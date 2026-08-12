@@ -211,6 +211,8 @@ export interface PluginAgentToolRegistration {
 	scope_use?: readonly string[];
 	/** 需要的会话能力 slug。 */
 	requires?: string[];
+	/** 副作用等级（"light" | "heavy"，缺省 = light）。heavy 工具会话内首次调用前需用户确认。 */
+	side_effect?: string;
 	context?: { conversation?: "summary" | "messages" };
 	/**
 	 * 该工具带有自渲染卡片（同一插件为它注册了 tool-call slot）。由渲染进程自动探测，

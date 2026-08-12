@@ -285,6 +285,7 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 		return (
 			this.options.readSkills?.().map((skill) => ({
 				...skill,
+				// agentModes 已废弃（ADR-0071）：无消费者，仅为返回值不可变而拷贝容忍字段。
 				agentModes: skill.agentModes ? [...skill.agentModes] : undefined,
 			})) ?? []
 		);

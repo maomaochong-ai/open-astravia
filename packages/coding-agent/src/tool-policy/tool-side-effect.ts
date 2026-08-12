@@ -27,6 +27,11 @@ export const DEFAULT_HEAVY_TOOL_NAMES: readonly string[] = [
  *   对话框内点击。再加一层闸只会变成双重确认。
  * - `content_creation_assets`：导入落在插件托管存储而非用户工作区，工具描述亦明确声明无需确认。
  * - `content_creation_inspect`：只读。
+ * - `vetd_history`：只读。
+ * - `vetd_restore`：改写整棵设计源码树但可自愈——恢复前会先把当前状态自动落一版历史，
+ *   误恢复可以再恢复回来，不满足「不可撤销」判据。
+ * - `bash` / `shell` 等命令执行：不归本闸管。命令执行的边界由 Execution Mode
+ *   （沙盒/全访问）承担，一次性首调确认对任意命令流没有防护价值。
  */
 
 export interface ToolSideEffectDeclaration {

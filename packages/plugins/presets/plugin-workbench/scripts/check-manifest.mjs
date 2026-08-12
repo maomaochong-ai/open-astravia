@@ -76,11 +76,8 @@ async function main() {
 	if (!Array.isArray(raw.permissions)) warnings.push("permissions should be an array");
 
 	if (raw.agent_mode !== undefined) {
-		const modes = Array.isArray(raw.agent_mode) ? raw.agent_mode : [raw.agent_mode];
-		const invalid = modes.filter((mode) => mode !== "work" && mode !== "coding");
-		if (invalid.length > 0) {
-			warnings.push(`agent_mode has unknown values: ${invalid.join(", ")} (known: work, coding)`);
-		}
+		// 字段已整体废弃（ADR-0071）：值对错都无意义，只提示删除。
+		warnings.push("agent_mode is deprecated (ADR-0071): it has no runtime effect and should be removed");
 	}
 
 	try {

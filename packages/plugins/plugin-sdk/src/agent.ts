@@ -34,6 +34,12 @@ export interface PluginAgentToolRegistration<TInput = unknown> {
 	 * 需要限定使用场景请写进 description 的反向触发段（Do NOT / Only for）。
 	 */
 	agent_mode?: readonly string[];
+	/**
+	 * 副作用等级（缺省 = light）。会在用户工作区创建目录/文件树、产生外部计费、或发起
+	 * 不可撤销外部动作的工具必须声明 `"heavy"`——宿主会在会话内首次调用前向用户确认，
+	 * 拒绝则零副作用。重副作用工具不声明会收到宿主告警。见 guiding-the-agent.md。
+	 */
+	side_effect?: "light" | "heavy";
 	context?: { conversation?: "summary" | "messages" };
 	handler: PluginAgentToolHandler<TInput>;
 }

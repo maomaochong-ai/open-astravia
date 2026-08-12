@@ -88,7 +88,6 @@ workbenchRoot = listPlugins() 中 id === "plugin-workbench" 的 rootPath
 | 要解决的问题 / MVP 范围 | 避免一次做全家桶 |
 | 是否立即安装到本机 | 构建后是否引导用户在面板点「应用到 Vetta」 |
 | 扩展点类型（用户没说时） | activity-tab / 工具 / 引导词 / 预览 / … |
-| **工作模式定位（通用 / Work 专属 / Coding 专属）** | 决定 `plugin.json` 的 `agent_mode`；白名单外整个插件不可见。**新建插件必问** |
 
 ---
 
@@ -106,7 +105,7 @@ node "{workbenchRoot}/scripts/scaffold.mjs" "{cwd}/{plugin-id}" --id {id} --name
 
 然后按文档改：
 
-- `plugin.json`：permissions、guidingWords、agent、styles、moduleFederation、**`agent_mode`**（工作模式定位：通用=不写；Work 专属=`["work"]`；Coding 专属=`["coding"]`，见 manifest.md）…  
+- `plugin.json`：permissions、guidingWords、agent、styles、moduleFederation…（`agent_mode` 已废弃，不要写，见 manifest.md）  
 - `src/index.tsx`：register* / registerTool 等（遵守 styling 顶层 JSX 规则）  
 - 需要 skill/prompt 时按 manifest 建目录  
 

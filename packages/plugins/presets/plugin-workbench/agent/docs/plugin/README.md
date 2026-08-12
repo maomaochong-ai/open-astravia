@@ -9,6 +9,7 @@
 | 文档 | 内容 |
 | --- | --- |
 | [getting-started.md](./getting-started.md) | 环境、脚手架、Vite/Module Federation、构建、安装（含本地路径）、调试闭环 |
+| [guiding-the-agent.md](./guiding-the-agent.md) | **引导模型用好你的扩展**：三层心智模型、name/description 正反触发段、返回值引导、skill 渐进披露、side_effect、反模式与自检清单 |
 | [manifest.md](./manifest.md) | `plugin.json` 全字段、`commands`、`contributionMode`、`agent_mode`（已废弃）、`defaultLocale` / i18n、settings、guidingWords、agent 贡献 |
 | [mcp.md](./mcp.md) | **MCP 三源聚合**、插件内聚 MCP（`agent.mcpServers`）、命名、生命周期、打包 |
 | [permissions.md](./permissions.md) | 权限完整清单、门控点、声明/授权流程 |

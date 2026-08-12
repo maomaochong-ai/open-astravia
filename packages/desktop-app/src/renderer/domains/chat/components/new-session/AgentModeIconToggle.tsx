@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentModeOption } from "../../../../../preload/api-types/session";
 
-/** 拉取前的首帧回退：与注册表当前内容一致，仅避免 toggle 闪空。 */
-const FALLBACK_MODES: readonly AgentModeOption[] = [
-	{ id: "work", label: "Work", description: "", icon: "icon-[solar--case-minimalistic-linear]" },
-	{ id: "coding", label: "Coding", description: "", icon: "icon-[solar--code-linear]" },
-];
+/**
+ * 拉取注册表前渲染空容器（IPC 往返毫秒级，肉眼不可见）。刻意不做硬编码回退：
+ * 回退清单会随注册表演进悄悄过期，成为"新增模式 = 一份 md"承诺之外的第二事实源。
+ */
+const EMPTY_MODES: readonly AgentModeOption[] = [];
 
 /**
  * 新会话欢迎区的胶囊形工作模式切换，也是工作模式在整个 App 里唯一的调整入口。
@@ -22,7 +22,7 @@ const FALLBACK_MODES: readonly AgentModeOption[] = [
 export function AgentModeIconToggle({ className }: { className?: string }): JSX.Element {
 	const { t, i18n } = useTranslation("settings");
 	const { defaultAgentMode, setDefaultAgentMode } = useDefaultAgentMode();
-	const [modes, setModes] = useState<readonly AgentModeOption[]>(FALLBACK_MODES);
+	const [modes, setModes] = useState<readonly AgentModeOption[]>(EMPTY_MODES);
 
 	useEffect(() => {
 		let disposed = false;

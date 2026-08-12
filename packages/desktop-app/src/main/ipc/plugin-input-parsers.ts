@@ -95,6 +95,7 @@ export function asAgentToolRegistration(value: unknown): {
 	timeoutMs?: number;
 	scope_use?: string[];
 	requires?: string[];
+	side_effect?: string;
 	context?: { conversation?: "summary" | "messages" };
 	rendersCard?: boolean;
 } {
@@ -122,6 +123,8 @@ export function asAgentToolRegistration(value: unknown): {
 		scope_use: asOptionalStringArray(input.scope_use),
 		requires: asOptionalStringArray(input.requires),
 		// agent_mode 容忍传入但不再解析（ADR-0071）：模式不影响工具的可用性与顺序。
+		// side_effect 只收窄合法值；无效/缺省交给 coding-agent 侧 resolver 按 light + 兜底清单处理。
+		side_effect: input.side_effect === "heavy" || input.side_effect === "light" ? input.side_effect : undefined,
 		context: asHandlerContext(input.context),
 		// 渲染进程在注册时探测该工具有没有 tool-call slot；有则宿主注入 md_intro 参数。
 		rendersCard: input.rendersCard === true ? true : undefined,

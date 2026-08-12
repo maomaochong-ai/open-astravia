@@ -1,3 +1,4 @@
+import { useAgentModeNarration } from "@shared/agent-modes/agent-mode-registry";
 import type { ChatMessage, TextBlock } from "@shared/store/atoms";
 import {
 	activeSessionAtom,
@@ -49,9 +50,9 @@ export function useAssistantMessageModel({
 	const isRuntimePredicting = useAtomValue(isPredictingAtom);
 	const customToolNames = useMemo(() => new Set(toolCallSlots.map((slot) => slot.toolName)), [toolCallSlots]);
 	const isCurrentlyStreaming = isTailMessage && isStreaming;
-	// 按「本会话固化的模式」渲染，不是全局默认值——改新会话默认模式不该动到已打开的会话。
-	// 会话未打开/未指定模式时回落 work（与 DEFAULT_AGENT_MODE 一致）。
-	const isWorkMode = (useAtomValue(sessionAgentModeAtom) ?? "work") === "work";
+	// 按「本会话固化的模式」查注册表的 narration 能力位渲染，不是全局默认值，也不硬编码
+	// mode id（新增模式对本渲染层零改动）。未指定模式回退 staged（与历史会话按 work 恢复口径一致）。
+	const stagedNarration = useAgentModeNarration(useAtomValue(sessionAgentModeAtom)) === "staged";
 	const foldData = useMemo(
 		() => getAssistantFoldData(message.blocks ?? [], customToolNames),
 		[message.blocks, customToolNames],
@@ -64,18 +65,18 @@ export function useAssistantMessageModel({
 	}, [expanded, exportMode, foldData, isCurrentlyStreaming, message.blocks]);
 	const segments = useMemo(
 		() =>
-			isWorkMode
+			stagedNarration
 				? groupBlocksForWork(visibleBlocks, customToolNames, isCurrentlyStreaming)
 				: groupBlocks(visibleBlocks, customToolNames),
-		[isWorkMode, visibleBlocks, customToolNames, isCurrentlyStreaming],
+		[stagedNarration, visibleBlocks, customToolNames, isCurrentlyStreaming],
 	);
 	// Work 折叠条按「阶段数」计数，而不是 coding 的原始 block 数——用户看到的单位就是阶段。
 	const workFoldCount = useMemo(() => {
-		if (!isWorkMode || !foldData) return 0;
+		if (!stagedNarration || !foldData) return 0;
 		const processSegments = groupBlocksForWork(foldData.processBlocks, customToolNames);
 		return processSegments.filter((segment) => segment.type === "progress_group" || segment.type === "tool_group")
 			.length;
-	}, [isWorkMode, foldData, customToolNames]);
+	}, [stagedNarration, foldData, customToolNames]);
 	const exportProcessSegments = useMemo(
 		() => (exportMode && foldData ? groupBlocks(foldData.processBlocks, customToolNames) : []),
 		[customToolNames, exportMode, foldData],
@@ -115,7 +116,7 @@ export function useAssistantMessageModel({
 		foldData,
 		isCurrentlyStreaming,
 		isPredicting: isTailMessage && !isCurrentlyStreaming && isRuntimePredicting,
-		isWorkMode,
+		stagedNarration,
 		workFoldCount,
 		segments,
 		showDuration: Boolean(message.durationSeconds && message.durationSeconds > 0) && !isCurrentlyStreaming,

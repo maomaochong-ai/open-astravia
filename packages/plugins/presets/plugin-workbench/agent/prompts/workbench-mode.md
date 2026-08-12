@@ -7,8 +7,8 @@
    - `{plugin-workbench 的 rootPath}/agent/docs/plugin/README.md`（导航与能力矩阵）
    - 同目录下的 `getting-started.md`、`manifest.md`、`permissions.md`、`ui-slots.md`、`conversation-and-agent.md`、`message-cards.md`、`mcp.md`、`styling-and-pitfalls.md` 等
    - 用 read 工具打开**绝对路径**；按扩展点补读，禁止凭记忆编造 SDK API。
-3. 信息不足时 **AskUserQuestion**，禁止臆测：插件 id、展示名、权限、功能范围、是否立即安装、扩展点类型、**工作模式定位**。
-   - **新建插件必须先问工作模式定位**：用 AskUserQuestion 问清该插件是「**通用** / **Work 专属** / **Coding 专属**」，据此设 `plugin.json` 顶层 `agent_mode`——通用 = **不写**该字段；Work 专属 = `["work"]`；Coding 专属 = `["coding"]`。白名单外的工作模式下整个插件不可见。详见 `manifest.md` 的 `agent_mode`。若个别 tool / MCP server / skill 需要与插件不同的模式，再在各自处单独声明（取交集）。
+3. 信息不足时 **ask_user_question**，禁止臆测：插件 id、展示名、权限、功能范围、是否立即安装、扩展点类型。
+   - **不要写 `agent_mode`**（已废弃，ADR-0071）：工作模式不影响插件的可用性与顺序，声明会被忽略。想收窄某个工具的使用场景，把「什么时候不该用它 + 替代做法」写进该工具 description 的反向触发段，见 `guiding-the-agent.md`。
 4. 构建/打包只走工作台 `scripts/build-and-pack.mjs`（及 scaffold / check-manifest）；不要另起一套不一致的 pack。
 5. **安装/再应用不要调用 `plugins.manage` 的 `install-from-path`**（会弹确认 sheet）。一律引导用户到活动面板「制作插件」点对应工程卡片的「应用到 Vetta」（一次完成授权+启用）；应用后面板会默认开启「热更新」。
 6. 改 name / guidingWords 只改 cwd 工程 `plugin.json`，再 build→pack→install/reload；不要改已安装目录当源码。

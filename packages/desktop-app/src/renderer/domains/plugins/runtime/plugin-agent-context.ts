@@ -142,10 +142,18 @@ export function createPluginAgentApi({
 				timeoutMs: registration.timeoutMs,
 				scope_use: registration.scope_use,
 				requires: registration.requires,
+				side_effect: registration.side_effect,
 				context: registration.context,
 				// 宿主自动检测：带自渲染槽的工具会被注入可选的 md_intro 参数（见 ADR-0047）。
 				rendersCard: hasToolCallSlot(toolName) || undefined,
 			};
+			if (registration.side_effect === undefined) {
+				// 强制声明（软执行）：不声明按 light 处理，重副作用工具漏声明会绕过首调确认闸。
+				console.warn(
+					`[plugin-agent] tool "${toolName}" (${plugin.id}) declares no side_effect; ` +
+						'defaulting to light. Declare side_effect: "heavy" if it creates file trees, incurs external cost, or performs irreversible external actions.',
+				);
+			}
 			registeredAgentTools.set(toolName, payload);
 			if (label) setAgentToolLabel(plugin.id, toolName, label);
 			const registrationPromise = window.vetta.plugins

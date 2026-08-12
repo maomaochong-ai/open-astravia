@@ -91,6 +91,7 @@ describe("scheduler RuntimeHost consumer", () => {
 		expect(createSession).toHaveBeenCalledWith({
 			cwd: task.cwd,
 			scenario: "automation",
+			agentMode: "work",
 			executionMode: "full-access",
 			sessionDir: "C:/desktop/conversations/.vetta/sessions",
 		});

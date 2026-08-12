@@ -6,6 +6,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- `registerTool` 新增 `side_effect?: "light" | "heavy"` 声明：heavy 工具（在用户工作区创建目录/文件树、产生外部计费、发起不可撤销外部动作）会话内首次调用前由宿主向用户确认，拒绝则零副作用；不声明按 light 处理并收到宿主告警。扩展设计指南见 docs/plugin/guiding-the-agent.md。
 - 新增 `tool-call-args` 会话事件（`ConversationEvent`）：模型还在生成这次工具调用，流式参数已解析出的部分键。用于「agent 正在动某个目标」这类实时 UI——`edit` / `write` 等到 `tool-call-start` 时活已经干完了。参数天然残缺，权威全量值仍取 `tool-call-start`。权限沿用 `agent.session.read`。
 
 ### Breaking Changes

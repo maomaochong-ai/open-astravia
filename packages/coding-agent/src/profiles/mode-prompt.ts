@@ -16,6 +16,8 @@ export interface ModePromptInfo {
 	description: string;
 	/** iconify class，供宿主 UI 遍历注册表渲染模式入口。 */
 	icon: string;
+	/** 渲染层能力位：staged = 会话流按 progress 阶段折叠；inline = 工具行内联展示。 */
+	narration: "staged" | "inline";
 	prompt: string;
 }
 

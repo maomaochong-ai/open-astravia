@@ -270,6 +270,7 @@ function cloneSkillSnapshot(snapshot: CodingAgentSkillSourceSnapshot): CodingAge
 		paths: snapshot.paths ? [...snapshot.paths] : undefined,
 		skills: snapshot.skills?.map((skill) => ({
 			...skill,
+			// agentModes 已废弃（ADR-0071）：无消费者，仅为快照不可变而拷贝容忍字段。
 			agentModes: skill.agentModes ? [...skill.agentModes] : undefined,
 		})),
 		policy: cloneSkillPolicy(snapshot.policy),

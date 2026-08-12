@@ -33,6 +33,8 @@ export interface AgentModeOption {
 	description: string;
 	/** iconify class，如 icon-[solar--code-linear]。 */
 	icon: string;
+	/** 渲染层能力位：staged = 会话流按 progress 阶段折叠；inline = 工具行内联展示。 */
+	narration: "staged" | "inline";
 }
 
 /** 个性化人设选项（由 coding-agent 注册表下发，不含提示词正文）。 */

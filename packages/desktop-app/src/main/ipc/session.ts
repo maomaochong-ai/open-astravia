@@ -852,7 +852,13 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	// id/label/description/icon，不含提示词正文。renderer 的模式 toggle 据此遍历渲染，
 	// 新增模式无需改任何 UI 代码。
 	ipcMain.handle(CHANNELS.GET_AGENT_MODES, () => {
-		return MODE_PROMPTS.map((m) => ({ id: m.id, label: m.label, description: m.description, icon: m.icon }));
+		return MODE_PROMPTS.map((m) => ({
+			id: m.id,
+			label: m.label,
+			description: m.description,
+			icon: m.icon,
+			narration: m.narration,
+		}));
 	});
 
 	// 个性化配置（人设 + 自定义指令）。仅写盘；运行中的 session 在下一轮 prompt 经

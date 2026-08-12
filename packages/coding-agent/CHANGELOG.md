@@ -21,6 +21,8 @@
 
 ### Changed
 
+- **mode 提示词支持共享 partial 与 narration 能力位（ADR-0071 外部审计跟进）**：`modes/partials/*.md` 存各模式共享的提示词段（正文以 `{{> name}}` 引用、构建期展开），work / coding 双份漂移的 deliverables/md_intro/observations 段收敛为单一事实源；frontmatter 新增必填 `narration`（staged = 会话流按 progress 阶段折叠 / inline = 工具行内联），渲染层据注册表查表而不再硬编码 mode id。`generate-modes.mjs` 同时新增工具名卫生校验（正文里拼写错误的工具引用当场构建失败），并修正 work.md 里错误的工具名 `AskUserQuestion` → `ask_user_question`。
+- **插件工具的 `side_effect` 声明通道打通**：SDK `registerTool({ side_effect })` 经 renderer → IPC → 贡献注册表透传至 heavy 首调确认闸的 resolver，插件自此可以（也应该）自行声明重副作用；`DEFAULT_HEAVY_TOOL_NAMES` 明确降级为「声明通道接通前就存在的核心工具」兜底清单，刻意豁免项（vetd_history/vetd_restore/bash 等）补全就近理由。
 - **`agent_mode` 从 fail-closed 过滤降级为排序偏好**：工作模式不再排除任何工具、Skill 或插件 MCP 工具。声明了 `agent_mode` 的条目在非匹配模式下**仍然激活、仍然可调用**，只是被稳定地排到清单末尾（同权重内保持原有顺序，不影响 system prompt 前缀缓存）。
   - **动机**：硬闸让用户在「工作」模式下遇到编程类需求时工具整组消失，模型只能干说不能干活；模式的正确定位是引导而不是权限。
   - **行为变化**：`resolveActiveToolNames`、system prompt 的 Skill 清单、`invoke_skill` 可调用集合、插件 MCP 工具的 Model Call Frame 都不再按模式排除条目。`matchesAgentMode` 保留但语义改为「是否为本模式主推」，新增 `agentModePreferenceRank` 与 `sortByAgentModePreference`。

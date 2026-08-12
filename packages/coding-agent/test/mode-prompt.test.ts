@@ -13,14 +13,19 @@ import { getModePrompt, MODE_PROMPTS } from "../src/profiles/mode-prompt.js";
 
 const modesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "profiles", "modes");
 
-/** 与 generate-modes.mjs 相同的 frontmatter 切分：正文 = 第二个 `---` 之后。 */
+/** 与 generate-modes.mjs 相同的正文解析：frontmatter 切分 + `{{> name}}` partial 展开。 */
 function readModeFile(file: string): { id: string; body: string } {
 	const normalized = readFileSync(join(modesDir, file), "utf-8").replace(/\r\n?/g, "\n");
 	const end = normalized.indexOf("\n---", 3);
 	const frontmatter = normalized.slice(4, end);
 	const id = /^id:\s*(\S+)$/m.exec(frontmatter)?.[1];
 	if (!id) throw new Error(`${file} 缺少 id`);
-	return { id, body: normalized.slice(end + 4).trim() };
+	const body = normalized
+		.slice(end + 4)
+		.replace(/^\{\{>\s*([a-z0-9-]+)\s*\}\}$/gm, (_match, name) =>
+			readFileSync(join(modesDir, "partials", `${name}.md`), "utf-8").trim(),
+		);
+	return { id, body: body.trim() };
 }
 
 const modeFiles = readdirSync(modesDir)
