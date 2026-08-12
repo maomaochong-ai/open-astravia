@@ -171,6 +171,16 @@ describe("history runner", () => {
 		await rm(target, { recursive: true, force: true });
 	});
 
+	it("直接提交也会自己建仓库——老设计被 agent 改到、但从没打开过画布", async () => {
+		const fresh = await mkdtemp(join(tmpdir(), "vetd-history-fresh-"));
+		await mkdir(join(fresh, "frames"), { recursive: true });
+		await writeFile(join(fresh, "frames", "index.tsx"), "export default function Index(){return null}\n");
+		const result = await run({ cmd: "commit", dir: fresh, title: "改一下首页" });
+		expect(result.committed).toBe(true);
+		expect(existsSync(join(fresh, ".history", "HEAD"))).toBe(true);
+		await rm(fresh, { recursive: true, force: true });
+	});
+
 	it("目标已经有历史时不覆盖", async () => {
 		const pack = join(dir, ".history-pack-3.zip");
 		await run({ cmd: "pack", dir, out: pack });
