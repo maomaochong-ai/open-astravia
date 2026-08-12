@@ -25,6 +25,7 @@ import type { DesignSession } from "../src/vetd/design-session";
 
 const session = { dirPath: "/w/a.vetd" } as unknown as DesignSession;
 const onPeek = vi.fn();
+const onRestored = vi.fn();
 
 let host: HTMLDivElement;
 let root: Root;
@@ -39,7 +40,9 @@ function commits() {
 
 async function render(): Promise<void> {
 	await act(async () => {
-		root.render(<HistoryDrawer session={session} peekSha={null} onPeek={onPeek} onClose={() => {}} />);
+		root.render(
+			<HistoryDrawer session={session} peekSha={null} onPeek={onPeek} onRestored={onRestored} onClose={() => {}} />,
+		);
 	});
 }
 
@@ -61,6 +64,7 @@ beforeEach(() => {
 	restoreDesign.mockReset().mockResolvedValue({ restored: null, stashed: null, reinstalled: false });
 	readDir.mockReset().mockRejectedValue(new Error("ENOENT"));
 	onPeek.mockReset();
+	onRestored.mockReset();
 });
 
 afterEach(() => {
@@ -158,10 +162,15 @@ describe("HistoryDrawer", () => {
 		expect(listHistory).toHaveBeenCalledTimes(2);
 	});
 
-	it("有缩略图就显示", async () => {
-		readDir.mockResolvedValue([{ name: "home.jpg", path: "/w/a.vetd/.history/thumbs/c3/home.jpg", isDirectory: false }]);
+	it("恢复完成后通知画布硬重载——整份内容换掉了，增量热更新指望不上", async () => {
 		await render();
-		expect(host.querySelectorAll("img").length).toBeGreaterThan(0);
+		await act(async () => {
+			buttonsWithText("history.restore")[0]?.click();
+		});
+		await act(async () => {
+			buttonsWithText("history.confirm.ok")[0]?.click();
+		});
+		expect(onRestored).toHaveBeenCalledTimes(1);
 	});
 
 	it("读不到历史时说读不到，而不是装作没有版本", async () => {

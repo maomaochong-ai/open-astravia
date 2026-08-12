@@ -11,13 +11,6 @@
  */
 export const HISTORY_DIR = ".history";
 
-/** 版本缩略图。不进 git 对象库：它是可丢弃的展示资源，不值得进历史。 */
-export const HISTORY_THUMBS_DIR = `${HISTORY_DIR}/thumbs`;
-
 export function historyDirOf(designDir: string): string {
 	return `${designDir}/${HISTORY_DIR}`;
-}
-
-export function thumbsDirOf(designDir: string, sha: string): string {
-	return `${designDir}/${HISTORY_THUMBS_DIR}/${sha}`;
 }

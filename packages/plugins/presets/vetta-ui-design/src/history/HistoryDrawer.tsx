@@ -6,34 +6,15 @@
  */
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { useCallback, useEffect, useState } from "react";
-import { toVettaFileUrl } from "../cards/file-url";
 import { ConfirmDialog } from "../canvas/ConfirmDialog";
 import { getPluginCtx } from "../plugin-context";
 import type { DesignSession } from "../vetd/design-session";
 import { type HistoryCommit, listHistory } from "./history-client";
-import { thumbsDirOf } from "./history-paths";
 import { restoreDesign } from "./restore";
 
 const PANEL_WIDTH = 300;
 const PANEL_GAP = 12;
 const PANEL_MAX_HEIGHT = "80%";
-
-interface HistoryEntry extends HistoryCommit {
-	/** 提交时存下的缩略图（vetta-file:// 地址）。可能为空——位图还没刷新出来就没存。 */
-	thumbs: string[];
-}
-
-async function loadThumbs(designDir: string, sha: string): Promise<string[]> {
-	try {
-		const entries = await getPluginCtx().fs.readDir(thumbsDirOf(designDir, sha));
-		return entries
-			.filter((entry) => !entry.isDirectory && entry.name.endsWith(".jpg"))
-			.sort((a, b) => a.name.localeCompare(b.name))
-			.map((entry) => toVettaFileUrl(entry.path));
-	} catch {
-		return [];
-	}
-}
 
 /** 「刚刚 / 12 分钟前 / 3 小时前 / 具体日期」。 */
 function useRelativeTime(): (timestamp: number) => string {
@@ -56,24 +37,22 @@ interface HistoryDrawerProps {
 	/** 正在查看的版本，画布此刻装的就是它。 */
 	peekSha: string | null;
 	onPeek(target: HistoryCommit): void;
+	/** 恢复完成后画布要硬重载：整份内容换掉了，增量热更新那条路指望不上。 */
+	onRestored(): void;
 	onClose(): void;
 }
 
-export function HistoryDrawer({ session, peekSha, onPeek, onClose }: HistoryDrawerProps) {
+export function HistoryDrawer({ session, peekSha, onPeek, onRestored, onClose }: HistoryDrawerProps) {
 	const { t } = useTranslation();
 	const relativeTime = useRelativeTime();
-	const [entries, setEntries] = useState<HistoryEntry[] | null>(null);
+	const [entries, setEntries] = useState<HistoryCommit[] | null>(null);
 	const [failed, setFailed] = useState(false);
 	const [confirming, setConfirming] = useState<HistoryCommit | null>(null);
 	const [busy, setBusy] = useState<string | null>(null);
 
 	const refresh = useCallback(async () => {
 		try {
-			const commits = await listHistory(getPluginCtx(), session.dirPath);
-			const withThumbs = await Promise.all(
-				commits.map(async (commit) => ({ ...commit, thumbs: await loadThumbs(session.dirPath, commit.sha) })),
-			);
-			setEntries(withThumbs);
+			setEntries(await listHistory(getPluginCtx(), session.dirPath));
 			setFailed(false);
 		} catch {
 			// 历史读不出来（runner 物化失败、目录被删）——给一句话，别给空列表：
@@ -92,6 +71,7 @@ export function HistoryDrawer({ session, peekSha, onPeek, onClose }: HistoryDraw
 		setBusy(target.sha);
 		try {
 			await restoreDesign(getPluginCtx(), session.dirPath, target, { session });
+			onRestored();
 			await refresh();
 		} catch {
 			setFailed(true);
@@ -153,19 +133,6 @@ export function HistoryDrawer({ session, peekSha, onPeek, onClose }: HistoryDraw
 							{relativeTime(entry.timestamp)}
 							{entry.files.length > 0 ? ` · ${entry.files.join("、")}` : ""}
 						</p>
-						{entry.thumbs.length > 0 ? (
-							<div className="flex gap-1 pt-1.5">
-								{entry.thumbs.map((thumb) => (
-									<img
-										key={thumb}
-										src={thumb}
-										alt=""
-										className="h-14 w-auto max-w-[76px] rounded-md border border-border/60 object-cover object-top"
-										draggable={false}
-									/>
-								))}
-							</div>
-						) : null}
 						{index > 0 ? (
 							<div className="flex gap-1 pt-1.5">
 								{/* 先看后决定：查看是可丢弃的临时态，恢复才写进历史。 */}

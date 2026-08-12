@@ -6,16 +6,10 @@ import type { PluginContext, PluginFsApi } from "@vetta-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const commitHistory = vi.fn();
-const captureThumbnails = vi.fn();
 
 vi.mock("../src/history/history-client", () => ({
 	commitHistory: (...args: unknown[]) => commitHistory(...args),
 }));
-vi.mock("../src/history/history-thumbs", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("../src/history/history-thumbs")>();
-	return { ...actual, captureThumbnails: (...args: unknown[]) => captureThumbnails(...args) };
-});
-vi.mock("../src/canvas/design-runtime", () => ({ getCanvasController: () => null }));
 
 const { commitTurn, registerTurnHistory, resetTurnHistory } = await import("../src/history/turn-history");
 
@@ -40,7 +34,6 @@ beforeEach(() => {
 	resetTurnHistory();
 	files = designFiles("a.vetd");
 	commitHistory.mockReset().mockResolvedValue({ sha: "s1", title: "t", timestamp: 0, files: ["frames/login.tsx"] });
-	captureThumbnails.mockReset().mockResolvedValue(1);
 });
 
 describe("commitTurn", () => {
@@ -57,10 +50,10 @@ describe("commitTurn", () => {
 		expect(commitHistory).not.toHaveBeenCalled();
 	});
 
-	it("没有产生版本就不存缩略图", async () => {
+	it("没有变更时不产生版本", async () => {
 		commitHistory.mockResolvedValue(null);
 		await commitTurn(makeCtx(), "/w", "什么都没改");
-		expect(captureThumbnails).not.toHaveBeenCalled();
+		expect(commitHistory).toHaveBeenCalledTimes(1);
 	});
 
 	it("一份设计失败不连累其它设计，也不抛出", async () => {

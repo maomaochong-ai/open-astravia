@@ -6,11 +6,9 @@
  * 一次就是一个版本永久缺失。挂在 hook 上，agent 完全不需要知道 git 存在。
  */
 import type { Disposable, PluginContext } from "@vetta-org/plugin-sdk";
-import { getCanvasController } from "../canvas/design-runtime";
 import { pickDesignPaths } from "../vetd/discover";
 import { commitHistory } from "./history-client";
 import { readPeekState } from "./peek";
-import { captureThumbnails, thumbFrameIds } from "./history-thumbs";
 import { carryOverTitle, commitTitleFromPrompt } from "./turn-title";
 
 const SCOPE_USE = ["project", "conversation"] as const;
@@ -28,13 +26,6 @@ async function designsUnder(ctx: PluginContext, cwd: string): Promise<string[]> 
 	}
 }
 
-/** 画布当前打开的这份设计的帧顺序；不是这一份（或没开画布）就没有。 */
-function canvasFrameIdsFor(designDir: string): string[] {
-	const session = getCanvasController()?.session;
-	if (!session || session.dirPath !== designDir) return [];
-	return session.manifest.frames.map((frame) => frame.id);
-}
-
 /**
  * 给 cwd 下每一份有变更的设计各落一个版本。没有变更的设计不产生空提交，所以
  * 这里可以无脑遍历——判空由 runner 那侧做，且不含变更时只花一次 node 冷启动。
@@ -45,9 +36,7 @@ export async function commitTurn(ctx: PluginContext, cwd: string, title: string)
 			// 正在被查看的设计，工作区里装的是一份旧版本。此刻提交会把旧版本记成新
 			// 版本，历史从此说谎。跳过它——查看模式本来就是只读的。
 			if (await readPeekState(ctx, designDir)) continue;
-			const commit = await commitHistory(ctx, designDir, title);
-			if (!commit) continue;
-			await captureThumbnails(ctx.fs, designDir, commit.sha, thumbFrameIds(commit.files, canvasFrameIdsFor(designDir)));
+			await commitHistory(ctx, designDir, title);
 		} catch (error) {
 			// 一份设计提交失败不该连累其它设计，更不该让回合结束报错。
 			console.warn("[vetta-ui-design] 设计版本提交失败", designDir, error);

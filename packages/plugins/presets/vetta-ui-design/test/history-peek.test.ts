@@ -19,7 +19,8 @@ vi.mock("../src/history/history-client", () => ({
 }));
 vi.mock("../src/history/runner-host", () => ({
 	runHistoryCommand: (...args: unknown[]) => {
-		order.push("checkout");
+		const request = args[1] as { cmd: string };
+		order.push(request.cmd);
 		return runHistoryCommand(...args);
 	},
 }));
@@ -32,6 +33,7 @@ const writeFile = vi.fn(async (path: string, content: string) => {
 	files.set(path, content);
 });
 const readFile = vi.fn(async (path: string) => {
+	if (path.endsWith("/design.json")) return { content: '{"frames":[]}' };
 	const content = files.get(path);
 	if (content === undefined) throw new Error("ENOENT");
 	return { content };
@@ -46,15 +48,21 @@ const reload = vi.fn();
 const session = { dirPath: "/w/a.vetd", reload } as unknown as DesignSession;
 const MARKER = "/w/a.vetd/.history/peek.json";
 
+/** 当前未提交的改动，逐用例改。 */
+let changed: string[] = [];
+
 const head = { sha: "head", title: "最新", timestamp: 0, files: [] };
 const target = { sha: "old", title: "初始状态", timestamp: 0, files: [] };
 
 beforeEach(() => {
 	files.clear();
 	order.length = 0;
+	changed = ["frames/login.tsx"];
 	commitHistory.mockReset().mockResolvedValue(null);
 	listHistory.mockReset().mockResolvedValue([head]);
-	runHistoryCommand.mockReset().mockResolvedValue({ checkedOut: "x" });
+	runHistoryCommand.mockReset().mockImplementation((_ctx: unknown, request: { cmd: string }) =>
+		request.cmd === "status" ? Promise.resolve({ changed }) : Promise.resolve({ checkedOut: "x" }),
+	);
 	reload.mockReset().mockResolvedValue(undefined);
 	writeFile.mockClear();
 	remove.mockClear();
@@ -65,13 +73,43 @@ describe("enterPeek", () => {
 		await enterPeek(ctx, session, target);
 		// 顺序错一步就丢东西：没封存就切，未提交的改动被旧版本盖掉；
 		// 先切后写标记，中间崩溃就没人知道该退回哪一版。
-		expect(order).toEqual(["commit", "marker-write", "checkout"]);
+		expect(order).toEqual(["status", "commit", "marker-write", "checkout"]);
 	});
 
 	it("标记里记着要退回哪一版", async () => {
 		const state = await enterPeek(ctx, session, target);
-		expect(state).toEqual({ sha: "old", title: "初始状态", returnTo: "head" });
+		expect(state).toMatchObject({ sha: "old", title: "初始状态", returnTo: "head" });
 		expect(await readPeekState(ctx, "/w/a.vetd")).toEqual(state);
+	});
+
+	it("只有 design.json 变了不落版本——那是拖画框/平移视口，不值得占一条历史", async () => {
+		changed = ["design.json"];
+		await enterPeek(ctx, session, target);
+		expect(commitHistory).not.toHaveBeenCalled();
+		// 但它的内容要存进标记，退出时写回，否则拖过的画框会弹回旧位置。
+		expect(await readPeekState(ctx, "/w/a.vetd")).toMatchObject({ manifest: expect.any(String) });
+	});
+
+	it("工作区干净时既不提交也不存 manifest", async () => {
+		changed = [];
+		await enterPeek(ctx, session, target);
+		expect(commitHistory).not.toHaveBeenCalled();
+		expect((await readPeekState(ctx, "/w/a.vetd"))?.manifest).toBeUndefined();
+	});
+
+	it("已经在查看态时再点查看：换一版看，绝不再封存现场", async () => {
+		const first = await enterPeek(ctx, session, target);
+		commitHistory.mockClear();
+		const second = await enterPeek(ctx, session, { sha: "older", title: "更早" });
+		// 现场此刻装的是上一版旧内容，再封存就是把旧内容记成新版本（实测踩过：
+		// 连点五次「查看」，历史里多出五个一模一样的假版本）。
+		expect(commitHistory).not.toHaveBeenCalled();
+		expect(second).toMatchObject({ sha: "older", returnTo: first?.returnTo });
+	});
+
+	it("点当前正在查看的那一版，原样返回", async () => {
+		const first = await enterPeek(ctx, session, target);
+		expect(await enterPeek(ctx, session, target)).toEqual(first);
 	});
 
 	it("切完重载画布——design.json 也被换掉了", async () => {

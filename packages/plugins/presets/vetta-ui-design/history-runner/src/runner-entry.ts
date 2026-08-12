@@ -136,14 +136,17 @@ async function ensureRepository(dir: string): Promise<void> {
  * 只把工作区遍历出来的文件（以及索引里已有的文件）交给 statusMatrix：它的
  * `filepaths` 是遍历根，不给的话会自己走整个目录树，node_modules 又回来了。
  */
-async function commit(dir: string, title: string, restoredFrom?: string): Promise<HistoryCommit | null> {
+/**
+ * 暂存工作区并回报变更清单。commit 与 status 共用——「有没有变、变了什么」必须是
+ * 同一个答案，两边各算一次迟早会出现「status 说干净、commit 却提交了」。
+ */
+async function stageAll(dir: string): Promise<string[]> {
 	const gitdir = gitdirOf(dir);
-	await ensureRepository(dir);
 	const onDisk = await walkWorktree(dir);
 	// 已跟踪文件取自 HEAD 树而不是 index：下面要把 index 丢掉，那之后 index 里什么都没有。
 	const tracked = await git.listFiles({ fs, gitdir, ref: "HEAD" }).catch(() => [] as string[]);
 	const filepaths = [...new Set([...onDisk, ...tracked])];
-	if (filepaths.length === 0) return null;
+	if (filepaths.length === 0) return [];
 
 	/*
 	 * 丢掉 index，强制按内容比对。
@@ -170,9 +173,16 @@ async function commit(dir: string, title: string, restoredFrom?: string): Promis
 		}
 		if (head !== workdir) changed.push(filepath);
 	}
+	return changed.sort();
+}
+
+async function commit(dir: string, title: string, restoredFrom?: string): Promise<HistoryCommit | null> {
+	const gitdir = gitdirOf(dir);
+	await ensureRepository(dir);
+	const changed = await stageAll(dir);
 	if (changed.length === 0) return null;
 
-	const message = buildMessage(title, { files: changed.sort(), restoredFrom });
+	const message = buildMessage(title, { files: changed, restoredFrom });
 	const timestamp = Date.now();
 	const sha = await git.commit({
 		fs,
@@ -312,6 +322,10 @@ async function dispatch(request: Request): Promise<unknown> {
 		case "unpack": {
 			if (!request.from) throw new Error("unpack requires from");
 			return { files: unpackHistory(request.dir, request.from) };
+		}
+		case "status": {
+			await ensureRepository(request.dir);
+			return { changed: await stageAll(request.dir) };
 		}
 		case "checkout": {
 			if (!request.sha) throw new Error("checkout requires sha");

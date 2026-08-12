@@ -303,6 +303,11 @@ export function DesignCanvas({
 	 * 这层 catch 不是可选的。这些动作全在异步链里，漏掉它时一次失败的表现是「点了
 	 * 没有任何反应」——按钮看起来坏了，而控制台之外没有任何线索。
 	 */
+	/**
+	 * 查看/恢复是把整份内容换掉，不能指望「按 mtime 比对 + HMR」那条增量路径：
+	 * 已经挂着的 iframe src 不变、浏览器不会重新加载，位图化的那些也未必被判成变了。
+	 * 实测表现就是画布纹丝不动，一直显示旧的那一版。所以走硬重载。
+	 */
 	const runPeekAction = async (action: () => Promise<void>): Promise<void> => {
 		setPeekBusy(true);
 		try {
@@ -1506,6 +1511,7 @@ export function DesignCanvas({
 						void runPeekAction(async () => {
 							await exitPeek(getPluginCtx(), session);
 							setPeek(null);
+							reloadAll();
 						});
 					}}
 					onRestore={() => {
@@ -1515,6 +1521,7 @@ export function DesignCanvas({
 							await exitPeek(getPluginCtx(), session);
 							await restoreDesign(getPluginCtx(), session.dirPath, { ...peek, timestamp: 0, files: [] }, { session });
 							setPeek(null);
+							reloadAll();
 						});
 					}}
 				/>
@@ -1534,8 +1541,10 @@ export function DesignCanvas({
 								return;
 							}
 							setPeek(state);
+							reloadAll();
 						});
 					}}
+					onRestored={reloadAll}
 					onClose={() => setHistoryOpen(false)}
 				/>
 			) : null}
