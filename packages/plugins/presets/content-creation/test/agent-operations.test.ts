@@ -3,9 +3,11 @@ import {
 	CONTENT_AGENT_OPERATION_SCHEMA,
 	parseContentAgentOperations,
 } from "../src/agent/operations";
+import { CONTENT_AGENT_OPERATION_TYPES } from "../src/agent/operation-schema";
 import { applyContentProjectCommands } from "../src/project/commands";
 import { createContentProject } from "../src/project/types";
 import type { ContentModelDescriptor } from "../src/generation/types";
+import { resolveContentPrompt, listConnectedPromptSources } from "../src/node/prompt-sources";
 
 const FRAME_VIDEO_MODEL: ContentModelDescriptor = {
 	providerId: "host-media",
@@ -142,7 +144,7 @@ describe("content agent operations", () => {
 		expect(prompt).toContain("5-second single coherent shot");
 		expect(prompt).toContain("Reference role:");
 		expect(prompt).toContain("Final frame:");
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).toHaveProperty("promptPlan");
+		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.oneOf).toHaveLength(CONTENT_AGENT_OPERATION_TYPES.length);
 	});
 
 	it("assigns stable ids and maps semantic connection inputs to internal handles", () => {
@@ -159,13 +161,35 @@ describe("content agent operations", () => {
 			expect.objectContaining({ type: "node.duplicate", id: expect.any(String) }),
 			expect.objectContaining({ type: "edge.connect", id: expect.any(String), targetHandle: "prompt" }),
 		]);
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("sourceHandle");
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("targetHandle");
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("x");
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("y");
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("imageEdit");
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("editRegions");
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties.type.enum).not.toContain("edit_image");
+		const serializedSchema = JSON.stringify(CONTENT_AGENT_OPERATION_SCHEMA);
+		expect(serializedSchema).not.toContain("sourceHandle");
+		expect(serializedSchema).not.toContain("targetHandle");
+		expect(serializedSchema).not.toContain('"x"');
+		expect(serializedSchema).not.toContain('"y"');
+		expect(CONTENT_AGENT_OPERATION_TYPES).not.toContain("edit_image");
+	});
+
+	it("accepts canonical node and edge ids for ordinary connections", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "prompt", kind: "prompt", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 400, y: 0 } } },
+		]);
+
+		const commands = parseContentAgentOperations(project, [{
+			type: "connect_nodes",
+			edgeId: "prompt-to-image",
+			sourceNodeId: "prompt",
+			targetNodeId: "image",
+			targetInput: "promptSources",
+		}]);
+
+		expect(commands).toEqual([expect.objectContaining({
+			type: "edge.connect",
+			id: "prompt-to-image",
+			source: "prompt",
+			target: "image",
+			targetHandle: "prompt",
+		})]);
 	});
 
 	it("normalizes legacy and internal target input names after tool validation", () => {
@@ -271,6 +295,55 @@ describe("content agent operations", () => {
 		expect(next.graph.edges.filter((edge) => edge.target === "video")).toHaveLength(3);
 	});
 
+	it("absorbs redundant media and prompt connections into one high-level video shot", () => {
+		const project = createContentProject("C:/project");
+		const commands = parseContentAgentOperations(project, [
+			{ type: "add_node", id: "topic", kind: "prompt", prompt: "A red sneaker in a night city" },
+			{ type: "add_node", id: "opening", kind: "image-generator", aspectRatio: "16:9" },
+			{ type: "add_node", id: "video", kind: "video-generator", aspectRatio: "16:9" },
+			{
+				type: "connect_nodes",
+				edgeId: "topic-to-video",
+				sourceNodeId: "topic",
+				targetNodeId: "video",
+				targetInput: "promptSources",
+			},
+			{
+				type: "connect_nodes",
+				edgeId: "opening-to-video",
+				sourceNodeId: "opening",
+				targetNodeId: "video",
+				targetInput: "referenceImages",
+			},
+			{
+				type: "configure_video_shot",
+				targetNodeId: "video",
+				strategy: "automatic",
+				aspectRatio: "16:9",
+				controlRequirements: { exactOpening: true, exactEnding: false },
+				sources: [{ sourceNodeId: "opening" }],
+				promptPlan: createVideoPromptPlan(),
+			},
+		], [FRAME_VIDEO_MODEL]);
+
+		const next = applyContentProjectCommands(project, commands);
+		const video = next.graph.nodes.find((node) => node.id === "video");
+		expect(next.graph.edges.filter((edge) => edge.target === "video")).toEqual(expect.arrayContaining([
+			expect.objectContaining({ source: "topic", targetHandle: "prompt" }),
+			expect.objectContaining({ source: "opening", role: "firstFrame" }),
+		]));
+		expect(next.graph.edges.filter((edge) => edge.source === "opening" && edge.target === "video")).toHaveLength(1);
+		expect(video?.data.promptDocument?.segments).toEqual(expect.arrayContaining([
+			{ type: "prompt-reference", sourceNodeId: "topic" },
+		]));
+		expect(resolveContentPrompt(listConnectedPromptSources(next, "video"), video?.data ?? {})).toContain(
+			"A red sneaker in a night city",
+		);
+		expect(resolveContentPrompt(listConnectedPromptSources(next, "video"), video?.data ?? {})).toContain(
+			"Primary action:",
+		);
+	});
+
 	it("numbers attached assets before generated references to match runtime input order", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{
@@ -333,7 +406,26 @@ describe("content agent operations", () => {
 		}], [FRAME_VIDEO_MODEL])).toThrowError(expect.objectContaining({ code: "video-shot-aspect-ratio-required" }));
 	});
 
-	it("turns legacy video target inputs into an actionable generation-plan error", () => {
+	it("requires two keyframe plans when exactEnding requests a hard last-frame anchor", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "opening", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+		]);
+
+		expect(() => parseContentAgentOperations(project, [{
+			type: "configure_video_shot",
+			targetNodeId: "video",
+			aspectRatio: "16:9",
+			controlRequirements: { exactEnding: true },
+			sources: [{ sourceNodeId: "opening" }],
+			promptPlan: createVideoPromptPlan(),
+		}], [FRAME_VIDEO_MODEL])).toThrowError(expect.objectContaining({
+			code: "video-shot-keyframes-required",
+			details: { required: ["keyframes.first", "keyframes.last"] },
+		}));
+	});
+
+	it("turns raw video media connections into an actionable high-level generation-plan error", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 } } },
 			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
@@ -350,8 +442,12 @@ describe("content agent operations", () => {
 				retryable: true,
 				details: {
 					targetNodeId: "video",
-					requiredOperation: "configure_generation",
+					requiredOperation: "configure_video_shot",
 					suggestedSource: { sourceNodeId: "image" },
+					suggestedOperation: expect.objectContaining({
+						type: "configure_video_shot",
+						targetNodeId: "video",
+					}),
 				},
 			});
 		}
@@ -404,7 +500,7 @@ describe("content agent operations", () => {
 
 	it("rejects operations outside the agent workflow surface", () => {
 		const project = createContentProject("C:/project");
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties.type.enum).not.toContain("add_timeline_clip");
+		expect(CONTENT_AGENT_OPERATION_TYPES).not.toContain("add_timeline_clip");
 		expect(() =>
 			parseContentAgentOperations(project, [
 				{ type: "add_timeline_clip", nodeId: "source", start: 0, duration: 5 },

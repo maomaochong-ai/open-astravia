@@ -207,7 +207,10 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			const node = findNode(project, command.nodeId);
 			const nextData = { ...node.data, ...command.data };
 			if (command.data.prompt !== undefined && command.data.promptDocument === undefined) {
-				nextData.promptDocument = createContentPromptDocument(nextData);
+				nextData.promptDocument = createContentPromptDocument({
+					...nextData,
+					promptDocument: undefined,
+				});
 			}
 			node.data = nextData;
 			return;

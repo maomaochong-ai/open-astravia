@@ -43,6 +43,7 @@ export function parseConfigureVideoShotOperation(
 	project: ContentProjectDocument,
 	nodeSnapshots: Map<string, ContentNode>,
 	models: readonly ContentModelDescriptor[],
+	plannedPromptSourceNodeIds: readonly string[] = [],
 ): ContentProjectCommand[] {
 	const targetNodeId = requiredString(operation, "targetNodeId");
 	const target = nodeSnapshots.get(targetNodeId);
@@ -179,8 +180,23 @@ export function parseConfigureVideoShotOperation(
 	const prompt = strategy === "omni-reference"
 		? compileOmniReferencePrompt(videoPlan, orderedReferences, duration)
 		: compileVideoPromptPlan(videoPlan, { durationSeconds: duration });
+	const promptSourceNodeIds = [...new Set(plannedPromptSourceNodeIds)]
+		.filter((nodeId) => nodeSnapshots.get(nodeId)?.kind === "prompt");
 	const targetData: ContentNode["data"] = {
 		prompt,
+		promptDocument: {
+			version: 1,
+			segments: [
+				...promptSourceNodeIds.map((sourceNodeId) => ({
+					type: "prompt-reference" as const,
+					sourceNodeId,
+				})),
+				{
+					type: "text",
+					text: `${promptSourceNodeIds.length > 0 ? "\n\n" : ""}${prompt}`,
+				},
+			],
+		},
 		promptOptimization: undefined,
 		...(aspectRatio ? { aspectRatio } : {}),
 		...(duration === undefined ? {} : { duration }),

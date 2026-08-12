@@ -9,6 +9,7 @@ import { ContentVideoShotPlanError } from "../src/agent/video-shot-plan";
 import { ContentGenerationIntentError } from "../src/generation/generation-intent";
 import { ContentLocalAssetError, type ContentLocalAssetService } from "../src/generation/local-asset-service";
 import type { ContentModelDescriptor } from "../src/generation/types";
+import { listConnectedPromptSources, resolveContentPrompt } from "../src/node/prompt-sources";
 import { applyContentProjectCommands } from "../src/project/commands";
 import { createContentProject } from "../src/project/types";
 import { ContentRunApprovalStore } from "../src/plugin/run-approval";
@@ -190,9 +191,72 @@ describe("content creation tool registration", () => {
 			expectedRevision: 0,
 			projectDir: "C:/project",
 			operations: [
-				{ type: "connect_nodes", source: "product-image", target: "product-video", targetInput: "startImages" },
-				{ type: "connect_nodes", source: "product-video", target: "output", targetInput: "content" },
+				{
+					type: "connect_nodes",
+					sourceNodeId: "product-image",
+					targetNodeId: "product-video",
+					targetInput: "startImages",
+				},
+				{
+					type: "connect_nodes",
+					sourceNodeId: "product-video",
+					targetNodeId: "output",
+					targetInput: "content",
+				},
 			],
+		})).not.toThrow();
+	});
+
+	it("accepts canonical connection ids through the actual host AJV validation path", () => {
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{
+				type: "connect_nodes",
+				edgeId: "prompt-to-image",
+				sourceNodeId: "prompt",
+				targetNodeId: "image",
+				targetInput: "promptSources",
+			}],
+		})).not.toThrow();
+	});
+
+	it("rejects low-level source roles on high-level video shots during schema validation", () => {
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{
+				type: "configure_video_shot",
+				targetNodeId: "video",
+				promptPlan: createVideoPromptPlan(),
+				sources: [{ sourceNodeId: "image", role: "referenceImages" }],
+			}],
+		})).toThrow();
+	});
+
+	it("requires operation-specific fields during host schema validation", () => {
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{ type: "connect_nodes", sourceNodeId: "prompt" }],
+		})).toThrow();
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{ type: "configure_video_shot", targetNodeId: "video" }],
+		})).toThrow();
+	});
+
+	it("keeps exact-ending semantics in the domain validator instead of provider-fragile schema conditionals", () => {
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{
+				type: "configure_video_shot",
+				targetNodeId: "video",
+				controlRequirements: { exactEnding: true },
+				promptPlan: createVideoPromptPlan(),
+				sources: [{ sourceNodeId: "opening" }],
+			}],
+		})).not.toThrow();
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{
+				type: "configure_video_shot",
+				targetNodeId: "video",
+				controlRequirements: { exactEnding: false },
+				promptPlan: createVideoPromptPlan(),
+				sources: [{ sourceNodeId: "opening" }],
+			}],
 		})).not.toThrow();
 	});
 
@@ -290,7 +354,7 @@ describe("content creation tool registration", () => {
 		});
 	});
 
-	it("runs a real validated product-image-to-video batch through the tool handler", async () => {
+	it("runs a real validated high-level image-to-video batch through the tool handler", async () => {
 		let project = createContentProject("C:/project");
 		edit.mockImplementationOnce(async (_cwd, operations) => {
 			project = applyContentProjectCommands(
@@ -316,16 +380,41 @@ describe("content creation tool registration", () => {
 					id: "product-video",
 					kind: "video-generator",
 					duration: 5,
-					promptPlan: createVideoPromptPlan(),
+					aspectRatio: "16:9",
 				},
 				{ type: "add_node", id: "output", kind: "output" },
-				{ type: "connect_nodes", source: "prompt", target: "product-image", targetInput: "prompt" },
-				{ type: "connect_nodes", source: "product-video", target: "output", targetInput: "content" },
 				{
-					type: "configure_generation",
+					type: "connect_nodes",
+					sourceNodeId: "prompt",
+					targetNodeId: "product-image",
+					targetInput: "prompt",
+				},
+				{
+					type: "connect_nodes",
+					sourceNodeId: "prompt",
 					targetNodeId: "product-video",
-					generationIntent: "animate-still",
+					targetInput: "promptSources",
+				},
+				{
+					type: "connect_nodes",
+					sourceNodeId: "product-image",
+					targetNodeId: "product-video",
+					targetInput: "referenceImages",
+				},
+				{
+					type: "connect_nodes",
+					sourceNodeId: "product-video",
+					targetNodeId: "output",
+					targetInput: "content",
+				},
+				{
+					type: "configure_video_shot",
+					targetNodeId: "product-video",
+					strategy: "automatic",
+					aspectRatio: "16:9",
+					controlRequirements: { exactOpening: true, exactEnding: false },
 					sources: [{ sourceNodeId: "product-image" }],
+					promptPlan: createVideoPromptPlan(),
 				},
 			],
 		};
@@ -333,7 +422,7 @@ describe("content creation tool registration", () => {
 
 		const result = await tool<typeof input>(CONTENT_EDIT_TOOL_NAME).handler(toolContext(validated as typeof input));
 
-		expect(result).toMatchObject({ ok: true, status: "applied", revision: 1, nodeCount: 4, connectionCount: 3 });
+		expect(result).toMatchObject({ ok: true, status: "applied", revision: 1, nodeCount: 4, connectionCount: 4 });
 		expect(project.graph.edges).toEqual(expect.arrayContaining([
 			expect.objectContaining({ source: "product-image", target: "product-video", role: "firstFrame" }),
 			expect.objectContaining({ source: "product-video", target: "output", targetHandle: "content" }),
@@ -343,6 +432,10 @@ describe("content creation tool registration", () => {
 			modelId: "frame-video",
 			modeId: "image-to-video",
 		});
+		const video = project.graph.nodes.find((node) => node.id === "product-video");
+		const effectivePrompt = resolveContentPrompt(listConnectedPromptSources(project, "product-video"), video?.data ?? {});
+		expect(effectivePrompt).toContain("Premium product lighting");
+		expect(effectivePrompt).toContain("Primary action:");
 	});
 
 	it("queues prepared generation for the global dialog without returning a card", async () => {

@@ -110,6 +110,32 @@ describe("content creation agent state", () => {
 		}));
 	});
 
+	it("diagnoses a connected Prompt node that is shadowed by local generator text", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "node.add",
+				node: { id: "topic", kind: "prompt", position: { x: 0, y: 0 }, data: { prompt: "Dynamic topic" } },
+			},
+			{
+				type: "node.add",
+				node: {
+					id: "video",
+					kind: "video-generator",
+					position: { x: 400, y: 0 },
+					data: { prompt: completeVideoPrompt() },
+				},
+			},
+			{ type: "edge.connect", source: "topic", target: "video", targetHandle: "prompt" },
+		]);
+
+		const state = createContentCreationAgentState(project, [VIDEO_MODEL]);
+		expect(state.diagnostics).toContainEqual(expect.objectContaining({
+			code: "connected-prompt-source-shadowed",
+			nodeId: "video",
+			details: { shadowedPromptSourceNodeIds: ["topic"], recommendedOperation: "configure_video_shot" },
+		}));
+	});
+
 	it("exposes the actual first/last-frame strategy and diagnoses reused frame prompts", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{

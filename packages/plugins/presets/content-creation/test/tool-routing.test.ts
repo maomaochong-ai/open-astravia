@@ -118,5 +118,6 @@ describe("content creation tool routing", () => {
 		expect(context).toContain("# Continuity and references");
 		expect(context).toContain("# Reference roles and timed directing");
 		expect(context).toContain("configure_video_shot");
+		expect(context).not.toContain("Use `configure_generation` for every video-generator media input");
 	});
 });

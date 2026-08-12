@@ -93,7 +93,7 @@ export function registerContentCreationTools(
 		name: CONTENT_ASSETS_TOOL_NAME,
 		label: "%tool.assets.label%",
 		description:
-			"List or import image, video, and audio files from host-authorized local paths. List directories before choosing reference media. Import copies media into managed plugin storage, creates or updates one asset node, and returns stable asset IDs for configure_generation. No confirmation is required.",
+			"List or import image, video, and audio files from host-authorized local paths. List directories before choosing reference media. Import copies media into managed plugin storage, creates or updates one asset node, and returns stable source IDs for configure_video_shot or low-level configure_generation. No confirmation is required.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -163,7 +163,7 @@ export function registerContentCreationTools(
 		name: CONTENT_EDIT_TOOL_NAME,
 		label: "%tool.edit.label%",
 		description:
-			"Atomically apply a revision-bound batch of semantic workflow edits without confirmation. Prefer configure_video_shot for Agent-authored video work: it selects text, single-frame, first/last-frame, omni-reference, or transform strategy from explicit control requirements, compiles distinct static keyframe and continuous video prompts, and configures references without silent degradation. Keep configure_generation for low-level or legacy media-role configuration. The returned readiness analysis identifies incomplete graphs.",
+			"Atomically apply a revision-bound batch of typed workflow operations without confirmation. Each operation has its own required fields. Ordinary connections use sourceNodeId/targetNodeId/optional edgeId. Prefer configure_video_shot for Agent-authored video work; declare video media only in its sources or keyframes, never as duplicate connect_nodes operations. It selects text, single-frame, first/last-frame, omni-reference, or transform strategy, composes connected Prompt nodes with the directing plan, and configures roles without silent degradation. Keep configure_generation for low-level compatibility or role repair. The returned readiness analysis identifies incomplete graphs.",
 		parameters: {
 			type: "object",
 			properties: {

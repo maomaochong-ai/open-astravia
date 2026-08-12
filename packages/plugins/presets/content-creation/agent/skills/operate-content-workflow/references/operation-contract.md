@@ -36,7 +36,7 @@ Every generator node should have a purpose that states its role and changed vari
 - Multi-shot sequence: use timestamped stages inside one video prompt only when the inspected mode supports them; otherwise create separate shot nodes and record their intended order in purposes or workflow metadata.
 - Multiple formats: separate output or generator nodes when ratio, duration, or prompt must differ.
 
-Describe the intended topology and use `afterNodeId` only as a locality hint when useful. The edit service owns incremental canvas layout; never synthesize coordinates. Preserve existing IDs and edges during local changes. Set `modelSelection="automatic"` unless inspected requirements justify a specific provider/model/mode. Connect ordinary topology with semantic `targetInput` values (`promptSources`, `referenceImages`, `contentSources`, or `mediaSources`) instead of internal handles. Use `bind_assets` to select concrete image-generator references.
+Describe the intended topology and use `afterNodeId` only as a locality hint when useful. The edit service owns incremental canvas layout; never synthesize coordinates. Preserve existing IDs and edges during local changes. Set `modelSelection="automatic"` unless inspected requirements justify a specific provider/model/mode. Connect ordinary topology with `sourceNodeId`, `targetNodeId`, optional `edgeId`, and semantic `targetInput` values (`promptSources`, `referenceImages`, `contentSources`, or `mediaSources`) instead of legacy `source` / `target` names or internal handles. Use `bind_assets` to select concrete image-generator references.
 
 Video media inputs are a generation plan, not generic graph edges. Prefer one high-level `configure_video_shot` operation with `targetNodeId` set to the receiving video-generator. It selects and validates a strategy before compiling to the same capability-backed roles. Use low-level `configure_generation` only for legacy or targeted role repair. Put source image/video node IDs in `sources[]`; never use a source node as `targetNodeId`:
 
@@ -51,7 +51,8 @@ For asset nodes, include non-empty `assetIds` selected from that node. For image
 For `configure_video_shot`:
 
 - use `strategy="automatic"` unless the user explicitly chooses a supported method;
-- set `controlRequirements.exactEnding=true` when the requested final composition or state must be controlled; this selects first/last-frame and never degrades to `animate-still`;
+- set `controlRequirements.exactEnding=true` only when an independent last-frame image must be authoritative; this requires both keyframe plans, selects first/last-frame, and never degrades to `animate-still`;
+- keep `exactEnding=false` when the request only needs a deliberate stable finish; express that editorial result in `promptPlan.finalState`;
 - provide `keyframes.first` and `keyframes.last` as distinct image-generator nodes with matching `image-keyframe` phases;
 - keep identity, subject count, environment, camera axis, aspect ratio, and light direction compatible across both keyframes;
 - for omni-reference, assign every source a unique `alias`, a semantic role (`identity`, `product`, `environment`, `style`, `composition`, `end`, `motion`, or `audio`), and a concrete instruction;
@@ -59,7 +60,7 @@ For `configure_video_shot`:
 
 ## Edit in coherent batches
 
-Keep a batch focused on one understandable change, but include newly created nodes and all intended connections in the same batch. The edit tool validates and applies the complete revision-bound batch atomically without a confirmation step. A failure leaves project state unchanged; inspect again after revision conflicts.
+Keep a batch focused on one understandable change, but include newly created nodes and all intended connections in the same batch. Do not add a raw media connection that duplicates a source or keyframe owned by `configure_video_shot`; redundant legacy connections are ignored only as a recovery measure. Prompt-node connections are ordinary topology and the compiled directing plan is appended after their dynamic content. The edit tool validates and applies the complete revision-bound batch atomically without a confirmation step. A failure leaves project state unchanged; inspect again after revision conflicts.
 
 For Agent-authored video prompts, submit a `video-shot` plan instead of a raw `prompt`. For generated first/last frames, use `image-keyframe` plans: these record frozen visible state, composition, camera axis, environment, light direction, and continuity anchors, while the video plan records continuous motion. The edit service compiles and validates all three prompts atomically. Existing user-authored prompts remain editable in the UI; only Agent changes are gated.
 
