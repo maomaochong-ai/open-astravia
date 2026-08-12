@@ -7,7 +7,7 @@ import type {
 	SystemPromptBlock,
 	SystemPromptOperation,
 } from "@vetta/runtime-core";
-import { normalizePluginAgentModes, parsePluginMcpServerConfig } from "@vetta-org/plugin-sdk/manifest";
+import { parsePluginMcpServerConfig } from "@vetta-org/plugin-sdk/manifest";
 import type { InstalledPlugin, PluginMcpServerConfig, PluginPermission } from "../../preload/api-types/plugins.js";
 import type { PluginAgentContributionRegistry } from "./plugin-agent-contribution-registry.js";
 
@@ -48,8 +48,7 @@ export function buildPluginMcpRuntimeName(pluginId: string, localName: string): 
 export function buildPluginRuntimeConfig(
 	dependencies: PluginRuntimeConfigDependencies,
 ): AgentPluginRuntimeConfig | undefined {
-	// 工作模式不再排除任何插件贡献（零硬闸决策）：manifest 的 agent_mode 只是偏好声明，
-	// 由下游按模式做排序与详略处理，这里一律放行。
+	// 工作模式不参与插件贡献的组装（ADR-0071）：模式差异完全由 mode 系统提示词承担。
 	const enabledPlugins = dependencies.plugins.filter(
 		(plugin) => plugin.enabled && plugin.agent && dependencies.isContributionModeActive(plugin.id),
 	);
@@ -218,7 +217,6 @@ function buildMcpContributions(
 				localName,
 				runtimeName: buildPluginMcpRuntimeName(plugin.id, localName),
 				config: resolveMcpServerConfig(dependencies.resolveMcpRoot(plugin), config),
-				agent_mode: normalizePluginAgentModes(config.agent_mode),
 			});
 		} catch (error) {
 			dependencies.logger.warn(`Plugin ${plugin.id}: skip MCP server '${localName}':`, error);

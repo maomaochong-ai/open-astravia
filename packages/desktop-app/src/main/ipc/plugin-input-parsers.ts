@@ -95,7 +95,6 @@ export function asAgentToolRegistration(value: unknown): {
 	timeoutMs?: number;
 	scope_use?: string[];
 	requires?: string[];
-	agent_mode?: string[];
 	context?: { conversation?: "summary" | "messages" };
 	rendersCard?: boolean;
 } {
@@ -122,7 +121,7 @@ export function asAgentToolRegistration(value: unknown): {
 		timeoutMs,
 		scope_use: asOptionalStringArray(input.scope_use),
 		requires: asOptionalStringArray(input.requires),
-		agent_mode: asOptionalStringArray(input.agent_mode),
+		// agent_mode 容忍传入但不再解析（ADR-0071）：模式不影响工具的可用性与顺序。
 		context: asHandlerContext(input.context),
 		// 渲染进程在注册时探测该工具有没有 tool-call slot；有则宿主注入 md_intro 参数。
 		rendersCard: input.rendersCard === true ? true : undefined,
@@ -136,7 +135,6 @@ export function asAgentHookRegistration(value: unknown): {
 	activationId?: string;
 	timeoutMs?: number;
 	scope_use: string[];
-	agent_mode?: string[];
 	toolNames?: string[];
 } {
 	const input = asRecord(value, "agent hook registration");
@@ -155,7 +153,6 @@ export function asAgentHookRegistration(value: unknown): {
 				? Math.min(Math.floor(input.timeoutMs), 30_000)
 				: undefined,
 		scope_use: scopeUse,
-		agent_mode: asStrictOptionalStringArray(input.agent_mode, "agent hook agent_mode"),
 		toolNames: asStrictOptionalStringArray(input.toolNames, "agent hook toolNames"),
 	};
 }

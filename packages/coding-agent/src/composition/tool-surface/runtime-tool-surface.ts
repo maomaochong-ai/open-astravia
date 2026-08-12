@@ -53,7 +53,6 @@ export interface CodingAgentRuntimeToolSurface {
 	readonly backgroundTasksAvailable: boolean;
 	resolveActivation(
 		context: ModelCallContributionContext,
-		agentMode?: string,
 		activeToolNamesOverride?: readonly string[],
 	): CodingToolActivation;
 }
@@ -69,14 +68,12 @@ export async function createCodingAgentRuntimeToolSurface(
 	let mcpCoordinator: CodingAgentMcpSessionCoordinator;
 	const resolveActivation = (
 		context: ModelCallContributionContext,
-		agentMode?: string,
 		activeToolNamesOverride?: readonly string[],
 	): CodingToolActivation =>
 		resolveCodingAgentToolActivation(
 			activation,
 			context,
 			{ backgroundTasksAvailable, knowledgeAvailable },
-			agentMode,
 			activeToolNamesOverride,
 		);
 	const tools = createCodingToolsRuntimeComposition({
@@ -85,11 +82,7 @@ export async function createCodingAgentRuntimeToolSurface(
 		activation,
 		resolveActivation: (context) => {
 			const configuration = options.indexes.configurationStates.get(context.sessionId);
-			return resolveActivation(
-				context,
-				configuration?.readAgentMode(),
-				configuration?.readActiveToolNamesOverride(),
-			);
+			return resolveActivation(context, configuration?.readActiveToolNamesOverride());
 		},
 		filterRegistration: (registration, context) => {
 			const executionRuntime = options.indexes.executionRuntimes.get(context.sessionId);

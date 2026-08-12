@@ -1,8 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
+import { isAgentMode } from "@vetta/coding-agent/profile";
 import { atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
 
-export type DesktopAgentMode = "work" | "coding";
+/** 合法值来自 coding-agent 模式注册表（ADR-0071），落盘校验见 normalizeDesktopAgentMode。 */
+export type DesktopAgentMode = string;
 
 /**
  * 会话级工作模式的落盘位置：与会话文件同目录的一份 sessionId → mode 索引。
@@ -17,7 +19,7 @@ const STORE_FILE_NAME = "agent-modes.json";
 export const LEGACY_SESSION_AGENT_MODE: DesktopAgentMode = "work";
 
 export function normalizeDesktopAgentMode(value: unknown): DesktopAgentMode {
-	return value === "coding" ? "coding" : "work";
+	return isAgentMode(value) ? value : "work";
 }
 
 export function resolveAgentModeStorePath(sessionPath: string): string {
@@ -34,7 +36,7 @@ async function readStore(storePath: string): Promise<Record<string, DesktopAgent
 		if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
 		const result: Record<string, DesktopAgentMode> = {};
 		for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-			if (value === "work" || value === "coding") result[key] = value;
+			if (isAgentMode(value)) result[key] = value;
 		}
 		return result;
 	} catch {

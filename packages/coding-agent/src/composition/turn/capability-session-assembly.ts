@@ -153,11 +153,10 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 					shouldPreserveBaseTool: (toolName) =>
 						options.mcpController?.isManagedTool(toolName) === true ||
 						options.extensionToolRuntime?.hasTool(toolName, options.session.readSessionId()) === true,
-					resolveActivation: (context) =>
-						toPluginToolActivation(options.activation.resolve(context), options.activation.readAgentMode()),
+					resolveActivation: (context) => toPluginToolActivation(options.activation.resolve(context)),
 					bindActivation: () => {
 						const bound = readBoundActivation(options.activation);
-						return (context) => toPluginToolActivation(bound.resolve(context), bound.agentMode);
+						return (context) => toPluginToolActivation(bound.resolve(context));
 					},
 					bindPreservedBaseToolNames: () =>
 						new Set([
@@ -201,7 +200,6 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 	const invokeSkillFeature = promptResourceSource
 		? createCodingAgentInvokeSkillFeature({
 				resourceSource: promptResourceSource,
-				readAgentMode: options.activation.readAgentMode,
 				hookRuntime: options.hookRuntime,
 			})
 		: undefined;
@@ -458,17 +456,13 @@ function readPluginSkillPaths(agentPlugins: AgentPluginRuntimeConfig | undefined
 	return agentPlugins?.skillPathContributions?.flatMap((contribution) => contribution.paths) ?? [];
 }
 
-function toPluginToolActivation(
-	activation: CodingToolActivation,
-	agentMode: string | undefined,
-): CodingAgentPluginToolActivation {
+function toPluginToolActivation(activation: CodingToolActivation): CodingAgentPluginToolActivation {
 	if (activation.mode === "explicit") return activation;
 	return {
 		mode: "scope",
 		scenario: activation.scope ?? "cli",
 		capabilities: activation.capabilities,
 		additionallyEnabledToolNames: activation.additionallyEnabledToolNames,
-		agentMode,
 	};
 }
 

@@ -2,6 +2,8 @@
 
 ### Breaking Changes
 
+- **agent_mode 排序偏好整体废弃（ADR-0071）**：删除 `sortByAgentModePreference` / `agentModePreferenceRank` / `matchesAgentMode` 及其在工具、Skill、插件 MCP 三处清单的消费；`resolveActiveToolNames` 去掉 mode 参数，激活只看 `scope_use` ∩ `requires` 两条 fail-closed 轴，清单顺序回归注册序（对提示词前缀缓存更稳）。`ToolActivationMetadata.agent_mode`、`AgentPluginToolContribution.agent_mode`、`McpServerContribution.agent_mode`、`Skill.agentMode` 等资源级字段随之删除；SDK 的 `CodingAgentSkillContribution.agentModes` 保留为 @deprecated 容忍字段。审计结论是排序对模型工具选择无可观察影响（模型按 description 语义匹配、不按位置），模式差异完全由 mode 系统提示词（`getModePrompt`）、工作区事实与工具自描述在任务解释层承担。会话级 `agentMode`（创建时固化、驱动 mode prompt）不变。
+- **模式注册表数据化（ADR-0071）**：`AgentMode` 联合类型与 `ALL_AGENT_MODES` / `isAgentMode` 改由 `profiles/modes/*.md` 经 `generate-modes.mjs` 派生（新增 `AgentModeId` 生成类型）；modes frontmatter 新增必填 `icon`，`MODE_PROMPTS` / `ModePromptInfo` 带 icon 并从 `@vetta/coding-agent/profile` 导出，宿主 UI 可直接遍历注册表渲染模式入口。新增一个工作模式 = 新增一份 md（含 icon）+ 宿主 i18n 文案。
 - **收口宿主可执行文件适配器 API**：`@vetta/coding-agent/host` 以 `createManagedCodingToolExecutableResolver`、`ResolveCodingToolExecutable`、`ManagedCodingToolExecutableDependencies` 和 `resolveManagedCodingToolExecutable` 替代旧的 `createToolExecutableResolver`、`EnsureTool`、`EnsureToolDependencies` 与 `ensureToolWithDependencies`，并删除与 `@vetta/runtime-tools` 重复的 `ToolExecutableName` / `ToolExecutableResolver` 类型。`fd`/`rg` 的本地优先、PATH 查找、离线与 Termux 策略、下载和失败降级行为不变。
 - **移除 Extension setup 的旧 SessionManager 源码兼容 shim**：`ExtensionSessionWriter` 不再提供恒为 `true` 的 `isPersisted()`，`ExtensionSessionSetup` 改为直接的函数合同，不再通过双变签名兼容以具体 `SessionManager` 标注参数的旧回调。setup 仍在原生 Conversation seed 创建后执行，已有写入、分支、标签和读取能力及持久化时序不变。
 - **收口 Extension 宿主兼容性合同**：`@vetta/coding-agent/bootstrap` 将 Bootstrap 的未解析结果改为 `extensionRequirements`，宿主通过 `resolveCodingAgentExtensionCompatibility()` 解析为带 `compatible` 的最终评估；移除误导性的 Legacy/Greenfield 类型、函数、常量和 `requiresLegacyRuntime` 字段，不改变 Extension 功能、未知事件拒绝策略或 CLI/RPC 错误协议。
@@ -12,6 +14,10 @@
 - **退役包根具体 Tool API**：`@vetta/coding-agent` 包根与 RPC 子路径不再转发内置 Tool 工厂、单例和实现类型；具体 Coding Tool 由 `@vetta/runtime-tools/coding` 持有，稳定 SDK 和产品组合根继续提供原有工具能力。
 - **退役 Runtime 包兼容子路径**：移除 `@vetta/coding-agent/compat/runtime-storage` 与 `@vetta/coding-agent/compat/runtime-tools`；两个 Runtime 包根现直接暴露各自独立实现，生产依赖图不再形成反向循环。
 - **Composition 公共面去迁移命名并收口**：`@vetta/coding-agent/composition` 的公开导出由 34 项收敛为 19 项，删除无外部消费者的辅助类型，并将 `Greenfield*` 公共名称替换为稳定的 `CodingAgent*` / 中性名称；工作区调用方已迁移且不保留旧名称别名，Session、CLI、Desktop 与 IM 的运行时行为不变。
+
+### Fixed
+
+- **Turn 绑定后 Session Plugin MCP 工具对模型不可见（回归）**：Turn-bound runtime generation（ADR-0069 落地）在 admission 冻结 MCP 可见集时只从 `readAvailableTools()` 取候选名，而 plugin MCP 工具要到 compose 阶段才由 pluginMcpRuntime 并入 frame、不在该表里，于是被整体冻结成不可见——插件声明的 MCP 工具在真实会话中从模型工具清单里消失。修复为冻结时把 MCP prompt state 的受管工具名并入候选集再过滤。回归由 `packages/cli-app/test/plugin-mcp-session-contract.test.ts` 锁定（原「isolates two sessions」用例在回归下失败）。该文件中 workflow 编排会话的 `rootMcpTools` 断言同步修正：旧断言 `[]` 锁定的是已删除的「MCP server agent_mode 与会话模式不匹配即排除」硬闸行为，零硬闸下 root 会话自己声明的 plugin MCP 工具对 root 模型同样可见。
 
 ### Changed
 

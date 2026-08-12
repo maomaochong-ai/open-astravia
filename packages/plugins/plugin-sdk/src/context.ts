@@ -24,8 +24,11 @@ export interface PluginPermissionApi {
 	require(permission: PluginPermission): void;
 }
 
-/** 工作模式（agent_mode 轴，见 ADR-0046）。宿主 Work/Coding，未来可能扩展。 */
-export type AgentMode = "work" | "coding";
+/**
+ * 工作模式 id。合法值由宿主的模式注册表定义（ADR-0071），插件不应硬编码枚举；
+ * 需要区分模式时按 id 字符串比较，未知 id 一律按通用处理。
+ */
+export type AgentMode = string;
 
 export interface PluginContext {
 	plugin: {

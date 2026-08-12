@@ -5,6 +5,11 @@
 > `agent_mode` 现在只是提示词偏好与排序权重，系统中不再存在任何形式的模式硬闸；mode 在会话创建时
 > 固化，会话内不可变。正文保留原样以记录当时的取舍，实现事实以文末修订段为准。
 
+> **再修订（ADR-0071）**：文末修订段中「`agent_mode` 降级为排序权重与提示词详情偏好」及正文
+> 「模式注册表为中心硬编码」两条已被 [ADR-0071](0071-agent-mode-is-a-task-interpretation-prior.md)
+> 取代：资源侧 `agent_mode` 声明整体废弃（解析保留、语义为零），模式重心由 mode prompt、工作区事实
+> 与工具自描述在任务解释层承担，模式注册表改由 `profiles/modes/*.md` 派生。
+
 > **机制修订（ADR-0069）**：本 ADR 的产品语义继续有效；“下一个 Turn 生效”现由统一的
 > Session configuration overlay 与 Turn-bound runtime generation 实现。活动 Turn 不重新读取全局 mode，
 > mode、Plugin 与 Execution Mode 的目标值由同一个 overlay 接受并在后续 Turn 发布，不再把 mode

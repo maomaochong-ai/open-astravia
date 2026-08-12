@@ -138,8 +138,6 @@ export interface InstalledPlugin {
 		expose: string;
 	};
 	agent?: PluginAgentManifest;
-	/** 插件声明的偏好工作模式。纯偏好，不排除：插件在任何模式下都会加载与展示。 */
-	agent_mode?: string | string[];
 	styleUrls: string[];
 	permissions: PluginPermission[];
 	grantedPermissions: PluginPermission[];
@@ -213,8 +211,6 @@ export interface PluginAgentToolRegistration {
 	scope_use?: readonly string[];
 	/** 需要的会话能力 slug。 */
 	requires?: string[];
-	/** 偏好的工作模式 slug；只影响排序与详略，不排除该工具。 */
-	agent_mode?: readonly string[];
 	context?: { conversation?: "summary" | "messages" };
 	/**
 	 * 该工具带有自渲染卡片（同一插件为它注册了 tool-call slot）。由渲染进程自动探测，
@@ -230,7 +226,6 @@ export interface PluginAgentHookHostRegistration {
 	activationId?: string;
 	timeoutMs?: number;
 	scope_use: readonly string[];
-	agent_mode?: readonly string[];
 	toolNames?: readonly string[];
 }
 

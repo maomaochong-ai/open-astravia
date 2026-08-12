@@ -142,7 +142,6 @@ export function createPluginAgentApi({
 				timeoutMs: registration.timeoutMs,
 				scope_use: registration.scope_use,
 				requires: registration.requires,
-				agent_mode: registration.agent_mode,
 				context: registration.context,
 				// 宿主自动检测：带自渲染槽的工具会被注入可选的 md_intro 参数（见 ADR-0047）。
 				rendersCard: hasToolCallSlot(toolName) || undefined,
@@ -213,7 +212,6 @@ export function createPluginAgentApi({
 				activationId,
 				timeoutMs: registration.timeoutMs,
 				scope_use: registration.scope_use,
-				agent_mode: registration.agent_mode,
 				toolNames: registration.toolNames,
 			};
 			const registrationPromise = window.vetta.plugins

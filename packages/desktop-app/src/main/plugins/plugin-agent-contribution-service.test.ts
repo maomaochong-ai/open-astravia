@@ -51,7 +51,7 @@ function createService(installed: InstalledPlugin) {
 
 describe("PluginAgentContributionService", () => {
 	it("applies the contribution mode gate before hook invocation", () => {
-		const service = createService(plugin({ agent_mode: ["work"] }));
+		const service = createService(plugin());
 		service.registerModeGate("demo");
 		expect(service.canInvokeHook("demo")).toBe(false);
 
@@ -59,10 +59,9 @@ describe("PluginAgentContributionService", () => {
 		expect(service.canInvokeHook("demo")).toBe(true);
 	});
 
-	it("never gates hook invocation on the declared agent mode", () => {
-		// 声明了 agent_mode 的插件在任何工作模式下都能触发 hook（零硬闸决策），
-		// 服务本身也不再持有「当前模式」这个可过滤的状态。
-		const service = createService(plugin({ agent_mode: ["work"] }));
+	it("never gates hook invocation on any agent mode notion", () => {
+		// 工作模式不参与 hook 过滤（ADR-0071），服务不持有「当前模式」这个可过滤的状态。
+		const service = createService(plugin());
 
 		expect(service.canInvokeHook("demo")).toBe(true);
 		expect("setAgentMode" in service).toBe(false);

@@ -67,8 +67,6 @@ export interface SkillFrontmatter {
 	name?: string;
 	alias?: string;
 	description?: string;
-	/** 主推的工作模式（agent_mode 轴）。缺省/空 = 通用。字符串或字符串数组。纯排序偏好，不排除 Skill。见 ADR-0046 修订。 */
-	agent_mode?: string | string[];
 	"disable-model-invocation"?: boolean;
 	hooks?: unknown;
 	metadata?: {
@@ -88,8 +86,6 @@ export interface Skill {
 	baseDir: string;
 	source: string;
 	type: SkillType;
-	/** 主推的工作模式（agent_mode 轴）。undefined/空 = 通用。纯排序偏好，不排除 Skill。见 ADR-0046 修订。 */
-	agentMode?: string[];
 	disableModelInvocation: boolean;
 	/** SDK 等内联来源可直接持有正文；文件来源保持 undefined。 */
 	content?: string;
@@ -105,13 +101,6 @@ export interface LoadSkillsResult {
 /** 统一读取文件型与内联 Skill 的原始内容。 */
 export function readSkillContent(skill: Skill): string {
 	return skill.content ?? readFileSync(skill.filePath, "utf-8");
-}
-
-/** frontmatter agent_mode（string | string[]）→ 归一化的 string[]；空/无效 → undefined（= 通用）。 */
-function normalizeSkillAgentMode(raw: string | string[] | undefined): string[] | undefined {
-	if (raw === undefined) return undefined;
-	const arr = (Array.isArray(raw) ? raw : [raw]).map((m) => String(m).trim()).filter((m) => m.length > 0);
-	return arr.length > 0 ? arr : undefined;
 }
 
 /**
@@ -291,8 +280,8 @@ function loadSkillFromFile(
 			return { skill: null, diagnostics };
 		}
 
+		// frontmatter 的 agent_mode 键容忍存在但不再解析（ADR-0071）：模式不影响 Skill 的可见性与顺序。
 		const skillType: SkillType = frontmatter.metadata?.type === "scene" ? "scene" : "skill";
-		const agentMode = normalizeSkillAgentMode(frontmatter.agent_mode);
 
 		return {
 			skill: {
@@ -303,7 +292,6 @@ function loadSkillFromFile(
 				baseDir: skillDir,
 				source,
 				type: skillType,
-				agentMode,
 				disableModelInvocation: frontmatter["disable-model-invocation"] === true,
 			},
 			diagnostics,

@@ -21,7 +21,8 @@ export function useDefaultAgentMode(): {
 		let disposed = false;
 		void window.vetta.config.get().then((config) => {
 			if (disposed) return;
-			if (config.defaultAgentMode === "coding" || config.defaultAgentMode === "work") {
+			// 合法性由主进程按模式注册表校验（ADR-0071）；renderer 不复刻注册表。
+			if (typeof config.defaultAgentMode === "string" && config.defaultAgentMode) {
 				setAtom(config.defaultAgentMode);
 			}
 		});

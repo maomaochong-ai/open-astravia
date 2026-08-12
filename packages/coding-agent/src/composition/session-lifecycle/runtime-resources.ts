@@ -105,13 +105,13 @@ export function createCodingAgentSessionRuntimeResources(
 					: [
 							...readActiveToolNames(
 								options.codingTools,
-								withAgentMode(stateActivation, options.configurationState.readAgentMode()),
+								stateActivation,
 								options.knowledgeAvailable,
 								options.activation,
 								options.mcpController,
 							),
 							...(options.extensionToolRuntime?.readActiveToolNames(
-								withAgentMode(stateActivation, options.configurationState.readAgentMode()),
+								stateActivation,
 								options.session.readSessionId(),
 							) ?? []),
 						];
@@ -153,7 +153,7 @@ function readSessionState(options: CodingAgentSessionRuntimeResourcesOptions, st
 		options.turnCapabilityAssembly.readPluginActiveToolNames() ??
 		readActiveToolNames(
 			options.codingTools,
-			withAgentMode(stateActivation, options.configurationState.readAgentMode()),
+			stateActivation,
 			options.knowledgeAvailable,
 			options.activation,
 			options.mcpController,
@@ -163,10 +163,7 @@ function readSessionState(options: CodingAgentSessionRuntimeResourcesOptions, st
 		...baseToolNames.filter(
 			(toolName) => !options.executionRuntime.ownsTool(toolName) || executionTools.has(toolName),
 		),
-		...selectCodingToolRegistrations(
-			options.productToolRegistrations,
-			withAgentMode(stateActivation, options.configurationState.readAgentMode()),
-		).map(({ tool }) => tool.name),
+		...selectCodingToolRegistrations(options.productToolRegistrations, stateActivation).map(({ tool }) => tool.name),
 		...(options.todoEnabled ? [options.todoToolRegistration.tool.name] : []),
 		...(options.memoryRuntime ? [options.memoryRuntime.toolRegistration.tool.name] : []),
 		...(options.subagentRuntime ? options.subagentRuntime.readTools().map(({ name }) => name) : []),
@@ -174,10 +171,7 @@ function readSessionState(options: CodingAgentSessionRuntimeResourcesOptions, st
 		isCodingAgentAskUserQuestionEnabled({ capability: options.askUserQuestion, scenario: options.scenario })
 			? [CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME]
 			: []),
-		...(options.extensionToolRuntime?.readActiveToolNames(
-			withAgentMode(stateActivation, options.configurationState.readAgentMode()),
-			options.session.readSessionId(),
-		) ?? []),
+		...(options.extensionToolRuntime?.readActiveToolNames(stateActivation, options.session.readSessionId()) ?? []),
 	];
 	const contextWindow = options.modelRuntime.readCurrentModel().contextWindow;
 	const contextUsage = options.contextRuntime.readUsage(contextWindow);
@@ -226,8 +220,4 @@ function createStateActivation(options: CodingAgentSessionRuntimeResourcesOption
 			...(options.knowledgeAvailable && options.activation.scope === "kb-processing" ? ["knowledge"] : []),
 		]),
 	};
-}
-
-function withAgentMode(activation: CodingToolActivation, agentMode: string | undefined): CodingToolActivation {
-	return activation.mode === "scope" ? { ...activation, agentMode } : activation;
 }

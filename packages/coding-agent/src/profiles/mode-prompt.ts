@@ -1,7 +1,7 @@
 /**
- * 工作模式专用系统提示词解析。见 ADR-0046。
+ * 工作模式专用系统提示词解析。见 ADR-0046、ADR-0071。
  *
- * 唯一编辑来源：`src/profiles/modes/*.md`（frontmatter 存 id/label/description，正文存提示词，英文撰写）。
+ * 唯一编辑来源：`src/profiles/modes/*.md`（frontmatter 存 id/label/description/icon，正文存提示词，英文撰写）。
  * 构建期由 `scripts/generate-modes.mjs` 内联生成本目录的 `modes-data.ts`，运行时零文件系统依赖
  * （coding-agent 会被 desktop 打进 bundle，运行时读盘的 __dirname 会失效）。
  *
@@ -14,6 +14,8 @@ export interface ModePromptInfo {
 	id: string;
 	label: string;
 	description: string;
+	/** iconify class，供宿主 UI 遍历注册表渲染模式入口。 */
+	icon: string;
 	prompt: string;
 }
 

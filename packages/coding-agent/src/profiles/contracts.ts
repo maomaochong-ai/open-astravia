@@ -1,10 +1,15 @@
 import type { ConversationScenario } from "@vetta/runtime-core";
+import { type AgentModeId, FILE_MODES } from "./modes-data.js";
 
 export type { ConversationScenario } from "@vetta/runtime-core";
 
-export type AgentMode = "work" | "coding";
+/**
+ * 合法工作模式由 `profiles/modes/*.md` 派生（ADR-0071）：新增模式 = 新增一份 md，
+ * 此处的联合类型与注册表随 `bun run generate:modes` 自动更新，无需手改。
+ */
+export type AgentMode = AgentModeId;
 
-export const ALL_AGENT_MODES: readonly AgentMode[] = ["work", "coding"];
+export const ALL_AGENT_MODES: readonly AgentMode[] = FILE_MODES.map((mode) => mode.id);
 export const DEFAULT_AGENT_MODE: AgentMode = "work";
 
 export const ALL_SCENARIOS: readonly ConversationScenario[] = [
@@ -38,11 +43,6 @@ export interface ToolActivationMetadata {
 	readonly scope_use?: readonly string[];
 	/** 必需的 Session capability（fail-closed）：任一缺失即不激活。 */
 	readonly requires?: readonly string[];
-	/**
-	 * 本工具主推的工作模式 slug。**软引导轴，不是过滤条件**：
-	 * 未命中当前模式的工具仍然激活，只会被排到工具清单末尾。缺省/空 = 通用。
-	 */
-	readonly agent_mode?: readonly string[];
 }
 
 /**
@@ -68,5 +68,5 @@ export function normalizeToolSideEffect(value: unknown): ToolSideEffect | undefi
 }
 
 export function isAgentMode(value: unknown): value is AgentMode {
-	return value === "work" || value === "coding";
+	return typeof value === "string" && (ALL_AGENT_MODES as readonly string[]).includes(value);
 }

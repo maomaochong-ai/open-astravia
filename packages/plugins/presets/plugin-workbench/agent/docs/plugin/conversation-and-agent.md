@@ -92,7 +92,6 @@ interface PluginAgentToolRegistration<TInput = unknown> {
   parameters: object;         // JSON Schema（可用 TypeBox 产出）
   scope_use?: string[];       // 允许出现的对话场景（见下）。fail-closed：缺省/空 = 任何场景都不出现
   requires?: string[];        // 需要的会话能力（如 "knowledge"），一般插件无需设置
-  agent_mode?: string[];      // 主推的工作模式（"work"/"coding"），缺省/空 = 通用。只影响排序，不排除。见「工作模式」
   timeoutMs?: number;
   context?: { conversation?: "summary" | "messages" }; // 大上下文 opt-in，缺省只传消息数
   handler: (context: PluginAgentHandlerContext<{
@@ -148,7 +147,7 @@ ctx.agent.registerTool({
 - `scope_use` 只能“减”——它从“宿主已注入的工具”里过滤，不能让工具凭空出现在未注入插件的场景。
 - 输入栏的开关 badge 也会跟随对应工具的 scope：工具在当前场景不出现时，对应 badge 自动隐藏（见 [ui-slots.md](./ui-slots.md#输入栏动作-registerinputaction) 的 `requiresActiveTool`）。
 - `requires` 是另一条正交轴（会话能力，如 `"knowledge"`）；与 `scope_use` 取交集才激活。一般插件无需设置。
-- `agent_mode`（工作模式，`"work"`/`"coding"`）**不是过滤轴**：它只把工具在清单里排前排后，任何模式下工具都可调用。插件级 [manifest `agent_mode`](./manifest.md#agent_mode工作模式偏好) 同理，两者不再取交集。见 [工作模式](#工作模式agent_mode)。
+- `agent_mode` **已废弃**（ADR-0071）：容忍传入但被忽略，工具在任何模式下可用性与顺序一致。要收窄使用场景，写进 description 的反向触发段。见 [工作模式](#工作模式agent_mode)。
 
 ## 注册 Coding Agent Hook
 
@@ -162,7 +161,6 @@ const hook = ctx.agent.registerHook({
   id: "protect-destructive-tools",
   eventName: "PreToolUse",
   scope_use: ["conversation", "project"],
-  agent_mode: ["coding"],        // 可选；仅为偏好声明，Hook 在所有工作模式下都会触发
   toolNames: ["bash", "write"], // 可选；缺省/空 = 所有工具
   timeoutMs: 3000,
   handler({ event }) {
@@ -199,7 +197,7 @@ hook.dispose();
 `feedbackMessage`。事件完整字段以 `PluginCodingAgentHookEvent` 类型为准。宿主内部的 transcript 路径
 不会下发给插件。
 
-- `scope_use` 必填且 fail-closed；`toolNames` 是额外过滤轴。`agent_mode` **不过滤 Hook**（ADR-0046 于 2026-08 修订）——声明它的 Hook 在所有工作模式下都会触发，要按模式区分行为请在 handler 内用 `ctx.getAgentMode()` 判断。
+- `scope_use` 必填且 fail-closed；`toolNames` 是额外过滤轴。`agent_mode` 已废弃（ADR-0071）：容忍传入但被忽略，Hook 在所有工作模式下都按 `scope_use` 与 matcher 触发。
 - 单次事件 dispatch 使用注册表快照；并发注册或注销只影响下一次 dispatch。
 - handler 默认 3 秒超时，Desktop 最多接受 30 秒。异常、超时或非法返回值会记录诊断并 fail-open；只有通过事件专属校验的显式结果会改变 Agent 行为。
 - Hook 不能扩大宿主工具权限，也不能绕过 execution mode / sandbox / confirmation。
@@ -513,10 +511,10 @@ function Panel() {
 
 ## 工作模式（agent_mode）
 
-工作模式（ADR-0046）是与对话场景、会话能力正交的一条轴，把 agent 分成 **Work** 与 **Coding**。用户在**新会话页**选择；选定的模式在会话创建时固化，**会话内不可变**，之后改设置只影响新建的会话。
+工作模式（ADR-0046 / ADR-0071）是**任务解释的先验**：它只改变 agent 的系统提示词引导，不影响任何能力的可用性与顺序。用户在**新会话页**选择；选定的模式在会话创建时固化，**会话内不可变**，之后改设置只影响新建的会话。合法模式由宿主的模式注册表定义（当前 `work` / `coding`，未来可扩展），插件不应硬编码枚举。
 
 ```ts
-type AgentMode = "work" | "coding";
+type AgentMode = string; // 模式 id，合法值来自宿主注册表
 ctx.getAgentMode(): AgentMode;                                   // 同步读当前的模式设置（= 新会话默认值）
 ctx.onAgentModeChanged(listener: (mode: AgentMode) => void): Disposable; // 订阅设置变更
 ```
@@ -532,10 +530,6 @@ function Panel() {
 }
 ```
 
-- 开发者可据当前模式做定制内容（不同 UI、不同行为）。**要按模式改变行为，只能这样自己判断。**
-- 声明式的 `agent_mode` 字段是**偏好，不是闸**（ADR-0046 于 2026-08 修订）：它只影响条目在工具/Skill 清单里的先后顺序与提示词详略，不会让任何贡献消失，Hook 也不再按模式过滤。可声明的位置：
-  - **插件级**（整个插件）：[manifest `agent_mode`](./manifest.md#agent_mode工作模式偏好)。
-  - **单个 tool**：`registerTool({ agent_mode: [...] })`（见 [注册 Agent 工具](#注册-agent-工具)）。
-  - **单个 MCP server**：`agent.mcpServers` 内联 map 的 `agent_mode`（见 [mcp.md](./mcp.md)）。
-  - **单个 skill**：其 `SKILL.md` frontmatter 的 `agent_mode`。
+- 开发者可据当前模式做**展示层**定制（不同文案、不同默认视图）。未知模式 id 一律按通用处理。
+- 声明式的 `agent_mode` 字段（插件级 / tool / MCP server / skill frontmatter）**已整体废弃**（ADR-0071）：容忍存在但无任何运行时语义。要引导模型少用某个工具，写进该工具 description 的反向触发段（何时**不该**用它及替代做法）。
   - 缺省/空 = 通用（在所有模式下都主推）；各级之间相互独立，不再取交集。

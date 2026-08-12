@@ -222,7 +222,8 @@ export function useSessionOpener(): SessionOpenerController {
 			// 对话场景 → 会话页插件插槽按对话类型 fail-closed 显隐。
 			setCurrentScenario(state.scenario);
 			// 本会话固化的工作模式 → 按会话而非全局默认值渲染（见 ADR-0046 修订）。
-			setSessionAgentMode(state.agentMode === "work" || state.agentMode === "coding" ? state.agentMode : null);
+			// 合法值由主进程按模式注册表固化（ADR-0071），renderer 只区分「有/无」。
+			setSessionAgentMode(typeof state.agentMode === "string" && state.agentMode ? state.agentMode : null);
 			// Fork lineage from session header (parentSession / parentEntryId).
 			const parentSessionPath = state.parentSessionPath;
 			const parentEntryId = state.parentEntryId;

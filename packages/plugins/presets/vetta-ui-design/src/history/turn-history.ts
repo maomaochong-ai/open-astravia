@@ -13,7 +13,6 @@ import { readPeekState } from "./peek";
 import { carryOverTitle, commitTitleFromPrompt } from "./turn-title";
 
 const SCOPE_USE = ["project", "conversation"] as const;
-const AGENT_MODE = ["work"] as const;
 
 /** 每个会话最近一次用户输入，作为该回合的版本标题。 */
 const lastPrompt = new Map<string, string>();
@@ -61,7 +60,6 @@ export function registerTurnHistory(ctx: PluginContext): Disposable[] {
 		id: "vetd-history-prompt",
 		eventName: "UserPromptSubmit",
 		scope_use: SCOPE_USE,
-		agent_mode: AGENT_MODE,
 		handler: async ({ session, event }) => {
 			await commitTurn(ctx, session.cwd, carryOverTitle(lastPrompt.get(session.id)));
 			lastPrompt.set(session.id, event.prompt);
@@ -71,7 +69,6 @@ export function registerTurnHistory(ctx: PluginContext): Disposable[] {
 		id: "vetd-history-stop",
 		eventName: "Stop",
 		scope_use: SCOPE_USE,
-		agent_mode: AGENT_MODE,
 		handler: async ({ session }) => {
 			await commitTurn(ctx, session.cwd, commitTitleFromPrompt(lastPrompt.get(session.id)));
 		},
@@ -80,7 +77,6 @@ export function registerTurnHistory(ctx: PluginContext): Disposable[] {
 		id: "vetd-history-session-end",
 		eventName: "SessionEnd",
 		scope_use: SCOPE_USE,
-		agent_mode: AGENT_MODE,
 		handler: ({ session }) => {
 			lastPrompt.delete(session.id);
 		},

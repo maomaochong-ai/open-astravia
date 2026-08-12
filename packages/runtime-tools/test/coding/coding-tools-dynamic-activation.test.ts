@@ -97,50 +97,11 @@ describe("coding tools dynamic activation", () => {
 		}
 	});
 
-	it("keeps mode-specific tools active in every agent mode", async () => {
-		const regular = createCurrentTimeToolRegistration();
-		const workOnly = {
-			...regular,
-			tool: { ...regular.tool, name: "work_only" },
-			agentModes: ["work"] as const,
-		};
-		const registry = new InMemoryCodingToolRegistry([regular, workOnly]);
-		let agentMode = "work";
-		const definition = createCodingToolsFeature({
-			catalog: registry,
-			resolveActivation: () => ({ mode: "scope", scope: "cli", agentMode }),
-		});
-		const signal = new AbortController().signal;
-		const feature = await definition.prepare({ signal });
-		const contribution = await feature.contribute({
-			profileId: "coding",
-			signal,
-		});
-		const provider = contribution.modelCallProviders?.[0];
-		if (!provider) throw new Error("Expected coding tools model-call provider");
-
-		try {
-			expect((await provider.contribute(modelCallContext(signal))).tools?.map(({ name }) => name)).toEqual([
-				"current_time",
-				"work_only",
-			]);
-			// agent_mode 是软引导：切到未声明的模式后工具依然在清单里，模型仍可调用。
-			agentMode = "coding";
-			expect((await provider.contribute(modelCallContext(signal))).tools?.map(({ name }) => name)).toEqual([
-				"current_time",
-				"work_only",
-			]);
-		} finally {
-			await feature.dispose();
-		}
-	});
-
 	it("freezes activation capabilities and registration filters for an admitted Turn", async () => {
 		const regular = createCurrentTimeToolRegistration();
 		const workOnly = {
 			...regular,
 			tool: { ...regular.tool, name: "work_only" },
-			agentModes: ["work"] as const,
 		};
 		const capabilities = new Set(["enabled"]);
 		let filterEnabled = true;

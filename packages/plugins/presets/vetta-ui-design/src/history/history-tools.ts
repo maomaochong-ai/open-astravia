@@ -15,11 +15,10 @@ interface HistoryToolsOptions {
 	/** 无画布场景下解析目标 .vetd（显式参数 > 打开的画布 > cwd 里唯一那份）。 */
 	resolveVetdPath(host: { fs: PluginContext["fs"] }, cwd: string, explicit?: string): Promise<string>;
 	scopeUse: readonly ("project" | "conversation")[];
-	agentMode: readonly string[];
 }
 
 export function registerHistoryTools(ctx: PluginContext, options: HistoryToolsOptions): void {
-	const { resolveVetdPath, scopeUse: SCOPE_USE, agentMode: AGENT_MODE } = options;
+	const { resolveVetdPath, scopeUse: SCOPE_USE } = options;
 
 interface HistoryInput {
 	design?: string;
@@ -44,7 +43,6 @@ ctx.agent.registerTool<HistoryInput>({
 		additionalProperties: false,
 	},
 	scope_use: SCOPE_USE,
-	agent_mode: AGENT_MODE,
 	handler: async ({ host, session, trigger }) => {
 		try {
 			const designDir = await resolveVetdPath(host, session.cwd, trigger.input.design);
@@ -92,7 +90,6 @@ ctx.agent.registerTool<RestoreInput>({
 		additionalProperties: false,
 	},
 	scope_use: SCOPE_USE,
-	agent_mode: AGENT_MODE,
 	handler: async ({ host, session, trigger }) => {
 		const version = trigger.input.version?.trim();
 		if (!version) return { ok: false, error: "Pass a `version` from vetd_history." };

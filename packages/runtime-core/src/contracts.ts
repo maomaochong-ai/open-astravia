@@ -122,8 +122,6 @@ export interface McpServerContribution {
 	/** Unique runtime server name, e.g. `plugin-cowart-canvas`. */
 	runtimeName: string;
 	config: AgentPluginMcpServerConfig;
-	/** 该 server 的工具允许出现的工作模式 slug（agent_mode 轴，缺省/空 = 通用）。见 ADR-0046。 */
-	agent_mode?: string[];
 }
 
 export type JsonSchema = Record<string, unknown>;
@@ -733,9 +731,9 @@ export interface SessionConfig {
 	 */
 	scenario?: ConversationScenario;
 	/**
-	 * 工作模式（agent_mode 轴）。会话创建时固化、会话内不可变；纯提示词软引导与排序偏好，
-	 * 不排除任何工具/Skill/MCP/插件。desktop 从 desktop-config 的 defaultAgentMode 读入，
-	 * 缺省 = 不做任何模式偏向。见 ADR-0046 修订。
+	 * 工作模式（agent_mode 轴）。会话创建时固化、会话内不可变；只作为任务解释的先验注入
+	 * mode 系统提示词，不影响任何工具/Skill/MCP/插件的可用性与顺序（ADR-0071）。
+	 * desktop 从 desktop-config 的 defaultAgentMode 读入，缺省 = 不做任何模式偏向。
 	 */
 	agentMode?: string;
 	/** 追加到 system prompt 末尾的文本，不会被上下文压缩 */

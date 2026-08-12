@@ -82,21 +82,9 @@
 
 可选字段与用户 MCP 一致：`disabled`、`autoApprove`、`env`、`headers`、`displayName`、`description`、OAuth 相关等。
 
-## 工作模式（agent_mode）
+## 工作模式（agent_mode，已废弃）
 
-**内联 map** 的每个 server 可加 `agent_mode` 声明它主推的工作模式（Work/Coding，ADR-0046），缺省/空 = 通用：
-
-```json
-"agent": {
-  "mcpServers": {
-    "canvas": { "command": "node", "args": ["./mcp/server.mjs"], "agent_mode": ["coding"] }
-  }
-}
-```
-
-- **不是闸**（ADR-0046 于 2026-08 修订）：非主推模式下该 server 的工具**仍然进入会话、仍然可调用**，只是在工具清单里被排到末尾。真正决定工具是否进入会话的仍是可见性开关与 `scope_use` / `requires`。
-- 与插件级 [manifest `agent_mode`](./manifest.md#agent_mode工作模式偏好) 各自独立，不再取交集。
-- `.mcp.json` **路径形式**为保持社区标准不扩展该字段，其下的 server 只**继承插件级** `agent_mode`。要按 server 分别声明偏好请用内联 map。
+> **Deprecated（ADR-0071）**：内联 map 里的 `agent_mode` 无任何运行时语义，容忍存在但被忽略。工具是否进入会话由可见性开关与 `scope_use` / `requires` 决定，与工作模式无关；清单顺序即注册序。想引导模型少用某个 server 的工具，把使用条件写进工具 description。
 
 ## 权限与生命周期
 

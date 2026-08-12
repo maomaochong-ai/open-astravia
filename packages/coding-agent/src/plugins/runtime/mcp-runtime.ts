@@ -20,7 +20,6 @@ import { createCodingAgentMcpToolResultPolicy } from "../../mcp/runtime/result-p
 import { type CodingAgentMcpSupervisorOptions, createCodingAgentMcpSupervisor } from "../../mcp/runtime/supervisor.js";
 import { decorateCodingAgentMcpRuntimeTool } from "../../mcp/runtime/tool-source.js";
 import type { AgentPluginRuntimeConfig } from "../../model-context/index.js";
-import { sortByAgentModePreference } from "../../profiles/index.js";
 import type {
 	CodingAgentPluginMcpRuntime as CodingAgentPluginMcpRuntimePort,
 	CodingAgentPluginMcpToolComposer,
@@ -37,7 +36,6 @@ export interface CodingAgentPluginMcpToolSurface {
 }
 
 export interface CodingAgentPluginMcpCompositionOptions {
-	readonly agentMode?: string;
 	readonly isToolVisible: (toolName: string) => boolean;
 }
 
@@ -45,7 +43,6 @@ export interface CodingAgentPluginMcpCompositionOptions {
 export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimePort {
 	private readonly tools = new Map<string, RuntimeToolDefinition>();
 	private readonly synchronizer;
-	private serverModes = new Map<string, readonly string[]>();
 	private disposed = false;
 
 	constructor(
@@ -61,23 +58,19 @@ export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimeP
 
 	async reconfigure(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<boolean> {
 		const servers = new Map<string, McpServerConfig>();
-		const nextModes = new Map<string, readonly string[]>();
 		for (const contribution of agentPlugins?.mcpServerContributions ?? []) {
 			if (!contribution.runtimeName || contribution.runtimeName.includes("_")) {
 				this.log(`Rejecting plugin MCP server with invalid runtimeName: ${contribution.runtimeName}`);
 				continue;
 			}
 			servers.set(contribution.runtimeName, contribution.config);
-			nextModes.set(contribution.runtimeName, normalizeModes(contribution.agent_mode));
 		}
 
 		const signature = fingerprintPluginMcpServers(servers);
-		const modesChanged = !sameServerModes(this.serverModes, nextModes);
 		const serversChanged = await this.source.replaceDynamicServers({ servers, signature });
-		this.serverModes = nextModes;
 		await this.synchronizer.refresh();
 		this.logServerOutcomes();
-		return serversChanged || modesChanged;
+		return serversChanged;
 	}
 
 	refresh(): Promise<McpRuntimeToolSnapshot> {
@@ -111,7 +104,6 @@ export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimeP
 			for (const lease of leases.reverse()) void lease.release();
 			throw error;
 		}
-		const serverModes = new Map(this.serverModes);
 		let released = false;
 		return {
 			bindForTurn: () => this.bindForTurn(context),
@@ -125,7 +117,7 @@ export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimeP
 				if (errors.length > 0) throw new AggregateError(errors, "Failed to release plugin MCP Turn binding");
 			},
 			compose: (compositionContext, baseAvailableTools, options) =>
-				composePluginMcpSurface(tools, serverModes, compositionContext, baseAvailableTools, options),
+				composePluginMcpSurface(tools, compositionContext, baseAvailableTools, options),
 		};
 	}
 
@@ -134,7 +126,7 @@ export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimeP
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
 		options: CodingAgentPluginMcpCompositionOptions,
 	): CodingAgentPluginMcpToolSurface {
-		return composePluginMcpSurface(this.tools, this.serverModes, context, baseAvailableTools, options);
+		return composePluginMcpSurface(this.tools, context, baseAvailableTools, options);
 	}
 
 	async dispose(): Promise<void> {
@@ -161,40 +153,19 @@ export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimeP
 
 function composePluginMcpSurface(
 	tools: ReadonlyMap<string, RuntimeToolDefinition>,
-	serverModes: ReadonlyMap<string, readonly string[]>,
 	context: ModelCallFrameCompositionContext,
 	baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
 	options: CodingAgentPluginMcpCompositionOptions,
 ): CodingAgentPluginMcpToolSurface {
 	const availableTools = new Map(baseAvailableTools);
 	const activeTools = new Map(context.frame.tools);
-	const entries = [...tools];
-	for (const [name, tool] of entries) availableTools.set(name, tool);
-	// 可见性仍是硬闸；agent_mode 只做软引导，把非本模式主推的 server 工具排到清单末尾。
-	const visible: Array<[string, RuntimeToolDefinition]> = [];
-	for (const entry of entries) {
-		if (options.isToolVisible(entry[0])) visible.push(entry);
-		else activeTools.delete(entry[0]);
-	}
-	for (const [name, tool] of sortByAgentModePreference(visible, options.agentMode, ([toolName]) =>
-		resolveServerModes(serverModes, toolName),
-	)) {
-		// 先删后插，保证降权工具真正落到 Map 末尾（Map 的 set 不会移动已存在的键）。
-		activeTools.delete(name);
-		activeTools.set(name, tool);
+	// 可见性开关是硬闸；工作模式不参与组装（ADR-0071），顺序即注册序。
+	for (const [name, tool] of tools) {
+		availableTools.set(name, tool);
+		if (options.isToolVisible(name)) activeTools.set(name, tool);
+		else activeTools.delete(name);
 	}
 	return { frame: { instructions: context.frame.instructions, tools: activeTools }, availableTools };
-}
-
-/** 找出该工具所属 plugin MCP server 声明的 agent_mode；未匹配到 server 视为通用。 */
-function resolveServerModes(
-	serverModes: ReadonlyMap<string, readonly string[]>,
-	toolName: string,
-): readonly string[] | undefined {
-	for (const [serverName, modes] of serverModes) {
-		if (toolName.startsWith(`mcp_${serverName}_`)) return modes;
-	}
-	return undefined;
 }
 
 function fingerprintPluginMcpServers(servers: ReadonlyMap<string, McpServerConfig>): string {
@@ -234,20 +205,3 @@ const EMPTY_MCP_CONFIG_SOURCE: McpConfigSource = {
 	getMergedSignature: () => "empty",
 	getConfigPaths: () => ({ global: "<dynamic>", project: "<dynamic>" }),
 };
-
-function normalizeModes(modes: readonly string[] | undefined): readonly string[] {
-	return [...new Set(modes ?? [])].sort();
-}
-
-function sameServerModes(
-	current: ReadonlyMap<string, readonly string[]>,
-	next: ReadonlyMap<string, readonly string[]>,
-): boolean {
-	if (current.size !== next.size) return false;
-	for (const [serverName, modes] of current) {
-		const nextModes = next.get(serverName);
-		if (!nextModes || modes.length !== nextModes.length) return false;
-		if (modes.some((mode, index) => mode !== nextModes[index])) return false;
-	}
-	return true;
-}

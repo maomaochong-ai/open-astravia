@@ -7,7 +7,6 @@ export {
 } from "./html-to-pdf-tool.js";
 export {
 	createHtmlToPdfToolRegistration,
-	HTML_TO_PDF_TOOL_AGENT_MODES,
 	HTML_TO_PDF_TOOL_CATEGORY,
 	HTML_TO_PDF_TOOL_SCOPES,
 } from "./registration.js";

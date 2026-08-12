@@ -13,7 +13,6 @@ describe("Coding Agent Tool Activation Policy", () => {
 			{ mode: "explicit", toolNames: ["bash"] },
 			context(),
 			availability(),
-			undefined,
 			override,
 		);
 
@@ -24,18 +23,17 @@ describe("Coding Agent Tool Activation Policy", () => {
 	it("preserves an explicit composition activation when there is no turn override", () => {
 		const activation: CodingToolActivation = { mode: "explicit", toolNames: ["read"] };
 
-		expect(resolveCodingAgentToolActivation(activation, context(), availability(), "plan")).toBe(activation);
+		expect(resolveCodingAgentToolActivation(activation, context(), availability())).toBe(activation);
 	});
 
-	it("adds runtime capabilities and agent mode to a scoped activation", () => {
+	it("adds runtime capabilities to a scoped activation", () => {
 		const result = resolveCodingAgentToolActivation(
 			{ mode: "scope", scope: "cli", capabilities: new Set(["existing"]) },
 			context({ type: "knowledge_mode_instruction" }),
 			availability({ backgroundTasksAvailable: true, knowledgeAvailable: true }),
-			"plan",
 		);
 
-		expect(result).toMatchObject({ mode: "scope", scope: "cli", agentMode: "plan" });
+		expect(result).toMatchObject({ mode: "scope", scope: "cli" });
 		expect(result.mode === "scope" ? [...(result.capabilities ?? [])] : []).toEqual([
 			"existing",
 			"bg-tasks",

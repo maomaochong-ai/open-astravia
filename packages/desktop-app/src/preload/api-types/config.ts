@@ -7,7 +7,7 @@ export interface DesktopConfigData {
 	vettaAppPath?: string;
 	defaultExecutionMode?: "sandbox" | "full-access";
 	/** 新会话的默认工作模式（agent_mode 轴）。缺省视为 "work"；已存在会话不受它影响。 */
-	defaultAgentMode?: "work" | "coding";
+	defaultAgentMode?: string;
 	sandbox?: {
 		status: "unknown" | "available" | "unavailable";
 		backend: "bundled-bwrap" | "system-bwrap" | "macos-seatbelt" | "windows-host" | null;

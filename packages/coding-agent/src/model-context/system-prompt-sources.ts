@@ -1,5 +1,5 @@
 import type { ConversationScenario } from "../profiles/index.js";
-import { getModePrompt, getPersonaPrompt, sortByAgentModePreference } from "../profiles/index.js";
+import { getModePrompt, getPersonaPrompt } from "../profiles/index.js";
 import type { SessionResourceRuntime } from "../resources/index.js";
 import { renderMemoryForPrompt } from "./memory-prompt.js";
 import type { AgentPluginRuntimeConfig } from "./plugin-runtime.js";
@@ -49,12 +49,8 @@ export function resolveSystemPromptOptionsFromSources(
 	dependencies: SystemPromptSourceDependencies,
 ): BuildSystemPromptOptions {
 	const loaderAppendSystemPrompt = dependencies.resourceLoader.getAppendSystemPrompt();
-	// agent_mode 只决定 skill 在清单里的先后顺序，非本模式主推的 skill 仍然列出。
-	const loadedSkills = sortByAgentModePreference(
-		dependencies.resourceLoader.getSkills().skills,
-		dependencies.agentMode,
-		(skill) => skill.agentMode,
-	);
+	// skill 清单在任何工作模式下一致，顺序即加载序（ADR-0071：模式差异只由 modePrompt 承担）。
+	const loadedSkills = dependencies.resourceLoader.getSkills().skills;
 	const mcpTools =
 		dependencies.mcpManager
 			?.getTools()

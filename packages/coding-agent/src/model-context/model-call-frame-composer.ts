@@ -136,8 +136,15 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 		const activeToolNamesOverride = this.options.readActiveToolNamesOverride?.();
 		const mcpPromptState = this.options.readMcpPromptState?.();
 		const agentMode = this.options.readAgentMode?.();
+		// 冻结可见集的候选名必须并入 MCP 受管工具（含 Session Plugin MCP）：它们不在
+		// readAvailableTools 里（compose 阶段才由 pluginMcpRuntime 并入 frame），只按
+		// availableTools 过滤会把全部 plugin MCP 工具冻结成不可见。
 		const visibleMcpTools = availableTools
-			? new Set([...availableTools.keys()].filter((toolName) => this.options.isMcpToolVisible?.(toolName) ?? true))
+			? new Set(
+					[...availableTools.keys(), ...(mcpPromptState?.tools.map(({ name }) => name) ?? [])].filter(
+						(toolName) => this.options.isMcpToolVisible?.(toolName) ?? true,
+					),
+				)
 			: undefined;
 		const pluginMcpRuntime = this.options.pluginMcpRuntime?.bindForTurn?.(context) ?? this.options.pluginMcpRuntime;
 		const extensionToolRuntime =
@@ -255,7 +262,6 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 			: context;
 		const extensionAvailableTools = extensionToolSurface?.availableTools ?? baseAvailableTools;
 		const pluginMcpSurface = this.options.pluginMcpRuntime?.compose(extensionContext, extensionAvailableTools, {
-			agentMode: this.options.readAgentMode?.(),
 			isToolVisible: this.options.isMcpToolVisible ?? (() => true),
 		});
 		const mcpContext: ModelCallFrameCompositionContext = pluginMcpSurface

@@ -47,7 +47,6 @@ export interface CodingAgentSessionPeripheralAssemblyOptions {
 	readonly readSessionId: () => string;
 	readonly resolveActivation: (
 		context: ModelCallContributionContext,
-		agentMode?: string,
 		activeToolNamesOverride?: readonly string[],
 	) => CodingToolActivation;
 	readonly trackMemoryRuntime: (runtime: CodingAgentMemoryRolloverRuntime) => void;
@@ -97,11 +96,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	const productToolFeature = createCodingAgentProductToolFeature({
 		registrations: productToolRegistrations,
 		resolveActivation: (context) =>
-			options.resolveActivation(
-				context,
-				configurationState.readAgentMode(),
-				configurationState.readActiveToolNamesOverride(),
-			),
+			options.resolveActivation(context, configurationState.readActiveToolNamesOverride()),
 	});
 	options.indexes.configurationStates.set(options.readSessionId(), configurationState);
 	options.deferRollback({

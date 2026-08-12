@@ -279,6 +279,7 @@ export function parsePluginCommandNames(value: unknown): string[] {
 	return Array.from(new Set(value));
 }
 
+/** @deprecated agent_mode 已无任何运行时语义（ADR-0071），保留仅为容忍既有 manifest。 */
 export function normalizePluginAgentModes(value: unknown): string[] | undefined {
 	if (value === undefined || value === null) return undefined;
 	const values = Array.isArray(value) ? value : [value];

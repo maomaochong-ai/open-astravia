@@ -228,7 +228,6 @@ export function projectCodingAgentSkillInfo(skill: Skill): CodingAgentSkillInfo 
 		description: skill.description,
 		source: skill.source,
 		type: skill.type,
-		agentModes: skill.agentMode ? [...skill.agentMode] : undefined,
 		disableModelInvocation: skill.disableModelInvocation,
 	};
 }
@@ -245,7 +244,6 @@ function toSkill(contribution: CodingAgentSkillContribution, source: string, cwd
 		baseDir: contribution.baseDir ? resolve(cwd, contribution.baseDir) : dirname(filePath),
 		source,
 		type: contribution.type ?? "skill",
-		agentMode: contribution.agentModes ? [...contribution.agentModes] : undefined,
 		disableModelInvocation: contribution.disableModelInvocation ?? false,
 		content: contribution.content,
 	};

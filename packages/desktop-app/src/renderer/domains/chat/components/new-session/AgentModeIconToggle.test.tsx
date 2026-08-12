@@ -6,7 +6,11 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
-	useTranslation: () => ({ t: (key: string) => key }),
+	useTranslation: () => ({
+		t: (key: string) => key,
+		// 缺译回落注册表 label 的分支由「registry drives the rendered modes」用例覆盖。
+		i18n: { exists: (key: string) => !key.endsWith(".design") },
+	}),
 }));
 
 import { Provider, createStore } from "jotai";
@@ -23,18 +27,31 @@ interface ConfigStub {
 	agentMode?: string;
 }
 
+interface ModeStub {
+	id: string;
+	label: string;
+	description: string;
+	icon: string;
+}
+
+const REGISTRY_MODES: ModeStub[] = [
+	{ id: "work", label: "Work", description: "", icon: "icon-[solar--case-minimalistic-linear]" },
+	{ id: "coding", label: "Coding", description: "", icon: "icon-[solar--code-linear]" },
+];
+
 let container: HTMLDivElement;
 let root: Root;
 const setGlobalAgentMode = vi.fn(async () => undefined);
 let agentModeListener: ((mode: "work" | "coding") => void) | undefined;
 
-function mountWithConfig(config: ConfigStub): { store: ReturnType<typeof createStore> } {
+function mountWithConfig(config: ConfigStub, modes: ModeStub[] = REGISTRY_MODES): { store: ReturnType<typeof createStore> } {
 	(globalThis as unknown as { window: unknown }).window = globalThis.window;
 	Object.assign(globalThis.window, {
 		vetta: {
 			config: { get: async () => config },
 			session: {
 				setGlobalAgentMode,
+				getAgentModes: async () => modes,
 				onAgentModeChanged: (handler: (mode: "work" | "coding") => void) => {
 					agentModeListener = handler;
 					return () => {
@@ -111,4 +128,24 @@ it("follows the main-process broadcast so every window shows the same default", 
 
 	expect(store.get(defaultAgentModeAtom)).toBe("coding");
 	expect(setGlobalAgentMode).not.toHaveBeenCalled();
+});
+
+it("registry drives the rendered modes: a third mode appears without UI changes (ADR-0071)", async () => {
+	mountWithConfig({ defaultAgentMode: "work" }, [
+		...REGISTRY_MODES,
+		{ id: "design", label: "Design", description: "", icon: "icon-[solar--palette-linear]" },
+	]);
+	await act(async () => {
+		await Promise.resolve();
+	});
+
+	// i18n 缺译（mock 对 .design 返回 exists=false）时回落注册表自带 label。
+	const button = container.querySelector<HTMLButtonElement>('button[aria-label="Design"]');
+	expect(button).not.toBeNull();
+	expect(button?.querySelector("span")?.className).toContain("icon-[solar--palette-linear]");
+
+	await act(async () => {
+		button?.click();
+	});
+	expect(setGlobalAgentMode).toHaveBeenCalledWith("design");
 });

@@ -11,7 +11,7 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Changed
 
-- **`agentModes` 不再参与工具激活选择（行为变化）**：`selectCodingToolRegistrations` / `selectCodingTools` 删除 agent_mode 过滤分支。声明了 `agentModes: ["work"]` 的内置工具（`doc_to_pdf`、`html_to_pdf`、`extract_text_from_pdf`、`extract_text_from_img`、`render_pdf_page`、`progress`）现在在任意工作模式下都会被激活并出现在模型工具清单里。工作模式的定位是引导模型该先用什么，不是决定工具存不存在；`scopeUse` 与 `requires` 仍是仅有的两条 fail-closed 轴。`CodingToolRegistration.agentModes` 与 `CodingToolActivation.agentMode` 字段保留为偏好声明，供宿主做排序与提示词详略。
+- **`agentModes` / `agentMode` 字段整体删除（ADR-0071，接续上一条）**：`CodingToolRegistration.agentModes` 与 `CodingToolActivation.agentMode` 不再存在，6 个内置工具的 `*_TOOL_AGENT_MODES` 常量删除。上一版把 agent_mode 从过滤降级为「宿主排序偏好」，本版确认排序对模型选择无可观察影响后整体废弃：工作模式不以任何形式参与工具选择与排序，`scopeUse` ∩ `requires` 仍是仅有的两条 fail-closed 轴。
 
 ### Added
 

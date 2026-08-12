@@ -11,8 +11,6 @@ export function resolveCodingAgentToolActivation(
 	base: CodingToolActivation,
 	context: ModelCallContributionContext,
 	availability: CodingAgentToolAvailability,
-	/** 工作模式 slug；仅作为工具清单的排序/详略偏好透传，不参与激活过滤。 */
-	agentMode?: string,
 	activeToolNamesOverride?: readonly string[],
 ): CodingToolActivation {
 	if (activeToolNamesOverride) return { mode: "explicit", toolNames: [...activeToolNamesOverride] };
@@ -22,7 +20,7 @@ export function resolveCodingAgentToolActivation(
 	if (isCodingAgentKnowledgeToolEnabled(base, context, availability.knowledgeAvailable)) {
 		capabilities.add("knowledge");
 	}
-	return { ...base, capabilities, agentMode };
+	return { ...base, capabilities };
 }
 
 export function isCodingAgentKnowledgeToolEnabled(

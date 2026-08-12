@@ -66,7 +66,6 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 	readonly releaseOwnership: (binding: TOwnershipBinding | undefined) => Promise<void>;
 	readonly resolveActivation: (
 		context: ModelCallContributionContext,
-		agentMode?: string,
 		activeToolNamesOverride?: readonly string[],
 	) => CodingToolActivation;
 	readonly createChildComposition: (
@@ -256,20 +255,14 @@ async function initializeSession<TOwnershipBinding>(
 				systemPromptAddon: sessionOptions.systemPromptAddon,
 			},
 			activation: {
-				resolve: (context) =>
-					options.resolveActivation(
-						context,
-						configurationState.readAgentMode(),
-						configurationState.readActiveToolNamesOverride(),
-					),
+				resolve: (context) => options.resolveActivation(context, configurationState.readActiveToolNamesOverride()),
 				readAgentMode: () => configurationState.readAgentMode(),
 				readAgentPlugins: () => configurationState.readAgentPlugins(),
 				readActiveToolNamesOverride: () => configurationState.readActiveToolNamesOverride(),
 				bindForTurn: () => {
 					const revision = configurationState.captureRevision();
 					return {
-						resolve: (context) =>
-							options.resolveActivation(context, revision.agentMode, revision.activeToolNamesOverride),
+						resolve: (context) => options.resolveActivation(context, revision.activeToolNamesOverride),
 						agentMode: revision.agentMode,
 						agentPlugins: revision.agentPlugins,
 						activeToolNamesOverride: revision.activeToolNamesOverride,

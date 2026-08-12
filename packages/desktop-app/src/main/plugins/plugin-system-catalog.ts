@@ -151,7 +151,6 @@ export class SystemPluginCatalog {
 			entryUrl: this.toResourceUrl(manifest.id, manifest.entry, manifest.version),
 			moduleFederation: manifest.moduleFederation,
 			agent: manifest.agent,
-			agent_mode: manifest.agent_mode,
 			styleUrls: (manifest.styles ?? []).map((style) => this.toResourceUrl(manifest.id, style, manifest.version)),
 			permissions: manifest.permissions ?? [],
 			grantedPermissions: manifest.permissions ?? [],

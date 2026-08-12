@@ -102,8 +102,8 @@ describe("PluginLifecycleService", () => {
 		]);
 	});
 
-	it("lists plugins whose declared agent_mode does not match the current mode", () => {
-		const harness = createHarness(installedPlugin({ agent_mode: ["coding"] }));
+	it("lists every installed plugin regardless of any mode notion (ADR-0071)", () => {
+		const harness = createHarness(installedPlugin());
 
 		expect(harness.service.list().map((item) => item.id)).toEqual(["demo"]);
 	});

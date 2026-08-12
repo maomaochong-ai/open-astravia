@@ -8,7 +8,6 @@ export interface DesktopPluginHookRegistration {
 	readonly timeoutMs?: number;
 	readonly scope_use: readonly string[];
 	/** 插件声明的偏好模式，仅作元数据保留：不再用于过滤 hook 触发。 */
-	readonly agent_mode?: readonly string[];
 	readonly toolNames?: readonly string[];
 }
 
@@ -197,7 +196,6 @@ function createGeneration(pluginId: string, registration: DesktopPluginHookRegis
 		registration: Object.freeze({
 			...registration,
 			scope_use: Object.freeze([...registration.scope_use]),
-			agent_mode: registration.agent_mode ? Object.freeze([...registration.agent_mode]) : undefined,
 			toolNames: registration.toolNames ? Object.freeze([...registration.toolNames]) : undefined,
 		}),
 		activeLeases: 0,

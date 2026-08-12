@@ -124,8 +124,8 @@ function matchesBindingScope(
 	binding: DesktopPluginHookBinding,
 	options: DesktopPluginHookAdapterFactoryOptions,
 ): boolean {
-	// 工作模式不再过滤 hook（用户决策：零硬闸）。binding.agent_mode 仅保留为声明，
-	// hook 是否触发只由 canInvoke、scope_use 以及自身的事件/工具 matcher 决定。
+	// 工作模式不参与 hook 过滤（ADR-0071）：hook 是否触发只由 canInvoke、scope_use
+	// 以及自身的事件/工具 matcher 决定。
 	if (!options.canInvoke(binding.pluginId)) return false;
 	return binding.scope_use.includes(options.scenario);
 }

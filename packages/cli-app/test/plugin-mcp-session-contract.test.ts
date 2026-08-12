@@ -51,12 +51,12 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 		const first = await composition.backend.create({
 			sessionId: "first",
 			agentMode: "coding",
-			agentPlugins: pluginConfiguration("alpha", "coding"),
+			agentPlugins: pluginConfiguration("alpha"),
 		});
 		const second = await composition.backend.create({
 			sessionId: "second",
 			agentMode: "work",
-			agentPlugins: pluginConfiguration("beta", "work"),
+			agentPlugins: pluginConfiguration("beta"),
 		});
 
 		await first.prompt({ text: "first" });
@@ -65,7 +65,7 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 
 		await first
 			.createRuntimeHostAssemblyCandidate()
-			.configurationController?.reconfigureAgentPlugins(pluginConfiguration("gamma", "coding"));
+			.configurationController?.reconfigureAgentPlugins(pluginConfiguration("gamma"));
 		await first.prompt({ text: "first replaced" });
 		await second.prompt({ text: "second unchanged" });
 
@@ -103,7 +103,7 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 		compositions.push(composition);
 		const session = await composition.backend.create({
 			sessionId: "deferred",
-			agentPlugins: pluginConfiguration("many", "coding"),
+			agentPlugins: pluginConfiguration("many"),
 		});
 
 		await session.prompt({ text: "discover" });
@@ -163,7 +163,7 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 		const session = await composition.backend.create({
 			sessionId: "plugin-mcp-subagent",
 			agentMode: "work",
-			agentPlugins: pluginConfiguration("child", "coding"),
+			agentPlugins: pluginConfiguration("child"),
 		});
 
 		await session.prompt({ text: "delegate MCP inspection" });
@@ -172,7 +172,9 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 			expect(clients.first("plugin-child-docs").callToolCalls).toBe(1);
 		});
 
-		expect(rootMcpTools[0]).toEqual([]);
+		// 零硬闸后（ADR-0046 修订 / ADR-0071）root 会话自己声明的 plugin MCP 工具对 root 模型同样可见；
+		// 旧断言 [] 锁定的是当年「server agent_mode 与会话模式不匹配即排除」的硬闸行为。
+		expect(rootMcpTools[0]).toEqual(["mcp_plugin-child-docs_lookup"]);
 		expect(childMcpTools[0]).toEqual(["mcp_plugin-child-docs_lookup"]);
 		expect(clients.first("plugin-child-docs").callToolCalls).toBe(1);
 		expect(createPluginMcpRuntime).toHaveBeenCalledOnce();
@@ -188,7 +190,7 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 	}
 });
 
-function pluginConfiguration(name: string, agentMode: string): AgentPluginRuntimeConfig {
+function pluginConfiguration(name: string): AgentPluginRuntimeConfig {
 	return {
 		mcpServerContributions: [
 			{
@@ -196,7 +198,6 @@ function pluginConfiguration(name: string, agentMode: string): AgentPluginRuntim
 				localName: "docs",
 				runtimeName: `plugin-${name}-docs`,
 				config: { command: name },
-				agent_mode: [agentMode],
 			},
 		],
 	};

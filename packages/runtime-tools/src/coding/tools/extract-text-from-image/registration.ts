@@ -14,7 +14,6 @@ export const EXTRACT_TEXT_FROM_IMAGE_TOOL_SCOPES = [
 	"kb-processing",
 	"cli",
 ] as const satisfies readonly CodingToolScope[];
-export const EXTRACT_TEXT_FROM_IMAGE_TOOL_AGENT_MODES = ["work"] as const;
 export const EXTRACT_TEXT_FROM_IMAGE_TOOL_CATEGORY = "doc" as const;
 
 export function createExtractTextFromImageToolRegistration(
@@ -24,7 +23,6 @@ export function createExtractTextFromImageToolRegistration(
 	return {
 		tool: createExtractTextFromImageTool(cwd, options),
 		scopeUse: EXTRACT_TEXT_FROM_IMAGE_TOOL_SCOPES,
-		agentModes: EXTRACT_TEXT_FROM_IMAGE_TOOL_AGENT_MODES,
 		modelOrder: options.modelOrder,
 		category: EXTRACT_TEXT_FROM_IMAGE_TOOL_CATEGORY,
 	};

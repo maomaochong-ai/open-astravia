@@ -1,6 +1,7 @@
 ---
 name: chart-renderer
 description: 创建适用于图表渲染插件的 Chart.js 图表。当用户要求把数据做成图表、可视化趋势、比较分类或展示占比时使用。
+agent_mode: work
 ---
 
 # Chart.js 图表渲染

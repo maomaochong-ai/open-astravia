@@ -363,31 +363,24 @@ describe("coding tool activation", () => {
 		).toEqual(["default-cli"]);
 	});
 
-	it("activates mode-declaring tools under every agent mode", () => {
-		// agent_mode 是软引导偏好，不是激活轴：换模式不能让工具从清单里消失。
-		const workOnly = { ...registration("work-only", ["cli"]), agentModes: ["work"] };
-		for (const agentMode of [undefined, "work", "coding", "unknown-mode"]) {
-			expect(
-				selectCodingTools([...registrations, workOnly], {
-					mode: "scope",
-					scope: "cli",
-					...(agentMode ? { agentMode } : {}),
-				}).map(({ name }) => name),
-			).toEqual(["default-cli", "work-only"]);
-		}
+	it("selects tools independent of any agent mode notion (ADR-0071)", () => {
+		// 工作模式不是激活轴：选择只看 scopeUse ∩ requires，任何模式下清单一致。
+		expect(
+			selectCodingTools([...registrations, registration("extra", ["cli"])], {
+				mode: "scope",
+				scope: "cli",
+			}).map(({ name }) => name),
+		).toEqual(["default-cli", "extra"]);
 	});
 
 	it("keeps scope_use and requires fail-closed", () => {
 		const guarded = { ...registration("guarded", ["cli"]), requires: ["kb"] };
-		expect(
-			selectCodingTools([guarded], { mode: "scope", scope: "cli", agentMode: "work" }).map(({ name }) => name),
-		).toEqual([]);
+		expect(selectCodingTools([guarded], { mode: "scope", scope: "cli" }).map(({ name }) => name)).toEqual([]);
 		expect(
 			selectCodingTools([guarded], {
 				mode: "scope",
 				scope: "cli",
 				capabilities: new Set(["kb"]),
-				agentMode: "work",
 			}).map(({ name }) => name),
 		).toEqual(["guarded"]);
 		expect(

@@ -27,7 +27,6 @@ export type CodingAgentPluginToolActivation =
 			readonly scenario: ConversationScenario;
 			readonly capabilities?: ReadonlySet<string>;
 			readonly additionallyEnabledToolNames?: readonly string[];
-			readonly agentMode?: string;
 	  };
 
 export interface CodingAgentPluginToolRuntimeOptions {
@@ -232,12 +231,8 @@ function isContributionActive(
 		return true;
 	}
 	return (
-		resolveActiveToolNames(
-			activation.scenario,
-			[contribution],
-			activation.capabilities ?? new Set<string>(),
-			activation.agentMode,
-		).length > 0
+		resolveActiveToolNames(activation.scenario, [contribution], activation.capabilities ?? new Set<string>()).length >
+		0
 	);
 }
 

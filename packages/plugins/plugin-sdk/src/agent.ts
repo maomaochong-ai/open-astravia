@@ -30,8 +30,8 @@ export interface PluginAgentToolRegistration<TInput = unknown> {
 	/** 需要的会话能力 slug（如 "knowledge"）；全满足才激活。一般插件无需设置。 */
 	requires?: string[];
 	/**
-	 * 该工具偏好的工作模式 slug（如 "work"/"coding"）。**纯偏好，不排除**：
-	 * 声明后工具在其它模式下依旧可用，宿主只据此调整排序与提示词详略。
+	 * @deprecated 工作模式不再影响工具的可用性与顺序（ADR-0071）。字段容忍传入但被宿主忽略；
+	 * 需要限定使用场景请写进 description 的反向触发段（Do NOT / Only for）。
 	 */
 	agent_mode?: readonly string[];
 	context?: { conversation?: "summary" | "messages" };
@@ -357,7 +357,7 @@ export interface PluginCodingAgentHookRegistration<
 	eventName: E;
 	/** Hook 是可执行贡献，必须显式声明允许出现的会话场景。 */
 	scope_use: readonly ConversationScenario[];
-	/** 偏好的工作模式声明；**不影响触发**：hook 在任何模式下都会按 scope_use 与 matcher 触发。 */
+	/** @deprecated 工作模式不参与 hook 触发（ADR-0071）。字段容忍传入但被宿主忽略。 */
 	agent_mode?: readonly string[];
 	/** 工具事件只匹配列出的宿主工具名；缺省/空数组表示所有工具。 */
 	toolNames?: readonly string[];

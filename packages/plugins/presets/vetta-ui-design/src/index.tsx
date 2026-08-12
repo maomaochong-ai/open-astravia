@@ -77,7 +77,7 @@ export default definePlugin({
 		let latestSessionId: string | null = null;
 
 		/**
-		 * cwd 里有 .vetd 才把画布 Tab 上栏。切回工作模式时也要重跑一次。
+		 * cwd 里有 .vetd 才把画布 Tab 上栏。
 		 *
 		 * 纯设计项目（除设计稿和 README 之类外没有别的文件）额外自动展开画布：
 		 * 这种目录打开就是为了看设计，先给面板。混合项目不抢；每次打开（切入）
@@ -147,7 +147,6 @@ export default definePlugin({
 			if (event.type === "conversation-changed") {
 				const { cwd, id } = event.conversation;
 				if (!cwd) return;
-				// 编程模式下也记住 cwd：切回工作模式时要靠它补跑探测。
 				latestCwd = cwd;
 				latestSessionId = id;
 				revealTabForCwd(cwd, id);

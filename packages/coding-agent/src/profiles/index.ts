@@ -16,10 +16,5 @@ export {
 } from "./contracts.js";
 export { getModePrompt, MODE_PROMPTS, type ModePromptInfo } from "./mode-prompt.js";
 export { DEFAULT_PERSONA_ID, getPersonaPrompt, PERSONAS, type Persona } from "./personas.js";
-export {
-	agentModePreferenceRank,
-	matchesAgentMode,
-	resolveActiveToolNames,
-	sortByAgentModePreference,
-} from "./tool-activation.js";
+export { resolveActiveToolNames } from "./tool-activation.js";
 export { resolveToolCategory } from "./tool-category.js";

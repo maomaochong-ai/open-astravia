@@ -148,14 +148,6 @@
 			"local": "Local zip"
 		},
 		"reloadable": "Reloadable to {{version}}",
-		"agentMode": {
-			"title": "Mode preference",
-			"none": "No preference",
-			"work": "Work",
-			"coding": "Coding",
-			"hint": "Available in every work mode; the agent favors it in these modes.",
-			"hintNone": "Available in every work mode, with no declared preference."
-		},
 		"permissions": "Permissions",
 		"permissionsSystemHint": "Granted automatically for system plugins, not editable",
 		"setupDialog": "Enable and permissions",

@@ -393,7 +393,7 @@ export const sessionExecutionModeAtom = atom<SessionExecutionMode>(getStoredExec
  * 注意语义：这里只是「下一个新会话用哪个模式」。会话的模式在创建时固化、会话内不可变，
  * 改这个值不会影响任何已存在的会话。
  */
-export type AgentMode = "work" | "coding";
+export type AgentMode = string;
 export const defaultAgentModeAtom = atom<AgentMode>("work");
 
 /**

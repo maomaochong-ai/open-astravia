@@ -9,6 +9,9 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 - **移除 `RuntimeHost.setGlobalAgentMode` 与 agent_mode 的 Turn 边界 pending 通道**：Agent Mode 现在只在
   `createSession` 时固化，会话内不可变，宿主不再能向活跃会话推送模式。Session 配置 overlay
   （`pendingConfiguration`）只保留 Execution Mode 与 Agent Plugins 两条通道。
+- **`McpServerContribution.agent_mode` 字段删除（ADR-0071）**：工作模式不再以任何形式参与插件 MCP
+  工具的组装与排序；desktop 构建贡献时也不再透传该字段。会话级 `agentMode`（`SessionConfig` /
+  `SessionStateSnapshot`，驱动 mode 系统提示词）不变。
 
 ### Added
 

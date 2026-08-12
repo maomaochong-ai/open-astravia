@@ -3,7 +3,7 @@ import { type Dirent, type FSWatcher, watch } from "node:fs";
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
-import { DEFAULT_PERSONA_ID, PERSONAS } from "@vetta/coding-agent/profile";
+import { DEFAULT_PERSONA_ID, isAgentMode, MODE_PROMPTS, PERSONAS } from "@vetta/coding-agent/profile";
 import type {
 	AgentPluginContinuationInvocation,
 	AgentPluginContinuationResult,
@@ -155,6 +155,7 @@ const CHANNELS = {
 	SET_GLOBAL_THINKING: "vetta:session:set-global-thinking-level",
 	GET_GLOBAL_THINKING: "vetta:session:get-global-thinking-level",
 	GET_PERSONAS: "vetta:session:get-personas",
+	GET_AGENT_MODES: "vetta:session:get-agent-modes",
 	GET_PERSONALIZATION: "vetta:session:get-personalization",
 	SET_PERSONALIZATION: "vetta:session:set-personalization",
 	EVENT: "vetta:session:event",
@@ -818,7 +819,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	// （模式已不再排除任何插件，重建出来的是同一份配置）。
 	// 广播仅用于各窗口新会话页 toggle 的显示同步。
 	ipcMain.handle(CHANNELS.SET_GLOBAL_AGENT_MODE, async (_event, mode: unknown) => {
-		const next = mode === "coding" ? "coding" : "work";
+		const next = isAgentMode(mode) ? mode : "work";
 		const settings = await readDesktopConfig();
 		settings.defaultAgentMode = next;
 		await writeDesktopConfig(settings);
@@ -845,6 +846,13 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	// 个性化人设清单：唯一来源是 coding-agent 注册表，只下发 id/label/description，不含提示词正文。
 	ipcMain.handle(CHANNELS.GET_PERSONAS, () => {
 		return PERSONAS.map((p) => ({ id: p.id, label: p.label, description: p.description }));
+	});
+
+	// 工作模式注册表：唯一来源是 coding-agent 的 modes/*.md（ADR-0071），只下发
+	// id/label/description/icon，不含提示词正文。renderer 的模式 toggle 据此遍历渲染，
+	// 新增模式无需改任何 UI 代码。
+	ipcMain.handle(CHANNELS.GET_AGENT_MODES, () => {
+		return MODE_PROMPTS.map((m) => ({ id: m.id, label: m.label, description: m.description, icon: m.icon }));
 	});
 
 	// 个性化配置（人设 + 自定义指令）。仅写盘；运行中的 session 在下一轮 prompt 经

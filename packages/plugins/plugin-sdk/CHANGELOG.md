@@ -10,6 +10,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Breaking Changes
 
+- **`agent_mode` 声明整体废弃（ADR-0071，行为变化）**：`plugin.json#agent_mode`、`registerTool({ agent_mode })`、`registerHook({ agent_mode })`、MCP 内联 map 的 `agent_mode` 与 `SKILL.md` frontmatter 的 `agent_mode` 不再有任何运行时语义——上一版它们还影响清单排序，本版确认排序对模型工具选择无可观察影响后归零。字段全部容忍传入（既有插件不需要改 manifest、不会校验失败），宿主直接忽略。要引导模型少用某个工具，把使用条件写进该工具 description 的反向触发段（Do NOT / Only for）。`AgentMode` 类型放宽为 `string`：合法模式 id 由宿主的模式注册表定义（未来可扩展），插件不应硬编码 `"work" | "coding"` 枚举，未知 id 一律按通用处理；`ctx.getAgentMode()` / `onAgentModeChanged()` 语义不变（仍是「新会话默认模式」，只适合展示层定制）。
 - `network.fetch` 现在必须同时声明 `plugin.json` 的 `network.allowedHosts`；宿主按域名/IP校验首跳与重定向。私网 IP、localhost 可正常声明，`*` 仅对 official 插件生效。
 - Replaced the media protocol v2 task surface with generic operation, job, and artifact APIs: consumers now call `ctx.media.submit()` with a typed `generate | compose | transcode` request, control host-owned work through `ctx.jobs`, and persist or release temporary output through `ctx.artifacts`. Provider registration now uses `submit()`, operation-specific capability declarations, opaque `inputs`, and `uploadInput()`. The old `createJob/getJob/cancelJob/saveArtifact/releaseArtifact` methods were removed without a compatibility layer (ADR-0059).
 

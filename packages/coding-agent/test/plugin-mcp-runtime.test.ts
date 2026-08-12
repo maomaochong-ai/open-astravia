@@ -18,13 +18,13 @@ import type { AgentPluginRuntimeConfig } from "../src/model-context/index.js";
 import { createCodingAgentPluginMcpRuntime } from "../src/plugins/runtime/mcp-runtime.js";
 
 describe("CodingAgentPluginMcpRuntime", () => {
-	it("isolates dynamic servers, preserves metadata and keeps off-mode tools active", async () => {
+	it("isolates dynamic servers and preserves metadata", async () => {
 		const clients = new FakeClientFactory();
 		const first = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
 		const second = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
 
-		await first.reconfigure(pluginConfig("alpha", "coding"));
-		await second.reconfigure(pluginConfig("beta", "work"));
+		await first.reconfigure(pluginConfig("alpha"));
+		await second.reconfigure(pluginConfig("beta"));
 
 		expect(first.snapshot().tools.map(({ name }) => name)).toEqual(["mcp_plugin-alpha-docs_lookup"]);
 		expect(second.snapshot().tools.map(({ name }) => name)).toEqual(["mcp_plugin-beta-docs_lookup"]);
@@ -32,11 +32,6 @@ describe("CodingAgentPluginMcpRuntime", () => {
 		expect(second.isManagedTool("mcp_plugin-alpha-docs_lookup")).toBe(false);
 
 		const visible = first.compose(compositionContext(), new Map(), {
-			agentMode: "coding",
-			isToolVisible: () => true,
-		});
-		const offMode = first.compose(compositionContext(), new Map(), {
-			agentMode: "work",
 			isToolVisible: () => true,
 		});
 		const tool = visible.frame.tools.get("mcp_plugin-alpha-docs_lookup") as EcosystemHookAwareRuntimeTool | undefined;
@@ -46,12 +41,8 @@ describe("CodingAgentPluginMcpRuntime", () => {
 			kind: "mcp",
 			source: { ecosystem: "mcp", serverName: "plugin-alpha-docs", originalName: "lookup" },
 		});
-		// 旧实现在此把 coding 声明的工具从 work 模式的 frame 中移除；现在 agent_mode 只做软引导。
-		expect(offMode.frame.tools.has("mcp_plugin-alpha-docs_lookup")).toBe(true);
-		expect(offMode.availableTools.has("mcp_plugin-alpha-docs_lookup")).toBe(true);
-		// 可见性仍是硬闸。
+		// 可见性是硬闸（与工作模式无关，ADR-0071）。
 		const invisible = first.compose(compositionContext(), new Map(), {
-			agentMode: "coding",
 			isToolVisible: () => false,
 		});
 		expect(invisible.frame.tools.has("mcp_plugin-alpha-docs_lookup")).toBe(false);
@@ -63,52 +54,41 @@ describe("CodingAgentPluginMcpRuntime", () => {
 		expect(clients.first("plugin-beta-docs").closeCalls).toBe(1);
 	});
 
-	it("orders off-mode plugin MCP tools last while keeping same-rank order stable", async () => {
+	it("keeps plugin MCP tool order at registration order, repeatably (ADR-0071)", async () => {
 		const clients = new FakeClientFactory();
 		const runtime = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
 		await runtime.reconfigure({
 			mcpServerContributions: [
-				...(pluginConfig("alpha", "coding").mcpServerContributions ?? []),
-				...(pluginConfig("beta", "work").mcpServerContributions ?? []),
-				...(pluginConfig("gamma", "coding").mcpServerContributions ?? []),
+				...(pluginConfig("alpha").mcpServerContributions ?? []),
+				...(pluginConfig("beta").mcpServerContributions ?? []),
+				...(pluginConfig("gamma").mcpServerContributions ?? []),
 			],
 		});
 
-		const compose = (agentMode: string) => [
-			...runtime
-				.compose(compositionContext(), new Map(), { agentMode, isToolVisible: () => true })
-				.frame.tools.keys(),
+		const compose = () => [
+			...runtime.compose(compositionContext(), new Map(), { isToolVisible: () => true }).frame.tools.keys(),
 		];
 
-		const coding = compose("coding");
-		expect(coding).toEqual([
+		const first = compose();
+		expect(first).toEqual([
 			"mcp_plugin-alpha-docs_lookup",
-			"mcp_plugin-gamma-docs_lookup",
 			"mcp_plugin-beta-docs_lookup",
-		]);
-		expect(compose("coding")).toEqual(coding);
-		expect(compose("work")).toEqual([
-			"mcp_plugin-beta-docs_lookup",
-			"mcp_plugin-alpha-docs_lookup",
 			"mcp_plugin-gamma-docs_lookup",
 		]);
+		expect(compose()).toEqual(first);
 		await runtime.dispose();
 	});
 
 	it("reconciles only real changes and lets a session plugin server override a base tool", async () => {
 		const clients = new FakeClientFactory();
 		const runtime = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
-		const initial = pluginConfig("alpha", "coding", "alpha");
+		const initial = pluginConfig("alpha", "alpha");
 
 		expect(await runtime.reconfigure(initial)).toBe(true);
 		expect(await runtime.reconfigure(initial)).toBe(false);
 		expect(clients.named("plugin-alpha-docs")).toHaveLength(1);
 
-		const modeOnly = pluginConfig("alpha", "work", "alpha");
-		expect(await runtime.reconfigure(modeOnly)).toBe(true);
-		expect(clients.named("plugin-alpha-docs")).toHaveLength(1);
-
-		const changed = pluginConfig("alpha", "work", "alpha-v2");
+		const changed = pluginConfig("alpha", "alpha-v2");
 		expect(await runtime.reconfigure(changed)).toBe(true);
 		expect(clients.named("plugin-alpha-docs")).toHaveLength(2);
 		expect(clients.first("plugin-alpha-docs").closeCalls).toBe(1);
@@ -117,7 +97,6 @@ describe("CodingAgentPluginMcpRuntime", () => {
 		const base = runtimeTool(name, "base");
 		const context = compositionContext(new Map([[name, base]]));
 		const surface = runtime.compose(context, context.frame.tools, {
-			agentMode: "work",
 			isToolVisible: () => true,
 		});
 		expect(surface.frame.tools.get(name)?.description).toBe("plugin-alpha-docs");
@@ -131,16 +110,14 @@ describe("CodingAgentPluginMcpRuntime", () => {
 	it("keeps a Turn-bound plugin MCP catalog stable across ordinary reconfiguration", async () => {
 		const clients = new FakeClientFactory();
 		const runtime = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
-		await runtime.reconfigure(pluginConfig("alpha", "coding"));
+		await runtime.reconfigure(pluginConfig("alpha"));
 		const admitted = runtime.bindForTurn(acquireContext());
 
-		await runtime.reconfigure(pluginConfig("beta", "coding"));
+		await runtime.reconfigure(pluginConfig("beta"));
 		const admittedSurface = admitted.compose(compositionContext(), new Map(), {
-			agentMode: "coding",
 			isToolVisible: () => true,
 		});
 		const nextSurface = runtime.compose(compositionContext(), new Map(), {
-			agentMode: "coding",
 			isToolVisible: () => true,
 		});
 
@@ -165,9 +142,8 @@ describe("CodingAgentPluginMcpRuntime", () => {
 			clientFactory: clients.create,
 			resultPolicy,
 		});
-		await runtime.reconfigure(pluginConfig("alpha", "coding"));
+		await runtime.reconfigure(pluginConfig("alpha"));
 		const surface = runtime.compose(compositionContext(), new Map(), {
-			agentMode: "coding",
 			isToolVisible: () => true,
 		});
 		const tool = surface.frame.tools.get("mcp_plugin-alpha-docs_lookup");
@@ -198,7 +174,7 @@ function acquireContext(): RuntimeSnapshotAcquireContext {
 	};
 }
 
-function pluginConfig(name: string, agentMode: string, command = name): AgentPluginRuntimeConfig {
+function pluginConfig(name: string, command = name): AgentPluginRuntimeConfig {
 	return {
 		mcpServerContributions: [
 			{
@@ -206,7 +182,6 @@ function pluginConfig(name: string, agentMode: string, command = name): AgentPlu
 				localName: "docs",
 				runtimeName: `plugin-${name}-docs`,
 				config: { command },
-				agent_mode: [agentMode],
 			},
 		],
 	};

@@ -81,6 +81,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **agent_mode 声明整体废弃，模式清单排序取消（ADR-0071，行为变化）**：接续下方「不再隐藏任何插件」条目——上一版 `agent_mode` 还保留「排序与提示词详略偏好」语义，本版确认清单排序对模型工具选择无可观察影响（模型按 description 语义匹配、不按位置，且「详略」从未实现）后整体归零：插件、工具、Skill、MCP、Hook 的 `agent_mode` 声明容忍存在但被忽略，工具与 Skill 清单在任何模式下集合与顺序完全一致（注册序，前缀缓存更稳）。插件详情页的「模式偏好」一栏移除。模式差异改由三处承担：mode 系统提示词、工作区事实注入、工具 description 的反向触发段。三个系统插件（vetta-ui-design / chart-renderer / content-creation）的全部 agent_mode 声明随之删除。
+- **模式注册表数据化（ADR-0071）**：新会话页的工作模式 toggle 改为遍历 coding-agent 模式注册表渲染（新增 IPC `vetta:session:get-agent-modes`，下发 id/label/description/icon）；`desktop-config` 与会话模式索引的合法值校验改查注册表。新增一个工作模式 = coding-agent 新增一份 modes/*.md（含 icon frontmatter）+ i18n 文案，桌面端零代码改动（缺译时回落注册表自带 label）。
 - **工作模式在会话创建时固定，会话内不可变（行为变化）**：此前工作模式是纯全局态，切换会把新模式推给所有活跃会话，在各自下一个 Turn 边界改写提示词与工具面——一个跑到一半的老会话会因为用户在别处改了模式而换掉行为。现在模式只在**新会话页**选择，创建会话时固化到该会话；之后改默认值只影响之后新建的会话，已存在会话（含恢复的历史会话）保持创建时的模式。历史会话没有记录时按 `work` 恢复，而不是回落到当前默认值。桌面配置 `desktop-config.json` 的 `agentMode` 字段随之改名为 `defaultAgentMode`（语义：新会话默认值），仍兼容读取旧字段名，老用户配置不会丢。
 - **工作模式不再隐藏任何插件，插件 Hook 也不再按模式过滤（行为变化）**：此前插件 `plugin.json#agent_mode` 是硬闸——声明了另一模式的插件在当前模式下被整体排除（列表看不到、UI 面板与侧边栏入口不加载、Agent 资源不注入），Hook 也按同一条件被跳过。现在这条硬闸整体删除：已安装插件在任何工作模式下都完整可用，`window.vetta.plugins.list()` 与 `listAll()` 返回同一份完整清单；插件声明的 Hook 只由自身的 `scope_use`、事件与工具 matcher 决定是否触发，因此**工作模式下也会触发编程类插件声明的 Hook，反之亦然**。`agent_mode` 字段仍然保留并解析，但只作为偏好声明（供排序与提示词详略使用），不再有任何排除语义。改默认工作模式也因此不再重建活跃会话的插件运行配置、不再让 renderer 重载插件 bundle——它只写配置并广播给各窗口的新会话页 toggle。
 - **工作模式不再隐藏文档类内置工具（行为变化）**：`doc_to_pdf`、`html_to_pdf`、`extract_text_from_pdf`、`extract_text_from_img`、`render_pdf_page`、`progress` 此前只在「工作」模式下激活，在「编程」模式下整组从模型工具清单消失。现在它们在两种模式下都可用，模式只影响 agent 的优先取向。

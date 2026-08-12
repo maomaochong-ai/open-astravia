@@ -47,7 +47,6 @@ export function capturePromptSettingsSource(source: CodingAgentPromptSettingsSou
 function captureSkill(skill: Skill): Skill {
 	const captured: Skill = {
 		...skill,
-		...(skill.agentMode ? { agentMode: [...skill.agentMode] } : {}),
 		content: readSkillContent(skill),
 		...(skill.type === "scene" ? { sceneTasks: readSceneTasks(skill) } : {}),
 	};

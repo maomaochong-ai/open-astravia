@@ -48,7 +48,7 @@ describe("buildPluginRuntimeConfig", () => {
 		const logger = { debug: vi.fn(), warn: vi.fn() };
 
 		const config = buildPluginRuntimeConfig({
-			plugins: [plugin({ agent_mode: ["work"] })],
+			plugins: [plugin()],
 			isContributionModeActive: () => true,
 			contributions,
 			resolveResource: (_plugin, path) => path,
@@ -78,7 +78,7 @@ describe("buildPluginRuntimeConfig", () => {
 		expect(
 			buildPluginRuntimeConfig({
 				...shared,
-				plugins: [plugin({ agent_mode: ["work"] })],
+				plugins: [plugin()],
 				isContributionModeActive: () => false,
 			}),
 		).toBeUndefined();

@@ -35,9 +35,12 @@ for (const file of files) {
 	const { fm, body } = parseMd(readFileSync(join(modesDir, file), "utf-8"));
 	const id = typeof fm.id === "string" ? fm.id.trim() : "";
 	const label = typeof fm.label === "string" ? fm.label.trim() : "";
+	const icon = typeof fm.icon === "string" ? fm.icon.trim() : "";
 	if (!id || !label) {
 		throw new Error(`[generate-modes] ${file} 缺少 id 或 label`);
 	}
+	// icon 是 UI 遍历注册表渲染 toggle 的必填项（ADR-0071）：缺了会让新模式在新会话页无图标可用。
+	if (!icon) throw new Error(`[generate-modes] ${file} 缺少 icon（iconify class，如 icon-[solar--case-linear]）`);
 	if (!body.trim()) throw new Error(`[generate-modes] ${file} 的提示词正文为空`);
 	if (seenIds.has(id)) throw new Error(`[generate-modes] mode id 重复: ${id}`);
 	seenIds.add(id);
@@ -45,16 +48,23 @@ for (const file of files) {
 		id,
 		label,
 		description: typeof fm.description === "string" ? fm.description.trim() : "",
+		icon,
 		prompt: body.trim(),
 	});
 }
 
+const idUnion = modes.map((mode) => JSON.stringify(mode.id)).join(" | ");
 const content = `// AUTO-GENERATED from src/profiles/modes/*.md by scripts/generate-modes.mjs. Do not edit by hand.
 
+/** 合法工作模式 id 联合类型，由 modes/*.md 派生（ADR-0071）。 */
+export type AgentModeId = ${idUnion};
+
 export interface RawMode {
-	id: string;
+	id: AgentModeId;
 	label: string;
 	description: string;
+	/** iconify class（如 icon-[solar--case-linear]），供 UI 遍历注册表渲染。 */
+	icon: string;
 	prompt: string;
 }
 

@@ -148,14 +148,6 @@
 			"local": "本地 zip"
 		},
 		"reloadable": "可重载到 {{version}}",
-		"agentMode": {
-			"title": "模式偏好",
-			"none": "无偏好",
-			"work": "工作",
-			"coding": "编程",
-			"hint": "插件在所有工作模式下都可用；在这些模式下，agent 会更优先考虑它。",
-			"hintNone": "插件在所有工作模式下都可用，没有声明模式偏好。"
-		},
 		"permissions": "权限",
 		"permissionsSystemHint": "系统插件自动授予，不可更改",
 		"setupDialog": "启用与权限",

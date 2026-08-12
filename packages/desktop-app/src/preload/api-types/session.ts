@@ -19,8 +19,21 @@ import type {
 } from "@vetta/runtime-core";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 
-/** 工作模式（agent_mode 轴）。会话创建时固化，会话内不可变。 */
-export type AgentMode = "work" | "coding";
+/**
+ * 工作模式 id（agent_mode 轴）。会话创建时固化，会话内不可变。
+ * 合法值由 coding-agent 的模式注册表定义（ADR-0071），经 getAgentModes() 下发；
+ * preload 层不复刻注册表，故放宽为 string，主进程写入前校验。
+ */
+export type AgentMode = string;
+
+/** 工作模式选项（由 coding-agent 模式注册表下发，不含提示词正文）。 */
+export interface AgentModeOption {
+	id: AgentMode;
+	label: string;
+	description: string;
+	/** iconify class，如 icon-[solar--code-linear]。 */
+	icon: string;
+}
 
 /** 个性化人设选项（由 coding-agent 注册表下发，不含提示词正文）。 */
 export interface PersonaOption {
@@ -109,6 +122,8 @@ export interface DesktopSessionApi {
 	setGlobalThinkingLevel(level: string): Promise<void>;
 	getGlobalThinkingLevel(): Promise<string>;
 	getPersonas(): Promise<PersonaOption[]>;
+	/** 工作模式注册表（ADR-0071）：新会话页 toggle 遍历渲染，新增模式无需改 UI。 */
+	getAgentModes(): Promise<AgentModeOption[]>;
 	getPersonalization(): Promise<PersonalizationConfig>;
 	setPersonalization(input: PersonalizationConfig): Promise<void>;
 	getState(sessionId: string): Promise<SessionStateSnapshot>;

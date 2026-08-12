@@ -29,12 +29,6 @@ import { scaffoldDesign } from "./vetd/scaffold";
 const SCOPE_USE = ["project", "conversation"] as const;
 /** 与画布位图队列同一档（canvas/frame-raster.ts）：模型看的图不该比画布上的糊。 */
 const SCREENSHOT_JPEG_QUALITY = 0.92;
-/**
- * 设计画布只在「工作」模式下成立（ADR-0046）：编程模式里这些工具连同画布、
- * 全局插槽、skill 一起隔离，只留 .vetd 的文件预览。插件级 agent_mode 是硬闸、
- * 会把预览一起藏掉，所以按子资源逐个收窄。
- */
-const AGENT_MODE = ["work"] as const;
 
 interface CreateInput {
 	name?: string;
@@ -134,7 +128,6 @@ export function registerDesignTools(ctx: PluginContext): void {
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
-		agent_mode: AGENT_MODE,
 		handler: async ({ host, session, trigger }) => {
 			// 硬闸而不是默认值：品类是这一步唯一需要判断的东西，而它在这一刻最清楚。
 			// 从前这里没有参数，兜底就写死成桌面 1440x900，于是「用户要移动 App」在整条
@@ -178,7 +171,6 @@ export function registerDesignTools(ctx: PluginContext): void {
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
-		agent_mode: AGENT_MODE,
 		// 必须宽于画布侧那条链路（拉回活体的静置 + 30s 截图 + 落盘），否则工具会
 		// 抢在内层超时前失败，报出来的原因也就没了参考价值。
 		timeoutMs: 60_000,
@@ -324,7 +316,6 @@ export function registerDesignTools(ctx: PluginContext): void {
 			"Inspect the Vetta UI Design state: workspace designs, the design open on the canvas, its frames (id/size/title/`buildError`), its `sharedShell` (existing _layout.tsx + components/ to reuse), `issues` (files that do not parse, plus rule violations found in your sources) and engine diagnostics. Call it ONCE before editing an existing design, to learn what is already there. Afterwards you do not need it for `issues` — vetd_screenshot returns them per frame.\nDo NOT use to survey a code repository, locate its UI source files or read its build state — use the ordinary file search and read tools instead.\nOnly for .vetd design documents and the design canvas.",
 		parameters: { type: "object", properties: {}, additionalProperties: false },
 		scope_use: SCOPE_USE,
-		agent_mode: AGENT_MODE,
 		handler: async ({ host, session }) => {
 			const designs = await findVetdFiles(host.fs, session.cwd);
 			const controller = getCanvasController();
@@ -430,7 +421,6 @@ export function registerDesignTools(ctx: PluginContext): void {
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
-		agent_mode: AGENT_MODE,
 		handler: async ({ host, session, trigger }) => {
 			const packages = trigger.input.packages ?? [];
 			if (packages.length === 0) {
@@ -468,7 +458,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 	});
 
 	// 版本历史的两个工具在 history/history-tools.ts：历史相关的东西全归那一处。
-	registerHistoryTools(ctx, { resolveVetdPath, scopeUse: SCOPE_USE, agentMode: AGENT_MODE });
+	registerHistoryTools(ctx, { resolveVetdPath, scopeUse: SCOPE_USE });
 
 	interface NotesInput {
 		ids?: string[];
@@ -538,7 +528,6 @@ export function registerDesignTools(ctx: PluginContext): void {
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
-		agent_mode: AGENT_MODE,
 		// 读取要为每个涉及的 frame 拉活体 + 截图 + 合成，逐帧 30s 的链路可能串联多次。
 		timeoutMs: 120_000,
 		handler: async ({ host, session, trigger }) => {

@@ -9,7 +9,7 @@ let previousHome: string | undefined;
 
 /** desktop-config.json 的路径在模块加载时算好，所以每个用例重置模块并重设 VETTA_HOME。 */
 async function loadStoreWithConfig(config: Record<string, unknown> | undefined): Promise<{
-	readDesktopConfig: () => Promise<{ defaultAgentMode?: "work" | "coding" }>;
+	readDesktopConfig: () => Promise<{ defaultAgentMode?: string }>;
 }> {
 	const home = await mkdtemp(join(tmpdir(), "vetta-config-"));
 	temporaryRoots.push(home);
