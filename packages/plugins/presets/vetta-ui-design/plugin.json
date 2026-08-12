@@ -1,7 +1,7 @@
 {
 	"id": "vetta-ui-design",
 	"name": "%plugin.name%",
-	"version": "0.6.0",
+	"version": "0.6.1",
 	"icon": "icon.png",
 	"agent_mode": [
 		"work"
@@ -31,6 +31,8 @@
 		"agent.session.write",
 		"agent.tools.register",
 		"agent.toolHandler.execute",
+		"agent.hooks.register",
+		"agent.hookHandler.execute",
 		"agent.skills.control",
 		"agent.command.run",
 		"agent.command.spawn",
