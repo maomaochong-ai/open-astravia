@@ -28,9 +28,9 @@ async function loadAtoms() {
 	return await import("./activity-atoms");
 }
 
-/** 该窗口宽度下面板能达到的最大宽度（= 窗口宽 - 聊天区最小宽 454）。 */
+/** 该窗口宽度下面板能达到的最大宽度（= 窗口宽 - 聊天区最小宽 384）。 */
 function maxAt(windowWidth: number): number {
-	return windowWidth - 454;
+	return windowWidth - 384;
 }
 
 describe("活动面板宽度意图", () => {

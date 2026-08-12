@@ -65,19 +65,19 @@ it("拉满态的面板宽度随窗口 resize 变窄再变宽", async () => {
 	});
 
 	act(() => store.set(setActivityPanelWidthAtom, "max"));
-	expect(widths.at(-1)).toBe(1600 - 454);
+	expect(widths.at(-1)).toBe(1600 - 384);
 
 	act(() => {
 		setWindowWidth(1000);
 		window.dispatchEvent(new Event("resize"));
 	});
-	expect(widths.at(-1)).toBe(1000 - 454);
+	expect(widths.at(-1)).toBe(1000 - 384);
 
 	act(() => {
 		setWindowWidth(1600);
 		window.dispatchEvent(new Event("resize"));
 	});
-	expect(widths.at(-1)).toBe(1600 - 454);
+	expect(widths.at(-1)).toBe(1600 - 384);
 	// 侧边栏联动曾在这一步用滞后一帧的宽度误判，把拉满态改写成 openLimit 的固定宽度。
 	const { activityPanelWidthModeAtom } = await import("@shared/store/atoms");
 	expect(store.get(activityPanelWidthModeAtom)).toEqual({ kind: "max" });
@@ -108,6 +108,6 @@ it("用户手动展开侧边栏时，过宽的面板仍被压到 openLimit 并�
 	expect(store.get(sidebarCollapsedAtom)).toBe(true);
 
 	act(() => store.set(sidebarCollapsedAtom, false));
-	expect(widths.at(-1)).toBe(1600 - 220 - 454);
-	expect(store.get(activityPanelWidthModeAtom)).toEqual({ kind: "fixed", px: 1600 - 220 - 454 });
+	expect(widths.at(-1)).toBe(1600 - 220 - 384);
+	expect(store.get(activityPanelWidthModeAtom)).toEqual({ kind: "fixed", px: 1600 - 220 - 384 });
 });
