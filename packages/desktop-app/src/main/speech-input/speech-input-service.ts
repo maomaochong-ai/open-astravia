@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { utilityProcess } from "electron";
+import { app, utilityProcess } from "electron";
 import type { SpeechInputEvent, SpeechInputStatus } from "../../preload/api-types/speech-input.js";
 import { getAppLogger } from "../logger.js";
 import { resolveSpeechModelPaths, WINDOWS_ZIPFORMER_MODEL } from "./model-catalog.js";
@@ -43,8 +44,6 @@ export interface SpeechModelAccess {
 	readonly supported: boolean;
 	readonly modelDirectory: string;
 	getStatus(): Promise<SpeechInputStatus>;
-	download(): Promise<SpeechInputStatus>;
-	cancelDownload(): void;
 }
 
 export class SpeechInputService {
@@ -69,7 +68,9 @@ export class SpeechInputService {
 		this.modelManager =
 			options.modelManager ??
 			new SpeechModelManager({
-				onStatus: (status) => this.publishStatus(status),
+				modelRoot: app.isPackaged
+					? join(process.resourcesPath, "speech-models")
+					: join(process.cwd(), "resources", "speech-models"),
 			});
 	}
 
@@ -77,14 +78,6 @@ export class SpeechInputService {
 		if (this.transientStatus && ["loading", "listening", "stopping"].includes(this.transientStatus.phase))
 			return this.transientStatus;
 		return this.modelManager.getStatus();
-	}
-
-	downloadModel(): Promise<SpeechInputStatus> {
-		return this.modelManager.download();
-	}
-
-	cancelDownload(): void {
-		this.modelManager.cancelDownload();
 	}
 
 	async start(): Promise<{ sessionId: string }> {
@@ -130,7 +123,6 @@ export class SpeechInputService {
 	}
 
 	dispose(): void {
-		this.modelManager.cancelDownload();
 		this.rejectWaiters(new Error("Speech input service disposed"));
 		this.activeSessionId = null;
 		this.initialized = false;
@@ -219,8 +211,6 @@ export class SpeechInputService {
 			supported: this.modelManager.supported,
 			phase,
 			modelId: WINDOWS_ZIPFORMER_MODEL.id,
-			downloadedBytes: phase === "ready" ? WINDOWS_ZIPFORMER_MODEL.totalBytes : 0,
-			totalBytes: WINDOWS_ZIPFORMER_MODEL.totalBytes,
 			...(errorCode ? { errorCode } : {}),
 		});
 	}

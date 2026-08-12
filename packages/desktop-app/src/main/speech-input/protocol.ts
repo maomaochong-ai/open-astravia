@@ -22,8 +22,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const ERROR_CODES = new Set([
 	"unsupported-platform",
-	"model-download-failed",
-	"model-integrity-failed",
+	"bundled-model-missing",
+	"bundled-model-invalid",
 	"recognizer-start-failed",
 	"recognizer-failed",
 ]);

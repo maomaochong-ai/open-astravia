@@ -416,20 +416,17 @@
 		},
 		"speech": {
 			"actions": {
-				"downloadAndStart": "下载离线语音模型并开始输入（约 160 MB）",
-				"cancelDownload": "取消语音模型下载（{{progress}}%）",
 				"start": "开始语音输入",
 				"stop": "停止语音输入"
 			},
 			"states": {
-				"downloading": "正在下载离线语音模型… {{progress}}%",
 				"loading": "正在加载离线语音模型…",
 				"stopping": "正在完成语音识别…"
 			},
 			"errors": {
 				"unsupported": "语音输入目前仅支持 Windows x64",
-				"download": "语音模型下载失败，点击重试",
-				"integrity": "语音模型校验失败，点击重新下载",
+				"missing": "安装包中缺少语音模型，请重新安装应用",
+				"integrity": "安装包中的语音模型不完整，请重新安装应用",
 				"recognizer": "语音识别启动失败，点击重试"
 			}
 		},

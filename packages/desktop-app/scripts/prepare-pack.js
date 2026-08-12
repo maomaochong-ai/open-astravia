@@ -7,6 +7,7 @@ import { resolveBuildResourceFilters } from "./build-resource-filters.mjs";
 import { loadBuildEnv } from "./load-build-env.mjs";
 import { resolvePackagedNativeDependencies } from "./packaged-native-dependencies.mjs";
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
+import { prepareSpeechModels, SPEECH_MODEL_RESOURCE_ROOT } from "./fetch-speech-models.mjs";
 import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
 import { resolveTenant, stageSystemPluginsFromArchives } from "./stage-system-plugins.mjs";
 import { stageSystemSkills } from "./stage-system-skills.mjs";
@@ -285,6 +286,13 @@ assertPackagedMainHasNoWorkspaceImports(join(projectRoot, "dist/main"));
 // Clean previous build stage
 rmSync(buildStageDir, { recursive: true, force: true });
 mkdirSync(buildStageDir, { recursive: true });
+
+const preparedSpeechModel = await prepareSpeechModels({
+	platformTags: resolvePlatformTagsFromEnv(),
+});
+if (preparedSpeechModel) {
+	cpSync(SPEECH_MODEL_RESOURCE_ROOT, join(buildStageDir, "speech-models"), { recursive: true });
+}
 
 // Write the staged package metadata. Electron-builder decides which
 // node_modules entries belong in app.asar from production dependencies, so
@@ -713,6 +721,13 @@ function resolveExtraResources() {
 		extraResources.push({
 			from: "appshot",
 			to: "appshot",
+			filter: ["**/*"],
+		});
+	}
+	if (resolvePlatformFamilies().has("win32")) {
+		extraResources.push({
+			from: "speech-models",
+			to: "speech-models",
 			filter: ["**/*"],
 		});
 	}

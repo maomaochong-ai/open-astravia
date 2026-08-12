@@ -31,14 +31,16 @@ vi.mock("../../services/microphone-pcm-capture", () => ({
 
 import { useSpeechInput } from "./useSpeechInput";
 
-const MISSING_STATUS: SpeechInputStatus = {
+const READY_STATUS: SpeechInputStatus = {
 	supported: true,
-	phase: "missing-model",
+	phase: "ready",
 	modelId: "test-model",
-	downloadedBytes: 0,
-	totalBytes: 100,
 };
-const READY_STATUS: SpeechInputStatus = { ...MISSING_STATUS, phase: "ready", downloadedBytes: 100 };
+const UNAVAILABLE_STATUS: SpeechInputStatus = {
+	...READY_STATUS,
+	phase: "unavailable",
+	errorCode: "bundled-model-missing",
+};
 
 describe("useSpeechInput", () => {
 	let emit: (event: SpeechInputEvent) => void;
@@ -49,9 +51,7 @@ describe("useSpeechInput", () => {
 		mocks.captureStart.mockResolvedValue(undefined);
 		mocks.captureStop.mockResolvedValue(undefined);
 		speechInput = {
-			getStatus: vi.fn(async () => MISSING_STATUS),
-			downloadModel: vi.fn(async () => READY_STATUS),
-			cancelDownload: vi.fn(async () => undefined),
+			getStatus: vi.fn(async () => READY_STATUS),
 			start: vi.fn(async () => ({ sessionId: "session-1" })),
 			pushAudio: vi.fn(),
 			stop: vi.fn(async () => undefined),
@@ -67,12 +67,11 @@ describe("useSpeechInput", () => {
 		});
 	});
 
-	it("downloads on first use, starts capture, and inserts final text", async () => {
+	it("starts with the bundled model and inserts final text", async () => {
 		const { result } = renderHook(() => useSpeechInput(true));
-		await waitFor(() => expect(result.current.title).toBe("inputBar.speech.actions.downloadAndStart"));
+		await waitFor(() => expect(result.current.title).toBe("inputBar.speech.actions.start"));
 
 		act(() => result.current.onToggle());
-		await waitFor(() => expect(speechInput.downloadModel).toHaveBeenCalledOnce());
 		await waitFor(() => expect(speechInput.start).toHaveBeenCalledOnce());
 		await waitFor(() => expect(mocks.captureStart).toHaveBeenCalledOnce());
 
@@ -81,5 +80,15 @@ describe("useSpeechInput", () => {
 		act(() => emit({ type: "final", sessionId: "session-1", text: "你好世界" }));
 		expect(mocks.insertPlainText).toHaveBeenCalledWith("你好世界");
 		expect(mocks.focusInputEditor).toHaveBeenCalledOnce();
+	});
+
+	it("disables voice input when the packaged model is unavailable", async () => {
+		vi.mocked(speechInput.getStatus).mockResolvedValue(UNAVAILABLE_STATUS);
+		const { result } = renderHook(() => useSpeechInput(true));
+
+		await waitFor(() => expect(result.current.disabled).toBe(true));
+		expect(result.current.statusText).toBe("inputBar.speech.errors.missing");
+		act(() => result.current.onToggle());
+		expect(speechInput.start).not.toHaveBeenCalled();
 	});
 });

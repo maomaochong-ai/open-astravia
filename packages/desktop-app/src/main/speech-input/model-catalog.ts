@@ -1,5 +1,9 @@
+import speechModelManifest from "./model-manifest.json";
+
+export type SpeechModelFileName = "encoder.int8.onnx" | "decoder.onnx" | "joiner.int8.onnx" | "tokens.txt";
+
 export interface SpeechModelFile {
-	name: "encoder.int8.onnx" | "decoder.onnx" | "joiner.int8.onnx" | "tokens.txt";
+	name: SpeechModelFileName;
 	size: number;
 	sha256: string;
 	url: string;
@@ -12,39 +16,25 @@ export interface SpeechModelDefinition {
 	files: readonly SpeechModelFile[];
 }
 
-const MODEL_BASE_URL =
-	"https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-zh-int8-2025-06-30/resolve/main";
+const MODEL_FILE_NAMES = new Set<SpeechModelFileName>([
+	"encoder.int8.onnx",
+	"decoder.onnx",
+	"joiner.int8.onnx",
+	"tokens.txt",
+]);
+
+function parseModelFileName(value: string): SpeechModelFileName {
+	if (!MODEL_FILE_NAMES.has(value as SpeechModelFileName)) throw new Error(`Unsupported speech model file: ${value}`);
+	return value as SpeechModelFileName;
+}
+
+const files = speechModelManifest.files.map((file) => ({ ...file, name: parseModelFileName(file.name) }));
 
 export const WINDOWS_ZIPFORMER_MODEL: SpeechModelDefinition = {
-	id: "sherpa-onnx-streaming-zipformer-zh-int8-2025-06-30",
-	sampleRate: 16_000,
-	totalBytes: 167_360_920,
-	files: [
-		{
-			name: "encoder.int8.onnx",
-			size: 161_141_793,
-			sha256: "34f25f4004af5f18871515fa9304bc000e6723ab9e46c4c514e9265fa2d4d5da",
-			url: `${MODEL_BASE_URL}/encoder.int8.onnx`,
-		},
-		{
-			name: "decoder.onnx",
-			size: 5_165_083,
-			sha256: "53dae6fddd07cdd031cb68889f5d4c041c179bf8b7abdce4c9aed303e851cd7a",
-			url: `${MODEL_BASE_URL}/decoder.onnx`,
-		},
-		{
-			name: "joiner.int8.onnx",
-			size: 1_033_416,
-			sha256: "ae128b8b4e7f668954207ccbf196760967eb4eb88b089c7ed828c2d30db0dd0e",
-			url: `${MODEL_BASE_URL}/joiner.int8.onnx`,
-		},
-		{
-			name: "tokens.txt",
-			size: 20_628,
-			sha256: "6193c7ea1c96d0d9a1e9652789b40d13a8a913b434a5451e93158f5a09fd6652",
-			url: `${MODEL_BASE_URL}/tokens.txt`,
-		},
-	],
+	id: speechModelManifest.id,
+	sampleRate: speechModelManifest.sampleRate,
+	totalBytes: files.reduce((total, file) => total + file.size, 0),
+	files,
 };
 
 export interface SpeechModelPaths {

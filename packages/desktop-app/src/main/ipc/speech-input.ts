@@ -22,14 +22,6 @@ export function registerSpeechInputIpc(webContents: WebContents): () => void {
 		assertAuthorizedSender(event);
 		return service.getStatus();
 	});
-	ipcMain.handle(SPEECH_INPUT_CHANNELS.DOWNLOAD_MODEL, (event) => {
-		assertAuthorizedSender(event);
-		return service.downloadModel();
-	});
-	ipcMain.handle(SPEECH_INPUT_CHANNELS.CANCEL_DOWNLOAD, (event) => {
-		assertAuthorizedSender(event);
-		service.cancelDownload();
-	});
 	ipcMain.handle(SPEECH_INPUT_CHANNELS.START, (event) => {
 		assertAuthorizedSender(event);
 		return service.start();

@@ -10,14 +10,7 @@ const INITIAL_STATUS: SpeechInputStatus = {
 	supported: false,
 	phase: "unsupported",
 	modelId: "",
-	downloadedBytes: 0,
-	totalBytes: 0,
 };
-
-function percentage(status: SpeechInputStatus): number {
-	if (status.totalBytes <= 0) return 0;
-	return Math.min(100, Math.round((status.downloadedBytes / status.totalBytes) * 100));
-}
 
 export function useSpeechInput(enabled: boolean): SpeechInputModel {
 	const { t } = useTranslation("chat");
@@ -66,10 +59,6 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 
 	const toggle = useCallback(async (): Promise<void> => {
 		if (!enabled || !isWindows) return;
-		if (status.phase === "downloading") {
-			await window.vetta.speechInput.cancelDownload();
-			return;
-		}
 		if (busyRef.current) return;
 		busyRef.current = true;
 		try {
@@ -78,8 +67,8 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 				return;
 			}
 			let readyStatus = status;
-			if (status.phase === "missing-model" || status.phase === "error") {
-				readyStatus = await window.vetta.speechInput.downloadModel();
+			if (status.phase === "error") {
+				readyStatus = await window.vetta.speechInput.getStatus();
 				setStatus(readyStatus);
 			}
 			if (readyStatus.phase !== "ready") return;
@@ -114,10 +103,10 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 	const errorText = useCallback(
 		(code?: SpeechInputErrorCode): string => {
 			switch (code) {
-				case "model-integrity-failed":
+				case "bundled-model-invalid":
 					return t("inputBar.speech.errors.integrity");
-				case "model-download-failed":
-					return t("inputBar.speech.errors.download");
+				case "bundled-model-missing":
+					return t("inputBar.speech.errors.missing");
 				case "unsupported-platform":
 					return t("inputBar.speech.errors.unsupported");
 				default:
@@ -128,11 +117,9 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 	);
 
 	return useMemo(() => {
-		const progress = percentage(status);
 		const titleByPhase: Record<SpeechInputStatus["phase"], string> = {
 			unsupported: t("inputBar.speech.errors.unsupported"),
-			"missing-model": t("inputBar.speech.actions.downloadAndStart"),
-			downloading: t("inputBar.speech.actions.cancelDownload", { progress }),
+			unavailable: errorText(status.errorCode),
 			ready: t("inputBar.speech.actions.start"),
 			loading: t("inputBar.speech.states.loading"),
 			listening: t("inputBar.speech.actions.stop"),
@@ -141,17 +128,16 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 		};
 		const statusText = partialText
 			? partialText
-			: status.phase === "downloading"
-				? t("inputBar.speech.states.downloading", { progress })
-				: status.phase === "loading" || status.phase === "stopping"
+			: status.phase === "loading" || status.phase === "stopping"
+				? titleByPhase[status.phase]
+				: status.phase === "error" || status.phase === "unavailable"
 					? titleByPhase[status.phase]
-					: status.phase === "error"
-						? titleByPhase.error
-						: null;
+					: null;
 		return {
 			visible: isWindows,
 			active: status.phase === "listening",
-			disabled: !enabled || status.phase === "loading" || status.phase === "stopping",
+			disabled:
+				!enabled || status.phase === "unavailable" || status.phase === "loading" || status.phase === "stopping",
 			title: titleByPhase[status.phase],
 			statusText,
 			onToggle: () => void toggle(),

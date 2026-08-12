@@ -3,7 +3,7 @@ import type { SpeechInputEvent, SpeechInputStatus } from "../../preload/api-type
 import type { SpeechHostCommand, SpeechHostEvent } from "./protocol.js";
 import { SpeechInputService, type SpeechModelAccess } from "./speech-input-service.js";
 
-vi.mock("electron", () => ({ utilityProcess: { fork: vi.fn() } }));
+vi.mock("electron", () => ({ app: { isPackaged: false }, utilityProcess: { fork: vi.fn() } }));
 vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }),
 }));
@@ -12,8 +12,6 @@ const READY_STATUS: SpeechInputStatus = {
 	supported: true,
 	phase: "ready",
 	modelId: "test-model",
-	downloadedBytes: 3,
-	totalBytes: 3,
 };
 
 class FakeSpeechHostChild {
@@ -54,8 +52,6 @@ describe("SpeechInputService", () => {
 			supported: true,
 			modelDirectory: "C:/cache/model",
 			getStatus: vi.fn(async () => READY_STATUS),
-			download: vi.fn(async () => READY_STATUS),
-			cancelDownload: vi.fn(),
 		};
 		const service = new SpeechInputService({
 			sendEvent: (event) => events.push(event),

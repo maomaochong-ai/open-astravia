@@ -4,8 +4,6 @@ import { onIpcEvent } from "./helper.js";
 
 export const SPEECH_INPUT_CHANNELS = {
 	GET_STATUS: "vetta:speech-input:get-status",
-	DOWNLOAD_MODEL: "vetta:speech-input:download-model",
-	CANCEL_DOWNLOAD: "vetta:speech-input:cancel-download",
 	START: "vetta:speech-input:start",
 	AUDIO: "vetta:speech-input:audio",
 	STOP: "vetta:speech-input:stop",
@@ -17,8 +15,6 @@ export function createSpeechInputApi(ipc: IpcRenderer): Pick<DesktopApi, "speech
 	return {
 		speechInput: {
 			getStatus: () => ipc.invoke(SPEECH_INPUT_CHANNELS.GET_STATUS),
-			downloadModel: () => ipc.invoke(SPEECH_INPUT_CHANNELS.DOWNLOAD_MODEL),
-			cancelDownload: () => ipc.invoke(SPEECH_INPUT_CHANNELS.CANCEL_DOWNLOAD),
 			start: () => ipc.invoke(SPEECH_INPUT_CHANNELS.START),
 			pushAudio: (sessionId, samples) => ipc.send(SPEECH_INPUT_CHANNELS.AUDIO, sessionId, samples),
 			stop: (sessionId) => ipc.invoke(SPEECH_INPUT_CHANNELS.STOP, sessionId),
