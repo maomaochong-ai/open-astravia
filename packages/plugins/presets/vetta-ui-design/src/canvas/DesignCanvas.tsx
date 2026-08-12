@@ -45,6 +45,7 @@ import { refreshCover } from "./cover-compose";
 import { useFrameRasters } from "./frame-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
+import { HistoryDrawer } from "../history/HistoryDrawer";
 import { NOTES_PANEL_INSET, NotesDrawer } from "./NotesDrawer";
 import { type NoteDraft, NotesLayer } from "./NotesLayer";
 import { selectionAfterHmr } from "./selection-ask";
@@ -286,6 +287,8 @@ export function DesignCanvas({
 	const [marquee, setMarquee] = useState<Rect | null>(null);
 	/** 设计体系选择 Dialog（与会话里那张选择卡同一个宫格）。 */
 	const [designDialogOpen, setDesignDialogOpen] = useState(false);
+	/** 版本历史抽屉。与备注抽屉分居两侧，可以同时开着。 */
+	const [historyOpen, setHistoryOpen] = useState(false);
 	const [menuAnchor, setMenuAnchor] = useState<FrameMenuAnchor | null>(null);
 	/** 正在就地重命名的 frame id（标题栏变输入框）。 */
 	const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -1470,12 +1473,15 @@ export function DesignCanvas({
 				/>
 			) : null}
 
+			{historyOpen ? <HistoryDrawer session={session} onClose={() => setHistoryOpen(false)} /> : null}
+
 			<ControlBar
 				tool={tool}
 				zoom={viewport.zoom}
 				exportableCount={orderedSelection.length}
 				designSystemsActive={designDialogOpen}
 				pendingNotes={pendingNoteCount}
+				historyActive={historyOpen}
 				onToolChange={setTool}
 				onZoomDelta={view.zoomBy}
 				onZoomReset={() => {
@@ -1486,6 +1492,7 @@ export function DesignCanvas({
 					setMenuAnchor(null);
 					setDesignDialogOpen((open) => !open);
 				}}
+				onHistory={() => setHistoryOpen((open) => !open)}
 			/>
 
 			<DesignSystemDialog

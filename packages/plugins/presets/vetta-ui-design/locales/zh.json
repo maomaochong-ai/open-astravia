@@ -267,5 +267,20 @@
 	"gallery.archive.description": "项目会从侧边栏和画廊里移除，磁盘上的文件不受影响，之后可在项目列表里取消归档。",
 	"gallery.archive.confirm": "归档",
 	"gallery.archive.failed": "归档失败",
-	"canvas.empty.rescan": "重新扫描"
+	"canvas.empty.rescan": "重新扫描",
+	"controlbar.history": "版本历史",
+	"history.drawer.title": "版本历史",
+	"history.drawer.empty": "还没有版本。Vetta 每完成一次修改就会自动存一个版本。",
+	"history.drawer.failed": "读不到版本历史。",
+	"history.close": "关闭",
+	"history.current": "当前",
+	"history.restore": "恢复到此",
+	"history.restoring": "恢复中…",
+	"history.confirm.title": "恢复到这个版本？",
+	"history.confirm.desc": "设计会变回「{{name}}」那一刻的样子。当前内容会先存成一个版本，随时可以再恢复回来。",
+	"history.confirm.ok": "恢复",
+	"history.confirm.cancel": "取消",
+	"history.time.now": "刚刚",
+	"history.time.minutes": "{{count}} 分钟前",
+	"history.time.hours": "{{count}} 小时前"
 }
