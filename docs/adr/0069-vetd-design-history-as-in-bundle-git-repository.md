@@ -19,7 +19,9 @@
 ### git 从哪来
 
 - **A 系统 git + 探测不到就降级**：零成本，但 Windows 设计师大量缺失，且 macOS 未装 Xcode CLT 时执行 `/usr/bin/git` 会弹出系统安装对话框——一个设计工具不该把用户推进开发者安装流程。「有时候有历史、有时候没有」比统一没有更难解释。
-- **B 内置真 git 二进制**（给 `runtimes/manifest.json` 加第三个 type，走 ADR-0011 的 vendor → 解压 → registry → PATH 注入）：能力最完整，其他插件也能用。但 node/python 都有现成的可再分发归档，git 没有：macOS 得自己凑构建，且 `paths.ts` 已经记录了「macOS 只能以解压目录形态内置，因为归档内的 Mach-O 签不到名、公证要逐个校验」——git 的 `libexec/git-core` 是上百个硬链接副本，签名会把硬链接打散。三个平台各一套坑，换来的能力我们只用到 `init / add / commit / log / checkout -- <path> / diff --name-status` 六条。
+- **B 内置真 git 二进制**（给 `runtimes/manifest.json` 加第三个 type，走 ADR-0011 的 vendor → 解压 → registry → PATH 注入）：能力最完整，其他插件也能用。但 node/python 都有现成的可再分发归档，git 没有：Windows 有官方便携包 MinGit，macOS 与 Linux 都得自建可重定位（`RUNTIME_PREFIX`）构建，且 `paths.ts` 已经记录了「macOS 只能以解压目录形态内置，因为归档内的 Mach-O 签不到名、公证要逐个校验」——git 的 `libexec/git-core` 是上百个到主二进制的硬链接，签名与公证在这种形态下会发生什么**没有实测过**，是这条路上第一个要验的问题。三个平台各一套坑，换来的能力我们只用到 `init / add / commit / log / checkout -- <path> / diff --name-status` 六条。
+
+  这条路仍然值得单独评估，但目标不同：真正需要系统 git 的是**模型在 bash 里给用户的代码项目敲 git 命令**（全仓没有任何一行代码直接调用 `git`），那在没装 git 的机器上是断的。设计历史不在其中——它由 C 覆盖，与用户机器上有没有 git 无关。
 - **C isomorphic-git 跑在托管 node 上（选定）**：纯 JS 实现随插件 dist 分发，经插件已经用熟的 `ctx.command.run("node", ["-e" | <runner>])` 通道调用（`engine-manager.ts`、`check-syntax.ts`、`open-demo.ts` 都是这条路），而 node 是托管运行时、必然就绪。零平台矩阵、零公证、零安装失败，三端行为一致，不动宿主一行代码。产物是标准 git 仓库，日后想换成真 git 或让用户用命令行打开都不受阻。
 
 ### 谁来提交
@@ -51,4 +53,8 @@
 
 - **agent 可以恢复，但要能自我纠正**：新增只读的 `vetd_history` 与执行恢复的 `vetd_restore`（插件侧 `ctx.agent.registerTool` + locales，不涉及 coding-agent 内置工具的注册点）。用户在聊天里说「退回上一版」时，模型直接恢复而不是手改代码去拼凑旧样子。风险是它挑错版本，缓解是 `vetd_restore` 的返回值必须同时报出「已恢复到 X」和「恢复前状态已存为 Z」，让它能在用户说「不是这个」时立刻改正。
 
-- **历史体积不主动修剪**：git 是内容寻址的，未改动的文件不重复存储，纯 tsx 设计几百个版本也只有几 MB；真正会胀的是 `assets/` 里反复替换的图片。自动丢弃最早的版本恰好会丢掉「一开始那一版」——最常被要求回到的那个。因此只在导出 `.vetdz` 且历史超过阈值时，才询问用户带不带历史。
+- **历史体积不主动修剪**：git 是内容寻址的，未改动的文件不重复存储，纯 tsx 设计几百个版本也只有几 MB；真正会胀的是 `assets/` 里反复替换的图片。自动丢弃最早的版本恰好会丢掉「一开始那一版」——最常被要求回到的那个。
+
+- **超限时不询问用户，直接不带历史并告知**：原本的决定是「导出 `.vetdz` 时历史超过阈值就问用户带不带」。实现时没有落这条：宿主没有确认框 API（`ctx.ui.notify` 只有 toast，没有操作按钮），而导出有画布和画廊两个入口、分属不同 surface，各写一套确认框的成本远超这个场景的价值——超限本身极罕见。改成：超过 24MB（宿主 `readBinaryFile` 硬上限 32MB，留余量）就不带历史，并用 toast 说明原因，设计内容仍然完整。等宿主有了带按钮的确认能力再补上询问。
+
+- **runner 静态引入，插件主 chunk 从 421KB 涨到 803KB**：动态 `import()` 能把这 380KB 拆成按需加载的独立块，但这个插件此前没有自己的动态 import 先例，异步 chunk 能否经 `vetta-plugin://` 取到没有被验证过——而它取不到时，表现是历史对所有人静默失效。在真实 Electron 里验证过之后可以随时拆回去（`runner-host.ts` 的注释里记了这件事）。
