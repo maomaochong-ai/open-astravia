@@ -140,9 +140,21 @@ async function commit(dir: string, title: string, restoredFrom?: string): Promis
 	const gitdir = gitdirOf(dir);
 	await ensureRepository(dir);
 	const onDisk = await walkWorktree(dir);
-	const tracked = await git.listFiles({ fs, gitdir }).catch(() => [] as string[]);
+	// 已跟踪文件取自 HEAD 树而不是 index：下面要把 index 丢掉，那之后 index 里什么都没有。
+	const tracked = await git.listFiles({ fs, gitdir, ref: "HEAD" }).catch(() => [] as string[]);
 	const filepaths = [...new Set([...onDisk, ...tracked])];
 	if (filepaths.length === 0) return null;
+
+	/*
+	 * 丢掉 index，强制按内容比对。
+	 *
+	 * statusMatrix 会信任 index 里缓存的 stat：同一秒内改动、且长度没变的文件被判成
+	 * 「没变」，那次修改就永远不会有版本。实测（history-runner.test.ts 里有回归用例）：
+	 * `// v1\n` → `// v2\n` 同秒写入，committed=false；改成不同长度就正常。
+	 * 这就是 git 自己的 racy-timestamp 问题，git 用「mtime 与 index 相同就回退到内容比对」
+	 * 解决，isomorphic-git 没有。设计包只有几十个文件，每次重算哈希的代价可以忽略。
+	 */
+	fs.rmSync(join(gitdir, "index"), { force: true });
 
 	const matrix = await git.statusMatrix({ fs, dir, gitdir, filepaths });
 	const changed: string[] = [];

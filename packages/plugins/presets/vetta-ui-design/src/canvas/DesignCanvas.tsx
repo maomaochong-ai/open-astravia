@@ -296,6 +296,24 @@ export function DesignCanvas({
 	/** 正在查看的旧版本。非 null 时画布上装的是那一版的内容，不是最新的。 */
 	const [peek, setPeek] = useState<PeekState | null>(null);
 	const [peekBusy, setPeekBusy] = useState(false);
+
+	/**
+	 * 查看/退出/恢复共用的收尾：置忙、出错报到界面上。
+	 *
+	 * 这层 catch 不是可选的。这些动作全在异步链里，漏掉它时一次失败的表现是「点了
+	 * 没有任何反应」——按钮看起来坏了，而控制台之外没有任何线索。
+	 */
+	const runPeekAction = async (action: () => Promise<void>): Promise<void> => {
+		setPeekBusy(true);
+		try {
+			await action();
+		} catch (error) {
+			console.error("[vetta-ui-design] 查看历史版本失败", error);
+			notify({ variant: "error", message: t("history.peek.failed"), error });
+		} finally {
+			setPeekBusy(false);
+		}
+	};
 	const [menuAnchor, setMenuAnchor] = useState<FrameMenuAnchor | null>(null);
 	/** 正在就地重命名的 frame id（标题栏变输入框）。 */
 	const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -1485,19 +1503,19 @@ export function DesignCanvas({
 					title={peek.title}
 					busy={peekBusy}
 					onExit={() => {
-						setPeekBusy(true);
-						void exitPeek(getPluginCtx(), session)
-							.then(() => setPeek(null))
-							.finally(() => setPeekBusy(false));
+						void runPeekAction(async () => {
+							await exitPeek(getPluginCtx(), session);
+							setPeek(null);
+						});
 					}}
 					onRestore={() => {
-						setPeekBusy(true);
-						// 先退出再恢复：工作区此刻装的是旧版本，直接恢复会把它当成「现场」
-						// 封存下来，历史里多出一个内容等于旧版的假版本。
-						void exitPeek(getPluginCtx(), session)
-							.then(() => restoreDesign(getPluginCtx(), session.dirPath, { ...peek, timestamp: 0, files: [] }, { session }))
-							.then(() => setPeek(null))
-							.finally(() => setPeekBusy(false));
+						void runPeekAction(async () => {
+							// 先退出再恢复：工作区此刻装的是旧版本，直接恢复会把它当成「现场」
+							// 封存下来，历史里多出一个内容等于旧版的假版本。
+							await exitPeek(getPluginCtx(), session);
+							await restoreDesign(getPluginCtx(), session.dirPath, { ...peek, timestamp: 0, files: [] }, { session });
+							setPeek(null);
+						});
 					}}
 				/>
 			) : null}
@@ -1507,10 +1525,16 @@ export function DesignCanvas({
 					session={session}
 					peekSha={peek?.sha ?? null}
 					onPeek={(target: HistoryCommit) => {
-						setPeekBusy(true);
-						void enterPeek(getPluginCtx(), session, target)
-							.then((state) => setPeek(state))
-							.finally(() => setPeekBusy(false));
+						void runPeekAction(async () => {
+							const state = await enterPeek(getPluginCtx(), session, target);
+							if (!state) {
+								// 唯一会走到这里的正常情况是「目标就是当前版本」，此时确实无事
+								// 可做；但静默返回会让按钮看起来是坏的，所以说一句。
+								notify({ variant: "info", message: t("history.peek.alreadyCurrent") });
+								return;
+							}
+							setPeek(state);
+						});
 					}}
 					onClose={() => setHistoryOpen(false)}
 				/>

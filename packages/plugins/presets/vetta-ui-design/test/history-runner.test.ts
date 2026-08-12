@@ -171,6 +171,20 @@ describe("history runner", () => {
 		await rm(target, { recursive: true, force: true });
 	});
 
+	it("同一秒内改动、长度还没变，也必须被记下来", async () => {
+		// git 的 racy-timestamp：statusMatrix 信任 index 里缓存的 stat，同秒同长度会被
+		// 判成「没变」。修复前这条是 committed=false，用户改了却没有版本。
+		const racy = await mkdtemp(join(tmpdir(), "vetd-history-racy-"));
+		await mkdir(join(racy, "frames"), { recursive: true });
+		await writeFile(join(racy, "frames", "index.tsx"), "// v1\n");
+		await run({ cmd: "commit", dir: racy, title: "一" });
+		await writeFile(join(racy, "frames", "index.tsx"), "// v2\n");
+		const second = await run({ cmd: "commit", dir: racy, title: "二" });
+		expect(second.committed).toBe(true);
+		expect(second.commit?.files).toEqual(["frames/index.tsx"]);
+		await rm(racy, { recursive: true, force: true });
+	});
+
 	it("直接提交也会自己建仓库——老设计被 agent 改到、但从没打开过画布", async () => {
 		const fresh = await mkdtemp(join(tmpdir(), "vetd-history-fresh-"));
 		await mkdir(join(fresh, "frames"), { recursive: true });
