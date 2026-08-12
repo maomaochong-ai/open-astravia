@@ -89,5 +89,27 @@
 	"video": {
 		"missingTitle": "桌宠视频",
 		"missingSubtitle": "未提供"
+	},
+	"notice": {
+		"lifecycle": {
+			"started": "我来处理这个",
+			"completed": "搞定了",
+			"paused": "已暂停，等你继续"
+		},
+		"context": {
+			"compacting": "我整理一下上下文"
+		},
+		"tool": {
+			"running": "正在执行工具",
+			"runningWithDescription": "{{description}}"
+		},
+		"background": {
+			"running": "后台任务运行中",
+			"completed": "后台任务已完成",
+			"failed": "后台任务遇到问题"
+		},
+		"error": {
+			"generic": "这一步遇到问题了"
+		}
 	}
 }

@@ -27,9 +27,9 @@ import { usePetHitbox } from "../hooks/usePetHitbox";
 import {
 	PET_APP_PRESENTATION_MIN_HOLD_MS,
 	type PetAppActionUpdate,
-	type PetAppBubbleUpdate,
 	usePetPresentationThrottle,
 } from "../hooks/usePetPresentationThrottle";
+import { getShowPetBubbleInput } from "../services/pet-bubble-state";
 import { usePetWindowInteractions } from "../hooks/usePetWindowInteractions";
 import { useWindowSize } from "../hooks/useWindowSize";
 
@@ -107,30 +107,15 @@ export function PetApp(): JSX.Element {
 		},
 		[videos],
 	);
-	const applyAppBubble = useCallback(
-		(update: PetAppBubbleUpdate) => {
-			if (update.type === "hide") {
-				hideBubble("app");
-				return;
-			}
-			showBubble({
-				...update.input,
-				source: "app",
-				ttlMs: Math.max(update.input.ttlMs ?? PET_APP_PRESENTATION_MIN_HOLD_MS, PET_APP_PRESENTATION_MIN_HOLD_MS),
-			});
-		},
-		[hideBubble, showBubble],
-	);
 	const handleAppActionQueued = useCallback((update: PetAppActionUpdate) => {
 		if (update.type === "set") {
 			appActionIdRef.current = update.actionId;
 		}
 	}, []);
-	const { clearPresentationThrottle, queueAppAction, queueAppBubble } = usePetPresentationThrottle({
+	const { clearPresentationThrottle, queueAppAction } = usePetPresentationThrottle({
 		minHoldMs: PET_APP_PRESENTATION_MIN_HOLD_MS,
 		canApplyAction: canApplyAppAction,
 		applyAction: applyAppAction,
-		applyBubble: applyAppBubble,
 		onActionQueued: handleAppActionQueued,
 	});
 	const scheduleUserActionRelease = (holdMs: number | undefined) => {
@@ -185,25 +170,12 @@ export function PetApp(): JSX.Element {
 	useEffect(() => {
 		return window.vettaPet?.onCommand((command) => {
 			if (command.type === "show-bubble") {
-				const input = {
-					text: command.text,
-					...(command.source === undefined ? {} : { source: command.source }),
-					...(command.ttlMs === undefined ? {} : { ttlMs: command.ttlMs }),
-					...(command.priority === undefined ? {} : { priority: command.priority }),
-				};
-				if ((command.source ?? "app") === "app") {
-					queueAppBubble({ type: "show", input });
-					return;
-				}
-				showBubble(input);
+				const input = getShowPetBubbleInput(command);
+				if (input) showBubble(input);
 				return;
 			}
 			if (command.type === "hide-bubble") {
-				if ((command.source ?? "app") === "app") {
-					queueAppBubble({ type: "hide" });
-					return;
-				}
-				hideBubble(command.source);
+				hideBubble(command.source ?? "app");
 				return;
 			}
 			if (command.type === "set-debug-frame") {
@@ -268,7 +240,7 @@ export function PetApp(): JSX.Element {
 			setActionId((current) => pickNextAction(videos, current));
 			scheduleUserActionRelease(command.holdMs);
 		});
-	}, [hideBubble, queueAppAction, queueAppBubble, showBubble, videos]);
+	}, [hideBubble, queueAppAction, showBubble, videos]);
 
 	return (
 		<div

@@ -33,6 +33,7 @@ import { getDesktopUserQuestionBroker } from "../conversations/user-question-bro
 import { type DebugRequestData, writeDebugRequest } from "../debug-writer.js";
 import { getAppLogger } from "../logger.js";
 import { notify } from "../notifications/index.js";
+import { createPetBubbleCommand } from "../pet/pet-bubble-command.js";
 import { mapSessionEventToPetPresentation } from "../pet/session-event-action-policy.js";
 import { sendPetCommandToWindow } from "../pet-window.js";
 import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invocation.js";
@@ -301,7 +302,6 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		let lastStopReason: string | undefined;
 		let aborted = false;
 		let lastPetActionId: string | undefined;
-		let lastPetBubbleKey: string | undefined;
 		const unsubscribe = runtime.subscribe(sessionId, (ev: SessionEvent) => {
 			const petPresentation = mapSessionEventToPetPresentation(ev);
 			const petActionId = petPresentation?.actionId;
@@ -311,19 +311,8 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			}
 			const petBubble = petPresentation?.bubble;
 			if (petBubble) {
-				const nextBubbleKey = `${petBubble.text}:${petBubble.ttlMs ?? ""}:${petBubble.priority ?? ""}`;
-				if (nextBubbleKey !== lastPetBubbleKey) {
-					lastPetBubbleKey = nextBubbleKey;
-					sendPetCommandToWindow({
-						type: "show-bubble",
-						text: petBubble.text,
-						source: "app",
-						...(petBubble.ttlMs === undefined ? {} : { ttlMs: petBubble.ttlMs }),
-						...(petBubble.priority === undefined ? {} : { priority: petBubble.priority }),
-					});
-				}
-			} else {
-				lastPetBubbleKey = undefined;
+				const command = createPetBubbleCommand(petBubble, sessionId);
+				if (command) sendPetCommandToWindow(command);
 			}
 
 			if (ev.type === "message.final") {
