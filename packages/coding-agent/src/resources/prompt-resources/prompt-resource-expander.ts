@@ -51,9 +51,9 @@ function expandPromptResource(
 					`Continue working through the existing items in strict sequential order.`,
 					`Use todo(action="list") to view current progress.`,
 				);
-			} else if (existsSync(tasksJsonPath)) {
+			} else if (skill.sceneTasks !== undefined || existsSync(tasksJsonPath)) {
 				try {
-					const tasks: unknown = JSON.parse(readFileSync(tasksJsonPath, "utf-8"));
+					const tasks: unknown = skill.sceneTasks ?? JSON.parse(readFileSync(tasksJsonPath, "utf-8"));
 					if (Array.isArray(tasks) && tasks.length > 0 && tasks.every((task) => typeof task === "string")) {
 						dependencies.todoState.initializeSceneTodoItems(tasks);
 						lines.push(

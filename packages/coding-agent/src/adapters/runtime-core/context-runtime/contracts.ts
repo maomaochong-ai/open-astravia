@@ -2,6 +2,7 @@ import type { AgentMessage } from "@vetta/agent-core";
 import type { Api, AssistantMessage, Message, Model } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter/hooks";
 import type { ContextCompositionReport } from "@vetta/runtime-core";
+import type { RuntimeSnapshotAcquireContext } from "@vetta/runtime-core/kernel";
 import type { CompactionPreparation, CompactionResult, CompactionSettings } from "../../../compaction/index.js";
 import type { CompactionWorkStateSnapshot } from "../../../compaction/work-state-recovery.js";
 import type { CodingAgentMemoryCompactionPolicy } from "../../../memory/index.js";
@@ -43,6 +44,10 @@ export interface CodingAgentContextRuntimeOptions {
 		messages: readonly AgentMessage[],
 		signal: AbortSignal,
 	) => Promise<readonly AgentMessage[]>;
+	readonly bindTransformAgentContext?: (context: RuntimeSnapshotAcquireContext) => {
+		transform(messages: readonly AgentMessage[], signal: AbortSignal): Promise<readonly AgentMessage[]>;
+		release(): Promise<void> | void;
+	};
 	readonly failureRecovery?: CodingAgentModelCallFailureRecovery;
 	readonly now?: () => number;
 	readonly readCompactionWorkState?: () => CompactionWorkStateSnapshot;

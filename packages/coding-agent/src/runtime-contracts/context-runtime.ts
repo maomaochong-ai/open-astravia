@@ -1,8 +1,13 @@
 import type { Api, Model } from "@vetta/ai";
+import type { RuntimeSnapshotAcquireContext } from "@vetta/runtime-core/kernel";
 import type { CompactionPreparation, CompactionResult, CompactionSettings } from "../compaction/index.js";
 import type { CodingAgentCompactionEntry, CodingAgentSessionEntry } from "../sessions/index.js";
 
 export interface CodingAgentCompactionExtensionRuntime {
+	bindForTurn?(
+		context: RuntimeSnapshotAcquireContext,
+	): CodingAgentCompactionExtensionRuntime | Promise<CodingAgentCompactionExtensionRuntime>;
+	releaseTurnBinding?(): Promise<void> | void;
 	beforeCompaction(input: {
 		readonly preparation: CompactionPreparation;
 		readonly branchEntries: readonly CodingAgentSessionEntry[];

@@ -11,14 +11,18 @@ import type {
 } from "../../src/runtime-contracts/index.js";
 
 describe("Coding Agent Runtime Extension Controls", () => {
-	it("binds live Event Bridge and Tool Runtime ports with the existing cleanup order", () => {
+	it("binds live Event Bridge and Tool Runtime ports with the existing cleanup order", async () => {
 		const cleanupOrder: string[] = [];
-		const bindEvents = vi.fn(() => () => cleanupOrder.push("events"));
+		const bindEvents = vi.fn(() => async () => {
+			cleanupOrder.push("events");
+		});
 		const bridge = {
 			bind: bindEvents,
 			readSystemPrompt: () => "extension prompt",
 		} as unknown as CodingAgentExtensionRunAdapter;
-		const bindTools = vi.fn(() => () => cleanupOrder.push("tools"));
+		const bindTools = vi.fn(() => async () => {
+			cleanupOrder.push("tools");
+		});
 		const refresh = vi.fn();
 		const replaceSessionTools = vi.fn();
 		const clearSessionTools = vi.fn();
@@ -44,12 +48,12 @@ describe("Coding Agent Runtime Extension Controls", () => {
 		controls.clearSessionTools("session");
 
 		expect(binding.readSystemPrompt()).toBe("extension prompt");
-		expect(bindEvents).toHaveBeenCalledWith(runner, bindingOptions);
+		expect(bindEvents).toHaveBeenCalledWith(runner, { ...bindingOptions, sessionId: "session" });
 		expect(bindTools).toHaveBeenCalledWith("session", runner, bindingOptions);
 		expect(refresh).toHaveBeenCalledWith(extensions);
 		expect(replaceSessionTools).toHaveBeenCalledWith("session", []);
 		expect(clearSessionTools).toHaveBeenCalledWith("session");
-		binding.dispose();
+		await binding.dispose();
 		expect(cleanupOrder).toEqual(["tools", "events"]);
 	});
 

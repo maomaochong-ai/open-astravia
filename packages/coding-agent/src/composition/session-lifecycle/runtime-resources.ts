@@ -88,14 +88,7 @@ export function createCodingAgentSessionRuntimeResources(
 		repository: options.conversation.repository,
 		conversationDocumentStore: options.conversation.documentStore,
 		conversationContinuationStore: options.conversation.continuationStore,
-		promptAdapter: {
-			intercept: (request, context) => options.turnCapabilityAssembly.promptAdapter.intercept(request, context),
-			async prepare(request, context) {
-				const prepared = await options.turnCapabilityAssembly.promptAdapter.prepare(request, context);
-				await options.todoRuntime.flush();
-				return prepared;
-			},
-		},
+		promptAdapter: options.turnCapabilityAssembly.promptAdapter,
 		snapshotProvider,
 		modelRuntime: options.modelRuntime,
 		documentParticipants: [

@@ -5,7 +5,8 @@
 Vetta 已经有正确的骨架，但一致性边界没有闭合：
 
 - Kernel 在 Turn 开始时获取一次 `RuntimeSnapshotLease`，Turn 结束后释放；模型选择也按 Turn 绑定。
-- `AtomicRuntimeSnapshotProvider` 能让旧 generation 在活动 lease 释放前继续存活。
+- `AtomicRuntimeSnapshotProvider` 能让旧 generation 在活动 lease 释放前不因普通 retirement 被 dispose；
+  它不保证底层物理资源健康。
 - `RuntimeCapabilityComposition` 能原子替换后续 Turn 使用的 snapshot，并在重编译失败时保留当前有效代。
 - Agent Mode 和部分 Plugin 配置已经通过 Runtime Host 的 pending 逻辑推迟到 Prompt/Turn 边界。
 
@@ -32,7 +33,7 @@ current generation、活动 lease 数和 retired 状态：
 - 最后一个 lease 释放后才 dispose；
 - `close()` 等待所有 generation 不再使用。
 
-这正是 Plugin handler、MCP connection 和 Tool implementation 保活所需要的底层模型。
+这正是防止 Plugin handler、MCP connection owner 和 Tool implementation 被普通更新提前回收所需要的底层模型。
 
 ### 2.2 Session capability generation
 

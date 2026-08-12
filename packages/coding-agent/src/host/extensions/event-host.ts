@@ -61,6 +61,7 @@ class DefaultCodingAgentExtensionEventHost implements CodingAgentExtensionEventH
 			await this.runner.emit(event);
 		});
 		this.removeExecutionObservationListener = assembly.executionObservationStream.subscribe(async (observation) => {
+			if (this.eventBinding.ownsTurn && !this.eventBinding.ownsTurn(observation.turnId)) return;
 			try {
 				await observationAdapter.observe(observation);
 			} catch (error) {

@@ -127,8 +127,7 @@ export function buildPluginRuntimeConfig(
 			continue;
 		}
 		for (const tool of registeredTools) {
-			const { activationId: _activationId, ...contribution } = tool;
-			toolContributions.push({ ...contribution, pluginId: plugin.id });
+			toolContributions.push({ ...tool, pluginId: plugin.id });
 		}
 	}
 
@@ -140,16 +139,14 @@ export function buildPluginRuntimeConfig(
 			continue;
 		}
 		for (const provider of dependencies.contributions.getSystemPrompts(plugin.id)) {
-			const { activationId: _activationId, ...contribution } = provider;
-			systemPromptProviderContributions.push({ ...contribution, pluginId: plugin.id });
+			systemPromptProviderContributions.push({ ...provider, pluginId: plugin.id });
 		}
 	}
 
 	for (const plugin of enabledToolPlugins) {
 		if (!hasGrantedPermission(plugin, "agent.continuation.register")) continue;
 		for (const provider of dependencies.contributions.getContinuations(plugin.id)) {
-			const { activationId: _activationId, ...contribution } = provider;
-			continuationContributions.push({ ...contribution, pluginId: plugin.id });
+			continuationContributions.push({ ...provider, pluginId: plugin.id });
 		}
 	}
 

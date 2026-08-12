@@ -35,8 +35,9 @@ Turn 获取。文件刚发生变化、插件正在加载或 MCP 正在重建时�
 
 ### Lease
 
-对 generation 及其资源的活动引用。retired generation 在最后一个 lease 释放前不得销毁正常执行所需的
-Plugin handler、MCP connection、Tool implementation 或内容快照。
+对 generation 及其资源的活动引用。retired generation 在最后一个 lease 释放前，宿主不得仅因普通更新主动
+销毁该 Turn 仍需的 Plugin handler、MCP connection owner、Tool implementation 或内容快照。Lease 不保证这些
+物理资源持续健康或调用必然成功。
 
 ### Hard Revocation
 
@@ -83,8 +84,8 @@ Session 无需重建或手动 reload。Turn admission 读取当时的 current ge
 
 ### C5：普通 retirement 与 hard revoke 分离
 
-普通 disable/uninstall/reload 只影响新 Turn；旧 generation 可以完成。Hard revocation 通过独立 Registry 在执行
-入口检查，可以拒绝尚未开始的旧调用、取消在途调用或阻止凭证使用。
+普通 disable/uninstall/reload 只影响新 Turn；旧 generation 仍可继续被调用，物理故障则按既有错误语义传播。
+Hard revocation 通过独立 Registry 在执行入口检查，可以拒绝尚未开始的旧调用、取消在途调用或阻止凭证使用。
 
 ### C6：发布线性化
 
@@ -107,12 +108,12 @@ candidate 解析、校验或物化失败时不替换 current。UI 和诊断必�
 | Settings/persona | 下一个 Turn | system prompt 不改变 | 不适用 |
 | AGENTS.md/Prompt | 下一个 Turn | 使用内容快照 | 不适用 |
 | Skill catalog/body | 下一个 Turn | 已公布 Skill 可按原正文调用 | 恶意 Skill 可 hard revoke |
-| Tool definition | 下一个 Turn | 已公布 schema/implementation 可完成 | revoke 拒绝或取消 |
+| Tool definition | 下一个 Turn | 已公布 schema/implementation 可继续调用；物理失败传播 | revoke 拒绝或取消 |
 | MCP config/tools | 下一个 Turn | 保持同代配置；同代断线可按同配置 reconnect | server/capability revoke 立即阻止 |
-| Plugin contribution | 下一个 Turn | 旧 activation 保活 | 插件 hard revoke 立即阻止 handler |
+| Plugin contribution | 下一个 Turn | 旧 activation 不因普通 retirement 被回收 | 插件 hard revoke 立即阻止 handler |
 | Hook/interceptor | 下一个 Turn | 整个 Turn 使用同一集合和顺序 | handler hard revoke 可跳过并记录 |
-| Extension/SDK Tool | 下一个 Turn | 旧 definition/runner generation 保活 | 显式 revoke 可拒绝 |
-| Credential secret value | 同一 credential identity 可即时轮换 | 不复制 secret；调用时取当前 secret | 撤销立即失败 |
+| Extension/SDK Tool | 下一个 Turn | 旧 definition/runner 不因普通 retirement 被回收 | 显式 revoke 可拒绝 |
+| Credential binding | 下一个 Turn | 使用 admission 捕获的不透明 credential binding | 显式撤销后下一次 resolve 失败 |
 | Conversation/Todo/Tool output | 当前 Turn | 正常实时变化 | 由既有取消/权限语义控制 |
 
 ## 4. Sandbox 与授权的特殊规则
@@ -128,13 +129,15 @@ Snapshot 固定的是 Turn 的基础执行策略，不是冻结所有授权交�
 
 ## 5. Credential 规则
 
-Secret 不进入 `PublishedAgentState`：
+Secret 不进入 `PublishedAgentState`、generation descriptor、事件或持久化历史：
 
-- snapshot 绑定 provider、credential identity、endpoint policy 和允许的 auth scope；
-- Tool/Provider 调用通过 Credential Port 即时取得 secret；
-- 同一 identity 的无语义轮换可对活动 Turn 透明；
-- identity/account/endpoint 的切换属于普通配置更新，只对新 Turn 可见；
-- credential revoke 属于 hard revocation，活动 Turn 的下一次使用失败。
+- snapshot 只暴露不透明 `RuntimeTurnCredentialBinding`，调用方只能执行 `resolve()`；
+- binding 在 admission 捕获 provider、credential identity、endpoint policy、允许的 auth scope 及其 provider-owned lease；
+- identity/account/scope/endpoint 切换都发布新 binding，只对后续 Turn 可见；
+- provider 若能证明 token rotation 不改变身份、权限语义和 endpoint policy，可封装在同一个不透明 binding 内，
+  但 Kernel 不依赖该能力；
+- credential revoke 属于 hard revocation，递增撤销 epoch，使活动 Turn 已捕获 binding 的下一次 `resolve()` 失败；
+- 实现可以在私有执行闭包中短暂持有 secret，但不得把它复制进可序列化 revision、日志或诊断对象。
 
 ## 6. follow-up、steer、retry 与 queue
 
@@ -149,18 +152,21 @@ Secret 不进入 `PublishedAgentState`：
 | 自动 compaction 后同 Turn 继续 | 否 | 沿用当前 Turn |
 | Conversation continuation/rollover 但 `turnId` 不变 | 否 | 沿用当前 Turn |
 
-## 7. Subagent 与工作流继承
+## 7. Subagent 与工作流边界
 
-为了避免根 Turn 在 generation N 中派出的子任务突然使用 generation N+1，采用因果继承：
+Subagent 是新建的独立 Session/Turn，不是父 Turn 的续段。采用独立 admission，而不是跨 Session 复制父
+revision set：
 
-- 在父 Turn 内创建的新 Subagent 首个 Turn，使用父 Turn revision set 投影出的 child profile generation；
-- 子 Agent 仍有独立 RuntimeSnapshotLease 和资源生命周期，父 Turn 结束不能提前释放子 Turn 正在使用的代；
-- 父 Turn 对已经存在的 child 发起、且语义上属于本次执行的 follow-up，也携带父 revision set；
-- 用户独立打开 child Session 后发送的新消息没有父 Turn 因果约束，按新 Turn 获取最新 current；
-- child 不继承父 Tool 对象本身，只继承外部状态 revision set，再按 child profile 过滤能力。
+- 父 Turn 在 generation N 中调用 `spawn_agent` 时，父 Turn 自身仍完整使用 N；
+- child 首个 Turn 在自己的 admission 捕获当时已经发布的完整 generation，可能是 N，也可能是 N+1；
+- child 有独立 `RuntimeSnapshotLease` 和资源生命周期，父 Turn 结束不会释放 child 正在使用的资源；
+- 父消息快照、显式传入的 child profile 与经过过滤的 MCP view 是 child 创建请求的不可变输入，不共享父 Tool 对象；
+- 对既有 child 的 follow-up 是 child 的新 Turn，在 child admission 重新捕获最新 published generation；
+- 用户独立打开 child Session 后发送消息遵循同一规则。
 
-如果首期无法完成 revision projection，安全的兼容降级是：在父 Turn 期间延迟 child admission，或明确记录
-`revisionInheritance: unsupported` 并关闭该灰度；不能静默让 child 使用任意最新状态后宣称一致性已完成。
+该规则保证“正在执行的 Turn 不被外部更新回写”，同时避免父子 Composition 共享资源 lease 或引入隐式的
+跨 Session 因果配置。若产品未来需要可复现实验式的父子同代执行，应新增显式 `revisionProjection` 协议，
+不能通过共享 mutable runtime 对象实现。
 
 ## 8. 物理故障不是配置更新
 
@@ -170,6 +176,9 @@ Snapshot 保证逻辑 generation，不保证外部世界永不失败：
 - Plugin renderer/worker 崩溃可以使旧 handler 调用失败；错误必须归因于 generation 对应的宿主故障。
 - 文件被外部删除不影响已经复制或内容寻址缓存的 Prompt/Skill；尚未物化的裸路径引用不满足本合同。
 - 网络、Provider 和凭证服务失败沿既有错误/重试语义传播。
+
+Lease 只阻止宿主因普通 retirement 主动回收旧代，不保证进程、连接或远端服务存活，更不保证 Turn 无损完成。
+完整分类和恢复边界见 [Turn Binding 的能力边界](./08-binding-boundaries.md)。
 
 ## 9. UI 合同
 

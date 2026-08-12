@@ -106,7 +106,7 @@ async function initializeSession<TOwnershipBinding>(
 			activeOwnership = undefined;
 		},
 	});
-	const extensionEvents = new CodingAgentExtensionRunAdapter();
+	const extensionEvents = new CodingAgentExtensionRunAdapter(options.extensionToolRuntime?.runnerGenerations);
 	options.registry.indexes.resourceContexts.set(activeSessionId, resourceContext);
 	rollback.defer({
 		id: "resource-context-binding",

@@ -324,6 +324,8 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.SET_CONTRIBUTION_MODE, pluginId, active),
 			beginAgentContributionsLoad: (pluginId, activationId) =>
 				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.BEGIN_LOAD, pluginId, activationId),
+			commitAgentContributionsLoad: (pluginId, activationId) =>
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.COMMIT_LOAD, pluginId, activationId),
 			registerAgentTool: (pluginId, registration) =>
 				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.TOOL_REGISTER, pluginId, registration),
 			unregisterAgentTool: (pluginId, toolId, activationId) =>
@@ -338,6 +340,7 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 			respondAgentTool: (requestId, result) =>
 				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.TOOL_RESPONSE, requestId, result),
 			onAgentHookRequest: (handler) => onIpcEvent(ipc, PLUGIN_CONTRIBUTION_CHANNELS.HOOK_REQUEST, handler),
+			onAgentHandlerReleased: (handler) => onIpcEvent(ipc, PLUGIN_CONTRIBUTION_CHANNELS.HANDLER_RELEASE, handler),
 			respondAgentHook: (requestId, result) =>
 				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.HOOK_RESPONSE, requestId, result),
 			registerAppAction: (pluginId, registration) =>

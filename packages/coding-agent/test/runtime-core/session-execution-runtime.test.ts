@@ -48,7 +48,7 @@ describe("CodingAgentSessionExecutionRuntime", () => {
 		fixture.runtime.dispose();
 	});
 
-	it("reflects shared registry removal without rebuilding the session feature", async () => {
+	it("applies shared registry removal to future frames without revoking an advertised Turn tool", async () => {
 		const states = new Map<string, CodingToolCatalogEntry["state"]>();
 		let bashRevision = "1";
 		const fixture = createRuntimeFixture("session-dynamic", (toolName) =>
@@ -77,10 +77,10 @@ describe("CodingAgentSessionExecutionRuntime", () => {
 					sessionId: "session-dynamic",
 					turnId: "turn-dynamic",
 					toolCallId: "tool-bash",
-					input: { command: "must-not-run" },
+					input: { command: process.platform === "win32" ? "Write-Output stable" : "printf stable" },
 					signal,
 				}),
-			).rejects.toMatchObject({ code: "coding_tool_deactivated" });
+			).resolves.toMatchObject({ content: expect.any(Array) });
 
 			states.set("bash", "active");
 			bashRevision = "2";

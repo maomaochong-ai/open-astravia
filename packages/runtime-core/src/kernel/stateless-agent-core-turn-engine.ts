@@ -184,9 +184,11 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 					signal,
 				};
 				const generation = telemetry.startGeneration(context, effectiveStreamOptions);
-				const apiKey = this.options.resolveApiKey
-					? await this.options.resolveApiKey(model)
-					: await this.options.getApiKey?.(model.provider);
+				const apiKey = request.modelBinding?.credential
+					? await request.modelBinding.credential.resolve()
+					: this.options.resolveApiKey
+						? await this.options.resolveApiKey(model)
+						: await this.options.getApiKey?.(model.provider);
 				const response = await (async () => {
 					try {
 						const source = await streamFn(model, context, {
@@ -322,9 +324,25 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 		request: TurnEngineRequest,
 		identities: WeakMap<object, RuntimeMessageEnvelope>,
 	): Promise<Message[]> {
-		const context = inputs.flatMap((input) => input.context ?? []);
+		const preparedInputs = await Promise.all(
+			inputs.map(async (input): Promise<QueuedSessionInput | undefined> => {
+				if (!input.request) return input;
+				const preparer = request.snapshot.inputRequestPreparer;
+				if (!preparer) throw new Error("Runtime snapshot does not provide an input request preparer");
+				const prepared = await preparer.prepare(input.request, {
+					sessionId: request.sessionId,
+					turnId: request.turnId,
+					signal: request.signal,
+					queueing: true,
+					modelBinding: request.modelBinding,
+				});
+				return prepared.action === "continue" ? prepared.input : undefined;
+			}),
+		);
+		const admittedInputs = preparedInputs.filter((input): input is QueuedSessionInput => input !== undefined);
+		const context = admittedInputs.flatMap((input) => input.context ?? []);
 		if (context.length > 0) await request.appendQueuedContext?.(context);
-		return inputs.flatMap((input) => {
+		return admittedInputs.flatMap((input) => {
 			const contextMessages = (input.context ?? []).map((record) => {
 				const message = contextRecordToUserMessage(record);
 				identities.set(message, { kind: "context", record, timestamp: message.timestamp });

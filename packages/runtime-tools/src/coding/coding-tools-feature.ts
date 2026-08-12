@@ -39,6 +39,7 @@ export function createCodingToolsFeature(options: CodingToolsFeatureOptions): Ag
 	const createProvider = (
 		catalogSnapshot?: ReturnType<CodingToolCatalog["snapshot"]>,
 		boundActivation?: CodingToolActivation,
+		boundSelectedNames?: ReadonlySet<string>,
 		releaseTurnBinding?: () => void,
 	): ModelCallContributionProvider => ({
 		id: featureId,
@@ -50,13 +51,31 @@ export function createCodingToolsFeature(options: CodingToolsFeatureOptions): Ag
 				signal: context.signal,
 				...(context.input ? { input: context.input } : {}),
 			};
-			await options.refreshCatalog?.(callContext);
-			context.signal.throwIfAborted();
-			const activation = options.resolveActivation
-				? await options.resolveActivation(callContext)
+			// Admission refresh belongs to the control plane. Running the legacy
+			// refresher here could await between independent domain captures and
+			// produce a combination that was never published as one Turn.
+			const activationResult = options.resolveActivation
+				? options.resolveActivation(callContext)
 				: (options.activation ?? { mode: "scope" });
-			const catalogLease = options.catalog.acquireSnapshot();
-			return createProvider(catalogLease.snapshot, activation, catalogLease.release);
+			const catalogLease = options.catalog.acquireSnapshot(context);
+			try {
+				const activation = captureActivation(
+					isPromiseLike(activationResult) ? await activationResult : activationResult,
+				);
+				const candidates = selectCodingToolRegistrations(catalogLease.snapshot.registrations, activation);
+				const filterResults = candidates.map((registration) =>
+					options.filterRegistration ? options.filterRegistration(registration, callContext) : true,
+				);
+				const selectedNames = new Set<string>();
+				for (const [index, allowed] of (await Promise.all(filterResults)).entries()) {
+					if (allowed) selectedNames.add(candidates[index]!.tool.name);
+				}
+				context.signal.throwIfAborted();
+				return createProvider(catalogLease.snapshot, activation, selectedNames, catalogLease.release);
+			} catch (error) {
+				catalogLease.release();
+				throw error;
+			}
 		},
 		async contribute(callContext: ModelCallContributionContext) {
 			callContext.signal.throwIfAborted();
@@ -69,13 +88,14 @@ export function createCodingToolsFeature(options: CodingToolsFeatureOptions): Ag
 					? await options.resolveActivation(callContext)
 					: (options.activation ?? { mode: "scope" }));
 			callContext.signal.throwIfAborted();
-			const registrations: CodingToolRegistration[] = [];
-			for (const registration of selectCodingToolRegistrations(snapshot.registrations, activation)) {
-				if (!options.filterRegistration || (await options.filterRegistration(registration, callContext))) {
-					registrations.push(registration);
+			const selectedNames = new Set(boundSelectedNames ?? []);
+			if (!boundSelectedNames) {
+				for (const registration of selectCodingToolRegistrations(snapshot.registrations, activation)) {
+					if (!options.filterRegistration || (await options.filterRegistration(registration, callContext))) {
+						selectedNames.add(registration.tool.name);
+					}
 				}
 			}
-			const selectedNames = new Set(registrations.map(({ tool }) => tool.name));
 			return {
 				tools: snapshot.entries
 					.filter(({ binding }) => selectedNames.has(binding.capabilityId))
@@ -96,4 +116,25 @@ export function createCodingToolsFeature(options: CodingToolsFeatureOptions): Ag
 			};
 		},
 	};
+}
+
+function captureActivation(activation: CodingToolActivation): CodingToolActivation {
+	return activation.mode === "explicit"
+		? Object.freeze({
+				mode: "explicit",
+				toolNames: Object.freeze([...activation.toolNames]),
+			})
+		: Object.freeze({
+				...activation,
+				...(activation.additionallyEnabledToolNames
+					? {
+							additionallyEnabledToolNames: Object.freeze([...activation.additionallyEnabledToolNames]),
+						}
+					: {}),
+				...(activation.capabilities ? { capabilities: new Set(activation.capabilities) } : {}),
+			});
+}
+
+function isPromiseLike<T>(value: T | PromiseLike<T>): value is PromiseLike<T> {
+	return typeof value === "object" && value !== null && "then" in value;
 }

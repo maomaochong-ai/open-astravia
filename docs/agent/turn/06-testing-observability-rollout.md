@@ -59,7 +59,7 @@ Provider、MCP、Plugin 进程和 Sandbox 默认使用内存 fake 或本地受�
 | R13 | R2/R3/R4 快速连续发布 | 已捕获者不改绑 | 捕获当时 current revision |
 | R14 | retry 发起 | 原 Turn 不变 | retry 作为新 Turn 重新捕获 |
 | R15 | same-Turn steer/follow-up | 沿用原 generation | 不适用 |
-| R16 | subagent 创建 | 按合同继承父 Turn generation | 独立后续 Turn 再捕获 |
+| R16 | subagent 创建 | 父 Turn 保持原 generation；child 独立 admission | child 的后续 Turn 再捕获 |
 
 矩阵中的每一行至少由一个能够在错误实现下稳定失败的自动化测试覆盖。
 
@@ -92,7 +92,7 @@ Provider、MCP、Plugin 进程和 Sandbox 默认使用内存 fake 或本地受�
 - memory/todo 的 Turn-local 写入可见，但外部写入不可见；
 - session-specific materialization failure 的 last-known-good 行为；
 - session close/materialization/reload 三方竞态；
-- retry、steer、same-Turn continuation 和 subagent 继承语义。
+- retry、steer、same-Turn continuation 和 subagent 独立 admission 语义。
 
 现有明确断言 Model Call 动态 refresh 的测试需要改成 Turn generation 合同测试，不能直接删除断言。
 
@@ -119,7 +119,7 @@ Provider、MCP、Plugin 进程和 Sandbox 默认使用内存 fake 或本地受�
 - fingerprint 变化时新旧 supervisor 可并存；
 - transport reconnect 不改变 generation；
 - close/reload/cancel 不泄漏进程、socket、listener；
-- credential identity 固定、rotation 可见、revoke fail-closed。
+- credential binding 在 Turn 内固定、普通 rotation 下个 Turn 可见、revoke fail-closed。
 
 ### 4.5 Plugin 与 Desktop
 

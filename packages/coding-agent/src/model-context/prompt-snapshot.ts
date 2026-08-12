@@ -7,11 +7,10 @@ import type { CodingAgentPromptResourceSource, CodingAgentPromptSettingsSource }
  */
 export function capturePromptResourceSource(source: CodingAgentPromptResourceSource): CodingAgentPromptResourceSource {
 	source.refreshContextResourcesIfChanged();
-	source.refreshSkillsIfChanged();
 	const agentsFiles = source
 		.getAgentsFiles()
 		.agentsFiles.map((file) => Object.freeze({ path: file.path, content: file.content }));
-	const skills = source.getSkills().skills.map(captureSkill);
+	const skills = capturePromptSkills(source);
 	const systemPrompt = source.getSystemPrompt();
 	const appendSystemPrompt = Object.freeze([...source.getAppendSystemPrompt()]);
 
@@ -24,6 +23,13 @@ export function capturePromptResourceSource(source: CodingAgentPromptResourceSou
 		refreshSkillsIfChanged: () => false,
 		setRuntimeSkillPaths: () => {},
 	});
+}
+
+export function capturePromptSkills(
+	source: Pick<CodingAgentPromptResourceSource, "getSkills" | "refreshSkillsIfChanged">,
+): readonly Skill[] {
+	source.refreshSkillsIfChanged();
+	return Object.freeze(source.getSkills().skills.map(captureSkill));
 }
 
 export function capturePromptSettingsSource(source: CodingAgentPromptSettingsSource): CodingAgentPromptSettingsSource {
@@ -43,6 +49,23 @@ function captureSkill(skill: Skill): Skill {
 		...skill,
 		...(skill.agentMode ? { agentMode: [...skill.agentMode] } : {}),
 		content: readSkillContent(skill),
+		...(skill.type === "scene" ? { sceneTasks: readSceneTasks(skill) } : {}),
 	};
 	return Object.freeze(captured);
 }
+
+function readSceneTasks(skill: Skill): readonly string[] {
+	const path = join(skill.baseDir, "tasks.json");
+	if (!existsSync(path)) return Object.freeze([]);
+	try {
+		const value: unknown = JSON.parse(readFileSync(path, "utf-8"));
+		return Array.isArray(value) && value.every((task) => typeof task === "string")
+			? Object.freeze([...value])
+			: Object.freeze([]);
+	} catch {
+		return Object.freeze([]);
+	}
+}
+
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";

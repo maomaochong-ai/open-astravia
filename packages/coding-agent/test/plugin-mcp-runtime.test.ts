@@ -107,7 +107,11 @@ describe("CodingAgentPluginMcpRuntime", () => {
 
 		expect([...admittedSurface.frame.tools.keys()]).toEqual(["mcp_plugin-alpha-docs_lookup"]);
 		expect([...nextSurface.frame.tools.keys()]).toEqual(["mcp_plugin-beta-docs_lookup"]);
+		expect(clients.first("plugin-alpha-docs").closeCalls).toBe(0);
+		await admitted.releaseTurnBinding?.();
+		expect(clients.first("plugin-alpha-docs").closeCalls).toBe(1);
 		await runtime.dispose();
+		expect(clients.first("plugin-beta-docs").closeCalls).toBe(1);
 	});
 
 	it("applies the configured result policy to dynamic plugin MCP tools", async () => {

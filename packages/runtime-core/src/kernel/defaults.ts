@@ -46,7 +46,7 @@ export class StaticRuntimeSnapshotProvider implements RuntimeSnapshotProvider {
 	) {}
 
 	async acquire(_context?: RuntimeSnapshotAcquireContext): Promise<RuntimeSnapshotLease> {
-		const modelBinding = this.modelBindingProvider?.bind();
+		const modelBinding = await this.modelBindingProvider?.bind(_context);
 		const bound = _context ? await bindRuntimeSnapshotForTurn(this.snapshot, _context) : undefined;
 		return {
 			snapshot: bound?.snapshot ?? this.snapshot,

@@ -180,6 +180,7 @@ export class CodingAgentPluginToolRuntime {
 						toolId: current.id,
 						toolName: current.name,
 						handlerId: current.handlerId,
+						activationId: current.activationId,
 						input: current.rendersCard ? stripMdIntroParameter(request.input) : request.input,
 						...this.options.runOrchestrator.createToolHandlerContext({
 							turnId: request.turnId,

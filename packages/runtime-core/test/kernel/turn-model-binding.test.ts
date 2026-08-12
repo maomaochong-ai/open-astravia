@@ -50,18 +50,20 @@ describe("Turn model binding", () => {
 		await modelRuntime.selectModel("test/alternate", "always");
 		modelRuntime.setThinkingLevel("medium");
 
-		expect(turnEngine.requests[0]?.modelBinding).toEqual({
+		expect(turnEngine.requests[0]?.modelBinding).toMatchObject({
 			model: INITIAL_MODEL,
 			reasoning: undefined,
 		});
+		expect(await turnEngine.requests[0]?.modelBinding?.credential?.resolve()).toBe("test-key");
 		turnEngine.finishFirst();
 		await firstTurn;
 
 		await pipeline.run("session-1", { message: userMessage("second") }, new AbortController().signal);
-		expect(turnEngine.requests[1]?.modelBinding).toEqual({
+		expect(turnEngine.requests[1]?.modelBinding).toMatchObject({
 			model: ALTERNATE_MODEL,
 			reasoning: "medium",
 		});
+		expect(await turnEngine.requests[1]?.modelBinding?.credential?.resolve()).toBe("test-key");
 	});
 
 	it("acquires the snapshot and model binding through one provider contract", async () => {
@@ -114,7 +116,11 @@ describe("Turn model binding", () => {
 			sessionId: "session-1",
 			turnId: "turn-1",
 			snapshot: snapshot(),
-			modelBinding: { model: ALTERNATE_MODEL, reasoning: undefined },
+			modelBinding: {
+				model: ALTERNATE_MODEL,
+				reasoning: undefined,
+				credential: { resolve: () => "binding-key" },
+			},
 			messages: [userMessage("hello")],
 			signal: new AbortController().signal,
 		})) {
@@ -122,7 +128,7 @@ describe("Turn model binding", () => {
 		}
 
 		expect(calls).toEqual([{ model: ALTERNATE_MODEL, reasoning: undefined }]);
-		expect(credentialModels).toEqual([ALTERNATE_MODEL]);
+		expect(credentialModels).toEqual([]);
 		expect(events.at(-1)).toEqual({ type: "completed", stopReason: "stop" });
 	});
 });

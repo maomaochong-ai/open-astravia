@@ -169,7 +169,7 @@ admission 物化时获取 catalog 与 implementation leases。Model Call 仍可�
 - 旧 supervisor 在引用归零后关闭；
 - 未变化的 server 可按配置 fingerprint 共享 ref-counted connection；
 - 相同配置下的断线重连属于物理恢复，可以替换 transport，但不得借机切换配置 revision 或 Tool schema；
-- 凭证按 [一致性合同](./02-consistency-contract.md) 的 identity/policy 与 secret value 分离规则处理。
+- 凭证按 [一致性合同](./02-consistency-contract.md) 绑定为不透明 Turn credential lease；普通更新只影响后续 Turn。
 
 MCP refresh API 应从 Model Call 路径移到控制面 publisher。若 server 主动发出 tools-changed 通知，则该通知生成新 revision，而不是直接改写活动 catalog。
 
@@ -279,8 +279,8 @@ Agent Mode 和 Plugin 已有部分 pending 语义，但各自实现；Execution 
 - model selection policy、provider endpoint、组织/项目身份和允许的模型集随 generation 捕获；
 - 一次 Turn 的 fallback/retry 只能在捕获策略允许的集合内进行；
 - 普通设置更新不能改变当前 Turn 的 fallback 目标；
-- secret value 不写入 revision，调用时通过捕获的 credential identity 向 secret provider 获取；
-- credential revoke 立即生效，rotation 保持 identity 不变时可被当前 Turn 获取；
+- secret value 不写入 revision、descriptor 或日志，执行只持有不透明 credential binding；
+- 普通 rotation 由后续 Turn 获取；显式 credential revoke 递增撤销 epoch，使旧 binding fail-closed；
 - Provider usage、stop、tool-call 与取消语义保持现有协议。
 
 ## 11. 文档与 ADR 同步

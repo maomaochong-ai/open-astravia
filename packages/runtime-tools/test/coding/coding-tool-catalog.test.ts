@@ -1,4 +1,4 @@
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeSnapshotAcquireContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import {
 	CODING_TOOL_AVAILABILITY_ERROR_CODES,
@@ -121,7 +121,43 @@ describe("coding tool registry", () => {
 		expect((await execute(guarded)).content).toEqual([{ type: "text", text: "replaceable" }]);
 		expect(replacementExecutions).toBe(0);
 
-		lease.release();
+		await lease.release();
+		await expect(execute(guarded)).rejects.toMatchObject({
+			code: CODING_TOOL_AVAILABILITY_ERROR_CODES.UNAVAILABLE,
+		});
+	});
+
+	it("acquires and releases external implementation leases with the catalog generation", async () => {
+		let releases = 0;
+		const base = registration("leased", ["project"]);
+		const registry = new InMemoryCodingToolRegistry([
+			{
+				...base,
+				tool: {
+					...base.tool,
+					bindForTurn: () => ({
+						tool: {
+							...base.tool,
+							execute: async () => ({ content: [{ type: "text", text: "leased-generation" }] }),
+						},
+						release: async () => {
+							releases += 1;
+						},
+					}),
+				},
+			},
+		]);
+		const lease = registry.acquireSnapshot(turnContext());
+		const entry = lease.snapshot.entries[0];
+		if (!entry) throw new Error("Missing leased tool");
+		const guarded = guardCodingToolRegistration(registry, entry);
+
+		expect(registry.unregister("leased")).toBe(true);
+		expect((await execute(guarded)).content).toEqual([{ type: "text", text: "leased-generation" }]);
+		expect(releases).toBe(0);
+
+		await lease.release();
+		expect(releases).toBe(1);
 		await expect(execute(guarded)).rejects.toMatchObject({
 			code: CODING_TOOL_AVAILABILITY_ERROR_CODES.UNAVAILABLE,
 		});
@@ -370,4 +406,13 @@ function execute(tool: RuntimeToolDefinition) {
 		input: {},
 		signal: new AbortController().signal,
 	});
+}
+
+function turnContext(): RuntimeSnapshotAcquireContext {
+	return {
+		sessionId: "session-1",
+		operationId: "turn-1",
+		reason: "turn",
+		signal: new AbortController().signal,
+	};
 }

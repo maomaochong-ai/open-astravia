@@ -34,6 +34,8 @@ export interface RuntimeTurnPrompt {
 	readonly attachments?: PromptRequest["attachments"];
 	readonly images?: PromptRequest["images"];
 	readonly streamingBehavior?: PromptRequest["streamingBehavior"];
+	readonly modelKey?: PromptRequest["modelKey"];
+	readonly reasoning?: PromptRequest["reasoning"];
 	readonly metadata?: PromptRequest["metadata"];
 }
 

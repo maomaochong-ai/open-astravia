@@ -20,6 +20,7 @@ import type {
 	CodingAgentRuntimeToolRegistration,
 } from "../../runtime-contracts/index.js";
 import type { RegisteredTool } from "../index.js";
+import { ExtensionRunnerGenerationOwner } from "./extension-runner-generations.js";
 
 export interface CodingAgentExtensionToolSurface {
 	readonly frame: ModelCallFrame;
@@ -38,6 +39,7 @@ interface AdaptedExtensionToolRegistration extends CodingAgentRuntimeToolRegistr
  * 解析到对应 Session Runner。工具只在当前模型调用 Frame 中覆盖同名能力，不进入 Runtime Core。
  */
 export class CodingAgentExtensionToolRuntime {
+	readonly runnerGenerations = new ExtensionRunnerGenerationOwner();
 	private readonly processCatalog = new DynamicContributionCatalog<AdaptedExtensionToolRegistration>();
 	private readonly processSourceLeases = new Map<string, ContributionLease>();
 	private processRevision = 0;
@@ -113,10 +115,16 @@ export class CodingAgentExtensionToolRuntime {
 
 	bindForTurn(context: RuntimeSnapshotAcquireContext) {
 		context.signal.throwIfAborted();
-		const registrations = Object.freeze([...this.readRegistrations(context.sessionId)]);
+		const runnerLease = this.runnerGenerations.acquire(context.sessionId, context.operationId);
+		const registrations = Object.freeze(
+			this.readRegistrations(context.sessionId).map((registration) =>
+				runnerLease ? bindRegistrationToRunner(registration, runnerLease.runner) : registration,
+			),
+		);
 		const registrationsByName = new Map(registrations.map((registration) => [registration.tool.name, registration]));
 		const bound = {
 			bindForTurn: () => bound,
+			releaseTurnBinding: () => runnerLease?.release(),
 			compose: (
 				compositionContext: ModelCallFrameCompositionContext,
 				baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
@@ -243,16 +251,14 @@ export class CodingAgentExtensionToolRuntime {
 		sessionId: string,
 		runner: CodingAgentExtensionRunnerPort,
 		options: { readonly replaceExisting?: boolean } = {},
-	): () => void {
-		const current = this.runners.get(sessionId);
-		if (current && current !== runner && options.replaceExisting !== true) {
-			throw new Error(`Extension tool runner is already bound: ${sessionId}`);
-		}
+	): () => Promise<void> {
+		const releaseGeneration = this.runnerGenerations.bind(sessionId, runner, options);
 		this.runners.set(sessionId, runner);
-		return () => {
+		return async () => {
 			for (const [boundSessionId, candidate] of this.runners) {
 				if (candidate === runner) this.runners.delete(boundSessionId);
 			}
+			await releaseGeneration();
 		};
 	}
 
@@ -337,6 +343,26 @@ export class CodingAgentExtensionToolRuntime {
 			category: resolveToolCategory(definition.category),
 		};
 	}
+}
+
+function bindRegistrationToRunner(
+	registration: AdaptedExtensionToolRegistration,
+	runner: CodingAgentExtensionRunnerPort,
+): AdaptedExtensionToolRegistration {
+	return {
+		...registration,
+		tool: {
+			...registration.tool,
+			execute: (request) =>
+				registration.definition.execute(
+					request.toolCallId,
+					request.input as Static<TSchema>,
+					request.signal,
+					request.onUpdate,
+					runner.createContext(),
+				),
+		},
+	};
 }
 
 function decodeNormalizedInput(schema: TSchema, input: unknown): Readonly<Record<string, unknown>> {

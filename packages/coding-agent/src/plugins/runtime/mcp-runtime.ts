@@ -99,10 +99,31 @@ export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimeP
 
 	bindForTurn(context: RuntimeSnapshotAcquireContext): CodingAgentPluginMcpToolComposer {
 		context.signal.throwIfAborted();
-		const tools = new Map(this.tools);
+		const leases: Array<{ release(): Promise<void> | void }> = [];
+		const tools = new Map<string, RuntimeToolDefinition>();
+		try {
+			for (const [name, tool] of this.tools) {
+				const lease = tool.bindForTurn?.(context);
+				if (lease) leases.push(lease);
+				tools.set(name, lease?.tool ?? tool);
+			}
+		} catch (error) {
+			for (const lease of leases.reverse()) void lease.release();
+			throw error;
+		}
 		const serverModes = new Map(this.serverModes);
+		let released = false;
 		return {
 			bindForTurn: () => this.bindForTurn(context),
+			async releaseTurnBinding() {
+				if (released) return;
+				released = true;
+				const results = await Promise.allSettled(leases.map((lease) => lease.release()));
+				const errors = results
+					.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+					.map(({ reason }) => reason);
+				if (errors.length > 0) throw new AggregateError(errors, "Failed to release plugin MCP Turn binding");
+			},
 			compose: (compositionContext, baseAvailableTools, options) =>
 				composePluginMcpSurface(tools, serverModes, compositionContext, baseAvailableTools, options),
 		};

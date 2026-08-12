@@ -13,17 +13,21 @@ import type {
 	ConversationContinuationStore,
 	ConversationRepository,
 	EventSink,
+	HandledSessionInputResult,
 	IdGenerator,
 	InstructionBlock,
 	KernelEvent,
 	MessageAppendedEvent,
 	ModelCallFrame,
+	RuntimeInputRequestPreparer,
 	RuntimeSnapshot,
+	RuntimeSnapshotAcquireContext,
 	RuntimeSnapshotLease,
 	RuntimeSnapshotProvider,
 	RuntimeTurnModelBinding,
 	SessionContextRecord,
 	SessionInput,
+	SessionInputRequest,
 	StoredConversation,
 	StoredSessionEvent,
 	TurnEngineContextCheckpointRequest,
@@ -168,7 +172,18 @@ export class TurnPipeline {
 		signal: AbortSignal,
 		inputQueue?: TurnInputQueue,
 	): Promise<TurnResult> {
-		return this.runTurn(sessionIdentity, input, signal, inputQueue);
+		const result = await this.runTurn(sessionIdentity, input, signal, inputQueue);
+		return assertTurnResult(result);
+	}
+
+	async runRequest(
+		sessionIdentity: string | TurnSessionIdentity,
+		request: SessionInputRequest,
+		signal: AbortSignal,
+		inputQueue?: TurnInputQueue,
+		fallbackPreparer?: RuntimeInputRequestPreparer,
+	): Promise<TurnResult | HandledSessionInputResult> {
+		return this.runTurn(sessionIdentity, undefined, signal, inputQueue, [], false, request, fallbackPreparer);
 	}
 
 	async continue(
@@ -177,7 +192,8 @@ export class TurnPipeline {
 		inputQueue?: TurnInputQueue,
 		context: readonly SessionContextRecord[] = [],
 	): Promise<TurnResult> {
-		return this.runTurn(sessionIdentity, undefined, signal, inputQueue, context);
+		const result = await this.runTurn(sessionIdentity, undefined, signal, inputQueue, context);
+		return assertTurnResult(result);
 	}
 
 	async retry(
@@ -185,7 +201,8 @@ export class TurnPipeline {
 		signal: AbortSignal,
 		inputQueue?: TurnInputQueue,
 	): Promise<TurnResult> {
-		return this.runTurn(sessionIdentity, undefined, signal, inputQueue, [], true);
+		const result = await this.runTurn(sessionIdentity, undefined, signal, inputQueue, [], true);
+		return assertTurnResult(result);
 	}
 
 	private async runTurn(
@@ -195,7 +212,9 @@ export class TurnPipeline {
 		inputQueue: TurnInputQueue | undefined,
 		continuationContext: readonly SessionContextRecord[] = [],
 		retrying = false,
-	): Promise<TurnResult> {
+		request?: SessionInputRequest,
+		fallbackPreparer?: RuntimeInputRequestPreparer,
+	): Promise<TurnResult | HandledSessionInputResult> {
 		const identity = normalizeSessionIdentity(sessionIdentity);
 		const turnId = this.idGenerator.next("turn");
 		const state: MutableTurnState = {
@@ -218,11 +237,38 @@ export class TurnPipeline {
 				reason: "turn",
 				signal,
 				...(input ? { input } : {}),
+				...(request ? { request } : {}),
 			});
+			if (request && !snapshotLease.snapshot.inputRequestPreparer && fallbackPreparer) {
+				snapshotLease = await attachInputRequestPreparer(snapshotLease, fallbackPreparer, {
+					sessionId: state.sessionId,
+					operationId: turnId,
+					reason: "turn",
+					signal,
+					request,
+				});
+			}
 			const snapshot = snapshotLease.snapshot;
 			const modelBinding = snapshotLease.modelBinding;
 			state.snapshot = snapshot;
 			signal.throwIfAborted();
+			if (request) {
+				if (!snapshot.inputRequestPreparer) {
+					throw new Error("Runtime snapshot does not provide an input request preparer");
+				}
+				const preparedRequest = await snapshot.inputRequestPreparer.prepare(request, {
+					sessionId: state.sessionId,
+					turnId,
+					signal,
+					queueing: false,
+					modelBinding,
+				});
+				signal.throwIfAborted();
+				if (preparedRequest.action === "handled") {
+					return { status: "handled", sessionId: state.sessionId };
+				}
+				input = preparedRequest.input;
+			}
 
 			await this.enterStage(state.sessionId, turnId, "conversation_loading");
 			const conversation = await this.repository.load(state.sessionId);
@@ -576,6 +622,9 @@ export class TurnPipeline {
 					messages: state.messages,
 				};
 			}
+			// Request preparation 属于宿主 prompt admission。它尚未写入 turn.started；
+			// 保持抛错让 Runtime Host 记录 prompt_rejected，而不是伪造一个没有用户消息的 failed Turn。
+			if (request && !state.started) throw error;
 
 			const normalized = normalizeError(error);
 			await this.appendTerminalSafely(turnId, state, signal, {
@@ -994,6 +1043,39 @@ function normalizeSessionIdentity(identity: string | TurnSessionIdentity): TurnS
 		},
 		transition(nextSessionId) {
 			sessionId = nextSessionId;
+		},
+	};
+}
+
+function assertTurnResult(result: TurnResult | HandledSessionInputResult): TurnResult {
+	if (result.status === "handled") throw new Error("A prepared SessionInput cannot produce a handled result");
+	return result;
+}
+
+async function attachInputRequestPreparer(
+	lease: RuntimeSnapshotLease,
+	preparer: RuntimeInputRequestPreparer,
+	context: RuntimeSnapshotAcquireContext,
+): Promise<RuntimeSnapshotLease> {
+	let bound: RuntimeInputRequestPreparer;
+	try {
+		bound = (await preparer.bindForTurn?.(context)) ?? preparer;
+	} catch (error) {
+		await lease.release();
+		throw error;
+	}
+	let released = false;
+	return {
+		...lease,
+		snapshot: Object.freeze({ ...lease.snapshot, inputRequestPreparer: bound }),
+		async release() {
+			if (released) return;
+			released = true;
+			const results = await Promise.allSettled([bound.releaseTurnBinding?.(), lease.release()]);
+			const errors = results
+				.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+				.map(({ reason }) => reason);
+			if (errors.length > 0) throw new AggregateError(errors, "Failed to release Prompt input generation");
 		},
 	};
 }

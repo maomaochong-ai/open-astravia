@@ -244,12 +244,39 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		pluginRunOrchestrator,
 		pluginMcpRuntime: options.pluginMcpRuntime,
 		pluginToolRuntime,
+		readAgentPlugins: options.activation.readAgentPlugins,
+		pluginHandlerLeaseProvider: options.pluginRuntime?.handlerLeaseProvider,
 		readAgentMode: options.activation.readAgentMode,
 		isMcpToolVisible: (toolName) => options.mcpController?.isToolVisible(toolName) ?? true,
 		systemPromptAdvertisedToolNames: options.prompt.systemPromptAdvertisedToolNames,
 		wrapTools: (tools, context) => {
 			const hookedTools = wrapRuntimeToolsWithInterceptionPipeline(tools, toolInterceptionCatalog, context);
 			return invokeSkillFeature?.wrapHookActivation(hookedTools) ?? hookedTools;
+		},
+		bindToolWrapper: (context) => {
+			const boundExtensionEvents = options.extensionEvents.bindAdapterForTurn(context);
+			const catalog = new DynamicContributionCatalog<CodingAgentToolInterceptor>();
+			catalog.register({
+				sourceId: "ecosystem",
+				localId: "tool-hooks",
+				revision: "turn",
+				order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.ecosystem,
+				value: createEcosystemToolInterceptor(options.hookRuntime),
+			});
+			catalog.register({
+				sourceId: "coding-extension",
+				localId: "tool-events",
+				revision: "turn",
+				order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.extension,
+				value: boundExtensionEvents.createToolInterceptor(),
+			});
+			return {
+				wrapTools: (tools, frameContext) => {
+					const intercepted = wrapRuntimeToolsWithInterceptionPipeline(tools, catalog, frameContext);
+					return invokeSkillFeature?.wrapHookActivation(intercepted) ?? intercepted;
+				},
+				release: () => boundExtensionEvents.releaseTurnBinding(),
+			};
 		},
 		extensionEvents: options.extensionEvents,
 		extensionToolRuntime: options.extensionToolRuntime,
@@ -268,6 +295,19 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			const memory = options.memoryRuntime?.renderPromptMemory();
 			return (context) => enhanceSystemPromptOptions(resolver, context, agentPlugins, memory);
 		},
+	});
+	const promptAdapter = new CodingAgentPromptRequestAdapter({
+		resolvePromptResource:
+			options.prompt.promptResourceResolver ??
+			(options.prompt.resourceSource
+				? createCodingAgentPromptResourceResolver({
+						resourceLoader: options.prompt.resourceSource,
+						todoState: options.todoRuntime,
+					})
+				: undefined),
+		hookRuntime: options.hookRuntime,
+		extensionEvents: options.extensionEvents,
+		onPrepared: () => options.todoRuntime.flush(),
 	});
 	const profile: AgentProfile = {
 		...options.baseProfile,
@@ -291,25 +331,13 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		agentRunPreparer: options.extensionEvents,
 		continuationPolicy: continuationOrchestrator,
 		modelCallFrameComposer,
+		inputRequestPreparer: promptAdapter,
 	};
 	const capabilities = await RuntimeCapabilityComposition.create({
 		initialProfile: profile,
 		compiler: options.codingTools.compiler,
 		modelBindingProvider: options.modelRuntime,
 	});
-	const promptAdapter = new CodingAgentPromptRequestAdapter({
-		resolvePromptResource:
-			options.prompt.promptResourceResolver ??
-			(options.prompt.resourceSource
-				? createCodingAgentPromptResourceResolver({
-						resourceLoader: options.prompt.resourceSource,
-						todoState: options.todoRuntime,
-					})
-				: undefined),
-		hookRuntime: options.hookRuntime,
-		extensionEvents: options.extensionEvents,
-	});
-
 	return {
 		capabilities,
 		promptAdapter,
@@ -342,7 +370,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 					turnId: operationId,
 					signal,
 					messages: [],
-					modelBinding: initialSnapshotLease.modelBinding ?? options.modelRuntime.bind(),
+					modelBinding: initialSnapshotLease.modelBinding ?? (await options.modelRuntime.bind()),
 					frame: {
 						instructions: initialSnapshotLease.snapshot.instructions,
 						tools: initialSnapshotLease.snapshot.tools,

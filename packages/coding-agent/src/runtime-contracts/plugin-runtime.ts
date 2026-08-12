@@ -3,6 +3,7 @@ import type {
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
+	AgentPluginTurnHandlerLeaseProvider,
 } from "@vetta/runtime-core";
 import type {
 	ModelCallFrame,
@@ -17,10 +18,12 @@ export interface CodingAgentPluginRuntimeSource {
 	readonly invokeSystemPrompt?: AgentPluginSystemPromptInvoker;
 	readonly invokeContinuation?: AgentPluginContinuationInvoker;
 	readonly invokeTool?: AgentPluginToolInvoker;
+	readonly handlerLeaseProvider?: AgentPluginTurnHandlerLeaseProvider;
 }
 
 export interface CodingAgentPluginMcpToolComposer {
 	bindForTurn?(context: RuntimeSnapshotAcquireContext): CodingAgentPluginMcpToolComposer;
+	releaseTurnBinding?(): Promise<void> | void;
 	compose(
 		context: ModelCallFrameCompositionContext,
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,

@@ -8,6 +8,7 @@ import type {
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
+	AgentPluginTurnHandlerLeaseProvider,
 	BackgroundTaskInfo,
 	HistoryEntry,
 	ProjectInfo,
@@ -123,6 +124,7 @@ export class RuntimeHost implements SessionFacade {
 	private pluginToolInvoker: AgentPluginToolInvoker | undefined;
 	private pluginContinuationInvoker: AgentPluginContinuationInvoker | undefined;
 	private pluginSystemPromptInvoker: AgentPluginSystemPromptInvoker | undefined;
+	private pluginTurnHandlerLeaseProvider: AgentPluginTurnHandlerLeaseProvider | undefined;
 
 	constructor(options: RuntimeHostOptions = {}) {
 		this.getDefaultExecutionMode = options.getDefaultExecutionMode ?? (() => "sandbox");
@@ -173,6 +175,10 @@ export class RuntimeHost implements SessionFacade {
 
 	setPluginSystemPromptInvoker(handler: AgentPluginSystemPromptInvoker | undefined): void {
 		this.pluginSystemPromptInvoker = handler;
+	}
+
+	setPluginTurnHandlerLeaseProvider(provider: AgentPluginTurnHandlerLeaseProvider | undefined): void {
+		this.pluginTurnHandlerLeaseProvider = provider;
 	}
 
 	private withAdditionalSkillPaths(
@@ -403,6 +409,7 @@ export class RuntimeHost implements SessionFacade {
 			invokePluginSystemPrompt: this.pluginSystemPromptInvoker
 				? (invocation, signal) => this.pluginSystemPromptInvoker?.(invocation, signal) ?? Promise.resolve([])
 				: undefined,
+			pluginTurnHandlerLeaseProvider: this.pluginTurnHandlerLeaseProvider,
 			// 「向用户提问」能力：只有宿主显式允许的 session 才会注册工具；
 			// isEnabled / ask 仍实时读取 this.userQuestionHandler，保留动态开关能力。
 			askUserQuestion:
@@ -667,26 +674,6 @@ export class RuntimeHost implements SessionFacade {
 		await this.applyPendingAgentPlugins(sessionId, handle);
 		this.applyPendingAgentMode(handle);
 
-		// Ensure the session model matches the requested model BEFORE prompting,
-		// so the model actually used is always the one the UI displays.
-		if (request.modelKey) {
-			// getAvailable() filters out providers where authStorage.hasAuth() is
-			// false. Local custom providers (e.g. a self-hosted qwen-local) can
-			// fail that check even when fully configured in models.json — the
-			// fallback resolver depends on construction-time state and some
-			// host-process scenarios race with it. Fall back to find() so an
-			// explicit user selection isn't silently dropped; if auth is truly
-			// missing, the provider request itself will return a clean error.
-			await handle.modelController.selectModel(request.modelKey, "if-changed");
-		}
-
-		// Apply the per-turn reasoning level (rides alongside modelKey) BEFORE prompting so
-		// the model and its chosen effort stay consistent. setModel above re-clamps thinking
-		// to the new model, so this must run after it.
-		if (request.reasoning) {
-			handle.modelController.setThinkingLevel(request.reasoning);
-		}
-
 		// Session cwd (esp. desktop ADR-0007 per-session dirs) may have been deleted
 		// while the handle stayed open (clear-artifacts, manual cleanup). Heal before tools run.
 		const sessionCwd = handle.workspaceView.readWorkingDirectory();
@@ -698,21 +685,6 @@ export class RuntimeHost implements SessionFacade {
 			}
 		}
 
-		let images = request.images;
-		let text = request.text;
-		if (images && images.length > 0) {
-			const model = handle.modelView.readCurrentModel();
-			if (!model?.input?.includes("image")) {
-				console.warn(
-					`[RuntimeHost.prompt] Model ${model?.id} does not support image input (input=${JSON.stringify(model?.input)}), stripping ${images.length} images`,
-				);
-				images = undefined;
-				if (text === "(see attached images)") {
-					text =
-						"(User attempted to send images, but the current model does not support image input. Please inform the user that this model cannot process images.)";
-				}
-			}
-		}
 		try {
 			// streaming 中带 streamingBehavior 的请求放行到 kernel 队列（ADR-0060）；
 			// 不带 behavior 的仍视为并发误用。
@@ -720,11 +692,13 @@ export class RuntimeHost implements SessionFacade {
 				throw runtimeError("SESSION_BUSY", "Session is already processing another turn.", true, "runtime");
 			}
 			const outcome = await handle.turnControl.prompt({
-				text,
-				images,
+				text: request.text,
+				images: request.images,
 				streamingBehavior: request.streamingBehavior,
 				promptRef: request.promptRef,
 				attachments: request.attachments,
+				modelKey: request.modelKey,
+				reasoning: request.reasoning,
 				metadata: request.metadata,
 			});
 			return outcome ?? { status: "completed" };

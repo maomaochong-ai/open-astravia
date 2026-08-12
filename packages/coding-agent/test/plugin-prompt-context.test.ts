@@ -4,6 +4,7 @@ import {
 	parsePluginPromptContexts,
 } from "../src/adapters/runtime-core/plugin-prompt-context.js";
 import { CodingAgentPromptRequestAdapter } from "../src/adapters/runtime-core/prompt-request-adapter.js";
+import { preparePrompt } from "./runtime-core/prompt-adapter-test-fixture.js";
 
 describe("plugin prompt contexts", () => {
 	it("preserves structured context and emits one safe model projection", () => {
@@ -50,7 +51,7 @@ describe("plugin prompt contexts", () => {
 			},
 		};
 
-		const idle = await adapter.prepare(request, { sessionId: "session-1", queueing: false });
+		const idle = await preparePrompt(adapter, request, { sessionId: "session-1", queueing: false });
 		expect(idle.input.context).toEqual([
 			expect.objectContaining({
 				type: "plugin_prompt_context",
@@ -59,7 +60,7 @@ describe("plugin prompt contexts", () => {
 			}),
 		]);
 
-		const queued = await adapter.prepare(request, { sessionId: "session-1", queueing: true });
+		const queued = await preparePrompt(adapter, request, { sessionId: "session-1", queueing: true });
 		expect(queued.input.context).toBeUndefined();
 		expect(queued.input.message.content).toEqual([
 			{

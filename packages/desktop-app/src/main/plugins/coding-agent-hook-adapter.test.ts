@@ -79,6 +79,8 @@ describe("Desktop Plugin Coding Agent Hook adapter", () => {
 	});
 
 	it("keeps Hook membership stable for the Turn and applies unregister to the next Turn", async () => {
+		const released = vi.fn();
+		const stopReleased = desktopPluginHookRegistry.onHandlerReleased(released);
 		desktopPluginHookRegistry.register("plugin-a", {
 			id: "guard",
 			eventName: "PreToolUse",
@@ -98,12 +100,19 @@ describe("Desktop Plugin Coding Agent Hook adapter", () => {
 		const running = adapter.dispatch(preToolEvent());
 		await vi.waitFor(() => expect(complete).toBeTypeOf("function"));
 		desktopPluginHookRegistry.unregister("plugin-a", "guard", "activation-1");
+		expect(released).not.toHaveBeenCalled();
 		complete?.({ action: "block", reason: "blocked" });
 
 		expect((await running).shouldBlock).toBe(true);
 		setDesktopPluginHookInvoker(async () => ({ action: "continue" }));
 		expect((await adapter.dispatch(preToolEvent())).runs).toHaveLength(1);
 		expect((await adapter.dispatch(preToolEvent("turn-2"))).runs).toHaveLength(0);
+		expect(released).toHaveBeenCalledWith({
+			pluginId: "plugin-a",
+			handlerId: "handler-1",
+			activationId: "activation-1",
+		});
+		stopReleased();
 	});
 
 	it("fails open for malformed renderer results and records a failed callback run", async () => {

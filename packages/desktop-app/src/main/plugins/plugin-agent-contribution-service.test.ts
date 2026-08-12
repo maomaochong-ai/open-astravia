@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
+import { DesktopPluginAgentHandlerRegistry } from "./coding-agent-handler-registry.js";
 import type { DesktopPluginHookRegistry } from "./coding-agent-hook-registry.js";
 import { PluginAgentContributionService } from "./plugin-agent-contribution-service.js";
 
@@ -44,6 +45,7 @@ function createService(installed: InstalledPlugin) {
 		resolveFilePath: (_pluginId, relativePath) => relativePath,
 		logger: { debug: vi.fn(), warn: vi.fn() },
 		hooks,
+		handlers: new DesktopPluginAgentHandlerRegistry(),
 	});
 }
 

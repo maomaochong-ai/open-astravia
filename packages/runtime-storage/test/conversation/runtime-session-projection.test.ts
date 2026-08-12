@@ -204,8 +204,12 @@ async function createAssembly(
 		repository,
 		conversationDocumentStore: repository,
 		promptAdapter: {
-			async prepare(request: { readonly text: string }) {
-				return { input: { message: userMessage(request.text) } };
+			createRequest(request: { readonly text: string }) {
+				return { payload: request, displayText: request.text };
+			},
+			async prepare(request: { readonly payload: unknown }) {
+				const prompt = request.payload as { readonly text: string };
+				return { action: "continue" as const, input: { message: userMessage(prompt.text) } };
 			},
 		},
 		modelRuntime,

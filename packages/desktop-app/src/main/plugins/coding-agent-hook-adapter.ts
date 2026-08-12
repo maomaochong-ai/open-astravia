@@ -9,7 +9,11 @@ import type {
 import { aggregateHookDispatchOutcomes, emptyHookDispatchOutcome } from "@vetta/coding-agent/hooks";
 import type { PluginCodingAgentHookEvent, PluginCodingAgentHookEventName } from "@vetta-org/plugin-sdk";
 import { invokeDesktopPluginHook } from "./coding-agent-hook-invocation.js";
-import { type DesktopPluginHookBinding, desktopPluginHookRegistry } from "./coding-agent-hook-registry.js";
+import {
+	type DesktopPluginHookBinding,
+	type DesktopPluginHookSnapshotLease,
+	desktopPluginHookRegistry,
+} from "./coding-agent-hook-registry.js";
 import { parseDesktopPluginHookResult } from "./coding-agent-hook-result.js";
 
 const DESKTOP_PLUGIN_HOOK_ADAPTER_ID = "desktop-plugin-hooks/1";
@@ -25,31 +29,42 @@ export function createDesktopPluginHookAdapterFactory(
 	options: DesktopPluginHookAdapterFactoryOptions,
 ): EcosystemHookAdapterFactory {
 	return async (context) => {
-		const turnBindings = new Map<string, readonly DesktopPluginHookBinding[]>();
+		const leases = new Map<string, DesktopPluginHookSnapshotLease>();
+		const leaseKey = (event: EcosystemHookEvent): string => readTurnId(event) ?? `session:${event.eventName}`;
+		const releaseLease = (event: EcosystemHookEvent): void => {
+			const key = leaseKey(event);
+			leases.get(key)?.release();
+			leases.delete(key);
+		};
+		const releaseAll = (): void => {
+			for (const lease of leases.values()) lease.release();
+			leases.clear();
+		};
 		const readBindings = (event: EcosystemHookEvent): readonly DesktopPluginHookBinding[] => {
 			const turnId = readTurnId(event);
-			if (!turnId) {
-				return desktopPluginHookRegistry.snapshot().filter((binding) => matchesBindingScope(binding, options));
-			}
-			const existing = turnBindings.get(turnId);
-			if (existing) return existing;
+			const key = leaseKey(event);
+			const existing = leases.get(key);
+			if (existing) return existing.bindings;
 			// A Session executes one Agent Turn at a time. Retire stale membership when
 			// the next turn is first observed, then bind the current published registry.
-			turnBindings.clear();
-			const captured = Object.freeze(
-				desktopPluginHookRegistry.snapshot().filter((binding) => matchesBindingScope(binding, options)),
-			);
-			turnBindings.set(turnId, captured);
-			return captured;
+			if (turnId) releaseAll();
+			const captured = desktopPluginHookRegistry.acquireSnapshot((binding) => matchesBindingScope(binding, options));
+			leases.set(key, captured);
+			return captured.bindings;
 		};
 		return {
 			id: DESKTOP_PLUGIN_HOOK_ADAPTER_ID,
-			supports: (event) => readBindings(event).some((binding) => matchesBindingEvent(binding, event)),
+			supports: (event) => {
+				const supported = readBindings(event).some((binding) => matchesBindingEvent(binding, event));
+				if (!supported && !readTurnId(event)) releaseLease(event);
+				return supported;
+			},
 			dispatch: async (event, signal) => {
 				const bindings = readBindings(event).filter((binding) => matchesBindingEvent(binding, event));
 				if (bindings.length === 0) {
-					if (event.eventName === "Stop") turnBindings.delete(event.turnId);
-					if (event.eventName === "SessionEnd") turnBindings.clear();
+					if (event.eventName === "Stop") releaseLease(event);
+					if (!readTurnId(event)) releaseLease(event);
+					if (event.eventName === "SessionEnd") releaseAll();
 					return emptyHookDispatchOutcome();
 				}
 				try {
@@ -63,10 +78,12 @@ export function createDesktopPluginHookAdapterFactory(
 					}
 					return aggregateHookDispatchOutcomes(outcomes);
 				} finally {
-					if (event.eventName === "Stop") turnBindings.delete(event.turnId);
-					if (event.eventName === "SessionEnd") turnBindings.clear();
+					if (event.eventName === "Stop") releaseLease(event);
+					if (!readTurnId(event)) releaseLease(event);
+					if (event.eventName === "SessionEnd") releaseAll();
 				}
 			},
+			resetSessionState: releaseAll,
 		};
 	};
 }

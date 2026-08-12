@@ -47,7 +47,7 @@ describe("Coding Agent Turn admission preparation", () => {
 
 	it("does not refresh mutable MCP state before the immutable Turn admission point", async () => {
 		const refreshSessionMcp = vi.fn(async () => undefined);
-		const intercept = vi.fn(async (request: unknown) => request);
+		const createRequest = vi.fn((request: { text: string }) => ({ payload: request, displayText: request.text }));
 		const resources = createCodingAgentSessionRuntimeResources({
 			session: {
 				initialSessionId: "session",
@@ -57,15 +57,15 @@ describe("Coding Agent Turn admission preparation", () => {
 			conversation: { resolveSessionPath: () => undefined },
 			turnCapabilityAssembly: {
 				capabilities: {},
-				promptAdapter: { intercept },
+				promptAdapter: { createRequest },
 			},
 			refreshSessionMcp,
 			activation: { mode: "explicit", toolNames: [] },
 		} as unknown as CodingAgentSessionRuntimeResourcesOptions);
 
-		await resources.promptAdapter.intercept?.({ text: "hello" }, { sessionId: "session" } as never);
+		resources.promptAdapter.createRequest({ text: "hello" });
 
 		expect(refreshSessionMcp).not.toHaveBeenCalled();
-		expect(intercept).toHaveBeenCalledOnce();
+		expect(createRequest).toHaveBeenCalledOnce();
 	});
 });

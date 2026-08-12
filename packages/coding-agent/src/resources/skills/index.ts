@@ -93,6 +93,8 @@ export interface Skill {
 	disableModelInvocation: boolean;
 	/** SDK 等内联来源可直接持有正文；文件来源保持 undefined。 */
 	content?: string;
+	/** Turn snapshot 捕获的 Scene tasks；undefined 表示未快照、允许从文件读取。 */
+	sceneTasks?: readonly string[];
 }
 
 export interface LoadSkillsResult {

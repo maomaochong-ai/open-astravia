@@ -25,8 +25,9 @@ Tool execution、Prompt、Skill、Plugin、MCP、Hook、Extension 与 Sandbox po
 新 Turn。Session/Conversation 不被冻结；retry、显式 continue 和用户下一条输入创建新 Turn 并重新捕获。
 
 外部对象不要求全部深拷贝。不可变 catalog 可以共享；Plugin activation、MCP supervisor、Extension
-runner、Sandbox host 和 Tool implementation 等有生命周期资源由 generation lease 延寿。普通 disable、
-reload 和 replacement 只 retirement，最后一个旧 lease 释放后才 dispose。
+runner、Sandbox host 和 Tool implementation 等有生命周期资源由 generation lease 延迟普通 retirement 回收。
+Lease 不快照物理世界，也不保证进程、连接、网络、凭证服务或远端 Provider 存活；这些故障按既有错误语义传播，
+且不得为了恢复而静默切换到新配置 generation。
 
 安全撤权使用独立 hard-revocation 通道。它必须携带 scope、reason 和 audit metadata，可以在声明的
 安全检查点立即拒绝或取消敏感操作；普通更新不得复用该通道。权限放宽只对新 Turn 生效。
@@ -59,6 +60,8 @@ generation 和 lease 实现；Desktop/CLI 只发布来源并展示 desired、pub
   但不能读取新的外部 revision。
 - Tool、Plugin、MCP、Hook、Extension 和 Sandbox 需要 generation-aware resource ownership，更新期间可能短暂
   并存新旧资源，必须监控 retired generation 数和 lease age。
+- Turn binding 保证逻辑合同与资源身份不因普通更新漂移，不保证 Turn 无损完成；执行状态、物理健康和明确的
+  hard revocation 保持实时。
 - UI 需要区分 desired、published、effective、pending 与 apply failure。
 - ADR-0046 的 Turn 边界语义保留并进入统一 session overlay；ADR-0064 的 next-dispatch 可见性被本 ADR
   的 next-Turn generation 可见性取代。Hook adapter 的单一领域模型、权限和聚合决策继续有效。

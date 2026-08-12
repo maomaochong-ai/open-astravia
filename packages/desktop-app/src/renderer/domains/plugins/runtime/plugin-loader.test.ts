@@ -57,6 +57,7 @@ beforeEach(() => {
 		vetta: {
 			plugins: {
 				beginAgentContributionsLoad: async () => mocks.events.push("activation:begin"),
+				commitAgentContributionsLoad: async () => mocks.events.push("agent:commit"),
 				commitAppActionActivation: async () => mocks.events.push("activation:commit"),
 				abortAppActionActivation: async () => mocks.events.push("activation:abort"),
 				clearAgentContributions: async () => mocks.events.push("agent:clear"),
@@ -84,7 +85,7 @@ describe("loadPlugin activation lifecycle", () => {
 
 		expect(mocks.events).toEqual([
 			"activation:begin",
-			"activation:commit",
+			"agent:commit",
 			"activation:cleanup",
 			"activation:deactivate",
 			"agent:clear",

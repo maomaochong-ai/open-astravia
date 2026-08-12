@@ -1,8 +1,10 @@
 import type {
 	CapabilityBinding,
+	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 	RuntimeToolExecutionRequest,
 	RuntimeToolResult,
+	RuntimeToolTurnBinding,
 } from "@vetta/runtime-core/kernel";
 import { CODING_TOOL_AVAILABILITY_ERROR_CODES, CodingToolAvailabilityError } from "./coding-tool-availability.js";
 import { CodingToolExecutionTracker } from "./coding-tool-execution-tracker.js";
@@ -25,14 +27,18 @@ export interface CodingToolCatalogSnapshot {
 
 export interface CodingToolCatalogSnapshotLease {
 	readonly snapshot: CodingToolCatalogSnapshot;
-	release(): void;
+	release(): Promise<void>;
 }
 
 export interface CodingToolCatalog {
 	snapshot(): CodingToolCatalogSnapshot;
-	acquireSnapshot(): CodingToolCatalogSnapshotLease;
+	acquireSnapshot(context?: RuntimeSnapshotAcquireContext): CodingToolCatalogSnapshotLease;
 	resolve(toolName: string): CodingToolCatalogEntry | undefined;
-	execute(binding: CapabilityBinding, request: RuntimeToolExecutionRequest): Promise<RuntimeToolResult>;
+	execute(
+		binding: CapabilityBinding,
+		request: RuntimeToolExecutionRequest,
+		implementation?: RuntimeToolDefinition,
+	): Promise<RuntimeToolResult>;
 }
 
 export interface CodingToolRevokeOptions {
@@ -133,14 +139,40 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 		return this.cachedSnapshot;
 	}
 
-	acquireSnapshot(): CodingToolCatalogSnapshotLease {
-		const snapshot = this.snapshot();
+	acquireSnapshot(context?: RuntimeSnapshotAcquireContext): CodingToolCatalogSnapshotLease {
+		const sourceSnapshot = this.snapshot();
+		const toolBindings: RuntimeToolTurnBinding[] = [];
+		let snapshot = sourceSnapshot;
+		try {
+			if (context) {
+				const entries = sourceSnapshot.entries.map((entry) => {
+					const binding = entry.registration.tool.bindForTurn?.(context);
+					if (!binding) return entry;
+					if (binding.tool.name !== entry.registration.tool.name) {
+						throw new Error(`Turn-bound coding tool changed its name: ${entry.registration.tool.name}`);
+					}
+					toolBindings.push(binding);
+					return freezeEntry({
+						...entry,
+						registration: freezeRegistration({ ...entry.registration, tool: binding.tool }),
+					});
+				});
+				snapshot = Object.freeze({
+					version: sourceSnapshot.version,
+					entries: Object.freeze(entries),
+					registrations: Object.freeze(entries.map(({ registration }) => registration)),
+				});
+			}
+		} catch (error) {
+			for (const binding of toolBindings.reverse()) void binding.release();
+			throw error;
+		}
 		const keys = snapshot.entries.map(({ binding }) => bindingKey(binding));
 		for (const key of keys) this.bindingLeaseCounts.set(key, (this.bindingLeaseCounts.get(key) ?? 0) + 1);
 		let released = false;
 		return {
 			snapshot,
-			release: () => {
+			release: async () => {
 				if (released) return;
 				released = true;
 				for (const entry of snapshot.entries) {
@@ -150,6 +182,11 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 					else this.bindingLeaseCounts.delete(key);
 					this.pruneRetiredBinding(entry.binding);
 				}
+				const results = await Promise.allSettled(toolBindings.map((binding) => binding.release()));
+				const errors = results
+					.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+					.map(({ reason }) => reason);
+				if (errors.length > 0) throw new AggregateError(errors, "Failed to release Turn-bound coding tools");
 			},
 		};
 	}
@@ -158,7 +195,11 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 		return this.entriesByName.get(toolName);
 	}
 
-	async execute(binding: CapabilityBinding, request: RuntimeToolExecutionRequest): Promise<RuntimeToolResult> {
+	async execute(
+		binding: CapabilityBinding,
+		request: RuntimeToolExecutionRequest,
+		implementation?: RuntimeToolDefinition,
+	): Promise<RuntimeToolResult> {
 		const advertised = this.entriesByBinding.get(bindingKey(binding));
 		if (!advertised) {
 			throw this.availabilityError(CODING_TOOL_AVAILABILITY_ERROR_CODES.UNAVAILABLE, binding);
@@ -170,7 +211,8 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 			binding.capabilityId,
 			request.signal,
 			async (signal) => {
-				const result = await advertised.registration.tool.execute({ ...request, signal });
+				const tool = implementation ?? advertised.registration.tool;
+				const result = await tool.execute({ ...request, signal });
 				return this.resultPolicy.project(result, {
 					sessionId: request.sessionId,
 					turnId: request.turnId,
@@ -256,7 +298,11 @@ function freezeToolDefinition(tool: RuntimeToolDefinition): RuntimeToolDefinitio
 		label: tool.label,
 		description: tool.description,
 		inputSchema: tool.inputSchema,
+		validateInput: tool.validateInput,
+		contextSource: tool.contextSource,
+		contextCategory: tool.contextCategory,
 		modelOrder: tool.modelOrder,
+		bindForTurn: tool.bindForTurn,
 		execute: (request: RuntimeToolExecutionRequest) => tool.execute(request),
 	});
 }

@@ -38,18 +38,24 @@ import type {
 import { __setPluginHostBridge, PluginAppActionError } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
+import { pluginHandlerGenerationKey as handlerKey } from "./plugin-handler-generation-key.js";
 
 const store = getDefaultStore();
 
 interface PluginAgentToolHandlerEntry {
 	handler: PluginAgentToolHandler;
 	api: PluginAgentToolApi;
+	activationId?: string;
 }
 
 const agentToolHandlers = new Map<string, PluginAgentToolHandlerEntry>();
 const agentHookHandlers = new Map<
 	string,
-	{ handler: PluginCodingAgentHookHandler<PluginCodingAgentHookEventName>; api: PluginAgentToolApi }
+	{
+		handler: PluginCodingAgentHookHandler<PluginCodingAgentHookEventName>;
+		api: PluginAgentToolApi;
+		activationId?: string;
+	}
 >();
 interface PluginAppActionHandlerEntry {
 	handler: PluginAppActionHandler;
@@ -58,13 +64,15 @@ interface PluginAppActionHandlerEntry {
 
 const appActionHandlers = new Map<string, PluginAppActionHandlerEntry>();
 const appActionInvocations = new Map<string, { controller: AbortController; handlerKey: string }>();
-const continuationHandlers = new Map<string, { handler: PluginContinuationHandler; api: PluginAgentToolApi }>();
-const systemPromptHandlers = new Map<string, { handler: PluginSystemPromptProviderHandler; api: PluginAgentToolApi }>();
+const continuationHandlers = new Map<
+	string,
+	{ handler: PluginContinuationHandler; api: PluginAgentToolApi; activationId?: string }
+>();
+const systemPromptHandlers = new Map<
+	string,
+	{ handler: PluginSystemPromptProviderHandler; api: PluginAgentToolApi; activationId?: string }
+>();
 const mediaProviderHandlers = new Map<string, PluginMediaProviderRegistration>();
-
-function handlerKey(pluginId: string, handlerId: string): string {
-	return `${pluginId}:${handlerId}`;
-}
 
 function createAgentActions(): {
 	actions: PluginAgentActions;
@@ -240,7 +248,7 @@ function startToolRequestListener(): void {
 	if (toolRequestListenerStarted) return;
 	toolRequestListenerStarted = true;
 	window.vetta.plugins.onAgentToolRequest((request) => {
-		const entry = agentToolHandlers.get(handlerKey(request.pluginId, request.handlerId));
+		const entry = agentToolHandlers.get(handlerKey(request.pluginId, request.handlerId, request.activationId));
 		if (!entry) {
 			void window.vetta.plugins.respondAgentTool(request.requestId, {
 				error: `Plugin tool handler not found: ${request.pluginId}/${request.handlerId}`,
@@ -292,7 +300,7 @@ function startHookRequestListener(): void {
 	if (hookRequestListenerStarted) return;
 	hookRequestListenerStarted = true;
 	window.vetta.plugins.onAgentHookRequest((request) => {
-		const entry = agentHookHandlers.get(handlerKey(request.pluginId, request.handlerId));
+		const entry = agentHookHandlers.get(handlerKey(request.pluginId, request.handlerId, request.activationId));
 		if (!entry) {
 			void window.vetta.plugins.respondAgentHook(request.requestId, {
 				error: `Plugin hook handler not found: ${request.pluginId}/${request.handlerId}`,
@@ -322,6 +330,31 @@ function startHookRequestListener(): void {
 				}),
 		);
 	});
+}
+
+let hookReleaseListenerStarted = false;
+
+function startHookReleaseListener(): void {
+	if (hookReleaseListenerStarted) return;
+	hookReleaseListenerStarted = true;
+	window.vetta.plugins.onAgentHandlerReleased((event) => {
+		const key = handlerKey(event.pluginId, event.handlerId, event.activationId);
+		if (event.kind === "tool") releaseHandler(agentToolHandlers, key, event.activationId);
+		else if (event.kind === "hook") releaseHandler(agentHookHandlers, key, event.activationId);
+		else if (event.kind === "continuation") releaseHandler(continuationHandlers, key, event.activationId);
+		else releaseHandler(systemPromptHandlers, key, event.activationId);
+	});
+}
+
+function releaseHandler<T extends { activationId?: string }>(
+	handlers: Map<string, T>,
+	key: string,
+	activationId: string | undefined,
+): void {
+	const entry = handlers.get(key);
+	if (!entry) return;
+	if (activationId !== undefined && entry.activationId !== activationId) return;
+	handlers.delete(key);
 }
 
 let appActionRequestListenerStarted = false;
@@ -392,7 +425,7 @@ function startContinuationRequestListener(): void {
 	if (continuationRequestListenerStarted) return;
 	continuationRequestListenerStarted = true;
 	window.vetta.plugins.onContinuationRequest((request) => {
-		const entry = continuationHandlers.get(handlerKey(request.pluginId, request.handlerId));
+		const entry = continuationHandlers.get(handlerKey(request.pluginId, request.handlerId, request.activationId));
 		if (!entry) {
 			void window.vetta.plugins.respondContinuation(request.requestId, {
 				error: `Plugin continuation handler not found: ${request.pluginId}/${request.handlerId}`,
@@ -439,7 +472,7 @@ function startSystemPromptRequestListener(): void {
 	if (systemPromptRequestListenerStarted) return;
 	systemPromptRequestListenerStarted = true;
 	window.vetta.plugins.onSystemPromptRequest((request) => {
-		const entry = systemPromptHandlers.get(handlerKey(request.pluginId, request.handlerId));
+		const entry = systemPromptHandlers.get(handlerKey(request.pluginId, request.handlerId, request.activationId));
 		if (!entry) {
 			void window.vetta.plugins.respondSystemPrompt(request.requestId, {
 				error: `Plugin system prompt handler not found: ${request.pluginId}/${request.handlerId}`,
@@ -533,11 +566,12 @@ export function registerPluginAgentToolHandler(options: {
 	pluginId: string;
 	toolId: string;
 	handlerId: string;
+	activationId?: string;
 	handler: PluginAgentToolHandler;
 	api: PluginAgentToolApi;
 }): Disposable {
-	const key = handlerKey(options.pluginId, options.handlerId);
-	agentToolHandlers.set(key, { handler: options.handler, api: options.api });
+	const key = handlerKey(options.pluginId, options.handlerId, options.activationId);
+	agentToolHandlers.set(key, { handler: options.handler, api: options.api, activationId: options.activationId });
 	return {
 		dispose: () => {
 			const entry = agentToolHandlers.get(key);
@@ -551,11 +585,16 @@ export function registerPluginAgentToolHandler(options: {
 export function registerPluginAgentHookHandler(options: {
 	pluginId: string;
 	handlerId: string;
+	activationId?: string;
 	handler: PluginCodingAgentHookHandler<PluginCodingAgentHookEventName>;
 	api: PluginAgentToolApi;
 }): Disposable {
-	const key = handlerKey(options.pluginId, options.handlerId);
-	agentHookHandlers.set(key, { handler: options.handler, api: options.api });
+	const key = handlerKey(options.pluginId, options.handlerId, options.activationId);
+	agentHookHandlers.set(key, {
+		handler: options.handler,
+		api: options.api,
+		activationId: options.activationId,
+	});
 	return {
 		dispose: () => {
 			if (agentHookHandlers.get(key)?.handler === options.handler) agentHookHandlers.delete(key);
@@ -590,11 +629,12 @@ export function registerPluginAppActionHandler(options: {
 export function registerPluginContinuationHandler(options: {
 	pluginId: string;
 	handlerId: string;
+	activationId?: string;
 	handler: PluginContinuationHandler;
 	api: PluginAgentToolApi;
 }): Disposable {
-	const key = handlerKey(options.pluginId, options.handlerId);
-	continuationHandlers.set(key, { handler: options.handler, api: options.api });
+	const key = handlerKey(options.pluginId, options.handlerId, options.activationId);
+	continuationHandlers.set(key, { handler: options.handler, api: options.api, activationId: options.activationId });
 	return {
 		dispose: () => {
 			if (continuationHandlers.get(key)?.handler === options.handler) {
@@ -607,11 +647,12 @@ export function registerPluginContinuationHandler(options: {
 export function registerPluginSystemPromptHandler(options: {
 	pluginId: string;
 	handlerId: string;
+	activationId?: string;
 	handler: PluginSystemPromptProviderHandler;
 	api: PluginAgentToolApi;
 }): Disposable {
-	const key = handlerKey(options.pluginId, options.handlerId);
-	systemPromptHandlers.set(key, { handler: options.handler, api: options.api });
+	const key = handlerKey(options.pluginId, options.handlerId, options.activationId);
+	systemPromptHandlers.set(key, { handler: options.handler, api: options.api, activationId: options.activationId });
 	return {
 		dispose: () => {
 			if (systemPromptHandlers.get(key)?.handler === options.handler) {
@@ -748,6 +789,7 @@ export function installPluginHostBridge(): void {
 	startTranslator();
 	startToolRequestListener();
 	startHookRequestListener();
+	startHookReleaseListener();
 	startAppActionRequestListener();
 	startContinuationRequestListener();
 	startSystemPromptRequestListener();

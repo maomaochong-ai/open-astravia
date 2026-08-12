@@ -5,9 +5,9 @@
 
 核心决策是：
 
-> 外部状态在发布后成为不可变 generation；一次 Turn 在 admission 阶段原子绑定一个 generation
-> 及其资源 lease，直到 Turn 终止都不再读取更新后的全局状态。更新可以立即发布，但只对之后开始的
-> Turn 可见。
+> 会改变执行合同的外部状态在发布后成为不可变 generation；一次 Turn 在 admission 阶段原子绑定一个
+> generation 及其资源 lease。普通更新只对之后开始的 Turn 可见；执行状态、物理资源健康和安全撤销仍按
+> 各自的实时合同变化。
 
 这里的“结束”指 Kernel Turn 进入 `completed`、`failed` 或 `cancelled` 终态，不是关闭整个
 Conversation/Session。Conversation 可以长期存在；同一 Session 的下一个 Turn 应自动采用最新的已发布状态。
@@ -21,10 +21,10 @@ Conversation/Session。Conversation 可以长期存在；同一 Session 的下�
 2. [目标一致性合同](./02-consistency-contract.md)
    - Session、Turn、Model Call、generation 和紧急撤权的精确定义。
    - 各类状态的生效边界与例外。
-   - follow-up、retry、subagent 和后台资源的继承规则。
+   - follow-up、retry、subagent 和后台资源的边界规则。
 3. [目标架构与核心合同](./03-target-architecture.md)
    - Published State、Turn Snapshot Materializer、Runtime Snapshot Lease 的关系。
-   - 原子发布、Turn admission、资源保活和回收流程。
+   - 原子发布、Turn admission、资源延迟普通回收流程。
    - 建议的 TypeScript 合同与包职责。
 4. [分领域改造方案](./04-domain-migration.md)
    - Settings、Mode、Sandbox、Prompt、Skill、Tool、MCP、Plugin、Hook、Extension 的具体改造点。
@@ -33,17 +33,21 @@ Conversation/Session。Conversation 可以长期存在；同一 Session 的下�
    - 可独立验收的阶段、依赖顺序、兼容策略和删除旧路径的时机。
 6. [测试、观测与上线](./06-testing-observability-rollout.md)
    - 竞态测试矩阵、跨宿主合同、诊断字段、灰度开关和最终验收标准。
-7. [实施状态与剩余边界](./07-implementation-status.md)
-   - 本轮已落地的合同、尚未完成的资源生命周期隔离，以及继续实施时的验收顺序。
+7. [实施状态与边界结论](./07-implementation-status.md)
+   - 已落地的逻辑合同、资源身份隔离和可选的观测增强。
+8. [Turn Binding 的能力边界](./08-binding-boundaries.md)
+   - 必须绑定、必须实时和必须实时收紧的分类规则。
+   - lease、物理故障、重连与 credential rotation 的保证边界。
 
 ## 本方案明确不做
 
 - 不把完整外部状态永久复制到 Conversation 或持久化历史中。
 - 不把 snapshot 固定到整个 Session 生命周期。
 - 不禁止 Turn 内由工具执行产生的合法局部状态变化，例如消息、Todo、MCP Tool Search 激活结果。
-- 不复制 secret、Token 或进程句柄；snapshot 保存版本化引用和 lease。
+- 不把 secret、Token 或进程句柄写入 published revision、诊断 descriptor 或持久化历史；执行面只保存不透明 binding/lease。
 - 不用永久双执行路径兼容旧语义。
 - 不让普通热重载拥有紧急安全撤权的语义。
+- 不快照文件系统、网络、进程健康或远端服务，也不承诺活动 Turn 无损完成。
 
 ## 与既有文档的关系
 

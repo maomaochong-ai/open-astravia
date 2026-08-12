@@ -35,6 +35,52 @@ function compiledSnapshot(id: string, disposed: string[]): CompiledRuntimeSnapsh
 }
 
 describe("AtomicRuntimeSnapshotProvider", () => {
+	it("starts model and snapshot capture before either asynchronous binder can yield", async () => {
+		const disposed: string[] = [];
+		let revision = "r1";
+		let releaseModelBinding: () => void = () => {};
+		const modelBindingBarrier = new Promise<void>((resolve) => {
+			releaseModelBinding = resolve;
+		});
+		let modelCapture: string | undefined;
+		let providerCapture: string | undefined;
+		const compiled = compiledSnapshot("snapshot-1", disposed);
+		const provider = new AtomicRuntimeSnapshotProvider(
+			{
+				...compiled,
+				snapshot: {
+					...compiled.snapshot,
+					modelCallProviders: [
+						{
+							id: "capture",
+							bindForTurn() {
+								providerCapture = revision;
+								return this;
+							},
+							contribute: async () => ({}),
+						},
+					],
+				},
+			},
+			{
+				async bind() {
+					modelCapture = revision;
+					await modelBindingBarrier;
+					return { model: {} as never };
+				},
+			},
+		);
+		const acquisition = provider.acquire(turnContext("turn-1"));
+		revision = "r2";
+		releaseModelBinding();
+		const lease = await acquisition;
+
+		expect(modelCapture).toBe("r1");
+		expect(providerCapture).toBe("r1");
+		await lease.release();
+		await provider.close();
+	});
+
 	it("binds dynamic components once for the admitted Turn", async () => {
 		const disposed: string[] = [];
 		let value = "r1";
@@ -79,6 +125,45 @@ describe("AtomicRuntimeSnapshotProvider", () => {
 		await lease.release();
 		await lease.release();
 		expect(releaseCount).toBe(1);
+		await provider.close();
+	});
+
+	it("binds and releases continuation and finalization policies with the same Turn lease", async () => {
+		const disposed: string[] = [];
+		const released: string[] = [];
+		const compiled = compiledSnapshot("snapshot-1", disposed);
+		const provider = new AtomicRuntimeSnapshotProvider({
+			...compiled,
+			snapshot: {
+				...compiled.snapshot,
+				continuationPolicy: {
+					bindForTurn: () => ({
+						releaseTurnBinding: () => {
+							released.push("continuation");
+						},
+						collect: async () => [],
+					}),
+					collect: async () => [],
+				},
+				modelCallMessageFinalizer: {
+					bindForTurn: () => ({
+						releaseTurnBinding: () => {
+							released.push("finalizer");
+						},
+						finalize: async ({ messages }) => messages,
+					}),
+					finalize: async ({ messages }) => messages,
+				},
+			},
+		});
+
+		const lease = await provider.acquire(turnContext("turn-1"));
+		expect(lease.snapshot.continuationPolicy).not.toBe(compiled.snapshot.continuationPolicy);
+		expect(lease.snapshot.modelCallMessageFinalizer).not.toBe(compiled.snapshot.modelCallMessageFinalizer);
+
+		await lease.release();
+		await lease.release();
+		expect(released).toEqual(["continuation", "finalizer"]);
 		await provider.close();
 	});
 

@@ -282,6 +282,7 @@ async function createCodingAgentSdkSessionComposition(
 			invokePluginTool: options.invokePluginTool,
 			invokePluginContinuation: options.invokePluginContinuation,
 			invokePluginSystemPrompt: options.invokePluginSystemPrompt,
+			pluginTurnHandlerLeaseProvider: options.pluginTurnHandlerLeaseProvider,
 			sessionTools,
 		},
 		initializeSession: extensionTransitions.initializeSession,

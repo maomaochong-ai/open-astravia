@@ -8,7 +8,7 @@
 2. Session 在 Turn admission 时捕获当前 revision，并将其物化为现有的 `RuntimeSnapshot`；
 3. Kernel 在整个 Turn 内只持有该 `RuntimeSnapshotLease`；
 4. 后续外部更新只发布新的 revision，不修改已被 Turn 持有的 snapshot；
-5. snapshot 中引用的 Tool、Plugin、MCP、Sandbox 等资源由 lease 延迟回收。
+5. snapshot 中引用的 Tool、Plugin、MCP、Sandbox 等资源由 lease 延迟普通 retirement 回收。
 
 `PublishedAgentStateRevision` 是待编译的控制面输入，`RuntimeSnapshot` 是可执行的数据面对象。Kernel 只认识后者，因此不会出现两个并列的执行事实源。
 
@@ -86,7 +86,7 @@ interface PublishedAgentStateRevision {
 
 `id` 应来自单调 generation 或稳定 hash；`sources` 用于诊断和缓存，不应包含密钥、完整 Prompt 或用户文件内容。
 
-这里的“副本”不要求深拷贝所有数据。可以引用不可变 catalog、持久化数据结构或 generation handle，但这些引用必须在 revision 生命周期内稳定，并且可通过 lease 延长底层资源寿命。
+这里的“副本”不要求深拷贝所有数据。可以引用不可变 catalog、持久化数据结构或 generation handle，但这些引用必须在 revision 生命周期内稳定，并且可通过 lease 防止宿主因普通更新主动回收。Lease 不冻结物理健康，也不提供调用成功保证。
 
 状态按 scope 发布，不构造包含所有 workspace 的巨大对象：process scope 保存全局设置和 Plugin 来源，workspace scope 保存资源、Skill、MCP 等工作区状态，并记录所基于的 process revision。Session admission 同步捕获 process、当前 workspace 与 session overlay 三个不可变指针，再生成一个 resolved composite key。
 
@@ -216,6 +216,9 @@ Turn 隔离不等于冻结 Agent 自己在本 Turn 中产生的所有状态。�
 
 Model Call provider 可以组合 generation-stable 数据与 Turn-local 数据，但不得借后者重新读取外部 current state。
 
+必须绑定、必须实时与必须实时收紧的完整判定规则见
+[Turn Binding 的能力边界](./08-binding-boundaries.md)。
+
 ## 5. 资源 lease 模型
 
 不可变对象本身容易冻结，真正困难的是对象背后的进程、函数实现和连接。所有可能因更新而被替换的资源必须遵循同一生命周期：
@@ -234,7 +237,7 @@ prepare candidate -> publish for new acquisitions -> retire old generation
 - 动态 Tool implementation；
 - Hook/interceptor handler catalog。
 
-普通更新只能 retirement；hard revoke 才能绕过 lease 拒绝新调用或取消在途调用。二者必须使用不同 API、不同事件和不同审计原因。
+普通更新只能 retirement；hard revoke 才能绕过 lease 拒绝新调用或取消在途调用。二者必须使用不同 API、不同事件和不同审计原因。Lease 只管理所有权和回收时机；进程崩溃、transport 断线、网络失败等物理故障仍可使旧代调用失败。
 
 ## 6. 更新事务
 

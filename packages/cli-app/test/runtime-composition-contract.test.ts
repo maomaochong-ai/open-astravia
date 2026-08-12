@@ -982,15 +982,17 @@ function createMcpSourceFixture(toolCount: number): {
 }
 
 function createMcpServerBinding(client: McpClientHandle, tools: readonly McpTool[]) {
+	const view = {
+		name: "search",
+		config: { command: "test" },
+		status: "ready" as const,
+		tools,
+		resources: [],
+		startedAt: 1,
+	};
 	return {
 		client,
-		view: {
-			name: "search",
-			config: { command: "test" },
-			status: "ready" as const,
-			tools,
-			resources: [],
-			startedAt: 1,
-		},
+		view,
+		acquireLease: () => ({ client, view, release: async () => {} }),
 	};
 }
