@@ -7,6 +7,7 @@ import {
 } from "../engine/engine-manager";
 import { exportDesign } from "../export/export-design";
 import { NotesStore } from "../notes/notes-store";
+import { useNotesVisibility } from "../notes/notes-visibility";
 import { getPluginCtx, notify } from "../plugin-context";
 import { PreviewDialog } from "../preview-mode/PreviewDialog";
 import { DesignSession } from "../vetd/design-session";
@@ -17,6 +18,7 @@ import { refreshCover } from "./cover-compose";
 import { DOCK_GAP, DOCK_ICON } from "./dock-magnify";
 import { clearFrameActivity, setCanvasController, setPendingDesignPath, takePendingDesignPath } from "./design-runtime";
 import { byCanvasOrder, DesignCanvas, type FrameCapture } from "./DesignCanvas";
+import { NotesVisibilitySwitch } from "./NotesVisibilitySwitch";
 import { ThemePalette } from "./ThemePalette";
 
 type Phase =
@@ -41,6 +43,8 @@ export function CanvasTab() {
 	const [session, setSession] = useState<DesignSession | null>(null);
 	const [notesStore, setNotesStore] = useState<NotesStore | null>(null);
 	const [showPalette, setShowPalette] = useState(false);
+	/** 画布备注气泡的显隐。开关在顶栏，自动规则（切工具/建备注/定位）只往显示推。 */
+	const notesVisibility = useNotesVisibility();
 	const [exporting, setExporting] = useState(false);
 	const [reloadNonce, setReloadNonce] = useState(0);
 	const bridgeRef = useRef(new BridgeHub());
@@ -279,6 +283,8 @@ export function CanvasTab() {
 					>
 						◐
 					</button>
+					{/* 备注显隐：隐藏只有这一个入口（自动规则一律只往显示推）。 */}
+					<NotesVisibilitySwitch visible={notesVisibility.visible} onToggle={notesVisibility.toggle} />
 					{/* 手动刷新：热更新链路（文件监听 / HMR）万一没生效时的兜底出路，
 					    强制所有 frame 重新加载最新代码并重截位图。
 					    同时重扫一遍设计列表——这个按钮是「与磁盘重新对齐」的唯一入口，
@@ -370,6 +376,8 @@ export function CanvasTab() {
 							previewTargetRef={previewTargetRef}
 							previewing={previewFrameId !== null}
 							resolveNoteElementsRef={resolveNoteElementsRef}
+							notesVisible={notesVisibility.visible}
+							showNotes={notesVisibility.show}
 						/>
 						{showPalette ? <ThemePalette session={session} /> : null}
 						{previewFrameId !== null ? (

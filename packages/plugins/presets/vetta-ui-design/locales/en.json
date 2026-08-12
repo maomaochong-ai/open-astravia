@@ -204,6 +204,8 @@
 	"notes.author.user": "Me",
 	"notes.delete": "Delete",
 	"notes.close": "Close",
+	"notes.visibility.show": "Show notes",
+	"notes.visibility.hide": "Hide notes",
 	"gallery.nav.label": "Design",
 	"gallery.nav.description": "Every project that holds a design",
 	"gallery.title": "Design",

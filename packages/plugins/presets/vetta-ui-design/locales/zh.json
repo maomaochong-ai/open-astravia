@@ -204,6 +204,8 @@
 	"notes.author.user": "我",
 	"notes.delete": "删除",
 	"notes.close": "关闭",
+	"notes.visibility.show": "显示备注",
+	"notes.visibility.hide": "隐藏备注",
 	"gallery.nav.label": "设计",
 	"gallery.nav.description": "所有带设计稿的项目",
 	"gallery.title": "设计",

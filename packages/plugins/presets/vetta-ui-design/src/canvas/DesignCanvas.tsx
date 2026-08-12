@@ -112,6 +112,10 @@ interface DesignCanvasProps {
 	resolveNoteElementsRef: RefObject<
 		((frameId: string, queries: ElementQuery[]) => Promise<(SelectedElementPayload | null)[]>) | null
 	>;
+	/** 顶栏开关的当前值：备注气泡在不在画布上。 */
+	notesVisible: boolean;
+	/** 自动显示备注（只开不关）：切到备注工具、落下一条备注、从列表定位到某条。 */
+	showNotes(): void;
 }
 
 interface Rect {
@@ -263,6 +267,8 @@ export function DesignCanvas({
 	previewTargetRef,
 	previewing,
 	resolveNoteElementsRef,
+	notesVisible,
+	showNotes,
 }: DesignCanvasProps) {
 	const { t } = useTranslation();
 	const [manifest, setManifest] = useState<VetdManifest>(session.manifest);
@@ -573,9 +579,11 @@ export function DesignCanvas({
 			// 那块）居中，否则「居中」正好把气泡送到面板底下。
 			const visibleWidth = Math.max(width - NOTES_PANEL_INSET, width * 0.35);
 			view.commitViewport({ zoom, x: width - visibleWidth / 2 - pos.x * zoom, y: height / 2 - pos.y * zoom });
+			// 定位到一个被隐藏的气泡等于把视口挪到空白处：先把备注层拉回来。
+			showNotes();
 			setOpenNoteId(noteId);
 		},
-		[notes, view, sizeRef, viewportRef],
+		[notes, view, sizeRef, viewportRef, showNotes],
 	);
 
 	/** 待处理备注数，挂在 ControlBar 备注按钮的角标上。 */
@@ -600,9 +608,11 @@ export function DesignCanvas({
 	});
 
 	// 切离备注工具就收掉没提交的草稿；换设计时 thread 弹层也一并收掉。
+	// 切到备注工具则自动显示备注层：这个工具下要做的每件事都得先看得见气泡。
 	useEffect(() => {
-		if (tool !== "note") setNoteDraft(null);
-	}, [tool]);
+		if (tool === "note") showNotes();
+		else setNoteDraft(null);
+	}, [tool, showNotes]);
 	useEffect(() => {
 		setNoteDraft(null);
 		setOpenNoteId(null);
@@ -855,6 +865,8 @@ export function DesignCanvas({
 		// 备注）。frame 上的命中元素解析在后台跑，不阻塞输入；空内容提交即丢弃。
 		if (tool === "note") {
 			setOpenNoteId(null);
+			// 备注工具下仍可手动隐藏；这一下要落的是一条新备注，落完必须看得见。
+			showNotes();
 			const world = toWorld(event.clientX, event.clientY);
 			const hitFrame =
 				[...manifestRef.current.frames]
@@ -1218,7 +1230,9 @@ export function DesignCanvas({
 	const handleAskSubmitted = useCallback((): void => {
 		setAskOpen(false);
 		setSelection(null);
-	}, []);
+		// 追问落的就是一条备注：刚提交完却看不到它，等于什么都没发生。
+		showNotes();
+	}, [showNotes]);
 
 	const openExport = (): void => {
 		if (orderedSelection.length === 0) return;
@@ -1399,6 +1413,7 @@ export function DesignCanvas({
 					store={notes}
 					frames={manifest.frames}
 					interactive={(tool === "select" || tool === "note") && !panActive && !previewing}
+					visible={notesVisible}
 					draft={noteDraft}
 					blockedReason={blockedReason}
 					onDraftClose={() => setNoteDraft(null)}

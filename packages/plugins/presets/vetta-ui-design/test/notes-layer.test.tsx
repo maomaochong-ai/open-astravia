@@ -50,6 +50,7 @@ function renderDraft(blockedReason: string | null = null): { textarea: HTMLTextA
 				store={store}
 				frames={[]}
 				interactive
+				visible
 				draft={{ world: { x: 10, y: 20 }, frameId: null, fx: 0, fy: 0, hit: null }}
 				blockedReason={blockedReason}
 				onDraftClose={() => {
