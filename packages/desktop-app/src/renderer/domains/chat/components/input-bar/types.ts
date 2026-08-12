@@ -82,6 +82,15 @@ export interface InputBarTodoModel {
 	onOpenPanel: () => void;
 }
 
+export interface SpeechInputModel {
+	visible: boolean;
+	active: boolean;
+	disabled: boolean;
+	title: string;
+	statusText: string | null;
+	onToggle: () => void;
+}
+
 export interface InputBarModel {
 	isStreaming: boolean;
 	pendingQuestion: ComponentProps<typeof QuestionPanel>["pending"] | undefined;
@@ -120,6 +129,8 @@ export interface InputBarModel {
 	drawerActiveTab: string | null;
 	/** 输入卡片外部下方的待办条。 */
 	todo: InputBarTodoModel | null;
+	/** Windows 本地流式语音输入；其他平台不渲染入口。 */
+	speechInput: SpeechInputModel;
 	hasPromptAttachment: boolean;
 	promptAttachmentIcon?: string;
 	promptAttachmentLabel?: string;

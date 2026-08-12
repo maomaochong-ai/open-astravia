@@ -414,6 +414,25 @@
 			"attachFile": "Attach file reference",
 			"skills": "Skills / Scenes"
 		},
+		"speech": {
+			"actions": {
+				"downloadAndStart": "Download the offline speech model and start (about 160 MB)",
+				"cancelDownload": "Cancel speech model download ({{progress}}%)",
+				"start": "Start voice input",
+				"stop": "Stop voice input"
+			},
+			"states": {
+				"downloading": "Downloading offline speech model… {{progress}}%",
+				"loading": "Loading offline speech model…",
+				"stopping": "Finishing speech recognition…"
+			},
+			"errors": {
+				"unsupported": "Voice input currently requires Windows x64",
+				"download": "Speech model download failed. Click to retry",
+				"integrity": "Speech model verification failed. Click to download again",
+				"recognizer": "Speech recognition failed to start. Click to retry"
+			}
+		},
 		"contextMenu": {
 			"cut": "Cut",
 			"copy": "Copy",

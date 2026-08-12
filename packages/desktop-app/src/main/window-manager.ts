@@ -3,6 +3,7 @@ import { app, BrowserWindow, nativeTheme } from "electron";
 import { setAppMonitorWindowVisible } from "./app-monitor/app-monitor-service.js";
 import { getAppLogger } from "./logger.js";
 import { openExternalUrl } from "./open-external.js";
+import { configureMainWindowMediaPermissions } from "./speech-input/media-permissions.js";
 
 const isMac = process.platform === "darwin";
 const appRoot = app.isPackaged ? app.getAppPath() : process.cwd();
@@ -70,6 +71,7 @@ export function createWindow(): BrowserWindow {
 			webviewTag: true,
 		},
 	});
+	configureMainWindowMediaPermissions(mainWindow.webContents.session, mainWindow.webContents);
 
 	// 内置浏览器（<webview>）单窗预览：页面内的 window.open/target=_blank 不另开窗口，
 	// 重定向到同一 webview 加载，保持单窗体验。

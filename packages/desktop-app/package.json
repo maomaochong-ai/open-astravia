@@ -169,6 +169,8 @@
 		"@iconify/tailwind4": "^1.0.6",
 		"@sentry/vite-plugin": "^5.4.0",
 		"@tailwindcss/vite": "^4.1.12",
+		"@testing-library/react": "^16.3.0",
+		"@testing-library/user-event": "^14.6.1",
 		"@types/canvas-confetti": "^1.9.0",
 		"@types/cross-spawn": "^6.0.6",
 		"@types/hast": "^3.0.4",
@@ -200,5 +202,8 @@
 		"wait-on": "^9.0.1",
 		"webdriverio": "^9.30.0",
 		"yaml": "^2.9.0"
+	},
+	"optionalDependencies": {
+		"sherpa-onnx-win-x64": "1.13.5"
 	}
 }

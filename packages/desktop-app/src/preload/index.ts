@@ -16,6 +16,7 @@ import { createPluginsApi } from "./apis/plugins.js";
 import { createQuickPanelApi } from "./apis/quick-panel.js";
 import { createSchedulerApi } from "./apis/scheduler.js";
 import { createSessionApi } from "./apis/session.js";
+import { createSpeechInputApi } from "./apis/speech-input.js";
 import { createSystemApi } from "./apis/system.js";
 import { createTelemetryApi } from "./apis/telemetry.js";
 import { createThemesApi } from "./apis/themes.js";
@@ -43,6 +44,7 @@ const rawApi: Omit<DesktopApi, "hostAccess"> = {
 	...createAppLifecycleApi(ipcRenderer),
 	...createAppMonitorApi(ipcRenderer),
 	...createSessionApi(ipcRenderer),
+	...createSpeechInputApi(ipcRenderer),
 	...createImApi(ipcRenderer),
 	...createDownloadsApi(ipcRenderer),
 	...createBatchTasksApi(ipcRenderer),

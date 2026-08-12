@@ -6,6 +6,11 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **Windows 本地流式语音输入**（ADR-0070）：输入栏在 Windows x64 显示麦克风入口，首次使用按需下载并
+  校验约 160 MiB 的中文 Streaming Zipformer 模型，随后完全本地识别；16 kHz PCM 由 AudioWorklet 分块
+  采集，Sherpa-ONNX 原生解码隔离在 utilityProcess，partial 实时展示、final 插入当前光标。macOS/Linux
+  不显示入口、不下载模型，也不把 Windows 原生运行时带进各自产物。
+
 - **执行模式与 Plugin Hook 采用 Turn 边界生效**：活动 Agent 运行时修改全局 Execution Mode 不再报 busy，
   当前 Turn 保持原沙盒/全访问实现并在下一 Turn 应用；Desktop Plugin Hook 按 `turnId` 固定首次捕获的
   binding 集合，普通注册/注销只影响后续 Turn。

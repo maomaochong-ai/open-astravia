@@ -104,7 +104,8 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
-		include: ["src/**/*.test.ts"],
+		include: ["src/**/*.test.{ts,tsx}"],
+		setupFiles: ["src/test/setup.ts"],
 		// Opt-in via `bun run test:coverage` only; default `test` is unchanged.
 		// Full src denominator is intentional — low totals reflect thin unit coverage,
 		// not a trimmed include list. UI still relies on verify:ui:*, not V8.
