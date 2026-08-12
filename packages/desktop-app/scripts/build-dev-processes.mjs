@@ -175,14 +175,21 @@ function runTask(task) {
 }
 
 async function main() {
-	await new Promise((resolve, reject) => {
-		const child = spawn("bun", ["run", "prepare:ocr-models"], {
-			cwd: desktopRoot,
-			stdio: "inherit",
+	for (const task of [
+		{ command: "prepare:ocr-models", label: "OCR 模型" },
+		{ command: "prepare:speech-models", label: "语音模型" },
+	]) {
+		await new Promise((resolve, reject) => {
+			const child = spawn("bun", ["run", task.command], {
+				cwd: desktopRoot,
+				stdio: "inherit",
+			});
+			child.once("error", reject);
+			child.once("exit", (code) =>
+				code === 0 ? resolve() : reject(new Error(`${task.label}准备失败（code=${code}）`)),
+			);
 		});
-		child.once("error", reject);
-		child.once("exit", (code) => code === 0 ? resolve() : reject(new Error(`OCR 模型准备失败（code=${code}）`)));
-	});
+	}
 
 	const cache = await readCache();
 	const nextCache = { version: 1, tasks: {} };

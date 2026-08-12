@@ -57,6 +57,7 @@ import type { TriggerMatch } from "./editor/tokens/trigger";
 import { useInputActionBarModel } from "../useInputActionBarModel";
 import type { ActiveActionCapsule } from "./ActiveActionCapsules";
 import type { InputBarModel, InputBarProps, InputBarDrawerItem, InputBarTodoModel } from "./types";
+import { useSpeechInput } from "./useSpeechInput";
 
 const CONTEXT_MENU_WIDTH = 160;
 const CONTEXT_MENU_HEIGHT = 112;
@@ -153,6 +154,7 @@ export function useInputBarModel({
 
 	const effectiveCwd = activeSession?.cwd ?? cwdOverride ?? "";
 	const hasSession = Boolean(activeSession) || Boolean(cwdOverride);
+	const speechInput = useSpeechInput(hasSession);
 	// 文件与图片如今都是文本流里的 token，因此文本非空即代表有内容可发。
 	const canSend = hasSession && !isStreaming && (!isBlank || Boolean(appshotAttachment));
 	const isEmpty = isBlank;
@@ -606,6 +608,7 @@ export function useInputBarModel({
 		drawerItems,
 		drawerActiveTab,
 		todo,
+		speechInput,
 		hasPromptAttachment: Boolean(promptAttachment),
 		promptAttachmentIcon: promptAttachment?.icon,
 		promptAttachmentLabel: promptAttachment?.label,

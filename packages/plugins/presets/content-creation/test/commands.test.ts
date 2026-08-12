@@ -50,6 +50,21 @@ describe("applyContentProjectCommands", () => {
 		).toThrow(ContentProjectCommandError);
 	});
 
+	it("replaces the effective prompt document when a plain prompt is updated", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.update", nodeId: "video", data: { prompt: "First directing prompt" } },
+		]);
+		const updated = applyContentProjectCommands(project, [
+			{ type: "node.update", nodeId: "video", data: { prompt: "Second directing prompt" } },
+		]);
+
+		expect(updated.graph.nodes[0]?.data.promptDocument).toEqual({
+			version: 1,
+			segments: [{ type: "text", text: "Second directing prompt" }],
+		});
+	});
+
 	it("stores workflow intent and semantic node purpose", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{

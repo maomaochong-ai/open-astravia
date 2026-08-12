@@ -25,6 +25,25 @@ Electron desktop host for the Vetta runtime.
 - `src/preload`: safe bridge surface for the renderer
 - `src/renderer`: React application domains and UI
 
+## Windows Voice Input
+
+Local streaming voice input is currently available only on Windows x64. The Windows artifact includes
+`sherpa-onnx-win-x64`; macOS and Linux artifacts exclude that native package. The pinned Chinese
+Zipformer model is downloaded and verified during a Windows build, then included under
+`Resources/speech-models/` in the packaged application. Runtime voice input is fully offline and never
+downloads model files. Build machines reuse verified files in `resources/speech-models/`; delete that
+gitignored directory to force a fresh download.
+
+The renderer captures 16 kHz mono PCM with an AudioWorklet. Recognition runs in a dedicated Electron
+utility process so native initialization and decoding do not block the main process. See
+[`ADR-0070`](../../docs/adr/0070-windows-local-streaming-speech-input.md).
+
+Run `bun run prepare:speech-models` to prepare the model explicitly. The command skips macOS/Linux
+targets, and is also part of `bun run build` and revalidated by `prepare-pack.js` before a Windows
+artifact is staged. After `bun run build:main`, run `bun run verify:speech-host` to exercise the real
+Electron utility process with the bundled Sherpa runtime and model through initialize, start, audio,
+and stop.
+
 ## Development
 
 Run `bun dev` from this package after installing the monorepo dependencies. The development startup

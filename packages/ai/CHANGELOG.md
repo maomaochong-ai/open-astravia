@@ -22,6 +22,7 @@
 
 - 修复 OpenAI 兼容中转返回 `finish_reason: ""` 时整轮对话失败、界面只剩一条空消息的问题。此前 `openai-completions` 的 chunk 校验强制要求 `finish_reason` 落在 OpenAI 枚举内，且 `index` / `delta` 必填，而中转在非终止 chunk 上普遍下发空字符串（实测某中转下的 `hy3`、`kimi-k2.7` 每个中间 chunk 均为 `""`），首包即抛 `AI_RESPONSE_VALIDATION_FAILED`。现在 chunk schema 只强制适配器真正消费的字段：`finish_reason` 允许任意字符串或 `null` 且可缺省，`index`（从不读取）与 `delta`（运行时已有守卫）改为可选；枚举外的终止原因（如 `eos`、`end_turn`）折叠为正常 `stop` 而非抛错。结构性畸形（如 `choices` 不是数组）仍然拒绝。
 - `AI_RESPONSE_VALIDATION_FAILED` 的 `metadata.errors` 新增 `received` 字段，携带失败路径上的实际取值（截断至 120 字符，不含周边 payload），使中转格式偏差可以直接从日志定位。
+- 工具参数校验会在本地为带唯一常量字段的 `oneOf` 自动推断 discriminator，只报告实际 operation 分支的错误；额外字段错误同时显示具体字段名，避免一个缺失字段膨胀为整套联合 Schema 的无关错误列表。发送给 Provider 的原始工具 Schema 保持不变。
 - 修复单个工具的畸形参数 schema 就能让整轮对话 400 的问题。`openai-completions` 下发 tools 前会剔除只带约束关键字、没有 `type`/`properties` 的 `anyOf`/`oneOf` 分支（如 `anyOf: [{ required: ["a"] }]`）：这类分支在 OpenAI 侧只是软提示，但 Gemini 会把每个分支当独立 Schema 校验并整体拒绝请求（`parameters.required: only allowed for OBJECT type`），命中时整个会话发不出去，报错里又只有工具下标。剔除时按工具名打一次 warn。
 - 修复 Google/Vertex 缺失 `finishReason`、terminal 后继续输出和畸形 Gemini chunk 被错误视为成功的问题；修复 cached input 同时计入 `input` 与 `cacheRead` 导致的 token/成本重复计算。Gemini CLI 畸形 SSE JSON 不再静默跳过，非重试型 4xx 不再误重试，HTTP status 进入稳定错误分类。
 - 修复 Anthropic/Bedrock 空流、缺失 `message_stop`/`messageStop`、未闭合或乱序 content block 被错误视为成功的问题；Bedrock streamed exception 与 AWS SDK `$metadata.httpStatusCode` 现在会保留状态码并映射到稳定错误类型，调用前和流中取消通过原生失败通道拒绝。

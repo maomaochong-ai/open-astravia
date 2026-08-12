@@ -62,6 +62,7 @@ export default defineConfig(({ mode }) => {
 					// uiohook 宿主 utilityProcess 独立入口：与 index.js 同目录输出，
 					// 运行时以 new URL("./uiohook-host.js", import.meta.url) 定位。
 					"uiohook-host": resolve(process.cwd(), "src/main/uiohook-host.ts"),
+					"speech-input-host": resolve(process.cwd(), "src/main/speech-input-host.ts"),
 				},
 				formats: ["es"],
 				fileName: (_format, entryName) => `${entryName}.js`,
@@ -91,6 +92,8 @@ export default defineConfig(({ mode }) => {
 					// electron-liquid-glass 同为原生模块（node-gyp-build + prebuilds），
 					// 提供 macOS 液态玻璃/磨砂玻璃效果，运行时从 node_modules 解析。
 					"electron-liquid-glass",
+					// Windows-only Sherpa-ONNX native runtime; model files are staged as extraResources at build time.
+					"sherpa-onnx-win-x64",
 				],
 			},
 			minify: false,

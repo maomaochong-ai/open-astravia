@@ -1,3 +1,6 @@
+import { cleanup } from "@testing-library/react";
+import { afterEach } from "vitest";
+
 /**
  * Node 22 自带一个未启用的 `globalThis.localStorage`（需要 --localstorage-file 才可用），
  * vitest 的 jsdom 环境不会覆盖这个已存在的全局，于是 renderer 模块在 DOM 测试里读到 undefined。
@@ -24,3 +27,5 @@ if (typeof window !== "undefined" && typeof globalThis.localStorage === "undefin
 		Object.defineProperty(window, "localStorage", { configurable: true, value: storage });
 	}
 }
+
+afterEach(() => cleanup());

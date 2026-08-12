@@ -7,7 +7,7 @@ import { ModelSelector } from "../ModelSelector";
 import { SendButton } from "../SendButton";
 import { ActiveActionCapsules, type ActiveActionCapsule } from "./ActiveActionCapsules";
 import { InputBarToolbarButton } from "./InputBarToolbarButton";
-import type { InputBarLabels } from "./types";
+import type { InputBarLabels, SpeechInputModel } from "./types";
 
 const SPRING = { type: "spring" as const, stiffness: 460, damping: 32, mass: 0.9 };
 const TOOLBAR_BUTTON_HOVER = { scale: 1.06 };
@@ -28,6 +28,7 @@ interface InputBarToolbarProps {
 	onSelectImages: () => void;
 	onSend: () => void;
 	slashOpen: boolean;
+	speechInput: SpeechInputModel;
 }
 
 export const InputBarToolbar = memo(function InputBarToolbar({
@@ -44,6 +45,7 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 	onSelectImages,
 	onSend,
 	slashOpen,
+	speechInput,
 }: InputBarToolbarProps): JSX.Element {
 	const toolbarLeftSurface = useThemeSurface("chat.inputBarToolbarLeft");
 	const toolbarRightSurface = useThemeSurface("chat.inputBarToolbarRight");
@@ -135,6 +137,15 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 				<div className={slashOpen ? "hidden" : "contents"}>
 					<ContextRing className="mr-1 shrink-0" />
 				</div>
+				{speechInput.visible && !slashOpen && (
+					<InputBarToolbarButton
+						icon={speechInput.active ? "icon-[solar--stop-circle-linear]" : "icon-[solar--microphone-3-linear]"}
+						title={speechInput.title}
+						disabled={speechInput.disabled}
+						onClick={speechInput.onToggle}
+						active={speechInput.active}
+					/>
+				)}
 				{isStreaming && !isEmpty ? (
 					<motion.button
 						type="button"

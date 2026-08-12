@@ -1,0 +1,30 @@
+{
+	"id": "sherpa-onnx-streaming-zipformer-zh-int8-2025-06-30",
+	"sampleRate": 16000,
+	"files": [
+		{
+			"name": "encoder.int8.onnx",
+			"size": 161141793,
+			"sha256": "5ac51e27981bb4dab01bb9be4958453ba50c3b61c063ddda0eab23fd3671aa4f",
+			"url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-zh-int8-2025-06-30/resolve/main/encoder.int8.onnx"
+		},
+		{
+			"name": "decoder.onnx",
+			"size": 5165083,
+			"sha256": "06522ad63cec0fdf6809f4e1db9bb4f7d710c34582e3b35db62ac60eccafac7e",
+			"url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-zh-int8-2025-06-30/resolve/main/decoder.onnx"
+		},
+		{
+			"name": "joiner.int8.onnx",
+			"size": 1033416,
+			"sha256": "b34584dc6f561089e1d747fedebb3765f2caa72c927ef54d7ca55e5ae40a814b",
+			"url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-zh-int8-2025-06-30/resolve/main/joiner.int8.onnx"
+		},
+		{
+			"name": "tokens.txt",
+			"size": 20628,
+			"sha256": "6193c7ea1c96d0d9a1e9652789b40d13a8a913b434a5451e93158f5a09fd6652",
+			"url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-zh-int8-2025-06-30/resolve/main/tokens.txt"
+		}
+	]
+}

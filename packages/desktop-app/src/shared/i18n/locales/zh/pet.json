@@ -101,8 +101,10 @@
 		},
 		"tool": {
 			"running": "正在执行工具",
-			"runningWithDescription": "{{description}}"
+			"runningWithDescription": "{{description}}",
+			"completed": "工具执行完成"
 		},
+		"retry": { "running": "正在重试第 {{attempt}}/{{maxAttempts}} 次" },
 		"background": {
 			"running": "后台任务运行中",
 			"completed": "后台任务已完成",

@@ -414,6 +414,22 @@
 			"attachFile": "附加文件引用",
 			"skills": "技能/场景"
 		},
+		"speech": {
+			"actions": {
+				"start": "开始语音输入",
+				"stop": "停止语音输入"
+			},
+			"states": {
+				"loading": "正在加载离线语音模型…",
+				"stopping": "正在完成语音识别…"
+			},
+			"errors": {
+				"unsupported": "语音输入目前仅支持 Windows x64",
+				"missing": "安装包中缺少语音模型，请重新安装应用",
+				"integrity": "安装包中的语音模型不完整，请重新安装应用",
+				"recognizer": "语音识别启动失败，点击重试"
+			}
+		},
 		"contextMenu": {
 			"cut": "剪切",
 			"copy": "复制",

@@ -62,6 +62,10 @@ packages/desktop-app/build/pet/*.compressed.webm
 # PP-OCRv5 ONNX models are fetched on demand into resources/ocr-models/
 # at build time (see scripts/fetch-ocr-models.js); not checked in.
 packages/desktop-app/resources/ocr-models/
+
+# Windows Sherpa-ONNX speech model is fetched and verified at build time,
+# then packaged as an Electron extraResource; model weights are not source.
+packages/desktop-app/resources/speech-models/
 /releases/
 todo.md
 

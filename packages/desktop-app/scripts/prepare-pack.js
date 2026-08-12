@@ -5,7 +5,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { resolveBuildResourceFilters } from "./build-resource-filters.mjs";
 import { loadBuildEnv } from "./load-build-env.mjs";
+import { resolvePackagedNativeDependencies } from "./packaged-native-dependencies.mjs";
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
+import { prepareSpeechModels, SPEECH_MODEL_RESOURCE_ROOT } from "./fetch-speech-models.mjs";
 import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
 import { resolveTenant, stageSystemPluginsFromArchives } from "./stage-system-plugins.mjs";
 import { stageSystemSkills } from "./stage-system-skills.mjs";
@@ -204,13 +206,14 @@ function resolveSandboxResourceFilters() {
 // createRequire 真能 resolve 到，恢复图片缩放路径。photon-node 是纯 WASM、
 // 无平台二进制差异，可安全跨平台打包。
 //
-// uiohook-napi（快捷面板双击功能键全局监听）与 electron-liquid-glass（macOS
-// 液态/磨砂玻璃）同为被 external 的运行时原生模块，必须一并复制进 staging，
+// uiohook-napi（快捷面板双击功能键全局监听）、electron-liquid-glass（macOS
+// 液态/磨砂玻璃）与 sherpa-onnx-win-x64（Windows 语音输入）同为被 external 的运行时原生模块，必须复制进 staging，
 // 否则 packaged 环境 require 不到。uiohook 各平台都有 prebuild、需全平台带；
-// electron-liquid-glass 是 darwin-only（`os:["darwin"]`），仅 mac 主机/包需要，
-// 非 mac 主机上可能未安装，故标记为 optional：解析不到就跳过、不阻断打包。
-const externalDeps = ["@silvia-odwyer/photon-node", "builder-util-runtime", "electron-updater", "uiohook-napi"];
-const optionalExternalDeps = ["electron-liquid-glass"];
+// electron-liquid-glass 是 darwin-only，Sherpa 是 win32-x64-only；依赖策略按目标产物平台选择，
+// 不按构建主机选择，避免把另一个系统的原生包带入产物。
+const packagedNativeDependencies = resolvePackagedNativeDependencies(resolvePlatformFamilies());
+const externalDeps = packagedNativeDependencies.required;
+const optionalExternalDeps = packagedNativeDependencies.optional;
 
 function resolvePackageRoot(dep, fromDir = projectRoot) {
 	const entry = require.resolve(dep, { paths: [fromDir] });
@@ -283,6 +286,13 @@ assertPackagedMainHasNoWorkspaceImports(join(projectRoot, "dist/main"));
 // Clean previous build stage
 rmSync(buildStageDir, { recursive: true, force: true });
 mkdirSync(buildStageDir, { recursive: true });
+
+const preparedSpeechModel = await prepareSpeechModels({
+	platformTags: resolvePlatformTagsFromEnv(),
+});
+if (preparedSpeechModel) {
+	cpSync(SPEECH_MODEL_RESOURCE_ROOT, join(buildStageDir, "speech-models"), { recursive: true });
+}
 
 // Write the staged package metadata. Electron-builder decides which
 // node_modules entries belong in app.asar from production dependencies, so
@@ -714,6 +724,13 @@ function resolveExtraResources() {
 			filter: ["**/*"],
 		});
 	}
+	if (resolvePlatformFamilies().has("win32")) {
+		extraResources.push({
+			from: "speech-models",
+			to: "speech-models",
+			filter: ["**/*"],
+		});
+	}
 	return extraResources;
 }
 
@@ -824,7 +841,7 @@ const builderConfig = {
 	// 上偶尔出问题（photon.ts 已经有 fallback paths 兜底，但能避免就避免）。
 	// 直接 unpack 到 app.asar.unpacked/，让 wasm 落到真实文件系统。
 	//
-	// uiohook-napi / electron-liquid-glass 通过 node-gyp-build 加载预编译 .node。
+// uiohook-napi / electron-liquid-glass / Sherpa-ONNX 加载预编译 .node。
 	// dlopen 无法从 asar 虚拟文件系统加载原生模块，必须整包 unpack 到真实磁盘，
 	// 否则 packaged 环境 require 即失败（electron-liquid-glass 仅 mac 包内存在）。
 	//
@@ -833,9 +850,7 @@ const builderConfig = {
 	// 使用 LZMA2 压缩，避免未压缩的 app.asar 直接抬高完整安装包体积。
 	asarUnpack: [
 		"ocr-runner/**/*",
-		"node_modules/@silvia-odwyer/photon-node/**/*",
-		"node_modules/uiohook-napi/**/*",
-		"node_modules/electron-liquid-glass/**/*",
+		...packagedNativeDependencies.asarUnpack,
 	],
 };
 writeFileSync(join(buildStageDir, "electron-builder.json"), JSON.stringify(builderConfig, null, "\t") + "\n");

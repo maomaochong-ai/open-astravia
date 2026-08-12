@@ -18,11 +18,13 @@
 		"build:main": "vite build --config vite.main.config.ts",
 		"build:ocr-preload": "vite build --config vite.ocr-preload.config.ts",
 		"build:ocr-runner": "vite build --config vite.ocr-runner.config.ts",
-		"build": "bun run build:presets && bun run build:themes && bun run build:preload && bun run build:ocr-preload && bun run build:renderer && bun run build:ocr-runner && bun run build:main",
+		"build": "bun run prepare:speech-models && bun run build:presets && bun run build:themes && bun run build:preload && bun run build:ocr-preload && bun run build:renderer && bun run build:ocr-runner && bun run build:main",
 		"snapshot:models-dev": "bun run scripts/update-models-dev-snapshot.ts",
 		"prepare:windows": "node scripts/prepare-windows-prereqs.js",
 		"prepare:windows:dev": "node scripts/prepare-windows-prereqs.js --incremental",
 		"prepare:ocr-models": "node scripts/fetch-ocr-models.js",
+		"prepare:speech-models": "node scripts/fetch-speech-models.mjs",
+		"verify:speech-host": "electron scripts/verify-speech-input-host.cjs",
 		"build:presets": "node scripts/build-presets.mjs",
 		"build:presets:dev": "cross-env VETTA_SKIP_PLUGIN_TOOLING_BUILD=1 node scripts/build-presets.mjs",
 		"build:themes": "node scripts/build-themes.mjs",
@@ -169,6 +171,8 @@
 		"@iconify/tailwind4": "^1.0.6",
 		"@sentry/vite-plugin": "^5.4.0",
 		"@tailwindcss/vite": "^4.1.12",
+		"@testing-library/react": "^16.3.0",
+		"@testing-library/user-event": "^14.6.1",
 		"@types/canvas-confetti": "^1.9.0",
 		"@types/cross-spawn": "^6.0.6",
 		"@types/hast": "^3.0.4",
@@ -200,5 +204,8 @@
 		"wait-on": "^9.0.1",
 		"webdriverio": "^9.30.0",
 		"yaml": "^2.9.0"
+	},
+	"optionalDependencies": {
+		"sherpa-onnx-win-x64": "1.13.5"
 	}
 }

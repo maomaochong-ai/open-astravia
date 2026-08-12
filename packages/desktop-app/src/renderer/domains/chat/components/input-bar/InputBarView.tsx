@@ -15,6 +15,7 @@ import { InputBarCapsule } from "./InputBarCapsule";
 import { InputBarDrawer } from "./InputBarDrawer";
 import { InputBarFooter } from "./InputBarFooter";
 import { InputBarTodoStatus } from "./InputBarTodoStatus";
+import { InputBarSpeechStatus } from "./InputBarSpeechStatus";
 import { PromptAttachmentLabels } from "./PromptAttachmentLabels";
 import { InputBarToolbar } from "./InputBarToolbar";
 import { InputEditor } from "./editor/InputEditor";
@@ -244,6 +245,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 							onSelectImages={() => void model.actions.handleSelectImages()}
 							onSend={model.actions.handleSend}
 							slashOpen={model.slashOpen}
+							speechInput={model.speechInput}
 						/>
 					</div>
 				</SessionDropZoneView>
@@ -257,6 +259,12 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 						{
 							id: "todo",
 							node: model.todo ? <InputBarTodoStatus todo={model.todo} /> : null,
+						},
+						{
+							id: "speech-input",
+							node: model.speechInput.statusText ? (
+								<InputBarSpeechStatus text={model.speechInput.statusText} />
+							) : null,
 						},
 					]}
 				/>

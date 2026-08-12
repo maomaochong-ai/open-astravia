@@ -102,6 +102,8 @@ export function renderContentMethodContext(methodIds: readonly ContentMethodId[]
 		"Apply this loaded guidance before calling content_creation_edit. Do not bypass it with a generic prompt.",
 		"For every Agent-authored video prompt, submit promptPlan instead of an unstructured prompt.",
 		"Prefer configure_video_shot over low-level configure_generation. Declare exact opening/ending and scene-reference requirements so the host selects first/last-frame or omni-reference control without degrading to animate-still.",
+		"For connect_nodes use sourceNodeId, targetNodeId, and optional edgeId. Never duplicate a configure_video_shot media source with connect_nodes, and never send low-level role inside high-level sources.",
+		"exactEnding means a hard last-frame image anchor and requires both keyframes; a stable final composition belongs in promptPlan.finalState with exactEnding false.",
 		"Image keyframe plans describe frozen visible states; video plans describe continuous state change. Never reuse one prompt across those node kinds.",
 		`promptPlan fields: ${VIDEO_PROMPT_PLAN_FIELD_GUIDANCE}.`,
 		"The plugin compiles the plan and rejects effective video prompt changes that omit the production method.",

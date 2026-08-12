@@ -299,6 +299,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		let lastStopReason: string | undefined;
 		let aborted = false;
 		let lastPetActionId: string | undefined;
+		let hasFinalPetBody = false;
 		const unsubscribe = runtime.subscribe(sessionId, (ev: SessionEvent) => {
 			const petPresentation = mapSessionEventToPetPresentation(ev);
 			const petActionId = petPresentation?.actionId;
@@ -307,25 +308,32 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				sendPetCommandToWindow({ type: "set-action", actionId: petActionId, source: "app" });
 			}
 			const petBubble = petPresentation?.bubble;
-			if (petBubble) {
+			const isRedundantGenericCompletion =
+				ev.type === "session.lifecycle" && ev.phase === "agent_end" && hasFinalPetBody;
+			if (petBubble && !isRedundantGenericCompletion) {
 				const command = createPetBubbleCommand(petBubble, sessionId);
 				if (command) sendPetCommandToWindow(command);
 			}
 
 			if (ev.type === "message.final") {
+				if (petBubble?.body) hasFinalPetBody = true;
 				const sr = (ev.message as unknown as { stopReason?: unknown }).stopReason;
 				if (typeof sr === "string") lastStopReason = sr;
 			} else if (ev.type === "error") {
 				lastStopReason = "error";
 			} else if (ev.type === "session.lifecycle") {
-				if (ev.phase === "aborted") {
+				if (ev.phase === "agent_start") {
+					hasFinalPetBody = false;
+				} else if (ev.phase === "aborted") {
 					aborted = true;
+					hasFinalPetBody = false;
 				} else if (ev.phase === "agent_end") {
 					const wasAborted = aborted || lastStopReason === "aborted";
 					const outcome = lastStopReason === "error" ? "error" : "completed";
 					const sessionPath = runtime.getSessionPath(sessionId);
 					lastStopReason = undefined;
 					aborted = false;
+					hasFinalPetBody = false;
 					// 中断不通知；正常完成 / 出错才通知（见 CONTEXT.md「agent 完成通知」）。
 					if (!wasAborted && sessionPath) {
 						void notify({ type: "agent-turn-complete", sessionPath, cwd, outcome });

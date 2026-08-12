@@ -20,18 +20,14 @@ import type {
 import {
 	compileVideoPromptPlan,
 	parseVideoPromptPlan,
-	VIDEO_PROMPT_PLAN_SCHEMA,
 } from "./generation-prompt-plan";
 import {
 	compileKeyframePromptPlan,
-	KEYFRAME_PROMPT_PLAN_SCHEMA,
 	parseKeyframePromptPlan,
 } from "./keyframe-prompt-plan";
 import { parseConfigureVideoShotOperation } from "./configure-video-shot-operation";
-import {
-	CONTENT_VIDEO_REFERENCE_SEMANTIC_ROLES,
-	CONTENT_VIDEO_SHOT_STRATEGIES,
-} from "./video-shot-plan";
+import { createContentAgentOperationSchema } from "./operation-schema";
+import { CONTENT_VIDEO_SHOT_STRATEGIES } from "./video-shot-plan";
 
 const NODE_KINDS: readonly ContentNodeKind[] = CONTENT_NODE_DEFINITIONS.map((definition) => definition.kind);
 const DELIVERABLE_TYPES: readonly ContentWorkflowDeliverable["type"][] = [
@@ -51,155 +47,7 @@ const CANONICAL_AGENT_TARGET_INPUTS = [
 
 type AgentTargetInput = (typeof CANONICAL_AGENT_TARGET_INPUTS)[number];
 
-export const CONTENT_AGENT_OPERATION_SCHEMA = {
-	type: "array",
-	minItems: 1,
-	maxItems: 50,
-	items: {
-		type: "object",
-		properties: {
-			type: {
-				type: "string",
-				description:
-					"Operation kind. Prefer configure_video_shot for Agent-authored video workflows; keep configure_generation for low-level or legacy role configuration.",
-				enum: [
-					"update_workflow",
-					"add_node",
-					"rename_node",
-					"set_node_purpose",
-					"update_node",
-					"duplicate_node",
-					"bind_assets",
-					"configure_generation",
-					"configure_video_shot",
-					"delete_node",
-					"connect_nodes",
-					"delete_edge",
-				],
-			},
-			id: { type: "string" },
-			kind: { type: "string", enum: NODE_KINDS },
-			afterNodeId: {
-				type: "string",
-				description: "Place a new node after this node. Prefer this or automatic placement over canvas coordinates.",
-			},
-			name: { type: "string" },
-			title: { type: "string" },
-			objective: { type: "string" },
-			purpose: { type: "string" },
-			assetIds: { type: "array", items: { type: "string" } },
-			generationIntent: {
-				type: "string",
-				enum: CONTENT_VIDEO_GENERATION_INTENTS,
-				description: "Required only for configure_generation. Classifies the requested video generation behavior.",
-			},
-			strategy: {
-				type: "string",
-				enum: CONTENT_VIDEO_SHOT_STRATEGIES,
-				description:
-					"High-level strategy for configure_video_shot. automatic selects from explicit control requirements and reference roles without silently degrading exact controls.",
-			},
-			controlRequirements: {
-				type: "object",
-				properties: {
-					exactOpening: { type: "boolean" },
-					exactEnding: { type: "boolean" },
-					requiresSceneReference: { type: "boolean" },
-				},
-				additionalProperties: false,
-			},
-			sources: {
-				type: "array",
-				description:
-					"Media sources for configure_generation. sourceNodeId identifies an asset/image-generator/video-generator source, never the target video-generator.",
-				items: {
-					type: "object",
-					properties: {
-						sourceNodeId: { type: "string" },
-						assetIds: { type: "array", items: { type: "string" } },
-						role: { type: "string", enum: CONTENT_GENERATION_SOURCE_ROLES },
-						alias: { type: "string" },
-						semanticRole: { type: "string", enum: CONTENT_VIDEO_REFERENCE_SEMANTIC_ROLES },
-						instruction: { type: "string" },
-					},
-					required: ["sourceNodeId"],
-					additionalProperties: false,
-				},
-			},
-			keyframes: {
-				type: "object",
-				properties: {
-					first: {
-						type: "object",
-						properties: {
-							nodeId: { type: "string" },
-							promptPlan: KEYFRAME_PROMPT_PLAN_SCHEMA,
-						},
-						required: ["nodeId", "promptPlan"],
-						additionalProperties: false,
-					},
-					last: {
-						type: "object",
-						properties: {
-							nodeId: { type: "string" },
-							promptPlan: KEYFRAME_PROMPT_PLAN_SCHEMA,
-						},
-						required: ["nodeId", "promptPlan"],
-						additionalProperties: false,
-					},
-				},
-				additionalProperties: false,
-			},
-			deliverables: {
-				type: "array",
-				items: {
-					type: "object",
-					properties: {
-						type: { type: "string", enum: DELIVERABLE_TYPES },
-						fromNode: { type: "string" },
-						description: { type: "string" },
-					},
-					required: ["type", "fromNode", "description"],
-					additionalProperties: false,
-				},
-			},
-			prompt: {
-				type: "string",
-				description:
-					"Raw prompt. For Agent-authored video prompts, prefer promptPlan; changed video prompts are checked against the production method.",
-			},
-			promptPlan: { anyOf: [VIDEO_PROMPT_PLAN_SCHEMA, KEYFRAME_PROMPT_PLAN_SCHEMA] },
-			aspectRatio: { type: "string" },
-			quality: { type: "string" },
-			resolution: { type: "string" },
-			duration: { type: "number" },
-			modelSelection: { type: "string", enum: ["automatic", "specific"] },
-			providerId: { type: "string" },
-			modelId: { type: "string" },
-			modeId: { type: "string" },
-			nodeId: {
-				type: "string",
-				description:
-					"Node operated on by update/rename/delete/duplicate. Legacy alias for configure_generation targetNodeId; prefer targetNodeId there.",
-			},
-			targetNodeId: {
-				type: "string",
-				description:
-					"For configure_generation/configure_video_shot: ID of the video-generator receiving the media. Never use an image source ID here.",
-			},
-			source: { type: "string" },
-			target: { type: "string" },
-			targetInput: {
-				type: "string",
-				description:
-					"Optional semantic target input for connect_nodes/bind_assets. Prefer promptSources, referenceImages, contentSources, or mediaSources. Legacy/internal names are normalized so the tool can return an actionable domain error instead of failing JSON Schema validation.",
-			},
-			edgeId: { type: "string" },
-		},
-		required: ["type"],
-		additionalProperties: false,
-	},
-} as const;
+export const CONTENT_AGENT_OPERATION_SCHEMA = createContentAgentOperationSchema(NODE_KINDS, DELIVERABLE_TYPES);
 
 interface PlacementFrame {
 	id: string;
@@ -217,8 +65,18 @@ export function parseContentAgentOperations(
 	const frames = project.graph.nodes.map(toPlacementFrame);
 	const nodeKinds = new Map(project.graph.nodes.map((node) => [node.id, node.kind]));
 	const nodeSnapshots = new Map(project.graph.nodes.map((node) => [node.id, structuredClone(node)]));
+	const promptSourcesByTarget = collectPromptSourcesByTarget(project, values);
 	return values.flatMap((value) => {
-		const parsed = parseOperation(value, project, frames, nodeKinds, nodeSnapshots, models);
+		if (isRedundantVideoMediaConnection(value, values, nodeKinds)) return [];
+		const parsed = parseOperation(
+			value,
+			project,
+			frames,
+			nodeKinds,
+			nodeSnapshots,
+			models,
+			promptSourcesByTarget,
+		);
 		return Array.isArray(parsed) ? parsed : [parsed];
 	});
 }
@@ -230,6 +88,7 @@ function parseOperation(
 	nodeKinds: Map<string, ContentNodeKind>,
 	nodeSnapshots: Map<string, ContentNode>,
 	models: readonly ContentModelDescriptor[],
+	promptSourcesByTarget: ReadonlyMap<string, readonly string[]>,
 ): ContentProjectCommand | ContentProjectCommand[] {
 	const operation = asRecord(value);
 	const type = requiredString(operation, "type");
@@ -323,8 +182,8 @@ function parseOperation(
 			};
 		}
 		case "connect_nodes": {
-			const source = requiredString(operation, "source");
-			const target = requiredString(operation, "target");
+			const source = requiredAliasedString(operation, "sourceNodeId", "source");
+			const target = requiredAliasedString(operation, "targetNodeId", "target");
 			const targetKind = nodeKinds.get(target);
 			const sourceKind = nodeKinds.get(source);
 			if (!sourceKind) throw new Error(`node not found: ${source}`);
@@ -332,14 +191,21 @@ function parseOperation(
 			const targetInput = resolveAgentTargetInput(targetKind, operation.targetInput);
 			if (targetKind === "video-generator" && sourceKind !== "prompt") {
 				throw new ContentGenerationIntentError(
-					"media inputs for generation nodes must use configure_generation so their business role is explicit",
+					"video media inputs must use configure_video_shot so strategy and business roles are explicit",
 					"generation-semantic-connection-required",
 					{
 						sourceNodeId: source,
 						targetNodeId: target,
-						requiredOperation: "configure_generation",
+						requiredOperation: "configure_video_shot",
 						suggestedSource: { sourceNodeId: source },
-						generationIntents: CONTENT_VIDEO_GENERATION_INTENTS,
+						suggestedOperation: {
+							type: "configure_video_shot",
+							targetNodeId: target,
+							strategy: "automatic",
+							sources: [{ sourceNodeId: source }],
+						},
+						requiredFields: ["promptPlan"],
+						strategies: CONTENT_VIDEO_SHOT_STRATEGIES,
 					},
 				);
 			}
@@ -363,7 +229,7 @@ function parseOperation(
 			}
 			return {
 				type: "edge.connect",
-				id: optionalString(operation, "id")?.trim() || crypto.randomUUID(),
+				id: optionalAliasedString(operation, "edgeId", "id")?.trim() || crypto.randomUUID(),
 				source,
 				target,
 				targetHandle: targetInput ? targetHandleForAgentInput(targetKind, targetInput) : undefined,
@@ -373,15 +239,19 @@ function parseOperation(
 			};
 		}
 		case "bind_assets": {
-			const source = requiredString(operation, "source");
-			const target = requiredString(operation, "target");
+			const source = requiredAliasedString(operation, "sourceNodeId", "source");
+			const target = requiredAliasedString(operation, "targetNodeId", "target");
 			if (nodeKinds.get(source) !== "asset") throw new Error("bind_assets source must be an asset node");
 			const targetKind = nodeKinds.get(target);
 			if (targetKind !== "image-generator") {
 				throw new ContentGenerationIntentError(
-					"video generator media inputs must use configure_generation",
+					"video generator media inputs must use configure_video_shot",
 					"generation-semantic-connection-required",
-					{ sourceNodeId: source, targetNodeId: target },
+					{
+						sourceNodeId: source,
+						targetNodeId: target,
+						requiredOperation: "configure_video_shot",
+					},
 				);
 			}
 			const targetInput = resolveAgentTargetInput(targetKind, operation.targetInput);
@@ -458,7 +328,13 @@ function parseOperation(
 			return { type: "node.configure-generation", targetNodeId, plan };
 		}
 		case "configure_video_shot":
-			return parseConfigureVideoShotOperation(operation, project, nodeSnapshots, models);
+			return parseConfigureVideoShotOperation(
+				operation,
+				project,
+				nodeSnapshots,
+				models,
+				promptSourcesByTarget.get(requiredString(operation, "targetNodeId")) ?? [],
+			);
 		case "delete_edge":
 			return { type: "edge.delete", edgeId: requiredString(operation, "edgeId") };
 		default:
@@ -483,6 +359,64 @@ function resolveAgentTargetInput(kind: ContentNodeKind, value: unknown): AgentTa
 		"target-input-unsupported",
 		{ targetKind: kind, receivedTargetInput: value, allowedTargetInputs: allowedTargetInputs(kind) },
 	);
+}
+
+function collectPromptSourcesByTarget(
+	project: ContentProjectDocument,
+	values: readonly unknown[],
+): Map<string, string[]> {
+	const result = new Map<string, string[]>();
+	const nodeKinds = new Map(project.graph.nodes.map((node) => [node.id, node.kind]));
+	for (const value of values) {
+		if (!isRecord(value) || value.type !== "add_node") continue;
+		if (typeof value.id !== "string" || typeof value.kind !== "string") continue;
+		if (NODE_KINDS.includes(value.kind as ContentNodeKind)) {
+			nodeKinds.set(value.id, value.kind as ContentNodeKind);
+		}
+	}
+	for (const edge of project.graph.edges) {
+		if (edge.targetHandle === "prompt" && nodeKinds.get(edge.source) === "prompt") {
+			appendUnique(result, edge.target, edge.source);
+		}
+	}
+	for (const value of values) {
+		if (!isRecord(value) || value.type !== "connect_nodes") continue;
+		const source = readAliasedString(value, "sourceNodeId", "source");
+		const target = readAliasedString(value, "targetNodeId", "target");
+		if (!source || !target || nodeKinds.get(source) !== "prompt") continue;
+		if (value.targetInput === undefined || ["promptSources", "prompt", "text"].includes(String(value.targetInput))) {
+			appendUnique(result, target, source);
+		}
+	}
+	return result;
+}
+
+function isRedundantVideoMediaConnection(
+	value: unknown,
+	values: readonly unknown[],
+	nodeKinds: ReadonlyMap<string, ContentNodeKind>,
+): boolean {
+	if (!isRecord(value) || value.type !== "connect_nodes") return false;
+	const source = readAliasedString(value, "sourceNodeId", "source");
+	const target = readAliasedString(value, "targetNodeId", "target");
+	if (!source || !target || nodeKinds.get(target) !== "video-generator" || nodeKinds.get(source) === "prompt") {
+		return false;
+	}
+	return values.some((candidate) => {
+		if (!isRecord(candidate) || candidate.type !== "configure_video_shot") return false;
+		if (candidate.targetNodeId !== target) return false;
+		const sources = Array.isArray(candidate.sources) ? candidate.sources : [];
+		if (sources.some((item) => isRecord(item) && item.sourceNodeId === source)) return true;
+		if (!isRecord(candidate.keyframes)) return false;
+		return [candidate.keyframes.first, candidate.keyframes.last]
+			.some((keyframe) => isRecord(keyframe) && keyframe.nodeId === source);
+	});
+}
+
+function appendUnique(map: Map<string, string[]>, key: string, value: string): void {
+	const values = map.get(key) ?? [];
+	if (!values.includes(value)) values.push(value);
+	map.set(key, values);
 }
 
 function targetHandleForAgentInput(kind: ContentNodeKind, input: AgentTargetInput): string {
@@ -697,8 +631,50 @@ function parseDeliverables(value: unknown): ContentWorkflowDeliverable[] | undef
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
-	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("operation must be an object");
+	if (!isRecord(value)) throw new Error("operation must be an object");
 	return value as Record<string, unknown>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function requiredAliasedString(
+	record: Record<string, unknown>,
+	canonicalKey: string,
+	legacyKey: string,
+): string {
+	const value = optionalAliasedString(record, canonicalKey, legacyKey);
+	if (!value?.trim()) throw new Error(`${canonicalKey} is required`);
+	return value.trim();
+}
+
+function optionalAliasedString(
+	record: Record<string, unknown>,
+	canonicalKey: string,
+	legacyKey: string,
+): string | undefined {
+	const canonical = optionalString(record, canonicalKey);
+	const legacy = optionalString(record, legacyKey);
+	if (canonical?.trim() && legacy?.trim() && canonical.trim() !== legacy.trim()) {
+		throw new ContentGenerationIntentError(
+			`${canonicalKey} and legacy ${legacyKey} identify different values`,
+			"operation-field-alias-ambiguous",
+			{ canonicalKey, legacyKey, canonicalValue: canonical, legacyValue: legacy },
+		);
+	}
+	return canonical ?? legacy;
+}
+
+function readAliasedString(
+	record: Readonly<Record<string, unknown>>,
+	canonicalKey: string,
+	legacyKey: string,
+): string | undefined {
+	const canonical = record[canonicalKey];
+	if (typeof canonical === "string" && canonical.trim()) return canonical.trim();
+	const legacy = record[legacyKey];
+	return typeof legacy === "string" && legacy.trim() ? legacy.trim() : undefined;
 }
 
 function requiredString(record: Record<string, unknown>, key: string): string {

@@ -95,7 +95,29 @@ function diagnoseGenerator(
 	models: readonly ContentModelDescriptor[],
 	diagnostics: ContentAgentDiagnostic[],
 ): void {
-	const prompt = resolveContentPrompt(listConnectedPromptSources(project, node.id), node.data);
+	const connectedPromptSources = listConnectedPromptSources(project, node.id);
+	const prompt = resolveContentPrompt(connectedPromptSources, node.data);
+	const composedPromptSourceIds = new Set(
+		node.data.promptDocument?.segments.flatMap((segment) =>
+			segment.type === "prompt-reference" ? [segment.sourceNodeId] : [],
+		) ?? [],
+	);
+	const shadowedPromptSourceIds = connectedPromptSources
+		.map(({ nodeId }) => nodeId)
+		.filter((nodeId) => !composedPromptSourceIds.has(nodeId));
+	if (node.kind === "video-generator" && contentPromptTextFromData(node.data) && shadowedPromptSourceIds.length > 0) {
+		diagnostics.push({
+			code: "connected-prompt-source-shadowed",
+			severity: "warning",
+			nodeId: node.id,
+			message: "Connected Prompt nodes are not part of the generator's effective prompt composition.",
+			retryable: true,
+			details: {
+				shadowedPromptSourceNodeIds: shadowedPromptSourceIds,
+				recommendedOperation: "configure_video_shot",
+			},
+		});
+	}
 	if (!prompt) {
 		diagnostics.push({
 			code: "generation-prompt-missing",

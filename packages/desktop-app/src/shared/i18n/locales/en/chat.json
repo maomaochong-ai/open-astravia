@@ -414,6 +414,22 @@
 			"attachFile": "Attach file reference",
 			"skills": "Skills / Scenes"
 		},
+		"speech": {
+			"actions": {
+				"start": "Start voice input",
+				"stop": "Stop voice input"
+			},
+			"states": {
+				"loading": "Loading offline speech model…",
+				"stopping": "Finishing speech recognition…"
+			},
+			"errors": {
+				"unsupported": "Voice input currently requires Windows x64",
+				"missing": "The speech model is missing from this installation. Reinstall the app",
+				"integrity": "The bundled speech model is incomplete. Reinstall the app",
+				"recognizer": "Speech recognition failed to start. Click to retry"
+			}
+		},
 		"contextMenu": {
 			"cut": "Cut",
 			"copy": "Copy",

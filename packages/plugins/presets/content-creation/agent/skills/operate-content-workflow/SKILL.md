@@ -12,7 +12,7 @@ Use the content-creation tools as the only control plane. Never edit `content-cr
 1. Call `content_creation_inspect` with the narrowest useful view: `summary`, `project`, `graph`, `readiness`, `capabilities`, `runtime`, or `diagnostics`.
 2. Convert the user's request into workflow objective, deliverables, node purposes, and typed connections. For video generation, first classify the business intent as text-only generation, still animation, first/last-frame interpolation, multi-reference guidance, or video transformation.
 3. Reuse existing nodes when their purpose matches. Give every new node a stable `id`, clear `name`, and concise `purpose`.
-4. Submit nodes, semantic connections, and asset bindings through `content_creation_edit` with the inspected revision. Configure video media through `configure_generation` so the model mode and every source role are committed atomically. The whole batch applies without user confirmation.
+4. Submit nodes, semantic connections, and asset bindings through `content_creation_edit` with the inspected revision. Configure Agent-authored video work through `configure_video_shot`; it owns video media edges, strategy selection, and role assignment atomically. Use low-level `configure_generation` only to preserve or repair an existing role configuration. The whole batch applies without user confirmation.
 5. Inspect `readiness` after structural edits and repair orphan, blocked, unbound, or incomplete paths before claiming the workflow is connected.
 6. Call `content_creation_run` with `action="prepare"` only after readiness has no blocking errors. Generation starts only when the user approves the plugin's global dialog.
 7. Use `content_creation_run` with `action="status"` or `action="cancel"` for an existing run.
@@ -27,9 +27,10 @@ Read [references/workflow-discovery-and-execution.md](references/workflow-discov
 - Describe topology with nodes, semantic connections, and optional `afterNodeId`; the edit service owns incremental canvas layout. Never invent canvas coordinates.
 - Prefer automatic model selection unless a capability requirement or user choice requires a specific model.
 - Never invent model support. Select only values returned by `content_creation_inspect(scope="capabilities")`.
-- Use semantic `targetInput` values for prompt, output, and other ordinary topology; never guess or send internal `sourceHandle` / `targetHandle` values.
-- Use `bind_assets` for concrete image-generator references. Use `configure_generation` for every video-generator media input; raw media `connect_nodes` and `bind_assets` operations are intentionally rejected there.
-- `text-to-video` takes no media; `animate-still` takes one image; `interpolate-frames` takes exactly two distinct images and requires real first/last-frame capability; `transform-video` takes one video; `reference-guided` accepts explicitly role-labelled image, video, or audio sources within model limits.
+- Use `sourceNodeId`, `targetNodeId`, and optional `edgeId` for ordinary connections, plus a semantic `targetInput`; never guess `source` / `target`, internal handles, or canvas fields.
+- Use `bind_assets` for concrete image-generator references. For video generators, declare every media source once inside `configure_video_shot`; never also send a raw media `connect_nodes` or `bind_assets` operation for the same relationship.
+- `strategy="automatic"` maps requirements to text-to-video, animate-still, first/last-frame, omni-reference, or video transformation. Do not send the low-level `role` field in high-level sources; use `semanticRole` only for omni-reference direction.
+- `exactEnding=true` means a hard last-frame image authority and therefore requires distinct `keyframes.first` and `keyframes.last`. A deliberate or stable ending described only in `promptPlan.finalState` is not an exact-ending requirement.
 - For an asset node, pass concrete `assetIds`. For an image/video generator node, reference its future output by `sourceNodeId` and do not pass `assetIds`.
 - Preserve node IDs and connections when making local edits.
 - Ask a focused question only when a missing decision materially changes the deliverable, cost, or reference-media requirements.
