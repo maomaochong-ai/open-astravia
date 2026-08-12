@@ -37,6 +37,9 @@ const IGNORED_TOP_LEVEL = new Set([
 
 const AUTHOR = { name: "Vetta", email: "design@vetta.local" };
 
+/** 画布正在查看旧版本的标记（插件侧读写，这里只需知道它不算历史内容）。 */
+const PEEK_FILE = "peek.json";
+
 /** 提交信息体里的机读尾注：变更文件清单在提交时就已知，存下来省得 log 时逐个算 diff。 */
 const TRAILER_PREFIX = "vetta-history: ";
 
@@ -194,6 +197,16 @@ async function restore(dir: string, sha: string, title: string): Promise<History
 	return commit(dir, title, sha);
 }
 
+/**
+ * 只把某个版本的内容写回工作区，**不提交**（画布 peek 用）。
+ *
+ * 与 restore 的差别只有「提交不提交」，但语义完全不同：peek 是可丢弃的临时态，
+ * 退出时用 HEAD 覆盖回去，历史里不该留下任何痕迹。
+ */
+async function checkoutOnly(dir: string, sha: string): Promise<void> {
+	await git.checkout({ fs, dir, gitdir: gitdirOf(dir), ref: sha, force: true, noUpdateHead: true });
+}
+
 /** 某个版本里一个文件的内容（预览、对比用）。 */
 async function show(dir: string, sha: string, filepath: string): Promise<string | null> {
 	try {
@@ -224,6 +237,8 @@ function packHistory(dir: string, out: string): number {
 			const rel = relative ? `${relative}/${entry.name}` : entry.name;
 			// 缩略图不进分享包：它是本机画布位图的副产品，收包方自己会重新截。
 			if (rel === "thumbs" || rel.startsWith("thumbs/")) continue;
+			// peek 标记是本机的临时态，不是历史的一部分。
+			if (rel === PEEK_FILE) continue;
 			if (entry.isDirectory()) walk(rel);
 			else if (entry.isFile()) entries[rel] = new Uint8Array(fs.readFileSync(join(gitdir, rel)));
 		}
@@ -285,6 +300,11 @@ async function dispatch(request: Request): Promise<unknown> {
 		case "unpack": {
 			if (!request.from) throw new Error("unpack requires from");
 			return { files: unpackHistory(request.dir, request.from) };
+		}
+		case "checkout": {
+			if (!request.sha) throw new Error("checkout requires sha");
+			await checkoutOnly(request.dir, request.sha);
+			return { checkedOut: request.sha };
 		}
 		case "show": {
 			if (!request.sha || !request.filepath) throw new Error("show requires sha and filepath");

@@ -46,6 +46,10 @@ import { useFrameRasters } from "./frame-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
 import { HistoryDrawer } from "../history/HistoryDrawer";
+import type { HistoryCommit } from "../history/history-client";
+import { PeekBanner } from "../history/PeekBanner";
+import { enterPeek, exitPeek, type PeekState } from "../history/peek";
+import { restoreDesign } from "../history/restore";
 import { NOTES_PANEL_INSET, NotesDrawer } from "./NotesDrawer";
 import { type NoteDraft, NotesLayer } from "./NotesLayer";
 import { selectionAfterHmr } from "./selection-ask";
@@ -289,6 +293,9 @@ export function DesignCanvas({
 	const [designDialogOpen, setDesignDialogOpen] = useState(false);
 	/** 版本历史抽屉。与备注抽屉分居两侧，可以同时开着。 */
 	const [historyOpen, setHistoryOpen] = useState(false);
+	/** 正在查看的旧版本。非 null 时画布上装的是那一版的内容，不是最新的。 */
+	const [peek, setPeek] = useState<PeekState | null>(null);
+	const [peekBusy, setPeekBusy] = useState(false);
 	const [menuAnchor, setMenuAnchor] = useState<FrameMenuAnchor | null>(null);
 	/** 正在就地重命名的 frame id（标题栏变输入框）。 */
 	const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -1473,7 +1480,41 @@ export function DesignCanvas({
 				/>
 			) : null}
 
-			{historyOpen ? <HistoryDrawer session={session} onClose={() => setHistoryOpen(false)} /> : null}
+			{peek ? (
+				<PeekBanner
+					title={peek.title}
+					busy={peekBusy}
+					onExit={() => {
+						setPeekBusy(true);
+						void exitPeek(getPluginCtx(), session)
+							.then(() => setPeek(null))
+							.finally(() => setPeekBusy(false));
+					}}
+					onRestore={() => {
+						setPeekBusy(true);
+						// 先退出再恢复：工作区此刻装的是旧版本，直接恢复会把它当成「现场」
+						// 封存下来，历史里多出一个内容等于旧版的假版本。
+						void exitPeek(getPluginCtx(), session)
+							.then(() => restoreDesign(getPluginCtx(), session.dirPath, { ...peek, timestamp: 0, files: [] }, { session }))
+							.then(() => setPeek(null))
+							.finally(() => setPeekBusy(false));
+					}}
+				/>
+			) : null}
+
+			{historyOpen ? (
+				<HistoryDrawer
+					session={session}
+					peekSha={peek?.sha ?? null}
+					onPeek={(target: HistoryCommit) => {
+						setPeekBusy(true);
+						void enterPeek(getPluginCtx(), session, target)
+							.then((state) => setPeek(state))
+							.finally(() => setPeekBusy(false));
+					}}
+					onClose={() => setHistoryOpen(false)}
+				/>
+			) : null}
 
 			<ControlBar
 				tool={tool}

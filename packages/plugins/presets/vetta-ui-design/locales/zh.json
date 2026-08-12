@@ -284,5 +284,12 @@
 	"history.time.minutes": "{{count}} 分钟前",
 	"history.time.hours": "{{count}} 小时前",
 	"tool.vetd_history": "设计版本历史",
-	"tool.vetd_restore": "恢复设计版本"
+	"tool.vetd_restore": "恢复设计版本",
+	"history.peek": "查看",
+	"history.peeking": "查看中",
+	"history.peek.banner": "正在查看旧版本",
+	"history.peek.readonly": "此时的修改不会被保存",
+	"history.peek.keep": "就恢复到这一版",
+	"history.peek.exit": "退出查看",
+	"history.peek.exiting": "退出中…"
 }

@@ -24,6 +24,7 @@ import type { DesignSession } from "../src/vetd/design-session";
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const session = { dirPath: "/w/a.vetd" } as unknown as DesignSession;
+const onPeek = vi.fn();
 
 let host: HTMLDivElement;
 let root: Root;
@@ -38,7 +39,7 @@ function commits() {
 
 async function render(): Promise<void> {
 	await act(async () => {
-		root.render(<HistoryDrawer session={session} onClose={() => {}} />);
+		root.render(<HistoryDrawer session={session} peekSha={null} onPeek={onPeek} onClose={() => {}} />);
 	});
 }
 
@@ -59,6 +60,7 @@ beforeEach(() => {
 	listHistory.mockReset().mockResolvedValue(commits());
 	restoreDesign.mockReset().mockResolvedValue({ restored: null, stashed: null, reinstalled: false });
 	readDir.mockReset().mockRejectedValue(new Error("ENOENT"));
+	onPeek.mockReset();
 });
 
 afterEach(() => {
@@ -101,6 +103,17 @@ describe("HistoryDrawer", () => {
 		});
 		expect(restoreDesign).toHaveBeenCalledTimes(1);
 		expect(restoreDesign.mock.calls[0]?.[2]).toMatchObject({ sha: "c2" });
+	});
+
+	it("查看是另一个按钮，不写历史", async () => {
+		await render();
+		await act(async () => {
+			buttonsWithText("history.peek")[0]?.click();
+		});
+		// 查看不该走恢复那条路：它是可丢弃的临时态。
+		expect(onPeek).toHaveBeenCalledTimes(1);
+		expect(onPeek.mock.calls[0]?.[0]).toMatchObject({ sha: "c2" });
+		expect(restoreDesign).not.toHaveBeenCalled();
 	});
 
 	it("取消确认就什么都不做", async () => {

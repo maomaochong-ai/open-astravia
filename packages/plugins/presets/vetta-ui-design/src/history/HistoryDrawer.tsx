@@ -53,10 +53,13 @@ function useRelativeTime(): (timestamp: number) => string {
 
 interface HistoryDrawerProps {
 	session: DesignSession;
+	/** 正在查看的版本，画布此刻装的就是它。 */
+	peekSha: string | null;
+	onPeek(target: HistoryCommit): void;
 	onClose(): void;
 }
 
-export function HistoryDrawer({ session, onClose }: HistoryDrawerProps) {
+export function HistoryDrawer({ session, peekSha, onPeek, onClose }: HistoryDrawerProps) {
 	const { t } = useTranslation();
 	const relativeTime = useRelativeTime();
 	const [entries, setEntries] = useState<HistoryEntry[] | null>(null);
@@ -157,14 +160,29 @@ export function HistoryDrawer({ session, onClose }: HistoryDrawerProps) {
 							</div>
 						) : null}
 						{index > 0 ? (
-							<button
-								type="button"
-								disabled={busy !== null}
-								onClick={() => setConfirming(entry)}
-								className="mt-1.5 rounded-lg border border-border/70 px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-45"
-							>
-								{busy === entry.sha ? t("history.restoring") : t("history.restore")}
-							</button>
+							<div className="flex gap-1 pt-1.5">
+								{/* 先看后决定：查看是可丢弃的临时态，恢复才写进历史。 */}
+								<button
+									type="button"
+									disabled={busy !== null}
+									onClick={() => onPeek(entry)}
+									className={`rounded-lg border px-2 py-1 text-[10px] font-medium transition-colors disabled:opacity-45 ${
+										peekSha === entry.sha
+											? "border-primary/60 bg-primary/10 text-primary"
+											: "border-border/70 text-foreground hover:bg-accent"
+									}`}
+								>
+									{peekSha === entry.sha ? t("history.peeking") : t("history.peek")}
+								</button>
+								<button
+									type="button"
+									disabled={busy !== null}
+									onClick={() => setConfirming(entry)}
+									className="rounded-lg border border-border/70 px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-45"
+								>
+									{busy === entry.sha ? t("history.restoring") : t("history.restore")}
+								</button>
+							</div>
 						) : null}
 					</article>
 				))}

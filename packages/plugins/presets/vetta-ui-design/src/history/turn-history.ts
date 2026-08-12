@@ -9,6 +9,7 @@ import type { Disposable, PluginContext } from "@vetta-org/plugin-sdk";
 import { getCanvasController } from "../canvas/design-runtime";
 import { pickDesignPaths } from "../vetd/discover";
 import { commitHistory } from "./history-client";
+import { readPeekState } from "./peek";
 import { captureThumbnails, thumbFrameIds } from "./history-thumbs";
 import { carryOverTitle, commitTitleFromPrompt } from "./turn-title";
 
@@ -41,6 +42,9 @@ function canvasFrameIdsFor(designDir: string): string[] {
 export async function commitTurn(ctx: PluginContext, cwd: string, title: string): Promise<void> {
 	for (const designDir of await designsUnder(ctx, cwd)) {
 		try {
+			// 正在被查看的设计，工作区里装的是一份旧版本。此刻提交会把旧版本记成新
+			// 版本，历史从此说谎。跳过它——查看模式本来就是只读的。
+			if (await readPeekState(ctx, designDir)) continue;
 			const commit = await commitHistory(ctx, designDir, title);
 			if (!commit) continue;
 			await captureThumbnails(ctx.fs, designDir, commit.sha, thumbFrameIds(commit.files, canvasFrameIdsFor(designDir)));

@@ -284,5 +284,12 @@
 	"history.time.minutes": "{{count}} min ago",
 	"history.time.hours": "{{count}} h ago",
 	"tool.vetd_history": "Design history",
-	"tool.vetd_restore": "Restore design version"
+	"tool.vetd_restore": "Restore design version",
+	"history.peek": "Peek",
+	"history.peeking": "Peeking",
+	"history.peek.banner": "Viewing an older version",
+	"history.peek.readonly": "changes made now are not kept",
+	"history.peek.keep": "Restore this one",
+	"history.peek.exit": "Exit",
+	"history.peek.exiting": "Exiting…"
 }

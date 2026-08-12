@@ -99,7 +99,7 @@ export class DesignSession {
 		// 版本历史在这里接上（ADR-0069）。放在 reconcile 之后：基础版本应该包含
 		// 已经收敛的 design.json，而不是打开瞬间的中间态。不等它——历史不可用
 		// 时设计照常打开。
-		void bootstrapHistory(this.ctx, this.dirPath);
+		void bootstrapHistory(this.ctx, this);
 		this.lastThemeCss = await this.readThemeCss();
 		const schedule = () => this.scheduleReconcile();
 		this.watchHandles.push(this.ctx.fs.watchDirectory(this.dirPath, schedule));
