@@ -32,6 +32,7 @@ import type {
 	ImportedContentAsset,
 	ImportedContentReference,
 } from "../generation/types";
+import type { ContentImageEditRequest } from "../image-edit/image-edit-document";
 import { AlignmentGuidesLayer, type AlignmentGuidesLayerHandle } from "./AlignmentGuidesLayer";
 import { clampCanvasOverlayPosition } from "./overlay-position";
 import { shouldOpenConnectionCreateMenu } from "./connection-drop-menu";
@@ -85,6 +86,7 @@ interface GraphWorkspaceProps {
 	models: readonly ContentModelDescriptor[];
 	onDispatch: (commands: readonly ContentProjectCommand[]) => Promise<void>;
 	onRunNode: (nodeId: string) => Promise<void>;
+	onRunImageEdit?: (nodeId: string, edit: ContentImageEditRequest) => Promise<void>;
 	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 	onSelectedNodeIdsChange: (nodeIds: readonly string[]) => void;
@@ -100,6 +102,7 @@ export function GraphWorkspace({
 	models,
 	onDispatch,
 	onRunNode,
+	onRunImageEdit = async () => undefined,
 	onImportAssets,
 	onImportReferences,
 	onSelectedNodeIdsChange,
@@ -242,6 +245,7 @@ export function GraphWorkspace({
 				void onDispatch([{ type: "node.resize", nodeId, position, width, height }]);
 			},
 			onRunNode,
+			onRunImageEdit,
 			onImportAssets,
 			onImportReferences,
 			onSetKeyframeSource: (nodeId, slotId, assetId, sourceNodeId) =>
@@ -271,7 +275,7 @@ export function GraphWorkspace({
 					},
 				]),
 		}),
-		[applyNodeSelection, onDispatch, onImportAssets, onImportReferences, onRunNode, project],
+		[applyNodeSelection, onDispatch, onImportAssets, onImportReferences, onRunImageEdit, onRunNode, project],
 	);
 	const synchronizedNodes = useMemo(
 		() => toContentFlowNodes(project, models, actions, assetPreviewUrls),

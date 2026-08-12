@@ -35,6 +35,71 @@ describe("ContentGenerationService", () => {
 		});
 	});
 
+	it("passes the edit source and spatial instructions to an image-to-image provider", async () => {
+		const fixture = await createFixture();
+		await fixture.workspace.dispatch("C:/project", [
+			{
+				type: "asset.add",
+				asset: {
+					id: "source-image",
+					blobId: "source-blob",
+					kind: "image",
+					name: "source.png",
+					mimeType: "image/png",
+					createdAt: new Date().toISOString(),
+				},
+			},
+		]);
+		await fixture.service.runImageEdit("C:/project", "image", {
+			sourceAssetId: "source-image",
+			providerId: "mock",
+			modelId: "mock-image",
+			regions: [{
+				id: "region-1",
+				kind: "rectangle",
+				points: [{ x: 0.1, y: 0.1 }, { x: 0.5, y: 0.5 }],
+				bounds: { x: 0.1, y: 0.1, w: 0.4, h: 0.4 },
+				instruction: "make this area brighter",
+			}],
+		});
+		expect(fixture.workspace.getSnapshot("C:/project")?.graph.nodes[0]?.data).not.toHaveProperty("modeId");
+		expect(fixture.generate).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				modeId: "image-to-image",
+				references: [expect.objectContaining({ source: { type: "plugin-blob", blobId: "source-blob" } })],
+				prompt: expect.stringContaining("make this area brighter"),
+			}),
+			expect.anything(),
+		);
+	});
+
+	it("keeps ordinary node runs isolated from the UI image edit request", async () => {
+		const fixture = await createFixture();
+		await fixture.workspace.dispatch("C:/project", [{
+			type: "asset.add",
+			asset: {
+				id: "source-image",
+				blobId: "source-blob",
+				kind: "image",
+				name: "source.png",
+				mimeType: "image/png",
+				createdAt: new Date().toISOString(),
+			},
+		}]);
+		await fixture.service.runImageEdit("C:/project", "image", {
+			sourceAssetId: "source-image",
+			providerId: "mock",
+			modelId: "mock-image",
+			regions: [{ id: "region", kind: "text", points: [{ x: 0.5, y: 0.5 }], instruction: "remove object" }],
+		});
+		fixture.generate.mockClear();
+		await fixture.service.runNode("C:/project", "image");
+		expect(fixture.generate).toHaveBeenCalledWith(
+			expect.objectContaining({ modeId: "text-to-image", prompt: "A small lighthouse", references: [] }),
+			expect.anything(),
+		);
+	});
+
 	it("marks the job and node as failed when the provider rejects", async () => {
 		const fixture = await createFixture();
 		fixture.generate.mockRejectedValueOnce(new Error("provider unavailable"));

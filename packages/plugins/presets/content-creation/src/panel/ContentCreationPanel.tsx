@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ContentProjectCommand } from "../project/commands";
 import type { ContentProjectDocument } from "../project/types";
 import type { ImportedContentAsset, ImportedContentReference } from "../generation/types";
+import type { ContentImageEditRequest } from "../image-edit/image-edit-document";
 import type { ContentCreationPluginRuntime } from "../plugin/runtime";
 import {
 	ContentCreationRuntimeProvider,
@@ -168,6 +169,22 @@ function ContentCreationPanelContent() {
 		},
 		[cwd, generation, runtime, t],
 	);
+	const runImageEdit = useCallback(
+		async (nodeId: string, edit: ContentImageEditRequest) => {
+			if (!cwd) {
+				setError(t("error.outputWorkspaceRequired"));
+				runtime.notifyError(t("error.outputWorkspaceRequired"), new Error("workspace is required"));
+				return;
+			}
+			try {
+				setError(null);
+				await generation.runImageEdit(cwd, nodeId, edit);
+			} catch (generationError) {
+				console.error("[plugin:content-creation] image editing failed", generationError);
+			}
+		},
+		[cwd, generation, runtime, t],
+	);
 	const importReferences = useCallback(
 		async (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => {
 			try {
@@ -216,6 +233,7 @@ function ContentCreationPanelContent() {
 					registerShortcutScope={runtime.registerShortcutScope}
 					onDispatch={dispatch}
 					onRunNode={runNode}
+					onRunImageEdit={runImageEdit}
 					onImportAssets={importAssets}
 					onImportReferences={importReferences}
 					onSelectedNodeIdsChange={setSelectedNodeIds}

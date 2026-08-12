@@ -1,4 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
+import { Button } from "@vetta/ui";
 import { useEffect, useMemo, useState } from "react";
 import {
 	assignContentReferenceSlots,
@@ -241,7 +242,8 @@ export function ContentGeneratorComposer({
 		: null;
 
 	return (
-		<NodeEditorPanel
+		<>
+			<NodeEditorPanel
 			className="min-w-0 max-w-[calc(100vw-32px)] rounded-2xl border border-border/70 bg-card/95 p-2.5 text-card-foreground shadow-xl backdrop-blur-md"
 			style={{
 				width: "fit-content",
@@ -371,7 +373,8 @@ export function ContentGeneratorComposer({
 				}}
 				onSubmit={submit}
 			/>
-		</NodeEditorPanel>
+			</NodeEditorPanel>
+		</>
 	);
 }
 

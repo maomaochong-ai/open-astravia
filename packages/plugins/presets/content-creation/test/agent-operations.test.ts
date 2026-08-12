@@ -163,6 +163,9 @@ describe("content agent operations", () => {
 		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("targetHandle");
 		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("x");
 		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("y");
+		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("imageEdit");
+		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("editRegions");
+		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties.type.enum).not.toContain("edit_image");
 	});
 
 	it("normalizes legacy and internal target input names after tool validation", () => {
