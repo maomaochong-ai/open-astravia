@@ -356,6 +356,41 @@ describe("GraphWorkspace mouse interactions", () => {
 		expect((selectAllScope?.enabled as () => boolean)()).toBe(false);
 	});
 
+	it("registers scoped undo and redo shortcuts outside editable fields", () => {
+		const project = createContentProject("C:\\project");
+		const onUndo = vi.fn(async () => undefined);
+		const onRedo = vi.fn(async () => undefined);
+		render(
+			<GraphWorkspace
+				project={project}
+				assetPreviewUrls={new Map()}
+				models={[]}
+				onDispatch={async () => undefined}
+				history={{ canUndo: true, canRedo: true }}
+				onUndo={onUndo}
+				onRedo={onRedo}
+				onRunNode={async () => undefined}
+				onImportAssets={async () => undefined}
+				onImportReferences={async () => undefined}
+				onSelectedNodeIdsChange={() => undefined}
+				onOpenSettings={() => undefined}
+			/>,
+		);
+
+		const historyScope = shortcutScopeCapture.options.find((options) => options.id === "graph-history");
+		expect(historyScope).toBeDefined();
+		const bindings = historyScope?.bindings as Array<Record<string, unknown>>;
+		expect(bindings.map(({ key, when }) => ({ key, when }))).toEqual([
+			{ key: "mod+z", when: "not-editable" },
+			{ key: "mod+shift+z", when: "not-editable" },
+			{ key: "mod+y", when: "not-editable" },
+		]);
+		(bindings[0]?.run as (event: KeyboardEvent) => void)({} as KeyboardEvent);
+		(bindings[1]?.run as (event: KeyboardEvent) => void)({} as KeyboardEvent);
+		expect(onUndo).toHaveBeenCalledOnce();
+		expect(onRedo).toHaveBeenCalledOnce();
+	});
+
 	it("commits box selection once after the drag instead of rebuilding nodes on every move", async () => {
 		const project = createContentProject("C:\\project");
 		project.graph.nodes = [

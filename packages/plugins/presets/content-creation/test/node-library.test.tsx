@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { CONTENT_NODE_DEFINITIONS } from "../src/node/definitions";
-import { EmptyCanvasStarter, NodeDefinitionGrid, NodeLibrary } from "../src/canvas/NodeLibrary";
+import { CanvasDock } from "../src/canvas/CanvasDock";
+import { EmptyCanvasStarter, NodeDefinitionGrid } from "../src/canvas/NodeLibrary";
 
 vi.mock("@vetta-org/plugin-sdk", () => ({
 	useTranslation: () => ({ locale: "en", t: (key: string) => key }),
@@ -54,11 +55,21 @@ describe("node creation surfaces", () => {
 
 	it("renders mutually exclusive select and pan tools in the canvas dock", () => {
 		const markup = renderToStaticMarkup(
-			<NodeLibrary activeTool="pan" onAdd={() => undefined} onToolChange={() => undefined} />,
+			<CanvasDock
+				activeTool="pan"
+				canUndo={false}
+				canRedo={false}
+				onUndo={() => undefined}
+				onRedo={() => undefined}
+				onAdd={() => undefined}
+				onToolChange={() => undefined}
+			/>,
 		);
 
 		expect(markup).toContain("canvas.tool.select");
 		expect(markup).toContain("canvas.tool.pan");
+		expect(markup).toContain("action.undo");
+		expect(markup).toContain("action.redo");
 		expect(markup).toContain("icon-[lucide--mouse-pointer-2]");
 		expect(markup).toContain("icon-[lucide--hand]");
 		expect(markup.match(/aria-pressed="true"/g)).toHaveLength(1);

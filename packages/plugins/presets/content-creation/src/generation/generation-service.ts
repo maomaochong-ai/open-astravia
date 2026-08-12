@@ -23,6 +23,7 @@ import {
 	createContentPromptDocument,
 } from "../node/prompt-document";
 import type { ContentCreationWorkspace } from "../project/workspace";
+import type { ContentHistoryMetadata } from "../project/history";
 import { joinContentPath } from "../shared/path";
 import {
 	assignContentReferenceSlots,
@@ -96,8 +97,9 @@ export class ContentGenerationService {
 		cwd: string | null,
 		nodeId: string,
 		files: readonly ImportedContentAsset[],
+		history?: ContentHistoryMetadata,
 	): Promise<ContentProjectDocument> {
-		return (await this.assetImports.import(cwd, files, { targetNodeId: nodeId })).project;
+		return (await this.assetImports.import(cwd, files, { targetNodeId: nodeId, history })).project;
 	}
 
 	async importReferences(
@@ -281,19 +283,26 @@ export class ContentGenerationService {
 		const jobId = crypto.randomUUID();
 		const assetId = crypto.randomUUID();
 
-		await this.workspace.dispatch(cwd, [
-			...(edit
-				? []
-				: [{
-						type: "node.update" as const,
-						nodeId,
-						data: { providerId: model.providerId, modelId: model.modelId, modeId: mode.id },
-					}]),
-			{
-				type: "job.start",
-				job: { id: jobId, nodeId, providerId: model.providerId, modelId: model.modelId, outputAssetId: assetId },
-			},
-		]);
+		await this.workspace.dispatch(
+			cwd,
+			[
+				...(edit
+					? []
+					: [
+							{
+								type: "node.update" as const,
+								nodeId,
+								data: { providerId: model.providerId, modelId: model.modelId, modeId: mode.id },
+							},
+						]),
+				{
+					type: "job.start",
+					job: { id: jobId, nodeId, providerId: model.providerId, modelId: model.modelId, outputAssetId: assetId },
+				},
+			],
+			undefined,
+			{ record: false },
+		);
 		this.activeJobIds.add(jobId);
 		try {
 			const references = await this.resolveReferences(cwd, prepared.candidates, assignment.assignedSlotIds);

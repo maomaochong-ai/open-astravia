@@ -1,7 +1,8 @@
 import type { ContentNodeKind } from "../project/types";
 import { EdgeCanvasContextMenu, NodeCanvasContextMenu } from "./CanvasContextMenu";
+import { CanvasDock } from "./CanvasDock";
 import { ConnectionCreateMenu } from "./ConnectionCreateMenu";
-import { CanvasCreateMenu, EmptyCanvasStarter, NodeLibrary } from "./NodeLibrary";
+import { CanvasCreateMenu, EmptyCanvasStarter } from "./NodeLibrary";
 import type { CanvasTool } from "./canvas-tools";
 
 export interface PendingConnectionMenu {
@@ -30,6 +31,10 @@ interface GraphOverlayLayerProps {
 	pendingMenu: PendingConnectionMenu | null;
 	contextMenu: CanvasContextMenuState | null;
 	contextNodeLocked: boolean;
+	canUndo: boolean;
+	canRedo: boolean;
+	onUndo: () => void;
+	onRedo: () => void;
 	onAddNode: (kind: ContentNodeKind, center?: { x: number; y: number }) => void;
 	onToolChange: (tool: CanvasTool) => void;
 	onCreateConnectedNode: (kind: ContentNodeKind) => void;
@@ -49,6 +54,10 @@ export function GraphOverlayLayer({
 	pendingMenu,
 	contextMenu,
 	contextNodeLocked,
+	canUndo,
+	canRedo,
+	onUndo,
+	onRedo,
 	onAddNode,
 	onToolChange,
 	onCreateConnectedNode,
@@ -63,7 +72,15 @@ export function GraphOverlayLayer({
 	return (
 		<>
 			{nodeCount === 0 ? <EmptyCanvasStarter onAdd={onAddNode} /> : null}
-			<NodeLibrary activeTool={activeTool} onAdd={onAddNode} onToolChange={onToolChange} />
+			<CanvasDock
+				activeTool={activeTool}
+				canUndo={canUndo}
+				canRedo={canRedo}
+				onUndo={onUndo}
+				onRedo={onRedo}
+				onAdd={onAddNode}
+				onToolChange={onToolChange}
+			/>
 			{canvasMenu ? (
 				<CanvasCreateMenu
 					left={canvasMenu.left}

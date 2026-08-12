@@ -70,6 +70,18 @@ const TEST_MODELS: readonly ContentModelDescriptor[] = [
 ];
 
 describe("ContentCreationAgentService", () => {
+	it("records one undoable history frame for an atomic Agent edit", async () => {
+		const { agent, workspace } = createAgentHarness();
+		await agent.edit("C:/project", [
+			{ type: "add_node", id: "prompt", kind: "prompt", prompt: "Campaign concept" },
+			{ type: "add_node", id: "output", kind: "output" },
+			{ type: "connect_nodes", source: "prompt", target: "output", targetInput: "contentSources" },
+		]);
+
+		expect(workspace.getHistoryView("C:/project").undoAction).toEqual({ kind: "agent.edit", count: 3 });
+		expect((await workspace.undo("C:/project")).graph.nodes).toHaveLength(0);
+	});
+
 	it("rejects weak Agent-authored video prompts before committing the edit", async () => {
 		const { agent } = createAgentHarness();
 

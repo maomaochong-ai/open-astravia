@@ -3,6 +3,17 @@ import { applyContentProjectCommands, ContentProjectCommandError } from "../src/
 import { createContentProject } from "../src/project/types";
 
 describe("applyContentProjectCommands", () => {
+	it("rejects deleting a node with an active generation job", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "job.start", job: { id: "job", nodeId: "image", providerId: "provider", modelId: "model", outputAssetId: "asset" } },
+		]);
+
+		expect(() => applyContentProjectCommands(project, [{ type: "node.delete", nodeId: "image" }])).toThrowError(
+			ContentProjectCommandError,
+		);
+	});
+
 	it("applies a command batch atomically and increments one revision", () => {
 		const project = createContentProject("C:/project", "2026-01-01T00:00:00.000Z");
 		const next = applyContentProjectCommands(
