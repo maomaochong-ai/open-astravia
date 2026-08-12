@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import type { ActionRpcRuntime } from "@vetta/action-rpc";
 import { ACTION_RPC_ENDPOINT_FILE_ENV } from "@vetta/action-rpc";
 import type { Api, Model } from "@vetta/ai";
+import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { CatalogRoutedRuntimeSessionAccessResolver, RuntimeHost } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -167,7 +168,10 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 			},
 		});
 		const sessionCatalog = new DesktopRuntimeSessionCatalog({
-			resolveRoots: () => [{ cwd: workspace, sessionDir: join(workspace, ".vetta", "sessions") }],
+			resolveRoots: () => [
+				{ cwd: workspace, sessionDir: codingAgentSessionShardPath(workspace) },
+				{ cwd: workspace, sessionDir: join(workspace, ".vetta", "sessions") },
+			],
 		});
 		runtime = new RuntimeHost({
 			sessionBackend: pool,

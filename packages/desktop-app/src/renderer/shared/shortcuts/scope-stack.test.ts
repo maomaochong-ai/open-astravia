@@ -1,9 +1,10 @@
+// @vitest-environment jsdom
+
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { matchesShortcut } from "../lib/platform";
 import { __setShortcutScopeStackForTests, ShortcutScopeStack } from "./scope-stack";
 
 function fakeKeyEvent(key: string): KeyboardEvent {
-	// Minimal stand-in for node vitest (no jsdom).
 	const event = {
 		key,
 		metaKey: false,
