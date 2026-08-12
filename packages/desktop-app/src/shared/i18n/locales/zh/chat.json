@@ -573,7 +573,8 @@
 		"progressGroup": {
 			"fallbackTitle": "正在处理",
 			"genericDone": "完成了 {{count}} 步操作",
-			"genericRunning": "正在处理…"
+			"genericRunning": "正在处理…",
+			"thinking": "正在思考"
 		},
 		"toolCallGroup": {
 			"completed": "{{count}} 个工具调用完成",

@@ -573,7 +573,8 @@
 		"progressGroup": {
 			"fallbackTitle": "Working",
 			"genericDone": "Completed {{count}} steps",
-			"genericRunning": "Working on it"
+			"genericRunning": "Working on it",
+			"thinking": "Thinking"
 		},
 		"toolCallGroup": {
 			"completed": "{{count}} tool calls completed",
