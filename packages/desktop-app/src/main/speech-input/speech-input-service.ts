@@ -9,11 +9,15 @@ import { SpeechModelManager } from "./model-manager.js";
 import { isSpeechHostEvent, type SpeechHostCommand, type SpeechHostEvent } from "./protocol.js";
 
 const log = getAppLogger("speech-input");
-const HOST_START_TIMEOUT_MS = 15_000;
+const HOST_SPAWN_TIMEOUT_MS = 10_000;
+const HOST_INITIALIZE_TIMEOUT_MS = 60_000;
 
 interface SpeechHostChild {
 	on(event: "message", listener: (message: unknown) => void): unknown;
 	on(event: "exit", listener: (code: number) => void): unknown;
+	on(event: "spawn", listener: () => void): unknown;
+	readonly stderr?: NodeJS.ReadableStream | null;
+	readonly stdout?: NodeJS.ReadableStream | null;
 	postMessage(message: SpeechHostCommand): void;
 	kill(): boolean;
 }
@@ -22,6 +26,12 @@ interface Deferred {
 	promise: Promise<void>;
 	resolve: () => void;
 	reject: (error: Error) => void;
+}
+
+interface SpeechHostDiagnostic {
+	phase: "forking" | "spawned" | "ready" | "initializing";
+	stdout: string;
+	stderr: string;
 }
 
 function createDeferred(): Deferred {
@@ -53,6 +63,8 @@ export class SpeechInputService {
 	private child: SpeechHostChild | null = null;
 	private initialized = false;
 	private initializeWaiter: Deferred | null = null;
+	private initializeStartedAt = 0;
+	private hostDiagnostic: SpeechHostDiagnostic | null = null;
 	private sessionWaiter: Deferred | null = null;
 	private activeSessionId: string | null = null;
 	private transientStatus: SpeechInputStatus | null = null;
@@ -62,9 +74,14 @@ export class SpeechInputService {
 		this.forkChild =
 			options.forkChild ??
 			(() =>
-				utilityProcess.fork(fileURLToPath(new URL("./speech-input-host.js", import.meta.url)), [], {
-					serviceName: "vetta-speech-input-host",
-				}));
+				utilityProcess.fork(
+					fileURLToPath(new URL(/* @vite-ignore */ "./speech-input-host.js", import.meta.url)),
+					[],
+					{
+						serviceName: "vetta-speech-input-host",
+						stdio: ["ignore", "pipe", "pipe"],
+					},
+				));
 		this.modelManager =
 			options.modelManager ??
 			new SpeechModelManager({
@@ -136,23 +153,34 @@ export class SpeechInputService {
 
 		const child = this.forkChild();
 		this.child = child;
+		this.initializeStartedAt = Date.now();
+		this.hostDiagnostic = { phase: "forking", stdout: "", stderr: "" };
+		this.captureHostOutput(child, "stdout");
+		this.captureHostOutput(child, "stderr");
+		child.on("spawn", () => {
+			if (this.hostDiagnostic) this.hostDiagnostic.phase = "spawned";
+		});
 		child.on("message", (message) => this.handleHostMessage(message));
 		child.on("exit", (code) => this.handleHostExit(code));
 		const waiter = createDeferred();
 		this.initializeWaiter = waiter;
-		child.postMessage({
-			type: "initialize",
-			model: resolveSpeechModelPaths(this.modelManager.modelDirectory),
-			sampleRate: WINDOWS_ZIPFORMER_MODEL.sampleRate,
-		});
 
 		const timeout = setTimeout(() => {
 			if (this.initializeWaiter !== waiter) return;
-			waiter.reject(new Error("Speech recognition host initialization timed out"));
+			const diagnostic = this.hostDiagnostic;
+			log.error("speech recognition host initialization timed out", {
+				durationMs: Date.now() - this.initializeStartedAt,
+				phase: diagnostic?.phase,
+				stdout: diagnostic?.stdout,
+				stderr: diagnostic?.stderr,
+			});
+			waiter.reject(
+				new Error(`Speech recognition host initialization timed out (phase=${diagnostic?.phase ?? "unknown"})`),
+			);
 			this.initializeWaiter = null;
 			this.child?.kill();
 			this.child = null;
-		}, HOST_START_TIMEOUT_MS);
+		}, HOST_SPAWN_TIMEOUT_MS + HOST_INITIALIZE_TIMEOUT_MS);
 		try {
 			await waiter.promise;
 		} finally {
@@ -163,8 +191,22 @@ export class SpeechInputService {
 	private handleHostMessage(message: unknown): void {
 		if (!isSpeechHostEvent(message)) return;
 		switch (message.type) {
+			case "ready":
+				if (this.hostDiagnostic) this.hostDiagnostic.phase = "ready";
+				this.requireChild().postMessage({
+					type: "initialize",
+					model: resolveSpeechModelPaths(this.modelManager.modelDirectory),
+					sampleRate: WINDOWS_ZIPFORMER_MODEL.sampleRate,
+				});
+				break;
+			case "initializing":
+				if (this.hostDiagnostic) this.hostDiagnostic.phase = "initializing";
+				break;
 			case "initialized":
 				this.initialized = true;
+				log.info("speech recognition host initialized", {
+					durationMs: Date.now() - this.initializeStartedAt,
+				});
 				this.initializeWaiter?.resolve();
 				this.initializeWaiter = null;
 				break;
@@ -188,7 +230,12 @@ export class SpeechInputService {
 	}
 
 	private handleHostError(message: Extract<SpeechHostEvent, { type: "error" }>): void {
-		log.error("speech recognition host failed", { code: message.code });
+		log.error("speech recognition host failed", {
+			code: message.code,
+			phase: this.hostDiagnostic?.phase,
+			stdout: this.hostDiagnostic?.stdout,
+			stderr: this.hostDiagnostic?.stderr,
+		});
 		this.sendEvent(message);
 		this.activeSessionId = null;
 		this.rejectWaiters(new Error(message.code));
@@ -199,7 +246,12 @@ export class SpeechInputService {
 		this.child = null;
 		this.initialized = false;
 		if (!this.initializeWaiter && !this.activeSessionId) return;
-		log.error("speech recognition host exited unexpectedly", { code });
+		log.error("speech recognition host exited unexpectedly", {
+			code,
+			phase: this.hostDiagnostic?.phase,
+			stdout: this.hostDiagnostic?.stdout,
+			stderr: this.hostDiagnostic?.stderr,
+		});
 		this.activeSessionId = null;
 		this.rejectWaiters(new Error("Speech recognition host exited"));
 		this.sendEvent({ type: "error", code: "recognizer-failed" });
@@ -235,5 +287,13 @@ export class SpeechInputService {
 		this.sessionWaiter?.reject(error);
 		this.initializeWaiter = null;
 		this.sessionWaiter = null;
+	}
+
+	private captureHostOutput(child: SpeechHostChild, stream: "stdout" | "stderr"): void {
+		child[stream]?.on("data", (chunk: Buffer | string) => {
+			const diagnostic = this.hostDiagnostic;
+			if (!diagnostic) return;
+			diagnostic[stream] = `${diagnostic[stream]}${chunk.toString()}`.slice(-8_192);
+		});
 	}
 }

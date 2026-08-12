@@ -9,6 +9,8 @@ export type SpeechHostCommand =
 	| { type: "cancel"; sessionId: string };
 
 export type SpeechHostEvent =
+	| { type: "ready" }
+	| { type: "initializing" }
 	| { type: "initialized" }
 	| { type: "started"; sessionId: string }
 	| { type: "partial"; sessionId: string; text: string }
@@ -31,6 +33,8 @@ const ERROR_CODES = new Set([
 export function isSpeechHostEvent(value: unknown): value is SpeechHostEvent {
 	if (!isRecord(value) || typeof value.type !== "string") return false;
 	switch (value.type) {
+		case "ready":
+		case "initializing":
 		case "initialized":
 			return true;
 		case "started":

@@ -3,6 +3,8 @@ import { isSpeechHostEvent } from "./protocol.js";
 
 describe("isSpeechHostEvent", () => {
 	it("accepts the documented host events", () => {
+		expect(isSpeechHostEvent({ type: "ready" })).toBe(true);
+		expect(isSpeechHostEvent({ type: "initializing" })).toBe(true);
 		expect(isSpeechHostEvent({ type: "initialized" })).toBe(true);
 		expect(isSpeechHostEvent({ type: "partial", sessionId: "s1", text: "你好" })).toBe(true);
 		expect(isSpeechHostEvent({ type: "error", code: "recognizer-failed" })).toBe(true);

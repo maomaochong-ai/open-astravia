@@ -27,7 +27,9 @@ binding 是同步原生调用；若直接在 Electron 主进程中加载和解�
 - Renderer 用 16 kHz、单声道 `AudioWorklet` 以 100 ms 分块采集 PCM。preload 只暴露带类型的状态、控制、
   音频和事件合同；IPC 只接受主窗口主 frame，并限制单条音频消息大小。
 - Sherpa 原生模块只在独立 Electron `utilityProcess` 中加载。主进程服务拥有模型发现、宿主生命周期和单会话
-  状态机；识别宿主拥有 recognizer/stream，向主进程发 partial、final、stopped 和有限错误码。
+  状态机；识别宿主拥有 recognizer/stream，向主进程发 partial、final、stopped 和有限错误码。宿主启动后先发
+  `ready`，主进程收到握手后才发初始化命令；宿主从 `parentPort` 的 `MessageEvent.data` 读取命令。真实 Electron
+  冒烟测试覆盖 initialize、start、audio 和 stop，避免进程替身掩盖宿主协议或原生加载错误。
 - Electron 的 `media` permission handler 只允许主窗口主 frame 请求纯音频，拒绝 webview、子 frame 与视频。
   Windows 系统的麦克风隐私开关仍由 Chromium/操作系统负责。
 - partial 只作临时状态展示，final 通过现有编辑器 handle 插入当前光标；语音输入不创建第二套草稿状态。

@@ -17,17 +17,35 @@ const READY_STATUS: SpeechInputStatus = {
 class FakeSpeechHostChild {
 	readonly commands: SpeechHostCommand[] = [];
 	readonly kill = vi.fn(() => true);
+	readonly stdout = null;
+	readonly stderr = null;
 	private readonly messageListeners: Array<(message: unknown) => void> = [];
 	private readonly exitListeners: Array<(code: number) => void> = [];
+	private readonly spawnListeners: Array<() => void> = [];
 
-	on(event: "message" | "exit", listener: ((message: unknown) => void) | ((code: number) => void)): void {
+	on(
+		event: "message" | "exit" | "spawn",
+		listener: ((message: unknown) => void) | ((code: number) => void) | (() => void),
+	): void {
 		if (event === "message") this.messageListeners.push(listener as (message: unknown) => void);
-		else this.exitListeners.push(listener as (code: number) => void);
+		else if (event === "exit") this.exitListeners.push(listener as (code: number) => void);
+		else {
+			this.spawnListeners.push(listener as () => void);
+			queueMicrotask(() => {
+				for (const spawnListener of this.spawnListeners) spawnListener();
+				this.emit({ type: "ready" });
+			});
+		}
 	}
 
 	postMessage(command: SpeechHostCommand): void {
 		this.commands.push(command);
-		if (command.type === "initialize") queueMicrotask(() => this.emit({ type: "initialized" }));
+		if (command.type === "initialize") {
+			queueMicrotask(() => {
+				this.emit({ type: "initializing" });
+				this.emit({ type: "initialized" });
+			});
+		}
 		if (command.type === "start") {
 			queueMicrotask(() => this.emit({ type: "started", sessionId: command.sessionId }));
 		}

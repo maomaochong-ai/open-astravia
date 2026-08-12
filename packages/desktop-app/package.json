@@ -24,6 +24,7 @@
 		"prepare:windows:dev": "node scripts/prepare-windows-prereqs.js --incremental",
 		"prepare:ocr-models": "node scripts/fetch-ocr-models.js",
 		"prepare:speech-models": "node scripts/fetch-speech-models.mjs",
+		"verify:speech-host": "electron scripts/verify-speech-input-host.cjs",
 		"build:presets": "node scripts/build-presets.mjs",
 		"build:presets:dev": "cross-env VETTA_SKIP_PLUGIN_TOOLING_BUILD=1 node scripts/build-presets.mjs",
 		"build:themes": "node scripts/build-themes.mjs",

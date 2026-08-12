@@ -29,6 +29,7 @@ function handleCommand(message: unknown): void {
 		switch (message.type) {
 			case "initialize": {
 				const command = message as SpeechHostCommand & { type: "initialize" };
+				post({ type: "initializing" });
 				recognizer = new SherpaStreamingRecognizer(command.model, command.sampleRate);
 				post({ type: "initialized" });
 				break;
@@ -66,7 +67,11 @@ function handleCommand(message: unknown): void {
 				break;
 			}
 		}
-	} catch {
+	} catch (error) {
+		console.error(
+			"[speech-input-host] command failed",
+			error instanceof Error ? (error.stack ?? error.message) : String(error),
+		);
 		post({
 			type: "error",
 			...(activeSessionId ? { sessionId: activeSessionId } : {}),
@@ -76,4 +81,5 @@ function handleCommand(message: unknown): void {
 	}
 }
 
-port.on("message", handleCommand);
+port.on("message", (event) => handleCommand(event.data));
+setImmediate(() => post({ type: "ready" }));

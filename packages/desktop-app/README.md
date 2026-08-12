@@ -40,7 +40,9 @@ utility process so native initialization and decoding do not block the main proc
 
 Run `bun run prepare:speech-models` to prepare the model explicitly. The command skips macOS/Linux
 targets, and is also part of `bun run build` and revalidated by `prepare-pack.js` before a Windows
-artifact is staged.
+artifact is staged. After `bun run build:main`, run `bun run verify:speech-host` to exercise the real
+Electron utility process with the bundled Sherpa runtime and model through initialize, start, audio,
+and stop.
 
 ## Development
 
