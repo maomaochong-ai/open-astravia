@@ -207,6 +207,8 @@ export function CanvasTab() {
 				return t("engine.status.materializing");
 			case "installing":
 				return t("engine.status.installing");
+			case "installing-design":
+				return t("engine.status.installingDesign");
 			case "starting":
 				return t("engine.status.starting");
 		}
@@ -332,7 +334,8 @@ export function CanvasTab() {
 					<div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
 						<span className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
 						<p className="max-w-72 whitespace-pre-wrap text-xs text-muted-foreground">{progressText}</p>
-						{phase.progress.phase === "installing" && phase.progress.outputTail ? (
+						{(phase.progress.phase === "installing" || phase.progress.phase === "installing-design") &&
+						phase.progress.outputTail ? (
 							<pre className="max-h-24 max-w-full overflow-hidden text-ellipsis rounded-md bg-accent p-2 text-left text-[10px] text-muted-foreground">
 								{phase.progress.outputTail}
 							</pre>

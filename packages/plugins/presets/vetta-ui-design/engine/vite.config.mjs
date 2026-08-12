@@ -84,10 +84,15 @@ function vetdWatchDesign() {
 	/**
 	 * Dot-prefixed entries are skipped on purpose: `.snapshots/` is written on
 	 * every canvas capture, and reloading on it would loop capture ↔ reload.
+	 *
+	 * `node_modules/` is skipped for cost, not correctness (ADR-0068): a design
+	 * declaring two libraries goes from 4 files to 7000+, and this walk runs on
+	 * every settle. Nothing in there is a design source, and a dependency change
+	 * already reaches the client through package.json moving in this same set.
 	 */
 	const listSources = (dir, prefix, out) => {
 		for (const entry of readdirSync(dir, { withFileTypes: true })) {
-			if (entry.name.startsWith(".")) continue;
+			if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
 			const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
 			if (entry.isDirectory()) listSources(`${dir}/${entry.name}`, rel, out);
 			else out.push(rel);
@@ -113,16 +118,38 @@ function vetdWatchDesign() {
 			let known = snapshot();
 			let timer = null;
 			let watcher;
+			/**
+			 * 依赖清单变了（ADR-0068 的 vetd_install）。
+			 *
+			 * 单独一个标记，因为下面的判据是**文件集合**变没变：第一次装包会新增
+			 * package-lock.json 所以能被看见，第二次装包只是改写这两个文件的内容，
+			 * 集合一模一样——不特判的话画布收不到任何通知，新装的包要等下一次改源码
+			 * 才生效。
+			 */
+			let dependenciesChanged = false;
 			try {
 				watcher = watch(designRoot, { recursive: true }, (_event, filename) => {
 					// Skip the noisy dirs before touching the disk (see listSources).
-					if (filename && filename.replaceAll("\\", "/").split("/").some((seg) => seg.startsWith("."))) return;
+					// An npm install writes thousands of files under node_modules; on
+					// platforms whose recursive watch reports them individually, every
+					// one would schedule another full-tree walk.
+					if (
+						filename &&
+						filename
+							.replaceAll("\\", "/")
+							.split("/")
+							.some((seg) => seg.startsWith(".") || seg === "node_modules")
+					)
+						return;
+					const base = (filename ?? "").replaceAll("\\", "/").split("/").pop();
+					if (base === "package.json" || base === "package-lock.json") dependenciesChanged = true;
 					// fs.watch fires several times per write; settle first, then diff.
 					if (timer) clearTimeout(timer);
 					timer = setTimeout(() => {
 						timer = null;
 						const next = snapshot();
-						if (next === known) return;
+						if (next === known && !dependenciesChanged) return;
+						dependenciesChanged = false;
 						const framesChanged = framesOf(next) !== framesOf(known);
 						known = next;
 						const environment = server.environments.client;

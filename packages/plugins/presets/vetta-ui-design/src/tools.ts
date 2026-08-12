@@ -9,13 +9,15 @@ import {
 import { captureFrameOffscreen, offscreenRasterSupported } from "./canvas/offscreen-raster";
 import { screenshotCardDescriptor, SCREENSHOT_TOOL_NAME } from "./cards/screenshot-card";
 import { ensureSnapshotsIgnored, pruneSnapshots, snapshotPath } from "./cards/snapshots";
-import { engineDiagnostics } from "./engine/engine-manager";
+import { ENGINE_PROVIDED_PACKAGES } from "./engine/engine-files";
+import { engineDiagnostics, installDesignDependencies } from "./engine/engine-manager";
 import { composeNotePins } from "./notes/annotate";
 import { notesFilePath } from "./notes/notes-store";
 import { type DesignNote, type NotesFile, noteStatus, parseNotesFile, pendingNotes } from "./notes/types";
 import { CANVAS_TAB_ID } from "./tab-ids";
 import type { SourceIssue } from "./vetd/check-sources";
 import { blockingSyntaxIssues, SYNTAX_RULE } from "./vetd/check-syntax";
+import { readDesignDependencies } from "./vetd/design-package";
 import { findVetdFiles } from "./vetd/discover";
 import { inspectIssues } from "./vetd/inspect";
 import { layoutIssues } from "./vetd/layout-probe";
@@ -325,6 +327,13 @@ export function registerDesignTools(ctx: PluginContext): void {
 			const engine = await engineDiagnostics(controller?.session.dirPath ?? null);
 			const shell = controller ? await inspectSharedShell(host.fs, controller.session.dirPath) : null;
 			const issues = controller ? await inspectIssues(ctx, host.fs, controller.session.dirPath) : [];
+			// 这份设计装过的第三方库。react 三件套不列：它们由引擎提供，每份设计都有，
+			// 报出来只是每轮多几个 token。
+			const dependencies = controller
+				? (await readDesignDependencies(host.fs, controller.session.dirPath)).filter(
+						(name) => !ENGINE_PROVIDED_PACKAGES.includes(name as (typeof ENGINE_PROVIDED_PACKAGES)[number]),
+					)
+				: [];
 			return {
 				designs,
 				open: controller
@@ -339,6 +348,9 @@ export function registerDesignTools(ctx: PluginContext): void {
 							// 复用面先于画框列出：agent 是一屏一屏往下写的，看不见既有的
 							// 外壳与组件就会在每个 frame 里重抄一遍导航栏。
 							sharedShell: shell,
+							// 已装的第三方库，import 前先看这里：装过的直接用，没有的
+							// 先掂量能不能用 Tailwind + React 写出来，真需要才 vetd_install。
+							...(dependencies.length > 0 ? { dependencies } : {}),
 							issues,
 							// 用户在画布上留的待处理备注数。非零时先调 vetd_notes 看内容。
 							pendingNotes: pendingNotes(controller.notes.notes).length,
@@ -375,6 +387,81 @@ export function registerDesignTools(ctx: PluginContext): void {
 		);
 	};
 
+
+	/**
+	 * npm 包名（可带 `@version`）。
+	 *
+	 * 卡这个形状不是为了限制能装什么，而是因为这些串会直接进 npm 的 argv：不校验的话
+	 * 一个 `--foo` 就从「包名」变成了「npm 的开关」。file:/git+ssh 之类的说明符也一并
+	 * 挡掉——设计要装的是 registry 上的库。
+	 */
+	const PACKAGE_SPEC = /^(?:@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*(?:@[a-z0-9-._~^><=|\s*]+)?$/i;
+
+	interface InstallInput {
+		packages?: string[];
+		design?: string;
+	}
+
+	ctx.agent.registerTool<InstallInput>({
+		id: "vetd-install",
+		name: "vetd_install",
+		label: "%tool.vetd_install%",
+		description:
+			"Install npm packages INTO this design (they land in the design's own package.json + node_modules, and travel with it). Use when a screen genuinely needs a library the design does not have — charts, markdown rendering, a rich text editor, an animation library. Do NOT use it for icons (those are Iconify CSS classes, always available) or for anything Tailwind utilities and plain React state already do well: every dependency is weight the design carries forever. Import the package normally once this returns.",
+		parameters: {
+			type: "object",
+			properties: {
+				packages: {
+					type: "array",
+					items: { type: "string" },
+					description:
+						'npm package names, optionally with a version (`recharts`, `react-markdown@10`). Install everything you need in ONE call — each call is a separate npm round-trip.',
+				},
+				design: {
+					type: "string",
+					description: "Path to the `x.vetd/` directory (default: the design open on the canvas).",
+				},
+			},
+			required: ["packages"],
+			additionalProperties: false,
+		},
+		scope_use: SCOPE_USE,
+		agent_mode: AGENT_MODE,
+		handler: async ({ host, session, trigger }) => {
+			const packages = trigger.input.packages ?? [];
+			if (packages.length === 0) {
+				return { ok: false, error: "Pass at least one package name in `packages`." };
+			}
+			const invalid = packages.filter((spec) => !PACKAGE_SPEC.test(spec.trim()));
+			if (invalid.length > 0) {
+				return {
+					ok: false,
+					error: `Not valid npm package names: ${invalid.join(", ")}. Pass registry names, optionally with a version (\`recharts\`, \`react-markdown@10\`).`,
+				};
+			}
+			const designDir = await resolveVetdPath(host, session.cwd, trigger.input.design);
+			try {
+				const outputTail = await installDesignDependencies(
+					ctx,
+					designDir,
+					packages.map((spec) => spec.trim()),
+					() => {},
+				);
+				return {
+					ok: true,
+					design: designDir,
+					installed: packages,
+					outputTail,
+					note: "Installed into this design — import them normally now. The canvas reloads on its own; if a frame that imports one of these still shows a build error, screenshot it again after your next edit.",
+				};
+			} catch (error) {
+				return {
+					ok: false,
+					error: `Install failed: ${error instanceof Error ? error.message : String(error)}`,
+				};
+			}
+		},
+	});
 
 	interface NotesInput {
 		ids?: string[];

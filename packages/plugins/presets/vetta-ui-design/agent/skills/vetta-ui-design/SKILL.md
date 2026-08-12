@@ -18,6 +18,7 @@ login-app.vetd/
   components/           ← shared React components
   assets/               ← images, imported relatively
   theme.css             ← color/radius/shadow tokens (Tailwind v4 @theme)
+  package.json          ← this design's npm dependencies; vetd_install writes it
   DESIGN.md             ← optional spec; OVERRIDES defaults in this skill
 ```
 
@@ -92,11 +93,31 @@ same way. The templates below are already correct on all of it:
   line destroys element→source mapping, and the user's "Ask Vetta" edits then
   point every element at the same line.
 - One default export per frame, rendering edge-to-edge — no page margins.
-- Only react, react-router, Tailwind v4 and Iconify are installed, and you
-  cannot add a dependency — the engine is a fixed template, there is no install
-  step anywhere. A chart, a date picker, an animation library: build it from
-  Tailwind utilities, an Iconify glyph and plain React state, or leave it out.
-  No web fonts — build contrast with size/weight/tracking.
+- react, react-router, Tailwind v4 and Iconify are always there. Anything else
+  has to be installed into the design first (see below) — importing a package
+  that is not installed fails the build. No web fonts — build contrast with
+  size/weight/tracking.
+
+### Dependencies are yours to choose — and yours to justify
+
+A design is a real npm project: `vetd_install` adds packages to its own
+`package.json`, and they travel with the design. `vetd_status` lists what is
+already installed — read that before adding anything.
+
+Install when the job is a solved domain problem where a hand-rolled version is
+visibly worse: chart geometry and axes, Markdown or rich-text rendering, date
+math and calendars, virtualised long lists, gesture/physics animation.
+
+Build it yourself when Tailwind and React state already do it well — cards,
+tabs, modals, dropdowns, toggles, steppers, progress bars, a simple bar or donut
+drawn with divs or inline SVG, and layout of every kind. A UI kit pulled in for a
+rounded card costs more than it gives: it arrives with its own design language
+and spends the rest of the design fighting `theme.css`.
+
+Never install an icon package (icons are Iconify classes), a CSS framework
+(Tailwind v4 is here) or a router (react-router is here).
+
+Install everything you need in ONE call, then import normally.
 
 ### The one thing nothing catches: a token that does not exist
 

@@ -11,6 +11,7 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { checkSources, type SourceFile, type SourceIssue } from "./check-sources";
 import { checkSyntax } from "./check-syntax";
+import { readDesignDependencies } from "./design-package";
 
 /** 送进机检的全部设计源码：画框与共享组件。 */
 export async function collectSources(fs: PluginContext["fs"], dirPath: string): Promise<SourceFile[]> {
@@ -47,9 +48,11 @@ export async function inspectIssues(
 	dirPath: string,
 ): Promise<SourceIssue[]> {
 	const [ruleIssues, syntaxIssues] = await Promise.all([
-		Promise.all([collectSources(fs, dirPath), readThemeCss(fs, dirPath)]).then(([files, themeCss]) =>
-			checkSources(files, themeCss),
-		),
+		Promise.all([
+			collectSources(fs, dirPath),
+			readThemeCss(fs, dirPath),
+			readDesignDependencies(fs, dirPath),
+		]).then(([files, themeCss, dependencies]) => checkSources(files, themeCss, dependencies)),
 		checkSyntax(ctx, dirPath),
 	]);
 	return [...syntaxIssues, ...ruleIssues];

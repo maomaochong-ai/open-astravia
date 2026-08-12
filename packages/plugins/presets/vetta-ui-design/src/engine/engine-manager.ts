@@ -10,6 +10,8 @@
  *    substitution), stopped when the canvas leaves the design.
  */
 import type { PluginCommandSpawnHandle, PluginContext } from "@vetta-org/plugin-sdk";
+import { designPackageJson, needsDependencyInstall, PACKAGE_FILE } from "../vetd/design-package";
+import { sanitizeDesignName } from "../vetd/scaffold";
 import { ENGINE_FILES, engineFilesHash } from "./engine-files";
 import { ENGINE_VERSION } from "./engine-version";
 
@@ -17,6 +19,8 @@ export type EngineProgress =
 	| { phase: "checking" }
 	| { phase: "materializing" }
 	| { phase: "installing"; outputTail: string }
+	/** 这份设计自己声明的第三方依赖（ADR-0068），与引擎依赖分开报：等的是两件事。 */
+	| { phase: "installing-design"; outputTail: string }
 	| { phase: "starting" };
 
 export interface EngineServer {
@@ -158,6 +162,48 @@ async function materializeEngine(ctx: PluginContext, engineRoot: string): Promis
 	}
 }
 
+/**
+ * 跑一次 npm 并把输出尾巴喂给进度回调。
+ *
+ * 引擎依赖与设计依赖共用：两者的区别只有 cwd、参数和报给用户的阶段名，而进程收尾
+ * （轮询、退出码、清定时器）一模一样，各写一份迟早只在其中一份里修 bug。
+ */
+async function runNpm(
+	ctx: PluginContext,
+	cwd: string,
+	args: readonly string[],
+	onOutput: (outputTail: string) => void,
+): Promise<string> {
+	const handle = await ctx.command.spawn("npm", [...args], { cwd });
+	let done = false;
+	let lastTail = "";
+	const poll = window.setInterval(() => {
+		void handle.status().then((status) => {
+			if (done) return;
+			lastTail = status.recentOutput.split("\n").filter(Boolean).slice(-3).join("\n");
+			onOutput(lastTail);
+		});
+	}, 1_500);
+	try {
+		await new Promise<void>((resolveInstall, rejectInstall) => {
+			handle.onExit((exit) => {
+				done = true;
+				if (exit.exitCode === 0) resolveInstall();
+				else {
+					void handle.status().then((status) => {
+						const tail = status.recentOutput.split("\n").filter(Boolean).slice(-8).join("\n");
+						rejectInstall(new Error(`npm ${args[0]} exited with ${exit.exitCode ?? exit.signal}\n${tail}`));
+					});
+				}
+			});
+		});
+	} finally {
+		window.clearInterval(poll);
+	}
+	const final = await handle.status().catch(() => null);
+	return final ? final.recentOutput.split("\n").filter(Boolean).slice(-8).join("\n") : lastTail;
+}
+
 async function installDependencies(
 	ctx: PluginContext,
 	engineRoot: string,
@@ -166,28 +212,54 @@ async function installDependencies(
 	// `ci` 而不是 `install`：模板连 package-lock.json 一起 materialize，所以这里的树
 	// 永远与 lock 同源，不需要再向 registry 解析一遍版本范围。--prefer-offline 让第二个
 	// 引擎版本直接吃托管 npm 缓存。
-	const handle = await ctx.command.spawn("npm", ["ci", "--no-audit", "--no-fund", "--prefer-offline"], {
-		cwd: engineRoot,
+	await runNpm(ctx, engineRoot, ["ci", "--no-audit", "--no-fund", "--prefer-offline"], (outputTail) => {
+		onProgress({ phase: "installing", outputTail });
 	});
-	let done = false;
-	const poll = window.setInterval(() => {
-		void handle.status().then((status) => {
-			if (done) return;
-			const tail = status.recentOutput.split("\n").filter(Boolean).slice(-3).join("\n");
-			onProgress({ phase: "installing", outputTail: tail });
-		});
-	}, 1_500);
-	try {
-		await new Promise<void>((resolveInstall, rejectInstall) => {
-			handle.onExit((exit) => {
-				done = true;
-				if (exit.exitCode === 0) resolveInstall();
-				else rejectInstall(new Error(`npm install exited with ${exit.exitCode ?? exit.signal}`));
-			});
-		});
-	} finally {
-		window.clearInterval(poll);
-	}
+}
+
+/**
+ * 把第三方包装进这一份设计（ADR-0068）。
+ *
+ * cwd 是设计包目录本身，所以 npm 会就地改写 `x.vetd/package.json` 的 dependencies
+ * 并写出 lock——两者都是设计源码，跟着设计走。装进去的 node_modules 是生成物。
+ *
+ * 不带 `--ignore-scripts`：与用户在自己项目里装依赖同一个信任层级，见 ADR-0068。
+ */
+export async function installDesignDependencies(
+	ctx: PluginContext,
+	designDir: string,
+	packages: readonly string[],
+	onProgress: (progress: EngineProgress) => void,
+): Promise<string> {
+	await ensureDesignPackageFile(ctx, designDir);
+	return runNpm(ctx, designDir, ["install", ...packages, "--no-audit", "--no-fund"], (outputTail) => {
+		onProgress({ phase: "installing-design", outputTail });
+	});
+}
+
+/**
+ * 声明了依赖但还没装（刚从 .vetdz 导入、或从 git clone 下来）时补装一次。
+ *
+ * 放在起 dev server 之前：vite 首次 import 解析不到包就是一帧构建失败，而用户看到的
+ * 是一张红色报错，不知道只是还没装。
+ */
+export async function ensureDesignDependencies(
+	ctx: PluginContext,
+	designDir: string,
+	onProgress: (progress: EngineProgress) => void,
+): Promise<void> {
+	if (!(await needsDependencyInstall(ctx.fs, designDir))) return;
+	onProgress({ phase: "installing-design", outputTail: "" });
+	await runNpm(ctx, designDir, ["install", "--no-audit", "--no-fund"], (outputTail) => {
+		onProgress({ phase: "installing-design", outputTail });
+	});
+}
+
+/** 老设计（ADR-0068 之前建的）没有 package.json，装第一个包时补上。 */
+async function ensureDesignPackageFile(ctx: PluginContext, designDir: string): Promise<void> {
+	if ((await ctx.fs.stat(`${designDir}/${PACKAGE_FILE}`)) !== null) return;
+	const base = designDir.replaceAll("\\", "/").split("/").pop() ?? "design";
+	await ctx.fs.writeFile(`${designDir}/${PACKAGE_FILE}`, designPackageJson(sanitizeDesignName(base)));
 }
 
 async function pruneOldEngines(ctx: PluginContext): Promise<void> {
@@ -293,6 +365,7 @@ export async function startDesignServer(
 		servers.delete(designDir);
 	}
 	const engineRoot = await ensureEngine(ctx, onProgress);
+	await ensureDesignDependencies(ctx, designDir, onProgress);
 	onProgress({ phase: "starting" });
 	const handle = await ctx.command.spawn(
 		"node",
@@ -341,6 +414,8 @@ export async function stopAllDesignServers(): Promise<void> {
 /** One-shot production build of a design (for export snapshots). */
 export async function buildDesign(ctx: PluginContext, designDir: string, outDir: string): Promise<void> {
 	const engineRoot = await ensureEngine(ctx, () => {});
+	// 导出快照走的是同一棵依赖树：设计声明了包却没装，这里会以构建失败告终。
+	await ensureDesignDependencies(ctx, designDir, () => {});
 	const handle = await ctx.command.spawn(
 		"node",
 		["node_modules/vite/bin/vite.js", "build", "--outDir", outDir, "--emptyOutDir"],
