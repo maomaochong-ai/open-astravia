@@ -72,6 +72,12 @@ const BUILTIN_NAV_ITEMS = [
 	},
 	{
 		type: "route",
+		path: "/scenes" as const,
+		labelKey: "sidebar.nav.scenes",
+		icon: "icon-[solar--clapperboard-open-linear]",
+	},
+	{
+		type: "route",
 		settingsTab: "models" as const,
 		labelKey: "sidebar.nav.modelSettings",
 		icon: "icon-[solar--cpu-bolt-linear]",
