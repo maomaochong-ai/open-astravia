@@ -833,6 +833,29 @@ describe("greenfield runtime kernel", () => {
 		expect(conversation.events.at(-1)?.type).toBe("turn.failed");
 	});
 
+	it("does not persist a provider assistant error alongside turn.failed", async () => {
+		const engine: TurnEnginePort = {
+			async *execute() {
+				yield { type: "message", message: assistantMessage("rejected") };
+				yield {
+					type: "message",
+					message: {
+						...assistantMessage("rejected"),
+						stopReason: "error" as const,
+						errorMessage: "provider failed",
+					},
+				};
+			},
+		};
+		const harness = await createHarness({ turnEngine: engine });
+		const result = await harness.session.send({ message: userMessage("hello") });
+
+		expect(result.status).toBe("failed");
+		const conversation = await harness.repository.load("session-1");
+		expect(conversation.messages.filter((message) => message.role === "assistant")).toHaveLength(1);
+		expect(conversation.events.at(-1)?.type).toBe("turn.failed");
+	});
+
 	it("requires an explicit concurrent-input behavior and retains queued input on cancellation", async () => {
 		let markStarted: (() => void) | undefined;
 		const started = new Promise<void>((resolve) => {

@@ -41,9 +41,46 @@ function mapPromptOutcome(result: unknown): RuntimeTurnPromptOutcome {
 			};
 		}
 		if (status === "handled") return { status: "handled" };
-		if (status === "completed" || status === "cancelled" || status === "failed") return { status };
+		if (status === "completed" || status === "cancelled" || status === "failed") {
+			const candidate = result as { error?: unknown; turnId?: unknown };
+			const error = readStructuredFailure(candidate.error);
+			return {
+				status,
+				...(error ? { error } : {}),
+				...(typeof candidate.turnId === "string" ? { turnId: candidate.turnId } : {}),
+			};
+		}
 	}
 	return { status: "completed" };
+}
+
+type RuntimePromptFailure = {
+	readonly code: string;
+	readonly message: string;
+	readonly retryable: boolean;
+	readonly origin: "runtime" | "provider" | "tool" | "mcp";
+};
+
+function readStructuredFailure(value: unknown): RuntimePromptFailure | undefined {
+	if (typeof value !== "object" || value === null) return undefined;
+	const candidate = value as Record<string, unknown>;
+	if (
+		typeof candidate.code !== "string" ||
+		typeof candidate.message !== "string" ||
+		typeof candidate.retryable !== "boolean" ||
+		(candidate.origin !== "runtime" &&
+			candidate.origin !== "provider" &&
+			candidate.origin !== "tool" &&
+			candidate.origin !== "mcp")
+	) {
+		return undefined;
+	}
+	return {
+		code: candidate.code,
+		message: candidate.message,
+		retryable: candidate.retryable,
+		origin: candidate.origin,
+	};
 }
 
 /**

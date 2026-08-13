@@ -9,9 +9,7 @@ describe("context ring details", () => {
 		expect(details).toMatchObject({
 			phase: "completed",
 			model: "openai/gpt-test",
-			actualTokens: "120",
-			estimatedTokens: "100",
-			coverage: "coverage:complete",
+			tokens: "120",
 		});
 		expect(details?.groups.map(({ id, tokens, share, itemCount }) => ({ id, tokens, share, itemCount }))).toEqual([
 			{ id: "instructions", tokens: "20", share: "20.0%", itemCount: 1 },
@@ -58,7 +56,7 @@ describe("context ring details", () => {
 		const details = buildContextRingDetails(partial, labels);
 		const tools = details?.groups.find(({ id }) => id === "tools");
 
-		expect(details?.estimatedTokens).toBe("80+");
+		expect(details?.tokens).toBe("80");
 		expect(tools).toMatchObject({ tokens: "unknown", share: "unknown", unknownCount: 1 });
 		expect(details?.groups.find(({ id }) => id === "instructions")?.tokens).toBe("20");
 	});

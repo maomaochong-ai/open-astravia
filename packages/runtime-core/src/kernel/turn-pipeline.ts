@@ -484,6 +484,7 @@ export class TurnPipeline {
 
 			await this.enterStage(state.sessionId, turnId, "execution");
 			let stopReason: StopReason | undefined;
+			let assistantErrorMessage: string | undefined;
 			for await (const event of this.turnEngine.execute({
 				get sessionId() {
 					return state.sessionId;
@@ -561,11 +562,28 @@ export class TurnPipeline {
 				}
 				signal.throwIfAborted();
 				if (event.type === "completed") {
+					if (event.stopReason === "error") {
+						throw new TurnExecutionError({
+							code: "PROVIDER_ERROR",
+							message: assistantErrorMessage || "Provider returned an assistant error response",
+							retryable: true,
+							origin: "provider",
+						});
+					}
 					stopReason = event.stopReason;
 					continue;
 				}
 				if (event.type === "observation") {
 					await this.publishObservation(state.sessionId, turnId, event.observation);
+					continue;
+				}
+				// A provider-level assistant error is an intermediate diagnostic, not a
+				// conversation message. The durable turn.failed fact below is the sole
+				// source of truth for new failures; old assistant error messages remain
+				// readable through the compatibility history projection.
+				if (event.message.role === "assistant" && event.message.stopReason === "error") {
+					assistantErrorMessage =
+						event.message.errorMessage?.trim() || extractAssistantText(event.message.content).trim() || undefined;
 					continue;
 				}
 
@@ -1038,6 +1056,14 @@ function normalizeError(error: unknown): RuntimeFailure {
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+function extractAssistantText(content: Message["content"]): string {
+	if (typeof content === "string") return content;
+	return content
+		.filter((part): part is Extract<Message["content"][number], { type: "text" }> => part.type === "text")
+		.map((part) => part.text)
+		.join("");
 }
 
 function normalizeSessionIdentity(identity: string | TurnSessionIdentity): TurnSessionIdentity {

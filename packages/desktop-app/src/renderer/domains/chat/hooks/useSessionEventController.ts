@@ -482,7 +482,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			if (event.type === "error") {
 				flushDeltas();
 				setRetryProgress(null);
-				setChatMessages((prev) => appendError(prev, event.error.message, event.retryAttempts));
+				setChatMessages((prev) => appendError(prev, event.error.message, event.retryAttempts, event.turnId));
 				return;
 			}
 
@@ -500,6 +500,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				}
 				setContextUsage({
 					percent: event.contextPercent ?? null,
+					contextTokens: event.contextTokens ?? null,
 					contextWindow: event.contextWindow ?? 0,
 					...(event.contextComposition ? { composition: event.contextComposition } : {}),
 				});

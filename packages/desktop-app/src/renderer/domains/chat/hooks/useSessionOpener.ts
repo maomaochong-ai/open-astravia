@@ -212,6 +212,7 @@ export function useSessionOpener(): SessionOpenerController {
 			const contextComposition = resolveSessionContextComposition(resolvedSessionPath, state.contextComposition);
 			setContextUsage({
 				percent: state.contextPercent,
+				contextTokens: state.contextTokens ?? null,
 				contextWindow: state.contextWindow,
 				...(contextComposition ? { composition: contextComposition } : {}),
 			});

@@ -38,6 +38,7 @@ describe("conversation error history projection", () => {
 			{
 				type: "error",
 				entryId: "event-2",
+				turnId: "turn-1",
 				code: "TRANSPORT_FAILED",
 				message: "503 service unavailable",
 				timestamp: new Date(2).toISOString(),

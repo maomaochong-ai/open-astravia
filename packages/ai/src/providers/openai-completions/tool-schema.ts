@@ -1,7 +1,7 @@
-// OpenAI 兼容端点后面可能坐着 Gemini（各类 proxy 会把 tools 翻成 Gemini 的 OpenAPI
-// `parameters`）。Gemini 把每个 anyOf/oneOf 分支当独立 Schema 校验，只带约束关键字、
-// 没有 type/properties 的分支（如 `{ "required": ["a"] }`）会让整个请求 400 —— 一个
-// 工具的 schema 就能废掉整轮对话，且报错里只有工具下标，极难定位。这里在发出前剔掉
+// 部分 OpenAI 兼容网关（包括把请求转发到 Gemini 的网关）会把 tools 翻成另一种
+// OpenAPI 方言。它们把每个 anyOf/oneOf 分支当独立 Schema 校验，只带约束关键字、
+// 没有结构关键字的分支（如 `{ "required": ["a"] }`）会让整个请求 400 —— 一个工具
+// 的 schema 就能废掉整轮对话，且报错里只有工具下标，极难定位。这里在发出前剔掉
 // 这类分支：它们对模型只是软提示，丢掉远好过整轮失败。
 
 const warnedTools = new Set<string>();
@@ -10,7 +10,23 @@ const warnedTools = new Set<string>();
 function isConstraintOnlyBranch(value: unknown): boolean {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return false;
 	const branch = value as Record<string, unknown>;
-	return !("type" in branch) && !("properties" in branch) && !("$ref" in branch);
+	const structuralKeywords = [
+		"type",
+		"properties",
+		"items",
+		"prefixItems",
+		"$ref",
+		"const",
+		"enum",
+		"anyOf",
+		"oneOf",
+		"allOf",
+		"not",
+		"if",
+		"then",
+		"else",
+	] as const;
+	return !structuralKeywords.some((key) => key in branch);
 }
 
 function sanitizeNode(node: unknown, dropped: string[]): unknown {
@@ -45,7 +61,7 @@ export function sanitizeToolParameters(toolName: string, parameters: unknown): u
 	if (!warnedTools.has(toolName)) {
 		warnedTools.add(toolName);
 		console.warn(
-			`[ai] tool "${toolName}": dropped ${dropped.length} ${[...new Set(dropped)].join("/")} branch(es) that carry only constraints (no type/properties); such branches break Gemini-backed OpenAI-compatible endpoints. Express the constraint in the property descriptions instead.`,
+			`[ai] tool "${toolName}": dropped ${dropped.length} ${[...new Set(dropped)].join("/")} branch(es) that carry only constraints (no schema structure); this shape is rejected by some OpenAI-compatible gateways, including Gemini-backed gateways. Express the constraint in the property descriptions instead.`,
 		);
 	}
 	return sanitized;

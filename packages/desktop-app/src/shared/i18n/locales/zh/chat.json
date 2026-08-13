@@ -264,12 +264,10 @@
 		"tooltip": {
 			"compacting": "正在压缩上下文...",
 			"unknown": "上下文窗口 {{window}}（使用量未知）",
-			"usage": "上下文已使用 {{percent}}%（{{window}} 窗口）"
+			"usage": "上下文已使用 {{tokens}} tokens（{{percent}}%，{{window}} 窗口）"
 		},
 		"details": {
 			"title": "上下文构成（最近一次调用）",
-			"actual": "实际输入",
-			"estimated": "估算",
 			"section": "区块",
 			"category": "分类",
 			"tokens": "Token",

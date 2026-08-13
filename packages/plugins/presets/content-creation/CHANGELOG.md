@@ -23,6 +23,7 @@
 
 ### Fixed
 
+- 修复 `configure_video_shot.promptPlan` 顶层缺少 `type: "object"` 导致 OpenAI 兼容工具 Schema 清洗器误删视频计划联合分支的问题。
 - 创作画布框选改为拖动结束后一次性提交最终选区，拖动期间不再重建整张 React Flow 节点数据；节点内容面也会忽略纯选择/拖动态变化，降低大画布框选时的主线程和 GC 压力。
 - 创作画布现在通过宿主快捷键作用域支持 `Ctrl+A` / `Command+A` 全选全部节点；输入框仍保留原生文字全选，并同步 React Flow 与画布选择状态。
 - 活动栏品牌图标改由宿主按 `plugin.json#icon` 注入（省略 `registerActivityTab.icon`），不再 `import` 包内 png 或拼宿主协议，避免 `/icon.png` 误解析为应用图标。

@@ -161,6 +161,7 @@ const TRANSFORM_VIDEO_PLAN_SCHEMA = planVariant(
 );
 
 export const VIDEO_PROMPT_PLAN_SCHEMA = {
+	type: "object",
 	description:
 		"Strategy-specific production plan for one video shot. Choose the plan kind that matches the intended generation strategy; each kind carries a different creative contract.",
 	oneOf: [

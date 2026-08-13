@@ -949,6 +949,7 @@ export class RuntimeHost implements SessionFacade {
 			currentTurnStartedAt: this.currentTurnStartedAt.get(sessionId),
 			messageCount: state.messageCount,
 			contextPercent: state.contextPercent,
+			...(state.contextTokens !== undefined ? { contextTokens: state.contextTokens } : {}),
 			contextWindow: state.contextWindow,
 			...(state.contextComposition ? { contextComposition: state.contextComposition } : {}),
 			activeToolNames: [...state.activeToolNames],

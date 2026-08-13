@@ -109,10 +109,11 @@ export function mapRuntimeSessionObservationEvent(
 				cacheWrite: event.cacheWrite,
 				costTotal: event.costTotal,
 				contextPercent: event.contextPercent,
+				...(event.contextTokens !== undefined ? { contextTokens: event.contextTokens } : {}),
 				contextWindow: event.contextWindow,
 			};
 		case "error":
-			return { ...base, type: event.type, error: event.error };
+			return { ...base, type: event.type, error: event.error, ...(event.turnId ? { turnId: event.turnId } : {}) };
 		case "todo_update":
 			return { ...base, type: event.type, items: [...event.items] };
 		case "background_tasks_update":

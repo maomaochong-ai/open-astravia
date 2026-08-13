@@ -17,6 +17,8 @@
 
 ### Fixed
 
+- **无额度 Provider 不再静默失败**：Runtime prompt 的失败回执携带结构化错误，自动重试适配层能正确区分失败与成功；不可重试的额度错误会按 `error -> agent_end` 发到 Desktop 消息列表。
+
 - 自动重试改为优先使用 Runtime 失败合同的结构化 `retryable` 字段，避免错误消息未包含 HTTP 数字时漏重试、或不可重试错误文本碰巧包含 `429/5xx` 时误重试；旧结果仍保留消息分类兼容路径。
 
 - **SDK 自定义 `agentDir` 未覆盖默认会话存储**：公共 SDK 此前只把 `agentDir` 用于认证、模型、设置与资源，默认会话目录仍从全局 Vetta Home 解析，导致嵌入式宿主把会话写入用户目录。默认文件存储现在与同一次 Session 组合使用相同的 `agentDir`；未指定 `agentDir` 或显式传入 `storage` 时的行为保持不变。

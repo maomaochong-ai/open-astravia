@@ -73,6 +73,7 @@ export type RuntimeSessionState = Pick<
 	| "isStreaming"
 	| "messageCount"
 	| "contextPercent"
+	| "contextTokens"
 	| "contextWindow"
 	| "contextComposition"
 	| "activeToolNames"

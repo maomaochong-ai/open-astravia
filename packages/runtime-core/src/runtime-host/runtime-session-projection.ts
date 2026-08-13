@@ -14,8 +14,10 @@ export interface RuntimeSessionIdentity {
 	readonly parentEntryId?: string;
 }
 
-export type RuntimeDynamicState = Pick<RuntimeSessionState, "contextPercent" | "contextWindow" | "activeToolNames"> & {
-	readonly contextTokens?: number | null;
+export type RuntimeDynamicState = Pick<
+	RuntimeSessionState,
+	"contextPercent" | "contextWindow" | "contextTokens" | "activeToolNames"
+> & {
 	readonly contextComposition?: ContextCompositionReport;
 };
 

@@ -4,8 +4,8 @@ import { convertTools } from "../src/providers/openai-completions/messages.js";
 import type { Model, Tool } from "../src/types.js";
 
 const model: Model<"openai-completions"> = {
-	id: "gemini-3.6-flash-high",
-	name: "gemini-3.6-flash-high",
+	id: "deepseek-chat",
+	name: "deepseek-chat",
 	api: "openai-completions",
 	provider: "cpa",
 	baseUrl: "http://127.0.0.1:8317/v1",
@@ -43,6 +43,8 @@ describe("convertTools tool parameter sanitization", () => {
 		});
 		expect(parameters.additionalProperties).toBe(false);
 		expect(warn).toHaveBeenCalledOnce();
+		expect(warn.mock.calls[0]?.[0]).toContain("some OpenAI-compatible gateways, including Gemini-backed gateways");
+		expect(warn.mock.calls[0]?.[0]).not.toContain("break Gemini-backed OpenAI-compatible endpoints");
 		warn.mockRestore();
 	});
 
@@ -57,6 +59,36 @@ describe("convertTools tool parameter sanitization", () => {
 		);
 
 		expect((parameters.properties as Record<string, unknown>).a).toEqual({ anyOf: [{ type: "string" }] });
+		warn.mockRestore();
+	});
+
+	it("保留只包含 oneOf 的联合 schema 分支", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const parameters = convert(
+			{
+				type: "object",
+				properties: {
+					promptPlan: {
+						anyOf: [
+							{
+								description: "video plan",
+								oneOf: [{ type: "object", properties: { kind: { const: "video" } } }],
+							},
+							{ type: "object", properties: { kind: { const: "image" } } },
+						],
+					},
+				},
+			},
+			"deepseek_content_creation_edit",
+		);
+
+		expect((parameters.properties as Record<string, unknown>).promptPlan).toEqual({
+			anyOf: [
+				{ description: "video plan", oneOf: [{ type: "object", properties: { kind: { const: "video" } } }] },
+				{ type: "object", properties: { kind: { const: "image" } } },
+			],
+		});
+		expect(warn).not.toHaveBeenCalled();
 		warn.mockRestore();
 	});
 

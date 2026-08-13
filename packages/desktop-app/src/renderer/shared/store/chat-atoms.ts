@@ -138,6 +138,8 @@ export interface ErrorBlock {
 	type: "error";
 	/** Stable id for React keying. */
 	id: string;
+	/** Stable runtime turn identity used to make live/history projections idempotent. */
+	turnId?: string;
 	/** Provider / 网关的原始错误串，只在错误卡的折叠区展示。 */
 	text: string;
 	/**
@@ -284,6 +286,8 @@ export interface TurnUsageData {
 export interface ContextUsageData {
 	/** Context usage percentage (0-100), or null if unknown */
 	percent: number | null;
+	/** Provider-reported context tokens; absent/null while only an estimate is available. */
+	contextTokens?: number | null;
 	/** Context window size in tokens */
 	contextWindow: number;
 	/** Latest privacy-safe model-call composition report. */

@@ -45,4 +45,15 @@ describe("useContextRingModel", () => {
 		act(() => store.set(contextUsageAtom, { percent: 35, contextWindow: 100_000, composition }));
 		expect(contextRingModelCapture.buildDetails).toHaveBeenCalledTimes(1);
 	});
+
+	it("uses provider-reported context tokens as the displayed percentage", () => {
+		const store = createStore();
+		store.set(contextUsageAtom, { percent: 10, contextTokens: 40_000, contextWindow: 100_000 });
+		const wrapper = ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;
+
+		const { result } = renderHook(() => useContextRingModel(false), { wrapper });
+
+		expect(result.current?.percent).toBe(40);
+		expect(result.current?.tooltip).toBe("contextRing.tooltip.usage");
+	});
 });

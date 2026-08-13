@@ -430,6 +430,8 @@ export interface UsageUpdateEvent extends SessionEventBase {
 	costTotal: number;
 	/** Context window usage percentage (0-100), or null if unknown (e.g. after compaction) */
 	contextPercent: number | null;
+	/** Provider-reported total input/context tokens when available. */
+	contextTokens?: number | null;
 	/** Total context window size in tokens */
 	contextWindow: number;
 	/** Privacy-safe breakdown for the exact provider-facing context. */
@@ -441,6 +443,8 @@ export interface SessionError extends RuntimeFailure {}
 export interface ErrorEvent extends SessionEventBase {
 	type: "error";
 	error: SessionError;
+	/** Stable turn correlation. Present for failures persisted as turn.failed. */
+	turnId?: string;
 	/**
 	 * 这条错误最终发出前，自动重试实际尝试过的次数（0 = 没重试过）。
 	 * 由 session-events 的挂起状态机累计，供 UI 说「已自动重试 N 次仍失败」。
@@ -638,6 +642,11 @@ export type SessionEvent =
 /** prompt 的即时回执（ADR-0060）：排队时立即返回，宿主/UI 据此区分「已发出」与「已排队」。 */
 export interface RuntimeTurnPromptOutcome {
 	readonly status: "completed" | "cancelled" | "failed" | "queued" | "handled";
+	/** Structured failure for a terminal failed turn. Kept on the prompt receipt so
+	 * retry adapters cannot mistake a failed turn for a successful one. */
+	readonly error?: SessionError;
+	/** The durable turn identity when this receipt represents a completed turn. */
+	readonly turnId?: string;
 	readonly pendingCount?: number;
 	readonly queueItemId?: string;
 }
@@ -666,6 +675,8 @@ export interface SessionStateSnapshot {
 	messageCount: number;
 	/** Context window usage percentage (0-100), or null if unknown */
 	contextPercent: number | null;
+	/** Provider-reported total input/context tokens when available. */
+	contextTokens?: number | null;
 	/** Total context window size in tokens */
 	contextWindow: number;
 	/** Latest model-call context composition, when a call has been prepared. */
@@ -838,6 +849,8 @@ export type HistoryEntry =
 			entryId?: string;
 			/** Runtime / provider error code when one is available. */
 			code?: string;
+			/** Stable turn correlation when the failure belongs to a persisted turn. */
+			turnId?: string;
 			message: string;
 			timestamp: string;
 	  }

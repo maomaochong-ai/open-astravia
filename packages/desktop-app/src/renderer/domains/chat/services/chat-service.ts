@@ -282,7 +282,14 @@ export function messageToBlocks(content: unknown): ContentBlock[] {
  * 变成四五个一模一样的错误卡。live 链路那边由 runtime-core 的延迟发射解决，
  * 历史这条路只能在这里折叠。
  */
-function pushHistoryError(blocks: ContentBlock[], errorMessage: string): void {
+function pushHistoryError(blocks: ContentBlock[], errorMessage: string, turnId?: string): void {
+	if (turnId) {
+		const existing = blocks.find((block) => block.type === "error" && block.turnId === turnId);
+		if (existing?.type === "error") {
+			existing.text = errorMessage;
+			return;
+		}
+	}
 	const kind = classifyChatError(errorMessage);
 	const last = blocks.at(-1);
 	if (last?.type === "error" && last.kind === kind) {
@@ -291,7 +298,7 @@ function pushHistoryError(blocks: ContentBlock[], errorMessage: string): void {
 		last.text = errorMessage;
 		return;
 	}
-	blocks.push({ type: "error", id: nextId("blk"), text: errorMessage, kind });
+	blocks.push({ type: "error", id: nextId("blk"), text: errorMessage, kind, ...(turnId ? { turnId } : {}) });
 }
 
 /**
@@ -472,7 +479,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 
 		if (entry.type === "error") {
 			const target = currentAssistant();
-			pushHistoryError(target.blocks!, entry.message);
+			pushHistoryError(target.blocks!, entry.message, entry.turnId);
 			if (!target.text) target.text = entry.message;
 			if (target.timestamp === undefined) target.timestamp = new Date(entry.timestamp).getTime();
 			continue;
@@ -951,13 +958,28 @@ export function handleToolPhase(prev: ChatMessage[], toolCallId: string, label: 
  *
  * @param attempts 这条错误发出前自动重试过的次数（runtime-core 随 error 事件带出）。
  */
-export function appendError(prev: ChatMessage[], errorMessage: string, attempts?: number): ChatMessage[] {
+export function appendError(
+	prev: ChatMessage[],
+	errorMessage: string,
+	attempts?: number,
+	turnId?: string,
+): ChatMessage[] {
 	const [msgs, idx] = ensureDraft(prev);
 	const msg = msgs[idx];
 	const blocks = [...(msg.blocks ?? [])];
+	if (turnId) {
+		const existingIndex = blocks.findIndex((block) => block.type === "error" && block.turnId === turnId);
+		const existing = existingIndex >= 0 ? blocks[existingIndex] : undefined;
+		if (existing?.type === "error") {
+			blocks[existingIndex] = { ...existing, text: errorMessage, ...(attempts ? { attempts } : {}) };
+			msgs[idx] = { ...msg, text: msg.text || errorMessage, blocks };
+			return msgs;
+		}
+	}
 	blocks.push({
 		type: "error",
 		id: nextId("blk"),
+		...(turnId ? { turnId } : {}),
 		text: errorMessage,
 		kind: classifyChatError(errorMessage),
 		...(attempts ? { attempts } : {}),

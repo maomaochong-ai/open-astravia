@@ -81,6 +81,7 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 				event.sessionId,
 				{
 					type: "error",
+					turnId: event.turnId,
 					error: {
 						code: failure.code,
 						message: failure.message,
@@ -126,6 +127,7 @@ function assistantMessageObservations(
 			cacheWrite: message.usage.cacheWrite,
 			costTotal: message.usage.cost.total,
 			contextPercent: null,
+			contextTokens: message.usage.input + message.usage.output + message.usage.cacheRead + message.usage.cacheWrite,
 			contextWindow: 0,
 			source: "agent",
 		},

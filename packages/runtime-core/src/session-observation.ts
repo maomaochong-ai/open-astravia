@@ -81,9 +81,10 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 				readonly cacheWrite: number;
 				readonly costTotal: number;
 				readonly contextPercent: number | null;
+				readonly contextTokens?: number | null;
 				readonly contextWindow: number;
 		  }
-		| { readonly type: "error"; readonly error: SessionError }
+		| { readonly type: "error"; readonly error: SessionError; readonly turnId?: string }
 		| { readonly type: "todo_update"; readonly items: readonly TodoItem[] }
 		| { readonly type: "background_tasks_update"; readonly tasks: readonly BackgroundTaskInfo[] }
 		| { readonly type: "subagents_update"; readonly agents: readonly SubagentInfo[] }

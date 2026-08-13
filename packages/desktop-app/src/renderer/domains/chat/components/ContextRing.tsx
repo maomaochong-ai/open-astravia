@@ -35,7 +35,6 @@ export function ContextRing({ className }: { className?: string } = {}): JSX.Ele
 						color={model.color}
 						isCompacting={model.isCompacting}
 						tooltip={model.tooltip}
-						className="pointer-events-none"
 					/>
 				</Button>
 			</PopoverTrigger>
@@ -47,13 +46,8 @@ export function ContextRing({ className }: { className?: string } = {}): JSX.Ele
 						<PopoverTitle className="text-[13px]">{t("contextRing.details.title")}</PopoverTitle>
 						<div className="mt-1 truncate text-[11px] text-muted-foreground">{model.details.model}</div>
 						<div className="mt-2 flex items-center gap-3 text-[11px]">
-							{model.details.actualTokens ? (
-								<span>
-									{t("contextRing.details.actual")}: {model.details.actualTokens}
-								</span>
-							) : null}
-							<span className="text-muted-foreground">
-								{t("contextRing.details.estimated")}: {model.details.estimatedTokens}
+							<span>
+								{t("contextRing.details.tokens")}: {model.details.tokens}
 							</span>
 						</div>
 						<div className="mt-1 text-[10px] text-muted-foreground/70">{model.details.coverage}</div>

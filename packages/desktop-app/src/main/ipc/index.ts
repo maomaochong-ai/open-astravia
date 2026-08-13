@@ -46,7 +46,6 @@ interface IpcTeardown {
 	teardownClipboard: () => void;
 	teardownFs: () => void;
 	teardownFileTransfer: () => void;
-	teardownBatchTasks: () => void;
 	teardownDownloads: () => void;
 	teardownIm: () => void;
 	teardownMedia: () => void;
@@ -84,7 +83,6 @@ export function registerAllIpc(
 		teardownClipboard: registerClipboardIpc(),
 		teardownFs: registerFsIpc(),
 		teardownFileTransfer: registerFileTransferIpc(),
-		teardownBatchTasks: () => {},
 		teardownDownloads: registerDownloadsIpc(webContents),
 		teardownIm: registerImIpc(webContents),
 		teardownMedia: registerMediaIpc(),
@@ -119,7 +117,6 @@ export function teardownAllIpc(teardown: IpcTeardown): void {
 	teardown.teardownClipboard();
 	teardown.teardownFs();
 	teardown.teardownFileTransfer();
-	teardown.teardownBatchTasks();
 	teardown.teardownDownloads();
 	teardown.teardownIm();
 	teardown.teardownMedia();

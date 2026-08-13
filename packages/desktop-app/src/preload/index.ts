@@ -22,17 +22,9 @@ import { createTelemetryApi } from "./apis/telemetry.js";
 import { createThemesApi } from "./apis/themes.js";
 import { createWebhookApi } from "./apis/webhook.js";
 import { createHostAccessGate } from "./host-access.js";
+import { createUserActivityReporter, USER_ACTIVITY_CHANNEL } from "./user-activity.js";
 
-const USER_ACTIVITY_CHANNEL = "vetta:app-monitor:user-activity";
-const USER_ACTIVITY_THROTTLE_MS = 15_000;
-let lastUserActivitySentAt = 0;
-
-const reportUserActivity = (): void => {
-	const now = Date.now();
-	if (now - lastUserActivitySentAt < USER_ACTIVITY_THROTTLE_MS) return;
-	lastUserActivitySentAt = now;
-	ipcRenderer.send(USER_ACTIVITY_CHANNEL);
-};
+const reportUserActivity = createUserActivityReporter(() => ipcRenderer.send(USER_ACTIVITY_CHANNEL)).report;
 
 for (const eventName of ["keydown", "mousedown", "mousemove", "touchstart", "wheel"] as const) {
 	window.addEventListener(eventName, reportUserActivity, { capture: true, passive: true });

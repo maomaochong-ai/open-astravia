@@ -111,7 +111,7 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 		expect(cancelled.map((event) => event.type)).toEqual(["session.lifecycle", "session.lifecycle"]);
 		expect(cancelled.map(payload)).toMatchObject([{ phase: "aborted" }, { phase: "agent_end" }]);
 		expect(failed.map((event) => event.type)).toEqual(["error", "session.lifecycle"]);
-		expect(payload(failed[0])).toMatchObject({ error: { code: "turn_failed", origin: "runtime" } });
+		expect(payload(failed[0])).toMatchObject({ turnId: "turn-1", error: { code: "turn_failed", origin: "runtime" } });
 		expect(compacted.map(payload)).toMatchObject([{ type: "compaction.end", success: true }]);
 	});
 

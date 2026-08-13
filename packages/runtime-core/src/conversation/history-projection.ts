@@ -187,7 +187,15 @@ function appendTurnFailedHistory(history: HistoryEntry[], entry: ConversationDoc
 	const message = typeof entry.data.error.message === "string" ? entry.data.error.message.trim() : "";
 	if (!message) return;
 	const code = typeof entry.data.error.code === "string" ? entry.data.error.code : undefined;
-	history.push({ type: "error", entryId: entry.id, code, message, timestamp: entry.timestamp });
+	const turnId = typeof entry.data.turnId === "string" ? entry.data.turnId : undefined;
+	history.push({
+		type: "error",
+		entryId: entry.id,
+		code,
+		message,
+		timestamp: entry.timestamp,
+		...(turnId ? { turnId } : {}),
+	});
 }
 
 function appendCustomMessageHistory(history: HistoryEntry[], entry: ConversationDocumentCustomMessageEntry): void {

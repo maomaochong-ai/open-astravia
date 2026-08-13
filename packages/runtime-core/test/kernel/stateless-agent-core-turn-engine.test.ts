@@ -154,6 +154,36 @@ describe("StatelessAgentCoreTurnEngine", () => {
 		expect(queue.pendingCount).toBe(1);
 	});
 
+	it("normalizes a provider-returned assistant error into a structured turn failure", async () => {
+		const engine = new StatelessAgentCoreTurnEngine({
+			model: model(),
+			streamFn: () =>
+				recordedStream({
+					...assistant([{ type: "text", text: "upstream failed" }], "error"),
+					errorMessage: "upstream failed",
+				}),
+		});
+
+		await expect(run(engine, snapshot())).rejects.toMatchObject({
+			failure: { code: "PROVIDER_ERROR", message: "upstream failed", origin: "provider", retryable: true },
+		});
+	});
+
+	it("preserves a provider error returned as a failed agent result without failure metadata", async () => {
+		const engine = new StatelessAgentCoreTurnEngine({
+			model: model(),
+			streamFn: () =>
+				recordedStream({
+					...assistant([{ type: "text", text: "quota exhausted" }], "error"),
+					errorMessage: "quota exhausted",
+				}),
+		});
+
+		await expect(run(engine, snapshot())).rejects.toMatchObject({
+			failure: { code: "PROVIDER_ERROR", message: "quota exhausted", origin: "provider", retryable: true },
+		});
+	});
+
 	it("propagates cancellation to the provider stream and rejects the turn", async () => {
 		const controller = new AbortController();
 		let markStarted: (() => void) | undefined;

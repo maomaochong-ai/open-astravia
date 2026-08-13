@@ -65,7 +65,13 @@ export function useContextRingModel(includeDetails = true): ContextRingModel | n
 
 	if (!ctx || !ctx.contextWindow) return null;
 
-	const percent = ctx.percent ?? 0;
+	const hasActualTokens = typeof ctx.contextTokens === "number" && Number.isFinite(ctx.contextTokens);
+	const contextTokens = hasActualTokens
+		? ctx.contextTokens!
+		: (composition?.estimate.tokens ??
+			composition?.estimate.knownTokens ??
+			((ctx.percent ?? 0) * ctx.contextWindow) / 100);
+	const percent = ctx.contextWindow > 0 ? (contextTokens / ctx.contextWindow) * 100 : (ctx.percent ?? 0);
 	const clamped = Math.min(100, Math.max(0, percent));
 	const offset = CONTEXT_RING_CIRCUMFERENCE - (clamped / 100) * CONTEXT_RING_CIRCUMFERENCE;
 
@@ -73,8 +79,12 @@ export function useContextRingModel(includeDetails = true): ContextRingModel | n
 
 	const tooltip = isCompacting
 		? t("contextRing.tooltip.compacting")
-		: ctx.percent !== null
-			? t("contextRing.tooltip.usage", { percent: percent.toFixed(1), window: formatTokens(ctx.contextWindow) })
+		: hasActualTokens || ctx.percent !== null
+			? t("contextRing.tooltip.usage", {
+					percent: percent.toFixed(1),
+					window: formatTokens(ctx.contextWindow),
+					tokens: formatTokens(contextTokens),
+				})
 			: t("contextRing.tooltip.unknown", { window: formatTokens(ctx.contextWindow) });
 
 	return {

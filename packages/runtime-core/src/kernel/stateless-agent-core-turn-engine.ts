@@ -88,6 +88,14 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 			if (result.status !== "completed") throw runFailure(result);
 			const assistant = result.lastAssistantMessage;
 			if (!assistant) throw turnProtocolError("agent-core completed without an assistant message");
+			if (assistant.stopReason === "error") {
+				throw new TurnExecutionError({
+					code: "PROVIDER_ERROR",
+					message: assistant.errorMessage?.trim() || "Provider returned an assistant error response",
+					retryable: true,
+					origin: "provider",
+				});
+			}
 			yield { type: "completed", stopReason: assistant.stopReason };
 		} catch (error) {
 			telemetry.fail(error);
@@ -363,6 +371,7 @@ class AgentEventProjector {
 	/** toolCallId → 已经播报过的参数键数，见 {@link projectToolCallArgs}。逐轮清空。 */
 	private readonly emittedArgKeys = new Map<string, number>();
 	private assistantMessageStarted = false;
+	private terminalAssistantError = false;
 	private readonly runMessages: RuntimeMessageEnvelope[] = [];
 
 	constructor(
@@ -383,12 +392,17 @@ class AgentEventProjector {
 		}
 		if (event.type === "model_call_start") {
 			this.assistantMessageStarted = false;
+			this.terminalAssistantError = false;
 			return this.startNextTurnIfNeeded();
 		}
 		if (event.type === "model_event") return this.projectModelEvent(event.event);
 		if (event.type === "assistant_message") {
 			this.currentAssistant = event.message;
 			const envelope = toRuntimeMessageEnvelope(event.message, this.identities);
+			if (event.message.stopReason === "error") {
+				this.terminalAssistantError = true;
+				return [];
+			}
 			this.runMessages.push(envelope);
 			return [
 				...(!this.assistantMessageStarted
@@ -522,6 +536,17 @@ class AgentEventProjector {
 			];
 		}
 		if (event.type === "run_finish") {
+			if (this.terminalAssistantError) {
+				return [
+					{
+						type: "execution_observation",
+						observation: {
+							type: "agent.end",
+							messages: [...this.initialMessages, ...this.runMessages],
+						},
+					},
+				];
+			}
 			return [
 				...this.finishTurn(),
 				{
@@ -712,11 +737,17 @@ function resolveLimits(limits: AgentCoreTurnEngineOptions["limits"]): AgentTurnR
 
 function runFailure(result: AgentRunResult): Error {
 	const failure = result.failure;
+	const assistantError = result.lastAssistantMessage?.stopReason === "error" ? result.lastAssistantMessage : undefined;
 	return new TurnExecutionError({
-		code: failure?.code ?? KERNEL_ERROR_CODES.TURN_FAILED,
-		message: failure?.message ?? `Agent run ended with status: ${result.status}`,
-		retryable: failure?.retryable ?? false,
-		origin: failure?.origin ?? "runtime",
+		code: failure?.code ?? (assistantError ? "PROVIDER_ERROR" : KERNEL_ERROR_CODES.TURN_FAILED),
+		message:
+			failure?.message ??
+			(assistantError?.errorMessage?.trim() ||
+				(assistantError
+					? "Provider returned an assistant error response"
+					: `Agent run ended with status: ${result.status}`)),
+		retryable: failure?.retryable ?? Boolean(assistantError),
+		origin: failure?.origin ?? (assistantError ? "provider" : "runtime"),
 		...(failure?.details && Object.keys(failure.details).length > 0 ? { details: failure.details } : {}),
 	});
 }

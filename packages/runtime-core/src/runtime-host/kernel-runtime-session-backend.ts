@@ -520,7 +520,11 @@ export class RuntimeSession {
 						if (result.status === "queued") {
 							return { status: "queued" as const, pendingCount: result.pendingCount, queueItemId: result.id };
 						}
-						return { status: result.status };
+						return {
+							status: result.status,
+							...(result.status === "failed" ? { error: result.error, turnId: result.turnId } : {}),
+							...(result.status === "completed" ? { turnId: result.turnId } : {}),
+						};
 					},
 					continue: async () => {
 						await this.continue();
@@ -783,9 +787,10 @@ class RuntimeSessionEventSink implements EventSink {
 	private withDynamicState(event: SessionEvent): SessionEvent {
 		if (event.type !== "usage.update" || !this.stateSource) return event;
 		const state = this.stateSource.read();
-		const contextTokens = event.input + event.output + event.cacheRead + event.cacheWrite;
+		const contextTokens = state.contextTokens ?? event.input + event.output + event.cacheRead + event.cacheWrite;
 		return {
 			...event,
+			contextTokens,
 			contextPercent: state.contextWindow > 0 ? (contextTokens / state.contextWindow) * 100 : null,
 			contextWindow: state.contextWindow,
 			...(state.contextComposition ? { contextComposition: state.contextComposition } : {}),

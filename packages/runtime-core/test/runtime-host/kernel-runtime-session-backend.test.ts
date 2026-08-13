@@ -438,28 +438,20 @@ describe("KernelRuntimeSessionBackend", () => {
 		expect((await session.getMessages()).map((message) => message.role)).toEqual(["user", "assistant", "assistant"]);
 	});
 
-	it("retries without replaying the terminal error assistant while preserving it in history", async () => {
+	it("retries without replaying the terminal error assistant", async () => {
 		const engine = new ErrorThenSuccessTurnEngine();
 		const { backend } = createBackend(engine);
 		const session = await backend.create({ id: "session-1" });
 
 		await expect(session.prompt({ text: "hello" })).resolves.toMatchObject({
-			status: "completed",
-			stopReason: "error",
+			status: "failed",
+			turnId: expect.any(String),
+			error: { code: "PROVIDER_ERROR", message: "503 service unavailable", origin: "provider" },
 		});
 		await expect(session.retry()).resolves.toMatchObject({ status: "completed", stopReason: "stop" });
 
 		expect(engine.requests.map((messages) => messages.map((message) => message.role))).toEqual([["user"], ["user"]]);
-		expect(
-			(await session.getMessages()).map((message) => ({
-				role: message.role,
-				stopReason: message.role === "assistant" ? message.stopReason : undefined,
-			})),
-		).toEqual([
-			{ role: "user", stopReason: undefined },
-			{ role: "assistant", stopReason: "error" },
-			{ role: "assistant", stopReason: "stop" },
-		]);
+		expect((await session.getMessages()).map((message) => message.role)).toEqual(["user", "assistant"]);
 	});
 
 	it("exposes synchronous lifecycle, workspace, turn, event and state core ports", async () => {

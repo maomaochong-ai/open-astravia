@@ -145,6 +145,14 @@ describe("content agent operations", () => {
 		expect(prompt).toContain("Reference role:");
 		expect(prompt).toContain("Final frame:");
 		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.oneOf).toHaveLength(CONTENT_AGENT_OPERATION_TYPES.length);
+		const videoShotOperation = CONTENT_AGENT_OPERATION_SCHEMA.items.oneOf.find(
+			(operation) => operation.properties.type.const === "configure_video_shot",
+		) as { properties?: Record<string, unknown> } | undefined;
+		const promptPlan = videoShotOperation?.properties?.promptPlan as
+			| { type?: unknown; oneOf?: Array<{ type?: unknown }> }
+			| undefined;
+		expect(promptPlan?.type).toBe("object");
+		expect(promptPlan?.oneOf?.every((branch) => branch.type === "object")).toBe(true);
 	});
 
 	it("assigns stable ids and maps semantic connection inputs to internal handles", () => {

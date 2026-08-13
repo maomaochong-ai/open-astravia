@@ -71,6 +71,13 @@ describe("appendError", () => {
 		expect(block.kind).toBe("auth");
 		expect(block.attempts).toBeUndefined();
 	});
+
+	it("同一 turn 重放错误事件时保持单个错误块", () => {
+		const once = appendError([], "503 unavailable", undefined, "turn-1");
+		const twice = appendError(once, "503 unavailable", 1, "turn-1");
+		expect(errorBlocksOf(twice)).toHaveLength(1);
+		expect(errorBlocksOf(twice)[0]).toMatchObject({ turnId: "turn-1", attempts: 1 });
+	});
 });
 
 describe("fullHistoryToChat error entries", () => {
@@ -80,6 +87,7 @@ describe("fullHistoryToChat error entries", () => {
 			{
 				type: "error",
 				entryId: "error-1",
+				turnId: "turn-1",
 				code: "TRANSPORT_FAILED",
 				message: "503 service unavailable",
 				timestamp: "2026-08-13T00:00:00.000Z",
@@ -87,7 +95,7 @@ describe("fullHistoryToChat error entries", () => {
 		]);
 
 		expect(errorBlocksOf(messages)).toEqual([
-			expect.objectContaining({ type: "error", kind: "server", text: "503 service unavailable" }),
+			expect.objectContaining({ type: "error", kind: "server", text: "503 service unavailable", turnId: "turn-1" }),
 		]);
 	});
 });

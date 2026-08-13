@@ -264,12 +264,10 @@
 		"tooltip": {
 			"compacting": "Compacting context...",
 			"unknown": "Context window {{window}} (usage unknown)",
-			"usage": "Context {{percent}}% used ({{window}} window)"
+			"usage": "Context {{tokens}} tokens used ({{percent}}%, {{window}} window)"
 		},
 		"details": {
 			"title": "Context composition (latest call)",
-			"actual": "Actual input",
-			"estimated": "Estimated",
 			"section": "Section",
 			"category": "Category",
 			"tokens": "Tokens",

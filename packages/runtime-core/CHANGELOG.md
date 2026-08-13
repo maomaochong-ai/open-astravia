@@ -15,6 +15,9 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- **统一 Turn 失败合同**：Provider 返回 `stopReason: "error"` 时不再作为 assistant 消息写入新会话，统一转换为结构化 `turn.failed`；实时错误与历史错误携带 `turnId`，Desktop 错误卡片按 turn 幂等投影，避免错误丢失或重复。旧 assistant error 历史保持兼容读取。
+- **失败 prompt 回执保留结构化错误**：`status: "failed"` 的 Runtime prompt 回执现在携带 `error` 与 `turnId`，宿主重试层不会再把已结束的额度/Provider 失败误判为成功并清掉错误事件。
+
 - **Turn-bound Runtime Generation**（ADR-0069）：`RuntimeSnapshotProvider.acquire` 接收 Session/operation
   context，并在同一次 lease 中绑定 Snapshot、模型和动态 Model Call 组件；Turn 释放时精确释放其外部
   generation lease。Execution Mode 更新不再因活动 Session 被拒绝，而是进入统一 Session 配置 overlay，

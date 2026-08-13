@@ -6,6 +6,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **Provider 失败可见且幂等**：错误卡片显示来自 Runtime 的结构化失败，并按 `turnId` 合并实时重放与历史回放，避免失败消息消失或重复出现。
+
 - **Windows 本地流式语音输入**（ADR-0070）：输入栏在 Windows x64 显示麦克风入口；Windows 构建阶段下载、
   校验并把约 160 MiB 的中文 Streaming Zipformer 模型写入安装包，应用运行时完全离线；16 kHz PCM 由 AudioWorklet 分块
   采集，Sherpa-ONNX 原生解码隔离在 utilityProcess，partial 实时展示、final 插入当前光标。macOS/Linux
