@@ -37,7 +37,8 @@ export interface InstalledCustomSkill {
 	installedAt: string;
 	source: "custom";
 	enabled: boolean;
-	type: "skill";
+	/** 由 SKILL.md 的 `metadata.type` 决定；缺省按 skill。 */
+	type: "skill" | "scene";
 	alias?: string;
 	description: string;
 }
@@ -66,7 +67,8 @@ export interface DesktopSkillsApi {
 	 * 供 App Action 与官方插件使用。
 	 */
 	installFromMarketSlug(type: "skill" | "scene", slug: string): Promise<SkillMarketInstallResult>;
-	importCustom(archiveBuffer: ArrayBuffer): Promise<{ name: string }>;
+	/** 安装类型由包内 SKILL.md 的 `metadata.type` 决定（scene 装进 `~/.vetta/scene/`）。 */
+	importCustom(archiveBuffer: ArrayBuffer): Promise<{ name: string; type: "skill" | "scene" }>;
 	uninstall(name: string, type: "skill" | "scene"): Promise<void>;
 	toggle(name: string): Promise<void>;
 	getMarketManifest(): Promise<Record<string, InstalledSkill>>;

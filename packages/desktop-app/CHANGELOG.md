@@ -100,6 +100,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **手动导入的场景被当成技能**：导入自定义能力包时只读 `SKILL.md` 的 name / alias / description / version，硬编码按 skill 装进 `~/.vetta/skills/`，`metadata.type: scene` 完全没人看。装错目录不只是分类不对——agent 是按目录判定场景的，装进 skills/ 就拿不到 tasks.json 自动建 todo 并锁定列表这类场景语义。现在导入类型与 agent 侧同一口径（只认 `metadata` 块内的 `type`，顶层同名键不算），scene 装进 `~/.vetta/scene/`，清单、能力台账与监控事件都记为 scene，场景页也随之列出用户自己导入的场景（此前本地清单里的 custom 条目被无条件跳过，只显示市场来源的场景）。已按 skill 装错的包需卸载后重新导入。
+- **折叠块写法的 description 被读成一个 `>`**：`description: >` 加缩进续行是 SKILL.md 的常见写法，导入时却只取首行，于是描述变成 `>`，落盘规范化还会把首行改写成 `description: ">"` 而让续行变成孤儿，agent 侧的严格 YAML 解析直接失败、技能加载不出来。现在折叠块按 folded 语义拼成整段，且不再改写块标量首行（块标量本身对 `:` 就是安全的）。
 - **AI 供应商错误与自动重试过程可见**：自动重试期间消息列表稳定显示“正在重新连接（1/3）”及上次失败的用户友好原因；最终失败进入现有错误卡并保留原始详情。`turn.failed` 与 prompt 前置失败现在也能从完整历史恢复，不再因 `agent_end` 触发的整表刷新而消失，重新打开会话仍可看到。
 
 - **生产包启动数秒后整个 App 未响应（macOS 彩虹圈）**：uiohook-napi ≤1.5.5 的 `hook_enable()` 存在启动竞态死锁——`uv_cond_wait` 无谓词循环，虚假唤醒后调用线程误判启动失败、持 `hook_running_mutex` 进入 `uv_thread_join`，钩子线程随后派发 `EVENT_HOOK_ENABLED` 时又要锁同一把 mutex，两边永久互等；quickpanel/appshot 手势在启动期同步调用 `uIOhook.start()`，主进程主线程被冻住。死锁在原生层、与输入监控授权无关（macOS 26/27 上调度时序变化后近乎必现）。现在 uIOhook 隔离到 utilityProcess 宿主子进程（`uiohook-host.ts`），键盘事件经 IPC 回传主进程状态机；`UiohookSupervisor` 对宿主做启动看门狗（超时即视为命中死锁，kill 后延迟重拉，竞态窗口极窄、重试大概率成功），重试预算用尽只降级为手势不可用并记日志，主进程 UI 永不再因此冻结。

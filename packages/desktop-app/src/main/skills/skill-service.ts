@@ -40,7 +40,7 @@ export interface InstalledCustomSkill {
 	installedAt: string;
 	source: "custom";
 	enabled: boolean;
-	type: "skill";
+	type: InstalledSkillType;
 	alias?: string;
 	description: string;
 }

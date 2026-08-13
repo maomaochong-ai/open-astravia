@@ -9,10 +9,12 @@ import { ipcMain } from "electron";
 import { recordAbilityInstall } from "../abilities/ability-ledger.js";
 import { getBuiltinSkillPaths } from "../builtin-skills.js";
 import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
+import { parseFrontmatter, rewriteFrontmatterDescription } from "../skills/skill-frontmatter.js";
 import { installSkillFromMarketArchive, installSkillFromMarketSlug } from "../skills/skill-market-install.js";
 import {
 	getDesktopSkillService,
 	getSkillBaseDir,
+	type InstalledSkillType,
 	readSkillsManifest,
 	recordSkillResourceEvent,
 	writeSkillsManifest,
@@ -26,75 +28,6 @@ function assertNonEmptyString(value: unknown, fieldName: string): asserts value 
 }
 
 const tmpBaseDir = join(getVettaHomePath(), "tmp");
-
-interface SkillFrontmatter {
-	name?: string;
-	alias?: string;
-	description?: string;
-	version?: string;
-}
-
-function extractFrontmatter(content: string): string | null {
-	const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-	return match ? match[1] : null;
-}
-
-function unquote(value: string): string {
-	const trimmed = value.trim();
-	if (trimmed.length >= 2) {
-		const first = trimmed[0];
-		const last = trimmed[trimmed.length - 1];
-		if ((first === '"' || first === "'") && first === last) {
-			return trimmed.slice(1, -1);
-		}
-	}
-	return trimmed;
-}
-
-function parseFrontmatter(content: string): SkillFrontmatter {
-	const fm = extractFrontmatter(content);
-	if (!fm) return {};
-	const result: SkillFrontmatter = {};
-	const lines = fm.split(/\r?\n/);
-	for (const line of lines) {
-		const topMatch = line.match(/^(name|alias|description):\s*(.*)$/);
-		if (topMatch) {
-			const key = topMatch[1] as "name" | "alias" | "description";
-			const value = unquote(topMatch[2]);
-			if (value.length > 0) result[key] = value;
-		}
-	}
-	const versionMatch = fm.match(/version:\s*["']?([^\s"']+)["']?/i);
-	if (versionMatch) result.version = versionMatch[1];
-	return result;
-}
-
-function yamlDoubleQuote(value: string): string {
-	const escaped = value
-		.replace(/\\/g, "\\\\")
-		.replace(/"/g, '\\"')
-		.replace(/\r/g, "\\r")
-		.replace(/\n/g, "\\n")
-		.replace(/\t/g, "\\t");
-	return `"${escaped}"`;
-}
-
-/**
- * 把 frontmatter 中 description 字段重写为 double-quoted YAML 字符串，
- * 防止 description 包含 `:` 等字符时 YAML 解析失败（agent 用的是严格 YAML 解析器）。
- * 仅替换单行 description；其他字段原样保留。
- */
-function rewriteFrontmatterDescription(content: string, description: string): string {
-	const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-	if (!match) return content;
-	const original = match[0];
-	const body = match[1];
-	const replaced = body.replace(/^description:[ \t]*.*$/m, `description: ${yamlDoubleQuote(description)}`);
-	if (replaced === body) return content;
-	const eolMatch = original.match(/\r?\n/);
-	const eol = eolMatch ? eolMatch[0] : "\n";
-	return content.replace(original, `---${eol}${replaced}${eol}---`);
-}
 
 function findShallowestSkillMd(rootDir: string): string | null {
 	const holder: { best: { path: string; depth: number } | null } = { best: null };
@@ -253,7 +186,11 @@ export function registerSkillsIpc(): () => void {
 				throw new Error("name 仅允许小写字母、数字、连字符（1–64 字符）");
 			}
 
-			const skillsBaseDir = getSkillBaseDir("skill");
+			// 类型口径与 agent 侧一致：只认 frontmatter 的 metadata.type，scene 装进 ~/.vetta/scene/。
+			// 装错目录不只是分类不对——agent 是按目录判定场景的，装进 skills/ 就拿不到
+			// tasks.json 锁定 todo 等场景语义。
+			const importType: InstalledSkillType = fm.type === "scene" ? "scene" : "skill";
+			const skillsBaseDir = getSkillBaseDir(importType);
 			const targetDir = join(skillsBaseDir, fm.name);
 			const manifest = readSkillsManifest();
 			if (manifest[fm.name] || existsSync(targetDir)) {
@@ -282,20 +219,20 @@ export function registerSkillsIpc(): () => void {
 				installedAt: new Date().toISOString(),
 				source: "custom",
 				enabled: true,
-				type: "skill",
+				type: importType,
 				alias: fm.alias,
 				description: fm.description,
 			};
 			writeSkillsManifest(manifest);
-			recordAbilityInstall("skill", fm.name, fm.version || "0.0.0");
+			recordAbilityInstall(importType, fm.name, fm.version || "0.0.0");
 			recordSkillResourceEvent({
 				name: fm.name,
-				type: "skill",
+				type: importType,
 				source: "custom",
 				operation: "imported",
 			});
 
-			return { name: fm.name };
+			return { name: fm.name, type: importType };
 		} finally {
 			await rm(extractDir, { recursive: true, force: true }).catch(() => {});
 		}
