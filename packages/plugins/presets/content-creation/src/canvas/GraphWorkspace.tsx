@@ -15,7 +15,7 @@ import {
 	useTranslation,
 } from "@vetta-org/plugin-sdk";
 import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { findContentAlignmentGuides } from "./alignment-guides";
+import { findContentFlowAlignmentGuides } from "./alignment-guides";
 import { listCompatibleNodeKinds, resolveContentConnection } from "../node/connections";
 import type { ContentProjectCommand } from "../project/commands";
 import type { ContentHistoryMetadata, ContentProjectHistoryView } from "../project/history";
@@ -621,23 +621,40 @@ export function GraphWorkspace({
 		},
 		[openCanvasMenu],
 	);
+	const pendingAlignmentNodeIdRef = useRef<string | null>(null);
+	const alignmentGuideFrameRef = useRef<number | null>(null);
+	const flushAlignmentGuides = useCallback(() => {
+		alignmentGuideFrameRef.current = null;
+		const activeNodeId = pendingAlignmentNodeIdRef.current;
+		const flowInstance = flowInstanceRef.current;
+		if (!activeNodeId || !flowInstance) return;
+		const threshold = 6 / flowInstance.getZoom();
+		alignmentGuidesLayerRef.current?.update(
+			findContentFlowAlignmentGuides(flowInstance.getNodes(), activeNodeId, threshold),
+		);
+	}, []);
+	const cancelPendingAlignmentGuides = useCallback(() => {
+		pendingAlignmentNodeIdRef.current = null;
+		if (alignmentGuideFrameRef.current !== null) {
+			cancelAnimationFrame(alignmentGuideFrameRef.current);
+			alignmentGuideFrameRef.current = null;
+		}
+	}, []);
+	useEffect(() => cancelPendingAlignmentGuides, [cancelPendingAlignmentGuides]);
 	const onNodeDrag = useCallback<NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onNodeDrag"]>>(
 		(_, node) => {
-			const flowNodes = flowInstanceRef.current?.getNodes() ?? [];
-			const flowNodeById = new Map(flowNodes.map((flowNode) => [flowNode.id, flowNode]));
-			const currentNodes = project.graph.nodes.map((projectNode) => {
-				const flowNode = flowNodeById.get(projectNode.id);
-				return flowNode ? { ...projectNode, position: flowNode.position } : projectNode;
-			});
-			const threshold = 6 / (flowInstanceRef.current?.getZoom() ?? 1);
-			alignmentGuidesLayerRef.current?.update(findContentAlignmentGuides(currentNodes, node.id, threshold));
+			pendingAlignmentNodeIdRef.current = node.id;
+			if (alignmentGuideFrameRef.current === null) {
+				alignmentGuideFrameRef.current = requestAnimationFrame(flushAlignmentGuides);
+			}
 		},
-		[project.graph.nodes],
+		[flushAlignmentGuides],
 	);
 	const onNodeDragStop = useCallback<
 		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onNodeDragStop"]>
 	>(
 		(_, __, draggedNodes) => {
+			cancelPendingAlignmentGuides();
 			alignmentGuidesLayerRef.current?.clear();
 			const movableNodeIds = new Set(project.graph.nodes.filter((node) => !node.locked).map((node) => node.id));
 			void onDispatch(
@@ -646,7 +663,7 @@ export function GraphWorkspace({
 					.map((node) => ({ type: "node.move", nodeId: node.id, position: node.position })),
 			);
 		},
-		[onDispatch, project.graph.nodes],
+		[cancelPendingAlignmentGuides, onDispatch, project.graph.nodes],
 	);
 
 	/** Host ShortcutScopeStack (not RF deleteKeyCode) so Delete participates in app/plugin scopes. */

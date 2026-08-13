@@ -16,6 +16,10 @@ const projectMenuCapture = vi.hoisted(() => ({
 const shortcutScopeCapture = vi.hoisted(() => ({
 	options: [] as Record<string, unknown>[],
 }));
+const alignmentGuidesCapture = vi.hoisted(() => ({
+	update: vi.fn(),
+	clear: vi.fn(),
+}));
 
 vi.mock("@xyflow/react", () => ({
 	Controls: ({ children }: { children?: unknown }) => <>{children}</>,
@@ -51,9 +55,15 @@ vi.mock("../src/node/ContentNodeCard", () => ({
 	ContentNodeCard: () => null,
 }));
 
-vi.mock("../src/canvas/AlignmentGuidesLayer", () => ({
-	AlignmentGuidesLayer: () => null,
-}));
+vi.mock("../src/canvas/AlignmentGuidesLayer", async () => {
+	const { forwardRef, useImperativeHandle } = await vi.importActual<typeof import("react")>("react");
+	return {
+		AlignmentGuidesLayer: forwardRef((_props, ref) => {
+			useImperativeHandle(ref, () => alignmentGuidesCapture, []);
+			return null;
+		}),
+	};
+});
 
 vi.mock("../src/canvas/GraphOverlayLayer", () => ({
 	GraphOverlayLayer: () => null,
@@ -75,6 +85,8 @@ describe("GraphWorkspace mouse interactions", () => {
 		reactFlowCapture.props = null;
 		projectMenuCapture.props = null;
 		shortcutScopeCapture.options = [];
+		alignmentGuidesCapture.update.mockClear();
+		alignmentGuidesCapture.clear.mockClear();
 	});
 	afterEach(() => {
 		cleanup();
@@ -460,5 +472,88 @@ describe("GraphWorkspace mouse interactions", () => {
 		expect(onSelectedNodeIdsChange).toHaveBeenLastCalledWith(["first", "second"]);
 		expect(setNodes).not.toHaveBeenCalled();
 		expect(setEdges).toHaveBeenCalledTimes(1);
+	});
+
+	it("coalesces alignment-guide work to one calculation per animation frame", () => {
+		const project = createContentProject("C:\\project");
+		project.graph.nodes = [
+			{ id: "active", kind: "prompt", position: { x: 0, y: 0 }, width: 100, height: 80, status: "idle", data: {} },
+			{ id: "target", kind: "prompt", position: { x: 100, y: 100 }, width: 100, height: 80, status: "idle", data: {} },
+		];
+		const scheduledFrames = new Map<number, FrameRequestCallback>();
+		let nextFrameId = 0;
+		const requestFrame = vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+			const frameId = ++nextFrameId;
+			scheduledFrames.set(frameId, callback);
+			return frameId;
+		});
+		const cancelFrame = vi.spyOn(window, "cancelAnimationFrame").mockImplementation((frameId) => {
+			scheduledFrames.delete(frameId);
+		});
+		const onDispatch = vi.fn(async () => undefined);
+
+		render(
+			<GraphWorkspace
+				project={project}
+				assetPreviewUrls={new Map()}
+				models={[]}
+				onDispatch={onDispatch}
+				onRunNode={async () => undefined}
+				onImportAssets={async () => undefined}
+				onImportReferences={async () => undefined}
+				onSelectedNodeIdsChange={() => undefined}
+				onOpenSettings={() => undefined}
+			/>,
+		);
+
+		const flowNodes = [
+			{ id: "active", position: { x: 102, y: 18 }, width: 100, height: 80, data: { kind: "prompt", nodeData: {} } },
+			{ id: "target", position: { x: 100, y: 100 }, width: 100, height: 80, data: { kind: "prompt", nodeData: {} } },
+		];
+		const getNodes = vi.fn(() => flowNodes);
+		act(() => {
+			(reactFlowCapture.props?.onInit as (instance: Record<string, unknown>) => void)({
+				setNodes: vi.fn(),
+				setEdges: vi.fn(),
+				getNodes,
+				getZoom: () => 1,
+				fitView: vi.fn(),
+				setViewport: vi.fn(),
+			});
+		});
+		getNodes.mockClear();
+
+		act(() => {
+			(reactFlowCapture.props?.onNodeDrag as (event: unknown, node: unknown) => void)({}, flowNodes[0]);
+			(reactFlowCapture.props?.onNodeDrag as (event: unknown, node: unknown) => void)({}, flowNodes[0]);
+			(reactFlowCapture.props?.onNodeDrag as (event: unknown, node: unknown) => void)({}, flowNodes[0]);
+		});
+
+		expect(requestFrame).toHaveBeenCalledTimes(1);
+		expect(getNodes).not.toHaveBeenCalled();
+		expect(alignmentGuidesCapture.update).not.toHaveBeenCalled();
+
+		const frame = scheduledFrames.values().next().value;
+		expect(frame).toBeTypeOf("function");
+		act(() => frame?.(0));
+
+		expect(getNodes).toHaveBeenCalledTimes(1);
+		expect(alignmentGuidesCapture.update).toHaveBeenCalledTimes(1);
+		expect(alignmentGuidesCapture.update).toHaveBeenCalledWith({
+			vertical: { x: 100, top: 18, bottom: 180 },
+			horizontal: { y: 100, left: 100, right: 202 },
+		});
+
+		act(() => {
+			(reactFlowCapture.props?.onNodeDrag as (event: unknown, node: unknown) => void)({}, flowNodes[0]);
+			(reactFlowCapture.props?.onNodeDragStop as (event: unknown, node: unknown, nodes: unknown[]) => void)(
+				{},
+				flowNodes[0],
+				[flowNodes[0]],
+			);
+		});
+
+		expect(cancelFrame).toHaveBeenCalledOnce();
+		expect(alignmentGuidesCapture.clear).toHaveBeenCalledOnce();
 	});
 });

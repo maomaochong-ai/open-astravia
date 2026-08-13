@@ -8,6 +8,7 @@ import { ContentNodeCard, type ContentFlowNode, type ContentFlowNodeData } from 
 
 const editorRender = vi.hoisted(() => vi.fn());
 const surfaceRender = vi.hoisted(() => vi.fn());
+const nodeToolbarRender = vi.hoisted(() => vi.fn());
 const nodeDefinition = vi.hoisted(() => ({
 	category: "generation",
 	descriptionKey: "node.description.image-generator",
@@ -23,8 +24,10 @@ interface MockButtonProps extends ComponentProps<"button"> {
 
 vi.mock("@xyflow/react", () => ({
 	NodeResizer: () => null,
-	NodeToolbar: ({ children, isVisible }: { children: ReactNode; isVisible?: boolean }) =>
-		isVisible ? <div>{children}</div> : null,
+	NodeToolbar: ({ children, isVisible }: { children: ReactNode; isVisible?: boolean }) => {
+		nodeToolbarRender();
+		return isVisible ? <div>{children}</div> : null;
+	},
 	Position: { Bottom: "bottom", Left: "left", Right: "right", Top: "top" },
 }));
 
@@ -126,6 +129,7 @@ describe("ContentNodeCard render boundary", () => {
 		cleanup();
 		editorRender.mockClear();
 		surfaceRender.mockClear();
+		nodeToolbarRender.mockClear();
 	});
 
 	it("does not rerender the editor when only the React Flow position changes", async () => {
@@ -186,6 +190,15 @@ describe("ContentNodeCard render boundary", () => {
 		view.rerender(<ContentNodeCard {...props} selected dragging={false} />);
 
 		await waitFor(() => expect(editorRender).toHaveBeenCalledTimes(1));
+	});
+
+	it("does not mount invisible React Flow toolbars for an unselected node", () => {
+		const data = createNodeData();
+		const props = createNodeProps(data, { selected: false });
+
+		render(<ContentNodeCard {...props} />);
+
+		expect(nodeToolbarRender).not.toHaveBeenCalled();
 	});
 
 	it("keeps an existing editor mounted but hidden while dragging", async () => {

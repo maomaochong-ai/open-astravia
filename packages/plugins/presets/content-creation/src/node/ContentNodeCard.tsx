@@ -222,8 +222,9 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, s
 				keepAspectRatio={false}
 				onResizeEnd={(_, size) => data.onResize({ x: size.x, y: size.y }, size.width, size.height)}
 			/>
-			<NodeToolbar isVisible={showQuickToolbar} position={Position.Top} offset={QUICK_TOOLBAR_OFFSET}>
-				<div
+			{showQuickToolbar ? (
+				<NodeToolbar isVisible position={Position.Top} offset={QUICK_TOOLBAR_OFFSET}>
+					<div
 					className="flex items-center gap-0.5 rounded-lg border border-border/80 bg-popover/95 p-0.5 text-popover-foreground shadow-sm backdrop-blur-md"
 					onMouseEnter={keepQuickToolbar}
 					onMouseLeave={scheduleQuickToolbarClose}
@@ -276,8 +277,9 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, s
 					>
 						<span className="icon-[lucide--trash-2] block size-4 shrink-0" aria-hidden="true" />
 					</Button>
-				</div>
-			</NodeToolbar>
+					</div>
+				</NodeToolbar>
+			) : null}
 			<div
 				className={`relative z-0 h-full w-full overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-[border-color,box-shadow] duration-150 ${
 					selected
@@ -332,8 +334,9 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, s
 				active={hovered || selected}
 				selected={selected}
 			/>
-			<NodeToolbar isVisible={showEditor} position={Position.Bottom} offset={QUICK_TOOLBAR_OFFSET}>
-				<div
+			{showEditor ? (
+				<NodeToolbar isVisible position={Position.Bottom} offset={QUICK_TOOLBAR_OFFSET}>
+					<div
 					className={`max-w-[calc(100vw-32px)] ${dragging ? "invisible pointer-events-none" : ""}`}
 					aria-hidden={dragging || undefined}
 				>
@@ -360,8 +363,9 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, s
 						onClearKeyframeSource={data.onClearKeyframeSource}
 						onAddToTimeline={data.onAddToTimeline}
 					/>
-				</div>
-			</NodeToolbar>
+					</div>
+				</NodeToolbar>
+			) : null}
 		</div>
 	);
 }, areContentNodeCardPropsEqual);
