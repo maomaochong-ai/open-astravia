@@ -499,7 +499,8 @@
 		"compactionBoundary": "上下文已压缩",
 		"modelSwitched": "切换了模型 {{name}}",
 		"compactionIndicator": "正在压缩上下文...",
-		"retryIndicator": "连接不太稳定，正在自动重试（第 {{attempt}}/{{maxAttempts}} 次）",
+		"retryIndicator": "正在重新连接（{{attempt}}/{{maxAttempts}}）",
+		"retryReason": "上次请求失败：{{reason}}",
 		"streamingPhrases": [
 			"Vetta 正在回复…",
 			"请耐心等待…",

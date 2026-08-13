@@ -837,6 +837,15 @@ export type HistoryEntry =
 			timestamp: string;
 	  }
 	| { type: "assistant_turn_timing"; timing: AssistantTurnTiming; timestamp: string }
+	| {
+			type: "error";
+			/** Stable conversation entry id when the failure was persisted as a document fact. */
+			entryId?: string;
+			/** Runtime / provider error code when one is available. */
+			code?: string;
+			message: string;
+			timestamp: string;
+	  }
 	/**
 	 * Marker that the next user message was sent via Settings AI assist
 	 * (model-only instruction custom message precedes it). UI-only; not LLM content.

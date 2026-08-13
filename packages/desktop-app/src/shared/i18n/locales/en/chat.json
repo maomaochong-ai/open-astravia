@@ -499,7 +499,8 @@
 		"compactionBoundary": "Context compacted",
 		"modelSwitched": "Switched model to {{name}}",
 		"compactionIndicator": "Compacting context...",
-		"retryIndicator": "Connection is flaky — retrying automatically ({{attempt}}/{{maxAttempts}})",
+		"retryIndicator": "Reconnecting ({{attempt}}/{{maxAttempts}})",
+		"retryReason": "Last request failed: {{reason}}",
 		"streamingPhrases": [
 			"Vetta is replying…",
 			"Please hold on…",

@@ -1,6 +1,6 @@
 import type { ErrorBlock } from "@shared/store/atoms";
 import { describe, expect, it } from "vitest";
-import { appendError, historyToChat } from "./chat-service";
+import { appendError, fullHistoryToChat, historyToChat } from "./chat-service";
 
 /** 会话文件里一条失败的 assistant message。 */
 function failed(errorMessage: string) {
@@ -70,5 +70,24 @@ describe("appendError", () => {
 
 		expect(block.kind).toBe("auth");
 		expect(block.attempts).toBeUndefined();
+	});
+});
+
+describe("fullHistoryToChat error entries", () => {
+	it("renders a durable turn failure as an error card", () => {
+		const messages = fullHistoryToChat([
+			{ type: "message", message: { role: "user", content: "hello", timestamp: 1 } },
+			{
+				type: "error",
+				entryId: "error-1",
+				code: "TRANSPORT_FAILED",
+				message: "503 service unavailable",
+				timestamp: "2026-08-13T00:00:00.000Z",
+			},
+		]);
+
+		expect(errorBlocksOf(messages)).toEqual([
+			expect.objectContaining({ type: "error", kind: "server", text: "503 service unavailable" }),
+		]);
 	});
 });

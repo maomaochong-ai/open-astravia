@@ -417,6 +417,8 @@ export const isCompactingAtom = atom<boolean>(false);
 export interface RetryProgress {
 	attempt: number;
 	maxAttempts: number;
+	/** 上一次失败的原始原因；UI 只展示归类后的人话，最终失败卡仍可展开原文。 */
+	errorMessage: string;
 }
 export const retryProgressAtom = atom<RetryProgress | null>(null);
 

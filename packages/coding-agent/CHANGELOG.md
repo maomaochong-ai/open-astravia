@@ -17,6 +17,8 @@
 
 ### Fixed
 
+- **自动重试提前结束宿主生命周期**：失败尝试的 `error` 虽被延迟，但配套 `agent_end` 此前仍会先发出，导致 Desktop 提前停止流式态、重拉历史并覆盖最终错误。重试适配层现在一并延迟失败尝试的终止事件；重试成功时丢弃中间错误与终止事件，彻底失败时按 `error → agent_end` 顺序只结算一次。
+
 - **Turn 绑定后 Session Plugin MCP 工具对模型不可见（回归）**：Turn-bound runtime generation（ADR-0069 落地）在 admission 冻结 MCP 可见集时只从 `readAvailableTools()` 取候选名，而 plugin MCP 工具要到 compose 阶段才由 pluginMcpRuntime 并入 frame、不在该表里，于是被整体冻结成不可见——插件声明的 MCP 工具在真实会话中从模型工具清单里消失。修复为冻结时把 MCP prompt state 的受管工具名并入候选集再过滤。回归由 `packages/cli-app/test/plugin-mcp-session-contract.test.ts` 锁定（原「isolates two sessions」用例在回归下失败）。该文件中 workflow 编排会话的 `rootMcpTools` 断言同步修正：旧断言 `[]` 锁定的是已删除的「MCP server agent_mode 与会话模式不匹配即排除」硬闸行为，零硬闸下 root 会话自己声明的 plugin MCP 工具对 root 模型同样可见。
 
 ### Changed

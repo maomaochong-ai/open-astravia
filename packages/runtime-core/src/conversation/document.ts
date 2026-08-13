@@ -210,6 +210,7 @@ export function applyStoredEventToConversationDocument(
 		event.type !== "message.appended" &&
 		event.type !== "context.appended" &&
 		event.type !== "context.recorded" &&
+		event.type !== "turn.failed" &&
 		!isPersistentCompactionEvent(event)
 	) {
 		return { ...document, journalVersion: sequence };
@@ -249,6 +250,26 @@ export function applyStoredEventToConversationDocument(
 					details: event.record.details,
 					fromHook: event.record.fromHook,
 					reason: event.record.reason,
+				},
+			],
+			activeLeafId: entryReference.id,
+		};
+	}
+	if (event.type === "turn.failed") {
+		return {
+			...document,
+			journalVersion: sequence,
+			// turn.failed records written before this projection existed were not part
+			// of document revision accounting. Keep that invariant so later persisted
+			// document commands retain their historical revision numbers.
+			revision: document.revision,
+			entries: [
+				...document.entries,
+				{
+					type: "custom",
+					...entryReference,
+					customType: "turn_failed",
+					data: { turnId: event.turnId, error: event.error },
 				},
 			],
 			activeLeafId: entryReference.id,

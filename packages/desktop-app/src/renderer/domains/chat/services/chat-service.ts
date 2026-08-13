@@ -470,6 +470,14 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 			continue;
 		}
 
+		if (entry.type === "error") {
+			const target = currentAssistant();
+			pushHistoryError(target.blocks!, entry.message);
+			if (!target.text) target.text = entry.message;
+			if (target.timestamp === undefined) target.timestamp = new Date(entry.timestamp).getTime();
+			continue;
+		}
+
 		const m = entry.message as {
 			role: string;
 			content: unknown;

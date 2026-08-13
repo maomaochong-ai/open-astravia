@@ -17,6 +17,7 @@ export interface CodingAgentRuntimeHostRetrySettings {
 }
 
 type RuntimeErrorEvent = Extract<SessionEvent, { readonly type: "error" }>;
+type RuntimeAgentEndEvent = Extract<SessionEvent, { readonly type: "session.lifecycle" }>;
 
 /** 排队 / 拦截回执：prompt 未开启 turn 时的即时返回值（ADR-0060）。 */
 function isPromptReceipt(result: unknown): result is { status: "queued" | "handled" } {
@@ -103,10 +104,12 @@ export function withCodingAgentRuntimeHostRetry(
 	};
 }
 
-class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStream {
+/** @internal Exported for the event-order contract test. */
+export class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStream {
 	private readonly listeners = new Set<(event: SessionEvent) => void>();
 	private readonly unsubscribe: () => void;
 	private pendingError: RuntimeErrorEvent | undefined;
+	private pendingAgentEnd: RuntimeAgentEndEvent | undefined;
 	private retryAttempts = 0;
 
 	constructor(
@@ -124,6 +127,9 @@ class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStream {
 	emitRetry(event: CodingAgentTurnRetryEvent): void {
 		if (event.type === "auto_retry_start") {
 			this.retryAttempts = event.attempt;
+			// The failed attempt is continuing as a retry, so its terminal lifecycle
+			// must not make hosts reconcile history or mark the whole operation idle.
+			this.pendingAgentEnd = undefined;
 			this.broadcast(
 				mapRuntimeSessionObservationEvent(this.sessionId, {
 					type: "retry.start",
@@ -150,14 +156,18 @@ class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStream {
 
 	clearPendingError(): void {
 		this.pendingError = undefined;
+		this.pendingAgentEnd = undefined;
 		this.retryAttempts = 0;
 	}
 
 	flushPendingError(): boolean {
 		const pending = this.pendingError;
 		if (!pending) return false;
-		this.broadcast({ ...pending, retryAttempts: this.retryAttempts });
+		const pendingAgentEnd = this.pendingAgentEnd;
+		const retryAttempts = this.retryAttempts;
 		this.clearPendingError();
+		this.broadcast({ ...pending, retryAttempts });
+		if (pendingAgentEnd) this.broadcast(pendingAgentEnd);
 		return true;
 	}
 
@@ -170,6 +180,10 @@ class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStream {
 	private accept(event: SessionEvent): void {
 		if (event.type === "error") {
 			this.pendingError = event;
+			return;
+		}
+		if (event.type === "session.lifecycle" && event.phase === "agent_end" && this.pendingError) {
+			this.pendingAgentEnd = event;
 			return;
 		}
 		if (event.type === "message.final" && event.message.role === "assistant") {

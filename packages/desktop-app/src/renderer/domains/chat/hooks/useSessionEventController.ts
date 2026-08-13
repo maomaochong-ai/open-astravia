@@ -466,7 +466,11 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 
 			// ── Auto-retry（退避等待中；错误本身要等重试彻底失败才会来）──
 			if (event.type === "retry.start") {
-				setRetryProgress({ attempt: event.attempt, maxAttempts: event.maxAttempts });
+				setRetryProgress({
+					attempt: event.attempt,
+					maxAttempts: event.maxAttempts,
+					errorMessage: event.errorMessage,
+				});
 				return;
 			}
 			if (event.type === "retry.end") {
