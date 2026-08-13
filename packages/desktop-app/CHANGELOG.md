@@ -81,6 +81,11 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **生产安装包收窄系统插件集**：开发环境继续加载现有全部 preset，`pack` / `dist`
+  产物只内置 `vetta-ui-design`、`image-gen`、`media-viewer`、`office-viewer`、
+  `svg-viewer`、`chart-renderer` 与 `git`。构建入口显式固定 development / production
+  profile，避免本地环境变量让开发插件误进发布包。
+
 - **会话流叙事方式改由模式注册表的 narration 能力位驱动（ADR-0071 外部审计跟进）**：渲染层不再以 `mode === "work"` 二值判断决定阶段折叠，改查注册表 `narration`（staged/inline），新模式声明一份 md 即获得正确渲染；新会话页 toggle 拉取注册表前不再渲染硬编码回退清单。批量任务与定时任务会话显式固化为 work 模式——此前它们执行时没有 mode 提示词、事后打开会话时 UI 又按 work 渲染，执行与展示割裂。插件工具注册未声明 `side_effect` 时宿主给出告警（缺省按 light，重副作用工具漏声明会绕过首调确认闸）。
 - **agent_mode 声明整体废弃，模式清单排序取消（ADR-0071，行为变化）**：接续下方「不再隐藏任何插件」条目——上一版 `agent_mode` 还保留「排序与提示词详略偏好」语义，本版确认清单排序对模型工具选择无可观察影响（模型按 description 语义匹配、不按位置，且「详略」从未实现）后整体归零：插件、工具、Skill、MCP、Hook 的 `agent_mode` 声明容忍存在但被忽略，工具与 Skill 清单在任何模式下集合与顺序完全一致（注册序，前缀缓存更稳）。插件详情页的「模式偏好」一栏移除。模式差异改由三处承担：mode 系统提示词、工作区事实注入、工具 description 的反向触发段。三个系统插件（vetta-ui-design / chart-renderer / content-creation）的全部 agent_mode 声明随之删除。
 - **模式注册表数据化（ADR-0071）**：新会话页的工作模式 toggle 改为遍历 coding-agent 模式注册表渲染（新增 IPC `vetta:session:get-agent-modes`，下发 id/label/description/icon）；`desktop-config` 与会话模式索引的合法值校验改查注册表。新增一个工作模式 = coding-agent 新增一份 modes/*.md（含 icon frontmatter）+ i18n 文案，桌面端零代码改动（缺译时回落注册表自带 label）。

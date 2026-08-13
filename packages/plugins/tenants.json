@@ -1,19 +1,33 @@
 {
   "default": "common",
-  "tenants": {
-    "common": [
-		"vetta-actions",
-      "vetta-ui-design",
-      "image-gen",
-      "media-viewer",
-      "office-viewer",
-      "svg-viewer",
-      "chart-renderer",
-      "git",
-      "plugin-workbench",
-      "comfyui-media-provider",
-      "content-creation",
-      "kanban"
-    ]
+  "defaultProfile": "development",
+  "profiles": {
+    "development": {
+      "common": [
+        "vetta-actions",
+        "vetta-ui-design",
+        "image-gen",
+        "media-viewer",
+        "office-viewer",
+        "svg-viewer",
+        "chart-renderer",
+        "git",
+        "plugin-workbench",
+        "comfyui-media-provider",
+        "content-creation",
+        "kanban"
+      ]
+    },
+    "production": {
+      "common": [
+        "vetta-ui-design",
+        "image-gen",
+        "media-viewer",
+        "office-viewer",
+        "svg-viewer",
+        "chart-renderer",
+        "git"
+      ]
+    }
   }
 }

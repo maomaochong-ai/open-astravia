@@ -14,24 +14,34 @@
 
 - [Module Federation 共享依赖约定](./docs/module-federation.md)：说明 `vettaPluginFederation` 的宿主共享依赖、构建期本地依赖要求、顶层求值限制和验证方式。
 
-## 租户化打包（tenants.json）
+## 环境与租户打包（tenants.json）
 
-系统插件按业务租户动态构建/打包。`tenants.json` 定义每个租户要包含的
-preset 插件 id 完整列表：
+系统插件先按开发/生产 profile，再按业务租户动态构建/打包。`tenants.json`
+定义每个 profile 下各租户要包含的 preset 插件 id 完整列表：
 
 ```json
 {
   "default": "common",
-  "tenants": {
-    "common": ["vetta-actions", "image-gen", "svg-viewer"],
-    "tenantb": ["vetta-actions", "image-gen", "svg-viewer", "demo-map"]
+  "defaultProfile": "development",
+  "profiles": {
+    "development": {
+      "common": ["vetta-actions", "image-gen", "svg-viewer"],
+      "tenantb": ["vetta-actions", "image-gen", "svg-viewer", "demo-map"]
+    },
+    "production": {
+      "common": ["image-gen", "svg-viewer"],
+      "tenantb": ["image-gen", "svg-viewer"]
+    }
   }
 }
 ```
 
 - `default`：未指定租户时使用的租户名。
-- 每个租户写**完整**插件 id 列表（不是增量）。新增 preset 后，需要它的
-  租户都要在各自数组里补上对应 id。
+- `defaultProfile`：手动运行通用构建脚本时的缺省 profile。
+- 每个 profile/租户组合写**完整**插件 id 列表（不是增量）。新增 preset
+  后，需要它的组合都要在各自数组里补上对应 id。
+- `build:presets:dev` 强制使用 `development`；`prebuild:pack` 及所有 `pack` / `dist`
+  入口强制使用 `production`，避免发布时因本地环境变量带入开发插件。
 
 构建/开发时通过 `VETTA_TENANT` 环境变量选择租户（缺省取 `default`）：
 
@@ -40,14 +50,14 @@ preset 插件 id 完整列表：
 cd packages/desktop-app
 VETTA_TENANT=tenantb bun run dev
 
-# 构建/打包 App：build:presets 与 prepare-pack 都读取同一 VETTA_TENANT
-VETTA_TENANT=tenantb bun run build
+# 打包 App：build:presets 与 prepare-pack 都读取同一 VETTA_TENANT
+VETTA_TENANT=tenantb bun run dist:win
 ```
 
-`build-presets.mjs` 只构建/staging 该租户的插件，切换租户时会自动清理
-`.artifacts/system-plugins` 下不属于该租户的旧插件；`prepare-pack.js` 只把该
-租户的 zip 制品打入 `Resources/system-plugins`。同一次构建务必使用一致的
-`VETTA_TENANT`，否则打包阶段会因缺少对应 zip 而报错。
+`build-presets.mjs` 只构建/staging 当前 profile + 租户的插件，切换组合时会自动清理
+`.artifacts/system-plugins` 下不属于该组合的旧插件；`prepare-pack.js` 只把该
+profile + 租户的 zip 制品打入 `Resources/system-plugins`。同一次构建务必使用一致的
+`VETTA_SYSTEM_PLUGIN_PROFILE` 与 `VETTA_TENANT`，否则打包阶段会因缺少对应 zip 而报错。
 
 若租户包含 `plugin-workbench`，`build-presets.mjs` 在算缓存哈希之前会先跑
 `presets/plugin-workbench/scripts/sync-plugin-docs.mjs`，将 monorepo
@@ -216,7 +226,7 @@ cd packages/plugins/<presets|externals>/<id>
 bun run build
 ```
 
-验证所有 Preset 和仓库：
+验证当前 profile + 租户选中的 Preset 和仓库：
 
 ```bash
 cd packages/desktop-app

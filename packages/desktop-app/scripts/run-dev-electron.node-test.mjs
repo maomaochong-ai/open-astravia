@@ -39,13 +39,14 @@ test("preserves explicit config and user data overrides", () => {
 });
 
 test("enables every preset from the active tenant by default", () => {
-	const resolveTenant = (tenant) => {
+	const resolveSelection = (tenant, profile) => {
 		assert.equal(tenant, "tenantb");
+		assert.equal(profile, "development");
 		return { name: tenant, pluginIds: new Set(["svg-viewer", "content-creation", "git"]) };
 	};
 
 	assert.equal(
-		resolveDevPluginIds({ VETTA_TENANT: "tenantb" }, resolveTenant),
+		resolveDevPluginIds({ VETTA_TENANT: "tenantb" }, resolveSelection),
 		"content-creation,git,svg-viewer",
 	);
 });

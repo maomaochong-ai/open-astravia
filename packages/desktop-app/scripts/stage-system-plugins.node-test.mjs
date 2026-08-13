@@ -1,0 +1,96 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import { resolveSystemPluginSelection } from "./stage-system-plugins.mjs";
+
+const developmentPluginIds = [
+	"vetta-actions",
+	"vetta-ui-design",
+	"image-gen",
+	"media-viewer",
+	"office-viewer",
+	"svg-viewer",
+	"chart-renderer",
+	"git",
+	"plugin-workbench",
+	"comfyui-media-provider",
+	"content-creation",
+	"kanban",
+];
+
+const productionPluginIds = [
+	"vetta-ui-design",
+	"image-gen",
+	"media-viewer",
+	"office-viewer",
+	"svg-viewer",
+	"chart-renderer",
+	"git",
+];
+
+const tenantbDevelopmentPluginIds = [
+	"vetta-actions",
+	"image-gen",
+	"media-viewer",
+	"office-viewer",
+	"svg-viewer",
+	"chart-renderer",
+	"demo-map",
+	"git",
+	"plugin-workbench",
+	"comfyui-media-provider",
+	"content-creation",
+	"remotion-renderer",
+	"kanban",
+];
+
+test("common keeps the full plugin set in development", () => {
+	const tenant = resolveSystemPluginSelection("common", "development");
+
+	assert.equal(tenant.name, "common");
+	assert.equal(tenant.profile, "development");
+	assert.deepEqual([...tenant.pluginIds], developmentPluginIds);
+});
+
+test("common packages only the production plugin set", () => {
+	const tenant = resolveSystemPluginSelection("common", "production");
+
+	assert.equal(tenant.name, "common");
+	assert.equal(tenant.profile, "production");
+	assert.deepEqual([...tenant.pluginIds], productionPluginIds);
+});
+
+test("tenantb keeps its full plugin set in development", () => {
+	const tenant = resolveSystemPluginSelection("tenantb", "development");
+
+	assert.deepEqual([...tenant.pluginIds], tenantbDevelopmentPluginIds);
+});
+
+test("production profile is identical across business tenants", () => {
+	const tenant = resolveSystemPluginSelection("tenantb", "production");
+
+	assert.equal(tenant.name, "tenantb");
+	assert.deepEqual([...tenant.pluginIds], productionPluginIds);
+});
+
+test("rejects an unknown system plugin profile", () => {
+	assert.throws(
+		() => resolveSystemPluginSelection("common", "preview"),
+		/未知系统插件 profile：preview/,
+	);
+});
+
+test("development and packaging scripts pin their system plugin profiles", async () => {
+	const packageJson = JSON.parse(
+		await readFile(new URL("../package.json", import.meta.url), "utf8"),
+	);
+
+	assert.match(
+		packageJson.scripts["build:presets:dev"],
+		/VETTA_SYSTEM_PLUGIN_PROFILE=development/,
+	);
+	assert.match(packageJson.scripts["build:pack"], /VETTA_SYSTEM_PLUGIN_PROFILE=production/);
+	assert.match(packageJson.scripts["prepare:pack"], /VETTA_SYSTEM_PLUGIN_PROFILE=production/);
+	assert.match(packageJson.scripts["prebuild:pack"], /bun run build:pack/);
+	assert.match(packageJson.scripts["prebuild:pack"], /bun run prepare:pack/);
+});

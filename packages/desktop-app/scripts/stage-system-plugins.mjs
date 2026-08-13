@@ -7,11 +7,14 @@ export const presetsDir = join(desktopAppDir, "..", "plugins", "presets");
 export const tenantsConfigPath = join(desktopAppDir, "..", "plugins", "tenants.json");
 export const devSystemPluginsDir = join(desktopAppDir, ".artifacts", "system-plugins");
 
-// 解析当前构建/开发使用的租户，返回该租户应打包的插件 id 集合。
-// 租户由 VETTA_TENANT 环境变量指定（或显式传入），缺省取 tenants.json 的 default。
+// 解析当前构建/开发使用的租户与系统插件 profile，返回应打包的插件 id 集合。
+// 租户由 VETTA_TENANT 指定，profile 由 VETTA_SYSTEM_PLUGIN_PROFILE 指定；
+// 两者缺省时分别取 tenants.json 的 default / defaultProfile。
 // 无 tenants.json 时返回 pluginIds=null，表示不过滤（打包全部 preset），保持向后兼容。
-export function resolveTenant(explicit) {
-	const requested = explicit ?? process.env.VETTA_TENANT ?? undefined;
+export function resolveSystemPluginSelection(explicitTenant, explicitProfile) {
+	const requestedTenant = explicitTenant ?? process.env.VETTA_TENANT ?? undefined;
+	const requestedProfile =
+		explicitProfile ?? process.env.VETTA_SYSTEM_PLUGIN_PROFILE ?? undefined;
 
 	let config = null;
 	try {
@@ -19,20 +22,29 @@ export function resolveTenant(explicit) {
 	} catch {
 		config = null;
 	}
-	if (config === null || typeof config !== "object" || typeof config.tenants !== "object") {
-		if (requested) {
-			throw new Error(`指定了租户 ${requested}，但缺少有效的 tenants.json：${tenantsConfigPath}`);
+	if (config === null || typeof config !== "object" || typeof config.profiles !== "object") {
+		if (requestedTenant || requestedProfile) {
+			throw new Error(
+				`指定了系统插件租户/profile，但缺少有效的 tenants.json：${tenantsConfigPath}`,
+			);
 		}
-		return { name: null, pluginIds: null };
+		return { name: null, profile: null, pluginIds: null };
 	}
 
-	const name = requested ?? config.default ?? "common";
-	const list = config.tenants[name];
-	if (!Array.isArray(list)) {
-		const known = Object.keys(config.tenants).join(", ") || "(空)";
-		throw new Error(`未知租户：${name}；tenants.json 已定义：${known}`);
+	const profile = requestedProfile ?? config.defaultProfile ?? "development";
+	const profileTenants = config.profiles[profile];
+	if (profileTenants === null || typeof profileTenants !== "object" || Array.isArray(profileTenants)) {
+		const known = Object.keys(config.profiles).join(", ") || "(空)";
+		throw new Error(`未知系统插件 profile：${profile}；tenants.json 已定义：${known}`);
 	}
-	return { name, pluginIds: new Set(list) };
+
+	const name = requestedTenant ?? config.default ?? "common";
+	const list = profileTenants[name];
+	if (!Array.isArray(list)) {
+		const known = Object.keys(profileTenants).join(", ") || "(空)";
+		throw new Error(`profile ${profile} 中的未知租户：${name}；tenants.json 已定义：${known}`);
+	}
+	return { name, profile, pluginIds: new Set(list) };
 }
 
 function readManifest(path) {

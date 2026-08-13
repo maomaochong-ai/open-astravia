@@ -9,7 +9,10 @@ import { resolvePackagedNativeDependencies } from "./packaged-native-dependencie
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
 import { prepareSpeechModels, SPEECH_MODEL_RESOURCE_ROOT } from "./fetch-speech-models.mjs";
 import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
-import { resolveTenant, stageSystemPluginsFromArchives } from "./stage-system-plugins.mjs";
+import {
+	resolveSystemPluginSelection,
+	stageSystemPluginsFromArchives,
+} from "./stage-system-plugins.mjs";
 import { stageSystemSkills } from "./stage-system-skills.mjs";
 import { stageSystemThemesFromArchives } from "./stage-system-themes.mjs";
 
@@ -652,15 +655,15 @@ await stageVendorRuntimes();
 //
 // build:presets 已为每个 preset 生成 release/<id>-<version>.zip。打包阶段只消费
 // zip 制品，校验后解压到 Resources/system-plugins/<id>/，不读取源码 dist。
-// 按租户（VETTA_TENANT，缺省取 tenants.json 的 default）筛选打包进 App 的系统插件。
-const packTenant = resolveTenant();
+// 按 profile + 租户筛选打包进 App 的系统插件。
+const pluginSelection = resolveSystemPluginSelection();
 console.log(
-	`[prepare-pack] 系统插件租户=${packTenant.name ?? "(未配置)"}：${
-		packTenant.pluginIds ? [...packTenant.pluginIds].join(", ") : "(全部 preset)"
+	`[prepare-pack] 系统插件 profile=${pluginSelection.profile ?? "(未配置)"}，租户=${pluginSelection.name ?? "(未配置)"}：${
+		pluginSelection.pluginIds ? [...pluginSelection.pluginIds].join(", ") : "(全部 preset)"
 	}`,
 );
 stageSystemPluginsFromArchives(join(buildStageDir, "system-plugins"), "prepare-pack", {
-	pluginIds: packTenant.pluginIds ?? undefined,
+	pluginIds: pluginSelection.pluginIds ?? undefined,
 });
 stageSystemThemesFromArchives(join(buildStageDir, "system-themes"), "prepare-pack");
 stageSystemSkills(join(buildStageDir, "system-skills"), "prepare-pack");

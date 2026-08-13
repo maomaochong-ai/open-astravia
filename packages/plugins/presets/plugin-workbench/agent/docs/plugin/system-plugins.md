@@ -18,7 +18,8 @@ packages/plugins/presets/
     src/index.tsx
 ```
 
-放进该目录即自动作为系统插件集成——这是该目录的约定语义。
+放进该目录会让它成为可选的系统插件 preset；还必须把 id 加入
+`packages/plugins/tenants.json` 中需要它的 profile/租户清单，才会进入对应开发或打包流程。
 
 ## 构建与集成
 
@@ -28,12 +29,16 @@ packages/plugins/presets/
 - **dev**：zip 解压到 `packages/desktop-app/.artifacts/system-plugins/<id>/`，主进程只读该 staging，不直接读 preset 源码或 `dist/`。
 - **打包**：`prepare-pack.js` 从 zip 解压到打包 staging 的 `system-plugins/<id>/`，再随 `extraResources` 进入 `Resources/system-plugins/<id>/`。
 
-## 租户化打包（tenants.json）
+## 环境与租户打包（tenants.json）
 
-`packages/plugins/tenants.json` 定义每个业务租户要包含的 **preset id 完整列表**（非增量）。环境变量 **`VETTA_TENANT`** 选择租户（缺省取 `default` 指向的租户名）。
+`packages/plugins/tenants.json` 先按开发/生产 profile，再按业务租户定义
+**preset id 完整列表**（非增量）。环境变量 **`VETTA_TENANT`** 选择租户
+（缺省取 `default` 指向的租户名）。
 
-- `build:presets` / `prepare-pack` 只构建并打入该租户列表中的插件。
-- 新增 preset 后，需要它的租户都要在各自数组里补上 id。
+- `build:presets:dev` 使用 `development` profile；`prebuild:pack` 及所有 `pack` /
+  `dist` 入口使用 `production` profile。
+- `build:presets` / `prepare-pack` 只构建并打入当前 profile + 租户列表中的插件。
+- 新增 preset 后，需要它的 profile/租户组合都要在各自数组里补上 id。
 
 详见 `packages/plugins/AGENTS.md`。
 

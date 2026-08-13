@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import electronPath from "electron";
-import { resolveTenant } from "./stage-system-plugins.mjs";
+import { resolveSystemPluginSelection } from "./stage-system-plugins.mjs";
 
 const projectRoot = join(import.meta.dirname, "..");
 
@@ -34,11 +34,14 @@ export function resolveDevLaunchEnvironment(environment = process.env, homeDirec
 	return { configDir, userDataDir };
 }
 
-export function resolveDevPluginIds(environment = process.env, tenantResolver = resolveTenant) {
+export function resolveDevPluginIds(
+	environment = process.env,
+	tenantResolver = resolveSystemPluginSelection,
+) {
 	if (Object.hasOwn(environment, "VETTA_PLUGIN_DEV")) {
 		return environment.VETTA_PLUGIN_DEV ?? "";
 	}
-	const tenant = tenantResolver(environment.VETTA_TENANT);
+	const tenant = tenantResolver(environment.VETTA_TENANT, "development");
 	return tenant.pluginIds ? Array.from(tenant.pluginIds).sort().join(",") : "";
 }
 
