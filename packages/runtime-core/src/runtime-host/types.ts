@@ -6,6 +6,7 @@ import type {
 	RuntimeUserQuestionRequest,
 	RuntimeUserQuestionResult,
 	SessionConfig,
+	SessionEvent,
 	SessionExecutionMode,
 } from "../contracts.js";
 import type { RuntimeHostSessionBackend } from "./session-backend.js";
@@ -127,6 +128,11 @@ export interface RuntimeHostOptions {
 	sessionAccessResolver?: RuntimeSessionAccessResolver;
 	/** 进程级共享模型资源。 */
 	sharedModelController?: RuntimeSharedModelController;
+	/**
+	 * 最终会话错误的宿主观察端口。事件已通过产品层重试包装，适合接入日志、
+	 * telemetry 等旁路；观察端抛错不会影响会话执行或事件分发。
+	 */
+	sessionErrorObserver?: (event: Extract<SessionEvent, { readonly type: "error" }>) => void;
 	getDefaultExecutionMode?: () => SessionExecutionMode | Promise<SessionExecutionMode>;
 	additionalSkillPaths?: string[];
 	sandboxHostPath?: string;

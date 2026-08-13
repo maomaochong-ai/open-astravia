@@ -5,6 +5,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@vetta/agent-core": fileURLToPath(new URL("../agent/src/index.ts", import.meta.url)),
+			"@vetta/ai": fileURLToPath(new URL("../ai/src/index.ts", import.meta.url)),
 			"@vetta/runtime-core/conversation": fileURLToPath(
 				new URL("./src/conversation/index.ts", import.meta.url),
 			),

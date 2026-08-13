@@ -8,7 +8,7 @@ import type {
 } from "@vetta/runtime-core";
 import { mapRuntimeSessionObservationEvent } from "@vetta/runtime-core";
 import type { CodingAgentTurnRetryEvent, CodingAgentTurnRetrySettings } from "../session-execution/contracts.js";
-import { readCodingAgentFailedTurnMessage } from "../session-execution/turn-executor.js";
+import { readCodingAgentTurnFailure } from "../session-execution/turn-executor.js";
 import { createCodingAgentTurnRetryController } from "../session-execution/turn-retry-controller.js";
 
 export interface CodingAgentRuntimeHostRetrySettings {
@@ -63,11 +63,11 @@ export function withCodingAgentRuntimeHostRetry(
 	});
 	const run = async (execute: () => Promise<unknown>): Promise<unknown> => {
 		try {
-			const result = await retry.run(execute, () => session.retry(), readCodingAgentFailedTurnMessage);
+			const result = await retry.run(execute, () => session.retry(), readCodingAgentTurnFailure);
 			// 排队/拦截回执（ADR-0060）不是 turn 结果：立即返回，不结算 pending error，
 			// 避免误清仍在 streaming 的当前 turn 挂起的错误。
 			if (isPromptReceipt(result)) return result;
-			if (readCodingAgentFailedTurnMessage(result)) events.flushPendingError();
+			if (readCodingAgentTurnFailure(result)) events.flushPendingError();
 			else events.clearPendingError();
 			return result;
 		} catch (error) {

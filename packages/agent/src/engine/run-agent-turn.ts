@@ -1,4 +1,4 @@
-import { type AssistantMessage, EventStream, type Message } from "@vetta/ai";
+import { type AssistantMessage, EventStream, isAIError, type Message } from "@vetta/ai";
 import { validateAgentRunLimits } from "./limits.js";
 import { executeRuntimeToolCalls } from "./tool-executor.js";
 import type {
@@ -364,7 +364,21 @@ function abortError(reason: unknown): Error {
 	return error;
 }
 
-function failureOf(error: unknown): { code: string; message: string } {
+function failureOf(error: unknown): AgentRunResult["failure"] {
+	if (isAIError(error)) {
+		return {
+			code: error.code,
+			message: error.message,
+			retryable: error.retryable,
+			origin: "provider",
+			details: {
+				...(error.statusCode === undefined ? {} : { statusCode: error.statusCode }),
+				...(error.provider === undefined ? {} : { provider: error.provider }),
+				...(error.modelId === undefined ? {} : { modelId: error.modelId }),
+				...(error.requestId === undefined ? {} : { requestId: error.requestId }),
+			},
+		};
+	}
 	if (error instanceof Error) {
 		const code = "code" in error && typeof error.code === "string" ? error.code : error.name;
 		return { code, message: error.message };

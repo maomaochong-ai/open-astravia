@@ -17,6 +17,7 @@ import {
 	type CodingAgentTurnExecutor,
 	type CodingAgentTurnRetryController,
 	createCodingAgentSessionCapabilityHost,
+	readCodingAgentTurnFailure,
 } from "@vetta/coding-agent/runtime";
 import { type HistoryEntry, RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
 import { type CodingToolRegistration, createImSendAttachmentToolRegistration } from "@vetta/runtime-tools/coding";
@@ -339,7 +340,7 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 					? await this.retryController.run(
 							command,
 							() => this.sessionHost.startActiveSessionOperation((session) => session.continue()),
-							readFailedTurnMessage,
+							readCodingAgentTurnFailure,
 						)
 					: await command();
 		} catch (error) {
@@ -351,20 +352,9 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 		}
 		if (activeTurn.terminalDeliveries.length > 0) return;
 		if (rejection) throw rejection.error;
-		const failedMessage = readFailedTurnMessage(result);
-		if (failedMessage) throw new Error(failedMessage);
+		const failure = readCodingAgentTurnFailure(result);
+		if (failure) throw new Error(failure.message);
 	}
-}
-
-function readFailedTurnMessage(value: unknown): string | undefined {
-	if (typeof value !== "object" || value === null) return undefined;
-	const error = Reflect.get(value, "error");
-	return Reflect.get(value, "status") === "failed" &&
-		typeof error === "object" &&
-		error !== null &&
-		typeof Reflect.get(error, "message") === "string"
-		? Reflect.get(error, "message")
-		: undefined;
 }
 
 function isAgentEndFrame(event: unknown): boolean {

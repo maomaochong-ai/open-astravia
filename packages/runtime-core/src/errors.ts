@@ -1,4 +1,5 @@
 import type { SessionError } from "./contracts.js";
+import type { RuntimeFailureDetails } from "./failure-contract.js";
 
 export const RUNTIME_ERROR_CODES = {
 	SESSION_NOT_FOUND: "SESSION_NOT_FOUND",
@@ -28,7 +29,7 @@ export function runtimeError(
 	message: string,
 	retryable: boolean,
 	origin: SessionError["origin"] = "runtime",
-	details?: unknown,
+	details?: RuntimeFailureDetails,
 ): SessionError {
 	return {
 		code: RUNTIME_ERROR_CODES[code],

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { AIError, getAIErrorDetails } from "../src/protocol/index.js";
 import type { ApiProvider } from "../src/runtime/adapter-registry.js";
 import { adaptApiProvider, adaptLegacyAssistantMessageStream } from "../src/runtime/language-model-adapter.js";
 import type { Api, AssistantMessage, AssistantMessageEvent, Context, Model } from "../src/types.js";
@@ -61,6 +62,30 @@ describe("adaptApiProvider", () => {
 
 		await expect(consume(response.events)).rejects.toMatchObject({ code });
 		await expect(response.result).rejects.toMatchObject({ code });
+	});
+
+	it("preserves native provider failure details through the compatibility projection", async () => {
+		const result = message("error", "too many requests");
+		const failure = new AIError("AI_RATE_LIMITED", "too many requests", {
+			retryable: true,
+			statusCode: 429,
+			provider: "test-provider",
+			modelId: "test-model",
+			requestId: "request-1",
+		});
+		const adapter = adaptApiProvider(
+			provider([{ type: "error", reason: "error", error: result, failure: getAIErrorDetails(failure) }]),
+		);
+		const response = await adapter.stream({ model, context });
+
+		await expect(response.result).rejects.toMatchObject({
+			code: "AI_RATE_LIMITED",
+			retryable: true,
+			statusCode: 429,
+			provider: "test-provider",
+			modelId: "test-model",
+			requestId: "request-1",
+		});
 	});
 
 	it.each([

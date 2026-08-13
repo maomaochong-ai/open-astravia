@@ -432,6 +432,38 @@ describe("runAgentTurn", () => {
 		expect(continuationCalls).toBe(0);
 	});
 
+	it("preserves structured provider failure details in the run result", async () => {
+		const run = runAgentTurn({
+			...request([
+				failedResponse(
+					new AIError("AI_RATE_LIMITED", "too many requests", {
+						retryable: true,
+						statusCode: 429,
+						provider: "test-provider",
+						modelId: "test-model",
+						requestId: "request-1",
+					}),
+				),
+			]),
+		});
+
+		await expect(run.result).resolves.toMatchObject({
+			status: "failed",
+			failure: {
+				code: "AI_RATE_LIMITED",
+				message: "too many requests",
+				retryable: true,
+				origin: "provider",
+				details: {
+					statusCode: 429,
+					provider: "test-provider",
+					modelId: "test-model",
+					requestId: "request-1",
+				},
+			},
+		});
+	});
+
 	it("emits tool updates, phases, and timing from the execution context", async () => {
 		const schema = Type.Object({ value: Type.String() });
 		const tool: RuntimeToolDefinition<typeof schema, { stage: string }> = {

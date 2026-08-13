@@ -1,6 +1,9 @@
 import {
+	AI_ERROR_CODES,
+	AIError,
 	type AssistantMessage,
 	AssistantMessageEventStream,
+	getAIErrorDetails,
 	type Message,
 	type Model,
 	type UserMessage,
@@ -121,14 +124,32 @@ describe("StatelessAgentCoreTurnEngine", () => {
 	it("rejects provider failures without consuming queued follow-up input", async () => {
 		const queue = new SessionInputQueue();
 		queue.followUp({ message: user("retry later") });
+		const failure = new AIError(AI_ERROR_CODES.RATE_LIMITED, "provider quota exceeded", {
+			retryable: true,
+			statusCode: 429,
+			provider: "openai",
+			modelId: "recorded-model",
+			requestId: "request-1",
+		});
 		const engine = new StatelessAgentCoreTurnEngine({
 			model: model(),
-			streamFn: () => errorStream(assistant([{ type: "text", text: "failed" }], "error")),
+			streamFn: () => errorStream(assistant([{ type: "text", text: "failed" }], "error"), failure),
 		});
 
 		await expect(run(engine, snapshot(), queue)).rejects.toMatchObject({
-			name: "AI_TRANSPORT_FAILED",
-			message: "Language model provider failed",
+			name: AI_ERROR_CODES.RATE_LIMITED,
+			message: "provider quota exceeded",
+			failure: {
+				code: AI_ERROR_CODES.RATE_LIMITED,
+				retryable: true,
+				origin: "provider",
+				details: {
+					statusCode: 429,
+					provider: "openai",
+					modelId: "recorded-model",
+					requestId: "request-1",
+				},
+			},
 		});
 		expect(queue.pendingCount).toBe(1);
 	});
@@ -186,9 +207,16 @@ function recordedStream(message: AssistantMessage): AssistantMessageEventStream 
 	return stream;
 }
 
-function errorStream(message: AssistantMessage): AssistantMessageEventStream {
+function errorStream(message: AssistantMessage, failure?: AIError): AssistantMessageEventStream {
 	const stream = new AssistantMessageEventStream();
-	queueMicrotask(() => stream.push({ type: "error", reason: "error", error: message }));
+	queueMicrotask(() =>
+		stream.push({
+			type: "error",
+			reason: "error",
+			error: message,
+			...(failure ? { failure: getAIErrorDetails(failure) } : {}),
+		}),
+	);
 	return stream;
 }
 

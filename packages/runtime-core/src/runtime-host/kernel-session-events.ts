@@ -75,16 +75,18 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 	}
 
 	if (event.type === "turn.failed") {
+		const failure = event.error;
 		return [
 			mapRuntimeSessionObservationEvent(
 				event.sessionId,
 				{
 					type: "error",
 					error: {
-						code: event.error.code,
-						message: event.error.message,
-						retryable: false,
-						origin: "runtime",
+						code: failure.code,
+						message: failure.message,
+						retryable: failure.retryable ?? false,
+						origin: failure.origin ?? "runtime",
+						...(failure.details ? { details: failure.details } : {}),
 					},
 					source: "runtime-core",
 				},

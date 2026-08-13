@@ -20,6 +20,7 @@
 
 ### Fixed
 
+- 修复原生 `LanguageModelAdapter` 经 legacy stream 兼容投影后丢失 Provider 结构化错误的问题；HTTP 状态码、稳定错误码、可重试标记、Provider/模型与 request id 现在可安全穿过兼容桥，且不会携带原始请求、响应或 `cause`。
 - 修复 OpenAI 兼容中转返回 `finish_reason: ""` 时整轮对话失败、界面只剩一条空消息的问题。此前 `openai-completions` 的 chunk 校验强制要求 `finish_reason` 落在 OpenAI 枚举内，且 `index` / `delta` 必填，而中转在非终止 chunk 上普遍下发空字符串（实测某中转下的 `hy3`、`kimi-k2.7` 每个中间 chunk 均为 `""`），首包即抛 `AI_RESPONSE_VALIDATION_FAILED`。现在 chunk schema 只强制适配器真正消费的字段：`finish_reason` 允许任意字符串或 `null` 且可缺省，`index`（从不读取）与 `delta`（运行时已有守卫）改为可选；枚举外的终止原因（如 `eos`、`end_turn`）折叠为正常 `stop` 而非抛错。结构性畸形（如 `choices` 不是数组）仍然拒绝。
 - `AI_RESPONSE_VALIDATION_FAILED` 的 `metadata.errors` 新增 `received` 字段，携带失败路径上的实际取值（截断至 120 字符，不含周边 payload），使中转格式偏差可以直接从日志定位。
 - 工具参数校验会在本地为带唯一常量字段的 `oneOf` 自动推断 discriminator，只报告实际 operation 分支的错误；额外字段错误同时显示具体字段名，避免一个缺失字段膨胀为整套联合 Schema 的无关错误列表。发送给 Provider 的原始工具 Schema 保持不变。

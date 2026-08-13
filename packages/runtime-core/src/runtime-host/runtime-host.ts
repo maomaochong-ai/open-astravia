@@ -112,6 +112,9 @@ export class RuntimeHost implements SessionFacade {
 	private readonly sessionFileHistoryReader: RuntimeSessionFileHistoryReader | undefined;
 	private readonly sessionAccessResolver: RuntimeSessionAccessResolver | undefined;
 	private readonly sharedModelController: RuntimeSharedModelController | undefined;
+	private readonly sessionErrorObserver:
+		| ((event: Extract<SessionEvent, { readonly type: "error" }>) => void)
+		| undefined;
 	private userConfirmationHandler:
 		| ((request: RuntimeUserConfirmationRequest, signal?: AbortSignal) => Promise<boolean>)
 		| undefined;
@@ -137,6 +140,7 @@ export class RuntimeHost implements SessionFacade {
 		this.sessionFileHistoryReader = options.sessionFileHistoryReader;
 		this.sessionAccessResolver = options.sessionAccessResolver;
 		this.sharedModelController = options.sharedModelController;
+		this.sessionErrorObserver = options.sessionErrorObserver;
 		this.sessionBackend = options.sessionBackend;
 		this.userConfirmationHandler = options.userConfirmationHandler;
 		this.userQuestionHandler = options.userQuestionHandler;
@@ -566,6 +570,7 @@ export class RuntimeHost implements SessionFacade {
 		};
 		this.inFlightBuffers.set(sessionId, buffer);
 		const unsubscribe = eventStream.subscribe((event) => {
+			this.observeSessionError(event);
 			if (event.type === "queue.changed") {
 				this.persistQueueSidecar(sessionPath, event);
 				return;
@@ -693,7 +698,6 @@ export class RuntimeHost implements SessionFacade {
 			// 订阅者，然后照原样把异常再向上抛，scheduler / batch-tasks 等
 			// 已经自带 try/catch 的调用方仍然能拿到 reject 做重试 / 落账。
 			const message = isSessionError(err) ? err.message : err instanceof Error ? err.message : String(err);
-			console.error(`[RuntimeHost.prompt] session=${sessionId} pre-stream error: ${message}`);
 			this.broadcastSyntheticEvent(sessionId, {
 				...baseSessionEvent(sessionId, "agent"),
 				type: "error",
@@ -888,6 +892,7 @@ export class RuntimeHost implements SessionFacade {
 	 * 同步 throw 的场景）。
 	 */
 	private broadcastSyntheticEvent(sessionId: string, event: SessionEvent): void {
+		this.observeSessionError(event);
 		const subscribers = this.externalSubscribers.get(sessionId);
 		if (!subscribers || subscribers.size === 0) return;
 		for (const handler of subscribers) {
@@ -896,6 +901,15 @@ export class RuntimeHost implements SessionFacade {
 			} catch (err) {
 				console.warn(`[RuntimeHost.broadcastSyntheticEvent] subscriber threw:`, err);
 			}
+		}
+	}
+
+	private observeSessionError(event: SessionEvent): void {
+		if (event.type !== "error" || !this.sessionErrorObserver) return;
+		try {
+			this.sessionErrorObserver(event);
+		} catch (error) {
+			console.warn("[RuntimeHost.observeSessionError] observer threw:", error);
 		}
 	}
 

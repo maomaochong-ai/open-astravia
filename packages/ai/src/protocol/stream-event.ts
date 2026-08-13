@@ -1,4 +1,4 @@
-import { AIStreamProtocolError } from "./errors.js";
+import { type AIErrorDetails, AIStreamProtocolError } from "./errors.js";
 import type { FailedStopReason, SuccessfulStopReason } from "./finish-reason.js";
 import type { AssistantMessage } from "./message.js";
 import type { ToolCall } from "./tool.js";
@@ -27,6 +27,8 @@ export interface AssistantMessageErrorEvent {
 	type: "error";
 	reason: FailedStopReason;
 	error: AssistantMessage;
+	/** Native adapters preserve structured failure data for in-process consumers. */
+	failure?: AIErrorDetails;
 }
 
 export type AssistantMessageTerminalEvent = AssistantMessageDoneEvent | AssistantMessageErrorEvent;

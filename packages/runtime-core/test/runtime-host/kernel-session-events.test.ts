@@ -115,6 +115,43 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 		expect(compacted.map(payload)).toMatchObject([{ type: "compaction.end", success: true }]);
 	});
 
+	it("preserves structured provider failures from the kernel", () => {
+		const failed = mapKernelEventToSessionEvents({
+			type: "turn.failed",
+			sessionId: "session-1",
+			turnId: "turn-1",
+			error: {
+				code: "AI_RATE_LIMITED",
+				message: "too many requests",
+				retryable: true,
+				origin: "provider",
+				details: {
+					statusCode: 429,
+					provider: "test-provider",
+					modelId: "test-model",
+					requestId: "request-1",
+				},
+			},
+			timestamp: 11,
+		});
+
+		expect(payload(failed[0])).toMatchObject({
+			type: "error",
+			error: {
+				code: "AI_RATE_LIMITED",
+				message: "too many requests",
+				retryable: true,
+				origin: "provider",
+				details: {
+					statusCode: 429,
+					provider: "test-provider",
+					modelId: "test-model",
+					requestId: "request-1",
+				},
+			},
+		});
+	});
+
 	it("does not expose persisted user messages or internal pipeline stages", () => {
 		const userEvent: KernelEvent = {
 			type: "message.appended",

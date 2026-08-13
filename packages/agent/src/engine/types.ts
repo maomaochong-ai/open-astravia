@@ -29,6 +29,14 @@ export type AgentRunStatus =
 export interface AgentRunFailure {
 	readonly code: string;
 	readonly message: string;
+	readonly retryable?: boolean;
+	readonly origin?: "provider";
+	readonly details?: {
+		readonly statusCode?: number;
+		readonly provider?: string;
+		readonly modelId?: string;
+		readonly requestId?: string;
+	};
 }
 
 export interface AgentRunResult {

@@ -18,6 +18,7 @@ describe("RuntimeHost running-changed reason", () => {
 	async function setup(): Promise<{
 		emit(event: SessionEvent): void;
 		reasons: Array<{ running: boolean; reason: RunningChangedReason | undefined }>;
+		observedErrors: Array<Extract<SessionEvent, { readonly type: "error" }>>;
 	}> {
 		let handler: ((event: SessionEvent) => void) | undefined;
 		const backend: RuntimeHostSessionBackend = {
@@ -26,7 +27,11 @@ describe("RuntimeHost running-changed reason", () => {
 					handler = h;
 				}),
 		};
-		const host = new RuntimeHost({ sessionBackend: backend });
+		const observedErrors: Array<Extract<SessionEvent, { readonly type: "error" }>> = [];
+		const host = new RuntimeHost({
+			sessionBackend: backend,
+			sessionErrorObserver: (event) => observedErrors.push(event),
+		});
 		const reasons: Array<{ running: boolean; reason: RunningChangedReason | undefined }> = [];
 		host.onRunningChanged((_path, running, _sessionId, reason) => {
 			reasons.push({ running, reason });
@@ -34,7 +39,7 @@ describe("RuntimeHost running-changed reason", () => {
 		await host.createSession({});
 		if (!handler) throw new Error("event stream not subscribed");
 		const emit = (event: SessionEvent): void => handler?.(event);
-		return { emit, reasons };
+		return { emit, observedErrors, reasons };
 	}
 
 	function lifecycle(phase: "agent_start" | "agent_end" | "aborted"): SessionEvent {
@@ -62,7 +67,7 @@ describe("RuntimeHost running-changed reason", () => {
 	}
 
 	it("turn.failed 路径（error observation + agent_end）报告 reason=error", async () => {
-		const { emit, reasons } = await setup();
+		const { emit, observedErrors, reasons } = await setup();
 		emit(lifecycle("agent_start"));
 		emit(errorEvent());
 		emit(lifecycle("agent_end"));
@@ -70,6 +75,8 @@ describe("RuntimeHost running-changed reason", () => {
 			{ running: true, reason: undefined },
 			{ running: false, reason: "error" },
 		]);
+		expect(observedErrors).toHaveLength(1);
+		expect(observedErrors[0]?.error).toMatchObject({ code: "PROVIDER_ERROR", message: "boom" });
 	});
 
 	it("abort 路径（lifecycle aborted + agent_end）报告 reason=aborted", async () => {

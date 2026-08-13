@@ -25,6 +25,17 @@ export interface AIErrorOptions {
 	cause?: unknown;
 }
 
+/** 可安全跨事件边界传递的 Provider 失败字段；不包含 cause 或原始请求/响应。 */
+export interface AIErrorDetails {
+	readonly code: AIErrorCode;
+	readonly message: string;
+	readonly retryable: boolean;
+	readonly statusCode?: number;
+	readonly provider?: Provider;
+	readonly modelId?: string;
+	readonly requestId?: string;
+}
+
 export class AIError extends Error {
 	readonly code: AIErrorCode;
 	readonly retryable: boolean;
@@ -63,4 +74,26 @@ export class AIAbortedError extends AIError {
 
 export function isAIError(value: unknown): value is AIError {
 	return value instanceof AIError;
+}
+
+export function getAIErrorDetails(error: AIError): AIErrorDetails {
+	return {
+		code: error.code,
+		message: error.message,
+		retryable: error.retryable,
+		...(error.statusCode === undefined ? {} : { statusCode: error.statusCode }),
+		...(error.provider === undefined ? {} : { provider: error.provider }),
+		...(error.modelId === undefined ? {} : { modelId: error.modelId }),
+		...(error.requestId === undefined ? {} : { requestId: error.requestId }),
+	};
+}
+
+export function createAIErrorFromDetails(details: AIErrorDetails): AIError {
+	return new AIError(details.code, details.message, {
+		retryable: details.retryable,
+		statusCode: details.statusCode,
+		provider: details.provider,
+		modelId: details.modelId,
+		requestId: details.requestId,
+	});
 }

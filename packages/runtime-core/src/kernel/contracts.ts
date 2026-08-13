@@ -15,6 +15,7 @@ import type {
 	ContextSectionSource,
 } from "../context-composition/contracts.js";
 import type { ConversationDocument } from "../conversation/document.js";
+import type { RecordedRuntimeFailure, RuntimeFailure } from "../failure-contract.js";
 import type {
 	RuntimeExecutionObservationEvent,
 	RuntimeMessageEnvelope,
@@ -713,10 +714,7 @@ export interface TurnFailedEvent {
 	readonly type: "turn.failed";
 	readonly sessionId: string;
 	readonly turnId: string;
-	readonly error: {
-		readonly code: string;
-		readonly message: string;
-	};
+	readonly error: RecordedRuntimeFailure;
 	readonly timestamp: number;
 }
 
@@ -943,10 +941,7 @@ export type TurnResult =
 			readonly status: "failed";
 			readonly sessionId: string;
 			readonly turnId: string;
-			readonly error: {
-				readonly code: string;
-				readonly message: string;
-			};
+			readonly error: RuntimeFailure;
 			readonly messages: readonly Message[];
 	  };
 

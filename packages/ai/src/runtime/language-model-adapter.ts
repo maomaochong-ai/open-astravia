@@ -5,6 +5,7 @@ import {
 	type AssistantMessage,
 	type AssistantMessageEvent,
 	type Context,
+	createAIErrorFromDetails,
 } from "../protocol/index.js";
 import type { Model, StreamOptions } from "../types.js";
 import { type AssistantMessageEventStream, EventStream } from "../utils/event-stream.js";
@@ -83,7 +84,11 @@ async function forwardLegacyStream<TApi extends Api>(
 	try {
 		for await (const event of source) {
 			if (event.type === "error") {
-				target.fail(classifyLegacyAssistantError(event.error, model));
+				target.fail(
+					event.failure
+						? createAIErrorFromDetails(event.failure)
+						: classifyLegacyAssistantError(event.error, model),
+				);
 				return;
 			}
 			target.push(event);

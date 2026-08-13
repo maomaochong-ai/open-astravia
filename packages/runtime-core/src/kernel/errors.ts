@@ -1,3 +1,5 @@
+import type { RuntimeFailure } from "../failure-contract.js";
+
 export const KERNEL_ERROR_CODES = {
 	SESSION_BUSY: "session_busy",
 	SESSION_CLOSED: "session_closed",
@@ -18,6 +20,17 @@ export class KernelError extends Error {
 		super(message, options);
 		this.name = "KernelError";
 		this.code = code;
+	}
+}
+
+/** Carries a model/tool execution failure through the TurnEngine exception boundary. */
+export class TurnExecutionError extends Error {
+	readonly failure: RuntimeFailure;
+
+	constructor(failure: RuntimeFailure) {
+		super(failure.message);
+		this.name = failure.code;
+		this.failure = failure;
 	}
 }
 

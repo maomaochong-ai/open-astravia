@@ -153,6 +153,7 @@ export {
 	sessionBusyError,
 	sessionClosedError,
 	snapshotProviderClosedError,
+	TurnExecutionError,
 	turnProtocolError,
 } from "./errors.js";
 export { FeatureCompiler, type FeatureCompilerOptions } from "./feature-compiler.js";

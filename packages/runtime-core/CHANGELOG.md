@@ -90,6 +90,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- Turn 失败从 Agent Engine 到持久化事件、Session `error` 事件全程保留 `retryable/origin/statusCode/provider/modelId/requestId`，并为宿主提供隔离故障的最终错误观察端口；旧会话中只有 `code/message` 的 `turn.failed` 记录继续按非重试 Runtime 错误兼容读取。
 - **turn 失败不再伪装成自然结束**：`turn.failed` 只产生 error observation + `agent_end`，此前 `running-changed` 的 reason 落成 `"agent_end"`，下游（如 Desktop 队列）会把上游报错当自然结束继续派发。现在回合内的 error 事件会把 terminalReason 置为 `"error"`；重试后成功收尾的回合会清除该标记，仍报告 `agent_end`（ADR-0060）。
 - **重开已有会话恢复该会话上次使用的模型**：会话级模型只活在进程内存里（`updateSettings({modelKey})` 不落盘），宿主重启后按 `sessionPath` 重开会话时，模型会退回宿主兜底值（Desktop 是可用列表第一个），宿主再把它同步回 UI，表现为「重启后模型被重置」。现在 `createSession` 在传了 `sessionPath` 且调用方未显式指定 `model` 时，从会话历史最后一条 assistant 记录恢复模型；模型已从 catalog 移除或缺少凭证时静默保持兜底模型，不阻断开会话。复用内存中已打开的同路径会话不受影响。
 - **Greenfield 初始化发布边界**：Runtime Factory 会在最终 Assembly 投影成功后才提交初始化事务；若返回对象构造阶段抛错，已创建的 Kernel Session 与 Composition 资源仍按逆序释放。

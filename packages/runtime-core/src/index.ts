@@ -78,6 +78,12 @@ export {
 } from "./conversation/index.js";
 export { isSessionError, RUNTIME_ERROR_CODES, runtimeError } from "./errors.js";
 export type {
+	RecordedRuntimeFailure,
+	RuntimeFailure,
+	RuntimeFailureDetails,
+	RuntimeFailureOrigin,
+} from "./failure-contract.js";
+export type {
 	RuntimeExecutionObservationEvent,
 	RuntimeMessageEnvelope,
 	RuntimeMessageOrigin,

@@ -1,4 +1,11 @@
-import { AI_ERROR_CODES, type AIError, type Api, type AssistantMessage, type Context } from "../protocol/index.js";
+import {
+	AI_ERROR_CODES,
+	type Api,
+	type AssistantMessage,
+	type Context,
+	getAIErrorDetails,
+	isAIError,
+} from "../protocol/index.js";
 import type { LanguageModelAdapter } from "../runtime/language-model-adapter.js";
 import type { Model, StreamOptions } from "../types.js";
 import { AssistantMessageEventStream } from "../utils/event-stream.js";
@@ -26,7 +33,12 @@ async function forwardAdapterResponse<TApi extends Api, TOptions extends StreamO
 		for await (const event of response.events) target.push(event);
 	} catch (error) {
 		const reason = isAIError(error) && error.code === AI_ERROR_CODES.ABORTED ? "aborted" : "error";
-		target.push({ type: "error", reason, error: compatibilityErrorMessage(model, error, reason) });
+		target.push({
+			type: "error",
+			reason,
+			error: compatibilityErrorMessage(model, error, reason),
+			...(isAIError(error) ? { failure: getAIErrorDetails(error) } : {}),
+		});
 	}
 }
 
@@ -53,8 +65,4 @@ function compatibilityErrorMessage<TApi extends Api>(
 		errorMessage: error instanceof Error ? error.message : String(error),
 		timestamp: Date.now(),
 	};
-}
-
-function isAIError(error: unknown): error is AIError {
-	return error instanceof Error && "code" in error && typeof error.code === "string";
 }

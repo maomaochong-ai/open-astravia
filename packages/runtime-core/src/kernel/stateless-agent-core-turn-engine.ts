@@ -41,7 +41,7 @@ import type {
 	TurnEnginePort,
 	TurnEngineRequest,
 } from "./contracts.js";
-import { turnProtocolError } from "./errors.js";
+import { KERNEL_ERROR_CODES, TurnExecutionError, turnProtocolError } from "./errors.js";
 import { composeModelCallSystemPrompt, resolveModelCallFrame } from "./model-call-frame.js";
 import { settledToolArgs } from "./streaming-tool-args.js";
 import { RuntimeToolExecutionError } from "./tool-execution-error.js";
@@ -711,9 +711,14 @@ function resolveLimits(limits: AgentCoreTurnEngineOptions["limits"]): AgentTurnR
 }
 
 function runFailure(result: AgentRunResult): Error {
-	const error = new Error(result.failure?.message ?? `Agent run ended with status: ${result.status}`);
-	error.name = result.failure?.code ?? "AgentRunError";
-	return error;
+	const failure = result.failure;
+	return new TurnExecutionError({
+		code: failure?.code ?? KERNEL_ERROR_CODES.TURN_FAILED,
+		message: failure?.message ?? `Agent run ended with status: ${result.status}`,
+		retryable: failure?.retryable ?? false,
+		origin: failure?.origin ?? "runtime",
+		...(failure?.details && Object.keys(failure.details).length > 0 ? { details: failure.details } : {}),
+	});
 }
 
 function lifecycle(phase: "agent_start" | "turn_start" | "turn_end" | "agent_end"): RuntimeSessionObservationEvent {

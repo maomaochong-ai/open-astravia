@@ -1,5 +1,8 @@
-import { isRetryableRuntimeError } from "../../utils/retryable-error.js";
-import type { CodingAgentTurnRetryController, CodingAgentTurnRetryControllerOptions } from "./contracts.js";
+import type {
+	CodingAgentTurnFailure,
+	CodingAgentTurnRetryController,
+	CodingAgentTurnRetryControllerOptions,
+} from "./contracts.js";
 
 export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRetryController {
 	private abortController: AbortController | undefined;
@@ -26,11 +29,11 @@ export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRet
 	async run<T>(
 		executeInitial: () => Promise<T>,
 		executeRetry: () => Promise<T>,
-		readFailure: (result: T) => string | undefined,
+		readFailure: (result: T) => CodingAgentTurnFailure | undefined,
 	): Promise<T> {
 		let result = await executeInitial();
 		let failure = readFailure(result);
-		while (failure && isRetryableRuntimeError(failure)) {
+		while (failure?.retryable) {
 			const settings = this.options.readSettings();
 			if (!settings.enabled || this.attempt >= settings.maxRetries) break;
 			this.attempt += 1;
@@ -43,7 +46,7 @@ export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRet
 				attempt: this.attempt,
 				maxAttempts: settings.maxRetries,
 				delayMs,
-				errorMessage: failure,
+				errorMessage: failure.message,
 			});
 			this.abortController = new AbortController();
 			try {
@@ -79,7 +82,7 @@ export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRet
 				type: "auto_retry_end",
 				success: failure === undefined,
 				attempt: this.attempt,
-				...(failure ? { finalError: failure } : {}),
+				...(failure ? { finalError: failure.message } : {}),
 			});
 			this.attempt = 0;
 		}

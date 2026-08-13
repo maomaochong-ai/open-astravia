@@ -1,5 +1,6 @@
 import type { Message, StopReason } from "@vetta/ai";
 import type { ConversationDocument, ConversationDocumentReader } from "../conversation/document.js";
+import type { RuntimeFailure } from "../failure-contract.js";
 import type { RuntimeExecutionObservationEvent, RuntimeMessageEnvelope } from "../runtime-execution-observation.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import { ContextCompactionCommitter } from "./context-compaction-committer.js";
@@ -39,7 +40,7 @@ import type {
 	TurnSessionIdentity,
 } from "./contracts.js";
 import { type ConversationRecoveryPolicy, FailInterruptedTurnRecoveryPolicy } from "./conversation-recovery.js";
-import { KERNEL_ERROR_CODES, KernelError, turnProtocolError } from "./errors.js";
+import { KERNEL_ERROR_CODES, KernelError, TurnExecutionError, turnProtocolError } from "./errors.js";
 import { composeModelCallSystemPrompt, resolveModelCallFrame } from "./model-call-frame.js";
 import {
 	projectRuntimeMessageEnvelope,
@@ -1017,16 +1018,21 @@ function abortReason(signal: AbortSignal): string | undefined {
 	return undefined;
 }
 
-function normalizeError(error: unknown): { readonly code: string; readonly message: string } {
+function normalizeError(error: unknown): RuntimeFailure {
+	if (error instanceof TurnExecutionError) return error.failure;
 	if (error instanceof KernelError) {
 		return {
 			code: error.code,
 			message: error.message,
+			retryable: false,
+			origin: "runtime",
 		};
 	}
 	return {
 		code: KERNEL_ERROR_CODES.TURN_FAILED,
 		message: errorMessage(error),
+		retryable: false,
+		origin: "runtime",
 	};
 }
 

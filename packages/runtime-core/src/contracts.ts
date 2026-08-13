@@ -1,6 +1,7 @@
 import type { ThinkingLevel, ToolPhase } from "@vetta/agent-core";
 import type { Message, Model } from "@vetta/ai";
 import type { ContextCompositionReport } from "./context-composition/contracts.js";
+import type { RuntimeFailure } from "./failure-contract.js";
 
 /** 对话场景 slug；RuntimeHost 与 Coding Profile 共享的稳定隔离轴。 */
 export type ConversationScenario =
@@ -435,13 +436,7 @@ export interface UsageUpdateEvent extends SessionEventBase {
 	contextComposition?: ContextCompositionReport;
 }
 
-export interface SessionError {
-	code: string;
-	message: string;
-	retryable: boolean;
-	origin: "runtime" | "provider" | "tool" | "mcp";
-	details?: unknown;
-}
+export interface SessionError extends RuntimeFailure {}
 
 export interface ErrorEvent extends SessionEventBase {
 	type: "error";

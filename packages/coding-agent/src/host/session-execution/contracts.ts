@@ -29,6 +29,12 @@ export interface CodingAgentTurnRetryControllerOptions {
 	readonly emit: (event: CodingAgentTurnRetryEvent) => void;
 }
 
+export interface CodingAgentTurnFailure {
+	readonly code: string;
+	readonly message: string;
+	readonly retryable: boolean;
+}
+
 export interface CodingAgentTurnRetryController {
 	readonly retryAttempt: number;
 	readonly isRetrying: boolean;
@@ -37,7 +43,7 @@ export interface CodingAgentTurnRetryController {
 	run<T>(
 		executeInitial: () => Promise<T>,
 		executeRetry: () => Promise<T>,
-		readFailure: (result: T) => string | undefined,
+		readFailure: (result: T) => CodingAgentTurnFailure | undefined,
 	): Promise<T>;
 }
 
