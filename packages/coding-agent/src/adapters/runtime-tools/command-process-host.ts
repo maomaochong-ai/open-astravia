@@ -48,6 +48,14 @@ function runCommandProcess(
 			if (killed) return;
 			killed = true;
 			if (child.pid) killProcessTree(child.pid);
+			// `taskkill /T` can fail on Windows (for example with access denied
+			// in restricted runners). Always terminate the direct child as a fallback
+			// so the close event and returned promise cannot remain pending.
+			try {
+				if (child.pid && !child.killed) child.kill();
+			} catch {
+				// The process may have exited between the tree and direct kill attempts.
+			}
 		};
 		const onAbort = (): void => {
 			aborted = true;

@@ -683,7 +683,7 @@ export interface PluginOfficialApi {
 			sessionId: string,
 			text: string,
 			options?: { modelKey?: string },
-		): Promise<{ status: "sent" | "queued" }>;
+		): Promise<{ status: "sent" | "queued" | "failed"; error?: { message: string } }>;
 		/** 中止会话当前回合。 */
 		abort(sessionId: string): Promise<void>;
 		/** 重命名会话（写入会话文件标题），用于把看板卡片标题同步到会话列表。 */

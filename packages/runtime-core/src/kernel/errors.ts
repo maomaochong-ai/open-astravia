@@ -6,6 +6,7 @@ export const KERNEL_ERROR_CODES = {
 	TURN_PROTOCOL: "turn_protocol",
 	TURN_FAILED: "turn_failed",
 	TURN_INTERRUPTED: "turn_interrupted",
+	TURN_PERSISTENCE: "turn_persistence",
 	FEATURE_CONFIGURATION: "feature_configuration",
 	FEATURE_CONFLICT: "feature_conflict",
 	SNAPSHOT_PROVIDER_CLOSED: "snapshot_provider_closed",
@@ -56,4 +57,13 @@ export function featureConflictError(message: string): KernelError {
 
 export function snapshotProviderClosedError(): KernelError {
 	return new KernelError(KERNEL_ERROR_CODES.SNAPSHOT_PROVIDER_CLOSED, "Runtime snapshot provider is closed");
+}
+
+export function turnPersistenceError(cause?: unknown): KernelError {
+	const detail = cause instanceof Error && cause.message ? ` Cause: ${cause.message}` : "";
+	return new KernelError(
+		KERNEL_ERROR_CODES.TURN_PERSISTENCE,
+		`Turn terminal state could not be persisted; session recovery is required.${detail}`,
+		cause === undefined ? undefined : { cause },
+	);
 }

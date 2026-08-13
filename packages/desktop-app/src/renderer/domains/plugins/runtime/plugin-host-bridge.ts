@@ -684,7 +684,9 @@ export const pluginSendMessageRef: {
 		| ((
 				text: string,
 				options?: { source?: "plugin" },
-		  ) => Promise<{ status: "sent" | "queued"; queueItemId?: string } | undefined>)
+		  ) => Promise<
+				{ status: "sent" | "queued" | "failed"; error?: { message: string }; queueItemId?: string } | undefined
+		  >)
 		| null;
 } = {
 	current: null,

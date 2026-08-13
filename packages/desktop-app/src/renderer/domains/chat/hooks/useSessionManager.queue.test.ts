@@ -49,7 +49,9 @@ vi.mock("../services/context-composition-cache", () => ({
 }));
 
 interface SessionManagerProbe {
-	sendMessage(): Promise<{ status: "sent" | "queued"; queueItemId?: string } | undefined>;
+	sendMessage(): Promise<
+		{ status: "sent" | "queued" | "failed"; error?: { message: string }; queueItemId?: string } | undefined
+	>;
 	openSession(cwd: string, sessionPath?: string): Promise<void>;
 	sendQueuedNow(runtimeId: string, id: string): Promise<void>;
 }
@@ -343,4 +345,26 @@ it("空闲发送：正常上屏乐观气泡并返回 sent", async () => {
 
 	expect(result).toEqual({ status: "sent" });
 	expect(store.get(chatMessagesAtom).map((m) => m.text)).toContain("普通消息");
+});
+
+it("失败回执：即使 error 事件未到达也上屏错误并返回 failed", async () => {
+	mocks.prompt.mockImplementation(async () => ({
+		status: "failed",
+		turnId: "turn-failed-1",
+		error: { code: "QUOTA_EXCEEDED", message: "供应商额度已用完", retryable: false, origin: "provider" },
+	}));
+	const store = await mount("额度测试", false);
+	const { activeSessionStreamingAtom, chatMessagesAtom } = await import("@shared/store/atoms");
+
+	let result: Awaited<ReturnType<SessionManagerProbe["sendMessage"]>>;
+	await act(async () => {
+		result = await manager?.sendMessage();
+	});
+
+	expect(result).toEqual({ status: "failed", error: { message: "供应商额度已用完" } });
+	expect(store.get(activeSessionStreamingAtom)).toBe(false);
+	expect(store.get(chatMessagesAtom).at(-1)).toMatchObject({
+		role: "assistant",
+		blocks: [{ type: "error", turnId: "turn-failed-1", text: "供应商额度已用完" }],
+	});
 });

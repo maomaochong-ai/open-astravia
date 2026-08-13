@@ -10,6 +10,7 @@ import { deriveSkillNames, parseInputSegments } from "@shared/lib/input-tokens";
 import {
 	activeInputActionIdsAtom,
 	activeSessionAtom,
+	activeSessionStreamingAtom,
 	appshotAttachmentAtom,
 	attachedImagesAtom,
 	batchProjectsAtom,
@@ -28,6 +29,7 @@ import {
 	promptSuggestionsAtom,
 	reasoningByModelAtom,
 	recordSentInputAndClearDraft,
+	retryProgressAtom,
 	type SendMessageOptions,
 	type SendMessageResult,
 	selectedModelAtom,
@@ -74,7 +76,9 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 	const batchProjects = useAtomValue(batchProjectsAtom);
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
 	const setChatMessages = useSetAtom(chatMessagesAtom);
+	const setActiveSessionStreaming = useSetAtom(activeSessionStreamingAtom);
 	const setPromptSuggestions = useSetAtom(promptSuggestionsAtom);
+	const setRetryProgress = useSetAtom(retryProgressAtom);
 	const { loadSessions, ensureLocalSession } = useProjectActions();
 
 	const attachedImagesRef = useRef(attachedImages);
@@ -103,7 +107,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				/** 插件 sendPrompt 路径：不清用户输入预测、不消费用户挂的 promptAttachment（ADR-0060）。 */
 				source?: "plugin";
 			},
-		): Promise<{ status: "sent" | "queued"; queueItemId?: string } | undefined> => {
+		): Promise<SendMessageResult | undefined> => {
 			// 目标会话读共享 atom（store 直读，不走 React 闭包）：openSession 同步写入
 			// activeSessionAtom，同一 tick 内「创建会话+发送」的组合仍读得到新值。不能读
 			// 实例级 activeSessionRef——useSessionManager 同时挂载多份（RootLayout /
@@ -475,7 +479,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			// 空闲时 kernel 忽略该字段直接开 turn。即便 isStreamingAtom 与主进程真实状态
 			// 失步，最坏结果也是入队而非 SESSION_BUSY 丢消息。
 			promptReq.streamingBehavior = "followUp";
-			let sendResult: { status: "sent" | "queued"; queueItemId?: string } | undefined;
+			let sendResult: SendMessageResult | undefined;
 			try {
 				await waitForPluginHostReady();
 				const outcome = await window.vetta.session.prompt(session.runtimeId, promptReq);
@@ -487,6 +491,16 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 						setChatMessages((prev) => prev.filter((m) => m.id !== staleId));
 					}
 					sendResult = { status: "queued", queueItemId: outcome.queueItemId };
+				} else if (outcome?.status === "failed") {
+					// A terminal failure is a normal prompt receipt, not a rejected IPC call.
+					// Render it here as the authoritative fallback when the event stream is
+					// delayed or lost. appendError deduplicates the later error event by turnId.
+					const message =
+						outcome.error?.message?.trim() || i18n.t("chat:messageList.errorBlock.kinds.unknown.title");
+					setChatMessages((prev) => appendError(prev, message, undefined, outcome.turnId));
+					setActiveSessionStreaming(false);
+					setRetryProgress(null);
+					sendResult = { status: "failed", error: { message } };
 				} else {
 					sendResult = { status: "sent" };
 				}
@@ -501,7 +515,13 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				// 气泡，杜绝「按了发送但屏幕完全没反应」的死寂体验。
 				const message = err instanceof Error ? err.message : String(err);
 				console.error("[useSessionManager.sendMessage] prompt rejected:", err);
-				setChatMessages((prev) => appendError(prev, message));
+				setChatMessages((prev) => {
+					const last = prev.at(-1);
+					const lastError = last?.blocks?.at(-1);
+					if (last?.role === "assistant" && lastError?.type === "error" && lastError.text === message) return prev;
+					return appendError(prev, message);
+				});
+				sendResult = { status: "failed", error: { message } };
 			}
 			// ADR-0007：归一回项目根 bucket，否则「对话」session 刷的是没用的子目录桶，
 			// 侧边栏默认列表（挂在根 bucket）拿不到这一轮的对账更新。
@@ -520,6 +540,8 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			loadSessions,
 			ensureLocalSession,
 			setPromptSuggestions,
+			setActiveSessionStreaming,
+			setRetryProgress,
 			bumpSuggestionToken,
 		],
 	);

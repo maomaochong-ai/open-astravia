@@ -23,7 +23,7 @@ import type {
 } from "../runtime-execution-observation.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 
-export type AgentSessionState = "idle" | "running" | "cancelling" | "closing" | "closed";
+export type AgentSessionState = "idle" | "running" | "cancelling" | "closing" | "recovery_required" | "closed";
 
 /** 由宿主适配器贡献的持久化上下文；Kernel 不解释业务类型。 */
 export interface SessionContextRecord {

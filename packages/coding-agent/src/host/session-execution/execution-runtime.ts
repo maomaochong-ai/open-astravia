@@ -112,7 +112,8 @@ export class CodingAgentSessionExecutionRuntime {
 
 	createExecutionController(session: AgentSession): RuntimeSessionExecutionController {
 		return {
-			isBusy: () => session.state === "running" || session.state === "cancelling",
+			isBusy: () =>
+				session.state === "running" || session.state === "cancelling" || session.state === "recovery_required",
 			reconfigure: async (update) => {
 				const registrations = this.buildModeRegistrations(update.mode, this.fullAccessRegistrations, update);
 				const next = new InMemoryCodingToolRegistry(registrations, {

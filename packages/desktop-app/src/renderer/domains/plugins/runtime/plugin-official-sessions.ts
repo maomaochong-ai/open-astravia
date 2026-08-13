@@ -73,7 +73,16 @@ export function createOfficialSessionsApi(capabilitySessionId: string): PluginOf
 				});
 				// streaming 中的发送进 kernel 队列（ADR-0060）；把回执如实透出，
 				// 调用方据此区分「已发出」与「排队中」，不要当成已开始执行。
-				return { status: outcome?.status === "queued" ? "queued" : "sent" };
+				if (outcome?.status === "queued") {
+					return { status: "queued" };
+				}
+				if (outcome?.status === "failed") {
+					return {
+						status: "failed",
+						error: outcome.error ? { message: outcome.error.message } : undefined,
+					};
+				}
+				return { status: "sent" };
 			}),
 		abort: (sessionId) =>
 			invoke(async () => {

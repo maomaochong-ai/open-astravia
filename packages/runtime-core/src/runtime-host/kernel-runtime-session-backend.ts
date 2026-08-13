@@ -603,7 +603,8 @@ export class RuntimeSession {
 			this.historyMutation ||
 			this.contextController?.readState().isCompacting ||
 			this.session.state === "running" ||
-			this.session.state === "cancelling"
+			this.session.state === "cancelling" ||
+			this.session.state === "recovery_required"
 		) {
 			throw new Error(message);
 		}

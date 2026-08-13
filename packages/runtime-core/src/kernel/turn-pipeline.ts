@@ -40,7 +40,13 @@ import type {
 	TurnSessionIdentity,
 } from "./contracts.js";
 import { type ConversationRecoveryPolicy, FailInterruptedTurnRecoveryPolicy } from "./conversation-recovery.js";
-import { KERNEL_ERROR_CODES, KernelError, TurnExecutionError, turnProtocolError } from "./errors.js";
+import {
+	KERNEL_ERROR_CODES,
+	KernelError,
+	TurnExecutionError,
+	turnPersistenceError,
+	turnProtocolError,
+} from "./errors.js";
 import { composeModelCallSystemPrompt, resolveModelCallFrame } from "./model-call-frame.js";
 import {
 	projectRuntimeMessageEnvelope,
@@ -626,13 +632,14 @@ export class TurnPipeline {
 		} catch (error) {
 			if (signal.aborted || isAbortError(error)) {
 				const reason = abortReason(signal);
-				await this.appendTerminalSafely(turnId, state, signal, {
+				const terminalResult = await this.appendTerminalSafely(turnId, state, {
 					type: "turn.cancelled",
 					sessionId: state.sessionId,
 					turnId,
 					reason,
 					timestamp: this.clock.now(),
 				});
+				if (!terminalResult.ok) throw turnPersistenceError(terminalResult.error);
 				return {
 					status: "cancelled",
 					sessionId: state.sessionId,
@@ -646,13 +653,14 @@ export class TurnPipeline {
 			if (request && !state.started) throw error;
 
 			const normalized = normalizeError(error);
-			await this.appendTerminalSafely(turnId, state, signal, {
+			const terminalResult = await this.appendTerminalSafely(turnId, state, {
 				type: "turn.failed",
 				sessionId: state.sessionId,
 				turnId,
 				error: normalized,
 				timestamp: this.clock.now(),
 			});
+			if (!terminalResult.ok) throw turnPersistenceError(terminalResult.error);
 			return {
 				status: "failed",
 				sessionId: state.sessionId,
@@ -901,13 +909,30 @@ export class TurnPipeline {
 	private async appendTerminalSafely(
 		turnId: string,
 		state: MutableTurnState,
-		signal: AbortSignal,
 		event: StoredSessionEvent,
-	): Promise<void> {
-		if (!state.started) return;
+	): Promise<{ readonly ok: true } | { readonly ok: false; readonly error: unknown }> {
+		if (!state.started) return { ok: true };
+		// Terminal lifecycle facts are durable state, not cancellable work. A turn's
+		// AbortSignal is already aborted on normal cancellation and must not be reused
+		// for the final repository append or observer notification.
+		const terminalSignal = new AbortController().signal;
 		try {
-			await this.appendRuntimeContext(turnId, state, signal);
-			await this.append(state, signal, [event]);
+			try {
+				await this.appendRuntimeContext(turnId, state, terminalSignal);
+			} catch (error) {
+				// Context is auxiliary. Preserve the terminal fact even when a context
+				// producer failed during cancellation or shutdown.
+				await this.publishSafely({
+					type: "observer.failed",
+					sessionId: state.sessionId,
+					turnId,
+					observerId: "runtime-context",
+					error: errorMessage(error),
+					timestamp: this.clock.now(),
+				});
+			}
+			await this.appendTerminalEvent(state, terminalSignal, event);
+			return { ok: true };
 		} catch (error) {
 			await this.publishSafely({
 				type: "observer.failed",
@@ -917,6 +942,45 @@ export class TurnPipeline {
 				error: errorMessage(error),
 				timestamp: this.clock.now(),
 			});
+			return { ok: false, error };
+		}
+	}
+
+	private async appendTerminalEvent(
+		state: MutableTurnState,
+		signal: AbortSignal,
+		event: StoredSessionEvent,
+	): Promise<void> {
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const conversation = await this.repository.load(state.sessionId);
+			const existingTerminal = conversation.events.find(
+				(candidate) =>
+					candidate.turnId === event.turnId &&
+					(candidate.type === "turn.completed" ||
+						candidate.type === "turn.cancelled" ||
+						candidate.type === "turn.failed" ||
+						candidate.type === "turn.transferred"),
+			);
+			if (existingTerminal) {
+				state.version = conversation.version;
+				return;
+			}
+			const recovery = this.recoveryPolicy.plan(conversation);
+			if (recovery.status !== "interrupt" || recovery.turnId !== event.turnId) {
+				throw turnProtocolError(
+					`Conversation ${state.sessionId} cannot append terminal event for turn ${event.turnId}`,
+				);
+			}
+			try {
+				const result = await this.repository.append(conversation.sessionId, conversation.version, [event]);
+				state.version = result.version;
+				await this.publishSafely(event);
+				await this.notifyObserversSafely(state.snapshot, event, signal);
+				return;
+			} catch (error) {
+				if (attempt === 0) continue;
+				throw error;
+			}
 		}
 	}
 

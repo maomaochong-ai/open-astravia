@@ -1,6 +1,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
+import { execPath } from "node:process";
 import { describe, expect, it } from "vitest";
 import {
 	RpcClient,
@@ -8,6 +9,12 @@ import {
 	resolveRpcClientProcessLaunch,
 	rpcClientErrorFromResponse,
 } from "../../src/modes/rpc/rpc-client.js";
+
+function nodeRuntimeEnv(): Record<string, string> {
+	const pathKey = Object.keys(process.env).find((key) => key.toLowerCase() === "path") ?? "PATH";
+	const currentPath = process.env[pathKey];
+	return { [pathKey]: [dirname(execPath), currentPath].filter(Boolean).join(delimiter) };
+}
 
 describe("RpcClient process launch", () => {
 	it("uses the canonical installed RPC executable by default", () => {
@@ -50,7 +57,7 @@ describe("RpcClient process launch", () => {
 		const fixtureDir = await mkdtemp(join(tmpdir(), "rpc-client-exit-"));
 		const fixturePath = join(fixtureDir, "exit.mjs");
 		await writeFile(fixturePath, "setTimeout(() => process.exit(9), 300);\n", "utf8");
-		const client = new RpcClient({ cliPath: fixturePath });
+		const client = new RpcClient({ cliPath: fixturePath, env: nodeRuntimeEnv() });
 
 		try {
 			await client.start();
@@ -93,7 +100,7 @@ lines.on("line", (line) => {
 `,
 			"utf8",
 		);
-		const client = new RpcClient({ cliPath: fixturePath });
+		const client = new RpcClient({ cliPath: fixturePath, env: nodeRuntimeEnv() });
 
 		try {
 			await client.start();

@@ -562,7 +562,8 @@ export interface SendMessageOptions {
 
 /** sendMessage 的回执（ADR-0060）：streaming 中入 kernel 队列时返回 queued + 条目 id。 */
 export interface SendMessageResult {
-	status: "sent" | "queued";
+	status: "sent" | "queued" | "failed";
+	error?: { message: string };
 	queueItemId?: string;
 }
 

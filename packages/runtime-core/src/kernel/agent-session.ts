@@ -13,7 +13,13 @@ import type {
 	TurnResult,
 	TurnSessionIdentity,
 } from "./contracts.js";
-import { sessionBusyError, sessionClosedError } from "./errors.js";
+import {
+	KERNEL_ERROR_CODES,
+	KernelError,
+	sessionBusyError,
+	sessionClosedError,
+	turnPersistenceError,
+} from "./errors.js";
 import { type ClearedSessionInputs, SessionInputQueue, type SessionInputQueueSnapshot } from "./session-input-queue.js";
 import type { TurnPipeline } from "./turn-pipeline.js";
 
@@ -110,6 +116,7 @@ export class AgentSession {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			throw sessionClosedError();
 		}
+		if (this.currentState === "recovery_required") throw turnPersistenceError();
 		if (this.currentState !== "idle") {
 			if (!options.streamingBehavior) throw sessionBusyError();
 			return this.queueInput(options.streamingBehavior, input);
@@ -127,6 +134,7 @@ export class AgentSession {
 		await this.contextWrite;
 		if (preparer) this.inputRequestPreparer = preparer;
 		if (this.currentState === "closed" || this.currentState === "closing") throw sessionClosedError();
+		if (this.currentState === "recovery_required") throw turnPersistenceError();
 		if (this.currentState !== "idle") {
 			if (!options.streamingBehavior) throw sessionBusyError();
 			const { id, pendingCount } = this.inputQueue.enqueueRequestWithId(options.streamingBehavior, request);
@@ -140,6 +148,7 @@ export class AgentSession {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			throw sessionClosedError();
 		}
+		if (this.currentState === "recovery_required") throw turnPersistenceError();
 		if (this.currentState !== "idle") throw sessionBusyError();
 		return this.startTurn();
 	}
@@ -149,6 +158,7 @@ export class AgentSession {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			throw sessionClosedError();
 		}
+		if (this.currentState === "recovery_required") throw turnPersistenceError();
 		if (this.currentState !== "idle") throw sessionBusyError();
 		return this.startTurn(undefined, [], true);
 	}
@@ -164,6 +174,7 @@ export class AgentSession {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			return Promise.reject(sessionClosedError());
 		}
+		if (this.currentState === "recovery_required") return Promise.reject(turnPersistenceError());
 		this.continuationRequested = true;
 		this.continuationContext.push(...context);
 		const completion = new Promise<void>((resolve, reject) => {
@@ -188,6 +199,7 @@ export class AgentSession {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			throw sessionClosedError();
 		}
+		if (this.currentState === "recovery_required") throw turnPersistenceError();
 		return {
 			status: "queued",
 			behavior,
@@ -199,6 +211,7 @@ export class AgentSession {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			throw sessionClosedError();
 		}
+		if (this.currentState === "recovery_required") throw turnPersistenceError();
 		this.nextTurnContext.push(...context);
 	}
 
@@ -206,6 +219,7 @@ export class AgentSession {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			return Promise.reject(sessionClosedError());
 		}
+		if (this.currentState === "recovery_required") return Promise.reject(turnPersistenceError());
 		const write = this.contextWrite.then(async () => {
 			if (this.currentState !== "idle") throw sessionBusyError();
 			await this.pipeline.recordContext(this.identity, context);
@@ -253,6 +267,7 @@ export class AgentSession {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			throw sessionClosedError();
 		}
+		if (this.currentState === "recovery_required") throw turnPersistenceError();
 		// 先取出条目再打断：确保这条消息绝不因中途失败而丢失在「已出队未发送」状态——
 		// takeById 失败即早退，成功后它只存在于本调用栈，随 startTurn 进入持久化。
 		const input = this.inputQueue.takeById(id);
@@ -275,6 +290,7 @@ export class AgentSession {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			throw sessionClosedError();
 		}
+		if (this.currentState === "recovery_required") throw turnPersistenceError();
 		this.inputQueue.resume();
 		if (this.currentState !== "idle") return undefined;
 		await this.contextWrite;
@@ -317,6 +333,7 @@ export class AgentSession {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			throw sessionClosedError();
 		}
+		if (this.currentState === "recovery_required") throw turnPersistenceError();
 		const { id, pendingCount } = this.inputQueue.enqueueWithId(behavior, input);
 		return { status: "queued", behavior, pendingCount, id };
 	}
@@ -345,6 +362,9 @@ export class AgentSession {
 			}
 			return result;
 		} catch (error) {
+			if (error instanceof KernelError && error.code === KERNEL_ERROR_CODES.TURN_PERSISTENCE) {
+				this.currentState = "recovery_required";
+			}
 			if (this.inputQueue.pendingCount > 0) this.inputQueue.pause();
 			throw error;
 		} finally {
@@ -368,6 +388,9 @@ export class AgentSession {
 			}
 			return result;
 		} catch (error) {
+			if (error instanceof KernelError && error.code === KERNEL_ERROR_CODES.TURN_PERSISTENCE) {
+				this.currentState = "recovery_required";
+			}
 			if (this.inputQueue.pendingCount > 0) this.inputQueue.pause();
 			throw error;
 		} finally {
@@ -398,7 +421,12 @@ export class AgentSession {
 	private finishActiveTurn(): void {
 		this.activeController = undefined;
 		this.activeTurn = undefined;
-		this.currentState = this.currentState === "closing" ? "closed" : "idle";
+		this.currentState =
+			this.currentState === "closing"
+				? "closed"
+				: this.currentState === "recovery_required"
+					? "recovery_required"
+					: "idle";
 		this.scheduleRequestedContinuations();
 	}
 

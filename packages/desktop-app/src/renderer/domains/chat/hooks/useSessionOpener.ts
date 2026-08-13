@@ -35,6 +35,7 @@ import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { type MutableRefObject, useCallback, useRef } from "react";
 import {
 	adoptDraftId,
+	appendError,
 	bumpOpenSessionToken,
 	currentUnsubscribe,
 	fullHistoryToChat,
@@ -166,10 +167,26 @@ export function useSessionOpener(): SessionOpenerController {
 					: isDefaultConversation
 						? "conversation"
 						: "project";
-			const createResult = await window.vetta.session.create(
-				{ cwd, sessionPath, executionMode, scenario },
-				sessionKind,
-			);
+			let createResult: Awaited<ReturnType<typeof window.vetta.session.create>>;
+			try {
+				createResult = await window.vetta.session.create(
+					{ cwd, sessionPath, executionMode, scenario },
+					sessionKind,
+				);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				console.error("[useSessionOpener] session.create failed:", error);
+				setChatMessages((prev) => {
+					const last = prev.at(-1);
+					const lastError = last?.blocks?.at(-1);
+					if (last?.role === "assistant" && lastError?.type === "error" && lastError.text === message) return prev;
+					return appendError(prev, message);
+				});
+				setActiveSession(null);
+				activeSessionRef.current = null;
+				if (shouldNavigate) void navigate({ to: "/" });
+				return;
+			}
 			const { sessionId } = createResult;
 			const canonicalSessionPath = createResult.sessionPath || sessionPath || "";
 			// ADR-0007: 「对话」项目下 main 会把 cwd 改写成 per-session 子目录，

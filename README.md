@@ -167,7 +167,7 @@ cd packages/im-gateway && make build   # 构建 IM 旁路网关
 
 - **包管理器**：统一使用 Bun（`bun` / `bunx`）。除非用户明确要求 npm，不要切换。
 - **代码质量**：TypeScript 侧禁止 `any`（除非确有必要）、禁止内联动态 `import()`；Go 侧改完必须跑 `make check`。整仓改完必须 `bun run check`（Biome + `tsgo --noEmit`）。
-- **测试**：`bun run check` 不含测试。测试请从对应包根目录运行 `bunx tsx ../../node_modules/vitest/dist/cli.js --run test/xxx.test.ts`。
+- **测试**：`bun run check` 不含测试。完整测试使用 `bun run test:unit`；单个包或测试文件从对应包根目录运行 `bun run test -- test/xxx.test.ts`。Vitest 由仓库统一使用 Node.js 20+ 启动，Bun 仅负责脚本与依赖管理。
 - **禁止命令**：不要直接 `bun run dev` / `bun run build` / `bun test`。
 - **提交规范**：中文 commit message；禁止 `Co-Authored-By` 等作者标签；关联工单请在 commit 中写 `fixes #N` / `closes #N`。
 - **并行代理 Git 规则**：只 `git add <具体路径>`，禁止 `git add -A/.`、`git reset --hard`、`git checkout .`、`git stash`、`--no-verify`。详见 [`AGENTS.md`](AGENTS.md)。

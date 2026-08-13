@@ -154,6 +154,7 @@ export {
 	sessionClosedError,
 	snapshotProviderClosedError,
 	TurnExecutionError,
+	turnPersistenceError,
 	turnProtocolError,
 } from "./errors.js";
 export { FeatureCompiler, type FeatureCompilerOptions } from "./feature-compiler.js";

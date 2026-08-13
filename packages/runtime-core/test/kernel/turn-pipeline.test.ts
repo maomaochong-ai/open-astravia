@@ -60,6 +60,7 @@ class CollectingEventSink implements EventSink {
 
 class InMemoryConversationRepository implements ConversationRepository {
 	private readonly conversations = new Map<string, StoredConversation>();
+	failTerminalAppend = false;
 
 	async create(input: CreateConversationInput): Promise<ConversationMetadata> {
 		if (this.conversations.has(input.sessionId)) {
@@ -88,6 +89,12 @@ class InMemoryConversationRepository implements ConversationRepository {
 		events: readonly StoredSessionEvent[],
 	): Promise<{ readonly version: number }> {
 		const conversation = await this.load(sessionId);
+		if (
+			this.failTerminalAppend &&
+			events.some((event) => event.type === "turn.cancelled" || event.type === "turn.failed")
+		) {
+			throw new Error("terminal append failed");
+		}
 		if (conversation.version !== expectedVersion) {
 			throw new Error(`Version mismatch: expected ${expectedVersion}, received ${conversation.version}`);
 		}
@@ -228,8 +235,10 @@ async function createHarness(options?: {
 	readonly runtimeContext?: RuntimeSessionContextBuffer;
 	readonly conversationDocumentReader?: ConversationDocumentReader;
 	readonly modelBindingProvider?: RuntimeTurnModelBindingProvider;
+	readonly failTerminalAppend?: boolean;
 }) {
 	const repository = new InMemoryConversationRepository();
+	repository.failTerminalAppend = options?.failTerminalAppend === true;
 	const contextStrategy = options?.contextStrategy ?? new RecordingContextStrategy();
 	const turnEngine = options?.turnEngine ?? new CompletingTurnEngine(assistantMessage("done"));
 	const eventSink = options?.eventSink ?? new CollectingEventSink();
@@ -729,6 +738,32 @@ describe("greenfield runtime kernel", () => {
 		expect(result).toMatchObject({ status: "cancelled", reason: "cancel checkpoint" });
 		expect(checkpointRejected).toBe(true);
 		expect((await harness.repository.load("session-1")).events.at(-1)?.type).toBe("turn.cancelled");
+	});
+
+	it("enters recovery_required when a terminal turn event cannot be persisted", async () => {
+		let markStarted: (() => void) | undefined;
+		const started = new Promise<void>((resolve) => {
+			markStarted = resolve;
+		});
+		const engine: TurnEnginePort = {
+			async *execute(request) {
+				markStarted?.();
+				await waitForAbort(request.signal);
+				yield { type: "completed", stopReason: "aborted" };
+			},
+		};
+		const harness = await createHarness({ turnEngine: engine, failTerminalAppend: true });
+		const turn = harness.session.send({ message: userMessage("current input") });
+		const turnError = turn.catch((error) => error);
+		await started;
+
+		const cancelError = harness.session.cancel("terminal persistence failure").catch((error) => error);
+		await expect(cancelError).resolves.toMatchObject({ code: KERNEL_ERROR_CODES.TURN_PERSISTENCE });
+		await expect(turnError).resolves.toMatchObject({ code: KERNEL_ERROR_CODES.TURN_PERSISTENCE });
+		expect(harness.session.state).toBe("recovery_required");
+		await expect(harness.session.send({ message: userMessage("must not start") })).rejects.toMatchObject({
+			code: KERNEL_ERROR_CODES.TURN_PERSISTENCE,
+		});
 	});
 
 	it("serializes runtime context after tool results and exposes it to the next external turn", async () => {
