@@ -8,6 +8,8 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- Runtime failure contract 现在保留 Provider 的安全诊断字段（provider code、请求阶段、脱敏 URL、响应摘要与 Retry-After），并继续穿过失败事件与 prompt 回执。
+
 - **执行失败与终态持久化解耦**：Provider/工具执行失败先以运行时事件发布，再独立尝试写入 `turn.failed`；终态写入失败只将会话置为 `recovery_required`，不会覆盖原始错误。失败 prompt 回执保留 `turnId` 与结构化 Provider 诊断。
 
 - **移除 `RuntimeHost.setGlobalAgentMode` 与 agent_mode 的 Turn 边界 pending 通道**：Agent Mode 现在只在

@@ -376,6 +376,12 @@ function failureOf(error: unknown): AgentRunResult["failure"] {
 				...(error.provider === undefined ? {} : { provider: error.provider }),
 				...(error.modelId === undefined ? {} : { modelId: error.modelId }),
 				...(error.requestId === undefined ? {} : { requestId: error.requestId }),
+				...(error.providerCode === undefined ? {} : { providerCode: error.providerCode }),
+				...(error.phase === undefined ? {} : { phase: error.phase }),
+				...(error.url === undefined ? {} : { url: error.url }),
+				...(error.responseHeaders === undefined ? {} : { responseHeaders: error.responseHeaders }),
+				...(error.responseBodyPreview === undefined ? {} : { responseBodyPreview: error.responseBodyPreview }),
+				...(error.retryAfterMs === undefined ? {} : { retryAfterMs: error.retryAfterMs }),
 			},
 		};
 	}

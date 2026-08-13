@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **Provider 错误合同和测试模型增强**：AI 错误现在保留安全的 Provider code、请求阶段、request id、响应头/响应体预览与 Retry-After 信息，并使用跨包 marker 识别；新增原生 `ScriptedLanguageModelAdapter`，用于按调用序列测试成功、失败和取消终态。
+
 ### Added
 
 - 新增 `zai-openai-completions` 与 `zhipu-openai-completions` provider 变体，复用 OpenAI Chat Completions 流式实现并内置 GLM 思考控制：下发 `thinking: { type: "enabled" | "disabled" }`，启用时将模型配置的 `reasoning_effort`（含 `none` / `minimal` / `low` / `medium` / `high` / `max`）原样透传；同时新增 `zhipu` KnownProvider 与 `ZHIPU_API_KEY` 识别。

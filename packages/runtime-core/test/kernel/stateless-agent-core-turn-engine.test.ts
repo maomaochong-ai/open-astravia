@@ -165,7 +165,7 @@ describe("StatelessAgentCoreTurnEngine", () => {
 		});
 
 		await expect(run(engine, snapshot())).rejects.toMatchObject({
-			failure: { code: "PROVIDER_ERROR", message: "upstream failed", origin: "provider", retryable: true },
+			failure: { code: "PROVIDER_ERROR", message: "upstream failed", origin: "provider", retryable: false },
 		});
 	});
 
@@ -180,7 +180,7 @@ describe("StatelessAgentCoreTurnEngine", () => {
 		});
 
 		await expect(run(engine, snapshot())).rejects.toMatchObject({
-			failure: { code: "PROVIDER_ERROR", message: "quota exhausted", origin: "provider", retryable: true },
+			failure: { code: "PROVIDER_ERROR", message: "quota exhausted", origin: "provider", retryable: false },
 		});
 	});
 

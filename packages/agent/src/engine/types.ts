@@ -36,6 +36,12 @@ export interface AgentRunFailure {
 		readonly provider?: string;
 		readonly modelId?: string;
 		readonly requestId?: string;
+		readonly providerCode?: string;
+		readonly phase?: "resolve" | "request" | "response" | "stream" | "decode";
+		readonly url?: string;
+		readonly responseHeaders?: Readonly<Record<string, string>>;
+		readonly responseBodyPreview?: string;
+		readonly retryAfterMs?: number;
 	};
 }
 

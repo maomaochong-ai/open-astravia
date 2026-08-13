@@ -464,6 +464,42 @@ describe("runAgentTurn", () => {
 		});
 	});
 
+	it("forwards safe provider diagnostics through the agent failure contract", async () => {
+		const run = runAgentTurn({
+			...request([
+				failedResponse(
+					new AIError("AI_TRANSPORT_FAILED", "gateway overloaded", {
+						retryable: true,
+						statusCode: 503,
+						provider: "deepseek",
+						modelId: "deepseek-chat",
+						requestId: "request-2",
+						providerCode: "overloaded_error",
+						phase: "response",
+						url: "https://api.deepseek.com/v1/chat",
+						responseHeaders: { "x-request-id": "request-2" },
+						responseBodyPreview: '{"error":"overloaded"}',
+						retryAfterMs: 2_000,
+					}),
+				),
+			]),
+		});
+
+		await expect(run.result).resolves.toMatchObject({
+			status: "failed",
+			failure: {
+				details: {
+					providerCode: "overloaded_error",
+					phase: "response",
+					url: "https://api.deepseek.com/v1/chat",
+					responseHeaders: { "x-request-id": "request-2" },
+					responseBodyPreview: '{"error":"overloaded"}',
+					retryAfterMs: 2_000,
+				},
+			},
+		});
+	});
+
 	it("emits tool updates, phases, and timing from the execution context", async () => {
 		const schema = Type.Object({ value: Type.String() });
 		const tool: RuntimeToolDefinition<typeof schema, { stage: string }> = {

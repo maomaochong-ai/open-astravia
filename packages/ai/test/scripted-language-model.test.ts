@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { AIAbortedError } from "../src/protocol/index.js";
-import { ScriptedLanguageModel } from "../src/testing/scripted-language-model.js";
+import { AIAbortedError, AIError } from "../src/protocol/index.js";
+import { ScriptedLanguageModel, ScriptedLanguageModelAdapter } from "../src/testing/scripted-language-model.js";
 import type { AssistantMessage, AssistantMessageEvent, Model } from "../src/types.js";
 
 const model: Model<"scripted"> = {
@@ -90,6 +90,45 @@ describe("ScriptedLanguageModel", () => {
 		const stream = scripted.stream(model, { messages: [] }, { signal: controller.signal });
 
 		await expect(stream.result()).rejects.toBeInstanceOf(AIAbortedError);
+		expect(scripted.remaining).toBe(1);
+	});
+});
+
+describe("ScriptedLanguageModelAdapter", () => {
+	it("records native requests and consumes outcomes in order", async () => {
+		const scripted = new ScriptedLanguageModelAdapter("test-api", [
+			{ events: events("native-first").filter((event) => event.type !== "error") },
+			{ error: new AIError("AI_RATE_LIMITED", "quota exceeded", { retryable: false, statusCode: 429 }) },
+		]);
+
+		const first = await scripted.stream({ model, context: { messages: [] } });
+		const second = await scripted.stream({
+			model,
+			context: { messages: [{ role: "user", content: "retry", timestamp: 2 }] },
+		});
+
+		await expect(first.result).resolves.toMatchObject({ content: [{ type: "text", text: "native-first" }] });
+		await expect(second.result).rejects.toMatchObject({
+			code: "AI_RATE_LIMITED",
+			retryable: false,
+			statusCode: 429,
+		});
+		expect(scripted.calls).toHaveLength(2);
+		expect(scripted.calls[1]?.request.context.messages[0]).toMatchObject({ content: "retry" });
+		expect(scripted.remaining).toBe(0);
+	});
+
+	it("fails immediately when the native request is already aborted", async () => {
+		const controller = new AbortController();
+		controller.abort();
+		const scripted = new ScriptedLanguageModelAdapter("test-api", [{ events: events("unused") }]);
+
+		const response = await scripted.stream({
+			model,
+			context: { messages: [] },
+			options: { signal: controller.signal },
+		});
+		await expect(response.result).rejects.toBeInstanceOf(AIAbortedError);
 		expect(scripted.remaining).toBe(1);
 	});
 });

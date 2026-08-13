@@ -1,42 +1,36 @@
-import {
-	AI_ERROR_CODES,
-	AIAbortedError,
-	AIError,
-	type Api,
-	type AssistantMessage,
-	isRetryableProviderFailure,
-} from "../protocol/index.js";
+import { AIAbortedError, AIError, type Api, type AssistantMessage } from "../protocol/index.js";
 import { normalizeProviderError } from "../provider-kit/provider-error.js";
 import type { Model } from "../types.js";
-import { isContextOverflow } from "../utils/overflow.js";
 
 export function classifyLegacyAssistantError<TApi extends Api>(message: AssistantMessage, model: Model<TApi>): AIError {
 	const errorMessage = message.errorMessage ?? "Language model provider failed";
-	const statusCode = parseStatusCode(errorMessage);
-	const options = {
-		provider: model.provider,
-		modelId: model.id,
-		statusCode,
-		metadata: { legacyStopReason: message.stopReason },
-	};
-	if (message.stopReason === "aborted") return new AIAbortedError(errorMessage, options);
-	if (isContextOverflow(message, model.contextWindow)) {
-		return new AIError(AI_ERROR_CODES.CONTEXT_OVERFLOW, errorMessage, options);
-	}
-	if (statusCode === 401) return new AIError(AI_ERROR_CODES.AUTHENTICATION_FAILED, errorMessage, options);
-	if (statusCode === 403) return new AIError(AI_ERROR_CODES.PERMISSION_DENIED, errorMessage, options);
-	if (statusCode === 429) {
-		return new AIError(AI_ERROR_CODES.RATE_LIMITED, errorMessage, {
-			...options,
-			retryable: isRetryableProviderFailure(errorMessage, statusCode),
+	if (message.stopReason === "aborted") {
+		return new AIAbortedError(errorMessage, {
+			provider: model.provider,
+			modelId: model.id,
+			phase: "response",
+			metadata: { legacyStopReason: message.stopReason },
 		});
 	}
-	if (statusCode === 400 || statusCode === 404 || statusCode === 422) {
-		return new AIError(AI_ERROR_CODES.INVALID_REQUEST, errorMessage, options);
-	}
-	return new AIError(AI_ERROR_CODES.TRANSPORT_FAILED, errorMessage, {
-		...options,
-		retryable: isRetryableProviderFailure(errorMessage, statusCode),
+
+	// The legacy protocol only encoded status in the human-readable message. Keep this
+	// parsing at the compatibility boundary, then use the canonical provider classifier.
+	const statusCode = parseStatusCode(errorMessage);
+	const normalized = normalizeProviderError(
+		{
+			message: errorMessage,
+			status: statusCode,
+			phase: "response",
+		},
+		model,
+	);
+	return new AIError(normalized.code, normalized.message, {
+		retryable: normalized.retryable,
+		statusCode: normalized.statusCode,
+		provider: normalized.provider,
+		modelId: normalized.modelId,
+		phase: normalized.phase,
+		metadata: { legacyStopReason: message.stopReason },
 	});
 }
 

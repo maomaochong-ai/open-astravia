@@ -69,4 +69,46 @@ describe("normalizeProviderError", () => {
 			statusCode: 429,
 		});
 	});
+
+	it("preserves Vercel-style safe response diagnostics", () => {
+		const source = Object.assign(new Error("gateway overloaded"), {
+			statusCode: 503,
+			code: "overloaded_error",
+			url: "https://provider.test/v1/chat?api_key=should-not-leak",
+			responseHeaders: {
+				"x-request-id": "req-123",
+				"retry-after": "2",
+				authorization: "should-not-leak",
+			},
+			responseBody: JSON.stringify({ error: { type: "overloaded_error" } }),
+		});
+
+		const result = normalizeProviderError(source, model);
+
+		expect(result).toMatchObject({
+			code: "AI_TRANSPORT_FAILED",
+			statusCode: 503,
+			providerCode: "overloaded_error",
+			requestId: "req-123",
+			retryAfterMs: 2_000,
+			url: "https://provider.test/v1/chat",
+			responseHeaders: { "x-request-id": "req-123", "retry-after": "2" },
+			responseBodyPreview: '{"error":{"type":"overloaded_error"}}',
+		});
+		expect(result.responseHeaders).not.toHaveProperty("authorization");
+	});
+
+	it("reads nested SDK response status and request id", () => {
+		const source = {
+			message: "upstream rejected request",
+			response: { status: 429, headers: { "x-request-id": "req-nested", "retry-after": "1" } },
+		};
+
+		expect(normalizeProviderError(source, model)).toMatchObject({
+			code: "AI_RATE_LIMITED",
+			statusCode: 429,
+			responseHeaders: { "x-request-id": "req-nested", "retry-after": "1" },
+			retryAfterMs: 1_000,
+		});
+	});
 });

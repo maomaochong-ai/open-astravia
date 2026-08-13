@@ -6,8 +6,10 @@ import {
 	type AssistantMessage,
 	type AssistantMessageEvent,
 	type AssistantMessageTerminalEvent,
+	getAIErrorDetails,
 	getAssistantMessageEventResult,
 	isAIError,
+	isAIErrorDetails,
 	isAssistantMessageTerminalEvent,
 } from "../src/protocol/index.js";
 import type {
@@ -114,6 +116,36 @@ describe("AI protocol contract", () => {
 			cause,
 		});
 		expect(isAIError(new Error("Request failed"))).toBe(false);
+	});
+
+	it("recognizes serialized error details without relying on instanceof", () => {
+		const details = getAIErrorDetails(
+			new AIError(AI_ERROR_CODES.RATE_LIMITED, "limited", {
+				retryable: true,
+				statusCode: 429,
+				requestId: "req-1",
+			}),
+		);
+		expect(isAIErrorDetails(structuredClone(details))).toBe(true);
+		expect(isAIErrorDetails({ code: AI_ERROR_CODES.RATE_LIMITED, message: "limited" })).toBe(false);
+	});
+
+	it("sanitizes diagnostics when creating a cross-boundary error detail", () => {
+		const details = getAIErrorDetails(
+			new AIError(AI_ERROR_CODES.TRANSPORT_FAILED, "failed", {
+				retryable: true,
+				url: "https://provider.test/chat?api_key=secret",
+				responseHeaders: { authorization: "secret", "x-request-id": "req-safe" },
+				responseBodyPreview: "x".repeat(1_100),
+			}),
+		);
+
+		expect(details).toMatchObject({
+			url: "https://provider.test/chat",
+			responseHeaders: { "x-request-id": "req-safe" },
+		});
+		expect(details.responseHeaders).not.toHaveProperty("authorization");
+		expect(details.responseBodyPreview).toHaveLength(1_001);
 	});
 
 	it("uses a non-retryable protocol error specialization", () => {

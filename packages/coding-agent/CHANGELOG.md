@@ -17,6 +17,8 @@
 
 ### Fixed
 
+- Runtime Host 重试合同现在保留并校验 Provider 的安全诊断字段，UI 和重试策略可以区分供应商错误阶段、request id 与 Retry-After。
+
 - 终态持久化失败时保留并回传原始 Provider 失败合同；Coding Agent 不会把持久化异常当成新的可重试供应商错误。
 
 - **无额度 Provider 不再静默失败**：Runtime prompt 的失败回执携带结构化错误，自动重试适配层能正确区分失败与成功；不可重试的额度错误会按 `error -> agent_end` 发到 Desktop 消息列表。

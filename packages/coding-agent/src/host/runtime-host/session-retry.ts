@@ -64,6 +64,12 @@ type RuntimePromptFailure = {
 		readonly provider?: string;
 		readonly modelId?: string;
 		readonly requestId?: string;
+		readonly providerCode?: string;
+		readonly phase?: "resolve" | "request" | "response" | "stream" | "decode";
+		readonly url?: string;
+		readonly responseHeaders?: Readonly<Record<string, string>>;
+		readonly responseBodyPreview?: string;
+		readonly retryAfterMs?: number;
 	};
 };
 
@@ -97,8 +103,20 @@ function isFailureDetails(value: unknown): value is RuntimePromptFailure["detail
 		(candidate.statusCode === undefined || typeof candidate.statusCode === "number") &&
 		(candidate.provider === undefined || typeof candidate.provider === "string") &&
 		(candidate.modelId === undefined || typeof candidate.modelId === "string") &&
-		(candidate.requestId === undefined || typeof candidate.requestId === "string")
+		(candidate.requestId === undefined || typeof candidate.requestId === "string") &&
+		(candidate.providerCode === undefined || typeof candidate.providerCode === "string") &&
+		(candidate.phase === undefined ||
+			["resolve", "request", "response", "stream", "decode"].includes(candidate.phase as string)) &&
+		(candidate.url === undefined || typeof candidate.url === "string") &&
+		(candidate.responseHeaders === undefined || isSafeHeaders(candidate.responseHeaders)) &&
+		(candidate.responseBodyPreview === undefined || typeof candidate.responseBodyPreview === "string") &&
+		(candidate.retryAfterMs === undefined || typeof candidate.retryAfterMs === "number")
 	);
+}
+
+function isSafeHeaders(value: unknown): value is Readonly<Record<string, string>> {
+	if (typeof value !== "object" || value === null) return false;
+	return Object.values(value).every((entry) => typeof entry === "string");
 }
 
 /**
