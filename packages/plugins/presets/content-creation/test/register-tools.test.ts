@@ -254,7 +254,7 @@ describe("content creation tool registration", () => {
 				type: "configure_video_shot",
 				targetNodeId: "video",
 				controlRequirements: { exactEnding: true },
-				promptPlan: createVideoPromptPlan(),
+				promptPlan: createVideoPromptPlan("first-last-frame-plan"),
 				sources: [{ sourceNodeId: "opening" }],
 			}],
 		})).not.toThrow();
@@ -276,7 +276,7 @@ describe("content creation tool registration", () => {
 				targetNodeId: "video",
 				strategy: "automatic",
 				controlRequirements: { requiresSceneReference: true },
-				promptPlan: createVideoPromptPlan(),
+				promptPlan: createVideoPromptPlan("omni-reference-plan"),
 				sources: [
 					{
 						sourceNodeId: "person",
@@ -293,6 +293,27 @@ describe("content creation tool registration", () => {
 				],
 			}],
 		})).not.toThrow();
+	});
+
+	it("advertises only strategy-specific video prompt plans to the Agent", () => {
+		const legacyPlan: Record<string, unknown> = { ...createVideoPromptPlan(), kind: "video-shot" };
+		delete legacyPlan.sourceImageContract;
+
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{
+				type: "configure_video_shot",
+				targetNodeId: "video",
+				promptPlan: legacyPlan,
+				sources: [{ sourceNodeId: "image" }],
+			}],
+		})).toThrow(/kind/);
+		const schema = JSON.stringify(tool(CONTENT_EDIT_TOOL_NAME).parameters);
+		expect(schema).toContain("text-to-video-plan");
+		expect(schema).toContain("animate-still-plan");
+		expect(schema).toContain("first-last-frame-plan");
+		expect(schema).toContain("omni-reference-plan");
+		expect(schema).toContain("transform-video-plan");
+		expect(schema).not.toContain('"const":"video-shot"');
 	});
 
 	it("returns retryable corrective context for semantic generation mistakes", async () => {
@@ -458,9 +479,10 @@ describe("content creation tool registration", () => {
 	});
 });
 
-function createVideoPromptPlan() {
-	return {
-		kind: "video-shot",
+function createVideoPromptPlan(
+	kind: "animate-still-plan" | "first-last-frame-plan" | "omni-reference-plan" = "animate-still-plan",
+) {
+	const base = {
 		sceneFunction: "Premium product reveal for a social advertisement",
 		referenceRole: "Use the product image as the identity and initial composition reference",
 		protectedInvariants: ["Preserve product geometry", "Preserve branding and color"],
@@ -481,5 +503,36 @@ function createVideoPromptPlan() {
 		},
 		finalState: "Hold the recognizable product in a clean hero frame for the final second",
 		constraints: ["No text overlays", "No product redesign"],
+	};
+	if (kind === "first-last-frame-plan") {
+		return {
+			kind,
+			...base,
+			transitionContract: {
+				continuity: ["Preserve product identity, studio environment, and camera axis"],
+				stateChanges: ["Move from the opening composition to the authoritative final composition"],
+				physicalPath: "The highlight and camera move resolve continuously between both endpoint frames",
+			},
+		};
+	}
+	if (kind === "omni-reference-plan") {
+		return {
+			kind,
+			...base,
+			referenceInteraction: {
+				relationships: ["The product identity remains authoritative inside the supplied environment"],
+				chronology: ["Establish the environment", "Reveal the product", "Settle on the brand frame"],
+			},
+		};
+	}
+	return {
+		kind,
+		...base,
+		sourceImageContract: {
+			authority: "The product image controls identity, geometry, materials, and opening composition",
+			inherit: ["Product geometry", "Branding", "Studio composition"],
+			animate: ["Camera push-in", "One controlled highlight"],
+			introduce: ["Fine atmospheric particles"],
+		},
 	};
 }

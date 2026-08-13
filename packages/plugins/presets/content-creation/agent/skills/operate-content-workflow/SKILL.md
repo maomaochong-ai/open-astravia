@@ -10,7 +10,7 @@ Use the content-creation tools as the only control plane. Never edit `content-cr
 ## Operating loop
 
 1. Call `content_creation_inspect` with the narrowest useful view: `summary`, `project`, `graph`, `readiness`, `capabilities`, `runtime`, or `diagnostics`.
-2. Convert the user's request into workflow objective, deliverables, node purposes, and typed connections. For video generation, first classify the business intent as text-only generation, still animation, first/last-frame interpolation, multi-reference guidance, or video transformation.
+2. Convert the user's request into workflow objective, deliverables, node purposes, and typed connections. For video generation, classify the creative authority contract as text-only generation, still animation, first/last-frame interpolation, multi-reference guidance, or video transformation; use the matching strategy-specific prompt plan kind.
 3. Reuse existing nodes when their purpose matches. Give every new node a stable `id`, clear `name`, and concise `purpose`.
 4. Submit nodes, semantic connections, and asset bindings through `content_creation_edit` with the inspected revision. Configure Agent-authored video work through `configure_video_shot`; it owns video media edges, strategy selection, and role assignment atomically. Use low-level `configure_generation` only to preserve or repair an existing role configuration. The whole batch applies without user confirmation.
 5. Inspect `readiness` after structural edits and repair orphan, blocked, unbound, or incomplete paths before claiming the workflow is connected.
@@ -29,7 +29,7 @@ Read [references/workflow-discovery-and-execution.md](references/workflow-discov
 - Never invent model support. Select only values returned by `content_creation_inspect(scope="capabilities")`.
 - Use `sourceNodeId`, `targetNodeId`, and optional `edgeId` for ordinary connections, plus a semantic `targetInput`; never guess `source` / `target`, internal handles, or canvas fields.
 - Use `bind_assets` for concrete image-generator references. For video generators, declare every media source once inside `configure_video_shot`; never also send a raw media `connect_nodes` or `bind_assets` operation for the same relationship.
-- `strategy="automatic"` maps requirements to text-to-video, animate-still, first/last-frame, omni-reference, or video transformation. Do not send the low-level `role` field in high-level sources; use `semanticRole` only for omni-reference direction.
+- `strategy="automatic"` maps declared authorities and sources to text-to-video, animate-still, first/last-frame, omni-reference, or video transformation. It does not replace creative method selection: submit the matching `text-to-video-plan`, `animate-still-plan`, `first-last-frame-plan`, `omni-reference-plan`, or `transform-video-plan`. Do not send the low-level `role` field in high-level sources; use `semanticRole` only for omni-reference direction.
 - `exactEnding=true` means a hard last-frame image authority and therefore requires distinct `keyframes.first` and `keyframes.last`. A deliberate or stable ending described only in `promptPlan.finalState` is not an exact-ending requirement.
 - For an asset node, pass concrete `assetIds`. For an image/video generator node, reference its future output by `sourceNodeId` and do not pass `assetIds`.
 - Preserve node IDs and connections when making local edits.

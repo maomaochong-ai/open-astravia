@@ -5,6 +5,7 @@ import { serializeContentProject } from "../project/persistence";
 import type { ContentNode, ContentProjectDocument, GenerationJob } from "../project/types";
 import { contentPromptTextFromData } from "../node/prompt-document";
 import { analyzeVideoPromptMethod, VIDEO_PROMPT_PLAN_FIELD_GUIDANCE } from "./generation-prompt-plan";
+import { contentVideoShotMethod, inferContentVideoShotStrategy } from "./video-shot-methods";
 import { analyzeContentWorkflow } from "./workflow-analysis";
 
 export type ContentAgentDiagnosticSeverity = "error" | "warning" | "info";
@@ -126,7 +127,8 @@ function diagnoseGenerator(
 			message: "Generation node has no effective prompt.",
 		});
 	} else if (node.kind === "video-generator") {
-		const issues = analyzeVideoPromptMethod(prompt);
+		const strategy = inferContentVideoShotStrategy(node.data.modeId, videoSourceRoles(project, node.id));
+		const issues = analyzeVideoPromptMethod(prompt, strategy);
 		if (issues.length > 0) {
 			diagnostics.push({
 				code: "video-prompt-method-incomplete",
@@ -182,25 +184,28 @@ function diagnoseGenerator(
 }
 
 function videoPlanForAgent(project: ContentProjectDocument, node: ContentNode) {
-	const sourceRoles = project.graph.edges
-		.filter((edge) => edge.target === node.id && edge.targetHandle !== "prompt")
-		.flatMap((edge) => edge.role ? [edge.role] : []);
+	const sourceRoles = videoSourceRoles(project, node.id);
+	const strategy = inferContentVideoShotStrategy(node.data.modeId, sourceRoles);
+	const method = strategy ? contentVideoShotMethod(strategy) : undefined;
 	return {
 		nodeId: node.id,
-		strategy: inferVideoStrategy(node.data.modeId, sourceRoles),
+		strategy: strategy ?? "unconfigured",
 		modeId: node.data.modeId ?? null,
 		sourceRoles,
+		method: method
+			? {
+				promptPlanKind: method.promptPlanKind,
+				description: method.description,
+				inputContract: method.inputContract,
+			}
+			: null,
 	};
 }
 
-function inferVideoStrategy(modeId: string | undefined, sourceRoles: readonly string[]): string {
-	if (modeId === "reference-to-video") return "omni-reference";
-	if (modeId === "video-to-video") return "transform-video";
-	if (modeId === "image-to-video") {
-		return sourceRoles.includes("lastFrame") ? "first-last-frame" : "animate-still";
-	}
-	if (modeId === "text-to-video") return "text-to-video";
-	return "unconfigured";
+function videoSourceRoles(project: ContentProjectDocument, nodeId: string): string[] {
+	return project.graph.edges
+		.filter((edge) => edge.target === nodeId && edge.targetHandle !== "prompt")
+		.flatMap((edge) => edge.role ? [edge.role] : []);
 }
 
 function diagnoseVideoStrategyPromptContracts(

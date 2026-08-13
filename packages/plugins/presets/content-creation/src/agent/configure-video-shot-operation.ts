@@ -2,7 +2,6 @@ import {
 	ContentGenerationIntentError,
 	planContentVideoGeneration,
 	type ContentGenerationSourceSpec,
-	type ContentVideoGenerationIntent,
 } from "../generation/generation-intent";
 import type { ContentModelDescriptor } from "../generation/types";
 import type { ContentProjectCommand } from "../project/commands";
@@ -10,6 +9,7 @@ import type { ContentNode, ContentNodeKind, ContentProjectDocument } from "../pr
 import {
 	compileVideoPromptPlan,
 	parseVideoPromptPlan,
+	videoPromptPlanStrategy,
 } from "./generation-prompt-plan";
 import {
 	compileKeyframePromptPlan,
@@ -24,6 +24,7 @@ import {
 	type ContentVideoReferenceSemanticRole,
 	type ContentVideoShotControlRequirements,
 } from "./video-shot-plan";
+import { contentVideoShotMethod } from "./video-shot-methods";
 
 interface ParsedVideoShotKeyframe {
 	nodeId: string;
@@ -72,6 +73,18 @@ export function parseConfigureVideoShotOperation(
 		hasLastFramePlan: Boolean(keyframes.last),
 		sources: references.map(({ kind, semanticRole }) => ({ kind, semanticRole })),
 	});
+	const promptStrategy = videoPromptPlanStrategy(videoPlan);
+	if (promptStrategy && promptStrategy !== strategy) {
+		throw new ContentVideoShotPlanError(
+			"video prompt plan kind does not match the resolved generation strategy",
+			"video-shot-prompt-strategy-mismatch",
+			{
+				resolvedStrategy: strategy,
+				receivedPromptPlanKind: videoPlan.kind,
+				requiredPromptPlanKind: contentVideoShotMethod(strategy).promptPlanKind,
+			},
+		);
+	}
 
 	const aspectRatio = optionalString(operation, "aspectRatio") ?? target.data.aspectRatio;
 	const duration = operation.duration === undefined ? target.data.duration : requiredNumber(operation, "duration");
@@ -165,7 +178,7 @@ export function parseConfigureVideoShotOperation(
 		generationSources = [];
 	}
 
-	const intent = strategyToGenerationIntent(strategy);
+	const intent = contentVideoShotMethod(strategy).generationIntent;
 	const modelSelection = optionalString(operation, "modelSelection");
 	const providerId = modelSelection === "automatic"
 		? undefined
@@ -499,12 +512,6 @@ function referenceSourceSpec(reference: ParsedVideoShotReference): ContentGenera
 		sourceNodeId: reference.sourceNodeId,
 		...(reference.assetIds ? { assetIds: reference.assetIds } : {}),
 	};
-}
-
-function strategyToGenerationIntent(strategy: Exclude<typeof CONTENT_VIDEO_SHOT_STRATEGIES[number], "automatic">): ContentVideoGenerationIntent {
-	if (strategy === "first-last-frame") return "interpolate-frames";
-	if (strategy === "omni-reference") return "reference-guided";
-	return strategy;
 }
 
 function compileOmniReferencePrompt(

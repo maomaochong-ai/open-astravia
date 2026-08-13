@@ -244,7 +244,7 @@ describe("content agent operations", () => {
 			aspectRatio: "16:9",
 			duration: 5,
 			controlRequirements: { exactOpening: true, exactEnding: true },
-			promptPlan: createVideoPromptPlan(),
+			promptPlan: createVideoPromptPlan("first-last-frame-plan"),
 			keyframes: {
 				first: { nodeId: "first", promptPlan: createKeyframePlan("first") },
 				last: { nodeId: "last", promptPlan: createKeyframePlan("last") },
@@ -279,7 +279,7 @@ describe("content agent operations", () => {
 			strategy: "automatic",
 			aspectRatio: "16:9",
 			controlRequirements: { requiresSceneReference: true },
-			promptPlan: createVideoPromptPlan(),
+			promptPlan: createVideoPromptPlan("omni-reference-plan"),
 			sources: [
 				{ sourceNodeId: "person-a", alias: "dancerA", semanticRole: "identity", instruction: "Preserve face and costume" },
 				{ sourceNodeId: "person-b", alias: "dancerB", semanticRole: "identity", instruction: "Preserve face and costume" },
@@ -293,6 +293,28 @@ describe("content agent operations", () => {
 		expect(video?.data.prompt).toContain("<Picture 1>: dancerA (identity). Preserve face and costume.");
 		expect(video?.data.prompt).toContain("<Picture 3>: ballroom (environment). Use the room layout and lighting.");
 		expect(next.graph.edges.filter((edge) => edge.target === "video")).toHaveLength(3);
+	});
+
+	it("rejects a prompt method that disagrees with the resolved media strategy", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+		]);
+
+		expect(() => parseContentAgentOperations(project, [{
+			type: "configure_video_shot",
+			targetNodeId: "video",
+			strategy: "automatic",
+			sources: [{ sourceNodeId: "image" }],
+			promptPlan: createVideoPromptPlan("omni-reference-plan"),
+		}], [FRAME_VIDEO_MODEL])).toThrowError(expect.objectContaining({
+			code: "video-shot-prompt-strategy-mismatch",
+			details: {
+				resolvedStrategy: "animate-still",
+				receivedPromptPlanKind: "omni-reference-plan",
+				requiredPromptPlanKind: "animate-still-plan",
+			},
+		}));
 	});
 
 	it("absorbs redundant media and prompt connections into one high-level video shot", () => {
@@ -322,7 +344,7 @@ describe("content agent operations", () => {
 				aspectRatio: "16:9",
 				controlRequirements: { exactOpening: true, exactEnding: false },
 				sources: [{ sourceNodeId: "opening" }],
-				promptPlan: createVideoPromptPlan(),
+				promptPlan: createVideoPromptPlan("animate-still-plan"),
 			},
 		], [FRAME_VIDEO_MODEL]);
 
@@ -368,7 +390,7 @@ describe("content agent operations", () => {
 			strategy: "omni-reference",
 			aspectRatio: "16:9",
 			controlRequirements: { requiresSceneReference: true },
-			promptPlan: createVideoPromptPlan(),
+			promptPlan: createVideoPromptPlan("omni-reference-plan"),
 			sources: [
 				{ sourceNodeId: "person", alias: "actor", semanticRole: "identity", instruction: "Preserve identity" },
 				{
@@ -398,7 +420,7 @@ describe("content agent operations", () => {
 			type: "configure_video_shot",
 			targetNodeId: "video",
 			strategy: "omni-reference",
-			promptPlan: createVideoPromptPlan(),
+			promptPlan: createVideoPromptPlan("omni-reference-plan"),
 			sources: [
 				{ sourceNodeId: "person", alias: "person", semanticRole: "identity", instruction: "Preserve identity" },
 				{ sourceNodeId: "scene", alias: "scene", semanticRole: "environment", instruction: "Use the scene" },
@@ -418,7 +440,7 @@ describe("content agent operations", () => {
 			aspectRatio: "16:9",
 			controlRequirements: { exactEnding: true },
 			sources: [{ sourceNodeId: "opening" }],
-			promptPlan: createVideoPromptPlan(),
+			promptPlan: createVideoPromptPlan("first-last-frame-plan"),
 		}], [FRAME_VIDEO_MODEL])).toThrowError(expect.objectContaining({
 			code: "video-shot-keyframes-required",
 			details: { required: ["keyframes.first", "keyframes.last"] },
@@ -530,9 +552,13 @@ function createKeyframePlan(phase: "first" | "last") {
 	};
 }
 
-function createVideoPromptPlan() {
-	return {
-		kind: "video-shot",
+function createVideoPromptPlan(
+	kind:
+		| "animate-still-plan"
+		| "first-last-frame-plan"
+		| "omni-reference-plan" = "animate-still-plan",
+) {
+	const base = {
 		sceneFunction: "One continuous dance encounter",
 		referenceRole: "References define dancer identity, costume and ballroom layout",
 		protectedInvariants: ["same dancers", "same costumes", "same ballroom"],
@@ -553,5 +579,36 @@ function createVideoPromptPlan() {
 		},
 		finalState: "Both dancers meet at center frame and hold eye contact",
 		constraints: ["one continuous shot", "no identity drift", "no scene change"],
+	};
+	if (kind === "first-last-frame-plan") {
+		return {
+			kind,
+			...base,
+			transitionContract: {
+				continuity: ["same dancers", "same costumes", "same ballroom", "same camera axis"],
+				stateChanges: ["Dancer A crosses from left to center", "Both dancers meet"],
+				physicalPath: "Dancer A completes one waltz phrase as the camera tracks and settles at center",
+			},
+		};
+	}
+	if (kind === "omni-reference-plan") {
+		return {
+			kind,
+			...base,
+			referenceInteraction: {
+				relationships: ["Both referenced dancers retain identity inside the referenced ballroom"],
+				chronology: ["Dancer A begins left", "Dancer A crosses the floor", "Both dancers meet at center"],
+			},
+		};
+	}
+	return {
+		kind,
+		...base,
+		sourceImageContract: {
+			authority: "The opening image controls dancer identity, costume, ballroom, and first composition",
+			inherit: ["Dancer identity", "Costume", "Ballroom layout"],
+			animate: ["Waltz movement", "Restrained camera tracking"],
+			introduce: [],
+		},
 	};
 }

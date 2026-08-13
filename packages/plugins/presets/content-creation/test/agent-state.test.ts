@@ -165,11 +165,41 @@ describe("content creation agent state", () => {
 			strategy: "first-last-frame",
 			modeId: "image-to-video",
 			sourceRoles: ["firstFrame", "lastFrame"],
+			method: {
+				promptPlanKind: "first-last-frame-plan",
+				description: expect.stringContaining("two authoritative static endpoints"),
+				inputContract: expect.stringContaining("keyframes.first"),
+			},
 		});
 		expect(state.diagnostics.map(({ code }) => code)).toEqual(expect.arrayContaining([
 			"video-keyframe-prompt-contract-missing",
 			"video-keyframe-prompts-reused",
 		]));
+	});
+
+	it("diagnoses a configured video prompt that lacks its strategy-specific method", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "node.add",
+				node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 } },
+			},
+			{
+				type: "node.add",
+				node: {
+					id: "video",
+					kind: "video-generator",
+					position: { x: 400, y: 0 },
+					data: { modeId: "image-to-video", prompt: completeVideoPrompt() },
+				},
+			},
+			{ type: "edge.connect", source: "image", target: "video", targetHandle: "image", role: "firstFrame" },
+		]);
+
+		const state = createContentCreationAgentState(project, [VIDEO_MODEL]);
+		expect(state.diagnostics).toContainEqual(expect.objectContaining({
+			code: "video-prompt-method-incomplete",
+			details: expect.objectContaining({ issues: expect.arrayContaining(["source-image-contract-missing"]) }),
+		}));
 	});
 });
 

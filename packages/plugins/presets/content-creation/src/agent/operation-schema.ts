@@ -7,8 +7,11 @@ import { VIDEO_PROMPT_PLAN_SCHEMA } from "./generation-prompt-plan";
 import { KEYFRAME_PROMPT_PLAN_SCHEMA } from "./keyframe-prompt-plan";
 import {
 	CONTENT_VIDEO_REFERENCE_SEMANTIC_ROLES,
-	CONTENT_VIDEO_SHOT_STRATEGIES,
 } from "./video-shot-plan";
+import {
+	CONTENT_VIDEO_SHOT_STRATEGIES,
+	contentVideoShotStrategyDescription,
+} from "./video-shot-methods";
 
 const TARGET_INPUT = {
 	type: "string",
@@ -115,7 +118,12 @@ export function createContentAgentOperationSchema(
 				minLength: 1,
 				description: "Receiving video-generator node. Media inputs belong in sources or keyframes.",
 			},
-			strategy: { type: "string", enum: CONTENT_VIDEO_SHOT_STRATEGIES },
+			strategy: {
+				type: "string",
+				enum: CONTENT_VIDEO_SHOT_STRATEGIES,
+				description:
+					`Generation method. Use automatic only after expressing the intended method through promptPlan and media controls.\n${contentVideoShotStrategyDescription()}`,
+			},
 			controlRequirements: {
 				type: "object",
 				properties: {

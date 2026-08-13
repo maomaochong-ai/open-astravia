@@ -59,11 +59,13 @@ describe("content creation tool routing", () => {
 		expect(methods).toEqual([
 			"operate-content-workflow",
 			"direct-video-creation",
+			"video-animate-still-method",
 			"product-video-recipe",
 		]);
 		const context = renderContentMethodContext(methods);
 		expect(context).toContain("# Direct AI video creation");
 		expect(context).toContain("# Video prompting");
+		expect(context).toContain("# Animate-still method");
 		expect(context).toContain("## Premium product showcase from a source photo");
 		expect(context).toContain("promptPlan");
 	});
@@ -112,12 +114,32 @@ describe("content creation tool routing", () => {
 			"operate-content-workflow",
 			"direct-image-creation",
 			"direct-video-creation",
+			"video-first-last-frame-method",
 			"product-video-recipe",
 		]);
 		expect(context).toContain("# Image prompt framework");
 		expect(context).toContain("# Continuity and references");
 		expect(context).toContain("# Reference roles and timed directing");
+		expect(context).toContain("# First/last-frame method");
 		expect(context).toContain("configure_video_shot");
 		expect(context).not.toContain("Use `configure_generation` for every video-generator media input");
+	});
+
+	it("loads only the specialized video methods implied by recent intent", () => {
+		expect(selectContentMethodIds("根据图一和图二以及场景参考生成全能参考视频")).toEqual([
+			"operate-content-workflow",
+			"direct-video-creation",
+			"video-omni-reference-method",
+		]);
+		expect(selectContentMethodIds("把这段视频进行动作迁移和服装替换")).toEqual([
+			"operate-content-workflow",
+			"direct-video-creation",
+			"video-transform-method",
+		]);
+		expect(selectContentMethodIds("只根据文字描述文生视频")).toEqual([
+			"operate-content-workflow",
+			"direct-video-creation",
+			"video-text-to-video-method",
+		]);
 	});
 });
