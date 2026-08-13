@@ -147,6 +147,7 @@ export {
 export {
 	featureConfigurationError,
 	featureConflictError,
+	isTurnPersistenceError,
 	KERNEL_ERROR_CODES,
 	KernelError,
 	type KernelErrorCode,
@@ -154,6 +155,7 @@ export {
 	sessionClosedError,
 	snapshotProviderClosedError,
 	TurnExecutionError,
+	TurnPersistenceError,
 	turnPersistenceError,
 	turnProtocolError,
 } from "./errors.js";

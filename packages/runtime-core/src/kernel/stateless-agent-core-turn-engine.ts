@@ -14,6 +14,7 @@ import {
 	type AssistantMessageEvent,
 	adaptApiProvider,
 	type Context,
+	isRetryableProviderFailure,
 	type Message,
 	type Model,
 	streamSimple,
@@ -92,7 +93,7 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 				throw new TurnExecutionError({
 					code: "PROVIDER_ERROR",
 					message: assistant.errorMessage?.trim() || "Provider returned an assistant error response",
-					retryable: true,
+					retryable: isRetryableProviderFailure(assistant.errorMessage?.trim() || ""),
 					origin: "provider",
 				});
 			}
@@ -746,7 +747,7 @@ function runFailure(result: AgentRunResult): Error {
 				(assistantError
 					? "Provider returned an assistant error response"
 					: `Agent run ended with status: ${result.status}`)),
-		retryable: failure?.retryable ?? Boolean(assistantError),
+		retryable: failure?.retryable ?? isRetryableProviderFailure(assistantError?.errorMessage?.trim() || ""),
 		origin: failure?.origin ?? (assistantError ? "provider" : "runtime"),
 		...(failure?.details && Object.keys(failure.details).length > 0 ? { details: failure.details } : {}),
 	});

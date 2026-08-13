@@ -37,6 +37,7 @@ import {
 	revokeAllSessionGrants,
 	revokeSessionGrant,
 } from "../execution-mode/sandbox-permissions.js";
+import { isTurnPersistenceError } from "../kernel/errors.js";
 import { generateAutoTitle, generateNextPromptSuggestions } from "./peripheral-tasks.js";
 import { debugPluginAgent, summarizeAgentPlugins } from "./plugin-debug.js";
 import type { RuntimeHostSessionBackend, RuntimeSessionCreateRequest } from "./session-backend.js";
@@ -698,10 +699,22 @@ export class RuntimeHost implements SessionFacade {
 			// 订阅者，然后照原样把异常再向上抛，scheduler / batch-tasks 等
 			// 已经自带 try/catch 的调用方仍然能拿到 reject 做重试 / 落账。
 			const message = isSessionError(err) ? err.message : err instanceof Error ? err.message : String(err);
+			const failure = isTurnPersistenceError(err) ? err.failure : undefined;
+			if (failure && isTurnPersistenceError(err)) {
+				// The execution failure was already published with its turnId. Return a
+				// terminal receipt instead of broadcasting the durability error as a
+				// second chat message; the session remains recovery_required.
+				return {
+					status: "failed",
+					turnId: err.turnId,
+					error: { ...failure, retryable: false },
+				};
+			}
 			this.broadcastSyntheticEvent(sessionId, {
 				...baseSessionEvent(sessionId, "agent"),
 				type: "error",
-				error: isSessionError(err) ? err : runtimeError("INTERNAL_ERROR", message, false, "runtime"),
+				...(isTurnPersistenceError(err) && err.turnId ? { turnId: err.turnId } : {}),
+				error: failure ?? (isSessionError(err) ? err : runtimeError("INTERNAL_ERROR", message, false, "runtime")),
 			});
 			throw err;
 		}

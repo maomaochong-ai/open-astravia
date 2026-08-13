@@ -880,15 +880,53 @@ describe("greenfield runtime kernel", () => {
 						errorMessage: "provider failed",
 					},
 				};
+				yield { type: "completed", stopReason: "error" };
 			},
 		};
 		const harness = await createHarness({ turnEngine: engine });
 		const result = await harness.session.send({ message: userMessage("hello") });
 
 		expect(result.status).toBe("failed");
+		expect((harness.eventSink as CollectingEventSink).events).toContainEqual(
+			expect.objectContaining({
+				type: "turn.execution_failed",
+				error: expect.objectContaining({ origin: "provider" }),
+			}),
+		);
 		const conversation = await harness.repository.load("session-1");
 		expect(conversation.messages.filter((message) => message.role === "assistant")).toHaveLength(1);
 		expect(conversation.events.at(-1)?.type).toBe("turn.failed");
+	});
+
+	it("publishes the provider failure before terminal persistence is attempted", async () => {
+		const engine: TurnEnginePort = {
+			async *execute() {
+				yield {
+					type: "message",
+					message: {
+						...assistantMessage("quota exhausted"),
+						stopReason: "error" as const,
+						errorMessage: "insufficient quota",
+					},
+				};
+				yield { type: "completed", stopReason: "error" };
+			},
+		};
+		const harness = await createHarness({ turnEngine: engine, failTerminalAppend: true });
+
+		await expect(harness.session.send({ message: userMessage("hello") })).rejects.toMatchObject({
+			code: KERNEL_ERROR_CODES.TURN_PERSISTENCE,
+		});
+		expect((harness.eventSink as CollectingEventSink).events).toContainEqual(
+			expect.objectContaining({
+				type: "turn.execution_failed",
+				error: expect.objectContaining({
+					message: "insufficient quota",
+					origin: "provider",
+					retryable: false,
+				}),
+			}),
+		);
 	});
 
 	it("requires an explicit concurrent-input behavior and retains queued input on cancellation", async () => {

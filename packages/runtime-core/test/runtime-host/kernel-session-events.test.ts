@@ -69,6 +69,7 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 			cacheWrite: 1,
 			costTotal: 10,
 			contextPercent: null,
+			contextTokens: 17,
 			contextWindow: 0,
 		});
 	});
@@ -113,6 +114,33 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 		expect(failed.map((event) => event.type)).toEqual(["error", "session.lifecycle"]);
 		expect(payload(failed[0])).toMatchObject({ turnId: "turn-1", error: { code: "turn_failed", origin: "runtime" } });
 		expect(compacted.map(payload)).toMatchObject([{ type: "compaction.end", success: true }]);
+	});
+
+	it("maps transient execution failures independently from durable turn failure", () => {
+		const events = mapKernelEventToSessionEvents({
+			type: "turn.execution_failed",
+			sessionId: "session-1",
+			turnId: "turn-1",
+			error: {
+				code: "AI_RATE_LIMITED",
+				message: "provider rate limited",
+				retryable: true,
+				origin: "provider",
+				details: { statusCode: 429, provider: "deepseek", modelId: "deepseek-chat" },
+			},
+			timestamp: 12,
+		});
+
+		expect(events.map((event) => event.type)).toEqual(["error", "session.lifecycle"]);
+		expect(payload(events[0])).toMatchObject({
+			type: "error",
+			turnId: "turn-1",
+			error: {
+				code: "AI_RATE_LIMITED",
+				origin: "provider",
+				details: { provider: "deepseek", modelId: "deepseek-chat" },
+			},
+		});
 	});
 
 	it("preserves structured provider failures from the kernel", () => {

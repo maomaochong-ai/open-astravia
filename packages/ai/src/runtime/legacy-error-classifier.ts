@@ -1,4 +1,11 @@
-import { AI_ERROR_CODES, AIAbortedError, AIError, type Api, type AssistantMessage } from "../protocol/index.js";
+import {
+	AI_ERROR_CODES,
+	AIAbortedError,
+	AIError,
+	type Api,
+	type AssistantMessage,
+	isRetryableProviderFailure,
+} from "../protocol/index.js";
 import { normalizeProviderError } from "../provider-kit/provider-error.js";
 import type { Model } from "../types.js";
 import { isContextOverflow } from "../utils/overflow.js";
@@ -19,14 +26,17 @@ export function classifyLegacyAssistantError<TApi extends Api>(message: Assistan
 	if (statusCode === 401) return new AIError(AI_ERROR_CODES.AUTHENTICATION_FAILED, errorMessage, options);
 	if (statusCode === 403) return new AIError(AI_ERROR_CODES.PERMISSION_DENIED, errorMessage, options);
 	if (statusCode === 429) {
-		return new AIError(AI_ERROR_CODES.RATE_LIMITED, errorMessage, { ...options, retryable: true });
+		return new AIError(AI_ERROR_CODES.RATE_LIMITED, errorMessage, {
+			...options,
+			retryable: isRetryableProviderFailure(errorMessage, statusCode),
+		});
 	}
 	if (statusCode === 400 || statusCode === 404 || statusCode === 422) {
 		return new AIError(AI_ERROR_CODES.INVALID_REQUEST, errorMessage, options);
 	}
 	return new AIError(AI_ERROR_CODES.TRANSPORT_FAILED, errorMessage, {
 		...options,
-		retryable: statusCode !== undefined && statusCode >= 500,
+		retryable: isRetryableProviderFailure(errorMessage, statusCode),
 	});
 }
 

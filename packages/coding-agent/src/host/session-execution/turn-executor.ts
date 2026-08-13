@@ -57,10 +57,14 @@ export function readCodingAgentTurnFailure(value: unknown): CodingAgentTurnFailu
 		const message = Reflect.get(error, "message") as string;
 		const code = Reflect.get(error, "code");
 		const retryable = Reflect.get(error, "retryable");
+		const origin = Reflect.get(error, "origin");
+		const details = Reflect.get(error, "details");
 		return {
 			code: typeof code === "string" ? code : "TURN_FAILED",
 			message,
 			retryable: typeof retryable === "boolean" ? retryable : isRetryableRuntimeError(message),
+			...(origin === "runtime" || origin === "provider" || origin === "tool" || origin === "mcp" ? { origin } : {}),
+			...(isFailureDetails(details) ? { details } : {}),
 		};
 	}
 	if (Reflect.get(value, "status") !== "completed" || Reflect.get(value, "stopReason") !== "error") {
@@ -86,4 +90,15 @@ export function readCodingAgentTurnFailure(value: unknown): CodingAgentTurnFailu
 	const errorMessage = assistant ? Reflect.get(assistant, "errorMessage") : undefined;
 	const message = typeof errorMessage === "string" && errorMessage.length > 0 ? errorMessage : "Request failed";
 	return { code: "LEGACY_ASSISTANT_ERROR", message, retryable: isRetryableRuntimeError(message) };
+}
+
+function isFailureDetails(value: unknown): value is CodingAgentTurnFailure["details"] {
+	if (typeof value !== "object" || value === null) return false;
+	const candidate = value as Record<string, unknown>;
+	return (
+		(candidate.statusCode === undefined || typeof candidate.statusCode === "number") &&
+		(candidate.provider === undefined || typeof candidate.provider === "string") &&
+		(candidate.modelId === undefined || typeof candidate.modelId === "string") &&
+		(candidate.requestId === undefined || typeof candidate.requestId === "string")
+	);
 }

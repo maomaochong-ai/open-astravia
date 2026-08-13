@@ -20,6 +20,8 @@
 
 ### Fixed
 
+- Provider 返回 HTTP 429 但错误正文表示额度/计费不可用时，不再标记为可重试；该分类规则统一供 Provider 适配器与 Runtime 使用。
+
 - 修复 OpenAI 兼容工具 Schema 清洗日志把所有命中端点误称为 Gemini 的问题；DeepSeek 等 provider 仍使用共享 `openai-completions` 适配器，但不会被错误判断为 Gemini。清洗器现在保留带有 `oneOf` / `anyOf` 等结构关键字的合法联合分支。
 - 修复原生 `LanguageModelAdapter` 经 legacy stream 兼容投影后丢失 Provider 结构化错误的问题；HTTP 状态码、稳定错误码、可重试标记、Provider/模型与 request id 现在可安全穿过兼容桥，且不会携带原始请求、响应或 `cause`。
 - 修复 OpenAI 兼容中转返回 `finish_reason: ""` 时整轮对话失败、界面只剩一条空消息的问题。此前 `openai-completions` 的 chunk 校验强制要求 `finish_reason` 落在 OpenAI 枚举内，且 `index` / `delta` 必填，而中转在非终止 chunk 上普遍下发空字符串（实测某中转下的 `hy3`、`kimi-k2.7` 每个中间 chunk 均为 `""`），首包即抛 `AI_RESPONSE_VALIDATION_FAILED`。现在 chunk schema 只强制适配器真正消费的字段：`finish_reason` 允许任意字符串或 `null` 且可缺省，`index`（从不读取）与 `delta`（运行时已有守卫）改为可选；枚举外的终止原因（如 `eos`、`end_turn`）折叠为正常 `stop` 而非抛错。结构性畸形（如 `choices` 不是数组）仍然拒绝。

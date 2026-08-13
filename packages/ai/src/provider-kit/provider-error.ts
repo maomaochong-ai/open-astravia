@@ -1,4 +1,10 @@
-import { AI_ERROR_CODES, AIError, type Api, type AssistantMessage } from "../protocol/index.js";
+import {
+	AI_ERROR_CODES,
+	AIError,
+	type Api,
+	type AssistantMessage,
+	isRetryableProviderFailure,
+} from "../protocol/index.js";
 import type { Model } from "../types.js";
 import { isContextOverflow } from "../utils/overflow.js";
 
@@ -20,14 +26,17 @@ export function normalizeProviderError<TApi extends Api>(error: unknown, model: 
 	if (statusCode === 401) return new AIError(AI_ERROR_CODES.AUTHENTICATION_FAILED, message, options);
 	if (statusCode === 403) return new AIError(AI_ERROR_CODES.PERMISSION_DENIED, message, options);
 	if (statusCode === 429) {
-		return new AIError(AI_ERROR_CODES.RATE_LIMITED, message, { ...options, retryable: true });
+		return new AIError(AI_ERROR_CODES.RATE_LIMITED, message, {
+			...options,
+			retryable: isRetryableProviderFailure(message, statusCode),
+		});
 	}
 	if (statusCode === 400 || statusCode === 404 || statusCode === 422) {
 		return new AIError(AI_ERROR_CODES.INVALID_REQUEST, message, options);
 	}
 	return new AIError(AI_ERROR_CODES.TRANSPORT_FAILED, message, {
 		...options,
-		retryable: statusCode !== undefined && statusCode >= 500,
+		retryable: isRetryableProviderFailure(message, statusCode),
 	});
 }
 

@@ -97,3 +97,20 @@ export function createAIErrorFromDetails(details: AIErrorDetails): AIError {
 		requestId: details.requestId,
 	});
 }
+
+/**
+ * Classifies provider failures for automatic retry without inspecting provider-specific
+ * SDK classes at the Agent/Runtime boundary. Quota and billing failures are deliberately
+ * non-retryable even when a gateway reports them as HTTP 429.
+ */
+export function isRetryableProviderFailure(message: string, statusCode?: number): boolean {
+	if (
+		/额度已用尽|额度不足|窗口额度|余额不足|insufficient[_ .-]?quota|insufficient[_ .-]?balance|quota[_ .-]?(exhausted|exceeded)|out of quota|billing required|payment required|account suspended/i.test(
+			message,
+		)
+	) {
+		return false;
+	}
+	if (statusCode === 429) return true;
+	return statusCode !== undefined && statusCode >= 500;
+}

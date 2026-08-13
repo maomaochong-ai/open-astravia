@@ -6,6 +6,10 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Breaking Changes
 
+### Fixed
+
+- **执行失败与终态持久化解耦**：Provider/工具执行失败先以运行时事件发布，再独立尝试写入 `turn.failed`；终态写入失败只将会话置为 `recovery_required`，不会覆盖原始错误。失败 prompt 回执保留 `turnId` 与结构化 Provider 诊断。
+
 - **移除 `RuntimeHost.setGlobalAgentMode` 与 agent_mode 的 Turn 边界 pending 通道**：Agent Mode 现在只在
   `createSession` 时固化，会话内不可变，宿主不再能向活跃会话推送模式。Session 配置 overlay
   （`pendingConfiguration`）只保留 Execution Mode 与 Agent Plugins 两条通道。

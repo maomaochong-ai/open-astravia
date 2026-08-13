@@ -24,6 +24,22 @@ export class KernelError extends Error {
 	}
 }
 
+export class TurnPersistenceError extends KernelError {
+	readonly turnId?: string;
+	readonly failure?: RuntimeFailure;
+
+	constructor(
+		message: string,
+		options?: ErrorOptions,
+		context?: { readonly turnId?: string; readonly failure?: RuntimeFailure },
+	) {
+		super(KERNEL_ERROR_CODES.TURN_PERSISTENCE, message, options);
+		this.name = "KernelError";
+		this.turnId = context?.turnId;
+		this.failure = context?.failure;
+	}
+}
+
 /** Carries a model/tool execution failure through the TurnEngine exception boundary. */
 export class TurnExecutionError extends Error {
 	readonly failure: RuntimeFailure;
@@ -59,11 +75,21 @@ export function snapshotProviderClosedError(): KernelError {
 	return new KernelError(KERNEL_ERROR_CODES.SNAPSHOT_PROVIDER_CLOSED, "Runtime snapshot provider is closed");
 }
 
-export function turnPersistenceError(cause?: unknown): KernelError {
+export function turnPersistenceError(
+	cause?: unknown,
+	context?: { readonly turnId?: string; readonly failure?: RuntimeFailure },
+): TurnPersistenceError {
 	const detail = cause instanceof Error && cause.message ? ` Cause: ${cause.message}` : "";
-	return new KernelError(
-		KERNEL_ERROR_CODES.TURN_PERSISTENCE,
+	return new TurnPersistenceError(
 		`Turn terminal state could not be persisted; session recovery is required.${detail}`,
 		cause === undefined ? undefined : { cause },
+		context,
+	);
+}
+
+export function isTurnPersistenceError(value: unknown): value is TurnPersistenceError {
+	return (
+		value instanceof TurnPersistenceError ||
+		(value instanceof KernelError && value.code === KERNEL_ERROR_CODES.TURN_PERSISTENCE)
 	);
 }

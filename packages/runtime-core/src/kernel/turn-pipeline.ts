@@ -1,4 +1,4 @@
-import type { Message, StopReason } from "@vetta/ai";
+import { isRetryableProviderFailure, type Message, type StopReason } from "@vetta/ai";
 import type { ConversationDocument, ConversationDocumentReader } from "../conversation/document.js";
 import type { RuntimeFailure } from "../failure-contract.js";
 import type { RuntimeExecutionObservationEvent, RuntimeMessageEnvelope } from "../runtime-execution-observation.js";
@@ -572,7 +572,7 @@ export class TurnPipeline {
 						throw new TurnExecutionError({
 							code: "PROVIDER_ERROR",
 							message: assistantErrorMessage || "Provider returned an assistant error response",
-							retryable: true,
+							retryable: isRetryableProviderFailure(assistantErrorMessage || ""),
 							origin: "provider",
 						});
 					}
@@ -653,6 +653,13 @@ export class TurnPipeline {
 			if (request && !state.started) throw error;
 
 			const normalized = normalizeError(error);
+			await this.publishSafely({
+				type: "turn.execution_failed",
+				sessionId: state.sessionId,
+				turnId,
+				error: normalized,
+				timestamp: this.clock.now(),
+			});
 			const terminalResult = await this.appendTerminalSafely(turnId, state, {
 				type: "turn.failed",
 				sessionId: state.sessionId,
@@ -660,7 +667,7 @@ export class TurnPipeline {
 				error: normalized,
 				timestamp: this.clock.now(),
 			});
-			if (!terminalResult.ok) throw turnPersistenceError(terminalResult.error);
+			if (!terminalResult.ok) throw turnPersistenceError(terminalResult.error, { turnId, failure: normalized });
 			return {
 				status: "failed",
 				sessionId: state.sessionId,

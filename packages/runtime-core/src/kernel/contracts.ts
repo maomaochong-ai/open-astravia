@@ -768,6 +768,15 @@ export interface TurnPipelineStageEvent {
 	readonly timestamp: number;
 }
 
+/** 瞬时执行失败；不写入 Conversation，避免 UI 错误依赖终态持久化成功。 */
+export interface TurnExecutionFailedEvent {
+	readonly type: "turn.execution_failed";
+	readonly sessionId: string;
+	readonly turnId: string;
+	readonly error: RuntimeFailure;
+	readonly timestamp: number;
+}
+
 export interface ObserverFailedEvent {
 	readonly type: "observer.failed";
 	readonly sessionId: string;
@@ -828,6 +837,7 @@ export interface QueueChangedKernelEvent {
 export type KernelEvent =
 	| StoredSessionEvent
 	| TurnPipelineStageEvent
+	| TurnExecutionFailedEvent
 	| ObserverFailedEvent
 	| RuntimeSessionObservationEnvelope
 	| RuntimeExecutionObservationEnvelope

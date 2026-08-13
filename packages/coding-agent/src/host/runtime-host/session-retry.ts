@@ -59,6 +59,12 @@ type RuntimePromptFailure = {
 	readonly message: string;
 	readonly retryable: boolean;
 	readonly origin: "runtime" | "provider" | "tool" | "mcp";
+	readonly details?: {
+		readonly statusCode?: number;
+		readonly provider?: string;
+		readonly modelId?: string;
+		readonly requestId?: string;
+	};
 };
 
 function readStructuredFailure(value: unknown): RuntimePromptFailure | undefined {
@@ -80,7 +86,19 @@ function readStructuredFailure(value: unknown): RuntimePromptFailure | undefined
 		message: candidate.message,
 		retryable: candidate.retryable,
 		origin: candidate.origin,
+		...(isFailureDetails(candidate.details) ? { details: candidate.details } : {}),
 	};
+}
+
+function isFailureDetails(value: unknown): value is RuntimePromptFailure["details"] {
+	if (typeof value !== "object" || value === null) return false;
+	const candidate = value as Record<string, unknown>;
+	return (
+		(candidate.statusCode === undefined || typeof candidate.statusCode === "number") &&
+		(candidate.provider === undefined || typeof candidate.provider === "string") &&
+		(candidate.modelId === undefined || typeof candidate.modelId === "string") &&
+		(candidate.requestId === undefined || typeof candidate.requestId === "string")
+	);
 }
 
 /**

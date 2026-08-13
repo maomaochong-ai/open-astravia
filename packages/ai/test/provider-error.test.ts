@@ -59,4 +59,14 @@ describe("normalizeProviderError", () => {
 			message: "socket closed",
 		});
 	});
+
+	it("does not retry quota exhaustion reported as HTTP 429", () => {
+		const source = Object.assign(new Error("insufficient_quota: account has no remaining credits"), { status: 429 });
+
+		expect(normalizeProviderError(source, model)).toMatchObject({
+			code: "AI_RATE_LIMITED",
+			retryable: false,
+			statusCode: 429,
+		});
+	});
 });

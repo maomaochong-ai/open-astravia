@@ -74,6 +74,33 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 		];
 	}
 
+	if (event.type === "turn.execution_failed") {
+		const failure = event.error;
+		return [
+			mapRuntimeSessionObservationEvent(
+				event.sessionId,
+				{
+					type: "error",
+					turnId: event.turnId,
+					error: {
+						code: failure.code,
+						message: failure.message,
+						retryable: failure.retryable,
+						origin: failure.origin,
+						...(failure.details ? { details: failure.details } : {}),
+					},
+					source: "runtime-core",
+				},
+				event.timestamp,
+			),
+			mapRuntimeSessionObservationEvent(
+				event.sessionId,
+				{ type: "lifecycle", phase: "agent_end", source: "runtime-core" },
+				event.timestamp,
+			),
+		];
+	}
+
 	if (event.type === "turn.failed") {
 		const failure = event.error;
 		return [

@@ -33,6 +33,13 @@ export interface CodingAgentTurnFailure {
 	readonly code: string;
 	readonly message: string;
 	readonly retryable: boolean;
+	readonly origin?: "runtime" | "provider" | "tool" | "mcp";
+	readonly details?: {
+		readonly statusCode?: number;
+		readonly provider?: string;
+		readonly modelId?: string;
+		readonly requestId?: string;
+	};
 }
 
 export interface CodingAgentTurnRetryController {
