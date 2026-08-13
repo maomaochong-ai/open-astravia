@@ -14,9 +14,11 @@ export const repoRoot = process.cwd();
 export const TESTABLE_PACKAGES = {
 	ai: "packages/ai",
 	agent: "packages/agent",
+	"runtime-core": "packages/runtime-core",
 	"runtime-mcp": "packages/runtime-mcp",
 	"coding-agent": "packages/coding-agent",
 	"ecosystem-adapter": "packages/ecosystem-adapter",
+	"desktop-app": "packages/desktop-app",
 	"plugin-cli": "packages/plugins/plugin-cli",
 };
 

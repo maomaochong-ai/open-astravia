@@ -50,6 +50,15 @@ describe("Coding Agent SDK Host Adapter", () => {
 		});
 	});
 
+	it("keeps default file storage inside the configured agent directory", async () => {
+		const resources = await createResources("sdk-host-agent-dir-");
+		const result = await createSession(resources, { model: MODEL });
+		sessions.push(result.session);
+
+		expect(result.session.sessionFile).toBeTruthy();
+		expect(result.session.sessionFile?.startsWith(join(resources.agentDir, "sessions"))).toBe(true);
+	});
+
 	it("preserves explicit built-in tool activation, including an empty tool list", async () => {
 		const emptyResources = await createResources("sdk-host-no-tools-");
 		const emptyResult = await createSession(emptyResources, {

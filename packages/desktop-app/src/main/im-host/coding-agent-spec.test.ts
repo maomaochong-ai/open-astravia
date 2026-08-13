@@ -15,6 +15,10 @@ vi.mock("@vetta/cli-app", () => ({
 	runAgentRuntimeCli: runtimeSelector,
 }));
 
+vi.mock("../constants.js", () => ({
+	DEFAULT_SERVER_URL: "https://api.test",
+}));
+
 import { runAgentRpcCommand } from "../cli/agent-rpc-command.js";
 import { buildCodingAgentSpec } from "./coding-agent-spec.js";
 
@@ -51,6 +55,7 @@ describe("IM coding-agent invocation", () => {
 			prefixArgs: ["C:\\resources\\coding-agent\\dist\\agent-rpc-cli.mjs", "--scenario", "im-claw"],
 			runAsNode: true,
 			packageDir: "C:\\resources\\coding-agent",
+			serverUrl: "https://api.test",
 		});
 		expect(spec.prefixArgs).not.toContain("--agent-runtime");
 	});

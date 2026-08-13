@@ -8,6 +8,7 @@ import type { ActionRpcRuntime } from "@vetta/action-rpc";
 import { ACTION_RPC_ENDPOINT_FILE_ENV } from "@vetta/action-rpc";
 import type { Api, Model } from "@vetta/ai";
 import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
+import { ENV_AGENT_DIR } from "@vetta/coding-agent/config";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { CatalogRoutedRuntimeSessionAccessResolver, RuntimeHost } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -119,6 +120,7 @@ interface CliResult {
 
 describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
 	const directories: string[] = [];
+	const originalAgentDir = process.env[ENV_AGENT_DIR];
 	let provider: OpenAiResponsesTestServer | undefined;
 	let runtime: RuntimeHost | undefined;
 	let pool: DesktopRuntimeBackendPool | undefined;
@@ -136,13 +138,18 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 		for (const directory of directories.splice(0).reverse()) {
 			await rm(directory, { recursive: true, force: true });
 		}
+		if (originalAgentDir === undefined) delete process.env[ENV_AGENT_DIR];
+		else process.env[ENV_AGENT_DIR] = originalAgentDir;
 	}, INTEGRATION_TEST_TIMEOUT_MS);
 
 	it("creates, continues and lists a persistent conversation through the existing CLI", async () => {
 		const root = await temporaryDirectory("vetta-desktop-cli-canary-");
 		const workspace = join(root, "workspace");
+		const agentDir = join(root, "agent");
 		const endpointFilePath = join(root, "action-server.json");
 		await mkdir(workspace);
+		await mkdir(agentDir);
+		process.env[ENV_AGENT_DIR] = agentDir;
 
 		provider = await startOpenAiResponsesTestServer(({ body }) => {
 			const input = JSON.stringify(body.input);

@@ -101,6 +101,7 @@ export interface CodingAgentQuestionCapability {
  */
 export interface CreateCodingAgentSessionOptions {
 	readonly cwd?: string;
+	/** Agent 配置根目录；未显式提供 `storage` 时也作为默认会话存储根目录。 */
 	readonly agentDir?: string;
 	readonly storage?: CodingAgentSessionStorageTarget;
 	readonly model?: Model<Api>;
