@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
 import { createCodingAgentPromptResourceResolver } from "../../src/resources/prompt-resource-resolver.js";
+import { expandPromptResourceReference } from "../../src/resources/prompt-resources/prompt-resource-expander.js";
 import type { Skill } from "../../src/resources/skills/index.js";
 import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
 import { preparePrompt } from "./prompt-adapter-test-fixture.js";
@@ -113,6 +114,43 @@ describe("Coding Agent prompt resource resolver", () => {
 		]);
 		expect(todoState.getLockSource()).toBe("scene");
 	});
+
+	it("exposes Scene frontmatter hooks as a prompt-resource contribution", () => {
+		const sceneDir = join(root, "review");
+		const scenePath = join(sceneDir, "SKILL.md");
+		mkdirSync(sceneDir);
+		writeFileSync(
+			scenePath,
+			skillDocument(
+				"review",
+				"review instructions",
+				"scene",
+				"hooks:\n  Stop:\n    - hooks:\n        - type: command\n          command: node verify.cjs\n",
+			),
+		);
+		const skill = createSkill("review", "scene", sceneDir, scenePath);
+
+		const expansion = expandPromptResourceReference(
+			"review it",
+			{ kind: "scene", name: "review" },
+			{
+				resourceLoader: {
+					getSkills: () => ({ skills: [skill], diagnostics: [] }),
+				},
+				todoState: new CodingAgentTodoRuntime(),
+			},
+		);
+
+		expect(expansion.promptResourceHookContribution).toMatchObject({
+			id: `skill:${scenePath}`,
+			sourcePath: scenePath,
+			configuration: { Stop: expect.any(Array) },
+			env: {
+				CLAUDE_PLUGIN_ROOT: sceneDir,
+				CLAUDE_SKILL_DIR: sceneDir,
+			},
+		});
+	});
 });
 
 function createSkill(name: string, type: Skill["type"], baseDir: string, filePath: string): Skill {
@@ -127,7 +165,7 @@ function createSkill(name: string, type: Skill["type"], baseDir: string, filePat
 	};
 }
 
-function skillDocument(name: string, body: string, type?: "scene"): string {
+function skillDocument(name: string, body: string, type?: "scene", extraFrontmatter = ""): string {
 	const metadata = type ? `metadata:\n  type: ${type}\n` : "";
-	return `---\nname: ${name}\ndescription: ${name} description\n${metadata}---\n${body}\n`;
+	return `---\nname: ${name}\ndescription: ${name} description\n${metadata}${extraFrontmatter}---\n${body}\n`;
 }

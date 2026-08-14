@@ -17,6 +17,8 @@
 
 ### Fixed
 
+- **Scene frontmatter hooks 未激活**：Scene 与 Skill 现在通过同一 Prompt Resource Hook contribution 合同，在资源展开后、`UserPromptSubmit` 前注册当前 Turn 的 hooks；保留原 `skillHookContribution` 字段兼容既有外部 resolver，并为场景脚本注入 `CLAUDE_PLUGIN_ROOT` / `CLAUDE_SKILL_DIR`。
+
 - **默认会话 Prompt Runtime 可正确展开场景**：Turn 组合现在把会话内部创建的资源源接入 Prompt Adapter；Desktop 未显式注入外部 resolver 时，`promptRef.scene` 也会读取 `SKILL.md`、注入场景正文并建立锁定待办，不再静默只保留不可见引用标记。
 
 - 自动压缩和分支摘要读取模型终端错误中的结构化 Provider failure，并将其交给 Runtime 观察与重试合同；后台模型失败不再只剩一段不可分类的文本。

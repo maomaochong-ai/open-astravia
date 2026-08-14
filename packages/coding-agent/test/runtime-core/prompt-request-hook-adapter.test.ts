@@ -80,6 +80,38 @@ describe("CodingAgentPromptRequestAdapter ecosystem hooks", () => {
 		expect(order).toEqual(["SessionStart", "register", "UserPromptSubmit"]);
 	});
 
+	it("registers a generic prompt-resource contribution for a Scene before UserPromptSubmit", async () => {
+		const order: string[] = [];
+		const register = vi.fn(() => order.push("register"));
+		const hookRuntime = runtimeFor((event) => {
+			order.push(event.eventName);
+			return emptyHookDispatchOutcome();
+		}, register);
+		const adapter = new CodingAgentPromptRequestAdapter({
+			hookRuntime,
+			resolvePromptResource: () => ({
+				text: "expanded prompt",
+				sceneInjection: "scene injection",
+				promptResourceHookContribution: {
+					id: "scene:C:/scenes/review/SKILL.md",
+					revision: "v1",
+					profileId: "test",
+					sourcePath: "C:/scenes/review/SKILL.md",
+					configuration: { UserPromptSubmit: [] },
+				},
+			}),
+		});
+
+		await preparePrompt(
+			adapter,
+			{ text: "original", promptRef: { kind: "scene", name: "review" } },
+			{ sessionId: "session-1", queueing: false },
+		);
+
+		expect(register).toHaveBeenCalledTimes(1);
+		expect(order).toEqual(["SessionStart", "register", "UserPromptSubmit"]);
+	});
+
 	it("preserves Legacy SessionStart/UserPrompt context ordering for idle and queued prompts", async () => {
 		const events: EcosystemHookEvent[] = [];
 		const hookRuntime = runtimeFor((event) => {

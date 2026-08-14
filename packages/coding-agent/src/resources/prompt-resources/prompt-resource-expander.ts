@@ -24,6 +24,7 @@ function expandPromptResource(
 	try {
 		const document = readSkillInvocationDocument(skill);
 		const body = document.body.trim();
+		const hookContribution = createSkillHookContribution(skill, document);
 		if (isScene) {
 			const lines: string[] = [
 				`<scene name="${skill.name}" location="${skill.filePath}">`,
@@ -79,6 +80,7 @@ function expandPromptResource(
 			return {
 				text: options.legacyArgs || text,
 				sceneInjection: lines.join("\n"),
+				promptResourceHookContribution: hookContribution,
 				promptRef,
 			};
 		}
@@ -94,7 +96,9 @@ function expandPromptResource(
 		return {
 			text,
 			skillInjection: skillBlock,
-			skillHookContribution: createSkillHookContribution(skill, document),
+			promptResourceHookContribution: hookContribution,
+			// Keep the established public field populated for external resolvers/consumers.
+			skillHookContribution: hookContribution,
 			promptRef,
 		};
 	} catch (error) {

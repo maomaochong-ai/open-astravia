@@ -13,6 +13,8 @@ export interface PromptResourceExpansion {
 	text: string;
 	sceneInjection?: string;
 	skillInjection?: string;
+	promptResourceHookContribution?: EcosystemHookContributionSource;
+	/** @deprecated Use promptResourceHookContribution for both Skill and Scene resources. */
 	skillHookContribution?: EcosystemHookContributionSource;
 	promptRef?: PromptResourceRef;
 }

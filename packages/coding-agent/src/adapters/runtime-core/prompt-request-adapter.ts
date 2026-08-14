@@ -123,7 +123,7 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter, Ru
 		const expansion = await this.expandPrompt(request, context);
 		const hookContexts = await this.runPromptHooks(
 			expansion.text,
-			expansion.skillHookContribution,
+			expansion.promptResourceHookContribution ?? expansion.skillHookContribution,
 			context.turnId,
 			context.signal,
 		);
@@ -163,7 +163,7 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter, Ru
 
 	private async runPromptHooks(
 		prompt: string,
-		skillHookContribution: CodingAgentPromptResourceExpansion["skillHookContribution"],
+		promptResourceHookContribution: CodingAgentPromptResourceExpansion["promptResourceHookContribution"],
 		turnId: string,
 		signal: AbortSignal,
 	): Promise<readonly string[]> {
@@ -177,7 +177,7 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter, Ru
 		const promptSubmit = await this.hookRuntime.runUserPromptSubmit(
 			prompt,
 			signal,
-			skillHookContribution ? [skillHookContribution] : [],
+			promptResourceHookContribution ? [promptResourceHookContribution] : [],
 			turnId,
 		);
 		if (promptSubmit.shouldStop || promptSubmit.shouldBlock) {

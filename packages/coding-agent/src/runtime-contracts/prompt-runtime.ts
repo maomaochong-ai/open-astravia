@@ -11,6 +11,8 @@ export interface CodingAgentPromptResourceExpansion {
 	readonly text: string;
 	readonly promptRef?: PromptResourceRef;
 	readonly skillInjection?: string;
+	readonly promptResourceHookContribution?: EcosystemHookContributionSource;
+	/** @deprecated Use promptResourceHookContribution for both Skill and Scene resources. */
 	readonly skillHookContribution?: EcosystemHookContributionSource;
 	readonly sceneInjection?: string;
 }
