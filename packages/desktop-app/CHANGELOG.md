@@ -121,6 +121,11 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **`.env.production` 的语音裁剪配置贯穿完整打包链路**：纯 Node 的模型准备与 `prepare-pack`
+  过去默认读取 `.env.development`，与 Vite 的 production 编译模式不一致，导致
+  `VETTA_SPEECH_INPUT_ENABLED=false` 虽然关闭了运行时入口，模型和 Sherpa 仍可能进入安装包。现在构建、
+  暂存与打包统一选择 production 环境；显式的 development / test 模式继续优先。
+
 - **场景统一为内置行内能力令牌**：对话输入、草稿恢复、重编辑与用户消息不再使用旧的顶部场景胶囊和独立全局状态；场景与 Skill 共用当前 Lexical/消息令牌 UI，但发送时仍转换为唯一的结构化 `promptRef`，保持强制展开与 `tasks.json` 待办锁定语义。令牌与后续正文会自动补齐词边界，避免正文被错误包进场景胶囊。
 
 - **自动化任务编辑与并发刷新更可靠**：编辑已暂停任务时不再被保存动作意外重新启用；更新或删除任务的 IPC 在途期间即使任务列表收到新增项，完成后的本地状态也基于最新列表合并，不再让新任务从界面消失。Cron 解析同时拒绝越界或无法由表单准确表示的表达式，避免打开任务后静默改成另一种执行时间。

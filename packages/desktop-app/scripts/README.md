@@ -92,6 +92,9 @@
 
 `VETTA_SPEECH_INPUT_ENABLED` 是严格的构建期开关，只接受 `true` 或 `false`，未设置时默认启用。
 它与目标平台共同决定语音能力：只有开关启用且目标包含 `win32-x64` 时才构建语音输入。
+`build` / `pack` / `dist` 及纯 Node 构建脚本默认统一读取 `.env.production`；开发启动器显式读取
+`.env.development`，`dist:*:test` 的 `VETTA_BUILD_ENV=test` 仍优先读取 `.env.test`。Shell 中直接设置的
+变量优先级最高。
 
 关闭版 Windows 包示例：
 
@@ -110,6 +113,9 @@ bun run dist:win
 开关只控制发布产物，不删除 `resources/speech-models` 中已校验的本地构建缓存。以后重新启用时仍可复用，
 避免重复下载。必须在完整的 `build` / `prepare:desktop-pack` / `dist:*` 命令之前设置变量；不能只在
 electron-builder 阶段设置，否则编译产物与打包资源可能不一致。
+
+开发环境需要单独准备模型时使用 `bun run prepare:speech-models:dev`，以确保开关取自
+`.env.development`；`bun run prepare:speech-models` 默认按生产构建读取 `.env.production`。
 
 ## extraResources 过滤
 

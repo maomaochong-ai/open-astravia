@@ -51,11 +51,12 @@ The value is a build-time contract and must be exactly `true` or `false`; it can
 packaging. Disabled builds keep any verified model in the ignored build cache for later reuse, but do
 not copy it into the staged application.
 
-Run `bun run prepare:speech-models` to prepare the model explicitly. The command skips macOS/Linux
-targets, and is also part of `bun run build` and revalidated by `prepare-pack.js` before a Windows
-artifact is staged. After `bun run build:main`, run `bun run verify:speech-host` to exercise the real
-Electron utility process with the bundled Sherpa runtime and model through initialize, start, audio,
-and stop.
+Run `bun run prepare:speech-models` to prepare the production model explicitly, or
+`bun run prepare:speech-models:dev` to use `.env.development`. The production command skips
+macOS/Linux targets, and is also part of `bun run build` and revalidated by `prepare-pack.js` before
+a Windows artifact is staged. After `bun run build:main`, run `bun run verify:speech-host` to
+exercise the real Electron utility process with the bundled Sherpa runtime and model through
+initialize, start, audio, and stop.
 
 ## Development
 
