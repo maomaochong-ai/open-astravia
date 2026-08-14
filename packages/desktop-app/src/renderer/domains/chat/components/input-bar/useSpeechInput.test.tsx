@@ -5,6 +5,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+	speechInputBuildEnabled: true,
 	replaceSpeechText: vi.fn(),
 	clearSpeechText: vi.fn(),
 	focusInputEditor: vi.fn(),
@@ -13,6 +14,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@shared/lib/platform", () => ({ isWindows: true }));
+vi.mock("@/shared/feature-flags", () => ({
+	isSpeechInputBuildEnabled: () => mocks.speechInputBuildEnabled,
+}));
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
 		t: (key: string, options?: { progress?: number }) =>
@@ -50,6 +54,7 @@ describe("useSpeechInput", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.speechInputBuildEnabled = true;
 		mocks.captureStart.mockResolvedValue(undefined);
 		mocks.captureStop.mockResolvedValue(undefined);
 		speechInput = {
@@ -67,6 +72,17 @@ describe("useSpeechInput", () => {
 			configurable: true,
 			value: { speechInput } as unknown as DesktopApi,
 		});
+	});
+
+	it("does not expose or initialize voice input in a speech-disabled build", () => {
+		mocks.speechInputBuildEnabled = false;
+		const { result } = renderHook(() => useSpeechInput(true));
+
+		expect(result.current.visible).toBe(false);
+		expect(speechInput.onEvent).not.toHaveBeenCalled();
+		expect(speechInput.getStatus).not.toHaveBeenCalled();
+		act(() => result.current.onToggle());
+		expect(speechInput.start).not.toHaveBeenCalled();
 	});
 
 	it("starts with the bundled model and inserts final text", async () => {

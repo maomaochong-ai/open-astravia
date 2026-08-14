@@ -32,6 +32,22 @@ async function createModelRoot(): Promise<string> {
 }
 
 describe("SpeechModelManager", () => {
+	it("does not inspect model files when the build disables speech input", async () => {
+		const manager = new SpeechModelManager({
+			enabled: false,
+			platform: "win32",
+			arch: "x64",
+			modelRoot: "Z:/path-that-must-not-be-read",
+			model: TEST_MODEL,
+		});
+
+		await expect(manager.getStatus()).resolves.toEqual({
+			supported: false,
+			phase: "unsupported",
+			modelId: TEST_MODEL.id,
+		});
+	});
+
 	it("only reports support on Windows x64", async () => {
 		const modelRoot = await createModelRoot();
 		const manager = new SpeechModelManager({ platform: "darwin", arch: "arm64", modelRoot });

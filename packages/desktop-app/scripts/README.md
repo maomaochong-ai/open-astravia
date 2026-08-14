@@ -88,6 +88,29 @@
 - 其他 Chromium 内置 UI 语言资源不再进入安装包。
 - 如果产品需要新增系统 UI 语言，应同步扩展 `electronLanguages`。
 
+## Windows 语音输入构建开关
+
+`VETTA_SPEECH_INPUT_ENABLED` 是严格的构建期开关，只接受 `true` 或 `false`，未设置时默认启用。
+它与目标平台共同决定语音能力：只有开关启用且目标包含 `win32-x64` 时才构建语音输入。
+
+关闭版 Windows 包示例：
+
+```powershell
+$env:VETTA_SPEECH_INPUT_ENABLED="false"
+bun run dist:win
+```
+
+关闭时构建链路会同时：
+
+- 跳过模型 manifest 读取、下载与校验，不产生网络请求。
+- 不复制 `speech-models` extraResources。
+- 不暂存或解包 `sherpa-onnx-win-x64`。
+- 不生成 `speech-input-host.js`，不开放主窗口麦克风权限，也不显示 Renderer 麦克风入口。
+
+开关只控制发布产物，不删除 `resources/speech-models` 中已校验的本地构建缓存。以后重新启用时仍可复用，
+避免重复下载。必须在完整的 `build` / `prepare:desktop-pack` / `dist:*` 命令之前设置变量；不能只在
+electron-builder 阶段设置，否则编译产物与打包资源可能不一致。
+
 ## extraResources 过滤
 
 `prepare-pack.js` 对 extraResources 做了发布包过滤：

@@ -38,6 +38,19 @@ The renderer captures 16 kHz mono PCM with an AudioWorklet. Recognition runs in 
 utility process so native initialization and decoding do not block the main process. See
 [`ADR-0070`](../../docs/adr/0070-windows-local-streaming-speech-input.md).
 
+Windows speech input is enabled in builds by default. Set `VETTA_SPEECH_INPUT_ENABLED=false` before
+running the complete build or packaging command to produce an artifact without the speech model,
+Sherpa native runtime, speech utility-process entry, microphone permission, or Renderer microphone entry:
+
+```powershell
+$env:VETTA_SPEECH_INPUT_ENABLED="false"
+bun run dist:win
+```
+
+The value is a build-time contract and must be exactly `true` or `false`; it cannot be changed after
+packaging. Disabled builds keep any verified model in the ignored build cache for later reuse, but do
+not copy it into the staged application.
+
 Run `bun run prepare:speech-models` to prepare the model explicitly. The command skips macOS/Linux
 targets, and is also part of `bun run build` and revalidated by `prepare-pack.js` before a Windows
 artifact is staged. After `bun run build:main`, run `bun run verify:speech-host` to exercise the real

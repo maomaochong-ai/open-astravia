@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, utilityProcess } from "electron";
 import type { SpeechInputEvent, SpeechInputStatus } from "../../preload/api-types/speech-input.js";
+import { isSpeechInputBuildEnabled } from "../../shared/feature-flags.js";
 import { getAppLogger } from "../logger.js";
 import { resolveSpeechModelPaths, WINDOWS_ZIPFORMER_MODEL } from "./model-catalog.js";
 import { SpeechModelManager } from "./model-manager.js";
@@ -86,6 +87,7 @@ export class SpeechInputService {
 		this.modelManager =
 			options.modelManager ??
 			new SpeechModelManager({
+				enabled: isSpeechInputBuildEnabled(),
 				modelRoot: app.isPackaged
 					? join(process.resourcesPath, "speech-models")
 					: join(process.cwd(), "resources", "speech-models"),

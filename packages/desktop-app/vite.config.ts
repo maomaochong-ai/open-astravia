@@ -4,6 +4,10 @@ import react from "@vitejs/plugin-react";
 import ts from "typescript";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import { createSentryBuildSetup, readValue } from "./sentry-vite";
+import {
+	resolveSpeechInputBuildConfig,
+	SPEECH_INPUT_ENABLED_ENV,
+} from "./scripts/speech-input-build-config.js";
 
 function themeDevelopmentReload(): Plugin {
 	const themeSourceDir = resolve(__dirname, "../themes/builtin/xianxia/src");
@@ -71,6 +75,10 @@ function hostApiAccessTransform(): Plugin {
 
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), "VETTA_");
+	for (const [key, value] of Object.entries(process.env)) {
+		if (key.startsWith("VETTA_") && value !== undefined) env[key] = value;
+	}
+	const speechInputBuildConfig = resolveSpeechInputBuildConfig({ env });
 	const themeDevelopmentEnabled =
 		(process.env.VETTA_THEME_DEV_SERVER ?? env.VETTA_THEME_DEV_SERVER) === "1";
 	const rawDevServerPort = process.env.VETTA_DESKTOP_DEV_PORT ?? env.VETTA_DESKTOP_DEV_PORT ?? "3020";
@@ -85,6 +93,7 @@ export default defineConfig(({ mode }) => {
 	return {
 		define: {
 			"process.env.VETTA_SHOW_UI_THEME": JSON.stringify(showUiTheme),
+			[`process.env.${SPEECH_INPUT_ENABLED_ENV}`]: JSON.stringify(String(speechInputBuildConfig.enabled)),
 			"process.env.VETTA_SENTRY_ENABLED": JSON.stringify(
 				readValue(env, "VETTA_SENTRY_DSN") ? "true" : "false",
 			),

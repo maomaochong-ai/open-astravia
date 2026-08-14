@@ -11,6 +11,11 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
+import { loadBuildEnv } from "./load-build-env.mjs";
+import {
+	resolveSpeechInputBuildConfig,
+	resolveSpeechInputTargetTags,
+} from "./speech-input-build-config.js";
 
 const projectRoot = join(import.meta.dirname, "..");
 export const SPEECH_MODEL_MANIFEST_PATH = join(
@@ -55,18 +60,11 @@ export async function readSpeechModelDefinition(manifestPath = SPEECH_MODEL_MANI
 }
 
 export function resolveSpeechModelTargetTags(env = process.env, platform = process.platform, arch = process.arch) {
-	const configured =
-		env.VETTA_IM_GATEWAY_TARGET_PLATFORMS ?? env.VETTA_CLI_TARGET_PLATFORMS ?? env.VETTA_VENDOR_PLATFORM;
-	return typeof configured === "string" && configured.trim().length > 0
-		? configured
-				.split(",")
-				.map((value) => value.trim())
-				.filter(Boolean)
-		: [`${platform}-${arch}`];
+	return resolveSpeechInputTargetTags(env, platform, arch);
 }
 
-export function requiresWindowsSpeechModel(platformTags) {
-	return platformTags.includes("win32-x64");
+export function requiresWindowsSpeechModel(platformTags, env = process.env) {
+	return resolveSpeechInputBuildConfig({ env, platformTags }).enabled;
 }
 
 async function sha256(path) {
@@ -126,13 +124,19 @@ export async function prepareSpeechModel({
 }
 
 export async function prepareSpeechModels({
-	platformTags = resolveSpeechModelTargetTags(),
+	env = process.env,
+	platformTags = resolveSpeechModelTargetTags(env),
 	targetRoot = SPEECH_MODEL_RESOURCE_ROOT,
 	manifestPath = SPEECH_MODEL_MANIFEST_PATH,
 	fetchImpl = fetch,
 	log = console.log,
 } = {}) {
-	if (!requiresWindowsSpeechModel(platformTags)) {
+	const buildConfig = resolveSpeechInputBuildConfig({ env, platformTags });
+	if (!buildConfig.enabled) {
+		if (!buildConfig.configuredEnabled) {
+			log("[speech-models] skipped: VETTA_SPEECH_INPUT_ENABLED=false");
+			return null;
+		}
 		log(`[speech-models] skipped for targets: ${platformTags.join(", ")}`);
 		return null;
 	}
@@ -144,6 +148,7 @@ export async function prepareSpeechModels({
 
 const entryPath = process.argv[1] ? resolve(process.argv[1]) : null;
 if (entryPath === fileURLToPath(import.meta.url)) {
+	loadBuildEnv();
 	prepareSpeechModels().catch((error) => {
 		console.error("[speech-models] failed:", error);
 		process.exitCode = 1;

@@ -4,7 +4,7 @@ const DEFINITIONS = [
 	{ name: "electron-updater", platforms: "all", unpack: false },
 	{ name: "uiohook-napi", platforms: "all", unpack: true },
 	{ name: "electron-liquid-glass", platforms: ["darwin"], unpack: true, optional: true },
-	{ name: "sherpa-onnx-win-x64", platforms: ["win32"], unpack: true },
+	{ name: "sherpa-onnx-win-x64", platforms: ["win32"], unpack: true, feature: "speech-input" },
 ];
 
 function matchesPlatform(definition, platformFamilies) {
@@ -15,8 +15,12 @@ function matchesPlatform(definition, platformFamilies) {
  * Resolve runtime dependencies from target platforms, never from the build host.
  * This keeps cross-built artifacts free of native libraries for other systems.
  */
-export function resolvePackagedNativeDependencies(platformFamilies) {
-	const selected = DEFINITIONS.filter((definition) => matchesPlatform(definition, platformFamilies));
+export function resolvePackagedNativeDependencies(platformFamilies, { speechInputEnabled = true } = {}) {
+	const selected = DEFINITIONS.filter(
+		(definition) =>
+			matchesPlatform(definition, platformFamilies) &&
+			(definition.feature !== "speech-input" || speechInputEnabled),
+	);
 	return {
 		required: selected.filter((definition) => !definition.optional).map((definition) => definition.name),
 		optional: selected.filter((definition) => definition.optional).map((definition) => definition.name),

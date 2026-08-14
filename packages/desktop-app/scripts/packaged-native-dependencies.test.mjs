@@ -14,6 +14,12 @@ test("stages sherpa only for Windows targets", () => {
 	}
 });
 
+test("omits sherpa from a speech-disabled Windows artifact", () => {
+	const windows = resolvePackagedNativeDependencies(new Set(["win32"]), { speechInputEnabled: false });
+	assert.ok(!windows.required.includes("sherpa-onnx-win-x64"));
+	assert.ok(!windows.asarUnpack.some((pattern) => pattern.includes("sherpa")));
+});
+
 test("keeps darwin-only glass out of Windows and Linux artifacts", () => {
 	for (const platform of ["win32", "linux"]) {
 		const result = resolvePackagedNativeDependencies(new Set([platform]));

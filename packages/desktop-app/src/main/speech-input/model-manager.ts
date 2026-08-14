@@ -6,6 +6,7 @@ import { type SpeechModelDefinition, WINDOWS_ZIPFORMER_MODEL } from "./model-cat
 export interface SpeechModelManagerOptions {
 	platform?: NodeJS.Platform;
 	arch?: string;
+	enabled?: boolean;
 	modelRoot: string;
 	model?: SpeechModelDefinition;
 }
@@ -19,18 +20,20 @@ export interface SpeechModelManagerOptions {
 export class SpeechModelManager {
 	private readonly platform: NodeJS.Platform;
 	private readonly arch: string;
+	private readonly enabled: boolean;
 	private readonly model: SpeechModelDefinition;
 	private readonly modelRoot: string;
 
 	constructor(options: SpeechModelManagerOptions) {
 		this.platform = options.platform ?? process.platform;
 		this.arch = options.arch ?? process.arch;
+		this.enabled = options.enabled ?? true;
 		this.modelRoot = options.modelRoot;
 		this.model = options.model ?? WINDOWS_ZIPFORMER_MODEL;
 	}
 
 	get supported(): boolean {
-		return this.platform === "win32" && this.arch === "x64";
+		return this.enabled && this.platform === "win32" && this.arch === "x64";
 	}
 
 	get modelDirectory(): string {
@@ -38,6 +41,7 @@ export class SpeechModelManager {
 	}
 
 	async getStatus(): Promise<SpeechInputStatus> {
+		if (!this.enabled) return this.status("unsupported");
 		if (!this.supported) return this.status("unsupported", "unsupported-platform");
 
 		try {

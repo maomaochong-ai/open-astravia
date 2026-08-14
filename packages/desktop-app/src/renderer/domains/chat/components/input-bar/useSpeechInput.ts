@@ -2,6 +2,7 @@ import type { SpeechInputErrorCode, SpeechInputStatus } from "@preload/api";
 import { isWindows } from "@shared/lib/platform";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { isSpeechInputBuildEnabled } from "@/shared/feature-flags";
 import { MicrophonePcmCapture } from "../../services/microphone-pcm-capture";
 import { clearSpeechText, focusInputEditor, replaceSpeechText } from "./editor/inputEditorHandle";
 import type { SpeechInputModel } from "./types";
@@ -14,13 +15,14 @@ const INITIAL_STATUS: SpeechInputStatus = {
 
 export function useSpeechInput(enabled: boolean): SpeechInputModel {
 	const { t } = useTranslation("chat");
+	const buildEnabled = isSpeechInputBuildEnabled();
 	const [status, setStatus] = useState<SpeechInputStatus>(INITIAL_STATUS);
 	const captureRef = useRef<MicrophonePcmCapture | null>(null);
 	const sessionIdRef = useRef<string | null>(null);
 	const busyRef = useRef(false);
 
 	useEffect(() => {
-		if (!isWindows) return;
+		if (!buildEnabled || !isWindows) return;
 		let active = true;
 		const unsubscribe = window.vetta.speechInput.onEvent((event) => {
 			if (!active) return;
@@ -45,7 +47,7 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 			if (sessionIdRef.current) void window.vetta.speechInput.cancel(sessionIdRef.current);
 			clearSpeechText();
 		};
-	}, []);
+	}, [buildEnabled]);
 
 	const stop = useCallback(async (): Promise<void> => {
 		const sessionId = sessionIdRef.current;
@@ -58,7 +60,7 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 	}, []);
 
 	const toggle = useCallback(async (): Promise<void> => {
-		if (!enabled || !isWindows) return;
+		if (!buildEnabled || !enabled || !isWindows) return;
 		if (busyRef.current) return;
 		busyRef.current = true;
 		try {
@@ -98,7 +100,7 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 		} finally {
 			busyRef.current = false;
 		}
-	}, [enabled, status, stop]);
+	}, [buildEnabled, enabled, status, stop]);
 
 	const errorText = useCallback(
 		(code?: SpeechInputErrorCode): string => {
@@ -133,7 +135,7 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 					? titleByPhase[status.phase]
 					: null;
 		return {
-			visible: isWindows,
+			visible: buildEnabled && isWindows,
 			active: status.phase === "listening",
 			disabled:
 				!enabled || status.phase === "unavailable" || status.phase === "loading" || status.phase === "stopping",
@@ -141,5 +143,5 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 			statusText,
 			onToggle: () => void toggle(),
 		};
-	}, [enabled, errorText, status, t, toggle]);
+	}, [buildEnabled, enabled, errorText, status, t, toggle]);
 }

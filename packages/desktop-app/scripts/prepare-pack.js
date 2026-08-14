@@ -8,6 +8,10 @@ import { loadBuildEnv } from "./load-build-env.mjs";
 import { resolvePackagedNativeDependencies } from "./packaged-native-dependencies.mjs";
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
 import { prepareSpeechModels, SPEECH_MODEL_RESOURCE_ROOT } from "./fetch-speech-models.mjs";
+import {
+	resolveSpeechInputBuildConfig,
+	resolveSpeechInputTargetTags,
+} from "./speech-input-build-config.js";
 import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
 import {
 	resolveSystemPluginSelection,
@@ -87,16 +91,7 @@ function resolveCliAppCompileTargets() {
 }
 
 function resolvePlatformTagsFromEnv() {
-	const rawTargets =
-		process.env.VETTA_IM_GATEWAY_TARGET_PLATFORMS ??
-		process.env.VETTA_CLI_TARGET_PLATFORMS ??
-		process.env.VETTA_VENDOR_PLATFORM;
-	return typeof rawTargets === "string" && rawTargets.trim().length > 0
-		? rawTargets
-				.split(",")
-				.map((value) => value.trim())
-				.filter(Boolean)
-		: [`${process.platform}-${process.arch}`];
+	return resolveSpeechInputTargetTags(process.env);
 }
 
 function resolveImGatewayTargets() {
@@ -127,6 +122,18 @@ function resolvePlatformFamilies() {
 	}
 	return families;
 }
+
+const speechInputBuildConfig = resolveSpeechInputBuildConfig({
+	env: process.env,
+	platformTags: resolvePlatformTagsFromEnv(),
+});
+console.log(
+	speechInputBuildConfig.enabled
+		? `[prepare-pack] speech input enabled for ${speechInputBuildConfig.platformTags.join(", ")}`
+		: speechInputBuildConfig.configuredEnabled
+			? `[prepare-pack] speech input skipped for ${speechInputBuildConfig.platformTags.join(", ")}`
+			: "[prepare-pack] speech input disabled by VETTA_SPEECH_INPUT_ENABLED=false",
+);
 
 // macOS 代码签名 / 公证：凭据齐全时自动开启，一个都不设时保持未签名产物。
 // 变量含义与申请流程见 docs/deploy/apple-code-signing.md。
@@ -214,7 +221,9 @@ function resolveSandboxResourceFilters() {
 // 否则 packaged 环境 require 不到。uiohook 各平台都有 prebuild、需全平台带；
 // electron-liquid-glass 是 darwin-only，Sherpa 是 win32-x64-only；依赖策略按目标产物平台选择，
 // 不按构建主机选择，避免把另一个系统的原生包带入产物。
-const packagedNativeDependencies = resolvePackagedNativeDependencies(resolvePlatformFamilies());
+const packagedNativeDependencies = resolvePackagedNativeDependencies(resolvePlatformFamilies(), {
+	speechInputEnabled: speechInputBuildConfig.enabled,
+});
 const externalDeps = packagedNativeDependencies.required;
 const optionalExternalDeps = packagedNativeDependencies.optional;
 
@@ -291,6 +300,7 @@ rmSync(buildStageDir, { recursive: true, force: true });
 mkdirSync(buildStageDir, { recursive: true });
 
 const preparedSpeechModel = await prepareSpeechModels({
+	env: process.env,
 	platformTags: resolvePlatformTagsFromEnv(),
 });
 if (preparedSpeechModel) {
@@ -727,7 +737,7 @@ function resolveExtraResources() {
 			filter: ["**/*"],
 		});
 	}
-	if (resolvePlatformFamilies().has("win32")) {
+	if (speechInputBuildConfig.enabled) {
 		extraResources.push({
 			from: "speech-models",
 			to: "speech-models",

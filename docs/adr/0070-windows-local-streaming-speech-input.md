@@ -15,15 +15,18 @@ binding 是同步原生调用；若直接在 Electron 主进程中加载和解�
 
 ## 决策
 
-- 首版平台合同固定为 `win32-x64`。Renderer 仅在 Windows 显示麦克风入口；其他平台不调用语音 IPC。
+- 首版平台合同固定为 `win32-x64`。完整构建默认启用语音；设置严格的构建期开关
+  `VETTA_SPEECH_INPUT_ENABLED=false` 可生成不含语音能力的轻量产物。Renderer 仅在构建能力启用且平台为
+  Windows 时显示麦克风入口；其他情况不调用语音 IPC。
 - 使用 `sherpa-onnx-win-x64@1.13.5` 和
   `sherpa-onnx-streaming-zipformer-zh-int8-2025-06-30`。原生运行时进入 Windows 安装包并从 asar 解包；
-  模型在 Windows 构建阶段从固定的上游 URL 下载并作为 `extraResources` 随安装包分发。
+  模型在启用语音的 Windows 构建阶段从固定的上游 URL 下载并作为 `extraResources` 随安装包分发。关闭版在
+  manifest 读取与网络请求前短路，同时排除模型、Sherpa 原生依赖、utility process 入口和麦克风权限装配。
 - 源码内 JSON manifest 是模型 id、采样率、文件名、长度、SHA-256 和来源的唯一事实源，构建脚本与运行时代码
   共同消费它。构建下载使用临时文件，逐文件校验成功后再原子替换；已存在且校验通过的构建缓存会复用。
-- Windows 模型落在源码树中被忽略的 `resources/speech-models/<model-id>/`，安装后位于
+- 启用构建的 Windows 模型落在源码树中被忽略的 `resources/speech-models/<model-id>/`，安装后位于
   `Resources/speech-models/<model-id>/`。运行时不提供下载 IPC，也不访问网络；缺失或长度不符时禁用语音
-  入口并提示重新安装。
+  入口并提示重新安装。关闭构建不删除已有构建缓存，但不会把缓存复制进产物。
 - Renderer 用 16 kHz、单声道 `AudioWorklet` 以 100 ms 分块采集 PCM。preload 只暴露带类型的状态、控制、
   音频和事件合同；IPC 只接受主窗口主 frame，并限制单条音频消息大小。
 - Sherpa 原生模块只在独立 Electron `utilityProcess` 中加载。主进程服务拥有模型发现、宿主生命周期和单会话
@@ -47,7 +50,8 @@ binding 是同步原生调用；若直接在 Electron 主进程中加载和解�
 
 ## 后果
 
-- Windows 安装包增加原生运行时及约 160 MiB 模型；用户安装后无需额外网络即可使用语音输入。
+- 默认 Windows 安装包增加原生运行时及约 160 MiB 模型；用户安装后无需额外网络即可使用语音输入。关闭版
+  明确牺牲语音能力以缩小发布体积，不提供安装后的运行时开关或模型下载路径。
 - macOS/Linux 构建不会声明、暂存或解包 Sherpa Windows 二进制，也不会下载模型。
 - 后续增加平台或模型时，应扩展平台化运行时清单与共享 manifest，不在 UI、IPC 或打包器中追加散落分支。
 - Windows 构建依赖模型源可达性；CI 可持久化 `resources/speech-models/` 以减少重复下载，但每次仍校验摘要。
