@@ -1,5 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type JSX, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { PluginPortal } from "../plugin-portal";
 import { hexToHsv, hsvToHex, toHex } from "./color";
 
 interface ColorPickerProps {
@@ -206,54 +207,63 @@ export function ColorPicker({ label, color, palette, disabled, onPick }: ColorPi
 				<span className="flex-1 text-xs font-medium uppercase tabular-nums text-foreground">{hex}</span>
 			</button>
 
+			{/*
+			  弹出面板 portal 到 body。它是 `fixed` 定位，而它的祖先——工作台右上角那张
+			  悬浮选项卡——带 backdrop-filter：按 CSS 规范，带 filter/backdrop-filter 的
+			  元素会成为 fixed 后代的包含块，于是这套按视口算出来的 left/top 变成相对卡片，
+			  面板被推到卡片外面（卡片长出横向滚动条，色板根本看不见）。
+			  PluginPortal 负责重新进入插件 CSS 的 @scope。
+			*/}
 			{open ? (
-				<div
-					ref={panelRef}
-					className="fixed z-[1010] flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-2xl"
-					style={{ left: anchor.left, top: anchor.top, width: POPOVER_WIDTH }}
-				>
-					<ShadeArea
-						hue={hue}
-						s={hsv.s}
-						v={hsv.v}
-						onChange={(s, v) => onPick(hsvToHex({ h: hue, s, v }))}
-					/>
-					<HueRail hue={hue} onChange={(next) => onPick(hsvToHex({ h: next, s: hsv.s, v: hsv.v || 1 }))} />
-
-					<label className="flex items-center gap-2 rounded-lg border border-border px-2 py-1">
-						<span className="text-xs text-muted-foreground">#</span>
-						<input
-							value={draft}
-							spellCheck={false}
-							aria-label={t("mockup.color.hex")}
-							onChange={(event) => commitDraft(event.target.value)}
-							className="w-full bg-transparent text-xs font-medium uppercase tabular-nums text-foreground outline-none"
+				<PluginPortal>
+					<div
+						ref={panelRef}
+						className="fixed z-[1010] flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-2xl"
+						style={{ left: anchor.left, top: anchor.top, width: POPOVER_WIDTH }}
+					>
+						<ShadeArea
+							hue={hue}
+							s={hsv.s}
+							v={hsv.v}
+							onChange={(s, v) => onPick(hsvToHex({ h: hue, s, v }))}
 						/>
-					</label>
+						<HueRail hue={hue} onChange={(next) => onPick(hsvToHex({ h: next, s: hsv.s, v: hsv.v || 1 }))} />
 
-					{swatches.length > 0 ? (
-						<div className="flex flex-col gap-1.5">
-							<span className="text-[11px] text-muted-foreground">{t("mockup.color.theme")}</span>
-							<div className="flex flex-wrap gap-1.5">
-								{swatches.map((swatch) => {
-									const swatchHex = toHex(swatch);
-									return (
-										<button
-											key={swatch}
-											type="button"
-											title={swatch}
-											onClick={() => onPick(swatchHex)}
-											style={{ background: swatch }}
-											className={`size-5 rounded-md border ${
-												swatchHex === hex ? "border-primary ring-1 ring-primary" : "border-border"
-											}`}
-										/>
-									);
-								})}
+						<label className="flex items-center gap-2 rounded-lg border border-border px-2 py-1">
+							<span className="text-xs text-muted-foreground">#</span>
+							<input
+								value={draft}
+								spellCheck={false}
+								aria-label={t("mockup.color.hex")}
+								onChange={(event) => commitDraft(event.target.value)}
+								className="w-full bg-transparent text-xs font-medium uppercase tabular-nums text-foreground outline-none"
+							/>
+						</label>
+
+						{swatches.length > 0 ? (
+							<div className="flex flex-col gap-1.5">
+								<span className="text-[11px] text-muted-foreground">{t("mockup.color.theme")}</span>
+								<div className="flex flex-wrap gap-1.5">
+									{swatches.map((swatch) => {
+										const swatchHex = toHex(swatch);
+										return (
+											<button
+												key={swatch}
+												type="button"
+												title={swatch}
+												onClick={() => onPick(swatchHex)}
+												style={{ background: swatch }}
+												className={`size-5 rounded-md border ${
+													swatchHex === hex ? "border-primary ring-1 ring-primary" : "border-border"
+												}`}
+											/>
+										);
+									})}
+								</div>
 							</div>
-						</div>
-					) : null}
-				</div>
+						) : null}
+					</div>
+				</PluginPortal>
 			) : null}
 		</div>
 	);

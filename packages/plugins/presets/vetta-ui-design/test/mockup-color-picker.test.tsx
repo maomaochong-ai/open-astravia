@@ -57,6 +57,22 @@ describe("ColorPicker theme swatches", () => {
 		expect(swatchTitles()).toEqual(["#a3a3a3", "#f5f5f1"]);
 	});
 
+	/**
+	 * 面板是 fixed 定位，按视口坐标算 left/top。工作台的悬浮选项卡带 backdrop-filter，
+	 * 而带 filter/backdrop-filter 的元素会成为 fixed 后代的包含块——留在原地就等于按
+	 * 卡片坐标定位，面板被推出卡片外（卡片长出横向滚动条，色板看不见）。
+	 */
+	it("renders the panel outside its own subtree so no filtered ancestor can contain it", () => {
+		act(() => {
+			root.render(<ColorPicker label="bg" color="#000000" palette={["#a3a3a3"]} onPick={vi.fn()} />);
+		});
+		open();
+
+		const swatch = document.body.querySelector<HTMLElement>("button[title='#a3a3a3']");
+		expect(swatch).not.toBeNull();
+		expect(host.contains(swatch)).toBe(false);
+	});
+
 	it("renders no swatch row without a palette", () => {
 		act(() => root.render(<ColorPicker label="bg" color="#000000" palette={[]} onPick={vi.fn()} />));
 		open();
