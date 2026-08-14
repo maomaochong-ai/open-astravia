@@ -51,8 +51,6 @@ export function CanvasTab() {
 	const bridgeRef = useRef(new BridgeHub());
 	/** 画布挂载后填入，见 DesignCanvas 的 captureRef。 */
 	const captureRef = useRef<FrameCapture | null>(null);
-	/** 同上，供顶部刷新按钮强制所有 frame 重载并重截位图。 */
-	const refreshRef = useRef<(() => void) | null>(null);
 	/** 同上，问画布「此刻单独选中的是哪一帧」，预览按钮据此定位起始帧。 */
 	const previewTargetRef = useRef<(() => string | null) | null>(null);
 	/** 预览窗口打开在哪一帧上；null 表示没开。 */
@@ -286,26 +284,6 @@ export function CanvasTab() {
 					</button>
 					{/* 备注显隐：隐藏只有这一个入口（自动规则一律只往显示推）。 */}
 					<NotesVisibilitySwitch visible={notesVisibility.visible} onToggle={notesVisibility.toggle} />
-					{/* 手动刷新：热更新链路（文件监听 / HMR）万一没生效时的兜底出路，
-					    强制所有 frame 重新加载最新代码并重截位图。
-					    同时重扫一遍设计列表——这个按钮是「与磁盘重新对齐」的唯一入口，
-					    面板开着时新出现的设计（含还没迁移的 v1 旧格式）也该在这里被收进来。 */}
-					<button
-						type="button"
-						disabled={phase.kind !== "ready"}
-						onClick={() => {
-							refreshRef.current?.();
-							void refreshFiles();
-						}}
-						title={t("canvas.refresh")}
-						aria-label={t("canvas.refresh")}
-						className="flex shrink-0 items-center justify-center rounded-[10px] bg-muted/55 text-foreground hover:bg-muted disabled:opacity-50"
-						style={{ width: DOCK_ICON, height: DOCK_ICON }}
-					>
-						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-							<path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6" strokeLinecap="round" strokeLinejoin="round" />
-						</svg>
-					</button>
 					{SHOW_EXPORT_SHARE ? (
 						<button
 							type="button"
@@ -373,7 +351,7 @@ export function CanvasTab() {
 							port={phase.port}
 							bridge={bridgeRef.current}
 							captureRef={captureRef}
-							refreshRef={refreshRef}
+							onRescanDesigns={() => void refreshFiles()}
 							previewTargetRef={previewTargetRef}
 							previewing={previewFrameId !== null}
 							resolveNoteElementsRef={resolveNoteElementsRef}

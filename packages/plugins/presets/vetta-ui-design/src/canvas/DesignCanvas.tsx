@@ -40,14 +40,13 @@ import {
 	setFrameError,
 } from "./design-runtime";
 import { DesignSystemDialog } from "./DesignSystemDialog";
-import { ExportMockupButton } from "./ExportMockupButton";
+import { CanvasCornerActions } from "./CanvasCornerActions";
 import { byCanvasOrder } from "./frame-order";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { refreshCover } from "./cover-compose";
 import { useFrameRasters } from "./frame-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
-import { HistoryButton } from "../history/HistoryButton";
 import { HistoryDrawer } from "../history/HistoryDrawer";
 import type { HistoryCommit } from "../history/history-client";
 import { PeekBanner } from "../history/PeekBanner";
@@ -93,10 +92,10 @@ interface DesignCanvasProps {
 	 */
 	captureRef: RefObject<FrameCapture | null>;
 	/**
-	 * 出口：顶部的刷新按钮用它强制所有 frame 重新加载并重截位图。
-	 * 热更新链路（文件监听 / HMR）万一没生效时的手动兜底。
+	 * 右上角的刷新按钮除了重载画布，还要让宿主重扫一遍设计列表——那是「与磁盘
+	 * 重新对齐」的唯一入口，面板开着时新出现的设计也该在这里被收进来。
 	 */
-	refreshRef: RefObject<(() => void) | null>;
+	onRescanDesigns(): void;
 	/**
 	 * 出口：预览按钮问「该预览哪一帧」。单独选中一个就是它，否则交给调用方回落
 	 * （画布顺序里的第一帧）。
@@ -260,7 +259,7 @@ export function DesignCanvas({
 	port,
 	bridge,
 	captureRef,
-	refreshRef,
+	onRescanDesigns,
 	previewTargetRef,
 	previewing,
 	resolveNoteElementsRef,
@@ -524,7 +523,6 @@ export function DesignCanvas({
 		},
 	});
 
-	refreshRef.current = reloadAll;
 
 	/**
 	 * 位图安静下来之后合成一次画廊封面。
@@ -1518,13 +1516,18 @@ export function DesignCanvas({
 				/>
 			) : null}
 
-			<HistoryButton
-				open={historyOpen}
+			<CanvasCornerActions
 				offsetTop={peek ? PEEK_BANNER_HEIGHT : 0}
-				onToggle={() => setHistoryOpen((open) => !open)}
+				historyOpen={historyOpen}
+				// 手动刷新：热更新链路（文件监听 / HMR）万一没生效时的兜底出路，
+				// 强制所有 frame 重新加载最新代码并重截位图，同时重扫设计列表。
+				onRefresh={() => {
+					reloadAll();
+					onRescanDesigns();
+				}}
+				onExport={openExport}
+				onToggleHistory={() => setHistoryOpen((open) => !open)}
 			/>
-
-			<ExportMockupButton offsetTop={peek ? PEEK_BANNER_HEIGHT : 0} onOpen={openExport} />
 
 			{peek ? (
 				<PeekBanner
