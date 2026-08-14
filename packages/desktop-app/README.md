@@ -78,6 +78,11 @@ bun run dev:isolated   # ~/.vetta-dev (same as `bun dev`)
 bun run dev:home       # ~/.vetta
 ```
 
+Saved credentials are shared too: `safeStorage` derives its master key from the Electron app name, so
+that name is fixed by `src/shared/app-identity.ts` and must stay equal to the name written into the
+packaged `package.json` by `scripts/prepare-pack.js`. Changing it strands every credential already
+encrypted under the old name.
+
 `bun run dev:home` shares `~/.vetta` with packaged builds; do not run both at the same time, since
 the single-instance lock keys on the Chromium profile and will not stop the second process. The
 project-level `<cwd>/.vetta` directory is intentionally fixed and does not follow `VETTA_CONFIG_DIR`

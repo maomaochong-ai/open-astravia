@@ -123,6 +123,13 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **自动化任务编辑与并发刷新更可靠**：编辑已暂停任务时不再被保存动作意外重新启用；更新或删除任务的 IPC 在途期间即使任务列表收到新增项，完成后的本地状态也基于最新列表合并，不再让新任务从界面消失。Cron 解析同时拒绝越界或无法由表单准确表示的表达式，避免打开任务后静默改成另一种执行时间。
 
+- **开发态与打包版共用同一份已保存密钥**：safeStorage 按 Electron app 名字定位主密钥（macOS 钥匙串
+  条目 `<name> Safe Storage`），而开发态曾把名字覆盖成 `Vetta`、打包版用 asar 内的 `vetta`，两侧因此各持
+  一把密钥。`bun run dev:home` 虽然共享 `~/.vetta`，却解不开打包版写入的 API key，日志记下
+  「模型凭据无法解密」后按未配置处理，重填又会覆盖打包版的密文。app 名字现由
+  `src/shared/app-identity.ts` 单一事实源固定，并由测试锁死与 `scripts/prepare-pack.js` 一致。
+  升级后开发态写入过的凭据需重填一次，此后两侧互通。
+
 - **Desktop 打包无限递归**：生产 profile 脚本曾新增 `build:pack`，同时打包准备入口仍名为
   `prebuild:pack`；Bun 会把后者当作前者的生命周期钩子自动执行，而该钩子又调用
   `build:pack`，导致 Windows workspace 前置构建完成后整条打包链不断重启。准备入口现改为
