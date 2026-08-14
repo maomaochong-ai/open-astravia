@@ -30,6 +30,7 @@ export class NodeHookCommandExecutor implements HookCommandExecutor {
 					cwd: request.cwd,
 					detached: process.platform !== "win32",
 					env: request.env ? { ...process.env, ...request.env } : process.env,
+					windowsVerbatimArguments: isWindowsCommandShell(this.shellProgram),
 					windowsHide: true,
 					stdio: ["pipe", "pipe", "pipe"],
 				});
@@ -99,6 +100,10 @@ export class NodeHookCommandExecutor implements HookCommandExecutor {
 			);
 		});
 	}
+}
+
+function isWindowsCommandShell(program: string): boolean {
+	return process.platform === "win32" && /(?:^|[\\/])cmd(?:\.exe)?$/i.test(program);
 }
 
 function defaultShell(): { program: string; args: string[] } {

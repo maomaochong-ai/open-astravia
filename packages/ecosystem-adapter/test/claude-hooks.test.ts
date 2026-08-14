@@ -298,6 +298,47 @@ describe("createClaudeHookAdapter runtime", () => {
 		expect((await runtime.runPreToolUse("call-5", { hostName: "bash", kind: "shell" }, {})).runs).toHaveLength(0);
 	});
 
+	it("executes dynamic hook command args containing an absolute script path", async () => {
+		const root = await makeTempDir();
+		const scriptPath = join(root, "scene-start.cjs");
+		await writeFile(
+			scriptPath,
+			`process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: "scene hook args ran" } }));\n`,
+			"utf8",
+		);
+		const runtime = createEcosystemHookRuntime({
+			host: {
+				cwd: root,
+				getSessionId: () => "scene-hook-args-session",
+				getTranscriptPath: () => null,
+				getModelId: () => "test-model",
+				abortCurrentRun: () => {},
+			},
+			initialSessionStartSource: "startup",
+			configLayers: [],
+		});
+		await runtime.runPendingSessionStart();
+
+		const outcome = await runtime.runUserPromptSubmit("use the scene", undefined, [
+			{
+				id: "scene:args",
+				revision: "v1",
+				profileId: CLAUDE_CODE_HOOK_PROFILE_ID,
+				sourcePath: join(root, "SKILL.md"),
+				configuration: {
+					UserPromptSubmit: [
+						{
+							hooks: [{ type: "command", command: "node", args: [scriptPath] }],
+						},
+					],
+				},
+			},
+		]);
+
+		expect(outcome.additionalContexts).toContain("scene hook args ran");
+		expect(outcome.runs).toEqual([expect.objectContaining({ status: "Completed" })]);
+	});
+
 	it("SessionStart plain stdout becomes additional context", async () => {
 		const { root, claudeDir } = await writeHookProject({
 			"session-start.cjs": `process.stdout.write("preflight context from fixture");\n`,
