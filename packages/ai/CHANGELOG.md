@@ -35,6 +35,8 @@
 
 ### Fixed
 
+- 明确的额度、余额和计费失败现在优先于 HTTP 401/429 状态分类，并统一映射为不可重试的 `AI_BILLING_REQUIRED`；中文“余额不足”与 Provider 结构化错误码使用同一规则。
+
 - `AssistantMessage(stopReason: "error")` 现在可以携带安全的 `AIErrorDetails`；统一的 `normalizeAssistantMessageError` 优先恢复结构化错误，只有旧 Provider 消息才使用兼容文本分类。
 
 - Provider 的终端错误消息现在保留安全的 `AIErrorDetails` 投影；`completeSimple`、兼容适配器和上层压缩流程不再把 provider code、model、request id 与重试语义丢在事件边界之外。

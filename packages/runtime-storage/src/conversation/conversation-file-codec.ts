@@ -20,6 +20,7 @@ import {
 	type ConversationFileHeader,
 	type ConversationImportSeedRecord,
 	type ConversationSeedRecord,
+	getStoredSessionEventValidationIssue,
 	isConversationContinuationSeedRecord,
 	isConversationDocumentOperationRecord,
 	isConversationEventRecord,
@@ -191,9 +192,12 @@ function documentOperationEntryId(record: ConversationDocumentOperationRecord): 
 
 export function validateConversationEvent(sessionId: string, event: StoredSessionEvent): void {
 	if (!isStoredSessionEvent(event)) {
+		const issue = getStoredSessionEventValidationIssue(event);
+		const eventLabel = issue?.eventType ? ` ${issue.eventType}` : "";
+		const diagnostic = issue ? ` at ${issue.path}: ${issue.message}` : "";
 		throw new ConversationStorageError(
 			CONVERSATION_STORAGE_ERROR_CODES.INVALID_EVENT,
-			`Event for ${sessionId} does not match the stored session event schema`,
+			`Stored${eventLabel} event for ${sessionId} does not match the schema${diagnostic}`,
 		);
 	}
 	if (event.sessionId !== sessionId) {

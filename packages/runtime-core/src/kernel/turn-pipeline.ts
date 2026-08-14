@@ -1,6 +1,6 @@
 import type { Message, StopReason } from "@vetta/ai";
 import type { ConversationDocument, ConversationDocumentReader } from "../conversation/document.js";
-import type { RuntimeFailure } from "../failure-contract.js";
+import { type RuntimeFailure, runtimeFailureFromAIErrorDetails } from "../failure-contract.js";
 import type { RuntimeExecutionObservationEvent, RuntimeMessageEnvelope } from "../runtime-execution-observation.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import { ContextCompactionCommitter } from "./context-compaction-committer.js";
@@ -540,6 +540,13 @@ export class TurnPipeline {
 					await this.publishExecutionObservation(state.sessionId, turnId, event.observation);
 					continue;
 				}
+				const messageFailure =
+					event.type === "message"
+						? (event.failure ??
+							(event.message.role === "assistant" && event.message.failure
+								? runtimeFailureFromAIErrorDetails(event.message.failure)
+								: undefined))
+						: undefined;
 				if (
 					signal.aborted &&
 					event.type === "observation" &&
@@ -560,7 +567,7 @@ export class TurnPipeline {
 						sessionId: state.sessionId,
 						turnId,
 						message: event.message,
-						...(event.failure ? { failure: event.failure } : {}),
+						...(messageFailure ? { failure: messageFailure } : {}),
 						...(event.origin ? { origin: event.origin } : {}),
 						timestamp: this.clock.now(),
 					};
@@ -572,7 +579,7 @@ export class TurnPipeline {
 				if (event.type === "completed") {
 					if (event.stopReason === "error") {
 						throw new TurnExecutionError({
-							code: "PROVIDER_ERROR",
+							code: assistantErrorFailure?.code ?? "PROVIDER_ERROR",
 							message: assistantErrorMessage || "Provider returned an assistant error response",
 							retryable: assistantErrorFailure?.retryable ?? false,
 							origin: assistantErrorFailure?.origin ?? "provider",
@@ -589,7 +596,7 @@ export class TurnPipeline {
 				if (event.message.role === "assistant" && event.message.stopReason === "error") {
 					assistantErrorMessage =
 						event.message.errorMessage?.trim() || extractAssistantText(event.message.content).trim() || undefined;
-					assistantErrorFailure = event.failure;
+					assistantErrorFailure = messageFailure;
 				}
 
 				const storedEvent: MessageAppendedEvent = {
@@ -597,7 +604,7 @@ export class TurnPipeline {
 					sessionId: state.sessionId,
 					turnId,
 					message: event.message,
-					...(event.failure ? { failure: event.failure } : {}),
+					...(messageFailure ? { failure: messageFailure } : {}),
 					...(event.origin ? { origin: event.origin } : {}),
 					timestamp: this.clock.now(),
 				};

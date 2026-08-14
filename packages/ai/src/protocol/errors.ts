@@ -204,14 +204,15 @@ export function createAIErrorFromDetails(details: AIErrorDetails): AIError {
  * SDK classes at the Agent/Runtime boundary. Quota and billing failures are deliberately
  * non-retryable even when a gateway reports them as HTTP 429.
  */
+export function isProviderBillingFailure(message: string, statusCode?: number, providerCode?: string): boolean {
+	if (statusCode === 402) return true;
+	return /额度已用尽|额度不足|窗口额度|余额不足|余额已用尽|insufficient[_ .-]?(quota|balance|credits?)|quota[_ .-]?(exhausted|exceeded)|out of quota|no remaining credits?|billing required|payment required|account suspended/i.test(
+		`${message} ${providerCode ?? ""}`,
+	);
+}
+
 export function isRetryableProviderFailure(message: string, statusCode?: number): boolean {
-	if (
-		/额度已用尽|额度不足|窗口额度|余额不足|insufficient[_ .-]?quota|insufficient[_ .-]?balance|quota[_ .-]?(exhausted|exceeded)|out of quota|billing required|payment required|account suspended/i.test(
-			message,
-		)
-	) {
-		return false;
-	}
+	if (isProviderBillingFailure(message, statusCode)) return false;
 	if (statusCode === 408 || statusCode === 409 || statusCode === 429) return true;
 	return statusCode !== undefined && statusCode >= 500;
 }

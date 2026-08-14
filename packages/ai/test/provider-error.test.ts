@@ -118,9 +118,23 @@ describe("normalizeProviderError", () => {
 		const source = Object.assign(new Error("insufficient_quota: account has no remaining credits"), { status: 429 });
 
 		expect(normalizeProviderError(source, model)).toMatchObject({
-			code: "AI_RATE_LIMITED",
+			code: "AI_BILLING_REQUIRED",
 			retryable: false,
 			statusCode: 429,
+		});
+	});
+
+	it.each([
+		[401, "余额不足。请前往计费页面充值"],
+		[402, "payment required"],
+		[429, "quota exhausted"],
+	] as const)("prioritizes explicit billing signals over HTTP %i", (status, message) => {
+		const source = Object.assign(new Error(message), { status });
+
+		expect(normalizeProviderError(source, model)).toMatchObject({
+			code: "AI_BILLING_REQUIRED",
+			retryable: false,
+			statusCode: status,
 		});
 	});
 

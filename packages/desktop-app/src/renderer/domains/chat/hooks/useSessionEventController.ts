@@ -55,6 +55,7 @@ import {
 	rememberOptimisticUserMessage,
 } from "../services/optimistic-user-message-cache";
 import { diffConsumedQueueEntries } from "../services/queue-mirror";
+import { reconcileHistoryWithLiveTerminalErrors } from "../services/terminal-error-reconciliation";
 import type { ActiveSessionHandle } from "./session-manager-types";
 
 const DELTA_FLUSH_INTERVAL_MS = 100;
@@ -283,7 +284,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 									}
 								}
 							}
-							setChatMessages(mapped);
+							setChatMessages((liveMessages) => reconcileHistoryWithLiveTerminalErrors(mapped, liveMessages));
 						})
 						.catch((err) => {
 							console.warn("[useSessionManager] getFullHistory after agent_end failed", err);
@@ -318,7 +319,9 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 										break;
 									}
 								}
-								if (!firstUser || !lastAssistant) {
+								const hasTerminalError =
+									lastAssistant?.blocks?.some((block) => block.type === "error") ?? false;
+								if (!firstUser || !lastAssistant || hasTerminalError) {
 									autoTitledSessionsRef.current.delete(sp);
 									return;
 								}

@@ -2,6 +2,7 @@ import type { ErrorBlock } from "@shared/store/atoms";
 import type { AssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import { appendError, fullHistoryToChat, historyToChat } from "./chat-service";
+import { reconcileHistoryWithLiveTerminalErrors } from "./terminal-error-reconciliation";
 
 /** 会话文件里一条失败的 assistant message。 */
 function failed(errorMessage: string) {
@@ -169,5 +170,52 @@ describe("fullHistoryToChat error entries", () => {
 			}),
 		]);
 		expect(errors[0]).not.toHaveProperty("repeated");
+	});
+});
+
+describe("reconcileHistoryWithLiveTerminalErrors", () => {
+	it("preserves a live terminal error when the agent_end history snapshot is stale", () => {
+		const live = appendError(
+			[{ id: "user-live", role: "user", text: "hello" }],
+			"provider quota exhausted",
+			undefined,
+			"turn-1",
+			{ code: "AI_BILLING_REQUIRED", provider: "deepseek", retryable: false },
+		);
+		const staleHistory = fullHistoryToChat([
+			{ type: "message", entryId: "user-1", message: { role: "user", content: "hello", timestamp: 1 } },
+		]);
+
+		const reconciled = reconcileHistoryWithLiveTerminalErrors(staleHistory, live);
+
+		expect(errorBlocksOf(reconciled)).toEqual([
+			expect.objectContaining({
+				turnId: "turn-1",
+				text: "provider quota exhausted",
+				details: { code: "AI_BILLING_REQUIRED", provider: "deepseek", retryable: false },
+			}),
+		]);
+	});
+
+	it("deduplicates a terminal error already present in canonical history", () => {
+		const live = appendError([], "provider quota exhausted", 2, "turn-1", {
+			code: "AI_BILLING_REQUIRED",
+			provider: "deepseek",
+		});
+		const history = fullHistoryToChat([
+			{
+				type: "error",
+				entryId: "error-1",
+				turnId: "turn-1",
+				code: "AI_BILLING_REQUIRED",
+				message: "provider quota exhausted",
+				timestamp: "2026-08-13T00:00:00.000Z",
+			},
+		]);
+
+		const reconciled = reconcileHistoryWithLiveTerminalErrors(history, live);
+
+		expect(errorBlocksOf(reconciled)).toHaveLength(1);
+		expect(errorBlocksOf(reconciled)[0]).toMatchObject({ turnId: "turn-1", attempts: 2 });
 	});
 });

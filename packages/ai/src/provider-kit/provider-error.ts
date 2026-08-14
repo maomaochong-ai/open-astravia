@@ -6,6 +6,7 @@ import {
 	type AssistantMessage,
 	createAssistantMessage,
 	isAIError,
+	isProviderBillingFailure,
 	isRetryableProviderFailure,
 } from "../protocol/index.js";
 import type { Model } from "../types.js";
@@ -54,14 +55,11 @@ export function normalizeProviderError<TApi extends Api>(error: unknown, model: 
 	if (isContextOverflow(createErrorMessage(model, message, statusCode), model.contextWindow)) {
 		return new AIError(AI_ERROR_CODES.CONTEXT_OVERFLOW, message, { ...options, retryable: false });
 	}
-	if (statusCode === 401)
-		return new AIError(AI_ERROR_CODES.AUTHENTICATION_FAILED, message, { ...options, retryable: false });
-	if (
-		statusCode === 402 ||
-		(statusCode !== 429 && /insufficient[_ .-]?(quota|balance)|billing required|payment required/i.test(message))
-	) {
+	if (isProviderBillingFailure(message, statusCode, providerCode)) {
 		return new AIError(AI_ERROR_CODES.BILLING_REQUIRED, message, { ...options, retryable: false });
 	}
+	if (statusCode === 401)
+		return new AIError(AI_ERROR_CODES.AUTHENTICATION_FAILED, message, { ...options, retryable: false });
 	if (statusCode === 403)
 		return new AIError(AI_ERROR_CODES.PERMISSION_DENIED, message, { ...options, retryable: false });
 	if (statusCode === 404 && /model|deployment|engine/i.test(`${message} ${providerCode ?? ""}`)) {

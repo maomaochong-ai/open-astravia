@@ -869,6 +869,13 @@ describe("greenfield runtime kernel", () => {
 	});
 
 	it("persists a provider assistant error alongside turn.failed", async () => {
+		const failure = {
+			code: "AI_BILLING_REQUIRED",
+			message: "余额不足",
+			retryable: false,
+			origin: "provider" as const,
+			details: { statusCode: 401, provider: "opencode-go", modelId: "deepseek-v4-flash" },
+		} as const;
 		const engine: TurnEnginePort = {
 			async *execute() {
 				yield { type: "message", message: assistantMessage("rejected") };
@@ -877,7 +884,15 @@ describe("greenfield runtime kernel", () => {
 					message: {
 						...assistantMessage("rejected"),
 						stopReason: "error" as const,
-						errorMessage: "provider failed",
+						errorMessage: failure.message,
+						failure: {
+							code: failure.code,
+							message: failure.message,
+							retryable: failure.retryable,
+							statusCode: failure.details.statusCode,
+							provider: failure.details.provider,
+							modelId: failure.details.modelId,
+						},
 					},
 				};
 				yield { type: "completed", stopReason: "error" };
@@ -886,7 +901,7 @@ describe("greenfield runtime kernel", () => {
 		const harness = await createHarness({ turnEngine: engine });
 		const result = await harness.session.send({ message: userMessage("hello") });
 
-		expect(result.status).toBe("failed");
+		expect(result).toMatchObject({ status: "failed", error: failure });
 		expect((harness.eventSink as CollectingEventSink).events).toContainEqual(
 			expect.objectContaining({
 				type: "turn.execution_failed",
@@ -895,7 +910,8 @@ describe("greenfield runtime kernel", () => {
 		);
 		const conversation = await harness.repository.load("session-1");
 		expect(conversation.messages.filter((message) => message.role === "assistant")).toHaveLength(2);
-		expect(conversation.events.at(-1)?.type).toBe("turn.failed");
+		expect(conversation.events.at(-2)).toMatchObject({ type: "message.appended", failure });
+		expect(conversation.events.at(-1)).toMatchObject({ type: "turn.failed", error: failure });
 	});
 
 	it("publishes the provider failure before terminal persistence is attempted", async () => {

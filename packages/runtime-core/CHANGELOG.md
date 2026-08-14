@@ -8,6 +8,8 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- Provider 终端失败进入 `turn.failed` 时保留具体 AI 错误码，不再把 `AI_BILLING_REQUIRED` 等结构化原因降级成泛化的 `PROVIDER_ERROR`。
+
 - Runtime 内核不再从 AssistantMessage 的错误文案推断重试性；有结构化 Provider failure 时严格使用其合同，没有诊断时默认不可重试。
 
 - Retry、compaction 与 MCP reload 观察事件现在统一携带 `RuntimeFailure`；AIError 的 Provider 诊断通过 `runtimeFailureFromError` 安全投影，普通边界异常默认不可重试，避免后台失败静默或被错误重试。
