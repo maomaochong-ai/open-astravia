@@ -23,11 +23,21 @@ import { ExportMockupDialog } from "../src/mockup/ExportMockupDialog";
 /** React 19 的 act 需要这个开关，否则每次更新都会告警。 */
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+const STAGE = { width: 900, height: 700 };
+
+/**
+ * happy-dom 不做布局，任何元素量出来都是 0×0——而工作台正是靠量出来的视口尺寸
+ * 决定初始缩放。这个替身在 observe 时报一个固定尺寸，把「测量 → 自动 fit」这条
+ * 链路接上。
+ */
 class StubResizeObserver {
-	observe(): void {}
+	constructor(private readonly callback: ResizeObserverCallback) {}
+	observe(target: Element): void {
+		this.callback([{ target, contentRect: STAGE } as unknown as ResizeObserverEntry], this as never);
+	}
 	disconnect(): void {}
 }
-(globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver ??= StubResizeObserver;
+(globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = StubResizeObserver;
 
 let host: HTMLDivElement;
 let root: Root;
@@ -165,6 +175,24 @@ describe("ExportMockupDialog", () => {
 
 		expect(staged()).toEqual(["B", "A", "C"]);
 		expect(document.body.textContent).toContain("mockup.rail.allAdded");
+	});
+
+	/**
+	 * 自适应：工作台一有内容就该铺满窗口居中，而不是以 100% 钉在原点。
+	 * 曾经量视口的 effect 挂在只跑一次的 ref 上，而预览台是收到请求之后才出现的
+	 * 节点——尺寸永远量不到，视口停在 0，自动 fit 从不触发。
+	 */
+	it("fits the composition into the measured stage instead of leaving it at 100%", async () => {
+		act(() => root.render(<ExportMockupDialog />));
+		act(() => requestMockupExport(makeRequest(["a"])));
+		await flush();
+
+		const page = document.body.querySelector<HTMLElement>("canvas[aria-label='mockup.preview.alt']")?.parentElement;
+		const width = Number.parseFloat(page?.style.width ?? "0");
+		const height = Number.parseFloat(page?.style.height ?? "0");
+		expect(width).toBeGreaterThan(0);
+		expect(width).toBeLessThanOrEqual(STAGE.width);
+		expect(height).toBeLessThanOrEqual(STAGE.height);
 	});
 
 	// 每页画框数是导出页数的唯一来源：超出就换页，导出入口也跟着从 PNG 变长图。

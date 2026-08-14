@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type MockupExportRequest, onMockupExport, requestMockupExport } from "../canvas/design-runtime";
 import { byCanvasOrder } from "../canvas/frame-order";
 import { loadRasters } from "../canvas/raster-cache";
@@ -63,7 +63,13 @@ export function ExportMockupDialog() {
 	const [viewport, setViewport] = useState({ width: 0, height: 0 });
 	const requestRef = useRef<MockupExportRequest | null>(null);
 	requestRef.current = request;
-	const stageRef = useRef<HTMLDivElement | null>(null);
+	/**
+	 * 预览台的 DOM 节点用 state 而不是 ref 持有：工作台在收到请求之前整个返回 null，
+	 * 挂 ref 的 effect 只跑一次就再也不会重跑，节点是后来才出现的——测不到尺寸，
+	 * 视口就一直是 0，自动 fit 永远不触发，内容以 100% 钉在原点。回调 ref 会在节点
+	 * 真正挂上时通知一次，这个时机才是对的。
+	 */
+	const [stage, setStage] = useState<HTMLDivElement | null>(null);
 	/** 正在截图的 frame，避免同一帧被重复排队。 */
 	const inFlightRef = useRef(new Set<string>());
 	/** 这次会话是否已经自动 fit 过一次：之后只听用户的缩放。 */
@@ -164,15 +170,16 @@ export function ExportMockupDialog() {
 		return () => window.removeEventListener("keydown", onKeyDown, true);
 	}, [request, close]);
 
-	useEffect(() => {
-		const element = stageRef.current;
-		if (!element) return;
+	useLayoutEffect(() => {
+		if (!stage) return;
+		const rect = stage.getBoundingClientRect();
+		setViewport({ width: rect.width, height: rect.height });
 		const observer = new ResizeObserver(([entry]) => {
 			setViewport({ width: entry.contentRect.width, height: entry.contentRect.height });
 		});
-		observer.observe(element);
+		observer.observe(stage);
 		return () => observer.disconnect();
-	}, []);
+	}, [stage]);
 
 	const shots = useMemo<ShotEntry[]>(() => {
 		const byId = new Map(frames.map((frame) => [frame.id, frame]));
@@ -209,7 +216,7 @@ export function ExportMockupDialog() {
 	}, [pages, options, slotsPerPage]);
 
 	// 内容第一次有东西可看时铺满窗口；之后的缩放只由用户决定。
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (fittedRef.current) return;
 		if (stack.world.width <= 0 || viewport.width <= 0) return;
 		fittedRef.current = true;
@@ -391,7 +398,7 @@ export function ExportMockupDialog() {
 					{/* 预览台：整块都是图片，可自由缩放平移。 */}
 					{/* biome-ignore lint/a11y/noStaticElementInteractions: 平移/缩放手势面，语义由下方缩放按钮承担 */}
 					<div
-						ref={stageRef}
+						ref={setStage}
 						className="relative min-h-0 min-w-0 flex-1 cursor-grab overflow-hidden bg-muted/30 active:cursor-grabbing"
 						onPointerDown={(event) => {
 							if (event.button !== 0 && event.button !== 1) return;
