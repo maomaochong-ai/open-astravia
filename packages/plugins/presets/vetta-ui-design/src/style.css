@@ -66,6 +66,15 @@
 	display: none;
 }
 
+/* 竖排缩略图列表：滚动但不显示滚动条（上下边缘用渐隐提示还有内容） */
+.vetd-rail-scroll {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.vetd-rail-scroll::-webkit-scrollbar {
+	display: none;
+}
+
 /* 截图进行中的骨架呼吸 */
 .vetd-shot-pulse {
 	animation: vetd-shot-pulse 1.4s ease-in-out infinite;

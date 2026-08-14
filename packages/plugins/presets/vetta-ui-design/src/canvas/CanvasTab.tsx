@@ -363,6 +363,7 @@ export function CanvasTab() {
 							<PreviewDialog
 								port={phase.port}
 								frames={session.manifest.frames}
+								vetdPath={session.vetdPath}
 								initialFrameId={previewFrameId}
 								onClose={() => setPreviewFrameId(null)}
 							/>

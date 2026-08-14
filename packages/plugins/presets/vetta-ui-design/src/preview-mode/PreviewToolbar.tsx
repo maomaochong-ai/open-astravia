@@ -1,20 +1,14 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import type { JSX } from "react";
-import type { VetdFrameEntry } from "../vetd/manifest-types";
 import { VIEWPORT_PRESETS, type ViewportSize } from "./viewport";
 
 interface PreviewToolbarProps {
-	frames: readonly VetdFrameEntry[];
-	/** 当前地址对应的 frame；地址不在画框表里时为 null（帧选择器显示空）。 */
-	currentFrameId: string | null;
-	path: string;
 	canBack: boolean;
 	canForward: boolean;
 	viewport: ViewportSize;
 	onBack(): void;
 	onForward(): void;
 	onReload(): void;
-	onPickFrame(frameId: string): void;
 	onPickViewport(size: ViewportSize): void;
 	/** 回到当前画框的声明尺寸。 */
 	onResetViewport(): void;
@@ -65,16 +59,12 @@ function IconButton({
 
 /** 预览窗口顶部那条浏览器工具栏。纯展示，所有状态由 {@link PreviewDialog} 持有。 */
 export function PreviewToolbar({
-	frames,
-	currentFrameId,
-	path,
 	canBack,
 	canForward,
 	viewport,
 	onBack,
 	onForward,
 	onReload,
-	onPickFrame,
 	onPickViewport,
 	onResetViewport,
 	onOpenExternal,
@@ -84,10 +74,10 @@ export function PreviewToolbar({
 	const presetId =
 		VIEWPORT_PRESETS.find((preset) => preset.width === viewport.width && preset.height === viewport.height)?.id ?? "";
 	return (
-		// 窗口宽度跟着画框走（手机画框只有 390px），一行摆不下整条工具栏时按两组换行：
-		// 导航+地址一组、右侧动作一组，右组整体右对齐，谁都不会被切到窗口外面去。
+		// 窗口宽度跟着画框走（手机画框只有 390px），一行摆不下整条工具栏时换行：
+		// 导航一组、右侧动作一组，右组整体右对齐，谁都不会被切到窗口外面去。
 		<div className="flex flex-wrap items-center gap-1 gap-y-1 border-b border-border bg-card px-2 py-1.5">
-			<div className="flex min-w-0 flex-1 basis-56 items-center gap-1">
+			<div className="flex min-w-0 items-center gap-1">
 				<IconButton label={t("previewMode.back")} disabled={!canBack} onClick={onBack}>
 					{icons.back}
 				</IconButton>
@@ -97,26 +87,8 @@ export function PreviewToolbar({
 				<IconButton label={t("previewMode.reload")} onClick={onReload}>
 					{icons.reload}
 				</IconButton>
-				{/* 地址栏：只读。设计稿的地址由画框文件名决定，能改的只有画框本身。 */}
-				<div className="mx-1 min-w-0 flex-1 truncate rounded-lg bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-					{path}
-				</div>
 			</div>
 			<div className="ml-auto flex min-w-0 items-center gap-1">
-				<select
-					value={currentFrameId ?? ""}
-					onChange={(event) => onPickFrame(event.target.value)}
-					title={t("previewMode.frame")}
-					aria-label={t("previewMode.frame")}
-					className="min-w-14 max-w-32 flex-1 truncate rounded-lg border-none bg-muted px-1.5 py-1 text-xs text-foreground outline-none focus:outline-none"
-				>
-					{currentFrameId === null ? <option value="">—</option> : null}
-					{frames.map((frame) => (
-						<option key={frame.id} value={frame.id}>
-							{frame.title || frame.id}
-						</option>
-					))}
-				</select>
 				<select
 					value={presetId}
 					onChange={(event) => {
