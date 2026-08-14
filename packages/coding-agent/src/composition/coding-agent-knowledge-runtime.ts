@@ -1,10 +1,6 @@
 import { join } from "node:path";
 import { listAvailableTags, queryByTags, wikiDir, writeKnowledgePage } from "@vetta/runtime-knowledge";
-import type {
-	KbFilterByTagsOperations,
-	KbListTagsOperations,
-	KbWritePageOperations,
-} from "@vetta/runtime-tools/coding";
+import type { KbFilterByTagsOperations, KbListTagsOperations, KbWritePageOperations } from "@vetta/runtime-node/coding";
 import { getKnowledgeDir } from "../config.js";
 
 export type CodingAgentKnowledgeQueryOperations = KbListTagsOperations & KbFilterByTagsOperations;

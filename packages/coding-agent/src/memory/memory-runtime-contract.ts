@@ -5,7 +5,7 @@ import type {
 	ConversationContinuationDirective,
 	TurnObserver,
 } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistration } from "@vetta/runtime-tools/coding";
+import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import type { CompactionPreparation, CompactionSettings } from "../compaction/index.js";
 
 export interface CodingAgentMemoryPromptState {

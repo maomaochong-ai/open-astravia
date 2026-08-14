@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { join } from "node:path";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import type { CodingToolResultContext, CodingToolResultPolicy } from "@vetta/runtime-tools/coding";
+import type { CodingToolResultContext, CodingToolResultPolicy } from "@vetta/runtime-tools";
 import { getAgentDir } from "../config.js";
 import type { CodingToolResultArtifact, CodingToolResultArtifactStore } from "./contracts.js";
 import { FileCodingToolResultArtifactStore } from "./file-result-artifact-store.js";

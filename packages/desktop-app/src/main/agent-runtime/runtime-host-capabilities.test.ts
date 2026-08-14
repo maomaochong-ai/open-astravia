@@ -9,8 +9,8 @@ import {
 	type AgentPluginToolInvocation,
 	RuntimeHost,
 } from "@vetta/runtime-core";
+import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DesktopRuntimeBackendPool } from "./backend-pool.js";
 
 describe("Desktop RuntimeHost capabilities", () => {
 	const directories: string[] = [];

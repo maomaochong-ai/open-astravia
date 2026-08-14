@@ -6,6 +6,7 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Breaking Changes
 
+- **具体 Coding Tool 实现迁至 Node 平台层**：`read`、`write`、`edit`、命令、PDF/OCR、能力与 Subagent Tool 的工厂、Schema 和 Host 原语改由 `@vetta/runtime-node/coding` 导出；本包只保留注册、Catalog、激活、可用性、结果策略和执行文件解析 Port。
 - **CodingToolCatalog 执行仲裁合同**：`resolve(toolName)` 返回带稳定 Capability Binding 的 Catalog Entry，只读 Catalog 新增 `execute(binding, request)`；Coding Tools 不再写入编译期 `RuntimeSnapshot.tools`，改为通过 Model Call Contribution 在每次模型调用前物化。
 - **退役 Coding Agent 工具兼容根**：包根改为暴露与 `@vetta/runtime-tools/coding` 相同的原生 Runtime Tool API，不再提供旧工具单例集合与旧工厂转发。
 
@@ -15,6 +16,7 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Added
 
+- **平台命令 Host Port 收口**：`CommandProcessPort`、`DesktopCommandPort`、`ForegroundCommandOperations` 与 `BackgroundCommandService` 由协议包统一定义；Node 包只提供进程、文件和生命周期实现，并保留兼容导出。
 - **注册级副作用声明 `CodingToolRegistration.sideEffect`**：核心工具可在定义处声明 `"light" | "heavy"`（缺省 light），产品宿主的 heavy 首调确认闸消费该声明。`im_send_attachment` 声明 heavy（外发不可撤回且无自带确认）；bash/shell（边界归 Execution Mode）、subagent 三件套（会话内计费、可回收）与 `kb_write_page`（写宿主知识库非工作区）显式声明 light 并就近注释豁免理由。
 - **Turn-bound Tool Catalog lease 与显式 hard revoke**：Turn admission 捕获不可变 Catalog 与具体
   implementation binding；普通 disable/unregister/reload 只影响后续 Turn，旧 binding 保留到最后一个

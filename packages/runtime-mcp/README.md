@@ -1,43 +1,29 @@
 # @vetta/runtime-mcp
 
-Greenfield Runtime 的独立 MCP Feature 合同与模型调用级同步实现。
+Vetta 平台无关的 MCP 协议、Port 与 Runtime 状态协调层。
 
-## What It Owns
+## 本包拥有
 
-- 当前 MCP 工具视图的 `McpRuntimeToolSource` Port
-- 与具体产品路径无关的 MCP 协议合同、TypeBox 配置 Schema 与文件配置 Source
-- stdio JSON-RPC Client、Node 子进程适配器与 Streamable HTTP SDK Client
-- OAuth 状态合同、Store Port、显式目录文件适配器和 SDK Provider
-- Browser OAuth 用例编排、SDK Auth Session 与 RFC 8628 Device Flow
-- HTTP Auth Provider Factory；产品目录、页面和操作系统交互由宿主适配器注入
-- MCP Server Supervisor：初始化、状态观察、生命周期、静态/动态配置叠加与差量协调
-- MCP Tool 的 TypeBox Schema 投影、调用结果投影与 Runtime-native Tool Source
-- 动态 Server 完整替换到 Runtime Tool View 的窄控制 Source
-- MCP 工具到 Runtime Registry 的增量同步与生命周期
-- Turn generation 内的会话级渐进披露、`tool_search` 和 MCP Prompt 物化
-- stdio、HTTP SDK 适配、配置和模型调用级能力的行为测试
+- MCP wire/config 类型与 TypeBox 配置 Schema
+- `McpConfigSource`、`McpOAuthStateStore`、Client Factory、Server 与 Tool Source Port
+- OAuth 持久状态 Schema 和平台无关的 Browser Authorization Code 编排
+- Server Supervisor 的 generation、lease、失败保持和差量协调状态机
+- MCP Tool 的 Schema/结果投影、Runtime Tool 同步与动态 Server Source
+- 会话级渐进披露、`tool_search` 和 MCP Prompt 物化
 
-## What It Does Not Own
+## 本包不拥有
 
-- Desktop、CLI 等产品对全局/项目配置路径的选择，以及配置 UI
-- OAuth token 产品目录解析、localhost 页面、系统浏览器和 provider-specific 策略
-- Coding Agent 的产品 OAuth 入口、插件命名策略和 `AgentTool` 协议
-- Desktop、CLI、IM 的 Composition Root
+- 文件配置、凭证和 OAuth 状态文件读写
+- stdio 子进程、HTTP SDK Client、网络请求和具体 Client Factory
+- SDK OAuth Provider、Device Flow 网络执行和内置 Vetta MCP 组装
+- Desktop 回调页面、系统浏览器、配置路径、UI 或交互授权策略
 
-## Who Depends On It
+Node 实现由 `@vetta/runtime-node/mcp` 提供；Desktop 专属交互由 `runtime-desktop` 或
+`desktop-app` Host 适配器提供。`runtime-mcp/src` 不得导入平台 Runtime 或 `node:*`。
 
-- `runtime-composition`：在 Turn admission 捕获共享 MCP 与 Session-local 插件 MCP 工具 generation
-- `coding-agent`：为 Greenfield 组合产品 OAuth 与 Runtime-native MCP Source，并以兼容
-  `McpManager` 保留插件贡献和旧 `AgentTool` API
-- Desktop 与 CLI 宿主：通过 coding-agent 产品工厂创建和释放 Runtime-native MCP Source
-
-依赖方向必须保持为：
+依赖方向：
 
 ```text
-runtime-mcp -> runtime-core + MCP SDK
-coding-agent product composition -> runtime-mcp supervisor + native tool source + product OAuth paths/interactions
-coding-agent compatibility adapter -> runtime-mcp supervisor + legacy API projection
-runtime-composition -> runtime-mcp + runtime-tools
+runtime-node/runtime-desktop -> runtime-mcp -> runtime-core
+coding-agent composition -> runtime-mcp ports + selected platform implementation
 ```
-
-`runtime-mcp/src` 禁止反向导入 `@vetta/coding-agent`。

@@ -4,7 +4,7 @@ import {
 	currentProcessStartedAtMs,
 	isLocalProcessAlive,
 	readLocalProcessStartedAtMs,
-} from "@vetta/runtime-storage/conversation";
+} from "@vetta/runtime-node/conversation";
 
 const PROCESS_START_TOLERANCE_MS = 5_000;
 

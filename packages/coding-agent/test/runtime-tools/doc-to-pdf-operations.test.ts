@@ -1,4 +1,4 @@
-import type { CommandProcessPort, DesktopCommandResult } from "@vetta/runtime-tools/coding";
+import type { CommandProcessPort, DesktopCommandResult } from "@vetta/runtime-node/coding";
 import { describe, expect, it } from "vitest";
 import { createCodingAgentDocToPdfOperations } from "../../src/adapters/runtime-tools/doc-to-pdf-operations.js";
 

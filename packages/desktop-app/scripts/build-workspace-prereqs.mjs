@@ -24,9 +24,11 @@ export const workspacePackages = {
 	"plugin-vite": { dir: "packages/plugins/plugin-vite" },
 	agent: { dir: "packages/agent" },
 	"runtime-core": { dir: "packages/runtime-core" },
+	"runtime-desktop": { dir: "packages/runtime-desktop" },
 	"coding-agent": { dir: "packages/coding-agent" },
 	"runtime-tools": { dir: "packages/runtime-tools" },
 	"runtime-storage": { dir: "packages/runtime-storage" },
+	"runtime-node": { dir: "packages/runtime-node" },
 	"runtime-mcp": { dir: "packages/runtime-mcp" },
 	"cli-app": { dir: "packages/cli-app" },
 };
@@ -48,8 +50,9 @@ export const workspaceLayers = [
 	["runtime-core"],
 	["runtime-mcp"],
 	["runtime-tools", "runtime-storage"],
+	["runtime-node"],
 	["coding-agent"],
-	["cli-app"],
+	["runtime-desktop", "cli-app"],
 ];
 
 async function hashPath(hash, absolutePath) {

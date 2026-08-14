@@ -6,11 +6,7 @@ import type {
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
-import {
-	CODING_TOOL_SCOPES,
-	type CodingToolActivation,
-	selectCodingToolRegistrations,
-} from "@vetta/runtime-tools/coding";
+import { CODING_TOOL_SCOPES, type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
 import { type ContributionLease, DynamicContributionCatalog } from "../../interception/contribution-catalog.js";
 import { applySystemPromptOperations, type SystemPromptDraft } from "../../model-context/index.js";
 import { resolveToolCategory } from "../../profiles/index.js";

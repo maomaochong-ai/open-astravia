@@ -1,4 +1,4 @@
-import { createBackgroundCommandService } from "@vetta/runtime-tools/coding";
+import { createBackgroundCommandService } from "@vetta/runtime-node/coding";
 import { describe, expect, it } from "vitest";
 import {
 	createCodingAgentBackgroundCommandHost,

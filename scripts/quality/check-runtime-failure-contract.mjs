@@ -24,7 +24,7 @@ export const REQUIRED_RUNTIME_FAILURE_MARKERS = Object.freeze({
 		"RUNTIME_ERROR_CODES.SESSION_BUSY",
 		"RUNTIME_ERROR_CODES.SESSION_LOCKED",
 	],
-	"packages/desktop-app/src/main/agent-runtime/lifecycle.ts": ["DesktopRuntimeFailure", "DesktopRuntimeHealth"],
+	"packages/runtime-desktop/src/lifecycle.ts": ["DesktopRuntimeFailure", "DesktopRuntimeHealth"],
 	"packages/im-gateway/internal/hostclient/types.go": [
 		"type TypedFailure interface",
 		"FailureRecoverability() FailureRecoverability",
@@ -36,6 +36,7 @@ export const REQUIRED_RUNTIME_FAILURE_MARKERS = Object.freeze({
 
 const BOUNDARY_ROOTS = [
 	"packages/coding-agent/src/modes/rpc",
+	"packages/runtime-desktop/src",
 	"packages/im-gateway/internal/hostclient",
 	"packages/im-gateway/internal/bridge",
 	"packages/im-gateway/internal/router",
@@ -46,7 +47,6 @@ const BOUNDARY_FILES = [
 	"packages/cli-app/src/extension-compatibility-error.ts",
 	"packages/cli-app/src/session-compatibility-error.ts",
 	"packages/desktop-app/src/main/agent-runtime/composition.ts",
-	"packages/desktop-app/src/main/agent-runtime/lifecycle.ts",
 	"packages/desktop-app/src/main/conversations/desktop-conversation-service.ts",
 	"packages/desktop-app/src/main/runtime.ts",
 	"packages/runtime-core/src/errors.ts",

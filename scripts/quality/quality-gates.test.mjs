@@ -542,7 +542,7 @@ describe("package boundary analysis", () => {
 		).toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/agent-runtime/historical-session-format.ts",
+				"packages/runtime-desktop/src/historical-session-format.ts",
 				'import { createCodingAgentHistoricalSessionCatalog } from "@vetta/coding-agent/historical-sessions";',
 			),
 		).toEqual([]);

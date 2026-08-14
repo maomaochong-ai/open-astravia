@@ -1,9 +1,6 @@
 import type { AgentFeatureDefinition } from "@vetta/runtime-core/kernel";
-import {
-	type CodingToolRegistration,
-	createTodoToolRegistration,
-	type TodoToolInput,
-} from "@vetta/runtime-tools/coding";
+import { createTodoToolRegistration, type TodoToolInput } from "@vetta/runtime-node/coding";
+import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../tool-policy/model-tool-order.js";
 import type { CodingAgentTodoRuntime } from "./contracts.js";
 

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
-import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
+import { resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
 import type { CodingAgentConversationPersistenceFactory } from "../../composition/contracts/index.js";
 import { createInMemoryCodingAgentConversationPersistence } from "../../composition/conversation/persistence.js";
 import type { CodingAgentSessionStorageTarget } from "../../public-api/sdk/sdk-create-contract.js";

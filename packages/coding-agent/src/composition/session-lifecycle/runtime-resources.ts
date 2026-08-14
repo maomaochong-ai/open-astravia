@@ -6,7 +6,7 @@ import type {
 } from "@vetta/runtime-core";
 import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools/coding";
+import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";

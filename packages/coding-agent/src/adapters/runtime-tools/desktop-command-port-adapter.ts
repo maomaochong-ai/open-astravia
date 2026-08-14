@@ -8,7 +8,7 @@ import {
 	type CommandProcessPort,
 	DesktopCommandAbortedError,
 	type DesktopCommandPort,
-} from "@vetta/runtime-tools/coding";
+} from "@vetta/runtime-node/coding";
 import { CodingAgentCommandProcessAbortedError, createCodingAgentCommandProcessHost } from "./index.js";
 
 const DesktopConfigSchema = Type.Object(

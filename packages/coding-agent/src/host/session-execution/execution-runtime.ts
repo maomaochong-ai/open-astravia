@@ -7,6 +7,15 @@ import {
 } from "@vetta/runtime-core";
 import type { AgentFeatureDefinition, AgentSession, CapabilityBinding } from "@vetta/runtime-core/kernel";
 import {
+	createBackgroundCommandService,
+	createBackgroundCommandToolExecutor,
+	createBashToolRegistration,
+	createForegroundCommandToolExecutor,
+	createShellToolRegistration,
+	createTaskOutputToolRegistration,
+	createTaskStopToolRegistration,
+} from "@vetta/runtime-node/coding";
+import {
 	type BackgroundCommandService,
 	buildBackgroundCommandNotification,
 	CODING_TOOL_AVAILABILITY_ERROR_CODES,
@@ -17,17 +26,10 @@ import {
 	type CodingToolCatalogEntry,
 	type CodingToolCatalogSnapshot,
 	type CodingToolRegistration,
-	createBackgroundCommandService,
-	createBackgroundCommandToolExecutor,
-	createBashToolRegistration,
 	createCodingToolsFeature,
-	createForegroundCommandToolExecutor,
-	createShellToolRegistration,
-	createTaskOutputToolRegistration,
-	createTaskStopToolRegistration,
 	guardCodingToolRegistration,
 	InMemoryCodingToolRegistry,
-} from "@vetta/runtime-tools/coding";
+} from "@vetta/runtime-tools";
 import {
 	createCodingAgentBackgroundCommandHost,
 	createCodingAgentForegroundCommandHost,

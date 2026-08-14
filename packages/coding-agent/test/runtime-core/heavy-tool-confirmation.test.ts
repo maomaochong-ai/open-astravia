@@ -1,5 +1,5 @@
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { AskUserQuestionCapability, AskUserQuestionRequest } from "@vetta/runtime-tools/coding";
+import type { AskUserQuestionCapability, AskUserQuestionRequest } from "@vetta/runtime-node/coding";
 import { describe, expect, it } from "vitest";
 import { DynamicContributionCatalog } from "../../src/interception/contribution-catalog.js";
 import {

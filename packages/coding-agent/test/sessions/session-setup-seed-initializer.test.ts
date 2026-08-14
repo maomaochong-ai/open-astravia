@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { FileConversationRepository } from "@vetta/runtime-storage/conversation";
+import { FileConversationRepository } from "@vetta/runtime-node/conversation";
 import { afterEach, describe, expect, it } from "vitest";
 import { initializeCodingAgentSessionSetupSeed } from "../../src/sessions/setup/session-setup-seed-initializer.js";
 

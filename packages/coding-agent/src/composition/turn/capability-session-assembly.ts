@@ -8,11 +8,8 @@ import {
 	type RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import {
-	type AskUserQuestionCapability,
-	type CodingToolActivation,
-	guardCodingToolRegistration,
-} from "@vetta/runtime-tools/coding";
+import type { AskUserQuestionCapability } from "@vetta/runtime-node/coding";
+import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
 import { createEcosystemToolInterceptor } from "../../adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
 import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";

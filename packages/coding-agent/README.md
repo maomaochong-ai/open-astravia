@@ -14,17 +14,22 @@ CLI / Desktop / IM
 @vetta/coding-agent       产品组合、会话宿主、资源与扩展编排
         |
         +--> @vetta/runtime-core       Kernel、Turn、事件与 Port
-        +--> @vetta/runtime-tools      通用工具实现与动态工具目录
-        +--> @vetta/runtime-storage    Conversation 持久化
-        +--> @vetta/runtime-mcp        MCP Runtime 能力
+        +--> @vetta/runtime-tools      工具协议与动态工具目录
+        +--> @vetta/runtime-storage    Conversation 持久化协议
+        +--> @vetta/runtime-node       Node 持久化、工具与 MCP 实现（当前产品组合依赖）
+        +--> @vetta/runtime-mcp        MCP 协议、Port 与状态协调
         +--> @vetta/runtime-knowledge  知识库能力
         +--> @vetta/runtime-subagents  子 Agent 能力
         +--> @vetta/runtime-telemetry  观测能力
         +--> @vetta/ai                 模型与 Provider 协议
 ```
 
-依赖方向是单向的：应用可以依赖 `coding-agent`，`coding-agent` 可以依赖 Runtime 包；
-Runtime 包的生产代码、测试、配置和包清单均不得反向依赖 `coding-agent`。
+依赖方向按职责分层：应用和平台 Runtime 可以组合 `coding-agent`；`coding-agent` 可以依赖
+Runtime Kernel、协议及环境实现。`runtime-core`、协议包和 `runtime-node` 不得反向依赖
+`coding-agent`；`runtime-desktop` 作为平台 Composition Root 可以组合它。
+
+当前 `coding-agent` 是 Node 产品组合，不属于跨平台可移植闭包。可移植边界由
+`runtime-core` 与各协议包组成；未来非 Node Host 应提供自己的平台实现和产品组合入口。
 
 ## 本包拥有
 
@@ -39,9 +44,10 @@ Runtime 包的生产代码、测试、配置和包清单均不得反向依赖 `c
 
 - 模型 Provider 的协议与流式响应实现，属于 `@vetta/ai`
 - Agent Kernel、Turn 和通用 Port，属于 `@vetta/runtime-core`
-- `read`、`write`、`edit`、`bash` 等工具实现，属于 `@vetta/runtime-tools`
-- Conversation Repository，属于 `@vetta/runtime-storage`
-- MCP 协议、传输和通用生命周期，属于 `@vetta/runtime-mcp`
+- 工具注册、Catalog、激活与绑定协议属于 `@vetta/runtime-tools`
+- `read`、`write`、`edit`、`bash` 等 Node 工具实现属于 `@vetta/runtime-node`
+- Conversation Repository 协议属于 `@vetta/runtime-storage`，Node 文件/内存实现属于 `@vetta/runtime-node`
+- MCP 协议、Port 和通用生命周期状态机属于 `@vetta/runtime-mcp`；Node transport、文件与 OAuth 实现属于 `@vetta/runtime-node`
 - Desktop UI、CLI 进程入口或 IM 传输协议，分别属于对应应用包
 
 宿主相关代码只实现 Runtime 声明的 Port，例如文件系统、进程、凭证、交互和下载能力；

@@ -37,5 +37,3 @@ export {
 } from "./runtime-tool-synchronizer.js";
 export * from "./server/index.js";
 export * from "./tools/index.js";
-export * from "./transports/http/index.js";
-export * from "./transports/stdio/index.js";

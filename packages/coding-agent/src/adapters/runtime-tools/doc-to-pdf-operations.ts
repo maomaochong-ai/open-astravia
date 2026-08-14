@@ -6,7 +6,7 @@ import type {
 	DesktopCommandResult,
 	DocToPdfDetectedBackend,
 	DocToPdfOperations,
-} from "@vetta/runtime-tools/coding";
+} from "@vetta/runtime-node/coding";
 import { createCodingAgentCommandProcessHost } from "./command-process-host.js";
 
 const PROCESS_TIMEOUT_MS = 60_000;

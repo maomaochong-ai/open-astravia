@@ -1,5 +1,5 @@
 import type { SessionHistoryInfo } from "@vetta/runtime-core";
-import { FileConversationRuntimeSessionCatalog } from "@vetta/runtime-storage/conversation";
+import { FileConversationRuntimeSessionCatalog } from "@vetta/runtime-node/conversation";
 import type {
 	CodingAgentSessionCatalog,
 	CodingAgentSessionSummary,

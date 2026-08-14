@@ -1,13 +1,12 @@
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
+import { McpDeviceCodeRequestError, runMcpBrowserOAuthFlow } from "@vetta/runtime-mcp";
 import {
 	createMcpBrowserOAuthSdkSession,
 	FileMcpOAuthStateStore,
-	McpDeviceCodeRequestError,
 	McpOAuthProvider,
-	runMcpBrowserOAuthFlow,
 	runMcpDeviceAuthorizationFlow,
-} from "@vetta/runtime-mcp";
+} from "@vetta/runtime-node/mcp";
 import { mainT } from "../i18n/index.js";
 import { openExternalUrl } from "../open-external.js";
 import { createDeviceCodePresentation, createOAuthCallbackSession } from "./mcp-oauth-host-ui.js";

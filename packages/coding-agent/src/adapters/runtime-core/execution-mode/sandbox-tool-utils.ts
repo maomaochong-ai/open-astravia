@@ -1,5 +1,20 @@
 import type { RuntimeSessionHostInteractionContext } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { SandboxPermissionContext, SandboxPermissionRequest } from "@vetta/runtime-core/sandbox";
+import type {
+	CodingToolRegistration,
+	EditPathPolicy,
+	ForegroundCommandOperations,
+	WritePathPolicy,
+} from "@vetta/runtime-node/coding";
+import {
+	createBashToolRegistration,
+	createEditToolRegistration,
+	createForegroundCommandToolExecutor,
+	createReadToolRegistration,
+	createShellToolRegistration,
+	createWriteToolRegistration,
+} from "@vetta/runtime-node/coding";
 import {
 	addSessionGrant,
 	assertSandboxPathNotDenied,
@@ -8,23 +23,7 @@ import {
 	findSessionGrant,
 	isSensitiveSandboxRequest,
 	runWithSandboxShellGrant,
-	type SandboxPermissionContext,
-	type SandboxPermissionRequest,
-} from "@vetta/runtime-core/sandbox";
-import type {
-	CodingToolRegistration,
-	EditPathPolicy,
-	ForegroundCommandOperations,
-	WritePathPolicy,
-} from "@vetta/runtime-tools/coding";
-import {
-	createBashToolRegistration,
-	createEditToolRegistration,
-	createForegroundCommandToolExecutor,
-	createReadToolRegistration,
-	createShellToolRegistration,
-	createWriteToolRegistration,
-} from "@vetta/runtime-tools/coding";
+} from "@vetta/runtime-node/sandbox";
 import { assertWorkspacePathAllowed, resolveWorkspacePathAccess } from "./workspace-guard.js";
 
 export interface SandboxRuntimeToolOptions {

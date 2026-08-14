@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
 import type { SessionEvent, SessionEventBase } from "../contracts.js";
+import { createRuntimeId } from "../id-generator.js";
 import type { RuntimeSessionLifecyclePhase, RuntimeSessionObservationEvent } from "../session-observation.js";
 
 export function baseSessionEvent(
@@ -10,7 +10,7 @@ export function baseSessionEvent(
 	return {
 		schemaVersion: 1,
 		sessionId,
-		eventId: randomUUID(),
+		eventId: createRuntimeId(),
 		timestamp,
 		source,
 	};

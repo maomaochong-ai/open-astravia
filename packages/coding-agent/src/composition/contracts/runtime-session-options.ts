@@ -9,7 +9,7 @@ import type {
 	SessionConfig,
 	SessionExecutionMode,
 } from "@vetta/runtime-core";
-import type { KbWritePageOperations } from "@vetta/runtime-tools/coding";
+import type { KbWritePageOperations } from "@vetta/runtime-node/coding";
 import type {
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentSessionToolRegistration,

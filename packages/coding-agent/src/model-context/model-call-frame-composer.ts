@@ -12,7 +12,7 @@ import type {
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
-import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
+import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type {
 	CodingAgentPluginMcpToolComposer,
 	CodingAgentSystemPromptOptionsResolver,

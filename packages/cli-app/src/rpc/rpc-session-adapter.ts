@@ -20,7 +20,7 @@ import {
 	readCodingAgentTurnFailure,
 } from "@vetta/coding-agent/runtime";
 import { type HistoryEntry, RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
-import { type CodingToolRegistration, createImSendAttachmentToolRegistration } from "@vetta/runtime-tools/coding";
+import { type CodingToolRegistration, createImSendAttachmentToolRegistration } from "@vetta/runtime-node/coding";
 import { RpcSessionEventAdapter } from "./rpc-session-event-adapter.js";
 
 type RpcResourceLoader = Pick<CodingAgentHostBootstrap["resourceLoader"], "getPrompts" | "getSkills">;

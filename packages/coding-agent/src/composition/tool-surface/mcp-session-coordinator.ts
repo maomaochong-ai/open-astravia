@@ -8,7 +8,7 @@ import {
 	type McpRuntimeToolSource,
 	type McpRuntimeToolView,
 } from "@vetta/runtime-mcp";
-import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
+import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentPluginMcpRuntime } from "../../runtime-contracts/index.js";
 import type { CodingAgentSessionMarkerIndex, CodingAgentSessionValueIndex } from "../session-lifecycle/indexes.js";
 

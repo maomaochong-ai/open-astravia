@@ -6,12 +6,12 @@ import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { RuntimeHost } from "@vetta/runtime-core";
+import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	startOpenAiResponsesTestServer,
 	textResponseEvents,
 } from "../../../../cli-app/test/support/openai-responses-test-server.js";
-import { DesktopRuntimeBackendPool } from "./backend-pool.js";
 
 const MODEL_A: Model<Api> = {
 	id: "model-a-first-in-list",

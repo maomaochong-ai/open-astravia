@@ -1,6 +1,7 @@
 import type { AssistantMessage } from "@vetta/ai";
 import type { ContextCompactionRecord, StoredSessionEvent } from "@vetta/runtime-core/kernel";
-import { type CodingToolRegistration, createMemoryToolRegistration } from "@vetta/runtime-tools/coding";
+import { createMemoryToolRegistration } from "@vetta/runtime-node/coding";
+import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import { renderMemoryForPrompt } from "../model-context/index.js";
 import { AiMemoryFactExtractor } from "./ai-memory-fact-extractor.js";
 import { FileMemoryJournal } from "./file-memory-journal.js";

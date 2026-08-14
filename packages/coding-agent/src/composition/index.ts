@@ -1,4 +1,3 @@
-export { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
 export { CodingAgentRuntimeHostSessionBackend } from "../host/runtime-host/session-backend.js";
 export {
 	type CodingAgentSessionSetup,

@@ -8,19 +8,10 @@ import {
 } from "@vetta/runtime-core/kernel";
 import {
 	type BackgroundCommandService,
-	type CodingToolActivation,
-	type CodingToolActivationResolver,
-	type CodingToolCatalogRefresher,
-	type CodingToolExecutableResolver,
-	type CodingToolRegistration,
-	type CodingToolRegistrationFilter,
-	type CodingToolRegistry,
-	type CodingToolResultPolicy,
 	type CommandToolExecutor,
 	createBackgroundCommandService,
 	createBackgroundCommandToolExecutor,
 	createBashToolRegistration,
-	createCodingToolsFeature,
 	createCurrentTimeToolRegistration,
 	createEditToolRegistration,
 	createFindToolRegistration,
@@ -34,8 +25,19 @@ import {
 	createTaskStopToolRegistration,
 	createTreeToolRegistration,
 	createWriteToolRegistration,
+} from "@vetta/runtime-node/coding";
+import {
+	type CodingToolActivation,
+	type CodingToolActivationResolver,
+	type CodingToolCatalogRefresher,
+	type CodingToolExecutableResolver,
+	type CodingToolRegistration,
+	type CodingToolRegistrationFilter,
+	type CodingToolRegistry,
+	type CodingToolResultPolicy,
+	createCodingToolsFeature,
 	InMemoryCodingToolRegistry,
-} from "@vetta/runtime-tools/coding";
+} from "@vetta/runtime-tools";
 import {
 	createCodingAgentBackgroundCommandHost,
 	createCodingAgentEditPathPolicy,

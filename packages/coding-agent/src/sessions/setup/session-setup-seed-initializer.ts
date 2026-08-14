@@ -1,4 +1,4 @@
-import { createConversationSeedDraft } from "@vetta/runtime-storage/conversation";
+import { createConversationSeedDraft } from "@vetta/runtime-node/conversation";
 import type { ExtensionSessionSetup } from "../../extensions/index.js";
 import type {
 	CodingAgentSessionSeedInitializer,

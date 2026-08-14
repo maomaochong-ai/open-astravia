@@ -1,6 +1,3 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { resolve as resolvePath } from "node:path";
 import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Message } from "@vetta/ai";
 import type {
@@ -31,12 +28,7 @@ import type {
 	SettingsPatch,
 } from "../contracts.js";
 import { isSessionError, runtimeError } from "../errors.js";
-import {
-	clearSessionGrants,
-	listSessionGrants,
-	revokeAllSessionGrants,
-	revokeSessionGrant,
-} from "../execution-mode/sandbox-permissions.js";
+import { createRuntimeId } from "../id-generator.js";
 import { isTurnPersistenceError } from "../kernel/errors.js";
 import { generateAutoTitle, generateNextPromptSuggestions } from "./peripheral-tasks.js";
 import { debugPluginAgent, summarizeAgentPlugins } from "./plugin-debug.js";
@@ -49,6 +41,9 @@ import type {
 	RuntimeSubagentSnapshot,
 } from "./session-ports.js";
 import type {
+	RuntimeHostPathServices,
+	RuntimeQueueSidecarStore,
+	RuntimeSandboxGrantStore,
 	RuntimeSessionAccess,
 	RuntimeSessionAccessResolver,
 	RuntimeSessionCatalog,
@@ -60,11 +55,6 @@ import type { InFlightBuffer, RunningChangedReason, RuntimeHostOptions, SessionH
 export type { RunningChangedReason, RuntimeHostOptions } from "./types.js";
 
 const DEFAULT_RUNTIME_SCENARIO: NonNullable<SessionConfig["scenario"]> = "cli";
-
-/** 队列 sidecar 与会话文件同目录同名并列，随会话删除自然可见（ADR-0060）。 */
-function queueSidecarPath(sessionPath: string): string {
-	return `${sessionPath}.queue.json`;
-}
 
 /** 合并插件激活期间连续产生的配置更新，空闲会话只重建一次工具面。 */
 const IDLE_AGENT_PLUGIN_APPLY_DELAY_MS = 300;
@@ -113,6 +103,9 @@ export class RuntimeHost implements SessionFacade {
 	private readonly sessionFileHistoryReader: RuntimeSessionFileHistoryReader | undefined;
 	private readonly sessionAccessResolver: RuntimeSessionAccessResolver | undefined;
 	private readonly sharedModelController: RuntimeSharedModelController | undefined;
+	private readonly pathServices: RuntimeHostPathServices | undefined;
+	private readonly queueSidecarStore: RuntimeQueueSidecarStore | undefined;
+	private readonly sandboxGrantStore: RuntimeSandboxGrantStore | undefined;
 	private readonly sessionErrorObserver:
 		| ((event: Extract<SessionEvent, { readonly type: "error" }>) => void)
 		| undefined;
@@ -141,6 +134,9 @@ export class RuntimeHost implements SessionFacade {
 		this.sessionFileHistoryReader = options.sessionFileHistoryReader;
 		this.sessionAccessResolver = options.sessionAccessResolver;
 		this.sharedModelController = options.sharedModelController;
+		this.pathServices = options.pathServices;
+		this.queueSidecarStore = options.queueSidecarStore;
+		this.sandboxGrantStore = options.sandboxGrantStore;
 		this.sessionErrorObserver = options.sessionErrorObserver;
 		this.sessionBackend = options.sessionBackend;
 		this.userConfirmationHandler = options.userConfirmationHandler;
@@ -244,23 +240,15 @@ export class RuntimeHost implements SessionFacade {
 	}
 
 	listSandboxGrants(sessionId: string): RuntimeSandboxGrantInfo[] {
-		return listSessionGrants(sessionId).map((entry) => ({
-			id: entry.id,
-			sessionId: entry.sessionId,
-			toolName: entry.toolName,
-			capability: entry.capability,
-			grantRoot: entry.grantRoot,
-			firstTarget: entry.firstTarget,
-			createdAt: entry.createdAt,
-		}));
+		return [...(this.sandboxGrantStore?.list(sessionId) ?? [])];
 	}
 
 	revokeSandboxGrant(sessionId: string, grantId: string): boolean {
-		return revokeSessionGrant(sessionId, grantId);
+		return this.sandboxGrantStore?.revoke(sessionId, grantId) ?? false;
 	}
 
 	revokeAllSandboxGrants(sessionId: string): number {
-		return revokeAllSessionGrants(sessionId);
+		return this.sandboxGrantStore?.revokeAll(sessionId) ?? 0;
 	}
 
 	/**
@@ -341,10 +329,10 @@ export class RuntimeHost implements SessionFacade {
 	 * file lock, since SessionManager rejects same-pid re-acquisition).
 	 */
 	private findHandleBySessionPath(sessionPath: string): { sessionId: string; handle: SessionHandle } | undefined {
-		const target = resolvePath(sessionPath);
+		const target = this.normalizePath(sessionPath);
 		for (const [sessionId, handle] of this.sessions) {
 			const openPath = handle.lifecycle.sessionPath;
-			if (openPath && resolvePath(openPath) === target) {
+			if (openPath && this.normalizePath(openPath) === target) {
 				return { sessionId, handle };
 			}
 		}
@@ -431,7 +419,7 @@ export class RuntimeHost implements SessionFacade {
 								}
 								return handler(
 									{
-										requestId: randomUUID(),
+										requestId: createRuntimeId(),
 										sessionId: sessionIdRef.current ?? "",
 										questions: request.questions,
 									},
@@ -664,9 +652,9 @@ export class RuntimeHost implements SessionFacade {
 		// Session cwd (esp. desktop ADR-0007 per-session dirs) may have been deleted
 		// while the handle stayed open (clear-artifacts, manual cleanup). Heal before tools run.
 		const sessionCwd = handle.workspaceView.readWorkingDirectory();
-		if (sessionCwd) {
+		if (sessionCwd && this.pathServices) {
 			try {
-				await mkdir(sessionCwd, { recursive: true });
+				await this.pathServices.ensureDirectory(sessionCwd);
 			} catch (err) {
 				console.warn(`[RuntimeHost.prompt] failed to ensure session cwd ${sessionCwd}:`, err);
 			}
@@ -767,31 +755,31 @@ export class RuntimeHost implements SessionFacade {
 
 	/** 串行化每个 sidecar 文件的写入，避免快照乱序落盘。 */
 	private persistQueueSidecar(sessionPath: string | undefined, event: QueueChangedEvent): void {
-		if (!sessionPath) return;
-		const path = queueSidecarPath(sessionPath);
-		const prev = this.queueSidecarWrites.get(path) ?? Promise.resolve();
+		if (!sessionPath || !this.queueSidecarStore) return;
+		const key = this.normalizePath(sessionPath);
+		const prev = this.queueSidecarWrites.get(key) ?? Promise.resolve();
 		const next = prev.then(async () => {
 			try {
 				if (event.entries.length === 0 && !event.paused) {
-					await rm(path, { force: true });
+					await this.queueSidecarStore?.remove(sessionPath);
 					return;
 				}
-				await writeFile(path, JSON.stringify(event.snapshot), "utf8");
+				await this.queueSidecarStore?.write(sessionPath, event.snapshot);
 			} catch (error) {
-				console.warn(`[RuntimeHost] failed to persist queue sidecar ${path}:`, error);
+				console.warn(`[RuntimeHost] failed to persist queue sidecar for ${sessionPath}:`, error);
 			}
 		});
-		this.queueSidecarWrites.set(path, next);
+		this.queueSidecarWrites.set(key, next);
 	}
 
 	private async restoreQueueSidecar(
 		queueController: NonNullable<SessionHandle["queueController"]>,
 		sessionPath: string | undefined,
 	): Promise<void> {
-		if (!sessionPath) return;
+		if (!sessionPath || !this.queueSidecarStore) return;
 		try {
-			const raw = await readFile(queueSidecarPath(sessionPath), "utf8");
-			queueController.restoreQueue(JSON.parse(raw));
+			const snapshot = await this.queueSidecarStore.read(sessionPath);
+			if (snapshot !== undefined) queueController.restoreQueue(snapshot);
 		} catch {
 			// 文件不存在或损坏都静默：队列 sidecar 丢失只影响排队，不损害历史。
 		}
@@ -995,7 +983,7 @@ export class RuntimeHost implements SessionFacade {
 
 	/** Resolve host capabilities for an existing session without opening or locking it. */
 	resolveSessionAccess(sessionPath: string): Promise<RuntimeSessionAccess | undefined> {
-		return this.sessionAccessResolver?.resolve(resolvePath(sessionPath)) ?? Promise.resolve(undefined);
+		return this.sessionAccessResolver?.resolve(this.normalizePath(sessionPath)) ?? Promise.resolve(undefined);
 	}
 
 	/**
@@ -1159,7 +1147,7 @@ export class RuntimeHost implements SessionFacade {
 		await handle.lifecycle.dispose();
 		this.sessions.delete(sessionId);
 		this.currentTurnStartedAt.delete(sessionId);
-		clearSessionGrants(sessionId);
+		this.sandboxGrantStore?.clear(sessionId);
 	}
 
 	/**
@@ -1176,7 +1164,7 @@ export class RuntimeHost implements SessionFacade {
 			} catch (err) {
 				console.error(`[RuntimeHost.disposeAllSessions] failed to dispose ${sessionId}:`, err);
 			}
-			clearSessionGrants(sessionId);
+			this.sandboxGrantStore?.clear(sessionId);
 		}
 		const wasRunning = Array.from(this.runningSessionPaths);
 		this.sessions.clear();
@@ -1242,7 +1230,7 @@ export class RuntimeHost implements SessionFacade {
 
 	private async assertSessionCapability(sessionPath: string, capability: "rename" | "delete"): Promise<void> {
 		if (!this.sessionAccessResolver) return;
-		const access = await this.sessionAccessResolver.resolve(resolvePath(sessionPath));
+		const access = await this.sessionAccessResolver.resolve(this.normalizePath(sessionPath));
 		if (access?.[capability]) return;
 		throw runtimeError("INVALID_REQUEST", `Session does not support ${capability}: ${sessionPath}`, false, "runtime");
 	}
@@ -1331,7 +1319,7 @@ export class RuntimeHost implements SessionFacade {
 				if (!handler || signal?.aborted) return false;
 				return handler(
 					{
-						requestId: randomUUID(),
+						requestId: createRuntimeId(),
 						sessionId: sessionIdRef.current ?? "",
 						title,
 						message,
@@ -1343,7 +1331,7 @@ export class RuntimeHost implements SessionFacade {
 				const handler = this.userSandboxGrantHandler;
 				if (!handler) return "deny";
 				return handler({
-					requestId: randomUUID(),
+					requestId: createRuntimeId(),
 					sessionId: sessionIdRef.current ?? "",
 					title: request.title,
 					message: request.message,
@@ -1357,6 +1345,10 @@ export class RuntimeHost implements SessionFacade {
 				});
 			},
 		};
+	}
+
+	private normalizePath(path: string): string {
+		return this.pathServices?.normalize(path) ?? path;
 	}
 }
 

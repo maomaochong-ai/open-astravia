@@ -16,9 +16,20 @@ import {
 	type RuntimeHostSessionBackendRouteDecision,
 } from "@vetta/runtime-core";
 import {
+	createDesktopHistoricalSessionFormat,
+	createDesktopRuntimeHostPlatformServices,
+	DesktopHistoricalSessionImportBackend,
+	DesktopRuntimeBackendPool,
+	type DesktopRuntimeComposition,
+	DesktopRuntimeSessionCatalog,
+	isSessionPathInDirectory,
+	logRuntimeSessionError,
+	PathFilteredRuntimeSessionCatalog,
+} from "@vetta/runtime-desktop";
+import {
 	FileConversationRuntimeSessionFileHistoryReader,
 	type RuntimeConversationSessionRoot,
-} from "@vetta/runtime-storage/conversation";
+} from "@vetta/runtime-node/conversation";
 import { getBuiltinSkillPaths } from "../builtin-skills.js";
 import {
 	DEFAULT_CONVERSATION_CWD,
@@ -38,25 +49,12 @@ import { createDesktopPluginHookAdapterFactory } from "../plugins/coding-agent-h
 import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "../sandbox/windows-binary-resolver.js";
-import { DesktopRuntimeBackendPool } from "./backend-pool.js";
-import { createDesktopHistoricalSessionFormat } from "./historical-session-format.js";
-import { DesktopHistoricalSessionImportBackend } from "./historical-session-import-backend.js";
 import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./host-services.js";
-import {
-	DesktopRuntimeSessionCatalog,
-	isSessionPathInDirectory,
-	PathFilteredRuntimeSessionCatalog,
-} from "./session-catalog.js";
-import { logRuntimeSessionError } from "./session-error-logger.js";
 
 const log = getAppLogger("runtime");
 
-export interface DesktopRuntimeComposition {
-	readonly runtime: RuntimeHost;
-	readonly runtimeBackendPool: DesktopRuntimeBackendPool;
-}
-
 export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
+	const platformServices = createDesktopRuntimeHostPlatformServices();
 	const modelRuntime = getOrCreateSharedModelRuntime();
 	const getDefaultExecutionMode = async () => (await readDesktopConfig()).defaultExecutionMode;
 	const sandboxHostPath = resolveWindowsSandboxHostBinary()?.path;
@@ -127,6 +125,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	return {
 		runtimeBackendPool,
 		runtime: new RuntimeHost({
+			...platformServices,
 			additionalSkillPaths,
 			getDefaultExecutionMode,
 			linuxBubblewrapPath,
@@ -134,7 +133,10 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 			sandboxHostPath,
 			serverUrl: DEFAULT_SERVER_URL,
 			sessionBackend,
-			sessionCatalog: new CompositeRuntimeSessionCatalog([historicalFormat.sessionCatalog, conversationCatalog]),
+			sessionCatalog: new CompositeRuntimeSessionCatalog(
+				[historicalFormat.sessionCatalog, conversationCatalog],
+				platformServices.pathServices.normalize,
+			),
 			sessionFileHistoryReader: new CompositeRuntimeSessionFileHistoryReader([
 				historicalFormat.sessionFileHistoryReader,
 				new FileConversationRuntimeSessionFileHistoryReader(),

@@ -1,7 +1,7 @@
 import type { SessionEndCause, SessionStartSource } from "@vetta/ecosystem-adapter";
 import type { ConversationScenario, KernelRuntimeSessionBackend } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistry } from "@vetta/runtime-tools/coding";
+import type { CodingToolRegistry } from "@vetta/runtime-tools";
 import type {
 	CodingAgentExtensionEventBinding,
 	CodingAgentExtensionRunnerPort,

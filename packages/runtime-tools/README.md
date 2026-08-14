@@ -1,47 +1,22 @@
 # @vetta/runtime-tools
 
-Runtime 拥有的通用 Agent 工具实现与 Coding Tools Feature。
-
-包根和 `@vetta/runtime-tools/coding` 暴露同一套独立 Runtime 工具接口。
+Vetta 平台无关的 Coding Tool 协议包。包根与 `@vetta/runtime-tools/coding` 暴露同一套合同。
 
 ## 本包拥有
 
-- 基于 TypeBox 的 Runtime Tool 定义
-- `read`、`write`、`edit`、`bash`、`grep`、`find` 等通用工具实现
-- 工具注册元数据、目录和场景选择
-- 动态 `CodingToolsFeature`
-- 工具执行依赖的 Port，例如可执行文件解析、路径策略和命令执行
+- `CodingToolRegistration`、Scope、Category 与 Side Effect 元数据
+- `CodingToolCatalog`、Registry、Turn-bound Binding 与 Revoke 语义
+- 工具激活、选择、可用性校验和结果策略
+- `CodingToolsFeature`、`CodingToolExecutableResolver`、命令进程、后台任务和前台命令 Operations Port
 
-## 本包不拥有
-
-- Agent 会话与产品状态
-- 应用权限 UI
-- 模型与 Provider 选择
-- 宿主可执行文件的下载和更新
-- 产品级路径、凭证或用户交互策略
-
-Runtime Tools 的生产代码、测试、配置和包清单均不得依赖 `@vetta/coding-agent`。
-产品宿主在自己的组合根中实现并注入所需 Port。
-
-## 主要入口
-
-- 独立工具工厂，例如 `createReadTool`、`createBashTool` 和 `createTreeTool`
-- `createCodingToolsFeature`
-- 工具注册工厂，例如 `createReadToolRegistration` 和 `createLsToolRegistration`
-- `InMemoryCodingToolRegistry`
-- `selectCodingTools` 与 `selectCodingToolsForScope`
-
-每个工具位于独立的 `src/coding/tools/<tool-name>/` 目录。模型可见描述放在工具目录的
-`description.ts`，工具 Schema 使用 TypeBox，Coding 场景元数据放在注册对象而不是工具定义中。
+本包不拥有具体工具、TypeBox 输入 Schema、模型可见工具描述，也不访问文件系统、进程、
+网络、Electron 或宿主全局状态。Node 环境中的 `read`、`write`、`edit`、`bash`、
+`grep`、PDF/OCR 与子进程实现由 `@vetta/runtime-node/coding` 提供。
 
 ## 组合示例
 
 ```ts
-const registry = new InMemoryCodingToolRegistry([
-	createCurrentTimeToolRegistration(),
-	createReadToolRegistration(cwd, readOptions),
-	createLsToolRegistration(cwd, lsOptions),
-]);
+const registry = new InMemoryCodingToolRegistry(platformRegistrations);
 
 createCodingToolsFeature({
 	catalog: registry,
@@ -49,20 +24,6 @@ createCodingToolsFeature({
 });
 ```
 
-工具专有依赖属于注册组合根，不属于 `CodingToolsFeatureOptions`。例如宿主把自己的
-`CodingToolExecutableResolver` 注入 grep/find；Runtime 只消费解析结果，不下载或更新二进制文件。
-
-## 动态注册语义
-
-Registry 支持 `register()` 和 `unregister()`。外部工具成员关系在 Turn admission 绑定为不可变 generation；
-Feature 的模型调用贡献 Provider 可以在该固定 catalog 内按 Turn-local state 选择工具，但不得重新读取新的
-Registry revision，因此普通工具变化只对后续 Turn 可见，也不会重新初始化无关 Feature。
-
-模型看到的工具按同一 generation 的 implementation binding 执行。普通移除或同名替换不会使活动 Turn
-已经获得的 binding 失效，也不会把旧 Schema 调用路由到新实现；显式 hard revoke 除外。下一个 Turn
-会收到更新后的工具列表。
-
-## 行为兼容
-
-架构迁移不得改变工具功能。Schema、描述、结果、错误、副作用、路径语义、取消和截断行为
-由 Runtime 合同测试保护；`coding-agent` 只测试其真实 Host Port 适配，不作为 Runtime 测试依赖。
+平台 Runtime 创建具体 Registration 并注入 Host Port；产品组合根只选择平台实现与产品策略。
+普通 Registry 变化只影响后续 Turn，活动 Turn 使用已租赁的稳定 Binding；显式 hard revoke
+会使旧 Binding 失效并协作取消在途执行。

@@ -7,6 +7,10 @@ export default defineConfig({
 	resolve: {
 		alias: [
 			{
+				find: "@vetta/runtime-node/conversation/legacy",
+				replacement: fileURLToPath(new URL("../runtime-node/src/conversation/legacy.ts", import.meta.url)),
+			},
+			{
 				find: "@vetta/ai",
 				replacement: fileURLToPath(new URL("../ai/src/index.ts", import.meta.url)),
 			},
@@ -95,6 +99,22 @@ export default defineConfig({
 				replacement: fileURLToPath(new URL("../runtime-core/src/index.ts", import.meta.url)),
 			},
 			{
+				find: "@vetta/runtime-mcp/auth",
+				replacement: fileURLToPath(new URL("../runtime-mcp/src/auth/index.ts", import.meta.url)),
+			},
+			{
+				find: "@vetta/runtime-mcp/client",
+				replacement: fileURLToPath(new URL("../runtime-mcp/src/client/index.ts", import.meta.url)),
+			},
+			{
+				find: "@vetta/runtime-mcp/config",
+				replacement: fileURLToPath(new URL("../runtime-mcp/src/config/index.ts", import.meta.url)),
+			},
+			{
+				find: "@vetta/runtime-mcp/protocol",
+				replacement: fileURLToPath(new URL("../runtime-mcp/src/protocol/index.ts", import.meta.url)),
+			},
+			{
 				find: "@vetta/runtime-mcp",
 				replacement: fileURLToPath(new URL("../runtime-mcp/src/index.ts", import.meta.url)),
 			},
@@ -107,12 +127,36 @@ export default defineConfig({
 				replacement: fileURLToPath(new URL("../runtime-storage/src/conversation/index.ts", import.meta.url)),
 			},
 			{
+				find: "@vetta/runtime-node/conversation",
+				replacement: fileURLToPath(new URL("../runtime-node/src/conversation/index.ts", import.meta.url)),
+			},
+			{
+				find: "@vetta/runtime-node/host",
+				replacement: fileURLToPath(new URL("../runtime-node/src/host/index.ts", import.meta.url)),
+			},
+			{
+				find: "@vetta/runtime-node/sandbox",
+				replacement: fileURLToPath(new URL("../runtime-node/src/sandbox/index.ts", import.meta.url)),
+			},
+			{
+				find: "@vetta/runtime-node/coding",
+				replacement: fileURLToPath(new URL("../runtime-node/src/coding/index.ts", import.meta.url)),
+			},
+			{
+				find: "@vetta/runtime-node/mcp",
+				replacement: fileURLToPath(new URL("../runtime-node/src/mcp/index.ts", import.meta.url)),
+			},
+			{
 				find: "@vetta/runtime-subagents",
 				replacement: fileURLToPath(new URL("../runtime-subagents/src/index.ts", import.meta.url)),
 			},
 			{
 				find: "@vetta/runtime-tools/coding",
 				replacement: fileURLToPath(new URL("../runtime-tools/src/coding/index.ts", import.meta.url)),
+			},
+			{
+				find: "@vetta/runtime-tools",
+				replacement: fileURLToPath(new URL("../runtime-tools/src/index.ts", import.meta.url)),
 			},
 		],
 	},

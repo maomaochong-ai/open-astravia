@@ -16,7 +16,7 @@ import type {
 	TreeToolDetails,
 	TreeToolInput,
 	WriteToolInput,
-} from "@vetta/runtime-tools/coding";
+} from "@vetta/runtime-node/coding";
 import type { BashToolDetails } from "../infrastructure.js";
 
 interface ToolCallEventBase {

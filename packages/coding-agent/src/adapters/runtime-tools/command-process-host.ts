@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import type { CommandProcessPort, DesktopCommandResult } from "@vetta/runtime-tools/coding";
+import type { CommandProcessPort, DesktopCommandResult } from "@vetta/runtime-tools";
 
 const DEFAULT_MAX_BUFFER_BYTES = 32 * 1024 * 1024;
 

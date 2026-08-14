@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { createWriteStream, type WriteStream } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DEFAULT_MAX_BYTES, truncateTail } from "@vetta/runtime-tools/coding";
+import { DEFAULT_MAX_BYTES, truncateTail } from "@vetta/runtime-node/coding";
 import stripAnsi from "strip-ansi";
 import { sanitizeBinaryOutput } from "./command-output.js";
 import type { HostBashExecutionOptions, HostBashResult } from "./contracts.js";

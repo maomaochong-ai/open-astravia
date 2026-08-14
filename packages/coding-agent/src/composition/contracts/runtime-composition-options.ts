@@ -4,7 +4,7 @@ import type { AgentCoreTurnEngineOptions } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
 import type { SubagentTypeRegistryLike } from "@vetta/runtime-subagents";
-import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
+import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type {
 	CodingAgentMemoryRolloverOrchestratorOptions,
 	CodingAgentMemoryRolloverRuntime,

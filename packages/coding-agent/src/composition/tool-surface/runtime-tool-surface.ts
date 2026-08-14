@@ -1,12 +1,8 @@
 import type { ConversationScenario } from "@vetta/runtime-core";
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
-import {
-	CODING_TOOL_SCOPES,
-	type CodingToolActivation,
-	createKbFilterByTagsToolRegistration,
-	createKbListTagsToolRegistration,
-} from "@vetta/runtime-tools/coding";
+import { createKbFilterByTagsToolRegistration, createKbListTagsToolRegistration } from "@vetta/runtime-node/coding";
+import { CODING_TOOL_SCOPES, type CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import {

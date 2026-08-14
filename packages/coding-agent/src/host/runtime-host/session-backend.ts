@@ -10,8 +10,8 @@ import {
 	type RuntimeSessionCreateRequest,
 	runtimeError,
 } from "@vetta/runtime-core";
+import { resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
 import { CONVERSATION_STORAGE_ERROR_CODES, ConversationStorageError } from "@vetta/runtime-storage";
-import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
 import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeSessionOptions,

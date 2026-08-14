@@ -4,8 +4,9 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { delimiter, isAbsolute, join } from "node:path";
 import { getVettaConfigDirName } from "@vetta/action-rpc";
-import { getSandboxShellGrant, type SandboxShellGrant } from "@vetta/runtime-core/sandbox";
-import type { CodingToolRegistration, ForegroundCommandOperations } from "@vetta/runtime-tools/coding";
+import type { SandboxShellGrant } from "@vetta/runtime-core/sandbox";
+import type { CodingToolRegistration, ForegroundCommandOperations } from "@vetta/runtime-node/coding";
+import { getSandboxShellGrant } from "@vetta/runtime-node/sandbox";
 import { getShellConfig } from "../../../host/command-execution/shell-runtime.js";
 import { createSandboxToolRegistrations, type SandboxRuntimeToolOptions } from "./sandbox-tool-utils.js";
 

@@ -11,7 +11,7 @@ import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-ht
 import type { CodingAgentHistoricalSessionMigrationIncompatible } from "@vetta/coding-agent/historical-sessions";
 import type { RpcSessionCapabilities } from "@vetta/coding-agent/rpc";
 import type { RuntimeSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
-import type { FileConversationOwnershipManagerOptions } from "@vetta/runtime-storage/conversation";
+import type { FileConversationOwnershipManagerOptions } from "@vetta/runtime-node/conversation";
 import type { CliPrintSessionAdapter } from "../../print-session-adapter.js";
 
 export interface RpcRuntimeHostExtensionIncompatible {

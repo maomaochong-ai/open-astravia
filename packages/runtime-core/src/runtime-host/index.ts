@@ -122,6 +122,9 @@ export type {
 	RuntimeTurnPrompt,
 } from "./session-ports.js";
 export type {
+	RuntimeHostPathServices,
+	RuntimeQueueSidecarStore,
+	RuntimeSandboxGrantStore,
 	RuntimeSessionAccess,
 	RuntimeSessionAccessResolver,
 	RuntimeSessionAccessRoute,

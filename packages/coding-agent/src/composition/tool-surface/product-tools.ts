@@ -1,6 +1,5 @@
 import type { AgentFeatureDefinition, ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import {
-	type CodingToolActivation,
 	createDocToPdfToolRegistration,
 	createExtractTextFromImageToolRegistration,
 	createExtractTextFromPdfToolRegistration,
@@ -10,8 +9,8 @@ import {
 	createRenderPdfPageToolRegistration,
 	type KbWritePageOperations,
 	RenderPdfPageProcessAbortedError,
-	selectCodingToolRegistrations,
-} from "@vetta/runtime-tools/coding";
+} from "@vetta/runtime-node/coding";
+import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
 import { createCodingAgentDesktopCommandPort } from "../../adapters/runtime-tools/desktop-command-port-adapter.js";
 import {
 	CodingAgentCommandProcessAbortedError,

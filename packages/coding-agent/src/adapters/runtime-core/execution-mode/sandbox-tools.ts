@@ -1,4 +1,4 @@
-import type { CodingToolRegistration, ForegroundCommandOperations } from "@vetta/runtime-tools/coding";
+import type { CodingToolRegistration, ForegroundCommandOperations } from "@vetta/runtime-node/coding";
 import { buildLinuxBubblewrapToolRegistrations, type LinuxBubblewrapToolOptions } from "./linux-bwrap-tools.js";
 import { buildMacosSeatbeltToolRegistrations, type MacosSeatbeltToolOptions } from "./macos-seatbelt-tools.js";
 import type { SandboxRuntimeToolOptions } from "./sandbox-tool-utils.js";

@@ -76,12 +76,22 @@ build_layer3() {
   build_pkg packages/runtime-storage
 }
 
-# ── Layer 4: Coding Profile + Composition Root ──
+# ── Layer 4: shared Node platform adapters ──
 build_layer4() {
+	build_pkg packages/runtime-node
+}
+
+# ── Layer 5: Coding Profile + Composition Root ──
+build_layer5() {
   build_pkg packages/coding-agent
 }
 
-# ── Layer 5: apps ──
+# ── Layer 6: platform runtimes ──
+build_layer6() {
+  build_pkg packages/runtime-desktop
+}
+
+# ── Layer 7: apps ──
 build_apps() {
   build_pkg packages/cli-app
   build_pkg packages/desktop-app
@@ -111,6 +121,8 @@ build_libs() {
   build_layer2
 	build_layer3
 	build_layer4
+	build_layer5
+	build_layer6
 }
 
 build_all() {

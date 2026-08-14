@@ -3,8 +3,9 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { delimiter, isAbsolute, join, resolve as resolvePath } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
-import { getSandboxShellGrant, type SandboxShellGrant } from "@vetta/runtime-core/sandbox";
-import type { CodingToolRegistration, ForegroundCommandOperations } from "@vetta/runtime-tools/coding";
+import type { SandboxShellGrant } from "@vetta/runtime-core/sandbox";
+import type { CodingToolRegistration, ForegroundCommandOperations } from "@vetta/runtime-node/coding";
+import { getSandboxShellGrant } from "@vetta/runtime-node/sandbox";
 import { getShellConfig } from "../../../host/command-execution/shell-runtime.js";
 import { createSandboxToolRegistrations, type SandboxRuntimeToolOptions } from "./sandbox-tool-utils.js";
 

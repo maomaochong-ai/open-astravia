@@ -3,18 +3,17 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { RuntimeSessionHostInteractionContext } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import {
-	clearSessionGrants,
-	getSandboxShellGrant,
-	type SandboxPermissionDecision,
-	type SandboxPermissionPrompt,
-	type SandboxShellGrant,
+import type {
+	SandboxPermissionDecision,
+	SandboxPermissionPrompt,
+	SandboxShellGrant,
 } from "@vetta/runtime-core/sandbox";
 import {
 	CODING_TOOL_SCOPES,
 	type CodingToolRegistration,
 	type ForegroundCommandOperations,
-} from "@vetta/runtime-tools/coding";
+} from "@vetta/runtime-node/coding";
+import { clearSessionGrants, getSandboxShellGrant } from "@vetta/runtime-node/sandbox";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCodingAgentSandboxToolRegistrations } from "../../src/host/session-execution/sandbox-tool-registrations.js";
 

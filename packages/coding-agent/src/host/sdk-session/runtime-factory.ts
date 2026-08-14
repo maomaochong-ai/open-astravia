@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { InitializationRollbackScope, RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
-import { FileConversationRuntimeSessionCatalog, resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
+import { FileConversationRuntimeSessionCatalog, resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
 import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,

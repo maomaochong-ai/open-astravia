@@ -4,7 +4,7 @@ import {
 	scoreDeferredTools,
 	type ToolSearchResult,
 	type ToolSearchToolDetails,
-} from "@vetta/runtime-tools/coding";
+} from "@vetta/runtime-node/coding";
 import { describe, expect, test } from "vitest";
 import { buildSystemPrompt } from "../src/model-context/index.js";
 

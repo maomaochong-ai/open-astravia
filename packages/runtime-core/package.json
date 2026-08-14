@@ -26,10 +26,9 @@
 	"scripts": {
 		"clean": "rm -rf dist",
 		"build": "tsgo -p tsconfig.build.json",
-		"test": "bunx vitest --run"
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run --config vitest.config.ts"
 	},
 	"dependencies": {
-		"@vetta/action-rpc": "workspace:*",
 		"@vetta/agent-core": "workspace:*",
 		"@vetta/ai": "workspace:*"
 	},

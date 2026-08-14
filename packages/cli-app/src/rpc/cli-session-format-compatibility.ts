@@ -1,7 +1,7 @@
 import { createCodingAgentHistoricalSessionCatalog } from "@vetta/coding-agent/historical-sessions";
 import { createCodingAgentSessionArtifactCleaner } from "@vetta/coding-agent/host-services";
 import { CompositeRuntimeSessionCatalog, type RuntimeSessionCatalog } from "@vetta/runtime-core";
-import { FileConversationRuntimeSessionCatalog } from "@vetta/runtime-storage/conversation";
+import { FileConversationRuntimeSessionCatalog } from "@vetta/runtime-node/conversation";
 
 export interface CliRuntimeSessionCatalogOptions {
 	readonly cwd: string;

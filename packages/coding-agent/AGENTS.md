@@ -18,16 +18,17 @@
 
 - 模型 Provider 协议与流式实现，属于 `@vetta/ai`。
 - Agent Kernel、Turn Pipeline 和通用 Port，属于 `@vetta/runtime-core` / `@vetta/agent-core`。
-- 通用 Coding Tool 实现，属于 `@vetta/runtime-tools`。
-- Conversation Repository，属于 `@vetta/runtime-storage`。
-- MCP 协议、传输和通用生命周期，属于 `@vetta/runtime-mcp`。
+- Coding Tool 协议与纯逻辑属于 `@vetta/runtime-tools`；Node Tool 实现属于 `@vetta/runtime-node`。
+- Conversation Repository 端口属于 `@vetta/runtime-storage`；Node 文件/内存实现属于 `@vetta/runtime-node`。
+- MCP 协议与通用生命周期属于 `@vetta/runtime-mcp`；Node transport、文件和 OAuth 实现属于 `@vetta/runtime-node`。
 - 通用知识库、Subagent 和观测实现，属于对应 `@vetta/runtime-*` 包。
 - CLI、Desktop 或 IM 自身的进程入口、UI 和传输协议。
 
 ## 依赖方向
 
 - Apps 只能依赖本包在 `package.json#exports` 中声明的公开入口，不得深度导入 `src/`。
-- 本包可以依赖 `@vetta/runtime-*`、`@vetta/ai` 和 `@vetta/agent-core`；这些下层包不得反向依赖本包。
+- 本包可以依赖 `@vetta/runtime-*`、`@vetta/ai` 和 `@vetta/agent-core`；Kernel、协议包和 `runtime-node` 不得反向依赖本包，平台 Composition Root（例如 `runtime-desktop`）可以组合本包。
+- 当前本包是 Node 产品组合，可以选择 `@vetta/runtime-node` 默认实现；非 Node 产品必须在独立 Composition Root 注入对应平台实现，不得让协议包兼容 Node I/O。
 - `runtime-contracts/`、`composition/contracts/` 和其他合同文件不得依赖 Composition、Host、Adapter 或 Public API 实现。
 - 产品能力域不得依赖 `composition/` 实现、`adapters/` 或 Public API facade。
 - Adapter 可以依赖稳定合同，但不得反向控制 Composition，也不得复制 Runtime 域实现。

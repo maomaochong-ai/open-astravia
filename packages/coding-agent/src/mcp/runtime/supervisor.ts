@@ -1,15 +1,13 @@
 import { join } from "node:path";
+import { type McpConfigSource, McpServerSupervisor, type RuntimeMcpClientFactory } from "@vetta/runtime-mcp";
 import {
 	buildBuiltinMcpServers,
 	createMcpClient,
 	FileMcpConfigSource,
 	FileMcpOAuthStateStore,
 	loadVettaCredentials,
-	type McpConfigSource,
 	McpOAuthProvider,
-	McpServerSupervisor,
-	type RuntimeMcpClientFactory,
-} from "@vetta/runtime-mcp";
+} from "@vetta/runtime-node/mcp";
 import { CONFIG_DIR_NAME, getAgentDir, VERSION } from "../../config.js";
 
 const MCP_PROTOCOL_VERSION = "2024-11-05";

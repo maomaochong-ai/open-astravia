@@ -1,4 +1,4 @@
-import type { TruncationResult } from "@vetta/runtime-tools/coding";
+import type { TruncationResult } from "@vetta/runtime-node/coding";
 
 export interface ExtensionEventBus {
 	emit(channel: string, data: unknown): void;

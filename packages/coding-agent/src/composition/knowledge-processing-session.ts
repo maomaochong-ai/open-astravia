@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
 import type { SessionEvent } from "@vetta/runtime-core";
 import { wikiDir } from "@vetta/runtime-knowledge";
-import type { KbWritePageOperations } from "@vetta/runtime-tools/coding";
+import type { KbWritePageOperations } from "@vetta/runtime-node/coding";
 import type { CodingAgentRuntimeModelSource } from "../runtime-contracts/index.js";
 import { resolveCodingAgentKnowledgeRoot } from "./coding-agent-knowledge-runtime.js";
 import type {

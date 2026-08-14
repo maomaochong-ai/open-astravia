@@ -1,5 +1,5 @@
 import type { AgentFeatureDefinition, ModelCallContributionProvider } from "@vetta/runtime-core/kernel";
-import { type AskUserQuestionCapability, createAskUserQuestionToolRegistration } from "@vetta/runtime-tools/coding";
+import { type AskUserQuestionCapability, createAskUserQuestionToolRegistration } from "@vetta/runtime-node/coding";
 import type { ConversationScenario } from "../../profiles/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 

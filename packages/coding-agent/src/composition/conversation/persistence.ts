@@ -1,4 +1,4 @@
-import { FileConversationRepository, InMemoryConversationRepository } from "@vetta/runtime-storage/conversation";
+import { FileConversationRepository, InMemoryConversationRepository } from "@vetta/runtime-node/conversation";
 import type {
 	CodingAgentConversationPersistence,
 	CodingAgentConversationPersistenceFactory,

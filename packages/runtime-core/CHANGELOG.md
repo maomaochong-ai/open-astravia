@@ -4,6 +4,10 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- `RuntimeHost` 的路径规范化、工作目录创建、队列 sidecar 和沙箱授权缓存改为显式 Host Port；核心不再直接依赖 Node 文件系统、路径、OS、AsyncLocalStorage 或 `process`。
+
 ### Breaking Changes
 
 ### Fixed

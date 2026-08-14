@@ -6,6 +6,7 @@ All notable changes to `@vetta/runtime-storage` are documented in this file.
 
 ### Breaking Changes
 
+- **协议与 Node 实现分离**：`@vetta/runtime-storage` 只保留 Conversation 持久化端口、错误模型和 Schema；`FileConversationRepository`、`InMemoryConversationRepository`、文件锁、会话目录和 Legacy 文件迁移等具体实现迁至 `@vetta/runtime-node/conversation`。
 - **退役 Coding Agent 存储兼容根**：包根改为暴露原生 Conversation API，不再转发 `AuthStorage`、`SessionManager`、`SettingsManager`；认证与设置继续由产品宿主拥有。
 
 ### Added

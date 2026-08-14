@@ -1,6 +1,7 @@
 {
 	"name": "@vetta/runtime-storage",
 	"version": "0.0.1",
+	"description": "Platform-neutral conversation storage contracts and schemas for Vetta runtimes",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -18,7 +19,7 @@
 	"scripts": {
 		"clean": "rm -rf dist",
 		"build": "tsgo -p tsconfig.build.json",
-		"test": "bunx vitest --run"
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run --config vitest.config.ts"
 	},
 	"dependencies": {
 		"@sinclair/typebox": "^0.34.41",

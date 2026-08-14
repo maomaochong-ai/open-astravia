@@ -29,7 +29,7 @@ import {
 	FileConversationOwnershipManager,
 	type FileConversationOwnershipManagerOptions,
 	resolveSessionIdFromPath,
-} from "@vetta/runtime-storage/conversation";
+} from "@vetta/runtime-node/conversation";
 
 export const CLI_RUNTIME_HOST_STARTUP_FAILURE = "CLI Runtime startup and cleanup failed";
 

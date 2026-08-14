@@ -4,13 +4,13 @@ import { join } from "node:path";
 import type { Api, Message, Model } from "@vetta/ai";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { type HistoryEntry, RuntimeHost, type SessionEvent } from "@vetta/runtime-core";
+import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	startOpenAiResponsesTestServer,
 	textResponseEvents,
 	toolCallResponseEvents,
 } from "../../../../cli-app/test/support/openai-responses-test-server.js";
-import { DesktopRuntimeBackendPool } from "./backend-pool.js";
 
 interface RuntimeFixture {
 	readonly runtime: RuntimeHost;

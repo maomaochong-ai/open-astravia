@@ -18,7 +18,7 @@ import {
 	PROGRESS_TOOL_SCOPES,
 	RENDER_PDF_PAGE_TOOL_CATEGORY,
 	RENDER_PDF_PAGE_TOOL_SCOPES,
-} from "@vetta/runtime-tools/coding";
+} from "@vetta/runtime-node/coding";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCodingAgentProductToolRegistrations } from "../../src/composition/tool-surface/product-tools.js";
 import type { Skill } from "../../src/resources/skills/index.js";

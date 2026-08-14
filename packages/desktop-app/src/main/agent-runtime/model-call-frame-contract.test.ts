@@ -10,6 +10,7 @@ import {
 } from "@vetta/coding-agent/host-services";
 import { ALL_SCENARIOS } from "@vetta/coding-agent/profile";
 import { type AgentPluginRuntimeConfig, type ConversationScenario, RuntimeHost } from "@vetta/runtime-core";
+import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
 	type OpenAiResponsesTestServer,
@@ -18,7 +19,6 @@ import {
 	textResponseEvents,
 	toolCallResponseEvents,
 } from "../../../../cli-app/test/support/openai-responses-test-server.js";
-import { DesktopRuntimeBackendPool } from "./backend-pool.js";
 
 type RuntimeBackend = "runtime";
 

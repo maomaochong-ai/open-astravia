@@ -1,6 +1,7 @@
 {
 	"name": "@vetta/runtime-mcp",
 	"version": "0.0.1",
+	"description": "Platform-neutral MCP protocols and runtime state coordination for Vetta agents",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -32,14 +33,6 @@
 		"./tools": {
 			"types": "./dist/tools/index.d.ts",
 			"import": "./dist/tools/index.js"
-		},
-		"./transports/http": {
-			"types": "./dist/transports/http/index.d.ts",
-			"import": "./dist/transports/http/index.js"
-		},
-		"./transports/stdio": {
-			"types": "./dist/transports/stdio/index.d.ts",
-			"import": "./dist/transports/stdio/index.js"
 		}
 	},
 	"files": ["dist"],

@@ -3,10 +3,6 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-	createCodingAgentHistoricalSessionCatalog,
-	createCodingAgentHistoricalSessionFileHistoryReader,
-} from "@vetta/coding-agent/historical-sessions";
-import {
 	CatalogRoutedRuntimeSessionAccessResolver,
 	CompositeRuntimeSessionCatalog,
 	CompositeRuntimeSessionFileHistoryReader,
@@ -15,6 +11,10 @@ import {
 	type RuntimeSessionFileHistoryReader,
 } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
+import {
+	createCodingAgentHistoricalSessionCatalog,
+	createCodingAgentHistoricalSessionFileHistoryReader,
+} from "../../src/public-api/historical-sessions.js";
 import {
 	type CodingAgentSharedModelSource,
 	createCodingAgentSharedModelController,

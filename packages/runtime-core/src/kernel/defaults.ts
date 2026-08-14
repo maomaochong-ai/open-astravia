@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createRuntimeId } from "../id-generator.js";
 import type {
 	Clock,
 	ContextStrategy,
@@ -21,7 +21,7 @@ export class SystemClock implements Clock {
 
 export class RandomIdGenerator implements IdGenerator {
 	next(scope: "snapshot" | "turn"): string {
-		return `${scope}-${randomUUID()}`;
+		return `${scope}-${createRuntimeId()}`;
 	}
 }
 

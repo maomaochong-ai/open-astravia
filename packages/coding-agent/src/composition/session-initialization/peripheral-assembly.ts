@@ -3,7 +3,7 @@ import type { Message } from "@vetta/ai";
 import type { ConversationScenario, InitializationRollbackTask, RuntimeResourceContext } from "@vetta/runtime-core";
 import type { AgentFeatureDefinition, AgentProfile, ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools/coding";
+import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
 import { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import {

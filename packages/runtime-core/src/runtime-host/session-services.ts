@@ -1,5 +1,25 @@
-import { resolve } from "node:path";
-import type { HistoryEntry, ProjectInfo, SessionHistoryInfo } from "../contracts.js";
+import type { HistoryEntry, ProjectInfo, RuntimeSandboxGrantInfo, SessionHistoryInfo } from "../contracts.js";
+
+/** Host path behavior used by RuntimeHost without assuming a filesystem implementation. */
+export interface RuntimeHostPathServices {
+	normalize(path: string): string;
+	ensureDirectory(path: string): Promise<void>;
+}
+
+/** Optional queue snapshot persistence. The platform owns the storage format and location. */
+export interface RuntimeQueueSidecarStore {
+	read(sessionPath: string): Promise<unknown | undefined>;
+	write(sessionPath: string, snapshot: unknown): Promise<void>;
+	remove(sessionPath: string): Promise<void>;
+}
+
+/** Session-scoped sandbox grant storage shared by RuntimeHost and platform tools. */
+export interface RuntimeSandboxGrantStore {
+	list(sessionId: string): readonly RuntimeSandboxGrantInfo[];
+	revoke(sessionId: string, grantId: string): boolean;
+	revokeAll(sessionId: string): number;
+	clear(sessionId: string): void;
+}
 
 /** 进程级共享模型资源；具体 Registry 只存在于 Composition Adapter。 */
 export interface RuntimeSharedModelController {
@@ -57,7 +77,10 @@ export class CatalogRoutedRuntimeSessionAccessResolver implements RuntimeSession
 
 /** 合并多个存储格式的离线目录，并按文件归属路由写操作。 */
 export class CompositeRuntimeSessionCatalog implements RuntimeSessionCatalog {
-	constructor(private readonly catalogs: readonly RuntimeSessionCatalog[]) {
+	constructor(
+		private readonly catalogs: readonly RuntimeSessionCatalog[],
+		private readonly normalizePath: (path: string) => string = (path) => path,
+	) {
 		if (catalogs.length === 0) throw new Error("CompositeRuntimeSessionCatalog requires at least one catalog");
 	}
 
@@ -86,7 +109,7 @@ export class CompositeRuntimeSessionCatalog implements RuntimeSessionCatalog {
 		const sessions = new Map<string, SessionHistoryInfo>();
 		for (const list of sessionLists) {
 			for (const session of list) {
-				const key = resolve(session.path);
+				const key = this.normalizePath(session.path);
 				const existing = sessions.get(key);
 				if (!existing || session.modifiedAt > existing.modifiedAt) sessions.set(key, session);
 			}

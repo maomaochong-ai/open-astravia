@@ -3,10 +3,11 @@ import * as coding from "../src/coding/index.js";
 import * as root from "../src/index.js";
 
 describe("runtime-tools root entry", () => {
-	it("publishes the native coding tool surface", () => {
+	it("publishes only the platform-neutral coding tool protocol", () => {
 		expect(root.createCodingToolsFeature).toBe(coding.createCodingToolsFeature);
-		expect(root.createReadTool).toBe(coding.createReadTool);
 		expect(root.InMemoryCodingToolRegistry).toBe(coding.InMemoryCodingToolRegistry);
+		expect("createReadTool" in root).toBe(false);
+		expect("createShellTool" in root).toBe(false);
 	});
 
 	it("does not publish retired coding-agent singleton collections", () => {

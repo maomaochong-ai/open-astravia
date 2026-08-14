@@ -9,6 +9,10 @@ export default defineConfig({
 	root: __dirname,
 	resolve: {
 		alias: [
+			{
+				find: "@vetta/runtime-node/conversation/legacy",
+				replacement: resolve(__dirname, "../runtime-node/src/conversation/legacy.ts"),
+			},
 			{ find: "@", replacement: resolve(__dirname, "./src") },
 			{ find: "@shared", replacement: resolve(__dirname, "./src/renderer/shared") },
 			{ find: "@domains", replacement: resolve(__dirname, "./src/renderer/domains") },
@@ -86,6 +90,14 @@ export default defineConfig({
 				replacement: resolve(__dirname, "../runtime-core/src/sandbox/index.ts"),
 			},
 			{ find: "@vetta/runtime-core", replacement: resolve(__dirname, "../runtime-core/src/index.ts") },
+			{ find: "@vetta/runtime-desktop", replacement: resolve(__dirname, "../runtime-desktop/src/index.ts") },
+			{ find: "@vetta/runtime-mcp/auth", replacement: resolve(__dirname, "../runtime-mcp/src/auth/index.ts") },
+			{ find: "@vetta/runtime-mcp/client", replacement: resolve(__dirname, "../runtime-mcp/src/client/index.ts") },
+			{ find: "@vetta/runtime-mcp/config", replacement: resolve(__dirname, "../runtime-mcp/src/config/index.ts") },
+			{
+				find: "@vetta/runtime-mcp/protocol",
+				replacement: resolve(__dirname, "../runtime-mcp/src/protocol/index.ts"),
+			},
 			{ find: "@vetta/runtime-mcp", replacement: resolve(__dirname, "../runtime-mcp/src/index.ts") },
 			{
 				find: "@vetta/runtime-knowledge",
@@ -96,12 +108,36 @@ export default defineConfig({
 				replacement: resolve(__dirname, "../runtime-storage/src/conversation/index.ts"),
 			},
 			{
+				find: "@vetta/runtime-node/conversation",
+				replacement: resolve(__dirname, "../runtime-node/src/conversation/index.ts"),
+			},
+			{
+				find: "@vetta/runtime-node/host",
+				replacement: resolve(__dirname, "../runtime-node/src/host/index.ts"),
+			},
+			{
+				find: "@vetta/runtime-node/sandbox",
+				replacement: resolve(__dirname, "../runtime-node/src/sandbox/index.ts"),
+			},
+			{
+				find: "@vetta/runtime-node/coding",
+				replacement: resolve(__dirname, "../runtime-node/src/coding/index.ts"),
+			},
+			{
+				find: "@vetta/runtime-node/mcp",
+				replacement: resolve(__dirname, "../runtime-node/src/mcp/index.ts"),
+			},
+			{
 				find: "@vetta/runtime-subagents",
 				replacement: resolve(__dirname, "../runtime-subagents/src/index.ts"),
 			},
 			{
 				find: "@vetta/runtime-tools/coding",
 				replacement: resolve(__dirname, "../runtime-tools/src/coding/index.ts"),
+			},
+			{
+				find: "@vetta/runtime-tools",
+				replacement: resolve(__dirname, "../runtime-tools/src/index.ts"),
 			},
 		],
 	},

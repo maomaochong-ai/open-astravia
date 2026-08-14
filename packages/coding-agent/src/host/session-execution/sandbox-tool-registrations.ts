@@ -1,5 +1,5 @@
 import type { RuntimeSessionHostInteractionContext } from "@vetta/runtime-core";
-import type { CodingToolRegistration, ForegroundCommandOperations } from "@vetta/runtime-tools/coding";
+import type { CodingToolRegistration, ForegroundCommandOperations } from "@vetta/runtime-tools";
 import { buildSandboxToolRegistrations } from "../../adapters/runtime-core/execution-mode/sandbox-tools.js";
 import {
 	createCodingAgentEditPathPolicy,

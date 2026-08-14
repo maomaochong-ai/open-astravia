@@ -11,7 +11,7 @@ import {
 import { migrateCodingAgentHistoricalSession } from "@vetta/coding-agent/historical-sessions";
 import { runRpcModeWithCapabilities } from "@vetta/coding-agent/rpc";
 import { InitializationRollbackScope } from "@vetta/runtime-core";
-import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
+import { resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
 import { CliPrintSessionAdapter } from "../../print-session-adapter.js";
 import { resolveImSessionPath } from "../im-session-selection.js";
 import {

@@ -23,7 +23,7 @@ IM 用户大量时间在飞书/微信聊天，但 Claw 的会话之间过去**�
 | 层 | 形态 | 何时进上下文 | 代码 |
 |---|---|---|---|
 | **L1 常驻记忆** `MEMORY.md` | 单文件、策展式 Markdown 条目 | 每次 Session Runtime 创建时作为**冻结快照**注入 system prompt | `src/memory/memory-store.ts` |
-| **L2 会话本体** conversation jsonl | 当前对话的完整轨迹，rollover 时续接到新文件 | 全程在上下文（受 rollover 控制大小） | `runtime-storage/src/conversation/file-conversation-repository.ts` |
+| **L2 会话本体** conversation jsonl | 当前对话的完整轨迹，rollover 时续接到新文件 | 全程在上下文（受 rollover 控制大小） | `runtime-node/src/conversation/file-conversation-repository.ts` |
 | **L3 日期工作史** `JOURNAL.md` + 日期目录 | 按需——agent 自助翻阅 | 不常驻，agent 用 Read/ls 拉取 | `src/memory/file-memory-journal.ts` |
 
 > L1 解决「跨会话记得」；L2 + rollover 解决「聊爆频繁压缩 + 连续感」；L3 解决「昨天干了什么 / 产物在哪」。
@@ -82,7 +82,7 @@ Turn 完成后，Memory Runtime 通过独立 `TurnObserver` 取得该 Turn 最�
 2. **flush（L1 抢救）**：`MemoryFlushService` 用 `preparation.messagesToSummarize`（即将被丢弃的上下文），经 `AiMemoryFactExtractor` 做一次 `completeSimple` LLM 调用，抽取「持久事实」逐条 `add` 进 MEMORY.md（带去重 + 字符预算，best-effort，失败不阻塞）。**只写磁盘，不动快照**（`src/memory/{memory-flush-service,ai-memory-fact-extractor}.ts`）。
 3. **生成摘要**：复用现有 `compact()` 得到 `summary` + `firstKeptEntryId` + 保留尾巴（`keepRecentTokens` 默认 ~20k）。
 4. **appendRollover(cwd, summary)**：把摘要追加进今日 `JOURNAL.md`。
-5. **Conversation continuation**（`runtime-core/src/kernel/turn-pipeline.ts` + `runtime-storage/src/conversation/file-conversation-repository.ts`）：
+5. **Conversation continuation**（`runtime-core/src/kernel/turn-pipeline.ts` + `runtime-node/src/conversation/file-conversation-repository.ts`）：
    - 以 compaction record 和保留尾巴创建一个新的 conversation 文件。
    - 新文件的 `parentSessionPath` 指回旧文件；旧文件原样归档，不再追加。
    - Runtime Core 在新 conversation 上继续同一 Turn，模型上下文仍为「摘要 + 保留尾巴」。
@@ -145,7 +145,7 @@ memory(action, content?, match?)
 | `memory` 工具 | `runtime-tools/src/coding/tools/memory/` |
 | 快照、flush+journal 接线与 70% 策略 | `coding-agent/src/memory/memory-rollover-runtime.ts` |
 | system prompt 的 `memory` 段 | `coding-agent/src/model-context/memory-prompt.ts` |
-| rollover continuation | `runtime-core/src/kernel/turn-pipeline.ts`、`runtime-storage/src/conversation/file-conversation-repository.ts` |
+| rollover continuation | `runtime-core/src/kernel/turn-pipeline.ts`、`runtime-node/src/conversation/file-conversation-repository.ts` |
 | `--memory-mode` / `--memory-file` 解析 | `coding-agent/src/cli/args.ts`、贯通 `sdk.ts` / `main.ts` |
 | `/new` 显式凝结：`flush_memory` RPC + `flushMemory()` | `coding-agent/src/modes/rpc/rpc-command-dispatcher.ts`、`adapters/runtime-core/greenfield-memory-controller.ts`；`im-gateway/internal/command/router.go: flushSessionMemory` |
 | `session_path_changed` 事件投影 | `cli-app/src/rpc/greenfield-im-rpc-events.ts` |

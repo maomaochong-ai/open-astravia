@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { Message } from "@vetta/ai";
 import type { HistoryEntry, PromptRequest, SessionEvent } from "../contracts.js";
 import {
@@ -9,6 +8,7 @@ import {
 	conversationDocumentEntry,
 	extractConversationEntryText,
 } from "../conversation/index.js";
+import { createRuntimeId } from "../id-generator.js";
 import type { AgentSession } from "../kernel/agent-session.js";
 import type {
 	AgentSessionState,
@@ -331,7 +331,7 @@ export class RuntimeSession {
 		fromHook?: boolean,
 	): Promise<{ entryId: string }> {
 		return this.withHistoryMutation("Cannot summarize branch while the session is streaming", async () => {
-			const entryId = `branch-summary-${randomUUID()}`;
+			const entryId = `branch-summary-${createRuntimeId()}`;
 			await this.executeDocumentCommand({
 				type: "branch_summary.append",
 				entryId,
@@ -386,7 +386,7 @@ export class RuntimeSession {
 		this.assertOpen();
 		await this.executeDocumentCommand({
 			type: "custom.append",
-			entryId: `entry-${randomUUID()}`,
+			entryId: `entry-${createRuntimeId()}`,
 			customType,
 			data,
 			timestamp: new Date().toISOString(),
@@ -397,7 +397,7 @@ export class RuntimeSession {
 		this.assertOpen();
 		await this.executeDocumentCommand({
 			type: "entry.label.set",
-			entryId: `label-${randomUUID()}`,
+			entryId: `label-${createRuntimeId()}`,
 			targetId: entryId,
 			label,
 			timestamp: new Date().toISOString(),

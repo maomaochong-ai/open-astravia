@@ -5,7 +5,7 @@ import type {
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
-import { createInvokeSkillToolRegistration } from "@vetta/runtime-tools/coding";
+import { createInvokeSkillToolRegistration } from "@vetta/runtime-node/coding";
 import type { CodingAgentPromptResourceSource } from "../../runtime-contracts/prompt-runtime.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import { readSkillContent, type Skill } from "./index.js";

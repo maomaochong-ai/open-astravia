@@ -1,6 +1,6 @@
 import type { RuntimeSessionObservationEvent } from "@vetta/runtime-core";
 import type { AgentSession, ModelCallContributionContext, SessionContextRecord } from "@vetta/runtime-core/kernel";
-import type { CodingToolCatalogEntry } from "@vetta/runtime-tools/coding";
+import type { CodingToolCatalogEntry } from "@vetta/runtime-node/coding";
 import { describe, expect, it } from "vitest";
 import { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
 

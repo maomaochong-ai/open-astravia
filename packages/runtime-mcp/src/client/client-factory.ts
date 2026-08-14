@@ -1,7 +1,14 @@
-import { isHttpServerConfig, type McpServerConfig } from "../protocol/index.js";
-import { HttpMcpClient, type McpHttpAuthProviderFactory } from "../transports/http/index.js";
-import { StdioMcpClient } from "../transports/stdio/index.js";
+import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
+import type { McpHttpServerConfig, McpServerConfig } from "../protocol/index.js";
 import type { McpClientHandle } from "./client-handle.js";
+
+export interface McpHttpAuthProviderContext {
+	readonly serverName: string;
+	readonly serverUrl: string;
+	readonly config: McpHttpServerConfig;
+}
+
+export type McpHttpAuthProviderFactory = (context: McpHttpAuthProviderContext) => OAuthClientProvider | undefined;
 
 export interface RuntimeMcpClientFactoryOptions {
 	readonly debug?: boolean;
@@ -14,17 +21,3 @@ export type RuntimeMcpClientFactory = (
 	config: McpServerConfig,
 	options?: RuntimeMcpClientFactoryOptions,
 ) => McpClientHandle;
-
-/** Select the concrete client without introducing a shared low-level transport abstraction. */
-export const createMcpClient: RuntimeMcpClientFactory = (name, config, options) => {
-	if (isHttpServerConfig(config)) {
-		return new HttpMcpClient({
-			name,
-			config,
-			debug: options?.debug,
-			timeout: options?.timeout,
-			authProviderFactory: options?.httpAuthProviderFactory,
-		});
-	}
-	return new StdioMcpClient({ name, config, debug: options?.debug, timeout: options?.timeout });
-};

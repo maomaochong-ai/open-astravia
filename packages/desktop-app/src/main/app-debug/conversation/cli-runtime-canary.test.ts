@@ -11,6 +11,7 @@ import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
 import { ENV_AGENT_DIR } from "@vetta/coding-agent/config";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { CatalogRoutedRuntimeSessionAccessResolver, RuntimeHost } from "@vetta/runtime-core";
+import { DesktopRuntimeBackendPool, DesktopRuntimeSessionCatalog } from "@vetta/runtime-desktop";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import {
@@ -18,8 +19,6 @@ import {
 	startOpenAiResponsesTestServer,
 	textResponseEvents,
 } from "../../../../../cli-app/test/support/openai-responses-test-server.js";
-import { DesktopRuntimeBackendPool } from "../../agent-runtime/backend-pool.js";
-import { DesktopRuntimeSessionCatalog } from "../../agent-runtime/session-catalog.js";
 import { DesktopConversationService } from "../../conversations/desktop-conversation-service.js";
 import { type DesktopLocalRpcServerHandle, startDesktopLocalRpcServer } from "../../local-rpc/server.js";
 import { AppDebugCatalog } from "../catalog.js";

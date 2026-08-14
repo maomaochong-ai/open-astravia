@@ -6,6 +6,12 @@ The root entry exposes the production `RuntimeHost`, the Kernel-backed Runtime
 Session implementation, and stable host contracts. Kernel primitives remain
 available through the explicit `@vetta/runtime-core/kernel` entry.
 
+`runtime-core` and the `runtime-storage`, `runtime-tools` and `runtime-mcp`
+protocol packages form the portable Runtime boundary. Concrete filesystem,
+process, persistence and transport behavior is supplied by a platform
+implementation such as `runtime-node`; the current `coding-agent` product
+composition is Node-oriented and is not part of this portable boundary.
+
 ## What It Owns
 
 - session lifecycle facade (`createSession`, `prompt`, `continue`, `abort`)
@@ -34,6 +40,7 @@ available through the explicit `@vetta/runtime-core/kernel` entry.
 - backend-provided Session Configuration Controller for input queue modes, plugin runtime configuration and agent mode
 - process-level Session Catalog, direct file history reader and shared model controller ports
 - runtime-owned tool execution and policy contracts
+- host ports for path normalization, directory preparation, queue snapshot persistence and sandbox grant storage
 
 ## What It Does Not Own
 
@@ -41,11 +48,14 @@ available through the explicit `@vetta/runtime-core/kernel` entry.
 - terminal UI
 - Electron IPC wiring
 - business-specific APIs or permissions
+- filesystem, operating-system path policy, AsyncLocalStorage or other Node.js platform implementations
 
 ## Who Depends On It
 
-- [packages/cli-app](../cli-app)
-- [packages/desktop-app](../desktop-app)
+- [packages/runtime-node](../runtime-node)
+- [packages/coding-agent](../coding-agent)
+- [packages/runtime-desktop](../runtime-desktop)
+- [packages/cli-app](../cli-app) and [packages/desktop-app](../desktop-app)
 
 ## Main Exports
 

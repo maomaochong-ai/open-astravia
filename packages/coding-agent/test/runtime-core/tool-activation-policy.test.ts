@@ -1,5 +1,5 @@
 import type { ModelCallContributionContext, SessionContextRecord } from "@vetta/runtime-core/kernel";
-import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
+import type { CodingToolActivation } from "@vetta/runtime-node/coding";
 import { describe, expect, it } from "vitest";
 import {
 	isCodingAgentKnowledgeToolEnabled,

@@ -14,7 +14,7 @@ import {
 	type McpRuntimeToolSource,
 	type McpTool,
 } from "@vetta/runtime-mcp";
-import { FileConversationRepository } from "@vetta/runtime-storage/conversation";
+import { FileConversationRepository } from "@vetta/runtime-node/conversation";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("Runtime composition contract", () => {

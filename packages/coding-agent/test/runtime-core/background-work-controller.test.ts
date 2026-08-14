@@ -1,4 +1,4 @@
-import type { BackgroundCommandService } from "@vetta/runtime-tools/coding";
+import type { BackgroundCommandService } from "@vetta/runtime-node/coding";
 import { describe, expect, it, vi } from "vitest";
 import {
 	CodingAgentBackgroundWorkController,

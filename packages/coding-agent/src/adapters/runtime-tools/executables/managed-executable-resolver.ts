@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { arch, platform } from "node:os";
 import { join } from "node:path";
-import type { CodingToolExecutable, CodingToolExecutableResolver } from "@vetta/runtime-tools/coding";
+import type { CodingToolExecutable, CodingToolExecutableResolver } from "@vetta/runtime-tools";
 import chalk from "chalk";
 import { getBinDir } from "../../../config.js";
 import { defaultCodingToolArchiveOperations, installCodingToolArchive } from "./archive-installer.js";
