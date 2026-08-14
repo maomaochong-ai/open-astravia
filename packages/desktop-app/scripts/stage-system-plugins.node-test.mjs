@@ -80,10 +80,11 @@ test("rejects an unknown system plugin profile", () => {
 	);
 });
 
-test("development and packaging scripts pin their system plugin profiles", async () => {
+test("development and packaging scripts pin their system plugin profiles without a recursive lifecycle hook", async () => {
 	const packageJson = JSON.parse(
 		await readFile(new URL("../package.json", import.meta.url), "utf8"),
 	);
+	const desktopPackPreparation = packageJson.scripts["prepare:desktop-pack"];
 
 	assert.match(
 		packageJson.scripts["build:presets:dev"],
@@ -91,6 +92,8 @@ test("development and packaging scripts pin their system plugin profiles", async
 	);
 	assert.match(packageJson.scripts["build:pack"], /VETTA_SYSTEM_PLUGIN_PROFILE=production/);
 	assert.match(packageJson.scripts["prepare:pack"], /VETTA_SYSTEM_PLUGIN_PROFILE=production/);
-	assert.match(packageJson.scripts["prebuild:pack"], /bun run build:pack/);
-	assert.match(packageJson.scripts["prebuild:pack"], /bun run prepare:pack/);
+	assert.equal(packageJson.scripts["prebuild:pack"], undefined);
+	assert.match(desktopPackPreparation, /bun run build:pack/);
+	assert.match(desktopPackPreparation, /bun run prepare:pack/);
+	assert.match(packageJson.scripts["dist:desktop"], /bun run prepare:desktop-pack/);
 });

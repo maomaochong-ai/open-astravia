@@ -40,7 +40,7 @@
 - `defaultProfile`：手动运行通用构建脚本时的缺省 profile。
 - 每个 profile/租户组合写**完整**插件 id 列表（不是增量）。新增 preset
   后，需要它的组合都要在各自数组里补上对应 id。
-- `build:presets:dev` 强制使用 `development`；`prebuild:pack` 及所有 `pack` / `dist`
+- `build:presets:dev` 强制使用 `development`；`prepare:desktop-pack` 及所有 `pack` / `dist`
   入口强制使用 `production`，避免发布时因本地环境变量带入开发插件。
 
 构建/开发时通过 `VETTA_TENANT` 环境变量选择租户（缺省取 `default`）：

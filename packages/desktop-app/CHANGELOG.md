@@ -105,6 +105,11 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **Desktop 打包无限递归**：生产 profile 脚本曾新增 `build:pack`，同时打包准备入口仍名为
+  `prebuild:pack`；Bun 会把后者当作前者的生命周期钩子自动执行，而该钩子又调用
+  `build:pack`，导致 Windows workspace 前置构建完成后整条打包链不断重启。准备入口现改为
+  不与生命周期冲突的显式 `prepare:desktop-pack`，`pack` / `dist` 行为和生产插件选择保持不变。
+
 - AI Provider 最终失败（包括 HTTP 400/429/5xx）现在写入 Desktop 主日志，记录稳定错误码、状态码、Provider、模型、request id、可重试标记与实际重试次数；日志只消费白名单诊断字段，并对错误消息中的常见凭证格式脱敏、截断。
 
 - **手动导入的场景被当成技能**：导入自定义能力包时只读 `SKILL.md` 的 name / alias / description / version，硬编码按 skill 装进 `~/.vetta/skills/`，`metadata.type: scene` 完全没人看。装错目录不只是分类不对——agent 是按目录判定场景的，装进 skills/ 就拿不到 tasks.json 自动建 todo 并锁定列表这类场景语义。现在导入类型与 agent 侧同一口径（只认 `metadata` 块内的 `type`，顶层同名键不算），scene 装进 `~/.vetta/scene/`，清单、能力台账与监控事件都记为 scene，场景页也随之列出用户自己导入的场景（此前本地清单里的 custom 条目被无条件跳过，只显示市场来源的场景）。已按 skill 装错的包需卸载后重新导入。

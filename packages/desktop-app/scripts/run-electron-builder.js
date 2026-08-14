@@ -100,7 +100,7 @@ function resolveArchitectures(cliArchs) {
 
 function assertBuildStageExists() {
 	if (!existsSync(builderConfigPath)) {
-		throw new Error(`electron-builder config not found: ${builderConfigPath}. Run prebuild:pack first.`);
+		throw new Error(`electron-builder config not found: ${builderConfigPath}. Run prepare:desktop-pack first.`);
 	}
 }
 
