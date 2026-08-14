@@ -163,6 +163,34 @@ export function renderMockupToDataUrl(
 }
 
 /**
+ * 长图：把多页竖着拼成一张。页宽不一致时（末页画框少）居中，空出来的地方
+ * 补背景色，透明导出则继续留空——与单页导出的背景规则保持一致。
+ */
+export function stitchPagesVertically(pages: readonly HTMLCanvasElement[], options: MockupOptions): HTMLCanvasElement {
+	if (pages.length === 1) return pages[0];
+	const width = Math.max(1, ...pages.map((page) => page.width));
+	const height = Math.max(
+		1,
+		pages.reduce((sum, page) => sum + page.height, 0),
+	);
+	const canvas = document.createElement("canvas");
+	canvas.width = width;
+	canvas.height = height;
+	const g = canvas.getContext("2d");
+	if (!g) throw new Error("2D canvas context unavailable");
+	if (!options.transparent) {
+		g.fillStyle = options.background;
+		g.fillRect(0, 0, width, height);
+	}
+	let top = 0;
+	for (const page of pages) {
+		g.drawImage(page, Math.round((width - page.width) / 2), top);
+		top += page.height;
+	}
+	return canvas;
+}
+
+/**
  * JPEG has no alpha, and Chromium encodes transparent pixels as black — flatten
  * onto white first, matching where a transparent export usually ends up.
  */

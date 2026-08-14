@@ -40,6 +40,7 @@ import {
 	setFrameError,
 } from "./design-runtime";
 import { DesignSystemDialog } from "./DesignSystemDialog";
+import { byCanvasOrder } from "./frame-order";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { refreshCover } from "./cover-compose";
 import { useFrameRasters } from "./frame-raster";
@@ -100,6 +101,12 @@ interface DesignCanvasProps {
 	 * （画布顺序里的第一帧）。
 	 */
 	previewTargetRef: RefObject<(() => string | null) | null>;
+	/**
+	 * 出口：顶栏的「导出渲染图」打开工作台。选中集会被预先放进渲染区，没选中就
+	 * 开一个空工作台——截图入口只有画布这一层有（runLive），所以按钮在顶栏、
+	 * 动作留在这里。
+	 */
+	exportRef: RefObject<(() => void) | null>;
 	/**
 	 * 预览窗口开着。背后的画布整体降为位图——反正被盖住了，没必要继续养 N 份
 	 * 活体 React 应用与 HMR 连接。
@@ -168,11 +175,6 @@ function selectedFrameIds(selection: CanvasSelection): string[] {
 
 function intersects(a: Rect, b: Rect): boolean {
 	return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
-}
-
-/** Canvas reading order: left to right, top to bottom for equal x. */
-export function byCanvasOrder(a: VetdFrameEntry, b: VetdFrameEntry): number {
-	return a.x === b.x ? a.y - b.y : a.x - b.x;
 }
 
 /**
@@ -265,6 +267,7 @@ export function DesignCanvas({
 	captureRef,
 	refreshRef,
 	previewTargetRef,
+	exportRef,
 	previewing,
 	resolveNoteElementsRef,
 	notesVisible,
@@ -1234,14 +1237,15 @@ export function DesignCanvas({
 		showNotes();
 	}, [showNotes]);
 
+	/** 打开渲染图工作台。当前选中集先放进渲染区；没选中就是空工作台。 */
 	const openExport = (): void => {
-		if (orderedSelection.length === 0) return;
 		requestMockupExport({
 			session,
-			frameIds: orderedSelection.map((frame) => frame.id),
+			initialFrameIds: orderedSelection.map((frame) => frame.id),
 			capture: (frameId, pixelRatio) => captureFaithfully(frameId, { pixelRatio }),
 		});
 	};
+	exportRef.current = openExport;
 
 	/** 菜单「复制为图片」：按 2 倍截一张，走宿主原生剪贴板。 */
 	const copyFrameImage = (frameId: string): void => {
@@ -1577,7 +1581,6 @@ export function DesignCanvas({
 			<ControlBar
 				tool={tool}
 				zoom={viewport.zoom}
-				exportableCount={orderedSelection.length}
 				designSystemsActive={designDialogOpen}
 				pendingNotes={pendingNoteCount}
 				onToolChange={setTool}
@@ -1585,7 +1588,6 @@ export function DesignCanvas({
 				onZoomReset={() => {
 					view.commitViewport({ ...viewportRef.current, zoom: 1 });
 				}}
-				onExport={openExport}
 				onDesignSystems={() => {
 					setMenuAnchor(null);
 					setDesignDialogOpen((open) => !open);

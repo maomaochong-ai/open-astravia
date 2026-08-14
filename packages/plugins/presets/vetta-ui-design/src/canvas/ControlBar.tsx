@@ -7,8 +7,6 @@ export type CanvasTool = "select" | "hand" | "frame" | "note";
 interface ControlBarProps {
 	tool: CanvasTool;
 	zoom: number;
-	/** Number of frames the export action would act on; 0 hides the button. */
-	exportableCount: number;
 	/** 设计体系 Dialog 开着时高亮按钮。 */
 	designSystemsActive: boolean;
 	/** 待处理备注数，挂在备注工具按钮的右上角；0 不显示。 */
@@ -16,7 +14,6 @@ interface ControlBarProps {
 	onToolChange(tool: CanvasTool): void;
 	onZoomDelta(direction: 1 | -1): void;
 	onZoomReset(): void;
-	onExport(): void;
 	onDesignSystems(): void;
 }
 
@@ -27,9 +24,7 @@ type DockSlot =
 			key: string;
 			label: string;
 			active: boolean;
-			/** 主题色底的动作项（导出），与前面的工具按钮拉开层次。 */
-			accent?: boolean;
-			/** 非等宽项（缩放百分比、导出）：撑开宽度而不是锁死成方块。 */
+			/** 非等宽项（缩放百分比）：撑开宽度而不是锁死成方块。 */
 			wide?: boolean;
 			/** 右上角角标数字（备注待处理数）。absolute 定位，不影响 dock 宽度与中心点缓存。 */
 			badge?: number;
@@ -66,12 +61,6 @@ const icons = {
 			/>
 		</svg>
 	),
-	mockup: (
-		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-			<rect x="4" y="2" width="7" height="20" rx="2" />
-			<rect x="14" y="6" width="7" height="16" rx="2" />
-		</svg>
-	),
 	swatches: (
 		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
 			<path d="M7 3h4v14a2 2 0 11-4 0V3z" strokeLinejoin="round" />
@@ -93,19 +82,18 @@ const icons = {
 };
 
 /**
- * 画布底部居中固定的工具栏（选择 / 托手 / 画框 / 缩放 / 设计体系 / 导出）。
+ * 画布底部居中固定的工具栏（选择 / 托手 / 画框 / 备注 / 设计体系 / 缩放）。
+ * 导出渲染图不在这里：它不依赖选中集，入口在顶栏。
  * 视觉与动效对齐 content-creation 画布的 dock：图标方块 + 光标处放大 + 峰值项浮标签。
  */
 export function ControlBar({
 	tool,
 	zoom,
-	exportableCount,
 	designSystemsActive,
 	pendingNotes,
 	onToolChange,
 	onZoomDelta,
 	onZoomReset,
-	onExport,
 	onDesignSystems,
 }: ControlBarProps) {
 	const { t } = useTranslation();
@@ -187,27 +175,11 @@ export function ControlBar({
 				content: icons.plus,
 			},
 		];
-		if (exportableCount > 0) {
-			items.push({ type: "divider", key: "divider-export" });
-			// 纯图标方块：带文字会把 dock 撑长约 90px。说明文字交给 dock 的峰值浮标签，
-			// 主题色底把它和前面的工具按钮区分开。
-			items.push({
-				type: "item",
-				key: "export",
-				label: t("controlbar.exportMockup", { count: exportableCount }),
-				active: false,
-				accent: true,
-				onClick: onExport,
-				content: icons.mockup,
-			});
-		}
 		return items;
 	}, [
 		designSystemsActive,
-		exportableCount,
 		pendingNotes,
 		onDesignSystems,
-		onExport,
 		onToolChange,
 		onZoomDelta,
 		onZoomReset,
@@ -312,7 +284,7 @@ export function ControlBar({
 								aria-pressed={slot.active}
 								onClick={slot.onClick}
 								className={`relative z-[1] flex shrink-0 origin-bottom items-center justify-center rounded-[22%] border border-transparent outline-none will-change-transform focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 ${
-									slot.active || slot.accent
+									slot.active
 										? "bg-primary/12 text-primary"
 										: "bg-muted/55 text-foreground hover:bg-muted"
 								} ${slot.wide ? "px-2.5" : ""} ${scale > 1.02 ? "z-[2]" : ""}`}
