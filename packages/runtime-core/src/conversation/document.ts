@@ -193,6 +193,44 @@ export function nativeConversationEntryId(sequence: number): string {
 	return `event-${sequence}`;
 }
 
+/**
+ * 一个 Kernel 事件在 Conversation Document 中的节点归属方式。
+ *
+ * - `none`：不产生文档节点。
+ * - `reference`：产生节点，且其 id/parentId reference 随事件落盘。
+ * - `implicit`：产生节点，但 reference 从不落盘；id 由 sequence 推导，
+ *   parentId 由重放时的 activeLeafId 决定。历史格式已经这样写入 `turn.failed`，
+ *   改为落盘会让旧版本读取器把文件判为损坏，因此保持隐式。
+ */
+export type ConversationDocumentEntryPersistence = "none" | "reference" | "implicit";
+
+/**
+ * 事件到文档节点的唯一事实源。投影、持久化与文件校验都必须走这里，
+ * 否则三侧对"什么是文档节点"的判断会再次分叉。
+ */
+export function conversationDocumentEntryPersistence(event: StoredSessionEvent): ConversationDocumentEntryPersistence {
+	if (event.type === "turn.failed") return "implicit";
+	if (
+		event.type === "message.appended" ||
+		event.type === "context.appended" ||
+		event.type === "context.recorded" ||
+		isPersistentCompactionEvent(event)
+	) {
+		return "reference";
+	}
+	return "none";
+}
+
+/** 会在 Document 中产生节点的事件；判定委托给上面的唯一事实源。 */
+export type ConversationDocumentEntryEvent =
+	| Extract<StoredSessionEvent, { readonly type: "message.appended" | "context.appended" | "context.recorded" }>
+	| Extract<StoredSessionEvent, { readonly type: "turn.failed" }>
+	| PersistentCompactionEvent;
+
+export function isConversationDocumentEntryEvent(event: StoredSessionEvent): event is ConversationDocumentEntryEvent {
+	return conversationDocumentEntryPersistence(event) !== "none";
+}
+
 /** Apply one persisted Kernel event to the independent conversation read model. */
 export function applyStoredEventToConversationDocument(
 	document: ConversationDocument,
@@ -206,13 +244,7 @@ export function applyStoredEventToConversationDocument(
 	if (sequence !== document.journalVersion + 1) {
 		throw new Error(`Conversation document journal sequence ${sequence} does not follow ${document.journalVersion}`);
 	}
-	if (
-		event.type !== "message.appended" &&
-		event.type !== "context.appended" &&
-		event.type !== "context.recorded" &&
-		event.type !== "turn.failed" &&
-		!isPersistentCompactionEvent(event)
-	) {
+	if (!isConversationDocumentEntryEvent(event)) {
 		return { ...document, journalVersion: sequence };
 	}
 
@@ -302,12 +334,11 @@ export function applyStoredEventToConversationDocument(
 	};
 }
 
-function isPersistentCompactionEvent(event: StoredSessionEvent): event is Extract<
-	StoredSessionEvent,
-	{ readonly type: "context.compacted" }
-> & {
+type PersistentCompactionEvent = Extract<StoredSessionEvent, { readonly type: "context.compacted" }> & {
 	readonly record: ContextCompactionRecord;
-} {
+};
+
+function isPersistentCompactionEvent(event: StoredSessionEvent): event is PersistentCompactionEvent {
 	return event.type === "context.compacted" && "firstKeptEntryId" in event.record;
 }
 

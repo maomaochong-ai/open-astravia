@@ -5,6 +5,7 @@ import {
 	type ConversationDocument,
 	type ConversationDocumentEntry,
 	type ConversationDocumentEntryReference,
+	conversationDocumentEntryPersistence,
 	createEmptyConversationDocument,
 	createSeededConversationDocument,
 	nativeConversationEntryId,
@@ -147,8 +148,8 @@ export function parseConversationFile(text: string, sessionId: string): ParsedCo
 		expectedEventSequence += 1;
 		validateConversationEvent(sessionId, record.event);
 		if (record.schemaVersion === CONVERSATION_SCHEMA_VERSION) {
-			const hasDocumentEntry = record.documentEntry !== null;
-			if (hasDocumentEntry !== isConversationDocumentEntryEvent(record.event)) {
+			const persistence = conversationDocumentEntryPersistence(record.event);
+			if ((record.documentEntry !== null) !== (persistence === "reference")) {
 				throw corruptConversation(sessionId, `event has inconsistent document entry at line ${index + 2}`);
 			}
 			if (record.documentEntry) {
@@ -160,10 +161,8 @@ export function parseConversationFile(text: string, sessionId: string): ParsedCo
 				}
 				documentEntryIds.add(record.documentEntry.id);
 			}
-			// turn.failed 会被投影成 turn_failed 文档 entry 并推进 activeLeafId，
-			// 但它的 reference 从不落盘；id 由 sequence 推导，必须在此登记，
-			// 否则后续消息的 parentId 会被误判为未知父节点。
-			if (record.event.type === "turn.failed") {
+			// 隐式节点的 id 不落盘，但同样会成为后续事件的父节点，必须一并登记。
+			if (persistence === "implicit") {
 				const implicitId = nativeConversationEntryId(record.sequence);
 				if (documentEntryIds.has(implicitId)) {
 					throw corruptConversation(sessionId, `duplicate document entry at line ${index + 2}`);
@@ -298,21 +297,12 @@ export function createDocumentEntryReference(
 	sequence: number,
 	parentId: string | null,
 ): ConversationDocumentEntryReference | null {
-	if (!isConversationDocumentEntryEvent(event)) return null;
+	if (conversationDocumentEntryPersistence(event) !== "reference") return null;
 	return {
 		id: nativeConversationEntryId(sequence),
 		parentId,
 		timestamp: new Date(event.timestamp).toISOString(),
 	};
-}
-
-function isConversationDocumentEntryEvent(event: StoredSessionEvent): boolean {
-	return (
-		event.type === "message.appended" ||
-		event.type === "context.appended" ||
-		event.type === "context.recorded" ||
-		(event.type === "context.compacted" && "firstKeptEntryId" in event.record)
-	);
 }
 
 function parseRecords(text: string, sessionId: string): unknown[] {

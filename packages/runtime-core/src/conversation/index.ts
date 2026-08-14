@@ -21,6 +21,8 @@ export {
 	type ConversationDocumentCustomMessageEntry,
 	type ConversationDocumentEntry,
 	type ConversationDocumentEntryBase,
+	type ConversationDocumentEntryEvent,
+	type ConversationDocumentEntryPersistence,
 	type ConversationDocumentEntryReference,
 	type ConversationDocumentIdentity,
 	type ConversationDocumentLabelEntry,
@@ -30,8 +32,10 @@ export {
 	type ConversationDocumentSessionInfoEntry,
 	type ConversationDocumentThinkingLevelEntry,
 	type ConversationDocumentToolTimingEntry,
+	conversationDocumentEntryPersistence,
 	createEmptyConversationDocument,
 	createSeededConversationDocument,
+	isConversationDocumentEntryEvent,
 	nativeConversationEntryId,
 } from "./document.js";
 export {
