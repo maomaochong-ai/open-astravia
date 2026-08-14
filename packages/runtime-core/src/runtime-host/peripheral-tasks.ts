@@ -3,6 +3,7 @@ import {
 	completeSimple,
 	getReasoningPreset,
 	type Model,
+	normalizeAssistantMessageError,
 	type TextContent,
 	type Tool,
 	type ToolCall,
@@ -251,10 +252,9 @@ export async function generateAutoTitle(
 		);
 		const durationMs = Date.now() - startedAt;
 		if (response.stopReason === "error") {
+			const failure = normalizeAssistantMessageError(response, model);
 			console.warn(
-				`[autoTitleSession] session=${sessionId} model=${key} durationMs=${durationMs} stopReason=error message=${
-					(response as { errorMessage?: string }).errorMessage ?? "(none)"
-				}`,
+				`[autoTitleSession] session=${sessionId} model=${key} durationMs=${durationMs} code=${failure.code} retryable=${failure.retryable} message=${failure.message}`,
 			);
 			return null;
 		}
@@ -326,10 +326,9 @@ export async function generateNextPromptSuggestions(
 				{ apiKey, maxTokens: 800, reasoning },
 			);
 			if (response.stopReason === "error") {
+				const failure = normalizeAssistantMessageError(response, model);
 				console.warn(
-					`[nextPromptSuggestions] session=${sessionId} model=${key} stopReason=error message=${
-						(response as { errorMessage?: string }).errorMessage ?? "(none)"
-					}`,
+					`[nextPromptSuggestions] session=${sessionId} model=${key} code=${failure.code} retryable=${failure.retryable} message=${failure.message}`,
 				);
 				return null;
 			}

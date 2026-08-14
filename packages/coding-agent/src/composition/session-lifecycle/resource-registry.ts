@@ -52,7 +52,6 @@ export class CodingAgentCompositionResourceRegistry implements CodingAgentCompos
 		memoryControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentMemoryController>(),
 		hookSessionControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionHookController>(),
 		mcpRefreshObservedSessions: new InMemoryCodingAgentSessionMarkerIndex(),
-		mcpPromptRefreshReuseSessions: new InMemoryCodingAgentSessionMarkerIndex(),
 	};
 
 	private readonly contextRuntimes = new Set<CodingAgentSynchronousDisposableResource>();
@@ -140,7 +139,6 @@ export class CodingAgentCompositionResourceRegistry implements CodingAgentCompos
 		this.indexes.resourceContexts.clear();
 		this.indexes.extensionEventBridges.clear();
 		this.indexes.mcpRefreshObservedSessions.clear();
-		this.indexes.mcpPromptRefreshReuseSessions.clear();
 		this.indexes.hookSessionControllers.clear();
 		this.indexes.mcpControllers.clear();
 		this.indexes.configurationStates.clear();

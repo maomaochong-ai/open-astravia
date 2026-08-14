@@ -1,5 +1,6 @@
 import { getEnvApiKey } from "../env-api-keys.js";
 import { supportsXhigh } from "../models.js";
+import { requireProviderCredential } from "../provider-kit/index.js";
 import type { Context, Model, SimpleStreamOptions, StreamFunction } from "../types.js";
 import { azureOpenAIResponsesAdapter } from "./azure-openai-responses/adapter.js";
 import type { AzureOpenAIResponsesOptions } from "./azure-openai-responses/options.js";
@@ -20,8 +21,7 @@ export const streamSimpleAzureOpenAIResponses: StreamFunction<"azure-openai-resp
 	context: Context,
 	options?: SimpleStreamOptions,
 ) => {
-	const apiKey = options?.apiKey || getEnvApiKey(model.provider);
-	if (!apiKey) throw new Error(`No API key for provider: ${model.provider}`);
+	const apiKey = requireProviderCredential(model, options?.apiKey || getEnvApiKey(model.provider));
 	return streamAzureOpenAIResponses(model, context, {
 		...buildBaseOptions(model, options, apiKey),
 		reasoningEffort: supportsXhigh(model) ? options?.reasoning : clampReasoning(options?.reasoning),

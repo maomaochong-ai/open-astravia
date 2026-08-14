@@ -10,7 +10,10 @@ interface MockupOptionsPanelProps {
 	maxRadius: number;
 	/** Swatches pulled from the design's own theme.css tokens. */
 	palette: string[];
+	/** 渲染区里当前选中的画框，没有就不出移除区。 */
+	selected: { frameId: string; title: string } | null;
 	onChange(patch: Partial<MockupOptions>): void;
+	onRemoveSelected(): void;
 	onReset(): void;
 }
 
@@ -45,11 +48,39 @@ function Toggle({
 	);
 }
 
-/** Right-hand settings column of the export dialog. */
-export function MockupOptionsPanel({ options, maxRadius, palette, onChange, onReset }: MockupOptionsPanelProps) {
+/** 悬浮在预览区右上角的设置卡片。 */
+export function MockupOptionsPanel({
+	options,
+	maxRadius,
+	palette,
+	selected,
+	onChange,
+	onRemoveSelected,
+	onReset,
+}: MockupOptionsPanelProps) {
 	const { t } = useTranslation();
 	return (
-		<div className="flex w-64 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border p-4">
+		<div
+			className="pointer-events-auto flex max-h-full w-64 flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-popover/95 p-3 shadow-lg backdrop-blur-md"
+			// 卡片浮在预览区之上：指针事件漏下去会变成平移画布。
+			onPointerDown={(event) => event.stopPropagation()}
+			onWheel={(event) => event.stopPropagation()}
+		>
+			{selected ? (
+				<div className="flex flex-col gap-2 rounded-lg border border-border bg-background/60 p-2.5">
+					<span className="truncate text-xs font-medium text-foreground" title={selected.title}>
+						{selected.title}
+					</span>
+					<button
+						type="button"
+						onClick={onRemoveSelected}
+						className="rounded-lg border border-border px-2 py-1 text-xs text-red-500 hover:bg-accent"
+					>
+						{t("mockup.selected.remove")}
+					</button>
+				</div>
+			) : null}
+
 			<OptionSlider
 				label={t("mockup.option.radius")}
 				display={`${Math.round(options.radius)}`}
@@ -116,7 +147,7 @@ export function MockupOptionsPanel({ options, maxRadius, palette, onChange, onRe
 			<button
 				type="button"
 				onClick={onReset}
-				className="mt-auto rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+				className="rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent"
 			>
 				{t("mockup.option.reset")}
 			</button>

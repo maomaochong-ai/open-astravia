@@ -58,11 +58,11 @@ const mediaDimensionsType = Type.Object(
 	{ width: Type.Integer({ minimum: 1 }), height: Type.Integer({ minimum: 1 }) },
 	{ additionalProperties: false },
 );
-const mediaPluginBlobSourceType = Type.Object(
+const mediaStorageBlobSourceType = Type.Object(
 	{
-		type: Type.Literal("plugin-blob"),
+		type: Type.Literal("storage-blob"),
 		namespace: requiredStringType,
-		blobId: requiredStringType,
+		id: requiredStringType,
 	},
 	{ additionalProperties: false },
 );
@@ -70,7 +70,7 @@ const mediaWorkspaceFileSourceType = Type.Object(
 	{ type: Type.Literal("workspace-file"), path: requiredStringType },
 	{ additionalProperties: false },
 );
-const mediaInputSourceType = Type.Union([mediaPluginBlobSourceType, mediaWorkspaceFileSourceType]);
+const mediaInputSourceType = Type.Union([mediaStorageBlobSourceType, mediaWorkspaceFileSourceType]);
 const mediaInputType = Type.Object(
 	{
 		id: Type.Optional(requiredStringType),
@@ -289,7 +289,7 @@ export const DOMAIN_MEDIA_CAPABILITIES = {
 		id: "cap.domain.vetta.media.job.submit",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
-		version: 1,
+		version: 2,
 		input: mediaSubmitInputSchema,
 		output: mediaJobOutputSchema,
 	}),

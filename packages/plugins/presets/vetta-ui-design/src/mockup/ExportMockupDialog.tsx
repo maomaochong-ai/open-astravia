@@ -1,51 +1,80 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { zipSync } from "fflate";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type MockupExportRequest, onMockupExport, requestMockupExport } from "../canvas/design-runtime";
+import { byCanvasOrder } from "../canvas/frame-order";
+import { loadRasters } from "../canvas/raster-cache";
 import { parseThemeTokens } from "../canvas/theme-tokens";
 import { getPluginCtx, notify } from "../plugin-context";
+import { attachFrame, detachFrame, railFrames, swapFrames } from "./attach";
 import { bytesToBase64, dataUrlToBytes } from "./binary";
 import { VETTA_LOGO_DATA_URL } from "./brand-logo";
+import { FrameRail, type RailFrame } from "./FrameRail";
 import { layoutMockup } from "./layout";
 import { loadImage } from "./load-image";
+import { type MockupDrag, MockupPage } from "./MockupPage";
 import { MockupOptionsPanel } from "./MockupOptionsPanel";
-import { MockupPreview } from "./MockupPreview";
 import { defaultOptions, loadOptions, saveOptions } from "./options";
+import { paginate } from "./paginate";
 import { buildImagePdf, type PdfPageImage } from "./pdf";
-import { canvasToJpegDataUrl, renderMockupToCanvas } from "./render";
-import type { MockupOptions, MockupShot } from "./types";
+import { canvasToJpegDataUrl, renderMockupToCanvas, stitchPagesVertically } from "./render";
+import { FRAMES_PER_PAGE, type MockupOptions, type MockupShot } from "./types";
+import { centerView, fitView, panBy, stackPages, type ViewTransform, zoomAt } from "./workbench-view";
 
-type ExportFormat = "png" | "pdf";
+type ExportFormat = "image" | "pdf";
 
-/** Frames per exported image; the rest spill onto further pages. */
-const PAGE_SIZE = 4;
 /** Capture ratio used for the on-screen preview; export re-captures per shot. */
 const PREVIEW_PIXEL_RATIO = 2;
 const MAX_PIXEL_RATIO = 4;
+/** 页与页之间的留白，按整叠图的宽度取——页本身已经自带内边距。 */
+const PAGE_GAP_RATIO = 0.04;
+/** 滚轮一格的缩放步进。 */
+const WHEEL_ZOOM = 1.0015;
+
+interface CaptureState {
+	image: HTMLImageElement | null;
+	error: string | null;
+}
 
 interface ShotEntry extends MockupShot {
 	error: string | null;
 }
 
 /**
- * The export dialog, mounted in the host's global slot so it can cover the whole
- * window — the design canvas lives in the activity panel, which is far too
- * narrow to judge radius and border on four side-by-side frames.
+ * 渲染图工作台，挂在宿主的全局插槽里，好盖住整个窗口——设计画布在活动面板里，
+ * 那点宽度根本判断不了圆角和边框。
  *
- * Rendered permanently by the plugin host; it draws nothing until the canvas
- * publishes a request through design-runtime.
+ * 由插件宿主常驻渲染；画布通过 design-runtime 发出请求前，它什么都不画。
  */
 export function ExportMockupDialog() {
 	const { t } = useTranslation();
 	const [request, setRequest] = useState<MockupExportRequest | null>(null);
-	const [shots, setShots] = useState<ShotEntry[]>([]);
+	/** 已加入渲染区的画框 id，顺序即导出顺序。 */
+	const [attached, setAttached] = useState<string[]>([]);
+	const [captures, setCaptures] = useState<ReadonlyMap<string, CaptureState>>(new Map());
+	const [thumbnails, setThumbnails] = useState<ReadonlyMap<string, string>>(new Map());
+	const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null);
 	const [options, setOptions] = useState<MockupOptions | null>(null);
-	const [format, setFormat] = useState<ExportFormat>("png");
+	const [format, setFormat] = useState<ExportFormat>("image");
 	const [busy, setBusy] = useState<"save" | "copy" | null>(null);
 	const [palette, setPalette] = useState<string[]>([]);
 	const [logo, setLogo] = useState<HTMLImageElement | null>(null);
+	const [drag, setDrag] = useState<MockupDrag | null>(null);
+	const [view, setView] = useState<ViewTransform>({ scale: 1, x: 0, y: 0 });
+	const [viewport, setViewport] = useState({ width: 0, height: 0 });
 	const requestRef = useRef<MockupExportRequest | null>(null);
 	requestRef.current = request;
+	/**
+	 * 预览台的 DOM 节点用 state 而不是 ref 持有：工作台在收到请求之前整个返回 null，
+	 * 挂 ref 的 effect 只跑一次就再也不会重跑，节点是后来才出现的——测不到尺寸，
+	 * 视口就一直是 0，自动 fit 永远不触发，内容以 100% 钉在原点。回调 ref 会在节点
+	 * 真正挂上时通知一次，这个时机才是对的。
+	 */
+	const [stage, setStage] = useState<HTMLDivElement | null>(null);
+	/** 正在截图的 frame，避免同一帧被重复排队。 */
+	const inFlightRef = useRef(new Set<string>());
+	/** 这次会话是否已经自动 fit 过一次：之后只听用户的缩放。 */
+	const fittedRef = useRef(false);
+	const panRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
 
 	useEffect(() => onMockupExport(setRequest), []);
 
@@ -61,53 +90,69 @@ export function ExportMockupDialog() {
 
 	const close = useCallback(() => requestMockupExport(null), []);
 
-	/** Capture one frame and slot its bitmap in, keeping the layout stable. */
+	/** 截一帧并填进对应的格子，布局不因此重排。 */
 	const captureInto = useCallback(async (frameId: string): Promise<void> => {
 		const active = requestRef.current;
-		if (!active) return;
-		setShots((current) =>
-			current.map((shot) => (shot.frameId === frameId ? { ...shot, error: null, image: null } : shot)),
-		);
+		if (!active || inFlightRef.current.has(frameId)) return;
+		inFlightRef.current.add(frameId);
+		setCaptures((current) => new Map(current).set(frameId, { image: null, error: null }));
 		try {
 			const dataUrl = await active.capture(frameId, PREVIEW_PIXEL_RATIO);
 			const image = await loadImage(dataUrl);
 			if (requestRef.current !== active) return;
-			setShots((current) => current.map((shot) => (shot.frameId === frameId ? { ...shot, image } : shot)));
+			setCaptures((current) => new Map(current).set(frameId, { image, error: null }));
 		} catch (error) {
 			if (requestRef.current !== active) return;
 			const message = error instanceof Error ? error.message : String(error);
-			setShots((current) => current.map((shot) => (shot.frameId === frameId ? { ...shot, error: message } : shot)));
+			setCaptures((current) => new Map(current).set(frameId, { image: null, error: message }));
+		} finally {
+			inFlightRef.current.delete(frameId);
 		}
 	}, []);
 
-	// New request: seed the shot list from the manifest, then capture in parallel.
+	/** 设计稿里的全部画框，按画布顺序——左侧列表和渲染顺序都以它为准。 */
+	const frames = useMemo(
+		() => (request ? [...request.session.manifest.frames].sort(byCanvasOrder) : []),
+		[request],
+	);
+
+	// 新请求：接住初始选中集，读主题色与缩略图，选项按这份设计稿的历史设置还原。
 	useEffect(() => {
+		inFlightRef.current.clear();
+		fittedRef.current = false;
+		setCaptures(new Map());
+		setThumbnails(new Map());
+		setSelectedFrameId(null);
+		setDrag(null);
 		if (!request) {
-			setShots([]);
+			setAttached([]);
 			setOptions(null);
 			return;
 		}
-		const frames = request.frameIds
-			.map((frameId) => request.session.manifest.frames.find((frame) => frame.id === frameId))
-			.filter((frame): frame is NonNullable<typeof frame> => frame !== undefined);
-		setShots(
-			frames.map((frame) => ({
-				frameId: frame.id,
-				title: frame.title || frame.id,
-				cssWidth: frame.width,
-				cssHeight: frame.height,
-				image: null,
-				error: null,
-			})),
-		);
-		const normalizedHeight = Math.max(1, ...frames.map((frame) => frame.height));
+		const known = new Set(request.session.manifest.frames.map((frame) => frame.id));
+		setAttached(request.initialFrameIds.filter((frameId) => known.has(frameId)));
+		const normalizedHeight = Math.max(1, ...request.session.manifest.frames.map((frame) => frame.height));
 		setOptions(loadOptions(request.session.vetdPath, normalizedHeight));
 		void request.session
 			.readThemeCss()
 			.then((css) => setPalette(parseThemeTokens(css).map((token) => token.value)))
 			.catch(() => setPalette([]));
-		for (const frame of frames) void captureInto(frame.id);
-	}, [request, captureInto]);
+		// 缩略图直接用画布留下的缓存位图：为了一列小图再把每帧拉活体截一遍不值当。
+		void loadRasters(
+			request.session.vetdPath,
+			request.session.manifest.frames.map((frame) => frame.id),
+		)
+			.then(setThumbnails)
+			.catch(() => setThumbnails(new Map()));
+	}, [request]);
+
+	// 加入渲染区就去截图；已经有结果或正在截的跳过（移除再加回来不重截）。
+	useEffect(() => {
+		if (!request) return;
+		for (const frameId of attached) {
+			if (!captures.has(frameId)) void captureInto(frameId);
+		}
+	}, [request, attached, captures, captureInto]);
 
 	useEffect(() => {
 		if (!request || !options) return;
@@ -125,13 +170,58 @@ export function ExportMockupDialog() {
 		return () => window.removeEventListener("keydown", onKeyDown, true);
 	}, [request, close]);
 
-	const pages = useMemo(() => {
-		const chunks: ShotEntry[][] = [];
-		for (let index = 0; index < shots.length; index += PAGE_SIZE) {
-			chunks.push(shots.slice(index, index + PAGE_SIZE));
-		}
-		return chunks;
-	}, [shots]);
+	useLayoutEffect(() => {
+		if (!stage) return;
+		const rect = stage.getBoundingClientRect();
+		setViewport({ width: rect.width, height: rect.height });
+		const observer = new ResizeObserver(([entry]) => {
+			setViewport({ width: entry.contentRect.width, height: entry.contentRect.height });
+		});
+		observer.observe(stage);
+		return () => observer.disconnect();
+	}, [stage]);
+
+	const shots = useMemo<ShotEntry[]>(() => {
+		const byId = new Map(frames.map((frame) => [frame.id, frame]));
+		return attached.flatMap((frameId) => {
+			const frame = byId.get(frameId);
+			if (!frame) return [];
+			const capture = captures.get(frameId);
+			return [
+				{
+					frameId,
+					title: frame.title || frame.id,
+					cssWidth: frame.width,
+					cssHeight: frame.height,
+					image: capture?.image ?? null,
+					error: capture?.error ?? null,
+				},
+			];
+		});
+	}, [attached, frames, captures]);
+
+	const pages = useMemo(() => paginate(shots, options?.perPage ?? 3), [shots, options?.perPage]);
+	/**
+	 * 每页留几格。只有一页时按实际画框数收紧——一张图右边空出两格纯属浪费；
+	 * 一旦换页就固定成 perPage，末页不满也占满宽度，多页叠起来才对得齐。
+	 */
+	const slotsPerPage = pages.length > 1 ? (options?.perPage ?? shots.length) : shots.length;
+
+	/** 每页的 layout 尺寸 + 竖向堆叠位置，全在世界坐标里。 */
+	const stack = useMemo(() => {
+		if (!options) return { world: { width: 0, height: 0 }, boxes: [] };
+		const sizes = pages.map((pageShots) => layoutMockup(pageShots, options, slotsPerPage));
+		const width = sizes.length > 0 ? Math.max(...sizes.map((size) => size.width)) : 0;
+		return stackPages(sizes, width * PAGE_GAP_RATIO);
+	}, [pages, options, slotsPerPage]);
+
+	// 内容第一次有东西可看时铺满窗口；之后的缩放只由用户决定。
+	useLayoutEffect(() => {
+		if (fittedRef.current) return;
+		if (stack.world.width <= 0 || viewport.width <= 0) return;
+		fittedRef.current = true;
+		setView(fitView(stack.world, viewport));
+	}, [stack.world, viewport]);
 
 	const errors = useMemo(() => {
 		const map = new Map<string, string>();
@@ -141,16 +231,51 @@ export function ExportMockupDialog() {
 	const pending = shots.some((shot) => !shot.image && !shot.error);
 	const ready = shots.length > 0 && !pending && errors.size === 0;
 
-	const normalizedHeight = shots.length > 0 ? Math.max(...shots.map((shot) => shot.cssHeight)) : 0;
+	const rail = useMemo<RailFrame[]>(
+		() =>
+			railFrames(frames, attached).map((frame) => ({
+				id: frame.id,
+				title: frame.title || frame.id,
+				width: frame.width,
+				height: frame.height,
+				thumbnail: thumbnails.get(frame.id) ?? null,
+			})),
+		[frames, attached, thumbnails],
+	);
+
+	const normalizedHeight = frames.length > 0 ? Math.max(...frames.map((frame) => frame.height)) : 0;
+	const selectedShot = shots.find((shot) => shot.frameId === selectedFrameId) ?? null;
+
+	const attach = useCallback((frameId: string, atIndex?: number): void => {
+		setAttached((current) => attachFrame(current, frameId, atIndex));
+		setSelectedFrameId(frameId);
+	}, []);
+
+	const detach = useCallback((frameId: string): void => {
+		setAttached((current) => detachFrame(current, frameId));
+		setSelectedFrameId((current) => (current === frameId ? null : current));
+	}, []);
+
+	/** 落点语义：从左侧列表来的插到那一格前面，渲染区内部互拖则是互换。 */
+	const dropAt = (index: number): void => {
+		if (!drag) return;
+		if (drag.kind === "rail") attach(drag.frameId, index);
+		else setAttached((current) => swapFrames(current, drag.index, index));
+		setDrag(null);
+	};
+
+	const dropAtEnd = (): void => {
+		if (drag?.kind === "rail") attach(drag.frameId);
+		setDrag(null);
+	};
 
 	/**
-	 * Re-capture one page at the ratio the final image actually needs, so text
-	 * stays crisp instead of being upscaled from the 2x preview bitmap.
+	 * 按最终图真正需要的倍率重截这一页，文字才是锐的，而不是把 2 倍的预览位图放大。
 	 */
 	const composePage = async (pageShots: ShotEntry[], current: MockupOptions): Promise<HTMLCanvasElement> => {
 		const active = requestRef.current;
 		if (!active) throw new Error("export request went away");
-		const layout = layoutMockup(pageShots, current);
+		const layout = layoutMockup(pageShots, current, slotsPerPage);
 		const pageHeight = Math.max(...pageShots.map((shot) => shot.cssHeight));
 		const fresh: MockupShot[] = [];
 		for (const shot of pageShots) {
@@ -159,45 +284,39 @@ export function ExportMockupDialog() {
 			const dataUrl = await active.capture(shot.frameId, ratio);
 			fresh.push({ ...shot, image: await loadImage(dataUrl) });
 		}
-		return renderMockupToCanvas(fresh, current, logo);
+		return renderMockupToCanvas(fresh, current, logo, slotsPerPage);
+	};
+
+	/** 逐页合成。Vetta 标识只出现在第一页，多页时不该每页重复一次。 */
+	const composeAllPages = async (current: MockupOptions): Promise<HTMLCanvasElement[]> => {
+		const rendered: HTMLCanvasElement[] = [];
+		for (const [index, pageShots] of pages.entries()) {
+			rendered.push(await composePage(pageShots, index === 0 ? current : { ...current, brand: false }));
+		}
+		return rendered;
 	};
 
 	const baseName = (): string => `${requestRef.current?.session.name ?? "design"}-mockup`;
 
-	/** One image per page; multi-page PNG ships as a zip so the user picks a path once. */
+	/** 单页就是一张 PNG，多页竖着拼成一张长图。 */
+	const composeImage = async (current: MockupOptions): Promise<HTMLCanvasElement> =>
+		stitchPagesVertically(await composeAllPages(current), current);
+
 	const savePng = async (current: MockupOptions): Promise<string | null> => {
-		const fs = getPluginCtx().fs;
-		if (pages.length === 1) {
-			const dataUrl = (await composePage(pages[0], current)).toDataURL("image/png");
-			return fs.saveAs(`${baseName()}.png`, dataUrl.split(",")[1] ?? "", "base64", {
-				title: t("mockup.save.title"),
-				filters: [{ name: "PNG", extensions: ["png"] }],
-			});
-		}
-		const files: Record<string, Uint8Array> = {};
-		for (const [index, pageShots] of pages.entries()) {
-			const dataUrl = (await composePage(pageShots, current)).toDataURL("image/png");
-			files[`${baseName()}-${index + 1}.png`] = dataUrlToBytes(dataUrl);
-		}
-		// level 0: PNG is already deflated, re-compressing only costs time.
-		const zipped = zipSync(files, { level: 0 });
-		return fs.saveAs(`${baseName()}.zip`, bytesToBase64(zipped), "base64", {
+		const dataUrl = (await composeImage(current)).toDataURL("image/png");
+		return getPluginCtx().fs.saveAs(`${baseName()}.png`, dataUrl.split(",")[1] ?? "", "base64", {
 			title: t("mockup.save.title"),
-			filters: [{ name: "ZIP", extensions: ["zip"] }],
+			filters: [{ name: "PNG", extensions: ["png"] }],
 		});
 	};
 
 	/** Uniform page width (the widest page); the badge rides the cover only. */
 	const savePdf = async (current: MockupOptions): Promise<string | null> => {
-		const rendered: PdfPageImage[] = [];
-		for (const [index, pageShots] of pages.entries()) {
-			const canvas = await composePage(pageShots, index === 0 ? current : { ...current, brand: false });
-			rendered.push({
-				jpeg: dataUrlToBytes(canvasToJpegDataUrl(canvas)),
-				width: canvas.width,
-				height: canvas.height,
-			});
-		}
+		const rendered: PdfPageImage[] = (await composeAllPages(current)).map((canvas) => ({
+			jpeg: dataUrlToBytes(canvasToJpegDataUrl(canvas)),
+			width: canvas.width,
+			height: canvas.height,
+		}));
 		const pageWidth = Math.max(...rendered.map((page) => page.width)) / current.scale;
 		const pdf = buildImagePdf(rendered, pageWidth);
 		return getPluginCtx().fs.saveAs(`${baseName()}.pdf`, bytesToBase64(pdf), "base64", {
@@ -220,10 +339,10 @@ export function ExportMockupDialog() {
 	};
 
 	const runCopy = async (): Promise<void> => {
-		if (!options || busy || !ready || pages.length !== 1) return;
+		if (!options || busy || !ready) return;
 		setBusy("copy");
 		try {
-			const canvas = await composePage(pages[0], options);
+			const canvas = await composeImage(options);
 			await getPluginCtx().ui.copyImage(canvas.toDataURL("image/png"));
 			notify({ message: t("mockup.copy.done"), variant: "success", durationMs: 3000 });
 		} catch (error) {
@@ -233,19 +352,13 @@ export function ExportMockupDialog() {
 		}
 	};
 
-	/** Reordering works on the whole sequence; pages are just a view of it. */
-	const swap = (pageIndex: number, fromIndexOnPage: number, toIndexOnPage: number): void => {
-		const offset = pageIndex * PAGE_SIZE;
-		setShots((current) => {
-			const next = [...current];
-			const from = offset + fromIndexOnPage;
-			const to = offset + toIndexOnPage;
-			[next[from], next[to]] = [next[to], next[from]];
-			return next;
-		});
+	const zoomBy = (factor: number): void => {
+		setView((current) => zoomAt(current, factor, { x: viewport.width / 2, y: viewport.height / 2 }));
 	};
 
 	if (!request || !options) return null;
+
+	const multiPage = pages.length > 1;
 
 	return (
 		// 顶部留出宿主标题栏（TitleBar 是 h-9）的高度：macOS 红绿灯就在那条带里，
@@ -253,11 +366,11 @@ export function ExportMockupDialog() {
 		<div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/55 px-6 pb-6 pt-11">
 			{/* biome-ignore lint/a11y/noStaticElementInteractions: click-outside backdrop */}
 			<div className="absolute inset-x-0 bottom-0 top-9" onClick={close} />
-			<div className="relative flex h-[85vh] w-[90vw] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+			<div className="relative flex h-[85vh] w-[85vw] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
 				<div className="flex items-center gap-2 border-b border-border px-4 py-3">
 					<span className="text-sm font-medium text-foreground">{t("mockup.title")}</span>
 					<span className="text-xs text-muted-foreground">
-						{t("mockup.subtitle", { count: shots.length })}
+						{t("mockup.subtitle", { count: shots.length, perPage: options.perPage })}
 					</span>
 					<div className="flex-1" />
 					<button
@@ -271,33 +384,193 @@ export function ExportMockupDialog() {
 				</div>
 
 				<div className="flex min-h-0 flex-1">
-					<div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto p-4">
-						{pages.map((pageShots, index) => (
-							<div key={pageShots[0]?.frameId ?? index} className="flex flex-col gap-1.5">
-								{pages.length > 1 ? (
-									<span className="text-[11px] tabular-nums text-muted-foreground">
-										{t("mockup.page.index", { index: index + 1, total: pages.length })}
-									</span>
-								) : null}
-								<MockupPreview
-									shots={pageShots}
-									options={options}
-									brandLogo={logo}
-									errors={errors}
-									onRetry={(frameId) => void captureInto(frameId)}
-									onSwap={(from, to) => swap(index, from, to)}
-								/>
-							</div>
-						))}
-					</div>
-
-					<MockupOptionsPanel
-						options={options}
-						maxRadius={normalizedHeight / 2}
-						palette={palette}
-						onChange={(patch) => setOptions((current) => (current ? { ...current, ...patch } : current))}
-						onReset={() => setOptions(defaultOptions(normalizedHeight))}
+					<FrameRail
+						frames={rail}
+						total={frames.length}
+						onAttach={(frameId) => attach(frameId)}
+						onAttachAll={() => {
+							setAttached((current) => rail.reduce((list, frame) => attachFrame(list, frame.id), current));
+						}}
+						onDragStart={(frameId) => setDrag({ kind: "rail", frameId })}
+						onDragEnd={() => setDrag(null)}
 					/>
+
+					{/* 预览台：整块都是图片，可自由缩放平移。 */}
+					{/* biome-ignore lint/a11y/noStaticElementInteractions: 平移/缩放手势面，语义由下方缩放按钮承担 */}
+					<div
+						ref={setStage}
+						className="relative min-h-0 min-w-0 flex-1 cursor-grab overflow-hidden bg-muted/30 active:cursor-grabbing"
+						onPointerDown={(event) => {
+							if (event.button !== 0 && event.button !== 1) return;
+							panRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+							event.currentTarget.setPointerCapture(event.pointerId);
+							setSelectedFrameId(null);
+						}}
+						onPointerMove={(event) => {
+							const pan = panRef.current;
+							if (!pan || pan.pointerId !== event.pointerId) return;
+							const dx = event.clientX - pan.x;
+							const dy = event.clientY - pan.y;
+							pan.x = event.clientX;
+							pan.y = event.clientY;
+							setView((current) => panBy(current, dx, dy));
+						}}
+						onPointerUp={(event) => {
+							if (panRef.current?.pointerId !== event.pointerId) return;
+							panRef.current = null;
+							event.currentTarget.releasePointerCapture(event.pointerId);
+						}}
+						onPointerCancel={() => {
+							panRef.current = null;
+						}}
+						// Figma 手势：滚轮平移，按住 Cmd/Ctrl 才是以光标为锚缩放。
+						onWheel={(event) => {
+							const rect = event.currentTarget.getBoundingClientRect();
+							if (event.ctrlKey || event.metaKey) {
+								const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+								setView((current) => zoomAt(current, WHEEL_ZOOM ** -event.deltaY, point));
+							} else {
+								setView((current) => panBy(current, -event.deltaX, -event.deltaY));
+							}
+						}}
+						onDragOver={(event) => {
+							if (drag) event.preventDefault();
+						}}
+						onDrop={(event) => {
+							event.preventDefault();
+							dropAtEnd();
+						}}
+					>
+						<div
+							className="absolute left-0 top-0"
+							style={{ transform: `translate(${view.x}px, ${view.y}px)` }}
+						>
+							{pages.map((pageShots, index) => {
+								const box = stack.boxes[index];
+								if (!box) return null;
+								return (
+									<div
+										key={pageShots[0]?.frameId ?? index}
+										className="absolute"
+										style={{ left: box.left * view.scale, top: box.top * view.scale }}
+									>
+										{multiPage ? (
+											<span className="pointer-events-none absolute -top-5 left-0 text-[11px] tabular-nums text-muted-foreground">
+												{t("mockup.page.index", { index: index + 1, total: pages.length })}
+											</span>
+										) : null}
+										<MockupPage
+											shots={pageShots}
+											offset={index * options.perPage}
+											slots={slotsPerPage}
+											options={options}
+											brandLogo={logo}
+											errors={errors}
+											scale={view.scale}
+											selectedFrameId={selectedFrameId}
+											drag={drag}
+											onSelect={setSelectedFrameId}
+											onRetry={(frameId) => {
+												setCaptures((current) => {
+													const next = new Map(current);
+													next.delete(frameId);
+													return next;
+												});
+											}}
+											onDragShot={(shotIndex) => setDrag({ kind: "shot", index: shotIndex })}
+											onDragEnd={() => setDrag(null)}
+											onDropAt={dropAt}
+										/>
+									</div>
+								);
+							})}
+						</div>
+
+						{shots.length === 0 ? (
+							<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 text-center">
+								<span className="text-sm font-medium text-foreground">{t("mockup.empty.title")}</span>
+								<p className="max-w-64 text-xs text-muted-foreground">{t("mockup.empty.desc")}</p>
+							</div>
+						) : null}
+
+						{/* 悬浮选项卡片：右上角，不占预览宽度。 */}
+						<div className="pointer-events-none absolute bottom-3 right-3 top-3 flex justify-end">
+							<MockupOptionsPanel
+								options={options}
+								maxRadius={normalizedHeight / 2}
+								palette={palette}
+								selected={
+									selectedShot ? { frameId: selectedShot.frameId, title: selectedShot.title } : null
+								}
+								onChange={(patch) => setOptions((current) => (current ? { ...current, ...patch } : current))}
+								onRemoveSelected={() => selectedShot && detach(selectedShot.frameId)}
+								onReset={() => setOptions(defaultOptions(normalizedHeight))}
+							/>
+						</div>
+
+						{/* 每张图的画框数：底部居中悬浮——它决定的是「图怎么分页」，
+						    比右侧那些外观参数更靠近画面本身。 */}
+						<div
+							className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-border bg-popover/95 px-2 py-1 shadow-md backdrop-blur-md"
+							onPointerDown={(event) => event.stopPropagation()}
+						>
+							<span className="pr-1 text-[11px] text-muted-foreground">{t("mockup.option.perPage")}</span>
+							{FRAMES_PER_PAGE.map((value) => (
+								<button
+									key={value}
+									type="button"
+									onClick={() => setOptions((current) => (current ? { ...current, perPage: value } : current))}
+									className={`min-w-7 rounded-md px-2 py-1 text-xs font-medium tabular-nums transition-colors ${
+										options.perPage === value
+											? "bg-primary text-primary-foreground"
+											: "text-muted-foreground hover:bg-accent"
+									}`}
+								>
+									{value}
+								</button>
+							))}
+						</div>
+
+						{/* 缩放控件：左下角，与预览台同层。 */}
+						<div
+							className="absolute bottom-3 left-3 flex items-center gap-0.5 rounded-lg border border-border bg-popover/95 p-0.5 shadow-md backdrop-blur-md"
+							onPointerDown={(event) => event.stopPropagation()}
+						>
+							<button
+								type="button"
+								aria-label={t("mockup.view.zoomOut")}
+								onClick={() => zoomBy(1 / 1.2)}
+								className="rounded-md px-2 py-1 text-xs text-foreground hover:bg-accent"
+							>
+								−
+							</button>
+							<span className="min-w-11 text-center text-[11px] tabular-nums text-muted-foreground">
+								{Math.round(view.scale * 100)}%
+							</span>
+							<button
+								type="button"
+								aria-label={t("mockup.view.zoomIn")}
+								onClick={() => zoomBy(1.2)}
+								className="rounded-md px-2 py-1 text-xs text-foreground hover:bg-accent"
+							>
+								+
+							</button>
+							<button
+								type="button"
+								onClick={() => setView(fitView(stack.world, viewport))}
+								className="rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent"
+							>
+								{t("mockup.view.fit")}
+							</button>
+							<button
+								type="button"
+								onClick={() => setView(centerView(stack.world, viewport, 1))}
+								className="rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent"
+							>
+								{t("mockup.view.actual")}
+							</button>
+						</div>
+					</div>
 				</div>
 
 				<div className="flex items-center gap-2 border-t border-border px-4 py-3">
@@ -310,25 +583,32 @@ export function ExportMockupDialog() {
 					</span>
 					<div className="flex-1" />
 					<div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
-						{(["png", "pdf"] as const).map((value) => (
-							<button
-								key={value}
-								type="button"
-								onClick={() => setFormat(value)}
-								className={`rounded-md px-2.5 py-1 text-xs font-medium uppercase transition-colors ${
-									format === value
-										? "bg-primary text-primary-foreground"
-										: "text-muted-foreground hover:bg-accent"
-								}`}
-							>
-								{value}
-							</button>
-						))}
+						<button
+							type="button"
+							onClick={() => setFormat("image")}
+							className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+								format === "image"
+									? "bg-primary text-primary-foreground"
+									: "text-muted-foreground hover:bg-accent"
+							}`}
+						>
+							{multiPage ? t("mockup.format.longImage") : t("mockup.format.png")}
+						</button>
+						<button
+							type="button"
+							onClick={() => setFormat("pdf")}
+							className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+								format === "pdf"
+									? "bg-primary text-primary-foreground"
+									: "text-muted-foreground hover:bg-accent"
+							}`}
+						>
+							{t("mockup.format.pdf")}
+						</button>
 					</div>
 					<button
 						type="button"
-						disabled={!ready || busy !== null || pages.length !== 1}
-						title={pages.length !== 1 ? t("mockup.copy.singleOnly") : undefined}
+						disabled={!ready || busy !== null}
 						onClick={() => void runCopy()}
 						className="rounded-lg px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent disabled:opacity-40"
 					>

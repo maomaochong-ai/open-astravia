@@ -2,6 +2,7 @@ import { usePluginShortcutScope, useTranslation } from "@vetta-org/plugin-sdk";
 import {
 	type CSSProperties,
 	type PointerEvent as ReactPointerEvent,
+	type ReactNode,
 	type RefObject,
 	useCallback,
 	useEffect,
@@ -40,11 +41,18 @@ import {
 	setFrameError,
 } from "./design-runtime";
 import { DesignSystemDialog } from "./DesignSystemDialog";
+import { CanvasCornerActions } from "./CanvasCornerActions";
+import { byCanvasOrder } from "./frame-order";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { refreshCover } from "./cover-compose";
 import { useFrameRasters } from "./frame-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
+import { HistoryDrawer } from "../history/HistoryDrawer";
+import type { HistoryCommit } from "../history/history-client";
+import { PeekBanner } from "../history/PeekBanner";
+import { enterPeek, exitPeek, type PeekState } from "../history/peek";
+import { restoreDesign } from "../history/restore";
 import { NOTES_PANEL_INSET, NotesDrawer } from "./NotesDrawer";
 import { type NoteDraft, NotesLayer } from "./NotesLayer";
 import { selectionAfterHmr } from "./selection-ask";
@@ -85,10 +93,10 @@ interface DesignCanvasProps {
 	 */
 	captureRef: RefObject<FrameCapture | null>;
 	/**
-	 * 出口：顶部的刷新按钮用它强制所有 frame 重新加载并重截位图。
-	 * 热更新链路（文件监听 / HMR）万一没生效时的手动兜底。
+	 * 右上角的刷新按钮除了重载画布，还要让宿主重扫一遍设计列表——那是「与磁盘
+	 * 重新对齐」的唯一入口，面板开着时新出现的设计也该在这里被收进来。
 	 */
-	refreshRef: RefObject<(() => void) | null>;
+	onRescanDesigns(): void;
 	/**
 	 * 出口：预览按钮问「该预览哪一帧」。单独选中一个就是它，否则交给调用方回落
 	 * （画布顺序里的第一帧）。
@@ -106,6 +114,20 @@ interface DesignCanvasProps {
 	resolveNoteElementsRef: RefObject<
 		((frameId: string, queries: ElementQuery[]) => Promise<(SelectedElementPayload | null)[]>) | null
 	>;
+	/** 右上角开关的当前值：备注气泡在不在画布上。 */
+	notesVisible: boolean;
+	/** 自动显示备注（只开不关）：切到备注工具、落下一条备注、从列表定位到某条。 */
+	showNotes(): void;
+	/** 右上角按钮组最左端的备注显隐开关。 */
+	onToggleNotes(): void;
+	/** 右上角按钮组最右端的「运行」：进预览模式。 */
+	onRun(): void;
+	runDisabled: boolean;
+	/**
+	 * 左上角标题区（设计切换 + 色卡）。内容归 CanvasTab（设计列表、色卡开合都是
+	 * 它的状态），定位与「给查看模式横幅让位」归画布——右上角按钮组同理。
+	 */
+	titleSlot: ReactNode;
 }
 
 interface Rect {
@@ -158,11 +180,6 @@ function selectedFrameIds(selection: CanvasSelection): string[] {
 
 function intersects(a: Rect, b: Rect): boolean {
 	return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
-}
-
-/** Canvas reading order: left to right, top to bottom for equal x. */
-export function byCanvasOrder(a: VetdFrameEntry, b: VetdFrameEntry): number {
-	return a.x === b.x ? a.y - b.y : a.x - b.x;
 }
 
 /**
@@ -243,6 +260,8 @@ function applyResizeSnap(
 
 /** 位图变化后隔多久合成封面：等一批 frame 都落定，不为每张图各合成一次。 */
 const COVER_REFRESH_DEBOUNCE_MS = 1500;
+/** 查看模式横幅的高度，右上角的历史按钮与面板据此让位。 */
+const PEEK_BANNER_HEIGHT = 40;
 
 export function DesignCanvas({
 	session,
@@ -251,10 +270,16 @@ export function DesignCanvas({
 	port,
 	bridge,
 	captureRef,
-	refreshRef,
+	onRescanDesigns,
 	previewTargetRef,
 	previewing,
 	resolveNoteElementsRef,
+	notesVisible,
+	showNotes,
+	onToggleNotes,
+	onRun,
+	runDisabled,
+	titleSlot,
 }: DesignCanvasProps) {
 	const { t } = useTranslation();
 	const [manifest, setManifest] = useState<VetdManifest>(session.manifest);
@@ -286,6 +311,34 @@ export function DesignCanvas({
 	const [marquee, setMarquee] = useState<Rect | null>(null);
 	/** 设计体系选择 Dialog（与会话里那张选择卡同一个宫格）。 */
 	const [designDialogOpen, setDesignDialogOpen] = useState(false);
+	/** 版本历史抽屉。与备注抽屉分居两侧，可以同时开着。 */
+	const [historyOpen, setHistoryOpen] = useState(false);
+	/** 正在查看的旧版本。非 null 时画布上装的是那一版的内容，不是最新的。 */
+	const [peek, setPeek] = useState<PeekState | null>(null);
+	const [peekBusy, setPeekBusy] = useState(false);
+
+	/**
+	 * 查看/退出/恢复共用的收尾：置忙、出错报到界面上。
+	 *
+	 * 这层 catch 不是可选的。这些动作全在异步链里，漏掉它时一次失败的表现是「点了
+	 * 没有任何反应」——按钮看起来坏了，而控制台之外没有任何线索。
+	 */
+	/**
+	 * 查看/恢复是把整份内容换掉，不能指望「按 mtime 比对 + HMR」那条增量路径：
+	 * 已经挂着的 iframe src 不变、浏览器不会重新加载，位图化的那些也未必被判成变了。
+	 * 实测表现就是画布纹丝不动，一直显示旧的那一版。所以走硬重载。
+	 */
+	const runPeekAction = async (action: () => Promise<void>): Promise<void> => {
+		setPeekBusy(true);
+		try {
+			await action();
+		} catch (error) {
+			console.error("[vetta-ui-design] 查看历史版本失败", error);
+			notify({ variant: "error", message: t("history.peek.failed"), error });
+		} finally {
+			setPeekBusy(false);
+		}
+	};
 	const [menuAnchor, setMenuAnchor] = useState<FrameMenuAnchor | null>(null);
 	/** 正在就地重命名的 frame id（标题栏变输入框）。 */
 	const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -485,7 +538,6 @@ export function DesignCanvas({
 		},
 	});
 
-	refreshRef.current = reloadAll;
 
 	/**
 	 * 位图安静下来之后合成一次画廊封面。
@@ -537,9 +589,11 @@ export function DesignCanvas({
 			// 那块）居中，否则「居中」正好把气泡送到面板底下。
 			const visibleWidth = Math.max(width - NOTES_PANEL_INSET, width * 0.35);
 			view.commitViewport({ zoom, x: width - visibleWidth / 2 - pos.x * zoom, y: height / 2 - pos.y * zoom });
+			// 定位到一个被隐藏的气泡等于把视口挪到空白处：先把备注层拉回来。
+			showNotes();
 			setOpenNoteId(noteId);
 		},
-		[notes, view, sizeRef, viewportRef],
+		[notes, view, sizeRef, viewportRef, showNotes],
 	);
 
 	/** 待处理备注数，挂在 ControlBar 备注按钮的角标上。 */
@@ -564,9 +618,11 @@ export function DesignCanvas({
 	});
 
 	// 切离备注工具就收掉没提交的草稿；换设计时 thread 弹层也一并收掉。
+	// 切到备注工具则自动显示备注层：这个工具下要做的每件事都得先看得见气泡。
 	useEffect(() => {
-		if (tool !== "note") setNoteDraft(null);
-	}, [tool]);
+		if (tool === "note") showNotes();
+		else setNoteDraft(null);
+	}, [tool, showNotes]);
 	useEffect(() => {
 		setNoteDraft(null);
 		setOpenNoteId(null);
@@ -819,6 +875,8 @@ export function DesignCanvas({
 		// 备注）。frame 上的命中元素解析在后台跑，不阻塞输入；空内容提交即丢弃。
 		if (tool === "note") {
 			setOpenNoteId(null);
+			// 备注工具下仍可手动隐藏；这一下要落的是一条新备注，落完必须看得见。
+			showNotes();
 			const world = toWorld(event.clientX, event.clientY);
 			const hitFrame =
 				[...manifestRef.current.frames]
@@ -1182,13 +1240,15 @@ export function DesignCanvas({
 	const handleAskSubmitted = useCallback((): void => {
 		setAskOpen(false);
 		setSelection(null);
-	}, []);
+		// 追问落的就是一条备注：刚提交完却看不到它，等于什么都没发生。
+		showNotes();
+	}, [showNotes]);
 
+	/** 打开渲染图工作台。当前选中集先放进渲染区；没选中就是空工作台。 */
 	const openExport = (): void => {
-		if (orderedSelection.length === 0) return;
 		requestMockupExport({
 			session,
-			frameIds: orderedSelection.map((frame) => frame.id),
+			initialFrameIds: orderedSelection.map((frame) => frame.id),
 			capture: (frameId, pixelRatio) => captureFaithfully(frameId, { pixelRatio }),
 		});
 	};
@@ -1363,6 +1423,7 @@ export function DesignCanvas({
 					store={notes}
 					frames={manifest.frames}
 					interactive={(tool === "select" || tool === "note") && !panActive && !previewing}
+					visible={notesVisible}
 					draft={noteDraft}
 					blockedReason={blockedReason}
 					onDraftClose={() => setNoteDraft(null)}
@@ -1466,14 +1527,100 @@ export function DesignCanvas({
 					session={session}
 					cwd={cwd}
 					onLocate={focusNote}
+					offsetTop={peek ? PEEK_BANNER_HEIGHT : 0}
 					onClose={() => setTool("select")}
+				/>
+			) : null}
+
+			{/* 顶部沉浸层：画布内容(底) → 这层渐隐(中) → 标题区/按钮组(顶, z-40)。
+			    实心底色压住从上方滚进来的画框，按钮组落在纯色上才读得清；60px 之后
+			    完全透明，不影响看稿。pointer-events-none：它只是一层画面。 */}
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-x-0 z-30 h-[60px] bg-gradient-to-b from-background to-transparent"
+				style={{ top: peek ? PEEK_BANNER_HEIGHT : 0 }}
+			/>
+
+			{/* 左上角标题区。与右上角按钮组同一套定位规则（含查看模式让位）；
+			    指针事件必须截断，否则画布根会捕获指针，里面点不动。 */}
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: pointer-capture shield for canvas chrome */}
+			<div
+				style={{ top: 12 + (peek ? PEEK_BANNER_HEIGHT : 0) }}
+				className="pointer-events-auto absolute left-3 z-40 flex items-center gap-1"
+				onPointerDown={(event) => event.stopPropagation()}
+				onPointerMove={(event) => event.stopPropagation()}
+				onPointerUp={(event) => event.stopPropagation()}
+			>
+				{titleSlot}
+			</div>
+
+			<CanvasCornerActions
+				offsetTop={peek ? PEEK_BANNER_HEIGHT : 0}
+				historyOpen={historyOpen}
+				notesVisible={notesVisible}
+				onToggleNotes={onToggleNotes}
+				onRun={onRun}
+				runDisabled={runDisabled}
+				// 手动刷新：热更新链路（文件监听 / HMR）万一没生效时的兜底出路，
+				// 强制所有 frame 重新加载最新代码并重截位图，同时重扫设计列表。
+				onRefresh={() => {
+					reloadAll();
+					onRescanDesigns();
+				}}
+				onExport={openExport}
+				onToggleHistory={() => setHistoryOpen((open) => !open)}
+			/>
+
+			{peek ? (
+				<PeekBanner
+					title={peek.title}
+					busy={peekBusy}
+					onExit={() => {
+						void runPeekAction(async () => {
+							await exitPeek(getPluginCtx(), session);
+							setPeek(null);
+							reloadAll();
+						});
+					}}
+					onRestore={() => {
+						void runPeekAction(async () => {
+							// 先退出再恢复：工作区此刻装的是旧版本，直接恢复会把它当成「现场」
+							// 封存下来，历史里多出一个内容等于旧版的假版本。
+							await exitPeek(getPluginCtx(), session);
+							await restoreDesign(getPluginCtx(), session.dirPath, { ...peek, timestamp: 0, files: [] }, { session });
+							setPeek(null);
+							reloadAll();
+						});
+					}}
+				/>
+			) : null}
+
+			{historyOpen ? (
+				<HistoryDrawer
+					session={session}
+					peekSha={peek?.sha ?? null}
+					onPeek={(target: HistoryCommit) => {
+						void runPeekAction(async () => {
+							const state = await enterPeek(getPluginCtx(), session, target);
+							if (!state) {
+								// 唯一会走到这里的正常情况是「目标就是当前版本」，此时确实无事
+								// 可做；但静默返回会让按钮看起来是坏的，所以说一句。
+								notify({ variant: "info", message: t("history.peek.alreadyCurrent") });
+								return;
+							}
+							setPeek(state);
+							reloadAll();
+						});
+					}}
+					onRestored={reloadAll}
+					offsetTop={peek ? PEEK_BANNER_HEIGHT : 0}
+					onClose={() => setHistoryOpen(false)}
 				/>
 			) : null}
 
 			<ControlBar
 				tool={tool}
 				zoom={viewport.zoom}
-				exportableCount={orderedSelection.length}
 				designSystemsActive={designDialogOpen}
 				pendingNotes={pendingNoteCount}
 				onToolChange={setTool}
@@ -1481,7 +1628,6 @@ export function DesignCanvas({
 				onZoomReset={() => {
 					view.commitViewport({ ...viewportRef.current, zoom: 1 });
 				}}
-				onExport={openExport}
 				onDesignSystems={() => {
 					setMenuAnchor(null);
 					setDesignDialogOpen((open) => !open);

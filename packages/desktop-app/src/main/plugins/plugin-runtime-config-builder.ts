@@ -7,10 +7,9 @@ import type {
 	SystemPromptBlock,
 	SystemPromptOperation,
 } from "@vetta/runtime-core";
-import { normalizePluginAgentModes, parsePluginMcpServerConfig } from "@vetta-org/plugin-sdk/manifest";
+import { parsePluginMcpServerConfig } from "@vetta-org/plugin-sdk/manifest";
 import type { InstalledPlugin, PluginMcpServerConfig, PluginPermission } from "../../preload/api-types/plugins.js";
 import type { PluginAgentContributionRegistry } from "./plugin-agent-contribution-registry.js";
-import { pluginVisibleInAgentMode } from "./plugin-agent-mode-policy.js";
 
 interface PluginRuntimeConfigLogger {
 	debug(message: string, data?: Record<string, unknown>): void;
@@ -19,7 +18,6 @@ interface PluginRuntimeConfigLogger {
 
 export interface PluginRuntimeConfigDependencies {
 	plugins: readonly InstalledPlugin[];
-	agentMode: string | undefined;
 	isContributionModeActive(pluginId: string): boolean;
 	contributions: PluginAgentContributionRegistry;
 	resolveResource(plugin: InstalledPlugin, relativePath: string): string;
@@ -50,18 +48,12 @@ export function buildPluginMcpRuntimeName(pluginId: string, localName: string): 
 export function buildPluginRuntimeConfig(
 	dependencies: PluginRuntimeConfigDependencies,
 ): AgentPluginRuntimeConfig | undefined {
+	// 工作模式不参与插件贡献的组装（ADR-0071）：模式差异完全由 mode 系统提示词承担。
 	const enabledPlugins = dependencies.plugins.filter(
-		(plugin) =>
-			plugin.enabled &&
-			plugin.agent &&
-			dependencies.isContributionModeActive(plugin.id) &&
-			pluginVisibleInAgentMode(plugin, dependencies.agentMode),
+		(plugin) => plugin.enabled && plugin.agent && dependencies.isContributionModeActive(plugin.id),
 	);
 	const enabledToolPlugins = dependencies.plugins.filter(
-		(plugin) =>
-			plugin.enabled &&
-			dependencies.isContributionModeActive(plugin.id) &&
-			pluginVisibleInAgentMode(plugin, dependencies.agentMode),
+		(plugin) => plugin.enabled && dependencies.isContributionModeActive(plugin.id),
 	);
 	dependencies.logger.debug("build runtime config start", {
 		agentPlugins: enabledPlugins.map((plugin) => plugin.id),
@@ -127,8 +119,7 @@ export function buildPluginRuntimeConfig(
 			continue;
 		}
 		for (const tool of registeredTools) {
-			const { activationId: _activationId, ...contribution } = tool;
-			toolContributions.push({ ...contribution, pluginId: plugin.id });
+			toolContributions.push({ ...tool, pluginId: plugin.id });
 		}
 	}
 
@@ -140,16 +131,14 @@ export function buildPluginRuntimeConfig(
 			continue;
 		}
 		for (const provider of dependencies.contributions.getSystemPrompts(plugin.id)) {
-			const { activationId: _activationId, ...contribution } = provider;
-			systemPromptProviderContributions.push({ ...contribution, pluginId: plugin.id });
+			systemPromptProviderContributions.push({ ...provider, pluginId: plugin.id });
 		}
 	}
 
 	for (const plugin of enabledToolPlugins) {
 		if (!hasGrantedPermission(plugin, "agent.continuation.register")) continue;
 		for (const provider of dependencies.contributions.getContinuations(plugin.id)) {
-			const { activationId: _activationId, ...contribution } = provider;
-			continuationContributions.push({ ...contribution, pluginId: plugin.id });
+			continuationContributions.push({ ...provider, pluginId: plugin.id });
 		}
 	}
 
@@ -228,7 +217,6 @@ function buildMcpContributions(
 				localName,
 				runtimeName: buildPluginMcpRuntimeName(plugin.id, localName),
 				config: resolveMcpServerConfig(dependencies.resolveMcpRoot(plugin), config),
-				agent_mode: normalizePluginAgentModes(config.agent_mode),
 			});
 		} catch (error) {
 			dependencies.logger.warn(`Plugin ${plugin.id}: skip MCP server '${localName}':`, error);

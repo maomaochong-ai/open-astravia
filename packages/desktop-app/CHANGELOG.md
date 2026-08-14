@@ -6,9 +6,41 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **Desktop UI 验证 Profile 与有界进程监督**：新增每次全新启动的 Fresh、持久且只从 `.vetta-dev`
+  白名单播种/同步模型密文配置的 Debug，以及只附着现有普通开发应用的 Dev Profile。三个 Profile
+  使用独立 home、Electron user data、Action RPC endpoint 和 Playwright session；验证启动改为后台等待
+  CDP 就绪后返回，CLI、Playwright 与 Renderer 端口等待均有超时，避免空服务时长期挂起。
+
+- **手工放置的本地场景可发现**：直接维护在 `~/.vetta*/scene/<name>/SKILL.md`、但未写入
+  `skills-manifest.json` 的合法场景，现在会作为本地只读场景出现在场景页、能力页和对话命令区；
+  市场安装与自定义导入的受管场景仍由清单控制启停和卸载。
+
+- **Provider 诊断继续穿过主进程边界**：`DesktopConversationError` 与 AI Capability 错误保留安全的错误码、来源、重试性和 Provider 诊断字段，debug/插件调用不再只收到通用失败文本。
+
+- **后台 AI 失败诊断贯通**：重试、自动压缩和 MCP 重载事件沿用 Runtime 的结构化失败字段，Renderer 可以在错误状态中保留 Provider、模型和请求诊断，而不依赖错误文案匹配。
+
+- **Provider 错误回执与 IPC 去重**：运行时错误事件先行展示；当终态持久化失败导致 prompt 返回失败回执时，Renderer 复用已有错误，不再追加第二条持久化异常。
+
+- **Provider 失败可见且幂等**：错误卡片显示来自 Runtime 的结构化失败，并按 `turnId` 合并实时重放与历史回放，避免失败消息消失或重复出现。
+
+- **Provider 诊断贯通消息列表**：错误块保留错误码、来源、HTTP 状态、Provider、模型、请求阶段与请求 ID 等安全诊断；详情区按需展示并支持复制，旧历史记录继续按原文兼容显示。
+
+- **Windows 本地流式语音输入**（ADR-0070）：输入栏在 Windows x64 显示麦克风入口；Windows 构建阶段下载、
+  校验并把约 160 MiB 的中文 Streaming Zipformer 模型写入安装包，应用运行时完全离线；16 kHz PCM 由 AudioWorklet 分块
+  采集，Sherpa-ONNX 原生解码隔离在 utilityProcess，partial 实时展示、final 插入当前光标。macOS/Linux
+  不显示入口，构建时跳过模型，也不把 Windows 原生运行时带进各自产物。识别宿主使用显式启动握手，并提供
+  真实 Electron 进程冒烟验证，避免进程消息接线错误表现为初始化超时。构建时可设置
+  `VETTA_SPEECH_INPUT_ENABLED=false` 生成不含模型、Sherpa、语音宿主和麦克风入口的轻量 Windows 包；默认
+  完整包行为保持不变。
+
+- **执行模式与 Plugin Hook 采用 Turn 边界生效**：活动 Agent 运行时修改全局 Execution Mode 不再报 busy，
+  当前 Turn 保持原沙盒/全访问实现并在下一 Turn 应用；Desktop Plugin Hook 按 `turnId` 固定首次捕获的
+  binding 集合，普通注册/注销只影响后续 Turn。
+- **Hosted Route 导航进入三层能力架构**（ADR-0068）：Desktop Renderer 新增通用 namespace 路由服务并继续拥有 TanStack Router、URL 与页面 Registry；Capability SDK 只发布可序列化的 `open-hosted-route` 合同，Runtime 负责精确 Grant、namespace constraint 与撤销；Plugin/Theme 各自在自己的集成层固定身份、映射权限并管理 Session。Capability SDK 中原有 Plugin/Theme Adapter 已迁回 Desktop 上层集成目录，网络和媒体合同中的 `pluginId` / `plugin-blob` 也分别收敛为通用 `namespace` / `storage-blob`，插件公开 API 保持不变。
+
 - **画布活动态浮层改挂生成阶段**：`edit` / `write` 的时间几乎全花在模型生成参数上（一整份 frame 正文），执行只要几毫秒。浮层原本挂在工具执行事件上，于是要等改动落盘之后才亮，看起来像「改完才闪一下」。宿主现在把新的 `toolcall.args`（生成中的部分参数）转译成插件事件 `tool-call-args`，插件据此在模型刚写下目标路径时就点亮对应画框，一直亮到落盘。
 
-- **设计画廊（系统插件「Vetta UI Design」新增侧边栏入口「设计」）**：所有带设计稿的项目的注册中心。它主动收集侧边栏里**项目根目录下**直接躺着 `x.vetd/` 的项目（只 readDir 一层，不递归——画廊要把每个项目都扫一遍，递归大仓库会让这个页面打不开），一个项目一张卡，卡面是**上封面下 info** 的 Figma 式版式：封面为画布全景，info 为项目名 + 最近改动相对时间 + 多设计时的「N 份设计」+ 有会话在跑时的运行中指示。点卡片跳进该项目**最近一个可续聊的会话**（只读或已被别的运行时占用的会话会被跳过，一个都没有则落到该项目的新建会话页），并直接把设计画布铺开、定位到卡面那份设计——从画廊进来是明确的「我要看这份设计」，不该再让用户自己去活动面板找标签卡。工具栏可按名字搜索、新建（只问名字，项目建在 workspace 下，随后进新会话页从提示词开始）、导入（拖 `.vetdz` 到页面，或按钮选文件）；卡片右键可导出分享包（项目里有多份设计时开子菜单让用户选，不替他挑）、在文件管理器中显示、归档项目。画廊只在**工作模式**下出现，与设计画布同属一档能力（ADR-0046）。
+- **设计画廊（系统插件「Vetta UI Design」新增侧边栏入口「设计」）**：所有带设计稿的项目的注册中心。它主动收集侧边栏里**项目根目录下**直接躺着 `x.vetd/` 的项目（只 readDir 一层，不递归——画廊要把每个项目都扫一遍，递归大仓库会让这个页面打不开），一个项目一张卡，卡面是**上封面下 info** 的 Figma 式版式：封面为画布全景，info 为项目名 + 最近改动相对时间 + 多设计时的「N 份设计」+ 有会话在跑时的运行中指示。点卡片跳进该项目**最近一个可续聊的会话**（只读或已被别的运行时占用的会话会被跳过，一个都没有则落到该项目的新建会话页），并直接把设计画布铺开、定位到卡面那份设计——从画廊进来是明确的「我要看这份设计」，不该再让用户自己去活动面板找标签卡。工具栏可按名字搜索、新建（只问名字，项目建在 workspace 下，随后进新会话页从提示词开始）、导入（拖 `.vetdz` 到页面，或按钮选文件）；卡片右键可导出分享包（项目里有多份设计时开子菜单让用户选，不替他挑）、在文件管理器中显示、归档项目。画廊与设计画布不按工作模式装卸（见 ADR-0046 修订：系统中不再有任何模式硬闸）——画布标签卡是否露出由「cwd 里有没有 `.vetd`」决定，那本来就是比模式更准的条件：在代码仓库里写着写着要看设计稿，画布就该在。
 - **画布封面**：用 manifest 里的 frame 坐标把画布已有的逐帧位图拼成一张**原比例全景图**存进 IndexedDB，供画廊卡片显示。素材复用画布本来就截过的那批位图，不额外起引擎、不额外截图，也不往用户项目里写派生文件。合成有两个时机：画布里位图安静下来之后（防抖）合成一次，离开设计时再补最后一版——只在卸载时合成会与画廊的挂载抢跑，出现「明明进过画布却没有封面」。画廊发现某份设计缺封面时还会**自己用缓存里的位图补一张**：原料早就在库里，有没有封面不该取决于用户离开画布的那一刻画布来不来得及写。三条路都拿不到（这台机器从没打开过这份设计的画布）才退回占位——用该设计 `theme.css` 的主色刷一个带设计名的色块。全景按原比例保存、卡片内 `object-cover` 裁切，故 frame 横排得很长的设计在卡面上只看得到中间一段。
 
 - **看板 0.3.1：侧边栏入口实时角标**：空闲时是 Beta 标识，有任务在跑时换成数量——不点开看板、不进任何会话页也知道现在有多少活在跑。计数与板上并发名额环 `n/5` 同一个口径（已派单但还没交付），已交付/失败的卡不再计入；任务清零后 Beta 标识自己回来。板面变化频繁而多数与角标无关，因此只在角标真的变了才通知宿主。
@@ -46,7 +78,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **项目文件列表支持鼠标框选**：在空白区域按下并拖出矩形，可多选可见文件/文件夹；Ctrl/Cmd/Shift 按住时为追加选区。与现有点选、Shift 范围选、多选拖拽共用同一套选区状态。
 - **插件快捷键 SDK（接入宿主 ShortcutScopeStack）**：新增权限 `ui.shortcuts.register`、`ctx.ui.registerShortcutScope` 与 SDK hook `usePluginShortcutScope`。插件按 `surface` / `overlay` / `modal` 注册绑定（禁止 `app` 层，留给宿主可配置全局快捷键），与宿主同一套优先级与 `when`（always/editable/not-editable），卸载时自动 dispose。`media-viewer` 缩放 / 全屏 Esc 已从 ad-hoc `keydown` 迁到该 API。
 - **输入框按会话草稿与发送历史**：未发送内容按作用域隔离（已有会话用 `sessionPath`，新会话页用 `new:${cwd}`），切换会话 / 临时去看别的任务再回来会恢复草稿，不再串台或被新会话页清空。发送成功后记入该作用域历史；输入为空或光标在文档起点时 ↑ / ↓ 浏览过往输入（首次 ↑ 暂存当前草稿，↓ 回到最新后还原）。仅进程内内存，刷新不保留。
-- **系统插件「Vetta UI Design」**：无限画布 UI 设计工作台（活动面板 Tab）。设计文档为 `.vetd` 清单 + `x.vetd.d/` 旁挂源码（frame = TSX + Tailwind v4 + Iconify），由插件托管的共享设计引擎（vite dev server + HMR）渲染；支持画布平移/无级缩放/空格拖手、frame 拖拽与改尺寸、Figma 式逐层选中 DOM 并 attach 给 Vetta、agent 修改中呼吸态、只读色板、`.vetd` 文件预览（工作态/打包态）、导出自包含分享包与导入。agent 工具：`vetd_create` / `vetd_screenshot` / `vetd_status`。整个插件（含其贡献的 skill，即命令面板里的条目）走 `agent_mode: ["work"]` 白名单，只在「工作」模式下出现。见 ADR-0053、ADR-0046。
+- **系统插件「Vetta UI Design」**：无限画布 UI 设计工作台（活动面板 Tab）。设计文档为 `.vetd` 清单 + `x.vetd.d/` 旁挂源码（frame = TSX + Tailwind v4 + Iconify），由插件托管的共享设计引擎（vite dev server + HMR）渲染；支持画布平移/无级缩放/空格拖手、frame 拖拽与改尺寸、Figma 式逐层选中 DOM 并 attach 给 Vetta、agent 修改中呼吸态、只读色板、`.vetd` 文件预览（工作态/打包态）、导出自包含分享包与导入。agent 工具：`vetd_create` / `vetd_screenshot` / `vetd_status`。插件声明 `agent_mode: ["work"]` 表示工作模式主推；该字段在本版内已随「零硬闸」决策降级为纯偏好，插件在两种模式下都完整可用。见 ADR-0053、ADR-0046（含修订）。
 
 - **Vetta UI Design 导出渲染图**：画布支持 frame 多选（shift 点选 / 空白处框选 / 多选群组拖动），选中后底部控制栏出现「导出渲染图」。导出走全局插槽的全窗口模态：等高归一化横排合成（每张图最多 4 个 frame，超出自动分页），可调圆角、外边框粗细与颜色、背景色或透明、投影、Vetta 标识与 1x/2x 倍率，预览内可拖拽交换位置，参数按设计文档记在本地。产物可另存为或直接复制到剪贴板。同时把「让 Vetta 调整」从 frame 标题栏移到控制栏上方常驻，支持一次对多个 frame（或整份设计稿）发起调整。
 
@@ -70,7 +102,22 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
-- **会话正文字号从 13px 提到 16px**：用户气泡与 Agent 回复的正文基线统一为 16px，Markdown 层级按同比例重排（h1/h2/h3/h4 = 22/19/17/16，行内代码、代码块、表格、文件/链接胶囊 = 14，技能与场景徽章 = 13），行高仍为 1.6。此前 13px 在长对话里偏小；层级跟着抬升是为了避免出现「h3 比正文还小」的倒挂。用户气泡的 10 行折叠阈值以 `em` 计算，字号变大后折叠行数不变。
+- **生产安装包收窄系统插件集**：开发环境继续加载现有全部 preset，`pack` / `dist`
+  产物只内置 `vetta-ui-design`、`image-gen`、`media-viewer`、`office-viewer`、
+  `svg-viewer`、`chart-renderer` 与 `git`。构建入口显式固定 development / production
+  profile，避免本地环境变量让开发插件误进发布包。
+
+- **会话流叙事方式改由模式注册表的 narration 能力位驱动（ADR-0071 外部审计跟进）**：渲染层不再以 `mode === "work"` 二值判断决定阶段折叠，改查注册表 `narration`（staged/inline），新模式声明一份 md 即获得正确渲染；新会话页 toggle 拉取注册表前不再渲染硬编码回退清单。批量任务与定时任务会话显式固化为 work 模式——此前它们执行时没有 mode 提示词、事后打开会话时 UI 又按 work 渲染，执行与展示割裂。插件工具注册未声明 `side_effect` 时宿主给出告警（缺省按 light，重副作用工具漏声明会绕过首调确认闸）。
+- **agent_mode 声明整体废弃，模式清单排序取消（ADR-0071，行为变化）**：接续下方「不再隐藏任何插件」条目——上一版 `agent_mode` 还保留「排序与提示词详略偏好」语义，本版确认清单排序对模型工具选择无可观察影响（模型按 description 语义匹配、不按位置，且「详略」从未实现）后整体归零：插件、工具、Skill、MCP、Hook 的 `agent_mode` 声明容忍存在但被忽略，工具与 Skill 清单在任何模式下集合与顺序完全一致（注册序，前缀缓存更稳）。插件详情页的「模式偏好」一栏移除。模式差异改由三处承担：mode 系统提示词、工作区事实注入、工具 description 的反向触发段。三个系统插件（vetta-ui-design / chart-renderer / content-creation）的全部 agent_mode 声明随之删除。
+- **模式注册表数据化（ADR-0071）**：新会话页的工作模式 toggle 改为遍历 coding-agent 模式注册表渲染（新增 IPC `vetta:session:get-agent-modes`，下发 id/label/description/icon）；`desktop-config` 与会话模式索引的合法值校验改查注册表。新增一个工作模式 = coding-agent 新增一份 modes/*.md（含 icon frontmatter）+ i18n 文案，桌面端零代码改动（缺译时回落注册表自带 label）。
+- **工作模式在会话创建时固定，会话内不可变（行为变化）**：此前工作模式是纯全局态，切换会把新模式推给所有活跃会话，在各自下一个 Turn 边界改写提示词与工具面——一个跑到一半的老会话会因为用户在别处改了模式而换掉行为。现在模式只在**新会话页**选择，创建会话时固化到该会话；之后改默认值只影响之后新建的会话，已存在会话（含恢复的历史会话）保持创建时的模式。历史会话没有记录时按 `work` 恢复，而不是回落到当前默认值。桌面配置 `desktop-config.json` 的 `agentMode` 字段随之改名为 `defaultAgentMode`（语义：新会话默认值），仍兼容读取旧字段名，老用户配置不会丢。
+- **工作模式不再隐藏任何插件，插件 Hook 也不再按模式过滤（行为变化）**：此前插件 `plugin.json#agent_mode` 是硬闸——声明了另一模式的插件在当前模式下被整体排除（列表看不到、UI 面板与侧边栏入口不加载、Agent 资源不注入），Hook 也按同一条件被跳过。现在这条硬闸整体删除：已安装插件在任何工作模式下都完整可用，`window.vetta.plugins.list()` 与 `listAll()` 返回同一份完整清单；插件声明的 Hook 只由自身的 `scope_use`、事件与工具 matcher 决定是否触发，因此**工作模式下也会触发编程类插件声明的 Hook，反之亦然**。`agent_mode` 字段仍然保留并解析，但只作为偏好声明（供排序与提示词详略使用），不再有任何排除语义。改默认工作模式也因此不再重建活跃会话的插件运行配置、不再让 renderer 重载插件 bundle——它只写配置并广播给各窗口的新会话页 toggle。
+- **工作模式不再隐藏文档类内置工具（行为变化）**：`doc_to_pdf`、`html_to_pdf`、`extract_text_from_pdf`、`extract_text_from_img`、`render_pdf_page`、`progress` 此前只在「工作」模式下激活，在「编程」模式下整组从模型工具清单消失。现在它们在两种模式下都可用，模式只影响 agent 的优先取向。
+- **工作模式的调整入口收敛到新会话页一处**：侧边栏顶栏的工作模式徽章下拉与底部设置菜单里的模式切换区一并删除（不保留只读指示器），共享的分段切换器 `AgentModeSwitcher` 随之移除。模式既然在会话创建时固化、会话内不可变，会话中途出现的切换入口就只会误导——现在只有新会话页的胶囊 toggle 能改，改的也明确是「新会话默认模式」。插件详情页原来的「适用工作场景」一栏当时改为「模式偏好」；该栏随后在本版内随 agent_mode 声明整体废弃而移除（见上方 ADR-0071 条目）。
+- **Work 模式重新保留思考过程**：此前 work 渲染把 thinking 块整块丢弃（ADR-0047 原决策），过程里模型的推理无处可查。现在 thinking 与工具行同列收在所属阶段组内，按原顺序排列，展开阶段后才可见；标题只报一句「正在思考」，不像 coding 模式那样报行数——work 的受众不需要这个数字。默认收起的阶段标题行不受影响，信息密度不变。
+- **桌宠消息改为结构化、可调度的纯文字通知**：会话状态、工具进度、后台任务和错误不再直接竞争同一个文本气泡；同一会话的连续进度原地更新，多会话普通消息短队列展示，高优先级错误即时抢占并清理过时状态，用户主动消息继续优先。协议同时携带消息类型、i18n key、参数、去重键与会话来源，为后续展示扩展保留稳定合同，当前视觉仍只显示文字。
+- **桌宠运行中消息改为正文优先并保持常驻**：工具描述、工具阶段、助手最终回复、重试原因和错误详情会优先作为气泡正文展示；运行态气泡持续到终止事件，正文更新至少保持 3 秒，结束时只保留一条最终消息，避免快速模型导致文字连续跳变或重复收尾。
+- **会话正文字号从 16px 调整为 14px**：用户气泡与 Agent 回复的正文基线统一为 14px，Markdown 层级按同比例收敛（h1/h2/h3/h4 = 20/17/15/14，行内代码、代码块、表格、文件/链接胶囊 = 13，技能与场景徽章 = 12），行高仍为 1.6。用户气泡的 10 行折叠阈值以 `em` 计算，字号调整后折叠行数不变。
 - **设计画廊「新建」改为从提示词开始**：输入名字后只建一个空项目，随即进入该项目的**新建会话页**，输入框里预置好 `vetta-ui-design` 的能力 badge，用户接着敲一句「要画什么」即可。此前是先预铺一份空 `.vetd` 再把画布铺开——用户还没说要画什么，画廊里就先多出一张空卡片，画布也只有一块空白；设计有几屏、多大尺寸、什么主题本来就该由第一句提示词决定，由 agent 建。设计建好后画廊照常自动扫出这张卡。导入分享包的路径不变（包里已经是成品，仍直接进画布）。
 - 活动面板 Tab 切换改为默认 warm 驻留：访问过的文件、内容创作等 Tab 不再每次切换都重建整棵组件树；每个面板最多保留 2 个非活动 Tab，超出后按 LRU 在空闲阶段淘汰，当前与浮动 Tab 不参与淘汰。浏览器等既有显式保活 Tab 继续常驻。
 - **设计文档变成一个目录，不再是「文件 + 同名旁挂目录」两个条目**：一份设计在磁盘上就是 `login-app.vetd/` 一个目录，画布 manifest 降级成包里的 `design.json`，`frames/`、`components/`、`assets/`、`theme.css` 都在同一个包内。此前是 `login-app.vetd` 和 `login-app.vetd.d/` 两个并列条目，靠一条命名约定绑在一起：移动、复制、删除、`git mv` 都要成对操作，漏一个就得到半份设计（没有源码的空画布，或丢掉全部画布坐标的一堆 tsx）。旧文档在被扫描到时**自动就地迁移**，路径不变、无需用户操作，迁移过程幂等且不存在丢内容的窗口。相应地，分享包（zip）改用 `.vetdz` 扩展名与目录形态区分，历史导出的 `-share.vetd` 仍可导入；文件树里设计包带专属图标，右键「在设计画布中打开」。Agent 侧规则同步更新：改的是 `design.json` 之外的源码，manifest 依旧由插件独写。见 ADR-0066。
@@ -78,6 +125,33 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **待办展示重做**：待办从输入框内的抽屉标签移到输入卡片外部下方，成为独立一条状态栏——数字徽标换成颜色圆点（未完成时主色呼吸、全部完成时静止绿点），后面跟进度 `已完成/总数` 和当前进行中的条目，条目文字带光斑扫过效果。点击不再展开抽屉，改为与模型选择一致的 popover，里面是完整待办清单（时间线连线、进行中条目高亮），底部可跳到活动面板。右侧活动面板的待办页同步重做为「概览（圆点 + 百分比 + 进度条）+ 同款时间线清单」。
 
 ### Fixed
+
+- **`.env.production` 的语音裁剪配置贯穿完整打包链路**：纯 Node 的模型准备与 `prepare-pack`
+  过去默认读取 `.env.development`，与 Vite 的 production 编译模式不一致，导致
+  `VETTA_SPEECH_INPUT_ENABLED=false` 虽然关闭了运行时入口，模型和 Sherpa 仍可能进入安装包。现在构建、
+  暂存与打包统一选择 production 环境；显式的 development / test 模式继续优先。
+
+- **场景统一为内置行内能力令牌**：对话输入、草稿恢复、重编辑与用户消息不再使用旧的顶部场景胶囊和独立全局状态；场景与 Skill 共用当前 Lexical/消息令牌 UI，但发送时仍转换为唯一的结构化 `promptRef`，保持强制展开与 `tasks.json` 待办锁定语义。令牌与后续正文会自动补齐词边界，避免正文被错误包进场景胶囊。
+
+- **自动化任务编辑与并发刷新更可靠**：编辑已暂停任务时不再被保存动作意外重新启用；更新或删除任务的 IPC 在途期间即使任务列表收到新增项，完成后的本地状态也基于最新列表合并，不再让新任务从界面消失。Cron 解析同时拒绝越界或无法由表单准确表示的表达式，避免打开任务后静默改成另一种执行时间。
+
+- **开发态与打包版共用同一份已保存密钥**：safeStorage 按 Electron app 名字定位主密钥（macOS 钥匙串
+  条目 `<name> Safe Storage`），而开发态曾把名字覆盖成 `Vetta`、打包版用 asar 内的 `vetta`，两侧因此各持
+  一把密钥。`bun run dev:home` 虽然共享 `~/.vetta`，却解不开打包版写入的 API key，日志记下
+  「模型凭据无法解密」后按未配置处理，重填又会覆盖打包版的密文。app 名字现由
+  `src/shared/app-identity.ts` 单一事实源固定，并由测试锁死与 `scripts/prepare-pack.js` 一致。
+  升级后开发态写入过的凭据需重填一次，此后两侧互通。
+
+- **Desktop 打包无限递归**：生产 profile 脚本曾新增 `build:pack`，同时打包准备入口仍名为
+  `prebuild:pack`；Bun 会把后者当作前者的生命周期钩子自动执行，而该钩子又调用
+  `build:pack`，导致 Windows workspace 前置构建完成后整条打包链不断重启。准备入口现改为
+  不与生命周期冲突的显式 `prepare:desktop-pack`，`pack` / `dist` 行为和生产插件选择保持不变。
+
+- AI Provider 最终失败（包括 HTTP 400/429/5xx）现在写入 Desktop 主日志，记录稳定错误码、状态码、Provider、模型、request id、可重试标记与实际重试次数；日志只消费白名单诊断字段，并对错误消息中的常见凭证格式脱敏、截断。
+
+- **手动导入的场景被当成技能**：导入自定义能力包时只读 `SKILL.md` 的 name / alias / description / version，硬编码按 skill 装进 `~/.vetta/skills/`，`metadata.type: scene` 完全没人看。装错目录不只是分类不对——agent 是按目录判定场景的，装进 skills/ 就拿不到 tasks.json 自动建 todo 并锁定列表这类场景语义。现在导入类型与 agent 侧同一口径（只认 `metadata` 块内的 `type`，顶层同名键不算），scene 装进 `~/.vetta/scene/`，清单、能力台账与监控事件都记为 scene，场景页也随之列出用户自己导入的场景（此前本地清单里的 custom 条目被无条件跳过，只显示市场来源的场景）。已按 skill 装错的包需卸载后重新导入。
+- **折叠块写法的 description 被读成一个 `>`**：`description: >` 加缩进续行是 SKILL.md 的常见写法，导入时却只取首行，于是描述变成 `>`，落盘规范化还会把首行改写成 `description: ">"` 而让续行变成孤儿，agent 侧的严格 YAML 解析直接失败、技能加载不出来。现在折叠块按 folded 语义拼成整段，且不再改写块标量首行（块标量本身对 `:` 就是安全的）。
+- **AI 供应商错误与自动重试过程可见**：自动重试期间消息列表稳定显示“正在重新连接（1/3）”及上次失败的用户友好原因；最终失败进入现有错误卡并保留原始详情。`turn.failed` 与 prompt 前置失败现在也能从完整历史恢复；`agent_end` 遇到尚未包含刚落盘错误的历史快照时，会按 `turnId` 对账并保留实时终端错误，不再出现错误卡先显示又消失，重新打开会话仍可看到。失败回合不会再使用错误文本发起 auto-title 请求。
 
 - **生产包启动数秒后整个 App 未响应（macOS 彩虹圈）**：uiohook-napi ≤1.5.5 的 `hook_enable()` 存在启动竞态死锁——`uv_cond_wait` 无谓词循环，虚假唤醒后调用线程误判启动失败、持 `hook_running_mutex` 进入 `uv_thread_join`，钩子线程随后派发 `EVENT_HOOK_ENABLED` 时又要锁同一把 mutex，两边永久互等；quickpanel/appshot 手势在启动期同步调用 `uIOhook.start()`，主进程主线程被冻住。死锁在原生层、与输入监控授权无关（macOS 26/27 上调度时序变化后近乎必现）。现在 uIOhook 隔离到 utilityProcess 宿主子进程（`uiohook-host.ts`），键盘事件经 IPC 回传主进程状态机；`UiohookSupervisor` 对宿主做启动看门狗（超时即视为命中死锁，kill 后延迟重拉，竞态窗口极窄、重试大概率成功），重试预算用尽只降级为手势不可用并记日志，主进程 UI 永不再因此冻结。
 - **从归档安装插件后 Agent 能力未立即生效**：归档安装路径此前只更新插件清单和监控事件，没有像 URL、目录安装路径一样刷新共享 Agent 运行时；新插件贡献的工具、Hook、MCP 和提示词要等下一次重载才可用。插件安装生命周期现由同一服务统一收尾，三种安装来源都会在成功后立即应用运行时配置。
@@ -153,7 +227,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **开发模式登录回调不再拉起已安装的正式版**：dev 跑的是 `node_modules` 里的 Electron.app（bundle id `com.github.Electron`，Info.plist 没有 `CFBundleURLTypes`），macOS/Linux 的 LaunchServices 只会把 `vetta://` 派发给声明过该 scheme 的 bundle，也就是 `/Applications/Vetta.app`，开发中的实例永远收不到 token；`setAsDefaultProtocolClient` 在 macOS 上也救不了（系统拉起 bundle 时不带 `dist/main/index.js` 这个 argv）。非打包时改走 OAuth 标准的 loopback 回调：主进程在 `127.0.0.1` 临时端口监听 `/oauth/callback`，`client_redirect` 指向该地址，收到后归一化成 `vetta://oauth/callback?…` 复用既有的 state 校验链路，并把窗口抢回前台。打包版行为不变。
 
-- **能力市场「我的」不再按工作模式过滤插件**：声明了 `agent_mode` 白名单的插件（如 `agent_mode: ["work"]`）在「编程」模式下会从「我的」里整条消失，看起来像能力丢了。能力页改用不过滤的 `plugins.listAll()` 取已装插件；插件详情页新增「适用工作场景」一栏，列出该插件声明的模式（未声明则为「全部场景」），当前模式不在白名单时给出提示。工作台列表与 UI 贡献的模式硬闸不变（ADR-0046）。
+- **能力市场「我的」不再按工作模式过滤插件**：声明了 `agent_mode` 白名单的插件（如 `agent_mode: ["work"]`）在「编程」模式下会从「我的」里整条消失，看起来像能力丢了。能力页改用不过滤的 `plugins.listAll()` 取已装插件；插件详情页新增「适用工作场景」一栏，列出该插件声明的模式（未声明则为「全部场景」），当前模式不在白名单时给出提示。（本版稍后进一步取消了全部模式硬闸，工作台列表与 UI 贡献也不再按模式过滤，详见下方「工作模式不再隐藏任何插件」。）
 
 - **活动面板「生图历史 / 移动预览 / 内容创作」默认不再占栏**：生图历史 `initiallyVisible: false`，仅在 `generate_image` / `edit_image` 成功后 `openActivityTab` 上栏；移动预览改为跟文件树选中（含 html/htm）显隐，不再因项目里任意存在 html 就自动上栏；内容创作（content-creation）同理默认隐藏，由 `open_content_creation` 或用户从「+」添加后再显示。
 - **移动预览旧安装包一直占栏**：已装的 `mobile-ui-preview@0.2.x` 未声明 `initiallyVisible: false`（缺省即上栏），与源码改动无关也会常驻。0.3.3 显式 `initiallyVisible: false`，会话回放时按选区写回显隐以清掉历史 attach 脏记录。
@@ -239,7 +313,6 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **设置 / 自动化 / 批量任务的切页骨架**：三个路由单独设 `pendingComponent: () => null`，pending 期间留空白、内容就绪后直出，不再闪一屏 `RouteContentLoadingView` 脉冲块。其余路由仍保留全局 `defaultPendingComponent`。
 - **新会话页的场景轮播 / 技能徽章 / 引导词三个区块**：欢迎页只保留问候语、模式切换与输入栏。随之删除 `useNewSessionResources`（本地 skill + 市场场景 + 安装清单的拉取）、场景点击安装链路、`GuidingWords` / `SkillBadgeRow` / `SceneCarousel` 及 `useGuidingWordsModel`，以及主题槽位 `chat.newSessionSceneCarousel` / `chat.newSessionSceneCard` / `chat.newSessionSkillBadgeRow` 在 desktop 侧的声明（theme-ui 的组件与契约保留，主题覆盖它们对客户端不再有效果）。`chat.newSession` 的 `sceneCarouselNext` / `sceneCarouselPrev` / `sceneInstallPrompt` / `skillScrollLeft` / `skillScrollRight` 文案一并删除。
 - **设置 → 新会话页**：整个 tab（含「页面元素」三个开关）与 `NewSessionSettings*` / `useNewSessionSettingsModel` 删除，`SettingsTab` 不再有 `newSession`；`newSessionPageVisibilityAtom` 与 desktop-config 的 `newSessionPage` 字段（主进程 `normalizeNewSessionPage`、preload 类型）一并移除。已有 `desktop-config.json` 里的该字段会在下次写入时被丢弃。
-- **侧边栏「更多」里的「场景」入口**：`/scenes` 路由本身保留，只是不再从侧边栏进入。
 - **服务端预设模板目录**：`/providers/templates.json` 的拉取、启动时的在线合并与 `vetta:models:fetch-templates` IPC 删除，改为 `vetta:models:list-presets` / `vetta:models:refresh-preset-models`。早期由服务端模板采纳、现已不在内置目录里的条目仍展示（标记「已下线」），但不提供刷新入口。
 - **能力详情的结构化 section 体系**：`CapabilityDetailSections` 的 featureList / scenarios / permissions / reviews 与 `catalog.ts` 中 Figma / GitHub / Notion 的客户端硬编码正文按 ADR-0049 作废，正文改由服务端下发 markdown。
 - **插件独立入口**：`PluginsPage` / `PluginsPanel` / `PluginCard` / `PluginDetailSheet` 及侧边栏「插件」导航项删除；插件的 dev 热更新、devLinks、从路径安装等开发者功能保持不变。
@@ -349,7 +422,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **edit 锚点模式的专属渲染**：diff 卡片统计行新增紫色「锚点编辑」徽章（`DiffPreviewView.modeBadge`）标识本次修改走锚点模式；流式阶段（diff 尚未产出）不再空白，新降级视图逐条展示锚点目标（`42:ab` 紫色 chip）、动作（替换该行/替换区间/插入到其后/删除）与新文本预览；文案接入 i18n（zh/en）。锚点模式参数（`edits` 数组）纳入工具卡片可展开判定。
 
-- **内置「图表渲染」系统插件（chart-renderer）**：收编原第三方插件为 preset，随 App 发布（common / tenantb 租户）。Agent 调用 `render_chart` 传入标准 Chart.js `type`/`data`（或 `charts` 数组，最多 4 个），图表渲染在工具调用下方；随包附带 `chart-renderer` skill；`agent_mode: ["work"]`，Coding 模式下整体不可见；文案接入插件 i18n（zh/en）。
+- **内置「图表渲染」系统插件（chart-renderer）**：收编原第三方插件为 preset，随 App 发布（common / tenantb 租户）。Agent 调用 `render_chart` 传入标准 Chart.js `type`/`data`（或 `charts` 数组，最多 4 个），图表渲染在工具调用下方；随包附带 `chart-renderer` skill；`agent_mode: ["work"]`（本版内已降级为纯偏好，两种模式下都可用）；文案接入插件 i18n（zh/en）。
 - **插件卡片 New 徽章**：用户新安装的非系统插件在安装后 1 小时内于卡片状态徽章旁显示 `New`（依据 `installedAt`）。
 - **Work 模式对话渲染改为 agent 自述的阶段组（ADR-0047）**：Work 模式下 `MessageList` 不再平铺工具卡片，而是按 agent 通过 `progress` 工具声明的阶段折叠成一行标题（进行中 / 完成态文案均由 agent 撰写），展开后一行一条调用说明，再点开才是完整工具卡片；thinking 一律不渲染；流式期间阶段标题行常驻，消息结束后整段过程收起、只留最终总结，折叠条按阶段数计数。没有 `progress` 调用时退回启发式合组 + 通用文案。插件自定义 UI 工具、错误块与失败调用强制冒泡到组外。Coding 模式渲染不变，历史消息中的 `progress` 调用降级为一行语义分隔小标题。
 - **插件产物卡片支持 agent 撰写的引入语**：渲染进程自动探测某个插件 agent 工具是否注册了 tool-call slot，是则宿主为其注入可选的 `md_intro` 参数，模型填写的 markdown 渲染在卡片正上方。插件无需任何改动。
@@ -413,7 +486,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **Vetta Vivi 设置分区合并**：「显示状态」与「窗口」合并为「显示与窗口」（显示桌宠 + 始终置顶），其余装饰 / 气泡 / 开发调试分区不变。
 - **预设服务商启用简化**：模型配置里未启用的预设服务商行内直接展示 API Key 输入框与「启用」按钮，无需先展开表单；placeholder 仅示意格式（`sk-...`）；已启用仍用「改 Key」展开修改。
 - **Vetta Claw 设置分区整理**：「总开关」与「对话模型」合并为「基础」；连接状态徽标上移到页标题旁；消息渠道与状态日志分区结构不变，减少单行卡片。
-- **工作模式徽章与 Claw 徽章位置互换**：侧边栏顶栏改为展示「工作模式」徽章（点击展开下拉菜单切换 Work/Coding，带模式图标与当前项打勾），Claw 在线徽章下沉到底部头像 item 内（脉冲点 + Claw，非交互状态标记）。新增共享的分段切换器 `AgentModeSwitcher`（outline 描边容器 + primary 实心滑块 + 模式图标，圆角走主题），底部设置菜单工作模式区与新会话页问候语上方复用。
+- **Claw 徽章下沉到底部头像 item 内**（脉冲点 + Claw，非交互状态标记）。侧边栏顶栏一度改为展示可切换的「工作模式」徽章，但本版稍后把模式入口收敛到了新会话页一处，该徽章与共享分段切换器 `AgentModeSwitcher` 均已移除，详见下方「工作模式的调整入口收敛到新会话页一处」。
 - **插件 App Action 运行时收口**：`vetta-actions` 改为不可停用/卸载的 required 系统插件并要求 Plugin API `^1.1.0`；Catalog 在核心 provider 未就绪时返回结构化错误，插件热更新按 provider 快照原子切换并在失败时保留上一版；官方审批 operation 映射改为宿主权威选择；批量任务、定时任务与 MCP 写入增加主进程结构校验，官方插件 API 按领域拆分并收紧数据类型。
 - **首次启动引导**：已登录时隐藏登录步骤（含底部 indicator）；设置 → 通用最下方新增「启动 App 引导」，可随时重新打开引导页。
 - **界面语言支持「跟随系统」**：`desktop-config.language` 取值 `system` | `zh` | `en`（缺省 / 未设置 = `system`）；启动按 OS locale 解析（中文族 → `zh`，其余 → `en`）。设置 → 外观与首次引导「语言与外观」均提供跟随系统 / 中文 / English 选项；缺译回退仍为中文（`FALLBACK_LANGUAGE=zh`）。
@@ -702,7 +775,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **MCP 设置支持 HTTP transport**：MCP 服务器设置（视图模式 + JSON 模式）支持新增 `type: "http"` 配置，可填 `url` 和可选 `headers`（每行 `KEY=VALUE`，支持 `${VAR}` 替换）。视图模式表单顶部新增「传输类型」切换器在 stdio / HTTP 间切换；JSON 模式不再强制要求 `command` 字段，按 `type` 分别校验。详情视图额外展示 HTTP URL/Headers。例：`{ "exa": { "type": "http", "url": "https://mcp.exa.ai/mcp" } }`。
 - **设置页新增「外观」面板（外观模式 + 主题）**：设置侧边栏在「通用设置」之后插入「外观」Tab，提供两组大卡片：外观模式（浅色 / 深色 / 跟随系统）和主题（默认 / 海洋）。主题用 TypeScript 对象表达（`shared/theme/themes/*.ts`，每个主题导出 `{ light, dark }` 两套 token），切换时通过 `document.documentElement.style.setProperty` 把 `TokenSet` 注入到根节点 inline style，CSS 文件保持不变。`styles.css` 中原 `[data-theme="dark|light"]` 选择器（语义=模式）改名为 `[data-mode="dark|light"]`，新增 `data-theme="default|ocean"` 仅作主题标识；`@custom-variant dark` 同步更新到 `[data-mode="dark"]`。`main.tsx` 顶部在 React 挂载前同步调用 `applyInitialTheme()` 从 localStorage 读 mode + 主题名注入变量，避免冷启动闪烁；切换时给 `<html>` 临时加 `.theme-transitioning` class 启用 180ms 颜色 transition，超时后自动移除。主题仅渲染层 + localStorage（key: `vetta-color-theme`），不经 IPC；模式同步主进程的逻辑保持原状。新增 token 涵盖 `[data-mode]` 块下所有原有变量（颜色 + chart + 阴影 + 字体 + 圆角），后续新增主题只需添 TS 文件 + 在 `themes/index.ts` 注册一行。
 
-- **批量任务 / 自动化 Dialog 支持选择技能·场景**：`BatchProjectDialog`（批量任务）和 `TaskFormDialog`（自动化）的 prompt 区改造为「输入卡片」——上方胶囊条 + textarea + 底部「+ 技能/场景」按钮，与会话页 InputBar 对齐。textarea 为空且首字符为 `/` 时唤起复用的 `SlashPanel`（中间出现 `/` 不触发，避免误触路径），底部「+」按钮可随时切换面板，胶囊上 Backspace 直接移除选中项。选中态以 `skill?: { name, alias?, type }` 持久化到 `BatchProject` / `ScheduledTask` 记录，运行时由各自 executor 通过顶层 `PromptRequest.promptRef` 结构化传递（与会话页 `useSessionManager.sendMessage` 一致）。重新打开 Dialog 时若存储的技能已被卸载，胶囊仍按 name/type 渲染并附 amber 色「未安装」标记，避免静默丢失用户选择。新增渲染端共享子组件 `SkillPromptArea`（位于 `domains/chat/components/`）封装胶囊条、SlashPanel 锚点与「+」工具条；preload 新增 `SelectedSkillRef` 类型并扩展 `BatchProject` / `ScheduledTask` / `createProject` / `updateProject` 数据形状；主进程 `batch-task-storage`、`batch-task-executor`、`task-storage` / `task-executor` 全链路透传。`/.vetta/meta.json` 与 `~/.vetta/scheduled-tasks.json` 旧记录无 skill 字段时按 undefined 兼容。NewSessionPage 复用既有 `selectedSkillAtom` 路径不变。
+- **批量任务 / 自动化 Dialog 支持选择技能·场景**：`BatchProjectDialog`（批量任务）和 `TaskFormDialog`（自动化）的 prompt 区改造为「输入卡片」——上方胶囊条 + textarea + 底部「+ 技能/场景」按钮，与会话页 InputBar 对齐。textarea 为空且首字符为 `/` 时唤起复用的 `SlashPanel`（中间出现 `/` 不触发，避免误触路径），底部「+」按钮可随时切换面板，胶囊上 Backspace 直接移除选中项。选中态以 `skill?: { name, alias?, type }` 持久化到 `BatchProject` / `ScheduledTask` 记录，运行时由各自 executor 通过顶层 `PromptRequest.promptRef` 结构化传递（与会话页 `useSessionManager.sendMessage` 一致）。重新打开 Dialog 时若存储的技能已被卸载，胶囊仍按 name/type 渲染并附 amber 色「未安装」标记，避免静默丢失用户选择。新增渲染端共享子组件 `SkillPromptArea`（位于 `domains/chat/components/`）封装胶囊条、SlashPanel 锚点与「+」工具条；preload 新增 `SelectedSkillRef` 类型并扩展 `BatchProject` / `ScheduledTask` / `createProject` / `updateProject` 数据形状；主进程 `batch-task-storage`、`batch-task-executor`、`task-storage` / `task-executor` 全链路透传。`/.vetta/meta.json` 与 `~/.vetta/scheduled-tasks.json` 旧记录无 skill 字段时按 undefined 兼容。批量任务与自动化继续持有任务级结构化选择；会话输入已改用行内能力令牌，不再共享该选择状态。
 
 - **会话页支持外部文件拖拽引用**：`ChatPage` / `NewSessionPage` 全页接管 OS 拖入事件，hover 时出现虚线虚化蒙层「松开以引用文件」提示。松开后非图片文件/目录通过 preload 新暴露的 `fs.pathForFile(file)`（Electron 32+ 移除 `File.path` 后由 `webUtils.getPathForFile` 接管）取到绝对路径，去重后追加进 `mentionedFilesAtom`，在 InputBar 顶部以胶囊形式展示并保留原有 hover 路径 tooltip；图片仍走 `attachedImagesAtom`（DataURL 多模态附件，不变）。文件夹通过 `webkitGetAsEntry` 检测，胶囊以目录形态显示。NewSessionPage 状态下拖入有效——文件暂存于 atom，由后续 `openSession + sendMessage` 串起。应用内 File Explorer 拖到 ChatPage 同样进 mentionedFiles：`FileTreeNode` 在 dragstart 新增第二条 MIME `application/vetta-path-meta`（JSON: `{ isDirectory, name }`），既不影响原有 in-tree move 逻辑，又让 chat drop zone 拿到目录标记。InputBar 自身的图片专属 drop overlay 下线，避免与全页 overlay 叠加。`mentionedFile` 语义随之从「cwd 内 @ 提及」放宽到「任意绝对路径引用」，CONTEXT.md 与 docs/adr/0002 已同步。
 

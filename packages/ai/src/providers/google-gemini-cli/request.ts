@@ -1,4 +1,5 @@
 import type { ThinkingConfig } from "@google/genai";
+import { providerAuthenticationError } from "../../provider-kit/index.js";
 import type { Context, Model } from "../../types.js";
 import { sanitizeSurrogates } from "../../utils/sanitize-unicode.js";
 import { convertMessages, convertTools, mapToolChoice } from "../google-shared.js";
@@ -31,18 +32,31 @@ export interface GoogleCloudCodeCredentials {
 	projectId: string;
 }
 
-export function parseGoogleCloudCodeCredentials(apiKeyRaw?: string): GoogleCloudCodeCredentials {
+export function parseGoogleCloudCodeCredentials(
+	model: Model<"google-gemini-cli">,
+	apiKeyRaw?: string,
+): GoogleCloudCodeCredentials {
 	if (!apiKeyRaw) {
-		throw new Error("Google Cloud Code Assist requires OAuth authentication. Use /login to authenticate.");
+		throw providerAuthenticationError(
+			model,
+			"Google Cloud Code Assist requires OAuth authentication. Use /login to authenticate.",
+		);
 	}
 	let parsed: { token?: string; projectId?: string };
 	try {
 		parsed = JSON.parse(apiKeyRaw) as { token?: string; projectId?: string };
-	} catch {
-		throw new Error("Invalid Google Cloud Code Assist credentials. Use /login to re-authenticate.");
+	} catch (error) {
+		throw providerAuthenticationError(
+			model,
+			"Invalid Google Cloud Code Assist credentials. Use /login to re-authenticate.",
+			error,
+		);
 	}
 	if (!parsed.token || !parsed.projectId) {
-		throw new Error("Missing token or projectId in Google Cloud credentials. Use /login to re-authenticate.");
+		throw providerAuthenticationError(
+			model,
+			"Missing token or projectId in Google Cloud credentials. Use /login to re-authenticate.",
+		);
 	}
 	return { accessToken: parsed.token, projectId: parsed.projectId };
 }

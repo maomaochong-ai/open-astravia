@@ -39,7 +39,7 @@
 		"build": "tsgo -p tsconfig.build.json",
 		"dev": "tsgo -p tsconfig.build.json --watch --preserveWatchOutput",
 		"dev:tsc": "tsgo -p tsconfig.build.json --watch --preserveWatchOutput",
-		"test": "vitest --run",
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run",
 		"test:all": "vitest --run --config vitest.all.config.ts",
 		"test:integration": "vitest --run --config vitest.integration.config.ts",
 		"test:live": "vitest --run --config vitest.live.config.ts",

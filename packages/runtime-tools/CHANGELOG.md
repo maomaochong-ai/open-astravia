@@ -9,8 +9,16 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 - **CodingToolCatalog 执行仲裁合同**：`resolve(toolName)` 返回带稳定 Capability Binding 的 Catalog Entry，只读 Catalog 新增 `execute(binding, request)`；Coding Tools 不再写入编译期 `RuntimeSnapshot.tools`，改为通过 Model Call Contribution 在每次模型调用前物化。
 - **退役 Coding Agent 工具兼容根**：包根改为暴露与 `@vetta/runtime-tools/coding` 相同的原生 Runtime Tool API，不再提供旧工具单例集合与旧工厂转发。
 
+### Changed
+
+- **`agentModes` / `agentMode` 字段整体删除（ADR-0071，接续上一条）**：`CodingToolRegistration.agentModes` 与 `CodingToolActivation.agentMode` 不再存在，6 个内置工具的 `*_TOOL_AGENT_MODES` 常量删除。上一版把 agent_mode 从过滤降级为「宿主排序偏好」，本版确认排序对模型选择无可观察影响后整体废弃：工作模式不以任何形式参与工具选择与排序，`scopeUse` ∩ `requires` 仍是仅有的两条 fail-closed 轴。
+
 ### Added
 
+- **注册级副作用声明 `CodingToolRegistration.sideEffect`**：核心工具可在定义处声明 `"light" | "heavy"`（缺省 light），产品宿主的 heavy 首调确认闸消费该声明。`im_send_attachment` 声明 heavy（外发不可撤回且无自带确认）；bash/shell（边界归 Execution Mode）、subagent 三件套（会话内计费、可回收）与 `kb_write_page`（写宿主知识库非工作区）显式声明 light 并就近注释豁免理由。
+- **Turn-bound Tool Catalog lease 与显式 hard revoke**：Turn admission 捕获不可变 Catalog 与具体
+  implementation binding；普通 disable/unregister/reload 只影响后续 Turn，旧 binding 保留到最后一个
+  Turn lease 释放。`revoke` 强制要求 reason 与 audit id，并可取消在途执行。
 - **原生 Subagent 控制 Tool**：新增 `spawn_agent`、`dispatch_workflows`、`wait_agent`、`list_agents`、`interrupt_agent`、`send_message` 与 `followup_task` 的 TypeBox Schema、TS 描述和 Registration；工具协议与用户可见行为保持不变，执行只依赖 `runtime-subagents` 的协调端口。
 - **原生 Knowledge 写页 Tool**：新增 `kb_write_page` 的 TypeBox Schema、TS 描述、Registration 与知识写入窄 Operations Port；工具名称、scope、输入、输出和移动提示保持不变。
 - **原生 IM 附件 Tool**：新增 `im_send_attachment` 的 TypeBox Schema、TS 描述、Registration 与宿主发送/文件访问窄 Port；工具名称、scope、输入、输出及错误语义保持不变。

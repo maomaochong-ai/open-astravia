@@ -48,7 +48,22 @@ function createHarness(installed = plugin()) {
 			return { dispose };
 		}),
 	};
-	const runtime = { providers, artifacts: {} } as unknown as DesktopMediaRuntime;
+	const artifacts = {
+		resolveInputFile: vi.fn().mockResolvedValue({
+			path: "C:/plugins/demo/generated.png",
+			mimeType: "image/png",
+			sizeBytes: 4,
+		}),
+		putFile: vi.fn().mockResolvedValue({
+			id: "artifact-1",
+			kind: "image",
+			mimeType: "image/png",
+			sizeBytes: 4,
+			lifetime: "temporary",
+		}),
+		release: vi.fn(),
+	};
+	const runtime = { providers, artifacts } as unknown as DesktopMediaRuntime;
 	const dependencies: PluginMediaProviderHostDependencies = {
 		listPlugins: () => [installed],
 		getMediaRuntime: () => runtime,
@@ -59,6 +74,7 @@ function createHarness(installed = plugin()) {
 	return {
 		host: new PluginMediaProviderHost(dependencies),
 		providers,
+		artifacts,
 		disposals,
 		getRegistration: () => registration,
 	};
@@ -117,5 +133,38 @@ describe("PluginMediaProviderHost", () => {
 		expect(() => harness.host.register(sender(1), "demo", providerRegistration)).toThrow(
 			"Plugin permission denied: media.provider.register",
 		);
+	});
+
+	it("maps plugin blob artifacts to generic storage blob inputs", async () => {
+		const harness = createHarness(plugin(["media.provider.register", "storage.read"]));
+		const contents = sender(1);
+		harness.host.register(contents, "demo", providerRegistration);
+		const registration = harness.getRegistration();
+		if (!registration) throw new Error("Provider was not registered");
+
+		const invocation = registration.submit(
+			{ inputs: [] } as unknown as Parameters<MediaProviderRegistration["submit"]>[0],
+			{ ownerId: "consumer", signal: new AbortController().signal },
+		);
+		harness.host.respond(contents, "request-1", {
+			value: {
+				id: "job-1",
+				status: "succeeded",
+				artifacts: [
+					{
+						kind: "image",
+						mimeType: "image/png",
+						source: { type: "plugin-blob", blobId: "generated" },
+					},
+				],
+			},
+		});
+
+		await expect(invocation).resolves.toMatchObject({ artifacts: [{ id: "artifact-1" }] });
+		expect(harness.artifacts.resolveInputFile).toHaveBeenCalledWith({
+			kind: "image",
+			mimeType: "image/png",
+			source: { type: "storage-blob", namespace: "demo", id: "generated" },
+		});
 	});
 });

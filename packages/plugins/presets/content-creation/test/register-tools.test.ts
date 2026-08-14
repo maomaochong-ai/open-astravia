@@ -9,6 +9,7 @@ import { ContentVideoShotPlanError } from "../src/agent/video-shot-plan";
 import { ContentGenerationIntentError } from "../src/generation/generation-intent";
 import { ContentLocalAssetError, type ContentLocalAssetService } from "../src/generation/local-asset-service";
 import type { ContentModelDescriptor } from "../src/generation/types";
+import { listConnectedPromptSources, resolveContentPrompt } from "../src/node/prompt-sources";
 import { applyContentProjectCommands } from "../src/project/commands";
 import { createContentProject } from "../src/project/types";
 import { ContentRunApprovalStore } from "../src/plugin/run-approval";
@@ -128,6 +129,15 @@ describe("content creation tool registration", () => {
 		]);
 	});
 
+	it("edit 在注册处声明 heavy，其余工具缺省 light", () => {
+		// edit 往用户工作区写内容工程文件树；run 自带全局确认对话框、assets 落插件托管存储、
+		// inspect 只读，均不该再进首调确认闸。
+		expect(tool(CONTENT_EDIT_TOOL_NAME).side_effect).toBe("heavy");
+		expect(tool(CONTENT_RUN_TOOL_NAME).side_effect).toBeUndefined();
+		expect(tool(CONTENT_ASSETS_TOOL_NAME).side_effect).toBeUndefined();
+		expect(tool(CONTENT_INSPECT_TOOL_NAME).side_effect).toBeUndefined();
+	});
+
 	it("validates and imports local media without returning file bytes", async () => {
 		const input = validateRegisteredTool(CONTENT_ASSETS_TOOL_NAME, {
 			action: "import",
@@ -190,9 +200,72 @@ describe("content creation tool registration", () => {
 			expectedRevision: 0,
 			projectDir: "C:/project",
 			operations: [
-				{ type: "connect_nodes", source: "product-image", target: "product-video", targetInput: "startImages" },
-				{ type: "connect_nodes", source: "product-video", target: "output", targetInput: "content" },
+				{
+					type: "connect_nodes",
+					sourceNodeId: "product-image",
+					targetNodeId: "product-video",
+					targetInput: "startImages",
+				},
+				{
+					type: "connect_nodes",
+					sourceNodeId: "product-video",
+					targetNodeId: "output",
+					targetInput: "content",
+				},
 			],
+		})).not.toThrow();
+	});
+
+	it("accepts canonical connection ids through the actual host AJV validation path", () => {
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{
+				type: "connect_nodes",
+				edgeId: "prompt-to-image",
+				sourceNodeId: "prompt",
+				targetNodeId: "image",
+				targetInput: "promptSources",
+			}],
+		})).not.toThrow();
+	});
+
+	it("rejects low-level source roles on high-level video shots during schema validation", () => {
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{
+				type: "configure_video_shot",
+				targetNodeId: "video",
+				promptPlan: createVideoPromptPlan(),
+				sources: [{ sourceNodeId: "image", role: "referenceImages" }],
+			}],
+		})).toThrow();
+	});
+
+	it("requires operation-specific fields during host schema validation", () => {
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{ type: "connect_nodes", sourceNodeId: "prompt" }],
+		})).toThrow();
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{ type: "configure_video_shot", targetNodeId: "video" }],
+		})).toThrow();
+	});
+
+	it("keeps exact-ending semantics in the domain validator instead of provider-fragile schema conditionals", () => {
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{
+				type: "configure_video_shot",
+				targetNodeId: "video",
+				controlRequirements: { exactEnding: true },
+				promptPlan: createVideoPromptPlan("first-last-frame-plan"),
+				sources: [{ sourceNodeId: "opening" }],
+			}],
+		})).not.toThrow();
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{
+				type: "configure_video_shot",
+				targetNodeId: "video",
+				controlRequirements: { exactEnding: false },
+				promptPlan: createVideoPromptPlan(),
+				sources: [{ sourceNodeId: "opening" }],
+			}],
 		})).not.toThrow();
 	});
 
@@ -203,7 +276,7 @@ describe("content creation tool registration", () => {
 				targetNodeId: "video",
 				strategy: "automatic",
 				controlRequirements: { requiresSceneReference: true },
-				promptPlan: createVideoPromptPlan(),
+				promptPlan: createVideoPromptPlan("omni-reference-plan"),
 				sources: [
 					{
 						sourceNodeId: "person",
@@ -220,6 +293,27 @@ describe("content creation tool registration", () => {
 				],
 			}],
 		})).not.toThrow();
+	});
+
+	it("advertises only strategy-specific video prompt plans to the Agent", () => {
+		const legacyPlan: Record<string, unknown> = { ...createVideoPromptPlan(), kind: "video-shot" };
+		delete legacyPlan.sourceImageContract;
+
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{
+				type: "configure_video_shot",
+				targetNodeId: "video",
+				promptPlan: legacyPlan,
+				sources: [{ sourceNodeId: "image" }],
+			}],
+		})).toThrow(/kind/);
+		const schema = JSON.stringify(tool(CONTENT_EDIT_TOOL_NAME).parameters);
+		expect(schema).toContain("text-to-video-plan");
+		expect(schema).toContain("animate-still-plan");
+		expect(schema).toContain("first-last-frame-plan");
+		expect(schema).toContain("omni-reference-plan");
+		expect(schema).toContain("transform-video-plan");
+		expect(schema).not.toContain('"const":"video-shot"');
 	});
 
 	it("returns retryable corrective context for semantic generation mistakes", async () => {
@@ -290,7 +384,7 @@ describe("content creation tool registration", () => {
 		});
 	});
 
-	it("runs a real validated product-image-to-video batch through the tool handler", async () => {
+	it("runs a real validated high-level image-to-video batch through the tool handler", async () => {
 		let project = createContentProject("C:/project");
 		edit.mockImplementationOnce(async (_cwd, operations) => {
 			project = applyContentProjectCommands(
@@ -316,16 +410,41 @@ describe("content creation tool registration", () => {
 					id: "product-video",
 					kind: "video-generator",
 					duration: 5,
-					promptPlan: createVideoPromptPlan(),
+					aspectRatio: "16:9",
 				},
 				{ type: "add_node", id: "output", kind: "output" },
-				{ type: "connect_nodes", source: "prompt", target: "product-image", targetInput: "prompt" },
-				{ type: "connect_nodes", source: "product-video", target: "output", targetInput: "content" },
 				{
-					type: "configure_generation",
+					type: "connect_nodes",
+					sourceNodeId: "prompt",
+					targetNodeId: "product-image",
+					targetInput: "prompt",
+				},
+				{
+					type: "connect_nodes",
+					sourceNodeId: "prompt",
 					targetNodeId: "product-video",
-					generationIntent: "animate-still",
+					targetInput: "promptSources",
+				},
+				{
+					type: "connect_nodes",
+					sourceNodeId: "product-image",
+					targetNodeId: "product-video",
+					targetInput: "referenceImages",
+				},
+				{
+					type: "connect_nodes",
+					sourceNodeId: "product-video",
+					targetNodeId: "output",
+					targetInput: "content",
+				},
+				{
+					type: "configure_video_shot",
+					targetNodeId: "product-video",
+					strategy: "automatic",
+					aspectRatio: "16:9",
+					controlRequirements: { exactOpening: true, exactEnding: false },
 					sources: [{ sourceNodeId: "product-image" }],
+					promptPlan: createVideoPromptPlan(),
 				},
 			],
 		};
@@ -333,7 +452,7 @@ describe("content creation tool registration", () => {
 
 		const result = await tool<typeof input>(CONTENT_EDIT_TOOL_NAME).handler(toolContext(validated as typeof input));
 
-		expect(result).toMatchObject({ ok: true, status: "applied", revision: 1, nodeCount: 4, connectionCount: 3 });
+		expect(result).toMatchObject({ ok: true, status: "applied", revision: 1, nodeCount: 4, connectionCount: 4 });
 		expect(project.graph.edges).toEqual(expect.arrayContaining([
 			expect.objectContaining({ source: "product-image", target: "product-video", role: "firstFrame" }),
 			expect.objectContaining({ source: "product-video", target: "output", targetHandle: "content" }),
@@ -343,6 +462,10 @@ describe("content creation tool registration", () => {
 			modelId: "frame-video",
 			modeId: "image-to-video",
 		});
+		const video = project.graph.nodes.find((node) => node.id === "product-video");
+		const effectivePrompt = resolveContentPrompt(listConnectedPromptSources(project, "product-video"), video?.data ?? {});
+		expect(effectivePrompt).toContain("Premium product lighting");
+		expect(effectivePrompt).toContain("Primary action:");
 	});
 
 	it("queues prepared generation for the global dialog without returning a card", async () => {
@@ -356,9 +479,10 @@ describe("content creation tool registration", () => {
 	});
 });
 
-function createVideoPromptPlan() {
-	return {
-		kind: "video-shot",
+function createVideoPromptPlan(
+	kind: "animate-still-plan" | "first-last-frame-plan" | "omni-reference-plan" = "animate-still-plan",
+) {
+	const base = {
 		sceneFunction: "Premium product reveal for a social advertisement",
 		referenceRole: "Use the product image as the identity and initial composition reference",
 		protectedInvariants: ["Preserve product geometry", "Preserve branding and color"],
@@ -379,5 +503,36 @@ function createVideoPromptPlan() {
 		},
 		finalState: "Hold the recognizable product in a clean hero frame for the final second",
 		constraints: ["No text overlays", "No product redesign"],
+	};
+	if (kind === "first-last-frame-plan") {
+		return {
+			kind,
+			...base,
+			transitionContract: {
+				continuity: ["Preserve product identity, studio environment, and camera axis"],
+				stateChanges: ["Move from the opening composition to the authoritative final composition"],
+				physicalPath: "The highlight and camera move resolve continuously between both endpoint frames",
+			},
+		};
+	}
+	if (kind === "omni-reference-plan") {
+		return {
+			kind,
+			...base,
+			referenceInteraction: {
+				relationships: ["The product identity remains authoritative inside the supplied environment"],
+				chronology: ["Establish the environment", "Reveal the product", "Settle on the brand frame"],
+			},
+		};
+	}
+	return {
+		kind,
+		...base,
+		sourceImageContract: {
+			authority: "The product image controls identity, geometry, materials, and opening composition",
+			inherit: ["Product geometry", "Branding", "Studio composition"],
+			animate: ["Camera push-in", "One controlled highlight"],
+			introduce: ["Fine atmospheric particles"],
+		},
 	};
 }

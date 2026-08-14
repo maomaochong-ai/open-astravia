@@ -15,9 +15,10 @@ import {
 	useTranslation,
 } from "@vetta-org/plugin-sdk";
 import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { findContentAlignmentGuides } from "./alignment-guides";
+import { findContentFlowAlignmentGuides } from "./alignment-guides";
 import { listCompatibleNodeKinds, resolveContentConnection } from "../node/connections";
 import type { ContentProjectCommand } from "../project/commands";
+import type { ContentHistoryMetadata, ContentProjectHistoryView } from "../project/history";
 import { createDefaultContentNodeData } from "../node/definitions";
 import { getContentNodeSize } from "../node/geometry";
 import {
@@ -32,6 +33,7 @@ import type {
 	ImportedContentAsset,
 	ImportedContentReference,
 } from "../generation/types";
+import type { ContentImageEditRequest } from "../image-edit/image-edit-document";
 import { AlignmentGuidesLayer, type AlignmentGuidesLayerHandle } from "./AlignmentGuidesLayer";
 import { clampCanvasOverlayPosition } from "./overlay-position";
 import { shouldOpenConnectionCreateMenu } from "./connection-drop-menu";
@@ -83,9 +85,17 @@ interface GraphWorkspaceProps {
 	project: ContentProjectDocument;
 	assetPreviewUrls: ReadonlyMap<string, string>;
 	models: readonly ContentModelDescriptor[];
-	onDispatch: (commands: readonly ContentProjectCommand[]) => Promise<void>;
+	onDispatch: (commands: readonly ContentProjectCommand[], history?: ContentHistoryMetadata) => Promise<void>;
+	history?: ContentProjectHistoryView;
+	onUndo?: () => Promise<void>;
+	onRedo?: () => Promise<void>;
 	onRunNode: (nodeId: string) => Promise<void>;
-	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
+	onRunImageEdit?: (nodeId: string, edit: ContentImageEditRequest) => Promise<void>;
+	onImportAssets: (
+		nodeId: string,
+		files: readonly ImportedContentAsset[],
+		history?: ContentHistoryMetadata,
+	) => Promise<void>;
 	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 	onSelectedNodeIdsChange: (nodeIds: readonly string[]) => void;
 	onOpenSettings: () => void;
@@ -99,7 +109,11 @@ export function GraphWorkspace({
 	assetPreviewUrls,
 	models,
 	onDispatch,
+	history = { canUndo: false, canRedo: false },
+	onUndo = async () => undefined,
+	onRedo = async () => undefined,
 	onRunNode,
+	onRunImageEdit = async () => undefined,
 	onImportAssets,
 	onImportReferences,
 	onSelectedNodeIdsChange,
@@ -242,6 +256,7 @@ export function GraphWorkspace({
 				void onDispatch([{ type: "node.resize", nodeId, position, width, height }]);
 			},
 			onRunNode,
+			onRunImageEdit,
 			onImportAssets,
 			onImportReferences,
 			onSetKeyframeSource: (nodeId, slotId, assetId, sourceNodeId) =>
@@ -271,7 +286,7 @@ export function GraphWorkspace({
 					},
 				]),
 		}),
-		[applyNodeSelection, onDispatch, onImportAssets, onImportReferences, onRunNode, project],
+		[applyNodeSelection, onDispatch, onImportAssets, onImportReferences, onRunImageEdit, onRunNode, project],
 	);
 	const synchronizedNodes = useMemo(
 		() => toContentFlowNodes(project, models, actions, assetPreviewUrls),
@@ -352,6 +367,7 @@ export function GraphWorkspace({
 			try {
 				const files = await collectDroppedMediaFiles(dataTransfer);
 				if (files.length === 0) return;
+				const historyGroupId = crypto.randomUUID();
 				const kind = "asset";
 				const nodeId = crypto.randomUUID();
 				const center = instance.screenToFlowPosition(pointer);
@@ -360,9 +376,16 @@ export function GraphWorkspace({
 				const position = { x: center.x - size.width / 2, y: center.y - size.height / 2 };
 				const name = `${t(`node.kind.${kind}`)} ${project.graph.nodes.filter((node) => node.kind === kind).length + 1}`;
 				closeMenus();
-				await onDispatch([{ type: "node.add", node: { id: nodeId, kind, name, position } }]);
+				await onDispatch([{ type: "node.add", node: { id: nodeId, kind, name, position } }], {
+					groupId: historyGroupId,
+				});
 				applyNodeSelection([nodeId]);
-				await importDroppedMediaFiles(files, (batch) => onImportAssets(nodeId, batch));
+				await importDroppedMediaFiles(files, (batch) =>
+					onImportAssets(nodeId, batch, {
+						groupId: historyGroupId,
+						action: { kind: "asset.import", count: files.length },
+					}),
+				);
 			} finally {
 				setImportingCanvasDrop(false);
 			}
@@ -598,23 +621,40 @@ export function GraphWorkspace({
 		},
 		[openCanvasMenu],
 	);
+	const pendingAlignmentNodeIdRef = useRef<string | null>(null);
+	const alignmentGuideFrameRef = useRef<number | null>(null);
+	const flushAlignmentGuides = useCallback(() => {
+		alignmentGuideFrameRef.current = null;
+		const activeNodeId = pendingAlignmentNodeIdRef.current;
+		const flowInstance = flowInstanceRef.current;
+		if (!activeNodeId || !flowInstance) return;
+		const threshold = 6 / flowInstance.getZoom();
+		alignmentGuidesLayerRef.current?.update(
+			findContentFlowAlignmentGuides(flowInstance.getNodes(), activeNodeId, threshold),
+		);
+	}, []);
+	const cancelPendingAlignmentGuides = useCallback(() => {
+		pendingAlignmentNodeIdRef.current = null;
+		if (alignmentGuideFrameRef.current !== null) {
+			cancelAnimationFrame(alignmentGuideFrameRef.current);
+			alignmentGuideFrameRef.current = null;
+		}
+	}, []);
+	useEffect(() => cancelPendingAlignmentGuides, [cancelPendingAlignmentGuides]);
 	const onNodeDrag = useCallback<NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onNodeDrag"]>>(
 		(_, node) => {
-			const flowNodes = flowInstanceRef.current?.getNodes() ?? [];
-			const flowNodeById = new Map(flowNodes.map((flowNode) => [flowNode.id, flowNode]));
-			const currentNodes = project.graph.nodes.map((projectNode) => {
-				const flowNode = flowNodeById.get(projectNode.id);
-				return flowNode ? { ...projectNode, position: flowNode.position } : projectNode;
-			});
-			const threshold = 6 / (flowInstanceRef.current?.getZoom() ?? 1);
-			alignmentGuidesLayerRef.current?.update(findContentAlignmentGuides(currentNodes, node.id, threshold));
+			pendingAlignmentNodeIdRef.current = node.id;
+			if (alignmentGuideFrameRef.current === null) {
+				alignmentGuideFrameRef.current = requestAnimationFrame(flushAlignmentGuides);
+			}
 		},
-		[project.graph.nodes],
+		[flushAlignmentGuides],
 	);
 	const onNodeDragStop = useCallback<
 		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onNodeDragStop"]>
 	>(
 		(_, __, draggedNodes) => {
+			cancelPendingAlignmentGuides();
 			alignmentGuidesLayerRef.current?.clear();
 			const movableNodeIds = new Set(project.graph.nodes.filter((node) => !node.locked).map((node) => node.id));
 			void onDispatch(
@@ -623,7 +663,7 @@ export function GraphWorkspace({
 					.map((node) => ({ type: "node.move", nodeId: node.id, position: node.position })),
 			);
 		},
-		[onDispatch, project.graph.nodes],
+		[cancelPendingAlignmentGuides, onDispatch, project.graph.nodes],
 	);
 
 	/** Host ShortcutScopeStack (not RF deleteKeyCode) so Delete participates in app/plugin scopes. */
@@ -692,6 +732,33 @@ export function GraphWorkspace({
 		kind: "surface",
 		enabled: canDeleteViaShortcut,
 		bindings: deleteShortcutBindings,
+	});
+
+	const historyShortcutBindings = useMemo(
+		(): readonly PluginShortcutBinding[] => [
+			{
+				key: keybindings.undo,
+				when: "not-editable",
+				run: () => void onUndo(),
+			},
+			{
+				key: keybindings.redo,
+				when: "not-editable",
+				run: () => void onRedo(),
+			},
+			{
+				key: keybindings.redoAlternative,
+				when: "not-editable",
+				run: () => void onRedo(),
+			},
+		],
+		[keybindings.redo, keybindings.redoAlternative, keybindings.undo, onRedo, onUndo],
+	);
+	usePluginShortcutScope(registerShortcutScope, {
+		id: "graph-history",
+		kind: "surface",
+		enabled: isGraphSurfaceActive,
+		bindings: historyShortcutBindings,
 	});
 
 	const canSelectAllViaShortcut = useCallback(
@@ -815,6 +882,10 @@ export function GraphWorkspace({
 					contextNodeLocked={Boolean(
 						contextMenu?.type === "node" && project.graph.nodes.find((node) => node.id === contextMenu.nodeId)?.locked,
 					)}
+					canUndo={history.canUndo}
+					canRedo={history.canRedo}
+					onUndo={() => void onUndo()}
+					onRedo={() => void onRedo()}
 					onAddNode={addNode}
 					onToolChange={setCanvasTool}
 					onCreateConnectedNode={createConnectedNode}

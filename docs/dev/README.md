@@ -6,53 +6,58 @@
 
 Vetta Debug 的会话操作参数见 [Vetta Debug](./vetta-debug.md)。
 
-## 标准流程
+## 验证 Profile
 
-所有命令都在仓库根目录执行。
+所有命令都在仓库根目录执行。三个 Profile 使用不同的 Vetta home、Electron user data、Action RPC endpoint 和 Playwright session，因此可以与普通开发应用同时运行：
 
-将当前工作树的验证实例作为后台长任务启动：
+| Profile | 用途 | 数据生命周期 |
+| --- | --- | --- |
+| Fresh | 初始化、首次启动、空状态流程；也是无后缀命令的默认值 | 每次启动创建新的临时 home，从不复用上一次数据 |
+| Debug | 反复调试模型和 Agent 流程 | 使用当前工作树专属的 `~/.vetta-ui-debug/<workspace-id>`，重启后保留 |
+| Dev | 调试已经由 Desktop `dev` 命令启动的普通开发应用 | 只附着 `~/.vetta-dev`，验证脚本不会启动、同步或停止它 |
+
+Fresh 标准流程：
 
 ```powershell
-bun run verify:ui:start
-```
-
-检查实例和 CDP target：
-
-```powershell
+bun run verify:ui:start:fresh
 bun run verify:ui:status
-```
-
-开始 UI 操作前，状态必须同时满足：
-
-- `running === true`
-- `ui.configured === true`
-- `ui.reachable === true`
-- `ui.targetFound === true`
-
-执行 Playwright CLI 命令：
-
-```powershell
 bun run verify:ui:pw -- snapshot
-bun run verify:ui:pw -- click "getByRole('button', { name: '按钮名称' })"
-bun run verify:ui:pw -- screenshot --filename=vetta-ui.png
-bun run verify:ui:pw -- console error
-```
-
-`verify:ui:pw` 会在需要时自动附着并选择主窗口。需要单独建立或解除 Playwright 附着时使用：
-
-```powershell
-bun run verify:ui:attach
-bun run verify:ui:detach
-```
-
-完成验证后停止当前工作树的验证实例：
-
-```powershell
-bun run verify:ui:detach
 bun run verify:ui:stop
 ```
 
-不要直接调用全局 `playwright-cli`，也不要使用 `close`、`close-all` 或 `kill-all`。
+`verify:ui:start`、`status`、`pw`、`attach`、`debug`、`stop` 继续作为 Fresh 的兼容别名。`start` 会在后台启动实例，等待主 Renderer 的 CDP target 可用并完成 Playwright 附着后才返回；失败会在 120 秒内退出并给出 `logPath`，不再无限等待。
+
+Debug 首次启动时，从 `~/.vetta-dev` 白名单播种模型配置；之后使用自己的持久数据：
+
+```powershell
+bun run verify:ui:start:debug
+bun run verify:ui:status:debug
+bun run verify:ui:pw:debug -- snapshot
+bun run verify:ui:debug:debug -- <Debug CLI 参数>
+bun run verify:ui:stop:debug
+```
+
+Debug 停止后，可以显式同步开发环境当前的模型配置和相关凭据：
+
+```powershell
+bun run verify:ui:sync:debug
+```
+
+播种和同步只写入净化后的 `agent/models.json`，并复制其中 `credentialRef` 实际引用的 `models/api-key` 加密记录。模型参数和环境变量取密引用会保留，内联明文 key 与命令型取密配置会删除；凭据保持 Electron `safeStorage` 密文，不解密、不输出。首次播种还会生成一份关闭通知、知识库、Quick Panel 和 Appshot 后台能力的安全桌面配置，并只注册当前仓库。以下内容不会复制：会话、锁、Action RPC endpoint、登录态、项目历史、插件、MCP、Skill、调度器、批处理、IM/Webhook 数据和缓存。后续同步不会覆盖 Debug 中已经修改的桌面配置。
+
+要附着已经运行的普通开发应用，先在另一个终端启动 Desktop，再使用 Dev 命令：
+
+```powershell
+bun run --cwd packages/desktop-app dev
+bun run verify:ui:status:dev
+bun run verify:ui:attach:dev
+bun run verify:ui:pw:dev -- snapshot
+bun run verify:ui:debug:dev -- <Debug CLI 参数>
+```
+
+Dev 是 attach-only Profile，没有对应的 `start` 或 `stop`。如果普通开发应用没有运行，命令会在有界超时后失败，不会挂起。
+
+开始 UI 操作前，状态必须同时满足 `running === true`、`ready === true`、`ui.reachable === true` 和 `ui.targetFound === true`。`verify:ui:pw*` 会在需要时自动附着并选择主窗口。不要直接调用全局 `playwright-cli`，也不要使用 `close`、`close-all` 或 `kill-all`。
 
 ## 验证闭环
 

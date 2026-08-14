@@ -29,8 +29,17 @@ export interface PluginAgentToolRegistration<TInput = unknown> {
 	scope_use?: readonly ConversationScenario[];
 	/** 需要的会话能力 slug（如 "knowledge"）；全满足才激活。一般插件无需设置。 */
 	requires?: string[];
-	/** 允许该工具出现的工作模式 slug（agent_mode 轴，如 "work"/"coding"）。缺省/空 = 通用。见 ADR-0046。 */
+	/**
+	 * @deprecated 工作模式不再影响工具的可用性与顺序（ADR-0071）。字段容忍传入但被宿主忽略；
+	 * 需要限定使用场景请写进 description 的反向触发段（Do NOT / Only for）。
+	 */
 	agent_mode?: readonly string[];
+	/**
+	 * 副作用等级（缺省 = light）。会在用户工作区创建目录/文件树、产生外部计费、或发起
+	 * 不可撤销外部动作的工具必须声明 `"heavy"`——宿主会在会话内首次调用前向用户确认，
+	 * 拒绝则零副作用。重副作用工具不声明会收到宿主告警。见 guiding-the-agent.md。
+	 */
+	side_effect?: "light" | "heavy";
 	context?: { conversation?: "summary" | "messages" };
 	handler: PluginAgentToolHandler<TInput>;
 }
@@ -354,7 +363,7 @@ export interface PluginCodingAgentHookRegistration<
 	eventName: E;
 	/** Hook 是可执行贡献，必须显式声明允许出现的会话场景。 */
 	scope_use: readonly ConversationScenario[];
-	/** 允许出现的工作模式；缺省/空数组表示通用。 */
+	/** @deprecated 工作模式不参与 hook 触发（ADR-0071）。字段容忍传入但被宿主忽略。 */
 	agent_mode?: readonly string[];
 	/** 工具事件只匹配列出的宿主工具名；缺省/空数组表示所有工具。 */
 	toolNames?: readonly string[];

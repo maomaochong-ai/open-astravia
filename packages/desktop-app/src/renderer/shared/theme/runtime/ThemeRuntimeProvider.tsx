@@ -11,6 +11,7 @@ import {
 	useState,
 } from "react";
 import { ThemeErrorBoundary } from "./ThemeErrorBoundary";
+import { themeRendererCapabilityHost } from "../pages/theme-renderer-capability-host";
 import { ThemeRuntimeContext } from "./ThemeRuntimeContext";
 import { loadThemePackage } from "./themeLoader";
 import type { ThemeRuntimeValue } from "./types";
@@ -92,6 +93,8 @@ export function ThemeRuntimeProvider({ children }: { children: ReactNode }): JSX
 		}
 		return () => disposeRef.current();
 	}, [selectTheme]);
+
+	useEffect(() => themeRendererCapabilityHost.activate(activeTheme.meta.id).dispose, [activeTheme.meta.id]);
 
 	const handleThemeRenderError = useCallback(
 		(error: Error, info: ErrorInfo): void => {

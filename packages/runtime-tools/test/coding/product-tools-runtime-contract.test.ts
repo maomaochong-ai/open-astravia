@@ -52,7 +52,6 @@ describe("runtime product tool contracts", () => {
 			"progress",
 		]);
 		for (const registration of registrations) {
-			expect(registration.agentModes).toEqual(["work"]);
 			expect(registration.category).toBe(registration.tool.name === "progress" ? "agent-control" : "doc");
 			expect(registration.scopeUse).toEqual([
 				"im-claw",

@@ -15,5 +15,5 @@
 		"noEmit": true,
 		"types": ["node", "vite/client"]
 	},
-	"include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts"]
+	"include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts", "history-runner/src/**/*.ts"]
 }

@@ -36,7 +36,6 @@ function createHarness(plugin = installedPlugin()) {
 	const actions = { clear: vi.fn(() => events.push("clear-actions")) };
 	const dependencies = {
 		listPlugins: () => [current],
-		readAgentMode: async () => "work",
 		installFromArchive: async () => current,
 		installFromUrl: async () => current,
 		installFromPath: async () => current,
@@ -57,6 +56,7 @@ function createHarness(plugin = installedPlugin()) {
 		stopDevWatch: vi.fn(() => events.push("stop-watch")),
 		stopSpawns: vi.fn(() => events.push("stop-spawns")),
 		destroyOffscreenSessions: vi.fn(() => events.push("destroy-offscreen")),
+		hardRevokeAgentHandlers: vi.fn((_id: string, reason: string) => events.push(`hard-revoke:${reason}`)),
 		refreshRuntime: vi.fn(() => events.push("refresh-runtime")),
 		recordEvent: vi.fn(() => events.push("record-event")),
 	};
@@ -91,6 +91,7 @@ describe("PluginLifecycleService", () => {
 
 		harness.service.uninstall("demo");
 		expect(harness.events).toEqual([
+			"hard-revoke:Plugin was uninstalled",
 			"stop-watch",
 			"stop-spawns",
 			"destroy-offscreen",
@@ -101,12 +102,30 @@ describe("PluginLifecycleService", () => {
 		]);
 	});
 
+	it("lists every installed plugin regardless of any mode notion (ADR-0071)", () => {
+		const harness = createHarness(installedPlugin());
+
+		expect(harness.service.list().map((item) => item.id)).toEqual(["demo"]);
+	});
+
 	it("records only newly granted permissions", () => {
 		const harness = createHarness(installedPlugin({ grantedPermissions: ["agent.skills.control"] }));
 
 		harness.service.grantPermissions("demo", ["agent.skills.control", "agent.tools.register"]);
 		expect(harness.dependencies.recordEvent).toHaveBeenCalledWith(
 			expect.objectContaining({ operation: "permissions-granted", permissionCount: 1 }),
+		);
+	});
+
+	it("hard-revokes admitted Hook leases only when Hook execution permission is revoked", () => {
+		const harness = createHarness();
+
+		harness.service.revokePermissions("demo", ["agent.hookHandler.execute"]);
+
+		expect(harness.dependencies.hardRevokeAgentHandlers).toHaveBeenCalledWith(
+			"demo",
+			"Plugin Agent permission was revoked",
+			expect.arrayContaining(["tool", "hook", "continuation", "system-prompt"]),
 		);
 	});
 });

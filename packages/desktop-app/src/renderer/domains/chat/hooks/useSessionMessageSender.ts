@@ -6,10 +6,11 @@ import {
 	recordInputActionsUsed,
 	recordInputContextUsed,
 } from "@shared/lib/app-monitor-events";
-import { deriveSkillNames, parseInputSegments } from "@shared/lib/input-tokens";
+import { deriveSkillNames, MultipleSceneReferencesError, prepareInputPrompt } from "@shared/lib/input-tokens";
 import {
 	activeInputActionIdsAtom,
 	activeSessionAtom,
+	activeSessionStreamingAtom,
 	appshotAttachmentAtom,
 	attachedImagesAtom,
 	batchProjectsAtom,
@@ -28,10 +29,10 @@ import {
 	promptSuggestionsAtom,
 	reasoningByModelAtom,
 	recordSentInputAndClearDraft,
+	retryProgressAtom,
 	type SendMessageOptions,
 	type SendMessageResult,
 	selectedModelAtom,
-	selectedSkillAtom,
 	todoItemsBySessionAtom,
 } from "@shared/store/atoms";
 import { bumpQueuedDispatchSeq } from "@shared/store/message-queue-atoms";
@@ -39,7 +40,7 @@ import type { PromptAttachmentRef, PromptRequest } from "@vetta/runtime-core";
 import type { PluginPromptContext } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
-import { appendError, fullHistoryToChat, isUserImageFile, nextId } from "../services/chat-service";
+import { appendError, fullHistoryToChat, isUserImageFile, nextId, toChatErrorDetails } from "../services/chat-service";
 import { rememberOptimisticUserMessage } from "../services/optimistic-user-message-cache";
 
 interface SessionMessageSenderOptions {
@@ -66,7 +67,6 @@ function getProjects() {
 export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageSenderOptions): SessionMessageSender {
 	const activeSession = useAtomValue(activeSessionAtom);
 	const [attachedImages, setAttachedImages] = useAtom(attachedImagesAtom);
-	const selectedSkill = useAtomValue(selectedSkillAtom);
 	const [mentionedFiles, setMentionedFiles] = useAtom(mentionedFilesAtom);
 	const appshotAttachment = useAtomValue(appshotAttachmentAtom);
 	const [selectedModel] = useAtom(selectedModelAtom);
@@ -74,13 +74,13 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 	const batchProjects = useAtomValue(batchProjectsAtom);
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
 	const setChatMessages = useSetAtom(chatMessagesAtom);
+	const setActiveSessionStreaming = useSetAtom(activeSessionStreamingAtom);
 	const setPromptSuggestions = useSetAtom(promptSuggestionsAtom);
+	const setRetryProgress = useSetAtom(retryProgressAtom);
 	const { loadSessions, ensureLocalSession } = useProjectActions();
 
 	const attachedImagesRef = useRef(attachedImages);
 	attachedImagesRef.current = attachedImages;
-	const selectedSkillRef = useRef(selectedSkill);
-	selectedSkillRef.current = selectedSkill;
 	const mentionedFilesRef = useRef(mentionedFiles);
 	mentionedFilesRef.current = mentionedFiles;
 	const appshotRef = useRef(appshotAttachment);
@@ -103,7 +103,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				/** 插件 sendPrompt 路径：不清用户输入预测、不消费用户挂的 promptAttachment（ADR-0060）。 */
 				source?: "plugin";
 			},
-		): Promise<{ status: "sent" | "queued"; queueItemId?: string } | undefined> => {
+		): Promise<SendMessageResult | undefined> => {
 			// 目标会话读共享 atom（store 直读，不走 React 闭包）：openSession 同步写入
 			// activeSessionAtom，同一 tick 内「创建会话+发送」的组合仍读得到新值。不能读
 			// 实例级 activeSessionRef——useSessionManager 同时挂载多份（RootLayout /
@@ -114,7 +114,6 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			// 不订阅输入 atom；调用时读取还能覆盖“先写草稿、同一流程立即发送”的场景。
 			const inputValue = getDefaultStore().get(inputValueAtom);
 			const attachedImages = attachedImagesRef.current;
-			const selectedSkill = selectedSkillRef.current;
 			const mentionedFiles = mentionedFilesRef.current;
 			const appshot = appshotRef.current;
 			const selectedModel = selectedModelRef.current;
@@ -144,6 +143,15 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				});
 			}
 			const rawText = hasOverride ? override : inputValue.trim();
+			let preparedInput: ReturnType<typeof prepareInputPrompt>;
+			try {
+				preparedInput = prepareInputPrompt(rawText);
+			} catch (error) {
+				if (!(error instanceof MultipleSceneReferencesError)) throw error;
+				const message = i18n.t("chat:inputBar.error.multipleScenes");
+				setChatMessages((prev) => appendError(prev, message));
+				return { status: "failed", error: { message } };
+			}
 			const images = !hasOverride && attachedImages.length > 0 ? attachedImages : undefined;
 			// 把附图落盘到会话图片缓存，改用 @路径 引用而非把 base64 塞进上下文：
 			// 视觉模型经 Read 工具即可看到图，不支持视觉的模型也能用工具对图做 OCR/改图等。
@@ -159,11 +167,8 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				}
 			}
 			const promptRef =
-				!hasOverride && selectedSkill
-					? {
-							kind: selectedSkill.type === "scene" ? ("scene" as const) : ("skill" as const),
-							name: selectedSkill.name,
-						}
+				!hasOverride && preparedInput.sceneName
+					? { kind: "scene" as const, name: preparedInput.sceneName }
 					: undefined;
 			const attachmentsByPath = new Map<string, PromptAttachmentRef>();
 			if (!hasOverride) {
@@ -184,23 +189,16 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				}
 			}
 			const attachments = [...attachmentsByPath.values()];
-			const text = rawText;
+			const text = hasOverride ? rawText : preparedInput.text;
 			recordInputContextUsed({
 				files: hasOverride ? [] : mentionedFiles,
 				images: images ?? [],
-				...(hasOverride || !selectedSkill
-					? {}
-					: {
-							promptRef: {
-								kind: selectedSkill.type === "scene" ? "scene" : "skill",
-								name: selectedSkill.name,
-							},
-						}),
+				...(promptRef ? { promptRef } : {}),
 			});
 			// 行内 skill 是软引用，不进 promptRef，但调用次数仍要计入 app-monitor
 			// （命令面板按使用频次排序依赖这份统计）。每个被引用的 skill 记一次。
 			if (!hasOverride) {
-				for (const name of deriveSkillNames(parseInputSegments(rawText).segments)) {
+				for (const name of deriveSkillNames(preparedInput.segments)) {
 					recordInputContextUsed({ promptRef: { kind: "skill", name } });
 				}
 			}
@@ -330,7 +328,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					id: session.runtimeId,
 					path: sp,
 					cwd: session.cwd,
-					firstMessage: rawText.slice(0, 80) || i18n.t("chat:session.emptyMessageLabel"),
+					firstMessage: text.slice(0, 80) || i18n.t("chat:session.emptyMessageLabel"),
 					modifiedAt: Date.now(),
 				});
 			}
@@ -475,7 +473,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			// 空闲时 kernel 忽略该字段直接开 turn。即便 isStreamingAtom 与主进程真实状态
 			// 失步，最坏结果也是入队而非 SESSION_BUSY 丢消息。
 			promptReq.streamingBehavior = "followUp";
-			let sendResult: { status: "sent" | "queued"; queueItemId?: string } | undefined;
+			let sendResult: SendMessageResult | undefined;
 			try {
 				await waitForPluginHostReady();
 				const outcome = await window.vetta.session.prompt(session.runtimeId, promptReq);
@@ -487,6 +485,18 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 						setChatMessages((prev) => prev.filter((m) => m.id !== staleId));
 					}
 					sendResult = { status: "queued", queueItemId: outcome.queueItemId };
+				} else if (outcome?.status === "failed") {
+					// A terminal failure is a normal prompt receipt, not a rejected IPC call.
+					// Render it here as the authoritative fallback when the event stream is
+					// delayed or lost. appendError deduplicates the later error event by turnId.
+					const message =
+						outcome.error?.message?.trim() || i18n.t("chat:messageList.errorBlock.kinds.unknown.title");
+					setChatMessages((prev) =>
+						appendError(prev, message, undefined, outcome.turnId, toChatErrorDetails(outcome.error)),
+					);
+					setActiveSessionStreaming(false);
+					setRetryProgress(null);
+					sendResult = { status: "failed", error: { message } };
 				} else {
 					sendResult = { status: "sent" };
 				}
@@ -501,7 +511,13 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				// 气泡，杜绝「按了发送但屏幕完全没反应」的死寂体验。
 				const message = err instanceof Error ? err.message : String(err);
 				console.error("[useSessionManager.sendMessage] prompt rejected:", err);
-				setChatMessages((prev) => appendError(prev, message));
+				setChatMessages((prev) => {
+					const last = prev.at(-1);
+					const lastError = last?.blocks?.at(-1);
+					if (last?.role === "assistant" && lastError?.type === "error" && lastError.text === message) return prev;
+					return appendError(prev, message);
+				});
+				sendResult = { status: "failed", error: { message } };
 			}
 			// ADR-0007：归一回项目根 bucket，否则「对话」session 刷的是没用的子目录桶，
 			// 侧边栏默认列表（挂在根 bucket）拿不到这一轮的对账更新。
@@ -520,6 +536,8 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			loadSessions,
 			ensureLocalSession,
 			setPromptSuggestions,
+			setActiveSessionStreaming,
+			setRetryProgress,
 			bumpSuggestionToken,
 		],
 	);

@@ -1,4 +1,5 @@
 import { getEnvApiKey } from "../env-api-keys.js";
+import { requireProviderCredential } from "../provider-kit/index.js";
 import type { Context, Model, SimpleStreamOptions, StreamFunction } from "../types.js";
 import { openAIResponsesAdapter } from "./openai-responses/adapter.js";
 import { projectResponsesAdapter } from "./openai-responses/legacy-stream.js";
@@ -19,8 +20,7 @@ export const streamSimpleOpenAIResponses: StreamFunction<"openai-responses", Sim
 	context: Context,
 	options?: SimpleStreamOptions,
 ) => {
-	const apiKey = options?.apiKey || getEnvApiKey(model.provider);
-	if (!apiKey) throw new Error(`No API key for provider: ${model.provider}`);
+	const apiKey = requireProviderCredential(model, options?.apiKey || getEnvApiKey(model.provider));
 	return streamOpenAIResponses(model, context, {
 		...buildBaseOptions(model, options, apiKey),
 		reasoningEffort: options?.reasoning,

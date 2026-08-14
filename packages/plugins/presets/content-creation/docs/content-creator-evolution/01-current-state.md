@@ -38,7 +38,7 @@
 
 ## 隔离机制没有被使用
 
-`plugin.json` 已用 `agent_mode: ["work"]` 排除了 Coding 模式，但普通 Work 会话都会加载该插件的 tools、skills 和 system prompt。当前没有：
+（注：`agent_mode` 硬闸已随 ADR-0071 整体废弃，插件在所有模式下常驻。）普通 Work 会话都会加载该插件的 tools、skills 和 system prompt。当前没有：
 
 - `contributionMode.hardIsolation`；
 - 与内容创作入口绑定的 hard-isolation input action；

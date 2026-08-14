@@ -54,7 +54,14 @@ function message(sessionId: string, turnId: string, text: string): MessageAppend
 	};
 }
 
-function assistant(sessionId: string, turnId: string, text: string, timestamp = 3): MessageAppendedEvent {
+function assistant(
+	sessionId: string,
+	turnId: string,
+	text: string,
+	timestamp = 3,
+): MessageAppendedEvent & {
+	message: Extract<MessageAppendedEvent["message"], { role: "assistant" }>;
+} {
 	return {
 		type: "message.appended",
 		sessionId,
@@ -214,6 +221,87 @@ describe("FileConversationRepository", () => {
 		expect(conversation.messages[0]).toMatchObject({
 			role: "user",
 			content: "persisted",
+		});
+		await reopened.close();
+	});
+
+	it("persists structured provider failures across repository instances", async () => {
+		const { repository, rootDir } = await createRepository();
+		const sessionId = "provider-failure-session";
+		const turnId = "turn-provider-failure";
+		const messageFailure = {
+			code: "AI_BILLING_REQUIRED" as const,
+			message: "401 余额不足",
+			retryable: false,
+			statusCode: 401,
+			provider: "opencode-go",
+			modelId: "deepseek-v4-flash",
+			requestId: "request-1",
+			providerCode: "insufficient_balance",
+			phase: "response" as const,
+			responseHeaders: { "x-request-id": "request-1" },
+			responseBodyPreview: '{"error":"insufficient balance"}',
+		};
+		const runtimeFailure = {
+			code: messageFailure.code,
+			message: messageFailure.message,
+			retryable: false,
+			origin: "provider" as const,
+			details: {
+				statusCode: messageFailure.statusCode,
+				provider: messageFailure.provider,
+				modelId: messageFailure.modelId,
+				requestId: messageFailure.requestId,
+				providerCode: messageFailure.providerCode,
+				phase: messageFailure.phase,
+				responseHeaders: messageFailure.responseHeaders,
+				responseBodyPreview: messageFailure.responseBodyPreview,
+			},
+		};
+		await repository.create({ sessionId, createdAt: 100 });
+		await repository.append(sessionId, 0, [
+			started(sessionId, turnId),
+			message(sessionId, turnId, "hello"),
+			{
+				type: "message.appended",
+				sessionId,
+				turnId,
+				message: {
+					...assistant(sessionId, turnId, "").message,
+					content: [],
+					stopReason: "error",
+					errorMessage: messageFailure.message,
+					failure: messageFailure,
+				},
+				failure: runtimeFailure,
+				timestamp: 3,
+			},
+			{
+				type: "turn.failed",
+				sessionId,
+				turnId,
+				error: runtimeFailure,
+				timestamp: 4,
+			},
+		]);
+		await repository.close();
+
+		const reopened = new FileConversationRepository({ rootDir });
+		const conversation = await reopened.load(sessionId);
+
+		expect(conversation.version).toBe(4);
+		expect(conversation.messages.at(-1)).toMatchObject({
+			role: "assistant",
+			stopReason: "error",
+			failure: messageFailure,
+		});
+		expect(conversation.events.at(-2)).toMatchObject({
+			type: "message.appended",
+			failure: runtimeFailure,
+		});
+		expect(conversation.events.at(-1)).toMatchObject({
+			type: "turn.failed",
+			error: runtimeFailure,
 		});
 		await reopened.close();
 	});
@@ -402,6 +490,8 @@ describe("FileConversationRepository", () => {
 
 		await expect(repository.append("session-1", 0, [invalidEvent])).rejects.toMatchObject({
 			code: CONVERSATION_STORAGE_ERROR_CODES.INVALID_EVENT,
+			message:
+				"Stored message.appended event for session-1 does not match the schema at /message: Expected union value",
 		});
 		expect((await repository.load("session-1")).version).toBe(0);
 	});

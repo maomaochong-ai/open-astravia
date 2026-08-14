@@ -308,7 +308,7 @@ export class PluginMediaProviderHost {
 					mimeType: artifact.mimeType,
 					source:
 						artifact.source.type === "plugin-blob"
-							? { type: "plugin-blob", namespace: pluginId, blobId: artifact.source.blobId }
+							? { type: "storage-blob", namespace: pluginId, id: artifact.source.blobId }
 							: { type: "workspace-file", path: artifact.source.path },
 				};
 				const file = await this.dependencies.getMediaRuntime().artifacts.resolveInputFile(input);

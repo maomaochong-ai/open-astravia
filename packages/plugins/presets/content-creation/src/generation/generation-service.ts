@@ -23,6 +23,7 @@ import {
 	createContentPromptDocument,
 } from "../node/prompt-document";
 import type { ContentCreationWorkspace } from "../project/workspace";
+import type { ContentHistoryMetadata } from "../project/history";
 import { joinContentPath } from "../shared/path";
 import {
 	assignContentReferenceSlots,
@@ -52,6 +53,10 @@ import {
 	ContentAssetImportService,
 	extensionForMimeType,
 } from "./asset-import-service";
+import {
+	serializeImageEditInstructions,
+	type ContentImageEditRequest,
+} from "../image-edit/image-edit-document";
 
 function requireNode(project: ContentProjectDocument, nodeId: string): ContentNode {
 	const node = project.graph.nodes.find((candidate) => candidate.id === nodeId);
@@ -63,7 +68,7 @@ interface ReferenceCandidate {
 	id: string;
 	asset: ContentAsset;
 	slotId?: string;
-	origin: "binding" | "edge" | "prompt";
+	origin: "binding" | "edge" | "prompt" | "edit-source";
 }
 
 export class ContentGenerationService {
@@ -92,8 +97,9 @@ export class ContentGenerationService {
 		cwd: string | null,
 		nodeId: string,
 		files: readonly ImportedContentAsset[],
+		history?: ContentHistoryMetadata,
 	): Promise<ContentProjectDocument> {
-		return (await this.assetImports.import(cwd, files, { targetNodeId: nodeId })).project;
+		return (await this.assetImports.import(cwd, files, { targetNodeId: nodeId, history })).project;
 	}
 
 	async importReferences(
@@ -236,36 +242,67 @@ export class ContentGenerationService {
 	}
 
 	async runNode(cwd: string | null, nodeId: string): Promise<ContentProjectDocument> {
+		return await this.runNodeWithImageEdit(cwd, nodeId);
+	}
+
+	/** UI-only entry point. Agent tools intentionally expose only runNode(). */
+	async runImageEdit(
+		cwd: string | null,
+		nodeId: string,
+		edit: ContentImageEditRequest,
+	): Promise<ContentProjectDocument> {
+		if (edit.regions.length === 0) throw new Error("image editing requires at least one region");
+		return await this.runNodeWithImageEdit(cwd, nodeId, edit);
+	}
+
+	private async runNodeWithImageEdit(
+		cwd: string | null,
+		nodeId: string,
+		edit?: ContentImageEditRequest,
+	): Promise<ContentProjectDocument> {
 		if (!cwd) throw new Error("content generation requires a workspace output directory");
 		const project = await this.workspace.load(cwd);
 		const node = requireNode(project, nodeId);
 		const outputKind = requireOutputKind(node);
+		if (edit && outputKind !== "image") throw new Error("image editing requires an image generator node");
 		if (node.status === "running" || node.status === "queued") throw new Error(`node is already running: ${nodeId}`);
 		const promptSources = listConnectedPromptSources(project, node.id);
 		const selectedPrompts = resolveConnectedPromptSources(promptSources, node.data);
 		const prompt = resolveContentPrompt(promptSources, node.data);
 		if (!prompt) throw new Error("content generation requires a prompt");
-		const candidates = listGenerationReferenceCandidates(project, node, selectedPrompts);
-		const model = findSelectedModel(this.listModels(outputKind), node, candidates);
+		const candidates = listGenerationReferenceCandidates(project, node, selectedPrompts, edit?.sourceAssetId);
+		const models = this.listModels(outputKind);
+		const model = edit
+			? models.find((candidate) => candidate.providerId === edit.providerId && candidate.modelId === edit.modelId)
+			: findSelectedModel(models, node, candidates);
 		if (!model) throw new Error("no compatible content model is configured");
-		const prepared = assignReferenceCandidates(model, candidates, node.data.modeId);
+		const prepared = assignReferenceCandidates(model, candidates, edit ? "image-to-image" : node.data.modeId);
 		const assignment = prepared.assignment;
 		const mode = assignment.mode;
 		if (!mode) throw new Error(`content model inputs are incompatible: ${model.providerId}/${model.modelId}`);
 		const jobId = crypto.randomUUID();
 		const assetId = crypto.randomUUID();
 
-		await this.workspace.dispatch(cwd, [
-			{
-				type: "node.update",
-				nodeId,
-				data: { providerId: model.providerId, modelId: model.modelId, modeId: mode.id },
-			},
-			{
-				type: "job.start",
-				job: { id: jobId, nodeId, providerId: model.providerId, modelId: model.modelId, outputAssetId: assetId },
-			},
-		]);
+		await this.workspace.dispatch(
+			cwd,
+			[
+				...(edit
+					? []
+					: [
+							{
+								type: "node.update" as const,
+								nodeId,
+								data: { providerId: model.providerId, modelId: model.modelId, modeId: mode.id },
+							},
+						]),
+				{
+					type: "job.start",
+					job: { id: jobId, nodeId, providerId: model.providerId, modelId: model.modelId, outputAssetId: assetId },
+				},
+			],
+			undefined,
+			{ record: false },
+		);
 		this.activeJobIds.add(jobId);
 		try {
 			const references = await this.resolveReferences(cwd, prepared.candidates, assignment.assignedSlotIds);
@@ -276,12 +313,14 @@ export class ContentGenerationService {
 				prepared.candidates,
 				references,
 			);
+			const editInstructions = serializeImageEditInstructions(edit?.regions ?? []);
+			const requestPrompt = editInstructions ? `${prompt.trim()}\n\n${editInstructions}` : prompt;
 			const generated = await this.providers.generate(
 				{
 					modeId: mode.id,
 					providerId: model.providerId,
 					modelId: model.modelId,
-					prompt,
+					prompt: requestPrompt,
 					aspectRatio: resolveContentAspectRatio({
 						outputKind,
 						explicitAspectRatio,
@@ -537,7 +576,13 @@ function listGenerationReferenceCandidates(
 	project: ContentProjectDocument,
 	node: ContentNode,
 	promptSources: readonly ConnectedPromptSource[],
+	editSourceAssetId?: string,
 ): ReferenceCandidate[] {
+	if (editSourceAssetId) {
+		const source = project.assets.find((asset) => asset.id === editSourceAssetId && asset.kind === "image");
+		if (!source) throw new Error(`image edit source not found: ${editSourceAssetId}`);
+		return [{ id: `edit-source:${source.id}`, asset: source, slotId: "referenceImages", origin: "edit-source" }];
+	}
 	const candidates: ReferenceCandidate[] = (node.data.inputs ?? []).flatMap((binding) => {
 		if (!isContentInputBindingAvailable(project, node.id, binding)) return [];
 		const asset = project.assets.find((candidate) => candidate.id === binding.assetId);

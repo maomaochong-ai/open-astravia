@@ -53,8 +53,25 @@ export interface SystemPromptDiagnostics {
 	readonly blocks: readonly SystemPromptBlockDiagnostics[];
 }
 
+/**
+ * 稳定段与易变段的 priority 分界。
+ *
+ * 分界以下的块（subconscious/base/mcp/guidelines/append/context/memory/skills）在会话内基本不变，
+ * 可以作为 Provider 前缀缓存的命中段；分界及以上的块（mode 850 / personalization 900 / footer 1000）
+ * 随会话设置与日期变化，放在缓存断点之后。
+ */
+export const STABLE_SYSTEM_PROMPT_PRIORITY = 800;
+
 export interface CompiledSystemPrompt {
 	readonly content: string;
+	/**
+	 * `content` 中稳定前缀的字符长度，满足 `content.slice(0, stableLength)` 恰好等于
+	 * 所有 `priority < STABLE_SYSTEM_PROMPT_PRIORITY` 的启用块按同一顺序 join("\n\n") 的结果。
+	 *
+	 * 块间分隔符 `"\n\n"` 归属其后的块，因此两段都非空时 `content.slice(stableLength)` 以 `"\n\n"` 开头，
+	 * 两段拼回必然等于 `content`。全部块落在同一段时取 `content.length` 或 `0`。
+	 */
+	readonly stableLength: number;
 	readonly diagnostics: SystemPromptDiagnostics;
 }
 
@@ -166,9 +183,15 @@ export function compileSystemPromptDraft(draft: SystemPromptDraft): CompiledSyst
 		.filter((block) => block.enabled && block.content.length > 0)
 		.sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
 	const content = enabledBlocks.map((block) => block.content).join("\n\n");
+	// 排序保证稳定段是 enabledBlocks 的前缀，因此对稳定段单独 join 的长度就是 content 的切分点。
+	const stableLength = enabledBlocks
+		.filter((block) => block.priority < STABLE_SYSTEM_PROMPT_PRIORITY)
+		.map((block) => block.content)
+		.join("\n\n").length;
 	const estimatedTokens = estimateTextTokens(content);
 	return {
 		content,
+		stableLength,
 		diagnostics: {
 			charCount: content.length,
 			estimatedTokens,

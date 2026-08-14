@@ -20,6 +20,7 @@ import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/abi
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getAppLogger } from "../logger.js";
 import { verifySha256 } from "../utils/integrity.js";
+import { DesktopPluginAgentHandlerRegistry } from "./coding-agent-handler-registry.js";
 import { desktopPluginHookRegistry } from "./coding-agent-hook-registry.js";
 import { PluginAgentContributionService } from "./plugin-agent-contribution-service.js";
 import { PluginDevLinkService } from "./plugin-dev-link-service.js";
@@ -58,6 +59,7 @@ export const pluginAgentContributionService = new PluginAgentContributionService
 	resolveFilePath: resolvePluginFilePath,
 	logger: pluginLog,
 	hooks: desktopPluginHookRegistry,
+	handlers: new DesktopPluginAgentHandlerRegistry(),
 });
 export const pluginSystemCatalog = new SystemPluginCatalog({
 	baseDir: systemPluginsBaseDir,

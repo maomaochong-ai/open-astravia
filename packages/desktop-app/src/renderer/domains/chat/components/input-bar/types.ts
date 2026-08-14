@@ -82,6 +82,15 @@ export interface InputBarTodoModel {
 	onOpenPanel: () => void;
 }
 
+export interface SpeechInputModel {
+	visible: boolean;
+	active: boolean;
+	disabled: boolean;
+	title: string;
+	statusText: string | null;
+	onToggle: () => void;
+}
+
 export interface InputBarModel {
 	isStreaming: boolean;
 	pendingQuestion: ComponentProps<typeof QuestionPanel>["pending"] | undefined;
@@ -90,8 +99,6 @@ export interface InputBarModel {
 	imageAttachments: ReadonlyArray<{ path: string; name: string; url: string; label: string }>;
 	/** 已激活的 input action；全量开关在命令面板里，这里只留激活提示。 */
 	activeActions: readonly ActiveActionCapsule[];
-	/** 仅场景（scene）：它走 promptRef 硬展开，不进文本流，用顶部胶囊展示。 */
-	selectedSkill: { name: string; alias?: string; type: string } | null;
 	appshotAttachment: AppshotAttachment | null;
 	hasSession: boolean;
 	canSend: boolean;
@@ -120,6 +127,8 @@ export interface InputBarModel {
 	drawerActiveTab: string | null;
 	/** 输入卡片外部下方的待办条。 */
 	todo: InputBarTodoModel | null;
+	/** Windows 本地流式语音输入；其他平台不渲染入口。 */
+	speechInput: SpeechInputModel;
 	hasPromptAttachment: boolean;
 	promptAttachmentIcon?: string;
 	promptAttachmentLabel?: string;
@@ -147,7 +156,6 @@ export interface InputBarModel {
 		handleConnectorSelect: (connector: ConnectorGridItem) => void;
 		handleAtClose: () => void;
 		handleAtSelect: (file: SelectedFile) => void;
-		removeSkill: () => void;
 		/** 从文本流里删掉该图片的 token（缩略图行的 × 按钮）。 */
 		removeImage: (path: string) => void;
 		openImagePreview: (index: number) => void;

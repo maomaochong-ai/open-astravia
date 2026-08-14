@@ -6,3 +6,4 @@ export * from "./product-prompt.js";
 export * from "./prompt-document.js";
 export * from "./skill-prompt.js";
 export * from "./system-prompt-sources.js";
+export * from "./workspace-facts.js";

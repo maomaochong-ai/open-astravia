@@ -98,7 +98,13 @@ export function mapRuntimeSessionObservationEvent(
 		case "mcp.reload.start":
 			return { ...base, type: event.type };
 		case "mcp.reload.end":
-			return { ...base, type: event.type, changed: event.changed, errorMessage: event.errorMessage };
+			return {
+				...base,
+				type: event.type,
+				changed: event.changed,
+				errorMessage: event.errorMessage,
+				...(event.failure ? { failure: event.failure } : {}),
+			};
 		case "usage.update":
 			return {
 				...base,
@@ -109,10 +115,11 @@ export function mapRuntimeSessionObservationEvent(
 				cacheWrite: event.cacheWrite,
 				costTotal: event.costTotal,
 				contextPercent: event.contextPercent,
+				...(event.contextTokens !== undefined ? { contextTokens: event.contextTokens } : {}),
 				contextWindow: event.contextWindow,
 			};
 		case "error":
-			return { ...base, type: event.type, error: event.error };
+			return { ...base, type: event.type, error: event.error, ...(event.turnId ? { turnId: event.turnId } : {}) };
 		case "todo_update":
 			return { ...base, type: event.type, items: [...event.items] };
 		case "background_tasks_update":
@@ -127,6 +134,7 @@ export function mapRuntimeSessionObservationEvent(
 				maxAttempts: event.maxAttempts,
 				delayMs: event.delayMs,
 				errorMessage: event.errorMessage,
+				...(event.failure ? { failure: event.failure } : {}),
 			};
 		case "retry.end":
 			return {
@@ -135,12 +143,19 @@ export function mapRuntimeSessionObservationEvent(
 				success: event.success,
 				attempt: event.attempt,
 				finalError: event.finalError,
+				...(event.failure ? { failure: event.failure } : {}),
 			};
 		case "active_tools_update":
 			return { ...base, type: event.type, activeToolNames: [...event.activeToolNames] };
 		case "compaction.start":
 			return { ...base, type: event.type, reason: event.reason };
 		case "compaction.end":
-			return { ...base, type: event.type, success: event.success, errorMessage: event.errorMessage };
+			return {
+				...base,
+				type: event.type,
+				success: event.success,
+				errorMessage: event.errorMessage,
+				...(event.failure ? { failure: event.failure } : {}),
+			};
 	}
 }

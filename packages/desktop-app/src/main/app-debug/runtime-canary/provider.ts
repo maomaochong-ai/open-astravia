@@ -291,7 +291,7 @@ async function writeFixtureConfiguration(fixture: RuntimeCanaryFixture): Promise
 					archivedProjects: [],
 					workspacePath: fixture.workspace,
 					defaultExecutionMode: "full-access",
-					agentMode: "coding",
+					defaultAgentMode: "coding",
 					experimental: { vettaCli: false, promptPrediction: false, agentSkills: false },
 					knowledgeBase: {
 						enabled: true,

@@ -20,9 +20,9 @@ export function registerPluginManagementIpc(pluginActionService: PluginActionSer
 	const capabilityAdapter = getDesktopCapabilityHost().adapters.plugin;
 	const lifecycle = createPluginLifecycleService(pluginActionService);
 
-	// The renderer must not observe plugins excluded by the agent_mode gate. See ADR-0046.
-	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.LIST, () => lifecycle.listVisible());
-	// The capability marketplace needs the complete installed inventory across modes.
+	// Plugins are never hidden by the working mode: the renderer sees the full installed inventory.
+	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.LIST, () => lifecycle.list());
+	// The capability marketplace uses the same complete inventory.
 	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.LIST_ALL, () => listPlugins());
 	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.INSTALL_FROM_ARCHIVE, (_event, archiveBuffer: unknown, options: unknown) =>
 		lifecycle.installArchive(asArchiveBuffer(archiveBuffer), asOptions(options)),
@@ -61,7 +61,7 @@ export function registerPluginManagementIpc(pluginActionService: PluginActionSer
 
 	ipcMain.handle(PLUGIN_SYSTEM_CHANNELS.LIST, (_event, sessionId: unknown) => {
 		capabilityAdapter.assertOfficialSession(asPluginId(sessionId));
-		return lifecycle.listVisible();
+		return lifecycle.list();
 	});
 	ipcMain.handle(PLUGIN_SYSTEM_CHANNELS.INSTALL_FROM_URL, (_event, sessionId: unknown, url: unknown) => {
 		capabilityAdapter.assertOfficialSession(asPluginId(sessionId));

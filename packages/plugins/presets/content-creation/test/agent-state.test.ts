@@ -110,6 +110,32 @@ describe("content creation agent state", () => {
 		}));
 	});
 
+	it("diagnoses a connected Prompt node that is shadowed by local generator text", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "node.add",
+				node: { id: "topic", kind: "prompt", position: { x: 0, y: 0 }, data: { prompt: "Dynamic topic" } },
+			},
+			{
+				type: "node.add",
+				node: {
+					id: "video",
+					kind: "video-generator",
+					position: { x: 400, y: 0 },
+					data: { prompt: completeVideoPrompt() },
+				},
+			},
+			{ type: "edge.connect", source: "topic", target: "video", targetHandle: "prompt" },
+		]);
+
+		const state = createContentCreationAgentState(project, [VIDEO_MODEL]);
+		expect(state.diagnostics).toContainEqual(expect.objectContaining({
+			code: "connected-prompt-source-shadowed",
+			nodeId: "video",
+			details: { shadowedPromptSourceNodeIds: ["topic"], recommendedOperation: "configure_video_shot" },
+		}));
+	});
+
 	it("exposes the actual first/last-frame strategy and diagnoses reused frame prompts", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{
@@ -139,11 +165,43 @@ describe("content creation agent state", () => {
 			strategy: "first-last-frame",
 			modeId: "image-to-video",
 			sourceRoles: ["firstFrame", "lastFrame"],
+			method: {
+				promptPlanKind: "first-last-frame-plan",
+				description: expect.stringContaining("derive the closing still"),
+				inputContract: expect.stringContaining("keyframes.first"),
+			},
 		});
 		expect(state.diagnostics.map(({ code }) => code)).toEqual(expect.arrayContaining([
 			"video-keyframe-prompt-contract-missing",
 			"video-keyframe-prompts-reused",
+			"video-keyframe-derivation-missing",
+			"video-keyframe-modes-invalid",
 		]));
+	});
+
+	it("diagnoses a configured video prompt that lacks its strategy-specific method", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "node.add",
+				node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 } },
+			},
+			{
+				type: "node.add",
+				node: {
+					id: "video",
+					kind: "video-generator",
+					position: { x: 400, y: 0 },
+					data: { modeId: "image-to-video", prompt: completeVideoPrompt() },
+				},
+			},
+			{ type: "edge.connect", source: "image", target: "video", targetHandle: "image", role: "firstFrame" },
+		]);
+
+		const state = createContentCreationAgentState(project, [VIDEO_MODEL]);
+		expect(state.diagnostics).toContainEqual(expect.objectContaining({
+			code: "video-prompt-method-incomplete",
+			details: expect.objectContaining({ issues: expect.arrayContaining(["source-image-contract-missing"]) }),
+		}));
 	});
 });
 

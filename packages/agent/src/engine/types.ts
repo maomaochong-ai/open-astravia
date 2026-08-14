@@ -1,5 +1,6 @@
 import type { Static, TSchema } from "@sinclair/typebox";
 import type {
+	AIErrorDetails,
 	AssistantMessage,
 	ImageContent,
 	LanguageModelStreamEvent,
@@ -29,6 +30,20 @@ export type AgentRunStatus =
 export interface AgentRunFailure {
 	readonly code: string;
 	readonly message: string;
+	readonly retryable?: boolean;
+	readonly origin?: "provider";
+	readonly details?: {
+		readonly statusCode?: number;
+		readonly provider?: string;
+		readonly modelId?: string;
+		readonly requestId?: string;
+		readonly providerCode?: string;
+		readonly phase?: "resolve" | "request" | "response" | "stream" | "decode";
+		readonly url?: string;
+		readonly responseHeaders?: Readonly<Record<string, string>>;
+		readonly responseBodyPreview?: string;
+		readonly retryAfterMs?: number;
+	};
 }
 
 export interface AgentRunResult {
@@ -172,7 +187,12 @@ export type AgentExecutionEvent =
 			readonly callId?: string;
 			readonly status: "completed" | "failed";
 	  }
-	| { readonly type: "assistant_message"; readonly message: AssistantMessage }
+	| {
+			readonly type: "assistant_message";
+			readonly message: AssistantMessage;
+			/** Structured provider failure from the terminal model event, if available. */
+			readonly failure?: AIErrorDetails;
+	  }
 	| { readonly type: "input_message"; readonly kind: AgentPendingInputKind; readonly message: Message }
 	| { readonly type: "tool_validation"; readonly call: ToolCall; readonly valid: boolean; readonly error?: string }
 	| { readonly type: "tool_execution_start"; readonly call: ToolCall; readonly startedAt: number }

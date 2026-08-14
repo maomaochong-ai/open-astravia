@@ -26,8 +26,10 @@ import {
 	type EventSink,
 	KERNEL_ERROR_CODES,
 	type ManualContextCompactionRuntime,
+	type RuntimeInputRequestPreparationContext,
 	type RuntimeSnapshot,
 	resumeAgentSession,
+	type SessionInputRequest,
 	StaticRuntimeSnapshotProvider,
 	type StoredConversation,
 	type StoredSessionEvent,
@@ -217,11 +219,33 @@ class RecordingPromptAdapter implements RuntimePromptAdapter {
 		readonly queueing: boolean;
 	}> = [];
 
-	async prepare(request: PromptRequest, context: { readonly sessionId: string; readonly queueing: boolean }) {
-		this.requests.push({ request, sessionId: context.sessionId, queueing: context.queueing });
+	createRequest(request: PromptRequest): SessionInputRequest {
 		return {
-			input: { message: userMessage(request.text) },
-			options: { streamingBehavior: request.streamingBehavior },
+			payload: request,
+			displayText: request.text,
+			...(request.modelKey || request.reasoning
+				? { model: { key: request.modelKey, reasoning: request.reasoning } }
+				: {}),
+		};
+	}
+
+	async prepare(request: SessionInputRequest, context: RuntimeInputRequestPreparationContext) {
+		const original = request.payload as PromptRequest;
+		const prompt =
+			original.images?.length && !context.modelBinding?.model.input.includes("image")
+				? {
+						...original,
+						images: undefined,
+						text:
+							original.text === "(see attached images)"
+								? "(User attempted to send images, but the current model does not support image input. Please inform the user that this model cannot process images.)"
+								: original.text,
+					}
+				: original;
+		this.requests.push({ request: prompt, sessionId: context.sessionId, queueing: context.queueing });
+		return {
+			action: "continue" as const,
+			input: { message: userMessage(prompt.text) },
 		};
 	}
 }
@@ -240,7 +264,7 @@ function createBackend(
 					let turnIndex = 0;
 					const repository = new InMemoryConversationRepository();
 					const details = runtimeAssemblyDetails(options.id);
-					const snapshotProvider = new StaticRuntimeSnapshotProvider(snapshot());
+					const snapshotProvider = new StaticRuntimeSnapshotProvider(snapshot(), details.modelRuntime);
 					const clock = { now: () => Date.now() };
 					const contextCompactionCommitter = new ContextCompactionCommitter({
 						repository,
@@ -251,7 +275,6 @@ function createBackend(
 					const pipeline = new TurnPipeline({
 						repository,
 						snapshotProvider,
-						modelBindingProvider: details.modelRuntime,
 						turnEngine,
 						eventSink,
 						clock,
@@ -270,7 +293,6 @@ function createBackend(
 								repository,
 								conversationDocumentReader: repository,
 								snapshotProvider,
-								modelBindingProvider: details.modelRuntime,
 								contextRuntime,
 								committer: contextCompactionCommitter,
 							})
@@ -416,28 +438,20 @@ describe("KernelRuntimeSessionBackend", () => {
 		expect((await session.getMessages()).map((message) => message.role)).toEqual(["user", "assistant", "assistant"]);
 	});
 
-	it("retries without replaying the terminal error assistant while preserving it in history", async () => {
+	it("retries without replaying the terminal error assistant while retaining it in history", async () => {
 		const engine = new ErrorThenSuccessTurnEngine();
 		const { backend } = createBackend(engine);
 		const session = await backend.create({ id: "session-1" });
 
 		await expect(session.prompt({ text: "hello" })).resolves.toMatchObject({
-			status: "completed",
-			stopReason: "error",
+			status: "failed",
+			turnId: expect.any(String),
+			error: { code: "PROVIDER_ERROR", message: "503 service unavailable", origin: "provider" },
 		});
 		await expect(session.retry()).resolves.toMatchObject({ status: "completed", stopReason: "stop" });
 
 		expect(engine.requests.map((messages) => messages.map((message) => message.role))).toEqual([["user"], ["user"]]);
-		expect(
-			(await session.getMessages()).map((message) => ({
-				role: message.role,
-				stopReason: message.role === "assistant" ? message.stopReason : undefined,
-			})),
-		).toEqual([
-			{ role: "user", stopReason: undefined },
-			{ role: "assistant", stopReason: "error" },
-			{ role: "assistant", stopReason: "stop" },
-		]);
+		expect((await session.getMessages()).map((message) => message.role)).toEqual(["user", "assistant", "assistant"]);
 	});
 
 	it("exposes synchronous lifecycle, workspace, turn, event and state core ports", async () => {
@@ -615,8 +629,7 @@ describe("KernelRuntimeSessionBackend", () => {
 			const details = runtimeAssemblyDetails(options.id);
 			const pipeline = new TurnPipeline({
 				repository,
-				snapshotProvider: new StaticRuntimeSnapshotProvider(snapshot()),
-				modelBindingProvider: details.modelRuntime,
+				snapshotProvider: new StaticRuntimeSnapshotProvider(snapshot(), details.modelRuntime),
 				turnEngine: new CompletingTurnEngine(),
 				eventSink,
 				clock: { now: () => 3 },
@@ -768,8 +781,8 @@ describe("KernelRuntimeSessionBackend", () => {
 		await session.abort("user cancelled");
 
 		await expect(activeTurn).resolves.toMatchObject({ status: "cancelled", reason: "user cancelled" });
-		expect(promptAdapter.requests.map(({ request }) => request.text)).toEqual(["first", "later"]);
-		expect(promptAdapter.requests.map(({ queueing }) => queueing)).toEqual([false, true]);
+		expect(promptAdapter.requests.map(({ request }) => request.text)).toEqual(["first"]);
+		expect(promptAdapter.requests.map(({ queueing }) => queueing)).toEqual([false]);
 		expect(await session.getState()).toMatchObject({ state: "idle", pendingMessageCount: 1 });
 		expect(events.filter((event) => event.type === "session.lifecycle").map((event) => event.phase)).toEqual([
 			"aborted",

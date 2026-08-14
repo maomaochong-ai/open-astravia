@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
+import { isAgentMode } from "@vetta/coding-agent/profile";
 import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import { isLanguagePreference, type LanguagePreference } from "../../shared/i18n/config.js";
 import { normalizeShortcutsConfig, type ShortcutsConfig } from "../../shared/shortcuts.js";
@@ -32,7 +33,8 @@ export interface DesktopConfig {
 	vettaCliAppPath?: string;
 	notificationsEnabled?: boolean;
 	language?: LanguagePreference;
-	agentMode?: "work" | "coding";
+	/** 新建会话的默认工作模式（合法值来自 coding-agent 模式注册表，ADR-0071）。会话创建时固化进会话，改这里只影响之后新建的会话。 */
+	defaultAgentMode?: string;
 	experimental?: ExperimentalConfig;
 	knowledgeBase?: KnowledgeBaseConfig;
 	shortcuts?: ShortcutsConfig;
@@ -76,7 +78,7 @@ const DEFAULT_CONFIG: DesktopConfig = {
 	archivedProjects: [],
 	workspacePath: join(getVettaHomePath(), "workspace"),
 	defaultExecutionMode: "full-access",
-	agentMode: "work",
+	defaultAgentMode: "work",
 	debugMode: false,
 	notificationsEnabled: true,
 	experimental: { vettaCli: true, agentSkills: true },
@@ -97,8 +99,9 @@ export function normalizeExecutionMode(value: unknown): "sandbox" | "full-access
 	return value === "sandbox" ? "sandbox" : "full-access";
 }
 
-export function normalizeAgentMode(value: unknown): "work" | "coding" {
-	return value === "coding" ? "coding" : "work";
+export function normalizeAgentMode(value: unknown): string {
+	// 合法模式由 coding-agent 的 modes/*.md 注册表定义（ADR-0071）；无效值回落 work。
+	return isAgentMode(value) ? value : "work";
 }
 
 const KB_POLL_INTERVALS = [3, 5, 10, 30];
@@ -197,7 +200,8 @@ function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 				? expandTildePath(parsed.workspacePath)
 				: DEFAULT_CONFIG.workspacePath,
 		defaultExecutionMode: normalizeExecutionMode(parsed.defaultExecutionMode),
-		agentMode: normalizeAgentMode(parsed.agentMode),
+		// 兼容 0.x 的旧字段名 agentMode（当时语义是全局工作模式），老用户配置不丢。
+		defaultAgentMode: normalizeAgentMode(parsed.defaultAgentMode ?? parsed.agentMode),
 		debugMode: typeof parsed.debugMode === "boolean" ? parsed.debugMode : false,
 		vettaAppPath: typeof parsed.vettaAppPath === "string" ? parsed.vettaAppPath : undefined,
 		vettaCliAppPath: typeof parsed.vettaCliAppPath === "string" ? parsed.vettaCliAppPath : undefined,

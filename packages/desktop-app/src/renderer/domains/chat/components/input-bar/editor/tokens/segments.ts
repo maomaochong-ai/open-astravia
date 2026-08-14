@@ -15,6 +15,7 @@ import {
 	$createConnectorTokenNode,
 	$createFileTokenNode,
 	$createImageTokenNode,
+	$createSceneTokenNode,
 	$createSkillTokenNode,
 	$isConnectorTokenNode,
 	$isFileTokenNode,
@@ -34,7 +35,7 @@ function pushText(out: InputSegment[], text: string): void {
 
 function collect(node: LexicalNode, out: InputSegment[]): void {
 	if ($isSkillTokenNode(node)) {
-		out.push({ kind: "skill", name: node.getName() });
+		out.push({ kind: node.getAbilityType(), name: node.getName() });
 		return;
 	}
 	if ($isConnectorTokenNode(node)) {
@@ -76,6 +77,8 @@ export function $readSegments(): InputSegment[] {
 
 function segmentNodes(segment: InputSegment): LexicalNode[] {
 	switch (segment.kind) {
+		case "scene":
+			return [$createSceneTokenNode(segment.name)];
 		case "skill":
 			return [$createSkillTokenNode(segment.name)];
 		case "connector":

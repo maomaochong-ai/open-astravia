@@ -1,6 +1,8 @@
 import type { ErrorBlock } from "@shared/store/atoms";
+import type { AssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
-import { appendError, historyToChat } from "./chat-service";
+import { appendError, fullHistoryToChat, historyToChat } from "./chat-service";
+import { reconcileHistoryWithLiveTerminalErrors } from "./terminal-error-reconciliation";
 
 /** 会话文件里一条失败的 assistant message。 */
 function failed(errorMessage: string) {
@@ -70,5 +72,150 @@ describe("appendError", () => {
 
 		expect(block.kind).toBe("auth");
 		expect(block.attempts).toBeUndefined();
+	});
+
+	it("同一 turn 重放错误事件时保持单个错误块", () => {
+		const once = appendError([], "503 unavailable", undefined, "turn-1");
+		const twice = appendError(once, "503 unavailable", 1, "turn-1", {
+			code: "TRANSPORT_FAILED",
+			origin: "provider",
+			statusCode: 503,
+			provider: "deepseek",
+		});
+		expect(errorBlocksOf(twice)).toHaveLength(1);
+		expect(errorBlocksOf(twice)[0]).toMatchObject({
+			turnId: "turn-1",
+			attempts: 1,
+			details: { code: "TRANSPORT_FAILED", origin: "provider", statusCode: 503, provider: "deepseek" },
+		});
+	});
+});
+
+describe("fullHistoryToChat error entries", () => {
+	it("renders a durable turn failure as an error card", () => {
+		const messages = fullHistoryToChat([
+			{ type: "message", message: { role: "user", content: "hello", timestamp: 1 } },
+			{
+				type: "error",
+				entryId: "error-1",
+				turnId: "turn-1",
+				code: "TRANSPORT_FAILED",
+				retryable: false,
+				origin: "provider",
+				details: { statusCode: 503, provider: "deepseek", modelId: "deepseek-chat", phase: "response" },
+				message: "503 service unavailable",
+				timestamp: "2026-08-13T00:00:00.000Z",
+			},
+		]);
+
+		expect(errorBlocksOf(messages)).toEqual([
+			expect.objectContaining({
+				type: "error",
+				kind: "server",
+				text: "503 service unavailable",
+				turnId: "turn-1",
+				details: {
+					code: "TRANSPORT_FAILED",
+					origin: "provider",
+					retryable: false,
+					statusCode: 503,
+					provider: "deepseek",
+					modelId: "deepseek-chat",
+					phase: "response",
+				},
+			}),
+		]);
+	});
+
+	it("deduplicates the assistant error message and durable turn failure", () => {
+		const messages = fullHistoryToChat([
+			{ type: "message", message: { role: "user", content: "hello", timestamp: 1 } },
+			{
+				type: "message",
+				message: {
+					role: "assistant",
+					content: [],
+					api: "openai-responses",
+					provider: "deepseek",
+					model: "deepseek-chat",
+					usage: {
+						input: 0,
+						output: 0,
+						cacheRead: 0,
+						cacheWrite: 0,
+						totalTokens: 0,
+						cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+					},
+					stopReason: "error",
+					errorMessage: "provider quota exhausted",
+					timestamp: 2,
+				} satisfies AssistantMessage,
+			},
+			{
+				type: "error",
+				entryId: "error-1",
+				turnId: "turn-1",
+				code: "AI_BILLING_REQUIRED",
+				message: "provider quota exhausted",
+				timestamp: "2026-08-13T00:00:00.000Z",
+			},
+		]);
+
+		const errors = errorBlocksOf(messages);
+		expect(errors).toEqual([
+			expect.objectContaining({
+				type: "error",
+				text: "provider quota exhausted",
+				turnId: "turn-1",
+			}),
+		]);
+		expect(errors[0]).not.toHaveProperty("repeated");
+	});
+});
+
+describe("reconcileHistoryWithLiveTerminalErrors", () => {
+	it("preserves a live terminal error when the agent_end history snapshot is stale", () => {
+		const live = appendError(
+			[{ id: "user-live", role: "user", text: "hello" }],
+			"provider quota exhausted",
+			undefined,
+			"turn-1",
+			{ code: "AI_BILLING_REQUIRED", provider: "deepseek", retryable: false },
+		);
+		const staleHistory = fullHistoryToChat([
+			{ type: "message", entryId: "user-1", message: { role: "user", content: "hello", timestamp: 1 } },
+		]);
+
+		const reconciled = reconcileHistoryWithLiveTerminalErrors(staleHistory, live);
+
+		expect(errorBlocksOf(reconciled)).toEqual([
+			expect.objectContaining({
+				turnId: "turn-1",
+				text: "provider quota exhausted",
+				details: { code: "AI_BILLING_REQUIRED", provider: "deepseek", retryable: false },
+			}),
+		]);
+	});
+
+	it("deduplicates a terminal error already present in canonical history", () => {
+		const live = appendError([], "provider quota exhausted", 2, "turn-1", {
+			code: "AI_BILLING_REQUIRED",
+			provider: "deepseek",
+		});
+		const history = fullHistoryToChat([
+			{
+				type: "error",
+				entryId: "error-1",
+				turnId: "turn-1",
+				code: "AI_BILLING_REQUIRED",
+				message: "provider quota exhausted",
+				timestamp: "2026-08-13T00:00:00.000Z",
+			},
+		]);
+
+		const reconciled = reconcileHistoryWithLiveTerminalErrors(history, live);
+
+		expect(errorBlocksOf(reconciled)).toHaveLength(1);
+		expect(errorBlocksOf(reconciled)[0]).toMatchObject({ turnId: "turn-1", attempts: 2 });
 	});
 });

@@ -1,5 +1,6 @@
 import { NodeToolbar, Position } from "@xyflow/react";
 import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useMemo } from "react";
 import {
 	Button,
 	DropdownMenu,
@@ -47,9 +48,11 @@ export function SelectionToolbar({
 	onToggleLock,
 }: SelectionToolbarProps) {
 	const { t } = useTranslation();
+	const toolbarNodeIds = useMemo(() => [...nodeIds], [nodeIds]);
+	if (toolbarNodeIds.length <= 1) return null;
 
 	return (
-		<NodeToolbar nodeId={[...nodeIds]} isVisible={nodeIds.length > 1} position={Position.Top} offset={12}>
+		<NodeToolbar nodeId={toolbarNodeIds} isVisible position={Position.Top} offset={12}>
 			<div
 				className="flex items-center gap-0.5 rounded-xl border border-border/80 bg-popover/95 p-1 text-popover-foreground shadow-md backdrop-blur-md nodrag nowheel"
 				onPointerDown={(event) => event.stopPropagation()}

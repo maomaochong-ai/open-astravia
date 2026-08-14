@@ -1,8 +1,10 @@
 import { useActivityTab, usePromptAttachment, useTranslation } from "@vetta-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ContentProjectCommand } from "../project/commands";
+import type { ContentHistoryMetadata, ContentProjectHistoryView } from "../project/history";
 import type { ContentProjectDocument } from "../project/types";
 import type { ImportedContentAsset, ImportedContentReference } from "../generation/types";
+import type { ContentImageEditRequest } from "../image-edit/image-edit-document";
 import type { ContentCreationPluginRuntime } from "../plugin/runtime";
 import {
 	ContentCreationRuntimeProvider,
@@ -28,6 +30,7 @@ function ContentCreationPanelContent() {
 	const { cwd } = useActivityTab();
 	const { t } = useTranslation();
 	const [project, setProject] = useState<ContentProjectDocument | null>(null);
+	const [history, setHistory] = useState<ContentProjectHistoryView>(() => workspaceHistoryEmpty());
 	const [error, setError] = useState<string | null>(null);
 	const [assetPreviewUrls, setAssetPreviewUrls] = useState<ReadonlyMap<string, string>>(new Map());
 	const [selectedNodeIds, setSelectedNodeIds] = useState<readonly string[]>([]);
@@ -103,10 +106,14 @@ function ContentCreationPanelContent() {
 	useEffect(() => {
 		let active = true;
 		setProject(workspace.getSnapshot(cwd));
+		setHistory(workspace.getHistoryView(cwd));
 		setSelectedNodeIds([]);
 		setError(null);
 		const unsubscribe = workspace.subscribe(cwd, () => {
-			if (active) setProject(workspace.getSnapshot(cwd));
+			if (active) {
+				setProject(workspace.getSnapshot(cwd));
+				setHistory(workspace.getHistoryView(cwd));
+			}
 		});
 		void workspace
 			.load(cwd)
@@ -140,10 +147,10 @@ function ContentCreationPanelContent() {
 	}, [assetPreviewResolver, project]);
 
 	const dispatch = useCallback(
-		async (commands: readonly ContentProjectCommand[]) => {
+		async (commands: readonly ContentProjectCommand[], historyMetadata?: ContentHistoryMetadata) => {
 			try {
 				setError(null);
-				await workspace.dispatch(cwd, commands);
+				await workspace.dispatch(cwd, commands, undefined, historyMetadata);
 			} catch (dispatchError) {
 				setError(t("error.save"));
 				runtime.notifyError(t("error.save"), dispatchError);
@@ -168,6 +175,35 @@ function ContentCreationPanelContent() {
 		},
 		[cwd, generation, runtime, t],
 	);
+	const runImageEdit = useCallback(
+		async (nodeId: string, edit: ContentImageEditRequest) => {
+			if (!cwd) {
+				setError(t("error.outputWorkspaceRequired"));
+				runtime.notifyError(t("error.outputWorkspaceRequired"), new Error("workspace is required"));
+				return;
+			}
+			try {
+				setError(null);
+				await generation.runImageEdit(cwd, nodeId, edit);
+			} catch (generationError) {
+				console.error("[plugin:content-creation] image editing failed", generationError);
+			}
+		},
+		[cwd, generation, runtime, t],
+	);
+	const restoreHistory = useCallback(
+		async (direction: "undo" | "redo") => {
+			try {
+				setError(null);
+				if (direction === "undo") await workspace.undo(cwd);
+				else await workspace.redo(cwd);
+			} catch (historyError) {
+				setError(t("error.historyRestore"));
+				runtime.notifyError(t("error.historyRestore"), historyError);
+			}
+		},
+		[cwd, runtime, t, workspace],
+	);
 	const importReferences = useCallback(
 		async (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => {
 			try {
@@ -181,10 +217,10 @@ function ContentCreationPanelContent() {
 		[cwd, generation, runtime, t],
 	);
 	const importAssets = useCallback(
-		async (nodeId: string, files: readonly ImportedContentAsset[]) => {
+		async (nodeId: string, files: readonly ImportedContentAsset[], historyMetadata?: ContentHistoryMetadata) => {
 			try {
 				setError(null);
-				await generation.importAssets(cwd, nodeId, files);
+				await generation.importAssets(cwd, nodeId, files, historyMetadata);
 			} catch (importError) {
 				setError(t("error.importAsset"));
 				runtime.notifyError(t("error.importAsset"), importError);
@@ -215,7 +251,11 @@ function ContentCreationPanelContent() {
 					models={models}
 					registerShortcutScope={runtime.registerShortcutScope}
 					onDispatch={dispatch}
+					history={history}
+					onUndo={() => restoreHistory("undo")}
+					onRedo={() => restoreHistory("redo")}
 					onRunNode={runNode}
+					onRunImageEdit={runImageEdit}
 					onImportAssets={importAssets}
 					onImportReferences={importReferences}
 					onSelectedNodeIdsChange={setSelectedNodeIds}
@@ -224,6 +264,10 @@ function ContentCreationPanelContent() {
 			</main>
 		</div>
 	);
+}
+
+function workspaceHistoryEmpty(): ContentProjectHistoryView {
+	return { canUndo: false, canRedo: false };
 }
 
 function previewUrlMapsEqual(

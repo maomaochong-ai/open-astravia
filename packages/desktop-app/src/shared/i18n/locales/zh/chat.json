@@ -264,12 +264,10 @@
 		"tooltip": {
 			"compacting": "正在压缩上下文...",
 			"unknown": "上下文窗口 {{window}}（使用量未知）",
-			"usage": "上下文已使用 {{percent}}%（{{window}} 窗口）"
+			"usage": "上下文已使用 {{tokens}} tokens（{{percent}}%，{{window}} 窗口）"
 		},
 		"details": {
 			"title": "上下文构成（最近一次调用）",
-			"actual": "实际输入",
-			"estimated": "估算",
 			"section": "区块",
 			"category": "分类",
 			"tokens": "Token",
@@ -278,11 +276,6 @@
 			"unavailableAfterRestart": "此会话没有可恢复的历史构成明细。发送下一条消息后，应用会生成并保存新的明细。",
 			"items": "{{count}} 项",
 			"unknownItems": "{{count}} 项未知",
-			"coverage": {
-				"complete": "估算覆盖完整",
-				"partial": "部分区块无法估算",
-				"none": "无可用估算"
-			},
 			"owner": {
 				"core": "系统",
 				"skill": "Skill",
@@ -372,6 +365,9 @@
 		}
 	},
 	"inputBar": {
+		"error": {
+			"multipleScenes": "一条消息只能选择一个场景，请移除多余的场景后重试"
+		},
 		"capsule": {
 			"appshotThumbnailAlt": "截图",
 			"appshotPreview": "预览截图",
@@ -413,6 +409,22 @@
 			"addImage": "添加图片",
 			"attachFile": "附加文件引用",
 			"skills": "技能/场景"
+		},
+		"speech": {
+			"actions": {
+				"start": "开始语音输入",
+				"stop": "停止语音输入"
+			},
+			"states": {
+				"loading": "正在加载离线语音模型…",
+				"stopping": "正在完成语音识别…"
+			},
+			"errors": {
+				"unsupported": "语音输入目前仅支持 Windows x64",
+				"missing": "安装包中缺少语音模型，请重新安装应用",
+				"integrity": "安装包中的语音模型不完整，请重新安装应用",
+				"recognizer": "语音识别启动失败，点击重试"
+			}
 		},
 		"contextMenu": {
 			"cut": "剪切",
@@ -483,7 +495,8 @@
 		"compactionBoundary": "上下文已压缩",
 		"modelSwitched": "切换了模型 {{name}}",
 		"compactionIndicator": "正在压缩上下文...",
-		"retryIndicator": "连接不太稳定，正在自动重试（第 {{attempt}}/{{maxAttempts}} 次）",
+		"retryIndicator": "正在重新连接（{{attempt}}/{{maxAttempts}}）",
+		"retryReason": "上次请求失败：{{reason}}",
 		"streamingPhrases": [
 			"Vetta 正在回复…",
 			"请耐心等待…",
@@ -498,6 +511,17 @@
 			"hideDetail": "收起详情",
 			"retriedNote": "已自动重试 {{count}} 次",
 			"repeatedNote": "重复出现 {{count}} 次",
+			"diagnostic": {
+				"code": "错误码：{{value}}",
+				"origin": "来源：{{value}}",
+				"statusCode": "HTTP 状态：{{value}}",
+				"provider": "供应商：{{value}}",
+				"model": "模型：{{value}}",
+				"providerCode": "供应商错误码：{{value}}",
+				"phase": "阶段：{{value}}",
+				"requestId": "请求 ID：{{value}}",
+				"retryAfter": "建议等待：{{value}} ms"
+			},
 			"kinds": {
 				"rate_limit": {
 					"title": "请求太频繁了",
@@ -573,7 +597,8 @@
 		"progressGroup": {
 			"fallbackTitle": "正在处理",
 			"genericDone": "完成了 {{count}} 步操作",
-			"genericRunning": "正在处理…"
+			"genericRunning": "正在处理…",
+			"thinking": "正在思考"
 		},
 		"toolCallGroup": {
 			"completed": "{{count}} 个工具调用完成",

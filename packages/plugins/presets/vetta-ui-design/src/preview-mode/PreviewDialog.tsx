@@ -5,12 +5,15 @@ import { PluginPortal } from "../plugin-portal";
 import { frameUrl, pathOfFrame } from "../vetd/frame-url";
 import type { VetdFrameEntry } from "../vetd/manifest-types";
 import { usePreviewBridge } from "./preview-client";
+import { PreviewFrameRail } from "./PreviewFrameRail";
 import { PreviewToolbar } from "./PreviewToolbar";
 import { clampToAvailable, MIN_VIEWPORT, type ViewportSize } from "./viewport";
 
 interface PreviewDialogProps {
 	port: number;
 	frames: readonly VetdFrameEntry[];
+	/** 缩略图列表的位图缓存归属键，见 canvas/raster-cache.ts。 */
+	vetdPath: string;
 	/** 打开时定位到哪一帧（画布上单独选中的那个，无选中则最左上）。 */
 	initialFrameId: string;
 	onClose(): void;
@@ -39,7 +42,7 @@ function sizeOfFrame(frames: readonly VetdFrameEntry[], frameId: string | null):
  * 并且被 preventDefault 掉了，这里的点击就是点击。跨帧跳转由 frame 源码里的
  * `<Link to>` 完成，走的是引擎的真实路由，与系统浏览器里打开同一地址完全一致。
  */
-export function PreviewDialog({ port, frames, initialFrameId, onClose }: PreviewDialogProps) {
+export function PreviewDialog({ port, frames, vetdPath, initialFrameId, onClose }: PreviewDialogProps) {
 	const { t } = useTranslation();
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
 	const { nav, navigateTo, go, reload } = usePreviewBridge(iframeRef);
@@ -144,48 +147,51 @@ export function PreviewDialog({ port, frames, initialFrameId, onClose }: Preview
 				onContextMenu={(event) => event.preventDefault()}
 			>
 				{/* biome-ignore lint/a11y/noStaticElementInteractions: keeps backdrop clicks off the window */}
-				<div
-					className="m-auto flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
-					style={{ width: viewport.width }}
-					role="dialog"
-					aria-label={t("previewMode.title")}
-					onClick={(event) => event.stopPropagation()}
-				>
-					<PreviewToolbar
+				<div className="m-auto flex items-start gap-3" onClick={(event) => event.stopPropagation()}>
+					<PreviewFrameRail
 						frames={frames}
 						currentFrameId={currentFrameId}
-						path={path}
-						canBack={nav?.canBack === true}
-						canForward={nav?.canForward === true}
-						viewport={viewport}
-						onBack={() => go(-1)}
-						onForward={() => go(1)}
-						onReload={reload}
-						onPickFrame={(frameId) => navigateTo(pathOfFrame(frameId))}
-						onPickViewport={setViewport}
-						onResetViewport={resetViewport}
-						onOpenExternal={openExternal}
-						onClose={onClose}
+						vetdPath={vetdPath}
+						onPick={(frameId) => navigateTo(pathOfFrame(frameId))}
 					/>
-					<div className="relative bg-white" style={{ height: viewport.height }}>
-						<iframe
-							ref={iframeRef}
-							title={t("previewMode.title")}
-							src={initialUrlRef.current}
-							className="h-full w-full border-0"
+					<div
+						className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+						style={{ width: viewport.width }}
+						role="dialog"
+						aria-label={t("previewMode.title")}
+					>
+						<PreviewToolbar
+							canBack={nav?.canBack === true}
+							canForward={nav?.canForward === true}
+							viewport={viewport}
+							onBack={() => go(-1)}
+							onForward={() => go(1)}
+							onReload={reload}
+							onPickViewport={setViewport}
+							onResetViewport={resetViewport}
+							onOpenExternal={openExternal}
+							onClose={onClose}
 						/>
-						{/* 拉伸手柄。压在 iframe 边缘之上，否则指针一进 iframe 事件就归它了。 */}
-						{handles.map(({ edge, className }) => (
-							// biome-ignore lint/a11y/noStaticElementInteractions: resize handle
-							<div
-								key={edge}
-								className={`absolute z-10 ${className}`}
-								onPointerDown={(event) => beginResize(event, edge)}
-								onPointerMove={moveResize}
-								onPointerUp={endResize}
-								onPointerCancel={endResize}
+						<div className="relative bg-white" style={{ height: viewport.height }}>
+							<iframe
+								ref={iframeRef}
+								title={t("previewMode.title")}
+								src={initialUrlRef.current}
+								className="h-full w-full border-0"
 							/>
-						))}
+							{/* 拉伸手柄。压在 iframe 边缘之上，否则指针一进 iframe 事件就归它了。 */}
+							{handles.map(({ edge, className }) => (
+								// biome-ignore lint/a11y/noStaticElementInteractions: resize handle
+								<div
+									key={edge}
+									className={`absolute z-10 ${className}`}
+									onPointerDown={(event) => beginResize(event, edge)}
+									onPointerMove={moveResize}
+									onPointerUp={endResize}
+									onPointerCancel={endResize}
+								/>
+							))}
+						</div>
 					</div>
 				</div>
 			</div>

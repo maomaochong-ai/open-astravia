@@ -23,17 +23,18 @@
 	--color-primary-foreground: var(--primary-foreground);
 }
 
-/* 无限画布的点阵背景：底色与点阵都取宿主主题变量，自动跟随明暗。 */
+/* 无限画布：底色取宿主背景色，纹理是一层低不透明度的网格。
+   light-dark() 只是宿主变量缺失时的兜底——宿主在 [data-mode] 上写了 color-scheme，
+   该属性可继承，能穿过插件的 @scope 边界（祖先选择器和 dark: 变体都穿不过来）。 */
 .vetd-canvas-bg {
 	/* 选中态固定用 Figma 蓝，刻意不跟随宿主主题色：主题色可能与设计稿本身的配色
 	   撞车，而「哪个 frame 被选中」必须在任何主题、任何设计稿上都一眼可辨。 */
 	--vetd-selected: #0d99ff;
-	background-color: var(--background, #f4f4f5);
-	background-image: radial-gradient(
-		circle,
-		color-mix(in oklab, var(--foreground, #000) 14%, transparent) 1px,
-		transparent 1px
-	);
+	--vetd-grid-line: color-mix(in oklab, var(--foreground, #000) 3%, transparent);
+	background-color: var(--background, light-dark(#f5f5f5, #1e1e1e));
+	background-image:
+		linear-gradient(to right, var(--vetd-grid-line) 1px, transparent 1px),
+		linear-gradient(to bottom, var(--vetd-grid-line) 1px, transparent 1px);
 	background-size: 14px 14px;
 }
 
@@ -63,6 +64,15 @@
 	-ms-overflow-style: none;
 }
 .vetd-swiper::-webkit-scrollbar {
+	display: none;
+}
+
+/* 竖排缩略图列表：滚动但不显示滚动条（上下边缘用渐隐提示还有内容） */
+.vetd-rail-scroll {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.vetd-rail-scroll::-webkit-scrollbar {
 	display: none;
 }
 
@@ -451,6 +461,37 @@
 	}
 }
 
+/* 启动占位：三点等待，与打字骨架线同一套节奏（错开相位、循环）。 */
+.vetd-loading-dots {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.vetd-loading-dot {
+	width: 5px;
+	height: 5px;
+	border-radius: 9999px;
+	background: color-mix(in oklab, var(--vetd-accent, #64748b) 60%, transparent);
+	animation: vetd-loading-dot 1.2s ease-in-out infinite;
+}
+.vetd-loading-dot:nth-child(2) {
+	animation-delay: 0.15s;
+}
+.vetd-loading-dot:nth-child(3) {
+	animation-delay: 0.3s;
+}
+@keyframes vetd-loading-dot {
+	0%,
+	100% {
+		opacity: 0.35;
+		transform: translateY(0) scale(0.85);
+	}
+	40% {
+		opacity: 1;
+		transform: translateY(-3px) scale(1);
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.vetd-bot-think .vetd-bot-head,
 	.vetd-bot-bubble,
@@ -461,8 +502,13 @@
 	.vetd-typing-line,
 	.vetd-fluid-spin,
 	.vetd-fluid-blob,
+	.vetd-loading-dot,
 	.vetd-spark {
 		animation: none;
+	}
+	/* 关掉动画后三点停在半透明帧，钉到可见状态。 */
+	.vetd-loading-dot {
+		opacity: 0.8;
 	}
 	/* 关掉动画后骨架线/星光停在不可见帧，钉到可见状态。 */
 	.vetd-typing-line {

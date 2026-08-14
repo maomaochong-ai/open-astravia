@@ -3,7 +3,7 @@ import { type Dirent, type FSWatcher, watch } from "node:fs";
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
-import { DEFAULT_PERSONA_ID, PERSONAS } from "@vetta/coding-agent/profile";
+import { DEFAULT_PERSONA_ID, isAgentMode, MODE_PROMPTS, PERSONAS } from "@vetta/coding-agent/profile";
 import type {
 	AgentPluginContinuationInvocation,
 	AgentPluginContinuationResult,
@@ -33,15 +33,11 @@ import { getDesktopUserQuestionBroker } from "../conversations/user-question-bro
 import { type DebugRequestData, writeDebugRequest } from "../debug-writer.js";
 import { getAppLogger } from "../logger.js";
 import { notify } from "../notifications/index.js";
+import { createPetBubbleCommand } from "../pet/pet-bubble-command.js";
 import { mapSessionEventToPetPresentation } from "../pet/session-event-action-policy.js";
 import { sendPetCommandToWindow } from "../pet-window.js";
 import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invocation.js";
-import {
-	broadcastPluginsChanged,
-	getPluginSettings,
-	listPlugins,
-	pluginAgentContributionService,
-} from "../plugins/plugin-catalog.js";
+import { getPluginSettings, listPlugins, pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { summarizeAgentPluginRuntimeConfig } from "../plugins/plugin-runtime-config-builder.js";
 import {
 	filterSystemPromptInvocationForPlugin,
@@ -136,7 +132,9 @@ const CHANNELS = {
 	UPDATE_SETTINGS: "vetta:session:update-settings",
 	SET_EXECUTION_MODE: "vetta:session:set-execution-mode",
 	SET_GLOBAL_EXECUTION_MODE: "vetta:session:set-global-execution-mode",
+	/** 设置「新会话默认工作模式」。不影响任何已存在会话：mode 在会话创建时固化。 */
 	SET_GLOBAL_AGENT_MODE: "vetta:session:set-global-agent-mode",
+	/** 默认工作模式已变更；仅用于各窗口新会话页 toggle 的显示同步，不改变任何活跃会话的行为。 */
 	AGENT_MODE_CHANGED: "vetta:session:agent-mode-changed",
 	GET_STATE: "vetta:session:get-state",
 	GET_MESSAGES: "vetta:session:get-messages",
@@ -157,6 +155,7 @@ const CHANNELS = {
 	SET_GLOBAL_THINKING: "vetta:session:set-global-thinking-level",
 	GET_GLOBAL_THINKING: "vetta:session:get-global-thinking-level",
 	GET_PERSONAS: "vetta:session:get-personas",
+	GET_AGENT_MODES: "vetta:session:get-agent-modes",
 	GET_PERSONALIZATION: "vetta:session:get-personalization",
 	SET_PERSONALIZATION: "vetta:session:set-personalization",
 	EVENT: "vetta:session:event",
@@ -301,7 +300,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		let lastStopReason: string | undefined;
 		let aborted = false;
 		let lastPetActionId: string | undefined;
-		let lastPetBubbleKey: string | undefined;
+		let hasFinalPetBody = false;
 		const unsubscribe = runtime.subscribe(sessionId, (ev: SessionEvent) => {
 			const petPresentation = mapSessionEventToPetPresentation(ev);
 			const petActionId = petPresentation?.actionId;
@@ -310,36 +309,32 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				sendPetCommandToWindow({ type: "set-action", actionId: petActionId, source: "app" });
 			}
 			const petBubble = petPresentation?.bubble;
-			if (petBubble) {
-				const nextBubbleKey = `${petBubble.text}:${petBubble.ttlMs ?? ""}:${petBubble.priority ?? ""}`;
-				if (nextBubbleKey !== lastPetBubbleKey) {
-					lastPetBubbleKey = nextBubbleKey;
-					sendPetCommandToWindow({
-						type: "show-bubble",
-						text: petBubble.text,
-						source: "app",
-						...(petBubble.ttlMs === undefined ? {} : { ttlMs: petBubble.ttlMs }),
-						...(petBubble.priority === undefined ? {} : { priority: petBubble.priority }),
-					});
-				}
-			} else {
-				lastPetBubbleKey = undefined;
+			const isRedundantGenericCompletion =
+				ev.type === "session.lifecycle" && ev.phase === "agent_end" && hasFinalPetBody;
+			if (petBubble && !isRedundantGenericCompletion) {
+				const command = createPetBubbleCommand(petBubble, sessionId);
+				if (command) sendPetCommandToWindow(command);
 			}
 
 			if (ev.type === "message.final") {
+				if (petBubble?.body) hasFinalPetBody = true;
 				const sr = (ev.message as unknown as { stopReason?: unknown }).stopReason;
 				if (typeof sr === "string") lastStopReason = sr;
 			} else if (ev.type === "error") {
 				lastStopReason = "error";
 			} else if (ev.type === "session.lifecycle") {
-				if (ev.phase === "aborted") {
+				if (ev.phase === "agent_start") {
+					hasFinalPetBody = false;
+				} else if (ev.phase === "aborted") {
 					aborted = true;
+					hasFinalPetBody = false;
 				} else if (ev.phase === "agent_end") {
 					const wasAborted = aborted || lastStopReason === "aborted";
 					const outcome = lastStopReason === "error" ? "error" : "completed";
 					const sessionPath = runtime.getSessionPath(sessionId);
 					lastStopReason = undefined;
 					aborted = false;
+					hasFinalPetBody = false;
 					// 中断不通知；正常完成 / 出错才通知（见 CONTEXT.md「agent 完成通知」）。
 					if (!wasAborted && sessionPath) {
 						void notify({ type: "agent-turn-complete", sessionPath, cwd, outcome });
@@ -445,10 +440,21 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		});
 	});
 
+	runtime.setPluginTurnHandlerLeaseProvider({
+		bindForTurn: (agentPlugins) => pluginAgentContributionService.bindAgentHandlersForTurn(agentPlugins),
+	});
+
 	runtime.setPluginToolInvoker((request: AgentPluginToolInvocation, signal?: AbortSignal) => {
 		if (webContents.isDestroyed()) {
 			return Promise.reject(new Error("Plugin host renderer is unavailable"));
 		}
+		const rejection = pluginAgentContributionService.readHandlerInvocationRejection(
+			"tool",
+			request.pluginId,
+			request.handlerId,
+			request.activationId,
+		);
+		if (rejection) return Promise.reject(new Error(rejection));
 		return new Promise<AgentPluginHandlerResult<unknown>>((resolve, reject) => {
 			const requestId = randomUUID();
 			const finish = (result: unknown): void => {
@@ -458,9 +464,19 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 					reject(new Error(String((result as { error?: unknown }).error ?? "Plugin tool failed")));
 					return;
 				}
+				const currentRejection = pluginAgentContributionService.readHandlerInvocationRejection(
+					"tool",
+					request.pluginId,
+					request.handlerId,
+					request.activationId,
+				);
+				if (currentRejection) {
+					reject(new Error(currentRejection));
+					return;
+				}
 				const plugin = listPlugins().find((candidate) => candidate.id === request.pluginId);
-				if (!plugin || !plugin.enabled) {
-					reject(new Error(`Plugin not found or disabled: ${request.pluginId}`));
+				if (!plugin) {
+					reject(new Error(`Plugin not found: ${request.pluginId}`));
 					return;
 				}
 				resolve({
@@ -488,16 +504,12 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	setDesktopPluginHookInvoker((request, signal?: AbortSignal) => {
 		if (webContents.isDestroyed()) return Promise.resolve(undefined);
-		const plugin = listPlugins().find((candidate) => candidate.id === request.pluginId);
-		if (
-			!plugin?.enabled ||
-			!plugin.permissions.includes("agent.hooks.register") ||
-			!plugin.grantedPermissions.includes("agent.hooks.register") ||
-			!plugin.permissions.includes("agent.hookHandler.execute") ||
-			!plugin.grantedPermissions.includes("agent.hookHandler.execute")
-		) {
-			return Promise.resolve(undefined);
-		}
+		const rejection = pluginAgentContributionService.readHookInvocationRejection(
+			request.pluginId,
+			request.handlerId,
+			request.activationId,
+		);
+		if (rejection) return Promise.reject(new Error(rejection));
 		return new Promise<unknown>((resolve, reject) => {
 			const requestId = randomUUID();
 			const finish = (result: unknown): void => {
@@ -507,9 +519,13 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 					reject(new Error(String((result as { error?: unknown }).error ?? "Plugin hook failed")));
 					return;
 				}
-				const current = listPlugins().find((candidate) => candidate.id === request.pluginId);
-				if (!current?.enabled) {
-					reject(new Error(`Plugin not found or disabled: ${request.pluginId}`));
+				const currentRejection = pluginAgentContributionService.readHookInvocationRejection(
+					request.pluginId,
+					request.handlerId,
+					request.activationId,
+				);
+				if (currentRejection) {
+					reject(new Error(currentRejection));
 					return;
 				}
 				resolve((result as { value?: unknown })?.value);
@@ -534,6 +550,13 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	runtime.setPluginContinuationInvoker((request: AgentPluginContinuationInvocation, signal?: AbortSignal) => {
 		if (webContents.isDestroyed()) return Promise.resolve({ value: null, effects: [] });
+		const rejection = pluginAgentContributionService.readHandlerInvocationRejection(
+			"continuation",
+			request.pluginId,
+			request.handlerId,
+			request.activationId,
+		);
+		if (rejection) return Promise.reject(new Error(rejection));
 		return new Promise<AgentPluginHandlerResult<AgentPluginContinuationResult | null>>((resolve, reject) => {
 			const requestId = randomUUID();
 			const finish = (result: unknown): void => {
@@ -544,9 +567,19 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 					return;
 				}
 				const value = (result as { value?: unknown })?.value;
+				const currentRejection = pluginAgentContributionService.readHandlerInvocationRejection(
+					"continuation",
+					request.pluginId,
+					request.handlerId,
+					request.activationId,
+				);
+				if (currentRejection) {
+					reject(new Error(currentRejection));
+					return;
+				}
 				const plugin = listPlugins().find((item) => item.id === request.pluginId);
-				if (!plugin || !plugin.enabled) {
-					reject(new Error(`Plugin not found or disabled: ${request.pluginId}`));
+				if (!plugin) {
+					reject(new Error(`Plugin not found: ${request.pluginId}`));
 					return;
 				}
 				const effects = normalizeDynamicSystemPromptOperations(
@@ -598,6 +631,13 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			});
 			return Promise.resolve([]);
 		}
+		const rejection = pluginAgentContributionService.readHandlerInvocationRejection(
+			"system-prompt",
+			request.pluginId,
+			request.handlerId,
+			request.activationId,
+		);
+		if (rejection) return Promise.reject(new Error(rejection));
 		return new Promise((resolve, reject) => {
 			const requestId = randomUUID();
 			const finish = (result: unknown): void => {
@@ -613,9 +653,19 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 					reject(new Error(String((result as { error?: unknown }).error ?? "Plugin system prompt failed")));
 					return;
 				}
+				const currentRejection = pluginAgentContributionService.readHandlerInvocationRejection(
+					"system-prompt",
+					request.pluginId,
+					request.handlerId,
+					request.activationId,
+				);
+				if (currentRejection) {
+					reject(new Error(currentRejection));
+					return;
+				}
 				const plugin = listPlugins().find((candidate) => candidate.id === request.pluginId);
-				if (!plugin || !plugin.enabled) {
-					reject(new Error(`Plugin not found or disabled: ${request.pluginId}`));
+				if (!plugin) {
+					reject(new Error(`Plugin not found: ${request.pluginId}`));
 					return;
 				}
 				const operations = normalizeDynamicSystemPromptOperations(plugin, (result as { value?: unknown })?.value);
@@ -647,9 +697,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				messageCount: request.conversation.messageCount,
 			});
 			const plugin = listPlugins().find((candidate) => candidate.id === request.pluginId);
-			if (!plugin || !plugin.enabled) {
+			if (!plugin) {
 				pluginSystemPromptMap.delete(requestId);
-				reject(new Error(`Plugin not found or disabled: ${request.pluginId}`));
+				reject(new Error(`Plugin not found: ${request.pluginId}`));
 				return;
 			}
 			const filteredRequest = filterSystemPromptInvocationForPlugin(plugin, request);
@@ -764,23 +814,18 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		await writeDesktopConfig(settings);
 	});
 
-	// 全局工作模式切换（agent_mode 轴，纯全局态）。持久化 + 推 pending 给活跃 session（turn 边界 apply）
-	// + 广播各窗口更新 badge/atom。见 ADR-0046。
+	// 只更新「新会话默认工作模式」。工作模式在会话创建时固化、会话内不可变，
+	// 因此这里不重建任何活跃 session 的插件配置，也不重载 renderer 插件清单
+	// （模式已不再排除任何插件，重建出来的是同一份配置）。
+	// 广播仅用于各窗口新会话页 toggle 的显示同步。
 	ipcMain.handle(CHANNELS.SET_GLOBAL_AGENT_MODE, async (_event, mode: unknown) => {
-		const next = mode === "coding" ? "coding" : "work";
+		const next = isAgentMode(mode) ? mode : "work";
 		const settings = await readDesktopConfig();
-		settings.agentMode = next;
+		settings.defaultAgentMode = next;
 		await writeDesktopConfig(settings);
-		// tools/skills/prompt：pending，turn 边界 apply。
-		runtime.setGlobalAgentMode(next);
-		// 插件级硬闸：更新 gate 模式并重建插件配置（排除模式外插件），推给活跃 session。
-		pluginAgentContributionService.setAgentMode(next);
-		await runtime.reconfigureAgentPlugins(pluginAgentContributionService.buildRuntimeConfig());
 		for (const win of BrowserWindow.getAllWindows()) {
 			win.webContents.send(CHANNELS.AGENT_MODE_CHANGED, next);
 		}
-		// renderer 侧硬闸：重新 list + 重载 MF remotes，模式外插件的 UI/bundle 立即消失。
-		broadcastPluginsChanged();
 	});
 
 	ipcMain.handle(CHANNELS.SET_GLOBAL_THINKING, (_event, level: unknown) => {
@@ -801,6 +846,19 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	// 个性化人设清单：唯一来源是 coding-agent 注册表，只下发 id/label/description，不含提示词正文。
 	ipcMain.handle(CHANNELS.GET_PERSONAS, () => {
 		return PERSONAS.map((p) => ({ id: p.id, label: p.label, description: p.description }));
+	});
+
+	// 工作模式注册表：唯一来源是 coding-agent 的 modes/*.md（ADR-0071），只下发
+	// id/label/description/icon，不含提示词正文。renderer 的模式 toggle 据此遍历渲染，
+	// 新增模式无需改任何 UI 代码。
+	ipcMain.handle(CHANNELS.GET_AGENT_MODES, () => {
+		return MODE_PROMPTS.map((m) => ({
+			id: m.id,
+			label: m.label,
+			description: m.description,
+			icon: m.icon,
+			narration: m.narration,
+		}));
 	});
 
 	// 个性化配置（人设 + 自定义指令）。仅写盘；运行中的 session 在下一轮 prompt 经
@@ -1398,6 +1456,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		setDesktopPluginHookInvoker(undefined);
 		runtime.setPluginContinuationInvoker(undefined);
 		runtime.setPluginSystemPromptInvoker(undefined);
+		runtime.setPluginTurnHandlerLeaseProvider(undefined);
 		// 不在此处 disposeAllSessions：共享 runtime 的 session 可能正被
 		// scheduler/batch-tasks 在后台使用。全进程 session 释放由 main.ts
 		// 的 before-quit 负责（见 disposeSharedRuntime）。

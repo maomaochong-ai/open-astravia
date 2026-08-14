@@ -1,3 +1,4 @@
+import { desktopHostedRouteService } from "@shared/hosted-routes/hosted-route-service";
 import {
 	pluginWorkspaceViewsAtom,
 	SIDEBAR_WIDTH_STORAGE_KEY,
@@ -8,10 +9,10 @@ import { useMatches, useNavigate } from "@tanstack/react-router";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { pluginWorkspaceRoute } from "../../../plugins/runtime/plugin-hosted-route-capability";
 import { usePluginTextResolver } from "../../../plugins/runtime/plugin-i18n";
 import {
 	sortWorkspaceViews,
-	WORKSPACE_VIEW_ROUTE_PATH,
 	workspaceViewNavKey,
 	workspaceViewPath,
 } from "../../../plugins/runtime/workspace-view-registry";
@@ -68,6 +69,12 @@ const BUILTIN_NAV_ITEMS = [
 		path: "/batch-tasks" as const,
 		labelKey: "sidebar.nav.batchTasks",
 		icon: "icon-[solar--clipboard-check-outline]",
+	},
+	{
+		type: "route",
+		path: "/scenes" as const,
+		labelKey: "sidebar.nav.scenes",
+		icon: "icon-[solar--clapperboard-open-linear]",
 	},
 	{
 		type: "route",
@@ -394,10 +401,9 @@ export function useSidebarModel({
 				return;
 			}
 			if (item.workspaceView) {
-				void navigate({
-					to: WORKSPACE_VIEW_ROUTE_PATH,
-					params: { pluginId: item.workspaceView.pluginId, viewId: item.workspaceView.viewId },
-				});
+				void desktopHostedRouteService.open(
+					pluginWorkspaceRoute(item.workspaceView.pluginId, item.workspaceView.viewId),
+				);
 				return;
 			}
 			if (item.settingsTab) {

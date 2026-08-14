@@ -27,7 +27,7 @@ vi.mock("../ipc/fs.js", () => ({
 	KB_PROCESSING_CWD: "C:/vetta/knowledge",
 	KB_PROCESSING_SESSION_DIR: "C:/vetta/knowledge/.vetta/sessions",
 	readDesktopConfig: async () => ({
-		agentMode: "work",
+		defaultAgentMode: "work",
 		defaultExecutionMode: "sandbox",
 		experimental: {},
 	}),
@@ -36,7 +36,6 @@ vi.mock("../ipc/fs.js", () => ({
 vi.mock("../plugins/plugin-catalog.js", () => ({
 	pluginAgentContributionService: {
 		buildRuntimeConfig: () => undefined,
-		setAgentMode: () => undefined,
 	},
 }));
 
@@ -150,6 +149,47 @@ describe("DesktopConversationService session access", () => {
 			})
 			.catch((reason: unknown) => reason);
 		expect(error).toMatchObject<Partial<DesktopConversationError>>({ code: "SESSION_BUSY" });
+	});
+
+	it("preserves structured provider diagnostics when a turn is rejected", async () => {
+		const runtime = {
+			getState: vi.fn(() => ({ isStreaming: false })),
+			getMessages: vi.fn(() => []),
+			prompt: vi.fn(async () => {
+				throw runtimeError("INTERNAL_ERROR", "quota exhausted", false, "provider", {
+					statusCode: 402,
+					provider: "deepseek",
+					modelId: "deepseek-chat",
+					providerCode: "insufficient_quota",
+				});
+			}),
+			abort: vi.fn(async () => undefined),
+		} as unknown as RuntimeHost;
+		const service = new DesktopConversationService(runtime);
+
+		const error = await service
+			.runTurn({
+				session: {
+					sessionId: "session-1",
+					sessionPath: "C:/sessions/session-1.conversation.jsonl",
+					cwd: "C:/workspace",
+					listCwd: "C:/workspace",
+					source: "interactive",
+				},
+				prompt: { text: "hello" },
+				timeoutMs: 1_000,
+			})
+			.catch((reason: unknown) => reason);
+
+		expect(error).toMatchObject({
+			code: "TURN_FAILED",
+			details: {
+				code: "INTERNAL_ERROR",
+				retryable: false,
+				origin: "provider",
+				details: { statusCode: 402, provider: "deepseek", modelId: "deepseek-chat" },
+			},
+		});
 	});
 });
 

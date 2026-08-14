@@ -38,6 +38,7 @@ export {
 export {
 	type CodingAgentTurnCommandHost,
 	type CodingAgentTurnExecutor,
+	type CodingAgentTurnFailure,
 	type CodingAgentTurnPromptOptions,
 	type CodingAgentTurnRetryController,
 	type CodingAgentTurnRetryEvent,
@@ -47,4 +48,6 @@ export {
 	type CreateCodingAgentTurnRetryControllerOptions,
 	createCodingAgentTurnExecutor,
 	createCodingAgentTurnRetryController,
+	readCodingAgentFailedTurnMessage,
+	readCodingAgentTurnFailure,
 } from "./runtime/turn.js";

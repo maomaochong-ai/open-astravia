@@ -24,7 +24,12 @@ export class CompactionPrefireCache {
 
 	constructor(private readonly options: CompactionPrefireCacheOptions) {}
 
-	start(entries: readonly SessionEntry[], settings: CompactionSettings, model: Model<Api>): void {
+	start(
+		entries: readonly SessionEntry[],
+		settings: CompactionSettings,
+		model: Model<Api>,
+		credential?: { resolve(): Promise<string | undefined> | string | undefined },
+	): void {
 		if (this.abortController || this.disposed || !this.options.canAttempt()) return;
 		const preparation = prepareCompaction([...entries], settings);
 		if (!preparation) return;
@@ -33,7 +38,7 @@ export class CompactionPrefireCache {
 
 		const controller = new AbortController();
 		this.abortController = controller;
-		void this.generate(preparation, fingerprint, model, controller.signal).finally(() => {
+		void this.generate(preparation, fingerprint, model, credential, controller.signal).finally(() => {
 			if (this.abortController === controller) this.abortController = undefined;
 		});
 	}
@@ -57,10 +62,11 @@ export class CompactionPrefireCache {
 		preparation: CompactionPreparation,
 		fingerprint: string,
 		model: Model<Api>,
+		credential: { resolve(): Promise<string | undefined> | string | undefined } | undefined,
 		signal: AbortSignal,
 	): Promise<void> {
 		try {
-			const apiKey = await this.options.resolveApiKey(model);
+			const apiKey = credential ? await credential.resolve() : await this.options.resolveApiKey(model);
 			if (!apiKey) return;
 			const result = await this.options.generateCompaction(preparation, model, apiKey, undefined, signal);
 			if (signal.aborted || this.disposed) return;

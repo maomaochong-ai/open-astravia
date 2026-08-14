@@ -2,7 +2,6 @@ import {
 	ContentGenerationIntentError,
 	planContentVideoGeneration,
 	type ContentGenerationSourceSpec,
-	type ContentVideoGenerationIntent,
 } from "../generation/generation-intent";
 import type { ContentModelDescriptor } from "../generation/types";
 import type { ContentProjectCommand } from "../project/commands";
@@ -10,6 +9,7 @@ import type { ContentNode, ContentNodeKind, ContentProjectDocument } from "../pr
 import {
 	compileVideoPromptPlan,
 	parseVideoPromptPlan,
+	videoPromptPlanStrategy,
 } from "./generation-prompt-plan";
 import {
 	compileKeyframePromptPlan,
@@ -24,6 +24,7 @@ import {
 	type ContentVideoReferenceSemanticRole,
 	type ContentVideoShotControlRequirements,
 } from "./video-shot-plan";
+import { contentVideoShotMethod } from "./video-shot-methods";
 
 interface ParsedVideoShotKeyframe {
 	nodeId: string;
@@ -43,6 +44,7 @@ export function parseConfigureVideoShotOperation(
 	project: ContentProjectDocument,
 	nodeSnapshots: Map<string, ContentNode>,
 	models: readonly ContentModelDescriptor[],
+	plannedPromptSourceNodeIds: readonly string[] = [],
 ): ContentProjectCommand[] {
 	const targetNodeId = requiredString(operation, "targetNodeId");
 	const target = nodeSnapshots.get(targetNodeId);
@@ -71,6 +73,18 @@ export function parseConfigureVideoShotOperation(
 		hasLastFramePlan: Boolean(keyframes.last),
 		sources: references.map(({ kind, semanticRole }) => ({ kind, semanticRole })),
 	});
+	const promptStrategy = videoPromptPlanStrategy(videoPlan);
+	if (promptStrategy && promptStrategy !== strategy) {
+		throw new ContentVideoShotPlanError(
+			"video prompt plan kind does not match the resolved generation strategy",
+			"video-shot-prompt-strategy-mismatch",
+			{
+				resolvedStrategy: strategy,
+				receivedPromptPlanKind: videoPlan.kind,
+				requiredPromptPlanKind: contentVideoShotMethod(strategy).promptPlanKind,
+			},
+		);
+	}
 
 	const aspectRatio = optionalString(operation, "aspectRatio") ?? target.data.aspectRatio;
 	const duration = operation.duration === undefined ? target.data.duration : requiredNumber(operation, "duration");
@@ -104,9 +118,14 @@ export function parseConfigureVideoShotOperation(
 		frameCommands.push(
 			keyframeUpdateCommand(keyframes.first, aspectRatio),
 			keyframeUpdateCommand(keyframes.last, aspectRatio),
+			{
+				type: "node.configure-generated-image-reference",
+				targetNodeId: keyframes.last.nodeId,
+				referenceSourceNodeId: keyframes.first.nodeId,
+			},
 		);
 		updateKeyframeSnapshot(nodeSnapshots, keyframes.first, aspectRatio);
-		updateKeyframeSnapshot(nodeSnapshots, keyframes.last, aspectRatio);
+		updateKeyframeSnapshot(nodeSnapshots, keyframes.last, aspectRatio, "image-to-image");
 		generationSources = [
 			{ sourceNodeId: keyframes.first.nodeId, role: "firstFrame" },
 			{ sourceNodeId: keyframes.last.nodeId, role: "lastFrame" },
@@ -164,7 +183,7 @@ export function parseConfigureVideoShotOperation(
 		generationSources = [];
 	}
 
-	const intent = strategyToGenerationIntent(strategy);
+	const intent = contentVideoShotMethod(strategy).generationIntent;
 	const modelSelection = optionalString(operation, "modelSelection");
 	const providerId = modelSelection === "automatic"
 		? undefined
@@ -179,8 +198,23 @@ export function parseConfigureVideoShotOperation(
 	const prompt = strategy === "omni-reference"
 		? compileOmniReferencePrompt(videoPlan, orderedReferences, duration)
 		: compileVideoPromptPlan(videoPlan, { durationSeconds: duration });
+	const promptSourceNodeIds = [...new Set(plannedPromptSourceNodeIds)]
+		.filter((nodeId) => nodeSnapshots.get(nodeId)?.kind === "prompt");
 	const targetData: ContentNode["data"] = {
 		prompt,
+		promptDocument: {
+			version: 1,
+			segments: [
+				...promptSourceNodeIds.map((sourceNodeId) => ({
+					type: "prompt-reference" as const,
+					sourceNodeId,
+				})),
+				{
+					type: "text",
+					text: `${promptSourceNodeIds.length > 0 ? "\n\n" : ""}${prompt}`,
+				},
+			],
+		},
 		promptOptimization: undefined,
 		...(aspectRatio ? { aspectRatio } : {}),
 		...(duration === undefined ? {} : { duration }),
@@ -198,6 +232,7 @@ export function parseConfigureVideoShotOperation(
 		models,
 		{ providerId, modelId },
 	);
+	if (strategy === "first-last-frame") assertFirstLastFrameGenerationPlan(generationPlan, models);
 	const selectedModel = models.find(
 		(model) => model.providerId === generationPlan.providerId && model.modelId === generationPlan.modelId,
 	);
@@ -410,6 +445,7 @@ function updateKeyframeSnapshot(
 	nodes: Map<string, ContentNode>,
 	keyframe: ParsedVideoShotKeyframe,
 	aspectRatio?: string,
+	modeId?: "text-to-image" | "image-to-image",
 ): void {
 	const node = nodes.get(keyframe.nodeId);
 	if (!node) return;
@@ -417,8 +453,41 @@ function updateKeyframeSnapshot(
 		...node.data,
 		prompt: compileKeyframePromptPlan(keyframe.plan),
 		promptOptimization: undefined,
+		...(modeId ? { providerId: undefined, modelId: undefined, modeId } : {}),
 		...(aspectRatio ? { aspectRatio } : {}),
 	};
+}
+
+function assertFirstLastFrameGenerationPlan(
+	plan: ReturnType<typeof planContentVideoGeneration>,
+	models: readonly ContentModelDescriptor[],
+): void {
+	const bindingRoles = new Set(plan.bindings.map(({ slotId }) => slotId));
+	const model = models.find(
+		(candidate) => candidate.providerId === plan.providerId && candidate.modelId === plan.modelId,
+	);
+	const mode = model?.modes.find((candidate) => candidate.id === plan.modeId);
+	const declaredSlots = new Set(mode?.inputs.map(({ id }) => id) ?? []);
+	if (
+		plan.intent === "interpolate-frames" &&
+		bindingRoles.size === 2 &&
+		bindingRoles.has("firstFrame") &&
+		bindingRoles.has("lastFrame") &&
+		declaredSlots.has("firstFrame") &&
+		declaredSlots.has("lastFrame")
+	) {
+		return;
+	}
+	throw new ContentVideoShotPlanError(
+		"first-last-frame must use one interpolation mode with distinct firstFrame and lastFrame inputs",
+		"video-shot-first-last-mode-required",
+		{
+			intent: plan.intent,
+			modeId: plan.modeId,
+			bindingRoles: [...bindingRoles],
+			declaredSlots: [...declaredSlots],
+		},
+	);
 }
 
 function orderVideoShotReferencesForExecution(
@@ -483,12 +552,6 @@ function referenceSourceSpec(reference: ParsedVideoShotReference): ContentGenera
 		sourceNodeId: reference.sourceNodeId,
 		...(reference.assetIds ? { assetIds: reference.assetIds } : {}),
 	};
-}
-
-function strategyToGenerationIntent(strategy: Exclude<typeof CONTENT_VIDEO_SHOT_STRATEGIES[number], "automatic">): ContentVideoGenerationIntent {
-	if (strategy === "first-last-frame") return "interpolate-frames";
-	if (strategy === "omni-reference") return "reference-guided";
-	return strategy;
 }
 
 function compileOmniReferencePrompt(

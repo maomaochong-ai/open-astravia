@@ -7,6 +7,7 @@ import type { SkillCardSkillView, SkillCardViewLabels } from "./SkillCardView";
 export interface SceneCardViewLabels extends SkillCardViewLabels {
 	readonly use: string;
 	readonly generalReadonly: string;
+	readonly localReadonly: string;
 	readonly running: string;
 	readonly installed: string;
 }
@@ -32,6 +33,8 @@ export function SceneCardView({
 	onUninstall,
 	onPreview,
 }: SceneCardViewProps): JSX.Element {
+	const isReadonly = scene.isAgent || scene.isReadonly;
+
 	return (
 		<motion.div
 			variants={{
@@ -75,10 +78,12 @@ export function SceneCardView({
 
 				<div className="mt-auto flex items-center gap-2 pt-2">
 					<div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-						{scene.isAgent ? (
+						{isReadonly ? (
 							<span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full bg-accent/60 px-2 text-[10px] font-semibold text-muted-foreground/80">
-								<span className="icon-[mdi--earth] h-2.5 w-2.5" />
-								{labels.generalReadonly}
+								<span
+									className={`${scene.isAgent ? "icon-[mdi--earth]" : "icon-[mdi--folder-outline]"} h-2.5 w-2.5`}
+								/>
+								{scene.isAgent ? labels.generalReadonly : labels.localReadonly}
 							</span>
 						) : (
 							scene.installed && (
@@ -114,7 +119,7 @@ export function SceneCardView({
 						))}
 					</div>
 					<div className="ml-auto flex shrink-0 items-center gap-1.5">
-						{scene.isAgent ? (
+						{isReadonly ? (
 							<span className="flex h-7 items-center gap-1 px-1.5 text-[11px] text-muted-foreground/50">
 								<span className="icon-[mdi--lock-outline] h-3.5 w-3.5" />
 								{labels.readonly}

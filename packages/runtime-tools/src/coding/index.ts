@@ -9,6 +9,7 @@ export {
 	type CodingToolCatalog,
 	type CodingToolCatalogEntry,
 	type CodingToolCatalogSnapshot,
+	type CodingToolCatalogSnapshotLease,
 	type CodingToolRegistry,
 	type CodingToolRevokeOptions,
 	InMemoryCodingToolRegistry,
@@ -105,6 +106,7 @@ export {
 	type CodingToolCategory,
 	type CodingToolRegistration,
 	type CodingToolScope,
+	type CodingToolSideEffect,
 	DEFAULT_CODING_TOOL_SCOPE,
 	selectCodingToolRegistrations,
 	selectCodingTools,
@@ -167,7 +169,6 @@ export {
 export {
 	createDocToPdfTool,
 	createDocToPdfToolRegistration,
-	DOC_TO_PDF_TOOL_AGENT_MODES,
 	DOC_TO_PDF_TOOL_CATEGORY,
 	DOC_TO_PDF_TOOL_DESCRIPTION,
 	DOC_TO_PDF_TOOL_SCOPES,
@@ -196,7 +197,6 @@ export {
 export {
 	createExtractTextFromImageTool,
 	createExtractTextFromImageToolRegistration,
-	EXTRACT_TEXT_FROM_IMAGE_TOOL_AGENT_MODES,
 	EXTRACT_TEXT_FROM_IMAGE_TOOL_CATEGORY,
 	EXTRACT_TEXT_FROM_IMAGE_TOOL_DESCRIPTION,
 	EXTRACT_TEXT_FROM_IMAGE_TOOL_SCOPES,
@@ -207,7 +207,6 @@ export {
 export {
 	createExtractTextFromPdfTool,
 	createExtractTextFromPdfToolRegistration,
-	EXTRACT_TEXT_FROM_PDF_TOOL_AGENT_MODES,
 	EXTRACT_TEXT_FROM_PDF_TOOL_CATEGORY,
 	EXTRACT_TEXT_FROM_PDF_TOOL_DESCRIPTION,
 	EXTRACT_TEXT_FROM_PDF_TOOL_SCOPES,
@@ -265,7 +264,6 @@ export {
 export {
 	createHtmlToPdfTool,
 	createHtmlToPdfToolRegistration,
-	HTML_TO_PDF_TOOL_AGENT_MODES,
 	HTML_TO_PDF_TOOL_CATEGORY,
 	HTML_TO_PDF_TOOL_DESCRIPTION,
 	HTML_TO_PDF_TOOL_SCOPES,
@@ -399,7 +397,6 @@ export {
 export {
 	createProgressTool,
 	createProgressToolRegistration,
-	PROGRESS_TOOL_AGENT_MODES,
 	PROGRESS_TOOL_CATEGORY,
 	PROGRESS_TOOL_DESCRIPTION,
 	PROGRESS_TOOL_SCOPES,
@@ -432,7 +429,6 @@ export {
 export {
 	createRenderPdfPageTool,
 	createRenderPdfPageToolRegistration,
-	RENDER_PDF_PAGE_TOOL_AGENT_MODES,
 	RENDER_PDF_PAGE_TOOL_CATEGORY,
 	RENDER_PDF_PAGE_TOOL_DESCRIPTION,
 	RENDER_PDF_PAGE_TOOL_SCOPES,

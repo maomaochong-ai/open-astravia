@@ -14,6 +14,16 @@ describe("keyframe prompt plan", () => {
 		expect(prompt).not.toContain("Primary action:");
 	});
 
+	it("compiles the last frame as a bounded edit of the supplied first frame", () => {
+		const prompt = compileKeyframePromptPlan(parseKeyframePromptPlan(createKeyframePlan("last")));
+
+		expect(prompt).toContain("Edit the supplied first-frame image");
+		expect(prompt).toContain("sole visual continuity authority");
+		expect(prompt).toContain("Edit boundary: Preserve same two dancers; same costumes; same ballroom.");
+		expect(prompt).toContain("Frozen visible state:");
+		expect(prompt).not.toContain("Primary action:");
+	});
+
 	it("rejects an incomplete static keyframe plan with actionable fields", () => {
 		expect(() => parseKeyframePromptPlan({ kind: "image-keyframe", phase: "last" })).toThrowError(
 			expect.objectContaining({

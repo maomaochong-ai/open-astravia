@@ -165,5 +165,13 @@ describe("CapabilityAccessController", () => {
 		handle.revoke();
 
 		await expect(invocation).rejects.toMatchObject({ code: CAPABILITY_ERROR_CODES.ABORTED });
+
+		const deadlineHandle = access.createSession({
+			subject: { id: "subject", sessionId: "deadline-abort" },
+			grants: [createCapabilityGrant(readFileCapability)],
+		});
+		await expect(
+			deadlineHandle.client.invoke(readFileCapability, { path: "value" }, { deadline: Date.now() - 1 }),
+		).rejects.toMatchObject({ code: CAPABILITY_ERROR_CODES.ABORTED });
 	});
 });

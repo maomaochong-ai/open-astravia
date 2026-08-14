@@ -2,6 +2,7 @@ import type { RuntimeSessionContextDeliveryController } from "@vetta/runtime-cor
 import { describe, expect, it, vi } from "vitest";
 import type { HostBashExecutor } from "../../src/host/command-execution/index.js";
 import type { CodingAgentTurnRetryEvent } from "../../src/host/session-execution/contracts.js";
+import { readCodingAgentTurnFailure } from "../../src/host/session-execution/turn-executor.js";
 import { CodingAgentSessionTurnRetryController } from "../../src/host/session-execution/turn-retry-controller.js";
 import { CodingAgentRpcBashCapability } from "../../src/modes/rpc/rpc-bash-capability.js";
 
@@ -59,7 +60,7 @@ describe("Coding Agent RPC product capabilities", () => {
 		controller.setAutoRetryEnabled(false);
 		expect(enabled).toBe(false);
 		controller.setAutoRetryEnabled(true);
-		const result = await controller.run(retry, retry, (candidate) => candidate.error?.message);
+		const result = await controller.run(retry, retry, readCodingAgentTurnFailure);
 
 		expect(result).toEqual({ status: "completed" });
 		expect(retry).toHaveBeenCalledTimes(2);
@@ -86,7 +87,7 @@ describe("Coding Agent RPC product capabilities", () => {
 			emit: () => {},
 		});
 
-		await controller.run(execute, execute, (candidate) => candidate.error?.message);
+		await controller.run(execute, execute, readCodingAgentTurnFailure);
 
 		expect(execute).toHaveBeenCalledOnce();
 	});

@@ -49,7 +49,8 @@ export interface ConversationQueueState {
  * 队列条目 id，插件可结合 `queue-changed` 事件呈现「已排队/已发出/被移除」状态。
  */
 export interface SendPromptResult {
-	status: "sent" | "queued";
+	status: "sent" | "queued" | "failed";
+	error?: { message: string };
 	queueItemId?: string;
 }
 

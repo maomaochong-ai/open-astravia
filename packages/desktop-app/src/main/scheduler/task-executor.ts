@@ -76,6 +76,9 @@ async function executeTaskInner(task: ScheduledTask, runtime: RuntimeHost, optio
 		const result = await runtime.createSession({
 			cwd: runCwd,
 			scenario: "automation",
+			// 显式固化为 work：不传则执行时没有 mode 提示词、事后打开会话时 UI 又按
+			// work 回退渲染，执行与展示割裂（同 batch-task-executor）。
+			agentMode: "work",
 			executionMode,
 			sessionDir: DEFAULT_CONVERSATION_SESSION_DIR,
 		});

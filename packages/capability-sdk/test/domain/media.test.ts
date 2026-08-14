@@ -59,7 +59,7 @@ describe("media domain capabilities", () => {
 					{
 						role: "lastFrame",
 						kind: "image",
-						source: { type: "plugin-blob", namespace: "content-creation", blobId: "last" },
+						source: { type: "storage-blob", namespace: "content-creation", id: "last" },
 					},
 				],
 			}),
@@ -106,12 +106,26 @@ describe("media domain capabilities", () => {
 					{
 						kind: "document",
 						mimeType: "application/vnd.example.timeline+json",
-						source: { type: "plugin-blob", namespace: "video-editor", blobId: "project" },
+						source: { type: "storage-blob", namespace: "video-editor", id: "project" },
 					},
 				],
 				output: { kind: "video", mimeType: "video/mp4", fps: 30 },
 			}),
 		).toMatchObject({ operation: "compose", output: { kind: "video", mimeType: "video/mp4", fps: 30 } });
+		expect(() =>
+			DOMAIN_MEDIA_CAPABILITIES.SUBMIT.parseInput({
+				ownerId: "video-editor",
+				providerId: "renderer:timeline",
+				operation: "compose",
+				inputs: [
+					{
+						kind: "document",
+						source: { type: "plugin-blob", namespace: "video-editor", blobId: "project" },
+					},
+				],
+				output: { kind: "video", mimeType: "video/mp4" },
+			}),
+		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }));
 	});
 
 	it("validates host jobs with temporary artifacts", () => {

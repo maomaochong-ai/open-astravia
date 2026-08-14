@@ -24,6 +24,7 @@ import {
 	retryProgressAtom,
 	type SessionExecutionMode,
 	selectedModelAtom,
+	sessionAgentModeAtom,
 	sessionExecutionModeAtom,
 	sessionsMapAtom,
 } from "@shared/store/atoms";
@@ -34,6 +35,7 @@ import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { type MutableRefObject, useCallback, useRef } from "react";
 import {
 	adoptDraftId,
+	appendError,
 	bumpOpenSessionToken,
 	currentUnsubscribe,
 	fullHistoryToChat,
@@ -77,6 +79,7 @@ export function useSessionOpener(): SessionOpenerController {
 	const setSessionExecutionMode = useSetAtom(sessionExecutionModeAtom);
 	const setActiveToolNames = useSetAtom(activeToolNamesAtom);
 	const setCurrentScenario = useSetAtom(currentScenarioAtom);
+	const setSessionAgentMode = useSetAtom(sessionAgentModeAtom);
 	const setIsCompacting = useSetAtom(isCompactingAtom);
 	const setRetryProgress = useSetAtom(retryProgressAtom);
 	const setInlineFilePreview = useSetAtom(inlineFilePreviewAtom);
@@ -142,6 +145,8 @@ export function useSessionOpener(): SessionOpenerController {
 			setActiveToolNames(null);
 			// 场景同样置未知（null）→ 插件插槽 fail-closed 暂不显示，等 getState 回填后按场景显隐。
 			setCurrentScenario(null);
+			// 本会话工作模式同样置未知，等 getState 回填；绝不回退到全局默认值。
+			setSessionAgentMode(null);
 
 			const isBatchSession =
 				sessionPath !== undefined &&
@@ -162,10 +167,26 @@ export function useSessionOpener(): SessionOpenerController {
 					: isDefaultConversation
 						? "conversation"
 						: "project";
-			const createResult = await window.vetta.session.create(
-				{ cwd, sessionPath, executionMode, scenario },
-				sessionKind,
-			);
+			let createResult: Awaited<ReturnType<typeof window.vetta.session.create>>;
+			try {
+				createResult = await window.vetta.session.create(
+					{ cwd, sessionPath, executionMode, scenario },
+					sessionKind,
+				);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				console.error("[useSessionOpener] session.create failed:", error);
+				setChatMessages((prev) => {
+					const last = prev.at(-1);
+					const lastError = last?.blocks?.at(-1);
+					if (last?.role === "assistant" && lastError?.type === "error" && lastError.text === message) return prev;
+					return appendError(prev, message);
+				});
+				setActiveSession(null);
+				activeSessionRef.current = null;
+				if (shouldNavigate) void navigate({ to: "/" });
+				return;
+			}
 			const { sessionId } = createResult;
 			const canonicalSessionPath = createResult.sessionPath || sessionPath || "";
 			// ADR-0007: 「对话」项目下 main 会把 cwd 改写成 per-session 子目录，
@@ -208,6 +229,7 @@ export function useSessionOpener(): SessionOpenerController {
 			const contextComposition = resolveSessionContextComposition(resolvedSessionPath, state.contextComposition);
 			setContextUsage({
 				percent: state.contextPercent,
+				contextTokens: state.contextTokens ?? null,
 				contextWindow: state.contextWindow,
 				...(contextComposition ? { composition: contextComposition } : {}),
 			});
@@ -217,6 +239,9 @@ export function useSessionOpener(): SessionOpenerController {
 			setActiveToolNames(new Set(state.activeToolNames));
 			// 对话场景 → 会话页插件插槽按对话类型 fail-closed 显隐。
 			setCurrentScenario(state.scenario);
+			// 本会话固化的工作模式 → 按会话而非全局默认值渲染（见 ADR-0046 修订）。
+			// 合法值由主进程按模式注册表固化（ADR-0071），renderer 只区分「有/无」。
+			setSessionAgentMode(typeof state.agentMode === "string" && state.agentMode ? state.agentMode : null);
 			// Fork lineage from session header (parentSession / parentEntryId).
 			const parentSessionPath = state.parentSessionPath;
 			const parentEntryId = state.parentEntryId;
@@ -396,6 +421,7 @@ export function useSessionOpener(): SessionOpenerController {
 			setSessionExecutionMode,
 			setActiveToolNames,
 			setCurrentScenario,
+			setSessionAgentMode,
 			setSelectedModel,
 			createSessionEventHandler,
 			setInlineFilePreview,

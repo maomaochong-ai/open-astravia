@@ -388,7 +388,10 @@ export function registerFsIpc(): () => void {
 				patch.defaultExecutionMode !== undefined
 					? normalizeExecutionMode(patch.defaultExecutionMode)
 					: current.defaultExecutionMode,
-			agentMode: patch.agentMode !== undefined ? normalizeAgentMode(patch.agentMode) : current.agentMode,
+			defaultAgentMode:
+				patch.defaultAgentMode !== undefined
+					? normalizeAgentMode(patch.defaultAgentMode)
+					: current.defaultAgentMode,
 			debugMode: patch.debugMode ?? current.debugMode,
 			vettaAppPath: patch.vettaAppPath ?? current.vettaAppPath,
 			vettaCliAppPath: patch.vettaCliAppPath ?? current.vettaCliAppPath,

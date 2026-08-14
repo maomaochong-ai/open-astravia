@@ -29,5 +29,7 @@ export function createBashToolRegistration(
 		tool: createBashTool(cwd, options),
 		scopeUse: getBashToolScopes(options.platform),
 		category: BASH_TOOL_CATEGORY,
+		// 命令执行的边界由 Execution Mode（沙盒/全访问）承担，首调确认对任意命令流无防护价值。
+		sideEffect: "light",
 	};
 }

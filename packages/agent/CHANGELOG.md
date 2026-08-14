@@ -4,6 +4,14 @@
 
 ### Fixed
 
+- 兼容 Agent API 的 `AgentState` 继续保留 `error` 文本字段，同时新增 `errorDetails` 保存 Provider 的结构化错误诊断；旧宿主无需迁移，新宿主不再解析错误文案。
+
+- **Provider 终端错误不再静默丢失**：模型流发出 `error` 事件时，Agent Loop 直接使用事件中的 `AssistantMessage` 完成消息收尾，不再等待随后 rejected 的 result Promise；错误消息会进入 Agent 上下文、生命周期和宿主事件，额度不足、鉴权失败等情况可被 UI 持久化展示。
+- Agent Run 现在将终端 `error` event 的 AssistantMessage 写入运行状态后再结束失败，并保证每个模型调用只发出一次 `model_call_finish`；结构化 Provider failure 与错误消息不再因随后 rejected result 的时序而丢失。
+
+- Agent Run 失败结果现在继续透传 Provider 的安全诊断字段（provider code、请求阶段、脱敏 URL、响应摘要与 Retry-After），便于上层重试和 UI 诊断。
+
+- Agent Run 失败结果会保留 AI Provider 的稳定错误码、可重试标记及安全诊断字段，不再在模型流异常进入 Agent 边界时退化成只有 `code/message` 的不可判定错误。
 - **中断不再丢弃已流出的部分回复**：abort 发生在模型流中途时，引擎此前立刻放弃等待——而 provider（如 anthropic adapter）在 abort 时对 result 是直接 reject，已流出的内容只存在于事件流累积的 `partial` 快照里，结果部分 assistant 消息既不进 run 结果也不发 `assistant_message` 事件（宿主无从落盘，UI 上先显示后被历史重放吞掉）。现在 abort 后优先在 1.5 秒宽限内等 result 交回完整 aborted 消息，provider 直接 reject 时退回事件流最后一个非空 `partial` 并标记 `stopReason: "aborted"`，计入 `messages`、照常发事件，随后仍以统一的 `aborted` 状态终止；无任何已流出内容时行为与原来一致。
 
 ### Changed

@@ -10,7 +10,6 @@ export const HTML_TO_PDF_TOOL_SCOPES = [
 	"kb-processing",
 	"cli",
 ] as const satisfies readonly CodingToolScope[];
-export const HTML_TO_PDF_TOOL_AGENT_MODES = ["work"] as const;
 export const HTML_TO_PDF_TOOL_CATEGORY = "doc" as const;
 
 export function createHtmlToPdfToolRegistration(
@@ -20,7 +19,6 @@ export function createHtmlToPdfToolRegistration(
 	return {
 		tool: createHtmlToPdfTool(cwd, options),
 		scopeUse: HTML_TO_PDF_TOOL_SCOPES,
-		agentModes: HTML_TO_PDF_TOOL_AGENT_MODES,
 		modelOrder: options.modelOrder,
 		category: HTML_TO_PDF_TOOL_CATEGORY,
 	};

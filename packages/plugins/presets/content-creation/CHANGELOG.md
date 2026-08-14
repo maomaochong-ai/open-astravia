@@ -2,8 +2,18 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Prompt 节点明确收敛为可选的多消费者复用原语：Agent 默认将单次使用的提示词保存在生成节点，并在自动 Prompt 只有一个消费者时通过 readiness 给出可修复诊断；操作 Schema、自动方法上下文与工作流 Skill 同步提供一致的选择规则。
+- 移除 `content_creation_assets` / `content_creation_edit` / `content_creation_run` 工具描述中的反向触发段（Do NOT / Only for）。误调防线回落到 heavy 首调确认闸（edit 会话内首调确认）与 run 自带的全局确认对话框。
+- `content_creation_edit` 在注册处显式声明 `side_effect: "heavy"`（往用户工作区写内容工程文件树），不再依赖宿主兜底清单；行为不变（首调确认此前已由清单兜住）。
+
 ### Added
 
+- 视频 Agent 方法按文生视频、单图动画、首尾帧、全能参考和视频转换拆为可确定性路由的独立参考资料；`configure_video_shot.promptPlan` 改为五种判别式创作合同并分别编译世界定义、源图继承、端点过渡、多参考关系和视频变换语义，运行时拒绝计划与解析策略不一致，`inspect` 返回对应方法与输入合同。
+- Agent 编辑操作改为按 `type` 判别的严格合同，普通连线统一为 `sourceNodeId` / `targetNodeId` / `edgeId`；高层视频配置吸收重复媒体连线、组合动态 Prompt 与导演计划，并提供与当前操作一致的恢复建议和遮蔽诊断。
+- 图片生成节点新增用户侧「图片重绘」工作区：可在原图上绘制矩形、自由笔刷、箭头和文字标注，填写区域指令后交给支持 `image-to-image` 的图片模型生成新图；该能力仅由画布 UI 触发，不加入 Agent 工具或项目文档。
+- 创作画布新增持久化撤销/重做：用户与 Agent 的领域编辑按原子批次进入同一历史栈，支持底部 Dock 按钮与 `Ctrl/Command+Z`、`Ctrl/Command+Shift+Z`（Windows 兼容 `Ctrl+Y`）；生成任务进度和结果不进入普通历史，活动生成节点也不会被历史恢复移除。
 - 视频生成节点的首帧与尾帧现在可从已连接图片节点和项目素材中选择；图片节点来源会持续跟随上游最新输出，本地上传入口保持可用。
 - 创作画布左下角缩放控件顺序为放大 → 当前百分比 → 缩小 → 适应画布；百分比可点击恢复默认缩放，并统一列宽避免文字竖排。
 - 创作画布默认以 100% 打开：去掉打开时的自适应缩放，仅在默认比例下平移居中已有内容。
@@ -14,6 +24,8 @@
 
 ### Fixed
 
+- 修复首尾帧被作为两次独立图片生成的问题：`configure_video_shot` 现在保留首帧自身已有的合法素材依据，原子建立 `首帧 -> 尾帧基于首帧图生图 -> 首尾帧插值视频` 依赖链，清理尾帧旧媒体引用，拒绝缺少双帧槽的模式，并在错误拓扑或模式下阻止运行准备。
+- 修复 `configure_video_shot.promptPlan` 顶层缺少 `type: "object"` 导致 OpenAI 兼容工具 Schema 清洗器误删视频计划联合分支的问题。
 - 创作画布框选改为拖动结束后一次性提交最终选区，拖动期间不再重建整张 React Flow 节点数据；节点内容面也会忽略纯选择/拖动态变化，降低大画布框选时的主线程和 GC 压力。
 - 创作画布现在通过宿主快捷键作用域支持 `Ctrl+A` / `Command+A` 全选全部节点；输入框仍保留原生文字全选，并同步 React Flow 与画布选择状态。
 - 活动栏品牌图标改由宿主按 `plugin.json#icon` 注入（省略 `registerActivityTab.icon`），不再 `import` 包内 png 或拼宿主协议，避免 `/icon.png` 误解析为应用图标。
@@ -83,7 +95,6 @@
 - Limited asset preview URL resolution to eight concurrent host lookups and evicted cached references outside the current project.
 - Restyled the multi-node selection outline with subdued theme colors, a thin solid border, and matching corner radii instead of React Flow's prominent default blue dotted frame.
 - Replaced hand-authored plugin and node SVG icons with a consistent Lucide Iconify set, inlined static icon classes at their use sites, and corrected dock hover centers to match the rendered item widths.
-- Restricted the plugin to Work mode via manifest `agent_mode: ["work"]` (hidden in Coding; ADR-0046).
 - Node quick toolbar is icon-only (no inline rename) and sits 8px above the card to match the generation composer gap; identity header hides while the toolbar is open.
 - Canvas Delete / Backspace now use the host plugin shortcut stack (`usePluginShortcutScope`) instead of React Flow `deleteKeyCode`, so they participate in scope priority, skip locked nodes, and stay inactive while the activity tab is hidden or focus is in an editable field.
 

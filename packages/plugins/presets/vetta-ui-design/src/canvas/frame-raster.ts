@@ -3,6 +3,7 @@ import type { BridgeHub } from "./bridge-client";
 import { getFrameError } from "./design-runtime";
 import {
 	captureFrameOffscreen,
+	OFFSCREEN_RASTER_SLOTS,
 	offscreenRasterSupported,
 	releaseOffscreenRasterSession,
 } from "./offscreen-raster";
@@ -46,6 +47,19 @@ const RASTER_JPEG_QUALITY = 0.92;
 const RASTER_BUDGET_BYTES = 64 * 1024 * 1024;
 /** 同时允许活体渲染的 frame 数上限。 */
 const MOUNT_WINDOW = 2;
+/**
+ * 离屏路径的并发截图数。
+ *
+ * 队列串行时，二十帧的设计稿冷启动要一张接一张地「切帧 → 等就绪 → 静置 → 编码」，
+ * 排在后面的十几帧全程显示启动占位——这就是「每个 frame 都载入得很慢」。离屏窗口
+ * 不占画布渲染进程，并行的成本是宿主侧多开隐藏 renderer。
+ *
+ * 上限 3 不是随手取的：宿主对同一插件最多允许 4 个离屏会话
+ * （offscreen-capture-service 的 MAX_SESSIONS_PER_PLUGIN），留一个给交付物截图
+ * （vetd_screenshot / 导出走 tools.ts 的同一套 API），否则那条路会直接报
+ * 「Too many capture sessions」。
+ */
+const OFFSCREEN_CONCURRENCY = 3;
 
 interface FrameRasterOptions {
 	bridge: BridgeHub;
@@ -193,8 +207,10 @@ export function useFrameRasters({
 	const [forced, setForced] = useState<ReadonlySet<string>>(new Set());
 	/** frameId → 截图失败原因。用于把「优化没生效」这件事摆到台面上。 */
 	const [failures, setFailures] = useState<ReadonlyMap<string, string>>(new Map());
-	const capturingRef = useRef<string | null>(null);
-	const timerRef = useRef<number | null>(null);
+	/** 正在截图（含静置等待）的 frame → 它占用的离屏槽位。 */
+	const capturingRef = useRef<Map<string, number>>(new Map());
+	/** 还在静置等待、尚未真正发起截图的定时器，按 frame 存：effect 重排时只作废这些。 */
+	const timersRef = useRef<Map<string, number>>(new Map());
 	/**
 	 * 每个 frame 的失效代数。截图从静置到编码可达数秒，期间到达的 invalidate（agent
 	 * 改代码 → HMR/文件监听）必须让这张「按旧内容截的图」作废重来；否则 finally 一清
@@ -203,6 +219,9 @@ export function useFrameRasters({
 	const invalidationSeqRef = useRef<Map<string, number>>(new Map());
 	/** 本次挂载后已收到 rendered 信号的 frame。iframe 卸载后作废（见 mounted 同步）。 */
 	const renderedRef = useRef<Set<string>>(new Set());
+	/** 最近一次被单独选中的 frame，取消选中后仍然记着（见 mounted）。 */
+	const lastActiveRef = useRef<string | null>(null);
+	if (activeFrameId !== null) lastActiveRef.current = activeFrameId;
 	const [reloadNonce, setReloadNonce] = useState(0);
 	const frameIdsRef = useRef(frameIds);
 	frameIdsRef.current = frameIds;
@@ -306,10 +325,15 @@ export function useFrameRasters({
 	const mounted = useMemo(() => {
 		const allowed = new Set<string>();
 		if (activeFrameId) allowed.add(activeFrameId);
+		// 刚取消选中的那一帧，只要还没有位图就继续留活体。否则 iframe 当场卸掉，画面
+		// 退回启动占位，要一直等到队列轮到它才恢复——用户看到的就是「点一下正常了，
+		// 取消选中又开始转圈」。它此刻已经渲染好了，留着不用重新加载。
+		const recent = lastActiveRef.current;
+		if (recent !== null && !rasters.has(recent)) allowed.add(recent);
 		// 正在截图的那个必须留住。frameIds 的顺序跟着视口走（见 DesignCanvas），平移
 		// 一下队列就重排，把它挤出挂载窗口会当场卸掉 iframe——这一张连同它已经等过的
 		// SETTLE 一起白费，还要从头再来一遍。（离屏模式截图不经过 iframe，不用留。）
-		if (!offscreenActive && capturingRef.current) allowed.add(capturingRef.current);
+		if (!offscreenActive) for (const frameId of capturingRef.current.keys()) allowed.add(frameId);
 		for (const frameId of forced) allowed.add(frameId);
 		let budget = MOUNT_WINDOW;
 		for (const frameId of frameIds) {
@@ -332,16 +356,97 @@ export function useFrameRasters({
 	}, [mounted]);
 
 	/**
-	 * 一次只截一张：html-to-image 本身不便宜，并发截会把主线程占满。
+	 * 位图队列：按视口优先级取脏 frame，最多 limit 张同时在跑。
 	 *
 	 * frameIds 会随视口重排（见 DesignCanvas），所以平移到新区域时这个 effect 会重跑、
-	 * cleanup 把还在 SETTLE 等待中的那张作废重来。这是有意接受的：cullRect 带一屏预留
+	 * cleanup 把还在 SETTLE 等待中的那些作废重来。这是有意接受的：cullRect 带一屏预留
 	 * 且余量不足半屏才重算，平移一屏才可能触发一次；而重排的意义正是「用户看向哪里就
 	 * 先截哪里」，为省下一次 450ms 的等待去守住旧队列并不划算。已经进入 capture 阶段的
-	 * 不受影响——那时 timerRef 已置空，cleanup 不动它，capturingRef 也拦着 effect 重排。
+	 * 不受影响——它们的定时器已经从 timersRef 里摘掉，cleanup 不动它们。
 	 */
 	useEffect(() => {
-		if (capturingRef.current !== null) return;
+		// 离屏路径可以并行（多个隐藏窗口，互不占用画布主线程）；html-to-image 回落路径
+		// 必须留在串行——它跑在画布自己的渲染进程里，并发只会把主线程占满。
+		const limit = offscreenActive ? OFFSCREEN_CONCURRENCY : 1;
+
+		const startCapture = (frameId: string): void => {
+			// 槽位决定用宿主的哪个隐藏窗口：同槽串行、异槽并行（见 offscreen-raster）。
+			const used = new Set(capturingRef.current.values());
+			let slot = 0;
+			while (used.has(slot)) slot += 1;
+			capturingRef.current.set(frameId, slot);
+			// 此后到截图落地之间任何一次失效（invalidate / notifyRendered / refreshAll）都
+			// 意味着这张图可能按旧内容截的，落地后必须重截。
+			const seqAtStart = invalidationSeqRef.current.get(frameId) ?? 0;
+			const runCapture = (): Promise<string> => {
+				if (offscreenActive) {
+					const context = offscreenRef.current;
+					const size = context?.sizeOf(frameId) ?? null;
+					if (context === null || size === null) {
+						return Promise.reject(new Error(`frame size unknown: ${frameId}`));
+					}
+					// 不占 withCaptureLock：离屏窗口与 iframe 内的 html-to-image（交付物
+					// 截图）用的是两套互不竞争的资源，串行化只会平白拖慢两边。
+					// 画布刷新只要位图：布局机检是截图工具那条路的事，位图队列是后台
+					// 连续跑的，不该为每次刷新多付一次求值。
+					return captureFrameOffscreen({
+						port: context.port,
+						frameId,
+						width: size.width,
+						height: size.height,
+						quality: RASTER_JPEG_QUALITY,
+						slot: slot % OFFSCREEN_RASTER_SLOTS,
+					}).then((result) => result.dataUrl);
+				}
+				return withCaptureLock(() =>
+					bridge.capture(frameId, {
+						pixelRatio: RASTER_PIXEL_RATIO,
+						timeoutMs: 20_000,
+						format: "jpeg",
+						quality: RASTER_JPEG_QUALITY,
+					}),
+				);
+			};
+			// 离屏路径不等 SETTLE：静置在宿主侧做（就绪信号之后），这里再等一次纯属浪费。
+			const timer = window.setTimeout(
+				() => {
+					timersRef.current.delete(frameId);
+					void runCapture()
+						.then(async (dataUrl) => {
+							// 解码在前、写状态在后：dirty 的清除在 finally，会等这个 await，
+							// 所以位图进入 rasters 时一定是「挂上就能画」的。
+							await decodeRaster(dataUrl);
+							setRasters((current) => withBudget(current, frameId, dataUrl, mounted));
+							// 落盘失败不影响这一轮（内存里已经有图），代价只是下次进画布得重截。
+							void saveRaster(cacheKey, frameId, dataUrl);
+						})
+						.catch((error: unknown) => {
+							// 截不到就让它继续活着——比显示一张坏图安全。但不能静默：一张都截
+							// 不成时整块优化等于没生效，而表面上看不出任何区别。
+							setFailures((current) =>
+								new Map(current).set(frameId, error instanceof Error ? error.message : String(error)),
+							);
+							console.error(`[vetd] 位图化失败，frame 保持活体渲染: ${frameId}`, error);
+						})
+						.finally(() => {
+							capturingRef.current.delete(frameId);
+							const stale = (invalidationSeqRef.current.get(frameId) ?? 0) !== seqAtStart;
+							setDirty((current) => {
+								if (!current.has(frameId)) return current;
+								// 截图期间内容又变了：保留脏标记重新排队。换引用是必须的——只有
+								// state 变化能让本 effect 重跑、把空出来的槽位填上。
+								if (stale) return new Set(current);
+								const remaining = new Set(current);
+								remaining.delete(frameId);
+								return remaining;
+							});
+						});
+				},
+				offscreenActive ? 0 : SETTLE_MS,
+			);
+			timersRef.current.set(frameId, timer);
+		};
+
 		// 按 frameIds 而不是 dirty 的插入顺序取：dirty 是「谁先渲染完谁先进」，与视口
 		// 优先级无关，眼前那几帧照样可能排在屏幕外的后面。
 		//
@@ -353,88 +458,27 @@ export function useFrameRasters({
 		// 重跑，所以这里跳过不会漏。
 		// 离屏模式：截图走宿主的隐藏窗口，frame 不需要挂活体、也没有 rendered 门禁
 		// （引擎自己的就绪信号由宿主轮询，见 offscreen-raster.ts）。
-		const next = frameIds.find(
-			(frameId) =>
-				dirty.has(frameId) &&
-				frameId !== activeFrameId &&
-				(offscreenActive || (mounted.has(frameId) && renderedRef.current.has(frameId))) &&
-				!getFrameError(frameId),
-		);
-		if (next === undefined) return;
-
-		capturingRef.current = next;
-		// 此后到截图落地之间任何一次失效（invalidate / notifyRendered / refreshAll）都
-		// 意味着这张图可能按旧内容截的，落地后必须重截。
-		const seqAtStart = invalidationSeqRef.current.get(next) ?? 0;
-		const runCapture = (): Promise<string> => {
-			if (offscreenActive) {
-				const context = offscreenRef.current;
-				const size = context?.sizeOf(next) ?? null;
-				if (context === null || size === null) {
-					return Promise.reject(new Error(`frame size unknown: ${next}`));
-				}
-				// 不占 withCaptureLock：离屏窗口与 iframe 内的 html-to-image（交付物
-				// 截图）用的是两套互不竞争的资源，串行化只会平白拖慢两边。
-				// 画布刷新只要位图：布局机检是截图工具那条路的事，位图队列是后台
-				// 连续跑的，不该为每次刷新多付一次求值。
-				return captureFrameOffscreen({
-					port: context.port,
-					frameId: next,
-					width: size.width,
-					height: size.height,
-					quality: RASTER_JPEG_QUALITY,
-				}).then((result) => result.dataUrl);
-			}
-			return withCaptureLock(() =>
-				bridge.capture(next, {
-					pixelRatio: RASTER_PIXEL_RATIO,
-					timeoutMs: 20_000,
-					format: "jpeg",
-					quality: RASTER_JPEG_QUALITY,
-				}),
-			);
-		};
-		// 离屏路径不等 SETTLE：静置在宿主侧做（就绪信号之后），这里再等一次纯属浪费。
-		timerRef.current = window.setTimeout(() => {
-			timerRef.current = null;
-			void runCapture()
-				.then(async (dataUrl) => {
-					// 解码在前、写状态在后：dirty 的清除在 finally，会等这个 await，
-					// 所以位图进入 rasters 时一定是「挂上就能画」的。
-					await decodeRaster(dataUrl);
-					setRasters((current) => withBudget(current, next, dataUrl, mounted));
-					// 落盘失败不影响这一轮（内存里已经有图），代价只是下次进画布得重截。
-					void saveRaster(cacheKey, next, dataUrl);
-				})
-				.catch((error: unknown) => {
-					// 截不到就让它继续活着——比显示一张坏图安全。但不能静默：一张都截
-					// 不成时整块优化等于没生效，而表面上看不出任何区别。
-					setFailures((current) =>
-						new Map(current).set(next, error instanceof Error ? error.message : String(error)),
-					);
-					console.error(`[vetd] 位图化失败，frame 保持活体渲染: ${next}`, error);
-				})
-				.finally(() => {
-					capturingRef.current = null;
-					const stale = (invalidationSeqRef.current.get(next) ?? 0) !== seqAtStart;
-					setDirty((current) => {
-						if (!current.has(next)) return current;
-						// 截图期间内容又变了：保留脏标记重新排队。换引用是必须的——effect
-						// 在 capturingRef 占用期间的重跑都被拦掉了，只有这次 state 变化能
-						// 让队列再动起来。
-						if (stale) return new Set(current);
-						const remaining = new Set(current);
-						remaining.delete(next);
-						return remaining;
-					});
-				});
-		}, offscreenActive ? 0 : SETTLE_MS);
+		const started: string[] = [];
+		for (const frameId of frameIds) {
+			if (capturingRef.current.size >= limit) break;
+			if (capturingRef.current.has(frameId)) continue;
+			if (!dirty.has(frameId)) continue;
+			if (frameId === activeFrameId) continue;
+			if (!offscreenActive && !(mounted.has(frameId) && renderedRef.current.has(frameId))) continue;
+			if (getFrameError(frameId)) continue;
+			startCapture(frameId);
+			started.push(frameId);
+		}
 
 		return () => {
-			if (timerRef.current !== null) {
-				window.clearTimeout(timerRef.current);
-				timerRef.current = null;
-				capturingRef.current = null;
+			// 只作废「还在静置等待」的那些：已经发出去的截图放着跑完，它们的槽位由
+			// finally 归还。
+			for (const frameId of started) {
+				const timer = timersRef.current.get(frameId);
+				if (timer === undefined) continue;
+				window.clearTimeout(timer);
+				timersRef.current.delete(frameId);
+				capturingRef.current.delete(frameId);
 			}
 		};
 	}, [bridge, cacheKey, dirty, activeFrameId, mounted, frameIds, withCaptureLock, offscreenActive]);

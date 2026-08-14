@@ -168,7 +168,7 @@ bun run check
 
 # 改 Desktop UI
 bun run check
-bun run verify:ui:start
+bun run verify:ui:start:fresh
 # ... verify:ui:pw ...
 
 # 可选清理

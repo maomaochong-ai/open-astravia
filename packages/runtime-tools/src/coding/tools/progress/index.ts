@@ -7,7 +7,6 @@ export {
 } from "./progress-tool.js";
 export {
 	createProgressToolRegistration,
-	PROGRESS_TOOL_AGENT_MODES,
 	PROGRESS_TOOL_CATEGORY,
 	PROGRESS_TOOL_SCOPES,
 	type ProgressToolRegistrationOptions,

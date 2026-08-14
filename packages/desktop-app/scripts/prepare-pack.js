@@ -5,9 +5,18 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { resolveBuildResourceFilters } from "./build-resource-filters.mjs";
 import { loadBuildEnv } from "./load-build-env.mjs";
+import { resolvePackagedNativeDependencies } from "./packaged-native-dependencies.mjs";
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
+import { prepareSpeechModels, SPEECH_MODEL_RESOURCE_ROOT } from "./fetch-speech-models.mjs";
+import {
+	resolveSpeechInputBuildConfig,
+	resolveSpeechInputTargetTags,
+} from "./speech-input-build-config.js";
 import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
-import { resolveTenant, stageSystemPluginsFromArchives } from "./stage-system-plugins.mjs";
+import {
+	resolveSystemPluginSelection,
+	stageSystemPluginsFromArchives,
+} from "./stage-system-plugins.mjs";
 import { stageSystemSkills } from "./stage-system-skills.mjs";
 import { stageSystemThemesFromArchives } from "./stage-system-themes.mjs";
 
@@ -82,16 +91,7 @@ function resolveCliAppCompileTargets() {
 }
 
 function resolvePlatformTagsFromEnv() {
-	const rawTargets =
-		process.env.VETTA_IM_GATEWAY_TARGET_PLATFORMS ??
-		process.env.VETTA_CLI_TARGET_PLATFORMS ??
-		process.env.VETTA_VENDOR_PLATFORM;
-	return typeof rawTargets === "string" && rawTargets.trim().length > 0
-		? rawTargets
-				.split(",")
-				.map((value) => value.trim())
-				.filter(Boolean)
-		: [`${process.platform}-${process.arch}`];
+	return resolveSpeechInputTargetTags(process.env);
 }
 
 function resolveImGatewayTargets() {
@@ -122,6 +122,18 @@ function resolvePlatformFamilies() {
 	}
 	return families;
 }
+
+const speechInputBuildConfig = resolveSpeechInputBuildConfig({
+	env: process.env,
+	platformTags: resolvePlatformTagsFromEnv(),
+});
+console.log(
+	speechInputBuildConfig.enabled
+		? `[prepare-pack] speech input enabled for ${speechInputBuildConfig.platformTags.join(", ")}`
+		: speechInputBuildConfig.configuredEnabled
+			? `[prepare-pack] speech input skipped for ${speechInputBuildConfig.platformTags.join(", ")}`
+			: "[prepare-pack] speech input disabled by VETTA_SPEECH_INPUT_ENABLED=false",
+);
 
 // macOS 代码签名 / 公证：凭据齐全时自动开启，一个都不设时保持未签名产物。
 // 变量含义与申请流程见 docs/deploy/apple-code-signing.md。
@@ -204,13 +216,16 @@ function resolveSandboxResourceFilters() {
 // createRequire 真能 resolve 到，恢复图片缩放路径。photon-node 是纯 WASM、
 // 无平台二进制差异，可安全跨平台打包。
 //
-// uiohook-napi（快捷面板双击功能键全局监听）与 electron-liquid-glass（macOS
-// 液态/磨砂玻璃）同为被 external 的运行时原生模块，必须一并复制进 staging，
+// uiohook-napi（快捷面板双击功能键全局监听）、electron-liquid-glass（macOS
+// 液态/磨砂玻璃）与 sherpa-onnx-win-x64（Windows 语音输入）同为被 external 的运行时原生模块，必须复制进 staging，
 // 否则 packaged 环境 require 不到。uiohook 各平台都有 prebuild、需全平台带；
-// electron-liquid-glass 是 darwin-only（`os:["darwin"]`），仅 mac 主机/包需要，
-// 非 mac 主机上可能未安装，故标记为 optional：解析不到就跳过、不阻断打包。
-const externalDeps = ["@silvia-odwyer/photon-node", "builder-util-runtime", "electron-updater", "uiohook-napi"];
-const optionalExternalDeps = ["electron-liquid-glass"];
+// electron-liquid-glass 是 darwin-only，Sherpa 是 win32-x64-only；依赖策略按目标产物平台选择，
+// 不按构建主机选择，避免把另一个系统的原生包带入产物。
+const packagedNativeDependencies = resolvePackagedNativeDependencies(resolvePlatformFamilies(), {
+	speechInputEnabled: speechInputBuildConfig.enabled,
+});
+const externalDeps = packagedNativeDependencies.required;
+const optionalExternalDeps = packagedNativeDependencies.optional;
 
 function resolvePackageRoot(dep, fromDir = projectRoot) {
 	const entry = require.resolve(dep, { paths: [fromDir] });
@@ -283,6 +298,14 @@ assertPackagedMainHasNoWorkspaceImports(join(projectRoot, "dist/main"));
 // Clean previous build stage
 rmSync(buildStageDir, { recursive: true, force: true });
 mkdirSync(buildStageDir, { recursive: true });
+
+const preparedSpeechModel = await prepareSpeechModels({
+	env: process.env,
+	platformTags: resolvePlatformTagsFromEnv(),
+});
+if (preparedSpeechModel) {
+	cpSync(SPEECH_MODEL_RESOURCE_ROOT, join(buildStageDir, "speech-models"), { recursive: true });
+}
 
 // Write the staged package metadata. Electron-builder decides which
 // node_modules entries belong in app.asar from production dependencies, so
@@ -642,15 +665,15 @@ await stageVendorRuntimes();
 //
 // build:presets 已为每个 preset 生成 release/<id>-<version>.zip。打包阶段只消费
 // zip 制品，校验后解压到 Resources/system-plugins/<id>/，不读取源码 dist。
-// 按租户（VETTA_TENANT，缺省取 tenants.json 的 default）筛选打包进 App 的系统插件。
-const packTenant = resolveTenant();
+// 按 profile + 租户筛选打包进 App 的系统插件。
+const pluginSelection = resolveSystemPluginSelection();
 console.log(
-	`[prepare-pack] 系统插件租户=${packTenant.name ?? "(未配置)"}：${
-		packTenant.pluginIds ? [...packTenant.pluginIds].join(", ") : "(全部 preset)"
+	`[prepare-pack] 系统插件 profile=${pluginSelection.profile ?? "(未配置)"}，租户=${pluginSelection.name ?? "(未配置)"}：${
+		pluginSelection.pluginIds ? [...pluginSelection.pluginIds].join(", ") : "(全部 preset)"
 	}`,
 );
 stageSystemPluginsFromArchives(join(buildStageDir, "system-plugins"), "prepare-pack", {
-	pluginIds: packTenant.pluginIds ?? undefined,
+	pluginIds: pluginSelection.pluginIds ?? undefined,
 });
 stageSystemThemesFromArchives(join(buildStageDir, "system-themes"), "prepare-pack");
 stageSystemSkills(join(buildStageDir, "system-skills"), "prepare-pack");
@@ -711,6 +734,13 @@ function resolveExtraResources() {
 		extraResources.push({
 			from: "appshot",
 			to: "appshot",
+			filter: ["**/*"],
+		});
+	}
+	if (speechInputBuildConfig.enabled) {
+		extraResources.push({
+			from: "speech-models",
+			to: "speech-models",
 			filter: ["**/*"],
 		});
 	}
@@ -824,7 +854,7 @@ const builderConfig = {
 	// 上偶尔出问题（photon.ts 已经有 fallback paths 兜底，但能避免就避免）。
 	// 直接 unpack 到 app.asar.unpacked/，让 wasm 落到真实文件系统。
 	//
-	// uiohook-napi / electron-liquid-glass 通过 node-gyp-build 加载预编译 .node。
+// uiohook-napi / electron-liquid-glass / Sherpa-ONNX 加载预编译 .node。
 	// dlopen 无法从 asar 虚拟文件系统加载原生模块，必须整包 unpack 到真实磁盘，
 	// 否则 packaged 环境 require 即失败（electron-liquid-glass 仅 mac 包内存在）。
 	//
@@ -833,9 +863,7 @@ const builderConfig = {
 	// 使用 LZMA2 压缩，避免未压缩的 app.asar 直接抬高完整安装包体积。
 	asarUnpack: [
 		"ocr-runner/**/*",
-		"node_modules/@silvia-odwyer/photon-node/**/*",
-		"node_modules/uiohook-napi/**/*",
-		"node_modules/electron-liquid-glass/**/*",
+		...packagedNativeDependencies.asarUnpack,
 	],
 };
 writeFileSync(join(buildStageDir, "electron-builder.json"), JSON.stringify(builderConfig, null, "\t") + "\n");

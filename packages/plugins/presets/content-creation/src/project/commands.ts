@@ -64,6 +64,7 @@ export type ContentProjectCommand =
 			sourceNodeId?: string;
 	  }
 	| { type: "node.clear-keyframe-source"; targetNodeId: string; slotId: ContentKeyframeSlotId }
+	| { type: "node.configure-generated-image-reference"; targetNodeId: string; referenceSourceNodeId: string }
 	| { type: "node.configure-generation"; targetNodeId: string; plan: ContentVideoGenerationPlan }
 	| { type: "node.delete"; nodeId: string }
 	| {
@@ -129,6 +130,28 @@ function findNode(project: ContentProjectDocument, nodeId: string): ContentNode 
 	const node = project.graph.nodes.find((candidate) => candidate.id === nodeId);
 	if (!node) throw new ContentProjectCommandError(`node not found: ${nodeId}`);
 	return node;
+}
+
+function replaceGeneratorMediaInputs(
+	project: ContentProjectDocument,
+	target: ContentNode,
+): NonNullable<ContentNode["data"]["inputs"]> {
+	project.graph.edges = project.graph.edges.filter(
+		(edge) => edge.target !== target.id || edge.targetHandle === "prompt",
+	);
+	const preservedInputs = (target.data.inputs ?? []).filter(
+		(binding) => binding.slotId === PROMPT_REFERENCE_SLOT_ID,
+	);
+	const preservedBindingIds = new Set(preservedInputs.map((binding) => binding.id));
+	if (target.data.promptDocument) {
+		target.data.promptDocument = {
+			...target.data.promptDocument,
+			segments: target.data.promptDocument.segments.filter(
+				(segment) => segment.type !== "asset-reference" || preservedBindingIds.has(segment.bindingId),
+			),
+		};
+	}
+	return preservedInputs;
 }
 
 function findTrack(project: ContentProjectDocument, trackId: string) {
@@ -207,7 +230,10 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			const node = findNode(project, command.nodeId);
 			const nextData = { ...node.data, ...command.data };
 			if (command.data.prompt !== undefined && command.data.promptDocument === undefined) {
-				nextData.promptDocument = createContentPromptDocument(nextData);
+				nextData.promptDocument = createContentPromptDocument({
+					...nextData,
+					promptDocument: undefined,
+				});
 			}
 			node.data = nextData;
 			return;
@@ -382,6 +408,38 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			clearKeyframeSource(project, target, command.slotId);
 			return;
 		}
+		case "node.configure-generated-image-reference": {
+			const target = findNode(project, command.targetNodeId);
+			if (target.kind !== "image-generator") {
+				throw new ContentProjectCommandError(
+					"image generation configuration target must be an image generator",
+					"image-generation-configuration-target-invalid",
+				);
+			}
+			const preservedInputs = replaceGeneratorMediaInputs(project, target);
+			const source = findNode(project, command.referenceSourceNodeId);
+			if (source.kind !== "image-generator") {
+				throw new ContentProjectCommandError(
+					"generated image reference source must be an image generator",
+					"image-generation-reference-source-invalid",
+				);
+			}
+			applyCommand(project, {
+				type: "edge.connect",
+				source: source.id,
+				target: target.id,
+				targetHandle: "reference",
+				role: "referenceImages",
+			}, now);
+			target.data = {
+				...target.data,
+				providerId: undefined,
+				modelId: undefined,
+				modeId: "image-to-image",
+				inputs: preservedInputs,
+			};
+			return;
+		}
 		case "node.configure-generation": {
 			const target = findNode(project, command.targetNodeId);
 			if (target.kind !== "video-generator") {
@@ -390,21 +448,7 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 					"generation-configuration-target-invalid",
 				);
 			}
-			project.graph.edges = project.graph.edges.filter(
-				(edge) => edge.target !== target.id || edge.targetHandle === "prompt",
-			);
-			const preservedInputs = (target.data.inputs ?? []).filter(
-				(binding) => binding.slotId === PROMPT_REFERENCE_SLOT_ID,
-			);
-			const preservedBindingIds = new Set(preservedInputs.map((binding) => binding.id));
-			if (target.data.promptDocument) {
-				target.data.promptDocument = {
-					...target.data.promptDocument,
-					segments: target.data.promptDocument.segments.filter(
-						(segment) => segment.type !== "asset-reference" || preservedBindingIds.has(segment.bindingId),
-					),
-				};
-			}
+			const preservedInputs = replaceGeneratorMediaInputs(project, target);
 			const nextInputs = [...preservedInputs];
 			for (const binding of command.plan.bindings) {
 				const source = findNode(project, binding.sourceNodeId);
@@ -467,6 +511,16 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 		}
 		case "node.delete": {
 			findNode(project, command.nodeId);
+			if (
+				project.jobs.some(
+					(job) => job.nodeId === command.nodeId && (job.status === "queued" || job.status === "running"),
+				)
+			) {
+				throw new ContentProjectCommandError(
+					`node has an active generation job: ${command.nodeId}`,
+					"node-active-generation",
+				);
+			}
 			project.graph.nodes = project.graph.nodes.filter((node) => node.id !== command.nodeId);
 			project.graph.edges = project.graph.edges.filter(
 				(edge) => edge.source !== command.nodeId && edge.target !== command.nodeId,

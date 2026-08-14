@@ -275,8 +275,15 @@ describe("Responses family streaming laws", () => {
 
 			controller.abort();
 			const [eventResult, messageResult] = await Promise.allSettled([iterator.next(), response.result]);
-			expect(eventResult).toMatchObject({ status: "rejected", reason: { code: "AI_ABORTED" } });
+			// Terminal error events are observable before the stream's result rejects.
+			// Consumers that only need the failure can inspect this event; consumers
+			// continuing iteration receive the same AI_ABORTED rejection afterwards.
+			expect(eventResult).toMatchObject({
+				status: "fulfilled",
+				value: { done: false, value: { type: "error", reason: "aborted", error: { stopReason: "aborted" } } },
+			});
 			expect(messageResult).toMatchObject({ status: "rejected", reason: { code: "AI_ABORTED" } });
+			await expect(iterator.next()).rejects.toMatchObject({ code: "AI_ABORTED" });
 		}
 	});
 

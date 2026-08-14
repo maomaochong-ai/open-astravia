@@ -38,6 +38,7 @@ export function SceneCard({
 				install: t("actions.install"),
 				use: t("actions.use"),
 				generalReadonly: t("scene.generalReadonly"),
+				localReadonly: t("scene.localReadonly"),
 				running: t("scene.running"),
 				installed: t("scene.installed"),
 			}}

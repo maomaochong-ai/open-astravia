@@ -7,8 +7,47 @@ import {
 } from "@vetta/ecosystem-adapter/hooks";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
+import { preparePrompt } from "./prompt-adapter-test-fixture.js";
 
 describe("CodingAgentPromptRequestAdapter ecosystem hooks", () => {
+	it("uses the Extension input interceptor captured at Turn admission", async () => {
+		let revision = "r1";
+		const release = vi.fn();
+		const adapter = new CodingAgentPromptRequestAdapter({
+			extensionEvents: {
+				bindForTurn: () => {
+					const captured = revision;
+					return {
+						releaseTurnBinding: release,
+						interceptInput: async () => ({ action: "transform", text: captured }),
+					};
+				},
+				interceptInput: async () => ({ action: "transform", text: revision }),
+			},
+		});
+		const bound = adapter.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
+		revision = "r2";
+
+		const result = await bound.prepare(adapter.createRequest({ text: "original" }), {
+			sessionId: "session-1",
+			turnId: "turn-1",
+			queueing: false,
+			signal: new AbortController().signal,
+		});
+
+		expect(result).toMatchObject({
+			action: "continue",
+			input: { message: { content: [{ type: "text", text: "r1" }] } },
+		});
+		await bound.releaseTurnBinding?.();
+		expect(release).toHaveBeenCalledOnce();
+	});
+
 	it("registers an explicitly expanded Skill contribution before UserPromptSubmit", async () => {
 		const order: string[] = [];
 		const register = vi.fn(() => order.push("register"));
@@ -31,8 +70,41 @@ describe("CodingAgentPromptRequestAdapter ecosystem hooks", () => {
 			}),
 		});
 
-		await adapter.prepare(
+		await preparePrompt(
+			adapter,
 			{ text: "original", promptRef: { kind: "skill", name: "demo" } },
+			{ sessionId: "session-1", queueing: false },
+		);
+
+		expect(register).toHaveBeenCalledTimes(1);
+		expect(order).toEqual(["SessionStart", "register", "UserPromptSubmit"]);
+	});
+
+	it("registers a generic prompt-resource contribution for a Scene before UserPromptSubmit", async () => {
+		const order: string[] = [];
+		const register = vi.fn(() => order.push("register"));
+		const hookRuntime = runtimeFor((event) => {
+			order.push(event.eventName);
+			return emptyHookDispatchOutcome();
+		}, register);
+		const adapter = new CodingAgentPromptRequestAdapter({
+			hookRuntime,
+			resolvePromptResource: () => ({
+				text: "expanded prompt",
+				sceneInjection: "scene injection",
+				promptResourceHookContribution: {
+					id: "scene:C:/scenes/review/SKILL.md",
+					revision: "v1",
+					profileId: "test",
+					sourcePath: "C:/scenes/review/SKILL.md",
+					configuration: { UserPromptSubmit: [] },
+				},
+			}),
+		});
+
+		await preparePrompt(
+			adapter,
+			{ text: "original", promptRef: { kind: "scene", name: "review" } },
 			{ sessionId: "session-1", queueing: false },
 		);
 
@@ -61,7 +133,8 @@ describe("CodingAgentPromptRequestAdapter ecosystem hooks", () => {
 			}),
 		});
 
-		const idle = await adapter.prepare(
+		const idle = await preparePrompt(
+			adapter,
 			{ text: "original", promptRef: { kind: "skill", name: "demo" } },
 			{ sessionId: "session-1", queueing: false },
 		);
@@ -81,7 +154,8 @@ describe("CodingAgentPromptRequestAdapter ecosystem hooks", () => {
 			timestamp: 42,
 		});
 
-		const queued = await adapter.prepare(
+		const queued = await preparePrompt(
+			adapter,
 			{
 				text: "queued",
 				promptRef: { kind: "skill", name: "demo" },
@@ -111,9 +185,9 @@ describe("CodingAgentPromptRequestAdapter ecosystem hooks", () => {
 		);
 		const adapter = new CodingAgentPromptRequestAdapter({ hookRuntime });
 
-		await expect(adapter.prepare({ text: "blocked" }, { sessionId: "session-1", queueing: false })).rejects.toThrow(
-			"prompt denied",
-		);
+		await expect(
+			preparePrompt(adapter, { text: "blocked" }, { sessionId: "session-1", queueing: false }),
+		).rejects.toThrow("prompt denied");
 	});
 });
 

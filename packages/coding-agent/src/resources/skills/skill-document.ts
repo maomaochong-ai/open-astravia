@@ -30,6 +30,9 @@ export function createSkillHookContribution(
 		profileId: CLAUDE_CODE_HOOK_PROFILE_ID,
 		sourcePath: skill.filePath,
 		configuration: document.hooks,
-		env: { CLAUDE_SKILL_DIR: skill.baseDir },
+		env: {
+			CLAUDE_PLUGIN_ROOT: skill.baseDir,
+			CLAUDE_SKILL_DIR: skill.baseDir,
+		},
 	};
 }

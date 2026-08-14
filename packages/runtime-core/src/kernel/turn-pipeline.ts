@@ -1,5 +1,6 @@
 import type { Message, StopReason } from "@vetta/ai";
 import type { ConversationDocument, ConversationDocumentReader } from "../conversation/document.js";
+import { type RuntimeFailure, runtimeFailureFromAIErrorDetails } from "../failure-contract.js";
 import type { RuntimeExecutionObservationEvent, RuntimeMessageEnvelope } from "../runtime-execution-observation.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import { ContextCompactionCommitter } from "./context-compaction-committer.js";
@@ -13,18 +14,21 @@ import type {
 	ConversationContinuationStore,
 	ConversationRepository,
 	EventSink,
+	HandledSessionInputResult,
 	IdGenerator,
 	InstructionBlock,
 	KernelEvent,
 	MessageAppendedEvent,
 	ModelCallFrame,
+	RuntimeInputRequestPreparer,
 	RuntimeSnapshot,
+	RuntimeSnapshotAcquireContext,
 	RuntimeSnapshotLease,
 	RuntimeSnapshotProvider,
 	RuntimeTurnModelBinding,
-	RuntimeTurnModelBindingProvider,
 	SessionContextRecord,
 	SessionInput,
+	SessionInputRequest,
 	StoredConversation,
 	StoredSessionEvent,
 	TurnEngineContextCheckpointRequest,
@@ -36,7 +40,13 @@ import type {
 	TurnSessionIdentity,
 } from "./contracts.js";
 import { type ConversationRecoveryPolicy, FailInterruptedTurnRecoveryPolicy } from "./conversation-recovery.js";
-import { KERNEL_ERROR_CODES, KernelError, turnProtocolError } from "./errors.js";
+import {
+	KERNEL_ERROR_CODES,
+	KernelError,
+	TurnExecutionError,
+	turnPersistenceError,
+	turnProtocolError,
+} from "./errors.js";
 import { composeModelCallSystemPrompt, resolveModelCallFrame } from "./model-call-frame.js";
 import {
 	projectRuntimeMessageEnvelope,
@@ -48,7 +58,6 @@ import type { RuntimeSessionContextBuffer } from "./session-context-buffer.js";
 export interface TurnPipelineOptions {
 	readonly repository: ConversationRepository;
 	readonly snapshotProvider: RuntimeSnapshotProvider;
-	readonly modelBindingProvider?: RuntimeTurnModelBindingProvider;
 	readonly turnEngine: TurnEnginePort;
 	readonly eventSink: EventSink;
 	readonly clock: Clock;
@@ -84,7 +93,6 @@ interface ContextCheckpointPreparation {
 export class TurnPipeline {
 	private readonly repository: ConversationRepository;
 	private readonly snapshotProvider: RuntimeSnapshotProvider;
-	private readonly modelBindingProvider: RuntimeTurnModelBindingProvider | undefined;
 	private readonly turnEngine: TurnEnginePort;
 	private readonly eventSink: EventSink;
 	private readonly clock: Clock;
@@ -101,7 +109,6 @@ export class TurnPipeline {
 	constructor(options: TurnPipelineOptions) {
 		this.repository = options.repository;
 		this.snapshotProvider = options.snapshotProvider;
-		this.modelBindingProvider = options.modelBindingProvider;
 		this.turnEngine = options.turnEngine;
 		this.eventSink = options.eventSink;
 		this.clock = options.clock;
@@ -172,7 +179,18 @@ export class TurnPipeline {
 		signal: AbortSignal,
 		inputQueue?: TurnInputQueue,
 	): Promise<TurnResult> {
-		return this.runTurn(sessionIdentity, input, signal, inputQueue);
+		const result = await this.runTurn(sessionIdentity, input, signal, inputQueue);
+		return assertTurnResult(result);
+	}
+
+	async runRequest(
+		sessionIdentity: string | TurnSessionIdentity,
+		request: SessionInputRequest,
+		signal: AbortSignal,
+		inputQueue?: TurnInputQueue,
+		fallbackPreparer?: RuntimeInputRequestPreparer,
+	): Promise<TurnResult | HandledSessionInputResult> {
+		return this.runTurn(sessionIdentity, undefined, signal, inputQueue, [], false, request, fallbackPreparer);
 	}
 
 	async continue(
@@ -181,7 +199,8 @@ export class TurnPipeline {
 		inputQueue?: TurnInputQueue,
 		context: readonly SessionContextRecord[] = [],
 	): Promise<TurnResult> {
-		return this.runTurn(sessionIdentity, undefined, signal, inputQueue, context);
+		const result = await this.runTurn(sessionIdentity, undefined, signal, inputQueue, context);
+		return assertTurnResult(result);
 	}
 
 	async retry(
@@ -189,7 +208,8 @@ export class TurnPipeline {
 		signal: AbortSignal,
 		inputQueue?: TurnInputQueue,
 	): Promise<TurnResult> {
-		return this.runTurn(sessionIdentity, undefined, signal, inputQueue, [], true);
+		const result = await this.runTurn(sessionIdentity, undefined, signal, inputQueue, [], true);
+		return assertTurnResult(result);
 	}
 
 	private async runTurn(
@@ -199,7 +219,9 @@ export class TurnPipeline {
 		inputQueue: TurnInputQueue | undefined,
 		continuationContext: readonly SessionContextRecord[] = [],
 		retrying = false,
-	): Promise<TurnResult> {
+		request?: SessionInputRequest,
+		fallbackPreparer?: RuntimeInputRequestPreparer,
+	): Promise<TurnResult | HandledSessionInputResult> {
 		const identity = normalizeSessionIdentity(sessionIdentity);
 		const turnId = this.idGenerator.next("turn");
 		const state: MutableTurnState = {
@@ -216,11 +238,44 @@ export class TurnPipeline {
 			signal.throwIfAborted();
 
 			await this.enterStage(state.sessionId, turnId, "snapshot_binding");
-			snapshotLease = await this.snapshotProvider.acquire();
+			snapshotLease = await this.snapshotProvider.acquire({
+				sessionId: state.sessionId,
+				operationId: turnId,
+				reason: "turn",
+				signal,
+				...(input ? { input } : {}),
+				...(request ? { request } : {}),
+			});
+			if (request && !snapshotLease.snapshot.inputRequestPreparer && fallbackPreparer) {
+				snapshotLease = await attachInputRequestPreparer(snapshotLease, fallbackPreparer, {
+					sessionId: state.sessionId,
+					operationId: turnId,
+					reason: "turn",
+					signal,
+					request,
+				});
+			}
 			const snapshot = snapshotLease.snapshot;
-			const modelBinding = this.modelBindingProvider?.bind();
+			const modelBinding = snapshotLease.modelBinding;
 			state.snapshot = snapshot;
 			signal.throwIfAborted();
+			if (request) {
+				if (!snapshot.inputRequestPreparer) {
+					throw new Error("Runtime snapshot does not provide an input request preparer");
+				}
+				const preparedRequest = await snapshot.inputRequestPreparer.prepare(request, {
+					sessionId: state.sessionId,
+					turnId,
+					signal,
+					queueing: false,
+					modelBinding,
+				});
+				signal.throwIfAborted();
+				if (preparedRequest.action === "handled") {
+					return { status: "handled", sessionId: state.sessionId };
+				}
+				input = preparedRequest.input;
+			}
 
 			await this.enterStage(state.sessionId, turnId, "conversation_loading");
 			const conversation = await this.repository.load(state.sessionId);
@@ -435,6 +490,8 @@ export class TurnPipeline {
 
 			await this.enterStage(state.sessionId, turnId, "execution");
 			let stopReason: StopReason | undefined;
+			let assistantErrorMessage: string | undefined;
+			let assistantErrorFailure: RuntimeFailure | undefined;
 			for await (const event of this.turnEngine.execute({
 				get sessionId() {
 					return state.sessionId;
@@ -483,6 +540,13 @@ export class TurnPipeline {
 					await this.publishExecutionObservation(state.sessionId, turnId, event.observation);
 					continue;
 				}
+				const messageFailure =
+					event.type === "message"
+						? (event.failure ??
+							(event.message.role === "assistant" && event.message.failure
+								? runtimeFailureFromAIErrorDetails(event.message.failure)
+								: undefined))
+						: undefined;
 				if (
 					signal.aborted &&
 					event.type === "observation" &&
@@ -503,6 +567,7 @@ export class TurnPipeline {
 						sessionId: state.sessionId,
 						turnId,
 						message: event.message,
+						...(messageFailure ? { failure: messageFailure } : {}),
 						...(event.origin ? { origin: event.origin } : {}),
 						timestamp: this.clock.now(),
 					};
@@ -512,6 +577,15 @@ export class TurnPipeline {
 				}
 				signal.throwIfAborted();
 				if (event.type === "completed") {
+					if (event.stopReason === "error") {
+						throw new TurnExecutionError({
+							code: assistantErrorFailure?.code ?? "PROVIDER_ERROR",
+							message: assistantErrorMessage || "Provider returned an assistant error response",
+							retryable: assistantErrorFailure?.retryable ?? false,
+							origin: assistantErrorFailure?.origin ?? "provider",
+							...(assistantErrorFailure?.details ? { details: assistantErrorFailure.details } : {}),
+						});
+					}
 					stopReason = event.stopReason;
 					continue;
 				}
@@ -519,12 +593,18 @@ export class TurnPipeline {
 					await this.publishObservation(state.sessionId, turnId, event.observation);
 					continue;
 				}
+				if (event.message.role === "assistant" && event.message.stopReason === "error") {
+					assistantErrorMessage =
+						event.message.errorMessage?.trim() || extractAssistantText(event.message.content).trim() || undefined;
+					assistantErrorFailure = messageFailure;
+				}
 
 				const storedEvent: MessageAppendedEvent = {
 					type: "message.appended",
 					sessionId: state.sessionId,
 					turnId,
 					message: event.message,
+					...(messageFailure ? { failure: messageFailure } : {}),
 					...(event.origin ? { origin: event.origin } : {}),
 					timestamp: this.clock.now(),
 				};
@@ -559,13 +639,14 @@ export class TurnPipeline {
 		} catch (error) {
 			if (signal.aborted || isAbortError(error)) {
 				const reason = abortReason(signal);
-				await this.appendTerminalSafely(turnId, state, signal, {
+				const terminalResult = await this.appendTerminalSafely(turnId, state, {
 					type: "turn.cancelled",
 					sessionId: state.sessionId,
 					turnId,
 					reason,
 					timestamp: this.clock.now(),
 				});
+				if (!terminalResult.ok) throw turnPersistenceError(terminalResult.error);
 				return {
 					status: "cancelled",
 					sessionId: state.sessionId,
@@ -574,15 +655,26 @@ export class TurnPipeline {
 					messages: state.messages,
 				};
 			}
+			// Request preparation 属于宿主 prompt admission。它尚未写入 turn.started；
+			// 保持抛错让 Runtime Host 记录 prompt_rejected，而不是伪造一个没有用户消息的 failed Turn。
+			if (request && !state.started) throw error;
 
 			const normalized = normalizeError(error);
-			await this.appendTerminalSafely(turnId, state, signal, {
+			await this.publishSafely({
+				type: "turn.execution_failed",
+				sessionId: state.sessionId,
+				turnId,
+				error: normalized,
+				timestamp: this.clock.now(),
+			});
+			const terminalResult = await this.appendTerminalSafely(turnId, state, {
 				type: "turn.failed",
 				sessionId: state.sessionId,
 				turnId,
 				error: normalized,
 				timestamp: this.clock.now(),
 			});
+			if (!terminalResult.ok) throw turnPersistenceError(terminalResult.error, { turnId, failure: normalized });
 			return {
 				status: "failed",
 				sessionId: state.sessionId,
@@ -831,13 +923,30 @@ export class TurnPipeline {
 	private async appendTerminalSafely(
 		turnId: string,
 		state: MutableTurnState,
-		signal: AbortSignal,
 		event: StoredSessionEvent,
-	): Promise<void> {
-		if (!state.started) return;
+	): Promise<{ readonly ok: true } | { readonly ok: false; readonly error: unknown }> {
+		if (!state.started) return { ok: true };
+		// Terminal lifecycle facts are durable state, not cancellable work. A turn's
+		// AbortSignal is already aborted on normal cancellation and must not be reused
+		// for the final repository append or observer notification.
+		const terminalSignal = new AbortController().signal;
 		try {
-			await this.appendRuntimeContext(turnId, state, signal);
-			await this.append(state, signal, [event]);
+			try {
+				await this.appendRuntimeContext(turnId, state, terminalSignal);
+			} catch (error) {
+				// Context is auxiliary. Preserve the terminal fact even when a context
+				// producer failed during cancellation or shutdown.
+				await this.publishSafely({
+					type: "observer.failed",
+					sessionId: state.sessionId,
+					turnId,
+					observerId: "runtime-context",
+					error: errorMessage(error),
+					timestamp: this.clock.now(),
+				});
+			}
+			await this.appendTerminalEvent(state, terminalSignal, event);
+			return { ok: true };
 		} catch (error) {
 			await this.publishSafely({
 				type: "observer.failed",
@@ -847,6 +956,45 @@ export class TurnPipeline {
 				error: errorMessage(error),
 				timestamp: this.clock.now(),
 			});
+			return { ok: false, error };
+		}
+	}
+
+	private async appendTerminalEvent(
+		state: MutableTurnState,
+		signal: AbortSignal,
+		event: StoredSessionEvent,
+	): Promise<void> {
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const conversation = await this.repository.load(state.sessionId);
+			const existingTerminal = conversation.events.find(
+				(candidate) =>
+					candidate.turnId === event.turnId &&
+					(candidate.type === "turn.completed" ||
+						candidate.type === "turn.cancelled" ||
+						candidate.type === "turn.failed" ||
+						candidate.type === "turn.transferred"),
+			);
+			if (existingTerminal) {
+				state.version = conversation.version;
+				return;
+			}
+			const recovery = this.recoveryPolicy.plan(conversation);
+			if (recovery.status !== "interrupt" || recovery.turnId !== event.turnId) {
+				throw turnProtocolError(
+					`Conversation ${state.sessionId} cannot append terminal event for turn ${event.turnId}`,
+				);
+			}
+			try {
+				const result = await this.repository.append(conversation.sessionId, conversation.version, [event]);
+				state.version = result.version;
+				await this.publishSafely(event);
+				await this.notifyObserversSafely(state.snapshot, event, signal);
+				return;
+			} catch (error) {
+				if (attempt === 0) continue;
+				throw error;
+			}
 		}
 	}
 
@@ -966,21 +1114,34 @@ function abortReason(signal: AbortSignal): string | undefined {
 	return undefined;
 }
 
-function normalizeError(error: unknown): { readonly code: string; readonly message: string } {
+function normalizeError(error: unknown): RuntimeFailure {
+	if (error instanceof TurnExecutionError) return error.failure;
 	if (error instanceof KernelError) {
 		return {
 			code: error.code,
 			message: error.message,
+			retryable: false,
+			origin: "runtime",
 		};
 	}
 	return {
 		code: KERNEL_ERROR_CODES.TURN_FAILED,
 		message: errorMessage(error),
+		retryable: false,
+		origin: "runtime",
 	};
 }
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+function extractAssistantText(content: Message["content"]): string {
+	if (typeof content === "string") return content;
+	return content
+		.filter((part): part is Extract<Message["content"][number], { type: "text" }> => part.type === "text")
+		.map((part) => part.text)
+		.join("");
 }
 
 function normalizeSessionIdentity(identity: string | TurnSessionIdentity): TurnSessionIdentity {
@@ -992,6 +1153,39 @@ function normalizeSessionIdentity(identity: string | TurnSessionIdentity): TurnS
 		},
 		transition(nextSessionId) {
 			sessionId = nextSessionId;
+		},
+	};
+}
+
+function assertTurnResult(result: TurnResult | HandledSessionInputResult): TurnResult {
+	if (result.status === "handled") throw new Error("A prepared SessionInput cannot produce a handled result");
+	return result;
+}
+
+async function attachInputRequestPreparer(
+	lease: RuntimeSnapshotLease,
+	preparer: RuntimeInputRequestPreparer,
+	context: RuntimeSnapshotAcquireContext,
+): Promise<RuntimeSnapshotLease> {
+	let bound: RuntimeInputRequestPreparer;
+	try {
+		bound = (await preparer.bindForTurn?.(context)) ?? preparer;
+	} catch (error) {
+		await lease.release();
+		throw error;
+	}
+	let released = false;
+	return {
+		...lease,
+		snapshot: Object.freeze({ ...lease.snapshot, inputRequestPreparer: bound }),
+		async release() {
+			if (released) return;
+			released = true;
+			const results = await Promise.allSettled([bound.releaseTurnBinding?.(), lease.release()]);
+			const errors = results
+				.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+				.map(({ reason }) => reason);
+			if (errors.length > 0) throw new AggregateError(errors, "Failed to release Prompt input generation");
 		},
 	};
 }

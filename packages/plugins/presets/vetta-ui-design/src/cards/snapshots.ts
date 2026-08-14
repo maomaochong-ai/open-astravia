@@ -57,16 +57,5 @@ export async function pruneSnapshots(fs: PluginFsApi, dirPath: string, frameId: 
 	}
 }
 
-/**
- * Keep screenshots out of the user's git history. Only creates a `.gitignore`
- * when the design directory has none — an existing one is never rewritten.
- */
-export async function ensureSnapshotsIgnored(fs: PluginFsApi, dirPath: string): Promise<void> {
-	const path = `${dirPath}/.gitignore`;
-	try {
-		if (await fs.stat(path)) return;
-		await fs.writeFile(path, `${SNAPSHOTS_DIR}/\n`);
-	} catch {
-		// Best-effort housekeeping.
-	}
-}
+// `.gitignore` 的维护移到 vetd/design-ignore.ts：要忽略的早已不止截图，且必须
+// 幂等补齐（老设计的 .gitignore 里没有 .history/，「已有就不重写」会让它永远缺）。

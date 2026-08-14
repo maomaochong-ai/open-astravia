@@ -1,5 +1,5 @@
 import { ViewportPortal } from "@xyflow/react";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import type { ContentAlignmentGuides } from "./alignment-guides";
 
 const EMPTY_GUIDES: ContentAlignmentGuides = {};
@@ -29,40 +29,17 @@ function sameGuides(left: ContentAlignmentGuides, right: ContentAlignmentGuides)
 
 export const AlignmentGuidesLayer = forwardRef<AlignmentGuidesLayerHandle>(function AlignmentGuidesLayer(_, ref) {
 	const [guides, setGuides] = useState<ContentAlignmentGuides>(EMPTY_GUIDES);
-	const pendingGuidesRef = useRef<ContentAlignmentGuides>(EMPTY_GUIDES);
-	const animationFrameRef = useRef<number | null>(null);
-
-	const flush = useCallback(() => {
-		animationFrameRef.current = null;
-		const nextGuides = pendingGuidesRef.current;
-		setGuides((currentGuides) => (sameGuides(currentGuides, nextGuides) ? currentGuides : nextGuides));
-	}, []);
 
 	useImperativeHandle(
 		ref,
 		() => ({
 			clear: () => {
-				pendingGuidesRef.current = EMPTY_GUIDES;
-				if (animationFrameRef.current !== null) {
-					cancelAnimationFrame(animationFrameRef.current);
-					animationFrameRef.current = null;
-				}
 				setGuides((currentGuides) => (sameGuides(currentGuides, EMPTY_GUIDES) ? currentGuides : EMPTY_GUIDES));
 			},
 			update: (nextGuides) => {
-				pendingGuidesRef.current = nextGuides;
-				if (animationFrameRef.current === null) {
-					animationFrameRef.current = requestAnimationFrame(flush);
-				}
+				setGuides((currentGuides) => (sameGuides(currentGuides, nextGuides) ? currentGuides : nextGuides));
 			},
 		}),
-		[flush],
-	);
-
-	useEffect(
-		() => () => {
-			if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
-		},
 		[],
 	);
 

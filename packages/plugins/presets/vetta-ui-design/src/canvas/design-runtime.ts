@@ -68,8 +68,11 @@ export function takePendingDesignPath(): string | null {
  */
 export interface MockupExportRequest {
 	session: DesignSession;
-	/** Frames to render, already ordered left-to-right by canvas position. */
-	frameIds: string[];
+	/**
+	 * 打开工作台时预先放进渲染区的画框（画布顺序）。可以是空的——顶栏入口不要求
+	 * 先选中任何东西，用户在工作台里自己往里加。
+	 */
+	initialFrameIds: string[];
 	capture(frameId: string, pixelRatio: number): Promise<string>;
 }
 

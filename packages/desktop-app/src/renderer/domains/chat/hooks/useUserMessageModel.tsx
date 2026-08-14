@@ -9,7 +9,6 @@ import {
 	mentionedFilesAtom,
 	openSessionFnRef,
 	pendingMessageEditAtom,
-	selectedSkillAtom,
 	type ChatMessage,
 	type FilePreviewItem,
 } from "@shared/store/atoms";
@@ -22,7 +21,6 @@ import {
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import {
 	SettingsAssistBadgeView,
-	SkillBadgeView,
 	type UserMessageContextMenuViewProps,
 	type UserMessageEntryState,
 	type UserMessageViewProps,
@@ -135,9 +133,13 @@ function fillInputFromUserText(
 	const ref = promptRef ?? legacyRef ?? null;
 	const restored: InputSegment[] = [...segments];
 
-	// 旧消息的 skill 引用存在 promptRef / 行首前缀里；软引用时代它应回到文本流。
-	if (ref && ref.kind === "skill") {
-		restored.unshift({ kind: "skill", name: ref.name });
+	// 结构化引用在持久化消息里不重复写进正文；重编辑时补回对应行内 token。
+	if (
+		ref &&
+		(ref.kind === "skill" || ref.kind === "scene") &&
+		!restored.some((segment) => segment.kind === ref.kind && segment.name === ref.name)
+	) {
+		restored.unshift({ kind: ref.kind, name: ref.name });
 	}
 
 	// 结构化 attachments 是权威来源（带 directory / image 类型）；
@@ -159,8 +161,6 @@ function fillInputFromUserText(
 
 	// 文本一写入，ValueBridgePlugin 会把编辑器内容整体重建成这些 token。
 	store.set(inputValueAtom, segmentsToText(restored));
-	// 场景仍是硬展开语义，继续走顶部胶囊。
-	store.set(selectedSkillAtom, ref && ref.kind === "scene" ? { name: ref.name, type: "scene" } : null);
 	// Appshot capsule needs full AppshotAttachment; on re-edit the image path rides
 	// along as an inline token instead (sendMessage will include it).
 	store.set(appshotAttachmentAtom, null);
@@ -170,7 +170,6 @@ function inputHasDraft(): boolean {
 	const store = getDefaultStore();
 	return (
 		store.get(inputValueAtom).trim().length > 0 ||
-		store.get(selectedSkillAtom) !== null ||
 		store.get(mentionedFilesAtom).length > 0 ||
 		store.get(appshotAttachmentAtom) !== null
 	);
@@ -199,23 +198,22 @@ export function useUserMessageModel({
 	onEntryComplete,
 }: UserMessageModelInput): UserMessageModel {
 	const { t } = useTranslation("chat");
-	// 正文里的 `@skill:slug` 要还原成命令区插入时的样子（图标 + 别名）。
+	// 正文里的能力 token 要还原成命令区插入时的样子（图标 + 别名）。
 	const resolveSkillMeta = useSkillTokenMeta();
 	const parsedUser = parseUserPrefixes(message.text);
 	const { segments, legacyRef } = parseInputSegments(message.text);
 	const promptRef = message.promptRef ?? legacyRef ?? undefined;
-	// 场景仍是「整条消息生效」的硬展开，继续用顶部 badge 表示；
-	// skill 是软引用，改为在正文里行内呈现。
-	const skillName = promptRef?.kind === "scene" ? promptRef.name : null;
-	const skillType = promptRef?.kind === "scene" ? "scene" : null;
 	/** Appshot 的截图/文本走独立卡片，不能同时又当行内 token 渲染一遍。 */
 	const bodySegments = segments.filter(
 		(segment) =>
 			(segment.kind !== "image" && segment.kind !== "file") || !isAppshotPath(segment.path),
 	);
-	if (promptRef?.kind === "skill") {
-		// 旧消息把 skill 存在 promptRef / 行首前缀里，补回文本流开头。
-		bodySegments.unshift({ kind: "skill", name: promptRef.name });
+	if (
+		(promptRef?.kind === "skill" || promptRef?.kind === "scene") &&
+		!bodySegments.some((segment) => segment.kind === promptRef.kind && segment.name === promptRef.name)
+	) {
+		// promptRef 不重复进入正文；显示时统一补成行内 token。
+		bodySegments.unshift({ kind: promptRef.kind, name: promptRef.name });
 	}
 	// 归一成行内标记形式：旧会话的行首前缀因此也能被 rehype 插件识别成 token。
 	// pathTokenText 会把 `\` 写成 `/`，避免气泡 markdown 把 `\.` 当转义吃掉后
@@ -276,7 +274,7 @@ export function useUserMessageModel({
 		return [...fromBase64, ...fromPaths];
 	}, [imageFiles, message.images]);
 	const hasImages = imageItems.length > 0;
-	const hasSkillBadge = Boolean(skillName);
+	const hasSkillBadge = false;
 	const settingsAssistTabId = message.settingsAssistTabId?.trim() ?? "";
 	const hasSettingsAssistBadge = settingsAssistTabId.length > 0;
 	const hasFileBadges = fileBadges.length > 0;
@@ -511,14 +509,6 @@ export function useUserMessageModel({
 	const badges: ReactNode = (
 		<>
 			{hasSettingsAssistBadge && <SettingsAssistBadgeView label={settingsLabel} />}
-			{skillName && (
-				<SkillBadgeView
-					name={skillName}
-					type={skillType ?? "skill"}
-					skillLabel={labels.skillBadge}
-					sceneLabel={labels.sceneBadge}
-				/>
-			)}
 		</>
 	);
 
@@ -613,7 +603,8 @@ export function useUserMessageModel({
 				inlineTokens={{
 					getImageLabel: (path) =>
 						imageLabelByPath.get(toTokenPath(path)) ?? pathBasename(path),
-					getSkill: resolveSkillMeta,
+					getSkill: (name) => resolveSkillMeta("skill", name),
+					getScene: (name) => resolveSkillMeta("scene", name),
 				}}
 				className="max-w-full overflow-x-auto [overflow-wrap:anywhere] [&_code]:break-all"
 			/>

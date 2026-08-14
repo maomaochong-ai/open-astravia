@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { AIError, getAIErrorDetails } from "../src/protocol/index.js";
 import type { ApiProvider } from "../src/runtime/adapter-registry.js";
 import { adaptApiProvider, adaptLegacyAssistantMessageStream } from "../src/runtime/language-model-adapter.js";
 import type { Api, AssistantMessage, AssistantMessageEvent, Context, Model } from "../src/types.js";
@@ -54,13 +55,60 @@ describe("adaptApiProvider", () => {
 		["ordinary provider failure", message("error", "provider unavailable"), "AI_TRANSPORT_FAILED"],
 		["context overflow", message("error", "prompt is too long: 1200 tokens > 1000 maximum"), "AI_CONTEXT_OVERFLOW"],
 		["aborted request", message("aborted", "request aborted"), "AI_ABORTED"],
-	] as const)("turns a compatibility error terminal into a rejected %s", async (_name, result, code) => {
+	] as const)("publishes a compatibility error terminal and rejects result for %s", async (_name, result, code) => {
 		const reason = result.stopReason === "aborted" ? "aborted" : "error";
 		const adapter = adaptApiProvider(provider([{ type: "error", reason, error: result }]));
 		const response = await adapter.stream({ model, context });
 
-		await expect(consume(response.events)).rejects.toMatchObject({ code });
+		const events: AssistantMessageEvent[] = [];
+		await expect(
+			(async () => {
+				for await (const event of response.events) events.push(event);
+			})(),
+		).rejects.toMatchObject({ code });
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: "error",
+				error: expect.objectContaining({ errorMessage: result.errorMessage }),
+			}),
+		);
 		await expect(response.result).rejects.toMatchObject({ code });
+	});
+
+	it("preserves native provider failure details through the compatibility projection", async () => {
+		const result = message("error", "too many requests");
+		const failure = new AIError("AI_RATE_LIMITED", "too many requests", {
+			retryable: true,
+			statusCode: 429,
+			provider: "test-provider",
+			modelId: "test-model",
+			requestId: "request-1",
+		});
+		const adapter = adaptApiProvider(
+			provider([{ type: "error", reason: "error", error: result, failure: getAIErrorDetails(failure) }]),
+		);
+		const response = await adapter.stream({ model, context });
+
+		const events: AssistantMessageEvent[] = [];
+		await expect(
+			(async () => {
+				for await (const event of response.events) events.push(event);
+			})(),
+		).rejects.toMatchObject({ code: "AI_RATE_LIMITED" });
+		expect(events).toContainEqual(
+			expect.objectContaining({
+				type: "error",
+				error: expect.objectContaining({ failure: getAIErrorDetails(failure) }),
+			}),
+		);
+		await expect(response.result).rejects.toMatchObject({
+			code: "AI_RATE_LIMITED",
+			retryable: true,
+			statusCode: 429,
+			provider: "test-provider",
+			modelId: "test-model",
+			requestId: "request-1",
+		});
 	});
 
 	it.each([
@@ -84,12 +132,18 @@ describe("adaptApiProvider", () => {
 
 		source.fail(new Error("socket closed"));
 
-		await expect(consume(response.events)).rejects.toMatchObject({
+		const events: AssistantMessageEvent[] = [];
+		await expect(
+			(async () => {
+				for await (const event of response.events) events.push(event);
+			})(),
+		).rejects.toMatchObject({
 			code: "AI_TRANSPORT_FAILED",
 			message: "socket closed",
 			provider: "test-provider",
 			modelId: "test-model",
 		});
+		expect(events).toContainEqual(expect.objectContaining({ type: "error" }));
 	});
 });
 
@@ -130,10 +184,4 @@ function message(stopReason: "stop" | "error" | "aborted", errorMessage?: string
 		errorMessage,
 		timestamp: 1,
 	};
-}
-
-async function consume(stream: AsyncIterable<unknown>): Promise<void> {
-	for await (const _event of stream) {
-		// Drain the stream to observe its terminal contract.
-	}
 }

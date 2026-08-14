@@ -45,6 +45,7 @@ import {
 	nextId,
 	resetStreamState,
 	setTurnStartTime,
+	toChatErrorDetails,
 	turnStartTime,
 	turnStatsCache,
 } from "../services/chat-service";
@@ -54,6 +55,7 @@ import {
 	rememberOptimisticUserMessage,
 } from "../services/optimistic-user-message-cache";
 import { diffConsumedQueueEntries } from "../services/queue-mirror";
+import { reconcileHistoryWithLiveTerminalErrors } from "../services/terminal-error-reconciliation";
 import type { ActiveSessionHandle } from "./session-manager-types";
 
 const DELTA_FLUSH_INTERVAL_MS = 100;
@@ -282,7 +284,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 									}
 								}
 							}
-							setChatMessages(mapped);
+							setChatMessages((liveMessages) => reconcileHistoryWithLiveTerminalErrors(mapped, liveMessages));
 						})
 						.catch((err) => {
 							console.warn("[useSessionManager] getFullHistory after agent_end failed", err);
@@ -317,7 +319,9 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 										break;
 									}
 								}
-								if (!firstUser || !lastAssistant) {
+								const hasTerminalError =
+									lastAssistant?.blocks?.some((block) => block.type === "error") ?? false;
+								if (!firstUser || !lastAssistant || hasTerminalError) {
 									autoTitledSessionsRef.current.delete(sp);
 									return;
 								}
@@ -466,7 +470,12 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 
 			// ── Auto-retry（退避等待中；错误本身要等重试彻底失败才会来）──
 			if (event.type === "retry.start") {
-				setRetryProgress({ attempt: event.attempt, maxAttempts: event.maxAttempts });
+				setRetryProgress({
+					attempt: event.attempt,
+					maxAttempts: event.maxAttempts,
+					errorMessage: event.errorMessage,
+					...(event.failure ? { details: toChatErrorDetails(event.failure) } : {}),
+				});
 				return;
 			}
 			if (event.type === "retry.end") {
@@ -478,7 +487,15 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			if (event.type === "error") {
 				flushDeltas();
 				setRetryProgress(null);
-				setChatMessages((prev) => appendError(prev, event.error.message, event.retryAttempts));
+				setChatMessages((prev) =>
+					appendError(
+						prev,
+						event.error.message,
+						event.retryAttempts,
+						event.turnId,
+						toChatErrorDetails(event.error),
+					),
+				);
 				return;
 			}
 
@@ -496,6 +513,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				}
 				setContextUsage({
 					percent: event.contextPercent ?? null,
+					contextTokens: event.contextTokens ?? null,
 					contextWindow: event.contextWindow ?? 0,
 					...(event.contextComposition ? { composition: event.contextComposition } : {}),
 				});

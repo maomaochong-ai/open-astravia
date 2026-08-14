@@ -2,14 +2,14 @@ import { isAttachmentPath, isImagePath } from "./paths";
 import type { InputSegment, LegacyPromptRef, ParsedInput } from "./types";
 
 /**
- * 行内 token 扫描：`@skill:名字` / `@skill:"名字"` / `@/abs/path` / `@"/abs/path"`。
+ * 行内 token 扫描：`@skill:名字` / `@scene:名字` / `@mcp:名字` / `@/abs/path`。
  * 只在词首（行首或空白后）起匹配，`a@b.com`、代码里的 `arr@idx` 不会被误认。
  *
  * 裸写形式排除全角句读——中文里 `@/a/b.ts。还有` 没有空白可依，
  * 只能靠这些字符断开路径（文件名中出现它们的情况可忽略；真有就加引号）。
  */
 const BARE = String.raw`[^\s"。，、；：！？（）【】「」『』]+`;
-const TOKEN_RE = new RegExp(`(?<=^|\\s)@(?:(skill|mcp):(?:"([^"]*)"|(${BARE}))|(?:"([^"]*)"|(${BARE})))`, "g");
+const TOKEN_RE = new RegExp(`(?<=^|\\s)@(?:(skill|scene|mcp):(?:"([^"]*)"|(${BARE}))|(?:"([^"]*)"|(${BARE})))`, "g");
 
 /** 裸路径末尾的半角句读；它们属于句子而不属于路径。 */
 const TRAILING_PUNCTUATION = /[,;:!?)\]]+$/;
@@ -79,7 +79,8 @@ function scanInline(body: string, segments: InputSegment[]): void {
 			const name = quotedName ?? bareName ?? "";
 			if (name === "") continue;
 			pushText(segments, body.slice(cursor, start));
-			segments.push({ kind: namespace === "mcp" ? "connector" : "skill", name });
+			const kind = namespace === "mcp" ? "connector" : namespace === "scene" ? "scene" : "skill";
+			segments.push({ kind, name });
 			cursor = start + raw.length;
 			continue;
 		}

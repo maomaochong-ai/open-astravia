@@ -2,6 +2,8 @@
 
 ### Breaking Changes
 
+- **agent_mode 排序偏好整体废弃（ADR-0071）**：删除 `sortByAgentModePreference` / `agentModePreferenceRank` / `matchesAgentMode` 及其在工具、Skill、插件 MCP 三处清单的消费；`resolveActiveToolNames` 去掉 mode 参数，激活只看 `scope_use` ∩ `requires` 两条 fail-closed 轴，清单顺序回归注册序（对提示词前缀缓存更稳）。`ToolActivationMetadata.agent_mode`、`AgentPluginToolContribution.agent_mode`、`McpServerContribution.agent_mode`、`Skill.agentMode` 等资源级字段随之删除；SDK 的 `CodingAgentSkillContribution.agentModes` 保留为 @deprecated 容忍字段。审计结论是排序对模型工具选择无可观察影响（模型按 description 语义匹配、不按位置），模式差异完全由 mode 系统提示词（`getModePrompt`）、工作区事实与工具自描述在任务解释层承担。会话级 `agentMode`（创建时固化、驱动 mode prompt）不变。
+- **模式注册表数据化（ADR-0071）**：`AgentMode` 联合类型与 `ALL_AGENT_MODES` / `isAgentMode` 改由 `profiles/modes/*.md` 经 `generate-modes.mjs` 派生（新增 `AgentModeId` 生成类型）；modes frontmatter 新增必填 `icon`，`MODE_PROMPTS` / `ModePromptInfo` 带 icon 并从 `@vetta/coding-agent/profile` 导出，宿主 UI 可直接遍历注册表渲染模式入口。新增一个工作模式 = 新增一份 md（含 icon）+ 宿主 i18n 文案。
 - **收口宿主可执行文件适配器 API**：`@vetta/coding-agent/host` 以 `createManagedCodingToolExecutableResolver`、`ResolveCodingToolExecutable`、`ManagedCodingToolExecutableDependencies` 和 `resolveManagedCodingToolExecutable` 替代旧的 `createToolExecutableResolver`、`EnsureTool`、`EnsureToolDependencies` 与 `ensureToolWithDependencies`，并删除与 `@vetta/runtime-tools` 重复的 `ToolExecutableName` / `ToolExecutableResolver` 类型。`fd`/`rg` 的本地优先、PATH 查找、离线与 Termux 策略、下载和失败降级行为不变。
 - **移除 Extension setup 的旧 SessionManager 源码兼容 shim**：`ExtensionSessionWriter` 不再提供恒为 `true` 的 `isPersisted()`，`ExtensionSessionSetup` 改为直接的函数合同，不再通过双变签名兼容以具体 `SessionManager` 标注参数的旧回调。setup 仍在原生 Conversation seed 创建后执行，已有写入、分支、标签和读取能力及持久化时序不变。
 - **收口 Extension 宿主兼容性合同**：`@vetta/coding-agent/bootstrap` 将 Bootstrap 的未解析结果改为 `extensionRequirements`，宿主通过 `resolveCodingAgentExtensionCompatibility()` 解析为带 `compatible` 的最终评估；移除误导性的 Legacy/Greenfield 类型、函数、常量和 `requiresLegacyRuntime` 字段，不改变 Extension 功能、未知事件拒绝策略或 CLI/RPC 错误协议。
@@ -13,8 +15,49 @@
 - **退役 Runtime 包兼容子路径**：移除 `@vetta/coding-agent/compat/runtime-storage` 与 `@vetta/coding-agent/compat/runtime-tools`；两个 Runtime 包根现直接暴露各自独立实现，生产依赖图不再形成反向循环。
 - **Composition 公共面去迁移命名并收口**：`@vetta/coding-agent/composition` 的公开导出由 34 项收敛为 19 项，删除无外部消费者的辅助类型，并将 `Greenfield*` 公共名称替换为稳定的 `CodingAgent*` / 中性名称；工作区调用方已迁移且不保留旧名称别名，Session、CLI、Desktop 与 IM 的运行时行为不变。
 
+### Fixed
+
+- Provider 零事件断流现在会进入既有的指数退避自动重试（默认最多 3 次），不会在供应商短暂不稳定时立即中断整段会话；重试耗尽后仍按标准错误事件结束并保留诊断信息。
+- **Scene frontmatter hooks 未激活**：Scene 与 Skill 现在通过同一 Prompt Resource Hook contribution 合同，在资源展开后、`UserPromptSubmit` 前注册当前 Turn 的 hooks；保留原 `skillHookContribution` 字段兼容既有外部 resolver，并为场景脚本注入 `CLAUDE_PLUGIN_ROOT` / `CLAUDE_SKILL_DIR`。
+
+- **默认会话 Prompt Runtime 可正确展开场景**：Turn 组合现在把会话内部创建的资源源接入 Prompt Adapter；Desktop 未显式注入外部 resolver 时，`promptRef.scene` 也会读取 `SKILL.md`、注入场景正文并建立锁定待办，不再静默只保留不可见引用标记。
+
+- 自动压缩和分支摘要读取模型终端错误中的结构化 Provider failure，并将其交给 Runtime 观察与重试合同；后台模型失败不再只剩一段不可分类的文本。
+
+- 手动上下文压缩和分支摘要缺少模型凭证时，现在复用 AI 认证错误合同，不再丢失 provider/model 与不可重试诊断。
+
+- Runtime Host 重试合同现在保留并校验 Provider 的安全诊断字段，UI 和重试策略可以区分供应商错误阶段、request id 与 Retry-After。
+
+- 终态持久化失败时保留并回传原始 Provider 失败合同；Coding Agent 不会把持久化异常当成新的可重试供应商错误。
+
+- **无额度 Provider 不再静默失败**：Runtime prompt 的失败回执携带结构化错误，自动重试适配层能正确区分失败与成功；不可重试的额度错误会按 `error -> agent_end` 发到 Desktop 消息列表。
+
+- 自动重试改为优先使用 Runtime 失败合同的结构化 `retryable` 字段，避免错误消息未包含 HTTP 数字时漏重试、或不可重试错误文本碰巧包含 `429/5xx` 时误重试；旧结果仍保留消息分类兼容路径。
+
+- **SDK 自定义 `agentDir` 未覆盖默认会话存储**：公共 SDK 此前只把 `agentDir` 用于认证、模型、设置与资源，默认会话目录仍从全局 Vetta Home 解析，导致嵌入式宿主把会话写入用户目录。默认文件存储现在与同一次 Session 组合使用相同的 `agentDir`；未指定 `agentDir` 或显式传入 `storage` 时的行为保持不变。
+- **自动重试提前结束宿主生命周期**：失败尝试的 `error` 虽被延迟，但配套 `agent_end` 此前仍会先发出，导致 Desktop 提前停止流式态、重拉历史并覆盖最终错误。重试适配层现在一并延迟失败尝试的终止事件；重试成功时丢弃中间错误与终止事件，彻底失败时按 `error → agent_end` 顺序只结算一次。
+
+- **Turn 绑定后 Session Plugin MCP 工具对模型不可见（回归）**：Turn-bound runtime generation（ADR-0069 落地）在 admission 冻结 MCP 可见集时只从 `readAvailableTools()` 取候选名，而 plugin MCP 工具要到 compose 阶段才由 pluginMcpRuntime 并入 frame、不在该表里，于是被整体冻结成不可见——插件声明的 MCP 工具在真实会话中从模型工具清单里消失。修复为冻结时把 MCP prompt state 的受管工具名并入候选集再过滤。回归由 `packages/cli-app/test/plugin-mcp-session-contract.test.ts` 锁定（原「isolates two sessions」用例在回归下失败）。该文件中 workflow 编排会话的 `rootMcpTools` 断言同步修正：旧断言 `[]` 锁定的是已删除的「MCP server agent_mode 与会话模式不匹配即排除」硬闸行为，零硬闸下 root 会话自己声明的 plugin MCP 工具对 root 模型同样可见。
+
+### Changed
+
+- **heavy 首调确认弹窗文案简化**：提问正文收敛为「允许在本会话中运行「{tool}」吗？」，去掉普通用户读不懂的副作用说明从句（工作区创建文件/计费/不可撤销）。
+- **heavy 首调确认闸接入核心工具的定义级声明**：resolver 的声明来源新增 coding tool registry snapshot（`runtime-tools` 注册对象的 `sideEffect` 字段），核心工具自此可在定义处自我声明——`im_send_attachment` 因此判 heavy（外发不可撤回，此前既不在兜底清单也无声明通道，是无人值守 im-claw 场景的漏网项）。`DEFAULT_HEAVY_TOOL_NAMES` 进一步收窄为「仍未声明的存量插件工具」兜底，新 heavy 工具应在定义处声明而不是加进清单。
+- **mode 提示词支持共享 partial 与 narration 能力位（ADR-0071 外部审计跟进）**：`modes/partials/*.md` 存各模式共享的提示词段（正文以 `{{> name}}` 引用、构建期展开），work / coding 双份漂移的 deliverables/md_intro/observations 段收敛为单一事实源；frontmatter 新增必填 `narration`（staged = 会话流按 progress 阶段折叠 / inline = 工具行内联），渲染层据注册表查表而不再硬编码 mode id。`generate-modes.mjs` 同时新增工具名卫生校验（正文里拼写错误的工具引用当场构建失败），并修正 work.md 里错误的工具名 `AskUserQuestion` → `ask_user_question`。
+- **插件工具的 `side_effect` 声明通道打通**：SDK `registerTool({ side_effect })` 经 renderer → IPC → 贡献注册表透传至 heavy 首调确认闸的 resolver，插件自此可以（也应该）自行声明重副作用；`DEFAULT_HEAVY_TOOL_NAMES` 明确降级为「声明通道接通前就存在的核心工具」兜底清单，刻意豁免项（vetd_history/vetd_restore/bash 等）补全就近理由。
+- **`agent_mode` 从 fail-closed 过滤降级为排序偏好**：工作模式不再排除任何工具、Skill 或插件 MCP 工具。声明了 `agent_mode` 的条目在非匹配模式下**仍然激活、仍然可调用**，只是被稳定地排到清单末尾（同权重内保持原有顺序，不影响 system prompt 前缀缓存）。
+  - **动机**：硬闸让用户在「工作」模式下遇到编程类需求时工具整组消失，模型只能干说不能干活；模式的正确定位是引导而不是权限。
+  - **行为变化**：`resolveActiveToolNames`、system prompt 的 Skill 清单、`invoke_skill` 可调用集合、插件 MCP 工具的 Model Call Frame 都不再按模式排除条目。`matchesAgentMode` 保留但语义改为「是否为本模式主推」，新增 `agentModePreferenceRank` 与 `sortByAgentModePreference`。
+  - **未变**：`scope_use` 与 `requires` 仍是真正的 fail-closed 轴；插件 MCP 工具的可见性开关仍是硬闸。
+
 ### Added
 
+- **工作区性质事实进系统提示词**：会话创建时探测 `cwd`（`.git`、`package.json` 及其依赖、`go.mod` / `Cargo.toml` / `pyproject.toml` 等标记文件），把「当前工作区是一个已有的 X 代码仓库、在其中沿用既有技术栈实现、不要另起独立工程」写入 `core.context` 块（排在项目指令文件之前）。事实比规则更强：模型收到「写一个前台页面」时手上直接有消歧依据，不必先 ls。探测结果在会话内固化、不逐轮重算（否则造成前缀缓存抖动），探测失败静默降级为不注入，绝不阻断会话创建。没有 `AGENTS.md` 的工作区同样会得到该段落。
+- **工具副作用分级与 heavy 工具首调确认闸**：工具元数据新增 `sideEffect: "light" | "heavy"`（宿主侧注册用 `sideEffect`，插件贡献与 manifest 用 `side_effect`，均不进 LLM schema）。被判定为 heavy 的工具（在工作区创建目录/文件树、产生外部计费、发起不可撤销外部动作）在会话内首次调用前先经 `ask_user_question` 向用户确认：确认后本会话免确认，拒绝则该次调用失败且不产生副作用，light 工具不受影响。未声明时按内置兜底清单（`vetd_create`、`vetd_install`、`generate_image`、`edit_image`、`render_remotion_video`、`content_creation_edit`）判定；`content_creation_run`（自带全局确认对话框，再加一层就是双重确认）、`content_creation_assets`（落插件托管存储而非用户工作区）与只读的 `content_creation_inspect` 刻意不在清单内，源码就近记有理由。「会话内已确认」是执行状态而非逻辑合同，按 `docs/agent/turn/08-binding-boundaries.md` 1.2 保持实时读取，不进 Turn binding。
+- **Turn 级外部状态隔离**（ADR-0069）：Prompt、AGENTS、Skill 内容、Personalization、Agent Mode、Tool、
+  Plugin Tool/Provider、Plugin MCP 与 Extension Tool 在 Turn admission 捕获不可变版本；MCP 先发布目录再
+  原子捕获，普通热更新只影响下一 Turn。Session 配置新增不可变 revision snapshot，模型绑定与 Runtime
+  Snapshot 来自同一次 acquisition。
 - **`@vetta/coding-agent/bootstrap` 新增 `codingAgentSessionShardPath(cwd)`**：返回某个工作目录对应的全局会话分片目录（`<agentDir>/sessions/--<编码后的 cwd>--`），纯路径计算、不建目录。供只需要知道落点的宿主（会话目录发现、清理、诊断）使用，避免枚举全部项目时用 `resolveCodingAgentSessionDir` 顺手撒一堆空目录。后者改为复用它，行为不变。
 - **Vetta native Tool 扩展与 Pi host-neutral ACL**：Extension Tool 新增输入 normalize/custom validator 和 active-tool-only 结构化 Prompt contribution，进程级 Tool refresh 复用 generation-safe Contribution Catalog；新增显式 `@vetta/coding-agent/extensions/pi-compat` 入口，以隔离的 `typebox@1.3.7` facade 兼容 Pi current/legacy namespace 的顺序 Tool、`prepareArguments` 与 prompt metadata。Pi TUI renderer/shortcut 明确剥离，parallel Tool、未落地事实事件和未具备 owner/unregister 的 Provider fail closed（ADR-0063）。
 - **Desktop Plugin 复用原生 Hook Runtime**：`@vetta/coding-agent/hooks` 补齐 callback adapter 所需的事件、结果聚合与运行摘要公共类型；Desktop Plugin 通过既有 `additionalHookAdapterFactories` 接入每 Session 唯一 `EcosystemHookRuntime`。移除平行的 Plugin Hook Runtime 和工具拦截阶段，Coding Extension 工具事件与既有顺序不变（ADR-0064）。
@@ -55,6 +98,9 @@
 
 ### Changed
 
+- **系统提示词不再复述工具清单**：删除 `core.tools` 块渲染的 `- name: description` 列表——它与 `params.tools` 中每个 tool 的 `description` 是同一份字符串，模型读两遍。工具集仍决定 `core.guidelines` 的条件分支与 `core.skills` 的启用条件，行为不变；`SystemPromptBlockType` 保留 `"tools"` 成员供插件贡献使用。
+- **系统提示词页脚只到天粒度**：`Current date and time: <含时分秒与时区>` 改为 `Current date: <星期, 年月日>`。原先精确到秒会让整段 system 每分钟自动失效、连带作废其后全部消息前缀缓存；需要精确时间的场景由 `current_time` 工具提供（相关 guideline 已强制优先使用它）。
+- **模型调用 Frame 声明系统提示词缓存断点**：`compileSystemPromptDraft` 新增返回 `stableLength`（`priority < 800` 的启用块 join 后的字符长度，块间分隔符归属其后的块），经 `ModelCallFrame.systemPromptStableLength` 传到 `Context`，供支持缓存断点的 Provider 把稳定段与易变段（mode / personalization / footer）分开。提示词正文本身逐字不变。
 - **移除普通 Todo 的自动续跑提醒**：只有被 scene 等机制锁定的 Todo 列表才会在自然停止时驱动模型继续工作；用户自己让 Agent 建的 Todo 现在只是可见的进度面板，不再在回合结束后追加 `[ephemeral:todo]` 提醒。`buildTodoContinuationMessages` 相应简化为 `(state, now)` 并直接返回消息数组，`TodoContinuationResult` 与 nudge signature 去重状态一并删除。
 - **RuntimeHost 重试包装器透传 prompt 回执**（ADR-0060）：`withCodingAgentRuntimeHostRetry` 的 `turnControl.prompt` 不再吞掉返回值；排队/拦截回执（`queued` / `handled`）直接透传且不参与重试与 pending error 结算，避免误清仍在 streaming 的当前回合挂起的错误。
 - **模型上下文韧性与 Session 产物生命周期闭环**：普通 Coding Tool 结果统一经过可注入末端策略，超大结果落为 Session 级产物并保留头尾预览；模型调用投影按 50%/75% 上下文压力截断或清理旧 ToolResult，同时保护最近 3 个真实用户轮次。图片请求增加 16/12 MiB 高低水位，Compaction 增加四级输入降级、瞬时错误分类重试、退化摘要拒绝，并在摘要中恢复 Todo 派生计划和后台任务引用。MCP 独立策略、动态能力、持久化历史和用户可见 Tool 行为不变。

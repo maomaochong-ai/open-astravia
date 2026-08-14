@@ -1,11 +1,13 @@
 import { AIAbortedError } from "../../protocol/index.js";
 import { EmptyProviderStreamError, normalizeProviderError, validateWirePayload } from "../../provider-kit/index.js";
 import {
+	failLanguageModelStream,
 	type LanguageModelAdapter,
 	LanguageModelStream,
 	type ModelCallRequest,
 	type ModelStreamResponse,
 } from "../../runtime/language-model-adapter.js";
+import { createModelCallMetadataFromMessage } from "../../runtime/model-call-result.js";
 import { createGoogleAssistantMessage } from "../google-stream/adapter.js";
 import { GeminiEventReducer } from "../google-stream/events.js";
 import type { GoogleGeminiCliOptions } from "./options.js";
@@ -29,6 +31,13 @@ const EMPTY_STREAM_BASE_DELAY_MS = 500;
 
 export const googleGeminiCliAdapter: LanguageModelAdapter<"google-gemini-cli", GoogleGeminiCliOptions> = {
 	api: "google-gemini-cli",
+	capabilities: {
+		streaming: true,
+		tools: true,
+		structuredOutput: true,
+		reasoning: true,
+		parallelToolCalls: true,
+	},
 	async stream(request) {
 		return createGoogleGeminiCliModelStream(request);
 	},
@@ -39,7 +48,8 @@ function createGoogleGeminiCliModelStream(
 ): ModelStreamResponse {
 	const stream = new LanguageModelStream();
 	void produceGoogleGeminiCliStream(request, stream);
-	return { events: stream, result: stream.result() };
+	const result = stream.result();
+	return { events: stream, result, metadata: result.then(createModelCallMetadataFromMessage, () => ({})) };
 }
 
 async function produceGoogleGeminiCliStream(
@@ -50,7 +60,7 @@ async function produceGoogleGeminiCliStream(
 	let output = createGoogleAssistantMessage(model);
 	try {
 		if (options?.signal?.aborted) throw new AIAbortedError();
-		const { accessToken, projectId } = parseGoogleCloudCodeCredentials(options?.apiKey);
+		const { accessToken, projectId } = parseGoogleCloudCodeCredentials(model, options?.apiKey);
 		const body = buildRequest(model, context, projectId, options, model.provider === "google-antigravity");
 		options?.onPayload?.(body);
 		const headers = buildGoogleCloudCodeHeaders(model, accessToken, options);
@@ -107,10 +117,18 @@ async function produceGoogleGeminiCliStream(
 		}
 		stream.push({ type: "done", reason: output.stopReason, message: output });
 	} catch (error) {
-		stream.fail(
+		failLanguageModelStream(
+			stream,
+			model,
 			options?.signal?.aborted
 				? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: error })
 				: normalizeProviderError(error, model),
+			options?.signal?.aborted ? "aborted" : "error",
+			{
+				...output,
+				stopReason: options?.signal?.aborted ? "aborted" : "error",
+				errorMessage: error instanceof Error ? error.message : String(error),
+			},
 		);
 	}
 }

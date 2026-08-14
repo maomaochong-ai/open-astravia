@@ -17,6 +17,7 @@ import {
 const pluginLog = getAppLogger("plugin");
 const handlerChannels = [
 	PLUGIN_CONTRIBUTION_CHANNELS.BEGIN_LOAD,
+	PLUGIN_CONTRIBUTION_CHANNELS.COMMIT_LOAD,
 	PLUGIN_CONTRIBUTION_CHANNELS.TOOL_REGISTER,
 	PLUGIN_CONTRIBUTION_CHANNELS.TOOL_UNREGISTER,
 	PLUGIN_CONTRIBUTION_CHANNELS.HOOK_REGISTER,
@@ -36,6 +37,18 @@ const handlerChannels = [
 ] as const;
 
 export function registerPluginContributionIpc(pluginActionService: PluginActionService): () => void {
+	const stopHookReleaseNotifications = pluginAgentContributionService.onHookHandlerReleased((handler) => {
+		for (const contents of webContents.getAllWebContents()) {
+			if (!contents.isDestroyed()) {
+				contents.send(PLUGIN_CONTRIBUTION_CHANNELS.HANDLER_RELEASE, { kind: "hook", ...handler });
+			}
+		}
+	});
+	const stopAgentHandlerReleaseNotifications = pluginAgentContributionService.onAgentHandlerReleased((handler) => {
+		for (const contents of webContents.getAllWebContents()) {
+			if (!contents.isDestroyed()) contents.send(PLUGIN_CONTRIBUTION_CHANNELS.HANDLER_RELEASE, handler);
+		}
+	});
 	ipcMain.handle(PLUGIN_CONTRIBUTION_CHANNELS.BEGIN_LOAD, (_event, pluginId: unknown, activationId: unknown) => {
 		const normalizedPluginId = asPluginId(pluginId);
 		const normalizedActivationId = asPluginId(activationId);
@@ -45,6 +58,13 @@ export function registerPluginContributionIpc(pluginActionService: PluginActionS
 		});
 		pluginAgentContributionService.beginLoad(normalizedPluginId, normalizedActivationId);
 		pluginActionService.beginLoad(normalizedPluginId, normalizedActivationId);
+		refreshAgentPlugins();
+	});
+	ipcMain.handle(PLUGIN_CONTRIBUTION_CHANNELS.COMMIT_LOAD, (_event, pluginId: unknown, activationId: unknown) => {
+		const normalizedPluginId = asPluginId(pluginId);
+		const normalizedActivationId = asPluginId(activationId);
+		pluginActionService.commit(normalizedPluginId, normalizedActivationId);
+		pluginAgentContributionService.commitLoad(normalizedPluginId, normalizedActivationId);
 		refreshAgentPlugins();
 	});
 	ipcMain.handle(
@@ -185,6 +205,8 @@ export function registerPluginContributionIpc(pluginActionService: PluginActionS
 	});
 
 	return () => {
+		stopHookReleaseNotifications();
+		stopAgentHandlerReleaseNotifications();
 		for (const channel of handlerChannels) ipcMain.removeHandler(channel);
 		pluginActionService.dispose();
 	};

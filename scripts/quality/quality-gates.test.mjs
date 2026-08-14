@@ -122,21 +122,60 @@ describe("quick check selection", () => {
 
 describe("affected package selection", () => {
 	it("includes transitive testable dependents", () => {
-		expect(expandTestablePackages(["ai"])).toEqual(["ai", "agent", "coding-agent"]);
-		expect(expandTestablePackages(["runtime-mcp"])).toEqual(["runtime-mcp", "coding-agent"]);
-		expect(expandTestablePackages(["ecosystem-adapter"])).toEqual(["coding-agent", "ecosystem-adapter"]);
+		expect(expandTestablePackages(["ai"])).toEqual([
+			"ai",
+			"agent",
+			"runtime-core",
+			"runtime-mcp",
+			"coding-agent",
+			"desktop-app",
+		]);
+		expect(expandTestablePackages(["runtime-mcp"])).toEqual(["runtime-mcp", "coding-agent", "desktop-app"]);
+		expect(expandTestablePackages(["ecosystem-adapter"])).toEqual([
+			"coding-agent",
+			"ecosystem-adapter",
+			"desktop-app",
+		]);
+	});
+
+	it("runs Runtime and Desktop tests when those packages change", () => {
+		expect(createChangedTestPlan(["packages/runtime-core/src/index.ts"]).toTest).toEqual([
+			"runtime-core",
+			"runtime-mcp",
+			"coding-agent",
+			"desktop-app",
+		]);
+		expect(createChangedTestPlan(["packages/desktop-app/src/main.ts"]).toTest).toEqual(["desktop-app"]);
 	});
 
 	it("runs every core test package for global quality inputs", () => {
 		const plan = createChangedTestPlan(["bun.lock"]);
 		expect(plan.globalTriggers).toEqual(["bun.lock"]);
-		expect(plan.toTest).toEqual(["ai", "agent", "runtime-mcp", "coding-agent", "ecosystem-adapter", "plugin-cli"]);
+		expect(plan.toTest).toEqual([
+			"ai",
+			"agent",
+			"runtime-core",
+			"runtime-mcp",
+			"coding-agent",
+			"ecosystem-adapter",
+			"desktop-app",
+			"plugin-cli",
+		]);
 	});
 
 	it("runs quality tests when their implementation changes", () => {
 		const plan = createChangedTestPlan(["scripts/quality/test-changed.mjs"]);
 		expect(plan.runQuality).toBe(true);
-		expect(plan.toTest).toEqual(["ai", "agent", "runtime-mcp", "coding-agent", "ecosystem-adapter", "plugin-cli"]);
+		expect(plan.toTest).toEqual([
+			"ai",
+			"agent",
+			"runtime-core",
+			"runtime-mcp",
+			"coding-agent",
+			"ecosystem-adapter",
+			"desktop-app",
+			"plugin-cli",
+		]);
 	});
 
 	it("accepts both base argument forms and rejects unknown arguments", () => {

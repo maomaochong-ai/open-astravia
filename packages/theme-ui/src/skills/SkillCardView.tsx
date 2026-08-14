@@ -15,6 +15,7 @@ export interface SkillCardSkillView {
 	readonly enabled: boolean;
 	readonly isCustom?: boolean;
 	readonly isAgent?: boolean;
+	readonly isReadonly?: boolean;
 	readonly needsUpdate?: boolean;
 	readonly localVersion?: string | null;
 	readonly downloadCount: number;

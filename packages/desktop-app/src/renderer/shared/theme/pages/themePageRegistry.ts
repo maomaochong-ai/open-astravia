@@ -1,11 +1,11 @@
+import { THEME_HOSTED_ROUTE_PATH } from "@shared/hosted-routes/hosted-route-descriptors";
+import { isValidHostedRouteSegment } from "@vetta/capability-sdk";
 import type { ThemeModule, ThemePageDefinition, ThemePageLayout } from "@vetta/theme-sdk";
 
-export const THEME_PAGE_ROUTE_PATH = "/theme/$themeId/$pageId";
-
-const THEME_PAGE_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*$/i;
+export const THEME_PAGE_ROUTE_PATH = THEME_HOSTED_ROUTE_PATH;
 
 export function isValidThemePageId(id: string): boolean {
-	return THEME_PAGE_ID_PATTERN.test(id);
+	return isValidHostedRouteSegment(id);
 }
 
 export function getThemePageLayout(page: ThemePageDefinition): ThemePageLayout {

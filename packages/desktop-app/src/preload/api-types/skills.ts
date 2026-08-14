@@ -37,7 +37,8 @@ export interface InstalledCustomSkill {
 	installedAt: string;
 	source: "custom";
 	enabled: boolean;
-	type: "skill";
+	/** 由 SKILL.md 的 `metadata.type` 决定；缺省按 skill。 */
+	type: "skill" | "scene";
 	alias?: string;
 	description: string;
 }
@@ -52,7 +53,10 @@ export interface SkillMarketInstallResult {
 }
 
 export interface DesktopSkillsApi {
-	/** @param cwd 当前会话/项目 cwd，用于发现项目级 `<cwd>/.agents/skills` 与 `<cwd>/.vetta/skills`；省略则仅列全局来源。 */
+	/**
+	 * 列出可调用资源；未登记清单、直接放入用户 Vetta 配置目录下 `scene` 的合法场景也会以 `source="scene"` 返回。
+	 * @param cwd 当前会话/项目 cwd，用于发现项目级 `<cwd>/.agents/skills` 与 `<cwd>/.vetta/skills`；省略则仅列全局来源。
+	 */
 	list(cwd?: string): Promise<SkillInfo[]>;
 	installFromMarket(
 		name: string,
@@ -66,7 +70,8 @@ export interface DesktopSkillsApi {
 	 * 供 App Action 与官方插件使用。
 	 */
 	installFromMarketSlug(type: "skill" | "scene", slug: string): Promise<SkillMarketInstallResult>;
-	importCustom(archiveBuffer: ArrayBuffer): Promise<{ name: string }>;
+	/** 安装类型由包内 SKILL.md 的 `metadata.type` 决定（scene 装进 `~/.vetta/scene/`）。 */
+	importCustom(archiveBuffer: ArrayBuffer): Promise<{ name: string; type: "skill" | "scene" }>;
 	uninstall(name: string, type: "skill" | "scene"): Promise<void>;
 	toggle(name: string): Promise<void>;
 	getMarketManifest(): Promise<Record<string, InstalledSkill>>;

@@ -43,7 +43,13 @@ const TEST_MODELS: readonly ContentModelDescriptor[] = [
 		displayName: "Image",
 		outputKind: "image",
 		aspectRatios: ["1:1"],
-		modes: [{ id: "text-to-image", inputs: [] }],
+		modes: [
+			{ id: "text-to-image", inputs: [] },
+			{
+				id: "image-to-image",
+				inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 1 }],
+			},
+		],
 	},
 	{
 		providerId: "test",
@@ -70,6 +76,18 @@ const TEST_MODELS: readonly ContentModelDescriptor[] = [
 ];
 
 describe("ContentCreationAgentService", () => {
+	it("records one undoable history frame for an atomic Agent edit", async () => {
+		const { agent, workspace } = createAgentHarness();
+		await agent.edit("C:/project", [
+			{ type: "add_node", id: "prompt", kind: "prompt", prompt: "Campaign concept" },
+			{ type: "add_node", id: "output", kind: "output" },
+			{ type: "connect_nodes", source: "prompt", target: "output", targetInput: "contentSources" },
+		]);
+
+		expect(workspace.getHistoryView("C:/project").undoAction).toEqual({ kind: "agent.edit", count: 3 });
+		expect((await workspace.undo("C:/project")).graph.nodes).toHaveLength(0);
+	});
+
 	it("rejects weak Agent-authored video prompts before committing the edit", async () => {
 		const { agent } = createAgentHarness();
 
@@ -138,9 +156,14 @@ describe("ContentCreationAgentService", () => {
 		]);
 
 		expect(project.graph.edges).toEqual(expect.arrayContaining([
+			expect.objectContaining({ source: "first", target: "last", role: "referenceImages" }),
 			expect.objectContaining({ source: "first", target: "video", role: "firstFrame" }),
 			expect.objectContaining({ source: "last", target: "video", role: "lastFrame" }),
 		]));
+		expect(project.graph.nodes.find((node) => node.id === "first")?.data.modeId).toBeUndefined();
+		expect(project.graph.nodes.find((node) => node.id === "last")?.data.modeId).toBe("image-to-image");
+		const run = await agent.prepareRun("C:/project", ["video"], project.revision);
+		expect(run.nodeIds).toEqual(["first", "last", "video"]);
 		expect((await agent.inspect("C:/project")).videoPlans).toContainEqual(expect.objectContaining({
 			nodeId: "video",
 			strategy: "first-last-frame",

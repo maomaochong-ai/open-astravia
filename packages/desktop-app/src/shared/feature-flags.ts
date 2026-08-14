@@ -11,3 +11,8 @@ export const APPEARANCE_UI_THEME_ENV = "VETTA_SHOW_UI_THEME";
 export function isAppearanceUiThemeEnabled(): boolean {
 	return process.env.VETTA_SHOW_UI_THEME === "true";
 }
+
+/** Windows 本地语音输入：构建期开关，发布后不能由运行环境重新开启。 */
+export function isSpeechInputBuildEnabled(): boolean {
+	return process.env.VETTA_SPEECH_INPUT_ENABLED === "true";
+}

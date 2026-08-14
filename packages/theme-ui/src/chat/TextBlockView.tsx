@@ -29,17 +29,18 @@ interface HastRoot {
 
 /** 文件 / 链接 badge 的公共样式：半透明主题色底 + 主题色描边与文字。 */
 const LINK_BADGE_CLASS =
-	"inline-flex max-w-full items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-1.5 py-px align-middle text-[14px] font-medium text-primary no-underline transition-colors hover:bg-primary/20";
+	"inline-flex max-w-full items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-1.5 py-px align-middle text-[13px] font-medium text-primary no-underline transition-colors hover:bg-primary/20";
 
 const remarkPlugins = [remarkGfm];
 
 /**
- * 用户消息里的行内 token（skill 引用 / 文件 / 图片）。
+ * 用户消息里的行内 token（skill / scene 引用、文件、图片）。
  * 语法归宿主所有——theme-ui 只负责渲染，解析函数由 inlineTokens.parse 注入。
  */
 export type InlineTokenPiece =
 	| { kind: "text"; text: string }
 	| { kind: "skill"; name: string }
+	| { kind: "scene"; name: string }
 	| { kind: "connector"; name: string }
 	| { kind: "file"; path: string; isDirectory?: boolean }
 	| { kind: "image"; path: string };
@@ -58,6 +59,8 @@ export interface InlineTokenSupport {
 	 * 否则气泡里的胶囊与输入框里刚插入的那枚对不上。查不到时回退成 slug + 默认图。
 	 */
 	getSkill?: (name: string) => { label: string; icon?: string } | undefined;
+	/** scene 与 skill 共用视觉语言，但使用场景图标和独立元数据命名空间。 */
+	getScene?: (name: string) => { label: string; icon?: string } | undefined;
 }
 
 const INLINE_TOKEN_TAG = "vetta-inline-token";
@@ -67,7 +70,7 @@ const INLINE_TOKEN_TAG = "vetta-inline-token";
  * 用 inline-flex 会让基线落在空的图标 span 上，徽标相对正文被抬高。
  */
 const INLINE_TOKEN_CLASS =
-	"mx-px inline-block max-w-full whitespace-pre rounded-md border border-primary/25 bg-primary/10 px-1.5 align-baseline text-[14px] font-medium leading-[1.6] text-primary";
+	"mx-px inline-block max-w-full whitespace-pre rounded-md border border-primary/25 bg-primary/10 px-1.5 align-baseline text-[13px] font-medium leading-[1.6] text-primary";
 const INLINE_TOKEN_ICON_CLASS = "mr-1 inline-block h-3 w-3 align-[-0.15em]";
 /** 自带渲染逻辑的图标（skill）需要一个定尺寸容器：图片图标按 h-full/w-full 铺满它。 */
 const INLINE_TOKEN_ICON_BOX_CLASS =
@@ -96,7 +99,9 @@ function rehypeInlineTokens(parse: (text: string) => InlineTokenPiece[]) {
 							properties: {
 								"data-token-kind": piece.kind,
 								"data-token-value":
-									piece.kind === "skill" || piece.kind === "connector" ? piece.name : piece.path,
+									piece.kind === "skill" || piece.kind === "scene" || piece.kind === "connector"
+										? piece.name
+										: piece.path,
 								"data-token-directory": piece.kind === "file" && piece.isDirectory ? "true" : "false",
 							},
 							children: [],
@@ -390,7 +395,7 @@ function CodeBlockShell({
 						{lang}
 					</div>
 				)}
-				<SyntaxHighlightedCode code={code} lang={lang} theme={theme} fontSizeClass="text-[14px]" />
+				<SyntaxHighlightedCode code={code} lang={lang} theme={theme} fontSizeClass="text-[13px]" />
 			</div>
 		</CodeBlockCopyButtonView>
 	);
@@ -430,23 +435,23 @@ export const TextBlockView = memo(function TextBlockView({
 	const components = useMemo<Components>(
 		() => ({
 			h1: ({ children }) => (
-				<h1 className="mb-3 mt-4 text-[22px] font-bold leading-tight text-foreground">{children}</h1>
+				<h1 className="mb-3 mt-4 text-[20px] font-bold leading-tight text-foreground">{children}</h1>
 			),
 			h2: ({ children }) => (
-				<h2 className="mb-2 mt-3.5 text-[19px] font-bold leading-tight text-foreground">{children}</h2>
+				<h2 className="mb-2 mt-3.5 text-[17px] font-bold leading-tight text-foreground">{children}</h2>
 			),
 			h3: ({ children }) => (
-				<h3 className="mb-2 mt-3 text-[17px] font-semibold leading-tight text-foreground">{children}</h3>
+				<h3 className="mb-2 mt-3 text-[15px] font-semibold leading-tight text-foreground">{children}</h3>
 			),
 			h4: ({ children }) => (
-				<h4 className="mb-1.5 mt-2.5 text-[16px] font-semibold text-foreground">{children}</h4>
+				<h4 className="mb-1.5 mt-2.5 text-[14px] font-semibold text-foreground">{children}</h4>
 			),
-			p: ({ children }) => <p className="my-1.5 text-[16px] leading-[1.6] text-foreground">{children}</p>,
+			p: ({ children }) => <p className="my-1.5 text-[14px] leading-[1.6] text-foreground">{children}</p>,
 			ul: ({ children }) => (
-				<ul className="md-bullet-list my-1.5 text-[16px] leading-[1.6] text-foreground">{children}</ul>
+				<ul className="md-bullet-list my-1.5 text-[14px] leading-[1.6] text-foreground">{children}</ul>
 			),
 			ol: ({ children }) => (
-				<ol className="my-1.5 ml-4 list-decimal space-y-0.5 text-[16px] leading-[1.6] text-foreground marker:text-primary">
+				<ol className="my-1.5 ml-4 list-decimal space-y-0.5 text-[14px] leading-[1.6] text-foreground marker:text-primary">
 					{children}
 				</ol>
 			),
@@ -461,17 +466,17 @@ export const TextBlockView = memo(function TextBlockView({
 						<CodeBlockShell lang={lang} code={code} theme={theme} labels={labelsRef.current} />
 					);
 				}
-				return <code className="rounded bg-muted px-1 py-0.5 text-[14px] text-foreground">{children}</code>;
+				return <code className="rounded bg-muted px-1 py-0.5 text-[13px] text-foreground">{children}</code>;
 			},
 			pre: ({ children }) => <>{children}</>,
 			blockquote: ({ children }) => (
-				<blockquote className="my-2 border-l-2 border-primary/10 pl-3 text-[16px] italic text-muted-foreground">
+				<blockquote className="my-2 border-l-2 border-primary/10 pl-3 text-[14px] italic text-muted-foreground">
 					{children}
 				</blockquote>
 			),
 			table: ({ children }) => (
 				<div className="my-2 overflow-x-auto rounded-lg border border-border">
-					<table className="w-full text-[14px]">{children}</table>
+					<table className="w-full text-[13px]">{children}</table>
 				</div>
 			),
 			thead: ({ children }) => <thead className="border-b border-border bg-muted">{children}</thead>,
@@ -541,15 +546,18 @@ export const TextBlockView = memo(function TextBlockView({
 						</span>
 					);
 				}
-				if (kind === "skill") {
-					const skill = inlineTokensRef.current?.getSkill?.(value);
+				if (kind === "skill" || kind === "scene") {
+					const ability =
+						kind === "scene"
+							? inlineTokensRef.current?.getScene?.(value)
+							: inlineTokensRef.current?.getSkill?.(value);
 					return (
 						<span className={INLINE_TOKEN_CLASS} title={value}>
 							{/* 图标走能力广场那套「图片 / Solar / 默认图」三态，与输入框胶囊同源。 */}
 							<span className={INLINE_TOKEN_ICON_BOX_CLASS}>
-								<SkillTypeIcon type="skill" icon={skill?.icon} className="h-3 w-3" />
+								<SkillTypeIcon type={kind} icon={ability?.icon} className="h-3 w-3" />
 							</span>
-							{skill?.label ?? value}
+							{ability?.label ?? value}
 						</span>
 					);
 				}

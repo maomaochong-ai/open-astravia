@@ -5,7 +5,7 @@ import { defineCapabilityInputSchema, defineCapabilityOutputSchema } from "../sc
 import { CAPABILITY_JSON_VALUE_TYPE, type CapabilityJsonValue } from "./json.js";
 
 const networkRequestInputType = Type.Object({
-	pluginId: Type.String({ minLength: 1 }),
+	namespace: Type.String({ minLength: 1 }),
 	request: CAPABILITY_JSON_VALUE_TYPE,
 });
 
@@ -19,7 +19,7 @@ export const FOUNDATION_NETWORK_CAPABILITIES = {
 		id: "cap.foundation.vetta.network.request",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.FOUNDATION,
-		version: 1,
+		version: 2,
 		input: networkRequestInputSchema,
 		output: networkRequestOutputSchema,
 	}),

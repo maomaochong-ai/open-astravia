@@ -28,7 +28,10 @@ describe("coding tools dynamic activation", () => {
 		});
 		const signal = new AbortController().signal;
 		const feature = await definition.prepare({ signal });
-		const contribution = await feature.contribute({ profileId: "coding", signal });
+		const contribution = await feature.contribute({
+			profileId: "coding",
+			signal,
+		});
 		const provider = contribution.modelCallProviders?.[0];
 		if (!provider) throw new Error("Expected coding tools model-call provider");
 
@@ -53,7 +56,10 @@ describe("coding tools dynamic activation", () => {
 	it("applies call-level hard isolation after explicit activation", async () => {
 		const knowledgeTool = {
 			...createCurrentTimeToolRegistration(),
-			tool: { ...createCurrentTimeToolRegistration().tool, name: "knowledge_only" },
+			tool: {
+				...createCurrentTimeToolRegistration().tool,
+				name: "knowledge_only",
+			},
 			category: "kb-read" as const,
 		};
 		const registry = new InMemoryCodingToolRegistry([knowledgeTool]);
@@ -66,7 +72,10 @@ describe("coding tools dynamic activation", () => {
 		});
 		const signal = new AbortController().signal;
 		const feature = await definition.prepare({ signal });
-		const contribution = await feature.contribute({ profileId: "coding", signal });
+		const contribution = await feature.contribute({
+			profileId: "coding",
+			signal,
+		});
 		const provider = contribution.modelCallProviders?.[0];
 		if (!provider) throw new Error("Expected coding tools model-call provider");
 
@@ -88,35 +97,66 @@ describe("coding tools dynamic activation", () => {
 		}
 	});
 
-	it("filters mode-specific tools at each model-call boundary", async () => {
+	it("freezes activation capabilities and registration filters for an admitted Turn", async () => {
 		const regular = createCurrentTimeToolRegistration();
 		const workOnly = {
 			...regular,
 			tool: { ...regular.tool, name: "work_only" },
-			agentModes: ["work"] as const,
 		};
+		const capabilities = new Set(["enabled"]);
+		let filterEnabled = true;
 		const registry = new InMemoryCodingToolRegistry([regular, workOnly]);
-		let agentMode = "work";
 		const definition = createCodingToolsFeature({
 			catalog: registry,
-			resolveActivation: () => ({ mode: "scope", scope: "cli", agentMode }),
+			resolveActivation: () => ({
+				mode: "scope",
+				scope: "cli",
+				capabilities,
+			}),
+			filterRegistration: ({ tool }) => tool.name !== "work_only" || filterEnabled,
 		});
 		const signal = new AbortController().signal;
 		const feature = await definition.prepare({ signal });
-		const contribution = await feature.contribute({ profileId: "coding", signal });
+		const contribution = await feature.contribute({
+			profileId: "coding",
+			signal,
+		});
 		const provider = contribution.modelCallProviders?.[0];
-		if (!provider) throw new Error("Expected coding tools model-call provider");
+		if (!provider?.bindForTurn) throw new Error("Expected Turn-bindable coding tools provider");
 
+		const firstTurn = await provider.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal,
+		});
 		try {
-			expect((await provider.contribute(modelCallContext(signal))).tools?.map(({ name }) => name)).toEqual([
+			expect((await firstTurn.contribute(modelCallContext(signal))).tools?.map(({ name }) => name)).toEqual([
 				"current_time",
 				"work_only",
 			]);
-			agentMode = "coding";
-			expect((await provider.contribute(modelCallContext(signal))).tools?.map(({ name }) => name)).toEqual([
+			filterEnabled = false;
+			capabilities.clear();
+			expect((await firstTurn.contribute(modelCallContext(signal))).tools?.map(({ name }) => name)).toEqual([
+				"current_time",
+				"work_only",
+			]);
+		} finally {
+			await firstTurn.releaseTurnBinding?.();
+		}
+
+		const secondTurn = await provider.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-2",
+			reason: "turn",
+			signal,
+		});
+		try {
+			expect((await secondTurn.contribute(modelCallContext(signal))).tools?.map(({ name }) => name)).toEqual([
 				"current_time",
 			]);
 		} finally {
+			await secondTurn.releaseTurnBinding?.();
 			await feature.dispose();
 		}
 	});

@@ -25,18 +25,18 @@ export function buildReminder(filePath, lineCount) {
 
 	if (lineCount > WARNING_THRESHOLD) {
 		return [
-			`[文件规模警示] \`${filePath}\` 当前 ${lineCount} 行，已超过 ${WARNING_THRESHOLD} 行。`,
-			"请对本次改动保持警惕，确认职责边界清晰，代码仍然易于维护、可扩展且易读。",
-			"如果文件在本次任务前就已达到这一规模，且拆分或整理与当前任务无关，不要求中断当前任务处理；完成任务后可在你判断确有必要且符合项目规范时再处理。",
-			"此提示不阻断当前工具调用。",
+			`[File size warning] \`${filePath}\` now has ${lineCount} lines, exceeding the ${WARNING_THRESHOLD}-line threshold.`,
+			"Treat changes to this file with extra caution. Confirm that responsibilities and module boundaries remain clear and that the code remains maintainable, extensible, and readable.",
+			"If the file was already this large before the current task and the size was not caused by your changes, you do not need to interrupt the current task for an unrelated refactor. After completing the task, you may address it if you consider that necessary and can do so in accordance with the project standards; no cleanup is mandatory.",
+			"This warning is advisory and does not block the tool call.",
 		].join(" ");
 	}
 
 	return [
-		`[文件规模提示] \`${filePath}\` 当前 ${lineCount} 行，已超过 ${NOTICE_THRESHOLD} 行。`,
-		"请确认本次改动没有继续加重职责混合，并保持代码易于维护、可扩展且易读。",
-		"如果这一规模并非由本次改动造成、文件此前就已较长，可以忽略此提示；不要求为与当前任务无关的历史问题额外重构。",
-		"此提示不阻断当前工具调用。",
+		`[File size notice] \`${filePath}\` now has ${lineCount} lines, exceeding the ${NOTICE_THRESHOLD}-line threshold.`,
+		"Check that this change does not further mix responsibilities and that the code remains maintainable, extensible, and readable.",
+		"If the file was already this large before the current task and the size was not caused by your changes, you may ignore this notice; no unrelated historical refactor is required.",
+		"This notice is advisory and does not block the tool call.",
 	].join(" ");
 }
 

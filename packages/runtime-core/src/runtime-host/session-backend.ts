@@ -3,6 +3,7 @@ import type {
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
+	AgentPluginTurnHandlerLeaseProvider,
 	RuntimeQuestionItem,
 	RuntimeUserQuestionResult,
 	SessionConfig,
@@ -51,6 +52,7 @@ export interface RuntimeSessionCreateRequest {
 	readonly invokePluginTool?: AgentPluginToolInvoker;
 	readonly invokePluginContinuation?: AgentPluginContinuationInvoker;
 	readonly invokePluginSystemPrompt?: AgentPluginSystemPromptInvoker;
+	readonly pluginTurnHandlerLeaseProvider?: AgentPluginTurnHandlerLeaseProvider;
 	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
 	readonly serverUrl?: string;
 	readonly sandboxHostPath?: string;

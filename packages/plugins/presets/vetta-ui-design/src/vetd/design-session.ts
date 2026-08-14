@@ -1,5 +1,6 @@
 import type { Disposable, PluginContext } from "@vetta-org/plugin-sdk";
 import { isFrameFile } from "../../engine/src/routes";
+import { bootstrapHistory } from "../history/history-bootstrap";
 import { type ParsedFrameMeta, parseFrameMeta, sameMeta, sanitizeFrameTitle, withFrameTitle } from "./frame-meta";
 import { FALLBACK_FRAME_SIZE, resolveFrameSizes } from "./frame-size";
 import {
@@ -61,7 +62,7 @@ export class DesignSession {
 		for (const listener of this.listeners) listener(change);
 	}
 
-	async open(): Promise<void> {
+	private async loadManifest(): Promise<void> {
 		try {
 			const raw = await this.ctx.fs.readFile(this.manifestPath);
 			const parsed = JSON.parse(raw.content) as VetdManifest;
@@ -71,12 +72,34 @@ export class DesignSession {
 					...parsed,
 					canvas: { ...emptyManifest().canvas, ...parsed.canvas },
 				};
+				return;
 			}
 		} catch {
 			// Corrupt/missing manifest: rebuild from the bundle sources (frames re-place).
-			this.manifest = emptyManifest();
 		}
+		this.manifest = emptyManifest();
+	}
+
+	/**
+	 * 整份重载。给「恢复到某个历史版本」用（ADR-0069）：那一步在磁盘上整份换掉了
+	 * 源码和 design.json，而目录监听走的是增量对账，认不出「manifest 自己被换了」
+	 * ——画框位置会停在旧值上。
+	 */
+	async reload(): Promise<void> {
+		if (this.disposed) return;
+		await this.loadManifest();
 		await this.reconcile();
+		this.emit("frames");
+		await this.emitThemeIfChanged();
+	}
+
+	async open(): Promise<void> {
+		await this.loadManifest();
+		await this.reconcile();
+		// 版本历史在这里接上（ADR-0069）。放在 reconcile 之后：基础版本应该包含
+		// 已经收敛的 design.json，而不是打开瞬间的中间态。不等它——历史不可用
+		// 时设计照常打开。
+		void bootstrapHistory(this.ctx, this);
 		this.lastThemeCss = await this.readThemeCss();
 		const schedule = () => this.scheduleReconcile();
 		this.watchHandles.push(this.ctx.fs.watchDirectory(this.dirPath, schedule));

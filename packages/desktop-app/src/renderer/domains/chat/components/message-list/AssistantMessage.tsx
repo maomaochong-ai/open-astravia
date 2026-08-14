@@ -58,7 +58,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 		foldData,
 		isCurrentlyStreaming,
 		isPredicting,
-		isWorkMode,
+		stagedNarration,
 		segments,
 		showDuration,
 		streamingTailIndex,
@@ -68,7 +68,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 	const labels = useMemo(() => {
 		const phrases = t("messageList.streamingPhrases", { returnObjects: true });
 		// Work 折叠条说的是「阶段」，coding 说的是「过程条数」。
-		const foldNamespace = isWorkMode ? "messageList.assistantFoldTip.work" : "messageList.assistantFoldTip";
+		const foldNamespace = stagedNarration ? "messageList.assistantFoldTip.work" : "messageList.assistantFoldTip";
 		return {
 			processing: t("messageList.assistantMessage.processing"),
 			predicting: t("messageList.assistantMessage.predicting"),
@@ -76,16 +76,16 @@ export const AssistantMessage = memo(function AssistantMessage({
 				t("messageList.assistantFoldTip.streaming", { elapsed }),
 			// 被折走的过程里一个阶段都没有（例如只有零散的单次调用）时，不说数量。
 			expandFold: (count: number) =>
-				isWorkMode && count === 0
+				stagedNarration && count === 0
 					? t("messageList.assistantFoldTip.work.expandZero")
 					: t(`${foldNamespace}.expand`, { count }),
 			collapseFold: (count: number) =>
-				isWorkMode && count === 0
+				stagedNarration && count === 0
 					? t("messageList.assistantFoldTip.work.collapseZero")
 					: t(`${foldNamespace}.collapse`, { count }),
 			streamingPhrases: Array.isArray(phrases) ? (phrases as string[]) : [],
 		};
-	}, [t, isWorkMode]);
+	}, [t, stagedNarration]);
 
 	const fold = isCurrentlyStreaming
 		? {
@@ -96,7 +96,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 		: foldData
 			? {
 					kind: "complete" as const,
-					count: isWorkMode ? workFoldCount : foldData.hiddenCount,
+					count: stagedNarration ? workFoldCount : foldData.hiddenCount,
 					expanded,
 					exportPanelId: exportFoldPanelId,
 				}
@@ -136,7 +136,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 							</div>
 						)}
 						{segments.map((segment, index) =>
-							isWorkMode ? (
+							stagedNarration ? (
 								<WorkSegmentRenderer
 									key={workSegmentKey(segment)}
 									segment={segment}

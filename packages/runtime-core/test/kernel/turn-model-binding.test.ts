@@ -32,8 +32,7 @@ describe("Turn model binding", () => {
 		let turnIndex = 0;
 		const pipeline = new TurnPipeline({
 			repository,
-			snapshotProvider: new StaticRuntimeSnapshotProvider(snapshot()),
-			modelBindingProvider: modelRuntime,
+			snapshotProvider: new StaticRuntimeSnapshotProvider(snapshot(), modelRuntime),
 			turnEngine,
 			eventSink: { async publish() {} },
 			clock: { now: () => 1 },
@@ -51,18 +50,48 @@ describe("Turn model binding", () => {
 		await modelRuntime.selectModel("test/alternate", "always");
 		modelRuntime.setThinkingLevel("medium");
 
-		expect(turnEngine.requests[0]?.modelBinding).toEqual({
+		expect(turnEngine.requests[0]?.modelBinding).toMatchObject({
 			model: INITIAL_MODEL,
 			reasoning: undefined,
 		});
+		expect(await turnEngine.requests[0]?.modelBinding?.credential?.resolve()).toBe("test-key");
 		turnEngine.finishFirst();
 		await firstTurn;
 
 		await pipeline.run("session-1", { message: userMessage("second") }, new AbortController().signal);
-		expect(turnEngine.requests[1]?.modelBinding).toEqual({
+		expect(turnEngine.requests[1]?.modelBinding).toMatchObject({
 			model: ALTERNATE_MODEL,
 			reasoning: "medium",
 		});
+		expect(await turnEngine.requests[1]?.modelBinding?.credential?.resolve()).toBe("test-key");
+	});
+
+	it("acquires the snapshot and model binding through one provider contract", async () => {
+		const repository = new InMemoryConversationRepository();
+		const modelRuntime = createModelRuntime();
+		const observed: Array<{ readonly snapshotId: string; readonly modelId: string | undefined }> = [];
+		const pipeline = new TurnPipeline({
+			repository,
+			snapshotProvider: new StaticRuntimeSnapshotProvider(snapshot(), modelRuntime),
+			turnEngine: {
+				async *execute(request) {
+					observed.push({
+						snapshotId: request.snapshot.id,
+						modelId: request.modelBinding?.model.id,
+					});
+					yield { type: "message", message: assistantMessage(request.modelBinding?.model ?? INITIAL_MODEL) };
+					yield { type: "completed", stopReason: "stop" };
+				},
+			},
+			eventSink: { async publish() {} },
+			clock: { now: () => 1 },
+			idGenerator: { next: () => "turn-atomic-binding" },
+		});
+		await pipeline.createSession("session-1");
+
+		await pipeline.run("session-1", { message: userMessage("hello") }, new AbortController().signal);
+
+		expect(observed).toEqual([{ snapshotId: "snapshot-1", modelId: "initial" }]);
 	});
 
 	it("makes AgentCoreTurnEngine use the request binding instead of static model options", async () => {
@@ -87,7 +116,11 @@ describe("Turn model binding", () => {
 			sessionId: "session-1",
 			turnId: "turn-1",
 			snapshot: snapshot(),
-			modelBinding: { model: ALTERNATE_MODEL, reasoning: undefined },
+			modelBinding: {
+				model: ALTERNATE_MODEL,
+				reasoning: undefined,
+				credential: { resolve: () => "binding-key" },
+			},
 			messages: [userMessage("hello")],
 			signal: new AbortController().signal,
 		})) {
@@ -95,7 +128,7 @@ describe("Turn model binding", () => {
 		}
 
 		expect(calls).toEqual([{ model: ALTERNATE_MODEL, reasoning: undefined }]);
-		expect(credentialModels).toEqual([ALTERNATE_MODEL]);
+		expect(credentialModels).toEqual([]);
 		expect(events.at(-1)).toEqual({ type: "completed", stopReason: "stop" });
 	});
 });

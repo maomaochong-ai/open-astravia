@@ -18,7 +18,12 @@ Use `$operate-content-workflow` for all inspection and mutations. This skill sup
 
 Read only the references needed for the task:
 
-- Any video task: read [references/dramaturgy-and-shot-design.md](references/dramaturgy-and-shot-design.md), [references/prompting.md](references/prompting.md), then [references/model-prompt-profiles.md](references/model-prompt-profiles.md)
+- Any video task: read [references/video-strategy-selection.md](references/video-strategy-selection.md), [references/dramaturgy-and-shot-design.md](references/dramaturgy-and-shot-design.md), [references/prompting.md](references/prompting.md), then [references/model-prompt-profiles.md](references/model-prompt-profiles.md)
+- Text-to-video: read [references/text-to-video-method.md](references/text-to-video-method.md)
+- One-still animation or image-to-video: read [references/animate-still-method.md](references/animate-still-method.md)
+- Exact first/last-frame interpolation: read [references/first-last-frame-method.md](references/first-last-frame-method.md), then [references/animatic-keyframes.md](references/animatic-keyframes.md)
+- Multi-reference or all-purpose reference generation: read [references/omni-reference-method.md](references/omni-reference-method.md)
+- Video transformation, edit, motion transfer, or continuation: read [references/transform-video-method.md](references/transform-video-method.md), then [references/video-editing-and-extension.md](references/video-editing-and-extension.md)
 - Ready-to-fill generation structures: [references/production-prompt-skeletons.md](references/production-prompt-skeletons.md)
 - Treatment, script, storyboard, edit plan, or prompt audit: [references/role-modes-and-output-contracts.md](references/role-modes-and-output-contracts.md)
 - Any timestamped sequence, storyboard, multi-shot generation, pacing plan, or animatic: [references/generation-timeline-and-storyboard.md](references/generation-timeline-and-storyboard.md)
@@ -48,12 +53,12 @@ Keep each generator focused on one visually coherent shot unless the inspected m
 
 ## Choose a generation mode
 
-- Use text-to-video for exploration when no exact subject appearance must be preserved.
-- Use image-to-video when composition, identity, product shape, lighting, or art direction already exists.
-- Use first/last-frame behavior only when the inspected mode exposes distinct frame roles.
-- Use reference-to-video or video-to-video only when the inspected input slots accept those assets.
+- Select the method from the authorities the shot must preserve, using `video-strategy-selection.md` before considering model availability.
+- Use the strategy-specific prompt plan kind required by that method, even when `strategy="automatic"`.
+- Use first/last-frame behavior only when the inspected mode exposes distinct frame roles and both static endpoint plans are feasible.
+- Use omni-reference or video transformation only when the inspected input slots accept the required media kinds.
 - Prefer a short low-cost validation shot before a larger set when creative direction is uncertain.
 
-When materializing the plan on the canvas, use `$operate-content-workflow`'s `configure_generation` contract. Pass concrete asset IDs for asset collections, reference upstream image/video generators by future output, and let capability resolution compile those business roles to provider slots. Never express first frame, last frame, visual reference, motion reference, or source video as an unlabelled edge.
+When materializing the plan on the canvas, use `$operate-content-workflow`'s high-level `configure_video_shot` contract. Pass concrete asset IDs for asset collections, reference upstream image/video generators by future output, and let capability resolution compile business roles to provider slots. Use low-level `configure_generation` only to preserve or repair an existing technical role configuration. Never express first frame, last frame, visual reference, motion reference, or source video as an unlabelled edge.
 
 This method is an original Vetta adaptation informed by Generative-Media-Skills (MIT), visual-skills by Serge Shima (CC BY 4.0, https://github.com/smixs/visual-skills), and ViMax (MIT).

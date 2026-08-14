@@ -2,7 +2,7 @@
 
 ADR-0046 引入 Work/Coding 工作模式后，对话页 `MessageList` 的渲染仍然是为开发者设计的：thinking 常驻、每次工具调用一张卡片、连续调用靠「连续就合并」的启发式折叠成一行「已完成 N 个工具调用」。Work 模式面向的是非技术用户，这套渲染既看不懂也没有信息量。
 
-决定在 Work 模式下改用 **agent 自述的阶段组**：新增 display-only 的内置工具 `progress`（`agent_mode: ["work"]`），采用**滑动窗口契约** —— 一次调用中 `summary` 关闭并改写上一阶段、`label` 开启新阶段，最后一个阶段由正文文本隐式关闭。渲染层据此把 block 流切成阶段组，每组折叠成一行 agent 写的中文标题，展开后一行一条（显示工具调用自带的 `description`），再点开才是 coding 的完整工具卡片。Work 模式下 thinking 一律不渲染。消息级折叠（`getAssistantFoldData`）保留：流式期间阶段标题行常驻可见，消息结束后整段过程收起、只留最终总结，折叠条按**阶段数**计数。
+决定在 Work 模式下改用 **agent 自述的阶段组**：新增 display-only 的内置工具 `progress`（`agent_mode: ["work"]`），采用**滑动窗口契约** —— 一次调用中 `summary` 关闭并改写上一阶段、`label` 开启新阶段，最后一个阶段由正文文本隐式关闭。渲染层据此把 block 流切成阶段组，每组折叠成一行 agent 写的中文标题，展开后一行一条（显示工具调用自带的 `description`），再点开才是 coding 的完整工具卡片。Work 模式下 thinking 保留（后修订，原决策是一律不渲染）：与工具行同列收在阶段组内，展开阶段后才可见，标题只报一句「正在思考」、不报行数。消息级折叠（`getAssistantFoldData`）保留：流式期间阶段标题行常驻可见，消息结束后整段过程收起、只留最终总结，折叠条按**阶段数**计数。
 
 ## Considered options
 

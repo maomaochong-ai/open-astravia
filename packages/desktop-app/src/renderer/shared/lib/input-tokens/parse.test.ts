@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseInputSegments } from "./parse";
-import { deriveAttachments, deriveSkillNames, pathTokenText, segmentsToText } from "./serialize";
+import { MultipleSceneReferencesError, prepareInputPrompt } from "./prepare";
+import { deriveAttachments, deriveSceneNames, deriveSkillNames, pathTokenText, segmentsToText } from "./serialize";
 import type { InputSegment } from "./types";
 
 describe("parseInputSegments", () => {
@@ -18,6 +19,12 @@ describe("parseInputSegments", () => {
 	it("同一条消息里可以有多个 skill token", () => {
 		const { segments } = parseInputSegments("@skill:review 检查完就 @skill:upload 上传");
 		expect(deriveSkillNames(segments)).toEqual(["review", "upload"]);
+	});
+
+	it("scene 使用独立命名空间并保留在文本流结构中", () => {
+		expect(segments).toEqual([
+			{ kind: "text", text: " 审查这些材料" },
+		]);
 	});
 
 	it("连接器走 @mcp: 命名空间，与手敲的 @词 区分开", () => {
@@ -94,6 +101,23 @@ describe("segmentsToText", () => {
 		expect(parseInputSegments(roundTripped).segments).toEqual(segments);
 	});
 
+	it("scene token 可以往返序列化", () => {
+		const segments: InputSegment[] = [
+			{ kind: "text", text: " 开始审查" },
+		];
+		const text = segmentsToText(segments);
+		expect(parseInputSegments(text).segments).toEqual(segments);
+	});
+
+	it("scene token 与紧随其后的正文补出边界，正文不会并入场景名称", () => {
+		const text = segmentsToText([
+			{ kind: "text", text: "看到我的东西了吗" },
+		]);
+		expect(parseInputSegments(text).segments).toEqual([
+			{ kind: "text", text: " 看到我的东西了吗" },
+		]);
+	});
+
 	it("紧邻的 token 之间补空格，保证能被回读", () => {
 		const segments: InputSegment[] = [
 			{ kind: "skill", name: "review" },
@@ -120,6 +144,32 @@ describe("segmentsToText", () => {
 		expect(parseInputSegments(text).segments).toEqual([
 			{ kind: "image", path: "C:/Users/foo/.vetta/image-cache/s/a.png" },
 		]);
+	});
+});
+
+describe("prepareInputPrompt", () => {
+	it("发送时移除 scene 展示 token，并返回结构化场景引用", () => {
+		expect(prepareInputPrompt("@scene:review 检查 @skill:legal 这份材料")).toMatchObject({
+			text: "检查 @skill:legal 这份材料",
+			sceneName: "review",
+		});
+	});
+
+	it("没有 scene 时保持原始文本不变", () => {
+		const prepared = prepareInputPrompt("  @skill:review 检查  ");
+		expect(prepared.text).toBe("  @skill:review 检查  ");
+		expect(prepared.sceneName).toBeUndefined();
+	});
+
+	it("兼容旧的 /scene: 前缀", () => {
+		expect(prepareInputPrompt("/scene:review\n检查材料")).toMatchObject({
+			text: "检查材料",
+			sceneName: "review",
+		});
+	});
+
+	it("拒绝在一条消息中选择多个 scene", () => {
+		expect(() => prepareInputPrompt("@scene:first @scene:second 检查")).toThrow(MultipleSceneReferencesError);
 	});
 });
 

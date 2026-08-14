@@ -1,17 +1,37 @@
 import type { ChatCompletionChunk } from "openai/resources/chat/completions.js";
 import { getEnvApiKey } from "../../env-api-keys.js";
 import { calculateCost } from "../../models.js";
-import { AIAbortedError, type Api } from "../../protocol/index.js";
-import { EmptyProviderStreamError, normalizeProviderError, validateWirePayload } from "../../provider-kit/index.js";
 import {
+	AIAbortedError,
+	type Api,
+	createAssistantMessage as createProtocolAssistantMessage,
+} from "../../protocol/index.js";
+import {
+	EmptyProviderStreamError,
+	normalizeProviderError,
+	requireProviderCredential,
+	validateWirePayload,
+} from "../../provider-kit/index.js";
+import {
+	failLanguageModelStream,
 	type LanguageModelAdapter,
 	LanguageModelStream,
 	type ModelCallRequest,
 	type ModelStreamResponse,
 } from "../../runtime/language-model-adapter.js";
-import type { AssistantMessage, Model, StopReason, TextContent, ThinkingContent, ToolCall } from "../../types.js";
+import { createModelCallMetadata, type ModelCallMetadata } from "../../runtime/model-call-result.js";
+import type {
+	AssistantMessage,
+	Model,
+	SimpleStreamOptions,
+	StopReason,
+	TextContent,
+	ThinkingContent,
+	ToolCall,
+} from "../../types.js";
 import { parseStreamingJson } from "../../utils/json-parse.js";
 import { createLinkedAbortSignal } from "../../utils/linked-abort-signal.js";
+import { buildBaseOptions } from "../simple-options.js";
 import { type ThinkingTagSegment, ThinkingTagSplitter } from "../thinking-tag-splitter.js";
 import type { OpenAICompletionsOptions } from "./options.js";
 import { buildOpenAICompletionsParams, createOpenAICompletionsClient } from "./request.js";
@@ -35,6 +55,25 @@ export function createOpenAICompatibleAdapter<TApi extends Api>(
 ): LanguageModelAdapter<TApi, OpenAICompletionsOptions> {
 	return {
 		api,
+		capabilities: {
+			streaming: true,
+			tools: true,
+			structuredOutput: false,
+			parallelToolCalls: true,
+		},
+		async streamSimple(request: ModelCallRequest<TApi, SimpleStreamOptions>) {
+			const { model, context, options } = request;
+			const apiKey = requireProviderCredential(model, options?.apiKey || getEnvApiKey(model.provider));
+			const base = buildBaseOptions(model, options, apiKey);
+			return createOpenAICompletionsResponse({
+				model: mapModel(model),
+				context,
+				options: {
+					...base,
+					reasoningEffort: options?.reasoning,
+				},
+			});
+		},
 		async stream(request) {
 			return createOpenAICompletionsResponse({
 				model: mapModel(request.model),
@@ -49,19 +88,27 @@ function createOpenAICompletionsResponse(
 	request: ModelCallRequest<"openai-completions", OpenAICompletionsOptions>,
 ): ModelStreamResponse {
 	const stream = new LanguageModelStream();
-	void produceOpenAICompletions(request, stream);
-	return { events: stream, result: stream.result() };
+	let resolveMetadata!: (metadata: ModelCallMetadata) => void;
+	const metadata = new Promise<ModelCallMetadata>((resolve) => {
+		resolveMetadata = resolve;
+	});
+	void produceOpenAICompletions(request, stream, resolveMetadata);
+	return { events: stream, result: stream.result(), metadata };
 }
 
 async function produceOpenAICompletions(
 	request: ModelCallRequest<"openai-completions", OpenAICompletionsOptions>,
 	stream: LanguageModelStream,
+	resolveMetadata: (metadata: ModelCallMetadata) => void,
 ): Promise<void> {
 	const { model, context, options } = request;
 	const output = createAssistantMessage(model);
 	const requestAbort = createLinkedAbortSignal(options?.signal);
+	let rawFinishReason: string | undefined;
+	let responseId: string | undefined;
+	let systemFingerprint: string | undefined;
 	try {
-		const apiKey = options?.apiKey || getEnvApiKey(model.provider) || "";
+		const apiKey = requireProviderCredential(model, options?.apiKey || getEnvApiKey(model.provider));
 		const client = createOpenAICompletionsClient(model, context, apiKey, options?.headers, options?.fetch);
 		const params = buildOpenAICompletionsParams(model, context, options);
 		options?.onPayload?.(params);
@@ -113,6 +160,8 @@ async function produceOpenAICompletions(
 		let receivedProviderChunk = false;
 		for await (const chunk of response) {
 			receivedProviderChunk = true;
+			responseId ??= chunk.id;
+			systemFingerprint ??= chunk.system_fingerprint ?? undefined;
 			validateWirePayload(openAIChatCompletionChunkSchema, chunk, {
 				provider: model.provider,
 				payloadType: "OpenAI chat completion chunk",
@@ -120,7 +169,10 @@ async function produceOpenAICompletions(
 			if (chunk.usage) updateUsage(output, model, chunk);
 			const choice = chunk.choices[0];
 			if (!choice) continue;
-			if (choice.finish_reason) output.stopReason = mapStopReason(choice.finish_reason);
+			if (choice.finish_reason) {
+				rawFinishReason = choice.finish_reason;
+				output.stopReason = mapStopReason(choice.finish_reason);
+			}
 			if (!choice.delta) continue;
 
 			if (choice.delta.content) {
@@ -206,37 +258,39 @@ async function produceOpenAICompletions(
 		if (output.stopReason === "aborted" || output.stopReason === "error") {
 			throw new Error("An unknown error occurred");
 		}
+		resolveMetadata(
+			createModelCallMetadata({ unified: output.stopReason, raw: rawFinishReason }, output.usage, {
+				response: responseId ? { responseId } : undefined,
+				providerMetadata: {
+					openai: {
+						...(responseId ? { responseId } : {}),
+						...(systemFingerprint ? { systemFingerprint } : {}),
+					},
+				},
+			}),
+		);
 		stream.push({ type: "done", reason: output.stopReason, message: output });
 	} catch (error) {
 		for (const block of output.content) Reflect.deleteProperty(block, "index");
-		stream.fail(
-			options?.signal?.aborted
-				? new AIAbortedError(undefined, { cause: error })
-				: normalizeProviderError(error, model),
-		);
+		const normalized = options?.signal?.aborted
+			? new AIAbortedError(undefined, { cause: error })
+			: normalizeProviderError(error, model);
+		resolveMetadata({
+			finishReason: { unified: options?.signal?.aborted ? "aborted" : "error" },
+			response: responseId ? { responseId } : undefined,
+		});
+		failLanguageModelStream(stream, model, normalized, options?.signal?.aborted ? "aborted" : "error", {
+			...output,
+			stopReason: options?.signal?.aborted ? "aborted" : "error",
+			errorMessage: normalized instanceof Error ? normalized.message : String(normalized),
+		});
 	} finally {
 		requestAbort.dispose();
 	}
 }
 
 function createAssistantMessage(model: Model<"openai-completions">): AssistantMessage {
-	return {
-		role: "assistant",
-		content: [],
-		api: model.api,
-		provider: model.provider,
-		model: model.id,
-		usage: {
-			input: 0,
-			output: 0,
-			cacheRead: 0,
-			cacheWrite: 0,
-			totalTokens: 0,
-			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-		},
-		stopReason: "stop",
-		timestamp: Date.now(),
-	};
+	return createProtocolAssistantMessage({ api: model.api, provider: model.provider, model: model.id });
 }
 
 function updateUsage(output: AssistantMessage, model: Model<"openai-completions">, chunk: ChatCompletionChunk): void {
@@ -263,11 +317,10 @@ function findReasoningField(delta: CompatibleDelta): "reasoning_content" | "reas
 	return null;
 }
 
-function mapStopReason(reason: ChatCompletionChunk.Choice["finish_reason"]): StopReason {
-	if (reason === null) return "stop";
+// Compatible endpoints emit vendor-specific finish reasons outside the OpenAI enum; an unknown
+// terminal reason must end the turn normally rather than abort it.
+function mapStopReason(reason: string | null | undefined): StopReason {
 	switch (reason) {
-		case "stop":
-			return "stop";
 		case "length":
 			return "length";
 		case "function_call":
@@ -275,9 +328,7 @@ function mapStopReason(reason: ChatCompletionChunk.Choice["finish_reason"]): Sto
 			return "toolUse";
 		case "content_filter":
 			return "error";
-		default: {
-			const exhaustive: never = reason;
-			throw new Error(`Unhandled stop reason: ${exhaustive}`);
-		}
+		default:
+			return "stop";
 	}
 }

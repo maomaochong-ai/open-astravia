@@ -101,11 +101,18 @@ export interface Disposable {
 
 export class CapabilityError extends Error {
 	readonly code: CapabilityErrorCode;
+	readonly details?: Readonly<Record<string, unknown>>;
 
-	constructor(code: CapabilityErrorCode, message: string, options?: ErrorOptions) {
+	constructor(
+		code: CapabilityErrorCode,
+		message: string,
+		options?: ErrorOptions,
+		details?: Readonly<Record<string, unknown>>,
+	) {
 		super(message, options);
 		this.name = "CapabilityError";
 		this.code = code;
+		this.details = details;
 	}
 }
 

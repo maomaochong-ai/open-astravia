@@ -1,6 +1,8 @@
+import { isRetryableRuntimeError } from "../../utils/retryable-error.js";
 import type {
 	CodingAgentTurnExecutor,
 	CodingAgentTurnExecutorOptions,
+	CodingAgentTurnFailure,
 	CodingAgentTurnPromptOptions,
 } from "./contracts.js";
 
@@ -28,9 +30,9 @@ export class CodingAgentSessionTurnExecutor implements CodingAgentTurnExecutor {
 		const result = await this.options.retryController.run(
 			executeInitial,
 			() => this.options.sessionHost.startActiveSessionOperation((session) => session.retry()),
-			readCodingAgentFailedTurnMessage,
+			readCodingAgentTurnFailure,
 		);
-		const failedMessage = readCodingAgentFailedTurnMessage(result);
+		const failedMessage = readCodingAgentTurnFailure(result)?.message;
 		if (failedMessage && promptOptions.throwOnFailure !== false) throw new Error(failedMessage);
 	}
 }
@@ -40,6 +42,10 @@ export function createCodingAgentTurnExecutor(options: CodingAgentTurnExecutorOp
 }
 
 export function readCodingAgentFailedTurnMessage(value: unknown): string | undefined {
+	return readCodingAgentTurnFailure(value)?.message;
+}
+
+export function readCodingAgentTurnFailure(value: unknown): CodingAgentTurnFailure | undefined {
 	if (typeof value !== "object" || value === null) return undefined;
 	const error = Reflect.get(value, "error");
 	if (
@@ -48,13 +54,26 @@ export function readCodingAgentFailedTurnMessage(value: unknown): string | undef
 		error !== null &&
 		typeof Reflect.get(error, "message") === "string"
 	) {
-		return Reflect.get(error, "message");
+		const message = Reflect.get(error, "message") as string;
+		const code = Reflect.get(error, "code");
+		const retryable = Reflect.get(error, "retryable");
+		const origin = Reflect.get(error, "origin");
+		const details = Reflect.get(error, "details");
+		return {
+			code: typeof code === "string" ? code : "TURN_FAILED",
+			message,
+			retryable: typeof retryable === "boolean" ? retryable : isRetryableRuntimeError(message),
+			...(origin === "runtime" || origin === "provider" || origin === "tool" || origin === "mcp" ? { origin } : {}),
+			...(isFailureDetails(details) ? { details } : {}),
+		};
 	}
 	if (Reflect.get(value, "status") !== "completed" || Reflect.get(value, "stopReason") !== "error") {
 		return undefined;
 	}
 	const messages = Reflect.get(value, "messages");
-	if (!Array.isArray(messages)) return "Request failed";
+	if (!Array.isArray(messages)) {
+		return { code: "LEGACY_ASSISTANT_ERROR", message: "Request failed", retryable: false };
+	}
 	let assistant: unknown;
 	for (let index = messages.length - 1; index >= 0; index -= 1) {
 		const candidate: unknown = messages[index];
@@ -68,6 +87,30 @@ export function readCodingAgentFailedTurnMessage(value: unknown): string | undef
 			break;
 		}
 	}
-	const message = assistant ? Reflect.get(assistant, "errorMessage") : undefined;
-	return typeof message === "string" && message.length > 0 ? message : "Request failed";
+	const errorMessage = assistant ? Reflect.get(assistant, "errorMessage") : undefined;
+	const message = typeof errorMessage === "string" && errorMessage.length > 0 ? errorMessage : "Request failed";
+	return { code: "LEGACY_ASSISTANT_ERROR", message, retryable: isRetryableRuntimeError(message) };
+}
+
+function isFailureDetails(value: unknown): value is CodingAgentTurnFailure["details"] {
+	if (typeof value !== "object" || value === null) return false;
+	const candidate = value as Record<string, unknown>;
+	return (
+		(candidate.statusCode === undefined || typeof candidate.statusCode === "number") &&
+		(candidate.provider === undefined || typeof candidate.provider === "string") &&
+		(candidate.modelId === undefined || typeof candidate.modelId === "string") &&
+		(candidate.requestId === undefined || typeof candidate.requestId === "string") &&
+		(candidate.providerCode === undefined || typeof candidate.providerCode === "string") &&
+		(candidate.phase === undefined ||
+			["resolve", "request", "response", "stream", "decode"].includes(candidate.phase as string)) &&
+		(candidate.url === undefined || typeof candidate.url === "string") &&
+		(candidate.responseHeaders === undefined || isSafeHeaders(candidate.responseHeaders)) &&
+		(candidate.responseBodyPreview === undefined || typeof candidate.responseBodyPreview === "string") &&
+		(candidate.retryAfterMs === undefined || typeof candidate.retryAfterMs === "number")
+	);
+}
+
+function isSafeHeaders(value: unknown): value is Readonly<Record<string, string>> {
+	if (typeof value !== "object" || value === null) return false;
+	return Object.values(value).every((entry) => typeof entry === "string");
 }

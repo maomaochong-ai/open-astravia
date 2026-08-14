@@ -104,14 +104,20 @@ describe("network and namespaced storage foundation capabilities", () => {
 	it("preserves dynamic JSON keys while cleaning contract object fields", () => {
 		expect(
 			FOUNDATION_NETWORK_CAPABILITIES.REQUEST.parseInput({
-				pluginId: "plugin-id",
+				namespace: "network-policy",
 				request: { nested: { keep: true }, list: [1, null, "value"] },
 				remove: true,
 			}),
 		).toEqual({
-			pluginId: "plugin-id",
+			namespace: "network-policy",
 			request: { nested: { keep: true }, list: [1, null, "value"] },
 		});
+		expect(() =>
+			FOUNDATION_NETWORK_CAPABILITIES.REQUEST.parseInput({
+				pluginId: "plugin-id",
+				request: { url: "https://example.com" },
+			}),
+		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }));
 		expect(
 			FOUNDATION_FILESYSTEM_CAPABILITIES.READ_DIRECTORY.parseOutput([
 				{

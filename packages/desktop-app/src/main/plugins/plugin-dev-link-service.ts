@@ -179,7 +179,6 @@ export class PluginDevLinkService {
 			entryUrl: link.entryUrl ?? toDevPluginUrl(plugin.id, manifest.entry, link.reloadToken),
 			moduleFederation: manifest.moduleFederation,
 			agent: manifest.agent,
-			agent_mode: manifest.agent_mode,
 			styleUrls: link.entryUrl
 				? []
 				: (manifest.styles ?? []).map((style) => toDevPluginUrl(plugin.id, style, link.reloadToken)),
@@ -235,7 +234,6 @@ export class PluginDevLinkService {
 			entryUrl: toDevPluginUrl(manifest.id, manifest.entry, now),
 			moduleFederation: manifest.moduleFederation,
 			agent: manifest.agent,
-			agent_mode: manifest.agent_mode,
 			styleUrls: (manifest.styles ?? []).map((style) => toDevPluginUrl(manifest.id, style, now)),
 			permissions,
 			grantedPermissions: permissions,

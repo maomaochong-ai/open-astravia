@@ -13,7 +13,7 @@
 		"clean": "rm -rf dist",
 		"build": "tsgo -p tsconfig.build.json",
 		"dev": "tsgo -p tsconfig.build.json --watch --preserveWatchOutput",
-		"test": "vitest --run --config vitest.config.ts",
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run --config vitest.config.ts",
 		"test:unit": "vitest --run --config vitest.config.ts",
 		"test:live": "vitest --run --config vitest.live.config.ts",
 		"test:all": "vitest --run --config vitest.all.config.ts",

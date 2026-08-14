@@ -6,8 +6,11 @@ import {
 	type AssistantMessage,
 	type AssistantMessageEvent,
 	type AssistantMessageTerminalEvent,
+	createAssistantMessage,
+	getAIErrorDetails,
 	getAssistantMessageEventResult,
 	isAIError,
+	isAIErrorDetails,
 	isAssistantMessageTerminalEvent,
 } from "../src/protocol/index.js";
 import type {
@@ -62,6 +65,29 @@ function eventType(event: AssistantMessageEvent): AssistantMessageEvent["type"] 
 }
 
 describe("AI protocol contract", () => {
+	it("creates a stable zero-value assistant envelope", () => {
+		const message = createAssistantMessage(
+			{ api: "openai-completions", provider: "deepseek", model: "deepseek-chat" },
+			{ stopReason: "error", errorMessage: "insufficient_quota", timestamp: 42 },
+		);
+
+		expect(message).toMatchObject({
+			role: "assistant",
+			api: "openai-completions",
+			provider: "deepseek",
+			model: "deepseek-chat",
+			content: [],
+			stopReason: "error",
+			errorMessage: "insufficient_quota",
+			timestamp: 42,
+			usage: {
+				input: 0,
+				output: 0,
+				totalTokens: 0,
+			},
+		});
+	});
+
 	it("keeps legacy root types as exact aliases of protocol types", () => {
 		expectTypeOf<LegacyAssistantMessage>().toEqualTypeOf<AssistantMessage>();
 		expectTypeOf<LegacyAssistantMessageEvent>().toEqualTypeOf<AssistantMessageEvent>();
@@ -89,6 +115,25 @@ describe("AI protocol contract", () => {
 		expectTypeOf(done).toMatchTypeOf<AssistantMessageTerminalEvent>();
 	});
 
+	it("retains structured failure when an error event is projected to a message", () => {
+		const failure = getAIErrorDetails(
+			new AIError(AI_ERROR_CODES.BILLING_REQUIRED, "quota exhausted", {
+				retryable: false,
+				statusCode: 402,
+				provider: "deepseek",
+				modelId: "deepseek-chat",
+			}),
+		);
+		const error = {
+			type: "error" as const,
+			reason: "error" as const,
+			error: assistantMessage("error"),
+			failure,
+		};
+
+		expect(getAssistantMessageEventResult(error)).toMatchObject({ failure });
+	});
+
 	it("provides stable structured error fields without string matching", () => {
 		const cause = new Error("socket closed");
 		const error = new AIError(AI_ERROR_CODES.TRANSPORT_FAILED, "Request failed", {
@@ -114,6 +159,36 @@ describe("AI protocol contract", () => {
 			cause,
 		});
 		expect(isAIError(new Error("Request failed"))).toBe(false);
+	});
+
+	it("recognizes serialized error details without relying on instanceof", () => {
+		const details = getAIErrorDetails(
+			new AIError(AI_ERROR_CODES.RATE_LIMITED, "limited", {
+				retryable: true,
+				statusCode: 429,
+				requestId: "req-1",
+			}),
+		);
+		expect(isAIErrorDetails(structuredClone(details))).toBe(true);
+		expect(isAIErrorDetails({ code: AI_ERROR_CODES.RATE_LIMITED, message: "limited" })).toBe(false);
+	});
+
+	it("sanitizes diagnostics when creating a cross-boundary error detail", () => {
+		const details = getAIErrorDetails(
+			new AIError(AI_ERROR_CODES.TRANSPORT_FAILED, "failed", {
+				retryable: true,
+				url: "https://provider.test/chat?api_key=secret",
+				responseHeaders: { authorization: "secret", "x-request-id": "req-safe" },
+				responseBodyPreview: "x".repeat(1_100),
+			}),
+		);
+
+		expect(details).toMatchObject({
+			url: "https://provider.test/chat",
+			responseHeaders: { "x-request-id": "req-safe" },
+		});
+		expect(details.responseHeaders).not.toHaveProperty("authorization");
+		expect(details.responseBodyPreview).toHaveLength(1_001);
 	});
 
 	it("uses a non-retryable protocol error specialization", () => {

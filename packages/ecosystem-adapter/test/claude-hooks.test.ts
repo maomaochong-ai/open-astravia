@@ -11,6 +11,17 @@ import { createEcosystemHookRuntime } from "../src/runtime.js";
 
 const tempDirs: string[] = [];
 
+function quoteShellArgument(value: string): string {
+	if (process.platform === "win32") {
+		return /[\s"&|<>^]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+	}
+	return `'${value.replaceAll("'", `'\\''`)}'`;
+}
+
+function nodeCommand(...args: readonly string[]): string {
+	return [process.execPath, ...args].map(quoteShellArgument).join(" ");
+}
+
 afterEach(async () => {
 	// Best-effort cleanup; Windows may lock briefly.
 	for (const dir of tempDirs.splice(0)) {
@@ -89,7 +100,7 @@ describe("discoverClaudeHookHandlers", () => {
 							hooks: [
 								{
 									type: "command",
-									command: `node -e ${JSON.stringify(`process.stdout.write("preflight")`)}`,
+									command: nodeCommand("-e", `process.stdout.write("preflight")`),
 								},
 							],
 						},
@@ -105,7 +116,7 @@ describe("discoverClaudeHookHandlers", () => {
 		expect(result.diagnostics).toEqual([]);
 		expect(result.handlers).toHaveLength(1);
 		expect(result.handlers[0]?.eventName).toBe("SessionStart");
-		expect(result.handlers[0]?.command).toContain("node -e");
+		expect(result.handlers[0]?.command).toContain("-e");
 	});
 
 	it("loads original cc-skills council hooks.json with CLAUDE_PLUGIN_ROOT expansion", async () => {
@@ -237,7 +248,7 @@ describe("createClaudeHookAdapter runtime", () => {
 					PreToolUse: [
 						{
 							matcher: "Bash",
-							hooks: [{ type: "command", command: "node skill-hook.cjs", once: true }],
+							hooks: [{ type: "command", command: nodeCommand("skill-hook.cjs"), once: true }],
 						},
 					],
 				},
@@ -259,7 +270,7 @@ describe("createClaudeHookAdapter runtime", () => {
 				PreToolUse: [
 					{
 						matcher: "Bash",
-						hooks: [{ type: "command", command: "node skill-hook.cjs", once: true }],
+						hooks: [{ type: "command", command: nodeCommand("skill-hook.cjs"), once: true }],
 					},
 				],
 			},
@@ -275,7 +286,7 @@ describe("createClaudeHookAdapter runtime", () => {
 				PreToolUse: [
 					{
 						matcher: "Bash",
-						hooks: [{ type: "command", command: "node skill-hook.cjs" }],
+						hooks: [{ type: "command", command: nodeCommand("skill-hook.cjs") }],
 					},
 				],
 			},
@@ -287,12 +298,53 @@ describe("createClaudeHookAdapter runtime", () => {
 		expect((await runtime.runPreToolUse("call-5", { hostName: "bash", kind: "shell" }, {})).runs).toHaveLength(0);
 	});
 
+	it("executes dynamic hook command args containing an absolute script path", async () => {
+		const root = await makeTempDir();
+		const scriptPath = join(root, "scene-start.cjs");
+		await writeFile(
+			scriptPath,
+			`process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: "scene hook args ran" } }));\n`,
+			"utf8",
+		);
+		const runtime = createEcosystemHookRuntime({
+			host: {
+				cwd: root,
+				getSessionId: () => "scene-hook-args-session",
+				getTranscriptPath: () => null,
+				getModelId: () => "test-model",
+				abortCurrentRun: () => {},
+			},
+			initialSessionStartSource: "startup",
+			configLayers: [],
+		});
+		await runtime.runPendingSessionStart();
+
+		const outcome = await runtime.runUserPromptSubmit("use the scene", undefined, [
+			{
+				id: "scene:args",
+				revision: "v1",
+				profileId: CLAUDE_CODE_HOOK_PROFILE_ID,
+				sourcePath: join(root, "SKILL.md"),
+				configuration: {
+					UserPromptSubmit: [
+						{
+							hooks: [{ type: "command", command: "node", args: [scriptPath] }],
+						},
+					],
+				},
+			},
+		]);
+
+		expect(outcome.additionalContexts).toContain("scene hook args ran");
+		expect(outcome.runs).toEqual([expect.objectContaining({ status: "Completed" })]);
+	});
+
 	it("SessionStart plain stdout becomes additional context", async () => {
 		const { root, claudeDir } = await writeHookProject({
 			"session-start.cjs": `process.stdout.write("preflight context from fixture");\n`,
 			".claude/settings.json": JSON.stringify({
 				hooks: {
-					SessionStart: [{ hooks: [{ type: "command", command: "node session-start.cjs" }] }],
+					SessionStart: [{ hooks: [{ type: "command", command: nodeCommand("session-start.cjs") }] }],
 				},
 			}),
 		});
@@ -333,7 +385,7 @@ process.stdin.on("end", () => {
 `,
 			".claude/settings.json": JSON.stringify({
 				hooks: {
-					UserPromptSubmit: [{ hooks: [{ type: "command", command: "node block-prompt.cjs" }] }],
+					UserPromptSubmit: [{ hooks: [{ type: "command", command: nodeCommand("block-prompt.cjs") }] }],
 				},
 			}),
 		});
@@ -382,7 +434,7 @@ process.stdin.on("end", () => {
 					PreToolUse: [
 						{
 							matcher: "Write|Edit",
-							hooks: [{ type: "command", command: "node deny-write.cjs" }],
+							hooks: [{ type: "command", command: nodeCommand("deny-write.cjs") }],
 						},
 					],
 				},
@@ -440,7 +492,7 @@ process.stdin.on("end", () => {
 `,
 			".claude/settings.json": JSON.stringify({
 				hooks: {
-					Stop: [{ hooks: [{ type: "command", command: "node stop-gate.cjs" }] }],
+					Stop: [{ hooks: [{ type: "command", command: nodeCommand("stop-gate.cjs") }] }],
 				},
 			}),
 		});
@@ -486,7 +538,7 @@ process.stdin.on("end", () => {
 						{
 							// Claude settings matcher stays on Claude reason vocabulary
 							matcher: "clear",
-							hooks: [{ type: "command", command: "node session-end.cjs" }],
+							hooks: [{ type: "command", command: nodeCommand("session-end.cjs") }],
 						},
 					],
 				},
@@ -551,11 +603,11 @@ process.exit(2);
 					PostToolUseFailure: [
 						{
 							matcher: "Bash",
-							hooks: [{ type: "command", command: "node failure-context.cjs" }],
+							hooks: [{ type: "command", command: nodeCommand("failure-context.cjs") }],
 						},
 						{
 							matcher: "Write",
-							hooks: [{ type: "command", command: "node failure-feedback.cjs" }],
+							hooks: [{ type: "command", command: nodeCommand("failure-feedback.cjs") }],
 						},
 					],
 				},

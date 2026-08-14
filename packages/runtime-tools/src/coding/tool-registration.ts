@@ -14,6 +14,19 @@ export type CodingToolScope = (typeof CODING_TOOL_SCOPES)[number];
 
 export const DEFAULT_CODING_TOOL_SCOPE: CodingToolScope = "cli";
 
+/**
+ * 工具副作用等级（宿主侧元数据，不进 LLM schema）。
+ *
+ * - `light`（缺省）：只读、可撤销或只影响会话内状态。不用显式写。
+ * - `heavy`：在用户工作区创建目录/文件树、产生外部计费、发起不可撤销的外部动作。
+ *   产品宿主会在会话内首次调用前向用户确认（见 coding-agent 的 heavy 首调确认闸）。
+ *
+ * 只在有话要说时显式声明：判 heavy 的工具，或按判据像 heavy 但刻意豁免的工具
+ * （显式写 `"light"` 并就近注释理由）。给显然 light 的工具填表只会让声明退化成
+ * 无信息量的仪式。
+ */
+export type CodingToolSideEffect = "light" | "heavy";
+
 export type CodingToolCategory =
 	| "core"
 	| "doc"
@@ -34,11 +47,11 @@ export interface CodingToolRegistration<TInput extends object = Readonly<Record<
 	 * filter, matching the legacy explicit-tool contract.
 	 */
 	readonly requires?: readonly string[];
-	/** 工作模式白名单；缺省或空数组表示通用。 */
-	readonly agentModes?: readonly string[];
 	/** 最终模型工具数组中的稳定顺序；未声明的动态工具保持贡献顺序并排在其后。 */
 	readonly modelOrder?: number;
 	readonly category: CodingToolCategory;
+	/** 缺省 = light；声明契约见 {@link CodingToolSideEffect}。 */
+	readonly sideEffect?: CodingToolSideEffect;
 }
 
 export type CodingToolActivation =
@@ -47,7 +60,6 @@ export type CodingToolActivation =
 			readonly scope?: CodingToolScope;
 			readonly additionallyEnabledToolNames?: readonly string[];
 			readonly capabilities?: ReadonlySet<string>;
-			readonly agentMode?: string;
 	  }
 	| {
 			readonly mode: "explicit";
@@ -73,12 +85,12 @@ export function selectCodingToolRegistrations(
 	const scope = activation.scope ?? DEFAULT_CODING_TOOL_SCOPE;
 	const additionallyEnabled = new Set(activation.additionallyEnabledToolNames ?? []);
 	const capabilities = activation.capabilities ?? new Set<string>();
+	// 工作模式不参与工具选择（ADR-0071）：激活只看 scopeUse ∩ requires 两条 fail-closed 轴。
 	return registrations.filter(
 		(registration) =>
 			additionallyEnabled.has(registration.tool.name) ||
 			(registration.scopeUse.includes(scope) &&
-				(registration.requires ?? []).every((capability) => capabilities.has(capability)) &&
-				matchesAgentMode(registration.agentModes, activation.agentMode)),
+				(registration.requires ?? []).every((capability) => capabilities.has(capability))),
 	);
 }
 
@@ -88,9 +100,4 @@ export function selectCodingToolsForScope(
 	capabilities: ReadonlySet<string> = new Set<string>(),
 ): readonly RuntimeToolDefinition[] {
 	return selectCodingTools(registrations, { mode: "scope", scope, capabilities });
-}
-
-function matchesAgentMode(declared: readonly string[] | undefined, active: string | undefined): boolean {
-	if (active === undefined || !declared || declared.length === 0) return true;
-	return declared.includes(active);
 }

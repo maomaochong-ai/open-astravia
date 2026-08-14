@@ -25,6 +25,7 @@
 	},
 	"scene": {
 		"generalReadonly": "通用·只读",
+		"localReadonly": "本地·只读",
 		"running": "运行中",
 		"installed": "已安装"
 	},

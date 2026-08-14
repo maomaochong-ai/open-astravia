@@ -93,7 +93,7 @@ export function registerContentCreationTools(
 		name: CONTENT_ASSETS_TOOL_NAME,
 		label: "%tool.assets.label%",
 		description:
-			"List or import image, video, and audio files from host-authorized local paths. List directories before choosing reference media. Import copies media into managed plugin storage, creates or updates one asset node, and returns stable asset IDs for configure_generation. No confirmation is required.",
+			"List or import image, video, and audio files from host-authorized local paths. List directories before choosing reference media. Import copies media into managed plugin storage, creates or updates one asset node, and returns stable source IDs for configure_video_shot or low-level configure_generation. No confirmation is required.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -163,7 +163,7 @@ export function registerContentCreationTools(
 		name: CONTENT_EDIT_TOOL_NAME,
 		label: "%tool.edit.label%",
 		description:
-			"Atomically apply a revision-bound batch of semantic workflow edits without confirmation. Prefer configure_video_shot for Agent-authored video work: it selects text, single-frame, first/last-frame, omni-reference, or transform strategy from explicit control requirements, compiles distinct static keyframe and continuous video prompts, and configures references without silent degradation. Keep configure_generation for low-level or legacy media-role configuration. The returned readiness analysis identifies incomplete graphs.",
+			"Atomically apply a revision-bound batch of typed workflow operations. The first call in a session asks the user to confirm, because this writes into their workspace. Each operation has its own required fields. Keep single-use prompts directly on their generator; add a Prompt node only for a verbatim fragment intentionally reused by at least two consumers. Ordinary connections use sourceNodeId/targetNodeId/optional edgeId. Prefer configure_video_shot for Agent-authored video work; declare video media only in its sources or keyframes, never as duplicate connect_nodes operations. Choose its strategy-specific prompt plan for text, single-frame, first/last-frame, omni-reference, or transform work; automatic resolves declared authorities but does not replace method selection. For first/last-frame, it preserves the first generator's intentional authorities, derives last by editing the generated first image, and selects a video mode with both frame slots. The operation composes connected Prompt nodes, validates plan/strategy agreement, and configures roles without silent degradation. Keep configure_generation for low-level compatibility or role repair. The returned readiness analysis identifies incomplete graphs.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -175,6 +175,8 @@ export function registerContentCreationTools(
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
+		// 往用户工作区写一棵内容工程文件树。
+		side_effect: "heavy",
 		handler: async ({ session, trigger }) => {
 			try {
 				const cwd = resolveCwd(trigger.input, session.cwd);

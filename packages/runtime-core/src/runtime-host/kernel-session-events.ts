@@ -1,6 +1,7 @@
 import type { Message, TextContent } from "@vetta/ai";
 import type { SessionEvent } from "../contracts.js";
 import { runtimeError } from "../errors.js";
+import { type RuntimeFailure, runtimeFailureFromAIErrorDetails } from "../failure-contract.js";
 import type { KernelEvent } from "../kernel/contracts.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import { baseSessionEvent, mapRuntimeSessionObservationEvent } from "./session-events.js";
@@ -25,7 +26,7 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 	}
 
 	if (event.type === "message.appended" && event.message.role === "assistant") {
-		return assistantMessageObservations(event.message).map((observation) =>
+		return assistantMessageObservations(event.message, event.turnId, event.failure).map((observation) =>
 			mapRuntimeSessionObservationEvent(event.sessionId, observation, event.timestamp),
 		);
 	}
@@ -50,7 +51,9 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 				entries: event.snapshot.entries.map((entry) => ({
 					id: entry.id,
 					behavior: entry.behavior,
-					displayText: entry.input.message ? messageText(entry.input.message) : "",
+					displayText: entry.input.message
+						? messageText(entry.input.message)
+						: (entry.input.request?.displayText ?? ""),
 				})),
 				snapshot: event.snapshot,
 			},
@@ -72,17 +75,47 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 		];
 	}
 
-	if (event.type === "turn.failed") {
+	if (event.type === "turn.execution_failed") {
+		const failure = event.error;
 		return [
 			mapRuntimeSessionObservationEvent(
 				event.sessionId,
 				{
 					type: "error",
+					turnId: event.turnId,
 					error: {
-						code: event.error.code,
-						message: event.error.message,
-						retryable: false,
-						origin: "runtime",
+						code: failure.code,
+						message: failure.message,
+						retryable: failure.retryable,
+						origin: failure.origin,
+						...(failure.details ? { details: failure.details } : {}),
+					},
+					source: "runtime-core",
+				},
+				event.timestamp,
+			),
+			mapRuntimeSessionObservationEvent(
+				event.sessionId,
+				{ type: "lifecycle", phase: "agent_end", source: "runtime-core" },
+				event.timestamp,
+			),
+		];
+	}
+
+	if (event.type === "turn.failed") {
+		const failure = event.error;
+		return [
+			mapRuntimeSessionObservationEvent(
+				event.sessionId,
+				{
+					type: "error",
+					turnId: event.turnId,
+					error: {
+						code: failure.code,
+						message: failure.message,
+						retryable: failure.retryable ?? false,
+						origin: failure.origin ?? "runtime",
+						...(failure.details ? { details: failure.details } : {}),
 					},
 					source: "runtime-core",
 				},
@@ -111,6 +144,8 @@ function messageText(message: Message): string {
 
 function assistantMessageObservations(
 	message: Extract<Message, { role: "assistant" }>,
+	turnId?: string,
+	failure?: RuntimeFailure,
 ): RuntimeSessionObservationEvent[] {
 	const observations: RuntimeSessionObservationEvent[] = [
 		{ type: "message.final", message, source: "agent" },
@@ -122,6 +157,7 @@ function assistantMessageObservations(
 			cacheWrite: message.usage.cacheWrite,
 			costTotal: message.usage.cost.total,
 			contextPercent: null,
+			contextTokens: message.usage.input + message.usage.output + message.usage.cacheRead + message.usage.cacheWrite,
 			contextWindow: 0,
 			source: "agent",
 		},
@@ -132,9 +168,11 @@ function assistantMessageObservations(
 			extractAssistantText(message.content) ||
 			(message as Message & { errorMessage?: string }).errorMessage ||
 			"Assistant response ended with error";
+		const messageFailure = message.failure ? runtimeFailureFromAIErrorDetails(message.failure) : undefined;
 		observations.push({
 			type: "error",
-			error: runtimeError("INTERNAL_ERROR", errorText, true, "provider"),
+			...(turnId ? { turnId } : {}),
+			error: failure ?? messageFailure ?? runtimeError("INTERNAL_ERROR", errorText, false, "provider"),
 			source: "agent",
 		});
 	} else if (message.stopReason === "aborted") {

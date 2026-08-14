@@ -1,5 +1,6 @@
-import { type Static, Type } from "@sinclair/typebox";
+import { type Static, type TSchema, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
+import type { StoredSessionEvent } from "@vetta/runtime-core/kernel";
 
 export const LEGACY_CONVERSATION_SCHEMA_VERSION = 1;
 export const CONVERSATION_SCHEMA_VERSION = 2;
@@ -73,6 +74,74 @@ const StopReasonSchema = Type.Union([
 	Type.Literal("aborted"),
 ]);
 
+const FailurePhaseSchema = Type.Union([
+	Type.Literal("resolve"),
+	Type.Literal("request"),
+	Type.Literal("response"),
+	Type.Literal("stream"),
+	Type.Literal("decode"),
+]);
+
+const FailureDiagnosticProperties = {
+	statusCode: Type.Optional(Type.Number()),
+	provider: Type.Optional(Type.String()),
+	modelId: Type.Optional(Type.String()),
+	requestId: Type.Optional(Type.String()),
+	providerCode: Type.Optional(Type.String()),
+	phase: Type.Optional(FailurePhaseSchema),
+	url: Type.Optional(Type.String()),
+	responseHeaders: Type.Optional(Type.Record(Type.String(), Type.String())),
+	responseBodyPreview: Type.Optional(Type.String()),
+	retryAfterMs: Type.Optional(Type.Number({ minimum: 0 })),
+} as const;
+
+type StoredAssistantFailure = NonNullable<
+	Extract<Extract<StoredSessionEvent, { type: "message.appended" }>["message"], { role: "assistant" }>["failure"]
+>;
+
+const AssistantFailureSchema = Type.Unsafe<StoredAssistantFailure>(
+	Type.Object(
+		{
+			code: Type.String(),
+			message: Type.String(),
+			retryable: Type.Boolean(),
+			...FailureDiagnosticProperties,
+		},
+		{ additionalProperties: false },
+	),
+);
+
+const RuntimeFailureOriginSchema = Type.Union([
+	Type.Literal("runtime"),
+	Type.Literal("provider"),
+	Type.Literal("tool"),
+	Type.Literal("mcp"),
+]);
+
+const RuntimeFailureDetailsSchema = Type.Object(FailureDiagnosticProperties, { additionalProperties: false });
+
+const RuntimeFailureSchema = Type.Object(
+	{
+		code: Type.String(),
+		message: Type.String(),
+		retryable: Type.Boolean(),
+		origin: RuntimeFailureOriginSchema,
+		details: Type.Optional(RuntimeFailureDetailsSchema),
+	},
+	{ additionalProperties: false },
+);
+
+const RecordedRuntimeFailureSchema = Type.Object(
+	{
+		code: Type.String(),
+		message: Type.String(),
+		retryable: Type.Optional(Type.Boolean()),
+		origin: Type.Optional(RuntimeFailureOriginSchema),
+		details: Type.Optional(RuntimeFailureDetailsSchema),
+	},
+	{ additionalProperties: false },
+);
+
 export const UserMessageSchema = Type.Object(
 	{
 		role: Type.Literal("user"),
@@ -92,6 +161,7 @@ const AssistantMessageSchema = Type.Object(
 		usage: UsageSchema,
 		stopReason: StopReasonSchema,
 		errorMessage: Type.Optional(Type.String()),
+		failure: Type.Optional(AssistantFailureSchema),
 		timestamp: Type.Number(),
 	},
 	{ additionalProperties: false },
@@ -179,6 +249,7 @@ const MessageAppendedEventSchema = Type.Object(
 		sessionId: Type.String(),
 		turnId: Type.String(),
 		message: ConversationMessageSchema,
+		failure: Type.Optional(RuntimeFailureSchema),
 		origin: Type.Optional(RuntimeMessageOriginSchema),
 		timestamp: Type.Number(),
 	},
@@ -257,13 +328,7 @@ const TurnFailedEventSchema = Type.Object(
 		type: Type.Literal("turn.failed"),
 		sessionId: Type.String(),
 		turnId: Type.String(),
-		error: Type.Object(
-			{
-				code: Type.String(),
-				message: Type.String(),
-			},
-			{ additionalProperties: false },
-		),
+		error: RecordedRuntimeFailureSchema,
 		timestamp: Type.Number(),
 	},
 	{ additionalProperties: false },
@@ -293,6 +358,51 @@ export const StoredSessionEventSchema = Type.Union([
 	TurnFailedEventSchema,
 	TurnTransferredEventSchema,
 ]);
+
+function storedSessionEventSchemaForType(type: string): TSchema | undefined {
+	switch (type) {
+		case "turn.started":
+			return TurnStartedEventSchema;
+		case "turn.continued":
+			return TurnContinuedEventSchema;
+		case "message.appended":
+			return MessageAppendedEventSchema;
+		case "context.appended":
+			return ContextAppendedEventSchema;
+		case "context.recorded":
+			return ContextRecordedEventSchema;
+		case "context.compacted":
+			return ContextCompactedEventSchema;
+		case "turn.completed":
+			return TurnCompletedEventSchema;
+		case "turn.cancelled":
+			return TurnCancelledEventSchema;
+		case "turn.failed":
+			return TurnFailedEventSchema;
+		case "turn.transferred":
+			return TurnTransferredEventSchema;
+		default:
+			return undefined;
+	}
+}
+
+export interface StoredSessionEventValidationIssue {
+	readonly path: string;
+	readonly message: string;
+	readonly eventType?: string;
+}
+
+export function getStoredSessionEventValidationIssue(value: unknown): StoredSessionEventValidationIssue | undefined {
+	const eventType =
+		typeof value === "object" && value !== null && "type" in value && typeof value.type === "string"
+			? value.type
+			: undefined;
+	if (!eventType) return { path: "/type", message: "Expected event type" };
+	const schema = storedSessionEventSchemaForType(eventType);
+	if (!schema) return { eventType, path: "/type", message: "Expected known event type" };
+	const issue = Value.Errors(schema, value).First();
+	return issue ? { eventType, path: issue.path || "/", message: issue.message } : undefined;
+}
 
 const ConversationFileHeaderSchemaV1 = Type.Object(
 	{

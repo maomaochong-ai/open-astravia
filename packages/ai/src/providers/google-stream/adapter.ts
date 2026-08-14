@@ -1,11 +1,13 @@
 import type { GenerateContentParameters } from "@google/genai";
-import { AIAbortedError, type Api, type AssistantMessage } from "../../protocol/index.js";
+import { AIAbortedError, type Api, type AssistantMessage, createAssistantMessage } from "../../protocol/index.js";
 import { EmptyProviderStreamError, normalizeProviderError, validateWirePayload } from "../../provider-kit/index.js";
 import {
+	failLanguageModelStream,
 	type LanguageModelAdapter,
 	LanguageModelStream,
 	type ModelCallRequest,
 } from "../../runtime/language-model-adapter.js";
+import { createModelCallMetadataFromMessage } from "../../runtime/model-call-result.js";
 import type { Model, StreamOptions } from "../../types.js";
 import { GeminiEventReducer } from "./events.js";
 import { geminiResponseChunkSchema } from "./response-schema.js";
@@ -26,10 +28,18 @@ export function createGoogleSdkAdapter<TApi extends Api, TOptions extends Stream
 ): LanguageModelAdapter<TApi, TOptions> {
 	return {
 		api: config.api,
+		capabilities: {
+			streaming: true,
+			tools: true,
+			structuredOutput: true,
+			reasoning: true,
+			parallelToolCalls: true,
+		},
 		async stream(request) {
 			const stream = new LanguageModelStream();
 			void produceGoogleSdkStream(config, request, stream);
-			return { events: stream, result: stream.result() };
+			const result = stream.result();
+			return { events: stream, result, metadata: result.then(createModelCallMetadataFromMessage, () => ({})) };
 		},
 	};
 }
@@ -65,30 +75,22 @@ async function produceGoogleSdkStream<TApi extends Api, TOptions extends StreamO
 		}
 		stream.push({ type: "done", reason: output.stopReason, message: output });
 	} catch (error) {
-		stream.fail(
+		failLanguageModelStream(
+			stream,
+			model,
 			options?.signal?.aborted
 				? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: error })
 				: normalizeProviderError(error, model),
+			options?.signal?.aborted ? "aborted" : "error",
+			{
+				...output,
+				stopReason: options?.signal?.aborted ? "aborted" : "error",
+				errorMessage: error instanceof Error ? error.message : String(error),
+			},
 		);
 	}
 }
 
 export function createGoogleAssistantMessage<TApi extends Api>(model: Model<TApi>): AssistantMessage {
-	return {
-		role: "assistant",
-		content: [],
-		api: model.api,
-		provider: model.provider,
-		model: model.id,
-		usage: {
-			input: 0,
-			output: 0,
-			cacheRead: 0,
-			cacheWrite: 0,
-			totalTokens: 0,
-			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-		},
-		stopReason: "stop",
-		timestamp: Date.now(),
-	};
+	return createAssistantMessage({ api: model.api, provider: model.provider, model: model.id });
 }

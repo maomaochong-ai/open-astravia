@@ -3,7 +3,6 @@
 	"name": "%plugin.name%",
 	"icon": "icon.png",
 	"version": "0.1.21",
-	"agent_mode": ["work"],
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",

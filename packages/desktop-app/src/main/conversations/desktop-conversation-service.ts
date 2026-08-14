@@ -4,7 +4,9 @@ import {
 	isSessionError,
 	type PromptRequest,
 	RUNTIME_ERROR_CODES,
+	type RuntimeFailure,
 	type RuntimeHost,
+	runtimeFailureFromAIErrorDetails,
 	type SessionConfig,
 } from "@vetta/runtime-core";
 import { type DesktopSessionHistoryInfo, UNAVAILABLE_RUNTIME_SESSION_ACCESS } from "../../shared/session-access.js";
@@ -19,6 +21,7 @@ import {
 	type DesktopSessionKind,
 	resolveDesktopSessionConfig,
 } from "./resolve-session-config.js";
+import { recordSessionAgentMode } from "./session-agent-mode-store.js";
 import {
 	isConversationCwd,
 	readDesktopSessionHeader,
@@ -42,7 +45,7 @@ export class DesktopConversationError extends Error {
 	constructor(
 		readonly code: DesktopConversationErrorCode,
 		message: string,
-		readonly details?: Record<string, string | number | boolean>,
+		readonly details?: Record<string, unknown>,
 	) {
 		super(message);
 		this.name = "DesktopConversationError";
@@ -86,6 +89,7 @@ function findLastAssistantMessage(
 	text: string;
 	stopReason: string;
 	errorMessage?: string;
+	failure?: RuntimeFailure;
 } | null {
 	const messages = runtime.getMessages(sessionId);
 	for (let index = messages.length - 1; index >= fromIndex; index -= 1) {
@@ -99,6 +103,7 @@ function findLastAssistantMessage(
 			text,
 			stopReason: message.stopReason,
 			errorMessage: message.errorMessage,
+			...(message.failure ? { failure: runtimeFailureFromAIErrorDetails(message.failure) } : {}),
 		};
 	}
 	return null;
@@ -123,6 +128,9 @@ export class DesktopConversationService {
 			if (!sessionPath) {
 				throw new DesktopConversationError("TURN_FAILED", "Runtime did not expose the created session path.");
 			}
+			// 工作模式在这里固化：新会话写入当前默认值，历史会话补写回落值。
+			// 已有记录不覆盖，所以之后改默认值不会改写任何已存在会话。
+			await recordSessionAgentMode(sessionPath, resolvedConfig.agentMode);
 			monitorRuntimeSession(this.runtime, result.sessionId, "interactive");
 			log.info("session created", {
 				sessionId: result.sessionId,
@@ -274,6 +282,14 @@ export class DesktopConversationService {
 			if (hasRuntimeErrorCode(error, RUNTIME_ERROR_CODES.SESSION_BUSY)) {
 				throw new DesktopConversationError("SESSION_BUSY", "Session is already processing another turn.");
 			}
+			if (isSessionError(error)) {
+				throw new DesktopConversationError("TURN_FAILED", error.message, {
+					code: error.code,
+					retryable: error.retryable,
+					origin: error.origin,
+					details: error.details,
+				});
+			}
 			throw new DesktopConversationError("TURN_FAILED", error instanceof Error ? error.message : String(error));
 		} finally {
 			clearTimeout(timeout);
@@ -288,7 +304,18 @@ export class DesktopConversationService {
 			throw new DesktopConversationError("TURN_ABORTED", "Conversation turn was aborted.");
 		}
 		if (assistant.stopReason === "error") {
-			throw new DesktopConversationError("TURN_FAILED", assistant.errorMessage ?? "Conversation turn failed.");
+			throw new DesktopConversationError(
+				"TURN_FAILED",
+				assistant.errorMessage ?? assistant.failure?.message ?? "Conversation turn failed.",
+				assistant.failure
+					? {
+							code: assistant.failure.code,
+							retryable: assistant.failure.retryable,
+							origin: assistant.failure.origin,
+							details: assistant.failure.details,
+						}
+					: undefined,
+			);
 		}
 		emitConversationListChanged({ cwd: options.session.listCwd, sessionPath: options.session.sessionPath });
 		if (initialMessageCount === 0 && options.session.source === "debug" && assistant.text.trim().length > 0) {

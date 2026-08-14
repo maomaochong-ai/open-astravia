@@ -4,7 +4,6 @@ import { SettingsMenuSettingsItem } from "@vetta/theme-ui/sidebar";
 import { PopoverContent } from "@vetta/ui";
 import type { SettingsMenuModel } from "./types";
 import { SettingsMenuAccountSection } from "./SettingsMenuAccountSection";
-import { SettingsMenuAgentModeSection } from "./SettingsMenuAgentModeSection";
 import { SettingsMenuDivider } from "./SettingsMenuDivider";
 import { SettingsMenuQuotaSection } from "./SettingsMenuQuotaSection";
 import { SettingsMenuThemeSection } from "./SettingsMenuThemeSection";
@@ -30,8 +29,6 @@ export function SettingsMenuPopover({ model }: SettingsMenuPopoverProps): JSX.El
 				exit={{ opacity: 0 }}
 				transition={{ duration: 0.12, ease: "easeOut" }}
 			>
-				<SettingsMenuAgentModeSection />
-				<SettingsMenuDivider />
 				<SettingsMenuThemeSection model={model} />
 				<SettingsMenuQuotaSection model={model} />
 				<SettingsMenuDivider />

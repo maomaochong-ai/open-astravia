@@ -6,6 +6,7 @@ import type {
 	PromptAttachmentRef,
 	PromptResourceRef,
 } from "../contracts.js";
+import type { RuntimeFailureDetails, RuntimeFailureOrigin } from "../failure-contract.js";
 import type {
 	ConversationDocument,
 	ConversationDocumentCustomEntry,
@@ -17,6 +18,8 @@ const ASSISTANT_TURN_TIMING_TYPE = "vetta.assistant_turn_timing";
 const PROMPT_RESOURCE_REFERENCE_TYPE = "prompt_resource_reference";
 const PROMPT_ATTACHMENT_CONTEXT_TYPE = "prompt_attachment_context";
 const PROMPT_ATTACHMENT_REFERENCE_TYPE = "prompt_attachment_reference";
+const PROMPT_REJECTED_TYPE = "prompt_rejected";
+const TURN_FAILED_TYPE = "turn_failed";
 
 export function selectConversationDocumentBranch(document: ConversationDocument): ConversationDocumentEntry[] {
 	const byId = new Map(document.entries.map((entry) => [entry.id, entry]));
@@ -61,9 +64,17 @@ export function projectConversationDocumentHistory(document: ConversationDocumen
 			});
 			continue;
 		}
-		if (entry.type === "custom" && entry.customType === ASSISTANT_TURN_TIMING_TYPE) {
-			const timing = parseAssistantTurnTiming(entry);
-			if (timing) history.push({ type: "assistant_turn_timing", timing, timestamp: entry.timestamp });
+		if (entry.type === "custom") {
+			if (entry.customType === ASSISTANT_TURN_TIMING_TYPE) {
+				const timing = parseAssistantTurnTiming(entry);
+				if (timing) history.push({ type: "assistant_turn_timing", timing, timestamp: entry.timestamp });
+				continue;
+			}
+			if (entry.customType === PROMPT_REJECTED_TYPE) {
+				appendPromptRejectedHistory(history, entry);
+				continue;
+			}
+			if (entry.customType === TURN_FAILED_TYPE) appendTurnFailedHistory(history, entry);
 			continue;
 		}
 		if (entry.type === "custom_message") appendCustomMessageHistory(history, entry);
@@ -157,6 +168,76 @@ function parseAssistantTurnTiming(entry: ConversationDocumentCustomEntry): Assis
 		return undefined;
 	}
 	return { startedAt: startedAt as number, endedAt: endedAt as number, durationMs: durationMs as number };
+}
+
+function appendPromptRejectedHistory(history: HistoryEntry[], entry: ConversationDocumentCustomEntry): void {
+	if (!isRecord(entry.data)) return;
+	const text = typeof entry.data.text === "string" ? entry.data.text.trim() : "";
+	const message = typeof entry.data.error === "string" ? entry.data.error.trim() : "";
+	if (text) {
+		history.push({
+			type: "message",
+			message: { role: "user", content: text, timestamp: new Date(entry.timestamp).getTime() },
+		});
+	}
+	if (message) history.push({ type: "error", entryId: entry.id, message, timestamp: entry.timestamp });
+}
+
+function appendTurnFailedHistory(history: HistoryEntry[], entry: ConversationDocumentCustomEntry): void {
+	if (!isRecord(entry.data) || !isRecord(entry.data.error)) return;
+	const message = typeof entry.data.error.message === "string" ? entry.data.error.message.trim() : "";
+	if (!message) return;
+	const code = typeof entry.data.error.code === "string" ? entry.data.error.code : undefined;
+	const retryable = typeof entry.data.error.retryable === "boolean" ? entry.data.error.retryable : undefined;
+	const origin = parseFailureOrigin(entry.data.error.origin);
+	const details = parseFailureDetails(entry.data.error.details);
+	const turnId = typeof entry.data.turnId === "string" ? entry.data.turnId : undefined;
+	history.push({
+		type: "error",
+		entryId: entry.id,
+		code,
+		...(retryable === undefined ? {} : { retryable }),
+		...(origin === undefined ? {} : { origin }),
+		...(details === undefined ? {} : { details }),
+		message,
+		timestamp: entry.timestamp,
+		...(turnId ? { turnId } : {}),
+	});
+}
+
+function parseFailureOrigin(value: unknown): RuntimeFailureOrigin | undefined {
+	return value === "runtime" || value === "provider" || value === "tool" || value === "mcp" ? value : undefined;
+}
+
+function parseFailureDetails(value: unknown): RuntimeFailureDetails | undefined {
+	if (!isRecord(value)) return undefined;
+	const details: {
+		statusCode?: number;
+		provider?: string;
+		modelId?: string;
+		requestId?: string;
+		providerCode?: string;
+		phase?: RuntimeFailureDetails["phase"];
+		retryAfterMs?: number;
+	} = {};
+	if (typeof value.statusCode === "number" && Number.isFinite(value.statusCode)) details.statusCode = value.statusCode;
+	if (typeof value.provider === "string" && value.provider.trim()) details.provider = value.provider.trim();
+	if (typeof value.modelId === "string" && value.modelId.trim()) details.modelId = value.modelId.trim();
+	if (typeof value.requestId === "string" && value.requestId.trim()) details.requestId = value.requestId.trim();
+	if (typeof value.providerCode === "string" && value.providerCode.trim())
+		details.providerCode = value.providerCode.trim();
+	if (
+		value.phase === "resolve" ||
+		value.phase === "request" ||
+		value.phase === "response" ||
+		value.phase === "stream" ||
+		value.phase === "decode"
+	) {
+		details.phase = value.phase;
+	}
+	if (typeof value.retryAfterMs === "number" && Number.isFinite(value.retryAfterMs))
+		details.retryAfterMs = value.retryAfterMs;
+	return Object.keys(details).length > 0 ? details : undefined;
 }
 
 function appendCustomMessageHistory(history: HistoryEntry[], entry: ConversationDocumentCustomMessageEntry): void {

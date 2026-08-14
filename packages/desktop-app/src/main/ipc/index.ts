@@ -27,6 +27,7 @@ import { registerRuntimesIpc } from "./runtimes.js";
 import { registerSessionIpc } from "./session.js";
 import { registerSettingsIpc } from "./settings.js";
 import { registerSkillsIpc } from "./skills.js";
+import { registerSpeechInputIpc } from "./speech-input.js";
 import { registerThemesIpc } from "./themes.js";
 import { registerUpdaterIpc } from "./updater.js";
 import { registerWebhookIpc } from "./webhook.js";
@@ -39,12 +40,12 @@ interface IpcTeardown {
 	teardownSettings: () => void;
 	teardownUpdater: () => void;
 	teardownSkills: () => void;
+	teardownSpeechInput: () => void;
 	teardownThemes: () => void;
 	teardownDialog: () => void;
 	teardownClipboard: () => void;
 	teardownFs: () => void;
 	teardownFileTransfer: () => void;
-	teardownBatchTasks: () => void;
 	teardownDownloads: () => void;
 	teardownIm: () => void;
 	teardownMedia: () => void;
@@ -76,12 +77,12 @@ export function registerAllIpc(
 		teardownSettings: registerSettingsIpc(),
 		teardownUpdater: registerUpdaterIpc(),
 		teardownSkills: registerSkillsIpc(),
+		teardownSpeechInput: registerSpeechInputIpc(webContents),
 		teardownThemes: registerThemesIpc(),
 		teardownDialog: registerDialogIpc(),
 		teardownClipboard: registerClipboardIpc(),
 		teardownFs: registerFsIpc(),
 		teardownFileTransfer: registerFileTransferIpc(),
-		teardownBatchTasks: () => {},
 		teardownDownloads: registerDownloadsIpc(webContents),
 		teardownIm: registerImIpc(webContents),
 		teardownMedia: registerMediaIpc(),
@@ -110,12 +111,12 @@ export function teardownAllIpc(teardown: IpcTeardown): void {
 	teardown.teardownSettings();
 	teardown.teardownUpdater();
 	teardown.teardownSkills();
+	teardown.teardownSpeechInput();
 	teardown.teardownThemes();
 	teardown.teardownDialog();
 	teardown.teardownClipboard();
 	teardown.teardownFs();
 	teardown.teardownFileTransfer();
-	teardown.teardownBatchTasks();
 	teardown.teardownDownloads();
 	teardown.teardownIm();
 	teardown.teardownMedia();

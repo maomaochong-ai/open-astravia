@@ -482,6 +482,9 @@ async function runTaskInner(
 				cwd: task.cwd,
 				sessionDir,
 				scenario: "batch",
+				// 显式固化为 work：批量任务是 work 产品线的会话形态，不传则执行时没有
+				// mode 提示词、事后打开会话时 UI 又按 work 回退渲染，执行与展示割裂。
+				agentMode: "work",
 				appendSystemPrompt: taskSystemPrompt,
 				executionMode: mode,
 				env: {

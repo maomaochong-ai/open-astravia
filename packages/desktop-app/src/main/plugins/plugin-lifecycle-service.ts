@@ -5,11 +5,9 @@ import type {
 } from "../../preload/api-types/app-monitor.js";
 import type { InstalledPlugin, PluginInstallOptions, PluginPermission } from "../../preload/api-types/plugins.js";
 import type { PluginActionService } from "./plugin-action-service.js";
-import { pluginVisibleInAgentMode } from "./plugin-agent-mode-policy.js";
 
 export interface PluginLifecycleDependencies {
 	listPlugins(): InstalledPlugin[];
-	readAgentMode(): Promise<string | undefined>;
 	installFromArchive(buffer: ArrayBuffer | Buffer, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	installFromUrl(url: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	installFromPath(path: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;
@@ -23,6 +21,11 @@ export interface PluginLifecycleDependencies {
 	stopDevWatch(id: string): void;
 	stopSpawns(id: string): void;
 	destroyOffscreenSessions(id: string): void;
+	hardRevokeAgentHandlers(
+		id: string,
+		reason: string,
+		kinds?: readonly ("tool" | "hook" | "continuation" | "system-prompt")[],
+	): void;
 	refreshRuntime(): void;
 	recordEvent(input: AppMonitorEvent): void;
 }
@@ -33,9 +36,9 @@ export class PluginLifecycleService {
 		private readonly dependencies: PluginLifecycleDependencies,
 	) {}
 
-	async listVisible(): Promise<InstalledPlugin[]> {
-		const mode = (await this.dependencies.readAgentMode()) ?? "work";
-		return this.dependencies.listPlugins().filter((plugin) => pluginVisibleInAgentMode(plugin, mode));
+	/** 已安装插件一律返回：工作模式不再隐藏任何插件（零硬闸决策）。 */
+	list(): InstalledPlugin[] {
+		return this.dependencies.listPlugins();
 	}
 
 	async installArchive(buffer: ArrayBuffer | Buffer, options?: PluginInstallOptions): Promise<InstalledPlugin> {
@@ -65,6 +68,7 @@ export class PluginLifecycleService {
 
 	uninstall(id: string): void {
 		const plugin = this.dependencies.listPlugins().find((candidate) => candidate.id === id);
+		this.dependencies.hardRevokeAgentHandlers(id, "Plugin was uninstalled");
 		this.stopPluginResources(id, true);
 		this.dependencies.uninstall(id);
 		this.actionService.clear(id);
@@ -94,6 +98,26 @@ export class PluginLifecycleService {
 	revokePermissions(id: string, permissions: PluginPermission[]): InstalledPlugin {
 		const previous = this.findPlugin(id)?.grantedPermissions ?? [];
 		const plugin = this.dependencies.revokePermissions(id, permissions);
+		const revokedKinds: Array<"tool" | "hook" | "continuation" | "system-prompt"> = [];
+		if (
+			!plugin.grantedPermissions.includes("agent.tools.register") ||
+			!plugin.grantedPermissions.includes("agent.toolHandler.execute")
+		)
+			revokedKinds.push("tool");
+		if (
+			!plugin.grantedPermissions.includes("agent.hooks.register") ||
+			!plugin.grantedPermissions.includes("agent.hookHandler.execute")
+		)
+			revokedKinds.push("hook");
+		if (!plugin.grantedPermissions.includes("agent.continuation.register")) revokedKinds.push("continuation");
+		if (
+			!plugin.grantedPermissions.includes("agent.systemPrompt.write") &&
+			!plugin.grantedPermissions.includes("agent.systemPrompt.fullControl")
+		)
+			revokedKinds.push("system-prompt");
+		if (revokedKinds.length > 0) {
+			this.dependencies.hardRevokeAgentHandlers(id, "Plugin Agent permission was revoked", revokedKinds);
+		}
 		if (
 			!plugin.grantedPermissions.includes("app.actions.register") ||
 			!plugin.grantedPermissions.includes("app.actionHandler.execute")

@@ -164,7 +164,7 @@ async function createCodingAgentSdkSessionComposition(
 	const extensionsResult = resourceLoader.getExtensions();
 	const storage: CodingAgentSessionStorageTarget = options.storage ?? {
 		kind: "file-create",
-		conversationDir: resolveCodingAgentSessionDir(cwd),
+		conversationDir: resolveCodingAgentSessionDir(cwd, undefined, agentDir),
 	};
 	const initial = await resolveSdkInitialModel(options, modelRegistry, settingsManager);
 	const tracer = options.tracer ?? createLangfuseRuntimeTracerFromEnv();
@@ -282,6 +282,7 @@ async function createCodingAgentSdkSessionComposition(
 			invokePluginTool: options.invokePluginTool,
 			invokePluginContinuation: options.invokePluginContinuation,
 			invokePluginSystemPrompt: options.invokePluginSystemPrompt,
+			pluginTurnHandlerLeaseProvider: options.pluginTurnHandlerLeaseProvider,
 			sessionTools,
 		},
 		initializeSession: extensionTransitions.initializeSession,

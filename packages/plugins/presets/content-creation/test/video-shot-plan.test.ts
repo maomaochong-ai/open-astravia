@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	ContentVideoShotPlanError,
+	resolveContentVideoShotStrategy,
 	selectContentVideoShotStrategy,
 } from "../src/agent/video-shot-plan";
 
@@ -27,6 +28,19 @@ describe("video shot strategy selection", () => {
 				{ kind: "image", semanticRole: "environment" },
 			],
 		})).toBe("omni-reference");
+	});
+
+	it("returns an explainable automatic strategy decision", () => {
+		expect(resolveContentVideoShotStrategy({
+			requestedStrategy: "automatic",
+			controlRequirements: {},
+			hasFirstFramePlan: false,
+			hasLastFramePlan: false,
+			sources: [{ kind: "video" }],
+		})).toEqual({
+			strategy: "transform-video",
+			reason: "One source video is the temporal authority.",
+		});
 	});
 
 	it("never silently degrades an exact ending to animate-still", () => {

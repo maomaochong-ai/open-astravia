@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { AssistantMessage } from "../src/protocol/index.js";
+import { AI_ERROR_CODES, AIError, getAIErrorDetails } from "../src/protocol/index.js";
 import {
 	AdapterRegistry,
 	type ApiProvider,
@@ -6,6 +8,7 @@ import {
 	LegacyApiProviderRegistry,
 } from "../src/runtime/adapter-registry.js";
 import { type LanguageModelAdapter, LanguageModelStream } from "../src/runtime/language-model-adapter.js";
+import { generateModel, streamModel } from "../src/runtime/stream-model.js";
 import { AssistantMessageEventStream } from "../src/utils/event-stream.js";
 
 function provider(api: string): ApiProvider {
@@ -105,4 +108,134 @@ describe("AdapterRegistry", () => {
 
 		expect(registry.get("test-api")?.api).toBe("test-api");
 	});
+
+	it("normalizes a native response failure at the registry boundary", async () => {
+		const registry = new AdapterRegistry();
+		const failure = new AIError(AI_ERROR_CODES.RATE_LIMITED, "provider quota exceeded", {
+			retryable: true,
+			statusCode: 429,
+			provider: "test-provider",
+			modelId: "model",
+		});
+		registry.register({
+			api: "test-api",
+			async stream() {
+				const source = new LanguageModelStream();
+				source.push({
+					type: "error",
+					reason: "error",
+					error: {
+						...assistantErrorMessage("provider quota exceeded"),
+						stopReason: "error",
+					},
+					failure: getAIErrorDetails(failure),
+				});
+				source.fail(failure);
+				return { events: source, result: source.result() };
+			},
+		});
+
+		const response = await streamModel({ model: testModel(), context: { messages: [] } }, registry);
+		const events: string[] = [];
+		await expect(
+			(async () => {
+				for await (const event of response.events) events.push(event.type);
+			})(),
+		).rejects.toMatchObject({ code: AI_ERROR_CODES.RATE_LIMITED, statusCode: 429 });
+		await expect(response.result).rejects.toMatchObject({ code: AI_ERROR_CODES.RATE_LIMITED, statusCode: 429 });
+		expect(events).toEqual(["error"]);
+	});
+
+	it("normalizes synchronous simple-stream adapter failures", async () => {
+		const registry = new AdapterRegistry();
+		registry.register({
+			api: "test-api",
+			async stream() {
+				throw Object.assign(new Error("quota exhausted"), { status: 429 });
+			},
+			async streamSimple() {
+				throw Object.assign(new Error("quota exhausted"), { status: 429 });
+			},
+		});
+
+		await expect(streamModel({ model: testModel(), context: { messages: [] } }, registry)).rejects.toMatchObject({
+			code: AI_ERROR_CODES.RATE_LIMITED,
+			statusCode: 429,
+		});
+		const adapter = registry.get("test-api");
+		if (!adapter?.streamSimple) throw new Error("Expected simple adapter");
+		await expect(adapter.streamSimple({ model: testModel(), context: { messages: [] } })).rejects.toMatchObject({
+			code: AI_ERROR_CODES.RATE_LIMITED,
+			statusCode: 429,
+		});
+	});
+
+	it("normalizes native generate and metadata failures", async () => {
+		const registry = new AdapterRegistry();
+		registry.register({
+			api: "test-api",
+			async stream() {
+				const source = new LanguageModelStream();
+				source.push({ type: "done", reason: "stop", message: assistantMessage() });
+				return {
+					events: source,
+					result: source.result(),
+					metadata: Promise.reject(Object.assign(new Error("gateway unavailable"), { status: 503 })),
+				};
+			},
+			async generate() {
+				return { result: Promise.reject(Object.assign(new Error("gateway unavailable"), { status: 503 })) };
+			},
+		});
+
+		const streamResponse = await streamModel({ model: testModel(), context: { messages: [] } }, registry);
+		await expect(streamResponse.metadata).rejects.toMatchObject({
+			code: AI_ERROR_CODES.TRANSPORT_FAILED,
+			statusCode: 503,
+		});
+		const generated = await generateModel({ model: testModel(), context: { messages: [] } }, registry);
+		await expect(generated.result).rejects.toMatchObject({
+			code: AI_ERROR_CODES.TRANSPORT_FAILED,
+			statusCode: 503,
+		});
+	});
 });
+
+function testModel(): Parameters<typeof streamModel>[0]["model"] {
+	return {
+		id: "model",
+		name: "Model",
+		api: "test-api",
+		provider: "test-provider",
+		baseUrl: "https://provider.test",
+		reasoning: false,
+		input: ["text"],
+		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+		contextWindow: 1000,
+		maxTokens: 100,
+	};
+}
+
+function assistantErrorMessage(message: string): AssistantMessage {
+	return { ...assistantMessage(), stopReason: "error", errorMessage: message };
+}
+
+function assistantMessage(): AssistantMessage {
+	return {
+		role: "assistant" as const,
+		content: [],
+		api: "test-api",
+		provider: "test-provider",
+		model: "model",
+		usage: {
+			input: 0,
+			output: 0,
+			cacheRead: 0,
+			cacheWrite: 0,
+			totalTokens: 0,
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+		},
+		stopReason: "stop" as const,
+		timestamp: 1,
+	};
+}

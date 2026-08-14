@@ -1,12 +1,12 @@
 import { type CapabilityAccessAuditEvent, CapabilityAccessController, CapabilityHub } from "@vetta/capability-runtime";
-import { PluginCapabilityAdapter } from "@vetta/capability-sdk/internal/plugin-adapter";
-import { ThemeCapabilityAdapter } from "@vetta/capability-sdk/internal/theme-adapter";
 import { ArtifactStore } from "../artifacts/artifact-store.js";
 import { JobManager } from "../jobs/job-manager.js";
 import { getAppLogger } from "../logger.js";
 import { listPlugins } from "../plugins/plugin-catalog.js";
 import { registerDesktopDomainProviders } from "./domain-providers.js";
 import { registerDesktopFoundationProviders } from "./foundation-providers.js";
+import { PluginCapabilityAdapter } from "./integrations/plugin/index.js";
+import { ThemeCapabilityAdapter } from "./integrations/theme-capability-adapter.js";
 
 const log = getAppLogger("capability-access");
 

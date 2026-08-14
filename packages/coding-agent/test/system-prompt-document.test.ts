@@ -4,6 +4,7 @@ import {
 	compileSystemPromptDraft,
 	coreBlock,
 	renderSystemPromptDraft,
+	STABLE_SYSTEM_PROMPT_PRIORITY,
 	type SystemPromptDraft,
 } from "../src/model-context/index.js";
 import { validatePluginRuntimeEffects } from "../src/plugins/runtime/runtime-effect-schema.js";
@@ -73,6 +74,65 @@ describe("system prompt document invariants", () => {
 			{ id: "core.base", estimatedTokens: 1 },
 			{ id: "core.footer", estimatedTokens: 2 },
 		]);
+	});
+});
+
+describe("system prompt cache breakpoint", () => {
+	it("splits content exactly at the stable/volatile priority boundary", () => {
+		const draft: SystemPromptDraft = {
+			blocks: [
+				coreBlock("core.base", "base", "Base", 150),
+				coreBlock("core.skills", "skills", "Skills", STABLE_SYSTEM_PROMPT_PRIORITY - 1),
+				coreBlock("core.mode", "mode", "Mode", 850),
+				coreBlock("core.footer", "footer", "Footer", 1000),
+			],
+			metadata: { cwd: "C:\\workspace", dateTime: "now" },
+		};
+
+		const { content, stableLength } = compileSystemPromptDraft(draft);
+
+		expect(content).toBe("Base\n\nSkills\n\nMode\n\nFooter");
+		expect(content.slice(0, stableLength)).toBe("Base\n\nSkills");
+		// 块间分隔符归属其后的块，两段拼回必须与原文逐字相等。
+		expect(content.slice(stableLength)).toBe("\n\nMode\n\nFooter");
+		expect(content.slice(0, stableLength) + content.slice(stableLength)).toBe(content);
+	});
+
+	it("ignores disabled and empty blocks when computing the split point", () => {
+		const draft: SystemPromptDraft = {
+			blocks: [
+				coreBlock("core.base", "base", "Base", 150),
+				coreBlock("core.memory", "memory", "", 600),
+				{ ...coreBlock("core.skills", "skills", "Skills", 700), enabled: false },
+				coreBlock("core.footer", "footer", "Footer", 1000),
+			],
+			metadata: { cwd: "C:\\workspace", dateTime: "now" },
+		};
+
+		const { content, stableLength } = compileSystemPromptDraft(draft);
+
+		expect(content).toBe("Base\n\nFooter");
+		expect(content.slice(0, stableLength)).toBe("Base");
+	});
+
+	it("reports the full length when every block is stable", () => {
+		const draft: SystemPromptDraft = {
+			blocks: [coreBlock("core.base", "base", "Base", 150), coreBlock("core.skills", "skills", "Skills", 700)],
+			metadata: { cwd: "C:\\workspace", dateTime: "now" },
+		};
+
+		const { content, stableLength } = compileSystemPromptDraft(draft);
+
+		expect(stableLength).toBe(content.length);
+	});
+
+	it("reports zero when every block is volatile", () => {
+		const draft: SystemPromptDraft = {
+			blocks: [coreBlock("core.mode", "mode", "Mode", 850), coreBlock("core.footer", "footer", "Footer", 1000)],
+			metadata: { cwd: "C:\\workspace", dateTime: "now" },
+		};
+
+		expect(compileSystemPromptDraft(draft).stableLength).toBe(0);
 	});
 });
 

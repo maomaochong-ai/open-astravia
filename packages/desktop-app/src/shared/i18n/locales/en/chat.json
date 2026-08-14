@@ -264,12 +264,10 @@
 		"tooltip": {
 			"compacting": "Compacting context...",
 			"unknown": "Context window {{window}} (usage unknown)",
-			"usage": "Context {{percent}}% used ({{window}} window)"
+			"usage": "Context {{tokens}} tokens used ({{percent}}%, {{window}} window)"
 		},
 		"details": {
 			"title": "Context composition (latest call)",
-			"actual": "Actual input",
-			"estimated": "Estimated",
 			"section": "Section",
 			"category": "Category",
 			"tokens": "Tokens",
@@ -278,11 +276,6 @@
 			"unavailableAfterRestart": "No restorable composition details are available for this session. Send another message to generate and save a new report.",
 			"items": "{{count}} items",
 			"unknownItems": "{{count}} unknown",
-			"coverage": {
-				"complete": "Estimate coverage is complete",
-				"partial": "Some sections could not be estimated",
-				"none": "No estimate is available"
-			},
 			"owner": {
 				"core": "System",
 				"skill": "Skill",
@@ -372,6 +365,9 @@
 		}
 	},
 	"inputBar": {
+		"error": {
+			"multipleScenes": "Only one Scene can be selected per message. Remove the extra Scene and try again"
+		},
 		"capsule": {
 			"appshotThumbnailAlt": "Screenshot",
 			"appshotPreview": "Preview screenshot",
@@ -413,6 +409,22 @@
 			"addImage": "Add image",
 			"attachFile": "Attach file reference",
 			"skills": "Skills / Scenes"
+		},
+		"speech": {
+			"actions": {
+				"start": "Start voice input",
+				"stop": "Stop voice input"
+			},
+			"states": {
+				"loading": "Loading offline speech model…",
+				"stopping": "Finishing speech recognition…"
+			},
+			"errors": {
+				"unsupported": "Voice input currently requires Windows x64",
+				"missing": "The speech model is missing from this installation. Reinstall the app",
+				"integrity": "The bundled speech model is incomplete. Reinstall the app",
+				"recognizer": "Speech recognition failed to start. Click to retry"
+			}
 		},
 		"contextMenu": {
 			"cut": "Cut",
@@ -483,7 +495,8 @@
 		"compactionBoundary": "Context compacted",
 		"modelSwitched": "Switched model to {{name}}",
 		"compactionIndicator": "Compacting context...",
-		"retryIndicator": "Connection is flaky — retrying automatically ({{attempt}}/{{maxAttempts}})",
+		"retryIndicator": "Reconnecting ({{attempt}}/{{maxAttempts}})",
+		"retryReason": "Last request failed: {{reason}}",
 		"streamingPhrases": [
 			"Vetta is replying…",
 			"Please hold on…",
@@ -498,6 +511,17 @@
 			"hideDetail": "Hide details",
 			"retriedNote": "Retried {{count}} time(s) automatically",
 			"repeatedNote": "Happened {{count}} times",
+			"diagnostic": {
+				"code": "Error code: {{value}}",
+				"origin": "Origin: {{value}}",
+				"statusCode": "HTTP status: {{value}}",
+				"provider": "Provider: {{value}}",
+				"model": "Model: {{value}}",
+				"providerCode": "Provider error code: {{value}}",
+				"phase": "Phase: {{value}}",
+				"requestId": "Request ID: {{value}}",
+				"retryAfter": "Suggested wait: {{value}} ms"
+			},
 			"kinds": {
 				"rate_limit": {
 					"title": "Too many requests",
@@ -573,7 +597,8 @@
 		"progressGroup": {
 			"fallbackTitle": "Working",
 			"genericDone": "Completed {{count}} steps",
-			"genericRunning": "Working on it"
+			"genericRunning": "Working on it",
+			"thinking": "Thinking"
 		},
 		"toolCallGroup": {
 			"completed": "{{count}} tool calls completed",

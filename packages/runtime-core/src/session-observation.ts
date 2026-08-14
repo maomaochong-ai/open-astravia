@@ -1,6 +1,7 @@
 import type { ToolPhase } from "@vetta/agent-core";
 import type { Message } from "@vetta/ai";
 import type { BackgroundTaskInfo, RuntimeEventSource, SessionError, SubagentInfo, TodoItem } from "./contracts.js";
+import type { RuntimeFailure } from "./failure-contract.js";
 
 export type RuntimeSessionLifecyclePhase =
 	| "created"
@@ -72,7 +73,12 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 				readonly details?: string;
 		  }
 		| { readonly type: "mcp.reload.start" }
-		| { readonly type: "mcp.reload.end"; readonly changed: boolean; readonly errorMessage?: string }
+		| {
+				readonly type: "mcp.reload.end";
+				readonly changed: boolean;
+				readonly errorMessage?: string;
+				readonly failure?: RuntimeFailure;
+		  }
 		| {
 				readonly type: "usage.update";
 				readonly input: number;
@@ -81,9 +87,10 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 				readonly cacheWrite: number;
 				readonly costTotal: number;
 				readonly contextPercent: number | null;
+				readonly contextTokens?: number | null;
 				readonly contextWindow: number;
 		  }
-		| { readonly type: "error"; readonly error: SessionError }
+		| { readonly type: "error"; readonly error: SessionError; readonly turnId?: string }
 		| { readonly type: "todo_update"; readonly items: readonly TodoItem[] }
 		| { readonly type: "background_tasks_update"; readonly tasks: readonly BackgroundTaskInfo[] }
 		| { readonly type: "subagents_update"; readonly agents: readonly SubagentInfo[] }
@@ -93,14 +100,21 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 				readonly maxAttempts: number;
 				readonly delayMs: number;
 				readonly errorMessage: string;
+				readonly failure?: RuntimeFailure;
 		  }
 		| {
 				readonly type: "retry.end";
 				readonly success: boolean;
 				readonly attempt: number;
 				readonly finalError?: string;
+				readonly failure?: RuntimeFailure;
 		  }
 		| { readonly type: "active_tools_update"; readonly activeToolNames: readonly string[] }
 		| { readonly type: "compaction.start"; readonly reason: "threshold" | "overflow" }
-		| { readonly type: "compaction.end"; readonly success: boolean; readonly errorMessage?: string }
+		| {
+				readonly type: "compaction.end";
+				readonly success: boolean;
+				readonly errorMessage?: string;
+				readonly failure?: RuntimeFailure;
+		  }
 	);

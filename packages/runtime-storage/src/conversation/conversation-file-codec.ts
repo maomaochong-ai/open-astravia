@@ -5,6 +5,7 @@ import {
 	type ConversationDocument,
 	type ConversationDocumentEntry,
 	type ConversationDocumentEntryReference,
+	conversationDocumentEntryPersistence,
 	createEmptyConversationDocument,
 	createSeededConversationDocument,
 	nativeConversationEntryId,
@@ -20,6 +21,7 @@ import {
 	type ConversationFileHeader,
 	type ConversationImportSeedRecord,
 	type ConversationSeedRecord,
+	getStoredSessionEventValidationIssue,
 	isConversationContinuationSeedRecord,
 	isConversationDocumentOperationRecord,
 	isConversationEventRecord,
@@ -146,8 +148,8 @@ export function parseConversationFile(text: string, sessionId: string): ParsedCo
 		expectedEventSequence += 1;
 		validateConversationEvent(sessionId, record.event);
 		if (record.schemaVersion === CONVERSATION_SCHEMA_VERSION) {
-			const hasDocumentEntry = record.documentEntry !== null;
-			if (hasDocumentEntry !== isConversationDocumentEntryEvent(record.event)) {
+			const persistence = conversationDocumentEntryPersistence(record.event);
+			if ((record.documentEntry !== null) !== (persistence === "reference")) {
 				throw corruptConversation(sessionId, `event has inconsistent document entry at line ${index + 2}`);
 			}
 			if (record.documentEntry) {
@@ -158,6 +160,14 @@ export function parseConversationFile(text: string, sessionId: string): ParsedCo
 					throw corruptConversation(sessionId, `unknown document parent at line ${index + 2}`);
 				}
 				documentEntryIds.add(record.documentEntry.id);
+			}
+			// 隐式节点的 id 不落盘，但同样会成为后续事件的父节点，必须一并登记。
+			if (persistence === "implicit") {
+				const implicitId = nativeConversationEntryId(record.sequence);
+				if (documentEntryIds.has(implicitId)) {
+					throw corruptConversation(sessionId, `duplicate document entry at line ${index + 2}`);
+				}
+				documentEntryIds.add(implicitId);
 			}
 		}
 		eventRecords.push(record);
@@ -191,9 +201,12 @@ function documentOperationEntryId(record: ConversationDocumentOperationRecord): 
 
 export function validateConversationEvent(sessionId: string, event: StoredSessionEvent): void {
 	if (!isStoredSessionEvent(event)) {
+		const issue = getStoredSessionEventValidationIssue(event);
+		const eventLabel = issue?.eventType ? ` ${issue.eventType}` : "";
+		const diagnostic = issue ? ` at ${issue.path}: ${issue.message}` : "";
 		throw new ConversationStorageError(
 			CONVERSATION_STORAGE_ERROR_CODES.INVALID_EVENT,
-			`Event for ${sessionId} does not match the stored session event schema`,
+			`Stored${eventLabel} event for ${sessionId} does not match the schema${diagnostic}`,
 		);
 	}
 	if (event.sessionId !== sessionId) {
@@ -284,21 +297,12 @@ export function createDocumentEntryReference(
 	sequence: number,
 	parentId: string | null,
 ): ConversationDocumentEntryReference | null {
-	if (!isConversationDocumentEntryEvent(event)) return null;
+	if (conversationDocumentEntryPersistence(event) !== "reference") return null;
 	return {
 		id: nativeConversationEntryId(sequence),
 		parentId,
 		timestamp: new Date(event.timestamp).toISOString(),
 	};
-}
-
-function isConversationDocumentEntryEvent(event: StoredSessionEvent): boolean {
-	return (
-		event.type === "message.appended" ||
-		event.type === "context.appended" ||
-		event.type === "context.recorded" ||
-		(event.type === "context.compacted" && "firstKeptEntryId" in event.record)
-	);
 }
 
 function parseRecords(text: string, sessionId: string): unknown[] {

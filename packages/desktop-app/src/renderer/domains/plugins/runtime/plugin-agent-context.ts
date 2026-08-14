@@ -123,6 +123,7 @@ export function createPluginAgentApi({
 				pluginId: plugin.id,
 				toolId,
 				handlerId,
+				activationId,
 				handler: registration.handler as PluginAgentToolHandler,
 				api: { fs, conversation },
 			});
@@ -141,11 +142,18 @@ export function createPluginAgentApi({
 				timeoutMs: registration.timeoutMs,
 				scope_use: registration.scope_use,
 				requires: registration.requires,
-				agent_mode: registration.agent_mode,
+				side_effect: registration.side_effect,
 				context: registration.context,
 				// 宿主自动检测：带自渲染槽的工具会被注入可选的 md_intro 参数（见 ADR-0047）。
 				rendersCard: hasToolCallSlot(toolName) || undefined,
 			};
+			if (registration.side_effect === undefined) {
+				// 强制声明（软执行）：不声明按 light 处理，重副作用工具漏声明会绕过首调确认闸。
+				console.warn(
+					`[plugin-agent] tool "${toolName}" (${plugin.id}) declares no side_effect; ` +
+						'defaulting to light. Declare side_effect: "heavy" if it creates file trees, incurs external cost, or performs irreversible external actions.',
+				);
+			}
 			registeredAgentTools.set(toolName, payload);
 			if (label) setAgentToolLabel(plugin.id, toolName, label);
 			const registrationPromise = window.vetta.plugins
@@ -169,7 +177,6 @@ export function createPluginAgentApi({
 			pendingRuntimeRegistrations.push(registrationPromise);
 			return {
 				dispose: () => {
-					handlerHandle.dispose();
 					registeredAgentTools.delete(toolName);
 					if (label) setAgentToolLabel(plugin.id, toolName, null);
 					void window.vetta.plugins.unregisterAgentTool(plugin.id, toolId, activationId);
@@ -202,6 +209,7 @@ export function createPluginAgentApi({
 			const handlerHandle = registerPluginAgentHookHandler({
 				pluginId: plugin.id,
 				handlerId,
+				activationId,
 				handler: registration.handler as unknown as PluginCodingAgentHookHandler<PluginCodingAgentHookEventName>,
 				api: { fs, conversation },
 			});
@@ -212,7 +220,6 @@ export function createPluginAgentApi({
 				activationId,
 				timeoutMs: registration.timeoutMs,
 				scope_use: registration.scope_use,
-				agent_mode: registration.agent_mode,
 				toolNames: registration.toolNames,
 			};
 			const registrationPromise = window.vetta.plugins
@@ -224,9 +231,9 @@ export function createPluginAgentApi({
 			pendingRuntimeRegistrations.push(registrationPromise);
 			return {
 				dispose: () => {
-					void window.vetta.plugins
-						.unregisterAgentHook(plugin.id, hookId, activationId)
-						.finally(() => handlerHandle.dispose());
+					// Main owns the generation lease. The renderer handler is released only
+					// after the last admitted Turn drops that lease.
+					void window.vetta.plugins.unregisterAgentHook(plugin.id, hookId, activationId);
 				},
 			};
 		},
@@ -243,6 +250,7 @@ export function createPluginAgentApi({
 			const handlerHandle = registerPluginContinuationHandler({
 				pluginId: plugin.id,
 				handlerId,
+				activationId,
 				handler: registration.handler,
 				api: { fs, conversation },
 			});
@@ -261,7 +269,6 @@ export function createPluginAgentApi({
 			pendingRuntimeRegistrations.push(registrationPromise);
 			return {
 				dispose: () => {
-					handlerHandle.dispose();
 					void window.vetta.plugins.unregisterContinuationProvider(plugin.id, providerId, activationId);
 				},
 			};
@@ -284,6 +291,7 @@ export function createPluginAgentApi({
 			const handlerHandle = registerPluginSystemPromptHandler({
 				pluginId: plugin.id,
 				handlerId,
+				activationId,
 				handler: registration.handler,
 				api: { fs, conversation },
 			});
@@ -302,7 +310,6 @@ export function createPluginAgentApi({
 			pendingRuntimeRegistrations.push(registrationPromise);
 			return {
 				dispose: () => {
-					handlerHandle.dispose();
 					void window.vetta.plugins.unregisterSystemPromptProvider(plugin.id, providerId, activationId);
 				},
 			};

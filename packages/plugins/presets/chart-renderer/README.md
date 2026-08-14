@@ -4,7 +4,6 @@
 Chart.js `type` / `data`（或 `charts` 数组，最多 4 个），图表以卡片形式渲染在
 当前工具调用下方（`ui.slot.tool-call`）。
 
-- 工作模式：`agent_mode: ["work"]`，Coding 模式下整个插件不可见（ADR-0046）。
 - 随插件打包一个 `chart-renderer` skill（`skills/`），约束 Agent 的调用格式与图表选型。
 - 文案走插件 i18n（`locales/zh.json`、`locales/en.json`，ADR-0033）；工具 name /
   description 面向 LLM，保持原文。

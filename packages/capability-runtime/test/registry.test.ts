@@ -175,4 +175,23 @@ describe("CapabilityRegistry", () => {
 			code: CAPABILITY_ERROR_CODES.VERSION_MISMATCH,
 		});
 	});
+
+	it("preserves provider diagnostics when wrapping a provider failure", async () => {
+		const registry = new CapabilityRegistry(CAPABILITY_LAYERS.FOUNDATION);
+		registry.registerOwner("owner", [
+			bindCapability(TEST_CAPABILITY, {
+				execute: () => {
+					throw Object.assign(new Error("quota exhausted"), {
+						code: "AI_BILLING_REQUIRED",
+						details: { statusCode: 402, provider: "deepseek", modelId: "deepseek-chat" },
+					});
+				},
+			}),
+		]);
+
+		await expect(registry.invoke(TEST_CAPABILITY, { path: "value" }, context())).rejects.toMatchObject({
+			code: CAPABILITY_ERROR_CODES.PROVIDER_FAILED,
+			details: { statusCode: 402, provider: "deepseek", modelId: "deepseek-chat" },
+		});
+	});
 });

@@ -1,6 +1,9 @@
 import type { EcosystemHookContributionSource } from "@vetta/ecosystem-adapter";
-import type { PromptResourceRef, RuntimePromptPreparationContext } from "@vetta/runtime-core";
-import type { ModelCallFrameCompositionContext } from "@vetta/runtime-core/kernel";
+import type { PromptResourceRef } from "@vetta/runtime-core";
+import type {
+	ModelCallFrameCompositionContext,
+	RuntimeInputRequestPreparationContext,
+} from "@vetta/runtime-core/kernel";
 import type { BuildSystemPromptOptions, PersonalizationSettingsSource } from "../model-context/index.js";
 import type { SessionResourceRuntime } from "../resources/index.js";
 
@@ -8,15 +11,20 @@ export interface CodingAgentPromptResourceExpansion {
 	readonly text: string;
 	readonly promptRef?: PromptResourceRef;
 	readonly skillInjection?: string;
+	readonly promptResourceHookContribution?: EcosystemHookContributionSource;
+	/** @deprecated Use promptResourceHookContribution for both Skill and Scene resources. */
 	readonly skillHookContribution?: EcosystemHookContributionSource;
 	readonly sceneInjection?: string;
 }
 
-export type CodingAgentPromptResourceResolver = (
-	text: string,
-	promptRef: PromptResourceRef,
-	context: RuntimePromptPreparationContext,
-) => Promise<CodingAgentPromptResourceExpansion> | CodingAgentPromptResourceExpansion;
+export type CodingAgentPromptResourceResolver = {
+	(
+		text: string,
+		promptRef: PromptResourceRef,
+		context: RuntimeInputRequestPreparationContext,
+	): Promise<CodingAgentPromptResourceExpansion> | CodingAgentPromptResourceExpansion;
+	bindForTurn?(): CodingAgentPromptResourceResolver;
+};
 
 export type CodingAgentPromptResourceSource = Pick<
 	SessionResourceRuntime,

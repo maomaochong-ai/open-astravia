@@ -25,6 +25,8 @@ All notable changes to `@vetta/runtime-storage` are documented in this file.
 
 ### Fixed
 
+- **结构化 Provider 失败可持久化**：Conversation 严格 Schema 接受 Assistant、`message.appended` 与 `turn.failed` 的安全失败字段，余额不足等终端错误不再因公共类型与存储校验漂移而被 `conversation_invalid_event` 覆盖。
+
 - **Legacy 会话重复导入**：确定性迁移目标在初始 Import Seed 后追加原生 V2 事件时仍可安全复用，重复打开不再误报 `Conversation already exists`，且保留迁移后继续产生的会话历史。
 
 - **会话删除与外部产物清理保持同一可重试事务**：文件会话目录支持可注入的产物 Cleaner，并在删除 Snapshot 和会话文件前执行；清理失败时保留会话及其锁内可重试状态，Storage 不依赖具体 Tool 或 Coding Agent 实现。

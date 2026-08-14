@@ -11,10 +11,10 @@ import { QuestionPanel } from "../QuestionPanel";
 import { AppshotCard } from "../AppshotCard";
 import { useSessionDropZoneModel } from "../../hooks/useSessionDropZoneModel";
 import { InputBarBackground } from "./InputBarBackground";
-import { InputBarCapsule } from "./InputBarCapsule";
 import { InputBarDrawer } from "./InputBarDrawer";
 import { InputBarFooter } from "./InputBarFooter";
 import { InputBarTodoStatus } from "./InputBarTodoStatus";
+import { InputBarSpeechStatus } from "./InputBarSpeechStatus";
 import { PromptAttachmentLabels } from "./PromptAttachmentLabels";
 import { InputBarToolbar } from "./InputBarToolbar";
 import { InputEditor } from "./editor/InputEditor";
@@ -195,18 +195,6 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 										)}
 
 										{/* 插件附件不画在卡片里：它是「你现在正看着什么」，画在卡片外面顶部（PromptAttachmentLabels）。 */}
-										{model.selectedSkill && (
-											<div className="flex flex-wrap items-center gap-1.5">
-												<InputBarCapsule
-													key="scene-capsule"
-													icon="icon-[solar--clapperboard-open-linear]"
-													label={model.selectedSkill.alias || model.selectedSkill.name}
-													labels={model.labels.capsule}
-													tone="primary"
-													onRemove={model.actions.removeSkill}
-												/>
-											</div>
-										)}
 									</div>
 								</motion.div>
 							)}
@@ -244,6 +232,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 							onSelectImages={() => void model.actions.handleSelectImages()}
 							onSend={model.actions.handleSend}
 							slashOpen={model.slashOpen}
+							speechInput={model.speechInput}
 						/>
 					</div>
 				</SessionDropZoneView>
@@ -257,6 +246,12 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 						{
 							id: "todo",
 							node: model.todo ? <InputBarTodoStatus todo={model.todo} /> : null,
+						},
+						{
+							id: "speech-input",
+							node: model.speechInput.statusText ? (
+								<InputBarSpeechStatus text={model.speechInput.statusText} />
+							) : null,
 						},
 					]}
 				/>

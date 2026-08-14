@@ -1,6 +1,7 @@
 import type { ThinkingLevel, ToolPhase } from "@vetta/agent-core";
 import type { Message, Model } from "@vetta/ai";
 import type { ContextCompositionReport } from "./context-composition/contracts.js";
+import type { RuntimeFailure, RuntimeFailureDetails, RuntimeFailureOrigin } from "./failure-contract.js";
 
 /** 对话场景 slug；RuntimeHost 与 Coding Profile 共享的稳定隔离轴。 */
 export type ConversationScenario =
@@ -122,8 +123,6 @@ export interface McpServerContribution {
 	/** Unique runtime server name, e.g. `plugin-cowart-canvas`. */
 	runtimeName: string;
 	config: AgentPluginMcpServerConfig;
-	/** 该 server 的工具允许出现的工作模式 slug（agent_mode 轴，缺省/空 = 通用）。见 ADR-0046。 */
-	agent_mode?: string[];
 }
 
 export type JsonSchema = Record<string, unknown>;
@@ -136,11 +135,17 @@ export interface AgentPluginToolContribution {
 	description: string;
 	parameters: JsonSchema;
 	handlerId: string;
+	activationId?: string;
 	timeoutMs?: number;
 	/** 允许出现的对话场景 slug（fail-closed：缺省/空 = 所有场景都不激活）。由插件 registerTool 声明。 */
 	scope_use?: string[];
 	/** 需要的会话能力 slug（如 "knowledge"）。 */
 	requires?: string[];
+	/**
+	 * 副作用等级（"light" | "heavy"，缺省 = light）。宿主侧元数据，不进 LLM schema。
+	 * heavy 工具在会话内首次调用前需要用户确认。
+	 */
+	side_effect?: string;
 	context?: { conversation?: "summary" | "messages" };
 }
 
@@ -156,6 +161,7 @@ export interface AgentPluginContinuationContribution {
 	pluginId: string;
 	id: string;
 	handlerId: string;
+	activationId?: string;
 	timeoutMs?: number;
 	context?: { conversation?: "summary" | "messages" };
 }
@@ -164,6 +170,7 @@ export interface AgentPluginSystemPromptProviderContribution {
 	pluginId: string;
 	id: string;
 	handlerId: string;
+	activationId?: string;
 	timeoutMs?: number;
 	context?: {
 		systemPrompt?: "none" | "blocks" | "rendered" | "full";
@@ -182,6 +189,7 @@ export interface AgentPluginSystemPromptInvocation {
 	pluginId: string;
 	providerId: string;
 	handlerId: string;
+	activationId?: string;
 	session: { id: string; cwd: string; scenario: string };
 	model: {
 		provider: string;
@@ -227,11 +235,27 @@ export interface AgentPluginRuntimeConfig {
 	mcpServerContributions?: McpServerContribution[];
 }
 
+export interface AgentPluginTurnHandlerLease {
+	release(): Promise<void> | void;
+}
+
+export interface AgentPluginTurnHandlerLeaseProvider {
+	bindForTurn(
+		config: AgentPluginRuntimeConfig | undefined,
+		context: {
+			readonly sessionId: string;
+			readonly turnId: string;
+			readonly signal: AbortSignal;
+		},
+	): Promise<AgentPluginTurnHandlerLease> | AgentPluginTurnHandlerLease;
+}
+
 export interface AgentPluginToolInvocation {
 	pluginId: string;
 	toolId: string;
 	toolName: string;
 	handlerId: string;
+	activationId?: string;
 	input: unknown;
 	session: AgentPluginSystemPromptInvocation["session"];
 	model: AgentPluginSystemPromptInvocation["model"];
@@ -249,6 +273,7 @@ export interface AgentPluginContinuationInvocation {
 	pluginId: string;
 	providerId: string;
 	handlerId: string;
+	activationId?: string;
 	session: AgentPluginSystemPromptInvocation["session"];
 	model: AgentPluginSystemPromptInvocation["model"];
 	conversation: AgentPluginSystemPromptInvocation["conversation"];
@@ -405,23 +430,21 @@ export interface UsageUpdateEvent extends SessionEventBase {
 	costTotal: number;
 	/** Context window usage percentage (0-100), or null if unknown (e.g. after compaction) */
 	contextPercent: number | null;
+	/** Provider-reported total input/context tokens when available. */
+	contextTokens?: number | null;
 	/** Total context window size in tokens */
 	contextWindow: number;
 	/** Privacy-safe breakdown for the exact provider-facing context. */
 	contextComposition?: ContextCompositionReport;
 }
 
-export interface SessionError {
-	code: string;
-	message: string;
-	retryable: boolean;
-	origin: "runtime" | "provider" | "tool" | "mcp";
-	details?: unknown;
-}
+export interface SessionError extends RuntimeFailure {}
 
 export interface ErrorEvent extends SessionEventBase {
 	type: "error";
 	error: SessionError;
+	/** Stable turn correlation. Present for failures persisted as turn.failed. */
+	turnId?: string;
 	/**
 	 * 这条错误最终发出前，自动重试实际尝试过的次数（0 = 没重试过）。
 	 * 由 session-events 的挂起状态机累计，供 UI 说「已自动重试 N 次仍失败」。
@@ -436,6 +459,8 @@ export interface RetryStartEvent extends SessionEventBase {
 	maxAttempts: number;
 	delayMs: number;
 	errorMessage: string;
+	/** Structured failure that triggered the retry; errorMessage remains legacy display text. */
+	failure?: RuntimeFailure;
 }
 
 /** 自动重试结束：success=false 表示重试次数耗尽，随后会有一条 error 事件。 */
@@ -524,6 +549,7 @@ export interface CompactionEndEvent extends SessionEventBase {
 	type: "compaction.end";
 	success: boolean;
 	errorMessage?: string;
+	failure?: RuntimeFailure;
 }
 
 export interface RuntimeUserConfirmationRequest {
@@ -619,6 +645,11 @@ export type SessionEvent =
 /** prompt 的即时回执（ADR-0060）：排队时立即返回，宿主/UI 据此区分「已发出」与「已排队」。 */
 export interface RuntimeTurnPromptOutcome {
 	readonly status: "completed" | "cancelled" | "failed" | "queued" | "handled";
+	/** Structured failure for a terminal failed turn. Kept on the prompt receipt so
+	 * retry adapters cannot mistake a failed turn for a successful one. */
+	readonly error?: SessionError;
+	/** The durable turn identity when this receipt represents a completed turn. */
+	readonly turnId?: string;
 	readonly pendingCount?: number;
 	readonly queueItemId?: string;
 }
@@ -647,6 +678,8 @@ export interface SessionStateSnapshot {
 	messageCount: number;
 	/** Context window usage percentage (0-100), or null if unknown */
 	contextPercent: number | null;
+	/** Provider-reported total input/context tokens when available. */
+	contextTokens?: number | null;
 	/** Total context window size in tokens */
 	contextWindow: number;
 	/** Latest model-call context composition, when a call has been prepared. */
@@ -659,6 +692,12 @@ export interface SessionStateSnapshot {
 	 * coding-agent 的 DEFAULT_SCENARIO（"cli"）。
 	 */
 	scenario: ConversationScenario;
+	/**
+	 * 本会话的工作模式，创建时固化、会话内不可变（见 ADR-0046 修订）。renderer 据此按
+	 * 本会话而非全局默认值渲染；改新会话默认模式不影响已打开的会话。
+	 * undefined = 未指定（CLI/headless 缺省，不做任何模式偏向）。
+	 */
+	agentMode?: string;
 	/** Parent session jsonl path when this session was forked. */
 	parentSessionPath?: string;
 	/** User entry id in the parent session this fork was created from. */
@@ -700,7 +739,11 @@ export interface SessionConfig {
 	 * DEFAULT_SCENARIO("cli")。desktop 各入口（普通对话/项目/批量/自动化）显式传入。
 	 */
 	scenario?: ConversationScenario;
-	/** 工作模式（agent_mode 正交轴）。纯全局态，desktop 从 desktop-config 读入。缺省=不过滤。见 ADR-0046。 */
+	/**
+	 * 工作模式（agent_mode 轴）。会话创建时固化、会话内不可变；只作为任务解释的先验注入
+	 * mode 系统提示词，不影响任何工具/Skill/MCP/插件的可用性与顺序（ADR-0071）。
+	 * desktop 从 desktop-config 的 defaultAgentMode 读入，缺省 = 不做任何模式偏向。
+	 */
 	agentMode?: string;
 	/** 追加到 system prompt 末尾的文本，不会被上下文压缩 */
 	appendSystemPrompt?: string;
@@ -803,6 +846,23 @@ export type HistoryEntry =
 			timestamp: string;
 	  }
 	| { type: "assistant_turn_timing"; timing: AssistantTurnTiming; timestamp: string }
+	| {
+			type: "error";
+			/** Stable conversation entry id when the failure was persisted as a document fact. */
+			entryId?: string;
+			/** Runtime / provider error code when one is available. */
+			code?: string;
+			/** Whether the failure may succeed after a retry. */
+			retryable?: boolean;
+			/** Layer that produced the failure. */
+			origin?: RuntimeFailureOrigin;
+			/** Safe provider/model diagnostics retained for history replay. */
+			details?: RuntimeFailureDetails;
+			/** Stable turn correlation when the failure belongs to a persisted turn. */
+			turnId?: string;
+			message: string;
+			timestamp: string;
+	  }
 	/**
 	 * Marker that the next user message was sent via Settings AI assist
 	 * (model-only instruction custom message precedes it). UI-only; not LLM content.
@@ -840,6 +900,7 @@ export interface SessionFacade {
 	setPluginToolInvoker(handler: AgentPluginToolInvoker | undefined): void;
 	setPluginContinuationInvoker(handler: AgentPluginContinuationInvoker | undefined): void;
 	setPluginSystemPromptInvoker(handler: AgentPluginSystemPromptInvoker | undefined): void;
+	setPluginTurnHandlerLeaseProvider(provider: AgentPluginTurnHandlerLeaseProvider | undefined): void;
 	reconfigureAgentPlugins(agentPlugins: AgentPluginRuntimeConfig | undefined): void;
 	listSandboxGrants(sessionId: string): RuntimeSandboxGrantInfo[];
 	revokeSandboxGrant(sessionId: string, grantId: string): boolean;

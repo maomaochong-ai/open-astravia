@@ -18,7 +18,7 @@ import type {
 import type { CodingAgentSessionToolDefinition } from "../../public-api/sdk/sdk-tool-contract.js";
 import { projectCodingAgentMessages } from "../../sessions/projection/conversation-context-projector.js";
 import type { CodingAgentTurnRetryController } from "../session-execution/contracts.js";
-import { readCodingAgentFailedTurnMessage } from "../session-execution/turn-executor.js";
+import { readCodingAgentTurnFailure } from "../session-execution/turn-executor.js";
 import { createCodingAgentTurnRetryController } from "../session-execution/turn-retry-controller.js";
 import type { CodingAgentSdkSessionCapabilityPort } from "./runtime-contracts.js";
 import type { CodingAgentSdkSessionCapabilityHostOptions } from "./session-capability-options.js";
@@ -69,11 +69,11 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 			? await retryController.run(
 					executeInitial,
 					() => this.options.readSession().retry(),
-					readCodingAgentFailedTurnMessage,
+					readCodingAgentTurnFailure,
 				)
 			: await executeInitial();
-		const failure = readCodingAgentFailedTurnMessage(result);
-		if (failure) throw new Error(failure);
+		const failure = readCodingAgentTurnFailure(result);
+		if (failure) throw new Error(failure.message);
 		return result;
 	}
 
@@ -285,6 +285,7 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 		return (
 			this.options.readSkills?.().map((skill) => ({
 				...skill,
+				// agentModes 已废弃（ADR-0071）：无消费者，仅为返回值不可变而拷贝容忍字段。
 				agentModes: skill.agentModes ? [...skill.agentModes] : undefined,
 			})) ?? []
 		);

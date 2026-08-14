@@ -138,6 +138,8 @@ export interface ErrorBlock {
 	type: "error";
 	/** Stable id for React keying. */
 	id: string;
+	/** Stable runtime turn identity used to make live/history projections idempotent. */
+	turnId?: string;
 	/** Provider / 网关的原始错误串，只在错误卡的折叠区展示。 */
 	text: string;
 	/**
@@ -152,6 +154,21 @@ export interface ErrorBlock {
 	 * live 链路不会产生 >1 的值——那边靠 attempts 表达。
 	 */
 	repeated?: number;
+	/** Safe structured diagnostics retained across live updates and history replay. */
+	details?: ChatErrorDetails;
+}
+
+export interface ChatErrorDetails {
+	code?: string;
+	origin?: "runtime" | "provider" | "tool" | "mcp";
+	retryable?: boolean;
+	statusCode?: number;
+	provider?: string;
+	modelId?: string;
+	requestId?: string;
+	providerCode?: string;
+	phase?: "resolve" | "request" | "response" | "stream" | "decode";
+	retryAfterMs?: number;
 }
 
 export type ContentBlock = TextBlock | ThinkingBlock | ToolCallBlock | ToolResultBlock | ErrorBlock;
@@ -284,6 +301,8 @@ export interface TurnUsageData {
 export interface ContextUsageData {
 	/** Context usage percentage (0-100), or null if unknown */
 	percent: number | null;
+	/** Provider-reported context tokens; absent/null while only an estimate is available. */
+	contextTokens?: number | null;
 	/** Context window size in tokens */
 	contextWindow: number;
 	/** Latest privacy-safe model-call composition report. */
@@ -387,11 +406,22 @@ function getStoredExecutionMode(): SessionExecutionMode {
 export const sessionExecutionModeAtom = atom<SessionExecutionMode>(getStoredExecutionMode());
 
 /**
- * 当前工作模式（agent_mode 轴，纯全局态，见 ADR-0046）。真源在主进程 desktop-config，
- * 本 atom 于 app 初始化时由 config.get() 水合、并跟随主进程广播更新。默认 "work"。
+ * 新会话的默认工作模式（agent_mode 轴）。真源在主进程 desktop-config 的
+ * defaultAgentMode，本 atom 于新会话页读取时由 config.get() 水合、并跟随主进程广播更新。
+ *
+ * 注意语义：这里只是「下一个新会话用哪个模式」。会话的模式在创建时固化、会话内不可变，
+ * 改这个值不会影响任何已存在的会话。
  */
-export type AgentMode = "work" | "coding";
-export const agentModeAtom = atom<AgentMode>("work");
+export type AgentMode = string;
+export const defaultAgentModeAtom = atom<AgentMode>("work");
+
+/**
+ * 当前打开会话的工作模式，来自 SessionStateSnapshot.agentMode（会话创建时固化）。
+ * 与 defaultAgentModeAtom 的区别：这个是「本会话是什么」，那个是「下一个新会话用什么」。
+ * 凡是按会话渲染的地方（如回答分组样式）都必须读这个，否则改默认值会串改已打开的会话。
+ * null = 会话未打开或未指定模式。
+ */
+export const sessionAgentModeAtom = atom<AgentMode | null>(null);
 
 /** Per-turn stats (speed, duration) for the last completed turn */
 export const lastTurnUsageAtom = atom<TurnUsageData | null>(null);
@@ -406,6 +436,9 @@ export const isCompactingAtom = atom<boolean>(false);
 export interface RetryProgress {
 	attempt: number;
 	maxAttempts: number;
+	/** 上一次失败的原始原因；UI 只展示归类后的人话，最终失败卡仍可展开原文。 */
+	errorMessage: string;
+	details?: ChatErrorDetails;
 }
 export const retryProgressAtom = atom<RetryProgress | null>(null);
 
@@ -474,7 +507,6 @@ export const reasoningByModelAtom = atom(
 /** Whether the current session model supports image input */
 export const modelSupportsImagesAtom = atom<boolean>(true);
 
-export const selectedSkillAtom = atom<SelectedSkill | null>(null);
 export const mentionedFilesAtom = atom<MentionedFile[]>([]);
 
 // ─── Action button bar ───
@@ -545,7 +577,8 @@ export interface SendMessageOptions {
 
 /** sendMessage 的回执（ADR-0060）：streaming 中入 kernel 队列时返回 queued + 条目 id。 */
 export interface SendMessageResult {
-	status: "sent" | "queued";
+	status: "sent" | "queued" | "failed";
+	error?: { message: string };
 	queueItemId?: string;
 }
 

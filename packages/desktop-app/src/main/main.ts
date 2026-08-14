@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { URL } from "node:url";
 import { getVettaHomePath, VETTA_HOME_ENV } from "@vetta/action-rpc";
 import { app, type BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, protocol, session, shell } from "electron";
+import { APP_RUNTIME_NAME } from "../shared/app-identity.js";
 import { ActionApprovalBroker } from "./app-actions/approval-broker.js";
 import { createAppActionSystem } from "./app-actions/index.js";
 import { createActionRpcRuntime } from "./app-actions/rpc.js";
@@ -23,7 +24,6 @@ import { parseAgentRpcCommand, runAgentRpcCommand } from "./cli/agent-rpc-comman
 import { parseHelpCliCommand, runHelpCliCommand } from "./cli/help-command.js";
 import { parseOcrCliCommand, runOcrCliCommand } from "./cli/ocr-command.js";
 import { parsePdfCliCommand, runPdfCliCommand } from "./cli/pdf-command.js";
-
 import { ensureDevCliShim, ensureDevVettaCliShim, ensureVettaCommandShim } from "./dev-cli-shim.js";
 import {
 	getDiagnosticsLogPath,
@@ -222,10 +222,10 @@ if (isCliMode) {
 	process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 }
 
-// 开发模式下 app.name/version 默认来自 Electron 框架，需要手动覆盖
-if (!app.isPackaged) {
-	app.name = "Vetta";
-}
+// app 名字必须在任何 safeStorage 调用之前固定，且开发态与打包版取同一个值：
+// safeStorage 按 app 名字定位主密钥，名字分叉会让两侧各持一把密钥，
+// 共享 ~/.vetta 时表现为凭据"丢失"并互相覆盖（见 shared/app-identity.ts）。
+app.name = APP_RUNTIME_NAME;
 
 let ipcTeardown: IpcTeardown | undefined;
 let teardownSchedulerIpc: (() => void) | undefined;

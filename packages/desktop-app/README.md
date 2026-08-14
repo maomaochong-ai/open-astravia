@@ -25,6 +25,39 @@ Electron desktop host for the Vetta runtime.
 - `src/preload`: safe bridge surface for the renderer
 - `src/renderer`: React application domains and UI
 
+## Windows Voice Input
+
+Local streaming voice input is currently available only on Windows x64. The Windows artifact includes
+`sherpa-onnx-win-x64`; macOS and Linux artifacts exclude that native package. The pinned Chinese
+Zipformer model is downloaded and verified during a Windows build, then included under
+`Resources/speech-models/` in the packaged application. Runtime voice input is fully offline and never
+downloads model files. Build machines reuse verified files in `resources/speech-models/`; delete that
+gitignored directory to force a fresh download.
+
+The renderer captures 16 kHz mono PCM with an AudioWorklet. Recognition runs in a dedicated Electron
+utility process so native initialization and decoding do not block the main process. See
+[`ADR-0070`](../../docs/adr/0070-windows-local-streaming-speech-input.md).
+
+Windows speech input is enabled in builds by default. Set `VETTA_SPEECH_INPUT_ENABLED=false` before
+running the complete build or packaging command to produce an artifact without the speech model,
+Sherpa native runtime, speech utility-process entry, microphone permission, or Renderer microphone entry:
+
+```powershell
+$env:VETTA_SPEECH_INPUT_ENABLED="false"
+bun run dist:win
+```
+
+The value is a build-time contract and must be exactly `true` or `false`; it cannot be changed after
+packaging. Disabled builds keep any verified model in the ignored build cache for later reuse, but do
+not copy it into the staged application.
+
+Run `bun run prepare:speech-models` to prepare the production model explicitly, or
+`bun run prepare:speech-models:dev` to use `.env.development`. The production command skips
+macOS/Linux targets, and is also part of `bun run build` and revalidated by `prepare-pack.js` before
+a Windows artifact is staged. After `bun run build:main`, run `bun run verify:speech-host` to
+exercise the real Electron utility process with the bundled Sherpa runtime and model through
+initialize, start, audio, and stop.
+
 ## Development
 
 Run `bun dev` from this package after installing the monorepo dependencies. The development startup
@@ -45,6 +78,11 @@ Two scripts make the common pair explicit:
 bun run dev:isolated   # ~/.vetta-dev (same as `bun dev`)
 bun run dev:home       # ~/.vetta
 ```
+
+Saved credentials are shared too: `safeStorage` derives its master key from the Electron app name, so
+that name is fixed by `src/shared/app-identity.ts` and must stay equal to the name written into the
+packaged `package.json` by `scripts/prepare-pack.js`. Changing it strands every credential already
+encrypted under the old name.
 
 `bun run dev:home` shares `~/.vetta` with packaged builds; do not run both at the same time, since
 the single-instance lock keys on the Chromium profile and will not stop the second process. The

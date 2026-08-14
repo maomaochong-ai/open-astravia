@@ -43,11 +43,29 @@ export function ErrorBlockView({ block, exportMode = false }: ErrorBlockProps): 
 		: block.repeated && block.repeated > 1
 			? t("messageList.errorBlock.repeatedNote", { count: block.repeated })
 			: undefined;
+	const diagnosticLines = [
+		block.details?.code ? t("messageList.errorBlock.diagnostic.code", { value: block.details.code }) : undefined,
+		block.details?.origin ? t("messageList.errorBlock.diagnostic.origin", { value: block.details.origin }) : undefined,
+		block.details?.statusCode !== undefined
+			? t("messageList.errorBlock.diagnostic.statusCode", { value: block.details.statusCode })
+			: undefined,
+		block.details?.provider ? t("messageList.errorBlock.diagnostic.provider", { value: block.details.provider }) : undefined,
+		block.details?.modelId ? t("messageList.errorBlock.diagnostic.model", { value: block.details.modelId }) : undefined,
+		block.details?.providerCode
+			? t("messageList.errorBlock.diagnostic.providerCode", { value: block.details.providerCode })
+			: undefined,
+		block.details?.phase ? t("messageList.errorBlock.diagnostic.phase", { value: block.details.phase }) : undefined,
+		block.details?.requestId ? t("messageList.errorBlock.diagnostic.requestId", { value: block.details.requestId }) : undefined,
+		block.details?.retryAfterMs !== undefined
+			? t("messageList.errorBlock.diagnostic.retryAfter", { value: block.details.retryAfterMs })
+			: undefined,
+	].filter((line): line is string => Boolean(line));
 
 	return (
 		<ThemeErrorBlockView
 			iconClass={ICON_BY_KIND[kind]}
 			detail={block.text}
+			diagnostics={diagnosticLines.length > 0 ? diagnosticLines.join("\n") : undefined}
 			expanded={expanded}
 			onToggleExpanded={toggleExpanded}
 			exportMode={exportMode}

@@ -2,7 +2,7 @@ import { ContextRingView } from "@vetta/theme-ui/chat";
 import { CollapsePanel } from "@vetta/theme-ui/shared";
 import { Button } from "@shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@shared/components/ui/popover";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useContextRingModel } from "../hooks/useContextRingModel";
 import {
@@ -13,10 +13,14 @@ import {
 export function ContextRing({ className }: { className?: string } = {}): JSX.Element | null {
 	const { t } = useTranslation("chat");
 	const [expandedGroup, setExpandedGroup] = useState<ContextRingDetailGroupKind | null>(null);
-	const model = useContextRingModel();
+	const [open, setOpen] = useState(false);
+	const model = useContextRingModel(open);
+	useEffect(() => {
+		if (!model && open) setOpen(false);
+	}, [model, open]);
 	if (!model) return null;
 	return (
-		<Popover>
+		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<Button
 					type="button"
@@ -31,27 +35,21 @@ export function ContextRing({ className }: { className?: string } = {}): JSX.Ele
 						color={model.color}
 						isCompacting={model.isCompacting}
 						tooltip={model.tooltip}
-						className="pointer-events-none"
 					/>
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent side="top" align="end" className="w-80 p-0">
-				{model.details ? (
+			{open ? (
+				<PopoverContent side="top" align="end" className="w-80 p-0">
+					{model.details ? (
 					<>
 					<div className="border-b border-border/50 px-3.5 py-3">
 						<PopoverTitle className="text-[13px]">{t("contextRing.details.title")}</PopoverTitle>
 						<div className="mt-1 truncate text-[11px] text-muted-foreground">{model.details.model}</div>
 						<div className="mt-2 flex items-center gap-3 text-[11px]">
-							{model.details.actualTokens ? (
-								<span>
-									{t("contextRing.details.actual")}: {model.details.actualTokens}
-								</span>
-							) : null}
-							<span className="text-muted-foreground">
-								{t("contextRing.details.estimated")}: {model.details.estimatedTokens}
+							<span>
+								{t("contextRing.details.tokens")}: {model.details.tokens}
 							</span>
 						</div>
-						<div className="mt-1 text-[10px] text-muted-foreground/70">{model.details.coverage}</div>
 					</div>
 					<div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 border-b border-border/40 px-3.5 py-1.5 text-[10px] text-muted-foreground">
 						<span>{t("contextRing.details.category")}</span>
@@ -137,8 +135,9 @@ export function ContextRing({ className }: { className?: string } = {}): JSX.Ele
 							{t("contextRing.details.unavailableAfterRestart")}
 						</p>
 					</div>
-				)}
-			</PopoverContent>
+					)}
+				</PopoverContent>
+			) : null}
 		</Popover>
 	);
 }

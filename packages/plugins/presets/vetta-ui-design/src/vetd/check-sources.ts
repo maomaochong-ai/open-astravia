@@ -12,6 +12,7 @@
  */
 
 import { isFrameFile } from "../../engine/src/routes";
+import { ENGINE_PROVIDED_PACKAGES } from "../engine/engine-files";
 import { parseFrameMeta } from "./frame-meta";
 
 export interface SourceIssue {
@@ -46,15 +47,15 @@ const IMPORT_SOURCE = /^\s*(?:import|export)\b(?:[^'"]*\bfrom\s*)?["']([^"']+)["
 
 /**
  * 引擎 node_modules 里真实存在的东西（与 engine/package.json 的 dependencies 及
- * vite.config.mjs 的 alias 三处对齐）。设计源码 import 别的包一律构建失败——引擎是
- * 物化到插件数据目录的固定模板，agent 装不了包，也没有装包的入口。
+ * vite.config.mjs 的 alias 三处对齐）。设计自己装的包不在这里，见 checkSources 的
+ * `designDependencies`。
  *
  * `lucide-react` 在这里是**兜底**，不是推荐用法：skill 只教 Iconify 的 CSS 类，但
  * 模型对「图标」的第一反应就是去 import 它，提示词纠正不掉。既然纠不掉就接住——
  * 装了以后两种写法都出图，而这条规则也就不能再报它了：报一个其实跑得起来的东西是
  * 误报，会让 agent 去改本来正确的代码，比不报更糟。
  */
-const INSTALLED_PACKAGES = new Set(["react", "react-dom", "react-router", "lucide-react"]);
+const ENGINE_PACKAGES: readonly string[] = ENGINE_PROVIDED_PACKAGES;
 
 /**
  * 图标包单独拎出来给话术。模型换一个图标包再试一次是很自然的反应，报错里不写清楚
@@ -223,7 +224,15 @@ interface Rule {
 	dedupeBy?(line: string): string;
 }
 
-const RULES: Rule[] = [
+/**
+ * 规则表按「这份设计装了什么」现建。
+ *
+ * 只有 `uninstalled-import` 需要这个信息，但它需要的是**这一份设计**的依赖清单
+ * （ADR-0068：包装在 x.vetd/node_modules/ 里，各设计不同），所以整张表不能再是
+ * 模块级常量。重建成本是几个对象字面量，正则都还是模块级的。
+ */
+function rulesFor(installedPackages: ReadonlySet<string>): Rule[] {
+	return [
 	{
 		id: "fake-router",
 		test: (line) => /^\s*(?:const|function)\s+(Link|NavLink|useNavigate|useLocation|Outlet)\b/.test(line),
@@ -242,14 +251,14 @@ const RULES: Rule[] = [
 			const source = IMPORT_SOURCE.exec(line)?.[1];
 			if (!source) return false;
 			const pkg = packageNameOf(source);
-			return pkg !== null && !INSTALLED_PACKAGES.has(pkg);
+			return pkg !== null && !installedPackages.has(pkg);
 		},
 		message: (line) => {
 			const pkg = packageNameOf(IMPORT_SOURCE.exec(line)?.[1] ?? "") ?? "that package";
-			const base = `Imports "${pkg}", which the design engine does not have — this frame will fail to build. Only react, react-router, Tailwind v4 and Iconify are installed, and there is no way to add a dependency.`;
+			const base = `Imports "${pkg}", which this design has not installed — the frame will fail to build.`;
 			return ICON_PACKAGES.has(pkg)
-				? `${base} Icons here are Iconify CSS classes, not components: <span className="icon-[lucide--search] size-4" />.`
-				: `${base} Build it from what is there: Tailwind utilities for layout/visuals, an Iconify class for a glyph, plain React state for behaviour.`;
+				? `${base} Do NOT install an icon package: icons here are Iconify CSS classes, not components — <span className="icon-[lucide--search] size-4" />.`
+				: `${base} Either install it (vetd_install with packages: ["${pkg}"]) if it genuinely earns its place, or build it from what is already here: Tailwind utilities for layout/visuals, an Iconify class for a glyph, plain React state for behaviour.`;
 		},
 		dedupeBy: (line) => packageNameOf(IMPORT_SOURCE.exec(line)?.[1] ?? "") ?? "",
 	},
@@ -288,7 +297,8 @@ const RULES: Rule[] = [
 		test: (line) => line.length > MAX_LINE_LENGTH,
 		message: `Line is over ${MAX_LINE_LENGTH} characters — the source is written as one long line. Element→source mapping is per line, so every element then reports the same location and the user's "让 Vetta 调整" can no longer target anything. Format it normally, one element per line for nested markup.`,
 	},
-];
+	];
+}
 
 /** `frames/login.tsx` → `login`；不是画框文件（`_layout.tsx`、components/）返回 null。 */
 function frameIdOf(path: string): string | null {
@@ -338,9 +348,14 @@ function checkFrameSize(file: SourceFile, others: readonly SourceFile[]): Source
  * 每条规则每个文件只报一次：同一个毛病在一个文件里往往命中几十行，全报出来会把
  * vetd_status 的返回撑爆，而 agent 需要的信息第一条就给全了。
  */
-export function checkSources(files: readonly SourceFile[], themeCss: string | null = null): SourceIssue[] {
+export function checkSources(
+	files: readonly SourceFile[],
+	themeCss: string | null = null,
+	designDependencies: readonly string[] = [],
+): SourceIssue[] {
 	const issues: SourceIssue[] = [];
 	const tokens = themeColorTokens(themeCss);
+	const rules = rulesFor(new Set([...ENGINE_PACKAGES, ...designDependencies]));
 	for (const file of files) {
 		const sizeIssue = checkFrameSize(file, files);
 		if (sizeIssue) issues.push(sizeIssue);
@@ -348,7 +363,7 @@ export function checkSources(files: readonly SourceFile[], themeCss: string | nu
 		const lines = file.content.split("\n");
 		const reported = new Set<string>();
 		for (const [index, line] of lines.entries()) {
-			for (const rule of RULES) {
+			for (const rule of rules) {
 				if (!rule.test(line, file)) continue;
 				const key = rule.dedupeBy ? `${rule.id}:${rule.dedupeBy(line)}` : rule.id;
 				if (reported.has(key)) continue;

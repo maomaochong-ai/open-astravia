@@ -920,7 +920,7 @@ function normalizeProviderValue(value: unknown, fixture: AgentRpcFixture): unkno
 			fixtureDirectoryIndex >= 0
 				? `${value.slice(0, fixtureDirectoryIndex)}<fixture-root>${value.slice(fixtureDirectoryIndex + fixtureDirectoryName.length)}`
 				: value.replaceAll(fixture.root, "<fixture-root>");
-		return normalizedPath.replace(/^Current date and time: .*$/gm, "Current date and time: <turn-time>");
+		return normalizedPath.replace(/^Current date: .*$/gm, "Current date: <turn-date>");
 	}
 	if (Array.isArray(value)) return value.map((entry) => normalizeProviderValue(entry, fixture));
 	if (typeof value !== "object" || value === null) return value;

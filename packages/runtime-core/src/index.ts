@@ -16,6 +16,8 @@ export type {
 	AgentPluginToolContribution,
 	AgentPluginToolInvocation,
 	AgentPluginToolInvoker,
+	AgentPluginTurnHandlerLease,
+	AgentPluginTurnHandlerLeaseProvider,
 	AssistantTurnTiming,
 	BackgroundTaskInfo,
 	BackgroundTasksUpdateEvent,
@@ -76,6 +78,13 @@ export {
 } from "./conversation/index.js";
 export { isSessionError, RUNTIME_ERROR_CODES, runtimeError } from "./errors.js";
 export type {
+	RecordedRuntimeFailure,
+	RuntimeFailure,
+	RuntimeFailureDetails,
+	RuntimeFailureOrigin,
+} from "./failure-contract.js";
+export { runtimeFailureFromAIErrorDetails, runtimeFailureFromError } from "./failure-contract.js";
+export type {
 	RuntimeExecutionObservationEvent,
 	RuntimeMessageEnvelope,
 	RuntimeMessageOrigin,
@@ -98,7 +107,6 @@ export type {
 	RuntimeDocumentParticipantContext,
 	RuntimeDynamicState,
 	RuntimeExecutionModeUpdate,
-	RuntimeHandledPromptResult,
 	RuntimeHostOptions,
 	RuntimeHostSessionAssembly,
 	RuntimeHostSessionAssemblyAssessment,
@@ -112,10 +120,7 @@ export type {
 	RuntimeModelOptions,
 	RuntimeModelRuntime,
 	RuntimeModelSelectionStrategy,
-	RuntimePreparedPrompt,
 	RuntimePromptAdapter,
-	RuntimePromptInterceptionResult,
-	RuntimePromptPreparationContext,
 	RuntimePromptResult,
 	RuntimeResourceContext,
 	RuntimeResources,

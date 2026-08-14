@@ -1,3 +1,5 @@
+import type { PluginMediaInputSource } from "@vetta-org/plugin-sdk";
+
 export type ContentGenerationModeId =
 	| "text-to-image"
 	| "image-to-image"
@@ -120,4 +122,3 @@ export interface ContentArtifactStore {
 	releaseGenerated(content: GeneratedContent): Promise<void>;
 	readReference(reference: ContentGenerationReference): Promise<StoredContentData | null>;
 }
-import type { PluginMediaInputSource } from "@vetta-org/plugin-sdk";

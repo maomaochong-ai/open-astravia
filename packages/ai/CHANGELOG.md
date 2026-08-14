@@ -4,12 +4,28 @@
 
 ### Added
 
+- AI 根入口现在公开导出 Provider credential/error 合同，Runtime 模型绑定与 Provider 适配器可以共享同一套认证失败类型，而不需要深度导入实现目录。
+- 新增显式模型不存在错误工厂，模型解析失败统一使用 `AI_MODEL_NOT_FOUND`。
+
+- Added the protocol-level `createAssistantMessage` factory so native adapters, compatibility projections, and provider error normalization share one assistant envelope and usage-zero contract.
+- Introduced stable model runtime contracts for normalized call results, explicit model identity/endpoint/capabilities, deterministic model middleware, and structured pre-stream routing/fallback. Existing legacy stream APIs remain compatible during migration.
+- `ModelRouter` now enforces an explicit routing commit point: structured failures may select a configured fallback after lifecycle start but before the first text/reasoning/tool output; once model output is observable, the current route is locked and later failures are propagated without switching providers.
+- Native model adapters are now preferred by the public `stream()`/`complete()` path; legacy providers remain an explicit fallback for extensions that have not migrated.
+- Adapter registries now normalize synchronous provider throws, stream error events, metadata failures, and generate failures at one invocation boundary; legacy API mismatches remain programming errors instead of being disguised as provider responses.
+
+- **Provider 错误合同和测试模型增强**：AI 错误现在保留安全的 Provider code、请求阶段、request id、响应头/响应体预览与 Retry-After 信息，并使用跨包 marker 识别；新增原生 `ScriptedLanguageModelAdapter`，用于按调用序列测试成功、失败和取消终态。
+
+### Added
+
 - 新增 `zai-openai-completions` 与 `zhipu-openai-completions` provider 变体，复用 OpenAI Chat Completions 流式实现并内置 GLM 思考控制：下发 `thinking: { type: "enabled" | "disabled" }`，启用时将模型配置的 `reasoning_effort`（含 `none` / `minimal` / `low` / `medium` / `high` / `max`）原样透传；同时新增 `zhipu` KnownProvider 与 `ZHIPU_API_KEY` 识别。
 - 新增 `openai-completions-deepseek` provider 变体（DeepSeek 直连），照搬 qwen/nvidia 的 thinkingFormat 模式：v4 统一模型（deepseek-v4-flash / deepseek-v4-pro）通过 `thinking: { type: "enabled" | "disabled", reasoning_effort }` 控制思考，`reasoning_effort` 取值 `high`/`max` 按模型配置透传；无推理请求时下发 `thinking: { type: "disabled" }`。reasoning 输出（`reasoning_content`）与工具轮的 reasoning 回传规则复用既有 `openai-completions` 逻辑。同时新增 `deepseek` KnownProvider 与 `DEEPSEEK_API_KEY` 环境变量识别。
 - 新增 `@vetta/ai/protocol` 稳定协议子路径，集中导出 Provider 中立的消息、工具、usage、reasoning、终止原因、流事件与结构化 AI 错误类型；旧根入口保持兼容 re-export。
 - 新增隔离的 `LanguageModelAdapter`/`AdapterRegistry`、`@vetta/ai/testing` 脚本模型与可控 Provider transport；OpenAI Completions 和 Anthropic 试点增加 TypeBox wire 校验及无网络 conformance 覆盖。
+- `Context` 新增可选字段 `systemPromptStableLength`：声明 `systemPrompt` 中会话内逐字不变的前缀长度。Anthropic provider 据此把 system 拆成「稳定前缀（打 `cache_control`）+ 易变尾段（不打）」两个 text block，使会话内变化的模式/人设/日期段落不再作废整段 system 前缀缓存；OAuth 分支同样生效。未声明该字段、或 `cacheRetention: "none"`、或切分点落在正文两端时保持单 block 原行为，其他 provider 忽略该字段。
 
 ### Changed
+
+- OpenAI-compatible request clients now resolve credentials through the selected model provider's environment mapping, instead of falling back to `OPENAI_API_KEY` for every compatible endpoint.
 
 - **Google 协议族切换为原生 `LanguageModelAdapter`**：Google Generative AI、Vertex 与 Gemini CLI 不再由新 Registry 反向包装 legacy stream；三种 transport 共享 TypeBox wire schema、Gemini event reducer、usage 和严格终止律，同时保留 API key、ADC 与 Cloud Code OAuth/endpoint/retry 的独立所有权。顶层 provider 入口收敛为轻量 facade，官方/Vertex sender 与 Gemini CLI fetch 支持确定性离线测试。
 - **Anthropic 与 Amazon Bedrock 切换为原生 `LanguageModelAdapter`**：两者不再由新 Registry 反向包装 legacy stream；分别使用符合各自 wire 顺序的显式状态机、TypeBox 入站校验、结构化失败与严格终止律。Claude adaptive-thinking/effort 规则和 legacy error-event projector 收敛为共享模块，Bedrock 增加不泄漏到公共 options 的 command sender 构造注入点供离线测试。
@@ -19,6 +35,21 @@
 
 ### Fixed
 
+- 供应商在未发出任何有效事件时结束流（`Stream ended without provider events`）现在被归类为可重试的瞬态协议故障；畸形事件、乱序状态和缺失终态等真实协议违规仍保持不可重试。
+- 明确的额度、余额和计费失败现在优先于 HTTP 401/429 状态分类，并统一映射为不可重试的 `AI_BILLING_REQUIRED`；中文“余额不足”与 Provider 结构化错误码使用同一规则。
+
+- `AssistantMessage(stopReason: "error")` 现在可以携带安全的 `AIErrorDetails`；统一的 `normalizeAssistantMessageError` 优先恢复结构化错误，只有旧 Provider 消息才使用兼容文本分类。
+
+- Provider 的终端错误消息现在保留安全的 `AIErrorDetails` 投影；`completeSimple`、兼容适配器和上层压缩流程不再把 provider code、model、request id 与重试语义丢在事件边界之外。
+
+- Assistant-error session observations now classify retryability from the provider failure text, so quota, billing, authentication, and other non-retryable failures do not enter automatic retry paths as retryable errors.
+- Provider 返回 HTTP 429 但错误正文表示额度/计费不可用时，不再标记为可重试；该分类规则统一供 Provider 适配器与 Runtime 使用。
+
+- 修复 OpenAI 兼容工具 Schema 清洗日志把所有命中端点误称为 Gemini 的问题；DeepSeek 等 provider 仍使用共享 `openai-completions` 适配器，但不会被错误判断为 Gemini。清洗器现在保留带有 `oneOf` / `anyOf` 等结构关键字的合法联合分支。
+- 修复原生 `LanguageModelAdapter` 经 legacy stream 兼容投影后丢失 Provider 结构化错误的问题；HTTP 状态码、稳定错误码、可重试标记、Provider/模型与 request id 现在可安全穿过兼容桥，且不会携带原始请求、响应或 `cause`。
+- 修复 OpenAI 兼容中转返回 `finish_reason: ""` 时整轮对话失败、界面只剩一条空消息的问题。此前 `openai-completions` 的 chunk 校验强制要求 `finish_reason` 落在 OpenAI 枚举内，且 `index` / `delta` 必填，而中转在非终止 chunk 上普遍下发空字符串（实测某中转下的 `hy3`、`kimi-k2.7` 每个中间 chunk 均为 `""`），首包即抛 `AI_RESPONSE_VALIDATION_FAILED`。现在 chunk schema 只强制适配器真正消费的字段：`finish_reason` 允许任意字符串或 `null` 且可缺省，`index`（从不读取）与 `delta`（运行时已有守卫）改为可选；枚举外的终止原因（如 `eos`、`end_turn`）折叠为正常 `stop` 而非抛错。结构性畸形（如 `choices` 不是数组）仍然拒绝。
+- `AI_RESPONSE_VALIDATION_FAILED` 的 `metadata.errors` 新增 `received` 字段，携带失败路径上的实际取值（截断至 120 字符，不含周边 payload），使中转格式偏差可以直接从日志定位。
+- 工具参数校验会在本地为带唯一常量字段的 `oneOf` 自动推断 discriminator，只报告实际 operation 分支的错误；额外字段错误同时显示具体字段名，避免一个缺失字段膨胀为整套联合 Schema 的无关错误列表。发送给 Provider 的原始工具 Schema 保持不变。
 - 修复单个工具的畸形参数 schema 就能让整轮对话 400 的问题。`openai-completions` 下发 tools 前会剔除只带约束关键字、没有 `type`/`properties` 的 `anyOf`/`oneOf` 分支（如 `anyOf: [{ required: ["a"] }]`）：这类分支在 OpenAI 侧只是软提示，但 Gemini 会把每个分支当独立 Schema 校验并整体拒绝请求（`parameters.required: only allowed for OBJECT type`），命中时整个会话发不出去，报错里又只有工具下标。剔除时按工具名打一次 warn。
 - 修复 Google/Vertex 缺失 `finishReason`、terminal 后继续输出和畸形 Gemini chunk 被错误视为成功的问题；修复 cached input 同时计入 `input` 与 `cacheRead` 导致的 token/成本重复计算。Gemini CLI 畸形 SSE JSON 不再静默跳过，非重试型 4xx 不再误重试，HTTP status 进入稳定错误分类。
 - 修复 Anthropic/Bedrock 空流、缺失 `message_stop`/`messageStop`、未闭合或乱序 content block 被错误视为成功的问题；Bedrock streamed exception 与 AWS SDK `$metadata.httpStatusCode` 现在会保留状态码并映射到稳定错误类型，调用前和流中取消通过原生失败通道拒绝。

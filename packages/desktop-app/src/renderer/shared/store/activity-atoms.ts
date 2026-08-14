@@ -24,9 +24,9 @@ export const ACTIVITY_PANEL_MIN_WIDTH = 260;
 /**
  * 拉到最大时给主聊天区保留的最小宽度；面板上限 = 窗口宽度 - 此值。
  * 按窗口坐标系计，实际消息区净宽还要扣 AppFrame 的 p-2（16）与聊天列/面板之间的 gap-2（8），
- * 即净宽 ≈ 此值 - 24。取 454 使消息区最窄约 430。
+ * 即净宽 ≈ 此值 - 24。取 384 使消息区最窄约 360。
  */
-export const ACTIVITY_PANEL_MIN_CHAT_AREA = 454;
+export const ACTIVITY_PANEL_MIN_CHAT_AREA = 384;
 
 /**
  * 文件 tab 内嵌预览的「显示阈值」：面板宽度 ≥ 此值才展示右侧预览框，否则只剩目录树。

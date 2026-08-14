@@ -47,6 +47,7 @@ import {
 	isSessionPathInDirectory,
 	PathFilteredRuntimeSessionCatalog,
 } from "./session-catalog.js";
+import { logRuntimeSessionError } from "./session-error-logger.js";
 
 const log = getAppLogger("runtime");
 
@@ -89,7 +90,6 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		createHookAdapterFactories: ({ scenario }) => [
 			createDesktopPluginHookAdapterFactory({
 				scenario,
-				readAgentMode: () => pluginAgentContributionService.getAgentMode(),
 				canInvoke: (pluginId) => pluginAgentContributionService.canInvokeHook(pluginId),
 			}),
 		],
@@ -169,6 +169,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				},
 			]),
 			sharedModelController: createCodingAgentSharedModelController(modelRuntime),
+			sessionErrorObserver: (event) => logRuntimeSessionError(event, log),
 			userQuestionHandler,
 		}),
 	};

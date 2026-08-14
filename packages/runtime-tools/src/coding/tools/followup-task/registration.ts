@@ -24,5 +24,7 @@ export function createFollowupTaskToolRegistration(
 		scopeUse: FOLLOWUP_TASK_TOOL_SCOPES,
 		modelOrder: options.modelOrder,
 		category: FOLLOWUP_TASK_TOOL_CATEGORY,
+		// 同 spawn_agent：会话内计费、可回收，不判 heavy。
+		sideEffect: "light",
 	};
 }

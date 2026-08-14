@@ -115,7 +115,6 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 			const firstFrame = observeRequest(server, 0);
 
 			fixture.runtime.reconfigureAgentPlugins(undefined);
-			fixture.runtime.setGlobalAgentMode("coding");
 			fixture.runtime.setUserQuestionHandler(undefined);
 			await fixture.runtime.prompt(created.sessionId, {
 				text: "Inspect the capabilities after reconfiguration",
@@ -335,13 +334,13 @@ function normalizeModelVisibleValue(value: unknown): unknown {
 }
 
 function normalizeSystemPrompt(value: string): string {
+	// 系统提示词已不再复述工具清单（工具面板只由 params.tools 承载），因此这里不需要抹平工具段落。
 	return value
-		.replace(/Available tools:\n[\s\S]*?\n\nGuidelines:/g, "Available tools:\n<tool-surface>\n\nGuidelines:")
 		.replace(
 			/<available_skills>[\s\S]*?<\/available_skills>/g,
 			"<available_skills>\n<skill-surface>\n</available_skills>",
 		)
-		.replace(/^Current date and time: .*$/gm, "Current date and time: <turn-time>");
+		.replace(/^Current date: .*$/gm, "Current date: <turn-date>");
 }
 
 function toolNames(value: unknown): string[] {

@@ -2,7 +2,6 @@ import { Button, Switch } from "@vetta/ui";
 import { useTranslation } from "react-i18next";
 import { PLUGIN_PERMISSION_LABEL_KEYS, pluginSourceLabelKey } from "../../lib/plugin-permission-labels";
 import type { AbilitiesModel, PluginAbility } from "../../types";
-import { PluginAgentModeSection } from "./PluginAgentModeSection";
 import { PluginContributionsSection } from "./PluginContributionsSection";
 
 /**
@@ -53,7 +52,6 @@ export function PluginAbilitySection({
 				</div>
 			) : null}
 
-			<PluginAgentModeSection item={item} />
 
 			<PluginContributionsSection item={item} />
 

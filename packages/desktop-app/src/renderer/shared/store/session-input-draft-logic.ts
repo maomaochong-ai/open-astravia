@@ -4,7 +4,6 @@ export const INPUT_HISTORY_MAX = 50;
 
 export interface SessionInputDraftLike {
 	text: string;
-	selectedSkill: unknown;
 	appshot: unknown;
 }
 
@@ -13,7 +12,7 @@ export function newSessionInputDraftKey(cwd: string): string {
 }
 
 export function isSessionInputDraftEmpty(draft: SessionInputDraftLike): boolean {
-	return draft.text.trim().length === 0 && draft.selectedSkill === null && draft.appshot === null;
+	return draft.text.trim().length === 0 && draft.appshot === null;
 }
 
 /**

@@ -7,7 +7,7 @@
 
 import type { AgentMessage } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
-import { completeSimple } from "@vetta/ai";
+import { completeSimple, normalizeAssistantMessageError } from "@vetta/ai";
 import {
 	convertToLlm,
 	createBranchSummaryMessage,
@@ -335,7 +335,7 @@ export async function generateBranchSummary(
 		return { aborted: true };
 	}
 	if (response.stopReason === "error") {
-		return { error: response.errorMessage || "Summarization failed" };
+		throw normalizeAssistantMessageError(response, model);
 	}
 
 	let summary = response.content

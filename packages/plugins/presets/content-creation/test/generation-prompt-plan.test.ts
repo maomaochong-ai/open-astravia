@@ -7,7 +7,7 @@ import {
 } from "../src/agent/generation-prompt-plan";
 
 const COMPLETE_PLAN = {
-	kind: "video-shot",
+	kind: "animate-still-plan",
 	sceneFunction: "reveal product material and finish on a clean brand frame",
 	referenceRole: "the source image is the first-frame and product-identity authority",
 	protectedInvariants: ["product geometry", "materials and colors", "existing label and logo"],
@@ -29,6 +29,12 @@ const COMPLETE_PLAN = {
 	finalState: "camera fully settled on a clean product frame with a short edit hold",
 	audioIntent: "silent beauty shot with no speech",
 	constraints: ["no geometry drift", "no new text", "no flicker or camera shake"],
+	sourceImageContract: {
+		authority: "the supplied product image controls identity, geometry, materials, and opening composition",
+		inherit: ["product geometry", "label", "studio composition"],
+		animate: ["one highlight crossing the surface", "one camera push-in"],
+		introduce: [],
+	},
 };
 
 describe("video generation prompt plans", () => {
@@ -36,12 +42,64 @@ describe("video generation prompt plans", () => {
 		const prompt = compileVideoPromptPlan(parseVideoPromptPlan(COMPLETE_PLAN), { durationSeconds: 5 });
 
 		expect(prompt).toContain("Reference role: the source image is the first-frame");
+		expect(prompt).toContain("Video strategy: animate-still.");
+		expect(prompt).toContain("Source-image authority:");
 		expect(prompt).toContain("Protected invariants: product geometry; materials and colors; existing label and logo.");
 		expect(prompt).toContain("Initial state:");
 		expect(prompt).toContain("Primary action:");
 		expect(prompt).toContain("Camera:");
 		expect(prompt).toContain("Final frame:");
 		expect(analyzeVideoPromptMethod(prompt)).toEqual([]);
+	});
+
+	it.each([
+		[
+			"text-to-video-plan",
+			{ worldDefinition: { subject: "A red robot", environment: "A wet night street", visualStyle: "Natural cinema" } },
+			"World definition:",
+		],
+		[
+			"first-last-frame-plan",
+			{
+				transitionContract: {
+					continuity: ["same product and studio"],
+					stateChanges: ["move from wide to close framing"],
+					physicalPath: "the camera follows one straight path while the product remains fixed",
+				},
+			},
+			"Endpoint transition:",
+		],
+		[
+			"omni-reference-plan",
+			{
+				referenceInteraction: {
+					relationships: ["the product remains inside the referenced studio"],
+					chronology: ["establish the studio", "reveal the product"],
+				},
+			},
+			"Reference relationships:",
+		],
+		[
+			"transform-video-plan",
+			{
+				transformationContract: {
+					sourceTimeRange: "the full five-second source",
+					preserve: ["camera path", "product motion"],
+					change: ["replace the background with a dark studio"],
+					temporalMapping: "the replacement follows every original frame and occlusion",
+				},
+			},
+			"Source-video time scope:",
+		],
+	] as const)("compiles the %s strategy through its own method contract", (kind, extension, marker) => {
+		const prompt = compileVideoPromptPlan(parseVideoPromptPlan({
+			...COMPLETE_PLAN,
+			kind,
+			sourceImageContract: undefined,
+			...extension,
+		}));
+
+		expect(prompt).toContain(marker);
 	});
 
 	it("returns stable corrective details for incomplete plans", () => {
@@ -77,5 +135,12 @@ describe("video generation prompt plans", () => {
 			"camera-rest-point-missing",
 			"final-frame-missing",
 		]));
+	});
+
+	it("keeps legacy video-shot plans parseable without advertising them in the Agent schema", () => {
+		const plan = parseVideoPromptPlan({ ...COMPLETE_PLAN, kind: "video-shot", sourceImageContract: undefined });
+
+		expect(plan.kind).toBe("video-shot");
+		expect(compileVideoPromptPlan(plan)).not.toContain("Video strategy:");
 	});
 });

@@ -1,5 +1,5 @@
 import type { ImageContent } from "@vetta/ai";
-import type { RuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeFailure, RuntimeSession } from "@vetta/runtime-core";
 
 export interface CodingAgentTurnRetrySettings {
 	readonly enabled: boolean;
@@ -15,18 +15,39 @@ export type CodingAgentTurnRetryEvent =
 			readonly maxAttempts: number;
 			readonly delayMs: number;
 			readonly errorMessage: string;
+			readonly failure?: RuntimeFailure;
 	  }
 	| {
 			readonly type: "auto_retry_end";
 			readonly success: boolean;
 			readonly attempt: number;
 			readonly finalError?: string;
+			readonly failure?: RuntimeFailure;
 	  };
 
 export interface CodingAgentTurnRetryControllerOptions {
 	readonly readSettings: () => CodingAgentTurnRetrySettings;
 	readonly setEnabled: (enabled: boolean) => void;
 	readonly emit: (event: CodingAgentTurnRetryEvent) => void;
+}
+
+export interface CodingAgentTurnFailure {
+	readonly code: string;
+	readonly message: string;
+	readonly retryable: boolean;
+	readonly origin?: "runtime" | "provider" | "tool" | "mcp";
+	readonly details?: {
+		readonly statusCode?: number;
+		readonly provider?: string;
+		readonly modelId?: string;
+		readonly requestId?: string;
+		readonly providerCode?: string;
+		readonly phase?: "resolve" | "request" | "response" | "stream" | "decode";
+		readonly url?: string;
+		readonly responseHeaders?: Readonly<Record<string, string>>;
+		readonly responseBodyPreview?: string;
+		readonly retryAfterMs?: number;
+	};
 }
 
 export interface CodingAgentTurnRetryController {
@@ -37,7 +58,7 @@ export interface CodingAgentTurnRetryController {
 	run<T>(
 		executeInitial: () => Promise<T>,
 		executeRetry: () => Promise<T>,
-		readFailure: (result: T) => string | undefined,
+		readFailure: (result: T) => CodingAgentTurnFailure | undefined,
 	): Promise<T>;
 }
 

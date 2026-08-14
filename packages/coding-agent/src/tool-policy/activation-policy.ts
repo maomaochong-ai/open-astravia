@@ -11,7 +11,6 @@ export function resolveCodingAgentToolActivation(
 	base: CodingToolActivation,
 	context: ModelCallContributionContext,
 	availability: CodingAgentToolAvailability,
-	agentMode?: string,
 	activeToolNamesOverride?: readonly string[],
 ): CodingToolActivation {
 	if (activeToolNamesOverride) return { mode: "explicit", toolNames: [...activeToolNamesOverride] };
@@ -21,7 +20,7 @@ export function resolveCodingAgentToolActivation(
 	if (isCodingAgentKnowledgeToolEnabled(base, context, availability.knowledgeAvailable)) {
 		capabilities.add("knowledge");
 	}
-	return { ...base, capabilities, agentMode };
+	return { ...base, capabilities };
 }
 
 export function isCodingAgentKnowledgeToolEnabled(

@@ -60,6 +60,7 @@ class CollectingEventSink implements EventSink {
 
 class InMemoryConversationRepository implements ConversationRepository {
 	private readonly conversations = new Map<string, StoredConversation>();
+	failTerminalAppend = false;
 
 	async create(input: CreateConversationInput): Promise<ConversationMetadata> {
 		if (this.conversations.has(input.sessionId)) {
@@ -88,6 +89,12 @@ class InMemoryConversationRepository implements ConversationRepository {
 		events: readonly StoredSessionEvent[],
 	): Promise<{ readonly version: number }> {
 		const conversation = await this.load(sessionId);
+		if (
+			this.failTerminalAppend &&
+			events.some((event) => event.type === "turn.cancelled" || event.type === "turn.failed")
+		) {
+			throw new Error("terminal append failed");
+		}
 		if (conversation.version !== expectedVersion) {
 			throw new Error(`Version mismatch: expected ${expectedVersion}, received ${conversation.version}`);
 		}
@@ -228,15 +235,19 @@ async function createHarness(options?: {
 	readonly runtimeContext?: RuntimeSessionContextBuffer;
 	readonly conversationDocumentReader?: ConversationDocumentReader;
 	readonly modelBindingProvider?: RuntimeTurnModelBindingProvider;
+	readonly failTerminalAppend?: boolean;
 }) {
 	const repository = new InMemoryConversationRepository();
+	repository.failTerminalAppend = options?.failTerminalAppend === true;
 	const contextStrategy = options?.contextStrategy ?? new RecordingContextStrategy();
 	const turnEngine = options?.turnEngine ?? new CompletingTurnEngine(assistantMessage("done"));
 	const eventSink = options?.eventSink ?? new CollectingEventSink();
 	const pipeline = new TurnPipeline({
 		repository,
-		snapshotProvider: new StaticRuntimeSnapshotProvider(options?.runtimeSnapshot ?? snapshot(contextStrategy)),
-		modelBindingProvider: options?.modelBindingProvider,
+		snapshotProvider: new StaticRuntimeSnapshotProvider(
+			options?.runtimeSnapshot ?? snapshot(contextStrategy),
+			options?.modelBindingProvider,
+		),
 		turnEngine,
 		eventSink,
 		clock: new TestClock(),
@@ -729,6 +740,32 @@ describe("greenfield runtime kernel", () => {
 		expect((await harness.repository.load("session-1")).events.at(-1)?.type).toBe("turn.cancelled");
 	});
 
+	it("enters recovery_required when a terminal turn event cannot be persisted", async () => {
+		let markStarted: (() => void) | undefined;
+		const started = new Promise<void>((resolve) => {
+			markStarted = resolve;
+		});
+		const engine: TurnEnginePort = {
+			async *execute(request) {
+				markStarted?.();
+				await waitForAbort(request.signal);
+				yield { type: "completed", stopReason: "aborted" };
+			},
+		};
+		const harness = await createHarness({ turnEngine: engine, failTerminalAppend: true });
+		const turn = harness.session.send({ message: userMessage("current input") });
+		const turnError = turn.catch((error) => error);
+		await started;
+
+		const cancelError = harness.session.cancel("terminal persistence failure").catch((error) => error);
+		await expect(cancelError).resolves.toMatchObject({ code: KERNEL_ERROR_CODES.TURN_PERSISTENCE });
+		await expect(turnError).resolves.toMatchObject({ code: KERNEL_ERROR_CODES.TURN_PERSISTENCE });
+		expect(harness.session.state).toBe("recovery_required");
+		await expect(harness.session.send({ message: userMessage("must not start") })).rejects.toMatchObject({
+			code: KERNEL_ERROR_CODES.TURN_PERSISTENCE,
+		});
+	});
+
 	it("serializes runtime context after tool results and exposes it to the next external turn", async () => {
 		const runtimeContext = new BufferedRuntimeSessionContext();
 		let execution = 0;
@@ -829,6 +866,83 @@ describe("greenfield runtime kernel", () => {
 		});
 		const conversation = await harness.repository.load("session-1");
 		expect(conversation.events.at(-1)?.type).toBe("turn.failed");
+	});
+
+	it("persists a provider assistant error alongside turn.failed", async () => {
+		const failure = {
+			code: "AI_BILLING_REQUIRED",
+			message: "余额不足",
+			retryable: false,
+			origin: "provider" as const,
+			details: { statusCode: 401, provider: "opencode-go", modelId: "deepseek-v4-flash" },
+		} as const;
+		const engine: TurnEnginePort = {
+			async *execute() {
+				yield { type: "message", message: assistantMessage("rejected") };
+				yield {
+					type: "message",
+					message: {
+						...assistantMessage("rejected"),
+						stopReason: "error" as const,
+						errorMessage: failure.message,
+						failure: {
+							code: failure.code,
+							message: failure.message,
+							retryable: failure.retryable,
+							statusCode: failure.details.statusCode,
+							provider: failure.details.provider,
+							modelId: failure.details.modelId,
+						},
+					},
+				};
+				yield { type: "completed", stopReason: "error" };
+			},
+		};
+		const harness = await createHarness({ turnEngine: engine });
+		const result = await harness.session.send({ message: userMessage("hello") });
+
+		expect(result).toMatchObject({ status: "failed", error: failure });
+		expect((harness.eventSink as CollectingEventSink).events).toContainEqual(
+			expect.objectContaining({
+				type: "turn.execution_failed",
+				error: expect.objectContaining({ origin: "provider" }),
+			}),
+		);
+		const conversation = await harness.repository.load("session-1");
+		expect(conversation.messages.filter((message) => message.role === "assistant")).toHaveLength(2);
+		expect(conversation.events.at(-2)).toMatchObject({ type: "message.appended", failure });
+		expect(conversation.events.at(-1)).toMatchObject({ type: "turn.failed", error: failure });
+	});
+
+	it("publishes the provider failure before terminal persistence is attempted", async () => {
+		const engine: TurnEnginePort = {
+			async *execute() {
+				yield {
+					type: "message",
+					message: {
+						...assistantMessage("quota exhausted"),
+						stopReason: "error" as const,
+						errorMessage: "insufficient quota",
+					},
+				};
+				yield { type: "completed", stopReason: "error" };
+			},
+		};
+		const harness = await createHarness({ turnEngine: engine, failTerminalAppend: true });
+
+		await expect(harness.session.send({ message: userMessage("hello") })).rejects.toMatchObject({
+			code: KERNEL_ERROR_CODES.TURN_PERSISTENCE,
+		});
+		expect((harness.eventSink as CollectingEventSink).events).toContainEqual(
+			expect.objectContaining({
+				type: "turn.execution_failed",
+				error: expect.objectContaining({
+					message: "insufficient quota",
+					origin: "provider",
+					retryable: false,
+				}),
+			}),
+		);
 	});
 
 	it("requires an explicit concurrent-input behavior and retains queued input on cancellation", async () => {

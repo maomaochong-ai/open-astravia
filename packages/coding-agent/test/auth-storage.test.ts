@@ -146,7 +146,12 @@ describe("AuthStorage", () => {
 
 		test("apiKey command can use shell features like pipes", async () => {
 			writeAuthJson({
-				anthropic: { type: "api_key", key: '!echo hello-world | node -e "process.stdin.pipe(process.stdout)"' },
+				anthropic: {
+					key: `!echo hello-world | ${[process.execPath, "-e", "process.stdin.pipe(process.stdout)"]
+						.map(quoteShellArgument)
+						.join(" ")}`,
+					type: "api_key",
+				},
 			});
 
 			authStorage = AuthStorage.create(authJsonPath);
@@ -524,7 +529,12 @@ describe("AuthStorage", () => {
 });
 
 function nodeCommand(script: string, args: readonly string[] = []): string {
-	return `!node -e "${script}" ${args.map((argument) => `"${argument}"`).join(" ")}`.trim();
+	return `!${[process.execPath, "-e", script, ...args].map(quoteShellArgument).join(" ")}`;
+}
+
+function quoteShellArgument(value: string): string {
+	if (process.platform === "win32") return `"${value.replaceAll('"', '""')}"`;
+	return `'${value.replaceAll("'", `'\\''`)}'`;
 }
 
 function counterCommand(counterFile: string, fail = false): string {

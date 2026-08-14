@@ -57,7 +57,7 @@ describe("Coding Agent MCP Session Coordinator", () => {
 		expect(registry.unregisterCalls).toEqual(["mcp_shared", "mcp_base"]);
 	});
 
-	it("reports prompt-boundary refreshes, updates controllers and reuses the same refresh once", async () => {
+	it("reports Turn-boundary refreshes and updates controllers", async () => {
 		const alpha = tool("mcp_alpha", "alpha");
 		const beta = tool("mcp_beta", "beta");
 		let currentView = runtimeView(binding(alpha, "alpha"));
@@ -104,16 +104,22 @@ describe("Coding Agent MCP Session Coordinator", () => {
 		]);
 		expect(source.refresh).toHaveBeenCalledTimes(2);
 
-		await coordinator.refreshCatalogForModelCall("session");
-		expect(source.refresh).toHaveBeenCalledTimes(2);
-		await coordinator.refreshCatalogForModelCall("session");
-		expect(source.refresh).toHaveBeenCalledTimes(3);
-
 		refreshFailure = new Error("refresh failed");
 		await expect(coordinator.refreshSession("session", true)).rejects.toBe(refreshFailure);
 		expect(observations.slice(2)).toEqual([
 			{ type: "mcp.reload.start", source: "agent" },
-			{ type: "mcp.reload.end", changed: false, errorMessage: "refresh failed", source: "agent" },
+			{
+				type: "mcp.reload.end",
+				changed: false,
+				errorMessage: "refresh failed",
+				failure: {
+					code: "MCP_RELOAD_FAILED",
+					message: "refresh failed",
+					retryable: false,
+					origin: "mcp",
+				},
+				source: "agent",
+			},
 		]);
 	});
 

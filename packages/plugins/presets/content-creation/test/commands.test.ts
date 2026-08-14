@@ -3,6 +3,17 @@ import { applyContentProjectCommands, ContentProjectCommandError } from "../src/
 import { createContentProject } from "../src/project/types";
 
 describe("applyContentProjectCommands", () => {
+	it("rejects deleting a node with an active generation job", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "job.start", job: { id: "job", nodeId: "image", providerId: "provider", modelId: "model", outputAssetId: "asset" } },
+		]);
+
+		expect(() => applyContentProjectCommands(project, [{ type: "node.delete", nodeId: "image" }])).toThrowError(
+			ContentProjectCommandError,
+		);
+	});
+
 	it("applies a command batch atomically and increments one revision", () => {
 		const project = createContentProject("C:/project", "2026-01-01T00:00:00.000Z");
 		const next = applyContentProjectCommands(
@@ -37,6 +48,21 @@ describe("applyContentProjectCommands", () => {
 		expect(() =>
 			applyContentProjectCommands(renamed, [{ type: "node.rename", nodeId: "prompt", name: "  " }]),
 		).toThrow(ContentProjectCommandError);
+	});
+
+	it("replaces the effective prompt document when a plain prompt is updated", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.update", nodeId: "video", data: { prompt: "First directing prompt" } },
+		]);
+		const updated = applyContentProjectCommands(project, [
+			{ type: "node.update", nodeId: "video", data: { prompt: "Second directing prompt" } },
+		]);
+
+		expect(updated.graph.nodes[0]?.data.promptDocument).toEqual({
+			version: 1,
+			segments: [{ type: "text", text: "Second directing prompt" }],
+		});
 	});
 
 	it("stores workflow intent and semantic node purpose", () => {
@@ -242,6 +268,46 @@ describe("applyContentProjectCommands", () => {
 		]);
 		expect(cleared.graph.edges).toEqual([]);
 		expect(cleared.graph.nodes.find((node) => node.id === "video")?.data.inputs).toHaveLength(1);
+	});
+
+	it("atomically replaces image references for dependent first/last-frame generation", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "shared-prompt", kind: "prompt", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "stale", kind: "image-generator", position: { x: 0, y: 200 } } },
+			{ type: "node.add", node: { id: "first", kind: "image-generator", position: { x: 300, y: 0 } } },
+			{ type: "node.add", node: { id: "last", kind: "image-generator", position: { x: 600, y: 0 } } },
+			{ type: "edge.connect", source: "shared-prompt", target: "first", targetHandle: "prompt" },
+			{
+				type: "edge.connect",
+				source: "stale",
+				target: "last",
+				targetHandle: "reference",
+				role: "referenceImages",
+			},
+		]);
+
+		const configured = applyContentProjectCommands(project, [
+			{
+				type: "node.configure-generated-image-reference",
+				targetNodeId: "last",
+				referenceSourceNodeId: "first",
+			},
+		]);
+
+		expect(configured.graph.edges).toEqual(expect.arrayContaining([
+			expect.objectContaining({ source: "shared-prompt", target: "first", targetHandle: "prompt" }),
+			expect.objectContaining({
+				source: "first",
+				target: "last",
+				targetHandle: "reference",
+				role: "referenceImages",
+			}),
+		]));
+		expect(configured.graph.edges.some((edge) => edge.source === "stale")).toBe(false);
+		expect(configured.graph.nodes.find((node) => node.id === "last")?.data).toMatchObject({
+			modeId: "image-to-image",
+			inputs: [],
+		});
 	});
 
 	it("duplicates a node with independent data and an offset position", () => {

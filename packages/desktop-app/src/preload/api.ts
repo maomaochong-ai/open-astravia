@@ -24,6 +24,7 @@ import type { DesktopQuickPanelApi } from "./api-types/quick-panel.js";
 import type { DesktopSchedulerApi } from "./api-types/scheduler.js";
 import type { DesktopSessionApi } from "./api-types/session.js";
 import type { DesktopSkillsApi } from "./api-types/skills.js";
+import type { DesktopSpeechInputApi } from "./api-types/speech-input.js";
 import type {
 	DesktopClipboardApi,
 	DesktopPermissionsApi,
@@ -66,6 +67,7 @@ export type * from "./api-types/scheduler.js";
 export type * from "./api-types/session.js";
 export type * from "./api-types/shared.js";
 export type * from "./api-types/skills.js";
+export type * from "./api-types/speech-input.js";
 export type * from "./api-types/system.js";
 export type * from "./api-types/telemetry.js";
 export type * from "./api-types/theme.js";
@@ -85,6 +87,7 @@ export interface DesktopApi {
 	appLifecycle: DesktopAppLifecycleApi;
 	appMonitor: DesktopAppMonitorApi;
 	session: DesktopSessionApi;
+	speechInput: DesktopSpeechInputApi;
 	dialog: DesktopDialogApi;
 	theme: DesktopThemeApi;
 	themes: DesktopThemesApi;

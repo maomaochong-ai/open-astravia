@@ -1,20 +1,23 @@
+import { PLUGIN_HOSTED_ROUTE_PATH, pluginHostedRoutePath } from "@shared/hosted-routes/hosted-route-descriptors";
 import type { RegisteredWorkspaceView } from "@shared/store/atoms";
+import { HOSTED_ROUTE_SEGMENT_PATTERN, isValidHostedRouteSegment } from "@vetta/capability-sdk";
 import type { PluginNavBadge, PluginNavBadgeTone } from "@vetta-org/plugin-sdk";
+import { pluginWorkspaceRoute } from "./plugin-hosted-route-capability.js";
 
 /**
  * 插件**工作区视图**（整页 surface）的路由。与主题页 `/theme/$themeId/$pageId`
  * 同构：宿主给出一条稳定深链，插件只负责渲染内容区。
  */
-export const WORKSPACE_VIEW_ROUTE_PATH = "/workspace/$pluginId/$viewId";
+export const WORKSPACE_VIEW_ROUTE_PATH = PLUGIN_HOSTED_ROUTE_PATH;
 
 /**
  * 视图 id 直接进 URL 段，且会作为侧边栏布局持久化的一部分，故只允许保守字符集：
  * 首字符字母数字，后续可含 `.`、`_`、`-`。
  */
-export const WORKSPACE_VIEW_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*$/i;
+export const WORKSPACE_VIEW_ID_PATTERN = new RegExp(HOSTED_ROUTE_SEGMENT_PATTERN);
 
 export function isValidWorkspaceViewId(id: string): boolean {
-	return WORKSPACE_VIEW_ID_PATTERN.test(id);
+	return isValidHostedRouteSegment(id);
 }
 
 /** 侧边栏导航项 key ⇄ 工作区视图的映射前缀。 */
@@ -39,7 +42,7 @@ export function parseWorkspaceViewNavKey(key: string): { pluginId: string; viewI
 
 /** 该视图整页路由的 hash 路径（`openExternal` 之外的宿主内跳转都用它）。 */
 export function workspaceViewPath(pluginId: string, viewId: string): string {
-	return `/workspace/${encodeURIComponent(pluginId)}/${encodeURIComponent(viewId)}`;
+	return pluginHostedRoutePath(pluginWorkspaceRoute(pluginId, viewId));
 }
 
 /**

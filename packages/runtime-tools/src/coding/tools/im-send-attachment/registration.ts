@@ -21,5 +21,7 @@ export function createImSendAttachmentToolRegistration(
 		scopeUse: IM_SEND_ATTACHMENT_TOOL_SCOPES,
 		modelOrder: options.modelOrder,
 		category: IM_SEND_ATTACHMENT_TOOL_CATEGORY,
+		// 把本地文件外发到 IM 会话，消息发出即不可撤回，且工具自身没有确认对话框。
+		sideEffect: "heavy",
 	};
 }

@@ -1,9 +1,10 @@
 import { spawn } from "node:child_process";
+import { Socket } from "node:net";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import electronPath from "electron";
-import { resolveTenant } from "./stage-system-plugins.mjs";
+import { resolveSystemPluginSelection } from "./stage-system-plugins.mjs";
 
 const projectRoot = join(import.meta.dirname, "..");
 
@@ -23,6 +24,34 @@ function waitForExit(child) {
 	});
 }
 
+export async function waitForRendererPort(
+	port,
+	{ timeoutMs = 120_000, retryIntervalMs = 100 } = {},
+) {
+	const startedAt = Date.now();
+	while (Date.now() - startedAt < timeoutMs) {
+		if (await canConnect(port)) return;
+		await new Promise((resolve) => setTimeout(resolve, retryIntervalMs));
+	}
+	throw new Error(`Timed out after ${timeoutMs}ms waiting for renderer port 127.0.0.1:${port}`);
+}
+
+function canConnect(port) {
+	return new Promise((resolve) => {
+		const socket = new Socket();
+		const finish = (connected) => {
+			socket.removeAllListeners();
+			socket.destroy();
+			resolve(connected);
+		};
+		socket.setTimeout(1_000);
+		socket.once("connect", () => finish(true));
+		socket.once("error", () => finish(false));
+		socket.once("timeout", () => finish(false));
+		socket.connect(port, "127.0.0.1");
+	});
+}
+
 export function resolveDevLaunchEnvironment(environment = process.env, homeDirectory = homedir()) {
 	const verificationEnabled = environment.VETTA_UI_VERIFICATION === "1";
 	const configDir =
@@ -34,26 +63,21 @@ export function resolveDevLaunchEnvironment(environment = process.env, homeDirec
 	return { configDir, userDataDir };
 }
 
-export function resolveDevPluginIds(environment = process.env, tenantResolver = resolveTenant) {
+export function resolveDevPluginIds(
+	environment = process.env,
+	tenantResolver = resolveSystemPluginSelection,
+) {
 	if (Object.hasOwn(environment, "VETTA_PLUGIN_DEV")) {
 		return environment.VETTA_PLUGIN_DEV ?? "";
 	}
-	const tenant = tenantResolver(environment.VETTA_TENANT);
+	const tenant = tenantResolver(environment.VETTA_TENANT, "development");
 	return tenant.pluginIds ? Array.from(tenant.pluginIds).sort().join(",") : "";
 }
 
 async function main() {
 	const rendererPort = resolveRendererPort();
 	const rendererUrl = `http://127.0.0.1:${rendererPort}`;
-	const waitProcess = spawn("bunx", ["wait-on", `tcp:127.0.0.1:${rendererPort}`], {
-		cwd: projectRoot,
-		stdio: "inherit",
-	});
-	const waitResult = await waitForExit(waitProcess);
-	if (waitResult.signal || waitResult.code !== 0) {
-		process.exitCode = waitResult.code ?? 1;
-		return;
-	}
+	await waitForRendererPort(rendererPort);
 
 	const { configDir, userDataDir } = resolveDevLaunchEnvironment();
 	const pluginIds = resolveDevPluginIds();

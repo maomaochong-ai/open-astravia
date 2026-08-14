@@ -1,4 +1,12 @@
-import type { Api, AssistantMessage, Message, Model, UserMessage } from "@vetta/ai";
+import {
+	AI_ERROR_CODES,
+	type Api,
+	type AssistantMessage,
+	isAIError,
+	type Message,
+	type Model,
+	type UserMessage,
+} from "@vetta/ai";
 import type { HookDispatchOutcome } from "@vetta/ecosystem-adapter/hooks";
 import {
 	applyStoredEventToConversationDocument,
@@ -20,6 +28,45 @@ import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../../src/
 import type { CodingAgentCompactionExtensionRuntime } from "../../src/runtime-contracts/index.js";
 
 describe("CodingAgentContextRuntime", () => {
+	it("keeps admitted compaction settings for every model call in the Turn", async () => {
+		let enabled = true;
+		const generateCompaction = vi.fn(async (preparation: CompactionPreparation) => ({
+			summary: "summary",
+			firstKeptEntryId: preparation.firstKeptEntryId,
+			tokensBefore: preparation.tokensBefore,
+		}));
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			resolveSettings: () => ({ ...compactingSettings(), enabled }),
+			generateCompaction,
+		});
+		const bound = await runtime.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
+		enabled = false;
+		const history = [
+			userMessage("old request".repeat(40), 1),
+			assistantMessage("old response", 90, 2),
+			userMessage("kept request", 3),
+		] satisfies Message[];
+		const input = {
+			...preparationInput(documentFromMessages(history), history, history, []),
+			reason: "model_call" as const,
+		};
+
+		const admitted = await bound.prepare(input, new AbortController().signal);
+		const nextTurn = await runtime.prepare(input, new AbortController().signal);
+
+		expect(admitted.compaction).toBeDefined();
+		expect(nextTurn.compaction).toBeUndefined();
+		expect(generateCompaction).toHaveBeenCalledOnce();
+		await bound.releaseTurnBinding?.();
+	});
+
 	it("persists a threshold compaction while keeping transient turn input outside the summary", async () => {
 		const history = [
 			userMessage("old request".repeat(40), 1),
@@ -496,6 +543,34 @@ describe("CodingAgentContextRuntime", () => {
 		expect(generateCompaction).not.toHaveBeenCalled();
 		expect(hooks.runPostCompact).not.toHaveBeenCalled();
 		expect(hooks.markSessionStart).not.toHaveBeenCalled();
+	});
+
+	it("uses the shared AI authentication contract for manual compaction credential failures", async () => {
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => undefined,
+		});
+		const result = runtime.compactManual(
+			{
+				sessionId: "session-1",
+				document: documentFromMessages([userMessage("old request".repeat(40), 1), userMessage("kept request", 2)]),
+				modelBinding: { model: MODEL },
+			},
+			new AbortController().signal,
+		);
+
+		await expect(result).rejects.toMatchObject({
+			code: AI_ERROR_CODES.AUTHENTICATION_FAILED,
+			provider: MODEL.provider,
+			modelId: MODEL.id,
+			retryable: false,
+		});
+		try {
+			await result;
+			throw new Error("Expected compaction to reject");
+		} catch (error) {
+			expect(isAIError(error)).toBe(true);
+		}
 	});
 
 	it("keeps low-pressure ToolResults on every model call without mutating persisted messages", async () => {

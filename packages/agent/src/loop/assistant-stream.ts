@@ -88,6 +88,15 @@ export async function streamAssistantResponse(
 
 		let partialMessage: AssistantMessage | null = null;
 		let addedPartial = false;
+		const finishModelMessage = async (finalMessage: AssistantMessage): Promise<AssistantMessage> => {
+			if (addedPartial) context.messages[context.messages.length - 1] = finalMessage;
+			else context.messages.push(finalMessage);
+			if (!addedPartial) stream.push({ type: "message_start", message: { ...finalMessage } });
+			stream.push({ type: "message_end", message: finalMessage });
+			failureReported = await reportModelCallTerminal(config, llmContext, finalMessage, signal);
+			endGeneration(assistantTelemetryUpdate(finalMessage, config.tracing?.captureContent === true));
+			return finalMessage;
+		};
 
 		for await (const event of response) {
 			switch (event.type) {
@@ -112,19 +121,18 @@ export async function streamAssistantResponse(
 						stream.push({ type: "message_update", assistantMessageEvent: event, message: { ...partialMessage } });
 					}
 					break;
-				case "done":
-				case "error": {
+				case "done": {
 					const finalMessage = await response.result();
-					if (event.type === "done" && config.salvageTextToolCalls?.length) {
+					if (config.salvageTextToolCalls?.length) {
 						salvageTextToolCalls(finalMessage, llmContext.tools, config.salvageTextToolCalls);
 					}
-					if (addedPartial) context.messages[context.messages.length - 1] = finalMessage;
-					else context.messages.push(finalMessage);
-					if (!addedPartial) stream.push({ type: "message_start", message: { ...finalMessage } });
-					stream.push({ type: "message_end", message: finalMessage });
-					failureReported = await reportModelCallTerminal(config, llmContext, finalMessage, signal);
-					endGeneration(assistantTelemetryUpdate(finalMessage, config.tracing?.captureContent === true));
-					return finalMessage;
+					return await finishModelMessage(finalMessage);
+				}
+				case "error": {
+					// The error event is the durable provider-facing message. The result
+					// promise may reject as well, so waiting for it here would lose the
+					// only message that can be shown and persisted by the host.
+					return await finishModelMessage(event.error);
 				}
 			}
 		}

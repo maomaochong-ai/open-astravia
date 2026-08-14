@@ -25,6 +25,7 @@
 	},
 	"scene": {
 		"generalReadonly": "General · Read-only",
+		"localReadonly": "Local · Read-only",
 		"running": "Running",
 		"installed": "Installed"
 	},

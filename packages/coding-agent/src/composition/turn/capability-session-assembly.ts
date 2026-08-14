@@ -8,7 +8,11 @@ import {
 	type RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools/coding";
+import {
+	type AskUserQuestionCapability,
+	type CodingToolActivation,
+	guardCodingToolRegistration,
+} from "@vetta/runtime-tools/coding";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
 import { createEcosystemToolInterceptor } from "../../adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
 import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
@@ -42,6 +46,11 @@ import type {
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentSystemPromptOptionsResolver,
 } from "../../runtime-contracts/index.js";
+import {
+	createHeavyToolConfirmationInterceptor,
+	HeavyToolConfirmationLedger,
+} from "../../tool-policy/heavy-tool-confirmation.js";
+import { createCodingAgentToolSideEffectResolver } from "../../tool-policy/tool-side-effect.js";
 import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import { CodingAgentTodoContinuationSource } from "../../work-state/todo-continuation-source.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
@@ -65,6 +74,12 @@ export interface CodingAgentTurnCapabilityActivationPort {
 	readonly readAgentMode: () => string | undefined;
 	readonly readAgentPlugins: () => AgentPluginRuntimeConfig | undefined;
 	readonly readActiveToolNamesOverride: () => readonly string[] | undefined;
+	readonly bindForTurn?: () => {
+		readonly resolve: (context: ModelCallContributionContext) => CodingToolActivation;
+		readonly agentMode: string | undefined;
+		readonly agentPlugins: AgentPluginRuntimeConfig | undefined;
+		readonly activeToolNamesOverride: readonly string[] | undefined;
+	};
 }
 
 export interface CodingAgentTurnCapabilityPromptOptions {
@@ -97,6 +112,8 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly mcpController?: McpDeferredToolController;
 	readonly extensionEvents: CodingAgentExtensionRunAdapter;
 	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
+	/** 宿主提问能力，heavy 工具首调确认闸的后端；缺省时确认闸走降级路径。 */
+	readonly askUserQuestion?: AskUserQuestionCapability;
 }
 
 export interface CodingAgentTurnCapabilitySessionAssembly {
@@ -136,8 +153,17 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 					shouldPreserveBaseTool: (toolName) =>
 						options.mcpController?.isManagedTool(toolName) === true ||
 						options.extensionToolRuntime?.hasTool(toolName, options.session.readSessionId()) === true,
-					resolveActivation: (context) =>
-						toPluginToolActivation(options.activation.resolve(context), options.activation.readAgentMode()),
+					resolveActivation: (context) => toPluginToolActivation(options.activation.resolve(context)),
+					bindActivation: () => {
+						const bound = readBoundActivation(options.activation);
+						return (context) => toPluginToolActivation(bound.resolve(context));
+					},
+					bindPreservedBaseToolNames: () =>
+						new Set([
+							...(options.pluginMcpRuntime?.view().tools.map(({ tool }) => tool.name) ?? []),
+							...(options.extensionToolRuntime?.readAvailableTools(options.session.readSessionId()).keys() ??
+								[]),
+						]),
 				})
 			: undefined;
 	const continuationOrchestrator = new CodingAgentContinuationOrchestrator({
@@ -156,13 +182,49 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 	const modelCallMessageFinalizer = new CodingAgentModelCallMessageFinalizer(
 		options.prompt.settingsSource ?? promptRuntime?.readSettingsSource(),
 	);
+	const enhanceSystemPromptOptions = async (
+		resolver: CodingAgentSystemPromptOptionsResolver,
+		context: Parameters<CodingAgentSystemPromptOptionsResolver>[0],
+		agentPlugins: AgentPluginRuntimeConfig | undefined,
+		memory: string | undefined,
+	) => {
+		const promptOptions = await resolver(context);
+		return {
+			...promptOptions,
+			cwd: promptOptions.cwd ?? options.session.cwd,
+			agentPlugins: promptOptions.agentPlugins ?? agentPlugins,
+			appendSystemPrompt: joinPromptAddons(promptOptions.appendSystemPrompt, options.session.systemPromptAddon),
+			...(memory ? { memory } : {}),
+		};
+	};
 	const invokeSkillFeature = promptResourceSource
 		? createCodingAgentInvokeSkillFeature({
 				resourceSource: promptResourceSource,
-				readAgentMode: options.activation.readAgentMode,
 				hookRuntime: options.hookRuntime,
 			})
 		: undefined;
+	// 「会话内已确认」是执行状态而非逻辑合同（见 docs/agent/turn/08-binding-boundaries.md 1.2），
+	// 因此台账与确认闸都实时读写，Turn 绑定不复制它。
+	const heavyToolConfirmationLedger = new HeavyToolConfirmationLedger();
+	const heavyToolConfirmationInterceptor = createHeavyToolConfirmationInterceptor({
+		ledger: heavyToolConfirmationLedger,
+		capability: options.askUserQuestion,
+		resolveSideEffect: createCodingAgentToolSideEffectResolver({
+			readDeclarations: () => [
+				// 核心工具在 runtime-tools 注册处的定义级声明（如 im_send_attachment 判 heavy）。
+				// registry 内容随 Execution Mode 等动态变化，按需 snapshot 而不是快照一次。
+				...options.codingTools.registry.snapshot().registrations.map((registration) => ({
+					name: registration.tool.name,
+					sideEffect: registration.sideEffect,
+				})),
+				...options.productToolRegistrations.map((registration) => ({
+					name: registration.tool.name,
+					sideEffect: registration.sideEffect,
+				})),
+				...(options.activation.readAgentPlugins()?.toolContributions ?? []),
+			],
+		}),
+	});
 	const toolInterceptionCatalog = new DynamicContributionCatalog<CodingAgentToolInterceptor>();
 	toolInterceptionCatalog.register({
 		sourceId: "ecosystem",
@@ -170,6 +232,13 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		revision: "session",
 		order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.ecosystem,
 		value: createEcosystemToolInterceptor(options.hookRuntime),
+	});
+	toolInterceptionCatalog.register({
+		sourceId: "tool-policy",
+		localId: "heavy-tool-confirmation",
+		revision: "session",
+		order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.sideEffectConfirmation,
+		value: heavyToolConfirmationInterceptor,
 	});
 	if (options.extensionEvents) {
 		toolInterceptionCatalog.register({
@@ -213,6 +282,8 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		pluginRunOrchestrator,
 		pluginMcpRuntime: options.pluginMcpRuntime,
 		pluginToolRuntime,
+		readAgentPlugins: options.activation.readAgentPlugins,
+		pluginHandlerLeaseProvider: options.pluginRuntime?.handlerLeaseProvider,
 		readAgentMode: options.activation.readAgentMode,
 		isMcpToolVisible: (toolName) => options.mcpController?.isToolVisible(toolName) ?? true,
 		systemPromptAdvertisedToolNames: options.prompt.systemPromptAdvertisedToolNames,
@@ -220,19 +291,68 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			const hookedTools = wrapRuntimeToolsWithInterceptionPipeline(tools, toolInterceptionCatalog, context);
 			return invokeSkillFeature?.wrapHookActivation(hookedTools) ?? hookedTools;
 		},
+		bindToolWrapper: (context) => {
+			const boundExtensionEvents = options.extensionEvents.bindAdapterForTurn(context);
+			const catalog = new DynamicContributionCatalog<CodingAgentToolInterceptor>();
+			catalog.register({
+				sourceId: "ecosystem",
+				localId: "tool-hooks",
+				revision: "turn",
+				order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.ecosystem,
+				value: createEcosystemToolInterceptor(options.hookRuntime),
+			});
+			catalog.register({
+				sourceId: "coding-extension",
+				localId: "tool-events",
+				revision: "turn",
+				order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.extension,
+				value: boundExtensionEvents.createToolInterceptor(),
+			});
+			catalog.register({
+				sourceId: "tool-policy",
+				localId: "heavy-tool-confirmation",
+				revision: "turn",
+				order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.sideEffectConfirmation,
+				value: heavyToolConfirmationInterceptor,
+			});
+			return {
+				wrapTools: (tools, frameContext) => {
+					const intercepted = wrapRuntimeToolsWithInterceptionPipeline(tools, catalog, frameContext);
+					return invokeSkillFeature?.wrapHookActivation(intercepted) ?? intercepted;
+				},
+				release: () => boundExtensionEvents.releaseTurnBinding(),
+			};
+		},
 		extensionEvents: options.extensionEvents,
 		extensionToolRuntime: options.extensionToolRuntime,
 		resolveExtensionToolActivation: options.activation.resolve,
-		resolveSystemPromptOptions: async (context) => {
-			const promptOptions = await resolveSystemPromptOptions(context);
-			return {
-				...promptOptions,
-				cwd: promptOptions.cwd ?? options.session.cwd,
-				agentPlugins: promptOptions.agentPlugins ?? options.activation.readAgentPlugins(),
-				appendSystemPrompt: joinPromptAddons(promptOptions.appendSystemPrompt, options.session.systemPromptAddon),
-				...(options.memoryRuntime ? { memory: options.memoryRuntime.renderPromptMemory() } : {}),
-			};
+		bindExtensionToolActivation: () => readBoundActivation(options.activation).resolve,
+		resolveSystemPromptOptions: (context) =>
+			enhanceSystemPromptOptions(
+				resolveSystemPromptOptions,
+				context,
+				options.activation.readAgentPlugins(),
+				options.memoryRuntime?.renderPromptMemory(),
+			),
+		bindSystemPromptOptions: () => {
+			const resolver = promptRuntime?.bindForTurn() ?? resolveSystemPromptOptions;
+			const agentPlugins = options.activation.readAgentPlugins();
+			const memory = options.memoryRuntime?.renderPromptMemory();
+			return (context) => enhanceSystemPromptOptions(resolver, context, agentPlugins, memory);
 		},
+	});
+	const promptAdapter = new CodingAgentPromptRequestAdapter({
+		resolvePromptResource:
+			options.prompt.promptResourceResolver ??
+			(promptResourceSource
+				? createCodingAgentPromptResourceResolver({
+						resourceLoader: promptResourceSource,
+						todoState: options.todoRuntime,
+					})
+				: undefined),
+		hookRuntime: options.hookRuntime,
+		extensionEvents: options.extensionEvents,
+		onPrepared: () => options.todoRuntime.flush(),
 	});
 	const profile: AgentProfile = {
 		...options.baseProfile,
@@ -256,24 +376,13 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		agentRunPreparer: options.extensionEvents,
 		continuationPolicy: continuationOrchestrator,
 		modelCallFrameComposer,
+		inputRequestPreparer: promptAdapter,
 	};
 	const capabilities = await RuntimeCapabilityComposition.create({
 		initialProfile: profile,
 		compiler: options.codingTools.compiler,
+		modelBindingProvider: options.modelRuntime,
 	});
-	const promptAdapter = new CodingAgentPromptRequestAdapter({
-		resolvePromptResource:
-			options.prompt.promptResourceResolver ??
-			(options.prompt.resourceSource
-				? createCodingAgentPromptResourceResolver({
-						resourceLoader: options.prompt.resourceSource,
-						todoState: options.todoRuntime,
-					})
-				: undefined),
-		hookRuntime: options.hookRuntime,
-		extensionEvents: options.extensionEvents,
-	});
-
 	return {
 		capabilities,
 		promptAdapter,
@@ -286,14 +395,27 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			pluginSession.id = sessionId;
 		},
 		async previewInitialSystemPrompt() {
-			const initialSnapshotLease = await capabilities.acquire();
+			const sessionId = options.session.readSessionId();
+			const operationId = `${sessionId}:extension-context-preview`;
+			const signal = new AbortController().signal;
+			const initialSnapshotLease = await capabilities.acquire({
+				sessionId,
+				operationId,
+				reason: "preview",
+				signal,
+			});
 			try {
-				await modelCallFrameComposer.previewSystemPrompt({
-					sessionId: options.session.readSessionId(),
-					turnId: `${options.session.readSessionId()}:extension-context-preview`,
-					signal: new AbortController().signal,
+				const admittedComposer = initialSnapshotLease.snapshot.modelCallFrameComposer;
+				const previewComposer =
+					admittedComposer instanceof CodingAgentModelCallFrameComposer
+						? admittedComposer
+						: modelCallFrameComposer;
+				await previewComposer.previewSystemPrompt({
+					sessionId,
+					turnId: operationId,
+					signal,
 					messages: [],
-					modelBinding: options.modelRuntime.bind(),
+					modelBinding: initialSnapshotLease.modelBinding ?? (await options.modelRuntime.bind()),
 					frame: {
 						instructions: initialSnapshotLease.snapshot.instructions,
 						tools: initialSnapshotLease.snapshot.tools,
@@ -340,18 +462,27 @@ function readPluginSkillPaths(agentPlugins: AgentPluginRuntimeConfig | undefined
 	return agentPlugins?.skillPathContributions?.flatMap((contribution) => contribution.paths) ?? [];
 }
 
-function toPluginToolActivation(
-	activation: CodingToolActivation,
-	agentMode: string | undefined,
-): CodingAgentPluginToolActivation {
+function toPluginToolActivation(activation: CodingToolActivation): CodingAgentPluginToolActivation {
 	if (activation.mode === "explicit") return activation;
 	return {
 		mode: "scope",
 		scenario: activation.scope ?? "cli",
 		capabilities: activation.capabilities,
 		additionallyEnabledToolNames: activation.additionallyEnabledToolNames,
-		agentMode,
 	};
+}
+
+function readBoundActivation(
+	activation: CodingAgentTurnCapabilityActivationPort,
+): ReturnType<NonNullable<CodingAgentTurnCapabilityActivationPort["bindForTurn"]>> {
+	return (
+		activation.bindForTurn?.() ?? {
+			resolve: activation.resolve,
+			agentMode: activation.readAgentMode(),
+			agentPlugins: activation.readAgentPlugins(),
+			activeToolNamesOverride: activation.readActiveToolNamesOverride(),
+		}
+	);
 }
 
 function joinPromptAddons(base: string | undefined, addon: string | undefined): string | undefined {

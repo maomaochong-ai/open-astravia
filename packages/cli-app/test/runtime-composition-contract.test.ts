@@ -576,7 +576,8 @@ describe("Runtime composition contract", () => {
 
 		await first.prompt({ text: "activate topic 15" });
 		expect(modelCalls[0]?.systemPrompt).toContain("MCP (Model Context Protocol) tools:");
-		expect(modelCalls[0]?.systemPrompt).toContain("- mcp_search_tool_15: Lookup topic-15");
+		// 系统提示词只保留 MCP 索引（此处超过阈值，按 server 压缩）；具体工具由 params.tools 承载。
+		expect(modelCalls[0]?.systemPrompt).toContain("- search (16 tools): tool_0, tool_1, tool_2, ...");
 		expect(modelCalls[0]?.systemPrompt).toContain("**MCP tool usage (deferred)**");
 		expect(modelCalls[0]?.messages).toEqual(["activate topic 15"]);
 		expect(modelCalls[0]?.tools.map(({ name }) => name)).toEqual(["tool_search"]);
@@ -982,15 +983,17 @@ function createMcpSourceFixture(toolCount: number): {
 }
 
 function createMcpServerBinding(client: McpClientHandle, tools: readonly McpTool[]) {
+	const view = {
+		name: "search",
+		config: { command: "test" },
+		status: "ready" as const,
+		tools,
+		resources: [],
+		startedAt: 1,
+	};
 	return {
 		client,
-		view: {
-			name: "search",
-			config: { command: "test" },
-			status: "ready" as const,
-			tools,
-			resources: [],
-			startedAt: 1,
-		},
+		view,
+		acquireLease: () => ({ client, view, release: async () => {} }),
 	};
 }

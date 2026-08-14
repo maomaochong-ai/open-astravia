@@ -27,15 +27,17 @@ bun install
 
 ## 构建系统插件
 
-从 Desktop 包目录构建所有 Preset，并将 zip 制品解压到开发 staging：
+从 Desktop 包目录构建当前 profile + 租户选中的 Preset，并将 zip 制品
+解压到开发 staging：
 
 ```bash
 cd packages/desktop-app
 bun run build:presets
 ```
 
-开发环境会先把这些插件 staging 到 `packages/desktop-app/.artifacts/system-plugins/`，
-再默认为当前租户的全部 preset 建立内存 dev 链接并启动开发服务器；关闭 dev 链接时回落 staging。
+开发环境会先把 `development` profile 中当前租户的插件 staging 到
+`packages/desktop-app/.artifacts/system-plugins/`，再默认为它们建立内存 dev 链接并启动
+开发服务器；关闭 dev 链接时回落 staging。
 Preset 不会安装到 `~/.vetta/plugins`。
 
 ## 通过 npm 分发外置插件

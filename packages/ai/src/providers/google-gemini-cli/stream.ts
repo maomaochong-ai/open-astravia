@@ -1,3 +1,4 @@
+import { requireProviderCredential } from "../../provider-kit/index.js";
 import type { Context, Model, SimpleStreamOptions, StreamFunction, ThinkingBudgets } from "../../types.js";
 import { getGeminiThinkingLevel, usesGeminiThinkingLevel } from "../google-stream/thinking.js";
 import { projectLanguageModelAdapter } from "../legacy-adapter-stream.js";
@@ -16,8 +17,11 @@ export const streamSimpleGoogleGeminiCli: StreamFunction<"google-gemini-cli", Si
 	context: Context,
 	options?: SimpleStreamOptions,
 ) => {
-	const apiKey = options?.apiKey;
-	if (!apiKey) throw new Error("Google Cloud Code Assist requires OAuth authentication. Use /login to authenticate.");
+	const apiKey = requireProviderCredential(
+		model,
+		options?.apiKey,
+		"Google Cloud Code Assist requires OAuth authentication. Use /login to authenticate.",
+	);
 	const base = buildBaseOptions(model, options, apiKey);
 	if (!options?.reasoning) {
 		return streamGoogleGeminiCli(model, context, {

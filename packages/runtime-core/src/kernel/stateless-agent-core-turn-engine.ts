@@ -9,6 +9,7 @@ import {
 	salvageTextToolCalls,
 } from "@vetta/agent-core";
 import {
+	type AIErrorDetails,
 	type Api,
 	type AssistantMessage,
 	type AssistantMessageEvent,
@@ -21,6 +22,7 @@ import {
 	Type,
 	validateToolArguments,
 } from "@vetta/ai";
+import { type RuntimeFailure, runtimeFailureFromAIErrorDetails } from "../failure-contract.js";
 import type { RuntimeMessageEnvelope } from "../runtime-execution-observation.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import type { AgentCoreTurnEngineOptions } from "./agent-core-turn-engine-options.js";
@@ -41,7 +43,7 @@ import type {
 	TurnEnginePort,
 	TurnEngineRequest,
 } from "./contracts.js";
-import { turnProtocolError } from "./errors.js";
+import { KERNEL_ERROR_CODES, TurnExecutionError, turnProtocolError } from "./errors.js";
 import { composeModelCallSystemPrompt, resolveModelCallFrame } from "./model-call-frame.js";
 import { settledToolArgs } from "./streaming-tool-args.js";
 import { RuntimeToolExecutionError } from "./tool-execution-error.js";
@@ -88,6 +90,17 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 			if (result.status !== "completed") throw runFailure(result);
 			const assistant = result.lastAssistantMessage;
 			if (!assistant) throw turnProtocolError("agent-core completed without an assistant message");
+			if (assistant.stopReason === "error") {
+				const failure = assistant.failure ? runtimeFailureFromAIErrorDetails(assistant.failure) : undefined;
+				throw new TurnExecutionError({
+					code: failure?.code ?? "PROVIDER_ERROR",
+					message:
+						failure?.message ?? assistant.errorMessage?.trim() ?? "Provider returned an assistant error response",
+					retryable: failure?.retryable ?? false,
+					origin: "provider",
+					...(failure?.details ? { details: failure.details } : {}),
+				});
+			}
 			yield { type: "completed", stopReason: assistant.stopReason };
 		} catch (error) {
 			telemetry.fail(error);
@@ -170,10 +183,13 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 							)),
 						]
 					: runtimeMessages;
+				// instructionOverride 替换整段 Prompt，Frame 上算出的稳定前缀长度随即失效，必须丢弃。
+				const stableLength = request.instructionOverride ? undefined : frame.systemPromptStableLength;
 				const context: Context = {
 					systemPrompt: composeModelCallSystemPrompt({
 						instructions: request.instructionOverride ?? frame.instructions,
 					}),
+					...(stableLength !== undefined ? { systemPromptStableLength: stableLength } : {}),
 					messages: finalizedMessages,
 					tools: tools.map(toModelTool),
 				};
@@ -184,9 +200,11 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 					signal,
 				};
 				const generation = telemetry.startGeneration(context, effectiveStreamOptions);
-				const apiKey = this.options.resolveApiKey
-					? await this.options.resolveApiKey(model)
-					: await this.options.getApiKey?.(model.provider);
+				const apiKey = request.modelBinding?.credential
+					? await request.modelBinding.credential.resolve()
+					: this.options.resolveApiKey
+						? await this.options.resolveApiKey(model)
+						: await this.options.getApiKey?.(model.provider);
 				const response = await (async () => {
 					try {
 						const source = await streamFn(model, context, {
@@ -208,6 +226,7 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 					snapshotId: request.snapshot.id,
 					response: {
 						events: response.events,
+						...(response.metadata ? { metadata: response.metadata } : {}),
 						result: response.result.then(
 							(assistant) => {
 								if (request.snapshot.salvageTextToolCalls?.length) {
@@ -322,9 +341,25 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 		request: TurnEngineRequest,
 		identities: WeakMap<object, RuntimeMessageEnvelope>,
 	): Promise<Message[]> {
-		const context = inputs.flatMap((input) => input.context ?? []);
+		const preparedInputs = await Promise.all(
+			inputs.map(async (input): Promise<QueuedSessionInput | undefined> => {
+				if (!input.request) return input;
+				const preparer = request.snapshot.inputRequestPreparer;
+				if (!preparer) throw new Error("Runtime snapshot does not provide an input request preparer");
+				const prepared = await preparer.prepare(input.request, {
+					sessionId: request.sessionId,
+					turnId: request.turnId,
+					signal: request.signal,
+					queueing: true,
+					modelBinding: request.modelBinding,
+				});
+				return prepared.action === "continue" ? prepared.input : undefined;
+			}),
+		);
+		const admittedInputs = preparedInputs.filter((input): input is QueuedSessionInput => input !== undefined);
+		const context = admittedInputs.flatMap((input) => input.context ?? []);
 		if (context.length > 0) await request.appendQueuedContext?.(context);
-		return inputs.flatMap((input) => {
+		return admittedInputs.flatMap((input) => {
 			const contextMessages = (input.context ?? []).map((record) => {
 				const message = contextRecordToUserMessage(record);
 				identities.set(message, { kind: "context", record, timestamp: message.timestamp });
@@ -342,6 +377,7 @@ class AgentEventProjector {
 	/** toolCallId → 已经播报过的参数键数，见 {@link projectToolCallArgs}。逐轮清空。 */
 	private readonly emittedArgKeys = new Map<string, number>();
 	private assistantMessageStarted = false;
+	private terminalAssistantError = false;
 	private readonly runMessages: RuntimeMessageEnvelope[] = [];
 
 	constructor(
@@ -362,12 +398,16 @@ class AgentEventProjector {
 		}
 		if (event.type === "model_call_start") {
 			this.assistantMessageStarted = false;
+			this.terminalAssistantError = false;
 			return this.startNextTurnIfNeeded();
 		}
 		if (event.type === "model_event") return this.projectModelEvent(event.event);
 		if (event.type === "assistant_message") {
 			this.currentAssistant = event.message;
 			const envelope = toRuntimeMessageEnvelope(event.message, this.identities);
+			if (event.message.stopReason === "error") {
+				this.terminalAssistantError = true;
+			}
 			this.runMessages.push(envelope);
 			return [
 				...(!this.assistantMessageStarted
@@ -376,7 +416,12 @@ class AgentEventProjector {
 				...(envelope
 					? [{ type: "execution_observation", observation: { type: "message.end", message: envelope } } as const]
 					: []),
-				{ type: "message", message: event.message, ...messageOrigin(event.message, this.identities) },
+				{
+					type: "message",
+					message: event.message,
+					...(event.failure ? { failure: runtimeFailureFromAI(event.failure) } : {}),
+					...messageOrigin(event.message, this.identities),
+				},
 			];
 		}
 		if (event.type === "input_message") {
@@ -501,6 +546,17 @@ class AgentEventProjector {
 			];
 		}
 		if (event.type === "run_finish") {
+			if (this.terminalAssistantError) {
+				return [
+					{
+						type: "execution_observation",
+						observation: {
+							type: "agent.end",
+							messages: [...this.initialMessages, ...this.runMessages],
+						},
+					},
+				];
+			}
 			return [
 				...this.finishTurn(),
 				{
@@ -690,9 +746,24 @@ function resolveLimits(limits: AgentCoreTurnEngineOptions["limits"]): AgentTurnR
 }
 
 function runFailure(result: AgentRunResult): Error {
-	const error = new Error(result.failure?.message ?? `Agent run ended with status: ${result.status}`);
-	error.name = result.failure?.code ?? "AgentRunError";
-	return error;
+	const failure = result.failure;
+	const assistantError = result.lastAssistantMessage?.stopReason === "error" ? result.lastAssistantMessage : undefined;
+	return new TurnExecutionError({
+		code: failure?.code ?? (assistantError ? "PROVIDER_ERROR" : KERNEL_ERROR_CODES.TURN_FAILED),
+		message:
+			failure?.message ??
+			(assistantError?.errorMessage?.trim() ||
+				(assistantError
+					? "Provider returned an assistant error response"
+					: `Agent run ended with status: ${result.status}`)),
+		retryable: failure?.retryable ?? assistantError?.failure?.retryable ?? false,
+		origin: failure?.origin ?? (assistantError ? "provider" : "runtime"),
+		...(failure?.details && Object.keys(failure.details).length > 0 ? { details: failure.details } : {}),
+	});
+}
+
+function runtimeFailureFromAI(details: AIErrorDetails): RuntimeFailure {
+	return runtimeFailureFromAIErrorDetails(details);
 }
 
 function lifecycle(phase: "agent_start" | "turn_start" | "turn_end" | "agent_end"): RuntimeSessionObservationEvent {

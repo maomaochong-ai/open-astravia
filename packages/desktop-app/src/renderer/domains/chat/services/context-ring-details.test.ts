@@ -9,9 +9,7 @@ describe("context ring details", () => {
 		expect(details).toMatchObject({
 			phase: "completed",
 			model: "openai/gpt-test",
-			actualTokens: "120",
-			estimatedTokens: "100",
-			coverage: "coverage:complete",
+			tokens: "120",
 		});
 		expect(details?.groups.map(({ id, tokens, share, itemCount }) => ({ id, tokens, share, itemCount }))).toEqual([
 			{ id: "instructions", tokens: "20", share: "20.0%", itemCount: 1 },
@@ -49,6 +47,8 @@ describe("context ring details", () => {
 	it("keeps known token totals visible when estimate coverage is partial", () => {
 		const partial: ContextCompositionReport = {
 			...report(),
+			// 该用例覆盖没有 Provider 上报时的估算回退路径。
+			providerReportedInputTokens: null,
 			estimate: { tokens: null, knownTokens: 80, coverage: "partial" },
 			sections: report().sections.map((section) =>
 				section.id === "tool:read" ? { ...section, estimatedTokens: null, estimateMethod: "unknown" } : section,
@@ -58,7 +58,7 @@ describe("context ring details", () => {
 		const details = buildContextRingDetails(partial, labels);
 		const tools = details?.groups.find(({ id }) => id === "tools");
 
-		expect(details?.estimatedTokens).toBe("80+");
+		expect(details?.tokens).toBe("80");
 		expect(tools).toMatchObject({ tokens: "unknown", share: "unknown", unknownCount: 1 });
 		expect(details?.groups.find(({ id }) => id === "instructions")?.tokens).toBe("20");
 	});
@@ -81,7 +81,6 @@ describe("context ring details", () => {
 
 const labels = {
 	unknown: "unknown",
-	coverage: { complete: "coverage:complete", partial: "coverage:partial", none: "coverage:none" },
 	owner: {
 		core: "owner:core",
 		skill: "owner:skill",

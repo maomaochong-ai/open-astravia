@@ -2,6 +2,7 @@ import { isAttachmentPath, isImagePath } from "@shared/lib/input-tokens";
 import { pathBasename } from "@shared/lib/utils";
 import type {
 	AskUserQuestionResolution,
+	ChatErrorDetails,
 	ChatMessage,
 	ContentBlock,
 	KnowledgeToolUiDetails,
@@ -12,6 +13,55 @@ import type {
 import type { HistoryEntry, PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { classifyChatError } from "./classifyChatError";
+
+export function toChatErrorDetails(
+	error:
+		| {
+				code?: unknown;
+				origin?: unknown;
+				retryable?: unknown;
+				details?: unknown;
+				provider?: unknown;
+				modelId?: unknown;
+		  }
+		| null
+		| undefined,
+): ChatErrorDetails | undefined {
+	const details = error?.details && typeof error.details === "object" ? error.details : undefined;
+	const source = details && !Array.isArray(details) ? (details as Record<string, unknown>) : {};
+	const result: ChatErrorDetails = {};
+	if (typeof error?.code === "string" && error.code.trim()) result.code = error.code.trim();
+	if (
+		error?.origin === "runtime" ||
+		error?.origin === "provider" ||
+		error?.origin === "tool" ||
+		error?.origin === "mcp"
+	) {
+		result.origin = error.origin;
+	}
+	if (typeof error?.retryable === "boolean") result.retryable = error.retryable;
+	if (typeof error?.provider === "string" && error.provider.trim()) result.provider = error.provider.trim();
+	if (typeof error?.modelId === "string" && error.modelId.trim()) result.modelId = error.modelId.trim();
+	if (typeof source.statusCode === "number" && Number.isFinite(source.statusCode))
+		result.statusCode = source.statusCode;
+	if (typeof source.provider === "string" && source.provider.trim()) result.provider = source.provider.trim();
+	if (typeof source.modelId === "string" && source.modelId.trim()) result.modelId = source.modelId.trim();
+	if (typeof source.requestId === "string" && source.requestId.trim()) result.requestId = source.requestId.trim();
+	if (typeof source.providerCode === "string" && source.providerCode.trim())
+		result.providerCode = source.providerCode.trim();
+	if (
+		source.phase === "resolve" ||
+		source.phase === "request" ||
+		source.phase === "response" ||
+		source.phase === "stream" ||
+		source.phase === "decode"
+	) {
+		result.phase = source.phase;
+	}
+	if (typeof source.retryAfterMs === "number" && Number.isFinite(source.retryAfterMs))
+		result.retryAfterMs = source.retryAfterMs;
+	return Object.keys(result).length > 0 ? result : undefined;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Message conversion helpers
@@ -282,16 +332,47 @@ export function messageToBlocks(content: unknown): ContentBlock[] {
  * 变成四五个一模一样的错误卡。live 链路那边由 runtime-core 的延迟发射解决，
  * 历史这条路只能在这里折叠。
  */
-function pushHistoryError(blocks: ContentBlock[], errorMessage: string): void {
+function pushHistoryError(
+	blocks: ContentBlock[],
+	errorMessage: string,
+	turnId?: string,
+	details?: ChatErrorDetails,
+): void {
+	if (turnId) {
+		const existing = blocks.find((block) => block.type === "error" && block.turnId === turnId);
+		if (existing?.type === "error") {
+			existing.text = errorMessage;
+			if (details) existing.details = { ...existing.details, ...details };
+			return;
+		}
+		// The durable assistant error message is projected before turn.failed and
+		// cannot carry turnId in the shared Message contract. Bind the following
+		// durable turn failure to that immediately preceding error instead of
+		// counting the same provider failure twice on session restore.
+		const pending = blocks.at(-1);
+		if (pending?.type === "error" && pending.turnId === undefined && pending.text === errorMessage) {
+			pending.turnId = turnId;
+			if (details) pending.details = { ...pending.details, ...details };
+			return;
+		}
+	}
 	const kind = classifyChatError(errorMessage);
 	const last = blocks.at(-1);
 	if (last?.type === "error" && last.kind === kind) {
 		last.repeated = (last.repeated ?? 1) + 1;
 		// 末次错误往往信息最全（例如带上了配额重置时间），以它为准。
 		last.text = errorMessage;
+		if (details) last.details = { ...last.details, ...details };
 		return;
 	}
-	blocks.push({ type: "error", id: nextId("blk"), text: errorMessage, kind });
+	blocks.push({
+		type: "error",
+		id: nextId("blk"),
+		text: errorMessage,
+		kind,
+		...(turnId ? { turnId } : {}),
+		...(details ? { details } : {}),
+	});
 }
 
 /**
@@ -308,6 +389,8 @@ export function historyToChat(
 		errorMessage?: string;
 		stopReason?: string;
 		details?: unknown;
+		provider?: string;
+		model?: string;
 	}>,
 ): ChatMessage[] {
 	const messages: ChatMessage[] = [];
@@ -358,7 +441,12 @@ export function historyToChat(
 			if (text) target.text = target.text ? `${target.text}\n${text}` : text;
 			// Handle error messages (e.g. provider 404)
 			if (m.stopReason === "error" && m.errorMessage) {
-				pushHistoryError(target.blocks!, m.errorMessage);
+				pushHistoryError(
+					target.blocks!,
+					m.errorMessage,
+					undefined,
+					toChatErrorDetails({ details: m.details, provider: m.provider, modelId: m.model }),
+				);
 				if (!target.text) target.text = m.errorMessage;
 			}
 		} else if (m.role === "toolResult" && m.toolCallId) {
@@ -470,6 +558,24 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 			continue;
 		}
 
+		if (entry.type === "error") {
+			const target = currentAssistant();
+			pushHistoryError(
+				target.blocks!,
+				entry.message,
+				entry.turnId,
+				toChatErrorDetails({
+					code: entry.code,
+					origin: entry.origin,
+					retryable: entry.retryable,
+					details: entry.details,
+				}),
+			);
+			if (!target.text) target.text = entry.message;
+			if (target.timestamp === undefined) target.timestamp = new Date(entry.timestamp).getTime();
+			continue;
+		}
+
 		const m = entry.message as {
 			role: string;
 			content: unknown;
@@ -532,7 +638,12 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 			const text = extractText(m.content);
 			if (text) target.text = target.text ? `${target.text}\n${text}` : text;
 			if (m.stopReason === "error" && m.errorMessage) {
-				pushHistoryError(target.blocks!, m.errorMessage);
+				pushHistoryError(
+					target.blocks!,
+					m.errorMessage,
+					undefined,
+					toChatErrorDetails({ details: m.details, provider: m.provider, modelId: m.model }),
+				);
 				if (!target.text) target.text = m.errorMessage;
 			}
 			// 回填本轮 user 消息实际使用的模型：从末尾向前找到第一条尚未标注 model 的 user 消息。
@@ -943,16 +1054,38 @@ export function handleToolPhase(prev: ChatMessage[], toolCallId: string, label: 
  *
  * @param attempts 这条错误发出前自动重试过的次数（runtime-core 随 error 事件带出）。
  */
-export function appendError(prev: ChatMessage[], errorMessage: string, attempts?: number): ChatMessage[] {
+export function appendError(
+	prev: ChatMessage[],
+	errorMessage: string,
+	attempts?: number,
+	turnId?: string,
+	details?: ChatErrorDetails,
+): ChatMessage[] {
 	const [msgs, idx] = ensureDraft(prev);
 	const msg = msgs[idx];
 	const blocks = [...(msg.blocks ?? [])];
+	if (turnId) {
+		const existingIndex = blocks.findIndex((block) => block.type === "error" && block.turnId === turnId);
+		const existing = existingIndex >= 0 ? blocks[existingIndex] : undefined;
+		if (existing?.type === "error") {
+			blocks[existingIndex] = {
+				...existing,
+				text: errorMessage,
+				...(attempts ? { attempts } : {}),
+				...(details ? { details: { ...existing.details, ...details } } : {}),
+			};
+			msgs[idx] = { ...msg, text: msg.text || errorMessage, blocks };
+			return msgs;
+		}
+	}
 	blocks.push({
 		type: "error",
 		id: nextId("blk"),
+		...(turnId ? { turnId } : {}),
 		text: errorMessage,
 		kind: classifyChatError(errorMessage),
 		...(attempts ? { attempts } : {}),
+		...(details ? { details } : {}),
 	});
 	msgs[idx] = { ...msg, text: msg.text || errorMessage, blocks };
 	return msgs;

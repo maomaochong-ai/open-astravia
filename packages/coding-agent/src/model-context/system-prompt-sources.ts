@@ -1,5 +1,5 @@
 import type { ConversationScenario } from "../profiles/index.js";
-import { getModePrompt, getPersonaPrompt, matchesAgentMode } from "../profiles/index.js";
+import { getModePrompt, getPersonaPrompt } from "../profiles/index.js";
 import type { SessionResourceRuntime } from "../resources/index.js";
 import { renderMemoryForPrompt } from "./memory-prompt.js";
 import type { AgentPluginRuntimeConfig } from "./plugin-runtime.js";
@@ -23,6 +23,8 @@ export interface SystemPromptSourceDependencies {
 	resourceLoader: SystemPromptResourceSource;
 	mcpManager: SystemPromptMcpSource | undefined;
 	cwd: string;
+	/** 会话创建时固化的工作区性质事实；undefined 表示未探测到或探测失败。 */
+	workspaceFacts?: string;
 	settingsManager: PersonalizationSettingsSource;
 	memoryMode: boolean;
 	memoryFile: string | undefined;
@@ -47,9 +49,8 @@ export function resolveSystemPromptOptionsFromSources(
 	dependencies: SystemPromptSourceDependencies,
 ): BuildSystemPromptOptions {
 	const loaderAppendSystemPrompt = dependencies.resourceLoader.getAppendSystemPrompt();
-	const loadedSkills = dependencies.resourceLoader
-		.getSkills()
-		.skills.filter((skill) => matchesAgentMode(skill.agentMode, dependencies.agentMode));
+	// skill 清单在任何工作模式下一致，顺序即加载序（ADR-0071：模式差异只由 modePrompt 承担）。
+	const loadedSkills = dependencies.resourceLoader.getSkills().skills;
 	const mcpTools =
 		dependencies.mcpManager
 			?.getTools()
@@ -67,6 +68,7 @@ export function resolveSystemPromptOptionsFromSources(
 		cwd: dependencies.cwd,
 		skills: loadedSkills,
 		contextFiles: dependencies.resourceLoader.getAgentsFiles().agentsFiles,
+		workspaceFacts: dependencies.workspaceFacts,
 		customPrompt: dependencies.resourceLoader.getSystemPrompt(),
 		appendSystemPrompt: loaderAppendSystemPrompt.length > 0 ? loaderAppendSystemPrompt.join("\n\n") : undefined,
 		selectedTools: [...dependencies.toolNames],

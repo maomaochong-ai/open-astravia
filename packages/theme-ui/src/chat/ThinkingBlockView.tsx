@@ -4,7 +4,8 @@ import { CollapsePanel } from "../shared/CollapsePanel";
 
 export interface ThinkingBlockViewLabels {
 	readonly title: string;
-	readonly lineCount: (count: number) => string;
+	/** 省略则不显示行数（work 模式只要一句「正在思考」）。 */
+	readonly lineCount?: (count: number) => string;
 }
 
 export interface ThinkingBlockViewProps {
@@ -36,9 +37,11 @@ export function ThinkingBlockView({
 			>
 				<span className="icon-[mdi--lightbulb-outline] h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
 				<span className="text-[12px] text-muted-foreground/50">{labels.title}</span>
-				<span className="text-[11px] text-muted-foreground/30">
-					{labels.lineCount(lines.length)}
-				</span>
+				{labels.lineCount && (
+					<span className="text-[11px] text-muted-foreground/30">
+						{labels.lineCount(lines.length)}
+					</span>
+				)}
 				<span
 					className={`icon-[mdi--chevron-right] h-3 w-3 shrink-0 text-muted-foreground/30 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
 				/>

@@ -14,7 +14,6 @@ export const RENDER_PDF_PAGE_TOOL_SCOPES = [
 	"kb-processing",
 	"cli",
 ] as const satisfies readonly CodingToolScope[];
-export const RENDER_PDF_PAGE_TOOL_AGENT_MODES = ["work"] as const;
 export const RENDER_PDF_PAGE_TOOL_CATEGORY = "doc" as const;
 
 export function createRenderPdfPageToolRegistration(
@@ -24,7 +23,6 @@ export function createRenderPdfPageToolRegistration(
 	return {
 		tool: createRenderPdfPageTool(cwd, options),
 		scopeUse: RENDER_PDF_PAGE_TOOL_SCOPES,
-		agentModes: RENDER_PDF_PAGE_TOOL_AGENT_MODES,
 		modelOrder: options.modelOrder,
 		category: RENDER_PDF_PAGE_TOOL_CATEGORY,
 	};

@@ -41,10 +41,10 @@ describe("resolveActiveToolNames", () => {
 		]);
 	});
 
-	it("agent mode 是与场景和 capability 正交的过滤轴", () => {
-		const tools = [{ ...tool("work-only", ["cli"]), agent_mode: ["work"] }, tool("shared", ["cli"])];
-		expect(resolveActiveToolNames("cli", tools, new Set(), "work")).toEqual(["work-only", "shared"]);
-		expect(resolveActiveToolNames("cli", tools, new Set(), "coding")).toEqual(["shared"]);
-		expect(resolveActiveToolNames("cli", tools, new Set())).toEqual(["work-only", "shared"]);
+	it("激活结果保持注册序，且可重复（提示词前缀缓存的稳定性前提，ADR-0071）", () => {
+		const tools = [tool("b", ["cli"]), tool("a", ["cli"]), tool("c", ["cli"])];
+		const first = resolveActiveToolNames("cli", tools, new Set());
+		expect(first).toEqual(["b", "a", "c"]);
+		expect(resolveActiveToolNames("cli", tools, new Set())).toEqual(first);
 	});
 });

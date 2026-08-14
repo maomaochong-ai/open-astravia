@@ -24,6 +24,7 @@ function expandPromptResource(
 	try {
 		const document = readSkillInvocationDocument(skill);
 		const body = document.body.trim();
+		const hookContribution = createSkillHookContribution(skill, document);
 		if (isScene) {
 			const lines: string[] = [
 				`<scene name="${skill.name}" location="${skill.filePath}">`,
@@ -51,9 +52,9 @@ function expandPromptResource(
 					`Continue working through the existing items in strict sequential order.`,
 					`Use todo(action="list") to view current progress.`,
 				);
-			} else if (existsSync(tasksJsonPath)) {
+			} else if (skill.sceneTasks !== undefined || existsSync(tasksJsonPath)) {
 				try {
-					const tasks: unknown = JSON.parse(readFileSync(tasksJsonPath, "utf-8"));
+					const tasks: unknown = skill.sceneTasks ?? JSON.parse(readFileSync(tasksJsonPath, "utf-8"));
 					if (Array.isArray(tasks) && tasks.length > 0 && tasks.every((task) => typeof task === "string")) {
 						dependencies.todoState.initializeSceneTodoItems(tasks);
 						lines.push(
@@ -79,6 +80,7 @@ function expandPromptResource(
 			return {
 				text: options.legacyArgs || text,
 				sceneInjection: lines.join("\n"),
+				promptResourceHookContribution: hookContribution,
 				promptRef,
 			};
 		}
@@ -94,7 +96,9 @@ function expandPromptResource(
 		return {
 			text,
 			skillInjection: skillBlock,
-			skillHookContribution: createSkillHookContribution(skill, document),
+			promptResourceHookContribution: hookContribution,
+			// Keep the established public field populated for external resolvers/consumers.
+			skillHookContribution: hookContribution,
 			promptRef,
 		};
 	} catch (error) {

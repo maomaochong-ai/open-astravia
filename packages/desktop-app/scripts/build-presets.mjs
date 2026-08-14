@@ -10,7 +10,7 @@ import {
 	devSystemPluginsDir,
 	isSystemPluginStaged,
 	presetsDir,
-	resolveTenant,
+	resolveSystemPluginSelection,
 	stageSystemPluginsFromArchives,
 } from "./stage-system-plugins.mjs";
 
@@ -158,11 +158,13 @@ if (allEntries.length === 0) {
 	process.exit(0);
 }
 
-// 按租户筛选要构建/staging 的插件（VETTA_TENANT，缺省取 tenants.json 的 default）。
-const tenant = resolveTenant();
-const entries = tenant.pluginIds ? allEntries.filter((name) => tenant.pluginIds.has(name)) : allEntries;
+// 按 profile + 租户筛选要构建/staging 的插件。
+const selection = resolveSystemPluginSelection();
+const entries = selection.pluginIds
+	? allEntries.filter((name) => selection.pluginIds.has(name))
+	: allEntries;
 console.log(
-	`[build-presets] 租户=${tenant.name ?? "(未配置)"}，构建 ${entries.length}/${allEntries.length} 个插件：${entries.join(", ") || "(无)"}`,
+	`[build-presets] profile=${selection.profile ?? "(未配置)"}，租户=${selection.name ?? "(未配置)"}，构建 ${entries.length}/${allEntries.length} 个插件：${entries.join(", ") || "(无)"}`,
 );
 
 if (entries.length === 0) {

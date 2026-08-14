@@ -5,6 +5,7 @@ import type { VetdFrameEntry } from "../vetd/manifest-types";
 import type { BridgeHub } from "./bridge-client";
 import type { FrameActivity } from "./design-runtime";
 import { FrameActivityOverlay } from "./FrameActivityOverlay";
+import { FrameLoadingOverlay } from "./FrameLoadingOverlay";
 import { FrameTitleInput } from "./FrameTitleInput";
 
 type ResizeEdge = "nw" | "ne" | "sw" | "se" | "e" | "s";
@@ -287,12 +288,17 @@ export const FrameView = memo(function FrameView({
 		>
 			{/* Title bar (inverse-scaled so it stays readable at any zoom). */}
 			<div
-				className="absolute left-0 flex items-center gap-1.5 whitespace-nowrap text-xs"
+				className="absolute left-0 flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-xs"
 				style={{
 					transform: `scale(${labelScale})`,
 					transformOrigin: "left bottom",
 					bottom: "100%",
 					marginBottom: `calc(4px * ${labelScale})`,
+					// 标题栏永远不超出 frame 自身的宽度（Figma 行为）：缩小时相邻 frame 的
+					// 标题就不会横着叠到一起，超出的部分由标题的 ellipsis 收掉。
+					// 除以 labelScale 是换算到反向缩放前的坐标系——缩放后正好等于 rect.width。
+					// 重命名时不限宽：输入框被裁掉会打不完字。
+					maxWidth: renaming ? undefined : `calc(${rect.width}px / ${labelScale})`,
 				}}
 			>
 				{renaming ? (
@@ -304,7 +310,8 @@ export const FrameView = memo(function FrameView({
 				) : (
 					<button
 						type="button"
-						className={`cursor-pointer truncate font-medium ${
+						// min-w-0：flex item 默认 min-width:auto，不给 0 的话 truncate 永远不会触发。
+						className={`min-w-0 cursor-pointer truncate font-medium ${
 							selected ? "text-[var(--vetd-selected)]" : "text-muted-foreground"
 						}`}
 						onPointerDown={(event) => beginDrag(event, "move")}
@@ -319,12 +326,9 @@ export const FrameView = memo(function FrameView({
 						{frame.title || frame.id}
 					</button>
 				)}
-				<span className="text-muted-foreground">
-					{Math.round(rect.width)}×{Math.round(rect.height)}
-				</span>
 				{buildError ? (
 					<span
-						className="flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-red-600"
+						className="flex shrink-0 items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-red-600"
 						title={buildError}
 					>
 						<span className="size-1.5 rounded-full bg-red-500" />
@@ -332,33 +336,37 @@ export const FrameView = memo(function FrameView({
 					</span>
 				) : null}
 				{activity === "reading" ? (
-					<span className="flex items-center gap-1 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-sky-600">
+					<span className="flex shrink-0 items-center gap-1 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-sky-600">
 						<span className="size-1.5 animate-pulse rounded-full bg-sky-500" />
 						{t("canvas.frame.reading")}
 					</span>
 				) : null}
 				{activity === "modifying" ? (
-					<span className="flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-primary">
+					<span className="flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-primary">
 						<span className="size-1.5 animate-pulse rounded-full bg-primary" />
 						{t("canvas.frame.modifying")}
 					</span>
 				) : null}
 				{activity === "creating" ? (
-					<span className="flex items-center gap-1 rounded-full bg-fuchsia-500/15 px-1.5 py-0.5 text-fuchsia-600">
+					<span className="flex shrink-0 items-center gap-1 rounded-full bg-fuchsia-500/15 px-1.5 py-0.5 text-fuchsia-600">
 						<span className="size-1.5 animate-pulse rounded-full bg-fuchsia-500" />
 						{t("canvas.frame.creating")}
 					</span>
 				) : null}
 				{activity === "updated" ? (
-					<span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-emerald-600">
+					<span className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-emerald-600">
 						{t("canvas.frame.updated")}
 					</span>
 				) : null}
 			</div>
 
+			{/* 直角 + 不铺底色，这两条都是为了边缘干净：
+			    - 圆角会让 overflow 裁剪走带遮罩的合成路径，四边都糊出一圈半透明像素；
+			    - 底色（原来是白）在缩放到非整数像素时，会在抗锯齿的那一行里透出来，
+			      深色稿子上就是一圈亮边。空白期由启动占位/位图盖住，不需要这层底。 */}
 			<div
-				className={`relative h-full w-full overflow-hidden rounded-sm bg-white shadow-md ring-offset-0 ${
-					selected ? "ring-2 ring-[var(--vetd-selected)]" : "ring-1 ring-border"
+				className={`relative h-full w-full overflow-hidden ring-offset-0 ${
+					selected ? "ring-2 ring-[var(--vetd-selected)]" : ""
 				} ${activity === "modifying" ? "vetd-modifying" : ""}`}
 			>
 				{/* 位图态下 iframe 根本不挂：留着 display:none 的 iframe 等于把整个
@@ -406,11 +414,7 @@ export const FrameView = memo(function FrameView({
 						onLoad={() => setPaintedRaster(raster)}
 					/>
 				) : null}
-				{!raster && !loaded && !buildError ? (
-					<div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-muted">
-						<span className="size-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent" />
-					</div>
-				) : null}
+				{!raster && !loaded && !buildError ? <FrameLoadingOverlay frameWidth={rect.width} /> : null}
 				{/* 遮罩：还没单独选中它时，画面区的点击只作用在 frame 这一层（选中/拖动）。
 				    单独选中之后遮罩让位给 iframe，里面的元素直接可选。
 				    注意是把指针事件关掉而不是把元素卸掉：起手拖动会顺带选中这个 frame，
@@ -437,8 +441,26 @@ export const FrameView = memo(function FrameView({
 				{/* 活动态浮层放最后：DOM 顺序就是叠放顺序，放前面会被位图/遮罩盖住。
 				    自身 pointer-events-none，压在遮罩上也不影响选中/拖拽。
 				    无条件渲染：渐出发生在 activity 清空之后，组件得留着把过渡走完。 */}
-				<FrameActivityOverlay activity={activity} />
+				<FrameActivityOverlay activity={activity} frameWidth={rect.width} />
 			</div>
+
+			{/* 尺寸标签（Figma 行为）：只在选中时出现在 frame 正下方，平时不占视觉噪音。
+			    和标题栏一样反向缩放，任何缩放下都是同样大小。 */}
+			{selected ? (
+				<div
+					className="pointer-events-none absolute left-1/2 whitespace-nowrap rounded-[4px] bg-primary px-1.5 py-0.5 text-[10px] font-medium leading-none text-primary-foreground"
+					style={{
+						top: "100%",
+						transform: `translateX(-50%) scale(${labelScale})`,
+						// 缩放的定点必须是「贴着 frame 底边的那条中线」，否则缩放时标签会
+						// 从 frame 上飘走。
+						transformOrigin: "center top",
+						marginTop: `calc(4px * ${labelScale})`,
+					}}
+				>
+					{Math.round(rect.width)}×{Math.round(rect.height)}
+				</div>
+			) : null}
 
 			{/* 手柄在元素选择开着时也要留：画面区已经归 iframe 了，缩放只剩这一条路。 */}
 			{selected && resizable

@@ -4,7 +4,9 @@
  */
 
 import {
+	getAIErrorDetails,
 	type ImageContent,
+	isAIError,
 	type Message,
 	type Model,
 	streamSimple,
@@ -144,6 +146,7 @@ export class Agent {
 		streamMessage: null,
 		pendingToolCalls: new Set<string>(),
 		error: undefined,
+		errorDetails: undefined,
 	};
 
 	private listeners = new Set<(e: AgentEvent) => void>();
@@ -352,6 +355,7 @@ export class Agent {
 		this._state.streamMessage = null;
 		this._state.pendingToolCalls = new Set<string>();
 		this._state.error = undefined;
+		this._state.errorDetails = undefined;
 		this.messageQueue.clear();
 	}
 
@@ -443,6 +447,7 @@ export class Agent {
 		this._state.isStreaming = true;
 		this._state.streamMessage = null;
 		this._state.error = undefined;
+		this._state.errorDetails = undefined;
 
 		const reasoning = this._state.thinkingLevel === "off" ? undefined : this._state.thinkingLevel;
 
@@ -520,6 +525,7 @@ export class Agent {
 			}
 		} catch (error: unknown) {
 			const errorMessage = getErrorMessage(error);
+			const errorDetails = isAIError(error) ? getAIErrorDetails(error) : undefined;
 			const errorMsg: AgentMessage = {
 				role: "assistant",
 				content: [{ type: "text", text: "" }],
@@ -536,11 +542,13 @@ export class Agent {
 				},
 				stopReason: this.abortController?.signal.aborted ? "aborted" : "error",
 				errorMessage,
+				...(errorDetails ? { failure: errorDetails } : {}),
 				timestamp: Date.now(),
 			} as AgentMessage;
 
 			this.appendMessage(errorMsg);
 			this._state.error = errorMessage;
+			this._state.errorDetails = errorDetails;
 			this.emit({ type: "agent_end", messages: [errorMsg] });
 		} finally {
 			this._state.isStreaming = false;

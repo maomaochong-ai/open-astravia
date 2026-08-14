@@ -4,6 +4,9 @@ import { coverageConfigDefaults, defineConfig } from "vitest/config";
 const codingAgentSrc = resolve(__dirname, "../coding-agent/src");
 
 export default defineConfig({
+	// Keep the package-local `src/**/*.test.*` include stable regardless of
+	// whether Vitest is launched from this package or the monorepo root.
+	root: __dirname,
 	resolve: {
 		alias: [
 			{ find: "@", replacement: resolve(__dirname, "./src") },
@@ -39,6 +42,10 @@ export default defineConfig({
 			{
 				find: "@vetta/coding-agent/host-services",
 				replacement: resolve(__dirname, "../coding-agent/src/public-api/host-services.ts"),
+			},
+			{
+				find: "@vetta/coding-agent/hooks",
+				replacement: resolve(__dirname, "../coding-agent/src/public-api/hooks.ts"),
 			},
 			{
 				find: "@vetta/coding-agent/historical-sessions",
@@ -100,7 +107,10 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
-		include: ["src/**/*.test.ts"],
+		// .tsx 用于 renderer 组件测试；这类文件各自用 `@vitest-environment jsdom` docblock
+		// 声明 DOM 环境，其余测试继续跑在 node 环境里。
+		include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],
+		setupFiles: ["src/test/setup.ts"],
 		// Opt-in via `bun run test:coverage` only; default `test` is unchanged.
 		// Full src denominator is intentional — low totals reflect thin unit coverage,
 		// not a trimmed include list. UI still relies on verify:ui:*, not V8.

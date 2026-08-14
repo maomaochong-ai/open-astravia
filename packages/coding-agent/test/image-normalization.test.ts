@@ -58,7 +58,51 @@ describe("model input image normalization", () => {
 		expect(finalized[0]).toBe(message);
 		expect(processor.resize).not.toHaveBeenCalled();
 	});
+
+	it("captures image settings once at Turn admission", async () => {
+		let blocked = false;
+		const reload = vi.fn();
+		const finalizer = new CodingAgentModelCallMessageFinalizer({
+			reloadImageSettings: reload,
+			getImageAutoResize: () => false,
+			getBlockImages: () => blocked,
+		});
+		const firstTurn = finalizer.bindForTurn(turnContext("turn-1"));
+		blocked = true;
+
+		const firstResult = await firstTurn.finalize(
+			finalizationInput("turn-1", [userImage("first")]),
+			new AbortController().signal,
+		);
+		const secondTurn = finalizer.bindForTurn(turnContext("turn-2"));
+		const secondResult = await secondTurn.finalize(
+			finalizationInput("turn-2", [userImage("second")]),
+			new AbortController().signal,
+		);
+
+		expect(imageData(firstResult[0])).toEqual(["first"]);
+		expect(imageData(secondResult[0])).toEqual([]);
+		expect(reload).toHaveBeenCalledTimes(2);
+	});
 });
+
+function turnContext(operationId: string) {
+	return {
+		sessionId: "session-1",
+		operationId,
+		reason: "turn" as const,
+		signal: new AbortController().signal,
+	};
+}
+
+function finalizationInput(turnId: string, messages: readonly Message[]) {
+	return {
+		sessionId: "session-1",
+		turnId,
+		messages,
+		modelBinding: { model: MODEL },
+	};
+}
 
 function imageProcessor(
 	resize: ModelInputImageProcessor["resize"],

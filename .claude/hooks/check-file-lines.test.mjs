@@ -9,18 +9,19 @@ describe("Claude Code file line hook", () => {
 	it("emits an ignorable maintenance notice above 800 lines", () => {
 		const reminder = buildReminder("src/large.ts", 801);
 
-		expect(reminder).toContain("超过 800 行");
-		expect(reminder).toContain("可以忽略此提示");
-		expect(reminder).toContain("不阻断当前工具调用");
+		expect(reminder).toContain("exceeding the 800-line threshold");
+		expect(reminder).toContain("you may ignore this notice");
+		expect(reminder).toContain("does not block the tool call");
 	});
 
 	it("emits a stronger but non-mandatory warning above 1200 lines", () => {
 		const reminder = buildReminder("src/very-large.ts", 1201);
 
-		expect(reminder).toContain("超过 1200 行");
-		expect(reminder).toContain("保持警惕");
-		expect(reminder).toContain("不要求中断当前任务处理");
-		expect(reminder).toContain("可在你判断确有必要且符合项目规范时再处理");
+		expect(reminder).toContain("exceeding the 1200-line threshold");
+		expect(reminder).toContain("with extra caution");
+		expect(reminder).toContain("you do not need to interrupt the current task");
+		expect(reminder).toContain("if you consider that necessary");
+		expect(reminder).toContain("no cleanup is mandatory");
 	});
 
 	it("checks the edited file and returns official PostToolUse context JSON", async () => {
@@ -41,7 +42,7 @@ describe("Claude Code file line hook", () => {
 		expect(output).toEqual({
 			hookSpecificOutput: {
 				hookEventName: "PostToolUse",
-				additionalContext: expect.stringContaining("`src/large.ts` 当前 900 行"),
+				additionalContext: expect.stringContaining("`src/large.ts` now has 900 lines"),
 			},
 		});
 	});

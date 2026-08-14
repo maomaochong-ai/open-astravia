@@ -8,14 +8,18 @@ import {
 } from "./canvas/design-runtime";
 import { captureFrameOffscreen, offscreenRasterSupported } from "./canvas/offscreen-raster";
 import { screenshotCardDescriptor, SCREENSHOT_TOOL_NAME } from "./cards/screenshot-card";
-import { ensureSnapshotsIgnored, pruneSnapshots, snapshotPath } from "./cards/snapshots";
-import { engineDiagnostics } from "./engine/engine-manager";
+import { pruneSnapshots, snapshotPath } from "./cards/snapshots";
+import { registerHistoryTools } from "./history/history-tools";
+import { ensureDesignIgnored } from "./vetd/design-ignore";
+import { ENGINE_PROVIDED_PACKAGES } from "./engine/engine-files";
+import { engineDiagnostics, installDesignDependencies } from "./engine/engine-manager";
 import { composeNotePins } from "./notes/annotate";
 import { notesFilePath } from "./notes/notes-store";
 import { type DesignNote, type NotesFile, noteStatus, parseNotesFile, pendingNotes } from "./notes/types";
 import { CANVAS_TAB_ID } from "./tab-ids";
 import type { SourceIssue } from "./vetd/check-sources";
 import { blockingSyntaxIssues, SYNTAX_RULE } from "./vetd/check-syntax";
+import { readDesignDependencies } from "./vetd/design-package";
 import { findVetdFiles } from "./vetd/discover";
 import { inspectIssues } from "./vetd/inspect";
 import { layoutIssues } from "./vetd/layout-probe";
@@ -25,12 +29,6 @@ import { scaffoldDesign } from "./vetd/scaffold";
 const SCOPE_USE = ["project", "conversation"] as const;
 /** 与画布位图队列同一档（canvas/frame-raster.ts）：模型看的图不该比画布上的糊。 */
 const SCREENSHOT_JPEG_QUALITY = 0.92;
-/**
- * 设计画布只在「工作」模式下成立（ADR-0046）：编程模式里这些工具连同画布、
- * 全局插槽、skill 一起隔离，只留 .vetd 的文件预览。插件级 agent_mode 是硬闸、
- * 会把预览一起藏掉，所以按子资源逐个收窄。
- */
-const AGENT_MODE = ["work"] as const;
 
 interface CreateInput {
 	name?: string;
@@ -99,8 +97,10 @@ export function registerDesignTools(ctx: PluginContext): void {
 		label: "%tool.vetd_create%",
 		// 工具描述每轮都在系统提示里，所以只留「做什么 + 去哪拿规则」。规则本身归
 		// skill 正文（已验证 invoke_skill 能送达），在这里复述一遍是双份 token。
+		// 反向触发段（Do NOT / Only for）是误调防线的第一层：这个工具会在用户工作区
+		// 里建一整棵目录，模型在「写个页面」这种指令上最容易把它当成实现路径。
 		description:
-			"Create a new Vetta UI Design document (a `<name>.vetd/` directory holding design.json + sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. Requires the product type (or an explicit frame size) — that is what the design defaults to, so decide it from the user's request BEFORE calling. Each frames/<id>.tsx is one canvas frame AND one route — invoke the vetta-ui-design skill for the rules before writing any of them.",
+			"Create a new Vetta UI Design document (a `<name>.vetd/` directory holding design.json + sources) in the current workspace and open it on the design canvas. Requires the product type (or an explicit frame size) — that is what the design defaults to, so decide it from the user's request BEFORE calling. Each frames/<id>.tsx is one canvas frame AND one route — invoke the vetta-ui-design skill for the rules before writing any of them.\nDo NOT use when the user is writing or modifying code in an existing codebase — implement the page directly in that repo's own framework instead.\nOnly for standalone visual exploration decoupled from any codebase, when the user asked for a design/mockup rather than working code.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -128,7 +128,8 @@ export function registerDesignTools(ctx: PluginContext): void {
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
-		agent_mode: AGENT_MODE,
+		// 在用户工作区落一整棵 .vetd 工程目录。
+		side_effect: "heavy",
 		handler: async ({ host, session, trigger }) => {
 			// 硬闸而不是默认值：品类是这一步唯一需要判断的东西，而它在这一刻最清楚。
 			// 从前这里没有参数，兜底就写死成桌面 1440x900，于是「用户要移动 App」在整条
@@ -159,7 +160,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: SCREENSHOT_TOOL_NAME,
 		label: "%tool.vetd_screenshot%",
 		description:
-			"Capture a rendered screenshot of one design frame from the open design canvas. Returns a PNG file path — call the Read tool on that path to actually see the rendering and verify your design changes visually. Also machine-checks the sources first: a frame that does not parse returns the syntax error instead of an image, and `issues` carries any rule violations found in that frame. This is the checkpoint after writing a frame — screenshot before revising it, never revise blind.",
+			"Capture a rendered screenshot of one design frame from the open design canvas. Returns a PNG file path — call the Read tool on that path to actually see the rendering and verify your design changes visually. Also machine-checks the sources first: a frame that does not parse returns the syntax error instead of an image, and `issues` carries any rule violations found in that frame. This is the checkpoint after writing a frame — screenshot before revising it, never revise blind.\nDo NOT use to capture anything that is not a frame of an open .vetd design — a dev server, a website, or an app you are building in the repo; drive those with the browser tooling instead.\nOnly for verifying frames of the design document currently open on the canvas.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -172,7 +173,6 @@ export function registerDesignTools(ctx: PluginContext): void {
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
-		agent_mode: AGENT_MODE,
 		// 必须宽于画布侧那条链路（拉回活体的静置 + 30s 截图 + 落盘），否则工具会
 		// 抢在内层超时前失败，报出来的原因也就没了参考价值。
 		timeoutMs: 60_000,
@@ -275,7 +275,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 			const { dirPath, vetdPath } = controller.session;
 			const path = snapshotPath(dirPath, frameId, Date.now());
 			await host.fs.writeFile(path, base64, "base64");
-			await ensureSnapshotsIgnored(host.fs, dirPath);
+			await ensureDesignIgnored(host.fs, dirPath);
 			await pruneSnapshots(host.fs, dirPath, frameId);
 			// 只带这一帧自己的违规：截图是逐帧调的，把整份设计的 issues 全塞进来会让
 			// agent 拿着别的 frame 的报错去改当前这个。
@@ -315,16 +315,22 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: "vetd_status",
 		label: "%tool.vetd_status%",
 		description:
-			"Inspect the Vetta UI Design state: workspace designs, the design open on the canvas, its frames (id/size/title/`buildError`), its `sharedShell` (existing _layout.tsx + components/ to reuse), `issues` (files that do not parse, plus rule violations found in your sources) and engine diagnostics. Call it ONCE before editing an existing design, to learn what is already there. Afterwards you do not need it for `issues` — vetd_screenshot returns them per frame.",
+			"Inspect the Vetta UI Design state: workspace designs, the design open on the canvas, its frames (id/size/title/`buildError`), its `sharedShell` (existing _layout.tsx + components/ to reuse), `issues` (files that do not parse, plus rule violations found in your sources) and engine diagnostics. Call it ONCE before editing an existing design, to learn what is already there. Afterwards you do not need it for `issues` — vetd_screenshot returns them per frame.\nDo NOT use to survey a code repository, locate its UI source files or read its build state — use the ordinary file search and read tools instead.\nOnly for .vetd design documents and the design canvas.",
 		parameters: { type: "object", properties: {}, additionalProperties: false },
 		scope_use: SCOPE_USE,
-		agent_mode: AGENT_MODE,
 		handler: async ({ host, session }) => {
 			const designs = await findVetdFiles(host.fs, session.cwd);
 			const controller = getCanvasController();
 			const engine = await engineDiagnostics(controller?.session.dirPath ?? null);
 			const shell = controller ? await inspectSharedShell(host.fs, controller.session.dirPath) : null;
 			const issues = controller ? await inspectIssues(ctx, host.fs, controller.session.dirPath) : [];
+			// 这份设计装过的第三方库。react 三件套不列：它们由引擎提供，每份设计都有，
+			// 报出来只是每轮多几个 token。
+			const dependencies = controller
+				? (await readDesignDependencies(host.fs, controller.session.dirPath)).filter(
+						(name) => !ENGINE_PROVIDED_PACKAGES.includes(name as (typeof ENGINE_PROVIDED_PACKAGES)[number]),
+					)
+				: [];
 			return {
 				designs,
 				open: controller
@@ -339,6 +345,9 @@ export function registerDesignTools(ctx: PluginContext): void {
 							// 复用面先于画框列出：agent 是一屏一屏往下写的，看不见既有的
 							// 外壳与组件就会在每个 frame 里重抄一遍导航栏。
 							sharedShell: shell,
+							// 已装的第三方库，import 前先看这里：装过的直接用，没有的
+							// 先掂量能不能用 Tailwind + React 写出来，真需要才 vetd_install。
+							...(dependencies.length > 0 ? { dependencies } : {}),
 							issues,
 							// 用户在画布上留的待处理备注数。非零时先调 vetd_notes 看内容。
 							pendingNotes: pendingNotes(controller.notes.notes).length,
@@ -375,6 +384,85 @@ export function registerDesignTools(ctx: PluginContext): void {
 		);
 	};
 
+
+	/**
+	 * npm 包名（可带 `@version`）。
+	 *
+	 * 卡这个形状不是为了限制能装什么，而是因为这些串会直接进 npm 的 argv：不校验的话
+	 * 一个 `--foo` 就从「包名」变成了「npm 的开关」。file:/git+ssh 之类的说明符也一并
+	 * 挡掉——设计要装的是 registry 上的库。
+	 */
+	const PACKAGE_SPEC = /^(?:@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*(?:@[a-z0-9-._~^><=|\s*]+)?$/i;
+
+	interface InstallInput {
+		packages?: string[];
+		design?: string;
+	}
+
+	ctx.agent.registerTool<InstallInput>({
+		id: "vetd-install",
+		name: "vetd_install",
+		label: "%tool.vetd_install%",
+		description:
+			"Install npm packages INTO this design (they land in the design's own package.json + node_modules, and travel with it). Use when a screen genuinely needs a library the design does not have — charts, markdown rendering, a rich text editor, an animation library. Import the package normally once this returns.\nDo NOT use to add a dependency to the user's own project, nor for icons (Iconify CSS classes are always available) or anything Tailwind utilities and plain React state already do well — run the repo's own package manager in a terminal for project dependencies instead.\nOnly for packages that frames of a .vetd design import.",
+		parameters: {
+			type: "object",
+			properties: {
+				packages: {
+					type: "array",
+					items: { type: "string" },
+					description:
+						'npm package names, optionally with a version (`recharts`, `react-markdown@10`). Install everything you need in ONE call — each call is a separate npm round-trip.',
+				},
+				design: {
+					type: "string",
+					description: "Path to the `x.vetd/` directory (default: the design open on the canvas).",
+				},
+			},
+			required: ["packages"],
+			additionalProperties: false,
+		},
+		scope_use: SCOPE_USE,
+		// 往设计工程的 node_modules 写依赖树（落在用户工作区的 .vetd 目录内）。
+		side_effect: "heavy",
+		handler: async ({ host, session, trigger }) => {
+			const packages = trigger.input.packages ?? [];
+			if (packages.length === 0) {
+				return { ok: false, error: "Pass at least one package name in `packages`." };
+			}
+			const invalid = packages.filter((spec) => !PACKAGE_SPEC.test(spec.trim()));
+			if (invalid.length > 0) {
+				return {
+					ok: false,
+					error: `Not valid npm package names: ${invalid.join(", ")}. Pass registry names, optionally with a version (\`recharts\`, \`react-markdown@10\`).`,
+				};
+			}
+			const designDir = await resolveVetdPath(host, session.cwd, trigger.input.design);
+			try {
+				const outputTail = await installDesignDependencies(
+					ctx,
+					designDir,
+					packages.map((spec) => spec.trim()),
+					() => {},
+				);
+				return {
+					ok: true,
+					design: designDir,
+					installed: packages,
+					outputTail,
+					note: "Installed into this design — import them normally now. The canvas reloads on its own; if a frame that imports one of these still shows a build error, screenshot it again after your next edit.",
+				};
+			} catch (error) {
+				return {
+					ok: false,
+					error: `Install failed: ${error instanceof Error ? error.message : String(error)}`,
+				};
+			}
+		},
+	});
+
+	// 版本历史的两个工具在 history/history-tools.ts：历史相关的东西全归那一处。
+	registerHistoryTools(ctx, { resolveVetdPath, scopeUse: SCOPE_USE });
 
 	interface NotesInput {
 		ids?: string[];
@@ -415,7 +503,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: "vetd_notes",
 		label: "%tool.vetd_notes%",
 		description:
-			"User notes pinned on the design canvas (Figma-style comments addressed to you). No args: list PENDING notes — each with its thread, a freshly re-resolved source anchor (`element.source` = file:line, authoritative unless `anchorStale`), and per-frame screenshots where numbered pins mark note positions (numbers match `number`). `ids`: read specific notes instead. `resolve`: after fixing, reply per note to mark it resolved — this is the ONLY way to write notes; never edit .notes.json directly.",
+			"User notes pinned on the design canvas (Figma-style comments addressed to you). No args: list PENDING notes — each with its thread, a freshly re-resolved source anchor (`element.source` = file:line, authoritative unless `anchorStale`), and per-frame screenshots where numbered pins mark note positions (numbers match `number`). `ids`: read specific notes instead. `resolve`: after fixing, reply per note to mark it resolved — this is the ONLY way to write notes; never edit .notes.json directly.\nDo NOT use for what the user wrote to you in this conversation, for code review comments or for issue trackers — act on those directly instead.\nOnly for notes pinned on the design canvas of an open .vetd design.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -444,7 +532,6 @@ export function registerDesignTools(ctx: PluginContext): void {
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
-		agent_mode: AGENT_MODE,
 		// 读取要为每个涉及的 frame 拉活体 + 截图 + 合成，逐帧 30s 的链路可能串联多次。
 		timeoutMs: 120_000,
 		handler: async ({ host, session, trigger }) => {
@@ -627,7 +714,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 					);
 					const path = snapshotPath(dirPath, `notes-${frameId}`, Date.now());
 					await host.fs.writeFile(path, annotated.split(",")[1] ?? "", "base64");
-					await ensureSnapshotsIgnored(host.fs, dirPath);
+					await ensureDesignIgnored(host.fs, dirPath);
 					await pruneSnapshots(host.fs, dirPath, `notes-${frameId}`);
 					screenshots.push({ frame: frameId, path });
 				} catch {

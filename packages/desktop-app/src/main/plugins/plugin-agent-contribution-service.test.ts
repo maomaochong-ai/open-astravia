@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
+import { DesktopPluginAgentHandlerRegistry } from "./coding-agent-handler-registry.js";
 import type { DesktopPluginHookRegistry } from "./coding-agent-hook-registry.js";
 import { PluginAgentContributionService } from "./plugin-agent-contribution-service.js";
 
@@ -44,20 +45,26 @@ function createService(installed: InstalledPlugin) {
 		resolveFilePath: (_pluginId, relativePath) => relativePath,
 		logger: { debug: vi.fn(), warn: vi.fn() },
 		hooks,
+		handlers: new DesktopPluginAgentHandlerRegistry(),
 	});
 }
 
 describe("PluginAgentContributionService", () => {
-	it("applies both contribution mode and agent mode before hook invocation", () => {
-		const service = createService(plugin({ agent_mode: ["work"] }));
+	it("applies the contribution mode gate before hook invocation", () => {
+		const service = createService(plugin());
 		service.registerModeGate("demo");
-		service.setAgentMode("work");
 		expect(service.canInvokeHook("demo")).toBe(false);
 
 		service.setContributionMode("demo", true);
 		expect(service.canInvokeHook("demo")).toBe(true);
-		service.setAgentMode("chat");
-		expect(service.canInvokeHook("demo")).toBe(false);
+	});
+
+	it("never gates hook invocation on any agent mode notion", () => {
+		// 工作模式不参与 hook 过滤（ADR-0071），服务不持有「当前模式」这个可过滤的状态。
+		const service = createService(plugin());
+
+		expect(service.canInvokeHook("demo")).toBe(true);
+		expect("setAgentMode" in service).toBe(false);
 	});
 
 	it("rejects tool registration when the permission is not granted", () => {

@@ -49,7 +49,9 @@ vi.mock("../services/context-composition-cache", () => ({
 }));
 
 interface SessionManagerProbe {
-	sendMessage(): Promise<{ status: "sent" | "queued"; queueItemId?: string } | undefined>;
+	sendMessage(): Promise<
+		{ status: "sent" | "queued" | "failed"; error?: { message: string }; queueItemId?: string } | undefined
+	>;
 	openSession(cwd: string, sessionPath?: string): Promise<void>;
 	sendQueuedNow(runtimeId: string, id: string): Promise<void>;
 }
@@ -86,7 +88,7 @@ beforeEach(() => {
 		configurable: true,
 		value: {
 			batchTasks: { resumeTaskWithText: vi.fn() },
-			config: { get: vi.fn() },
+			config: { get: vi.fn(async () => ({})) },
 			dialog: { persistImages: vi.fn(async () => []) },
 			session: {
 				autoTitle: vi.fn(),
@@ -343,4 +345,94 @@ it("空闲发送：正常上屏乐观气泡并返回 sent", async () => {
 
 	expect(result).toEqual({ status: "sent" });
 	expect(store.get(chatMessagesAtom).map((m) => m.text)).toContain("普通消息");
+});
+
+it("失败回执：即使 error 事件未到达也上屏错误并返回 failed", async () => {
+	mocks.prompt.mockImplementation(async () => ({
+		status: "failed",
+		turnId: "turn-failed-1",
+		error: { code: "QUOTA_EXCEEDED", message: "供应商额度已用完", retryable: false, origin: "provider" },
+	}));
+	const store = await mount("额度测试", false);
+	const { activeSessionStreamingAtom, chatMessagesAtom } = await import("@shared/store/atoms");
+
+	let result: Awaited<ReturnType<SessionManagerProbe["sendMessage"]>>;
+	await act(async () => {
+		result = await manager?.sendMessage();
+	});
+
+	expect(result).toEqual({ status: "failed", error: { message: "供应商额度已用完" } });
+	expect(store.get(activeSessionStreamingAtom)).toBe(false);
+	expect(store.get(chatMessagesAtom).at(-1)).toMatchObject({
+		role: "assistant",
+		blocks: [{ type: "error", turnId: "turn-failed-1", text: "供应商额度已用完" }],
+	});
+});
+
+it("失败收尾：agent_end 的落后历史快照不会清掉刚显示的错误卡片", async () => {
+	let eventHandler: SessionEventHandler | undefined;
+	const sessionApi = (window as unknown as { vetta: { session: Record<string, unknown> } }).vetta.session;
+	const autoTitle = vi.fn();
+	sessionApi.create = vi.fn(async () => ({ cwd, sessionId: runtimeId, sessionPath }));
+	sessionApi.autoTitle = autoTitle;
+	sessionApi.getSessionPath = vi.fn(async () => sessionPath);
+	sessionApi.getState = vi.fn(async () => ({
+		activeToolNames: [],
+		contextPercent: null,
+		contextWindow: 128_000,
+		executionMode: "full-access",
+		isStreaming: false,
+		messageCount: 1,
+		model: null,
+		scenario: "project",
+	}));
+	sessionApi.getFullHistory = vi.fn(async () => [
+		{ type: "message", entryId: "user-1", message: { role: "user", content: "额度测试" } },
+	]);
+	sessionApi.subscribe = vi.fn(async (_sessionId: string, handler: SessionEventHandler) => {
+		eventHandler = handler;
+		return vi.fn();
+	});
+	const store = await mount("", false);
+	const { chatMessagesAtom } = await import("@shared/store/atoms");
+	await act(async () => {
+		await manager?.openSession(cwd, sessionPath);
+	});
+	if (!eventHandler) throw new Error("subscribe handler not captured");
+	const base = {
+		schemaVersion: 1,
+		sessionId: runtimeId,
+		eventId: "event-error",
+		timestamp: Date.now(),
+		source: "runtime-core",
+	};
+
+	act(() => {
+		eventHandler?.({
+			...base,
+			type: "error",
+			turnId: "turn-failed-1",
+			retryAttempts: 0,
+			error: {
+				code: "AI_BILLING_REQUIRED",
+				message: "供应商额度已用完",
+				retryable: false,
+				origin: "provider",
+			},
+		});
+	});
+	expect(store.get(chatMessagesAtom).at(-1)?.blocks).toEqual([
+		expect.objectContaining({ type: "error", turnId: "turn-failed-1", text: "供应商额度已用完" }),
+	]);
+
+	await act(async () => {
+		eventHandler?.({ ...base, eventId: "event-end", type: "session.lifecycle", phase: "agent_end" });
+		await Promise.resolve();
+		await Promise.resolve();
+	});
+
+	expect(store.get(chatMessagesAtom).at(-1)?.blocks).toEqual([
+		expect.objectContaining({ type: "error", turnId: "turn-failed-1", text: "供应商额度已用完" }),
+	]);
+	expect(autoTitle).not.toHaveBeenCalled();
 });

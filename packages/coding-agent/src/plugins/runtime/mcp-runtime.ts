@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type {
 	ModelCallFrame,
 	ModelCallFrameCompositionContext,
+	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import {
@@ -19,8 +20,10 @@ import { createCodingAgentMcpToolResultPolicy } from "../../mcp/runtime/result-p
 import { type CodingAgentMcpSupervisorOptions, createCodingAgentMcpSupervisor } from "../../mcp/runtime/supervisor.js";
 import { decorateCodingAgentMcpRuntimeTool } from "../../mcp/runtime/tool-source.js";
 import type { AgentPluginRuntimeConfig } from "../../model-context/index.js";
-import { matchesAgentMode } from "../../profiles/index.js";
-import type { CodingAgentPluginMcpRuntime as CodingAgentPluginMcpRuntimePort } from "../../runtime-contracts/index.js";
+import type {
+	CodingAgentPluginMcpRuntime as CodingAgentPluginMcpRuntimePort,
+	CodingAgentPluginMcpToolComposer,
+} from "../../runtime-contracts/index.js";
 
 export interface CodingAgentPluginMcpRuntimeOptions
 	extends Pick<CodingAgentMcpSupervisorOptions, "agentDir" | "clientFactory" | "debug"> {
@@ -33,7 +36,6 @@ export interface CodingAgentPluginMcpToolSurface {
 }
 
 export interface CodingAgentPluginMcpCompositionOptions {
-	readonly agentMode?: string;
 	readonly isToolVisible: (toolName: string) => boolean;
 }
 
@@ -41,7 +43,6 @@ export interface CodingAgentPluginMcpCompositionOptions {
 export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimePort {
 	private readonly tools = new Map<string, RuntimeToolDefinition>();
 	private readonly synchronizer;
-	private serverModes = new Map<string, readonly string[]>();
 	private disposed = false;
 
 	constructor(
@@ -57,23 +58,19 @@ export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimeP
 
 	async reconfigure(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<boolean> {
 		const servers = new Map<string, McpServerConfig>();
-		const nextModes = new Map<string, readonly string[]>();
 		for (const contribution of agentPlugins?.mcpServerContributions ?? []) {
 			if (!contribution.runtimeName || contribution.runtimeName.includes("_")) {
 				this.log(`Rejecting plugin MCP server with invalid runtimeName: ${contribution.runtimeName}`);
 				continue;
 			}
 			servers.set(contribution.runtimeName, contribution.config);
-			nextModes.set(contribution.runtimeName, normalizeModes(contribution.agent_mode));
 		}
 
 		const signature = fingerprintPluginMcpServers(servers);
-		const modesChanged = !sameServerModes(this.serverModes, nextModes);
 		const serversChanged = await this.source.replaceDynamicServers({ servers, signature });
-		this.serverModes = nextModes;
 		await this.synchronizer.refresh();
 		this.logServerOutcomes();
-		return serversChanged || modesChanged;
+		return serversChanged;
 	}
 
 	refresh(): Promise<McpRuntimeToolSnapshot> {
@@ -93,25 +90,43 @@ export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimeP
 		return this.tools.has(toolName);
 	}
 
+	bindForTurn(context: RuntimeSnapshotAcquireContext): CodingAgentPluginMcpToolComposer {
+		context.signal.throwIfAborted();
+		const leases: Array<{ release(): Promise<void> | void }> = [];
+		const tools = new Map<string, RuntimeToolDefinition>();
+		try {
+			for (const [name, tool] of this.tools) {
+				const lease = tool.bindForTurn?.(context);
+				if (lease) leases.push(lease);
+				tools.set(name, lease?.tool ?? tool);
+			}
+		} catch (error) {
+			for (const lease of leases.reverse()) void lease.release();
+			throw error;
+		}
+		let released = false;
+		return {
+			bindForTurn: () => this.bindForTurn(context),
+			async releaseTurnBinding() {
+				if (released) return;
+				released = true;
+				const results = await Promise.allSettled(leases.map((lease) => lease.release()));
+				const errors = results
+					.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+					.map(({ reason }) => reason);
+				if (errors.length > 0) throw new AggregateError(errors, "Failed to release plugin MCP Turn binding");
+			},
+			compose: (compositionContext, baseAvailableTools, options) =>
+				composePluginMcpSurface(tools, compositionContext, baseAvailableTools, options),
+		};
+	}
+
 	compose(
 		context: ModelCallFrameCompositionContext,
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
 		options: CodingAgentPluginMcpCompositionOptions,
 	): CodingAgentPluginMcpToolSurface {
-		const availableTools = new Map(baseAvailableTools);
-		const activeTools = new Map(context.frame.tools);
-		for (const [name, tool] of this.tools) {
-			availableTools.set(name, tool);
-			if (options.isToolVisible(name) && this.matchesToolMode(name, options.agentMode)) {
-				activeTools.set(name, tool);
-			} else {
-				activeTools.delete(name);
-			}
-		}
-		return {
-			frame: { instructions: context.frame.instructions, tools: activeTools },
-			availableTools,
-		};
+		return composePluginMcpSurface(this.tools, context, baseAvailableTools, options);
 	}
 
 	async dispose(): Promise<void> {
@@ -119,13 +134,6 @@ export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimeP
 		this.disposed = true;
 		this.synchronizer.dispose();
 		await this.supervisor.shutdown();
-	}
-
-	private matchesToolMode(toolName: string, agentMode: string | undefined): boolean {
-		for (const [serverName, modes] of this.serverModes) {
-			if (toolName.startsWith(`mcp_${serverName}_`)) return matchesAgentMode(modes, agentMode);
-		}
-		return true;
 	}
 
 	private logServerOutcomes(): void {
@@ -141,6 +149,23 @@ export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimeP
 	private log(message: string): void {
 		if (this.debug) console.error(`[MCPManager] ${message}`);
 	}
+}
+
+function composePluginMcpSurface(
+	tools: ReadonlyMap<string, RuntimeToolDefinition>,
+	context: ModelCallFrameCompositionContext,
+	baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
+	options: CodingAgentPluginMcpCompositionOptions,
+): CodingAgentPluginMcpToolSurface {
+	const availableTools = new Map(baseAvailableTools);
+	const activeTools = new Map(context.frame.tools);
+	// 可见性开关是硬闸；工作模式不参与组装（ADR-0071），顺序即注册序。
+	for (const [name, tool] of tools) {
+		availableTools.set(name, tool);
+		if (options.isToolVisible(name)) activeTools.set(name, tool);
+		else activeTools.delete(name);
+	}
+	return { frame: { instructions: context.frame.instructions, tools: activeTools }, availableTools };
 }
 
 function fingerprintPluginMcpServers(servers: ReadonlyMap<string, McpServerConfig>): string {
@@ -180,20 +205,3 @@ const EMPTY_MCP_CONFIG_SOURCE: McpConfigSource = {
 	getMergedSignature: () => "empty",
 	getConfigPaths: () => ({ global: "<dynamic>", project: "<dynamic>" }),
 };
-
-function normalizeModes(modes: readonly string[] | undefined): readonly string[] {
-	return [...new Set(modes ?? [])].sort();
-}
-
-function sameServerModes(
-	current: ReadonlyMap<string, readonly string[]>,
-	next: ReadonlyMap<string, readonly string[]>,
-): boolean {
-	if (current.size !== next.size) return false;
-	for (const [serverName, modes] of current) {
-		const nextModes = next.get(serverName);
-		if (!nextModes || modes.length !== nextModes.length) return false;
-		if (modes.some((mode, index) => mode !== nextModes[index])) return false;
-	}
-	return true;
-}

@@ -30,15 +30,12 @@ export interface ContextRingDetailGroup {
 export interface ContextRingDetailsModel {
 	readonly phase: ContextCompositionReport["phase"];
 	readonly model: string;
-	readonly actualTokens: string | null;
-	readonly estimatedTokens: string;
-	readonly coverage: string;
+	readonly tokens: string;
 	readonly groups: readonly ContextRingDetailGroup[];
 }
 
 export interface ContextRingDetailLabels {
 	readonly unknown: string;
-	readonly coverage: Record<ContextCompositionReport["estimate"]["coverage"], string>;
 	readonly owner: Record<ContextSourceOwner, string>;
 	readonly kind: Record<ContextSectionKind, string>;
 	readonly group: Record<ContextRingDetailGroupKind, string>;
@@ -71,12 +68,7 @@ export function buildContextRingDetails(
 	return {
 		phase: report.phase,
 		model: `${report.model.provider}/${report.model.modelId}`,
-		actualTokens:
-			report.providerReportedInputTokens === undefined || report.providerReportedInputTokens === null
-				? null
-				: formatTokens(report.providerReportedInputTokens),
-		estimatedTokens: formatSectionTokens(report.sections, labels.unknown),
-		coverage: labels.coverage[report.estimate.coverage],
+		tokens: formatTokens(report.providerReportedInputTokens ?? report.estimate.tokens ?? report.estimate.knownTokens),
 		groups: GROUP_ORDER.flatMap((group) => {
 			const sections = sectionsByGroup.get(group);
 			if (!sections || sections.length === 0) return [];

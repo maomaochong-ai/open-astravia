@@ -18,8 +18,6 @@
 			"@domains/*": ["./src/renderer/domains/*"],
 			"@preload/*": ["./src/preload/*"],
 			"@vetta/capability-sdk": ["../capability-sdk/src/index.ts"],
-			"@vetta/capability-sdk/internal/plugin-adapter": ["../capability-sdk/src/adapters/plugin/index.ts"],
-			"@vetta/capability-sdk/internal/theme-adapter": ["../capability-sdk/src/adapters/theme.ts"],
 			"@vetta/capability-sdk/*": ["../capability-sdk/src/*"],
 			"@vetta/capability-runtime": ["../capability-runtime/src/index.ts"],
 			"@vetta/capability-runtime/*": ["../capability-runtime/src/*"],

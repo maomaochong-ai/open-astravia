@@ -40,6 +40,39 @@ describe("Coding Agent Turn executor", () => {
 		expect(events.map((event) => event.type)).toEqual(["auto_retry_start", "auto_retry_end"]);
 	});
 
+	it("uses structured retryability instead of parsing the error message", async () => {
+		const retryablePrompt = vi.fn(async () => ({
+			status: "failed",
+			error: {
+				code: "AI_STREAM_PROTOCOL_FAILED",
+				message: "Stream ended without provider events",
+				retryable: true,
+			},
+		}));
+		const retryableRetry = vi.fn(async () => ({ status: "completed" }));
+		const retryableExecutor = createExecutor({
+			prompt: retryablePrompt,
+			retryTurn: retryableRetry,
+			retry: { enabled: true, maxRetries: 1, baseDelayMs: 0 },
+		});
+
+		await retryableExecutor.prompt("hello");
+		expect(retryableRetry).toHaveBeenCalledTimes(1);
+
+		const permanentRetry = vi.fn(async () => ({ status: "completed" }));
+		const permanentExecutor = createExecutor({
+			prompt: async () => ({
+				status: "failed",
+				error: { code: "AI_INVALID_REQUEST", message: "503 appears in user data", retryable: false },
+			}),
+			retryTurn: permanentRetry,
+			retry: { enabled: true, maxRetries: 1, baseDelayMs: 0 },
+		});
+
+		await expect(permanentExecutor.prompt("hello")).rejects.toThrow("503 appears in user data");
+		expect(permanentRetry).not.toHaveBeenCalled();
+	});
+
 	it("retries Agent Core completed results whose assistant stop reason is error", async () => {
 		const events: CodingAgentTurnRetryEvent[] = [];
 		const prompt = vi.fn(async () => ({

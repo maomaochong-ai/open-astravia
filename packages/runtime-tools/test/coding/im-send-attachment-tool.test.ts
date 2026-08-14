@@ -21,6 +21,8 @@ describe("im_send_attachment", () => {
 		expect(registration.scopeUse).toEqual(["im-claw"]);
 		expect(registration.category).toBe("im");
 		expect(registration.requires).toBeUndefined();
+		// 外发不可撤回且工具自身无确认对话框，注册处必须声明 heavy，由宿主首调确认闸兜底。
+		expect(registration.sideEffect).toBe("heavy");
 	});
 
 	it("accepts a platform-native absolute file and forwards it to the sender", async () => {

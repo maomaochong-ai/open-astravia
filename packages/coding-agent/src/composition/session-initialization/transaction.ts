@@ -66,7 +66,6 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 	readonly releaseOwnership: (binding: TOwnershipBinding | undefined) => Promise<void>;
 	readonly resolveActivation: (
 		context: ModelCallContributionContext,
-		agentMode?: string,
 		activeToolNamesOverride?: readonly string[],
 	) => CodingToolActivation;
 	readonly createChildComposition: (
@@ -106,7 +105,7 @@ async function initializeSession<TOwnershipBinding>(
 			activeOwnership = undefined;
 		},
 	});
-	const extensionEvents = new CodingAgentExtensionRunAdapter();
+	const extensionEvents = new CodingAgentExtensionRunAdapter(options.extensionToolRuntime?.runnerGenerations);
 	options.registry.indexes.resourceContexts.set(activeSessionId, resourceContext);
 	rollback.defer({
 		id: "resource-context-binding",
@@ -256,10 +255,19 @@ async function initializeSession<TOwnershipBinding>(
 				systemPromptAddon: sessionOptions.systemPromptAddon,
 			},
 			activation: {
-				resolve: (context) => options.resolveActivation(context, configurationState.readAgentMode()),
+				resolve: (context) => options.resolveActivation(context, configurationState.readActiveToolNamesOverride()),
 				readAgentMode: () => configurationState.readAgentMode(),
 				readAgentPlugins: () => configurationState.readAgentPlugins(),
 				readActiveToolNamesOverride: () => configurationState.readActiveToolNamesOverride(),
+				bindForTurn: () => {
+					const revision = configurationState.captureRevision();
+					return {
+						resolve: (context) => options.resolveActivation(context, revision.activeToolNamesOverride),
+						agentMode: revision.agentMode,
+						agentPlugins: revision.agentPlugins,
+						activeToolNamesOverride: revision.activeToolNamesOverride,
+					};
+				},
 			},
 			prompt: {
 				systemPromptOptionsResolver:
@@ -288,6 +296,7 @@ async function initializeSession<TOwnershipBinding>(
 			mcpController,
 			extensionEvents,
 			extensionToolRuntime: options.extensionToolRuntime,
+			askUserQuestion: sessionOptions.askUserQuestion,
 		});
 		options.registry.trackTurnCapabilityAssembly(turnCapabilityAssembly);
 		rollback.defer({

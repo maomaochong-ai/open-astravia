@@ -138,8 +138,6 @@ export interface InstalledPlugin {
 		expose: string;
 	};
 	agent?: PluginAgentManifest;
-	/** 插件级工作模式白名单（agent_mode 轴，见 ADR-0046）。缺省/空 = 全局通用。 */
-	agent_mode?: string | string[];
 	styleUrls: string[];
 	permissions: PluginPermission[];
 	grantedPermissions: PluginPermission[];
@@ -213,8 +211,8 @@ export interface PluginAgentToolRegistration {
 	scope_use?: readonly string[];
 	/** 需要的会话能力 slug。 */
 	requires?: string[];
-	/** 允许出现的工作模式 slug（agent_mode 轴，缺省/空 = 通用）。见 ADR-0046。 */
-	agent_mode?: readonly string[];
+	/** 副作用等级（"light" | "heavy"，缺省 = light）。heavy 工具会话内首次调用前需用户确认。 */
+	side_effect?: string;
 	context?: { conversation?: "summary" | "messages" };
 	/**
 	 * 该工具带有自渲染卡片（同一插件为它注册了 tool-call slot）。由渲染进程自动探测，
@@ -230,7 +228,6 @@ export interface PluginAgentHookHostRegistration {
 	activationId?: string;
 	timeoutMs?: number;
 	scope_use: readonly string[];
-	agent_mode?: readonly string[];
 	toolNames?: readonly string[];
 }
 
@@ -279,6 +276,7 @@ export interface PluginHandlerInvocationBase {
 	requestId: string;
 	pluginId: string;
 	handlerId: string;
+	activationId?: string;
 	settings: Record<string, unknown>;
 	session: { id: string; cwd: string; scenario: string };
 	model: {
@@ -307,10 +305,18 @@ export interface PluginAgentHookInvocationRequest {
 	requestId: string;
 	pluginId: string;
 	handlerId: string;
+	activationId?: string;
 	settings: Record<string, unknown>;
 	hookId: string;
 	session: { id: string; cwd: string; scenario: string };
 	event: PluginCodingAgentHookEvent;
+}
+
+export interface PluginAgentHandlerReleasedEvent {
+	kind: "tool" | "hook" | "continuation" | "system-prompt";
+	pluginId: string;
+	handlerId: string;
+	activationId?: string;
 }
 
 export interface PluginContinuationRegistration {
@@ -633,9 +639,9 @@ export type PluginMediaProviderInvocationResult = { value: PluginMediaProviderJo
 
 export interface DesktopPluginsApi {
 	readonly internalCapabilities: DesktopPluginInternalCapabilitiesApi;
-	/** 当前工作模式（agent_mode 轴）下可见的插件；工作台与 UI 贡献用它。见 ADR-0046。 */
+	/** 全部已装插件；工作台与 UI 贡献用它。工作模式不再隐藏任何插件。 */
 	list(): Promise<InstalledPlugin[]>;
-	/** 全部已装插件，不按工作模式过滤；能力市场「我的」用它，避免另一模式的插件看起来像丢了。 */
+	/** 与 `list()` 等价的完整清单；能力市场「我的」在用。 */
 	listAll(): Promise<InstalledPlugin[]>;
 	installFromArchive(archiveBuffer: ArrayBuffer, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	installFromUrl(url: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;
@@ -689,6 +695,7 @@ export interface DesktopPluginsApi {
 	/** Enable/disable a mode-gated plugin's agent contributions (ADR-0041). */
 	setContributionMode(pluginId: string, active: boolean): Promise<void>;
 	beginAgentContributionsLoad(pluginId: string, activationId: string): Promise<void>;
+	commitAgentContributionsLoad(pluginId: string, activationId: string): Promise<void>;
 	registerAgentTool(pluginId: string, registration: PluginAgentToolRegistration): Promise<void>;
 	unregisterAgentTool(pluginId: string, toolId: string, activationId?: string): Promise<void>;
 	registerAgentHook(pluginId: string, registration: PluginAgentHookHostRegistration): Promise<void>;
@@ -697,6 +704,7 @@ export interface DesktopPluginsApi {
 	onAgentToolRequest(handler: (request: PluginAgentToolInvocationRequest) => void): () => void;
 	respondAgentTool(requestId: string, result: unknown): Promise<void>;
 	onAgentHookRequest(handler: (request: PluginAgentHookInvocationRequest) => void): () => void;
+	onAgentHandlerReleased(handler: (event: PluginAgentHandlerReleasedEvent) => void): () => void;
 	respondAgentHook(requestId: string, result: unknown): Promise<void>;
 	registerAppAction(pluginId: string, registration: PluginAppActionRegistration): Promise<void>;
 	commitAppActionActivation(pluginId: string, activationId: string): Promise<void>;

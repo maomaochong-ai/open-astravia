@@ -6,6 +6,7 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorBlockView } from "../blocks/ErrorBlock";
 import { TextBlockView } from "../blocks/TextBlock";
+import { ThinkingBlockView } from "../blocks/ThinkingBlock";
 import { ToolCallBlockView } from "../blocks/ToolCallBlock";
 import { toolLabel } from "../blocks/tool-views/shared/parse-tool";
 import { useExpansion } from "./expansionStore";
@@ -50,21 +51,31 @@ interface StageGroupProps {
 }
 
 const StageGroup = memo(function StageGroup({ segment, fallbackTitle, exportMode }: StageGroupProps) {
-	// thinking is never rendered in work mode — not even inside an expanded stage.
-	const toolBlocks = segment.blocks.filter((block): block is ToolCallBlock => block.type === "tool_call");
 	const [expanded, toggle] = useExpansion(`stage:${segment.id}`);
+	const { t } = useTranslation("chat");
 	return (
 		<ProgressGroupView
 			title={segment.summary ?? segment.label ?? fallbackTitle}
-			blockCount={toolBlocks.length}
+			blockCount={segment.blocks.length}
 			done={isProgressGroupDone(segment)}
 			exportMode={exportMode}
 			expanded={expanded}
 			onToggle={toggle}
 		>
-			{toolBlocks.map((block) => (
-				<StageRow key={block.toolCallId} block={block} exportMode={exportMode} />
-			))}
+			{/* thinking 与工具调用按原顺序同列，展开阶段后才可见。 */}
+			{segment.blocks.map((block) =>
+				block.type === "tool_call" ? (
+					<StageRow key={block.toolCallId} block={block} exportMode={exportMode} />
+				) : (
+					<ThinkingBlockView
+						key={`thinking-${block.id}`}
+						text={block.text}
+						exportMode={exportMode}
+						title={t("messageList.progressGroup.thinking")}
+						showLineCount={false}
+					/>
+				),
+			)}
 		</ProgressGroupView>
 	);
 });
@@ -133,20 +144,24 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 		const blocks = segment.blocks as (ToolCallBlock | ThinkingBlock)[];
 		const toolBlocks = blocks.filter((block): block is ToolCallBlock => block.type === "tool_call");
 		const done = toolBlocks.every((block) => block.status !== "pending");
+		const firstThinking = blocks.find((block): block is ThinkingBlock => block.type === "thinking");
 		content = (
 			<StageGroup
 				segment={{
 					type: "progress_group",
 					// 兜底组没有 progress 调用可依附，用首个 block 的 id 保证展开态 key 稳定且不串。
-					id: `heuristic-${toolBlocks[0]?.toolCallId ?? "empty"}`,
+					id: `heuristic-${toolBlocks[0]?.toolCallId ?? firstThinking?.id ?? "empty"}`,
 					stageId: "heuristic",
 					closed: done,
 					blocks,
 				}}
 				fallbackTitle={
-					done
-						? t("messageList.progressGroup.genericDone", { count: toolBlocks.length })
-						: t("messageList.progressGroup.genericRunning")
+					// 纯 thinking 的兜底组不该说「完成了 0 步操作」。
+					toolBlocks.length === 0
+						? t("messageList.progressGroup.thinking")
+						: done
+							? t("messageList.progressGroup.genericDone", { count: toolBlocks.length })
+							: t("messageList.progressGroup.genericRunning")
 				}
 				exportMode={exportMode}
 			/>
@@ -157,8 +172,15 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 				content = <TextBlockView text={segment.block.text} isStreamingTail={isStreamingTail} />;
 				break;
 			case "thinking":
-				// Hidden in work mode.
-				content = null;
+				// 组外的裸 thinking（阶段尚未开组）：同样只报「正在思考」，不报行数。
+				content = (
+					<ThinkingBlockView
+						text={segment.block.text}
+						exportMode={exportMode}
+						title={t("messageList.progressGroup.thinking")}
+						showLineCount={false}
+					/>
+				);
 				break;
 			case "tool_call":
 				content = <ToolCallBlockView block={segment.block} exportMode={exportMode} aliased />;

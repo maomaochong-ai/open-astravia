@@ -24,5 +24,7 @@ export function createDispatchWorkflowsToolRegistration(
 		scopeUse: DISPATCH_WORKFLOWS_TOOL_SCOPES,
 		modelOrder: options.modelOrder,
 		category: DISPATCH_WORKFLOWS_TOOL_CATEGORY,
+		// 同 spawn_agent：会话内计费、可被 interrupt_agent / task_stop 回收，不判 heavy。
+		sideEffect: "light",
 	};
 }

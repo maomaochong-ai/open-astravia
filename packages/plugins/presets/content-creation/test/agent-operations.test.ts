@@ -3,9 +3,11 @@ import {
 	CONTENT_AGENT_OPERATION_SCHEMA,
 	parseContentAgentOperations,
 } from "../src/agent/operations";
+import { CONTENT_AGENT_OPERATION_TYPES } from "../src/agent/operation-schema";
 import { applyContentProjectCommands } from "../src/project/commands";
 import { createContentProject } from "../src/project/types";
 import type { ContentModelDescriptor } from "../src/generation/types";
+import { resolveContentPrompt, listConnectedPromptSources } from "../src/node/prompt-sources";
 
 const FRAME_VIDEO_MODEL: ContentModelDescriptor = {
 	providerId: "host-media",
@@ -142,7 +144,15 @@ describe("content agent operations", () => {
 		expect(prompt).toContain("5-second single coherent shot");
 		expect(prompt).toContain("Reference role:");
 		expect(prompt).toContain("Final frame:");
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).toHaveProperty("promptPlan");
+		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.oneOf).toHaveLength(CONTENT_AGENT_OPERATION_TYPES.length);
+		const videoShotOperation = CONTENT_AGENT_OPERATION_SCHEMA.items.oneOf.find(
+			(operation) => operation.properties.type.const === "configure_video_shot",
+		) as { properties?: Record<string, unknown> } | undefined;
+		const promptPlan = videoShotOperation?.properties?.promptPlan as
+			| { type?: unknown; oneOf?: Array<{ type?: unknown }> }
+			| undefined;
+		expect(promptPlan?.type).toBe("object");
+		expect(promptPlan?.oneOf?.every((branch) => branch.type === "object")).toBe(true);
 	});
 
 	it("assigns stable ids and maps semantic connection inputs to internal handles", () => {
@@ -159,10 +169,35 @@ describe("content agent operations", () => {
 			expect.objectContaining({ type: "node.duplicate", id: expect.any(String) }),
 			expect.objectContaining({ type: "edge.connect", id: expect.any(String), targetHandle: "prompt" }),
 		]);
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("sourceHandle");
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("targetHandle");
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("x");
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("y");
+		const serializedSchema = JSON.stringify(CONTENT_AGENT_OPERATION_SCHEMA);
+		expect(serializedSchema).not.toContain("sourceHandle");
+		expect(serializedSchema).not.toContain("targetHandle");
+		expect(serializedSchema).not.toContain('"x"');
+		expect(serializedSchema).not.toContain('"y"');
+		expect(CONTENT_AGENT_OPERATION_TYPES).not.toContain("edit_image");
+	});
+
+	it("accepts canonical node and edge ids for ordinary connections", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "prompt", kind: "prompt", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 400, y: 0 } } },
+		]);
+
+		const commands = parseContentAgentOperations(project, [{
+			type: "connect_nodes",
+			edgeId: "prompt-to-image",
+			sourceNodeId: "prompt",
+			targetNodeId: "image",
+			targetInput: "promptSources",
+		}]);
+
+		expect(commands).toEqual([expect.objectContaining({
+			type: "edge.connect",
+			id: "prompt-to-image",
+			source: "prompt",
+			target: "image",
+			targetHandle: "prompt",
+		})]);
 	});
 
 	it("normalizes legacy and internal target input names after tool validation", () => {
@@ -206,9 +241,17 @@ describe("content agent operations", () => {
 
 	it("materializes distinct static keyframes and a continuous video prompt atomically", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "authority", kind: "image-generator", position: { x: -300, y: 0 } } },
 			{ type: "node.add", node: { id: "first", kind: "image-generator", position: { x: 0, y: 0 } } },
 			{ type: "node.add", node: { id: "last", kind: "image-generator", position: { x: 0, y: 300 } } },
 			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+			{
+				type: "edge.connect",
+				source: "authority",
+				target: "first",
+				targetHandle: "reference",
+				role: "referenceImages",
+			},
 		]);
 		const commands = parseContentAgentOperations(project, [{
 			type: "configure_video_shot",
@@ -217,7 +260,7 @@ describe("content agent operations", () => {
 			aspectRatio: "16:9",
 			duration: 5,
 			controlRequirements: { exactOpening: true, exactEnding: true },
-			promptPlan: createVideoPromptPlan(),
+			promptPlan: createVideoPromptPlan("first-last-frame-plan"),
 			keyframes: {
 				first: { nodeId: "first", promptPlan: createKeyframePlan("first") },
 				last: { nodeId: "last", promptPlan: createKeyframePlan("last") },
@@ -230,13 +273,24 @@ describe("content agent operations", () => {
 		const videoPrompt = next.graph.nodes.find((node) => node.id === "video")?.data.prompt;
 		expect(firstPrompt).toContain("Keyframe phase: first frame.");
 		expect(lastPrompt).toContain("Keyframe phase: last frame.");
+		expect(lastPrompt).toContain("Edit the supplied first-frame image");
 		expect(firstPrompt).not.toBe(lastPrompt);
 		expect(videoPrompt).toContain("Primary action:");
 		expect(videoPrompt).not.toContain("Keyframe phase:");
 		expect(next.graph.edges).toEqual(expect.arrayContaining([
+			expect.objectContaining({ source: "authority", target: "first", role: "referenceImages" }),
+			expect.objectContaining({
+				source: "first",
+				target: "last",
+				targetHandle: "reference",
+				role: "referenceImages",
+			}),
 			expect.objectContaining({ source: "first", target: "video", role: "firstFrame" }),
 			expect.objectContaining({ source: "last", target: "video", role: "lastFrame" }),
 		]));
+		expect(next.graph.nodes.find((node) => node.id === "first")?.data.modeId).toBeUndefined();
+		expect(next.graph.nodes.find((node) => node.id === "last")?.data.modeId).toBe("image-to-image");
+		expect(next.graph.nodes.find((node) => node.id === "video")?.data.modeId).toBe("image-to-video");
 	});
 
 	it("compiles an omni-reference manifest into stable media tokens", () => {
@@ -252,7 +306,7 @@ describe("content agent operations", () => {
 			strategy: "automatic",
 			aspectRatio: "16:9",
 			controlRequirements: { requiresSceneReference: true },
-			promptPlan: createVideoPromptPlan(),
+			promptPlan: createVideoPromptPlan("omni-reference-plan"),
 			sources: [
 				{ sourceNodeId: "person-a", alias: "dancerA", semanticRole: "identity", instruction: "Preserve face and costume" },
 				{ sourceNodeId: "person-b", alias: "dancerB", semanticRole: "identity", instruction: "Preserve face and costume" },
@@ -266,6 +320,77 @@ describe("content agent operations", () => {
 		expect(video?.data.prompt).toContain("<Picture 1>: dancerA (identity). Preserve face and costume.");
 		expect(video?.data.prompt).toContain("<Picture 3>: ballroom (environment). Use the room layout and lighting.");
 		expect(next.graph.edges.filter((edge) => edge.target === "video")).toHaveLength(3);
+	});
+
+	it("rejects a prompt method that disagrees with the resolved media strategy", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+		]);
+
+		expect(() => parseContentAgentOperations(project, [{
+			type: "configure_video_shot",
+			targetNodeId: "video",
+			strategy: "automatic",
+			sources: [{ sourceNodeId: "image" }],
+			promptPlan: createVideoPromptPlan("omni-reference-plan"),
+		}], [FRAME_VIDEO_MODEL])).toThrowError(expect.objectContaining({
+			code: "video-shot-prompt-strategy-mismatch",
+			details: {
+				resolvedStrategy: "animate-still",
+				receivedPromptPlanKind: "omni-reference-plan",
+				requiredPromptPlanKind: "animate-still-plan",
+			},
+		}));
+	});
+
+	it("absorbs redundant media and prompt connections into one high-level video shot", () => {
+		const project = createContentProject("C:/project");
+		const commands = parseContentAgentOperations(project, [
+			{ type: "add_node", id: "topic", kind: "prompt", prompt: "A red sneaker in a night city" },
+			{ type: "add_node", id: "opening", kind: "image-generator", aspectRatio: "16:9" },
+			{ type: "add_node", id: "video", kind: "video-generator", aspectRatio: "16:9" },
+			{
+				type: "connect_nodes",
+				edgeId: "topic-to-video",
+				sourceNodeId: "topic",
+				targetNodeId: "video",
+				targetInput: "promptSources",
+			},
+			{
+				type: "connect_nodes",
+				edgeId: "opening-to-video",
+				sourceNodeId: "opening",
+				targetNodeId: "video",
+				targetInput: "referenceImages",
+			},
+			{
+				type: "configure_video_shot",
+				targetNodeId: "video",
+				strategy: "automatic",
+				aspectRatio: "16:9",
+				controlRequirements: { exactOpening: true, exactEnding: false },
+				sources: [{ sourceNodeId: "opening" }],
+				promptPlan: createVideoPromptPlan("animate-still-plan"),
+			},
+		], [FRAME_VIDEO_MODEL]);
+
+		const next = applyContentProjectCommands(project, commands);
+		const video = next.graph.nodes.find((node) => node.id === "video");
+		expect(next.graph.edges.filter((edge) => edge.target === "video")).toEqual(expect.arrayContaining([
+			expect.objectContaining({ source: "topic", targetHandle: "prompt" }),
+			expect.objectContaining({ source: "opening", role: "firstFrame" }),
+		]));
+		expect(next.graph.edges.filter((edge) => edge.source === "opening" && edge.target === "video")).toHaveLength(1);
+		expect(video?.data.promptDocument?.segments).toEqual(expect.arrayContaining([
+			{ type: "prompt-reference", sourceNodeId: "topic" },
+		]));
+		expect(resolveContentPrompt(listConnectedPromptSources(next, "video"), video?.data ?? {})).toContain(
+			"A red sneaker in a night city",
+		);
+		expect(resolveContentPrompt(listConnectedPromptSources(next, "video"), video?.data ?? {})).toContain(
+			"Primary action:",
+		);
 	});
 
 	it("numbers attached assets before generated references to match runtime input order", () => {
@@ -292,7 +417,7 @@ describe("content agent operations", () => {
 			strategy: "omni-reference",
 			aspectRatio: "16:9",
 			controlRequirements: { requiresSceneReference: true },
-			promptPlan: createVideoPromptPlan(),
+			promptPlan: createVideoPromptPlan("omni-reference-plan"),
 			sources: [
 				{ sourceNodeId: "person", alias: "actor", semanticRole: "identity", instruction: "Preserve identity" },
 				{
@@ -322,7 +447,7 @@ describe("content agent operations", () => {
 			type: "configure_video_shot",
 			targetNodeId: "video",
 			strategy: "omni-reference",
-			promptPlan: createVideoPromptPlan(),
+			promptPlan: createVideoPromptPlan("omni-reference-plan"),
 			sources: [
 				{ sourceNodeId: "person", alias: "person", semanticRole: "identity", instruction: "Preserve identity" },
 				{ sourceNodeId: "scene", alias: "scene", semanticRole: "environment", instruction: "Use the scene" },
@@ -330,7 +455,26 @@ describe("content agent operations", () => {
 		}], [FRAME_VIDEO_MODEL])).toThrowError(expect.objectContaining({ code: "video-shot-aspect-ratio-required" }));
 	});
 
-	it("turns legacy video target inputs into an actionable generation-plan error", () => {
+	it("requires two keyframe plans when exactEnding requests a hard last-frame anchor", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "opening", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+		]);
+
+		expect(() => parseContentAgentOperations(project, [{
+			type: "configure_video_shot",
+			targetNodeId: "video",
+			aspectRatio: "16:9",
+			controlRequirements: { exactEnding: true },
+			sources: [{ sourceNodeId: "opening" }],
+			promptPlan: createVideoPromptPlan("first-last-frame-plan"),
+		}], [FRAME_VIDEO_MODEL])).toThrowError(expect.objectContaining({
+			code: "video-shot-keyframes-required",
+			details: { required: ["keyframes.first", "keyframes.last"] },
+		}));
+	});
+
+	it("turns raw video media connections into an actionable high-level generation-plan error", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 } } },
 			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
@@ -347,8 +491,12 @@ describe("content agent operations", () => {
 				retryable: true,
 				details: {
 					targetNodeId: "video",
-					requiredOperation: "configure_generation",
+					requiredOperation: "configure_video_shot",
 					suggestedSource: { sourceNodeId: "image" },
+					suggestedOperation: expect.objectContaining({
+						type: "configure_video_shot",
+						targetNodeId: "video",
+					}),
 				},
 			});
 		}
@@ -401,7 +549,7 @@ describe("content agent operations", () => {
 
 	it("rejects operations outside the agent workflow surface", () => {
 		const project = createContentProject("C:/project");
-		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties.type.enum).not.toContain("add_timeline_clip");
+		expect(CONTENT_AGENT_OPERATION_TYPES).not.toContain("add_timeline_clip");
 		expect(() =>
 			parseContentAgentOperations(project, [
 				{ type: "add_timeline_clip", nodeId: "source", start: 0, duration: 5 },
@@ -431,9 +579,13 @@ function createKeyframePlan(phase: "first" | "last") {
 	};
 }
 
-function createVideoPromptPlan() {
-	return {
-		kind: "video-shot",
+function createVideoPromptPlan(
+	kind:
+		| "animate-still-plan"
+		| "first-last-frame-plan"
+		| "omni-reference-plan" = "animate-still-plan",
+) {
+	const base = {
 		sceneFunction: "One continuous dance encounter",
 		referenceRole: "References define dancer identity, costume and ballroom layout",
 		protectedInvariants: ["same dancers", "same costumes", "same ballroom"],
@@ -454,5 +606,36 @@ function createVideoPromptPlan() {
 		},
 		finalState: "Both dancers meet at center frame and hold eye contact",
 		constraints: ["one continuous shot", "no identity drift", "no scene change"],
+	};
+	if (kind === "first-last-frame-plan") {
+		return {
+			kind,
+			...base,
+			transitionContract: {
+				continuity: ["same dancers", "same costumes", "same ballroom", "same camera axis"],
+				stateChanges: ["Dancer A crosses from left to center", "Both dancers meet"],
+				physicalPath: "Dancer A completes one waltz phrase as the camera tracks and settles at center",
+			},
+		};
+	}
+	if (kind === "omni-reference-plan") {
+		return {
+			kind,
+			...base,
+			referenceInteraction: {
+				relationships: ["Both referenced dancers retain identity inside the referenced ballroom"],
+				chronology: ["Dancer A begins left", "Dancer A crosses the floor", "Both dancers meet at center"],
+			},
+		};
+	}
+	return {
+		kind,
+		...base,
+		sourceImageContract: {
+			authority: "The opening image controls dancer identity, costume, ballroom, and first composition",
+			inherit: ["Dancer identity", "Costume", "Ballroom layout"],
+			animate: ["Waltz movement", "Restrained camera tracking"],
+			introduce: [],
+		},
 	};
 }

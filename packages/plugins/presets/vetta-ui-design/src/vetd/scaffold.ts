@@ -1,4 +1,5 @@
 import type { PluginFsApi } from "@vetta-org/plugin-sdk";
+import { designPackageJson, PACKAGE_FILE } from "./design-package";
 import { emptyManifest, type FrameSize, manifestPathOf, type VetdManifest } from "./manifest-types";
 
 // 注意：这段是写进用户项目里的产物文件，不是插件 UI 文案，所以不走 locales；
@@ -53,6 +54,7 @@ export async function scaffoldDesign(
 	await fs.createDirectory(`${vetdPath}/components`);
 	await fs.createDirectory(`${vetdPath}/assets`);
 	await fs.writeFile(`${vetdPath}/theme.css`, DEFAULT_THEME_CSS);
+	await fs.writeFile(`${vetdPath}/${PACKAGE_FILE}`, designPackageJson(name));
 	const manifest: VetdManifest = {
 		...emptyManifest(),
 		...(defaultFrameSize ? { defaultFrameSize } : {}),

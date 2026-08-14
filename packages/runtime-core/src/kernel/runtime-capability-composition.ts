@@ -1,8 +1,10 @@
 import type {
 	AgentProfile,
 	CompiledRuntimeSnapshot,
+	RuntimeSnapshotAcquireContext,
 	RuntimeSnapshotLease,
 	RuntimeSnapshotProvider,
+	RuntimeTurnModelBindingProvider,
 } from "./contracts.js";
 import { snapshotProviderClosedError } from "./errors.js";
 import { AtomicRuntimeSnapshotProvider } from "./runtime-snapshot-provider.js";
@@ -14,6 +16,7 @@ export interface RuntimeProfileCompiler {
 export interface RuntimeCapabilityCompositionOptions {
 	readonly initialProfile: AgentProfile;
 	readonly compiler: RuntimeProfileCompiler;
+	readonly modelBindingProvider?: RuntimeTurnModelBindingProvider;
 	readonly signal?: AbortSignal;
 }
 
@@ -35,19 +38,23 @@ export class RuntimeCapabilityComposition implements RuntimeSnapshotProvider {
 	private closed = false;
 	private closePromise: Promise<void> | undefined;
 
-	private constructor(compiler: RuntimeProfileCompiler, initial: CompiledRuntimeSnapshot) {
+	private constructor(
+		compiler: RuntimeProfileCompiler,
+		initial: CompiledRuntimeSnapshot,
+		modelBindingProvider?: RuntimeTurnModelBindingProvider,
+	) {
 		this.compiler = compiler;
-		this.provider = new AtomicRuntimeSnapshotProvider(initial);
+		this.provider = new AtomicRuntimeSnapshotProvider(initial, modelBindingProvider);
 	}
 
 	static async create(options: RuntimeCapabilityCompositionOptions): Promise<RuntimeCapabilityComposition> {
 		const signal = options.signal ?? new AbortController().signal;
 		const initial = await options.compiler.compile(options.initialProfile, signal);
-		return new RuntimeCapabilityComposition(options.compiler, initial);
+		return new RuntimeCapabilityComposition(options.compiler, initial, options.modelBindingProvider);
 	}
 
-	acquire(): Promise<RuntimeSnapshotLease> {
-		return this.provider.acquire();
+	acquire(context?: RuntimeSnapshotAcquireContext): Promise<RuntimeSnapshotLease> {
+		return this.provider.acquire(context);
 	}
 
 	reconfigure(

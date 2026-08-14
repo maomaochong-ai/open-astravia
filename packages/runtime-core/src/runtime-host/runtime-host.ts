@@ -8,6 +8,7 @@ import type {
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
+	AgentPluginTurnHandlerLeaseProvider,
 	BackgroundTaskInfo,
 	HistoryEntry,
 	ProjectInfo,
@@ -36,6 +37,7 @@ import {
 	revokeAllSessionGrants,
 	revokeSessionGrant,
 } from "../execution-mode/sandbox-permissions.js";
+import { isTurnPersistenceError } from "../kernel/errors.js";
 import { generateAutoTitle, generateNextPromptSuggestions } from "./peripheral-tasks.js";
 import { debugPluginAgent, summarizeAgentPlugins } from "./plugin-debug.js";
 import type { RuntimeHostSessionBackend, RuntimeSessionCreateRequest } from "./session-backend.js";
@@ -111,6 +113,9 @@ export class RuntimeHost implements SessionFacade {
 	private readonly sessionFileHistoryReader: RuntimeSessionFileHistoryReader | undefined;
 	private readonly sessionAccessResolver: RuntimeSessionAccessResolver | undefined;
 	private readonly sharedModelController: RuntimeSharedModelController | undefined;
+	private readonly sessionErrorObserver:
+		| ((event: Extract<SessionEvent, { readonly type: "error" }>) => void)
+		| undefined;
 	private userConfirmationHandler:
 		| ((request: RuntimeUserConfirmationRequest, signal?: AbortSignal) => Promise<boolean>)
 		| undefined;
@@ -123,6 +128,7 @@ export class RuntimeHost implements SessionFacade {
 	private pluginToolInvoker: AgentPluginToolInvoker | undefined;
 	private pluginContinuationInvoker: AgentPluginContinuationInvoker | undefined;
 	private pluginSystemPromptInvoker: AgentPluginSystemPromptInvoker | undefined;
+	private pluginTurnHandlerLeaseProvider: AgentPluginTurnHandlerLeaseProvider | undefined;
 
 	constructor(options: RuntimeHostOptions = {}) {
 		this.getDefaultExecutionMode = options.getDefaultExecutionMode ?? (() => "sandbox");
@@ -135,6 +141,7 @@ export class RuntimeHost implements SessionFacade {
 		this.sessionFileHistoryReader = options.sessionFileHistoryReader;
 		this.sessionAccessResolver = options.sessionAccessResolver;
 		this.sharedModelController = options.sharedModelController;
+		this.sessionErrorObserver = options.sessionErrorObserver;
 		this.sessionBackend = options.sessionBackend;
 		this.userConfirmationHandler = options.userConfirmationHandler;
 		this.userQuestionHandler = options.userQuestionHandler;
@@ -175,6 +182,10 @@ export class RuntimeHost implements SessionFacade {
 		this.pluginSystemPromptInvoker = handler;
 	}
 
+	setPluginTurnHandlerLeaseProvider(provider: AgentPluginTurnHandlerLeaseProvider | undefined): void {
+		this.pluginTurnHandlerLeaseProvider = provider;
+	}
+
 	private withAdditionalSkillPaths(
 		agentPlugins: AgentPluginRuntimeConfig | undefined,
 	): AgentPluginRuntimeConfig | undefined {
@@ -202,8 +213,8 @@ export class RuntimeHost implements SessionFacade {
 				debugPluginAgent("runtime reconfigure skip: plugins disabled", { sessionId });
 				continue;
 			}
-			handle.pendingAgentPlugins = nextAgentPlugins;
-			handle.hasPendingAgentPlugins = true;
+			handle.pendingConfiguration.agentPlugins = nextAgentPlugins;
+			handle.pendingConfiguration.hasAgentPlugins = true;
 			debugPluginAgent("runtime reconfigure deferred until prompt", { sessionId });
 			this.scheduleIdleAgentPluginApply(sessionId, handle);
 		}
@@ -354,8 +365,8 @@ export class RuntimeHost implements SessionFacade {
 				}
 				if (config.enableAgentPlugins === true && !existing.handle.agentPluginsEnabled) {
 					existing.handle.agentPluginsEnabled = true;
-					existing.handle.pendingAgentPlugins = this.withAdditionalSkillPaths(config.agentPlugins);
-					existing.handle.hasPendingAgentPlugins = true;
+					existing.handle.pendingConfiguration.agentPlugins = this.withAdditionalSkillPaths(config.agentPlugins);
+					existing.handle.pendingConfiguration.hasAgentPlugins = true;
 					this.scheduleIdleAgentPluginApply(existing.sessionId, existing.handle);
 				}
 				await existing.handle.hostInteraction.bind(
@@ -403,6 +414,7 @@ export class RuntimeHost implements SessionFacade {
 			invokePluginSystemPrompt: this.pluginSystemPromptInvoker
 				? (invocation, signal) => this.pluginSystemPromptInvoker?.(invocation, signal) ?? Promise.resolve([])
 				: undefined,
+			pluginTurnHandlerLeaseProvider: this.pluginTurnHandlerLeaseProvider,
 			// 「向用户提问」能力：只有宿主显式允许的 session 才会注册工具；
 			// isEnabled / ask 仍实时读取 this.userQuestionHandler，保留动态开关能力。
 			askUserQuestion:
@@ -470,13 +482,15 @@ export class RuntimeHost implements SessionFacade {
 			queueController,
 			metadataController,
 			executionMode,
+			pendingConfiguration: {
+				executionMode: undefined,
+				hasExecutionMode: false,
+				agentPlugins: undefined,
+				hasAgentPlugins: false,
+			},
 			agentPluginsEnabled: config.enableAgentPlugins === true,
-			pendingAgentPlugins: undefined,
-			hasPendingAgentPlugins: false,
 			scenario: config.scenario ?? DEFAULT_RUNTIME_SCENARIO,
 			agentMode: config.agentMode,
-			pendingAgentMode: undefined,
-			hasPendingAgentMode: false,
 			idleAgentPluginTimer: undefined,
 			agentPluginApplyInFlight: undefined,
 			lastBroadcastActiveToolNames: undefined,
@@ -557,6 +571,7 @@ export class RuntimeHost implements SessionFacade {
 		};
 		this.inFlightBuffers.set(sessionId, buffer);
 		const unsubscribe = eventStream.subscribe((event) => {
+			this.observeSessionError(event);
 			if (event.type === "queue.changed") {
 				this.persistQueueSidecar(sessionPath, event);
 				return;
@@ -576,9 +591,9 @@ export class RuntimeHost implements SessionFacade {
 				buffer.terminalReason = "aborted";
 				return;
 			}
-			// turn.failed 只产生 error observation + agent_end，没有 assistant
-			// message.final；不在这里置位的话失败会伪装成 "agent_end"，下游把
-			// 错误当自然结束（例如继续派发排队消息）。ADR-0060。
+			// turn.failed 仍会产生 error observation + agent_end；assistant error
+			// message 也会先以 message.final 到达。两条路径都带有同一个 turnId，
+			// 由宿主投影层幂等合并，避免错误既丢失又重复。ADR-0060。
 			if (event.type === "error" && buffer.isActive) {
 				buffer.terminalReason = "error";
 				return;
@@ -621,69 +636,30 @@ export class RuntimeHost implements SessionFacade {
 
 	async setExecutionMode(sessionId: string, mode: SessionExecutionMode): Promise<void> {
 		const handle = this.requireSession(sessionId);
-		if (handle.executionMode === mode) return;
-		this.assertCanSwitchExecutionMode(handle);
-
-		await handle.executionController.reconfigure({
-			mode,
-			sessionId,
-			sandboxHostPath: this.sandboxHostPath,
-			linuxBubblewrapPath: this.linuxBubblewrapPath,
-			macosSandboxExecPath: this.macosSandboxExecPath,
-		});
-		handle.executionMode = mode;
+		if (handle.executionMode === mode) {
+			handle.pendingConfiguration.executionMode = undefined;
+			handle.pendingConfiguration.hasExecutionMode = false;
+			return;
+		}
+		if (handle.executionController.isBusy()) {
+			handle.pendingConfiguration.executionMode = mode;
+			handle.pendingConfiguration.hasExecutionMode = true;
+			return;
+		}
+		await this.applyExecutionMode(sessionId, handle, mode);
 	}
 
 	async setGlobalExecutionMode(mode: SessionExecutionMode): Promise<void> {
-		const pending = Array.from(this.sessions.entries()).filter(([, handle]) => handle.executionMode !== mode);
-		for (const [, handle] of pending) {
-			this.assertCanSwitchExecutionMode(handle);
-		}
-		for (const [sessionId] of pending) {
+		const pending = Array.from(this.sessions.keys());
+		for (const sessionId of pending) {
 			await this.setExecutionMode(sessionId, mode);
-		}
-	}
-
-	/**
-	 * 全局切换工作模式（agent_mode 轴，纯全局态）。对每个 mode 不同的活跃 session 写 pending，
-	 * 于各自下一个 turn 边界（prompt 入口）apply，避免 streaming 中途换工具集。见 ADR-0046。
-	 */
-	setGlobalAgentMode(mode: string): void {
-		for (const handle of this.sessions.values()) {
-			if (handle.agentMode === mode) {
-				handle.pendingAgentMode = undefined;
-				handle.hasPendingAgentMode = false;
-				continue;
-			}
-			handle.pendingAgentMode = mode;
-			handle.hasPendingAgentMode = true;
 		}
 	}
 
 	async prompt(sessionId: string, request: PromptRequest): Promise<RuntimeTurnPromptOutcome> {
 		const handle = this.requireSession(sessionId);
+		await this.applyPendingExecutionMode(sessionId, handle);
 		await this.applyPendingAgentPlugins(sessionId, handle);
-		this.applyPendingAgentMode(handle);
-
-		// Ensure the session model matches the requested model BEFORE prompting,
-		// so the model actually used is always the one the UI displays.
-		if (request.modelKey) {
-			// getAvailable() filters out providers where authStorage.hasAuth() is
-			// false. Local custom providers (e.g. a self-hosted qwen-local) can
-			// fail that check even when fully configured in models.json — the
-			// fallback resolver depends on construction-time state and some
-			// host-process scenarios race with it. Fall back to find() so an
-			// explicit user selection isn't silently dropped; if auth is truly
-			// missing, the provider request itself will return a clean error.
-			await handle.modelController.selectModel(request.modelKey, "if-changed");
-		}
-
-		// Apply the per-turn reasoning level (rides alongside modelKey) BEFORE prompting so
-		// the model and its chosen effort stay consistent. setModel above re-clamps thinking
-		// to the new model, so this must run after it.
-		if (request.reasoning) {
-			handle.modelController.setThinkingLevel(request.reasoning);
-		}
 
 		// Session cwd (esp. desktop ADR-0007 per-session dirs) may have been deleted
 		// while the handle stayed open (clear-artifacts, manual cleanup). Heal before tools run.
@@ -696,21 +672,6 @@ export class RuntimeHost implements SessionFacade {
 			}
 		}
 
-		let images = request.images;
-		let text = request.text;
-		if (images && images.length > 0) {
-			const model = handle.modelView.readCurrentModel();
-			if (!model?.input?.includes("image")) {
-				console.warn(
-					`[RuntimeHost.prompt] Model ${model?.id} does not support image input (input=${JSON.stringify(model?.input)}), stripping ${images.length} images`,
-				);
-				images = undefined;
-				if (text === "(see attached images)") {
-					text =
-						"(User attempted to send images, but the current model does not support image input. Please inform the user that this model cannot process images.)";
-				}
-			}
-		}
 		try {
 			// streaming 中带 streamingBehavior 的请求放行到 kernel 队列（ADR-0060）；
 			// 不带 behavior 的仍视为并发误用。
@@ -718,11 +679,13 @@ export class RuntimeHost implements SessionFacade {
 				throw runtimeError("SESSION_BUSY", "Session is already processing another turn.", true, "runtime");
 			}
 			const outcome = await handle.turnControl.prompt({
-				text,
-				images,
+				text: request.text,
+				images: request.images,
 				streamingBehavior: request.streamingBehavior,
 				promptRef: request.promptRef,
 				attachments: request.attachments,
+				modelKey: request.modelKey,
+				reasoning: request.reasoning,
 				metadata: request.metadata,
 			});
 			return outcome ?? { status: "completed" };
@@ -736,11 +699,22 @@ export class RuntimeHost implements SessionFacade {
 			// 订阅者，然后照原样把异常再向上抛，scheduler / batch-tasks 等
 			// 已经自带 try/catch 的调用方仍然能拿到 reject 做重试 / 落账。
 			const message = isSessionError(err) ? err.message : err instanceof Error ? err.message : String(err);
-			console.error(`[RuntimeHost.prompt] session=${sessionId} pre-stream error: ${message}`);
+			const failure = isTurnPersistenceError(err) ? err.failure : undefined;
+			if (failure && isTurnPersistenceError(err)) {
+				// The execution failure was already published with its turnId. Return a
+				// terminal receipt instead of broadcasting the durability error as a
+				// second chat message; the session remains recovery_required.
+				return {
+					status: "failed",
+					turnId: err.turnId,
+					error: { ...failure, retryable: false },
+				};
+			}
 			this.broadcastSyntheticEvent(sessionId, {
 				...baseSessionEvent(sessionId, "agent"),
 				type: "error",
-				error: isSessionError(err) ? err : runtimeError("INTERNAL_ERROR", message, false, "runtime"),
+				...(isTurnPersistenceError(err) && err.turnId ? { turnId: err.turnId } : {}),
+				error: failure ?? (isSessionError(err) ? err : runtimeError("INTERNAL_ERROR", message, false, "runtime")),
 			});
 			throw err;
 		}
@@ -748,8 +722,8 @@ export class RuntimeHost implements SessionFacade {
 
 	async continue(sessionId: string): Promise<void> {
 		const handle = this.requireSession(sessionId);
+		await this.applyPendingExecutionMode(sessionId, handle);
 		await this.applyPendingAgentPlugins(sessionId, handle);
-		this.applyPendingAgentMode(handle);
 		await handle.turnControl.continue();
 	}
 
@@ -931,6 +905,7 @@ export class RuntimeHost implements SessionFacade {
 	 * 同步 throw 的场景）。
 	 */
 	private broadcastSyntheticEvent(sessionId: string, event: SessionEvent): void {
+		this.observeSessionError(event);
 		const subscribers = this.externalSubscribers.get(sessionId);
 		if (!subscribers || subscribers.size === 0) return;
 		for (const handler of subscribers) {
@@ -939,6 +914,15 @@ export class RuntimeHost implements SessionFacade {
 			} catch (err) {
 				console.warn(`[RuntimeHost.broadcastSyntheticEvent] subscriber threw:`, err);
 			}
+		}
+	}
+
+	private observeSessionError(event: SessionEvent): void {
+		if (event.type !== "error" || !this.sessionErrorObserver) return;
+		try {
+			this.sessionErrorObserver(event);
+		} catch (error) {
+			console.warn("[RuntimeHost.observeSessionError] observer threw:", error);
 		}
 	}
 
@@ -978,10 +962,12 @@ export class RuntimeHost implements SessionFacade {
 			currentTurnStartedAt: this.currentTurnStartedAt.get(sessionId),
 			messageCount: state.messageCount,
 			contextPercent: state.contextPercent,
+			...(state.contextTokens !== undefined ? { contextTokens: state.contextTokens } : {}),
 			contextWindow: state.contextWindow,
 			...(state.contextComposition ? { contextComposition: state.contextComposition } : {}),
 			activeToolNames: [...state.activeToolNames],
 			scenario: handle.scenario,
+			...(handle.agentMode !== undefined ? { agentMode: handle.agentMode } : {}),
 			parentSessionPath: state.parentSessionPath,
 			parentEntryId: state.parentEntryId,
 		};
@@ -1274,7 +1260,7 @@ export class RuntimeHost implements SessionFacade {
 				// 失败由发起方记录；这里仅等待并发中的配置应用完成。
 			});
 		}
-		if (!handle.agentPluginsEnabled || !handle.hasPendingAgentPlugins) return;
+		if (!handle.agentPluginsEnabled || !handle.pendingConfiguration.hasAgentPlugins) return;
 		if (handle.executionController.isBusy()) return;
 		const apply = this.applyPendingAgentPluginsOnce(sessionId, handle);
 		handle.agentPluginApplyInFlight = apply.then(
@@ -1290,42 +1276,51 @@ export class RuntimeHost implements SessionFacade {
 
 	private async applyPendingAgentPluginsOnce(sessionId: string, handle: SessionHandle): Promise<void> {
 		debugPluginAgent("runtime deferred reconfigure apply", { sessionId });
-		const pendingAgentPlugins = handle.pendingAgentPlugins;
-		handle.pendingAgentPlugins = undefined;
-		handle.hasPendingAgentPlugins = false;
+		const pendingAgentPlugins = handle.pendingConfiguration.agentPlugins;
+		handle.pendingConfiguration.agentPlugins = undefined;
+		handle.pendingConfiguration.hasAgentPlugins = false;
 		try {
 			await handle.configurationController.reconfigureAgentPlugins(pendingAgentPlugins);
 		} catch (error) {
-			if (!handle.hasPendingAgentPlugins) {
-				handle.pendingAgentPlugins = pendingAgentPlugins;
-				handle.hasPendingAgentPlugins = true;
+			if (!handle.pendingConfiguration.hasAgentPlugins) {
+				handle.pendingConfiguration.agentPlugins = pendingAgentPlugins;
+				handle.pendingConfiguration.hasAgentPlugins = true;
 			}
 			throw error;
 		}
 		this.broadcastActiveToolNames(sessionId, handle);
 	}
 
-	/**
-	 * 在 turn 边界应用挂起的工作模式切换（仿 applyPendingAgentPlugins）。
-	 * streaming / bash 运行中不 apply，留到再下一个 turn 边界。见 ADR-0046。
-	 */
-	private applyPendingAgentMode(handle: SessionHandle): void {
-		if (!handle.hasPendingAgentMode) return;
-		if (handle.executionController.isBusy()) return;
-		const pendingAgentMode = handle.pendingAgentMode;
-		handle.pendingAgentMode = undefined;
-		handle.hasPendingAgentMode = false;
-		handle.agentMode = pendingAgentMode;
-		handle.configurationController.setAgentMode(pendingAgentMode);
+	private async applyExecutionMode(
+		sessionId: string,
+		handle: SessionHandle,
+		mode: SessionExecutionMode,
+	): Promise<void> {
+		await handle.executionController.reconfigure({
+			mode,
+			sessionId,
+			sandboxHostPath: this.sandboxHostPath,
+			linuxBubblewrapPath: this.linuxBubblewrapPath,
+			macosSandboxExecPath: this.macosSandboxExecPath,
+		});
+		handle.executionMode = mode;
 	}
 
-	private assertCanSwitchExecutionMode(handle: SessionHandle): void {
-		if (handle.executionController.isBusy()) {
-			throw runtimeError(
-				"EXECUTION_MODE_SWITCH_BLOCKED",
-				"Cannot switch execution mode while the agent is running.",
-				true,
-			);
+	/** 应用运行中发布的执行模式；失败时保留 pending，供下一次 Turn 重试。 */
+	private async applyPendingExecutionMode(sessionId: string, handle: SessionHandle): Promise<void> {
+		if (!handle.pendingConfiguration.hasExecutionMode || handle.executionController.isBusy()) return;
+		const pendingExecutionMode = handle.pendingConfiguration.executionMode;
+		if (!pendingExecutionMode) return;
+		handle.pendingConfiguration.executionMode = undefined;
+		handle.pendingConfiguration.hasExecutionMode = false;
+		try {
+			await this.applyExecutionMode(sessionId, handle, pendingExecutionMode);
+		} catch (error) {
+			if (!handle.pendingConfiguration.hasExecutionMode) {
+				handle.pendingConfiguration.executionMode = pendingExecutionMode;
+				handle.pendingConfiguration.hasExecutionMode = true;
+			}
+			throw error;
 		}
 	}
 

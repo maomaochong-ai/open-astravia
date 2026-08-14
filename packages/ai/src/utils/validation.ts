@@ -1,3 +1,4 @@
+import type { ErrorObject } from "ajv";
 import AjvModule from "ajv";
 import addFormatsModule from "ajv-formats";
 
@@ -20,6 +21,7 @@ if (!isBrowserExtension) {
 			allErrors: true,
 			strict: false,
 			coerceTypes: true,
+			discriminator: true,
 		});
 		addFormats(ajv);
 	} catch (_e) {
@@ -59,7 +61,7 @@ export function validateToolArguments(tool: Tool, toolCall: ToolCall): any {
 	}
 
 	// Compile the schema
-	const validate = ajv.compile(tool.parameters);
+	const validate = ajv.compile(withInferredDiscriminators(tool.parameters));
 
 	// Clone arguments so AJV can safely mutate for type coercion
 	const args = structuredClone(toolCall.arguments);
@@ -72,13 +74,58 @@ export function validateToolArguments(tool: Tool, toolCall: ToolCall): any {
 	// Format validation errors nicely
 	const errors =
 		validate.errors
-			?.map((err: any) => {
+			?.filter((err: ErrorObject) => err.keyword !== "if")
+			.map((err: ErrorObject) => {
 				const path = err.instancePath ? err.instancePath.substring(1) : err.params.missingProperty || "root";
-				return `  - ${path}: ${err.message}`;
+				const unexpectedProperty =
+					err.keyword === "additionalProperties" ? err.params.additionalProperty : undefined;
+				return `  - ${path}: ${err.message}${unexpectedProperty ? ` '${unexpectedProperty}'` : ""}`;
 			})
 			.join("\n") || "Unknown validation error";
 
 	const errorMessage = `Validation failed for tool "${toolCall.name}":\n${errors}\n\nReceived arguments:\n${JSON.stringify(toolCall.arguments, null, 2)}`;
 
 	throw new Error(errorMessage);
+}
+
+function withInferredDiscriminators(schema: unknown): unknown {
+	if (Array.isArray(schema)) return schema.map(withInferredDiscriminators);
+	if (!schema || typeof schema !== "object") return schema;
+	const mapped = Object.fromEntries(
+		Object.entries(schema).map(([key, value]) => [key, withInferredDiscriminators(value)]),
+	);
+	const variants = Array.isArray(mapped.oneOf) ? mapped.oneOf : null;
+	if (!variants || variants.length < 2 || mapped.discriminator !== undefined) return mapped;
+	const propertyName = inferDiscriminatorProperty(variants);
+	return propertyName ? { ...mapped, discriminator: { propertyName } } : mapped;
+}
+
+function inferDiscriminatorProperty(variants: readonly unknown[]): string | null {
+	const firstProperties = schemaProperties(variants[0]);
+	if (!firstProperties) return null;
+	for (const propertyName of Object.keys(firstProperties)) {
+		const values = variants.map((variant) => discriminatorValue(variant, propertyName));
+		if (values.every((value) => value !== null) && new Set(values).size === values.length) {
+			return propertyName;
+		}
+	}
+	return null;
+}
+
+function discriminatorValue(variant: unknown, propertyName: string): string | null {
+	if (!variant || typeof variant !== "object" || Array.isArray(variant)) return null;
+	const record = variant as Record<string, unknown>;
+	if (!Array.isArray(record.required) || !record.required.includes(propertyName)) return null;
+	const property = schemaProperties(variant)?.[propertyName];
+	if (!property || typeof property !== "object" || Array.isArray(property)) return null;
+	const value = (property as Record<string, unknown>).const;
+	return typeof value === "string" ? value : null;
+}
+
+function schemaProperties(schema: unknown): Record<string, unknown> | null {
+	if (!schema || typeof schema !== "object" || Array.isArray(schema)) return null;
+	const properties = (schema as Record<string, unknown>).properties;
+	return properties && typeof properties === "object" && !Array.isArray(properties)
+		? (properties as Record<string, unknown>)
+		: null;
 }

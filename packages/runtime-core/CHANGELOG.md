@@ -4,9 +4,48 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ## [Unreleased]
 
+### Breaking Changes
+
+### Fixed
+
+- Provider 终端失败进入 `turn.failed` 时保留具体 AI 错误码，不再把 `AI_BILLING_REQUIRED` 等结构化原因降级成泛化的 `PROVIDER_ERROR`。
+
+- Runtime 内核不再从 AssistantMessage 的错误文案推断重试性；有结构化 Provider failure 时严格使用其合同，没有诊断时默认不可重试。
+
+- Retry、compaction 与 MCP reload 观察事件现在统一携带 `RuntimeFailure`；AIError 的 Provider 诊断通过 `runtimeFailureFromError` 安全投影，普通边界异常默认不可重试，避免后台失败静默或被错误重试。
+
+- Runtime 模型切换和 Turn 级模型绑定缺少凭证时，现在统一抛出 AI 认证错误合同（含 provider、model、resolve 阶段和不可重试标记）；显式选择或 Turn 请求的模型不存在时抛出 `AI_MODEL_NOT_FOUND`，不再静默替换成当前模型。
+
+- Assistant error observations now preserve the Provider retryability classification instead of marking every `stopReason: "error"` message as retryable.
+
+- **Provider assistant error 进入会话消息历史**：`AssistantMessage(stopReason: "error")` 现在同时作为 `message.appended` 持久化，并继续生成结构化 `turn.execution_failed/turn.failed`；Desktop 可以直接从消息列表展示错误，同时保留 turn 级重试、状态和诊断字段。
+
+- Runtime failure contract 现在保留 Provider 的安全诊断字段（provider code、请求阶段、脱敏 URL、响应摘要与 Retry-After），并继续穿过失败事件与 prompt 回执。
+- 历史 `HistoryEntry.error` 现在保留 `retryable`、`origin` 和安全的 Provider/模型诊断字段，重开会话时与实时错误事件使用同一份失败合同。
+
+- **执行失败与终态持久化解耦**：Provider/工具执行失败先以运行时事件发布，再独立尝试写入 `turn.failed`；终态写入失败只将会话置为 `recovery_required`，不会覆盖原始错误。失败 prompt 回执保留 `turnId` 与结构化 Provider 诊断。
+
+- **移除 `RuntimeHost.setGlobalAgentMode` 与 agent_mode 的 Turn 边界 pending 通道**：Agent Mode 现在只在
+  `createSession` 时固化，会话内不可变，宿主不再能向活跃会话推送模式。Session 配置 overlay
+  （`pendingConfiguration`）只保留 Execution Mode 与 Agent Plugins 两条通道。
+- **`McpServerContribution.agent_mode` 字段删除（ADR-0071）**：工作模式不再以任何形式参与插件 MCP
+  工具的组装与排序；desktop 构建贡献时也不再透传该字段。会话级 `agentMode`（`SessionConfig` /
+  `SessionStateSnapshot`，驱动 mode 系统提示词）不变。
+
 ### Added
 
+- **统一 Turn 失败合同**：Provider 返回 `stopReason: "error"` 时统一生成结构化 `turn.failed`，并与对应 assistant error 消息绑定到同一个 turn；实时错误与历史错误携带 `turnId`，Desktop 错误卡片按 turn 幂等投影，避免错误丢失或重复。旧 assistant error 历史保持兼容读取。
+- **失败 prompt 回执保留结构化错误**：`status: "failed"` 的 Runtime prompt 回执现在携带 `error` 与 `turnId`，宿主重试层不会再把已结束的额度/Provider 失败误判为成功并清掉错误事件。
+
+- **Turn-bound Runtime Generation**（ADR-0069）：`RuntimeSnapshotProvider.acquire` 接收 Session/operation
+  context，并在同一次 lease 中绑定 Snapshot、模型和动态 Model Call 组件；Turn 释放时精确释放其外部
+  generation lease。Execution Mode 更新不再因活动 Session 被拒绝，而是进入统一 Session 配置 overlay，
+  在下一 Turn 前应用。
+- `SessionStateSnapshot` 新增可选字段 `agentMode`：回传本会话创建时固化的工作模式，供宿主按会话而非
+  全局默认值渲染。未指定模式的会话（CLI/headless）不带该字段。
+- `ModelCallFrame` 新增可选字段 `systemPromptStableLength`：由 Profile 的 Frame Composer 声明系统提示词稳定前缀长度，`resolveModelCallFrame` 原样透传，Turn Engine 写入 `Context.systemPromptStableLength` 供 Provider 切缓存断点。`instructionOverride` 生效时该值被显式丢弃（override 替换了整段 Prompt，偏移不再成立）。
 - 新增 `toolcall.args` 会话事件：模型流式生成工具参数时，每多解析出一个值已完整的键就播报一次（按键数增长节流，不逐 token）。`edit` / `write` 的开销几乎全在生成参数上，只听 `tool.start` 的消费方要等工具执行完才知道目标；路径通常是第一个键，这条事件能提前拿到。`tool.start` 仍是权威全量参数。
+- `HistoryEntry` 新增 `error` 条目；原生 Conversation 投影会把 `turn.failed` 与 `prompt_rejected` 转成可展示、可恢复的历史事实，同时继续从模型上下文中排除这些终止错误。
 
 ### Breaking Changes
 
@@ -73,6 +112,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- Turn 失败从 Agent Engine 到持久化事件、Session `error` 事件全程保留 `retryable/origin/statusCode/provider/modelId/requestId`，并为宿主提供隔离故障的最终错误观察端口；旧会话中只有 `code/message` 的 `turn.failed` 记录继续按非重试 Runtime 错误兼容读取。
 - **turn 失败不再伪装成自然结束**：`turn.failed` 只产生 error observation + `agent_end`，此前 `running-changed` 的 reason 落成 `"agent_end"`，下游（如 Desktop 队列）会把上游报错当自然结束继续派发。现在回合内的 error 事件会把 terminalReason 置为 `"error"`；重试后成功收尾的回合会清除该标记，仍报告 `agent_end`（ADR-0060）。
 - **重开已有会话恢复该会话上次使用的模型**：会话级模型只活在进程内存里（`updateSettings({modelKey})` 不落盘），宿主重启后按 `sessionPath` 重开会话时，模型会退回宿主兜底值（Desktop 是可用列表第一个），宿主再把它同步回 UI，表现为「重启后模型被重置」。现在 `createSession` 在传了 `sessionPath` 且调用方未显式指定 `model` 时，从会话历史最后一条 assistant 记录恢复模型；模型已从 catalog 移除或缺少凭证时静默保持兜底模型，不阻断开会话。复用内存中已打开的同路径会话不受影响。
 - **Greenfield 初始化发布边界**：Runtime Factory 会在最终 Assembly 投影成功后才提交初始化事务；若返回对象构造阶段抛错，已创建的 Kernel Session 与 Composition 资源仍按逆序释放。

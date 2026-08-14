@@ -45,17 +45,13 @@ import {
 	noopDisposable,
 	warnSkippedPluginContribution,
 } from "./plugin-permissions";
+import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host";
 import {
 	assertPluginShortcutScopeKind,
 	normalizePluginShortcutBindings,
 	registerPluginShortcutScopeOnHost,
 } from "./plugin-shortcut-scope";
-import {
-	isValidWorkspaceViewId,
-	normalizePluginNavBadge,
-	WORKSPACE_VIEW_ID_PATTERN,
-	WORKSPACE_VIEW_ROUTE_PATH,
-} from "./workspace-view-registry";
+import { isValidWorkspaceViewId, normalizePluginNavBadge, WORKSPACE_VIEW_ID_PATTERN } from "./workspace-view-registry";
 
 export interface CreatePluginUiApiOptions {
 	plugin: InstalledPlugin;
@@ -63,6 +59,7 @@ export interface CreatePluginUiApiOptions {
 	onChanged: () => void;
 	disposers: Array<() => void>;
 	agentContributions: PluginAgentApiRegistration;
+	capabilitySessionId: string;
 }
 
 function setPluginActivityTabVisible(pluginId: string, tabId: string, visible: boolean): boolean {
@@ -128,6 +125,7 @@ export function createPluginUiApi({
 	onChanged,
 	disposers,
 	agentContributions,
+	capabilitySessionId,
 }: CreatePluginUiApiOptions): PluginContext["ui"] {
 	const { slots, filePreviews, activityTabs, inputActions, cardRenderers, toolCallSlots, turnCards, workspaceViews } =
 		contributions;
@@ -410,9 +408,8 @@ export function createPluginUiApi({
 			console.warn(`[plugin:${plugin.id}] openWorkspaceView: unknown view ${JSON.stringify(viewId)}`);
 			return;
 		}
-		void router.navigate({
-			to: WORKSPACE_VIEW_ROUTE_PATH,
-			params: { pluginId: plugin.id, viewId: id },
+		void pluginRendererCapabilityHost.openWorkspaceView(capabilitySessionId, id).catch((error: unknown) => {
+			console.error(`[plugin:${plugin.id}] openWorkspaceView failed`, error);
 		});
 	};
 	const setWorkspaceViewBadge = (viewId: string, badge: PluginNavBadge | null): void => {

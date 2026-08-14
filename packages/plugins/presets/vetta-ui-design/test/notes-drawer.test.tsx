@@ -58,7 +58,7 @@ afterEach(() => {
 function render(onClose: () => void = () => {}, onLocate: (id: string) => void = () => {}): void {
 	act(() => {
 		root.render(
-			<NotesDrawer store={store} session={session} cwd="/repo" onLocate={onLocate} onClose={onClose} />,
+			<NotesDrawer store={store} session={session} cwd="/repo" onLocate={onLocate} offsetTop={0} onClose={onClose} />,
 		);
 	});
 }
@@ -120,4 +120,11 @@ it("clearing resolved notes keeps the pending ones", () => {
 	if (!clear) throw new Error("clear button not rendered");
 	act(() => clear.click());
 	expect(store.notes.map((note) => note.id)).toEqual([open.id]);
+});
+
+it("坐在左上角标题区下方，查看模式时再让开横幅", () => {
+	// 顶死在 12px 的话，设计切换和色卡按钮会被这块面板压住点不到。
+	render();
+	const panel = host.querySelector<HTMLElement>(".vetd-note-drawer-enter");
+	expect(panel?.style.top).toBe("48px");
 });

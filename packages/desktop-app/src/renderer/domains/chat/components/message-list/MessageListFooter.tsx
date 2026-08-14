@@ -4,6 +4,7 @@ import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { PluginTurnCardHost } from "../../../plugins/components/PluginTurnCardHost";
+import { classifyChatError } from "../../services/classifyChatError";
 import { StreamingIndicator } from "./AssistantMessage";
 import { WorkflowFooterItems } from "./WorkflowFooterItems";
 
@@ -19,6 +20,7 @@ export const MessageListFooter = memo(function MessageListFooter({
 }) {
 	const { t } = useTranslation("chat");
 	const retryProgress = useAtomValue(retryProgressAtom);
+	const retryKind = retryProgress ? classifyChatError(retryProgress.errorMessage) : undefined;
 	return (
 		<MessageListFooterView
 			compactionLabel={t("messageList.compactionIndicator")}
@@ -27,6 +29,13 @@ export const MessageListFooter = memo(function MessageListFooter({
 					? t("messageList.retryIndicator", {
 							attempt: retryProgress.attempt,
 							maxAttempts: retryProgress.maxAttempts,
+						})
+					: null
+			}
+			retryDetail={
+				retryKind
+					? t("messageList.retryReason", {
+							reason: t(`messageList.errorBlock.kinds.${retryKind}.title`),
 						})
 					: null
 			}

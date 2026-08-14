@@ -2,6 +2,10 @@ import { builtinModules } from "node:module";
 import { resolve } from "node:path";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import { createSentryBuildSetup } from "./sentry-vite";
+import {
+	resolveSpeechInputBuildConfig,
+	SPEECH_INPUT_ENABLED_ENV,
+} from "./scripts/speech-input-build-config.js";
 
 function workspaceSourceAlias(): Plugin {
 	return {
@@ -27,6 +31,7 @@ export default defineConfig(({ mode }) => {
 	for (const [key, value] of Object.entries(process.env)) {
 		if (key.startsWith("VETTA_") && value !== undefined) env[key] = value;
 	}
+	const speechInputBuildConfig = resolveSpeechInputBuildConfig({ env });
 	const developmentWorkspacePackages =
 		effectiveMode === "development"
 			? [/^@vetta\/(?:action-rpc|ai|coding-agent|runtime-core)(?:\/|$)/]
@@ -39,13 +44,16 @@ export default defineConfig(({ mode }) => {
 			`[vite.main.config] VETTA_SERVER_URL 未配置，请检查 .env.${effectiveMode}（mode=${effectiveMode}）`,
 		);
 	}
-	console.log(`[vite.main.config] mode=${effectiveMode}, VETTA_SERVER_URL=${env.VETTA_SERVER_URL}`);
+	console.log(
+		`[vite.main.config] mode=${effectiveMode}, VETTA_SERVER_URL=${env.VETTA_SERVER_URL}, speechInput=${speechInputBuildConfig.enabled}`,
+	);
 
 	// 将 .env.<mode> 中的 VETTA_* 变量内联到构建产物
 	const define: Record<string, string> = {};
 	for (const [key, value] of Object.entries(env)) {
 		define[`process.env.${key}`] = JSON.stringify(value);
 	}
+	define[`process.env.${SPEECH_INPUT_ENABLED_ENV}`] = JSON.stringify(String(speechInputBuildConfig.enabled));
 
 	return {
 		define,
@@ -62,6 +70,9 @@ export default defineConfig(({ mode }) => {
 					// uiohook 宿主 utilityProcess 独立入口：与 index.js 同目录输出，
 					// 运行时以 new URL("./uiohook-host.js", import.meta.url) 定位。
 					"uiohook-host": resolve(process.cwd(), "src/main/uiohook-host.ts"),
+					...(speechInputBuildConfig.enabled
+						? { "speech-input-host": resolve(process.cwd(), "src/main/speech-input-host.ts") }
+						: {}),
 				},
 				formats: ["es"],
 				fileName: (_format, entryName) => `${entryName}.js`,
@@ -91,6 +102,8 @@ export default defineConfig(({ mode }) => {
 					// electron-liquid-glass 同为原生模块（node-gyp-build + prebuilds），
 					// 提供 macOS 液态玻璃/磨砂玻璃效果，运行时从 node_modules 解析。
 					"electron-liquid-glass",
+					// Windows-only Sherpa-ONNX native runtime; model files are staged as extraResources at build time.
+					...(speechInputBuildConfig.enabled ? ["sherpa-onnx-win-x64"] : []),
 				],
 			},
 			minify: false,

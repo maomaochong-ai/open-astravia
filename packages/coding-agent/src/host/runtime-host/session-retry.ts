@@ -8,7 +8,7 @@ import type {
 } from "@vetta/runtime-core";
 import { mapRuntimeSessionObservationEvent } from "@vetta/runtime-core";
 import type { CodingAgentTurnRetryEvent, CodingAgentTurnRetrySettings } from "../session-execution/contracts.js";
-import { readCodingAgentFailedTurnMessage } from "../session-execution/turn-executor.js";
+import { readCodingAgentTurnFailure } from "../session-execution/turn-executor.js";
 import { createCodingAgentTurnRetryController } from "../session-execution/turn-retry-controller.js";
 
 export interface CodingAgentRuntimeHostRetrySettings {
@@ -17,6 +17,7 @@ export interface CodingAgentRuntimeHostRetrySettings {
 }
 
 type RuntimeErrorEvent = Extract<SessionEvent, { readonly type: "error" }>;
+type RuntimeAgentEndEvent = Extract<SessionEvent, { readonly type: "session.lifecycle" }>;
 
 /** 排队 / 拦截回执：prompt 未开启 turn 时的即时返回值（ADR-0060）。 */
 function isPromptReceipt(result: unknown): result is { status: "queued" | "handled" } {
@@ -40,9 +41,82 @@ function mapPromptOutcome(result: unknown): RuntimeTurnPromptOutcome {
 			};
 		}
 		if (status === "handled") return { status: "handled" };
-		if (status === "completed" || status === "cancelled" || status === "failed") return { status };
+		if (status === "completed" || status === "cancelled" || status === "failed") {
+			const candidate = result as { error?: unknown; turnId?: unknown };
+			const error = readStructuredFailure(candidate.error);
+			return {
+				status,
+				...(error ? { error } : {}),
+				...(typeof candidate.turnId === "string" ? { turnId: candidate.turnId } : {}),
+			};
+		}
 	}
 	return { status: "completed" };
+}
+
+type RuntimePromptFailure = {
+	readonly code: string;
+	readonly message: string;
+	readonly retryable: boolean;
+	readonly origin: "runtime" | "provider" | "tool" | "mcp";
+	readonly details?: {
+		readonly statusCode?: number;
+		readonly provider?: string;
+		readonly modelId?: string;
+		readonly requestId?: string;
+		readonly providerCode?: string;
+		readonly phase?: "resolve" | "request" | "response" | "stream" | "decode";
+		readonly url?: string;
+		readonly responseHeaders?: Readonly<Record<string, string>>;
+		readonly responseBodyPreview?: string;
+		readonly retryAfterMs?: number;
+	};
+};
+
+function readStructuredFailure(value: unknown): RuntimePromptFailure | undefined {
+	if (typeof value !== "object" || value === null) return undefined;
+	const candidate = value as Record<string, unknown>;
+	if (
+		typeof candidate.code !== "string" ||
+		typeof candidate.message !== "string" ||
+		typeof candidate.retryable !== "boolean" ||
+		(candidate.origin !== "runtime" &&
+			candidate.origin !== "provider" &&
+			candidate.origin !== "tool" &&
+			candidate.origin !== "mcp")
+	) {
+		return undefined;
+	}
+	return {
+		code: candidate.code,
+		message: candidate.message,
+		retryable: candidate.retryable,
+		origin: candidate.origin,
+		...(isFailureDetails(candidate.details) ? { details: candidate.details } : {}),
+	};
+}
+
+function isFailureDetails(value: unknown): value is RuntimePromptFailure["details"] {
+	if (typeof value !== "object" || value === null) return false;
+	const candidate = value as Record<string, unknown>;
+	return (
+		(candidate.statusCode === undefined || typeof candidate.statusCode === "number") &&
+		(candidate.provider === undefined || typeof candidate.provider === "string") &&
+		(candidate.modelId === undefined || typeof candidate.modelId === "string") &&
+		(candidate.requestId === undefined || typeof candidate.requestId === "string") &&
+		(candidate.providerCode === undefined || typeof candidate.providerCode === "string") &&
+		(candidate.phase === undefined ||
+			["resolve", "request", "response", "stream", "decode"].includes(candidate.phase as string)) &&
+		(candidate.url === undefined || typeof candidate.url === "string") &&
+		(candidate.responseHeaders === undefined || isSafeHeaders(candidate.responseHeaders)) &&
+		(candidate.responseBodyPreview === undefined || typeof candidate.responseBodyPreview === "string") &&
+		(candidate.retryAfterMs === undefined || typeof candidate.retryAfterMs === "number")
+	);
+}
+
+function isSafeHeaders(value: unknown): value is Readonly<Record<string, string>> {
+	if (typeof value !== "object" || value === null) return false;
+	return Object.values(value).every((entry) => typeof entry === "string");
 }
 
 /**
@@ -62,11 +136,11 @@ export function withCodingAgentRuntimeHostRetry(
 	});
 	const run = async (execute: () => Promise<unknown>): Promise<unknown> => {
 		try {
-			const result = await retry.run(execute, () => session.retry(), readCodingAgentFailedTurnMessage);
+			const result = await retry.run(execute, () => session.retry(), readCodingAgentTurnFailure);
 			// 排队/拦截回执（ADR-0060）不是 turn 结果：立即返回，不结算 pending error，
 			// 避免误清仍在 streaming 的当前 turn 挂起的错误。
 			if (isPromptReceipt(result)) return result;
-			if (readCodingAgentFailedTurnMessage(result)) events.flushPendingError();
+			if (readCodingAgentTurnFailure(result)) events.flushPendingError();
 			else events.clearPendingError();
 			return result;
 		} catch (error) {
@@ -103,10 +177,12 @@ export function withCodingAgentRuntimeHostRetry(
 	};
 }
 
-class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStream {
+/** @internal Exported for the event-order contract test. */
+export class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStream {
 	private readonly listeners = new Set<(event: SessionEvent) => void>();
 	private readonly unsubscribe: () => void;
 	private pendingError: RuntimeErrorEvent | undefined;
+	private pendingAgentEnd: RuntimeAgentEndEvent | undefined;
 	private retryAttempts = 0;
 
 	constructor(
@@ -124,6 +200,9 @@ class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStream {
 	emitRetry(event: CodingAgentTurnRetryEvent): void {
 		if (event.type === "auto_retry_start") {
 			this.retryAttempts = event.attempt;
+			// The failed attempt is continuing as a retry, so its terminal lifecycle
+			// must not make hosts reconcile history or mark the whole operation idle.
+			this.pendingAgentEnd = undefined;
 			this.broadcast(
 				mapRuntimeSessionObservationEvent(this.sessionId, {
 					type: "retry.start",
@@ -131,6 +210,7 @@ class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStream {
 					maxAttempts: event.maxAttempts,
 					delayMs: event.delayMs,
 					errorMessage: event.errorMessage,
+					...(event.failure ? { failure: event.failure } : {}),
 					source: "agent",
 				}),
 			);
@@ -143,6 +223,7 @@ class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStream {
 				success: event.success,
 				attempt: event.attempt,
 				finalError: event.finalError,
+				...(event.failure ? { failure: event.failure } : {}),
 				source: "agent",
 			}),
 		);
@@ -150,14 +231,18 @@ class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStream {
 
 	clearPendingError(): void {
 		this.pendingError = undefined;
+		this.pendingAgentEnd = undefined;
 		this.retryAttempts = 0;
 	}
 
 	flushPendingError(): boolean {
 		const pending = this.pendingError;
 		if (!pending) return false;
-		this.broadcast({ ...pending, retryAttempts: this.retryAttempts });
+		const pendingAgentEnd = this.pendingAgentEnd;
+		const retryAttempts = this.retryAttempts;
 		this.clearPendingError();
+		this.broadcast({ ...pending, retryAttempts });
+		if (pendingAgentEnd) this.broadcast(pendingAgentEnd);
 		return true;
 	}
 
@@ -170,6 +255,10 @@ class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStream {
 	private accept(event: SessionEvent): void {
 		if (event.type === "error") {
 			this.pendingError = event;
+			return;
+		}
+		if (event.type === "session.lifecycle" && event.phase === "agent_end" && this.pendingError) {
+			this.pendingAgentEnd = event;
 			return;
 		}
 		if (event.type === "message.final" && event.message.role === "assistant") {

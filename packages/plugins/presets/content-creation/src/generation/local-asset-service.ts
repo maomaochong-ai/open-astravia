@@ -125,6 +125,10 @@ export class ContentLocalAssetService {
 			nodeName: options.nodeName,
 			nodePurpose: options.nodePurpose,
 			layoutOwnership: "automatic",
+			history: {
+				origin: "agent",
+				action: { kind: "asset.import", count: files.length },
+			},
 		});
 	}
 

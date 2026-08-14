@@ -23,13 +23,17 @@ export interface AgentPluginToolContribution {
 	description: string;
 	parameters: JsonSchema;
 	handlerId: string;
+	activationId?: string;
 	timeoutMs?: number;
 	/** 允许出现的对话场景 slug（fail-closed：缺省/空 = 所有场景都不激活）。由插件 registerTool 声明。 */
 	scope_use?: string[];
 	/** 需要的会话能力 slug（如 "knowledge"）。 */
 	requires?: string[];
-	/** 允许出现的工作模式 slug（agent_mode 轴，缺省/空 = 通用）。见 ADR-0046。 */
-	agent_mode?: string[];
+	/**
+	 * 副作用等级（"light" | "heavy"，缺省 = light）。宿主侧元数据，不进 LLM schema。
+	 * heavy 工具在会话内首次调用前需要用户确认，见 tool-policy/heavy-tool-confirmation.ts。
+	 */
+	side_effect?: string;
 	context?: { conversation?: "summary" | "messages" };
 	/**
 	 * 该工具带有宿主自渲染卡片（插件注册了 tool-call slot），其结果是用户当作答案来读的
@@ -51,6 +55,7 @@ export interface AgentPluginContinuationContribution {
 	pluginId: string;
 	id: string;
 	handlerId: string;
+	activationId?: string;
 	timeoutMs?: number;
 	context?: { conversation?: "summary" | "messages" };
 }
@@ -59,6 +64,7 @@ export interface AgentPluginSystemPromptProviderContribution {
 	pluginId: string;
 	id: string;
 	handlerId: string;
+	activationId?: string;
 	timeoutMs?: number;
 	context?: {
 		systemPrompt?: "none" | "blocks" | "rendered" | "full";
@@ -77,6 +83,7 @@ export interface AgentPluginSystemPromptInvocation {
 	pluginId: string;
 	providerId: string;
 	handlerId: string;
+	activationId?: string;
 	session: { id: string; cwd: string; scenario: string };
 	model: {
 		provider: string;
@@ -149,8 +156,6 @@ export interface McpServerContribution {
 	/** Unique runtime key; must not contain `_` (tool name adapter constraint). */
 	runtimeName: string;
 	config: AgentPluginMcpServerConfig;
-	/** 该 server 的工具允许出现的工作模式 slug（agent_mode 轴，缺省/空 = 通用）。见 ADR-0046。 */
-	agent_mode?: string[];
 }
 
 export interface AgentPluginRuntimeConfig {
@@ -170,6 +175,7 @@ export interface AgentPluginToolInvocation {
 	toolId: string;
 	toolName: string;
 	handlerId: string;
+	activationId?: string;
 	input: unknown;
 	session: AgentPluginSystemPromptInvocation["session"];
 	model: AgentPluginSystemPromptInvocation["model"];
@@ -187,6 +193,7 @@ export interface AgentPluginContinuationInvocation {
 	pluginId: string;
 	providerId: string;
 	handlerId: string;
+	activationId?: string;
 	session: AgentPluginSystemPromptInvocation["session"];
 	model: AgentPluginSystemPromptInvocation["model"];
 	conversation: AgentPluginSystemPromptInvocation["conversation"];

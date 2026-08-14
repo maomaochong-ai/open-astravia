@@ -116,6 +116,7 @@ describe("batch RuntimeHost consumer", () => {
 			cwd: task.cwd,
 			sessionDir: join(project.id, ".vetta", "sessions"),
 			scenario: "batch",
+			agentMode: "work",
 			appendSystemPrompt: expect.stringContaining("## 批量任务上下文"),
 			executionMode: "full-access",
 			env: {

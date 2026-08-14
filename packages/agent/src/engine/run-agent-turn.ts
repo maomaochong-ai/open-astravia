@@ -1,4 +1,11 @@
-import { type AssistantMessage, EventStream, type Message } from "@vetta/ai";
+import {
+	type AssistantMessage,
+	createAIErrorFromDetails,
+	EventStream,
+	getAIErrorDetails,
+	isAIError,
+	type Message,
+} from "@vetta/ai";
 import { validateAgentRunLimits } from "./limits.js";
 import { executeRuntimeToolCalls } from "./tool-executor.js";
 import type {
@@ -77,6 +84,7 @@ async function executeRun(
 
 			state.modelCalls += 1;
 			let resolved: ResolvedModelCall | undefined;
+			let modelCallFinished = false;
 			try {
 				const resolving = request
 					.resolveModelCall({
@@ -96,13 +104,26 @@ async function executeRun(
 					callId: resolved.callId,
 					snapshotId: resolved.snapshotId,
 				});
-				const assistant = await consumeModelResponse(resolved, modelCallIndex, emit, signal);
+				const consumed = await consumeModelResponse(resolved, modelCallIndex, emit, signal);
+				const assistant = consumed.message;
 				state.lastAssistantMessage = assistant;
 				state.messages.push(assistant);
+				if (consumed.failure) {
+					emit({ type: "model_call_finish", modelCallIndex, callId: resolved.callId, status: "failed" });
+					modelCallFinished = true;
+					emit({
+						type: "assistant_message",
+						message: assistant,
+						...(isAIError(consumed.failure) ? { failure: getAIErrorDetails(consumed.failure) } : {}),
+					});
+					throw consumed.failure;
+				}
 				emit({ type: "model_call_finish", modelCallIndex, callId: resolved.callId, status: "completed" });
 				emit({ type: "assistant_message", message: assistant });
 			} catch (error) {
-				emit({ type: "model_call_finish", modelCallIndex, callId: resolved?.callId, status: "failed" });
+				if (!modelCallFinished) {
+					emit({ type: "model_call_finish", modelCallIndex, callId: resolved?.callId, status: "failed" });
+				}
 				if (signal.aborted) throw error;
 				const recovery = await checkpoint(request, "assistant_error", state, modelCallIndex, signal);
 				if (recovery?.retry) {
@@ -214,7 +235,7 @@ async function consumeModelResponse(
 	modelCallIndex: number,
 	emit: (event: AgentExecutionEvent) => void,
 	signal: AbortSignal,
-) {
+): Promise<{ message: AssistantMessage; failure?: unknown }> {
 	const settledResult = resolved.response.result.then(
 		(value) => ({ status: "fulfilled" as const, value }),
 		(reason: unknown) => ({ status: "rejected" as const, reason }),
@@ -224,18 +245,26 @@ async function consumeModelResponse(
 	// 已流出的内容只存在于这里。
 	let lastPartial: AssistantMessage | undefined;
 	try {
-		await interruptible(
-			(async () => {
+		return await interruptible(
+			(async (): Promise<{ message: AssistantMessage; failure?: unknown }> => {
 				for await (const event of resolved.response.events) {
 					if ("partial" in event && event.partial) lastPartial = event.partial;
 					emit({ type: "model_event", modelCallIndex, event });
+					if (event.type === "error") {
+						return {
+							message: event.error,
+							failure: event.failure
+								? createAIErrorFromDetails(event.failure)
+								: new Error(event.error.errorMessage),
+						};
+					}
 				}
+				const settled = await interruptible(settledResult, signal);
+				if (settled.status === "rejected") throw settled.reason;
+				return { message: settled.value };
 			})(),
 			signal,
 		);
-		const settled = await interruptible(settledResult, signal);
-		if (settled.status === "rejected") throw settled.reason;
-		return settled.value;
 	} catch (error) {
 		if (!signal.aborted) throw error;
 		// 中断挽救：立刻放弃会让已流出的内容既不进 state.messages 也不落盘
@@ -245,9 +274,9 @@ async function consumeModelResponse(
 			settledResult,
 			new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), ABORT_SALVAGE_TIMEOUT_MS)),
 		]);
-		if (salvaged?.status === "fulfilled") return salvaged.value;
+		if (salvaged?.status === "fulfilled") return { message: salvaged.value };
 		if (lastPartial && lastPartial.content.length > 0) {
-			return { ...lastPartial, stopReason: "aborted" as const };
+			return { message: { ...lastPartial, stopReason: "aborted" as const } };
 		}
 		throw error;
 	}
@@ -364,7 +393,27 @@ function abortError(reason: unknown): Error {
 	return error;
 }
 
-function failureOf(error: unknown): { code: string; message: string } {
+function failureOf(error: unknown): AgentRunResult["failure"] {
+	if (isAIError(error)) {
+		return {
+			code: error.code,
+			message: error.message,
+			retryable: error.retryable,
+			origin: "provider",
+			details: {
+				...(error.statusCode === undefined ? {} : { statusCode: error.statusCode }),
+				...(error.provider === undefined ? {} : { provider: error.provider }),
+				...(error.modelId === undefined ? {} : { modelId: error.modelId }),
+				...(error.requestId === undefined ? {} : { requestId: error.requestId }),
+				...(error.providerCode === undefined ? {} : { providerCode: error.providerCode }),
+				...(error.phase === undefined ? {} : { phase: error.phase }),
+				...(error.url === undefined ? {} : { url: error.url }),
+				...(error.responseHeaders === undefined ? {} : { responseHeaders: error.responseHeaders }),
+				...(error.responseBodyPreview === undefined ? {} : { responseBodyPreview: error.responseBodyPreview }),
+				...(error.retryAfterMs === undefined ? {} : { retryAfterMs: error.retryAfterMs }),
+			},
+		};
+	}
 	if (error instanceof Error) {
 		const code = "code" in error && typeof error.code === "string" ? error.code : error.name;
 		return { code, message: error.message };

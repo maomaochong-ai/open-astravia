@@ -43,7 +43,6 @@ export interface CodingAgentSessionResourceIndexes {
 	readonly memoryControllers: CodingAgentSessionValueIndex<CodingAgentMemoryController>;
 	readonly hookSessionControllers: CodingAgentSessionValueIndex<CodingAgentSessionHookController>;
 	readonly mcpRefreshObservedSessions: CodingAgentSessionMarkerIndex;
-	readonly mcpPromptRefreshReuseSessions: CodingAgentSessionMarkerIndex;
 }
 
 export interface CodingAgentSessionResourceLifecycleOptions {
@@ -177,7 +176,6 @@ function unbindAttachedResources(
 	if (options.memoryController) options.indexes.memoryControllers.unbind(sessionId, options.memoryController);
 	options.indexes.hookSessionControllers.unbind(sessionId, hookController);
 	options.indexes.mcpRefreshObservedSessions.delete(sessionId);
-	options.indexes.mcpPromptRefreshReuseSessions.delete(sessionId);
 	options.tracking.untrackHookSessionDisposer(disposeHookSession);
 }
 
@@ -219,7 +217,6 @@ function createResources(
 			await options.ownership.rebind(result.sessionId);
 			options.session.commitSessionId(result.sessionId);
 			options.indexes.mcpRefreshObservedSessions.rebind(previousSessionId, result.sessionId);
-			options.indexes.mcpPromptRefreshReuseSessions.rebind(previousSessionId, result.sessionId);
 			turnCapabilityAssembly.rebindSession(result.sessionId);
 			rebindSessionIndexes(options, hookController, previousSessionId, result.sessionId);
 			options.extensionToolRuntime?.rebindSession(previousSessionId, result.sessionId);
@@ -333,7 +330,6 @@ function unbindSessionResources(
 	options.indexes.resourceContexts.unbind(sessionId, options.resourceContext);
 	options.indexes.extensionEventBridges.unbind(sessionId, options.extensionEvents);
 	options.indexes.mcpRefreshObservedSessions.delete(sessionId);
-	options.indexes.mcpPromptRefreshReuseSessions.delete(sessionId);
 }
 
 function rebindSessionIndexes(

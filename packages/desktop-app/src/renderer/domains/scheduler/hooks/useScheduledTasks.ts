@@ -34,19 +34,19 @@ export function useScheduledTasks() {
 	const updateTask = useCallback(
 		async (id: string, patch: Partial<ScheduledTask>) => {
 			await window.vetta.scheduler.updateTask(id, patch);
-			const updated = tasks.map((t) => (t.id === id ? { ...t, ...patch, updatedAt: Date.now() } : t));
-			setTasks(updated);
+			setTasks((current) =>
+				current.map((task) => (task.id === id ? { ...task, ...patch, updatedAt: Date.now() } : task)),
+			);
 		},
-		[tasks, setTasks],
+		[setTasks],
 	);
 
 	const deleteTask = useCallback(
 		async (id: string) => {
 			await window.vetta.scheduler.deleteTask(id);
-			const remaining = tasks.filter((t) => t.id !== id);
-			setTasks(remaining);
+			setTasks((current) => current.filter((task) => task.id !== id));
 		},
-		[tasks, setTasks],
+		[setTasks],
 	);
 
 	const toggleTask = useCallback(

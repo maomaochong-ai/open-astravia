@@ -26,6 +26,11 @@ interface NotesLayerProps {
 	frames: readonly VetdFrameEntry[];
 	/** select/note 工具下气泡可点；托手/空格/frame 工具下整层不吃指针。 */
 	interactive: boolean;
+	/**
+	 * 顶栏开关：false 时气泡与 thread 整体不渲染。放置中的草稿输入框不受它管——
+	 * 那是用户此刻正在打的字，不是「已有备注」。
+	 */
+	visible: boolean;
 	draft: NoteDraft | null;
 	/** null = agent 空闲，落下就会被派出去；否则是等待原因（已本地化）。 */
 	blockedReason: string | null;
@@ -46,6 +51,7 @@ export function NotesLayer({
 	store,
 	frames,
 	interactive,
+	visible,
 	draft,
 	blockedReason,
 	onDraftClose,
@@ -153,7 +159,8 @@ export function NotesLayer({
 		target.addEventListener("pointercancel", onUp);
 	};
 
-	const openNote = openNoteId ? store.noteById(openNoteId) : undefined;
+	// 隐藏时连 thread 一起收：气泡都不在了，一个悬空的弹层没有归属。
+	const openNote = openNoteId && visible ? store.noteById(openNoteId) : undefined;
 
 	/**
 	 * 草稿浮层的意图与等待原因在弹出那一刻定下，之后不随 agent 忙闲翻转——正在打字时
@@ -175,7 +182,7 @@ export function NotesLayer({
 
 	return (
 		<div className={`vetd-note ${interactive ? "contents" : "pointer-events-none contents"}`}>
-			{store.notes.map((note) => {
+			{(visible ? store.notes : []).map((note) => {
 				const base = noteWorldPosition(note, frameOf);
 				const delta = dragDelta?.id === note.id ? dragDelta : null;
 				const pos = delta ? { x: base.x + delta.dx, y: base.y + delta.dy } : base;

@@ -1,4 +1,4 @@
-import { completeSimple } from "@vetta/ai";
+import { type AssistantMessage, completeSimple, getAIErrorDetails, isAIError } from "@vetta/ai";
 import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
 import {
 	CAPABILITY_ERROR_CODES,
@@ -78,22 +78,36 @@ export function registerDesktopAiProviders(registry: CapabilityRegistry): Dispos
 					);
 				}
 
-				const response = await completeSimple(
-					selectedModel,
-					{
-						...(input.systemPrompt === undefined ? {} : { systemPrompt: input.systemPrompt }),
-						messages: [{ role: "user", content: input.prompt, timestamp: Date.now() }],
-					},
-					{
-						apiKey,
-						signal: context.signal,
-						...(input.temperature === undefined ? {} : { temperature: input.temperature }),
-						...(input.maxTokens === undefined
-							? {}
-							: { maxTokens: Math.min(input.maxTokens, selectedModel.maxTokens) }),
-						...(input.reasoning === undefined || !selectedModel.reasoning ? {} : { reasoning: input.reasoning }),
-					},
-				);
+				let response: AssistantMessage;
+				try {
+					response = await completeSimple(
+						selectedModel,
+						{
+							...(input.systemPrompt === undefined ? {} : { systemPrompt: input.systemPrompt }),
+							messages: [{ role: "user", content: input.prompt, timestamp: Date.now() }],
+						},
+						{
+							apiKey,
+							signal: context.signal,
+							...(input.temperature === undefined ? {} : { temperature: input.temperature }),
+							...(input.maxTokens === undefined
+								? {}
+								: { maxTokens: Math.min(input.maxTokens, selectedModel.maxTokens) }),
+							...(input.reasoning === undefined || !selectedModel.reasoning
+								? {}
+								: { reasoning: input.reasoning }),
+						},
+					);
+				} catch (error) {
+					if (!isAIError(error)) throw error;
+					const details = getAIErrorDetails(error);
+					throw new CapabilityError(
+						CAPABILITY_ERROR_CODES.PROVIDER_FAILED,
+						details.message,
+						{ cause: error },
+						{ ...details },
+					);
+				}
 				assertNotAborted(context.signal);
 				if (response.stopReason !== "stop" && response.stopReason !== "length") {
 					throw new CapabilityError(
@@ -101,6 +115,8 @@ export function registerDesktopAiProviders(registry: CapabilityRegistry): Dispos
 							? CAPABILITY_ERROR_CODES.ABORTED
 							: CAPABILITY_ERROR_CODES.PROVIDER_FAILED,
 						response.errorMessage ?? `AI completion stopped with reason: ${response.stopReason}`,
+						undefined,
+						response.failure === undefined ? undefined : { ...response.failure },
 					);
 				}
 				return {

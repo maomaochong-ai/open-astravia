@@ -1,27 +1,74 @@
 import { getEnvApiKey } from "../../env-api-keys.js";
-import { AIAbortedError, AIStreamProtocolError, type AssistantMessage } from "../../protocol/index.js";
+import {
+	AIAbortedError,
+	AIStreamProtocolError,
+	type AssistantMessage,
+	createAssistantMessage as createProtocolAssistantMessage,
+} from "../../protocol/index.js";
 import {
 	EmptyProviderStreamError,
 	isSdkEmptyStreamError,
 	normalizeProviderError,
+	requireProviderCredential,
 	validateWirePayload,
 } from "../../provider-kit/index.js";
 import {
+	failLanguageModelStream,
 	type LanguageModelAdapter,
 	LanguageModelStream,
 	type ModelCallRequest,
 	type ModelStreamResponse,
 } from "../../runtime/language-model-adapter.js";
-import type { Model } from "../../types.js";
+import { createModelCallMetadataFromMessage } from "../../runtime/model-call-result.js";
+import type { Model, SimpleStreamOptions } from "../../types.js";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "../github-copilot-headers.js";
+import { adjustMaxTokensForThinking, buildBaseOptions } from "../simple-options.js";
 import { createAnthropicClient } from "./client.js";
 import { AnthropicEventReducer } from "./events.js";
 import type { AnthropicOptions } from "./options.js";
+import { mapThinkingLevelToEffort, supportsAdaptiveThinking } from "./options.js";
 import { buildAnthropicParams } from "./request.js";
 import { anthropicStreamEventSchema } from "./response-schema.js";
 
 export const anthropicAdapter: LanguageModelAdapter<"anthropic-messages", AnthropicOptions> = {
 	api: "anthropic-messages",
+	capabilities: {
+		streaming: true,
+		tools: true,
+		structuredOutput: false,
+		reasoning: true,
+		parallelToolCalls: true,
+	},
+	async streamSimple(request: ModelCallRequest<"anthropic-messages", SimpleStreamOptions>) {
+		const { model, context, options } = request;
+		const apiKey = requireProviderCredential(model, options?.apiKey || getEnvApiKey(model.provider));
+		const base = buildBaseOptions(model, options, apiKey);
+		if (!options?.reasoning)
+			return createAnthropicModelStream({ model, context, options: { ...base, thinkingEnabled: false } });
+		if (supportsAdaptiveThinking(model.id)) {
+			return createAnthropicModelStream({
+				model,
+				context,
+				options: { ...base, thinkingEnabled: true, effort: mapThinkingLevelToEffort(options.reasoning, model.id) },
+			});
+		}
+		const adjusted = adjustMaxTokensForThinking(
+			base.maxTokens || 0,
+			model.maxTokens,
+			options.reasoning,
+			options.thinkingBudgets,
+		);
+		return createAnthropicModelStream({
+			model,
+			context,
+			options: {
+				...base,
+				maxTokens: adjusted.maxTokens,
+				thinkingEnabled: true,
+				thinkingBudgetTokens: adjusted.thinkingBudget,
+			},
+		});
+	},
 	async stream(request) {
 		return createAnthropicModelStream(request);
 	},
@@ -32,7 +79,8 @@ function createAnthropicModelStream(
 ): ModelStreamResponse {
 	const stream = new LanguageModelStream();
 	void produceAnthropicStream(request, stream);
-	return { events: stream, result: stream.result() };
+	const result = stream.result();
+	return { events: stream, result, metadata: result.then(createModelCallMetadataFromMessage, () => ({})) };
 }
 
 async function produceAnthropicStream(
@@ -44,7 +92,7 @@ async function produceAnthropicStream(
 	let receivedProviderEvent = false;
 	try {
 		if (options?.signal?.aborted) throw new AIAbortedError();
-		const apiKey = options?.apiKey ?? getEnvApiKey(model.provider) ?? "";
+		const apiKey = requireProviderCredential(model, options?.apiKey ?? getEnvApiKey(model.provider));
 		const dynamicHeaders =
 			model.provider === "github-copilot"
 				? buildCopilotDynamicHeaders({
@@ -83,10 +131,18 @@ async function produceAnthropicStream(
 		stream.push({ type: "done", reason: output.stopReason, message: output });
 	} catch (error) {
 		const normalizedError = normalizeAnthropicSdkStreamError(error, receivedProviderEvent, model);
-		stream.fail(
+		failLanguageModelStream(
+			stream,
+			model,
 			options?.signal?.aborted
 				? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: normalizedError })
 				: normalizeProviderError(normalizedError, model),
+			options?.signal?.aborted ? "aborted" : "error",
+			{
+				...output,
+				stopReason: options?.signal?.aborted ? "aborted" : "error",
+				errorMessage: normalizedError instanceof Error ? normalizedError.message : String(normalizedError),
+			},
 		);
 	}
 }
@@ -108,21 +164,5 @@ function normalizeAnthropicSdkStreamError(
 }
 
 function createAssistantMessage(model: Model<"anthropic-messages">): AssistantMessage {
-	return {
-		role: "assistant",
-		content: [],
-		api: model.api,
-		provider: model.provider,
-		model: model.id,
-		usage: {
-			input: 0,
-			output: 0,
-			cacheRead: 0,
-			cacheWrite: 0,
-			totalTokens: 0,
-			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-		},
-		stopReason: "stop",
-		timestamp: Date.now(),
-	};
+	return createProtocolAssistantMessage({ api: model.api, provider: model.provider, model: model.id });
 }

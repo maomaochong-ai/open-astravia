@@ -6,6 +6,7 @@ import type {
 	RuntimeUserQuestionRequest,
 	RuntimeUserQuestionResult,
 	SessionConfig,
+	SessionEvent,
 	SessionExecutionMode,
 } from "../contracts.js";
 import type { RuntimeHostSessionBackend } from "./session-backend.js";
@@ -53,16 +54,21 @@ export interface SessionHandle {
 	queueController: RuntimeSessionQueueController | undefined;
 	metadataController: RuntimeSessionMetadataController | undefined;
 	executionMode: SessionExecutionMode;
+	/** 宿主已接受、等待下一 Turn 发布到 Session runtime 的统一配置 overlay。 */
+	pendingConfiguration: {
+		executionMode: SessionExecutionMode | undefined;
+		hasExecutionMode: boolean;
+		agentPlugins: AgentPluginRuntimeConfig | undefined;
+		hasAgentPlugins: boolean;
+	};
 	agentPluginsEnabled: boolean;
-	pendingAgentPlugins: AgentPluginRuntimeConfig | undefined;
-	hasPendingAgentPlugins: boolean;
 	/** 本会话解析后的对话场景（缺省回落 DEFAULT_SCENARIO），getState 回传给 renderer。 */
 	scenario: NonNullable<SessionConfig["scenario"]>;
-	/** 当前生效的工作模式（agent_mode 轴）。undefined = 不过滤。见 ADR-0046。 */
+	/**
+	 * 本会话创建时固化的工作模式（见 ADR-0046 修订）。会话内不可变，getState 回传给
+	 * renderer，供其按本会话而非全局默认值渲染。undefined = 未指定（CLI/headless 缺省）。
+	 */
 	agentMode: string | undefined;
-	/** 全局切换 mode 时挂起，于下一个 turn 边界 apply（避免 streaming 中途换工具集）。 */
-	pendingAgentMode: string | undefined;
-	hasPendingAgentMode: boolean;
 	/**
 	 * 空闲期提前 apply 挂起插件配置的合并定时器。插件 activate 会逐个工具打
 	 * reconfigure，这里做防抖，避免一次激活重建 N 次 runtime。
@@ -122,6 +128,11 @@ export interface RuntimeHostOptions {
 	sessionAccessResolver?: RuntimeSessionAccessResolver;
 	/** 进程级共享模型资源。 */
 	sharedModelController?: RuntimeSharedModelController;
+	/**
+	 * 最终会话错误的宿主观察端口。事件已通过产品层重试包装，适合接入日志、
+	 * telemetry 等旁路；观察端抛错不会影响会话执行或事件分发。
+	 */
+	sessionErrorObserver?: (event: Extract<SessionEvent, { readonly type: "error" }>) => void;
 	getDefaultExecutionMode?: () => SessionExecutionMode | Promise<SessionExecutionMode>;
 	additionalSkillPaths?: string[];
 	sandboxHostPath?: string;

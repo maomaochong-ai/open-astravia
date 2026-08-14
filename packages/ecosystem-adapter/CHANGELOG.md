@@ -17,6 +17,10 @@ All notable changes to `@vetta/ecosystem-adapter` are documented in this file.
 - 新增可组合的 `EcosystemHookRuntime` / `EcosystemHookAdapter` 抽象，将会话状态、多适配器聚合和 Stop 安全策略从 Coding Agent 下沉到生态适配包。
 - 新增 `codex-hooks/fca51f6` profile，支持最新版 10 个事件、事件级严格 wire contract、Codex matcher、`commandWindows`、handler 环境变量、完成顺序聚合、通用工具身份、PreToolUse 输入改写及 PermissionRequest 决策。
 
+### Fixed
+
+- **Windows command Hook 的引号被当成参数正文**：`NodeHookCommandExecutor` 调用 `cmd.exe /C` 时启用原样参数传递，避免 Node 再次转义已经组装好的 Hook 命令；frontmatter `args` 中的 Windows 绝对脚本路径现在可以正常执行。
+
 ### Changed
 
 - **`SessionEnd` 宿主语义与 Claude wire 解耦**：中立 API 使用 Vetta `SessionEndCause`（`new_session` / `switch_session` / `fork_session` / `dispose`），不再暴露 Claude 的 `clear` / `other` 等 `reason`。Claude profile 在 encode/matcher 内映射为 stdin 与 settings matcher 的 `reason`（`new_session`|`fork_session`→`clear`，`switch_session`→`resume`，`dispose`→`other`）。

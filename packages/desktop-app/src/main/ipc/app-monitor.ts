@@ -95,7 +95,7 @@ export function registerAppMonitorIpc(): () => void {
 		recordAppMonitorUserActivity();
 	};
 	const onRecordEvent = (_event: Electron.IpcMainEvent, payload: unknown): void => {
-		const event = toAppMonitorEvent(payload);
+		const event = parseAppMonitorEvent(payload);
 		if (!event) return;
 		recordAppMonitorEvent(event);
 		captureProductEvent(event);
@@ -141,7 +141,7 @@ export function registerAppMonitorIpc(): () => void {
 	};
 }
 
-function toAppMonitorEvent(value: unknown): AppMonitorEvent | null {
+export function parseAppMonitorEvent(value: unknown): AppMonitorEvent | null {
 	if (!isRecord(value)) return null;
 	if (value.type === "settings.changed") return toSettingsChangedEvent(value);
 	if (value.type === "resource.lifecycle") return toResourceLifecycleEvent(value);

@@ -14,3 +14,10 @@
 
 - input-pipeline / agent 资源图需按 pluginId 过滤贡献；Activity Tab 与 input-action 的显隐规则要与 mode 对齐。
 - 与 ADR-0023 可信插件模型兼容：隔离的是**贡献可见性**，不是进程沙箱。
+
+> **与 ADR-0046 修订的关系（2026-08）**：ADR-0046 于 2026-08 修订，删除了工作模式（`agent_mode`）
+> 的全部硬闸——插件不再因 Work/Coding 模式被隐藏或不加载。本 ADR 的
+> `contributionMode.hardIsolation` **不受影响，继续有效**：它门控的是 `registerInputAction` 的
+> per-turn / per-session input-action 模式（用户在输入区显式打开的开关，默认关），与 Work/Coding
+> 工作模式是两条互不相干的机制。两者曾经都表现为「插件贡献被整体排除」，但只有前者是用户此刻
+> 显式表达的意图，因此保留硬隔离语义；后者是全局偏好，不再具备排除能力。

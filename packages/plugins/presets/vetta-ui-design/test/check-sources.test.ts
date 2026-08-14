@@ -72,6 +72,39 @@ it("catches a re-export from a missing package too", () => {
 	expect(rulesFor('export { Icon } from "@heroicons/react";')).toContain("uninstalled-import");
 });
 
+it("stays quiet on a package this design installed", () => {
+	// ADR-0068：第三方库装在 x.vetd/node_modules/，判据是这份设计的 package.json。
+	// 装完还报是误报里最糟的一种——agent 会回去删掉本来正确的 import。
+	const content = 'import { LineChart } from "recharts";';
+	const rules = checkSources([{ path: "frames/home.tsx", content }], null, ["react", "recharts"]).map(
+		(issue) => issue.rule,
+	);
+	expect(rules).not.toContain("uninstalled-import");
+	// 别的包没装，照报不误
+	expect(
+		checkSources([{ path: "frames/home.tsx", content: 'import Markdown from "react-markdown";' }], null, [
+			"recharts",
+		]).map((issue) => issue.rule),
+	).toContain("uninstalled-import");
+});
+
+it("points a missing package at vetd_install", () => {
+	const issue = checkSources([{ path: "frames/home.tsx", content: 'import { LineChart } from "recharts";' }]).find(
+		(found) => found.rule === "uninstalled-import",
+	);
+	expect(issue?.message).toContain("vetd_install");
+	expect(issue?.message).toContain("recharts");
+});
+
+it("never suggests installing an icon package", () => {
+	// 图标是 Iconify 的 CSS 类。这里要是给出安装入口，agent 会顺着装一个图标库回来。
+	const issue = checkSources([
+		{ path: "frames/home.tsx", content: 'import { FiSearch } from "react-icons/fi";' },
+	]).find((found) => found.rule === "uninstalled-import");
+	expect(issue?.message).not.toContain("vetd_install");
+	expect(issue?.message).toContain("icon-[lucide--search]");
+});
+
 it("catches an icon set the engine does not ship", () => {
 	// @iconify/tailwind4 找不到集合是直接 throw，整帧构建失败。
 	const issue = checkSources([
