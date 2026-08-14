@@ -358,7 +358,7 @@ export const FrameView = memo(function FrameView({
 
 			<div
 				className={`relative h-full w-full overflow-hidden rounded-sm bg-white shadow-md ring-offset-0 ${
-					selected ? "ring-2 ring-[var(--vetd-selected)]" : "ring-1 ring-border"
+					selected ? "ring-2 ring-[var(--vetd-selected)]" : ""
 				} ${activity === "modifying" ? "vetd-modifying" : ""}`}
 			>
 				{/* 位图态下 iframe 根本不挂：留着 display:none 的 iframe 等于把整个
