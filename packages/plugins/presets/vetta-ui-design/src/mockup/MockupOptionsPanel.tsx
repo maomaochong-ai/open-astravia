@@ -2,7 +2,7 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import type { ReactNode } from "react";
 import { ColorPicker } from "./ColorPicker";
 import { OptionSlider } from "./OptionSlider";
-import { FRAMES_PER_PAGE, type MockupOptions } from "./types";
+import type { MockupOptions } from "./types";
 
 interface MockupOptionsPanelProps {
 	options: MockupOptions;
@@ -80,25 +80,6 @@ export function MockupOptionsPanel({
 					</button>
 				</div>
 			) : null}
-
-			<Field label={t("mockup.option.perPage")}>
-				<div className="flex gap-1">
-					{FRAMES_PER_PAGE.map((value) => (
-						<button
-							key={value}
-							type="button"
-							onClick={() => onChange({ perPage: value })}
-							className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors ${
-								options.perPage === value
-									? "bg-primary text-primary-foreground"
-									: "text-muted-foreground hover:bg-accent"
-							}`}
-						>
-							{value}
-						</button>
-					))}
-				</div>
-			</Field>
 
 			<OptionSlider
 				label={t("mockup.option.radius")}

@@ -12,6 +12,8 @@ interface MockupPageProps {
 	shots: MockupShot[];
 	/** 本页第一格在整个序列里的下标——回调一律用全局下标，页只是它的一个视图。 */
 	offset: number;
+	/** 本页留几格。末页画框不满时空位照样占宽，多页叠起来才对得齐。 */
+	slots: number;
 	options: MockupOptions;
 	brandLogo: CanvasImageSource | null;
 	/** Per-shot capture error, keyed by frame id. */
@@ -35,6 +37,7 @@ interface MockupPageProps {
 export function MockupPage({
 	shots,
 	offset,
+	slots,
 	options,
 	brandLogo,
 	errors,
@@ -49,7 +52,7 @@ export function MockupPage({
 }: MockupPageProps) {
 	const { t } = useTranslation();
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
-	const layout = useMemo(() => layoutMockup(shots, options), [shots, options]);
+	const layout = useMemo(() => layoutMockup(shots, options, slots), [shots, options, slots]);
 
 	useEffect(() => {
 		const canvas = canvasRef.current;

@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { type JSX, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type JSX, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { hexToHsv, hsvToHex, toHex } from "./color";
 
 interface ColorPickerProps {
@@ -164,6 +164,21 @@ export function ColorPicker({ label, color, palette, disabled, onPick }: ColorPi
 		if (open) setDraft(hex.slice(1).toUpperCase());
 	}, [open, hex]);
 
+	/**
+	 * 主题色板按最终色值去重。theme.css 里多个 token 指向同一个颜色是常态
+	 * （--border 与 --input 都是那一档灰），照单全收就是一排看不出区别的重复
+	 * 色块，而且 React 会因为重复 key 报警。
+	 */
+	const swatches = useMemo(() => {
+		const seen = new Set<string>();
+		return palette.filter((value) => {
+			const key = toHex(value).toLowerCase();
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+	}, [palette]);
+
 	const commitDraft = (value: string): void => {
 		const cleaned = value.replace(/[^0-9a-f]/gi, "").slice(0, 6);
 		setDraft(cleaned.toUpperCase());
@@ -216,11 +231,11 @@ export function ColorPicker({ label, color, palette, disabled, onPick }: ColorPi
 						/>
 					</label>
 
-					{palette.length > 0 ? (
+					{swatches.length > 0 ? (
 						<div className="flex flex-col gap-1.5">
 							<span className="text-[11px] text-muted-foreground">{t("mockup.color.theme")}</span>
 							<div className="flex flex-wrap gap-1.5">
-								{palette.map((swatch) => {
+								{swatches.map((swatch) => {
 									const swatchHex = toHex(swatch);
 									return (
 										<button

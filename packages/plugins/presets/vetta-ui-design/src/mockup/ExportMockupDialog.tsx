@@ -17,7 +17,7 @@ import { defaultOptions, loadOptions, saveOptions } from "./options";
 import { paginate } from "./paginate";
 import { buildImagePdf, type PdfPageImage } from "./pdf";
 import { canvasToJpegDataUrl, renderMockupToCanvas, stitchPagesVertically } from "./render";
-import type { MockupOptions, MockupShot } from "./types";
+import { FRAMES_PER_PAGE, type MockupOptions, type MockupShot } from "./types";
 import { centerView, fitView, panBy, stackPages, type ViewTransform, zoomAt } from "./workbench-view";
 
 type ExportFormat = "image" | "pdf";
@@ -194,14 +194,19 @@ export function ExportMockupDialog() {
 	}, [attached, frames, captures]);
 
 	const pages = useMemo(() => paginate(shots, options?.perPage ?? 3), [shots, options?.perPage]);
+	/**
+	 * 每页留几格。只有一页时按实际画框数收紧——一张图右边空出两格纯属浪费；
+	 * 一旦换页就固定成 perPage，末页不满也占满宽度，多页叠起来才对得齐。
+	 */
+	const slotsPerPage = pages.length > 1 ? (options?.perPage ?? shots.length) : shots.length;
 
 	/** 每页的 layout 尺寸 + 竖向堆叠位置，全在世界坐标里。 */
 	const stack = useMemo(() => {
 		if (!options) return { world: { width: 0, height: 0 }, boxes: [] };
-		const sizes = pages.map((pageShots) => layoutMockup(pageShots, options));
+		const sizes = pages.map((pageShots) => layoutMockup(pageShots, options, slotsPerPage));
 		const width = sizes.length > 0 ? Math.max(...sizes.map((size) => size.width)) : 0;
 		return stackPages(sizes, width * PAGE_GAP_RATIO);
-	}, [pages, options]);
+	}, [pages, options, slotsPerPage]);
 
 	// 内容第一次有东西可看时铺满窗口；之后的缩放只由用户决定。
 	useEffect(() => {
@@ -263,7 +268,7 @@ export function ExportMockupDialog() {
 	const composePage = async (pageShots: ShotEntry[], current: MockupOptions): Promise<HTMLCanvasElement> => {
 		const active = requestRef.current;
 		if (!active) throw new Error("export request went away");
-		const layout = layoutMockup(pageShots, current);
+		const layout = layoutMockup(pageShots, current, slotsPerPage);
 		const pageHeight = Math.max(...pageShots.map((shot) => shot.cssHeight));
 		const fresh: MockupShot[] = [];
 		for (const shot of pageShots) {
@@ -272,7 +277,7 @@ export function ExportMockupDialog() {
 			const dataUrl = await active.capture(shot.frameId, ratio);
 			fresh.push({ ...shot, image: await loadImage(dataUrl) });
 		}
-		return renderMockupToCanvas(fresh, current, logo);
+		return renderMockupToCanvas(fresh, current, logo, slotsPerPage);
 	};
 
 	/** 逐页合成。Vetta 标识只出现在第一页，多页时不该每页重复一次。 */
@@ -450,6 +455,7 @@ export function ExportMockupDialog() {
 										<MockupPage
 											shots={pageShots}
 											offset={index * options.perPage}
+											slots={slotsPerPage}
 											options={options}
 											brandLogo={logo}
 											errors={errors}
@@ -493,6 +499,29 @@ export function ExportMockupDialog() {
 								onRemoveSelected={() => selectedShot && detach(selectedShot.frameId)}
 								onReset={() => setOptions(defaultOptions(normalizedHeight))}
 							/>
+						</div>
+
+						{/* 每张图的画框数：底部居中悬浮——它决定的是「图怎么分页」，
+						    比右侧那些外观参数更靠近画面本身。 */}
+						<div
+							className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-border bg-popover/95 px-2 py-1 shadow-md backdrop-blur-md"
+							onPointerDown={(event) => event.stopPropagation()}
+						>
+							<span className="pr-1 text-[11px] text-muted-foreground">{t("mockup.option.perPage")}</span>
+							{FRAMES_PER_PAGE.map((value) => (
+								<button
+									key={value}
+									type="button"
+									onClick={() => setOptions((current) => (current ? { ...current, perPage: value } : current))}
+									className={`min-w-7 rounded-md px-2 py-1 text-xs font-medium tabular-nums transition-colors ${
+										options.perPage === value
+											? "bg-primary text-primary-foreground"
+											: "text-muted-foreground hover:bg-accent"
+									}`}
+								>
+									{value}
+								</button>
+							))}
 						</div>
 
 						{/* 缩放控件：左下角，与预览台同层。 */}

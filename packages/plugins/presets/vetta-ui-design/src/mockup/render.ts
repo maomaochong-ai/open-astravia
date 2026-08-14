@@ -141,8 +141,10 @@ export function renderMockupToCanvas(
 	shots: MockupShot[],
 	options: MockupOptions,
 	brandLogo: CanvasImageSource | null,
+	/** 这一页留几格；末页不满时靠它保住与其他页一致的宽度，见 layout.ts。 */
+	slots = shots.length,
 ): HTMLCanvasElement {
-	const layout = layoutMockup(shots, options);
+	const layout = layoutMockup(shots, options, slots);
 	const scale = options.scale * layout.fit;
 	const canvas = document.createElement("canvas");
 	canvas.width = Math.max(1, Math.round(layout.width * scale));
@@ -151,15 +153,6 @@ export function renderMockupToCanvas(
 	if (!g) throw new Error("2D canvas context unavailable");
 	renderMockup(g, shots, options, layout, scale, brandLogo);
 	return canvas;
-}
-
-/** Compose to an offscreen canvas and hand back a PNG data URL. */
-export function renderMockupToDataUrl(
-	shots: MockupShot[],
-	options: MockupOptions,
-	brandLogo: CanvasImageSource | null,
-): string {
-	return renderMockupToCanvas(shots, options, brandLogo).toDataURL("image/png");
 }
 
 /**
