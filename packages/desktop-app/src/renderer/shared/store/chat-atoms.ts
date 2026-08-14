@@ -507,7 +507,6 @@ export const reasoningByModelAtom = atom(
 /** Whether the current session model supports image input */
 export const modelSupportsImagesAtom = atom<boolean>(true);
 
-export const selectedSkillAtom = atom<SelectedSkill | null>(null);
 export const mentionedFilesAtom = atom<MentionedFile[]>([]);
 
 // ─── Action button bar ───

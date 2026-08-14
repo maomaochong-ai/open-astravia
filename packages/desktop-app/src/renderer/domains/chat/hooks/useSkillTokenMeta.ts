@@ -1,5 +1,5 @@
 /**
- * 行内 skill token 的展示解析：slug → 「别名 + 图标」。
+ * 行内 skill / scene token 的展示解析：type + slug → 「别名 + 图标」。
  *
  * 文本流里只留 `@skill:<name>`（软引用的权威形态，模型要按真实 name 查 skill），
  * 别名与图标属于展示层，必须在渲染时回查——否则消息气泡、重编辑回填的输入框只能
@@ -15,7 +15,7 @@ import { buildSkillTokenMetaMap, type SkillTokenMeta } from "../lib/skill-token-
 import { useSkillIconMap } from "./useSkillIconMap";
 
 /** 查不到（未安装 / 已卸载）时返回 undefined，由调用方落 slug + 默认图。 */
-export type SkillTokenMetaResolver = (name: string) => SkillTokenMeta | undefined;
+export type SkillTokenMetaResolver = (type: "skill" | "scene", name: string) => SkillTokenMeta | undefined;
 
 /** 键带语言：内置 skill 的别名由主进程按当前语言给出，切语言后旧结果不能复用。 */
 const cache = new Map<string, SkillInfo[]>();
@@ -75,5 +75,5 @@ export function useSkillTokenMeta(): SkillTokenMetaResolver {
 
 	const metaByName = useMemo(() => buildSkillTokenMetaMap(skills, iconMap), [iconMap, skills]);
 
-	return useCallback((name: string) => metaByName.get(name), [metaByName]);
+	return useCallback((type: "skill" | "scene", name: string) => metaByName.get(`${type}:${name}`), [metaByName]);
 }

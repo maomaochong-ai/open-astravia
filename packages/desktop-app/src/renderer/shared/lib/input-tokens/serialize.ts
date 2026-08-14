@@ -12,6 +12,11 @@ export function skillTokenText(name: string): string {
 	return `@skill:${quoteIfNeeded(name)}`;
 }
 
+/** 单个 scene token 的编辑态文本形式；发送前会转为结构化 promptRef。 */
+export function sceneTokenText(name: string): string {
+	return `@scene:${quoteIfNeeded(name)}`;
+}
+
 /** 单个连接器 token 的文本形式。 */
 export function connectorTokenText(name: string): string {
 	return `@mcp:${quoteIfNeeded(name)}`;
@@ -40,6 +45,8 @@ function segmentToText(segment: InputSegment): string {
 			return segment.text;
 		case "skill":
 			return skillTokenText(segment.name);
+		case "scene":
+			return sceneTokenText(segment.name);
 		case "connector":
 			return connectorTokenText(segment.name);
 		case "file":
@@ -50,16 +57,21 @@ function segmentToText(segment: InputSegment): string {
 
 /**
  * segments → 发给模型的文本。
- * token 必须落在词首才能被 parseInputSegments 还原，因此紧邻的 token
- * 之间补一个空格（`@/a@/b` 这种粘连形式无法回读）。
+ * token 必须有明确的词边界才能被 parseInputSegments 还原，因此 token 与
+ * 相邻 token / 正文之间按需补一个空格（`@scene:review正文` 会被误认成一个名字）。
  */
 export function segmentsToText(segments: readonly InputSegment[]): string {
 	let out = "";
+	let previousKind: InputSegment["kind"] | null = null;
 	for (const segment of segments) {
 		const piece = segmentToText(segment);
 		if (piece === "") continue;
-		if (segment.kind !== "text" && out !== "" && !/\s$/.test(out)) out += " ";
+		const followsToken = previousKind !== null && previousKind !== "text";
+		const needsSeparator =
+			out !== "" && !/\s$/.test(out) && (segment.kind !== "text" || (followsToken && !/^\s/.test(piece)));
+		if (needsSeparator) out += " ";
 		out += piece;
+		previousKind = segment.kind;
 	}
 	return out;
 }
@@ -91,6 +103,15 @@ export function deriveSkillNames(segments: readonly InputSegment[]): string[] {
 	const names: string[] = [];
 	for (const segment of segments) {
 		if (segment.kind === "skill" && !names.includes(segment.name)) names.push(segment.name);
+	}
+	return names;
+}
+
+/** 文本流里引用到的 scene 名；正常 UI 始终只有一个，发送边界仍会做唯一性校验。 */
+export function deriveSceneNames(segments: readonly InputSegment[]): string[] {
+	const names: string[] = [];
+	for (const segment of segments) {
+		if (segment.kind === "scene" && !names.includes(segment.name)) names.push(segment.name);
 	}
 	return names;
 }

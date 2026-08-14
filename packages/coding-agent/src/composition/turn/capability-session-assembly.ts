@@ -344,9 +344,9 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 	const promptAdapter = new CodingAgentPromptRequestAdapter({
 		resolvePromptResource:
 			options.prompt.promptResourceResolver ??
-			(options.prompt.resourceSource
+			(promptResourceSource
 				? createCodingAgentPromptResourceResolver({
-						resourceLoader: options.prompt.resourceSource,
+						resourceLoader: promptResourceSource,
 						todoState: options.todoRuntime,
 					})
 				: undefined),

@@ -34,12 +34,13 @@ const LINK_BADGE_CLASS =
 const remarkPlugins = [remarkGfm];
 
 /**
- * 用户消息里的行内 token（skill 引用 / 文件 / 图片）。
+ * 用户消息里的行内 token（skill / scene 引用、文件、图片）。
  * 语法归宿主所有——theme-ui 只负责渲染，解析函数由 inlineTokens.parse 注入。
  */
 export type InlineTokenPiece =
 	| { kind: "text"; text: string }
 	| { kind: "skill"; name: string }
+	| { kind: "scene"; name: string }
 	| { kind: "connector"; name: string }
 	| { kind: "file"; path: string; isDirectory?: boolean }
 	| { kind: "image"; path: string };
@@ -58,6 +59,8 @@ export interface InlineTokenSupport {
 	 * 否则气泡里的胶囊与输入框里刚插入的那枚对不上。查不到时回退成 slug + 默认图。
 	 */
 	getSkill?: (name: string) => { label: string; icon?: string } | undefined;
+	/** scene 与 skill 共用视觉语言，但使用场景图标和独立元数据命名空间。 */
+	getScene?: (name: string) => { label: string; icon?: string } | undefined;
 }
 
 const INLINE_TOKEN_TAG = "vetta-inline-token";
@@ -96,7 +99,9 @@ function rehypeInlineTokens(parse: (text: string) => InlineTokenPiece[]) {
 							properties: {
 								"data-token-kind": piece.kind,
 								"data-token-value":
-									piece.kind === "skill" || piece.kind === "connector" ? piece.name : piece.path,
+									piece.kind === "skill" || piece.kind === "scene" || piece.kind === "connector"
+										? piece.name
+										: piece.path,
 								"data-token-directory": piece.kind === "file" && piece.isDirectory ? "true" : "false",
 							},
 							children: [],
@@ -541,15 +546,18 @@ export const TextBlockView = memo(function TextBlockView({
 						</span>
 					);
 				}
-				if (kind === "skill") {
-					const skill = inlineTokensRef.current?.getSkill?.(value);
+				if (kind === "skill" || kind === "scene") {
+					const ability =
+						kind === "scene"
+							? inlineTokensRef.current?.getScene?.(value)
+							: inlineTokensRef.current?.getSkill?.(value);
 					return (
 						<span className={INLINE_TOKEN_CLASS} title={value}>
 							{/* 图标走能力广场那套「图片 / Solar / 默认图」三态，与输入框胶囊同源。 */}
 							<span className={INLINE_TOKEN_ICON_BOX_CLASS}>
-								<SkillTypeIcon type="skill" icon={skill?.icon} className="h-3 w-3" />
+								<SkillTypeIcon type={kind} icon={ability?.icon} className="h-3 w-3" />
 							</span>
-							{skill?.label ?? value}
+							{ability?.label ?? value}
 						</span>
 					);
 				}

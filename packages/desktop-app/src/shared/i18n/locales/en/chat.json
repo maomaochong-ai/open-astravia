@@ -365,6 +365,9 @@
 		}
 	},
 	"inputBar": {
+		"error": {
+			"multipleScenes": "Only one Scene can be selected per message. Remove the extra Scene and try again"
+		},
 		"capsule": {
 			"appshotThumbnailAlt": "Screenshot",
 			"appshotPreview": "Preview screenshot",

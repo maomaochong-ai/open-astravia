@@ -19,4 +19,10 @@ export {
 } from "./ConnectorTokenNode";
 export { $createFileTokenNode, $isFileTokenNode, FileTokenNode } from "./FileTokenNode";
 export { $createImageTokenNode, $isImageTokenNode, ImageTokenNode } from "./ImageTokenNode";
-export { $createSkillTokenNode, $isSkillTokenNode, SkillTokenNode } from "./SkillTokenNode";
+export {
+	$createSceneTokenNode,
+	$createSkillTokenNode,
+	$isSkillTokenNode,
+	type AbilityTokenType,
+	SkillTokenNode,
+} from "./SkillTokenNode";

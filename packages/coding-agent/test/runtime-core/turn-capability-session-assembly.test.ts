@@ -1,4 +1,7 @@
-import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
 import type { RuntimeModel } from "@vetta/runtime-core";
 import {
 	type AgentFeatureDefinition,
@@ -15,12 +18,17 @@ import { createCodingAgentTurnCapabilitySessionAssembly } from "../../src/compos
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
 import { DEFAULT_HEAVY_TOOL_CONFIRMATION_TEXTS } from "../../src/tool-policy/heavy-tool-confirmation.js";
 import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
+import { preparePrompt } from "./prompt-adapter-test-fixture.js";
 
 describe("Coding Agent Turn Capability session assembly", () => {
 	const disposals: Array<() => Promise<void> | void> = [];
+	const temporaryDirectories: string[] = [];
 
 	afterEach(async () => {
 		for (const dispose of disposals.splice(0).reverse()) await dispose();
+		for (const directory of temporaryDirectories.splice(0).reverse()) {
+			rmSync(directory, { recursive: true, force: true });
+		}
 	});
 
 	it("owns the session-local capability profile without changing its tool surface", async () => {
@@ -89,6 +97,75 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		expect(assembly.readAvailableTools().get(executionTool.name)).toBe(executionTool);
 		expect(assembly.readAvailableTools().has(productTool.name)).toBe(false);
 		expect(() => assembly.rebindSession("session-2")).not.toThrow();
+	});
+
+	it("expands a Scene through the default session-local Prompt Runtime", async () => {
+		const root = mkdtempSync(join(tmpdir(), "turn-capability-scene-"));
+		temporaryDirectories.push(root);
+		const workspace = join(root, "workspace");
+		const sceneName = "assembly-scene";
+		const sceneDir = join(workspace, ".vetta", "skills", sceneName);
+		mkdirSync(sceneDir, { recursive: true });
+		writeFileSync(
+			join(sceneDir, "SKILL.md"),
+			`---\nname: ${sceneName}\ndescription: assembly scene\nmetadata:\n  type: scene\n---\nRun the assembly scene.\n`,
+		);
+		writeFileSync(join(sceneDir, "tasks.json"), JSON.stringify(["inspect", "report"]));
+
+		const codingTools = createCodingToolsRuntimeComposition({
+			activation: { mode: "explicit", toolNames: [] },
+		});
+		disposals.push(() => codingTools.dispose());
+		const todoRuntime = new CodingAgentTodoRuntime();
+		disposals.push(() => todoRuntime.dispose());
+		const executionRuntime = {
+			feature: createFeature("execution", []),
+			ownsTool: () => false,
+			readAvailableTools: () => new Map(),
+		} as unknown as CodingAgentSessionExecutionRuntime;
+		const hookRuntime = createEmptyHookRuntime(workspace);
+		const assembly = await createCodingAgentTurnCapabilitySessionAssembly({
+			session: {
+				initialSessionId: "session-1",
+				readSessionId: () => "session-1",
+				cwd: workspace,
+				agentDir: join(root, "agent"),
+				includeAgentSkills: false,
+				scenario: "conversation",
+			},
+			activation: {
+				resolve: () => ({ mode: "explicit", toolNames: [] }),
+				readAgentMode: () => undefined,
+				readAgentPlugins: () => undefined,
+				readActiveToolNamesOverride: () => undefined,
+			},
+			prompt: {},
+			baseProfile: codingTools.profile,
+			codingTools,
+			executionRuntime,
+			productToolFeature: createFeature("product", []),
+			productToolRegistrations: [],
+			todoRuntime,
+			contextRuntime: createContextRuntime(),
+			conversationContextProjector: { project: () => [] } satisfies ConversationContextProjector,
+			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
+			hookRuntime,
+			extensionEvents: new CodingAgentExtensionRunAdapter(),
+		});
+		disposals.push(() => assembly.dispose());
+
+		const prepared = await preparePrompt(
+			assembly.promptAdapter,
+			{ text: "review it", promptRef: { kind: "scene", name: sceneName } },
+			{ sessionId: "session-1", queueing: false },
+		);
+
+		expect(prepared.input.context?.[0]).toMatchObject({
+			type: "scene_expansion",
+			content: expect.stringContaining("Run the assembly scene."),
+		});
+		expect(todoRuntime.getLockSource()).toBe("scene");
+		expect(todoRuntime.getAll()).toHaveLength(2);
 	});
 
 	it("gates a heavy product tool behind one confirmation per session", async () => {
@@ -191,6 +268,20 @@ function createPassthroughHookRuntime(): EcosystemHookRuntime {
 		runPostToolUse: async () => ({ shouldStop: false, shouldBlock: false, additionalContexts: [] }),
 		recordAdditionalContexts: async () => {},
 	} as unknown as EcosystemHookRuntime;
+}
+
+function createEmptyHookRuntime(cwd: string): EcosystemHookRuntime {
+	return new EcosystemHookRuntime({
+		host: {
+			cwd,
+			getSessionId: () => "session-1",
+			getTranscriptPath: () => join(cwd, "session.jsonl"),
+			getModelId: () => "model-1",
+			abortCurrentRun() {},
+		},
+		initialSessionStartSource: "startup",
+		loadAdapters: async () => [],
+	});
 }
 
 function createFeature(id: string, tools: readonly RuntimeToolDefinition[]): AgentFeatureDefinition {

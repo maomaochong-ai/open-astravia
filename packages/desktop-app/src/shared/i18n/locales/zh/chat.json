@@ -365,6 +365,9 @@
 		}
 	},
 	"inputBar": {
+		"error": {
+			"multipleScenes": "一条消息只能选择一个场景，请移除多余的场景后重试"
+		},
 		"capsule": {
 			"appshotThumbnailAlt": "截图",
 			"appshotPreview": "预览截图",

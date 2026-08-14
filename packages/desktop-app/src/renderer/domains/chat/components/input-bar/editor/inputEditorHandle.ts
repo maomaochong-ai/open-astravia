@@ -14,8 +14,10 @@ import {
 	$createConnectorTokenNode,
 	$createFileTokenNode,
 	$createImageTokenNode,
+	$createSceneTokenNode,
 	$createSkillTokenNode,
 	ImageTokenNode,
+	SkillTokenNode,
 } from "./nodes";
 import { $applySegments, $insertTokenNodes } from "./tokens/segments";
 import { $removeTriggerBeforeCaret } from "./tokens/trigger";
@@ -58,6 +60,17 @@ function insert(nodes: () => LexicalNode[], options?: InsertTokenOptions): void 
 
 export function insertSkillToken(name: string, alias?: string, icon?: string, options?: InsertTokenOptions): void {
 	insert(() => [$createSkillTokenNode(name, alias, icon)], options);
+}
+
+/** 场景在编辑器里是行内 token，但每条 prompt 只能选择一个；新选择替换旧场景。 */
+export function insertSceneToken(name: string, alias?: string, icon?: string, options?: InsertTokenOptions): void {
+	current?.update(() => {
+		if (options?.replaceTrigger) $removeTriggerBeforeCaret();
+		for (const node of $nodesOfType(SkillTokenNode)) {
+			if (node.getAbilityType() === "scene") node.remove();
+		}
+		$insertTokenNodes([$createSceneTokenNode(name, alias, icon)]);
+	});
 }
 
 export function insertConnectorToken(

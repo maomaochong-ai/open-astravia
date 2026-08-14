@@ -6,7 +6,7 @@ import {
 	recordInputActionsUsed,
 	recordInputContextUsed,
 } from "@shared/lib/app-monitor-events";
-import { deriveSkillNames, parseInputSegments } from "@shared/lib/input-tokens";
+import { deriveSkillNames, MultipleSceneReferencesError, prepareInputPrompt } from "@shared/lib/input-tokens";
 import {
 	activeInputActionIdsAtom,
 	activeSessionAtom,
@@ -33,7 +33,6 @@ import {
 	type SendMessageOptions,
 	type SendMessageResult,
 	selectedModelAtom,
-	selectedSkillAtom,
 	todoItemsBySessionAtom,
 } from "@shared/store/atoms";
 import { bumpQueuedDispatchSeq } from "@shared/store/message-queue-atoms";
@@ -68,7 +67,6 @@ function getProjects() {
 export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageSenderOptions): SessionMessageSender {
 	const activeSession = useAtomValue(activeSessionAtom);
 	const [attachedImages, setAttachedImages] = useAtom(attachedImagesAtom);
-	const selectedSkill = useAtomValue(selectedSkillAtom);
 	const [mentionedFiles, setMentionedFiles] = useAtom(mentionedFilesAtom);
 	const appshotAttachment = useAtomValue(appshotAttachmentAtom);
 	const [selectedModel] = useAtom(selectedModelAtom);
@@ -83,8 +81,6 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 
 	const attachedImagesRef = useRef(attachedImages);
 	attachedImagesRef.current = attachedImages;
-	const selectedSkillRef = useRef(selectedSkill);
-	selectedSkillRef.current = selectedSkill;
 	const mentionedFilesRef = useRef(mentionedFiles);
 	mentionedFilesRef.current = mentionedFiles;
 	const appshotRef = useRef(appshotAttachment);
@@ -118,7 +114,6 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			// 不订阅输入 atom；调用时读取还能覆盖“先写草稿、同一流程立即发送”的场景。
 			const inputValue = getDefaultStore().get(inputValueAtom);
 			const attachedImages = attachedImagesRef.current;
-			const selectedSkill = selectedSkillRef.current;
 			const mentionedFiles = mentionedFilesRef.current;
 			const appshot = appshotRef.current;
 			const selectedModel = selectedModelRef.current;
@@ -148,6 +143,15 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				});
 			}
 			const rawText = hasOverride ? override : inputValue.trim();
+			let preparedInput: ReturnType<typeof prepareInputPrompt>;
+			try {
+				preparedInput = prepareInputPrompt(rawText);
+			} catch (error) {
+				if (!(error instanceof MultipleSceneReferencesError)) throw error;
+				const message = i18n.t("chat:inputBar.error.multipleScenes");
+				setChatMessages((prev) => appendError(prev, message));
+				return { status: "failed", error: { message } };
+			}
 			const images = !hasOverride && attachedImages.length > 0 ? attachedImages : undefined;
 			// 把附图落盘到会话图片缓存，改用 @路径 引用而非把 base64 塞进上下文：
 			// 视觉模型经 Read 工具即可看到图，不支持视觉的模型也能用工具对图做 OCR/改图等。
@@ -163,11 +167,8 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				}
 			}
 			const promptRef =
-				!hasOverride && selectedSkill
-					? {
-							kind: selectedSkill.type === "scene" ? ("scene" as const) : ("skill" as const),
-							name: selectedSkill.name,
-						}
+				!hasOverride && preparedInput.sceneName
+					? { kind: "scene" as const, name: preparedInput.sceneName }
 					: undefined;
 			const attachmentsByPath = new Map<string, PromptAttachmentRef>();
 			if (!hasOverride) {
@@ -188,23 +189,16 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				}
 			}
 			const attachments = [...attachmentsByPath.values()];
-			const text = rawText;
+			const text = hasOverride ? rawText : preparedInput.text;
 			recordInputContextUsed({
 				files: hasOverride ? [] : mentionedFiles,
 				images: images ?? [],
-				...(hasOverride || !selectedSkill
-					? {}
-					: {
-							promptRef: {
-								kind: selectedSkill.type === "scene" ? "scene" : "skill",
-								name: selectedSkill.name,
-							},
-						}),
+				...(promptRef ? { promptRef } : {}),
 			});
 			// 行内 skill 是软引用，不进 promptRef，但调用次数仍要计入 app-monitor
 			// （命令面板按使用频次排序依赖这份统计）。每个被引用的 skill 记一次。
 			if (!hasOverride) {
-				for (const name of deriveSkillNames(parseInputSegments(rawText).segments)) {
+				for (const name of deriveSkillNames(preparedInput.segments)) {
 					recordInputContextUsed({ promptRef: { kind: "skill", name } });
 				}
 			}
@@ -334,7 +328,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					id: session.runtimeId,
 					path: sp,
 					cwd: session.cwd,
-					firstMessage: rawText.slice(0, 80) || i18n.t("chat:session.emptyMessageLabel"),
+					firstMessage: text.slice(0, 80) || i18n.t("chat:session.emptyMessageLabel"),
 					modifiedAt: Date.now(),
 				});
 			}

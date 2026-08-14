@@ -17,6 +17,8 @@
 
 ### Fixed
 
+- **默认会话 Prompt Runtime 可正确展开场景**：Turn 组合现在把会话内部创建的资源源接入 Prompt Adapter；Desktop 未显式注入外部 resolver 时，`promptRef.scene` 也会读取 `SKILL.md`、注入场景正文并建立锁定待办，不再静默只保留不可见引用标记。
+
 - 自动压缩和分支摘要读取模型终端错误中的结构化 Provider failure，并将其交给 Runtime 观察与重试合同；后台模型失败不再只剩一段不可分类的文本。
 
 - 手动上下文压缩和分支摘要缺少模型凭证时，现在复用 AI 认证错误合同，不再丢失 provider/model 与不可重试诊断。

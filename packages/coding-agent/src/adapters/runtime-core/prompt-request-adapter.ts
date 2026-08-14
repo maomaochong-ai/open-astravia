@@ -197,6 +197,9 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter, Ru
 		const name = request.promptRef.name.trim();
 		if (!name) throw new Error("Prompt resource name must not be empty");
 		const promptRef = { ...request.promptRef, name };
+		if (!this.resolvePromptResource && promptRef.kind === "scene") {
+			throw new Error(`Scene prompt resource resolver is unavailable: ${promptRef.name}`);
+		}
 		return this.resolvePromptResource
 			? this.resolvePromptResource(request.text, promptRef, context)
 			: { text: request.text, promptRef };

@@ -193,6 +193,18 @@ describe("Coding Agent model call and prompt runtime", () => {
 		]);
 	});
 
+	it("rejects a Scene instead of silently dropping it when the resolver is unavailable", async () => {
+		const adapter = new CodingAgentPromptRequestAdapter({ now: () => 42 });
+
+		await expect(
+			preparePrompt(
+				adapter,
+				{ text: "run it", promptRef: { kind: "scene", name: "review" } },
+				{ sessionId: "session-1", queueing: false },
+			),
+		).rejects.toThrow("Scene prompt resource resolver is unavailable: review");
+	});
+
 	it("compiles the exact legacy structured prompt from the current model-call tools and context", async () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-07-28T06:00:00.000Z"));

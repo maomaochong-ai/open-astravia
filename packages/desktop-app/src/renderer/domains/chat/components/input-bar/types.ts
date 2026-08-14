@@ -99,8 +99,6 @@ export interface InputBarModel {
 	imageAttachments: ReadonlyArray<{ path: string; name: string; url: string; label: string }>;
 	/** 已激活的 input action；全量开关在命令面板里，这里只留激活提示。 */
 	activeActions: readonly ActiveActionCapsule[];
-	/** 仅场景（scene）：它走 promptRef 硬展开，不进文本流，用顶部胶囊展示。 */
-	selectedSkill: { name: string; alias?: string; type: string } | null;
 	appshotAttachment: AppshotAttachment | null;
 	hasSession: boolean;
 	canSend: boolean;
@@ -158,7 +156,6 @@ export interface InputBarModel {
 		handleConnectorSelect: (connector: ConnectorGridItem) => void;
 		handleAtClose: () => void;
 		handleAtSelect: (file: SelectedFile) => void;
-		removeSkill: () => void;
 		/** 从文本流里删掉该图片的 token（缩略图行的 × 按钮）。 */
 		removeImage: (path: string) => void;
 		openImagePreview: (index: number) => void;

@@ -25,18 +25,18 @@ export interface SkillTokenMeta {
 	icon?: string;
 }
 
-/** 行内 skill token 的展示表：slug → 别名 + 图标。 */
+/** 行内 skill / scene token 的展示表：`${type}:${slug}` → 别名 + 图标。 */
 export function buildSkillTokenMetaMap(
 	skills: readonly SkillInfo[],
 	iconMap: SkillIconMap,
 ): ReadonlyMap<string, SkillTokenMeta> {
 	const map = new Map<string, SkillTokenMeta>();
 	for (const skill of skills) {
-		// 文本流里的 token 只可能是 skill：scene 是硬展开，走 promptRef + 顶部胶囊。
-		if (skill.type !== "skill") continue;
-		if (map.has(skill.name)) continue;
+		if (skill.type !== "skill" && skill.type !== "scene") continue;
+		const key = `${skill.type}:${skill.name}`;
+		if (map.has(key)) continue;
 		const icon = skillIconOf(iconMap, skill);
-		map.set(skill.name, { label: skill.alias || skill.name, ...(icon ? { icon } : {}) });
+		map.set(key, { label: skill.alias || skill.name, ...(icon ? { icon } : {}) });
 	}
 	return map;
 }

@@ -18,7 +18,6 @@ import {
 	promptSuggestionsAtom,
 	promptAttachmentAtom,
 	sandboxPermissionDrawerAtom,
-	selectedSkillAtom,
 	todoItemsBySessionAtom,
 	mentionedFilesAtom,
 } from "@shared/store/atoms";
@@ -42,6 +41,7 @@ import {
 	insertFileToken,
 	insertImageToken,
 	insertPlainText,
+	insertSceneToken,
 	insertSkillToken,
 	readSelectionText,
 	removeImageToken,
@@ -121,7 +121,6 @@ export function useInputBarModel({
 	const pendingQuestion = activeSession?.runtimeId ? pendingQuestions[activeSession.runtimeId] : undefined;
 	const promptSuggestions = useAtomValue(promptSuggestionsAtom);
 	const firstSuggestion = activeSession?.runtimeId ? promptSuggestions[activeSession.runtimeId]?.[0] : undefined;
-	const [selectedSkill, setSelectedSkill] = useAtom(selectedSkillAtom);
 	const [promptAttachment, setPromptAttachment] = useAtom(promptAttachmentAtom);
 	const [appshotAttachment, setAppshotAttachment] = useAtom(appshotAttachmentAtom);
 	const [pendingMessageEdit, setPendingMessageEdit] = useAtom(pendingMessageEditAtom);
@@ -204,12 +203,11 @@ export function useInputBarModel({
 	);
 
 	/**
-	 * 仍留在输入卡片顶部的非行内附件：图片、场景、Appshot、重编辑提示。
+	 * 仍留在输入卡片顶部的非行内附件：图片、Appshot、重编辑提示。
 	 * 插件上下文不在其中——它画在卡片外面顶部，算进来只会让卡片里展开一块空白。
 	 */
 	const hasCapsules =
 		imageAttachments.length > 0 ||
-		Boolean(selectedSkill) ||
 		Boolean(appshotAttachment) ||
 		Boolean(pendingMessageEdit);
 
@@ -289,16 +287,15 @@ export function useInputBarModel({
 	const handleSlashSelect = useCallback(
 		(skill: SkillInfo, icon?: string) => {
 			if (skill.type === "scene") {
-				// 场景仍走 PromptRequest.promptRef 硬展开（tasks.json 自动建 todo + 锁列表），
-				// 因此它不进文本流，只在输入卡片顶部保留一枚胶囊，且同时只能有一个。
-				setSelectedSkill({ name: skill.name, alias: skill.alias, type: skill.type });
+				// 展示/编辑统一走行内 token；发送边界再转成唯一 promptRef 硬展开。
+				insertSceneToken(skill.name, skill.alias, icon, { replaceTrigger: true });
 			} else {
 				insertSkillToken(skill.name, skill.alias, icon, { replaceTrigger: true });
 			}
 			setTrigger(null);
 			focusInputEditor();
 		},
-		[setSelectedSkill],
+		[],
 	);
 
 	const handleConnectorSelect = useCallback((connector: ConnectorGridItem) => {
@@ -307,11 +304,6 @@ export function useInputBarModel({
 		setTrigger(null);
 		focusInputEditor();
 	}, []);
-
-	const handleRemoveSkill = useCallback(() => {
-		setSelectedSkill(null);
-		focusInputEditor();
-	}, [setSelectedSkill]);
 
 	const handleAtSelect = useCallback(
 		async (file: SelectedFile) => {
@@ -503,10 +495,9 @@ export function useInputBarModel({
 		setPendingMessageEdit(null);
 		// 清空文本 → ValueBridgePlugin 会把编辑器一并清干净（含所有行内 token）。
 		setInputValue("");
-		setSelectedSkill(null);
 		setMentionedFiles([]);
 		setAppshotAttachment(null);
-	}, [setAppshotAttachment, setInputValue, setMentionedFiles, setPendingMessageEdit, setSelectedSkill]);
+	}, [setAppshotAttachment, setInputValue, setMentionedFiles, setPendingMessageEdit]);
 
 	const defaultPlaceholders = useMemo(() => {
 		const raw = t("inputBar.placeholder.defaults", { returnObjects: true });
@@ -589,7 +580,6 @@ export function useInputBarModel({
 		firstSuggestion,
 		imageAttachments,
 		activeActions,
-		selectedSkill,
 		appshotAttachment,
 		hasSession,
 		canSend,
@@ -630,7 +620,6 @@ export function useInputBarModel({
 			handleConnectorSelect,
 			handleAtClose: dismissTrigger,
 			handleAtSelect,
-			removeSkill: handleRemoveSkill,
 			removeImage,
 			openImagePreview,
 			removePromptAttachment,
