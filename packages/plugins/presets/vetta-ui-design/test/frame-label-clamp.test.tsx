@@ -18,7 +18,10 @@ import { FrameView } from "../src/canvas/FrameView";
 
 const bridge = { register: () => {} } as unknown as BridgeHub;
 
-function renderFrame(renaming: boolean): { label: HTMLElement; cleanup: () => void } {
+function renderFrame(
+	renaming: boolean,
+	selected = false,
+): { host: HTMLElement; label: HTMLElement; cleanup: () => void } {
 	const host = document.createElement("div");
 	document.body.appendChild(host);
 	const root = createRoot(host);
@@ -29,7 +32,7 @@ function renderFrame(renaming: boolean): { label: HTMLElement; cleanup: () => vo
 				port={1234}
 				getZoom={() => 1}
 				bridge={bridge}
-				selected={false}
+				selected={selected}
 				entered={false}
 				interactive
 				resizable={false}
@@ -58,6 +61,7 @@ function renderFrame(renaming: boolean): { label: HTMLElement; cleanup: () => vo
 	const label = host.querySelector<HTMLElement>("[data-vetd-frame] > div");
 	if (!label) throw new Error("title bar not rendered");
 	return {
+		host,
 		label,
 		cleanup: () => {
 			act(() => root.unmount());
@@ -81,4 +85,21 @@ it("drops the clamp while renaming so the input is not cut off", () => {
 	const { label, cleanup } = renderFrame(true);
 	expect(label.style.maxWidth).toBe("");
 	cleanup();
+});
+
+it("shows the size badge only while selected, under the frame", () => {
+	const idle = renderFrame(false);
+	expect(idle.host.textContent).not.toContain("390×1046");
+	idle.cleanup();
+
+	const active = renderFrame(false, true);
+	const badge = [...active.host.querySelectorAll<HTMLElement>("div")].find(
+		(node) => node.textContent === "390×1046",
+	);
+	expect(badge).toBeDefined();
+	expect(badge?.className).toContain("bg-primary");
+	// frame 底边下方、水平居中，且跟着 --vetd-lscale 反向缩放。
+	expect(badge?.style.top).toBe("100%");
+	expect(badge?.style.transform).toBe("translateX(-50%) scale(var(--vetd-lscale, 1))");
+	active.cleanup();
 });

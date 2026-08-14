@@ -325,9 +325,6 @@ export const FrameView = memo(function FrameView({
 						{frame.title || frame.id}
 					</button>
 				)}
-				<span className="shrink-0 text-muted-foreground">
-					{Math.round(rect.width)}×{Math.round(rect.height)}
-				</span>
 				{buildError ? (
 					<span
 						className="flex shrink-0 items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-red-600"
@@ -445,6 +442,24 @@ export const FrameView = memo(function FrameView({
 				    无条件渲染：渐出发生在 activity 清空之后，组件得留着把过渡走完。 */}
 				<FrameActivityOverlay activity={activity} />
 			</div>
+
+			{/* 尺寸标签（Figma 行为）：只在选中时出现在 frame 正下方，平时不占视觉噪音。
+			    和标题栏一样反向缩放，任何缩放下都是同样大小。 */}
+			{selected ? (
+				<div
+					className="pointer-events-none absolute left-1/2 whitespace-nowrap rounded-[4px] bg-primary px-1.5 py-0.5 text-[10px] font-medium leading-none text-primary-foreground"
+					style={{
+						top: "100%",
+						transform: `translateX(-50%) scale(${labelScale})`,
+						// 缩放的定点必须是「贴着 frame 底边的那条中线」，否则缩放时标签会
+						// 从 frame 上飘走。
+						transformOrigin: "center top",
+						marginTop: `calc(4px * ${labelScale})`,
+					}}
+				>
+					{Math.round(rect.width)}×{Math.round(rect.height)}
+				</div>
+			) : null}
 
 			{/* 手柄在元素选择开着时也要留：画面区已经归 iframe 了，缩放只剩这一条路。 */}
 			{selected && resizable
