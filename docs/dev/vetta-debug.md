@@ -6,38 +6,38 @@ Vetta Debug 是开发环境专用的会话能力，用于从外层 Agent 驱动�
 
 ## 运行环境
 
-在仓库根目录将 UI 验证实例作为后台长任务启动：
+在仓库根目录启动持久 Debug Profile：
 
 ```powershell
-bun run verify:ui:start
+bun run verify:ui:start:debug
 ```
 
 等待实例就绪：
 
 ```powershell
-bun run verify:ui:status
+bun run verify:ui:status:debug
 ```
 
 开始调用 Debug 前，状态必须满足：
 
 - `running === true`
-- `ui.configured === true`
+- `ready === true`
 - `ui.reachable === true`
 - `ui.targetFound === true`
 
-验证实例使用当前工作树独立的 Vetta 配置、Electron user-data、RPC endpoint 和 CDP endpoint，不与普通开发实例共用运行状态。
+Debug Profile 使用当前工作树独立且持久的 Vetta home、Electron user-data、RPC endpoint 和 CDP endpoint，不与普通开发实例共用运行状态。首次启动从 `.vetta-dev` 白名单播种模型配置；具体边界见 [Desktop UI 验证](./README.md#验证-profile)。
 
 所有 Debug CLI 调用统一经过仓库入口：
 
 ```powershell
-bun run verify:ui:debug -- <debug 参数>
+bun run verify:ui:debug:debug -- <debug 参数>
 ```
 
 修改 Renderer 后通常由 Vite HMR 更新。修改 Main 或 Preload 后，需要停止并重新启动验证实例：
 
 ```powershell
-bun run verify:ui:stop
-bun run verify:ui:start
+bun run verify:ui:stop:debug
+bun run verify:ui:start:debug
 ```
 
 ## 标识和生命周期

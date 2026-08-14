@@ -27,7 +27,7 @@ try {
 }
 
 async function runRuntimeCanary(): Promise<z.infer<typeof runtimeCanarySuccessEnvelopeSchema>> {
-	const host = spawn("bun", ["run", "verify:ui:start", "--runtime-canary"], {
+	const host = spawn("bun", ["scripts/ui-verification.mjs", "serve", "--profile", "fresh", "--runtime-canary"], {
 		cwd: desktopRoot,
 		env: process.env,
 		stdio: ["ignore", "pipe", "pipe"],

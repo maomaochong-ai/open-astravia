@@ -6,6 +6,11 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **Desktop UI 验证 Profile 与有界进程监督**：新增每次全新启动的 Fresh、持久且只从 `.vetta-dev`
+  白名单播种/同步模型密文配置的 Debug，以及只附着现有普通开发应用的 Dev Profile。三个 Profile
+  使用独立 home、Electron user data、Action RPC endpoint 和 Playwright session；验证启动改为后台等待
+  CDP 就绪后返回，CLI、Playwright 与 Renderer 端口等待均有超时，避免空服务时长期挂起。
+
 - **手工放置的本地场景可发现**：直接维护在 `~/.vetta*/scene/<name>/SKILL.md`、但未写入
   `skills-manifest.json` 的合法场景，现在会作为本地只读场景出现在场景页、能力页和对话命令区；
   市场安装与自定义导入的受管场景仍由清单控制启停和卸载。

@@ -1,7 +1,44 @@
 import assert from "node:assert/strict";
+import { createServer } from "node:net";
 import { join } from "node:path";
 import test from "node:test";
-import { resolveDevLaunchEnvironment, resolveDevPluginIds } from "./run-dev-electron.mjs";
+import {
+	resolveDevLaunchEnvironment,
+	resolveDevPluginIds,
+	waitForRendererPort,
+} from "./run-dev-electron.mjs";
+
+test("returns when the renderer port becomes reachable", async (context) => {
+	const server = createServer();
+	context.after(() => server.close());
+	await new Promise((resolve, reject) => {
+		server.once("error", reject);
+		server.listen(0, "127.0.0.1", resolve);
+	});
+	const address = server.address();
+	assert.notEqual(address, null);
+	assert.equal(typeof address, "object");
+
+	await waitForRendererPort(address.port, { timeoutMs: 500, retryIntervalMs: 10 });
+});
+
+test("fails instead of hanging when the renderer port stays unavailable", async () => {
+	const server = createServer();
+	await new Promise((resolve, reject) => {
+		server.once("error", reject);
+		server.listen(0, "127.0.0.1", resolve);
+	});
+	const address = server.address();
+	assert.notEqual(address, null);
+	assert.equal(typeof address, "object");
+	const port = address.port;
+	await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+
+	await assert.rejects(
+		waitForRendererPort(port, { timeoutMs: 50, retryIntervalMs: 5 }),
+		/Timed out after 50ms/,
+	);
+});
 
 test("isolates normal development from packaged application data", () => {
 	const homeDirectory = join("test", "home");
