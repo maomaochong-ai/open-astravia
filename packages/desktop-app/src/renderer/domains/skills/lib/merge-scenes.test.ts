@@ -15,6 +15,36 @@ function customEntry(overrides: Partial<Extract<InstalledSkill, { source: "custo
 }
 
 describe("mergeScenes", () => {
+	it("列出直接放进 scene 目录但尚未登记清单的本地场景", () => {
+		const merged = mergeScenes([], {}, [
+			{
+				description: "核对指标数据与佐证材料",
+				source: "scene",
+				type: "scene",
+			},
+		]);
+
+		expect(merged).toHaveLength(1);
+		expect(merged[0]).toMatchObject({
+			description: "核对指标数据与佐证材料",
+			installed: true,
+			enabled: true,
+			isReadonly: true,
+			source: "scene",
+		});
+	});
+
+	it("本地扫描结果不会与同名清单场景重复", () => {
+			{
+				description: "磁盘描述",
+				source: "scene",
+				type: "scene",
+			},
+		]);
+
+		expect(merged).toHaveLength(1);
+	});
+
 	it("列出用户自己导入的自定义场景", () => {
 		expect(merged).toHaveLength(1);
 		expect(merged[0]).toMatchObject({

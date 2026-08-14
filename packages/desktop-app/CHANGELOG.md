@@ -6,6 +6,10 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **手工放置的本地场景可发现**：直接维护在 `~/.vetta*/scene/<name>/SKILL.md`、但未写入
+  `skills-manifest.json` 的合法场景，现在会作为本地只读场景出现在场景页、能力页和对话命令区；
+  市场安装与自定义导入的受管场景仍由清单控制启停和卸载。
+
 - **Provider 诊断继续穿过主进程边界**：`DesktopConversationError` 与 AI Capability 错误保留安全的错误码、来源、重试性和 Provider 诊断字段，debug/插件调用不再只收到通用失败文本。
 
 - **后台 AI 失败诊断贯通**：重试、自动压缩和 MCP 重载事件沿用 Runtime 的结构化失败字段，Renderer 可以在错误状态中保留 Provider、模型和请求诊断，而不依赖错误文案匹配。

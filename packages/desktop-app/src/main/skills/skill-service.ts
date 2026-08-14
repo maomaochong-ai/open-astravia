@@ -15,6 +15,7 @@ import {
 import { readDesktopConfig } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
 import { listPlugins, pluginAgentContributionService } from "../plugins/plugin-catalog.js";
+import { shouldListSkill } from "./skill-list-policy.js";
 
 const skillsLog = getAppLogger("skills");
 const skillsBaseDir = join(getVettaHomePath(), "skills");
@@ -141,9 +142,7 @@ export class SkillService {
 		const listed = skills
 			.filter((skill) => {
 				if (isBuiltinSkillFile(skill.filePath)) return builtinManifest[skill.name]?.enabled ?? false;
-				const entry = manifest[skill.name];
-				if (skill.source === "market" || skill.source === "scene") return entry?.enabled ?? false;
-				return !entry || entry.enabled;
+				return shouldListSkill(skill, manifest[skill.name]);
 			})
 			.map((skill): ListedSkill => {
 				const isBuiltin = isBuiltinSkillFile(skill.filePath);

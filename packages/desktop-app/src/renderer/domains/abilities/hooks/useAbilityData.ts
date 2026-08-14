@@ -26,6 +26,7 @@ import {
 	getOpenMarketplaceLoadState,
 	shouldReportAbilityLoadFailure,
 } from "../lib/ability-load-policy";
+import { isReadonlyLocalSkillSource } from "../lib/local-skill-source-policy";
 import { mergeAbilityCatalogs } from "../lib/merge-ability-catalogs";
 
 export interface AbilityData {
@@ -41,10 +42,6 @@ export interface AbilityData {
 	error: string | null;
 	refresh: () => void;
 	addMarketplaceSource: (input: AddMarketplaceSourceInput) => Promise<void>;
-}
-
-function isReadonlySkillSource(source: string): boolean {
-	return source.startsWith("agents-") || source === "builtin";
 }
 
 export function useAbilityData(): AbilityData {
@@ -94,7 +91,7 @@ export function useAbilityData(): AbilityData {
 					setLedger(nextLedger);
 					setBuiltinPresentations(presentations);
 					setSkillManifest(manifest);
-					setLocalSkills(skills.filter((skill) => isReadonlySkillSource(skill.source)));
+					setLocalSkills(skills.filter((skill) => isReadonlyLocalSkillSource(skill.source)));
 					setPlugins(installedPlugins);
 				})
 				.catch((reason) => {

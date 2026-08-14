@@ -38,7 +38,7 @@ export function useSkillsPageModel(): SkillsPageModel {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [market, setMarket] = useState<MarketAbility[]>([]);
 	const [manifest, setManifest] = useState<Record<string, InstalledSkill>>({});
-	const [agentSkills, setAgentSkills] = useState<SkillInfo[]>([]);
+	const [listedSkills, setListedSkills] = useState<SkillInfo[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [actionStates, setActionStates] = useState<Record<string, ActionState>>({});
@@ -51,7 +51,11 @@ export function useSkillsPageModel(): SkillsPageModel {
 		void window.vetta.skills.getMarketManifest().then(setManifest);
 		void window.vetta.skills
 			.list()
-			.then((list) => setAgentSkills(list.filter((s) => s.source.startsWith("agents-") || s.source === "builtin")));
+			.then((list) =>
+				setListedSkills(
+					list.filter((s) => s.source.startsWith("agents-") || s.source === "builtin" || s.source === "scene"),
+				),
+			);
 	}, []);
 
 	const loadMarket = useCallback(() => {
@@ -167,7 +171,7 @@ export function useSkillsPageModel(): SkillsPageModel {
 		[refresh],
 	);
 
-	const merged = useMemo(() => mergeScenes(market, manifest), [market, manifest]);
+	const merged = useMemo(() => mergeScenes(market, manifest, listedSkills), [listedSkills, manifest, market]);
 
 	const filterBySearch = useCallback(
 		(list: MergedSkill[]) => {
@@ -190,8 +194,8 @@ export function useSkillsPageModel(): SkillsPageModel {
 	const agentForTab = useMemo<MergedSkill[]>(
 		() =>
 			filterBySearch(
-				agentSkills
-					.filter((s) => s.type === "scene")
+				listedSkills
+					.filter((s) => s.type === "scene" && (s.source.startsWith("agents-") || s.source === "builtin"))
 					.map((s) => ({
 						name: s.name,
 						alias: s.alias ?? "",
@@ -210,7 +214,7 @@ export function useSkillsPageModel(): SkillsPageModel {
 						license: "",
 					})),
 			),
-		[agentSkills, filterBySearch],
+		[filterBySearch, listedSkills],
 	);
 
 	const hasContent = groups.size > 0 || agentForTab.length > 0;

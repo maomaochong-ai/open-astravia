@@ -1,4 +1,4 @@
-import type { InstalledSkill } from "@preload/api";
+import type { InstalledSkill, SkillInfo } from "@preload/api";
 import type { MarketAbility } from "@shared/lib/api";
 
 export interface MergedSkill {
@@ -21,6 +21,8 @@ export interface MergedSkill {
 	isCustom?: boolean;
 	/** 通用 Agent Skill（~/.agents/skills）或内置：只读展示，不可安装/卸载/启停。 */
 	isAgent?: boolean;
+	/** 直接从本地目录发现、但未进入安装清单：只读展示，不接管目录生命周期。 */
+	isReadonly?: boolean;
 	/**
 	 * 来源标识（仅 agent/builtin 等 listSkills 结果会写入）。
 	 * `agents-user` / `agents-project` 对应 ~/.agents/skills 兼容发现。
@@ -33,8 +35,12 @@ export interface MergedSkill {
 // 渲染期解析为 t("group.uncategorized")（模块级常量不存中文）。
 export const UNCATEGORIZED = "__uncategorized__";
 
-/** 市场 scene 行 + 本地安装清单 → 场景卡片模型。 */
-export function mergeScenes(market: MarketAbility[], manifest: Record<string, InstalledSkill>): MergedSkill[] {
+/** 市场 scene 行 + 本地安装清单 + 未受管的本地 scene → 场景卡片模型。 */
+export function mergeScenes(
+	market: MarketAbility[],
+	manifest: Record<string, InstalledSkill>,
+	listedSkills: SkillInfo[] = [],
+): MergedSkill[] {
 	const merged = new Map<string, MergedSkill>();
 
 	for (const entry of market) {
@@ -79,6 +85,30 @@ export function mergeScenes(market: MarketAbility[], manifest: Record<string, In
 			needsUpdate: false,
 			localVersion: local.version,
 			isCustom: local.source === "custom",
+			downloadCount: 0,
+			license: "",
+		});
+	}
+
+	// 用户可以直接维护 ~/.vetta*/scene。没有安装清单的目录仍应可见、可调用，但宿主不
+	// 接管其生命周期，避免把手工目录错误地暴露为可启停/卸载的受管安装项。
+	for (const local of listedSkills) {
+		if (local.type !== "scene" || local.source !== "scene") continue;
+		if (manifest[local.name] || merged.has(local.name)) continue;
+		merged.set(local.name, {
+			name: local.name,
+			alias: local.alias ?? "",
+			description: local.description,
+			type: "scene",
+			version: "",
+			author: "",
+			tags: [],
+			category: "",
+			installed: true,
+			enabled: true,
+			needsUpdate: false,
+			isReadonly: true,
+			source: local.source,
 			downloadCount: 0,
 			license: "",
 		});
