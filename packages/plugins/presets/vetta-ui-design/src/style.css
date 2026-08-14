@@ -35,7 +35,7 @@
 	background-image:
 		linear-gradient(to right, var(--vetd-grid-line) 1px, transparent 1px),
 		linear-gradient(to bottom, var(--vetd-grid-line) 1px, transparent 1px);
-	background-size: 24px 24px;
+	background-size: 14px 14px;
 }
 
 /* 框选选框的填充（描边直接用工具类取 --vetd-selected） */

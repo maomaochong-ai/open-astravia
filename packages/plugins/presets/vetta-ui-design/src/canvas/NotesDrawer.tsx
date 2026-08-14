@@ -10,6 +10,11 @@ import { NotePin } from "./NoteAvatar";
 const PANEL_WIDTH = 288;
 /** 面板距画布左边缘的留白（px）——悬浮而不贴边。 */
 const PANEL_GAP = 12;
+/**
+ * 面板顶边：让开画布左上角的标题区（12 留白 + 28 高的控件 + 8 间隔）。
+ * 贴着 PANEL_GAP 放的话，设计切换和色卡按钮会被这块面板压在下面点不到。
+ */
+const PANEL_TOP = 48;
 /** 面板高度上限：内容撑多高就多高，最多吃掉画布的这个比例。 */
 const PANEL_MAX_HEIGHT = "80%";
 /** 面板打开时从画布左侧占走的总宽度；「定位到备注」按剩下的区域居中。 */
@@ -21,6 +26,8 @@ interface NotesDrawerProps {
 	cwd: string | null;
 	/** 点条目：视口居中到气泡并打开 thread（重开也走这条路——在 thread 里补一句）。 */
 	onLocate(noteId: string): void;
+	/** 查看模式的横幅压在画布顶部，面板要跟着往下让（同右上角按钮组）。 */
+	offsetTop: number;
 	onClose(): void;
 }
 
@@ -28,7 +35,7 @@ interface NotesDrawerProps {
  * 左侧备注抽屉：待处理/已处理两段、让 Vetta 处理（全部/单条）、清空已处理。
  * 宽度限死不推挤画布（画布本来就吃宽度），关掉即恢复。
  */
-export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDrawerProps) {
+export function NotesDrawer({ store, session, cwd, onLocate, offsetTop, onClose }: NotesDrawerProps) {
 	const { t } = useTranslation();
 	const handoff = useNotesHandoff(cwd);
 	const [, setVersion] = useState(0);
@@ -89,7 +96,7 @@ export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDra
 		// 高度跟着内容走，只在超过画布 80% 时才封顶——两条备注不该占满整条边。
 		<div
 			className="vetd-note vetd-note-drawer-enter vetd-note-surface pointer-events-auto absolute z-40 flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-popover/95 shadow-2xl ring-1 ring-black/5 backdrop-blur-xl"
-			style={{ top: PANEL_GAP, left: PANEL_GAP, width: PANEL_WIDTH, maxHeight: PANEL_MAX_HEIGHT }}
+			style={{ top: PANEL_TOP + offsetTop, left: PANEL_GAP, width: PANEL_WIDTH, maxHeight: PANEL_MAX_HEIGHT }}
 		>
 			<header className="flex shrink-0 items-center gap-2 border-b border-border/60 px-3 py-2.5">
 				<span className="text-xs font-semibold text-foreground">{t("notes.drawer.title")}</span>

@@ -1527,6 +1527,7 @@ export function DesignCanvas({
 					session={session}
 					cwd={cwd}
 					onLocate={focusNote}
+					offsetTop={peek ? PEEK_BANNER_HEIGHT : 0}
 					onClose={() => setTool("select")}
 				/>
 			) : null}
