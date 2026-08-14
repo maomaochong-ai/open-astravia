@@ -1532,6 +1532,15 @@ export function DesignCanvas({
 				/>
 			) : null}
 
+			{/* 顶部沉浸层：画布内容(底) → 这层渐隐(中) → 标题区/按钮组(顶, z-40)。
+			    实心底色压住从上方滚进来的画框，按钮组落在纯色上才读得清；60px 之后
+			    完全透明，不影响看稿。pointer-events-none：它只是一层画面。 */}
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-x-0 z-30 h-[60px] bg-gradient-to-b from-background to-transparent"
+				style={{ top: peek ? PEEK_BANNER_HEIGHT : 0 }}
+			/>
+
 			{/* 左上角标题区。与右上角按钮组同一套定位规则（含查看模式让位）；
 			    指针事件必须截断，否则画布根会捕获指针，里面点不动。 */}
 			{/* biome-ignore lint/a11y/noStaticElementInteractions: pointer-capture shield for canvas chrome */}
