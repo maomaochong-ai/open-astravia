@@ -12,6 +12,15 @@
 import { getPluginCtx } from "../plugin-context";
 import { LAYOUT_PROBE_SCRIPT } from "../vetd/layout-probe";
 
+/**
+ * 画布位图队列可以并行占用的离屏会话数。
+ *
+ * 宿主对同一插件最多 4 个会话（offscreen-capture-service 的 MAX_SESSIONS_PER_PLUGIN），
+ * 这里占 3，剩下的一个留给交付物截图（不带 slot 的调用，见下）——否则用户正在截图/
+ * 导出时会撞上「Too many capture sessions」。
+ */
+export const OFFSCREEN_RASTER_SLOTS = 3;
+
 export interface OffscreenRasterRequest {
 	port: number;
 	frameId: string;
@@ -19,6 +28,12 @@ export interface OffscreenRasterRequest {
 	height: number;
 	/** jpeg 质量，0–1。 */
 	quality: number;
+	/**
+	 * 位图队列的槽位（0 起，上限 OFFSCREEN_RASTER_SLOTS）。同一 slot 的请求在宿主侧
+	 * 串行复用同一个隐藏窗口，不同 slot 之间才是真并行。
+	 * 省略表示交付物那条路：独占一个会话，不和后台队列抢窗口。
+	 */
+	slot?: number;
 	/** 出图的同时量一次布局（见 vetd/layout-probe）。画布自己的刷新不需要。 */
 	probeLayout?: boolean;
 }
@@ -37,8 +52,8 @@ export function offscreenRasterSupported(): boolean {
 	}
 }
 
-function sessionKeyOf(port: number): string {
-	return `design-raster:${port}`;
+function sessionKeyOf(port: number, slot: number | null): string {
+	return slot === null ? `design-raster:${port}:delivery` : `design-raster:${port}:${slot}`;
 }
 
 export async function captureFrameOffscreen(request: OffscreenRasterRequest): Promise<OffscreenRasterResult> {
@@ -51,7 +66,7 @@ export async function captureFrameOffscreen(request: OffscreenRasterRequest): Pr
 		url: `http://127.0.0.1:${request.port}/`,
 		width: request.width,
 		height: request.height,
-		sessionKey: sessionKeyOf(request.port),
+		sessionKey: sessionKeyOf(request.port, request.slot ?? null),
 		prepareScript: `window.postMessage({ vetd: true, type: "show-frame", id: ${frameId} }, "*")`,
 		// __vetdPainted 由引擎在「chunk 到齐 + 字体就绪 + 绘制过一帧」后写入
 		// （见 engine/src/main.tsx 的 FramePainted）；图片解码另等 complete。
@@ -65,10 +80,18 @@ export async function captureFrameOffscreen(request: OffscreenRasterRequest): Pr
 	return { dataUrl: result.dataUrl, probe: result.probe };
 }
 
-/** 释放引擎对应的离屏窗口（切设计文档 / 强制刷新时；下次截图会重新加载页面）。 */
+/**
+ * 释放引擎对应的全部离屏窗口（切设计文档 / 强制刷新时；下次截图会重新加载页面）。
+ * 池里每个槽位都是独立会话，漏掉任何一个都会让那一格继续拿旧页面出图。
+ */
 export function releaseOffscreenRasterSession(port: number): void {
 	try {
-		void getPluginCtx().capture?.releaseOffscreen(sessionKeyOf(port));
+		const capture = getPluginCtx().capture;
+		if (!capture) return;
+		for (let slot = 0; slot < OFFSCREEN_RASTER_SLOTS; slot += 1) {
+			void capture.releaseOffscreen(sessionKeyOf(port, slot));
+		}
+		void capture.releaseOffscreen(sessionKeyOf(port, null));
 	} catch {
 		// ctx 未就绪或宿主不支持：无窗口可释放。
 	}

@@ -213,3 +213,39 @@ it("没有 invalidate 时只截一次，位图落地后 frame 退出活体", asy
 	await advance(SETTLE * 4);
 	expect(captures.length).toBe(1);
 });
+
+/**
+ * 冷启动时二十帧的设计稿如果一张接一张地截，排在后面的十几帧全程只有启动占位——
+ * 「每个 frame 都载入得很慢」就是这么来的。离屏窗口不占画布主线程，队列按槽位并发。
+ */
+it("离屏模式下并发截图，不同帧落在不同的离屏会话上", async () => {
+	const pending: { sessionKey: string; resolve: (value: { dataUrl: string; scaleFactor: number }) => void }[] = [];
+	setPluginCtx({
+		capture: {
+			offscreen: (options: { sessionKey?: string }) =>
+				new Promise<{ dataUrl: string; scaleFactor: number }>((resolve) => {
+					pending.push({ sessionKey: options.sessionKey ?? "", resolve });
+				}),
+			releaseOffscreen: () => Promise.resolve(),
+		},
+	} as unknown as PluginContext);
+	try {
+		await mount(["a", "b", "c", "d"], { port: 5173, sizeOf: () => ({ width: 390, height: 844 }) });
+		await advance(50);
+		await flushMicrotasks();
+
+		// 三张同时在跑，第四张等空位——上限来自宿主的每插件会话数（留一个给交付物截图）。
+		expect(pending.length).toBe(3);
+		expect(new Set(pending.map((call) => call.sessionKey)).size).toBe(3);
+
+		pending[0].resolve({ dataUrl: "data:a", scaleFactor: 2 });
+		await flushMicrotasks();
+		await advance(50);
+		await flushMicrotasks();
+		expect(pending.length).toBe(4);
+		// 空出来的槽位被复用，不会无限开窗口。
+		expect(pending[3].sessionKey).toBe(pending[0].sessionKey);
+	} finally {
+		setPluginCtx(null as unknown as PluginContext);
+	}
+});
