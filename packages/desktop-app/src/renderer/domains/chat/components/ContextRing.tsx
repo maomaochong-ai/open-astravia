@@ -50,7 +50,6 @@ export function ContextRing({ className }: { className?: string } = {}): JSX.Ele
 								{t("contextRing.details.tokens")}: {model.details.tokens}
 							</span>
 						</div>
-						<div className="mt-1 text-[10px] text-muted-foreground/70">{model.details.coverage}</div>
 					</div>
 					<div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 border-b border-border/40 px-3.5 py-1.5 text-[10px] text-muted-foreground">
 						<span>{t("contextRing.details.category")}</span>

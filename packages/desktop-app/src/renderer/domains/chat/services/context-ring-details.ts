@@ -36,7 +36,6 @@ export interface ContextRingDetailsModel {
 
 export interface ContextRingDetailLabels {
 	readonly unknown: string;
-	readonly coverage: Record<ContextCompositionReport["estimate"]["coverage"], string>;
 	readonly owner: Record<ContextSourceOwner, string>;
 	readonly kind: Record<ContextSectionKind, string>;
 	readonly group: Record<ContextRingDetailGroupKind, string>;

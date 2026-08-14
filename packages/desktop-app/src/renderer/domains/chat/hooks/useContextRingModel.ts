@@ -25,11 +25,6 @@ export function useContextRingModel(includeDetails = true): ContextRingModel | n
 			includeDetails
 				? ({
 						unknown: t("contextRing.details.unknown"),
-						coverage: {
-							complete: t("contextRing.details.coverage.complete"),
-							partial: t("contextRing.details.coverage.partial"),
-							none: t("contextRing.details.coverage.none"),
-						},
 						owner: {
 							core: t("contextRing.details.owner.core"),
 							skill: t("contextRing.details.owner.skill"),

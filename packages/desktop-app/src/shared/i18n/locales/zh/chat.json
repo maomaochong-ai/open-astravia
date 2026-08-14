@@ -276,11 +276,6 @@
 			"unavailableAfterRestart": "此会话没有可恢复的历史构成明细。发送下一条消息后，应用会生成并保存新的明细。",
 			"items": "{{count}} 项",
 			"unknownItems": "{{count}} 项未知",
-			"coverage": {
-				"complete": "估算覆盖完整",
-				"partial": "部分区块无法估算",
-				"none": "无可用估算"
-			},
 			"owner": {
 				"core": "系统",
 				"skill": "Skill",

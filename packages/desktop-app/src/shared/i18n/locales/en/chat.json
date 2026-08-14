@@ -276,11 +276,6 @@
 			"unavailableAfterRestart": "No restorable composition details are available for this session. Send another message to generate and save a new report.",
 			"items": "{{count}} items",
 			"unknownItems": "{{count}} unknown",
-			"coverage": {
-				"complete": "Estimate coverage is complete",
-				"partial": "Some sections could not be estimated",
-				"none": "No estimate is available"
-			},
 			"owner": {
 				"core": "System",
 				"skill": "Skill",

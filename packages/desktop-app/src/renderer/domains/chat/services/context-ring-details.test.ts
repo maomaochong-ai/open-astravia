@@ -47,6 +47,8 @@ describe("context ring details", () => {
 	it("keeps known token totals visible when estimate coverage is partial", () => {
 		const partial: ContextCompositionReport = {
 			...report(),
+			// 该用例覆盖没有 Provider 上报时的估算回退路径。
+			providerReportedInputTokens: null,
 			estimate: { tokens: null, knownTokens: 80, coverage: "partial" },
 			sections: report().sections.map((section) =>
 				section.id === "tool:read" ? { ...section, estimatedTokens: null, estimateMethod: "unknown" } : section,
@@ -79,7 +81,6 @@ describe("context ring details", () => {
 
 const labels = {
 	unknown: "unknown",
-	coverage: { complete: "coverage:complete", partial: "coverage:partial", none: "coverage:none" },
 	owner: {
 		core: "owner:core",
 		skill: "owner:skill",
