@@ -1,5 +1,5 @@
 import { type CSSProperties, type JSX, useEffect, useState } from "react";
-import { BotFace, FluidBackdrop, INVERSE_SCALE, PALETTES } from "./activity-visuals";
+import { BotFace, FluidBackdrop, overlayScale, PALETTES } from "./activity-visuals";
 import type { FrameActivity } from "./design-runtime";
 
 /**
@@ -29,7 +29,14 @@ const OVERLAY_MAX_MS = 120_000;
 /** 渐入渐出时长，与 style.css 的 .vetd-activity-overlay transition 保持一致。 */
 const FADE_MS = 300;
 
-export function FrameActivityOverlay({ activity }: { activity: FrameActivity | undefined }): JSX.Element | null {
+export function FrameActivityOverlay({
+	activity,
+	frameWidth,
+}: {
+	activity: FrameActivity | undefined;
+	/** 钳住浮层里居中件的反向缩放，见 overlayScale。 */
+	frameWidth: number;
+}): JSX.Element | null {
 	const [expired, setExpired] = useState(false);
 	useEffect(() => {
 		setExpired(false);
@@ -59,6 +66,7 @@ export function FrameActivityOverlay({ activity }: { activity: FrameActivity | u
 	}, [show, activity]);
 
 	if (kind === null) return null;
+	const scale = overlayScale(frameWidth);
 	return (
 		<div
 			aria-hidden
@@ -73,13 +81,13 @@ export function FrameActivityOverlay({ activity }: { activity: FrameActivity | u
 					<div className="vetd-scan-beam" />
 					<div
 						className="absolute left-2 top-2"
-						style={{ transform: `scale(${INVERSE_SCALE})`, transformOrigin: "left top" }}
+						style={{ transform: `scale(${scale})`, transformOrigin: "left top" }}
 					>
 						<BotFace mood="think" />
 					</div>
 					<div
 						className="absolute left-1/2 top-1/2"
-						style={{ transform: `translate(-50%, -50%) scale(${INVERSE_SCALE})` }}
+						style={{ transform: `translate(-50%, -50%) scale(${scale})` }}
 					>
 						<div className="vetd-magnifier">
 							<span className="vetd-magnifier-glass" />
@@ -91,7 +99,7 @@ export function FrameActivityOverlay({ activity }: { activity: FrameActivity | u
 			{kind === "modifying" ? (
 				<div
 					className="absolute left-1/2 top-1/2"
-					style={{ transform: `translate(-50%, -50%) scale(${INVERSE_SCALE})` }}
+					style={{ transform: `translate(-50%, -50%) scale(${scale})` }}
 				>
 					<div className="vetd-activity-chip">
 						<BotFace mood="write" />
@@ -111,7 +119,7 @@ export function FrameActivityOverlay({ activity }: { activity: FrameActivity | u
 					<span className="vetd-spark" style={{ left: "24%", top: "68%", animationDelay: "1.4s" }} />
 					<div
 						className="absolute left-1/2 top-1/2"
-						style={{ transform: `translate(-50%, -50%) scale(${INVERSE_SCALE})` }}
+						style={{ transform: `translate(-50%, -50%) scale(${scale})` }}
 					>
 						<div className="vetd-activity-chip">
 							<BotFace mood="bounce" />

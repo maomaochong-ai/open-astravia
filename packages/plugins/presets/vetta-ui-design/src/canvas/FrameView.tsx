@@ -361,7 +361,7 @@ export const FrameView = memo(function FrameView({
 			</div>
 
 			<div
-				className={`relative h-full w-full overflow-hidden rounded-sm bg-white shadow-md ring-offset-0 ${
+				className={`relative h-full w-full overflow-hidden rounded-sm bg-white ring-offset-0 ${
 					selected ? "ring-2 ring-[var(--vetd-selected)]" : ""
 				} ${activity === "modifying" ? "vetd-modifying" : ""}`}
 			>
@@ -410,7 +410,7 @@ export const FrameView = memo(function FrameView({
 						onLoad={() => setPaintedRaster(raster)}
 					/>
 				) : null}
-				{!raster && !loaded && !buildError ? <FrameLoadingOverlay /> : null}
+				{!raster && !loaded && !buildError ? <FrameLoadingOverlay frameWidth={rect.width} /> : null}
 				{/* 遮罩：还没单独选中它时，画面区的点击只作用在 frame 这一层（选中/拖动）。
 				    单独选中之后遮罩让位给 iframe，里面的元素直接可选。
 				    注意是把指针事件关掉而不是把元素卸掉：起手拖动会顺带选中这个 frame，
@@ -437,7 +437,7 @@ export const FrameView = memo(function FrameView({
 				{/* 活动态浮层放最后：DOM 顺序就是叠放顺序，放前面会被位图/遮罩盖住。
 				    自身 pointer-events-none，压在遮罩上也不影响选中/拖拽。
 				    无条件渲染：渐出发生在 activity 清空之后，组件得留着把过渡走完。 */}
-				<FrameActivityOverlay activity={activity} />
+				<FrameActivityOverlay activity={activity} frameWidth={rect.width} />
 			</div>
 
 			{/* 尺寸标签（Figma 行为）：只在选中时出现在 frame 正下方，平时不占视觉噪音。

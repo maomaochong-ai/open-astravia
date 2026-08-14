@@ -79,3 +79,20 @@ export function FluidBackdrop({ kind }: { kind: ActivityVisualKind }): JSX.Eleme
 
 /** 标题栏同款反向缩放：浮层元素要在任何画布缩放下保持可读大小。 */
 export const INVERSE_SCALE = "var(--vetd-lscale, 1)";
+
+/**
+ * 居中件（胶囊 / 放大镜）在这个宽度上正好占满 frame。反向缩放的上限由它换算出来：
+ * 胶囊本身约 90px 宽，除以它得到「最多占 frame 宽度的 40%」。
+ */
+const OVERLAY_FIT_WIDTH = 220;
+
+/**
+ * 浮层居中件的缩放：反向缩放（屏幕上恒定大小）与「不超过 frame 的一小块」取小。
+ *
+ * 只用反向缩放会在画布缩小时炸掉——lscale 到 5、8 的时候，胶囊在世界坐标里比整个
+ * frame 还宽，一屏几十个 frame 上全是同样大的小人，比稿子本身还抢眼。钳住之后它
+ * 跟着 frame 一起缩，缩到看不清时本来也不需要看清（流体背景仍在报状态）。
+ */
+export function overlayScale(frameWidth: number): string {
+	return `min(${INVERSE_SCALE}, ${(Math.max(frameWidth, 1) / OVERLAY_FIT_WIDTH).toFixed(3)})`;
+}

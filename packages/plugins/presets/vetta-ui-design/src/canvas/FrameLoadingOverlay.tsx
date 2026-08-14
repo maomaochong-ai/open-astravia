@@ -1,5 +1,5 @@
 import { type CSSProperties, type JSX } from "react";
-import { BotFace, FluidBackdrop, INVERSE_SCALE, PALETTES } from "./activity-visuals";
+import { BotFace, FluidBackdrop, overlayScale, PALETTES } from "./activity-visuals";
 
 /**
  * frame 启动占位：还没有任何位图、活体也没画出来之前盖在容器上的那一层。
@@ -9,7 +9,7 @@ import { BotFace, FluidBackdrop, INVERSE_SCALE, PALETTES } from "./activity-visu
  * 头像用 think：此刻是「在等它起来」，不是 agent 在改稿；配色也取最安静的蓝灰
  * （见 PALETTES.loading），免得被误读成 agent 正在干活。
  */
-export function FrameLoadingOverlay(): JSX.Element {
+export function FrameLoadingOverlay({ frameWidth }: { frameWidth: number }): JSX.Element {
 	return (
 		<div
 			aria-hidden
@@ -18,7 +18,7 @@ export function FrameLoadingOverlay(): JSX.Element {
 			style={{ "--vetd-accent": PALETTES.loading.accent } as CSSProperties}
 		>
 			<FluidBackdrop kind="loading" />
-			<div className="absolute left-1/2 top-1/2" style={{ transform: `translate(-50%, -50%) scale(${INVERSE_SCALE})` }}>
+			<div className="absolute left-1/2 top-1/2" style={{ transform: `translate(-50%, -50%) scale(${overlayScale(frameWidth)})` }}>
 				<div className="vetd-activity-chip">
 					<BotFace mood="think" />
 					<span className="vetd-loading-dots">

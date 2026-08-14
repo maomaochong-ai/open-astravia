@@ -30,7 +30,7 @@
 	/* 选中态固定用 Figma 蓝，刻意不跟随宿主主题色：主题色可能与设计稿本身的配色
 	   撞车，而「哪个 frame 被选中」必须在任何主题、任何设计稿上都一眼可辨。 */
 	--vetd-selected: #0d99ff;
-	--vetd-grid-line: color-mix(in oklab, var(--foreground, #000) 6%, transparent);
+	--vetd-grid-line: color-mix(in oklab, var(--foreground, #000) 3%, transparent);
 	background-color: var(--background, light-dark(#f5f5f5, #1e1e1e));
 	background-image:
 		linear-gradient(to right, var(--vetd-grid-line) 1px, transparent 1px),
