@@ -74,7 +74,7 @@ export function useTaskFormModel({ open, task, initialDraft, onClose }: UseTaskF
 					prompt: data.prompt,
 					cron: data.cron,
 					isOnce: data.isOnce ?? false,
-					enabled: true,
+					enabled: data.enabled ?? true,
 					cwd: data.cwd,
 					executionMode: (data.executionMode ?? "full-access") as ExecutionModeOverride,
 					modelKey: data.modelKey ?? undefined,

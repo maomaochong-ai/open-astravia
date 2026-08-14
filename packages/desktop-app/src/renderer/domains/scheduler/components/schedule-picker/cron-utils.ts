@@ -115,65 +115,70 @@ export function parseCronExpression(cron: string, isOnce: boolean): Schedule | n
 	if (!cron || typeof cron !== "string") return null;
 
 	const parts = cron.trim().split(/\s+/);
-	if (parts.length < 5) return null;
+	if (parts.length !== 5) return null;
 
 	const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
 
 	// Determine mode
 	if (isOnce || (dayOfMonth !== "*" && month !== "*")) {
 		// one-time: specific day and month
-		const m = parseInt(month, 10);
-		const d = parseInt(dayOfMonth, 10);
-		if (Number.isNaN(m) || Number.isNaN(d)) return null;
+		const m = parseNumberInRange(month, 1, 12);
+		const d = parseNumberInRange(dayOfMonth, 1, 31);
+		const parsedHour = parseNumberInRange(hour, 0, 23);
+		const parsedMinute = parseNumberInRange(minute, 0, 59);
+		if (m === null || d === null || parsedHour === null || parsedMinute === null) return null;
 		return {
 			mode: "once",
 			year: new Date().getFullYear(),
 			month: m,
 			day: d,
-			hour: parseInt(hour, 10) || 0,
-			minute: parseInt(minute, 10) || 0,
+			hour: parsedHour,
+			minute: parsedMinute,
 		};
 	}
 
 	if (hour.startsWith("*/")) {
 		// interval: */N hour
-		const intervalHours = parseInt(hour.slice(2), 10);
-		if (Number.isNaN(intervalHours) || intervalHours < 1) return null;
+		const intervalHours = parseNumberInRange(hour.slice(2), 1, Number.MAX_SAFE_INTEGER);
+		if (intervalHours === null || minute !== "0" || dayOfMonth !== "*" || month !== "*" || dayOfWeek !== "*") {
+			return null;
+		}
 		return { mode: "interval", intervalHours };
 	}
 
-	if (minute === "*/") {
-		// interval: */N minute
-		const intervalMinutes = parseInt(minute.slice(2), 10);
-		if (Number.isNaN(intervalMinutes) || intervalMinutes < 1) return null;
-		// Convert to hours (rounded up)
-		const intervalHours = Math.ceil(60 / intervalMinutes);
-		return { mode: "interval", intervalHours };
-	}
+	const parsedHour = parseNumberInRange(hour, 0, 23);
+	const parsedMinute = parseNumberInRange(minute, 0, 59);
+	if (parsedHour === null || parsedMinute === null || dayOfMonth !== "*" || month !== "*") return null;
 
 	if (dayOfWeek !== "*" && dayOfWeek !== "?") {
 		// weekly: specific weekday(s)
 		const weekdays = new Set<number>();
 		for (const part of dayOfWeek.split(",")) {
-			const n = parseInt(part.trim(), 10);
-			if (Number.isNaN(n) || n < 0 || n > 6) return null;
+			const n = parseNumberInRange(part.trim(), 0, 6);
+			if (n === null) return null;
 			weekdays.add(n);
 		}
 		if (weekdays.size === 0) return null;
 		return {
 			mode: "weekly",
 			weekdays,
-			hour: parseInt(hour, 10) || 0,
-			minute: parseInt(minute, 10) || 0,
+			hour: parsedHour,
+			minute: parsedMinute,
 		};
 	}
 
 	// daily: every day at specific time
 	return {
 		mode: "daily",
-		hour: parseInt(hour, 10) || 0,
-		minute: parseInt(minute, 10) || 0,
+		hour: parsedHour,
+		minute: parsedMinute,
 	};
+}
+
+function parseNumberInRange(value: string, min: number, max: number): number | null {
+	if (!/^\d+$/.test(value)) return null;
+	const parsed = Number(value);
+	return parsed >= min && parsed <= max ? parsed : null;
 }
 
 /** Get default schedule values for each mode */

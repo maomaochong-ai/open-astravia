@@ -115,6 +115,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **自动化任务编辑与并发刷新更可靠**：编辑已暂停任务时不再被保存动作意外重新启用；更新或删除任务的 IPC 在途期间即使任务列表收到新增项，完成后的本地状态也基于最新列表合并，不再让新任务从界面消失。Cron 解析同时拒绝越界或无法由表单准确表示的表达式，避免打开任务后静默改成另一种执行时间。
+
 - **Desktop 打包无限递归**：生产 profile 脚本曾新增 `build:pack`，同时打包准备入口仍名为
   `prebuild:pack`；Bun 会把后者当作前者的生命周期钩子自动执行，而该钩子又调用
   `build:pack`，导致 Windows workspace 前置构建完成后整条打包链不断重启。准备入口现改为
