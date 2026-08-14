@@ -62,6 +62,36 @@ describe("content workflow analysis", () => {
 		expect(analysis.issues.map((issue) => issue.code)).toContain("orphan-node");
 	});
 
+	it("flags an automatic Prompt node that does not actually provide reuse", () => {
+		const singleConsumer = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "node.add",
+				node: {
+					id: "shared",
+					kind: "prompt",
+					position: { x: 0, y: 0 },
+					layoutOwnership: "automatic",
+					data: { prompt: "Brand identity" },
+				},
+			},
+			{ type: "node.add", node: { id: "image-a", kind: "image-generator", position: { x: 400, y: 0 } } },
+			{ type: "edge.connect", source: "shared", target: "image-a", targetHandle: "prompt" },
+		]);
+		expect(analyzeContentWorkflow(singleConsumer, [IMAGE_MODEL]).issues).toContainEqual(expect.objectContaining({
+			code: "agent-prompt-node-not-reused",
+			severity: "warning",
+			nodeId: "shared",
+		}));
+
+		const reused = applyContentProjectCommands(singleConsumer, [
+			{ type: "node.add", node: { id: "image-b", kind: "image-generator", position: { x: 400, y: 300 } } },
+			{ type: "edge.connect", source: "shared", target: "image-b", targetHandle: "prompt" },
+		]);
+		expect(analyzeContentWorkflow(reused, [IMAGE_MODEL]).issues.map(({ code }) => code)).not.toContain(
+			"agent-prompt-node-not-reused",
+		);
+	});
+
 	it("reports an asset edge without selected bindings", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{ type: "node.add", node: { id: "assets", kind: "asset", position: { x: 0, y: 0 } } },

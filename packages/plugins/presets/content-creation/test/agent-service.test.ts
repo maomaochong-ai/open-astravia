@@ -43,7 +43,13 @@ const TEST_MODELS: readonly ContentModelDescriptor[] = [
 		displayName: "Image",
 		outputKind: "image",
 		aspectRatios: ["1:1"],
-		modes: [{ id: "text-to-image", inputs: [] }],
+		modes: [
+			{ id: "text-to-image", inputs: [] },
+			{
+				id: "image-to-image",
+				inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 1 }],
+			},
+		],
 	},
 	{
 		providerId: "test",
@@ -150,9 +156,14 @@ describe("ContentCreationAgentService", () => {
 		]);
 
 		expect(project.graph.edges).toEqual(expect.arrayContaining([
+			expect.objectContaining({ source: "first", target: "last", role: "referenceImages" }),
 			expect.objectContaining({ source: "first", target: "video", role: "firstFrame" }),
 			expect.objectContaining({ source: "last", target: "video", role: "lastFrame" }),
 		]));
+		expect(project.graph.nodes.find((node) => node.id === "first")?.data.modeId).toBeUndefined();
+		expect(project.graph.nodes.find((node) => node.id === "last")?.data.modeId).toBe("image-to-image");
+		const run = await agent.prepareRun("C:/project", ["video"], project.revision);
+		expect(run.nodeIds).toEqual(["first", "last", "video"]);
 		expect((await agent.inspect("C:/project")).videoPlans).toContainEqual(expect.objectContaining({
 			nodeId: "video",
 			strategy: "first-last-frame",

@@ -118,9 +118,14 @@ export function parseConfigureVideoShotOperation(
 		frameCommands.push(
 			keyframeUpdateCommand(keyframes.first, aspectRatio),
 			keyframeUpdateCommand(keyframes.last, aspectRatio),
+			{
+				type: "node.configure-generated-image-reference",
+				targetNodeId: keyframes.last.nodeId,
+				referenceSourceNodeId: keyframes.first.nodeId,
+			},
 		);
 		updateKeyframeSnapshot(nodeSnapshots, keyframes.first, aspectRatio);
-		updateKeyframeSnapshot(nodeSnapshots, keyframes.last, aspectRatio);
+		updateKeyframeSnapshot(nodeSnapshots, keyframes.last, aspectRatio, "image-to-image");
 		generationSources = [
 			{ sourceNodeId: keyframes.first.nodeId, role: "firstFrame" },
 			{ sourceNodeId: keyframes.last.nodeId, role: "lastFrame" },
@@ -227,6 +232,7 @@ export function parseConfigureVideoShotOperation(
 		models,
 		{ providerId, modelId },
 	);
+	if (strategy === "first-last-frame") assertFirstLastFrameGenerationPlan(generationPlan, models);
 	const selectedModel = models.find(
 		(model) => model.providerId === generationPlan.providerId && model.modelId === generationPlan.modelId,
 	);
@@ -439,6 +445,7 @@ function updateKeyframeSnapshot(
 	nodes: Map<string, ContentNode>,
 	keyframe: ParsedVideoShotKeyframe,
 	aspectRatio?: string,
+	modeId?: "text-to-image" | "image-to-image",
 ): void {
 	const node = nodes.get(keyframe.nodeId);
 	if (!node) return;
@@ -446,8 +453,41 @@ function updateKeyframeSnapshot(
 		...node.data,
 		prompt: compileKeyframePromptPlan(keyframe.plan),
 		promptOptimization: undefined,
+		...(modeId ? { providerId: undefined, modelId: undefined, modeId } : {}),
 		...(aspectRatio ? { aspectRatio } : {}),
 	};
+}
+
+function assertFirstLastFrameGenerationPlan(
+	plan: ReturnType<typeof planContentVideoGeneration>,
+	models: readonly ContentModelDescriptor[],
+): void {
+	const bindingRoles = new Set(plan.bindings.map(({ slotId }) => slotId));
+	const model = models.find(
+		(candidate) => candidate.providerId === plan.providerId && candidate.modelId === plan.modelId,
+	);
+	const mode = model?.modes.find((candidate) => candidate.id === plan.modeId);
+	const declaredSlots = new Set(mode?.inputs.map(({ id }) => id) ?? []);
+	if (
+		plan.intent === "interpolate-frames" &&
+		bindingRoles.size === 2 &&
+		bindingRoles.has("firstFrame") &&
+		bindingRoles.has("lastFrame") &&
+		declaredSlots.has("firstFrame") &&
+		declaredSlots.has("lastFrame")
+	) {
+		return;
+	}
+	throw new ContentVideoShotPlanError(
+		"first-last-frame must use one interpolation mode with distinct firstFrame and lastFrame inputs",
+		"video-shot-first-last-mode-required",
+		{
+			intent: plan.intent,
+			modeId: plan.modeId,
+			bindingRoles: [...bindingRoles],
+			declaredSlots: [...declaredSlots],
+		},
+	);
 }
 
 function orderVideoShotReferencesForExecution(

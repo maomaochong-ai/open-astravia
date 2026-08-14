@@ -234,6 +234,8 @@ const RUN_BLOCKING_DIAGNOSTIC_CODES = new Set([
 	"selected-model-unavailable",
 	"generation-source-role-missing",
 	"generation-inputs-incompatible",
+	"video-keyframe-derivation-missing",
+	"video-keyframe-modes-invalid",
 ]);
 
 function topologicalNodeOrder(project: ContentProjectDocument, nodeIds: readonly string[]): string[] {

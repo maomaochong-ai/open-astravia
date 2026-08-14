@@ -145,6 +145,8 @@ export function createContentAgentOperationSchema(
 			},
 			keyframes: {
 				type: "object",
+				description:
+					"Endpoint plans for first-last-frame only. The host preserves the first generator's own valid source authorities, edits its generated image into last as image-to-image, and binds both to a video interpolation mode. Do not connect these nodes manually or generate last independently.",
 				properties: { first: KEYFRAME_SCHEMA, last: KEYFRAME_SCHEMA },
 				additionalProperties: false,
 			},
@@ -170,7 +172,12 @@ export function createContentAgentOperationSchema(
 				},
 				operation("add_node", {
 					id: { type: "string", minLength: 1 },
-					kind: { type: "string", enum: nodeKinds },
+					kind: {
+						type: "string",
+						enum: nodeKinds,
+						description:
+							"Prompt is optional and only for one verbatim prompt fragment intentionally shared by at least two consumers. Put single-use prompts directly on image-generator or video-generator nodes.",
+					},
 					afterNodeId: { type: "string", minLength: 1 },
 					name: { type: "string" },
 					purpose: { type: "string" },

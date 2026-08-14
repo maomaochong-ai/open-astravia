@@ -241,9 +241,17 @@ describe("content agent operations", () => {
 
 	it("materializes distinct static keyframes and a continuous video prompt atomically", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "authority", kind: "image-generator", position: { x: -300, y: 0 } } },
 			{ type: "node.add", node: { id: "first", kind: "image-generator", position: { x: 0, y: 0 } } },
 			{ type: "node.add", node: { id: "last", kind: "image-generator", position: { x: 0, y: 300 } } },
 			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+			{
+				type: "edge.connect",
+				source: "authority",
+				target: "first",
+				targetHandle: "reference",
+				role: "referenceImages",
+			},
 		]);
 		const commands = parseContentAgentOperations(project, [{
 			type: "configure_video_shot",
@@ -265,13 +273,24 @@ describe("content agent operations", () => {
 		const videoPrompt = next.graph.nodes.find((node) => node.id === "video")?.data.prompt;
 		expect(firstPrompt).toContain("Keyframe phase: first frame.");
 		expect(lastPrompt).toContain("Keyframe phase: last frame.");
+		expect(lastPrompt).toContain("Edit the supplied first-frame image");
 		expect(firstPrompt).not.toBe(lastPrompt);
 		expect(videoPrompt).toContain("Primary action:");
 		expect(videoPrompt).not.toContain("Keyframe phase:");
 		expect(next.graph.edges).toEqual(expect.arrayContaining([
+			expect.objectContaining({ source: "authority", target: "first", role: "referenceImages" }),
+			expect.objectContaining({
+				source: "first",
+				target: "last",
+				targetHandle: "reference",
+				role: "referenceImages",
+			}),
 			expect.objectContaining({ source: "first", target: "video", role: "firstFrame" }),
 			expect.objectContaining({ source: "last", target: "video", role: "lastFrame" }),
 		]));
+		expect(next.graph.nodes.find((node) => node.id === "first")?.data.modeId).toBeUndefined();
+		expect(next.graph.nodes.find((node) => node.id === "last")?.data.modeId).toBe("image-to-image");
+		expect(next.graph.nodes.find((node) => node.id === "video")?.data.modeId).toBe("image-to-video");
 	});
 
 	it("compiles an omni-reference manifest into stable media tokens", () => {

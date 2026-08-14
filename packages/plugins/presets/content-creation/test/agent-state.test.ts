@@ -167,13 +167,15 @@ describe("content creation agent state", () => {
 			sourceRoles: ["firstFrame", "lastFrame"],
 			method: {
 				promptPlanKind: "first-last-frame-plan",
-				description: expect.stringContaining("two authoritative static endpoints"),
+				description: expect.stringContaining("derive the closing still"),
 				inputContract: expect.stringContaining("keyframes.first"),
 			},
 		});
 		expect(state.diagnostics.map(({ code }) => code)).toEqual(expect.arrayContaining([
 			"video-keyframe-prompt-contract-missing",
 			"video-keyframe-prompts-reused",
+			"video-keyframe-derivation-missing",
+			"video-keyframe-modes-invalid",
 		]));
 	});
 

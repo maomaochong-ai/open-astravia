@@ -35,6 +35,41 @@ describe("ContentGenerationService", () => {
 		});
 	});
 
+	it("uses the generated first frame as the last frame image-to-image reference", async () => {
+		const fixture = await createFixture();
+		await fixture.workspace.dispatch("C:/project", [
+			{
+				type: "node.add",
+				node: {
+					id: "last",
+					kind: "image-generator",
+					position: { x: 400, y: 0 },
+					data: { prompt: "Derived final frozen state" },
+				},
+			},
+			{
+				type: "node.configure-generated-image-reference",
+				targetNodeId: "last",
+				referenceSourceNodeId: "image",
+			},
+		]);
+
+		const firstResult = await fixture.service.runNode("C:/project", "image");
+		const firstAssetId = firstResult.graph.nodes.find((node) => node.id === "image")?.data.assetId;
+		expect(firstAssetId).toBeTruthy();
+		await fixture.service.runNode("C:/project", "last");
+
+		expect(fixture.generate).toHaveBeenCalledTimes(2);
+		expect(fixture.generate.mock.calls[1]?.[0]).toEqual(expect.objectContaining({
+			modeId: "image-to-image",
+			prompt: "Derived final frozen state",
+			references: [expect.objectContaining({
+				kind: "image",
+				slotId: "referenceImages",
+			})],
+		}));
+	});
+
 	it("passes the edit source and spatial instructions to an image-to-image provider", async () => {
 		const fixture = await createFixture();
 		await fixture.workspace.dispatch("C:/project", [

@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Prompt 节点明确收敛为可选的多消费者复用原语：Agent 默认将单次使用的提示词保存在生成节点，并在自动 Prompt 只有一个消费者时通过 readiness 给出可修复诊断；操作 Schema、自动方法上下文与工作流 Skill 同步提供一致的选择规则。
 - 移除 `content_creation_assets` / `content_creation_edit` / `content_creation_run` 工具描述中的反向触发段（Do NOT / Only for）。误调防线回落到 heavy 首调确认闸（edit 会话内首调确认）与 run 自带的全局确认对话框。
 - `content_creation_edit` 在注册处显式声明 `side_effect: "heavy"`（往用户工作区写内容工程文件树），不再依赖宿主兜底清单；行为不变（首调确认此前已由清单兜住）。
 
@@ -23,6 +24,7 @@
 
 ### Fixed
 
+- 修复首尾帧被作为两次独立图片生成的问题：`configure_video_shot` 现在保留首帧自身已有的合法素材依据，原子建立 `首帧 -> 尾帧基于首帧图生图 -> 首尾帧插值视频` 依赖链，清理尾帧旧媒体引用，拒绝缺少双帧槽的模式，并在错误拓扑或模式下阻止运行准备。
 - 修复 `configure_video_shot.promptPlan` 顶层缺少 `type: "object"` 导致 OpenAI 兼容工具 Schema 清洗器误删视频计划联合分支的问题。
 - 创作画布框选改为拖动结束后一次性提交最终选区，拖动期间不再重建整张 React Flow 节点数据；节点内容面也会忽略纯选择/拖动态变化，降低大画布框选时的主线程和 GC 压力。
 - 创作画布现在通过宿主快捷键作用域支持 `Ctrl+A` / `Command+A` 全选全部节点；输入框仍保留原生文字全选，并同步 React Flow 与画布选择状态。

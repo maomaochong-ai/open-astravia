@@ -112,6 +112,12 @@ export function parseKeyframePromptPlan(value: unknown): ContentKeyframePromptPl
 export function compileKeyframePromptPlan(plan: ContentKeyframePromptPlan): string {
 	return [
 		`Keyframe phase: ${plan.phase} frame.`,
+		...(plan.phase === "last"
+			? [
+				"Generation method: Edit the supplied first-frame image into the final frozen state; use that image as the sole visual continuity authority.",
+				`Edit boundary: Preserve ${sentence(plan.protectedInvariants.join("; "))} Change only what is required to reach the final visible state.`,
+			]
+			: ["Generation method: Create the opening frozen state as a standalone still image."]),
 		`Scene function: ${sentence(plan.sceneFunction)}`,
 		`Reference role: ${sentence(plan.referenceRole)}`,
 		`Protected invariants: ${sentence(plan.protectedInvariants.join("; "))}`,

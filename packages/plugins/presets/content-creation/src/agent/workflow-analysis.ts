@@ -99,6 +99,20 @@ function diagnoseGraph(
 				message: "Generator output is neither connected nor declared as a deliverable.",
 			});
 		}
+		if (node.kind === "prompt" && node.layoutOwnership === "automatic") {
+			const consumers = project.graph.edges.filter(
+				(edge) => edge.source === node.id && edge.targetHandle === "prompt",
+			);
+			if (consumers.length === 1) {
+				issues.push({
+					code: "agent-prompt-node-not-reused",
+					severity: "warning",
+					nodeId: node.id,
+					message: "Prompt nodes are optional shared fragments; inline this single-use prompt on its generator unless central reuse is intentional.",
+					retryable: true,
+				});
+			}
+		}
 		if (isGeneratorNode(node) && models.some((model) => model.outputKind === (node.kind === "image-generator" ? "image" : "video"))) {
 			const resolution = resolveConfiguredContentGeneration(project, node, models);
 			if (!resolution.ok && resolution.reason === "source-role-missing") {

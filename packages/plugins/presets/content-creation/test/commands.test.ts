@@ -270,6 +270,46 @@ describe("applyContentProjectCommands", () => {
 		expect(cleared.graph.nodes.find((node) => node.id === "video")?.data.inputs).toHaveLength(1);
 	});
 
+	it("atomically replaces image references for dependent first/last-frame generation", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "shared-prompt", kind: "prompt", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "stale", kind: "image-generator", position: { x: 0, y: 200 } } },
+			{ type: "node.add", node: { id: "first", kind: "image-generator", position: { x: 300, y: 0 } } },
+			{ type: "node.add", node: { id: "last", kind: "image-generator", position: { x: 600, y: 0 } } },
+			{ type: "edge.connect", source: "shared-prompt", target: "first", targetHandle: "prompt" },
+			{
+				type: "edge.connect",
+				source: "stale",
+				target: "last",
+				targetHandle: "reference",
+				role: "referenceImages",
+			},
+		]);
+
+		const configured = applyContentProjectCommands(project, [
+			{
+				type: "node.configure-generated-image-reference",
+				targetNodeId: "last",
+				referenceSourceNodeId: "first",
+			},
+		]);
+
+		expect(configured.graph.edges).toEqual(expect.arrayContaining([
+			expect.objectContaining({ source: "shared-prompt", target: "first", targetHandle: "prompt" }),
+			expect.objectContaining({
+				source: "first",
+				target: "last",
+				targetHandle: "reference",
+				role: "referenceImages",
+			}),
+		]));
+		expect(configured.graph.edges.some((edge) => edge.source === "stale")).toBe(false);
+		expect(configured.graph.nodes.find((node) => node.id === "last")?.data).toMatchObject({
+			modeId: "image-to-image",
+			inputs: [],
+		});
+	});
+
 	it("duplicates a node with independent data and an offset position", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{

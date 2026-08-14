@@ -51,8 +51,8 @@ export const CONTENT_VIDEO_SHOT_METHODS: Readonly<
 		strategy: "first-last-frame",
 		promptPlanKind: "first-last-frame-plan",
 		generationIntent: "interpolate-frames",
-		description: "Design two authoritative static endpoints and direct one physically coherent transition between them.",
-		inputContract: "Distinct keyframes.first and keyframes.last plans with one shared aspect ratio.",
+		description: "Generate the opening still, derive the closing still by editing that opening image, then direct one physically coherent interpolation between both endpoints.",
+		inputContract: "Distinct keyframes.first and keyframes.last plans with one shared aspect ratio. The host preserves the first frame's own valid authorities, then enforces first -> last(image-to-image using first) -> video(image-to-video with firstFrame and lastFrame slots).",
 	},
 	"omni-reference": {
 		strategy: "omni-reference",
