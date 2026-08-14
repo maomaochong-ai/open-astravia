@@ -360,8 +360,12 @@ export const FrameView = memo(function FrameView({
 				) : null}
 			</div>
 
+			{/* 直角 + 不铺底色，这两条都是为了边缘干净：
+			    - 圆角会让 overflow 裁剪走带遮罩的合成路径，四边都糊出一圈半透明像素；
+			    - 底色（原来是白）在缩放到非整数像素时，会在抗锯齿的那一行里透出来，
+			      深色稿子上就是一圈亮边。空白期由启动占位/位图盖住，不需要这层底。 */}
 			<div
-				className={`relative h-full w-full overflow-hidden rounded-sm bg-white ring-offset-0 ${
+				className={`relative h-full w-full overflow-hidden ring-offset-0 ${
 					selected ? "ring-2 ring-[var(--vetd-selected)]" : ""
 				} ${activity === "modifying" ? "vetd-modifying" : ""}`}
 			>
