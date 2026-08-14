@@ -35,6 +35,7 @@
 
 ### Fixed
 
+- 供应商在未发出任何有效事件时结束流（`Stream ended without provider events`）现在被归类为可重试的瞬态协议故障；畸形事件、乱序状态和缺失终态等真实协议违规仍保持不可重试。
 - 明确的额度、余额和计费失败现在优先于 HTTP 401/429 状态分类，并统一映射为不可重试的 `AI_BILLING_REQUIRED`；中文“余额不足”与 Provider 结构化错误码使用同一规则。
 
 - `AssistantMessage(stopReason: "error")` 现在可以携带安全的 `AIErrorDetails`；统一的 `normalizeAssistantMessageError` 优先恢复结构化错误，只有旧 Provider 消息才使用兼容文本分类。

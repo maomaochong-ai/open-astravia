@@ -43,7 +43,11 @@ describe("Coding Agent Turn executor", () => {
 	it("uses structured retryability instead of parsing the error message", async () => {
 		const retryablePrompt = vi.fn(async () => ({
 			status: "failed",
-			error: { code: "AI_TRANSPORT_FAILED", message: "opaque provider failure", retryable: true },
+			error: {
+				code: "AI_STREAM_PROTOCOL_FAILED",
+				message: "Stream ended without provider events",
+				retryable: true,
+			},
 		}));
 		const retryableRetry = vi.fn(async () => ({ status: "completed" }));
 		const retryableExecutor = createExecutor({

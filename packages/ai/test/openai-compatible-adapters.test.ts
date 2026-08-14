@@ -216,6 +216,7 @@ describe("OpenAI-compatible native adapters", () => {
 		await expect(response.result).rejects.toMatchObject({
 			code: "AI_STREAM_PROTOCOL_FAILED",
 			message: "Stream ended without provider events",
+			retryable: true,
 		});
 	});
 

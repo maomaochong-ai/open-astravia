@@ -17,6 +17,7 @@
 
 ### Fixed
 
+- Provider 零事件断流现在会进入既有的指数退避自动重试（默认最多 3 次），不会在供应商短暂不稳定时立即中断整段会话；重试耗尽后仍按标准错误事件结束并保留诊断信息。
 - **Scene frontmatter hooks 未激活**：Scene 与 Skill 现在通过同一 Prompt Resource Hook contribution 合同，在资源展开后、`UserPromptSubmit` 前注册当前 Turn 的 hooks；保留原 `skillHookContribution` 字段兼容既有外部 resolver，并为场景脚本注入 `CLAUDE_PLUGIN_ROOT` / `CLAUDE_SKILL_DIR`。
 
 - **默认会话 Prompt Runtime 可正确展开场景**：Turn 组合现在把会话内部创建的资源源接入 Prompt Adapter；Desktop 未显式注入外部 resolver 时，`promptRef.scene` 也会读取 `SKILL.md`、注入场景正文并建立锁定待办，不再静默只保留不可见引用标记。

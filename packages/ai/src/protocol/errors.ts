@@ -100,8 +100,11 @@ export class AIError extends Error {
 }
 
 export class AIStreamProtocolError extends AIError {
-	constructor(message: string, options: Omit<AIErrorOptions, "retryable"> = {}) {
-		super(AI_ERROR_CODES.STREAM_PROTOCOL_FAILED, message, { ...options, retryable: false });
+	constructor(message: string, options: AIErrorOptions = {}) {
+		super(AI_ERROR_CODES.STREAM_PROTOCOL_FAILED, message, {
+			...options,
+			retryable: options.retryable ?? false,
+		});
 		this.name = "AIStreamProtocolError";
 	}
 }
