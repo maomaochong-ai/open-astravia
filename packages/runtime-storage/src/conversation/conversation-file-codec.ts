@@ -160,6 +160,16 @@ export function parseConversationFile(text: string, sessionId: string): ParsedCo
 				}
 				documentEntryIds.add(record.documentEntry.id);
 			}
+			// turn.failed 会被投影成 turn_failed 文档 entry 并推进 activeLeafId，
+			// 但它的 reference 从不落盘；id 由 sequence 推导，必须在此登记，
+			// 否则后续消息的 parentId 会被误判为未知父节点。
+			if (record.event.type === "turn.failed") {
+				const implicitId = nativeConversationEntryId(record.sequence);
+				if (documentEntryIds.has(implicitId)) {
+					throw corruptConversation(sessionId, `duplicate document entry at line ${index + 2}`);
+				}
+				documentEntryIds.add(implicitId);
+			}
 		}
 		eventRecords.push(record);
 		conversationRecords.push(record);
