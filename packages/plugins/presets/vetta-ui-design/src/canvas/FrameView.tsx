@@ -5,6 +5,7 @@ import type { VetdFrameEntry } from "../vetd/manifest-types";
 import type { BridgeHub } from "./bridge-client";
 import type { FrameActivity } from "./design-runtime";
 import { FrameActivityOverlay } from "./FrameActivityOverlay";
+import { FrameLoadingOverlay } from "./FrameLoadingOverlay";
 import { FrameTitleInput } from "./FrameTitleInput";
 
 type ResizeEdge = "nw" | "ne" | "sw" | "se" | "e" | "s";
@@ -409,11 +410,7 @@ export const FrameView = memo(function FrameView({
 						onLoad={() => setPaintedRaster(raster)}
 					/>
 				) : null}
-				{!raster && !loaded && !buildError ? (
-					<div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-muted">
-						<span className="size-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent" />
-					</div>
-				) : null}
+				{!raster && !loaded && !buildError ? <FrameLoadingOverlay /> : null}
 				{/* 遮罩：还没单独选中它时，画面区的点击只作用在 frame 这一层（选中/拖动）。
 				    单独选中之后遮罩让位给 iframe，里面的元素直接可选。
 				    注意是把指针事件关掉而不是把元素卸掉：起手拖动会顺带选中这个 frame，
