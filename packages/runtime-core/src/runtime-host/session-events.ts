@@ -98,7 +98,13 @@ export function mapRuntimeSessionObservationEvent(
 		case "mcp.reload.start":
 			return { ...base, type: event.type };
 		case "mcp.reload.end":
-			return { ...base, type: event.type, changed: event.changed, errorMessage: event.errorMessage };
+			return {
+				...base,
+				type: event.type,
+				changed: event.changed,
+				errorMessage: event.errorMessage,
+				...(event.failure ? { failure: event.failure } : {}),
+			};
 		case "usage.update":
 			return {
 				...base,
@@ -128,6 +134,7 @@ export function mapRuntimeSessionObservationEvent(
 				maxAttempts: event.maxAttempts,
 				delayMs: event.delayMs,
 				errorMessage: event.errorMessage,
+				...(event.failure ? { failure: event.failure } : {}),
 			};
 		case "retry.end":
 			return {
@@ -136,12 +143,19 @@ export function mapRuntimeSessionObservationEvent(
 				success: event.success,
 				attempt: event.attempt,
 				finalError: event.finalError,
+				...(event.failure ? { failure: event.failure } : {}),
 			};
 		case "active_tools_update":
 			return { ...base, type: event.type, activeToolNames: [...event.activeToolNames] };
 		case "compaction.start":
 			return { ...base, type: event.type, reason: event.reason };
 		case "compaction.end":
-			return { ...base, type: event.type, success: event.success, errorMessage: event.errorMessage };
+			return {
+				...base,
+				type: event.type,
+				success: event.success,
+				errorMessage: event.errorMessage,
+				...(event.failure ? { failure: event.failure } : {}),
+			};
 	}
 }

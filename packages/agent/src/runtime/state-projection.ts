@@ -30,6 +30,9 @@ export function projectAgentEvent(
 			if ("errorMessage" in event.message && typeof event.message.errorMessage === "string") {
 				state.error = event.message.errorMessage;
 			}
+			if (event.message.role === "assistant" && event.message.failure) {
+				state.errorDetails = event.message.failure;
+			}
 			return partial;
 		case "agent_end":
 			state.isStreaming = false;

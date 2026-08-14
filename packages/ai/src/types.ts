@@ -1,4 +1,4 @@
-import type { Api, Context, Provider, ThinkingBudgets, ThinkingLevel } from "./protocol/index.js";
+import type { Api, Context, ModelCapabilities, Provider, ThinkingBudgets, ThinkingLevel } from "./protocol/index.js";
 import type { AssistantMessageEventStream } from "./utils/event-stream.js";
 
 export type {
@@ -191,6 +191,8 @@ export interface Model<TApi extends Api> {
 	};
 	contextWindow: number;
 	maxTokens: number;
+	/** Explicit capabilities. Older model records may omit this and use conservative defaults. */
+	capabilities?: ModelCapabilities;
 	headers?: Record<string, string>;
 	/** Compatibility overrides for OpenAI-compatible APIs. If not set, auto-detected from baseUrl. */
 	compat?: TApi extends "openai-completions"

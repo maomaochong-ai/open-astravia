@@ -32,16 +32,24 @@ describe("DeferredRuntimeErrorEventStream", () => {
 			maxAttempts: 3,
 			delayMs: 2_000,
 			errorMessage: "first failure",
+			failure: { code: "AI_RATE_LIMITED", message: "first failure", retryable: true, origin: "provider" },
 		});
 		source.emit(lifecycle("agent_start", "start-2"));
 		source.emit(errorEvent("final failure", "error-2"));
 		source.emit(lifecycle("agent_end", "end-2"));
-		stream.emitRetry({ type: "auto_retry_end", success: false, attempt: 1, finalError: "final failure" });
+		stream.emitRetry({
+			type: "auto_retry_end",
+			success: false,
+			attempt: 1,
+			finalError: "final failure",
+			failure: { code: "AI_RATE_LIMITED", message: "final failure", retryable: true, origin: "provider" },
+		});
 
 		expect(observed.map(eventName)).toEqual(["retry.start", "agent_start", "retry.end"]);
 		expect(stream.flushPendingError()).toBe(true);
 		expect(observed.map(eventName)).toEqual(["retry.start", "agent_start", "retry.end", "error", "agent_end"]);
 		expect(observed.at(-2)).toMatchObject({ type: "error", retryAttempts: 1 });
+		expect(observed[0]).toMatchObject({ type: "retry.start", failure: { code: "AI_RATE_LIMITED" } });
 	});
 
 	it("drops the held error and failed lifecycle after a successful retry", () => {

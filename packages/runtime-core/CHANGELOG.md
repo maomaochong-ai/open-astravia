@@ -8,7 +8,18 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- Runtime 内核不再从 AssistantMessage 的错误文案推断重试性；有结构化 Provider failure 时严格使用其合同，没有诊断时默认不可重试。
+
+- Retry、compaction 与 MCP reload 观察事件现在统一携带 `RuntimeFailure`；AIError 的 Provider 诊断通过 `runtimeFailureFromError` 安全投影，普通边界异常默认不可重试，避免后台失败静默或被错误重试。
+
+- Runtime 模型切换和 Turn 级模型绑定缺少凭证时，现在统一抛出 AI 认证错误合同（含 provider、model、resolve 阶段和不可重试标记）；显式选择或 Turn 请求的模型不存在时抛出 `AI_MODEL_NOT_FOUND`，不再静默替换成当前模型。
+
+- Assistant error observations now preserve the Provider retryability classification instead of marking every `stopReason: "error"` message as retryable.
+
+- **Provider assistant error 进入会话消息历史**：`AssistantMessage(stopReason: "error")` 现在同时作为 `message.appended` 持久化，并继续生成结构化 `turn.execution_failed/turn.failed`；Desktop 可以直接从消息列表展示错误，同时保留 turn 级重试、状态和诊断字段。
+
 - Runtime failure contract 现在保留 Provider 的安全诊断字段（provider code、请求阶段、脱敏 URL、响应摘要与 Retry-After），并继续穿过失败事件与 prompt 回执。
+- 历史 `HistoryEntry.error` 现在保留 `retryable`、`origin` 和安全的 Provider/模型诊断字段，重开会话时与实时错误事件使用同一份失败合同。
 
 - **执行失败与终态持久化解耦**：Provider/工具执行失败先以运行时事件发布，再独立尝试写入 `turn.failed`；终态写入失败只将会话置为 `recovery_required`，不会覆盖原始错误。失败 prompt 回执保留 `turnId` 与结构化 Provider 诊断。
 
@@ -21,7 +32,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
-- **统一 Turn 失败合同**：Provider 返回 `stopReason: "error"` 时不再作为 assistant 消息写入新会话，统一转换为结构化 `turn.failed`；实时错误与历史错误携带 `turnId`，Desktop 错误卡片按 turn 幂等投影，避免错误丢失或重复。旧 assistant error 历史保持兼容读取。
+- **统一 Turn 失败合同**：Provider 返回 `stopReason: "error"` 时统一生成结构化 `turn.failed`，并与对应 assistant error 消息绑定到同一个 turn；实时错误与历史错误携带 `turnId`，Desktop 错误卡片按 turn 幂等投影，避免错误丢失或重复。旧 assistant error 历史保持兼容读取。
 - **失败 prompt 回执保留结构化错误**：`status: "failed"` 的 Runtime prompt 回执现在携带 `error` 与 `turnId`，宿主重试层不会再把已结束的额度/Provider 失败误判为成功并清掉错误事件。
 
 - **Turn-bound Runtime Generation**（ADR-0069）：`RuntimeSnapshotProvider.acquire` 接收 Session/operation

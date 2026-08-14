@@ -1,5 +1,6 @@
 import type { Static, TSchema } from "@sinclair/typebox";
 import type {
+	AIErrorDetails,
 	AssistantMessage,
 	ImageContent,
 	LanguageModelStreamEvent,
@@ -186,7 +187,12 @@ export type AgentExecutionEvent =
 			readonly callId?: string;
 			readonly status: "completed" | "failed";
 	  }
-	| { readonly type: "assistant_message"; readonly message: AssistantMessage }
+	| {
+			readonly type: "assistant_message";
+			readonly message: AssistantMessage;
+			/** Structured provider failure from the terminal model event, if available. */
+			readonly failure?: AIErrorDetails;
+	  }
 	| { readonly type: "input_message"; readonly kind: AgentPendingInputKind; readonly message: Message }
 	| { readonly type: "tool_validation"; readonly call: ToolCall; readonly valid: boolean; readonly error?: string }
 	| { readonly type: "tool_execution_start"; readonly call: ToolCall; readonly startedAt: number }

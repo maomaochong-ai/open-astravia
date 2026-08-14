@@ -1,4 +1,4 @@
-import type { RuntimeResourceContext } from "@vetta/runtime-core";
+import { type RuntimeResourceContext, runtimeFailureFromError } from "@vetta/runtime-core";
 import {
 	createMcpDeferredToolController,
 	createMcpRuntimeToolSynchronizer,
@@ -87,6 +87,7 @@ export async function createCodingAgentMcpSessionCoordinator(
 					type: "mcp.reload.end",
 					changed: false,
 					errorMessage: error instanceof Error ? error.message : String(error),
+					failure: runtimeFailureFromError(error, { origin: "mcp", code: "MCP_RELOAD_FAILED" }),
 					source: "agent",
 				});
 			}

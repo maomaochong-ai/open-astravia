@@ -6,9 +6,15 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **Provider 诊断继续穿过主进程边界**：`DesktopConversationError` 与 AI Capability 错误保留安全的错误码、来源、重试性和 Provider 诊断字段，debug/插件调用不再只收到通用失败文本。
+
+- **后台 AI 失败诊断贯通**：重试、自动压缩和 MCP 重载事件沿用 Runtime 的结构化失败字段，Renderer 可以在错误状态中保留 Provider、模型和请求诊断，而不依赖错误文案匹配。
+
 - **Provider 错误回执与 IPC 去重**：运行时错误事件先行展示；当终态持久化失败导致 prompt 返回失败回执时，Renderer 复用已有错误，不再追加第二条持久化异常。
 
 - **Provider 失败可见且幂等**：错误卡片显示来自 Runtime 的结构化失败，并按 `turnId` 合并实时重放与历史回放，避免失败消息消失或重复出现。
+
+- **Provider 诊断贯通消息列表**：错误块保留错误码、来源、HTTP 状态、Provider、模型、请求阶段与请求 ID 等安全诊断；详情区按需展示并支持复制，旧历史记录继续按原文兼容显示。
 
 - **Windows 本地流式语音输入**（ADR-0070）：输入栏在 Windows x64 显示麦克风入口；Windows 构建阶段下载、
   校验并把约 160 MiB 的中文 Streaming Zipformer 模型写入安装包，应用运行时完全离线；16 kHz PCM 由 AudioWorklet 分块

@@ -1,4 +1,12 @@
-import type { Api, AssistantMessage, Message, Model, UserMessage } from "@vetta/ai";
+import {
+	AI_ERROR_CODES,
+	type Api,
+	type AssistantMessage,
+	isAIError,
+	type Message,
+	type Model,
+	type UserMessage,
+} from "@vetta/ai";
 import type { HookDispatchOutcome } from "@vetta/ecosystem-adapter/hooks";
 import {
 	applyStoredEventToConversationDocument,
@@ -535,6 +543,34 @@ describe("CodingAgentContextRuntime", () => {
 		expect(generateCompaction).not.toHaveBeenCalled();
 		expect(hooks.runPostCompact).not.toHaveBeenCalled();
 		expect(hooks.markSessionStart).not.toHaveBeenCalled();
+	});
+
+	it("uses the shared AI authentication contract for manual compaction credential failures", async () => {
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => undefined,
+		});
+		const result = runtime.compactManual(
+			{
+				sessionId: "session-1",
+				document: documentFromMessages([userMessage("old request".repeat(40), 1), userMessage("kept request", 2)]),
+				modelBinding: { model: MODEL },
+			},
+			new AbortController().signal,
+		);
+
+		await expect(result).rejects.toMatchObject({
+			code: AI_ERROR_CODES.AUTHENTICATION_FAILED,
+			provider: MODEL.provider,
+			modelId: MODEL.id,
+			retryable: false,
+		});
+		try {
+			await result;
+			throw new Error("Expected compaction to reject");
+		} catch (error) {
+			expect(isAIError(error)).toBe(true);
+		}
 	});
 
 	it("keeps low-pressure ToolResults on every model call without mutating persisted messages", async () => {

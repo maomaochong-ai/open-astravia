@@ -1,4 +1,4 @@
-import type { Api, Model } from "@vetta/ai";
+import { AI_ERROR_CODES, type Api, isAIError, type Model } from "@vetta/ai";
 import { describe, expect, it, vi } from "vitest";
 import {
 	RuntimeModel,
@@ -39,8 +39,22 @@ describe("RuntimeModel", () => {
 			credentials: { resolve, refreshAuth: async () => {} },
 		});
 
-		await runtime.selectModel("missing/model", "always");
+		await expect(runtime.selectModel("missing/model", "always")).rejects.toMatchObject({
+			code: AI_ERROR_CODES.MODEL_NOT_FOUND,
+			provider: "missing",
+			modelId: "model",
+			retryable: false,
+		});
 		expect(runtime.readCurrentModel()).toBe(INITIAL_MODEL);
+		await expect(
+			runtime.bind({
+				sessionId: "session-1",
+				operationId: "turn-1",
+				reason: "turn",
+				signal: new AbortController().signal,
+				request: { payload: "hello", displayText: "hello", model: { key: "missing/model" } },
+			}),
+		).rejects.toMatchObject({ code: AI_ERROR_CODES.MODEL_NOT_FOUND, provider: "missing", modelId: "model" });
 
 		await runtime.selectModel("test/initial", "if-changed");
 		expect(resolve).not.toHaveBeenCalled();
@@ -48,9 +62,20 @@ describe("RuntimeModel", () => {
 		await runtime.selectModel("test/initial", "always");
 		expect(resolve).toHaveBeenCalledOnce();
 
-		await expect(runtime.selectModel("test/without-key", "always")).rejects.toThrow(
-			"No API key for test/without-key",
-		);
+		const result = runtime.selectModel("test/without-key", "always");
+		await expect(result).rejects.toMatchObject({
+			code: AI_ERROR_CODES.AUTHENTICATION_FAILED,
+			provider: "test",
+			modelId: "without-key",
+			phase: "resolve",
+			retryable: false,
+		});
+		try {
+			await result;
+			throw new Error("Expected model selection to reject");
+		} catch (error) {
+			expect(isAIError(error)).toBe(true);
+		}
 		expect(runtime.readCurrentModel()).toBe(INITIAL_MODEL);
 	});
 

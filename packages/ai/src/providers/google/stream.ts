@@ -1,4 +1,5 @@
 import { getEnvApiKey } from "../../env-api-keys.js";
+import { requireProviderCredential } from "../../provider-kit/index.js";
 import type { Context, Model, SimpleStreamOptions, StreamFunction } from "../../types.js";
 import { getGeminiThinkingLevel, getGoogleThinkingBudget, usesGeminiThinkingLevel } from "../google-stream/thinking.js";
 import { projectLanguageModelAdapter } from "../legacy-adapter-stream.js";
@@ -14,8 +15,7 @@ export const streamSimpleGoogle: StreamFunction<"google-generative-ai", SimpleSt
 	context: Context,
 	options?: SimpleStreamOptions,
 ) => {
-	const apiKey = options?.apiKey || getEnvApiKey(model.provider);
-	if (!apiKey) throw new Error(`No API key for provider: ${model.provider}`);
+	const apiKey = requireProviderCredential(model, options?.apiKey || getEnvApiKey(model.provider));
 	const base = buildBaseOptions(model, options, apiKey);
 	if (!options?.reasoning) {
 		return streamGoogle(model, context, { ...base, thinking: { enabled: false } } satisfies GoogleOptions);

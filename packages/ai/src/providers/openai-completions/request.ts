@@ -1,5 +1,7 @@
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions.js";
+import { getEnvApiKey } from "../../env-api-keys.js";
+import { requireProviderCredential } from "../../provider-kit/index.js";
 import type { Context, FetchFunction, Message, Model } from "../../types.js";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "../github-copilot-headers.js";
 import { resolveOpenAICompletionsCompat } from "./compatibility.js";
@@ -13,15 +15,7 @@ export function createOpenAICompletionsClient(
 	optionsHeaders?: Record<string, string>,
 	providerFetch?: FetchFunction,
 ): OpenAI {
-	let resolvedApiKey = apiKey;
-	if (!resolvedApiKey) {
-		if (!process.env.OPENAI_API_KEY) {
-			throw new Error(
-				"OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass it as an argument.",
-			);
-		}
-		resolvedApiKey = process.env.OPENAI_API_KEY;
-	}
+	const resolvedApiKey = requireProviderCredential(model, apiKey || getEnvApiKey(model.provider));
 
 	const headers = { ...model.headers };
 	if (model.provider === "github-copilot") {

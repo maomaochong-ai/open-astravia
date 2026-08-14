@@ -2,6 +2,7 @@ import { Type } from "@sinclair/typebox";
 import {
 	AIError,
 	type AssistantMessage,
+	getAIErrorDetails,
 	LanguageModelStream,
 	type Message,
 	type ModelStreamResponse,
@@ -430,6 +431,53 @@ describe("runAgentTurn", () => {
 
 		await expect(run.result).resolves.toMatchObject({ status: "failed" });
 		expect(continuationCalls).toBe(0);
+	});
+
+	it("persists a terminal provider error event and finishes the model call once", async () => {
+		const failure = new AIError("AI_BILLING_REQUIRED", "provider quota exhausted", {
+			retryable: false,
+			statusCode: 402,
+			provider: "deepseek",
+			modelId: "deepseek-chat",
+			requestId: "request-quota",
+		});
+		const errorMessage: AssistantMessage = {
+			...assistant([{ type: "text", text: "provider quota exhausted" }]),
+			provider: "deepseek",
+			model: "deepseek-chat",
+			stopReason: "error",
+			errorMessage: failure.message,
+		};
+		const stream = new LanguageModelStream();
+		stream.push({
+			type: "error",
+			reason: "error",
+			error: errorMessage,
+			failure: getAIErrorDetails(failure),
+		});
+		stream.fail(failure);
+		const run = runAgentTurn(request([{ events: stream, result: stream.result() }]));
+		const events = await collect(run.events);
+		const result = await run.result;
+
+		expect(result).toMatchObject({
+			status: "failed",
+			lastAssistantMessage: { stopReason: "error", errorMessage: "provider quota exhausted" },
+			failure: {
+				code: "AI_BILLING_REQUIRED",
+				retryable: false,
+				details: { provider: "deepseek", modelId: "deepseek-chat", requestId: "request-quota" },
+			},
+		});
+		expect(result.messages.at(-1)).toMatchObject({ role: "assistant", stopReason: "error" });
+		expect(events.filter((event) => event.type === "model_call_finish")).toEqual([
+			{ type: "model_call_finish", modelCallIndex: 0, callId: "call-1", status: "failed" },
+		]);
+		expect(events).toContainEqual({
+			type: "assistant_message",
+			message: errorMessage,
+			failure: getAIErrorDetails(failure),
+		});
 	});
 
 	it("preserves structured provider failure details in the run result", async () => {

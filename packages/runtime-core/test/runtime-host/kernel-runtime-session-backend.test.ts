@@ -438,7 +438,7 @@ describe("KernelRuntimeSessionBackend", () => {
 		expect((await session.getMessages()).map((message) => message.role)).toEqual(["user", "assistant", "assistant"]);
 	});
 
-	it("retries without replaying the terminal error assistant", async () => {
+	it("retries without replaying the terminal error assistant while retaining it in history", async () => {
 		const engine = new ErrorThenSuccessTurnEngine();
 		const { backend } = createBackend(engine);
 		const session = await backend.create({ id: "session-1" });
@@ -451,7 +451,7 @@ describe("KernelRuntimeSessionBackend", () => {
 		await expect(session.retry()).resolves.toMatchObject({ status: "completed", stopReason: "stop" });
 
 		expect(engine.requests.map((messages) => messages.map((message) => message.role))).toEqual([["user"], ["user"]]);
-		expect((await session.getMessages()).map((message) => message.role)).toEqual(["user", "assistant"]);
+		expect((await session.getMessages()).map((message) => message.role)).toEqual(["user", "assistant", "assistant"]);
 	});
 
 	it("exposes synchronous lifecycle, workspace, turn, event and state core ports", async () => {

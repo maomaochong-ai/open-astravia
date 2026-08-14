@@ -6,6 +6,7 @@ import type {
 	PromptAttachmentRef,
 	PromptResourceRef,
 } from "../contracts.js";
+import type { RuntimeFailureDetails, RuntimeFailureOrigin } from "../failure-contract.js";
 import type {
 	ConversationDocument,
 	ConversationDocumentCustomEntry,
@@ -187,15 +188,56 @@ function appendTurnFailedHistory(history: HistoryEntry[], entry: ConversationDoc
 	const message = typeof entry.data.error.message === "string" ? entry.data.error.message.trim() : "";
 	if (!message) return;
 	const code = typeof entry.data.error.code === "string" ? entry.data.error.code : undefined;
+	const retryable = typeof entry.data.error.retryable === "boolean" ? entry.data.error.retryable : undefined;
+	const origin = parseFailureOrigin(entry.data.error.origin);
+	const details = parseFailureDetails(entry.data.error.details);
 	const turnId = typeof entry.data.turnId === "string" ? entry.data.turnId : undefined;
 	history.push({
 		type: "error",
 		entryId: entry.id,
 		code,
+		...(retryable === undefined ? {} : { retryable }),
+		...(origin === undefined ? {} : { origin }),
+		...(details === undefined ? {} : { details }),
 		message,
 		timestamp: entry.timestamp,
 		...(turnId ? { turnId } : {}),
 	});
+}
+
+function parseFailureOrigin(value: unknown): RuntimeFailureOrigin | undefined {
+	return value === "runtime" || value === "provider" || value === "tool" || value === "mcp" ? value : undefined;
+}
+
+function parseFailureDetails(value: unknown): RuntimeFailureDetails | undefined {
+	if (!isRecord(value)) return undefined;
+	const details: {
+		statusCode?: number;
+		provider?: string;
+		modelId?: string;
+		requestId?: string;
+		providerCode?: string;
+		phase?: RuntimeFailureDetails["phase"];
+		retryAfterMs?: number;
+	} = {};
+	if (typeof value.statusCode === "number" && Number.isFinite(value.statusCode)) details.statusCode = value.statusCode;
+	if (typeof value.provider === "string" && value.provider.trim()) details.provider = value.provider.trim();
+	if (typeof value.modelId === "string" && value.modelId.trim()) details.modelId = value.modelId.trim();
+	if (typeof value.requestId === "string" && value.requestId.trim()) details.requestId = value.requestId.trim();
+	if (typeof value.providerCode === "string" && value.providerCode.trim())
+		details.providerCode = value.providerCode.trim();
+	if (
+		value.phase === "resolve" ||
+		value.phase === "request" ||
+		value.phase === "response" ||
+		value.phase === "stream" ||
+		value.phase === "decode"
+	) {
+		details.phase = value.phase;
+	}
+	if (typeof value.retryAfterMs === "number" && Number.isFinite(value.retryAfterMs))
+		details.retryAfterMs = value.retryAfterMs;
+	return Object.keys(details).length > 0 ? details : undefined;
 }
 
 function appendCustomMessageHistory(history: HistoryEntry[], entry: ConversationDocumentCustomMessageEntry): void {

@@ -1,7 +1,9 @@
 import "./providers/register-builtins.js";
 import "./utils/http-proxy.js";
 
-import { getApiProvider } from "./api-registry.js";
+import { getApiProvider, getApiProviderSource } from "./api-registry.js";
+import { projectLanguageModelAdapter, projectLanguageModelSimpleAdapter } from "./providers/legacy-adapter-stream.js";
+import { getDefaultAdapterRegistry } from "./runtime/default-adapter-registry.js";
 import type {
 	Api,
 	AssistantMessage,
@@ -23,11 +25,33 @@ function resolveApiProvider(api: Api) {
 	return provider;
 }
 
+function resolveNativeAdapter(api: Api) {
+	return getDefaultAdapterRegistry().get(api);
+}
+
+function shouldUseNativeAdapter(api: Api): boolean {
+	const nativeAdapter = resolveNativeAdapter(api);
+	if (!nativeAdapter) return false;
+	const legacySource = getApiProviderSource(api);
+	return legacySource === undefined || legacySource === "built-in";
+}
+
+function shouldUseNativeSimpleAdapter(api: Api): boolean {
+	const nativeAdapter = resolveNativeAdapter(api);
+	if (!nativeAdapter?.streamSimple) return false;
+	const legacySource = getApiProviderSource(api);
+	return legacySource === undefined || legacySource === "built-in";
+}
+
 export function stream<TApi extends Api>(
 	model: Model<TApi>,
 	context: Context,
 	options?: ProviderStreamOptions,
 ): AssistantMessageEventStream {
+	const nativeAdapter = resolveNativeAdapter(model.api);
+	if (nativeAdapter && shouldUseNativeAdapter(model.api)) {
+		return projectLanguageModelAdapter(nativeAdapter, model, context, options as StreamOptions);
+	}
 	const provider = resolveApiProvider(model.api);
 	return provider.stream(model, context, options as StreamOptions);
 }
@@ -46,6 +70,10 @@ export function streamSimple<TApi extends Api>(
 	context: Context,
 	options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
+	const nativeAdapter = resolveNativeAdapter(model.api);
+	if (nativeAdapter?.streamSimple && shouldUseNativeSimpleAdapter(model.api)) {
+		return projectLanguageModelSimpleAdapter(nativeAdapter, model, context, options);
+	}
 	const provider = resolveApiProvider(model.api);
 	return provider.streamSimple(model, context, options);
 }

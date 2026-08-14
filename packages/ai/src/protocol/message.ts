@@ -1,3 +1,4 @@
+import type { AIErrorDetails } from "./errors.js";
 import type { StopReason } from "./finish-reason.js";
 import type { Api, Provider } from "./identity.js";
 import type { ToolCall } from "./tool.js";
@@ -36,6 +37,8 @@ export interface AssistantMessage {
 	usage: Usage;
 	stopReason: StopReason;
 	errorMessage?: string;
+	/** Safe provider diagnostics retained when a terminal error is projected to a message. */
+	failure?: AIErrorDetails;
 	timestamp: number;
 }
 

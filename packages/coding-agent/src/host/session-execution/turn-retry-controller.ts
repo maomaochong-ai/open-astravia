@@ -1,3 +1,4 @@
+import { type RuntimeFailure, runtimeFailureFromError } from "@vetta/runtime-core";
 import type {
 	CodingAgentTurnFailure,
 	CodingAgentTurnRetryController,
@@ -47,6 +48,7 @@ export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRet
 				maxAttempts: settings.maxRetries,
 				delayMs,
 				errorMessage: failure.message,
+				failure: toRuntimeFailure(failure),
 			});
 			this.abortController = new AbortController();
 			try {
@@ -57,6 +59,7 @@ export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRet
 					success: false,
 					attempt: this.attempt,
 					finalError: "Retry cancelled",
+					failure: runtimeFailureFromError(new Error("Retry cancelled"), { code: "RETRY_CANCELLED" }),
 				});
 				this.attempt = 0;
 				return result;
@@ -71,6 +74,7 @@ export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRet
 					success: false,
 					attempt: this.attempt,
 					finalError: error instanceof Error ? error.message : String(error),
+					failure: runtimeFailureFromError(error),
 				});
 				this.attempt = 0;
 				throw error;
@@ -83,11 +87,22 @@ export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRet
 				success: failure === undefined,
 				attempt: this.attempt,
 				...(failure ? { finalError: failure.message } : {}),
+				...(failure ? { failure: toRuntimeFailure(failure) } : {}),
 			});
 			this.attempt = 0;
 		}
 		return result;
 	}
+}
+
+function toRuntimeFailure(failure: CodingAgentTurnFailure): RuntimeFailure {
+	return {
+		code: failure.code,
+		message: failure.message,
+		retryable: failure.retryable,
+		origin: failure.origin ?? "runtime",
+		...(failure.details ? { details: failure.details } : {}),
+	};
 }
 
 export function createCodingAgentTurnRetryController(

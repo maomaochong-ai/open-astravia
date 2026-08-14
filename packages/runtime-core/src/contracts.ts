@@ -1,7 +1,7 @@
 import type { ThinkingLevel, ToolPhase } from "@vetta/agent-core";
 import type { Message, Model } from "@vetta/ai";
 import type { ContextCompositionReport } from "./context-composition/contracts.js";
-import type { RuntimeFailure } from "./failure-contract.js";
+import type { RuntimeFailure, RuntimeFailureDetails, RuntimeFailureOrigin } from "./failure-contract.js";
 
 /** 对话场景 slug；RuntimeHost 与 Coding Profile 共享的稳定隔离轴。 */
 export type ConversationScenario =
@@ -459,6 +459,8 @@ export interface RetryStartEvent extends SessionEventBase {
 	maxAttempts: number;
 	delayMs: number;
 	errorMessage: string;
+	/** Structured failure that triggered the retry; errorMessage remains legacy display text. */
+	failure?: RuntimeFailure;
 }
 
 /** 自动重试结束：success=false 表示重试次数耗尽，随后会有一条 error 事件。 */
@@ -547,6 +549,7 @@ export interface CompactionEndEvent extends SessionEventBase {
 	type: "compaction.end";
 	success: boolean;
 	errorMessage?: string;
+	failure?: RuntimeFailure;
 }
 
 export interface RuntimeUserConfirmationRequest {
@@ -849,6 +852,12 @@ export type HistoryEntry =
 			entryId?: string;
 			/** Runtime / provider error code when one is available. */
 			code?: string;
+			/** Whether the failure may succeed after a retry. */
+			retryable?: boolean;
+			/** Layer that produced the failure. */
+			origin?: RuntimeFailureOrigin;
+			/** Safe provider/model diagnostics retained for history replay. */
+			details?: RuntimeFailureDetails;
 			/** Stable turn correlation when the failure belongs to a persisted turn. */
 			turnId?: string;
 			message: string;

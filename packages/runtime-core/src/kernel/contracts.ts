@@ -664,6 +664,8 @@ export interface MessageAppendedEvent {
 	readonly sessionId: string;
 	readonly turnId: string;
 	readonly message: Message;
+	/** Structured provider failure for an assistant error message, when available. */
+	readonly failure?: RuntimeFailure;
 	readonly origin?: RuntimeMessageOrigin;
 	readonly timestamp: number;
 }
@@ -907,6 +909,7 @@ export type TurnEngineEvent =
 	| {
 			readonly type: "message";
 			readonly message: Message;
+			readonly failure?: RuntimeFailure;
 			readonly origin?: RuntimeMessageOrigin;
 	  }
 	| {

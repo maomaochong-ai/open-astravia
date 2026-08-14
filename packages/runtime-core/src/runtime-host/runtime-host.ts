@@ -591,9 +591,9 @@ export class RuntimeHost implements SessionFacade {
 				buffer.terminalReason = "aborted";
 				return;
 			}
-			// turn.failed 只产生 error observation + agent_end，没有 assistant
-			// message.final；不在这里置位的话失败会伪装成 "agent_end"，下游把
-			// 错误当自然结束（例如继续派发排队消息）。ADR-0060。
+			// turn.failed 仍会产生 error observation + agent_end；assistant error
+			// message 也会先以 message.final 到达。两条路径都带有同一个 turnId，
+			// 由宿主投影层幂等合并，避免错误既丢失又重复。ADR-0060。
 			if (event.type === "error" && buffer.isActive) {
 				buffer.terminalReason = "error";
 				return;

@@ -3,14 +3,20 @@ import {
 	type ConverseStreamCommandInput,
 	type ConverseStreamCommandOutput,
 } from "@aws-sdk/client-bedrock-runtime";
-import { AIAbortedError, type AssistantMessage } from "../../protocol/index.js";
+import {
+	AIAbortedError,
+	type AssistantMessage,
+	createAssistantMessage as createProtocolAssistantMessage,
+} from "../../protocol/index.js";
 import { EmptyProviderStreamError, normalizeProviderError, validateWirePayload } from "../../provider-kit/index.js";
 import {
+	failLanguageModelStream,
 	type LanguageModelAdapter,
 	LanguageModelStream,
 	type ModelCallRequest,
 	type ModelStreamResponse,
 } from "../../runtime/language-model-adapter.js";
+import { createModelCallMetadataFromMessage } from "../../runtime/model-call-result.js";
 import type { Model } from "../../types.js";
 import { createBedrockClient } from "./client.js";
 import { BedrockEventReducer } from "./events.js";
@@ -34,6 +40,13 @@ export function createBedrockAdapter(
 ): LanguageModelAdapter<"bedrock-converse-stream", BedrockOptions> {
 	return {
 		api: "bedrock-converse-stream",
+		capabilities: {
+			streaming: true,
+			tools: true,
+			structuredOutput: false,
+			reasoning: true,
+			parallelToolCalls: true,
+		},
 		async stream(request) {
 			return createBedrockModelStream(request, dependencies.send ?? sendBedrockCommand);
 		},
@@ -46,7 +59,8 @@ function createBedrockModelStream(
 ): ModelStreamResponse {
 	const stream = new LanguageModelStream();
 	void produceBedrockStream(request, send, stream);
-	return { events: stream, result: stream.result() };
+	const result = stream.result();
+	return { events: stream, result, metadata: result.then(createModelCallMetadataFromMessage, () => ({})) };
 }
 
 async function produceBedrockStream(
@@ -80,10 +94,18 @@ async function produceBedrockStream(
 		}
 		stream.push({ type: "done", reason: output.stopReason, message: output });
 	} catch (error) {
-		stream.fail(
+		failLanguageModelStream(
+			stream,
+			model,
 			options.signal?.aborted
 				? new AIAbortedError(undefined, { provider: model.provider, modelId: model.id, cause: error })
 				: normalizeProviderError(error, model),
+			options.signal?.aborted ? "aborted" : "error",
+			{
+				...output,
+				stopReason: options.signal?.aborted ? "aborted" : "error",
+				errorMessage: error instanceof Error ? error.message : String(error),
+			},
 		);
 	}
 }
@@ -97,21 +119,5 @@ async function sendBedrockCommand(
 }
 
 function createAssistantMessage(model: Model<"bedrock-converse-stream">): AssistantMessage {
-	return {
-		role: "assistant",
-		content: [],
-		api: model.api,
-		provider: model.provider,
-		model: model.id,
-		usage: {
-			input: 0,
-			output: 0,
-			cacheRead: 0,
-			cacheWrite: 0,
-			totalTokens: 0,
-			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-		},
-		stopReason: "stop",
-		timestamp: Date.now(),
-	};
+	return createProtocolAssistantMessage({ api: model.api, provider: model.provider, model: model.id });
 }

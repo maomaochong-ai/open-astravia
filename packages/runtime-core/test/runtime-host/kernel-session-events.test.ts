@@ -1,4 +1,4 @@
-import type { AssistantMessage } from "@vetta/ai";
+import { AIError, type AssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import type { SessionEvent } from "../../src/contracts.js";
 import type { KernelEvent } from "../../src/kernel/index.js";
@@ -80,7 +80,8 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 
 		expect(failed.map((event) => event.type)).toEqual(["message.final", "usage.update", "error"]);
 		expect(payload(failed[2])).toMatchObject({
-			error: { message: "provider failed", retryable: true, origin: "provider" },
+			turnId: "turn-1",
+			error: { message: "provider failed", retryable: false, origin: "provider" },
 		});
 		expect(aborted.map((event) => event.type)).toEqual(["message.final", "usage.update", "session.lifecycle"]);
 		expect(payload(aborted[2])).toMatchObject({ phase: "aborted", source: "runtime-core" });
@@ -177,6 +178,90 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 					requestId: "request-1",
 				},
 			},
+		});
+	});
+
+	it("does not mark non-retryable assistant errors as retryable", () => {
+		const events = mapKernelEventToSessionEvents({
+			type: "message.appended",
+			sessionId: "session-1",
+			turnId: "turn-1",
+			message: {
+				role: "assistant",
+				content: [],
+				api: "openai-completions",
+				provider: "deepseek",
+				model: "deepseek-chat",
+				usage: {
+					input: 0,
+					output: 0,
+					cacheRead: 0,
+					cacheWrite: 0,
+					totalTokens: 0,
+					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+				},
+				stopReason: "error",
+				errorMessage: "insufficient_quota: account has no remaining credits",
+				timestamp: 1,
+			},
+			timestamp: 2,
+		});
+
+		expect(payload(events.at(-1)!)).toMatchObject({
+			type: "error",
+			error: { retryable: false, origin: "provider" },
+		});
+	});
+
+	it("prefers the structured provider failure attached to an assistant message", () => {
+		const failure = new AIError("AI_BILLING_REQUIRED", "quota exhausted", {
+			retryable: false,
+			statusCode: 402,
+			provider: "deepseek",
+			modelId: "deepseek-chat",
+			requestId: "request-quota",
+		});
+		const events = mapKernelEventToSessionEvents({
+			type: "message.appended",
+			sessionId: "session-1",
+			turnId: "turn-1",
+			message: assistantMessage("error"),
+			failure: {
+				code: failure.code,
+				message: failure.message,
+				retryable: failure.retryable,
+				origin: "provider",
+				details: {
+					statusCode: failure.statusCode,
+					provider: failure.provider,
+					modelId: failure.modelId,
+					requestId: failure.requestId,
+				},
+			},
+			timestamp: 2,
+		});
+
+		expect(payload(events.at(-1)!)).toMatchObject({
+			error: {
+				code: "AI_BILLING_REQUIRED",
+				message: "quota exhausted",
+				retryable: false,
+				details: { statusCode: 402, provider: "deepseek", modelId: "deepseek-chat", requestId: "request-quota" },
+			},
+		});
+	});
+
+	it("does not infer retryability from an unstructured assistant error message", () => {
+		const events = mapKernelEventToSessionEvents(
+			messageEvent({
+				...assistantMessage("error"),
+				errorMessage: "temporary 503 text without structured failure",
+			}),
+		);
+
+		expect(payload(events.at(-1)!)).toMatchObject({
+			type: "error",
+			error: { retryable: false, origin: "provider" },
 		});
 	});
 

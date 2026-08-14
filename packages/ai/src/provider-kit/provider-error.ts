@@ -4,6 +4,7 @@ import {
 	type AIErrorOptions,
 	type Api,
 	type AssistantMessage,
+	createAssistantMessage,
 	isAIError,
 	isRetryableProviderFailure,
 } from "../protocol/index.js";
@@ -87,24 +88,13 @@ function createErrorMessage<TApi extends Api>(
 	message: string,
 	statusCode?: number,
 ): AssistantMessage {
-	return {
-		role: "assistant",
-		content: [],
-		api: model.api,
-		provider: model.provider,
-		model: model.id,
-		usage: {
-			input: 0,
-			output: 0,
-			cacheRead: 0,
-			cacheWrite: 0,
-			totalTokens: 0,
-			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+	return createAssistantMessage(
+		{ api: model.api, provider: model.provider, model: model.id },
+		{
+			stopReason: "error",
+			errorMessage: statusCode === undefined ? message : `${statusCode} status code: ${message}`,
 		},
-		stopReason: "error",
-		errorMessage: statusCode === undefined ? message : `${statusCode} status code: ${message}`,
-		timestamp: Date.now(),
-	};
+	);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

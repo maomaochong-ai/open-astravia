@@ -22,6 +22,10 @@ export function getApiProvider(api: Api): RegisteredApiProvider | undefined {
 	return defaultApiProviderRegistry.get(api);
 }
 
+export function getApiProviderSource(api: Api): string | undefined {
+	return defaultApiProviderRegistry.getSource(api);
+}
+
 export function getApiProviders(): RegisteredApiProvider[] {
 	return defaultApiProviderRegistry.getAll();
 }

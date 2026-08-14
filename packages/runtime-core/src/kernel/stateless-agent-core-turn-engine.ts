@@ -9,12 +9,12 @@ import {
 	salvageTextToolCalls,
 } from "@vetta/agent-core";
 import {
+	type AIErrorDetails,
 	type Api,
 	type AssistantMessage,
 	type AssistantMessageEvent,
 	adaptApiProvider,
 	type Context,
-	isRetryableProviderFailure,
 	type Message,
 	type Model,
 	streamSimple,
@@ -22,6 +22,7 @@ import {
 	Type,
 	validateToolArguments,
 } from "@vetta/ai";
+import { type RuntimeFailure, runtimeFailureFromAIErrorDetails } from "../failure-contract.js";
 import type { RuntimeMessageEnvelope } from "../runtime-execution-observation.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import type { AgentCoreTurnEngineOptions } from "./agent-core-turn-engine-options.js";
@@ -90,11 +91,14 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 			const assistant = result.lastAssistantMessage;
 			if (!assistant) throw turnProtocolError("agent-core completed without an assistant message");
 			if (assistant.stopReason === "error") {
+				const failure = assistant.failure ? runtimeFailureFromAIErrorDetails(assistant.failure) : undefined;
 				throw new TurnExecutionError({
-					code: "PROVIDER_ERROR",
-					message: assistant.errorMessage?.trim() || "Provider returned an assistant error response",
-					retryable: isRetryableProviderFailure(assistant.errorMessage?.trim() || ""),
+					code: failure?.code ?? "PROVIDER_ERROR",
+					message:
+						failure?.message ?? assistant.errorMessage?.trim() ?? "Provider returned an assistant error response",
+					retryable: failure?.retryable ?? false,
 					origin: "provider",
+					...(failure?.details ? { details: failure.details } : {}),
 				});
 			}
 			yield { type: "completed", stopReason: assistant.stopReason };
@@ -222,6 +226,7 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 					snapshotId: request.snapshot.id,
 					response: {
 						events: response.events,
+						...(response.metadata ? { metadata: response.metadata } : {}),
 						result: response.result.then(
 							(assistant) => {
 								if (request.snapshot.salvageTextToolCalls?.length) {
@@ -402,7 +407,6 @@ class AgentEventProjector {
 			const envelope = toRuntimeMessageEnvelope(event.message, this.identities);
 			if (event.message.stopReason === "error") {
 				this.terminalAssistantError = true;
-				return [];
 			}
 			this.runMessages.push(envelope);
 			return [
@@ -412,7 +416,12 @@ class AgentEventProjector {
 				...(envelope
 					? [{ type: "execution_observation", observation: { type: "message.end", message: envelope } } as const]
 					: []),
-				{ type: "message", message: event.message, ...messageOrigin(event.message, this.identities) },
+				{
+					type: "message",
+					message: event.message,
+					...(event.failure ? { failure: runtimeFailureFromAI(event.failure) } : {}),
+					...messageOrigin(event.message, this.identities),
+				},
 			];
 		}
 		if (event.type === "input_message") {
@@ -747,10 +756,14 @@ function runFailure(result: AgentRunResult): Error {
 				(assistantError
 					? "Provider returned an assistant error response"
 					: `Agent run ended with status: ${result.status}`)),
-		retryable: failure?.retryable ?? isRetryableProviderFailure(assistantError?.errorMessage?.trim() || ""),
+		retryable: failure?.retryable ?? assistantError?.failure?.retryable ?? false,
 		origin: failure?.origin ?? (assistantError ? "provider" : "runtime"),
 		...(failure?.details && Object.keys(failure.details).length > 0 ? { details: failure.details } : {}),
 	});
+}
+
+function runtimeFailureFromAI(details: AIErrorDetails): RuntimeFailure {
+	return runtimeFailureFromAIErrorDetails(details);
 }
 
 function lifecycle(phase: "agent_start" | "turn_start" | "turn_end" | "agent_end"): RuntimeSessionObservationEvent {

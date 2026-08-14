@@ -1,8 +1,15 @@
-import { AIAbortedError, AIError, type Api, type AssistantMessage } from "../protocol/index.js";
+import {
+	AIAbortedError,
+	AIError,
+	type Api,
+	type AssistantMessage,
+	createAIErrorFromDetails,
+} from "../protocol/index.js";
 import { normalizeProviderError } from "../provider-kit/provider-error.js";
 import type { Model } from "../types.js";
 
 export function classifyLegacyAssistantError<TApi extends Api>(message: AssistantMessage, model: Model<TApi>): AIError {
+	if (message.failure) return createAIErrorFromDetails(message.failure);
 	const errorMessage = message.errorMessage ?? "Language model provider failed";
 	if (message.stopReason === "aborted") {
 		return new AIAbortedError(errorMessage, {
@@ -32,6 +39,14 @@ export function classifyLegacyAssistantError<TApi extends Api>(message: Assistan
 		phase: normalized.phase,
 		metadata: { legacyStopReason: message.stopReason },
 	});
+}
+
+/** Converts a terminal assistant message into the canonical Provider error. */
+export function normalizeAssistantMessageError<TApi extends Api>(
+	message: AssistantMessage,
+	model: Model<TApi>,
+): AIError {
+	return classifyLegacyAssistantError(message, model);
 }
 
 export function normalizeLegacyProviderError<TApi extends Api>(error: unknown, model: Model<TApi>): AIError {

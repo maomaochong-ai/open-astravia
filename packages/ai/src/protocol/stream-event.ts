@@ -39,7 +39,9 @@ export function isAssistantMessageTerminalEvent(event: AssistantMessageEvent): e
 
 export function getAssistantMessageEventResult(event: AssistantMessageEvent): AssistantMessage {
 	if (event.type === "done") return event.message;
-	if (event.type === "error") return event.error;
+	if (event.type === "error") {
+		return event.failure === undefined ? event.error : { ...event.error, failure: event.failure };
+	}
 	throw new AIStreamProtocolError(`Expected a terminal assistant message event, received: ${event.type}`, {
 		metadata: { eventType: event.type },
 	});

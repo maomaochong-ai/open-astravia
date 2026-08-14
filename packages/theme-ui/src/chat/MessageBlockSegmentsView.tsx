@@ -118,6 +118,8 @@ export interface ErrorBlockViewProps {
 	labels: ErrorBlockViewLabels;
 	/** provider 原文，只出现在折叠区。 */
 	detail: string;
+	/** Optional safe diagnostics, already localized/formatted by the host app. */
+	diagnostics?: string;
 	expanded: boolean;
 	onToggleExpanded: () => void;
 	/** 需要用户离开对话去处理时给一个落点（配额、鉴权）。 */
@@ -135,6 +137,7 @@ export function ErrorBlockView({
 	iconClass,
 	labels,
 	detail,
+	diagnostics,
 	expanded,
 	onToggleExpanded,
 	action,
@@ -180,7 +183,7 @@ export function ErrorBlockView({
 							{open ? labels.hideDetail : labels.showDetail}
 						</button>
 						<CopyIconButton
-							getText={() => detail}
+							getText={() => (diagnostics ? `${diagnostics}\n\n${detail}` : detail)}
 							label={labels.copy}
 							labels={{ label: labels.copy, copied: labels.copied }}
 						/>
@@ -188,6 +191,11 @@ export function ErrorBlockView({
 				</div>
 			</div>
 			<CollapsePanel open={open} id={panelId} exportPanel={exportMode}>
+				{diagnostics ? (
+					<pre className="mt-2 overflow-auto rounded border border-border/50 bg-background/60 px-2 py-1.5 font-mono text-[11.5px] leading-[1.55] text-muted-foreground/75">
+						{diagnostics}
+					</pre>
+				) : null}
 				<pre className="mt-2 max-h-60 overflow-auto rounded border border-border/50 bg-background/60 px-2 py-1.5 font-mono text-[11.5px] leading-[1.55] text-muted-foreground/75">
 					{detail}
 				</pre>

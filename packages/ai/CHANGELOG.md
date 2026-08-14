@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+
+- AI 根入口现在公开导出 Provider credential/error 合同，Runtime 模型绑定与 Provider 适配器可以共享同一套认证失败类型，而不需要深度导入实现目录。
+- 新增显式模型不存在错误工厂，模型解析失败统一使用 `AI_MODEL_NOT_FOUND`。
+
+- Added the protocol-level `createAssistantMessage` factory so native adapters, compatibility projections, and provider error normalization share one assistant envelope and usage-zero contract.
+- Introduced stable model runtime contracts for normalized call results, explicit model identity/endpoint/capabilities, deterministic model middleware, and structured pre-stream routing/fallback. Existing legacy stream APIs remain compatible during migration.
+- `ModelRouter` now enforces an explicit routing commit point: structured failures may select a configured fallback after lifecycle start but before the first text/reasoning/tool output; once model output is observable, the current route is locked and later failures are propagated without switching providers.
+- Native model adapters are now preferred by the public `stream()`/`complete()` path; legacy providers remain an explicit fallback for extensions that have not migrated.
+- Adapter registries now normalize synchronous provider throws, stream error events, metadata failures, and generate failures at one invocation boundary; legacy API mismatches remain programming errors instead of being disguised as provider responses.
+
 - **Provider 错误合同和测试模型增强**：AI 错误现在保留安全的 Provider code、请求阶段、request id、响应头/响应体预览与 Retry-After 信息，并使用跨包 marker 识别；新增原生 `ScriptedLanguageModelAdapter`，用于按调用序列测试成功、失败和取消终态。
 
 ### Added
@@ -14,6 +25,8 @@
 
 ### Changed
 
+- OpenAI-compatible request clients now resolve credentials through the selected model provider's environment mapping, instead of falling back to `OPENAI_API_KEY` for every compatible endpoint.
+
 - **Google 协议族切换为原生 `LanguageModelAdapter`**：Google Generative AI、Vertex 与 Gemini CLI 不再由新 Registry 反向包装 legacy stream；三种 transport 共享 TypeBox wire schema、Gemini event reducer、usage 和严格终止律，同时保留 API key、ADC 与 Cloud Code OAuth/endpoint/retry 的独立所有权。顶层 provider 入口收敛为轻量 facade，官方/Vertex sender 与 Gemini CLI fetch 支持确定性离线测试。
 - **Anthropic 与 Amazon Bedrock 切换为原生 `LanguageModelAdapter`**：两者不再由新 Registry 反向包装 legacy stream；分别使用符合各自 wire 顺序的显式状态机、TypeBox 入站校验、结构化失败与严格终止律。Claude adaptive-thinking/effort 规则和 legacy error-event projector 收敛为共享模块，Bedrock 增加不泄漏到公共 options 的 command sender 构造注入点供离线测试。
 - **OpenAI Responses 协议族切换为原生 `LanguageModelAdapter`**：OpenAI、Azure 与 Codex Responses 不再由新 Registry 反向包装 legacy stream；三者共享按 `output_index` 归约的流状态机、TypeBox wire 校验、结构化失败与严格终止律，OpenAI/Azure endpoint 和 Codex SSE/WebSocket 仍由各自 transport 负责。旧 `stream*()` 入口保留为从新 Adapter 到 error-event 语义的单向兼容投影。
@@ -22,6 +35,11 @@
 
 ### Fixed
 
+- `AssistantMessage(stopReason: "error")` 现在可以携带安全的 `AIErrorDetails`；统一的 `normalizeAssistantMessageError` 优先恢复结构化错误，只有旧 Provider 消息才使用兼容文本分类。
+
+- Provider 的终端错误消息现在保留安全的 `AIErrorDetails` 投影；`completeSimple`、兼容适配器和上层压缩流程不再把 provider code、model、request id 与重试语义丢在事件边界之外。
+
+- Assistant-error session observations now classify retryability from the provider failure text, so quota, billing, authentication, and other non-retryable failures do not enter automatic retry paths as retryable errors.
 - Provider 返回 HTTP 429 但错误正文表示额度/计费不可用时，不再标记为可重试；该分类规则统一供 Provider 适配器与 Runtime 使用。
 
 - 修复 OpenAI 兼容工具 Schema 清洗日志把所有命中端点误称为 Gemini 的问题；DeepSeek 等 provider 仍使用共享 `openai-completions` 适配器，但不会被错误判断为 Gemini。清洗器现在保留带有 `oneOf` / `anyOf` 等结构关键字的合法联合分支。

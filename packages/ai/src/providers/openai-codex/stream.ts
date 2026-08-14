@@ -1,5 +1,6 @@
 import { getEnvApiKey } from "../../env-api-keys.js";
 import { supportsXhigh } from "../../models.js";
+import { requireProviderCredential } from "../../provider-kit/index.js";
 import type { Context, Model, SimpleStreamOptions, StreamFunction } from "../../types.js";
 import type { AssistantMessageEventStream } from "../../utils/event-stream.js";
 import { projectResponsesAdapter } from "../openai-responses/legacy-stream.js";
@@ -20,8 +21,7 @@ export const streamSimpleOpenAICodexResponses: StreamFunction<"openai-codex-resp
 	context: Context,
 	options?: SimpleStreamOptions,
 ): AssistantMessageEventStream => {
-	const apiKey = options?.apiKey || getEnvApiKey(model.provider);
-	if (!apiKey) throw new Error(`No API key for provider: ${model.provider}`);
+	const apiKey = requireProviderCredential(model, options?.apiKey || getEnvApiKey(model.provider));
 	const base = buildBaseOptions(model, options, apiKey);
 	return streamOpenAICodexResponses(model, context, {
 		...base,

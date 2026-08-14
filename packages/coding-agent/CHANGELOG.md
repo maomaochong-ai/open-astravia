@@ -17,6 +17,10 @@
 
 ### Fixed
 
+- 自动压缩和分支摘要读取模型终端错误中的结构化 Provider failure，并将其交给 Runtime 观察与重试合同；后台模型失败不再只剩一段不可分类的文本。
+
+- 手动上下文压缩和分支摘要缺少模型凭证时，现在复用 AI 认证错误合同，不再丢失 provider/model 与不可重试诊断。
+
 - Runtime Host 重试合同现在保留并校验 Provider 的安全诊断字段，UI 和重试策略可以区分供应商错误阶段、request id 与 Retry-After。
 
 - 终态持久化失败时保留并回传原始 Provider 失败合同；Coding Agent 不会把持久化异常当成新的可重试供应商错误。

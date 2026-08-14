@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { AIError } from "../src/protocol/index.js";
-import { normalizeProviderError } from "../src/provider-kit/index.js";
+import { AIError, getAIErrorDetails } from "../src/protocol/index.js";
+import { normalizeProviderError, requireProviderCredential } from "../src/provider-kit/index.js";
+import { normalizeAssistantMessageError } from "../src/runtime/index.js";
 import type { Model } from "../src/types.js";
 
 const model: Model<"openai-completions"> = {
@@ -17,6 +18,59 @@ const model: Model<"openai-completions"> = {
 };
 
 describe("normalizeProviderError", () => {
+	it("restores a structured terminal assistant failure without text classification", () => {
+		const details = getAIErrorDetails(
+			new AIError("AI_BILLING_REQUIRED", "quota exhausted", {
+				retryable: false,
+				statusCode: 402,
+				provider: "test-provider",
+				modelId: "test-model",
+				providerCode: "insufficient_quota",
+			}),
+		);
+		const restored = normalizeAssistantMessageError(
+			{
+				role: "assistant",
+				content: [],
+				api: model.api,
+				provider: model.provider,
+				model: model.id,
+				usage: {
+					input: 0,
+					output: 0,
+					cacheRead: 0,
+					cacheWrite: 0,
+					totalTokens: 0,
+					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+				},
+				stopReason: "error",
+				errorMessage: "503 temporary text that must not override the contract",
+				failure: details,
+				timestamp: 1,
+			},
+			model,
+		);
+
+		expect(restored).toMatchObject({
+			code: "AI_BILLING_REQUIRED",
+			message: "quota exhausted",
+			retryable: false,
+			statusCode: 402,
+			providerCode: "insufficient_quota",
+		});
+	});
+
+	it("classifies missing credentials as non-retryable authentication failures", () => {
+		expect(() => requireProviderCredential(model, undefined)).toThrowError(
+			expect.objectContaining({
+				code: "AI_AUTHENTICATION_FAILED",
+				retryable: false,
+				provider: "test-provider",
+				modelId: "test-model",
+				phase: "resolve",
+			}),
+		);
+	});
 	it.each([
 		[401, "AI_AUTHENTICATION_FAILED", false],
 		[403, "AI_PERMISSION_DENIED", false],

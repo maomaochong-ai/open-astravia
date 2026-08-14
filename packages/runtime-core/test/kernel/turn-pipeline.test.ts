@@ -868,7 +868,7 @@ describe("greenfield runtime kernel", () => {
 		expect(conversation.events.at(-1)?.type).toBe("turn.failed");
 	});
 
-	it("does not persist a provider assistant error alongside turn.failed", async () => {
+	it("persists a provider assistant error alongside turn.failed", async () => {
 		const engine: TurnEnginePort = {
 			async *execute() {
 				yield { type: "message", message: assistantMessage("rejected") };
@@ -894,7 +894,7 @@ describe("greenfield runtime kernel", () => {
 			}),
 		);
 		const conversation = await harness.repository.load("session-1");
-		expect(conversation.messages.filter((message) => message.role === "assistant")).toHaveLength(1);
+		expect(conversation.messages.filter((message) => message.role === "assistant")).toHaveLength(2);
 		expect(conversation.events.at(-1)?.type).toBe("turn.failed");
 	});
 

@@ -45,6 +45,7 @@ import {
 	nextId,
 	resetStreamState,
 	setTurnStartTime,
+	toChatErrorDetails,
 	turnStartTime,
 	turnStatsCache,
 } from "../services/chat-service";
@@ -470,6 +471,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 					attempt: event.attempt,
 					maxAttempts: event.maxAttempts,
 					errorMessage: event.errorMessage,
+					...(event.failure ? { details: toChatErrorDetails(event.failure) } : {}),
 				});
 				return;
 			}
@@ -482,7 +484,15 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			if (event.type === "error") {
 				flushDeltas();
 				setRetryProgress(null);
-				setChatMessages((prev) => appendError(prev, event.error.message, event.retryAttempts, event.turnId));
+				setChatMessages((prev) =>
+					appendError(
+						prev,
+						event.error.message,
+						event.retryAttempts,
+						event.turnId,
+						toChatErrorDetails(event.error),
+					),
+				);
 				return;
 			}
 

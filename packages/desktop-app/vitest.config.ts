@@ -4,6 +4,9 @@ import { coverageConfigDefaults, defineConfig } from "vitest/config";
 const codingAgentSrc = resolve(__dirname, "../coding-agent/src");
 
 export default defineConfig({
+	// Keep the package-local `src/**/*.test.*` include stable regardless of
+	// whether Vitest is launched from this package or the monorepo root.
+	root: __dirname,
 	resolve: {
 		alias: [
 			{ find: "@", replacement: resolve(__dirname, "./src") },

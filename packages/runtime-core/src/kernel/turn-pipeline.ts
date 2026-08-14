@@ -1,4 +1,4 @@
-import { isRetryableProviderFailure, type Message, type StopReason } from "@vetta/ai";
+import type { Message, StopReason } from "@vetta/ai";
 import type { ConversationDocument, ConversationDocumentReader } from "../conversation/document.js";
 import type { RuntimeFailure } from "../failure-contract.js";
 import type { RuntimeExecutionObservationEvent, RuntimeMessageEnvelope } from "../runtime-execution-observation.js";
@@ -491,6 +491,7 @@ export class TurnPipeline {
 			await this.enterStage(state.sessionId, turnId, "execution");
 			let stopReason: StopReason | undefined;
 			let assistantErrorMessage: string | undefined;
+			let assistantErrorFailure: RuntimeFailure | undefined;
 			for await (const event of this.turnEngine.execute({
 				get sessionId() {
 					return state.sessionId;
@@ -559,6 +560,7 @@ export class TurnPipeline {
 						sessionId: state.sessionId,
 						turnId,
 						message: event.message,
+						...(event.failure ? { failure: event.failure } : {}),
 						...(event.origin ? { origin: event.origin } : {}),
 						timestamp: this.clock.now(),
 					};
@@ -572,8 +574,9 @@ export class TurnPipeline {
 						throw new TurnExecutionError({
 							code: "PROVIDER_ERROR",
 							message: assistantErrorMessage || "Provider returned an assistant error response",
-							retryable: isRetryableProviderFailure(assistantErrorMessage || ""),
-							origin: "provider",
+							retryable: assistantErrorFailure?.retryable ?? false,
+							origin: assistantErrorFailure?.origin ?? "provider",
+							...(assistantErrorFailure?.details ? { details: assistantErrorFailure.details } : {}),
 						});
 					}
 					stopReason = event.stopReason;
@@ -583,14 +586,10 @@ export class TurnPipeline {
 					await this.publishObservation(state.sessionId, turnId, event.observation);
 					continue;
 				}
-				// A provider-level assistant error is an intermediate diagnostic, not a
-				// conversation message. The durable turn.failed fact below is the sole
-				// source of truth for new failures; old assistant error messages remain
-				// readable through the compatibility history projection.
 				if (event.message.role === "assistant" && event.message.stopReason === "error") {
 					assistantErrorMessage =
 						event.message.errorMessage?.trim() || extractAssistantText(event.message.content).trim() || undefined;
-					continue;
+					assistantErrorFailure = event.failure;
 				}
 
 				const storedEvent: MessageAppendedEvent = {
@@ -598,6 +597,7 @@ export class TurnPipeline {
 					sessionId: state.sessionId,
 					turnId,
 					message: event.message,
+					...(event.failure ? { failure: event.failure } : {}),
 					...(event.origin ? { origin: event.origin } : {}),
 					timestamp: this.clock.now(),
 				};

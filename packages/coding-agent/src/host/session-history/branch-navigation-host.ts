@@ -1,3 +1,4 @@
+import { providerAuthenticationError } from "@vetta/ai";
 import type { RuntimeSession } from "@vetta/runtime-core";
 import { createCodingAgentExtensionSessionView } from "../../adapters/extensions/runtime-session-view-adapter.js";
 import { collectEntriesForBranchSummary, generateBranchSummary } from "../../compaction/index.js";
@@ -104,7 +105,12 @@ export class CodingAgentBranchNavigationHost {
 			let summaryDetails: unknown;
 			if (options.summarize && entriesToSummarize.length > 0 && !extensionSummary) {
 				const apiKey = await assembly.modelView.resolveApiKey(model!);
-				if (!apiKey) throw new Error(`No API key for ${model!.provider}`);
+				if (!apiKey) {
+					throw providerAuthenticationError(
+						model!,
+						`No credentials configured for ${model!.provider}/${model!.id}`,
+					);
+				}
 				const result = await this.generateSummary(entriesToSummarize, {
 					model: model!,
 					apiKey,

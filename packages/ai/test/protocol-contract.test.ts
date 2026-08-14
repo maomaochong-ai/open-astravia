@@ -6,6 +6,7 @@ import {
 	type AssistantMessage,
 	type AssistantMessageEvent,
 	type AssistantMessageTerminalEvent,
+	createAssistantMessage,
 	getAIErrorDetails,
 	getAssistantMessageEventResult,
 	isAIError,
@@ -64,6 +65,29 @@ function eventType(event: AssistantMessageEvent): AssistantMessageEvent["type"] 
 }
 
 describe("AI protocol contract", () => {
+	it("creates a stable zero-value assistant envelope", () => {
+		const message = createAssistantMessage(
+			{ api: "openai-completions", provider: "deepseek", model: "deepseek-chat" },
+			{ stopReason: "error", errorMessage: "insufficient_quota", timestamp: 42 },
+		);
+
+		expect(message).toMatchObject({
+			role: "assistant",
+			api: "openai-completions",
+			provider: "deepseek",
+			model: "deepseek-chat",
+			content: [],
+			stopReason: "error",
+			errorMessage: "insufficient_quota",
+			timestamp: 42,
+			usage: {
+				input: 0,
+				output: 0,
+				totalTokens: 0,
+			},
+		});
+	});
+
 	it("keeps legacy root types as exact aliases of protocol types", () => {
 		expectTypeOf<LegacyAssistantMessage>().toEqualTypeOf<AssistantMessage>();
 		expectTypeOf<LegacyAssistantMessageEvent>().toEqualTypeOf<AssistantMessageEvent>();
@@ -89,6 +113,25 @@ describe("AI protocol contract", () => {
 			expect.objectContaining({ code: AI_ERROR_CODES.STREAM_PROTOCOL_FAILED }),
 		);
 		expectTypeOf(done).toMatchTypeOf<AssistantMessageTerminalEvent>();
+	});
+
+	it("retains structured failure when an error event is projected to a message", () => {
+		const failure = getAIErrorDetails(
+			new AIError(AI_ERROR_CODES.BILLING_REQUIRED, "quota exhausted", {
+				retryable: false,
+				statusCode: 402,
+				provider: "deepseek",
+				modelId: "deepseek-chat",
+			}),
+		);
+		const error = {
+			type: "error" as const,
+			reason: "error" as const,
+			error: assistantMessage("error"),
+			failure,
+		};
+
+		expect(getAssistantMessageEventResult(error)).toMatchObject({ failure });
 	});
 
 	it("provides stable structured error fields without string matching", () => {

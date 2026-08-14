@@ -1,5 +1,5 @@
 import type { ImageContent } from "@vetta/ai";
-import type { RuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeFailure, RuntimeSession } from "@vetta/runtime-core";
 
 export interface CodingAgentTurnRetrySettings {
 	readonly enabled: boolean;
@@ -15,12 +15,14 @@ export type CodingAgentTurnRetryEvent =
 			readonly maxAttempts: number;
 			readonly delayMs: number;
 			readonly errorMessage: string;
+			readonly failure?: RuntimeFailure;
 	  }
 	| {
 			readonly type: "auto_retry_end";
 			readonly success: boolean;
 			readonly attempt: number;
 			readonly finalError?: string;
+			readonly failure?: RuntimeFailure;
 	  };
 
 export interface CodingAgentTurnRetryControllerOptions {

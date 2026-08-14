@@ -48,4 +48,31 @@ describe("mapRuntimeSessionObservationEvent", () => {
 		if (event.type !== "active_tools_update") throw new Error("Expected active tools event");
 		expect(event.activeToolNames).not.toBe(activeToolNames);
 	});
+
+	it("preserves structured failures on retry and compaction observations", () => {
+		const failure = {
+			code: "AI_RATE_LIMITED",
+			message: "rate limited",
+			retryable: true,
+			origin: "provider" as const,
+		};
+		const retry = mapRuntimeSessionObservationEvent("session-1", {
+			type: "retry.start",
+			attempt: 1,
+			maxAttempts: 2,
+			delayMs: 100,
+			errorMessage: failure.message,
+			failure,
+			source: "agent",
+		});
+		const compaction = mapRuntimeSessionObservationEvent("session-1", {
+			type: "compaction.end",
+			success: false,
+			errorMessage: failure.message,
+			failure,
+			source: "agent",
+		});
+		expect(retry).toMatchObject({ failure });
+		expect(compaction).toMatchObject({ failure });
+	});
 });

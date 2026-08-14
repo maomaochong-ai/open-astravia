@@ -1,6 +1,7 @@
 import type { Message, TextContent } from "@vetta/ai";
 import type { SessionEvent } from "../contracts.js";
 import { runtimeError } from "../errors.js";
+import { type RuntimeFailure, runtimeFailureFromAIErrorDetails } from "../failure-contract.js";
 import type { KernelEvent } from "../kernel/contracts.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import { baseSessionEvent, mapRuntimeSessionObservationEvent } from "./session-events.js";
@@ -25,7 +26,7 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 	}
 
 	if (event.type === "message.appended" && event.message.role === "assistant") {
-		return assistantMessageObservations(event.message).map((observation) =>
+		return assistantMessageObservations(event.message, event.turnId, event.failure).map((observation) =>
 			mapRuntimeSessionObservationEvent(event.sessionId, observation, event.timestamp),
 		);
 	}
@@ -143,6 +144,8 @@ function messageText(message: Message): string {
 
 function assistantMessageObservations(
 	message: Extract<Message, { role: "assistant" }>,
+	turnId?: string,
+	failure?: RuntimeFailure,
 ): RuntimeSessionObservationEvent[] {
 	const observations: RuntimeSessionObservationEvent[] = [
 		{ type: "message.final", message, source: "agent" },
@@ -165,9 +168,11 @@ function assistantMessageObservations(
 			extractAssistantText(message.content) ||
 			(message as Message & { errorMessage?: string }).errorMessage ||
 			"Assistant response ended with error";
+		const messageFailure = message.failure ? runtimeFailureFromAIErrorDetails(message.failure) : undefined;
 		observations.push({
 			type: "error",
-			error: runtimeError("INTERNAL_ERROR", errorText, true, "provider"),
+			...(turnId ? { turnId } : {}),
+			error: failure ?? messageFailure ?? runtimeError("INTERNAL_ERROR", errorText, false, "provider"),
 			source: "agent",
 		});
 	} else if (message.stopReason === "aborted") {

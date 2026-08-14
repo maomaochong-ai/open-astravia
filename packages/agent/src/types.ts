@@ -1,5 +1,6 @@
 import type { Static, TSchema } from "@sinclair/typebox";
 import type {
+	AIErrorDetails,
 	AssistantMessage,
 	AssistantMessageEvent,
 	Context,
@@ -256,6 +257,8 @@ export interface AgentState {
 	streamMessage: AgentMessage | null;
 	pendingToolCalls: Set<string>;
 	error?: string;
+	/** Structured Provider diagnostics for new consumers; `error` remains legacy text. */
+	errorDetails?: AIErrorDetails;
 }
 
 export interface AgentToolResult<T> {

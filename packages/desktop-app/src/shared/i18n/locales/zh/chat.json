@@ -513,6 +513,17 @@
 			"hideDetail": "收起详情",
 			"retriedNote": "已自动重试 {{count}} 次",
 			"repeatedNote": "重复出现 {{count}} 次",
+			"diagnostic": {
+				"code": "错误码：{{value}}",
+				"origin": "来源：{{value}}",
+				"statusCode": "HTTP 状态：{{value}}",
+				"provider": "供应商：{{value}}",
+				"model": "模型：{{value}}",
+				"providerCode": "供应商错误码：{{value}}",
+				"phase": "阶段：{{value}}",
+				"requestId": "请求 ID：{{value}}",
+				"retryAfter": "建议等待：{{value}} ms"
+			},
 			"kinds": {
 				"rate_limit": {
 					"title": "请求太频繁了",

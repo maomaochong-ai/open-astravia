@@ -1,4 +1,5 @@
 import { getEnvApiKey } from "../../env-api-keys.js";
+import { requireProviderCredential } from "../../provider-kit/index.js";
 import { createResponsesAdapter } from "../openai-responses/adapter.js";
 import { processResponsesStream } from "../openai-responses/events.js";
 import type { AzureOpenAIResponsesOptions } from "./options.js";
@@ -9,12 +10,11 @@ export const azureOpenAIResponsesAdapter = createResponsesAdapter<
 	AzureOpenAIResponsesOptions
 >("azure-openai-responses", async ({ request, output, stream, signal, start }) => {
 	const { model, context, options } = request;
-	const apiKey = options?.apiKey || getEnvApiKey(model.provider) || "";
-	if (!apiKey) {
-		throw new Error(
-			"Azure OpenAI API key is required. Set AZURE_OPENAI_API_KEY environment variable or pass it as an argument.",
-		);
-	}
+	const apiKey = requireProviderCredential(
+		model,
+		options?.apiKey || getEnvApiKey(model.provider),
+		"Azure OpenAI API key is required. Set AZURE_OPENAI_API_KEY environment variable or pass it as an argument.",
+	);
 	const client = createAzureOpenAIResponsesClient(model, apiKey, options);
 	const params = buildAzureOpenAIResponsesParams(model, context, options, resolveDeploymentName(model, options));
 	options?.onPayload?.(params);

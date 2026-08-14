@@ -7,7 +7,7 @@
 
 import type { AgentMessage } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
-import { completeSimple } from "@vetta/ai";
+import { completeSimple, normalizeAssistantMessageError } from "@vetta/ai";
 import {
 	convertToLlm,
 	createBranchSummaryMessage,
@@ -723,7 +723,7 @@ async function completeSummaryCandidate(options: CompleteSummaryCandidateOptions
 		},
 	);
 	if (response.stopReason === "error") {
-		throw new Error(`${options.errorPrefix}: ${response.errorMessage || "Unknown error"}`);
+		throw normalizeAssistantMessageError(response, options.model);
 	}
 	const text = response.content.flatMap((content) => (content.type === "text" ? [content.text] : [])).join("\n");
 	return extractSummaryFromResponse(text);

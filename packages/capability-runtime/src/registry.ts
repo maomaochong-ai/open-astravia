@@ -202,7 +202,15 @@ export class CapabilityRegistry {
 				CAPABILITY_ERROR_CODES.PROVIDER_FAILED,
 				`Capability provider failed: ${capability.id}`,
 				{ cause: error },
+				readProviderErrorDetails(error),
 			);
 		}
 	}
+}
+
+function readProviderErrorDetails(error: unknown): Readonly<Record<string, unknown>> | undefined {
+	if (typeof error !== "object" || error === null) return undefined;
+	const details = Reflect.get(error, "details");
+	if (typeof details !== "object" || details === null || Array.isArray(details)) return undefined;
+	return details as Readonly<Record<string, unknown>>;
 }

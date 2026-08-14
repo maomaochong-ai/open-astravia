@@ -1,5 +1,5 @@
-import type { Message, UserMessage } from "@vetta/ai";
-import type { ContextCompositionReport } from "@vetta/runtime-core";
+import { type Message, providerAuthenticationError, type UserMessage } from "@vetta/ai";
+import { type ContextCompositionReport, runtimeFailureFromError } from "@vetta/runtime-core";
 import { type ConversationDocument, selectConversationDocumentModelMessages } from "@vetta/runtime-core/conversation";
 import type {
 	ContextCompactionRecord,
@@ -198,6 +198,9 @@ export class CodingAgentContextRuntime
 					type: "compaction.end",
 					success: false,
 					errorMessage: `No API key for ${model.provider}`,
+					failure: runtimeFailureFromError(
+						providerAuthenticationError(model, `No credentials configured for ${model.provider}/${model.id}`),
+					),
 					source: "agent",
 				});
 				return unchanged(callMessages, assembledTokens);
@@ -253,6 +256,7 @@ export class CodingAgentContextRuntime
 				type: "compaction.end",
 				success: false,
 				errorMessage: error instanceof Error ? error.message : String(error),
+				failure: runtimeFailureFromError(error, { origin: "provider", code: "COMPACTION_FAILED" }),
 				source: "agent",
 			});
 			return unchanged(callMessages, assembledTokens);
@@ -312,7 +316,9 @@ export class CodingAgentContextRuntime
 		const apiKey = input.modelBinding?.credential
 			? await input.modelBinding.credential.resolve()
 			: await this.options.resolveApiKey(model);
-		if (!apiKey) throw new Error(`No API key for ${model.provider}`);
+		if (!apiKey) {
+			throw providerAuthenticationError(model, `No credentials configured for ${model.provider}/${model.id}`);
+		}
 
 		const entries = toCompactionSessionEntries(input.document);
 		const preparation = prepareCompaction(entries, this.readSettings());

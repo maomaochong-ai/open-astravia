@@ -83,6 +83,7 @@ export type {
 	RuntimeFailureDetails,
 	RuntimeFailureOrigin,
 } from "./failure-contract.js";
+export { runtimeFailureFromAIErrorDetails, runtimeFailureFromError } from "./failure-contract.js";
 export type {
 	RuntimeExecutionObservationEvent,
 	RuntimeMessageEnvelope,

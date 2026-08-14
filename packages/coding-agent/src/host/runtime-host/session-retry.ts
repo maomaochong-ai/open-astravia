@@ -210,6 +210,7 @@ export class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStrea
 					maxAttempts: event.maxAttempts,
 					delayMs: event.delayMs,
 					errorMessage: event.errorMessage,
+					...(event.failure ? { failure: event.failure } : {}),
 					source: "agent",
 				}),
 			);
@@ -222,6 +223,7 @@ export class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStrea
 				success: event.success,
 				attempt: event.attempt,
 				finalError: event.finalError,
+				...(event.failure ? { failure: event.failure } : {}),
 				source: "agent",
 			}),
 		);

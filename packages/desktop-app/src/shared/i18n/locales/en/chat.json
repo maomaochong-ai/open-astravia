@@ -513,6 +513,17 @@
 			"hideDetail": "Hide details",
 			"retriedNote": "Retried {{count}} time(s) automatically",
 			"repeatedNote": "Happened {{count}} times",
+			"diagnostic": {
+				"code": "Error code: {{value}}",
+				"origin": "Origin: {{value}}",
+				"statusCode": "HTTP status: {{value}}",
+				"provider": "Provider: {{value}}",
+				"model": "Model: {{value}}",
+				"providerCode": "Provider error code: {{value}}",
+				"phase": "Phase: {{value}}",
+				"requestId": "Request ID: {{value}}",
+				"retryAfter": "Suggested wait: {{value}} ms"
+			},
 			"kinds": {
 				"rate_limit": {
 					"title": "Too many requests",

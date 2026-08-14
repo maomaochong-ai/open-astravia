@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { streamQwen } from "../src/providers/qwen.js";
 import { streamModel } from "../src/runtime/stream-model.js";
 import {
@@ -95,11 +95,16 @@ describe("OpenAI-compatible native adapters", () => {
 
 			for await (const event of response.events) eventTypes.push(event.type);
 			const result = await response.result;
+			const metadata = await response.metadata;
 
 			expect(textOf(result)).toBe("hello");
 			expect(result.api).toBe("openai-completions");
 			expect(result.usage).toMatchObject({ input: 3, output: 2, totalTokens: 5 });
 			expect(eventTypes).toEqual(["start", "text_start", "text_delta", "text_end", "done"]);
+			expect(metadata).toMatchObject({
+				finishReason: { unified: "stop", raw: "stop" },
+				response: { responseId: "chunk-1" },
+			});
 			expect(transport.requests).toHaveLength(1);
 			fixture.assertReasoningPayload(JSON.parse(transport.requests[0]?.body ?? "{}"));
 		});
@@ -138,6 +143,7 @@ describe("OpenAI-compatible native adapters", () => {
 
 		await expect(consume(response.events)).rejects.toMatchObject({ code: "AI_RESPONSE_VALIDATION_FAILED" });
 		await expect(response.result).rejects.toMatchObject({ code: "AI_RESPONSE_VALIDATION_FAILED" });
+		await expect(response.metadata).resolves.toMatchObject({ finishReason: { unified: "error" } });
 	});
 
 	it("normalizes rate limits on the native adapter boundary", async () => {
@@ -163,6 +169,25 @@ describe("OpenAI-compatible native adapters", () => {
 			statusCode: 429,
 		});
 		expect(transport.requests).toHaveLength(3);
+	});
+
+	it("resolves credentials from the selected compatible provider", async () => {
+		vi.stubEnv("DEEPSEEK_API_KEY", "deepseek-env-key");
+		vi.stubEnv("OPENAI_API_KEY", "unrelated-openai-key");
+		try {
+			const fixture = fixtureFor("openai-completions-deepseek");
+			const transport = createProviderTestTransport([textResponse()]);
+			const response = await streamModel({
+				model: model(fixture),
+				context,
+				options: { fetch: transport.fetch },
+			});
+
+			await response.result;
+			expect(transport.requests[0]?.headers.get("authorization")).toBe("Bearer deepseek-env-key");
+		} finally {
+			vi.unstubAllEnvs();
+		}
 	});
 
 	it("settles an already aborted native adapter request", async () => {

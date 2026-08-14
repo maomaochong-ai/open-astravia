@@ -154,6 +154,21 @@ export interface ErrorBlock {
 	 * live 链路不会产生 >1 的值——那边靠 attempts 表达。
 	 */
 	repeated?: number;
+	/** Safe structured diagnostics retained across live updates and history replay. */
+	details?: ChatErrorDetails;
+}
+
+export interface ChatErrorDetails {
+	code?: string;
+	origin?: "runtime" | "provider" | "tool" | "mcp";
+	retryable?: boolean;
+	statusCode?: number;
+	provider?: string;
+	modelId?: string;
+	requestId?: string;
+	providerCode?: string;
+	phase?: "resolve" | "request" | "response" | "stream" | "decode";
+	retryAfterMs?: number;
 }
 
 export type ContentBlock = TextBlock | ThinkingBlock | ToolCallBlock | ToolResultBlock | ErrorBlock;
@@ -423,6 +438,7 @@ export interface RetryProgress {
 	maxAttempts: number;
 	/** 上一次失败的原始原因；UI 只展示归类后的人话，最终失败卡仍可展开原文。 */
 	errorMessage: string;
+	details?: ChatErrorDetails;
 }
 export const retryProgressAtom = atom<RetryProgress | null>(null);
 

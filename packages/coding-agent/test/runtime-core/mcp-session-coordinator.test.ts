@@ -108,7 +108,18 @@ describe("Coding Agent MCP Session Coordinator", () => {
 		await expect(coordinator.refreshSession("session", true)).rejects.toBe(refreshFailure);
 		expect(observations.slice(2)).toEqual([
 			{ type: "mcp.reload.start", source: "agent" },
-			{ type: "mcp.reload.end", changed: false, errorMessage: "refresh failed", source: "agent" },
+			{
+				type: "mcp.reload.end",
+				changed: false,
+				errorMessage: "refresh failed",
+				failure: {
+					code: "MCP_RELOAD_FAILED",
+					message: "refresh failed",
+					retryable: false,
+					origin: "mcp",
+				},
+				source: "agent",
+			},
 		]);
 	});
 

@@ -92,6 +92,43 @@ describe("model call lifecycle", () => {
 			undefined,
 		);
 	});
+
+	it("persists the terminal error event when the provider result also rejects", async () => {
+		const failed = vi.fn();
+		const errorMessage = assistantMessage("error", 0);
+		const config: AgentLoopConfig = {
+			model: createModel(),
+			convertToLlm: (messages) => messages.filter(isMessage),
+			modelCallLifecycle: {
+				prepared: vi.fn(),
+				completed: vi.fn(),
+				failed,
+			},
+		};
+		const stream = agentLoopContinue(
+			{ systemPrompt: "system", messages: [{ role: "user", content: "start", timestamp: 1 }] },
+			config,
+			undefined,
+			() => {
+				const events = new EventStream<AssistantMessageEvent, AssistantMessage>(
+					(event) => event.type === "done" || event.type === "error",
+					(event) => {
+						if (event.type === "done") return event.message;
+						if (event.type === "error") return event.error;
+						throw new Error("Unexpected non-terminal event");
+					},
+				);
+				queueMicrotask(() => events.push({ type: "error", reason: "error", error: errorMessage }));
+				events.result = () => Promise.reject(new Error("provider transport failed"));
+				return events;
+			},
+		);
+
+		await expect(stream.result()).resolves.toEqual(
+			expect.arrayContaining([expect.objectContaining({ role: "assistant", stopReason: "error" })]),
+		);
+		expect(failed).toHaveBeenCalledWith(expect.anything(), errorMessage, undefined);
+	});
 });
 
 function responseStream(message: AssistantMessage): EventStream<AssistantMessageEvent, AssistantMessage> {

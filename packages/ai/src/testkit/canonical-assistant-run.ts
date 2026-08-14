@@ -44,6 +44,7 @@ export function canonicalizeAssistantMessage(message: AssistantMessage): Canonic
 		},
 		stopReason: message.stopReason,
 		...(message.errorMessage === undefined ? {} : { errorMessage: message.errorMessage }),
+		...(message.failure === undefined ? {} : { failure: { ...message.failure } }),
 	};
 }
 

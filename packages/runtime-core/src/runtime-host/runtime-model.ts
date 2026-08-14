@@ -1,5 +1,12 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
-import { type Api, type Model, modelsAreEqual, supportsXhigh } from "@vetta/ai";
+import {
+	type Api,
+	type Model,
+	modelsAreEqual,
+	providerAuthenticationError,
+	providerModelNotFoundError,
+	supportsXhigh,
+} from "@vetta/ai";
 import type {
 	RuntimeSnapshotAcquireContext,
 	RuntimeTurnCredentialBinding,
@@ -65,13 +72,16 @@ export class RuntimeModel implements RuntimeModelRuntime {
 
 	async selectModel(modelKey: string, strategy: RuntimeModelSelectionStrategy): Promise<void> {
 		const model = this.findModel(modelKey);
-		if (!model) return;
+		if (!model) {
+			const [provider, ...rest] = modelKey.split("/");
+			throw providerModelNotFoundError(provider, rest.join("/"));
+		}
 		if (strategy === "if-changed" && modelsAreEqual(this.currentModel, model)) return;
 
 		const revision = ++this.configurationRevision;
 		const apiKey = await this.credentials.resolve(model);
 		if (!apiKey) {
-			throw new Error(`No API key for ${model.provider}/${model.id}`);
+			throw providerAuthenticationError(model, `No credentials configured for ${model.provider}/${model.id}`);
 		}
 		if (revision !== this.configurationRevision) return;
 		this.currentModel = model;
@@ -117,11 +127,21 @@ export class RuntimeModel implements RuntimeModelRuntime {
 		}
 
 		const revision = ++this.configurationRevision;
-		const model = requested.key ? (this.findModel(requested.key) ?? this.currentModel) : this.currentModel;
+		let model = this.currentModel;
+		if (requested.key) {
+			model =
+				this.findModel(requested.key) ??
+				(() => {
+					const [provider, ...rest] = requested.key!.split("/");
+					throw providerModelNotFoundError(provider, rest.join("/"));
+				})();
+		}
 		const requestedThinkingLevel = (requested.reasoning ?? this.thinkingLevel) as ThinkingLevel;
 		const apiKey = await this.credentials.resolve(model);
 		if (requested.key && !modelsAreEqual(model, this.currentModel)) {
-			if (!apiKey) throw new Error(`No API key for ${model.provider}/${model.id}`);
+			if (!apiKey) {
+				throw providerAuthenticationError(model, `No credentials configured for ${model.provider}/${model.id}`);
+			}
 		}
 		const thinkingLevel = clampThinkingLevelForModel(requestedThinkingLevel, model);
 		if (revision === this.configurationRevision) {

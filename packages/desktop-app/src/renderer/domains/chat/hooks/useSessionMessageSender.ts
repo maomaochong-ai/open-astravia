@@ -41,7 +41,7 @@ import type { PromptAttachmentRef, PromptRequest } from "@vetta/runtime-core";
 import type { PluginPromptContext } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
-import { appendError, fullHistoryToChat, isUserImageFile, nextId } from "../services/chat-service";
+import { appendError, fullHistoryToChat, isUserImageFile, nextId, toChatErrorDetails } from "../services/chat-service";
 import { rememberOptimisticUserMessage } from "../services/optimistic-user-message-cache";
 
 interface SessionMessageSenderOptions {
@@ -497,7 +497,9 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					// delayed or lost. appendError deduplicates the later error event by turnId.
 					const message =
 						outcome.error?.message?.trim() || i18n.t("chat:messageList.errorBlock.kinds.unknown.title");
-					setChatMessages((prev) => appendError(prev, message, undefined, outcome.turnId));
+					setChatMessages((prev) =>
+						appendError(prev, message, undefined, outcome.turnId, toChatErrorDetails(outcome.error)),
+					);
 					setActiveSessionStreaming(false);
 					setRetryProgress(null);
 					sendResult = { status: "failed", error: { message } };

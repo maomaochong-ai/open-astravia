@@ -94,4 +94,22 @@ describe("projectAgentEvent", () => {
 		expect(state.isStreaming).toBe(false);
 		expect(state.streamMessage).toBeNull();
 	});
+
+	it("projects structured provider diagnostics alongside legacy error text", () => {
+		const state = createState();
+		const message = {
+			...assistant("quota exhausted"),
+			failure: {
+				code: "AI_BILLING_REQUIRED" as const,
+				message: "quota exhausted",
+				retryable: false,
+				provider: "deepseek" as const,
+				modelId: "deepseek-chat",
+			},
+		};
+
+		projectAgentEvent(state, { type: "turn_end", message, toolResults: [] }, message);
+		expect(state.error).toBe("quota exhausted");
+		expect(state.errorDetails).toMatchObject({ code: "AI_BILLING_REQUIRED", provider: "deepseek" });
+	});
 });
