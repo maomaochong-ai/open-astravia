@@ -287,12 +287,17 @@ export const FrameView = memo(function FrameView({
 		>
 			{/* Title bar (inverse-scaled so it stays readable at any zoom). */}
 			<div
-				className="absolute left-0 flex items-center gap-1.5 whitespace-nowrap text-xs"
+				className="absolute left-0 flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-xs"
 				style={{
 					transform: `scale(${labelScale})`,
 					transformOrigin: "left bottom",
 					bottom: "100%",
 					marginBottom: `calc(4px * ${labelScale})`,
+					// 标题栏永远不超出 frame 自身的宽度（Figma 行为）：缩小时相邻 frame 的
+					// 标题就不会横着叠到一起，超出的部分由标题的 ellipsis 收掉。
+					// 除以 labelScale 是换算到反向缩放前的坐标系——缩放后正好等于 rect.width。
+					// 重命名时不限宽：输入框被裁掉会打不完字。
+					maxWidth: renaming ? undefined : `calc(${rect.width}px / ${labelScale})`,
 				}}
 			>
 				{renaming ? (
@@ -304,7 +309,8 @@ export const FrameView = memo(function FrameView({
 				) : (
 					<button
 						type="button"
-						className={`cursor-pointer truncate font-medium ${
+						// min-w-0：flex item 默认 min-width:auto，不给 0 的话 truncate 永远不会触发。
+						className={`min-w-0 cursor-pointer truncate font-medium ${
 							selected ? "text-[var(--vetd-selected)]" : "text-muted-foreground"
 						}`}
 						onPointerDown={(event) => beginDrag(event, "move")}
@@ -319,12 +325,12 @@ export const FrameView = memo(function FrameView({
 						{frame.title || frame.id}
 					</button>
 				)}
-				<span className="text-muted-foreground">
+				<span className="shrink-0 text-muted-foreground">
 					{Math.round(rect.width)}×{Math.round(rect.height)}
 				</span>
 				{buildError ? (
 					<span
-						className="flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-red-600"
+						className="flex shrink-0 items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-red-600"
 						title={buildError}
 					>
 						<span className="size-1.5 rounded-full bg-red-500" />
@@ -332,25 +338,25 @@ export const FrameView = memo(function FrameView({
 					</span>
 				) : null}
 				{activity === "reading" ? (
-					<span className="flex items-center gap-1 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-sky-600">
+					<span className="flex shrink-0 items-center gap-1 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-sky-600">
 						<span className="size-1.5 animate-pulse rounded-full bg-sky-500" />
 						{t("canvas.frame.reading")}
 					</span>
 				) : null}
 				{activity === "modifying" ? (
-					<span className="flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-primary">
+					<span className="flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-primary">
 						<span className="size-1.5 animate-pulse rounded-full bg-primary" />
 						{t("canvas.frame.modifying")}
 					</span>
 				) : null}
 				{activity === "creating" ? (
-					<span className="flex items-center gap-1 rounded-full bg-fuchsia-500/15 px-1.5 py-0.5 text-fuchsia-600">
+					<span className="flex shrink-0 items-center gap-1 rounded-full bg-fuchsia-500/15 px-1.5 py-0.5 text-fuchsia-600">
 						<span className="size-1.5 animate-pulse rounded-full bg-fuchsia-500" />
 						{t("canvas.frame.creating")}
 					</span>
 				) : null}
 				{activity === "updated" ? (
-					<span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-emerald-600">
+					<span className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-emerald-600">
 						{t("canvas.frame.updated")}
 					</span>
 				) : null}
