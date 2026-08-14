@@ -2,6 +2,7 @@ import { usePluginShortcutScope, useTranslation } from "@vetta-org/plugin-sdk";
 import {
 	type CSSProperties,
 	type PointerEvent as ReactPointerEvent,
+	type ReactNode,
 	type RefObject,
 	useCallback,
 	useEffect,
@@ -113,10 +114,20 @@ interface DesignCanvasProps {
 	resolveNoteElementsRef: RefObject<
 		((frameId: string, queries: ElementQuery[]) => Promise<(SelectedElementPayload | null)[]>) | null
 	>;
-	/** 顶栏开关的当前值：备注气泡在不在画布上。 */
+	/** 右上角开关的当前值：备注气泡在不在画布上。 */
 	notesVisible: boolean;
 	/** 自动显示备注（只开不关）：切到备注工具、落下一条备注、从列表定位到某条。 */
 	showNotes(): void;
+	/** 右上角按钮组最左端的备注显隐开关。 */
+	onToggleNotes(): void;
+	/** 右上角按钮组最右端的「运行」：进预览模式。 */
+	onRun(): void;
+	runDisabled: boolean;
+	/**
+	 * 左上角标题区（设计切换 + 色卡）。内容归 CanvasTab（设计列表、色卡开合都是
+	 * 它的状态），定位与「给查看模式横幅让位」归画布——右上角按钮组同理。
+	 */
+	titleSlot: ReactNode;
 }
 
 interface Rect {
@@ -265,6 +276,10 @@ export function DesignCanvas({
 	resolveNoteElementsRef,
 	notesVisible,
 	showNotes,
+	onToggleNotes,
+	onRun,
+	runDisabled,
+	titleSlot,
 }: DesignCanvasProps) {
 	const { t } = useTranslation();
 	const [manifest, setManifest] = useState<VetdManifest>(session.manifest);
@@ -1516,9 +1531,26 @@ export function DesignCanvas({
 				/>
 			) : null}
 
+			{/* 左上角标题区。与右上角按钮组同一套定位规则（含查看模式让位）；
+			    指针事件必须截断，否则画布根会捕获指针，里面点不动。 */}
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: pointer-capture shield for canvas chrome */}
+			<div
+				style={{ top: 12 + (peek ? PEEK_BANNER_HEIGHT : 0) }}
+				className="pointer-events-auto absolute left-3 z-40 flex items-center gap-1"
+				onPointerDown={(event) => event.stopPropagation()}
+				onPointerMove={(event) => event.stopPropagation()}
+				onPointerUp={(event) => event.stopPropagation()}
+			>
+				{titleSlot}
+			</div>
+
 			<CanvasCornerActions
 				offsetTop={peek ? PEEK_BANNER_HEIGHT : 0}
 				historyOpen={historyOpen}
+				notesVisible={notesVisible}
+				onToggleNotes={onToggleNotes}
+				onRun={onRun}
+				runDisabled={runDisabled}
 				// 手动刷新：热更新链路（文件监听 / HMR）万一没生效时的兜底出路，
 				// 强制所有 frame 重新加载最新代码并重截位图，同时重扫设计列表。
 				onRefresh={() => {

@@ -23,15 +23,19 @@
 	--color-primary-foreground: var(--primary-foreground);
 }
 
-/* 无限画布的底色：固定中性灰，刻意不跟随宿主主题色——画布是设计稿的背景板，
-   染上主题色会干扰对稿件本身配色的判断。
-   明暗靠 light-dark()：宿主在 [data-mode] 上写了 color-scheme，该属性可继承，
-   能穿过插件的 @scope 边界（祖先选择器和 dark: 变体都穿不过来）。 */
+/* 无限画布：底色取宿主背景色，纹理是一层低不透明度的网格。
+   light-dark() 只是宿主变量缺失时的兜底——宿主在 [data-mode] 上写了 color-scheme，
+   该属性可继承，能穿过插件的 @scope 边界（祖先选择器和 dark: 变体都穿不过来）。 */
 .vetd-canvas-bg {
 	/* 选中态固定用 Figma 蓝，刻意不跟随宿主主题色：主题色可能与设计稿本身的配色
 	   撞车，而「哪个 frame 被选中」必须在任何主题、任何设计稿上都一眼可辨。 */
 	--vetd-selected: #0d99ff;
-	background-color: light-dark(#f5f5f5, #1e1e1e);
+	--vetd-grid-line: color-mix(in oklab, var(--foreground, #000) 6%, transparent);
+	background-color: var(--background, light-dark(#f5f5f5, #1e1e1e));
+	background-image:
+		linear-gradient(to right, var(--vetd-grid-line) 1px, transparent 1px),
+		linear-gradient(to bottom, var(--vetd-grid-line) 1px, transparent 1px);
+	background-size: 24px 24px;
 }
 
 /* 框选选框的填充（描边直接用工具类取 --vetd-selected） */

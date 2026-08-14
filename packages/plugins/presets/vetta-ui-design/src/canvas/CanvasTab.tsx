@@ -15,11 +15,9 @@ import { findVetdFiles } from "../vetd/discover";
 import { scaffoldDesign } from "../vetd/scaffold";
 import { BridgeHub, type ElementQuery, type SelectedElementPayload } from "./bridge-client";
 import { refreshCover } from "./cover-compose";
-import { DOCK_GAP, DOCK_ICON } from "./dock-magnify";
 import { clearFrameActivity, setCanvasController, setPendingDesignPath, takePendingDesignPath } from "./design-runtime";
 import { DesignCanvas, type FrameCapture } from "./DesignCanvas";
 import { byCanvasOrder } from "./frame-order";
-import { NotesVisibilitySwitch } from "./NotesVisibilitySwitch";
 import { ThemePalette } from "./ThemePalette";
 
 type Phase =
@@ -245,76 +243,58 @@ export function CanvasTab() {
 		);
 	}
 
+	/**
+	 * 画布左上角的标题区：设计切换（就是这张画布的标题，所以不套卡片底）+ 色卡开关。
+	 * 定位交给画布（它要给查看模式的横幅让位），这里只管内容。
+	 */
+	const titleSlot = (
+		<>
+			<select
+				value={selectedPath ?? ""}
+				onChange={(event) => setSelectedPath(event.target.value)}
+				title={t("canvas.picker.label")}
+				aria-label={t("canvas.picker.label")}
+				className="h-7 min-w-0 max-w-52 truncate rounded-md border-none bg-transparent px-1 text-sm font-medium text-foreground outline-none transition-colors hover:bg-accent focus:outline-none"
+			>
+				{files.map((file) => (
+					<option key={file} value={file}>
+						{file.split("/").pop()}
+					</option>
+				))}
+			</select>
+			<button
+				type="button"
+				onClick={() => setShowPalette((value) => !value)}
+				title={t("canvas.theme.title")}
+				aria-label={t("canvas.theme.title")}
+				aria-pressed={showPalette}
+				className={`flex size-7 shrink-0 items-center justify-center rounded-md text-xs transition-colors ${
+					showPalette ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+				}`}
+			>
+				◐
+			</button>
+			{SHOW_EXPORT_SHARE ? (
+				<button
+					type="button"
+					disabled={exporting || phase.kind !== "ready"}
+					onClick={() => void runExport()}
+					className="flex h-7 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+				>
+					{exporting ? t("canvas.export.running") : t("canvas.export")}
+				</button>
+			) : null}
+		</>
+	);
+
 	return (
 		<div className="relative flex h-full flex-col">
-			{/* 沉浸式标题栏：浮在画布之上，底色由主题变量渐隐到透明。
-			    按钮组顶部居中，样式与底部 ControlBar 的 dock 对齐。 */}
-			<div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-center bg-gradient-to-b from-background via-background/80 to-transparent px-3 pb-6 pt-2">
-				<div
-					className="pointer-events-auto flex items-center rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md"
-					style={{ gap: DOCK_GAP }}
-				>
-					<select
-						value={selectedPath ?? ""}
-						onChange={(event) => setSelectedPath(event.target.value)}
-						title={t("canvas.picker.label")}
-						aria-label={t("canvas.picker.label")}
-						className="min-w-0 max-w-44 truncate rounded-[10px] border-none bg-muted/55 px-2 text-xs text-foreground outline-none hover:bg-muted focus:outline-none"
-						style={{ height: DOCK_ICON }}
-					>
-						{files.map((file) => (
-							<option key={file} value={file}>
-								{file.split("/").pop()}
-							</option>
-						))}
-					</select>
-					<span className="w-px shrink-0 self-center bg-border" style={{ height: DOCK_ICON * 0.55 }} aria-hidden />
-					<button
-						type="button"
-						onClick={() => setShowPalette((value) => !value)}
-						title={t("canvas.theme.title")}
-						aria-label={t("canvas.theme.title")}
-						aria-pressed={showPalette}
-						className={`flex shrink-0 items-center justify-center rounded-[10px] text-xs ${
-							showPalette ? "bg-primary/12 text-primary" : "bg-muted/55 text-foreground hover:bg-muted"
-						}`}
-						style={{ width: DOCK_ICON, height: DOCK_ICON }}
-					>
-						◐
-					</button>
-					{/* 备注显隐：隐藏只有这一个入口（自动规则一律只往显示推）。 */}
-					<NotesVisibilitySwitch visible={notesVisibility.visible} onToggle={notesVisibility.toggle} />
-					{SHOW_EXPORT_SHARE ? (
-						<button
-							type="button"
-							disabled={exporting || phase.kind !== "ready"}
-							onClick={() => void runExport()}
-							className="flex shrink-0 items-center rounded-[10px] bg-muted/55 px-2.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
-							style={{ height: DOCK_ICON }}
-						>
-							{exporting ? t("canvas.export.running") : t("canvas.export")}
-						</button>
-					) : null}
-					<span className="w-px shrink-0 self-center bg-border" style={{ height: DOCK_ICON * 0.55 }} aria-hidden />
-					{/* 运行：把设计稿当成真实站点来点。带文字，它是这组里唯一一个「进入
-					    另一种模式」的动作，纯 icon 认不出来。 */}
-					<button
-						type="button"
-						disabled={phase.kind !== "ready" || (session?.manifest.frames.length ?? 0) === 0}
-						onClick={openPreview}
-						title={t("canvas.run")}
-						className="flex shrink-0 items-center gap-1.5 rounded-[10px] bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-						style={{ height: DOCK_ICON }}
-					>
-						<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-							<path d="M6 4l12 8-12 8V4z" strokeLinejoin="round" />
-						</svg>
-						{t("canvas.run")}
-					</button>
-				</div>
-			</div>
-
 			<div className="relative min-h-0 flex-1">
+				{/* 画布还没起来时也要能切设计：ready 之后这块由画布自己摆（它要给查看
+				    模式的横幅让位），这里只补上引擎准备/失败期间的那段空窗。 */}
+				{phase.kind !== "ready" ? (
+					<div className="absolute left-3 top-3 z-40 flex items-center gap-1">{titleSlot}</div>
+				) : null}
 				{phase.kind === "preparing" ? (
 					<div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
 						<span className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -357,6 +337,10 @@ export function CanvasTab() {
 							resolveNoteElementsRef={resolveNoteElementsRef}
 							notesVisible={notesVisibility.visible}
 							showNotes={notesVisibility.show}
+							onToggleNotes={notesVisibility.toggle}
+							onRun={openPreview}
+							runDisabled={session.manifest.frames.length === 0}
+							titleSlot={titleSlot}
 						/>
 						{showPalette ? <ThemePalette session={session} /> : null}
 						{previewFrameId !== null ? (
