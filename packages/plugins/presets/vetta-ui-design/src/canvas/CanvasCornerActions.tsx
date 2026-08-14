@@ -50,11 +50,14 @@ function Divider() {
 
 function Action({
 	label,
+	showLabel = false,
 	active,
 	onClick,
 	children,
 }: {
 	label: string;
+	/** true 时把 label 写在图标右边（打开面板类的动作，纯 icon 认不出来）。 */
+	showLabel?: boolean;
 	/** 对应面板开着时高亮；一次性动作传 false。 */
 	active: boolean;
 	onClick(): void;
@@ -67,11 +70,12 @@ function Action({
 			aria-label={label}
 			aria-pressed={active}
 			onClick={onClick}
-			className={`flex size-7 items-center justify-center rounded-md transition-colors ${
-				active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
-			}`}
+			className={`flex h-7 items-center justify-center rounded-md transition-colors ${
+				showLabel ? "gap-1.5 px-2 text-xs font-medium" : "w-7"
+			} ${active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
 		>
 			{children}
+			{showLabel ? <span className="whitespace-nowrap">{label}</span> : null}
 		</button>
 	);
 }
@@ -97,7 +101,7 @@ export function CanvasCornerActions({
 	return (
 		<div
 			style={{ top: 12 + offsetTop }}
-			className="pointer-events-auto absolute right-3 z-40 flex items-center gap-0.5 rounded-lg border border-border/60 bg-popover/90 p-0.5 shadow-sm backdrop-blur-xl"
+			className="pointer-events-auto absolute right-3 z-40 flex items-center gap-0.5 rounded-lg border border-border bg-popover/90 p-0.5 backdrop-blur-xl"
 			// 同历史抽屉：不截断的话画布根会捕获指针，按钮点不动。
 			onPointerDown={(event) => event.stopPropagation()}
 			onPointerMove={(event) => event.stopPropagation()}
@@ -109,11 +113,11 @@ export function CanvasCornerActions({
 			<Action label={t("canvas.refresh")} active={false} onClick={onRefresh}>
 				{icons.refresh}
 			</Action>
-			<Action label={t("controlbar.exportMockup.label")} active={false} onClick={onExport}>
-				{icons.export}
-			</Action>
-			<Action label={t("controlbar.history")} active={historyOpen} onClick={onToggleHistory}>
+			<Action label={t("controlbar.history")} showLabel active={historyOpen} onClick={onToggleHistory}>
 				{icons.history}
+			</Action>
+			<Action label={t("controlbar.exportMockup.label")} showLabel active={false} onClick={onExport}>
+				{icons.export}
 			</Action>
 			<Divider />
 			{/* 运行带文字：它是这组里唯一一个「进入另一种模式」的动作，纯 icon 认不出来。 */}

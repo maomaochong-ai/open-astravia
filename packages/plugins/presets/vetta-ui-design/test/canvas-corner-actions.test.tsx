@@ -51,18 +51,21 @@ function render(options: { notesVisible?: boolean; runDisabled?: boolean } = {})
 	};
 }
 
-it("orders the group as notes | refresh export history | run", () => {
+it("orders the group as notes | refresh history export | run", () => {
 	const { buttons, calls, cleanup } = render();
 	expect(buttons.map((button) => button.getAttribute("aria-label") ?? button.textContent)).toEqual([
 		"notes.visibility.hide",
 		"canvas.refresh",
-		"controlbar.exportMockup.label",
 		"controlbar.history",
+		"controlbar.exportMockup.label",
 		"canvas.run",
 	]);
 	// 备注开关是真开关，状态要能被读出来（不只是底色深浅）。
 	expect(buttons[0]?.getAttribute("role")).toBe("switch");
 	expect(buttons[0]?.getAttribute("aria-checked")).toBe("true");
+	// 打开面板的两个动作带文字：纯 icon 认不出「版本历史」和「导出渲染图」的区别。
+	expect(buttons[2]?.textContent).toContain("controlbar.history");
+	expect(buttons[3]?.textContent).toContain("controlbar.exportMockup.label");
 
 	act(() => buttons[0]?.click());
 	act(() => buttons[4]?.click());
