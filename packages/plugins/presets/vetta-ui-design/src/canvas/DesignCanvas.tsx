@@ -40,6 +40,7 @@ import {
 	setFrameError,
 } from "./design-runtime";
 import { DesignSystemDialog } from "./DesignSystemDialog";
+import { ExportMockupButton } from "./ExportMockupButton";
 import { byCanvasOrder } from "./frame-order";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { refreshCover } from "./cover-compose";
@@ -101,12 +102,6 @@ interface DesignCanvasProps {
 	 * （画布顺序里的第一帧）。
 	 */
 	previewTargetRef: RefObject<(() => string | null) | null>;
-	/**
-	 * 出口：顶栏的「导出渲染图」打开工作台。选中集会被预先放进渲染区，没选中就
-	 * 开一个空工作台——截图入口只有画布这一层有（runLive），所以按钮在顶栏、
-	 * 动作留在这里。
-	 */
-	exportRef: RefObject<(() => void) | null>;
 	/**
 	 * 预览窗口开着。背后的画布整体降为位图——反正被盖住了，没必要继续养 N 份
 	 * 活体 React 应用与 HMR 连接。
@@ -267,7 +262,6 @@ export function DesignCanvas({
 	captureRef,
 	refreshRef,
 	previewTargetRef,
-	exportRef,
 	previewing,
 	resolveNoteElementsRef,
 	notesVisible,
@@ -1245,7 +1239,6 @@ export function DesignCanvas({
 			capture: (frameId, pixelRatio) => captureFaithfully(frameId, { pixelRatio }),
 		});
 	};
-	exportRef.current = openExport;
 
 	/** 菜单「复制为图片」：按 2 倍截一张，走宿主原生剪贴板。 */
 	const copyFrameImage = (frameId: string): void => {
@@ -1530,6 +1523,8 @@ export function DesignCanvas({
 				offsetTop={peek ? PEEK_BANNER_HEIGHT : 0}
 				onToggle={() => setHistoryOpen((open) => !open)}
 			/>
+
+			<ExportMockupButton offsetTop={peek ? PEEK_BANNER_HEIGHT : 0} onOpen={openExport} />
 
 			{peek ? (
 				<PeekBanner

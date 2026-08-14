@@ -55,8 +55,6 @@ export function CanvasTab() {
 	const refreshRef = useRef<(() => void) | null>(null);
 	/** 同上，问画布「此刻单独选中的是哪一帧」，预览按钮据此定位起始帧。 */
 	const previewTargetRef = useRef<(() => string | null) | null>(null);
-	/** 同上，顶栏「导出渲染图」打开工作台；截图入口在画布那一层，动作也留在那里。 */
-	const exportRef = useRef<(() => void) | null>(null);
 	/** 预览窗口打开在哪一帧上；null 表示没开。 */
 	const [previewFrameId, setPreviewFrameId] = useState<string | null>(null);
 	/** 同 captureRef：vetd_notes 的锚点保鲜入口，画布挂载后填入。 */
@@ -308,21 +306,6 @@ export function CanvasTab() {
 							<path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6" strokeLinecap="round" strokeLinejoin="round" />
 						</svg>
 					</button>
-					{/* 导出渲染图：开工作台。不要求先选中画框——画框在工作台里自己往渲染区加。 */}
-					<button
-						type="button"
-						disabled={phase.kind !== "ready" || (session?.manifest.frames.length ?? 0) === 0}
-						onClick={() => exportRef.current?.()}
-						title={t("controlbar.exportMockup.label")}
-						aria-label={t("controlbar.exportMockup.label")}
-						className="flex shrink-0 items-center justify-center rounded-[10px] bg-muted/55 text-foreground hover:bg-muted disabled:opacity-50"
-						style={{ width: DOCK_ICON, height: DOCK_ICON }}
-					>
-						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-							<rect x="4" y="2" width="7" height="20" rx="2" />
-							<rect x="14" y="6" width="7" height="16" rx="2" />
-						</svg>
-					</button>
 					{SHOW_EXPORT_SHARE ? (
 						<button
 							type="button"
@@ -392,7 +375,6 @@ export function CanvasTab() {
 							captureRef={captureRef}
 							refreshRef={refreshRef}
 							previewTargetRef={previewTargetRef}
-							exportRef={exportRef}
 							previewing={previewFrameId !== null}
 							resolveNoteElementsRef={resolveNoteElementsRef}
 							notesVisible={notesVisibility.visible}
