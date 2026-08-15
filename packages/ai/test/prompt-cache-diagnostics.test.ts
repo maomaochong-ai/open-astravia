@@ -9,7 +9,9 @@ describe("prompt cache diagnostics", () => {
 		const assistant = changed.messages[1] as AssistantMessage;
 		assistant.timestamp = 999;
 		assistant.usage = { ...assistant.usage, input: 999 };
-		changed.messages[2] = { ...changed.messages[2]!, details: { local: "changed" }, timestamp: 888 };
+		const toolResult = changed.messages[2];
+		if (toolResult?.role !== "toolResult") throw new Error("Missing tool result fixture");
+		changed.messages[2] = { ...toolResult, details: { local: "changed" }, timestamp: 888 };
 		changed.messages[3] = { role: "user", content: "a different current request", timestamp: 777 };
 
 		expect(createPromptCacheDiagnostics(changed)).toEqual(first);
