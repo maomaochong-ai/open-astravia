@@ -6,6 +6,7 @@ import {
 	type AssistantMessage,
 	type AssistantMessageEvent,
 	type AssistantMessageTerminalEvent,
+	createAIErrorFromDetails,
 	createAssistantMessage,
 	getAIErrorDetails,
 	getAssistantMessageEventResult,
@@ -189,6 +190,39 @@ describe("AI protocol contract", () => {
 		});
 		expect(details.responseHeaders).not.toHaveProperty("authorization");
 		expect(details.responseBodyPreview).toHaveLength(1_001);
+	});
+
+	it("round-trips only allowlisted response-validation diagnostics", () => {
+		const details = getAIErrorDetails(
+			new AIError(AI_ERROR_CODES.RESPONSE_VALIDATION_FAILED, "invalid response", {
+				metadata: {
+					payloadType: "OpenAI chunk",
+					errors: [{ path: "/choices", message: "Expected array", received: '"invalid"', secret: "drop" }],
+					secret: "drop",
+				},
+			}),
+		);
+
+		expect(details).toMatchObject({
+			responseValidation: {
+				payloadType: "OpenAI chunk",
+				errors: [{ path: "/choices", message: "Expected array", received: '"invalid"' }],
+			},
+		});
+		expect(details).not.toHaveProperty("metadata");
+		expect(
+			isAIErrorDetails({
+				...details,
+				responseValidation: {
+					...details.responseValidation,
+					secret: "drop",
+				},
+			}),
+		).toBe(false);
+		expect(createAIErrorFromDetails(details).metadata).toEqual({
+			payloadType: "OpenAI chunk",
+			errors: [{ path: "/choices", message: "Expected array", received: '"invalid"' }],
+		});
 	});
 
 	it("uses a non-retryable protocol error specialization", () => {

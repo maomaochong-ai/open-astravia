@@ -71,6 +71,12 @@ describe("Coding Agent RPC product capabilities", () => {
 				maxAttempts: 2,
 				delayMs: 0,
 				errorMessage: "503 service unavailable",
+				failure: {
+					code: "TURN_FAILED",
+					message: "503 service unavailable",
+					retryable: true,
+					origin: "runtime",
+				},
 			},
 			{ type: "auto_retry_end", success: true, attempt: 1 },
 		]);

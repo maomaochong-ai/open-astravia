@@ -2,6 +2,7 @@
 
 import { act, renderHook } from "@testing-library/react";
 import { contextUsageAtom } from "@shared/store/atoms";
+import type { ContextCompositionReport } from "@vetta/runtime-core";
 import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -24,7 +25,16 @@ vi.mock("../services/context-ring-details", async (importOriginal) => ({
 describe("useContextRingModel", () => {
 	it("defers detail aggregation until requested and memoizes an unchanged composition", () => {
 		const store = createStore();
-		const composition = { callId: "call-1" } as never;
+		const composition: ContextCompositionReport = {
+			version: 1,
+			callId: "call-1",
+			snapshotId: "snapshot-1",
+			phase: "prepared",
+			createdAt: 1,
+			model: { provider: "test", modelId: "test-model", contextWindow: 100_000 },
+			estimate: { tokens: 25_000, knownTokens: 25_000, coverage: "complete" },
+			sections: [],
+		};
 		store.set(contextUsageAtom, { percent: 25, contextWindow: 100_000, composition });
 		contextRingModelCapture.buildDetails.mockClear();
 		const wrapper = ({ children }: { children: ReactNode }) => <Provider store={store}>{children}</Provider>;

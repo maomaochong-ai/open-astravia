@@ -348,7 +348,11 @@ function matcherForEvent(
 
 function quoteIfNeeded(value: string): string {
 	if (value.length === 0) return '""';
-	if (/[\s"'$`\\]/.test(value)) return `"${value.replaceAll('"', '\\"')}"`;
+	if (process.platform === "win32") {
+		if (/[\s"&|<>^]/.test(value)) return `"${value.replaceAll('"', '""')}"`;
+		return value;
+	}
+	if (/[\s"'$`\\]/.test(value)) return `'${value.replaceAll("'", `'\\''`)}'`;
 	return value;
 }
 
