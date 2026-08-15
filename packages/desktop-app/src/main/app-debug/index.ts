@@ -1,3 +1,6 @@
+import { streamSimple } from "@vetta/ai";
+import { getOrCreateSharedModelRuntime } from "../agent-runtime/host-services.js";
+import { getDesktopProviderObservationRuntime } from "../agent-runtime/provider-observation.js";
 import { getBatchTaskExecutorState } from "../batch-tasks/batch-task-executor.js";
 import { getDesktopBatchTaskService } from "../batch-tasks/batch-task-service.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
@@ -7,6 +10,7 @@ import { AppDebugCatalog } from "./catalog.js";
 import { createConversationDebugDefinitions } from "./conversation/definitions.js";
 import { createDebugInfoDefinition } from "./debug-info.js";
 import { createLifecycleDebugDefinitions } from "./lifecycle/definitions.js";
+import { createProviderDebugDefinitions } from "./provider/definitions.js";
 import { AppDebugRuntime } from "./runtime.js";
 import { createRuntimeCanaryConsumerDefinitions } from "./runtime-canary/consumer-definitions.js";
 import { createUiDebugDefinitions } from "./ui/definitions.js";
@@ -24,6 +28,15 @@ export function createAppDebugRuntime(options: AppDebugRuntimeOptions): AppDebug
 		catalog.register(definition);
 	}
 	for (const definition of createLifecycleDebugDefinitions(options.requestQuit)) {
+		catalog.register(definition);
+	}
+	const providerObservationRuntime = getDesktopProviderObservationRuntime();
+	for (const definition of createProviderDebugDefinitions({
+		models: getOrCreateSharedModelRuntime(),
+		streamFn:
+			providerObservationRuntime?.streamFn ??
+			((model, context, streamOptions) => streamSimple(model, context, streamOptions)),
+	})) {
 		catalog.register(definition);
 	}
 	for (const definition of createRuntimeCanaryConsumerDefinitions({

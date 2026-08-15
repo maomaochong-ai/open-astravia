@@ -6,7 +6,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
-- **Debug Provider 观测中间件**：UI Verification 可通过显式实验 `runId` 启用隔离的模型调用链，将脱敏后的请求前缀、Provider payload/wire 和真实缓存 usage 追加到应用缓存 NDJSON；默认仅记录 metadata，不改变 Debug RPC 返回合同或全局模型 Registry。
+- **Debug Provider 观测与认证预检**：UI Verification 可通过显式实验 `runId` 启用隔离的模型调用链，将脱敏后的请求前缀、Provider payload/wire 和真实缓存 usage 追加到应用缓存 NDJSON；新增 `provider.preflight`，在正式实验前用低 Token、禁用缓存的真实请求区分模型缺失、凭据缺失、认证失败、计费、限流和超时。验证脚本改用轻量 Debug CLI，不再为 RPC 调用加载完整 Agent/Extension CLI 源码。
 - **缓存前缀连续性诊断**：逐轮 Token 面板现在显示稳定前缀是首次诊断、连续扩展、已改变还是因历史版本不可比较，并列出变化发生在系统提示词、工具或消息历史；只提供读取观测的 Provider 会明确显示写入数据“未上报（只读）”。
 - **逐轮 Token 与上下文缓存详情**：每条已完成的 Assistant 消息末尾新增用量图标，悬停或键盘聚焦后展示本轮多次模型调用汇总的输入、输出、缓存读取/写入、总 Token、缓存命中率与观测覆盖率；历史回放与实时流使用同一消息 usage 数据，不写入 App Monitor。
 

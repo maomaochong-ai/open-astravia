@@ -70,7 +70,7 @@ vi.mock("../../sandbox/capability.js", () => ({
 	assertSandboxAvailableForMode: async () => undefined,
 }));
 
-const cliPath = fileURLToPath(new URL("../../../../../cli-app/src/cli.ts", import.meta.url));
+const debugCliPath = fileURLToPath(new URL("../../../../../cli-app/src/debug-cli.ts", import.meta.url));
 const repositoryRoot = fileURLToPath(new URL("../../../../../..", import.meta.url));
 const firstPrompt = "Reply with exactly DESKTOP_CLI_CANARY_FIRST.";
 const secondPrompt = "Reply with exactly DESKTOP_CLI_CANARY_SECOND.";
@@ -284,7 +284,7 @@ async function runVettaDebug(endpointFilePath: string, debugId: string, input: u
 
 async function runCli(args: readonly string[], env: NodeJS.ProcessEnv): Promise<CliResult> {
 	return await new Promise<CliResult>((resolve, reject) => {
-		const child = spawn("bun", [cliPath, ...args], {
+		const child = spawn("bun", [debugCliPath, ...args], {
 			cwd: repositoryRoot,
 			env,
 			stdio: ["ignore", "pipe", "pipe"],

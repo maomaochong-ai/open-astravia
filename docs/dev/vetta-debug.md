@@ -45,12 +45,36 @@ bun run verify:ui:start:debug
 需要验证上下文缓存或检查模型供应商实际请求时，可以在启动 Debug Profile 前启用测试观测中间件：
 
 ```powershell
+bun run verify:ui:stop:debug
+bun run verify:ui:sync:debug
 $env:VETTA_PROVIDER_OBSERVATION_RUN_ID="cache-baseline-01"
 $env:VETTA_PROVIDER_OBSERVATION_CAPTURE="metadata"
 bun run verify:ui:start:debug
 ```
 
 `runId` 只允许 1 至 64 个字母、数字、下划线或连字符。环境变量只在 Main 进程启动时读取；验证实例已经运行时，先执行 `bun run verify:ui:stop:debug` 再重新启动。
+
+`sync` 只证明模型配置和被引用的加密凭据已同步，不证明密钥仍然有效。开始正式实验前，必须对准备使用的精确 `modelKey` 执行认证预检：
+
+```powershell
+bun run verify:ui:debug:debug -- run provider.preflight '{"modelKey":"provider/model-id","timeoutMs":30000}'
+```
+
+预检在 Electron 主进程中使用与真实会话相同的模型目录、凭据解析和 Provider Adapter，发送一次 `cacheRetention: "none"`、`maxTokens: 16` 的最小请求。`timeoutMs` 覆盖模型目录加载、凭据解析和 Provider 调用的完整生命周期。成功结果只返回模型身份、凭据种类、耗时、停止原因和 usage，不返回凭据或模型正文：
+
+```json
+{
+  "ok": true,
+  "result": {
+    "status": "ready",
+    "modelKey": "provider/model-id",
+    "credentialKind": "api-key",
+    "stopReason": "stop"
+  }
+}
+```
+
+预检失败时不得继续缓存实验。`DEBUG_PROVIDER_AUTHENTICATION_FAILED` 表示凭据存在但已失效；`DEBUG_PROVIDER_CREDENTIAL_MISSING` 表示没有可解析凭据；它们与“凭据文件复制成功”是不同状态。普通 Dev Profile 可能使用 Desktop 登录态或远程模型目录，不能用它的成功结果推断 Debug Profile 中的本地 API Key 有效。
 
 中间件不改变 `conversation.create`、`conversation.continue` 或其他 Debug RPC 的返回合同。每次内置原生 Provider 调用完成后，会向以下文件追加一条 NDJSON：
 
@@ -71,6 +95,8 @@ bun run verify:ui:start:debug
 `payload` 和 `wire` 仍可能包含对话正文、工具参数和模型输出，只能在隔离的验证 Profile 中短期使用；认证 header、cookie、URL 密钥参数以及常见 token/secret/password 字段会统一替换为 `[REDACTED]`。删除实验数据时只删除对应 `provider-observations` 缓存文件。
 
 当前观测 Registry 与全局 Registry 隔离，只注册内置原生 Adapter。自定义 legacy Provider 会回退到正常调用链且不产生观测记录；Bedrock 使用 SDK transport，能记录 payload 和最终 usage，但不保证产生 HTTP wire 记录。启用观测本身不会调用模型，真实 Provider 调用仍可能产生费用，必须由测试发起者显式执行会话。
+
+同一会话至少运行一轮冷启动和两轮热缓存验证。热缓存轮必须同时满足：`response.usage.cacheUsageReporting !== "unavailable"`、`request.promptCache.prefixStatus === "extended"`、`changedSegments` 为空，且 `cacheRead / (input + cacheRead + cacheWrite) >= 0.9`。只检查 `cachePrefixHash` 是否相等是不正确的，因为正常追加历史也会产生新的完整前缀哈希。
 
 ## 标识和生命周期
 
@@ -309,6 +335,13 @@ bun run verify:ui:debug -- run conversation.abort '{"operationId":"..."}'
 | `DEBUG_INTERACTION_NOT_PENDING` | 使用 `conversation.wait` 获取后续状态，不重复回答 |
 | `DEBUG_CONVERSATION_TIMEOUT` | 检查工具、网络和权限状态，调整超时或中止操作 |
 | `DEBUG_CONVERSATION_FAILED` | 保留错误证据，修复环境后通过 `sessionPath` 继续 |
+| `DEBUG_PROVIDER_MODEL_NOT_FOUND` | 核对模型选择器中的精确 `provider/model-id`，不要猜测 modelKey |
+| `DEBUG_PROVIDER_CREDENTIAL_MISSING` | 同步 Debug Profile，或为该 Provider 配置凭据后重启实例 |
+| `DEBUG_PROVIDER_AUTHENTICATION_FAILED` | 更新已失效的 API Key；预检通过前不要开始正式实验 |
+| `DEBUG_PROVIDER_BILLING_REQUIRED` | 检查 Provider 余额或配额，不要按网络故障重试 |
+| `DEBUG_PROVIDER_RATE_LIMITED` | 遵守 Provider 的 Retry-After 后重新预检 |
+| `DEBUG_PROVIDER_TIMEOUT` | 检查网络后调整预检 timeout；不要把超时当作认证成功 |
+| `DEBUG_PROVIDER_REQUEST_FAILED` | 检查返回的安全 Provider 错误信息和观测 trace |
 
 ## 验收条件
 
