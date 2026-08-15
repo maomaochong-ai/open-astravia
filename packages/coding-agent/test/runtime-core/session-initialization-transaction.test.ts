@@ -73,6 +73,17 @@ describe("Coding Agent Session Initialization Transaction", () => {
 				todoRuntimes.push(runtime);
 				return runtime;
 			},
+			createSessionExtensionDefinitions: () => [
+				{
+					id: "test.session-extension",
+					create: () => ({
+						contributions: [],
+						dispose() {
+							rollbackOrder.push("session-extension");
+						},
+					}),
+				},
+			],
 			createSystemPromptOptionsResolver: () => () => {
 				promptAttempts += 1;
 				if (promptAttempts === 1) throw new Error("initial prompt preview failed");
@@ -84,7 +95,7 @@ describe("Coding Agent Session Initialization Transaction", () => {
 			await expect(composition.backend.create({ sessionId: "session", memoryMode: true })).rejects.toThrow(
 				"initial prompt preview failed",
 			);
-			expect(rollbackOrder).toEqual(["todo", "memory", "plugin-mcp", "ownership"]);
+			expect(rollbackOrder).toEqual(["session-extension", "todo", "memory", "plugin-mcp", "ownership"]);
 			expect(activeOwnerships).toBe(0);
 			expect(pluginRuntimes).toHaveLength(1);
 			expect(memoryRuntimes[0]?.dispose).toHaveBeenCalledOnce();

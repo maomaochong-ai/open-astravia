@@ -3,10 +3,12 @@ import type { AgentPluginRuntimeConfig, ConversationScenario, RuntimeModel } fro
 import {
 	type AgentFeatureDefinition,
 	type AgentProfile,
+	type ContinuationPolicyContext,
 	type ModelCallContributionContext,
 	RuntimeCapabilityComposition,
 	type RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
+import type { SessionExtensionContinuationSource } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import type { AskUserQuestionCapability } from "@vetta/runtime-node/coding";
 import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools";
@@ -49,7 +51,6 @@ import {
 } from "../../tool-policy/heavy-tool-confirmation.js";
 import { createCodingAgentToolSideEffectResolver } from "../../tool-policy/tool-side-effect.js";
 import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
-import { CodingAgentTodoContinuationSource } from "../../work-state/todo-continuation-source.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import { CodingAgentContinuationOrchestrator } from "./continuation-orchestrator.js";
@@ -96,6 +97,7 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly executionRuntime: CodingAgentSessionExecutionRuntime;
 	readonly productToolFeature: AgentFeatureDefinition;
 	readonly productToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
+	readonly continuationSources: readonly SessionExtensionContinuationSource[];
 	readonly todoRuntime: CodingAgentTodoRuntime;
 	readonly todoToolRegistration?: CodingAgentRuntimeToolRegistration;
 	readonly memoryRuntime?: CodingAgentMemoryRolloverRuntime;
@@ -163,10 +165,25 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 						]),
 				})
 			: undefined;
+	const stopHookContinuationSource = new CodingAgentStopHookContinuationSource({ hookRuntime: options.hookRuntime });
 	const continuationOrchestrator = new CodingAgentContinuationOrchestrator({
-		todo: new CodingAgentTodoContinuationSource({ state: options.todoRuntime }),
-		plugin: pluginRunOrchestrator,
-		stopHook: new CodingAgentStopHookContinuationSource({ hookRuntime: options.hookRuntime }),
+		sources: [
+			...options.continuationSources,
+			...(pluginRunOrchestrator
+				? [
+						{
+							id: "plugin",
+							priority: 200,
+							collect: (context: ContinuationPolicyContext) => pluginRunOrchestrator.collect(context),
+						},
+					]
+				: []),
+			{
+				id: "stop-hook",
+				priority: 300,
+				collect: (context) => stopHookContinuationSource.collect(context),
+			},
+		],
 	});
 	const promptRuntime = await createPromptRuntime(options);
 	const resolveSystemPromptOptions =

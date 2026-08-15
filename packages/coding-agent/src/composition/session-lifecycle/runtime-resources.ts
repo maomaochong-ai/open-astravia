@@ -5,6 +5,7 @@ import type {
 	RuntimeSessionAskUserQuestionCapability,
 } from "@vetta/runtime-core";
 import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel";
+import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
@@ -46,6 +47,7 @@ export interface CodingAgentSessionRuntimeResourcesOptions {
 	readonly conversation: CodingAgentSessionConversationResources;
 	readonly turnCapabilityAssembly: CodingAgentTurnCapabilitySessionAssembly;
 	readonly modelRuntime: CodingAgentSessionModelRuntimePort;
+	readonly sessionExtensions: SessionExtensionComposition;
 	readonly todoRuntime: CodingAgentTodoRuntime;
 	readonly contextRuntime: CodingAgentContextRuntime;
 	readonly subagentRuntime?: CodingAgentSubagentRuntime;
@@ -92,7 +94,7 @@ export function createCodingAgentSessionRuntimeResources(
 		snapshotProvider,
 		modelRuntime: options.modelRuntime,
 		documentParticipants: [
-			options.todoRuntime,
+			...options.sessionExtensions.documentParticipants,
 			options.contextRuntime,
 			...(options.subagentRuntime ? [options.subagentRuntime] : []),
 		],

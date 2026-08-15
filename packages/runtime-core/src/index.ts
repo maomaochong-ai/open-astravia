@@ -198,6 +198,7 @@ export {
 	RuntimeSessionHostInteractionBroker,
 	RuntimeSessionProjection,
 } from "./runtime-host/index.js";
+export * from "./session-extensions/index.js";
 export type {
 	RuntimeSessionLifecyclePhase,
 	RuntimeSessionObservationEvent,

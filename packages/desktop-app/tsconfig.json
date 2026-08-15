@@ -52,6 +52,7 @@
 			"@vetta/cli-app": ["../cli-app/src/index.ts"],
 			"@vetta/cli-app/*": ["../cli-app/src/*"],
 			"@vetta/runtime-core": ["../runtime-core/src/index.ts"],
+			"@vetta/runtime-core/session-extensions": ["../runtime-core/src/session-extensions/index.ts"],
 			"@vetta/runtime-core/*": ["../runtime-core/src/*"],
 			"@vetta/runtime-desktop": ["../runtime-desktop/src/index.ts"],
 			"@vetta/runtime-desktop/*": ["../runtime-desktop/src/*"],

@@ -6,6 +6,7 @@ import {
 	type RuntimeResources,
 	type RuntimeSessionAskUserQuestionCapability,
 } from "@vetta/runtime-core";
+import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController, McpRuntimeToolSnapshot } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
@@ -69,6 +70,7 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 	readonly contextRuntime: CodingAgentContextRuntime;
 	readonly memoryRuntime?: CodingAgentMemoryRolloverRuntime;
 	readonly memoryController?: CodingAgentMemoryController;
+	readonly sessionExtensions: SessionExtensionComposition;
 	readonly todoRuntime: CodingAgentTodoRuntime;
 	readonly todoToolRegistration: CodingAgentRuntimeToolRegistration;
 	readonly todoEnabled: boolean;
@@ -93,7 +95,7 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 		untrackHookSessionDisposer(dispose: () => Promise<void>): void;
 		untrackContextRuntime(runtime: CodingAgentContextRuntime): void;
 		untrackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
-		untrackTodoRuntime(runtime: CodingAgentTodoRuntime): void;
+		untrackSessionExtensionComposition(composition: SessionExtensionComposition): void;
 		untrackTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): void;
 	};
 }
@@ -191,6 +193,7 @@ function createResources(
 		conversation: options.conversation,
 		turnCapabilityAssembly,
 		modelRuntime: options.modelRuntime,
+		sessionExtensions: options.sessionExtensions,
 		todoRuntime: options.todoRuntime,
 		contextRuntime: options.contextRuntime,
 		subagentRuntime: options.subagentRuntime,
@@ -295,11 +298,11 @@ function createSessionCleanup(
 		},
 	});
 	cleanup.add({
-		id: "todo-runtime",
+		id: "session-extensions",
 		phase: 0,
 		cleanup: async () => {
-			await options.todoRuntime.dispose();
-			options.tracking.untrackTodoRuntime(options.todoRuntime);
+			await options.sessionExtensions.dispose();
+			options.tracking.untrackSessionExtensionComposition(options.sessionExtensions);
 		},
 	});
 	cleanup.add({

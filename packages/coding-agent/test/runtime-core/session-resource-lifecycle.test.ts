@@ -1,6 +1,7 @@
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
 import type { RuntimeModel, RuntimeResourceContext, RuntimeResources } from "@vetta/runtime-core";
 import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel";
+import { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
@@ -62,6 +63,14 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 				todoDisposals += 1;
 			},
 		} as unknown as CodingAgentTodoRuntime;
+		const sessionExtensions = await SessionExtensionComposition.create({
+			definitions: [
+				{
+					id: "test.todo",
+					create: () => ({ contributions: [], dispose: () => todoRuntime.dispose() }),
+				},
+			],
+		});
 		const turnCapabilityAssembly = {
 			rebindSession(sessionId: string) {
 				events.push(`turn:${sessionId}`);
@@ -121,6 +130,7 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 			contextRuntime,
 			memoryRuntime,
 			memoryController,
+			sessionExtensions,
 			todoRuntime,
 			todoToolRegistration: { tool: { name: "todo" } } as unknown as CodingAgentRuntimeToolRegistration,
 			todoEnabled: true,
@@ -139,7 +149,7 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 				untrackHookSessionDisposer: (dispose) => hookDisposers.delete(dispose),
 				untrackContextRuntime: () => {},
 				untrackMemoryRuntime: () => {},
-				untrackTodoRuntime: () => {},
+				untrackSessionExtensionComposition: () => {},
 				untrackTurnCapabilityAssembly: () => {},
 			},
 		});

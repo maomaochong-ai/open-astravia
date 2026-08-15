@@ -6,6 +6,7 @@ import {
 	type RuntimeResources,
 } from "@vetta/runtime-core";
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
+import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
 import { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
@@ -13,7 +14,6 @@ import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
-import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
 import { createCodingAgentSessionResourceLifecycle } from "../session-lifecycle/resource-lifecycle.js";
@@ -38,8 +38,8 @@ export interface CodingAgentSessionInitializationRegistry {
 	untrackContextRuntime(runtime: CodingAgentContextRuntime): void;
 	trackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
 	untrackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
-	trackTodoRuntime(runtime: CodingAgentTodoRuntime): void;
-	untrackTodoRuntime(runtime: CodingAgentTodoRuntime): void;
+	trackSessionExtensionComposition(extensions: SessionExtensionComposition): void;
+	untrackSessionExtensionComposition(extensions: SessionExtensionComposition): void;
 	trackTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): void;
 	untrackTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): void;
 	trackHookSessionDisposer(dispose: () => Promise<void>): void;
@@ -142,8 +142,10 @@ async function initializeSession<TOwnershipBinding>(
 			resolveActivation: options.resolveActivation,
 			trackMemoryRuntime: (runtime) => options.registry.trackMemoryRuntime(runtime),
 			untrackMemoryRuntime: (runtime) => options.registry.untrackMemoryRuntime(runtime),
-			trackTodoRuntime: (runtime) => options.registry.trackTodoRuntime(runtime),
-			untrackTodoRuntime: (runtime) => options.registry.untrackTodoRuntime(runtime),
+			trackSessionExtensionComposition: (extensions) =>
+				options.registry.trackSessionExtensionComposition(extensions),
+			untrackSessionExtensionComposition: (extensions) =>
+				options.registry.untrackSessionExtensionComposition(extensions),
 			deferRollback: (task) => {
 				rollback.defer(task);
 			},
@@ -178,6 +180,7 @@ async function initializeSession<TOwnershipBinding>(
 			pluginRuntime,
 			productToolFeature,
 			productToolRegistrations,
+			sessionExtensions,
 			todoEnabled,
 			todoRegistration,
 			todoRuntime,
@@ -214,6 +217,7 @@ async function initializeSession<TOwnershipBinding>(
 			contextRuntime,
 			memoryRuntime,
 			memoryController,
+			sessionExtensions,
 			todoRuntime,
 			todoToolRegistration: todoRegistration,
 			todoEnabled,
@@ -236,7 +240,8 @@ async function initializeSession<TOwnershipBinding>(
 				untrackHookSessionDisposer: (dispose) => options.registry.untrackHookSessionDisposer(dispose),
 				untrackContextRuntime: (runtime) => options.registry.untrackContextRuntime(runtime),
 				untrackMemoryRuntime: (runtime) => options.registry.untrackMemoryRuntime(runtime),
-				untrackTodoRuntime: (runtime) => options.registry.untrackTodoRuntime(runtime),
+				untrackSessionExtensionComposition: (extensions) =>
+					options.registry.untrackSessionExtensionComposition(extensions),
 				untrackTurnCapabilityAssembly: (assembly) => options.registry.untrackTurnCapabilityAssembly(assembly),
 			},
 		});
@@ -283,6 +288,7 @@ async function initializeSession<TOwnershipBinding>(
 			executionRuntime,
 			productToolFeature,
 			productToolRegistrations,
+			continuationSources: sessionExtensions.continuationSources,
 			todoRuntime,
 			todoToolRegistration: todoEnabled ? todoRegistration : undefined,
 			memoryRuntime,

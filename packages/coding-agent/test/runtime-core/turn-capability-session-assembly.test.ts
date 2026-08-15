@@ -72,6 +72,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			executionRuntime,
 			productToolFeature: createFeature("product", [productTool]),
 			productToolRegistrations: [],
+			continuationSources: [],
 			todoRuntime,
 			contextRuntime,
 			conversationContextProjector: {
@@ -145,6 +146,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			executionRuntime,
 			productToolFeature: createFeature("product", []),
 			productToolRegistrations: [],
+			continuationSources: [],
 			todoRuntime,
 			contextRuntime: createContextRuntime(),
 			conversationContextProjector: { project: () => [] } satisfies ConversationContextProjector,
@@ -204,6 +206,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			executionRuntime,
 			productToolFeature: createFeature("product", [heavyTool]),
 			productToolRegistrations: [{ tool: heavyTool, scopeUse: ["cli"], category: "core", sideEffect: "heavy" }],
+			continuationSources: [],
 			todoRuntime,
 			contextRuntime: createContextRuntime(),
 			conversationContextProjector: { project: () => [] } satisfies ConversationContextProjector,

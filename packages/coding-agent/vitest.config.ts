@@ -52,6 +52,9 @@ export default defineConfig({
 			"@vetta/runtime-core/sandbox": fileURLToPath(
 				new URL("../runtime-core/src/sandbox/index.ts", import.meta.url),
 			),
+			"@vetta/runtime-core/session-extensions": fileURLToPath(
+				new URL("../runtime-core/src/session-extensions/index.ts", import.meta.url),
+			),
 			"@vetta/runtime-core": fileURLToPath(new URL("../runtime-core/src/index.ts", import.meta.url)),
 		},
 	},

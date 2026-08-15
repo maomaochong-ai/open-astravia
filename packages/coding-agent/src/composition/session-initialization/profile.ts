@@ -9,6 +9,7 @@ export type CodingAgentSessionInitializationProfile = Pick<
 	| "createPluginMcpRuntime"
 	| "createPluginRuntime"
 	| "createPromptResourceResolver"
+	| "createSessionExtensionDefinitions"
 	| "createSubagentChildFactory"
 	| "createSystemPromptOptionsResolver"
 	| "createTodoRuntime"
@@ -44,6 +45,7 @@ export function createCodingAgentSessionInitializationProfile(
 		createPluginMcpRuntime: options.createPluginMcpRuntime,
 		createPluginRuntime: options.createPluginRuntime,
 		createPromptResourceResolver: options.createPromptResourceResolver,
+		createSessionExtensionDefinitions: options.createSessionExtensionDefinitions,
 		createSubagentChildFactory: options.createSubagentChildFactory,
 		createSystemPromptOptionsResolver: options.createSystemPromptOptionsResolver,
 		createTodoRuntime: options.createTodoRuntime,

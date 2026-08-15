@@ -41,6 +41,7 @@
 
 ### Changed
 
+- **Todo 接入统一 Session Extension 生命周期**：Todo 的 Runtime、Tool Feature、Conversation Document 持久化参与、自然停止续跑、观察广播和释放由单一 `coding-agent.todo` 扩展拥有；Composition Root 改为消费 typed contributions，并以通用 Session Extension 集合替代 Todo 专属资源登记。`createSessionExtensionDefinitions` 可为每个 Session 注入其他产品能力定义；既有 Todo Tool、快照、锁定、`todo_update` 与宿主 clear/read 行为不变。
 - **heavy 首调确认弹窗文案简化**：提问正文收敛为「允许在本会话中运行「{tool}」吗？」，去掉普通用户读不懂的副作用说明从句（工作区创建文件/计费/不可撤销）。
 - **heavy 首调确认闸接入核心工具的定义级声明**：resolver 的声明来源新增 coding tool registry snapshot（`runtime-tools` 注册对象的 `sideEffect` 字段），核心工具自此可在定义处自我声明——`im_send_attachment` 因此判 heavy（外发不可撤回，此前既不在兜底清单也无声明通道，是无人值守 im-claw 场景的漏网项）。`DEFAULT_HEAVY_TOOL_NAMES` 进一步收窄为「仍未声明的存量插件工具」兜底，新 heavy 工具应在定义处声明而不是加进清单。
 - **mode 提示词支持共享 partial 与 narration 能力位（ADR-0071 外部审计跟进）**：`modes/partials/*.md` 存各模式共享的提示词段（正文以 `{{> name}}` 引用、构建期展开），work / coding 双份漂移的 deliverables/md_intro/observations 段收敛为单一事实源；frontmatter 新增必填 `narration`（staged = 会话流按 progress 阶段折叠 / inline = 工具行内联），渲染层据注册表查表而不再硬编码 mode id。`generate-modes.mjs` 同时新增工具名卫生校验（正文里拼写错误的工具引用当场构建失败），并修正 work.md 里错误的工具名 `AskUserQuestion` → `ask_user_question`。

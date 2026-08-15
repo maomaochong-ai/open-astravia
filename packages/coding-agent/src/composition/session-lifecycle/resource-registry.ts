@@ -21,7 +21,7 @@ export interface CodingAgentCompositionResourceCleanupSnapshot {
 	readonly memoryRuntimes: readonly CodingAgentSynchronousDisposableResource[];
 	readonly executionRuntimes: readonly CodingAgentAsynchronousDisposableResource[];
 	readonly hookSessionDisposers: readonly (() => Promise<void>)[];
-	readonly todoRuntimes: readonly CodingAgentAsynchronousDisposableResource[];
+	readonly sessionExtensionCompositions: readonly CodingAgentAsynchronousDisposableResource[];
 	readonly turnCapabilityAssemblies: readonly CodingAgentAsynchronousDisposableResource[];
 	readonly ownershipBindings: readonly CodingAgentAsynchronousDisposableResource[];
 	readonly pluginMcpRuntimes: readonly CodingAgentAsynchronousDisposableResource[];
@@ -32,7 +32,7 @@ export interface CodingAgentCompositionResourceCleanupRegistry {
 	untrackContextRuntime(runtime: CodingAgentSynchronousDisposableResource): void;
 	untrackMemoryRuntime(runtime: CodingAgentSynchronousDisposableResource): void;
 	untrackHookSessionDisposer(dispose: () => Promise<void>): void;
-	untrackTodoRuntime(runtime: CodingAgentAsynchronousDisposableResource): void;
+	untrackSessionExtensionComposition(composition: CodingAgentAsynchronousDisposableResource): void;
 	untrackTurnCapabilityAssembly(assembly: CodingAgentAsynchronousDisposableResource): void;
 	untrackOwnershipBinding(binding: CodingAgentAsynchronousDisposableResource): void;
 	unbindExecutionRuntime(runtime: CodingAgentAsynchronousDisposableResource): void;
@@ -57,7 +57,7 @@ export class CodingAgentCompositionResourceRegistry implements CodingAgentCompos
 	private readonly contextRuntimes = new Set<CodingAgentSynchronousDisposableResource>();
 	private readonly memoryRuntimes = new Set<CodingAgentSynchronousDisposableResource>();
 	private readonly hookSessionDisposers = new Set<() => Promise<void>>();
-	private readonly todoRuntimes = new Set<CodingAgentAsynchronousDisposableResource>();
+	private readonly sessionExtensionCompositions = new Set<CodingAgentAsynchronousDisposableResource>();
 	private readonly turnCapabilityAssemblies = new Set<CodingAgentAsynchronousDisposableResource>();
 	private readonly ownershipBindings = new Set<CodingAgentAsynchronousDisposableResource>();
 
@@ -85,12 +85,12 @@ export class CodingAgentCompositionResourceRegistry implements CodingAgentCompos
 		this.hookSessionDisposers.delete(dispose);
 	}
 
-	trackTodoRuntime(runtime: CodingAgentAsynchronousDisposableResource): void {
-		this.todoRuntimes.add(runtime);
+	trackSessionExtensionComposition(composition: CodingAgentAsynchronousDisposableResource): void {
+		this.sessionExtensionCompositions.add(composition);
 	}
 
-	untrackTodoRuntime(runtime: CodingAgentAsynchronousDisposableResource): void {
-		this.todoRuntimes.delete(runtime);
+	untrackSessionExtensionComposition(composition: CodingAgentAsynchronousDisposableResource): void {
+		this.sessionExtensionCompositions.delete(composition);
 	}
 
 	trackTurnCapabilityAssembly(assembly: CodingAgentAsynchronousDisposableResource): void {
@@ -115,7 +115,7 @@ export class CodingAgentCompositionResourceRegistry implements CodingAgentCompos
 			memoryRuntimes: Object.freeze([...this.memoryRuntimes]),
 			executionRuntimes: Object.freeze([...new Set(this.indexes.executionRuntimes.values())]),
 			hookSessionDisposers: Object.freeze([...this.hookSessionDisposers]),
-			todoRuntimes: Object.freeze([...this.todoRuntimes]),
+			sessionExtensionCompositions: Object.freeze([...this.sessionExtensionCompositions]),
 			turnCapabilityAssemblies: Object.freeze([...this.turnCapabilityAssemblies]),
 			ownershipBindings: Object.freeze([...this.ownershipBindings]),
 			pluginMcpRuntimes: Object.freeze([...new Set(this.indexes.pluginMcpRuntimes.values())]),

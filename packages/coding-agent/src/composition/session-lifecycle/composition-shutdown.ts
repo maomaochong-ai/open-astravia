@@ -67,8 +67,8 @@ function prepareCleanup(
 			},
 		});
 	}
-	addAsynchronousResources(cleanup, "todo-runtime", resources.todoRuntimes, (runtime) =>
-		options.registry.untrackTodoRuntime(runtime),
+	addAsynchronousResources(cleanup, "session-extensions", resources.sessionExtensionCompositions, (composition) =>
+		options.registry.untrackSessionExtensionComposition(composition),
 	);
 	addAsynchronousResources(cleanup, "capability-composition", resources.turnCapabilityAssemblies, (assembly) =>
 		options.registry.untrackTurnCapabilityAssembly(assembly),

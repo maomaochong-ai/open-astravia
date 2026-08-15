@@ -20,6 +20,10 @@
 		"./sandbox": {
 			"types": "./dist/sandbox/index.d.ts",
 			"import": "./dist/sandbox/index.js"
+		},
+		"./session-extensions": {
+			"types": "./dist/session-extensions/index.d.ts",
+			"import": "./dist/session-extensions/index.js"
 		}
 	},
 	"files": ["dist"],

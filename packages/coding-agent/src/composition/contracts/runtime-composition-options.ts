@@ -1,6 +1,7 @@
 import type { EcosystemHookAdapterFactory, HookConfigLayer } from "@vetta/ecosystem-adapter";
 import type { ConversationScenario, SessionConfig } from "@vetta/runtime-core";
 import type { AgentCoreTurnEngineOptions } from "@vetta/runtime-core/kernel";
+import type { SessionExtensionDefinition } from "@vetta/runtime-core/session-extensions";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
 import type { SubagentTypeRegistryLike } from "@vetta/runtime-subagents";
@@ -119,6 +120,10 @@ export interface CodingAgentRuntimeExtensionOptions {
 }
 
 export interface CodingAgentRuntimeContextOptions {
+	/** 为每个 Session 贡献产品能力定义；具体状态与副作用由各 Extension Instance 自己持有。 */
+	readonly createSessionExtensionDefinitions?: (
+		sessionOptions: CodingAgentRuntimeSessionOptions,
+	) => readonly SessionExtensionDefinition[] | Promise<readonly SessionExtensionDefinition[]>;
 	/** 为每个 Session 创建唯一 Todo Runtime；Tool、Continuation、Scene 与 Controller 共享它。 */
 	readonly createTodoRuntime?: (sessionOptions: CodingAgentRuntimeSessionOptions) => CodingAgentTodoRuntime;
 	/** 运行中读取压缩设置；未提供时使用 Coding Agent 既有默认值。 */

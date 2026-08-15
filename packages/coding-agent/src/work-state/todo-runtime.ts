@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type {
 	ConversationDocument,
 	RuntimeDocumentParticipantContext,
@@ -43,7 +42,7 @@ export class CodingAgentTodoRuntime implements CodingAgentTodoRuntimePort {
 
 	constructor(options: CodingAgentTodoRuntimeOptions = {}) {
 		this.state = options.state ?? new TodoState();
-		this.createEntryId = options.createEntryId ?? randomUUID;
+		this.createEntryId = options.createEntryId ?? createTodoEntryId;
 		this.now = options.now ?? Date.now;
 	}
 
@@ -180,6 +179,10 @@ export class CodingAgentTodoRuntime implements CodingAgentTodoRuntimePort {
 			this.restoring = false;
 		}
 	}
+}
+
+function createTodoEntryId(): string {
+	return globalThis.crypto.randomUUID();
 }
 
 function latestTodoSnapshot(document: ConversationDocument): TodoSnapshot | undefined {

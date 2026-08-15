@@ -1,12 +1,10 @@
 import type { ContinuationMessage, ContinuationPolicy, ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
-import type { CodingAgentContinuationSource } from "../../runtime-contracts/index.js";
+import type { SessionExtensionContinuationSource } from "@vetta/runtime-core/session-extensions";
 
 export type { CodingAgentContinuationSource } from "../../runtime-contracts/index.js";
 
 export interface CodingAgentContinuationOrchestratorOptions {
-	readonly todo?: CodingAgentContinuationSource;
-	readonly plugin?: CodingAgentContinuationSource;
-	readonly stopHook?: CodingAgentContinuationSource;
+	readonly sources: readonly SessionExtensionContinuationSource[];
 }
 
 /**
@@ -16,18 +14,24 @@ export interface CodingAgentContinuationOrchestratorOptions {
  * Todo -> Plugin -> Stop Hook 选择第一个产生消息的来源。
  */
 export class CodingAgentContinuationOrchestrator implements ContinuationPolicy {
-	constructor(private readonly options: CodingAgentContinuationOrchestratorOptions) {}
+	private readonly sources: readonly SessionExtensionContinuationSource[];
+
+	constructor(options: CodingAgentContinuationOrchestratorOptions) {
+		const byId = new Set<string>();
+		for (const source of options.sources) {
+			if (byId.has(source.id)) throw new Error(`Duplicate continuation source id: ${source.id}`);
+			byId.add(source.id);
+		}
+		this.sources = [...options.sources].sort(
+			(left, right) => left.priority - right.priority || left.id.localeCompare(right.id),
+		);
+	}
 
 	async collect(context: ContinuationPolicyContext): Promise<readonly ContinuationMessage[]> {
 		if (context.signal.aborted) return [];
-		for (const [sourceId, source] of [
-			["todo", this.options.todo],
-			["plugin", this.options.plugin],
-			["stop-hook", this.options.stopHook],
-		] as const) {
-			if (!source) continue;
+		for (const source of this.sources) {
 			const messages = await source.collect(context);
-			if (messages.length > 0) return messages.map((message) => ({ message, source: sourceId }));
+			if (messages.length > 0) return messages.map((message) => ({ message, source: source.id }));
 			if (context.signal.aborted) return [];
 		}
 		return [];
