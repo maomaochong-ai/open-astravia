@@ -23,7 +23,7 @@
 		"clean": "rm -rf dist",
 		"build": "bun run clean && tsgo -p tsconfig.build.json && bun build src/index.ts --target node --format esm --outfile dist/index.js && bun build src/cli.ts --target node --format esm --outfile dist/cli.js",
 		"typecheck": "tsgo --noEmit -p tsconfig.json",
-		"test": "bunx vitest --run"
+		"test": "bun ../../../scripts/quality/run-vitest.mjs --run"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.5",

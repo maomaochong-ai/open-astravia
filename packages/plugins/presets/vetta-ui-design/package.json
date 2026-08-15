@@ -7,7 +7,7 @@
 		"build:runner": "bunx vite build --config vite.runner.config.ts",
 		"build": "bun run build:runner && bunx vite build",
 		"check": "bunx tsc --noEmit",
-		"test": "bunx vitest --run"
+		"test": "bun ../../../../scripts/quality/run-vitest.mjs --run"
 	},
 	"dependencies": {
 		"fflate": "^0.8.2",

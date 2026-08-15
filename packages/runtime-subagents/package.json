@@ -14,7 +14,7 @@
 	"scripts": {
 		"clean": "rm -rf dist",
 		"build": "tsgo -p tsconfig.build.json",
-		"test": "bunx vitest --run"
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.5",

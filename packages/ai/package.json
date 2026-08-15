@@ -40,10 +40,10 @@
 		"dev": "tsgo -p tsconfig.build.json --watch --preserveWatchOutput",
 		"dev:tsc": "tsgo -p tsconfig.build.json --watch --preserveWatchOutput",
 		"test": "bun ../../scripts/quality/run-vitest.mjs --run",
-		"test:all": "vitest --run --config vitest.all.config.ts",
-		"test:integration": "vitest --run --config vitest.integration.config.ts",
-		"test:live": "vitest --run --config vitest.live.config.ts",
-		"test:unit": "vitest --run",
+		"test:all": "bun ../../scripts/quality/run-vitest.mjs --run --config vitest.all.config.ts",
+		"test:integration": "bun ../../scripts/quality/run-vitest.mjs --run --config vitest.integration.config.ts",
+		"test:live": "bun ../../scripts/quality/run-vitest.mjs --run --config vitest.live.config.ts",
+		"test:unit": "bun ../../scripts/quality/run-vitest.mjs --run",
 		"prepublishOnly": "bun run clean && bun run build"
 	},
 	"dependencies": {

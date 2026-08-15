@@ -32,6 +32,8 @@ scripts/quality/
   check-package-boundaries.mjs 库/插件不得依赖 app 宿主
   check-coding-agent-architecture.mjs
                                Coding Agent 当前架构依赖与公开面
+  run-vitest.mjs               用 Node 启动 Vitest（Windows 上禁止 Bun 拉起 worker）
+  check-vitest-runner.mjs      package.json 测试脚本必须走 run-vitest.mjs
   test-pkg.mjs                 按包名跑 vitest
   test-changed.mjs             按 git 变更和依赖图选包
   quality-gates.test.mjs       质量脚本定向测试
@@ -51,6 +53,7 @@ knip.config.ts                 Knip（可选）
 | `check:quick` | 变更文件 Biome + 全量 guards；Biome 配置变化时自动回退全量 Biome |
 | `check` | 并行 lint + types + guards（只读） |
 | `fix` | Biome 全量格式化与安全修复 |
+| `vitest` | 用 Node 启动仓库 Vitest；等价于 `bun scripts/quality/run-vitest.mjs` |
 | `test:quality` | 质量脚本定向测试 |
 | `test:unit` | ai / agent / coding-agent / ecosystem-adapter |
 | `test:pkg` | 见 `bun run test:pkg --list` |
@@ -73,6 +76,20 @@ bun run --cwd packages/desktop-app test:coverage
 - `reportOnFailure: true`：单测失败仍会出报告（coding-agent 在 Windows 上仍有已知基线失败）
 - 不设全局 thresholds；不进 husky / `check` / CI；UI 验收仍用 `verify:ui:*`
 - `@vitest/coverage-v8` 主版本须与根 `vitest` 对齐（当前均为 3.2.x）
+
+## Windows 上必须用 Node 跑 Vitest
+
+Vitest 3 默认 `pool: "forks"`。用 Bun 在 Windows 上拉起 worker 时，`import.meta.url` 经常被编成非法 `file://`（例如 `file://C:/...` 而不是 `file:///C:/...`），于是每个分片在收集测试前就报 `File URL path must be an absolute path`。换成 `threads` / `vmThreads` 会改报 `port.addListener is not a function`。
+
+统一入口：
+
+```bash
+bun scripts/quality/run-vitest.mjs --run <test-file>
+bun run vitest --run <test-file>
+bun run test:pkg <name>
+```
+
+包装器会查找 Node 20+（可用 `VETTA_TEST_NODE` 指定 `node.exe`），再执行仓库里的 `node_modules/vitest/vitest.mjs`。不要使用 `bunx vitest`、`npx vitest` 或包脚本里的裸 `vitest`。`check-vitest-runner.mjs` 会扫描 workspace `package.json` 并拒绝这些入口。
 
 ## 包边界规则（`check-package-boundaries`）
 

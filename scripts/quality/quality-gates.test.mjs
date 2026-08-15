@@ -8,6 +8,7 @@ import { findPackageBoundaryViolations, findPackageManifestBoundaryViolations } 
 import { batchPaths, createQuickCheckPlan, isBiomeGlobalTrigger } from "./check-quick.mjs";
 import { findSkillFrontmatterProblems } from "./check-skill-frontmatter.mjs";
 import { findStandaloneCliBuildViolations } from "./check-standalone-cli-build.mjs";
+import { findVitestRunnerViolations } from "./check-vitest-runner.mjs";
 import { changedFiles, expandTestablePackages, packagesFromPaths, parseBaseArgs, stagedFiles } from "./lib.mjs";
 import { createChangedTestPlan, parseArgs } from "./test-changed.mjs";
 
@@ -88,6 +89,32 @@ describe("standalone CLI 编译入口守卫", () => {
 				"packages/desktop-app/src/main/dev-cli-shim.ts",
 				`spawn("bun", ["build", launcherEntryPath, "--compile"]);`,
 			),
+		).toEqual([]);
+	});
+});
+
+describe("vitest runner 守卫", () => {
+	it("拒绝 bunx vitest 和直接 vitest", () => {
+		expect(
+			findVitestRunnerViolations("packages/foo/package.json", {
+				scripts: { test: "bunx vitest --run", "test:unit": "vitest --run" },
+			}),
+		).toHaveLength(2);
+	});
+
+	it("允许统一 Node 包装器", () => {
+		expect(
+			findVitestRunnerViolations("packages/foo/package.json", {
+				scripts: { test: "bun ../../scripts/quality/run-vitest.mjs --run --coverage" },
+			}),
+		).toEqual([]);
+	});
+
+	it("忽略不含 vitest 的脚本", () => {
+		expect(
+			findVitestRunnerViolations("packages/foo/package.json", {
+				scripts: { build: "tsgo -p tsconfig.build.json", "test:e2e": "wdio run ./wdio.conf.ts" },
+			}),
 		).toEqual([]);
 	});
 });

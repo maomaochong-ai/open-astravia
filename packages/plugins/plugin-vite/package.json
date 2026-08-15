@@ -24,7 +24,7 @@
 	"scripts": {
 		"clean": "rm -rf dist",
 		"build": "tsgo -p tsconfig.build.json",
-		"test": "vitest --run"
+		"test": "bun ../../../scripts/quality/run-vitest.mjs --run"
 	},
 	"dependencies": {
 		"@module-federation/vite": "^1.16.6",
