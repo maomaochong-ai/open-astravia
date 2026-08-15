@@ -107,7 +107,12 @@ for (const fixture of fixtures) {
 
 			expect(textOf(result)).toBe("hello");
 			expect(result).toMatchObject({ api: fixture.api, stopReason: "stop" });
-			expect(result.usage).toMatchObject({ input: 3, output: 2, totalTokens: 5 });
+			expect(result.usage).toMatchObject({
+				input: 3,
+				output: 2,
+				totalTokens: 5,
+				cacheUsageReporting: "read-only",
+			});
 			expect(events.map((event) => event.type)).toEqual(["start", "text_start", "text_delta", "text_end", "done"]);
 			expect(transport.requests).toHaveLength(1);
 			expect(JSON.parse(transport.requests[0]?.body ?? "{}")).toMatchObject({ stream: true });

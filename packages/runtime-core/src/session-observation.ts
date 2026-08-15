@@ -1,5 +1,5 @@
 import type { ToolPhase } from "@vetta/agent-core";
-import type { Message } from "@vetta/ai";
+import type { CacheUsageReporting, Message } from "@vetta/ai";
 import type { BackgroundTaskInfo, RuntimeEventSource, SessionError, SubagentInfo, TodoItem } from "./contracts.js";
 import type { RuntimeFailure } from "./failure-contract.js";
 
@@ -85,6 +85,12 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 				readonly output: number;
 				readonly cacheRead: number;
 				readonly cacheWrite: number;
+				readonly cacheUsageReporting?: CacheUsageReporting;
+				readonly model?: {
+					readonly api: string;
+					readonly provider: string;
+					readonly id: string;
+				};
 				readonly costTotal: number;
 				readonly contextPercent: number | null;
 				readonly contextTokens?: number | null;

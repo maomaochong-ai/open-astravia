@@ -1,5 +1,5 @@
 import type { ThinkingLevel, ToolPhase } from "@vetta/agent-core";
-import type { Message, Model } from "@vetta/ai";
+import type { CacheUsageReporting, Message, Model } from "@vetta/ai";
 import type { ContextCompositionReport } from "./context-composition/contracts.js";
 import type { RuntimeFailure, RuntimeFailureDetails, RuntimeFailureOrigin } from "./failure-contract.js";
 
@@ -427,6 +427,14 @@ export interface UsageUpdateEvent extends SessionEventBase {
 	output: number;
 	cacheRead: number;
 	cacheWrite: number;
+	/** Cache detail available for this exact provider response. */
+	cacheUsageReporting?: CacheUsageReporting;
+	/** Exact model that produced this usage; optional for external runtime observations. */
+	model?: {
+		api: string;
+		provider: string;
+		id: string;
+	};
 	costTotal: number;
 	/** Context window usage percentage (0-100), or null if unknown (e.g. after compaction) */
 	contextPercent: number | null;

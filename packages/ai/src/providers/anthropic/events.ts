@@ -219,6 +219,8 @@ function updateUsage(
 	usage: AnthropicUsage,
 	preserveMissing = false,
 ): void {
+	const hasCacheRead = usage.cache_read_input_tokens != null;
+	const hasCacheWrite = usage.cache_creation_input_tokens != null;
 	if (!preserveMissing || usage.input_tokens != null) output.usage.input = usage.input_tokens || 0;
 	if (!preserveMissing || usage.output_tokens != null) output.usage.output = usage.output_tokens || 0;
 	if (!preserveMissing || usage.cache_read_input_tokens != null) {
@@ -226,6 +228,10 @@ function updateUsage(
 	}
 	if (!preserveMissing || usage.cache_creation_input_tokens != null) {
 		output.usage.cacheWrite = usage.cache_creation_input_tokens || 0;
+	}
+	if (hasCacheRead || hasCacheWrite || !preserveMissing) {
+		output.usage.cacheUsageReporting =
+			hasCacheRead && hasCacheWrite ? "read-write" : hasCacheRead ? "read-only" : "unavailable";
 	}
 	output.usage.totalTokens =
 		output.usage.input + output.usage.output + output.usage.cacheRead + output.usage.cacheWrite;

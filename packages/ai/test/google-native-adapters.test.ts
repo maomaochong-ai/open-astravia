@@ -64,7 +64,13 @@ describe("Google Generative AI native adapter", () => {
 			},
 		]);
 		expect(result.stopReason).toBe("toolUse");
-		expect(result.usage).toMatchObject({ input: 7, output: 6, cacheRead: 3, totalTokens: 16 });
+		expect(result.usage).toMatchObject({
+			input: 7,
+			output: 6,
+			cacheRead: 3,
+			totalTokens: 16,
+			cacheUsageReporting: "read-only",
+		});
 		expect(observedParams).toMatchObject({
 			model: googleModel.id,
 			config: {
@@ -173,7 +179,13 @@ describe("Google Gemini CLI native adapter", () => {
 		expect(events.at(0)?.type).toBe("start");
 		expect(events.at(-1)?.type).toBe("done");
 		expect(result.content.at(-1)).toMatchObject({ type: "toolCall", name: "lookup" });
-		expect(result.usage).toMatchObject({ input: 7, output: 6, cacheRead: 3, totalTokens: 16 });
+		expect(result.usage).toMatchObject({
+			input: 7,
+			output: 6,
+			cacheRead: 3,
+			totalTokens: 16,
+			cacheUsageReporting: "read-only",
+		});
 		expect(fetch).toHaveBeenCalledTimes(1);
 	});
 

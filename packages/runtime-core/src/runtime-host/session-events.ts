@@ -113,6 +113,8 @@ export function mapRuntimeSessionObservationEvent(
 				output: event.output,
 				cacheRead: event.cacheRead,
 				cacheWrite: event.cacheWrite,
+				...(event.cacheUsageReporting !== undefined ? { cacheUsageReporting: event.cacheUsageReporting } : {}),
+				...(event.model !== undefined ? { model: event.model } : {}),
 				costTotal: event.costTotal,
 				contextPercent: event.contextPercent,
 				...(event.contextTokens !== undefined ? { contextTokens: event.contextTokens } : {}),

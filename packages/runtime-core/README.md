@@ -78,7 +78,8 @@ composition is Node-oriented and is not part of this portable boundary.
 - `RuntimeModelRuntime` and `RuntimeModel` for shared Controller/View/State/Turn model state
 - `@vetta/runtime-core/conversation` for the tree-shaped history read model, reader port and host history projection
 - `resumeAgentSession` and `ConversationRecoveryPolicy` for recovery without model or tool replay
-- `RuntimeSessionObservationEvent` and Kernel-to-`SessionEvent` adapters
+- `RuntimeSessionObservationEvent` and Kernel-to-`SessionEvent` adapters, including provider/model cache observability on `usage.update`
+- generation and agent tracing projections for prompt-cache hit rate, write rate, and observation coverage
 - session event and state contracts from `src/contracts.ts`
 - shared runtime error helpers
 - `@vetta/runtime-core/kernel` for the new `AgentSession`, `TurnPipeline`,

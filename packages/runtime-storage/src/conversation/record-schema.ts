@@ -61,6 +61,9 @@ const UsageSchema = Type.Object(
 		cacheRead: Type.Number(),
 		cacheWrite: Type.Number(),
 		totalTokens: Type.Number(),
+		cacheUsageReporting: Type.Optional(
+			Type.Union([Type.Literal("unavailable"), Type.Literal("read-only"), Type.Literal("read-write")]),
+		),
 		cost: CostSchema,
 	},
 	{ additionalProperties: false },
