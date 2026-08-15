@@ -97,6 +97,7 @@ export class CodingAgentContextRuntime
 		const settings = Object.freeze({ ...this.readSettings() });
 		const transformBinding = this.options.bindTransformAgentContext?.(context);
 		const extensionRuntime = (await this.extensionRuntime?.bindForTurn?.(context)) ?? this.extensionRuntime;
+		const projectionTimeBoundary = this.now();
 		let released = false;
 		return {
 			prepare: (input, signal) => this.prepareWithPolicy(input, signal, settings, extensionRuntime),
@@ -106,7 +107,12 @@ export class CodingAgentContextRuntime
 				this.onCompactionContinuationCommittedWithExtension(record, input, result, signal, extensionRuntime),
 			onCompactionContinuationFailed: () => this.onCompactionContinuationFailed(),
 			transform: (input, signal) =>
-				this.transformWith(input, signal, transformBinding?.transform ?? this.options.transformAgentContext),
+				this.transformWith(
+					input,
+					signal,
+					transformBinding?.transform ?? this.options.transformAgentContext,
+					projectionTimeBoundary,
+				),
 			async releaseTurnBinding() {
 				if (released) return;
 				released = true;
@@ -373,8 +379,11 @@ export class CodingAgentContextRuntime
 		input: ModelCallContextTransformationInput,
 		signal: AbortSignal,
 		transformAgentContext: CodingAgentContextRuntimeOptions["transformAgentContext"],
+		timeBoundary?: number,
 	): Promise<readonly Message[]> {
-		const projected = await projectModelCallContext(input, transformAgentContext, signal);
+		const projected = await projectModelCallContext(input, transformAgentContext, signal, {
+			timeBoundary,
+		});
 		this.currentTokens = projected.estimatedTokens;
 		return projected.messages;
 	}

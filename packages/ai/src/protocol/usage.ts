@@ -15,6 +15,30 @@ export interface UsageCost {
  */
 export type CacheUsageReporting = "unavailable" | "read-only" | "read-write";
 
+/**
+ * Privacy-safe fingerprints for the provider-facing prompt prefix.
+ *
+ * The hashes are intentionally computed from the normalized request shape and
+ * never contain prompt text. They explain why a cache prefix changed without
+ * turning usage records into raw prompt snapshots.
+ */
+export interface PromptCacheDiagnostics {
+	/** Hash of stable system prefix + tools + all messages except the current tail message. */
+	cachePrefixHash: string;
+	/** Hash of the system prompt portion declared stable by the caller. */
+	stableSystemPromptHash: string;
+	/** Hash of the system prompt portion after the stable boundary. */
+	volatileSystemPromptHash: string;
+	/** Hash of provider-neutral tool definitions, preserving model order. */
+	toolsHash: string;
+	/** Hash of the message history before the current user/tool tail. */
+	historyPrefixHash: string;
+	stableSystemPromptLength: number;
+	volatileSystemPromptLength: number;
+	historyPrefixMessages: number;
+	toolCount: number;
+}
+
 export interface Usage {
 	input: number;
 	output: number;
@@ -23,6 +47,8 @@ export interface Usage {
 	totalTokens: number;
 	/** Missing on historical records and treated as `unavailable`. */
 	cacheUsageReporting?: CacheUsageReporting;
+	/** Optional privacy-safe request-prefix diagnostics for this model call. */
+	promptCache?: PromptCacheDiagnostics;
 	cost: UsageCost;
 }
 

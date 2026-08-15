@@ -44,6 +44,7 @@ import type {
 	TurnEngineRequest,
 } from "./contracts.js";
 import { KERNEL_ERROR_CODES, TurnExecutionError, turnProtocolError } from "./errors.js";
+import { withPromptCacheDiagnostics } from "./model-call-diagnostics.js";
 import { composeModelCallSystemPrompt, resolveModelCallFrame } from "./model-call-frame.js";
 import { settledToolArgs } from "./streaming-tool-args.js";
 import { RuntimeToolExecutionError } from "./tool-execution-error.js";
@@ -184,7 +185,7 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 						]
 					: runtimeMessages;
 				// instructionOverride 替换整段 Prompt，Frame 上算出的稳定前缀长度随即失效，必须丢弃。
-				const stableLength = request.instructionOverride ? undefined : frame.systemPromptStableLength;
+				const stableLength = request.instructionOverride ? 0 : frame.systemPromptStableLength;
 				const context: Context = {
 					systemPrompt: composeModelCallSystemPrompt({
 						instructions: request.instructionOverride ?? frame.instructions,
@@ -221,13 +222,14 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 						throw error;
 					}
 				})();
+				const diagnosedResponse = withPromptCacheDiagnostics(response, context);
 				return {
 					callId: `${request.turnId}:model-call:${modelCallIndex + 1}`,
 					snapshotId: request.snapshot.id,
 					response: {
-						events: response.events,
-						...(response.metadata ? { metadata: response.metadata } : {}),
-						result: response.result.then(
+						events: diagnosedResponse.events,
+						...(diagnosedResponse.metadata ? { metadata: diagnosedResponse.metadata } : {}),
+						result: diagnosedResponse.result.then(
 							(assistant) => {
 								if (request.snapshot.salvageTextToolCalls?.length) {
 									salvageTextToolCalls(assistant, context.tools, request.snapshot.salvageTextToolCalls);

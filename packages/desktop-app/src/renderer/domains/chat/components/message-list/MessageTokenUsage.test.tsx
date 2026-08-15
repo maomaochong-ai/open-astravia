@@ -25,6 +25,12 @@ const labels: Record<string, string> = {
 	"messageList.tokenUsage.cacheHitRate": "缓存命中率",
 	"messageList.tokenUsage.readCoverage": "读取观测覆盖率",
 	"messageList.tokenUsage.writeCoverage": "写入观测覆盖率",
+	"messageList.tokenUsage.diagnosticCoverage": "前缀诊断覆盖",
+	"messageList.tokenUsage.stableSystemChars": "稳定系统提示词字符",
+	"messageList.tokenUsage.volatileSystemChars": "动态系统提示词字符",
+	"messageList.tokenUsage.historyMessages": "前缀历史消息",
+	"messageList.tokenUsage.toolCount": "工具数量",
+	"messageList.tokenUsage.prefixHash": "请求前缀指纹",
 	"messageList.tokenUsage.unavailable": "未上报",
 };
 
@@ -57,6 +63,7 @@ describe("MessageTokenUsage", () => {
 							output: 20,
 							cacheRead: 50,
 							cacheUsageReporting: "read-only",
+							promptCache: promptCacheDiagnostics(),
 						}),
 					]}
 				/>
@@ -68,10 +75,13 @@ describe("MessageTokenUsage", () => {
 		expect(within(panel).getByText("本轮 Token")).toBeTruthy();
 		expect(within(panel).getByText("2 次模型调用")).toBeTruthy();
 		expect(within(panel).getByText("230")).toBeTruthy();
-		expect(within(panel).getByText("120")).toBeTruthy();
+		expect(within(panel).getAllByText("120")).toHaveLength(2);
 		expect(within(panel).getByText("60%")).toBeTruthy();
 		expect(within(panel).getByText("100%")).toBeTruthy();
 		expect(within(panel).getByText("50%")).toBeTruthy();
+		expect(within(panel).getByText("前缀诊断覆盖")).toBeTruthy();
+		expect(within(panel).getByText("1/2")).toBeTruthy();
+		expect(within(panel).getByText("pc1:1234567890abcdef")).toBeTruthy();
 	});
 
 	it("renders nothing when a historical message has no usage", () => {
@@ -96,6 +106,21 @@ function usage(overrides: Partial<Usage>): Usage {
 		cacheWrite,
 		totalTokens: input + output + cacheRead + cacheWrite,
 		cacheUsageReporting: overrides.cacheUsageReporting,
+		promptCache: overrides.promptCache,
 		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+	};
+}
+
+function promptCacheDiagnostics(): NonNullable<Usage["promptCache"]> {
+	return {
+		cachePrefixHash: "pc1:1234567890abcdef",
+		stableSystemPromptHash: "pc1:stable",
+		volatileSystemPromptHash: "pc1:volatile",
+		toolsHash: "pc1:tools",
+		historyPrefixHash: "pc1:history",
+		stableSystemPromptLength: 120,
+		volatileSystemPromptLength: 20,
+		historyPrefixMessages: 4,
+		toolCount: 3,
 	};
 }

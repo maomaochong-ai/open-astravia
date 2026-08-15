@@ -134,6 +134,24 @@ describe("system prompt cache breakpoint", () => {
 
 		expect(compileSystemPromptDraft(draft).stableLength).toBe(0);
 	});
+
+	it("treats plugin blocks as volatile unless they explicitly opt into stable caching", () => {
+		const draft: SystemPromptDraft = {
+			blocks: [
+				coreBlock("core.base", "base", "Base", 100),
+				{ ...pluginBlock("plugin.dynamic"), source: { kind: "plugin", pluginId: "plugin-a" } },
+				coreBlock("core.skills", "skills", "Skills", 300),
+			],
+			metadata: { cwd: "C:\\workspace", dateTime: "now" },
+		};
+
+		const implicit = compileSystemPromptDraft(draft);
+		expect(implicit.content.slice(0, implicit.stableLength)).toBe("Base");
+
+		draft.blocks[1]!.cacheability = "stable";
+		const explicit = compileSystemPromptDraft(draft);
+		expect(explicit.stableLength).toBe(explicit.content.length);
+	});
 });
 
 function createDraft(): SystemPromptDraft {

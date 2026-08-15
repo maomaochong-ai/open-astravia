@@ -30,6 +30,8 @@ const PromptBlockTypeSchema = Type.Union([
 	Type.Literal("plugin"),
 ]);
 
+const PromptBlockCacheabilitySchema = Type.Union([Type.Literal("stable"), Type.Literal("volatile")]);
+
 const PromptBlockSchema = Type.Object(
 	{
 		id: Type.String(),
@@ -38,6 +40,7 @@ const PromptBlockSchema = Type.Object(
 		content: Type.String(),
 		priority: Type.Number(),
 		enabled: Type.Boolean(),
+		cacheability: Type.Optional(PromptBlockCacheabilitySchema),
 	},
 	{ additionalProperties: false },
 );
@@ -49,6 +52,7 @@ const PromptBlockPatchSchema = Type.Partial(
 			content: Type.String(),
 			priority: Type.Number(),
 			enabled: Type.Boolean(),
+			cacheability: PromptBlockCacheabilitySchema,
 		},
 		{ additionalProperties: false },
 	),

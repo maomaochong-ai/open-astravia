@@ -30,6 +30,31 @@ describe("Amazon Bedrock request parameters", () => {
 		expect(input.messages?.[0]?.content?.at(-1)).toEqual({ cachePoint: { type: "default", ttl: "1h" } });
 	});
 
+	it("places the system cache point before the volatile system tail", () => {
+		const systemPrompt = "Stable prefix\n\nvolatile tail";
+		const input = buildBedrockCommandInput(
+			model,
+			{ ...context, systemPrompt, systemPromptStableLength: "Stable prefix".length },
+			{ cacheRetention: "long" },
+		);
+
+		expect(input.system).toEqual([
+			{ text: "Stable prefix" },
+			{ cachePoint: { type: "default", ttl: "1h" } },
+			{ text: "\n\nvolatile tail" },
+		]);
+	});
+
+	it("does not add a system cache point when no stable system prefix is declared", () => {
+		const input = buildBedrockCommandInput(
+			model,
+			{ ...context, systemPromptStableLength: 0 },
+			{ cacheRetention: "long" },
+		);
+
+		expect(input.system).toEqual([{ text: "System prompt" }]);
+	});
+
 	it("maps tool choices without changing tool schemas", () => {
 		const any = buildBedrockCommandInput(model, context, { toolChoice: "any" });
 		const none = buildBedrockCommandInput(model, context, { toolChoice: "none" });

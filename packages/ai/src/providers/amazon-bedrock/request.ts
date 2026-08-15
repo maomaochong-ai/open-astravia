@@ -18,7 +18,7 @@ export function buildBedrockCommandInput(
 	return {
 		modelId: model.id,
 		messages: convertBedrockMessages(context, model, cacheRetention),
-		system: buildSystemPrompt(context.systemPrompt, model, cacheRetention),
+		system: buildSystemPrompt(context, model, cacheRetention),
 		inferenceConfig: { maxTokens: options.maxTokens, temperature: options.temperature },
 		toolConfig: convertToolConfig(context.tools, options.toolChoice),
 		additionalModelRequestFields: buildAdditionalModelRequestFields(model, options),

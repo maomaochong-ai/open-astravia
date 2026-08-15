@@ -50,6 +50,7 @@ export interface SystemPromptBlock {
 	content: string;
 	priority: number;
 	enabled: boolean;
+	cacheability?: "stable" | "volatile";
 }
 
 export type SystemPromptBlockPatch = Partial<Omit<SystemPromptBlock, "id">>;

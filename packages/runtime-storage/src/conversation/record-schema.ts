@@ -64,6 +64,22 @@ const UsageSchema = Type.Object(
 		cacheUsageReporting: Type.Optional(
 			Type.Union([Type.Literal("unavailable"), Type.Literal("read-only"), Type.Literal("read-write")]),
 		),
+		promptCache: Type.Optional(
+			Type.Object(
+				{
+					cachePrefixHash: Type.String(),
+					stableSystemPromptHash: Type.String(),
+					volatileSystemPromptHash: Type.String(),
+					toolsHash: Type.String(),
+					historyPrefixHash: Type.String(),
+					stableSystemPromptLength: Type.Number(),
+					volatileSystemPromptLength: Type.Number(),
+					historyPrefixMessages: Type.Integer({ minimum: 0 }),
+					toolCount: Type.Integer({ minimum: 0 }),
+				},
+				{ additionalProperties: false },
+			),
+		),
 		cost: CostSchema,
 	},
 	{ additionalProperties: false },

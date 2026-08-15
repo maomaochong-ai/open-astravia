@@ -301,7 +301,9 @@ describe("AgentCoreTurnEngine", () => {
 				)
 				.map(({ observation }) => observation.type),
 		).toEqual(["agent.start", "turn.start", "message.start", "message.end", "turn.end", "agent.end"]);
-		expect(events.filter((event) => event.type !== "observation" && event.type !== "execution_observation")).toEqual([
+		expect(
+			events.filter((event) => event.type !== "observation" && event.type !== "execution_observation"),
+		).toMatchObject([
 			{
 				type: "message",
 				message: assistantMessage([{ type: "text", text: "done" }]),
@@ -554,7 +556,7 @@ describe("AgentCoreTurnEngine", () => {
 			{ type: "message.start", message: initialMessages[1] },
 			{ type: "message.end", message: initialMessages[1] },
 		]);
-		expect(executionEvents.at(-1)).toEqual({
+		expect(executionEvents.at(-1)).toMatchObject({
 			type: "agent.end",
 			messages: [...initialMessages, { kind: "message", message: response }],
 		});
@@ -672,7 +674,7 @@ describe("AgentCoreTurnEngine", () => {
 		}
 
 		expect(contexts[0]?.systemPrompt).toBe("run prompt");
-		expect(contexts[0]?.systemPromptStableLength).toBeUndefined();
+		expect(contexts[0]?.systemPromptStableLength).toBe(0);
 	});
 
 	it("applies the session context transformer before every model call without mutating persisted messages", async () => {

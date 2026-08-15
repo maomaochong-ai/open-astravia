@@ -35,4 +35,21 @@ describe("conversation cache usage reporting", () => {
 		message.usage.cacheUsageReporting = "maybe";
 		expect(Value.Check(ConversationMessageSchema, message)).toBe(false);
 	});
+
+	it("persists optional privacy-safe prompt cache diagnostics", () => {
+		const message = assistantUsage("read-write");
+		message.usage.promptCache = {
+			cachePrefixHash: "pc1:prefix",
+			stableSystemPromptHash: "pc1:stable",
+			volatileSystemPromptHash: "pc1:volatile",
+			toolsHash: "pc1:tools",
+			historyPrefixHash: "pc1:history",
+			stableSystemPromptLength: 100,
+			volatileSystemPromptLength: 20,
+			historyPrefixMessages: 4,
+			toolCount: 3,
+		};
+
+		expect(Value.Check(ConversationMessageSchema, message)).toBe(true);
+	});
 });

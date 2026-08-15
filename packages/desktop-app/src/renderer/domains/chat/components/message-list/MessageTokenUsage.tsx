@@ -19,6 +19,8 @@ interface TokenUsageDetails {
 	tokenHitRate: number | null;
 	readCallCoverage: number | null;
 	writeCallCoverage: number | null;
+	diagnosedCalls: number;
+	latestPromptCache: NonNullable<Usage["promptCache"]> | null;
 }
 
 export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Element | null {
@@ -37,7 +39,7 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 
 	if (!details) return null;
 
-	const rows = [
+	const rows: readonly (readonly [string, string])[] = [
 		[t("messageList.tokenUsage.total"), numberFormatter.format(details.totalTokens)],
 		[t("messageList.tokenUsage.prompt"), numberFormatter.format(details.promptTokens)],
 		[t("messageList.tokenUsage.uncachedInput"), numberFormatter.format(details.input)],
@@ -62,7 +64,29 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 				? t("messageList.tokenUsage.unavailable")
 				: percentFormatter.format(details.writeCallCoverage),
 		],
-	] as const;
+		...(details.latestPromptCache
+			? [
+					[
+						t("messageList.tokenUsage.diagnosticCoverage"),
+						`${numberFormatter.format(details.diagnosedCalls)}/${numberFormatter.format(details.modelCalls)}`,
+					],
+					[
+						t("messageList.tokenUsage.stableSystemChars"),
+						numberFormatter.format(details.latestPromptCache.stableSystemPromptLength),
+					],
+					[
+						t("messageList.tokenUsage.volatileSystemChars"),
+						numberFormatter.format(details.latestPromptCache.volatileSystemPromptLength),
+					],
+					[
+						t("messageList.tokenUsage.historyMessages"),
+						numberFormatter.format(details.latestPromptCache.historyPrefixMessages),
+					],
+					[t("messageList.tokenUsage.toolCount"), numberFormatter.format(details.latestPromptCache.toolCount)],
+					[t("messageList.tokenUsage.prefixHash"), details.latestPromptCache.cachePrefixHash],
+				] as const
+			: []),
+	];
 
 	return (
 		<Tooltip>
@@ -110,12 +134,18 @@ export function calculateTokenUsageDetails(usages: readonly Usage[]): TokenUsage
 	let cacheRead = 0;
 	let cacheWrite = 0;
 	let totalTokens = 0;
+	let diagnosedCalls = 0;
+	let latestPromptCache: NonNullable<Usage["promptCache"]> | null = null;
 	for (const usage of usages) {
 		input += usage.input;
 		output += usage.output;
 		cacheRead += usage.cacheRead;
 		cacheWrite += usage.cacheWrite;
 		totalTokens += usage.totalTokens;
+		if (usage.promptCache) {
+			diagnosedCalls += 1;
+			latestPromptCache = usage.promptCache;
+		}
 	}
 	return {
 		input,
@@ -128,5 +158,7 @@ export function calculateTokenUsageDetails(usages: readonly Usage[]): TokenUsage
 		tokenHitRate: promptCache.tokenHitRate,
 		readCallCoverage: promptCache.readCallCoverage,
 		writeCallCoverage: promptCache.writeCallCoverage,
+		diagnosedCalls,
+		latestPromptCache,
 	};
 }

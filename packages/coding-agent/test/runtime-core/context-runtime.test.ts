@@ -28,6 +28,39 @@ import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../../src/
 import type { CodingAgentCompactionExtensionRuntime } from "../../src/runtime-contracts/index.js";
 
 describe("CodingAgentContextRuntime", () => {
+	it("freezes time-based projection decisions for every model call in a Turn", async () => {
+		let now = 100_000;
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			now: () => now,
+		});
+		const bound = await runtime.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
+		const messages = [
+			...Array.from({ length: 9 }, (_, index) => thinkingAssistantMessage(`thought-${index}`, 80_000 + index)),
+			userMessage("current", 90_000),
+		];
+		const input = {
+			sessionId: "session-1",
+			turnId: "turn-1",
+			messages,
+			modelBinding: { model: { ...MODEL, contextWindow: 10_000, maxTokens: 100 } },
+		};
+
+		const first = await bound.transform(input, new AbortController().signal);
+		now = 200_000;
+		const second = await bound.transform(input, new AbortController().signal);
+
+		expect(first).toEqual(second);
+		expect(first[0]?.content).toEqual([{ type: "thinking", thinking: "thought-0" }]);
+		await bound.releaseTurnBinding?.();
+	});
+
 	it("keeps admitted compaction settings for every model call in the Turn", async () => {
 		let enabled = true;
 		const generateCompaction = vi.fn(async (preparation: CompactionPreparation) => ({
@@ -753,6 +786,13 @@ function assistantMessage(text: string, totalTokens: number, timestamp: number):
 		},
 		stopReason: "stop",
 		timestamp,
+	};
+}
+
+function thinkingAssistantMessage(thinking: string, timestamp: number): AssistantMessage {
+	return {
+		...assistantMessage("", 1, timestamp),
+		content: [{ type: "thinking", thinking }],
 	};
 }
 

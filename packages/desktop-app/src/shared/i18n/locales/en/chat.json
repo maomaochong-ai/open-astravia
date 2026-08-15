@@ -505,6 +505,12 @@
 			"cacheHitRate": "Cache hit rate",
 			"readCoverage": "Read observation coverage",
 			"writeCoverage": "Write observation coverage",
+			"diagnosticCoverage": "Prefix diagnostic coverage",
+			"stableSystemChars": "Stable system prompt chars",
+			"volatileSystemChars": "Volatile system prompt chars",
+			"historyMessages": "Prefix history messages",
+			"toolCount": "Tool count",
+			"prefixHash": "Request prefix fingerprint",
 			"unavailable": "Not reported"
 		},
 		"compactionBoundary": "Context compacted",

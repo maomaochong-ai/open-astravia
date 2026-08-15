@@ -11,10 +11,16 @@ export interface ProjectedModelCallContext {
 	readonly estimatedTokens: number;
 }
 
+export interface ModelCallContextProjectionOptions {
+	/** Fixed time boundary shared by every model call admitted for a Turn. */
+	readonly timeBoundary?: number;
+}
+
 export async function projectModelCallContext(
 	input: ModelCallContextTransformationInput,
 	transformAgentContext: CodingAgentContextRuntimeOptions["transformAgentContext"],
 	signal: AbortSignal,
+	options: ModelCallContextProjectionOptions = {},
 ): Promise<ProjectedModelCallContext> {
 	signal.throwIfAborted();
 	const envelopes = input.messageEnvelopes ?? input.messages.map(toMessageEnvelope);
@@ -28,11 +34,13 @@ export async function projectModelCallContext(
 	const invisibleIdentities = readInvisibleIdentityCounts(envelopes);
 	const extensionMessages = transformAgentContext ? await transformAgentContext(agentMessages, signal) : agentMessages;
 	signal.throwIfAborted();
-	const visibleMessages = microcompact([...extensionMessages], {
+	const projectedMessages = microcompact([...extensionMessages], {
 		keepRecent: 8,
 		maxAgeMs: 30 * 1000,
 		pruneToolResults: false,
-	}).filter((message) => !consumeIdentity(invisibleIdentities, message));
+		now: options.timeBoundary,
+	});
+	const visibleMessages = projectedMessages.filter((message) => !consumeIdentity(invisibleIdentities, message));
 	const messages = convertToLlm(
 		reduceContextByPressure(visibleMessages, {
 			contextWindow: input.modelBinding.model.contextWindow,

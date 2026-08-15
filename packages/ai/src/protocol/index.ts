@@ -5,6 +5,7 @@ export * from "./identity.js";
 export * from "./message.js";
 export * from "./message-factory.js";
 export * from "./model-capabilities.js";
+export * from "./prompt-cache-diagnostics.js";
 export * from "./reasoning.js";
 export * from "./stream-event.js";
 export * from "./tool.js";

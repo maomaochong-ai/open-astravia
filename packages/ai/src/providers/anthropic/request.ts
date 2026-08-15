@@ -59,6 +59,9 @@ function buildSystemBlocks(context: Context, cacheControl: AnthropicCacheControl
 	if (!systemPrompt) return [];
 
 	const stableLength = context.systemPromptStableLength;
+	if (cacheControl && stableLength === 0) {
+		return [{ type: "text", text: sanitizeSurrogates(systemPrompt) }];
+	}
 	if (cacheControl && stableLength !== undefined && stableLength > 0 && stableLength < systemPrompt.length) {
 		// Slice before sanitizing: stableLength is an offset into the raw prompt.
 		return [
