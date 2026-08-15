@@ -492,6 +492,21 @@
 			"predicting": "Vetta is predicting…",
 			"processing": "Processing..."
 		},
+		"tokenUsage": {
+			"trigger": "View token usage for this turn",
+			"title": "Turn tokens",
+			"modelCalls": "{{count}} model calls",
+			"total": "Total",
+			"prompt": "Prompt tokens",
+			"uncachedInput": "Uncached input",
+			"output": "Output",
+			"cacheRead": "Cache read",
+			"cacheWrite": "Cache write",
+			"cacheHitRate": "Cache hit rate",
+			"readCoverage": "Read observation coverage",
+			"writeCoverage": "Write observation coverage",
+			"unavailable": "Not reported"
+		},
 		"compactionBoundary": "Context compacted",
 		"modelSwitched": "Switched model to {{name}}",
 		"compactionIndicator": "Compacting context...",

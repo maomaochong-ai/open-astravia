@@ -430,7 +430,8 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 			// ── Message final (full assistant message — text, thinking, tool calls) ──
 			if (event.type === "message.final" && event.message.role === "assistant") {
 				flushDeltas();
-				setChatMessages((prev) => finalizeMessage(prev, event.message.content));
+				const { content, usage } = event.message;
+				setChatMessages((prev) => finalizeMessage(prev, content, usage));
 				return;
 			}
 

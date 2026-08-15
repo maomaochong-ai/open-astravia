@@ -492,6 +492,21 @@
 			"predicting": "Vetta 正在预测…",
 			"processing": "处理中..."
 		},
+		"tokenUsage": {
+			"trigger": "查看本轮 Token 用量",
+			"title": "本轮 Token",
+			"modelCalls": "{{count}} 次模型调用",
+			"total": "总计",
+			"prompt": "Prompt Token",
+			"uncachedInput": "未缓存输入",
+			"output": "输出",
+			"cacheRead": "缓存读取",
+			"cacheWrite": "缓存写入",
+			"cacheHitRate": "缓存命中率",
+			"readCoverage": "读取观测覆盖率",
+			"writeCoverage": "写入观测覆盖率",
+			"unavailable": "未上报"
+		},
 		"compactionBoundary": "上下文已压缩",
 		"modelSwitched": "切换了模型 {{name}}",
 		"compactionIndicator": "正在压缩上下文...",
