@@ -29,6 +29,7 @@ export {
 	createCodingToolsFeature,
 } from "./coding-tools-feature.js";
 export * from "./host/index.js";
+export { ToolCallDescriptionSchema } from "./tool-call-description.js";
 export {
 	CODING_TOOL_SCOPES,
 	type CodingToolActivation,

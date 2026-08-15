@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { InitializationRollbackScope, RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
-import { FileConversationRuntimeSessionCatalog, resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
+import {
+	FileConversationRuntimeSessionCatalog,
+	resolveConversationFilePath,
+	resolveSessionIdFromPath,
+} from "@vetta/runtime-node/conversation";
 import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
@@ -142,9 +146,11 @@ export async function createCodingAgentSdkSession(
 			initialSession: runtimeSession,
 			sessionOptions: options.session ?? {},
 			conversationDir,
+			defaultCwd: options.session?.cwd ?? options.composition.cwd ?? process.cwd(),
 			sessionCatalog: createSessionCatalog(storage, options.session?.cwd, options.composition.agentDir),
 			createSessionId: randomUUID,
 			resolveSessionId: (path) => resolveSessionIdFromPath(conversationDir, path),
+			resolveSessionPath: (sessionId) => resolveConversationFilePath(conversationDir, sessionId),
 			lifecycle: createResourceAwareTransitionLifecycle(
 				composition,
 				options,

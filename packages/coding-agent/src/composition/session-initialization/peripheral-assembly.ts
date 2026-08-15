@@ -5,6 +5,12 @@ import type { AgentFeatureDefinition, AgentProfile, ModelCallContributionContext
 import { SessionExtensionComposition, sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
+import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
+import {
+	CODING_AGENT_TODO_RUNTIME,
+	createCodingAgentTodoSessionExtension,
+} from "../../features/todo/todo-session-extension.js";
+import { CODING_AGENT_TODO_OBSERVATION } from "../../features/todo/todo-session-extension-contract.js";
 import { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import {
@@ -17,12 +23,6 @@ import type {
 	CodingAgentPluginRuntimeSource,
 	CodingAgentRuntimeToolRegistration,
 } from "../../runtime-contracts/index.js";
-import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
-import {
-	CODING_AGENT_TODO_RUNTIME,
-	createCodingAgentTodoSessionExtension,
-} from "../../work-state/todo-session-extension.js";
-import { CODING_AGENT_TODO_OBSERVATION } from "../../work-state/todo-session-extension-contract.js";
 import { createCodingAgentKnowledgeWriteOperations } from "../coding-agent-knowledge-runtime.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";

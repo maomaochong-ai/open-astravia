@@ -4,13 +4,11 @@ import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
 import type { SessionEvent } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-	type CodingAgentRuntimeComposition,
-	createCodingAgentRuntimeComposition,
-} from "../../src/composition/index.js";
-import type { CodingAgentRuntimeModelSource } from "../../src/public-api/host-services.js";
-import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
-import { readCodingAgentTodoObservation } from "../../src/work-state/todo-session-extension-contract.js";
+import type { CodingAgentRuntimeComposition } from "../../../src/composition/index.js";
+import { CodingAgentTodoRuntime } from "../../../src/features/todo/todo-runtime.js";
+import { readCodingAgentTodoObservation } from "../../../src/features/todo/todo-session-extension-contract.js";
+import type { CodingAgentRuntimeModelSource } from "../../../src/public-api/host-services.js";
+import { createCodingAgentRuntimeComposition } from "../../fixtures/conversation-persistence.js";
 
 describe("Coding Agent Todo observation", () => {
 	const temporaryDirectories: string[] = [];

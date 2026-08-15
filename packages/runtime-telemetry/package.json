@@ -1,0 +1,32 @@
+{
+	"name": "@vetta/runtime-telemetry",
+	"version": "0.0.1",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./langfuse": {
+			"types": "./dist/langfuse.d.ts",
+			"import": "./dist/langfuse.js"
+		}
+	},
+	"files": ["dist"],
+	"scripts": {
+		"clean": "rm -rf dist",
+		"build": "tsgo -p tsconfig.build.json"
+	},
+	"devDependencies": {
+		"typescript": "^5.9.2",
+		"@types/node": "^22.10.5"
+	},
+	"dependencies": {
+		"@vetta/agent-core": "workspace:*",
+		"@langfuse/otel": "^5.4.1",
+		"@langfuse/tracing": "^5.4.1",
+		"@opentelemetry/sdk-node": "^0.218.0"
+	}
+}

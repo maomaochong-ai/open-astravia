@@ -418,11 +418,17 @@ function checkGreenfieldLegacyStartupSymbols(posixPath, text, findings) {
 	}
 }
 
-function checkGreenfieldSessionTransitionBoundary(posixPath, text, specifiers, findings) {
-	if (posixPath !== "packages/coding-agent/src/composition/greenfield-active-session-transition-host.ts") return;
+function checkActiveSessionTransitionBoundary(posixPath, text, specifiers, findings) {
+	if (posixPath !== "packages/runtime-core/src/runtime-host/active-session-host.ts") return;
 	for (const specifier of specifiers) {
+		if (specifier.startsWith("node:")) {
+			findings.push(`${posixPath}: active-session transactions must use host ports instead of ${specifier}`);
+		}
 		if (specifier.includes("core/session-manager") || specifier.includes("legacy-session-import-normalizer")) {
 			findings.push(`${posixPath}: active-session transactions must delegate Legacy session seed construction`);
+		}
+		if (specifier === "@vetta/coding-agent" || specifier.startsWith("@vetta/coding-agent/")) {
+			findings.push(`${posixPath}: active-session transactions must not import Coding Agent products`);
 		}
 		if (specifier.includes("core/extensions")) {
 			findings.push(`${posixPath}: active-session transactions must use neutral session action ports`);
@@ -432,7 +438,10 @@ function checkGreenfieldSessionTransitionBoundary(posixPath, text, specifiers, f
 	const forbiddenSymbols = new Set([
 		"ExtensionCommandContextActions",
 		"CodingAgentRuntimeComposition",
+		"CodingAgentSessionTransitionRuntimePort",
 		"SessionManager",
+		"Buffer",
+		"process",
 		"migrateLegacySessionToV2",
 	]);
 	const visit = (node) => {
@@ -567,13 +576,13 @@ function checkCodingAgentTurnCapabilityAssemblyBoundary(posixPath, text, finding
 function checkCodingAgentDomainAdapterBoundary(posixPath, specifiers, findings) {
 	const domainRoots = [
 		"packages/coding-agent/src/extensions/",
+		"packages/coding-agent/src/features/",
 		"packages/coding-agent/src/memory/",
 		"packages/coding-agent/src/mcp/",
 		"packages/coding-agent/src/model-context/",
 		"packages/coding-agent/src/plugins/",
 		"packages/coding-agent/src/resources/",
 		"packages/coding-agent/src/sessions/",
-		"packages/coding-agent/src/work-state/",
 	];
 	if (!domainRoots.some((root) => posixPath.startsWith(root))) return;
 	for (const specifier of specifiers) {
@@ -1301,9 +1310,9 @@ function checkRuntimeCoreImports(posixPath, specifiers, findings) {
 function checkAgentCoreImports(posixPath, specifiers, findings) {
 	if (!posixPath.startsWith("packages/agent/src/")) return;
 	for (const specifier of specifiers) {
-		const importsRuntimeCore = specifier === "@vetta/runtime-core" || specifier.startsWith("@vetta/runtime-core/");
+		const importsRuntime = specifier.startsWith("@vetta/runtime-");
 		const importsCodingAgent = specifier === "@vetta/coding-agent" || specifier.startsWith("@vetta/coding-agent/");
-		if (importsRuntimeCore || importsCodingAgent) {
+		if (importsRuntime || importsCodingAgent) {
 			findings.push(`${posixPath}: agent-core must not import runtime or product packages (${specifier})`);
 		}
 	}
@@ -1344,7 +1353,7 @@ export function findPackageBoundaryViolations(posixPath, text, options = {}) {
 	checkMcpProtocolImports(posixPath, specifiers, findings);
 	checkRuntimeCorePlatformImports(posixPath, text, specifiers, findings);
 	checkGreenfieldLegacyStartupSymbols(posixPath, text, findings);
-	checkGreenfieldSessionTransitionBoundary(posixPath, text, specifiers, findings);
+	checkActiveSessionTransitionBoundary(posixPath, text, specifiers, findings);
 	checkBranchNavigationBoundary(posixPath, text, findings);
 	checkKnowledgeProcessingBoundary(posixPath, text, specifiers, findings);
 	checkCodingAgentSubagentAssemblyBoundary(posixPath, text, findings);
@@ -1392,6 +1401,18 @@ export function findPackageManifestBoundaryViolations(manifest) {
 	];
 	if (dependencyGroups.some((dependencies) => Object.hasOwn(dependencies ?? {}, "@vetta/runtime-composition"))) {
 		findings.push(`${manifest.name ?? "workspace package"}: retired @vetta/runtime-composition dependency`);
+	}
+	if (manifest.name === "@vetta/agent-core") {
+		const productionDependencies = {
+			...manifest.dependencies,
+			...manifest.optionalDependencies,
+			...manifest.peerDependencies,
+		};
+		for (const dependency of Object.keys(productionDependencies)) {
+			if (dependency.startsWith("@vetta/runtime-") || dependency === "@vetta/coding-agent") {
+				findings.push(`@vetta/agent-core: lower-level execution kernel must not depend on ${dependency}`);
+			}
+		}
 	}
 	if (manifest.name !== "@vetta/coding-agent") return findings;
 	const exports = manifest.exports ?? {};

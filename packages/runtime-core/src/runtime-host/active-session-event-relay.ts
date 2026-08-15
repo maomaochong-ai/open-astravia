@@ -1,7 +1,15 @@
-import type { RuntimeSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
+import type { SessionEvent } from "../contracts.js";
+import type { RuntimeSession } from "./kernel-runtime-session-backend.js";
+import type { RuntimeSessionExecutionObservation } from "./session-ports.js";
 
-/** Keeps host-level listeners stable while the active Runtime Session changes. */
-export class CodingAgentActiveSessionEventRelay {
+export type RuntimeActiveSessionListenerKind = "event" | "execution-observation";
+
+export interface RuntimeActiveSessionEventRelayOptions {
+	readonly reportListenerError?: (kind: RuntimeActiveSessionListenerKind, error: unknown) => void;
+}
+
+/** Keeps host listeners stable while the active Runtime Session changes. */
+export class RuntimeActiveSessionEventRelay {
 	private eventUnsubscribe: (() => void) | undefined;
 	private observationUnsubscribe: (() => void) | undefined;
 	private readonly listeners = new Set<(event: SessionEvent) => void>();
@@ -10,7 +18,10 @@ export class CodingAgentActiveSessionEventRelay {
 	>();
 	private suppressEvents = false;
 
-	constructor(session: RuntimeSession) {
+	constructor(
+		session: RuntimeSession,
+		private readonly options: RuntimeActiveSessionEventRelayOptions = {},
+	) {
 		this.bind(session);
 	}
 
@@ -63,7 +74,7 @@ export class CodingAgentActiveSessionEventRelay {
 				try {
 					listener(event);
 				} catch (error) {
-					console.warn("[CodingAgentActiveSessionHost] Event listener failed", error);
+					this.reportListenerError("event", error);
 				}
 			}
 		});
@@ -74,9 +85,18 @@ export class CodingAgentActiveSessionEventRelay {
 					try {
 						await listener(observation);
 					} catch (error) {
-						console.warn("[CodingAgentActiveSessionHost] Execution observation listener failed", error);
+						this.reportListenerError("execution-observation", error);
 					}
 				}
 			});
+	}
+
+	private reportListenerError(kind: RuntimeActiveSessionListenerKind, error: unknown): void {
+		if (this.options.reportListenerError) {
+			this.options.reportListenerError(kind, error);
+			return;
+		}
+		const label = kind === "event" ? "Event" : "Execution observation";
+		console.warn(`[RuntimeActiveSessionEventRelay] ${label} listener failed`, error);
 	}
 }

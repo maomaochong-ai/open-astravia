@@ -1,11 +1,14 @@
-import type { RuntimeResourceContext } from "@vetta/runtime-core";
+import {
+	InMemoryRuntimeSessionMarkerIndex,
+	InMemoryRuntimeSessionValueIndex,
+	type RuntimeResourceContext,
+} from "@vetta/runtime-core";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryController } from "../../memory/index.js";
 import type { CodingAgentPluginMcpRuntime } from "../../runtime-contracts/index.js";
-import { InMemoryCodingAgentSessionMarkerIndex, InMemoryCodingAgentSessionValueIndex } from "./indexes.js";
 import type { CodingAgentSessionHookController, CodingAgentSessionResourceIndexes } from "./resource-lifecycle.js";
 
 export interface CodingAgentSynchronousDisposableResource {
@@ -43,15 +46,15 @@ export interface CodingAgentCompositionResourceCleanupRegistry {
 /** Composition 级 Session 索引与唯一资源身份登记；不负责创建或释放资源。 */
 export class CodingAgentCompositionResourceRegistry implements CodingAgentCompositionResourceCleanupRegistry {
 	readonly indexes: CodingAgentSessionResourceIndexes = {
-		mcpControllers: new InMemoryCodingAgentSessionValueIndex<McpDeferredToolController>(),
-		pluginMcpRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentPluginMcpRuntime>(),
-		executionRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
-		configurationStates: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionConfigurationState>(),
-		resourceContexts: new InMemoryCodingAgentSessionValueIndex<RuntimeResourceContext>(),
-		extensionEventBridges: new InMemoryCodingAgentSessionValueIndex<CodingAgentExtensionRunAdapter>(),
-		memoryControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentMemoryController>(),
-		hookSessionControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionHookController>(),
-		mcpRefreshObservedSessions: new InMemoryCodingAgentSessionMarkerIndex(),
+		mcpControllers: new InMemoryRuntimeSessionValueIndex<McpDeferredToolController>(),
+		pluginMcpRuntimes: new InMemoryRuntimeSessionValueIndex<CodingAgentPluginMcpRuntime>(),
+		executionRuntimes: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
+		configurationStates: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionConfigurationState>(),
+		resourceContexts: new InMemoryRuntimeSessionValueIndex<RuntimeResourceContext>(),
+		extensionEventBridges: new InMemoryRuntimeSessionValueIndex<CodingAgentExtensionRunAdapter>(),
+		memoryControllers: new InMemoryRuntimeSessionValueIndex<CodingAgentMemoryController>(),
+		hookSessionControllers: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionHookController>(),
+		mcpRefreshObservedSessions: new InMemoryRuntimeSessionMarkerIndex(),
 	};
 
 	private readonly contextRuntimes = new Set<CodingAgentSynchronousDisposableResource>();

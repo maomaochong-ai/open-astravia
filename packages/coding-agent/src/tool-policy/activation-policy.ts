@@ -31,6 +31,13 @@ export function isCodingAgentKnowledgeToolEnabled(
 	if (!knowledgeAvailable) return false;
 	return (
 		(base.mode === "scope" && base.scope === "kb-processing") ||
-		context.input?.context?.some(({ type }) => type === "knowledge_mode_instruction") === true
+		context.input?.context?.some(({ type }) => type === "knowledge_mode_instruction") === true ||
+		isKnowledgeModeRequest(context.request?.payload)
 	);
+}
+
+function isKnowledgeModeRequest(payload: unknown): boolean {
+	if (!payload || typeof payload !== "object") return false;
+	const metadata = Reflect.get(payload, "metadata");
+	return Boolean(metadata && typeof metadata === "object" && Reflect.get(metadata, "knowledgeMode") === true);
 }

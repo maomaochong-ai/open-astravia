@@ -3,6 +3,7 @@ import {
 	type KnowledgeProcessingSessionFactory,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentModelRuntime } from "@vetta/coding-agent/host-services";
+import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";
 
 export interface DesktopKnowledgeProcessingSessionFactoryOptions {
 	readonly getModelRegistry: () => CodingAgentModelRuntime;
@@ -14,5 +15,6 @@ export function createDesktopKnowledgeProcessingSessionFactory(
 ): KnowledgeProcessingSessionFactory {
 	return createKnowledgeProcessingSessionFactory({
 		getModelRegistry: options.getModelRegistry,
+		createConversationPersistence: ({ conversationDir }) => createFileConversationPersistence(conversationDir),
 	});
 }

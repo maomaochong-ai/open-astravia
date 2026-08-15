@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 
+/** Shared optional model narration field for Coding Tool input schemas. */
 export const ToolCallDescriptionSchema = Type.Optional(
 	Type.String({
 		description: "Brief user-facing reason for this tool call (max 100 chars).",

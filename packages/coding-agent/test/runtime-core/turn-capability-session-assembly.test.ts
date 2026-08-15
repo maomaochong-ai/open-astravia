@@ -15,9 +15,9 @@ import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/
 import { CodingAgentExtensionRunAdapter } from "../../src/adapters/runtime-core/extension-run-adapter.js";
 import { createCodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
 import { createCodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
+import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
 import { DEFAULT_HEAVY_TOOL_CONFIRMATION_TEXTS } from "../../src/tool-policy/heavy-tool-confirmation.js";
-import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
 import { preparePrompt } from "./prompt-adapter-test-fixture.js";
 
 describe("Coding Agent Turn Capability session assembly", () => {

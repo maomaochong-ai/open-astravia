@@ -1,4 +1,4 @@
-import type { CodingToolRegistration, CodingToolScope } from "../../tool-registration.js";
+import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools";
 import { createTodoTool, type TodoToolInput, type TodoToolOptions } from "./todo-tool.js";
 
 export const TODO_TOOL_SCOPES = [

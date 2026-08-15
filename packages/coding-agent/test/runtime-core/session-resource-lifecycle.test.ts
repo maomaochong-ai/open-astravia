@@ -1,5 +1,11 @@
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type { RuntimeModel, RuntimeResourceContext, RuntimeResources } from "@vetta/runtime-core";
+import {
+	InMemoryRuntimeSessionMarkerIndex,
+	InMemoryRuntimeSessionValueIndex,
+	type RuntimeModel,
+	type RuntimeResourceContext,
+	type RuntimeResources,
+} from "@vetta/runtime-core";
 import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel";
 import { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
@@ -7,22 +13,18 @@ import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
 import type { CodingAgentExtensionRunAdapter } from "../../src/adapters/runtime-core/extension-run-adapter.js";
 import {
-	InMemoryCodingAgentSessionMarkerIndex,
-	InMemoryCodingAgentSessionValueIndex,
-} from "../../src/composition/session-lifecycle/indexes.js";
-import {
 	type CodingAgentSessionResourceIndexes,
 	createCodingAgentSessionResourceLifecycle,
 } from "../../src/composition/session-lifecycle/resource-lifecycle.js";
 import type { CodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
+import type { CodingAgentTodoRuntime } from "../../src/features/todo/contracts.js";
 import type { CodingAgentSessionConfigurationState } from "../../src/host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryController, CodingAgentMemoryRolloverRuntime } from "../../src/memory/index.js";
 import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
 import type { CodingAgentRuntimeToolRegistration } from "../../src/runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../src/sessions/projection/conversation-context-overlay.js";
-import type { CodingAgentTodoRuntime } from "../../src/work-state/contracts.js";
 
 describe("Coding Agent Session Resource Lifecycle", () => {
 	it("atomically rebinds session resources and retries only failed cleanup phases", async () => {
@@ -191,15 +193,15 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 
 function createIndexes(): CodingAgentSessionResourceIndexes {
 	return {
-		mcpControllers: new InMemoryCodingAgentSessionValueIndex<McpDeferredToolController>(),
-		pluginMcpRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentPluginMcpRuntime>(),
-		executionRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
-		configurationStates: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionConfigurationState>(),
-		resourceContexts: new InMemoryCodingAgentSessionValueIndex<RuntimeResourceContext>(),
-		extensionEventBridges: new InMemoryCodingAgentSessionValueIndex<CodingAgentExtensionRunAdapter>(),
-		memoryControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentMemoryController>(),
-		hookSessionControllers: new InMemoryCodingAgentSessionValueIndex(),
-		mcpRefreshObservedSessions: new InMemoryCodingAgentSessionMarkerIndex(),
+		mcpControllers: new InMemoryRuntimeSessionValueIndex<McpDeferredToolController>(),
+		pluginMcpRuntimes: new InMemoryRuntimeSessionValueIndex<CodingAgentPluginMcpRuntime>(),
+		executionRuntimes: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
+		configurationStates: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionConfigurationState>(),
+		resourceContexts: new InMemoryRuntimeSessionValueIndex<RuntimeResourceContext>(),
+		extensionEventBridges: new InMemoryRuntimeSessionValueIndex<CodingAgentExtensionRunAdapter>(),
+		memoryControllers: new InMemoryRuntimeSessionValueIndex<CodingAgentMemoryController>(),
+		hookSessionControllers: new InMemoryRuntimeSessionValueIndex(),
+		mcpRefreshObservedSessions: new InMemoryRuntimeSessionMarkerIndex(),
 	};
 }
 

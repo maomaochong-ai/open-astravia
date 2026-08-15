@@ -5,13 +5,11 @@ import type { Api, Model } from "@vetta/ai";
 import type { AgentPluginRuntimeConfig } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-	type CodingAgentRuntimeComposition,
-	createCodingAgentRuntimeComposition,
-} from "../../src/composition/index.js";
+import type { CodingAgentRuntimeComposition } from "../../src/composition/index.js";
 import { createCodingAgentSessionResourceRuntime } from "../../src/host/coding-agent-resource-runtime.js";
 import type { CodingAgentRuntimeModelSource } from "../../src/public-api/host-services.js";
 import { SettingsRuntime } from "../../src/settings/index.js";
+import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-persistence.js";
 
 const temporaryRoots: string[] = [];
 const compositions: CodingAgentRuntimeComposition[] = [];

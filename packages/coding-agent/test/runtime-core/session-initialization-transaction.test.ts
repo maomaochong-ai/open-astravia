@@ -6,10 +6,10 @@ import type { ModelCallFrameCompositionContext, RuntimeToolDefinition } from "@v
 import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/model-runtime-adapter.js";
-import { createCodingAgentRuntimeComposition } from "../../src/composition/runtime-composition.js";
+import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import { CodingAgentMemoryRolloverOrchestrator } from "../../src/memory/index.js";
 import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
-import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
+import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-persistence.js";
 
 describe("Coding Agent Session Initialization Transaction", () => {
 	it("rolls back acquired resources in reverse order and allows the same Session to restart", async () => {

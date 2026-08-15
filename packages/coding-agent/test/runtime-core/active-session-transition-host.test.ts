@@ -275,6 +275,25 @@ describe("CodingAgentActiveSessionHost", () => {
 		expect(seeded).toContain("setup context");
 	});
 
+	it("uses host path ports for seed defaults and failed-target cleanup", async () => {
+		const fixture = await createFixture({ omitSessionCwd: true });
+		let seedCwd: string | undefined;
+		await expect(
+			fixture.host.newSession({
+				seedInitializer: {
+					initializeSeed: async (target) => {
+						seedCwd = target.cwd;
+						await fixture.writeConversationPlaceholder("created");
+						throw new Error("seed failed");
+					},
+				},
+			}),
+		).rejects.toThrow("seed failed");
+
+		expect(seedCwd).toBe(fixture.defaultCwd);
+		await expect(access(fixture.sessionPath("created"))).rejects.toMatchObject({ code: "ENOENT" });
+	});
+
 	it("removes a created fork and restores the source session when rebinding fails", async () => {
 		const fixture = await createFixture({ failPrepare: true });
 		const fork = createSession("forked", fixture.sessionPath("forked"));
@@ -396,6 +415,7 @@ async function createFixture(
 		failFinalize?: boolean;
 		failCleanupReporter?: boolean;
 		failPrepare?: boolean;
+		omitSessionCwd?: boolean;
 		skipConversationRestore?: boolean;
 		cancelBefore?: boolean;
 	} = {},
@@ -442,14 +462,16 @@ async function createFixture(
 	const host = new CodingAgentActiveSessionHost({
 		runtime,
 		initialSession: initial.session,
-		sessionOptions: { cwd: conversationDir },
+		sessionOptions: options.omitSessionCwd ? {} : { cwd: conversationDir },
 		conversationDir,
+		defaultCwd: conversationDir,
 		sessionCatalog: catalog,
 		createSessionId: () => "created",
 		resolveSessionId: (path) => {
 			const encoded = path.match(/([^\\/]+)\.conversation\.jsonl$/)?.[1];
 			return encoded ? Buffer.from(encoded, "base64url").toString("utf8") : undefined;
 		},
+		resolveSessionPath: (sessionId) => sessionPath(conversationDir, sessionId),
 		onTransitionCleanupError: (error) => {
 			cleanupErrors.push(error);
 			if (options.failCleanupReporter) throw new Error("cleanup reporter failed");
@@ -495,6 +517,7 @@ async function createFixture(
 		sessionHookStart,
 		sessionHookDiscard,
 		cleanupErrors,
+		defaultCwd: conversationDir,
 		lifecycleOrder,
 		sessionPath: (id: string) => sessionPath(conversationDir, id),
 		writeConversationPlaceholder: async (id: string) => writeFile(sessionPath(conversationDir, id), "placeholder"),

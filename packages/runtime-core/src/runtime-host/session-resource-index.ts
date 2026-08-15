@@ -1,4 +1,4 @@
-export interface CodingAgentSessionValueIndex<T> {
+export interface RuntimeSessionValueIndex<T> {
 	get(sessionId: string): T | undefined;
 	set(sessionId: string, value: T): void;
 	unbind(sessionId: string, value: T): void;
@@ -9,7 +9,8 @@ export interface CodingAgentSessionValueIndex<T> {
 	clear(): void;
 }
 
-export class InMemoryCodingAgentSessionValueIndex<T> implements CodingAgentSessionValueIndex<T> {
+/** Maintains resource identity while a Runtime Session ID changes. */
+export class InMemoryRuntimeSessionValueIndex<T> implements RuntimeSessionValueIndex<T> {
 	private readonly valuesBySessionId = new Map<string, T>();
 
 	get(sessionId: string): T | undefined {
@@ -47,7 +48,7 @@ export class InMemoryCodingAgentSessionValueIndex<T> implements CodingAgentSessi
 	}
 }
 
-export interface CodingAgentSessionMarkerIndex {
+export interface RuntimeSessionMarkerIndex {
 	has(sessionId: string): boolean;
 	add(sessionId: string): void;
 	delete(sessionId: string): boolean;
@@ -55,7 +56,8 @@ export interface CodingAgentSessionMarkerIndex {
 	clear(): void;
 }
 
-export class InMemoryCodingAgentSessionMarkerIndex implements CodingAgentSessionMarkerIndex {
+/** Tracks a boolean marker across Runtime Session identity changes. */
+export class InMemoryRuntimeSessionMarkerIndex implements RuntimeSessionMarkerIndex {
 	private readonly sessionIds = new Set<string>();
 
 	has(sessionId: string): boolean {

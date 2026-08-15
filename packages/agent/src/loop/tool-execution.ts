@@ -1,6 +1,6 @@
 import type { TSchema } from "@sinclair/typebox";
 import { type AssistantMessage, type EventStream, type ToolResultMessage, validateToolArguments } from "@vetta/ai";
-import type { RuntimeObservation } from "@vetta/runtime-telemetry";
+import type { AgentObservation } from "../telemetry.js";
 import { AgentToolExecutionError } from "../tool-execution-error.js";
 import type { AgentEvent, AgentLoopConfig, AgentMessage, AgentTool, AgentToolResult, ToolPhase } from "../types.js";
 import { objectKeys, textFromToolResult, toolCallInput, traceAttributes } from "./telemetry.js";
@@ -12,7 +12,7 @@ export async function executeToolCalls(
 	signal: AbortSignal | undefined,
 	stream: EventStream<AgentEvent, AgentMessage[]>,
 	getSteeringMessages?: AgentLoopConfig["getSteeringMessages"],
-	traceParent?: RuntimeObservation,
+	traceParent?: AgentObservation,
 	tracing?: AgentLoopConfig["tracing"],
 ): Promise<{ toolResults: ToolResultMessage[]; steeringMessages?: AgentMessage[] }> {
 	const toolCalls = assistantMessage.content.filter((content) => content.type === "toolCall");
@@ -137,7 +137,7 @@ export async function executeToolCalls(
 function skipToolCall(
 	toolCall: Extract<AssistantMessage["content"][number], { type: "toolCall" }>,
 	stream: EventStream<AgentEvent, AgentMessage[]>,
-	traceParent?: RuntimeObservation,
+	traceParent?: AgentObservation,
 	tracing?: AgentLoopConfig["tracing"],
 ): ToolResultMessage {
 	const result: AgentToolResult<unknown> = {

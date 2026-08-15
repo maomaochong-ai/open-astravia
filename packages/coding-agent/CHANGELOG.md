@@ -2,6 +2,10 @@
 
 ### Breaking Changes
 
+- **Composition 持久化改为必填 Host Port**：`CodingAgentRuntimeCompositionOptions.createConversationPersistence`
+  与 Knowledge Processing Factory 的同名选项不再可选；`coding-agent` 不再根据 `conversationDir` 隐式创建
+  Node 文件仓储。Subagent 恢复路径也通过持久化 Port 评估，不再自行构造 `FileConversationRepository`；CLI、
+  Desktop、SDK 和测试宿主均已显式选择原有文件/内存实现，现有产品行为、恢复校验与数据格式不变。
 - **agent_mode 排序偏好整体废弃（ADR-0071）**：删除 `sortByAgentModePreference` / `agentModePreferenceRank` / `matchesAgentMode` 及其在工具、Skill、插件 MCP 三处清单的消费；`resolveActiveToolNames` 去掉 mode 参数，激活只看 `scope_use` ∩ `requires` 两条 fail-closed 轴，清单顺序回归注册序（对提示词前缀缓存更稳）。`ToolActivationMetadata.agent_mode`、`AgentPluginToolContribution.agent_mode`、`McpServerContribution.agent_mode`、`Skill.agentMode` 等资源级字段随之删除；SDK 的 `CodingAgentSkillContribution.agentModes` 保留为 @deprecated 容忍字段。审计结论是排序对模型工具选择无可观察影响（模型按 description 语义匹配、不按位置），模式差异完全由 mode 系统提示词（`getModePrompt`）、工作区事实与工具自描述在任务解释层承担。会话级 `agentMode`（创建时固化、驱动 mode prompt）不变。
 - **模式注册表数据化（ADR-0071）**：`AgentMode` 联合类型与 `ALL_AGENT_MODES` / `isAgentMode` 改由 `profiles/modes/*.md` 经 `generate-modes.mjs` 派生（新增 `AgentModeId` 生成类型）；modes frontmatter 新增必填 `icon`，`MODE_PROMPTS` / `ModePromptInfo` 带 icon 并从 `@vetta/coding-agent/profile` 导出，宿主 UI 可直接遍历注册表渲染模式入口。新增一个工作模式 = 新增一份 md（含 icon）+ 宿主 i18n 文案。
 - **收口宿主可执行文件适配器 API**：`@vetta/coding-agent/host` 以 `createManagedCodingToolExecutableResolver`、`ResolveCodingToolExecutable`、`ManagedCodingToolExecutableDependencies` 和 `resolveManagedCodingToolExecutable` 替代旧的 `createToolExecutableResolver`、`EnsureTool`、`EnsureToolDependencies` 与 `ensureToolWithDependencies`，并删除与 `@vetta/runtime-tools` 重复的 `ToolExecutableName` / `ToolExecutableResolver` 类型。`fd`/`rg` 的本地优先、PATH 查找、离线与 Termux 策略、下载和失败降级行为不变。
@@ -17,6 +21,11 @@
 
 ### Fixed
 
+- Keep Extension `input` admission context idle until Agent execution starts, instead of exposing the Kernel's request-serialization lock as active streaming.
+- 知识模式现在在 Turn admission 直接从未展开的 Prompt 请求绑定 `kb-read` 工具，避免输入准备晚于能力快照而
+  导致本轮知识指令存在但查询工具缺失；知识能力关闭时仍保持 fail-closed。
+- 延迟 MCP 的 `tool_search` 在当前 Turn 激活工具后，下一次模型调用会按 admission 冻结的 MCP 目录重新合成
+  工具 Frame；激活仍保持 Session-local，目录增删仍只在后续 Turn 发布。
 - Provider 零事件断流现在会进入既有的指数退避自动重试（默认最多 3 次），不会在供应商短暂不稳定时立即中断整段会话；重试耗尽后仍按标准错误事件结束并保留诊断信息。
 - **Scene frontmatter hooks 未激活**：Scene 与 Skill 现在通过同一 Prompt Resource Hook contribution 合同，在资源展开后、`UserPromptSubmit` 前注册当前 Turn 的 hooks；保留原 `skillHookContribution` 字段兼容既有外部 resolver，并为场景脚本注入 `CLAUDE_PLUGIN_ROOT` / `CLAUDE_SKILL_DIR`。
 
@@ -41,6 +50,16 @@
 
 ### Changed
 
+- Active Session 的身份、new/resume/fork 串行事务、中断、提交回滚和释放状态机已归 `runtime-core`；
+  `CodingAgentActiveSessionHost` 只保留产品公共名称与诊断标签，Extension Hook、Seed 和后台资源仍以 Port 组合，
+  现有 SDK、CLI、事件顺序、取消与会话文件行为不变。
+- `CodingAgentActiveSessionHost` 不再直接使用 Node 路径、`Buffer` 或进程 cwd；新会话 Seed 的默认 cwd
+  与持久化目标路径由宿主显式注入，CLI/SDK 组合根复用 `runtime-node` 的标准路径实现。
+- 默认 Conversation 文件/内存 bundle 的具体创建已归 `runtime-node`；Coding Agent Composition 只消费必填的
+  `CodingAgentConversationPersistenceFactory`，不再保留具体工厂包装或根据目录隐式选择平台实现。
+- **Todo 产品能力完成所有权收敛**：状态、持久化、Session Extension、继续策略、Tool Schema、模型描述
+  和注册逻辑统一位于 `features/todo`；Todo Tool 不再从 `runtime-node` 获取纯产品实现，名称、Schema、
+  返回文本、锁定顺序和宿主观察协议保持不变。
 - 系统提示词编译器现在为每个启用块生成与最终渲染文本一致的位置和稳定性元数据，供 Runtime 在不保留块正文的前提下定位缓存失效来源。
 - **Todo 接入统一 Session Extension 生命周期、端点与观察协议**：Todo 的 Runtime、Tool Feature、Conversation Document 持久化参与、自然停止续跑、观察广播和释放由单一 `coding-agent.todo` 扩展拥有；Composition Root 改为消费 typed contributions，并以通用 Session Extension 集合替代 Todo 专属资源登记。新增 `@vetta/coding-agent/session-extensions` 公共协议入口，集中导出 Todo read/clear/observation token、`TodoItem` 和宿主边界 Schema 解析；Desktop、CLI、SDK 与 Subagent 不再依赖 Runtime Core 的 Todo 类型或事件。既有 Todo Tool、快照、锁定、CLI/SDK `todo_update` 与用户可见 clear/read 行为不变。
 - **heavy 首调确认弹窗文案简化**：提问正文收敛为「允许在本会话中运行「{tool}」吗？」，去掉普通用户读不懂的副作用说明从句（工作区创建文件/计费/不可撤销）。

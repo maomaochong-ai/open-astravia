@@ -13,6 +13,12 @@ export {
 	type FileConversationOwnershipManagerOptions,
 } from "./conversation-ownership-lease.js";
 export {
+	createFileConversationPersistence,
+	createInMemoryConversationPersistence,
+	type RuntimeNodeConversationPersistence,
+	type RuntimeNodeConversationSessionPathAssessment,
+} from "./conversation-persistence.js";
+export {
 	type ConversationSeedDraft,
 	type ConversationSeedDraftOptions,
 	type ConversationSeedPublicationOptions,

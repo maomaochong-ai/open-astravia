@@ -52,6 +52,42 @@ describe("Coding Agent model call and prompt runtime", () => {
 		expect(release).toHaveBeenCalledOnce();
 	});
 
+	it("exposes a deferred MCP tool activated between model calls in the same Turn", async () => {
+		let activated = false;
+		const mcpTool = runtimeTool("mcp_search_lookup");
+		const toolSearch = runtimeTool("tool_search");
+		const composer = new CodingAgentModelCallFrameComposer({
+			resolveSystemPromptOptions: () => ({ customPrompt: "test", cwd: "C:\\workspace" }),
+			readAvailableTools: () =>
+				new Map([
+					[mcpTool.name, mcpTool],
+					[toolSearch.name, toolSearch],
+				]),
+			readMcpPromptState: () => ({
+				tools: [{ name: mcpTool.name, description: mcpTool.description }],
+				deferred: true,
+			}),
+			bindMcpToolVisibility: () => (toolName) => toolName === mcpTool.name && activated,
+		});
+		const bound = await composer.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
+		const context = {
+			sessionId: "session-1",
+			turnId: "turn-1",
+			signal: new AbortController().signal,
+			messages: [],
+			frame: { instructions: [], tools: new Map([[toolSearch.name, toolSearch]]) },
+		};
+
+		expect([...(await bound.compose(context)).tools.keys()]).toEqual(["tool_search"]);
+		activated = true;
+		expect([...(await bound.compose(context)).tools.keys()]).toEqual(["mcp_search_lookup", "tool_search"]);
+	});
+
 	it("adapts the live model runtime to catalog, credentials and auth refresh ports", async () => {
 		const refresh = vi.fn();
 		const getApiKey = vi.fn(async () => "test-key");

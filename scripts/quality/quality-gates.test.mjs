@@ -338,6 +338,36 @@ describe("package boundary analysis", () => {
 		).toHaveLength(1);
 	});
 
+	it("keeps agent-core independent from Runtime and product packages", () => {
+		expect(
+			findPackageBoundaryViolations(
+				"packages/agent/src/telemetry.ts",
+				'import type { RuntimeTracer } from "@vetta/runtime-telemetry";',
+			),
+		).toHaveLength(1);
+		expect(
+			findPackageBoundaryViolations(
+				"packages/agent/src/engine.ts",
+				'import type { RuntimeSession } from "@vetta/runtime-core";',
+			),
+		).toHaveLength(1);
+		expect(
+			findPackageBoundaryViolations("packages/agent/src/model.ts", 'import type { Model } from "@vetta/ai";'),
+		).toEqual([]);
+		expect(
+			findPackageManifestBoundaryViolations({
+				name: "@vetta/agent-core",
+				dependencies: { "@vetta/runtime-telemetry": "workspace:*" },
+			}),
+		).toHaveLength(1);
+		expect(
+			findPackageManifestBoundaryViolations({
+				name: "@vetta/agent-core",
+				dependencies: { "@vetta/ai": "workspace:*" },
+			}),
+		).toEqual([]);
+	});
+
 	it("keeps greenfield product modules independent from legacy startup symbols", () => {
 		const source = "const startup = runLegacyAgentWithBootstrap;";
 		expect(
@@ -647,8 +677,8 @@ describe("package boundary analysis", () => {
 		).toHaveLength(1);
 	});
 
-	it("keeps the Greenfield active-session transaction host independent from Legacy session construction", () => {
-		const hostPath = "packages/coding-agent/src/composition/greenfield-active-session-transition-host.ts";
+	it("keeps the Runtime active-session transaction host independent from products and platform implementations", () => {
+		const hostPath = "packages/runtime-core/src/runtime-host/active-session-host.ts";
 		expect(
 			findPackageBoundaryViolations(hostPath, 'import { SessionManager } from "../core/session-manager/index.js";'),
 		).not.toEqual([]);
@@ -659,13 +689,20 @@ describe("package boundary analysis", () => {
 			),
 		).not.toEqual([]);
 		expect(findPackageBoundaryViolations(hostPath, "type Runtime = CodingAgentRuntimeComposition;")).toHaveLength(1);
+		expect(findPackageBoundaryViolations(hostPath, "type Runtime = RuntimeActiveSessionRuntimePort;")).toEqual([]);
 		expect(
-			findPackageBoundaryViolations(hostPath, "type Runtime = CodingAgentGreenfieldSessionTransitionRuntimePort;"),
-		).toEqual([]);
+			findPackageBoundaryViolations(
+				hostPath,
+				'import { createCodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";',
+			),
+		).not.toEqual([]);
+		expect(findPackageBoundaryViolations(hostPath, 'import { join } from "node:path";')).not.toEqual([]);
+		expect(findPackageBoundaryViolations(hostPath, 'const value = Buffer.from("session");')).not.toEqual([]);
+		expect(findPackageBoundaryViolations(hostPath, "const cwd = process.cwd();")).not.toEqual([]);
 	});
 
 	it("keeps Greenfield session action ports independent from the Extension command API", () => {
-		const activeHostPath = "packages/coding-agent/src/composition/greenfield-active-session-transition-host.ts";
+		const activeHostPath = "packages/runtime-core/src/runtime-host/active-session-host.ts";
 		expect(
 			findPackageBoundaryViolations(
 				activeHostPath,
@@ -958,7 +995,7 @@ describe("package boundary analysis", () => {
 			"packages/coding-agent/src/plugins/runtime/tool-runtime.ts",
 			"packages/coding-agent/src/resources/prompt-resource-resolver.ts",
 			"packages/coding-agent/src/sessions/projection/conversation-context-projector.ts",
-			"packages/coding-agent/src/work-state/todo-continuation-source.ts",
+			"packages/coding-agent/src/features/todo/todo-continuation-source.ts",
 		]) {
 			expect(
 				findPackageBoundaryViolations(path, 'import { Adapter } from "../adapters/runtime-core/example.js";'),

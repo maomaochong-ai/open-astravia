@@ -12,10 +12,14 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Changed
 
+- Coding Tools Feature 的 Turn-bound activation/filter 现在同时接收 admission 原始请求；需要在 Prompt
+  展开前决定的动态能力可据此绑定本 Turn，后续模型调用继续使用同一冻结选择。
 - **`agentModes` / `agentMode` 字段整体删除（ADR-0071，接续上一条）**：`CodingToolRegistration.agentModes` 与 `CodingToolActivation.agentMode` 不再存在，6 个内置工具的 `*_TOOL_AGENT_MODES` 常量删除。上一版把 agent_mode 从过滤降级为「宿主排序偏好」，本版确认排序对模型选择无可观察影响后整体废弃：工作模式不以任何形式参与工具选择与排序，`scopeUse` ∩ `requires` 仍是仅有的两条 fail-closed 轴。
 
 ### Added
 
+- 新增平台中立的 `ToolCallDescriptionSchema`，作为 Coding Tool 可选调用说明字段的协议事实源；
+  产品 Tool 与 Node Tool 共享同一 Schema，不再从平台实现目录复制或深度导入。
 - **平台命令 Host Port 收口**：`CommandProcessPort`、`DesktopCommandPort`、`ForegroundCommandOperations` 与 `BackgroundCommandService` 由协议包统一定义；Node 包只提供进程、文件和生命周期实现，并保留兼容导出。
 - **注册级副作用声明 `CodingToolRegistration.sideEffect`**：核心工具可在定义处声明 `"light" | "heavy"`（缺省 light），产品宿主的 heavy 首调确认闸消费该声明。`im_send_attachment` 声明 heavy（外发不可撤回且无自带确认）；bash/shell（边界归 Execution Mode）、subagent 三件套（会话内计费、可回收）与 `kb_write_page`（写宿主知识库非工作区）显式声明 light 并就近注释豁免理由。
 - **Turn-bound Tool Catalog lease 与显式 hard revoke**：Turn admission 捕获不可变 Catalog 与具体

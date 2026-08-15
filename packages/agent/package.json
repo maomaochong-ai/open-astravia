@@ -21,8 +21,7 @@
 	},
 	"dependencies": {
 		"@vetta/ai": "workspace:*",
-		"@sinclair/typebox": "^0.34.41",
-		"@vetta/runtime-telemetry": "workspace:*"
+		"@sinclair/typebox": "^0.34.41"
 	},
 	"keywords": [
 		"ai",

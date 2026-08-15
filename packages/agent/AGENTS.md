@@ -1,10 +1,14 @@
 # Team: AI Core
 
-> 本包属于 **AI Core Team**，同组包：`packages/ai`、`packages/tui`、`packages/web-ui`
+> 本包属于 AI Core，所有修改同时服从根 `AGENTS.md` 与 ADR-0077。
 
 ## 职责范围
 
-通用 Agent 运行时，提供 agent 循环引擎、状态管理、传输抽象。
+单次 Agent 执行的最小内核，提供模型调用与 Tool Loop、消息状态转换、流式事件、错误、取消、
+usage 和 stop 传播。
+
+本包不拥有 Session 生命周期、Turn admission、Queue、Runtime Snapshot、产品 Feature、持久化或平台
+I/O。它只依赖 `@vetta/ai` 和自身合同，不得依赖 `@vetta/runtime-*`、`@vetta/coding-agent` 或应用宿主。
 
 ## 关键模块
 
@@ -17,6 +21,7 @@
 
 - 本包是 `coding-agent` 的直接上游依赖，接口变更会直接影响下游
 - `agent-loop.ts` 是最关键的文件，修改需格外谨慎
+- 观测、存储和平台实现通过本包定义的窄 Port 注入；Port 的实现包不得反向拥有 Agent 合同
 
 ## 测试要求
 

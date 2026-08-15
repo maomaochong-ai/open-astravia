@@ -1,6 +1,6 @@
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import { ToolCallDescriptionSchema } from "../../shared/tool-call-description.js";
+import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
 import { TOOL_SEARCH_TOOL_DESCRIPTION } from "./description.js";
 
 export const ToolSearchToolInputSchema = Type.Object({

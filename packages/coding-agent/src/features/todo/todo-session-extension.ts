@@ -6,7 +6,7 @@ import {
 	sessionExtensionObservation,
 } from "@vetta/runtime-core/session-extensions";
 import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
-import type { CodingAgentRuntimeToolRegistration } from "../runtime-contracts/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import type { CodingAgentTodoRuntime, TodoItem, TodoLockSource } from "./contracts.js";
 import { CodingAgentTodoContinuationSource } from "./todo-continuation-source.js";
 import { CodingAgentTodoRuntime as DefaultCodingAgentTodoRuntime } from "./todo-runtime.js";

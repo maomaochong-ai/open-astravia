@@ -325,6 +325,8 @@ export interface ModelCallContributionContext {
 	readonly turnId: string;
 	readonly signal: AbortSignal;
 	readonly input?: SessionInput;
+	/** Admission 时尚未展开的宿主请求；动态能力可据此绑定本 Turn，不能解释其产品 payload。 */
+	readonly request?: SessionInputRequest;
 	/** 当前模型调用已经积累的模型可见消息。 */
 	readonly messages?: readonly Message[];
 	/** 当前 Turn 的不可变模型绑定。 */

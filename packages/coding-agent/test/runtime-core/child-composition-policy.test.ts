@@ -16,6 +16,7 @@ import type {
 	CodingAgentSubagentChildCompositionRequest,
 	CodingAgentSubagentChildSessionOptions,
 } from "../../src/composition/subagent/session-assembly.js";
+import { createTestConversationPersistence } from "../fixtures/conversation-persistence.js";
 
 describe("Coding Agent Child Composition policy", () => {
 	it("projects an isolated child composition while preserving allowed parent ports", async () => {
@@ -35,6 +36,7 @@ describe("Coding Agent Child Composition policy", () => {
 		};
 		const parentOptions: CodingAgentRuntimeCompositionOptions = {
 			conversationDir: "C:\\conversations",
+			createConversationPersistence: createTestConversationPersistence,
 			modelRegistry: {} as CodingAgentRuntimeCompositionOptions["modelRegistry"],
 			initialModel: MODEL,
 			initialThinkingLevel: "off",

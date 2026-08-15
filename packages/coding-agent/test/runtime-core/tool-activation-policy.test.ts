@@ -60,6 +60,18 @@ describe("Coding Agent Tool Activation Policy", () => {
 		).toBe(true);
 	});
 
+	it("enables Knowledge from the admission request before product input expansion", () => {
+		const callContext: ModelCallContributionContext = {
+			...context(),
+			request: {
+				displayText: "search knowledge",
+				payload: { text: "search knowledge", metadata: { knowledgeMode: true } },
+			},
+		};
+
+		expect(isCodingAgentKnowledgeToolEnabled({ mode: "scope", scope: "cli" }, callContext, true)).toBe(true);
+	});
+
 	it("does not enable Knowledge for unrelated context", () => {
 		expect(
 			isCodingAgentKnowledgeToolEnabled({ mode: "scope", scope: "cli" }, context({ type: "unrelated" }), true),

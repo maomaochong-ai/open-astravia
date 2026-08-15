@@ -1,16 +1,16 @@
 import { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import { describe, expect, it, vi } from "vitest";
-import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
+import { CodingAgentTodoRuntime } from "../../../src/features/todo/todo-runtime.js";
 import {
 	CODING_AGENT_TODO_CHANGED,
 	CODING_AGENT_TODO_RUNTIME,
 	createCodingAgentTodoSessionExtension,
-} from "../../src/work-state/todo-session-extension.js";
+} from "../../../src/features/todo/todo-session-extension.js";
 import {
 	CODING_AGENT_TODO_CLEAR,
 	CODING_AGENT_TODO_OBSERVATION,
 	CODING_AGENT_TODO_READ,
-} from "../../src/work-state/todo-session-extension-contract.js";
+} from "../../../src/features/todo/todo-session-extension-contract.js";
 
 describe("Coding Agent Todo session extension", () => {
 	it("contributes the Todo lifecycle through typed session extension contracts", async () => {

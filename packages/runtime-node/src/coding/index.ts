@@ -497,21 +497,6 @@ export {
 	type TaskStopToolOptions,
 } from "./tools/task-stop/index.js";
 export {
-	createTodoTool,
-	createTodoToolRegistration,
-	TODO_TOOL_CATEGORY,
-	TODO_TOOL_DESCRIPTION,
-	TODO_TOOL_SCOPES,
-	type TodoToolDetails,
-	type TodoToolInput,
-	TodoToolInputSchema,
-	type TodoToolItem,
-	type TodoToolOptions,
-	type TodoToolRegistrationOptions,
-	type TodoToolStatus,
-	type TodoToolStore,
-} from "./tools/todo/index.js";
-export {
 	createToolSearchTool,
 	createToolSearchToolRegistration,
 	type DeferredToolIndexEntry,

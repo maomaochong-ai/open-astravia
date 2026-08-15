@@ -4,8 +4,9 @@
 
 ## 职责范围
 
-协议、注册元数据、Catalog、激活选择和纯状态逻辑位于 `src/coding/`，由包根和
-`@vetta/runtime-tools/coding` 暴露。Node 工具实现位于 `@vetta/runtime-node/coding`。
+协议、共享 Schema、注册元数据、Catalog、激活选择和纯状态逻辑位于 `src/coding/`，由包根和
+`@vetta/runtime-tools/coding` 暴露。访问环境的工具实现位于 `@vetta/runtime-node/coding`；包含产品
+规则但不访问环境的工具由对应产品包拥有。
 
 ## 注意事项
 

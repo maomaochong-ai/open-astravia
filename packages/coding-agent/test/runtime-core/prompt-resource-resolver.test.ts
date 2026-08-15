@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
+import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import { createCodingAgentPromptResourceResolver } from "../../src/resources/prompt-resource-resolver.js";
 import { expandPromptResourceReference } from "../../src/resources/prompt-resources/prompt-resource-expander.js";
 import type { Skill } from "../../src/resources/skills/index.js";
-import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
 import { preparePrompt } from "./prompt-adapter-test-fixture.js";
 
 describe("Coding Agent prompt resource resolver", () => {

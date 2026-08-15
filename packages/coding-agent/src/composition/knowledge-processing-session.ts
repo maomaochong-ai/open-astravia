@@ -7,20 +7,23 @@ import type { KbWritePageOperations } from "@vetta/runtime-node/coding";
 import type { CodingAgentRuntimeModelSource } from "../runtime-contracts/index.js";
 import { resolveCodingAgentKnowledgeRoot } from "./coding-agent-knowledge-runtime.js";
 import type {
+	CodingAgentConversationPersistenceFactory,
+	CodingAgentRuntimeComposition,
+	CodingAgentRuntimeCompositionOptions,
+} from "./contracts/index.js";
+import type {
 	KnowledgeProcessingPageWriter,
 	KnowledgeProcessingSession,
 	KnowledgeProcessingSessionFactory,
 	KnowledgeProcessingSessionRequest,
 	KnowledgeProcessingUsage,
 } from "./knowledge-processing-contract.js";
-import {
-	type CodingAgentRuntimeComposition,
-	type CodingAgentRuntimeCompositionOptions,
-	createCodingAgentRuntimeComposition,
-} from "./runtime-composition.js";
+import { createCodingAgentRuntimeComposition } from "./runtime-composition.js";
 
 export interface KnowledgeProcessingSessionFactoryOptions {
 	readonly getModelRegistry: () => CodingAgentRuntimeModelSource;
+	/** 由宿主选择平台持久化实现；知识处理产品层只转发 Port。 */
+	readonly createConversationPersistence: CodingAgentConversationPersistenceFactory;
 	readonly knowledgeRoot?: string;
 	readonly createSessionId?: () => string;
 	readonly createComposition?: (
@@ -48,6 +51,7 @@ export function createKnowledgeProcessingSessionFactory(
 			const initialModel = readInitialModel(modelRuntime);
 			const composition = await createComposition({
 				conversationDir: request.sessionDir,
+				createConversationPersistence: options.createConversationPersistence,
 				modelRegistry: modelRuntime,
 				initialModel,
 				initialThinkingLevel: "off",

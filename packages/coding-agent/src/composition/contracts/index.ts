@@ -2,6 +2,7 @@ export type {
 	CodingAgentConversationPersistence,
 	CodingAgentConversationPersistenceFactory,
 	CodingAgentConversationPersistenceFactoryContext,
+	CodingAgentConversationSessionPathAssessment,
 } from "./conversation-persistence.js";
 export type {
 	CodingAgentRuntimeCompositionOptions,

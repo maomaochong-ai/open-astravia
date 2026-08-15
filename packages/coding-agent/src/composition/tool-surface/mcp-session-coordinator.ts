@@ -1,4 +1,9 @@
-import { type RuntimeResourceContext, runtimeFailureFromError } from "@vetta/runtime-core";
+import {
+	type RuntimeResourceContext,
+	type RuntimeSessionMarkerIndex,
+	type RuntimeSessionValueIndex,
+	runtimeFailureFromError,
+} from "@vetta/runtime-core";
 import {
 	createMcpDeferredToolController,
 	createMcpRuntimeToolSynchronizer,
@@ -10,13 +15,12 @@ import {
 } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentPluginMcpRuntime } from "../../runtime-contracts/index.js";
-import type { CodingAgentSessionMarkerIndex, CodingAgentSessionValueIndex } from "../session-lifecycle/indexes.js";
 
 export interface CodingAgentMcpSessionIndexes {
-	readonly pluginMcpRuntimes: CodingAgentSessionValueIndex<CodingAgentPluginMcpRuntime>;
-	readonly resourceContexts: CodingAgentSessionValueIndex<RuntimeResourceContext>;
-	readonly mcpControllers: CodingAgentSessionValueIndex<McpDeferredToolController>;
-	readonly mcpRefreshObservedSessions: CodingAgentSessionMarkerIndex;
+	readonly pluginMcpRuntimes: RuntimeSessionValueIndex<CodingAgentPluginMcpRuntime>;
+	readonly resourceContexts: RuntimeSessionValueIndex<RuntimeResourceContext>;
+	readonly mcpControllers: RuntimeSessionValueIndex<McpDeferredToolController>;
+	readonly mcpRefreshObservedSessions: RuntimeSessionMarkerIndex;
 }
 
 export interface CodingAgentMcpSessionCoordinatorOptions {

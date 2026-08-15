@@ -33,3 +33,17 @@ export {
 	createCodingAgentTodoRuntimeFeature,
 	createCodingAgentTodoRuntimeToolRegistration,
 } from "./todo-tool-feature.js";
+export {
+	createTodoTool,
+	createTodoToolRegistration,
+	TODO_TOOL_CATEGORY,
+	TODO_TOOL_DESCRIPTION,
+	TODO_TOOL_SCOPES,
+	type TodoToolDetails,
+	type TodoToolInput,
+	TodoToolInputSchema,
+	type TodoToolOptions,
+	type TodoToolRegistrationOptions,
+	type TodoToolStatus,
+	type TodoToolStore,
+} from "./tool/index.js";

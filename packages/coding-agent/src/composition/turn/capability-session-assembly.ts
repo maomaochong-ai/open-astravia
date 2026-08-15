@@ -18,6 +18,7 @@ import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core
 import { CodingAgentPromptRequestAdapter } from "../../adapters/runtime-core/prompt-request-adapter.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import { CodingAgentStopHookContinuationSource } from "../../extensions/runtime/stop-hook-continuation-source.js";
+import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import { DynamicContributionCatalog } from "../../interception/contribution-catalog.js";
 import {
@@ -50,7 +51,6 @@ import {
 	HeavyToolConfirmationLedger,
 } from "../../tool-policy/heavy-tool-confirmation.js";
 import { createCodingAgentToolSideEffectResolver } from "../../tool-policy/tool-side-effect.js";
-import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import { CodingAgentContinuationOrchestrator } from "./continuation-orchestrator.js";
@@ -300,6 +300,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		pluginHandlerLeaseProvider: options.pluginRuntime?.handlerLeaseProvider,
 		readAgentMode: options.activation.readAgentMode,
 		isMcpToolVisible: (toolName) => options.mcpController?.isToolVisible(toolName) ?? true,
+		bindMcpToolVisibility: () => options.mcpController?.bindToolVisibility() ?? (() => true),
 		systemPromptAdvertisedToolNames: options.prompt.systemPromptAdvertisedToolNames,
 		wrapTools: (tools, context) => {
 			const hookedTools = wrapRuntimeToolsWithInterceptionPipeline(tools, toolInterceptionCatalog, context);

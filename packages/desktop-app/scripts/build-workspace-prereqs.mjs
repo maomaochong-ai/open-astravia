@@ -37,7 +37,6 @@ export const workspaceLayers = [
 	[
 		"capability-sdk",
 		"ai",
-		"runtime-telemetry",
 		"runtime-knowledge",
 		"ecosystem-adapter",
 		"action-rpc",
@@ -47,7 +46,7 @@ export const workspaceLayers = [
 		"plugin-vite",
 	],
 	["capability-runtime", "agent"],
-	["runtime-core"],
+	["runtime-core", "runtime-telemetry"],
 	["runtime-mcp"],
 	["runtime-tools", "runtime-storage"],
 	["runtime-node"],

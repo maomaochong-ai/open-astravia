@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
 	CODING_AGENT_TODO_OBSERVATION,
 	readCodingAgentTodoObservation,
-} from "../../src/work-state/todo-session-extension-contract.js";
+} from "../../../src/features/todo/todo-session-extension-contract.js";
 
 describe("Coding Agent Todo session extension contract", () => {
 	it("validates and copies Todo observations at the host boundary", () => {

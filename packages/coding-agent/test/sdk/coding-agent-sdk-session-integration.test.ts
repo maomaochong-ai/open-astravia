@@ -6,12 +6,12 @@ import { EventStream } from "@vetta/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/model-runtime-adapter.js";
 import type { CodingAgentRuntimeComposition } from "../../src/composition/contracts/index.js";
-import { createCodingAgentRuntimeComposition } from "../../src/composition/runtime-composition.js";
 import { bindCodingAgentSdkSessionRuntime } from "../../src/host/sdk-session/runtime-binding.js";
 import { createCodingAgentSdkSession } from "../../src/host/sdk-session/runtime-factory.js";
 import { CodingAgentSdkSessionAdapter } from "../../src/host/sdk-session/session-adapter.js";
 import { CodingAgentSdkSessionCapabilityHost } from "../../src/host/sdk-session/session-capability-host.js";
 import type { CodingAgentFixedSession } from "../../src/public-api/sdk/sdk-session-contract.js";
+import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-persistence.js";
 
 describe("Coding Agent SDK session integration", () => {
 	const temporaryDirectories: string[] = [];

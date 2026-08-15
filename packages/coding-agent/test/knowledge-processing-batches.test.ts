@@ -16,7 +16,10 @@ import {
 	createKnowledgeProcessingSessionFactory,
 	type KnowledgeProcessingSessionFactoryOptions,
 } from "../src/composition/knowledge-processing-session.js";
-import { createCodingAgentRuntimeComposition } from "../src/composition/runtime-composition.js";
+import {
+	createCodingAgentRuntimeComposition,
+	createTestConversationPersistence,
+} from "./fixtures/conversation-persistence.js";
 
 describe("Knowledge processing batches", () => {
 	const directories: string[] = [];
@@ -45,6 +48,7 @@ describe("Knowledge processing batches", () => {
 		let nextSessionId = 1;
 		const factory = createKnowledgeProcessingSessionFactory({
 			getModelRegistry: () => modelRegistry(),
+			createConversationPersistence: createTestConversationPersistence,
 			knowledgeRoot: root,
 			createSessionId: () => `knowledge-batch-${nextSessionId++}`,
 			createComposition: createBatchComposition(requests, disposeComposition),

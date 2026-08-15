@@ -2,10 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
-import {
-	type CodingAgentRuntimeComposition,
-	createCodingAgentRuntimeComposition,
-} from "@vetta/coding-agent/composition";
+import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { CODING_AGENT_TODO_READ } from "@vetta/coding-agent/session-extensions";
 import { assessRuntimeHostSessionAssembly } from "@vetta/runtime-core";
@@ -17,6 +14,7 @@ import {
 } from "@vetta/runtime-mcp";
 import { FileConversationRepository } from "@vetta/runtime-node/conversation";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 
 describe("Runtime composition contract", () => {
 	const temporaryDirectories: string[] = [];
@@ -726,10 +724,11 @@ describe("Runtime composition contract", () => {
 
 		await session.prompt({ text: "discover tools" });
 		expect(calls[0]?.systemPrompt).toContain("Composed Coding Agent prompt");
-		expect(calls[0]?.systemPrompt).toContain("# MCP (Model Context Protocol) Tools");
-		expect(calls[0]?.systemPrompt).toContain("**mcp_search_tool_15**: Lookup topic-15");
+		expect(calls[0]?.systemPrompt).toContain("MCP (Model Context Protocol) tools:");
+		expect(calls[0]?.systemPrompt).toContain("- search (16 tools): tool_0, tool_1, tool_2, ...");
+		expect(calls[0]?.systemPrompt).not.toContain("mcp_search_tool_15");
 		expect(calls[0]?.systemPrompt).toContain("**MCP tool usage (deferred)**");
-		expect(calls[0]?.systemPrompt?.match(/# MCP \(Model Context Protocol\) Tools/g)).toHaveLength(1);
+		expect(calls[0]?.systemPrompt?.match(/MCP \(Model Context Protocol\) tools:/g)).toHaveLength(1);
 		expect(calls[0]?.mcpTools).toEqual(["tool_search"]);
 
 		fixture.setAvailable(false);

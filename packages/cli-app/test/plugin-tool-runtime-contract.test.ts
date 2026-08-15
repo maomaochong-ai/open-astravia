@@ -9,13 +9,11 @@ import {
 	type Message,
 	type Model,
 } from "@vetta/ai";
-import {
-	type CodingAgentRuntimeComposition,
-	createCodingAgentRuntimeComposition,
-} from "@vetta/coding-agent/composition";
+import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import { type EcosystemHookEvent, emptyHookDispatchOutcome } from "@vetta/coding-agent/hooks";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { afterEach, describe, expect, it } from "vitest";
+import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 
 describe("Plugin Tool Runtime composition contract", () => {
 	const temporaryDirectories: string[] = [];

@@ -16,9 +16,11 @@ import type {
 	RuntimeSessionCreateRequest,
 } from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
+import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";
 
 type CompositionFixedOption =
 	| "agentDir"
+	| "createConversationPersistence"
 	| "conversationDir"
 	| "cwd"
 	| "enableSubagents"
@@ -30,7 +32,12 @@ export type DesktopCodingAgentRuntimeCompositionDefaults = Omit<
 	CodingAgentRuntimeCompositionOptions,
 	CompositionFixedOption
 > &
-	Partial<Pick<CodingAgentRuntimeCompositionOptions, "initialModel" | "initialThinkingLevel">>;
+	Partial<
+		Pick<
+			CodingAgentRuntimeCompositionOptions,
+			"createConversationPersistence" | "initialModel" | "initialThinkingLevel"
+		>
+	>;
 
 export interface DesktopRuntimeBackendPoolOptions {
 	readonly compositionDefaults: DesktopCodingAgentRuntimeCompositionDefaults;
@@ -189,6 +196,9 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		});
 		const composition = await this.createComposition({
 			...this.options.compositionDefaults,
+			createConversationPersistence:
+				this.options.compositionDefaults.createConversationPersistence ??
+				(() => createFileConversationPersistence(scope.conversationDir)),
 			additionalHookAdapterFactories: [
 				...(this.options.compositionDefaults.additionalHookAdapterFactories ?? []),
 				...(this.options.createHookAdapterFactories?.(scope) ?? []),

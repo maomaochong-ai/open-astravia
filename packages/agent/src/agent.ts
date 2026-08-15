@@ -14,7 +14,6 @@ import {
 	type ThinkingBudgets,
 	type Transport,
 } from "@vetta/ai";
-import type { RuntimeTracer } from "@vetta/runtime-telemetry";
 
 // NEVER convert to top-level import — agent 包可能被浏览器/Vite 消费者引用，
 // node:events 不存在于浏览器。和 openai-codex-responses.ts 处理 node:os 一致。
@@ -30,6 +29,7 @@ if (typeof process !== "undefined" && (process.versions?.node || process.version
 import { agentLoop, agentLoopContinue } from "./agent-loop.js";
 import { type AgentContinuationProvider, AgentMessageQueue } from "./runtime/message-queue.js";
 import { projectAgentEvent } from "./runtime/state-projection.js";
+import type { AgentTracer } from "./telemetry.js";
 import type {
 	AgentContext,
 	AgentEvent,
@@ -120,7 +120,7 @@ export interface AgentOptions {
 	/**
 	 * Optional platform-neutral tracer for agent, LLM, and tool observations.
 	 */
-	tracer?: RuntimeTracer;
+	tracer?: AgentTracer;
 
 	/**
 	 * Tracing behavior. Content capture is disabled by default in hosts.
@@ -164,7 +164,7 @@ export class Agent {
 	private _thinkingBudgets?: ThinkingBudgets;
 	private _transport: Transport;
 	private _maxRetryDelayMs?: number;
-	private tracer?: RuntimeTracer;
+	private tracer?: AgentTracer;
 	private tracing?: AgentTracingOptions;
 	private salvageTextToolCalls?: string[];
 	private limits?: AgentLoopLimits;

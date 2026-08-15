@@ -5,6 +5,8 @@ import {
 	type RuntimeResourceContext,
 	type RuntimeResources,
 	type RuntimeSessionAskUserQuestionCapability,
+	type RuntimeSessionMarkerIndex,
+	type RuntimeSessionValueIndex,
 } from "@vetta/runtime-core";
 import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController, McpRuntimeToolSnapshot } from "@vetta/runtime-mcp";
@@ -20,7 +22,6 @@ import type { CodingAgentConversationContextOverlay } from "../../sessions/proje
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";
-import type { CodingAgentSessionMarkerIndex, CodingAgentSessionValueIndex } from "./indexes.js";
 import {
 	type CodingAgentSessionConversationResources,
 	type CodingAgentSessionModelRuntimePort,
@@ -34,15 +35,15 @@ export interface CodingAgentSessionHookController {
 }
 
 export interface CodingAgentSessionResourceIndexes {
-	readonly mcpControllers: CodingAgentSessionValueIndex<McpDeferredToolController>;
-	readonly pluginMcpRuntimes: CodingAgentSessionValueIndex<CodingAgentPluginMcpRuntime>;
-	readonly executionRuntimes: CodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>;
-	readonly configurationStates: CodingAgentSessionValueIndex<CodingAgentSessionConfigurationState>;
-	readonly resourceContexts: CodingAgentSessionValueIndex<RuntimeResourceContext>;
-	readonly extensionEventBridges: CodingAgentSessionValueIndex<CodingAgentExtensionRunAdapter>;
-	readonly memoryControllers: CodingAgentSessionValueIndex<CodingAgentMemoryController>;
-	readonly hookSessionControllers: CodingAgentSessionValueIndex<CodingAgentSessionHookController>;
-	readonly mcpRefreshObservedSessions: CodingAgentSessionMarkerIndex;
+	readonly mcpControllers: RuntimeSessionValueIndex<McpDeferredToolController>;
+	readonly pluginMcpRuntimes: RuntimeSessionValueIndex<CodingAgentPluginMcpRuntime>;
+	readonly executionRuntimes: RuntimeSessionValueIndex<CodingAgentSessionExecutionRuntime>;
+	readonly configurationStates: RuntimeSessionValueIndex<CodingAgentSessionConfigurationState>;
+	readonly resourceContexts: RuntimeSessionValueIndex<RuntimeResourceContext>;
+	readonly extensionEventBridges: RuntimeSessionValueIndex<CodingAgentExtensionRunAdapter>;
+	readonly memoryControllers: RuntimeSessionValueIndex<CodingAgentMemoryController>;
+	readonly hookSessionControllers: RuntimeSessionValueIndex<CodingAgentSessionHookController>;
+	readonly mcpRefreshObservedSessions: RuntimeSessionMarkerIndex;
 }
 
 export interface CodingAgentSessionResourceLifecycleOptions {

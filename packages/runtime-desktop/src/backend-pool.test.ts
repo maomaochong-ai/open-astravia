@@ -4,11 +4,15 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
 import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
-import { createCodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
+import {
+	type CodingAgentRuntimeCompositionOptions,
+	createCodingAgentRuntimeComposition,
+} from "@vetta/coding-agent/composition";
 import type { EcosystemHookAdapterFactory } from "@vetta/coding-agent/hooks";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { RuntimeHost } from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
+import { createInMemoryConversationPersistence } from "@vetta/runtime-node/conversation";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { DesktopRuntimeBackendPool } from "./backend-pool.js";
 import { DesktopRuntimeSessionCatalog } from "./session-catalog.js";
@@ -130,6 +134,63 @@ describe("DesktopRuntimeBackendPool", () => {
 		expect(dirname(runtime.getSessionPath(created.sessionId) ?? "")).toBe(sessionDir);
 		// 显式落点不该被缺省值抢走：全局分片目录里不该多出这条会话。
 		expect(await readdir(resolveCodingAgentSessionDir(cwd))).toHaveLength(0);
+	});
+
+	it("selects Node file persistence by default and honours an explicit host factory", async () => {
+		const defaultCwd = await temporaryDirectory("desktop-runtime-default-persistence-");
+		let capturedDefaultFactory: CodingAgentRuntimeCompositionOptions["createConversationPersistence"] | undefined;
+		const defaultPool = new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+			},
+			createComposition: async (options) => {
+				capturedDefaultFactory = options.createConversationPersistence;
+				return await createCodingAgentRuntimeComposition(options);
+			},
+		});
+		const defaultRuntime = new RuntimeHost({
+			sessionBackend: defaultPool,
+			getDefaultExecutionMode: () => "full-access",
+		});
+		pools.push(defaultPool);
+		runtimes.push(defaultRuntime);
+
+		const created = await defaultRuntime.createSession({
+			cwd: defaultCwd,
+			model: MODEL,
+			scenario: "batch",
+		});
+		const expectedConversationDir = resolveCodingAgentSessionDir(defaultCwd);
+		expect(capturedDefaultFactory).toBeTypeOf("function");
+		expect(dirname(defaultRuntime.getSessionPath(created.sessionId) ?? "")).toBe(expectedConversationDir);
+
+		const overrideCwd = await temporaryDirectory("desktop-runtime-override-persistence-");
+		const overrideFactory = vi.fn(() => createInMemoryConversationPersistence());
+		let capturedOverrideFactory: CodingAgentRuntimeCompositionOptions["createConversationPersistence"] | undefined;
+		const overridePool = new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+				createConversationPersistence: overrideFactory,
+			},
+			createComposition: async (options) => {
+				capturedOverrideFactory = options.createConversationPersistence;
+				return await createCodingAgentRuntimeComposition(options);
+			},
+		});
+		const overrideRuntime = new RuntimeHost({
+			sessionBackend: overridePool,
+			getDefaultExecutionMode: () => "full-access",
+		});
+		pools.push(overridePool);
+		runtimes.push(overrideRuntime);
+
+		await overrideRuntime.createSession({ cwd: overrideCwd, model: MODEL, scenario: "batch" });
+		expect(capturedOverrideFactory).toBe(overrideFactory);
+		expect(overrideFactory).toHaveBeenCalledTimes(1);
 	});
 
 	it("deduplicates concurrent host ownership and resumes after the backend pool is recreated", async () => {

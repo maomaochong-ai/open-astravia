@@ -1,28 +1,33 @@
-import type { RuntimeSession } from "@vetta/runtime-core";
-import { RetryableCleanup } from "@vetta/runtime-core";
-import type { CodingAgentActiveSessionEventRelay } from "./active-session-event-relay.js";
-import type { CodingAgentPreparedSessionBinding } from "./active-session-transition-contracts.js";
+import type { RuntimeActiveSessionEventRelay } from "./active-session-event-relay.js";
+import type { RuntimeSession } from "./kernel-runtime-session-backend.js";
+import { RetryableCleanup } from "./retryable-cleanup.js";
 
-export interface CodingAgentRetiredSessionCleanupOptions {
+export interface RuntimePreparedSessionBinding {
+	commit(): Promise<void>;
+	rollback(): Promise<void>;
+	finalize(): Promise<void>;
+}
+
+export interface RuntimeRetiredSessionCleanupOptions {
 	readonly previous: RuntimeSession;
-	readonly prepared?: CodingAgentPreparedSessionBinding;
+	readonly prepared?: RuntimePreparedSessionBinding;
 	readonly reportError: (error: AggregateError) => void;
 }
 
-export interface CodingAgentActiveSessionCleanupOptions {
+export interface RuntimeActiveSessionCleanupOptions {
 	readonly waitForTransitions: () => Promise<void>;
-	readonly events: CodingAgentActiveSessionEventRelay;
+	readonly events: RuntimeActiveSessionEventRelay;
 	readonly readActiveSession: () => RuntimeSession;
 }
 
-/** Owns retryable cleanup after a Session transition has already committed. */
-export class CodingAgentSessionTransitionCleanup {
+/** Owns retryable cleanup after an active Session transition has committed. */
+export class RuntimeSessionTransitionCleanup {
 	private readonly retired = new Map<number, RetryableCleanup>();
 	private readonly finalCleanup = new RetryableCleanup();
 	private sequence = 0;
 	private disposePreparation: Promise<void> | undefined;
 
-	async retire(options: CodingAgentRetiredSessionCleanupOptions): Promise<void> {
+	async retire(options: RuntimeRetiredSessionCleanupOptions): Promise<void> {
 		const cleanupId = this.sequence++;
 		const cleanup = new RetryableCleanup();
 		this.retired.set(cleanupId, cleanup);
@@ -43,13 +48,13 @@ export class CodingAgentSessionTransitionCleanup {
 		}
 	}
 
-	async dispose(options: CodingAgentActiveSessionCleanupOptions): Promise<void> {
+	async dispose(options: RuntimeActiveSessionCleanupOptions): Promise<void> {
 		this.disposePreparation ??= this.prepareDisposal(options);
 		await this.disposePreparation;
 		await this.finalCleanup.run("Failed to dispose active session host");
 	}
 
-	private async prepareDisposal(options: CodingAgentActiveSessionCleanupOptions): Promise<void> {
+	private async prepareDisposal(options: RuntimeActiveSessionCleanupOptions): Promise<void> {
 		await options.waitForTransitions();
 		for (const [cleanupId, retiredCleanup] of this.retired) {
 			this.finalCleanup.add({

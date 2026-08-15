@@ -61,6 +61,18 @@ export class McpDeferredToolController {
 		return this.explicitToolNames?.has(toolName) ?? true;
 	}
 
+	/** 冻结目录代际，但让本 Session 的 tool_search 激活在当前 Turn 内继续生效。 */
+	bindToolVisibility(): (toolName: string) => boolean {
+		const toolNames = new Set(this.currentSnapshot.tools.map(({ name }) => name));
+		const deferred = this.isDeferred();
+		const explicitToolNames = this.explicitToolNames;
+		return (toolName) => {
+			if (!toolNames.has(toolName)) return false;
+			if (deferred) return this.activatedToolNames.has(toolName);
+			return explicitToolNames?.has(toolName) ?? true;
+		};
+	}
+
 	readPromptState(): McpDeferredPromptState {
 		return {
 			tools: this.instructionTools(),

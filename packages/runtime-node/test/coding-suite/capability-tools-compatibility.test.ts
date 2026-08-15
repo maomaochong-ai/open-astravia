@@ -16,7 +16,6 @@ import {
 	createKbFilterByTagsToolRegistration,
 	createKbListTagsToolRegistration,
 	createMemoryToolRegistration,
-	createTodoToolRegistration,
 	createToolSearchToolRegistration,
 	INVOKE_SKILL_TOOL_CATEGORY,
 	INVOKE_SKILL_TOOL_DESCRIPTION,
@@ -38,16 +37,9 @@ import {
 	MemoryToolInputSchema,
 	type MemoryToolOperations,
 	scoreDeferredTools,
-	TODO_TOOL_CATEGORY,
-	TODO_TOOL_DESCRIPTION,
-	TODO_TOOL_SCOPES,
 	TOOL_SEARCH_TOOL_CATEGORY,
 	TOOL_SEARCH_TOOL_DESCRIPTION,
 	TOOL_SEARCH_TOOL_SCOPES,
-	TodoToolInputSchema,
-	type TodoToolItem,
-	type TodoToolStatus,
-	type TodoToolStore,
 	ToolSearchToolInputSchema,
 } from "../../src/coding/index.js";
 
@@ -95,7 +87,6 @@ describe("native capability tool compatibility", () => {
 		const ask = async () => ({ cancelled: true, answers: [] });
 		const skill = createSkill();
 		const search = () => ({ activated: [], alreadyActive: [], totalDeferred: 0 });
-		const todoStore = new TestTodoStore();
 		const memoryOperations = createInMemoryMemoryOperations();
 		const knowledgeOperations = createKnowledgeOperations();
 
@@ -145,14 +136,6 @@ describe("native capability tool compatibility", () => {
 			schema: MemoryToolInputSchema,
 			scopeUse: MEMORY_TOOL_SCOPES,
 			category: MEMORY_TOOL_CATEGORY,
-		});
-		expectRegistration(createTodoToolRegistration({ getTodoStore: () => todoStore }), {
-			name: "todo",
-			label: "todo",
-			description: TODO_TOOL_DESCRIPTION,
-			schema: TodoToolInputSchema,
-			scopeUse: TODO_TOOL_SCOPES,
-			category: TODO_TOOL_CATEGORY,
 		});
 		expectRegistration(createKbListTagsToolRegistration({ operations: knowledgeOperations }), {
 			name: "kb_list_available_tags",
@@ -276,30 +259,6 @@ describe("native capability tool compatibility", () => {
 		});
 	});
 
-	it("keeps todo creation, update, listing, and clear behavior", async () => {
-		const runtimeStore = new TestTodoStore();
-		const runtime = createTodoToolRegistration({ getTodoStore: () => runtimeStore }).tool;
-		const inputs = [
-			{ action: "create" as const, items: ["First", "Second"] },
-			{ action: "update" as const, id: 1, status: "in_progress" as const },
-			{ action: "list" as const },
-			{ action: "clear" as const },
-		];
-		const results = [];
-		for (const input of inputs) results.push(await executeRuntime(runtime, input));
-		expect(results.map((result) => result.details)).toEqual([
-			{ action: "create" },
-			{ action: "update" },
-			{ action: "list" },
-			{ action: "clear" },
-		]);
-		expect(results[0]?.content[0]).toMatchObject({ text: expect.stringContaining("Created 2 todo items") });
-		expect(results[1]?.content[0]).toMatchObject({ text: expect.stringContaining("Updated #1 → in_progress") });
-		expect(results[2]?.content[0]).toMatchObject({ text: expect.stringContaining("[~] #1 First") });
-		expect(results[3]?.content[0]).toMatchObject({ text: expect.stringContaining("Cleared all todo items") });
-		expect(runtimeStore.getAll()).toEqual([]);
-	});
-
 	it("keeps knowledge tag listing and filtering results", async () => {
 		const operations = createKnowledgeOperations();
 		const runtimeList = createKbListTagsToolRegistration({ operations }).tool;
@@ -363,41 +322,6 @@ function createSkill() {
 		disableModelInvocation: false,
 		content: "---\nname: pdf\n---\nFollow the PDF workflow.",
 	};
-}
-
-class TestTodoStore implements TodoToolStore {
-	private items: TodoToolItem[] = [];
-	private nextId = 1;
-
-	getAll(): readonly TodoToolItem[] {
-		return this.items;
-	}
-
-	isLocked(): boolean {
-		return false;
-	}
-
-	getLockSource(): string | null {
-		return null;
-	}
-
-	createMany(contents: string[]): readonly TodoToolItem[] {
-		const created = contents.map((content) => ({ id: this.nextId++, content, status: "pending" as const }));
-		this.items.push(...created);
-		return created;
-	}
-
-	update(id: number, status: TodoToolStatus): TodoToolItem | undefined {
-		const index = this.items.findIndex((item) => item.id === id);
-		if (index < 0) return undefined;
-		const updated = { ...this.items[index], status };
-		this.items[index] = updated;
-		return updated;
-	}
-
-	clear(): void {
-		this.items = [];
-	}
 }
 
 function createKnowledgeOperations() {

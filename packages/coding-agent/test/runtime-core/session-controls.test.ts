@@ -1,7 +1,11 @@
-import type { ConversationDocument, RuntimeMessageEnvelope, RuntimeResourceContext } from "@vetta/runtime-core";
+import {
+	type ConversationDocument,
+	InMemoryRuntimeSessionValueIndex,
+	type RuntimeMessageEnvelope,
+	type RuntimeResourceContext,
+} from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
-import { InMemoryCodingAgentSessionValueIndex } from "../../src/composition/session-lifecycle/indexes.js";
 import type {
 	CodingAgentSessionHookController,
 	CodingAgentSessionResourceIndexes,
@@ -88,10 +92,10 @@ describe("Coding Agent Runtime Session Controls", () => {
 
 function createFixture() {
 	const indexes = {
-		executionRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
-		hookSessionControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionHookController>(),
-		memoryControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentMemoryController>(),
-		resourceContexts: new InMemoryCodingAgentSessionValueIndex<RuntimeResourceContext>(),
+		executionRuntimes: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
+		hookSessionControllers: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionHookController>(),
+		memoryControllers: new InMemoryRuntimeSessionValueIndex<CodingAgentMemoryController>(),
+		resourceContexts: new InMemoryRuntimeSessionValueIndex<RuntimeResourceContext>(),
 	} satisfies Pick<
 		CodingAgentSessionResourceIndexes,
 		"executionRuntimes" | "hookSessionControllers" | "memoryControllers" | "resourceContexts"

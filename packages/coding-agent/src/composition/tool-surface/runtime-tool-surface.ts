@@ -1,4 +1,4 @@
-import type { ConversationScenario } from "@vetta/runtime-core";
+import type { ConversationScenario, RuntimeSessionValueIndex } from "@vetta/runtime-core";
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { createKbFilterByTagsToolRegistration, createKbListTagsToolRegistration } from "@vetta/runtime-node/coding";
@@ -11,7 +11,6 @@ import {
 } from "../../tool-policy/activation-policy.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import { createCodingAgentKnowledgeQueryOperations } from "../coding-agent-knowledge-runtime.js";
-import type { CodingAgentSessionValueIndex } from "../session-lifecycle/indexes.js";
 import {
 	type CodingAgentMcpSessionCoordinator,
 	type CodingAgentMcpSessionIndexes,
@@ -23,8 +22,8 @@ import {
 } from "./runtime-tools-composition.js";
 
 export interface CodingAgentRuntimeToolSurfaceIndexes extends CodingAgentMcpSessionIndexes {
-	readonly configurationStates: CodingAgentSessionValueIndex<CodingAgentSessionConfigurationState>;
-	readonly executionRuntimes: CodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>;
+	readonly configurationStates: RuntimeSessionValueIndex<CodingAgentSessionConfigurationState>;
+	readonly executionRuntimes: RuntimeSessionValueIndex<CodingAgentSessionExecutionRuntime>;
 }
 
 export interface CodingAgentRuntimeToolSurfaceOptions {

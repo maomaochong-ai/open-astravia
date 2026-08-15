@@ -21,7 +21,7 @@
 
 ## Todo 首个迁移切片
 
-Todo 由 `coding-agent/work-state` 提供 `coding-agent.todo` Session Extension，并统一拥有：
+Todo 由 `coding-agent/features/todo` 提供 `coding-agent.todo` Session Extension，并统一拥有：
 
 - Session-local Todo Runtime 与初始状态；
 - Todo Tool Feature；
@@ -31,7 +31,7 @@ Todo 由 `coding-agent/work-state` 提供 `coding-agent.todo` Session Extension�
 - typed Todo observation、迟订阅初始状态源与产品宿主的 `todo_update` 兼容映射；
 - 初始化回滚、正常释放和 Composition 关闭兜底。
 
-Todo Runtime 的默认 ID 生成改用平台中立的 Web Crypto，默认实现不再直接导入 `node:crypto`。Todo Tool 当前仍复用 `runtime-node` 的既有实现，这是现有 Coding Agent Node 产品组合的已知边界；本决策不在同一阶段迁移全部 Tool 实现。
+Todo Runtime 的默认 ID 生成改用平台中立的 Web Crypto，默认实现不再直接导入 `node:crypto`。Todo Tool 的名称、Schema、描述、Handler、锁定规则与注册逻辑同样由 `coding-agent/features/todo` 拥有；它不访问 Node 环境，因此不再通过 `runtime-node` 暴露。跨产品 Tool 共用的描述字段合同位于 `runtime-tools`，具体产品语义不得反向进入该协议包。
 
 Coding Agent Composition Options 通过 `createSessionExtensionDefinitions(sessionOptions)` 接受其他可信产品能力定义。该工厂在每个 Session 初始化事务内执行，返回的定义与内置 Todo 一起完成依赖排序、初始化、回滚和释放。它是程序化 Composition Root 注入点，不直接加载 Plugin 或外部配置。
 

@@ -47,8 +47,6 @@ build_pkg_script() {
 build_layer0() {
   build_pkg packages/capability-sdk
   build_pkg packages/ai
-  build_pkg packages/runtime-telemetry
-  build_pkg packages/agent
   build_pkg packages/ecosystem-adapter
   build_pkg packages/action-rpc
   build_pkg packages/runtime-subagents
@@ -60,38 +58,44 @@ build_layer0() {
 # ── Layer 1: depends on layer 0 ──
 build_layer1() {
   build_pkg packages/capability-runtime
-  build_pkg packages/runtime-core
+  build_pkg packages/agent
   build_pkg packages/plugins/plugin-cli
 }
 
-# ── Layer 2: depends on runtime-core ──
+# ── Layer 2: depends on agent ──
 build_layer2() {
+	build_pkg packages/runtime-telemetry
+	build_pkg packages/runtime-core
+}
+
+# ── Layer 3: depends on runtime-core ──
+build_layer3() {
   build_pkg packages/runtime-mcp
 }
 
-# ── Layer 3: independent Runtime packages used by coding-agent ──
-build_layer3() {
+# ── Layer 4: independent Runtime packages used by coding-agent ──
+build_layer4() {
   build_pkg packages/runtime-knowledge
   build_pkg packages/runtime-tools
   build_pkg packages/runtime-storage
 }
 
-# ── Layer 4: shared Node platform adapters ──
-build_layer4() {
+# ── Layer 5: shared Node platform adapters ──
+build_layer5() {
 	build_pkg packages/runtime-node
 }
 
-# ── Layer 5: Coding Profile + Composition Root ──
-build_layer5() {
+# ── Layer 6: Coding product definition ──
+build_layer6() {
   build_pkg packages/coding-agent
 }
 
-# ── Layer 6: platform runtimes ──
-build_layer6() {
+# ── Layer 7: platform runtimes ──
+build_layer7() {
   build_pkg packages/runtime-desktop
 }
 
-# ── Layer 7: apps ──
+# ── Layer 8: apps ──
 build_apps() {
   build_pkg packages/cli-app
   build_pkg packages/desktop-app
@@ -123,6 +127,7 @@ build_libs() {
 	build_layer4
 	build_layer5
 	build_layer6
+	build_layer7
 }
 
 build_all() {

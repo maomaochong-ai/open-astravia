@@ -26,8 +26,10 @@ import {
 import { buildDefaultHookConfigLayers } from "@vetta/ecosystem-adapter";
 import { InitializationRollbackScope, type RuntimeSession, type RuntimeSessionCatalog } from "@vetta/runtime-core";
 import {
+	createFileConversationPersistence,
 	FileConversationOwnershipManager,
 	type FileConversationOwnershipManagerOptions,
+	resolveConversationFilePath,
 	resolveSessionIdFromPath,
 } from "@vetta/runtime-node/conversation";
 
@@ -80,6 +82,7 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 	try {
 		runtime = await createCodingAgentRuntimeComposition({
 			conversationDir: options.conversationDir,
+			createConversationPersistence: () => createFileConversationPersistence(options.conversationDir),
 			modelRegistry: bootstrap.modelRegistry,
 			initialModel: options.initialModel,
 			initialThinkingLevel: options.initialThinkingLevel,
@@ -166,9 +169,11 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 			initialSession: session,
 			sessionOptions,
 			conversationDir: options.conversationDir,
+			defaultCwd: bootstrap.cwd,
 			sessionCatalog: options.sessionCatalog,
 			createSessionId: options.createSessionId,
 			resolveSessionId: (path) => resolveSessionIdFromPath(options.conversationDir, path),
+			resolveSessionPath: (sessionId) => resolveConversationFilePath(options.conversationDir, sessionId),
 			lifecycle: {
 				before: (transition) => extensionSessionHost!.before(transition),
 				prepare: (transition) => extensionSessionHost!.prepare(transition),

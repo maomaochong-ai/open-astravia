@@ -6,10 +6,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../src/adapters/runtime-core/model-runtime-adapter.js";
 import { createKnowledgeProcessingSessionFactory } from "../src/composition/index.js";
 import type { KnowledgeProcessingSessionFactoryOptions } from "../src/composition/knowledge-processing-session.js";
+import type { CodingAgentRuntimeCompositionOptions } from "../src/composition/runtime-composition.js";
 import {
-	type CodingAgentRuntimeCompositionOptions,
 	createCodingAgentRuntimeComposition,
-} from "../src/composition/runtime-composition.js";
+	createTestConversationPersistence,
+} from "./fixtures/conversation-persistence.js";
 
 describe("Knowledge processing session", () => {
 	const directories: string[] = [];
@@ -87,6 +88,7 @@ describe("Knowledge processing session", () => {
 		const disposeComposition = vi.fn(async () => {});
 		const factory = createKnowledgeProcessingSessionFactory({
 			getModelRegistry: () => registry,
+			createConversationPersistence: createTestConversationPersistence,
 			knowledgeRoot: knowledgeDirectory,
 			createSessionId: () => "knowledge-session",
 			createComposition: createRecordedComposition({
@@ -178,6 +180,7 @@ describe("Knowledge processing session", () => {
 				...registry,
 				find: () => undefined,
 			}),
+			createConversationPersistence: createTestConversationPersistence,
 			createComposition: (options) =>
 				createCodingAgentRuntimeComposition({
 					...options,

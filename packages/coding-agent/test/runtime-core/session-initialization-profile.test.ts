@@ -2,6 +2,7 @@ import type { Api, Model } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import type { CodingAgentRuntimeCompositionOptions } from "../../src/composition/contracts/index.js";
 import { createCodingAgentSessionInitializationProfile } from "../../src/composition/session-initialization/profile.js";
+import { createTestConversationPersistence } from "../fixtures/conversation-persistence.js";
 
 describe("Coding Agent session initialization profile", () => {
 	it("只投影 Session 初始化需要的配置并保留动态来源引用", () => {
@@ -79,6 +80,7 @@ describe("Coding Agent session initialization profile", () => {
 function createBaseOptions(): CodingAgentRuntimeCompositionOptions {
 	return {
 		conversationDir: "C:\\conversations",
+		createConversationPersistence: createTestConversationPersistence,
 		modelRegistry: {} as CodingAgentRuntimeCompositionOptions["modelRegistry"],
 		initialModel: MODEL,
 		initialThinkingLevel: "off",

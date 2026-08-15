@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
-import { resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
+import {
+	createFileConversationPersistence,
+	createInMemoryConversationPersistence,
+	resolveSessionIdFromPath,
+} from "@vetta/runtime-node/conversation";
 import type { CodingAgentConversationPersistenceFactory } from "../../composition/contracts/index.js";
-import { createInMemoryCodingAgentConversationPersistence } from "../../composition/conversation/persistence.js";
 import type { CodingAgentSessionStorageTarget } from "../../public-api/sdk/sdk-create-contract.js";
 
 export type CodingAgentSdkSessionStorageOperation = "create" | "resume";
@@ -11,7 +14,7 @@ export interface ResolvedCodingAgentSdkSessionStorage {
 	readonly operation: CodingAgentSdkSessionStorageOperation;
 	readonly sessionId: string;
 	readonly conversationDir?: string;
-	readonly createConversationPersistence?: CodingAgentConversationPersistenceFactory;
+	readonly createConversationPersistence: CodingAgentConversationPersistenceFactory;
 }
 
 export const CODING_AGENT_SDK_STORAGE_ERROR_CODES = {
@@ -42,7 +45,7 @@ export function resolveCodingAgentSdkSessionStorage(
 		return {
 			operation: "create",
 			sessionId: normalizeSessionId(target.sessionId, target),
-			createConversationPersistence: () => createInMemoryCodingAgentConversationPersistence(),
+			createConversationPersistence: () => createInMemoryConversationPersistence(),
 		};
 	}
 
@@ -54,15 +57,16 @@ export function resolveCodingAgentSdkSessionStorage(
 			target,
 		);
 	}
+	const resolvedConversationDir = resolve(conversationDir);
 	if (target.kind === "file-create") {
 		return {
 			operation: "create",
 			sessionId: normalizeSessionId(target.sessionId, target),
-			conversationDir: resolve(conversationDir),
+			conversationDir: resolvedConversationDir,
+			createConversationPersistence: () => createFileConversationPersistence(resolvedConversationDir),
 		};
 	}
 
-	const resolvedConversationDir = resolve(conversationDir);
 	const sessionId = resolveSessionIdFromPath(resolvedConversationDir, target.sessionPath);
 	if (!sessionId) {
 		throw new CodingAgentSdkStorageError(
@@ -75,6 +79,7 @@ export function resolveCodingAgentSdkSessionStorage(
 		operation: "resume",
 		sessionId,
 		conversationDir: resolvedConversationDir,
+		createConversationPersistence: () => createFileConversationPersistence(resolvedConversationDir),
 	};
 }
 

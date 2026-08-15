@@ -2,7 +2,7 @@ import type { AssistantMessage, Message } from "@vetta/ai";
 import type { RuntimeSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { SubagentChildHandle, SubagentTodoProgress, SubagentUsageSnapshot } from "@vetta/runtime-subagents";
-import { CODING_AGENT_TODO_READ } from "../../work-state/todo-session-extension-contract.js";
+import { CODING_AGENT_TODO_READ } from "../../features/todo/todo-session-extension-contract.js";
 
 export interface CodingAgentSubagentChildHandleOptions {
 	readonly session: RuntimeSession;

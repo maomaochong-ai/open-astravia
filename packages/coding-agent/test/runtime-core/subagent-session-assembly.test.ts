@@ -81,6 +81,7 @@ describe("Coding Agent Subagent session assembly", () => {
 					},
 				};
 			},
+			assessChildSessionPath: async () => "valid",
 			hookRuntime,
 			resourceContext,
 		});
@@ -370,6 +371,7 @@ function baseOptions() {
 		createChildComposition: async () => {
 			throw new Error("disabled assembly must not create a child composition");
 		},
+		assessChildSessionPath: async () => "valid" as const,
 		hookRuntime: {
 			async runSubagentStart() {
 				return emptyHookDispatchOutcome();

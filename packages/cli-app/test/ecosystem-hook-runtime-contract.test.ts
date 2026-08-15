@@ -13,12 +13,12 @@ import {
 	CodingAgentActiveSessionHost,
 	type CodingAgentRuntimeComposition,
 	type CodingAgentSessionTransitionLifecycle,
-	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import { type EcosystemHookEvent, emptyHookDispatchOutcome, type HookDispatchOutcome } from "@vetta/coding-agent/hooks";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import type { RuntimeSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
+import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 
 const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
 
@@ -252,12 +252,14 @@ function createActiveSessionHost(
 		initialSession,
 		sessionOptions: { cwd: conversationDir },
 		conversationDir,
+		defaultCwd: conversationDir,
 		sessionCatalog: sessionCatalog(),
 		createSessionId,
 		resolveSessionId: (path) => {
 			const encoded = path.match(/([^\\/]+)\.conversation\.jsonl$/u)?.[1];
 			return encoded ? Buffer.from(encoded, "base64url").toString("utf8") : undefined;
 		},
+		resolveSessionPath: (sessionId) => sessionPath(conversationDir, sessionId),
 		lifecycle,
 	});
 }

@@ -50,6 +50,7 @@ export function createCodingToolsFeature(options: CodingToolsFeatureOptions): Ag
 				turnId: context.operationId,
 				signal: context.signal,
 				...(context.input ? { input: context.input } : {}),
+				...(context.request ? { request: context.request } : {}),
 			};
 			// Admission refresh belongs to the control plane. Running the legacy
 			// refresher here could await between independent domain captures and

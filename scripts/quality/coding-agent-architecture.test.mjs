@@ -187,4 +187,60 @@ describe("Coding Agent architecture gate", () => {
 
 		expect(findCodingAgentArchitectureViolations(state)).toEqual([]);
 	});
+
+	it.each([
+		"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+		"packages/runtime-desktop/src/backend-pool.ts",
+		"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+	])("requires %s to select and inject Node conversation persistence", (path) => {
+		const missing = createState([
+			{
+				path,
+				text: 'import { createCodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";',
+			},
+		]);
+		const configured = createState([
+			{
+				path,
+				text: [
+					'import { createCodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";',
+					'import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";',
+					"createCodingAgentRuntimeComposition({",
+					"\tcreateConversationPersistence: () => createFileConversationPersistence(conversationDir),",
+					"});",
+				].join("\n"),
+			},
+		]);
+
+		expect(findCodingAgentArchitectureViolations(missing)).toEqual([
+			`${path}: platform Composition Root must select createFileConversationPersistence from runtime-node`,
+			`${path}: platform Composition Root must inject createConversationPersistence`,
+		]);
+		expect(findCodingAgentArchitectureViolations(configured)).toEqual([]);
+	});
+
+	it("keeps concrete Conversation persistence outside the product Composition", () => {
+		const importingNode = createState([
+			{
+				path: `${SOURCE_ROOT}/composition/runtime-composition.ts`,
+				text: [
+					'import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";',
+					"options.createConversationPersistence({ conversationDir: options.conversationDir });",
+				].join("\n"),
+			},
+		]);
+		const missingPort = createState([
+			{
+				path: `${SOURCE_ROOT}/composition/runtime-composition.ts`,
+				text: "export const runtime = {};",
+			},
+		]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${SOURCE_ROOT}/composition/runtime-composition.ts:1: product Composition must consume a persistence Port, not a Node implementation`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingPort)).toContain(
+			`${SOURCE_ROOT}/composition/runtime-composition.ts: product Composition must obtain conversation persistence from its host Port`,
+		);
+	});
 });

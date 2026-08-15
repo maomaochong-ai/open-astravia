@@ -4,12 +4,10 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import { FileConversationRepository } from "@vetta/runtime-node/conversation";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-	type CodingAgentRuntimeComposition,
-	createCodingAgentRuntimeComposition,
-} from "../../src/composition/index.js";
+import type { CodingAgentRuntimeComposition } from "../../src/composition/index.js";
 import { type CodingAgentMemoryFlushInput, CodingAgentMemoryRolloverOrchestrator } from "../../src/memory/index.js";
 import type { CodingAgentRuntimeModelSource } from "../../src/public-api/host-services.js";
+import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-persistence.js";
 
 const temporaryRoots: string[] = [];
 const compositions: CodingAgentRuntimeComposition[] = [];

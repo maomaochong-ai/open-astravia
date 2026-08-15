@@ -14,6 +14,7 @@ import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
+import type { CodingAgentConversationSessionPathAssessment } from "../contracts/conversation-persistence.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
 import { createCodingAgentSessionResourceLifecycle } from "../session-lifecycle/resource-lifecycle.js";
@@ -71,6 +72,11 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 	readonly createChildComposition: (
 		request: CodingAgentSubagentChildCompositionRequest,
 	) => Promise<CodingAgentSubagentChildComposition>;
+	readonly assessChildSessionPath: (
+		conversationDir: string,
+		sessionId: string,
+		sessionPath: string,
+	) => Promise<CodingAgentConversationSessionPathAssessment>;
 }
 
 export interface CodingAgentSessionInitializationTransaction {
@@ -164,6 +170,7 @@ async function initializeSession<TOwnershipBinding>(
 			resolveConversationPath: options.conversation.resolveConversationPath,
 			readConversationModelMessages: options.readConversationModelMessages,
 			createChildComposition: options.createChildComposition,
+			assessChildSessionPath: options.assessChildSessionPath,
 			trackContextRuntime: (runtime) => options.registry.trackContextRuntime(runtime),
 			untrackContextRuntime: (runtime) => options.registry.untrackContextRuntime(runtime),
 			deferRollback: (task) => {

@@ -6,6 +6,10 @@ import type {
 	RuntimeSession,
 	RuntimeSessionInputQueueMode,
 } from "@vetta/runtime-core";
+import {
+	CODING_AGENT_TODO_CLEAR,
+	CODING_AGENT_TODO_READ,
+} from "../../features/todo/todo-session-extension-contract.js";
 import type { CodingAgentRetryEvent } from "../../public-api/sdk/sdk-event-contract.js";
 import type {
 	CodingAgentMemoryConfiguration,
@@ -17,7 +21,6 @@ import type {
 } from "../../public-api/sdk/sdk-session-contract.js";
 import type { CodingAgentSessionToolDefinition } from "../../public-api/sdk/sdk-tool-contract.js";
 import { projectCodingAgentMessages } from "../../sessions/projection/conversation-context-projector.js";
-import { CODING_AGENT_TODO_CLEAR, CODING_AGENT_TODO_READ } from "../../work-state/todo-session-extension-contract.js";
 import type { CodingAgentTurnRetryController } from "../session-execution/contracts.js";
 import { readCodingAgentTurnFailure } from "../session-execution/turn-executor.js";
 import { createCodingAgentTurnRetryController } from "../session-execution/turn-retry-controller.js";

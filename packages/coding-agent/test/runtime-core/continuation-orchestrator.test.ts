@@ -3,8 +3,8 @@ import type { ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentContinuationOrchestrator } from "../../src/composition/turn/continuation-orchestrator.js";
 import { CodingAgentStopHookContinuationSource } from "../../src/extensions/runtime/stop-hook-continuation-source.js";
-import type { TodoItem } from "../../src/work-state/index.js";
-import { CodingAgentTodoContinuationSource } from "../../src/work-state/todo-continuation-source.js";
+import type { TodoItem } from "../../src/features/todo/index.js";
+import { CodingAgentTodoContinuationSource } from "../../src/features/todo/todo-continuation-source.js";
 
 describe("CodingAgentContinuationOrchestrator", () => {
 	it("selects Todo, Plugin and Stop Hook in the established priority order", async () => {

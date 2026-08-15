@@ -1,7 +1,7 @@
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { SubagentCoordinatorPort } from "@vetta/runtime-subagents";
-import { ToolCallDescriptionSchema } from "../../shared/tool-call-description.js";
+import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
 import { WAIT_AGENT_TOOL_DESCRIPTION, WORKFLOW_NO_WAIT_TEXT } from "./description.js";
 
 export const WaitAgentToolInputSchema = Type.Object({

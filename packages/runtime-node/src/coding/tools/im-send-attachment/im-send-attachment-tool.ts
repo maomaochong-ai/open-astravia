@@ -2,7 +2,7 @@ import { existsSync, statSync } from "node:fs";
 import { isAbsolute } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import { ToolCallDescriptionSchema } from "../../shared/tool-call-description.js";
+import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
 import { IM_SEND_ATTACHMENT_TOOL_DESCRIPTION } from "./description.js";
 
 export const ImSendAttachmentToolInputSchema = Type.Object({

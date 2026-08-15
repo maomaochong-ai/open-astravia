@@ -1,15 +1,19 @@
 # Team: Runtime
 
-> 本包属于 Runtime 能力域，定义 Agent Kernel、Turn、事件和宿主 Port。
+> 本包属于 Runtime 能力域，所有修改同时服从根 `AGENTS.md` 与 ADR-0077。
 
 ## 职责范围
 
-核心运行时层，定义会话事件模型、数据契约、运行时宿主接口。
+产品无关的多轮运行机制，定义 Session、Turn admission、Queue、Runtime Snapshot、Conversation
+Document、生命周期事务、恢复、资源所有权、Port、Session Extension 和通用事件路由。
+
+本包不拥有 Todo、IM、知识库、Coding Prompt、产品 Profile 等产品规则，也不访问文件系统、进程、
+数据库、Electron 或其他具体环境。
 
 ## 关键模块
 
 - `src/contracts.ts` — SessionEvent、PromptRequest、SessionFacade 等核心契约
-- `src/runtime-host/` — 运行时宿主实现（`runtime-host.ts` 编排 + session-events / history / peripheral-tasks 等）
+- `src/runtime-host/` — 运行时宿主实现（RuntimeHost、Active Session 事务、事件、历史与生命周期）
 - `src/errors.ts` — 错误定义
 
 ## 注意事项
@@ -19,6 +23,7 @@
 - Kernel 与 Runtime 合同必须保持产品无关，不得导入 `@vetta/coding-agent`
 - 生产代码、测试、配置和包清单均不得反向依赖 `@vetta/coding-agent`
 - Runtime 包拥有实际能力，不是 `coding-agent` 的兼容转发层
+- “可跨平台”不是进入本包的充分条件；包含产品名词或默认产品选择的逻辑仍由产品包拥有
 
 ## 测试要求
 

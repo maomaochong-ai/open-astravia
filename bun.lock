@@ -120,7 +120,6 @@
       "dependencies": {
         "@sinclair/typebox": "^0.34.41",
         "@vetta/ai": "workspace:*",
-        "@vetta/runtime-telemetry": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.3.0",
@@ -1005,6 +1004,7 @@
         "@langfuse/otel": "^5.4.1",
         "@langfuse/tracing": "^5.4.1",
         "@opentelemetry/sdk-node": "^0.218.0",
+        "@vetta/agent-core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^22.10.5",
@@ -1015,6 +1015,7 @@
       "name": "@vetta/runtime-tools",
       "version": "0.0.1",
       "dependencies": {
+        "@sinclair/typebox": "^0.34.41",
         "@vetta/runtime-core": "workspace:*",
       },
       "devDependencies": {

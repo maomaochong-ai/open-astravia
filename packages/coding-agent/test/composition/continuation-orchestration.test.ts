@@ -10,10 +10,8 @@ import {
 	type Model,
 } from "@vetta/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-	type CodingAgentRuntimeComposition,
-	createCodingAgentRuntimeComposition,
-} from "../../src/composition/index.js";
+import type { CodingAgentRuntimeComposition } from "../../src/composition/index.js";
+import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import {
 	type EcosystemHookEvent,
 	emptyHookDispatchOutcome,
@@ -23,7 +21,7 @@ import type {
 	CodingAgentPluginRuntimeSource,
 	CodingAgentRuntimeModelSource,
 } from "../../src/public-api/host-services.js";
-import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
+import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-persistence.js";
 
 describe("Coding Agent continuation orchestration", () => {
 	const temporaryDirectories: string[] = [];

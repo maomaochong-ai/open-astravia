@@ -6,6 +6,7 @@ import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
 import type { SubagentTypeRegistryLike } from "@vetta/runtime-subagents";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
+import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import type {
 	CodingAgentMemoryRolloverOrchestratorOptions,
 	CodingAgentMemoryRolloverRuntime,
@@ -22,7 +23,6 @@ import type {
 	CodingAgentRuntimeModelSource,
 	CodingAgentSystemPromptOptionsResolver,
 } from "../../runtime-contracts/index.js";
-import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import type { CodingAgentConversationPersistenceFactory } from "./conversation-persistence.js";
 import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
 import type {
@@ -38,10 +38,10 @@ export interface CodingAgentRuntimeEnvironmentOptions {
 }
 
 export interface CodingAgentRuntimeConversationOptions {
-	/** 默认文件仓储根目录；注入 createConversationPersistence 时只作为工厂上下文。 */
+	/** 由宿主持久化工厂解释的 Conversation 根目录上下文。 */
 	readonly conversationDir: string;
 	/** 为每个 Composition 创建独占持久化端口；Composition 负责关闭。 */
-	readonly createConversationPersistence?: CodingAgentConversationPersistenceFactory;
+	readonly createConversationPersistence: CodingAgentConversationPersistenceFactory;
 	/** 可选的进程级会话所有权；与 Repository 单次写锁相互独立。 */
 	readonly conversationOwnershipManager?: ConversationOwnershipManager;
 }

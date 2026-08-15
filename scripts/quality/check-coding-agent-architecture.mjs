@@ -13,13 +13,13 @@ const PACKAGE_SPECIFIER = "@vetta/coding-agent";
 
 const DOMAIN_ROOTS = Object.freeze([
 	`${SOURCE_ROOT}/extensions/`,
+	`${SOURCE_ROOT}/features/`,
 	`${SOURCE_ROOT}/memory/`,
 	`${SOURCE_ROOT}/mcp/`,
 	`${SOURCE_ROOT}/model-context/`,
 	`${SOURCE_ROOT}/plugins/`,
 	`${SOURCE_ROOT}/resources/`,
 	`${SOURCE_ROOT}/sessions/`,
-	`${SOURCE_ROOT}/work-state/`,
 ]);
 
 const COMPOSITION_PUBLIC_SOURCE_ROOTS = Object.freeze([
@@ -29,6 +29,20 @@ const COMPOSITION_PUBLIC_SOURCE_ROOTS = Object.freeze([
 	`${SOURCE_ROOT}/sessions/setup/`,
 ]);
 const COMPOSITION_PUBLIC_EXTERNAL_SOURCES = new Set(["@vetta/runtime-storage/conversation"]);
+const PLATFORM_PERSISTENCE_COMPOSITION_ROOTS = Object.freeze([
+	{
+		path: "packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+		factory: "createFileConversationPersistence",
+	},
+	{
+		path: "packages/runtime-desktop/src/backend-pool.ts",
+		factory: "createFileConversationPersistence",
+	},
+	{
+		path: "packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+		factory: "createFileConversationPersistence",
+	},
+]);
 
 export function collectCodingAgentArchitectureState({ files, packageJson }) {
 	const normalizedFiles = files.map((file) => ({ ...file, path: normalizePath(file.path) }));
@@ -47,6 +61,8 @@ export function collectCodingAgentArchitectureState({ files, packageJson }) {
 
 export function findCodingAgentArchitectureViolations(state) {
 	const violations = [];
+	checkPlatformPersistenceCompositionRoots(state, violations);
+	checkCodingAgentCompositionPersistenceBoundary(state, violations);
 
 	for (const path of state.sourcePaths) {
 		if (path.startsWith(`${SOURCE_ROOT}/core/`) || path.startsWith(`${SOURCE_ROOT}/compat/`)) {
@@ -105,6 +121,47 @@ export function findCodingAgentArchitectureViolations(state) {
 	}
 
 	return violations;
+}
+
+function checkCodingAgentCompositionPersistenceBoundary(state, violations) {
+	for (const edge of state.edges) {
+		if (
+			edge.path.startsWith(`${SOURCE_ROOT}/composition/`) &&
+			edge.specifier === "@vetta/runtime-node/conversation"
+		) {
+			violations.push(
+				`${edge.path}:${edge.line}: product Composition must consume a persistence Port, not a Node implementation`,
+			);
+		}
+	}
+
+	const composition = state.files.find((file) => file.path === `${SOURCE_ROOT}/composition/runtime-composition.ts`);
+	if (composition && !/\boptions\.createConversationPersistence\s*\(/.test(composition.text)) {
+		violations.push(
+			`${composition.path}: product Composition must obtain conversation persistence from its host Port`,
+		);
+	}
+}
+
+function checkPlatformPersistenceCompositionRoots(state, violations) {
+	for (const requirement of PLATFORM_PERSISTENCE_COMPOSITION_ROOTS) {
+		const file = state.files.find((candidate) => candidate.path === requirement.path);
+		if (!file) continue;
+		const importsFactory = state.edges.some(
+			(edge) =>
+				edge.path === requirement.path &&
+				edge.specifier === "@vetta/runtime-node/conversation" &&
+				edge.names.includes(requirement.factory),
+		);
+		if (!importsFactory) {
+			violations.push(
+				`${requirement.path}: platform Composition Root must select ${requirement.factory} from runtime-node`,
+			);
+		}
+		if (!/\bcreateConversationPersistence\s*:/.test(file.text)) {
+			violations.push(`${requirement.path}: platform Composition Root must inject createConversationPersistence`);
+		}
+	}
 }
 
 function isPublishedPackageSpecifier(specifier, packageExports) {

@@ -2,10 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
-import {
-	type CodingAgentRuntimeComposition,
-	createCodingAgentRuntimeComposition,
-} from "@vetta/coding-agent/composition";
+import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import { createCodingAgentPluginMcpRuntime } from "@vetta/coding-agent/host-services";
 import type { AgentPluginRuntimeConfig } from "@vetta/runtime-core";
 import type {
@@ -15,6 +12,7 @@ import type {
 	RuntimeMcpClientFactory,
 } from "@vetta/runtime-mcp";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 
 const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
 

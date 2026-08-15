@@ -4,8 +4,8 @@ import {
 	createEmptyConversationDocument,
 } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
-import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
-import { createCodingAgentTodoRuntimeToolRegistration } from "../../src/work-state/todo-tool-feature.js";
+import { CodingAgentTodoRuntime } from "../../../src/features/todo/todo-runtime.js";
+import { createCodingAgentTodoRuntimeToolRegistration } from "../../../src/features/todo/todo-tool-feature.js";
 
 describe("CodingAgentTodoRuntime", () => {
 	it("shares one store across Runtime Tool, persistence and Controller", async () => {

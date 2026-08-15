@@ -10,6 +10,7 @@ import { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-r
 import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
 import { type CodingAgentMemoryController, CodingAgentSessionMemoryController } from "../../memory/index.js";
+import type { CodingAgentConversationSessionPathAssessment } from "../contracts/conversation-persistence.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import {
@@ -37,6 +38,11 @@ export interface CodingAgentSessionContextAssemblyOptions {
 	readonly createChildComposition: (
 		request: CodingAgentSubagentChildCompositionRequest,
 	) => Promise<CodingAgentSubagentChildComposition>;
+	readonly assessChildSessionPath: (
+		conversationDir: string,
+		sessionId: string,
+		sessionPath: string,
+	) => Promise<CodingAgentConversationSessionPathAssessment>;
 	readonly trackContextRuntime: (runtime: CodingAgentContextRuntime) => void;
 	readonly untrackContextRuntime: (runtime: CodingAgentContextRuntime) => void;
 	readonly deferRollback: (task: InitializationRollbackTask) => void;
@@ -140,6 +146,7 @@ export function createCodingAgentSessionContextAssembly(
 		typeRegistry: profile.subagentTypeRegistry,
 		createChildFactory: profile.createSubagentChildFactory,
 		createChildComposition: options.createChildComposition,
+		assessChildSessionPath: options.assessChildSessionPath,
 		hookRuntime,
 		resourceContext: options.resourceContext,
 	});
