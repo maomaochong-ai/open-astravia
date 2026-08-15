@@ -33,6 +33,12 @@ const labels: Record<string, string> = {
 	"messageList.tokenUsage.toolCount": "工具数量",
 	"messageList.tokenUsage.prefixStatus": "稳定前缀状态",
 	"messageList.tokenUsage.changedSegments": "变化部分",
+	"messageList.tokenUsage.changedPromptBlocks": "变化提示词块",
+	"messageList.tokenUsage.changedTools": "变化工具",
+	"messageList.tokenUsage.changeKinds.added": "新增",
+	"messageList.tokenUsage.changeKinds.removed": "删除",
+	"messageList.tokenUsage.changeKinds.changed": "内容变化",
+	"messageList.tokenUsage.changeKinds.reordered": "顺序变化",
 	"messageList.tokenUsage.segmentSeparator": "、",
 	"messageList.tokenUsage.prefixStatuses.initial": "首次诊断",
 	"messageList.tokenUsage.prefixStatuses.extended": "连续扩展",
@@ -48,8 +54,11 @@ const labels: Record<string, string> = {
 
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({
-		t: (key: string, values?: { count?: number }) =>
-			key === "messageList.tokenUsage.modelCalls" ? `${values?.count} 次模型调用` : (labels[key] ?? key),
+		t: (key: string, values?: { count?: number; id?: string; change?: string }) => {
+			if (key === "messageList.tokenUsage.modelCalls") return `${values?.count} 次模型调用`;
+			if (key === "messageList.tokenUsage.definitionChange") return `${values?.id}（${values?.change}）`;
+			return labels[key] ?? key;
+		},
 		i18n: { language: "zh-CN", resolvedLanguage: "zh-CN" },
 	}),
 }));
@@ -96,6 +105,10 @@ describe("MessageTokenUsage", () => {
 		expect(within(panel).getByText("pc1:1234567890abcdef")).toBeTruthy();
 		expect(within(panel).getByText("连续扩展")).toBeTruthy();
 		expect(within(panel).getByText("动态系统提示词")).toBeTruthy();
+		expect(within(panel).getByText("变化提示词块")).toBeTruthy();
+		expect(within(panel).getByText("plugin.router（内容变化）")).toBeTruthy();
+		expect(within(panel).getByText("变化工具")).toBeTruthy();
+		expect(within(panel).getByText("todo_write（新增）、read（内容变化）")).toBeTruthy();
 	});
 
 	it("explains that write metrics are unavailable for read-only providers", async () => {
@@ -151,6 +164,11 @@ function promptCacheDiagnostics(): NonNullable<Usage["promptCache"]> {
 		requestMessageCount: 5,
 		prefixStatus: "extended",
 		changedSegments: ["volatile-system"],
+		changedSystemPromptBlocks: [{ id: "plugin.router", change: "changed" }],
+		changedTools: [
+			{ id: "todo_write", change: "added" },
+			{ id: "read", change: "changed" },
+		],
 		stableSystemPromptLength: 120,
 		volatileSystemPromptLength: 20,
 		historyPrefixMessages: 4,

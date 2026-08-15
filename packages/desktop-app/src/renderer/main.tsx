@@ -5,8 +5,10 @@ import { applyInitialTheme } from "./shared/theme/apply";
 import { applyStoredCursorStyle } from "./shared/theme/cursor";
 import { applyStoredSidebarStyle } from "./shared/theme/sidebar-style";
 import { captureReactError, initializeRendererErrorMonitoring } from "./telemetry/error-monitoring";
+import { initializeViteHmrDiagnostics } from "./telemetry/vite-hmr-diagnostics";
 import "./styles.css";
 
+initializeViteHmrDiagnostics();
 initializeRendererErrorMonitoring("main");
 
 // 在首个 React 节点挂载前同步恢复持久化主题与光标，保证窗口首次可见时已使用实际设计令牌。

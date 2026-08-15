@@ -8,7 +8,13 @@ export type PluginDevServerEvent =
 			entryUrl: string;
 			origin: string;
 	  }
-	| { type: "update"; pluginId: string }
+	| {
+			type: "update";
+			pluginId: string;
+			reason?: "entry" | "full-reload" | "resource";
+			path?: string;
+			triggeredBy?: string;
+	  }
 	| { type: "error"; pluginId?: string; message: string };
 
 export interface ParsedPluginDevServerOutput {
@@ -52,7 +58,21 @@ export function parsePluginDevServerEvent(line: string): PluginDevServerEvent | 
 		};
 	}
 	if (value.type === "update" && "pluginId" in value && typeof value.pluginId === "string") {
-		return { type: "update", pluginId: value.pluginId };
+		const reason =
+			"reason" in value &&
+			(value.reason === "entry" || value.reason === "full-reload" || value.reason === "resource")
+				? value.reason
+				: undefined;
+		const path = "path" in value && typeof value.path === "string" ? value.path : undefined;
+		const triggeredBy =
+			"triggeredBy" in value && typeof value.triggeredBy === "string" ? value.triggeredBy : undefined;
+		return {
+			type: "update",
+			pluginId: value.pluginId,
+			...(reason ? { reason } : {}),
+			...(path ? { path } : {}),
+			...(triggeredBy ? { triggeredBy } : {}),
+		};
 	}
 	if (value.type === "error" && "message" in value && typeof value.message === "string") {
 		return {

@@ -192,9 +192,20 @@ $vettaEvents |
 
 1. 把 Provider 调用时间转换为本地时间。
 2. 对照 `<VETTA_HOME>/desktop-app/logs/main/<date>.log` 和 Renderer 日志。
-3. 搜索 `runtime reconfigure`、插件 `activationId`、Main/Preload 重启和 Vite HMR。
-4. 比较 `stableSystemPromptHash`、`volatileSystemPromptHash`、`toolsHash` 和长度。
-5. 环境稳定后继续同一会话复测；若下一调用恢复高命中，将前一调用归为失效样本。
+3. 搜索 `[vite-hmr] before-full-reload`；该日志包含 Vite 的 `path` 和 `triggeredBy`，用于定位触发
+   Renderer 整页重载的文件。插件开发服务器的更新则搜索 `dev-watch: refreshed`，并读取
+   `pluginId`、`reason`、`path` 和 `triggeredBy`。
+4. 搜索 `publish agent plugin runtime` / `skip unchanged agent plugin runtime`。`runtimeFingerprint`
+   包含 handler 与 activation 身份，用于判断 Runtime 是否确实需要接收新路由；
+   `modelTopologyFingerprint` 只表示可能影响模型输入的静态插件拓扑，不代表动态 Prompt Provider
+   的本次输出一定相同。
+5. 比较 `stableSystemPromptHash`、`volatileSystemPromptHash`、`toolsHash` 和长度。新记录还提供
+   `changedSystemPromptBlocks` 与 `changedTools`，可以直接定位变化的块 ID、工具名以及新增、删除、
+   内容变化或顺序变化。
+6. 环境稳定后继续同一会话复测；若下一调用恢复高命中，将前一调用归为失效样本。
+
+三类证据不可互相替代：Vite 日志解释“为什么重载”，Runtime 指纹解释“为什么重新配置”，模型请求
+诊断解释“供应商实际看到的前缀哪里改变”。只有最后一类可以直接归因上下文缓存失效。
 
 正式基准期间应冻结代码修改和插件配置，关闭不相关的演示插件及动态 Prompt Provider。必须保留动态 Provider
 时，记录其启用状态和贡献哈希，使“预期动态变化”与回归能够区分。
@@ -205,7 +216,7 @@ $vettaEvents |
 - Profile、模型精确 `modelKey`、推理级别和 Provider 观测 `runId`。
 - 会话轮数、模型调用数、工具调用数与各工具 Action。
 - 冷启动、稳态、失效三类的 Token、命中率、输出和成本。
-- 每个失效调用的 `changedSegments`、相关哈希和长度变化。
+- 每个失效调用的 `changedSegments`、`changedSystemPromptBlocks`、`changedTools`、相关哈希和长度变化。
 - 同时间窗口的 HMR、插件激活、Runtime 重配置或会话压缩日志。
 - Todo 最终事实状态，以及模型文字是否与其一致。
 - 是否设置输出限制；`timeoutMs` 不能记录成输出限制。
@@ -219,4 +230,3 @@ $vettaEvents |
 - 所有异常低命中都有 Prompt 诊断或运行时日志证据，未把猜测写成根因。
 - 报告区分冷启动、稳态和失效，不用单一聚合数字代替分析。
 - 实验没有泄露凭据、会话正文或未脱敏的 Provider payload。
-

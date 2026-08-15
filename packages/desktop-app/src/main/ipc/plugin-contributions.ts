@@ -58,14 +58,14 @@ export function registerPluginContributionIpc(pluginActionService: PluginActionS
 		});
 		pluginAgentContributionService.beginLoad(normalizedPluginId, normalizedActivationId);
 		pluginActionService.beginLoad(normalizedPluginId, normalizedActivationId);
-		refreshAgentPlugins();
+		refreshAgentPlugins({ reason: "contribution:begin-load", pluginId: normalizedPluginId });
 	});
 	ipcMain.handle(PLUGIN_CONTRIBUTION_CHANNELS.COMMIT_LOAD, (_event, pluginId: unknown, activationId: unknown) => {
 		const normalizedPluginId = asPluginId(pluginId);
 		const normalizedActivationId = asPluginId(activationId);
 		pluginActionService.commit(normalizedPluginId, normalizedActivationId);
 		pluginAgentContributionService.commitLoad(normalizedPluginId, normalizedActivationId);
-		refreshAgentPlugins();
+		refreshAgentPlugins({ reason: "contribution:commit-load", pluginId: normalizedPluginId });
 	});
 	ipcMain.handle(
 		PLUGIN_CONTRIBUTION_CHANNELS.APP_ACTION_REGISTER,
@@ -98,43 +98,47 @@ export function registerPluginContributionIpc(pluginActionService: PluginActionS
 	ipcMain.handle(
 		PLUGIN_CONTRIBUTION_CHANNELS.CONTINUATION_REGISTER,
 		(_event, pluginId: unknown, registration: unknown) => {
+			const normalizedPluginId = asPluginId(pluginId);
 			pluginAgentContributionService.registerContinuation(
-				asPluginId(pluginId),
+				normalizedPluginId,
 				asContinuationRegistration(registration),
 			);
-			refreshAgentPlugins();
+			refreshAgentPlugins({ reason: "contribution:continuation-register", pluginId: normalizedPluginId });
 		},
 	);
 	ipcMain.handle(
 		PLUGIN_CONTRIBUTION_CHANNELS.CONTINUATION_UNREGISTER,
 		(_event, pluginId: unknown, providerId: unknown, activationId: unknown) => {
+			const normalizedPluginId = asPluginId(pluginId);
 			pluginAgentContributionService.unregisterContinuation(
-				asPluginId(pluginId),
+				normalizedPluginId,
 				asPluginId(providerId),
 				asOptionalStringId(activationId, "continuation activation id"),
 			);
-			refreshAgentPlugins();
+			refreshAgentPlugins({ reason: "contribution:continuation-unregister", pluginId: normalizedPluginId });
 		},
 	);
 	ipcMain.handle(
 		PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_REGISTER,
 		(_event, pluginId: unknown, registration: unknown) => {
+			const normalizedPluginId = asPluginId(pluginId);
 			pluginAgentContributionService.registerSystemPrompt(
-				asPluginId(pluginId),
+				normalizedPluginId,
 				asSystemPromptProviderRegistration(registration),
 			);
-			refreshAgentPlugins();
+			refreshAgentPlugins({ reason: "contribution:system-prompt-register", pluginId: normalizedPluginId });
 		},
 	);
 	ipcMain.handle(
 		PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_UNREGISTER,
 		(_event, pluginId: unknown, providerId: unknown, activationId: unknown) => {
+			const normalizedPluginId = asPluginId(pluginId);
 			pluginAgentContributionService.unregisterSystemPrompt(
-				asPluginId(pluginId),
+				normalizedPluginId,
 				asPluginId(providerId),
 				asOptionalStringId(activationId, "system prompt provider activation id"),
 			);
-			refreshAgentPlugins();
+			refreshAgentPlugins({ reason: "contribution:system-prompt-unregister", pluginId: normalizedPluginId });
 		},
 	);
 	ipcMain.handle(PLUGIN_CONTRIBUTION_CHANNELS.TOOL_REGISTER, (_event, pluginId: unknown, registration: unknown) => {
@@ -148,7 +152,7 @@ export function registerPluginContributionIpc(pluginActionService: PluginActionS
 			activationId: normalizedRegistration.activationId,
 		});
 		pluginAgentContributionService.registerTool(normalizedPluginId, normalizedRegistration);
-		refreshAgentPlugins();
+		refreshAgentPlugins({ reason: "contribution:tool-register", pluginId: normalizedPluginId });
 	});
 	ipcMain.handle(
 		PLUGIN_CONTRIBUTION_CHANNELS.TOOL_UNREGISTER,
@@ -162,7 +166,7 @@ export function registerPluginContributionIpc(pluginActionService: PluginActionS
 				activationId: normalizedActivationId,
 			});
 			pluginAgentContributionService.unregisterTool(normalizedPluginId, normalizedToolId, normalizedActivationId);
-			refreshAgentPlugins();
+			refreshAgentPlugins({ reason: "contribution:tool-unregister", pluginId: normalizedPluginId });
 		},
 	);
 	ipcMain.handle(PLUGIN_CONTRIBUTION_CHANNELS.HOOK_REGISTER, (_event, pluginId: unknown, registration: unknown) => {
@@ -187,7 +191,7 @@ export function registerPluginContributionIpc(pluginActionService: PluginActionS
 		});
 		pluginAgentContributionService.clear(normalizedPluginId, normalizedActivationId);
 		pluginActionService.clear(normalizedPluginId, normalizedActivationId);
-		refreshAgentPlugins();
+		refreshAgentPlugins({ reason: "contribution:clear", pluginId: normalizedPluginId });
 	});
 	ipcMain.handle(PLUGIN_CONTRIBUTION_CHANNELS.GET_SETTINGS, (_event, id: unknown) =>
 		getPluginSettings(asPluginId(id)),
@@ -198,7 +202,7 @@ export function registerPluginContributionIpc(pluginActionService: PluginActionS
 			throw new Error("Invalid plugin settings values");
 		}
 		const effective = setPluginSettings(pluginId, values as Record<string, unknown>);
-		refreshAgentPlugins();
+		refreshAgentPlugins({ reason: "contribution:settings-change", pluginId });
 		for (const contents of webContents.getAllWebContents()) {
 			contents.send(PLUGIN_CONTRIBUTION_CHANNELS.SETTINGS_CHANGED, { pluginId, values: effective });
 		}

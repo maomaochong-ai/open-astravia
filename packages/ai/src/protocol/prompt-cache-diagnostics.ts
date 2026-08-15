@@ -1,7 +1,14 @@
-import type { Context } from "./context.js";
+import type { Context, PromptCacheSystemPromptBlockSpan } from "./context.js";
 import type { ImageContent, Message, TextContent, ThinkingContent } from "./message.js";
 import type { Tool, ToolCall } from "./tool.js";
-import type { PromptCacheChangedSegment, PromptCacheDiagnostics, PromptCachePrefixStatus } from "./usage.js";
+import type {
+	PromptCacheChangedSegment,
+	PromptCacheDefinitionChange,
+	PromptCacheDiagnostics,
+	PromptCachePrefixStatus,
+	PromptCacheSystemPromptBlockFingerprint,
+	PromptCacheToolFingerprint,
+} from "./usage.js";
 
 const HASH_VERSION = "pc1";
 
@@ -21,6 +28,11 @@ export function createPromptCacheDiagnostics(context: Context): PromptCacheDiagn
 	const requestMessages = context.messages.map(canonicalizeMessage);
 	const history = requestMessages.slice(0, -1);
 	const tools = (context.tools ?? []).map(canonicalizeTool);
+	const systemPromptBlocks = fingerprintSystemPromptBlocks(systemPrompt, context.promptCacheSystemPromptBlocks);
+	const toolDefinitions = (context.tools ?? []).map<PromptCacheToolFingerprint>((tool) => ({
+		name: tool.name,
+		hash: fingerprint(canonicalizeTool(tool)),
+	}));
 
 	const stableSystemPromptHash = fingerprint(stableSystemPrompt);
 	const volatileSystemPromptHash = fingerprint(volatileSystemPrompt);
@@ -40,6 +52,8 @@ export function createPromptCacheDiagnostics(context: Context): PromptCacheDiagn
 		volatileSystemPromptHash,
 		volatileSystemPromptLength: volatileSystemPrompt.length,
 		toolsHash,
+		systemPromptBlocks,
+		toolDefinitions,
 		requestMessages,
 	});
 
@@ -53,6 +67,10 @@ export function createPromptCacheDiagnostics(context: Context): PromptCacheDiagn
 		requestMessageCount: requestMessages.length,
 		prefixStatus: comparison.status,
 		changedSegments: comparison.changedSegments,
+		...(systemPromptBlocks ? { systemPromptBlocks } : {}),
+		toolDefinitions,
+		changedSystemPromptBlocks: comparison.changedSystemPromptBlocks,
+		changedTools: comparison.changedTools,
 		stableSystemPromptLength: stableSystemPrompt.length,
 		volatileSystemPromptLength: volatileSystemPrompt.length,
 		historyPrefixMessages: history.length,
@@ -67,17 +85,23 @@ interface PreviousComparisonInput {
 	readonly volatileSystemPromptHash: string;
 	readonly volatileSystemPromptLength: number;
 	readonly toolsHash: string;
+	readonly systemPromptBlocks: readonly PromptCacheSystemPromptBlockFingerprint[] | undefined;
+	readonly toolDefinitions: readonly PromptCacheToolFingerprint[];
 	readonly requestMessages: readonly unknown[];
 }
 
 function compareWithPrevious(input: PreviousComparisonInput): {
 	status: PromptCachePrefixStatus;
 	changedSegments: PromptCacheChangedSegment[];
+	changedSystemPromptBlocks: PromptCacheDefinitionChange[];
+	changedTools: PromptCacheDefinitionChange[];
 } {
-	if (!input.previous) return { status: "initial", changedSegments: [] };
+	if (!input.previous) {
+		return { status: "initial", changedSegments: [], changedSystemPromptBlocks: [], changedTools: [] };
+	}
 	const previous = input.previous;
 	if (previous.requestMessagesHash === undefined || previous.requestMessageCount === undefined) {
-		return { status: "unknown", changedSegments: [] };
+		return { status: "unknown", changedSegments: [], changedSystemPromptBlocks: [], changedTools: [] };
 	}
 
 	const changedSegments: PromptCacheChangedSegment[] = [];
@@ -101,7 +125,78 @@ function compareWithPrevious(input: PreviousComparisonInput): {
 	if (!previousMessagesRemainPrefix) changedSegments.push("messages");
 
 	const stablePrefixChanged = changedSegments.some((segment) => segment !== "volatile-system");
-	return { status: stablePrefixChanged ? "changed" : "extended", changedSegments };
+	return {
+		status: stablePrefixChanged ? "changed" : "extended",
+		changedSegments,
+		changedSystemPromptBlocks:
+			previous.systemPromptBlocks && input.systemPromptBlocks
+				? compareNamedFingerprints(previous.systemPromptBlocks, input.systemPromptBlocks, (item) => item.id)
+				: [],
+		changedTools: previous.toolDefinitions
+			? compareNamedFingerprints(previous.toolDefinitions, input.toolDefinitions, (item) => item.name)
+			: [],
+	};
+}
+
+function fingerprintSystemPromptBlocks(
+	systemPrompt: string,
+	spans: readonly PromptCacheSystemPromptBlockSpan[] | undefined,
+): PromptCacheSystemPromptBlockFingerprint[] | undefined {
+	if (!spans) return undefined;
+	const ids = new Set<string>();
+	let previousEnd = 0;
+	const result: PromptCacheSystemPromptBlockFingerprint[] = [];
+	for (const span of spans) {
+		const end = span.start + span.length;
+		if (
+			!span.id ||
+			ids.has(span.id) ||
+			!Number.isInteger(span.start) ||
+			!Number.isInteger(span.length) ||
+			span.start < previousEnd ||
+			span.length < 0 ||
+			end > systemPrompt.length
+		) {
+			return undefined;
+		}
+		ids.add(span.id);
+		previousEnd = end;
+		result.push({
+			id: span.id,
+			hash: fingerprint(systemPrompt.slice(span.start, end)),
+			charCount: span.length,
+			cacheability: span.cacheability,
+		});
+	}
+	return result;
+}
+
+function compareNamedFingerprints<T extends object>(
+	previous: readonly T[],
+	current: readonly T[],
+	readId: (item: T) => string,
+): PromptCacheDefinitionChange[] {
+	const previousById = new Map(previous.map((item, index) => [readId(item), { item, index }]));
+	const currentIds = new Set(current.map(readId));
+	const changes: PromptCacheDefinitionChange[] = [];
+	for (const [index, item] of current.entries()) {
+		const id = readId(item);
+		const prior = previousById.get(id);
+		if (!prior) {
+			changes.push({ id, change: "added" });
+			continue;
+		}
+		if (stableSerialize(prior.item) !== stableSerialize(item)) {
+			changes.push({ id, change: "changed" });
+		} else if (prior.index !== index) {
+			changes.push({ id, change: "reordered" });
+		}
+	}
+	for (const item of previous) {
+		const id = readId(item);
+		if (!currentIds.has(id)) changes.push({ id, change: "removed" });
+	}
+	return changes;
 }
 
 function findPreviousDiagnostics(messages: readonly Message[]): PromptCacheDiagnostics | undefined {

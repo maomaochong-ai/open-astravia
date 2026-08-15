@@ -50,14 +50,17 @@ if (import.meta.hot) {
     import.meta.hot.send("vetta:plugin-lifecycle-reload", {
       pluginId: ${JSON.stringify(pluginId)},
       reason: "entry",
+	  path: ${JSON.stringify(entryUrl)},
     });
   });
-  import.meta.hot.on("vetta:plugin-full-reload", async () => {
+  import.meta.hot.on("vetta:plugin-full-reload", async (reload) => {
     const nextModule = await import(${JSON.stringify(`${entryUrl}?vetta-reload=`)} + Date.now());
     moduleStore.set(${JSON.stringify(pluginId)}, nextModule);
     import.meta.hot.send("vetta:plugin-lifecycle-reload", {
       pluginId: ${JSON.stringify(pluginId)},
       reason: "full-reload",
+	  path: reload?.path,
+	  triggeredBy: reload?.triggeredBy,
     });
   });
 }
@@ -96,14 +99,29 @@ window.__vite_plugin_react_preamble_installed__ = true;
 					typeof data === "object" && data !== null && "reason" in data && data.reason === "full-reload"
 						? "full-reload"
 						: "entry";
-				emitVettaPluginDevEvent({ type: "update", pluginId, reason });
+				const path = readOptionalString(data, "path");
+				const triggeredBy = readOptionalString(data, "triggeredBy");
+				emitVettaPluginDevEvent({
+					type: "update",
+					pluginId,
+					reason,
+					...(path ? { path } : {}),
+					...(triggeredBy ? { triggeredBy } : {}),
+				});
 			});
 
 			const send = server.ws.send.bind(server.ws);
 			server.ws.send = ((payloadOrEvent: unknown, data?: unknown) => {
 				if (typeof payloadOrEvent === "object" && payloadOrEvent !== null && "type" in payloadOrEvent) {
 					if (payloadOrEvent.type === "full-reload") {
-						send({ type: "custom", event: "vetta:plugin-full-reload", data: {} });
+						send({
+							type: "custom",
+							event: "vetta:plugin-full-reload",
+							data: {
+								path: readOptionalString(payloadOrEvent, "path"),
+								triggeredBy: readOptionalString(payloadOrEvent, "triggeredBy"),
+							},
+						});
 						return;
 					}
 					if (payloadOrEvent.type === "error" && "err" in payloadOrEvent) {
@@ -123,6 +141,12 @@ window.__vite_plugin_react_preamble_installed__ = true;
 			}) as typeof server.ws.send;
 		},
 	};
+}
+
+function readOptionalString(value: unknown, key: string): string | undefined {
+	if (typeof value !== "object" || value === null || !(key in value)) return undefined;
+	const candidate = (value as Record<string, unknown>)[key];
+	return typeof candidate === "string" && candidate.length > 0 ? candidate : undefined;
 }
 
 export function createVettaPluginDevPlugins(entry: string): PluginOption[] {

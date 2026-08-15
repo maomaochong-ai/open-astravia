@@ -24,6 +24,7 @@ interface DevWatchEntry {
 	ready: boolean;
 	attempt: number;
 	restartAttempts: number;
+	pendingUpdate: Extract<PluginDevServerEvent, { type: "update" }> | null;
 }
 
 const entries = new Map<string, DevWatchEntry>();
@@ -37,16 +38,32 @@ function settleInitialStartup(entry: DevWatchEntry, result: InstalledPlugin | Er
 	entry.rejectReady = null;
 }
 
-function scheduleRefresh(id: string, entry: DevWatchEntry): void {
+function scheduleRefresh(
+	id: string,
+	entry: DevWatchEntry,
+	update: Extract<PluginDevServerEvent, { type: "update" }>,
+): void {
 	if (entry.stopped || !entry.ready) return;
+	entry.pendingUpdate = update;
 	if (entry.debounceTimer) clearTimeout(entry.debounceTimer);
 	entry.debounceTimer = setTimeout(() => {
 		entry.debounceTimer = null;
 		if (entry.stopped || !entry.ready) return;
+		const pendingUpdate = entry.pendingUpdate;
+		entry.pendingUpdate = null;
 		try {
 			pluginDevLinkService.refresh(id);
-			refreshAgentPlugins();
-			log.info(`dev-watch: refreshed ${id}`);
+			refreshAgentPlugins({
+				reason: `plugin-dev:${pendingUpdate?.reason ?? "unknown"}`,
+				pluginId: id,
+				force: true,
+			});
+			log.info("dev-watch: refreshed", {
+				pluginId: id,
+				reason: pendingUpdate?.reason ?? "unknown",
+				path: pendingUpdate?.path,
+				triggeredBy: pendingUpdate?.triggeredBy,
+			});
 		} catch (error) {
 			log.warn(`dev-watch: reload failed for ${id}`, error);
 			pluginDevLinkService.setStatus(id, "error", error instanceof Error ? error.message : String(error));
@@ -82,7 +99,7 @@ function failInitialStartup(id: string, entry: DevWatchEntry, message: string): 
 
 function scheduleRestart(id: string, entry: DevWatchEntry, message: string): void {
 	pluginDevLinkService.deactivate(id, message);
-	refreshAgentPlugins();
+	refreshAgentPlugins({ reason: "plugin-dev:server-exit", pluginId: id, force: true });
 	const delay = RESTART_DELAYS_MS[entry.restartAttempts];
 	if (delay === undefined) {
 		log.error(`dev-watch: restart exhausted for ${id}`, { error: message });
@@ -130,13 +147,13 @@ function handleDevServerEvent(
 			entry.restartAttempts = 0;
 			if (entry.startupTimer) clearTimeout(entry.startupTimer);
 			entry.startupTimer = null;
-			refreshAgentPlugins();
+			refreshAgentPlugins({ reason: "plugin-dev:server-ready", pluginId: id, force: true });
 			log.info(`dev-watch: server ready for ${id} at ${event.origin}`);
 			settleInitialStartup(entry, plugin);
 			return;
 		}
 		if (event.type === "update") {
-			scheduleRefresh(id, entry);
+			scheduleRefresh(id, entry, event);
 			return;
 		}
 		if (!entry.ready) {
@@ -232,6 +249,7 @@ export function startPluginDevWatch(
 			ready: false,
 			attempt: 0,
 			restartAttempts: 0,
+			pendingUpdate: null,
 		};
 		entries.set(id, entry);
 		spawnPluginDevServer(id, entry);

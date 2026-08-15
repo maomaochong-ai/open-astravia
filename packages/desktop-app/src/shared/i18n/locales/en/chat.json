@@ -513,6 +513,15 @@
 			"toolCount": "Tool count",
 			"prefixStatus": "Stable prefix status",
 			"changedSegments": "Changed segments",
+			"changedPromptBlocks": "Changed prompt blocks",
+			"changedTools": "Changed tools",
+			"definitionChange": "{{id}} ({{change}})",
+			"changeKinds": {
+				"added": "added",
+				"removed": "removed",
+				"changed": "content changed",
+				"reordered": "reordered"
+			},
 			"segmentSeparator": ", ",
 			"prefixStatuses": {
 				"initial": "First diagnostic",

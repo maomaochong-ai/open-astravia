@@ -4,6 +4,7 @@ import type {
 	ImageContent,
 	Message,
 	Model,
+	PromptCacheSystemPromptBlockSpan,
 	SimpleStreamOptions,
 	StopReason,
 	TextContent,
@@ -356,6 +357,8 @@ export interface ModelCallFrame {
 	 * 消费方必须丢弃，否则断点会切在另一段文本的错误偏移上。
 	 */
 	readonly systemPromptStableLength?: number;
+	/** Block layout corresponding to the composed system prompt. */
+	readonly promptCacheSystemPromptBlocks?: readonly PromptCacheSystemPromptBlockSpan[];
 	/** Call-scoped sensitive inputs; reporters must not expose their content. */
 	readonly contextCompositionSections?: readonly ContextCompositionSectionInput[];
 }

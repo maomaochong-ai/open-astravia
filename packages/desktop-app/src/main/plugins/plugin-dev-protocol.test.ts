@@ -28,6 +28,23 @@ describe("plugin dev server protocol", () => {
 			type: "update",
 			pluginId: "demo",
 		});
+		expect(
+			parsePluginDevServerEvent(
+				JSON.stringify({
+					type: "update",
+					pluginId: "demo",
+					reason: "full-reload",
+					path: "*",
+					triggeredBy: "/src/router.ts",
+				}),
+			),
+		).toEqual({
+			type: "update",
+			pluginId: "demo",
+			reason: "full-reload",
+			path: "*",
+			triggeredBy: "/src/router.ts",
+		});
 		expect(parsePluginDevServerEvent(JSON.stringify({ type: "error", message: "compile failed" }))).toEqual({
 			type: "error",
 			message: "compile failed",

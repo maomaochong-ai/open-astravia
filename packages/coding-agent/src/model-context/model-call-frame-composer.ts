@@ -227,6 +227,7 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 			tools,
 			// 整段 Prompt 只落在这一个 InstructionBlock 里，因此编译期算出的切分点可以直接透传给 Provider。
 			systemPromptStableLength: compiledPrompt.stableLength,
+			promptCacheSystemPromptBlocks: compiledPrompt.promptCacheBlocks,
 			contextCompositionSections: composeContextSections(draft, tools),
 		};
 	}

@@ -82,7 +82,7 @@ bun run verify:ui:debug:debug -- run provider.preflight '{"modelKey":"provider/m
 <VETTA_HOME>/cache/provider-observations/<runId>.ndjson
 ```
 
-每条记录包含模型身份、请求前缀指纹、稳定/动态系统提示词长度、消息和工具数量、归一化 usage、缓存读写 Token、停止原因及调用耗时。可以用相同 Prompt 和模型运行多轮，再按 `request.promptCache.cachePrefixHash`、`prefixStatus` 和 `response.usage.cacheRead` 对比前缀是否稳定及真实缓存命中情况。
+每条记录包含模型身份、请求前缀指纹、稳定/动态系统提示词长度、消息和工具数量、归一化 usage、缓存读写 Token、停止原因及调用耗时。新的诊断还会以哈希形式保存 Prompt Block 与工具定义，并通过 `changedSystemPromptBlocks` / `changedTools` 给出具体变化的块 ID、工具名和变化类型；不会保存提示词正文、工具描述或 Schema。可以用相同 Prompt 和模型运行多轮，再按 `request.promptCache.cachePrefixHash`、`prefixStatus` 和 `response.usage.cacheRead` 对比前缀是否稳定及真实缓存命中情况。
 
 真实多轮工具实验、缓存指标分组、会话 Usage 提取和 Dev Profile 热更新干扰的完整方法见
 [Vetta Debug 真实 Provider 实战](./vetta-debug-real-provider-runbook.md)。

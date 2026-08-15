@@ -513,6 +513,15 @@
 			"toolCount": "工具数量",
 			"prefixStatus": "稳定前缀状态",
 			"changedSegments": "变化部分",
+			"changedPromptBlocks": "变化提示词块",
+			"changedTools": "变化工具",
+			"definitionChange": "{{id}}（{{change}}）",
+			"changeKinds": {
+				"added": "新增",
+				"removed": "删除",
+				"changed": "内容变化",
+				"reordered": "顺序变化"
+			},
 			"segmentSeparator": "、",
 			"prefixStatuses": {
 				"initial": "首次诊断",

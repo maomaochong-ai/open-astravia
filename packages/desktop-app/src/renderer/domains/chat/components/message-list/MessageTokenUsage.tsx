@@ -61,6 +61,22 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 			}
 		})
 		.join(t("messageList.tokenUsage.segmentSeparator"));
+	const changeLabels = {
+		added: t("messageList.tokenUsage.changeKinds.added"),
+		removed: t("messageList.tokenUsage.changeKinds.removed"),
+		changed: t("messageList.tokenUsage.changeKinds.changed"),
+		reordered: t("messageList.tokenUsage.changeKinds.reordered"),
+	};
+	const formatDefinitionChanges = (
+		changes: NonNullable<NonNullable<Usage["promptCache"]>["changedTools"]> | undefined,
+	) =>
+		changes
+			?.map(({ id, change }) =>
+				t("messageList.tokenUsage.definitionChange", { id, change: changeLabels[change] }),
+			)
+			.join(t("messageList.tokenUsage.segmentSeparator"));
+	const changedPromptBlocks = formatDefinitionChanges(latestPromptCache?.changedSystemPromptBlocks);
+	const changedTools = formatDefinitionChanges(latestPromptCache?.changedTools);
 
 	const rows: readonly (readonly [string, string])[] = [
 		[t("messageList.tokenUsage.total"), numberFormatter.format(details.totalTokens)],
@@ -112,6 +128,10 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 					...(changedSegments
 						? [[t("messageList.tokenUsage.changedSegments"), changedSegments] as const]
 						: []),
+					...(changedPromptBlocks
+						? [[t("messageList.tokenUsage.changedPromptBlocks"), changedPromptBlocks] as const]
+						: []),
+					...(changedTools ? [[t("messageList.tokenUsage.changedTools"), changedTools] as const] : []),
 					[t("messageList.tokenUsage.prefixHash"), latestPromptCache.cachePrefixHash],
 				] as const
 			: []),
@@ -146,7 +166,9 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 					{rows.map(([label, value]) => (
 						<div key={label} className="contents">
 							<dt className="text-muted-foreground">{label}</dt>
-							<dd className="text-right font-medium tabular-nums text-popover-foreground">{value}</dd>
+							<dd className="max-w-40 break-words text-right font-medium tabular-nums text-popover-foreground">
+								{value}
+							</dd>
 						</div>
 					))}
 				</dl>

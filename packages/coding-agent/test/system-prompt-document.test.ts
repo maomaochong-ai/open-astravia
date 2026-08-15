@@ -89,13 +89,19 @@ describe("system prompt cache breakpoint", () => {
 			metadata: { cwd: "C:\\workspace", dateTime: "now" },
 		};
 
-		const { content, stableLength } = compileSystemPromptDraft(draft);
+		const { content, stableLength, promptCacheBlocks } = compileSystemPromptDraft(draft);
 
 		expect(content).toBe("Base\n\nSkills\n\nMode\n\nFooter");
 		expect(content.slice(0, stableLength)).toBe("Base\n\nSkills");
 		// 块间分隔符归属其后的块，两段拼回必须与原文逐字相等。
 		expect(content.slice(stableLength)).toBe("\n\nMode\n\nFooter");
 		expect(content.slice(0, stableLength) + content.slice(stableLength)).toBe(content);
+		expect(promptCacheBlocks).toEqual([
+			{ id: "core.base", start: 0, length: 4, cacheability: "stable" },
+			{ id: "core.skills", start: 6, length: 6, cacheability: "stable" },
+			{ id: "core.mode", start: 14, length: 4, cacheability: "volatile" },
+			{ id: "core.footer", start: 20, length: 6, cacheability: "volatile" },
+		]);
 	});
 
 	it("ignores disabled and empty blocks when computing the split point", () => {

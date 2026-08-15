@@ -1,5 +1,7 @@
 /** Structured system-prompt document and deterministic mutation/rendering operations. */
 
+import type { PromptCacheSystemPromptBlockSpan } from "@vetta/ai";
+
 export type SystemPromptBlockType =
 	| "subconscious"
 	| "base"
@@ -72,6 +74,8 @@ export interface CompiledSystemPrompt {
 	 * 两段拼回必然等于 `content`。全部块落在同一段时取 `content.length` 或 `0`。
 	 */
 	readonly stableLength: number;
+	/** Ordered block spans for privacy-safe cache change diagnostics. */
+	readonly promptCacheBlocks: readonly PromptCacheSystemPromptBlockSpan[];
 	readonly diagnostics: SystemPromptDiagnostics;
 }
 
@@ -185,14 +189,27 @@ export function compileSystemPromptDraft(draft: SystemPromptDraft): CompiledSyst
 		.filter((block) => block.enabled && block.content.length > 0)
 		.sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
 	const content = enabledBlocks.map((block) => block.content).join("\n\n");
+	const stableBlockCount = firstVolatileBlockIndex(enabledBlocks);
 	const stableLength = enabledBlocks
-		.slice(0, firstVolatileBlockIndex(enabledBlocks))
+		.slice(0, stableBlockCount)
 		.map((block) => block.content)
 		.join("\n\n").length;
+	let blockEnd = 0;
+	const promptCacheBlocks = enabledBlocks.map<PromptCacheSystemPromptBlockSpan>((block, index) => {
+		const start = blockEnd + (index === 0 ? 0 : 2);
+		blockEnd = start + block.content.length;
+		return {
+			id: block.id,
+			start,
+			length: block.content.length,
+			cacheability: index < stableBlockCount ? "stable" : "volatile",
+		};
+	});
 	const estimatedTokens = estimateTextTokens(content);
 	return {
 		content,
 		stableLength,
+		promptCacheBlocks,
 		diagnostics: {
 			charCount: content.length,
 			estimatedTokens,

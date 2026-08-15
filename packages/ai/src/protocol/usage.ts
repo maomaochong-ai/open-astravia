@@ -19,6 +19,25 @@ export type PromptCachePrefixStatus = "initial" | "extended" | "changed" | "unkn
 
 export type PromptCacheChangedSegment = "stable-system" | "volatile-system" | "tools" | "messages";
 
+export type PromptCacheDefinitionChangeKind = "added" | "removed" | "changed" | "reordered";
+
+export interface PromptCacheSystemPromptBlockFingerprint {
+	id: string;
+	hash: string;
+	charCount: number;
+	cacheability: "stable" | "volatile";
+}
+
+export interface PromptCacheToolFingerprint {
+	name: string;
+	hash: string;
+}
+
+export interface PromptCacheDefinitionChange {
+	id: string;
+	change: PromptCacheDefinitionChangeKind;
+}
+
 /**
  * Privacy-safe fingerprints for the provider-facing prompt prefix.
  *
@@ -45,6 +64,14 @@ export interface PromptCacheDiagnostics {
 	prefixStatus?: PromptCachePrefixStatus;
 	/** Segments that changed relative to the previous diagnosed request. */
 	changedSegments?: PromptCacheChangedSegment[];
+	/** Per-block fingerprints; no prompt text is retained. */
+	systemPromptBlocks?: PromptCacheSystemPromptBlockFingerprint[];
+	/** Per-tool fingerprints; schemas and descriptions are not retained. */
+	toolDefinitions?: PromptCacheToolFingerprint[];
+	/** Exact system-prompt block changes when both requests expose block layout. */
+	changedSystemPromptBlocks?: PromptCacheDefinitionChange[];
+	/** Exact tool definition changes when both requests expose tool fingerprints. */
+	changedTools?: PromptCacheDefinitionChange[];
 	stableSystemPromptLength: number;
 	volatileSystemPromptLength: number;
 	historyPrefixMessages: number;

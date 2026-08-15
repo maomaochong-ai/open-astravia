@@ -248,6 +248,11 @@ console.log(summary.tokenHitRate, summary.readCallCoverage);
 
 The token hit rate is `cacheRead / (input + cacheRead + cacheWrite)`. Output tokens never participate in prompt-cache rates. Aggregated rates only use calls where the corresponding cache detail was observable and expose coverage separately.
 
+`usage.promptCache` contains privacy-safe request fingerprints. Callers that provide
+`Context.promptCacheSystemPromptBlocks` also receive exact `changedSystemPromptBlocks` and
+`changedTools` entries. These records retain block IDs, tool names, lengths, and hashes only;
+prompt text, tool descriptions, and schemas are never copied into usage diagnostics.
+
 ## Tools
 
 Tools enable LLMs to interact with external systems. This library uses TypeBox schemas for type-safe tool definitions with automatic validation using AJV. TypeBox schemas can be serialized and deserialized as plain JSON, making them ideal for distributed systems.

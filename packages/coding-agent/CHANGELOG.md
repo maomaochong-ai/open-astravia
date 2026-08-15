@@ -41,6 +41,7 @@
 
 ### Changed
 
+- 系统提示词编译器现在为每个启用块生成与最终渲染文本一致的位置和稳定性元数据，供 Runtime 在不保留块正文的前提下定位缓存失效来源。
 - **Todo 接入统一 Session Extension 生命周期、端点与观察协议**：Todo 的 Runtime、Tool Feature、Conversation Document 持久化参与、自然停止续跑、观察广播和释放由单一 `coding-agent.todo` 扩展拥有；Composition Root 改为消费 typed contributions，并以通用 Session Extension 集合替代 Todo 专属资源登记。新增 `@vetta/coding-agent/session-extensions` 公共协议入口，集中导出 Todo read/clear/observation token、`TodoItem` 和宿主边界 Schema 解析；Desktop、CLI、SDK 与 Subagent 不再依赖 Runtime Core 的 Todo 类型或事件。既有 Todo Tool、快照、锁定、CLI/SDK `todo_update` 与用户可见 clear/read 行为不变。
 - **heavy 首调确认弹窗文案简化**：提问正文收敛为「允许在本会话中运行「{tool}」吗？」，去掉普通用户读不懂的副作用说明从句（工作区创建文件/计费/不可撤销）。
 - **heavy 首调确认闸接入核心工具的定义级声明**：resolver 的声明来源新增 coding tool registry snapshot（`runtime-tools` 注册对象的 `sideEffect` 字段），核心工具自此可在定义处自我声明——`im_send_attachment` 因此判 heavy（外发不可撤回，此前既不在兜底清单也无声明通道，是无人值守 im-claw 场景的漏网项）。`DEFAULT_HEAVY_TOOL_NAMES` 进一步收窄为「仍未声明的存量插件工具」兜底，新 heavy 工具应在定义处声明而不是加进清单。

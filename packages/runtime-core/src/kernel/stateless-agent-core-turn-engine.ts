@@ -186,11 +186,15 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 					: runtimeMessages;
 				// instructionOverride 替换整段 Prompt，Frame 上算出的稳定前缀长度随即失效，必须丢弃。
 				const stableLength = request.instructionOverride ? 0 : frame.systemPromptStableLength;
+				const promptCacheSystemPromptBlocks = request.instructionOverride
+					? undefined
+					: frame.promptCacheSystemPromptBlocks;
 				const context: Context = {
 					systemPrompt: composeModelCallSystemPrompt({
 						instructions: request.instructionOverride ?? frame.instructions,
 					}),
 					...(stableLength !== undefined ? { systemPromptStableLength: stableLength } : {}),
+					...(promptCacheSystemPromptBlocks ? { promptCacheSystemPromptBlocks } : {}),
 					messages: finalizedMessages,
 					tools: tools.map(toModelTool),
 				};

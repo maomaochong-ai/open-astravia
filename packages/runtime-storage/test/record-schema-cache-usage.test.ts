@@ -52,6 +52,17 @@ describe("conversation cache usage reporting", () => {
 					requestMessageCount: 5,
 					prefixStatus: "extended",
 					changedSegments: ["volatile-system"],
+					systemPromptBlocks: [
+						{
+							id: "plugin.router",
+							hash: "pc1:block",
+							charCount: 20,
+							cacheability: "volatile",
+						},
+					],
+					toolDefinitions: [{ name: "read", hash: "pc1:read" }],
+					changedSystemPromptBlocks: [{ id: "plugin.router", change: "changed" }],
+					changedTools: [{ id: "read", change: "reordered" }],
 					stableSystemPromptLength: 100,
 					volatileSystemPromptLength: 20,
 					historyPrefixMessages: 4,

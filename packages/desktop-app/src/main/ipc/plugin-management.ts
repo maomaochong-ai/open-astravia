@@ -34,12 +34,14 @@ export function registerPluginManagementIpc(pluginActionService: PluginActionSer
 		lifecycle.installPath(asRequiredString(path, "plugin path"), asOptions(options)),
 	);
 	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.REGISTER_MODE_GATE, (_event, id: unknown) => {
-		pluginAgentContributionService.registerModeGate(asPluginId(id));
-		refreshAgentPlugins();
+		const pluginId = asPluginId(id);
+		pluginAgentContributionService.registerModeGate(pluginId);
+		refreshAgentPlugins({ reason: "management:register-mode-gate", pluginId });
 	});
 	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.SET_CONTRIBUTION_MODE, (_event, id: unknown, active: unknown) => {
-		pluginAgentContributionService.setContributionMode(asPluginId(id), active === true);
-		refreshAgentPlugins();
+		const pluginId = asPluginId(id);
+		pluginAgentContributionService.setContributionMode(pluginId, active === true);
+		refreshAgentPlugins({ reason: "management:set-contribution-mode", pluginId });
 	});
 	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.UNINSTALL, (_event, id: unknown) => lifecycle.uninstall(asPluginId(id)));
 	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.SET_ENABLED, (_event, id: unknown, enabled: unknown) =>

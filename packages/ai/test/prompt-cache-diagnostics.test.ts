@@ -131,6 +131,72 @@ describe("prompt cache diagnostics", () => {
 		expect(diagnostics.prefixStatus).toBe("unknown");
 		expect(diagnostics.changedSegments).toEqual([]);
 	});
+
+	it("identifies exact prompt blocks and tools without retaining their contents", () => {
+		const firstContext: Context = {
+			systemPrompt: "stable secret\n\nvolatile secret",
+			systemPromptStableLength: "stable secret".length,
+			promptCacheSystemPromptBlocks: [
+				{ id: "core.identity", start: 0, length: "stable secret".length, cacheability: "stable" },
+				{
+					id: "plugin.router",
+					start: "stable secret\n\n".length,
+					length: "volatile secret".length,
+					cacheability: "volatile",
+				},
+			],
+			messages: [{ role: "user", content: "first request", timestamp: 1 }],
+			tools: [
+				{ name: "read", description: "private read description", parameters: Type.Object({ path: Type.String() }) },
+				{ name: "write", description: "write", parameters: Type.Object({ path: Type.String() }) },
+			],
+		};
+		const first = createPromptCacheDiagnostics(firstContext);
+		const previousResponse = assistantMessage();
+		previousResponse.usage.promptCache = first;
+
+		const second = createPromptCacheDiagnostics({
+			...firstContext,
+			systemPrompt: "stable secret\n\nchanged volatile secret",
+			promptCacheSystemPromptBlocks: [
+				firstContext.promptCacheSystemPromptBlocks![0]!,
+				{
+					id: "plugin.router",
+					start: "stable secret\n\n".length,
+					length: "changed volatile secret".length,
+					cacheability: "volatile",
+				},
+			],
+			messages: [...firstContext.messages, previousResponse, { role: "user", content: "next", timestamp: 3 }],
+			tools: [
+				{ name: "read", description: "changed read description", parameters: Type.Object({ path: Type.String() }) },
+				{ name: "search", description: "search", parameters: Type.Object({ query: Type.String() }) },
+			],
+		});
+
+		expect(second.changedSystemPromptBlocks).toEqual([{ id: "plugin.router", change: "changed" }]);
+		expect(second.changedTools).toEqual([
+			{ id: "read", change: "changed" },
+			{ id: "search", change: "added" },
+			{ id: "write", change: "removed" },
+		]);
+		expect(second.systemPromptBlocks?.map((block) => block.id)).toEqual(["core.identity", "plugin.router"]);
+		expect(second.toolDefinitions?.map((tool) => tool.name)).toEqual(["read", "search"]);
+		const serialized = JSON.stringify(second);
+		expect(serialized).not.toContain("stable secret");
+		expect(serialized).not.toContain("changed volatile secret");
+		expect(serialized).not.toContain("changed read description");
+	});
+
+	it("omits block-level diagnostics when spans are invalid", () => {
+		const diagnostics = createPromptCacheDiagnostics({
+			systemPrompt: "short",
+			promptCacheSystemPromptBlocks: [{ id: "invalid", start: 3, length: 10, cacheability: "volatile" }],
+			messages: [],
+		});
+
+		expect(diagnostics.systemPromptBlocks).toBeUndefined();
+	});
 });
 
 function context(): Context {

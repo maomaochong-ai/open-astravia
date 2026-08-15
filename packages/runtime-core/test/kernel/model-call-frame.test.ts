@@ -197,6 +197,11 @@ describe("model call frame", () => {
 		const frame = await resolve(composerSnapshot(11));
 
 		expect(frame.systemPromptStableLength).toBe(11);
+		expect(frame.promptCacheSystemPromptBlocks).toEqual([
+			{ id: "stable", start: 0, length: 11, cacheability: "stable" },
+		]);
+		expect(Object.isFrozen(frame.promptCacheSystemPromptBlocks)).toBe(true);
+		expect(Object.isFrozen(frame.promptCacheSystemPromptBlocks?.[0])).toBe(true);
 		expect(Object.isFrozen(frame)).toBe(true);
 	});
 
@@ -242,6 +247,10 @@ function composerSnapshot(systemPromptStableLength: number | undefined): Paramet
 					instructions: [{ id: "final", content: "stable part\n\nvolatile", priority: 0 }],
 					tools: new Map(),
 					systemPromptStableLength,
+					promptCacheSystemPromptBlocks:
+						systemPromptStableLength === undefined
+							? undefined
+							: [{ id: "stable", start: 0, length: 11, cacheability: "stable" }],
 				};
 			},
 		},

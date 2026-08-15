@@ -6,6 +6,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Changed
 
+- Runtime Model Call Frame 现在把系统提示词块位置随稳定切分点一同透传给 AI 请求诊断，并在 instruction override 替换提示词时同时丢弃两者，避免错误的块级缓存归因。
 - Runtime 模型调用诊断现在利用上一条 Assistant usage 的消息谱系判断新请求是否保持追加兼容，并将分段变化原因继续附加到成功与失败终态，避免依赖 Session 全局缓存。
 - `usage.update` 现在透传缓存观测级别与实际响应模型身份；Runtime tracing 在 generation 与 agent 观测中分别输出单次和本轮聚合的 `promptCache` 指标，使 Harness 能够统计可信缓存命中率，同时保持旧事件生产者兼容。
 - `RuntimeHost` 的路径规范化、工作目录创建、队列 sidecar 和沙箱授权缓存改为显式 Host Port；核心不再直接依赖 Node 文件系统、路径、OS、AsyncLocalStorage 或 `process`。
