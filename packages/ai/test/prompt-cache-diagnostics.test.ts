@@ -14,7 +14,11 @@ describe("prompt cache diagnostics", () => {
 		changed.messages[2] = { ...toolResult, details: { local: "changed" }, timestamp: 888 };
 		changed.messages[3] = { role: "user", content: "a different current request", timestamp: 777 };
 
-		expect(createPromptCacheDiagnostics(changed)).toEqual(first);
+		const next = createPromptCacheDiagnostics(changed);
+		const { requestMessagesHash: firstRequestHash, ...firstPrefix } = first;
+		const { requestMessagesHash: nextRequestHash, ...nextPrefix } = next;
+		expect(nextPrefix).toEqual(firstPrefix);
+		expect(nextRequestHash).not.toBe(firstRequestHash);
 	});
 
 	it("isolates stable system, volatile system, tools, and history changes", () => {
@@ -58,6 +62,74 @@ describe("prompt cache diagnostics", () => {
 		expect(createPromptCacheDiagnostics(reversedTools).toolsHash).not.toBe(
 			createPromptCacheDiagnostics(base).toolsHash,
 		);
+	});
+
+	it("classifies append-only conversations and isolates changed prefix segments", () => {
+		const firstContext: Context = {
+			systemPrompt: "Stable prefix\n\nvolatile tail",
+			systemPromptStableLength: "Stable prefix".length,
+			messages: [{ role: "user", content: "first request", timestamp: 1 }],
+			tools: context().tools,
+		};
+		const first = createPromptCacheDiagnostics(firstContext);
+		expect(first.prefixStatus).toBe("initial");
+
+		const previousResponse = assistantMessage();
+		previousResponse.usage.promptCache = first;
+		const continued: Context = {
+			...firstContext,
+			messages: [
+				...firstContext.messages,
+				previousResponse,
+				{ role: "user", content: "next request", timestamp: 3 },
+			],
+		};
+		const extended = createPromptCacheDiagnostics(continued);
+		expect(extended.prefixStatus).toBe("extended");
+		expect(extended.changedSegments).toEqual([]);
+
+		const volatileChanged = createPromptCacheDiagnostics({
+			...continued,
+			systemPrompt: "Stable prefix\n\na different volatile tail",
+		});
+		expect(volatileChanged.prefixStatus).toBe("extended");
+		expect(volatileChanged.changedSegments).toEqual(["volatile-system"]);
+
+		const stableChanged = createPromptCacheDiagnostics({
+			...continued,
+			systemPrompt: "Changed prefix\n\nvolatile tail",
+			systemPromptStableLength: "Changed prefix".length,
+		});
+		expect(stableChanged.prefixStatus).toBe("changed");
+		expect(stableChanged.changedSegments).toEqual(["stable-system"]);
+
+		const toolsChanged = createPromptCacheDiagnostics({
+			...continued,
+			tools: [...(continued.tools ?? [])].reverse(),
+		});
+		expect(toolsChanged.prefixStatus).toBe("changed");
+		expect(toolsChanged.changedSegments).toEqual(["tools"]);
+
+		const messagesChanged = createPromptCacheDiagnostics({
+			...continued,
+			messages: [{ role: "user", content: "rewritten", timestamp: 1 }, ...continued.messages.slice(1)],
+		});
+		expect(messagesChanged.prefixStatus).toBe("changed");
+		expect(messagesChanged.changedSegments).toEqual(["messages"]);
+	});
+
+	it("marks historical diagnostics without lineage fields as unknown", () => {
+		const previousResponse = assistantMessage();
+		previousResponse.usage.promptCache = createPromptCacheDiagnostics({ messages: [] });
+		delete previousResponse.usage.promptCache.requestMessagesHash;
+		delete previousResponse.usage.promptCache.requestMessageCount;
+
+		const diagnostics = createPromptCacheDiagnostics({
+			messages: [previousResponse, { role: "user", content: "next", timestamp: 3 }],
+		});
+
+		expect(diagnostics.prefixStatus).toBe("unknown");
+		expect(diagnostics.changedSegments).toEqual([]);
 	});
 });
 

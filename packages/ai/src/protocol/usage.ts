@@ -15,6 +15,10 @@ export interface UsageCost {
  */
 export type CacheUsageReporting = "unavailable" | "read-only" | "read-write";
 
+export type PromptCachePrefixStatus = "initial" | "extended" | "changed" | "unknown";
+
+export type PromptCacheChangedSegment = "stable-system" | "volatile-system" | "tools" | "messages";
+
 /**
  * Privacy-safe fingerprints for the provider-facing prompt prefix.
  *
@@ -33,6 +37,14 @@ export interface PromptCacheDiagnostics {
 	toolsHash: string;
 	/** Hash of the message history before the current user/tool tail. */
 	historyPrefixHash: string;
+	/** Hash of every provider-neutral message in this request. */
+	requestMessagesHash?: string;
+	/** Message count covered by `requestMessagesHash`. */
+	requestMessageCount?: number;
+	/** Whether stable cache segments and prior messages remain compatible with the previous request. */
+	prefixStatus?: PromptCachePrefixStatus;
+	/** Segments that changed relative to the previous diagnosed request. */
+	changedSegments?: PromptCacheChangedSegment[];
 	stableSystemPromptLength: number;
 	volatileSystemPromptLength: number;
 	historyPrefixMessages: number;

@@ -38,6 +38,29 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 	);
 
 	if (!details) return null;
+	const latestPromptCache = details.latestPromptCache;
+	const prefixStatus = latestPromptCache?.prefixStatus
+		? {
+				initial: t("messageList.tokenUsage.prefixStatuses.initial"),
+				extended: t("messageList.tokenUsage.prefixStatuses.extended"),
+				changed: t("messageList.tokenUsage.prefixStatuses.changed"),
+				unknown: t("messageList.tokenUsage.prefixStatuses.unknown"),
+			}[latestPromptCache.prefixStatus]
+		: null;
+	const changedSegments = latestPromptCache?.changedSegments
+		?.map((segment) => {
+			switch (segment) {
+				case "stable-system":
+					return t("messageList.tokenUsage.prefixSegments.stableSystem");
+				case "volatile-system":
+					return t("messageList.tokenUsage.prefixSegments.volatileSystem");
+				case "tools":
+					return t("messageList.tokenUsage.prefixSegments.tools");
+				case "messages":
+					return t("messageList.tokenUsage.prefixSegments.messages");
+			}
+		})
+		.join(t("messageList.tokenUsage.segmentSeparator"));
 
 	const rows: readonly (readonly [string, string])[] = [
 		[t("messageList.tokenUsage.total"), numberFormatter.format(details.totalTokens)],
@@ -60,11 +83,13 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 		],
 		[
 			t("messageList.tokenUsage.writeCoverage"),
-			details.writeCallCoverage === null
+			details.readCallCoverage !== null && details.readCallCoverage > 0 && details.writeCallCoverage === 0
+				? t("messageList.tokenUsage.readOnlyReporting")
+				: details.writeCallCoverage === null
 				? t("messageList.tokenUsage.unavailable")
 				: percentFormatter.format(details.writeCallCoverage),
 		],
-		...(details.latestPromptCache
+		...(latestPromptCache
 			? [
 					[
 						t("messageList.tokenUsage.diagnosticCoverage"),
@@ -72,18 +97,22 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 					],
 					[
 						t("messageList.tokenUsage.stableSystemChars"),
-						numberFormatter.format(details.latestPromptCache.stableSystemPromptLength),
+						numberFormatter.format(latestPromptCache.stableSystemPromptLength),
 					],
 					[
 						t("messageList.tokenUsage.volatileSystemChars"),
-						numberFormatter.format(details.latestPromptCache.volatileSystemPromptLength),
+						numberFormatter.format(latestPromptCache.volatileSystemPromptLength),
 					],
 					[
 						t("messageList.tokenUsage.historyMessages"),
-						numberFormatter.format(details.latestPromptCache.historyPrefixMessages),
+						numberFormatter.format(latestPromptCache.historyPrefixMessages),
 					],
-					[t("messageList.tokenUsage.toolCount"), numberFormatter.format(details.latestPromptCache.toolCount)],
-					[t("messageList.tokenUsage.prefixHash"), details.latestPromptCache.cachePrefixHash],
+					[t("messageList.tokenUsage.toolCount"), numberFormatter.format(latestPromptCache.toolCount)],
+					...(prefixStatus ? [[t("messageList.tokenUsage.prefixStatus"), prefixStatus] as const] : []),
+					...(changedSegments
+						? [[t("messageList.tokenUsage.changedSegments"), changedSegments] as const]
+						: []),
+					[t("messageList.tokenUsage.prefixHash"), latestPromptCache.cachePrefixHash],
 				] as const
 			: []),
 	];

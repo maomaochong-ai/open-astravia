@@ -1,7 +1,7 @@
 import type { Context } from "./context.js";
 import type { ImageContent, Message, TextContent, ThinkingContent } from "./message.js";
 import type { Tool, ToolCall } from "./tool.js";
-import type { PromptCacheDiagnostics } from "./usage.js";
+import type { PromptCacheChangedSegment, PromptCacheDiagnostics, PromptCachePrefixStatus } from "./usage.js";
 
 const HASH_VERSION = "pc1";
 
@@ -18,17 +18,29 @@ export function createPromptCacheDiagnostics(context: Context): PromptCacheDiagn
 	const stableLength = normalizeStableLength(context.systemPromptStableLength, systemPrompt.length);
 	const stableSystemPrompt = systemPrompt.slice(0, stableLength);
 	const volatileSystemPrompt = systemPrompt.slice(stableLength);
-	const history = context.messages.slice(0, -1).map(canonicalizeMessage);
+	const requestMessages = context.messages.map(canonicalizeMessage);
+	const history = requestMessages.slice(0, -1);
 	const tools = (context.tools ?? []).map(canonicalizeTool);
 
 	const stableSystemPromptHash = fingerprint(stableSystemPrompt);
 	const volatileSystemPromptHash = fingerprint(volatileSystemPrompt);
 	const toolsHash = fingerprint(tools);
 	const historyPrefixHash = fingerprint(history);
+	const requestMessagesHash = fingerprint(requestMessages);
 	const cachePrefixHash = fingerprint({
 		stableSystemPromptHash,
 		toolsHash,
 		historyPrefixHash,
+	});
+	const previous = findPreviousDiagnostics(context.messages);
+	const comparison = compareWithPrevious({
+		previous,
+		stableSystemPromptHash,
+		stableSystemPromptLength: stableSystemPrompt.length,
+		volatileSystemPromptHash,
+		volatileSystemPromptLength: volatileSystemPrompt.length,
+		toolsHash,
+		requestMessages,
 	});
 
 	return {
@@ -37,11 +49,67 @@ export function createPromptCacheDiagnostics(context: Context): PromptCacheDiagn
 		volatileSystemPromptHash,
 		toolsHash,
 		historyPrefixHash,
+		requestMessagesHash,
+		requestMessageCount: requestMessages.length,
+		prefixStatus: comparison.status,
+		changedSegments: comparison.changedSegments,
 		stableSystemPromptLength: stableSystemPrompt.length,
 		volatileSystemPromptLength: volatileSystemPrompt.length,
 		historyPrefixMessages: history.length,
 		toolCount: tools.length,
 	};
+}
+
+interface PreviousComparisonInput {
+	readonly previous: PromptCacheDiagnostics | undefined;
+	readonly stableSystemPromptHash: string;
+	readonly stableSystemPromptLength: number;
+	readonly volatileSystemPromptHash: string;
+	readonly volatileSystemPromptLength: number;
+	readonly toolsHash: string;
+	readonly requestMessages: readonly unknown[];
+}
+
+function compareWithPrevious(input: PreviousComparisonInput): {
+	status: PromptCachePrefixStatus;
+	changedSegments: PromptCacheChangedSegment[];
+} {
+	if (!input.previous) return { status: "initial", changedSegments: [] };
+	const previous = input.previous;
+	if (previous.requestMessagesHash === undefined || previous.requestMessageCount === undefined) {
+		return { status: "unknown", changedSegments: [] };
+	}
+
+	const changedSegments: PromptCacheChangedSegment[] = [];
+	if (
+		previous.stableSystemPromptHash !== input.stableSystemPromptHash ||
+		previous.stableSystemPromptLength !== input.stableSystemPromptLength
+	) {
+		changedSegments.push("stable-system");
+	}
+	if (
+		previous.volatileSystemPromptHash !== input.volatileSystemPromptHash ||
+		previous.volatileSystemPromptLength !== input.volatileSystemPromptLength
+	) {
+		changedSegments.push("volatile-system");
+	}
+	if (previous.toolsHash !== input.toolsHash) changedSegments.push("tools");
+
+	const previousMessagesRemainPrefix =
+		previous.requestMessageCount <= input.requestMessages.length &&
+		fingerprint(input.requestMessages.slice(0, previous.requestMessageCount)) === previous.requestMessagesHash;
+	if (!previousMessagesRemainPrefix) changedSegments.push("messages");
+
+	const stablePrefixChanged = changedSegments.some((segment) => segment !== "volatile-system");
+	return { status: stablePrefixChanged ? "changed" : "extended", changedSegments };
+}
+
+function findPreviousDiagnostics(messages: readonly Message[]): PromptCacheDiagnostics | undefined {
+	for (let index = messages.length - 1; index >= 0; index--) {
+		const message = messages[index];
+		if (message?.role === "assistant" && message.usage.promptCache) return message.usage.promptCache;
+	}
+	return undefined;
 }
 
 function normalizeStableLength(value: number | undefined, promptLength: number): number {

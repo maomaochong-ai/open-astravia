@@ -505,11 +505,27 @@
 			"cacheHitRate": "Cache hit rate",
 			"readCoverage": "Read observation coverage",
 			"writeCoverage": "Write observation coverage",
+			"readOnlyReporting": "Not reported (read-only)",
 			"diagnosticCoverage": "Prefix diagnostic coverage",
 			"stableSystemChars": "Stable system prompt chars",
 			"volatileSystemChars": "Volatile system prompt chars",
 			"historyMessages": "Prefix history messages",
 			"toolCount": "Tool count",
+			"prefixStatus": "Stable prefix status",
+			"changedSegments": "Changed segments",
+			"segmentSeparator": ", ",
+			"prefixStatuses": {
+				"initial": "First diagnostic",
+				"extended": "Continuously extended",
+				"changed": "Prefix changed",
+				"unknown": "Historical version unavailable"
+			},
+			"prefixSegments": {
+				"stableSystem": "Stable system prompt",
+				"volatileSystem": "Volatile system prompt",
+				"tools": "Tool definitions",
+				"messages": "Message history"
+			},
 			"prefixHash": "Request prefix fingerprint",
 			"unavailable": "Not reported"
 		},

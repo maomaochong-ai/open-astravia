@@ -6,6 +6,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **缓存前缀连续性诊断**：逐轮 Token 面板现在显示稳定前缀是首次诊断、连续扩展、已改变还是因历史版本不可比较，并列出变化发生在系统提示词、工具或消息历史；只提供读取观测的 Provider 会明确显示写入数据“未上报（只读）”。
 - **逐轮 Token 与上下文缓存详情**：每条已完成的 Assistant 消息末尾新增用量图标，悬停或键盘聚焦后展示本轮多次模型调用汇总的输入、输出、缓存读取/写入、总 Token、缓存命中率与观测覆盖率；历史回放与实时流使用同一消息 usage 数据，不写入 App Monitor。
 
 - **Desktop UI 验证 Profile 与有界进程监督**：新增每次全新启动的 Fresh、持久且只从 `.vetta-dev`

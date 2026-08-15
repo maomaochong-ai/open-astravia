@@ -24,6 +24,21 @@ describe("model call diagnostics", () => {
 			volatileSystemPromptLength: 8,
 			historyPrefixMessages: 1,
 			toolCount: 0,
+			prefixStatus: "initial",
+		});
+
+		const nextContext: Context = {
+			...context(),
+			messages: [...context().messages, result, { role: "user", content: "next request", timestamp: 4 }],
+		};
+		const next = withPromptCacheDiagnostics(
+			{ events: events({ type: "done", reason: "stop", message }), result: Promise.resolve(message) },
+			nextContext,
+		);
+
+		expect((await next.result).usage.promptCache).toMatchObject({
+			prefixStatus: "extended",
+			changedSegments: [],
 		});
 	});
 });

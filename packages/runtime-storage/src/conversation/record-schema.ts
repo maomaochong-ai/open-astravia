@@ -72,6 +72,26 @@ const UsageSchema = Type.Object(
 					volatileSystemPromptHash: Type.String(),
 					toolsHash: Type.String(),
 					historyPrefixHash: Type.String(),
+					requestMessagesHash: Type.Optional(Type.String()),
+					requestMessageCount: Type.Optional(Type.Integer({ minimum: 0 })),
+					prefixStatus: Type.Optional(
+						Type.Union([
+							Type.Literal("initial"),
+							Type.Literal("extended"),
+							Type.Literal("changed"),
+							Type.Literal("unknown"),
+						]),
+					),
+					changedSegments: Type.Optional(
+						Type.Array(
+							Type.Union([
+								Type.Literal("stable-system"),
+								Type.Literal("volatile-system"),
+								Type.Literal("tools"),
+								Type.Literal("messages"),
+							]),
+						),
+					),
 					stableSystemPromptLength: Type.Number(),
 					volatileSystemPromptLength: Type.Number(),
 					historyPrefixMessages: Type.Integer({ minimum: 0 }),

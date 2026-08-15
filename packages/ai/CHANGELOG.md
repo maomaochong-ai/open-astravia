@@ -4,6 +4,7 @@
 
 ### Added
 
+- `PromptCacheDiagnostics` 新增跨调用消息谱系、追加兼容状态及分段变化原因，可区分正常历史追加与稳定系统提示词、工具或历史重写导致的缓存前缀失效；旧 usage 记录保持兼容。
 - `Usage` 新增向后兼容的 `cacheUsageReporting`，区分真实零命中与 Provider 未上报；Anthropic、Bedrock、OpenAI 和 Google 原生适配器现在声明每次调用的缓存观测级别，并公开统一的单次与多调用缓存指标投影。
 - AI 根入口现在公开导出 Provider credential/error 合同，Runtime 模型绑定与 Provider 适配器可以共享同一套认证失败类型，而不需要深度导入实现目录。
 - 新增显式模型不存在错误工厂，模型解析失败统一使用 `AI_MODEL_NOT_FOUND`。

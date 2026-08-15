@@ -505,11 +505,27 @@
 			"cacheHitRate": "缓存命中率",
 			"readCoverage": "读取观测覆盖率",
 			"writeCoverage": "写入观测覆盖率",
+			"readOnlyReporting": "未上报（只读）",
 			"diagnosticCoverage": "前缀诊断覆盖",
 			"stableSystemChars": "稳定系统提示词字符",
 			"volatileSystemChars": "动态系统提示词字符",
 			"historyMessages": "前缀历史消息",
 			"toolCount": "工具数量",
+			"prefixStatus": "稳定前缀状态",
+			"changedSegments": "变化部分",
+			"segmentSeparator": "、",
+			"prefixStatuses": {
+				"initial": "首次诊断",
+				"extended": "连续扩展",
+				"changed": "前缀已改变",
+				"unknown": "历史版本不可比较"
+			},
+			"prefixSegments": {
+				"stableSystem": "稳定系统提示词",
+				"volatileSystem": "动态系统提示词",
+				"tools": "工具定义",
+				"messages": "历史消息"
+			},
 			"prefixHash": "请求前缀指纹",
 			"unavailable": "未上报"
 		},
