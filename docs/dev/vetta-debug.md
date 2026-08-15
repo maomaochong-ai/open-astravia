@@ -40,6 +40,38 @@ bun run verify:ui:stop:debug
 bun run verify:ui:start:debug
 ```
 
+## Provider 请求观测
+
+需要验证上下文缓存或检查模型供应商实际请求时，可以在启动 Debug Profile 前启用测试观测中间件：
+
+```powershell
+$env:VETTA_PROVIDER_OBSERVATION_RUN_ID="cache-baseline-01"
+$env:VETTA_PROVIDER_OBSERVATION_CAPTURE="metadata"
+bun run verify:ui:start:debug
+```
+
+`runId` 只允许 1 至 64 个字母、数字、下划线或连字符。环境变量只在 Main 进程启动时读取；验证实例已经运行时，先执行 `bun run verify:ui:stop:debug` 再重新启动。
+
+中间件不改变 `conversation.create`、`conversation.continue` 或其他 Debug RPC 的返回合同。每次内置原生 Provider 调用完成后，会向以下文件追加一条 NDJSON：
+
+```text
+<VETTA_HOME>/cache/provider-observations/<runId>.ndjson
+```
+
+每条记录包含模型身份、请求前缀指纹、稳定/动态系统提示词长度、消息和工具数量、归一化 usage、缓存读写 Token、停止原因及调用耗时。可以用相同 Prompt 和模型运行多轮，再按 `request.promptCache.cachePrefixHash`、`prefixStatus` 和 `response.usage.cacheRead` 对比前缀是否稳定及真实缓存命中情况。
+
+`VETTA_PROVIDER_OBSERVATION_CAPTURE` 支持三档：
+
+| 值 | 记录内容 | 用途 |
+|---|---|---|
+| `metadata` | 哈希、长度、usage 与安全 Provider metadata | 默认；缓存命中率回归测试 |
+| `payload` | 额外记录脱敏后的 Provider 请求 payload | 定位动态字段和消息排序变化 |
+| `wire` | 额外记录脱敏后的 HTTP 请求与响应正文 | 检查供应商真实 wire 协议 |
+
+`payload` 和 `wire` 仍可能包含对话正文、工具参数和模型输出，只能在隔离的验证 Profile 中短期使用；认证 header、cookie、URL 密钥参数以及常见 token/secret/password 字段会统一替换为 `[REDACTED]`。删除实验数据时只删除对应 `provider-observations` 缓存文件。
+
+当前观测 Registry 与全局 Registry 隔离，只注册内置原生 Adapter。自定义 legacy Provider 会回退到正常调用链且不产生观测记录；Bedrock 使用 SDK transport，能记录 payload 和最终 usage，但不保证产生 HTTP wire 记录。启用观测本身不会调用模型，真实 Provider 调用仍可能产生费用，必须由测试发起者显式执行会话。
+
 ## 标识和生命周期
 
 | 标识 | 生命周期 | 用途 |

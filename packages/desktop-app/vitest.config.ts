@@ -20,6 +20,7 @@ export default defineConfig({
 				find: "@vetta-org/plugin-sdk/manifest",
 				replacement: resolve(__dirname, "../plugins/plugin-sdk/src/manifest.ts"),
 			},
+			{ find: "@vetta/ai/testing", replacement: resolve(__dirname, "../ai/src/testing/index.ts") },
 			{ find: "@vetta/ai", replacement: resolve(__dirname, "../ai/src/index.ts") },
 			{ find: "@vetta/agent-core", replacement: resolve(__dirname, "../agent/src/index.ts") },
 			{

@@ -50,12 +50,14 @@ import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "../sandbox/windows-binary-resolver.js";
 import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./host-services.js";
+import { getDesktopProviderObservationRuntime } from "./provider-observation.js";
 
 const log = getAppLogger("runtime");
 
 export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	const platformServices = createDesktopRuntimeHostPlatformServices();
 	const modelRuntime = getOrCreateSharedModelRuntime();
+	const providerObservationRuntime = getDesktopProviderObservationRuntime();
 	const getDefaultExecutionMode = async () => (await readDesktopConfig()).defaultExecutionMode;
 	const sandboxHostPath = resolveWindowsSandboxHostBinary()?.path;
 	const linuxBubblewrapPath = getAvailableLinuxBubblewrapPath();
@@ -77,6 +79,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	const runtimeBackendPool = new DesktopRuntimeBackendPool({
 		compositionDefaults: {
 			modelRegistry: modelRuntime,
+			...(providerObservationRuntime ? { streamFn: providerObservationRuntime.streamFn } : {}),
 			createPluginMcpRuntime: ({ cwd, agentDir }) => {
 				const resolvedAgentDir = agentDir ?? getAgentDir();
 				return createCodingAgentPluginMcpRuntime({
