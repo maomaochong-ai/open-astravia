@@ -391,7 +391,6 @@ function childSession(sessionId: string, promptInputs: string[]): RuntimeSession
 		sessionId,
 		createCoreAssembly: () => ({
 			lifecycle: { sessionPath: `C:\\conversations\\.subagents\\parent\\${sessionId}.conversation.jsonl` },
-			todoController: undefined,
 		}),
 		prompt: async ({ text }: { readonly text: string }) => {
 			promptInputs.push(text);

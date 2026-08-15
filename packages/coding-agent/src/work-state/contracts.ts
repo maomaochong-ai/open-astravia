@@ -24,12 +24,14 @@ export interface SceneTodoState {
 	initializeSceneTodoItems(contents: readonly string[]): void;
 }
 
-export interface CodingAgentTodoRuntime extends RuntimeDocumentParticipant, RuntimeSessionTodoController {
+export interface CodingAgentTodoRuntime extends RuntimeDocumentParticipant {
 	getAll(): ReadonlyArray<TodoItem>;
+	readItems(): readonly TodoItem[];
 	isLocked(): boolean;
 	getLockSource(): TodoLockSource | null;
 	createMany(contents: string[]): TodoItem[];
 	update(id: number, status: TodoItem["status"]): TodoItem | undefined;
+	clear(): boolean;
 	/** 订阅 Todo 变更，供宿主把状态实时广播给 UI。返回退订函数。 */
 	subscribe(listener: TodoUpdateListener): () => void;
 	initializeTodoItems(contents: readonly string[], lockSource?: TodoLockSource): void;
@@ -39,4 +41,4 @@ export interface CodingAgentTodoRuntime extends RuntimeDocumentParticipant, Runt
 	dispose(): Promise<void>;
 }
 
-import type { RuntimeDocumentParticipant, RuntimeSessionTodoController } from "@vetta/runtime-core";
+import type { RuntimeDocumentParticipant } from "@vetta/runtime-core";

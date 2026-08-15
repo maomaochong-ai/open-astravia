@@ -11,7 +11,7 @@
 在 `@vetta/runtime-core/session-extensions` 定义平台与产品无关的 Session Extension 合同：
 
 - `SessionExtensionDefinition` 声明稳定 ID、依赖、冲突和实例工厂；Composition 按依赖拓扑确定性初始化。
-- `SessionExtensionInstance` 是 Session 级资源所有者，通过判别联合贡献 Agent Feature、Conversation Document participant、Continuation source、typed service 和 typed endpoint。
+- `SessionExtensionInstance` 是 Session 级资源所有者，通过判别联合贡献 Agent Feature、Conversation Document participant、Continuation source、initial observation source、typed service 和 typed endpoint。
 - typed signal 只表达已发生的观察事实；单个监听器失败不得改变扩展状态或阻断其他监听器。
 - service 只允许本扩展或显式依赖方读取；service、endpoint、continuation source 和扩展 ID 冲突均 fail closed。
 - 初始化失败严格逆序回滚；初始化错误与回滚错误同时保留。正常关闭全量尝试释放，成功项不再执行，失败项允许后续关闭重试。
@@ -28,14 +28,18 @@ Todo 由 `coding-agent/work-state` 提供 `coding-agent.todo` Session Extension�
 - Conversation Document participant；
 - 锁定 Todo 的 continuation source；
 - read/clear typed endpoint、runtime service 与 changed signal；
-- `todo_update` 兼容观察投影；
+- typed Todo observation、迟订阅初始状态源与产品宿主的 `todo_update` 兼容映射；
 - 初始化回滚、正常释放和 Composition 关闭兜底。
 
 Todo Runtime 的默认 ID 生成改用平台中立的 Web Crypto，默认实现不再直接导入 `node:crypto`。Todo Tool 当前仍复用 `runtime-node` 的既有实现，这是现有 Coding Agent Node 产品组合的已知边界；本决策不在同一阶段迁移全部 Tool 实现。
 
 Coding Agent Composition Options 通过 `createSessionExtensionDefinitions(sessionOptions)` 接受其他可信产品能力定义。该工厂在每个 Session 初始化事务内执行，返回的定义与内置 Todo 一起完成依赖排序、初始化、回滚和释放。它是程序化 Composition Root 注入点，不直接加载 Plugin 或外部配置。
 
-现有 `RuntimeResources.todoController`、`RuntimeHost.clearTodos()` 和 `todo_update` 保留，以维持 Desktop、CLI 与 SDK 的公开行为。它们现在投影同一个 Extension-owned Runtime，不创建第二份状态或生命周期。待宿主控制面迁移到通用 Session Extension endpoint 后，应删除这些 Todo 专属 Runtime Core 合同；删除前必须同步迁移全部消费者和合同测试。
+宿主控制面通过 `SessionExtensionEndpointHost` 和 `RuntimeSessionExtensionHost` 暴露类型化 endpoint。`RuntimeHost.invokeSessionExtension()` 只转发 token、输入和取消信号，不解释具体产品语义；Desktop、CLI、SDK 和 Subagent 通过 Coding Agent 导出的 Todo read/clear token 访问同一个 Extension-owned Runtime。`RuntimeResources.todoController`、`RuntimeSessionTodoController` 与 `RuntimeHost.clearTodos()` 已删除，不保留 Todo 专属兼容别名。
+
+为了维持迟订阅宿主的状态恢复，Extension 可贡献同步的 initial observation source，Composition 统一汇总后由 `RuntimeSessionExtensionHost` 投影。扩展通过 typed observation token 构造 `session.extension` 信封，Runtime Core 只负责附加 Session 元数据和路由 `extensionId/event/payload`，不解释 payload。Coding Agent 的公共 `@vetta/coding-agent/session-extensions` 入口拥有 Todo token、`TodoItem` 与 TypeBox 校验适配器；Desktop 和 CLI 在产品边界验证 payload 后再更新各自的 Todo 视图。
+
+Runtime Core 的 `TodoItem`、`TodoUpdateEvent` 和 `todo_update` 分支已删除。CLI 与稳定 SDK 可以在自己的产品事件合同中继续使用 `todo_update`，但它们必须从已校验的 Coding Agent observation 映射，不得让该名称反向进入通用 Runtime 协议。
 
 ## 被拒绝方案
 
@@ -55,5 +59,6 @@ Factory 能隐藏构造代码，但不能统一贡献发现、依赖校验、冲
 
 - 新的 Session 级产品能力可以围绕自己的领域状态实现一个 Extension Definition，中心组装只收集定义。
 - Agent Feature 继续专注 Turn Snapshot，Session Extension 专注 Session 生命周期和跨能力贡献，两层职责可分别测试。
-- Todo 当前仍有宿主兼容投影，runtime-core 的产品专属合同尚未全部移除；这是后续迁移目标，不代表最终边界。
+- Todo 的宿主命令与观察事件均已迁移到通用 endpoint/observation；Runtime Core 不再定义 Todo Controller、Todo 数据模型、Todo 事件或清空策略。
+- 新产品能力可以复用同一通用信封，但跨 IPC/RPC 后的 `payload` 是 `unknown`；具体产品必须在首次消费边界进行运行时 Schema 校验。
 - 动态安装、热替换、权限清单和第三方 Extension ABI 尚未定义；出现真实第二实现和安全需求后再扩展合同，不在当前接口中预留万能 metadata。

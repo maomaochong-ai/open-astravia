@@ -401,7 +401,7 @@ describe("Desktop RuntimeHost production contract", () => {
 		}
 
 		expect(observations.runtime).toEqual({
-			mutationEvents: ["todo_update", "todo_update", "todo_update", "todo_update"],
+			mutationEvents: ["session.extension", "session.extension", "session.extension", "session.extension"],
 			parentRestored: true,
 			childRestored: [
 				historyMessage("user", "first-user", null),

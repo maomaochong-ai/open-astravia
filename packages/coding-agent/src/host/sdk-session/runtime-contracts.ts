@@ -10,7 +10,6 @@ import type {
 	RuntimeSessionInputQueueMode,
 	RuntimeSessionState,
 	RuntimeSubagentSnapshot,
-	TodoItem,
 } from "@vetta/runtime-core";
 import type { CodingAgentRetryEvent } from "../../public-api/sdk/sdk-event-contract.js";
 import type {
@@ -24,6 +23,7 @@ import type {
 	CodingAgentToolInfo,
 } from "../../public-api/sdk/sdk-session-contract.js";
 import type { CodingAgentSessionToolDefinition } from "../../public-api/sdk/sdk-tool-contract.js";
+import type { TodoItem } from "../../work-state/contracts.js";
 
 /** 固定会话适配器依赖的内部能力端口。 */
 export interface CodingAgentSdkSessionCapabilityPort {

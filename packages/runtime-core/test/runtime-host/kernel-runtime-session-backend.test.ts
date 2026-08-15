@@ -552,7 +552,6 @@ describe("KernelRuntimeSessionBackend", () => {
 				"hostInteraction",
 				"executionController",
 				"backgroundWorkController",
-				"todoController",
 				"configurationController",
 			],
 		});
@@ -573,10 +572,6 @@ describe("KernelRuntimeSessionBackend", () => {
 				readTasks: () => [],
 				readSubagents: () => [],
 				interruptSubagent: () => undefined,
-			},
-			todoController: {
-				readItems: () => [],
-				clear: () => true,
 			},
 			configurationController: {
 				setSteeringMode,

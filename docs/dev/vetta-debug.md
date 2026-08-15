@@ -84,6 +84,9 @@ bun run verify:ui:debug:debug -- run provider.preflight '{"modelKey":"provider/m
 
 每条记录包含模型身份、请求前缀指纹、稳定/动态系统提示词长度、消息和工具数量、归一化 usage、缓存读写 Token、停止原因及调用耗时。可以用相同 Prompt 和模型运行多轮，再按 `request.promptCache.cachePrefixHash`、`prefixStatus` 和 `response.usage.cacheRead` 对比前缀是否稳定及真实缓存命中情况。
 
+真实多轮工具实验、缓存指标分组、会话 Usage 提取和 Dev Profile 热更新干扰的完整方法见
+[Vetta Debug 真实 Provider 实战](./vetta-debug-real-provider-runbook.md)。
+
 `VETTA_PROVIDER_OBSERVATION_CAPTURE` 支持三档：
 
 | 值 | 记录内容 | 用途 |

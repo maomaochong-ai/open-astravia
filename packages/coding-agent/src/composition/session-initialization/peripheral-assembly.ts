@@ -2,7 +2,7 @@ import { join } from "node:path";
 import type { Message } from "@vetta/ai";
 import type { ConversationScenario, InitializationRollbackTask, RuntimeResourceContext } from "@vetta/runtime-core";
 import type { AgentFeatureDefinition, AgentProfile, ModelCallContributionContext } from "@vetta/runtime-core/kernel";
-import { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
+import { SessionExtensionComposition, sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
 import { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
@@ -22,6 +22,7 @@ import {
 	CODING_AGENT_TODO_RUNTIME,
 	createCodingAgentTodoSessionExtension,
 } from "../../work-state/todo-session-extension.js";
+import { CODING_AGENT_TODO_OBSERVATION } from "../../work-state/todo-session-extension-contract.js";
 import { createCodingAgentKnowledgeWriteOperations } from "../coding-agent-knowledge-runtime.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
@@ -196,8 +197,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 				initialLockSource: sessionOptions.initialTodoLockSource,
 				reportUpdate: (items) =>
 					options.resourceContext.reportObservation({
-						type: "todo_update",
-						items,
+						...sessionExtensionObservation(CODING_AGENT_TODO_OBSERVATION, items),
 						source: "tool",
 					}),
 			}),

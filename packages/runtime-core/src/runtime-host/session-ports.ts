@@ -14,11 +14,12 @@ import type {
 	SessionStateSnapshot,
 	SettingsPatch,
 	SubagentInfo,
-	TodoItem,
 } from "../contracts.js";
 import type { ConversationDocument } from "../conversation/document.js";
 import type { RuntimeToolDefinition, SessionContextRecord } from "../kernel/contracts.js";
 import type { RuntimeExecutionObservationEvent } from "../runtime-execution-observation.js";
+import type { SessionExtensionEndpointHost } from "../session-extensions/contracts.js";
+import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 
 /** 会话身份与资源释放；不承载宿主 UI 绑定或业务外围能力。 */
 export interface RuntimeSessionIdentityLifecycle {
@@ -240,10 +241,9 @@ export interface RuntimeSessionBackgroundWorkController {
 	interruptSubagent(target: string): RuntimeSubagentSnapshot | undefined;
 }
 
-/** Todo 状态读取与受锁保护的清空命令。 */
-export interface RuntimeSessionTodoController {
-	readItems(): readonly TodoItem[];
-	clear(): boolean;
+/** 产品扩展对 Runtime Session 宿主暴露的通用控制面与迟订阅初始观察。 */
+export interface RuntimeSessionExtensionHost extends SessionExtensionEndpointHost {
+	readInitialObservations(): readonly RuntimeSessionObservationEvent[];
 }
 
 export type RuntimeSessionInputQueueMode = NonNullable<SettingsPatch["steeringMode"]>;

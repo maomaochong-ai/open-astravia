@@ -15,6 +15,7 @@ import type {
 	RuntimeSessionConfigurationController,
 	RuntimeSessionEventStream,
 	RuntimeSessionExecutionController,
+	RuntimeSessionExtensionHost,
 	RuntimeSessionHistoryController,
 	RuntimeSessionHistoryReader,
 	RuntimeSessionHostInteraction,
@@ -24,7 +25,6 @@ import type {
 	RuntimeSessionModelView,
 	RuntimeSessionQueueController,
 	RuntimeSessionStateReader,
-	RuntimeSessionTodoController,
 	RuntimeSessionTurnControl,
 	RuntimeSessionWorkspaceView,
 } from "./session-ports.js";
@@ -46,7 +46,7 @@ export interface SessionHandle {
 	executionController: RuntimeSessionExecutionController;
 	workspaceView: RuntimeSessionWorkspaceView;
 	backgroundWorkController: RuntimeSessionBackgroundWorkController;
-	todoController: RuntimeSessionTodoController;
+	extensionHost: RuntimeSessionExtensionHost | undefined;
 	configurationController: RuntimeSessionConfigurationController;
 	modelController: RuntimeSessionModelController;
 	modelView: RuntimeSessionModelView;

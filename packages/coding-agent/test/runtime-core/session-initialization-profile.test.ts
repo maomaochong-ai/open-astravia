@@ -28,6 +28,7 @@ describe("Coding Agent session initialization profile", () => {
 			"createPluginMcpRuntime",
 			"createPluginRuntime",
 			"createPromptResourceResolver",
+			"createSessionExtensionDefinitions",
 			"createSubagentChildFactory",
 			"createSystemPromptOptionsResolver",
 			"createTodoRuntime",

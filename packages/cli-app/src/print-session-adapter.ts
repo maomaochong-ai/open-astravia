@@ -4,6 +4,7 @@ import {
 	createCodingAgentRuntimeExtensionObservationAdapter,
 	projectCodingAgentRuntimeMessages,
 } from "@vetta/coding-agent/runtime";
+import { readCodingAgentTodoObservation } from "@vetta/coding-agent/session-extensions";
 import type { RuntimeSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
 
 interface PrintSessionHost {
@@ -80,7 +81,7 @@ export class CliPrintSessionAdapter implements PrintSessionCapabilities {
 	}
 }
 
-function mapSupplementalSessionEvent(event: SessionEvent): unknown | undefined {
+export function mapSupplementalSessionEvent(event: SessionEvent): unknown | undefined {
 	switch (event.type) {
 		case "session.path_changed":
 			return event.path
@@ -96,8 +97,10 @@ function mapSupplementalSessionEvent(event: SessionEvent): unknown | undefined {
 				willRetry: false,
 				...(event.errorMessage ? { errorMessage: event.errorMessage } : {}),
 			};
-		case "todo_update":
-			return { type: "todo_update", items: event.items };
+		case "session.extension": {
+			const items = readCodingAgentTodoObservation(event);
+			return items ? { type: "todo_update", items } : undefined;
+		}
 		case "background_tasks_update":
 			return { type: "background_tasks_update", tasks: event.tasks };
 		case "subagents_update":

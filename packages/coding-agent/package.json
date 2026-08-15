@@ -81,6 +81,10 @@
 			"types": "./dist/public-api/sdk.d.ts",
 			"import": "./dist/public-api/sdk.js"
 		},
+		"./session-extensions": {
+			"types": "./dist/public-api/session-extensions.d.ts",
+			"import": "./dist/public-api/session-extensions.js"
+		},
 		"./settings": {
 			"types": "./dist/public-api/settings.d.ts",
 			"import": "./dist/public-api/settings.js"

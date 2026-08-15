@@ -12,6 +12,9 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Breaking Changes
 
+- 移除 `RuntimeSessionTodoController`、`RuntimeResources.todoController` 与 `RuntimeHost.clearTodos()`；产品命令改由可选的 `RuntimeSessionExtensionHost` 和类型化 Session Extension endpoint token 暴露。`RuntimeHost.invokeSessionExtension()` 提供通用异步转发，迟订阅初始观察由扩展宿主统一投影。
+- 移除 Runtime Core 的 `TodoItem`、`TodoUpdateEvent` 与 `todo_update` Session 事件；产品观察改用通用 `session.extension` 信封。信封只声明 `extensionId/event/payload`，具体 payload 类型与跨宿主运行时校验由产品协议拥有。
+
 ### Fixed
 
 - Provider 终端失败进入 `turn.failed` 时保留具体 AI 错误码，不再把 `AI_BILLING_REQUIRED` 等结构化原因降级成泛化的 `PROVIDER_ERROR`。
@@ -40,7 +43,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
-- 新增 `@vetta/runtime-core/session-extensions` 会话级扩展组合合同，支持依赖/冲突校验、Agent Feature、Conversation Document participant、Continuation source、typed service/endpoint/signal 贡献，以及初始化逆序回滚和失败释放重试；合同保持产品与平台无关。
+- 新增 `@vetta/runtime-core/session-extensions` 会话级扩展组合合同，支持依赖/冲突校验、Agent Feature、Conversation Document participant、Continuation source、initial observation source、typed service/endpoint/signal/observation 贡献、同步/异步 endpoint 宿主调用，以及初始化逆序回滚和失败释放重试；合同保持产品与平台无关。
 - **统一 Turn 失败合同**：Provider 返回 `stopReason: "error"` 时统一生成结构化 `turn.failed`，并与对应 assistant error 消息绑定到同一个 turn；实时错误与历史错误携带 `turnId`，Desktop 错误卡片按 turn 幂等投影，避免错误丢失或重复。旧 assistant error 历史保持兼容读取。
 - **失败 prompt 回执保留结构化错误**：`status: "failed"` 的 Runtime prompt 回执现在携带 `error` 与 `turnId`，宿主重试层不会再把已结束的额度/Provider 失败误判为成功并清掉错误事件。
 

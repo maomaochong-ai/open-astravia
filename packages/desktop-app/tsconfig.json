@@ -35,6 +35,7 @@
 			"@vetta/coding-agent/bootstrap": ["../coding-agent/src/public-api/bootstrap.ts"],
 			"@vetta/coding-agent/cli-control": ["../coding-agent/src/public-api/cli-control.ts"],
 			"@vetta/coding-agent/composition": ["../coding-agent/src/composition/index.ts"],
+			"@vetta/coding-agent/session-extensions": ["../coding-agent/src/public-api/session-extensions.ts"],
 			"@vetta/coding-agent/config": ["../coding-agent/src/config.ts"],
 			"@vetta/coding-agent/concurrency": ["../coding-agent/src/concurrency/index.ts"],
 			"@vetta/coding-agent/extensions": ["../coding-agent/src/public-api/extensions.ts"],

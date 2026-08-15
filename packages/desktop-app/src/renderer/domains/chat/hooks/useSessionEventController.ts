@@ -18,7 +18,6 @@ import {
 	retryProgressAtom,
 	type SubagentTask,
 	subagentsBySessionAtom,
-	type TodoItem,
 	todoItemsBySessionAtom,
 } from "@shared/store/atoms";
 import {
@@ -29,6 +28,7 @@ import {
 	setQueueForSessionAtom,
 	setQueuePausedAtom,
 } from "@shared/store/message-queue-atoms";
+import { readCodingAgentTodoObservation } from "@vetta/coding-agent/session-extensions";
 import type { SessionEvent } from "@vetta/runtime-core";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { type MutableRefObject, useCallback, useEffect, useRef } from "react";
@@ -589,15 +589,16 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				return;
 			}
 
-			// ── Todo update ──
-			if (event.type === "todo_update") {
+			// ── Coding Agent Todo extension update ──
+			if (event.type === "session.extension") {
+				const items = readCodingAgentTodoObservation(event);
+				if (!items) return;
 				const sid = activeSessionRef.current?.runtimeId;
 				if (sid) {
-					const items = (event as { items?: unknown[] }).items ?? [];
 					setTodoItems((prev) => {
 						const next = new Map(prev);
 						if (items.length > 0) {
-							next.set(sid, items as TodoItem[]);
+							next.set(sid, [...items]);
 						} else {
 							next.delete(sid);
 						}

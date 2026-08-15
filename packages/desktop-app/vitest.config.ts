@@ -32,6 +32,10 @@ export default defineConfig({
 				replacement: resolve(__dirname, "../coding-agent/src/composition/index.ts"),
 			},
 			{
+				find: "@vetta/coding-agent/session-extensions",
+				replacement: resolve(__dirname, "../coding-agent/src/public-api/session-extensions.ts"),
+			},
+			{
 				find: "@vetta/coding-agent/bootstrap",
 				replacement: resolve(__dirname, "../coding-agent/src/public-api/bootstrap.ts"),
 			},
@@ -89,6 +93,10 @@ export default defineConfig({
 			{
 				find: "@vetta/runtime-core/sandbox",
 				replacement: resolve(__dirname, "../runtime-core/src/sandbox/index.ts"),
+			},
+			{
+				find: "@vetta/runtime-core/session-extensions",
+				replacement: resolve(__dirname, "../runtime-core/src/session-extensions/index.ts"),
 			},
 			{ find: "@vetta/runtime-core", replacement: resolve(__dirname, "../runtime-core/src/index.ts") },
 			{ find: "@vetta/runtime-desktop", replacement: resolve(__dirname, "../runtime-desktop/src/index.ts") },

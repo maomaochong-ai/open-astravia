@@ -122,8 +122,14 @@ export function mapRuntimeSessionObservationEvent(
 			};
 		case "error":
 			return { ...base, type: event.type, error: event.error, ...(event.turnId ? { turnId: event.turnId } : {}) };
-		case "todo_update":
-			return { ...base, type: event.type, items: [...event.items] };
+		case "session.extension":
+			return {
+				...base,
+				type: event.type,
+				extensionId: event.extensionId,
+				event: event.event,
+				payload: event.payload,
+			};
 		case "background_tasks_update":
 			return { ...base, type: event.type, tasks: [...event.tasks] };
 		case "subagents_update":

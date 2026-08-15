@@ -6,6 +6,7 @@ declare const serviceType: unique symbol;
 declare const endpointInputType: unique symbol;
 declare const endpointOutputType: unique symbol;
 declare const signalType: unique symbol;
+declare const observationType: unique symbol;
 
 export interface SessionExtensionServiceToken<T> {
 	readonly id: string;
@@ -26,6 +27,20 @@ export interface SessionExtensionSignalToken<Payload> {
 	readonly [signalType]?: Payload;
 }
 
+export interface SessionExtensionObservationToken<Payload> {
+	readonly id: string;
+	readonly extensionId: string;
+	readonly event: string;
+	readonly [observationType]?: Payload;
+}
+
+export interface SessionExtensionObservation<Payload = unknown> {
+	readonly type: "session.extension";
+	readonly extensionId: string;
+	readonly event: string;
+	readonly payload: Payload;
+}
+
 export function defineSessionExtensionService<T>(extensionId: string, name: string): SessionExtensionServiceToken<T> {
 	return Object.freeze({ id: qualifiedId(extensionId, name), extensionId: requireId(extensionId, "extension") });
 }
@@ -44,6 +59,29 @@ export function defineSessionExtensionSignal<Payload>(
 	return Object.freeze({ id: qualifiedId(extensionId, name), extensionId: requireId(extensionId, "extension") });
 }
 
+export function defineSessionExtensionObservation<Payload>(
+	extensionId: string,
+	event: string,
+): SessionExtensionObservationToken<Payload> {
+	return Object.freeze({
+		id: qualifiedId(extensionId, event),
+		extensionId: requireId(extensionId, "extension"),
+		event: requireId(event, "observation"),
+	});
+}
+
+export function sessionExtensionObservation<Payload>(
+	token: SessionExtensionObservationToken<Payload>,
+	payload: Payload,
+): SessionExtensionObservation<Payload> {
+	return {
+		type: "session.extension",
+		extensionId: token.extensionId,
+		event: token.event,
+		payload,
+	};
+}
+
 export interface SessionExtensionServiceResolver {
 	optional<T>(token: SessionExtensionServiceToken<T>): T | undefined;
 	require<T>(token: SessionExtensionServiceToken<T>): T;
@@ -51,6 +89,21 @@ export interface SessionExtensionServiceResolver {
 
 export interface SessionExtensionSignalPublisher {
 	publish<Payload>(token: SessionExtensionSignalToken<Payload>, payload: Payload): void;
+}
+
+/** Session 宿主可调用的最小扩展控制面；具体 endpoint 仍由扩展实例拥有。 */
+export interface SessionExtensionEndpointHost {
+	hasEndpoint<Input, Output>(token: SessionExtensionEndpointToken<Input, Output>): boolean;
+	invoke<Input, Output>(
+		token: SessionExtensionEndpointToken<Input, Output>,
+		input: Input,
+		signal?: AbortSignal,
+	): Promise<Output>;
+	invokeSync<Input, Output>(
+		token: SessionExtensionEndpointToken<Input, Output>,
+		input: Input,
+		signal?: AbortSignal,
+	): Output;
 }
 
 export interface SessionExtensionContext {
@@ -65,6 +118,12 @@ export interface SessionExtensionContinuationSource {
 	readonly id: string;
 	readonly priority: number;
 	collect(context: ContinuationPolicyContext): Promise<readonly UserMessage[]>;
+}
+
+/** 扩展为迟订阅宿主提供的同步初始状态投影。 */
+export interface SessionExtensionInitialObservationSource {
+	readonly id: string;
+	read(): readonly SessionExtensionObservation[];
 }
 
 export interface SessionExtensionServiceContribution<T = unknown> {
@@ -83,6 +142,7 @@ export type SessionExtensionContribution =
 	| { readonly kind: "agent-feature"; readonly feature: AgentFeatureDefinition }
 	| { readonly kind: "document-participant"; readonly participant: RuntimeDocumentParticipant }
 	| { readonly kind: "continuation-source"; readonly source: SessionExtensionContinuationSource }
+	| { readonly kind: "initial-observation-source"; readonly source: SessionExtensionInitialObservationSource }
 	| SessionExtensionServiceContribution
 	| SessionExtensionEndpointContribution;
 

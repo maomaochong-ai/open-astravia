@@ -1,7 +1,8 @@
 import type { ToolPhase } from "@vetta/agent-core";
 import type { CacheUsageReporting, Message } from "@vetta/ai";
-import type { BackgroundTaskInfo, RuntimeEventSource, SessionError, SubagentInfo, TodoItem } from "./contracts.js";
+import type { BackgroundTaskInfo, RuntimeEventSource, SessionError, SubagentInfo } from "./contracts.js";
 import type { RuntimeFailure } from "./failure-contract.js";
+import type { SessionExtensionObservation } from "./session-extensions/contracts.js";
 
 export type RuntimeSessionLifecyclePhase =
 	| "created"
@@ -97,7 +98,7 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 				readonly contextWindow: number;
 		  }
 		| { readonly type: "error"; readonly error: SessionError; readonly turnId?: string }
-		| { readonly type: "todo_update"; readonly items: readonly TodoItem[] }
+		| SessionExtensionObservation
 		| { readonly type: "background_tasks_update"; readonly tasks: readonly BackgroundTaskInfo[] }
 		| { readonly type: "subagents_update"; readonly agents: readonly SubagentInfo[] }
 		| {

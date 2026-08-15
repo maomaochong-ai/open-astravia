@@ -3,6 +3,7 @@ import type {
 	ConversationScenario,
 	RuntimeResources,
 	RuntimeSessionAskUserQuestionCapability,
+	RuntimeSessionExtensionHost,
 } from "@vetta/runtime-core";
 import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel";
 import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
@@ -15,7 +16,6 @@ import { CodingAgentBackgroundWorkController } from "../../host/session-executio
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { CodingAgentPluginMcpRuntime, CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
-import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import {
 	CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME,
@@ -48,7 +48,6 @@ export interface CodingAgentSessionRuntimeResourcesOptions {
 	readonly turnCapabilityAssembly: CodingAgentTurnCapabilitySessionAssembly;
 	readonly modelRuntime: CodingAgentSessionModelRuntimePort;
 	readonly sessionExtensions: SessionExtensionComposition;
-	readonly todoRuntime: CodingAgentTodoRuntime;
 	readonly contextRuntime: CodingAgentContextRuntime;
 	readonly subagentRuntime?: CodingAgentSubagentRuntime;
 	readonly executionRuntime: CodingAgentSessionExecutionRuntime;
@@ -77,6 +76,7 @@ export function createCodingAgentSessionRuntimeResources(
 ): RuntimeResources {
 	const stateActivation = createStateActivation(options);
 	const pluginMcpRuntime = options.pluginMcpRuntime;
+	const extensionHost = createSessionExtensionHost(options.sessionExtensions);
 	const snapshotProvider: RuntimeResources["snapshotProvider"] = {
 		async acquire(context) {
 			// External catalogs publish first; only then may the capability composition
@@ -98,7 +98,7 @@ export function createCodingAgentSessionRuntimeResources(
 			options.contextRuntime,
 			...(options.subagentRuntime ? [options.subagentRuntime] : []),
 		],
-		todoController: options.todoRuntime,
+		extensionHost,
 		toolController: {
 			readActiveToolNames: () => {
 				const override = options.configurationState.readActiveToolNamesOverride();
@@ -147,6 +147,16 @@ export function createCodingAgentSessionRuntimeResources(
 		},
 		onConversationContinued: options.onConversationContinued,
 		dispose: options.dispose,
+	};
+}
+
+function createSessionExtensionHost(extensions: SessionExtensionComposition): RuntimeSessionExtensionHost {
+	return {
+		hasEndpoint: (token) => extensions.hasEndpoint(token),
+		invoke: (token, input, signal) => extensions.invoke(token, input, signal),
+		invokeSync: (token, input, signal) => extensions.invokeSync(token, input, signal),
+		readInitialObservations: () =>
+			extensions.readInitialObservations().map((observation) => ({ ...observation, source: "agent" })),
 	};
 }
 

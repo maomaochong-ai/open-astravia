@@ -51,12 +51,12 @@ import type {
 	RuntimeSessionExecutionController,
 	RuntimeSessionExecutionObservation,
 	RuntimeSessionExecutionObservationStream,
+	RuntimeSessionExtensionHost,
 	RuntimeSessionHostInteraction,
 	RuntimeSessionMetadataController,
 	RuntimeSessionQueueController,
 	RuntimeSessionQueueView,
 	RuntimeSessionState,
-	RuntimeSessionTodoController,
 	RuntimeSessionToolController,
 } from "./session-ports.js";
 
@@ -76,7 +76,7 @@ export interface KernelRuntimeAssembly {
 	readonly identity: RuntimeSessionIdentity;
 	readonly stateSource: RuntimeStateSource;
 	readonly documentParticipants?: readonly RuntimeDocumentParticipant[];
-	readonly todoController?: RuntimeSessionTodoController;
+	readonly extensionHost?: RuntimeSessionExtensionHost;
 	readonly contextController?: RuntimeSessionContextController;
 	readonly contextDeliveryController?: RuntimeSessionContextDeliveryController;
 	readonly hostInteraction?: RuntimeSessionHostInteraction;
@@ -116,7 +116,7 @@ export type RuntimeSessionCoreAssembly = Pick<
 	readonly queueController: RuntimeSessionQueueController;
 	readonly contextUsageView: RuntimeSessionContextUsageView;
 	readonly executionObservationStream: RuntimeSessionExecutionObservationStream;
-	readonly todoController?: RuntimeSessionTodoController;
+	readonly extensionHost?: RuntimeSessionExtensionHost;
 	readonly contextController?: RuntimeSessionContextController;
 	readonly contextDeliveryController: RuntimeSessionContextDeliveryController;
 	readonly metadataController: RuntimeSessionMetadataController;
@@ -133,7 +133,7 @@ export class RuntimeSession {
 	private readonly projection: RuntimeSessionProjection;
 	private readonly documentMutations: ConversationDocumentMutationCoordinator;
 	private readonly documentParticipants: readonly RuntimeDocumentParticipant[];
-	private readonly todoController: RuntimeSessionTodoController | undefined;
+	private readonly extensionHost: RuntimeSessionExtensionHost | undefined;
 	private readonly contextController: RuntimeSessionContextController | undefined;
 	private readonly contextDeliveryController: RuntimeSessionContextDeliveryController;
 	private readonly hostInteraction: RuntimeSessionHostInteraction | undefined;
@@ -166,7 +166,7 @@ export class RuntimeSession {
 		});
 		this.eventSink.bindDocumentMutationCoordinator(this.documentMutations);
 		this.documentParticipants = assembly.documentParticipants ?? [];
-		this.todoController = assembly.todoController;
+		this.extensionHost = assembly.extensionHost;
 		this.contextController = assembly.contextController;
 		this.contextDeliveryController =
 			assembly.contextDeliveryController ?? createContextDeliveryController(assembly.session);
@@ -502,7 +502,7 @@ export class RuntimeSession {
 			executionObservationStream: {
 				subscribe: (handler) => this.eventSink.subscribeExecutionObservation(handler),
 			},
-			todoController: this.todoController,
+			extensionHost: this.extensionHost,
 			contextController: this.contextController,
 			contextDeliveryController: this.contextDeliveryController,
 			metadataController: {

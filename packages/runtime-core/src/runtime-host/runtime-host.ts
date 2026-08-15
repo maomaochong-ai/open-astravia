@@ -30,10 +30,11 @@ import type {
 import { isSessionError, runtimeError } from "../errors.js";
 import { createRuntimeId } from "../id-generator.js";
 import { isTurnPersistenceError } from "../kernel/errors.js";
+import type { SessionExtensionEndpointToken } from "../session-extensions/contracts.js";
 import { generateAutoTitle, generateNextPromptSuggestions } from "./peripheral-tasks.js";
 import { debugPluginAgent, summarizeAgentPlugins } from "./plugin-debug.js";
 import type { RuntimeHostSessionBackend, RuntimeSessionCreateRequest } from "./session-backend.js";
-import { baseSessionEvent, lifecycleSessionEvent } from "./session-events.js";
+import { baseSessionEvent, lifecycleSessionEvent, mapRuntimeSessionObservationEvent } from "./session-events.js";
 import type {
 	RuntimeSessionEventStream,
 	RuntimeSessionHostInteractionContext,
@@ -443,7 +444,7 @@ export class RuntimeHost implements SessionFacade {
 			executionController,
 			workspaceView,
 			backgroundWorkController,
-			todoController,
+			extensionHost,
 			configurationController,
 			modelController,
 			modelView,
@@ -462,7 +463,7 @@ export class RuntimeHost implements SessionFacade {
 			executionController,
 			workspaceView,
 			backgroundWorkController,
-			todoController,
+			extensionHost,
 			configurationController,
 			modelController,
 			modelView,
@@ -785,28 +786,24 @@ export class RuntimeHost implements SessionFacade {
 		}
 	}
 
-	/**
-	 * 清空 session 的 todo 列表。被 scene 等机制 lock 时拒绝清空。
-	 * 返回是否实际执行了清空。
-	 */
-	async clearTodos(sessionId: string): Promise<boolean> {
+	/** 通过类型化 token 调用当前会话公开的产品扩展端点。 */
+	async invokeSessionExtension<Input, Output>(
+		sessionId: string,
+		token: SessionExtensionEndpointToken<Input, Output>,
+		input: Input,
+		signal?: AbortSignal,
+	): Promise<Output> {
 		const handle = this.requireSession(sessionId);
-		return handle.todoController.clear();
+		if (!handle.extensionHost) throw new Error("Session extension host is unavailable");
+		return handle.extensionHost.invoke(token, input, signal);
 	}
 
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): () => void {
 		const handle = this.requireSession(sessionId);
 		handler(lifecycleSessionEvent(sessionId, "created"));
 
-		// Push current todo state so late subscribers (e.g., user navigating into
-		// an already-running session) see the todo panel immediately.
-		const todoItems = handle.todoController.readItems();
-		if (todoItems.length > 0) {
-			handler({
-				...baseSessionEvent(sessionId, "agent"),
-				type: "todo_update",
-				items: [...todoItems],
-			} as SessionEvent);
+		for (const observation of handle.extensionHost?.readInitialObservations() ?? []) {
+			handler(mapRuntimeSessionObservationEvent(sessionId, observation));
 		}
 
 		handler({

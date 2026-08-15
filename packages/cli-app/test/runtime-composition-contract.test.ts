@@ -7,6 +7,7 @@ import {
 	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
+import { CODING_AGENT_TODO_READ } from "@vetta/coding-agent/session-extensions";
 import { assessRuntimeHostSessionAssembly } from "@vetta/runtime-core";
 import {
 	createMcpServerRuntimeToolSource,
@@ -239,7 +240,7 @@ describe("Runtime composition contract", () => {
 			steeringMode: "all",
 			followUpMode: "all",
 		});
-		expect(assembly.todoController?.readItems()).toEqual([]);
+		expect(assembly.extensionHost?.invokeSync(CODING_AGENT_TODO_READ, undefined)).toEqual([]);
 		await session.dispose();
 	});
 

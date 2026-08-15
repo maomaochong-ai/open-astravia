@@ -218,7 +218,6 @@ async function initializeSession<TOwnershipBinding>(
 			memoryRuntime,
 			memoryController,
 			sessionExtensions,
-			todoRuntime,
 			todoToolRegistration: todoRegistration,
 			todoEnabled,
 			subagentRuntime,

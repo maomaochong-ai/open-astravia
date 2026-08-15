@@ -13,8 +13,11 @@ import type {
 	SessionExtensionContribution,
 	SessionExtensionDefinition,
 	SessionExtensionEndpointContribution,
+	SessionExtensionEndpointHost,
 	SessionExtensionEndpointToken,
+	SessionExtensionInitialObservationSource,
 	SessionExtensionInstance,
+	SessionExtensionObservation,
 	SessionExtensionServiceResolver,
 	SessionExtensionServiceToken,
 } from "./contracts.js";
@@ -32,7 +35,7 @@ interface PreparedExtension {
 	readonly instance: SessionExtensionInstance;
 }
 
-export class SessionExtensionComposition {
+export class SessionExtensionComposition implements SessionExtensionEndpointHost {
 	readonly features: readonly AgentFeatureDefinition[];
 	readonly documentParticipants: readonly RuntimeDocumentParticipant[];
 	readonly continuationSources: readonly SessionExtensionContinuationSource[];
@@ -47,6 +50,7 @@ export class SessionExtensionComposition {
 		features: readonly SessionExtensionContribution[],
 		documentParticipants: readonly RuntimeDocumentParticipant[],
 		continuationSources: readonly SessionExtensionContinuationSource[],
+		private readonly initialObservationSources: readonly SessionExtensionInitialObservationSource[],
 		services: SessionExtensionServiceResolver,
 		signals: SessionExtensionSignalBus,
 		private readonly endpoints: ReadonlyMap<string, SessionExtensionEndpointContribution>,
@@ -73,6 +77,8 @@ export class SessionExtensionComposition {
 		const contributions: SessionExtensionContribution[] = [];
 		const participants: RuntimeDocumentParticipant[] = [];
 		const continuationSources: SessionExtensionContinuationSource[] = [];
+		const initialObservationSources: SessionExtensionInitialObservationSource[] = [];
+		const initialObservationSourcesById = new Map<string, SessionExtensionInitialObservationSource>();
 		const endpoints = new Map<string, SessionExtensionEndpointContribution>();
 
 		try {
@@ -112,6 +118,15 @@ export class SessionExtensionComposition {
 						case "continuation-source":
 							continuationSources.push(contribution.source);
 							break;
+						case "initial-observation-source":
+							addUnique(
+								initialObservationSourcesById,
+								contribution.source.id,
+								contribution.source,
+								"initial observation source",
+							);
+							initialObservationSources.push(contribution.source);
+							break;
 					}
 				}
 			}
@@ -129,6 +144,7 @@ export class SessionExtensionComposition {
 			contributions,
 			participants,
 			orderContinuationSources(continuationSources),
+			initialObservationSources,
 			services,
 			signalBus,
 			endpoints,
@@ -139,6 +155,15 @@ export class SessionExtensionComposition {
 		return this.continuationSources.length > 0
 			? new SessionExtensionContinuationPolicy(this.continuationSources)
 			: undefined;
+	}
+
+	readInitialObservations(): readonly SessionExtensionObservation[] {
+		if (this.disposed) throw new Error("Session extension composition is disposed");
+		return this.initialObservationSources.flatMap((source) => source.read());
+	}
+
+	hasEndpoint<Input, Output>(token: SessionExtensionEndpointToken<Input, Output>): boolean {
+		return !this.disposed && this.endpoints.has(token.id);
 	}
 
 	async invoke<Input, Output>(
@@ -153,9 +178,28 @@ export class SessionExtensionComposition {
 		return (await endpoint.handle(input, signal)) as Output;
 	}
 
+	invokeSync<Input, Output>(
+		token: SessionExtensionEndpointToken<Input, Output>,
+		input: Input,
+		signal: AbortSignal = new AbortController().signal,
+	): Output {
+		if (this.disposed) throw new Error("Session extension composition is disposed");
+		const endpoint = this.endpoints.get(token.id);
+		if (!endpoint) throw new Error(`Session extension endpoint is not registered: ${token.id}`);
+		signal.throwIfAborted();
+		const output = endpoint.handle(input, signal);
+		if (isPromiseLike(output)) {
+			throw new Error(`Session extension endpoint is asynchronous: ${token.id}`);
+		}
+		return output as Output;
+	}
+
 	async dispose(): Promise<void> {
-		if (this.pendingDisposals.size === 0) return;
 		this.disposed = true;
+		if (this.pendingDisposals.size === 0) {
+			this.signals.clear();
+			return;
+		}
 		const errors: unknown[] = [];
 		for (const extension of [...this.prepared].reverse()) {
 			if (!this.pendingDisposals.has(extension)) continue;
@@ -269,6 +313,15 @@ function assertContributionOwner(extensionId: string, contribution: SessionExten
 function addUnique<T>(target: Map<string, T>, id: string, value: T, kind: string): void {
 	if (target.has(id)) throw new Error(`Duplicate session extension ${kind} id: ${id}`);
 	target.set(id, value);
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+	return (
+		(typeof value === "object" || typeof value === "function") &&
+		value !== null &&
+		"then" in value &&
+		typeof value.then === "function"
+	);
 }
 
 async function disposePrepared(

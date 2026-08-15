@@ -32,6 +32,12 @@ export default defineConfig({
 				replacement: fileURLToPath(new URL("../coding-agent/src/composition/index.ts", import.meta.url)),
 			},
 			{
+				find: "@vetta/coding-agent/session-extensions",
+				replacement: fileURLToPath(
+					new URL("../coding-agent/src/public-api/session-extensions.ts", import.meta.url),
+				),
+			},
+			{
 				find: "@vetta/coding-agent/bootstrap",
 				replacement: fileURLToPath(new URL("../coding-agent/src/public-api/bootstrap.ts", import.meta.url)),
 			},
@@ -93,6 +99,12 @@ export default defineConfig({
 			{
 				find: "@vetta/runtime-core/sandbox",
 				replacement: fileURLToPath(new URL("../runtime-core/src/sandbox/index.ts", import.meta.url)),
+			},
+			{
+				find: "@vetta/runtime-core/session-extensions",
+				replacement: fileURLToPath(
+					new URL("../runtime-core/src/session-extensions/index.ts", import.meta.url),
+				),
 			},
 			{
 				find: "@vetta/runtime-core",

@@ -1,10 +1,10 @@
 import type { AgentEvent } from "@vetta/agent-core";
+import type { TodoItem } from "@vetta/coding-agent/session-extensions";
 import type {
 	BackgroundTaskInfo,
 	RuntimeContextCompactionResult,
 	RuntimeFailure,
 	RuntimeSubagentSnapshot,
-	TodoItem,
 } from "@vetta/runtime-core";
 
 export type CodingAgentRetryEvent =

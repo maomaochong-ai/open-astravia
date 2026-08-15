@@ -16,6 +16,7 @@ composition is Node-oriented and is not part of this portable boundary.
 
 - session lifecycle facade (`createSession`, `prompt`, `continue`, `abort`)
 - runtime-safe event contract for hosts
+- product-neutral `session.extension` observations with typed in-process tokens and opaque host payloads
 - state snapshots and session history listing
 - isolated Session state machine, Typed Turn Pipeline and Feature Compiler under `./kernel`
 - acquire/release Runtime Snapshot lifecycle with atomic Feature-topology switching
@@ -36,7 +37,7 @@ composition is Node-oriented and is not part of this portable boundary.
 - Runtime Session model fact source with abstract catalog/credential ports and immutable per-Turn model binding
 - backend-provided Host Interaction binding without exposing product extension UI protocols
 - backend-provided Workspace View and Execution Controller without exposing SessionManager or custom tool types
-- backend-provided Background Work and Todo controllers with runtime-owned host snapshots
+- backend-provided Background Work controller plus an optional, typed Session Extension host bridge
 - backend-provided Session Configuration Controller for input queue modes, plugin runtime configuration and agent mode
 - process-level Session Catalog, direct file history reader and shared model controller ports
 - runtime-owned tool execution and policy contracts
@@ -69,7 +70,10 @@ composition is Node-oriented and is not part of this portable boundary.
 - `RuntimeSessionModelView` for current/available models and credential lookup without exposing the registry
 - `RuntimeSessionHostInteraction` for rebinding confirmation and sandbox-grant capabilities
 - `RuntimeSessionWorkspaceView` and `RuntimeSessionExecutionController` for cwd lookup, busy-state guards and mode changes
-- `RuntimeSessionBackgroundWorkController` and `RuntimeSessionTodoController` for background/subagent/todo host state
+- `RuntimeSessionBackgroundWorkController` for background/subagent host state
+- `RuntimeSessionExtensionHost` and typed Session Extension endpoint tokens for product-owned host commands
+- `SessionExtensionObservationToken` and `sessionExtensionObservation()` for product-owned host observations
+- `SessionExtensionInitialObservationSource` for extension-owned late-subscriber state replay
 - `RuntimeSessionConfigurationController` for dynamic session configuration without exposing the legacy session
 - `RuntimeSessionCatalog`, `RuntimeSessionFileHistoryReader` and `RuntimeSharedModelController` for process-level services
 - `RuntimeHostSessionAssembly` and `RuntimeHostSessionBackend` for explicit port-only composition-root capability delivery

@@ -36,6 +36,9 @@
 			"@vetta/coding-agent/rpc": ["./packages/coding-agent/src/public-api/rpc.ts"],
 			"@vetta/coding-agent/runtime": ["./packages/coding-agent/src/public-api/runtime.ts"],
 			"@vetta/coding-agent/sdk": ["./packages/coding-agent/src/public-api/sdk.ts"],
+			"@vetta/coding-agent/session-extensions": [
+				"./packages/coding-agent/src/public-api/session-extensions.ts"
+			],
 			"@vetta/coding-agent/*": ["./packages/coding-agent/src/*"],
 			"@vetta/ai": ["./packages/ai/src/index.ts"],
 			"@vetta/ai/protocol": ["./packages/ai/src/protocol/index.ts"],

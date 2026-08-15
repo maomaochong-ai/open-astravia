@@ -15,14 +15,18 @@ export {
 } from "./todo-continuation-source.js";
 export {
 	CODING_AGENT_TODO_CHANGED,
-	CODING_AGENT_TODO_CLEAR,
-	CODING_AGENT_TODO_EXTENSION_ID,
-	CODING_AGENT_TODO_READ,
 	CODING_AGENT_TODO_RUNTIME,
 	type CodingAgentTodoExtensionRuntime,
 	type CodingAgentTodoSessionExtensionOptions,
 	createCodingAgentTodoSessionExtension,
 } from "./todo-session-extension.js";
+export {
+	CODING_AGENT_TODO_CLEAR,
+	CODING_AGENT_TODO_EXTENSION_ID,
+	CODING_AGENT_TODO_OBSERVATION,
+	CODING_AGENT_TODO_READ,
+	readCodingAgentTodoObservation,
+} from "./todo-session-extension-contract.js";
 export { parseTodoSnapshot, TODO_SNAPSHOT_TYPE } from "./todo-snapshot.js";
 export { TodoState } from "./todo-state.js";
 export {

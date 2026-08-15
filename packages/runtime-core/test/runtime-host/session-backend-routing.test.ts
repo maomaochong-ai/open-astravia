@@ -129,7 +129,6 @@ function assembly(sessionId: string): RuntimeHostSessionAssembly {
 			readSubagents: () => [],
 			interruptSubagent: () => undefined,
 		},
-		todoController: { readItems: () => [], clear: () => false },
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},

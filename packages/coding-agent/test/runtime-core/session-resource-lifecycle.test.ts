@@ -131,7 +131,6 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 			memoryRuntime,
 			memoryController,
 			sessionExtensions,
-			todoRuntime,
 			todoToolRegistration: { tool: { name: "todo" } } as unknown as CodingAgentRuntimeToolRegistration,
 			todoEnabled: true,
 			executionRuntime,

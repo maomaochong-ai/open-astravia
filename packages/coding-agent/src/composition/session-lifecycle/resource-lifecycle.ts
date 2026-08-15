@@ -17,7 +17,6 @@ import type { CodingAgentSessionExecutionRuntime } from "../../host/session-exec
 import type { CodingAgentMemoryController, CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { CodingAgentPluginMcpRuntime, CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
-import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";
@@ -71,7 +70,6 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 	readonly memoryRuntime?: CodingAgentMemoryRolloverRuntime;
 	readonly memoryController?: CodingAgentMemoryController;
 	readonly sessionExtensions: SessionExtensionComposition;
-	readonly todoRuntime: CodingAgentTodoRuntime;
 	readonly todoToolRegistration: CodingAgentRuntimeToolRegistration;
 	readonly todoEnabled: boolean;
 	readonly subagentRuntime?: CodingAgentSubagentRuntime;
@@ -194,7 +192,6 @@ function createResources(
 		turnCapabilityAssembly,
 		modelRuntime: options.modelRuntime,
 		sessionExtensions: options.sessionExtensions,
-		todoRuntime: options.todoRuntime,
 		contextRuntime: options.contextRuntime,
 		subagentRuntime: options.subagentRuntime,
 		executionRuntime: options.executionRuntime,

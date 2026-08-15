@@ -10,6 +10,7 @@ import {
 } from "../../src/composition/index.js";
 import type { CodingAgentRuntimeModelSource } from "../../src/public-api/host-services.js";
 import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
+import { readCodingAgentTodoObservation } from "../../src/work-state/todo-session-extension-contract.js";
 
 describe("Coding Agent Todo observation", () => {
 	const temporaryDirectories: string[] = [];
@@ -24,7 +25,7 @@ describe("Coding Agent Todo observation", () => {
 		}
 	});
 
-	it("publishes todo_update whenever the session Todo state mutates", async () => {
+	it("publishes a typed extension observation whenever the session Todo state mutates", async () => {
 		const conversationDir = await mkdtemp(join(tmpdir(), "todo-observation-"));
 		temporaryDirectories.push(conversationDir);
 		const todoRuntime = new CodingAgentTodoRuntime();
@@ -54,11 +55,12 @@ describe("Coding Agent Todo observation", () => {
 		await todoRuntime.flush();
 		await Promise.resolve();
 
-		const todoEvents = events.filter(
-			(event): event is Extract<SessionEvent, { type: "todo_update" }> => event.type === "todo_update",
-		);
+		const todoEvents = events.flatMap((event) => {
+			const items = readCodingAgentTodoObservation(event);
+			return items ? [items] : [];
+		});
 		expect(todoEvents.length).toBeGreaterThanOrEqual(2);
-		expect(todoEvents.at(-1)?.items).toEqual([
+		expect(todoEvents.at(-1)).toEqual([
 			{ id: 1, content: "Task one", status: "in_progress" },
 			{ id: 2, content: "Task two", status: "pending" },
 		]);

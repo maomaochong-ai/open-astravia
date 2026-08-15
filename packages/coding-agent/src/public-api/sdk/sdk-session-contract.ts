@@ -1,5 +1,6 @@
 import type { AgentMessage, ThinkingLevel } from "@vetta/agent-core";
 import type { Api, ImageContent, Model, TextContent } from "@vetta/ai";
+import type { TodoItem } from "@vetta/coding-agent/session-extensions";
 import type {
 	AgentPluginRuntimeConfig,
 	BackgroundTaskInfo,
@@ -8,7 +9,6 @@ import type {
 	RuntimeSessionInputQueueMode,
 	RuntimeSessionState,
 	RuntimeSubagentSnapshot,
-	TodoItem,
 } from "@vetta/runtime-core";
 import type { CodingAgentSessionEventListener } from "./sdk-event-contract.js";
 import type { CodingAgentPromptOptions } from "./sdk-prompt-contract.js";

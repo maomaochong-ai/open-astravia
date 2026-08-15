@@ -1,12 +1,9 @@
-import type {
-	ConversationDocument,
-	RuntimeDocumentParticipantContext,
-	RuntimeSessionTodoController,
-} from "@vetta/runtime-core";
+import type { ConversationDocument, RuntimeDocumentParticipantContext } from "@vetta/runtime-core";
 import { selectConversationDocumentEntries } from "@vetta/runtime-core";
 import type { StoredSessionEvent } from "@vetta/runtime-core/kernel";
 import type {
 	CodingAgentTodoRuntime as CodingAgentTodoRuntimePort,
+	TodoItem,
 	TodoLockSource,
 	TodoSnapshot,
 	TodoSnapshotEnvelope,
@@ -85,7 +82,7 @@ export class CodingAgentTodoRuntime implements CodingAgentTodoRuntimePort {
 		this.state.lock("scene");
 	}
 
-	readItems(): ReturnType<RuntimeSessionTodoController["readItems"]> {
+	readItems(): readonly TodoItem[] {
 		return this.state.getAll().map((item) => ({ ...item }));
 	}
 

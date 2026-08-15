@@ -40,8 +40,8 @@ import type {
 	RuntimeSessionBackgroundWorkController,
 	RuntimeSessionConfigurationController,
 	RuntimeSessionExecutionController,
+	RuntimeSessionExtensionHost,
 	RuntimeSessionHostInteraction,
-	RuntimeSessionTodoController,
 	RuntimeSessionToolController,
 } from "./session-ports.js";
 
@@ -77,7 +77,7 @@ export interface RuntimeResources {
 	readonly identity: RuntimeSessionIdentity;
 	readonly stateSource: RuntimeStateSource;
 	readonly documentParticipants?: readonly RuntimeDocumentParticipant[];
-	readonly todoController?: RuntimeSessionTodoController;
+	readonly extensionHost?: RuntimeSessionExtensionHost;
 	readonly hostInteraction?: RuntimeSessionHostInteraction;
 	readonly executionController?: RuntimeSessionExecutionController;
 	readonly backgroundWorkController?: RuntimeSessionBackgroundWorkController;
@@ -270,7 +270,7 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 				identity: resources.identity,
 				stateSource: resources.stateSource,
 				documentParticipants: resources.documentParticipants,
-				todoController: resources.todoController,
+				extensionHost: resources.extensionHost,
 				hostInteraction: sessionPeripherals?.hostInteraction ?? resources.hostInteraction,
 				executionController: sessionPeripherals?.executionController ?? resources.executionController,
 				backgroundWorkController:

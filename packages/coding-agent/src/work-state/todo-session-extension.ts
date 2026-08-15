@@ -1,9 +1,9 @@
 import type { RuntimeDocumentParticipant } from "@vetta/runtime-core";
 import {
-	defineSessionExtensionEndpoint,
 	defineSessionExtensionService,
 	defineSessionExtensionSignal,
 	type SessionExtensionDefinition,
+	sessionExtensionObservation,
 } from "@vetta/runtime-core/session-extensions";
 import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
 import type { CodingAgentRuntimeToolRegistration } from "../runtime-contracts/index.js";
@@ -11,11 +11,15 @@ import type { CodingAgentTodoRuntime, TodoItem, TodoLockSource } from "./contrac
 import { CodingAgentTodoContinuationSource } from "./todo-continuation-source.js";
 import { CodingAgentTodoRuntime as DefaultCodingAgentTodoRuntime } from "./todo-runtime.js";
 import {
+	CODING_AGENT_TODO_CLEAR,
+	CODING_AGENT_TODO_EXTENSION_ID,
+	CODING_AGENT_TODO_OBSERVATION,
+	CODING_AGENT_TODO_READ,
+} from "./todo-session-extension-contract.js";
+import {
 	createCodingAgentTodoRuntimeFeature,
 	createCodingAgentTodoRuntimeToolRegistration,
 } from "./todo-tool-feature.js";
-
-export const CODING_AGENT_TODO_EXTENSION_ID = "coding-agent.todo";
 
 export interface CodingAgentTodoExtensionRuntime {
 	readonly runtime: CodingAgentTodoRuntime;
@@ -26,16 +30,6 @@ export interface CodingAgentTodoExtensionRuntime {
 export const CODING_AGENT_TODO_RUNTIME = defineSessionExtensionService<CodingAgentTodoExtensionRuntime>(
 	CODING_AGENT_TODO_EXTENSION_ID,
 	"runtime",
-);
-
-export const CODING_AGENT_TODO_READ = defineSessionExtensionEndpoint<void, readonly TodoItem[]>(
-	CODING_AGENT_TODO_EXTENSION_ID,
-	"read",
-);
-
-export const CODING_AGENT_TODO_CLEAR = defineSessionExtensionEndpoint<void, boolean>(
-	CODING_AGENT_TODO_EXTENSION_ID,
-	"clear",
 );
 
 export const CODING_AGENT_TODO_CHANGED = defineSessionExtensionSignal<readonly TodoItem[]>(
@@ -89,6 +83,18 @@ export function createCodingAgentTodoSessionExtension(
 						{ kind: "service", token: CODING_AGENT_TODO_RUNTIME, value: runtimeService },
 						{ kind: "endpoint", token: CODING_AGENT_TODO_READ, handle: () => runtime.readItems() },
 						{ kind: "endpoint", token: CODING_AGENT_TODO_CLEAR, handle: () => runtime.clear() },
+						{
+							kind: "initial-observation-source",
+							source: {
+								id: `${CODING_AGENT_TODO_EXTENSION_ID}.initial-state`,
+								read: () => {
+									const items = runtime.readItems();
+									return items.length > 0
+										? [sessionExtensionObservation(CODING_AGENT_TODO_OBSERVATION, items)]
+										: [];
+								},
+							},
+						},
 						{ kind: "document-participant", participant: withoutDisposal(runtime) },
 						{
 							kind: "continuation-source",
