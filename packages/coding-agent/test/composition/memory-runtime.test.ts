@@ -3,14 +3,41 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import { FileConversationRepository } from "@vetta/runtime-node/conversation";
+import { NodeTextFileStorage } from "@vetta/runtime-node/host";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CodingAgentRuntimeComposition } from "../../src/composition/index.js";
-import { type CodingAgentMemoryFlushInput, CodingAgentMemoryRolloverOrchestrator } from "../../src/memory/index.js";
+import type {
+	CodingAgentMemoryRuntimeFactoryOptions,
+	CodingAgentRuntimeComposition,
+} from "../../src/composition/index.js";
+import {
+	type CodingAgentMemoryFlushInput,
+	CodingAgentMemoryRolloverOrchestrator,
+	type CodingAgentMemoryRolloverOrchestratorOptions,
+} from "../../src/memory/index.js";
 import type { CodingAgentRuntimeModelSource } from "../../src/public-api/host-services.js";
 import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-persistence.js";
 
 const temporaryRoots: string[] = [];
 const compositions: CodingAgentRuntimeComposition[] = [];
+
+type MemoryRuntimeOverrides = Pick<
+	CodingAgentMemoryRolloverOrchestratorOptions,
+	"flushMemory" | "appendTurnJournal" | "appendRolloverJournal"
+>;
+
+function createFileMemoryRuntime(
+	options: CodingAgentMemoryRuntimeFactoryOptions,
+	overrides: MemoryRuntimeOverrides = {},
+): CodingAgentMemoryRolloverOrchestrator {
+	const memoryFile = options.memoryFile ?? join(options.cwd, "MEMORY.md");
+	return new CodingAgentMemoryRolloverOrchestrator({
+		...options,
+		memoryFile,
+		memoryStorage: new NodeTextFileStorage(memoryFile),
+		journalStorage: new NodeTextFileStorage(join(options.cwd, "JOURNAL.md")),
+		...overrides,
+	});
+}
 
 afterEach(async () => {
 	for (const composition of compositions.splice(0).reverse()) await composition.dispose();
@@ -51,6 +78,7 @@ describe("Greenfield CLI memory runtime", () => {
 			cwd: workspace,
 			enableSubagents: false,
 			activation: { mode: "explicit", toolNames: [] },
+			createMemoryRolloverRuntime: (runtimeOptions) => createFileMemoryRuntime(runtimeOptions),
 			resolveSystemPromptOptions: () => ({
 				customPrompt: "Memory-enabled Coding Agent",
 				scenario: "im-claw",
@@ -142,8 +170,7 @@ describe("Greenfield CLI memory runtime", () => {
 			cwd: workspace,
 			enableSubagents: false,
 			activation: { mode: "explicit", toolNames: [] },
-			createMemoryRolloverRuntime: (runtimeOptions) =>
-				new CodingAgentMemoryRolloverOrchestrator({ ...runtimeOptions, flushMemory }),
+			createMemoryRolloverRuntime: (runtimeOptions) => createFileMemoryRuntime(runtimeOptions, { flushMemory }),
 			resolveSystemPromptOptions: () => ({
 				customPrompt: "Memory flush Coding Agent",
 				scenario: "im-claw",
@@ -205,8 +232,7 @@ describe("Greenfield CLI memory runtime", () => {
 				firstKeptEntryId: preparation.firstKeptEntryId,
 				tokensBefore: preparation.tokensBefore,
 			}),
-			createMemoryRolloverRuntime: (runtimeOptions) =>
-				new CodingAgentMemoryRolloverOrchestrator({ ...runtimeOptions, flushMemory }),
+			createMemoryRolloverRuntime: (runtimeOptions) => createFileMemoryRuntime(runtimeOptions, { flushMemory }),
 			resolveSystemPromptOptions: () => ({
 				customPrompt: "Memory rollover Coding Agent",
 				scenario: "im-claw",

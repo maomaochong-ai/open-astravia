@@ -15,6 +15,7 @@ import { resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
 import { createCliCodingAgentBootstrap } from "../../coding-agent-bootstrap.js";
 import { CliPrintSessionAdapter } from "../../print-session-adapter.js";
 import { resolveImSessionPath } from "../im-session-selection.js";
+import { NodeRpcJsonlTransport } from "../node-rpc-jsonl-transport.js";
 import {
 	CLI_RUNTIME_HOST_STARTUP_FAILURE,
 	type CliSessionAssembly,
@@ -197,12 +198,19 @@ async function prepareRuntimeHost(
 }
 
 export async function runImRuntimeHost(prepared: RpcRuntimeHostReady): Promise<never> {
-	return runRpcModeWithCapabilities(prepared.capabilities, { enableHostBridge: true });
+	return runNodeRpcMode(prepared, true);
 }
 
 export async function runRpcRuntimeHost(prepared: RpcRuntimeHostReady): Promise<never> {
+	return runNodeRpcMode(prepared, prepared.bootstrap.parsed.enableHostBridge === true);
+}
+
+function runNodeRpcMode(prepared: RpcRuntimeHostReady, enableHostBridge: boolean): Promise<never> {
 	return runRpcModeWithCapabilities(prepared.capabilities, {
-		enableHostBridge: prepared.bootstrap.parsed.enableHostBridge === true,
+		transport: new NodeRpcJsonlTransport(process.stdin, process.stdout),
+		exit: (code) => process.exit(code),
+		createRequestId: randomUUID,
+		enableHostBridge,
 	});
 }
 

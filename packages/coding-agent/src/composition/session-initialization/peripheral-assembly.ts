@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import type { Message } from "@vetta/ai";
 import type { ConversationScenario, InitializationRollbackTask, RuntimeResourceContext } from "@vetta/runtime-core";
 import type { AgentFeatureDefinition, AgentProfile, ModelCallContributionContext } from "@vetta/runtime-core/kernel";
@@ -13,11 +12,7 @@ import {
 import { CODING_AGENT_TODO_OBSERVATION } from "../../features/todo/todo-session-extension-contract.js";
 import { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
-import {
-	CodingAgentMemoryRolloverOrchestrator,
-	type CodingAgentMemoryRolloverRuntime,
-	createCodingAgentMemoryRuntimeFeature,
-} from "../../memory/index.js";
+import { type CodingAgentMemoryRolloverRuntime, createCodingAgentMemoryRuntimeFeature } from "../../memory/index.js";
 import type {
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
@@ -165,14 +160,19 @@ export async function createCodingAgentSessionPeripheralAssembly(
 		},
 	});
 
-	const memoryRuntimeOptions = {
-		memoryFile: sessionOptions.memoryFile ?? join(options.sessionCwd, "MEMORY.md"),
-		memoryCharLimit: sessionOptions.memoryCharLimit,
-		cwd: options.sessionCwd,
-	};
 	const memoryRuntime = sessionOptions.memoryMode
-		? (profile.createMemoryRolloverRuntime?.(memoryRuntimeOptions, sessionOptions) ??
-			new CodingAgentMemoryRolloverOrchestrator(memoryRuntimeOptions))
+		? profile.createMemoryRolloverRuntime
+			? profile.createMemoryRolloverRuntime(
+					{
+						cwd: options.sessionCwd,
+						memoryFile: sessionOptions.memoryFile,
+						memoryCharLimit: sessionOptions.memoryCharLimit,
+					},
+					sessionOptions,
+				)
+			: (() => {
+					throw new Error("Memory mode requires an explicit createMemoryRolloverRuntime host factory");
+				})()
 		: undefined;
 	if (memoryRuntime) {
 		options.trackMemoryRuntime(memoryRuntime);

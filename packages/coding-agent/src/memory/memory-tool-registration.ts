@@ -1,4 +1,4 @@
-import type { CodingToolRegistration, CodingToolScope } from "../../tool-registration.js";
+import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools";
 import { createMemoryTool, type MemoryToolInput, type MemoryToolOptions } from "./memory-tool.js";
 
 export const MEMORY_TOOL_SCOPES = ["im-claw"] as const satisfies readonly CodingToolScope[];

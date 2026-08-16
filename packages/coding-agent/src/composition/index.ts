@@ -13,6 +13,7 @@ export type {
 	CodingAgentKnowledgeQueryOperations,
 	CodingAgentKnowledgeRuntime,
 	CodingAgentKnowledgeWriteOperations,
+	CodingAgentMemoryRuntimeFactoryOptions,
 } from "./contracts/runtime-composition-options.js";
 export type {
 	KnowledgeProcessingPageWriter,
@@ -22,6 +23,11 @@ export type {
 	KnowledgeProcessingUsage,
 } from "./knowledge-processing-contract.js";
 export { createKnowledgeProcessingSessionFactory } from "./knowledge-processing-session.js";
+export {
+	type CodingAgentMemoryRuntimeHostOptions,
+	createCodingAgentMemoryRolloverRuntime,
+	type MemoryTextStorage,
+} from "./memory-runtime.js";
 export {
 	type CodingAgentPromptRuntimeSourceContext,
 	type CodingAgentPromptRuntimeSources,

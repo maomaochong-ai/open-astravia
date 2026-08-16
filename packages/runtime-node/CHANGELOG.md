@@ -6,6 +6,9 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Breaking Changes
 
+- 移除 `@vetta/runtime-node/coding` 的 `memory` Tool、Schema、描述和注册导出。模型可见 Memory 语义现由
+  `@vetta/coding-agent` 拥有；Node Runtime 只提供通用文本文件存储适配器。
+
 - 移除 `@vetta/runtime-node/coding` 的 `kb_list_available_tags`、`kb_filter_by_tags` 与 `kb_write_page`
   Tool 定义及其 Schema/注册导出。这些模型可见语义现由 `@vetta/coding-agent` 的 Knowledge Feature 拥有；Node Runtime
   只提供显式根目录的查询与写入适配器。
@@ -17,6 +20,9 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
   产品规则，现由 `@vetta/coding-agent` 的 Todo Feature 直接拥有；Coding Agent 用户行为保持不变。
 
 ### Added
+
+- `@vetta/runtime-node/host` 新增 `NodeTextFileStorage`，以缺失读取、临时文件替换和追加能力实现平台中立的
+  `MemoryTextStorage` 合同，由 CLI、Desktop 与 SDK Composition Root 显式选择具体 Memory 与 Journal 路径。
 
 - `@vetta/runtime-node/host` 新增 `createNodeKnowledgeRuntime(root)`，把 `runtime-knowledge` 的 Tag 查询、页面写入和
   绝对路径解析绑定到宿主选择的根目录，不读取 Coding Agent 配置或进程开关。

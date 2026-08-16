@@ -1,21 +1,11 @@
-import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import {
 	createFileConversationPersistence,
 	createInMemoryConversationPersistence,
 	resolveSessionIdFromPath,
 } from "@vetta/runtime-node/conversation";
-import type { CodingAgentConversationPersistenceFactory } from "../../composition/contracts/index.js";
 import type { CodingAgentSessionStorageTarget } from "../../public-api/sdk/sdk-create-contract.js";
-
-export type CodingAgentSdkSessionStorageOperation = "create" | "resume";
-
-export interface ResolvedCodingAgentSdkSessionStorage {
-	readonly operation: CodingAgentSdkSessionStorageOperation;
-	readonly sessionId: string;
-	readonly conversationDir?: string;
-	readonly createConversationPersistence: CodingAgentConversationPersistenceFactory;
-}
+import type { ResolvedCodingAgentSdkSessionStorage } from "./contracts/session-identity-runtime.js";
 
 export const CODING_AGENT_SDK_STORAGE_ERROR_CODES = {
 	INVALID_CONVERSATION_DIR: "coding_agent_sdk_invalid_conversation_dir",
@@ -37,14 +27,15 @@ export class CodingAgentSdkStorageError extends Error {
 	}
 }
 
-/** 把 SDK 存储意图解析为 Composition 可消费的持久化配置。 */
+/** 在 Node Host 中把 SDK 存储意图解析为 Composition 可消费的持久化配置。 */
 export function resolveCodingAgentSdkSessionStorage(
 	target: CodingAgentSessionStorageTarget,
+	createSessionId: () => string,
 ): ResolvedCodingAgentSdkSessionStorage {
 	if (target.kind === "memory") {
 		return {
 			operation: "create",
-			sessionId: normalizeSessionId(target.sessionId, target),
+			sessionId: normalizeSessionId(target.sessionId, target, createSessionId),
 			createConversationPersistence: () => createInMemoryConversationPersistence(),
 		};
 	}
@@ -61,7 +52,7 @@ export function resolveCodingAgentSdkSessionStorage(
 	if (target.kind === "file-create") {
 		return {
 			operation: "create",
-			sessionId: normalizeSessionId(target.sessionId, target),
+			sessionId: normalizeSessionId(target.sessionId, target, createSessionId),
 			conversationDir: resolvedConversationDir,
 			createConversationPersistence: () => createFileConversationPersistence(resolvedConversationDir),
 		};
@@ -83,8 +74,12 @@ export function resolveCodingAgentSdkSessionStorage(
 	};
 }
 
-function normalizeSessionId(sessionId: string | undefined, target: CodingAgentSessionStorageTarget): string {
-	if (sessionId === undefined) return randomUUID();
+function normalizeSessionId(
+	sessionId: string | undefined,
+	target: CodingAgentSessionStorageTarget,
+	createSessionId: () => string,
+): string {
+	if (sessionId === undefined) return createSessionId();
 	const normalized = sessionId.trim();
 	if (normalized) return normalized;
 	throw new CodingAgentSdkStorageError(

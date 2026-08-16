@@ -1,12 +1,11 @@
 import type { AssistantMessage } from "@vetta/ai";
 import type { ContextCompactionRecord, StoredSessionEvent } from "@vetta/runtime-core/kernel";
-import { createMemoryToolRegistration } from "@vetta/runtime-node/coding";
 import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import { renderMemoryForPrompt } from "../model-context/index.js";
 import { AiMemoryFactExtractor } from "./ai-memory-fact-extractor.js";
-import { FileMemoryJournal } from "./file-memory-journal.js";
 import { DEFAULT_MEMORY_CHAR_LIMIT } from "./memory-document.js";
 import { MemoryFlushService } from "./memory-flush-service.js";
+import { MemoryJournalWriter } from "./memory-journal.js";
 import type {
 	CodingAgentMemoryFlushInput,
 	CodingAgentMemoryPromptState,
@@ -14,7 +13,8 @@ import type {
 	CodingAgentMemoryRolloverPreparation,
 	CodingAgentMemoryRolloverRuntime,
 } from "./memory-runtime-contract.js";
-import { FileMemoryStore } from "./memory-store.js";
+import { MemoryDocumentStore } from "./memory-store.js";
+import { createMemoryToolRegistration } from "./memory-tool-registration.js";
 
 export class CodingAgentMemoryRolloverOrchestrator implements CodingAgentMemoryRolloverRuntime {
 	readonly id = "coding-agent.memory-rollover";
@@ -34,8 +34,8 @@ export class CodingAgentMemoryRolloverOrchestrator implements CodingAgentMemoryR
 		this.memoryFile = options.memoryFile;
 		this.cwd = options.cwd;
 		this.memoryCharLimit = options.memoryCharLimit ?? DEFAULT_MEMORY_CHAR_LIMIT;
-		const store = new FileMemoryStore({ path: this.memoryFile, charLimit: this.memoryCharLimit });
-		const journal = new FileMemoryJournal();
+		const store = new MemoryDocumentStore({ storage: options.memoryStorage, charLimit: this.memoryCharLimit });
+		const journal = new MemoryJournalWriter(options.journalStorage);
 		const flushService = new MemoryFlushService(store, new AiMemoryFactExtractor());
 		this.frozenMemorySnapshot = store.readContent();
 		this.flushMemory =

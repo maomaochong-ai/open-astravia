@@ -46,6 +46,7 @@ const BOUNDARY_FILES = [
 	"packages/cli-app/src/agent-runtime-selection.ts",
 	"packages/cli-app/src/extension-compatibility-error.ts",
 	"packages/cli-app/src/session-compatibility-error.ts",
+	"packages/cli-app/src/rpc/node-rpc-client-transport.ts",
 	"packages/desktop-app/src/main/agent-runtime/composition.ts",
 	"packages/desktop-app/src/main/conversations/desktop-conversation-service.ts",
 	"packages/desktop-app/src/main/runtime.ts",

@@ -4,12 +4,14 @@ import { createMcpToolResultPolicy } from "@vetta/runtime-mcp";
 import {
 	createNodeKnowledgeRuntime,
 	createNodeResultArtifactStorage,
+	NodeTextFileStorage,
 	NodeTransactionalTextStorage,
 } from "@vetta/runtime-node/host";
 import { createLangfuseRuntimeTracerFromEnv } from "@vetta/runtime-telemetry/langfuse";
 import { createCodingAgentCompactionExtensionRuntime } from "../../adapters/extensions/compaction-extension-adapter.js";
 import { createCodingAgentNodeToolEnvironment } from "../../adapters/runtime-tools/node-tool-environment.js";
 import { createCodingAgentAuthRuntime } from "../../auth/index.js";
+import { createCodingAgentMemoryRolloverRuntime } from "../../composition/memory-runtime.js";
 import { DEFAULT_SERVER_URL, ENV_SERVER_URL, getAgentDir, getKnowledgeDir, getVettaHomePath } from "../../config.js";
 import { createCodingAgentHtmlExportRuntime } from "../../export-html/index.js";
 import { createCodingAgentMcpRuntimeToolSource } from "../../mcp/runtime/tool-source.js";
@@ -36,6 +38,7 @@ import {
 } from "./contracts.js";
 import { adaptPublicCodingAgentSdkCustomTools, resolvePublicSdkActiveToolNames } from "./custom-tool-adapter.js";
 import { resolveSdkInitialModel } from "./initial-model.js";
+import { nodeCodingAgentSdkSessionIdentityRuntime } from "./node-session-identity-runtime.js";
 import { createCodingAgentSdkSessionResourceRuntime } from "./resource-runtime.js";
 import { type CodingAgentSdkOwnedResource, createCodingAgentSdkSession } from "./runtime-factory.js";
 import {
@@ -228,6 +231,7 @@ async function createCodingAgentSdkSessionComposition(
 
 	const created = await createCodingAgentSdkSession({
 		storage,
+		identityRuntime: hostContext.identityRuntime ?? nodeCodingAgentSdkSessionIdentityRuntime,
 		sessionArtifactCleaner: resultArtifacts.cleaner,
 		ownedResources,
 		composition: {
@@ -235,6 +239,16 @@ async function createCodingAgentSdkSessionComposition(
 			codingToolResultPolicy: createCodingAgentCodingToolResultPolicy({ artifactStore: resultArtifacts.coding }),
 			knowledgeRuntime:
 				process.env.VETTA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeDir()),
+			createMemoryRolloverRuntime: (memoryOptions) => {
+				const memoryFile = memoryOptions.memoryFile ?? join(memoryOptions.cwd, "MEMORY.md");
+				return createCodingAgentMemoryRolloverRuntime({
+					cwd: memoryOptions.cwd,
+					memoryFile,
+					memoryCharLimit: memoryOptions.memoryCharLimit,
+					memoryStorage: new NodeTextFileStorage(memoryFile),
+					journalStorage: new NodeTextFileStorage(join(memoryOptions.cwd, "JOURNAL.md")),
+				});
+			},
 			modelRegistry,
 			initialModel: initial.model,
 			initialThinkingLevel: initial.thinkingLevel,

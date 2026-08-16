@@ -1,7 +1,7 @@
 import { PassThrough } from "node:stream";
 import { describe, expect, test, vi } from "vitest";
 import { createRpcCommandDispatcher, type RpcFrameOutput } from "../../src/modes/rpc/rpc-command-dispatcher.js";
-import { runRpcModeWithCapabilities } from "../../src/modes/rpc/rpc-mode.js";
+import { type RpcFrameTransport, runRpcModeWithCapabilities } from "../../src/modes/rpc/rpc-mode.js";
 import {
 	RPC_FULL_SESSION_PROFILE,
 	RPC_IM_SESSION_PROFILE,
@@ -200,7 +200,7 @@ describe("RPC command dispatcher", () => {
 		output.on("data", (chunk: Buffer) => chunks.push(chunk));
 		const exit = vi.fn();
 
-		void runRpcModeWithCapabilities(session, { input, output, exit });
+		void runRpcModeWithCapabilities(session, createRpcModeOptions(input, output, exit));
 		await vi.waitFor(() => expect(initialization).toBeDefined());
 
 		input.write('{"id":"state","type":"get_state"}\n');
@@ -254,7 +254,7 @@ describe("RPC command dispatcher", () => {
 		output.on("data", (chunk: Buffer) => chunks.push(chunk));
 		const exit = vi.fn();
 
-		void runRpcModeWithCapabilities(session, { input, output, exit });
+		void runRpcModeWithCapabilities(session, createRpcModeOptions(input, output, exit));
 		await vi.waitFor(() => expect(initialization).toBeDefined());
 		input.write('{"id":"drain-state","type":"get_state"}\n');
 		await vi.waitFor(() => expect(required(session.state).readState).toHaveBeenCalledOnce());
@@ -304,7 +304,7 @@ describe("RPC command dispatcher", () => {
 		const output = new PassThrough();
 		const exit = vi.fn();
 
-		void runRpcModeWithCapabilities(session, { input, output, exit });
+		void runRpcModeWithCapabilities(session, createRpcModeOptions(input, output, exit));
 		input.write('{"id":"held-compact","type":"compact"}\n');
 		input.write('{"id":"held-memory","type":"flush_memory"}\n');
 		input.write('{"id":"held-bash","type":"bash","command":"hold"}\n');
@@ -329,7 +329,7 @@ describe("RPC command dispatcher", () => {
 		const output = new PassThrough();
 		const exit = vi.fn();
 
-		void runRpcModeWithCapabilities(session, { input, output, exit });
+		void runRpcModeWithCapabilities(session, createRpcModeOptions(input, output, exit));
 		input.write('{"id":"background-prompt","type":"prompt","message":"hold"}\n');
 		await vi.waitFor(() => expect(required(session.turn).prompt).toHaveBeenCalledOnce());
 		input.end();
@@ -355,7 +355,7 @@ describe("RPC command dispatcher", () => {
 		output.on("data", (chunk: Buffer) => chunks.push(chunk));
 		const exit = vi.fn();
 
-		void runRpcModeWithCapabilities(session, { input, output, exit, enableHostBridge: true });
+		void runRpcModeWithCapabilities(session, createRpcModeOptions(input, output, exit, true));
 		await vi.waitFor(() => expect(initialization).toBeDefined());
 		input.write('{"id":"host-prompt","type":"prompt","message":"send"}\n');
 		await vi.waitFor(() =>
@@ -390,7 +390,7 @@ describe("RPC command dispatcher", () => {
 		output.on("data", (chunk: Buffer) => chunks.push(chunk));
 		const exit = vi.fn();
 
-		void runRpcModeWithCapabilities(session, { input, output, exit });
+		void runRpcModeWithCapabilities(session, createRpcModeOptions(input, output, exit));
 		await vi.waitFor(() => expect(initialization).toBeDefined());
 		input.write('{"id":"ui-prompt","type":"prompt","message":"confirm"}\n');
 		await vi.waitFor(() =>
@@ -425,7 +425,7 @@ describe("RPC command dispatcher", () => {
 		const output = new PassThrough();
 		const exit = vi.fn();
 
-		void runRpcModeWithCapabilities(session, { input, output, exit });
+		void runRpcModeWithCapabilities(session, createRpcModeOptions(input, output, exit));
 		await vi.waitFor(() => expect(initialization).toBeDefined());
 		input.write('{"id":"shutdown-prompt","type":"prompt","message":"hold"}\n');
 		await vi.waitFor(() => expect(required(session.turn).prompt).toHaveBeenCalledOnce());
@@ -452,7 +452,7 @@ describe("RPC command dispatcher", () => {
 		const output = new PassThrough();
 		const exit = vi.fn();
 
-		void runRpcModeWithCapabilities(session, { input, output, exit });
+		void runRpcModeWithCapabilities(session, createRpcModeOptions(input, output, exit));
 		await vi.waitFor(() => expect(initialization).toBeDefined());
 		required(initialization).onShutdownRequested();
 		input.write('{"id":"shutdown-state-a","type":"get_state"}\n');
@@ -476,7 +476,7 @@ describe("RPC command dispatcher", () => {
 		const output = new PassThrough();
 		const exit = vi.fn();
 
-		void runRpcModeWithCapabilities(session, { input, output, exit });
+		void runRpcModeWithCapabilities(session, createRpcModeOptions(input, output, exit));
 		await vi.waitFor(() => expect(initialization).toBeDefined());
 		await Promise.resolve();
 		required(initialization).onShutdownRequested();
@@ -500,7 +500,7 @@ describe("RPC command dispatcher", () => {
 		const output = new PassThrough();
 		const exit = vi.fn();
 
-		void runRpcModeWithCapabilities(session, { input, output, exit });
+		void runRpcModeWithCapabilities(session, createRpcModeOptions(input, output, exit));
 		await vi.waitFor(() => expect(initialization).toBeDefined());
 		lifecycle.push("handler-before");
 		required(initialization).onShutdownRequested();
@@ -520,15 +520,73 @@ describe("RPC command dispatcher", () => {
 		});
 
 		await expect(
-			runRpcModeWithCapabilities(session, {
-				input: new PassThrough(),
-				output: new PassThrough(),
-				exit: vi.fn(),
-			}),
+			runRpcModeWithCapabilities(session, createRpcModeOptions(new PassThrough(), new PassThrough(), vi.fn())),
 		).rejects.toThrow("initialization failed");
 		expect(session.dispose).toHaveBeenCalledOnce();
 	});
 });
+
+function createRpcModeOptions(
+	input: PassThrough,
+	output: PassThrough,
+	exit: (code: number) => void,
+	enableHostBridge = false,
+): {
+	transport: RpcFrameTransport;
+	exit: (code: number) => void;
+	createRequestId: () => string;
+	enableHostBridge?: boolean;
+} {
+	return {
+		transport: new TestRpcFrameTransport(input, output),
+		exit,
+		createRequestId: () => "test-request-id",
+		...(enableHostBridge ? { enableHostBridge: true } : {}),
+	};
+}
+
+class TestRpcFrameTransport implements RpcFrameTransport {
+	private onLine: ((line: string) => void) | undefined;
+	private onClose: (() => void) | undefined;
+	private buffer = "";
+	private pendingLines: string[] = [];
+	private closed = false;
+
+	constructor(
+		input: PassThrough,
+		private readonly output: PassThrough,
+	) {
+		input.on("data", (chunk: Buffer | string) => {
+			this.buffer += chunk.toString();
+			const lines = this.buffer.split("\n");
+			this.buffer = lines.pop() ?? "";
+			for (const rawLine of lines) {
+				const line = rawLine.replace(/\r$/, "");
+				if (this.onLine) this.onLine(line);
+				else this.pendingLines.push(line);
+			}
+		});
+		input.once("end", () => this.close());
+	}
+
+	write(frame: unknown): void {
+		this.output.write(`${JSON.stringify(frame)}\n`);
+	}
+
+	start(onLine: (line: string) => void, onClose: () => void): void {
+		if (this.onLine) throw new Error("RPC test transport already started");
+		this.onLine = onLine;
+		this.onClose = onClose;
+		for (const line of this.pendingLines) onLine(line);
+		this.pendingLines = [];
+	}
+
+	close(): void {
+		if (this.closed) return;
+		this.closed = true;
+		this.onClose?.();
+	}
+}
 
 function createSessionCapabilities(): RpcSessionCapabilities {
 	return {

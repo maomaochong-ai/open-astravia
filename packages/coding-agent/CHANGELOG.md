@@ -2,6 +2,22 @@
 
 ### Breaking Changes
 
+- **Node RPC Client Transport 迁至 CLI 包**：子进程启动、JSONL stdout 读取、环境变量与信号管理从 Coding Agent
+  移至 `@vetta/cli-app`。Coding Agent RPC facade 保留注入 `RpcClientTransport` 的可移植 `RpcClient`、wire
+  类型、`RpcClientError` 与结构化失败映射；CLI 根入口导出绑定 `NodeRpcClientTransport` 的零配置 `RpcClient`。
+  Client 方法、默认可执行文件、超时和错误语义保持不变。
+
+- **RPC Host 依赖改为显式注入**：`runRpcModeWithCapabilities()` 不再读取 Node stdin/stdout、调用
+  `process.exit()` 或自行生成请求 ID，改为要求宿主提供 `RpcFrameTransport`、退出函数和请求 ID 工厂。
+  RPC Frame 校验、命令分发、Extension UI、IM Host Bridge 与生命周期语义仍由 Coding Agent 持有；CLI
+  通过 `NodeRpcJsonlTransport` 负责 Node JSONL 适配，便于其他宿主复用同一协议核心。
+
+- **Memory 改为显式 Host 存储**：模型可见 `memory` Tool 的名称、Schema、描述、结果投影与激活元数据迁入
+  Coding Agent Memory Feature；`MemoryDocumentStore`、Journal 与 Rollover Orchestrator 只依赖
+  `MemoryTextStorage`，不再直接访问 Node 文件系统。Runtime Composition 不再提供隐式文件回退；启用 Memory 的宿主必须
+  注入 `createMemoryRolloverRuntime`。CLI、Desktop 与 SDK 已显式绑定原有 `MEMORY.md` / `JOURNAL.md` 路径，Tool、Prompt
+  快照、字符预算、Journal 和 Rollover 行为保持不变。
+
 - **Knowledge 改为显式 Runtime 注入**：低层 Runtime Composition 删除 `knowledgeRoot` 与
   `knowledgeEnabled`，改为接收可选 `knowledgeRuntime`；未提供即不注册 Knowledge Tool，不再从进程环境或默认目录推断
   能力。三个模型可见 Knowledge Tool 的名称、Schema、描述、激活元数据和结果投影迁入
@@ -139,6 +155,10 @@
 - **Turn 绑定后 Session Plugin MCP 工具对模型不可见（回归）**：Turn-bound runtime generation（ADR-0069 落地）在 admission 冻结 MCP 可见集时只从 `readAvailableTools()` 取候选名，而 plugin MCP 工具要到 compose 阶段才由 pluginMcpRuntime 并入 frame、不在该表里，于是被整体冻结成不可见——插件声明的 MCP 工具在真实会话中从模型工具清单里消失。修复为冻结时把 MCP prompt state 的受管工具名并入候选集再过滤。回归由 `packages/cli-app/test/plugin-mcp-session-contract.test.ts` 锁定（原「isolates two sessions」用例在回归下失败）。该文件中 workflow 编排会话的 `rootMcpTools` 断言同步修正：旧断言 `[]` 锁定的是已删除的「MCP server agent_mode 与会话模式不匹配即排除」硬闸行为，零硬闸下 root 会话自己声明的 plugin MCP 工具对 root 模型同样可见。
 
 ### Changed
+
+- **SDK Session identity Host 解耦**：低层 SDK Session Factory 不再自行选择 UUID、cwd、Conversation Catalog、文件路径或
+  Node Persistence；这些能力通过 `CodingAgentSdkSessionIdentityRuntime` 注入。现有零参数 SDK 入口继续由 Node 兼容 Host
+  提供相同默认行为，同时为其他平台提供可替换的 Session identity 接缝。
 
 - Active Session 的身份、new/resume/fork 串行事务、中断、提交回滚和释放状态机已归 `runtime-core`；
   `CodingAgentActiveSessionHost` 只保留产品公共名称与诊断标签，Extension Hook、Seed 和后台资源仍以 Port 组合，

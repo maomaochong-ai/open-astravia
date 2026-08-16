@@ -193,6 +193,7 @@ describe("Coding Agent architecture gate", () => {
 		"packages/runtime-desktop/src/backend-pool.ts",
 		"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
 	])("requires %s to select and inject Node conversation persistence", (path) => {
+		const requiresMemoryStorage = path === "packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts";
 		const missing = createState([
 			{
 				path,
@@ -205,12 +206,15 @@ describe("Coding Agent architecture gate", () => {
 				text: [
 					'import { createCodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";',
 					'import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";',
-					'import { createNodeKnowledgeRuntime } from "@vetta/runtime-node/host";',
+					`import { createNodeKnowledgeRuntime${requiresMemoryStorage ? ", NodeTextFileStorage" : ""} } from "@vetta/runtime-node/host";`,
 					"createCodingAgentRuntimeComposition({",
 					"\tcreateConversationPersistence: () => createFileConversationPersistence(conversationDir),",
 					"\tcreateToolEnvironment: hostToolEnvironmentFactory,",
 					"\tcodingToolResultPolicy: hostToolResultPolicy,",
 					"\tknowledgeRuntime: createNodeKnowledgeRuntime(knowledgeDir),",
+					...(requiresMemoryStorage
+						? ["\tcreateMemoryRolloverRuntime: () => new NodeTextFileStorage(memoryFile),"]
+						: []),
 					"});",
 				].join("\n"),
 			},
@@ -224,6 +228,9 @@ describe("Coding Agent architecture gate", () => {
 		];
 		if (path !== "packages/runtime-desktop/src/backend-pool.ts") {
 			expectedMissing.push(`${path}: Node Host Composition Root must inject createNodeKnowledgeRuntime`);
+		}
+		if (requiresMemoryStorage) {
+			expectedMissing.push(`${path}: Node Host Composition Root must inject NodeTextFileStorage for Memory`);
 		}
 		expect(findCodingAgentArchitectureViolations(missing)).toEqual(expectedMissing);
 		expect(findCodingAgentArchitectureViolations(configured)).toEqual([]);
@@ -391,6 +398,85 @@ describe("Coding Agent architecture gate", () => {
 		);
 		expect(findCodingAgentArchitectureViolations(retiredHostComposition)).toContain(
 			`${hostPath}: Node resource composition belongs to application hosts`,
+		);
+	});
+
+	it("keeps RPC protocol semantics independent from Node transport", () => {
+		const rpcModePath = `${SOURCE_ROOT}/modes/rpc/rpc-mode.ts`;
+		const bridgePath = `${SOURCE_ROOT}/modes/rpc/rpc-host-bridge.ts`;
+		const clientPath = `${SOURCE_ROOT}/modes/rpc/rpc-client.ts`;
+		const hostPath = "packages/cli-app/src/rpc/runtime-host/runtime-host.ts";
+		const nodeClientTransportPath = "packages/cli-app/src/rpc/node-rpc-client-transport.ts";
+		const importingNode = createState([
+			{ path: rpcModePath, text: 'import { randomUUID } from "node:crypto"; export interface RunRpcModeOptions {}' },
+		]);
+		const directRandomness = createState([{ path: bridgePath, text: "const id = randomUUID();" }]);
+		const missingTransport = createState([
+			{
+				path: rpcModePath,
+				text: "export interface RunRpcModeOptions { readonly input: NodeJS.ReadableStream; }",
+			},
+		]);
+		const missingHostInjection = createState([
+			{ path: hostPath, text: "runRpcModeWithCapabilities(session, { exit: process.exit });" },
+		]);
+		const nodeBoundClientCore = createState([
+			{ path: clientPath, text: 'import { spawn } from "node:child_process";' },
+		]);
+		const missingClientPort = createState([
+			{ path: nodeClientTransportPath, text: "export class NodeRpcClientTransport {}" },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${rpcModePath}:1: RPC protocol semantics must consume host transport and ID ports`,
+		);
+		expect(findCodingAgentArchitectureViolations(directRandomness)).toContain(
+			`${bridgePath}: RPC protocol semantics must not access Node process or randomness directly`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingTransport)).toContain(
+			`${rpcModePath}: RPC mode must require explicit transport and request ID ports`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingHostInjection)).toContain(
+			`${hostPath}: Node RPC Host must inject JSONL transport, exit and request ID ports`,
+		);
+		expect(findCodingAgentArchitectureViolations(nodeBoundClientCore)).toContain(
+			`${clientPath}:1: RPC protocol semantics must consume host transport and ID ports`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingClientPort)).toContain(
+			`${nodeClientTransportPath}: Node RPC Client transport must implement the public RPC Port`,
+		);
+	});
+
+	it("keeps the SDK Session factory independent from Node identity and persistence", () => {
+		const runtimeFactoryPath = `${SOURCE_ROOT}/host/sdk-session/runtime-factory.ts`;
+		const sessionHostPath = `${SOURCE_ROOT}/host/sdk-session/session-host.ts`;
+		const importingNode = createState([
+			{ path: runtimeFactoryPath, text: 'import { randomUUID } from "node:crypto";' },
+		]);
+		const selectingDefaults = createState([
+			{
+				path: runtimeFactoryPath,
+				text: "const cwd = process.cwd(); const catalog = new FileConversationRuntimeSessionCatalog();",
+			},
+		]);
+		const missingPort = createState([
+			{ path: runtimeFactoryPath, text: "export interface CodingAgentSdkSessionFactoryOptions {}" },
+		]);
+		const missingHostInjection = createState([
+			{ path: sessionHostPath, text: "return createCodingAgentSdkSession({ storage });" },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${runtimeFactoryPath}:1: SDK Session factory must consume an identity runtime Port`,
+		);
+		expect(findCodingAgentArchitectureViolations(selectingDefaults)).toContain(
+			`${runtimeFactoryPath}: SDK Session factory must not select Node identity defaults`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingPort)).toContain(
+			`${runtimeFactoryPath}: SDK Session factory must require the complete identity runtime Port`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingHostInjection)).toContain(
+			`${sessionHostPath}: default SDK Host must inject the Node Session identity runtime`,
 		);
 	});
 
@@ -699,6 +785,34 @@ describe("Coding Agent architecture gate", () => {
 				`${nodeToolPath}: Knowledge Tool definitions belong to the Coding Agent feature`,
 				`${nodeEntryPath}: runtime-node must not export Coding Agent Knowledge Tools`,
 				`${cliPath}: Node Host Composition Root must inject createNodeKnowledgeRuntime`,
+			]),
+		);
+	});
+
+	it("keeps Memory definitions portable and platform storage host-owned", () => {
+		const featurePath = `${SOURCE_ROOT}/memory/memory-store.ts`;
+		const optionsPath = `${SOURCE_ROOT}/composition/contracts/runtime-composition-options.ts`;
+		const peripheralPath = `${SOURCE_ROOT}/composition/session-initialization/peripheral-assembly.ts`;
+		const nodeToolPath = "packages/runtime-node/src/coding/tools/memory/memory-tool.ts";
+		const nodeEntryPath = "packages/runtime-node/src/coding/index.ts";
+		const cliPath = "packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts";
+		const state = createState([
+			{ path: featurePath, text: 'import { readFile } from "node:fs";' },
+			{ path: optionsPath, text: "export interface Options {}" },
+			{ path: peripheralPath, text: "new CodingAgentMemoryRolloverOrchestrator()" },
+			{ path: nodeToolPath, text: "export const tool = {};" },
+			{ path: nodeEntryPath, text: 'export * from "./tools/memory/index.js";' },
+			{ path: cliPath, text: "createCodingAgentRuntimeComposition({});" },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(state)).toEqual(
+			expect.arrayContaining([
+				`${featurePath}:1: Memory semantics must consume portable storage ports`,
+				`${optionsPath}: Composition must accept an explicit Memory runtime factory`,
+				`${peripheralPath}: Memory host storage must be selected by the Composition Root`,
+				`${nodeToolPath}: Memory Tool definitions belong to the Coding Agent feature`,
+				`${nodeEntryPath}: runtime-node must not export Coding Agent Memory Tools`,
+				`${cliPath}: Node Host Composition Root must inject NodeTextFileStorage for Memory`,
 			]),
 		);
 	});

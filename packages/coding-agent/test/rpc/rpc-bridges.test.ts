@@ -10,7 +10,7 @@ afterEach(() => {
 describe("RPC extension UI bridge", () => {
 	test("correlates dialog responses and keeps notification requests fire-and-forget", async () => {
 		const requests: RpcExtensionUIRequest[] = [];
-		const bridge = new RpcExtensionUIBridge((request) => requests.push(request));
+		const bridge = new RpcExtensionUIBridge((request) => requests.push(request), createRequestId);
 		const context = bridge.createContext();
 
 		const confirmation = context.confirm("Confirm", "Continue?");
@@ -49,7 +49,7 @@ describe("RPC extension UI bridge", () => {
 	test("settles aborted, timed-out and disposed dialogs without leaking pending requests", async () => {
 		vi.useFakeTimers();
 		const requests: RpcExtensionUIRequest[] = [];
-		const bridge = new RpcExtensionUIBridge((request) => requests.push(request));
+		const bridge = new RpcExtensionUIBridge((request) => requests.push(request), createRequestId);
 		const context = bridge.createContext();
 		const controller = new AbortController();
 
@@ -75,7 +75,7 @@ describe("RPC extension UI bridge", () => {
 describe("RPC host bridge", () => {
 	test("correlates success and structured failure responses", async () => {
 		const requests: RpcHostRequest[] = [];
-		const host = new RpcHostBridge((request) => requests.push(request));
+		const host = new RpcHostBridge((request) => requests.push(request), createRequestId);
 		const bridge = host.createBridge();
 
 		const success = bridge.sendAttachment({ path: "image.png", kind: "image" });
@@ -105,7 +105,7 @@ describe("RPC host bridge", () => {
 	test("rejects timed-out and disposed host requests", async () => {
 		vi.useFakeTimers();
 		const requests: RpcHostRequest[] = [];
-		const host = new RpcHostBridge((request) => requests.push(request), 25);
+		const host = new RpcHostBridge((request) => requests.push(request), createRequestId, 25);
 		const bridge = host.createBridge();
 
 		const timedOut = bridge.sendAttachment({ path: "image.png", kind: "image" });
@@ -122,3 +122,9 @@ describe("RPC host bridge", () => {
 		expect(host.handle({ type: "host_response", id: disposedRequest.id, success: true })).toBe(false);
 	});
 });
+
+let requestId = 0;
+function createRequestId(): string {
+	requestId += 1;
+	return `request-${requestId}`;
+}

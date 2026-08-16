@@ -25,6 +25,8 @@ vi.mock("@vetta/coding-agent/composition", () => ({
 
 vi.mock("@vetta/runtime-node/conversation", () => ({
 	createFileConversationPersistence: factoryMocks.createFileConversationPersistence,
+	resolveConversationFilePath: vi.fn(),
+	resolveSessionIdFromPath: vi.fn(),
 }));
 
 vi.mock("@vetta/runtime-node/host", () => ({

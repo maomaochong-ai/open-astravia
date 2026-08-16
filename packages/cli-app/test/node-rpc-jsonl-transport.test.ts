@@ -1,8 +1,8 @@
 import { PassThrough } from "node:stream";
 import { describe, expect, test, vi } from "vitest";
-import { RpcJsonlTransport } from "../../src/modes/rpc/rpc-jsonl-transport.js";
+import { NodeRpcJsonlTransport } from "../src/rpc/node-rpc-jsonl-transport.js";
 
-describe("RPC JSONL transport", () => {
+describe("Node RPC JSONL transport", () => {
 	test("preserves line boundaries and emits one JSON object per write", async () => {
 		const input = new PassThrough();
 		const output = new PassThrough();
@@ -10,7 +10,7 @@ describe("RPC JSONL transport", () => {
 		output.on("data", (chunk: Buffer) => outputChunks.push(chunk));
 		const lines: string[] = [];
 		const closed = vi.fn();
-		const transport = new RpcJsonlTransport(input, output);
+		const transport = new NodeRpcJsonlTransport(input, output);
 		transport.start((line) => lines.push(line), closed);
 
 		input.write('{"type":"get_state"}\n{"type":"abort"}\n');
@@ -26,7 +26,7 @@ describe("RPC JSONL transport", () => {
 	});
 
 	test("rejects duplicate starts", () => {
-		const transport = new RpcJsonlTransport(new PassThrough(), new PassThrough());
+		const transport = new NodeRpcJsonlTransport(new PassThrough(), new PassThrough());
 		transport.start(
 			() => {},
 			() => {},

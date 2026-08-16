@@ -2,13 +2,9 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { execPath } from "node:process";
+import { RpcClientError, rpcClientErrorFromResponse } from "@vetta/coding-agent/rpc";
 import { describe, expect, it } from "vitest";
-import {
-	RpcClient,
-	RpcClientError,
-	resolveRpcClientProcessLaunch,
-	rpcClientErrorFromResponse,
-} from "../../src/modes/rpc/rpc-client.js";
+import { RpcClient, resolveRpcClientProcessLaunch } from "../src/rpc/rpc-client.js";
 
 function nodeRuntimeEnv(): Record<string, string> {
 	const pathKey = Object.keys(process.env).find((key) => key.toLowerCase() === "path") ?? "PATH";

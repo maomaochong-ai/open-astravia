@@ -8,10 +8,7 @@ import type { SubagentTypeRegistryLike } from "@vetta/runtime-subagents";
 import type { CodingToolActivation, CodingToolResultPolicy } from "@vetta/runtime-tools";
 import type { CodingAgentKnowledgeRuntime } from "../../features/knowledge/contracts.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
-import type {
-	CodingAgentMemoryRolloverOrchestratorOptions,
-	CodingAgentMemoryRolloverRuntime,
-} from "../../memory/index.js";
+import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type {
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentCompactionRuntimeOptions,
@@ -25,6 +22,7 @@ import type {
 	CodingAgentSystemPromptOptionsResolver,
 } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationPersistenceFactory } from "./conversation-persistence.js";
+import type { CodingAgentMemoryRuntimeFactoryOptions } from "./memory-runtime.js";
 import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
 import type {
 	CodingAgentSubagentChildFactory,
@@ -39,6 +37,7 @@ export type {
 	CodingAgentKnowledgeRuntime,
 	CodingAgentKnowledgeWriteOperations,
 } from "../../features/knowledge/contracts.js";
+export type { CodingAgentMemoryRuntimeFactoryOptions } from "./memory-runtime.js";
 
 export interface CodingAgentRuntimeEnvironmentOptions {
 	readonly cwd?: string;
@@ -163,9 +162,9 @@ export interface CodingAgentRuntimeContextOptions {
 	) => CodingAgentCompactionExtensionRuntime | undefined;
 	/** 测试或宿主可替换摘要调用；生产默认复用 Coding Agent 既有实现。 */
 	readonly generateCompaction?: CodingAgentCompactionRuntimeOptions["generateCompaction"];
-	/** 为每个 memory-mode Session 创建产品级 Memory Runtime；默认使用 Coding Agent 既有实现。 */
+	/** 为每个 memory-mode Session 创建产品级 Memory Runtime；文件与其他存储由宿主显式注入。 */
 	readonly createMemoryRolloverRuntime?: (
-		options: CodingAgentMemoryRolloverOrchestratorOptions,
+		options: CodingAgentMemoryRuntimeFactoryOptions,
 		sessionOptions: CodingAgentRuntimeSessionOptions,
 	) => CodingAgentMemoryRolloverRuntime;
 }

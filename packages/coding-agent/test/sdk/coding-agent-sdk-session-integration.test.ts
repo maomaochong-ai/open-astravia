@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/model-runtime-adapter.js";
 import { createCodingAgentNodeToolEnvironment } from "../../src/adapters/runtime-tools/node-tool-environment.js";
 import type { CodingAgentRuntimeComposition } from "../../src/composition/contracts/index.js";
+import { nodeCodingAgentSdkSessionIdentityRuntime } from "../../src/host/sdk-session/node-session-identity-runtime.js";
 import { bindCodingAgentSdkSessionRuntime } from "../../src/host/sdk-session/runtime-binding.js";
 import {
 	type CodingAgentSdkSessionFactoryOptions,
@@ -85,6 +86,37 @@ describe("Coding Agent SDK session integration", () => {
 		expect(session.sessionId).toBe("sdk-memory");
 		expect(session.sessionFile).toBeUndefined();
 		expect(session.messages.map(({ role }) => role)).toEqual(["user", "assistant"]);
+	});
+
+	it("routes initial and replacement Session identity through one explicit Host runtime", async () => {
+		const conversationDir = await temporaryDirectory("greenfield-sdk-identity-conversations-");
+		const workspace = await temporaryDirectory("greenfield-sdk-identity-workspace-");
+		const identityRuntime = {
+			resolveStorage: vi.fn(nodeCodingAgentSdkSessionIdentityRuntime.resolveStorage),
+			resolveDefaultCwd: vi.fn(nodeCodingAgentSdkSessionIdentityRuntime.resolveDefaultCwd),
+			createSessionCatalog: vi.fn(nodeCodingAgentSdkSessionIdentityRuntime.createSessionCatalog),
+			createSessionId: vi.fn(() => "sdk-identity-next"),
+			resolveSessionId: vi.fn(nodeCodingAgentSdkSessionIdentityRuntime.resolveSessionId),
+			resolveSessionPath: vi.fn(nodeCodingAgentSdkSessionIdentityRuntime.resolveSessionPath),
+		};
+		const { session } = await createCodingAgentSdkSession({
+			storage: { kind: "file-create", conversationDir, sessionId: "sdk-identity-initial" },
+			identityRuntime,
+			composition: factoryComposition(workspace),
+			session: { cwd: workspace, includeAgentSkills: false },
+		});
+		sdkSessions.push(session);
+		const initialSessionPath = session.sessionFile;
+		if (!initialSessionPath) throw new Error("Expected an initial Session path");
+
+		expect(identityRuntime.resolveStorage).toHaveBeenCalledOnce();
+		expect(identityRuntime.resolveDefaultCwd).toHaveBeenCalledWith(workspace);
+		expect(identityRuntime.createSessionCatalog).toHaveBeenCalledOnce();
+		await expect(session.newSession()).resolves.toBe(true);
+		expect(session.sessionId).toBe("sdk-identity-next");
+		expect(identityRuntime.createSessionId).toHaveBeenCalledOnce();
+		await expect(session.switchSession(initialSessionPath)).resolves.toBe(true);
+		expect(identityRuntime.resolveSessionId).toHaveBeenCalledWith(conversationDir, initialSessionPath);
 	});
 
 	it("preserves queued steering and follow-up messages through the Runtime queue port", async () => {
@@ -457,9 +489,13 @@ function assistantMessage(text: string): AssistantMessage {
 	};
 }
 
-function createCodingAgentSdkSession(options: CodingAgentSdkSessionFactoryOptions) {
+function createCodingAgentSdkSession(
+	options: Omit<CodingAgentSdkSessionFactoryOptions, "identityRuntime"> &
+		Partial<Pick<CodingAgentSdkSessionFactoryOptions, "identityRuntime">>,
+) {
 	return createSdkSession({
 		...options,
+		identityRuntime: options.identityRuntime ?? nodeCodingAgentSdkSessionIdentityRuntime,
 		composition: {
 			resolveSystemPromptOptions: () => ({ customPrompt: "Test system prompt", scenario: "cli" }),
 			...options.composition,

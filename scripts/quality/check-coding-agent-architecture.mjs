@@ -66,6 +66,12 @@ const KNOWLEDGE_RUNTIME_COMPOSITION_ROOTS = Object.freeze([
 	"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
 	`${SOURCE_ROOT}/host/sdk-session/session-host.ts`,
 ]);
+const MEMORY_RUNTIME_COMPOSITION_ROOTS = Object.freeze([
+	"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+	"packages/desktop-app/src/main/agent-runtime/composition.ts",
+	`${SOURCE_ROOT}/host/sdk-session/session-host.ts`,
+]);
+const RPC_HOST_COMPOSITION_ROOTS = Object.freeze(["packages/cli-app/src/rpc/runtime-host/runtime-host.ts"]);
 
 export function collectCodingAgentArchitectureState({ files, packageJson }) {
 	const normalizedFiles = files.map((file) => ({ ...file, path: normalizePath(file.path) }));
@@ -97,6 +103,9 @@ export function findCodingAgentArchitectureViolations(state) {
 	checkResourcePackageHostBoundary(state, violations);
 	checkHostOwnedResourceCompositionBoundary(state, violations);
 	checkKnowledgeRuntimeBoundary(state, violations);
+	checkMemoryRuntimeBoundary(state, violations);
+	checkRpcHostBoundary(state, violations);
+	checkSdkSessionIdentityRuntimeBoundary(state, violations);
 	checkRetiredLayerTerminology(state, violations);
 
 	for (const path of state.sourcePaths) {
@@ -562,6 +571,161 @@ function checkKnowledgeRuntimeBoundary(state, violations) {
 	}
 }
 
+function checkMemoryRuntimeBoundary(state, violations) {
+	const memoryRoot = `${SOURCE_ROOT}/memory/`;
+	const compositionOptionsPath = `${SOURCE_ROOT}/composition/contracts/runtime-composition-options.ts`;
+	const peripheralAssemblyPath = `${SOURCE_ROOT}/composition/session-initialization/peripheral-assembly.ts`;
+	const retiredNodeToolPrefixes = ["packages/runtime-node/src/coding/tools/memory/"];
+
+	for (const edge of state.edges) {
+		if (
+			edge.path.startsWith(memoryRoot) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: Memory semantics must consume portable storage ports`);
+		}
+	}
+	for (const file of state.files) {
+		if (retiredNodeToolPrefixes.some((prefix) => file.path.startsWith(prefix))) {
+			violations.push(`${file.path}: Memory Tool definitions belong to the Coding Agent feature`);
+		}
+		if (file.path.startsWith(memoryRoot) && /\bFileMemory(?:Store|Journal)\b/.test(file.text)) {
+			violations.push(`${file.path}: Memory semantics must not contain a file-backed implementation`);
+		}
+	}
+
+	const nodeCodingEntry = state.files.find((file) => file.path === "packages/runtime-node/src/coding/index.ts");
+	if (nodeCodingEntry && /\bcreateMemoryTool\b|\.\/tools\/memory\//.test(nodeCodingEntry.text)) {
+		violations.push(`${nodeCodingEntry.path}: runtime-node must not export Coding Agent Memory Tools`);
+	}
+
+	const compositionOptions = state.files.find((file) => file.path === compositionOptionsPath);
+	if (compositionOptions && !/\bcreateMemoryRolloverRuntime\??\s*:/.test(compositionOptions.text)) {
+		violations.push(`${compositionOptionsPath}: Composition must accept an explicit Memory runtime factory`);
+	}
+
+	const peripheralAssembly = state.files.find((file) => file.path === peripheralAssemblyPath);
+	if (
+		peripheralAssembly &&
+		(/\bnew\s+CodingAgentMemoryRolloverOrchestrator\b/.test(peripheralAssembly.text) ||
+			/\bjoin\s*\([^)]*MEMORY\.md/.test(peripheralAssembly.text))
+	) {
+		violations.push(`${peripheralAssembly.path}: Memory host storage must be selected by the Composition Root`);
+	}
+
+	for (const path of MEMORY_RUNTIME_COMPOSITION_ROOTS) {
+		const file = state.files.find((candidate) => candidate.path === path);
+		if (!file) continue;
+		const importsStorage = state.edges.some(
+			(edge) =>
+				edge.path === path &&
+				edge.specifier === "@vetta/runtime-node/host" &&
+				edge.names.includes("NodeTextFileStorage"),
+		);
+		if (!importsStorage || !/\bcreateMemoryRolloverRuntime\s*:/.test(file.text)) {
+			violations.push(`${path}: Node Host Composition Root must inject NodeTextFileStorage for Memory`);
+		}
+	}
+}
+
+function checkRpcHostBoundary(state, violations) {
+	const rpcRoot = `${SOURCE_ROOT}/modes/rpc/`;
+	const rpcModePath = `${rpcRoot}rpc-mode.ts`;
+	const rpcClientPath = `${rpcRoot}rpc-client.ts`;
+	const hostBridgePaths = new Set([`${rpcRoot}rpc-extension-ui-bridge.ts`, `${rpcRoot}rpc-host-bridge.ts`]);
+	const portableRpcPaths = new Set([rpcModePath, rpcClientPath, ...hostBridgePaths]);
+	for (const edge of state.edges) {
+		if (portableRpcPaths.has(edge.path) && edge.specifier.startsWith("node:")) {
+			violations.push(`${edge.path}:${edge.line}: RPC protocol semantics must consume host transport and ID ports`);
+		}
+	}
+	for (const file of state.files) {
+		if (!portableRpcPaths.has(file.path)) continue;
+		if (/\bprocess\.(?:env|stdin|stdout|exit)\b|\brandomUUID\s*\(/.test(file.text)) {
+			violations.push(`${file.path}: RPC protocol semantics must not access Node process or randomness directly`);
+		}
+	}
+
+	const rpcMode = state.files.find((file) => file.path === rpcModePath);
+	if (rpcMode && (!/transport:\s*RpcFrameTransport/.test(rpcMode.text) || !/createRequestId/.test(rpcMode.text))) {
+		violations.push(`${rpcModePath}: RPC mode must require explicit transport and request ID ports`);
+	}
+	for (const path of RPC_HOST_COMPOSITION_ROOTS) {
+		const file = state.files.find((candidate) => candidate.path === path);
+		if (!file) continue;
+		const importsTransport = state.edges.some(
+			(edge) => edge.path === path && edge.names.includes("NodeRpcJsonlTransport"),
+		);
+		if (
+			!importsTransport ||
+			!/transport:\s*new\s+NodeRpcJsonlTransport/.test(file.text) ||
+			!/createRequestId:/.test(file.text)
+		) {
+			violations.push(`${path}: Node RPC Host must inject JSONL transport, exit and request ID ports`);
+		}
+	}
+
+	const nodeClientTransportPath = "packages/cli-app/src/rpc/node-rpc-client-transport.ts";
+	const nodeClientTransport = state.files.find((file) => file.path === nodeClientTransportPath);
+	if (nodeClientTransport) {
+		const importsPort = state.edges.some(
+			(edge) =>
+				edge.path === nodeClientTransportPath &&
+				edge.specifier === "@vetta/coding-agent/rpc" &&
+				edge.names.includes("RpcClientTransport"),
+		);
+		if (!importsPort || !/implements\s+RpcClientTransport/.test(nodeClientTransport.text)) {
+			violations.push(`${nodeClientTransportPath}: Node RPC Client transport must implement the public RPC Port`);
+		}
+	}
+}
+
+function checkSdkSessionIdentityRuntimeBoundary(state, violations) {
+	const runtimeFactoryPath = `${SOURCE_ROOT}/host/sdk-session/runtime-factory.ts`;
+	const sessionHostPath = `${SOURCE_ROOT}/host/sdk-session/session-host.ts`;
+	const nodeRuntimePath = `${SOURCE_ROOT}/host/sdk-session/node-session-identity-runtime.ts`;
+	for (const edge of state.edges) {
+		if (
+			edge.path === runtimeFactoryPath &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: SDK Session factory must consume an identity runtime Port`);
+		}
+	}
+
+	const runtimeFactory = state.files.find((file) => file.path === runtimeFactoryPath);
+	if (runtimeFactory) {
+		if (/\bprocess\.|\brandomUUID\s*\(|\bFileConversationRuntimeSessionCatalog\b/.test(runtimeFactory.text)) {
+			violations.push(`${runtimeFactoryPath}: SDK Session factory must not select Node identity defaults`);
+		}
+		if (
+			!/^\s*readonly\s+identityRuntime:\s*CodingAgentSdkSessionIdentityRuntime\s*;/m.test(runtimeFactory.text) ||
+			!/options\.identityRuntime\.resolveStorage\s*\(/.test(runtimeFactory.text) ||
+			!/options\.identityRuntime\.createSessionCatalog\s*\(/.test(runtimeFactory.text)
+		) {
+			violations.push(`${runtimeFactoryPath}: SDK Session factory must require the complete identity runtime Port`);
+		}
+	}
+
+	const sessionHost = state.files.find((file) => file.path === sessionHostPath);
+	if (sessionHost) {
+		const importsNodeRuntime = state.edges.some(
+			(edge) => edge.path === sessionHostPath && edge.names.includes("nodeCodingAgentSdkSessionIdentityRuntime"),
+		);
+		if (
+			!importsNodeRuntime ||
+			!/identityRuntime:\s*[^,]*nodeCodingAgentSdkSessionIdentityRuntime/.test(sessionHost.text)
+		) {
+			violations.push(`${sessionHostPath}: default SDK Host must inject the Node Session identity runtime`);
+		}
+	}
+
+	const nodeRuntime = state.files.find((file) => file.path === nodeRuntimePath);
+	if (nodeRuntime && !/CodingAgentSdkSessionIdentityRuntime/.test(nodeRuntime.text)) {
+		violations.push(`${nodeRuntimePath}: Node SDK identity adapter must implement the identity runtime Port`);
+	}
+}
+
 function checkToolEnvironmentBoundary(state, violations) {
 	const toolCompositionPath = `${SOURCE_ROOT}/composition/tool-surface/runtime-tools-composition.ts`;
 	const retiredNodeImplementationPaths = [
@@ -740,6 +904,7 @@ function isContractPath(path) {
 	return (
 		path.startsWith(`${SOURCE_ROOT}/runtime-contracts/`) ||
 		path.startsWith(`${SOURCE_ROOT}/composition/contracts/`) ||
+		path.startsWith(`${SOURCE_ROOT}/host/sdk-session/contracts/`) ||
 		path === `${SOURCE_ROOT}/composition/knowledge-processing-contract.ts` ||
 		path.endsWith("-contract.ts") ||
 		path.endsWith("/contracts.ts") ||

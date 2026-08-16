@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { NodeScopedTextStorage } from "./scoped-text-storage.js";
+import { NodeTextFileStorage } from "./text-file-storage.js";
 import { NodeTransactionalTextStorage } from "./transactional-text-storage.js";
 
 const temporaryDirectories: string[] = [];
@@ -82,5 +83,18 @@ describe("Node transactional text storage", () => {
 		await expect(first).resolves.toBe("first");
 		await expect(second).resolves.toBe("one");
 		expect(readFileSync(path, "utf8")).toBe("two");
+	});
+});
+
+describe("Node text file storage", () => {
+	it("preserves missing reads, atomic replacement and append", () => {
+		const directory = createTemporaryDirectory();
+		const missing = new NodeTextFileStorage(join(directory, "missing", "MEMORY.md"));
+		expect(missing.read()).toBeUndefined();
+
+		const storage = new NodeTextFileStorage(join(directory, "MEMORY.md"));
+		storage.replace("first");
+		storage.append("\nsecond");
+		expect(storage.read()).toBe("first\nsecond");
 	});
 });

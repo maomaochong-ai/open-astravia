@@ -24,7 +24,7 @@ IM 用户大量时间在飞书/微信聊天，但 Claw 的会话之间过去**�
 |---|---|---|---|
 | **L1 常驻记忆** `MEMORY.md` | 单文件、策展式 Markdown 条目 | 每次 Session Runtime 创建时作为**冻结快照**注入 system prompt | `src/memory/memory-store.ts` |
 | **L2 会话本体** conversation jsonl | 当前对话的完整轨迹，rollover 时续接到新文件 | 全程在上下文（受 rollover 控制大小） | `runtime-node/src/conversation/file-conversation-repository.ts` |
-| **L3 日期工作史** `JOURNAL.md` + 日期目录 | 按需——agent 自助翻阅 | 不常驻，agent 用 Read/ls 拉取 | `src/memory/file-memory-journal.ts` |
+| **L3 日期工作史** `JOURNAL.md` + 日期目录 | 按需——agent 自助翻阅 | 不常驻，agent 用 Read/ls 拉取 | `src/memory/memory-journal.ts` |
 
 > L1 解决「跨会话记得」；L2 + rollover 解决「聊爆频繁压缩 + 连续感」；L3 解决「昨天干了什么 / 产物在哪」。
 
@@ -72,7 +72,7 @@ coding-agent 创建 memory-mode Session Runtime 时：
 
 ### 3.3 一轮对话 + JOURNAL 行（L3）
 
-Turn 完成后，Memory Runtime 通过独立 `TurnObserver` 取得该 Turn 最后的 assistant message，并调用 `FileMemoryJournal.appendTurn`：向运行 cwd（=今日目录）的 `JOURNAL.md` 追加一行「`- HH:MM <截断的回复> — files: <write/edit 触及的文件>`」。cancelled/failed/aborted/error 轮不落有效日志。
+Turn 完成后，Memory Runtime 通过独立 `TurnObserver` 取得该 Turn 最后的 assistant message，并调用 `MemoryJournalWriter.appendTurn`：向宿主注入的 Journal Storage 追加一行「`- HH:MM <截断的回复> — files: <write/edit 触及的文件>`」。当前 Node 宿主将该 Storage 绑定到运行 cwd（=今日目录）的 `JOURNAL.md`；cancelled/failed/aborted/error 轮不落有效日志。
 
 ### 3.4 触发 rollover（L2，取代 Layer2 压缩）
 
@@ -141,7 +141,7 @@ memory(action, content?, match?)
 | 记忆文件读/写 | `coding-agent/src/memory/memory-store.ts` |
 | 记忆条目代数与字符预算 | `coding-agent/src/memory/memory-document.ts` |
 | flush 领域服务 / LLM 持久事实抽取 | `coding-agent/src/memory/memory-flush-service.ts`、`ai-memory-fact-extractor.ts` |
-| JOURNAL 行/段 | `coding-agent/src/memory/file-memory-journal.ts` |
+| JOURNAL 行/段 | `coding-agent/src/memory/memory-journal.ts` |
 | `memory` 工具 | `runtime-tools/src/coding/tools/memory/` |
 | 快照、flush+journal 接线与 70% 策略 | `coding-agent/src/memory/memory-rollover-runtime.ts` |
 | system prompt 的 `memory` 段 | `coding-agent/src/model-context/memory-prompt.ts` |

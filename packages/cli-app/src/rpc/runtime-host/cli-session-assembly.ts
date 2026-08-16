@@ -2,11 +2,13 @@ import { join } from "node:path";
 import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
 import {
 	CodingAgentActiveSessionHost,
+	type CodingAgentMemoryRuntimeFactoryOptions,
 	CodingAgentProcessSessionHost,
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
 	type CodingAgentRuntimeSessionOptions,
 	createCodingAgentCodingToolResultPolicy,
+	createCodingAgentMemoryRolloverRuntime,
 	createCodingAgentRuntimeComposition,
 	createCodingAgentSessionSetupSeedInitializer,
 } from "@vetta/coding-agent/composition";
@@ -36,7 +38,11 @@ import {
 	resolveConversationFilePath,
 	resolveSessionIdFromPath,
 } from "@vetta/runtime-node/conversation";
-import { createNodeKnowledgeRuntime, createNodeResultArtifactStorage } from "@vetta/runtime-node/host";
+import {
+	createNodeKnowledgeRuntime,
+	createNodeResultArtifactStorage,
+	NodeTextFileStorage,
+} from "@vetta/runtime-node/host";
 
 export const CLI_RUNTIME_HOST_STARTUP_FAILURE = "CLI Runtime startup and cleanup failed";
 
@@ -53,6 +59,17 @@ export interface CliSessionAssemblyOptions {
 	readonly createSessionId: () => string;
 	readonly ownership?: FileConversationOwnershipManagerOptions;
 	readonly createPluginRuntime?: CodingAgentRuntimeCompositionOptions["createPluginRuntime"];
+}
+
+function createCliMemoryRolloverRuntime(options: CodingAgentMemoryRuntimeFactoryOptions) {
+	const memoryFile = options.memoryFile ?? join(options.cwd, "MEMORY.md");
+	return createCodingAgentMemoryRolloverRuntime({
+		cwd: options.cwd,
+		memoryFile,
+		memoryCharLimit: options.memoryCharLimit,
+		memoryStorage: new NodeTextFileStorage(memoryFile),
+		journalStorage: new NodeTextFileStorage(join(options.cwd, "JOURNAL.md")),
+	});
 }
 
 export interface CliSessionAssembly {
@@ -104,6 +121,7 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 			agentDir: bootstrap.agentDir,
 			knowledgeRuntime:
 				process.env.VETTA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeDir()),
+			createMemoryRolloverRuntime: createCliMemoryRolloverRuntime,
 			hookConfigLayers: buildDefaultHookConfigLayers({
 				cwd: bootstrap.cwd,
 				vettaHome: getVettaHomePath(),

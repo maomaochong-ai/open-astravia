@@ -1,11 +1,4 @@
-import { randomUUID } from "node:crypto";
-import type { RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { InitializationRollbackScope, RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
-import {
-	FileConversationRuntimeSessionCatalog,
-	resolveConversationFilePath,
-	resolveSessionIdFromPath,
-} from "@vetta/runtime-node/conversation";
 import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
@@ -21,13 +14,17 @@ import type { CodingAgentSessionStorageTarget } from "../../public-api/sdk/sdk-c
 import type { CodingAgentSession } from "../../public-api/sdk/sdk-session-contract.js";
 import { CodingAgentSdkActiveSessionAdapter } from "./active-session-adapter.js";
 import { CodingAgentSdkActiveSessionCapabilityHost } from "./active-session-capability-host.js";
+import type {
+	CodingAgentSdkSessionArtifactCleaner,
+	CodingAgentSdkSessionIdentityRuntime,
+	ResolvedCodingAgentSdkSessionStorage,
+} from "./contracts/session-identity-runtime.js";
 import { bindCodingAgentSdkActiveSessionRuntime } from "./runtime-binding.js";
 import type {
 	CodingAgentSdkActiveSessionCapabilityPort,
 	CodingAgentSdkSessionCapabilityPort,
 } from "./runtime-contracts.js";
 import { CodingAgentSdkSessionCapabilityHost } from "./session-capability-host.js";
-import { type ResolvedCodingAgentSdkSessionStorage, resolveCodingAgentSdkSessionStorage } from "./storage.js";
 
 type CodingAgentSdkCompositionOptions = Omit<
 	CodingAgentRuntimeCompositionOptions,
@@ -38,6 +35,7 @@ type CodingAgentSdkRuntimeSessionOptions = Omit<CodingAgentRuntimeSessionOptions
 
 export interface CodingAgentSdkSessionFactoryOptions {
 	readonly storage: CodingAgentSessionStorageTarget;
+	readonly identityRuntime: CodingAgentSdkSessionIdentityRuntime;
 	readonly composition: CodingAgentSdkCompositionOptions;
 	readonly session?: CodingAgentSdkRuntimeSessionOptions;
 	readonly sessionArtifactCleaner?: CodingAgentSdkSessionArtifactCleaner;
@@ -53,10 +51,6 @@ export interface CodingAgentSdkSessionFactoryOptions {
 	readonly createActiveCapabilityHost?: CodingAgentSdkActiveSessionCapabilityHostFactory;
 	/** 完整清理成功后通知外层 Host 释放 Session 所有权。 */
 	readonly onSessionClosed?: () => void;
-}
-
-export interface CodingAgentSdkSessionArtifactCleaner {
-	deleteSessionArtifacts(sessionId: string): Promise<void>;
 }
 
 export interface CodingAgentSdkOwnedResource {
@@ -106,7 +100,7 @@ export async function createCodingAgentSdkSession(
 	}
 	let storage: ResolvedCodingAgentSdkSessionStorage;
 	try {
-		storage = resolveCodingAgentSdkSessionStorage(options.storage);
+		storage = options.identityRuntime.resolveStorage(options.storage);
 	} catch (error) {
 		return rollback.rollback(error, "SDK storage resolution and rollback failed");
 	}
@@ -150,11 +144,15 @@ export async function createCodingAgentSdkSession(
 			initialSession: runtimeSession,
 			sessionOptions: options.session ?? {},
 			conversationDir,
-			defaultCwd: options.session?.cwd ?? options.composition.cwd ?? process.cwd(),
-			sessionCatalog: createSessionCatalog(storage, options.session?.cwd, options.sessionArtifactCleaner),
-			createSessionId: randomUUID,
-			resolveSessionId: (path) => resolveSessionIdFromPath(conversationDir, path),
-			resolveSessionPath: (sessionId) => resolveConversationFilePath(conversationDir, sessionId),
+			defaultCwd: options.identityRuntime.resolveDefaultCwd(options.session?.cwd ?? options.composition.cwd),
+			sessionCatalog: options.identityRuntime.createSessionCatalog({
+				storage,
+				cwd: options.session?.cwd,
+				artifactCleaner: options.sessionArtifactCleaner,
+			}),
+			createSessionId: () => options.identityRuntime.createSessionId(),
+			resolveSessionId: (path) => options.identityRuntime.resolveSessionId(conversationDir, path),
+			resolveSessionPath: (sessionId) => options.identityRuntime.resolveSessionPath(conversationDir, sessionId),
 			lifecycle: createResourceAwareTransitionLifecycle(
 				composition,
 				options,
@@ -219,18 +217,6 @@ function createActiveSessionCleanup(
 	return cleanup;
 }
 
-function createSessionCatalog(
-	storage: ResolvedCodingAgentSdkSessionStorage,
-	cwd: string | undefined,
-	artifactCleaner: CodingAgentSdkSessionArtifactCleaner | undefined,
-): RuntimeSessionCatalog {
-	if (!storage.conversationDir) return EMPTY_SESSION_CATALOG;
-	return new FileConversationRuntimeSessionCatalog({
-		roots: [{ cwd: cwd ?? process.cwd(), sessionDir: storage.conversationDir }],
-		artifactCleaner,
-	});
-}
-
 function createResourceAwareTransitionLifecycle(
 	composition: CodingAgentRuntimeComposition,
 	options: CodingAgentSdkSessionFactoryOptions,
@@ -274,13 +260,3 @@ function createResourceAwareTransitionLifecycle(
 		after: (transition) => options.transitionLifecycle?.after?.(transition) ?? Promise.resolve(),
 	};
 }
-
-const EMPTY_SESSION_CATALOG: RuntimeSessionCatalog = {
-	ownsSession: async () => false,
-	listProjects: async () => [],
-	listSessions: async () => [],
-	renameSession: async () => {
-		throw new Error("In-memory SDK sessions cannot be renamed through a file catalog");
-	},
-	deleteSessionArtifacts: async () => {},
-};

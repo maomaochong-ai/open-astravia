@@ -52,6 +52,7 @@ export {
 } from "./result-artifact-storage.js";
 export { nodeRuntimeHostPathServices, nodeRuntimeQueueSidecarStore } from "./runtime-host-services.js";
 export { NodeScopedTextStorage } from "./scoped-text-storage.js";
+export { NodeTextFileStorage } from "./text-file-storage.js";
 export {
 	NodeTransactionalTextStorage,
 	type NodeTransactionalTextStorageOptions,

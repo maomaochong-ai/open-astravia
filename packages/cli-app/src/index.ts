@@ -2,6 +2,18 @@ export {
 	type RunAgentRuntimeCliOptions,
 	runAgentRuntimeCli,
 } from "./agent-runtime-selection.js";
+export {
+	NodeRpcClientTransport,
+	type NodeRpcClientTransportOptions,
+} from "./rpc/node-rpc-client-transport.js";
+export {
+	type ModelInfo,
+	RpcClient,
+	type RpcClientOptions,
+	type RpcClientProcessLaunch,
+	type RpcEventListener,
+	resolveRpcClientProcessLaunch,
+} from "./rpc/rpc-client.js";
 export { installRpcStdoutGuard, type RpcStdoutGuard } from "./rpc/rpc-stdout-guard.js";
 export {
 	CLI_EXTENSION_EVENT_COMPATIBILITY_PROFILE,

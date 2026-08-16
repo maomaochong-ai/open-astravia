@@ -60,6 +60,10 @@ Knowledge 同样按定义与实现分离：`features/knowledge` 拥有 Tool 名�
 `runtime-knowledge` 拥有知识文件、索引、查询和写入规则；最终宿主通过 `knowledgeRuntime` 注入具体实现。
 未注入时该能力不可用，Composition 不读取默认目录或环境开关。
 
+Memory 的文档规则、Tool、Prompt 快照、Journal 格式与 Rollover 策略由本包拥有，持久化只依赖
+`MemoryTextStorage`。Node 宿主使用 `NodeTextFileStorage` 选择 `MEMORY.md` 与 `JOURNAL.md`；启用
+Memory 但未提供 `createMemoryRolloverRuntime` 时，Session 初始化会明确失败，不存在隐式文件回退。
+
 ## 执行模型
 
 一次模型 Turn 的稳定主干是：
@@ -88,7 +92,8 @@ Host request
 - `@vetta/coding-agent/bootstrap`：平台无关的启动编排；Settings、Auth、Model 与 Resource 实现由宿主注入
 - `@vetta/coding-agent/runtime`：Runtime 产品入口
 - `@vetta/coding-agent/sdk`：嵌入式会话 API
-- `@vetta/coding-agent/rpc`：迁移中的 RPC 兼容入口，目标所有者为 CLI Host
+- `@vetta/coding-agent/rpc`：平台无关的 RPC Frame、命令分发、桥接和会话能力合同；传输、进程退出与请求 ID
+  由宿主注入。CLI 的 Node JSONL 适配位于 `@vetta/cli-app`，不属于协议核心
 - `@vetta/coding-agent/extensions`：扩展合同
 - `@vetta/coding-agent/host`：迁移中的 Node Host 兼容入口，不得作为新功能依赖
 - `@vetta/coding-agent/configuration`：配置合同

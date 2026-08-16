@@ -10,6 +10,7 @@ import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js"
 import { CodingAgentMemoryRolloverOrchestrator } from "../../src/memory/index.js";
 import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
 import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-persistence.js";
+import { createMemoryTextStorage } from "../fixtures/memory-storage.js";
 
 describe("Coding Agent Session Initialization Transaction", () => {
 	it("rolls back acquired resources in reverse order and allows the same Session to restart", async () => {
@@ -54,7 +55,12 @@ describe("Coding Agent Session Initialization Transaction", () => {
 				return runtime;
 			},
 			createMemoryRolloverRuntime: (options) => {
-				const runtime = new CodingAgentMemoryRolloverOrchestrator(options);
+				const runtime = new CodingAgentMemoryRolloverOrchestrator({
+					...options,
+					memoryFile: options.memoryFile ?? "MEMORY.md",
+					memoryStorage: createMemoryTextStorage(),
+					journalStorage: createMemoryTextStorage(),
+				});
 				const dispose = runtime.dispose.bind(runtime);
 				vi.spyOn(runtime, "dispose").mockImplementation(() => {
 					rollbackOrder.push("memory");

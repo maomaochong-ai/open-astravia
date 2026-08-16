@@ -9,17 +9,11 @@ import {
 	type CodingToolRegistration,
 	createAskUserQuestionToolRegistration,
 	createInvokeSkillToolRegistration,
-	createMemoryToolRegistration,
 	createToolSearchToolRegistration,
 	INVOKE_SKILL_TOOL_CATEGORY,
 	INVOKE_SKILL_TOOL_DESCRIPTION,
 	INVOKE_SKILL_TOOL_SCOPES,
 	InvokeSkillToolInputSchema,
-	MEMORY_TOOL_CATEGORY,
-	MEMORY_TOOL_DESCRIPTION,
-	MEMORY_TOOL_SCOPES,
-	MemoryToolInputSchema,
-	type MemoryToolOperations,
 	scoreDeferredTools,
 	TOOL_SEARCH_TOOL_CATEGORY,
 	TOOL_SEARCH_TOOL_DESCRIPTION,
@@ -44,7 +38,6 @@ describe("native capability tool compatibility", () => {
 		const ask = async () => ({ cancelled: true, answers: [] });
 		const skill = createSkill();
 		const search = () => ({ activated: [], alreadyActive: [], totalDeferred: 0 });
-		const memoryOperations = createInMemoryMemoryOperations();
 
 		expectRegistration(createAskUserQuestionToolRegistration({ ask }), {
 			name: "ask_user_question",
@@ -76,22 +69,6 @@ describe("native capability tool compatibility", () => {
 			schema: ToolSearchToolInputSchema,
 			scopeUse: TOOL_SEARCH_TOOL_SCOPES,
 			category: TOOL_SEARCH_TOOL_CATEGORY,
-		});
-		const memory = createMemoryToolRegistration({ operations: memoryOperations });
-		expect({
-			name: memory.tool.name,
-			label: memory.tool.label,
-			description: memory.tool.description,
-			schema: memory.tool.inputSchema,
-			scopeUse: memory.scopeUse,
-			category: memory.category,
-		}).toEqual({
-			name: "memory",
-			label: "Memory",
-			description: MEMORY_TOOL_DESCRIPTION,
-			schema: MemoryToolInputSchema,
-			scopeUse: MEMORY_TOOL_SCOPES,
-			category: MEMORY_TOOL_CATEGORY,
 		});
 	});
 
@@ -175,27 +152,6 @@ describe("native capability tool compatibility", () => {
 		});
 		expect(calls).toEqual([10]);
 	});
-
-	it("keeps memory add and replace state transitions", async () => {
-		const runtime = createMemoryToolRegistration({
-			operations: createInMemoryMemoryOperations(),
-		}).tool;
-		expect(await executeRuntime(runtime, { action: "add", content: "Uses Bun" })).toEqual({
-			content: [{ type: "text", text: "memory add ok — 1 entry, 8/4000 chars.\n\nCurrent memory:\n1. Uses Bun" }],
-			details: { action: "add", entryCount: 1, chars: 8, limit: 4_000 },
-		});
-		expect(
-			await executeRuntime(runtime, { action: "replace", match: "Bun", content: "Uses Bun workspaces" }),
-		).toEqual({
-			content: [
-				{
-					type: "text",
-					text: "memory replace ok — 1 entry, 19/4000 chars.\n\nCurrent memory:\n1. Uses Bun workspaces",
-				},
-			],
-			details: { action: "replace", entryCount: 1, chars: 19, limit: 4_000 },
-		});
-	});
 });
 
 function expectRegistration<TInput extends object>(
@@ -233,23 +189,5 @@ function createSkill() {
 		type: "skill" as const,
 		disableModelInvocation: false,
 		content: "---\nname: pdf\n---\nFollow the PDF workflow.",
-	};
-}
-
-function createInMemoryMemoryOperations(): MemoryToolOperations {
-	const entries: string[] = [];
-	return {
-		apply(action, input) {
-			if (action === "add") entries.push(input.content ?? "");
-			if (action === "replace") {
-				const index = entries.findIndex((entry) => entry.includes(input.match ?? ""));
-				if (index >= 0) entries[index] = input.content ?? "";
-			}
-			if (action === "remove") {
-				const index = entries.findIndex((entry) => entry.includes(input.match ?? ""));
-				if (index >= 0) entries.splice(index, 1);
-			}
-			return { entries: [...entries], chars: entries.join("\n\n§\n\n").length, limit: 4_000 };
-		},
 	};
 }

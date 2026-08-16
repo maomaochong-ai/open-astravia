@@ -26,7 +26,17 @@ import {
 } from "../src/public-api/host-services.js";
 import { ALL_SCENARIOS, PERSONAS } from "../src/public-api/profile.js";
 import * as resourceApi from "../src/public-api/resources.js";
-import { RPC_FULL_SESSION_PROFILE, RPC_IM_SESSION_PROFILE, runRpcModeWithCapabilities } from "../src/public-api/rpc.js";
+import {
+	RPC_FULL_SESSION_PROFILE,
+	RPC_IM_SESSION_PROFILE,
+	RpcClient,
+	type RpcClientTransport,
+	type RpcCommand,
+	type RpcResponse,
+	type RpcSlashCommand,
+	runRpcModeWithCapabilities,
+	type SessionStats,
+} from "../src/public-api/rpc.js";
 import {
 	createCodingAgentRuntimeExtensionCommandHost,
 	createCodingAgentSessionCapabilityHost,
@@ -56,6 +66,12 @@ describe("coding-agent public subpaths", () => {
 		expectTypeOf<CodingAgentPromptRuntimeSources>().toHaveProperty("resourceSource");
 		expect(createCodingAgentBootstrap).toBeTypeOf("function");
 		expect(runRpcModeWithCapabilities).toBeTypeOf("function");
+		expect(RpcClient).toBeTypeOf("function");
+		expectTypeOf<RpcClientTransport>().toHaveProperty("start");
+		expectTypeOf<RpcCommand>().toHaveProperty("type");
+		expectTypeOf<RpcResponse>().toHaveProperty("success");
+		expectTypeOf<RpcSlashCommand>().toHaveProperty("source");
+		expectTypeOf<SessionStats>().toHaveProperty("sessionId");
 		expect(RPC_IM_SESSION_PROFILE.id).toBe("greenfield-im");
 		expect(RPC_FULL_SESSION_PROFILE.id).toBe("greenfield");
 		expect(CODING_AGENT_SDK_HOST_ERROR_CODES.NO_MODEL).toBe("greenfield_sdk_no_model");

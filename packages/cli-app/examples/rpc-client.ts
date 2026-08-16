@@ -1,9 +1,9 @@
 import * as readline from "node:readline";
-import { RpcClient } from "../src/modes/rpc/rpc-client.js";
+import { RpcClient } from "../src/rpc/rpc-client.js";
 
 /**
  * Interactive example of using coding-agent via RpcClient.
- * Usage: npx tsx test/rpc-example.ts
+ * Usage: npx tsx examples/rpc-client.ts
  */
 
 async function main() {

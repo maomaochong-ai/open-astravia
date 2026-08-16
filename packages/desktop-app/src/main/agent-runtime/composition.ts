@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
+import { createCodingAgentMemoryRolloverRuntime } from "@vetta/coding-agent/composition";
 import { getAgentDir } from "@vetta/coding-agent/config";
 import {
 	createCodingAgentMcpRuntimeToolSource,
@@ -30,7 +31,7 @@ import {
 	FileConversationRuntimeSessionFileHistoryReader,
 	type RuntimeConversationSessionRoot,
 } from "@vetta/runtime-node/conversation";
-import { createNodeKnowledgeRuntime } from "@vetta/runtime-node/host";
+import { createNodeKnowledgeRuntime, NodeTextFileStorage } from "@vetta/runtime-node/host";
 import { getBuiltinSkillPaths } from "../builtin-skills.js";
 import {
 	DEFAULT_CONVERSATION_CWD,
@@ -86,6 +87,16 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 			createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 			knowledgeRuntime:
 				process.env.VETTA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeRoot()),
+			createMemoryRolloverRuntime: (options) => {
+				const memoryFile = options.memoryFile ?? join(options.cwd, "MEMORY.md");
+				return createCodingAgentMemoryRolloverRuntime({
+					cwd: options.cwd,
+					memoryFile,
+					memoryCharLimit: options.memoryCharLimit,
+					memoryStorage: new NodeTextFileStorage(memoryFile),
+					journalStorage: new NodeTextFileStorage(join(options.cwd, "JOURNAL.md")),
+				});
+			},
 			...(providerObservationRuntime ? { streamFn: providerObservationRuntime.streamFn } : {}),
 			createPluginMcpRuntime: ({ cwd, agentDir }) => {
 				const resolvedAgentDir = agentDir ?? getAgentDir();

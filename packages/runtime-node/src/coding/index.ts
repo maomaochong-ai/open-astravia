@@ -348,21 +348,6 @@ export {
 	type LsToolOptions,
 } from "./tools/ls/index.js";
 export {
-	createMemoryTool,
-	createMemoryToolRegistration,
-	MEMORY_TOOL_CATEGORY,
-	MEMORY_TOOL_DESCRIPTION,
-	MEMORY_TOOL_SCOPES,
-	type MemoryToolAction,
-	type MemoryToolDetails,
-	type MemoryToolInput,
-	MemoryToolInputSchema,
-	type MemoryToolOperations,
-	type MemoryToolOptions,
-	type MemoryToolRegistrationOptions,
-	type MemoryToolState,
-} from "./tools/memory/index.js";
-export {
 	createProgressTool,
 	createProgressToolRegistration,
 	PROGRESS_TOOL_CATEGORY,
