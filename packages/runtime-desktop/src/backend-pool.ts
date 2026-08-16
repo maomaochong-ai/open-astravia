@@ -7,6 +7,7 @@ import {
 	CodingAgentRuntimeHostSessionBackend,
 	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
+import { createCodingAgentNodeToolEnvironment } from "@vetta/coding-agent/host-services";
 import type {
 	ConversationScenario,
 	RuntimeHostSessionAssembly,
@@ -17,9 +18,11 @@ import type {
 } from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";
+import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
 
 type CompositionFixedOption =
 	| "agentDir"
+	| "createToolEnvironment"
 	| "createConversationPersistence"
 	| "conversationDir"
 	| "cwd"
@@ -49,6 +52,7 @@ export interface DesktopRuntimeBackendPoolOptions {
 	) => Promise<CodingAgentRuntimeComposition>;
 	readonly createMcpRuntimeSource?: (scope: DesktopMcpRuntimeScope) => Promise<DesktopManagedMcpRuntimeSource>;
 	readonly resolveMcpRuntimeScope?: (scope: DesktopMcpRuntimeScope) => DesktopMcpRuntimeScope;
+	readonly createCodingToolResultPolicy?: (scope: DesktopMcpRuntimeScope) => CodingToolResultPolicy;
 }
 
 export interface DesktopRuntimeHookScope {
@@ -199,6 +203,12 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 			createConversationPersistence:
 				this.options.compositionDefaults.createConversationPersistence ??
 				(() => createFileConversationPersistence(scope.conversationDir)),
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			codingToolResultPolicy:
+				this.options.createCodingToolResultPolicy?.({
+					cwd: scope.cwd,
+					agentDir: scope.agentDir,
+				}) ?? this.options.compositionDefaults.codingToolResultPolicy,
 			additionalHookAdapterFactories: [
 				...(this.options.compositionDefaults.additionalHookAdapterFactories ?? []),
 				...(this.options.createHookAdapterFactories?.(scope) ?? []),

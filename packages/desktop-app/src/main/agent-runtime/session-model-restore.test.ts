@@ -12,6 +12,7 @@ import {
 	startOpenAiResponsesTestServer,
 	textResponseEvents,
 } from "../../../../cli-app/test/support/openai-responses-test-server.js";
+import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
 
 const MODEL_A: Model<Api> = {
 	id: "model-a-first-in-list",
@@ -139,7 +140,11 @@ describe("Desktop session model restore", () => {
 		dispose: () => Promise<void>;
 	} {
 		const pool = new DesktopRuntimeBackendPool({
-			compositionDefaults: { modelRegistry: modelRegistry(models), initialThinkingLevel: "off" },
+			compositionDefaults: {
+				modelRegistry: modelRegistry(models),
+				initialThinkingLevel: "off",
+				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
+			},
 		});
 		const runtime = new RuntimeHost({ sessionBackend: pool, getDefaultExecutionMode: () => "full-access" });
 		const entry = {

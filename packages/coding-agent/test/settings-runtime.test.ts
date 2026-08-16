@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CONFIG_DIR_NAME } from "../src/config.js";
-import { SettingsRuntime } from "../src/settings/index.js";
+import { createFileSettingsRuntime } from "./fixtures/file-settings-runtime.js";
 
 describe("SettingsRuntime", () => {
 	const testDir = join(process.cwd(), "test-settings-tmp");
@@ -37,7 +37,7 @@ describe("SettingsRuntime", () => {
 			);
 
 			// Create SettingsRuntime (simulates pi starting up)
-			const manager = SettingsRuntime.create(projectDir, agentDir);
+			const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 			// Simulate user editing settings.json externally to add enabledModels
 			const currentSettings = JSON.parse(readFileSync(settingsPath, "utf-8"));
@@ -65,7 +65,7 @@ describe("SettingsRuntime", () => {
 				}),
 			);
 
-			const manager = SettingsRuntime.create(projectDir, agentDir);
+			const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 			// User adds custom settings externally
 			const currentSettings = JSON.parse(readFileSync(settingsPath, "utf-8"));
@@ -93,7 +93,7 @@ describe("SettingsRuntime", () => {
 				}),
 			);
 
-			const manager = SettingsRuntime.create(projectDir, agentDir);
+			const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 			// User externally sets thinking level to "low"
 			const currentSettings = JSON.parse(readFileSync(settingsPath, "utf-8"));
@@ -120,7 +120,7 @@ describe("SettingsRuntime", () => {
 				}),
 			);
 
-			const manager = SettingsRuntime.create(projectDir, agentDir);
+			const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 			expect(manager.getPackages()).toEqual([]);
 			expect(manager.getExtensionPaths()).toEqual(["/local/ext.ts", "./relative/ext.ts"]);
@@ -142,7 +142,7 @@ describe("SettingsRuntime", () => {
 				}),
 			);
 
-			const manager = SettingsRuntime.create(projectDir, agentDir);
+			const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 			const packages = manager.getPackages();
 			expect(packages).toHaveLength(2);
@@ -166,7 +166,7 @@ describe("SettingsRuntime", () => {
 				}),
 			);
 
-			const manager = SettingsRuntime.create(projectDir, agentDir);
+			const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 			writeFileSync(
 				settingsPath,
@@ -188,7 +188,7 @@ describe("SettingsRuntime", () => {
 			const settingsPath = join(agentDir, "settings.json");
 			writeFileSync(settingsPath, JSON.stringify({ theme: "dark" }));
 
-			const manager = SettingsRuntime.create(projectDir, agentDir);
+			const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 			writeFileSync(settingsPath, "{ invalid json");
 			manager.reload();
@@ -204,7 +204,7 @@ describe("SettingsRuntime", () => {
 			writeFileSync(globalSettingsPath, "{ invalid global json");
 			writeFileSync(projectSettingsPath, "{ invalid project json");
 
-			const manager = SettingsRuntime.create(projectDir, agentDir);
+			const manager = createFileSettingsRuntime(projectDir, agentDir);
 			const errors = manager.drainErrors();
 
 			expect(errors).toHaveLength(2);
@@ -223,7 +223,7 @@ describe("SettingsRuntime", () => {
 			rmSync(join(projectDir, CONFIG_DIR_NAME), { recursive: true });
 
 			// Create SettingsRuntime (reads both global and project settings)
-			const manager = SettingsRuntime.create(projectDir, agentDir);
+			const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 			// The project config folder should not be created just by reading.
 			expect(existsSync(join(projectDir, CONFIG_DIR_NAME))).toBe(false);
@@ -240,7 +240,7 @@ describe("SettingsRuntime", () => {
 			// Delete the project config folder that beforeEach created.
 			rmSync(join(projectDir, CONFIG_DIR_NAME), { recursive: true });
 
-			const manager = SettingsRuntime.create(projectDir, agentDir);
+			const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 			// The project config folder should not exist yet.
 			expect(existsSync(join(projectDir, CONFIG_DIR_NAME))).toBe(false);
@@ -262,7 +262,7 @@ describe("SettingsRuntime", () => {
 			const settingsPath = join(agentDir, "settings.json");
 			writeFileSync(settingsPath, JSON.stringify({ shellCommandPrefix: "shopt -s expand_aliases" }));
 
-			const manager = SettingsRuntime.create(projectDir, agentDir);
+			const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 			expect(manager.getShellCommandPrefix()).toBe("shopt -s expand_aliases");
 		});
@@ -271,7 +271,7 @@ describe("SettingsRuntime", () => {
 			const settingsPath = join(agentDir, "settings.json");
 			writeFileSync(settingsPath, JSON.stringify({ theme: "dark" }));
 
-			const manager = SettingsRuntime.create(projectDir, agentDir);
+			const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 			expect(manager.getShellCommandPrefix()).toBeUndefined();
 		});
@@ -280,7 +280,7 @@ describe("SettingsRuntime", () => {
 			const settingsPath = join(agentDir, "settings.json");
 			writeFileSync(settingsPath, JSON.stringify({ shellCommandPrefix: "shopt -s expand_aliases" }));
 
-			const manager = SettingsRuntime.create(projectDir, agentDir);
+			const manager = createFileSettingsRuntime(projectDir, agentDir);
 			manager.setTheme("light");
 			await manager.flush();
 

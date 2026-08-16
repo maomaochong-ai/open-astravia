@@ -18,10 +18,8 @@ export type {
 	SettingsStoragePort,
 } from "../settings/index.js";
 export {
-	createFileSettingsRuntime,
 	createInMemorySettingsRuntime,
 	createSettingsRuntimeFromStorage,
-	FileSettingsStorage,
 	MemorySettingsStorage,
 	SettingsRuntime,
 } from "../settings/index.js";

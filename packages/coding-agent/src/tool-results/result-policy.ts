@@ -1,34 +1,31 @@
-import { Buffer } from "node:buffer";
-import { join } from "node:path";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import type { CodingToolResultContext, CodingToolResultPolicy } from "@vetta/runtime-tools";
-import { getAgentDir } from "../config.js";
-import type { CodingToolResultArtifact, CodingToolResultArtifactStore } from "./contracts.js";
-import { FileCodingToolResultArtifactStore } from "./file-result-artifact-store.js";
+import type {
+	CodingToolResultArtifact,
+	CodingToolResultArtifactStore,
+	CodingToolResultContext,
+	CodingToolResultPolicy,
+} from "@vetta/runtime-tools";
 
 export const DEFAULT_CODING_AGENT_MAX_INLINE_TOOL_RESULT_BYTES = 50 * 1024;
+const utf8Encoder = new TextEncoder();
+const utf8Decoder = new TextDecoder();
 
 export interface CodingAgentCodingToolResultPolicyOptions {
-	readonly artifactStore?: CodingToolResultArtifactStore;
+	readonly artifactStore: CodingToolResultArtifactStore;
 	readonly maxInlineResultBytes?: number;
-	readonly agentDir?: string;
 }
 
 export function createCodingAgentCodingToolResultPolicy(
-	options: CodingAgentCodingToolResultPolicyOptions | string = {},
+	options: CodingAgentCodingToolResultPolicyOptions,
 ): CodingToolResultPolicy {
-	const resolvedOptions = typeof options === "string" ? { agentDir: options } : options;
 	const maxInlineResultBytes = positiveInteger(
-		resolvedOptions.maxInlineResultBytes,
+		options.maxInlineResultBytes,
 		DEFAULT_CODING_AGENT_MAX_INLINE_TOOL_RESULT_BYTES,
 	);
-	const artifactStore =
-		resolvedOptions.artifactStore ??
-		new FileCodingToolResultArtifactStore(join(resolvedOptions.agentDir ?? getAgentDir(), "tool-results"));
 	return {
 		async project(result, context) {
 			if (context.category === "external") return result;
-			return projectLargeResult(result, context, artifactStore, maxInlineResultBytes);
+			return projectLargeResult(result, context, options.artifactStore, maxInlineResultBytes);
 		},
 	};
 }
@@ -43,7 +40,7 @@ async function projectLargeResult(
 		.filter((item): item is Extract<(typeof result.content)[number], { type: "text" }> => item.type === "text")
 		.map((item) => item.text)
 		.join("\n\n");
-	const textBytes = Buffer.byteLength(text, "utf8");
+	const textBytes = utf8ByteLength(text);
 	const inlinePayloadBytes = measureInlinePayload(result);
 	if (inlinePayloadBytes <= maxInlineResultBytes) return result;
 	let serializedResult: string;
@@ -55,7 +52,7 @@ async function projectLargeResult(
 	} catch {
 		return result;
 	}
-	const resultBytes = Buffer.byteLength(serializedResult, "utf8");
+	const resultBytes = utf8ByteLength(serializedResult);
 
 	let artifact: CodingToolResultArtifact;
 	try {
@@ -84,12 +81,12 @@ async function projectLargeResult(
 
 function measureInlinePayload(result: RuntimeToolResult): number {
 	const contentBytes = result.content.reduce(
-		(total, item) => total + (item.type === "text" ? Buffer.byteLength(item.text, "utf8") : 0),
+		(total, item) => total + (item.type === "text" ? utf8ByteLength(item.text) : 0),
 		0,
 	);
 	if (result.details === undefined) return contentBytes;
 	try {
-		return contentBytes + Buffer.byteLength(JSON.stringify(result.details), "utf8");
+		return contentBytes + utf8ByteLength(JSON.stringify(result.details));
 	} catch {
 		return Number.POSITIVE_INFINITY;
 	}
@@ -104,19 +101,23 @@ function projectText(text: string, textBytes: number, maxBytes: number, notice: 
 }
 
 function sliceUtf8Start(value: string, maxBytes: number): string {
-	const bytes = Buffer.from(value, "utf8");
+	const bytes = utf8Encoder.encode(value);
 	if (bytes.length <= maxBytes) return value;
 	let end = maxBytes;
 	while (end > 0 && isUtf8ContinuationByte(bytes[end])) end -= 1;
-	return bytes.subarray(0, end).toString("utf8");
+	return utf8Decoder.decode(bytes.subarray(0, end));
 }
 
 function sliceUtf8End(value: string, maxBytes: number): string {
-	const bytes = Buffer.from(value, "utf8");
+	const bytes = utf8Encoder.encode(value);
 	if (bytes.length <= maxBytes) return value;
 	let start = bytes.length - maxBytes;
 	while (start < bytes.length && isUtf8ContinuationByte(bytes[start])) start += 1;
-	return bytes.subarray(start).toString("utf8");
+	return utf8Decoder.decode(bytes.subarray(start));
+}
+
+function utf8ByteLength(value: string): number {
+	return utf8Encoder.encode(value).length;
 }
 
 function isUtf8ContinuationByte(value: number | undefined): boolean {

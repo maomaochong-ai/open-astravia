@@ -10,13 +10,14 @@ import type {
 	RuntimeMcpClientFactory,
 	RuntimeMcpClientFactoryOptions,
 } from "@vetta/runtime-mcp";
-import { DEFAULT_MCP_MAX_INLINE_RESULT_BYTES } from "@vetta/runtime-mcp";
+import { createMcpToolResultPolicy, DEFAULT_MCP_MAX_INLINE_RESULT_BYTES } from "@vetta/runtime-mcp";
+import { NodeMcpToolResultArtifactStore } from "@vetta/runtime-node/mcp";
 import { describe, expect, it, vi } from "vitest";
 import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
 import { createCodingAgentMcpRuntimeToolSource } from "../src/mcp/runtime/tool-source.js";
 
 describe("Coding Agent native MCP runtime source", () => {
-	it("composes product client options, hook metadata and lifecycle without a legacy Manager", async () => {
+	it("composes client options, hook metadata and lifecycle without a legacy Manager", async () => {
 		const source = new StaticConfigSource({ search: { command: "search", debug: true } });
 		const client = new FakeClient();
 		const created: Array<{
@@ -70,16 +71,20 @@ describe("Coding Agent native MCP runtime source", () => {
 		expect(client.close).toHaveBeenCalledOnce();
 	});
 
-	it("uses the product file policy for large results", async () => {
+	it("uses an explicitly injected Host file policy for large results", async () => {
 		const agentDir = await mkdtemp(join(tmpdir(), "vetta-native-mcp-"));
 		const source = new StaticConfigSource({ search: { command: "search" } });
 		const originalText = `start-${"x".repeat(DEFAULT_MCP_MAX_INLINE_RESULT_BYTES)}-end`;
 		const client = new FakeClient(originalText);
+		const resultPolicy = createMcpToolResultPolicy({
+			artifactStore: new NodeMcpToolResultArtifactStore(join(agentDir, "mcp-results")),
+		});
 		const managed = await createCodingAgentMcpRuntimeToolSource({
 			configSource: source,
 			clientFactory: () => client,
 			agentDir,
 			includeBuiltinServers: false,
+			resultPolicy,
 		});
 		try {
 			const tool = (await managed.source.refresh()).tools[0]?.tool;

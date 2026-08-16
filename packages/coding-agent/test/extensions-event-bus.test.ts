@@ -39,4 +39,30 @@ describe("extension event bus public API", () => {
 		expect(error).toHaveBeenCalledWith("Event handler error (status):", expect.any(Error));
 		error.mockRestore();
 	});
+
+	it("treats reserved Node event names as ordinary channels", () => {
+		const bus = createEventBus();
+		const received: unknown[] = [];
+		bus.on("error", (data) => received.push(data));
+		bus.on("newListener", (data) => received.push(data));
+
+		expect(() => bus.emit("error", "failure-data")).not.toThrow();
+		bus.emit("newListener", "listener-data");
+
+		expect(received).toEqual(["failure-data", "listener-data"]);
+	});
+
+	it("keeps duplicate subscriptions independent", () => {
+		const bus = createEventBus();
+		const received: unknown[] = [];
+		const handler = (data: unknown) => received.push(data);
+		const unsubscribeFirst = bus.on("status", handler);
+		bus.on("status", handler);
+
+		bus.emit("status", 1);
+		unsubscribeFirst();
+		bus.emit("status", 2);
+
+		expect(received).toEqual([1, 1, 2]);
+	});
 });

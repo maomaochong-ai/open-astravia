@@ -24,7 +24,7 @@ export type CodingAgentRetryEvent =
 			readonly failure?: RuntimeFailure;
 	  };
 
-export type CodingAgentProductSessionEvent =
+export type CodingAgentSessionFeatureEvent =
 	| { readonly type: "auto_compaction_start"; readonly reason: "threshold" | "overflow" }
 	| {
 			readonly type: "auto_compaction_end";
@@ -52,7 +52,7 @@ export type CodingAgentProductSessionEvent =
 			readonly reason: "rollover";
 	  };
 
-/** Agent 内核事件与 Coding Agent 产品事件的稳定公共联合。 */
-export type CodingAgentSessionEvent = AgentEvent | CodingAgentProductSessionEvent;
+/** Agent 内核事件与 Coding Agent Feature 事件的稳定公共联合。 */
+export type CodingAgentSessionEvent = AgentEvent | CodingAgentSessionFeatureEvent;
 
 export type CodingAgentSessionEventListener = (event: CodingAgentSessionEvent) => void;

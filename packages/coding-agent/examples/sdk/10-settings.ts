@@ -4,14 +4,27 @@
  * Override settings using SettingsRuntime.
  */
 
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { CONFIG_DIR_NAME } from "@vetta/coding-agent/config";
 import { createCodingAgentHostWithServices, SettingsRuntime } from "@vetta/coding-agent/host-services";
+import { NodeScopedTextStorage } from "@vetta/runtime-node/host";
+
+function createNodeSettingsRuntime() {
+	return SettingsRuntime.fromStorage(
+		new NodeScopedTextStorage({
+			global: join(homedir(), ".vetta", "agent", "settings.json"),
+			project: join(process.cwd(), CONFIG_DIR_NAME, "settings.json"),
+		}),
+	);
+}
 
 // Load current settings (merged global + project)
-const settingsManagerFromDisk = SettingsRuntime.create();
+const settingsManagerFromDisk = createNodeSettingsRuntime();
 console.log("Current settings:", JSON.stringify(settingsManagerFromDisk.getGlobalSettings(), null, 2));
 
 // Override specific settings
-const settingsManager = SettingsRuntime.create();
+const settingsManager = createNodeSettingsRuntime();
 settingsManager.applyOverrides({
 	compaction: { enabled: false },
 	retry: { enabled: true, maxRetries: 5, baseDelayMs: 1000 },

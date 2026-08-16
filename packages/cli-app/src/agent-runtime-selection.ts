@@ -1,9 +1,12 @@
-import { createAgentCliBootstrap, resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
+import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
 import { runCodingAgentCliControl } from "@vetta/coding-agent/cli-control";
+import { getAgentDir } from "@vetta/coding-agent/config";
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import { RPC_FAILURE_CODES, stringifyRpcStartupFailure } from "@vetta/coding-agent/rpc";
 import { ConversationOwnershipConflictError } from "@vetta/runtime-storage/conversation";
 import { classifyAgentCliIntent } from "./agent-cli-intent.js";
+import { createCliCodingAgentBootstrap } from "./coding-agent-bootstrap.js";
+import { createCliResourcePackageRuntime, createCliSettingsRuntime } from "./coding-agent-resource-runtime.js";
 import { ExtensionCompatibilityError } from "./extension-compatibility-error.js";
 import { createCliRuntimeSessionCatalog } from "./rpc/cli-session-format-compatibility.js";
 import {
@@ -27,12 +30,26 @@ export async function runAgentRuntimeCli(
 	assertSupportedSessionSelection(args);
 	const intent = classifyAgentCliIntent(args);
 	if (intent === "control") {
-		if (!(await runCodingAgentCliControl([...args], { htmlExporter: options.htmlExporter }))) {
+		if (
+			!(await runCodingAgentCliControl([...args], {
+				htmlExporter: options.htmlExporter,
+				createBootstrap: (controlArgs) => createCliCodingAgentBootstrap({ args: controlArgs }),
+				createPackageCommandRuntime: () => {
+					const cwd = process.cwd();
+					const agentDir = getAgentDir();
+					const settings = createCliSettingsRuntime(cwd, agentDir);
+					return {
+						settings,
+						packages: createCliResourcePackageRuntime({ cwd, agentDir, settings }),
+					};
+				},
+			}))
+		) {
 			throw new Error("CLI control intent was not handled by the Coding Agent control host");
 		}
 		return;
 	}
-	const bootstrap = await createAgentCliBootstrap([...args]);
+	const bootstrap = await createCliCodingAgentBootstrap({ args: [...args] });
 	const conversationDir = resolveCodingAgentSessionDir(bootstrap.cwd, bootstrap.parsed.sessionDir);
 	const sessionCatalog = createCliRuntimeSessionCatalog({
 		cwd: bootstrap.cwd,

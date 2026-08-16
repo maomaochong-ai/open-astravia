@@ -1,8 +1,12 @@
 import type { ConversationScenario, RuntimeSessionValueIndex } from "@vetta/runtime-core";
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
-import { createKbFilterByTagsToolRegistration, createKbListTagsToolRegistration } from "@vetta/runtime-node/coding";
-import { CODING_TOOL_SCOPES, type CodingToolActivation } from "@vetta/runtime-tools";
+import { CODING_TOOL_SCOPES, type CodingToolActivation, type CodingToolResultPolicy } from "@vetta/runtime-tools";
+import {
+	type CodingAgentKnowledgeRuntime,
+	createCodingAgentKnowledgeFilterByTagsToolRegistration,
+	createCodingAgentKnowledgeListTagsToolRegistration,
+} from "../../features/knowledge/index.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import {
@@ -10,7 +14,7 @@ import {
 	resolveCodingAgentToolActivation,
 } from "../../tool-policy/activation-policy.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
-import { createCodingAgentKnowledgeQueryOperations } from "../coding-agent-knowledge-runtime.js";
+import type { CodingAgentToolEnvironmentFactory } from "../contracts/index.js";
 import {
 	type CodingAgentMcpSessionCoordinator,
 	type CodingAgentMcpSessionIndexes,
@@ -31,13 +35,14 @@ export interface CodingAgentRuntimeToolSurfaceOptions {
 	readonly agentDir?: string;
 	readonly scenario: ConversationScenario;
 	readonly activation?: CodingToolActivation;
-	readonly knowledgeEnabled?: boolean;
-	readonly knowledgeRoot?: string;
+	readonly knowledgeRuntime?: CodingAgentKnowledgeRuntime;
 	readonly inheritedMcpView: McpRuntimeToolView;
 	readonly mcpSource?: McpRuntimeToolSource;
 	readonly indexes: CodingAgentRuntimeToolSurfaceIndexes;
 	readonly tokenBudget?: number;
 	readonly reservedOutputTokens?: number;
+	readonly createToolEnvironment: CodingAgentToolEnvironmentFactory;
+	readonly resultPolicy?: CodingToolResultPolicy;
 }
 
 export interface CodingAgentRuntimeToolSurface {
@@ -57,8 +62,7 @@ export async function createCodingAgentRuntimeToolSurface(
 	options: CodingAgentRuntimeToolSurfaceOptions,
 ): Promise<CodingAgentRuntimeToolSurface> {
 	const activation = options.activation ?? ({ mode: "scope", scope: options.scenario } satisfies CodingToolActivation);
-	const knowledgeAvailable = options.knowledgeEnabled ?? process.env.VETTA_KNOWLEDGE_DISABLED !== "1";
-	const knowledgeOperations = createCodingAgentKnowledgeQueryOperations(options.knowledgeRoot);
+	const knowledgeAvailable = options.knowledgeRuntime !== undefined;
 	let backgroundTasksAvailable = false;
 	let mcpCoordinator: CodingAgentMcpSessionCoordinator;
 	const resolveActivation = (
@@ -71,9 +75,14 @@ export async function createCodingAgentRuntimeToolSurface(
 			{ backgroundTasksAvailable, knowledgeAvailable },
 			activeToolNamesOverride,
 		);
-	const tools = createCodingToolsRuntimeComposition({
+	const environment = await options.createToolEnvironment({
 		cwd: options.cwd,
 		agentDir: options.agentDir,
+		scenario: options.scenario,
+	});
+	const tools = createCodingToolsRuntimeComposition({
+		cwd: options.cwd,
+		environment,
 		activation,
 		resolveActivation: (context) => {
 			const configuration = options.indexes.configurationStates.get(context.sessionId);
@@ -92,14 +101,18 @@ export async function createCodingAgentRuntimeToolSurface(
 			return !controller?.isManagedTool(registration.tool.name) || controller.isToolVisible(registration.tool.name);
 		},
 		additionalRegistrations: [
-			createKbListTagsToolRegistration({
-				operations: knowledgeOperations,
-				modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.knowledgeTags,
-			}),
-			createKbFilterByTagsToolRegistration({
-				operations: knowledgeOperations,
-				modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.knowledgeFilter,
-			}),
+			...(options.knowledgeRuntime
+				? [
+						createCodingAgentKnowledgeListTagsToolRegistration({
+							operations: options.knowledgeRuntime.query,
+							modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.knowledgeTags,
+						}),
+						createCodingAgentKnowledgeFilterByTagsToolRegistration({
+							operations: options.knowledgeRuntime.query,
+							modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.knowledgeFilter,
+						}),
+					]
+				: []),
 			...options.inheritedMcpView.tools.map(({ tool }) => ({
 				tool,
 				scopeUse: CODING_TOOL_SCOPES,
@@ -108,6 +121,7 @@ export async function createCodingAgentRuntimeToolSurface(
 		],
 		tokenBudget: options.tokenBudget,
 		reservedOutputTokens: options.reservedOutputTokens,
+		resultPolicy: options.resultPolicy,
 	});
 	backgroundTasksAvailable = tools.backgroundService !== undefined;
 	try {

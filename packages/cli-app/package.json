@@ -28,6 +28,7 @@
 		"@vetta/runtime-node": "workspace:*",
 		"@vetta/runtime-storage": "workspace:*",
 		"@vetta/runtime-subagents": "workspace:*",
+		"chalk": "^5.5.0",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {

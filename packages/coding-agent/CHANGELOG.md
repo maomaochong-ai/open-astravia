@@ -2,6 +2,96 @@
 
 ### Breaking Changes
 
+- **Knowledge 改为显式 Runtime 注入**：低层 Runtime Composition 删除 `knowledgeRoot` 与
+  `knowledgeEnabled`，改为接收可选 `knowledgeRuntime`；未提供即不注册 Knowledge Tool，不再从进程环境或默认目录推断
+  能力。三个模型可见 Knowledge Tool 的名称、Schema、描述、激活元数据和结果投影迁入
+  `features/knowledge`，CLI、Desktop 与 SDK 宿主通过 `@vetta/runtime-node/host` 显式绑定既有文件实现。
+  Tool 行为、默认目录、Desktop 开关和 Knowledge Processing 的共享 Writer 语义保持不变。
+
+- **资源 Node 默认组合移至应用宿主**：`@vetta/coding-agent/resources` 不再导出
+  `createCodingAgentResourcePackageRuntime()` 与 `createCodingAgentSessionResourceRuntime()`；该入口只保留可移植的资源合同和
+  显式构造器。CLI、Desktop 与 SDK 分别选择 `runtime-node` 服务、目录和设置存储。Runtime Composition 新增会话级
+  `createPromptRuntimeSources`，深层 Prompt 组装不再静默读取本机资源；直接使用低层 Composition 的宿主必须提供
+  Prompt 来源或显式 System Prompt Resolver。
+
+- **Resource Package 路径与摘要改为显式 Host 依赖**：低层 `ResourcePackageRuntimeOptions` 现在要求
+  `ResourcePackageDigestPort`，位置策略统一消费 `ResourceAccessPort.paths`，不再直接导入 Node path/crypto。
+  Node 应用宿主注入 `runtime-node` 的 SHA-256 适配器；来源 identity、Settings 相对路径以及现有临时缓存目录保持兼容。
+
+- **Theme Resource 解析改为显式依赖**：低层 `SessionResourceRuntimeOptions` 现在要求 `themeParser`，主题目录与文件访问
+  全部通过异步 `ResourceAccessPort`，不再由资源 Runtime 直接调用同步 Node 文件 API。Node 应用宿主继续注入既有
+  Theme Schema 与颜色解析实现；目录层级、符号链接、诊断、名称冲突和项目优先级保持不变，取消会向调用方传播。
+
+- **Bootstrap 改为显式 Host 依赖**：`CodingAgentHostBootstrap` / `createCodingAgentHostBootstrap()` 与
+  `createAgentCliBootstrap()` 由平台无关的 `CodingAgentBootstrap` / `createCodingAgentBootstrap()` 取代。
+  新工厂要求宿主提供 Settings、Auth、Model 和 Resource Runtime Factory，不再修改进程环境、推导目录、执行迁移或
+  选择 Node 存储。CLI 应用现在拥有对应的 Node Composition Root；参数二次解析、Extension Provider 注册、默认服务地址
+  和初始模型选择行为保持不变。
+
+- **Tool Result 文件存储改为显式 Host 策略**：Coding Agent 继续拥有普通工具大结果的阈值、截断和模型提示，
+  但不再根据 `agentDir` 隐式创建 Node 文件存储。`CodingAgentRuntimeCompositionOptions.codingToolResultPolicy`
+  可由宿主注入；缺省保留完整结果且不产生文件副作用。MCP Source 与 Plugin MCP 同样缺省使用 preserve policy。
+  Desktop、CLI 与 SDK Node 宿主已显式接回原有 `tool-results` / `mcp-results` 目录、阈值和会话清理行为。
+
+- **OS 沙箱实现迁出 Coding Agent**：Linux bubblewrap、macOS Seatbelt、Windows sandbox host/policy 与工作区文件边界
+  解析迁至 `@vetta/runtime-node/sandbox`。Coding Agent 现在通过结构化 `SandboxHostServices` 消费平台标识、命令操作、
+  路径判定和 Grant 生命周期，只保留工具注册、权限请求时机、确认文案与会话授权策略。三平台工具名、敏感目录、
+  环境白名单、网络隔离、超时、取消和错误语义保持不变；自定义宿主可注入完整 Host Services。
+
+- **Bash 宿主实现迁出 Coding Agent**：`host/command-execution` 现在只保留 `HostBashExecutor` 契约、Shell 配置与
+  Node 兼容装配；本地子进程启动、进程树终止、输出截断和临时完整输出文件由
+  `@vetta/runtime-node/coding` 的 `NodeHostBashExecutor` 提供。SDK、RPC 的命令结果、取消、超时和完整输出语义保持不变，
+  非 Node 宿主可以直接实现同一契约。
+
+- **Resource Package 安装文件事务改为显式 Host Port**：`ResourcePackageRuntimeOptions` 现在还必须提供
+  `ResourcePackageFilePort`；包生命周期不再直接使用 Node 文件系统，`getInstalledPath()` 改为异步返回 Promise。
+  Node 兼容宿主由 `@vetta/runtime-node/host` 注入文件事务适配器；npm/git 命令策略、安装初始化、目录清理、更新恢复和
+  设置格式保持不变。
+
+- **Resource Package Discovery 改为异步 ResourceAccessPort**：Package Runtime 现在要求显式提供资源访问和 managed
+  skills 目录事实；文件枚举、ignore、manifest 读取、符号链接判断和资源投影不再直接使用 Node 文件系统。Node 兼容
+  宿主继续注入 `createNodeResourceAccess()`，资源来源顺序、过滤、碰撞和本地路径投影语义保持不变。
+- **Resource Package 路径事实改为显式宿主输入**：`ResourcePackageRuntimeOptions` 现在还必须提供
+  `ResourcePackageLocationFacts`，包路径策略不再通过同步 `npm root -g` 查询，也不再自行推导 Home/Temp 目录。
+  Node 宿主由 `runtime-node` 提供 `homeDirectory`、`temporaryDirectory` 与惰性 `getGlobalNpmRoot()`；包来源身份、
+  安装路径、临时缓存和设置格式保持不变。
+- **Resource Package 宿主能力改为显式注入**：低层 `ResourcePackageRuntimeOptions` 的 command、npm registry 与
+  offline environment Port 现在全部必填，不再自行创建 Node 子进程、网络 Client 或读取 `PI_OFFLINE`。当前 Node
+  实现迁至 `@vetta/runtime-node/host`，由 CLI 与 SDK 的 Node 宿主显式装配；来源解析、
+  安装/更新、进度事件、离线行为、路径和设置格式保持不变。
+- **Extension 事件合同移除 Node 类型**：Extension 语义层不再导入 `node:events` 或 `@vetta/runtime-node`；内置工具
+  事件使用 Extension 自有的稳定数据合同，并由类型合同测试持续校验与 Node 工具实现一致。`UserBashOperations`
+  的数据块从 `Buffer` 改为 `Uint8Array`，环境变量从 `NodeJS.ProcessEnv` 改为只读字符串映射，Node 与 Web 宿主均可
+  实现同一接口。事件总线保留订阅顺序、重复订阅、取消、clear 和监听器错误隔离，并把 `error`、`newListener`
+  等名称视为普通频道，不再泄漏 Node EventEmitter 的保留事件行为。
+- **Extension Host 能力改为显式注入**：低层 `loadExtensions()`、`discoverAndLoadExtensions()`、
+  `loadPiExtensions()` 与 `SessionResourceRuntimeOptions` 现在要求异步资源访问、Factory Loader 和命令执行 Port；
+  Extension 文件发现、native/pi 模块执行及 `ExtensionAPI.exec()` 不再由 Extension 语义层隐式选择 Node 实现。
+  CLI、Desktop 与 SDK 宿主分别装配 Node 实现；项目/用户/manifest 发现顺序、注册、
+  冲突、错误、取消、超时和进程终止语义保持不变。
+- **Prompt Template 发现改为异步 Host Port**：`loadPromptTemplates()` 现在要求 `ResourceAccessPort` 与 `cwd` 并返回
+  Promise；模板合同、纯参数展开和异步发现已拆分，Session 只在完整加载成功后发布冻结快照并串行化并发更新。
+  Node 应用宿主通过低层 `createSessionResourceRuntime()` 注入适配器；来源顺序、非递归 Markdown 发现、
+  description、碰撞 winner、参数替换和普通文件读取失败跳过行为不变，取消会向调用方传播。
+- **Skill/Scene 资源改为异步完整快照**：`loadSkills()`、`loadSkillsFromDir()` 现在返回 Promise 并要求
+  `ResourceAccessPort`；`Skill.content` 与 `Skill.sceneTasks` 改为必填快照字段，删除会按 `filePath` 同步回读的
+  `readSkillContent()`。`reloadSkills()`、`refreshSkillsIfChanged()`、Skill 路径更新和 `extendResources()` 同步改为
+  异步合同并传播取消。资源正文、Scene tasks 和指纹在刷新边界完整物化，成功后原子发布，普通文件变化仍只影响
+  后续 Turn；发现顺序、ignore、碰撞、市场禁用、Hook revision 和 Scene/Todo 行为不变。
+- **上下文资源读取改为异步 Host Port**：低层 `SessionResourceRuntimeOptions` 现在必须注入
+  `ResourceAccessPort`，`refreshContextResourcesIfChanged()` 返回 `Promise<boolean>`，Prompt Turn 绑定会等待资源刷新并
+  传播取消信号。CLI、Desktop 与 SDK 的 Node 宿主提供文件适配器；自定义/Web 宿主可以
+  注入自己的异步文件树与路径语义实现，AGENTS/CLAUDE 顺序、SYSTEM/APPEND_SYSTEM 优先级和 Turn 内冻结行为不变。
+- **移除实现中的层级术语**：公开子路径 `@vetta/coding-agent/product-prompt` 改为
+  `@vetta/coding-agent/cli-guidance`，`CodingAgentProductSessionEvent` 改为
+  `CodingAgentSessionFeatureEvent`；内部 Prompt Policy、Skill 索引和测试命名同步改为直接职责名称，不保留旧别名。
+- **Settings/Auth 文件后端改为显式 Host 选择**：`SettingsRuntime.create()`、`AuthStorage.create()` 与
+  `createFileSettingsRuntime()` 不再由 Coding Agent 公共 API 隐式选择 Node 文件系统。宿主现在通过
+  `SettingsRuntime.fromStorage()`、`AuthStorage.fromStorage()` 注入存储；Node 宿主可使用
+  `NodeScopedTextStorage` 与 `NodeTransactionalTextStorage` 保持原有路径、锁、权限和外部编辑合并行为。
+- **工具环境改为必填 Host Port**：`CodingAgentRuntimeToolOptions.createToolEnvironment` 与 Knowledge Processing
+  Factory 的同名选项不再隐式创建 Node 文件、Shell 和后台任务实现；CLI、Desktop、SDK 与测试宿主均已显式
+  注入兼容环境。Coding Agent 继续拥有工具选择、排序、激活和结果策略，现有工具名称与执行行为不变。
 - **Composition 持久化改为必填 Host Port**：`CodingAgentRuntimeCompositionOptions.createConversationPersistence`
   与 Knowledge Processing Factory 的同名选项不再可选；`coding-agent` 不再根据 `conversationDir` 隐式创建
   Node 文件仓储。Subagent 恢复路径也通过持久化 Port 评估，不再自行构造 `FileConversationRepository`；CLI、
@@ -139,7 +229,7 @@
 - **Skill 与 Prompt 资源域包内重写**：Skill 发现、frontmatter 校验、冲突诊断、动态读取、模型提示格式化与 Prompt Template 参数展开迁入 `src/resources`，生产调用方和行为测试不再依赖旧 `core/skills`、`core/prompt-templates`、`core/diagnostics`；ResourceLoader 不再于 PackageManager 过滤后重复扫描默认 Skill 目录，禁用配置恢复生效。资源目录测试同步改用当前 `CONFIG_DIR_NAME`，用户可见协议、发现优先级、错误和动态刷新行为保持不变。质量守卫拒绝新 Resource 域回接旧 `core` 实现。
 - **Extension 合同与运行时包内重写**：扩展 UI、事件、工具注册、会话视图、模型目录和宿主动作绑定迁入 `src/extensions` 稳定领域，并按 UI、Context、Tool、Provider、事件、公共 API 和 Runtime 状态拆分职责模块；动态发现、模块加载、注册、上下文宿主、事件分派和 Tool 拦截进一步拆入独立 Runtime 职责模块，旧 `core/extensions` 已删除。合同改为结构端口并复用 `runtime-tools` 的工具输入/详情类型，不再依赖具体 `SessionManager`、`ModelRegistry` 或旧 Tool 类型；公开名称、加载顺序、错误隔离、事件载荷、TypeBox 工具 Schema、Tool 拦截顺序和用户可见功能保持不变。
 - **Compaction 包内领域重写**：上下文压缩、token 策略、prefire、microcompact、熔断和分支摘要从旧 `core/compaction` 迁入 `src/compaction`；算法改为依赖中立历史条目与最小分支读取合同，不再依赖 `SessionManager` 或 Runtime 存储实现。阈值、切点、摘要 Prompt、文件追踪、缓存和取消行为保持不变。
-- **Model Context 包内领域重写**：模型消息合同、LLM 投影、结构化 Prompt 文档、Plugin 运行时贡献和产品 Prompt 组合从旧 `core/messages.ts`、`core/system-prompt.ts` 拆入 `src/model-context`；Desktop 通过显式 `product-prompt` 子路径消费产品指引。Prompt 文案、Tool/MCP/Skill/Plugin 组合、消息过滤、摘要和 Bash 投影行为保持不变。
+- **Model Context 包内领域重写**：模型消息合同、LLM 投影、结构化 Prompt 文档、Plugin 运行时贡献和系统 Prompt 组合从旧 `core/messages.ts`、`core/system-prompt.ts` 拆入 `src/model-context`；Desktop 通过显式 `cli-guidance` 子路径消费 CLI 指引。Prompt 文案、Tool/MCP/Skill/Plugin 组合、消息过滤、摘要和 Bash 投影行为保持不变。
 - **Knowledge Runtime 独立化**：知识领域模型、文件存储、查询、写页和加工编排迁出 Coding Agent；`kb_write_page` 的 TypeBox Schema、描述、注册与执行协议迁入 `runtime-tools`，Coding Agent 只在组合层解析默认目录并注入窄 Operations Port。磁盘格式、默认目录、Tool 合同、并发写入和 Desktop 加工行为保持不变。
 - **IM Host Tool 原生化与旧示例退役**：RPC/CLI 直接注册 `runtime-tools` 的 `im_send_attachment`，Legacy RPC 仅在显式兼容适配器内转换协议；删除只展示旧包根 Tool API 或旧 Extension Tool 接线的示例，用户可见 IM 附件行为保持不变。
 - **Greenfield 能力 Tool 与 Catalog 原生化**：`ask_user_question`、`invoke_skill`、`memory`、`todo`、`tool_search` 与知识标签查询改由 `runtime-tools` 独立持有 TypeBox Schema、TS 描述、Registration 和执行协议，状态与查询通过窄 Port 注入；删除无调用方的旧 Bash/Shell Executor，CLI 与稳定 SDK 的内置工具激活名称不再读取 `core/tools`。工具名称、描述、Schema、scope、输出、错误、状态时序和动态 Catalog 行为保持不变。

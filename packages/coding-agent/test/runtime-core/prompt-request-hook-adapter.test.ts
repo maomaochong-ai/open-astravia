@@ -25,7 +25,7 @@ describe("CodingAgentPromptRequestAdapter ecosystem hooks", () => {
 				interceptInput: async () => ({ action: "transform", text: revision }),
 			},
 		});
-		const bound = adapter.bindForTurn({
+		const bound = await adapter.bindForTurn({
 			sessionId: "session-1",
 			operationId: "turn-1",
 			reason: "turn",

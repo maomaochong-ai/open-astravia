@@ -17,8 +17,8 @@ import type {
 	CodingAgentPluginMcpToolComposer,
 	CodingAgentSystemPromptOptionsResolver,
 } from "../runtime-contracts/index.js";
-import { type BuildSystemPromptOptions, buildSystemPromptDraft } from "./product-prompt.js";
 import { compileSystemPromptDraft, type SystemPromptDiagnostics, type SystemPromptDraft } from "./prompt-document.js";
+import { type BuildSystemPromptOptions, buildSystemPromptDraft } from "./system-prompt-policy.js";
 
 export type CodingAgentSystemPromptOptions = Omit<BuildSystemPromptOptions, "selectedTools">;
 
@@ -31,7 +31,7 @@ export interface CodingAgentModelCallFrameComposerOptions {
 	readonly resolveSystemPromptOptions: CodingAgentSystemPromptOptionsResolver;
 	readonly bindSystemPromptOptions?: (
 		context: RuntimeSnapshotAcquireContext,
-	) => CodingAgentSystemPromptOptionsResolver;
+	) => Promise<CodingAgentSystemPromptOptionsResolver> | CodingAgentSystemPromptOptionsResolver;
 	readonly readMcpPromptState?: () => CodingAgentMcpPromptState;
 	readonly readAvailableTools?: () => ReadonlyMap<string, RuntimeToolDefinition>;
 	readonly readActiveToolNamesOverride?: () => readonly string[] | undefined;
@@ -155,7 +155,7 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 		const resolveExtensionToolActivation =
 			this.options.bindExtensionToolActivation?.(context) ?? this.options.resolveExtensionToolActivation;
 		const resolveSystemPromptOptions =
-			this.options.bindSystemPromptOptions?.(context) ?? this.options.resolveSystemPromptOptions;
+			(await this.options.bindSystemPromptOptions?.(context)) ?? this.options.resolveSystemPromptOptions;
 		let pluginHandlerLease: AgentPluginTurnHandlerLease | undefined;
 		try {
 			pluginHandlerLease = await pluginHandlerLeaseResult;

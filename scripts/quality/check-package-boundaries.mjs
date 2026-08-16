@@ -800,7 +800,7 @@ function checkCodingAgentSessionInitializationStageBoundary(posixPath, text, fin
 		"CodingAgentSessionExecutionRuntime",
 	]);
 	const forbiddenFactories = new Set([
-		"createCodingAgentProductToolRegistrations",
+		"createCodingAgentSpecializedToolRegistrations",
 		"createCodingAgentTodoRuntimeToolRegistration",
 		"createEcosystemHookRuntime",
 		"createForkContextFeature",
@@ -1187,6 +1187,7 @@ function checkCodingAgentLegacyBoundaries(posixPath, text, specifiers, findings)
 	if (!isProductionSource) return;
 	const historicalSessionPublicSubpath = "@vetta/coding-agent/historical-sessions";
 	const historicalSessionConsumers = new Set([
+		"packages/cli-app/src/coding-agent-bootstrap.ts",
 		"packages/cli-app/src/rpc/cli-session-format-compatibility.ts",
 		"packages/cli-app/src/rpc/runtime-host/runtime-host-contract.ts",
 		"packages/cli-app/src/rpc/runtime-host/runtime-host.ts",

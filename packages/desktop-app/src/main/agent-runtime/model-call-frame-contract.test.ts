@@ -19,6 +19,7 @@ import {
 	textResponseEvents,
 	toolCallResponseEvents,
 } from "../../../../cli-app/test/support/openai-responses-test-server.js";
+import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
 
 type RuntimeBackend = "runtime";
 
@@ -190,7 +191,7 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 		expect(observations.runtime).toEqual(expected);
 	}, 30_000);
 
-	it("keeps product-tool cwd isolated across sessions sharing one RuntimeHost", async () => {
+	it("keeps specialized-tool cwd isolated across sessions sharing one RuntimeHost", async () => {
 		const firstCwd = await temporaryDirectory("desktop-frame-first-cwd-");
 		const secondCwd = await temporaryDirectory("desktop-frame-second-cwd-");
 		await Promise.all([
@@ -415,6 +416,7 @@ function createRuntimeFixture(_backend: RuntimeBackend, _agentStateDir: string, 
 			modelRegistry: modelRegistry(model),
 			initialModel: model,
 			initialThinkingLevel: "off",
+			createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 			createPluginMcpRuntime: () => createCodingAgentPluginMcpRuntime(),
 		},
 		// Legacy MCP resolves its global config from getAgentDir(), even when the

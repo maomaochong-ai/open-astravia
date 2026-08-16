@@ -6,8 +6,6 @@ import { getVettaConfigDirName } from "@vetta/action-rpc";
 import type { RuntimeSandboxGrantStore } from "@vetta/runtime-core";
 import type {
 	SandboxPermissionCapability,
-	SandboxPermissionContext,
-	SandboxPermissionDecision,
 	SandboxPermissionRequest,
 	SandboxSessionGrantEntry,
 	SandboxShellGrant,
@@ -397,91 +395,6 @@ export function collectShellWritePermissionRequests(command: string, cwd: string
 			reason: "shell command writes outside the workspace sandbox",
 			command,
 		}));
-}
-
-export function isSensitiveSandboxRequest(request: SandboxPermissionRequest): boolean {
-	if (isDeniedSandboxPath(request.resolvedTarget)) return true;
-	if (request.grantRoot && isDeniedSandboxPath(request.grantRoot)) return true;
-	return false;
-}
-
-export async function confirmSandboxPermission(
-	ctx: SandboxPermissionContext,
-	request: SandboxPermissionRequest,
-): Promise<SandboxPermissionDecision> {
-	// Ecosystem PermissionRequest: only when host is about to show a permission UI.
-	// allow/deny short-circuit; undefined falls through to UI (or deny without UI).
-	if (typeof ctx.requestEcosystemPermission === "function") {
-		try {
-			const hookDecision = await ctx.requestEcosystemPermission({
-				toolName: request.toolName,
-				toolInput: {
-					capability: request.capability,
-					target: request.target,
-					resolvedTarget: request.resolvedTarget,
-					grantRoot: request.grantRoot,
-					command: request.command,
-					reason: request.reason,
-				},
-				runIdSuffix: `${request.capability}:${request.resolvedTarget}`,
-			});
-			if (hookDecision?.decision === "deny") {
-				console.info("[ecosystem-hooks] PermissionRequest denied sandbox grant", {
-					tool: request.toolName,
-					capability: request.capability,
-					message: hookDecision.message,
-				});
-				return "deny";
-			}
-			if (hookDecision?.decision === "allow") {
-				console.info("[ecosystem-hooks] PermissionRequest allowed sandbox grant", {
-					tool: request.toolName,
-					capability: request.capability,
-				});
-				// Hooks approve this single request; session-cache still requires user "allow_session".
-				return "allow_once";
-			}
-		} catch (error) {
-			console.warn("[ecosystem-hooks] PermissionRequest hook failed; falling through to UI", error);
-		}
-	}
-
-	if (!ctx.hasUI) return "deny";
-	const sensitive = isSensitiveSandboxRequest(request);
-	const title = "沙箱权限请求";
-	const lines = [
-		`工具：${request.toolName}`,
-		`权限：${request.capability}`,
-		`目标：${request.target}`,
-		`解析路径：${request.resolvedTarget}`,
-		request.grantRoot ? `本次授权目录：${request.grantRoot}` : undefined,
-		request.command ? `命令：${request.command}` : undefined,
-		"",
-		sensitive
-			? "该路径为敏感路径，仅支持本次允许（不可缓存到本会话）。"
-			: '"允许本次"仅对当前工具调用生效；"本会话不再询问"会缓存到本会话内同 grantRoot 的后续请求。',
-	].filter((line): line is string => typeof line === "string");
-
-	// Prefer the new tri-state API when available.
-	if (typeof ctx.ui.requestSandboxGrant === "function") {
-		const decision = await ctx.ui.requestSandboxGrant({
-			title,
-			message: lines.join("\n"),
-			toolName: request.toolName,
-			capability: request.capability,
-			target: request.target,
-			resolvedTarget: request.resolvedTarget,
-			grantRoot: request.grantRoot,
-			command: request.command,
-			sensitive,
-		});
-		if (decision === "allow_session" && sensitive) return "allow_once";
-		return decision ?? "deny";
-	}
-
-	// Fallback: confirm() returns boolean, so we can only express deny / allow_once.
-	const ok = await ctx.ui.confirm(title, lines.join("\n"));
-	return ok ? "allow_once" : "deny";
 }
 
 export function runWithSandboxShellGrant<T>(

@@ -387,7 +387,7 @@ export class RuntimeHost implements SessionFacade {
 			appendSystemPrompt: config.appendSystemPrompt,
 			env: config.env,
 			enableBackgroundTasks: config.enableBackgroundTasks,
-			// Fail-closed product gate: only interactive conversation/project/cli roots.
+			// Fail-closed scenario gate: only interactive conversation/project/cli roots.
 			// batch/automation/kb-processing/im-claw stay off until lifecycle is designed.
 			enableSubagents: shouldEnableSubagents(config.scenario),
 			includeAgentSkills: config.includeAgentSkills,

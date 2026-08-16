@@ -19,7 +19,6 @@ import {
 } from "../../composition/session-host/active-session-transition-host.js";
 import type { CodingAgentSessionStorageTarget } from "../../public-api/sdk/sdk-create-contract.js";
 import type { CodingAgentSession } from "../../public-api/sdk/sdk-session-contract.js";
-import { createCodingAgentSessionArtifactCleaner } from "../../tool-results/session-artifact-cleaner.js";
 import { CodingAgentSdkActiveSessionAdapter } from "./active-session-adapter.js";
 import { CodingAgentSdkActiveSessionCapabilityHost } from "./active-session-capability-host.js";
 import { bindCodingAgentSdkActiveSessionRuntime } from "./runtime-binding.js";
@@ -41,6 +40,7 @@ export interface CodingAgentSdkSessionFactoryOptions {
 	readonly storage: CodingAgentSessionStorageTarget;
 	readonly composition: CodingAgentSdkCompositionOptions;
 	readonly session?: CodingAgentSdkRuntimeSessionOptions;
+	readonly sessionArtifactCleaner?: CodingAgentSdkSessionArtifactCleaner;
 	/** Composition 创建前已由产品宿主取得、并随 SDK Session 释放的资源。 */
 	readonly ownedResources?: readonly CodingAgentSdkOwnedResource[];
 	/** Runtime Session 创建后绑定 Extension 等 Session 级产品资源。 */
@@ -53,6 +53,10 @@ export interface CodingAgentSdkSessionFactoryOptions {
 	readonly createActiveCapabilityHost?: CodingAgentSdkActiveSessionCapabilityHostFactory;
 	/** 完整清理成功后通知外层 Host 释放 Session 所有权。 */
 	readonly onSessionClosed?: () => void;
+}
+
+export interface CodingAgentSdkSessionArtifactCleaner {
+	deleteSessionArtifacts(sessionId: string): Promise<void>;
 }
 
 export interface CodingAgentSdkOwnedResource {
@@ -147,7 +151,7 @@ export async function createCodingAgentSdkSession(
 			sessionOptions: options.session ?? {},
 			conversationDir,
 			defaultCwd: options.session?.cwd ?? options.composition.cwd ?? process.cwd(),
-			sessionCatalog: createSessionCatalog(storage, options.session?.cwd, options.composition.agentDir),
+			sessionCatalog: createSessionCatalog(storage, options.session?.cwd, options.sessionArtifactCleaner),
 			createSessionId: randomUUID,
 			resolveSessionId: (path) => resolveSessionIdFromPath(conversationDir, path),
 			resolveSessionPath: (sessionId) => resolveConversationFilePath(conversationDir, sessionId),
@@ -218,12 +222,12 @@ function createActiveSessionCleanup(
 function createSessionCatalog(
 	storage: ResolvedCodingAgentSdkSessionStorage,
 	cwd: string | undefined,
-	agentDir: string | undefined,
+	artifactCleaner: CodingAgentSdkSessionArtifactCleaner | undefined,
 ): RuntimeSessionCatalog {
 	if (!storage.conversationDir) return EMPTY_SESSION_CATALOG;
 	return new FileConversationRuntimeSessionCatalog({
 		roots: [{ cwd: cwd ?? process.cwd(), sessionDir: storage.conversationDir }],
-		artifactCleaner: createCodingAgentSessionArtifactCleaner(agentDir),
+		artifactCleaner,
 	});
 }
 

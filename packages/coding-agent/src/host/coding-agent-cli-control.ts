@@ -1,18 +1,24 @@
 import chalk from "chalk";
+import type { CodingAgentBootstrap } from "../bootstrap/coding-agent-bootstrap.js";
 import { type Args, parseArgs, printHelp } from "../cli/args.js";
 import { listModels } from "../cli/list-models.js";
-import { APP_NAME, CONFIG_DIR_NAME, getAgentDir, VERSION } from "../config.js";
+import { APP_NAME, CONFIG_DIR_NAME, VERSION } from "../config.js";
 import { type CodingAgentHtmlExportRuntime, createCodingAgentHtmlExportRuntime } from "../export-html/index.js";
-import { SettingsRuntime } from "../settings/index.js";
-import { createAgentCliBootstrap } from "./coding-agent-cli-bootstrap.js";
-import type { CodingAgentHostBootstrap } from "./coding-agent-host-bootstrap.js";
+import type { ResourcePackageRuntime } from "../resources/index.js";
+import type { SettingsRuntime } from "../settings/index.js";
 import { prepareCodingAgentPipedStdin } from "./coding-agent-print-invocation.js";
-import { createCodingAgentResourcePackageRuntime } from "./coding-agent-resource-runtime.js";
 
 type PackageCommand = "install" | "remove" | "update" | "list";
 
 export interface CodingAgentCliControlOptions {
 	readonly htmlExporter?: CodingAgentHtmlExportRuntime;
+	readonly createBootstrap?: (args: string[]) => Promise<CodingAgentBootstrap>;
+	readonly createPackageCommandRuntime?: () => CodingAgentPackageCommandRuntime;
+}
+
+export interface CodingAgentPackageCommandRuntime {
+	readonly settings: SettingsRuntime;
+	readonly packages: ResourcePackageRuntime;
 }
 
 interface PackageCommandOptions {
@@ -29,14 +35,26 @@ export async function runCodingAgentCliControl(
 	options: CodingAgentCliControlOptions = {},
 ): Promise<boolean> {
 	applyOfflineMode(args);
-	if (await handlePackageCommand(args)) return true;
-	if (!isBootstrapControl(parseArgs(args))) return false;
-	return runCodingAgentCliControlWithBootstrap(await createAgentCliBootstrap(args), options);
+	if (await handlePackageCommand(args, options.createPackageCommandRuntime)) return true;
+	const parsed = parseArgs(args);
+	if (parsed.version) {
+		console.log(VERSION);
+		process.exit(0);
+	}
+	if (parsed.help) {
+		printHelp();
+		process.exit(0);
+	}
+	if (!requiresBootstrap(parsed)) return false;
+	if (!options.createBootstrap) {
+		throw new Error("CLI control requires a host-provided Coding Agent bootstrap factory");
+	}
+	return runCodingAgentCliControlWithBootstrap(await options.createBootstrap(args), options);
 }
 
 /** Preserve the Legacy public entry while keeping control behavior outside Agent execution. */
 export async function runCodingAgentCliControlWithBootstrap(
-	bootstrap: CodingAgentHostBootstrap,
+	bootstrap: CodingAgentBootstrap,
 	options: CodingAgentCliControlOptions = {},
 ): Promise<boolean> {
 	const { parsed, modelRegistry } = bootstrap;
@@ -69,10 +87,8 @@ export async function runCodingAgentCliControlWithBootstrap(
 	}
 }
 
-function isBootstrapControl(parsed: Args): boolean {
-	return (
-		parsed.version === true || parsed.help === true || parsed.listModels !== undefined || parsed.export !== undefined
-	);
+function requiresBootstrap(parsed: Args): boolean {
+	return parsed.listModels !== undefined || parsed.export !== undefined;
 }
 
 function applyOfflineMode(args: readonly string[]): void {
@@ -187,7 +203,10 @@ function parsePackageCommand(args: readonly string[]): PackageCommandOptions | u
 	return { command, source, local, help, invalidOption };
 }
 
-async function handlePackageCommand(args: readonly string[]): Promise<boolean> {
+async function handlePackageCommand(
+	args: readonly string[],
+	createRuntime: CodingAgentCliControlOptions["createPackageCommandRuntime"],
+): Promise<boolean> {
 	const options = parsePackageCommand(args);
 	if (!options) return false;
 	if (options.help) {
@@ -209,11 +228,9 @@ async function handlePackageCommand(args: readonly string[]): Promise<boolean> {
 		return true;
 	}
 
-	const cwd = process.cwd();
-	const agentDir = getAgentDir();
-	const settingsManager = SettingsRuntime.create(cwd, agentDir);
+	if (!createRuntime) throw new Error("Package commands require a host-provided Resource Package runtime factory");
+	const { settings: settingsManager, packages: packageRuntime } = createRuntime();
 	reportSettingsErrors(settingsManager, "package command");
-	const packageRuntime = createCodingAgentResourcePackageRuntime({ cwd, agentDir, settings: settingsManager });
 	packageRuntime.setProgressListener((event) => {
 		if (event.type === "start") process.stdout.write(chalk.dim(`${event.message}\n`));
 	});
@@ -243,20 +260,20 @@ async function handlePackageCommand(args: readonly string[]): Promise<boolean> {
 					console.log(chalk.dim("No packages installed."));
 					return true;
 				}
-				const formatPackage = (pkg: (typeof globalPackages)[number], scope: "user" | "project") => {
+				const formatPackage = async (pkg: (typeof globalPackages)[number], scope: "user" | "project") => {
 					const packageSource = typeof pkg === "string" ? pkg : pkg.source;
 					console.log(`  ${typeof pkg === "object" ? `${packageSource} (filtered)` : packageSource}`);
-					const path = packageRuntime.getInstalledPath(packageSource, scope);
+					const path = await packageRuntime.getInstalledPath(packageSource, scope);
 					if (path) console.log(chalk.dim(`    ${path}`));
 				};
 				if (globalPackages.length > 0) {
 					console.log(chalk.bold("User packages:"));
-					for (const pkg of globalPackages) formatPackage(pkg, "user");
+					for (const pkg of globalPackages) await formatPackage(pkg, "user");
 				}
 				if (projectPackages.length > 0) {
 					if (globalPackages.length > 0) console.log();
 					console.log(chalk.bold("Project packages:"));
-					for (const pkg of projectPackages) formatPackage(pkg, "project");
+					for (const pkg of projectPackages) await formatPackage(pkg, "project");
 				}
 				return true;
 			}

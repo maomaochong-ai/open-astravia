@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CONFIG_DIR_NAME } from "../src/config.js";
-import { SettingsRuntime } from "../src/settings/index.js";
+import { createFileSettingsRuntime } from "./fixtures/file-settings-runtime.js";
 
 /**
  * Tests for the fix to a bug where external file changes to arrays were overwritten.
@@ -48,7 +48,7 @@ describe("SettingsRuntime - External Edit Preservation", () => {
 		);
 
 		// Pi starts up, loads settings into memory
-		const manager = SettingsRuntime.create(projectDir, agentDir);
+		const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 		// At this point, globalSettings.packages = ["npm:pi-mcp-adapter"]
 		expect(manager.getPackages()).toEqual(["npm:pi-mcp-adapter"]);
@@ -83,7 +83,7 @@ describe("SettingsRuntime - External Edit Preservation", () => {
 			}),
 		);
 
-		const manager = SettingsRuntime.create(projectDir, agentDir);
+		const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 		// User externally updates extensions
 		const currentSettings = JSON.parse(readFileSync(settingsPath, "utf-8"));
@@ -110,7 +110,7 @@ describe("SettingsRuntime - External Edit Preservation", () => {
 			}),
 		);
 
-		const manager = SettingsRuntime.create(projectDir, agentDir);
+		const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 		const currentProjectSettings = JSON.parse(readFileSync(projectSettingsPath, "utf-8"));
 		currentProjectSettings.prompts = ["./new-prompt.md"];
@@ -133,7 +133,7 @@ describe("SettingsRuntime - External Edit Preservation", () => {
 			}),
 		);
 
-		const manager = SettingsRuntime.create(projectDir, agentDir);
+		const manager = createFileSettingsRuntime(projectDir, agentDir);
 
 		const currentProjectSettings = JSON.parse(readFileSync(projectSettingsPath, "utf-8"));
 		currentProjectSettings.extensions = ["./external-extension.ts"];

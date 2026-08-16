@@ -8,7 +8,7 @@ import type {
 import { createInvokeSkillToolRegistration } from "@vetta/runtime-node/coding";
 import type { CodingAgentPromptResourceSource } from "../../runtime-contracts/prompt-runtime.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
-import { readSkillContent, type Skill } from "./index.js";
+import type { Skill } from "./index.js";
 import { createSkillHookContribution, readSkillInvocationDocument } from "./skill-document.js";
 
 export interface CodingAgentInvokeSkillFeatureOptions {
@@ -29,7 +29,6 @@ export function createCodingAgentInvokeSkillFeature(
 	options: CodingAgentInvokeSkillFeatureOptions,
 ): CodingAgentInvokeSkillFeature {
 	const readVisibleSkills = (): Skill[] => {
-		options.resourceSource.refreshSkillsIfChanged();
 		// 可见集合与顺序不随工作模式变化（ADR-0071）：模式偏移由 mode 提示词承担，不在候选列表施力。
 		return options.resourceSource
 			.getSkills()
@@ -57,7 +56,8 @@ export function createCodingAgentInvokeSkillFeature(
 		readSkills: () => Skill[],
 	): ModelCallContributionProvider => ({
 		id: "coding-agent.invoke-skill",
-		bindForTurn(_context: RuntimeSnapshotAcquireContext) {
+		async bindForTurn(context: RuntimeSnapshotAcquireContext) {
+			await options.resourceSource.refreshSkillsIfChanged(context.signal);
 			const skills = captureVisibleSkills(readVisibleSkills());
 			return createProvider(
 				createRegistration(() => skills),
@@ -107,6 +107,6 @@ export function createCodingAgentInvokeSkillFeature(
 function captureVisibleSkills(skills: readonly Skill[]): Skill[] {
 	return skills.map((skill) => ({
 		...skill,
-		content: readSkillContent(skill),
+		sceneTasks: [...skill.sceneTasks],
 	}));
 }

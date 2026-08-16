@@ -6,10 +6,11 @@ import { Value } from "@sinclair/typebox/value";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import {
 	type CommandProcessPort,
+	createNodeCommandProcessHost,
 	DesktopCommandAbortedError,
 	type DesktopCommandPort,
+	NodeCommandProcessAbortedError,
 } from "@vetta/runtime-node/coding";
-import { CodingAgentCommandProcessAbortedError, createCodingAgentCommandProcessHost } from "./index.js";
 
 const DesktopConfigSchema = Type.Object(
 	{ vettaAppPath: Type.Optional(Type.String({ minLength: 1 })) },
@@ -17,7 +18,7 @@ const DesktopConfigSchema = Type.Object(
 );
 
 export function createCodingAgentDesktopCommandPort(
-	commandProcess: CommandProcessPort = createCodingAgentCommandProcessHost(),
+	commandProcess: CommandProcessPort = createNodeCommandProcessHost(),
 ): DesktopCommandPort {
 	return {
 		locate: findVettaExecutable,
@@ -25,7 +26,7 @@ export function createCodingAgentDesktopCommandPort(
 			try {
 				return await commandProcess.run(executable, args, options);
 			} catch (error) {
-				if (error instanceof CodingAgentCommandProcessAbortedError) throw new DesktopCommandAbortedError();
+				if (error instanceof NodeCommandProcessAbortedError) throw new DesktopCommandAbortedError();
 				throw error;
 			}
 		},

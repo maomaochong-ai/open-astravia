@@ -9,10 +9,12 @@ import {
 	CodingAgentSharedModelController,
 	type CodingAgentSharedModelSource,
 } from "../adapters/runtime-core/shared-model-controller.js";
+import { createCodingAgentNodeToolEnvironment } from "../adapters/runtime-tools/node-tool-environment.js";
 import { AuthStorage, type CodingAgentAuthRuntime, createCodingAgentAuthRuntime } from "../auth/index.js";
 import { type CodingAgentHtmlExportRuntime, createCodingAgentHtmlExportRuntime } from "../export-html/index.js";
 import { createCodingAgentHostFromSessionFactory } from "../host/coding-agent-host.js";
 import { createHostBashExecutor } from "../host/command-execution/index.js";
+import { createCodingAgentNodeExtensionFactoryLoader } from "../host/extensions/node-extension-factory-loader.js";
 import { createCodingAgentSessionFromPublicOptions } from "../host/sdk-session/index.js";
 import {
 	type CodingAgentMcpRuntimeToolSourceOptions,
@@ -27,7 +29,6 @@ import {
 } from "../plugins/runtime/mcp-runtime.js";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "../runtime-contracts/index.js";
 import { SettingsRuntime } from "../settings/index.js";
-import { createCodingAgentSessionArtifactCleaner } from "../tool-results/session-artifact-cleaner.js";
 import type { CodingAgentHost, CodingAgentHostSessionDefaults } from "./sdk/index.js";
 
 export {
@@ -36,8 +37,9 @@ export {
 	createCodingAgentHtmlExportRuntime,
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentModelRuntime,
+	createCodingAgentNodeExtensionFactoryLoader,
+	createCodingAgentNodeToolEnvironment,
 	createCodingAgentPluginMcpRuntime,
-	createCodingAgentSessionArtifactCleaner,
 	createHostBashExecutor,
 	SettingsRuntime,
 };

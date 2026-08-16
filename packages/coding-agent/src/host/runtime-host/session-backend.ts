@@ -16,7 +16,7 @@ import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeSessionOptions,
 } from "../../composition/runtime-composition.js";
-import { SettingsRuntime } from "../../settings/index.js";
+import { createCodingAgentNodeSettingsRuntime } from "../node-state-services.js";
 import { type CodingAgentRuntimeHostRetrySettings, withCodingAgentRuntimeHostRetry } from "./session-retry.js";
 
 export interface CodingAgentRuntimeHostSessionBackendOptions {
@@ -41,7 +41,7 @@ export class CodingAgentRuntimeHostSessionBackend implements RuntimeHostSessionB
 	private readonly retrySettings: CodingAgentRuntimeHostRetrySettings;
 
 	constructor(private readonly options: CodingAgentRuntimeHostSessionBackendOptions) {
-		this.retrySettings = options.retrySettings ?? SettingsRuntime.create(options.cwd, options.agentDir);
+		this.retrySettings = options.retrySettings ?? createCodingAgentNodeSettingsRuntime(options.cwd, options.agentDir);
 	}
 
 	async createAssembly(request: RuntimeSessionCreateRequest): Promise<RuntimeHostSessionAssembly> {

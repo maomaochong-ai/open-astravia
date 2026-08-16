@@ -16,6 +16,9 @@ export {
 	type InMemoryCodingToolRegistryOptions,
 } from "./coding-tool-catalog.js";
 export {
+	type CodingToolResultArtifact,
+	type CodingToolResultArtifactStore,
+	type CodingToolResultArtifactWriteRequest,
 	type CodingToolResultContext,
 	type CodingToolResultPolicy,
 	PRESERVE_CODING_TOOL_RESULT_POLICY,

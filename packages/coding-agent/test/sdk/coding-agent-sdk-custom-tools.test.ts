@@ -11,7 +11,7 @@ import type { Theme } from "../../src/modes/interactive/theme/theme.js";
 import type { CodingAgentSessionToolDefinition, CodingAgentToolExecutionContext } from "../../src/public-api/sdk.js";
 
 describe("Coding Agent SDK custom tool adapter", () => {
-	it("adapts the stable public tool contract without exposing product managers", async () => {
+	it("adapts the stable public tool contract without exposing internal managers", async () => {
 		const parameters = Type.Object({ value: Type.String() });
 		const component = { render: () => ["rendered"] };
 		const renderCall = vi.fn(() => component);

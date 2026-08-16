@@ -13,5 +13,4 @@ export type {
 	CodingAgentAuthRuntime,
 	OAuthCredential,
 } from "./contracts.js";
-export { FileAuthStorageBackend } from "./storage/file-auth-storage-backend.js";
 export { InMemoryAuthStorageBackend } from "./storage/in-memory-auth-storage-backend.js";

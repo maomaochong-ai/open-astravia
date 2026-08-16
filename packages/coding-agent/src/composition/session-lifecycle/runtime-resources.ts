@@ -55,7 +55,7 @@ export interface CodingAgentSessionRuntimeResourcesOptions {
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
 	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
 	readonly codingTools: CodingToolsRuntimeComposition;
-	readonly productToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
+	readonly specializedToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
 	readonly todoToolRegistration: CodingAgentRuntimeToolRegistration;
 	readonly todoEnabled: boolean;
 	readonly memoryRuntime?: CodingAgentMemoryRolloverRuntime;
@@ -131,7 +131,7 @@ export function createCodingAgentSessionRuntimeResources(
 			configurationController: options.configurationState.createController(session, {
 				reconfigureAgentPlugins: async (agentPlugins) => {
 					await pluginMcpRuntime?.reconfigure(agentPlugins);
-					options.turnCapabilityAssembly.reconfigureAgentPluginSkills(agentPlugins);
+					await options.turnCapabilityAssembly.reconfigureAgentPluginSkills(agentPlugins);
 				},
 			}),
 		}),
@@ -175,7 +175,9 @@ function readSessionState(options: CodingAgentSessionRuntimeResourcesOptions, st
 		...baseToolNames.filter(
 			(toolName) => !options.executionRuntime.ownsTool(toolName) || executionTools.has(toolName),
 		),
-		...selectCodingToolRegistrations(options.productToolRegistrations, stateActivation).map(({ tool }) => tool.name),
+		...selectCodingToolRegistrations(options.specializedToolRegistrations, stateActivation).map(
+			({ tool }) => tool.name,
+		),
 		...(options.todoEnabled ? [options.todoToolRegistration.tool.name] : []),
 		...(options.memoryRuntime ? [options.memoryRuntime.toolRegistration.tool.name] : []),
 		...(options.subagentRuntime ? options.subagentRuntime.readTools().map(({ name }) => name) : []),

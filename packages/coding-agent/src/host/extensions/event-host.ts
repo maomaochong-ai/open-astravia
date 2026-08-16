@@ -128,7 +128,7 @@ class DefaultCodingAgentExtensionEventHost implements CodingAgentExtensionEventH
 			promptPaths: buildExtensionResourcePaths(discovered.promptPaths),
 			themePaths: buildExtensionResourcePaths(discovered.themePaths),
 		};
-		this.options.resourceLoader.extendResources(extensionPaths);
+		await this.options.resourceLoader.extendResources(extensionPaths);
 	}
 
 	readSystemPrompt(): string {

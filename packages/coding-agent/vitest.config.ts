@@ -27,6 +27,7 @@ export default defineConfig({
 			"@vetta/runtime-node/coding": fileURLToPath(
 				new URL("../runtime-node/src/coding/index.ts", import.meta.url),
 			),
+			"@vetta/runtime-node/host": fileURLToPath(new URL("../runtime-node/src/host/index.ts", import.meta.url)),
 			"@vetta/runtime-node/mcp": fileURLToPath(new URL("../runtime-node/src/mcp/index.ts", import.meta.url)),
 			"@vetta/runtime-tools/coding": fileURLToPath(
 				new URL("../runtime-tools/src/coding/index.ts", import.meta.url),

@@ -13,12 +13,17 @@ import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-ser
 import { RuntimeHost } from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import { createInMemoryConversationPersistence } from "@vetta/runtime-node/conversation";
+import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { DesktopRuntimeBackendPool } from "./backend-pool.js";
 import { DesktopRuntimeSessionCatalog } from "./session-catalog.js";
 
 /** `getAgentDir()` 的环境变量开关；缺省会话落点由它决定，测试不得写进真实 `~/.vetta/agent`。 */
 const AGENT_DIR_ENV = "VETTA_CODING_AGENT_DIR";
+
+function resolveTestSystemPromptOptions() {
+	return { customPrompt: "Test system prompt", scenario: "batch" as const };
+}
 
 describe("DesktopRuntimeBackendPool", () => {
 	const directories: string[] = [];
@@ -144,6 +149,7 @@ describe("DesktopRuntimeBackendPool", () => {
 				modelRegistry: modelRegistry(),
 				initialModel: MODEL,
 				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
 			},
 			createComposition: async (options) => {
 				capturedDefaultFactory = options.createConversationPersistence;
@@ -174,6 +180,7 @@ describe("DesktopRuntimeBackendPool", () => {
 				modelRegistry: modelRegistry(),
 				initialModel: MODEL,
 				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
 				createConversationPersistence: overrideFactory,
 			},
 			createComposition: async (options) => {
@@ -191,6 +198,34 @@ describe("DesktopRuntimeBackendPool", () => {
 		await overrideRuntime.createSession({ cwd: overrideCwd, model: MODEL, scenario: "batch" });
 		expect(capturedOverrideFactory).toBe(overrideFactory);
 		expect(overrideFactory).toHaveBeenCalledTimes(1);
+	});
+
+	it("forwards the scope-specific Tool Result policy from the Desktop composition root", async () => {
+		const cwd = await temporaryDirectory("desktop-runtime-result-policy-");
+		const resultPolicy: CodingToolResultPolicy = { project: async (result) => result };
+		const createCodingToolResultPolicy = vi.fn(() => resultPolicy);
+		let capturedPolicy: CodingToolResultPolicy | undefined;
+		const pool = new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
+			},
+			createCodingToolResultPolicy,
+			createComposition: async (options) => {
+				capturedPolicy = options.codingToolResultPolicy;
+				return await createCodingAgentRuntimeComposition(options);
+			},
+		});
+		const runtime = new RuntimeHost({ sessionBackend: pool, getDefaultExecutionMode: () => "full-access" });
+		pools.push(pool);
+		runtimes.push(runtime);
+
+		await runtime.createSession({ cwd, agentDir, model: MODEL, scenario: "batch" });
+
+		expect(createCodingToolResultPolicy).toHaveBeenCalledWith({ cwd, agentDir });
+		expect(capturedPolicy).toBe(resultPolicy);
 	});
 
 	it("deduplicates concurrent host ownership and resumes after the backend pool is recreated", async () => {
@@ -268,6 +303,7 @@ describe("DesktopRuntimeBackendPool", () => {
 				modelRegistry: modelRegistry(),
 				initialModel: MODEL,
 				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
 			},
 			createMcpRuntimeSource,
 			createComposition: async (options) => {
@@ -304,6 +340,7 @@ describe("DesktopRuntimeBackendPool", () => {
 				modelRegistry: modelRegistry(),
 				initialModel: MODEL,
 				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
 				additionalHookAdapterFactories: [hostFactory],
 			},
 			createHookAdapterFactories,
@@ -341,6 +378,7 @@ describe("DesktopRuntimeBackendPool", () => {
 				modelRegistry: modelRegistry(),
 				initialModel: MODEL,
 				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
 			},
 			createMcpRuntimeSource,
 			resolveMcpRuntimeScope: ({ agentDir }) => ({ cwd: rootCwd, agentDir }),
@@ -376,6 +414,7 @@ describe("DesktopRuntimeBackendPool", () => {
 				modelRegistry: modelRegistry(),
 				initialModel: MODEL,
 				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
 			},
 			createMcpRuntimeSource,
 		});
@@ -404,6 +443,7 @@ describe("DesktopRuntimeBackendPool", () => {
 				modelRegistry: modelRegistry(),
 				initialModel: MODEL,
 				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
 			},
 			createMcpRuntimeSource: async () => ({ source, dispose }),
 			createComposition: async () => {
@@ -432,6 +472,7 @@ describe("DesktopRuntimeBackendPool", () => {
 				modelRegistry: modelRegistry(),
 				initialModel: MODEL,
 				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
 			},
 		});
 	}

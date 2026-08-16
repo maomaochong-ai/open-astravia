@@ -1,9 +1,16 @@
 import { join } from "node:path";
 import { buildDefaultHookConfigLayers } from "@vetta/ecosystem-adapter";
+import { createMcpToolResultPolicy } from "@vetta/runtime-mcp";
+import {
+	createNodeKnowledgeRuntime,
+	createNodeResultArtifactStorage,
+	NodeTransactionalTextStorage,
+} from "@vetta/runtime-node/host";
 import { createLangfuseRuntimeTracerFromEnv } from "@vetta/runtime-telemetry/langfuse";
 import { createCodingAgentCompactionExtensionRuntime } from "../../adapters/extensions/compaction-extension-adapter.js";
+import { createCodingAgentNodeToolEnvironment } from "../../adapters/runtime-tools/node-tool-environment.js";
 import { createCodingAgentAuthRuntime } from "../../auth/index.js";
-import { DEFAULT_SERVER_URL, ENV_SERVER_URL, getAgentDir, getVettaHomePath } from "../../config.js";
+import { DEFAULT_SERVER_URL, ENV_SERVER_URL, getAgentDir, getKnowledgeDir, getVettaHomePath } from "../../config.js";
 import { createCodingAgentHtmlExportRuntime } from "../../export-html/index.js";
 import { createCodingAgentMcpRuntimeToolSource } from "../../mcp/runtime/tool-source.js";
 import { createCodingAgentModelRuntime } from "../../models/index.js";
@@ -15,12 +22,12 @@ import {
 	type CreateCodingAgentSessionOptions,
 	type CreateCodingAgentSessionResult,
 } from "../../public-api/sdk/index.js";
-import { SettingsRuntime } from "../../settings/index.js";
-import { createCodingAgentSessionResourceRuntime } from "../coding-agent-resource-runtime.js";
+import { createCodingAgentCodingToolResultPolicy } from "../../tool-results/result-policy.js";
 import { CodingAgentSdkExtensionTransitionAdapter } from "../coding-agent-sdk-extension-transition-adapter.js";
 import { CodingAgentSdkResourceSourceAdapter } from "../coding-agent-sdk-resource-source-adapter.js";
 import { resolveCodingAgentSessionDir } from "../coding-agent-session-storage.js";
 import { createCodingAgentExtensionEventHost } from "../extensions/event-host.js";
+import { createCodingAgentNodeSettingsRuntime } from "../node-state-services.js";
 import {
 	CODING_AGENT_SDK_HOST_ERROR_CODES,
 	CodingAgentSdkHostError,
@@ -29,6 +36,7 @@ import {
 } from "./contracts.js";
 import { adaptPublicCodingAgentSdkCustomTools, resolvePublicSdkActiveToolNames } from "./custom-tool-adapter.js";
 import { resolveSdkInitialModel } from "./initial-model.js";
+import { createCodingAgentSdkSessionResourceRuntime } from "./resource-runtime.js";
 import { type CodingAgentSdkOwnedResource, createCodingAgentSdkSession } from "./runtime-factory.js";
 import {
 	createCodingAgentSdkActiveSessionCapabilityHostFactory,
@@ -98,13 +106,19 @@ async function createCodingAgentSdkSessionComposition(
 				};
 	const cwd = options.cwd ?? process.cwd();
 	const agentDir = options.agentDir ?? getAgentDir();
-	const authPath = options.agentDir ? join(agentDir, "auth.json") : undefined;
+	const authPath = join(agentDir, "auth.json");
 	const modelsPath = options.agentDir ? join(agentDir, "models.json") : undefined;
-	const authStorage = hostContext.authStorage ?? createCodingAgentAuthRuntime(authPath);
+	const authStorage =
+		hostContext.authStorage ?? createCodingAgentAuthRuntime(new NodeTransactionalTextStorage(authPath));
 	const htmlExporter = hostContext.htmlExporter ?? createCodingAgentHtmlExportRuntime();
 	const modelRegistry =
 		hostContext.modelRegistry ?? createCodingAgentModelRuntime(authStorage, { modelsJsonPath: modelsPath });
-	const settingsManager = hostContext.settingsManager ?? SettingsRuntime.create(cwd, agentDir);
+	const settingsManager = hostContext.settingsManager ?? createCodingAgentNodeSettingsRuntime(cwd, agentDir);
+	const resultArtifacts = createNodeResultArtifactStorage({
+		codingRoot: join(agentDir, "tool-results"),
+		mcpRoot: join(agentDir, "mcp-results"),
+	});
+	const mcpToolResultPolicy = createMcpToolResultPolicy({ artifactStore: resultArtifacts.mcp });
 
 	if (!hostContext.modelRegistry) {
 		let serverUrl = options.serverUrl ?? process.env[ENV_SERVER_URL] ?? settingsManager.getServerUrl();
@@ -121,7 +135,7 @@ async function createCodingAgentSdkSessionComposition(
 	const promptTemplateContributions = options.resources?.promptTemplates;
 	const contextFileContributions = options.resources?.contextFiles;
 	let currentAgentPlugins = options.agentPlugins;
-	const resourceLoader = createCodingAgentSessionResourceRuntime({
+	const resourceLoader = createCodingAgentSdkSessionResourceRuntime({
 		cwd,
 		agentDir,
 		settings: settingsManager,
@@ -175,6 +189,7 @@ async function createCodingAgentSdkSessionComposition(
 				agentDir,
 				debug: settingsManager.getMcpDebug(),
 				enabled: true,
+				resultPolicy: mcpToolResultPolicy,
 			})
 		: undefined;
 	const ownedResources: CodingAgentSdkOwnedResource[] = [
@@ -213,8 +228,13 @@ async function createCodingAgentSdkSessionComposition(
 
 	const created = await createCodingAgentSdkSession({
 		storage,
+		sessionArtifactCleaner: resultArtifacts.cleaner,
 		ownedResources,
 		composition: {
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			codingToolResultPolicy: createCodingAgentCodingToolResultPolicy({ artifactStore: resultArtifacts.coding }),
+			knowledgeRuntime:
+				process.env.VETTA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeDir()),
 			modelRegistry,
 			initialModel: initial.model,
 			initialThinkingLevel: initial.thinkingLevel,
@@ -249,6 +269,7 @@ async function createCodingAgentSdkSessionComposition(
 						createCodingAgentPluginMcpRuntime({
 							agentDir: runtimeAgentDir,
 							debug: settingsManager.getMcpDebug(),
+							resultPolicy: mcpToolResultPolicy,
 						})
 				: undefined,
 		},

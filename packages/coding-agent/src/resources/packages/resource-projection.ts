@@ -1,6 +1,4 @@
-import { existsSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { getUserSkillsDir } from "../../config.js";
+import type { ResourceAccessPort } from "../contracts/resource-access.js";
 import type {
 	ResolvedResourcePath,
 	ResolvedResourcePaths,
@@ -16,15 +14,17 @@ import {
 	collectAutoSkillEntries,
 	collectAutoThemeEntries,
 	collectResourceFiles,
+	type ResourceDiscoveryOptions,
 	readResourceManifest,
 } from "./resource-discovery.js";
+import type { ResourcePackageLocations } from "./resource-package-locations.js";
 import {
 	applyResourcePatterns,
 	isResourceEnabledByOverrides,
 	isResourcePattern,
 	splitResourcePatterns,
 } from "./resource-patterns.js";
-import type { LocalResourceSource, ResourcePackageLocations } from "./source-spec.js";
+import type { LocalResourceSource } from "./source-spec.js";
 
 type ResourceEntryState = { metadata: ResourcePathMetadata; enabled: boolean };
 export type ResourceAccumulator = Record<ResourceKind, Map<string, ResourceEntryState>>;
@@ -32,7 +32,11 @@ type ResourceFilter = Exclude<ResourcePackageSource, string>;
 const RESOURCE_KINDS: ResourceKind[] = ["extensions", "skills", "prompts", "themes"];
 
 export class ResourceProjector {
-	constructor(private readonly locations: ResourcePackageLocations) {}
+	constructor(
+		private readonly locations: ResourcePackageLocations,
+		private readonly resourceAccess: ResourceAccessPort,
+		private readonly managedSkillsDir: string,
+	) {}
 
 	createAccumulator(): ResourceAccumulator {
 		return { extensions: new Map(), skills: new Map(), prompts: new Map(), themes: new Map() };
@@ -49,79 +53,81 @@ export class ResourceProjector {
 		};
 	}
 
-	projectLocalSource(
+	async projectLocalSource(
 		source: LocalResourceSource,
 		accumulator: ResourceAccumulator,
 		filter: ResourceFilter | undefined,
 		metadata: ResourcePathMetadata,
 		baseDir: string,
-	): void {
+	): Promise<void> {
 		const resolved = this.locations.resolvePathFromBase(source.path, baseDir);
-		if (!existsSync(resolved)) return;
-		try {
-			const stats = statSync(resolved);
-			if (stats.isFile()) {
-				metadata.baseDir = dirname(resolved);
+		const stats = await this.stat(resolved);
+		if (!stats) return;
+		if (stats.kind === "file") {
+			metadata.baseDir = this.resourceAccess.paths.dirname(resolved);
+			this.addResource(accumulator.extensions, resolved, metadata, true);
+		} else if (stats.kind === "directory") {
+			metadata.baseDir = resolved;
+			if (!(await this.projectPackage(resolved, accumulator, filter, metadata))) {
 				this.addResource(accumulator.extensions, resolved, metadata, true);
-			} else if (stats.isDirectory()) {
-				metadata.baseDir = resolved;
-				if (!this.projectPackage(resolved, accumulator, filter, metadata)) {
-					this.addResource(accumulator.extensions, resolved, metadata, true);
-				}
 			}
-		} catch {}
+		}
 	}
 
-	projectPackage(
+	async projectPackage(
 		packageRoot: string,
 		accumulator: ResourceAccumulator,
 		filter: ResourceFilter | undefined,
 		metadata: ResourcePathMetadata,
-	): boolean {
+	): Promise<boolean> {
 		if (filter) {
 			for (const kind of RESOURCE_KINDS) {
 				const patterns = filter[kind];
-				if (patterns !== undefined)
-					this.applyPackageFilter(packageRoot, patterns, kind, accumulator[kind], metadata);
-				else this.collectDefaultResources(packageRoot, kind, accumulator[kind], metadata);
+				if (patterns !== undefined) {
+					await this.applyPackageFilter(packageRoot, patterns, kind, accumulator[kind], metadata);
+				} else {
+					await this.collectDefaultResources(packageRoot, kind, accumulator[kind], metadata);
+				}
 			}
 			return true;
 		}
 
-		const manifest = readResourceManifest(packageRoot);
+		const manifest = await this.readManifest(packageRoot);
 		if (manifest) {
 			for (const kind of RESOURCE_KINDS) {
-				this.addManifestEntries(manifest[kind], packageRoot, kind, accumulator[kind], metadata);
+				await this.addManifestEntries(manifest[kind], packageRoot, kind, accumulator[kind], metadata);
 			}
 			return true;
 		}
 
 		let foundConventionDirectory = false;
 		for (const kind of RESOURCE_KINDS) {
-			const dir = join(packageRoot, kind);
-			if (!existsSync(dir)) continue;
-			for (const path of collectResourceFiles(dir, kind)) this.addResource(accumulator[kind], path, metadata, true);
+			const dir = this.resourceAccess.paths.join(packageRoot, kind);
+			if (!(await this.stat(dir))) continue;
+			for (const path of await this.collectResourceFiles(dir, kind)) {
+				this.addResource(accumulator[kind], path, metadata, true);
+			}
 			foundConventionDirectory = true;
 		}
 		return foundConventionDirectory;
 	}
 
-	projectConfiguredPaths(
+	async projectConfiguredPaths(
 		accumulator: ResourceAccumulator,
 		globalSettings: ResourceSettingsSnapshot,
 		projectSettings: ResourceSettingsSnapshot,
 		globalBaseDir: string,
 		projectBaseDir: string,
-	): void {
+	): Promise<void> {
 		for (const kind of RESOURCE_KINDS) {
-			this.resolveLocalEntries(
+			await this.resolveLocalEntries(
 				projectSettings[kind] ?? [],
 				kind,
 				accumulator[kind],
 				{ source: "local", scope: "project", origin: "top-level" },
 				projectBaseDir,
 			);
-			this.resolveLocalEntries(
+			await this.resolveLocalEntries(
 				globalSettings[kind] ?? [],
 				kind,
 				accumulator[kind],
@@ -129,94 +135,110 @@ export class ResourceProjector {
 				globalBaseDir,
 			);
 		}
-		this.addAutoDiscoveredResources(accumulator, globalSettings, projectSettings, globalBaseDir, projectBaseDir);
+		await this.addAutoDiscoveredResources(
+			accumulator,
+			globalSettings,
+			projectSettings,
+			globalBaseDir,
+			projectBaseDir,
+		);
 	}
 
-	private collectDefaultResources(
+	private async collectDefaultResources(
 		packageRoot: string,
 		kind: ResourceKind,
 		target: Map<string, ResourceEntryState>,
 		metadata: ResourcePathMetadata,
-	): void {
-		const entries = readResourceManifest(packageRoot)?.[kind];
+	): Promise<void> {
+		const entries = (await this.readManifest(packageRoot))?.[kind];
 		if (entries) {
-			this.addManifestEntries(entries, packageRoot, kind, target, metadata);
+			await this.addManifestEntries(entries, packageRoot, kind, target, metadata);
 			return;
 		}
-		const dir = join(packageRoot, kind);
-		if (existsSync(dir)) {
-			for (const path of collectResourceFiles(dir, kind)) this.addResource(target, path, metadata, true);
-		}
+		const dir = this.resourceAccess.paths.join(packageRoot, kind);
+		if (!(await this.stat(dir))) return;
+		for (const path of await this.collectResourceFiles(dir, kind)) this.addResource(target, path, metadata, true);
 	}
 
-	private applyPackageFilter(
+	private async applyPackageFilter(
 		packageRoot: string,
 		patterns: string[],
 		kind: ResourceKind,
 		target: Map<string, ResourceEntryState>,
 		metadata: ResourcePathMetadata,
-	): void {
-		const allFiles = this.collectManifestFiles(packageRoot, kind);
+	): Promise<void> {
+		const allFiles = await this.collectManifestFiles(packageRoot, kind);
 		const enabled =
-			patterns.length === 0 ? new Set<string>() : applyResourcePatterns(allFiles, patterns, packageRoot);
+			patterns.length === 0
+				? new Set<string>()
+				: applyResourcePatterns(this.resourceAccess.paths, allFiles, patterns, packageRoot);
 		for (const path of allFiles) this.addResource(target, path, metadata, enabled.has(path));
 	}
 
-	private collectManifestFiles(packageRoot: string, kind: ResourceKind): string[] {
-		const entries = readResourceManifest(packageRoot)?.[kind];
+	private async collectManifestFiles(packageRoot: string, kind: ResourceKind): Promise<string[]> {
+		const entries = (await this.readManifest(packageRoot))?.[kind];
 		if (entries?.length) {
-			const allFiles = this.collectFilesFromManifestEntries(entries, packageRoot, kind);
+			const allFiles = await this.collectFilesFromManifestEntries(entries, packageRoot, kind);
 			const patterns = entries.filter(isResourcePattern);
-			return patterns.length > 0 ? Array.from(applyResourcePatterns(allFiles, patterns, packageRoot)) : allFiles;
+			return patterns.length > 0
+				? Array.from(applyResourcePatterns(this.resourceAccess.paths, allFiles, patterns, packageRoot))
+				: allFiles;
 		}
-		const conventionDir = join(packageRoot, kind);
-		return existsSync(conventionDir) ? collectResourceFiles(conventionDir, kind) : [];
+		const conventionDir = this.resourceAccess.paths.join(packageRoot, kind);
+		return (await this.stat(conventionDir)) ? this.collectResourceFiles(conventionDir, kind) : [];
 	}
 
-	private addManifestEntries(
+	private async addManifestEntries(
 		entries: string[] | undefined,
 		root: string,
 		kind: ResourceKind,
 		target: Map<string, ResourceEntryState>,
 		metadata: ResourcePathMetadata,
-	): void {
+	): Promise<void> {
 		if (!entries) return;
-		const allFiles = this.collectFilesFromManifestEntries(entries, root, kind);
-		const enabled = applyResourcePatterns(allFiles, entries.filter(isResourcePattern), root);
+		const allFiles = await this.collectFilesFromManifestEntries(entries, root, kind);
+		const enabled = applyResourcePatterns(
+			this.resourceAccess.paths,
+			allFiles,
+			entries.filter(isResourcePattern),
+			root,
+		);
 		for (const path of allFiles) if (enabled.has(path)) this.addResource(target, path, metadata, true);
 	}
 
-	private collectFilesFromManifestEntries(entries: string[], root: string, kind: ResourceKind): string[] {
+	private collectFilesFromManifestEntries(entries: string[], root: string, kind: ResourceKind): Promise<string[]> {
 		return this.collectFilesFromPaths(
-			entries.filter((entry) => !isResourcePattern(entry)).map((entry) => resolve(root, entry)),
+			entries
+				.filter((entry) => !isResourcePattern(entry))
+				.map((entry) => this.resourceAccess.paths.resolve(root, entry)),
 			kind,
 		);
 	}
 
-	private resolveLocalEntries(
+	private async resolveLocalEntries(
 		entries: string[],
 		kind: ResourceKind,
 		target: Map<string, ResourceEntryState>,
 		metadata: ResourcePathMetadata,
 		baseDir: string,
-	): void {
+	): Promise<void> {
 		if (entries.length === 0) return;
 		const { plain, patterns } = splitResourcePatterns(entries);
-		const paths = this.collectFilesFromPaths(
+		const paths = await this.collectFilesFromPaths(
 			plain.map((path) => this.locations.resolvePathFromBase(path, baseDir)),
 			kind,
 		);
-		const enabled = applyResourcePatterns(paths, patterns, baseDir);
+		const enabled = applyResourcePatterns(this.resourceAccess.paths, paths, patterns, baseDir);
 		for (const path of paths) this.addResource(target, path, metadata, enabled.has(path));
 	}
 
-	private addAutoDiscoveredResources(
+	private async addAutoDiscoveredResources(
 		accumulator: ResourceAccumulator,
 		globalSettings: ResourceSettingsSnapshot,
 		projectSettings: ResourceSettingsSnapshot,
 		globalBaseDir: string,
 		projectBaseDir: string,
-	): void {
+	): Promise<void> {
 		const projectMetadata: ResourcePathMetadata = {
 			source: "auto",
 			scope: "project",
@@ -231,89 +253,122 @@ export class ResourceProjector {
 		};
 		const projectDirs = this.resourceDirs(projectBaseDir);
 		const userDirs = this.resourceDirs(globalBaseDir);
-		const add = (
+		const add = async (
 			kind: ResourceKind,
-			paths: string[],
+			paths: Promise<string[]>,
 			metadata: ResourcePathMetadata,
 			overrides: string[],
 			baseDir: string,
-		): void => {
-			for (const path of paths) {
-				this.addResource(accumulator[kind], path, metadata, isResourceEnabledByOverrides(path, overrides, baseDir));
+		): Promise<void> => {
+			for (const path of await paths) {
+				this.addResource(
+					accumulator[kind],
+					path,
+					metadata,
+					isResourceEnabledByOverrides(this.resourceAccess.paths, path, overrides, baseDir),
+				);
 			}
 		};
-		add(
+		const discoveryOptions = { resourceAccess: this.resourceAccess } satisfies ResourceDiscoveryOptions;
+		await add(
 			"extensions",
-			collectAutoExtensionEntries(projectDirs.extensions),
+			collectAutoExtensionEntries(discoveryOptions, projectDirs.extensions),
 			projectMetadata,
 			projectSettings.extensions ?? [],
 			projectBaseDir,
 		);
-		add(
+		await add(
 			"skills",
-			[...collectAutoSkillEntries(projectDirs.skills), ...collectAncestorAgentSkillEntries(this.locations.cwd)],
+			Promise.all([
+				collectAutoSkillEntries(discoveryOptions, projectDirs.skills),
+				collectAncestorAgentSkillEntries(discoveryOptions, this.locations.cwd),
+			]).then(([skills, ancestors]) => [...skills, ...ancestors]),
 			projectMetadata,
 			projectSettings.skills ?? [],
 			projectBaseDir,
 		);
-		add(
+		await add(
 			"prompts",
-			collectAutoPromptEntries(projectDirs.prompts),
+			collectAutoPromptEntries(discoveryOptions, projectDirs.prompts),
 			projectMetadata,
 			projectSettings.prompts ?? [],
 			projectBaseDir,
 		);
-		add(
+		await add(
 			"themes",
-			collectAutoThemeEntries(projectDirs.themes),
+			collectAutoThemeEntries(discoveryOptions, projectDirs.themes),
 			projectMetadata,
 			projectSettings.themes ?? [],
 			projectBaseDir,
 		);
-		add(
+		await add(
 			"extensions",
-			collectAutoExtensionEntries(userDirs.extensions),
+			collectAutoExtensionEntries(discoveryOptions, userDirs.extensions),
 			userMetadata,
 			globalSettings.extensions ?? [],
 			globalBaseDir,
 		);
-		add(
+		await add(
 			"skills",
-			[...collectAutoSkillEntries(userDirs.skills), ...collectAutoSkillEntries(getUserSkillsDir())],
+			Promise.all([
+				collectAutoSkillEntries(discoveryOptions, userDirs.skills),
+				collectAutoSkillEntries(discoveryOptions, this.managedSkillsDir),
+			]).then(([skills, managed]) => [...skills, ...managed]),
 			userMetadata,
 			globalSettings.skills ?? [],
 			globalBaseDir,
 		);
-		add(
+		await add(
 			"prompts",
-			collectAutoPromptEntries(userDirs.prompts),
+			collectAutoPromptEntries(discoveryOptions, userDirs.prompts),
 			userMetadata,
 			globalSettings.prompts ?? [],
 			globalBaseDir,
 		);
-		add("themes", collectAutoThemeEntries(userDirs.themes), userMetadata, globalSettings.themes ?? [], globalBaseDir);
+		await add(
+			"themes",
+			collectAutoThemeEntries(discoveryOptions, userDirs.themes),
+			userMetadata,
+			globalSettings.themes ?? [],
+			globalBaseDir,
+		);
 	}
 
 	private resourceDirs(baseDir: string): Record<ResourceKind, string> {
 		return {
-			extensions: join(baseDir, "extensions"),
-			skills: join(baseDir, "skills"),
-			prompts: join(baseDir, "prompts"),
-			themes: join(baseDir, "themes"),
+			extensions: this.resourceAccess.paths.join(baseDir, "extensions"),
+			skills: this.resourceAccess.paths.join(baseDir, "skills"),
+			prompts: this.resourceAccess.paths.join(baseDir, "prompts"),
+			themes: this.resourceAccess.paths.join(baseDir, "themes"),
 		};
 	}
 
-	private collectFilesFromPaths(paths: string[], kind: ResourceKind): string[] {
+	private async collectFilesFromPaths(paths: string[], kind: ResourceKind): Promise<string[]> {
 		const files: string[] = [];
+		const discoveryOptions = { resourceAccess: this.resourceAccess } satisfies ResourceDiscoveryOptions;
 		for (const path of paths) {
-			if (!existsSync(path)) continue;
-			try {
-				const stats = statSync(path);
-				if (stats.isFile()) files.push(path);
-				else if (stats.isDirectory()) files.push(...collectResourceFiles(path, kind));
-			} catch {}
+			const stats = await this.stat(path);
+			if (!stats) continue;
+			if (stats.kind === "file") files.push(path);
+			else if (stats.kind === "directory") files.push(...(await collectResourceFiles(discoveryOptions, path, kind)));
 		}
 		return files;
+	}
+
+	private collectResourceFiles(path: string, kind: ResourceKind): Promise<string[]> {
+		return collectResourceFiles({ resourceAccess: this.resourceAccess }, path, kind);
+	}
+
+	private readManifest(packageRoot: string) {
+		return readResourceManifest({ resourceAccess: this.resourceAccess }, packageRoot);
+	}
+
+	private async stat(path: string) {
+		try {
+			return await this.resourceAccess.files.stat(path);
+		} catch {
+			return undefined;
+		}
 	}
 
 	private addResource(

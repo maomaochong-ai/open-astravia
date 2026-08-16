@@ -185,8 +185,8 @@ async function initializeSession<TOwnershipBinding>(
 			memoryRuntime,
 			pluginMcpRuntime,
 			pluginRuntime,
-			productToolFeature,
-			productToolRegistrations,
+			specializedToolFeature,
+			specializedToolRegistrations,
 			sessionExtensions,
 			todoEnabled,
 			todoRegistration,
@@ -233,7 +233,7 @@ async function initializeSession<TOwnershipBinding>(
 			pluginMcpRuntime,
 			mcpController,
 			codingTools: options.codingTools,
-			productToolRegistrations,
+			specializedToolRegistrations,
 			activation: options.activation,
 			knowledgeAvailable: options.knowledgeAvailable,
 			backgroundTasksAvailable: options.backgroundTasksAvailable,
@@ -255,6 +255,7 @@ async function initializeSession<TOwnershipBinding>(
 			id: "hook-session",
 			rollback: () => resourceLifecycleAssembly.disposeHookSession(),
 		});
+		const createPromptRuntimeSources = profile.createPromptRuntimeSources;
 		const turnCapabilityAssembly = await createCodingAgentTurnCapabilitySessionAssembly({
 			session: {
 				initialSessionId: activeSessionId,
@@ -281,6 +282,15 @@ async function initializeSession<TOwnershipBinding>(
 				},
 			},
 			prompt: {
+				runtimeSourceFactory: createPromptRuntimeSources
+					? () =>
+							createPromptRuntimeSources({
+								sessionOptions,
+								cwd: sessionCwd,
+								agentDir: profile.agentDir,
+								scenario: options.scenario,
+							})
+					: undefined,
 				systemPromptOptionsResolver:
 					profile.createSystemPromptOptionsResolver?.(sessionOptions) ?? profile.resolveSystemPromptOptions,
 				promptResourceResolver:
@@ -292,8 +302,8 @@ async function initializeSession<TOwnershipBinding>(
 			baseProfile,
 			codingTools: options.codingTools,
 			executionRuntime,
-			productToolFeature,
-			productToolRegistrations,
+			specializedToolFeature,
+			specializedToolRegistrations,
 			continuationSources: sessionExtensions.continuationSources,
 			todoRuntime,
 			todoToolRegistration: todoEnabled ? todoRegistration : undefined,

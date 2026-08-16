@@ -60,7 +60,7 @@ describe("Coding Agent Tool Activation Policy", () => {
 		).toBe(true);
 	});
 
-	it("enables Knowledge from the admission request before product input expansion", () => {
+	it("enables Knowledge from the admission request before Coding Agent input expansion", () => {
 		const callContext: ModelCallContributionContext = {
 			...context(),
 			request: {

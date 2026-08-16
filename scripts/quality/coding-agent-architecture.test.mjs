@@ -65,7 +65,7 @@ describe("Coding Agent architecture gate", () => {
 			"domain to composition",
 			`${SOURCE_ROOT}/memory/runtime.ts`,
 			'import { createRuntime } from "../composition/runtime-composition.js";',
-			"product domain depends on orchestration or implementation",
+			"Coding Agent domain depends on orchestration or implementation",
 		],
 		[
 			"adapter to Composition implementation",
@@ -205,21 +205,31 @@ describe("Coding Agent architecture gate", () => {
 				text: [
 					'import { createCodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";',
 					'import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";',
+					'import { createNodeKnowledgeRuntime } from "@vetta/runtime-node/host";',
 					"createCodingAgentRuntimeComposition({",
 					"\tcreateConversationPersistence: () => createFileConversationPersistence(conversationDir),",
+					"\tcreateToolEnvironment: hostToolEnvironmentFactory,",
+					"\tcodingToolResultPolicy: hostToolResultPolicy,",
+					"\tknowledgeRuntime: createNodeKnowledgeRuntime(knowledgeDir),",
 					"});",
 				].join("\n"),
 			},
 		]);
 
-		expect(findCodingAgentArchitectureViolations(missing)).toEqual([
+		const expectedMissing = [
 			`${path}: platform Composition Root must select createFileConversationPersistence from runtime-node`,
 			`${path}: platform Composition Root must inject createConversationPersistence`,
-		]);
+			`${path}: host Composition Root must inject createToolEnvironment`,
+			`${path}: Node Host Composition Root must inject codingToolResultPolicy`,
+		];
+		if (path !== "packages/runtime-desktop/src/backend-pool.ts") {
+			expectedMissing.push(`${path}: Node Host Composition Root must inject createNodeKnowledgeRuntime`);
+		}
+		expect(findCodingAgentArchitectureViolations(missing)).toEqual(expectedMissing);
 		expect(findCodingAgentArchitectureViolations(configured)).toEqual([]);
 	});
 
-	it("keeps concrete Conversation persistence outside the product Composition", () => {
+	it("keeps concrete Conversation persistence outside the Coding Agent Composition", () => {
 		const importingNode = createState([
 			{
 				path: `${SOURCE_ROOT}/composition/runtime-composition.ts`,
@@ -237,10 +247,475 @@ describe("Coding Agent architecture gate", () => {
 		]);
 
 		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
-			`${SOURCE_ROOT}/composition/runtime-composition.ts:1: product Composition must consume a persistence Port, not a Node implementation`,
+			`${SOURCE_ROOT}/composition/runtime-composition.ts:1: Coding Agent Composition must consume a persistence Port, not a Node implementation`,
 		);
 		expect(findCodingAgentArchitectureViolations(missingPort)).toContain(
-			`${SOURCE_ROOT}/composition/runtime-composition.ts: product Composition must obtain conversation persistence from its host Port`,
+			`${SOURCE_ROOT}/composition/runtime-composition.ts: Coding Agent Composition must obtain conversation persistence from its host Port`,
+		);
+	});
+
+	it("keeps Node tool creation behind the host ToolEnvironment Port", () => {
+		const toolCompositionPath = `${SOURCE_ROOT}/composition/tool-surface/runtime-tools-composition.ts`;
+		const runtimeCompositionPath = `${SOURCE_ROOT}/composition/runtime-composition.ts`;
+		const importingNode = createState([
+			{
+				path: toolCompositionPath,
+				text: 'import { createReadToolRegistration } from "@vetta/runtime-node/coding";',
+			},
+		]);
+		const missingForward = createState([{ path: runtimeCompositionPath, text: "export const runtime = {};" }]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${toolCompositionPath}:1: Coding Agent tool composition must consume ToolEnvironment, not Node tools`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingForward)).toContain(
+			`${runtimeCompositionPath}: Coding Agent Composition must forward the host ToolEnvironment factory`,
+		);
+	});
+
+	it.each([
+		`${SOURCE_ROOT}/adapters/runtime-tools/command-process-host.ts`,
+		`${SOURCE_ROOT}/adapters/runtime-tools/executables/resolver.ts`,
+	])("keeps retired Node tool implementation out of %s", (path) => {
+		const state = createState([{ path, text: "export const implementation = {};" }]);
+		expect(findCodingAgentArchitectureViolations(state)).toContain(
+			`${path}: Node command and executable implementations belong to runtime-node`,
+		);
+	});
+
+	it.each([
+		`${SOURCE_ROOT}/auth/storage/file-auth-storage-backend.ts`,
+		`${SOURCE_ROOT}/settings/storage/file-settings-storage.ts`,
+	])("keeps retired Node state backend out of %s", (path) => {
+		const state = createState([{ path, text: "export const backend = {};" }]);
+		expect(findCodingAgentArchitectureViolations(state)).toContain(
+			`${path}: Node file state backends belong to runtime-node`,
+		);
+	});
+
+	it("keeps Settings semantics independent from Node storage", () => {
+		const importingNode = createState([
+			{
+				path: `${SOURCE_ROOT}/settings/runtime/create-settings-runtime.ts`,
+				text: 'import { NodeScopedTextStorage } from "@vetta/runtime-node/host";',
+			},
+		]);
+		const selectingFileDefault = createState([
+			{
+				path: `${SOURCE_ROOT}/settings/index.ts`,
+				text: "export const SettingsRuntime = { create: createFileSettingsRuntime };",
+			},
+		]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${SOURCE_ROOT}/settings/runtime/create-settings-runtime.ts:1: Settings semantics must consume SettingsStoragePort, not a Node backend`,
+		);
+		expect(findCodingAgentArchitectureViolations(selectingFileDefault)).toContain(
+			`${SOURCE_ROOT}/settings/index.ts: SettingsRuntime must not select a Node file backend`,
+		);
+	});
+
+	it("keeps Node module and process execution out of Extension semantics", () => {
+		const loaderPath = `${SOURCE_ROOT}/extensions/runtime/loading/extension-module-loader.ts`;
+		const commandPath = `${SOURCE_ROOT}/extensions/runtime/exec-command.ts`;
+		const state = createState([
+			{ path: loaderPath, text: 'import { createJiti } from "@mariozechner/jiti";' },
+			{ path: commandPath, text: 'import { spawn } from "node:child_process";' },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(state)).toContain(
+			`${loaderPath}: Node Extension execution belongs behind Host Ports`,
+		);
+		expect(findCodingAgentArchitectureViolations(state)).toContain(
+			`${commandPath}: Node Extension execution belongs behind Host Ports`,
+		);
+	});
+
+	it("keeps all Extension contracts independent from Node modules and globals", () => {
+		const modulePath = `${SOURCE_ROOT}/extensions/events/tool-events.ts`;
+		const globalPath = `${SOURCE_ROOT}/extensions/infrastructure.ts`;
+		const importingNode = createState([
+			{ path: modulePath, text: 'import type { ToolInput } from "@vetta/runtime-node/coding";' },
+		]);
+		const usingNodeGlobals = createState([
+			{
+				path: globalPath,
+				text: "export type Operations = { data: Buffer; env: NodeJS.ProcessEnv };",
+			},
+		]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${modulePath}:1: Extension semantics must not depend on Node implementations`,
+		);
+		expect(findCodingAgentArchitectureViolations(usingNodeGlobals)).toContain(
+			`${globalPath}: Extension contracts must use platform-neutral data types`,
+		);
+	});
+
+	it("keeps Resource Package Node effects behind required Host Ports", () => {
+		const effectsPath = `${SOURCE_ROOT}/resources/packages/package-effects.ts`;
+		const runtimePath = `${SOURCE_ROOT}/resources/packages/package-source-runtime.ts`;
+		const hostPath = `${SOURCE_ROOT}/host/coding-agent-resource-runtime.ts`;
+		const retiredEffects = createState([{ path: effectsPath, text: "export class NodeCommands {}" }]);
+		const optionalPorts = createState([
+			{
+				path: runtimePath,
+				text: "export interface ResourcePackageRuntimeOptions { commands?: ResourcePackageCommandPort }",
+			},
+		]);
+		const selectingDefaults = createState([
+			{
+				path: runtimePath,
+				text: "const commands = new NodeResourcePackageCommands(); const offline = process.env.PI_OFFLINE;",
+			},
+		]);
+		const retiredHostComposition = createState([{ path: hostPath, text: "export const runtime = {};" }]);
+		const missingLocationFacts = createState([
+			{
+				path: runtimePath,
+				text: "export interface ResourcePackageRuntimeOptions { commands: ResourcePackageCommandPort; registry: ResourcePackageRegistryPort; environment: ResourcePackageEnvironmentPort }",
+			},
+		]);
+
+		expect(findCodingAgentArchitectureViolations(retiredEffects)).toContain(
+			`${effectsPath}: Resource Package Node effects belong to runtime-node`,
+		);
+		expect(findCodingAgentArchitectureViolations(optionalPorts)).toContain(
+			`${runtimePath}: ResourcePackageRuntimeOptions must require all Host Ports`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingLocationFacts)).toContain(
+			`${runtimePath}: ResourcePackageRuntimeOptions must require all Host Ports`,
+		);
+		expect(findCodingAgentArchitectureViolations(selectingDefaults)).toContain(
+			`${runtimePath}: Resource Package runtime must not select Node defaults`,
+		);
+		expect(findCodingAgentArchitectureViolations(retiredHostComposition)).toContain(
+			`${hostPath}: Node resource composition belongs to application hosts`,
+		);
+	});
+
+	it("requires application-owned resource and Prompt composition", () => {
+		const promptFactoryPath = `${SOURCE_ROOT}/composition/turn/prompt-runtime-factory.ts`;
+		const publicResourcesPath = `${SOURCE_ROOT}/public-api/resources.ts`;
+		const compositionOptionsPath = `${SOURCE_ROOT}/composition/contracts/runtime-composition-options.ts`;
+		const transactionPath = `${SOURCE_ROOT}/composition/session-initialization/transaction.ts`;
+		const cliControlPath = `${SOURCE_ROOT}/host/coding-agent-cli-control.ts`;
+		const state = createState([
+			{ path: promptFactoryPath, text: "export function createPromptRuntime() {}" },
+			{ path: publicResourcesPath, text: "export function createCodingAgentSessionResourceRuntime() {}" },
+			{ path: compositionOptionsPath, text: "export interface Options {}" },
+			{ path: transactionPath, text: "export function initializeSession() {}" },
+			{ path: cliControlPath, text: "export function createControl() {}" },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(state)).toEqual(
+			expect.arrayContaining([
+				`${promptFactoryPath}: Prompt resource selection belongs to application hosts`,
+				`${publicResourcesPath}: Resources facade must expose portable constructors only`,
+				`${compositionOptionsPath}: Composition must accept host-owned Prompt runtime sources`,
+				`${transactionPath}: Session initialization must forward host-owned Prompt runtime sources`,
+				`${cliControlPath}: CLI package commands must receive an explicit runtime factory`,
+			]),
+		);
+	});
+
+	it("keeps Resource Package discovery and projection on ResourceAccessPort", () => {
+		const discoveryPath = `${SOURCE_ROOT}/resources/packages/resource-discovery.ts`;
+		const projectionPath = `${SOURCE_ROOT}/resources/packages/resource-projection.ts`;
+		const runtimePath = `${SOURCE_ROOT}/resources/packages/package-source-runtime.ts`;
+		const lifecyclePath = `${SOURCE_ROOT}/resources/packages/package-lifecycle.ts`;
+		const state = createState([
+			{ path: discoveryPath, text: 'import { readdirSync } from "node:fs";' },
+			{ path: projectionPath, text: 'import { existsSync } from "node:fs";' },
+			{ path: runtimePath, text: 'import { existsSync } from "node:fs";' },
+			{ path: lifecyclePath, text: 'import { rm } from "node:fs/promises";' },
+		]);
+
+		const violations = findCodingAgentArchitectureViolations(state);
+		expect(violations).toContain(
+			`${discoveryPath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+		);
+		expect(violations).toContain(
+			`${projectionPath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+		);
+		expect(violations).toContain(
+			`${runtimePath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+		);
+		expect(violations).toContain(
+			`${lifecyclePath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+		);
+	});
+
+	it("keeps Resource Package source parsing and locations portable and separate", () => {
+		const sourceSpecPath = `${SOURCE_ROOT}/resources/packages/source-spec.ts`;
+		const locationsPath = `${SOURCE_ROOT}/resources/packages/resource-package-locations.ts`;
+		const importingNode = createState([
+			{ path: sourceSpecPath, text: 'import { createHash } from "node:crypto";' },
+			{ path: locationsPath, text: 'import path from "node:path";' },
+		]);
+		const mixedResponsibilities = createState([
+			{ path: sourceSpecPath, text: "export class ResourcePackageLocations {}" },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toEqual(
+			expect.arrayContaining([
+				`${sourceSpecPath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+				`${locationsPath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+			]),
+		);
+		expect(findCodingAgentArchitectureViolations(mixedResponsibilities)).toContain(
+			`${sourceSpecPath}: Resource source parsing must not own package location policy`,
+		);
+	});
+
+	it("keeps Bash process implementation behind runtime-node", () => {
+		const commandPath = `${SOURCE_ROOT}/host/command-execution/local-bash-executor.ts`;
+		const importingNode = createState([{ path: commandPath, text: 'import { spawn } from "node:child_process";' }]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${commandPath}:1: command execution implementation belongs to runtime-node, not Coding Agent`,
+		);
+	});
+
+	it("keeps OS sandbox implementation behind injected Host Services", () => {
+		const executionModeRoot = `${SOURCE_ROOT}/adapters/runtime-core/execution-mode/`;
+		const retiredPath = `${executionModeRoot}linux-bwrap-tools.ts`;
+		const policyPath = `${executionModeRoot}sandbox-tool-utils.ts`;
+		const retiredImplementation = createState([
+			{ path: retiredPath, text: 'import { spawn } from "node:child_process";' },
+		]);
+		const nodeGlobalPolicy = createState([{ path: policyPath, text: "const platform = process.platform;" }]);
+		const selectingNodeService = createState([
+			{ path: policyPath, text: 'import { findSessionGrant } from "@vetta/runtime-node/sandbox";' },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(retiredImplementation)).toContain(
+			`${retiredPath}: OS sandbox implementation belongs to runtime-node`,
+		);
+		expect(findCodingAgentArchitectureViolations(retiredImplementation)).toContain(
+			`${retiredPath}:1: OS sandbox implementation belongs to runtime-node`,
+		);
+		expect(findCodingAgentArchitectureViolations(nodeGlobalPolicy)).toContain(
+			`${policyPath}: sandbox policy must consume Host Services, not Node globals`,
+		);
+		expect(findCodingAgentArchitectureViolations(selectingNodeService)).toContain(
+			`${policyPath}:1: sandbox policy must consume injected Host Services`,
+		);
+	});
+
+	it("keeps Tool Result artifact files behind an injected Host policy", () => {
+		const policyPath = `${SOURCE_ROOT}/tool-results/result-policy.ts`;
+		const retiredStorePath = `${SOURCE_ROOT}/tool-results/file-result-artifact-store.ts`;
+		const compositionPath = `${SOURCE_ROOT}/composition/runtime-composition.ts`;
+		const importingNode = createState([{ path: policyPath, text: 'import { Buffer } from "node:buffer";' }]);
+		const retiredStore = createState([
+			{ path: retiredStorePath, text: 'import { writeFile } from "node:fs/promises";' },
+		]);
+		const missingPolicy = createState([{ path: compositionPath, text: "export function create() {}" }]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${policyPath}:1: Tool Result policy must consume an Artifact Store contract`,
+		);
+		expect(findCodingAgentArchitectureViolations(retiredStore)).toContain(
+			`${retiredStorePath}: result artifact file implementation belongs to runtime-node`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingPolicy)).toContain(
+			`${compositionPath}: Coding Agent Composition must forward the host Tool Result policy`,
+		);
+	});
+
+	it("keeps Coding Agent Bootstrap independent from Node host selection", () => {
+		const bootstrapPath = `${SOURCE_ROOT}/bootstrap/coding-agent-bootstrap.ts`;
+		const retiredPath = `${SOURCE_ROOT}/host/coding-agent-host-bootstrap.ts`;
+		const importingNode = createState([
+			{ path: bootstrapPath, text: 'import { join } from "node:path"; const cwd = process.cwd();' },
+		]);
+		const retiredBootstrap = createState([{ path: retiredPath, text: "export function create() {}" }]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${bootstrapPath}: Coding Agent Bootstrap must consume host-owned state and environment facts`,
+		);
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${bootstrapPath}:1: Coding Agent Bootstrap must not select a Node implementation`,
+		);
+		expect(findCodingAgentArchitectureViolations(retiredBootstrap)).toContain(
+			`${retiredPath}: platform bootstrap belongs to the application Composition Root`,
+		);
+	});
+
+	it("allows CLI Bootstrap and resource Node selection to use adjacent host modules", () => {
+		const cliCompositionPath = "packages/cli-app/src/coding-agent-bootstrap.ts";
+		const cliResourceCompositionPath = "packages/cli-app/src/coding-agent-resource-runtime.ts";
+		const completeHost = createState([
+			{
+				path: cliCompositionPath,
+				text: "createCodingAgentBootstrap(); new NodeTransactionalTextStorage(); runCodingAgentStartupMigrations({ cwd, agentDir }); createCliSettingsRuntime(); createCliSessionResourceRuntime();",
+			},
+			{
+				path: cliResourceCompositionPath,
+				text: "new NodeScopedTextStorage(); createNodeResourcePackageHost(); createNodeCommandExecutor();",
+			},
+		]);
+		const missingResourceHost = createState([
+			{
+				path: cliCompositionPath,
+				text: "createCodingAgentBootstrap(); new NodeTransactionalTextStorage(); runCodingAgentStartupMigrations({ cwd, agentDir }); createCliSettingsRuntime(); createCliSessionResourceRuntime();",
+			},
+		]);
+
+		expect(findCodingAgentArchitectureViolations(completeHost)).not.toContain(
+			`${cliCompositionPath}: CLI host composition must select Node dependencies explicitly`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingResourceHost)).toContain(
+			`${cliCompositionPath}: CLI host composition must select Node dependencies explicitly`,
+		);
+	});
+
+	it("keeps Extension discovery and loading behind explicit Host Ports", () => {
+		const discoveryPath = `${SOURCE_ROOT}/extensions/runtime/discovery/extension-paths.ts`;
+		const runtimeContractPath = `${SOURCE_ROOT}/resources/contracts/resource-runtime.ts`;
+		const importingNode = createState([{ path: discoveryPath, text: 'import { readdir } from "node:fs/promises";' }]);
+		const missingPorts = createState([
+			{
+				path: runtimeContractPath,
+				text: "export interface SessionResourceRuntimeOptions { resourceAccess: ResourceAccessPort }",
+			},
+		]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${discoveryPath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingPorts)).toContain(
+			`${runtimeContractPath}: SessionResourceRuntimeOptions must require Extension Host Ports`,
+		);
+	});
+
+	it("keeps context resource discovery behind the asynchronous ResourceAccessPort", () => {
+		const contextPath = `${SOURCE_ROOT}/resources/runtime/context-resources.ts`;
+		const runtimeContractPath = `${SOURCE_ROOT}/resources/contracts/resource-runtime.ts`;
+		const importingNode = createState([{ path: contextPath, text: 'import { readFile } from "node:fs/promises";' }]);
+		const missingPort = createState([
+			{ path: runtimeContractPath, text: "export interface SessionResourceRuntimeOptions {}" },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${contextPath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingPort)).toContain(
+			`${runtimeContractPath}: SessionResourceRuntimeOptions must require ResourceAccessPort`,
+		);
+	});
+
+	it("keeps resource path resolution behind ResourcePathPort", () => {
+		const statePath = `${SOURCE_ROOT}/resources/runtime/resource-state.ts`;
+		const runtimePath = `${SOURCE_ROOT}/resources/runtime/session-resource-runtime.ts`;
+		const patternsPath = `${SOURCE_ROOT}/resources/packages/resource-patterns.ts`;
+		const state = createState([
+			{ path: statePath, text: 'import { homedir } from "node:os";' },
+			{ path: runtimePath, text: 'import { resolve } from "node:path";' },
+			{ path: patternsPath, text: 'import { relative } from "node:path";' },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(state)).toEqual(
+			expect.arrayContaining([
+				`${statePath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+				`${runtimePath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+				`${patternsPath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+			]),
+		);
+	});
+
+	it("keeps theme resource I/O behind ResourceAccessPort", () => {
+		const themeResourcesPath = `${SOURCE_ROOT}/resources/runtime/theme-resources.ts`;
+		const runtimeContractPath = `${SOURCE_ROOT}/resources/contracts/resource-runtime.ts`;
+		const importingNode = createState([{ path: themeResourcesPath, text: 'import { readFile } from "node:fs";' }]);
+		const missingParser = createState([
+			{ path: runtimeContractPath, text: "export interface SessionResourceRuntimeOptions {}" },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${themeResourcesPath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingParser)).toContain(
+			`${runtimeContractPath}: SessionResourceRuntimeOptions must require ThemeResourceParser`,
+		);
+	});
+
+	it("keeps Skill and Scene content materialized behind ResourceAccessPort", () => {
+		const discoveryPath = `${SOURCE_ROOT}/resources/skills/discovery.ts`;
+		const consumerPath = `${SOURCE_ROOT}/resources/prompt-resources/prompt-resource-expander.ts`;
+		const importingNode = createState([{ path: discoveryPath, text: 'import { readFile } from "node:fs";' }]);
+		const lazyRead = createState([{ path: consumerPath, text: "export const content = readSkillContent(skill);" }]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${discoveryPath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+		);
+		expect(findCodingAgentArchitectureViolations(lazyRead)).toContain(
+			`${consumerPath}: Skill consumers must use the materialized resource snapshot`,
+		);
+	});
+
+	it("keeps Prompt template discovery behind ResourceAccessPort", () => {
+		const discoveryPath = `${SOURCE_ROOT}/resources/prompts/discovery.ts`;
+		const statePath = `${SOURCE_ROOT}/resources/runtime/prompt-resource-state.ts`;
+		const importingNode = createState([{ path: discoveryPath, text: 'import { readFile } from "node:fs";' }]);
+		const selectingNode = createState([
+			{ path: statePath, text: 'import { createNodeResourceAccess } from "@vetta/runtime-node/host";' },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${discoveryPath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+		);
+		expect(findCodingAgentArchitectureViolations(selectingNode)).toContain(
+			`${statePath}:1: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+		);
+	});
+
+	it("keeps Knowledge definitions portable and platform implementations host-owned", () => {
+		const featurePath = `${SOURCE_ROOT}/features/knowledge/list-tags-tool.ts`;
+		const retiredFactoryPath = `${SOURCE_ROOT}/composition/coding-agent-knowledge-runtime.ts`;
+		const optionsPath = `${SOURCE_ROOT}/composition/contracts/runtime-composition-options.ts`;
+		const nodeToolPath = "packages/runtime-node/src/coding/tools/kb-list-tags/index.ts";
+		const nodeEntryPath = "packages/runtime-node/src/coding/index.ts";
+		const cliPath = "packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts";
+		const state = createState([
+			{ path: featurePath, text: 'import { join } from "node:path";' },
+			{ path: retiredFactoryPath, text: "export function createKnowledge() {}" },
+			{
+				path: optionsPath,
+				text: "export interface Options { knowledgeRoot?: string; knowledgeEnabled?: boolean }",
+			},
+			{ path: nodeToolPath, text: "export const tool = {};" },
+			{ path: nodeEntryPath, text: 'export * from "./tools/kb-list-tags/index.js";' },
+			{ path: cliPath, text: "createCodingAgentRuntimeComposition({});" },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(state)).toEqual(
+			expect.arrayContaining([
+				`${featurePath}:1: Knowledge Feature must consume portable operations`,
+				`${retiredFactoryPath}: Knowledge platform implementation belongs to application hosts`,
+				`${optionsPath}: Composition must accept an explicit Knowledge runtime`,
+				`${optionsPath}: Composition must not infer Knowledge platform availability`,
+				`${nodeToolPath}: Knowledge Tool definitions belong to the Coding Agent feature`,
+				`${nodeEntryPath}: runtime-node must not export Coding Agent Knowledge Tools`,
+				`${cliPath}: Node Host Composition Root must inject createNodeKnowledgeRuntime`,
+			]),
+		);
+	});
+
+	it("rejects retired architecture-layer terminology in implementation names", () => {
+		const retiredTerm = ["pro", "duct"].join("");
+		const sourcePath = `${SOURCE_ROOT}/model-context/${retiredTerm}-prompt.ts`;
+		const sourceState = createState([{ path: sourcePath, text: `export type ${retiredTerm}Policy = {};` }]);
+		const exportState = createState([], {
+			exports: { ".": "./dist/index.js", [`./${retiredTerm}-prompt`]: "./dist/prompt.js" },
+		});
+
+		expect(findCodingAgentArchitectureViolations(sourceState)).toContain(
+			`${sourcePath}: implementation uses a retired architecture-layer term`,
+		);
+		expect(findCodingAgentArchitectureViolations(exportState)).toContain(
+			`packages/coding-agent/package.json: export ./${retiredTerm}-prompt uses a retired architecture-layer term`,
 		);
 	});
 });

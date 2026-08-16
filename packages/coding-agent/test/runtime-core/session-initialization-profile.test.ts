@@ -8,11 +8,16 @@ describe("Coding Agent session initialization profile", () => {
 	it("只投影 Session 初始化需要的配置并保留动态来源引用", () => {
 		const promptResourceSource = {} as NonNullable<CodingAgentRuntimeCompositionOptions["promptResourceSource"]>;
 		const promptSettingsSource = {} as NonNullable<CodingAgentRuntimeCompositionOptions["promptSettingsSource"]>;
+		const createPromptRuntimeSources = async () => ({
+			resourceSource: promptResourceSource,
+			settingsSource: promptSettingsSource,
+		});
 		const createPluginRuntime = () => undefined;
 		const options = {
 			...createBaseOptions(),
 			promptResourceSource,
 			promptSettingsSource,
+			createPromptRuntimeSources,
 			createPluginRuntime,
 			enableSubagents: false,
 			subagentMaxConcurrent: 4,
@@ -29,6 +34,7 @@ describe("Coding Agent session initialization profile", () => {
 			"createPluginMcpRuntime",
 			"createPluginRuntime",
 			"createPromptResourceResolver",
+			"createPromptRuntimeSources",
 			"createSessionExtensionDefinitions",
 			"createSubagentChildFactory",
 			"createSystemPromptOptionsResolver",
@@ -38,7 +44,7 @@ describe("Coding Agent session initialization profile", () => {
 			"hookConfigLayers",
 			"initialModel",
 			"initialThinkingLevel",
-			"knowledgeRoot",
+			"knowledgeRuntime",
 			"maxStopHookContinuations",
 			"promptResourceSource",
 			"promptSettingsSource",
@@ -51,6 +57,7 @@ describe("Coding Agent session initialization profile", () => {
 		]);
 		expect(profile.promptResourceSource).toBe(promptResourceSource);
 		expect(profile.promptSettingsSource).toBe(promptSettingsSource);
+		expect(profile.createPromptRuntimeSources).toBe(createPromptRuntimeSources);
 		expect(profile.createPluginRuntime).toBe(createPluginRuntime);
 		expect(profile.initialModel).toBe(MODEL);
 		expect("conversationDir" in profile).toBe(false);
@@ -81,6 +88,7 @@ function createBaseOptions(): CodingAgentRuntimeCompositionOptions {
 	return {
 		conversationDir: "C:\\conversations",
 		createConversationPersistence: createTestConversationPersistence,
+		createToolEnvironment: () => ({ registrations: [], dispose() {} }),
 		modelRegistry: {} as CodingAgentRuntimeCompositionOptions["modelRegistry"],
 		initialModel: MODEL,
 		initialThinkingLevel: "off",

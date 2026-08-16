@@ -1,4 +1,4 @@
-import { VETTA_CLI_GUIDANCE } from "@vetta/coding-agent/product-prompt";
+import { VETTA_CLI_GUIDANCE } from "@vetta/coding-agent/cli-guidance";
 import type { ConversationScenario } from "@vetta/coding-agent/profile";
 import type { SessionConfig } from "@vetta/runtime-core";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";

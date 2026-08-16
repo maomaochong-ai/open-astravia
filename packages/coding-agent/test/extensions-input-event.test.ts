@@ -2,10 +2,11 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { AuthStorage } from "../src/auth/index.js";
-import { discoverAndLoadExtensions, ExtensionRunner } from "../src/extensions/index.js";
+import { ExtensionRunner } from "../src/extensions/index.js";
 import { createCodingAgentModelRuntime } from "../src/models/index.js";
 import { createExtensionSessionView } from "./fixtures/extension-session-view.js";
+import { createFileAuthStorage } from "./fixtures/file-auth-storage.js";
+import { discoverAndLoadExtensions } from "./fixtures/node-extension-host.js";
 
 describe("Input Event", () => {
 	let tempDir: string;
@@ -28,7 +29,7 @@ describe("Input Event", () => {
 		for (let i = 0; i < extensions.length; i++) fs.writeFileSync(path.join(extensionsDir, `e${i}.ts`), extensions[i]);
 		const result = await discoverAndLoadExtensions([], tempDir, tempDir);
 		const sm = createExtensionSessionView(tempDir);
-		const mr = createCodingAgentModelRuntime(AuthStorage.create(path.join(tempDir, "auth.json")));
+		const mr = createCodingAgentModelRuntime(createFileAuthStorage(path.join(tempDir, "auth.json")));
 		return new ExtensionRunner(result.extensions, result.runtime, tempDir, sm, mr);
 	}
 

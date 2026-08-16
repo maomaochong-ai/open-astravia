@@ -10,6 +10,10 @@ const ROOT_ENTRY = `${SOURCE_ROOT}/index.ts`;
 const COMPOSITION_ENTRY = `${SOURCE_ROOT}/composition/index.ts`;
 const HISTORICAL_ROOT = `${SOURCE_ROOT}/sessions/legacy`;
 const PACKAGE_SPECIFIER = "@vetta/coding-agent";
+const RETIRED_LAYER_TERM = String.fromCharCode(112, 114, 111, 100, 117, 99, 116);
+const RETIRED_LAYER_TERM_PATTERN = new RegExp(
+	`\\b${RETIRED_LAYER_TERM}\\b|\\b${RETIRED_LAYER_TERM}[A-Z]|\\b${RETIRED_LAYER_TERM[0].toUpperCase()}${RETIRED_LAYER_TERM.slice(1)}[A-Z]|\\b${RETIRED_LAYER_TERM}[-_]`,
+);
 
 const DOMAIN_ROOTS = Object.freeze([
 	`${SOURCE_ROOT}/extensions/`,
@@ -27,6 +31,7 @@ const COMPOSITION_PUBLIC_SOURCE_ROOTS = Object.freeze([
 	`${SOURCE_ROOT}/composition/session-host/`,
 	`${SOURCE_ROOT}/host/runtime-host/`,
 	`${SOURCE_ROOT}/sessions/setup/`,
+	`${SOURCE_ROOT}/tool-results/`,
 ]);
 const COMPOSITION_PUBLIC_EXTERNAL_SOURCES = new Set(["@vetta/runtime-storage/conversation"]);
 const PLATFORM_PERSISTENCE_COMPOSITION_ROOTS = Object.freeze([
@@ -42,6 +47,24 @@ const PLATFORM_PERSISTENCE_COMPOSITION_ROOTS = Object.freeze([
 		path: "packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
 		factory: "createFileConversationPersistence",
 	},
+]);
+const TOOL_ENVIRONMENT_COMPOSITION_ROOTS = Object.freeze([
+	"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+	"packages/runtime-desktop/src/backend-pool.ts",
+	"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+	`${SOURCE_ROOT}/host/sdk-session/session-host.ts`,
+]);
+const TOOL_RESULT_POLICY_COMPOSITION_ROOTS = Object.freeze([
+	"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+	"packages/runtime-desktop/src/backend-pool.ts",
+	"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+	`${SOURCE_ROOT}/host/sdk-session/session-host.ts`,
+]);
+const KNOWLEDGE_RUNTIME_COMPOSITION_ROOTS = Object.freeze([
+	"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+	"packages/desktop-app/src/main/agent-runtime/composition.ts",
+	"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+	`${SOURCE_ROOT}/host/sdk-session/session-host.ts`,
 ]);
 
 export function collectCodingAgentArchitectureState({ files, packageJson }) {
@@ -63,6 +86,18 @@ export function findCodingAgentArchitectureViolations(state) {
 	const violations = [];
 	checkPlatformPersistenceCompositionRoots(state, violations);
 	checkCodingAgentCompositionPersistenceBoundary(state, violations);
+	checkToolEnvironmentBoundary(state, violations);
+	checkNodeStateBackendBoundary(state, violations);
+	checkExtensionModuleBoundary(state, violations);
+	checkResourceAccessBoundary(state, violations);
+	checkCommandExecutionBoundary(state, violations);
+	checkExecutionModeHostBoundary(state, violations);
+	checkToolResultArtifactBoundary(state, violations);
+	checkBootstrapBoundary(state, violations);
+	checkResourcePackageHostBoundary(state, violations);
+	checkHostOwnedResourceCompositionBoundary(state, violations);
+	checkKnowledgeRuntimeBoundary(state, violations);
+	checkRetiredLayerTerminology(state, violations);
 
 	for (const path of state.sourcePaths) {
 		if (path.startsWith(`${SOURCE_ROOT}/core/`) || path.startsWith(`${SOURCE_ROOT}/compat/`)) {
@@ -105,7 +140,7 @@ export function findCodingAgentArchitectureViolations(state) {
 			(isAdapterPath(target) || isCompositionImplementation(target) || isPublicFacade(target))
 		) {
 			violations.push(
-				`${edge.path}:${edge.line}: product domain depends on orchestration or implementation (${edge.specifier})`,
+				`${edge.path}:${edge.line}: Coding Agent domain depends on orchestration or implementation (${edge.specifier})`,
 			);
 		}
 		if (isAdapterPath(edge.path) && (isCompositionImplementation(target) || isPublicFacade(target))) {
@@ -123,6 +158,472 @@ export function findCodingAgentArchitectureViolations(state) {
 	return violations;
 }
 
+function checkBootstrapBoundary(state, violations) {
+	const bootstrapRoot = `${SOURCE_ROOT}/bootstrap/`;
+	const bootstrapPath = `${bootstrapRoot}coding-agent-bootstrap.ts`;
+	const cliCompositionPath = "packages/cli-app/src/coding-agent-bootstrap.ts";
+	const cliResourceCompositionPath = "packages/cli-app/src/coding-agent-resource-runtime.ts";
+	const retiredPaths = new Set([
+		`${SOURCE_ROOT}/host/coding-agent-host-bootstrap.ts`,
+		`${SOURCE_ROOT}/host/coding-agent-cli-bootstrap.ts`,
+	]);
+
+	for (const file of state.files) {
+		if (retiredPaths.has(file.path)) {
+			violations.push(`${file.path}: platform bootstrap belongs to the application Composition Root`);
+		}
+		if (file.path.startsWith(`${SOURCE_ROOT}/host/extensions/compatibility/`)) {
+			violations.push(`${file.path}: Extension compatibility rules belong to the Extension domain`);
+		}
+		if (
+			file.path.startsWith(bootstrapRoot) &&
+			(/\bprocess\s*\./.test(file.text) || /\bgetAgentDir\b|\brunMigrations\b|\bNode\w*Storage\b/.test(file.text))
+		) {
+			violations.push(`${file.path}: Coding Agent Bootstrap must consume host-owned state and environment facts`);
+		}
+	}
+	for (const edge of state.edges) {
+		if (
+			edge.path.startsWith(bootstrapRoot) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: Coding Agent Bootstrap must not select a Node implementation`);
+		}
+	}
+
+	const bootstrap = state.files.find((file) => file.path === bootstrapPath);
+	if (
+		bootstrap &&
+		(!/\bsettingsManager\s*:\s*SettingsRuntime\b/.test(bootstrap.text) ||
+			!/\bauthStorage\s*:\s*CodingAgentAuthRuntime\b/.test(bootstrap.text) ||
+			!/\bmodelRegistry\s*:\s*CodingAgentModelRuntime\b/.test(bootstrap.text) ||
+			!/\bcreateResourceRuntime\s*:\s*CodingAgentBootstrapResourceFactory\b/.test(bootstrap.text))
+	) {
+		violations.push(`${bootstrapPath}: Coding Agent Bootstrap must require explicit host-owned dependencies`);
+	}
+
+	const cliComposition = state.files.find((file) => file.path === cliCompositionPath);
+	const cliResourceComposition = state.files.find((file) => file.path === cliResourceCompositionPath);
+	if (
+		cliComposition &&
+		(!/\bcreateCodingAgentBootstrap\s*\(/.test(cliComposition.text) ||
+			!/\bNodeTransactionalTextStorage\b/.test(cliComposition.text) ||
+			!/\brunCodingAgentStartupMigrations\s*\(\s*\{\s*cwd\s*,\s*agentDir\s*\}\s*\)/.test(cliComposition.text) ||
+			!/\bcreateCliSettingsRuntime\b/.test(cliComposition.text) ||
+			!/\bcreateCliSessionResourceRuntime\b/.test(cliComposition.text) ||
+			!cliResourceComposition ||
+			!/\bNodeScopedTextStorage\b/.test(cliResourceComposition.text) ||
+			!/\bcreateNodeResourcePackageHost\b/.test(cliResourceComposition.text) ||
+			!/\bcreateNodeCommandExecutor\b/.test(cliResourceComposition.text))
+	) {
+		violations.push(`${cliCompositionPath}: CLI host composition must select Node dependencies explicitly`);
+	}
+}
+
+function checkToolResultArtifactBoundary(state, violations) {
+	const policyPath = `${SOURCE_ROOT}/tool-results/result-policy.ts`;
+	const retiredPaths = new Set([
+		`${SOURCE_ROOT}/tool-results/contracts.ts`,
+		`${SOURCE_ROOT}/tool-results/file-result-artifact-store.ts`,
+		`${SOURCE_ROOT}/tool-results/session-artifact-cleaner.ts`,
+		`${SOURCE_ROOT}/mcp/runtime/file-result-artifact-store.ts`,
+		`${SOURCE_ROOT}/mcp/runtime/result-policy.ts`,
+	]);
+	for (const file of state.files) {
+		if (retiredPaths.has(file.path)) {
+			violations.push(`${file.path}: result artifact file implementation belongs to runtime-node`);
+		}
+	}
+	for (const edge of state.edges) {
+		if (
+			edge.path === policyPath &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: Tool Result policy must consume an Artifact Store contract`);
+		}
+	}
+
+	const composition = state.files.find((file) => file.path === `${SOURCE_ROOT}/composition/runtime-composition.ts`);
+	if (composition && !/\bresultPolicy\s*:\s*options\.codingToolResultPolicy\b/.test(composition.text)) {
+		violations.push(`${composition.path}: Coding Agent Composition must forward the host Tool Result policy`);
+	}
+	for (const path of TOOL_RESULT_POLICY_COMPOSITION_ROOTS) {
+		const file = state.files.find((candidate) => candidate.path === path);
+		if (file && !/\bcodingToolResultPolicy\s*:/.test(file.text) && !/\bcodingToolResultPolicy,/.test(file.text)) {
+			violations.push(`${path}: Node Host Composition Root must inject codingToolResultPolicy`);
+		}
+	}
+}
+
+function checkRetiredLayerTerminology(state, violations) {
+	for (const file of state.files) {
+		if (!file.path.startsWith(`${SOURCE_ROOT}/`)) continue;
+		if (RETIRED_LAYER_TERM_PATTERN.test(file.path) || RETIRED_LAYER_TERM_PATTERN.test(file.text)) {
+			violations.push(`${file.path}: implementation uses a retired architecture-layer term`);
+		}
+	}
+	for (const packageExport of state.packageExports) {
+		if (RETIRED_LAYER_TERM_PATTERN.test(packageExport)) {
+			violations.push(
+				`${PACKAGE_ROOT}/package.json: export ${packageExport} uses a retired architecture-layer term`,
+			);
+		}
+	}
+}
+
+function checkResourceAccessBoundary(state, violations) {
+	const portableResourcePaths = new Set([
+		`${SOURCE_ROOT}/resources/contracts/resource-access.ts`,
+		`${SOURCE_ROOT}/resources/runtime/context-resources.ts`,
+		`${SOURCE_ROOT}/resources/runtime/resource-state.ts`,
+		`${SOURCE_ROOT}/resources/runtime/session-resource-runtime.ts`,
+		`${SOURCE_ROOT}/resources/runtime/theme-resources.ts`,
+		`${SOURCE_ROOT}/resources/runtime/prompt-resource-state.ts`,
+		`${SOURCE_ROOT}/resources/runtime/skill-resource-state.ts`,
+		`${SOURCE_ROOT}/resources/prompts/arguments.ts`,
+		`${SOURCE_ROOT}/resources/prompts/contracts.ts`,
+		`${SOURCE_ROOT}/resources/prompts/discovery.ts`,
+		`${SOURCE_ROOT}/resources/prompts/index.ts`,
+		`${SOURCE_ROOT}/resources/skills/contracts.ts`,
+		`${SOURCE_ROOT}/resources/skills/discovery.ts`,
+		`${SOURCE_ROOT}/resources/skills/index.ts`,
+		`${SOURCE_ROOT}/resources/skills/prompt.ts`,
+		`${SOURCE_ROOT}/model-context/prompt-snapshot.ts`,
+		`${SOURCE_ROOT}/resources/prompt-resources/prompt-resource-expander.ts`,
+		`${SOURCE_ROOT}/extensions/host-contracts.ts`,
+		`${SOURCE_ROOT}/extensions/pi-compat/loading.ts`,
+		`${SOURCE_ROOT}/extensions/runtime/discovery/extension-paths.ts`,
+		`${SOURCE_ROOT}/extensions/runtime/loading/load-extensions.ts`,
+		`${SOURCE_ROOT}/extensions/runtime/registration/extension-registration.ts`,
+		`${SOURCE_ROOT}/resources/runtime/extension-resources.ts`,
+		`${SOURCE_ROOT}/resources/packages/resource-discovery.ts`,
+		`${SOURCE_ROOT}/resources/packages/resource-patterns.ts`,
+		`${SOURCE_ROOT}/resources/packages/resource-projection.ts`,
+		`${SOURCE_ROOT}/resources/packages/package-source-runtime.ts`,
+		`${SOURCE_ROOT}/resources/packages/package-lifecycle.ts`,
+		`${SOURCE_ROOT}/resources/packages/source-spec.ts`,
+		`${SOURCE_ROOT}/resources/packages/resource-package-locations.ts`,
+	]);
+	for (const edge of state.edges) {
+		if (
+			portableResourcePaths.has(edge.path) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(
+				`${edge.path}:${edge.line}: portable resource access must consume ResourceAccessPort, not a Node implementation`,
+			);
+		}
+	}
+
+	const runtimeContract = state.files.find(
+		(file) => file.path === `${SOURCE_ROOT}/resources/contracts/resource-runtime.ts`,
+	);
+	if (runtimeContract && !/\bresourceAccess\s*:\s*ResourceAccessPort\b/.test(runtimeContract.text)) {
+		violations.push(`${runtimeContract.path}: SessionResourceRuntimeOptions must require ResourceAccessPort`);
+	}
+	if (runtimeContract && !/\bthemeParser\s*:\s*ThemeResourceParser\b/.test(runtimeContract.text)) {
+		violations.push(`${runtimeContract.path}: SessionResourceRuntimeOptions must require ThemeResourceParser`);
+	}
+	if (
+		runtimeContract &&
+		(!/\bextensionFactoryLoader\s*:\s*ExtensionFactoryLoader\b/.test(runtimeContract.text) ||
+			!/\bextensionCommandExecutor\s*:\s*ExtensionCommandExecutor\b/.test(runtimeContract.text))
+	) {
+		violations.push(`${runtimeContract.path}: SessionResourceRuntimeOptions must require Extension Host Ports`);
+	}
+
+	for (const file of state.files) {
+		if (file.path.startsWith(`${SOURCE_ROOT}/resources/`) && /\breadSkillContent\b/.test(file.text)) {
+			violations.push(`${file.path}: Skill consumers must use the materialized resource snapshot`);
+		}
+	}
+}
+
+function checkCommandExecutionBoundary(state, violations) {
+	const commandExecutionRoot = `${SOURCE_ROOT}/host/command-execution/`;
+	for (const edge of state.edges) {
+		if (edge.path.startsWith(commandExecutionRoot) && edge.specifier.startsWith("node:")) {
+			violations.push(
+				`${edge.path}:${edge.line}: command execution implementation belongs to runtime-node, not Coding Agent`,
+			);
+		}
+	}
+}
+
+function checkExecutionModeHostBoundary(state, violations) {
+	const executionModeRoot = `${SOURCE_ROOT}/adapters/runtime-core/execution-mode/`;
+	const retiredPlatformFiles = new Set([
+		`${executionModeRoot}linux-bwrap-tools.ts`,
+		`${executionModeRoot}macos-seatbelt-tools.ts`,
+		`${executionModeRoot}windows-sandbox-policy.ts`,
+		`${executionModeRoot}windows-sandbox-tools.ts`,
+		`${executionModeRoot}workspace-guard.ts`,
+	]);
+	for (const file of state.files) {
+		if (retiredPlatformFiles.has(file.path)) {
+			violations.push(`${file.path}: OS sandbox implementation belongs to runtime-node`);
+		}
+		if (
+			file.path.startsWith(executionModeRoot) &&
+			(/\bNodeJS\s*\./.test(file.text) || /\bprocess\s*\./.test(file.text))
+		) {
+			violations.push(`${file.path}: sandbox policy must consume Host Services, not Node globals`);
+		}
+	}
+	for (const edge of state.edges) {
+		if (edge.path.startsWith(executionModeRoot) && edge.specifier.startsWith("node:")) {
+			violations.push(`${edge.path}:${edge.line}: OS sandbox implementation belongs to runtime-node`);
+		}
+		if (
+			edge.path.startsWith(executionModeRoot) &&
+			!edge.path.endsWith("/sandbox-tools.ts") &&
+			edge.specifier === "@vetta/runtime-node/sandbox"
+		) {
+			violations.push(`${edge.path}:${edge.line}: sandbox policy must consume injected Host Services`);
+		}
+	}
+}
+
+function checkExtensionModuleBoundary(state, violations) {
+	const retiredPaths = new Set([
+		`${SOURCE_ROOT}/extensions/runtime/loading/extension-module-loader.ts`,
+		`${SOURCE_ROOT}/extensions/runtime/exec-command.ts`,
+	]);
+	for (const file of state.files) {
+		if (retiredPaths.has(file.path)) {
+			violations.push(`${file.path}: Node Extension execution belongs behind Host Ports`);
+		}
+		if (
+			file.path.startsWith(`${SOURCE_ROOT}/extensions/`) &&
+			(/\bBuffer\b/.test(file.text) || /\bNodeJS\s*\./.test(file.text))
+		) {
+			violations.push(`${file.path}: Extension contracts must use platform-neutral data types`);
+		}
+	}
+	for (const edge of state.edges) {
+		if (
+			edge.path.startsWith(`${SOURCE_ROOT}/extensions/`) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: Extension semantics must not depend on Node implementations`);
+		}
+	}
+}
+
+function checkResourcePackageHostBoundary(state, violations) {
+	const retiredEffectsPath = `${SOURCE_ROOT}/resources/packages/package-effects.ts`;
+	const runtimePath = `${SOURCE_ROOT}/resources/packages/package-source-runtime.ts`;
+	const sourceSpecPath = `${SOURCE_ROOT}/resources/packages/source-spec.ts`;
+	if (state.sourcePaths.includes(retiredEffectsPath)) {
+		violations.push(`${retiredEffectsPath}: Resource Package Node effects belong to runtime-node`);
+	}
+
+	const runtime = state.files.find((file) => file.path === runtimePath);
+	if (
+		runtime &&
+		(!/\bcommands\s*:\s*ResourcePackageCommandPort\b/.test(runtime.text) ||
+			!/\bdigest\s*:\s*ResourcePackageDigestPort\b/.test(runtime.text) ||
+			!/\bregistry\s*:\s*ResourcePackageRegistryPort\b/.test(runtime.text) ||
+			!/\benvironment\s*:\s*ResourcePackageEnvironmentPort\b/.test(runtime.text) ||
+			!/\blocationFacts\s*:\s*ResourcePackageLocationFacts\b/.test(runtime.text) ||
+			!/\bresourceAccess\s*:\s*ResourceAccessPort\b/.test(runtime.text) ||
+			!/\bfiles\s*:\s*ResourcePackageFilePort\b/.test(runtime.text) ||
+			!/\bmanagedSkillsDir\s*:\s*string\b/.test(runtime.text))
+	) {
+		violations.push(`${runtimePath}: ResourcePackageRuntimeOptions must require all Host Ports`);
+	}
+	if (runtime && /\brunSync\s*\(/.test(runtime.text)) {
+		violations.push(`${runtimePath}: Resource Package runtime must not synchronously query Node commands`);
+	}
+	if (
+		runtime &&
+		(/\bnew\s+(?:NodeResourcePackageCommands|NpmResourcePackageRegistry)\b/.test(runtime.text) ||
+			/\bprocess\.env\.PI_OFFLINE\b/.test(runtime.text))
+	) {
+		violations.push(`${runtimePath}: Resource Package runtime must not select Node defaults`);
+	}
+
+	const sourceSpec = state.files.find((file) => file.path === sourceSpecPath);
+	if (sourceSpec && /\bclass\s+ResourcePackageLocations\b/.test(sourceSpec.text)) {
+		violations.push(`${sourceSpecPath}: Resource source parsing must not own package location policy`);
+	}
+}
+
+function checkHostOwnedResourceCompositionBoundary(state, violations) {
+	const retiredResourceFactoryPath = `${SOURCE_ROOT}/host/coding-agent-resource-runtime.ts`;
+	const retiredPromptFactoryPath = `${SOURCE_ROOT}/composition/turn/prompt-runtime-factory.ts`;
+	const publicResourcesPath = `${SOURCE_ROOT}/public-api/resources.ts`;
+	const compositionOptionsPath = `${SOURCE_ROOT}/composition/contracts/runtime-composition-options.ts`;
+	const transactionPath = `${SOURCE_ROOT}/composition/session-initialization/transaction.ts`;
+	const cliControlPath = `${SOURCE_ROOT}/host/coding-agent-cli-control.ts`;
+
+	if (state.sourcePaths.includes(retiredResourceFactoryPath)) {
+		violations.push(`${retiredResourceFactoryPath}: Node resource composition belongs to application hosts`);
+	}
+	if (state.sourcePaths.includes(retiredPromptFactoryPath)) {
+		violations.push(`${retiredPromptFactoryPath}: Prompt resource selection belongs to application hosts`);
+	}
+
+	const publicResources = state.files.find((file) => file.path === publicResourcesPath);
+	if (
+		publicResources &&
+		/\bcreateCodingAgent(?:Settings|ResourcePackage|SessionResource|SkillResource)Runtime\b/.test(
+			publicResources.text,
+		)
+	) {
+		violations.push(`${publicResourcesPath}: Resources facade must expose portable constructors only`);
+	}
+
+	const compositionOptions = state.files.find((file) => file.path === compositionOptionsPath);
+	if (compositionOptions && !/\bcreatePromptRuntimeSources\??\s*:/.test(compositionOptions.text)) {
+		violations.push(`${compositionOptionsPath}: Composition must accept host-owned Prompt runtime sources`);
+	}
+
+	const transaction = state.files.find((file) => file.path === transactionPath);
+	if (transaction && !/\bruntimeSourceFactory\s*:\s*createPromptRuntimeSources\b/.test(transaction.text)) {
+		violations.push(`${transactionPath}: Session initialization must forward host-owned Prompt runtime sources`);
+	}
+
+	const cliControl = state.files.find((file) => file.path === cliControlPath);
+	if (cliControl && !/\bcreatePackageCommandRuntime\b/.test(cliControl.text)) {
+		violations.push(`${cliControlPath}: CLI package commands must receive an explicit runtime factory`);
+	}
+}
+
+function checkKnowledgeRuntimeBoundary(state, violations) {
+	const featureRoot = `${SOURCE_ROOT}/features/knowledge/`;
+	const retiredFactoryPath = `${SOURCE_ROOT}/composition/coding-agent-knowledge-runtime.ts`;
+	const compositionOptionsPath = `${SOURCE_ROOT}/composition/contracts/runtime-composition-options.ts`;
+	const toolSurfacePath = `${SOURCE_ROOT}/composition/tool-surface/runtime-tool-surface.ts`;
+	const retiredNodeToolPrefixes = [
+		"packages/runtime-node/src/coding/tools/kb-filter-by-tags/",
+		"packages/runtime-node/src/coding/tools/kb-list-tags/",
+		"packages/runtime-node/src/coding/tools/kb-write-page/",
+	];
+
+	if (state.sourcePaths.includes(retiredFactoryPath)) {
+		violations.push(`${retiredFactoryPath}: Knowledge platform implementation belongs to application hosts`);
+	}
+	for (const edge of state.edges) {
+		if (
+			edge.path.startsWith(featureRoot) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: Knowledge Feature must consume portable operations`);
+		}
+	}
+	for (const file of state.files) {
+		if (retiredNodeToolPrefixes.some((prefix) => file.path.startsWith(prefix))) {
+			violations.push(`${file.path}: Knowledge Tool definitions belong to the Coding Agent feature`);
+		}
+	}
+
+	const nodeCodingEntry = state.files.find((file) => file.path === "packages/runtime-node/src/coding/index.ts");
+	if (
+		nodeCodingEntry &&
+		/\bcreateKb(?:FilterByTags|ListTags|WritePage)Tool\b|\.\/tools\/kb-(?:filter-by-tags|list-tags|write-page)\//.test(
+			nodeCodingEntry.text,
+		)
+	) {
+		violations.push(`${nodeCodingEntry.path}: runtime-node must not export Coding Agent Knowledge Tools`);
+	}
+
+	const compositionOptions = state.files.find((file) => file.path === compositionOptionsPath);
+	if (compositionOptions) {
+		if (!/\bknowledgeRuntime\??\s*:\s*CodingAgentKnowledgeRuntime\b/.test(compositionOptions.text)) {
+			violations.push(`${compositionOptionsPath}: Composition must accept an explicit Knowledge runtime`);
+		}
+		if (/\bknowledge(?:Root|Enabled)\??\s*:/.test(compositionOptions.text)) {
+			violations.push(`${compositionOptionsPath}: Composition must not infer Knowledge platform availability`);
+		}
+	}
+
+	const toolSurface = state.files.find((file) => file.path === toolSurfacePath);
+	if (
+		toolSurface &&
+		(/\bprocess\s*\./.test(toolSurface.text) ||
+			/\bgetKnowledgeDir\b|\bcreateNodeKnowledgeRuntime\b|\bknowledge(?:Root|Enabled)\b/.test(toolSurface.text))
+	) {
+		violations.push(`${toolSurfacePath}: Tool Surface must consume the injected Knowledge runtime`);
+	}
+
+	for (const path of KNOWLEDGE_RUNTIME_COMPOSITION_ROOTS) {
+		const file = state.files.find((candidate) => candidate.path === path);
+		if (!file) continue;
+		const importsFactory = state.edges.some(
+			(edge) =>
+				edge.path === path &&
+				edge.specifier === "@vetta/runtime-node/host" &&
+				edge.names.includes("createNodeKnowledgeRuntime"),
+		);
+		if (!importsFactory || !/\bknowledgeRuntime\s*:/.test(file.text)) {
+			violations.push(`${path}: Node Host Composition Root must inject createNodeKnowledgeRuntime`);
+		}
+	}
+}
+
+function checkToolEnvironmentBoundary(state, violations) {
+	const toolCompositionPath = `${SOURCE_ROOT}/composition/tool-surface/runtime-tools-composition.ts`;
+	const retiredNodeImplementationPaths = [
+		`${SOURCE_ROOT}/adapters/runtime-tools/command-process-host.ts`,
+		`${SOURCE_ROOT}/adapters/runtime-tools/executables/`,
+	];
+	for (const file of state.files) {
+		if (
+			retiredNodeImplementationPaths.some((path) =>
+				path.endsWith("/") ? file.path.startsWith(path) : file.path === path,
+			)
+		) {
+			violations.push(`${file.path}: Node command and executable implementations belong to runtime-node`);
+		}
+	}
+	for (const edge of state.edges) {
+		if (edge.path === toolCompositionPath && edge.specifier === "@vetta/runtime-node/coding") {
+			violations.push(
+				`${edge.path}:${edge.line}: Coding Agent tool composition must consume ToolEnvironment, not Node tools`,
+			);
+		}
+	}
+
+	const composition = state.files.find((file) => file.path === `${SOURCE_ROOT}/composition/runtime-composition.ts`);
+	if (composition && !/\bcreateToolEnvironment\s*:\s*options\.createToolEnvironment\b/.test(composition.text)) {
+		violations.push(`${composition.path}: Coding Agent Composition must forward the host ToolEnvironment factory`);
+	}
+
+	for (const path of TOOL_ENVIRONMENT_COMPOSITION_ROOTS) {
+		const file = state.files.find((candidate) => candidate.path === path);
+		if (file && !/\bcreateToolEnvironment\s*:/.test(file.text)) {
+			violations.push(`${path}: host Composition Root must inject createToolEnvironment`);
+		}
+	}
+}
+
+function checkNodeStateBackendBoundary(state, violations) {
+	const retiredBackendPaths = new Set([
+		`${SOURCE_ROOT}/auth/storage/file-auth-storage-backend.ts`,
+		`${SOURCE_ROOT}/settings/storage/file-settings-storage.ts`,
+	]);
+	for (const file of state.files) {
+		if (retiredBackendPaths.has(file.path)) {
+			violations.push(`${file.path}: Node file state backends belong to runtime-node`);
+		}
+	}
+	for (const edge of state.edges) {
+		if (
+			edge.path.startsWith(`${SOURCE_ROOT}/settings/`) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(
+				`${edge.path}:${edge.line}: Settings semantics must consume SettingsStoragePort, not a Node backend`,
+			);
+		}
+	}
+	const settingsEntry = state.files.find((file) => file.path === `${SOURCE_ROOT}/settings/index.ts`);
+	if (settingsEntry && /\bcreate\s*:\s*createFileSettingsRuntime\b/.test(settingsEntry.text)) {
+		violations.push(`${settingsEntry.path}: SettingsRuntime must not select a Node file backend`);
+	}
+}
+
 function checkCodingAgentCompositionPersistenceBoundary(state, violations) {
 	for (const edge of state.edges) {
 		if (
@@ -130,7 +631,7 @@ function checkCodingAgentCompositionPersistenceBoundary(state, violations) {
 			edge.specifier === "@vetta/runtime-node/conversation"
 		) {
 			violations.push(
-				`${edge.path}:${edge.line}: product Composition must consume a persistence Port, not a Node implementation`,
+				`${edge.path}:${edge.line}: Coding Agent Composition must consume a persistence Port, not a Node implementation`,
 			);
 		}
 	}
@@ -138,7 +639,7 @@ function checkCodingAgentCompositionPersistenceBoundary(state, violations) {
 	const composition = state.files.find((file) => file.path === `${SOURCE_ROOT}/composition/runtime-composition.ts`);
 	if (composition && !/\boptions\.createConversationPersistence\s*\(/.test(composition.text)) {
 		violations.push(
-			`${composition.path}: product Composition must obtain conversation persistence from its host Port`,
+			`${composition.path}: Coding Agent Composition must obtain conversation persistence from its host Port`,
 		);
 	}
 }
@@ -313,7 +814,13 @@ function readCurrentInput() {
 	})
 		.filter((path) => !normalizePath(path).includes("/node_modules/") && !normalizePath(path).includes("/dist/"))
 		.map((path) => ({ path: rel(path), text: readText(path) }))
-		.filter((file) => !file.path.startsWith(`${PACKAGE_ROOT}/`) && file.text.includes("@vetta/coding-agent"));
+		.filter(
+			(file) =>
+				!file.path.startsWith(`${PACKAGE_ROOT}/`) &&
+				(file.text.includes("@vetta/coding-agent") ||
+					file.path === "packages/runtime-node/src/coding/index.ts" ||
+					file.path.startsWith("packages/runtime-node/src/coding/tools/kb-")),
+		);
 	return {
 		files: [...codingAgentFiles, ...consumerFiles],
 		packageJson: JSON.parse(readText(packagePath)),

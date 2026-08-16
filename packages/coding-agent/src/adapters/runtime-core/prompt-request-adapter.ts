@@ -69,12 +69,14 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter, Ru
 		});
 	}
 
-	bindForTurn(_context: RuntimeSnapshotAcquireContext): RuntimeInputRequestPreparer {
+	async bindForTurn(context: RuntimeSnapshotAcquireContext): Promise<RuntimeInputRequestPreparer> {
+		const resolvePromptResource =
+			(await this.resolvePromptResource?.bindForTurn?.(context)) ?? this.resolvePromptResource;
 		return new CodingAgentPromptRequestAdapter({
 			now: this.now,
-			resolvePromptResource: this.resolvePromptResource?.bindForTurn?.() ?? this.resolvePromptResource,
+			resolvePromptResource,
 			hookRuntime: this.hookRuntime,
-			extensionEvents: this.extensionEvents?.bindForTurn?.(_context) ?? this.extensionEvents,
+			extensionEvents: this.extensionEvents?.bindForTurn?.(context) ?? this.extensionEvents,
 			inputSource: this.inputSource,
 			onPrepared: this.onPrepared,
 		});

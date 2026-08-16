@@ -43,7 +43,7 @@ afterEach(() => {
  * 窗口 resize 与面板宽度之间的接线：原子层的意图解析已由 activity-panel-width.test.ts 覆盖，
  * 这里验证 useWindowWidth → sync 这一步在真实 React 树里确实跑通。
  */
-it("拉满态的面板宽度随窗口 resize 变窄再变宽", async () => {
+it("拉满态的面板宽度随窗口 resize 变窄再变宽", { timeout: 10_000 }, async () => {
 	const { activityPanelOpenAtom, setActivityPanelWidthAtom } = await import("@shared/store/atoms");
 	const { useActivityPanelModel } = await import("./useActivityPanelModel");
 

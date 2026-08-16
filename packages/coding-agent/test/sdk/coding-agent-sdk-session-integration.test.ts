@@ -5,9 +5,13 @@ import type { Api, AssistantMessage, AssistantMessageEvent, Model } from "@vetta
 import { EventStream } from "@vetta/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/model-runtime-adapter.js";
+import { createCodingAgentNodeToolEnvironment } from "../../src/adapters/runtime-tools/node-tool-environment.js";
 import type { CodingAgentRuntimeComposition } from "../../src/composition/contracts/index.js";
 import { bindCodingAgentSdkSessionRuntime } from "../../src/host/sdk-session/runtime-binding.js";
-import { createCodingAgentSdkSession } from "../../src/host/sdk-session/runtime-factory.js";
+import {
+	type CodingAgentSdkSessionFactoryOptions,
+	createCodingAgentSdkSession as createSdkSession,
+} from "../../src/host/sdk-session/runtime-factory.js";
 import { CodingAgentSdkSessionAdapter } from "../../src/host/sdk-session/session-adapter.js";
 import { CodingAgentSdkSessionCapabilityHost } from "../../src/host/sdk-session/session-capability-host.js";
 import type { CodingAgentFixedSession } from "../../src/public-api/sdk/sdk-session-contract.js";
@@ -112,6 +116,7 @@ describe("Coding Agent SDK session integration", () => {
 		});
 		expect(session.pendingMessageCount).toBe(0);
 
+		await vi.waitFor(() => expect(stream).toBeDefined());
 		if (!stream) throw new Error("Expected a deferred assistant stream");
 		stream.complete(assistantMessage("completed"));
 		await running;
@@ -335,7 +340,7 @@ describe("Coding Agent SDK session integration", () => {
 		expect(recovered.session.sessionId).toBe("sdk-rollback");
 	});
 
-	it("owns product resources before and after the Runtime Session lifecycle", async () => {
+	it("owns feature resources before and after the Runtime Session lifecycle", async () => {
 		const workspace = await temporaryDirectory("greenfield-sdk-owned-resource-workspace-");
 		const disposed: string[] = [];
 		const { session } = await createCodingAgentSdkSession({
@@ -373,6 +378,7 @@ describe("Coding Agent SDK session integration", () => {
 
 function factoryComposition(workspace: string) {
 	return {
+		createToolEnvironment: createCodingAgentNodeToolEnvironment,
 		cwd: workspace,
 		modelRegistry: modelRegistry(),
 		initialModel: MODEL,
@@ -449,6 +455,16 @@ function assistantMessage(text: string): AssistantMessage {
 		stopReason: "stop",
 		timestamp: 2,
 	};
+}
+
+function createCodingAgentSdkSession(options: CodingAgentSdkSessionFactoryOptions) {
+	return createSdkSession({
+		...options,
+		composition: {
+			resolveSystemPromptOptions: () => ({ customPrompt: "Test system prompt", scenario: "cli" }),
+			...options.composition,
+		},
+	});
 }
 
 const MODEL: Model<Api> = {

@@ -4,15 +4,20 @@
  * Configure API key resolution via AuthStorage and CodingAgentModelRuntime.
  */
 
+import { homedir } from "node:os";
+import { join } from "node:path";
 import {
 	AuthStorage,
 	createCodingAgentHostWithServices,
 	createCodingAgentModelRuntime,
 } from "@vetta/coding-agent/host-services";
+import { NodeTransactionalTextStorage } from "@vetta/runtime-node/host";
 
-// Default: AuthStorage uses ~/.vetta/agent/auth.json
+// The Node host explicitly chooses ~/.vetta/agent/auth.json.
 // CodingAgentModelRuntime loads built-in + custom models from ~/.vetta/agent/models.json
-const authStorage = AuthStorage.create();
+const authStorage = AuthStorage.fromStorage(
+	new NodeTransactionalTextStorage(join(homedir(), ".vetta", "agent", "auth.json")),
+);
 const modelRuntime = createCodingAgentModelRuntime(authStorage);
 
 const defaultHost = createCodingAgentHostWithServices({
@@ -24,7 +29,7 @@ await defaultHost.close();
 console.log("Session with default auth storage and model registry");
 
 // Custom auth storage location
-const customAuthStorage = AuthStorage.create("/tmp/my-app/auth.json");
+const customAuthStorage = AuthStorage.fromStorage(new NodeTransactionalTextStorage("/tmp/my-app/auth.json"));
 const customModelRuntime = createCodingAgentModelRuntime(customAuthStorage, {
 	modelsJsonPath: "/tmp/my-app/models.json",
 });

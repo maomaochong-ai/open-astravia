@@ -5,7 +5,8 @@ import type { SessionExtensionDefinition } from "@vetta/runtime-core/session-ext
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
 import type { SubagentTypeRegistryLike } from "@vetta/runtime-subagents";
-import type { CodingToolActivation } from "@vetta/runtime-tools";
+import type { CodingToolActivation, CodingToolResultPolicy } from "@vetta/runtime-tools";
+import type { CodingAgentKnowledgeRuntime } from "../../features/knowledge/contracts.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import type {
 	CodingAgentMemoryRolloverOrchestratorOptions,
@@ -30,6 +31,14 @@ import type {
 	CodingAgentSubagentChildFactoryContext,
 	CodingAgentSubagentProfile,
 } from "./subagent.js";
+import type { CodingAgentToolEnvironmentFactory } from "./tool-environment.js";
+
+export type {
+	CodingAgentKnowledgePage,
+	CodingAgentKnowledgeQueryOperations,
+	CodingAgentKnowledgeRuntime,
+	CodingAgentKnowledgeWriteOperations,
+} from "../../features/knowledge/contracts.js";
 
 export interface CodingAgentRuntimeEnvironmentOptions {
 	readonly cwd?: string;
@@ -54,9 +63,13 @@ export interface CodingAgentRuntimeModelOptions {
 }
 
 export interface CodingAgentRuntimeToolOptions {
+	/** 平台工具环境由最终宿主显式选择；Coding Agent 不提供 Node 默认实现。 */
+	readonly createToolEnvironment: CodingAgentToolEnvironmentFactory;
+	/** 大结果如何投影由宿主显式选择；缺省保留完整结果且不产生环境副作用。 */
+	readonly codingToolResultPolicy?: CodingToolResultPolicy;
 	readonly activation?: CodingToolActivation;
-	readonly knowledgeEnabled?: boolean;
-	readonly knowledgeRoot?: string;
+	/** Knowledge 的查询与写入实现由最终宿主选择；缺省时不注册 Knowledge Tool。 */
+	readonly knowledgeRuntime?: CodingAgentKnowledgeRuntime;
 	/** 仅用于保留宿主既有系统提示词合同；不会把名称对应的工具加入可执行 Tool Frame。 */
 	readonly systemPromptAdvertisedToolNames?: readonly string[];
 	readonly mcpSource?: McpRuntimeToolSource;
@@ -77,6 +90,10 @@ export interface CodingAgentRuntimeSubagentOptions {
 }
 
 export interface CodingAgentRuntimePromptOptions {
+	/** 为每个 Session 创建资源与设置事实源；文件与环境实现由最终宿主选择。 */
+	readonly createPromptRuntimeSources?: (
+		context: CodingAgentPromptRuntimeSourceContext,
+	) => Promise<CodingAgentPromptRuntimeSources>;
 	/** 已由宿主 Bootstrap 加载的共享动态资源；必须与 promptSettingsSource 同时提供。 */
 	readonly promptResourceSource?: CodingAgentPromptResourceSource;
 	/** 已由宿主 Bootstrap 加载的共享设置；必须与 promptResourceSource 同时提供。 */
@@ -94,6 +111,18 @@ export interface CodingAgentRuntimePromptOptions {
 	) => CodingAgentSystemPromptOptionsResolver;
 	/** 无状态系统提示词来源的兼容入口。 */
 	readonly resolveSystemPromptOptions?: CodingAgentSystemPromptOptionsResolver;
+}
+
+export interface CodingAgentPromptRuntimeSourceContext {
+	readonly sessionOptions: CodingAgentRuntimeSessionOptions;
+	readonly cwd: string;
+	readonly agentDir?: string;
+	readonly scenario: ConversationScenario;
+}
+
+export interface CodingAgentPromptRuntimeSources {
+	readonly resourceSource: CodingAgentPromptResourceSource;
+	readonly settingsSource: CodingAgentPromptSettingsSource;
 }
 
 export interface CodingAgentRuntimePluginOptions {

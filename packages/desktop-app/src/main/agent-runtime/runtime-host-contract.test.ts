@@ -11,6 +11,7 @@ import {
 	textResponseEvents,
 	toolCallResponseEvents,
 } from "../../../../cli-app/test/support/openai-responses-test-server.js";
+import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
 
 interface RuntimeFixture {
 	readonly runtime: RuntimeHost;
@@ -467,6 +468,7 @@ describe("Desktop RuntimeHost production contract", () => {
 				modelRegistry: modelRegistry(model),
 				initialModel: model,
 				initialThinkingLevel: "off",
+				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 			},
 		});
 		const runtime = new RuntimeHost({

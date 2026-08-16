@@ -1,29 +1,40 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { loadThemeFromPath, type Theme } from "../../modes/interactive/theme/theme.js";
+import type { Theme } from "../../modes/interactive/theme/theme.js";
 import type { ResourceDiagnostic } from "../contracts/diagnostics.js";
+import type { ResourceAccessPort } from "../contracts/resource-access.js";
+import type { ThemeResourceParser } from "../contracts/resource-runtime.js";
 
-export function loadThemeResources(
-	paths: string[],
-	cwd: string,
-): {
+export interface LoadThemeResourcesOptions {
+	readonly resourceAccess: ResourceAccessPort;
+	readonly paths: readonly string[];
+	readonly cwd: string;
+	readonly parse: ThemeResourceParser;
+	readonly signal?: AbortSignal;
+}
+
+export async function loadThemeResources(options: LoadThemeResourcesOptions): Promise<{
 	themes: Theme[];
 	diagnostics: ResourceDiagnostic[];
-} {
+}> {
 	const themes: Theme[] = [];
 	const diagnostics: ResourceDiagnostic[] = [];
-	for (const path of paths) {
-		const resolved = resolve(cwd, path);
-		if (!existsSync(resolved)) {
-			diagnostics.push({ type: "warning", message: "theme path does not exist", path: resolved });
-			continue;
-		}
+	for (const path of options.paths) {
+		options.signal?.throwIfAborted();
+		const resolved = options.resourceAccess.paths.resolve(options.cwd, path);
 		try {
-			const stats = statSync(resolved);
-			if (stats.isDirectory()) loadThemesFromDir(resolved, themes, diagnostics);
-			else if (stats.isFile() && resolved.endsWith(".json")) loadThemeFile(resolved, themes, diagnostics);
-			else diagnostics.push({ type: "warning", message: "theme path is not a json file", path: resolved });
+			const info = await options.resourceAccess.files.stat(resolved, { signal: options.signal });
+			if (!info) {
+				diagnostics.push({ type: "warning", message: "theme path does not exist", path: resolved });
+				continue;
+			}
+			if (info.kind === "directory") {
+				await loadThemesFromDirectory(options, resolved, themes, diagnostics);
+			} else if (info.kind === "file" && resolved.endsWith(".json")) {
+				await loadThemeFile(options, resolved, themes, diagnostics);
+			} else {
+				diagnostics.push({ type: "warning", message: "theme path is not a json file", path: resolved });
+			}
 		} catch (error) {
+			options.signal?.throwIfAborted();
 			diagnostics.push({
 				type: "warning",
 				message: error instanceof Error ? error.message : "failed to read theme path",
@@ -34,32 +45,52 @@ export function loadThemeResources(
 	return dedupeThemes(themes, diagnostics);
 }
 
-function loadThemesFromDir(dir: string, themes: Theme[], diagnostics: ResourceDiagnostic[]): void {
+async function loadThemesFromDirectory(
+	options: LoadThemeResourcesOptions,
+	directory: string,
+	themes: Theme[],
+	diagnostics: ResourceDiagnostic[],
+): Promise<void> {
 	try {
-		for (const entry of readdirSync(dir, { withFileTypes: true })) {
-			let isFile = entry.isFile();
-			if (entry.isSymbolicLink()) {
+		const entries = await options.resourceAccess.files.readDirectory(directory, { signal: options.signal });
+		for (const entry of entries) {
+			options.signal?.throwIfAborted();
+			const filePath = options.resourceAccess.paths.join(directory, entry.name);
+			let kind = entry.kind;
+			if (entry.symbolicLink) {
 				try {
-					isFile = statSync(join(dir, entry.name)).isFile();
+					kind = (await options.resourceAccess.files.stat(filePath, { signal: options.signal }))?.kind ?? "other";
 				} catch {
+					options.signal?.throwIfAborted();
 					continue;
 				}
 			}
-			if (isFile && entry.name.endsWith(".json")) loadThemeFile(join(dir, entry.name), themes, diagnostics);
+			if (kind === "file" && entry.name.endsWith(".json")) {
+				await loadThemeFile(options, filePath, themes, diagnostics);
+			}
 		}
 	} catch (error) {
+		options.signal?.throwIfAborted();
 		diagnostics.push({
 			type: "warning",
 			message: error instanceof Error ? error.message : "failed to read theme directory",
-			path: dir,
+			path: directory,
 		});
 	}
 }
 
-function loadThemeFile(filePath: string, themes: Theme[], diagnostics: ResourceDiagnostic[]): void {
+async function loadThemeFile(
+	options: LoadThemeResourcesOptions,
+	filePath: string,
+	themes: Theme[],
+	diagnostics: ResourceDiagnostic[],
+): Promise<void> {
 	try {
-		themes.push(loadThemeFromPath(filePath));
+		const content = await options.resourceAccess.files.readText(filePath, { signal: options.signal });
+		options.signal?.throwIfAborted();
+		themes.push(options.parse(filePath, content));
 	} catch (error) {
+		options.signal?.throwIfAborted();
 		diagnostics.push({
 			type: "warning",
 			message: error instanceof Error ? error.message : "failed to load theme",

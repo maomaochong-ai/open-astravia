@@ -14,10 +14,6 @@ export {
 	type RuntimeSpawnBackgroundCommandProcessOptions,
 } from "./background-command-host.js";
 export {
-	CodingAgentCommandProcessAbortedError,
-	createCodingAgentCommandProcessHost,
-} from "./command-process-host.js";
-export {
 	type CodingAgentDocToPdfOperationsOptions,
 	createCodingAgentDocToPdfOperations,
 } from "./doc-to-pdf-operations.js";
@@ -26,17 +22,14 @@ export {
 	type RuntimeEditPathPolicy,
 } from "./edit-path-policy.js";
 export {
-	createManagedCodingToolExecutableResolver,
-	ensureManagedCodingToolExecutable,
-	type ManagedCodingToolExecutableDependencies,
-	type ResolveCodingToolExecutable,
-	resolveManagedCodingToolExecutable,
-} from "./executables/index.js";
-export {
 	type CodingAgentForegroundCommandHost,
 	createCodingAgentForegroundCommandHost,
 	type RuntimeForegroundCommandOperations,
 } from "./foreground-command-operations.js";
+export {
+	type CodingAgentNodeToolEnvironmentOptions,
+	createCodingAgentNodeToolEnvironment,
+} from "./node-tool-environment.js";
 export { getCodingAgentOcrExecutionGate } from "./ocr-execution-gate.js";
 export {
 	createCodingAgentWritePathPolicy,

@@ -18,6 +18,9 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Added
 
+- `CodingToolResultArtifactStore` 及其写入合同进入工具协议层，供可移植结果策略依赖；具体文件、对象存储或远端实现
+  继续由平台 Runtime 提供。
+
 - 新增平台中立的 `ToolCallDescriptionSchema`，作为 Coding Tool 可选调用说明字段的协议事实源；
   产品 Tool 与 Node Tool 共享同一 Schema，不再从平台实现目录复制或深度导入。
 - **平台命令 Host Port 收口**：`CommandProcessPort`、`DesktopCommandPort`、`ForegroundCommandOperations` 与 `BackgroundCommandService` 由协议包统一定义；Node 包只提供进程、文件和生命周期实现，并保留兼容导出。

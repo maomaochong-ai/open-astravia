@@ -23,16 +23,15 @@ import type {
 	CodingAgentPluginRuntimeSource,
 	CodingAgentRuntimeToolRegistration,
 } from "../../runtime-contracts/index.js";
-import { createCodingAgentKnowledgeWriteOperations } from "../coding-agent-knowledge-runtime.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
 import { createCodingAgentAskUserQuestionFeature } from "../tool-surface/ask-user-question-feature.js";
 import type { CodingAgentMcpSessionCoordinator } from "../tool-surface/mcp-session-coordinator.js";
-import {
-	createCodingAgentProductToolFeature,
-	createCodingAgentProductToolRegistrations,
-} from "../tool-surface/product-tools.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
+import {
+	createCodingAgentSpecializedToolFeature,
+	createCodingAgentSpecializedToolRegistrations,
+} from "../tool-surface/specialized-tools.js";
 import type { CodingAgentSessionInitializationProfile } from "./profile.js";
 
 export interface CodingAgentSessionPeripheralAssemblyOptions {
@@ -59,8 +58,8 @@ export interface CodingAgentSessionPeripheralAssemblyOptions {
 
 export interface CodingAgentSessionPeripheralAssembly {
 	readonly configurationState: CodingAgentSessionConfigurationState;
-	readonly productToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
-	readonly productToolFeature: AgentFeatureDefinition;
+	readonly specializedToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
+	readonly specializedToolFeature: AgentFeatureDefinition;
 	readonly pluginRuntime?: CodingAgentPluginRuntimeSource;
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
 	readonly mcpController?: McpDeferredToolController;
@@ -87,16 +86,15 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	const configurationState = new CodingAgentSessionConfigurationState(sessionOptions.agentMode, () =>
 		pluginRuntime?.readAgentPlugins(),
 	);
-	const productToolRegistrations = [
-		...createCodingAgentProductToolRegistrations({
+	const specializedToolRegistrations = [
+		...createCodingAgentSpecializedToolRegistrations({
 			cwd: options.sessionCwd,
-			knowledgePageWriter:
-				sessionOptions.knowledgePageWriter ?? createCodingAgentKnowledgeWriteOperations(profile.knowledgeRoot),
+			knowledgePageWriter: sessionOptions.knowledgePageWriter ?? profile.knowledgeRuntime?.write,
 		}),
 		...(sessionOptions.sessionRuntimeTools ?? []),
 	];
-	const productToolFeature = createCodingAgentProductToolFeature({
-		registrations: productToolRegistrations,
+	const specializedToolFeature = createCodingAgentSpecializedToolFeature({
+		registrations: specializedToolRegistrations,
 		resolveActivation: (context) =>
 			options.resolveActivation(context, configurationState.readActiveToolNamesOverride()),
 	});
@@ -241,8 +239,8 @@ export async function createCodingAgentSessionPeripheralAssembly(
 
 	return {
 		configurationState,
-		productToolRegistrations,
-		productToolFeature,
+		specializedToolRegistrations,
+		specializedToolFeature,
 		pluginRuntime,
 		pluginMcpRuntime,
 		mcpController,

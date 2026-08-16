@@ -1,4 +1,4 @@
-import type { CodingAgentHostBootstrap } from "@vetta/coding-agent/bootstrap";
+import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
 import type { CodingAgentActiveSessionHost, CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import { type CodingAgentHtmlExportRuntime, createCodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import {
@@ -23,11 +23,11 @@ import { type HistoryEntry, RetryableCleanup, type RuntimeSession } from "@vetta
 import { type CodingToolRegistration, createImSendAttachmentToolRegistration } from "@vetta/runtime-node/coding";
 import { RpcSessionEventAdapter } from "./rpc-session-event-adapter.js";
 
-type RpcResourceLoader = Pick<CodingAgentHostBootstrap["resourceLoader"], "getPrompts" | "getSkills">;
+type RpcResourceLoader = Pick<CodingAgentBootstrap["resourceLoader"], "getPrompts" | "getSkills">;
 type RpcCommandDiscoveryCapability = NonNullable<RpcSessionCapabilities["commands"]>;
 
 interface ActiveTurnCommand {
-	readonly terminalDeliveries: Array<() => void>;
+	readonly terminalDeliveries: Map<(event: unknown) => void, () => void>;
 }
 
 export interface CliRpcSessionAdapterOptions {
@@ -265,7 +265,7 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 			for (const mapped of adapter.map(event)) {
 				const activeTurn = this.activeTurnCommands[0];
 				if (isAgentEndFrame(mapped) && activeTurn) {
-					activeTurn.terminalDeliveries.push(() => {
+					activeTurn.terminalDeliveries.set(listener, () => {
 						if (subscribed) listener(mapped);
 					});
 					continue;
@@ -329,7 +329,7 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 	}
 
 	private async runTurnCommand(command: () => Promise<unknown>): Promise<void> {
-		const activeTurn: ActiveTurnCommand = { terminalDeliveries: [] };
+		const activeTurn: ActiveTurnCommand = { terminalDeliveries: new Map() };
 		this.activeTurnCommands.push(activeTurn);
 		let result: unknown;
 		let rejection: { readonly error: unknown } | undefined;
@@ -348,9 +348,9 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 		} finally {
 			const activeIndex = this.activeTurnCommands.indexOf(activeTurn);
 			if (activeIndex >= 0) this.activeTurnCommands.splice(activeIndex, 1);
-			for (const deliver of activeTurn.terminalDeliveries) deliver();
+			for (const deliver of activeTurn.terminalDeliveries.values()) deliver();
 		}
-		if (activeTurn.terminalDeliveries.length > 0) return;
+		if (activeTurn.terminalDeliveries.size > 0) return;
 		if (rejection) throw rejection.error;
 		const failure = readCodingAgentTurnFailure(result);
 		if (failure) throw new Error(failure.message);

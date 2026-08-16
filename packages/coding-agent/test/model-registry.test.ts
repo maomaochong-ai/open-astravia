@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Api, Model, OpenAICompletionsCompat } from "@vetta/ai";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { AuthStorage } from "../src/auth/index.js";
+import type { AuthStorage } from "../src/auth/index.js";
 import {
 	type CodingAgentModelRuntime,
 	type CreateCodingAgentModelRuntimeOptions,
@@ -11,6 +11,7 @@ import {
 	createCodingAgentModelRuntime as createModelRuntime,
 	type ModelCredentialStore,
 } from "../src/models/index.js";
+import { createFileAuthStorage } from "./fixtures/file-auth-storage.js";
 
 const BUILT_IN_MODELS: readonly Model<Api>[] = [
 	model("anthropic", "claude-sonnet-4"),
@@ -69,7 +70,7 @@ describe("CodingAgentModelRuntime", () => {
 		tempDir = join(tmpdir(), `pi-test-model-registry-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		mkdirSync(tempDir, { recursive: true });
 		modelsJsonPath = join(tempDir, "models.json");
-		authStorage = AuthStorage.create(join(tempDir, "auth.json"));
+		authStorage = createFileAuthStorage(join(tempDir, "auth.json"));
 	});
 
 	afterEach(() => {

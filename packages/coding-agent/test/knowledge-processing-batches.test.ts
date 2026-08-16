@@ -12,6 +12,7 @@ import {
 } from "@vetta/runtime-knowledge";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../src/adapters/runtime-core/model-runtime-adapter.js";
+import { createCodingAgentNodeToolEnvironment } from "../src/adapters/runtime-tools/node-tool-environment.js";
 import {
 	createKnowledgeProcessingSessionFactory,
 	type KnowledgeProcessingSessionFactoryOptions,
@@ -49,7 +50,8 @@ describe("Knowledge processing batches", () => {
 		const factory = createKnowledgeProcessingSessionFactory({
 			getModelRegistry: () => modelRegistry(),
 			createConversationPersistence: createTestConversationPersistence,
-			knowledgeRoot: root,
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			knowledgeRuntime: createTestKnowledgeRuntime(root),
 			createSessionId: () => `knowledge-batch-${nextSessionId++}`,
 			createComposition: createBatchComposition(requests, disposeComposition),
 		});
@@ -91,6 +93,19 @@ describe("Knowledge processing batches", () => {
 		return directory;
 	}
 });
+
+function createTestKnowledgeRuntime(root: string) {
+	return {
+		query: {
+			listAvailableTags: async () => [],
+			queryByTags: async () => [],
+		},
+		write: {
+			write: async () => ({ action: "create" as const, id: "unused", path: "unused.md" }),
+			resolveAbsolutePath: (path: string) => join(root, "wiki", path),
+		},
+	};
+}
 
 function createBatchComposition(
 	requests: readonly [WritePageRequest, WritePageRequest],

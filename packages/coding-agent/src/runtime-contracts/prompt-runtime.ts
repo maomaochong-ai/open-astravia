@@ -3,6 +3,7 @@ import type { PromptResourceRef } from "@vetta/runtime-core";
 import type {
 	ModelCallFrameCompositionContext,
 	RuntimeInputRequestPreparationContext,
+	RuntimeSnapshotAcquireContext,
 } from "@vetta/runtime-core/kernel";
 import type { BuildSystemPromptOptions, PersonalizationSettingsSource } from "../model-context/index.js";
 import type { SessionResourceRuntime } from "../resources/index.js";
@@ -23,7 +24,9 @@ export type CodingAgentPromptResourceResolver = {
 		promptRef: PromptResourceRef,
 		context: RuntimeInputRequestPreparationContext,
 	): Promise<CodingAgentPromptResourceExpansion> | CodingAgentPromptResourceExpansion;
-	bindForTurn?(): CodingAgentPromptResourceResolver;
+	bindForTurn?(
+		context: RuntimeSnapshotAcquireContext,
+	): Promise<CodingAgentPromptResourceResolver> | CodingAgentPromptResourceResolver;
 };
 
 export type CodingAgentPromptResourceSource = Pick<

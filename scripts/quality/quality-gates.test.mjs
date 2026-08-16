@@ -605,6 +605,12 @@ describe("package boundary analysis", () => {
 		).toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
+				"packages/cli-app/src/coding-agent-bootstrap.ts",
+				'import { runCodingAgentStartupMigrations } from "@vetta/coding-agent/historical-sessions";',
+			),
+		).toEqual([]);
+		expect(
+			findPackageBoundaryViolations(
 				"packages/cli-app/src/rpc/cli-session-format-compatibility.ts",
 				'import { createCodingAgentHistoricalSessionCatalog } from "@vetta/coding-agent/historical-sessions";',
 			),
@@ -904,7 +910,7 @@ describe("package boundary analysis", () => {
 			"new CodingAgentGreenfieldContextRuntime({});",
 			"createEcosystemHookRuntime({});",
 			"createCodingAgentSubagentSessionAssembly({});",
-			"createCodingAgentProductToolRegistrations({});",
+			"createCodingAgentSpecializedToolRegistrations({});",
 			"createSessionPluginRuntime(options);",
 		];
 		for (const source of forbiddenConstructions) {

@@ -79,7 +79,7 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
 	readonly mcpController?: McpDeferredToolController;
 	readonly codingTools: CodingToolsRuntimeComposition;
-	readonly productToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
+	readonly specializedToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
 	readonly activation: CodingToolActivation;
 	readonly knowledgeAvailable: boolean;
 	readonly backgroundTasksAvailable: boolean;
@@ -200,7 +200,7 @@ function createResources(
 		pluginMcpRuntime: options.pluginMcpRuntime,
 		extensionToolRuntime: options.extensionToolRuntime,
 		codingTools: options.codingTools,
-		productToolRegistrations: options.productToolRegistrations,
+		specializedToolRegistrations: options.specializedToolRegistrations,
 		todoToolRegistration: options.todoToolRegistration,
 		todoEnabled: options.todoEnabled,
 		memoryRuntime: options.memoryRuntime,

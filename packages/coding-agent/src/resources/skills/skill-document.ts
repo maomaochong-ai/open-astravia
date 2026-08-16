@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { CLAUDE_CODE_HOOK_PROFILE_ID, type EcosystemHookContributionSource } from "@vetta/ecosystem-adapter";
 import { parseFrontmatter } from "../../utils/frontmatter.js";
-import { readSkillContent, type Skill, type SkillFrontmatter } from "./index.js";
+import type { Skill, SkillFrontmatter } from "./index.js";
 
 export interface SkillInvocationDocument {
 	readonly body: string;
@@ -10,7 +10,7 @@ export interface SkillInvocationDocument {
 }
 
 export function readSkillInvocationDocument(skill: Skill): SkillInvocationDocument {
-	const content = readSkillContent(skill);
+	const content = skill.content;
 	const { frontmatter, body } = parseFrontmatter<SkillFrontmatter>(content);
 	return {
 		body,

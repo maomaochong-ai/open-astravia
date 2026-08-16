@@ -1,5 +1,5 @@
-import { basename, dirname, relative } from "node:path";
 import { minimatch } from "minimatch";
+import type { ResourcePathPort } from "../contracts/resource-access.js";
 
 export function isResourcePattern(value: string): boolean {
 	return (
@@ -18,15 +18,15 @@ export function splitResourcePatterns(entries: string[]): { plain: string[]; pat
 	return { plain, patterns };
 }
 
-function matchesAnyPattern(filePath: string, patterns: string[], baseDir: string): boolean {
-	const relativePath = toPatternPath(relative(baseDir, filePath));
+function matchesAnyPattern(paths: ResourcePathPort, filePath: string, patterns: string[], baseDir: string): boolean {
+	const relativePath = toPatternPath(paths.relative(baseDir, filePath));
 	const comparableFilePath = toPatternPath(filePath);
-	const name = basename(filePath);
+	const name = paths.basename(filePath);
 	const isSkillFile = name === "SKILL.md";
-	const parentDir = isSkillFile ? dirname(filePath) : undefined;
-	const parentRelative = parentDir ? toPatternPath(relative(baseDir, parentDir)) : undefined;
+	const parentDir = isSkillFile ? paths.dirname(filePath) : undefined;
+	const parentRelative = parentDir ? toPatternPath(paths.relative(baseDir, parentDir)) : undefined;
 	const comparableParentDir = parentDir ? toPatternPath(parentDir) : undefined;
-	const parentName = parentDir ? basename(parentDir) : undefined;
+	const parentName = parentDir ? paths.basename(parentDir) : undefined;
 	return patterns.some((rawPattern) => {
 		const pattern = toPatternPath(rawPattern);
 		return (
@@ -43,12 +43,17 @@ function matchesAnyPattern(filePath: string, patterns: string[], baseDir: string
 	});
 }
 
-function matchesAnyExactPattern(filePath: string, patterns: string[], baseDir: string): boolean {
-	const relativePath = toPatternPath(relative(baseDir, filePath));
+function matchesAnyExactPattern(
+	paths: ResourcePathPort,
+	filePath: string,
+	patterns: string[],
+	baseDir: string,
+): boolean {
+	const relativePath = toPatternPath(paths.relative(baseDir, filePath));
 	const comparableFilePath = toPatternPath(filePath);
-	const isSkillFile = basename(filePath) === "SKILL.md";
-	const parentDir = isSkillFile ? dirname(filePath) : undefined;
-	const parentRelative = parentDir ? toPatternPath(relative(baseDir, parentDir)) : undefined;
+	const isSkillFile = paths.basename(filePath) === "SKILL.md";
+	const parentDir = isSkillFile ? paths.dirname(filePath) : undefined;
+	const parentRelative = parentDir ? toPatternPath(paths.relative(baseDir, parentDir)) : undefined;
 	const comparableParentDir = parentDir ? toPatternPath(parentDir) : undefined;
 	return patterns.some((pattern) => {
 		const normalizedPattern = toPatternPath(pattern);
@@ -65,20 +70,30 @@ function toPatternPath(path: string): string {
 	return path.replaceAll("\\", "/");
 }
 
-export function isResourceEnabledByOverrides(filePath: string, patterns: string[], baseDir: string): boolean {
+export function isResourceEnabledByOverrides(
+	paths: ResourcePathPort,
+	filePath: string,
+	patterns: string[],
+	baseDir: string,
+): boolean {
 	const overrides = patterns.filter(
 		(pattern) => pattern.startsWith("!") || pattern.startsWith("+") || pattern.startsWith("-"),
 	);
 	const excludes = overrides.filter((pattern) => pattern.startsWith("!")).map((pattern) => pattern.slice(1));
 	const forceIncludes = overrides.filter((pattern) => pattern.startsWith("+")).map((pattern) => pattern.slice(1));
 	const forceExcludes = overrides.filter((pattern) => pattern.startsWith("-")).map((pattern) => pattern.slice(1));
-	let enabled = excludes.length === 0 || !matchesAnyPattern(filePath, excludes, baseDir);
-	if (forceIncludes.length > 0 && matchesAnyExactPattern(filePath, forceIncludes, baseDir)) enabled = true;
-	if (forceExcludes.length > 0 && matchesAnyExactPattern(filePath, forceExcludes, baseDir)) enabled = false;
+	let enabled = excludes.length === 0 || !matchesAnyPattern(paths, filePath, excludes, baseDir);
+	if (forceIncludes.length > 0 && matchesAnyExactPattern(paths, filePath, forceIncludes, baseDir)) enabled = true;
+	if (forceExcludes.length > 0 && matchesAnyExactPattern(paths, filePath, forceExcludes, baseDir)) enabled = false;
 	return enabled;
 }
 
-export function applyResourcePatterns(allPaths: string[], patterns: string[], baseDir: string): Set<string> {
+export function applyResourcePatterns(
+	paths: ResourcePathPort,
+	allPaths: string[],
+	patterns: string[],
+	baseDir: string,
+): Set<string> {
 	const includes: string[] = [];
 	const excludes: string[] = [];
 	const forceIncludes: string[] = [];
@@ -90,13 +105,15 @@ export function applyResourcePatterns(allPaths: string[], patterns: string[], ba
 		else includes.push(pattern);
 	}
 	let result =
-		includes.length === 0 ? [...allPaths] : allPaths.filter((path) => matchesAnyPattern(path, includes, baseDir));
-	if (excludes.length > 0) result = result.filter((path) => !matchesAnyPattern(path, excludes, baseDir));
+		includes.length === 0
+			? [...allPaths]
+			: allPaths.filter((path) => matchesAnyPattern(paths, path, includes, baseDir));
+	if (excludes.length > 0) result = result.filter((path) => !matchesAnyPattern(paths, path, excludes, baseDir));
 	for (const path of allPaths) {
-		if (!result.includes(path) && matchesAnyExactPattern(path, forceIncludes, baseDir)) result.push(path);
+		if (!result.includes(path) && matchesAnyExactPattern(paths, path, forceIncludes, baseDir)) result.push(path);
 	}
 	if (forceExcludes.length > 0) {
-		result = result.filter((path) => !matchesAnyExactPattern(path, forceExcludes, baseDir));
+		result = result.filter((path) => !matchesAnyExactPattern(paths, path, forceExcludes, baseDir));
 	}
 	return new Set(result);
 }

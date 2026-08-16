@@ -14,6 +14,8 @@ import { createCodingAgentChildCompositionFactory } from "./subagent/child-compo
 
 export type {
 	CodingAgentInitialTodoLockSource,
+	CodingAgentPromptRuntimeSourceContext,
+	CodingAgentPromptRuntimeSources,
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeExtensionControls,
@@ -56,13 +58,14 @@ async function createCodingAgentRuntimeCompositionInternal(
 		agentDir: options.agentDir,
 		scenario,
 		activation: options.activation,
-		knowledgeEnabled: options.knowledgeEnabled,
-		knowledgeRoot: options.knowledgeRoot,
+		knowledgeRuntime: options.knowledgeRuntime,
 		inheritedMcpView,
 		mcpSource: options.mcpSource,
 		indexes: resourceRegistry.indexes,
 		tokenBudget: options.tokenBudget,
 		reservedOutputTokens: options.reservedOutputTokens,
+		createToolEnvironment: options.createToolEnvironment,
+		resultPolicy: options.codingToolResultPolicy,
 	});
 	const {
 		activation: effectiveActivation,

@@ -1,16 +1,19 @@
-import { readSkillContent, type Skill } from "../resources/skills/index.js";
+import type { Skill } from "../resources/skills/index.js";
 import type { CodingAgentPromptResourceSource, CodingAgentPromptSettingsSource } from "../runtime-contracts/index.js";
 
 /**
- * Turn admission 时把文件型 Prompt/Skill 来源转换为只读内存视图。
- * Skill 正文也在这里读取，避免 invoke_skill 在 Turn 中再次按路径读取新文件。
+ * Turn admission 时把已物化的 Prompt/Skill generation 转换为只读内存视图。
+ * Skill 正文与 Scene tasks 已在资源刷新阶段读取，本层只冻结当前 Turn 的版本。
  */
-export function capturePromptResourceSource(source: CodingAgentPromptResourceSource): CodingAgentPromptResourceSource {
-	source.refreshContextResourcesIfChanged();
+export async function capturePromptResourceSource(
+	source: CodingAgentPromptResourceSource,
+	signal?: AbortSignal,
+): Promise<CodingAgentPromptResourceSource> {
+	await source.refreshContextResourcesIfChanged(signal);
 	const agentsFiles = source
 		.getAgentsFiles()
 		.agentsFiles.map((file) => Object.freeze({ path: file.path, content: file.content }));
-	const skills = capturePromptSkills(source);
+	const skills = await capturePromptSkills(source, signal);
 	const systemPrompt = source.getSystemPrompt();
 	const appendSystemPrompt = Object.freeze([...source.getAppendSystemPrompt()]);
 
@@ -19,16 +22,17 @@ export function capturePromptResourceSource(source: CodingAgentPromptResourceSou
 		getAppendSystemPrompt: () => [...appendSystemPrompt],
 		getSkills: () => ({ skills: [...skills], diagnostics: [] }),
 		getSystemPrompt: () => systemPrompt,
-		refreshContextResourcesIfChanged: () => false,
-		refreshSkillsIfChanged: () => false,
-		setRuntimeSkillPaths: () => {},
+		refreshContextResourcesIfChanged: async () => false,
+		refreshSkillsIfChanged: async () => false,
+		setRuntimeSkillPaths: async () => {},
 	});
 }
 
-export function capturePromptSkills(
+export async function capturePromptSkills(
 	source: Pick<CodingAgentPromptResourceSource, "getSkills" | "refreshSkillsIfChanged">,
-): readonly Skill[] {
-	source.refreshSkillsIfChanged();
+	signal?: AbortSignal,
+): Promise<readonly Skill[]> {
+	await source.refreshSkillsIfChanged(signal);
 	return Object.freeze(source.getSkills().skills.map(captureSkill));
 }
 
@@ -47,24 +51,7 @@ export function capturePromptSettingsSource(source: CodingAgentPromptSettingsSou
 function captureSkill(skill: Skill): Skill {
 	const captured: Skill = {
 		...skill,
-		content: readSkillContent(skill),
-		...(skill.type === "scene" ? { sceneTasks: readSceneTasks(skill) } : {}),
+		sceneTasks: Object.freeze([...skill.sceneTasks]),
 	};
 	return Object.freeze(captured);
 }
-
-function readSceneTasks(skill: Skill): readonly string[] {
-	const path = join(skill.baseDir, "tasks.json");
-	if (!existsSync(path)) return Object.freeze([]);
-	try {
-		const value: unknown = JSON.parse(readFileSync(path, "utf-8"));
-		return Array.isArray(value) && value.every((task) => typeof task === "string")
-			? Object.freeze([...value])
-			: Object.freeze([]);
-	} catch {
-		return Object.freeze([]);
-	}
-}
-
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";

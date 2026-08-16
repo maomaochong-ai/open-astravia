@@ -8,6 +8,7 @@ export type CodingAgentSessionInitializationProfile = Pick<
 	| "createMemoryRolloverRuntime"
 	| "createPluginMcpRuntime"
 	| "createPluginRuntime"
+	| "createPromptRuntimeSources"
 	| "createPromptResourceResolver"
 	| "createSessionExtensionDefinitions"
 	| "createSubagentChildFactory"
@@ -18,7 +19,7 @@ export type CodingAgentSessionInitializationProfile = Pick<
 	| "hookConfigLayers"
 	| "initialModel"
 	| "initialThinkingLevel"
-	| "knowledgeRoot"
+	| "knowledgeRuntime"
 	| "maxStopHookContinuations"
 	| "promptResourceSource"
 	| "promptSettingsSource"
@@ -44,6 +45,7 @@ export function createCodingAgentSessionInitializationProfile(
 		createMemoryRolloverRuntime: options.createMemoryRolloverRuntime,
 		createPluginMcpRuntime: options.createPluginMcpRuntime,
 		createPluginRuntime: options.createPluginRuntime,
+		createPromptRuntimeSources: options.createPromptRuntimeSources,
 		createPromptResourceResolver: options.createPromptResourceResolver,
 		createSessionExtensionDefinitions: options.createSessionExtensionDefinitions,
 		createSubagentChildFactory: options.createSubagentChildFactory,
@@ -54,7 +56,7 @@ export function createCodingAgentSessionInitializationProfile(
 		hookConfigLayers: options.hookConfigLayers,
 		initialModel: options.initialModel,
 		initialThinkingLevel: options.initialThinkingLevel,
-		knowledgeRoot: options.knowledgeRoot,
+		knowledgeRuntime: options.knowledgeRuntime,
 		maxStopHookContinuations: options.maxStopHookContinuations,
 		promptResourceSource: options.promptResourceSource,
 		promptSettingsSource: options.promptSettingsSource,

@@ -52,7 +52,7 @@ export class CodingAgentConversationContextProjector implements ConversationCont
 	}
 }
 
-/** Restore the active branch to the product-level AgentMessage identities used by hosts. */
+/** Restore the active branch to the Coding Agent message identities used by hosts. */
 export function projectCodingAgentMessages(document: ConversationDocument): readonly AgentMessage[] {
 	return new CodingAgentConversationContextProjector().project(document).map((envelope) => {
 		if (envelope.kind === "message") return envelope.message;

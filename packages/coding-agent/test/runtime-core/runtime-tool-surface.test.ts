@@ -1,6 +1,7 @@
 import type { ModelCallContributionContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolBinding, McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { describe, expect, it } from "vitest";
+import { createCodingAgentNodeToolEnvironment } from "../../src/adapters/runtime-tools/node-tool-environment.js";
 import { CodingAgentCompositionResourceRegistry } from "../../src/composition/session-lifecycle/resource-registry.js";
 import { createCodingAgentRuntimeToolSurface } from "../../src/composition/tool-surface/runtime-tool-surface.js";
 
@@ -13,10 +14,10 @@ describe("Coding Agent Runtime Tool Surface", () => {
 		const surface = await createCodingAgentRuntimeToolSurface({
 			cwd: process.cwd(),
 			scenario: "cli",
-			knowledgeEnabled: false,
 			inheritedMcpView: runtimeView(),
 			mcpSource: { refresh: async () => currentView },
 			indexes: resources.indexes,
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
 		});
 
 		expect(readRegistryToolNames(surface.tools.registry.snapshot().entries)).toContain("mcp_alpha");

@@ -1,7 +1,6 @@
-import { Buffer } from "node:buffer";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
+import type { CodingToolResultArtifactStore } from "@vetta/runtime-tools";
 import { describe, expect, it, vi } from "vitest";
-import type { CodingToolResultArtifactStore } from "../src/tool-results/contracts.js";
 import { createCodingAgentCodingToolResultPolicy } from "../src/tool-results/result-policy.js";
 
 const context = {
@@ -45,7 +44,7 @@ describe("coding agent coding tool result policy", () => {
 		expect(projected.content[1]).toEqual({ type: "image", data: "image-data", mimeType: "image/png" });
 		const request = vi.mocked(store.write).mock.calls[0]?.[0];
 		expect(request ? JSON.parse(request.data) : undefined).toEqual({ content: result.content, details });
-		expect(request?.byteLength).toBe(Buffer.byteLength(request?.data ?? "", "utf8"));
+		expect(request?.byteLength).toBe(new TextEncoder().encode(request?.data ?? "").length);
 	});
 
 	it("does not offload image payloads that remain attached", async () => {

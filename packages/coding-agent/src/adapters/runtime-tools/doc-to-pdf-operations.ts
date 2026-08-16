@@ -1,13 +1,13 @@
 import { constants } from "node:fs";
 import { access } from "node:fs/promises";
 import nodePath from "node:path";
-import type {
-	CommandProcessPort,
-	DesktopCommandResult,
-	DocToPdfDetectedBackend,
-	DocToPdfOperations,
+import {
+	type CommandProcessPort,
+	createNodeCommandProcessHost,
+	type DesktopCommandResult,
+	type DocToPdfDetectedBackend,
+	type DocToPdfOperations,
 } from "@vetta/runtime-node/coding";
-import { createCodingAgentCommandProcessHost } from "./command-process-host.js";
 
 const PROCESS_TIMEOUT_MS = 60_000;
 const PROCESS_MAX_BUFFER_BYTES = 1024 * 1024;
@@ -23,7 +23,7 @@ export function createCodingAgentDocToPdfOperations(
 	options: CodingAgentDocToPdfOperationsOptions = {},
 ): DocToPdfOperations {
 	const platform = options.platform ?? process.platform;
-	const commandProcess = options.commandProcess ?? createCodingAgentCommandProcessHost();
+	const commandProcess = options.commandProcess ?? createNodeCommandProcessHost();
 	const exists = options.fileExists ?? defaultFileExists;
 	return {
 		detect: () => detectBackend(platform, commandProcess, exists),

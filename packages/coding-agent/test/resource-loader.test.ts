@@ -2,15 +2,16 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createNodeResourceAccess } from "@vetta/runtime-node/host";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { AuthStorage } from "../src/auth/index.js";
 import { CONFIG_DIR_NAME } from "../src/config.js";
 import { ExtensionRunner } from "../src/extensions/index.js";
-import { createCodingAgentSessionResourceRuntime } from "../src/host/coding-agent-resource-runtime.js";
 import { createCodingAgentModelRuntime } from "../src/models/index.js";
 import type { Skill } from "../src/resources/skills/index.js";
 import { SettingsRuntime } from "../src/settings/index.js";
 import { createExtensionSessionView } from "./fixtures/extension-session-view.js";
+import { createFileAuthStorage } from "./fixtures/file-auth-storage.js";
+import { createTestSessionResourceRuntime as createCodingAgentSessionResourceRuntime } from "./fixtures/node-resource-runtime.js";
 
 describe("SessionResourceRuntime", () => {
 	let tempDir: string;
@@ -83,13 +84,13 @@ Skill content here.`,
 			const skillDirectory = join(cwd, CONFIG_DIR_NAME, "skills", "dynamic-project-skill");
 			const skillPath = join(skillDirectory, "SKILL.md");
 
-			expect(loader.refreshSkillsIfChanged()).toBe(false);
+			expect(await loader.refreshSkillsIfChanged()).toBe(false);
 			mkdirSync(skillDirectory, { recursive: true });
 			writeFileSync(
 				skillPath,
 				"---\nname: dynamic-project-skill\ndescription: Dynamic version one\n---\nVersion one",
 			);
-			expect(loader.refreshSkillsIfChanged()).toBe(true);
+			expect(await loader.refreshSkillsIfChanged()).toBe(true);
 			expect(loader.getSkills().skills.find((skill) => skill.name === "dynamic-project-skill")?.description).toBe(
 				"Dynamic version one",
 			);
@@ -98,13 +99,13 @@ Skill content here.`,
 				skillPath,
 				"---\nname: dynamic-project-skill\ndescription: Dynamic version two changed\n---\nVersion two changed",
 			);
-			expect(loader.refreshSkillsIfChanged()).toBe(true);
+			expect(await loader.refreshSkillsIfChanged()).toBe(true);
 			expect(loader.getSkills().skills.find((skill) => skill.name === "dynamic-project-skill")?.description).toBe(
 				"Dynamic version two changed",
 			);
 
 			rmSync(skillDirectory, { recursive: true, force: true });
-			expect(loader.refreshSkillsIfChanged()).toBe(true);
+			expect(await loader.refreshSkillsIfChanged()).toBe(true);
 			expect(loader.getSkills().skills.some((skill) => skill.name === "dynamic-project-skill")).toBe(false);
 		});
 
@@ -249,7 +250,7 @@ Project skill`,
 			expect(extensionsResult.errors.some((e) => e.error.includes('Command "/deploy" conflicts'))).toBe(true);
 
 			const sessionManager = createExtensionSessionView(cwd);
-			const authStorage = AuthStorage.create(join(tempDir, "auth.json"));
+			const authStorage = createFileAuthStorage(join(tempDir, "auth.json"));
 			const modelRuntime = createCodingAgentModelRuntime(authStorage);
 			const runner = new ExtensionRunner(
 				extensionsResult.extensions,
@@ -351,12 +352,12 @@ Content`,
 			const systemPath = join(configDir, "SYSTEM.md");
 			const appendPath = join(configDir, "APPEND_SYSTEM.md");
 
-			expect(loader.refreshContextResourcesIfChanged()).toBe(false);
+			expect(await loader.refreshContextResourcesIfChanged()).toBe(false);
 			mkdirSync(configDir, { recursive: true });
 			writeFileSync(agentsPath, "First project instruction");
 			writeFileSync(systemPath, "First system prompt");
 			writeFileSync(appendPath, "First appended prompt");
-			expect(loader.refreshContextResourcesIfChanged()).toBe(true);
+			expect(await loader.refreshContextResourcesIfChanged()).toBe(true);
 			expect(loader.getAgentsFiles().agentsFiles[0]?.content).toBe("First project instruction");
 			expect(loader.getSystemPrompt()).toBe("First system prompt");
 			expect(loader.getAppendSystemPrompt()).toEqual(["First appended prompt"]);
@@ -364,7 +365,7 @@ Content`,
 			writeFileSync(agentsPath, "Second project instruction");
 			writeFileSync(systemPath, "Second system prompt");
 			writeFileSync(appendPath, "Second appended prompt");
-			expect(loader.refreshContextResourcesIfChanged()).toBe(true);
+			expect(await loader.refreshContextResourcesIfChanged()).toBe(true);
 			expect(loader.getAgentsFiles().agentsFiles[0]?.content).toBe("Second project instruction");
 			expect(loader.getSystemPrompt()).toBe("Second system prompt");
 			expect(loader.getAppendSystemPrompt()).toEqual(["Second appended prompt"]);
@@ -372,7 +373,7 @@ Content`,
 			rmSync(agentsPath);
 			rmSync(systemPath);
 			rmSync(appendPath);
-			expect(loader.refreshContextResourcesIfChanged()).toBe(true);
+			expect(await loader.refreshContextResourcesIfChanged()).toBe(true);
 			expect(loader.getAgentsFiles().agentsFiles).toEqual([]);
 			expect(loader.getSystemPrompt()).toBeUndefined();
 			expect(loader.getAppendSystemPrompt()).toEqual([]);
@@ -407,7 +408,7 @@ Extra prompt content`,
 			const loader = createCodingAgentSessionResourceRuntime({ cwd, agentDir });
 			await loader.reload();
 
-			loader.extendResources({
+			await loader.extendResources({
 				skillPaths: [
 					{
 						path: extraSkillDir,
@@ -441,6 +442,86 @@ Extra prompt content`,
 			const metadata = loader.getPathMetadata();
 			expect(metadata.get(skillPath)?.source).toBe("extension:extra");
 			expect(metadata.get(promptPath)?.source).toBe("extension:extra");
+		});
+
+		it("should preserve the published prompt snapshot when an extension load is cancelled", async () => {
+			const promptsDir = join(agentDir, "prompts");
+			mkdirSync(promptsDir, { recursive: true });
+			writeFileSync(join(promptsDir, "stable.md"), "Stable prompt");
+			const cancelledPath = join(tempDir, "cancelled.md");
+			writeFileSync(cancelledPath, "Cancelled prompt");
+			const loader = createCodingAgentSessionResourceRuntime({ cwd, agentDir });
+			await loader.reload();
+			const published = loader.getPrompts().prompts;
+			const controller = new AbortController();
+			controller.abort(new DOMException("cancelled", "AbortError"));
+
+			await expect(
+				loader.extendResources(
+					{
+						promptPaths: [
+							{
+								path: cancelledPath,
+								metadata: { source: "extension:cancelled", scope: "temporary", origin: "top-level" },
+							},
+						],
+					},
+					controller.signal,
+				),
+			).rejects.toMatchObject({ name: "AbortError" });
+			expect(loader.getPrompts().prompts).toEqual(published);
+			expect(loader.getPrompts().prompts.some(({ name }) => name === "cancelled")).toBe(false);
+		});
+
+		it("should serialize theme updates before publishing a new snapshot", async () => {
+			const themeDocument = JSON.parse(
+				readFileSync(fileURLToPath(new URL("../src/modes/interactive/theme/dark.json", import.meta.url)), "utf-8"),
+			) as { name: string };
+			const firstThemePath = join(tempDir, "first-theme.json");
+			const secondThemePath = join(tempDir, "second-theme.json");
+			writeFileSync(firstThemePath, JSON.stringify({ ...themeDocument, name: "first-theme" }));
+			writeFileSync(secondThemePath, JSON.stringify({ ...themeDocument, name: "second-theme" }));
+
+			const nodeAccess = createNodeResourceAccess();
+			let releaseFirstRead: () => void = () => undefined;
+			const firstReadBlocked = new Promise<void>((resolve) => {
+				releaseFirstRead = resolve;
+			});
+			let notifyFirstRead: () => void = () => undefined;
+			const firstReadStarted = new Promise<void>((resolve) => {
+				notifyFirstRead = resolve;
+			});
+			let blockFirstRead = true;
+			const readPaths: string[] = [];
+			const resourceAccess = {
+				paths: nodeAccess.paths,
+				files: {
+					...nodeAccess.files,
+					async readText(path: string, options?: { signal?: AbortSignal }): Promise<string> {
+						readPaths.push(path);
+						if (path === firstThemePath && blockFirstRead) {
+							blockFirstRead = false;
+							notifyFirstRead();
+							await firstReadBlocked;
+						}
+						return nodeAccess.files.readText(path, options);
+					},
+				},
+			};
+			const loader = createCodingAgentSessionResourceRuntime({ cwd, agentDir, resourceAccess });
+			await loader.reload();
+			readPaths.length = 0;
+			const metadata = { source: "extension:theme", scope: "temporary", origin: "top-level" } as const;
+
+			const firstUpdate = loader.extendResources({ themePaths: [{ path: firstThemePath, metadata }] });
+			await firstReadStarted;
+			const secondUpdate = loader.extendResources({ themePaths: [{ path: secondThemePath, metadata }] });
+			await new Promise<void>((resolve) => setImmediate(resolve));
+
+			expect(readPaths).toEqual([firstThemePath]);
+			releaseFirstRead();
+			await Promise.all([firstUpdate, secondUpdate]);
+			expect(loader.getThemes().themes.map(({ name }) => name)).toEqual(["first-theme", "second-theme"]);
 		});
 	});
 
@@ -499,6 +580,8 @@ Content`,
 				source: "custom",
 				type: "skill",
 				disableModelInvocation: false,
+				content: "Injected content",
+				sceneTasks: [],
 			};
 			const loader = createCodingAgentSessionResourceRuntime({
 				cwd,

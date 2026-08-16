@@ -1,19 +1,27 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
+import {
+	createNodeResourceAccess,
+	NodeResourcePackageCommands,
+	NodeResourcePackageFiles,
+	NpmResourcePackageRegistry,
+	nodeResourcePackageDigest,
+} from "@vetta/runtime-node/host";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CONFIG_DIR_NAME } from "../src/config.js";
-import { createCodingAgentResourcePackageRuntime } from "../src/host/coding-agent-resource-runtime.js";
 import type {
 	ResolvedResourcePath,
 	ResourcePackageCommandPort,
+	ResourcePackageLocationFacts,
 	ResourcePackageProgressEvent,
 	ResourcePackageRuntime,
 } from "../src/resources/contracts/resource-source.js";
-import { NodeResourcePackageCommands, NpmResourcePackageRegistry } from "../src/resources/packages/package-effects.js";
 import { ResourcePackageLifecycle } from "../src/resources/packages/package-lifecycle.js";
-import { parseResourceSource, ResourcePackageLocations } from "../src/resources/packages/source-spec.js";
+import { ResourcePackageLocations } from "../src/resources/packages/resource-package-locations.js";
+import { parseResourceSource } from "../src/resources/packages/source-spec.js";
 import { SettingsRuntime } from "../src/settings/index.js";
+import { createTestResourcePackageRuntime as createCodingAgentResourcePackageRuntime } from "./fixtures/node-resource-runtime.js";
 
 // Helper to check if a resource is enabled
 const isEnabled = (r: ResolvedResourcePath, pathMatch: string, matchFn: "endsWith" | "includes" = "endsWith") =>
@@ -26,12 +34,21 @@ function createCommandPort(): ResourcePackageCommandPort {
 	return new NodeResourcePackageCommands();
 }
 
+function createLocationFacts(tempDir: string): ResourcePackageLocationFacts {
+	return {
+		homeDirectory: tempDir,
+		temporaryDirectory: tmpdir(),
+		getGlobalNpmRoot: () => join(tempDir, "global-node-modules"),
+	};
+}
+
 describe("ResourcePackageRuntime", () => {
 	let tempDir: string;
 	let agentDir: string;
 	let settingsManager: SettingsRuntime;
 	let packageManager: ResourcePackageRuntime;
 	let locations: ResourcePackageLocations;
+	let locationFacts: ResourcePackageLocationFacts;
 	let previousOfflineEnv: string | undefined;
 
 	beforeEach(() => {
@@ -44,12 +61,20 @@ describe("ResourcePackageRuntime", () => {
 
 		settingsManager = SettingsRuntime.inMemory();
 		const commands = createCommandPort();
-		locations = new ResourcePackageLocations(tempDir, agentDir, commands);
+		locationFacts = createLocationFacts(tempDir);
+		locations = new ResourcePackageLocations({
+			cwd: tempDir,
+			agentDir,
+			paths: createNodeResourceAccess().paths,
+			locationFacts,
+			digest: nodeResourcePackageDigest,
+		});
 		packageManager = createCodingAgentResourcePackageRuntime({
 			cwd: tempDir,
 			agentDir,
 			settings: settingsManager,
 			commands,
+			locationFacts,
 		});
 	});
 
@@ -339,13 +364,13 @@ Content`,
 			const events: ResourcePackageProgressEvent[] = [];
 			const commands: ResourcePackageCommandPort = {
 				run: vi.fn().mockRejectedValue(new Error("install failed")),
-				runSync: () => join(tempDir, "global-node-modules"),
 			};
 			const runtime = createCodingAgentResourcePackageRuntime({
 				cwd: tempDir,
 				agentDir,
 				settings: settingsManager,
 				commands,
+				locationFacts,
 			});
 			runtime.setProgressListener((event) => events.push(event));
 
@@ -359,13 +384,13 @@ Content`,
 			const events: ResourcePackageProgressEvent[] = [];
 			const commands: ResourcePackageCommandPort = {
 				run: vi.fn().mockRejectedValue(new Error("clone failed")),
-				runSync: () => join(tempDir, "global-node-modules"),
 			};
 			const runtime = createCodingAgentResourcePackageRuntime({
 				cwd: tempDir,
 				agentDir,
 				settings: settingsManager,
 				commands,
+				locationFacts,
 			});
 			runtime.setProgressListener((event) => events.push(event));
 
@@ -1216,13 +1241,13 @@ export default function(api) { api.registerTool({ name: "test", description: "te
 			settingsManager.setProjectPackages(["npm:missing-package", "git:github.com/example/missing-repo"]);
 			const commands: ResourcePackageCommandPort = {
 				run: vi.fn().mockResolvedValue(undefined),
-				runSync: () => join(tempDir, "global-node-modules"),
 			};
 			const runtime = createCodingAgentResourcePackageRuntime({
 				cwd: tempDir,
 				agentDir,
 				settings: settingsManager,
 				commands,
+				locationFacts,
 			});
 
 			const result = await runtime.resolve();
@@ -1242,13 +1267,13 @@ export default function(api) { api.registerTool({ name: "test", description: "te
 			writeFileSync(join(installedPath, "extensions", "index.ts"), "export default function() {};");
 			const commands: ResourcePackageCommandPort = {
 				run: vi.fn().mockResolvedValue(undefined),
-				runSync: () => join(tempDir, "global-node-modules"),
 			};
 			const runtime = createCodingAgentResourcePackageRuntime({
 				cwd: tempDir,
 				agentDir,
 				settings: settingsManager,
 				commands,
+				locationFacts,
 			});
 
 			const result = await runtime.resolveAdditionalSources([gitSource], { temporary: true });
@@ -1263,7 +1288,16 @@ export default function(api) { api.registerTool({ name: "test", description: "te
 			writeFileSync(join(installedPath, "package.json"), JSON.stringify({ version: "1.0.0" }));
 
 			const registry = { getLatestVersion: vi.fn().mockResolvedValue("2.0.0") };
-			const lifecycle = new ResourcePackageLifecycle(locations, createCommandPort(), registry);
+			const lifecycle = new ResourcePackageLifecycle(
+				locations,
+				createCommandPort(),
+				registry,
+				{
+					isOffline: () => true,
+				},
+				createNodeResourceAccess(),
+				new NodeResourcePackageFiles(),
+			);
 
 			const needsUpdate = await lifecycle.needsNpmInstall(
 				{ type: "npm", spec: "example", name: "example", pinned: false },

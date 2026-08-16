@@ -1,5 +1,5 @@
-/** Minimal product-facing skill data required to render the model-visible skill index. */
-export interface ProductPromptSkill {
+/** Minimal skill data required to render the model-visible skill index. */
+export interface ModelVisibleSkill {
 	readonly name: string;
 	readonly description: string;
 	readonly type: "skill" | "scene";
@@ -7,7 +7,7 @@ export interface ProductPromptSkill {
 }
 
 /** Format model-invocable skills using the Agent Skills XML prompt contract. */
-export function formatSkillsForProductPrompt(skills: readonly ProductPromptSkill[]): string {
+export function formatModelVisibleSkills(skills: readonly ModelVisibleSkill[]): string {
 	const visibleSkills = skills.filter((skill) => !skill.disableModelInvocation && skill.type !== "scene");
 	if (visibleSkills.length === 0) return "";
 

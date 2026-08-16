@@ -16,10 +16,10 @@ export type {
 } from "./sdk-create-contract.js";
 export { CODING_AGENT_SESSION_CREATE_ERROR_CODES, CodingAgentSessionCreateError } from "./sdk-create-contract.js";
 export type {
-	CodingAgentProductSessionEvent,
 	CodingAgentRetryEvent,
 	CodingAgentSessionEvent,
 	CodingAgentSessionEventListener,
+	CodingAgentSessionFeatureEvent,
 } from "./sdk-event-contract.js";
 export type {
 	CodingAgentHost,

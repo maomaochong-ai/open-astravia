@@ -1,18 +1,6 @@
-import { join } from "node:path";
-import { type McpConfigSource, McpServerSupervisor, type RuntimeMcpClientFactory } from "@vetta/runtime-mcp";
-import {
-	buildBuiltinMcpServers,
-	createMcpClient,
-	FileMcpConfigSource,
-	FileMcpOAuthStateStore,
-	loadVettaCredentials,
-	McpOAuthProvider,
-} from "@vetta/runtime-node/mcp";
+import type { McpConfigSource, RuntimeMcpClientFactory } from "@vetta/runtime-mcp";
+import { createNodeMcpSupervisor, type NodeMcpSupervisorComposition } from "@vetta/runtime-node/mcp";
 import { CONFIG_DIR_NAME, getAgentDir, VERSION } from "../../config.js";
-
-const MCP_PROTOCOL_VERSION = "2024-11-05";
-const CLIENT_NAME = "vetta";
-const PLACEHOLDER_REDIRECT_URI = "http://127.0.0.1/callback";
 
 export interface CodingAgentMcpSupervisorOptions {
 	readonly projectRoot?: string;
@@ -24,55 +12,23 @@ export interface CodingAgentMcpSupervisorOptions {
 	readonly includeBuiltinServers?: boolean;
 }
 
-export interface CodingAgentMcpSupervisorComposition {
-	readonly supervisor: McpServerSupervisor;
-	readonly configSource: McpConfigSource;
-}
+export type CodingAgentMcpSupervisorComposition = NodeMcpSupervisorComposition;
 
-/** Inject Coding Agent paths and persisted OAuth credentials into the generic MCP runtime. */
+/** 迁移期 Node 接线；平台根应直接选择 runtime-node MCP 实现。 */
 export function createCodingAgentMcpSupervisor(
 	options: CodingAgentMcpSupervisorOptions = {},
 	onDiagnostic?: (message: string) => void,
 ): CodingAgentMcpSupervisorComposition {
-	const projectRoot = options.projectRoot ?? process.cwd();
-	const agentDir = options.agentDir ?? getAgentDir();
-	const configSource =
-		options.configSource ??
-		new FileMcpConfigSource({
-			globalConfigPath: join(agentDir, "mcp.json"),
-			projectConfigPath: join(projectRoot, CONFIG_DIR_NAME, "mcp.json"),
-			projectRoot,
-		});
-	const oauthStore = new FileMcpOAuthStateStore({ authDirectory: join(agentDir, "mcp-auth") });
-	const clientFactory = options.clientFactory ?? createMcpClient;
-	const loadBuiltinCredentials = () => loadVettaCredentials(agentDir);
-	const supervisor = new McpServerSupervisor({
-		builtinServers:
-			options.includeBuiltinServers === false
-				? {}
-				: buildBuiltinMcpServers({ clientVersion: VERSION, loadCredentials: loadBuiltinCredentials }),
-		configSource,
-		clientFactory: (name, config, clientOptions) =>
-			clientFactory(name, config, {
-				...clientOptions,
-				httpAuthProviderFactory: ({ serverName, serverUrl, config: httpConfig }) => {
-					if (!oauthStore.hasTokens(serverName)) return undefined;
-					return new McpOAuthProvider({
-						serverName,
-						serverUrl,
-						redirectUri: oauthStore.load(serverName)?.redirectUri ?? PLACEHOLDER_REDIRECT_URI,
-						onRedirect: () => undefined,
-						store: oauthStore,
-						clientName: "Vetta",
-						clientId: httpConfig.oauthClientId,
-					});
-				},
-			}),
-		protocolVersion: MCP_PROTOCOL_VERSION,
-		clientInfo: { name: CLIENT_NAME, version: VERSION },
-		enabled: options.enabled,
+	return createNodeMcpSupervisor({
+		projectRoot: options.projectRoot ?? process.cwd(),
+		agentDir: options.agentDir ?? getAgentDir(),
+		clientVersion: VERSION,
+		projectConfigDirectoryName: CONFIG_DIR_NAME,
 		debug: options.debug,
+		enabled: options.enabled,
+		configSource: options.configSource,
+		clientFactory: options.clientFactory,
+		includeBuiltinServers: options.includeBuiltinServers,
 		onDiagnostic,
 	});
-	return { supervisor, configSource };
 }

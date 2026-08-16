@@ -11,7 +11,7 @@ function localNodeCommand(script: string): string {
 }
 
 describe("Coding Agent command hosts", () => {
-	it("executes a foreground command through the product shell host", async () => {
+	it("executes a foreground command through the configured shell host", async () => {
 		const host = createCodingAgentForegroundCommandHost(process.cwd());
 		let output = "";
 		const result = await host.operations.exec(
@@ -19,7 +19,7 @@ describe("Coding Agent command hosts", () => {
 			process.cwd(),
 			{
 				onData: (data) => {
-					output += data.toString("utf8");
+					output += Buffer.from(data).toString("utf8");
 				},
 				timeout: 10,
 			},
@@ -29,7 +29,7 @@ describe("Coding Agent command hosts", () => {
 		expect(output).toBe("coding-agent-foreground-ok");
 	});
 
-	it("executes and observes a background command through the product host", async () => {
+	it("executes and observes a background command through the configured host", async () => {
 		const service = createBackgroundCommandService(createCodingAgentBackgroundCommandHost());
 		try {
 			const task = service.spawn({

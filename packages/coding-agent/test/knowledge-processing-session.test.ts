@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../src/adapters/runtime-core/model-runtime-adapter.js";
+import { createCodingAgentNodeToolEnvironment } from "../src/adapters/runtime-tools/node-tool-environment.js";
 import { createKnowledgeProcessingSessionFactory } from "../src/composition/index.js";
 import type { KnowledgeProcessingSessionFactoryOptions } from "../src/composition/knowledge-processing-session.js";
 import type { CodingAgentRuntimeCompositionOptions } from "../src/composition/runtime-composition.js";
@@ -89,7 +90,8 @@ describe("Knowledge processing session", () => {
 		const factory = createKnowledgeProcessingSessionFactory({
 			getModelRegistry: () => registry,
 			createConversationPersistence: createTestConversationPersistence,
-			knowledgeRoot: knowledgeDirectory,
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			knowledgeRuntime: createTestKnowledgeRuntime(knowledgeDirectory),
 			createSessionId: () => "knowledge-session",
 			createComposition: createRecordedComposition({
 				onFrame(model, context, streamOptions) {
@@ -181,6 +183,8 @@ describe("Knowledge processing session", () => {
 				find: () => undefined,
 			}),
 			createConversationPersistence: createTestConversationPersistence,
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			knowledgeRuntime: createTestKnowledgeRuntime(cwd),
 			createComposition: (options) =>
 				createCodingAgentRuntimeComposition({
 					...options,
@@ -214,6 +218,19 @@ describe("Knowledge processing session", () => {
 		return directory;
 	}
 });
+
+function createTestKnowledgeRuntime(root: string) {
+	return {
+		query: {
+			listAvailableTags: async () => [],
+			queryByTags: async () => [],
+		},
+		write: {
+			write: async () => ({ action: "create" as const, id: "unused", path: "unused.md" }),
+			resolveAbsolutePath: (path: string) => join(root, "wiki", path),
+		},
+	};
+}
 
 function createRecordedComposition(options: {
 	readonly onFrame: (

@@ -24,9 +24,9 @@ function createRuntime(cwd: string, workspaceFacts?: string): CodingAgentPromptR
 		...(workspaceFacts !== undefined ? { workspaceFacts } : {}),
 		scenario: "cli",
 		resourceLoader: {
-			refreshContextResourcesIfChanged: () => false,
-			refreshSkillsIfChanged: () => false,
-			setRuntimeSkillPaths: () => {},
+			refreshContextResourcesIfChanged: async () => false,
+			refreshSkillsIfChanged: async () => false,
+			setRuntimeSkillPaths: async () => {},
 			getSystemPrompt: () => "",
 			getAppendSystemPrompt: () => [],
 			getAgentsFiles: () => ({ agentsFiles: [] }),
@@ -55,10 +55,10 @@ describe("CodingAgentPromptRuntime workspace facts", () => {
 		expect(runtime.resolve(promptContext).workspaceFacts).toContain("It is a Git repository.");
 	});
 
-	it("keeps the probed facts fixed for the whole session, including per-Turn bindings", () => {
+	it("keeps the probed facts fixed for the whole session, including per-Turn bindings", async () => {
 		const cwd = createWorkspace();
 		const runtime = createRuntime(cwd);
-		const boundResolve = runtime.bindForTurn();
+		const boundResolve = await runtime.bindForTurn();
 
 		// 会话开始后工作区变成 Node 工程：已固化的事实不得随之改变，否则前缀缓存每轮抖动。
 		writeFileSync(join(cwd, "package.json"), JSON.stringify({ name: "late-arrival" }), "utf-8");

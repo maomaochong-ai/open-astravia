@@ -5,6 +5,8 @@ export type {
 	CodingAgentConversationSessionPathAssessment,
 } from "./conversation-persistence.js";
 export type {
+	CodingAgentPromptRuntimeSourceContext,
+	CodingAgentPromptRuntimeSources,
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeContextOptions,
 	CodingAgentRuntimeConversationOptions,
@@ -30,3 +32,8 @@ export type {
 	CodingAgentSubagentChildFactoryContext,
 	CodingAgentSubagentProfile,
 } from "./subagent.js";
+export type {
+	CodingAgentToolEnvironment,
+	CodingAgentToolEnvironmentContext,
+	CodingAgentToolEnvironmentFactory,
+} from "./tool-environment.js";

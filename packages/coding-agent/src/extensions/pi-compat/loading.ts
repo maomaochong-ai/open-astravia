@@ -1,7 +1,8 @@
+import type { ResourcePathPort } from "../../resources/contracts/resource-access.js";
+import type { ExtensionCommandExecutor, ExtensionFactoryLoader } from "../host-contracts.js";
 import type { EventBus } from "../infrastructure.js";
 import { resolveExtensionPath } from "../runtime/discovery/extension-paths.js";
 import { createExtensionEventBus } from "../runtime/event-bus.js";
-import { loadExtensionFactory } from "../runtime/loading/extension-module-loader.js";
 import { loadExtensionFromFactory } from "../runtime/registration/extension-registration.js";
 import { createExtensionRuntime } from "../runtime/runtime-state.js";
 import type { Extension, ExtensionRuntime } from "../runtime-contracts.js";
@@ -20,22 +21,31 @@ export interface LoadPiExtensionsResult {
 	readonly compatibilityReports: readonly PiExtensionCompatibilityReport[];
 }
 
+export interface LoadPiExtensionsOptions {
+	readonly cwd: string;
+	readonly paths: ResourcePathPort;
+	readonly factoryLoader: ExtensionFactoryLoader;
+	readonly commandExecutor: ExtensionCommandExecutor;
+	readonly eventBus?: EventBus;
+	readonly signal?: AbortSignal;
+}
+
 export async function loadPiExtensions(
 	paths: readonly string[],
-	cwd: string,
-	eventBus?: EventBus,
+	options: LoadPiExtensionsOptions,
 ): Promise<LoadPiExtensionsResult> {
 	const extensions: Extension[] = [];
 	const errors: Array<{ path: string; error: string }> = [];
 	const compatibilityReports: PiExtensionCompatibilityReport[] = [];
 	const runtime = createExtensionRuntime();
-	const resolvedEventBus = eventBus ?? createExtensionEventBus();
+	const resolvedEventBus = options.eventBus ?? createExtensionEventBus();
 
 	for (const extensionPath of paths) {
-		const resolvedPath = resolveExtensionPath(extensionPath, cwd);
+		options.signal?.throwIfAborted();
+		const resolvedPath = resolveExtensionPath(options.paths, extensionPath, options.cwd);
 		const features: PiExtensionCompatibilityFeature[] = [];
 		try {
-			const factory = await loadExtensionFactory(resolvedPath, "pi");
+			const factory = await options.factoryLoader.loadFactory(resolvedPath, "pi", { signal: options.signal });
 			if (!factory) {
 				errors.push({ path: extensionPath, error: "Pi extension does not export a valid factory function" });
 				continue;
@@ -44,9 +54,10 @@ export async function loadPiExtensions(
 				adaptPiExtensionFactory(factory as unknown as PiCompatibleExtensionFactory, (feature) =>
 					features.push(feature),
 				),
-				cwd,
+				options.cwd,
 				resolvedEventBus,
 				runtime,
+				options.commandExecutor,
 				extensionPath,
 				resolvedPath,
 			);

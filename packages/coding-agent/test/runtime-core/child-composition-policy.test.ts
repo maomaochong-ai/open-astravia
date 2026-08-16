@@ -3,6 +3,7 @@ import type { RuntimeSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
+import { createCodingAgentNodeToolEnvironment } from "../../src/adapters/runtime-tools/node-tool-environment.js";
 import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
@@ -28,6 +29,10 @@ describe("Coding Agent Child Composition policy", () => {
 			throw new Error("child must not create a plugin MCP runtime");
 		};
 		const createPluginRuntime = () => undefined;
+		const knowledgeRuntime = {
+			query: { listAvailableTags: vi.fn(), queryByTags: vi.fn() },
+			write: { write: vi.fn(), resolveAbsolutePath: vi.fn() },
+		} as CodingAgentRuntimeCompositionOptions["knowledgeRuntime"];
 		const extensionTools: NonNullable<CodingAgentRuntimeCompositionOptions["extensionTools"]> = [];
 		const tracer = {} as NonNullable<CodingAgentRuntimeCompositionOptions["tracer"]>;
 		const tracing: NonNullable<CodingAgentRuntimeCompositionOptions["tracing"]> = {
@@ -37,6 +42,7 @@ describe("Coding Agent Child Composition policy", () => {
 		const parentOptions: CodingAgentRuntimeCompositionOptions = {
 			conversationDir: "C:\\conversations",
 			createConversationPersistence: createTestConversationPersistence,
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
 			modelRegistry: {} as CodingAgentRuntimeCompositionOptions["modelRegistry"],
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
@@ -50,7 +56,7 @@ describe("Coding Agent Child Composition policy", () => {
 			tracer,
 			tracing,
 			enableSubagents: true,
-			knowledgeRoot: "C:\\knowledge",
+			knowledgeRuntime,
 			systemPromptAdvertisedToolNames: ["parent_tool"],
 		};
 		const inheritedMcpView = { tools: [] } as McpRuntimeToolView;
@@ -85,7 +91,7 @@ describe("Coding Agent Child Composition policy", () => {
 			activation: request.activation,
 			enableSubagents: false,
 			scenario: "project",
-			knowledgeRoot: "C:\\knowledge",
+			knowledgeRuntime,
 			systemPromptAdvertisedToolNames: ["parent_tool"],
 		});
 		expect(childOptions.createPluginRuntime).toBe(createPluginRuntime);

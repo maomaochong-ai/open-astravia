@@ -1,16 +1,19 @@
-import type { CodingAgentHostBootstrap } from "@vetta/coding-agent/bootstrap";
+import { join } from "node:path";
+import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
 import {
 	CodingAgentActiveSessionHost,
 	CodingAgentProcessSessionHost,
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
 	type CodingAgentRuntimeSessionOptions,
+	createCodingAgentCodingToolResultPolicy,
 	createCodingAgentRuntimeComposition,
 	createCodingAgentSessionSetupSeedInitializer,
 } from "@vetta/coding-agent/composition";
-import { getVettaHomePath } from "@vetta/coding-agent/config";
+import { getKnowledgeDir, getVettaHomePath } from "@vetta/coding-agent/config";
 import {
 	createCodingAgentMcpRuntimeToolSource,
+	createCodingAgentNodeToolEnvironment,
 	createCodingAgentPluginMcpRuntime,
 } from "@vetta/coding-agent/host-services";
 import {
@@ -25,6 +28,7 @@ import {
 } from "@vetta/coding-agent/runtime";
 import { buildDefaultHookConfigLayers } from "@vetta/ecosystem-adapter";
 import { InitializationRollbackScope, type RuntimeSession, type RuntimeSessionCatalog } from "@vetta/runtime-core";
+import { createMcpToolResultPolicy } from "@vetta/runtime-mcp";
 import {
 	createFileConversationPersistence,
 	FileConversationOwnershipManager,
@@ -32,11 +36,12 @@ import {
 	resolveConversationFilePath,
 	resolveSessionIdFromPath,
 } from "@vetta/runtime-node/conversation";
+import { createNodeKnowledgeRuntime, createNodeResultArtifactStorage } from "@vetta/runtime-node/host";
 
 export const CLI_RUNTIME_HOST_STARTUP_FAILURE = "CLI Runtime startup and cleanup failed";
 
 export interface CliSessionAssemblyOptions {
-	readonly bootstrap: CodingAgentHostBootstrap;
+	readonly bootstrap: CodingAgentBootstrap;
 	readonly conversationDir: string;
 	readonly sessionCatalog: RuntimeSessionCatalog;
 	readonly sessionId: string;
@@ -61,11 +66,18 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 	const { bootstrap } = options;
 	const { parsed } = bootstrap;
 	const mcpDebug = bootstrap.settingsManager.getMcpDebug();
+	const resultArtifacts = createNodeResultArtifactStorage({
+		codingRoot: join(bootstrap.agentDir, "tool-results"),
+		mcpRoot: join(bootstrap.agentDir, "mcp-results"),
+	});
+	const codingToolResultPolicy = createCodingAgentCodingToolResultPolicy({ artifactStore: resultArtifacts.coding });
+	const mcpToolResultPolicy = createMcpToolResultPolicy({ artifactStore: resultArtifacts.mcp });
 	const managedMcpSource = await createCodingAgentMcpRuntimeToolSource({
 		projectRoot: bootstrap.cwd,
 		agentDir: bootstrap.agentDir,
 		debug: mcpDebug,
 		enabled: true,
+		resultPolicy: mcpToolResultPolicy,
 	});
 	const rollback = new InitializationRollbackScope();
 	const dismissMcpRollback = rollback.defer({
@@ -83,11 +95,15 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 		runtime = await createCodingAgentRuntimeComposition({
 			conversationDir: options.conversationDir,
 			createConversationPersistence: () => createFileConversationPersistence(options.conversationDir),
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			codingToolResultPolicy,
 			modelRegistry: bootstrap.modelRegistry,
 			initialModel: options.initialModel,
 			initialThinkingLevel: options.initialThinkingLevel,
 			cwd: bootstrap.cwd,
 			agentDir: bootstrap.agentDir,
+			knowledgeRuntime:
+				process.env.VETTA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeDir()),
 			hookConfigLayers: buildDefaultHookConfigLayers({
 				cwd: bootstrap.cwd,
 				vettaHome: getVettaHomePath(),
@@ -113,7 +129,8 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 				createCodingAgentCompactionExtensionRuntime(() => extensionSessionHost?.readRunner()),
 			createPluginRuntime: options.createPluginRuntime,
 			extensionTools: bootstrap.extensionsResult.extensions,
-			createPluginMcpRuntime: ({ agentDir }) => createCodingAgentPluginMcpRuntime({ agentDir, debug: mcpDebug }),
+			createPluginMcpRuntime: ({ agentDir }) =>
+				createCodingAgentPluginMcpRuntime({ agentDir, debug: mcpDebug, resultPolicy: mcpToolResultPolicy }),
 			conversationOwnershipManager: new FileConversationOwnershipManager(options.ownership),
 		});
 		const acquiredRuntime = runtime;

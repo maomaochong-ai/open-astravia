@@ -430,6 +430,8 @@ function createAdapterFixture(
 					baseDir: "skills/deploy",
 					type: "skill" as const,
 					disableModelInvocation: false,
+					content: "Deploy safely",
+					sceneTasks: [],
 				},
 			],
 			diagnostics: [],

@@ -1,13 +1,28 @@
 export type { ResourceCollision, ResourceDiagnostic } from "./contracts/diagnostics.js";
 export type {
+	ResourceAccessOptions,
+	ResourceAccessPort,
+	ResourceDirectoryEntry,
+	ResourceEntryKind,
+	ResourceFileInfo,
+	ResourceFileTreePort,
+	ResourcePathPort,
+} from "./contracts/resource-access.js";
+export type {
 	ResourceExtensionPaths,
 	SessionResourceRuntime,
 	SessionResourceRuntimeOptions,
+	SkillResourceLocations,
+	ThemeResourceParser,
 } from "./contracts/resource-runtime.js";
 export type {
 	ResolvedResourcePath,
 	ResolvedResourcePaths,
 	ResourcePackageCommandPort,
+	ResourcePackageDigestPort,
+	ResourcePackageEnvironmentPort,
+	ResourcePackageFilePort,
+	ResourcePackageLocationFacts,
 	ResourcePackageProgressEvent,
 	ResourcePackageProgressListener,
 	ResourcePackageRegistryPort,
@@ -42,7 +57,6 @@ export {
 	type LoadSkillsResult,
 	loadSkills,
 	loadSkillsFromDir,
-	readSkillContent,
 	type Skill,
 	type SkillFrontmatter,
 	type SkillType,

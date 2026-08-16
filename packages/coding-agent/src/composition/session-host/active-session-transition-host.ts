@@ -17,7 +17,7 @@ export type {
 	CodingAgentSessionTransitionRuntimePort,
 } from "./active-session-transition-contracts.js";
 
-/** Product-facing compatibility name for the Runtime-owned active Session transaction host. */
+/** Coding Agent compatibility name for the Runtime-owned active Session transaction host. */
 export class CodingAgentActiveSessionHost extends RuntimeActiveSessionHost<CodingAgentRuntimeSessionOptions> {
 	constructor(options: CodingAgentActiveSessionHostOptions) {
 		super({ ...options, logLabel: "CodingAgentActiveSessionHost" });

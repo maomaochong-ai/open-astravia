@@ -1,10 +1,13 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { CONFIG_DIR_NAME } from "../../config.js";
+import type { ResourceAccessPort } from "../contracts/resource-access.js";
 import type {
 	MissingResourceSourceAction,
 	ResolvedResourcePaths,
 	ResourcePackageCommandPort,
+	ResourcePackageDigestPort,
+	ResourcePackageEnvironmentPort,
+	ResourcePackageFilePort,
+	ResourcePackageLocationFacts,
 	ResourcePackageProgressEvent,
 	ResourcePackageProgressListener,
 	ResourcePackageRegistryPort,
@@ -14,21 +17,23 @@ import type {
 	ResourceScope,
 	ResourceSettingsPort,
 } from "../contracts/resource-source.js";
-import {
-	isResourcePackageOffline,
-	NodeResourcePackageCommands,
-	NpmResourcePackageRegistry,
-} from "./package-effects.js";
 import { ResourcePackageLifecycle } from "./package-lifecycle.js";
+import { ResourcePackageLocations } from "./resource-package-locations.js";
 import { type ResourceAccumulator, ResourceProjector } from "./resource-projection.js";
-import { type ParsedResourceSource, parseResourceSource, ResourcePackageLocations } from "./source-spec.js";
+import { type ParsedResourceSource, parseResourceSource } from "./source-spec.js";
 
 export interface ResourcePackageRuntimeOptions {
 	cwd: string;
 	agentDir: string;
 	settings: ResourceSettingsPort;
-	commands?: ResourcePackageCommandPort;
-	registry?: ResourcePackageRegistryPort;
+	commands: ResourcePackageCommandPort;
+	digest: ResourcePackageDigestPort;
+	locationFacts: ResourcePackageLocationFacts;
+	resourceAccess: ResourceAccessPort;
+	files: ResourcePackageFilePort;
+	managedSkillsDir: string;
+	registry: ResourcePackageRegistryPort;
+	environment: ResourcePackageEnvironmentPort;
 }
 
 export function createResourcePackageRuntime(options: ResourcePackageRuntimeOptions): ResourcePackageRuntime {
@@ -40,18 +45,31 @@ class DefaultResourcePackageRuntime implements ResourcePackageRuntime {
 	private readonly locations: ResourcePackageLocations;
 	private readonly lifecycle: ResourcePackageLifecycle;
 	private readonly projector: ResourceProjector;
+	private readonly resourceAccess: ResourceAccessPort;
+	private readonly environment: ResourcePackageEnvironmentPort;
 	private progressListener: ResourcePackageProgressListener | undefined;
 
 	constructor(options: ResourcePackageRuntimeOptions) {
-		const commands = options.commands ?? new NodeResourcePackageCommands();
+		const commands = options.commands;
 		this.settings = options.settings;
-		this.locations = new ResourcePackageLocations(options.cwd, options.agentDir, commands);
+		this.environment = options.environment;
+		this.resourceAccess = options.resourceAccess;
+		this.locations = new ResourcePackageLocations({
+			cwd: options.cwd,
+			agentDir: options.agentDir,
+			paths: options.resourceAccess.paths,
+			locationFacts: options.locationFacts,
+			digest: options.digest,
+		});
 		this.lifecycle = new ResourcePackageLifecycle(
 			this.locations,
 			commands,
-			options.registry ?? new NpmResourcePackageRegistry(),
+			options.registry,
+			options.environment,
+			options.resourceAccess,
+			options.files,
 		);
-		this.projector = new ResourceProjector(this.locations);
+		this.projector = new ResourceProjector(this.locations, options.resourceAccess, options.managedSkillsDir);
 	}
 
 	setProgressListener(listener: ResourcePackageProgressListener | undefined): void {
@@ -80,7 +98,7 @@ class DefaultResourcePackageRuntime implements ResourcePackageRuntime {
 		return true;
 	}
 
-	getInstalledPath(source: string, scope: "user" | "project"): string | undefined {
+	getInstalledPath(source: string, scope: "user" | "project"): Promise<string | undefined> {
 		return this.lifecycle.getInstalledPath(parseResourceSource(source), scope);
 	}
 
@@ -94,8 +112,8 @@ class DefaultResourcePackageRuntime implements ResourcePackageRuntime {
 		]);
 		await this.resolveSources(sources, accumulator, onMissing);
 		const globalBaseDir = this.locations.agentDir;
-		const projectBaseDir = join(this.locations.cwd, CONFIG_DIR_NAME);
-		this.projector.projectConfiguredPaths(
+		const projectBaseDir = this.resourceAccess.paths.join(this.locations.cwd, CONFIG_DIR_NAME);
+		await this.projector.projectConfiguredPaths(
 			accumulator,
 			globalSettings,
 			projectSettings,
@@ -133,7 +151,7 @@ class DefaultResourcePackageRuntime implements ResourcePackageRuntime {
 	}
 
 	async update(source?: string): Promise<void> {
-		if (isResourcePackageOffline()) return;
+		if (this.environment.isOffline()) return;
 		const identity = source ? this.locations.identity(source) : undefined;
 		for (const [scope, packages] of [
 			["user", this.settings.getGlobalSettings().packages ?? []],
@@ -162,7 +180,7 @@ class DefaultResourcePackageRuntime implements ResourcePackageRuntime {
 			const parsed = parseResourceSource(sourceString);
 			const metadata: ResourcePathMetadata = { source: sourceString, scope: entry.scope, origin: "package" };
 			if (parsed.type === "local") {
-				this.projector.projectLocalSource(
+				await this.projector.projectLocalSource(
 					parsed,
 					accumulator,
 					filter,
@@ -176,7 +194,7 @@ class DefaultResourcePackageRuntime implements ResourcePackageRuntime {
 				parsed.type === "npm"
 					? this.locations.npmInstallPath(parsed, entry.scope)
 					: this.locations.gitInstallPath(parsed, entry.scope);
-			const wasInstalled = existsSync(installedPath);
+			const wasInstalled = await this.isInstalled(installedPath);
 			const needsInstall =
 				!wasInstalled || (parsed.type === "npm" && (await this.lifecycle.needsNpmInstall(parsed, installedPath)));
 			if (needsInstall && !(await this.installMissing(parsed, entry.scope, sourceString, onMissing))) continue;
@@ -184,7 +202,7 @@ class DefaultResourcePackageRuntime implements ResourcePackageRuntime {
 				parsed.type === "git" &&
 				entry.scope === "temporary" &&
 				!parsed.pinned &&
-				!isResourcePackageOffline() &&
+				!this.environment.isOffline() &&
 				wasInstalled
 			) {
 				await this.withProgress("pull", sourceString, `Refreshing ${sourceString}...`, () =>
@@ -192,7 +210,7 @@ class DefaultResourcePackageRuntime implements ResourcePackageRuntime {
 				).catch(() => {});
 			}
 			metadata.baseDir = installedPath;
-			this.projector.projectPackage(installedPath, accumulator, filter, metadata);
+			await this.projector.projectPackage(installedPath, accumulator, filter, metadata);
 		}
 	}
 
@@ -202,7 +220,7 @@ class DefaultResourcePackageRuntime implements ResourcePackageRuntime {
 		source: string,
 		onMissing?: (source: string) => Promise<MissingResourceSourceAction>,
 	): Promise<boolean> {
-		if (isResourcePackageOffline()) return false;
+		if (this.environment.isOffline()) return false;
 		if (onMissing) {
 			const action = await onMissing(source);
 			if (action === "skip") return false;
@@ -210,6 +228,14 @@ class DefaultResourcePackageRuntime implements ResourcePackageRuntime {
 		}
 		await this.lifecycle.install(parsed, scope, scope === "temporary");
 		return true;
+	}
+
+	private async isInstalled(path: string): Promise<boolean> {
+		try {
+			return (await this.resourceAccess.files.stat(path)) !== undefined;
+		} catch {
+			return false;
+		}
 	}
 
 	private async withProgress(

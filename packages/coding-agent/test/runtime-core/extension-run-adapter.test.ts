@@ -3,10 +3,11 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { CodingAgentExtensionRunAdapter } from "../../src/adapters/runtime-core/extension-run-adapter.js";
-import { AuthStorage } from "../../src/auth/index.js";
-import { discoverAndLoadExtensions, ExtensionRunner } from "../../src/extensions/index.js";
+import { ExtensionRunner } from "../../src/extensions/index.js";
 import { createCodingAgentModelRuntime } from "../../src/models/index.js";
 import { createExtensionSessionView } from "../fixtures/extension-session-view.js";
+import { createFileAuthStorage } from "../fixtures/file-auth-storage.js";
+import { discoverAndLoadExtensions } from "../fixtures/node-extension-host.js";
 
 const temporaryDirectories: string[] = [];
 
@@ -216,7 +217,7 @@ async function createRunner(extensionSource?: string): Promise<ExtensionRunner> 
 		fs.writeFileSync(path.join(extensionsDirectory, "before-agent-start.ts"), extensionSource);
 	}
 	const loaded = await discoverAndLoadExtensions([], directory, directory);
-	const authStorage = AuthStorage.create(path.join(directory, "auth.json"));
+	const authStorage = createFileAuthStorage(path.join(directory, "auth.json"));
 	return new ExtensionRunner(
 		loaded.extensions,
 		loaded.runtime,

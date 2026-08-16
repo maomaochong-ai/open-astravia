@@ -31,11 +31,11 @@
 			],
 			"@vetta/coding-agent/hooks": ["./packages/coding-agent/src/public-api/hooks.ts"],
 			"@vetta/coding-agent/profile": ["./packages/coding-agent/src/public-api/profile.ts"],
-			"@vetta/coding-agent/product-prompt": ["./packages/coding-agent/src/public-api/product-prompt.ts"],
 			"@vetta/coding-agent/resources": ["./packages/coding-agent/src/public-api/resources.ts"],
 			"@vetta/coding-agent/rpc": ["./packages/coding-agent/src/public-api/rpc.ts"],
 			"@vetta/coding-agent/runtime": ["./packages/coding-agent/src/public-api/runtime.ts"],
 			"@vetta/coding-agent/sdk": ["./packages/coding-agent/src/public-api/sdk.ts"],
+			"@vetta/coding-agent/settings": ["./packages/coding-agent/src/public-api/settings.ts"],
 			"@vetta/coding-agent/session-extensions": [
 				"./packages/coding-agent/src/public-api/session-extensions.ts"
 			],

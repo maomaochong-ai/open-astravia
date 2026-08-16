@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CONFIG_DIR_NAME } from "../src/config.js";
-import { SettingsRuntime } from "../src/settings/index.js";
+import { createFileSettingsRuntime } from "./fixtures/file-settings-runtime.js";
 
 describe("SettingsRuntime boundaries", () => {
 	const root = join(process.cwd(), "test-settings-runtime-boundaries");
@@ -28,7 +28,7 @@ describe("SettingsRuntime boundaries", () => {
 			}),
 		);
 
-		const settings = SettingsRuntime.create(projectDir, agentDir);
+		const settings = createFileSettingsRuntime(projectDir, agentDir);
 
 		expect(settings.getSteeringMode()).toBe("all");
 		expect(settings.getTransport()).toBe("websocket");
@@ -39,7 +39,7 @@ describe("SettingsRuntime boundaries", () => {
 	it("reports an invalid known field without exposing an untyped value", () => {
 		writeFileSync(globalPath, JSON.stringify({ images: { blockImages: "yes" } }));
 
-		const settings = SettingsRuntime.create(projectDir, agentDir);
+		const settings = createFileSettingsRuntime(projectDir, agentDir);
 
 		expect(settings.getBlockImages()).toBe(false);
 		const [error] = settings.drainErrors();
@@ -49,7 +49,7 @@ describe("SettingsRuntime boundaries", () => {
 
 	it("preserves unknown top-level fields while persisting a known field", async () => {
 		writeFileSync(globalPath, JSON.stringify({ pluginOwned: { enabled: true }, theme: "dark" }));
-		const settings = SettingsRuntime.create(projectDir, agentDir);
+		const settings = createFileSettingsRuntime(projectDir, agentDir);
 
 		settings.setTheme("light");
 		await settings.flush();
@@ -61,7 +61,7 @@ describe("SettingsRuntime boundaries", () => {
 
 	it("preserves an externally changed sibling in a nested settings block", async () => {
 		writeFileSync(globalPath, JSON.stringify({ images: { autoResize: true, maxRecentImages: 2 } }));
-		const settings = SettingsRuntime.create(projectDir, agentDir);
+		const settings = createFileSettingsRuntime(projectDir, agentDir);
 		writeFileSync(globalPath, JSON.stringify({ images: { autoResize: false, maxRecentImages: 7 } }));
 
 		settings.setBlockImages(true);

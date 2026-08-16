@@ -1,4 +1,4 @@
-import type { CodingAgentHostBootstrap } from "@vetta/coding-agent/bootstrap";
+import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import { createHostBashExecutor } from "@vetta/coding-agent/host-services";
 import {
@@ -11,7 +11,7 @@ import { CliRpcSessionAdapter, createImRpcSessionAdapter } from "../rpc-session-
 import { CLI_RUNTIME_HOST_STARTUP_FAILURE, type CliSessionAssembly } from "./cli-session-assembly.js";
 
 export interface CreateRpcRuntimeCapabilitiesOptions {
-	readonly bootstrap: CodingAgentHostBootstrap;
+	readonly bootstrap: CodingAgentBootstrap;
 	readonly assembly: CliSessionAssembly;
 	readonly backend: "rpc" | "im";
 	readonly htmlExporter?: CodingAgentHtmlExportRuntime;

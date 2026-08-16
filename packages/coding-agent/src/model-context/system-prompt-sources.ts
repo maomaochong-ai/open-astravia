@@ -3,7 +3,7 @@ import { getModePrompt, getPersonaPrompt } from "../profiles/index.js";
 import type { SessionResourceRuntime } from "../resources/index.js";
 import { renderMemoryForPrompt } from "./memory-prompt.js";
 import type { AgentPluginRuntimeConfig } from "./plugin-runtime.js";
-import type { BuildSystemPromptOptions } from "./product-prompt.js";
+import type { BuildSystemPromptOptions } from "./system-prompt-policy.js";
 
 export interface PersonalizationSettingsSource {
 	getPersonalization(): { personaId: string; customPrompt: string };

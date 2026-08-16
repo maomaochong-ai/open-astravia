@@ -19,6 +19,7 @@ import {
 	startOpenAiResponsesTestServer,
 	textResponseEvents,
 } from "../../../../../cli-app/test/support/openai-responses-test-server.js";
+import { createDesktopPromptRuntimeSources } from "../../agent-runtime/resource-runtime.js";
 import { DesktopConversationService } from "../../conversations/desktop-conversation-service.js";
 import { type DesktopLocalRpcServerHandle, startDesktopLocalRpcServer } from "../../local-rpc/server.js";
 import { AppDebugCatalog } from "../catalog.js";
@@ -170,6 +171,7 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 				modelRegistry: modelRegistry(model),
 				initialModel: model,
 				initialThinkingLevel: "off",
+				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 			},
 		});
 		const sessionCatalog = new DesktopRuntimeSessionCatalog({

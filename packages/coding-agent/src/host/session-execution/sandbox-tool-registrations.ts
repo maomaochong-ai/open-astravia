@@ -1,5 +1,9 @@
 import type { RuntimeSessionHostInteractionContext } from "@vetta/runtime-core";
 import type { CodingToolRegistration, ForegroundCommandOperations } from "@vetta/runtime-tools";
+import type {
+	SandboxCommandPlatform,
+	SandboxHostServices,
+} from "../../adapters/runtime-core/execution-mode/sandbox-host-services.js";
 import { buildSandboxToolRegistrations } from "../../adapters/runtime-core/execution-mode/sandbox-tools.js";
 import {
 	createCodingAgentEditPathPolicy,
@@ -10,11 +14,12 @@ import {
 export interface CodingAgentSandboxToolsOptions {
 	readonly cwd: string;
 	readonly hostInteraction: RuntimeSessionHostInteractionContext;
-	readonly platform?: NodeJS.Platform;
+	readonly platform?: SandboxCommandPlatform;
 	readonly windowsSandboxHostPath?: string;
 	readonly linuxBubblewrapPath?: string;
 	readonly macosSandboxExecPath?: string;
 	readonly getSessionId?: () => string | undefined;
+	readonly hostServices?: SandboxHostServices;
 	/** Narrow platform-command port used by contract tests and alternate hosts. */
 	readonly commandOperations?: ForegroundCommandOperations;
 }

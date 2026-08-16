@@ -15,6 +15,7 @@ import {
 } from "@vetta/runtime-node/coding";
 import { clearSessionGrants, getSandboxShellGrant } from "@vetta/runtime-node/sandbox";
 import { afterEach, describe, expect, it } from "vitest";
+import type { SandboxCommandPlatform } from "../../src/adapters/runtime-core/execution-mode/sandbox-host-services.js";
 import { createCodingAgentSandboxToolRegistrations } from "../../src/host/session-execution/sandbox-tool-registrations.js";
 
 const SESSION_IDS = ["sandbox-read-session", "sandbox-deny-session", "sandbox-shell-session"] as const;
@@ -170,7 +171,7 @@ describe("Coding Agent sandbox tool registrations", () => {
 
 interface CreateRegistrationsOptions {
 	readonly cwd: string;
-	readonly platform: NodeJS.Platform;
+	readonly platform: SandboxCommandPlatform;
 	readonly decision: SandboxPermissionDecision;
 	readonly sessionId?: string;
 	readonly prompts?: SandboxPermissionPrompt[];

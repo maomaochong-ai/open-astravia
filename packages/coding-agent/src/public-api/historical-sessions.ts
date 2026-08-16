@@ -9,6 +9,11 @@ import {
 	migrateCodingAgentLegacySession,
 } from "../sessions/legacy/migration.js";
 
+export {
+	type CodingAgentStartupMigrationPaths,
+	runMigrations as runCodingAgentStartupMigrations,
+} from "../migrations.js";
+
 export type CodingAgentHistoricalSessionIncompatibilityCode = CodingAgentLegacySessionIncompatibilityCode;
 export type CodingAgentHistoricalSessionMigration = CodingAgentLegacySessionMigration;
 export type CodingAgentHistoricalSessionMigrationIncompatible = CodingAgentLegacySessionMigrationIncompatible;

@@ -50,6 +50,10 @@ export default defineConfig({
 				replacement: fileURLToPath(new URL("../coding-agent/src/public-api/export-html.ts", import.meta.url)),
 			},
 			{
+				find: "@vetta/coding-agent/extensions",
+				replacement: fileURLToPath(new URL("../coding-agent/src/public-api/extensions.ts", import.meta.url)),
+			},
+			{
 				find: "@vetta/coding-agent/config",
 				replacement: fileURLToPath(new URL("../coding-agent/src/config.ts", import.meta.url)),
 			},
@@ -72,12 +76,20 @@ export default defineConfig({
 				replacement: fileURLToPath(new URL("../coding-agent/src/public-api/profile.ts", import.meta.url)),
 			},
 			{
+				find: "@vetta/coding-agent/resources",
+				replacement: fileURLToPath(new URL("../coding-agent/src/public-api/resources.ts", import.meta.url)),
+			},
+			{
 				find: "@vetta/coding-agent/rpc",
 				replacement: fileURLToPath(new URL("../coding-agent/src/public-api/rpc.ts", import.meta.url)),
 			},
 			{
 				find: "@vetta/coding-agent/runtime",
 				replacement: fileURLToPath(new URL("../coding-agent/src/public-api/runtime.ts", import.meta.url)),
+			},
+			{
+				find: "@vetta/coding-agent/settings",
+				replacement: fileURLToPath(new URL("../coding-agent/src/public-api/settings.ts", import.meta.url)),
 			},
 			// Deep imports use ESM ".js" suffix; map to monorepo TypeScript sources
 			{

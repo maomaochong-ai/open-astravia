@@ -1,9 +1,5 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import { listAvailableTags, queryByTags, writeWikiPage } from "@vetta/runtime-knowledge";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
 	ASK_USER_QUESTION_TOOL_CATEGORY,
 	ASK_USER_QUESTION_TOOL_DESCRIPTION,
@@ -13,24 +9,12 @@ import {
 	type CodingToolRegistration,
 	createAskUserQuestionToolRegistration,
 	createInvokeSkillToolRegistration,
-	createKbFilterByTagsToolRegistration,
-	createKbListTagsToolRegistration,
 	createMemoryToolRegistration,
 	createToolSearchToolRegistration,
 	INVOKE_SKILL_TOOL_CATEGORY,
 	INVOKE_SKILL_TOOL_DESCRIPTION,
 	INVOKE_SKILL_TOOL_SCOPES,
 	InvokeSkillToolInputSchema,
-	KB_FILTER_BY_TAGS_TOOL_CATEGORY,
-	KB_FILTER_BY_TAGS_TOOL_DESCRIPTION,
-	KB_FILTER_BY_TAGS_TOOL_REQUIRES,
-	KB_FILTER_BY_TAGS_TOOL_SCOPES,
-	KB_LIST_TAGS_TOOL_CATEGORY,
-	KB_LIST_TAGS_TOOL_DESCRIPTION,
-	KB_LIST_TAGS_TOOL_REQUIRES,
-	KB_LIST_TAGS_TOOL_SCOPES,
-	KbFilterByTagsToolInputSchema,
-	KbListTagsToolInputSchema,
 	MEMORY_TOOL_CATEGORY,
 	MEMORY_TOOL_DESCRIPTION,
 	MEMORY_TOOL_SCOPES,
@@ -54,33 +38,6 @@ interface ExpectedRegistration {
 }
 
 const signal = new AbortController().signal;
-let testRoot = "";
-
-beforeAll(async () => {
-	testRoot = await mkdtemp(join(tmpdir(), "runtime-capability-tools-"));
-	const timestamp = "2026-08-04T00:00:00.000Z";
-	await writeWikiPage(
-		testRoot,
-		"topic/page.md",
-		{
-			id: "page-1",
-			source: "test",
-			source_path: "test/page.md",
-			source_hash: "hash-1",
-			tags: ["runtime", "tool"],
-			title: "Runtime Tool",
-			summary: "Native tool contract",
-			created_at: timestamp,
-			updated_at: timestamp,
-			orphaned_at: null,
-		},
-		"body",
-	);
-});
-
-afterAll(async () => {
-	if (testRoot) await rm(testRoot, { recursive: true, force: true });
-});
 
 describe("native capability tool compatibility", () => {
 	it("keeps all model-visible definitions and registration metadata", () => {
@@ -88,7 +45,6 @@ describe("native capability tool compatibility", () => {
 		const skill = createSkill();
 		const search = () => ({ activated: [], alreadyActive: [], totalDeferred: 0 });
 		const memoryOperations = createInMemoryMemoryOperations();
-		const knowledgeOperations = createKnowledgeOperations();
 
 		expectRegistration(createAskUserQuestionToolRegistration({ ask }), {
 			name: "ask_user_question",
@@ -136,24 +92,6 @@ describe("native capability tool compatibility", () => {
 			schema: MemoryToolInputSchema,
 			scopeUse: MEMORY_TOOL_SCOPES,
 			category: MEMORY_TOOL_CATEGORY,
-		});
-		expectRegistration(createKbListTagsToolRegistration({ operations: knowledgeOperations }), {
-			name: "kb_list_available_tags",
-			label: "KB List Tags",
-			description: KB_LIST_TAGS_TOOL_DESCRIPTION,
-			schema: KbListTagsToolInputSchema,
-			scopeUse: KB_LIST_TAGS_TOOL_SCOPES,
-			requires: KB_LIST_TAGS_TOOL_REQUIRES,
-			category: KB_LIST_TAGS_TOOL_CATEGORY,
-		});
-		expectRegistration(createKbFilterByTagsToolRegistration({ operations: knowledgeOperations }), {
-			name: "kb_filter_by_tags",
-			label: "KB Filter by Tags",
-			description: KB_FILTER_BY_TAGS_TOOL_DESCRIPTION,
-			schema: KbFilterByTagsToolInputSchema,
-			scopeUse: KB_FILTER_BY_TAGS_TOOL_SCOPES,
-			requires: KB_FILTER_BY_TAGS_TOOL_REQUIRES,
-			category: KB_FILTER_BY_TAGS_TOOL_CATEGORY,
 		});
 	});
 
@@ -258,32 +196,6 @@ describe("native capability tool compatibility", () => {
 			details: { action: "replace", entryCount: 1, chars: 19, limit: 4_000 },
 		});
 	});
-
-	it("keeps knowledge tag listing and filtering results", async () => {
-		const operations = createKnowledgeOperations();
-		const runtimeList = createKbListTagsToolRegistration({ operations }).tool;
-		expect(await executeRuntime(runtimeList, {})).toEqual({
-			content: [{ type: "text", text: "kb_list_available_tags — 2 tag(s):\n- runtime (1)\n- tool (1)" }],
-			details: {
-				tags: [
-					{ tag: "runtime", count: 1 },
-					{ tag: "tool", count: 1 },
-				],
-			},
-		});
-
-		const runtimeFilter = createKbFilterByTagsToolRegistration({ operations }).tool;
-		const input = { all: ["runtime"] };
-		const result = await executeRuntime(runtimeFilter, input);
-		expect(result.content[0]).toMatchObject({
-			type: "text",
-			text: expect.stringContaining("kb_filter_by_tags matched 1 page(s)"),
-		});
-		expect(result.details).toMatchObject({
-			count: 1,
-			pages: [{ id: "page-1", title: "Runtime Tool", tags: ["runtime", "tool"] }],
-		});
-	});
 });
 
 function expectRegistration<TInput extends object>(
@@ -321,16 +233,6 @@ function createSkill() {
 		type: "skill" as const,
 		disableModelInvocation: false,
 		content: "---\nname: pdf\n---\nFollow the PDF workflow.",
-	};
-}
-
-function createKnowledgeOperations() {
-	return {
-		listAvailableTags: () => listAvailableTags(testRoot),
-		queryByTags: async (input: { all?: string[]; any?: string[]; none?: string[] }) => {
-			const pages = await queryByTags(testRoot, input);
-			return pages.map((page) => ({ ...page, absolutePath: join(testRoot, "wiki", page.path) }));
-		},
 	};
 }
 

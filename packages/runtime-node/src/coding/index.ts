@@ -1,3 +1,4 @@
+export { NodeCodingToolResultArtifactStore } from "../host/result-artifact-storage.js";
 export {
 	CODING_TOOL_AVAILABILITY_ERROR_CODES,
 	CodingToolAvailabilityError,
@@ -28,12 +29,24 @@ export {
 	type CodingToolsFeatureOptions,
 	createCodingToolsFeature,
 } from "./coding-tools-feature.js";
+export * from "./host/index.js";
 export {
 	type CodingToolExecutable,
 	type CodingToolExecutableResolver,
 	createLocalCodingToolExecutableResolver,
+	createNodeBackgroundCommandHost,
+	createNodeForegroundCommandHost,
+	killNodeProcessTree,
 	type LocalCodingToolExecutableResolverOptions,
+	type NodeBackgroundCommandHostOptions,
+	type NodeForegroundCommandHostOptions,
+	type NodeShellCommand,
 } from "./host/index.js";
+export {
+	createNodeCodingToolEnvironment,
+	type NodeCodingToolEnvironment,
+	type NodeCodingToolEnvironmentOptions,
+} from "./node-tool-environment.js";
 export { createAsyncExecutionGate } from "./shared/async-execution-gate.js";
 export {
 	type BackgroundCommandExecutorOptions,
@@ -89,6 +102,7 @@ export {
 	buildSubagentNotification,
 	type SubagentNotificationPayload,
 } from "./shared/subagent-notification.js";
+export { decodeTextBuffer, sanitizeBinaryOutput } from "./shared/text-decoding.js";
 export {
 	DEFAULT_MAX_BYTES,
 	DEFAULT_MAX_LINES,
@@ -309,52 +323,6 @@ export {
 	type InvokeSkillToolOptions,
 	type InvokeSkillToolRegistrationOptions,
 } from "./tools/invoke-skill/index.js";
-export {
-	createKbFilterByTagsTool,
-	createKbFilterByTagsToolRegistration,
-	KB_FILTER_BY_TAGS_TOOL_CATEGORY,
-	KB_FILTER_BY_TAGS_TOOL_DESCRIPTION,
-	KB_FILTER_BY_TAGS_TOOL_REQUIRES,
-	KB_FILTER_BY_TAGS_TOOL_SCOPES,
-	type KbFilterByTagsDetails,
-	type KbFilterByTagsOperations,
-	type KbFilterByTagsToolInput,
-	KbFilterByTagsToolInputSchema,
-	type KbFilterByTagsToolOptions,
-	type KbFilterByTagsToolRegistrationOptions,
-	type KbFilteredPage,
-} from "./tools/kb-filter-by-tags/index.js";
-export {
-	createKbListTagsTool,
-	createKbListTagsToolRegistration,
-	KB_LIST_TAGS_TOOL_CATEGORY,
-	KB_LIST_TAGS_TOOL_DESCRIPTION,
-	KB_LIST_TAGS_TOOL_REQUIRES,
-	KB_LIST_TAGS_TOOL_SCOPES,
-	type KbListTagsDetails,
-	type KbListTagsOperations,
-	type KbListTagsToolInput,
-	KbListTagsToolInputSchema,
-	type KbListTagsToolOptions,
-	type KbListTagsToolRegistrationOptions,
-	type KbTagCount,
-} from "./tools/kb-list-tags/index.js";
-export {
-	createKbWritePageTool,
-	createKbWritePageToolRegistration,
-	KB_WRITE_PAGE_TOOL_CATEGORY,
-	KB_WRITE_PAGE_TOOL_DESCRIPTION,
-	KB_WRITE_PAGE_TOOL_REQUIRES,
-	KB_WRITE_PAGE_TOOL_SCOPES,
-	type KbWritePageOperations,
-	type KbWritePageRequest,
-	type KbWritePageResult,
-	type KbWritePageToolDetails,
-	type KbWritePageToolInput,
-	KbWritePageToolInputSchema,
-	type KbWritePageToolOptions,
-	type KbWritePageToolRegistrationOptions,
-} from "./tools/kb-write-page/index.js";
 export {
 	createListAgentsTool,
 	createListAgentsToolRegistration,

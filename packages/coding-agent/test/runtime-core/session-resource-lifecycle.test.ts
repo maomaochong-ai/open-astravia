@@ -139,7 +139,7 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 			configurationState,
 			pluginMcpRuntime,
 			codingTools: {} as CodingToolsRuntimeComposition,
-			productToolRegistrations: [],
+			specializedToolRegistrations: [],
 			activation: { mode: "explicit", toolNames: [] },
 			knowledgeAvailable: true,
 			backgroundTasksAvailable: true,

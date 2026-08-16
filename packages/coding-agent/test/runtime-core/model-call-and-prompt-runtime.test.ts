@@ -485,13 +485,13 @@ describe("Coding Agent model call and prompt runtime", () => {
 		]);
 	});
 
-	it("freezes Resource, Settings, Mode and Memory per Turn without sharing sessions", () => {
+	it("freezes Resource, Settings, Mode and Memory per Turn without sharing sessions", async () => {
 		let firstBasePrompt = "First session prompt v1";
 		let firstPersonalization = "First persona v1";
 		let firstMode: string | undefined = "work";
 		let firstMemory = "First memory v1";
-		const firstRefresh = vi.fn();
-		const firstContextRefresh = vi.fn();
+		const firstRefresh = vi.fn(async () => false);
+		const firstContextRefresh = vi.fn(async () => false);
 		const firstReloadPersonalization = vi.fn();
 		const first = new CodingAgentPromptRuntime({
 			cwd: "C:\\first",
@@ -504,7 +504,7 @@ describe("Coding Agent model call and prompt runtime", () => {
 					agentsFiles: [{ path: "C:\\first\\AGENTS.md", content: "First repository instruction" }],
 				}),
 				getSkills: () => ({ skills: [], diagnostics: [] }),
-				setRuntimeSkillPaths: () => {},
+				setRuntimeSkillPaths: async () => {},
 				refreshSkillsIfChanged: firstRefresh,
 			},
 			settingsManager: {
@@ -523,13 +523,13 @@ describe("Coding Agent model call and prompt runtime", () => {
 			cwd: "C:\\second",
 			scenario: "cli",
 			resourceLoader: {
-				refreshContextResourcesIfChanged: () => false,
+				refreshContextResourcesIfChanged: async () => false,
 				getSystemPrompt: () => "Second session prompt",
 				getAppendSystemPrompt: () => [],
 				getAgentsFiles: () => ({ agentsFiles: [] }),
 				getSkills: () => ({ skills: [], diagnostics: [] }),
-				setRuntimeSkillPaths: () => {},
-				refreshSkillsIfChanged: () => false,
+				setRuntimeSkillPaths: async () => {},
+				refreshSkillsIfChanged: async () => false,
 			},
 			settingsManager: {
 				reloadPersonalizationSettings() {},
@@ -545,15 +545,15 @@ describe("Coding Agent model call and prompt runtime", () => {
 			activeToolNames: ["read"],
 		};
 
-		const firstTurn = first.bindForTurn();
+		const firstTurn = await first.bindForTurn();
 		const firstCall = firstTurn(context);
 		firstBasePrompt = "First session prompt v2";
 		firstPersonalization = "First persona v2";
 		firstMode = undefined;
 		firstMemory = "First memory v2";
 		const secondCall = firstTurn(context);
-		const nextTurnCall = first.bindForTurn()({ ...context, turnId: "turn-2" });
-		const isolatedCall = second.bindForTurn()({ ...context, sessionId: "second" });
+		const nextTurnCall = (await first.bindForTurn())({ ...context, turnId: "turn-2" });
+		const isolatedCall = (await second.bindForTurn())({ ...context, sessionId: "second" });
 
 		expect(firstCall).toMatchObject({
 			customPrompt: "First session prompt v1",

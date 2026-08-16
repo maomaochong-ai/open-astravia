@@ -1,20 +1,40 @@
 import type {
 	EventBus,
 	Extension,
+	ExtensionCommandExecutor,
 	ExtensionFactory,
+	ExtensionFactoryLoader,
 	ExtensionRuntime,
 	LoadExtensionsResult,
 } from "../../extensions/index.js";
 import { loadExtensionFromFactory, loadExtensions } from "../../extensions/index.js";
+import type { ResourceAccessPort } from "../contracts/resource-access.js";
 
 export async function loadExtensionResources(options: {
 	paths: string[];
 	cwd: string;
+	resourceAccess: ResourceAccessPort;
+	factoryLoader: ExtensionFactoryLoader;
+	commandExecutor: ExtensionCommandExecutor;
 	eventBus: EventBus;
 	factories: ExtensionFactory[];
+	signal?: AbortSignal;
 }): Promise<LoadExtensionsResult> {
-	const result = await loadExtensions(options.paths, options.cwd, options.eventBus);
-	const inline = await loadExtensionFactories(options.factories, options.cwd, options.eventBus, result.runtime);
+	const result = await loadExtensions(options.paths, {
+		cwd: options.cwd,
+		resourceAccess: options.resourceAccess,
+		factoryLoader: options.factoryLoader,
+		commandExecutor: options.commandExecutor,
+		eventBus: options.eventBus,
+		signal: options.signal,
+	});
+	const inline = await loadExtensionFactories(
+		options.factories,
+		options.cwd,
+		options.eventBus,
+		result.runtime,
+		options.commandExecutor,
+	);
 	result.extensions.push(...inline.extensions);
 	result.errors.push(...inline.errors, ...detectExtensionConflicts(result.extensions));
 	return result;
@@ -25,13 +45,14 @@ async function loadExtensionFactories(
 	cwd: string,
 	eventBus: EventBus,
 	runtime: ExtensionRuntime,
+	commandExecutor: ExtensionCommandExecutor,
 ): Promise<{ extensions: Extension[]; errors: Array<{ path: string; error: string }> }> {
 	const extensions: Extension[] = [];
 	const errors: Array<{ path: string; error: string }> = [];
 	for (const [index, factory] of factories.entries()) {
 		const path = `<inline:${index + 1}>`;
 		try {
-			extensions.push(await loadExtensionFromFactory(factory, cwd, eventBus, runtime, path));
+			extensions.push(await loadExtensionFromFactory(factory, cwd, eventBus, runtime, commandExecutor, path));
 		} catch (error) {
 			errors.push({ path, error: error instanceof Error ? error.message : "failed to load extension" });
 		}

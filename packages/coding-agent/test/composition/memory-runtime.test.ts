@@ -125,7 +125,7 @@ describe("Greenfield CLI memory runtime", () => {
 		await session.dispose();
 	});
 
-	it("flushes the current active context on demand through the product composition boundary", async () => {
+	it("flushes the current active context on demand through the Coding Agent composition boundary", async () => {
 		const workspace = await temporaryRoot("greenfield-memory-flush-workspace-");
 		const conversations = await temporaryRoot("greenfield-memory-flush-conversations-");
 		const memoryFile = join(workspace, "MEMORY.md");

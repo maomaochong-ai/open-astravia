@@ -1,7 +1,7 @@
 /**
  * Minimal structural UI types exposed to Coding Agent extensions.
  *
- * The TUI product was removed and its package deleted. The extension API still
+ * The TUI application was removed and its package deleted. The extension API still
  * carries a UI surface (widgets / header / footer / editor / custom renderers,
  * autocomplete). That surface is not dead: the RPC host forwards setWidget /
  * setHeader / setFooter to the desktop app for rendering, and HTML export calls

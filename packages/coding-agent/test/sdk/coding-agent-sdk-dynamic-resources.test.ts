@@ -14,7 +14,6 @@ import {
 	type CodingAgentSkillSourceSnapshot,
 	createCodingAgentSession,
 } from "../../src/public-api/sdk.js";
-import { readSkillContent } from "../../src/resources/skills/index.js";
 
 describe("Coding Agent SDK dynamic resources", () => {
 	const temporaryDirectories: string[] = [];
@@ -55,7 +54,7 @@ describe("Coding Agent SDK dynamic resources", () => {
 		expect(initial.map(projectCodingAgentSkillInfo)).toEqual([
 			expect.objectContaining({ name: "dynamic-browser", source: "sdk:dynamic", type: "skill" }),
 		]);
-		expect(readSkillContent(initial[0]!)).toBe("Dynamic instructions");
+		expect(initial[0]?.content).toBe("Dynamic instructions");
 
 		snapshot = {
 			revision: 2,

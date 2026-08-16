@@ -1,5 +1,3 @@
-import type { TruncationResult } from "@vetta/runtime-node/coding";
-
 export interface ExtensionEventBus {
 	emit(channel: string, data: unknown): void;
 	on(channel: string, handler: (data: unknown) => void): () => void;
@@ -77,10 +75,10 @@ export interface UserBashOperations {
 		command: string,
 		cwd: string,
 		options: {
-			onData: (data: Buffer) => void;
+			onData: (data: Uint8Array) => void;
 			signal?: AbortSignal;
 			timeout?: number;
-			env?: NodeJS.ProcessEnv;
+			env?: Readonly<Record<string, string | undefined>>;
 		},
 	): Promise<{ exitCode: number | null }>;
 }
@@ -91,14 +89,6 @@ export interface UserBashResult {
 	cancelled: boolean;
 	truncated: boolean;
 	fullOutputPath?: string;
-}
-
-export interface BashToolDetails {
-	truncation?: TruncationResult;
-	fullOutputPath?: string;
-	pathCorrections?: Array<{ original: string; corrected: string }>;
-	backgroundTaskId?: string;
-	autoPromoted?: boolean;
 }
 
 export type EventBus = ExtensionEventBus;

@@ -22,21 +22,21 @@ export interface CodingAgentPromptResourceResolverOptions {
 export function createCodingAgentPromptResourceResolver(
 	options: CodingAgentPromptResourceResolverOptions,
 ): CodingAgentPromptResourceResolver {
-	const resolver: CodingAgentPromptResourceResolver = (text, promptRef) => {
-		options.resourceLoader.refreshSkillsIfChanged();
+	const resolver: CodingAgentPromptResourceResolver = async (text, promptRef, context) => {
+		await options.resourceLoader.refreshSkillsIfChanged(context.signal);
 		return expandPromptResourceReference(text, promptRef, {
 			resourceLoader: options.resourceLoader,
 			todoState: options.todoState,
 			emitError: options.emitError,
 		});
 	};
-	resolver.bindForTurn = () => {
-		const skills = capturePromptSkills(options.resourceLoader);
+	resolver.bindForTurn = async (context) => {
+		const skills = await capturePromptSkills(options.resourceLoader, context.signal);
 		return createCodingAgentPromptResourceResolver({
 			...options,
 			resourceLoader: {
 				getSkills: () => ({ skills: [...skills], diagnostics: [] }),
-				refreshSkillsIfChanged: () => false,
+				refreshSkillsIfChanged: async () => false,
 			},
 		});
 	};

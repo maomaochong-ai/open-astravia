@@ -1,5 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import type { PromptResourceRef } from "@vetta/runtime-core";
 import { createSkillHookContribution, readSkillInvocationDocument } from "../skills/skill-document.js";
 import type { PromptResourceExpansion, PromptResourceExpansionDependencies } from "./contracts.js";
@@ -43,7 +41,6 @@ function expandPromptResource(
 			];
 
 			const sceneState = dependencies.todoState.readSceneTodoState();
-			const tasksJsonPath = join(skill.baseDir, "tasks.json");
 			if (sceneState.locked) {
 				lines.push(
 					"",
@@ -52,21 +49,18 @@ function expandPromptResource(
 					`Continue working through the existing items in strict sequential order.`,
 					`Use todo(action="list") to view current progress.`,
 				);
-			} else if (skill.sceneTasks !== undefined || existsSync(tasksJsonPath)) {
+			} else if (skill.sceneTasks.length > 0) {
 				try {
-					const tasks: unknown = skill.sceneTasks ?? JSON.parse(readFileSync(tasksJsonPath, "utf-8"));
-					if (Array.isArray(tasks) && tasks.length > 0 && tasks.every((task) => typeof task === "string")) {
-						dependencies.todoState.initializeSceneTodoItems(tasks);
-						lines.push(
-							"",
-							`[SYSTEM] ${tasks.length} todo items have been auto-created from this scene's tasks.json and the list is now LOCKED.`,
-							`Do NOT call todo(action="create") — it will be rejected. The tasks.json list is the authoritative plan.`,
-							`Work strictly through these items in order. Start now with todo(action="update", id=1, status="in_progress").`,
-							`After finishing each item, IMMEDIATELY call todo(action="update", id=N, status="done") before moving on to the next.`,
-						);
-					}
+					dependencies.todoState.initializeSceneTodoItems(skill.sceneTasks);
+					lines.push(
+						"",
+						`[SYSTEM] ${skill.sceneTasks.length} todo items have been auto-created from this scene's tasks.json and the list is now LOCKED.`,
+						`Do NOT call todo(action="create") — it will be rejected. The tasks.json list is the authoritative plan.`,
+						`Work strictly through these items in order. Start now with todo(action="update", id=1, status="in_progress").`,
+						`After finishing each item, IMMEDIATELY call todo(action="update", id=N, status="done") before moving on to the next.`,
+					);
 				} catch {
-					// Malformed tasks.json remains a best-effort no-op.
+					// Scene Todo initialization remains a best-effort side effect.
 				}
 			}
 
