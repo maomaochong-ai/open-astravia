@@ -119,6 +119,7 @@ export function ProjectsPanel(props: ProjectsPanelProps): JSX.Element {
 				defaultConversationFilter={model.defaultConversationFilter}
 				listClassName={props.defaultSessionListClassName}
 				project={model.defaultProject}
+				sessionsCwd={model.defaultSessionsCwd}
 				sessions={model.defaultSessions}
 				sessionsLoading={model.defaultSessionsLoading}
 				onNewSession={model.actions.defaultNewSession}

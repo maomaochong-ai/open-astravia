@@ -142,6 +142,22 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **Claw 用自定义 provider 不再报 401**：桌面端把自定义 provider 的明文 API Key 存进 safeStorage
+  保险库，`models.json` 只留 `credentialRef`，而 Claw 的 agent-rpc 子进程走 `@vetta/cli-app` 自建
+  bootstrap，只读 `models.json` / `auth.json`，拿不到凭据后回落到本地 provider 的
+  "no auth" 占位串并把它当 Bearer 发出去——远端 provider（deepseek 等）随即返回
+  `401 ... your api key: ****ider is invalid`，而同一模型在桌面会话里完全正常。子进程本身也是
+  Electron 且 `app.name` 与主进程一致，保险库又存在共享的 `~/.vetta/desktop-app/credentials`，
+  现在由子进程自己解密并注入 AuthStorage，明文 key 不经 argv 或环境变量外传。
+- **侧栏 Claw 会话可以进只读视图**：默认会话区在 claw 过滤下列的是 im-gateway 自己 cwd 下的会话
+  （ADR-0005），但往下传的却是默认「对话」项目的 cwd，点击时按错的 cwd 查不到 `session.access`，
+  判定退化为交互式恢复，主进程再以 `SESSION_READ_ONLY` 拒绝——表现为点击毫无反应、永远看不到
+  Claw 的对话内容。现在会话列表拿到的是会话真正所属的 cwd。
+- **打包版恢复 `HTTP_PROXY` / `HTTPS_PROXY` 支持**：Electron 的 Node 没有 `node:sqlite`，而 Rollup
+  把 undici 里惰性的 `require("node:sqlite")`（原本有 try/catch 兜住）提升成了 chunk 顶层静态
+  import，导致整个 undici chunk 加载失败：`EnvHttpProxyAgent` 从未装上，环境代理静默失效，同时在
+  agent-rpc 子进程 stderr 上刷出 `ERR_UNKNOWN_BUILTIN_MODULE` 的 UnhandledPromiseRejectionWarning。
+  主进程构建改为把 `node:sqlite` 指向显式 shim。
 - **`.env.production` 的语音裁剪配置贯穿完整打包链路**：纯 Node 的模型准备与 `prepare-pack`
   过去默认读取 `.env.development`，与 Vite 的 production 编译模式不一致，导致
   `VETTA_SPEECH_INPUT_ENABLED=false` 虽然关闭了运行时入口，模型和 Sherpa 仍可能进入安装包。现在构建、

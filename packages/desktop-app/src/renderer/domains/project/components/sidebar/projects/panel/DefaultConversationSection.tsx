@@ -17,6 +17,12 @@ interface DefaultConversationSectionProps {
 	onSelectSession: (cwd: string, sessionPath: string) => void;
 	project: Project;
 	sessions: SessionInfo[];
+	/**
+	 * `sessions` 真正所属的 cwd。claw 过滤下会话来自 im-gateway 的 cwd（ADR-0005），
+	 * 与 `project.cwd` 是两个物理目录；选中 / 重命名必须用这个值，否则按 project.cwd
+	 * 查不到会话，access 缺失后会错误地走交互式恢复而进不了只读视图。
+	 */
+	sessionsCwd: string;
 	sessionsLoading: boolean;
 }
 
@@ -42,7 +48,7 @@ export function DefaultConversationSection(
 				<DefaultSessionList
 					activeSessionPath={props.activeSessionPath}
 					className={cn("project-list-containment -mx-1.5 px-1.5", props.listClassName)}
-					cwd={props.project.cwd}
+					cwd={props.sessionsCwd || props.project.cwd}
 					filter={props.defaultConversationFilter}
 					onBeforeSelect={props.onBeforeSelectSession}
 					onNewSession={model.actions.newSession}

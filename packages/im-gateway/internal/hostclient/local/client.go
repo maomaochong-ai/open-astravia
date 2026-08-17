@@ -66,8 +66,11 @@ type Options struct {
 }
 
 const (
-	defaultBin              = "vetta"
-	defaultHandshakeTimeout = 10 * time.Second
+	defaultBin = "vetta"
+	// Cold-start budget: the desktop host's agent binary is Vetta.app itself,
+	// whose first spawn after launch/update takes ~10s (Electron + asar) vs
+	// ~1s warm. Keep in sync with config.DefaultHandshakeTimeout.
+	defaultHandshakeTimeout = 30 * time.Second
 	defaultCloseTimeout     = 5 * time.Second
 )
 

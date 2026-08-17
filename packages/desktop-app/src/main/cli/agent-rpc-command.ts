@@ -1,5 +1,8 @@
 import { join } from "node:path";
 import { app } from "electron";
+import { getAppLogger } from "../logger.js";
+import { syncAgentRpcModelCredentials } from "../models/agent-rpc-model-credentials.js";
+import { getDesktopModelCredentialStore } from "../models/model-credential-store.js";
 
 // ---------------------------------------------------------------------------
 // Coding-agent RPC CLI mode
@@ -58,7 +61,20 @@ export async function runAgentRpcCommand(args: string[]): Promise<number> {
 			process.env.VETTA_PACKAGE_DIR = resolveCodingAgentPackageDir();
 		}
 		const { runAgentRuntimeCli } = await import("@vetta/cli-app");
-		await runAgentRuntimeCli(args);
+		await runAgentRuntimeCli(args, {
+			// models.json 只留 credentialRef，明文 key 在 safeStorage 保险库里。
+			// 子进程自己解密后注入，避免密钥经 argv / 环境变量外传。
+			injectRuntimeCredentials: (authStorage) =>
+				syncAgentRpcModelCredentials({
+					authStorage,
+					credentials: getDesktopModelCredentialStore(),
+					onError: (error) => {
+						getAppLogger("agent-rpc-credentials").warn("无法注入自定义 provider 凭据，模型调用可能鉴权失败", {
+							error: error instanceof Error ? error.message : String(error),
+						});
+					},
+				}),
+		});
 		return typeof process.exitCode === "number" ? process.exitCode : 0;
 	} catch (err) {
 		const msg = err instanceof Error ? (err.stack ?? err.message) : String(err);
