@@ -19,6 +19,7 @@ import type {
 	CodingAgentPluginRuntimeSource,
 	CodingAgentRuntimeToolRegistration,
 } from "../../runtime-contracts/index.js";
+import { getCodingAgentOcrExecutionGate } from "../../tool-policy/ocr-execution-gate.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
 import type { CodingAgentMcpSessionCoordinator } from "../tool-surface/mcp-session-coordinator.js";
@@ -81,9 +82,15 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	const configurationState = new CodingAgentSessionConfigurationState(sessionOptions.agentMode, () =>
 		pluginRuntime?.readAgentPlugins(),
 	);
+	const platformSpecializedToolRegistrations = await options.codingTools.createSpecializedToolRegistrations?.({
+		cwd: options.sessionCwd,
+		agentDir: profile.agentDir,
+		scenario: options.scenario,
+		ocrExecutionGate: getCodingAgentOcrExecutionGate(),
+	});
 	const specializedToolRegistrations = [
 		...createCodingAgentSpecializedToolRegistrations({
-			cwd: options.sessionCwd,
+			platformRegistrations: platformSpecializedToolRegistrations,
 			knowledgePageWriter: sessionOptions.knowledgePageWriter ?? profile.knowledgeRuntime?.write,
 		}),
 		...(sessionOptions.sessionRuntimeTools ?? []),

@@ -1026,21 +1026,31 @@ describe("Coding Agent architecture gate", () => {
 
 	it("keeps portable product Tool semantics out of runtime-node", () => {
 		const featurePath = "packages/coding-agent/src/features/current-time/tool/current-time-tool.ts";
+		const specializedCompositionPath = "packages/coding-agent/src/composition/tool-surface/specialized-tools.ts";
 		const nodeToolPath = "packages/runtime-node/src/coding/tools/current-time/index.ts";
+		const nodeGatePath = "packages/runtime-node/src/coding/shared/async-execution-gate.ts";
 		const nodeEntryPath = "packages/runtime-node/src/coding/index.ts";
 		const nodeEnvironmentPath = "packages/runtime-node/src/coding/node-tool-environment.ts";
 		const state = createState([
 			{ path: featurePath, text: 'import { platform } from "node:os";' },
+			{ path: specializedCompositionPath, text: 'import { createNodeTool } from "@vetta/runtime-node/coding";' },
 			{ path: nodeToolPath, text: "export const tool = {};" },
-			{ path: nodeEntryPath, text: 'export * from "./tools/current-time/index.js";' },
+			{ path: nodeGatePath, text: "export const gate = {};" },
+			{
+				path: nodeEntryPath,
+				text: 'export * from "./tools/current-time/index.js";\nexport * from "./shared/async-execution-gate.js";',
+			},
 			{ path: nodeEnvironmentPath, text: "createTaskOutputToolRegistration();" },
 		]);
 
 		expect(findCodingAgentArchitectureViolations(state)).toEqual(
 			expect.arrayContaining([
 				`${featurePath}:1: portable Coding Agent Tool Features must consume Runtime ports`,
+				`${specializedCompositionPath}:1: Coding Agent product Tool composition must consume host factories`,
 				`${nodeToolPath}: portable product Tool definitions belong to Coding Agent Features`,
+				`${nodeGatePath}: platform-neutral execution gates belong to runtime-tools`,
 				`${nodeEntryPath}: runtime-node must not export portable Coding Agent product Tools`,
+				`${nodeEntryPath}: runtime-node must not export platform-neutral execution gates`,
 				`${nodeEnvironmentPath}: Node Tool Environment must compose platform Tools only`,
 			]),
 		);

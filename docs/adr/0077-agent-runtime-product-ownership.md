@@ -55,6 +55,10 @@ Tool 的模型合同按语义而不是执行环境归属：名称、描述、Sch
 模型语义由 Coding Agent 组合。迁移期 Host 若仍返回产品保留名称，产品入口忽略旧注册并建立唯一内置定义，
 不保留第二条执行路径。
 
+文档转换与 OCR 等依赖平台的专用 Tool，由 `CodingAgentToolEnvironment` 按 Session `cwd` 提供注册工厂；
+`runtime-node` 选择进程、文件与 Desktop Command 实现，Coding Agent 只叠加产品级激活和模型顺序。
+并发 Gate 等不访问环境的通用机制属于 `runtime-tools`，不得为了现有 Node 消费者留在平台包。
+
 `runtime-core` 提供 Feature、Session Extension、Context Strategy、生命周期和 Port 编排扩展点；它不通过内置
 Coding Agent 功能来证明“可扩展”。压缩、会话和其他产品变化应实现这些通用合同，由产品 Profile 选择策略。
 

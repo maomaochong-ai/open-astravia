@@ -5,6 +5,7 @@ import * as root from "../src/index.js";
 describe("runtime-tools root entry", () => {
 	it("publishes only the platform-neutral coding tool protocol", () => {
 		expect(root.createCodingToolsFeature).toBe(coding.createCodingToolsFeature);
+		expect(root.createAsyncExecutionGate).toBe(coding.createAsyncExecutionGate);
 		expect(root.InMemoryCodingToolRegistry).toBe(coding.InMemoryCodingToolRegistry);
 		expect("createReadTool" in root).toBe(false);
 		expect("createShellTool" in root).toBe(false);

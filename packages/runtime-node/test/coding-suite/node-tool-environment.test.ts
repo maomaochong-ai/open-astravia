@@ -25,6 +25,14 @@ describe("Node coding tool environment", () => {
 			"write",
 		]);
 		expect(environment.backgroundService).toBeUndefined();
+		expect(
+			environment
+				.createSpecializedToolRegistrations({
+					cwd: "C:/session-workspace",
+					ocrExecutionGate: { run: (operation) => operation() },
+				})
+				.map(({ tool }) => tool.name),
+		).toEqual(["doc_to_pdf", "html_to_pdf", "extract_text_from_pdf", "extract_text_from_img", "render_pdf_page"]);
 		expect(() => environment.dispose()).not.toThrow();
 	});
 

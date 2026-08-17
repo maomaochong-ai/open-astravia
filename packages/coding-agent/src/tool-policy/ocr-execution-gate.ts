@@ -1,4 +1,4 @@
-import { type AsyncExecutionGate, createAsyncExecutionGate } from "@vetta/runtime-node/coding";
+import { type AsyncExecutionGate, createAsyncExecutionGate } from "@vetta/runtime-tools";
 
 let sharedOcrExecutionGate: AsyncExecutionGate | undefined;
 

@@ -49,8 +49,8 @@ export {
 	type NodeCodingToolEnvironmentOptions,
 	type NodeCommandToolEnvironment,
 	type NodeCommandToolEnvironmentOptions,
+	type NodeSpecializedToolRegistrationContext,
 } from "./node-tool-environment.js";
-export { createAsyncExecutionGate } from "./shared/async-execution-gate.js";
 export {
 	type BackgroundCommandExecutorOptions,
 	type BackgroundCommandToolDetails,

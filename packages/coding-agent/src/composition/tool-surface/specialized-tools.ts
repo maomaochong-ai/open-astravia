@@ -1,17 +1,9 @@
 import type { AgentFeatureDefinition, ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import {
-	createDocToPdfToolRegistration,
-	createExtractTextFromImageToolRegistration,
-	createExtractTextFromPdfToolRegistration,
-	createHtmlToPdfToolRegistration,
-	createNodeCommandProcessHost,
-	createNodeDocToPdfOperations,
-	createNodeVettaDesktopCommandPort,
-	createRenderPdfPageToolRegistration,
-	NodeCommandProcessAbortedError,
-	RenderPdfPageProcessAbortedError,
-} from "@vetta/runtime-node/coding";
-import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
+	type CodingToolActivation,
+	type CodingToolRegistration,
+	selectCodingToolRegistrations,
+} from "@vetta/runtime-tools";
 import {
 	type CodingAgentKnowledgeWriteOperations,
 	createCodingAgentKnowledgeWritePageToolRegistration,
@@ -19,10 +11,9 @@ import {
 import { createProgressToolRegistration } from "../../features/progress/index.js";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
-import { getCodingAgentOcrExecutionGate } from "../../tool-policy/ocr-execution-gate.js";
 
 export interface CodingAgentSpecializedToolOptions {
-	readonly cwd: string;
+	readonly platformRegistrations?: readonly CodingToolRegistration[];
 	readonly knowledgePageWriter?: CodingAgentKnowledgeWriteOperations;
 }
 
@@ -33,52 +24,12 @@ export interface CodingAgentSpecializedToolFeatureOptions {
 	) => Promise<CodingToolActivation> | CodingToolActivation;
 }
 
-/** 组装文档、OCR、进度与知识写入工具；工具执行合同由 runtime-tools 提供。 */
+/** 组装宿主专用 Tool 与 Coding Agent 的进度、知识写入产品 Tool。 */
 export function createCodingAgentSpecializedToolRegistrations(
 	options: CodingAgentSpecializedToolOptions,
 ): readonly CodingAgentRuntimeToolRegistration[] {
-	const commandProcess = createNodeCommandProcessHost();
-	const desktop = createNodeVettaDesktopCommandPort({ commandProcess });
-	const ocrExecutionGate = getCodingAgentOcrExecutionGate();
 	return [
-		createDocToPdfToolRegistration(options.cwd, {
-			operations: createNodeDocToPdfOperations({ commandProcess }),
-			modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.docToPdf,
-		}),
-		createHtmlToPdfToolRegistration(options.cwd, {
-			desktop,
-			modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.htmlToPdf,
-		}),
-		createExtractTextFromPdfToolRegistration(options.cwd, {
-			desktop,
-			process: desktop,
-			executionGate: ocrExecutionGate,
-			modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.extractTextFromPdf,
-		}),
-		createExtractTextFromImageToolRegistration(options.cwd, {
-			desktop,
-			executionGate: ocrExecutionGate,
-			modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.extractTextFromImage,
-		}),
-		createRenderPdfPageToolRegistration(options.cwd, {
-			process: {
-				async run(args, signal) {
-					try {
-						return await commandProcess.run("pdftoppm", args, {
-							signal,
-							timeoutMs: 5 * 60 * 1_000,
-							maxBufferBytes: 4 * 1_024 * 1_024,
-						});
-					} catch (error) {
-						if (error instanceof NodeCommandProcessAbortedError) {
-							throw new RenderPdfPageProcessAbortedError();
-						}
-						throw error;
-					}
-				},
-			},
-			modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.renderPdfPage,
-		}),
+		...(options.platformRegistrations ?? []).map(withCodingAgentSpecializedToolOrder),
 		createProgressToolRegistration({
 			modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.progress,
 		}),
@@ -91,6 +42,24 @@ export function createCodingAgentSpecializedToolRegistrations(
 				]
 			: []),
 	];
+}
+
+const SPECIALIZED_TOOL_MODEL_ORDER: Readonly<Record<string, number>> = {
+	doc_to_pdf: CODING_AGENT_MODEL_TOOL_ORDER.docToPdf,
+	html_to_pdf: CODING_AGENT_MODEL_TOOL_ORDER.htmlToPdf,
+	extract_text_from_pdf: CODING_AGENT_MODEL_TOOL_ORDER.extractTextFromPdf,
+	extract_text_from_img: CODING_AGENT_MODEL_TOOL_ORDER.extractTextFromImage,
+	render_pdf_page: CODING_AGENT_MODEL_TOOL_ORDER.renderPdfPage,
+};
+
+function withCodingAgentSpecializedToolOrder(registration: CodingToolRegistration): CodingAgentRuntimeToolRegistration {
+	const modelOrder = SPECIALIZED_TOOL_MODEL_ORDER[registration.tool.name];
+	if (modelOrder === undefined) return registration;
+	return {
+		...registration,
+		modelOrder,
+		tool: { ...registration.tool, modelOrder },
+	};
 }
 
 /** 专用工具按 Session 创建，避免把 Composition Root cwd 固化到其他会话。 */

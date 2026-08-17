@@ -1,5 +1,5 @@
 import type { ConversationScenario } from "@vetta/runtime-core";
-import type { BackgroundCommandService, CodingToolRegistration } from "@vetta/runtime-tools";
+import type { AsyncExecutionGate, BackgroundCommandService, CodingToolRegistration } from "@vetta/runtime-tools";
 
 export interface CodingAgentToolEnvironmentContext {
 	readonly cwd: string;
@@ -11,7 +11,14 @@ export interface CodingAgentToolEnvironmentContext {
 export interface CodingAgentToolEnvironment {
 	readonly registrations: readonly CodingToolRegistration[];
 	readonly backgroundService?: BackgroundCommandService;
+	readonly createSpecializedToolRegistrations?: (
+		context: CodingAgentSpecializedToolRegistrationContext,
+	) => readonly CodingToolRegistration[] | Promise<readonly CodingToolRegistration[]>;
 	dispose(): void;
+}
+
+export interface CodingAgentSpecializedToolRegistrationContext extends CodingAgentToolEnvironmentContext {
+	readonly ocrExecutionGate: AsyncExecutionGate;
 }
 
 export type CodingAgentToolEnvironmentFactory = (

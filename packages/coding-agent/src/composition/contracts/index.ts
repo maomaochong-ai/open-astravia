@@ -43,6 +43,7 @@ export type {
 	CodingAgentSubagentProfile,
 } from "./subagent.js";
 export type {
+	CodingAgentSpecializedToolRegistrationContext,
 	CodingAgentToolEnvironment,
 	CodingAgentToolEnvironmentContext,
 	CodingAgentToolEnvironmentFactory,
