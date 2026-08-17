@@ -38,6 +38,10 @@ All notable changes to `@vetta/im-gateway` are documented in this file.
 
 ### Fixed
 
+- 握手超时默认值从 10s 放宽到 30s（`config.DefaultHandshakeTimeout` 与 `hostclient/local` 内置默认值）。
+  desktop 宿主用 Vetta.app 自身作为 agent 二进制，应用启动或更新后的**首次** session 要付一次
+  Electron + asar 冷启动代价（实测 arm64 Mac ~10s，缓存热了之后 ~1s），10s 预算会正好输掉这场竞速，
+  表现为 `handshake timed out after 10s`，且 stderr 停在启动中途（如 `[skills] loaded`）。
 - `hostclient/local` 的握手超时错误现在会附带子进程 stderr（`handshake timed out after 10s; subprocess stderr: ...`）。此前只有「subprocess exited during handshake」路径会带 stderr，纯超时（子进程仍存活但不回 get_state，例如 Linux 上子 Electron 卡在 sandbox/GPU 初始化）则把 stderr 整个吞掉，导致无法定位真因。
 - Windows desktop-app host mode now supports `InitFrame.codingAgent.runAsNode`; when set, `hostclient/local` spawns the configured Electron executable with `ELECTRON_RUN_AS_NODE=1`. This lets Windows packaged desktop builds run coding-agent RPC over reliable Node stdio instead of GUI Electron stdio, fixing WeChat/Claw messages failing at `subprocess exited during handshake`.
 

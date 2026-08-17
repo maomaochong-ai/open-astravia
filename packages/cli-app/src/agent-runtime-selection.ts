@@ -2,6 +2,7 @@ import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
 import { runCodingAgentCliControl } from "@vetta/coding-agent/cli-control";
 import { getAgentDir } from "@vetta/coding-agent/config";
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
+import type { CodingAgentAuthRuntime } from "@vetta/coding-agent/host-services";
 import { RPC_FAILURE_CODES, stringifyRpcStartupFailure } from "@vetta/coding-agent/rpc";
 import { ConversationOwnershipConflictError } from "@vetta/runtime-storage/conversation";
 import { classifyAgentCliIntent } from "./agent-cli-intent.js";
@@ -21,6 +22,15 @@ import { SessionCompatibilityError } from "./session-compatibility-error.js";
 
 export interface RunAgentRuntimeCliOptions {
 	readonly htmlExporter?: CodingAgentHtmlExportRuntime;
+	/**
+	 * 宿主在 bootstrap 完成、模型解析开始之前注入运行时 API Key。
+	 *
+	 * Desktop 把自定义 provider 的明文 key 存在 safeStorage 保险库里，
+	 * `models.json` 只留 `credentialRef`，所以子进程单靠读 models.json /
+	 * auth.json 拿不到凭据：ModelRuntime 会回落到本地 provider 的
+	 * "no auth" 占位串，远端 provider（deepseek 等）随即 401。
+	 */
+	readonly injectRuntimeCredentials?: (authStorage: CodingAgentAuthRuntime) => void | Promise<void>;
 }
 
 export async function runAgentRuntimeCli(
@@ -33,7 +43,11 @@ export async function runAgentRuntimeCli(
 		if (
 			!(await runCodingAgentCliControl([...args], {
 				htmlExporter: options.htmlExporter,
-				createBootstrap: (controlArgs) => createCliCodingAgentBootstrap({ args: controlArgs }),
+				createBootstrap: async (controlArgs) => {
+					const controlBootstrap = await createCliCodingAgentBootstrap({ args: controlArgs });
+					await options.injectRuntimeCredentials?.(controlBootstrap.authStorage);
+					return controlBootstrap;
+				},
 				createPackageCommandRuntime: () => {
 					const cwd = process.cwd();
 					const agentDir = getAgentDir();
@@ -50,6 +64,8 @@ export async function runAgentRuntimeCli(
 		return;
 	}
 	const bootstrap = await createCliCodingAgentBootstrap({ args: [...args] });
+	// 必须早于 prepare*RuntimeHost：模型解析与可用性过滤都会读凭据。
+	await options.injectRuntimeCredentials?.(bootstrap.authStorage);
 	const conversationDir = resolveCodingAgentSessionDir(bootstrap.cwd, bootstrap.parsed.sessionDir);
 	const sessionCatalog = createCliRuntimeSessionCatalog({
 		cwd: bootstrap.cwd,

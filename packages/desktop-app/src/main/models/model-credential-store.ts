@@ -1,4 +1,4 @@
-import type { AuthStorage } from "@vetta/coding-agent/host-services";
+import type { CodingAgentAuthRuntime } from "@vetta/coding-agent/host-services";
 import type { CredentialVault } from "../credentials/credential-vault.js";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getAppLogger } from "../logger.js";
@@ -51,7 +51,7 @@ export class DesktopModelCredentialStore implements ModelCredentialStore {
 		this.vault.remove(modelApiKeyRef(credentialRef));
 	}
 
-	syncToAuthStorage(authStorage: AuthStorage, providers: Record<string, { credentialRef?: string }>): void {
+	syncToAuthStorage(authStorage: CodingAgentAuthRuntime, providers: Record<string, { credentialRef?: string }>): void {
 		const nextProviderIds = new Set<string>();
 		for (const [providerId, provider] of Object.entries(providers)) {
 			if (!provider.credentialRef) continue;

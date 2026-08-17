@@ -23,6 +23,8 @@ export interface ProjectsPanelModel {
 	defaultConversationFilter: DefaultConversationFilter;
 	defaultProject: Project | undefined;
 	defaultSessions: SessionInfo[];
+	/** 默认区会话真正所属的 cwd：claw 过滤下是 im-gateway 的 cwd，而非 defaultProject.cwd。 */
+	defaultSessionsCwd: string;
 	expandedBatchProjects: Set<string>;
 	expandedProjects: Set<string>;
 	filteredProjects: Project[];
