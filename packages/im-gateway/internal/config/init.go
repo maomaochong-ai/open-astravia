@@ -79,7 +79,9 @@ hostClient:
   # Maximum number of concurrent coding-agent subprocesses. Default 8.
   poolMaxSize: 8
   # How long OpenSession waits for the subprocess's first JSON line.
-  handshakeTimeout: 10s
+  # The first session after a desktop app launch/update pays an Electron
+  # cold start (~10s), so keep this well above the warm-start latency.
+  handshakeTimeout: 30s
   # How long Close() waits for graceful exit before SIGKILL.
   closeTimeout: 5s
 

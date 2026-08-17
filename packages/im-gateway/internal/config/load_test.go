@@ -52,7 +52,7 @@ func TestLoadConfig_ValidYAML(t *testing.T) {
     baseUrl: https://example.invalid
 hostClient:
   poolMaxSize: 16
-  handshakeTimeout: 30s
+  handshakeTimeout: 45s
 logging:
   level: debug
 paths:
@@ -76,8 +76,8 @@ paths:
 	if cfg.HostClient.PoolMaxSize != 16 {
 		t.Errorf("pool size: want 16, got %d", cfg.HostClient.PoolMaxSize)
 	}
-	if cfg.HostClient.HandshakeTimeout != 30*time.Second {
-		t.Errorf("handshake timeout: want 30s, got %v", cfg.HostClient.HandshakeTimeout)
+	if cfg.HostClient.HandshakeTimeout != 45*time.Second {
+		t.Errorf("handshake timeout: want 45s, got %v", cfg.HostClient.HandshakeTimeout)
 	}
 	if cfg.Logging.Level != "debug" {
 		t.Errorf("log level: want debug, got %q", cfg.Logging.Level)

@@ -1,6 +1,6 @@
-import type { AsyncExecutionGate } from "./desktop-command.js";
+import type { AsyncExecutionGate } from "./host/desktop-command.js";
 
-/** 创建 FIFO 并发执行门；失败任务也会释放额度。 */
+/** Creates a FIFO concurrency gate; rejected operations still release their slot. */
 export function createAsyncExecutionGate(maxConcurrent: number): AsyncExecutionGate {
 	const limit = Math.max(1, Math.floor(maxConcurrent));
 	let active = 0;

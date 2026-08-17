@@ -61,6 +61,10 @@ export default defineConfig(({ mode }) => {
 		resolve: {
 			alias: {
 				x11: resolve(process.cwd(), "src/main/shims/x11.ts"),
+				// Electron 的 Node 没有 node:sqlite。undici 的惰性探测被 Rollup 提升成
+				// chunk 顶层静态 import，真实内置模块缺失会让整个 chunk 加载失败，
+				// 连带 EnvHttpProxyAgent 装不上（详见 shims/node-sqlite.ts）。
+				"node:sqlite": resolve(process.cwd(), "src/main/shims/node-sqlite.ts"),
 			},
 		},
 		build: {
@@ -82,8 +86,10 @@ export default defineConfig(({ mode }) => {
 			rollupOptions: {
 				external: [
 					"electron",
-					...builtinModules,
-					...builtinModules.map((m) => `node:${m}`),
+					// node:sqlite 走上面的 shim，不能标成 external：标了 external 就会
+					// 在产物里留下对真实内置模块的静态 import，而 Electron 没有它。
+					...builtinModules.filter((m) => m !== "sqlite" && m !== "node:sqlite"),
+					...builtinModules.filter((m) => m !== "sqlite" && m !== "node:sqlite").map((m) => `node:${m}`),
 					...developmentWorkspacePackages,
 					// Photon-node ships as CJS with __dirname-based WASM loading.
 					// Inlining it into this ESM bundle makes Node interpret its .js

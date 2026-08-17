@@ -13,6 +13,47 @@ import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-pe
 import { createMemoryTextStorage } from "../fixtures/memory-storage.js";
 
 describe("Coding Agent Session Initialization Transaction", () => {
+	it("creates platform specialized tools with the current Session context", async () => {
+		const conversationDir = await mkdtemp(join(tmpdir(), "coding-agent-specialized-tool-host-"));
+		const createSpecializedToolRegistrations = vi.fn(() => []);
+		const composition = await createCodingAgentRuntimeComposition({
+			conversationDir,
+			modelRegistry: modelRegistry(),
+			initialModel: MODEL,
+			initialThinkingLevel: "off",
+			enableSubagents: false,
+			activation: { mode: "explicit", toolNames: [] },
+			agentDir: "C:/agent-home",
+			createToolEnvironment: () => ({
+				registrations: [],
+				createSpecializedToolRegistrations,
+				dispose() {},
+			}),
+		});
+
+		try {
+			const first = await composition.backend.create({ sessionId: "first", cwd: "C:/first-workspace" });
+			const second = await composition.backend.create({ sessionId: "second", cwd: "C:/second-workspace" });
+			expect(createSpecializedToolRegistrations).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({
+					cwd: "C:/first-workspace",
+					agentDir: "C:/agent-home",
+					scenario: "cli",
+					ocrExecutionGate: expect.objectContaining({ run: expect.any(Function) }),
+				}),
+			);
+			expect(createSpecializedToolRegistrations).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ cwd: "C:/second-workspace" }),
+			);
+			await Promise.all([first.dispose(), second.dispose()]);
+		} finally {
+			await composition.dispose().catch(() => undefined);
+			await rm(conversationDir, { force: true, recursive: true });
+		}
+	});
+
 	it("rolls back acquired resources in reverse order and allows the same Session to restart", async () => {
 		const conversationDir = await mkdtemp(join(tmpdir(), "coding-agent-session-initialization-"));
 		const rollbackOrder: string[] = [];

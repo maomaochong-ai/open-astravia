@@ -788,6 +788,11 @@ function checkPortableProductToolOwnership(state, violations) {
 	const retiredNodeToolRoots = ["current-time", "progress", "task-output", "task-stop", "im-send-attachment"].map(
 		(name) => `packages/runtime-node/src/coding/tools/${name}/`,
 	);
+	const portableProductCompositionPaths = new Set([
+		`${SOURCE_ROOT}/composition/tool-surface/specialized-tools.ts`,
+		`${SOURCE_ROOT}/tool-policy/ocr-execution-gate.ts`,
+	]);
+	const retiredNodeMechanismPath = "packages/runtime-node/src/coding/shared/async-execution-gate.ts";
 
 	for (const edge of state.edges) {
 		if (
@@ -796,10 +801,18 @@ function checkPortableProductToolOwnership(state, violations) {
 		) {
 			violations.push(`${edge.path}:${edge.line}: portable Coding Agent Tool Features must consume Runtime ports`);
 		}
+		if (portableProductCompositionPaths.has(edge.path) && edge.specifier.startsWith("@vetta/runtime-node")) {
+			violations.push(
+				`${edge.path}:${edge.line}: Coding Agent product Tool composition must consume host factories`,
+			);
+		}
 	}
 	for (const file of state.files) {
 		if (retiredNodeToolRoots.some((root) => file.path.startsWith(root))) {
 			violations.push(`${file.path}: portable product Tool definitions belong to Coding Agent Features`);
+		}
+		if (file.path === retiredNodeMechanismPath) {
+			violations.push(`${file.path}: platform-neutral execution gates belong to runtime-tools`);
 		}
 	}
 
@@ -811,6 +824,9 @@ function checkPortableProductToolOwnership(state, violations) {
 		)
 	) {
 		violations.push(`${nodeCodingEntry.path}: runtime-node must not export portable Coding Agent product Tools`);
+	}
+	if (nodeCodingEntry && /\.\/shared\/async-execution-gate\.js/.test(nodeCodingEntry.text)) {
+		violations.push(`${nodeCodingEntry.path}: runtime-node must not export platform-neutral execution gates`);
 	}
 
 	const nodeEnvironment = state.files.find(

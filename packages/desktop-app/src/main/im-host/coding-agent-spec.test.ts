@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-const runtimeSelector = vi.hoisted(() => vi.fn(async () => {}));
+// 形参必须显式声明：断言要读第二个参数（runAgentRuntimeCli 的 options）。
+const runtimeSelector = vi.hoisted(() =>
+	vi.fn(async (_args: readonly string[], _options?: { injectRuntimeCredentials?: unknown }) => {}),
+);
 
 vi.mock("electron", () => ({
 	app: {
@@ -67,7 +70,27 @@ describe("IM coding-agent invocation", () => {
 		});
 
 		await expect(runAgentRpcCommand(["--mode", "rpc"])).resolves.toBe(0);
-		expect(runtimeSelector).toHaveBeenCalledWith(["--mode", "rpc"]);
+		expect(runtimeSelector).toHaveBeenCalledWith(["--mode", "rpc"], expect.anything());
+	});
+
+	test("即使凭据装配不可用也照常把子进程拉起来", async () => {
+		// 保险库/日志子系统出问题时只能不注入凭据（自定义 provider 会自己报鉴权错），
+		// 但绝不能让整个 Claw 子进程起不来——本地无鉴权 provider 本来还能用。
+		Object.defineProperty(process, "resourcesPath", {
+			configurable: true,
+			value: "C:\\resources",
+		});
+		vi.doMock("../models/model-credential-store.js", () => {
+			throw new Error("safeStorage unavailable");
+		});
+		const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+
+		await expect(runAgentRpcCommand(["--mode", "rpc"])).resolves.toBe(0);
+
+		expect(runtimeSelector).toHaveBeenCalledOnce();
+		expect(runtimeSelector.mock.calls[0]?.[1]).toMatchObject({ injectRuntimeCredentials: undefined });
+		expect(stderr).toHaveBeenCalledWith(expect.stringContaining("凭据注入不可用"));
+		vi.doUnmock("../models/model-credential-store.js");
 	});
 
 	test("packages the Windows RPC entry from cli-app instead of the Legacy coding-agent CLI", () => {

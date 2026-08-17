@@ -1,3 +1,4 @@
+export { createAsyncExecutionGate } from "./async-execution-gate.js";
 export {
 	CODING_TOOL_AVAILABILITY_ERROR_CODES,
 	CodingToolAvailabilityError,

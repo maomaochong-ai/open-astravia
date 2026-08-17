@@ -70,7 +70,13 @@ type HostClientConfig struct {
 
 	// HandshakeTimeout is how long OpenSession will wait for the subprocess
 	// to emit its first JSON line before giving up. Zero means use the
-	// default (10s).
+	// default (30s).
+	//
+	// The desktop host spawns Vetta.app itself as the agent, so the FIRST
+	// session after an app launch or update pays a full Electron + asar cold
+	// start (measured ~10s on a warm-disk arm64 Mac, vs ~1s once cached).
+	// A 10s budget lost that race and surfaced as "handshake timed out" with
+	// stderr cut off mid-startup.
 	HandshakeTimeout time.Duration `yaml:"handshakeTimeout,omitempty"`
 
 	// CloseTimeout is how long Close() waits for the subprocess to exit
@@ -80,7 +86,7 @@ type HostClientConfig struct {
 
 const (
 	DefaultPoolMaxSize      = 8
-	DefaultHandshakeTimeout = 10 * time.Second
+	DefaultHandshakeTimeout = 30 * time.Second
 	DefaultCloseTimeout     = 5 * time.Second
 )
 

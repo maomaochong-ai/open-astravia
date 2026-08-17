@@ -16,8 +16,8 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { resolveDesktopSessionOpenTarget } from "@/shared/session-access";
 import { resolveProjectGoneCleanup } from "../../../../hooks/project-gone-cleanup";
+import { resolveSessionOpenTarget } from "../../../../hooks/session-open-target";
 import { useProjects } from "../../../../hooks/useProjects";
 import type { BatchProjectEntry, ProjectsPanelModel, ProjectsPanelProps } from "./types";
 
@@ -125,6 +125,9 @@ export function useProjectsPanelModel({
 
 	const showBatchGroup = filter === "all" || filter === "batch";
 	const defaultProject = useMemo(() => projects.find((project) => project.isDefault), [projects]);
+	// 默认区的会话来源 cwd：claw 过滤读 im-gateway 自己的 cwd（ADR-0005），
+	// 与 defaultProject.cwd 是两个物理目录，选中 / 重命名都必须用这个值。
+	const defaultSessionsCwd = defaultConversationFilter === "claw" ? imCwd : defaultProject?.cwd;
 	const filteredProjects = useMemo(() => {
 		const visible = projects.filter((project) => project.type !== "batch" && !project.isDefault);
 		if (filter === "all") return visible;
@@ -149,10 +152,9 @@ export function useProjectsPanelModel({
 		[navigate],
 	);
 
-	const selectSession = useCallback(
+	const openSessionByTarget = useCallback(
 		(cwd: string, path: string) => {
-			const session = sessionsMap.get(cwd)?.find((item) => item.path === path);
-			const target = session?.access ? resolveDesktopSessionOpenTarget(session.access) : "interactive";
+			const target = resolveSessionOpenTarget(sessionsMap.get(cwd), path);
 			if (target === "viewer") {
 				void navigate({ to: "/viewer/$path", params: { path: encodeURIComponent(path) } });
 				return;
@@ -162,6 +164,8 @@ export function useProjectsPanelModel({
 		},
 		[onOpenSession, sessionsMap, navigate],
 	);
+
+	const selectSession = openSessionByTarget;
 
 	const selectBatchSession = useCallback(
 		(_cwd: string, path: string) => {
@@ -173,19 +177,9 @@ export function useProjectsPanelModel({
 		[visibleBatchProjects, onOpenSession],
 	);
 
-	const defaultSelectSession = useCallback(
-		(cwd: string, path: string) => {
-			const session = sessionsMap.get(cwd)?.find((item) => item.path === path);
-			const target = session?.access ? resolveDesktopSessionOpenTarget(session.access) : "interactive";
-			if (target === "viewer") {
-				void navigate({ to: "/viewer/$path", params: { path: encodeURIComponent(path) } });
-				return;
-			}
-			if (target === "unavailable") return;
-			void onOpenSession(cwd, path);
-		},
-		[onOpenSession, navigate, sessionsMap],
-	);
+	// 默认区（含 claw）与项目区共用同一套判定；cwd 由 defaultSessionsCwd 逐层传下，
+	// 保证查 access 用的是会话真正所属的 cwd。
+	const defaultSelectSession = openSessionByTarget;
 
 	const deletePanelSession = useCallback(
 		(session: { cwd: string; path: string }) => {
@@ -412,7 +406,6 @@ export function useProjectsPanelModel({
 		}
 	}, [defaultConversationFilter, imCwd, loadSessions]);
 
-	const defaultSessionsCwd = defaultConversationFilter === "claw" ? imCwd : defaultProject?.cwd;
 	const defaultSessions = defaultSessionsCwd
 		? (sessionsMap.get(defaultSessionsCwd) ?? EMPTY_SESSIONS)
 		: EMPTY_SESSIONS;
@@ -423,6 +416,7 @@ export function useProjectsPanelModel({
 		defaultConversationFilter,
 		defaultProject,
 		defaultSessions,
+		defaultSessionsCwd: defaultSessionsCwd ?? "",
 		defaultSessionsLoading: Boolean(
 			defaultSessionsCwd && sessionLoadingCwds.has(defaultSessionsCwd) && !sessionsMap.has(defaultSessionsCwd),
 		),

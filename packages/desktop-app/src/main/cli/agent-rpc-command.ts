@@ -52,13 +52,54 @@ function resolveCodingAgentPackageDir(): string {
 	return join(appRoot, "..", "coding-agent");
 }
 
+/**
+ * 组装凭据注入回调：models.json 只留 `credentialRef`，明文 key 在 safeStorage
+ * 保险库里，只有这个 Electron 子进程能解密（见 models/agent-rpc-model-credentials.ts）。
+ *
+ * 全程动态 import：`model-credential-store` / `logger` 在模块顶层就建 logger 实例，
+ * 静态导入会把它们提到 logger 模块自身初始化之前求值，主进程加载直接挂在
+ * "Cannot access 'appLoggingConfigured' before initialization"。Rollup 关于
+ * 「既动态又静态导入」的提示无害。
+ *
+ * 装配失败（保险库不可用、日志子系统异常等）只降级为「不注入」：宁可让后续模型调用
+ * 报自己的鉴权错误，也不能让整个 Claw 子进程起不来——本地无鉴权 provider 本来能用。
+ */
+async function loadRuntimeCredentialInjector(): Promise<
+	NonNullable<Parameters<typeof import("@vetta/cli-app").runAgentRuntimeCli>[1]>["injectRuntimeCredentials"]
+> {
+	try {
+		const [{ syncAgentRpcModelCredentials }, { getDesktopModelCredentialStore }, { getAppLogger }] =
+			await Promise.all([
+				import("../models/agent-rpc-model-credentials.js"),
+				import("../models/model-credential-store.js"),
+				import("../logger.js"),
+			]);
+		return (authStorage) =>
+			syncAgentRpcModelCredentials({
+				authStorage,
+				credentials: getDesktopModelCredentialStore(),
+				onError: (error) => {
+					getAppLogger("agent-rpc-credentials").warn("无法注入自定义 provider 凭据，模型调用可能鉴权失败", {
+						error: error instanceof Error ? error.message : String(error),
+					});
+				},
+			});
+	} catch (error) {
+		// logger 本身可能就是失败的那一环，只能直接写 stderr。
+		const reason = error instanceof Error ? error.message : String(error);
+		process.stderr.write(`[agent-rpc] 凭据注入不可用，自定义 provider 可能鉴权失败: ${reason}\n`);
+		return undefined;
+	}
+}
+
 export async function runAgentRpcCommand(args: string[]): Promise<number> {
 	try {
 		if (!process.env.VETTA_PACKAGE_DIR && !process.env.PI_PACKAGE_DIR) {
 			process.env.VETTA_PACKAGE_DIR = resolveCodingAgentPackageDir();
 		}
 		const { runAgentRuntimeCli } = await import("@vetta/cli-app");
-		await runAgentRuntimeCli(args);
+		const injectRuntimeCredentials = await loadRuntimeCredentialInjector();
+		await runAgentRuntimeCli(args, { injectRuntimeCredentials });
 		return typeof process.exitCode === "number" ? process.exitCode : 0;
 	} catch (err) {
 		const msg = err instanceof Error ? (err.stack ?? err.message) : String(err);
