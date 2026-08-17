@@ -166,7 +166,7 @@ describe("ComfyUI media provider", () => {
 		expect(submittedPrompt?.load.inputs.image).toBe("uploads/input.png");
 		expect(submittedPrompt?.generate.inputs.prompt).toBe("a slow camera move");
 		expect(submittedPrompt?.resolution.inputs.aspect_ratio).toBe("16:9 (Widescreen)");
-		expect(submittedPrompt?.resolution.inputs.megapixels).toBe(0.98);
+		expect(submittedPrompt?.resolution.inputs.megapixels).toBe(2.25);
 		expect(submittedPrompt?.resolution.inputs.multiple).toBe(32);
 		expect(submittedPrompt?.duration.inputs.value).toBe(10);
 
@@ -244,7 +244,7 @@ describe("ComfyUI media provider", () => {
 					kind: "video",
 					mode: "text-to-video",
 					prompt: "city lights",
-					resolution: "2k",
+					resolution: "8k",
 					inputs: [],
 				},
 				{ invocationId: "invalid-resolution", uploadInput },
@@ -253,7 +253,7 @@ describe("ComfyUI media provider", () => {
 			status: "failed",
 			error: {
 				code: "invalid-request",
-				message: "Unsupported MiniMax H3 resolution preset: 2k",
+				message: "Unsupported MiniMax H3 resolution preset: 8k",
 				retryable: false,
 			},
 		});
