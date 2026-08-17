@@ -1,6 +1,6 @@
 import { Button } from "@shared/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@shared/components/ui/tooltip";
-import { aggregatePromptCacheUsage, type Usage } from "@vetta/ai";
+import { aggregatePromptCacheUsage, type Usage } from "@vetta/ai/protocol";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
