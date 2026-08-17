@@ -142,6 +142,13 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **设计任务不再卡在「正在工作」**：插件离屏截图的 `timeoutMs` 此前只覆盖就绪表达式的轮询间隙，
+  `loadURL`、`executeJavaScript`、`capturePage` 任何一步永不返回（隐藏 renderer 崩溃、设计稿主线程
+  被死循环占住）就会无限期挂着；同 `sessionKey` 的请求又是串行的，一次卡死会把后续截图全部堵在
+  后面——表现为设计已经改完、右侧画布不再刷新、左侧会话一直停在「正在工作」，刷新后才发现该轮
+  早就结束。现在整次截图受统一的 wall-clock 期限约束，超时即销毁该隐藏窗口，下一次请求换新窗口
+  重来；renderer 崩溃也会立刻回收窗口而不是等满超时。
+
 - **Claw 用自定义 provider 不再报 401**：桌面端把自定义 provider 的明文 API Key 存进 safeStorage
   保险库，`models.json` 只留 `credentialRef`，而 Claw 的 agent-rpc 子进程走 `@vetta/cli-app` 自建
   bootstrap，只读 `models.json` / `auth.json`，拿不到凭据后回落到本地 provider 的
