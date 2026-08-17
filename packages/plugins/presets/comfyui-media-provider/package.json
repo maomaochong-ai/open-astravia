@@ -6,7 +6,7 @@
 	"scripts": {
 		"build": "bunx vite build",
 		"check": "bunx tsc --noEmit",
-		"test": "bunx vitest --run"
+		"test": "bun ../../../../scripts/quality/run-vitest.mjs --run"
 	},
 	"devDependencies": {
 		"@vetta-org/plugin-sdk": "workspace:*",

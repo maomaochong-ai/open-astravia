@@ -1,4 +1,3 @@
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import {
 	applyMemoryDocumentOperation,
 	DEFAULT_MEMORY_CHAR_LIMIT,
@@ -7,6 +6,7 @@ import {
 	type MemoryState,
 	parseMemoryEntries,
 } from "./memory-document.js";
+import type { MemoryTextStorage } from "./memory-storage.js";
 
 export interface MemoryStore {
 	readContent(): string;
@@ -14,23 +14,23 @@ export interface MemoryStore {
 	apply(action: MemoryAction, input: MemoryOperationInput): MemoryState;
 }
 
-export interface FileMemoryStoreOptions {
-	readonly path: string;
+export interface MemoryStoreOptions {
+	readonly storage: MemoryTextStorage;
 	readonly charLimit?: number;
 }
 
-export class FileMemoryStore implements MemoryStore {
-	readonly path: string;
+export class MemoryDocumentStore implements MemoryStore {
+	private readonly storage: MemoryTextStorage;
 	readonly charLimit: number;
 
-	constructor(options: FileMemoryStoreOptions) {
-		this.path = options.path;
+	constructor(options: MemoryStoreOptions) {
+		this.storage = options.storage;
 		this.charLimit = options.charLimit ?? DEFAULT_MEMORY_CHAR_LIMIT;
 	}
 
 	readContent(): string {
 		try {
-			return existsSync(this.path) ? readFileSync(this.path, "utf8") : "";
+			return this.storage.read() ?? "";
 		} catch {
 			return "";
 		}
@@ -42,9 +42,7 @@ export class FileMemoryStore implements MemoryStore {
 
 	apply(action: MemoryAction, input: MemoryOperationInput): MemoryState {
 		const change = applyMemoryDocumentOperation(this.readContent(), action, input, this.charLimit);
-		const temporaryPath = `${this.path}.tmp`;
-		writeFileSync(temporaryPath, change.content);
-		renameSync(temporaryPath, this.path);
+		this.storage.replace(change.content);
 		return change.state;
 	}
 }

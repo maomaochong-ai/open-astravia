@@ -15,8 +15,33 @@ export default defineConfig({
 			"@vetta/runtime-storage/conversation": fileURLToPath(
 				new URL("../runtime-storage/src/conversation/index.ts", import.meta.url),
 			),
+			"@vetta/runtime-node/sandbox": fileURLToPath(
+				new URL("../runtime-node/src/sandbox/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-node/conversation/legacy": fileURLToPath(
+				new URL("../runtime-node/src/conversation/legacy.ts", import.meta.url),
+			),
+			"@vetta/runtime-node/conversation": fileURLToPath(
+				new URL("../runtime-node/src/conversation/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-node/coding": fileURLToPath(
+				new URL("../runtime-node/src/coding/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-node/host": fileURLToPath(new URL("../runtime-node/src/host/index.ts", import.meta.url)),
+			"@vetta/runtime-node/mcp": fileURLToPath(new URL("../runtime-node/src/mcp/index.ts", import.meta.url)),
 			"@vetta/runtime-tools/coding": fileURLToPath(
 				new URL("../runtime-tools/src/coding/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-tools": fileURLToPath(new URL("../runtime-tools/src/index.ts", import.meta.url)),
+			"@vetta/runtime-mcp/auth": fileURLToPath(new URL("../runtime-mcp/src/auth/index.ts", import.meta.url)),
+			"@vetta/runtime-mcp/client": fileURLToPath(
+				new URL("../runtime-mcp/src/client/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-mcp/config": fileURLToPath(
+				new URL("../runtime-mcp/src/config/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-mcp/protocol": fileURLToPath(
+				new URL("../runtime-mcp/src/protocol/index.ts", import.meta.url),
 			),
 			"@vetta/runtime-mcp": fileURLToPath(new URL("../runtime-mcp/src/index.ts", import.meta.url)),
 			"@vetta/runtime-core/kernel": fileURLToPath(
@@ -27,6 +52,9 @@ export default defineConfig({
 			),
 			"@vetta/runtime-core/sandbox": fileURLToPath(
 				new URL("../runtime-core/src/sandbox/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-core/session-extensions": fileURLToPath(
+				new URL("../runtime-core/src/session-extensions/index.ts", import.meta.url),
 			),
 			"@vetta/runtime-core": fileURLToPath(new URL("../runtime-core/src/index.ts", import.meta.url)),
 		},

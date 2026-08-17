@@ -6,6 +6,10 @@ import type {
 	RuntimeSession,
 	RuntimeSessionInputQueueMode,
 } from "@vetta/runtime-core";
+import {
+	CODING_AGENT_TODO_CLEAR,
+	CODING_AGENT_TODO_READ,
+} from "../../features/todo/todo-session-extension-contract.js";
 import type { CodingAgentRetryEvent } from "../../public-api/sdk/sdk-event-contract.js";
 import type {
 	CodingAgentMemoryConfiguration,
@@ -321,15 +325,15 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 	}
 
 	readTodos() {
-		return (
-			this.readCore()
-				.todoController?.readItems()
-				.map((item) => ({ ...item })) ?? []
-		);
+		const host = this.readCore().extensionHost;
+		return host?.hasEndpoint(CODING_AGENT_TODO_READ)
+			? host.invokeSync(CODING_AGENT_TODO_READ, undefined).map((item) => ({ ...item }))
+			: [];
 	}
 
 	clearTodos(): boolean {
-		return this.readCore().todoController?.clear() ?? false;
+		const host = this.readCore().extensionHost;
+		return host?.hasEndpoint(CODING_AGENT_TODO_CLEAR) ? host.invokeSync(CODING_AGENT_TODO_CLEAR, undefined) : false;
 	}
 
 	readMemoryConfiguration(): CodingAgentMemoryConfiguration {

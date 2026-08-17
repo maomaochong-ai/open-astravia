@@ -613,8 +613,7 @@ function createTheme(themeJson: ThemeJson, mode?: ColorMode, sourcePath?: string
 	});
 }
 
-export function loadThemeFromPath(themePath: string, mode?: ColorMode): Theme {
-	const content = fs.readFileSync(themePath, "utf-8");
+export function loadThemeFromContent(themePath: string, content: string, mode?: ColorMode): Theme {
 	const themeJson = parseThemeJsonContent(themePath, content);
 	return createTheme(themeJson, mode, themePath);
 }
@@ -1059,4 +1058,4 @@ export function getLanguageFromPath(filePath: string): string | undefined {
 
 // Terminal rendering theme helpers (getMarkdownTheme / getSelectListTheme /
 // getEditorTheme / getSettingsListTheme) were removed together with the TUI
-// product — they returned pi-tui theme objects with no remaining consumers.
+// application — they returned pi-tui theme objects with no remaining consumers.

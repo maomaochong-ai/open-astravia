@@ -9,6 +9,10 @@ export default defineConfig({
 	root: __dirname,
 	resolve: {
 		alias: [
+			{
+				find: "@vetta/runtime-node/conversation/legacy",
+				replacement: resolve(__dirname, "../runtime-node/src/conversation/legacy.ts"),
+			},
 			{ find: "@", replacement: resolve(__dirname, "./src") },
 			{ find: "@shared", replacement: resolve(__dirname, "./src/renderer/shared") },
 			{ find: "@domains", replacement: resolve(__dirname, "./src/renderer/domains") },
@@ -16,15 +20,21 @@ export default defineConfig({
 				find: "@vetta-org/plugin-sdk/manifest",
 				replacement: resolve(__dirname, "../plugins/plugin-sdk/src/manifest.ts"),
 			},
+			{ find: "@vetta/ai/testing", replacement: resolve(__dirname, "../ai/src/testing/index.ts") },
+			{ find: "@vetta/ai/protocol", replacement: resolve(__dirname, "../ai/src/protocol/index.ts") },
 			{ find: "@vetta/ai", replacement: resolve(__dirname, "../ai/src/index.ts") },
 			{ find: "@vetta/agent-core", replacement: resolve(__dirname, "../agent/src/index.ts") },
 			{
 				find: "@vetta/coding-agent/host",
-				replacement: resolve(__dirname, "../coding-agent/src/adapters/runtime-tools/index.ts"),
+				replacement: resolve(__dirname, "../coding-agent/src/host/tool-environment/node/index.ts"),
 			},
 			{
 				find: "@vetta/coding-agent/composition",
 				replacement: resolve(__dirname, "../coding-agent/src/composition/index.ts"),
+			},
+			{
+				find: "@vetta/coding-agent/session-extensions",
+				replacement: resolve(__dirname, "../coding-agent/src/public-api/session-extensions.ts"),
 			},
 			{
 				find: "@vetta/coding-agent/bootstrap",
@@ -56,8 +66,8 @@ export default defineConfig({
 				replacement: resolve(__dirname, "../coding-agent/src/public-api/profile.ts"),
 			},
 			{
-				find: "@vetta/coding-agent/product-prompt",
-				replacement: resolve(__dirname, "../coding-agent/src/public-api/product-prompt.ts"),
+				find: "@vetta/coding-agent/cli-guidance",
+				replacement: resolve(__dirname, "../coding-agent/src/public-api/cli-guidance.ts"),
 			},
 			{
 				find: "@vetta/coding-agent/resources",
@@ -70,6 +80,10 @@ export default defineConfig({
 			{
 				find: "@vetta/coding-agent/runtime",
 				replacement: resolve(__dirname, "../coding-agent/src/public-api/runtime.ts"),
+			},
+			{
+				find: "@vetta/coding-agent/settings",
+				replacement: resolve(__dirname, "../coding-agent/src/public-api/settings.ts"),
 			},
 			{ find: /^@vetta\/coding-agent\/(.+)\.js$/, replacement: `${codingAgentSrc}/$1.ts` },
 			{ find: "@vetta/coding-agent", replacement: resolve(__dirname, "../coding-agent/src/index.ts") },
@@ -85,7 +99,19 @@ export default defineConfig({
 				find: "@vetta/runtime-core/sandbox",
 				replacement: resolve(__dirname, "../runtime-core/src/sandbox/index.ts"),
 			},
+			{
+				find: "@vetta/runtime-core/session-extensions",
+				replacement: resolve(__dirname, "../runtime-core/src/session-extensions/index.ts"),
+			},
 			{ find: "@vetta/runtime-core", replacement: resolve(__dirname, "../runtime-core/src/index.ts") },
+			{ find: "@vetta/runtime-desktop", replacement: resolve(__dirname, "../runtime-desktop/src/index.ts") },
+			{ find: "@vetta/runtime-mcp/auth", replacement: resolve(__dirname, "../runtime-mcp/src/auth/index.ts") },
+			{ find: "@vetta/runtime-mcp/client", replacement: resolve(__dirname, "../runtime-mcp/src/client/index.ts") },
+			{ find: "@vetta/runtime-mcp/config", replacement: resolve(__dirname, "../runtime-mcp/src/config/index.ts") },
+			{
+				find: "@vetta/runtime-mcp/protocol",
+				replacement: resolve(__dirname, "../runtime-mcp/src/protocol/index.ts"),
+			},
 			{ find: "@vetta/runtime-mcp", replacement: resolve(__dirname, "../runtime-mcp/src/index.ts") },
 			{
 				find: "@vetta/runtime-knowledge",
@@ -96,12 +122,36 @@ export default defineConfig({
 				replacement: resolve(__dirname, "../runtime-storage/src/conversation/index.ts"),
 			},
 			{
+				find: "@vetta/runtime-node/conversation",
+				replacement: resolve(__dirname, "../runtime-node/src/conversation/index.ts"),
+			},
+			{
+				find: "@vetta/runtime-node/host",
+				replacement: resolve(__dirname, "../runtime-node/src/host/index.ts"),
+			},
+			{
+				find: "@vetta/runtime-node/sandbox",
+				replacement: resolve(__dirname, "../runtime-node/src/sandbox/index.ts"),
+			},
+			{
+				find: "@vetta/runtime-node/coding",
+				replacement: resolve(__dirname, "../runtime-node/src/coding/index.ts"),
+			},
+			{
+				find: "@vetta/runtime-node/mcp",
+				replacement: resolve(__dirname, "../runtime-node/src/mcp/index.ts"),
+			},
+			{
 				find: "@vetta/runtime-subagents",
 				replacement: resolve(__dirname, "../runtime-subagents/src/index.ts"),
 			},
 			{
 				find: "@vetta/runtime-tools/coding",
 				replacement: resolve(__dirname, "../runtime-tools/src/coding/index.ts"),
+			},
+			{
+				find: "@vetta/runtime-tools",
+				replacement: resolve(__dirname, "../runtime-tools/src/index.ts"),
 			},
 		],
 	},

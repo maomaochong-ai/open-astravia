@@ -71,15 +71,6 @@ const KEYFRAME_SCHEMA = {
 	additionalProperties: false,
 } as const;
 
-function operation(type: string, properties: Record<string, unknown>, required: readonly string[]) {
-	return {
-		type: "object",
-		properties: { type: { const: type }, ...properties },
-		required: ["type", ...required],
-		additionalProperties: false,
-	} as const;
-}
-
 export const CONTENT_AGENT_OPERATION_TYPES = [
 	"update_workflow",
 	"add_node",
@@ -94,6 +85,42 @@ export const CONTENT_AGENT_OPERATION_TYPES = [
 	"connect_nodes",
 	"delete_edge",
 ] as const;
+
+type ContentAgentOperationType = (typeof CONTENT_AGENT_OPERATION_TYPES)[number];
+
+const OPERATION_DESCRIPTIONS: Readonly<Record<ContentAgentOperationType, string>> = {
+	update_workflow: "Update workflow-level title, objective, or deliverables without changing graph nodes.",
+	add_node:
+		"Add one semantic workflow node. Keep single-use prompts on their generator; add a prompt node only for intentional verbatim reuse by multiple consumers.",
+	rename_node: "Change one existing node's display name without changing its purpose or generation configuration.",
+	set_node_purpose: "Set the semantic role of one existing node so later inspection and planning can explain it.",
+	update_node: "Update editable data on one existing node without replacing the node or its connections.",
+	duplicate_node: "Duplicate one existing node's current semantic configuration under a new or generated ID.",
+	bind_assets:
+		"Bind concrete imported asset IDs to an image-generator. Use content_creation_assets first; video media belongs in configure_video_shot.",
+	configure_generation:
+		"Low-level compatibility or media-role repair for an existing video-generator. Prefer configure_video_shot for Agent-authored video work.",
+	configure_video_shot:
+		"Configure Agent-authored video work with an explicit creative strategy, method-specific prompt plan, and semantic media authorities.",
+	delete_node: "Delete one node; its incident connections are removed by the atomic project command.",
+	connect_nodes:
+		"Connect ordinary prompt or workflow topology. Do not use this operation for video media roles or imported image asset bindings.",
+	delete_edge: "Delete one existing connection by the edge ID returned from content_creation_inspect.",
+};
+
+function operation(
+	type: ContentAgentOperationType,
+	properties: Record<string, unknown>,
+	required: readonly string[],
+) {
+	return {
+		type: "object",
+		description: OPERATION_DESCRIPTIONS[type],
+		properties: { type: { const: type }, ...properties },
+		required: ["type", ...required],
+		additionalProperties: false,
+	} as const;
+}
 
 export function createContentAgentOperationSchema(
 	nodeKinds: readonly ContentNodeKind[],

@@ -1,20 +1,13 @@
 /**
  * RPC Client for programmatic access to the coding agent.
  *
- * Spawns the agent in RPC mode and provides a typed API for all operations.
+ * Provides a typed API over an injected RPC transport.
  */
 
-import { type ChildProcess, spawn } from "node:child_process";
-import * as readline from "node:readline";
 import type { AgentEvent, AgentMessage, ThinkingLevel } from "@vetta/agent-core";
 import type { ImageContent } from "@vetta/ai";
-import type { CompactionResult } from "../../compaction/index.js";
-import {
-	RPC_FAILURE_CODES,
-	type RpcFailureMetadata,
-	type RpcFailurePhase,
-	type RpcFailureRecoverability,
-} from "./rpc-failure.js";
+import { RpcClientError, rpcClientErrorFromResponse } from "./rpc-client-error.js";
+import { RPC_FAILURE_CODES } from "./rpc-failure.js";
 import type {
 	RpcBashResult,
 	RpcCommand,
@@ -24,8 +17,8 @@ import type {
 	SessionStats,
 } from "./rpc-types.js";
 
-const RPC_CLIENT_STARTUP_SETTLE_MS = 100;
-const RPC_CLIENT_STOP_GRACE_MS = 1_000;
+type RpcCompactionResult = Extract<RpcResponse, { command: "compact"; success: true }>["data"];
+
 const RPC_CLIENT_REQUEST_TIMEOUT_MS = 30_000;
 const RPC_CLIENT_EVENT_TIMEOUT_MS = 60_000;
 
@@ -39,21 +32,6 @@ type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : n
 /** RpcCommand without the id field (for internal send) */
 type RpcCommandBody = DistributiveOmit<RpcCommand, "id">;
 
-export interface RpcClientOptions {
-	/** Path to a JavaScript CLI entry point. Defaults to the installed `vetta-agent-rpc` executable. */
-	cliPath?: string;
-	/** Working directory for the agent */
-	cwd?: string;
-	/** Environment variables */
-	env?: Record<string, string>;
-	/** Provider to use */
-	provider?: string;
-	/** Model ID to use */
-	model?: string;
-	/** Additional CLI arguments */
-	args?: string[];
-}
-
 export interface ModelInfo {
 	provider: string;
 	id: string;
@@ -63,42 +41,18 @@ export interface ModelInfo {
 
 export type RpcEventListener = (event: AgentEvent) => void;
 
-type RpcProcessFailureListener = (error: RpcClientError) => void;
+type RpcTransportFailureListener = (error: RpcClientError) => void;
 
-export interface RpcClientProcessLaunch {
-	readonly command: string;
-	readonly args: readonly string[];
+export interface RpcClientTransportHandlers {
+	readonly onLine: (line: string) => void;
+	readonly onFailure: (error: RpcClientError) => void;
 }
 
-export class RpcClientError extends Error implements RpcFailureMetadata {
-	readonly errorCode: string;
-	readonly phase: RpcFailurePhase;
-	readonly recoverability: RpcFailureRecoverability;
-	readonly command: string | undefined;
-
-	constructor(
-		message: string,
-		metadata: RpcFailureMetadata,
-		options: { readonly command?: string; readonly cause?: unknown } = {},
-	) {
-		super(message, options.cause === undefined ? undefined : { cause: options.cause });
-		this.name = "RpcClientError";
-		this.errorCode = metadata.errorCode;
-		this.phase = metadata.phase;
-		this.recoverability = metadata.recoverability;
-		this.command = options.command;
-	}
-}
-
-export function rpcClientErrorFromResponse(response: Extract<RpcResponse, { success: false }>): RpcClientError {
-	return new RpcClientError(response.error, response, { command: response.command });
-}
-
-export function resolveRpcClientProcessLaunch(
-	cliPath: string | undefined,
-	args: readonly string[],
-): RpcClientProcessLaunch {
-	return cliPath ? { command: "node", args: [cliPath, ...args] } : { command: "vetta-agent-rpc", args: [...args] };
+export interface RpcClientTransport {
+	start(handlers: RpcClientTransportHandlers): Promise<void>;
+	stop(): Promise<void>;
+	write(line: string): void;
+	getStderr(): string;
 }
 
 // ============================================================================
@@ -106,156 +60,67 @@ export function resolveRpcClientProcessLaunch(
 // ============================================================================
 
 export class RpcClient {
-	private process: ChildProcess | null = null;
-	private rl: readline.Interface | null = null;
 	private eventListeners: RpcEventListener[] = [];
 	private pendingRequests: Map<string, { resolve: (response: RpcResponse) => void; reject: (error: Error) => void }> =
 		new Map();
 	private requestId = 0;
-	private stderr = "";
 	private startupFailure: Extract<RpcResponse, { success: false }> | undefined;
-	private processFailure: RpcClientError | undefined;
-	private processFailureListeners = new Set<RpcProcessFailureListener>();
+	private transportFailure: RpcClientError | undefined;
+	private transportFailureListeners = new Set<RpcTransportFailureListener>();
+	private started = false;
+	private starting = false;
 
-	constructor(private options: RpcClientOptions = {}) {}
+	constructor(private readonly transport: RpcClientTransport) {}
 
 	/**
-	 * Start the RPC agent process.
+	 * Start the configured RPC transport.
 	 */
 	async start(): Promise<void> {
-		if (this.process) {
+		if (this.started || this.starting) {
 			throw new RpcClientError("Client already started", {
 				errorCode: RPC_FAILURE_CODES.INVALID_REQUEST,
 				phase: "startup",
 				recoverability: "user_action",
 			});
 		}
-		this.stderr = "";
 		this.startupFailure = undefined;
-		this.processFailure = undefined;
-
-		const args = ["--mode", "rpc"];
-
-		if (this.options.provider) {
-			args.push("--provider", this.options.provider);
-		}
-		if (this.options.model) {
-			args.push("--model", this.options.model);
-		}
-		if (this.options.args) {
-			args.push(...this.options.args);
-		}
-
-		const launch = resolveRpcClientProcessLaunch(this.options.cliPath, args);
-		this.process = spawn(launch.command, launch.args, {
-			cwd: this.options.cwd,
-			env: { ...process.env, ...this.options.env },
-			stdio: ["pipe", "pipe", "pipe"],
-		});
-		const child = this.process;
-		child.once("exit", (code, signal) => {
-			if (this.process !== child) return;
-			const suffix = signal ? ` signal ${signal}` : ` code ${code ?? "unknown"}`;
-			const failure = new RpcClientError(`Agent process exited with${suffix}. Stderr: ${this.stderr}`, {
-				errorCode: RPC_FAILURE_CODES.PROCESS_EXITED,
-				phase: "command",
-				recoverability: "restart_session",
-			});
-			this.process = null;
-			this.rl?.close();
-			this.rl = null;
-			this.rejectPending(failure);
-			this.processFailure = failure;
-			for (const listener of this.processFailureListeners) listener(failure);
-		});
-
-		// Collect stderr for debugging
-		this.process.stderr?.on("data", (data) => {
-			this.stderr += data.toString();
-		});
-
-		// Set up line reader for stdout
-		this.rl = readline.createInterface({
-			input: this.process.stdout!,
-			terminal: false,
-		});
-
-		this.rl.on("line", (line) => {
-			this.handleLine(line);
-		});
-
-		// Wait a moment for process to initialize
+		this.transportFailure = undefined;
+		this.starting = true;
 		try {
-			await new Promise<void>((resolve, reject) => {
-				const onError = (cause: Error): void => {
-					clearTimeout(timer);
-					reject(
-						new RpcClientError(
-							`Failed to spawn Agent process: ${cause.message}`,
-							{
-								errorCode: RPC_FAILURE_CODES.PROCESS_SPAWN_FAILED,
-								phase: "startup",
-								recoverability: "retry_safe",
-							},
-							{ cause },
-						),
-					);
-				};
-				const timer = setTimeout(() => {
-					child.removeListener("error", onError);
-					resolve();
-				}, RPC_CLIENT_STARTUP_SETTLE_MS);
-				child.once("error", onError);
+			await this.transport.start({
+				onLine: (line) => this.handleLine(line),
+				onFailure: (error) => this.handleTransportFailure(error),
 			});
-		} catch (error) {
-			this.rl?.close();
-			this.process = null;
-			this.rl = null;
-			throw error;
+		} finally {
+			this.starting = false;
 		}
 
-		if (child.exitCode !== null) {
+		const transportFailure = this.readTransportFailure();
+		if (transportFailure) {
 			const failure = this.startupFailure
 				? rpcClientErrorFromResponse(this.startupFailure)
 				: new RpcClientError(
-						`Agent process exited immediately with code ${child.exitCode}. Stderr: ${this.stderr}`,
+						transportFailure.message,
 						{
-							errorCode: RPC_FAILURE_CODES.PROCESS_EXITED,
+							errorCode: transportFailure.errorCode,
 							phase: "startup",
 							recoverability: "retry_safe",
 						},
+						{ cause: transportFailure },
 					);
-			this.rl?.close();
-			this.process = null;
-			this.rl = null;
 			throw failure;
 		}
+		this.started = true;
 	}
 
 	/**
-	 * Stop the RPC agent process.
+	 * Stop the configured RPC transport.
 	 */
 	async stop(): Promise<void> {
-		if (!this.process) return;
-
-		this.rl?.close();
-		this.process.kill("SIGTERM");
-
-		// Wait for process to exit
-		await new Promise<void>((resolve) => {
-			const timeout = setTimeout(() => {
-				this.process?.kill("SIGKILL");
-				resolve();
-			}, RPC_CLIENT_STOP_GRACE_MS);
-
-			this.process?.on("exit", () => {
-				clearTimeout(timeout);
-				resolve();
-			});
-		});
-
-		this.process = null;
-		this.rl = null;
+		if (!this.started && !this.starting) return;
+		await this.transport.stop();
+		this.started = false;
+		this.starting = false;
 		this.pendingRequests.clear();
 	}
 
@@ -276,7 +141,7 @@ export class RpcClient {
 	 * Get collected stderr output (useful for debugging).
 	 */
 	getStderr(): string {
-		return this.stderr;
+		return this.transport.getStderr();
 	}
 
 	// =========================================================================
@@ -391,7 +256,7 @@ export class RpcClient {
 	/**
 	 * Compact session context.
 	 */
-	async compact(customInstructions?: string): Promise<CompactionResult> {
+	async compact(customInstructions?: string): Promise<RpcCompactionResult> {
 		const response = await this.send({ type: "compact", customInstructions });
 		return this.getData(response);
 	}
@@ -525,7 +390,7 @@ export class RpcClient {
 			const timer = setTimeout(() => {
 				cleanup();
 				reject(
-					new RpcClientError(`Timeout waiting for agent to become idle. Stderr: ${this.stderr}`, {
+					new RpcClientError(`Timeout waiting for agent to become idle. Stderr: ${this.getStderr()}`, {
 						errorCode: RPC_FAILURE_CODES.REQUEST_TIMEOUT,
 						phase: "turn",
 						recoverability: "continue_session",
@@ -539,7 +404,7 @@ export class RpcClient {
 					resolve();
 				}
 			});
-			unsubscribeFailure = this.onProcessFailure((error) => {
+			unsubscribeFailure = this.onTransportFailure((error) => {
 				cleanup();
 				reject(turnProcessFailure(error));
 			});
@@ -562,7 +427,7 @@ export class RpcClient {
 			const timer = setTimeout(() => {
 				cleanup();
 				reject(
-					new RpcClientError(`Timeout collecting events. Stderr: ${this.stderr}`, {
+					new RpcClientError(`Timeout collecting events. Stderr: ${this.getStderr()}`, {
 						errorCode: RPC_FAILURE_CODES.REQUEST_TIMEOUT,
 						phase: "turn",
 						recoverability: "continue_session",
@@ -577,7 +442,7 @@ export class RpcClient {
 					resolve(events);
 				}
 			});
-			unsubscribeFailure = this.onProcessFailure((error) => {
+			unsubscribeFailure = this.onTransportFailure((error) => {
 				cleanup();
 				reject(turnProcessFailure(error));
 			});
@@ -626,7 +491,7 @@ export class RpcClient {
 	}
 
 	private async send(command: RpcCommandBody): Promise<RpcResponse> {
-		if (!this.process?.stdin) {
+		if (!this.started) {
 			throw new RpcClientError("Client not started", {
 				errorCode: RPC_FAILURE_CODES.CLIENT_NOT_STARTED,
 				phase: "command",
@@ -644,7 +509,7 @@ export class RpcClient {
 				this.pendingRequests.delete(id);
 				reject(
 					new RpcClientError(
-						`Timeout waiting for response to ${command.type}. Stderr: ${this.stderr}`,
+						`Timeout waiting for response to ${command.type}. Stderr: ${this.getStderr()}`,
 						{
 							errorCode: RPC_FAILURE_CODES.REQUEST_TIMEOUT,
 							phase: "command",
@@ -670,7 +535,13 @@ export class RpcClient {
 				},
 			});
 
-			this.process!.stdin!.write(`${JSON.stringify(fullCommand)}\n`);
+			try {
+				this.transport.write(`${JSON.stringify(fullCommand)}\n`);
+			} catch (error) {
+				clearTimeout(timeout);
+				this.pendingRequests.delete(id);
+				reject(error instanceof Error ? error : new Error(String(error)));
+			}
 		});
 	}
 
@@ -690,13 +561,24 @@ export class RpcClient {
 		this.pendingRequests.clear();
 	}
 
-	private onProcessFailure(listener: RpcProcessFailureListener): () => void {
-		if (this.processFailure) {
-			listener(this.processFailure);
+	private handleTransportFailure(error: RpcClientError): void {
+		this.started = false;
+		this.rejectPending(error);
+		this.transportFailure = error;
+		for (const listener of this.transportFailureListeners) listener(error);
+	}
+
+	private readTransportFailure(): RpcClientError | undefined {
+		return this.transportFailure;
+	}
+
+	private onTransportFailure(listener: RpcTransportFailureListener): () => void {
+		if (this.transportFailure) {
+			listener(this.transportFailure);
 			return () => {};
 		}
-		this.processFailureListeners.add(listener);
-		return () => this.processFailureListeners.delete(listener);
+		this.transportFailureListeners.add(listener);
+		return () => this.transportFailureListeners.delete(listener);
 	}
 }
 

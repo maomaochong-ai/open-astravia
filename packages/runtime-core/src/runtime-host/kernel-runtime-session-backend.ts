@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { Message } from "@vetta/ai";
 import type { HistoryEntry, PromptRequest, SessionEvent } from "../contracts.js";
 import {
@@ -9,6 +8,7 @@ import {
 	conversationDocumentEntry,
 	extractConversationEntryText,
 } from "../conversation/index.js";
+import { createRuntimeId } from "../id-generator.js";
 import type { AgentSession } from "../kernel/agent-session.js";
 import type {
 	AgentSessionState,
@@ -51,12 +51,12 @@ import type {
 	RuntimeSessionExecutionController,
 	RuntimeSessionExecutionObservation,
 	RuntimeSessionExecutionObservationStream,
+	RuntimeSessionExtensionHost,
 	RuntimeSessionHostInteraction,
 	RuntimeSessionMetadataController,
 	RuntimeSessionQueueController,
 	RuntimeSessionQueueView,
 	RuntimeSessionState,
-	RuntimeSessionTodoController,
 	RuntimeSessionToolController,
 } from "./session-ports.js";
 
@@ -76,7 +76,7 @@ export interface KernelRuntimeAssembly {
 	readonly identity: RuntimeSessionIdentity;
 	readonly stateSource: RuntimeStateSource;
 	readonly documentParticipants?: readonly RuntimeDocumentParticipant[];
-	readonly todoController?: RuntimeSessionTodoController;
+	readonly extensionHost?: RuntimeSessionExtensionHost;
 	readonly contextController?: RuntimeSessionContextController;
 	readonly contextDeliveryController?: RuntimeSessionContextDeliveryController;
 	readonly hostInteraction?: RuntimeSessionHostInteraction;
@@ -116,7 +116,7 @@ export type RuntimeSessionCoreAssembly = Pick<
 	readonly queueController: RuntimeSessionQueueController;
 	readonly contextUsageView: RuntimeSessionContextUsageView;
 	readonly executionObservationStream: RuntimeSessionExecutionObservationStream;
-	readonly todoController?: RuntimeSessionTodoController;
+	readonly extensionHost?: RuntimeSessionExtensionHost;
 	readonly contextController?: RuntimeSessionContextController;
 	readonly contextDeliveryController: RuntimeSessionContextDeliveryController;
 	readonly metadataController: RuntimeSessionMetadataController;
@@ -133,7 +133,7 @@ export class RuntimeSession {
 	private readonly projection: RuntimeSessionProjection;
 	private readonly documentMutations: ConversationDocumentMutationCoordinator;
 	private readonly documentParticipants: readonly RuntimeDocumentParticipant[];
-	private readonly todoController: RuntimeSessionTodoController | undefined;
+	private readonly extensionHost: RuntimeSessionExtensionHost | undefined;
 	private readonly contextController: RuntimeSessionContextController | undefined;
 	private readonly contextDeliveryController: RuntimeSessionContextDeliveryController;
 	private readonly hostInteraction: RuntimeSessionHostInteraction | undefined;
@@ -166,7 +166,7 @@ export class RuntimeSession {
 		});
 		this.eventSink.bindDocumentMutationCoordinator(this.documentMutations);
 		this.documentParticipants = assembly.documentParticipants ?? [];
-		this.todoController = assembly.todoController;
+		this.extensionHost = assembly.extensionHost;
 		this.contextController = assembly.contextController;
 		this.contextDeliveryController =
 			assembly.contextDeliveryController ?? createContextDeliveryController(assembly.session);
@@ -331,7 +331,7 @@ export class RuntimeSession {
 		fromHook?: boolean,
 	): Promise<{ entryId: string }> {
 		return this.withHistoryMutation("Cannot summarize branch while the session is streaming", async () => {
-			const entryId = `branch-summary-${randomUUID()}`;
+			const entryId = `branch-summary-${createRuntimeId()}`;
 			await this.executeDocumentCommand({
 				type: "branch_summary.append",
 				entryId,
@@ -386,7 +386,7 @@ export class RuntimeSession {
 		this.assertOpen();
 		await this.executeDocumentCommand({
 			type: "custom.append",
-			entryId: `entry-${randomUUID()}`,
+			entryId: `entry-${createRuntimeId()}`,
 			customType,
 			data,
 			timestamp: new Date().toISOString(),
@@ -397,7 +397,7 @@ export class RuntimeSession {
 		this.assertOpen();
 		await this.executeDocumentCommand({
 			type: "entry.label.set",
-			entryId: `label-${randomUUID()}`,
+			entryId: `label-${createRuntimeId()}`,
 			targetId: entryId,
 			label,
 			timestamp: new Date().toISOString(),
@@ -463,6 +463,9 @@ export class RuntimeSession {
 				get sessionPath() {
 					return runtimeSession.eventSink.readIdentity().sessionPath;
 				},
+				get sessionDirectory() {
+					return runtimeSession.eventSink.readIdentity().sessionDirectory;
+				},
 				dispose: () => this.dispose(),
 			},
 			historyReader: {
@@ -502,7 +505,7 @@ export class RuntimeSession {
 			executionObservationStream: {
 				subscribe: (handler) => this.eventSink.subscribeExecutionObservation(handler),
 			},
-			todoController: this.todoController,
+			extensionHost: this.extensionHost,
 			contextController: this.contextController,
 			contextDeliveryController: this.contextDeliveryController,
 			metadataController: {
@@ -694,6 +697,7 @@ class RuntimeSessionEventSink implements EventSink {
 			);
 			this.identity = {
 				cwd: event.document.identity.cwd,
+				sessionDirectory: event.sessionDirectory ?? this.identity.sessionDirectory,
 				sessionPath: event.sessionPath,
 				parentSessionPath: event.document.identity.parentSessionPath,
 				parentEntryId: event.document.identity.parentEntryId,

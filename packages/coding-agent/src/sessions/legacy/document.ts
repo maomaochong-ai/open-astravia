@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { AgentMessage } from "@vetta/agent-core";
 import type { ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
-import { parseLegacySessionDocumentSource } from "@vetta/runtime-storage/conversation";
+import { parseLegacySessionDocumentSource } from "@vetta/runtime-node/conversation/legacy";
 import type {
 	CodingAgentCustomMessageEntry,
 	CodingAgentSessionEntry,

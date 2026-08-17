@@ -5,7 +5,7 @@ import {
 	BRANCH_SUMMARY_PREFIX,
 	buildSystemPrompt,
 	convertToLlm,
-	formatSkillsForProductPrompt,
+	formatModelVisibleSkills,
 	PROMPT_RESOURCE_REFERENCE_TYPE,
 	type SystemPromptDraft,
 } from "../src/model-context/index.js";
@@ -77,7 +77,7 @@ describe("Coding Agent model context", () => {
 		expect(next.blocks[1]?.source).toEqual({ kind: "plugin", pluginId: "plugin-a" });
 	});
 
-	it("rebuilds product prompt and skill index from current inputs", () => {
+	it("rebuilds the system prompt and skill index from current inputs", () => {
 		const readPrompt = buildSystemPrompt({ selectedTools: ["read"], skills: [] });
 		const writePrompt = buildSystemPrompt({ selectedTools: ["write"], skills: [] });
 		// 工具清单已不进提示词，随工具集变化的是 guidelines。
@@ -85,7 +85,7 @@ describe("Coding Agent model context", () => {
 		expect(writePrompt).toContain("Use write only for new files or complete rewrites");
 
 		expect(
-			formatSkillsForProductPrompt([
+			formatModelVisibleSkills([
 				{ name: "a&b", description: "<read>", type: "skill", disableModelInvocation: false },
 				{ name: "hidden", description: "hidden", type: "scene", disableModelInvocation: false },
 			]),

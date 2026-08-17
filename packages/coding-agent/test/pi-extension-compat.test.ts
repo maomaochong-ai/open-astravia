@@ -2,13 +2,9 @@ import { fileURLToPath } from "node:url";
 import { Type } from "typebox";
 import { describe, expect, it } from "vitest";
 import type { ExtensionContext, ExtensionRunner } from "../src/extensions/index.js";
-import {
-	adaptPiToolDefinition,
-	loadPiExtensions,
-	PiExtensionCompatibilityError,
-} from "../src/extensions/pi-compat/index.js";
+import { adaptPiToolDefinition, PiExtensionCompatibilityError } from "../src/extensions/pi-compat/index.js";
 import { CodingAgentExtensionToolRuntime } from "../src/extensions/runtime/extension-tool-runtime.js";
-import { loadExtensions } from "../src/extensions/runtime/loading/load-extensions.js";
+import { loadExtensions, loadPiExtensions } from "./fixtures/node-extension-host.js";
 
 describe("Pi extension compatibility boundary", () => {
 	it("loads a host-neutral Pi extension through the TypeBox 1 and tool ACL facades", async () => {

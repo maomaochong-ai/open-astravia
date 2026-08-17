@@ -57,7 +57,14 @@ describe("Anthropic native adapter", () => {
 			{ type: "toolCall", id: "call-1", name: "lookup", arguments: { query: "test" } },
 		]);
 		expect(result.stopReason).toBe("toolUse");
-		expect(result.usage).toMatchObject({ input: 3, output: 2, cacheRead: 4, cacheWrite: 5, totalTokens: 14 });
+		expect(result.usage).toMatchObject({
+			input: 3,
+			output: 2,
+			cacheRead: 4,
+			cacheWrite: 5,
+			totalTokens: 14,
+			cacheUsageReporting: "read-write",
+		});
 		expect(JSON.parse(transport.requests[0]?.body ?? "{}")).toMatchObject({ model: anthropicModel.id, stream: true });
 	});
 
@@ -211,7 +218,14 @@ describe("Amazon Bedrock native adapter", () => {
 			{ type: "toolCall", id: "call-1", name: "lookup", arguments: { query: "test" } },
 		]);
 		expect(result.stopReason).toBe("toolUse");
-		expect(result.usage).toMatchObject({ input: 3, output: 2, cacheRead: 4, cacheWrite: 5, totalTokens: 14 });
+		expect(result.usage).toMatchObject({
+			input: 3,
+			output: 2,
+			cacheRead: 4,
+			cacheWrite: 5,
+			totalTokens: 14,
+			cacheUsageReporting: "read-write",
+		});
 		expect(observedInput).toMatchObject({ modelId: bedrockModel.id });
 		expect(observedSignal).toBe(controller.signal);
 	});

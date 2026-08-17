@@ -60,10 +60,10 @@ export function createCodingAgentSdkSessionCapabilityHostFactory(
 				composition.refreshExtensionTools(currentExtensions.extensions);
 			},
 		});
-		const applyResourceSourcePaths = () => {
+		const applyResourceSourcePaths = async () => {
 			if (!options.resourceSourceAdapter) return;
 			options.resourceLoader.setAdditionalExtensionPaths([...options.resourceSourceAdapter.readExtensionPaths()]);
-			options.resourceLoader.setAdditionalSkillPaths([
+			await options.resourceLoader.setAdditionalSkillPaths([
 				...(options.readAgentPlugins()?.skillPathContributions?.flatMap((contribution) => contribution.paths) ??
 					[]),
 				...options.resourceSourceAdapter.readSkillPaths(),
@@ -73,9 +73,9 @@ export function createCodingAgentSdkSessionCapabilityHostFactory(
 			if (!options.resourceSourceAdapter) return;
 			const refreshed = await options.resourceSourceAdapter.refreshInvalidated();
 			if (!refreshed.skillsChanged && !refreshed.extensionsChanged) return;
-			applyResourceSourcePaths();
+			await applyResourceSourcePaths();
 			if (refreshed.extensionsChanged) await reloadHost.reload();
-			else options.resourceLoader.reloadSkills();
+			else await options.resourceLoader.reloadSkills();
 		};
 		return new CodingAgentSdkSessionCapabilityHost({
 			readSession,
@@ -92,9 +92,9 @@ export function createCodingAgentSdkSessionCapabilityHostFactory(
 			readSystemPrompt: () => options.extensionTransitions.readSystemPrompt(),
 			readSkills: () => options.resourceLoader.getSkills().skills.map(projectCodingAgentSkillInfo),
 			readPromptTemplates: () => options.resourceLoader.getPrompts().prompts,
-			reconfigureAgentPlugins: (agentPlugins) => {
+			reconfigureAgentPlugins: async (agentPlugins) => {
 				options.setAgentPlugins(agentPlugins);
-				options.resourceLoader.setAdditionalSkillPaths([
+				await options.resourceLoader.setAdditionalSkillPaths([
 					...(agentPlugins?.skillPathContributions?.flatMap((contribution) => contribution.paths) ?? []),
 					...(options.resourceSourceAdapter?.readSkillPaths() ?? options.sdkOptions.resources?.skillPaths ?? []),
 				]);
@@ -110,7 +110,7 @@ export function createCodingAgentSdkSessionCapabilityHostFactory(
 			reloadMcp: () => composition.reloadMcp(readSession().sessionId),
 			reload: async () => {
 				await options.resourceSourceAdapter?.refreshAll();
-				applyResourceSourcePaths();
+				await applyResourceSourcePaths();
 				await reloadHost.reload();
 			},
 			exportToHtml: (outputPath) =>

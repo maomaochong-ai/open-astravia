@@ -35,7 +35,8 @@ export function ContentVideoGenerationSettings({
 	const durations = model?.durations ?? [];
 	const resolutions = model?.resolutions ?? [];
 	const duration = resolveSupportedModelOption(draft.duration, durations);
-	const resolution = resolveSupportedModelOption(draft.resolution, resolutions);
+	const resolution = resolveSupportedModelOption(draft.resolution, resolutions, model?.defaultResolution);
+	const resolutionLabel = resolution ? translateResolutionOption(t, resolution) : undefined;
 	const availableMethods = videoMethods(model);
 	const method = resolveVideoMethod(draft.modeId, availableMethods);
 	const selectedMode = model?.modes.find((candidate) => candidate.id === availableMethods[method ?? "frames"]);
@@ -47,7 +48,7 @@ export function ContentVideoGenerationSettings({
 		aspectRatio === AUTOMATIC_ASPECT_RATIO
 			? resolvedAspectRatio ?? t("nodeEditor.videoSettings.followImageShort")
 			: aspectRatio,
-		resolution,
+		resolutionLabel,
 		duration === undefined ? undefined : t("nodeEditor.videoSettings.durationSummary", { duration }),
 	].filter((part): part is string => Boolean(part));
 
@@ -161,7 +162,7 @@ export function ContentVideoGenerationSettings({
 										aria-pressed={resolution === option}
 										onClick={() => onChange({ ...draft, resolution: option })}
 									>
-										{t(`option.resolution.${option}`)}
+										{translateResolutionOption(t, option)}
 									</button>
 								))}
 							</div>
@@ -318,6 +319,12 @@ function optionGroupClass(layout: string): string {
 
 function equalColumns(count: number): string {
 	return `repeat(${Math.max(count, 1)}, minmax(0, 1fr))`;
+}
+
+function translateResolutionOption(translate: (key: string) => string, value: string): string {
+	const key = `option.resolution.${value}`;
+	const translated = translate(key);
+	return translated === key ? value : translated;
 }
 
 function aspectRatioIconStyle(ratio?: string): { width: number; height: number } {

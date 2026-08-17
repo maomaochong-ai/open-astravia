@@ -1,19 +1,13 @@
-export { createAgentCliBootstrap } from "../host/coding-agent-cli-bootstrap.js";
 export {
-	type CodingAgentHostBootstrap,
-	type CodingAgentHostBootstrapDiagnostics,
-	type CodingAgentHostBootstrapOptions,
+	type CodingAgentBootstrap,
+	type CodingAgentBootstrapDiagnostics,
+	type CodingAgentBootstrapOptions,
+	type CodingAgentBootstrapResourceFactory,
+	type CodingAgentBootstrapResourceRequest,
 	type CodingAgentInitialModelResolution,
-	createCodingAgentHostBootstrap,
+	createCodingAgentBootstrap,
 	resolveCodingAgentInitialModel,
-} from "../host/coding-agent-host-bootstrap.js";
-export {
-	type CodingAgentPrintInvocation,
-	type PrepareCodingAgentPrintInvocationOptions,
-	prepareCodingAgentPipedStdin,
-	prepareCodingAgentPrintInvocation,
-} from "../host/coding-agent-print-invocation.js";
-export { codingAgentSessionShardPath, resolveCodingAgentSessionDir } from "../host/coding-agent-session-storage.js";
+} from "../bootstrap/coding-agent-bootstrap.js";
 export type {
 	CodingAgentExtensionBootstrapContributions,
 	CodingAgentExtensionCompatibilityAssessment,
@@ -24,11 +18,18 @@ export type {
 	CodingAgentExtensionRegistrationSummary,
 	CodingAgentExtensionRequirements,
 	CodingAgentExtensionRuntimeCapability,
-} from "../host/extensions/compatibility/index.js";
+} from "../extensions/compatibility/index.js";
 export {
 	CODING_AGENT_EXTENSION_HOST_SUPPORTED_EVENTS,
 	resolveCodingAgentExtensionCompatibility,
-} from "../host/extensions/compatibility/index.js";
+} from "../extensions/compatibility/index.js";
+export {
+	type CodingAgentPrintInvocation,
+	type PrepareCodingAgentPrintInvocationOptions,
+	prepareCodingAgentPipedStdin,
+	prepareCodingAgentPrintInvocation,
+} from "../host/coding-agent-print-invocation.js";
+export { codingAgentSessionShardPath, resolveCodingAgentSessionDir } from "../host/coding-agent-session-storage.js";
 export {
 	CODING_AGENT_SDK_HOST_ERROR_CODES,
 	CodingAgentSdkHostError,

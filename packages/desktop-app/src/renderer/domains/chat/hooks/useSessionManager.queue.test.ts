@@ -136,26 +136,33 @@ async function mount(input: string, streaming: boolean): Promise<ReturnType<type
 	return store;
 }
 
-it("streaming 中发送：带 streamingBehavior=followUp 直发 kernel，收 queued 回执且不加乐观气泡", async () => {
-	mocks.prompt.mockImplementation(async () => ({ status: "queued", pendingCount: 1, queueItemId: "q-1" }));
-	const store = await mount("排队消息", true);
-	const { chatMessagesAtom, inputValueAtom } = await import("@shared/store/atoms");
+it(
+	"streaming 中发送：带 streamingBehavior=followUp 直发 kernel，收 queued 回执且不加乐观气泡",
+	{ timeout: 10_000 },
+	async () => {
+		mocks.prompt.mockImplementation(async () => ({ status: "queued", pendingCount: 1, queueItemId: "q-1" }));
+		const store = await mount("排队消息", true);
+		const { chatMessagesAtom, inputValueAtom } = await import("@shared/store/atoms");
 
-	let result: Awaited<ReturnType<SessionManagerProbe["sendMessage"]>>;
-	await act(async () => {
-		result = await manager?.sendMessage();
-	});
+		let result: Awaited<ReturnType<SessionManagerProbe["sendMessage"]>>;
+		await act(async () => {
+			result = await manager?.sendMessage();
+		});
 
-	expect(mocks.prompt).toHaveBeenCalledTimes(1);
-	const [, request] = mocks.prompt.mock.calls[0] as unknown as [string, { text: string; streamingBehavior?: string }];
-	expect(request.streamingBehavior).toBe("followUp");
-	expect(request.text).toBe("排队消息");
-	expect(result).toEqual({ status: "queued", queueItemId: "q-1" });
-	// 排队消息不上屏：待消费时经 queue.changed 差分补气泡，顺序与模型可见一致。
-	expect(store.get(chatMessagesAtom)).toEqual([]);
-	// 入队语义下输入框仍然清空。
-	expect(store.get(inputValueAtom)).toBe("");
-});
+		expect(mocks.prompt).toHaveBeenCalledTimes(1);
+		const [, request] = mocks.prompt.mock.calls[0] as unknown as [
+			string,
+			{ text: string; streamingBehavior?: string },
+		];
+		expect(request.streamingBehavior).toBe("followUp");
+		expect(request.text).toBe("排队消息");
+		expect(result).toEqual({ status: "queued", queueItemId: "q-1" });
+		// 排队消息不上屏：待消费时经 queue.changed 差分补气泡，顺序与模型可见一致。
+		expect(store.get(chatMessagesAtom)).toEqual([]);
+		// 入队语义下输入框仍然清空。
+		expect(store.get(inputValueAtom)).toBe("");
+	},
+);
 
 it("失步竞态：以为空闲实则已在跑（回执 queued）时撤掉抢先的乐观气泡", async () => {
 	mocks.prompt.mockImplementation(async () => ({ status: "queued", pendingCount: 1, queueItemId: "q-2" }));

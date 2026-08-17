@@ -65,6 +65,8 @@ describe("MCP Runtime Tool result policy", () => {
 			artifact: { reference: "artifact://mcp-result/1", mediaType: "application/json" },
 			summary: { contentItems: 1, imageCount: 0, resourceCount: 0 },
 		});
+		expect(details.summary.textBytes).toBe(new TextEncoder().encode(originalText).length);
+		expect(store.requests[0]?.byteLength).toBe(new TextEncoder().encode(JSON.stringify(result)).length);
 		expect(JSON.parse(store.requests[0]?.data ?? "")).toEqual(result);
 		expect(JSON.stringify(projected.details)).not.toContain(originalText);
 	});

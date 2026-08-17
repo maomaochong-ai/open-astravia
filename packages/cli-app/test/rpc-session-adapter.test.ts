@@ -2,8 +2,8 @@ import { join } from "node:path";
 import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { RpcSessionInitialization, RpcSessionState } from "@vetta/coding-agent/rpc";
 import type { RuntimeSession, RuntimeSessionCoreAssembly, SessionEvent } from "@vetta/runtime-core";
-import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
-import type { CodingToolRegistration } from "@vetta/runtime-tools/coding";
+import type { CodingToolRegistration } from "@vetta/runtime-node/coding";
+import { resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
 import { describe, expect, test, vi } from "vitest";
 import { type CreateImRpcSessionAdapterOptions, createImRpcSessionAdapter } from "../src/rpc/rpc-session-adapter.js";
 import { RpcSessionEventAdapter } from "../src/rpc/rpc-session-event-adapter.js";
@@ -430,6 +430,8 @@ function createAdapterFixture(
 					baseDir: "skills/deploy",
 					type: "skill" as const,
 					disableModelInvocation: false,
+					content: "Deploy safely",
+					sceneTasks: [],
 				},
 			],
 			diagnostics: [],

@@ -8,7 +8,7 @@ export interface TodoItem {
 
 /**
  * 当前会话的 todo 列表。
- * 由后端 todo_update 事件驱动更新，按 sessionId 隔离。
+ * 由 Coding Agent Todo extension observation 驱动更新，按 sessionId 隔离。
  * Map<sessionId, TodoItem[]>
  */
 export const todoItemsBySessionAtom = atom<Map<string, TodoItem[]>>(new Map());

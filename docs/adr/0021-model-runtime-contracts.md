@@ -5,6 +5,8 @@
 ## Decision
 
 - A model call exposes a normalized `ModelCallResult` with the assistant message, unified/raw finish reason, usage, warnings, response metadata, and namespaced provider metadata.
+- Normalized usage keeps `input`, `cacheRead`, and `cacheWrite` as disjoint prompt-token buckets. `cacheUsageReporting` distinguishes an observed zero from unavailable provider detail, so consumers can calculate cache rates without treating missing telemetry as a miss.
+- Prompt-cache quality is an execution-observability concern: Runtime session observations carry raw normalized usage and Runtime tracing projects per-generation and per-agent rates. Product usage analytics must not persist or own derived cache-quality metrics.
 - Model configuration is interpreted as four concerns: model identity (`api`, provider, model id), endpoint (URL and headers), capabilities/limits, and provider compatibility options. Provider selection must use explicit API identity and capabilities; URL detection is only a legacy fallback.
 - Cross-cutting model behavior is attached through ordered `ModelMiddleware` at the adapter boundary. Middleware can transform a request or wrap stream/generate execution, but it does not own Agent/Turn state and is not a general mutable event bus.
 - `ModelRouter` may choose a fallback only before a stream has emitted model output, and only for explicitly configured structured error codes. Lifecycle-only events such as `start` do not commit a route; the first text, reasoning, tool-call, or successful terminal event does. It never retries or switches providers by parsing human-readable messages.

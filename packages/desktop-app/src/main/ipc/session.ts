@@ -4,6 +4,7 @@ import { mkdir, readdir, rm } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
 import { DEFAULT_PERSONA_ID, isAgentMode, MODE_PROMPTS, PERSONAS } from "@vetta/coding-agent/profile";
+import { CODING_AGENT_TODO_CLEAR } from "@vetta/coding-agent/session-extensions";
 import type {
 	AgentPluginContinuationInvocation,
 	AgentPluginContinuationResult,
@@ -792,7 +793,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.CLEAR_TODOS, async (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
-		return runtime.clearTodos(sessionId);
+		return runtime.invokeSessionExtension(sessionId, CODING_AGENT_TODO_CLEAR, undefined);
 	});
 
 	ipcMain.handle(CHANNELS.UPDATE_SETTINGS, async (_event, sessionId: unknown, partialSettings: SettingsPatch) => {

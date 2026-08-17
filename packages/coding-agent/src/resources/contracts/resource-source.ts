@@ -55,11 +55,36 @@ export type ResourcePackageProgressListener = (event: ResourcePackageProgressEve
 
 export interface ResourcePackageCommandPort {
 	run(command: string, args: string[], options?: { cwd?: string }): Promise<void>;
-	runSync(command: string, args: string[]): string;
+}
+
+/** Host-owned file operations required by package installation transactions. */
+export interface ResourcePackageFilePort {
+	stat(path: string): Promise<{ kind: "file" | "directory" | "other" } | undefined>;
+	readText(path: string): Promise<string>;
+	ensureDirectory(path: string): Promise<void>;
+	ensureTextFile(path: string, content: string): Promise<void>;
+	removeTree(path: string): Promise<void>;
+	readDirectory(path: string): Promise<readonly string[]>;
+}
+
+/** Host-owned directory facts used by the package location policy. */
+export interface ResourcePackageLocationFacts {
+	readonly homeDirectory: string;
+	readonly temporaryDirectory: string;
+	readonly getGlobalNpmRoot: () => string;
+}
+
+/** Host-provided stable digest used to preserve resource package cache paths. */
+export interface ResourcePackageDigestPort {
+	sha256Hex(value: string): string;
 }
 
 export interface ResourcePackageRegistryPort {
 	getLatestVersion(packageName: string): Promise<string>;
+}
+
+export interface ResourcePackageEnvironmentPort {
+	isOffline(): boolean;
 }
 
 export interface ResourcePackageRuntime {
@@ -74,5 +99,5 @@ export interface ResourcePackageRuntime {
 	addSource(source: string, options?: { local?: boolean }): boolean;
 	removeSource(source: string, options?: { local?: boolean }): boolean;
 	setProgressListener(listener: ResourcePackageProgressListener | undefined): void;
-	getInstalledPath(source: string, scope: "user" | "project"): string | undefined;
+	getInstalledPath(source: string, scope: "user" | "project"): Promise<string | undefined>;
 }

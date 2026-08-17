@@ -1,4 +1,4 @@
-import { ComposedRuntimeFactory, KernelRuntimeSessionBackend } from "@vetta/runtime-core";
+import { ComposedRuntimeFactory, KernelRuntimeSessionBackend, RuntimeOwnershipBinding } from "@vetta/runtime-core";
 import { selectConversationDocumentModelMessages } from "@vetta/runtime-core/conversation";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/model-runtime-adapter.js";
@@ -10,12 +10,12 @@ import type {
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeSessionOptions,
 } from "./contracts/index.js";
-import { resolveCodingAgentConversationPersistence } from "./conversation/persistence.js";
-import { ConversationOwnershipBinding } from "./conversation-ownership-binding.js";
 import { createCodingAgentChildCompositionFactory } from "./subagent/child-composition-policy.js";
 
 export type {
 	CodingAgentInitialTodoLockSource,
+	CodingAgentPromptRuntimeSourceContext,
+	CodingAgentPromptRuntimeSources,
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeExtensionControls,
@@ -36,7 +36,7 @@ import { createCodingAgentRuntimeToolSurface } from "./tool-surface/runtime-tool
 /**
  * Coding Agent Runtime 的共享组合入口。
  *
- * 它使用真实文件 Repository 与 Runtime Coding Tools；宿主必须显式持有并使用返回的 Backend。
+ * 它组合 Coding Agent 产品能力；平台持久化必须由宿主显式注入。
  */
 export async function createCodingAgentRuntimeComposition(
 	options: CodingAgentRuntimeCompositionOptions,
@@ -58,13 +58,14 @@ async function createCodingAgentRuntimeCompositionInternal(
 		agentDir: options.agentDir,
 		scenario,
 		activation: options.activation,
-		knowledgeEnabled: options.knowledgeEnabled,
-		knowledgeRoot: options.knowledgeRoot,
+		knowledgeRuntime: options.knowledgeRuntime,
 		inheritedMcpView,
 		mcpSource: options.mcpSource,
 		indexes: resourceRegistry.indexes,
 		tokenBudget: options.tokenBudget,
 		reservedOutputTokens: options.reservedOutputTokens,
+		createToolEnvironment: options.createToolEnvironment,
+		resultPolicy: options.codingToolResultPolicy,
 	});
 	const {
 		activation: effectiveActivation,
@@ -73,21 +74,23 @@ async function createCodingAgentRuntimeCompositionInternal(
 		mcpCoordinator,
 		tools,
 	} = toolSurface;
-	const persistence = await resolveCodingAgentConversationPersistence(options);
+	const persistence = await options.createConversationPersistence({
+		conversationDir: options.conversationDir,
+	});
 	const repository = persistence.repository;
 	const baseConversationContextProjector = new CodingAgentConversationContextProjector();
 	const conversationContextOverlay = new CodingAgentConversationContextOverlay(baseConversationContextProjector);
 	const modelAdapter = new CodingAgentRuntimeModelAdapter(options.modelRegistry);
-	const acquireOwnership = async (sessionId: string): Promise<ConversationOwnershipBinding | undefined> => {
+	const acquireOwnership = async (sessionId: string): Promise<RuntimeOwnershipBinding<string> | undefined> => {
 		const manager = options.conversationOwnershipManager;
 		if (!manager) return undefined;
 		const sessionPath = persistence.resolveSessionPath(sessionId);
 		if (!sessionPath) throw new Error("Conversation ownership requires a persistent session path");
-		const binding = await ConversationOwnershipBinding.acquire(manager, sessionPath);
+		const binding = await RuntimeOwnershipBinding.acquire(manager, sessionPath);
 		resourceRegistry.trackOwnershipBinding(binding);
 		return binding;
 	};
-	const releaseOwnership = async (binding: ConversationOwnershipBinding | undefined): Promise<void> => {
+	const releaseOwnership = async (binding: RuntimeOwnershipBinding<string> | undefined): Promise<void> => {
 		if (!binding) return;
 		await binding.dispose();
 		resourceRegistry.untrackOwnershipBinding(binding);
@@ -97,12 +100,21 @@ async function createCodingAgentRuntimeCompositionInternal(
 		documentStore: persistence.documentStore,
 		continuationStore: persistence.continuationStore,
 		resolveConversationPath: persistence.resolveConversationPath,
+		resolveSessionDirectory: persistence.resolveSessionDirectory,
 		resolveSessionPath: persistence.resolveSessionPath,
 	};
 	const createChildComposition = createCodingAgentChildCompositionFactory({
 		parentOptions: options,
 		createComposition: createCodingAgentRuntimeCompositionInternal,
 	});
+	const assessChildSessionPath = async (conversationDir: string, sessionId: string, sessionPath: string) => {
+		const childPersistence = await options.createConversationPersistence({ conversationDir });
+		try {
+			return await childPersistence.assessSessionPath(sessionId, sessionPath);
+		} finally {
+			await childPersistence.dispose();
+		}
+	};
 	const sessionInitialization = createCodingAgentSessionInitializationTransaction({
 		profile: sessionInitializationProfile,
 		cwd,
@@ -129,6 +141,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 		releaseOwnership,
 		resolveActivation: toolSurface.resolveActivation,
 		createChildComposition,
+		assessChildSessionPath,
 	});
 	const runtimeFactory = new ComposedRuntimeFactory<CodingAgentRuntimeSessionOptions>({
 		streamFn: options.streamFn,

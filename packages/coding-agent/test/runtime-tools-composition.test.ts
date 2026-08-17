@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
+import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import { describe, expect, it, vi } from "vitest";
 import { createCodingToolsRuntimeComposition } from "../src/composition/tool-surface/runtime-tools-composition.js";
+import { createCodingAgentNodeToolEnvironment } from "../src/host/tool-environment/node/node-tool-environment.js";
 import { ALL_SCENARIOS } from "../src/profiles/index.js";
 
 const DEFAULT_TOOL_NAMES = {
@@ -16,14 +18,72 @@ function modelCallContext(signal = new AbortController().signal) {
 }
 
 describe("Coding Tools Runtime Composition Root", () => {
+	it("preserves complete tool results when the Host does not select an artifact policy", async () => {
+		const completeResult = { content: [{ type: "text" as const, text: "x".repeat(60 * 1024) }] };
+		const composition = createCodingToolsRuntimeComposition({
+			cwd: "C:/workspace",
+			environment: {
+				registrations: [
+					registration({
+						...tool("read"),
+						execute: async () => completeResult,
+					}),
+				],
+				dispose() {},
+			},
+		});
+		const entry = composition.registry.resolve("read");
+		if (!entry) throw new Error("expected read registration");
+
+		const result = await composition.registry.execute(entry.binding, {
+			sessionId: "session-1",
+			turnId: "turn-1",
+			toolCallId: "call-1",
+			input: {},
+			signal: new AbortController().signal,
+		});
+
+		expect(result).toBe(completeResult);
+		composition.dispose();
+	});
+
+	it("owns platform environment disposal while preserving Coding Agent model order", async () => {
+		const dispose = vi.fn();
+		const composition = createCodingToolsRuntimeComposition({
+			cwd: "C:/workspace",
+			environment: {
+				registrations: [registration(tool("write")), registration(tool("read"))],
+				dispose,
+			},
+			activation: { mode: "explicit", toolNames: ["write", "read"] },
+		});
+
+		const compiled = await composition.compile();
+		try {
+			const provider = compiled.snapshot.modelCallProviders?.[0];
+			if (!provider) throw new Error("expected coding tools model call provider");
+			const contribution = await provider.contribute(modelCallContext());
+			expect(contribution.tools?.map(({ name }) => name)).toEqual(["read", "write"]);
+		} finally {
+			await compiled.dispose();
+			composition.dispose();
+		}
+		expect(dispose).toHaveBeenCalledOnce();
+	});
+
 	it("registers and compiles the default CLI coding tools without downloading", async () => {
 		const calls: Array<{ readonly tool: "fd" | "rg"; readonly silent: boolean | undefined }> = [];
 		const composition = createCodingToolsRuntimeComposition({
 			cwd: "C:/workspace",
-			ensureTool: async (tool, silent) => {
-				calls.push({ tool, silent });
-				return undefined;
-			},
+			environment: createCodingAgentNodeToolEnvironment(
+				{ cwd: "C:/workspace", scenario: "cli" },
+				{
+					ensureTool: async (tool, silent) => {
+						calls.push({ tool, silent });
+						return undefined;
+					},
+				},
+			),
 		});
 
 		const compiled = await composition.compile();
@@ -34,8 +94,7 @@ describe("Coding Tools Runtime Composition Root", () => {
 			expect(contribution.tools?.map(({ name }) => name)).toEqual(
 				process.platform === "win32" ? DEFAULT_TOOL_NAMES.win32 : DEFAULT_TOOL_NAMES.posix,
 			);
-			await expect(composition.executableResolver.resolve("rg")).resolves.toBeUndefined();
-			expect(calls).toEqual([{ tool: "rg", silent: true }]);
+			expect(calls).toEqual([]);
 		} finally {
 			await compiled.dispose();
 			composition.dispose();
@@ -45,11 +104,11 @@ describe("Coding Tools Runtime Composition Root", () => {
 	it("keeps fail-closed tools available for explicit activation", async () => {
 		const composition = createCodingToolsRuntimeComposition({
 			cwd: "C:/workspace",
+			environment: createCodingAgentNodeToolEnvironment({ cwd: "C:/workspace", scenario: "cli" }),
 			activation: {
 				mode: "explicit",
 				toolNames: ["find", "ls"],
 			},
-			ensureTool: async () => undefined,
 		});
 
 		const compiled = await composition.compile();
@@ -67,8 +126,8 @@ describe("Coding Tools Runtime Composition Root", () => {
 	it.each(ALL_SCENARIOS)("matches the frozen active tool contract for %s", async (scenario) => {
 		const composition = createCodingToolsRuntimeComposition({
 			cwd: "C:/workspace",
+			environment: createCodingAgentNodeToolEnvironment({ cwd: "C:/workspace", scenario }),
 			activation: { mode: "scope", scope: scenario, capabilities: new Set(["bg-tasks"]) },
-			ensureTool: async () => undefined,
 		});
 
 		const compiled = await composition.compile();
@@ -85,3 +144,21 @@ describe("Coding Tools Runtime Composition Root", () => {
 		}
 	});
 });
+
+function tool(name: string): RuntimeToolDefinition {
+	return {
+		name,
+		label: name,
+		description: name,
+		inputSchema: { type: "object" },
+		execute: async () => ({ content: [{ type: "text", text: name }] }),
+	};
+}
+
+function registration(toolDefinition: RuntimeToolDefinition) {
+	return {
+		tool: toolDefinition,
+		scopeUse: ["cli" as const],
+		category: "core" as const,
+	};
+}

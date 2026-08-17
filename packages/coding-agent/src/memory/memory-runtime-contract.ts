@@ -5,8 +5,9 @@ import type {
 	ConversationContinuationDirective,
 	TurnObserver,
 } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistration } from "@vetta/runtime-tools/coding";
+import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import type { CompactionPreparation, CompactionSettings } from "../compaction/index.js";
+import type { MemoryTextStorage } from "./memory-storage.js";
 
 export interface CodingAgentMemoryPromptState {
 	readonly enabled: boolean;
@@ -39,6 +40,8 @@ export interface CodingAgentMemoryCompactionPolicy {
 export interface CodingAgentMemoryRolloverOrchestratorOptions {
 	readonly memoryFile: string;
 	readonly cwd: string;
+	readonly memoryStorage: MemoryTextStorage;
+	readonly journalStorage: MemoryTextStorage;
 	readonly memoryCharLimit?: number;
 	readonly flushMemory?: (
 		input: CodingAgentMemoryFlushInput & { readonly memoryFile: string; readonly limit: number },

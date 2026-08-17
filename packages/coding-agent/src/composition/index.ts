@@ -1,9 +1,35 @@
-export { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
 export { CodingAgentRuntimeHostSessionBackend } from "../host/runtime-host/session-backend.js";
 export {
 	type CodingAgentSessionSetup,
 	createCodingAgentSessionSetupSeedInitializer,
 } from "../sessions/setup/session-setup-seed-initializer.js";
+export {
+	type CodingAgentCodingToolResultPolicyOptions,
+	createCodingAgentCodingToolResultPolicy,
+	DEFAULT_CODING_AGENT_MAX_INLINE_TOOL_RESULT_BYTES,
+} from "../tool-results/result-policy.js";
+export type {
+	CodingAgentKnowledgePage,
+	CodingAgentKnowledgeQueryOperations,
+	CodingAgentKnowledgeRuntime,
+	CodingAgentKnowledgeWriteOperations,
+	CodingAgentMemoryRuntimeFactoryOptions,
+} from "./contracts/runtime-composition-options.js";
+export type {
+	CodingAgentSandboxEnvironment,
+	CodingAgentSandboxHostOptions,
+	CodingAgentSandboxHostServices,
+	CodingAgentSandboxToolSet,
+	CodingAgentSandboxWorkspacePathAccess,
+	CodingAgentSessionExecutionEnvironment,
+	CodingAgentSessionExecutionEnvironmentContext,
+	CodingAgentSessionExecutionEnvironmentFactory,
+} from "./contracts/session-execution-environment.js";
+export type {
+	CodingAgentToolEnvironment,
+	CodingAgentToolEnvironmentContext,
+	CodingAgentToolEnvironmentFactory,
+} from "./contracts/tool-environment.js";
 export type {
 	KnowledgeProcessingPageWriter,
 	KnowledgeProcessingSession,
@@ -13,6 +39,13 @@ export type {
 } from "./knowledge-processing-contract.js";
 export { createKnowledgeProcessingSessionFactory } from "./knowledge-processing-session.js";
 export {
+	type CodingAgentMemoryRuntimeHostOptions,
+	createCodingAgentMemoryRolloverRuntime,
+	type MemoryTextStorage,
+} from "./memory-runtime.js";
+export {
+	type CodingAgentPromptRuntimeSourceContext,
+	type CodingAgentPromptRuntimeSources,
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
 	type CodingAgentRuntimeSessionOptions,
@@ -24,3 +57,10 @@ export {
 	type CodingAgentSessionTransitionLifecycle,
 } from "./session-host/active-session-transition-host.js";
 export { CodingAgentProcessSessionHost } from "./session-host/index.js";
+export {
+	type CodingAgentEditPathPolicy,
+	type CodingAgentPathPolicyBoundaries,
+	type CodingAgentWritePathPolicy,
+	createCodingAgentEditPathPolicy,
+	createCodingAgentWritePathPolicy,
+} from "./tool-path-policy.js";

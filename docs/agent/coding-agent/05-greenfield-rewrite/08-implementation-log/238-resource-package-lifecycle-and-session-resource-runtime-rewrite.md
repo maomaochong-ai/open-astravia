@@ -60,9 +60,10 @@
 
 ### 4. 宿主组合与调用方迁移
 
-- `host/coding-agent-resource-runtime.ts` 是唯一的产品组合位置，负责把 `SettingsManager` 与默认命令、Registry、资源包 Runtime、Session Resource Runtime 连接起来。
-- CLI、SDK、Host Bootstrap、Greenfield Prompt/Extension Adapter 和 Desktop Skill Service 全部切换到新合同。
-- `@vetta/coding-agent/resources` 改为显式 `public-api/resources.ts`；desktop TypeScript path map 同步指向源码入口。
+- 本阶段最初由 `host/coding-agent-resource-runtime.ts` 集中连接设置、命令、Registry、资源包 Runtime 与 Session Resource
+  Runtime；后续可移植性阶段已删除该隐式 Node 组合入口，CLI、Desktop 与 SDK 分别在应用宿主内完成具体装配。
+- `@vetta/coding-agent/resources` 的 `public-api/resources.ts` 当前只公开可移植合同和显式构造器；Desktop TypeScript path map
+  继续指向该源码入口。
 - 包根不再导出 `DefaultPackageManager` 和 `DefaultResourceLoader`，测试验证这两个旧内部对象不会重新暴露。
 - 删除 `core/package-manager.ts` 与 `core/resource-loader.ts`，没有兼容转发文件。
 

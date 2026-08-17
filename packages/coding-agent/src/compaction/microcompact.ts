@@ -17,6 +17,8 @@ export interface MicrocompactOptions {
 	maxAgeMs: number;
 	/** Disable count-based ToolResult pruning when a pressure-aware policy owns that responsibility. */
 	pruneToolResults?: boolean;
+	/** Fixed evaluation time used to keep every model call in one Turn deterministic. */
+	now?: number;
 }
 
 export const DEFAULT_MICROCOMPACT_OPTIONS: MicrocompactOptions = {
@@ -73,7 +75,7 @@ function pruneToolResults(messages: AgentMessage[], options: MicrocompactOptions
 	}
 
 	const clearCandidates = compactableIndices.slice(0, -options.keepRecent);
-	const now = Date.now();
+	const now = options.now ?? Date.now();
 	const clearSet = new Set<number>();
 
 	for (const idx of clearCandidates) {
@@ -148,7 +150,7 @@ function pruneThinkingBlocks(messages: AgentMessage[], options: MicrocompactOpti
 	}
 
 	const clearCandidates = thinkingIndices.slice(0, -options.keepRecent);
-	const now = Date.now();
+	const now = options.now ?? Date.now();
 	const clearSet = new Set<number>();
 
 	for (const idx of clearCandidates) {

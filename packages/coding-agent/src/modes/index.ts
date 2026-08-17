@@ -16,11 +16,14 @@ export { CodingAgentRpcBashCapability } from "./rpc/rpc-bash-capability.js";
 export {
 	type ModelInfo,
 	RpcClient,
-	RpcClientError,
-	type RpcClientOptions,
+	type RpcClientTransport,
+	type RpcClientTransportHandlers,
 	type RpcEventListener,
-	rpcClientErrorFromResponse,
 } from "./rpc/rpc-client.js";
+export {
+	RpcClientError,
+	rpcClientErrorFromResponse,
+} from "./rpc/rpc-client-error.js";
 export {
 	isRpcFailureMetadata,
 	RPC_FAILURE_CODES,
@@ -31,7 +34,11 @@ export {
 	type RpcFailureRecoverability,
 	RpcFailureRecoverabilitySchema,
 } from "./rpc/rpc-failure.js";
-export { type RunRpcModeOptions, runRpcModeWithCapabilities } from "./rpc/rpc-mode.js";
+export {
+	type RpcFrameTransport,
+	type RunRpcModeOptions,
+	runRpcModeWithCapabilities,
+} from "./rpc/rpc-mode.js";
 export {
 	assertRpcSessionCapabilities,
 	type ImHostBridge,
@@ -63,4 +70,6 @@ export type {
 	RpcErrorResponse,
 	RpcResponse,
 	RpcSessionState,
+	RpcSlashCommand,
+	SessionStats,
 } from "./rpc/rpc-types.js";

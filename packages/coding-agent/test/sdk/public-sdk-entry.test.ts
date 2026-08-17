@@ -22,7 +22,7 @@ describe("public Coding Agent SDK entry", () => {
 		);
 	});
 
-	it("creates an in-memory session without exposing product managers or Extension runtime", async () => {
+	it("creates an in-memory session without exposing internal managers or Extension runtime", async () => {
 		const cwd = await temporaryDirectory("public-sdk-memory-cwd-");
 		const agentDir = await temporaryDirectory("public-sdk-memory-agent-");
 		const result = await createCodingAgentSession({
@@ -199,9 +199,9 @@ describe("public Coding Agent SDK entry", () => {
 function verifyConcreteManagerOptionsStayOutOfPublicContract(): void {
 	// @ts-expect-error SessionManager belongs to the Legacy compatibility factory.
 	const sessionManager: CreateCodingAgentSessionOptions = { sessionManager: {} };
-	// @ts-expect-error ResourceLoader belongs to the product Composition Root.
+	// @ts-expect-error ResourceLoader belongs to the Coding Agent Composition Root.
 	const resourceLoader: CreateCodingAgentSessionOptions = { resourceLoader: {} };
-	// @ts-expect-error ModelRegistry belongs to the product Composition Root.
+	// @ts-expect-error ModelRegistry belongs to the Coding Agent Composition Root.
 	const modelRegistry: CreateCodingAgentSessionOptions = { modelRegistry: {} };
 	void [sessionManager, resourceLoader, modelRegistry];
 }

@@ -196,7 +196,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 使用最小但充分的验证范围：
 
 1. 一轮代码编辑后运行 `bun run check:quick`。
-2. 运行与变更直接相关的测试，例如 `bunx vitest --run <test-file>` 或 `bun run test:pkg <name>`。
+2. 运行与变更直接相关的测试，例如 `bun scripts/quality/run-vitest.mjs --run <test-file>` 或 `bun run test:pkg <name>`。
 3. 涉及多个可测包或影响范围不明确时运行 `bun run test:changed`。
 4. 一轮代码任务完成后运行一次 `bun run check`，修复全部 error、warning 和 info。
 
@@ -205,6 +205,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 额外约束：
 
 - 不使用裸 `bun test`，避免扫描整个 monorepo。
+- 不使用 `bunx vitest` 或直接 `vitest`：Windows 上 Bun worker 会在收集测试前因非法 file URL 全部失败。统一走 `scripts/quality/run-vitest.mjs`（内部用 Node 启动 Vitest）。
 - 不默认启动长驻的 `bun run dev`。Desktop UI 验证只使用根目录 `bun run verify:ui:*` 流程。
 - 只有任务或验证明确需要构建产物时才运行相应的 `bun run build:*`，不要把全量构建当作默认反馈循环。
 - 修改 Go 包时，使用该包 README/Makefile 定义的定向测试和检查；根 `bun run check` 不覆盖 Go。

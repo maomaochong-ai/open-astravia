@@ -1,8 +1,10 @@
 import type { EcosystemHookContributionSource } from "@vetta/ecosystem-adapter";
-import type { PromptResourceRef } from "@vetta/runtime-core";
+import type { PromptRequest, PromptResourceRef } from "@vetta/runtime-core";
 import type {
 	ModelCallFrameCompositionContext,
 	RuntimeInputRequestPreparationContext,
+	RuntimeInputRequestPreparationResult,
+	RuntimeSnapshotAcquireContext,
 } from "@vetta/runtime-core/kernel";
 import type { BuildSystemPromptOptions, PersonalizationSettingsSource } from "../model-context/index.js";
 import type { SessionResourceRuntime } from "../resources/index.js";
@@ -23,8 +25,22 @@ export type CodingAgentPromptResourceResolver = {
 		promptRef: PromptResourceRef,
 		context: RuntimeInputRequestPreparationContext,
 	): Promise<CodingAgentPromptResourceExpansion> | CodingAgentPromptResourceExpansion;
-	bindForTurn?(): CodingAgentPromptResourceResolver;
+	bindForTurn?(
+		context: RuntimeSnapshotAcquireContext,
+	): Promise<CodingAgentPromptResourceResolver> | CodingAgentPromptResourceResolver;
 };
+
+/** Coding Agent Prompt policy that turns one admitted request into Kernel input. */
+export interface CodingAgentPromptRequestRuntime {
+	bindForTurn?(
+		context: RuntimeSnapshotAcquireContext,
+	): Promise<CodingAgentPromptRequestRuntime> | CodingAgentPromptRequestRuntime;
+	releaseTurnBinding?(): Promise<void> | void;
+	prepare(
+		request: PromptRequest,
+		context: RuntimeInputRequestPreparationContext,
+	): Promise<RuntimeInputRequestPreparationResult>;
+}
 
 export type CodingAgentPromptResourceSource = Pick<
 	SessionResourceRuntime,

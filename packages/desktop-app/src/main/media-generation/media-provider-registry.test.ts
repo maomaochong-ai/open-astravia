@@ -47,6 +47,8 @@ describe("MediaProviderRegistry", () => {
 						operation: "generate",
 						kind: "video",
 						modes: ["image-to-video"],
+						resolutions: ["0_5mp", "0_75mp", "1mp"],
+						defaultResolution: "0_75mp",
 						modeCapabilities: [
 							{
 								mode: "image-to-video",
@@ -62,6 +64,8 @@ describe("MediaProviderRegistry", () => {
 		});
 
 		expect(registry.listProviders()[0]?.capabilities[0]).toMatchObject({
+			resolutions: ["0_5mp", "0_75mp", "1mp"],
+			defaultResolution: "0_75mp",
 			modeCapabilities: [
 				{
 					mode: "image-to-video",
@@ -87,6 +91,7 @@ describe("MediaProviderRegistry", () => {
 						modes: ["text-to-video"],
 						aspectRatios: undefined,
 						resolutions: undefined,
+						defaultResolution: undefined,
 						durationsSeconds: undefined,
 						modeCapabilities: [
 							{
@@ -109,8 +114,36 @@ describe("MediaProviderRegistry", () => {
 		expect(providers).toEqual(JSON.parse(JSON.stringify(providers)));
 		expect(providers).toEqual([expect.not.objectContaining({ displayName: undefined })]);
 		expect(providers[0]?.capabilities[0]).not.toEqual(
-			expect.objectContaining({ aspectRatios: undefined, resolutions: undefined, durationsSeconds: undefined }),
+			expect.objectContaining({
+				aspectRatios: undefined,
+				resolutions: undefined,
+				defaultResolution: undefined,
+				durationsSeconds: undefined,
+			}),
 		);
+	});
+
+	it("rejects a default resolution that is not part of the advertised options", () => {
+		const registry = createRegistry();
+		expect(() =>
+			registry.registerProvider({
+				descriptor: {
+					id: "plugin:minimax-h3",
+					ownerId: "comfyui-media-provider",
+					protocolVersion: MEDIA_PROTOCOL_VERSION,
+					capabilities: [
+						{
+							operation: "generate",
+							kind: "video",
+							modes: ["text-to-video"],
+							resolutions: ["0_5mp"],
+							defaultResolution: "1mp",
+						},
+					],
+				},
+				submit: vi.fn(),
+			}),
+		).toThrow("Media provider default resolution is not declared: plugin:minimax-h3");
 	});
 
 	it("routes submissions through a registered host provider", async () => {

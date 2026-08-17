@@ -24,6 +24,7 @@
 		"@types/node": "^22.10.5"
 	},
 	"dependencies": {
+		"@vetta/agent-core": "workspace:*",
 		"@langfuse/otel": "^5.4.1",
 		"@langfuse/tracing": "^5.4.1",
 		"@opentelemetry/sdk-node": "^0.218.0"

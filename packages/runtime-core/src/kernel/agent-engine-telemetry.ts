@@ -1,5 +1,14 @@
 import type { AgentExecutionEvent, AgentRunResult } from "@vetta/agent-core";
-import type { Api, AssistantMessage, Context, Message, Model, SimpleStreamOptions } from "@vetta/ai";
+import {
+	type Api,
+	type AssistantMessage,
+	aggregatePromptCacheUsage,
+	type Context,
+	calculatePromptCacheMetrics,
+	type Message,
+	type Model,
+	type SimpleStreamOptions,
+} from "@vetta/ai";
 import type { AgentCoreTurnEngineOptions } from "./agent-core-turn-engine-options.js";
 
 type RuntimeTracer = NonNullable<AgentCoreTurnEngineOptions["tracer"]>;
@@ -103,8 +112,7 @@ export class AgentEngineTelemetry {
 		this.settled = true;
 		this.closeChildren(result.failure?.message);
 		if (this.agentTerminal) {
-			const usage = aggregateUsage(this.deliveredMessages);
-			const cost = aggregateCost(this.deliveredMessages);
+			const { usage, cost, promptCache } = aggregateAssistantTelemetry(this.deliveredMessages);
 			this.agentTerminal.end({
 				output: this.captureContent ? { messages: this.deliveredMessages } : messageSummary(this.deliveredMessages),
 				level: result.status === "completed" ? "DEFAULT" : "ERROR",
@@ -117,6 +125,7 @@ export class AgentEngineTelemetry {
 					modelCalls: result.modelCalls,
 					toolCalls: result.toolCalls,
 					recoveryAttempts: result.recoveryAttempts,
+					promptCache,
 				},
 			});
 		}
@@ -229,6 +238,7 @@ function modelParameters(options: SimpleStreamOptions | undefined): Record<strin
 }
 
 function assistantUpdate(message: AssistantMessage, captureContent: boolean) {
+	const promptCache = calculatePromptCacheMetrics(message.usage);
 	return {
 		output: captureContent ? message.content : { contentTypes: message.content.map(({ type }) => type) },
 		level: message.stopReason === "error" ? ("ERROR" as const) : ("DEFAULT" as const),
@@ -252,12 +262,18 @@ function assistantUpdate(message: AssistantMessage, captureContent: boolean) {
 			provider: message.provider,
 			model: message.model,
 			stopReason: message.stopReason,
+			promptCache: {
+				reporting: message.usage.cacheUsageReporting ?? "unavailable",
+				...promptCache,
+			},
 		},
 	};
 }
 
-function aggregateUsage(messages: readonly Message[]) {
+function aggregateAssistantTelemetry(messages: readonly Message[]) {
 	const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0 };
+	const cost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 };
+	const promptCacheUsages: AssistantMessage["usage"][] = [];
 	for (const message of messages) {
 		if (message.role !== "assistant") continue;
 		usage.input += message.usage.input;
@@ -265,21 +281,14 @@ function aggregateUsage(messages: readonly Message[]) {
 		usage.cacheRead += message.usage.cacheRead;
 		usage.cacheWrite += message.usage.cacheWrite;
 		usage.totalTokens += message.usage.totalTokens;
-	}
-	return usage;
-}
-
-function aggregateCost(messages: readonly Message[]) {
-	const cost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 };
-	for (const message of messages) {
-		if (message.role !== "assistant") continue;
 		cost.input += message.usage.cost.input;
 		cost.output += message.usage.cost.output;
 		cost.cacheRead += message.usage.cost.cacheRead;
 		cost.cacheWrite += message.usage.cost.cacheWrite;
 		cost.total += message.usage.cost.total;
+		promptCacheUsages.push(message.usage);
 	}
-	return cost;
+	return { usage, cost, promptCache: aggregatePromptCacheUsage(promptCacheUsages) };
 }
 
 function messageSummary(messages: readonly Message[]) {

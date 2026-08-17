@@ -1,3 +1,9 @@
+export type {
+	CodingAgentSdkSessionArtifactCleaner,
+	CodingAgentSdkSessionCatalogContext,
+	CodingAgentSdkSessionIdentityRuntime,
+	ResolvedCodingAgentSdkSessionStorage,
+} from "./contracts/session-identity-runtime.js";
 export {
 	CODING_AGENT_SDK_HOST_ERROR_CODES,
 	CodingAgentSdkHostError,

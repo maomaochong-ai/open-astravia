@@ -20,6 +20,7 @@ const steps = [
 	["scripts/quality/check-agent-ai-maintainability.mjs"],
 	["scripts/quality/check-standalone-cli-build.mjs"],
 	["scripts/quality/check-skill-frontmatter.mjs"],
+	["scripts/quality/check-vitest-runner.mjs"],
 ];
 
 function runStep(args) {

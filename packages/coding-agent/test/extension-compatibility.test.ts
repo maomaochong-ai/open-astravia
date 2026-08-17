@@ -4,7 +4,7 @@ import {
 	type CodingAgentExtensionEventCompatibilityProfile,
 	collectCodingAgentExtensionRequirements,
 	resolveCodingAgentExtensionCompatibility,
-} from "../src/host/extensions/compatibility/index.js";
+} from "../src/extensions/compatibility/index.js";
 
 const EXTENSION_EVENT_PROFILE = {
 	input: "supported",

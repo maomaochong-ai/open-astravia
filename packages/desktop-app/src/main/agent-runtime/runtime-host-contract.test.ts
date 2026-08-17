@@ -4,13 +4,14 @@ import { join } from "node:path";
 import type { Api, Message, Model } from "@vetta/ai";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { type HistoryEntry, RuntimeHost, type SessionEvent } from "@vetta/runtime-core";
+import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	startOpenAiResponsesTestServer,
 	textResponseEvents,
 	toolCallResponseEvents,
 } from "../../../../cli-app/test/support/openai-responses-test-server.js";
-import { DesktopRuntimeBackendPool } from "./backend-pool.js";
+import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
 
 interface RuntimeFixture {
 	readonly runtime: RuntimeHost;
@@ -401,7 +402,7 @@ describe("Desktop RuntimeHost production contract", () => {
 		}
 
 		expect(observations.runtime).toEqual({
-			mutationEvents: ["todo_update", "todo_update", "todo_update", "todo_update"],
+			mutationEvents: ["session.extension", "session.extension", "session.extension", "session.extension"],
 			parentRestored: true,
 			childRestored: [
 				historyMessage("user", "first-user", null),
@@ -467,6 +468,7 @@ describe("Desktop RuntimeHost production contract", () => {
 				modelRegistry: modelRegistry(model),
 				initialModel: model,
 				initialThinkingLevel: "off",
+				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 			},
 		});
 		const runtime = new RuntimeHost({

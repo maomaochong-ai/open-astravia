@@ -103,12 +103,18 @@ describe("Anthropic system prompt cache breakpoint", () => {
 		expect(systemBlocks(params)).toEqual([{ text: "STABLE PREFIX\n\nVOLATILE TAIL", cacheControl: undefined }]);
 	});
 
-	it("does not split when the breakpoint sits at either end of the prompt", () => {
-		for (const stableLength of [0, splitContext.systemPrompt?.length]) {
-			const params = buildAnthropicParams(model, { ...splitContext, systemPromptStableLength: stableLength }, false);
+	it("keeps zero-length stable prompts uncached and caches a full-length stable prompt", () => {
+		const uncached = buildAnthropicParams(model, { ...splitContext, systemPromptStableLength: 0 }, false);
+		const fullyCached = buildAnthropicParams(
+			model,
+			{ ...splitContext, systemPromptStableLength: splitContext.systemPrompt?.length },
+			false,
+		);
 
-			expect(systemBlocks(params)).toHaveLength(1);
-		}
+		expect(systemBlocks(uncached)).toEqual([{ text: "STABLE PREFIX\n\nVOLATILE TAIL", cacheControl: undefined }]);
+		expect(systemBlocks(fullyCached)).toEqual([
+			{ text: "STABLE PREFIX\n\nVOLATILE TAIL", cacheControl: { type: "ephemeral" } },
+		]);
 	});
 
 	it("splits after the Claude Code preamble on the OAuth path", () => {

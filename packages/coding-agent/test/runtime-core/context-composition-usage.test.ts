@@ -1,6 +1,7 @@
 import type { ContextCompositionReport } from "@vetta/runtime-core";
 import { describe, expect, it } from "vitest";
-import { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/context-runtime.js";
+import { DefaultCodingAgentContextRuntime } from "../../src/compaction/runtime/context-runtime.js";
+import type { CodingAgentContextRuntime } from "../../src/runtime-contracts/index.js";
 
 describe("CodingAgentContextRuntime context composition", () => {
 	it("stores prepared reports and applies completed provider input usage", () => {
@@ -37,7 +38,7 @@ describe("CodingAgentContextRuntime context composition", () => {
 });
 
 function createRuntime(): CodingAgentContextRuntime {
-	return new CodingAgentContextRuntime({
+	return new DefaultCodingAgentContextRuntime({
 		hookRuntime: {
 			markSessionStart() {},
 			async runPreCompact() {

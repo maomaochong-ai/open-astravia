@@ -11,9 +11,10 @@ import type {
 	ConversationContinuationResult,
 } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
-import { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
 import type { CompactionSettings } from "../../src/compaction/index.js";
+import { DefaultCodingAgentContextRuntime } from "../../src/compaction/runtime/index.js";
 import { type CodingAgentMemoryFlushInput, CodingAgentMemoryRolloverOrchestrator } from "../../src/memory/index.js";
+import { createMemoryTextStorage } from "../fixtures/memory-storage.js";
 
 describe("Greenfield memory rollover context integration", () => {
 	it("applies the legacy memory threshold, flushes the discarded prefix and requests generic continuation", async () => {
@@ -31,13 +32,15 @@ describe("Greenfield memory rollover context integration", () => {
 		const memoryRollover = new CodingAgentMemoryRolloverOrchestrator({
 			memoryFile: "C:\\memory\\MEMORY.md",
 			cwd: "C:\\workspace",
+			memoryStorage: createMemoryTextStorage(),
+			journalStorage: createMemoryTextStorage(),
 			flushMemory,
 			appendRolloverJournal: () => {
 				trace.push("journal");
 			},
 		});
 		const hooks = hookRuntime(trace);
-		const runtime = new CodingAgentContextRuntime({
+		const runtime = new DefaultCodingAgentContextRuntime({
 			hookRuntime: hooks,
 			resolveApiKey: () => "key",
 			resolveSettings: baseSettings,
@@ -99,9 +102,11 @@ describe("Greenfield memory rollover context integration", () => {
 		const memoryRollover = new CodingAgentMemoryRolloverOrchestrator({
 			memoryFile: "C:\\memory\\MEMORY.md",
 			cwd: "C:\\workspace",
+			memoryStorage: createMemoryTextStorage(),
+			journalStorage: createMemoryTextStorage(),
 			flushMemory,
 		});
-		const runtime = new CodingAgentContextRuntime({
+		const runtime = new DefaultCodingAgentContextRuntime({
 			hookRuntime: hookRuntime(),
 			resolveApiKey: () => "key",
 			resolveSettings: () => ({ ...baseSettings(), reserveTokens: 90 }),
@@ -144,9 +149,11 @@ describe("Greenfield memory rollover context integration", () => {
 		const memoryRollover = new CodingAgentMemoryRolloverOrchestrator({
 			memoryFile: "C:\\memory\\MEMORY.md",
 			cwd: "C:\\workspace",
+			memoryStorage: createMemoryTextStorage(),
+			journalStorage: createMemoryTextStorage(),
 			appendRolloverJournal: () => {},
 		});
-		const runtime = new CodingAgentContextRuntime({
+		const runtime = new DefaultCodingAgentContextRuntime({
 			hookRuntime: hooks,
 			resolveApiKey: () => "key",
 			memoryRollover,

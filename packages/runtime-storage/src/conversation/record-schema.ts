@@ -54,6 +54,34 @@ const CostSchema = Type.Object(
 	{ additionalProperties: false },
 );
 
+const PromptCacheDefinitionChangeSchema = Type.Object(
+	{
+		id: Type.String(),
+		change: Type.Union([
+			Type.Literal("added"),
+			Type.Literal("removed"),
+			Type.Literal("changed"),
+			Type.Literal("reordered"),
+		]),
+	},
+	{ additionalProperties: false },
+);
+
+const PromptCacheSystemPromptBlockSchema = Type.Object(
+	{
+		id: Type.String(),
+		hash: Type.String(),
+		charCount: Type.Integer({ minimum: 0 }),
+		cacheability: Type.Union([Type.Literal("stable"), Type.Literal("volatile")]),
+	},
+	{ additionalProperties: false },
+);
+
+const PromptCacheToolDefinitionSchema = Type.Object(
+	{ name: Type.String(), hash: Type.String() },
+	{ additionalProperties: false },
+);
+
 const UsageSchema = Type.Object(
 	{
 		input: Type.Number(),
@@ -61,6 +89,49 @@ const UsageSchema = Type.Object(
 		cacheRead: Type.Number(),
 		cacheWrite: Type.Number(),
 		totalTokens: Type.Number(),
+		cacheUsageReporting: Type.Optional(
+			Type.Union([Type.Literal("unavailable"), Type.Literal("read-only"), Type.Literal("read-write")]),
+		),
+		promptCache: Type.Optional(
+			Type.Object(
+				{
+					cachePrefixHash: Type.String(),
+					stableSystemPromptHash: Type.String(),
+					volatileSystemPromptHash: Type.String(),
+					toolsHash: Type.String(),
+					historyPrefixHash: Type.String(),
+					requestMessagesHash: Type.Optional(Type.String()),
+					requestMessageCount: Type.Optional(Type.Integer({ minimum: 0 })),
+					prefixStatus: Type.Optional(
+						Type.Union([
+							Type.Literal("initial"),
+							Type.Literal("extended"),
+							Type.Literal("changed"),
+							Type.Literal("unknown"),
+						]),
+					),
+					changedSegments: Type.Optional(
+						Type.Array(
+							Type.Union([
+								Type.Literal("stable-system"),
+								Type.Literal("volatile-system"),
+								Type.Literal("tools"),
+								Type.Literal("messages"),
+							]),
+						),
+					),
+					systemPromptBlocks: Type.Optional(Type.Array(PromptCacheSystemPromptBlockSchema)),
+					toolDefinitions: Type.Optional(Type.Array(PromptCacheToolDefinitionSchema)),
+					changedSystemPromptBlocks: Type.Optional(Type.Array(PromptCacheDefinitionChangeSchema)),
+					changedTools: Type.Optional(Type.Array(PromptCacheDefinitionChangeSchema)),
+					stableSystemPromptLength: Type.Number(),
+					volatileSystemPromptLength: Type.Number(),
+					historyPrefixMessages: Type.Integer({ minimum: 0 }),
+					toolCount: Type.Integer({ minimum: 0 }),
+				},
+				{ additionalProperties: false },
+			),
+		),
 		cost: CostSchema,
 	},
 	{ additionalProperties: false },

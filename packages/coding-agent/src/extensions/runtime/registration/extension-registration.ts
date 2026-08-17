@@ -1,12 +1,12 @@
+import type { ResourcePathPort } from "../../../resources/contracts/resource-access.js";
 import type { ExtensionAPI, ExtensionFactory, MessageRenderer, RegisteredCommand } from "../../api-contracts.js";
 import type { ExtensionContext } from "../../context-contracts.js";
+import type { ExtensionCommandExecutor, ExtensionFactoryLoader } from "../../host-contracts.js";
 import type { EventBus, ExecOptions, KeyId } from "../../infrastructure.js";
 import type { ProviderConfig } from "../../provider-contracts.js";
 import type { Extension, ExtensionRuntime } from "../../runtime-contracts.js";
 import type { ToolDefinition } from "../../tool-contracts.js";
 import { resolveExtensionPath } from "../discovery/extension-paths.js";
-import { executeExtensionCommand } from "../exec-command.js";
-import { loadExtensionFactory } from "../loading/extension-module-loader.js";
 
 type Handler = (...args: unknown[]) => Promise<unknown>;
 
@@ -28,6 +28,7 @@ function createExtensionApi(
 	runtime: ExtensionRuntime,
 	cwd: string,
 	eventBus: EventBus,
+	commandExecutor: ExtensionCommandExecutor,
 ): ExtensionAPI {
 	return {
 		on(event: string, handler: Handler): void {
@@ -81,7 +82,7 @@ function createExtensionApi(
 			runtime.setLabel(entryId, label);
 		},
 		exec(command: string, args: string[], options?: ExecOptions) {
-			return executeExtensionCommand(command, args, options?.cwd ?? cwd, options);
+			return commandExecutor.execute(command, args, options?.cwd ?? cwd, options);
 		},
 		getActiveTools: () => runtime.getActiveTools(),
 		getAllTools: () => runtime.getAllTools(),
@@ -106,10 +107,11 @@ export async function loadExtensionFromFactory(
 	cwd: string,
 	eventBus: EventBus,
 	runtime: ExtensionRuntime,
+	commandExecutor: ExtensionCommandExecutor,
 	extensionPath = "<inline>",
 	resolvedPath = extensionPath,
 ): Promise<Extension> {
-	return registerExtensionFactory(factory, cwd, eventBus, runtime, extensionPath, resolvedPath);
+	return registerExtensionFactory(factory, cwd, eventBus, runtime, commandExecutor, extensionPath, resolvedPath);
 }
 
 async function registerExtensionFactory(
@@ -117,11 +119,12 @@ async function registerExtensionFactory(
 	cwd: string,
 	eventBus: EventBus,
 	runtime: ExtensionRuntime,
+	commandExecutor: ExtensionCommandExecutor,
 	extensionPath: string,
 	resolvedPath: string,
 ): Promise<Extension> {
 	const extension = createExtension(extensionPath, resolvedPath);
-	await factory(createExtensionApi(extension, runtime, cwd, eventBus));
+	await factory(createExtensionApi(extension, runtime, cwd, eventBus, commandExecutor));
 	return extension;
 }
 
@@ -130,15 +133,29 @@ export async function loadExtensionFromPath(
 	cwd: string,
 	eventBus: EventBus,
 	runtime: ExtensionRuntime,
+	options: {
+		readonly paths: ResourcePathPort;
+		readonly factoryLoader: ExtensionFactoryLoader;
+		readonly commandExecutor: ExtensionCommandExecutor;
+		readonly signal?: AbortSignal;
+	},
 ): Promise<{ extension: Extension | null; error: string | null }> {
-	const resolvedPath = resolveExtensionPath(extensionPath, cwd);
+	const resolvedPath = resolveExtensionPath(options.paths, extensionPath, cwd);
 	try {
-		const factory = await loadExtensionFactory(resolvedPath);
+		const factory = await options.factoryLoader.loadFactory(resolvedPath, "native", { signal: options.signal });
 		if (!factory) {
 			return { extension: null, error: `Extension does not export a valid factory function: ${extensionPath}` };
 		}
 		return {
-			extension: await registerExtensionFactory(factory, cwd, eventBus, runtime, extensionPath, resolvedPath),
+			extension: await registerExtensionFactory(
+				factory,
+				cwd,
+				eventBus,
+				runtime,
+				options.commandExecutor,
+				extensionPath,
+				resolvedPath,
+			),
 			error: null,
 		};
 	} catch (error) {

@@ -8,7 +8,7 @@ import {
 	LegacySessionImportError,
 	type LegacySessionImportIssueCode,
 	migrateLegacySessionToV2,
-} from "@vetta/runtime-storage/conversation";
+} from "@vetta/runtime-node/conversation";
 import { normalizeCodingAgentLegacySessionEntry } from "./entry-normalizer.js";
 import { acquireLegacySessionFormatLease } from "./lease.js";
 

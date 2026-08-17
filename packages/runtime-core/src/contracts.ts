@@ -1,7 +1,8 @@
 import type { ThinkingLevel, ToolPhase } from "@vetta/agent-core";
-import type { Message, Model } from "@vetta/ai";
+import type { CacheUsageReporting, Message, Model } from "@vetta/ai";
 import type { ContextCompositionReport } from "./context-composition/contracts.js";
 import type { RuntimeFailure, RuntimeFailureDetails, RuntimeFailureOrigin } from "./failure-contract.js";
+import type { SessionExtensionObservation } from "./session-extensions/contracts.js";
 
 /** 对话场景 slug；RuntimeHost 与 Coding Profile 共享的稳定隔离轴。 */
 export type ConversationScenario =
@@ -50,6 +51,7 @@ export interface SystemPromptBlock {
 	content: string;
 	priority: number;
 	enabled: boolean;
+	cacheability?: "stable" | "volatile";
 }
 
 export type SystemPromptBlockPatch = Partial<Omit<SystemPromptBlock, "id">>;
@@ -427,6 +429,14 @@ export interface UsageUpdateEvent extends SessionEventBase {
 	output: number;
 	cacheRead: number;
 	cacheWrite: number;
+	/** Cache detail available for this exact provider response. */
+	cacheUsageReporting?: CacheUsageReporting;
+	/** Exact model that produced this usage; optional for external runtime observations. */
+	model?: {
+		api: string;
+		provider: string;
+		id: string;
+	};
 	costTotal: number;
 	/** Context window usage percentage (0-100), or null if unknown (e.g. after compaction) */
 	contextPercent: number | null;
@@ -471,16 +481,7 @@ export interface RetryEndEvent extends SessionEventBase {
 	finalError?: string;
 }
 
-export interface TodoItem {
-	id: number;
-	content: string;
-	status: "pending" | "in_progress" | "done";
-}
-
-export interface TodoUpdateEvent extends SessionEventBase {
-	type: "todo_update";
-	items: TodoItem[];
-}
+export interface SessionExtensionEvent extends SessionEventBase, SessionExtensionObservation {}
 
 /** 后台 bash 任务（run_in_background）的可序列化状态，随事件全量推送。 */
 export interface BackgroundTaskInfo {
@@ -632,7 +633,7 @@ export type SessionEvent =
 	| McpReloadEndEvent
 	| UsageUpdateEvent
 	| ErrorEvent
-	| TodoUpdateEvent
+	| SessionExtensionEvent
 	| BackgroundTasksUpdateEvent
 	| SubagentsUpdateEvent
 	| ActiveToolsUpdateEvent

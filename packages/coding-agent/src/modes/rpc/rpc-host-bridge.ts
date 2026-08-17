@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { ImHostBridge } from "./rpc-session-capabilities.js";
 import type { RpcHostRequest, RpcHostResponse } from "./rpc-types.js";
 
@@ -15,6 +14,7 @@ export class RpcHostBridge {
 
 	constructor(
 		private readonly output: (request: RpcHostRequest) => void,
+		private readonly createRequestId: () => string,
 		private readonly timeoutMs = DEFAULT_HOST_REQUEST_TIMEOUT_MS,
 	) {}
 
@@ -22,7 +22,7 @@ export class RpcHostBridge {
 		return {
 			sendAttachment: (params) =>
 				new Promise<{ messageId?: string }>((resolve, reject) => {
-					const id = randomUUID();
+					const id = this.createRequestId();
 					const timer = setTimeout(() => {
 						this.pending.delete(id);
 						reject(new Error(`im_send_attachment: host did not respond within ${this.timeoutMs}ms`));

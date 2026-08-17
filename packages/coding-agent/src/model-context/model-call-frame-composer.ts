@@ -12,13 +12,13 @@ import type {
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
-import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
+import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type {
 	CodingAgentPluginMcpToolComposer,
 	CodingAgentSystemPromptOptionsResolver,
 } from "../runtime-contracts/index.js";
-import { type BuildSystemPromptOptions, buildSystemPromptDraft } from "./product-prompt.js";
 import { compileSystemPromptDraft, type SystemPromptDiagnostics, type SystemPromptDraft } from "./prompt-document.js";
+import { type BuildSystemPromptOptions, buildSystemPromptDraft } from "./system-prompt-policy.js";
 
 export type CodingAgentSystemPromptOptions = Omit<BuildSystemPromptOptions, "selectedTools">;
 
@@ -31,13 +31,14 @@ export interface CodingAgentModelCallFrameComposerOptions {
 	readonly resolveSystemPromptOptions: CodingAgentSystemPromptOptionsResolver;
 	readonly bindSystemPromptOptions?: (
 		context: RuntimeSnapshotAcquireContext,
-	) => CodingAgentSystemPromptOptionsResolver;
+	) => Promise<CodingAgentSystemPromptOptionsResolver> | CodingAgentSystemPromptOptionsResolver;
 	readonly readMcpPromptState?: () => CodingAgentMcpPromptState;
 	readonly readAvailableTools?: () => ReadonlyMap<string, RuntimeToolDefinition>;
 	readonly readActiveToolNamesOverride?: () => readonly string[] | undefined;
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpToolComposer;
 	readonly readAgentMode?: () => string | undefined;
 	readonly isMcpToolVisible?: (toolName: string) => boolean;
+	readonly bindMcpToolVisibility?: () => (toolName: string) => boolean;
 	readonly pluginRunOrchestrator?: CodingAgentModelCallPluginRunPort;
 	readonly pluginToolRuntime?: CodingAgentModelCallPluginToolPort;
 	readonly readAgentPlugins?: () => AgentPluginRuntimeConfig | undefined;
@@ -139,12 +140,9 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 		// 冻结可见集的候选名必须并入 MCP 受管工具（含 Session Plugin MCP）：它们不在
 		// readAvailableTools 里（compose 阶段才由 pluginMcpRuntime 并入 frame），只按
 		// availableTools 过滤会把全部 plugin MCP 工具冻结成不可见。
-		const visibleMcpTools = availableTools
-			? new Set(
-					[...availableTools.keys(), ...(mcpPromptState?.tools.map(({ name }) => name) ?? [])].filter(
-						(toolName) => this.options.isMcpToolVisible?.(toolName) ?? true,
-					),
-				)
+		const boundMcpToolVisibility = this.options.bindMcpToolVisibility?.() ?? this.options.isMcpToolVisible;
+		const mcpToolCandidates = availableTools
+			? new Set([...availableTools.keys(), ...(mcpPromptState?.tools.map(({ name }) => name) ?? [])])
 			: undefined;
 		const pluginMcpRuntime = this.options.pluginMcpRuntime?.bindForTurn?.(context) ?? this.options.pluginMcpRuntime;
 		const extensionToolRuntime =
@@ -157,7 +155,7 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 		const resolveExtensionToolActivation =
 			this.options.bindExtensionToolActivation?.(context) ?? this.options.resolveExtensionToolActivation;
 		const resolveSystemPromptOptions =
-			this.options.bindSystemPromptOptions?.(context) ?? this.options.resolveSystemPromptOptions;
+			(await this.options.bindSystemPromptOptions?.(context)) ?? this.options.resolveSystemPromptOptions;
 		let pluginHandlerLease: AgentPluginTurnHandlerLease | undefined;
 		try {
 			pluginHandlerLease = await pluginHandlerLeaseResult;
@@ -182,7 +180,9 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 			readActiveToolNamesOverride: () => activeToolNamesOverride,
 			readMcpPromptState: mcpPromptState ? () => mcpPromptState : undefined,
 			readAgentMode: () => agentMode,
-			isMcpToolVisible: visibleMcpTools ? (toolName) => visibleMcpTools.has(toolName) : undefined,
+			isMcpToolVisible: mcpToolCandidates
+				? (toolName) => mcpToolCandidates.has(toolName) && (boundMcpToolVisibility?.(toolName) ?? true)
+				: boundMcpToolVisibility,
 			wrapTools: boundToolWrapper?.wrapTools ?? this.options.wrapTools,
 			releaseTurnBinding: () =>
 				releaseTurnBindings(pluginMcpRuntime, pluginHandlerLease, extensionToolRuntime, boundToolWrapper),
@@ -227,6 +227,7 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 			tools,
 			// 整段 Prompt 只落在这一个 InstructionBlock 里，因此编译期算出的切分点可以直接透传给 Provider。
 			systemPromptStableLength: compiledPrompt.stableLength,
+			promptCacheSystemPromptBlocks: compiledPrompt.promptCacheBlocks,
 			contextCompositionSections: composeContextSections(draft, tools),
 		};
 	}
@@ -269,10 +270,16 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 			: extensionContext;
 		const mcpAvailableTools = pluginMcpSurface?.availableTools ?? extensionAvailableTools;
 		const pluginToolSurface = this.options.pluginToolRuntime?.compose(mcpContext, mcpAvailableTools);
-		const effectiveContext: ModelCallFrameCompositionContext = pluginToolSurface
+		const pluginContext: ModelCallFrameCompositionContext = pluginToolSurface
 			? { ...mcpContext, frame: pluginToolSurface.frame }
 			: mcpContext;
 		const availableTools = pluginToolSurface?.availableTools ?? mcpAvailableTools;
+		const effectiveContext = reconcileManagedMcpTools(
+			pluginContext,
+			availableTools,
+			this.options.readMcpPromptState?.(),
+			this.options.isMcpToolVisible,
+		);
 		const override = this.options.readActiveToolNamesOverride?.();
 		const activeToolNames = override
 			? override.filter((toolName) => availableTools.has(toolName))
@@ -314,6 +321,37 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 			createDraft,
 		};
 	}
+}
+
+function reconcileManagedMcpTools(
+	context: ModelCallFrameCompositionContext,
+	availableTools: ReadonlyMap<string, RuntimeToolDefinition>,
+	promptState: CodingAgentMcpPromptState | undefined,
+	isVisible: ((toolName: string) => boolean) | undefined,
+): ModelCallFrameCompositionContext {
+	if (!promptState || !isVisible) return context;
+	const tools = new Map(context.frame.tools);
+	let changed = false;
+	for (const { name } of promptState.tools) {
+		const visibleTool = isVisible(name) ? availableTools.get(name) : undefined;
+		if (visibleTool) {
+			if (tools.get(name) !== visibleTool) {
+				tools.set(name, visibleTool);
+				changed = true;
+			}
+		} else if (tools.delete(name)) {
+			changed = true;
+		}
+	}
+	if (!changed) return context;
+	const orderedTools = new Map<string, RuntimeToolDefinition>();
+	for (const [name, tool] of availableTools) {
+		if (tools.has(name)) orderedTools.set(name, tool);
+	}
+	for (const [name, tool] of tools) {
+		if (!orderedTools.has(name)) orderedTools.set(name, tool);
+	}
+	return { ...context, frame: { ...context.frame, tools: orderedTools } };
 }
 
 async function releaseTurnBindings(

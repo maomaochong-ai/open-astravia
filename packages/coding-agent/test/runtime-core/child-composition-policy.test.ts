@@ -16,6 +16,9 @@ import type {
 	CodingAgentSubagentChildCompositionRequest,
 	CodingAgentSubagentChildSessionOptions,
 } from "../../src/composition/subagent/session-assembly.js";
+import { createCodingAgentNodeSessionExecutionEnvironment } from "../../src/host/tool-environment/node/node-session-execution-environment.js";
+import { createCodingAgentNodeToolEnvironment } from "../../src/host/tool-environment/node/node-tool-environment.js";
+import { createTestConversationPersistence } from "../fixtures/conversation-persistence.js";
 
 describe("Coding Agent Child Composition policy", () => {
 	it("projects an isolated child composition while preserving allowed parent ports", async () => {
@@ -27,6 +30,10 @@ describe("Coding Agent Child Composition policy", () => {
 			throw new Error("child must not create a plugin MCP runtime");
 		};
 		const createPluginRuntime = () => undefined;
+		const knowledgeRuntime = {
+			query: { listAvailableTags: vi.fn(), queryByTags: vi.fn() },
+			write: { write: vi.fn(), resolveAbsolutePath: vi.fn() },
+		} as CodingAgentRuntimeCompositionOptions["knowledgeRuntime"];
 		const extensionTools: NonNullable<CodingAgentRuntimeCompositionOptions["extensionTools"]> = [];
 		const tracer = {} as NonNullable<CodingAgentRuntimeCompositionOptions["tracer"]>;
 		const tracing: NonNullable<CodingAgentRuntimeCompositionOptions["tracing"]> = {
@@ -35,6 +42,9 @@ describe("Coding Agent Child Composition policy", () => {
 		};
 		const parentOptions: CodingAgentRuntimeCompositionOptions = {
 			conversationDir: "C:\\conversations",
+			createConversationPersistence: createTestConversationPersistence,
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
 			modelRegistry: {} as CodingAgentRuntimeCompositionOptions["modelRegistry"],
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
@@ -48,7 +58,7 @@ describe("Coding Agent Child Composition policy", () => {
 			tracer,
 			tracing,
 			enableSubagents: true,
-			knowledgeRoot: "C:\\knowledge",
+			knowledgeRuntime,
 			systemPromptAdvertisedToolNames: ["parent_tool"],
 		};
 		const inheritedMcpView = { tools: [] } as McpRuntimeToolView;
@@ -83,7 +93,7 @@ describe("Coding Agent Child Composition policy", () => {
 			activation: request.activation,
 			enableSubagents: false,
 			scenario: "project",
-			knowledgeRoot: "C:\\knowledge",
+			knowledgeRuntime,
 			systemPromptAdvertisedToolNames: ["parent_tool"],
 		});
 		expect(childOptions.createPluginRuntime).toBe(createPluginRuntime);

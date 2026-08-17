@@ -6,14 +6,15 @@ import {
 	type RuntimeResources,
 } from "@vetta/runtime-core";
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
-import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
-import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
-import { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
+import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
+import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
+import { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
+import type { CodingAgentContextRuntime } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
-import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
+import type { CodingAgentConversationSessionPathAssessment } from "../contracts/conversation-persistence.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
 import { createCodingAgentSessionResourceLifecycle } from "../session-lifecycle/resource-lifecycle.js";
@@ -38,8 +39,8 @@ export interface CodingAgentSessionInitializationRegistry {
 	untrackContextRuntime(runtime: CodingAgentContextRuntime): void;
 	trackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
 	untrackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
-	trackTodoRuntime(runtime: CodingAgentTodoRuntime): void;
-	untrackTodoRuntime(runtime: CodingAgentTodoRuntime): void;
+	trackSessionExtensionComposition(extensions: SessionExtensionComposition): void;
+	untrackSessionExtensionComposition(extensions: SessionExtensionComposition): void;
 	trackTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): void;
 	untrackTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): void;
 	trackHookSessionDisposer(dispose: () => Promise<void>): void;
@@ -71,6 +72,11 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 	readonly createChildComposition: (
 		request: CodingAgentSubagentChildCompositionRequest,
 	) => Promise<CodingAgentSubagentChildComposition>;
+	readonly assessChildSessionPath: (
+		conversationDir: string,
+		sessionId: string,
+		sessionPath: string,
+	) => Promise<CodingAgentConversationSessionPathAssessment>;
 }
 
 export interface CodingAgentSessionInitializationTransaction {
@@ -105,7 +111,7 @@ async function initializeSession<TOwnershipBinding>(
 			activeOwnership = undefined;
 		},
 	});
-	const extensionEvents = new CodingAgentExtensionRunAdapter(options.extensionToolRuntime?.runnerGenerations);
+	const extensionEvents = new CodingAgentExtensionRunBridge(options.extensionToolRuntime?.runnerGenerations);
 	options.registry.indexes.resourceContexts.set(activeSessionId, resourceContext);
 	rollback.defer({
 		id: "resource-context-binding",
@@ -142,8 +148,10 @@ async function initializeSession<TOwnershipBinding>(
 			resolveActivation: options.resolveActivation,
 			trackMemoryRuntime: (runtime) => options.registry.trackMemoryRuntime(runtime),
 			untrackMemoryRuntime: (runtime) => options.registry.untrackMemoryRuntime(runtime),
-			trackTodoRuntime: (runtime) => options.registry.trackTodoRuntime(runtime),
-			untrackTodoRuntime: (runtime) => options.registry.untrackTodoRuntime(runtime),
+			trackSessionExtensionComposition: (extensions) =>
+				options.registry.trackSessionExtensionComposition(extensions),
+			untrackSessionExtensionComposition: (extensions) =>
+				options.registry.untrackSessionExtensionComposition(extensions),
 			deferRollback: (task) => {
 				rollback.defer(task);
 			},
@@ -162,6 +170,7 @@ async function initializeSession<TOwnershipBinding>(
 			resolveConversationPath: options.conversation.resolveConversationPath,
 			readConversationModelMessages: options.readConversationModelMessages,
 			createChildComposition: options.createChildComposition,
+			assessChildSessionPath: options.assessChildSessionPath,
 			trackContextRuntime: (runtime) => options.registry.trackContextRuntime(runtime),
 			untrackContextRuntime: (runtime) => options.registry.untrackContextRuntime(runtime),
 			deferRollback: (task) => {
@@ -176,8 +185,9 @@ async function initializeSession<TOwnershipBinding>(
 			memoryRuntime,
 			pluginMcpRuntime,
 			pluginRuntime,
-			productToolFeature,
-			productToolRegistrations,
+			specializedToolFeature,
+			specializedToolRegistrations,
+			sessionExtensions,
 			todoEnabled,
 			todoRegistration,
 			todoRuntime,
@@ -214,7 +224,7 @@ async function initializeSession<TOwnershipBinding>(
 			contextRuntime,
 			memoryRuntime,
 			memoryController,
-			todoRuntime,
+			sessionExtensions,
 			todoToolRegistration: todoRegistration,
 			todoEnabled,
 			subagentRuntime,
@@ -223,7 +233,7 @@ async function initializeSession<TOwnershipBinding>(
 			pluginMcpRuntime,
 			mcpController,
 			codingTools: options.codingTools,
-			productToolRegistrations,
+			specializedToolRegistrations,
 			activation: options.activation,
 			knowledgeAvailable: options.knowledgeAvailable,
 			backgroundTasksAvailable: options.backgroundTasksAvailable,
@@ -236,7 +246,8 @@ async function initializeSession<TOwnershipBinding>(
 				untrackHookSessionDisposer: (dispose) => options.registry.untrackHookSessionDisposer(dispose),
 				untrackContextRuntime: (runtime) => options.registry.untrackContextRuntime(runtime),
 				untrackMemoryRuntime: (runtime) => options.registry.untrackMemoryRuntime(runtime),
-				untrackTodoRuntime: (runtime) => options.registry.untrackTodoRuntime(runtime),
+				untrackSessionExtensionComposition: (extensions) =>
+					options.registry.untrackSessionExtensionComposition(extensions),
 				untrackTurnCapabilityAssembly: (assembly) => options.registry.untrackTurnCapabilityAssembly(assembly),
 			},
 		});
@@ -244,6 +255,7 @@ async function initializeSession<TOwnershipBinding>(
 			id: "hook-session",
 			rollback: () => resourceLifecycleAssembly.disposeHookSession(),
 		});
+		const createPromptRuntimeSources = profile.createPromptRuntimeSources;
 		const turnCapabilityAssembly = await createCodingAgentTurnCapabilitySessionAssembly({
 			session: {
 				initialSessionId: activeSessionId,
@@ -270,6 +282,15 @@ async function initializeSession<TOwnershipBinding>(
 				},
 			},
 			prompt: {
+				runtimeSourceFactory: createPromptRuntimeSources
+					? () =>
+							createPromptRuntimeSources({
+								sessionOptions,
+								cwd: sessionCwd,
+								agentDir: profile.agentDir,
+								scenario: options.scenario,
+							})
+					: undefined,
 				systemPromptOptionsResolver:
 					profile.createSystemPromptOptionsResolver?.(sessionOptions) ?? profile.resolveSystemPromptOptions,
 				promptResourceResolver:
@@ -281,8 +302,9 @@ async function initializeSession<TOwnershipBinding>(
 			baseProfile,
 			codingTools: options.codingTools,
 			executionRuntime,
-			productToolFeature,
-			productToolRegistrations,
+			specializedToolFeature,
+			specializedToolRegistrations,
+			continuationSources: sessionExtensions.continuationSources,
 			todoRuntime,
 			todoToolRegistration: todoEnabled ? todoRegistration : undefined,
 			memoryRuntime,

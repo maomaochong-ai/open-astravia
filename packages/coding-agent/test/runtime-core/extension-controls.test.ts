@@ -1,10 +1,10 @@
+import { InMemoryRuntimeSessionValueIndex } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
-import type { CodingAgentExtensionRunAdapter } from "../../src/adapters/runtime-core/extension-run-adapter.js";
 import {
 	type CodingAgentExtensionToolHostPort,
 	createCodingAgentRuntimeExtensionControls,
 } from "../../src/composition/session-lifecycle/extension-controls.js";
-import { InMemoryCodingAgentSessionValueIndex } from "../../src/composition/session-lifecycle/indexes.js";
+import type { CodingAgentExtensionRunBridge } from "../../src/extensions/runtime/extension-run-bridge.js";
 import type {
 	CodingAgentExtensionRunnerPort,
 	CodingAgentExtensionToolSource,
@@ -19,7 +19,7 @@ describe("Coding Agent Runtime Extension Controls", () => {
 		const bridge = {
 			bind: bindEvents,
 			readSystemPrompt: () => "extension prompt",
-		} as unknown as CodingAgentExtensionRunAdapter;
+		} as unknown as CodingAgentExtensionRunBridge;
 		const bindTools = vi.fn(() => async () => {
 			cleanupOrder.push("tools");
 		});
@@ -32,7 +32,7 @@ describe("Coding Agent Runtime Extension Controls", () => {
 			replaceSessionTools,
 			clearSessionTools,
 		} satisfies CodingAgentExtensionToolHostPort;
-		const extensionEventBridges = new InMemoryCodingAgentSessionValueIndex<CodingAgentExtensionRunAdapter>();
+		const extensionEventBridges = new InMemoryRuntimeSessionValueIndex<CodingAgentExtensionRunBridge>();
 		const controls = createCodingAgentRuntimeExtensionControls({
 			indexes: { extensionEventBridges },
 			extensionToolRuntime,
@@ -58,7 +58,7 @@ describe("Coding Agent Runtime Extension Controls", () => {
 	});
 
 	it("preserves missing-bridge errors and optional Tool Runtime behavior", () => {
-		const extensionEventBridges = new InMemoryCodingAgentSessionValueIndex<CodingAgentExtensionRunAdapter>();
+		const extensionEventBridges = new InMemoryRuntimeSessionValueIndex<CodingAgentExtensionRunBridge>();
 		const controls = createCodingAgentRuntimeExtensionControls({ indexes: { extensionEventBridges } });
 		const runner = {} as CodingAgentExtensionRunnerPort;
 

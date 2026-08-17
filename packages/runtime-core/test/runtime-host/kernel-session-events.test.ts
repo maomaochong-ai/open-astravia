@@ -67,6 +67,8 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 			output: 4,
 			cacheRead: 2,
 			cacheWrite: 1,
+			cacheUsageReporting: "unavailable",
+			model: { api: "openai-responses", provider: "openai", id: "test-model" },
 			costTotal: 10,
 			contextPercent: null,
 			contextTokens: 17,

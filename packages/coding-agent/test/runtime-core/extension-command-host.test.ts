@@ -4,10 +4,11 @@ import * as path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthStorage } from "../../src/auth/index.js";
 import type { ExtensionCommandContextActions } from "../../src/extensions/index.js";
-import { discoverAndLoadExtensions, ExtensionRunner } from "../../src/extensions/index.js";
+import { ExtensionRunner } from "../../src/extensions/index.js";
 import { createCodingAgentModelRuntime } from "../../src/models/index.js";
 import { createCodingAgentRuntimeExtensionCommandHost } from "../../src/public-api/runtime/extensions.js";
 import { createExtensionSessionView } from "../fixtures/extension-session-view.js";
+import { discoverAndLoadExtensions } from "../fixtures/node-extension-host.js";
 
 const temporaryDirectories: string[] = [];
 

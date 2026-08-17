@@ -1,4 +1,5 @@
 import type { ChatErrorKind } from "@domains/chat/services/classifyChatError";
+import type { Usage } from "@vetta/ai";
 import type { ContextCompositionReport, PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { atom } from "jotai";
@@ -197,6 +198,8 @@ export interface ChatMessage {
 	branch?: ChatMessageBranch;
 	/** Rich content blocks for assistant messages */
 	blocks?: ContentBlock[];
+	/** One normalized usage record per model call in this assistant turn. */
+	usages?: Usage[];
 	/** Attached images for user messages */
 	images?: Array<{ data: string; mimeType: string; name: string }>;
 	/** Timestamp when the message was created (Date.now()) */

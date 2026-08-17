@@ -1,7 +1,6 @@
-import { createHash } from "node:crypto";
 import { CLAUDE_CODE_HOOK_PROFILE_ID, type EcosystemHookContributionSource } from "@vetta/ecosystem-adapter";
 import { parseFrontmatter } from "../../utils/frontmatter.js";
-import { readSkillContent, type Skill, type SkillFrontmatter } from "./index.js";
+import type { Skill, SkillFrontmatter } from "./index.js";
 
 export interface SkillInvocationDocument {
 	readonly body: string;
@@ -10,12 +9,12 @@ export interface SkillInvocationDocument {
 }
 
 export function readSkillInvocationDocument(skill: Skill): SkillInvocationDocument {
-	const content = readSkillContent(skill);
+	const content = skill.content;
 	const { frontmatter, body } = parseFrontmatter<SkillFrontmatter>(content);
 	return {
 		body,
 		hooks: frontmatter.hooks,
-		revision: createHash("sha256").update(content).digest("hex"),
+		revision: createSkillContentRevision(content),
 	};
 }
 
@@ -35,4 +34,20 @@ export function createSkillHookContribution(
 			CLAUDE_SKILL_DIR: skill.baseDir,
 		},
 	};
+}
+
+/** Internal change detector for an already-materialized Skill document; this is not a security digest. */
+function createSkillContentRevision(content: string): string {
+	let first = 0x811c9dc5;
+	let second = 0x9e3779b9;
+	for (let index = 0; index < content.length; index += 1) {
+		const codeUnit = content.charCodeAt(index);
+		first = Math.imul(first ^ codeUnit, 0x01000193);
+		second = Math.imul(second ^ (codeUnit + index), 0x27d4eb2d);
+	}
+	return `${content.length.toString(16)}-${toHex(first)}${toHex(second)}`;
+}
+
+function toHex(value: number): string {
+	return (value >>> 0).toString(16).padStart(8, "0");
 }

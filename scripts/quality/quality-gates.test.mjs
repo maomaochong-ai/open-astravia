@@ -8,6 +8,7 @@ import { findPackageBoundaryViolations, findPackageManifestBoundaryViolations } 
 import { batchPaths, createQuickCheckPlan, isBiomeGlobalTrigger } from "./check-quick.mjs";
 import { findSkillFrontmatterProblems } from "./check-skill-frontmatter.mjs";
 import { findStandaloneCliBuildViolations } from "./check-standalone-cli-build.mjs";
+import { findVitestRunnerViolations } from "./check-vitest-runner.mjs";
 import { changedFiles, expandTestablePackages, packagesFromPaths, parseBaseArgs, stagedFiles } from "./lib.mjs";
 import { createChangedTestPlan, parseArgs } from "./test-changed.mjs";
 
@@ -88,6 +89,32 @@ describe("standalone CLI 编译入口守卫", () => {
 				"packages/desktop-app/src/main/dev-cli-shim.ts",
 				`spawn("bun", ["build", launcherEntryPath, "--compile"]);`,
 			),
+		).toEqual([]);
+	});
+});
+
+describe("vitest runner 守卫", () => {
+	it("拒绝 bunx vitest 和直接 vitest", () => {
+		expect(
+			findVitestRunnerViolations("packages/foo/package.json", {
+				scripts: { test: "bunx vitest --run", "test:unit": "vitest --run" },
+			}),
+		).toHaveLength(2);
+	});
+
+	it("允许统一 Node 包装器", () => {
+		expect(
+			findVitestRunnerViolations("packages/foo/package.json", {
+				scripts: { test: "bun ../../scripts/quality/run-vitest.mjs --run --coverage" },
+			}),
+		).toEqual([]);
+	});
+
+	it("忽略不含 vitest 的脚本", () => {
+		expect(
+			findVitestRunnerViolations("packages/foo/package.json", {
+				scripts: { build: "tsgo -p tsconfig.build.json", "test:e2e": "wdio run ./wdio.conf.ts" },
+			}),
 		).toEqual([]);
 	});
 });
@@ -311,6 +338,36 @@ describe("package boundary analysis", () => {
 		).toHaveLength(1);
 	});
 
+	it("keeps agent-core independent from Runtime and product packages", () => {
+		expect(
+			findPackageBoundaryViolations(
+				"packages/agent/src/telemetry.ts",
+				'import type { RuntimeTracer } from "@vetta/runtime-telemetry";',
+			),
+		).toHaveLength(1);
+		expect(
+			findPackageBoundaryViolations(
+				"packages/agent/src/engine.ts",
+				'import type { RuntimeSession } from "@vetta/runtime-core";',
+			),
+		).toHaveLength(1);
+		expect(
+			findPackageBoundaryViolations("packages/agent/src/model.ts", 'import type { Model } from "@vetta/ai";'),
+		).toEqual([]);
+		expect(
+			findPackageManifestBoundaryViolations({
+				name: "@vetta/agent-core",
+				dependencies: { "@vetta/runtime-telemetry": "workspace:*" },
+			}),
+		).toHaveLength(1);
+		expect(
+			findPackageManifestBoundaryViolations({
+				name: "@vetta/agent-core",
+				dependencies: { "@vetta/ai": "workspace:*" },
+			}),
+		).toEqual([]);
+	});
+
 	it("keeps greenfield product modules independent from legacy startup symbols", () => {
 		const source = "const startup = runLegacyAgentWithBootstrap;";
 		expect(
@@ -507,6 +564,18 @@ describe("package boundary analysis", () => {
 				'import type { ConversationDocument } from "@vetta/runtime-core/conversation";',
 			),
 		).toHaveLength(1);
+		expect(
+			findPackageBoundaryViolations(
+				"packages/coding-agent/src/compaction/runtime/context-runtime.ts",
+				'import type { ContextStrategy } from "@vetta/runtime-core/kernel";',
+			),
+		).toEqual([]);
+		expect(
+			findPackageBoundaryViolations(
+				"packages/coding-agent/src/compaction/runtime/context-runtime.ts",
+				'import type { SessionManager } from "../core/session-manager/index.js";',
+			),
+		).toHaveLength(1);
 	});
 
 	it("keeps production Legacy imports and Runtime adapters inside explicit compatibility boundaries", () => {
@@ -542,8 +611,14 @@ describe("package boundary analysis", () => {
 		).toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/agent-runtime/historical-session-format.ts",
+				"packages/runtime-desktop/src/historical-session-format.ts",
 				'import { createCodingAgentHistoricalSessionCatalog } from "@vetta/coding-agent/historical-sessions";',
+			),
+		).toEqual([]);
+		expect(
+			findPackageBoundaryViolations(
+				"packages/cli-app/src/coding-agent-bootstrap.ts",
+				'import { runCodingAgentStartupMigrations } from "@vetta/coding-agent/historical-sessions";',
 			),
 		).toEqual([]);
 		expect(
@@ -620,8 +695,8 @@ describe("package boundary analysis", () => {
 		).toHaveLength(1);
 	});
 
-	it("keeps the Greenfield active-session transaction host independent from Legacy session construction", () => {
-		const hostPath = "packages/coding-agent/src/composition/greenfield-active-session-transition-host.ts";
+	it("keeps the Runtime active-session transaction host independent from products and platform implementations", () => {
+		const hostPath = "packages/runtime-core/src/runtime-host/active-session-host.ts";
 		expect(
 			findPackageBoundaryViolations(hostPath, 'import { SessionManager } from "../core/session-manager/index.js";'),
 		).not.toEqual([]);
@@ -632,13 +707,20 @@ describe("package boundary analysis", () => {
 			),
 		).not.toEqual([]);
 		expect(findPackageBoundaryViolations(hostPath, "type Runtime = CodingAgentRuntimeComposition;")).toHaveLength(1);
+		expect(findPackageBoundaryViolations(hostPath, "type Runtime = RuntimeActiveSessionRuntimePort;")).toEqual([]);
 		expect(
-			findPackageBoundaryViolations(hostPath, "type Runtime = CodingAgentGreenfieldSessionTransitionRuntimePort;"),
-		).toEqual([]);
+			findPackageBoundaryViolations(
+				hostPath,
+				'import { createCodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";',
+			),
+		).not.toEqual([]);
+		expect(findPackageBoundaryViolations(hostPath, 'import { join } from "node:path";')).not.toEqual([]);
+		expect(findPackageBoundaryViolations(hostPath, 'const value = Buffer.from("session");')).not.toEqual([]);
+		expect(findPackageBoundaryViolations(hostPath, "const cwd = process.cwd();")).not.toEqual([]);
 	});
 
 	it("keeps Greenfield session action ports independent from the Extension command API", () => {
-		const activeHostPath = "packages/coding-agent/src/composition/greenfield-active-session-transition-host.ts";
+		const activeHostPath = "packages/runtime-core/src/runtime-host/active-session-host.ts";
 		expect(
 			findPackageBoundaryViolations(
 				activeHostPath,
@@ -840,7 +922,7 @@ describe("package boundary analysis", () => {
 			"new CodingAgentGreenfieldContextRuntime({});",
 			"createEcosystemHookRuntime({});",
 			"createCodingAgentSubagentSessionAssembly({});",
-			"createCodingAgentProductToolRegistrations({});",
+			"createCodingAgentSpecializedToolRegistrations({});",
 			"createSessionPluginRuntime(options);",
 		];
 		for (const source of forbiddenConstructions) {
@@ -931,7 +1013,7 @@ describe("package boundary analysis", () => {
 			"packages/coding-agent/src/plugins/runtime/tool-runtime.ts",
 			"packages/coding-agent/src/resources/prompt-resource-resolver.ts",
 			"packages/coding-agent/src/sessions/projection/conversation-context-projector.ts",
-			"packages/coding-agent/src/work-state/todo-continuation-source.ts",
+			"packages/coding-agent/src/features/todo/todo-continuation-source.ts",
 		]) {
 			expect(
 				findPackageBoundaryViolations(path, 'import { Adapter } from "../adapters/runtime-core/example.js";'),

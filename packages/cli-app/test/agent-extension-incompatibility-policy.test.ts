@@ -1,7 +1,4 @@
-import type {
-	CodingAgentExtensionCompatibilityAssessment,
-	CodingAgentHostBootstrap,
-} from "@vetta/coding-agent/bootstrap";
+import type { CodingAgentBootstrap, CodingAgentExtensionCompatibilityAssessment } from "@vetta/coding-agent/bootstrap";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runAgentRuntimeCli } from "../src/agent-runtime-selection.js";
 
@@ -16,8 +13,11 @@ const runtimeMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@vetta/coding-agent/bootstrap", () => ({
-	createAgentCliBootstrap: runtimeMocks.createBootstrap,
 	resolveCodingAgentSessionDir: () => "C:/test/conversations",
+}));
+
+vi.mock("../src/coding-agent-bootstrap.js", () => ({
+	createCliCodingAgentBootstrap: runtimeMocks.createBootstrap,
 }));
 
 vi.mock("@vetta/coding-agent/cli-control", () => ({
@@ -40,7 +40,7 @@ vi.mock("../src/rpc/runtime-host/runtime-host.js", () => ({
 const bootstrap = {
 	cwd: "C:/test/workspace",
 	parsed: { sessionDir: "C:/test/conversations" },
-} as CodingAgentHostBootstrap;
+} as CodingAgentBootstrap;
 
 const extensionCompatibility = {
 	extensionCount: 1,

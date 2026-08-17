@@ -826,6 +826,7 @@ export class TurnPipeline {
 			sourceSessionId,
 			sourceSessionPath: result.sourceSessionPath,
 			sessionId: result.sessionId,
+			sessionDirectory: result.sessionDirectory,
 			sessionPath: result.sessionPath,
 			turnId,
 			reason: directive.reason,

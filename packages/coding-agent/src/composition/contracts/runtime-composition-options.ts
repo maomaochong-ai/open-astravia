@@ -1,17 +1,18 @@
 import type { EcosystemHookAdapterFactory, HookConfigLayer } from "@vetta/ecosystem-adapter";
 import type { ConversationScenario, SessionConfig } from "@vetta/runtime-core";
 import type { AgentCoreTurnEngineOptions } from "@vetta/runtime-core/kernel";
+import type { SessionExtensionDefinition } from "@vetta/runtime-core/session-extensions";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
 import type { SubagentTypeRegistryLike } from "@vetta/runtime-subagents";
-import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
-import type {
-	CodingAgentMemoryRolloverOrchestratorOptions,
-	CodingAgentMemoryRolloverRuntime,
-} from "../../memory/index.js";
+import type { CodingToolActivation, CodingToolResultPolicy } from "@vetta/runtime-tools";
+import type { CodingAgentKnowledgeRuntime } from "../../features/knowledge/contracts.js";
+import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
+import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type {
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentCompactionRuntimeOptions,
+	CodingAgentContextRuntimeFactory,
 	CodingAgentExtensionToolSource,
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
@@ -21,14 +22,24 @@ import type {
 	CodingAgentRuntimeModelSource,
 	CodingAgentSystemPromptOptionsResolver,
 } from "../../runtime-contracts/index.js";
-import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import type { CodingAgentConversationPersistenceFactory } from "./conversation-persistence.js";
+import type { CodingAgentMemoryRuntimeFactoryOptions } from "./memory-runtime.js";
 import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
+import type { CodingAgentSessionExecutionEnvironmentFactory } from "./session-execution-environment.js";
 import type {
 	CodingAgentSubagentChildFactory,
 	CodingAgentSubagentChildFactoryContext,
 	CodingAgentSubagentProfile,
 } from "./subagent.js";
+import type { CodingAgentToolEnvironmentFactory } from "./tool-environment.js";
+
+export type {
+	CodingAgentKnowledgePage,
+	CodingAgentKnowledgeQueryOperations,
+	CodingAgentKnowledgeRuntime,
+	CodingAgentKnowledgeWriteOperations,
+} from "../../features/knowledge/contracts.js";
+export type { CodingAgentMemoryRuntimeFactoryOptions } from "./memory-runtime.js";
 
 export interface CodingAgentRuntimeEnvironmentOptions {
 	readonly cwd?: string;
@@ -37,10 +48,10 @@ export interface CodingAgentRuntimeEnvironmentOptions {
 }
 
 export interface CodingAgentRuntimeConversationOptions {
-	/** 默认文件仓储根目录；注入 createConversationPersistence 时只作为工厂上下文。 */
+	/** 由宿主持久化工厂解释的 Conversation 根目录上下文。 */
 	readonly conversationDir: string;
 	/** 为每个 Composition 创建独占持久化端口；Composition 负责关闭。 */
-	readonly createConversationPersistence?: CodingAgentConversationPersistenceFactory;
+	readonly createConversationPersistence: CodingAgentConversationPersistenceFactory;
 	/** 可选的进程级会话所有权；与 Repository 单次写锁相互独立。 */
 	readonly conversationOwnershipManager?: ConversationOwnershipManager;
 }
@@ -53,9 +64,15 @@ export interface CodingAgentRuntimeModelOptions {
 }
 
 export interface CodingAgentRuntimeToolOptions {
+	/** 平台工具环境由最终宿主显式选择；Coding Agent 不提供 Node 默认实现。 */
+	readonly createToolEnvironment: CodingAgentToolEnvironmentFactory;
+	/** 为每个 Session 创建独占的命令、后台任务与 sandbox 宿主环境。 */
+	readonly createSessionExecutionEnvironment: CodingAgentSessionExecutionEnvironmentFactory;
+	/** 大结果如何投影由宿主显式选择；缺省保留完整结果且不产生环境副作用。 */
+	readonly codingToolResultPolicy?: CodingToolResultPolicy;
 	readonly activation?: CodingToolActivation;
-	readonly knowledgeEnabled?: boolean;
-	readonly knowledgeRoot?: string;
+	/** Knowledge 的查询与写入实现由最终宿主选择；缺省时不注册 Knowledge Tool。 */
+	readonly knowledgeRuntime?: CodingAgentKnowledgeRuntime;
 	/** 仅用于保留宿主既有系统提示词合同；不会把名称对应的工具加入可执行 Tool Frame。 */
 	readonly systemPromptAdvertisedToolNames?: readonly string[];
 	readonly mcpSource?: McpRuntimeToolSource;
@@ -76,6 +93,10 @@ export interface CodingAgentRuntimeSubagentOptions {
 }
 
 export interface CodingAgentRuntimePromptOptions {
+	/** 为每个 Session 创建资源与设置事实源；文件与环境实现由最终宿主选择。 */
+	readonly createPromptRuntimeSources?: (
+		context: CodingAgentPromptRuntimeSourceContext,
+	) => Promise<CodingAgentPromptRuntimeSources>;
 	/** 已由宿主 Bootstrap 加载的共享动态资源；必须与 promptSettingsSource 同时提供。 */
 	readonly promptResourceSource?: CodingAgentPromptResourceSource;
 	/** 已由宿主 Bootstrap 加载的共享设置；必须与 promptResourceSource 同时提供。 */
@@ -93,6 +114,18 @@ export interface CodingAgentRuntimePromptOptions {
 	) => CodingAgentSystemPromptOptionsResolver;
 	/** 无状态系统提示词来源的兼容入口。 */
 	readonly resolveSystemPromptOptions?: CodingAgentSystemPromptOptionsResolver;
+}
+
+export interface CodingAgentPromptRuntimeSourceContext {
+	readonly sessionOptions: CodingAgentRuntimeSessionOptions;
+	readonly cwd: string;
+	readonly agentDir?: string;
+	readonly scenario: ConversationScenario;
+}
+
+export interface CodingAgentPromptRuntimeSources {
+	readonly resourceSource: CodingAgentPromptResourceSource;
+	readonly settingsSource: CodingAgentPromptSettingsSource;
 }
 
 export interface CodingAgentRuntimePluginOptions {
@@ -119,6 +152,12 @@ export interface CodingAgentRuntimeExtensionOptions {
 }
 
 export interface CodingAgentRuntimeContextOptions {
+	/** 替换完整的 Session Context/Compaction 产品能力；Runtime Core 仍拥有提交与生命周期机制。 */
+	readonly createContextRuntime?: CodingAgentContextRuntimeFactory;
+	/** 为每个 Session 贡献产品能力定义；具体状态与副作用由各 Extension Instance 自己持有。 */
+	readonly createSessionExtensionDefinitions?: (
+		sessionOptions: CodingAgentRuntimeSessionOptions,
+	) => readonly SessionExtensionDefinition[] | Promise<readonly SessionExtensionDefinition[]>;
 	/** 为每个 Session 创建唯一 Todo Runtime；Tool、Continuation、Scene 与 Controller 共享它。 */
 	readonly createTodoRuntime?: (sessionOptions: CodingAgentRuntimeSessionOptions) => CodingAgentTodoRuntime;
 	/** 运行中读取压缩设置；未提供时使用 Coding Agent 既有默认值。 */
@@ -129,9 +168,9 @@ export interface CodingAgentRuntimeContextOptions {
 	) => CodingAgentCompactionExtensionRuntime | undefined;
 	/** 测试或宿主可替换摘要调用；生产默认复用 Coding Agent 既有实现。 */
 	readonly generateCompaction?: CodingAgentCompactionRuntimeOptions["generateCompaction"];
-	/** 为每个 memory-mode Session 创建产品级 Memory Runtime；默认使用 Coding Agent 既有实现。 */
+	/** 为每个 memory-mode Session 创建产品级 Memory Runtime；文件与其他存储由宿主显式注入。 */
 	readonly createMemoryRolloverRuntime?: (
-		options: CodingAgentMemoryRolloverOrchestratorOptions,
+		options: CodingAgentMemoryRuntimeFactoryOptions,
 		sessionOptions: CodingAgentRuntimeSessionOptions,
 	) => CodingAgentMemoryRolloverRuntime;
 }

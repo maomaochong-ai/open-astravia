@@ -4,30 +4,35 @@
 
 ## 架构定位
 
-`@vetta/coding-agent` 上接 CLI、Desktop、IM 和 SDK 等宿主，下接 AI、Agent Core 与各 Runtime 能力域。它负责把稳定合同和独立能力组合成 Coding Agent 产品，但不拥有这些能力的通用底层实现。
+`@vetta/coding-agent` 定义 Coding Agent 产品：它下接 AI、Agent Core 与各 Runtime 能力域，向平台
+Runtime 和应用提供产品 Feature、策略、默认配置和稳定产品 API 映射。它不是通用 Runtime Host，也
+不是最终平台 Composition Root。
 
 本包拥有：
 
-- 产品级 Runtime Composition Root 与默认 Profile。
-- Session 创建、恢复、切换、提交、回滚和释放的产品编排。
-- Prompt、Skill、MCP、Plugin、Memory、Compaction 和工作状态的产品策略与能力装配。
-- Runtime 事件、Port 与宿主服务之间的产品适配。
-- SDK、RPC、历史会话等稳定产品入口。
+- 默认 Profile、Prompt、Mode 与产品 Feature 集合。
+- Todo、Memory、Knowledge、Skill、Plugin、IM、Compaction 和上下文的产品规则与策略。
+- 产品 Feature 与 Session Extension 定义，以及产品事件和稳定产品 API 的语义映射。
+- Coding Agent 历史数据格式的显式读取与迁移边界。
 
 本包不拥有：
 
 - 模型 Provider 协议与流式实现，属于 `@vetta/ai`。
 - Agent Kernel、Turn Pipeline 和通用 Port，属于 `@vetta/runtime-core` / `@vetta/agent-core`。
-- 通用 Coding Tool 实现，属于 `@vetta/runtime-tools`。
-- Conversation Repository，属于 `@vetta/runtime-storage`。
-- MCP 协议、传输和通用生命周期，属于 `@vetta/runtime-mcp`。
+- Session 创建、恢复、切换、Queue、Snapshot、生命周期事务和通用事件路由，属于 `@vetta/runtime-core`。
+- Coding Tool 协议与纯逻辑属于 `@vetta/runtime-tools`；Node Tool 实现属于 `@vetta/runtime-node`。
+- Conversation Repository 端口属于 `@vetta/runtime-storage`；Node 文件/内存实现属于 `@vetta/runtime-node`。
+- MCP 协议与通用生命周期属于 `@vetta/runtime-mcp`；Node transport、文件和 OAuth 实现属于 `@vetta/runtime-node`。
 - 通用知识库、Subagent 和观测实现，属于对应 `@vetta/runtime-*` 包。
 - CLI、Desktop 或 IM 自身的进程入口、UI 和传输协议。
+- Node/Desktop 环境实现和最终平台 Composition Root，属于现有平台 Runtime 或应用宿主。
 
 ## 依赖方向
 
 - Apps 只能依赖本包在 `package.json#exports` 中声明的公开入口，不得深度导入 `src/`。
-- 本包可以依赖 `@vetta/runtime-*`、`@vetta/ai` 和 `@vetta/agent-core`；这些下层包不得反向依赖本包。
+- 本包可以依赖 `@vetta/runtime-*`、`@vetta/ai` 和 `@vetta/agent-core`；Kernel、协议包和 `runtime-node` 不得反向依赖本包，平台 Composition Root（例如 `runtime-desktop`）可以组合本包。
+- 产品 Feature 不得选择 `@vetta/runtime-node` 默认实现；具体实现只允许在现有平台 Composition Root
+  中选择。迁移期间保留的 Node 接线必须登记并按纵向切片移除。
 - `runtime-contracts/`、`composition/contracts/` 和其他合同文件不得依赖 Composition、Host、Adapter 或 Public API 实现。
 - 产品能力域不得依赖 `composition/` 实现、`adapters/` 或 Public API facade。
 - Adapter 可以依赖稳定合同，但不得反向控制 Composition，也不得复制 Runtime 域实现。
@@ -36,13 +41,14 @@
 
 ## 关键目录
 
-- `src/composition/`：产品 Composition Root、Session 装配和生命周期事务。
+- `src/composition/`：产品定义和默认 Feature/策略集合；通用 Session 装配与生命周期应迁入 Runtime。
 - `src/composition/contracts/`、`src/runtime-contracts/`：稳定产品合同与依赖倒置边界。
 - `src/sessions/`：会话产品语义、投影、迁移和历史格式隔离。
+- `src/features/`：Todo 等完整产品能力，按领域共同放置状态、Tool、Extension 和产品策略。
 - `src/extensions/`、`src/plugins/`、`src/resources/`：扩展、Plugin、Skill 和 Prompt 的产品域。
-- `src/model-context/`、`src/compaction/`、`src/memory/`、`src/work-state/`：产品级上下文与工作状态策略。
+- `src/model-context/`、`src/compaction/`、`src/memory/`：待按产品能力或策略继续收敛的现有领域。
 - `src/mcp/`：Coding Agent 的 MCP 路径、OAuth 和宿主组合；通用 MCP 实现仍属于 `runtime-mcp`。
-- `src/adapters/`、`src/host/`：Runtime Port 的产品适配和有副作用的宿主实现。
+- `src/adapters/`、`src/host/`：迁移中的混合区域；只允许保留产品语义映射，通用机制和环境实现应迁出。
 - `src/public-api/`：稳定公开入口；入口文件只导出，不承载业务实现。
 
 ## 编码前必须分析
@@ -139,7 +145,7 @@
 
 ```bash
 bun run check:quick
-bunx vitest --run <相关测试文件>
+bun scripts/quality/run-vitest.mjs --run <相关测试文件>
 bun run check
 ```
 
@@ -157,4 +163,4 @@ bun run check
 - 测试是否覆盖本次决策和失败路径，而不只是覆盖代码行。
 - `bun run check:quick`、相关测试和代码变更后的 `bun run check` 是否全部通过。
 
-固定重写目标见 [`REWRITE-CHARTER.md`](../../docs/agent/coding-agent/05-greenfield-rewrite/08-implementation-log/REWRITE-CHARTER.md)。架构守卫以 `scripts/quality/check-coding-agent-architecture.mjs` 和包边界守卫为准。
+固定重写目标见 [`REWRITE-CHARTER.md`](../../docs/agent/coding-agent/05-greenfield-rewrite/08-implementation-log/REWRITE-CHARTER.md)，三层所有权以 ADR-0077 为准。架构守卫以 `scripts/quality/check-coding-agent-architecture.mjs` 和包边界守卫为准。

@@ -9,8 +9,9 @@ import {
 	type AgentPluginToolInvocation,
 	RuntimeHost,
 } from "@vetta/runtime-core";
+import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DesktopRuntimeBackendPool } from "./backend-pool.js";
+import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
 
 describe("Desktop RuntimeHost capabilities", () => {
 	const directories: string[] = [];
@@ -144,6 +145,7 @@ describe("Desktop RuntimeHost capabilities", () => {
 				modelRegistry: modelRegistry(),
 				initialModel: MODEL,
 				initialThinkingLevel: "off",
+				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 				streamFn: (_model, context) => {
 					toolSurfaces.push((context.tools ?? []).map(({ name }) => name));
 					const response = responses[responseIndex++];

@@ -1,6 +1,7 @@
 import { clearApiProviders, registerApiProvider } from "../api-registry.js";
 import type { AdapterRegistry, ApiProvider } from "../runtime/adapter-registry.js";
 import type { LanguageModelAdapter } from "../runtime/language-model-adapter.js";
+import type { ModelMiddleware } from "../runtime/model-middleware.js";
 import type { Api, StreamOptions } from "../types.js";
 import { bedrockAdapter, streamBedrock, streamSimpleBedrock } from "./amazon-bedrock.js";
 import { anthropicAdapter, streamAnthropic, streamSimpleAnthropic } from "./anthropic.js";
@@ -172,10 +173,18 @@ export function registerBuiltInApiProviders(): void {
 	});
 }
 
-export function registerBuiltInAdapters(registry: AdapterRegistry): void {
+export interface RegisterBuiltInAdaptersOptions {
+	readonly middleware?: readonly ModelMiddleware[];
+	readonly sourceId?: string;
+}
+
+export function registerBuiltInAdapters(registry: AdapterRegistry, options: RegisterBuiltInAdaptersOptions = {}): void {
 	visitBuiltInProviders({
 		register(_provider, adapter) {
-			registry.register(adapter, { sourceId: "built-in" });
+			registry.register(adapter, {
+				sourceId: options.sourceId ?? "built-in",
+				middleware: options.middleware,
+			});
 		},
 	});
 }

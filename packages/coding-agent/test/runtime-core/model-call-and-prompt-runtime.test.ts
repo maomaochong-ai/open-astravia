@@ -52,6 +52,42 @@ describe("Coding Agent model call and prompt runtime", () => {
 		expect(release).toHaveBeenCalledOnce();
 	});
 
+	it("exposes a deferred MCP tool activated between model calls in the same Turn", async () => {
+		let activated = false;
+		const mcpTool = runtimeTool("mcp_search_lookup");
+		const toolSearch = runtimeTool("tool_search");
+		const composer = new CodingAgentModelCallFrameComposer({
+			resolveSystemPromptOptions: () => ({ customPrompt: "test", cwd: "C:\\workspace" }),
+			readAvailableTools: () =>
+				new Map([
+					[mcpTool.name, mcpTool],
+					[toolSearch.name, toolSearch],
+				]),
+			readMcpPromptState: () => ({
+				tools: [{ name: mcpTool.name, description: mcpTool.description }],
+				deferred: true,
+			}),
+			bindMcpToolVisibility: () => (toolName) => toolName === mcpTool.name && activated,
+		});
+		const bound = await composer.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
+		const context = {
+			sessionId: "session-1",
+			turnId: "turn-1",
+			signal: new AbortController().signal,
+			messages: [],
+			frame: { instructions: [], tools: new Map([[toolSearch.name, toolSearch]]) },
+		};
+
+		expect([...(await bound.compose(context)).tools.keys()]).toEqual(["tool_search"]);
+		activated = true;
+		expect([...(await bound.compose(context)).tools.keys()]).toEqual(["mcp_search_lookup", "tool_search"]);
+	});
+
 	it("adapts the live model runtime to catalog, credentials and auth refresh ports", async () => {
 		const refresh = vi.fn();
 		const getApiKey = vi.fn(async () => "test-key");
@@ -105,6 +141,43 @@ describe("Coding Agent model call and prompt runtime", () => {
 				},
 			},
 		});
+	});
+
+	it("delegates Turn binding and release to a replaceable product Prompt Runtime", async () => {
+		const releaseTurnBinding = vi.fn();
+		const prepare = vi.fn(async () => ({ action: "handled" as const }));
+		const bindForTurn = vi.fn(() => ({ prepare, releaseTurnBinding }));
+		const adapter = new CodingAgentPromptRequestAdapter({
+			runtime: {
+				prepare: vi.fn(async () => ({ action: "handled" as const })),
+				bindForTurn,
+			},
+		});
+		const signal = new AbortController().signal;
+		const bound = await adapter.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal,
+		});
+		const request = adapter.createRequest({ text: "delegated" });
+
+		await expect(
+			bound.prepare(request, {
+				sessionId: "session-1",
+				turnId: "turn-1",
+				queueing: false,
+				signal,
+			}),
+		).resolves.toEqual({ action: "handled" });
+		await bound.releaseTurnBinding?.();
+
+		expect(bindForTurn).toHaveBeenCalledOnce();
+		expect(prepare).toHaveBeenCalledWith(
+			expect.objectContaining({ text: "delegated" }),
+			expect.objectContaining({ sessionId: "session-1", turnId: "turn-1" }),
+		);
+		expect(releaseTurnBinding).toHaveBeenCalledOnce();
 	});
 
 	it("translates legacy prompt contributions into ordered generic context records", async () => {
@@ -449,13 +522,13 @@ describe("Coding Agent model call and prompt runtime", () => {
 		]);
 	});
 
-	it("freezes Resource, Settings, Mode and Memory per Turn without sharing sessions", () => {
+	it("freezes Resource, Settings, Mode and Memory per Turn without sharing sessions", async () => {
 		let firstBasePrompt = "First session prompt v1";
 		let firstPersonalization = "First persona v1";
 		let firstMode: string | undefined = "work";
 		let firstMemory = "First memory v1";
-		const firstRefresh = vi.fn();
-		const firstContextRefresh = vi.fn();
+		const firstRefresh = vi.fn(async () => false);
+		const firstContextRefresh = vi.fn(async () => false);
 		const firstReloadPersonalization = vi.fn();
 		const first = new CodingAgentPromptRuntime({
 			cwd: "C:\\first",
@@ -468,7 +541,7 @@ describe("Coding Agent model call and prompt runtime", () => {
 					agentsFiles: [{ path: "C:\\first\\AGENTS.md", content: "First repository instruction" }],
 				}),
 				getSkills: () => ({ skills: [], diagnostics: [] }),
-				setRuntimeSkillPaths: () => {},
+				setRuntimeSkillPaths: async () => {},
 				refreshSkillsIfChanged: firstRefresh,
 			},
 			settingsManager: {
@@ -487,13 +560,13 @@ describe("Coding Agent model call and prompt runtime", () => {
 			cwd: "C:\\second",
 			scenario: "cli",
 			resourceLoader: {
-				refreshContextResourcesIfChanged: () => false,
+				refreshContextResourcesIfChanged: async () => false,
 				getSystemPrompt: () => "Second session prompt",
 				getAppendSystemPrompt: () => [],
 				getAgentsFiles: () => ({ agentsFiles: [] }),
 				getSkills: () => ({ skills: [], diagnostics: [] }),
-				setRuntimeSkillPaths: () => {},
-				refreshSkillsIfChanged: () => false,
+				setRuntimeSkillPaths: async () => {},
+				refreshSkillsIfChanged: async () => false,
 			},
 			settingsManager: {
 				reloadPersonalizationSettings() {},
@@ -509,15 +582,15 @@ describe("Coding Agent model call and prompt runtime", () => {
 			activeToolNames: ["read"],
 		};
 
-		const firstTurn = first.bindForTurn();
+		const firstTurn = await first.bindForTurn();
 		const firstCall = firstTurn(context);
 		firstBasePrompt = "First session prompt v2";
 		firstPersonalization = "First persona v2";
 		firstMode = undefined;
 		firstMemory = "First memory v2";
 		const secondCall = firstTurn(context);
-		const nextTurnCall = first.bindForTurn()({ ...context, turnId: "turn-2" });
-		const isolatedCall = second.bindForTurn()({ ...context, sessionId: "second" });
+		const nextTurnCall = (await first.bindForTurn())({ ...context, turnId: "turn-2" });
+		const isolatedCall = (await second.bindForTurn())({ ...context, sessionId: "second" });
 
 		expect(firstCall).toMatchObject({
 			customPrompt: "First session prompt v1",

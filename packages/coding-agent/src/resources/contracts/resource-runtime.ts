@@ -1,8 +1,15 @@
-import type { EventBus, ExtensionFactory, LoadExtensionsResult } from "../../extensions/index.js";
+import type {
+	EventBus,
+	ExtensionCommandExecutor,
+	ExtensionFactory,
+	ExtensionFactoryLoader,
+	LoadExtensionsResult,
+} from "../../extensions/index.js";
 import type { Theme } from "../../modes/interactive/theme/theme.js";
 import type { PromptTemplate } from "../prompts/index.js";
 import type { Skill } from "../skills/index.js";
 import type { ResourceDiagnostic } from "./diagnostics.js";
+import type { ResourceAccessPort } from "./resource-access.js";
 import type { ResourcePackageRuntime, ResourcePathMetadata, ResourceSettingsPort } from "./resource-source.js";
 
 export interface ResourceExtensionPaths {
@@ -10,6 +17,14 @@ export interface ResourceExtensionPaths {
 	promptPaths?: Array<{ path: string; metadata: ResourcePathMetadata }>;
 	themePaths?: Array<{ path: string; metadata: ResourcePathMetadata }>;
 }
+
+export interface SkillResourceLocations {
+	readonly sceneDir: string;
+	readonly managedSkillsDir: string;
+	readonly manifestPath: string;
+}
+
+export type ThemeResourceParser = (path: string, content: string) => Theme;
 
 export interface SessionResourceRuntime {
 	getExtensions(): LoadExtensionsResult;
@@ -20,19 +35,24 @@ export interface SessionResourceRuntime {
 	getSystemPrompt(): string | undefined;
 	getAppendSystemPrompt(): string[];
 	getPathMetadata(): Map<string, ResourcePathMetadata>;
-	extendResources(paths: ResourceExtensionPaths): void;
-	setAdditionalSkillPaths(paths: string[]): void;
-	setRuntimeSkillPaths(paths: string[]): void;
+	extendResources(paths: ResourceExtensionPaths, signal?: AbortSignal): Promise<void>;
+	setAdditionalSkillPaths(paths: string[], signal?: AbortSignal): Promise<void>;
+	setRuntimeSkillPaths(paths: string[], signal?: AbortSignal): Promise<void>;
 	setAdditionalExtensionPaths(paths: string[]): void;
-	reloadSkills(): void;
+	reloadSkills(signal?: AbortSignal): Promise<void>;
 	reload(): Promise<void>;
-	refreshSkillsIfChanged(): boolean;
-	refreshContextResourcesIfChanged(): boolean;
+	refreshSkillsIfChanged(signal?: AbortSignal): Promise<boolean>;
+	refreshContextResourcesIfChanged(signal?: AbortSignal): Promise<boolean>;
 }
 
 export interface SessionResourceRuntimeOptions {
 	cwd: string;
 	agentDir: string;
+	resourceAccess: ResourceAccessPort;
+	themeParser: ThemeResourceParser;
+	extensionFactoryLoader: ExtensionFactoryLoader;
+	extensionCommandExecutor: ExtensionCommandExecutor;
+	skillLocations: SkillResourceLocations;
 	packages: ResourcePackageRuntime;
 	settings?: ResourceSettingsPort;
 	eventBus?: EventBus;

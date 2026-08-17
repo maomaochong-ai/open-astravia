@@ -1,5 +1,6 @@
 import type { ImageContent, TextContent } from "@vetta/ai";
 import type {
+	BashToolDetails,
 	BashToolInput,
 	EditToolDetails,
 	EditToolInput,
@@ -16,8 +17,9 @@ import type {
 	TreeToolDetails,
 	TreeToolInput,
 	WriteToolInput,
-} from "@vetta/runtime-tools/coding";
-import type { BashToolDetails } from "../infrastructure.js";
+} from "./tool-event-data.js";
+
+export * from "./tool-event-data.js";
 
 interface ToolCallEventBase {
 	type: "tool_call";

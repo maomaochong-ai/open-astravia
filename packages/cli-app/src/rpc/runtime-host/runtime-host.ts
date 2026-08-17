@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import {
+	type CodingAgentBootstrap,
 	type CodingAgentExtensionEventCompatibilityProfile,
-	createCodingAgentHostBootstrap,
 	prepareCodingAgentPrintInvocation,
 	resolveCodingAgentExtensionCompatibility,
 	resolveCodingAgentInitialModel,
@@ -11,9 +11,11 @@ import {
 import { migrateCodingAgentHistoricalSession } from "@vetta/coding-agent/historical-sessions";
 import { runRpcModeWithCapabilities } from "@vetta/coding-agent/rpc";
 import { InitializationRollbackScope } from "@vetta/runtime-core";
-import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
+import { resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
+import { createCliCodingAgentBootstrap } from "../../coding-agent-bootstrap.js";
 import { CliPrintSessionAdapter } from "../../print-session-adapter.js";
 import { resolveImSessionPath } from "../im-session-selection.js";
+import { NodeRpcJsonlTransport } from "../node-rpc-jsonl-transport.js";
 import {
 	CLI_RUNTIME_HOST_STARTUP_FAILURE,
 	type CliSessionAssembly,
@@ -74,7 +76,7 @@ export const CLI_EXTENSION_EVENT_COMPATIBILITY_PROFILE = {
 
 /** 构建启用 Host Bridge 的 IM Runtime Host。 */
 export async function createImRuntimeHost(options: CreateImRuntimeHostOptions): Promise<RpcRuntimeHostPreparation> {
-	const bootstrap = await createCodingAgentHostBootstrap(options);
+	const bootstrap = await createCliCodingAgentBootstrap(options);
 	return prepareImRuntimeHost({ ...options, bootstrap });
 }
 
@@ -196,12 +198,19 @@ async function prepareRuntimeHost(
 }
 
 export async function runImRuntimeHost(prepared: RpcRuntimeHostReady): Promise<never> {
-	return runRpcModeWithCapabilities(prepared.capabilities, { enableHostBridge: true });
+	return runNodeRpcMode(prepared, true);
 }
 
 export async function runRpcRuntimeHost(prepared: RpcRuntimeHostReady): Promise<never> {
+	return runNodeRpcMode(prepared, prepared.bootstrap.parsed.enableHostBridge === true);
+}
+
+function runNodeRpcMode(prepared: RpcRuntimeHostReady, enableHostBridge: boolean): Promise<never> {
 	return runRpcModeWithCapabilities(prepared.capabilities, {
-		enableHostBridge: prepared.bootstrap.parsed.enableHostBridge === true,
+		transport: new NodeRpcJsonlTransport(process.stdin, process.stdout),
+		exit: (code) => process.exit(code),
+		createRequestId: randomUUID,
+		enableHostBridge,
 	});
 }
 
@@ -221,7 +230,7 @@ export async function runPrintRuntimeHost(prepared: PrintRuntimeHostReady): Prom
 }
 
 async function createPrintRuntimeHostReady(
-	bootstrap: PrepareRuntimeHostOptions["bootstrap"],
+	bootstrap: CodingAgentBootstrap,
 	assembly: CliSessionAssembly,
 ): Promise<PrintRuntimeHostReady> {
 	const rollback = new InitializationRollbackScope();

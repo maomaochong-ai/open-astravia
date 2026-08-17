@@ -15,8 +15,8 @@ import {
 	type McpServerConfig,
 	type McpServerSupervisor,
 	type McpToolResultPolicy,
+	PRESERVE_MCP_TOOL_RESULT_POLICY,
 } from "@vetta/runtime-mcp";
-import { createCodingAgentMcpToolResultPolicy } from "../../mcp/runtime/result-policy.js";
 import { type CodingAgentMcpSupervisorOptions, createCodingAgentMcpSupervisor } from "../../mcp/runtime/supervisor.js";
 import { decorateCodingAgentMcpRuntimeTool } from "../../mcp/runtime/tool-source.js";
 import type { AgentPluginRuntimeConfig } from "../../model-context/index.js";
@@ -193,7 +193,7 @@ export async function createCodingAgentPluginMcpRuntime(
 	await composition.supervisor.initialize();
 	const source = createMcpDynamicServerRuntimeToolSource(composition.supervisor, {
 		decorateTool: decorateCodingAgentMcpRuntimeTool,
-		resultPolicy: options.resultPolicy ?? createCodingAgentMcpToolResultPolicy(options.agentDir),
+		resultPolicy: options.resultPolicy ?? PRESERVE_MCP_TOOL_RESULT_POLICY,
 	});
 	return new CodingAgentPluginMcpRuntime(composition.supervisor, source, options.debug ?? false);
 }

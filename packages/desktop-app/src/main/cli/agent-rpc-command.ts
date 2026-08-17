@@ -8,7 +8,7 @@ import { app } from "electron";
 // the coding-agent CLI args), main.ts short-circuits into this command:
 // we forward everything after `--agent-rpc` to `@vetta/cli-app`'s runtime
 // host. The host owns one production Runtime; scenario flags only select
-// product capabilities such as the IM host bridge.
+// Coding Agent capabilities such as the IM host bridge.
 //
 // Production-only motivation: a packaged Vetta.app does not ship a
 // standalone `vetta` CLI on PATH, so im-gateway cannot spawn coding-agent

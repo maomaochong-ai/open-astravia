@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
 import type { SessionEvent, SessionEventBase } from "../contracts.js";
+import { createRuntimeId } from "../id-generator.js";
 import type { RuntimeSessionLifecyclePhase, RuntimeSessionObservationEvent } from "../session-observation.js";
 
 export function baseSessionEvent(
@@ -10,7 +10,7 @@ export function baseSessionEvent(
 	return {
 		schemaVersion: 1,
 		sessionId,
-		eventId: randomUUID(),
+		eventId: createRuntimeId(),
 		timestamp,
 		source,
 	};
@@ -113,6 +113,8 @@ export function mapRuntimeSessionObservationEvent(
 				output: event.output,
 				cacheRead: event.cacheRead,
 				cacheWrite: event.cacheWrite,
+				...(event.cacheUsageReporting !== undefined ? { cacheUsageReporting: event.cacheUsageReporting } : {}),
+				...(event.model !== undefined ? { model: event.model } : {}),
 				costTotal: event.costTotal,
 				contextPercent: event.contextPercent,
 				...(event.contextTokens !== undefined ? { contextTokens: event.contextTokens } : {}),
@@ -120,8 +122,14 @@ export function mapRuntimeSessionObservationEvent(
 			};
 		case "error":
 			return { ...base, type: event.type, error: event.error, ...(event.turnId ? { turnId: event.turnId } : {}) };
-		case "todo_update":
-			return { ...base, type: event.type, items: [...event.items] };
+		case "session.extension":
+			return {
+				...base,
+				type: event.type,
+				extensionId: event.extensionId,
+				event: event.event,
+				payload: event.payload,
+			};
 		case "background_tasks_update":
 			return { ...base, type: event.type, tasks: [...event.tasks] };
 		case "subagents_update":

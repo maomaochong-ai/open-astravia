@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { APP_NAME, ENV_AGENT_DIR } from "../src/config.js";
 import { runCodingAgentCliControl } from "../src/host/coding-agent-cli-control.js";
+import { createFileSettingsRuntime } from "./fixtures/file-settings-runtime.js";
+import { createTestResourcePackageRuntime } from "./fixtures/node-resource-runtime.js";
 
 describe("package commands", () => {
 	let tempDir: string;
@@ -46,7 +48,7 @@ describe("package commands", () => {
 		const relativePkgDir = join(projectDir, "packages", "local-package");
 		mkdirSync(relativePkgDir, { recursive: true });
 
-		await runCodingAgentCliControl(["install", "./packages/local-package"]);
+		await runPackageCommand(["install", "./packages/local-package"]);
 
 		const settingsPath = join(agentDir, "settings.json");
 		const settings = JSON.parse(readFileSync(settingsPath, "utf-8")) as { packages?: string[] };
@@ -57,13 +59,13 @@ describe("package commands", () => {
 	});
 
 	it("should remove local packages using a path with a trailing slash", async () => {
-		await runCodingAgentCliControl(["install", `${packageDir}/`]);
+		await runPackageCommand(["install", `${packageDir}/`]);
 
 		const settingsPath = join(agentDir, "settings.json");
 		const installedSettings = JSON.parse(readFileSync(settingsPath, "utf-8")) as { packages?: string[] };
 		expect(installedSettings.packages?.length).toBe(1);
 
-		await runCodingAgentCliControl(["remove", `${packageDir}/`]);
+		await runPackageCommand(["remove", `${packageDir}/`]);
 
 		const removedSettings = JSON.parse(readFileSync(settingsPath, "utf-8")) as { packages?: string[] };
 		expect(removedSettings.packages ?? []).toHaveLength(0);
@@ -117,4 +119,26 @@ describe("package commands", () => {
 			errorSpy.mockRestore();
 		}
 	});
+
+	it("requires the application host for package side effects", async () => {
+		await expect(runCodingAgentCliControl(["install", packageDir])).rejects.toThrow(
+			"Package commands require a host-provided Resource Package runtime factory",
+		);
+	});
+
+	function runPackageCommand(args: string[]) {
+		return runCodingAgentCliControl(args, {
+			createPackageCommandRuntime: () => {
+				const settings = createFileSettingsRuntime(projectDir, agentDir);
+				return {
+					settings,
+					packages: createTestResourcePackageRuntime({
+						cwd: projectDir,
+						agentDir,
+						settings,
+					}),
+				};
+			},
+		});
+	}
 });

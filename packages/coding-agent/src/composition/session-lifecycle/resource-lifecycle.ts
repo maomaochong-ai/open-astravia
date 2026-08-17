@@ -5,22 +5,26 @@ import {
 	type RuntimeResourceContext,
 	type RuntimeResources,
 	type RuntimeSessionAskUserQuestionCapability,
+	type RuntimeSessionMarkerIndex,
+	type RuntimeSessionValueIndex,
 } from "@vetta/runtime-core";
+import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController, McpRuntimeToolSnapshot } from "@vetta/runtime-mcp";
-import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
-import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
-import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
+import type { CodingToolActivation } from "@vetta/runtime-tools";
+import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryController, CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
-import type { CodingAgentPluginMcpRuntime, CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import type {
+	CodingAgentContextRuntime,
+	CodingAgentPluginMcpRuntime,
+	CodingAgentRuntimeToolRegistration,
+} from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
-import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";
-import type { CodingAgentSessionMarkerIndex, CodingAgentSessionValueIndex } from "./indexes.js";
 import {
 	type CodingAgentSessionConversationResources,
 	type CodingAgentSessionModelRuntimePort,
@@ -34,15 +38,15 @@ export interface CodingAgentSessionHookController {
 }
 
 export interface CodingAgentSessionResourceIndexes {
-	readonly mcpControllers: CodingAgentSessionValueIndex<McpDeferredToolController>;
-	readonly pluginMcpRuntimes: CodingAgentSessionValueIndex<CodingAgentPluginMcpRuntime>;
-	readonly executionRuntimes: CodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>;
-	readonly configurationStates: CodingAgentSessionValueIndex<CodingAgentSessionConfigurationState>;
-	readonly resourceContexts: CodingAgentSessionValueIndex<RuntimeResourceContext>;
-	readonly extensionEventBridges: CodingAgentSessionValueIndex<CodingAgentExtensionRunAdapter>;
-	readonly memoryControllers: CodingAgentSessionValueIndex<CodingAgentMemoryController>;
-	readonly hookSessionControllers: CodingAgentSessionValueIndex<CodingAgentSessionHookController>;
-	readonly mcpRefreshObservedSessions: CodingAgentSessionMarkerIndex;
+	readonly mcpControllers: RuntimeSessionValueIndex<McpDeferredToolController>;
+	readonly pluginMcpRuntimes: RuntimeSessionValueIndex<CodingAgentPluginMcpRuntime>;
+	readonly executionRuntimes: RuntimeSessionValueIndex<CodingAgentSessionExecutionRuntime>;
+	readonly configurationStates: RuntimeSessionValueIndex<CodingAgentSessionConfigurationState>;
+	readonly resourceContexts: RuntimeSessionValueIndex<RuntimeResourceContext>;
+	readonly extensionEventBridges: RuntimeSessionValueIndex<CodingAgentExtensionRunBridge>;
+	readonly memoryControllers: RuntimeSessionValueIndex<CodingAgentMemoryController>;
+	readonly hookSessionControllers: RuntimeSessionValueIndex<CodingAgentSessionHookController>;
+	readonly mcpRefreshObservedSessions: RuntimeSessionMarkerIndex;
 }
 
 export interface CodingAgentSessionResourceLifecycleOptions {
@@ -62,14 +66,14 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 	readonly resourceContext: RuntimeResourceContext;
 	readonly indexes: CodingAgentSessionResourceIndexes;
 	readonly hookRuntime: EcosystemHookRuntime;
-	readonly extensionEvents: CodingAgentExtensionRunAdapter;
+	readonly extensionEvents: CodingAgentExtensionRunBridge;
 	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
 	readonly conversationContextOverlay: CodingAgentConversationContextOverlay;
 	readonly modelRuntime: CodingAgentSessionModelRuntimePort;
 	readonly contextRuntime: CodingAgentContextRuntime;
 	readonly memoryRuntime?: CodingAgentMemoryRolloverRuntime;
 	readonly memoryController?: CodingAgentMemoryController;
-	readonly todoRuntime: CodingAgentTodoRuntime;
+	readonly sessionExtensions: SessionExtensionComposition;
 	readonly todoToolRegistration: CodingAgentRuntimeToolRegistration;
 	readonly todoEnabled: boolean;
 	readonly subagentRuntime?: CodingAgentSubagentRuntime;
@@ -78,7 +82,7 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
 	readonly mcpController?: McpDeferredToolController;
 	readonly codingTools: CodingToolsRuntimeComposition;
-	readonly productToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
+	readonly specializedToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
 	readonly activation: CodingToolActivation;
 	readonly knowledgeAvailable: boolean;
 	readonly backgroundTasksAvailable: boolean;
@@ -93,7 +97,7 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 		untrackHookSessionDisposer(dispose: () => Promise<void>): void;
 		untrackContextRuntime(runtime: CodingAgentContextRuntime): void;
 		untrackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
-		untrackTodoRuntime(runtime: CodingAgentTodoRuntime): void;
+		untrackSessionExtensionComposition(composition: SessionExtensionComposition): void;
 		untrackTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): void;
 	};
 }
@@ -191,7 +195,7 @@ function createResources(
 		conversation: options.conversation,
 		turnCapabilityAssembly,
 		modelRuntime: options.modelRuntime,
-		todoRuntime: options.todoRuntime,
+		sessionExtensions: options.sessionExtensions,
 		contextRuntime: options.contextRuntime,
 		subagentRuntime: options.subagentRuntime,
 		executionRuntime: options.executionRuntime,
@@ -199,7 +203,7 @@ function createResources(
 		pluginMcpRuntime: options.pluginMcpRuntime,
 		extensionToolRuntime: options.extensionToolRuntime,
 		codingTools: options.codingTools,
-		productToolRegistrations: options.productToolRegistrations,
+		specializedToolRegistrations: options.specializedToolRegistrations,
 		todoToolRegistration: options.todoToolRegistration,
 		todoEnabled: options.todoEnabled,
 		memoryRuntime: options.memoryRuntime,
@@ -295,11 +299,11 @@ function createSessionCleanup(
 		},
 	});
 	cleanup.add({
-		id: "todo-runtime",
+		id: "session-extensions",
 		phase: 0,
 		cleanup: async () => {
-			await options.todoRuntime.dispose();
-			options.tracking.untrackTodoRuntime(options.todoRuntime);
+			await options.sessionExtensions.dispose();
+			options.tracking.untrackSessionExtensionComposition(options.sessionExtensions);
 		},
 	});
 	cleanup.add({

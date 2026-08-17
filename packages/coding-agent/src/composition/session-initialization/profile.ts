@@ -5,10 +5,14 @@ export type CodingAgentSessionInitializationProfile = Pick<
 	| "additionalHookAdapterFactories"
 	| "agentDir"
 	| "createCompactionExtensionRuntime"
+	| "createContextRuntime"
 	| "createMemoryRolloverRuntime"
 	| "createPluginMcpRuntime"
 	| "createPluginRuntime"
+	| "createPromptRuntimeSources"
+	| "createSessionExecutionEnvironment"
 	| "createPromptResourceResolver"
+	| "createSessionExtensionDefinitions"
 	| "createSubagentChildFactory"
 	| "createSystemPromptOptionsResolver"
 	| "createTodoRuntime"
@@ -17,7 +21,7 @@ export type CodingAgentSessionInitializationProfile = Pick<
 	| "hookConfigLayers"
 	| "initialModel"
 	| "initialThinkingLevel"
-	| "knowledgeRoot"
+	| "knowledgeRuntime"
 	| "maxStopHookContinuations"
 	| "promptResourceSource"
 	| "promptSettingsSource"
@@ -40,10 +44,14 @@ export function createCodingAgentSessionInitializationProfile(
 		additionalHookAdapterFactories: options.additionalHookAdapterFactories,
 		agentDir: options.agentDir,
 		createCompactionExtensionRuntime: options.createCompactionExtensionRuntime,
+		createContextRuntime: options.createContextRuntime,
 		createMemoryRolloverRuntime: options.createMemoryRolloverRuntime,
 		createPluginMcpRuntime: options.createPluginMcpRuntime,
 		createPluginRuntime: options.createPluginRuntime,
+		createPromptRuntimeSources: options.createPromptRuntimeSources,
+		createSessionExecutionEnvironment: options.createSessionExecutionEnvironment,
 		createPromptResourceResolver: options.createPromptResourceResolver,
+		createSessionExtensionDefinitions: options.createSessionExtensionDefinitions,
 		createSubagentChildFactory: options.createSubagentChildFactory,
 		createSystemPromptOptionsResolver: options.createSystemPromptOptionsResolver,
 		createTodoRuntime: options.createTodoRuntime,
@@ -52,7 +60,7 @@ export function createCodingAgentSessionInitializationProfile(
 		hookConfigLayers: options.hookConfigLayers,
 		initialModel: options.initialModel,
 		initialThinkingLevel: options.initialThinkingLevel,
-		knowledgeRoot: options.knowledgeRoot,
+		knowledgeRuntime: options.knowledgeRuntime,
 		maxStopHookContinuations: options.maxStopHookContinuations,
 		promptResourceSource: options.promptResourceSource,
 		promptSettingsSource: options.promptSettingsSource,

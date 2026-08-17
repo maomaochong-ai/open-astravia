@@ -5,7 +5,6 @@
  * separate so the transport does not depend on AgentSession internals.
  */
 
-import type { Readable, Writable } from "node:stream";
 import {
 	createRpcCommandDispatcher,
 	type RpcFrameOutput,
@@ -16,7 +15,6 @@ import { RpcExtensionUIBridge } from "./rpc-extension-ui-bridge.js";
 import { RPC_FAILURE_CODES } from "./rpc-failure.js";
 import { validateRpcInboundFrame } from "./rpc-frame-validator.js";
 import { RpcHostBridge } from "./rpc-host-bridge.js";
-import { RpcJsonlTransport } from "./rpc-jsonl-transport.js";
 import { assertRpcSessionCapabilities, type RpcSessionCapabilities } from "./rpc-session-capabilities.js";
 
 export type {
@@ -28,27 +26,30 @@ export type {
 } from "./rpc-types.js";
 
 export interface RunRpcModeOptions {
+	readonly transport: RpcFrameTransport;
+	readonly exit: (code: number) => void;
+	readonly createRequestId: () => string;
 	/** Register the im_send_attachment tool and accept host_response frames. */
-	enableHostBridge?: boolean;
+	readonly enableHostBridge?: boolean;
 }
 
-interface RpcModeRuntimeOptions extends RunRpcModeOptions {
-	readonly input?: Readable;
-	readonly output?: Writable;
-	readonly exit?: (code: number) => void;
+export interface RpcFrameTransport {
+	write(frame: unknown): void;
+	start(onLine: (line: string) => void, onClose: () => void): void;
+	close(): void;
 }
 
 export async function runRpcModeWithCapabilities(
 	session: RpcSessionCapabilities,
-	options: RpcModeRuntimeOptions = {},
+	options: RunRpcModeOptions,
 ): Promise<never> {
 	assertRpcSessionCapabilities(session, {
 		hostBridgeEnabled: options.enableHostBridge === true,
 	});
-	const transport = new RpcJsonlTransport(options.input ?? process.stdin, options.output ?? process.stdout);
+	const transport = options.transport;
 	const output: RpcFrameOutput = (frame) => transport.write(frame);
-	const extensionUI = new RpcExtensionUIBridge(output);
-	const hostBridge = options.enableHostBridge ? new RpcHostBridge(output) : undefined;
+	const extensionUI = new RpcExtensionUIBridge(output, options.createRequestId);
+	const hostBridge = options.enableHostBridge ? new RpcHostBridge(output, options.createRequestId) : undefined;
 	const backgroundTasks = new Set<Promise<void>>();
 	const longOperationController = new AbortController();
 	const dispatch = createRpcCommandDispatcher(session, output, {
@@ -61,7 +62,7 @@ export async function runRpcModeWithCapabilities(
 		},
 		longOperationSignal: longOperationController.signal,
 	});
-	const exit = options.exit ?? ((code: number): never => process.exit(code));
+	const exit = options.exit;
 	let shutdownRequested = false;
 	let beginRequestedShutdown: (() => void) | undefined;
 	let requestedShutdownScheduled = false;

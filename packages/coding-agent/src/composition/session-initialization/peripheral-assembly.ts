@@ -1,37 +1,32 @@
-import { join } from "node:path";
 import type { Message } from "@vetta/ai";
 import type { ConversationScenario, InitializationRollbackTask, RuntimeResourceContext } from "@vetta/runtime-core";
 import type { AgentFeatureDefinition, AgentProfile, ModelCallContributionContext } from "@vetta/runtime-core/kernel";
+import { SessionExtensionComposition, sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools/coding";
+import type { CodingToolActivation } from "@vetta/runtime-tools";
+import { createCodingAgentAskUserQuestionFeature } from "../../features/ask-user-question/index.js";
+import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
+import {
+	CODING_AGENT_TODO_RUNTIME,
+	createCodingAgentTodoSessionExtension,
+} from "../../features/todo/todo-session-extension.js";
+import { CODING_AGENT_TODO_OBSERVATION } from "../../features/todo/todo-session-extension-contract.js";
 import { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
-import {
-	CodingAgentMemoryRolloverOrchestrator,
-	type CodingAgentMemoryRolloverRuntime,
-	createCodingAgentMemoryRuntimeFeature,
-} from "../../memory/index.js";
+import { type CodingAgentMemoryRolloverRuntime, createCodingAgentMemoryRuntimeFeature } from "../../memory/index.js";
 import type {
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
 	CodingAgentRuntimeToolRegistration,
 } from "../../runtime-contracts/index.js";
-import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
-import { CodingAgentTodoRuntime as DefaultCodingAgentTodoRuntime } from "../../work-state/todo-runtime.js";
-import {
-	createCodingAgentTodoRuntimeFeature,
-	createCodingAgentTodoRuntimeToolRegistration,
-} from "../../work-state/todo-tool-feature.js";
-import { createCodingAgentKnowledgeWriteOperations } from "../coding-agent-knowledge-runtime.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
-import { createCodingAgentAskUserQuestionFeature } from "../tool-surface/ask-user-question-feature.js";
 import type { CodingAgentMcpSessionCoordinator } from "../tool-surface/mcp-session-coordinator.js";
-import {
-	createCodingAgentProductToolFeature,
-	createCodingAgentProductToolRegistrations,
-} from "../tool-surface/product-tools.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
+import {
+	createCodingAgentSpecializedToolFeature,
+	createCodingAgentSpecializedToolRegistrations,
+} from "../tool-surface/specialized-tools.js";
 import type { CodingAgentSessionInitializationProfile } from "./profile.js";
 
 export interface CodingAgentSessionPeripheralAssemblyOptions {
@@ -51,15 +46,15 @@ export interface CodingAgentSessionPeripheralAssemblyOptions {
 	) => CodingToolActivation;
 	readonly trackMemoryRuntime: (runtime: CodingAgentMemoryRolloverRuntime) => void;
 	readonly untrackMemoryRuntime: (runtime: CodingAgentMemoryRolloverRuntime) => void;
-	readonly trackTodoRuntime: (runtime: CodingAgentTodoRuntime) => void;
-	readonly untrackTodoRuntime: (runtime: CodingAgentTodoRuntime) => void;
+	readonly trackSessionExtensionComposition: (composition: SessionExtensionComposition) => void;
+	readonly untrackSessionExtensionComposition: (composition: SessionExtensionComposition) => void;
 	readonly deferRollback: (task: InitializationRollbackTask) => void;
 }
 
 export interface CodingAgentSessionPeripheralAssembly {
 	readonly configurationState: CodingAgentSessionConfigurationState;
-	readonly productToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
-	readonly productToolFeature: AgentFeatureDefinition;
+	readonly specializedToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
+	readonly specializedToolFeature: AgentFeatureDefinition;
 	readonly pluginRuntime?: CodingAgentPluginRuntimeSource;
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
 	readonly mcpController?: McpDeferredToolController;
@@ -68,6 +63,7 @@ export interface CodingAgentSessionPeripheralAssembly {
 	readonly todoRuntime: CodingAgentTodoRuntime;
 	readonly todoRegistration: CodingAgentRuntimeToolRegistration;
 	readonly todoEnabled: boolean;
+	readonly sessionExtensions: SessionExtensionComposition;
 	readonly baseProfile: AgentProfile;
 }
 
@@ -85,16 +81,15 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	const configurationState = new CodingAgentSessionConfigurationState(sessionOptions.agentMode, () =>
 		pluginRuntime?.readAgentPlugins(),
 	);
-	const productToolRegistrations = [
-		...createCodingAgentProductToolRegistrations({
+	const specializedToolRegistrations = [
+		...createCodingAgentSpecializedToolRegistrations({
 			cwd: options.sessionCwd,
-			knowledgePageWriter:
-				sessionOptions.knowledgePageWriter ?? createCodingAgentKnowledgeWriteOperations(profile.knowledgeRoot),
+			knowledgePageWriter: sessionOptions.knowledgePageWriter ?? profile.knowledgeRuntime?.write,
 		}),
 		...(sessionOptions.sessionRuntimeTools ?? []),
 	];
-	const productToolFeature = createCodingAgentProductToolFeature({
-		registrations: productToolRegistrations,
+	const specializedToolFeature = createCodingAgentSpecializedToolFeature({
+		registrations: specializedToolRegistrations,
 		resolveActivation: (context) =>
 			options.resolveActivation(context, configurationState.readActiveToolNamesOverride()),
 	});
@@ -140,19 +135,31 @@ export async function createCodingAgentSessionPeripheralAssembly(
 		});
 	}
 
-	const executionRuntime = new CodingAgentSessionExecutionRuntime({
+	const executionEnvironment = await profile.createSessionExecutionEnvironment({
 		cwd: options.sessionCwd,
-		activation: options.activation,
-		enableBackgroundTasks: sessionOptions.enableBackgroundTasks,
-		initialMode: sessionOptions.executionMode,
+		agentDir: profile.agentDir,
+		scenario: options.scenario,
 		env: sessionOptions.env,
-		sandboxHostPath: sessionOptions.sandboxHostPath,
-		linuxBubblewrapPath: sessionOptions.linuxBubblewrapPath,
-		macosSandboxExecPath: sessionOptions.macosSandboxExecPath,
-		readSessionId: options.readSessionId,
-		resolveToolEntry: (toolName) => options.codingTools.registry.resolve(toolName),
-		resourceContext: options.resourceContext,
 	});
+	let executionRuntime: CodingAgentSessionExecutionRuntime;
+	try {
+		executionRuntime = new CodingAgentSessionExecutionRuntime({
+			cwd: options.sessionCwd,
+			activation: options.activation,
+			environment: executionEnvironment,
+			enableBackgroundTasks: sessionOptions.enableBackgroundTasks,
+			initialMode: sessionOptions.executionMode,
+			sandboxHostPath: sessionOptions.sandboxHostPath,
+			linuxBubblewrapPath: sessionOptions.linuxBubblewrapPath,
+			macosSandboxExecPath: sessionOptions.macosSandboxExecPath,
+			readSessionId: options.readSessionId,
+			resolveToolEntry: (toolName) => options.codingTools.registry.resolve(toolName),
+			resourceContext: options.resourceContext,
+		});
+	} catch (error) {
+		await executionEnvironment.dispose();
+		throw error;
+	}
 	options.indexes.executionRuntimes.set(options.readSessionId(), executionRuntime);
 	options.deferRollback({
 		id: "execution-runtime",
@@ -165,14 +172,19 @@ export async function createCodingAgentSessionPeripheralAssembly(
 		},
 	});
 
-	const memoryRuntimeOptions = {
-		memoryFile: sessionOptions.memoryFile ?? join(options.sessionCwd, "MEMORY.md"),
-		memoryCharLimit: sessionOptions.memoryCharLimit,
-		cwd: options.sessionCwd,
-	};
 	const memoryRuntime = sessionOptions.memoryMode
-		? (profile.createMemoryRolloverRuntime?.(memoryRuntimeOptions, sessionOptions) ??
-			new CodingAgentMemoryRolloverOrchestrator(memoryRuntimeOptions))
+		? profile.createMemoryRolloverRuntime
+			? profile.createMemoryRolloverRuntime(
+					{
+						cwd: options.sessionCwd,
+						memoryFile: sessionOptions.memoryFile,
+						memoryCharLimit: sessionOptions.memoryCharLimit,
+					},
+					sessionOptions,
+				)
+			: (() => {
+					throw new Error("Memory mode requires an explicit createMemoryRolloverRuntime host factory");
+				})()
 		: undefined;
 	if (memoryRuntime) {
 		options.trackMemoryRuntime(memoryRuntime);
@@ -184,37 +196,36 @@ export async function createCodingAgentSessionPeripheralAssembly(
 			},
 		});
 	}
-	const todoRuntime = profile.createTodoRuntime?.(sessionOptions) ?? new DefaultCodingAgentTodoRuntime();
-	options.trackTodoRuntime(todoRuntime);
-	// Todo 状态是 Session 内的实时 UI 面板来源：每次变更都要立刻广播，
-	// 否则宿主只能在重新订阅（切会话）时才看到列表。
-	const unsubscribeTodoObservation = todoRuntime.subscribe((items) => {
-		void options.resourceContext
-			.reportObservation({
-				type: "todo_update",
-				items: items.map((item) => ({ ...item })),
-				source: "tool",
-			})
-			.catch((error: unknown) => {
-				console.warn("[coding-agent-runtime] failed to publish todo observation", error);
-			});
+	const createTodoRuntime = profile.createTodoRuntime;
+	const additionalExtensions = await profile.createSessionExtensionDefinitions?.(sessionOptions);
+	const sessionExtensions = await SessionExtensionComposition.create({
+		definitions: [
+			createCodingAgentTodoSessionExtension({
+				activation: options.activation,
+				createRuntime: createTodoRuntime ? () => createTodoRuntime(sessionOptions) : undefined,
+				initialItems: sessionOptions.initialTodos,
+				initialLockSource: sessionOptions.initialTodoLockSource,
+				reportUpdate: (items) =>
+					options.resourceContext.reportObservation({
+						...sessionExtensionObservation(CODING_AGENT_TODO_OBSERVATION, items),
+						source: "tool",
+					}),
+			}),
+			...(additionalExtensions ?? []),
+		],
 	});
+	options.trackSessionExtensionComposition(sessionExtensions);
 	options.deferRollback({
-		id: "todo-runtime",
+		id: "session-extensions",
 		rollback: async () => {
-			try {
-				unsubscribeTodoObservation();
-				await todoRuntime.dispose();
-			} finally {
-				options.untrackTodoRuntime(todoRuntime);
-			}
+			await sessionExtensions.dispose();
+			options.untrackSessionExtensionComposition(sessionExtensions);
 		},
 	});
-	if (sessionOptions.initialTodos && sessionOptions.initialTodos.length > 0) {
-		todoRuntime.initializeTodoItems(sessionOptions.initialTodos, sessionOptions.initialTodoLockSource);
-	}
-	const todoRegistration = createCodingAgentTodoRuntimeToolRegistration(todoRuntime);
-	const todoEnabled = selectCodingToolRegistrations([todoRegistration], options.activation).length > 0;
+	const todoExtension = sessionExtensions.services.require(CODING_AGENT_TODO_RUNTIME);
+	const todoRuntime = todoExtension.runtime;
+	const todoRegistration = todoExtension.toolRegistration;
+	const todoEnabled = todoExtension.toolEnabled;
 	const askUserQuestionFeature = sessionOptions.askUserQuestion
 		? createCodingAgentAskUserQuestionFeature({
 				capability: sessionOptions.askUserQuestion,
@@ -227,7 +238,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 		...(sessionOptions.forkContextMessages?.length
 			? [createForkContextFeature(sessionOptions.forkContextMessages)]
 			: []),
-		...(todoEnabled ? [createCodingAgentTodoRuntimeFeature(todoRegistration)] : []),
+		...sessionExtensions.features,
 		...(memoryRuntime ? [createCodingAgentMemoryRuntimeFeature(memoryRuntime.toolRegistration)] : []),
 		...(askUserQuestionFeature ? [askUserQuestionFeature] : []),
 		...(mcpController ? [mcpController.createFeature({ includePromptInstruction: false })] : []),
@@ -240,8 +251,8 @@ export async function createCodingAgentSessionPeripheralAssembly(
 
 	return {
 		configurationState,
-		productToolRegistrations,
-		productToolFeature,
+		specializedToolRegistrations,
+		specializedToolFeature,
 		pluginRuntime,
 		pluginMcpRuntime,
 		mcpController,
@@ -250,6 +261,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 		todoRuntime,
 		todoRegistration,
 		todoEnabled,
+		sessionExtensions,
 		baseProfile,
 	};
 }

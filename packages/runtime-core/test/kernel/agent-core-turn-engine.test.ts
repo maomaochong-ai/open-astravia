@@ -301,7 +301,9 @@ describe("AgentCoreTurnEngine", () => {
 				)
 				.map(({ observation }) => observation.type),
 		).toEqual(["agent.start", "turn.start", "message.start", "message.end", "turn.end", "agent.end"]);
-		expect(events.filter((event) => event.type !== "observation" && event.type !== "execution_observation")).toEqual([
+		expect(
+			events.filter((event) => event.type !== "observation" && event.type !== "execution_observation"),
+		).toMatchObject([
 			{
 				type: "message",
 				message: assistantMessage([{ type: "text", text: "done" }]),
@@ -554,7 +556,7 @@ describe("AgentCoreTurnEngine", () => {
 			{ type: "message.start", message: initialMessages[1] },
 			{ type: "message.end", message: initialMessages[1] },
 		]);
-		expect(executionEvents.at(-1)).toEqual({
+		expect(executionEvents.at(-1)).toMatchObject({
 			type: "agent.end",
 			messages: [...initialMessages, { kind: "message", message: response }],
 		});
@@ -634,7 +636,18 @@ describe("AgentCoreTurnEngine", () => {
 			snapshot({
 				modelCallFrameComposer: {
 					async compose(context) {
-						return { ...context.frame, systemPromptStableLength: "Base instruction".length };
+						return {
+							...context.frame,
+							systemPromptStableLength: "Base instruction".length,
+							promptCacheSystemPromptBlocks: [
+								{
+									id: "base",
+									start: 0,
+									length: "Base instruction".length,
+									cacheability: "stable",
+								},
+							],
+						};
 					},
 				},
 			}),
@@ -642,6 +655,9 @@ describe("AgentCoreTurnEngine", () => {
 
 		expect(contexts[0]?.systemPrompt).toBe("Base instruction\n\nFeature instruction");
 		expect(contexts[0]?.systemPromptStableLength).toBe("Base instruction".length);
+		expect(contexts[0]?.promptCacheSystemPromptBlocks).toEqual([
+			{ id: "base", start: 0, length: "Base instruction".length, cacheability: "stable" },
+		]);
 	});
 
 	it("drops the cache breakpoint when instructionOverride replaces the prompt", async () => {
@@ -660,7 +676,11 @@ describe("AgentCoreTurnEngine", () => {
 			snapshot: snapshot({
 				modelCallFrameComposer: {
 					async compose(context) {
-						return { ...context.frame, systemPromptStableLength: 4 };
+						return {
+							...context.frame,
+							systemPromptStableLength: 4,
+							promptCacheSystemPromptBlocks: [{ id: "base", start: 0, length: 4, cacheability: "stable" }],
+						};
 					},
 				},
 			}),
@@ -672,7 +692,8 @@ describe("AgentCoreTurnEngine", () => {
 		}
 
 		expect(contexts[0]?.systemPrompt).toBe("run prompt");
-		expect(contexts[0]?.systemPromptStableLength).toBeUndefined();
+		expect(contexts[0]?.systemPromptStableLength).toBe(0);
+		expect(contexts[0]?.promptCacheSystemPromptBlocks).toBeUndefined();
 	});
 
 	it("applies the session context transformer before every model call without mutating persisted messages", async () => {

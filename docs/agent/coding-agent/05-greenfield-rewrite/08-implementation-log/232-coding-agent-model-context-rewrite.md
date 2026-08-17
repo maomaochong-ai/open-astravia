@@ -43,8 +43,8 @@
 - 新增 `prompt-document.ts`，持有 Prompt Block、Draft、Operation、不可变操作应用和确定性渲染。
 - 新增 `plugin-runtime.ts`，隔离 Plugin Tool、Prompt、Continuation、MCP Contribution 和调用 DTO，不再与产品 Prompt 文案混在一个文件。
 - 新增 `skill-prompt.ts`，只消费渲染 Skill 索引所需的最小结构合同，不依赖旧 Skill Loader 具体实现。
-- 新增 `product-prompt.ts`，持有 Vetta 产品身份、工具说明、场景指导、Context/MCP/Skill 渲染和每次 Model Call 使用的 Prompt Builder。
-- 所有旧 Core、Greenfield Adapter、SDK/RPC、测试和 Desktop 消费者已切换到 `model-context`；Desktop 通过显式 `@vetta/coding-agent/product-prompt` 子路径消费产品指引。
+- 新增 `system-prompt-policy.ts`，持有 Vetta 身份、工具说明、场景指导、Context/MCP/Skill 渲染和每次 Model Call 使用的 Prompt Builder。
+- 所有旧 Core、Greenfield Adapter、SDK/RPC、测试和 Desktop 消费者已切换到 `model-context`；Desktop 通过显式 `@vetta/coding-agent/cli-guidance` 子路径消费 CLI 指引。
 - 删除旧 `core/messages.ts`、`core/system-prompt.ts` 和迁移后成为孤儿的 `core/subconscious.ts`，不保留转发文件或执行兼容层。
 - 增加回流守卫，禁止恢复三个旧文件、旧深层导入和对应 Manifest 导出。
 - 修正既有 Prompt 测试对默认命令工具的跨平台假设：Windows 验证 `shell`，其他平台验证 `bash`，生产行为未修改。
@@ -79,4 +79,3 @@ Messages 和 System Prompt 两个旧域的 19 条生产依赖已经全部删除�
 - 旧 AgentSession 内部继续消费新的 Model Context 以保持兼容行为，但 AgentSession、SessionManager 和 Extension Runner 本身仍属于待退役旧执行岛。
 - 8 个旧格式边界及其中 3 条旧实现依赖仍需独立审计；旧数据兼容必须与旧执行代码分离。
 - 下一阶段应优先处理依赖新消息合同的 Compaction 运行时边界，或先审计 Extensions 与 Resource Loader 的闭环条件；不能把旧 Manager/Runner 原样移动到新目录。
-

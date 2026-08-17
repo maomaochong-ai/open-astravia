@@ -38,7 +38,7 @@
 
 ## 工具元数据
 
-真实模型调用以 `RuntimeToolDefinition.description` 为权威来源。`product-prompt.ts` 中的内置描述只服务于直接调用公共 SDK 的兼容兜底。新增工具相关规则应优先按当前 active tools 条件注入；既有 Mode 中涉及工具的交互契约保持兼容，后续迁移需要配套行为测试。
+真实模型调用以 `RuntimeToolDefinition.description` 为权威来源。`system-prompt-policy.ts` 中的内置描述只服务于直接调用公共 SDK 的兼容兜底。新增工具相关规则应优先按当前 active tools 条件注入；既有 Mode 中涉及工具的交互契约保持兼容，后续迁移需要配套行为测试。
 
 ## 动态资源
 

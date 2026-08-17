@@ -1,21 +1,13 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import type { AgentMessage } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
-	FileMemoryStore,
+	MemoryDocumentStore,
 	MemoryFlushService,
 	parseMemoryFactCandidates,
 	serializeMessagesForMemoryFlush,
 } from "../../src/memory/index.js";
-
-const temporaryRoots: string[] = [];
-
-afterEach(async () => {
-	await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { force: true, recursive: true })));
-});
+import { createMemoryTextStorage } from "../fixtures/memory-storage.js";
 
 describe("Memory flush service", () => {
 	it("serializes only user and assistant text and parses the existing line protocol", () => {
@@ -32,8 +24,7 @@ describe("Memory flush service", () => {
 	});
 
 	it("deduplicates candidates and stops at the first failed write", async () => {
-		const root = await temporaryRoot();
-		const store = new FileMemoryStore({ path: join(root, "MEMORY.md"), charLimit: 30 });
+		const store = new MemoryDocumentStore({ storage: createMemoryTextStorage(), charLimit: 30 });
 		store.apply("add", { content: "Uses Bun" });
 		const extractor = {
 			extract: vi.fn(async () => ["Bun", "Uses TypeScript", "never written"]),
@@ -55,8 +46,7 @@ describe("Memory flush service", () => {
 	});
 
 	it("keeps extractor failures best-effort", async () => {
-		const root = await temporaryRoot();
-		const store = new FileMemoryStore({ path: join(root, "MEMORY.md") });
+		const store = new MemoryDocumentStore({ storage: createMemoryTextStorage() });
 		const service = new MemoryFlushService(store, {
 			extract: async () => {
 				throw new Error("provider unavailable");
@@ -91,12 +81,6 @@ function assistantMessage(text: string) {
 		stopReason: "stop" as const,
 		timestamp: 1,
 	};
-}
-
-async function temporaryRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-memory-flush-"));
-	temporaryRoots.push(root);
-	return root;
 }
 
 const MODEL: Model<Api> = {

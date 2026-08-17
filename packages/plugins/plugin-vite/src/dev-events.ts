@@ -13,6 +13,7 @@ export type VettaPluginDevEvent =
 			pluginId: string;
 			reason: "entry" | "full-reload" | "resource";
 			path?: string;
+			triggeredBy?: string;
 		}
 	| {
 			type: "error";

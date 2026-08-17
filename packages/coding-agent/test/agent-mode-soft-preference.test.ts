@@ -62,18 +62,19 @@ function skill(name: string): Skill {
 		type: "skill",
 		disableModelInvocation: false,
 		content: `---\nname: ${name}\ndescription: ${name} skill\n---\nbody of ${name}\n`,
+		sceneTasks: [],
 	};
 }
 
 function resourceSource(skills: readonly Skill[]): CodingAgentPromptResourceSource {
 	return {
-		refreshContextResourcesIfChanged: () => false,
-		refreshSkillsIfChanged: () => false,
+		refreshContextResourcesIfChanged: async () => false,
+		refreshSkillsIfChanged: async () => false,
 		getSkills: () => ({ skills: [...skills], diagnostics: [] }),
 		getAgentsFiles: () => ({ agentsFiles: [] }),
 		getSystemPrompt: () => undefined,
 		getAppendSystemPrompt: () => [],
-		setRuntimeSkillPaths: () => {},
+		setRuntimeSkillPaths: async () => {},
 	};
 }
 

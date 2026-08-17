@@ -7,6 +7,7 @@ import type {
 	PluginMediaProviderRegistration,
 } from "@vetta-org/plugin-sdk";
 import { ComfyUiClient, outputFile } from "./comfyui-client";
+import { H3_DEFAULT_RESOLUTION, H3_RESOLUTION_IDS, resolveH3ResolutionPreset } from "./h3-resolution";
 import { adaptMinimaxWorkflow } from "./workflow-adapter";
 
 const outputNodes = new Map<string, string>();
@@ -109,6 +110,8 @@ export function createComfyUiProvider(ctx: PluginContext): PluginMediaProviderRe
 				kind: "video",
 				modes: modeCapabilities.map(({ mode }) => mode),
 				aspectRatios: ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"],
+				resolutions: H3_RESOLUTION_IDS,
+				defaultResolution: H3_DEFAULT_RESOLUTION,
 				// MiniMax H3 accepts continuous duration; expose every second from 4–15.
 				durationsSeconds: Array.from({ length: 12 }, (_, second) => second + 4),
 				modeCapabilities,
@@ -128,6 +131,11 @@ export function createComfyUiProvider(ctx: PluginContext): PluginMediaProviderRe
 			const inputs = normalizeInputRoles(request.inputs, mode);
 			const validationError = validateInputs(inputs, mode);
 			if (validationError) return invalidRequest(validationError);
+			try {
+				resolveH3ResolutionPreset(request.resolution);
+			} catch (error) {
+				return invalidRequest(error instanceof Error ? error.message : String(error));
+			}
 			try {
 				const [template, uploadedPaths] = await Promise.all([
 					client.loadTemplate(request.mode),

@@ -1,5 +1,5 @@
 import type { ModelCallContributionContext, SessionContextRecord } from "@vetta/runtime-core/kernel";
-import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
+import type { CodingToolActivation } from "@vetta/runtime-node/coding";
 import { describe, expect, it } from "vitest";
 import {
 	isCodingAgentKnowledgeToolEnabled,
@@ -58,6 +58,18 @@ describe("Coding Agent Tool Activation Policy", () => {
 				true,
 			),
 		).toBe(true);
+	});
+
+	it("enables Knowledge from the admission request before Coding Agent input expansion", () => {
+		const callContext: ModelCallContributionContext = {
+			...context(),
+			request: {
+				displayText: "search knowledge",
+				payload: { text: "search knowledge", metadata: { knowledgeMode: true } },
+			},
+		};
+
+		expect(isCodingAgentKnowledgeToolEnabled({ mode: "scope", scope: "cli" }, callContext, true)).toBe(true);
 	});
 
 	it("does not enable Knowledge for unrelated context", () => {

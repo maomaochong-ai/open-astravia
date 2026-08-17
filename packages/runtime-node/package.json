@@ -1,0 +1,76 @@
+{
+	"name": "@vetta/runtime-node",
+	"version": "0.0.1",
+	"description": "Shared Node.js runtime adapters for Vetta agents",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./conversation": {
+			"types": "./dist/conversation/index.d.ts",
+			"import": "./dist/conversation/index.js"
+		},
+		"./conversation/legacy": {
+			"types": "./dist/conversation/legacy.d.ts",
+			"import": "./dist/conversation/legacy.js"
+		},
+		"./coding": {
+			"types": "./dist/coding/index.d.ts",
+			"import": "./dist/coding/index.js"
+		},
+		"./mcp": {
+			"types": "./dist/mcp/index.d.ts",
+			"import": "./dist/mcp/index.js"
+		},
+		"./host": {
+			"types": "./dist/host/index.d.ts",
+			"import": "./dist/host/index.js"
+		},
+		"./sandbox": {
+			"types": "./dist/sandbox/index.d.ts",
+			"import": "./dist/sandbox/index.js"
+		}
+	},
+	"files": ["dist", "README.md"],
+	"scripts": {
+		"clean": "rm -rf dist",
+		"build": "tsgo -p tsconfig.build.json",
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run --config vitest.config.ts",
+		"prepublishOnly": "bun run clean && bun run build"
+	},
+	"dependencies": {
+		"@mariozechner/jiti": "^2.6.2",
+		"@modelcontextprotocol/sdk": "^1.29.0",
+		"@sinclair/typebox": "^0.34.41",
+		"@vetta/action-rpc": "workspace:*",
+		"@vetta/runtime-core": "workspace:*",
+		"@vetta/runtime-knowledge": "workspace:*",
+		"@vetta/runtime-mcp": "workspace:*",
+		"@vetta/runtime-storage": "workspace:*",
+		"@vetta/runtime-subagents": "workspace:*",
+		"@vetta/runtime-tools": "workspace:*",
+		"@silvia-odwyer/photon-node": "^0.3.4",
+		"diff": "^8.0.2",
+		"extract-zip": "^2.0.1",
+		"file-type": "^21.1.1",
+		"glob": "^13.0.1",
+		"ignore": "^7.0.5"
+		,"proper-lockfile": "^4.1.2",
+		"strip-ansi": "^7.1.0"
+	},
+	"devDependencies": {
+		"@types/diff": "^7.0.2",
+		"@types/node": "^22.10.5",
+		"@types/proper-lockfile": "^4.1.4",
+		"@vetta/ai": "workspace:*",
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.4"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	}
+}

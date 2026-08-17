@@ -11,6 +11,7 @@ export {
 	getLanguageFromPath,
 	highlightCode,
 	initTheme,
+	loadThemeFromContent,
 	Theme,
 	type ThemeColor,
 } from "../modes/interactive/theme/theme.js";

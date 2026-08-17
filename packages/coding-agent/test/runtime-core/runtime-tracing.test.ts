@@ -4,10 +4,8 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/model-runtime-adapter.js";
-import {
-	type CodingAgentRuntimeCompositionOptions,
-	createCodingAgentRuntimeComposition,
-} from "../../src/composition/runtime-composition.js";
+import type { CodingAgentRuntimeCompositionOptions } from "../../src/composition/runtime-composition.js";
+import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-persistence.js";
 
 type TestTracer = NonNullable<CodingAgentRuntimeCompositionOptions["tracer"]>;
 type TestObservation = ReturnType<TestTracer["startObservation"]>;

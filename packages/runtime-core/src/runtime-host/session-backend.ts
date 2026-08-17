@@ -14,6 +14,7 @@ import type {
 	RuntimeSessionConfigurationController,
 	RuntimeSessionCorePorts,
 	RuntimeSessionExecutionController,
+	RuntimeSessionExtensionHost,
 	RuntimeSessionHistoryController,
 	RuntimeSessionHistoryReader,
 	RuntimeSessionHostInteraction,
@@ -22,7 +23,6 @@ import type {
 	RuntimeSessionModelController,
 	RuntimeSessionModelView,
 	RuntimeSessionQueueController,
-	RuntimeSessionTodoController,
 	RuntimeSessionWorkspaceView,
 } from "./session-ports.js";
 import type { RuntimeSessionCatalog } from "./session-services.js";
@@ -76,7 +76,7 @@ export interface RuntimeHostSessionAssembly {
 	readonly executionController: RuntimeSessionExecutionController;
 	readonly workspaceView: RuntimeSessionWorkspaceView;
 	readonly backgroundWorkController: RuntimeSessionBackgroundWorkController;
-	readonly todoController: RuntimeSessionTodoController;
+	readonly extensionHost?: RuntimeSessionExtensionHost;
 	readonly configurationController: RuntimeSessionConfigurationController;
 	readonly modelController: RuntimeSessionModelController;
 	readonly modelView: RuntimeSessionModelView;
@@ -94,7 +94,6 @@ export const RUNTIME_HOST_SESSION_PORT_NAMES = [
 	"executionController",
 	"workspaceView",
 	"backgroundWorkController",
-	"todoController",
 	"configurationController",
 	"modelController",
 	"modelView",

@@ -7,4 +7,5 @@ export * from "./model-capabilities.js";
 export * from "./model-identity.js";
 export * from "./model-middleware.js";
 export * from "./model-router.js";
+export * from "./registry-simple-stream.js";
 export * from "./stream-model.js";

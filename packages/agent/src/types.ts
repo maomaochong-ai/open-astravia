@@ -13,7 +13,7 @@ import type {
 	Tool,
 	ToolResultMessage,
 } from "@vetta/ai";
-import type { RuntimeTracer } from "@vetta/runtime-telemetry";
+import type { AgentTracer } from "./telemetry.js";
 
 /** Stream function - can return sync or Promise for async config lookup */
 export type StreamFn = (
@@ -76,7 +76,7 @@ export interface AgentLoopLimits {
  */
 export interface AgentLoopConfig extends SimpleStreamOptions {
 	model: Model<any>;
-	tracer?: RuntimeTracer;
+	tracer?: AgentTracer;
 	tracing?: AgentTracingOptions;
 
 	/**

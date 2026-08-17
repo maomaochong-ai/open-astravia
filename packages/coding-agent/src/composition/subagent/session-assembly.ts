@@ -1,12 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { stat } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import type { Message } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
 import type { ConversationScenario, RuntimeResourceContext, RuntimeSession, SessionConfig } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
-import { FileConversationRepository } from "@vetta/runtime-storage/conversation";
+import { buildSubagentNotification } from "@vetta/runtime-node/coding";
 import type {
 	SubagentChildHandle,
 	SubagentLifecycle,
@@ -15,9 +14,10 @@ import type {
 	SubagentTypeDefinition,
 	SubagentTypeRegistryLike,
 } from "@vetta/runtime-subagents";
-import { buildSubagentNotification, type CodingToolActivation } from "@vetta/runtime-tools/coding";
+import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import type {
+	CodingAgentConversationSessionPathAssessment,
 	CodingAgentSubagentChildFactory,
 	CodingAgentSubagentChildFactoryContext,
 	CodingAgentSubagentProfile,
@@ -73,6 +73,11 @@ export interface CodingAgentSubagentSessionAssemblyOptions {
 	readonly createChildComposition: (
 		request: CodingAgentSubagentChildCompositionRequest,
 	) => Promise<CodingAgentSubagentChildComposition>;
+	readonly assessChildSessionPath: (
+		conversationDir: string,
+		sessionId: string,
+		sessionPath: string,
+	) => Promise<CodingAgentConversationSessionPathAssessment>;
 	readonly hookRuntime: Pick<
 		EcosystemHookRuntime,
 		"recordAdditionalContexts" | "runSubagentStart" | "runSubagentStop"
@@ -113,7 +118,7 @@ export function createCodingAgentSubagentSessionAssembly(
 				: undefined
 			: (snapshot, type, forkContext) => openChild("resume", snapshot, type, forkContext, options),
 		validateRecoveredChild: (snapshot) =>
-			validateRecoveredSubagentTranscript(snapshot, options.readParentSessionPath()),
+			validateRecoveredSubagentTranscript(snapshot, options.readParentSessionPath(), options.assessChildSessionPath),
 		onRecoveryIssue: (message) => {
 			console.warn("[coding-agent-runtime] subagent recovery issue", message);
 		},
@@ -318,23 +323,19 @@ function toSubagentInfo(snapshot: SubagentSnapshot): Omit<SubagentSnapshot, "usa
 async function validateRecoveredSubagentTranscript(
 	snapshot: SubagentSnapshot,
 	parentSessionPath: string,
+	assessSessionPath: CodingAgentSubagentSessionAssemblyOptions["assessChildSessionPath"],
 ): Promise<string | undefined> {
 	const sessionFile = snapshot.sessionFile;
 	if (!sessionFile) return "Recovered subagent has no child session transcript";
-	const expectedDirectory = resolve(dirname(parentSessionPath), ".subagents", snapshot.parentSessionId);
-	const resolvedSessionFile = resolve(sessionFile);
-	const childRepository = new FileConversationRepository({ rootDir: expectedDirectory });
-	const expectedSessionFile = childRepository.resolveConversationPath(snapshot.id);
-	await childRepository.close();
-	if (resolvedSessionFile !== expectedSessionFile) {
+	const expectedDirectory = join(dirname(parentSessionPath), ".subagents", snapshot.parentSessionId);
+	const assessment = await assessSessionPath(expectedDirectory, snapshot.id, sessionFile);
+	if (assessment === "valid") return undefined;
+	if (assessment === "path-mismatch") {
 		return "Recovered subagent transcript does not match the parent-owned session path";
 	}
-	try {
-		const metadata = await stat(resolvedSessionFile);
-		return metadata.isFile() ? undefined : "Recovered subagent transcript is not a file";
-	} catch {
-		return "Recovered subagent transcript is missing";
-	}
+	return assessment === "not-file"
+		? "Recovered subagent transcript is not a file"
+		: "Recovered subagent transcript is missing";
 }
 
 const EMPTY_MCP_TOOL_VIEW: McpRuntimeToolView = Object.freeze({ tools: Object.freeze([]) });

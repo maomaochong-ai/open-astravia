@@ -8,6 +8,7 @@ CLI and process composition roots around `@vetta/coding-agent`.
 - the `vetta`, `vetta-agent`, and `vetta-agent-rpc` executable entrypoints
 - host-profile selection for Print, RPC, and IM RPC execution
 - dedicated JSONL RPC sidecar entrypoint
+- Node RPC Client and child-process lifecycle
 - argument handoff into `coding-agent`
 
 ## Runtime Entry
@@ -29,6 +30,7 @@ session files remain readable through the explicit pre-open import boundary, but
 - agent behavior
 - model/provider logic
 - terminal UI primitives
+- RPC wire semantics, validation, and command dispatch
 
 ## Who Depends On It
 

@@ -131,7 +131,6 @@ function assembly(
 			readSubagents: () => [],
 			interruptSubagent: () => undefined,
 		},
-		todoController: { readItems: () => [], clear: () => false },
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},

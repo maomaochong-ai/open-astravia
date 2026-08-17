@@ -131,7 +131,10 @@ export type PluginMediaCapability =
 			kind: "image" | "video";
 			modes: readonly PluginMediaGenerationMode[];
 			aspectRatios?: readonly string[];
+			/** Provider-defined stable option ids; consumers must not infer pixel dimensions from their names. */
 			resolutions?: readonly string[];
+			/** Preferred option when the consumer has no supported persisted resolution. */
+			defaultResolution?: string;
 			durationsSeconds?: readonly number[];
 			modeCapabilities?: readonly PluginMediaGenerationModeCapability[];
 	  }

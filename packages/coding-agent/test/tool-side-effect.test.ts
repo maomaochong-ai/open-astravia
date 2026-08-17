@@ -1,4 +1,4 @@
-import { createImSendAttachmentToolRegistration } from "@vetta/runtime-tools/coding";
+import { createImSendAttachmentToolRegistration } from "@vetta/runtime-node/coding";
 import { describe, expect, it } from "vitest";
 import { isToolSideEffect, normalizeToolSideEffect } from "../src/profiles/index.js";
 import {

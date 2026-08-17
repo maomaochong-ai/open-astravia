@@ -11,7 +11,7 @@ describe("Coding Agent composition shutdown", () => {
 		const memoryRuntime = { dispose: vi.fn() };
 		const executionRuntime = { dispose: vi.fn(async () => {}) };
 		const hookSessionDisposer = vi.fn(async () => {});
-		const todoRuntime = { dispose: vi.fn(async () => {}) };
+		const sessionExtensions = { dispose: vi.fn(async () => {}) };
 		const turnCapabilityAssembly = { dispose: vi.fn(async () => {}) };
 		let ownershipAttempts = 0;
 		const ownershipBinding = {
@@ -24,7 +24,7 @@ describe("Coding Agent composition shutdown", () => {
 		registry.trackContextRuntime(contextRuntime);
 		registry.trackMemoryRuntime(memoryRuntime);
 		registry.trackHookSessionDisposer(hookSessionDisposer);
-		registry.trackTodoRuntime(todoRuntime);
+		registry.trackSessionExtensionComposition(sessionExtensions);
 		registry.trackTurnCapabilityAssembly(turnCapabilityAssembly);
 		registry.trackOwnershipBinding(ownershipBinding);
 		registry.indexes.executionRuntimes.set(
@@ -85,7 +85,7 @@ describe("Coding Agent composition shutdown", () => {
 		expect(memoryRuntime.dispose).toHaveBeenCalledOnce();
 		expect(executionRuntime.dispose).toHaveBeenCalledOnce();
 		expect(hookSessionDisposer).toHaveBeenCalledOnce();
-		expect(todoRuntime.dispose).toHaveBeenCalledOnce();
+		expect(sessionExtensions.dispose).toHaveBeenCalledOnce();
 		expect(turnCapabilityAssembly.dispose).toHaveBeenCalledOnce();
 		expect(pluginMcpRuntime.dispose).toHaveBeenCalledOnce();
 		expect(closeConversationRepository).toHaveBeenCalledOnce();
@@ -94,16 +94,16 @@ describe("Coding Agent composition shutdown", () => {
 	it("does not dispose resources already removed by normal Session cleanup", async () => {
 		const registry = new CodingAgentCompositionResourceRegistry();
 		const contextRuntime = { dispose: vi.fn() };
-		const todoRuntime = { dispose: vi.fn(async () => {}) };
+		const sessionExtensions = { dispose: vi.fn(async () => {}) };
 		const executionRuntime = { dispose: vi.fn(async () => {}) };
 		registry.trackContextRuntime(contextRuntime);
-		registry.trackTodoRuntime(todoRuntime);
+		registry.trackSessionExtensionComposition(sessionExtensions);
 		registry.indexes.executionRuntimes.set(
 			"session",
 			executionRuntime as unknown as CodingAgentSessionExecutionRuntime,
 		);
 		registry.untrackContextRuntime(contextRuntime);
-		registry.untrackTodoRuntime(todoRuntime);
+		registry.untrackSessionExtensionComposition(sessionExtensions);
 		registry.indexes.executionRuntimes.unbind(
 			"session",
 			executionRuntime as unknown as CodingAgentSessionExecutionRuntime,
@@ -117,7 +117,7 @@ describe("Coding Agent composition shutdown", () => {
 
 		await shutdown.dispose();
 		expect(contextRuntime.dispose).not.toHaveBeenCalled();
-		expect(todoRuntime.dispose).not.toHaveBeenCalled();
+		expect(sessionExtensions.dispose).not.toHaveBeenCalled();
 		expect(executionRuntime.dispose).not.toHaveBeenCalled();
 	});
 });

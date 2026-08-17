@@ -1,4 +1,5 @@
 import type { RuntimeSnapshot, RuntimeSnapshotAcquireContext, RuntimeSnapshotLease } from "@vetta/runtime-core/kernel";
+import { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import { describe, expect, it, vi } from "vitest";
 import {
 	type CodingAgentSessionRuntimeResourcesOptions,
@@ -16,17 +17,19 @@ describe("Coding Agent Turn admission preparation", () => {
 			order.push("capture");
 			return lease;
 		});
+		const sessionExtensions = await SessionExtensionComposition.create({ definitions: [] });
 		const resources = createCodingAgentSessionRuntimeResources({
 			session: {
 				initialSessionId: "session",
 				readSessionId: () => "session",
 				cwd: "C:\\workspace",
 			},
-			conversation: { resolveSessionPath: () => undefined },
+			conversation: { resolveSessionDirectory: () => undefined, resolveSessionPath: () => undefined },
 			turnCapabilityAssembly: {
 				capabilities: { acquire },
 				promptAdapter: {},
 			},
+			sessionExtensions,
 			refreshSessionMcp: async () => {
 				order.push("publish");
 			},
@@ -48,17 +51,19 @@ describe("Coding Agent Turn admission preparation", () => {
 	it("does not refresh mutable MCP state before the immutable Turn admission point", async () => {
 		const refreshSessionMcp = vi.fn(async () => undefined);
 		const createRequest = vi.fn((request: { text: string }) => ({ payload: request, displayText: request.text }));
+		const sessionExtensions = await SessionExtensionComposition.create({ definitions: [] });
 		const resources = createCodingAgentSessionRuntimeResources({
 			session: {
 				initialSessionId: "session",
 				readSessionId: () => "session",
 				cwd: "C:\\workspace",
 			},
-			conversation: { resolveSessionPath: () => undefined },
+			conversation: { resolveSessionDirectory: () => undefined, resolveSessionPath: () => undefined },
 			turnCapabilityAssembly: {
 				capabilities: {},
 				promptAdapter: { createRequest },
 			},
+			sessionExtensions,
 			refreshSessionMcp,
 			activation: { mode: "explicit", toolNames: [] },
 		} as unknown as CodingAgentSessionRuntimeResourcesOptions);

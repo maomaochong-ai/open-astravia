@@ -5,7 +5,6 @@ import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStrea
 import {
 	type CodingAgentRuntimeComposition,
 	CodingAgentRuntimeHostSessionBackend,
-	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import {
@@ -15,6 +14,7 @@ import {
 	RuntimeHost,
 } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 
 const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
 

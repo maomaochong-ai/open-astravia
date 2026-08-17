@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { CodingAgentPromptRequestAdapter } from "../src/adapters/runtime-core/prompt-request-adapter.js";
 import {
 	buildPluginPromptContextMessage,
 	parsePluginPromptContexts,
-} from "../src/adapters/runtime-core/plugin-prompt-context.js";
-import { CodingAgentPromptRequestAdapter } from "../src/adapters/runtime-core/prompt-request-adapter.js";
+} from "../src/plugins/runtime/plugin-prompt-context.js";
 import { preparePrompt } from "./runtime-core/prompt-adapter-test-fixture.js";
 
 describe("plugin prompt contexts", () => {

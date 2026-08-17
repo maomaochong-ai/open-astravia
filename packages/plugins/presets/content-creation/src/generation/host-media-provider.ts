@@ -242,6 +242,10 @@ function createModels(provider: PluginMediaProviderDescriptor): ContentModelDesc
 		.filter((kind, index, all) => all.indexOf(kind) === index);
 	return outputKinds.flatMap((outputKind) => {
 		const capabilities = generationCapabilities.filter((capability) => capability.kind === outputKind);
+		const resolutions = unique(capabilities.flatMap((capability) => capability.resolutions ?? []));
+		const defaultResolution = capabilities
+			.map((capability) => capability.defaultResolution)
+			.find((candidate): candidate is string => candidate !== undefined && resolutions.includes(candidate));
 		const modes = capabilities
 			.flatMap((capability) => capability.modes)
 			.filter((mode, index, all) => all.indexOf(mode) === index)
@@ -256,7 +260,8 @@ function createModels(provider: PluginMediaProviderDescriptor): ContentModelDesc
 			outputKind,
 			modes,
 			aspectRatios: unique(capabilities.flatMap((capability) => capability.aspectRatios ?? [])),
-			resolutions: unique(capabilities.flatMap((capability) => capability.resolutions ?? [])),
+			resolutions,
+			...(defaultResolution ? { defaultResolution } : {}),
 			durations: unique(capabilities.flatMap((capability) => capability.durationsSeconds ?? [])),
 		}];
 	});

@@ -48,8 +48,10 @@ export class CodingAgentPromptRuntime {
 		this.resolveSystemPromptOptions = (context) => this.resolve(context);
 	}
 
-	bindForTurn(): (context: CodingAgentModelCallPromptContext) => CodingAgentSystemPromptOptions {
-		const resourceLoader = capturePromptResourceSource(this.options.resourceLoader);
+	async bindForTurn(
+		signal?: AbortSignal,
+	): Promise<(context: CodingAgentModelCallPromptContext) => CodingAgentSystemPromptOptions> {
+		const resourceLoader = await capturePromptResourceSource(this.options.resourceLoader, signal);
 		const settingsManager = capturePromptSettingsSource(this.options.settingsManager);
 		const agentMode = this.options.readAgentMode?.();
 		const memory = this.options.readMemory?.();

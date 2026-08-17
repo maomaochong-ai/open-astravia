@@ -10,6 +10,7 @@ import {
 	type CodingAgentMemoryRolloverPreparation,
 	createCodingAgentMemoryRuntimeFeature,
 } from "../../src/memory/index.js";
+import { createMemoryTextStorage } from "../fixtures/memory-storage.js";
 
 const temporaryRoots: string[] = [];
 
@@ -22,7 +23,13 @@ describe("CodingAgentMemoryRolloverOrchestrator", () => {
 		const root = await temporaryRoot();
 		const memoryFile = join(root, "MEMORY.md");
 		await writeFile(memoryFile, "original memory", "utf8");
-		const runtime = new CodingAgentMemoryRolloverOrchestrator({ memoryFile, cwd: root, memoryCharLimit: 123 });
+		const runtime = new CodingAgentMemoryRolloverOrchestrator({
+			memoryFile,
+			cwd: root,
+			memoryCharLimit: 123,
+			memoryStorage: createMemoryTextStorage("original memory"),
+			journalStorage: createMemoryTextStorage(),
+		});
 		await writeFile(memoryFile, "changed after session start", "utf8");
 
 		expect(runtime.readPromptMemory()).toEqual({
@@ -47,6 +54,8 @@ describe("CodingAgentMemoryRolloverOrchestrator", () => {
 		const runtime = new CodingAgentMemoryRolloverOrchestrator({
 			memoryFile: join(root, "MEMORY.md"),
 			cwd: root,
+			memoryStorage: createMemoryTextStorage(),
+			journalStorage: createMemoryTextStorage(),
 			flushMemory,
 		});
 		const preparation = rolloverPreparation();
@@ -70,6 +79,8 @@ describe("CodingAgentMemoryRolloverOrchestrator", () => {
 		const runtime = new CodingAgentMemoryRolloverOrchestrator({
 			memoryFile: join(root, "MEMORY.md"),
 			cwd: root,
+			memoryStorage: createMemoryTextStorage(),
+			journalStorage: createMemoryTextStorage(),
 			appendTurnJournal,
 			appendRolloverJournal,
 		});
@@ -112,6 +123,8 @@ describe("CodingAgentMemoryRolloverOrchestrator", () => {
 		const runtime = new CodingAgentMemoryRolloverOrchestrator({
 			memoryFile: join(root, "MEMORY.md"),
 			cwd: root,
+			memoryStorage: createMemoryTextStorage(),
+			journalStorage: createMemoryTextStorage(),
 		});
 		const feature = createCodingAgentMemoryRuntimeFeature(runtime.toolRegistration);
 		const prepared = await feature.prepare({

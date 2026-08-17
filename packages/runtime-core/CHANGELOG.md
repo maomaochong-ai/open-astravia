@@ -4,7 +4,25 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `RuntimeSessionIdentity`、`RuntimeSessionIdentityLifecycle` 与 continuation 合同新增可选 `sessionDirectory`
+  宿主位置事实；Kernel 在会话续接时透明更新该事实，旧存储未提供时保留原值，不解析平台路径或改变既有
+  `sessionPath` 语义。
+
+### Changed
+
+- `ModelCallContributionContext` 在 Turn admission 绑定时可读取尚未展开的 `SessionInputRequest`；Runtime Core
+  仅透传不透明 payload，使动态能力可以在输入准备前完成本 Turn 隔离，而不引入产品语义。
+- Runtime Model Call Frame 现在把系统提示词块位置随稳定切分点一同透传给 AI 请求诊断，并在 instruction override 替换提示词时同时丢弃两者，避免错误的块级缓存归因。
+- Runtime 模型调用诊断现在利用上一条 Assistant usage 的消息谱系判断新请求是否保持追加兼容，并将分段变化原因继续附加到成功与失败终态，避免依赖 Session 全局缓存。
+- `usage.update` 现在透传缓存观测级别与实际响应模型身份；Runtime tracing 在 generation 与 agent 观测中分别输出单次和本轮聚合的 `promptCache` 指标，使 Harness 能够统计可信缓存命中率，同时保持旧事件生产者兼容。
+- `RuntimeHost` 的路径规范化、工作目录创建、队列 sidecar 和沙箱授权缓存改为显式 Host Port；核心不再直接依赖 Node 文件系统、路径、OS、AsyncLocalStorage 或 `process`。
+
 ### Breaking Changes
+
+- 移除 `RuntimeSessionTodoController`、`RuntimeResources.todoController` 与 `RuntimeHost.clearTodos()`；产品命令改由可选的 `RuntimeSessionExtensionHost` 和类型化 Session Extension endpoint token 暴露。`RuntimeHost.invokeSessionExtension()` 提供通用异步转发，迟订阅初始观察由扩展宿主统一投影。
+- 移除 Runtime Core 的 `TodoItem`、`TodoUpdateEvent` 与 `todo_update` Session 事件；产品观察改用通用 `session.extension` 信封。信封只声明 `extensionId/event/payload`，具体 payload 类型与跨宿主运行时校验由产品协议拥有。
 
 ### Fixed
 
@@ -34,6 +52,13 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- 新增产品无关的 `RuntimeActiveSessionHost`，统一拥有活动 Session 身份、new/resume/fork 事务串行化、
+  中断与空闲等待、提交回滚、事件重绑和资源释放；Seed、Hook、路径与后台命令继续通过窄 Port 注入。
+- 新增泛型 `RuntimeOwnershipBinding`，统一可变 Runtime 身份的 Lease 获取、重绑回滚与释放重试。
+- 新增平台与产品无关的 Runtime Session 资源索引，统一资源身份绑定、解绑和 Session ID 重绑机制。
+- 新增产品无关的 `RuntimeActiveSessionEventRelay` 与 `RuntimeSessionTransitionCleanup`，统一拥有活动
+  Session 切换时的稳定订阅、监听失败隔离，以及已提交切换后的可重试资源释放。
+- 新增 `@vetta/runtime-core/session-extensions` 会话级扩展组合合同，支持依赖/冲突校验、Agent Feature、Conversation Document participant、Continuation source、initial observation source、typed service/endpoint/signal/observation 贡献、同步/异步 endpoint 宿主调用，以及初始化逆序回滚和失败释放重试；合同保持产品与平台无关。
 - **统一 Turn 失败合同**：Provider 返回 `stopReason: "error"` 时统一生成结构化 `turn.failed`，并与对应 assistant error 消息绑定到同一个 turn；实时错误与历史错误携带 `turnId`，Desktop 错误卡片按 turn 幂等投影，避免错误丢失或重复。旧 assistant error 历史保持兼容读取。
 - **失败 prompt 回执保留结构化错误**：`status: "failed"` 的 Runtime prompt 回执现在携带 `error` 与 `turnId`，宿主重试层不会再把已结束的额度/Provider 失败误判为成功并清掉错误事件。
 

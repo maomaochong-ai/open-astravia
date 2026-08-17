@@ -38,6 +38,7 @@ import {
 } from "./model-inputs";
 import { resolveContentAspectRatio } from "./aspect-ratio";
 import { inferImageDimensionsFromBase64 } from "./image-dimensions";
+import { resolveSupportedModelOption } from "./model-options";
 import type { ContentProviderRegistry } from "./provider-registry";
 import type {
 	ContentArtifactStore,
@@ -329,7 +330,11 @@ export class ContentGenerationService {
 					}),
 					quality: node.data.quality,
 					duration: node.data.duration,
-					resolution: node.data.resolution,
+					resolution: resolveSupportedModelOption(
+						node.data.resolution,
+						model.resolutions,
+						model.defaultResolution,
+					),
 					references,
 				},
 				this.createProviderContext(cwd, jobId),

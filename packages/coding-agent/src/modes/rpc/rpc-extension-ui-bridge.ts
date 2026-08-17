@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { type Theme, theme } from "../interactive/theme/theme.js";
 import type {
 	ExtensionUIContext,
@@ -17,7 +16,10 @@ interface PendingExtensionRequest {
 export class RpcExtensionUIBridge {
 	private readonly pending = new Map<string, PendingExtensionRequest>();
 
-	constructor(private readonly output: RpcExtensionUIOutput) {}
+	constructor(
+		private readonly output: RpcExtensionUIOutput,
+		private readonly createRequestId: () => string,
+	) {}
 
 	createContext(): ExtensionUIContext {
 		return {
@@ -60,7 +62,7 @@ export class RpcExtensionUIBridge {
 			notify: (message, type) => {
 				this.output({
 					type: "extension_ui_request",
-					id: randomUUID(),
+					id: this.createRequestId(),
 					method: "notify",
 					message,
 					notifyType: type,
@@ -70,7 +72,7 @@ export class RpcExtensionUIBridge {
 			setStatus: (key, text) => {
 				this.output({
 					type: "extension_ui_request",
-					id: randomUUID(),
+					id: this.createRequestId(),
 					method: "setStatus",
 					statusKey: key,
 					statusText: text,
@@ -81,7 +83,7 @@ export class RpcExtensionUIBridge {
 				if (content === undefined || Array.isArray(content)) {
 					this.output({
 						type: "extension_ui_request",
-						id: randomUUID(),
+						id: this.createRequestId(),
 						method: "setWidget",
 						widgetKey: key,
 						widgetLines: content as string[] | undefined,
@@ -94,7 +96,7 @@ export class RpcExtensionUIBridge {
 			setTitle: (title) => {
 				this.output({
 					type: "extension_ui_request",
-					id: randomUUID(),
+					id: this.createRequestId(),
 					method: "setTitle",
 					title,
 				});
@@ -106,7 +108,7 @@ export class RpcExtensionUIBridge {
 			setEditorText: (text) => {
 				this.output({
 					type: "extension_ui_request",
-					id: randomUUID(),
+					id: this.createRequestId(),
 					method: "set_editor_text",
 					text,
 				});
@@ -149,7 +151,7 @@ export class RpcExtensionUIBridge {
 		parseResponse: (response: RpcExtensionUIResponse) => T,
 	): Promise<T> {
 		if (options?.signal?.aborted) return Promise.resolve(defaultValue);
-		const id = randomUUID();
+		const id = this.createRequestId();
 		return new Promise<T>((resolve) => {
 			let timeoutId: ReturnType<typeof setTimeout> | undefined;
 			const cleanup = () => {
@@ -178,7 +180,7 @@ export class RpcExtensionUIBridge {
 	}
 
 	private createEditorPromise(title: string, prefill?: string): Promise<string | undefined> {
-		const id = randomUUID();
+		const id = this.createRequestId();
 		return new Promise<string | undefined>((resolve) => {
 			const finish = (value: string | undefined) => {
 				this.pending.delete(id);

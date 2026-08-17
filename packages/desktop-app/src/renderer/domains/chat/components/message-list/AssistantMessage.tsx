@@ -16,6 +16,7 @@ import { useExpansion } from "./expansionStore";
 import { workSegmentKey } from "./progressGroupModel";
 import { WorkSegmentRenderer } from "./WorkSegmentRenderer";
 import { CopyButton, formatDuration, formatTime, RelativeTimeLabel } from "./MessageActions";
+import { MessageTokenUsage } from "./MessageTokenUsage";
 
 /** Desktop wrapper: injects i18n streaming phrases into theme-ui indicator. */
 export function StreamingIndicator(): JSX.Element {
@@ -103,6 +104,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 			: null;
 
 	const hasBlocks = Boolean(message.blocks?.length);
+	const showTokenUsage = !exportMode && Boolean(message.usages?.length);
 
 	return (
 		<AssistantMessageView
@@ -159,12 +161,13 @@ export const AssistantMessage = memo(function AssistantMessage({
 			}
 			fallbackText={message.text || "\u2026"}
 			actions={
-				conclusionText.length > 0 ? (
+				conclusionText.length > 0 || showTokenUsage ? (
 					<div className="flex items-center gap-1">
-						<CopyButton getText={() => conclusionText} />
+						{conclusionText.length > 0 && <CopyButton getText={() => conclusionText} />}
 						{(message.endedAt ?? message.timestamp) && (
 							<RelativeTimeLabel endedAt={(message.endedAt ?? message.timestamp) as number} />
 						)}
+						{showTokenUsage && <MessageTokenUsage usages={message.usages ?? []} />}
 					</div>
 				) : undefined
 			}

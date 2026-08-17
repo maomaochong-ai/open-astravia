@@ -3,7 +3,7 @@ import {
 	VETTA_BUILTIN_MCP_NAME,
 	VETTA_CLIENT_VERSION_HEADER,
 	type VettaCredentials,
-} from "@vetta/runtime-mcp";
+} from "@vetta/runtime-node/mcp";
 import { describe, expect, it } from "vitest";
 
 const CREDENTIALS: VettaCredentials = { baseUrl: "https://api.example.com", token: "tok-1" };

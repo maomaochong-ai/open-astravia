@@ -19,21 +19,32 @@ export function resolveCacheRetention(cacheRetention?: CacheRetention): CacheRet
 }
 
 export function buildSystemPrompt(
-	systemPrompt: string | undefined,
+	context: Context,
 	model: Model<"bedrock-converse-stream">,
 	cacheRetention: CacheRetention,
 ): SystemContentBlock[] | undefined {
+	const systemPrompt = context.systemPrompt;
 	if (!systemPrompt) return undefined;
-	const blocks: SystemContentBlock[] = [{ text: sanitizeSurrogates(systemPrompt) }];
-	if (cacheRetention !== "none" && supportsPromptCaching(model)) {
-		blocks.push({
-			cachePoint: {
-				type: CachePointType.DEFAULT,
-				...(cacheRetention === "long" ? { ttl: CacheTTL.ONE_HOUR } : {}),
-			},
-		});
+	if (cacheRetention === "none" || !supportsPromptCaching(model)) {
+		return [{ text: sanitizeSurrogates(systemPrompt) }];
+	}
+
+	const stableLength = normalizeStableLength(context.systemPromptStableLength, systemPrompt.length);
+	if (stableLength === 0) {
+		return [{ text: sanitizeSurrogates(systemPrompt) }];
+	}
+	const blocks: SystemContentBlock[] = [{ text: sanitizeSurrogates(systemPrompt.slice(0, stableLength)) }];
+	blocks.push({ cachePoint: cachePoint(cacheRetention) });
+	if (stableLength < systemPrompt.length) {
+		blocks.push({ text: sanitizeSurrogates(systemPrompt.slice(stableLength)) });
 	}
 	return blocks;
+}
+
+function normalizeStableLength(value: number | undefined, promptLength: number): number {
+	if (value === undefined) return promptLength;
+	if (!Number.isFinite(value)) return 0;
+	return Math.min(promptLength, Math.max(0, Math.trunc(value)));
 }
 
 export function convertBedrockMessages(
@@ -96,14 +107,18 @@ export function convertBedrockMessages(
 		const lastMessage = result[result.length - 1];
 		if (lastMessage.role === ConversationRole.USER && lastMessage.content) {
 			(lastMessage.content as ContentBlock[]).push({
-				cachePoint: {
-					type: CachePointType.DEFAULT,
-					...(cacheRetention === "long" ? { ttl: CacheTTL.ONE_HOUR } : {}),
-				},
+				cachePoint: cachePoint(cacheRetention),
 			});
 		}
 	}
 	return result;
+}
+
+function cachePoint(cacheRetention: CacheRetention): { type: CachePointType; ttl?: CacheTTL } {
+	return {
+		type: CachePointType.DEFAULT,
+		...(cacheRetention === "long" ? { ttl: CacheTTL.ONE_HOUR } : {}),
+	};
 }
 
 function toToolResult(message: ToolResultMessage): ContentBlock.ToolResultMember {

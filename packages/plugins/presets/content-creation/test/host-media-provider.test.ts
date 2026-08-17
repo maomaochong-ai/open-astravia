@@ -24,6 +24,7 @@ const providerDescriptor: PluginMediaProviderDescriptor = {
 			modes: ["text-to-video", "image-to-video"],
 			aspectRatios: ["16:9"],
 			resolutions: ["1080p"],
+			defaultResolution: "1080p",
 			durationsSeconds: [4, 8],
 			modeCapabilities: [
 				{
@@ -70,6 +71,7 @@ describe("HostMediaProvider", () => {
 				modelId: "host:media:video",
 				outputKind: "video",
 				resolutions: ["1080p"],
+				defaultResolution: "1080p",
 				durations: [4, 8],
 			}),
 		]);

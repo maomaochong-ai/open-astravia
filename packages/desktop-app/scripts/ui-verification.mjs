@@ -29,7 +29,7 @@ const desktopRoot = join(import.meta.dirname, "..");
 const repoRoot = realpathSync(join(desktopRoot, "..", ".."));
 const workspaceId = createWorkspaceId(repoRoot);
 const runtimeRoot = join(tmpdir(), "vetta-ui-verification", workspaceId);
-const cliPath = join(repoRoot, "packages", "cli-app", "src", "cli.ts");
+const debugCliPath = join(repoRoot, "packages", "cli-app", "src", "debug-cli.ts");
 const currentScriptPath = fileURLToPath(import.meta.url);
 const runtimeCanaryProviderPath = join(desktopRoot, "scripts", "runtime-canary-provider.ts");
 const runtimeCanaryRunnerPath = join(desktopRoot, "scripts", "runtime-canary-runner.ts");
@@ -62,7 +62,7 @@ function resolveDebugCli(state) {
 	if (state?.runtimeCanary) {
 		return { command: state.runtimeCanary.installedCliPath, prefixArgs: [] };
 	}
-	return { command: "bun", prefixArgs: [cliPath] };
+	return { command: "bun", prefixArgs: [debugCliPath] };
 }
 
 function isProcessAlive(pid) {
@@ -156,7 +156,7 @@ async function inspectCdp(endpoint) {
 }
 
 function readDevUiInfo(layout) {
-	const result = spawnSync("bun", [cliPath, "debug", "run", "ui.info"], {
+	const result = spawnSync("bun", [debugCliPath, "debug", "run", "ui.info"], {
 		cwd: repoRoot,
 		encoding: "utf8",
 		env: createProfileEnvironment(layout),

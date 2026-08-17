@@ -28,6 +28,7 @@ import {
 	messageQueuePausedBySessionAtom,
 } from "@shared/store/message-queue-atoms";
 import { recordInputFilesAdded } from "@shared/lib/app-monitor-events";
+import { perfSendBegin, perfSendMark } from "@shared/lib/perf-send";
 import { isImagePath } from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import { filePreviewAtom } from "@shared/store/file-preview-atoms";
@@ -245,7 +246,9 @@ export function useInputBarModel({
 	}, [focusInputRequest]);
 
 	const handleSend = useCallback(() => {
+		perfSendBegin("send-button");
 		void onSend();
+		perfSendMark("handler-return");
 	}, [onSend]);
 
 	const handleAbort = useCallback(() => {
@@ -255,7 +258,9 @@ export function useInputBarModel({
 	/** 回车：能发就发，生成中则入队，空输入时用输入预测直发。返回是否已处理。 */
 	const handleEnter = useCallback((): boolean => {
 		if (canSend) {
+			perfSendBegin("enter");
 			void onSend();
+			perfSendMark("handler-return");
 			return true;
 		}
 		if (isStreaming && hasSession && !isEmpty) {

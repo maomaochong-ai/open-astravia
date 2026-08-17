@@ -1,11 +1,14 @@
-import { randomUUID } from "node:crypto";
-import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
 import type { SessionEvent } from "@vetta/runtime-core";
-import { wikiDir } from "@vetta/runtime-knowledge";
-import type { KbWritePageOperations } from "@vetta/runtime-tools/coding";
+import type { CodingAgentKnowledgeRuntime, CodingAgentKnowledgeWriteOperations } from "../features/knowledge/index.js";
 import type { CodingAgentRuntimeModelSource } from "../runtime-contracts/index.js";
-import { resolveCodingAgentKnowledgeRoot } from "./coding-agent-knowledge-runtime.js";
+import type {
+	CodingAgentConversationPersistenceFactory,
+	CodingAgentRuntimeComposition,
+	CodingAgentRuntimeCompositionOptions,
+	CodingAgentSessionExecutionEnvironmentFactory,
+	CodingAgentToolEnvironmentFactory,
+} from "./contracts/index.js";
 import type {
 	KnowledgeProcessingPageWriter,
 	KnowledgeProcessingSession,
@@ -13,15 +16,16 @@ import type {
 	KnowledgeProcessingSessionRequest,
 	KnowledgeProcessingUsage,
 } from "./knowledge-processing-contract.js";
-import {
-	type CodingAgentRuntimeComposition,
-	type CodingAgentRuntimeCompositionOptions,
-	createCodingAgentRuntimeComposition,
-} from "./runtime-composition.js";
+import { createCodingAgentRuntimeComposition } from "./runtime-composition.js";
 
 export interface KnowledgeProcessingSessionFactoryOptions {
 	readonly getModelRegistry: () => CodingAgentRuntimeModelSource;
-	readonly knowledgeRoot?: string;
+	/** 由宿主选择平台持久化实现；知识处理产品层只转发 Port。 */
+	readonly createConversationPersistence: CodingAgentConversationPersistenceFactory;
+	readonly createToolEnvironment: CodingAgentToolEnvironmentFactory;
+	readonly createSessionExecutionEnvironment: CodingAgentSessionExecutionEnvironmentFactory;
+	readonly codingToolResultPolicy?: CodingAgentRuntimeCompositionOptions["codingToolResultPolicy"];
+	readonly knowledgeRuntime: CodingAgentKnowledgeRuntime;
 	readonly createSessionId?: () => string;
 	readonly createComposition?: (
 		options: CodingAgentRuntimeCompositionOptions,
@@ -37,9 +41,8 @@ export interface KnowledgeProcessingSessionFactoryOptions {
 export function createKnowledgeProcessingSessionFactory(
 	options: KnowledgeProcessingSessionFactoryOptions,
 ): KnowledgeProcessingSessionFactory {
-	const createSessionId = options.createSessionId ?? randomUUID;
+	const createSessionId = options.createSessionId ?? (() => globalThis.crypto.randomUUID());
 	const createComposition = options.createComposition ?? createCodingAgentRuntimeComposition;
-	const resolvedKnowledgeRoot = resolveCodingAgentKnowledgeRoot(options.knowledgeRoot);
 
 	return {
 		async create(request) {
@@ -48,13 +51,16 @@ export function createKnowledgeProcessingSessionFactory(
 			const initialModel = readInitialModel(modelRuntime);
 			const composition = await createComposition({
 				conversationDir: request.sessionDir,
+				createConversationPersistence: options.createConversationPersistence,
+				createToolEnvironment: options.createToolEnvironment,
+				createSessionExecutionEnvironment: options.createSessionExecutionEnvironment,
+				codingToolResultPolicy: options.codingToolResultPolicy,
 				modelRegistry: modelRuntime,
 				initialModel,
 				initialThinkingLevel: "off",
 				cwd: request.cwd,
 				scenario: "kb-processing",
-				knowledgeEnabled: true,
-				knowledgeRoot: resolvedKnowledgeRoot,
+				knowledgeRuntime: options.knowledgeRuntime,
 				enableSubagents: false,
 			});
 			let runtimeSession: Awaited<ReturnType<CodingAgentRuntimeComposition["backend"]["create"]>>;
@@ -68,7 +74,10 @@ export function createKnowledgeProcessingSessionFactory(
 					systemPromptAddon: request.appendSystemPrompt,
 					initialTodos: request.todoItems,
 					initialTodoLockSource: request.todoItems.length > 0 ? "scene" : undefined,
-					knowledgePageWriter: adaptKnowledgePageWriter(request.writer, resolvedKnowledgeRoot),
+					knowledgePageWriter: adaptKnowledgePageWriter(
+						request.writer,
+						options.knowledgeRuntime.write.resolveAbsolutePath,
+					),
 				});
 			} catch (error) {
 				await composition.dispose();
@@ -149,11 +158,11 @@ function parseModelKey(modelKey: string): { readonly provider: string; readonly 
 
 function adaptKnowledgePageWriter(
 	writer: KnowledgeProcessingPageWriter,
-	resolvedKnowledgeRoot: string,
-): KbWritePageOperations {
+	resolveAbsolutePath: CodingAgentKnowledgeWriteOperations["resolveAbsolutePath"],
+): CodingAgentKnowledgeWriteOperations {
 	return {
 		write: (request, now) => writer.write(request, now),
-		resolveAbsolutePath: (relativeWikiPath) => join(wikiDir(resolvedKnowledgeRoot), relativeWikiPath),
+		resolveAbsolutePath,
 	};
 }
 

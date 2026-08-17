@@ -1,11 +1,12 @@
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type CodingAgentHostBootstrap, createCodingAgentHostBootstrap } from "@vetta/coding-agent/bootstrap";
+import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
 import type { RpcSessionInitialization } from "@vetta/coding-agent/rpc";
 import type { RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { CONVERSATION_STORAGE_ERROR_CODES } from "@vetta/runtime-storage/conversation";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createCliCodingAgentBootstrap } from "../src/coding-agent-bootstrap.js";
 import { createCliRuntimeSessionCatalog } from "../src/rpc/cli-session-format-compatibility.js";
 import { prepareImRuntimeHost, type RpcRuntimeHostReady } from "../src/rpc/runtime-host/runtime-host.js";
 
@@ -618,7 +619,7 @@ async function createFixture(
 	readonly workspace: string;
 	readonly conversationDir: string;
 	readonly sessionCatalog: RuntimeSessionCatalog;
-	readonly bootstrap: CodingAgentHostBootstrap;
+	readonly bootstrap: CodingAgentBootstrap;
 }> {
 	const root = await mkdtemp(join(tmpdir(), "vetta-im-runtime-host-"));
 	temporaryDirectories.push(root);
@@ -678,8 +679,8 @@ async function createFixture(
 async function createBootstrap(
 	fixture: { readonly agentDir: string; readonly workspace: string },
 	extraArgs: string[],
-): Promise<CodingAgentHostBootstrap> {
-	const bootstrap = await createCodingAgentHostBootstrap({
+): Promise<CodingAgentBootstrap> {
+	const bootstrap = await createCliCodingAgentBootstrap({
 		args: ["--mode", "rpc", "--enable-host-bridge", "--scenario", "im-claw", ...extraArgs],
 		cwd: fixture.workspace,
 		agentDir: fixture.agentDir,

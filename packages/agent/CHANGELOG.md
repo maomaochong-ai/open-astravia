@@ -16,6 +16,8 @@
 
 ### Changed
 
+- Agent tracing 的最小合同现在由 `@vetta/agent-core` 以 `AgentTracer` / `AgentObservation` 公开；
+  `runtime-telemetry` 继续兼容导出原有 `RuntimeTracer` 名称，现有调用方无需迁移。
 - **Vitest 依赖上收到 monorepo 根**：本包不再声明 `devDependencies.vitest`，改用根目录统一版本；包内仍保留 `vitest.config.ts` 与 `"test": "vitest --run"`。
 - `AgentTool` 新增第三个泛型参数 `TScenario extends string = string`，`scope_use` 由 `string[]` 改为 `readonly TScenario[]`。向后兼容（默认 `string`，旧的 `AgentTool<P>` / `AgentTool<P, D>` 不受影响）；上层消费者可绑定具体的场景联合（如 coding-agent 的 `ConversationScenario`）以在声明 `scope_use` 时获得补全/拼写校验。agent-core 自身仍不绑定任何场景词汇、不解读该字段。
 

@@ -30,67 +30,14 @@ export class ConsoleRuntimeLogger implements RuntimeLogger {
 	}
 }
 
-export type RuntimeObservationType = "span" | "generation" | "event" | "agent" | "tool";
-export type RuntimeObservationLevel = "DEBUG" | "DEFAULT" | "WARNING" | "ERROR";
-
-export interface RuntimeUsageDetails {
-	input?: number;
-	output?: number;
-	cacheRead?: number;
-	cacheWrite?: number;
-	totalTokens?: number;
-	[key: string]: number | undefined;
-}
-
-export interface RuntimeCostDetails {
-	input?: number;
-	output?: number;
-	cacheRead?: number;
-	cacheWrite?: number;
-	total?: number;
-	[key: string]: number | undefined;
-}
-
-export interface RuntimeObservationUpdate {
-	input?: unknown;
-	output?: unknown;
-	metadata?: Record<string, unknown>;
-	level?: RuntimeObservationLevel;
-	statusMessage?: string;
-	userId?: string;
-	sessionId?: string;
-	traceName?: string;
-	tags?: string[];
-	version?: string;
-	model?: string;
-	modelParameters?: Record<string, string | number>;
-	usageDetails?: RuntimeUsageDetails;
-	costDetails?: RuntimeCostDetails;
-}
-
-export interface RuntimeObservationStartOptions {
-	type?: RuntimeObservationType;
-}
-
-export interface RuntimeObservation {
-	id: string;
-	traceId: string;
-	type: RuntimeObservationType;
-	startObservation(
-		name: string,
-		update?: RuntimeObservationUpdate,
-		options?: RuntimeObservationStartOptions,
-	): RuntimeObservation;
-	update(update: RuntimeObservationUpdate): void;
-	end(update?: RuntimeObservationUpdate): void;
-}
-
-export interface RuntimeTracer {
-	startObservation(
-		name: string,
-		update?: RuntimeObservationUpdate,
-		options?: RuntimeObservationStartOptions,
-	): RuntimeObservation;
-	flush?(): Promise<void>;
-	shutdown?(): Promise<void>;
-}
+// Backward-compatible names. The execution-facing observation contract is owned by agent-core.
+export type {
+	AgentCostDetails as RuntimeCostDetails,
+	AgentObservation as RuntimeObservation,
+	AgentObservationLevel as RuntimeObservationLevel,
+	AgentObservationStartOptions as RuntimeObservationStartOptions,
+	AgentObservationType as RuntimeObservationType,
+	AgentObservationUpdate as RuntimeObservationUpdate,
+	AgentTracer as RuntimeTracer,
+	AgentUsageDetails as RuntimeUsageDetails,
+} from "@vetta/agent-core";

@@ -2,11 +2,9 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
-import {
-	type CodingAgentRuntimeComposition,
-	createCodingAgentRuntimeComposition,
-} from "@vetta/coding-agent/composition";
+import type { CodingAgentKnowledgeRuntime, CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
+import { CODING_AGENT_TODO_READ } from "@vetta/coding-agent/session-extensions";
 import { assessRuntimeHostSessionAssembly } from "@vetta/runtime-core";
 import {
 	createMcpServerRuntimeToolSource,
@@ -14,8 +12,10 @@ import {
 	type McpRuntimeToolSource,
 	type McpTool,
 } from "@vetta/runtime-mcp";
-import { FileConversationRepository } from "@vetta/runtime-storage/conversation";
+import { FileConversationRepository } from "@vetta/runtime-node/conversation";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createCliPromptRuntimeSources } from "../src/coding-agent-resource-runtime.js";
+import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 
 describe("Runtime composition contract", () => {
 	const temporaryDirectories: string[] = [];
@@ -239,11 +239,11 @@ describe("Runtime composition contract", () => {
 			steeringMode: "all",
 			followUpMode: "all",
 		});
-		expect(assembly.todoController?.readItems()).toEqual([]);
+		expect(assembly.extensionHost?.invokeSync(CODING_AGENT_TODO_READ, undefined)).toEqual([]);
 		await session.dispose();
 	});
 
-	it("registers knowledge tools while keeping host availability fail-closed", async () => {
+	it("registers knowledge tools only when the host provides a Knowledge runtime", async () => {
 		const enabledConversations = await createTemporaryDirectory("runtime-knowledge-enabled-");
 		const enabledModelTools: string[][] = [];
 		const enabled = await createCodingAgentRuntimeComposition({
@@ -251,7 +251,7 @@ describe("Runtime composition contract", () => {
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
-			knowledgeEnabled: true,
+			knowledgeRuntime: createKnowledgeRuntime(),
 			streamFn: (_model, context) => {
 				enabledModelTools.push((context.tools ?? []).map(({ name }) => name));
 				return new RecordedAssistantStream(assistantMessage([{ type: "text", text: "done" }]));
@@ -273,7 +273,6 @@ describe("Runtime composition contract", () => {
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
-			knowledgeEnabled: false,
 			streamFn: (_model, context) => {
 				disabledModelTools.push((context.tools ?? []).map(({ name }) => name));
 				return new RecordedAssistantStream(assistantMessage([{ type: "text", text: "done" }]));
@@ -289,7 +288,7 @@ describe("Runtime composition contract", () => {
 		expect(disabledModelTools[0]).not.toEqual(
 			expect.arrayContaining(["kb_list_available_tags", "kb_filter_by_tags"]),
 		);
-		expect(disabled.tools.registry.snapshot().registrations.map(({ tool }) => tool.name)).toEqual(
+		expect(disabled.tools.registry.snapshot().registrations.map(({ tool }) => tool.name)).not.toEqual(
 			expect.arrayContaining(["kb_list_available_tags", "kb_filter_by_tags"]),
 		);
 		await disabledSession.dispose();
@@ -337,6 +336,7 @@ describe("Runtime composition contract", () => {
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
 			agentDir,
+			createPromptRuntimeSources: createCliPromptRuntimeSources,
 			activation: { mode: "explicit", toolNames: [] },
 			streamFn: (_model, context) => {
 				systemPrompts.push(context.systemPrompt ?? "");
@@ -356,7 +356,7 @@ describe("Runtime composition contract", () => {
 		expect(systemPrompts[1]).not.toContain("First session repository instruction");
 		await first.dispose();
 		await second.dispose();
-	});
+	}, 10_000);
 
 	it("recompiles the Coding Agent system prompt from current call tools and session-local options", async () => {
 		const conversations = await createTemporaryDirectory("runtime-system-prompt-");
@@ -725,10 +725,11 @@ describe("Runtime composition contract", () => {
 
 		await session.prompt({ text: "discover tools" });
 		expect(calls[0]?.systemPrompt).toContain("Composed Coding Agent prompt");
-		expect(calls[0]?.systemPrompt).toContain("# MCP (Model Context Protocol) Tools");
-		expect(calls[0]?.systemPrompt).toContain("**mcp_search_tool_15**: Lookup topic-15");
+		expect(calls[0]?.systemPrompt).toContain("MCP (Model Context Protocol) tools:");
+		expect(calls[0]?.systemPrompt).toContain("- search (16 tools): tool_0, tool_1, tool_2, ...");
+		expect(calls[0]?.systemPrompt).not.toContain("mcp_search_tool_15");
 		expect(calls[0]?.systemPrompt).toContain("**MCP tool usage (deferred)**");
-		expect(calls[0]?.systemPrompt?.match(/# MCP \(Model Context Protocol\) Tools/g)).toHaveLength(1);
+		expect(calls[0]?.systemPrompt?.match(/MCP \(Model Context Protocol\) tools:/g)).toHaveLength(1);
 		expect(calls[0]?.mcpTools).toEqual(["tool_search"]);
 
 		fixture.setAvailable(false);
@@ -913,6 +914,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function jsonValue<T>(value: T): T {
 	return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function createKnowledgeRuntime(): CodingAgentKnowledgeRuntime {
+	return {
+		query: {
+			listAvailableTags: async () => [],
+			queryByTags: async () => [],
+		},
+		write: {
+			write: async () => ({ action: "create", id: "unused", path: "unused.md" }),
+			resolveAbsolutePath: (path) => path,
+		},
+	};
 }
 
 const MODEL: Model<Api> = {

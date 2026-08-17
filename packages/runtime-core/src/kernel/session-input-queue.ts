@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createRuntimeId } from "../id-generator.js";
 import type {
 	QueuedSessionInput,
 	SessionContextRecord,
@@ -228,7 +228,7 @@ export class SessionInputQueue implements TurnInputQueue {
 
 	enqueueFollowUps(messages: readonly SessionInput["message"][]): void {
 		for (const message of messages) {
-			this.followUpQueue.push({ id: randomUUID(), input: { message } });
+			this.followUpQueue.push({ id: createRuntimeId(), input: { message } });
 		}
 		if (messages.length > 0) this.notifyChange();
 	}
@@ -247,7 +247,7 @@ export class SessionInputQueue implements TurnInputQueue {
 	}
 
 	private enqueueEntry(behavior: SessionStreamingBehavior, input: QueuedSessionInput): string {
-		const slot: QueueSlot = { id: randomUUID(), input };
+		const slot: QueueSlot = { id: createRuntimeId(), input };
 		if (behavior === "steer") this.steeringQueue.push(slot);
 		else this.followUpQueue.push(slot);
 		this.notifyChange();

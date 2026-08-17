@@ -10,6 +10,7 @@ import type {
 	ToolCallUiDetails,
 	ToolImagePreview,
 } from "@shared/store/atoms";
+import type { Usage } from "@vetta/ai";
 import type { HistoryEntry, PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { classifyChatError } from "./classifyChatError";
@@ -391,6 +392,7 @@ export function historyToChat(
 		details?: unknown;
 		provider?: string;
 		model?: string;
+		usage?: Usage;
 	}>,
 ): ChatMessage[] {
 	const messages: ChatMessage[] = [];
@@ -431,6 +433,7 @@ export function historyToChat(
 		} else if (m.role === "assistant") {
 			// Merge consecutive assistant messages into one (same agent turn)
 			const target = currentAssistant();
+			if (m.usage) target.usages = [...(target.usages ?? []), m.usage];
 			const blocks = messageToBlocks(m.content);
 			for (const b of blocks) {
 				if (b.type === "tool_call") toolCallIndex.set(b.toolCallId, b);
@@ -587,6 +590,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 			details?: unknown;
 			provider?: string;
 			model?: string;
+			usage?: Usage;
 		};
 
 		if (m.role === "user") {
@@ -625,6 +629,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 			pendingAttachments = undefined;
 			const entryId = entry.type === "message" ? entry.entryId : undefined;
 			const target = currentAssistant();
+			if (m.usage) target.usages = [...(target.usages ?? []), m.usage];
 			// Prefer first assistant entry id for the merged bubble when not set yet.
 			if (entryId && !target.entryId) {
 				target.entryId = entryId;
@@ -812,7 +817,7 @@ export function appendThinkingDelta(prev: ChatMessage[], delta: string): ChatMes
  *   blocks exist with correct args.
  * - draftId is NOT cleared here — it persists until resetStreamState() at agent_end.
  */
-export function finalizeMessage(prev: ChatMessage[], content: unknown): ChatMessage[] {
+export function finalizeMessage(prev: ChatMessage[], content: unknown, usage?: Usage): ChatMessage[] {
 	const copy = [...prev];
 
 	// Parse tool calls from the final message
@@ -899,7 +904,12 @@ export function finalizeMessage(prev: ChatMessage[], content: unknown): ChatMess
 		.map((b) => (b as { text: string }).text)
 		.join("");
 
-	copy[targetIdx] = { ...msg, text, blocks };
+	copy[targetIdx] = {
+		...msg,
+		text,
+		blocks,
+		...(usage ? { usages: [...(msg.usages ?? []), usage] } : {}),
+	};
 
 	// Do NOT clear draftId — the agent turn may continue with more LLM calls.
 	// draftId is cleared by resetStreamState() at agent_start/agent_end.

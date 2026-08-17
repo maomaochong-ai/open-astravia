@@ -1,7 +1,7 @@
 import { basename, dirname } from "node:path";
 import { RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
+import { CodingAgentExtensionObservationAdapter } from "../../adapters/extensions/extension-observation-adapter.js";
 import { createCodingAgentExtensionSessionView } from "../../adapters/extensions/runtime-session-view-adapter.js";
-import { CodingAgentExtensionObservationAdapter } from "../../adapters/runtime-core/extension-observation-adapter.js";
 import type { Extension, ExtensionError, ExtensionExecutionHost, ExtensionRuntime } from "../../extensions/index.js";
 import { ExtensionRunner } from "../../extensions/index.js";
 import type { CodingAgentModelRuntime } from "../../models/index.js";
@@ -128,7 +128,7 @@ class DefaultCodingAgentExtensionEventHost implements CodingAgentExtensionEventH
 			promptPaths: buildExtensionResourcePaths(discovered.promptPaths),
 			themePaths: buildExtensionResourcePaths(discovered.themePaths),
 		};
-		this.options.resourceLoader.extendResources(extensionPaths);
+		await this.options.resourceLoader.extendResources(extensionPaths);
 	}
 
 	readSystemPrompt(): string {

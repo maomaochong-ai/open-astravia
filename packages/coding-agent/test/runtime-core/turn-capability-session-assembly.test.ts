@@ -11,13 +11,15 @@ import {
 	type RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it } from "vitest";
-import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
-import { CodingAgentExtensionRunAdapter } from "../../src/adapters/runtime-core/extension-run-adapter.js";
 import { createCodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
 import { createCodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
+import { CodingAgentExtensionRunBridge } from "../../src/extensions/runtime/extension-run-bridge.js";
+import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
+import type { CodingAgentContextRuntime } from "../../src/runtime-contracts/index.js";
 import { DEFAULT_HEAVY_TOOL_CONFIRMATION_TEXTS } from "../../src/tool-policy/heavy-tool-confirmation.js";
-import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
+import { createFileSettingsRuntime } from "../fixtures/file-settings-runtime.js";
+import { createTestSessionResourceRuntime } from "../fixtures/node-resource-runtime.js";
 import { preparePrompt } from "./prompt-adapter-test-fixture.js";
 
 describe("Coding Agent Turn Capability session assembly", () => {
@@ -33,14 +35,16 @@ describe("Coding Agent Turn Capability session assembly", () => {
 
 	it("owns the session-local capability profile without changing its tool surface", async () => {
 		const codingTools = createCodingToolsRuntimeComposition({
+			cwd: "C:\\workspace",
+			environment: emptyToolEnvironment(),
 			activation: { mode: "explicit", toolNames: [] },
 		});
 		disposals.push(() => codingTools.dispose());
 		const todoRuntime = new CodingAgentTodoRuntime();
 		disposals.push(() => todoRuntime.dispose());
 		const contextRuntime = createContextRuntime();
-		const extensionEvents = new CodingAgentExtensionRunAdapter();
-		const productTool = createTool("product_tool");
+		const extensionEvents = new CodingAgentExtensionRunBridge();
+		const specializedTool = createTool("specialized_tool");
 		const executionTool = createTool("execution_tool");
 		const executionFeature = createFeature("execution", []);
 		const executionRuntime = {
@@ -70,8 +74,9 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			},
 			codingTools,
 			executionRuntime,
-			productToolFeature: createFeature("product", [productTool]),
-			productToolRegistrations: [],
+			specializedToolFeature: createFeature("specialized", [specializedTool]),
+			specializedToolRegistrations: [],
+			continuationSources: [],
 			todoRuntime,
 			contextRuntime,
 			conversationContextProjector: {
@@ -85,7 +90,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 
 		const lease = await assembly.capabilities.acquire();
 		try {
-			expect(lease.snapshot.tools.has(productTool.name)).toBe(true);
+			expect(lease.snapshot.tools.has(specializedTool.name)).toBe(true);
 			expect(lease.snapshot.contextStrategy).toBe(contextRuntime);
 			expect(lease.snapshot.modelCallFrameComposer).toBeDefined();
 			expect(lease.snapshot.modelCallMessageFinalizer).toBeDefined();
@@ -95,14 +100,15 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			await lease.release();
 		}
 		expect(assembly.readAvailableTools().get(executionTool.name)).toBe(executionTool);
-		expect(assembly.readAvailableTools().has(productTool.name)).toBe(false);
+		expect(assembly.readAvailableTools().has(specializedTool.name)).toBe(false);
 		expect(() => assembly.rebindSession("session-2")).not.toThrow();
 	});
 
-	it("expands a Scene through the default session-local Prompt Runtime", async () => {
+	it("expands a Scene through an explicit host-owned Prompt Runtime", async () => {
 		const root = mkdtempSync(join(tmpdir(), "turn-capability-scene-"));
 		temporaryDirectories.push(root);
 		const workspace = join(root, "workspace");
+		const agentDir = join(root, "agent");
 		const sceneName = "assembly-scene";
 		const sceneDir = join(workspace, ".vetta", "skills", sceneName);
 		mkdirSync(sceneDir, { recursive: true });
@@ -113,6 +119,8 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		writeFileSync(join(sceneDir, "tasks.json"), JSON.stringify(["inspect", "report"]));
 
 		const codingTools = createCodingToolsRuntimeComposition({
+			cwd: workspace,
+			environment: emptyToolEnvironment(),
 			activation: { mode: "explicit", toolNames: [] },
 		});
 		disposals.push(() => codingTools.dispose());
@@ -124,12 +132,23 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			readAvailableTools: () => new Map(),
 		} as unknown as CodingAgentSessionExecutionRuntime;
 		const hookRuntime = createEmptyHookRuntime(workspace);
+		const settingsSource = createFileSettingsRuntime(workspace, agentDir);
+		const resourceSource = createTestSessionResourceRuntime({
+			cwd: workspace,
+			agentDir,
+			settings: settingsSource,
+			includeAgentSkills: false,
+			noExtensions: true,
+			noPromptTemplates: true,
+			noThemes: true,
+		});
+		await resourceSource.reload();
 		const assembly = await createCodingAgentTurnCapabilitySessionAssembly({
 			session: {
 				initialSessionId: "session-1",
 				readSessionId: () => "session-1",
 				cwd: workspace,
-				agentDir: join(root, "agent"),
+				agentDir,
 				includeAgentSkills: false,
 				scenario: "conversation",
 			},
@@ -139,18 +158,21 @@ describe("Coding Agent Turn Capability session assembly", () => {
 				readAgentPlugins: () => undefined,
 				readActiveToolNamesOverride: () => undefined,
 			},
-			prompt: {},
+			prompt: {
+				runtimeSourceFactory: async () => ({ resourceSource, settingsSource }),
+			},
 			baseProfile: codingTools.profile,
 			codingTools,
 			executionRuntime,
-			productToolFeature: createFeature("product", []),
-			productToolRegistrations: [],
+			specializedToolFeature: createFeature("specialized", []),
+			specializedToolRegistrations: [],
+			continuationSources: [],
 			todoRuntime,
 			contextRuntime: createContextRuntime(),
 			conversationContextProjector: { project: () => [] } satisfies ConversationContextProjector,
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime,
-			extensionEvents: new CodingAgentExtensionRunAdapter(),
+			extensionEvents: new CodingAgentExtensionRunBridge(),
 		});
 		disposals.push(() => assembly.dispose());
 
@@ -168,8 +190,10 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		expect(todoRuntime.getAll()).toHaveLength(2);
 	});
 
-	it("gates a heavy product tool behind one confirmation per session", async () => {
+	it("gates a heavy specialized tool behind one confirmation per session", async () => {
 		const codingTools = createCodingToolsRuntimeComposition({
+			cwd: "C:\\workspace",
+			environment: emptyToolEnvironment(),
 			activation: { mode: "explicit", toolNames: [] },
 		});
 		disposals.push(() => codingTools.dispose());
@@ -202,14 +226,15 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			baseProfile: codingTools.profile,
 			codingTools,
 			executionRuntime,
-			productToolFeature: createFeature("product", [heavyTool]),
-			productToolRegistrations: [{ tool: heavyTool, scopeUse: ["cli"], category: "core", sideEffect: "heavy" }],
+			specializedToolFeature: createFeature("specialized", [heavyTool]),
+			specializedToolRegistrations: [{ tool: heavyTool, scopeUse: ["cli"], category: "core", sideEffect: "heavy" }],
+			continuationSources: [],
 			todoRuntime,
 			contextRuntime: createContextRuntime(),
 			conversationContextProjector: { project: () => [] } satisfies ConversationContextProjector,
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime: createPassthroughHookRuntime(),
-			extensionEvents: new CodingAgentExtensionRunAdapter(),
+			extensionEvents: new CodingAgentExtensionRunBridge(),
 			askUserQuestion: {
 				isEnabled: () => true,
 				ask: async (request) => {
@@ -259,6 +284,10 @@ function toolRequest(toolCallId: string) {
 		input: {},
 		signal: new AbortController().signal,
 	};
+}
+
+function emptyToolEnvironment() {
+	return { registrations: [], dispose() {} };
 }
 
 /** 放行一切的 Ecosystem Hook 桩，用来把确认闸暴露成唯一的拦截来源。 */

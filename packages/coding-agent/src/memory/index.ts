@@ -3,7 +3,6 @@ export {
 	parseMemoryFactCandidates,
 	serializeMessagesForMemoryFlush,
 } from "./ai-memory-fact-extractor.js";
-export { FileMemoryJournal, type FileMemoryJournalOptions, type MemoryJournal } from "./file-memory-journal.js";
 export {
 	type CodingAgentMemoryController,
 	CodingAgentSessionMemoryController,
@@ -24,6 +23,7 @@ export type {
 	MemoryFactExtractor,
 } from "./memory-fact-extractor.js";
 export { type MemoryFlushInput, MemoryFlushService } from "./memory-flush-service.js";
+export { type MemoryJournal, type MemoryJournalOptions, MemoryJournalWriter } from "./memory-journal.js";
 export { CodingAgentMemoryRolloverOrchestrator } from "./memory-rollover-runtime.js";
 export type {
 	CodingAgentMemoryCompactionPolicy,
@@ -34,4 +34,26 @@ export type {
 	CodingAgentMemoryRolloverRuntime,
 } from "./memory-runtime-contract.js";
 export { createCodingAgentMemoryRuntimeFeature } from "./memory-runtime-feature.js";
-export { FileMemoryStore, type FileMemoryStoreOptions, type MemoryStore } from "./memory-store.js";
+export type { MemoryTextStorage } from "./memory-storage.js";
+export {
+	MemoryDocumentStore,
+	type MemoryStore,
+	type MemoryStoreOptions,
+} from "./memory-store.js";
+export {
+	createMemoryTool,
+	type MemoryToolAction,
+	type MemoryToolDetails,
+	type MemoryToolInput,
+	MemoryToolInputSchema,
+	type MemoryToolOperations,
+	type MemoryToolOptions,
+	type MemoryToolState,
+} from "./memory-tool.js";
+export { MEMORY_TOOL_DESCRIPTION } from "./memory-tool-description.js";
+export {
+	createMemoryToolRegistration,
+	MEMORY_TOOL_CATEGORY,
+	MEMORY_TOOL_SCOPES,
+	type MemoryToolRegistrationOptions,
+} from "./memory-tool-registration.js";

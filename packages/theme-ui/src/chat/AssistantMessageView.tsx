@@ -238,7 +238,7 @@ export function AssistantMessageView({
 						<StreamingIndicator phrases={labels.streamingPhrases} />
 					</div>
 				)}
-				{(conclusionText.length > 0 || isPredicting) && !isCurrentlyStreaming && (
+				{(actions || isPredicting) && !isCurrentlyStreaming && (
 					<div className="mt-2 flex items-center gap-2">
 						{actions}
 						{isPredicting && (
@@ -251,4 +251,3 @@ export function AssistantMessageView({
 		</div>
 	);
 }
-

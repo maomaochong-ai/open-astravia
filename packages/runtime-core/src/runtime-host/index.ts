@@ -12,6 +12,30 @@
  */
 
 export {
+	RuntimeActiveSessionEventRelay,
+	type RuntimeActiveSessionEventRelayOptions,
+	type RuntimeActiveSessionListenerKind,
+} from "./active-session-event-relay.js";
+export {
+	RuntimeActiveSessionHost,
+	waitForRuntimeSessionIdle,
+} from "./active-session-host.js";
+export type {
+	RuntimeActiveSessionCreateOptions,
+	RuntimeActiveSessionEndCause,
+	RuntimeActiveSessionHookLifecycle,
+	RuntimeActiveSessionHostOptions,
+	RuntimeActiveSessionRuntimePort,
+	RuntimeActiveSessionStartSource,
+	RuntimeActiveSessionTransition,
+	RuntimeActiveSessionTransitionDecision,
+	RuntimeActiveSessionTransitionKind,
+	RuntimeActiveSessionTransitionLifecycle,
+	RuntimeNewSessionOptions,
+	RuntimeSessionSeedInitializer,
+	RuntimeSessionSeedTarget,
+} from "./active-session-host-contracts.js";
+export {
 	ComposedRuntimeFactory,
 	type ComposedRuntimeFactoryOptions,
 	type RuntimeAssemblyOperation,
@@ -35,6 +59,11 @@ export {
 	type RuntimeSessionStatus,
 } from "./kernel-runtime-session-backend.js";
 export { mapKernelEventToSessionEvents } from "./kernel-session-events.js";
+export {
+	RuntimeOwnershipBinding,
+	type RuntimeOwnershipLease,
+	type RuntimeOwnershipManager,
+} from "./ownership-binding.js";
 export { RetryableCleanup, type RetryableCleanupTask } from "./retryable-cleanup.js";
 export type {
 	RuntimeCustomEntryInput,
@@ -98,6 +127,7 @@ export type {
 	RuntimeSessionExecutionController,
 	RuntimeSessionExecutionObservation,
 	RuntimeSessionExecutionObservationStream,
+	RuntimeSessionExtensionHost,
 	RuntimeSessionHistoryController,
 	RuntimeSessionHistoryReader,
 	RuntimeSessionHostInteraction,
@@ -113,7 +143,6 @@ export type {
 	RuntimeSessionQueueView,
 	RuntimeSessionState,
 	RuntimeSessionStateReader,
-	RuntimeSessionTodoController,
 	RuntimeSessionToolController,
 	RuntimeSessionTurnControl,
 	RuntimeSessionWorkspaceView,
@@ -121,7 +150,16 @@ export type {
 	RuntimeSubagentUsageSnapshot,
 	RuntimeTurnPrompt,
 } from "./session-ports.js";
+export {
+	InMemoryRuntimeSessionMarkerIndex,
+	InMemoryRuntimeSessionValueIndex,
+	type RuntimeSessionMarkerIndex,
+	type RuntimeSessionValueIndex,
+} from "./session-resource-index.js";
 export type {
+	RuntimeHostPathServices,
+	RuntimeQueueSidecarStore,
+	RuntimeSandboxGrantStore,
 	RuntimeSessionAccess,
 	RuntimeSessionAccessResolver,
 	RuntimeSessionAccessRoute,
@@ -134,4 +172,10 @@ export {
 	CompositeRuntimeSessionCatalog,
 	CompositeRuntimeSessionFileHistoryReader,
 } from "./session-services.js";
+export {
+	type RuntimeActiveSessionCleanupOptions,
+	type RuntimePreparedSessionBinding,
+	type RuntimeRetiredSessionCleanupOptions,
+	RuntimeSessionTransitionCleanup,
+} from "./session-transition-cleanup.js";
 export type { RunningChangedReason, RuntimeHostOptions } from "./types.js";

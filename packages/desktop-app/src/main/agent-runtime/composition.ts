@@ -1,10 +1,10 @@
 import { join } from "node:path";
 import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
+import { createCodingAgentMemoryRolloverRuntime } from "@vetta/coding-agent/composition";
 import { getAgentDir } from "@vetta/coding-agent/config";
 import {
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentPluginMcpRuntime,
-	createCodingAgentSessionArtifactCleaner,
 	createCodingAgentSharedModelController,
 } from "@vetta/coding-agent/host-services";
 import {
@@ -16,9 +16,22 @@ import {
 	type RuntimeHostSessionBackendRouteDecision,
 } from "@vetta/runtime-core";
 import {
+	createDesktopHistoricalSessionFormat,
+	createDesktopResultArtifactRuntime,
+	createDesktopRuntimeHostPlatformServices,
+	DesktopHistoricalSessionImportBackend,
+	DesktopRuntimeBackendPool,
+	type DesktopRuntimeComposition,
+	DesktopRuntimeSessionCatalog,
+	isSessionPathInDirectory,
+	logRuntimeSessionError,
+	PathFilteredRuntimeSessionCatalog,
+} from "@vetta/runtime-desktop";
+import {
 	FileConversationRuntimeSessionFileHistoryReader,
 	type RuntimeConversationSessionRoot,
-} from "@vetta/runtime-storage/conversation";
+} from "@vetta/runtime-node/conversation";
+import { createNodeKnowledgeRuntime, NodeTextFileStorage } from "@vetta/runtime-node/host";
 import { getBuiltinSkillPaths } from "../builtin-skills.js";
 import {
 	DEFAULT_CONVERSATION_CWD,
@@ -33,31 +46,22 @@ import {
 import { DEFAULT_SERVER_URL } from "../constants.js";
 import { resolveSessionListCwd } from "../conversations/session-paths.js";
 import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
+import { getKnowledgeRoot } from "../knowledge/knowledge-layout.js";
 import { getAppLogger } from "../logger.js";
 import { createDesktopPluginHookAdapterFactory } from "../plugins/coding-agent-hook-adapter.js";
 import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "../sandbox/windows-binary-resolver.js";
-import { DesktopRuntimeBackendPool } from "./backend-pool.js";
-import { createDesktopHistoricalSessionFormat } from "./historical-session-format.js";
-import { DesktopHistoricalSessionImportBackend } from "./historical-session-import-backend.js";
 import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./host-services.js";
-import {
-	DesktopRuntimeSessionCatalog,
-	isSessionPathInDirectory,
-	PathFilteredRuntimeSessionCatalog,
-} from "./session-catalog.js";
-import { logRuntimeSessionError } from "./session-error-logger.js";
+import { getDesktopProviderObservationRuntime } from "./provider-observation.js";
+import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
 
 const log = getAppLogger("runtime");
 
-export interface DesktopRuntimeComposition {
-	readonly runtime: RuntimeHost;
-	readonly runtimeBackendPool: DesktopRuntimeBackendPool;
-}
-
 export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
+	const platformServices = createDesktopRuntimeHostPlatformServices();
 	const modelRuntime = getOrCreateSharedModelRuntime();
+	const providerObservationRuntime = getDesktopProviderObservationRuntime();
 	const getDefaultExecutionMode = async () => (await readDesktopConfig()).defaultExecutionMode;
 	const sandboxHostPath = resolveWindowsSandboxHostBinary()?.path;
 	const linuxBubblewrapPath = getAvailableLinuxBubblewrapPath();
@@ -65,9 +69,10 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	const userQuestionHandler = getDesktopUserQuestionBroker().handle;
 	const additionalSkillPaths = getBuiltinSkillPaths();
 	const historicalFormat = createDesktopHistoricalSessionFormat();
+	const defaultResultArtifacts = createDesktopResultArtifactRuntime(getAgentDir());
 	const conversationCatalog = new DesktopRuntimeSessionCatalog({
 		resolveRoots: resolveDesktopRuntimeSessionRoots,
-		artifactCleaner: createCodingAgentSessionArtifactCleaner(getAgentDir()),
+		artifactCleaner: defaultResultArtifacts.sessionArtifactCleaner,
 	});
 	const imConversationCatalog = new PathFilteredRuntimeSessionCatalog(conversationCatalog, (sessionPath) =>
 		isSessionPathInDirectory(sessionPath, DEFAULT_IM_CONVERSATION_SESSION_DIR),
@@ -79,11 +84,27 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	const runtimeBackendPool = new DesktopRuntimeBackendPool({
 		compositionDefaults: {
 			modelRegistry: modelRuntime,
+			createPromptRuntimeSources: createDesktopPromptRuntimeSources,
+			knowledgeRuntime:
+				process.env.VETTA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeRoot()),
+			createMemoryRolloverRuntime: (options) => {
+				const memoryFile = options.memoryFile ?? join(options.cwd, "MEMORY.md");
+				return createCodingAgentMemoryRolloverRuntime({
+					cwd: options.cwd,
+					memoryFile,
+					memoryCharLimit: options.memoryCharLimit,
+					memoryStorage: new NodeTextFileStorage(memoryFile),
+					journalStorage: new NodeTextFileStorage(join(options.cwd, "JOURNAL.md")),
+				});
+			},
+			...(providerObservationRuntime ? { streamFn: providerObservationRuntime.streamFn } : {}),
 			createPluginMcpRuntime: ({ cwd, agentDir }) => {
 				const resolvedAgentDir = agentDir ?? getAgentDir();
+				const resultArtifacts = createDesktopResultArtifactRuntime(resolvedAgentDir);
 				return createCodingAgentPluginMcpRuntime({
 					agentDir: resolvedAgentDir,
 					debug: readDesktopMcpDebug(cwd, resolvedAgentDir),
+					resultPolicy: resultArtifacts.mcpToolResultPolicy,
 				});
 			},
 		},
@@ -93,13 +114,17 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				canInvoke: (pluginId) => pluginAgentContributionService.canInvokeHook(pluginId),
 			}),
 		],
+		createCodingToolResultPolicy: ({ agentDir }) =>
+			createDesktopResultArtifactRuntime(agentDir ?? getAgentDir()).codingToolResultPolicy,
 		createMcpRuntimeSource: async ({ cwd, agentDir }) => {
 			const resolvedAgentDir = agentDir ?? getAgentDir();
+			const resultArtifacts = createDesktopResultArtifactRuntime(resolvedAgentDir);
 			return await createCodingAgentMcpRuntimeToolSource({
 				projectRoot: cwd,
 				agentDir: resolvedAgentDir,
 				debug: readDesktopMcpDebug(cwd, resolvedAgentDir),
 				enabled: true,
+				resultPolicy: resultArtifacts.mcpToolResultPolicy,
 			});
 		},
 		resolveMcpRuntimeScope: ({ cwd, agentDir }) => ({
@@ -127,6 +152,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	return {
 		runtimeBackendPool,
 		runtime: new RuntimeHost({
+			...platformServices,
 			additionalSkillPaths,
 			getDefaultExecutionMode,
 			linuxBubblewrapPath,
@@ -134,7 +160,10 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 			sandboxHostPath,
 			serverUrl: DEFAULT_SERVER_URL,
 			sessionBackend,
-			sessionCatalog: new CompositeRuntimeSessionCatalog([historicalFormat.sessionCatalog, conversationCatalog]),
+			sessionCatalog: new CompositeRuntimeSessionCatalog(
+				[historicalFormat.sessionCatalog, conversationCatalog],
+				platformServices.pathServices.normalize,
+			),
 			sessionFileHistoryReader: new CompositeRuntimeSessionFileHistoryReader([
 				historicalFormat.sessionFileHistoryReader,
 				new FileConversationRuntimeSessionFileHistoryReader(),

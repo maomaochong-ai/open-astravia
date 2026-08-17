@@ -4,7 +4,8 @@
 
 仓库入口负责启动隔离的验证实例、发现动态 CDP 端口、维护 Playwright session，并自动选择 `Vetta Desktop` 主窗口。不要在提示词或脚本中写死端口、session 名、tab 下标或 snapshot ref。
 
-Vetta Debug 的会话操作参数见 [Vetta Debug](./vetta-debug.md)。
+Vetta Debug 的会话操作参数见 [Vetta Debug](./vetta-debug.md)；真实模型、多轮工具和上下文缓存实验见
+[Vetta Debug 真实 Provider 实战](./vetta-debug-real-provider-runbook.md)。
 
 ## 验证 Profile
 

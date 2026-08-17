@@ -6,6 +6,11 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **插件热重载与缓存失效可验证诊断**：Dev 日志记录 Renderer full reload 和插件开发更新的触发路径；插件 Runtime 以完整配置指纹跳过 staged 注册产生的重复重配，同时保留 activation/handler 路由更新和资源强制刷新。逐轮 Token 面板新增具体变化的 Prompt Block ID、工具名及变化类型。
+- **Debug Provider 观测与认证预检**：UI Verification 可通过显式实验 `runId` 启用隔离的模型调用链，将脱敏后的请求前缀、Provider payload/wire 和真实缓存 usage 追加到应用缓存 NDJSON；新增 `provider.preflight`，在正式实验前用低 Token、禁用缓存的真实请求区分模型缺失、凭据缺失、认证失败、计费、限流和超时。验证脚本改用轻量 Debug CLI，不再为 RPC 调用加载完整 Agent/Extension CLI 源码。
+- **缓存前缀连续性诊断**：逐轮 Token 面板现在显示稳定前缀是首次诊断、连续扩展、已改变还是因历史版本不可比较，并列出变化发生在系统提示词、工具或消息历史；只提供读取观测的 Provider 会明确显示写入数据“未上报（只读）”。
+- **逐轮 Token 与上下文缓存详情**：每条已完成的 Assistant 消息末尾新增用量图标，悬停或键盘聚焦后展示本轮多次模型调用汇总的输入、输出、缓存读取/写入、总 Token、缓存命中率与观测覆盖率；历史回放与实时流使用同一消息 usage 数据，不写入 App Monitor。
+
 - **Desktop UI 验证 Profile 与有界进程监督**：新增每次全新启动的 Fresh、持久且只从 `.vetta-dev`
   白名单播种/同步模型密文配置的 Debug，以及只附着现有普通开发应用的 Dev Profile。三个 Profile
   使用独立 home、Electron user data、Action RPC endpoint 和 Playwright session；验证启动改为后台等待
@@ -101,6 +106,17 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **插件装完直接弹权限配置**：首次安装的插件权限默认全未授予，安装成功（市场安装 / 开源市场 / 本地 zip 导入）后自动弹出该插件的权限弹窗，省掉用户自己找「权限配置」的一步。插件数据落地后才弹，系统插件与无权限声明的插件不打扰。
 
 ### Changed
+
+- **自定义模型的 API 类型改为下拉选择**：模型设置里新增/编辑模型时不再手工输入 API 类型，
+  与自定义服务商表单一致改用下拉，首项为「继承服务商」（即不显式设置）；配置里已有的
+  非内置 api 值会作为额外选项保留，不会被下拉悄悄改写。内置选项补齐了此前缺失的
+  `openai-completions-deepseek`，服务商表单同样可选。
+
+- **发送一条消息的渲染开销收敛（低配设备可感）**：用户气泡取消入场动画（弹入 + 正文去模糊），
+  静态气泡不再挂载 motion 组件；驱动该动画的「挂起 / 进行中」状态机连同消息列表滚动模型里
+  的 layout-effect setState 一并移除——此前每次发送都会因此额外同步重渲整张可见列表
+  （React Profiler 中表现为多次 `nested-update`）。新用户消息改为直接贴底跟随。
+  输入栏工具按钮与流式态「入队」按钮的 hover / press 缩放由 motion spring 改为 CSS transform。
 
 - **生产安装包收窄系统插件集**：开发环境继续加载现有全部 preset，`pack` / `dist`
   产物只内置 `vetta-ui-design`、`image-gen`、`media-viewer`、`office-viewer`、

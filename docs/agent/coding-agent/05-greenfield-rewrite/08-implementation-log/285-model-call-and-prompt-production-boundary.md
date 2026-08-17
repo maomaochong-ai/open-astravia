@@ -68,8 +68,9 @@ Prompt Adapter 只依赖窄的输入拦截合同，不再依赖具体 Extension 
 - `sessions/projection/conversation-context-projector.ts` 负责模型消息投影；
 - `sessions/projection/conversation-context-overlay.ts` 负责 Conversation 上下文覆盖。
 
-这些产品域通过局部窄 Port 接收 Extension、Plugin 和 Tool 能力，不再导入具体 Adapter。Composition 的
-`turn/prompt-runtime-factory.ts` 单独承担默认 Settings 与 Resource Runtime 的实例化，使产品运行逻辑与装配策略分离。
+这些产品域通过局部窄 Port 接收 Extension、Plugin 和 Tool 能力，不再导入具体 Adapter。该阶段最初由
+`turn/prompt-runtime-factory.ts` 实例化默认 Settings 与 Resource Runtime；后续可移植性阶段已删除这条深层 Node 回退，
+改由应用宿主通过 `createPromptRuntimeSources` 为每个 Session 显式提供来源。
 
 ### 行为兼容与结构化校验
 

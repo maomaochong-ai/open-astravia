@@ -563,6 +563,9 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 					kind === "video-generator"
 						? ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"]
 						: ["1:1"],
+				...(kind === "video-generator"
+					? { resolutions: ["1080p"], defaultResolution: "1080p" }
+					: {}),
 			},
 		],
 		generate,

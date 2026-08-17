@@ -9,13 +9,11 @@ import {
 	type Message,
 	type Model,
 } from "@vetta/ai";
-import {
-	type CodingAgentRuntimeComposition,
-	createCodingAgentRuntimeComposition,
-} from "@vetta/coding-agent/composition";
+import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { assessRuntimeHostSessionAssembly } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
+import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 
 describe("Subagent Runtime composition contract", () => {
 	const directories: string[] = [];

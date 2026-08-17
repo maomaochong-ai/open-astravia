@@ -295,7 +295,8 @@ function createAssistantMessage(model: Model<"openai-completions">): AssistantMe
 
 function updateUsage(output: AssistantMessage, model: Model<"openai-completions">, chunk: ChatCompletionChunk): void {
 	if (!chunk.usage) return;
-	const cachedTokens = chunk.usage.prompt_tokens_details?.cached_tokens || 0;
+	const reportedCachedTokens = chunk.usage.prompt_tokens_details?.cached_tokens;
+	const cachedTokens = reportedCachedTokens || 0;
 	const reasoningTokens = chunk.usage.completion_tokens_details?.reasoning_tokens || 0;
 	const input = (chunk.usage.prompt_tokens || 0) - cachedTokens;
 	const outputTokens = (chunk.usage.completion_tokens || 0) + reasoningTokens;
@@ -305,6 +306,7 @@ function updateUsage(output: AssistantMessage, model: Model<"openai-completions"
 		cacheRead: cachedTokens,
 		cacheWrite: 0,
 		totalTokens: input + outputTokens + cachedTokens,
+		cacheUsageReporting: reportedCachedTokens === undefined ? "unavailable" : "read-only",
 		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 	};
 	calculateCost(model, output.usage);

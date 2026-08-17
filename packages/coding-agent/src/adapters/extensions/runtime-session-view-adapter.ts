@@ -1,4 +1,3 @@
-import { dirname } from "node:path";
 import type { AgentMessage } from "@vetta/agent-core";
 import type { ConversationDocument, RuntimeSessionCoreAssembly } from "@vetta/runtime-core";
 import type { ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
@@ -28,10 +27,7 @@ export function createCodingAgentExtensionSessionView(assembly: RuntimeSessionCo
 
 	return {
 		getCwd: readCwd,
-		getSessionDir: () => {
-			const sessionPath = assembly.lifecycle.sessionPath;
-			return sessionPath ? dirname(sessionPath) : readCwd();
-		},
+		getSessionDir: () => assembly.lifecycle.sessionDirectory ?? readCwd(),
 		getSessionId: () => readDocument().identity.sessionId,
 		getSessionFile: () => assembly.lifecycle.sessionPath,
 		getLeafId: () => readDocument().activeLeafId,

@@ -2,6 +2,7 @@ import { validateToolArguments, type Tool } from "@vetta/ai";
 import type { PluginAgentToolRegistration, PluginContext } from "@vetta-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ContentGenerationPromptPlanError } from "../src/agent/generation-prompt-plan";
+import { CONTENT_AGENT_OPERATION_TYPES } from "../src/agent/operation-schema";
 import { parseContentAgentOperations } from "../src/agent/operations";
 import type { ContentCreationAgentService } from "../src/agent/service";
 import { createContentCreationAgentState } from "../src/agent/state";
@@ -19,7 +20,7 @@ import {
 	CONTENT_INSPECT_TOOL_NAME,
 	CONTENT_RUN_TOOL_NAME,
 	registerContentCreationTools,
-} from "../src/plugin/register-tools";
+} from "../src/plugin/tools";
 
 const TOOL_TEST_MODELS: readonly ContentModelDescriptor[] = [
 	{
@@ -127,6 +128,52 @@ describe("content creation tool registration", () => {
 			CONTENT_EDIT_TOOL_NAME,
 			CONTENT_RUN_TOOL_NAME,
 		]);
+	});
+
+	it("exposes concise routing contracts at the tool level", () => {
+		expect(tool(CONTENT_INSPECT_TOOL_NAME).description).toMatch(/without modifying.*current revision/s);
+		expect(tool(CONTENT_ASSETS_TOOL_NAME).description).toMatch(/Do not use.*normal file tools/s);
+		expect(tool(CONTENT_EDIT_TOOL_NAME).description).toMatch(/inspect.*view="project".*invalid operation/s);
+		expect(tool(CONTENT_EDIT_TOOL_NAME).description).not.toContain("first/last-frame");
+		expect(tool(CONTENT_EDIT_TOOL_NAME).description.length).toBeLessThan(900);
+		expect(tool(CONTENT_RUN_TOOL_NAME).description).toMatch(/readiness.*runId returned by prepare/s);
+	});
+
+	it("describes decision-bearing parameters and every operation variant", () => {
+		const describedFields = [
+			[CONTENT_INSPECT_TOOL_NAME, "view"],
+			[CONTENT_ASSETS_TOOL_NAME, "action"],
+			[CONTENT_EDIT_TOOL_NAME, "operations"],
+			[CONTENT_RUN_TOOL_NAME, "action"],
+			[CONTENT_RUN_TOOL_NAME, "nodeIds"],
+			[CONTENT_RUN_TOOL_NAME, "runId"],
+		] as const;
+		for (const [toolName, fieldName] of describedFields) {
+			const parameters = tool(toolName).parameters as {
+				properties?: Record<string, { description?: unknown }>;
+			};
+			expect(parameters.properties?.[fieldName]?.description, `${toolName}.${fieldName}`).toEqual(
+				expect.any(String),
+			);
+		}
+
+		const editParameters = tool(CONTENT_EDIT_TOOL_NAME).parameters as {
+			properties?: {
+				operations?: {
+					items?: {
+						oneOf?: Array<{
+							description?: unknown;
+							properties?: { type?: { const?: unknown } };
+						}>;
+					};
+				};
+			};
+		};
+		const variants = editParameters.properties?.operations?.items?.oneOf ?? [];
+		expect(variants.map((variant) => variant.properties?.type?.const)).toEqual(CONTENT_AGENT_OPERATION_TYPES);
+		for (const variant of variants) {
+			expect(variant.description, String(variant.properties?.type?.const)).toEqual(expect.any(String));
+		}
 	});
 
 	it("edit 在注册处声明 heavy，其余工具缺省 light", () => {

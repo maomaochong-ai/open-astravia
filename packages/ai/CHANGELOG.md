@@ -4,6 +4,10 @@
 
 ### Added
 
+- `PromptCacheDiagnostics` 新增隐私安全的逐块系统提示词与逐工具指纹，并报告具体 ID/名称的新增、删除、内容和顺序变化；诊断不持久化 Prompt 正文、工具描述或 Schema。
+- `@vetta/ai/testing` 新增非干扰式 Provider 观测中间件、统一脱敏合同与隔离 Registry 流入口；测试宿主可按 metadata、payload、wire 三档记录真实请求、响应及缓存 usage，而不修改全局 Adapter Registry。
+- `PromptCacheDiagnostics` 新增跨调用消息谱系、追加兼容状态及分段变化原因，可区分正常历史追加与稳定系统提示词、工具或历史重写导致的缓存前缀失效；旧 usage 记录保持兼容。
+- `Usage` 新增向后兼容的 `cacheUsageReporting`，区分真实零命中与 Provider 未上报；Anthropic、Bedrock、OpenAI 和 Google 原生适配器现在声明每次调用的缓存观测级别，并公开统一的单次与多调用缓存指标投影。
 - AI 根入口现在公开导出 Provider credential/error 合同，Runtime 模型绑定与 Provider 适配器可以共享同一套认证失败类型，而不需要深度导入实现目录。
 - 新增显式模型不存在错误工厂，模型解析失败统一使用 `AI_MODEL_NOT_FOUND`。
 
@@ -35,6 +39,7 @@
 
 ### Fixed
 
+- `AI_RESPONSE_VALIDATION_FAILED` 的白名单诊断现在会穿过流事件错误投影并在恢复 `AIError` 时重建 `metadata`；结构校验失败不再丢失 `payloadType`、失败路径和截断后的实际取值，同时仍不会传播任意 metadata 或原始 payload。
 - 供应商在未发出任何有效事件时结束流（`Stream ended without provider events`）现在被归类为可重试的瞬态协议故障；畸形事件、乱序状态和缺失终态等真实协议违规仍保持不可重试。
 - 明确的额度、余额和计费失败现在优先于 HTTP 401/429 状态分类，并统一映射为不可重试的 `AI_BILLING_REQUIRED`；中文“余额不足”与 Provider 结构化错误码使用同一规则。
 

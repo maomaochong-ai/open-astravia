@@ -6,10 +6,12 @@ All notable changes to `@vetta/runtime-storage` are documented in this file.
 
 ### Breaking Changes
 
+- **协议与 Node 实现分离**：`@vetta/runtime-storage` 只保留 Conversation 持久化端口、错误模型和 Schema；`FileConversationRepository`、`InMemoryConversationRepository`、文件锁、会话目录和 Legacy 文件迁移等具体实现迁至 `@vetta/runtime-node/conversation`。
 - **退役 Coding Agent 存储兼容根**：包根改为暴露原生 Conversation API，不再转发 `AuthStorage`、`SessionManager`、`SettingsManager`；认证与设置继续由产品宿主拥有。
 
 ### Added
 
+- **Prompt 缓存诊断兼容持久化**：Conversation Assistant usage Schema 接受可选的请求消息谱系、前缀兼容状态、分段变化原因，以及隐私安全的 Prompt Block/工具定义指纹和具体变化，使新会话可跨轮定位缓存前缀失效，同时继续读取旧诊断记录。
 - **Turn 外 Context 与 Entry Label 持久化**：Conversation V2 TypeBox Schema 新增无 `turnId` 的 `context.recorded`，可在不启动模型 Turn 时保存模型/UI 可见上下文；Repository 同时支持无预读 revision 的 Session 元数据、Custom Entry 与 Label 追加写入，并保持重开后的分支投影。
 - **跨 Conversation 续接事务**：`FileConversationRepository` 可从最近原生压缩边界创建带血缘的目标会话，TypeBox 校验 continuation seed 并重写 carried tail identity；源会话以 `turn.transferred` 闭合、目标会话以 `turn.continued` 延续同一 Turn，版本冲突不会留下目标文件，重开后保持摘要与尾部模型投影。
 - **Turn 外手动压缩持久化**：Conversation V2 Schema 允许 `reason: "manual"` 的 `context.compacted` 不携带 `turnId`，并在关闭、重开后继续投影为相同的摘要与保留尾部；活动 Turn 内的压缩协议仍由 Runtime Core 严格校验。

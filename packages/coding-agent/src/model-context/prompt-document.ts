@@ -1,5 +1,7 @@
 /** Structured system-prompt document and deterministic mutation/rendering operations. */
 
+import type { PromptCacheSystemPromptBlockSpan } from "@vetta/ai";
+
 export type SystemPromptBlockType =
 	| "subconscious"
 	| "base"
@@ -25,6 +27,8 @@ export interface SystemPromptBlock {
 	content: string;
 	priority: number;
 	enabled: boolean;
+	/** Core blocks infer this from priority; plugin blocks default to volatile. */
+	cacheability?: "stable" | "volatile";
 }
 
 export interface SystemPromptDraft {
@@ -56,9 +60,7 @@ export interface SystemPromptDiagnostics {
 /**
  * 稳定段与易变段的 priority 分界。
  *
- * 分界以下的块（subconscious/base/mcp/guidelines/append/context/memory/skills）在会话内基本不变，
- * 可以作为 Provider 前缀缓存的命中段；分界及以上的块（mode 850 / personalization 900 / footer 1000）
- * 随会话设置与日期变化，放在缓存断点之后。
+ * 核心块以该优先级推断默认 cacheability。插件块必须显式声明 stable，否则一律视为 volatile。
  */
 export const STABLE_SYSTEM_PROMPT_PRIORITY = 800;
 
@@ -66,12 +68,14 @@ export interface CompiledSystemPrompt {
 	readonly content: string;
 	/**
 	 * `content` 中稳定前缀的字符长度，满足 `content.slice(0, stableLength)` 恰好等于
-	 * 所有 `priority < STABLE_SYSTEM_PROMPT_PRIORITY` 的启用块按同一顺序 join("\n\n") 的结果。
+	 * 排序后连续 stable 块按同一顺序 join("\n\n") 的结果。首个 volatile 块之后不再跨段缓存。
 	 *
 	 * 块间分隔符 `"\n\n"` 归属其后的块，因此两段都非空时 `content.slice(stableLength)` 以 `"\n\n"` 开头，
 	 * 两段拼回必然等于 `content`。全部块落在同一段时取 `content.length` 或 `0`。
 	 */
 	readonly stableLength: number;
+	/** Ordered block spans for privacy-safe cache change diagnostics. */
+	readonly promptCacheBlocks: readonly PromptCacheSystemPromptBlockSpan[];
 	readonly diagnostics: SystemPromptDiagnostics;
 }
 
@@ -102,6 +106,7 @@ export function coreBlock(
 		content,
 		priority,
 		enabled: content.length > 0,
+		cacheability: priority < STABLE_SYSTEM_PROMPT_PRIORITY ? "stable" : "volatile",
 	};
 }
 
@@ -140,11 +145,12 @@ export function applySystemPromptOperation(
 		case "updateBlock": {
 			const block = draft.blocks.find((candidate) => candidate.id === operation.blockId);
 			if (block) {
-				const { type, content, priority, enabled } = operation.patch;
+				const { type, content, priority, enabled, cacheability } = operation.patch;
 				if (type !== undefined) block.type = type;
 				if (content !== undefined) block.content = content;
 				if (priority !== undefined) block.priority = priority;
 				if (enabled !== undefined) block.enabled = enabled;
+				if (cacheability !== undefined) block.cacheability = cacheability;
 			}
 			return;
 		}
@@ -183,15 +189,27 @@ export function compileSystemPromptDraft(draft: SystemPromptDraft): CompiledSyst
 		.filter((block) => block.enabled && block.content.length > 0)
 		.sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
 	const content = enabledBlocks.map((block) => block.content).join("\n\n");
-	// 排序保证稳定段是 enabledBlocks 的前缀，因此对稳定段单独 join 的长度就是 content 的切分点。
+	const stableBlockCount = firstVolatileBlockIndex(enabledBlocks);
 	const stableLength = enabledBlocks
-		.filter((block) => block.priority < STABLE_SYSTEM_PROMPT_PRIORITY)
+		.slice(0, stableBlockCount)
 		.map((block) => block.content)
 		.join("\n\n").length;
+	let blockEnd = 0;
+	const promptCacheBlocks = enabledBlocks.map<PromptCacheSystemPromptBlockSpan>((block, index) => {
+		const start = blockEnd + (index === 0 ? 0 : 2);
+		blockEnd = start + block.content.length;
+		return {
+			id: block.id,
+			start,
+			length: block.content.length,
+			cacheability: index < stableBlockCount ? "stable" : "volatile",
+		};
+	});
 	const estimatedTokens = estimateTextTokens(content);
 	return {
 		content,
 		stableLength,
+		promptCacheBlocks,
 		diagnostics: {
 			charCount: content.length,
 			estimatedTokens,
@@ -208,6 +226,16 @@ export function compileSystemPromptDraft(draft: SystemPromptDraft): CompiledSyst
 			})),
 		},
 	};
+}
+
+function firstVolatileBlockIndex(blocks: readonly SystemPromptBlock[]): number {
+	const index = blocks.findIndex((block) => !isCacheStable(block));
+	return index < 0 ? blocks.length : index;
+}
+
+function isCacheStable(block: SystemPromptBlock): boolean {
+	if (block.cacheability !== undefined) return block.cacheability === "stable";
+	return block.source.kind === "core" && block.priority < STABLE_SYSTEM_PROMPT_PRIORITY;
 }
 
 export function renderSystemPromptDraft(draft: SystemPromptDraft): string {

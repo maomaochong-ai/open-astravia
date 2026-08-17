@@ -40,7 +40,7 @@
 - 现有 Agent service 安全测试全部保留；
 - 非内容 Work 会话不出现 tool、Skill 或 system prompt。
 
-## Phase 2：收敛为三个领域工具
+## Phase 2：收敛并稳定领域工具面
 
 目标：减少近义工具和模型协议记忆。
 
@@ -52,12 +52,13 @@
 - inspect 默认 summary，详细 view 明确选择。
 - operation schema 改为真正的 discriminated union，避免所有 action 共享几十个可选字段。
 - 使用 TypeBox 或仓库现有结构化 schema 事实源，同时生成运行时校验和工具 schema，避免双份合同。
-- 增加动态 system prompt provider 和 `agent.tools.control`，按轮启用 inspect/edit/run。
-- 给动态 provider 固定本插件工具 allowlist，拒绝切换任何宿主或其它插件工具。
+- 四个领域工具按固定注册序进入模型工具面，不随当前消息或工作流阶段逐轮增删。
+- 不注册插件 System Prompt Provider；通过稳定 Skill 索引和宿主 `invoke_skill` 按需读取任务相关方法资料，不申请 `agent.systemPrompt.write` 或 `agent.tools.control`。
 
 验收：
 
-- 内容任务首轮最多暴露 2 个插件工具；
+- 不同内容意图下的工具名称、顺序和 Schema 完全一致；
+- 方法切换只增加 `invoke_skill` 工具结果与后续 reference 内容，不改变 system prompt 或工具缓存前缀；
 - 模型无需知道 destructive operation 对应哪个工具；
 - 同一 safety 测试集行为不变；
 - schema token 相比 Phase 0 明显下降。
@@ -91,7 +92,7 @@
 
 工作项：
 
-- 将当前 system prompt 缩为不可信数据、安全门槛和入口路由。
+- 移除插件专属 system prompt，把触发边界放在 Skill description、执行边界放在 Tool description/Schema。
 - 新建 image、video、quality-review Skill。
 - 按 universal/model/task/failure 拆 reference。
 - recipe Skill 只声明输入、阶段、gate、fallback 和交付物。
@@ -140,13 +141,15 @@
 - 产出 context、tool、task、cost、quality 指标报告。
 - 引入有限人工盲评并校准自动 judge。
 - 在 Coding Agent 层评估把现有 MCP deferred controller 抽象为 catalog-source-neutral。
-- plugin tools 超过阈值时使用同一 `tool_search` 会话激活语义，不在 content-creation 内另造搜索工具。
+- 以序列化 Schema 字节数或估算 token 预算判定是否 deferred，不只按工具数量设阈值。
+- 超过预算的 plugin 领域工具包使用同一 `tool_search` 会话激活语义，不在 content-creation 内另造搜索工具。
 
 验收：
 
 - benchmark 可在不访问真实 Provider 的情况下稳定运行结构和工具评测；
 - 真实媒体质量评测单独显式执行并记录费用；
-- deferred 激活保持 session 隔离，同一 tool loop 下一模型调用可见；
+- deferred 激活保持 session 隔离，同一 tool loop 下一模型调用可见；完整领域工具包首次激活后在该
+  Session 内只增不减，后续 Turn 不再反复破坏缓存；
 - 不改变显式工具白名单与现有 MCP 行为。
 
 ## 建议的首个实施切片
@@ -171,7 +174,7 @@
 
 | 风险 | 建议 |
 | --- | --- |
-| dynamic tool router 误判 | 显式模式与 stage 优先，关键词兜底；inspect 作为安全默认，不调用分类模型。 |
+| Skill 路由遗漏或误判 | 用互斥度足够的 Skill description 覆盖正反例；`invoke_skill` 按需读取正文，inspect 作为安全默认。 |
 | 领域工具参数变得过大 | 分 action 使用 discriminated union；必要时按阶段 gate，而不是回到多个近义工具。 |
 | plan 与 graph 双真源 | ProductionPlan 是创作意图真源，graph 是可编辑执行投影；人工 graph 编辑记录 override。 |
 | evaluator 过度自信 | 保存 confidence/evidence，低置信度转用户选择，定期用盲评校准。 |

@@ -98,7 +98,9 @@ describe("startVettaPluginDevServer", () => {
 		expect(manifest.headers.get("content-type")).toContain("application/json");
 		expect(await manifest.json()).toMatchObject({ id: "dev_server_test" });
 		expect(await preamble.text()).toContain("__vite_plugin_react_preamble_installed__");
-		expect(await virtualEntry.text()).toContain("__VETTA_PLUGIN_DEV_MODULES__");
+		const virtualEntryText = await virtualEntry.text();
+		expect(virtualEntryText).toContain("__VETTA_PLUGIN_DEV_MODULES__");
+		expect(virtualEntryText).toContain("triggeredBy");
 		expect(await pluginEntry.text()).toContain("/@vite/client");
 		const cssText = await cssModule.text();
 		expect(cssText).toContain("@scope ([data-vetta-plugin-root=dev-server-test])");

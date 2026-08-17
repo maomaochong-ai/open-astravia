@@ -1,6 +1,5 @@
-import type { ConversationDocument, RuntimeMessageEnvelope } from "@vetta/runtime-core";
+import type { ConversationDocument, RuntimeMessageEnvelope, RuntimeSessionValueIndex } from "@vetta/runtime-core";
 import type { CodingAgentRuntimeSessionControls } from "../contracts/index.js";
-import type { CodingAgentSessionValueIndex } from "./indexes.js";
 import type { CodingAgentSessionHookController, CodingAgentSessionResourceIndexes } from "./resource-lifecycle.js";
 
 type CodingAgentRuntimeSessionControlIndexes = Pick<
@@ -75,7 +74,7 @@ export function createCodingAgentRuntimeSessionControls(
 }
 
 function requireSessionHookController(
-	controllers: CodingAgentSessionValueIndex<CodingAgentSessionHookController>,
+	controllers: RuntimeSessionValueIndex<CodingAgentSessionHookController>,
 	sessionId: string,
 ): CodingAgentSessionHookController {
 	const controller = controllers.get(sessionId);

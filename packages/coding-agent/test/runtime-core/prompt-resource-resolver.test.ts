@@ -1,12 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
+import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import { createCodingAgentPromptResourceResolver } from "../../src/resources/prompt-resource-resolver.js";
 import { expandPromptResourceReference } from "../../src/resources/prompt-resources/prompt-resource-expander.js";
 import type { Skill } from "../../src/resources/skills/index.js";
-import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
 import { preparePrompt } from "./prompt-adapter-test-fixture.js";
 
 describe("Coding Agent prompt resource resolver", () => {
@@ -25,12 +25,11 @@ describe("Coding Agent prompt resource resolver", () => {
 		const skillPath = join(skillDir, "SKILL.md");
 		mkdirSync(skillDir);
 		writeFileSync(skillPath, skillDocument("review", "first instructions"));
-		const skill = createSkill("review", "skill", skillDir, skillPath);
-		const refreshSkillsIfChanged = vi.fn(() => true);
+		const refreshSkillsIfChanged = vi.fn(async () => true);
 		const resourceLoader = {
 			refreshSkillsIfChanged,
 			getSkills: () => ({
-				skills: existsSync(skillPath) ? [skill] : [],
+				skills: existsSync(skillPath) ? [createSkill("review", "skill", skillDir, skillPath)] : [],
 				diagnostics: [],
 			}),
 		};
@@ -88,7 +87,7 @@ describe("Coding Agent prompt resource resolver", () => {
 		const adapter = new CodingAgentPromptRequestAdapter({
 			resolvePromptResource: createCodingAgentPromptResourceResolver({
 				resourceLoader: {
-					refreshSkillsIfChanged: () => false,
+					refreshSkillsIfChanged: async () => false,
 					getSkills: () => ({
 						skills: [createSkill("deploy", "scene", sceneDir, scenePath)],
 						diagnostics: [],
@@ -162,6 +161,11 @@ function createSkill(name: string, type: Skill["type"], baseDir: string, filePat
 		source: "test",
 		type,
 		disableModelInvocation: false,
+		content: readFileSync(filePath, "utf8"),
+		sceneTasks:
+			type === "scene" && existsSync(join(baseDir, "tasks.json"))
+				? (JSON.parse(readFileSync(join(baseDir, "tasks.json"), "utf8")) as string[])
+				: [],
 	};
 }
 

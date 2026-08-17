@@ -5539,6 +5539,10 @@
                           "type": "string"
                         }
                       },
+                      "defaultResolution": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
                       "durationsSeconds": {
                         "type": "array",
                         "items": {

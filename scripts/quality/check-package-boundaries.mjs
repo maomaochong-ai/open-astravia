@@ -16,7 +16,7 @@ import { join } from "node:path";
 import ts from "typescript";
 import { fail, isDirectRun, ok, readText, rel, repoRoot, walkFiles } from "./lib.mjs";
 
-/** Path prefixes (posix, under repo root) that must stay host-agnostic. */
+/** Reusable package prefixes that must not depend on concrete applications. */
 const LIB_PREFIXES = [
 	"packages/capability-sdk/",
 	"packages/capability-runtime/",
@@ -28,8 +28,10 @@ const LIB_PREFIXES = [
 	"packages/runtime-knowledge/",
 	"packages/runtime-tools/",
 	"packages/runtime-storage/",
+	"packages/runtime-node/",
 	"packages/runtime-mcp/",
 	"packages/runtime-telemetry/",
+	"packages/runtime-desktop/",
 	"packages/action-rpc/",
 	"packages/toolkit/",
 	"packages/theme-sdk/",
@@ -44,7 +46,9 @@ const MANIFEST_TRUTH_PACKAGE_NAMES = new Set([
 	"@vetta/coding-agent",
 	"@vetta/runtime-knowledge",
 	"@vetta/runtime-storage",
+	"@vetta/runtime-node",
 	"@vetta/runtime-tools",
+	"@vetta/runtime-desktop",
 	"@vetta/cli-app",
 	"@vetta/desktop-app",
 ]);
@@ -311,6 +315,80 @@ function checkGreenfieldRuntimeImports(posixPath, specifiers, findings) {
 	}
 }
 
+function checkStorageProtocolImports(posixPath, specifiers, findings) {
+	if (!posixPath.startsWith("packages/runtime-storage/src/")) return;
+	for (const specifier of specifiers) {
+		if (
+			specifier.startsWith("node:") ||
+			specifier === "@vetta/runtime-node" ||
+			specifier.startsWith("@vetta/runtime-node/") ||
+			specifier === "@vetta/runtime-desktop" ||
+			specifier.startsWith("@vetta/runtime-desktop/")
+		) {
+			findings.push(`${posixPath}: runtime-storage protocol must not import platform implementation (${specifier})`);
+		}
+	}
+}
+
+function checkToolsProtocolImports(posixPath, specifiers, findings) {
+	if (!posixPath.startsWith("packages/runtime-tools/src/")) return;
+	for (const specifier of specifiers) {
+		if (
+			specifier.startsWith("node:") ||
+			specifier === "@vetta/runtime-node" ||
+			specifier.startsWith("@vetta/runtime-node/") ||
+			specifier === "@vetta/runtime-desktop" ||
+			specifier.startsWith("@vetta/runtime-desktop/")
+		) {
+			findings.push(`${posixPath}: runtime-tools protocol must not import platform implementation (${specifier})`);
+		}
+	}
+}
+
+function checkMcpProtocolImports(posixPath, specifiers, findings) {
+	if (!posixPath.startsWith("packages/runtime-mcp/src/")) return;
+	for (const specifier of specifiers) {
+		if (
+			specifier.startsWith("node:") ||
+			specifier === "@vetta/runtime-node" ||
+			specifier.startsWith("@vetta/runtime-node/") ||
+			specifier === "@vetta/runtime-desktop" ||
+			specifier.startsWith("@vetta/runtime-desktop/")
+		) {
+			findings.push(`${posixPath}: runtime-mcp protocol must not import platform implementation (${specifier})`);
+		}
+	}
+}
+
+function checkRuntimeCorePlatformImports(posixPath, text, specifiers, findings) {
+	if (!posixPath.startsWith("packages/runtime-core/src/")) return;
+	for (const specifier of specifiers) {
+		if (
+			specifier.startsWith("node:") ||
+			specifier === "@vetta/runtime-node" ||
+			specifier.startsWith("@vetta/runtime-node/") ||
+			specifier === "@vetta/runtime-desktop" ||
+			specifier.startsWith("@vetta/runtime-desktop/")
+		) {
+			findings.push(
+				`${posixPath}: runtime-core must use host ports instead of platform implementation (${specifier})`,
+			);
+		}
+	}
+
+	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
+	const forbiddenGlobals = new Set(["Buffer", "Bun", "process"]);
+	const foundGlobals = new Set();
+	const visit = (node) => {
+		if (ts.isIdentifier(node) && forbiddenGlobals.has(node.text)) foundGlobals.add(node.text);
+		ts.forEachChild(node, visit);
+	};
+	visit(sourceFile);
+	for (const symbol of foundGlobals) {
+		findings.push(`${posixPath}: runtime-core must not depend on platform global (${symbol})`);
+	}
+}
+
 function checkGreenfieldLegacyStartupSymbols(posixPath, text, findings) {
 	const isGreenfieldProductModule =
 		posixPath.startsWith("packages/cli-app/src/rpc/") ||
@@ -340,11 +418,17 @@ function checkGreenfieldLegacyStartupSymbols(posixPath, text, findings) {
 	}
 }
 
-function checkGreenfieldSessionTransitionBoundary(posixPath, text, specifiers, findings) {
-	if (posixPath !== "packages/coding-agent/src/composition/greenfield-active-session-transition-host.ts") return;
+function checkActiveSessionTransitionBoundary(posixPath, text, specifiers, findings) {
+	if (posixPath !== "packages/runtime-core/src/runtime-host/active-session-host.ts") return;
 	for (const specifier of specifiers) {
+		if (specifier.startsWith("node:")) {
+			findings.push(`${posixPath}: active-session transactions must use host ports instead of ${specifier}`);
+		}
 		if (specifier.includes("core/session-manager") || specifier.includes("legacy-session-import-normalizer")) {
 			findings.push(`${posixPath}: active-session transactions must delegate Legacy session seed construction`);
+		}
+		if (specifier === "@vetta/coding-agent" || specifier.startsWith("@vetta/coding-agent/")) {
+			findings.push(`${posixPath}: active-session transactions must not import Coding Agent products`);
 		}
 		if (specifier.includes("core/extensions")) {
 			findings.push(`${posixPath}: active-session transactions must use neutral session action ports`);
@@ -354,7 +438,10 @@ function checkGreenfieldSessionTransitionBoundary(posixPath, text, specifiers, f
 	const forbiddenSymbols = new Set([
 		"ExtensionCommandContextActions",
 		"CodingAgentRuntimeComposition",
+		"CodingAgentSessionTransitionRuntimePort",
 		"SessionManager",
+		"Buffer",
+		"process",
 		"migrateLegacySessionToV2",
 	]);
 	const visit = (node) => {
@@ -489,13 +576,13 @@ function checkCodingAgentTurnCapabilityAssemblyBoundary(posixPath, text, finding
 function checkCodingAgentDomainAdapterBoundary(posixPath, specifiers, findings) {
 	const domainRoots = [
 		"packages/coding-agent/src/extensions/",
+		"packages/coding-agent/src/features/",
 		"packages/coding-agent/src/memory/",
 		"packages/coding-agent/src/mcp/",
 		"packages/coding-agent/src/model-context/",
 		"packages/coding-agent/src/plugins/",
 		"packages/coding-agent/src/resources/",
 		"packages/coding-agent/src/sessions/",
-		"packages/coding-agent/src/work-state/",
 	];
 	if (!domainRoots.some((root) => posixPath.startsWith(root))) return;
 	for (const specifier of specifiers) {
@@ -713,7 +800,7 @@ function checkCodingAgentSessionInitializationStageBoundary(posixPath, text, fin
 		"CodingAgentSessionExecutionRuntime",
 	]);
 	const forbiddenFactories = new Set([
-		"createCodingAgentProductToolRegistrations",
+		"createCodingAgentSpecializedToolRegistrations",
 		"createCodingAgentTodoRuntimeToolRegistration",
 		"createEcosystemHookRuntime",
 		"createForkContextFeature",
@@ -1082,6 +1169,7 @@ function checkCodingAgentCompactionBoundary(posixPath, specifiers, findings) {
 	}
 
 	if (!posixPath.startsWith("packages/coding-agent/src/compaction/")) return;
+	const isCompactionRuntime = posixPath.startsWith("packages/coding-agent/src/compaction/runtime/");
 	for (const specifier of specifiers) {
 		const dependsOnSessionImplementation = specifier.includes("/core/") || specifier.includes("/adapters/");
 		const dependsOnRuntimeStorage =
@@ -1089,8 +1177,11 @@ function checkCodingAgentCompactionBoundary(posixPath, specifiers, findings) {
 			specifier.startsWith("@vetta/runtime-core/") ||
 			specifier === "@vetta/runtime-storage" ||
 			specifier.startsWith("@vetta/runtime-storage/");
-		if (dependsOnSessionImplementation || dependsOnRuntimeStorage) {
-			findings.push(`${posixPath}: Compaction domain must depend on neutral history contracts (${specifier})`);
+		if (dependsOnSessionImplementation || (dependsOnRuntimeStorage && !isCompactionRuntime)) {
+			findings.push(
+				`${posixPath}: Compaction policy must not depend on Session implementations; ` +
+					`only compaction/runtime may consume Runtime Core contracts (${specifier})`,
+			);
 		}
 	}
 }
@@ -1100,12 +1191,13 @@ function checkCodingAgentLegacyBoundaries(posixPath, text, specifiers, findings)
 	if (!isProductionSource) return;
 	const historicalSessionPublicSubpath = "@vetta/coding-agent/historical-sessions";
 	const historicalSessionConsumers = new Set([
+		"packages/cli-app/src/coding-agent-bootstrap.ts",
 		"packages/cli-app/src/rpc/cli-session-format-compatibility.ts",
 		"packages/cli-app/src/rpc/runtime-host/runtime-host-contract.ts",
 		"packages/cli-app/src/rpc/runtime-host/runtime-host.ts",
 		"packages/cli-app/src/session-compatibility-error.ts",
-		"packages/desktop-app/src/main/agent-runtime/historical-session-format.ts",
-		"packages/desktop-app/src/main/agent-runtime/historical-session-import-backend.ts",
+		"packages/runtime-desktop/src/historical-session-format.ts",
+		"packages/runtime-desktop/src/historical-session-import-backend.ts",
 	]);
 
 	for (const specifier of specifiers) {
@@ -1223,9 +1315,9 @@ function checkRuntimeCoreImports(posixPath, specifiers, findings) {
 function checkAgentCoreImports(posixPath, specifiers, findings) {
 	if (!posixPath.startsWith("packages/agent/src/")) return;
 	for (const specifier of specifiers) {
-		const importsRuntimeCore = specifier === "@vetta/runtime-core" || specifier.startsWith("@vetta/runtime-core/");
+		const importsRuntime = specifier.startsWith("@vetta/runtime-");
 		const importsCodingAgent = specifier === "@vetta/coding-agent" || specifier.startsWith("@vetta/coding-agent/");
-		if (importsRuntimeCore || importsCodingAgent) {
+		if (importsRuntime || importsCodingAgent) {
 			findings.push(`${posixPath}: agent-core must not import runtime or product packages (${specifier})`);
 		}
 	}
@@ -1261,8 +1353,12 @@ export function findPackageBoundaryViolations(posixPath, text, options = {}) {
 	checkRawCapabilityIds(posixPath, text, findings);
 	checkCapabilitySchemaDefinitions(posixPath, text, findings);
 	checkGreenfieldRuntimeImports(posixPath, specifiers, findings);
+	checkStorageProtocolImports(posixPath, specifiers, findings);
+	checkToolsProtocolImports(posixPath, specifiers, findings);
+	checkMcpProtocolImports(posixPath, specifiers, findings);
+	checkRuntimeCorePlatformImports(posixPath, text, specifiers, findings);
 	checkGreenfieldLegacyStartupSymbols(posixPath, text, findings);
-	checkGreenfieldSessionTransitionBoundary(posixPath, text, specifiers, findings);
+	checkActiveSessionTransitionBoundary(posixPath, text, specifiers, findings);
 	checkBranchNavigationBoundary(posixPath, text, findings);
 	checkKnowledgeProcessingBoundary(posixPath, text, specifiers, findings);
 	checkCodingAgentSubagentAssemblyBoundary(posixPath, text, findings);
@@ -1311,6 +1407,18 @@ export function findPackageManifestBoundaryViolations(manifest) {
 	if (dependencyGroups.some((dependencies) => Object.hasOwn(dependencies ?? {}, "@vetta/runtime-composition"))) {
 		findings.push(`${manifest.name ?? "workspace package"}: retired @vetta/runtime-composition dependency`);
 	}
+	if (manifest.name === "@vetta/agent-core") {
+		const productionDependencies = {
+			...manifest.dependencies,
+			...manifest.optionalDependencies,
+			...manifest.peerDependencies,
+		};
+		for (const dependency of Object.keys(productionDependencies)) {
+			if (dependency.startsWith("@vetta/runtime-") || dependency === "@vetta/coding-agent") {
+				findings.push(`@vetta/agent-core: lower-level execution kernel must not depend on ${dependency}`);
+			}
+		}
+	}
 	if (manifest.name !== "@vetta/coding-agent") return findings;
 	const exports = manifest.exports ?? {};
 	if (Object.hasOwn(exports, "./knowledge")) {
@@ -1339,8 +1447,10 @@ const roots = [
 	join(repoRoot, "packages/runtime-knowledge"),
 	join(repoRoot, "packages/runtime-tools"),
 	join(repoRoot, "packages/runtime-storage"),
+	join(repoRoot, "packages/runtime-node"),
 	join(repoRoot, "packages/runtime-mcp"),
 	join(repoRoot, "packages/runtime-telemetry"),
+	join(repoRoot, "packages/runtime-desktop"),
 	join(repoRoot, "packages/action-rpc"),
 	join(repoRoot, "packages/toolkit"),
 	join(repoRoot, "packages/theme-sdk"),

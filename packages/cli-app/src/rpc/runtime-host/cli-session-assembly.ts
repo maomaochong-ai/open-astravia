@@ -1,14 +1,18 @@
-import type { CodingAgentHostBootstrap } from "@vetta/coding-agent/bootstrap";
+import { join } from "node:path";
+import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
 import {
 	CodingAgentActiveSessionHost,
+	type CodingAgentMemoryRuntimeFactoryOptions,
 	CodingAgentProcessSessionHost,
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
 	type CodingAgentRuntimeSessionOptions,
+	createCodingAgentCodingToolResultPolicy,
+	createCodingAgentMemoryRolloverRuntime,
 	createCodingAgentRuntimeComposition,
 	createCodingAgentSessionSetupSeedInitializer,
 } from "@vetta/coding-agent/composition";
-import { getVettaHomePath } from "@vetta/coding-agent/config";
+import { getKnowledgeDir, getVettaHomePath } from "@vetta/coding-agent/config";
 import {
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentPluginMcpRuntime,
@@ -25,16 +29,28 @@ import {
 } from "@vetta/coding-agent/runtime";
 import { buildDefaultHookConfigLayers } from "@vetta/ecosystem-adapter";
 import { InitializationRollbackScope, type RuntimeSession, type RuntimeSessionCatalog } from "@vetta/runtime-core";
+import { createMcpToolResultPolicy } from "@vetta/runtime-mcp";
 import {
+	createFileConversationPersistence,
 	FileConversationOwnershipManager,
 	type FileConversationOwnershipManagerOptions,
+	resolveConversationFilePath,
 	resolveSessionIdFromPath,
-} from "@vetta/runtime-storage/conversation";
+} from "@vetta/runtime-node/conversation";
+import {
+	createNodeKnowledgeRuntime,
+	createNodeResultArtifactStorage,
+	NodeTextFileStorage,
+} from "@vetta/runtime-node/host";
+import {
+	createCliCodingAgentSessionExecutionEnvironmentFactory,
+	createCliCodingAgentToolEnvironmentFactory,
+} from "./cli-tool-environment.js";
 
 export const CLI_RUNTIME_HOST_STARTUP_FAILURE = "CLI Runtime startup and cleanup failed";
 
 export interface CliSessionAssemblyOptions {
-	readonly bootstrap: CodingAgentHostBootstrap;
+	readonly bootstrap: CodingAgentBootstrap;
 	readonly conversationDir: string;
 	readonly sessionCatalog: RuntimeSessionCatalog;
 	readonly sessionId: string;
@@ -48,6 +64,17 @@ export interface CliSessionAssemblyOptions {
 	readonly createPluginRuntime?: CodingAgentRuntimeCompositionOptions["createPluginRuntime"];
 }
 
+function createCliMemoryRolloverRuntime(options: CodingAgentMemoryRuntimeFactoryOptions) {
+	const memoryFile = options.memoryFile ?? join(options.cwd, "MEMORY.md");
+	return createCodingAgentMemoryRolloverRuntime({
+		cwd: options.cwd,
+		memoryFile,
+		memoryCharLimit: options.memoryCharLimit,
+		memoryStorage: new NodeTextFileStorage(memoryFile),
+		journalStorage: new NodeTextFileStorage(join(options.cwd, "JOURNAL.md")),
+	});
+}
+
 export interface CliSessionAssembly {
 	readonly runtime: CodingAgentRuntimeComposition;
 	readonly sessionHost: CodingAgentProcessSessionHost;
@@ -59,11 +86,26 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 	const { bootstrap } = options;
 	const { parsed } = bootstrap;
 	const mcpDebug = bootstrap.settingsManager.getMcpDebug();
+	const createToolEnvironment = createCliCodingAgentToolEnvironmentFactory({
+		agentDir: bootstrap.agentDir,
+		settings: bootstrap.settingsManager,
+	});
+	const createSessionExecutionEnvironment = createCliCodingAgentSessionExecutionEnvironmentFactory({
+		agentDir: bootstrap.agentDir,
+		settings: bootstrap.settingsManager,
+	});
+	const resultArtifacts = createNodeResultArtifactStorage({
+		codingRoot: join(bootstrap.agentDir, "tool-results"),
+		mcpRoot: join(bootstrap.agentDir, "mcp-results"),
+	});
+	const codingToolResultPolicy = createCodingAgentCodingToolResultPolicy({ artifactStore: resultArtifacts.coding });
+	const mcpToolResultPolicy = createMcpToolResultPolicy({ artifactStore: resultArtifacts.mcp });
 	const managedMcpSource = await createCodingAgentMcpRuntimeToolSource({
 		projectRoot: bootstrap.cwd,
 		agentDir: bootstrap.agentDir,
 		debug: mcpDebug,
 		enabled: true,
+		resultPolicy: mcpToolResultPolicy,
 	});
 	const rollback = new InitializationRollbackScope();
 	const dismissMcpRollback = rollback.defer({
@@ -80,11 +122,18 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 	try {
 		runtime = await createCodingAgentRuntimeComposition({
 			conversationDir: options.conversationDir,
+			createConversationPersistence: () => createFileConversationPersistence(options.conversationDir),
+			createToolEnvironment,
+			createSessionExecutionEnvironment,
+			codingToolResultPolicy,
 			modelRegistry: bootstrap.modelRegistry,
 			initialModel: options.initialModel,
 			initialThinkingLevel: options.initialThinkingLevel,
 			cwd: bootstrap.cwd,
 			agentDir: bootstrap.agentDir,
+			knowledgeRuntime:
+				process.env.VETTA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeDir()),
+			createMemoryRolloverRuntime: createCliMemoryRolloverRuntime,
 			hookConfigLayers: buildDefaultHookConfigLayers({
 				cwd: bootstrap.cwd,
 				vettaHome: getVettaHomePath(),
@@ -110,7 +159,8 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 				createCodingAgentCompactionExtensionRuntime(() => extensionSessionHost?.readRunner()),
 			createPluginRuntime: options.createPluginRuntime,
 			extensionTools: bootstrap.extensionsResult.extensions,
-			createPluginMcpRuntime: ({ agentDir }) => createCodingAgentPluginMcpRuntime({ agentDir, debug: mcpDebug }),
+			createPluginMcpRuntime: ({ agentDir }) =>
+				createCodingAgentPluginMcpRuntime({ agentDir, debug: mcpDebug, resultPolicy: mcpToolResultPolicy }),
 			conversationOwnershipManager: new FileConversationOwnershipManager(options.ownership),
 		});
 		const acquiredRuntime = runtime;
@@ -166,9 +216,11 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 			initialSession: session,
 			sessionOptions,
 			conversationDir: options.conversationDir,
+			defaultCwd: bootstrap.cwd,
 			sessionCatalog: options.sessionCatalog,
 			createSessionId: options.createSessionId,
 			resolveSessionId: (path) => resolveSessionIdFromPath(options.conversationDir, path),
+			resolveSessionPath: (sessionId) => resolveConversationFilePath(options.conversationDir, sessionId),
 			lifecycle: {
 				before: (transition) => extensionSessionHost!.before(transition),
 				prepare: (transition) => extensionSessionHost!.prepare(transition),

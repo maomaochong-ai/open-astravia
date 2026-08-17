@@ -1,8 +1,9 @@
-import { Buffer } from "node:buffer";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import type { McpContent, McpToolCallResult } from "../protocol/index.js";
 
 export const DEFAULT_MCP_MAX_INLINE_RESULT_BYTES = 20_000;
+const utf8Encoder = new TextEncoder();
+const utf8Decoder = new TextDecoder();
 
 export interface McpToolResultArtifactWriteRequest {
 	readonly sessionId: string;
@@ -68,7 +69,7 @@ export function createMcpToolResultPolicy(options: McpToolResultPolicyOptions): 
 		async project(result, context) {
 			const content = convertMcpContent(result.content);
 			const serializedResult = JSON.stringify(result);
-			const resultBytes = Buffer.byteLength(serializedResult, "utf8");
+			const resultBytes = utf8ByteLength(serializedResult);
 			if (resultBytes <= maxInlineResultBytes) return { content, details: result };
 
 			let artifact: McpToolResultArtifact;
@@ -88,7 +89,7 @@ export function createMcpToolResultPolicy(options: McpToolResultPolicyOptions): 
 				.filter((item): item is Extract<(typeof content)[number], { type: "text" }> => item.type === "text")
 				.map((item) => item.text)
 				.join("\n\n");
-			const textBytes = Buffer.byteLength(text, "utf8");
+			const textBytes = utf8ByteLength(text);
 			const textTruncated = textBytes > maxInlineResultBytes;
 			const notice = renderOffloadNotice(artifact.reference, resultBytes, textTruncated);
 			const projectedText = textTruncated
@@ -156,19 +157,23 @@ function summarizeContent(content: readonly McpContent[], textBytes: number): Mc
 }
 
 function sliceUtf8Start(value: string, maxBytes: number): string {
-	const bytes = Buffer.from(value, "utf8");
+	const bytes = utf8Encoder.encode(value);
 	if (bytes.length <= maxBytes) return value;
 	let end = maxBytes;
 	while (end > 0 && isUtf8ContinuationByte(bytes[end])) end -= 1;
-	return bytes.subarray(0, end).toString("utf8");
+	return utf8Decoder.decode(bytes.subarray(0, end));
 }
 
 function sliceUtf8End(value: string, maxBytes: number): string {
-	const bytes = Buffer.from(value, "utf8");
+	const bytes = utf8Encoder.encode(value);
 	if (bytes.length <= maxBytes) return value;
 	let start = bytes.length - maxBytes;
 	while (start < bytes.length && isUtf8ContinuationByte(bytes[start])) start += 1;
-	return bytes.subarray(start).toString("utf8");
+	return utf8Decoder.decode(bytes.subarray(start));
+}
+
+function utf8ByteLength(value: string): number {
+	return utf8Encoder.encode(value).length;
 }
 
 function isUtf8ContinuationByte(value: number | undefined): boolean {

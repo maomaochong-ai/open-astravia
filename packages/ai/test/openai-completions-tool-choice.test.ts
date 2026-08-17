@@ -51,6 +51,19 @@ vi.mock("openai", () => {
 });
 
 describe("openai-completions tool_choice", () => {
+	it("marks reported cached-token details as read-observable", async () => {
+		const result = await streamOpenAICompletions(
+			baseModel,
+			{
+				messages: [{ role: "user", content: "Hello", timestamp: Date.now() }],
+			},
+			{ apiKey: "test" },
+		).result();
+
+		expect(result.usage.cacheRead).toBe(0);
+		expect(result.usage.cacheUsageReporting).toBe("read-only");
+	});
+
 	it("releases the turn abort listener after each streamed request", async () => {
 		const controller = new AbortController();
 

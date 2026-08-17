@@ -6,10 +6,11 @@ import type { ModelCallFrameCompositionContext, RuntimeToolDefinition } from "@v
 import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/model-runtime-adapter.js";
-import { createCodingAgentRuntimeComposition } from "../../src/composition/runtime-composition.js";
+import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import { CodingAgentMemoryRolloverOrchestrator } from "../../src/memory/index.js";
 import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
-import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
+import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-persistence.js";
+import { createMemoryTextStorage } from "../fixtures/memory-storage.js";
 
 describe("Coding Agent Session Initialization Transaction", () => {
 	it("rolls back acquired resources in reverse order and allows the same Session to restart", async () => {
@@ -54,7 +55,12 @@ describe("Coding Agent Session Initialization Transaction", () => {
 				return runtime;
 			},
 			createMemoryRolloverRuntime: (options) => {
-				const runtime = new CodingAgentMemoryRolloverOrchestrator(options);
+				const runtime = new CodingAgentMemoryRolloverOrchestrator({
+					...options,
+					memoryFile: options.memoryFile ?? "MEMORY.md",
+					memoryStorage: createMemoryTextStorage(),
+					journalStorage: createMemoryTextStorage(),
+				});
 				const dispose = runtime.dispose.bind(runtime);
 				vi.spyOn(runtime, "dispose").mockImplementation(() => {
 					rollbackOrder.push("memory");
@@ -73,6 +79,17 @@ describe("Coding Agent Session Initialization Transaction", () => {
 				todoRuntimes.push(runtime);
 				return runtime;
 			},
+			createSessionExtensionDefinitions: () => [
+				{
+					id: "test.session-extension",
+					create: () => ({
+						contributions: [],
+						dispose() {
+							rollbackOrder.push("session-extension");
+						},
+					}),
+				},
+			],
 			createSystemPromptOptionsResolver: () => () => {
 				promptAttempts += 1;
 				if (promptAttempts === 1) throw new Error("initial prompt preview failed");
@@ -84,7 +101,7 @@ describe("Coding Agent Session Initialization Transaction", () => {
 			await expect(composition.backend.create({ sessionId: "session", memoryMode: true })).rejects.toThrow(
 				"initial prompt preview failed",
 			);
-			expect(rollbackOrder).toEqual(["todo", "memory", "plugin-mcp", "ownership"]);
+			expect(rollbackOrder).toEqual(["session-extension", "todo", "memory", "plugin-mcp", "ownership"]);
 			expect(activeOwnerships).toBe(0);
 			expect(pluginRuntimes).toHaveLength(1);
 			expect(memoryRuntimes[0]?.dispose).toHaveBeenCalledOnce();

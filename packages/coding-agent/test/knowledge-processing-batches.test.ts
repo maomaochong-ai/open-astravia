@@ -16,7 +16,12 @@ import {
 	createKnowledgeProcessingSessionFactory,
 	type KnowledgeProcessingSessionFactoryOptions,
 } from "../src/composition/knowledge-processing-session.js";
-import { createCodingAgentRuntimeComposition } from "../src/composition/runtime-composition.js";
+import { createCodingAgentNodeSessionExecutionEnvironment } from "../src/host/tool-environment/node/node-session-execution-environment.js";
+import { createCodingAgentNodeToolEnvironment } from "../src/host/tool-environment/node/node-tool-environment.js";
+import {
+	createCodingAgentRuntimeComposition,
+	createTestConversationPersistence,
+} from "./fixtures/conversation-persistence.js";
 
 describe("Knowledge processing batches", () => {
 	const directories: string[] = [];
@@ -45,7 +50,10 @@ describe("Knowledge processing batches", () => {
 		let nextSessionId = 1;
 		const factory = createKnowledgeProcessingSessionFactory({
 			getModelRegistry: () => modelRegistry(),
-			knowledgeRoot: root,
+			createConversationPersistence: createTestConversationPersistence,
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
+			knowledgeRuntime: createTestKnowledgeRuntime(root),
 			createSessionId: () => `knowledge-batch-${nextSessionId++}`,
 			createComposition: createBatchComposition(requests, disposeComposition),
 		});
@@ -87,6 +95,19 @@ describe("Knowledge processing batches", () => {
 		return directory;
 	}
 });
+
+function createTestKnowledgeRuntime(root: string) {
+	return {
+		query: {
+			listAvailableTags: async () => [],
+			queryByTags: async () => [],
+		},
+		write: {
+			write: async () => ({ action: "create" as const, id: "unused", path: "unused.md" }),
+			resolveAbsolutePath: (path: string) => join(root, "wiki", path),
+		},
+	};
+}
 
 function createBatchComposition(
 	requests: readonly [WritePageRequest, WritePageRequest],

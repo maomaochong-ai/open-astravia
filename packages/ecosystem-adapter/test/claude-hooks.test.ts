@@ -298,9 +298,10 @@ describe("createClaudeHookAdapter runtime", () => {
 		expect((await runtime.runPreToolUse("call-5", { hostName: "bash", kind: "shell" }, {})).runs).toHaveLength(0);
 	});
 
-	it("executes dynamic hook command args containing an absolute script path", async () => {
+	it("executes dynamic hook command args containing an absolute script path with spaces", async () => {
 		const root = await makeTempDir();
-		const scriptPath = join(root, "scene-start.cjs");
+		const scriptPath = join(root, "scene hooks", "scene-start.cjs");
+		await mkdir(dirname(scriptPath), { recursive: true });
 		await writeFile(
 			scriptPath,
 			`process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: "scene hook args ran" } }));\n`,
@@ -328,7 +329,7 @@ describe("createClaudeHookAdapter runtime", () => {
 				configuration: {
 					UserPromptSubmit: [
 						{
-							hooks: [{ type: "command", command: "node", args: [scriptPath] }],
+							hooks: [{ type: "command", command: process.execPath, args: [scriptPath] }],
 						},
 					],
 				},

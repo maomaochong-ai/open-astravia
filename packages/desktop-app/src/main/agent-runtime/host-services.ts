@@ -1,7 +1,7 @@
 // Shared Desktop host services used by the production Agent Runtime composition.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getAgentDir } from "@vetta/coding-agent/config";
+import { CONFIG_DIR_NAME, getAgentDir } from "@vetta/coding-agent/config";
 import {
 	AuthStorage,
 	type CodingAgentAuthRuntime,
@@ -9,6 +9,7 @@ import {
 	createCodingAgentModelRuntime,
 	SettingsRuntime,
 } from "@vetta/coding-agent/host-services";
+import { NodeScopedTextStorage, NodeTransactionalTextStorage } from "@vetta/runtime-node/host";
 import { DEFAULT_SERVER_URL } from "../constants.js";
 import { getDesktopModelCredentialStore, type ModelCredentialStore } from "../models/model-credential-store.js";
 import { readModelsConfigSync } from "../models/model-settings-service.js";
@@ -20,7 +21,7 @@ let syncedCredentialProviderIds = new Set<string>();
 export function getOrCreateSharedModelRuntime(): CodingAgentModelRuntime {
 	if (sharedModelRuntime) return sharedModelRuntime;
 	const agentDir = getAgentDir();
-	const authStorage = AuthStorage.create(join(agentDir, "auth.json"));
+	const authStorage = AuthStorage.fromStorage(new NodeTransactionalTextStorage(join(agentDir, "auth.json")));
 	sharedModelAuth = authStorage;
 	syncSharedModelRuntimeCredentials(getDesktopModelCredentialStore(), readModelsConfigSync().providers);
 	const runtime = createCodingAgentModelRuntime(authStorage, { modelsJsonPath: join(agentDir, "models.json") });
@@ -53,7 +54,12 @@ export function syncSharedModelRuntimeCredentials(
 }
 
 export function readDesktopMcpDebug(cwd: string, agentDir: string): boolean {
-	return SettingsRuntime.create(cwd, agentDir).getMcpDebug();
+	return SettingsRuntime.fromStorage(
+		new NodeScopedTextStorage({
+			global: join(agentDir, "settings.json"),
+			project: join(cwd, CONFIG_DIR_NAME, "settings.json"),
+		}),
+	).getMcpDebug();
 }
 
 function readServerTokenFromDisk(): string | undefined {

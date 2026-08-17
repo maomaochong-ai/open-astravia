@@ -2,8 +2,7 @@ import { definePlugin } from "@vetta-org/plugin-sdk";
 import "@xyflow/react/dist/style.css";
 import "./styles/index.css";
 import { ContentRunApprovalDialog } from "./plugin/ContentRunApprovalDialog";
-import { registerContentCreationTools } from "./plugin/register-tools";
-import { registerContentCreationToolRouter } from "./plugin/tool-routing";
+import { registerContentCreationTools } from "./plugin/tools";
 import { ContentCreationPanel } from "./panel/ContentCreationPanel";
 import { ContentCreationPluginRuntime } from "./plugin/runtime";
 
@@ -32,7 +31,6 @@ export default definePlugin({
 			});
 			ctx.ui.registerGlobalSlot({ id: "run-approval", component: RunApprovalDialog });
 			registerContentCreationTools(ctx, runtime.agent, runtime.runApprovals, runtime.localAssets);
-			registerContentCreationToolRouter(ctx);
 			return cleanup;
 		} catch (error) {
 			cleanup();

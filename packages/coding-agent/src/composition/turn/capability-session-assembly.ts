@@ -1,24 +1,27 @@
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type { AgentPluginRuntimeConfig, ConversationScenario, RuntimeModel } from "@vetta/runtime-core";
+import type {
+	AgentPluginRuntimeConfig,
+	ConversationScenario,
+	RuntimeModel,
+	RuntimeSessionAskUserQuestionCapability,
+} from "@vetta/runtime-core";
 import {
 	type AgentFeatureDefinition,
 	type AgentProfile,
+	type ContinuationPolicyContext,
 	type ModelCallContributionContext,
 	RuntimeCapabilityComposition,
 	type RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
+import type { SessionExtensionContinuationSource } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import {
-	type AskUserQuestionCapability,
-	type CodingToolActivation,
-	guardCodingToolRegistration,
-} from "@vetta/runtime-tools/coding";
-import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
-import { createEcosystemToolInterceptor } from "../../adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
-import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
+import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools";
+import { createEcosystemToolInterceptor } from "../../adapters/ecosystem/tool-interceptor-adapter.js";
 import { CodingAgentPromptRequestAdapter } from "../../adapters/runtime-core/prompt-request-adapter.js";
+import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import { CodingAgentStopHookContinuationSource } from "../../extensions/runtime/stop-hook-continuation-source.js";
+import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import { DynamicContributionCatalog } from "../../interception/contribution-catalog.js";
 import {
@@ -38,6 +41,7 @@ import {
 import { createCodingAgentPromptResourceResolver } from "../../resources/prompt-resource-resolver.js";
 import { createCodingAgentInvokeSkillFeature } from "../../resources/skills/invoke-skill-feature.js";
 import type {
+	CodingAgentContextRuntime,
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
 	CodingAgentPromptResourceResolver,
@@ -51,13 +55,10 @@ import {
 	HeavyToolConfirmationLedger,
 } from "../../tool-policy/heavy-tool-confirmation.js";
 import { createCodingAgentToolSideEffectResolver } from "../../tool-policy/tool-side-effect.js";
-import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
-import { CodingAgentTodoContinuationSource } from "../../work-state/todo-continuation-source.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import { CodingAgentContinuationOrchestrator } from "./continuation-orchestrator.js";
 import { createEcosystemHookTurnObserver } from "./ecosystem-hook-turn-observer.js";
-import { createCodingAgentPromptRuntime } from "./prompt-runtime-factory.js";
 
 export interface CodingAgentTurnCapabilitySessionIdentity {
 	readonly initialSessionId: string;
@@ -83,6 +84,10 @@ export interface CodingAgentTurnCapabilityActivationPort {
 }
 
 export interface CodingAgentTurnCapabilityPromptOptions {
+	readonly runtimeSourceFactory?: () => Promise<{
+		readonly resourceSource: CodingAgentPromptResourceSource;
+		readonly settingsSource: CodingAgentPromptSettingsSource;
+	}>;
 	readonly systemPromptOptionsResolver?: CodingAgentSystemPromptOptionsResolver;
 	readonly promptResourceResolver?: CodingAgentPromptResourceResolver;
 	readonly resourceSource?: CodingAgentPromptResourceSource;
@@ -97,8 +102,9 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly baseProfile: AgentProfile;
 	readonly codingTools: CodingToolsRuntimeComposition;
 	readonly executionRuntime: CodingAgentSessionExecutionRuntime;
-	readonly productToolFeature: AgentFeatureDefinition;
-	readonly productToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
+	readonly specializedToolFeature: AgentFeatureDefinition;
+	readonly specializedToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
+	readonly continuationSources: readonly SessionExtensionContinuationSource[];
 	readonly todoRuntime: CodingAgentTodoRuntime;
 	readonly todoToolRegistration?: CodingAgentRuntimeToolRegistration;
 	readonly memoryRuntime?: CodingAgentMemoryRolloverRuntime;
@@ -110,10 +116,10 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly pluginRuntime?: CodingAgentPluginRuntimeSource;
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
 	readonly mcpController?: McpDeferredToolController;
-	readonly extensionEvents: CodingAgentExtensionRunAdapter;
+	readonly extensionEvents: CodingAgentExtensionRunBridge;
 	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
 	/** 宿主提问能力，heavy 工具首调确认闸的后端；缺省时确认闸走降级路径。 */
-	readonly askUserQuestion?: AskUserQuestionCapability;
+	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
 }
 
 export interface CodingAgentTurnCapabilitySessionAssembly {
@@ -121,7 +127,7 @@ export interface CodingAgentTurnCapabilitySessionAssembly {
 	readonly promptAdapter: CodingAgentPromptRequestAdapter;
 	readAvailableTools(): ReadonlyMap<string, RuntimeToolDefinition>;
 	readPluginActiveToolNames(): readonly string[] | undefined;
-	reconfigureAgentPluginSkills(agentPlugins: AgentPluginRuntimeConfig | undefined): void;
+	reconfigureAgentPluginSkills(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<void>;
 	rebindSession(sessionId: string): void;
 	previewInitialSystemPrompt(): Promise<void>;
 	dispose(): Promise<void>;
@@ -166,10 +172,25 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 						]),
 				})
 			: undefined;
+	const stopHookContinuationSource = new CodingAgentStopHookContinuationSource({ hookRuntime: options.hookRuntime });
 	const continuationOrchestrator = new CodingAgentContinuationOrchestrator({
-		todo: new CodingAgentTodoContinuationSource({ state: options.todoRuntime }),
-		plugin: pluginRunOrchestrator,
-		stopHook: new CodingAgentStopHookContinuationSource({ hookRuntime: options.hookRuntime }),
+		sources: [
+			...options.continuationSources,
+			...(pluginRunOrchestrator
+				? [
+						{
+							id: "plugin",
+							priority: 200,
+							collect: (context: ContinuationPolicyContext) => pluginRunOrchestrator.collect(context),
+						},
+					]
+				: []),
+			{
+				id: "stop-hook",
+				priority: 300,
+				collect: (context) => stopHookContinuationSource.collect(context),
+			},
+		],
 	});
 	const promptRuntime = await createPromptRuntime(options);
 	const resolveSystemPromptOptions =
@@ -178,7 +199,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		throw new Error("Coding Agent system prompt resolver was not created");
 	}
 	const promptResourceSource = options.prompt.resourceSource ?? promptRuntime?.readResourceSource();
-	promptResourceSource?.setRuntimeSkillPaths(readPluginSkillPaths(options.activation.readAgentPlugins()));
+	await promptResourceSource?.setRuntimeSkillPaths(readPluginSkillPaths(options.activation.readAgentPlugins()));
 	const modelCallMessageFinalizer = new CodingAgentModelCallMessageFinalizer(
 		options.prompt.settingsSource ?? promptRuntime?.readSettingsSource(),
 	);
@@ -217,7 +238,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 					name: registration.tool.name,
 					sideEffect: registration.sideEffect,
 				})),
-				...options.productToolRegistrations.map((registration) => ({
+				...options.specializedToolRegistrations.map((registration) => ({
 					name: registration.tool.name,
 					sideEffect: registration.sideEffect,
 				})),
@@ -262,7 +283,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 						] as const,
 				),
 			...options.executionRuntime.readAvailableTools(),
-			...options.productToolRegistrations.map(({ tool }) => [tool.name, tool] as const),
+			...options.specializedToolRegistrations.map(({ tool }) => [tool.name, tool] as const),
 			...(options.todoToolRegistration
 				? [[options.todoToolRegistration.tool.name, options.todoToolRegistration.tool] as const]
 				: []),
@@ -286,6 +307,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		pluginHandlerLeaseProvider: options.pluginRuntime?.handlerLeaseProvider,
 		readAgentMode: options.activation.readAgentMode,
 		isMcpToolVisible: (toolName) => options.mcpController?.isToolVisible(toolName) ?? true,
+		bindMcpToolVisibility: () => options.mcpController?.bindToolVisibility() ?? (() => true),
 		systemPromptAdvertisedToolNames: options.prompt.systemPromptAdvertisedToolNames,
 		wrapTools: (tools, context) => {
 			const hookedTools = wrapRuntimeToolsWithInterceptionPipeline(tools, toolInterceptionCatalog, context);
@@ -334,8 +356,8 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 				options.activation.readAgentPlugins(),
 				options.memoryRuntime?.renderPromptMemory(),
 			),
-		bindSystemPromptOptions: () => {
-			const resolver = promptRuntime?.bindForTurn() ?? resolveSystemPromptOptions;
+		bindSystemPromptOptions: async (context) => {
+			const resolver = (await promptRuntime?.bindForTurn(context.signal)) ?? resolveSystemPromptOptions;
 			const agentPlugins = options.activation.readAgentPlugins();
 			const memory = options.memoryRuntime?.renderPromptMemory();
 			return (context) => enhanceSystemPromptOptions(resolver, context, agentPlugins, memory);
@@ -358,7 +380,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		...options.baseProfile,
 		features: [
 			...options.baseProfile.features,
-			options.productToolFeature,
+			options.specializedToolFeature,
 			...(invokeSkillFeature ? [invokeSkillFeature] : []),
 			...(options.subagentRuntime ? [options.subagentRuntime.feature] : []),
 		],
@@ -388,8 +410,8 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		promptAdapter,
 		readAvailableTools,
 		readPluginActiveToolNames: () => pluginRunOrchestrator?.readActiveToolNames(),
-		reconfigureAgentPluginSkills(agentPlugins) {
-			promptResourceSource?.setRuntimeSkillPaths(readPluginSkillPaths(agentPlugins));
+		async reconfigureAgentPluginSkills(agentPlugins) {
+			await promptResourceSource?.setRuntimeSkillPaths(readPluginSkillPaths(agentPlugins));
 		},
 		rebindSession(sessionId) {
 			pluginSession.id = sessionId;
@@ -432,26 +454,20 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 async function createPromptRuntime(
 	options: CodingAgentTurnCapabilitySessionAssemblyOptions,
 ): Promise<CodingAgentPromptRuntime | undefined> {
-	const memoryRuntime = options.memoryRuntime;
 	if (options.prompt.systemPromptOptionsResolver) return undefined;
-	if (options.prompt.resourceSource && options.prompt.settingsSource) {
-		return new CodingAgentPromptRuntime({
-			cwd: options.session.cwd,
-			resourceLoader: options.prompt.resourceSource,
-			settingsManager: options.prompt.settingsSource,
-			scenario: options.session.scenario,
-			readAgentMode: options.activation.readAgentMode,
-			readMemory: memoryRuntime ? () => memoryRuntime.readPromptMemory() : undefined,
-			readAgentPlugins: options.activation.readAgentPlugins,
-		});
-	}
-	return createCodingAgentPromptRuntime({
+	const factorySources =
+		options.prompt.resourceSource && options.prompt.settingsSource
+			? undefined
+			: await options.prompt.runtimeSourceFactory?.();
+	const resourceSource = options.prompt.resourceSource ?? factorySources?.resourceSource;
+	const settingsSource = options.prompt.settingsSource ?? factorySources?.settingsSource;
+	if (!resourceSource || !settingsSource) return undefined;
+	const memoryRuntime = options.memoryRuntime;
+	return new CodingAgentPromptRuntime({
 		cwd: options.session.cwd,
-		agentDir: options.session.agentDir,
+		resourceLoader: resourceSource,
+		settingsManager: settingsSource,
 		scenario: options.session.scenario,
-		resourceLoaderOptions: {
-			includeAgentSkills: options.session.includeAgentSkills,
-		},
 		readAgentMode: options.activation.readAgentMode,
 		readMemory: memoryRuntime ? () => memoryRuntime.readPromptMemory() : undefined,
 		readAgentPlugins: options.activation.readAgentPlugins,

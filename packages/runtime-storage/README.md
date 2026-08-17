@@ -1,32 +1,14 @@
 # @vetta/runtime-storage
 
-Runtime-owned conversation storage implementations for Agent hosts.
+Platform-neutral conversation storage contracts, errors, and persisted record schemas.
 
-The package root and `@vetta/runtime-storage/conversation` expose the same native
-conversation persistence surface. Auth and product settings remain host-owned
-and are not exported by this package.
-
-## What It Owns
-
-- versioned file Conversation Repository
-- strict native Conversation V1/V2 reading and V2 document-entry envelopes
-- read-only Legacy v1-v3 Session JSONL import into the Runtime Conversation Document
-- TypeBox runtime validation for persisted conversation records
-- stable absolute conversation path resolution for runtime session identity
-
-## What It Does Not Own
-
-- host-specific file selection or path permissions
-- application UI
-- business data models
-
-## Who Depends On It
-
-- runtime hosts and embedded apps that need storage without importing deep `coding-agent` internals
+The package deliberately contains no filesystem, process, database, Electron, or browser I/O. Platform runtimes implement these contracts. The shared Node implementation is published by `@vetta/runtime-node` and selected by `@vetta/runtime-desktop` or other Node hosts.
 
 ## Main Exports
 
-- `FileConversationRepository` and stable storage errors from the package root
-  or `@vetta/runtime-storage/conversation`
-- `FileConversationRepository.resolveConversationPath()` for composition-owned identity metadata
-- `FileConversationRepository.readDocument()` and `LegacySessionDocumentReader` for native and Legacy history reads
+- `ConversationRepository`, `ConversationContinuationStore`, and `ConversationPersistence`
+- `ConversationOwnershipManager` and `ConversationOwnershipLease`
+- stable storage errors and error codes
+- persisted conversation schema versions
+
+Repository and document types currently preserve their `runtime-core` structural contracts during migration. Their physical ownership will be inverted after all concrete adapters have moved out of the protocol packages.

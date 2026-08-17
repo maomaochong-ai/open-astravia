@@ -36,6 +36,18 @@ export interface AIErrorOptions {
 
 export type AIErrorPhase = "resolve" | "request" | "response" | "stream" | "decode";
 
+export interface AIResponseValidationIssue {
+	readonly path: string;
+	readonly message: string;
+	readonly received?: string;
+}
+
+/** Wire-validation diagnostics that are safe to carry across event boundaries. */
+export interface AIResponseValidationDetails {
+	readonly payloadType: string;
+	readonly errors: readonly AIResponseValidationIssue[];
+}
+
 /** 可安全跨事件边界传递的 Provider 失败字段；不包含 cause 或原始请求/响应。 */
 export interface AIErrorDetails {
 	readonly code: AIErrorCode;
@@ -51,6 +63,7 @@ export interface AIErrorDetails {
 	readonly responseHeaders?: Readonly<Record<string, string>>;
 	readonly responseBodyPreview?: string;
 	readonly retryAfterMs?: number;
+	readonly responseValidation?: AIResponseValidationDetails;
 }
 
 const AI_ERROR_MARKER = Symbol.for("vetta.ai.error");
@@ -63,6 +76,11 @@ const SAFE_DIAGNOSTIC_HEADERS = new Set([
 	"cf-ray",
 ]);
 const DIAGNOSTIC_BODY_LIMIT = 1_000;
+const VALIDATION_ERROR_LIMIT = 5;
+const VALIDATION_PATH_LIMIT = 240;
+const VALIDATION_MESSAGE_LIMIT = 500;
+const VALIDATION_RECEIVED_LIMIT = 120;
+const VALIDATION_PAYLOAD_TYPE_LIMIT = 120;
 
 export class AIError extends Error {
 	readonly [AI_ERROR_MARKER] = true;
@@ -131,7 +149,10 @@ export function isAIErrorDetails(value: unknown): value is AIErrorDetails {
 		typeof details.message === "string" &&
 		typeof details.retryable === "boolean" &&
 		(details.statusCode === undefined || typeof details.statusCode === "number") &&
-		(details.retryAfterMs === undefined || typeof details.retryAfterMs === "number")
+		(details.retryAfterMs === undefined || typeof details.retryAfterMs === "number") &&
+		(details.responseValidation === undefined ||
+			(details.code === AI_ERROR_CODES.RESPONSE_VALIDATION_FAILED &&
+				isResponseValidationDetails(details.responseValidation)))
 	);
 }
 
@@ -139,6 +160,7 @@ export function getAIErrorDetails(error: AIError): AIErrorDetails {
 	const responseHeaders = sanitizeResponseHeaders(error.responseHeaders);
 	const responseBodyPreview = sanitizeBodyPreview(error.responseBodyPreview);
 	const url = sanitizeUrl(error.url);
+	const responseValidation = sanitizeResponseValidation(error.code, error.metadata);
 	return {
 		code: error.code,
 		message: error.message,
@@ -153,7 +175,63 @@ export function getAIErrorDetails(error: AIError): AIErrorDetails {
 		...(responseHeaders === undefined ? {} : { responseHeaders }),
 		...(responseBodyPreview === undefined ? {} : { responseBodyPreview }),
 		...(error.retryAfterMs === undefined ? {} : { retryAfterMs: error.retryAfterMs }),
+		...(responseValidation === undefined ? {} : { responseValidation }),
 	};
+}
+
+function sanitizeResponseValidation(code: AIErrorCode, metadata?: unknown): AIResponseValidationDetails | undefined {
+	if (code !== AI_ERROR_CODES.RESPONSE_VALIDATION_FAILED || !isRecord(metadata)) return undefined;
+	const payloadType = sanitizeDiagnosticText(metadata.payloadType, VALIDATION_PAYLOAD_TYPE_LIMIT);
+	if (!payloadType || !Array.isArray(metadata.errors)) return undefined;
+
+	const errors = metadata.errors.slice(0, VALIDATION_ERROR_LIMIT).flatMap((value): AIResponseValidationIssue[] => {
+		if (!isRecord(value)) return [];
+		const path = sanitizeDiagnosticText(value.path, VALIDATION_PATH_LIMIT);
+		const message = sanitizeDiagnosticText(value.message, VALIDATION_MESSAGE_LIMIT);
+		if (!path || !message) return [];
+		const received = sanitizeDiagnosticText(value.received, VALIDATION_RECEIVED_LIMIT);
+		return [{ path, message, ...(received === undefined ? {} : { received }) }];
+	});
+	if (errors.length === 0) return undefined;
+	return { payloadType, errors };
+}
+
+function isResponseValidationDetails(value: unknown): value is AIResponseValidationDetails {
+	if (!isRecord(value) || typeof value.payloadType !== "string" || !Array.isArray(value.errors)) return false;
+	return (
+		hasOnlyKeys(value, ["payloadType", "errors"]) &&
+		value.payloadType.length > 0 &&
+		value.payloadType.length <= VALIDATION_PAYLOAD_TYPE_LIMIT + 1 &&
+		value.errors.length > 0 &&
+		value.errors.length <= VALIDATION_ERROR_LIMIT &&
+		value.errors.every(
+			(error) =>
+				isRecord(error) &&
+				hasOnlyKeys(error, ["path", "message", "received"]) &&
+				typeof error.path === "string" &&
+				error.path.length > 0 &&
+				error.path.length <= VALIDATION_PATH_LIMIT + 1 &&
+				typeof error.message === "string" &&
+				error.message.length > 0 &&
+				error.message.length <= VALIDATION_MESSAGE_LIMIT + 1 &&
+				(error.received === undefined ||
+					(typeof error.received === "string" && error.received.length <= VALIDATION_RECEIVED_LIMIT + 1)),
+		)
+	);
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasOnlyKeys(value: Readonly<Record<string, unknown>>, keys: readonly string[]): boolean {
+	const allowed = new Set(keys);
+	return Object.keys(value).every((key) => allowed.has(key));
+}
+
+function sanitizeDiagnosticText(value: unknown, limit: number): string | undefined {
+	if (typeof value !== "string" || value.length === 0) return undefined;
+	return value.length > limit ? `${value.slice(0, limit)}…` : value;
 }
 
 function sanitizeResponseHeaders(
@@ -187,6 +265,9 @@ function sanitizeUrl(value?: string): string | undefined {
 }
 
 export function createAIErrorFromDetails(details: AIErrorDetails): AIError {
+	const responseValidation = details.responseValidation
+		? sanitizeResponseValidation(details.code, details.responseValidation)
+		: undefined;
 	return new AIError(details.code, details.message, {
 		retryable: details.retryable,
 		statusCode: details.statusCode,
@@ -199,6 +280,12 @@ export function createAIErrorFromDetails(details: AIErrorDetails): AIError {
 		responseHeaders: details.responseHeaders,
 		responseBodyPreview: details.responseBodyPreview,
 		retryAfterMs: details.retryAfterMs,
+		metadata: responseValidation
+			? {
+					payloadType: responseValidation.payloadType,
+					errors: responseValidation.errors,
+				}
+			: undefined,
 	});
 }
 

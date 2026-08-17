@@ -1,8 +1,8 @@
 import type { AssistantMessage, Context, Tool } from "@vetta/ai";
-import type { RuntimeObservationUpdate } from "@vetta/runtime-telemetry";
+import type { AgentObservationUpdate } from "../telemetry.js";
 import type { AgentContext, AgentLoopConfig, AgentMessage, AgentTool, AgentToolResult } from "../types.js";
 
-export function assistantTelemetryUpdate(message: AssistantMessage, captureContent: boolean): RuntimeObservationUpdate {
+export function assistantTelemetryUpdate(message: AssistantMessage, captureContent: boolean): AgentObservationUpdate {
 	const errorMessage =
 		"errorMessage" in message && typeof message.errorMessage === "string" ? message.errorMessage : undefined;
 	return {
@@ -35,7 +35,7 @@ export function assistantTelemetryUpdate(message: AssistantMessage, captureConte
 
 export function traceAttributes(
 	tracing: AgentLoopConfig["tracing"],
-): Pick<RuntimeObservationUpdate, "userId" | "sessionId" | "traceName" | "tags" | "version"> {
+): Pick<AgentObservationUpdate, "userId" | "sessionId" | "traceName" | "tags" | "version"> {
 	return {
 		userId: tracing?.userId,
 		sessionId: tracing?.sessionId,

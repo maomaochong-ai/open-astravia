@@ -1,4 +1,11 @@
-/** Run Vitest with a supported Node.js runtime. */
+/**
+ * Run Vitest with a supported Node.js runtime.
+ *
+ * Bun on Windows cannot host Vitest workers: the default forks pool dies with
+ * `File URL path must be an absolute path`, and threads/vmThreads die with
+ * `port.addListener is not a function`. Launch Vitest through this script
+ * (or a package `test` script that calls it) so workers inherit Node, not Bun.
+ */
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";

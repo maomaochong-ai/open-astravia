@@ -7,7 +7,7 @@ import type {
 	SubagentSpawnRequest,
 	SubagentTypeDefinition,
 } from "@vetta/runtime-subagents";
-import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
+import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 
 export interface CodingAgentSubagentProfile {

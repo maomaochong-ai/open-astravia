@@ -2,9 +2,9 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { AuthStorage } from "../src/auth/index.js";
 import { ENV_AGENT_DIR } from "../src/config.js";
-import { migrateAuthToAuthJson } from "../src/migrations.js";
+import { migrateAuthToAuthJson, runMigrations } from "../src/migrations.js";
+import { createFileAuthStorage } from "./fixtures/file-auth-storage.js";
 
 describe("auth credential migration", () => {
 	let agentDir: string;
@@ -42,7 +42,7 @@ describe("auth credential migration", () => {
 
 		expect(migrateAuthToAuthJson()).toEqual(["legacyOauth", "legacyApi"]);
 
-		const storage = AuthStorage.create(join(agentDir, "auth.json"));
+		const storage = createFileAuthStorage(join(agentDir, "auth.json"));
 		expect(storage.get("legacyOauth")).toMatchObject({
 			type: "oauth",
 			projectId: "legacy-project",
@@ -51,5 +51,28 @@ describe("auth credential migration", () => {
 		expect(storage.drainErrors()).toEqual([]);
 		expect(existsSync(join(agentDir, "oauth.json.migrated"))).toBe(true);
 		expect(JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf-8"))).toEqual({ theme: "dark" });
+	});
+
+	test("uses the host-owned agent directory instead of the process default", () => {
+		const explicitAgentDir = join(agentDir, "explicit-host-state");
+		const workspace = join(agentDir, "workspace");
+		mkdirSync(explicitAgentDir, { recursive: true });
+		mkdirSync(workspace, { recursive: true });
+		writeFileSync(
+			join(explicitAgentDir, "oauth.json"),
+			JSON.stringify({
+				explicit: {
+					refresh: "refresh-token",
+					access: "access-token",
+					expires: Date.now() + 60_000,
+				},
+			}),
+		);
+
+		const result = runMigrations({ cwd: workspace, agentDir: explicitAgentDir });
+
+		expect(result.migratedAuthProviders).toEqual(["explicit"]);
+		expect(existsSync(join(explicitAgentDir, "auth.json"))).toBe(true);
+		expect(existsSync(join(agentDir, "auth.json"))).toBe(false);
 	});
 });

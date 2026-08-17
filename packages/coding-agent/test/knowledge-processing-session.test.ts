@@ -6,10 +6,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../src/adapters/runtime-core/model-runtime-adapter.js";
 import { createKnowledgeProcessingSessionFactory } from "../src/composition/index.js";
 import type { KnowledgeProcessingSessionFactoryOptions } from "../src/composition/knowledge-processing-session.js";
+import type { CodingAgentRuntimeCompositionOptions } from "../src/composition/runtime-composition.js";
+import { createCodingAgentNodeSessionExecutionEnvironment } from "../src/host/tool-environment/node/node-session-execution-environment.js";
+import { createCodingAgentNodeToolEnvironment } from "../src/host/tool-environment/node/node-tool-environment.js";
 import {
-	type CodingAgentRuntimeCompositionOptions,
 	createCodingAgentRuntimeComposition,
-} from "../src/composition/runtime-composition.js";
+	createTestConversationPersistence,
+} from "./fixtures/conversation-persistence.js";
 
 describe("Knowledge processing session", () => {
 	const directories: string[] = [];
@@ -87,7 +90,10 @@ describe("Knowledge processing session", () => {
 		const disposeComposition = vi.fn(async () => {});
 		const factory = createKnowledgeProcessingSessionFactory({
 			getModelRegistry: () => registry,
-			knowledgeRoot: knowledgeDirectory,
+			createConversationPersistence: createTestConversationPersistence,
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
+			knowledgeRuntime: createTestKnowledgeRuntime(knowledgeDirectory),
 			createSessionId: () => "knowledge-session",
 			createComposition: createRecordedComposition({
 				onFrame(model, context, streamOptions) {
@@ -178,6 +184,10 @@ describe("Knowledge processing session", () => {
 				...registry,
 				find: () => undefined,
 			}),
+			createConversationPersistence: createTestConversationPersistence,
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
+			knowledgeRuntime: createTestKnowledgeRuntime(cwd),
 			createComposition: (options) =>
 				createCodingAgentRuntimeComposition({
 					...options,
@@ -211,6 +221,19 @@ describe("Knowledge processing session", () => {
 		return directory;
 	}
 });
+
+function createTestKnowledgeRuntime(root: string) {
+	return {
+		query: {
+			listAvailableTags: async () => [],
+			queryByTags: async () => [],
+		},
+		write: {
+			write: async () => ({ action: "create" as const, id: "unused", path: "unused.md" }),
+			resolveAbsolutePath: (path: string) => join(root, "wiki", path),
+		},
+	};
+}
 
 function createRecordedComposition(options: {
 	readonly onFrame: (

@@ -5,6 +5,7 @@ import {
 	parseInputSegments,
 	segmentsToText,
 } from "@shared/lib/input-tokens";
+import { perfSendMark } from "@shared/lib/perf-send";
 import { pathBasename } from "@shared/lib/utils";
 import { type MentionedFile, inputValueAtom, mentionedFilesAtom } from "@shared/store/atoms";
 import { useStore } from "jotai";
@@ -89,9 +90,11 @@ export function ValueBridgePlugin(): null {
 			const next = store.get(inputValueAtom);
 			if (next === projectedRef.current) return;
 			projectedRef.current = next;
+			perfSendMark("editor-apply-start");
 			editor.update(() => {
 				$applySegments(parseInputSegments(next).segments);
 			});
+			perfSendMark("editor-apply-end");
 		});
 	}, [editor, store]);
 

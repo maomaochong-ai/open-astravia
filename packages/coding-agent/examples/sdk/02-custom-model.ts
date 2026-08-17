@@ -4,15 +4,20 @@
  * Shows how to select a specific model and thinking level.
  */
 
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { getModel } from "@vetta/ai";
 import {
 	AuthStorage,
 	createCodingAgentHostWithServices,
 	createCodingAgentModelRuntime,
 } from "@vetta/coding-agent/host-services";
+import { NodeTransactionalTextStorage } from "@vetta/runtime-node/host";
 
 // Set up auth storage and model registry
-const authStorage = AuthStorage.create();
+const authStorage = AuthStorage.fromStorage(
+	new NodeTransactionalTextStorage(join(homedir(), ".vetta", "agent", "auth.json")),
+);
 const modelRuntime = createCodingAgentModelRuntime(authStorage);
 
 // Option 1: Find a specific built-in model by provider/id

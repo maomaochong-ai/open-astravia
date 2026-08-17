@@ -3,8 +3,20 @@ import {
 	RuntimeHost,
 	type RuntimeHostSessionAssembly,
 	type RuntimeHostSessionBackend,
+	type RuntimeSessionExtensionHost,
 	type SessionConfig,
 } from "../../src/index.js";
+import {
+	defineSessionExtensionEndpoint,
+	defineSessionExtensionObservation,
+	sessionExtensionObservation,
+} from "../../src/session-extensions/index.js";
+
+const READ_EXTENSION_VALUE = defineSessionExtensionEndpoint<void, string>("test.extension", "read-value");
+const EXTENSION_VALUE_CHANGED = defineSessionExtensionObservation<{ readonly value: string }>(
+	"test.extension",
+	"value-changed",
+);
 
 describe("RuntimeHost agent mode 会话级固化", () => {
 	it("会话创建时固化模式，Turn 边界不再改写", async () => {
@@ -63,11 +75,75 @@ describe("RuntimeHost agent mode 会话级固化", () => {
 	});
 });
 
+describe("RuntimeHost session extension bridge", () => {
+	it("forwards typed endpoint invocations without knowing the product capability", async () => {
+		const invoke = vi.fn();
+		const extensionHost = createExtensionHost({ invokeResult: "extension-value", onInvoke: invoke });
+		const host = new RuntimeHost({
+			getDefaultExecutionMode: () => "full-access",
+			sessionBackend: backend(() => assembly("session-1", () => {}, extensionHost)),
+		});
+		await host.createSession();
+
+		await expect(host.invokeSessionExtension("session-1", READ_EXTENSION_VALUE, undefined)).resolves.toBe(
+			"extension-value",
+		);
+		expect(invoke).toHaveBeenCalledWith(READ_EXTENSION_VALUE, undefined, undefined);
+	});
+
+	it("fails explicitly when a session does not expose an extension host", async () => {
+		const host = new RuntimeHost({
+			getDefaultExecutionMode: () => "full-access",
+			sessionBackend: backend(() => assembly("session-1", () => {})),
+		});
+		await host.createSession();
+
+		await expect(host.invokeSessionExtension("session-1", READ_EXTENSION_VALUE, undefined)).rejects.toThrow(
+			"Session extension host is unavailable",
+		);
+	});
+
+	it("replays extension-provided initial observations to late subscribers", async () => {
+		const extensionHost = createExtensionHost({
+			readInitialObservations: () => [
+				{
+					...sessionExtensionObservation(EXTENSION_VALUE_CHANGED, { value: "restore state" }),
+					source: "agent",
+				},
+			],
+		});
+		const host = new RuntimeHost({
+			getDefaultExecutionMode: () => "full-access",
+			sessionBackend: backend(() => assembly("session-1", () => {}, extensionHost)),
+		});
+		await host.createSession();
+		const events: Array<{ readonly type: string }> = [];
+
+		host.subscribe("session-1", (event) => events.push(event));
+
+		expect(events).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: "session.lifecycle" }),
+				expect.objectContaining({
+					type: "session.extension",
+					extensionId: "test.extension",
+					event: "value-changed",
+					payload: { value: "restore state" },
+				}),
+			]),
+		);
+	});
+});
+
 function backend(create: (config: { agentMode?: string }) => RuntimeHostSessionAssembly): RuntimeHostSessionBackend {
 	return { createAssembly: async (request) => create(request) };
 }
 
-function assembly(sessionId: string, setAgentMode: (mode: string | undefined) => void): RuntimeHostSessionAssembly {
+function assembly(
+	sessionId: string,
+	setAgentMode: (mode: string | undefined) => void,
+	extensionHost?: RuntimeSessionExtensionHost,
+): RuntimeHostSessionAssembly {
 	return {
 		lifecycle: { sessionId, sessionPath: `/tmp/${sessionId}.jsonl`, dispose: async () => {} },
 		historyReader: { readHistory: () => [] },
@@ -93,7 +169,7 @@ function assembly(sessionId: string, setAgentMode: (mode: string | undefined) =>
 			readSubagents: () => [],
 			interruptSubagent: () => undefined,
 		},
-		todoController: { readItems: () => [], clear: () => false },
+		extensionHost,
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},
@@ -130,5 +206,23 @@ function assembly(sessionId: string, setAgentMode: (mode: string | undefined) =>
 				readMessages: () => [],
 			},
 		},
+	};
+}
+
+function createExtensionHost(
+	options: {
+		readonly invokeResult?: unknown;
+		readonly onInvoke?: (token: unknown, input: unknown, signal: AbortSignal | undefined) => void;
+		readonly readInitialObservations?: RuntimeSessionExtensionHost["readInitialObservations"];
+	} = {},
+): RuntimeSessionExtensionHost {
+	return {
+		hasEndpoint: () => true,
+		invoke: async (token, input, signal) => {
+			options.onInvoke?.(token, input, signal);
+			return options.invokeResult as never;
+		},
+		invokeSync: () => "" as never,
+		readInitialObservations: options.readInitialObservations ?? (() => []),
 	};
 }

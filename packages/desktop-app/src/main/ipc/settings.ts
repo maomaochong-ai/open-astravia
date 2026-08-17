@@ -41,7 +41,7 @@ function writeSettings(settings: Record<string, unknown>): void {
 /**
  * 锁内读-改-写 settings.json。所有「读出整份 → 改几个键 → 整份写回」都必须走这里。
  *
- * settings.json 是**跨进程**共享的：coding-agent 的 FileSettingsStorage 用
+ * settings.json 是**跨进程**共享的：runtime-node 的 NodeScopedTextStorage 用
  * proper-lockfile 锁同一个文件，同机再跑一个客户端实例（dev + 打包版）也会写它。
  * 无锁的读-改-写之间被别的进程插一次写，就会整份覆盖回旧内容——落到 token 上
  * 就是把已经轮换掉的 serverRefreshToken 写回去，下次 refresh 出示的即是已撤销值，

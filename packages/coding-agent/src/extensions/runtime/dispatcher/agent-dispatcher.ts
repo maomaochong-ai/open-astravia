@@ -1,5 +1,6 @@
 import type { AgentMessage } from "@vetta/agent-core";
 import type { ImageContent } from "@vetta/ai";
+import type { ExtensionContext } from "../../context-contracts.js";
 import type {
 	BeforeAgentStartEvent,
 	BeforeAgentStartEventResult,
@@ -112,7 +113,7 @@ export class AgentDispatcher {
 	}
 
 	async emitInput(text: string, images: ImageContent[] | undefined, source: InputSource): Promise<InputEventResult> {
-		const context = this.environment.context();
+		const context = createInputAdmissionContext(this.environment.context());
 		let currentText = text;
 		let currentImages = images;
 		for (const registration of this.environment.handlers("input")) {
@@ -132,4 +133,10 @@ export class AgentDispatcher {
 			? { action: "transform", text: currentText, images: currentImages }
 			: { action: "continue" };
 	}
+}
+
+function createInputAdmissionContext(context: ExtensionContext): ExtensionContext {
+	// Kernel 已锁定 Session 以串行化 admission，但模型执行尚未开始；Extension 的
+	// isIdle 语义描述 Agent 执行状态，不能把这段内部互斥窗口暴露为 streaming。
+	return { ...context, isIdle: () => true };
 }

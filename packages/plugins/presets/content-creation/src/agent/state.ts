@@ -354,6 +354,7 @@ function modelForAgent(model: ContentModelDescriptor) {
 		aspectRatios: [...model.aspectRatios],
 		...(model.durations ? { durations: [...model.durations] } : {}),
 		...(model.resolutions ? { resolutions: [...model.resolutions] } : {}),
+		...(model.defaultResolution ? { defaultResolution: model.defaultResolution } : {}),
 	};
 }
 

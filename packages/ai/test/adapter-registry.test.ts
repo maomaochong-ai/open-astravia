@@ -146,7 +146,7 @@ describe("AdapterRegistry", () => {
 		expect(events).toEqual(["error"]);
 	});
 
-	it("normalizes synchronous simple-stream adapter failures", async () => {
+	it("normalizes synchronous simple-stream billing failures", async () => {
 		const registry = new AdapterRegistry();
 		registry.register({
 			api: "test-api",
@@ -159,14 +159,16 @@ describe("AdapterRegistry", () => {
 		});
 
 		await expect(streamModel({ model: testModel(), context: { messages: [] } }, registry)).rejects.toMatchObject({
-			code: AI_ERROR_CODES.RATE_LIMITED,
+			code: AI_ERROR_CODES.BILLING_REQUIRED,
 			statusCode: 429,
+			retryable: false,
 		});
 		const adapter = registry.get("test-api");
 		if (!adapter?.streamSimple) throw new Error("Expected simple adapter");
 		await expect(adapter.streamSimple({ model: testModel(), context: { messages: [] } })).rejects.toMatchObject({
-			code: AI_ERROR_CODES.RATE_LIMITED,
+			code: AI_ERROR_CODES.BILLING_REQUIRED,
 			statusCode: 429,
+			retryable: false,
 		});
 	});
 

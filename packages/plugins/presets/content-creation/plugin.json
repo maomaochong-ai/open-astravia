@@ -18,9 +18,7 @@
 		"ui.slot.global",
 		"ui.shortcuts.register",
 		"agent.skills.control",
-		"agent.systemPrompt.write",
 		"agent.tools.register",
-		"agent.tools.control",
 		"agent.toolHandler.execute",
 		"ai.models.list",
 		"ai.complete",
@@ -32,10 +30,7 @@
 		"storage.write"
 	],
 	"agent": {
-		"skillPaths": ["agent/skills"],
-		"systemPrompt": {
-			"promptPaths": ["agent/prompts/content-creation.md"]
-		}
+		"skillPaths": ["agent/skills"]
 	},
 	"network": {
 		"allowedHosts": ["*"]

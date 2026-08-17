@@ -15,9 +15,9 @@
 		"clean": "rm -rf dist",
 		"build": "tsgo -p tsconfig.build.json",
 		"typecheck": "tsgo --noEmit -p tsconfig.json",
-		"test": "bunx vitest --run",
-		"verify:artifact:installed": "bunx vitest --run test/installed-artifact-runtime.test.ts",
-		"verify:runtime-contract": "bunx vitest --run --maxWorkers=4 contract.test.ts test/runtime-host.test.ts test/agent-runtime-selection.test.ts test/rpc-session-adapter.test.ts test/session-resource-close.test.ts test/agent-runtime-initialization-failure.test.ts test/agent-print-mode.test.ts"
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run",
+		"verify:artifact:installed": "bun ../../scripts/quality/run-vitest.mjs --run test/installed-artifact-runtime.test.ts",
+		"verify:runtime-contract": "bun ../../scripts/quality/run-vitest.mjs --run --maxWorkers=4 contract.test.ts test/runtime-host.test.ts test/agent-runtime-selection.test.ts test/rpc-session-adapter.test.ts test/session-resource-close.test.ts test/agent-runtime-initialization-failure.test.ts test/agent-print-mode.test.ts"
 	},
 	"dependencies": {
 		"@vetta/action-rpc": "workspace:*",
@@ -25,9 +25,10 @@
 		"@vetta/ecosystem-adapter": "workspace:*",
 		"@vetta/runtime-core": "workspace:*",
 		"@vetta/runtime-mcp": "workspace:*",
+		"@vetta/runtime-node": "workspace:*",
 		"@vetta/runtime-storage": "workspace:*",
 		"@vetta/runtime-subagents": "workspace:*",
-		"@vetta/runtime-tools": "workspace:*",
+		"chalk": "^5.5.0",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {

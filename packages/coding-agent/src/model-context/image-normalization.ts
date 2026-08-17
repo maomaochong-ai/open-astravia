@@ -5,7 +5,7 @@ import {
 	type ImageResizeResult,
 	isImageResizeFailure,
 	resizeImageBuffer,
-} from "@vetta/runtime-tools/coding";
+} from "@vetta/runtime-node/coding";
 
 export interface ModelInputImageProcessor {
 	resize(data: string, mimeType: string, signal: AbortSignal): Promise<ImageResizeResult>;

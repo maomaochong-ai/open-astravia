@@ -74,15 +74,16 @@ function createFeature(
 		type: "skill",
 		disableModelInvocation: false,
 		content,
+		sceneTasks: [],
 	};
 	const resourceSource: CodingAgentPromptResourceSource = {
-		refreshContextResourcesIfChanged: () => false,
-		refreshSkillsIfChanged: () => false,
+		refreshContextResourcesIfChanged: async () => false,
+		refreshSkillsIfChanged: async () => false,
 		getSkills: () => ({ skills: [skill], diagnostics: [] }),
 		getAgentsFiles: () => ({ agentsFiles: [] }),
 		getSystemPrompt: () => undefined,
 		getAppendSystemPrompt: () => [],
-		setRuntimeSkillPaths: () => {},
+		setRuntimeSkillPaths: async () => {},
 	};
 	return createCodingAgentInvokeSkillFeature({
 		resourceSource,

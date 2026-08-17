@@ -6,9 +6,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthStorage } from "../src/auth/index.js";
 import {
-	discoverAndLoadExtensions,
 	type ExtensionKeybindingsConfig,
 	ExtensionRunner,
 	type ExtensionSessionView,
@@ -16,6 +14,8 @@ import {
 } from "../src/extensions/index.js";
 import { type CodingAgentModelRuntime, createCodingAgentModelRuntime } from "../src/models/index.js";
 import { createExtensionSessionView } from "./fixtures/extension-session-view.js";
+import { createFileAuthStorage } from "./fixtures/file-auth-storage.js";
+import { discoverAndLoadExtensions } from "./fixtures/node-extension-host.js";
 
 const BUILT_IN_KEYBINDINGS = {
 	interrupt: "escape",
@@ -35,7 +35,7 @@ describe("ExtensionRunner", () => {
 		extensionsDir = path.join(tempDir, "extensions");
 		fs.mkdirSync(extensionsDir);
 		sessionManager = createExtensionSessionView(tempDir);
-		const authStorage = AuthStorage.create(path.join(tempDir, "auth.json"));
+		const authStorage = createFileAuthStorage(path.join(tempDir, "auth.json"));
 		modelRegistry = createCodingAgentModelRuntime(authStorage);
 	});
 

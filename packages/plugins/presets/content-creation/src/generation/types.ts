@@ -35,6 +35,7 @@ export interface ContentModelDescriptor {
 	aspectRatios: readonly string[];
 	durations?: readonly number[];
 	resolutions?: readonly string[];
+	defaultResolution?: string;
 }
 
 export interface ContentGenerationRequest {

@@ -1,19 +1,11 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
 	applyMemoryDocumentOperation,
-	FileMemoryStore,
+	MemoryDocumentStore,
 	parseMemoryEntries,
 	serializeMemoryEntries,
 } from "../../src/memory/index.js";
-
-const temporaryRoots: string[] = [];
-
-afterEach(async () => {
-	await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { force: true, recursive: true })));
-});
+import { createMemoryTextStorage, readMemoryTextStorage } from "../fixtures/memory-storage.js";
 
 describe("Memory document and file store", () => {
 	it("preserves the MEMORY.md separator and first-match operation semantics", () => {
@@ -30,11 +22,9 @@ describe("Memory document and file store", () => {
 		expect(removed.state.entries).toEqual(["Uses TypeScript", "Bun appears again"]);
 	});
 
-	it("keeps validation and character-budget failures non-mutating", async () => {
-		const root = await temporaryRoot();
-		const path = join(root, "MEMORY.md");
-		await writeFile(path, "existing", "utf8");
-		const store = new FileMemoryStore({ path, charLimit: 10 });
+	it("keeps validation and character-budget failures non-mutating", () => {
+		const storage = createMemoryTextStorage("existing");
+		const store = new MemoryDocumentStore({ storage, charLimit: 10 });
 
 		expect(() => store.apply("add", { content: "" })).toThrow(
 			"memory add: `content` is required and must be non-empty",
@@ -43,13 +33,12 @@ describe("Memory document and file store", () => {
 			'memory replace: no entry matching "missing"',
 		);
 		expect(() => store.apply("add", { content: "too long" })).toThrow("memory add: would exceed the 10-char limit");
-		expect(await readFile(path, "utf8")).toBe("existing");
+		expect(readMemoryTextStorage(storage)).toBe("existing");
 	});
 
-	it("reads a missing file as empty and persists successful operations atomically", async () => {
-		const root = await temporaryRoot();
-		const path = join(root, "MEMORY.md");
-		const store = new FileMemoryStore({ path });
+	it("reads missing storage as empty and persists successful operations", () => {
+		const storage = createMemoryTextStorage();
+		const store = new MemoryDocumentStore({ storage });
 
 		expect(store.readContent()).toBe("");
 		expect(store.apply("add", { content: "Uses Bun" })).toEqual({
@@ -57,12 +46,6 @@ describe("Memory document and file store", () => {
 			chars: 8,
 			limit: 4_000,
 		});
-		expect(await readFile(path, "utf8")).toBe("Uses Bun");
+		expect(readMemoryTextStorage(storage)).toBe("Uses Bun");
 	});
 });
-
-async function temporaryRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-memory-store-"));
-	temporaryRoots.push(root);
-	return root;
-}

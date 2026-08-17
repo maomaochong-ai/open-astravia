@@ -2,7 +2,7 @@ import type { RuntimeSessionExecutionObservation } from "@vetta/runtime-core";
 import {
 	CodingAgentExtensionObservationAdapter,
 	type CodingAgentObservedExtensionEvent,
-} from "../../adapters/runtime-core/extension-observation-adapter.js";
+} from "../../adapters/extensions/extension-observation-adapter.js";
 import type { ExtensionCommandContextActions } from "../../extensions/index.js";
 import { createCodingAgentExtensionCommandActions } from "../../host/extensions/command-actions.js";
 import { createCodingAgentExtensionCommandHost } from "../../host/extensions/command-host.js";

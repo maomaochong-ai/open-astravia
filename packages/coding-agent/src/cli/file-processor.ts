@@ -4,7 +4,7 @@
 
 import { access, readFile, stat } from "node:fs/promises";
 import type { ImageContent } from "@vetta/ai";
-import { resolveExistingPath } from "@vetta/runtime-tools/coding";
+import { resolveExistingPath } from "@vetta/runtime-node/coding";
 import chalk from "chalk";
 import {
 	formatDimensionNote,

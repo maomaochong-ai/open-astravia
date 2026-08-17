@@ -246,6 +246,7 @@ function toSkill(contribution: CodingAgentSkillContribution, source: string, cwd
 		type: contribution.type ?? "skill",
 		disableModelInvocation: contribution.disableModelInvocation ?? false,
 		content: contribution.content,
+		sceneTasks: [],
 	};
 }
 

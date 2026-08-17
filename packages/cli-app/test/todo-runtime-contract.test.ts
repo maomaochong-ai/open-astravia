@@ -2,13 +2,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
-import {
-	type CodingAgentRuntimeComposition,
-	createCodingAgentRuntimeComposition,
-} from "@vetta/coding-agent/composition";
+import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import type { RuntimeSession, RuntimeSessionTodoController } from "@vetta/runtime-core";
+import { CODING_AGENT_TODO_CLEAR, CODING_AGENT_TODO_READ } from "@vetta/coding-agent/session-extensions";
+import type { RuntimeSession, RuntimeSessionExtensionHost } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
+import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 
 describe("Todo Runtime composition contract", () => {
 	const directories: string[] = [];
@@ -88,9 +87,7 @@ describe("Todo Runtime composition contract", () => {
 		}
 		expect(result).toMatchObject({ status: "completed" });
 		expect(toolLists).toEqual([["todo"], ["todo"], ["todo"]]);
-		expect(requireTodoController(session).readItems()).toEqual([
-			{ id: 1, content: "Implement the slice", status: "done" },
-		]);
+		expect(readTodos(session)).toEqual([{ id: 1, content: "Implement the slice", status: "done" }]);
 		expect((await session.getMessages()).map(({ role }) => role)).toEqual([
 			"user",
 			"assistant",
@@ -102,13 +99,12 @@ describe("Todo Runtime composition contract", () => {
 		await session.dispose();
 
 		const resumed = await composition.backend.resume({ sessionId: "todo-session" });
-		const resumedTodoController = requireTodoController(resumed);
-		expect(resumedTodoController.readItems()).toEqual([{ id: 1, content: "Implement the slice", status: "done" }]);
-		expect(resumedTodoController.clear()).toBe(true);
+		expect(readTodos(resumed)).toEqual([{ id: 1, content: "Implement the slice", status: "done" }]);
+		expect(clearTodos(resumed)).toBe(true);
 		await resumed.dispose();
 
 		const cleared = await composition.backend.resume({ sessionId: "todo-session" });
-		expect(requireTodoController(cleared).readItems()).toEqual([]);
+		expect(readTodos(cleared)).toEqual([]);
 		await cleared.dispose();
 	});
 
@@ -130,27 +126,35 @@ describe("Todo Runtime composition contract", () => {
 			initialTodos: ["first", "second"],
 			initialTodoLockSource: "scene",
 		});
-		expect(requireTodoController(session).readItems()).toEqual([
+		expect(readTodos(session)).toEqual([
 			{ id: 1, content: "first", status: "pending" },
 			{ id: 2, content: "second", status: "pending" },
 		]);
-		expect(requireTodoController(session).clear()).toBe(false);
+		expect(clearTodos(session)).toBe(false);
 		await session.dispose();
 
 		const resumed = await composition.backend.resume({ sessionId: "prefilled-todo-session" });
-		expect(requireTodoController(resumed).readItems()).toEqual([
+		expect(readTodos(resumed)).toEqual([
 			{ id: 1, content: "first", status: "pending" },
 			{ id: 2, content: "second", status: "pending" },
 		]);
-		expect(requireTodoController(resumed).clear()).toBe(false);
+		expect(clearTodos(resumed)).toBe(false);
 		await resumed.dispose();
 	});
 });
 
-function requireTodoController(session: RuntimeSession): RuntimeSessionTodoController {
-	const controller = session.createCoreAssembly().todoController;
-	if (!controller) throw new Error("Todo Controller was not composed");
-	return controller;
+function requireExtensionHost(session: RuntimeSession): RuntimeSessionExtensionHost {
+	const host = session.createCoreAssembly().extensionHost;
+	if (!host) throw new Error("Session extension host was not composed");
+	return host;
+}
+
+function readTodos(session: RuntimeSession) {
+	return requireExtensionHost(session).invokeSync(CODING_AGENT_TODO_READ, undefined);
+}
+
+function clearTodos(session: RuntimeSession): boolean {
+	return requireExtensionHost(session).invokeSync(CODING_AGENT_TODO_CLEAR, undefined);
 }
 
 class RecordedAssistantStream extends EventStream<AssistantMessageEvent, AssistantMessage> {

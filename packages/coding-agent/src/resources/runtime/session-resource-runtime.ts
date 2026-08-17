@@ -1,6 +1,4 @@
-import { existsSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { CONFIG_DIR_NAME, getSceneDir } from "../../config.js";
+import { CONFIG_DIR_NAME } from "../../config.js";
 import {
 	createExtensionEventBus,
 	createExtensionRuntime,
@@ -20,14 +18,9 @@ import type { PromptTemplate } from "../prompts/index.js";
 import type { Skill } from "../skills/index.js";
 import { discoverPromptFile, loadProjectContextFiles, resolvePromptInput } from "./context-resources.js";
 import { loadExtensionResources } from "./extension-resources.js";
-import {
-	computeSkillsFingerprint,
-	loadPromptResources,
-	loadSkillResources,
-	mergeResourcePaths,
-	ResourceMetadataIndex,
-	resolveResourcePath,
-} from "./resource-state.js";
+import { loadPromptResources } from "./prompt-resource-state.js";
+import { mergeResourcePaths, ResourceMetadataIndex, resolveResourcePath } from "./resource-state.js";
+import { computeSkillsFingerprint, loadSkillResources } from "./skill-resource-state.js";
 import { loadThemeResources } from "./theme-resources.js";
 
 export function createSessionResourceRuntime(options: SessionResourceRuntimeOptions): SessionResourceRuntime {
@@ -57,10 +50,13 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 	private lastThemePaths: string[] = [];
 	private skillsFingerprint = "";
 	private contextResourcesFingerprint = "";
+	private skillOperation: Promise<void> = Promise.resolve();
+	private promptOperation: Promise<void> = Promise.resolve();
+	private themeOperation: Promise<void> = Promise.resolve();
 
 	constructor(options: SessionResourceRuntimeOptions) {
 		this.options = options;
-		this.metadata = new ResourceMetadataIndex(options.cwd, options.agentDir);
+		this.metadata = new ResourceMetadataIndex(options.resourceAccess.paths, options.cwd, options.agentDir);
 		this.eventBus = options.eventBus ?? createExtensionEventBus();
 		this.additionalExtensionPaths = options.additionalExtensionPaths ?? [];
 		this.additionalSkillPaths = options.additionalSkillPaths ?? [];
@@ -72,11 +68,11 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 	}
 
 	getSkills(): { skills: Skill[]; diagnostics: ResourceDiagnostic[] } {
-		return { skills: this.skills, diagnostics: this.skillDiagnostics };
+		return { skills: [...this.skills], diagnostics: [...this.skillDiagnostics] };
 	}
 
 	getPrompts(): { prompts: PromptTemplate[]; diagnostics: ResourceDiagnostic[] } {
-		return { prompts: this.prompts, diagnostics: this.promptDiagnostics };
+		return { prompts: [...this.prompts], diagnostics: [...this.promptDiagnostics] };
 	}
 
 	getThemes(): { themes: Theme[]; diagnostics: ResourceDiagnostic[] } {
@@ -99,7 +95,11 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		return this.metadata.get();
 	}
 
-	setAdditionalSkillPaths(paths: string[]): void {
+	setAdditionalSkillPaths(paths: string[], signal?: AbortSignal): Promise<void> {
+		return this.enqueueSkillOperation(() => this.setAdditionalSkillPathsNow(paths, signal));
+	}
+
+	private async setAdditionalSkillPathsNow(paths: string[], signal?: AbortSignal): Promise<void> {
 		const previousPaths = this.merge([], this.additionalSkillPaths);
 		const nextPaths = this.merge([], paths);
 		if (
@@ -111,15 +111,21 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		const previous = new Set(previousPaths);
 		this.additionalSkillPaths = nextPaths;
 		this.nonRuntimeSkillPaths = this.merge(
-			this.nonRuntimeSkillPaths.filter((path) => !previous.has(resolve(path))),
+			this.nonRuntimeSkillPaths.filter(
+				(path) => !previous.has(this.options.resourceAccess.paths.resolve(this.options.cwd, path)),
+			),
 			this.additionalSkillPaths,
 		);
 		this.lastSkillPaths = this.merge(this.nonRuntimeSkillPaths, this.runtimeSkillPaths);
-		this.updateSkills(this.lastSkillPaths);
-		this.skillsFingerprint = this.computeFingerprint();
+		await this.updateSkills(this.lastSkillPaths, [], signal);
+		this.skillsFingerprint = await this.computeFingerprint(signal);
 	}
 
-	setRuntimeSkillPaths(paths: string[]): void {
+	setRuntimeSkillPaths(paths: string[], signal?: AbortSignal): Promise<void> {
+		return this.enqueueSkillOperation(() => this.setRuntimeSkillPathsNow(paths, signal));
+	}
+
+	private async setRuntimeSkillPathsNow(paths: string[], signal?: AbortSignal): Promise<void> {
 		const nextPaths = this.merge([], paths);
 		if (
 			this.runtimeSkillPaths.length === nextPaths.length &&
@@ -129,45 +135,57 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		}
 		this.runtimeSkillPaths = nextPaths;
 		this.lastSkillPaths = this.merge(this.nonRuntimeSkillPaths, this.runtimeSkillPaths);
-		this.updateSkills(this.lastSkillPaths);
-		this.skillsFingerprint = this.computeFingerprint();
+		await this.updateSkills(this.lastSkillPaths, [], signal);
+		this.skillsFingerprint = await this.computeFingerprint(signal);
 	}
 
 	setAdditionalExtensionPaths(paths: string[]): void {
 		this.additionalExtensionPaths = this.merge([], paths);
 	}
 
-	reloadSkills(): void {
-		this.updateSkills(this.lastSkillPaths);
-		this.skillsFingerprint = this.computeFingerprint();
+	reloadSkills(signal?: AbortSignal): Promise<void> {
+		return this.enqueueSkillOperation(() => this.reloadSkillsNow(signal));
 	}
 
-	extendResources(paths: ResourceExtensionPaths): void {
+	private async reloadSkillsNow(signal?: AbortSignal): Promise<void> {
+		await this.updateSkills(this.lastSkillPaths, [], signal);
+		this.skillsFingerprint = await this.computeFingerprint(signal);
+	}
+
+	async extendResources(paths: ResourceExtensionPaths, signal?: AbortSignal): Promise<void> {
 		const skills = this.normalizeExtensionPaths(paths.skillPaths ?? []);
 		const prompts = this.normalizeExtensionPaths(paths.promptPaths ?? []);
 		const themes = this.normalizeExtensionPaths(paths.themePaths ?? []);
 		if (skills.length > 0) {
-			this.nonRuntimeSkillPaths = this.merge(
-				this.nonRuntimeSkillPaths,
-				skills.map((entry) => entry.path),
-			);
-			this.lastSkillPaths = this.merge(this.nonRuntimeSkillPaths, this.runtimeSkillPaths);
-			this.updateSkills(this.lastSkillPaths, skills);
-			this.skillsFingerprint = this.computeFingerprint();
+			await this.enqueueSkillOperation(async () => {
+				this.nonRuntimeSkillPaths = this.merge(
+					this.nonRuntimeSkillPaths,
+					skills.map((entry) => entry.path),
+				);
+				this.lastSkillPaths = this.merge(this.nonRuntimeSkillPaths, this.runtimeSkillPaths);
+				await this.updateSkills(this.lastSkillPaths, skills, signal);
+				this.skillsFingerprint = await this.computeFingerprint(signal);
+			});
 		}
 		if (prompts.length > 0) {
-			this.lastPromptPaths = this.merge(
-				this.lastPromptPaths,
-				prompts.map((entry) => entry.path),
-			);
-			this.updatePrompts(this.lastPromptPaths, prompts);
+			await this.enqueuePromptOperation(async () => {
+				const nextPaths = this.merge(
+					this.lastPromptPaths,
+					prompts.map((entry) => entry.path),
+				);
+				await this.updatePrompts(nextPaths, prompts, signal);
+				this.lastPromptPaths = nextPaths;
+			});
 		}
 		if (themes.length > 0) {
-			this.lastThemePaths = this.merge(
-				this.lastThemePaths,
-				themes.map((entry) => entry.path),
-			);
-			this.updateThemes(this.lastThemePaths, themes);
+			await this.enqueueThemeOperation(async () => {
+				const nextPaths = this.merge(
+					this.lastThemePaths,
+					themes.map((entry) => entry.path),
+				);
+				await this.updateThemes(nextPaths, themes, signal);
+				this.lastThemePaths = nextPaths;
+			});
 		}
 	}
 
@@ -178,7 +196,9 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		});
 		this.metadata.reset();
 		const enabledExtensions = this.enabledPaths(resolved.extensions);
-		const enabledSkills = this.metadata.enabled(resolved.skills).map((resource) => this.resolveSkillPath(resource));
+		const enabledSkills = await Promise.all(
+			this.metadata.enabled(resolved.skills).map((resource) => this.resolveSkillPath(resource)),
+		);
 		const enabledPrompts = this.enabledPaths(resolved.prompts);
 		const enabledThemes = this.enabledPaths(resolved.themes);
 		const additionalExtensions = this.enabledPaths(additional.extensions);
@@ -192,6 +212,9 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		const extensionsResult = await loadExtensionResources({
 			paths: extensionPaths,
 			cwd: this.options.cwd,
+			resourceAccess: this.options.resourceAccess,
+			factoryLoader: this.options.extensionFactoryLoader,
+			commandExecutor: this.options.extensionCommandExecutor,
 			eventBus: this.eventBus,
 			factories: this.options.extensionFactories ?? [],
 		});
@@ -201,35 +224,48 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 
 		const skillPaths = this.options.noSkills
 			? this.merge(additionalSkills, this.additionalSkillPaths)
-			: this.merge([...enabledSkills, ...additionalSkills, getSceneDir()], this.additionalSkillPaths);
-		this.nonRuntimeSkillPaths = skillPaths;
-		this.lastSkillPaths = this.merge(this.nonRuntimeSkillPaths, this.runtimeSkillPaths);
-		this.updateSkills(this.lastSkillPaths);
+			: this.merge(
+					[...enabledSkills, ...additionalSkills, this.options.skillLocations.sceneDir],
+					this.additionalSkillPaths,
+				);
+		await this.enqueueSkillOperation(async () => {
+			this.nonRuntimeSkillPaths = skillPaths;
+			this.lastSkillPaths = this.merge(this.nonRuntimeSkillPaths, this.runtimeSkillPaths);
+			await this.updateSkills(this.lastSkillPaths);
+			this.skillsFingerprint = await this.computeFingerprint();
+		});
 		const promptPaths = this.options.noPromptTemplates
 			? this.merge(additionalPrompts, this.options.additionalPromptTemplatePaths ?? [])
 			: this.merge([...enabledPrompts, ...additionalPrompts], this.options.additionalPromptTemplatePaths ?? []);
-		this.lastPromptPaths = promptPaths;
-		this.updatePrompts(promptPaths);
+		await this.enqueuePromptOperation(async () => {
+			await this.updatePrompts(promptPaths);
+			this.lastPromptPaths = promptPaths;
+		});
 		const themePaths = this.options.noThemes
 			? this.merge(additionalThemes, this.options.additionalThemePaths ?? [])
 			: this.merge([...enabledThemes, ...additionalThemes], this.options.additionalThemePaths ?? []);
-		this.lastThemePaths = themePaths;
-		this.updateThemes(themePaths);
-		this.skillsFingerprint = this.computeFingerprint();
+		await this.enqueueThemeOperation(async () => {
+			await this.updateThemes(themePaths);
+			this.lastThemePaths = themePaths;
+		});
 		for (const extension of this.extensionsResult.extensions) this.metadata.addDefault(extension.path);
-		this.updateContextResources();
+		await this.updateContextResources();
 	}
 
-	refreshSkillsIfChanged(): boolean {
-		const fingerprint = this.computeFingerprint();
+	refreshSkillsIfChanged(signal?: AbortSignal): Promise<boolean> {
+		return this.enqueueSkillOperation(() => this.refreshSkillsIfChangedNow(signal));
+	}
+
+	private async refreshSkillsIfChangedNow(signal?: AbortSignal): Promise<boolean> {
+		const fingerprint = await this.computeFingerprint(signal);
 		if (fingerprint === this.skillsFingerprint) return false;
+		await this.updateSkills(this.lastSkillPaths, [], signal);
 		this.skillsFingerprint = fingerprint;
-		this.updateSkills(this.lastSkillPaths);
 		return true;
 	}
 
-	refreshContextResourcesIfChanged(): boolean {
-		const resources = this.readContextResources();
+	async refreshContextResourcesIfChanged(signal?: AbortSignal): Promise<boolean> {
+		const resources = await this.readContextResources(signal);
 		const fingerprint = JSON.stringify(resources);
 		if (fingerprint === this.contextResourcesFingerprint) return false;
 		this.applyContextResources(resources);
@@ -241,40 +277,52 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		return this.metadata.enabled(resources).map((resource) => resource.path);
 	}
 
-	private resolveSkillPath(resource: ResolvedResourcePath): string {
+	private async resolveSkillPath(resource: ResolvedResourcePath): Promise<string> {
 		if (resource.metadata.source !== "auto" && resource.metadata.origin !== "package") return resource.path;
 		try {
-			if (!statSync(resource.path).isDirectory()) return resource.path;
+			if ((await this.options.resourceAccess.files.stat(resource.path))?.kind !== "directory") return resource.path;
 		} catch {
 			return resource.path;
 		}
-		const skillFile = join(resource.path, "SKILL.md");
-		if (existsSync(skillFile)) {
+		const skillFile = this.options.resourceAccess.paths.join(resource.path, "SKILL.md");
+		if ((await this.options.resourceAccess.files.stat(skillFile))?.kind === "file") {
 			this.metadata.apply([{ path: skillFile, metadata: resource.metadata }], []);
 			return skillFile;
 		}
 		return resource.path;
 	}
 
-	private updateSkills(
-		paths: string[],
+	private async updateSkills(
+		resourcePaths: string[],
 		extensionPaths: Array<{ path: string; metadata: ResourcePathMetadata }> = [],
-	): void {
+		signal?: AbortSignal,
+	): Promise<void> {
+		const pathPort = this.options.resourceAccess.paths;
 		const resolvedPaths = this.options.noSkills
-			? paths
+			? resourcePaths
 			: this.merge(
-					[resolve(this.options.cwd, CONFIG_DIR_NAME, "skills"), join(this.options.agentDir, "skills")],
-					paths,
+					[
+						pathPort.resolve(this.options.cwd, CONFIG_DIR_NAME, "skills"),
+						pathPort.join(this.options.agentDir, "skills"),
+					],
+					resourcePaths,
 				);
-		const result = loadSkillResources({
+		const result = await loadSkillResources({
+			resourceAccess: this.options.resourceAccess,
 			cwd: this.options.cwd,
 			agentDir: this.options.agentDir,
+			sceneDir: this.options.skillLocations.sceneDir,
+			managedSkillsDir: this.options.skillLocations.managedSkillsDir,
+			manifestPath: this.options.skillLocations.manifestPath,
 			paths: resolvedPaths,
 			includeAgentSkills: this.options.includeAgentSkills ?? true,
 			disabled: this.options.noSkills ?? false,
+			signal,
 			override: this.options.skillsOverride,
 		});
-		this.skills = this.filterDefaultSkillOverrides(result.skills);
+		this.skills = this.filterDefaultSkillOverrides(result.skills).map((skill) =>
+			Object.freeze({ ...skill, sceneTasks: Object.freeze([...skill.sceneTasks]) }),
+		);
 		this.skillDiagnostics = result.diagnostics;
 		this.metadata.apply(
 			extensionPaths,
@@ -287,31 +335,40 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		if (!this.options.settings) return skills;
 		const projectSettings = this.options.settings.getProjectSettings();
 		const globalSettings = this.options.settings.getGlobalSettings();
-		const projectBaseDir = resolve(this.options.cwd, CONFIG_DIR_NAME);
+		const pathPort = this.options.resourceAccess.paths;
+		const projectBaseDir = pathPort.resolve(this.options.cwd, CONFIG_DIR_NAME);
 		return skills.filter((skill) => {
 			if (skill.source === "project") {
-				return isResourceEnabledByOverrides(skill.filePath, projectSettings.skills ?? [], projectBaseDir);
+				return isResourceEnabledByOverrides(pathPort, skill.filePath, projectSettings.skills ?? [], projectBaseDir);
 			}
 			if (skill.source === "user") {
-				return isResourceEnabledByOverrides(skill.filePath, globalSettings.skills ?? [], this.options.agentDir);
+				return isResourceEnabledByOverrides(
+					pathPort,
+					skill.filePath,
+					globalSettings.skills ?? [],
+					this.options.agentDir,
+				);
 			}
 			return true;
 		});
 	}
 
-	private updatePrompts(
+	private async updatePrompts(
 		paths: string[],
 		extensionPaths: Array<{ path: string; metadata: ResourcePathMetadata }> = [],
-	): void {
-		const result = loadPromptResources({
+		signal?: AbortSignal,
+	): Promise<void> {
+		const result = await loadPromptResources({
+			resourceAccess: this.options.resourceAccess,
 			cwd: this.options.cwd,
 			agentDir: this.options.agentDir,
 			paths,
 			disabled: this.options.noPromptTemplates ?? false,
+			signal,
 			override: this.options.promptsOverride,
 		});
-		this.prompts = result.prompts;
-		this.promptDiagnostics = result.diagnostics;
+		this.prompts = result.prompts.map((prompt) => Object.freeze({ ...prompt }));
+		this.promptDiagnostics = [...result.diagnostics];
 		this.metadata.apply(
 			extensionPaths,
 			this.prompts.map((prompt) => prompt.filePath),
@@ -319,14 +376,21 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		for (const prompt of this.prompts) this.metadata.addDefault(prompt.filePath);
 	}
 
-	private updateThemes(
+	private async updateThemes(
 		paths: string[],
 		extensionPaths: Array<{ path: string; metadata: ResourcePathMetadata }> = [],
-	): void {
+		signal?: AbortSignal,
+	): Promise<void> {
 		let result =
 			this.options.noThemes && paths.length === 0
 				? { themes: [], diagnostics: [] }
-				: loadThemeResources(paths, this.options.cwd);
+				: await loadThemeResources({
+						resourceAccess: this.options.resourceAccess,
+						paths,
+						cwd: this.options.cwd,
+						parse: this.options.themeParser,
+						signal,
+					});
 		result = this.options.themesOverride ? this.options.themesOverride(result) : result;
 		this.themes = result.themes;
 		this.themeDiagnostics = result.diagnostics;
@@ -335,22 +399,28 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		for (const path of sourcePaths) this.metadata.addDefault(path);
 	}
 
-	private updateContextResources(): void {
-		const resources = this.readContextResources();
+	private async updateContextResources(): Promise<void> {
+		const resources = await this.readContextResources();
 		this.applyContextResources(resources);
 		this.contextResourcesFingerprint = JSON.stringify(resources);
 	}
 
-	private readContextResources(): ContextResourcesSnapshot {
-		const agentsFiles = loadProjectContextFiles(this.options.cwd, this.options.agentDir);
-		const systemPrompt = resolvePromptInput(
-			this.options.systemPrompt ?? discoverPromptFile(this.options.cwd, this.options.agentDir, "SYSTEM.md"),
+	private async readContextResources(signal?: AbortSignal): Promise<ContextResourcesSnapshot> {
+		const access = this.options.resourceAccess;
+		const agentsFiles = await loadProjectContextFiles(access, this.options.cwd, this.options.agentDir, signal);
+		const systemPrompt = await resolvePromptInput(
+			access,
+			this.options.systemPrompt ??
+				(await discoverPromptFile(access, this.options.cwd, this.options.agentDir, "SYSTEM.md", signal)),
 			"system prompt",
+			signal,
 		);
-		const append = resolvePromptInput(
+		const append = await resolvePromptInput(
+			access,
 			this.options.appendSystemPrompt ??
-				discoverPromptFile(this.options.cwd, this.options.agentDir, "APPEND_SYSTEM.md"),
+				(await discoverPromptFile(access, this.options.cwd, this.options.agentDir, "APPEND_SYSTEM.md", signal)),
 			"append system prompt",
+			signal,
 		);
 		return { agentsFiles, systemPrompt, appendSystemPrompt: append ? [append] : [] };
 	}
@@ -369,22 +439,51 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		entries: Array<{ path: string; metadata: ResourcePathMetadata }>,
 	): Array<{ path: string; metadata: ResourcePathMetadata }> {
 		return entries.map((entry) => ({
-			path: resolveResourcePath(this.options.cwd, entry.path),
+			path: resolveResourcePath(this.options.resourceAccess.paths, this.options.cwd, entry.path),
 			metadata: entry.metadata,
 		}));
 	}
 
 	private merge(primary: string[], additional: string[]): string[] {
-		return mergeResourcePaths(this.options.cwd, primary, additional);
+		return mergeResourcePaths(this.options.resourceAccess.paths, this.options.cwd, primary, additional);
 	}
 
-	private computeFingerprint(): string {
-		return computeSkillsFingerprint(this.lastSkillPaths, {
+	private computeFingerprint(signal?: AbortSignal): Promise<string> {
+		return computeSkillsFingerprint(this.options.resourceAccess, this.lastSkillPaths, {
 			cwd: this.options.cwd,
 			agentDir: this.options.agentDir,
 			includeDefaults: !(this.options.noSkills ?? false),
 			includeAgentSkills: this.options.includeAgentSkills ?? true,
+			manifestPath: this.options.skillLocations.manifestPath,
+			signal,
 		});
+	}
+
+	private enqueueSkillOperation<T>(operation: () => Promise<T>): Promise<T> {
+		const result = this.skillOperation.then(operation, operation);
+		this.skillOperation = result.then(
+			() => undefined,
+			() => undefined,
+		);
+		return result;
+	}
+
+	private enqueuePromptOperation<T>(operation: () => Promise<T>): Promise<T> {
+		const result = this.promptOperation.then(operation, operation);
+		this.promptOperation = result.then(
+			() => undefined,
+			() => undefined,
+		);
+		return result;
+	}
+
+	private enqueueThemeOperation<T>(operation: () => Promise<T>): Promise<T> {
+		const result = this.themeOperation.then(operation, operation);
+		this.themeOperation = result.then(
+			() => undefined,
+			() => undefined,
+		);
+		return result;
 	}
 }
 

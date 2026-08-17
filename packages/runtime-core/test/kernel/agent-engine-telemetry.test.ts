@@ -17,8 +17,23 @@ describe("StatelessAgentCoreTurnEngine telemetry", () => {
 	it("closes agent, generation, and tool observations exactly once without capturing content by default", async () => {
 		const tracer = new RecordingTracer();
 		const responses = [
-			assistant([{ type: "toolCall", id: "call-1", name: "echo", arguments: { value: "secret-input" } }], "toolUse"),
-			assistant([{ type: "text", text: "finished" }]),
+			assistant(
+				[{ type: "toolCall", id: "call-1", name: "echo", arguments: { value: "secret-input" } }],
+				"toolUse",
+				{
+					input: 20,
+					cacheRead: 70,
+					cacheWrite: 10,
+					totalTokens: 101,
+					cacheUsageReporting: "read-write",
+				},
+			),
+			assistant([{ type: "text", text: "finished" }], "stop", {
+				input: 50,
+				cacheRead: 50,
+				totalTokens: 101,
+				cacheUsageReporting: "read-only",
+			}),
 		];
 		const tool: RuntimeToolDefinition = {
 			name: "echo",
@@ -55,7 +70,25 @@ describe("StatelessAgentCoreTurnEngine telemetry", () => {
 		expect(tracePayload).not.toContain("secret-output");
 		expect(tracer.observations[0]?.ends[0]).toMatchObject({
 			level: "DEFAULT",
-			usageDetails: { input: 2, output: 2, totalTokens: 4 },
+			usageDetails: { input: 70, output: 2, cacheRead: 120, cacheWrite: 10, totalTokens: 202 },
+			metadata: {
+				promptCache: {
+					calls: 2,
+					readObservedCalls: 2,
+					writeObservedCalls: 1,
+					tokenHitRate: 0.6,
+					readCallCoverage: 1,
+					writeRate: 0.1,
+					writeCallCoverage: 0.5,
+				},
+			},
+		});
+		const generationObservations = tracer.observations.filter(({ type }) => type === "generation");
+		expect(generationObservations[0]?.ends[0]?.metadata).toMatchObject({
+			promptCache: { reporting: "read-write", tokenHitRate: 0.7, writeRate: 0.1 },
+		});
+		expect(generationObservations[1]?.ends[0]?.metadata).toMatchObject({
+			promptCache: { reporting: "read-only", tokenHitRate: 0.5, writeRate: null },
 		});
 		expect(tracer.observations[0]?.start?.metadata).toMatchObject({
 			tenant: "test",
@@ -256,6 +289,7 @@ function snapshot(tools: readonly RuntimeToolDefinition[] = []): RuntimeSnapshot
 function assistant(
 	content: AssistantMessage["content"],
 	stopReason: AssistantMessage["stopReason"] = "stop",
+	usageOverrides: Partial<AssistantMessage["usage"]> = {},
 ): AssistantMessage {
 	return {
 		role: "assistant",
@@ -269,7 +303,8 @@ function assistant(
 			cacheRead: 0,
 			cacheWrite: 0,
 			totalTokens: 2,
-			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+			...usageOverrides,
+			cost: usageOverrides.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 		},
 		stopReason,
 		timestamp: 2,

@@ -1,6 +1,6 @@
 import { type AssistantMessage, type Context, type EventStream, streamSimple } from "@vetta/ai";
-import type { RuntimeObservation, RuntimeObservationUpdate } from "@vetta/runtime-telemetry";
 import { salvageTextToolCalls } from "../salvage-text-tool-calls.js";
+import type { AgentObservation, AgentObservationUpdate } from "../telemetry.js";
 import type { AgentContext, AgentEvent, AgentLoopConfig, AgentMessage, StreamFn } from "../types.js";
 import { requestContextCheckpoint } from "./context-checkpoint.js";
 import type { DEFAULT_AGENT_LOOP_LIMITS } from "./limits.js";
@@ -18,7 +18,7 @@ export async function streamAssistantResponse(
 	signal: AbortSignal | undefined,
 	stream: EventStream<AgentEvent, AgentMessage[]>,
 	streamFn?: StreamFn,
-	traceParent?: RuntimeObservation,
+	traceParent?: AgentObservation,
 	limits?: typeof DEFAULT_AGENT_LOOP_LIMITS,
 ): Promise<AssistantMessage> {
 	if (config.resolveCallContext) {
@@ -75,7 +75,7 @@ export async function streamAssistantResponse(
 		{ type: "generation" },
 	);
 	let generationEnded = false;
-	const endGeneration = (update: RuntimeObservationUpdate) => {
+	const endGeneration = (update: AgentObservationUpdate) => {
 		if (generationEnded) return;
 		generationEnded = true;
 		generationObservation?.end(update);

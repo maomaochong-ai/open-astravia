@@ -1,10 +1,19 @@
+import { createNodeResourceAccess, nodeResourcePackageDigest } from "@vetta/runtime-node/host";
 import { describe, expect, it } from "vitest";
-import { parseResourceSource, ResourcePackageLocations } from "../src/resources/packages/source-spec.js";
+import { ResourcePackageLocations } from "../src/resources/packages/resource-package-locations.js";
+import { parseResourceSource } from "../src/resources/packages/source-spec.js";
 import type { GitSource } from "../src/utils/git.js";
 
-const locations = new ResourcePackageLocations(process.cwd(), process.cwd(), {
-	run: async () => {},
-	runSync: () => "",
+const locations = new ResourcePackageLocations({
+	cwd: process.cwd(),
+	agentDir: process.cwd(),
+	paths: createNodeResourceAccess().paths,
+	locationFacts: {
+		homeDirectory: process.cwd(),
+		temporaryDirectory: process.cwd(),
+		getGlobalNpmRoot: () => process.cwd(),
+	},
+	digest: nodeResourcePackageDigest,
 });
 
 function parseGitSource(source: string): GitSource {

@@ -53,6 +53,7 @@ Unified LLM API with automatic model discovery, provider configuration, token an
   - [Type Safety](#type-safety)
 - [Cross-Provider Handoffs](#cross-provider-handoffs)
 - [Context Serialization](#context-serialization)
+- [Prompt Cache Usage](#prompt-cache-usage)
 - [Browser Usage](#browser-usage)
   - [Environment Variables](#environment-variables-nodejs-only)
   - [Checking Environment Variables](#checking-environment-variables)
@@ -218,6 +219,39 @@ for (const block of response.content) {
   }
 }
 ```
+
+## Prompt Cache Usage
+
+Provider adapters normalize prompt-cache accounting into three disjoint token buckets:
+
+- `usage.input`: prompt tokens that were not read from cache and were not separately reported as cache writes
+- `usage.cacheRead`: prompt tokens served from cache
+- `usage.cacheWrite`: prompt tokens written to cache when the provider reports writes separately
+
+`usage.cacheUsageReporting` describes the detail available for that completed call:
+
+- `read-write`: cache reads and writes are observable
+- `read-only`: cache reads are observable, but writes are not reported separately
+- `unavailable` or missing: the provider did not expose enough detail; normalized zero values must not be interpreted as cache misses
+
+Use the shared projections instead of reimplementing denominators or treating unavailable calls as misses:
+
+```typescript
+import { aggregatePromptCacheUsage, calculatePromptCacheMetrics } from '@vetta/ai';
+
+const metrics = calculatePromptCacheMetrics(response.usage);
+console.log(metrics.tokenHitRate); // null when cache reads are unavailable
+
+const summary = aggregatePromptCacheUsage(completedCalls.map(call => call.usage));
+console.log(summary.tokenHitRate, summary.readCallCoverage);
+```
+
+The token hit rate is `cacheRead / (input + cacheRead + cacheWrite)`. Output tokens never participate in prompt-cache rates. Aggregated rates only use calls where the corresponding cache detail was observable and expose coverage separately.
+
+`usage.promptCache` contains privacy-safe request fingerprints. Callers that provide
+`Context.promptCacheSystemPromptBlocks` also receive exact `changedSystemPromptBlocks` and
+`changedTools` entries. These records retain block IDs, tool names, lengths, and hashes only;
+prompt text, tool descriptions, and schemas are never copied into usage diagnostics.
 
 ## Tools
 

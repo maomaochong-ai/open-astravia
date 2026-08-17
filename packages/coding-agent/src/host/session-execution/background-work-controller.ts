@@ -1,5 +1,5 @@
 import type { RuntimeSessionBackgroundWorkController, RuntimeSubagentSnapshot } from "@vetta/runtime-core";
-import type { BackgroundCommandService } from "@vetta/runtime-tools/coding";
+import type { BackgroundCommandService } from "@vetta/runtime-tools";
 
 export interface CodingAgentSubagentWorkRuntime {
 	clearFinished(): number;

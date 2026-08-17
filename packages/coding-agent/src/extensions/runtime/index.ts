@@ -10,7 +10,9 @@ export type {
 } from "./extension-runner.js";
 export { ExtensionRunner, emitSessionShutdownEvent } from "./extension-runner.js";
 export {
+	type DiscoverAndLoadExtensionsOptions,
 	discoverAndLoadExtensions,
+	type LoadExtensionsOptions,
 	loadExtensions,
 } from "./loading/load-extensions.js";
 export { loadExtensionFromFactory } from "./registration/extension-registration.js";

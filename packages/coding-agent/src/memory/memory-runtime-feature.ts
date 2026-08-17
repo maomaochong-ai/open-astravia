@@ -1,5 +1,5 @@
 import type { AgentFeatureDefinition } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistration } from "@vetta/runtime-tools/coding";
+import type { CodingToolRegistration } from "@vetta/runtime-tools";
 
 export function createCodingAgentMemoryRuntimeFeature(registration: CodingToolRegistration): AgentFeatureDefinition {
 	return {

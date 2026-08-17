@@ -4,6 +4,7 @@ import type { LoadExtensionsResult } from "../../extensions/index.js";
 import type { CodingAgentModelRuntime } from "../../models/index.js";
 import type { CodingAgentSession } from "../../public-api/sdk/sdk-session-contract.js";
 import type { SettingsRuntime } from "../../settings/index.js";
+import type { CodingAgentSdkSessionIdentityRuntime } from "./contracts/session-identity-runtime.js";
 
 export const CODING_AGENT_SDK_HOST_ERROR_CODES = {
 	NO_MODEL: "greenfield_sdk_no_model",
@@ -25,6 +26,7 @@ export class CodingAgentSdkHostError extends Error {
 export interface CodingAgentSdkPublicHostContext {
 	readonly authStorage?: CodingAgentAuthRuntime;
 	readonly htmlExporter?: CodingAgentHtmlExportRuntime;
+	readonly identityRuntime?: CodingAgentSdkSessionIdentityRuntime;
 	readonly modelRegistry?: CodingAgentModelRuntime;
 	readonly settingsManager?: SettingsRuntime;
 	readonly onSessionClosed?: () => void;

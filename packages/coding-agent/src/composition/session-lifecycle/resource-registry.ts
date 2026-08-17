@@ -1,11 +1,14 @@
-import type { RuntimeResourceContext } from "@vetta/runtime-core";
+import {
+	InMemoryRuntimeSessionMarkerIndex,
+	InMemoryRuntimeSessionValueIndex,
+	type RuntimeResourceContext,
+} from "@vetta/runtime-core";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
+import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryController } from "../../memory/index.js";
 import type { CodingAgentPluginMcpRuntime } from "../../runtime-contracts/index.js";
-import { InMemoryCodingAgentSessionMarkerIndex, InMemoryCodingAgentSessionValueIndex } from "./indexes.js";
 import type { CodingAgentSessionHookController, CodingAgentSessionResourceIndexes } from "./resource-lifecycle.js";
 
 export interface CodingAgentSynchronousDisposableResource {
@@ -21,7 +24,7 @@ export interface CodingAgentCompositionResourceCleanupSnapshot {
 	readonly memoryRuntimes: readonly CodingAgentSynchronousDisposableResource[];
 	readonly executionRuntimes: readonly CodingAgentAsynchronousDisposableResource[];
 	readonly hookSessionDisposers: readonly (() => Promise<void>)[];
-	readonly todoRuntimes: readonly CodingAgentAsynchronousDisposableResource[];
+	readonly sessionExtensionCompositions: readonly CodingAgentAsynchronousDisposableResource[];
 	readonly turnCapabilityAssemblies: readonly CodingAgentAsynchronousDisposableResource[];
 	readonly ownershipBindings: readonly CodingAgentAsynchronousDisposableResource[];
 	readonly pluginMcpRuntimes: readonly CodingAgentAsynchronousDisposableResource[];
@@ -32,7 +35,7 @@ export interface CodingAgentCompositionResourceCleanupRegistry {
 	untrackContextRuntime(runtime: CodingAgentSynchronousDisposableResource): void;
 	untrackMemoryRuntime(runtime: CodingAgentSynchronousDisposableResource): void;
 	untrackHookSessionDisposer(dispose: () => Promise<void>): void;
-	untrackTodoRuntime(runtime: CodingAgentAsynchronousDisposableResource): void;
+	untrackSessionExtensionComposition(composition: CodingAgentAsynchronousDisposableResource): void;
 	untrackTurnCapabilityAssembly(assembly: CodingAgentAsynchronousDisposableResource): void;
 	untrackOwnershipBinding(binding: CodingAgentAsynchronousDisposableResource): void;
 	unbindExecutionRuntime(runtime: CodingAgentAsynchronousDisposableResource): void;
@@ -43,21 +46,21 @@ export interface CodingAgentCompositionResourceCleanupRegistry {
 /** Composition 级 Session 索引与唯一资源身份登记；不负责创建或释放资源。 */
 export class CodingAgentCompositionResourceRegistry implements CodingAgentCompositionResourceCleanupRegistry {
 	readonly indexes: CodingAgentSessionResourceIndexes = {
-		mcpControllers: new InMemoryCodingAgentSessionValueIndex<McpDeferredToolController>(),
-		pluginMcpRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentPluginMcpRuntime>(),
-		executionRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
-		configurationStates: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionConfigurationState>(),
-		resourceContexts: new InMemoryCodingAgentSessionValueIndex<RuntimeResourceContext>(),
-		extensionEventBridges: new InMemoryCodingAgentSessionValueIndex<CodingAgentExtensionRunAdapter>(),
-		memoryControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentMemoryController>(),
-		hookSessionControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionHookController>(),
-		mcpRefreshObservedSessions: new InMemoryCodingAgentSessionMarkerIndex(),
+		mcpControllers: new InMemoryRuntimeSessionValueIndex<McpDeferredToolController>(),
+		pluginMcpRuntimes: new InMemoryRuntimeSessionValueIndex<CodingAgentPluginMcpRuntime>(),
+		executionRuntimes: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
+		configurationStates: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionConfigurationState>(),
+		resourceContexts: new InMemoryRuntimeSessionValueIndex<RuntimeResourceContext>(),
+		extensionEventBridges: new InMemoryRuntimeSessionValueIndex<CodingAgentExtensionRunBridge>(),
+		memoryControllers: new InMemoryRuntimeSessionValueIndex<CodingAgentMemoryController>(),
+		hookSessionControllers: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionHookController>(),
+		mcpRefreshObservedSessions: new InMemoryRuntimeSessionMarkerIndex(),
 	};
 
 	private readonly contextRuntimes = new Set<CodingAgentSynchronousDisposableResource>();
 	private readonly memoryRuntimes = new Set<CodingAgentSynchronousDisposableResource>();
 	private readonly hookSessionDisposers = new Set<() => Promise<void>>();
-	private readonly todoRuntimes = new Set<CodingAgentAsynchronousDisposableResource>();
+	private readonly sessionExtensionCompositions = new Set<CodingAgentAsynchronousDisposableResource>();
 	private readonly turnCapabilityAssemblies = new Set<CodingAgentAsynchronousDisposableResource>();
 	private readonly ownershipBindings = new Set<CodingAgentAsynchronousDisposableResource>();
 
@@ -85,12 +88,12 @@ export class CodingAgentCompositionResourceRegistry implements CodingAgentCompos
 		this.hookSessionDisposers.delete(dispose);
 	}
 
-	trackTodoRuntime(runtime: CodingAgentAsynchronousDisposableResource): void {
-		this.todoRuntimes.add(runtime);
+	trackSessionExtensionComposition(composition: CodingAgentAsynchronousDisposableResource): void {
+		this.sessionExtensionCompositions.add(composition);
 	}
 
-	untrackTodoRuntime(runtime: CodingAgentAsynchronousDisposableResource): void {
-		this.todoRuntimes.delete(runtime);
+	untrackSessionExtensionComposition(composition: CodingAgentAsynchronousDisposableResource): void {
+		this.sessionExtensionCompositions.delete(composition);
 	}
 
 	trackTurnCapabilityAssembly(assembly: CodingAgentAsynchronousDisposableResource): void {
@@ -115,7 +118,7 @@ export class CodingAgentCompositionResourceRegistry implements CodingAgentCompos
 			memoryRuntimes: Object.freeze([...this.memoryRuntimes]),
 			executionRuntimes: Object.freeze([...new Set(this.indexes.executionRuntimes.values())]),
 			hookSessionDisposers: Object.freeze([...this.hookSessionDisposers]),
-			todoRuntimes: Object.freeze([...this.todoRuntimes]),
+			sessionExtensionCompositions: Object.freeze([...this.sessionExtensionCompositions]),
 			turnCapabilityAssemblies: Object.freeze([...this.turnCapabilityAssemblies]),
 			ownershipBindings: Object.freeze([...this.ownershipBindings]),
 			pluginMcpRuntimes: Object.freeze([...new Set(this.indexes.pluginMcpRuntimes.values())]),

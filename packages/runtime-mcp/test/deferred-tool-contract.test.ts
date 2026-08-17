@@ -72,6 +72,7 @@ describe("MCP deferred tool contract", () => {
 				required: ["query"],
 			},
 		});
+		expect(tool.description).toContain("next model step in the same turn");
 		const result = await tool.execute({
 			sessionId: "session",
 			turnId: "turn",
@@ -134,5 +135,43 @@ describe("MCP deferred tool contract", () => {
 		expect(controller.isToolVisible("mcp_docs_lookup")).toBe(false);
 		controller.refresh({ revision: 3, tools });
 		expect(controller.isToolVisible("mcp_docs_lookup")).toBe(true);
+	});
+
+	it("freezes the bound catalog while keeping same-turn activation live", async () => {
+		const controller = createMcpDeferredToolController({ sessionId: "session", threshold: 1 });
+		const tools = [
+			{ name: "mcp_docs_lookup", description: "Search pages" },
+			{ name: "mcp_issues_create", description: "Create issue" },
+		];
+		controller.refresh({ revision: 1, tools });
+		const visibility = controller.bindToolVisibility();
+		expect(visibility("mcp_docs_lookup")).toBe(false);
+
+		const feature = await controller.createFeature().prepare({ signal: new AbortController().signal });
+		const contribution = await feature.contribute({
+			profileId: "coding-agent",
+			signal: new AbortController().signal,
+		});
+		const callContribution = await contribution.modelCallProviders?.[0]?.contribute({
+			sessionId: "session",
+			turnId: "turn",
+			signal: new AbortController().signal,
+		});
+		const search = callContribution?.tools?.find(({ name }) => name === "tool_search");
+		if (!search) throw new Error("Expected deferred MCP tool_search");
+		await search.execute({
+			sessionId: "session",
+			turnId: "turn",
+			toolCallId: "call",
+			input: { query: "docs" },
+			signal: new AbortController().signal,
+		});
+		expect(visibility("mcp_docs_lookup")).toBe(true);
+
+		controller.refresh({
+			revision: 2,
+			tools: [...tools, { name: "mcp_new_tool", description: "New external tool" }],
+		});
+		expect(visibility("mcp_new_tool")).toBe(false);
 	});
 });

@@ -4,6 +4,7 @@ import type {
 	ImageContent,
 	Message,
 	Model,
+	PromptCacheSystemPromptBlockSpan,
 	SimpleStreamOptions,
 	StopReason,
 	TextContent,
@@ -324,6 +325,8 @@ export interface ModelCallContributionContext {
 	readonly turnId: string;
 	readonly signal: AbortSignal;
 	readonly input?: SessionInput;
+	/** Admission 时尚未展开的宿主请求；动态能力可据此绑定本 Turn，不能解释其产品 payload。 */
+	readonly request?: SessionInputRequest;
 	/** 当前模型调用已经积累的模型可见消息。 */
 	readonly messages?: readonly Message[];
 	/** 当前 Turn 的不可变模型绑定。 */
@@ -356,6 +359,8 @@ export interface ModelCallFrame {
 	 * 消费方必须丢弃，否则断点会切在另一段文本的错误偏移上。
 	 */
 	readonly systemPromptStableLength?: number;
+	/** Block layout corresponding to the composed system prompt. */
+	readonly promptCacheSystemPromptBlocks?: readonly PromptCacheSystemPromptBlockSpan[];
 	/** Call-scoped sensitive inputs; reporters must not expose their content. */
 	readonly contextCompositionSections?: readonly ContextCompositionSectionInput[];
 }
@@ -630,6 +635,8 @@ export interface ConversationContinuationResult {
 	readonly sourceSessionPath?: string;
 	readonly sourceVersion: number;
 	readonly sessionId: string;
+	/** 宿主持有的目标会话制品位置；Kernel 不解释其格式。 */
+	readonly sessionDirectory?: string;
 	readonly sessionPath?: string;
 	readonly version: number;
 	/** 目标文件写入 turn.continued 前的投影，用于运行时无重读地原子重绑定。 */
@@ -813,6 +820,7 @@ export interface ConversationContinuedEvent {
 	readonly sourceSessionId: string;
 	readonly sourceSessionPath?: string;
 	readonly sessionId: string;
+	readonly sessionDirectory?: string;
 	readonly sessionPath?: string;
 	readonly turnId: string;
 	readonly reason: string;

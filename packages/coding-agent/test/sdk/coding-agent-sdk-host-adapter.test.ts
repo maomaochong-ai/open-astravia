@@ -17,7 +17,7 @@ import {
 	CODING_AGENT_SESSION_CREATE_ERROR_CODES,
 	CodingAgentSessionCreateError,
 } from "../../src/public-api/sdk/index.js";
-import { SettingsRuntime } from "../../src/settings/index.js";
+import { createFileSettingsRuntime } from "../fixtures/file-settings-runtime.js";
 
 describe("Coding Agent SDK Host Adapter", () => {
 	const temporaryDirectories: string[] = [];
@@ -159,8 +159,8 @@ describe("Coding Agent SDK Host Adapter", () => {
 		expect(creationError.code).toBe(CODING_AGENT_SESSION_CREATE_ERROR_CODES.NO_MODEL);
 	});
 
-	it("serves product behavior through narrow SDK capabilities", async () => {
-		const resources = await createResources("sdk-host-product-capabilities-");
+	it("serves Coding Agent behavior through narrow SDK capabilities", async () => {
+		const resources = await createResources("sdk-host-capabilities-");
 		registerTestModel(resources.modelRegistry);
 		const memoryFile = join(resources.cwd, "MEMORY.md");
 		const result = await createSession(resources, {
@@ -252,7 +252,7 @@ describe("Coding Agent SDK Host Adapter", () => {
 		const agentDir = await temporaryDirectory(`${prefix}agent-`);
 		const authStorage = AuthStorage.inMemory();
 		const modelRegistry = createCodingAgentModelRuntime(authStorage);
-		const settingsManager = SettingsRuntime.create(cwd, agentDir);
+		const settingsManager = createFileSettingsRuntime(cwd, agentDir);
 		return {
 			cwd,
 			agentDir,

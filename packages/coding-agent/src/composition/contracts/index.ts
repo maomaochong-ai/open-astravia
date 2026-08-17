@@ -2,8 +2,11 @@ export type {
 	CodingAgentConversationPersistence,
 	CodingAgentConversationPersistenceFactory,
 	CodingAgentConversationPersistenceFactoryContext,
+	CodingAgentConversationSessionPathAssessment,
 } from "./conversation-persistence.js";
 export type {
+	CodingAgentPromptRuntimeSourceContext,
+	CodingAgentPromptRuntimeSources,
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeContextOptions,
 	CodingAgentRuntimeConversationOptions,
@@ -25,7 +28,22 @@ export type {
 } from "./runtime-composition-result.js";
 export type { CodingAgentInitialTodoLockSource, CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
 export type {
+	CodingAgentSandboxEnvironment,
+	CodingAgentSandboxHostOptions,
+	CodingAgentSandboxHostServices,
+	CodingAgentSandboxToolSet,
+	CodingAgentSandboxWorkspacePathAccess,
+	CodingAgentSessionExecutionEnvironment,
+	CodingAgentSessionExecutionEnvironmentContext,
+	CodingAgentSessionExecutionEnvironmentFactory,
+} from "./session-execution-environment.js";
+export type {
 	CodingAgentSubagentChildFactory,
 	CodingAgentSubagentChildFactoryContext,
 	CodingAgentSubagentProfile,
 } from "./subagent.js";
+export type {
+	CodingAgentToolEnvironment,
+	CodingAgentToolEnvironmentContext,
+	CodingAgentToolEnvironmentFactory,
+} from "./tool-environment.js";

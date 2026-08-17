@@ -10,8 +10,8 @@ import type {
 	RuntimeSessionInputQueueMode,
 	RuntimeSessionState,
 	RuntimeSubagentSnapshot,
-	TodoItem,
 } from "@vetta/runtime-core";
+import type { TodoItem } from "../../features/todo/contracts.js";
 import type { CodingAgentRetryEvent } from "../../public-api/sdk/sdk-event-contract.js";
 import type {
 	CodingAgentActiveSessionCapabilities,

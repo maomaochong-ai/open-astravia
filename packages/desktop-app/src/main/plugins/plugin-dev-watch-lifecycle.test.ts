@@ -137,6 +137,53 @@ describe("plugin development watch lifecycle", () => {
 		}
 	});
 
+	it("forces a runtime refresh and preserves the development update reason", async () => {
+		vi.useFakeTimers();
+		try {
+			const child = new FakeChildProcess();
+			mocks.spawn.mockReturnValue(child);
+			const started = startPluginDevWatch("demo", "C:/plugin");
+			child.stdout.emit(
+				"data",
+				Buffer.from(
+					`${JSON.stringify({
+						type: "ready",
+						protocolVersion: 1,
+						pluginId: "demo",
+						entryUrl: "http://127.0.0.1:4100/mf-manifest.json",
+						origin: "http://127.0.0.1:4100",
+					})}\n`,
+				),
+			);
+			await started;
+			vi.clearAllMocks();
+
+			child.stdout.emit(
+				"data",
+				Buffer.from(
+					`${JSON.stringify({
+						type: "update",
+						pluginId: "demo",
+						reason: "full-reload",
+						path: "*",
+						triggeredBy: "/src/router.ts",
+					})}\n`,
+				),
+			);
+			await vi.advanceTimersByTimeAsync(80);
+
+			expect(mocks.refreshLink).toHaveBeenCalledWith("demo");
+			expect(mocks.reconfigureAgentPlugins).toHaveBeenCalledWith({
+				reason: "plugin-dev:full-reload",
+				pluginId: "demo",
+				force: true,
+			});
+		} finally {
+			stopAllPluginDevWatches();
+			vi.useRealTimers();
+		}
+	});
+
 	it("rejects and stops an incompatible project development server", async () => {
 		const child = new FakeChildProcess();
 		mocks.spawn.mockReturnValue(child);

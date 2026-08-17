@@ -82,7 +82,7 @@ function verifyToolContextIsNarrow(context: CodingAgentToolExecutionContext): vo
 	void context.getSystemPrompt();
 	// @ts-expect-error Concrete session storage belongs to the compatibility Extension context.
 	void context.sessionManager;
-	// @ts-expect-error Concrete model discovery belongs to the product Composition Root.
+	// @ts-expect-error Concrete model discovery belongs to the Coding Agent Composition Root.
 	void context.modelRegistry;
 }
 

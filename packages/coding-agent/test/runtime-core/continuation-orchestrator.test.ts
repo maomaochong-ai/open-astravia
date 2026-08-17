@@ -1,25 +1,20 @@
 import type { Api, Message, Model, UserMessage } from "@vetta/ai";
 import type { ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
-import {
-	CodingAgentContinuationOrchestrator,
-	type CodingAgentContinuationSource,
-} from "../../src/composition/turn/continuation-orchestrator.js";
+import { CodingAgentContinuationOrchestrator } from "../../src/composition/turn/continuation-orchestrator.js";
 import { CodingAgentStopHookContinuationSource } from "../../src/extensions/runtime/stop-hook-continuation-source.js";
-import type { TodoItem } from "../../src/work-state/index.js";
-import { CodingAgentTodoContinuationSource } from "../../src/work-state/todo-continuation-source.js";
+import type { TodoItem } from "../../src/features/todo/index.js";
+import { CodingAgentTodoContinuationSource } from "../../src/features/todo/todo-continuation-source.js";
 
 describe("CodingAgentContinuationOrchestrator", () => {
 	it("selects Todo, Plugin and Stop Hook in the established priority order", async () => {
 		let todoMessages: readonly UserMessage[] = [userMessage("todo")];
 		let pluginMessages: readonly UserMessage[] = [userMessage("plugin")];
-		const todo = source(() => todoMessages);
-		const plugin = source(() => pluginMessages);
-		const stopHook = source(() => [userMessage("stop")]);
+		const todo = source("todo", 100, () => todoMessages);
+		const plugin = source("plugin", 200, () => pluginMessages);
+		const stopHook = source("stop-hook", 300, () => [userMessage("stop")]);
 		const orchestrator = new CodingAgentContinuationOrchestrator({
-			todo,
-			plugin,
-			stopHook,
+			sources: [stopHook, plugin, todo],
 		});
 		const context = continuationContext("turn-1");
 
@@ -43,11 +38,11 @@ describe("CodingAgentContinuationOrchestrator", () => {
 	});
 
 	it("does not call a source after cancellation and does not swallow source failures", async () => {
-		const todo = source(() => {
+		const todo = source("todo", 100, () => {
 			throw new Error("todo state failed");
 		});
-		const stopHook = source(() => [userMessage("stop")]);
-		const orchestrator = new CodingAgentContinuationOrchestrator({ todo, stopHook });
+		const stopHook = source("stop-hook", 300, () => [userMessage("stop")]);
+		const orchestrator = new CodingAgentContinuationOrchestrator({ sources: [todo, stopHook] });
 
 		await expect(orchestrator.collect(continuationContext("turn-1"))).rejects.toThrow("todo state failed");
 		expect(stopHook.collect).not.toHaveBeenCalled();
@@ -119,10 +114,12 @@ describe("CodingAgentStopHookContinuationSource", () => {
 });
 
 function source(
+	id: string,
+	priority: number,
 	collect: (context: ContinuationPolicyContext) => readonly UserMessage[] | Promise<readonly UserMessage[]>,
 ) {
 	const mock = vi.fn(async (context: ContinuationPolicyContext): Promise<readonly UserMessage[]> => collect(context));
-	return { collect: mock } satisfies CodingAgentContinuationSource;
+	return { id, priority, collect: mock };
 }
 
 function continuationContext(

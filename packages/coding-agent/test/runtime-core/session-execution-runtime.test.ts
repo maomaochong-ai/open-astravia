@@ -1,8 +1,9 @@
 import type { RuntimeSessionObservationEvent } from "@vetta/runtime-core";
 import type { AgentSession, ModelCallContributionContext, SessionContextRecord } from "@vetta/runtime-core/kernel";
-import type { CodingToolCatalogEntry } from "@vetta/runtime-tools/coding";
+import type { CodingToolCatalogEntry } from "@vetta/runtime-node/coding";
 import { describe, expect, it } from "vitest";
 import { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
+import { createCodingAgentNodeSessionExecutionEnvironment } from "../../src/host/tool-environment/node/node-session-execution-environment.js";
 
 describe("CodingAgentSessionExecutionRuntime", () => {
 	it("switches execution mode per session and reports the real busy state", async () => {
@@ -45,7 +46,8 @@ describe("CodingAgentSessionExecutionRuntime", () => {
 			"task_output",
 			"task_stop",
 		]);
-		fixture.runtime.dispose();
+		await fixture.runtime.dispose();
+		expect(fixture.environmentDisposeCalls).toBe(1);
 	});
 
 	it("applies shared registry removal to future frames without revoking an advertised Turn tool", async () => {
@@ -92,7 +94,7 @@ describe("CodingAgentSessionExecutionRuntime", () => {
 			]);
 		} finally {
 			await prepared.dispose();
-			fixture.runtime.dispose();
+			await fixture.runtime.dispose();
 		}
 	});
 
@@ -126,8 +128,7 @@ describe("CodingAgentSessionExecutionRuntime", () => {
 			]);
 			expect(second.records).toEqual([]);
 		} finally {
-			first.runtime.dispose();
-			second.runtime.dispose();
+			await Promise.all([first.runtime.dispose(), second.runtime.dispose()]);
 		}
 	});
 });
@@ -140,12 +141,25 @@ function createRuntimeFixture(
 	readonly observations: RuntimeSessionObservationEvent[];
 	readonly records: SessionContextRecord[];
 	readonly asyncDeliveries: number;
+	readonly environmentDisposeCalls: number;
 } {
 	const observations: RuntimeSessionObservationEvent[] = [];
 	const records: SessionContextRecord[] = [];
 	let asyncDeliveries = 0;
+	let environmentDisposeCalls = 0;
+	const environment = createCodingAgentNodeSessionExecutionEnvironment({
+		cwd: process.cwd(),
+		scenario: "cli",
+	});
 	const runtime = new CodingAgentSessionExecutionRuntime({
 		cwd: process.cwd(),
+		environment: {
+			...environment,
+			dispose: async () => {
+				environmentDisposeCalls += 1;
+				await environment.dispose();
+			},
+		},
 		activation: {
 			mode: "explicit",
 			toolNames: ["bash", "shell", "read", "write", "edit", "task_output", "task_stop"],
@@ -175,6 +189,9 @@ function createRuntimeFixture(
 		records,
 		get asyncDeliveries() {
 			return asyncDeliveries;
+		},
+		get environmentDisposeCalls() {
+			return environmentDisposeCalls;
 		},
 	};
 }

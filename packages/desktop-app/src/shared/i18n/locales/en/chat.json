@@ -273,6 +273,7 @@
 			"tokens": "Tokens",
 			"share": "Share",
 			"unknown": "Unknown",
+			"back": "Back",
 			"unavailableAfterRestart": "No restorable composition details are available for this session. Send another message to generate and save a new report.",
 			"items": "{{count}} items",
 			"unknownItems": "{{count}} unknown",
@@ -491,6 +492,52 @@
 		"assistantMessage": {
 			"predicting": "Vetta is predicting…",
 			"processing": "Processing..."
+		},
+		"tokenUsage": {
+			"trigger": "View token usage for this turn",
+			"title": "Turn tokens",
+			"modelCalls": "{{count}} model calls",
+			"total": "Total",
+			"prompt": "Prompt tokens",
+			"uncachedInput": "Uncached input",
+			"output": "Output",
+			"cacheRead": "Cache read",
+			"cacheWrite": "Cache write",
+			"cacheHitRate": "Cache hit rate",
+			"readCoverage": "Read observation coverage",
+			"writeCoverage": "Write observation coverage",
+			"readOnlyReporting": "Not reported (read-only)",
+			"diagnosticCoverage": "Prefix diagnostic coverage",
+			"stableSystemChars": "Stable system prompt chars",
+			"volatileSystemChars": "Volatile system prompt chars",
+			"historyMessages": "Prefix history messages",
+			"toolCount": "Tool count",
+			"prefixStatus": "Stable prefix status",
+			"changedSegments": "Changed segments",
+			"changedPromptBlocks": "Changed prompt blocks",
+			"changedTools": "Changed tools",
+			"definitionChange": "{{id}} ({{change}})",
+			"changeKinds": {
+				"added": "added",
+				"removed": "removed",
+				"changed": "content changed",
+				"reordered": "reordered"
+			},
+			"segmentSeparator": ", ",
+			"prefixStatuses": {
+				"initial": "First diagnostic",
+				"extended": "Continuously extended",
+				"changed": "Prefix changed",
+				"unknown": "Historical version unavailable"
+			},
+			"prefixSegments": {
+				"stableSystem": "Stable system prompt",
+				"volatileSystem": "Volatile system prompt",
+				"tools": "Tool definitions",
+				"messages": "Message history"
+			},
+			"prefixHash": "Request prefix fingerprint",
+			"unavailable": "Not reported"
 		},
 		"compactionBoundary": "Context compacted",
 		"modelSwitched": "Switched model to {{name}}",

@@ -52,7 +52,7 @@ describe("Coding Agent SDK session adapter", () => {
 		expect(Reflect.has(session, "subagents")).toBe(false);
 	});
 
-	it("exposes product behavior through narrow views and asynchronous commands", async () => {
+	it("exposes Coding Agent behavior through narrow views and asynchronous commands", async () => {
 		const runtime = new FakeSdkRuntime();
 		const session = new CodingAgentSdkSessionAdapter(runtime);
 
@@ -68,7 +68,7 @@ describe("Coding Agent SDK session adapter", () => {
 		await session.reload();
 		await expect(session.exportToHtml("session.html")).resolves.toBe("session.html");
 		expect(session.hasExtensionHandlers("before_agent_start")).toBe(true);
-		expect(runtime.productCommands).toEqual(["flush-memory", "plugins", "reload-mcp", "reload", "export"]);
+		expect(runtime.capabilityCommands).toEqual(["flush-memory", "plugins", "reload-mcp", "reload", "export"]);
 		for (const concrete of ["modelRegistry", "backgroundTasks", "todoStore", "resourceLoader", "extensionRunner"]) {
 			expect(Reflect.has(session, concrete)).toBe(false);
 		}
@@ -153,7 +153,7 @@ class FakeSdkRuntime implements CodingAgentSdkSessionRuntimePort {
 	readonly observers = new Set<(observation: RuntimeSessionExecutionObservation) => Promise<void> | void>();
 	readonly retryObservers = new Set<(event: CodingAgentRetryEvent) => void>();
 	readonly interruptedSubagents: string[] = [];
-	readonly productCommands: string[] = [];
+	readonly capabilityCommands: string[] = [];
 	clearFinishedSubagentCalls = 0;
 	disposeCalls = 0;
 	disposeFailures = 0;
@@ -233,7 +233,7 @@ class FakeSdkRuntime implements CodingAgentSdkSessionRuntimePort {
 			},
 		],
 		reconfigureAgentPlugins: async () => {
-			this.productCommands.push("plugins");
+			this.capabilityCommands.push("plugins");
 		},
 		readBackgroundTasks: () => [],
 		killBackgroundTask: () => false,
@@ -242,17 +242,17 @@ class FakeSdkRuntime implements CodingAgentSdkSessionRuntimePort {
 		clearTodos: () => false,
 		readMemoryConfiguration: () => ({ enabled: true, file: "MEMORY.md", charLimit: 4_000 }),
 		flushMemory: async () => {
-			this.productCommands.push("flush-memory");
+			this.capabilityCommands.push("flush-memory");
 			return 2;
 		},
 		reloadMcp: async () => {
-			this.productCommands.push("reload-mcp");
+			this.capabilityCommands.push("reload-mcp");
 		},
 		reload: async () => {
-			this.productCommands.push("reload");
+			this.capabilityCommands.push("reload");
 		},
 		exportToHtml: async (outputPath) => {
-			this.productCommands.push("export");
+			this.capabilityCommands.push("export");
 			return outputPath ?? "session.html";
 		},
 		hasExtensionHandlers: (eventType) => eventType === "before_agent_start",

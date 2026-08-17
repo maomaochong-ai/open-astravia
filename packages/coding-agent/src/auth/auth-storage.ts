@@ -1,11 +1,8 @@
-import { join } from "node:path";
 import { getEnvApiKey, type OAuthCredentials, type OAuthLoginCallbacks, type OAuthProviderId } from "@vetta/ai";
-import { getAgentDir } from "../config.js";
 import { resolveConfigValue } from "../configuration/config-value-resolver.js";
 import { parseAuthDocument, serializeAuthDocument } from "./auth-document.js";
 import type { AuthCredential, AuthStorageBackend, AuthStorageData, CodingAgentAuthRuntime } from "./contracts.js";
 import { createOAuthCredentialRuntime, type OAuthCredentialRuntime } from "./oauth-credential-runtime.js";
-import { FileAuthStorageBackend } from "./storage/file-auth-storage-backend.js";
 import { InMemoryAuthStorageBackend } from "./storage/in-memory-auth-storage-backend.js";
 
 export interface AuthStorageDependencies {
@@ -26,10 +23,6 @@ export class AuthStorage implements CodingAgentAuthRuntime {
 	) {
 		this.oauth = dependencies.oauth ?? createOAuthCredentialRuntime();
 		this.reload();
-	}
-
-	static create(authPath?: string, dependencies?: AuthStorageDependencies): AuthStorage {
-		return new AuthStorage(new FileAuthStorageBackend(authPath ?? join(getAgentDir(), "auth.json")), dependencies);
 	}
 
 	static fromStorage(storage: AuthStorageBackend, dependencies?: AuthStorageDependencies): AuthStorage {
@@ -197,8 +190,11 @@ export class AuthStorage implements CodingAgentAuthRuntime {
 	}
 }
 
-export function createCodingAgentAuthRuntime(authPath?: string): CodingAgentAuthRuntime {
-	return AuthStorage.create(authPath);
+export function createCodingAgentAuthRuntime(
+	storage: AuthStorageBackend,
+	dependencies?: AuthStorageDependencies,
+): CodingAgentAuthRuntime {
+	return AuthStorage.fromStorage(storage, dependencies);
 }
 
 function normalizeError(error: unknown): Error {

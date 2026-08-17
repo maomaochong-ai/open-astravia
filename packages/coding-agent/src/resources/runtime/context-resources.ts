@@ -1,51 +1,64 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
 import chalk from "chalk";
 import { CONFIG_DIR_NAME } from "../../config.js";
+import type { ResourceAccessPort } from "../contracts/resource-access.js";
 
-export function resolvePromptInput(input: string | undefined, description: string): string | undefined {
+export async function resolvePromptInput(
+	access: ResourceAccessPort,
+	input: string | undefined,
+	description: string,
+	signal?: AbortSignal,
+): Promise<string | undefined> {
 	if (!input) return undefined;
-	if (!existsSync(input)) return input;
+	if (!(await access.files.stat(input, { signal }))) return input;
 	try {
-		return readFileSync(input, "utf-8");
+		return await access.files.readText(input, { signal });
 	} catch (error) {
+		signal?.throwIfAborted();
 		console.error(chalk.yellow(`Warning: Could not read ${description} file ${input}: ${error}`));
 		return input;
 	}
 }
 
-function loadContextFileFromDir(dir: string): { path: string; content: string } | null {
+async function loadContextFileFromDir(
+	access: ResourceAccessPort,
+	dir: string,
+	signal?: AbortSignal,
+): Promise<{ path: string; content: string } | null> {
 	for (const filename of ["AGENTS.md", "CLAUDE.md"]) {
-		const filePath = join(dir, filename);
-		if (!existsSync(filePath)) continue;
+		const filePath = access.paths.join(dir, filename);
+		if (!(await access.files.stat(filePath, { signal }))) continue;
 		try {
-			return { path: filePath, content: readFileSync(filePath, "utf-8") };
+			return { path: filePath, content: await access.files.readText(filePath, { signal }) };
 		} catch (error) {
+			signal?.throwIfAborted();
 			console.error(chalk.yellow(`Warning: Could not read ${filePath}: ${error}`));
 		}
 	}
 	return null;
 }
 
-export function loadProjectContextFiles(cwd: string, agentDir: string): Array<{ path: string; content: string }> {
+export async function loadProjectContextFiles(
+	access: ResourceAccessPort,
+	cwd: string,
+	agentDir: string,
+	signal?: AbortSignal,
+): Promise<Array<{ path: string; content: string }>> {
 	const files: Array<{ path: string; content: string }> = [];
 	const seen = new Set<string>();
-	const globalContext = loadContextFileFromDir(agentDir);
+	const globalContext = await loadContextFileFromDir(access, agentDir, signal);
 	if (globalContext) {
 		files.push(globalContext);
 		seen.add(globalContext.path);
 	}
 	const ancestors: Array<{ path: string; content: string }> = [];
-	let currentDir = cwd;
-	const root = resolve("/");
+	let currentDir = access.paths.resolve(cwd);
 	while (true) {
-		const context = loadContextFileFromDir(currentDir);
+		const context = await loadContextFileFromDir(access, currentDir, signal);
 		if (context && !seen.has(context.path)) {
 			ancestors.unshift(context);
 			seen.add(context.path);
 		}
-		if (currentDir === root) break;
-		const parentDir = resolve(currentDir, "..");
+		const parentDir = access.paths.dirname(currentDir);
 		if (parentDir === currentDir) break;
 		currentDir = parentDir;
 	}
@@ -53,9 +66,15 @@ export function loadProjectContextFiles(cwd: string, agentDir: string): Array<{ 
 	return files;
 }
 
-export function discoverPromptFile(cwd: string, agentDir: string, filename: string): string | undefined {
-	const projectPath = join(cwd, CONFIG_DIR_NAME, filename);
-	if (existsSync(projectPath)) return projectPath;
-	const globalPath = join(agentDir, filename);
-	return existsSync(globalPath) ? globalPath : undefined;
+export async function discoverPromptFile(
+	access: ResourceAccessPort,
+	cwd: string,
+	agentDir: string,
+	filename: string,
+	signal?: AbortSignal,
+): Promise<string | undefined> {
+	const projectPath = access.paths.join(cwd, CONFIG_DIR_NAME, filename);
+	if (await access.files.stat(projectPath, { signal })) return projectPath;
+	const globalPath = access.paths.join(agentDir, filename);
+	return (await access.files.stat(globalPath, { signal })) ? globalPath : undefined;
 }
