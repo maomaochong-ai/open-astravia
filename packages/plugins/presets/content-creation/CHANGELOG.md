@@ -4,8 +4,9 @@
 
 ### Changed
 
-- Prompt 节点明确收敛为可选的多消费者复用原语：Agent 默认将单次使用的提示词保存在生成节点，并在自动 Prompt 只有一个消费者时通过 readiness 给出可修复诊断；操作 Schema、自动方法上下文与工作流 Skill 同步提供一致的选择规则。
-- 移除 `content_creation_assets` / `content_creation_edit` / `content_creation_run` 工具描述中的反向触发段（Do NOT / Only for）。误调防线回落到 heavy 首调确认闸（edit 会话内首调确认）与 run 自带的全局确认对话框。
+- 内容创作的四个领域工具改为固定模型工具面，不再按用户消息关键词逐轮启停；插件移除动态 System Prompt Provider、静态 Prompt 贡献及对应写权限，专业方法改由宿主 `invoke_skill` 按需返回到消息历史，避免工具 Schema 或 system 前缀跨 Turn 变化，并移除不再需要的 `agent.tools.control` 权限。
+- Prompt 节点明确收敛为可选的多消费者复用原语：Agent 默认将单次使用的提示词保存在生成节点，并在自动 Prompt 只有一个消费者时通过 readiness 给出可修复诊断；操作 Schema 与工作流 Skill 提供一致的选择规则。
+- 四个领域工具的 description 重写为“正向触发、反向边界、必要前置、副作用、关键返回”的简洁路由合同，并按 `tools/` 下的独立模块拆分名称、模板字符串描述、Schema 与 handler；`content_creation_edit` 的视频方法教程移回按需 Skill/reference，`assets` / `edit` 明确替代路径，关键 action/ID/批次字段和全部 operation 判别分支补齐模型可见语义说明，同时保留 heavy 首调确认与 run 全局确认边界。
 - `content_creation_edit` 在注册处显式声明 `side_effect: "heavy"`（往用户工作区写内容工程文件树），不再依赖宿主兜底清单；行为不变（首调确认此前已由清单兜住）。
 
 ### Added

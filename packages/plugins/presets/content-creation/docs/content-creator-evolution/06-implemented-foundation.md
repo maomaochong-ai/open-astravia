@@ -1,23 +1,24 @@
 # 已实施基础
 
-本轮落地的是路线图 Phase 1、Phase 2 和 Phase 4 的可独立交付部分，目标是先降低无关上下文、减少工具选择错误，并把“如何做好内容”变成按任务加载的专业方法。没有在同一轮修改项目持久化协议或引入尚未验证的自动评审状态机。
+本轮落地的是路线图 Phase 1、Phase 2 和 Phase 4 的可独立交付部分，目标是减少近义工具和工具选择错误，并把“如何做好内容”变成按任务加载的专业方法。没有在同一轮修改项目持久化协议或引入尚未验证的自动评审状态机。
 
 ## 贡献与路由
 
-- 插件启用后贡献 Prompt、Skill 和三个领域 Tool；输入栏“内容创作”模式负责软显隐和 prompt 装饰。
-- 动态路由根据当前用户文本启用 `inspect`、`edit`、`run` 的最小集合，不能切换宿主或其它插件工具。
-- 系统 Prompt 缩为三个领域入口、状态检查和运行确认语义，不再承担完整创作教程。
+- 插件启用后以固定顺序贡献 Skill 和 `inspect`、`assets`、`edit`、`run` 四个领域 Tool；输入栏不再提供“内容创作”开关。
+- 插件不注册静态或动态 System Prompt，不申请 `agent.systemPrompt.write` 或 `agent.tools.control`。
+- 模型通过稳定 Skill 索引调用宿主 `invoke_skill`；Skill 正文作为工具结果进入消息历史，再按任务读取必要 reference。
 
-结果：模型面对稳定的领域工具面，输入模式仍能显式表达当前画布上下文，而不是承担安全隔离职责。
+结果：用户措辞和工作流阶段不会改写 system prompt；模型面对的工具名称、顺序和 Schema 保持稳定，方法知识在稳定前缀之后按需进入历史。
 
-## 三个领域工具
+## 四个领域工具
 
 原有 7 个工具收敛为：
 
 | 工具 | 职责 |
 | --- | --- |
 | `content_creation_inspect` | 读取 summary/project/graph/readiness/capabilities/runtime/diagnostics 等窄视图 |
-| `content_creation_edit` | 原子提交 revision-bound 语义 operation，不要求用户确认 |
+| `content_creation_assets` | 发现并导入宿主已授权的本地媒体，返回稳定素材引用 |
+| `content_creation_edit` | 原子提交 revision-bound 语义 operation；会话内首调经 heavy 工具闸确认，不再逐操作预览确认 |
 | `content_creation_run` | prepare/status/cancel 生成运行；prepare 进入插件全局确认弹窗 |
 
 `edit` 将节点、连接和素材绑定作为一个批次完成校验与提交；revision 冲突或任一命令失败时不会产生部分修改。Agent 使用稳定的 `targetInput` 语义输入，领域层负责解析真实端口，并为端口缺失、类型不匹配、端口占用和成环返回不同错误代码。
@@ -39,8 +40,8 @@
 
 ## 已验证合同
 
-- 工具注册面固定为 3 个领域工具。
-- 只读诊断、工作流规划和端到端生成请求会得到不同的最小工具集合。
+- 工具注册面固定为 4 个领域工具，插件没有 System Prompt 或工具控制权限。
+- 只读诊断、工作流规划和端到端生成请求复用同一工具集合，通过 `invoke_skill` 和必要 reference 获取不同方法知识。
 - 创建、编辑、删除、语义连线和素材绑定都直接原子应用，revision conflict 不得覆盖并发修改。
 - 生成准备不消耗额度，用户必须在全局弹窗确认；运行仍按依赖排序。
 - 端口解析、成环诊断、工作流 readiness、凭据模型过滤与全局运行弹窗都有定向测试。

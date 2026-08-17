@@ -7,7 +7,7 @@
 系统应满足：
 
 - 非内容创作会话不携带该插件贡献。
-- 内容创作会话每轮只看到当前阶段必要的领域工具。
+- 内容创作工具包一旦进入会话，工具名称、顺序和 Schema 在后续 Turn 保持稳定。
 - 专业知识按模态、任务和模型加载，不与执行 schema 混在一起。
 - Agent 先产出结构化创作计划，画布是计划的投影与人工编辑器。
 - 所有付费生成都有成本可见的 plan 和确认 gate。
@@ -18,7 +18,7 @@
 
 ```text
 1. Contribution Gate
-   hard isolation / scenario / agent mode / per-turn tool gate
+   hard isolation / scenario / session-monotonic deferred bundle
 
 2. Knowledge Plane
    router skill / modality skill / recipe / model profile / quality rubric
@@ -93,26 +93,24 @@ type EditRequest =
 
 `open_content_creation` 作为 edit/run 成功后的宿主副作用或 UI action，不再占一个模型工具。
 
-### L2：逐轮工具 gate
+### L2：稳定工具面与按需 Skill
 
-增加 `registerSystemPromptProvider()`，结合 `agent.tools.control`，按当前请求和项目阶段启用工具：
+插件贡献启用期间，`inspect`、`assets`、`edit`、`run` 保持固定的模型工具集合与注册顺序。工具的
+name、description 和判别式 Schema 负责选择语义；heavy 首调确认与 run 全局确认继续承担执行安全边界。
 
-| 场景 | 启用工具 |
-| --- | --- |
-| 用户询问当前项目/失败原因 | inspect |
-| 用户创建或修改方案 | inspect + edit |
-| 用户确认生成、继续或查询进度 | inspect + run |
-| 无内容创作意图 | 全部关闭，或由 hard isolation 直接移除插件 |
-
-路由应优先使用显式模式状态、当前 stage、卡片动作和结构化 UI 事件；关键词只作兜底。不要每轮额外调用一个分类模型来节省少量 schema token。
-
-`agent.tools.control` 可以改变运行时工具可见性，属于高权限能力。provider 内必须维护本插件工具名 allowlist，只允许切换 `content_creation_inspect`、`content_creation_edit` 和 `content_creation_run`，并用测试证明它不会关闭宿主或其它插件工具。
+插件不注册静态或动态 System Prompt，也不申请 `agent.systemPrompt.write` 或 `agent.tools.control`。稳定的 Skill
+索引负责说明触发边界；模型命中后调用宿主 `invoke_skill`，Skill 正文以工具结果进入消息历史，并按正文路由
+读取必要 reference。这样用户措辞和工作流阶段不会改写 system 前缀或工具定义，专业知识仍可按任务渐进披露。
 
 ### L3：宿主级 deferred plugin tools
 
-长期可把现有 MCP `tool_search` 的 deferred controller 抽象到所有 catalog tool source。工具超过阈值时只注入轻量索引和搜索工具，命中工具在同一 Agent Tool Loop 下一次模型调用中激活。
+长期可把现有 MCP `tool_search` 的 deferred controller 抽象到所有 catalog tool source。当某个领域工具包
+的序列化 Schema 超过预算时，只注入轻量索引和搜索工具；命中后一次性激活完整领域工具包，并在当前
+Session 内只增不减。允许首次激活产生一次可解释的缓存变化，后续 Turn 必须恢复稳定，不能按工作流阶段
+反复启停。
 
-这是跨插件的架构能力，不应只为 `content-creation` 私造第二套搜索协议。短期用 L0-L2 即可。
+触发阈值应以 Schema 字节数或估算 token 为主，而不是只数工具个数。这是跨插件的架构能力，不应只为
+`content-creation` 私造第二套搜索协议。短期使用 L0-L2 的固定工具面。
 
 ## 第二层：Skill 与知识资源图
 
