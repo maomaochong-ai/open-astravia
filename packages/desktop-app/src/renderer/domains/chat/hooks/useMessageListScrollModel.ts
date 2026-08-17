@@ -1,6 +1,6 @@
 import { activityPanelResizingAtom, type ChatMessage, pendingScrollToEntryAtom } from "@shared/store/atoms";
 import { getDefaultStore, useAtomValue } from "jotai";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import type { VirtuosoHandle } from "react-virtuoso";
 
 const MIN_SCROLL_LERP_RATIO = 0.045;
@@ -23,11 +23,7 @@ interface MessageListScrollModelInput {
 }
 
 export interface MessageListScrollModel {
-	activeUserAnimationId: string | null;
-	enteringUserMessageId: string | null;
 	onAtBottomChange: (atBottom: boolean) => void;
-	onUserMessageEntryComplete: () => void;
-	pendingUserAnimationId: string | null;
 	scrollerRef: (element: HTMLElement | Window | null) => void;
 	virtuosoRef: React.RefObject<VirtuosoHandle | null>;
 }
@@ -45,26 +41,11 @@ export function useMessageListScrollModel({
 	activityPanelResizingRef.current = activityPanelResizing;
 	const atBottomRef = useRef(true);
 	const shouldFollowBottomRef = useRef(true);
-	const previousRenderMessageCountRef = useRef(messages.length);
-	const lastMessage = messages.at(-1);
-	const enteringUserMessageId =
-		messages.length > previousRenderMessageCountRef.current && lastMessage?.role === "user" ? lastMessage.id : null;
-	const [pendingUserAnimationId, setPendingUserAnimationId] = useState<string | null>(null);
-	const pendingUserAnimationIdRef = useRef<string | null>(null);
-	const [activeUserAnimationId, setActiveUserAnimationId] = useState<string | null>(null);
 	const lerpAnimationFrameRef = useRef<number | null>(null);
 	const idleFrameCountRef = useRef(0);
 	const lastTouchYRef = useRef<number | null>(null);
 	const isStreamingRef = useRef(isStreaming);
 	isStreamingRef.current = isStreaming;
-
-	const releasePendingUserAnimation = useCallback(() => {
-		const id = pendingUserAnimationIdRef.current;
-		if (!id) return;
-		pendingUserAnimationIdRef.current = null;
-		setPendingUserAnimationId(null);
-		setActiveUserAnimationId(id);
-	}, []);
 
 	const tickLerp = useCallback(() => {
 		const element = scrollerElementRef.current;
@@ -90,14 +71,12 @@ export function useMessageListScrollModel({
 			lerpAnimationFrameRef.current = requestAnimationFrame(tickLerp);
 		} else if (isStreamingRef.current) {
 			idleFrameCountRef.current++;
-			releasePendingUserAnimation();
 			lerpAnimationFrameRef.current = requestAnimationFrame(tickLerp);
 		} else {
 			idleFrameCountRef.current = 0;
-			releasePendingUserAnimation();
 			lerpAnimationFrameRef.current = null;
 		}
-	}, [releasePendingUserAnimation]);
+	}, []);
 
 	const startFollowingBottom = useCallback(() => {
 		// 有新内容进来就恢复逐帧测量，别让降频把这次追底拖后。
@@ -112,11 +91,10 @@ export function useMessageListScrollModel({
 			atBottomRef.current = atBottom;
 			if (atBottom) {
 				shouldFollowBottomRef.current = true;
-				releasePendingUserAnimation();
 				startFollowingBottom();
 			}
 		},
-		[releasePendingUserAnimation, startFollowingBottom],
+		[startFollowingBottom],
 	);
 
 	const stopFollowingBottom = useCallback(() => {
@@ -160,9 +138,6 @@ export function useMessageListScrollModel({
 		}
 		atBottomRef.current = true;
 		shouldFollowBottomRef.current = true;
-		pendingUserAnimationIdRef.current = null;
-		setPendingUserAnimationId(null);
-		setActiveUserAnimationId(null);
 		skipNextLerpRef.current = true;
 
 		const store = getDefaultStore();
@@ -211,30 +186,19 @@ export function useMessageListScrollModel({
 		if (shouldFollowBottomRef.current) startFollowingBottom();
 	}, [messages, isStreaming, startFollowingBottom]);
 
+	// 新用户消息：直接贴底跟随。这里曾经要先把跟随关掉、等气泡入场动画播完再打开，
+	// 那条路径每次发送都会在 layout effect 里再 setState 一次，把整张列表同步重渲
+	// （Profiler 里表现为 nested-update）。入场动画去掉后不再需要这层等待。
 	const previousMessageCountRef = useRef(messages.length);
 	useLayoutEffect(() => {
 		const previousCount = previousMessageCountRef.current;
 		previousMessageCountRef.current = messages.length;
 		const newMessage = messages.at(-1);
 		if (messages.length > previousCount && newMessage?.role === "user") {
-			setActiveUserAnimationId(newMessage.id);
-			pendingUserAnimationIdRef.current = null;
-			setPendingUserAnimationId(null);
 			atBottomRef.current = true;
-			shouldFollowBottomRef.current = false;
-			skipNextLerpRef.current = true;
+			shouldFollowBottomRef.current = true;
 		}
 	}, [messages]);
-
-	useEffect(() => {
-		previousRenderMessageCountRef.current = messages.length;
-	}, [messages.length]);
-
-	const onUserMessageEntryComplete = useCallback(() => {
-		setActiveUserAnimationId(null);
-		shouldFollowBottomRef.current = true;
-		startFollowingBottom();
-	}, [startFollowingBottom]);
 
 	const scrollerRef = useCallback((element: HTMLElement | Window | null) => {
 		scrollerElementRef.current = element instanceof HTMLElement ? element : null;
@@ -291,11 +255,7 @@ export function useMessageListScrollModel({
 	);
 
 	return {
-		activeUserAnimationId,
-		enteringUserMessageId,
 		onAtBottomChange,
-		onUserMessageEntryComplete,
-		pendingUserAnimationId,
 		scrollerRef,
 		virtuosoRef,
 	};

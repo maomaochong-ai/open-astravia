@@ -107,6 +107,12 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **发送一条消息的渲染开销收敛（低配设备可感）**：用户气泡取消入场动画（弹入 + 正文去模糊），
+  静态气泡不再挂载 motion 组件；驱动该动画的「挂起 / 进行中」状态机连同消息列表滚动模型里
+  的 layout-effect setState 一并移除——此前每次发送都会因此额外同步重渲整张可见列表
+  （React Profiler 中表现为多次 `nested-update`）。新用户消息改为直接贴底跟随。
+  输入栏工具按钮与流式态「入队」按钮的 hover / press 缩放由 motion spring 改为 CSS transform。
+
 - **生产安装包收窄系统插件集**：开发环境继续加载现有全部 preset，`pack` / `dist`
   产物只内置 `vetta-ui-design`、`image-gen`、`media-viewer`、`office-viewer`、
   `svg-viewer`、`chart-renderer` 与 `git`。构建入口显式固定 development / production

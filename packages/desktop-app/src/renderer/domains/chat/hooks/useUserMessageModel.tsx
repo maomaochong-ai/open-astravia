@@ -22,7 +22,6 @@ import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import {
 	SettingsAssistBadgeView,
 	type UserMessageContextMenuViewProps,
-	type UserMessageEntryState,
 	type UserMessageViewProps,
 } from "@vetta/theme-ui/chat";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
@@ -176,13 +175,11 @@ function inputHasDraft(): boolean {
 }
 
 export interface UserMessageModelInput {
-	entryState: UserMessageEntryState;
 	hasAssistantAfter?: boolean;
 	isLastUserMessage?: boolean;
 	isStreaming?: boolean;
 	message: ChatMessage;
 	onAbortEdit?: () => void;
-	onEntryComplete?: () => void;
 }
 
 export interface UserMessageModel extends UserMessageViewProps {
@@ -191,11 +188,9 @@ export interface UserMessageModel extends UserMessageViewProps {
 
 export function useUserMessageModel({
 	message,
-	entryState,
 	isLastUserMessage = false,
 	isStreaming = false,
 	onAbortEdit,
-	onEntryComplete,
 }: UserMessageModelInput): UserMessageModel {
 	const { t } = useTranslation("chat");
 	// 正文里的能力 token 要还原成命令区插入时的样子（图标 + 别名）。
@@ -558,7 +553,8 @@ export function useUserMessageModel({
 	);
 
 	return {
-		entryState,
+		// 入场动画只服务于 site 的演示流；桌面端恒静态，不驱动 motion。
+		entryState: "static",
 		displayText,
 		hasImages,
 		hasSkillBadge,
@@ -611,7 +607,6 @@ export function useUserMessageModel({
 		),
 		relativeTime: null,
 		copyButton: <CopyButton getText={() => copyText} />,
-		onEntryComplete,
 		onContextMenu: handleOpenContextMenu,
 		onEdit: handleEdit,
 		onFork: handleFork,

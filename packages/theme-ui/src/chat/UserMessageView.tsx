@@ -117,15 +117,23 @@ function UserMessageTextShell({
 			className="relative min-w-0 max-w-full overflow-hidden"
 			style={{ maxHeight: expanded ? undefined : USER_MESSAGE_COLLAPSED_MAX_HEIGHT }}
 		>
-			<motion.div
-				ref={contentRef}
-				className="min-w-0 max-w-full"
-				initial={shouldAnimateIn ? TEXT_INITIAL : false}
-				animate={shouldHoldHidden ? TEXT_INITIAL : TEXT_VISIBLE}
-				transition={TEXT_TRANSITION}
-			>
-				{children}
-			</motion.div>
+			{/* 静态态不挂 motion：历史消息与发送后常驻的气泡占绝大多数，
+			    给每条都套一层动画组件只是白付出订阅与逐帧调度的开销。 */}
+			{shouldAnimateIn || shouldHoldHidden ? (
+				<motion.div
+					ref={contentRef}
+					className="min-w-0 max-w-full"
+					initial={shouldAnimateIn ? TEXT_INITIAL : false}
+					animate={shouldHoldHidden ? TEXT_INITIAL : TEXT_VISIBLE}
+					transition={TEXT_TRANSITION}
+				>
+					{children}
+				</motion.div>
+			) : (
+				<div ref={contentRef} className="min-w-0 max-w-full">
+					{children}
+				</div>
+			)}
 			{canExpand && !expanded && (
 				<div className="absolute inset-x-0 bottom-0 flex h-20 items-end justify-center bg-gradient-to-t from-secondary via-secondary/80 to-secondary/0 pb-1.5">
 					<button
@@ -223,16 +231,12 @@ export function UserMessageView({
 	const showActions = showPrimaryActions || showMetaRow;
 
 	return (
-		<motion.div
-			className="flex min-w-0 justify-end"
-			initial={shouldAnimateIn ? HIDDEN_VISUAL_STATE : false}
-			animate={shouldHoldHidden ? HIDDEN_VISUAL_STATE : VISIBLE_VISUAL_STATE}
-			transition={ENTRY_TRANSITION}
-			onAnimationComplete={shouldAnimateIn ? onEntryComplete : undefined}
-			style={MESSAGE_STYLE}
+		<UserMessageFrame
+			shouldAnimateIn={shouldAnimateIn}
+			shouldHoldHidden={shouldHoldHidden}
+			onEntryComplete={onEntryComplete}
 			onContextMenu={onContextMenu}
-			onMouseEnter={() => onActionsVisibleChange(true)}
-			onMouseLeave={() => onActionsVisibleChange(false)}
+			onActionsVisibleChange={onActionsVisibleChange}
 		>
 			<div className="relative flex min-w-0 max-w-[72%] flex-col items-end">
 				{hasAppshot && <div className="mb-1.5 flex justify-end">{appshot}</div>}
@@ -343,6 +347,55 @@ export function UserMessageView({
 					</div>
 				)}
 			</div>
+		</UserMessageFrame>
+	);
+}
+
+/**
+ * 气泡外框。
+ *
+ * 只有「正在入场 / 入场前挂起」的那一条才需要 motion；其余（历史消息、发送完成
+ * 后的常驻气泡）走普通 div。列表里静态气泡是绝大多数，让它们各自挂一个动画组件
+ * 会在每次列表重渲时付出订阅与逐帧调度成本，而屏幕上并没有任何东西在动。
+ */
+function UserMessageFrame({
+	shouldAnimateIn,
+	shouldHoldHidden,
+	onEntryComplete,
+	onContextMenu,
+	onActionsVisibleChange,
+	children,
+}: {
+	shouldAnimateIn: boolean;
+	shouldHoldHidden: boolean;
+	onEntryComplete?: () => void;
+	onContextMenu: (event: MouseEvent<HTMLDivElement>) => void;
+	onActionsVisibleChange: (visible: boolean) => void;
+	children: ReactNode;
+}): JSX.Element {
+	const handlers = {
+		onContextMenu,
+		onMouseEnter: () => onActionsVisibleChange(true),
+		onMouseLeave: () => onActionsVisibleChange(false),
+	};
+	if (!shouldAnimateIn && !shouldHoldHidden) {
+		return (
+			<div className="flex min-w-0 justify-end" {...handlers}>
+				{children}
+			</div>
+		);
+	}
+	return (
+		<motion.div
+			className="flex min-w-0 justify-end"
+			initial={shouldAnimateIn ? HIDDEN_VISUAL_STATE : false}
+			animate={shouldHoldHidden ? HIDDEN_VISUAL_STATE : VISIBLE_VISUAL_STATE}
+			transition={ENTRY_TRANSITION}
+			onAnimationComplete={shouldAnimateIn ? onEntryComplete : undefined}
+			style={MESSAGE_STYLE}
+			{...handlers}
+		>
+			{children}
 		</motion.div>
 	);
 }

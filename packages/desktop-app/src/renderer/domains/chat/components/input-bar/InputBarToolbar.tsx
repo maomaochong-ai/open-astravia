@@ -1,6 +1,5 @@
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import { memo } from "react";
-import { motion } from "motion/react";
 import { ContextRing } from "../ContextRing";
 import { ExecutionModeSelector } from "../ExecutionModeSelector";
 import { ModelSelector } from "../ModelSelector";
@@ -9,9 +8,9 @@ import { ActiveActionCapsules, type ActiveActionCapsule } from "./ActiveActionCa
 import { InputBarToolbarButton } from "./InputBarToolbarButton";
 import type { InputBarLabels, SpeechInputModel } from "./types";
 
-const SPRING = { type: "spring" as const, stiffness: 460, damping: 32, mass: 0.9 };
-const TOOLBAR_BUTTON_HOVER = { scale: 1.06 };
-const TOOLBAR_BUTTON_TAP = { scale: 0.92 };
+/** hover / press 缩放走 CSS，与 InputBarToolbarButton 保持一致。 */
+const QUEUE_BUTTON_INTERACTION =
+	"transition-transform duration-150 ease-out will-change-transform hover:scale-[1.06] active:scale-[0.92]";
 
 interface InputBarToolbarProps {
 	/** 已激活的 input action，紧跟执行模式右侧显示。 */
@@ -147,17 +146,14 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 					/>
 				)}
 				{isStreaming && !isEmpty ? (
-					<motion.button
+					<button
 						type="button"
 						onClick={onSend}
-						whileHover={TOOLBAR_BUTTON_HOVER}
-						whileTap={TOOLBAR_BUTTON_TAP}
-						transition={SPRING}
 						title={labels.toolbar.queue}
-						className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+						className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground ${QUEUE_BUTTON_INTERACTION}`}
 					>
 						<span className="icon-[solar--add-square-linear] h-[18px] w-[18px]" />
-					</motion.button>
+					</button>
 				) : (
 					<div className="shrink-0">
 						<SendButton canSend={canSend} isStreaming={isStreaming} onSend={onSend} onAbort={onAbort} />

@@ -99,19 +99,6 @@ export function MessageListView({
 						isStreaming={isStreaming}
 						isLastUserMessage={message.id === lastUserMessageId}
 						hasAssistantAfter={index < lastNonUserIndex}
-						userMessageEntryState={
-							message.id === scroll.activeUserAnimationId
-								? "enter"
-								: message.id === scroll.pendingUserAnimationId ||
-										message.id === scroll.enteringUserMessageId
-									? "hidden"
-									: "static"
-						}
-						onUserMessageEntryComplete={
-							message.id === scroll.activeUserAnimationId
-								? scroll.onUserMessageEntryComplete
-								: undefined
-						}
 						onAbortEdit={onAbort}
 					/>
 					{showForkOrigin ? <ForkOriginBanner sourceMessage={sourceUser} /> : null}
@@ -127,10 +114,6 @@ export function MessageListView({
 			messages,
 			modelSwitchLabels,
 			onAbort,
-			scroll.activeUserAnimationId,
-			scroll.enteringUserMessageId,
-			scroll.onUserMessageEntryComplete,
-			scroll.pendingUserAnimationId,
 			tailMessageId,
 		],
 	);
