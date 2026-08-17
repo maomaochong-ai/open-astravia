@@ -2,8 +2,8 @@ import type { RuntimeSessionHostInteractionContext } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { SandboxPermissionContext, SandboxPermissionRequest } from "@vetta/runtime-core/sandbox";
 import type { CodingToolRegistration } from "@vetta/runtime-tools";
-import type { CodingAgentSandboxToolSet } from "../../../composition/contracts/session-execution-environment.js";
-import { confirmSandboxPermission, isSensitiveSandboxRequest } from "./sandbox-permission-policy.js";
+import type { CodingAgentSandboxToolSet } from "../../composition/contracts/session-execution-environment.js";
+import { confirmSandboxPermission, isSensitiveSandboxRequest } from "./permission-policy.js";
 
 export interface SandboxRuntimeToolOptions {
 	readonly cwd: string;

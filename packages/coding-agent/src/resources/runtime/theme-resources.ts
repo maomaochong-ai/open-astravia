@@ -1,4 +1,4 @@
-import type { Theme } from "../../modes/interactive/theme/theme.js";
+import type { Theme } from "../../theme/index.js";
 import type { ResourceDiagnostic } from "../contracts/diagnostics.js";
 import type { ResourceAccessPort } from "../contracts/resource-access.js";
 import type { ThemeResourceParser } from "../contracts/resource-runtime.js";

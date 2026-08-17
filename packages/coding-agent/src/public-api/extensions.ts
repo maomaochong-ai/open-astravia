@@ -14,4 +14,4 @@ export {
 	loadThemeFromContent,
 	Theme,
 	type ThemeColor,
-} from "../modes/interactive/theme/theme.js";
+} from "../theme/index.js";

@@ -1,7 +1,7 @@
 import type { RuntimeSessionHostInteractionContext } from "@vetta/runtime-core";
 import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import type { CodingAgentSandboxEnvironment } from "../../composition/contracts/session-execution-environment.js";
-import { createSandboxToolRegistrations } from "./sandbox/sandbox-tool-utils.js";
+import { createSandboxToolRegistrations } from "./tool-utils.js";
 
 export interface CodingAgentSandboxToolsOptions {
 	readonly cwd: string;

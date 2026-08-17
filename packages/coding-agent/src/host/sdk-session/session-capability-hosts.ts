@@ -7,11 +7,11 @@ import {
 } from "../../export-html/index.js";
 import { DEFAULT_MEMORY_CHAR_LIMIT } from "../../memory/index.js";
 import type { CodingAgentModelRuntime } from "../../models/index.js";
-import { theme } from "../../modes/interactive/theme/theme.js";
 import type { CreateCodingAgentSessionOptions } from "../../public-api/sdk/index.js";
 import type { SessionResourceRuntime } from "../../resources/index.js";
 import { createCodingAgentSessionSetupSeedInitializer } from "../../sessions/setup/session-setup-seed-initializer.js";
 import type { SettingsRuntime } from "../../settings/index.js";
+import { theme } from "../../theme/index.js";
 import { CodingAgentSdkBashAdapter } from "../coding-agent-sdk-bash-adapter.js";
 import type { CodingAgentSdkExtensionTransitionAdapter } from "../coding-agent-sdk-extension-transition-adapter.js";
 import {

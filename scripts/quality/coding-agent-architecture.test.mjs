@@ -76,7 +76,7 @@ describe("Coding Agent architecture gate", () => {
 		[
 			"historical format to host execution",
 			`${SOURCE_ROOT}/sessions/legacy/reader.ts`,
-			'import { execute } from "../../host/session-execution/executor.js";',
+			'import { execute } from "../../execution/turn/turn-executor.js";',
 			"historical format boundary depends on Agent execution",
 		],
 		[
@@ -340,17 +340,43 @@ describe("Coding Agent architecture gate", () => {
 	});
 
 	it("keeps Session execution behind the injected Host environment", () => {
-		const executionPath = `${SOURCE_ROOT}/host/session-execution/execution-runtime.ts`;
-		const sandboxPath = `${SOURCE_ROOT}/host/session-execution/sandbox-tool-registrations.ts`;
+		const executionPath = `${SOURCE_ROOT}/execution/session/runtime.ts`;
+		const sandboxPath = `${SOURCE_ROOT}/execution/sandbox/tool-registrations.ts`;
 		const state = createState([
 			{ path: executionPath, text: 'import { spawn } from "node:child_process";' },
 			{ path: sandboxPath, text: 'import { createNodeSandboxHost } from "@vetta/runtime-node/sandbox";' },
 		]);
 
-		expect(findCodingAgentArchitectureViolations(state)).toEqual([
-			`${executionPath}:1: Session execution must consume its Host environment Port`,
-			`${sandboxPath}:1: Session execution must consume its Host environment Port`,
+		expect(findCodingAgentArchitectureViolations(state)).toEqual(
+			expect.arrayContaining([
+				`${executionPath}:1: Session execution must consume its Host environment Port`,
+				`${sandboxPath}:1: Session execution must consume its Host environment Port`,
+			]),
+		);
+	});
+
+	it("keeps the legacy Theme path as a thin compatibility facade", () => {
+		const legacyThemePath = `${SOURCE_ROOT}/modes/interactive/theme/theme.ts`;
+		const internalConsumerPath = `${SOURCE_ROOT}/extensions/theme-consumer.ts`;
+		const internalConsumer = createState([
+			{
+				path: internalConsumerPath,
+				text: 'import { Theme } from "../modes/interactive/theme/theme.js";',
+			},
 		]);
+		const implementationInFacade = createState([
+			{
+				path: legacyThemePath,
+				text: 'import { Theme } from "../../../theme/theme.js";',
+			},
+		]);
+
+		expect(findCodingAgentArchitectureViolations(internalConsumer)).toContain(
+			`${internalConsumerPath}:1: internal Theme consumers must use the Theme domain entry`,
+		);
+		expect(findCodingAgentArchitectureViolations(implementationInFacade)).toContain(
+			`${legacyThemePath}:1: legacy Theme facade may only export the Theme domain entry`,
+		);
 	});
 
 	it.each([
@@ -516,9 +542,9 @@ describe("Coding Agent architecture gate", () => {
 	});
 
 	it("keeps RPC protocol semantics independent from Node transport", () => {
-		const rpcModePath = `${SOURCE_ROOT}/modes/rpc/rpc-mode.ts`;
-		const bridgePath = `${SOURCE_ROOT}/modes/rpc/rpc-host-bridge.ts`;
-		const clientPath = `${SOURCE_ROOT}/modes/rpc/rpc-client.ts`;
+		const rpcModePath = `${SOURCE_ROOT}/rpc/rpc-mode.ts`;
+		const bridgePath = `${SOURCE_ROOT}/rpc/rpc-host-bridge.ts`;
+		const clientPath = `${SOURCE_ROOT}/rpc/rpc-client.ts`;
 		const hostPath = "packages/cli-app/src/rpc/runtime-host/runtime-host.ts";
 		const nodeClientTransportPath = "packages/cli-app/src/rpc/node-rpc-client-transport.ts";
 		const importingNode = createState([
@@ -678,10 +704,10 @@ describe("Coding Agent architecture gate", () => {
 	});
 
 	it("keeps OS sandbox implementation behind injected Host Services", () => {
-		const sandboxHostRoot = `${SOURCE_ROOT}/host/session-execution/sandbox/`;
+		const sandboxPolicyRoot = `${SOURCE_ROOT}/execution/sandbox/`;
 		const retiredAdapterPath = `${SOURCE_ROOT}/adapters/runtime-core/execution-mode/sandbox-tools.ts`;
-		const retiredPath = `${sandboxHostRoot}linux-bwrap-tools.ts`;
-		const policyPath = `${sandboxHostRoot}sandbox-tool-utils.ts`;
+		const retiredPath = `${sandboxPolicyRoot}linux-bwrap-tools.ts`;
+		const policyPath = `${sandboxPolicyRoot}tool-utils.ts`;
 		const retiredAdapter = createState([{ path: retiredAdapterPath, text: "export function create() {}" }]);
 		const retiredImplementation = createState([
 			{ path: retiredPath, text: 'import { spawn } from "node:child_process";' },

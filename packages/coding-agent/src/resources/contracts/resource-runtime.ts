@@ -5,7 +5,7 @@ import type {
 	ExtensionFactoryLoader,
 	LoadExtensionsResult,
 } from "../../extensions/index.js";
-import type { Theme } from "../../modes/interactive/theme/theme.js";
+import type { Theme } from "../../theme/index.js";
 import type { PromptTemplate } from "../prompts/index.js";
 import type { Skill } from "../skills/index.js";
 import type { ResourceDiagnostic } from "./diagnostics.js";

@@ -16,6 +16,7 @@ const RETIRED_LAYER_TERM_PATTERN = new RegExp(
 );
 
 const DOMAIN_ROOTS = Object.freeze([
+	`${SOURCE_ROOT}/execution/`,
 	`${SOURCE_ROOT}/extensions/`,
 	`${SOURCE_ROOT}/features/`,
 	`${SOURCE_ROOT}/memory/`,
@@ -23,7 +24,9 @@ const DOMAIN_ROOTS = Object.freeze([
 	`${SOURCE_ROOT}/model-context/`,
 	`${SOURCE_ROOT}/plugins/`,
 	`${SOURCE_ROOT}/resources/`,
+	`${SOURCE_ROOT}/rpc/`,
 	`${SOURCE_ROOT}/sessions/`,
+	`${SOURCE_ROOT}/theme/`,
 ]);
 
 const COMPOSITION_PUBLIC_SOURCE_ROOTS = Object.freeze([
@@ -100,6 +103,7 @@ export function findCodingAgentArchitectureViolations(state) {
 	checkResourceAccessBoundary(state, violations);
 	checkCommandExecutionBoundary(state, violations);
 	checkExecutionModeHostBoundary(state, violations);
+	checkThemeDomainBoundary(state, violations);
 	checkToolResultArtifactBoundary(state, violations);
 	checkBootstrapBoundary(state, violations);
 	checkResourcePackageHostBoundary(state, violations);
@@ -391,13 +395,13 @@ function checkCommandExecutionBoundary(state, violations) {
 
 function checkExecutionModeHostBoundary(state, violations) {
 	const retiredExecutionModeRoot = `${SOURCE_ROOT}/adapters/runtime-core/execution-mode/`;
-	const sandboxHostRoot = `${SOURCE_ROOT}/host/session-execution/sandbox/`;
+	const sandboxPolicyRoot = `${SOURCE_ROOT}/execution/sandbox/`;
 	const retiredPlatformFiles = new Set([
-		`${sandboxHostRoot}linux-bwrap-tools.ts`,
-		`${sandboxHostRoot}macos-seatbelt-tools.ts`,
-		`${sandboxHostRoot}windows-sandbox-policy.ts`,
-		`${sandboxHostRoot}windows-sandbox-tools.ts`,
-		`${sandboxHostRoot}workspace-guard.ts`,
+		`${sandboxPolicyRoot}linux-bwrap-tools.ts`,
+		`${sandboxPolicyRoot}macos-seatbelt-tools.ts`,
+		`${sandboxPolicyRoot}windows-sandbox-policy.ts`,
+		`${sandboxPolicyRoot}windows-sandbox-tools.ts`,
+		`${sandboxPolicyRoot}workspace-guard.ts`,
 	]);
 	for (const file of state.files) {
 		if (file.path.startsWith(retiredExecutionModeRoot)) {
@@ -407,18 +411,32 @@ function checkExecutionModeHostBoundary(state, violations) {
 			violations.push(`${file.path}: OS sandbox implementation belongs to runtime-node`);
 		}
 		if (
-			file.path.startsWith(sandboxHostRoot) &&
+			file.path.startsWith(sandboxPolicyRoot) &&
 			(/\bNodeJS\s*\./.test(file.text) || /\bprocess\s*\./.test(file.text))
 		) {
 			violations.push(`${file.path}: sandbox policy must consume Host Services, not Node globals`);
 		}
 	}
 	for (const edge of state.edges) {
-		if (edge.path.startsWith(sandboxHostRoot) && edge.specifier.startsWith("node:")) {
+		if (edge.path.startsWith(sandboxPolicyRoot) && edge.specifier.startsWith("node:")) {
 			violations.push(`${edge.path}:${edge.line}: OS sandbox implementation belongs to runtime-node`);
 		}
-		if (edge.path.startsWith(sandboxHostRoot) && edge.specifier.startsWith("@vetta/runtime-node")) {
+		if (edge.path.startsWith(sandboxPolicyRoot) && edge.specifier.startsWith("@vetta/runtime-node")) {
 			violations.push(`${edge.path}:${edge.line}: sandbox policy must consume injected Host Services`);
+		}
+	}
+}
+
+function checkThemeDomainBoundary(state, violations) {
+	const legacyThemeFacade = `${SOURCE_ROOT}/modes/interactive/theme/theme.ts`;
+	const themeEntry = `${SOURCE_ROOT}/theme/index.ts`;
+	for (const edge of state.edges) {
+		const target = resolveSourceTarget(edge.path, edge.specifier);
+		if (edge.path !== legacyThemeFacade && edge.path.startsWith(`${SOURCE_ROOT}/`) && target === legacyThemeFacade) {
+			violations.push(`${edge.path}:${edge.line}: internal Theme consumers must use the Theme domain entry`);
+		}
+		if (edge.path === legacyThemeFacade && (edge.kind !== "export" || target !== themeEntry)) {
+			violations.push(`${edge.path}:${edge.line}: legacy Theme facade may only export the Theme domain entry`);
 		}
 	}
 }
@@ -843,7 +861,7 @@ function checkPortableProductToolOwnership(state, violations) {
 }
 
 function checkRpcHostBoundary(state, violations) {
-	const rpcRoot = `${SOURCE_ROOT}/modes/rpc/`;
+	const rpcRoot = `${SOURCE_ROOT}/rpc/`;
 	const rpcModePath = `${rpcRoot}rpc-mode.ts`;
 	const rpcClientPath = `${rpcRoot}rpc-client.ts`;
 	const hostBridgePaths = new Set([`${rpcRoot}rpc-extension-ui-bridge.ts`, `${rpcRoot}rpc-host-bridge.ts`]);
@@ -942,8 +960,8 @@ function checkSdkSessionIdentityRuntimeBoundary(state, violations) {
 
 function checkToolEnvironmentBoundary(state, violations) {
 	const toolCompositionPath = `${SOURCE_ROOT}/composition/tool-surface/runtime-tools-composition.ts`;
-	const sessionExecutionPath = `${SOURCE_ROOT}/host/session-execution/execution-runtime.ts`;
-	const sandboxRegistrationPath = `${SOURCE_ROOT}/host/session-execution/sandbox-tool-registrations.ts`;
+	const sessionExecutionPath = `${SOURCE_ROOT}/execution/session/runtime.ts`;
+	const sandboxRegistrationPath = `${SOURCE_ROOT}/execution/sandbox/tool-registrations.ts`;
 	const pathPolicyRoot = `${SOURCE_ROOT}/tool-policy/path/`;
 	const platformFactories = [
 		"packages/cli-app/src/rpc/runtime-host/cli-tool-environment.ts",
@@ -1232,6 +1250,7 @@ function isHistoricalExecutionTarget(path) {
 	return (
 		isAdapterPath(path) ||
 		path.startsWith(`${SOURCE_ROOT}/composition/`) ||
+		path.startsWith(`${SOURCE_ROOT}/execution/`) ||
 		path.startsWith(`${SOURCE_ROOT}/host/`) ||
 		path.startsWith(`${SOURCE_ROOT}/modes/`) ||
 		path.startsWith(`${SOURCE_ROOT}/public-api/sdk`)

@@ -66,6 +66,6 @@ agent → host 反向调用（如 IM 发附件）：
 
 ## 参考
 
-- 命令分发：`src/modes/rpc/rpc-command-dispatcher.ts`
-- 模式入口：`src/modes/rpc/rpc-mode.ts`
+- 命令分发：`src/rpc/rpc-command-dispatcher.ts`
+- 模式入口：`src/rpc/rpc-mode.ts`
 - im-gateway / desktop 以本协议驱动子进程

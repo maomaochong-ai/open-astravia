@@ -4,6 +4,7 @@ import type { AgentFeatureDefinition, AgentProfile, ModelCallContributionContext
 import { SessionExtensionComposition, sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
+import { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import { createCodingAgentAskUserQuestionFeature } from "../../features/ask-user-question/index.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import {
@@ -12,7 +13,6 @@ import {
 } from "../../features/todo/todo-session-extension.js";
 import { CODING_AGENT_TODO_OBSERVATION } from "../../features/todo/todo-session-extension-contract.js";
 import { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
-import { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import { type CodingAgentMemoryRolloverRuntime, createCodingAgentMemoryRuntimeFeature } from "../../memory/index.js";
 import type {
 	CodingAgentPluginMcpRuntime,

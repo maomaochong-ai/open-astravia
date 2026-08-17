@@ -5,7 +5,7 @@ import {
 	type EventBus,
 	type LoadExtensionsResult,
 } from "../../extensions/index.js";
-import type { Theme } from "../../modes/interactive/theme/theme.js";
+import type { Theme } from "../../theme/index.js";
 import type { ResourceDiagnostic } from "../contracts/diagnostics.js";
 import type {
 	ResourceExtensionPaths,

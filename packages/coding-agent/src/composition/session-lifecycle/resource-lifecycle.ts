@@ -11,10 +11,10 @@ import {
 import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController, McpRuntimeToolSnapshot } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
+import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
-import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryController, CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type {
 	CodingAgentContextRuntime,

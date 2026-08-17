@@ -1,6 +1,5 @@
 import { createNodeCommandExecutor, createNodeResourcePackageHost } from "@vetta/runtime-node/host";
 import { getSceneDir, getUserSkillsDir, getVettaHomePath } from "../../config.js";
-import { loadThemeFromContent } from "../../modes/interactive/theme/theme.js";
 import type {
 	SessionResourceRuntime,
 	SessionResourceRuntimeOptions,
@@ -8,6 +7,7 @@ import type {
 import type { ResourceSettingsPort } from "../../resources/contracts/resource-source.js";
 import { createResourcePackageRuntime } from "../../resources/packages/package-source-runtime.js";
 import { createSessionResourceRuntime } from "../../resources/runtime/session-resource-runtime.js";
+import { loadThemeFromContent } from "../../theme/index.js";
 import { createCodingAgentNodeExtensionFactoryLoader } from "../extensions/node-extension-factory-loader.js";
 
 export interface CreateCodingAgentSdkSessionResourceRuntimeOptions

@@ -5,6 +5,10 @@ Vetta Coding Agent 的能力、策略与稳定 API 语义层。
 本包定义 Coding Agent 的 Profile、Prompt、Mode、Todo、Memory、Knowledge、Skill、Plugin、Extension、
 IM、Compaction 与工具策略。平台 Runtime 负责选择环境实现并完成最终装配。
 
+包内的 `execution/` 按 Turn、Session、后台工作与 Sandbox 组织产品执行策略，`rpc/` 独立拥有平台无关的
+协议和客户端，`theme/` 独立拥有 Theme 合同、解析和投影。`host/` 只保留迁移中的宿主接线，不再作为产品
+执行逻辑的默认归档位置。
+
 ## 架构定位
 
 ```text

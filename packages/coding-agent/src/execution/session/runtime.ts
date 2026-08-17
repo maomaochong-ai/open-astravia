@@ -26,7 +26,7 @@ import {
 	createTaskOutputToolRegistration,
 	createTaskStopToolRegistration,
 } from "../../features/background-tasks/index.js";
-import { createCodingAgentSandboxToolRegistrations } from "./sandbox-tool-registrations.js";
+import { createCodingAgentSandboxToolRegistrations } from "../sandbox/tool-registrations.js";
 
 const SESSION_EXECUTION_FEATURE_ID = "coding-session-execution-tools";
 

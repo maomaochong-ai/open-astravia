@@ -7,12 +7,27 @@
 
 import type { AgentMessage, ThinkingLevel } from "@vetta/agent-core";
 import type { ImageContent, Model } from "@vetta/ai";
-import type { CompactionResult } from "../../compaction/index.js";
-import type { CodingAgentSessionStats } from "../../public-api/sdk/index.js";
+import type { CompactionResult } from "../compaction/index.js";
 import type { RpcFailureMetadata } from "./rpc-failure.js";
 import type { RpcStartupFailure } from "./rpc-startup-failure.js";
 
-export type SessionStats = CodingAgentSessionStats;
+export interface SessionStats {
+	readonly sessionFile: string | undefined;
+	readonly sessionId: string;
+	readonly userMessages: number;
+	readonly assistantMessages: number;
+	readonly toolCalls: number;
+	readonly toolResults: number;
+	readonly totalMessages: number;
+	readonly tokens: {
+		readonly input: number;
+		readonly output: number;
+		readonly cacheRead: number;
+		readonly cacheWrite: number;
+		readonly total: number;
+	};
+	readonly cost: number;
+}
 
 /** RPC 线协议中的 Bash 执行结果；与具体宿主实现解耦。 */
 export interface RpcBashResult {

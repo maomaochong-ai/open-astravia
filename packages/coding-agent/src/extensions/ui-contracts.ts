@@ -1,4 +1,4 @@
-import type { Theme } from "../modes/interactive/theme/theme.js";
+import type { Theme } from "../theme/index.js";
 import type { KeybindingsManager, ReadonlyFooterDataProvider } from "./infrastructure.js";
 import type { Component, EditorComponent, EditorTheme, OverlayHandle, OverlayOptions, TUI } from "./ui-primitives.js";
 

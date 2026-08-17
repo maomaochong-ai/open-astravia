@@ -1091,14 +1091,14 @@ describe("package boundary analysis", () => {
 
 	it("keeps Session Host capability declarations out of Composition", () => {
 		const compositionPath = "packages/coding-agent/src/composition/session-initialization/peripheral-assembly.ts";
-		const hostPath = "packages/coding-agent/src/host/session-execution/execution-runtime.ts";
+		const executionPath = "packages/coding-agent/src/execution/session/runtime.ts";
 		const hostCapabilities = `
 			export class CodingAgentSessionExecutionRuntime {}
 			export interface CodingAgentSubagentWorkRuntime {}
 		`;
 
 		expect(findPackageBoundaryViolations(compositionPath, hostCapabilities)).toHaveLength(2);
-		expect(findPackageBoundaryViolations(hostPath, hostCapabilities)).toEqual([]);
+		expect(findPackageBoundaryViolations(executionPath, hostCapabilities)).toEqual([]);
 	});
 
 	it("requires scoped production packages to declare workspace imports", () => {

@@ -6,17 +6,17 @@ import {
 } from "@vetta/runtime-core";
 import type { ManagedMcpRuntimeToolSource } from "@vetta/runtime-mcp";
 import type {
-	CodingAgentExtensionInitialization,
-	CodingAgentExtensionSessionHost,
-} from "../../host/extensions/contracts.js";
-import type {
 	CodingAgentTurnExecutor,
 	CodingAgentTurnRetryController,
 	CodingAgentTurnRetryEvent,
 	CodingAgentTurnRetrySettings,
-} from "../../host/session-execution/contracts.js";
-import { createCodingAgentTurnExecutor } from "../../host/session-execution/turn-executor.js";
-import { createCodingAgentTurnRetryController } from "../../host/session-execution/turn-retry-controller.js";
+} from "../../execution/turn/contracts.js";
+import { createCodingAgentTurnExecutor } from "../../execution/turn/turn-executor.js";
+import { createCodingAgentTurnRetryController } from "../../execution/turn/turn-retry-controller.js";
+import type {
+	CodingAgentExtensionInitialization,
+	CodingAgentExtensionSessionHost,
+} from "../../host/extensions/contracts.js";
 import type { CodingAgentRuntimeComposition } from "../contracts/index.js";
 import type { CodingAgentActiveSessionHost } from "./active-session-transition-host.js";
 

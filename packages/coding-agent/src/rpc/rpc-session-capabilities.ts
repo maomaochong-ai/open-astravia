@@ -1,7 +1,7 @@
 import type { AgentMessage, ThinkingLevel } from "@vetta/agent-core";
 import type { Api, ImageContent, Model } from "@vetta/ai";
-import type { CompactionResult } from "../../compaction/index.js";
-import type { ExtensionUIContext, ExtensionUIDialogOptions, ExtensionWidgetOptions } from "../../extensions/index.js";
+import type { CompactionResult } from "../compaction/index.js";
+import type { ExtensionUIContext, ExtensionUIDialogOptions, ExtensionWidgetOptions } from "../extensions/index.js";
 import type { RpcBashResult, RpcCommandType, RpcSessionState, RpcSlashCommand, SessionStats } from "./rpc-types.js";
 
 /** Stable external identifiers retained for RPC consumers; they do not select an execution backend. */

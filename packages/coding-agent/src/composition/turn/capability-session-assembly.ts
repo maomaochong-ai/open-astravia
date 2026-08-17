@@ -18,11 +18,11 @@ import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools";
 import { createEcosystemToolInterceptor } from "../../adapters/ecosystem/tool-interceptor-adapter.js";
 import { CodingAgentPromptRequestAdapter } from "../../adapters/runtime-core/prompt-request-adapter.js";
+import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import { CodingAgentStopHookContinuationSource } from "../../extensions/runtime/stop-hook-continuation-source.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
-import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import { DynamicContributionCatalog } from "../../interception/contribution-catalog.js";
 import {
 	CODING_AGENT_TOOL_INTERCEPTION_ORDER,

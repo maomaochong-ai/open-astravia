@@ -1,4 +1,4 @@
-import { type Theme, theme } from "../interactive/theme/theme.js";
+import { type Theme, theme } from "../theme/index.js";
 import type {
 	ExtensionUIContext,
 	ExtensionUIDialogOptions,

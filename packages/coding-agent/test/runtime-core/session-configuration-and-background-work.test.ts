@@ -1,8 +1,8 @@
 import type { AgentSession } from "@vetta/runtime-core/kernel";
 import type { BackgroundCommandService, BackgroundCommandSnapshot } from "@vetta/runtime-node/coding";
 import { describe, expect, it, vi } from "vitest";
+import { CodingAgentBackgroundWorkController } from "../../src/execution/background/work-controller.js";
 import { CodingAgentSessionConfigurationState } from "../../src/host/session-configuration/configuration-state.js";
-import { CodingAgentBackgroundWorkController } from "../../src/host/session-execution/background-work-controller.js";
 
 describe("Coding Agent session configuration and background work", () => {
 	it("publishes immutable agent and plugin configuration revisions while binding queue modes", async () => {

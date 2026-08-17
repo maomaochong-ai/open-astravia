@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isRpcFailureMetadata, RPC_FAILURE_CODES } from "../../src/modes/rpc/rpc-failure.js";
+import { isRpcFailureMetadata, RPC_FAILURE_CODES } from "../../src/rpc/rpc-failure.js";
 
 describe("RPC failure metadata", () => {
 	it("accepts the stable external failure dimensions", () => {

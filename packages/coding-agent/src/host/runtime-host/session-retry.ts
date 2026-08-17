@@ -7,9 +7,9 @@ import type {
 	SessionEvent,
 } from "@vetta/runtime-core";
 import { mapRuntimeSessionObservationEvent } from "@vetta/runtime-core";
-import type { CodingAgentTurnRetryEvent, CodingAgentTurnRetrySettings } from "../session-execution/contracts.js";
-import { readCodingAgentTurnFailure } from "../session-execution/turn-executor.js";
-import { createCodingAgentTurnRetryController } from "../session-execution/turn-retry-controller.js";
+import type { CodingAgentTurnRetryEvent, CodingAgentTurnRetrySettings } from "../../execution/turn/contracts.js";
+import { readCodingAgentTurnFailure } from "../../execution/turn/turn-executor.js";
+import { createCodingAgentTurnRetryController } from "../../execution/turn/turn-retry-controller.js";
 
 export interface CodingAgentRuntimeHostRetrySettings {
 	getRetrySettings(): CodingAgentTurnRetrySettings;
