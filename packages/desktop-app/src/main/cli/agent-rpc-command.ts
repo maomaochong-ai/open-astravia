@@ -1,8 +1,5 @@
 import { join } from "node:path";
 import { app } from "electron";
-import { getAppLogger } from "../logger.js";
-import { syncAgentRpcModelCredentials } from "../models/agent-rpc-model-credentials.js";
-import { getDesktopModelCredentialStore } from "../models/model-credential-store.js";
 
 // ---------------------------------------------------------------------------
 // Coding-agent RPC CLI mode
@@ -61,6 +58,13 @@ export async function runAgentRpcCommand(args: string[]): Promise<number> {
 			process.env.VETTA_PACKAGE_DIR = resolveCodingAgentPackageDir();
 		}
 		const { runAgentRuntimeCli } = await import("@vetta/cli-app");
+		// 必须是动态 import：model-credential-store / logger 在模块顶层就建
+		// logger 实例，静态导入会把它们提到 logger 模块自身初始化之前求值，
+		// 主进程启动直接挂在 "Cannot access 'appLoggingConfigured' before
+		// initialization"。Rollup 关于「既动态又静态导入」的提示无害。
+		const { syncAgentRpcModelCredentials } = await import("../models/agent-rpc-model-credentials.js");
+		const { getDesktopModelCredentialStore } = await import("../models/model-credential-store.js");
+		const { getAppLogger } = await import("../logger.js");
 		await runAgentRuntimeCli(args, {
 			// models.json 只留 credentialRef，明文 key 在 safeStorage 保险库里。
 			// 子进程自己解密后注入，避免密钥经 argv / 环境变量外传。
