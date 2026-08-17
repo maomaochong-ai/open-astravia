@@ -10,8 +10,6 @@ import {
 	EXTRACT_TEXT_FROM_PDF_TOOL_SCOPES,
 	HTML_TO_PDF_TOOL_CATEGORY,
 	HTML_TO_PDF_TOOL_SCOPES,
-	PROGRESS_TOOL_CATEGORY,
-	PROGRESS_TOOL_SCOPES,
 	RENDER_PDF_PAGE_TOOL_CATEGORY,
 	RENDER_PDF_PAGE_TOOL_SCOPES,
 } from "@vetta/runtime-node/coding";
@@ -23,6 +21,7 @@ import {
 	CODING_AGENT_KNOWLEDGE_WRITE_PAGE_TOOL_SCOPES,
 	type CodingAgentKnowledgeWriteOperations,
 } from "../../src/features/knowledge/index.js";
+import { PROGRESS_TOOL_CATEGORY, PROGRESS_TOOL_SCOPES } from "../../src/features/progress/index.js";
 import type { Skill } from "../../src/resources/skills/index.js";
 import { createCodingAgentInvokeSkillFeature } from "../../src/resources/skills/invoke-skill-feature.js";
 import type {

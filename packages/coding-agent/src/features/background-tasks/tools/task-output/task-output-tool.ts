@@ -1,7 +1,7 @@
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { BackgroundCommandService, BackgroundCommandStatus } from "../../shared/background-command-service.js";
-import { truncateTail } from "../../shared/truncation.js";
+import type { BackgroundCommandService, BackgroundCommandStatus } from "@vetta/runtime-tools";
+import { truncateBackgroundTaskOutputTail } from "../../output-truncation.js";
 import { TASK_OUTPUT_TOOL_DESCRIPTION } from "./description.js";
 
 export const TaskOutputToolInputSchema = Type.Object({
@@ -56,7 +56,7 @@ export function createTaskOutputTool(options: TaskOutputToolOptions): RuntimeToo
 			let text: string;
 
 			if (chunk) {
-				const truncation = truncateTail(chunk);
+				const truncation = truncateBackgroundTaskOutputTail(chunk);
 				text = `${statusLine}\n\n${truncation.content}`;
 				if (truncation.truncated) {
 					text += `\n\n[Output truncated. Full output: ${task.outputFile}]`;

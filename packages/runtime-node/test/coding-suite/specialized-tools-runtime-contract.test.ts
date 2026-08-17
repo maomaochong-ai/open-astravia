@@ -9,7 +9,6 @@ import {
 	createExtractTextFromImageToolRegistration,
 	createExtractTextFromPdfToolRegistration,
 	createHtmlToPdfToolRegistration,
-	createProgressToolRegistration,
 	createRenderPdfPageToolRegistration,
 	type DesktopCommandPort,
 	type DocToPdfOperations,
@@ -40,7 +39,6 @@ describe("runtime specialized tool contracts", () => {
 			}),
 			createExtractTextFromImageToolRegistration(cwd, { desktop, executionGate: immediateGate }),
 			createRenderPdfPageToolRegistration(cwd, { process: successfulRenderProcess() }),
-			createProgressToolRegistration(),
 		];
 
 		expect(registrations.map(({ tool }) => tool.name)).toEqual([
@@ -49,10 +47,9 @@ describe("runtime specialized tool contracts", () => {
 			"extract_text_from_pdf",
 			"extract_text_from_img",
 			"render_pdf_page",
-			"progress",
 		]);
 		for (const registration of registrations) {
-			expect(registration.category).toBe(registration.tool.name === "progress" ? "agent-control" : "doc");
+			expect(registration.category).toBe("doc");
 			expect(registration.scopeUse).toEqual([
 				"im-claw",
 				"conversation",
@@ -262,27 +259,6 @@ describe("runtime specialized tool contracts", () => {
 			["-png", "-r", "144", "-f", "2", "-l", "2", "-singlefile", inputPath, outputPath.slice(0, -4)],
 		]);
 		expect(result.content[0]).toMatchObject({ text: expect.stringContaining(`output: ${outputPath}`) });
-	});
-
-	it("preserves progress result details and validation text", async () => {
-		const tool = createProgressToolRegistration().tool;
-		const success = await tool.execute({
-			sessionId: "session",
-			turnId: "turn",
-			toolCallId: "call",
-			input: { summary: "done", label: "next" },
-			signal,
-		});
-		const invalid = await tool.execute({
-			sessionId: "session",
-			turnId: "turn",
-			toolCallId: "call",
-			input: {},
-			signal,
-		});
-
-		expect(success).toEqual({ content: [{ type: "text", text: "OK" }], details: { summary: "done", label: "next" } });
-		expect(invalid.content[0]).toMatchObject({ text: expect.stringContaining("requires at least one") });
 	});
 });
 

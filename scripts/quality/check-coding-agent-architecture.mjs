@@ -110,6 +110,7 @@ export function findCodingAgentArchitectureViolations(state) {
 	checkInvokeSkillToolOwnership(state, violations);
 	checkMcpToolSearchOwnership(state, violations);
 	checkSubagentControlToolOwnership(state, violations);
+	checkPortableProductToolOwnership(state, violations);
 	checkRpcHostBoundary(state, violations);
 	checkSdkSessionIdentityRuntimeBoundary(state, violations);
 	checkRetiredLayerTerminology(state, violations);
@@ -738,6 +739,7 @@ function checkMcpToolSearchOwnership(state, violations) {
 
 function checkSubagentControlToolOwnership(state, violations) {
 	const productToolRoot = `${SOURCE_ROOT}/composition/subagent/tools/`;
+	const retiredNodeNotificationPath = "packages/runtime-node/src/coding/shared/subagent-notification.ts";
 	const retiredNodeToolRoots = [
 		"dispatch-workflows",
 		"followup-task",
@@ -760,16 +762,67 @@ function checkSubagentControlToolOwnership(state, violations) {
 		if (retiredNodeToolRoots.some((root) => file.path.startsWith(root))) {
 			violations.push(`${file.path}: Subagent control Tool definitions belong to the Coding Agent Subagent feature`);
 		}
+		if (file.path === retiredNodeNotificationPath) {
+			violations.push(`${file.path}: Subagent notification projection belongs to the Coding Agent Subagent feature`);
+		}
 	}
 
 	const nodeCodingEntry = state.files.find((file) => file.path === "packages/runtime-node/src/coding/index.ts");
 	if (
 		nodeCodingEntry &&
-		/\b(?:createDispatchWorkflows|createFollowupTask|createInterruptAgent|createListAgents|createSendMessage|createSpawnAgent|createWaitAgent)Tool\b|\.\/tools\/(?:dispatch-workflows|followup-task|interrupt-agent|list-agents|send-message|spawn-agent|wait-agent)\//.test(
+		/\b(?:createDispatchWorkflows|createFollowupTask|createInterruptAgent|createListAgents|createSendMessage|createSpawnAgent|createWaitAgent)Tool\b|\bbuildSubagentNotification\b|\.\/tools\/(?:dispatch-workflows|followup-task|interrupt-agent|list-agents|send-message|spawn-agent|wait-agent)\//.test(
 			nodeCodingEntry.text,
 		)
 	) {
 		violations.push(`${nodeCodingEntry.path}: runtime-node must not export Coding Agent Subagent control Tools`);
+	}
+}
+
+function checkPortableProductToolOwnership(state, violations) {
+	const featureRoots = [
+		`${SOURCE_ROOT}/features/current-time/`,
+		`${SOURCE_ROOT}/features/background-tasks/`,
+		`${SOURCE_ROOT}/features/progress/`,
+		`${SOURCE_ROOT}/features/im-send-attachment/`,
+	];
+	const retiredNodeToolRoots = ["current-time", "progress", "task-output", "task-stop", "im-send-attachment"].map(
+		(name) => `packages/runtime-node/src/coding/tools/${name}/`,
+	);
+
+	for (const edge of state.edges) {
+		if (
+			featureRoots.some((root) => edge.path.startsWith(root)) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: portable Coding Agent Tool Features must consume Runtime ports`);
+		}
+	}
+	for (const file of state.files) {
+		if (retiredNodeToolRoots.some((root) => file.path.startsWith(root))) {
+			violations.push(`${file.path}: portable product Tool definitions belong to Coding Agent Features`);
+		}
+	}
+
+	const nodeCodingEntry = state.files.find((file) => file.path === "packages/runtime-node/src/coding/index.ts");
+	if (
+		nodeCodingEntry &&
+		/\b(?:createCurrentTime|createProgress|createTaskOutput|createTaskStop|createImSendAttachment)Tool\b|\.\/tools\/(?:current-time|progress|task-output|task-stop|im-send-attachment)\//.test(
+			nodeCodingEntry.text,
+		)
+	) {
+		violations.push(`${nodeCodingEntry.path}: runtime-node must not export portable Coding Agent product Tools`);
+	}
+
+	const nodeEnvironment = state.files.find(
+		(file) => file.path === "packages/runtime-node/src/coding/node-tool-environment.ts",
+	);
+	if (
+		nodeEnvironment &&
+		/\b(?:createCurrentTime|createTaskOutput|createTaskStop)ToolRegistration\b|["'](?:current_time|task_output|task_stop)["']/.test(
+			nodeEnvironment.text,
+		)
+	) {
+		violations.push(`${nodeEnvironment.path}: Node Tool Environment must compose platform Tools only`);
 	}
 }
 

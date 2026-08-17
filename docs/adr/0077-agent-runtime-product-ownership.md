@@ -43,6 +43,21 @@ Todo、Memory/Knowledge/Skill/Plugin/IM 的产品策略、上下文和 Compactio
 `runtime-node`、`runtime-desktop` 继续拥有对应环境实现与平台组合；应用只拥有自身 UI、进程入口和
 传输接线。不为本次职责收敛创建新包。
 
+### 产品 Tool 与平台 Tool
+
+Tool 的模型合同按语义而不是执行环境归属：名称、描述、Schema、Scope、Category、`sideEffect`、结果文本和
+产品激活规则属于 `coding-agent` Feature；文件、路径、进程、Shell 和 Desktop 命令实现属于平台 Runtime。
+产品 Tool 需要环境能力时，通过 `runtime-*` 协议 Port 注入，不能为了复用 Node 实现而把整个 Tool 下沉到
+`runtime-node`。
+
+`CodingAgentToolEnvironment` 与 `CodingAgentSessionExecutionEnvironment` 只提供平台 Tool 和 Host Service。
+`current_time`、`progress`、后台任务控制、IM 外发、Skill、Memory、Knowledge、Todo、提问和子 Agent 控制等
+模型语义由 Coding Agent 组合。迁移期 Host 若仍返回产品保留名称，产品入口忽略旧注册并建立唯一内置定义，
+不保留第二条执行路径。
+
+`runtime-core` 提供 Feature、Session Extension、Context Strategy、生命周期和 Port 编排扩展点；它不通过内置
+Coding Agent 功能来证明“可扩展”。压缩、会话和其他产品变化应实现这些通用合同，由产品 Profile 选择策略。
+
 ## 判断顺序
 
 代码所有权按以下顺序判断：

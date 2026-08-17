@@ -2,7 +2,10 @@
 
 本目录记录 `packages/coding-agent` 的架构现状、主要问题与后续演进建议。
 
-当前结论：`coding-agent` 已从最初的终端编码 Agent 演变为同时承载 SDK、会话、工具、扩展、MCP、插件、知识、IM 与子 Agent 能力的产品内核。现阶段的主要风险不是单个文件过大，而是组合边界不唯一、扩展机制重叠、宿主能力下沉以及内部依赖方向不稳定。
+当前结论：`runtime-core` 已拥有产品无关的 Session、Turn、Feature、Session Extension、Context Strategy、生命周期与
+Port 编排；`coding-agent` 负责 Prompt、Profile、Mode、Compaction 策略和具体产品 Feature；Node 文件、进程、Shell、
+Sandbox 与 Desktop 命令实现由平台 Runtime 持有。历史上的组合边界混杂已按 ADR-0077 持续收敛，后续评估应区分
+“产品 Feature 数量较多”和“通用机制或平台实现错误下沉”两类问题，不能再以目录规模直接判断核心所有权。
 
 ## 文档索引
 
@@ -16,4 +19,5 @@
 
 ## 使用说明
 
-本文档描述的是当前源码状态，不代表已经批准的重构方案。实施架构调整前，应结合具体需求补充兼容范围、测试基线和分阶段验收标准。
+早期评估文档保留当时的源码背景；当前所有权以 ADR-0075、ADR-0076、ADR-0077、源码架构守卫和最新迁移记录为准。
+实施后续架构调整时，仍需补充兼容范围、测试基线和分阶段验收标准。

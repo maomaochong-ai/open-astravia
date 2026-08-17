@@ -1,6 +1,6 @@
 import type { PluginMediaGenerationMode, PluginMediaProviderSubmitRequest } from "@vetta-org/plugin-sdk";
 import {
-	calculateH3Dimensions,
+	calculateH3CanvasResolution,
 	H3_CANVAS_MULTIPLE,
 	resolveH3ResolutionPreset,
 } from "./h3-resolution";
@@ -171,17 +171,25 @@ function applyResolution(prompt: ComfyPrompt, generator: ComfyPromptNode, reques
 	const preset = resolveH3ResolutionPreset(request.resolution);
 	const selector = linkedResolutionSelector(prompt, generator);
 	if (selector) {
+		const aspectRatio = request.aspectRatio
+			? ASPECT_RATIO_VALUES[request.aspectRatio] ?? request.aspectRatio
+			: typeof selector.inputs.aspect_ratio === "string"
+				? selector.inputs.aspect_ratio
+				: undefined;
 		if (request.aspectRatio) {
-			selector.inputs.aspect_ratio = ASPECT_RATIO_VALUES[request.aspectRatio] ?? request.aspectRatio;
+			selector.inputs.aspect_ratio = aspectRatio;
 		}
-		selector.inputs.megapixels = preset.megapixels;
+		selector.inputs.megapixels = calculateH3CanvasResolution(aspectRatio, preset, {
+			width: 1344,
+			height: 768,
+		}).megapixels;
 		selector.inputs.multiple = H3_CANVAS_MULTIPLE;
 		return;
 	}
 	const width = generator.inputs.width;
 	const height = generator.inputs.height;
 	if (isPositiveNumber(width) && isPositiveNumber(height)) {
-		const dimensions = calculateH3Dimensions(request.aspectRatio, preset.megapixels, { width, height });
+		const dimensions = calculateH3CanvasResolution(request.aspectRatio, preset, { width, height });
 		generator.inputs.width = dimensions.width;
 		generator.inputs.height = dimensions.height;
 		return;

@@ -1,4 +1,4 @@
-import type { CodingToolRegistration, CodingToolScope } from "../../tool-registration.js";
+import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools/coding";
 import { createTaskOutputTool, type TaskOutputToolInput, type TaskOutputToolOptions } from "./task-output-tool.js";
 
 export const TASK_OUTPUT_TOOL_SCOPES = [

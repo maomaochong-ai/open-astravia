@@ -1,10 +1,7 @@
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
+import { createCodingToolsFeature, InMemoryCodingToolRegistry } from "@vetta/runtime-tools";
 import { describe, expect, it, vi } from "vitest";
-import {
-	createCodingToolsFeature,
-	createCurrentTimeToolRegistration,
-	InMemoryCodingToolRegistry,
-} from "../../src/coding/index.js";
+import { createCurrentTimeToolRegistration } from "../../src/features/current-time/index.js";
 
 describe("coding tools dynamic activation", () => {
 	it("resolves activation from each model-call input without rebuilding the feature", async () => {

@@ -29,9 +29,9 @@ vi.mock("@vetta-org/plugin-sdk", () => ({
 	useTranslation: () => ({
 		t: (key: string) =>
 			({
-				"option.resolution.0_5mp": "标清",
-				"option.resolution.0_75mp": "高清",
-				"option.resolution.1mp": "超清",
+				"option.resolution.0_5mp": "720p",
+				"option.resolution.0_75mp": "1K",
+				"option.resolution.1mp": "2K",
 			})[key] ?? key,
 	}),
 }));
@@ -259,7 +259,7 @@ describe("ContentGenerationControls option mounting", () => {
 		expect(screen.getByLabelText("nodeEditor.videoSettings.open").textContent).toContain("1080p");
 	});
 
-	it("renders translated H3 resolution labels in the summary and option list", () => {
+	it("renders explicit H3 resolution labels in the summary and option list", () => {
 		const model: ContentModelDescriptor = {
 			...videoModel,
 			resolutions: ["0_5mp", "0_75mp", "1mp"],
@@ -280,12 +280,12 @@ describe("ContentGenerationControls option mounting", () => {
 		);
 
 		const triggerText = screen.getByLabelText("nodeEditor.videoSettings.open").textContent;
-		expect(triggerText).toContain("高清");
+		expect(triggerText).toContain("1K");
 		expect(triggerText).not.toContain("0_75mp");
 		fireEvent.click(screen.getByTestId("popover-toggle"));
-		expect(screen.getByText("标清")).toBeTruthy();
-		expect(screen.getByText("高清")).toBeTruthy();
-		expect(screen.getByText("超清")).toBeTruthy();
+		expect(screen.getByText("720p")).toBeTruthy();
+		expect(screen.getByText("1K")).toBeTruthy();
+		expect(screen.getByText("2K")).toBeTruthy();
 	});
 
 	it("switches to omni reference when the selected model supports it", () => {

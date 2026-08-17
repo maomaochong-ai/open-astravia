@@ -1,18 +1,16 @@
-import { rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
 	createImSendAttachmentTool,
 	createImSendAttachmentToolRegistration,
 	IM_SEND_ATTACHMENT_TOOL_DESCRIPTION,
 	type ImSendAttachmentFileOperations,
-} from "../../src/coding/index.js";
+} from "../../../src/features/im-send-attachment/index.js";
 
 describe("im_send_attachment", () => {
 	it("preserves the model contract and registration metadata", () => {
 		const registration = createImSendAttachmentToolRegistration({
 			sender: { sendAttachment: vi.fn(async () => ({})) },
+			fileOperations: operations({ absolute: true, exists: true, file: true }),
 		});
 
 		expect(registration.tool.name).toBe("im_send_attachment");
@@ -25,23 +23,20 @@ describe("im_send_attachment", () => {
 		expect(registration.sideEffect).toBe("heavy");
 	});
 
-	it("accepts a platform-native absolute file and forwards it to the sender", async () => {
-		const path = join(tmpdir(), `vetta-im-attachment-${crypto.randomUUID()}.txt`);
-		await writeFile(path, "attachment", "utf8");
+	it("accepts a Host-validated absolute file and forwards it to the sender", async () => {
+		const path = "C:/tmp/attachment.txt";
 		const sendAttachment = vi.fn(async () => ({ messageId: "message-1" }));
-		const tool = createImSendAttachmentTool({ sender: { sendAttachment } });
+		const tool = createImSendAttachmentTool({
+			sender: { sendAttachment },
+			fileOperations: operations({ absolute: true, exists: true, file: true }),
+		});
+		const result = await execute(tool, { description: "Send test attachment", path, kind: "file" });
 
-		try {
-			const result = await execute(tool, { description: "Send test attachment", path, kind: "file" });
-
-			expect(sendAttachment).toHaveBeenCalledWith({ path, kind: "file", caption: undefined });
-			expect(result).toEqual({
-				content: [{ type: "text", text: `Sent file attachment ${path} (messageId=message-1)` }],
-				details: { path, kind: "file", messageId: "message-1" },
-			});
-		} finally {
-			await rm(path, { force: true });
-		}
+		expect(sendAttachment).toHaveBeenCalledWith({ path, kind: "file", caption: undefined });
+		expect(result).toEqual({
+			content: [{ type: "text", text: `Sent file attachment ${path} (messageId=message-1)` }],
+			details: { path, kind: "file", messageId: "message-1" },
+		});
 	});
 
 	it.each([

@@ -8,8 +8,6 @@ import {
 	createBashToolRegistration,
 	createForegroundCommandToolExecutor,
 	createShellToolRegistration,
-	createTaskOutputToolRegistration,
-	createTaskStopToolRegistration,
 } from "../../../src/coding/index.js";
 import { createTestBackgroundCommandHost, createTestForegroundCommandHost } from "../../support/local-command-host.js";
 
@@ -72,14 +70,6 @@ async function waitForCompletion(service: BackgroundCommandService, taskId: stri
 	const result = await service.wait(taskId, { maxMs: 10_000 });
 	expect(result.stillRunning).toBe(false);
 	await new Promise((resolve) => setTimeout(resolve, 20));
-}
-
-async function waitForOutput(service: BackgroundCommandService, taskId: string, expected: string): Promise<void> {
-	const deadline = Date.now() + 2_000;
-	while (!(service.get(taskId)?.tail.includes(expected) ?? false)) {
-		if (Date.now() >= deadline) throw new Error(`Timed out waiting for task output: ${expected}`);
-		await new Promise((resolve) => setTimeout(resolve, 20));
-	}
 }
 
 describe.each(["bash", "shell"] as const)("runtime %s background command", (toolName) => {
@@ -170,51 +160,5 @@ describe("runtime background task tools", () => {
 				"Use the task_output tool to read the command output if needed.",
 			].join("\n"),
 		);
-	});
-
-	it("reads output incrementally and stops running tasks", async () => {
-		const service = createRuntimeBackgroundService();
-		const command = localNodeCommand("process.stdout.write('task-output-ok');setTimeout(() => {}, 30000)");
-		service.spawn({ command, cwd: process.cwd(), env: { ...process.env } });
-		await waitForOutput(service, "b1", "task-output-ok");
-
-		const outputTool = createTaskOutputToolRegistration({ backgroundService: service }).tool;
-		const first = await outputTool.execute({
-			sessionId: "session-1",
-			turnId: "turn-1",
-			toolCallId: "runtime-output",
-			input: { task_id: "b1", from_start: true },
-			signal: new AbortController().signal,
-		});
-		expect(first.content[0]).toMatchObject({ text: expect.stringContaining("task-output-ok") });
-		const second = await outputTool.execute({
-			sessionId: "session-1",
-			turnId: "turn-1",
-			toolCallId: "runtime-output-2",
-			input: { task_id: "b1" },
-			signal: new AbortController().signal,
-		});
-		expect(second.content[0]).toMatchObject({ text: expect.stringContaining("no new output since last read") });
-
-		const stopTool = createTaskStopToolRegistration({ backgroundService: service }).tool;
-		const stopped = await stopTool.execute({
-			sessionId: "session-1",
-			turnId: "turn-1",
-			toolCallId: "runtime-stop",
-			input: { task_id: "b1" },
-			signal: new AbortController().signal,
-		});
-		expect(stopped.content[0]).toMatchObject({ text: expect.stringContaining("Sent kill signal to task b1") });
-		await waitForCompletion(service, "b1");
-		expect(service.get("b1")).toMatchObject({ status: "killed", endedBy: "agent" });
-		await expect(
-			outputTool.execute({
-				sessionId: "session-1",
-				turnId: "turn-1",
-				toolCallId: "runtime-missing",
-				input: { task_id: "missing" },
-				signal: new AbortController().signal,
-			}),
-		).rejects.toThrow('Background task "missing" not found.');
 	});
 });
