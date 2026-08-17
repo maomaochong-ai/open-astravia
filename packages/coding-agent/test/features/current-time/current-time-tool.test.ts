@@ -1,12 +1,11 @@
+import { CODING_TOOL_SCOPES, selectCodingToolsForScope } from "@vetta/runtime-tools";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-	CODING_TOOL_SCOPES,
 	CURRENT_TIME_TOOL_CATEGORY,
 	CURRENT_TIME_TOOL_SCOPES,
 	CurrentTimeToolInputSchema,
 	createCurrentTimeToolRegistration,
-	selectCodingToolsForScope,
-} from "../../src/coding/index.js";
+} from "../../../src/features/current-time/index.js";
 
 afterEach(() => {
 	vi.useRealTimers();

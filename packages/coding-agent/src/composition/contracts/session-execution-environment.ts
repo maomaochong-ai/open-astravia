@@ -51,7 +51,7 @@ export interface CodingAgentSessionExecutionEnvironmentContext {
 	readonly env?: Readonly<Record<string, string>>;
 }
 
-/** Session 独占的命令工具与后台任务宿主；产品模式和激活策略不属于该环境。 */
+/** Session 独占的命令 Tool 与后台任务宿主；任务控制 Tool、产品模式和激活策略不属于该环境。 */
 export interface CodingAgentSessionExecutionEnvironment {
 	readonly registrations: readonly CodingToolRegistration[];
 	readonly backgroundService: BackgroundCommandService;

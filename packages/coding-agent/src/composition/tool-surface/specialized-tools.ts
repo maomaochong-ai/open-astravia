@@ -7,7 +7,6 @@ import {
 	createNodeCommandProcessHost,
 	createNodeDocToPdfOperations,
 	createNodeVettaDesktopCommandPort,
-	createProgressToolRegistration,
 	createRenderPdfPageToolRegistration,
 	NodeCommandProcessAbortedError,
 	RenderPdfPageProcessAbortedError,
@@ -17,6 +16,7 @@ import {
 	type CodingAgentKnowledgeWriteOperations,
 	createCodingAgentKnowledgeWritePageToolRegistration,
 } from "../../features/knowledge/index.js";
+import { createProgressToolRegistration } from "../../features/progress/index.js";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import { getCodingAgentOcrExecutionGate } from "../../tool-policy/ocr-execution-gate.js";

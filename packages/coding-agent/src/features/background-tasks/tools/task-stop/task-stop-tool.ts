@@ -1,6 +1,6 @@
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { BackgroundCommandService, BackgroundCommandStatus } from "../../shared/background-command-service.js";
+import type { BackgroundCommandService, BackgroundCommandStatus } from "@vetta/runtime-tools";
 import { TASK_STOP_TOOL_DESCRIPTION } from "./description.js";
 
 export const TaskStopToolInputSchema = Type.Object({

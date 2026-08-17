@@ -1003,17 +1003,45 @@ describe("Coding Agent architecture gate", () => {
 		const productToolPath = "packages/coding-agent/src/composition/subagent/tools/spawn-agent/spawn-agent-tool.ts";
 		const nodeToolPath = "packages/runtime-node/src/coding/tools/spawn-agent/index.ts";
 		const nodeEntryPath = "packages/runtime-node/src/coding/index.ts";
+		const notificationPath = "packages/runtime-node/src/coding/shared/subagent-notification.ts";
 		const state = createState([
 			{ path: productToolPath, text: 'import { platform } from "node:os";' },
 			{ path: nodeToolPath, text: "export const tool = {};" },
-			{ path: nodeEntryPath, text: 'export * from "./tools/spawn-agent/index.js";' },
+			{ path: notificationPath, text: "export const notification = {};" },
+			{
+				path: nodeEntryPath,
+				text: "export { buildSubagentNotification } from './shared/subagent-notification.js';",
+			},
 		]);
 
 		expect(findCodingAgentArchitectureViolations(state)).toEqual(
 			expect.arrayContaining([
 				`${productToolPath}:1: Subagent control Tools must consume portable Runtime Ports`,
 				`${nodeToolPath}: Subagent control Tool definitions belong to the Coding Agent Subagent feature`,
+				`${notificationPath}: Subagent notification projection belongs to the Coding Agent Subagent feature`,
 				`${nodeEntryPath}: runtime-node must not export Coding Agent Subagent control Tools`,
+			]),
+		);
+	});
+
+	it("keeps portable product Tool semantics out of runtime-node", () => {
+		const featurePath = "packages/coding-agent/src/features/current-time/tool/current-time-tool.ts";
+		const nodeToolPath = "packages/runtime-node/src/coding/tools/current-time/index.ts";
+		const nodeEntryPath = "packages/runtime-node/src/coding/index.ts";
+		const nodeEnvironmentPath = "packages/runtime-node/src/coding/node-tool-environment.ts";
+		const state = createState([
+			{ path: featurePath, text: 'import { platform } from "node:os";' },
+			{ path: nodeToolPath, text: "export const tool = {};" },
+			{ path: nodeEntryPath, text: 'export * from "./tools/current-time/index.js";' },
+			{ path: nodeEnvironmentPath, text: "createTaskOutputToolRegistration();" },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(state)).toEqual(
+			expect.arrayContaining([
+				`${featurePath}:1: portable Coding Agent Tool Features must consume Runtime ports`,
+				`${nodeToolPath}: portable product Tool definitions belong to Coding Agent Features`,
+				`${nodeEntryPath}: runtime-node must not export portable Coding Agent product Tools`,
+				`${nodeEnvironmentPath}: Node Tool Environment must compose platform Tools only`,
 			]),
 		);
 	});

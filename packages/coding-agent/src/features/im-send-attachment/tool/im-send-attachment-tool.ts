@@ -1,5 +1,3 @@
-import { existsSync, statSync } from "node:fs";
-import { isAbsolute } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
@@ -38,19 +36,13 @@ export interface ImSendAttachmentFileOperations {
 
 export interface ImSendAttachmentToolOptions {
 	readonly sender: ImSendAttachmentSender;
-	readonly fileOperations?: ImSendAttachmentFileOperations;
+	readonly fileOperations: ImSendAttachmentFileOperations;
 }
-
-const defaultFileOperations: ImSendAttachmentFileOperations = {
-	isAbsolute,
-	exists: existsSync,
-	isFile: (path) => statSync(path).isFile(),
-};
 
 export function createImSendAttachmentTool(
 	options: ImSendAttachmentToolOptions,
 ): RuntimeToolDefinition<ImSendAttachmentToolInput> {
-	const fileOperations = options.fileOperations ?? defaultFileOperations;
+	const fileOperations = options.fileOperations;
 	return {
 		name: "im_send_attachment",
 		label: "Send IM Attachment",

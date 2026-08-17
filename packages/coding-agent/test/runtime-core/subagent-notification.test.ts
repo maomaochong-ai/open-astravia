@@ -1,6 +1,6 @@
 import type { SubagentSnapshot } from "@vetta/runtime-subagents";
 import { describe, expect, it } from "vitest";
-import { buildSubagentNotification } from "../../src/coding/index.js";
+import { buildSubagentNotification } from "../../src/composition/subagent/notification.js";
 
 describe("subagent notification projection", () => {
 	it("preserves the model-visible protocol outside the scheduling runtime", () => {

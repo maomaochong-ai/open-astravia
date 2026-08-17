@@ -1,5 +1,5 @@
-import { createImSendAttachmentToolRegistration } from "@vetta/runtime-node/coding";
 import { describe, expect, it } from "vitest";
+import { createImSendAttachmentToolRegistration } from "../src/features/im-send-attachment/index.js";
 import { isToolSideEffect, normalizeToolSideEffect } from "../src/profiles/index.js";
 import {
 	createCodingAgentToolSideEffectResolver,
@@ -69,6 +69,7 @@ describe("createCodingAgentToolSideEffectResolver", () => {
 		// 组装层把 registry snapshot 的注册对象接进 readDeclarations 后，这条链路必须成立。
 		const registration = createImSendAttachmentToolRegistration({
 			sender: { sendAttachment: async () => ({}) },
+			fileOperations: { isAbsolute: () => true, exists: () => true, isFile: () => true },
 		});
 		const resolve = createCodingAgentToolSideEffectResolver({
 			readDeclarations: () => [{ name: registration.tool.name, sideEffect: registration.sideEffect }],

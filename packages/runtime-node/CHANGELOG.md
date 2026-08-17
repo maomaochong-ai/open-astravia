@@ -6,9 +6,17 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Breaking Changes
 
+- 移除 `@vetta/runtime-node/coding` 的 `current_time`、`progress`、`task_output`、`task_stop` Tool 定义、Schema、
+  描述和注册导出。Node Tool Environment 现在只组合文件、命令与进程等平台实现；后台任务服务仍由
+  `runtime-node` 创建并通过 `BackgroundCommandService` Port 交给 Coding Agent 产品 Feature。
+
+- 移除 `@vetta/runtime-node/coding` 的 `im_send_attachment` 产品 Tool 与注册导出；新增通用
+  `createNodeFileInspectionOperations()` Host 实现，最终 CLI Host 将它注入 Coding Agent IM Feature。
+
 - 移除 `@vetta/runtime-node/coding` 的 7 个子代理控制 Tool（`spawn_agent`、`dispatch_workflows`、`wait_agent`、
   `list_agents`、`interrupt_agent`、`send_message`、`followup_task`）及其 Schema、描述和注册导出。它们不依赖
-  Node 环境，现由 `@vetta/coding-agent` 的 Subagent Feature 持有；Node Runtime 继续只提供平台实现。
+  Node 环境，现由 `@vetta/coding-agent` 的 Subagent Feature 持有；同属产品协议的子代理完成通知投影也一并迁移，
+  Node Runtime 继续只提供平台实现。
 
 - 移除 `@vetta/runtime-node/coding` 中无人使用的重复 `tool_search` Tool、评分器、Schema 与注册导出。
   会话级渐进披露的唯一生产实现和公共合同位于平台中立的 `@vetta/runtime-mcp`。

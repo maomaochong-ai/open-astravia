@@ -71,6 +71,23 @@ describe("Coding Tools Runtime Composition Root", () => {
 		expect(dispose).toHaveBeenCalledOnce();
 	});
 
+	it("replaces legacy Host definitions for Coding Agent-owned base Tools", () => {
+		const composition = createCodingToolsRuntimeComposition({
+			cwd: "C:/workspace",
+			environment: {
+				registrations: [
+					registration({ ...tool("current_time"), label: "legacy-host-time" }),
+					registration(tool("task_output")),
+				],
+				dispose() {},
+			},
+		});
+
+		expect(composition.registry.resolve("current_time")?.registration.tool.label).toBe("Current Time");
+		expect(composition.registry.resolve("task_output")).toBeUndefined();
+		composition.dispose();
+	});
+
 	it("registers and compiles the default CLI coding tools without downloading", async () => {
 		const calls: Array<{ readonly tool: "fd" | "rg"; readonly silent: boolean | undefined }> = [];
 		const composition = createCodingToolsRuntimeComposition({

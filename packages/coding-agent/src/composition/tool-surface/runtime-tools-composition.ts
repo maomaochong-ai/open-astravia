@@ -19,6 +19,11 @@ import {
 	InMemoryCodingToolRegistry,
 	PRESERVE_CODING_TOOL_RESULT_POLICY,
 } from "@vetta/runtime-tools";
+import {
+	createTaskOutputToolRegistration,
+	createTaskStopToolRegistration,
+} from "../../features/background-tasks/index.js";
+import { createCurrentTimeToolRegistration } from "../../features/current-time/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import type { CodingAgentToolEnvironment } from "../contracts/index.js";
 
@@ -51,8 +56,21 @@ export function createCodingToolsRuntimeComposition(
 ): CodingToolsRuntimeComposition {
 	const cwd = options.cwd;
 	const backgroundService = options.environment.backgroundService;
+	const builtInRegistrations: CodingToolRegistration[] = [
+		createCurrentTimeToolRegistration(),
+		...(backgroundService
+			? [
+					createTaskOutputToolRegistration({ backgroundService }),
+					createTaskStopToolRegistration({ backgroundService }),
+				]
+			: []),
+	];
 	const registry = new InMemoryCodingToolRegistry(
-		[...options.environment.registrations.map(withCodingAgentModelOrder), ...(options.additionalRegistrations ?? [])],
+		[
+			...options.environment.registrations.filter(({ tool }) => !CODING_AGENT_OWNED_BASE_TOOL_NAMES.has(tool.name)),
+			...builtInRegistrations,
+			...(options.additionalRegistrations ?? []),
+		].map(withCodingAgentModelOrder),
 		{ resultPolicy: options.resultPolicy ?? PRESERVE_CODING_TOOL_RESULT_POLICY },
 	);
 	const feature = createCodingToolsFeature({
@@ -109,6 +127,8 @@ const CODING_AGENT_BASE_TOOL_ORDER: Readonly<Record<string, number>> = {
 	tree: CODING_AGENT_MODEL_TOOL_ORDER.directoryTree,
 	write: CODING_AGENT_MODEL_TOOL_ORDER.write,
 };
+
+const CODING_AGENT_OWNED_BASE_TOOL_NAMES = new Set<string>(["current_time", "task_output", "task_stop"]);
 
 function withCodingAgentModelOrder(registration: CodingToolRegistration): CodingToolRegistration {
 	const modelOrder = CODING_AGENT_BASE_TOOL_ORDER[registration.tool.name];
