@@ -1,23 +1,15 @@
 import type { ChatMessage } from "@shared/store/atoms";
-import {
-	UserMessageContextMenuView,
-	UserMessageView,
-	type UserMessageEntryState,
-} from "@vetta/theme-ui/chat";
+import { UserMessageContextMenuView, UserMessageView } from "@vetta/theme-ui/chat";
 import { memo } from "react";
 import { createPortal } from "react-dom";
 import { useUserMessageModel } from "../../hooks/useUserMessageModel";
 
-export type { UserMessageEntryState };
-
 interface UserMessageProps {
-	entryState: UserMessageEntryState;
 	hasAssistantAfter?: boolean;
 	isLastUserMessage?: boolean;
 	isStreaming?: boolean;
 	message: ChatMessage;
 	onAbortEdit?: () => void;
-	onEntryComplete?: () => void;
 }
 
 export const UserMessage = memo(function UserMessage(props: UserMessageProps) {

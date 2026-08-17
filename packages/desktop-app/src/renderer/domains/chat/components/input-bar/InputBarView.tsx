@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { PerfSendProfiler } from "@shared/lib/perf-send";
 import { AnimatePresence, motion } from "motion/react";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
@@ -81,15 +82,19 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					.join(" ")}
 				aria-hidden={model.pendingQuestion ? true : undefined}
 			>
-				<AtPanel
-					open={model.atOpen}
-					onClose={model.actions.handleAtClose}
-					onSelect={model.actions.handleAtSelect}
-					filter={model.atFilter}
-					cwd={model.effectiveCwd}
-				/>
+				<PerfSendProfiler id="ib:AtPanel">
+					<AtPanel
+						open={model.atOpen}
+						onClose={model.actions.handleAtClose}
+						onSelect={model.actions.handleAtSelect}
+						filter={model.atFilter}
+						cwd={model.effectiveCwd}
+					/>
+				</PerfSendProfiler>
 
-				<ActionButtonBar />
+				<PerfSendProfiler id="ib:ActionButtonBar">
+					<ActionButtonBar />
+				</PerfSendProfiler>
 
 				<PromptAttachmentLabels
 					labels={model.promptAttachmentLabels ?? []}
@@ -117,6 +122,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					<ThemedInputBarBackground />
 					<div className={["relative z-10 rounded-[inherit]", classNames?.cardContent].filter(Boolean).join(" ")}>
 						{/* 展开形态：命令区与编辑区同处这张卡片，两者之间没有接缝 */}
+						<PerfSendProfiler id="ib:CommandPanel">
 						<CommandPanel
 							open={model.slashOpen}
 							onClose={model.actions.handleSlashClose}
@@ -126,6 +132,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 							cwd={model.effectiveCwd || undefined}
 							className={model.isFocused ? "border-primary/20" : undefined}
 						/>
+						</PerfSendProfiler>
 
 						{/*
 						 * 顶部附件区只剩「不是一个词」的东西：重编辑提示、Appshot 复合卡片、
@@ -202,6 +209,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 
 						<div className={["px-4 pb-1 pt-3", classNames?.editorWrap].filter(Boolean).join(" ")}>
 							<div className="relative">
+								<PerfSendProfiler id="ib:InputEditor">
 								<InputEditor
 									ariaLabel={model.placeholderTexts[0]}
 									editable={model.hasSession}
@@ -210,6 +218,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 									onFocusChange={model.actions.setFocused}
 									onTriggerChange={model.actions.handleTriggerChange}
 								/>
+								</PerfSendProfiler>
 								<ThemedInputBarPlaceholder
 									texts={model.placeholderTexts}
 									visible={model.showPlaceholder}
@@ -218,6 +227,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 							</div>
 						</div>
 
+						<PerfSendProfiler id="ib:Toolbar">
 						<InputBarToolbar
 							activeActions={model.activeActions}
 							canSend={model.canSend}
@@ -234,6 +244,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 							slashOpen={model.slashOpen}
 							speechInput={model.speechInput}
 						/>
+						</PerfSendProfiler>
 					</div>
 				</SessionDropZoneView>
 

@@ -2,7 +2,8 @@
 
 import { act, createElement, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ContextRingDetailsModel } from "../services/context-ring-details";
 import { ContextRing } from "./ContextRing";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -10,6 +11,7 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const contextRingCapture = vi.hoisted(() => ({
 	includeDetails: [] as boolean[],
 	onOpenChange: null as ((open: boolean) => void) | null,
+	details: null as unknown,
 }));
 
 vi.mock("../hooks/useContextRingModel", () => ({
@@ -21,7 +23,7 @@ vi.mock("../hooks/useContextRingModel", () => ({
 			color: "currentColor",
 			isCompacting: false,
 			tooltip: "Context 25% used",
-			details: null,
+			details: includeDetails ? contextRingCapture.details : null,
 		};
 	},
 }));
@@ -32,10 +34,6 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@vetta/theme-ui/chat", () => ({
 	ContextRingView: () => createElement("span", { "data-testid": "context-ring-view" }),
-}));
-
-vi.mock("@vetta/theme-ui/shared", () => ({
-	CollapsePanel: ({ children }: { children: ReactNode }) => createElement("div", null, children),
 }));
 
 vi.mock("@shared/components/ui/button", () => ({
@@ -54,16 +52,14 @@ vi.mock("@shared/components/ui/popover", () => ({
 }));
 
 describe("ContextRing", () => {
-	it("builds and renders details only after the user opens the popover", async () => {
-		const container = document.createElement("div");
-		document.body.append(container);
-		const root = createRoot(container);
+	beforeEach(() => {
 		contextRingCapture.includeDetails = [];
 		contextRingCapture.onOpenChange = null;
+		contextRingCapture.details = null;
+	});
 
-		await act(async () => {
-			root.render(createElement(ContextRing));
-		});
+	it("builds and renders details only after the user opens the popover", async () => {
+		const { container, unmount } = render();
 
 		expect(container.querySelector("button")?.getAttribute("aria-label")).toBe("Context 25% used");
 		expect(container.textContent).not.toContain("contextRing.details.unavailableAfterRestart");
@@ -74,7 +70,120 @@ describe("ContextRing", () => {
 		expect(container.textContent).toContain("contextRing.details.unavailableAfterRestart");
 		expect(contextRingCapture.includeDetails.at(-1)).toBe(true);
 
-		await act(async () => root.unmount());
-		container.remove();
+		await unmount();
+	});
+
+	it("sizes stacked bar segments against the context window, leaving the unused capacity blank", async () => {
+		contextRingCapture.details = details();
+		const { container, unmount } = render();
+
+		await act(async () => contextRingCapture.onOpenChange?.(true));
+
+		// 窗口 400、已用 40：两段合计只占条的 10%。
+		const widths = [...container.querySelectorAll<HTMLElement>("section [aria-label]")].map(
+			(node) => node.style.width,
+		);
+		expect(widths).toEqual(["2.5%", "7.5%"]);
+		expect(container.textContent).toContain("40 / 400");
+
+		await unmount();
+	});
+
+	it("opens the selected group as a second pane and returns to the overview", async () => {
+		contextRingCapture.details = details();
+		const { container, unmount } = render();
+		await act(async () => contextRingCapture.onOpenChange?.(true));
+
+		await act(async () => click(container, '[aria-label="group:tools"]'));
+
+		expect(container.textContent).toContain("tool:read");
+		expect(container.textContent).not.toContain("group:conversation");
+
+		await act(async () => click(container, '[aria-label="contextRing.details.back"]'));
+
+		expect(container.textContent).toContain("group:conversation");
+		expect(container.textContent).not.toContain("tool:read");
+
+		await unmount();
+	});
+
+	it("resets to the overview when the popover closes", async () => {
+		contextRingCapture.details = details();
+		const { container, unmount } = render();
+		await act(async () => contextRingCapture.onOpenChange?.(true));
+		await act(async () => click(container, '[aria-label="group:tools"]'));
+
+		await act(async () => contextRingCapture.onOpenChange?.(false));
+		await act(async () => contextRingCapture.onOpenChange?.(true));
+
+		expect(container.textContent).toContain("group:conversation");
+		expect(container.textContent).not.toContain("tool:read");
+
+		await unmount();
 	});
 });
+
+function render(): { container: HTMLElement; unmount: () => Promise<void> } {
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	act(() => {
+		root.render(createElement(ContextRing));
+	});
+	return {
+		container,
+		unmount: async () => {
+			await act(async () => root.unmount());
+			container.remove();
+		},
+	};
+}
+
+function click(container: HTMLElement, selector: string): void {
+	const target = container.querySelector<HTMLElement>(selector);
+	if (!target) throw new Error(`missing element: ${selector}`);
+	target.click();
+}
+
+function details(): ContextRingDetailsModel {
+	return {
+		phase: "completed",
+		model: "openai/gpt-test",
+		tokens: "40",
+		windowTokens: 400,
+		windowLabel: "400",
+		groups: [
+			{
+				id: "tools",
+				title: "group:tools",
+				tokens: "10",
+				share: "25.0%",
+				tokenCount: 10,
+				itemCount: 1,
+				unknownCount: 0,
+				sections: [
+					{
+						id: "tool:read",
+						title: "tool:read",
+						metadata: "owner:runtime",
+						tokens: "10",
+						share: "25.0%",
+						tokenCount: 10,
+						itemCount: 1,
+						unknownCount: 0,
+					},
+				],
+			},
+			{
+				id: "conversation",
+				title: "group:conversation",
+				tokens: "30",
+				share: "75.0%",
+				tokenCount: 30,
+				itemCount: 1,
+				unknownCount: 0,
+				sections: [],
+			},
+		],
+	};
+}

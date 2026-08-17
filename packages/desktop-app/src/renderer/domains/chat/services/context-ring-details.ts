@@ -13,6 +13,7 @@ export interface ContextRingDetailSection {
 	readonly metadata: string;
 	readonly tokens: string;
 	readonly share: string;
+	readonly tokenCount: number;
 	readonly itemCount: number;
 	readonly unknownCount: number;
 }
@@ -22,15 +23,24 @@ export interface ContextRingDetailGroup {
 	readonly title: string;
 	readonly tokens: string;
 	readonly share: string;
+	readonly tokenCount: number;
 	readonly itemCount: number;
 	readonly unknownCount: number;
 	readonly sections: readonly ContextRingDetailSection[];
+}
+
+export interface ContextRingBarSegment {
+	readonly id: ContextRingDetailGroupKind;
+	readonly percent: number;
 }
 
 export interface ContextRingDetailsModel {
 	readonly phase: ContextCompositionReport["phase"];
 	readonly model: string;
 	readonly tokens: string;
+	/** 模型上下文窗口容量，堆叠条以它作为 100%；未知时为 null。 */
+	readonly windowTokens: number | null;
+	readonly windowLabel: string;
 	readonly groups: readonly ContextRingDetailGroup[];
 }
 
@@ -65,10 +75,13 @@ export function buildContextRingDetails(
 		sectionsByGroup.set(group, sections);
 	}
 
+	const windowTokens = report.model.contextWindow > 0 ? report.model.contextWindow : null;
 	return {
 		phase: report.phase,
 		model: `${report.model.provider}/${report.model.modelId}`,
 		tokens: formatTokens(report.providerReportedInputTokens ?? report.estimate.tokens ?? report.estimate.knownTokens),
+		windowTokens,
+		windowLabel: windowTokens === null ? labels.unknown : formatTokens(windowTokens),
 		groups: GROUP_ORDER.flatMap((group) => {
 			const sections = sectionsByGroup.get(group);
 			if (!sections || sections.length === 0) return [];
@@ -77,11 +90,27 @@ export function buildContextRingDetails(
 	};
 }
 
-export function toggleExpandedContextGroup(
-	current: ContextRingDetailGroupKind | null,
-	selected: ContextRingDetailGroupKind,
-): ContextRingDetailGroupKind | null {
-	return current === selected ? null : selected;
+/**
+ * 堆叠条的 100% 是模型上下文窗口容量，各环节按占窗口的比例取宽度，
+ * 未使用的窗口留白。窗口未知时退化为按已知 token 在各环节间归一化。
+ * 非空环节保留一个可点击的最小宽度，避免它在条上完全消失；
+ * 若因此超出窗口，则整体等比缩回 100%。
+ */
+export function buildContextRingBarSegments(
+	groups: readonly ContextRingDetailGroup[],
+	windowTokens: number | null,
+	minPercent = 1.5,
+): ContextRingBarSegment[] {
+	if (groups.length === 0) return [];
+	const total = groups.reduce((sum, group) => sum + group.tokenCount, 0);
+	const scale = windowTokens && windowTokens > 0 ? windowTokens : total;
+	const segments = groups.map((group) => {
+		const percent = scale > 0 ? (group.tokenCount / scale) * 100 : 100 / groups.length;
+		return { id: group.id, percent: percent > 0 ? Math.max(percent, minPercent) : percent };
+	});
+	const used = segments.reduce((sum, segment) => sum + segment.percent, 0);
+	if (used <= 100) return segments;
+	return segments.map((segment) => ({ ...segment, percent: (segment.percent / used) * 100 }));
 }
 
 function classifySection(section: ContextSectionUsage): ContextRingDetailGroupKind {
@@ -109,6 +138,7 @@ function buildGroup(
 		title: labels.group[group],
 		tokens: formatSectionTokens(sections, labels.unknown),
 		share: formatSectionShare(sections, estimatedTotal, labels.unknown),
+		tokenCount: sumKnownTokens(sections),
 		itemCount: sections.length,
 		unknownCount: countUnknownSections(sections),
 		sections:
@@ -135,6 +165,7 @@ function buildConversationSections(
 				metadata: "",
 				tokens: formatSectionTokens(matching, labels.unknown),
 				share: formatSectionShare(matching, estimatedTotal, labels.unknown),
+				tokenCount: sumKnownTokens(matching),
 				itemCount: matching.length,
 				unknownCount: countUnknownSections(matching),
 			},
@@ -155,13 +186,18 @@ function buildDetailSection(
 			.join(" / "),
 		tokens: formatSectionTokens([section], labels.unknown),
 		share: formatSectionShare([section], estimatedTotal, labels.unknown),
+		tokenCount: section.estimatedTokens ?? 0,
 		itemCount: 1,
 		unknownCount: section.estimatedTokens === null ? 1 : 0,
 	};
 }
 
+function sumKnownTokens(sections: readonly ContextSectionUsage[]): number {
+	return sections.reduce((sum, section) => sum + (section.estimatedTokens ?? 0), 0);
+}
+
 function formatSectionTokens(sections: readonly ContextSectionUsage[], unknown: string): string {
-	const knownTokens = sections.reduce((sum, section) => sum + (section.estimatedTokens ?? 0), 0);
+	const knownTokens = sumKnownTokens(sections);
 	const unknownCount = countUnknownSections(sections);
 	if (unknownCount === 0) return formatTokens(knownTokens);
 	return knownTokens > 0 ? `${formatTokens(knownTokens)}+` : unknown;
@@ -173,7 +209,7 @@ function formatSectionShare(
 	unknown: string,
 ): string {
 	if (estimatedTotal === null || estimatedTotal <= 0 || countUnknownSections(sections) > 0) return unknown;
-	const tokens = sections.reduce((sum, section) => sum + (section.estimatedTokens ?? 0), 0);
+	const tokens = sumKnownTokens(sections);
 	return `${((tokens / estimatedTotal) * 100).toFixed(1)}%`;
 }
 

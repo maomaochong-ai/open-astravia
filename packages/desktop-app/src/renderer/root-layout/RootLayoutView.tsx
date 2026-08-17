@@ -1,5 +1,6 @@
 import { Outlet } from "@tanstack/react-router";
 import { cn } from "@shared/lib/utils";
+import { PerfSendProfiler } from "@shared/lib/perf-send";
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import { RouteContentLoadingView } from "@vetta/theme-ui/app";
 import { AppFrame, MainContentFrame, SidebarDock, SidebarOverlay } from "@vetta/theme-ui/layout";
@@ -50,7 +51,8 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 	}, [routePending]);
 	const pageHeader =
 		pageLayout === "content" ? (
-			<PageHeader
+			<PerfSendProfiler id="PageHeader">
+				<PageHeader
 				// 顶栏左簇（展开侧边栏 / 新会话 / 标题）用统一的 4px 间距：
 				// 图标按钮自带内边距，默认 8px 会让两枚图标看起来散开。
 				classNames={{ left: "gap-1" }}
@@ -59,11 +61,13 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 				onExpandSidebar={actions.toggleSidebar}
 				onOverlayOpen={actions.openOverlay}
 				onOverlayClose={actions.scheduleOverlayClose}
-			/>
+				/>
+			</PerfSendProfiler>
 		) : null;
 
 	return (
 		<TooltipProvider>
+			<PerfSendProfiler id="Root(total)">
 			<AppFrame
 				className={cn("app-frame", appFrameSurface?.rootClassName)}
 				decoration={<ThemedAppBackground />}
@@ -72,7 +76,9 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 				{showSidebar && (
 					<>
 						<SidebarDock className="sidebar-dock" visible={!narrow && !sidebarCollapsed}>
-							<Sidebar onOpenSession={onOpenSession} onCollapse={actions.toggleSidebar} />
+							<PerfSendProfiler id="Sidebar">
+								<Sidebar onOpenSession={onOpenSession} onCollapse={actions.toggleSidebar} />
+							</PerfSendProfiler>
 						</SidebarDock>
 						<SidebarOverlay
 							visible={narrow && overlayOpen}
@@ -90,11 +96,16 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 					</div>
 				) : (
 					<MainContentFrame className="app-main-frame" header={pageHeader}>
-						{routePending ? <RouteContentLoadingView /> : <Outlet />}
+						<PerfSendProfiler id="RouteOutlet">
+							{routePending ? <RouteContentLoadingView /> : <Outlet />}
+						</PerfSendProfiler>
 					</MainContentFrame>
 				)}
-				<RootGlobalOverlays />
+				<PerfSendProfiler id="RootGlobalOverlays">
+					<RootGlobalOverlays />
+				</PerfSendProfiler>
 			</AppFrame>
+			</PerfSendProfiler>
 		</TooltipProvider>
 	);
 }

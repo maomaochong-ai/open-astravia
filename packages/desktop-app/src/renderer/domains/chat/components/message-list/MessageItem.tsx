@@ -8,7 +8,7 @@ import { forwardRef, memo } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatMessage } from "./types";
 import { AssistantMessage } from "./AssistantMessage";
-import { UserMessage, type UserMessageEntryState } from "./UserMessage";
+import { UserMessage } from "./UserMessage";
 
 export const CompactionBoundary = memo(function CompactionBoundary() {
 	const { t } = useTranslation("chat");
@@ -38,8 +38,6 @@ interface MessageItemProps {
 	isTailMessage: boolean;
 	message: ChatMessage;
 	onAbortEdit?: () => void;
-	onUserMessageEntryComplete?: () => void;
-	userMessageEntryState: UserMessageEntryState;
 }
 
 export const MessageItem = memo(function MessageItem({
@@ -48,9 +46,7 @@ export const MessageItem = memo(function MessageItem({
 	isStreaming,
 	isLastUserMessage = false,
 	hasAssistantAfter = false,
-	userMessageEntryState,
 	onAbortEdit,
-	onUserMessageEntryComplete,
 	exportMode = false,
 }: MessageItemProps) {
 	if (message.role === "compaction") {
@@ -65,8 +61,6 @@ export const MessageItem = memo(function MessageItem({
 			<MessageItemView>
 				<UserMessage
 					message={message}
-					entryState={userMessageEntryState}
-					onEntryComplete={onUserMessageEntryComplete}
 					isLastUserMessage={isLastUserMessage}
 					hasAssistantAfter={hasAssistantAfter}
 					isStreaming={isStreaming}
@@ -98,7 +92,6 @@ export const ExportMessageList = forwardRef<HTMLDivElement, { messages: ChatMess
 							message={message}
 							isTailMessage={message.id === tailMessageId}
 							isStreaming={false}
-							userMessageEntryState="static"
 							exportMode
 						/>
 					</div>

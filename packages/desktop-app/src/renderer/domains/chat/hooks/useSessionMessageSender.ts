@@ -7,6 +7,7 @@ import {
 	recordInputContextUsed,
 } from "@shared/lib/app-monitor-events";
 import { deriveSkillNames, MultipleSceneReferencesError, prepareInputPrompt } from "@shared/lib/input-tokens";
+import { perfSendMark } from "@shared/lib/perf-send";
 import {
 	activeInputActionIdsAtom,
 	activeSessionAtom,
@@ -142,6 +143,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					return next;
 				});
 			}
+			perfSendMark("sender-enter");
 			const rawText = hasOverride ? override : inputValue.trim();
 			let preparedInput: ReturnType<typeof prepareInputPrompt>;
 			try {
@@ -204,7 +206,9 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			}
 			if (!hasOverride) {
 				// 记入本作用域历史并清草稿（含 input / skill / appshot 工作集与 map 条目）。
+				perfSendMark("clear-draft-start");
 				recordSentInputAndClearDraft(rawText);
+				perfSendMark("clear-draft-end");
 				setAttachedImages([]);
 				setMentionedFiles([]);
 			}
@@ -309,6 +313,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					userMsg.settingsAssistTabId = settingsAssistTabId;
 				}
 				rememberOptimisticUserMessage(session.runtimeId, userMsg, store.get(chatMessagesAtom));
+				perfSendMark("optimistic-append");
 				setChatMessages((prev) => [...prev, userMsg]);
 				optimisticUserMsgId = userMsg.id;
 			}
@@ -475,8 +480,11 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			promptReq.streamingBehavior = "followUp";
 			let sendResult: SendMessageResult | undefined;
 			try {
+				perfSendMark("await-plugin-host");
 				await waitForPluginHostReady();
+				perfSendMark("prompt-ipc-start");
 				const outcome = await window.vetta.session.prompt(session.runtimeId, promptReq);
+				perfSendMark("prompt-ipc-end");
 				if (outcome?.status === "queued") {
 					if (optimisticUserMsgId) {
 						// 以为空闲实则已在跑：消息已入 kernel 队列，撤掉抢先的乐观气泡，
