@@ -72,6 +72,7 @@ describe("MCP deferred tool contract", () => {
 				required: ["query"],
 			},
 		});
+		expect(tool.description).toContain("next model step in the same turn");
 		const result = await tool.execute({
 			sessionId: "session",
 			turnId: "turn",

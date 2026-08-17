@@ -100,6 +100,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 		documentStore: persistence.documentStore,
 		continuationStore: persistence.continuationStore,
 		resolveConversationPath: persistence.resolveConversationPath,
+		resolveSessionDirectory: persistence.resolveSessionDirectory,
 		resolveSessionPath: persistence.resolveSessionPath,
 	};
 	const createChildComposition = createCodingAgentChildCompositionFactory({

@@ -13,7 +13,7 @@ import type {
 	RuntimeMcpClientFactory,
 } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
-import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
+import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/ecosystem/tool-interceptor-adapter.js";
 import type { AgentPluginRuntimeConfig } from "../src/model-context/index.js";
 import { createCodingAgentPluginMcpRuntime } from "../src/plugins/runtime/mcp-runtime.js";
 

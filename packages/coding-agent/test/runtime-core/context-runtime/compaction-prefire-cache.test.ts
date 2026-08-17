@@ -1,7 +1,7 @@
 import type { Api, AssistantMessage, Model, UserMessage } from "@vetta/ai";
 import { describe, expect, it, vi } from "vitest";
-import { CompactionPrefireCache } from "../../../src/adapters/runtime-core/context-runtime/compaction-prefire-cache.js";
 import type { CompactionResult, CompactionSettings } from "../../../src/compaction/index.js";
+import { CompactionPrefireCache } from "../../../src/compaction/runtime/compaction-prefire-cache.js";
 import type { CodingAgentSessionEntry as SessionEntry } from "../../../src/sessions/index.js";
 
 describe("CompactionPrefireCache", () => {

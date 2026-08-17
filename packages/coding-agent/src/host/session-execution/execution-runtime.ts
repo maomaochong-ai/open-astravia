@@ -7,15 +7,6 @@ import {
 } from "@vetta/runtime-core";
 import type { AgentFeatureDefinition, AgentSession, CapabilityBinding } from "@vetta/runtime-core/kernel";
 import {
-	createBackgroundCommandService,
-	createBackgroundCommandToolExecutor,
-	createBashToolRegistration,
-	createForegroundCommandToolExecutor,
-	createShellToolRegistration,
-	createTaskOutputToolRegistration,
-	createTaskStopToolRegistration,
-} from "@vetta/runtime-node/coding";
-import {
 	type BackgroundCommandService,
 	buildBackgroundCommandNotification,
 	CODING_TOOL_AVAILABILITY_ERROR_CODES,
@@ -30,10 +21,7 @@ import {
 	guardCodingToolRegistration,
 	InMemoryCodingToolRegistry,
 } from "@vetta/runtime-tools";
-import {
-	createCodingAgentBackgroundCommandHost,
-	createCodingAgentForegroundCommandHost,
-} from "../../adapters/runtime-tools/index.js";
+import type { CodingAgentSessionExecutionEnvironment } from "../../composition/contracts/session-execution-environment.js";
 import { createCodingAgentSandboxToolRegistrations } from "./sandbox-tool-registrations.js";
 
 const SESSION_EXECUTION_FEATURE_ID = "coding-session-execution-tools";
@@ -41,9 +29,9 @@ const SESSION_EXECUTION_FEATURE_ID = "coding-session-execution-tools";
 export interface CodingAgentSessionExecutionRuntimeOptions {
 	readonly cwd: string;
 	readonly activation: CodingToolActivation;
+	readonly environment: CodingAgentSessionExecutionEnvironment;
 	readonly enableBackgroundTasks?: boolean;
 	readonly initialMode?: SessionExecutionMode;
-	readonly env?: Readonly<Record<string, string>>;
 	readonly sandboxHostPath?: string;
 	readonly linuxBubblewrapPath?: string;
 	readonly macosSandboxExecPath?: string;
@@ -66,25 +54,10 @@ export class CodingAgentSessionExecutionRuntime {
 
 	constructor(private readonly options: CodingAgentSessionExecutionRuntimeOptions) {
 		this.mode = options.initialMode ?? "full-access";
-		const commandHost = createCodingAgentForegroundCommandHost(options.cwd);
-		const environment = commandHost.environment;
-		const sessionCommandHost = {
-			...commandHost,
-			environment: () => ({ ...environment(), ...options.env }),
-		};
-		this.backgroundService = createBackgroundCommandService(createCodingAgentBackgroundCommandHost());
-		const foregroundExecutor = createForegroundCommandToolExecutor(sessionCommandHost);
-		const commandExecutor = createBackgroundCommandToolExecutor({
-			...sessionCommandHost,
-			foregroundExecutor,
-			backgroundService: this.backgroundService,
-		});
-		this.fullAccessRegistrations = [
-			createBashToolRegistration(options.cwd, { executor: commandExecutor }),
-			createShellToolRegistration(options.cwd, { executor: commandExecutor }),
-			createTaskOutputToolRegistration({ backgroundService: this.backgroundService }),
-			createTaskStopToolRegistration({ backgroundService: this.backgroundService }),
-		].map((registration) => inheritModelOrder(registration, options.resolveToolEntry?.(registration.tool.name)));
+		this.backgroundService = options.environment.backgroundService;
+		this.fullAccessRegistrations = options.environment.registrations.map((registration) =>
+			inheritModelOrder(registration, options.resolveToolEntry?.(registration.tool.name)),
+		);
 		for (const toolName of SESSION_EXECUTION_TOOL_NAMES) {
 			this.sourceBindings.set(toolName, options.resolveToolEntry?.(toolName)?.binding);
 		}
@@ -203,7 +176,11 @@ export class CodingAgentSessionExecutionRuntime {
 
 	async dispose(): Promise<void> {
 		this.unbindBackgroundTaskObservers();
-		await this.backgroundService.shutdown();
+		try {
+			await this.backgroundService.shutdown();
+		} finally {
+			await this.options.environment.dispose();
+		}
 	}
 
 	private resolveAvailabilityErrorCode(toolName: string): CodingToolAvailabilityErrorCode | undefined {
@@ -237,6 +214,7 @@ export class CodingAgentSessionExecutionRuntime {
 			...createCodingAgentSandboxToolRegistrations({
 				cwd: this.options.cwd,
 				hostInteraction: this.hostInteraction,
+				environment: this.options.environment.sandbox,
 				windowsSandboxHostPath: update.sandboxHostPath,
 				linuxBubblewrapPath: update.linuxBubblewrapPath,
 				macosSandboxExecPath: update.macosSandboxExecPath,

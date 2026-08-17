@@ -93,6 +93,8 @@ export function findCodingAgentArchitectureViolations(state) {
 	checkPlatformPersistenceCompositionRoots(state, violations);
 	checkCodingAgentCompositionPersistenceBoundary(state, violations);
 	checkToolEnvironmentBoundary(state, violations);
+	checkPromptRequestAdapterBoundary(state, violations);
+	checkRetiredAdapterOwnershipPaths(state, violations);
 	checkNodeStateBackendBoundary(state, violations);
 	checkExtensionModuleBoundary(state, violations);
 	checkResourceAccessBoundary(state, violations);
@@ -104,6 +106,10 @@ export function findCodingAgentArchitectureViolations(state) {
 	checkHostOwnedResourceCompositionBoundary(state, violations);
 	checkKnowledgeRuntimeBoundary(state, violations);
 	checkMemoryRuntimeBoundary(state, violations);
+	checkAskUserQuestionToolOwnership(state, violations);
+	checkInvokeSkillToolOwnership(state, violations);
+	checkMcpToolSearchOwnership(state, violations);
+	checkSubagentControlToolOwnership(state, violations);
 	checkRpcHostBoundary(state, violations);
 	checkSdkSessionIdentityRuntimeBoundary(state, violations);
 	checkRetiredLayerTerminology(state, violations);
@@ -116,6 +122,14 @@ export function findCodingAgentArchitectureViolations(state) {
 
 	for (const edge of state.edges) {
 		const target = resolveSourceTarget(edge.path, edge.specifier);
+		if (
+			isAdapterPath(edge.path) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(
+				`${edge.path}:${edge.line}: Adapter must consume platform-neutral facts, not a Node implementation`,
+			);
+		}
 		if (edge.path === ROOT_ENTRY && (edge.kind !== "export" || edge.specifier !== "./public-api/extensions.js")) {
 			violations.push(`${edge.path}:${edge.line}: package root may only export the Extension facade`);
 		}
@@ -165,6 +179,21 @@ export function findCodingAgentArchitectureViolations(state) {
 	}
 
 	return violations;
+}
+
+function checkRetiredAdapterOwnershipPaths(state, violations) {
+	const retiredPaths = new Set([
+		`${SOURCE_ROOT}/adapters/runtime-core/ecosystem-hook-tool-wrapper.ts`,
+		`${SOURCE_ROOT}/adapters/runtime-core/extension-observation-adapter.ts`,
+		`${SOURCE_ROOT}/adapters/runtime-core/extension-run-adapter.ts`,
+		`${SOURCE_ROOT}/adapters/runtime-core/extension-tool-wrapper.ts`,
+		`${SOURCE_ROOT}/adapters/extensions/extension-tool-interceptor.ts`,
+	]);
+	for (const path of state.sourcePaths) {
+		if (retiredPaths.has(path)) {
+			violations.push(`${path}: implementation belongs to its Extension or ecosystem owner`);
+		}
+	}
 }
 
 function checkBootstrapBoundary(state, violations) {
@@ -360,34 +389,34 @@ function checkCommandExecutionBoundary(state, violations) {
 }
 
 function checkExecutionModeHostBoundary(state, violations) {
-	const executionModeRoot = `${SOURCE_ROOT}/adapters/runtime-core/execution-mode/`;
+	const retiredExecutionModeRoot = `${SOURCE_ROOT}/adapters/runtime-core/execution-mode/`;
+	const sandboxHostRoot = `${SOURCE_ROOT}/host/session-execution/sandbox/`;
 	const retiredPlatformFiles = new Set([
-		`${executionModeRoot}linux-bwrap-tools.ts`,
-		`${executionModeRoot}macos-seatbelt-tools.ts`,
-		`${executionModeRoot}windows-sandbox-policy.ts`,
-		`${executionModeRoot}windows-sandbox-tools.ts`,
-		`${executionModeRoot}workspace-guard.ts`,
+		`${sandboxHostRoot}linux-bwrap-tools.ts`,
+		`${sandboxHostRoot}macos-seatbelt-tools.ts`,
+		`${sandboxHostRoot}windows-sandbox-policy.ts`,
+		`${sandboxHostRoot}windows-sandbox-tools.ts`,
+		`${sandboxHostRoot}workspace-guard.ts`,
 	]);
 	for (const file of state.files) {
+		if (file.path.startsWith(retiredExecutionModeRoot)) {
+			violations.push(`${file.path}: sandbox host policy must not return to the Runtime adapter directory`);
+		}
 		if (retiredPlatformFiles.has(file.path)) {
 			violations.push(`${file.path}: OS sandbox implementation belongs to runtime-node`);
 		}
 		if (
-			file.path.startsWith(executionModeRoot) &&
+			file.path.startsWith(sandboxHostRoot) &&
 			(/\bNodeJS\s*\./.test(file.text) || /\bprocess\s*\./.test(file.text))
 		) {
 			violations.push(`${file.path}: sandbox policy must consume Host Services, not Node globals`);
 		}
 	}
 	for (const edge of state.edges) {
-		if (edge.path.startsWith(executionModeRoot) && edge.specifier.startsWith("node:")) {
+		if (edge.path.startsWith(sandboxHostRoot) && edge.specifier.startsWith("node:")) {
 			violations.push(`${edge.path}:${edge.line}: OS sandbox implementation belongs to runtime-node`);
 		}
-		if (
-			edge.path.startsWith(executionModeRoot) &&
-			!edge.path.endsWith("/sandbox-tools.ts") &&
-			edge.specifier === "@vetta/runtime-node/sandbox"
-		) {
+		if (edge.path.startsWith(sandboxHostRoot) && edge.specifier.startsWith("@vetta/runtime-node")) {
 			violations.push(`${edge.path}:${edge.line}: sandbox policy must consume injected Host Services`);
 		}
 	}
@@ -628,6 +657,122 @@ function checkMemoryRuntimeBoundary(state, violations) {
 	}
 }
 
+function checkAskUserQuestionToolOwnership(state, violations) {
+	const featureRoot = `${SOURCE_ROOT}/features/ask-user-question/`;
+	const retiredCompositionPath = `${SOURCE_ROOT}/composition/tool-surface/ask-user-question-feature.ts`;
+	const retiredNodeToolRoot = "packages/runtime-node/src/coding/tools/ask-user-question/";
+
+	for (const edge of state.edges) {
+		if (
+			edge.path.startsWith(featureRoot) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: Ask User Question Feature must consume portable Runtime ports`);
+		}
+	}
+	for (const file of state.files) {
+		if (file.path === retiredCompositionPath) {
+			violations.push(`${file.path}: Ask User Question belongs to its Coding Agent feature`);
+		}
+		if (file.path.startsWith(retiredNodeToolRoot)) {
+			violations.push(`${file.path}: Ask User Question Tool definitions belong to the Coding Agent feature`);
+		}
+	}
+
+	const nodeCodingEntry = state.files.find((file) => file.path === "packages/runtime-node/src/coding/index.ts");
+	if (
+		nodeCodingEntry &&
+		/\b(?:createAskUserQuestionTool|AskUserQuestionToolInputSchema)\b|\.\/tools\/ask-user-question\//.test(
+			nodeCodingEntry.text,
+		)
+	) {
+		violations.push(`${nodeCodingEntry.path}: runtime-node must not export Coding Agent Ask User Question Tools`);
+	}
+}
+
+function checkInvokeSkillToolOwnership(state, violations) {
+	const skillRoot = `${SOURCE_ROOT}/resources/skills/`;
+	const retiredNodeToolRoot = "packages/runtime-node/src/coding/tools/invoke-skill/";
+
+	for (const edge of state.edges) {
+		if (
+			edge.path.startsWith(skillRoot) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: Skill semantics must consume portable Runtime and resource ports`);
+		}
+	}
+	for (const file of state.files) {
+		if (file.path.startsWith(retiredNodeToolRoot)) {
+			violations.push(`${file.path}: Invoke Skill Tool definitions belong to the Coding Agent Skill domain`);
+		}
+	}
+
+	const nodeCodingEntry = state.files.find((file) => file.path === "packages/runtime-node/src/coding/index.ts");
+	if (
+		nodeCodingEntry &&
+		/\b(?:createInvokeSkillTool|InvokeSkillToolInputSchema)\b|\.\/tools\/invoke-skill\//.test(nodeCodingEntry.text)
+	) {
+		violations.push(`${nodeCodingEntry.path}: runtime-node must not export Coding Agent Invoke Skill Tools`);
+	}
+}
+
+function checkMcpToolSearchOwnership(state, violations) {
+	const retiredNodeToolRoot = "packages/runtime-node/src/coding/tools/tool-search/";
+	for (const file of state.files) {
+		if (file.path.startsWith(retiredNodeToolRoot)) {
+			violations.push(`${file.path}: MCP Tool Search belongs to runtime-mcp`);
+		}
+	}
+
+	const nodeCodingEntry = state.files.find((file) => file.path === "packages/runtime-node/src/coding/index.ts");
+	if (
+		nodeCodingEntry &&
+		/\b(?:createToolSearchTool|ToolSearchToolInputSchema|scoreDeferredTools)\b|\.\/tools\/tool-search\//.test(
+			nodeCodingEntry.text,
+		)
+	) {
+		violations.push(`${nodeCodingEntry.path}: runtime-node must not duplicate runtime-mcp Tool Search`);
+	}
+}
+
+function checkSubagentControlToolOwnership(state, violations) {
+	const productToolRoot = `${SOURCE_ROOT}/composition/subagent/tools/`;
+	const retiredNodeToolRoots = [
+		"dispatch-workflows",
+		"followup-task",
+		"interrupt-agent",
+		"list-agents",
+		"send-message",
+		"spawn-agent",
+		"wait-agent",
+	].map((name) => `packages/runtime-node/src/coding/tools/${name}/`);
+
+	for (const edge of state.edges) {
+		if (
+			edge.path.startsWith(productToolRoot) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: Subagent control Tools must consume portable Runtime Ports`);
+		}
+	}
+	for (const file of state.files) {
+		if (retiredNodeToolRoots.some((root) => file.path.startsWith(root))) {
+			violations.push(`${file.path}: Subagent control Tool definitions belong to the Coding Agent Subagent feature`);
+		}
+	}
+
+	const nodeCodingEntry = state.files.find((file) => file.path === "packages/runtime-node/src/coding/index.ts");
+	if (
+		nodeCodingEntry &&
+		/\b(?:createDispatchWorkflows|createFollowupTask|createInterruptAgent|createListAgents|createSendMessage|createSpawnAgent|createWaitAgent)Tool\b|\.\/tools\/(?:dispatch-workflows|followup-task|interrupt-agent|list-agents|send-message|spawn-agent|wait-agent)\//.test(
+			nodeCodingEntry.text,
+		)
+	) {
+		violations.push(`${nodeCodingEntry.path}: runtime-node must not export Coding Agent Subagent control Tools`);
+	}
+}
+
 function checkRpcHostBoundary(state, violations) {
 	const rpcRoot = `${SOURCE_ROOT}/modes/rpc/`;
 	const rpcModePath = `${rpcRoot}rpc-mode.ts`;
@@ -728,10 +873,17 @@ function checkSdkSessionIdentityRuntimeBoundary(state, violations) {
 
 function checkToolEnvironmentBoundary(state, violations) {
 	const toolCompositionPath = `${SOURCE_ROOT}/composition/tool-surface/runtime-tools-composition.ts`;
-	const retiredNodeImplementationPaths = [
-		`${SOURCE_ROOT}/adapters/runtime-tools/command-process-host.ts`,
-		`${SOURCE_ROOT}/adapters/runtime-tools/executables/`,
+	const sessionExecutionPath = `${SOURCE_ROOT}/host/session-execution/execution-runtime.ts`;
+	const sandboxRegistrationPath = `${SOURCE_ROOT}/host/session-execution/sandbox-tool-registrations.ts`;
+	const pathPolicyRoot = `${SOURCE_ROOT}/tool-policy/path/`;
+	const platformFactories = [
+		"packages/cli-app/src/rpc/runtime-host/cli-tool-environment.ts",
+		"packages/runtime-desktop/src/coding-agent-tool-environment.ts",
 	];
+	const migratedCompositionRoots = TOOL_ENVIRONMENT_COMPOSITION_ROOTS.filter(
+		(path) => path !== `${SOURCE_ROOT}/host/sdk-session/session-host.ts`,
+	);
+	const retiredNodeImplementationPaths = [`${SOURCE_ROOT}/adapters/runtime-tools/`];
 	for (const file of state.files) {
 		if (
 			retiredNodeImplementationPaths.some((path) =>
@@ -747,6 +899,18 @@ function checkToolEnvironmentBoundary(state, violations) {
 				`${edge.path}:${edge.line}: Coding Agent tool composition must consume ToolEnvironment, not Node tools`,
 			);
 		}
+		if (
+			edge.path.startsWith(pathPolicyRoot) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: Coding Agent path policy must consume Host path boundaries`);
+		}
+		if (
+			(edge.path === sessionExecutionPath || edge.path === sandboxRegistrationPath) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: Session execution must consume its Host environment Port`);
+		}
 	}
 
 	const composition = state.files.find((file) => file.path === `${SOURCE_ROOT}/composition/runtime-composition.ts`);
@@ -756,9 +920,62 @@ function checkToolEnvironmentBoundary(state, violations) {
 
 	for (const path of TOOL_ENVIRONMENT_COMPOSITION_ROOTS) {
 		const file = state.files.find((candidate) => candidate.path === path);
-		if (file && !/\bcreateToolEnvironment\s*:/.test(file.text)) {
+		if (file && !/\bcreateToolEnvironment\s*(?::|,)/.test(file.text)) {
 			violations.push(`${path}: host Composition Root must inject createToolEnvironment`);
 		}
+		if (file && !/\bcreateSessionExecutionEnvironment\s*(?::|,)/.test(file.text)) {
+			violations.push(`${path}: host Composition Root must inject createSessionExecutionEnvironment`);
+		}
+	}
+	for (const path of migratedCompositionRoots) {
+		const file = state.files.find((candidate) => candidate.path === path);
+		if (file && /\bcreateCodingAgentNodeToolEnvironment\b/.test(file.text)) {
+			violations.push(`${path}: platform Composition Root must not select Coding Agent's legacy Node factory`);
+		}
+		if (file && /\bcreateCodingAgentNodeSessionExecutionEnvironment\b/.test(file.text)) {
+			violations.push(
+				`${path}: platform Composition Root must not select Coding Agent's legacy Session environment`,
+			);
+		}
+	}
+	for (const path of platformFactories) {
+		const file = state.files.find((candidate) => candidate.path === path);
+		if (
+			file &&
+			(!/\bcreateNodeHostCodingToolEnvironment\b/.test(file.text) ||
+				!/\bcreateNodeHostSessionCommandEnvironment\b/.test(file.text) ||
+				!/\bcreateNodeSandboxCodingToolEnvironment\b/.test(file.text) ||
+				!/\bcreateCodingAgentEditPathPolicy\b/.test(file.text) ||
+				!/\bcreateCodingAgentWritePathPolicy\b/.test(file.text))
+		) {
+			violations.push(
+				`${path}: platform environment factory must compose Node mechanisms with Coding Agent policies`,
+			);
+		}
+	}
+}
+
+function checkPromptRequestAdapterBoundary(state, violations) {
+	const adapterPath = `${SOURCE_ROOT}/adapters/runtime-core/prompt-request-adapter.ts`;
+	const adapter = state.files.find((file) => file.path === adapterPath);
+	if (!adapter) return;
+
+	for (const edge of state.edges) {
+		if (
+			edge.path === adapterPath &&
+			(edge.specifier.startsWith("../../plugins/") ||
+				edge.specifier.startsWith("../../extensions/") ||
+				edge.specifier.startsWith("@vetta/ecosystem-adapter"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: Prompt request Adapter must delegate domain policy`);
+		}
+	}
+
+	if (
+		!/private readonly runtime:\s*CodingAgentPromptRequestRuntime/.test(adapter.text) ||
+		!/this\.runtime\.prepare\(readPromptRequest\(inputRequest\.payload\), context\)/.test(adapter.text)
+	) {
+		violations.push(`${adapterPath}: Prompt request Adapter must delegate preparation to its runtime Port`);
 	}
 }
 

@@ -6,6 +6,7 @@ import type {
 	CodingAgentConversationPersistenceFactory,
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
+	CodingAgentSessionExecutionEnvironmentFactory,
 	CodingAgentToolEnvironmentFactory,
 } from "./contracts/index.js";
 import type {
@@ -22,6 +23,7 @@ export interface KnowledgeProcessingSessionFactoryOptions {
 	/** 由宿主选择平台持久化实现；知识处理产品层只转发 Port。 */
 	readonly createConversationPersistence: CodingAgentConversationPersistenceFactory;
 	readonly createToolEnvironment: CodingAgentToolEnvironmentFactory;
+	readonly createSessionExecutionEnvironment: CodingAgentSessionExecutionEnvironmentFactory;
 	readonly codingToolResultPolicy?: CodingAgentRuntimeCompositionOptions["codingToolResultPolicy"];
 	readonly knowledgeRuntime: CodingAgentKnowledgeRuntime;
 	readonly createSessionId?: () => string;
@@ -51,6 +53,7 @@ export function createKnowledgeProcessingSessionFactory(
 				conversationDir: request.sessionDir,
 				createConversationPersistence: options.createConversationPersistence,
 				createToolEnvironment: options.createToolEnvironment,
+				createSessionExecutionEnvironment: options.createSessionExecutionEnvironment,
 				codingToolResultPolicy: options.codingToolResultPolicy,
 				modelRegistry: modelRuntime,
 				initialModel,

@@ -1,5 +1,10 @@
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type { AgentPluginRuntimeConfig, ConversationScenario, RuntimeModel } from "@vetta/runtime-core";
+import type {
+	AgentPluginRuntimeConfig,
+	ConversationScenario,
+	RuntimeModel,
+	RuntimeSessionAskUserQuestionCapability,
+} from "@vetta/runtime-core";
 import {
 	type AgentFeatureDefinition,
 	type AgentProfile,
@@ -10,12 +15,10 @@ import {
 } from "@vetta/runtime-core/kernel";
 import type { SessionExtensionContinuationSource } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import type { AskUserQuestionCapability } from "@vetta/runtime-node/coding";
 import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools";
-import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
-import { createEcosystemToolInterceptor } from "../../adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
-import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
+import { createEcosystemToolInterceptor } from "../../adapters/ecosystem/tool-interceptor-adapter.js";
 import { CodingAgentPromptRequestAdapter } from "../../adapters/runtime-core/prompt-request-adapter.js";
+import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import { CodingAgentStopHookContinuationSource } from "../../extensions/runtime/stop-hook-continuation-source.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
@@ -38,6 +41,7 @@ import {
 import { createCodingAgentPromptResourceResolver } from "../../resources/prompt-resource-resolver.js";
 import { createCodingAgentInvokeSkillFeature } from "../../resources/skills/invoke-skill-feature.js";
 import type {
+	CodingAgentContextRuntime,
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
 	CodingAgentPromptResourceResolver,
@@ -112,10 +116,10 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly pluginRuntime?: CodingAgentPluginRuntimeSource;
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
 	readonly mcpController?: McpDeferredToolController;
-	readonly extensionEvents: CodingAgentExtensionRunAdapter;
+	readonly extensionEvents: CodingAgentExtensionRunBridge;
 	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
 	/** 宿主提问能力，heavy 工具首调确认闸的后端；缺省时确认闸走降级路径。 */
-	readonly askUserQuestion?: AskUserQuestionCapability;
+	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
 }
 
 export interface CodingAgentTurnCapabilitySessionAssembly {

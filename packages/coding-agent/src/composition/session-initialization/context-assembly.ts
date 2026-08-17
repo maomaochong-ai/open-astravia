@@ -6,10 +6,11 @@ import {
 	RuntimeModel,
 	type RuntimeResourceContext,
 } from "@vetta/runtime-core";
-import { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
-import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
+import { createDefaultCodingAgentContextRuntime } from "../../compaction/runtime/index.js";
+import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import { type CodingAgentMemoryController, CodingAgentSessionMemoryController } from "../../memory/index.js";
+import type { CodingAgentContextRuntime } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationSessionPathAssessment } from "../contracts/conversation-persistence.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
@@ -30,7 +31,7 @@ export interface CodingAgentSessionContextAssemblyOptions {
 	readonly resourceContext: RuntimeResourceContext;
 	readonly peripherals: CodingAgentSessionPeripheralAssembly;
 	readonly modelAdapter: CodingAgentRuntimeModelAdapter;
-	readonly extensionEvents: CodingAgentExtensionRunAdapter;
+	readonly extensionEvents: CodingAgentExtensionRunBridge;
 	readonly mcpCoordinator: CodingAgentMcpSessionCoordinator;
 	readonly readSessionId: () => string;
 	readonly resolveConversationPath: (sessionId: string) => string;
@@ -98,7 +99,7 @@ export function createCodingAgentSessionContextAssembly(
 		configLayers: profile.hookConfigLayers,
 		maxStopContinuations: profile.maxStopHookContinuations,
 	});
-	const contextRuntime = new CodingAgentContextRuntime({
+	const contextRuntime = (profile.createContextRuntime ?? createDefaultCodingAgentContextRuntime)({
 		hookRuntime,
 		resolveApiKey: (model) => modelRuntime.resolveApiKey(model),
 		resolveSettings: profile.resolveCompactionSettings,

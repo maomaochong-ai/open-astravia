@@ -10,20 +10,22 @@ import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel"
 import { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
-import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
-import type { CodingAgentExtensionRunAdapter } from "../../src/adapters/runtime-core/extension-run-adapter.js";
 import {
 	type CodingAgentSessionResourceIndexes,
 	createCodingAgentSessionResourceLifecycle,
 } from "../../src/composition/session-lifecycle/resource-lifecycle.js";
 import type { CodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
+import type { CodingAgentExtensionRunBridge } from "../../src/extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentTodoRuntime } from "../../src/features/todo/contracts.js";
 import type { CodingAgentSessionConfigurationState } from "../../src/host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryController, CodingAgentMemoryRolloverRuntime } from "../../src/memory/index.js";
 import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
-import type { CodingAgentRuntimeToolRegistration } from "../../src/runtime-contracts/index.js";
+import type {
+	CodingAgentContextRuntime,
+	CodingAgentRuntimeToolRegistration,
+} from "../../src/runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../src/sessions/projection/conversation-context-overlay.js";
 
 describe("Coding Agent Session Resource Lifecycle", () => {
@@ -50,7 +52,7 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 		} as unknown as CodingAgentSessionExecutionRuntime;
 		const configurationState = {} as CodingAgentSessionConfigurationState;
 		const resourceContext = {} as RuntimeResourceContext;
-		const extensionEvents = {} as CodingAgentExtensionRunAdapter;
+		const extensionEvents = {} as CodingAgentExtensionRunBridge;
 		const memoryController = {} as CodingAgentMemoryController;
 		const memoryRuntime = {
 			dispose: vi.fn(),
@@ -198,7 +200,7 @@ function createIndexes(): CodingAgentSessionResourceIndexes {
 		executionRuntimes: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
 		configurationStates: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionConfigurationState>(),
 		resourceContexts: new InMemoryRuntimeSessionValueIndex<RuntimeResourceContext>(),
-		extensionEventBridges: new InMemoryRuntimeSessionValueIndex<CodingAgentExtensionRunAdapter>(),
+		extensionEventBridges: new InMemoryRuntimeSessionValueIndex<CodingAgentExtensionRunBridge>(),
 		memoryControllers: new InMemoryRuntimeSessionValueIndex<CodingAgentMemoryController>(),
 		hookSessionControllers: new InMemoryRuntimeSessionValueIndex(),
 		mcpRefreshObservedSessions: new InMemoryRuntimeSessionMarkerIndex(),
@@ -212,6 +214,7 @@ function createConversationResources() {
 		documentStore: storage as unknown as RuntimeResources["conversationDocumentStore"],
 		continuationStore: storage as unknown as NonNullable<RuntimeResources["conversationContinuationStore"]>,
 		resolveConversationPath: (sessionId: string) => `C:\\conversations\\${sessionId}.jsonl`,
+		resolveSessionDirectory: (_sessionId: string) => "C:\\conversations",
 		resolveSessionPath: (sessionId: string) => `C:\\conversations\\${sessionId}.jsonl`,
 	};
 }

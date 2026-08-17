@@ -4,6 +4,12 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `RuntimeSessionIdentity`、`RuntimeSessionIdentityLifecycle` 与 continuation 合同新增可选 `sessionDirectory`
+  宿主位置事实；Kernel 在会话续接时透明更新该事实，旧存储未提供时保留原值，不解析平台路径或改变既有
+  `sessionPath` 语义。
+
 ### Changed
 
 - `ModelCallContributionContext` 在 Turn admission 绑定时可读取尚未展开的 `SessionInputRequest`；Runtime Core

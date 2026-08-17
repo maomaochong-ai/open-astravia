@@ -5,23 +5,21 @@ import {
 	createExtractTextFromPdfToolRegistration,
 	createHtmlToPdfToolRegistration,
 	createNodeCommandProcessHost,
+	createNodeDocToPdfOperations,
+	createNodeVettaDesktopCommandPort,
 	createProgressToolRegistration,
 	createRenderPdfPageToolRegistration,
 	NodeCommandProcessAbortedError,
 	RenderPdfPageProcessAbortedError,
 } from "@vetta/runtime-node/coding";
 import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
-import { createCodingAgentDesktopCommandPort } from "../../adapters/runtime-tools/desktop-command-port-adapter.js";
-import {
-	createCodingAgentDocToPdfOperations,
-	getCodingAgentOcrExecutionGate,
-} from "../../adapters/runtime-tools/index.js";
 import {
 	type CodingAgentKnowledgeWriteOperations,
 	createCodingAgentKnowledgeWritePageToolRegistration,
 } from "../../features/knowledge/index.js";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
+import { getCodingAgentOcrExecutionGate } from "../../tool-policy/ocr-execution-gate.js";
 
 export interface CodingAgentSpecializedToolOptions {
 	readonly cwd: string;
@@ -40,11 +38,11 @@ export function createCodingAgentSpecializedToolRegistrations(
 	options: CodingAgentSpecializedToolOptions,
 ): readonly CodingAgentRuntimeToolRegistration[] {
 	const commandProcess = createNodeCommandProcessHost();
-	const desktop = createCodingAgentDesktopCommandPort(commandProcess);
+	const desktop = createNodeVettaDesktopCommandPort({ commandProcess });
 	const ocrExecutionGate = getCodingAgentOcrExecutionGate();
 	return [
 		createDocToPdfToolRegistration(options.cwd, {
-			operations: createCodingAgentDocToPdfOperations({ commandProcess }),
+			operations: createNodeDocToPdfOperations({ commandProcess }),
 			modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.docToPdf,
 		}),
 		createHtmlToPdfToolRegistration(options.cwd, {

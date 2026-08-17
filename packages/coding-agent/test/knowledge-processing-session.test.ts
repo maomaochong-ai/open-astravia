@@ -4,10 +4,11 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../src/adapters/runtime-core/model-runtime-adapter.js";
-import { createCodingAgentNodeToolEnvironment } from "../src/adapters/runtime-tools/node-tool-environment.js";
 import { createKnowledgeProcessingSessionFactory } from "../src/composition/index.js";
 import type { KnowledgeProcessingSessionFactoryOptions } from "../src/composition/knowledge-processing-session.js";
 import type { CodingAgentRuntimeCompositionOptions } from "../src/composition/runtime-composition.js";
+import { createCodingAgentNodeSessionExecutionEnvironment } from "../src/host/tool-environment/node/node-session-execution-environment.js";
+import { createCodingAgentNodeToolEnvironment } from "../src/host/tool-environment/node/node-tool-environment.js";
 import {
 	createCodingAgentRuntimeComposition,
 	createTestConversationPersistence,
@@ -91,6 +92,7 @@ describe("Knowledge processing session", () => {
 			getModelRegistry: () => registry,
 			createConversationPersistence: createTestConversationPersistence,
 			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
 			knowledgeRuntime: createTestKnowledgeRuntime(knowledgeDirectory),
 			createSessionId: () => "knowledge-session",
 			createComposition: createRecordedComposition({
@@ -184,6 +186,7 @@ describe("Knowledge processing session", () => {
 			}),
 			createConversationPersistence: createTestConversationPersistence,
 			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
 			knowledgeRuntime: createTestKnowledgeRuntime(cwd),
 			createComposition: (options) =>
 				createCodingAgentRuntimeComposition({

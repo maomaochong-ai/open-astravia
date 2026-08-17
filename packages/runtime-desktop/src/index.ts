@@ -1,4 +1,5 @@
 export * from "./backend-pool.js";
+export * from "./coding-agent-tool-environment.js";
 export * from "./historical-session-format.js";
 export * from "./historical-session-import-backend.js";
 export * from "./lifecycle.js";

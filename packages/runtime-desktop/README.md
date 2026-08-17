@@ -13,3 +13,11 @@ desktop-app -> runtime-desktop -> coding-agent + runtime-node
 
 Desktop 组合通过 `createDesktopRuntimeHostPlatformServices` 显式提供 Node 路径、队列 sidecar 与沙箱授权服务；`runtime-core` 不感知 Electron、Node 文件系统或 OS 路径规则。当前
 `coding-agent` 是 Node 产品组合，`runtime-desktop` 负责把它与 Desktop 生命周期及平台服务连接起来。
+
+`createDesktopCodingAgentToolEnvironment()` 是 Desktop 的 ToolEnvironment 组合根：它把 Coding Agent 的路径拒绝
+策略与 `runtime-node` 的路径、Shell、进程和工具实现连接起来。`coding-agent` 的低层 Composition 只消费工厂 Port，
+不选择该默认实现。
+
+`createDesktopCodingAgentSessionExecutionEnvironment()` 为每个 Session 创建独占的命令、后台任务与 sandbox
+环境；它通过 `runtime-node` 的统一工厂提供具体 sandbox Tool 与 Host Services，Coding Agent 只叠加产品权限策略。
+Session 关闭时由 Coding Agent 生命周期通过该 Port 释放，但具体 Node 资源所有权和构造仍位于平台层。

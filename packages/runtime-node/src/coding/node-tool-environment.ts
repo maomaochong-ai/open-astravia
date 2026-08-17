@@ -33,14 +33,26 @@ export interface NodeCodingToolEnvironmentOptions {
 	readonly writePathPolicy: WritePathPolicy;
 }
 
-export interface NodeCodingToolEnvironment {
+export interface NodeCommandToolEnvironmentOptions {
+	readonly cwd: string;
+	readonly foregroundCommand?: ForegroundCommandExecutorOptions;
+	readonly backgroundCommandHost?: BackgroundCommandHost;
+	readonly backgroundService?: BackgroundCommandService;
+	readonly commandExecutor?: CommandToolExecutor;
+}
+
+export interface NodeCommandToolEnvironment {
 	readonly registrations: readonly CodingToolRegistration[];
 	readonly backgroundService?: BackgroundCommandService;
 	dispose(): void;
 }
 
-/** 创建 Node 基础工具能力；场景激活、模型顺序和结果策略由上层组合决定。 */
-export function createNodeCodingToolEnvironment(options: NodeCodingToolEnvironmentOptions): NodeCodingToolEnvironment {
+export interface NodeCodingToolEnvironment extends NodeCommandToolEnvironment {}
+
+/** 创建可由 Session 独占的 Node 命令工具与后台任务环境。 */
+export function createNodeCommandToolEnvironment(
+	options: NodeCommandToolEnvironmentOptions,
+): NodeCommandToolEnvironment {
 	const backgroundService =
 		options.backgroundService ??
 		(options.commandExecutor || !options.backgroundCommandHost
@@ -50,7 +62,7 @@ export function createNodeCodingToolEnvironment(options: NodeCodingToolEnvironme
 		options.commandExecutor ??
 		(options.foregroundCommand ? createForegroundCommandToolExecutor(options.foregroundCommand) : undefined);
 	if (!foregroundExecutor) {
-		throw new Error("Node coding tool environment requires foregroundCommand or commandExecutor");
+		throw new Error("Node command tool environment requires foregroundCommand or commandExecutor");
 	}
 	const commandExecutor =
 		options.commandExecutor ??
@@ -64,9 +76,6 @@ export function createNodeCodingToolEnvironment(options: NodeCodingToolEnvironme
 
 	return {
 		registrations: [
-			createCurrentTimeToolRegistration(),
-			createReadToolRegistration(options.cwd),
-			createEditToolRegistration(options.cwd, { pathPolicy: options.editPathPolicy }),
 			createBashToolRegistration(options.cwd, { executor: commandExecutor }),
 			createShellToolRegistration(options.cwd, { executor: commandExecutor }),
 			...(backgroundService
@@ -75,6 +84,22 @@ export function createNodeCodingToolEnvironment(options: NodeCodingToolEnvironme
 						createTaskStopToolRegistration({ backgroundService }),
 					]
 				: []),
+		],
+		backgroundService,
+		dispose: () => backgroundService?.dispose(),
+	};
+}
+
+/** 创建 Node 基础工具能力；场景激活、模型顺序和结果策略由上层组合决定。 */
+export function createNodeCodingToolEnvironment(options: NodeCodingToolEnvironmentOptions): NodeCodingToolEnvironment {
+	const commandEnvironment = createNodeCommandToolEnvironment(options);
+
+	return {
+		registrations: [
+			createCurrentTimeToolRegistration(),
+			createReadToolRegistration(options.cwd),
+			createEditToolRegistration(options.cwd, { pathPolicy: options.editPathPolicy }),
+			...commandEnvironment.registrations,
 			createLsToolRegistration(options.cwd),
 			createGlobToolRegistration(options.cwd),
 			createGrepToolRegistration(options.cwd, { executableResolver: options.executableResolver }),
@@ -82,7 +107,7 @@ export function createNodeCodingToolEnvironment(options: NodeCodingToolEnvironme
 			createTreeToolRegistration(options.cwd, { executableResolver: options.executableResolver }),
 			createWriteToolRegistration(options.cwd, { pathPolicy: options.writePathPolicy }),
 		],
-		backgroundService,
-		dispose: () => backgroundService?.dispose(),
+		backgroundService: commandEnvironment.backgroundService,
+		dispose: () => commandEnvironment.dispose(),
 	};
 }

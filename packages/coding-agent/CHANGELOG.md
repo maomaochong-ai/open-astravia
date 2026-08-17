@@ -2,6 +2,30 @@
 
 ### Breaking Changes
 
+- 子代理控制 Tool（`spawn_agent`、`dispatch_workflows`、`wait_agent`、`list_agents`、`interrupt_agent`、
+  `send_message`、`followup_task`）的模型名称、Schema、描述、Scope、Category、结果和注册顺序现由
+  `composition/subagent/tools` 持有，并直接消费 `SubagentCoordinatorPort`；Node Runtime 不再承载这些产品语义，
+  用户可观察行为保持不变。
+
+- `CodingAgentConversationPersistence` 新增必填 `resolveSessionDirectory(sessionId)`，由宿主持久化实现显式提供会话制品目录；
+  Extension Session View 不再使用 Node path API 解析 `sessionPath`，内存会话仍回退到工作目录。
+
+- `CodingAgentSandboxEnvironment` 改为通过 `createToolSet()` 提供宿主构造的 `read`、`write`、`edit`、
+  平台命令注册及 sandbox services，不再向产品层暴露路径策略、命令环境和具体工具组装原语。CLI、Desktop 与
+  SDK Node 兼容宿主均已迁移；Coding Agent 只保留 sandbox 工具白名单、权限确认和会话授权策略。
+
+- `CodingAgentRuntimeCompositionOptions` 新增必填 `createSessionExecutionEnvironment`：每个 Session 的
+  `bash`/`shell`、后台任务与 sandbox Host 现在由最终宿主显式创建和释放，Coding Agent 只保留执行模式、工具激活、
+  权限确认和观察投影。CLI、Desktop、Knowledge Processing 与 SDK 兼容宿主均已接线；同时移除
+  `createCodingAgentForegroundCommandHost()`、`createCodingAgentBackgroundCommandHost()` 及相关 Node 类型导出。
+
+- Coding Agent 的 Edit/Write 路径策略现在接收平台提供的 `CodingAgentPathPolicyBoundaries`，不再自行读取
+  Home、工作区和 Knowledge 目录或调用 Node path API。CLI 与 Desktop Composition Root 已显式组合相同目录集合；
+  `createCodingAgentNodeToolEnvironment()` 仅作为公开 SDK 的迁移兼容入口保留，应用宿主不应继续选择它。
+
+- `@vetta/coding-agent/host` 不再导出 Node 专属的 `createCodingAgentDocToPdfOperations()`；对应实现迁至
+  `@vetta/runtime-node/coding` 的 `createNodeDocToPdfOperations()`。内置工具行为、探测顺序、命令参数和错误语义保持不变。
+
 - **Node RPC Client Transport 迁至 CLI 包**：子进程启动、JSONL stdout 读取、环境变量与信号管理从 Coding Agent
   移至 `@vetta/cli-app`。Coding Agent RPC facade 保留注入 `RpcClientTransport` 的可移植 `RpcClient`、wire
   类型、`RpcClientError` 与结构化失败映射；CLI 根入口导出绑定 `NodeRpcClientTransport` 的零配置 `RpcClient`。
@@ -155,6 +179,14 @@
 - **Turn 绑定后 Session Plugin MCP 工具对模型不可见（回归）**：Turn-bound runtime generation（ADR-0069 落地）在 admission 冻结 MCP 可见集时只从 `readAvailableTools()` 取候选名，而 plugin MCP 工具要到 compose 阶段才由 pluginMcpRuntime 并入 frame、不在该表里，于是被整体冻结成不可见——插件声明的 MCP 工具在真实会话中从模型工具清单里消失。修复为冻结时把 MCP prompt state 的受管工具名并入候选集再过滤。回归由 `packages/cli-app/test/plugin-mcp-session-contract.test.ts` 锁定（原「isolates two sessions」用例在回归下失败）。该文件中 workflow 编排会话的 `rootMcpTools` 断言同步修正：旧断言 `[]` 锁定的是已删除的「MCP server agent_mode 与会话模式不匹配即排除」硬闸行为，零硬闸下 root 会话自己声明的 plugin MCP 工具对 root 模型同样可见。
 
 ### Changed
+
+- **Invoke Skill 归入 Skill 领域**：`invoke_skill` 的模型名称、Schema、描述、输出、Scope、Category 和注册逻辑从
+  `runtime-node` 迁入 `resources/skills/tool`。现有 Turn 级 Skill 快照、Hook 激活、缺失/读取失败结果和模型顺序保持不变；
+  Skill Hook 的内部内容 revision 同时改用平台中立的确定性文本指纹，`runtime-node` 不再持有无平台依赖的 Skill 产品语义。
+
+- **Ask User Question 归入产品 Feature**：`ask_user_question` 的模型可见名称、Schema、描述、输出文案、
+  动态可用性和注册顺序统一位于 `features/ask-user-question`；该 Feature 直接消费 `runtime-core` 的通用宿主提问
+  Capability，不再依赖 `runtime-node` 的产品 Tool 定义。名称、Schema、取消语义和用户回答输出保持不变。
 
 - **SDK Session identity Host 解耦**：低层 SDK Session Factory 不再自行选择 UUID、cwd、Conversation Catalog、文件路径或
   Node Persistence；这些能力通过 `CodingAgentSdkSessionIdentityRuntime` 注入。现有零参数 SDK 入口继续由 Node 兼容 Host

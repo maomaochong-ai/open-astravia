@@ -5,10 +5,12 @@ export type CodingAgentSessionInitializationProfile = Pick<
 	| "additionalHookAdapterFactories"
 	| "agentDir"
 	| "createCompactionExtensionRuntime"
+	| "createContextRuntime"
 	| "createMemoryRolloverRuntime"
 	| "createPluginMcpRuntime"
 	| "createPluginRuntime"
 	| "createPromptRuntimeSources"
+	| "createSessionExecutionEnvironment"
 	| "createPromptResourceResolver"
 	| "createSessionExtensionDefinitions"
 	| "createSubagentChildFactory"
@@ -42,10 +44,12 @@ export function createCodingAgentSessionInitializationProfile(
 		additionalHookAdapterFactories: options.additionalHookAdapterFactories,
 		agentDir: options.agentDir,
 		createCompactionExtensionRuntime: options.createCompactionExtensionRuntime,
+		createContextRuntime: options.createContextRuntime,
 		createMemoryRolloverRuntime: options.createMemoryRolloverRuntime,
 		createPluginMcpRuntime: options.createPluginMcpRuntime,
 		createPluginRuntime: options.createPluginRuntime,
 		createPromptRuntimeSources: options.createPromptRuntimeSources,
+		createSessionExecutionEnvironment: options.createSessionExecutionEnvironment,
 		createPromptResourceResolver: options.createPromptResourceResolver,
 		createSessionExtensionDefinitions: options.createSessionExtensionDefinitions,
 		createSubagentChildFactory: options.createSubagentChildFactory,

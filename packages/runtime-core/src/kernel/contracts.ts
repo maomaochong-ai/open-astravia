@@ -635,6 +635,8 @@ export interface ConversationContinuationResult {
 	readonly sourceSessionPath?: string;
 	readonly sourceVersion: number;
 	readonly sessionId: string;
+	/** 宿主持有的目标会话制品位置；Kernel 不解释其格式。 */
+	readonly sessionDirectory?: string;
 	readonly sessionPath?: string;
 	readonly version: number;
 	/** 目标文件写入 turn.continued 前的投影，用于运行时无重读地原子重绑定。 */
@@ -818,6 +820,7 @@ export interface ConversationContinuedEvent {
 	readonly sourceSessionId: string;
 	readonly sourceSessionPath?: string;
 	readonly sessionId: string;
+	readonly sessionDirectory?: string;
 	readonly sessionPath?: string;
 	readonly turnId: string;
 	readonly reason: string;

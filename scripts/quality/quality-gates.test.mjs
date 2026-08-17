@@ -564,6 +564,18 @@ describe("package boundary analysis", () => {
 				'import type { ConversationDocument } from "@vetta/runtime-core/conversation";',
 			),
 		).toHaveLength(1);
+		expect(
+			findPackageBoundaryViolations(
+				"packages/coding-agent/src/compaction/runtime/context-runtime.ts",
+				'import type { ContextStrategy } from "@vetta/runtime-core/kernel";',
+			),
+		).toEqual([]);
+		expect(
+			findPackageBoundaryViolations(
+				"packages/coding-agent/src/compaction/runtime/context-runtime.ts",
+				'import type { SessionManager } from "../core/session-manager/index.js";',
+			),
+		).toHaveLength(1);
 	});
 
 	it("keeps production Legacy imports and Runtime adapters inside explicit compatibility boundaries", () => {

@@ -9,18 +9,21 @@ import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel"
 import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
-import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
+import {
+	CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME,
+	isCodingAgentAskUserQuestionEnabled,
+} from "../../features/ask-user-question/index.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import { CodingAgentBackgroundWorkController } from "../../host/session-execution/background-work-controller.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
-import type { CodingAgentPluginMcpRuntime, CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import type {
+	CodingAgentContextRuntime,
+	CodingAgentPluginMcpRuntime,
+	CodingAgentRuntimeToolRegistration,
+} from "../../runtime-contracts/index.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
-import {
-	CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME,
-	isCodingAgentAskUserQuestionEnabled,
-} from "../tool-surface/ask-user-question-feature.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";
 
@@ -29,6 +32,7 @@ export interface CodingAgentSessionConversationResources {
 	readonly documentStore: RuntimeResources["conversationDocumentStore"];
 	readonly continuationStore: NonNullable<RuntimeResources["conversationContinuationStore"]>;
 	resolveConversationPath(sessionId: string): string;
+	resolveSessionDirectory(sessionId: string): string | undefined;
 	resolveSessionPath(sessionId: string): string | undefined;
 }
 
@@ -138,6 +142,7 @@ export function createCodingAgentSessionRuntimeResources(
 		contextRuntime: options.contextRuntime,
 		identity: {
 			cwd: options.session.cwd,
+			sessionDirectory: options.conversation.resolveSessionDirectory(options.session.initialSessionId),
 			sessionPath: options.conversation.resolveSessionPath(options.session.initialSessionId),
 			parentSessionPath: options.session.parentSessionPath,
 			parentEntryId: options.session.parentEntryId,

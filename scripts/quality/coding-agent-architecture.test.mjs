@@ -105,6 +105,28 @@ describe("Coding Agent architecture gate", () => {
 		expect(violations.some((violation) => violation.includes("historical file mutation"))).toBe(false);
 	});
 
+	it("keeps contract adapters independent from Node platform implementations", () => {
+		const nodePathAdapter = createState([
+			{
+				path: `${SOURCE_ROOT}/adapters/extensions/session-view-adapter.ts`,
+				text: 'import { dirname } from "node:path";',
+			},
+		]);
+		const runtimeNodeAdapter = createState([
+			{
+				path: `${SOURCE_ROOT}/adapters/runtime-core/model-adapter.ts`,
+				text: 'import { createHost } from "@vetta/runtime-node/host";',
+			},
+		]);
+
+		expect(findCodingAgentArchitectureViolations(nodePathAdapter)).toContain(
+			`${SOURCE_ROOT}/adapters/extensions/session-view-adapter.ts:1: Adapter must consume platform-neutral facts, not a Node implementation`,
+		);
+		expect(findCodingAgentArchitectureViolations(runtimeNodeAdapter)).toContain(
+			`${SOURCE_ROOT}/adapters/runtime-core/model-adapter.ts:1: Adapter must consume platform-neutral facts, not a Node implementation`,
+		);
+	});
+
 	it("keeps historical conversion in its explicit format adapter", () => {
 		const allowed = createState([
 			{
@@ -210,6 +232,7 @@ describe("Coding Agent architecture gate", () => {
 					"createCodingAgentRuntimeComposition({",
 					"\tcreateConversationPersistence: () => createFileConversationPersistence(conversationDir),",
 					"\tcreateToolEnvironment: hostToolEnvironmentFactory,",
+					"\tcreateSessionExecutionEnvironment: hostSessionExecutionEnvironmentFactory,",
 					"\tcodingToolResultPolicy: hostToolResultPolicy,",
 					"\tknowledgeRuntime: createNodeKnowledgeRuntime(knowledgeDir),",
 					...(requiresMemoryStorage
@@ -224,6 +247,7 @@ describe("Coding Agent architecture gate", () => {
 			`${path}: platform Composition Root must select createFileConversationPersistence from runtime-node`,
 			`${path}: platform Composition Root must inject createConversationPersistence`,
 			`${path}: host Composition Root must inject createToolEnvironment`,
+			`${path}: host Composition Root must inject createSessionExecutionEnvironment`,
 			`${path}: Node Host Composition Root must inject codingToolResultPolicy`,
 		];
 		if (path !== "packages/runtime-desktop/src/backend-pool.ts") {
@@ -280,13 +304,103 @@ describe("Coding Agent architecture gate", () => {
 		);
 	});
 
+	it("keeps path policy portable and selects Node ToolEnvironment mechanisms in platform roots", () => {
+		const pathPolicyPath = `${SOURCE_ROOT}/tool-policy/path/path-policy-boundaries.ts`;
+		const cliCompositionPath = "packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts";
+		const cliFactoryPath = "packages/cli-app/src/rpc/runtime-host/cli-tool-environment.ts";
+		const importingNode = createState([{ path: pathPolicyPath, text: 'import { resolve } from "node:path";' }]);
+		const selectingLegacyFactory = createState([
+			{
+				path: cliCompositionPath,
+				text: "createToolEnvironment: createCodingAgentNodeToolEnvironment,",
+			},
+		]);
+		const incompletePlatformFactory = createState([
+			{ path: cliFactoryPath, text: "createNodeHostCodingToolEnvironment();" },
+		]);
+		const completePlatformFactory = createState([
+			{
+				path: cliFactoryPath,
+				text: "createNodeHostCodingToolEnvironment({ editPathPolicy: createCodingAgentEditPathPolicy(boundaries), writePathPolicy: createCodingAgentWritePathPolicy(boundaries) }); createNodeHostSessionCommandEnvironment(); createNodeSandboxCodingToolEnvironment();",
+			},
+		]);
+
+		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
+			`${pathPolicyPath}:1: Coding Agent path policy must consume Host path boundaries`,
+		);
+		expect(findCodingAgentArchitectureViolations(selectingLegacyFactory)).toContain(
+			`${cliCompositionPath}: platform Composition Root must not select Coding Agent's legacy Node factory`,
+		);
+		expect(findCodingAgentArchitectureViolations(incompletePlatformFactory)).toContain(
+			`${cliFactoryPath}: platform environment factory must compose Node mechanisms with Coding Agent policies`,
+		);
+		expect(findCodingAgentArchitectureViolations(completePlatformFactory)).not.toContain(
+			`${cliFactoryPath}: platform environment factory must compose Node mechanisms with Coding Agent policies`,
+		);
+	});
+
+	it("keeps Session execution behind the injected Host environment", () => {
+		const executionPath = `${SOURCE_ROOT}/host/session-execution/execution-runtime.ts`;
+		const sandboxPath = `${SOURCE_ROOT}/host/session-execution/sandbox-tool-registrations.ts`;
+		const state = createState([
+			{ path: executionPath, text: 'import { spawn } from "node:child_process";' },
+			{ path: sandboxPath, text: 'import { createNodeSandboxHost } from "@vetta/runtime-node/sandbox";' },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(state)).toEqual([
+			`${executionPath}:1: Session execution must consume its Host environment Port`,
+			`${sandboxPath}:1: Session execution must consume its Host environment Port`,
+		]);
+	});
+
 	it.each([
 		`${SOURCE_ROOT}/adapters/runtime-tools/command-process-host.ts`,
+		`${SOURCE_ROOT}/adapters/runtime-tools/desktop-command-port-adapter.ts`,
+		`${SOURCE_ROOT}/adapters/runtime-tools/doc-to-pdf-operations.ts`,
+		`${SOURCE_ROOT}/adapters/runtime-tools/edit-path-policy.ts`,
+		`${SOURCE_ROOT}/adapters/runtime-tools/path-policy-boundaries.ts`,
+		`${SOURCE_ROOT}/adapters/runtime-tools/write-path-policy.ts`,
 		`${SOURCE_ROOT}/adapters/runtime-tools/executables/resolver.ts`,
 	])("keeps retired Node tool implementation out of %s", (path) => {
 		const state = createState([{ path, text: "export const implementation = {};" }]);
 		expect(findCodingAgentArchitectureViolations(state)).toContain(
 			`${path}: Node command and executable implementations belong to runtime-node`,
+		);
+	});
+
+	it("keeps Prompt domain policy behind the request runtime Port", () => {
+		const adapterPath = `${SOURCE_ROOT}/adapters/runtime-core/prompt-request-adapter.ts`;
+		const importingDomainImplementation = createState([
+			{
+				path: adapterPath,
+				text: 'import { buildPluginPromptContext } from "../../plugins/runtime/plugin-prompt-context.js";',
+			},
+		]);
+		const missingRuntimePort = createState([
+			{
+				path: adapterPath,
+				text: "export class CodingAgentPromptRequestAdapter {}",
+			},
+		]);
+
+		expect(findCodingAgentArchitectureViolations(importingDomainImplementation)).toContain(
+			`${adapterPath}:1: Prompt request Adapter must delegate domain policy`,
+		);
+		expect(findCodingAgentArchitectureViolations(missingRuntimePort)).toContain(
+			`${adapterPath}: Prompt request Adapter must delegate preparation to its runtime Port`,
+		);
+	});
+
+	it.each([
+		`${SOURCE_ROOT}/adapters/runtime-core/ecosystem-hook-tool-wrapper.ts`,
+		`${SOURCE_ROOT}/adapters/runtime-core/extension-observation-adapter.ts`,
+		`${SOURCE_ROOT}/adapters/runtime-core/extension-run-adapter.ts`,
+		`${SOURCE_ROOT}/adapters/runtime-core/extension-tool-wrapper.ts`,
+		`${SOURCE_ROOT}/adapters/extensions/extension-tool-interceptor.ts`,
+	])("keeps retired Adapter ownership path out of %s", (path) => {
+		const state = createState([{ path, text: "export const implementation = {};" }]);
+		expect(findCodingAgentArchitectureViolations(state)).toContain(
+			`${path}: implementation belongs to its Extension or ecosystem owner`,
 		);
 	});
 
@@ -564,9 +678,11 @@ describe("Coding Agent architecture gate", () => {
 	});
 
 	it("keeps OS sandbox implementation behind injected Host Services", () => {
-		const executionModeRoot = `${SOURCE_ROOT}/adapters/runtime-core/execution-mode/`;
-		const retiredPath = `${executionModeRoot}linux-bwrap-tools.ts`;
-		const policyPath = `${executionModeRoot}sandbox-tool-utils.ts`;
+		const sandboxHostRoot = `${SOURCE_ROOT}/host/session-execution/sandbox/`;
+		const retiredAdapterPath = `${SOURCE_ROOT}/adapters/runtime-core/execution-mode/sandbox-tools.ts`;
+		const retiredPath = `${sandboxHostRoot}linux-bwrap-tools.ts`;
+		const policyPath = `${sandboxHostRoot}sandbox-tool-utils.ts`;
+		const retiredAdapter = createState([{ path: retiredAdapterPath, text: "export function create() {}" }]);
 		const retiredImplementation = createState([
 			{ path: retiredPath, text: 'import { spawn } from "node:child_process";' },
 		]);
@@ -574,7 +690,13 @@ describe("Coding Agent architecture gate", () => {
 		const selectingNodeService = createState([
 			{ path: policyPath, text: 'import { findSessionGrant } from "@vetta/runtime-node/sandbox";' },
 		]);
+		const selectingNodeTools = createState([
+			{ path: policyPath, text: 'import { createReadToolRegistration } from "@vetta/runtime-node/coding";' },
+		]);
 
+		expect(findCodingAgentArchitectureViolations(retiredAdapter)).toContain(
+			`${retiredAdapterPath}: sandbox host policy must not return to the Runtime adapter directory`,
+		);
 		expect(findCodingAgentArchitectureViolations(retiredImplementation)).toContain(
 			`${retiredPath}: OS sandbox implementation belongs to runtime-node`,
 		);
@@ -585,6 +707,9 @@ describe("Coding Agent architecture gate", () => {
 			`${policyPath}: sandbox policy must consume Host Services, not Node globals`,
 		);
 		expect(findCodingAgentArchitectureViolations(selectingNodeService)).toContain(
+			`${policyPath}:1: sandbox policy must consume injected Host Services`,
+		);
+		expect(findCodingAgentArchitectureViolations(selectingNodeTools)).toContain(
 			`${policyPath}:1: sandbox policy must consume injected Host Services`,
 		);
 	});
@@ -813,6 +938,82 @@ describe("Coding Agent architecture gate", () => {
 				`${nodeToolPath}: Memory Tool definitions belong to the Coding Agent feature`,
 				`${nodeEntryPath}: runtime-node must not export Coding Agent Memory Tools`,
 				`${cliPath}: Node Host Composition Root must inject NodeTextFileStorage for Memory`,
+			]),
+		);
+	});
+
+	it("keeps Ask User Question definitions in the portable Coding Agent feature", () => {
+		const featurePath = `${SOURCE_ROOT}/features/ask-user-question/tool/ask-user-question-tool.ts`;
+		const retiredCompositionPath = `${SOURCE_ROOT}/composition/tool-surface/ask-user-question-feature.ts`;
+		const nodeToolPath = "packages/runtime-node/src/coding/tools/ask-user-question/index.ts";
+		const nodeEntryPath = "packages/runtime-node/src/coding/index.ts";
+		const state = createState([
+			{ path: featurePath, text: 'import { join } from "node:path";' },
+			{ path: retiredCompositionPath, text: "export function createFeature() {}" },
+			{ path: nodeToolPath, text: "export const tool = {};" },
+			{ path: nodeEntryPath, text: 'export * from "./tools/ask-user-question/index.js";' },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(state)).toEqual(
+			expect.arrayContaining([
+				`${featurePath}:1: Ask User Question Feature must consume portable Runtime ports`,
+				`${retiredCompositionPath}: Ask User Question belongs to its Coding Agent feature`,
+				`${nodeToolPath}: Ask User Question Tool definitions belong to the Coding Agent feature`,
+				`${nodeEntryPath}: runtime-node must not export Coding Agent Ask User Question Tools`,
+			]),
+		);
+	});
+
+	it("keeps Invoke Skill definitions in the portable Coding Agent Skill domain", () => {
+		const skillToolPath = `${SOURCE_ROOT}/resources/skills/tool/invoke-skill-tool.ts`;
+		const nodeToolPath = "packages/runtime-node/src/coding/tools/invoke-skill/index.ts";
+		const nodeEntryPath = "packages/runtime-node/src/coding/index.ts";
+		const state = createState([
+			{ path: skillToolPath, text: 'import { readFile } from "node:fs";' },
+			{ path: nodeToolPath, text: "export const tool = {};" },
+			{ path: nodeEntryPath, text: 'export * from "./tools/invoke-skill/index.js";' },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(state)).toEqual(
+			expect.arrayContaining([
+				`${skillToolPath}:1: Skill semantics must consume portable Runtime and resource ports`,
+				`${nodeToolPath}: Invoke Skill Tool definitions belong to the Coding Agent Skill domain`,
+				`${nodeEntryPath}: runtime-node must not export Coding Agent Invoke Skill Tools`,
+			]),
+		);
+	});
+
+	it("keeps MCP Tool Search in runtime-mcp without a runtime-node duplicate", () => {
+		const nodeToolPath = "packages/runtime-node/src/coding/tools/tool-search/index.ts";
+		const nodeEntryPath = "packages/runtime-node/src/coding/index.ts";
+		const state = createState([
+			{ path: nodeToolPath, text: "export const tool = {};" },
+			{ path: nodeEntryPath, text: 'export * from "./tools/tool-search/index.js";' },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(state)).toEqual(
+			expect.arrayContaining([
+				`${nodeToolPath}: MCP Tool Search belongs to runtime-mcp`,
+				`${nodeEntryPath}: runtime-node must not duplicate runtime-mcp Tool Search`,
+			]),
+		);
+	});
+
+	it("keeps Subagent control Tool semantics in Coding Agent", () => {
+		const productToolPath = "packages/coding-agent/src/composition/subagent/tools/spawn-agent/spawn-agent-tool.ts";
+		const nodeToolPath = "packages/runtime-node/src/coding/tools/spawn-agent/index.ts";
+		const nodeEntryPath = "packages/runtime-node/src/coding/index.ts";
+		const state = createState([
+			{ path: productToolPath, text: 'import { platform } from "node:os";' },
+			{ path: nodeToolPath, text: "export const tool = {};" },
+			{ path: nodeEntryPath, text: 'export * from "./tools/spawn-agent/index.js";' },
+		]);
+
+		expect(findCodingAgentArchitectureViolations(state)).toEqual(
+			expect.arrayContaining([
+				`${productToolPath}:1: Subagent control Tools must consume portable Runtime Ports`,
+				`${nodeToolPath}: Subagent control Tool definitions belong to the Coding Agent Subagent feature`,
+				`${nodeEntryPath}: runtime-node must not export Coding Agent Subagent control Tools`,
 			]),
 		);
 	});

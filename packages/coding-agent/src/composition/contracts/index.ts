@@ -28,6 +28,16 @@ export type {
 } from "./runtime-composition-result.js";
 export type { CodingAgentInitialTodoLockSource, CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
 export type {
+	CodingAgentSandboxEnvironment,
+	CodingAgentSandboxHostOptions,
+	CodingAgentSandboxHostServices,
+	CodingAgentSandboxToolSet,
+	CodingAgentSandboxWorkspacePathAccess,
+	CodingAgentSessionExecutionEnvironment,
+	CodingAgentSessionExecutionEnvironmentContext,
+	CodingAgentSessionExecutionEnvironmentFactory,
+} from "./session-execution-environment.js";
+export type {
 	CodingAgentSubagentChildFactory,
 	CodingAgentSubagentChildFactoryContext,
 	CodingAgentSubagentProfile,

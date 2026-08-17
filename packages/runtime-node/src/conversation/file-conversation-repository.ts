@@ -78,6 +78,11 @@ export class FileConversationRepository
 		return this.conversationPath(sessionId);
 	}
 
+	/** Stable absolute directory containing this repository's session artifacts. */
+	resolveSessionDirectory(): string {
+		return this.rootDir;
+	}
+
 	async create(input: CreateConversationInput): Promise<ConversationMetadata> {
 		this.assertOpen();
 		return this.exclusive(input.sessionId, async () => {
@@ -333,6 +338,7 @@ export class FileConversationRepository
 					sourceSessionPath,
 					sourceVersion: input.expectedVersion + 1,
 					sessionId,
+					sessionDirectory: this.rootDir,
 					sessionPath,
 					version: 1,
 					seedConversation,

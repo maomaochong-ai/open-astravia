@@ -25,7 +25,9 @@ export default defineConfig({
 			// Stable public host surface (package exports "./host")
 			{
 				find: "@vetta/coding-agent/host",
-				replacement: fileURLToPath(new URL("../coding-agent/src/adapters/runtime-tools/index.ts", import.meta.url)),
+				replacement: fileURLToPath(
+					new URL("../coding-agent/src/host/tool-environment/node/index.ts", import.meta.url),
+				),
 			},
 			{
 				find: "@vetta/coding-agent/composition",

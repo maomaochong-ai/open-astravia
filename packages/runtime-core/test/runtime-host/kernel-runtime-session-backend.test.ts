@@ -22,6 +22,7 @@ import type {
 } from "../../src/kernel/contracts.js";
 import {
 	ContextCompactionCommitter,
+	type ConversationContinuedEvent,
 	createAgentSession,
 	type EventSink,
 	KERNEL_ERROR_CODES,
@@ -257,10 +258,12 @@ function createBackend(
 	contextRuntime?: ManualContextCompactionRuntime,
 	assemblyOverrides: Partial<KernelRuntimeAssembly> = {},
 ) {
+	let runtimeEventSink: EventSink | undefined;
 	return {
 		backend: new KernelRuntimeSessionBackend<TestCreateOptions>({
 			runtimeFactory: {
 				async create(options: TestCreateOptions, eventSink: EventSink) {
+					runtimeEventSink = eventSink;
 					let turnIndex = 0;
 					const repository = new InMemoryConversationRepository();
 					const details = runtimeAssemblyDetails(options.id);
@@ -313,6 +316,10 @@ function createBackend(
 				},
 			},
 		}),
+		publish: async (event: ConversationContinuedEvent) => {
+			if (!runtimeEventSink) throw new Error("Runtime event sink is not initialized");
+			await runtimeEventSink.publish(event);
+		},
 		dispose,
 		promptAdapter,
 	};
@@ -455,7 +462,7 @@ describe("KernelRuntimeSessionBackend", () => {
 	});
 
 	it("exposes synchronous lifecycle, workspace, turn, event and state core ports", async () => {
-		const { backend } = createBackend(new CompletingTurnEngine());
+		const { backend, publish } = createBackend(new CompletingTurnEngine());
 		const session = await backend.create({ id: "session-1" });
 		const assembly = session.createCoreAssembly();
 		const events: SessionEvent[] = [];
@@ -463,6 +470,7 @@ describe("KernelRuntimeSessionBackend", () => {
 
 		expect(assembly.lifecycle).toMatchObject({
 			sessionId: "session-1",
+			sessionDirectory: "sessions",
 			sessionPath: "sessions/session-1.conversation.jsonl",
 		});
 		expect(assembly.workspaceView.readWorkingDirectory()).toBe("workspace/session-1");
@@ -505,6 +513,36 @@ describe("KernelRuntimeSessionBackend", () => {
 			{ type: "message", entryId: "event-2", parentId: null, message: { role: "user" } },
 			{ type: "message", entryId: "event-3", parentId: "event-2", message: { role: "assistant" } },
 		]);
+
+		const continuedDocument = createEmptyConversationDocument({
+			sessionId: "session-2",
+			createdAt: 2,
+			cwd: "workspace/session-2",
+		});
+		await publish({
+			type: "conversation.continued",
+			sourceSessionId: "session-1",
+			sourceSessionPath: "sessions/session-1.conversation.jsonl",
+			sessionId: "session-2",
+			sessionDirectory: "sessions/continued",
+			sessionPath: "sessions/session-2.conversation.jsonl",
+			turnId: "turn-1",
+			reason: "memory-rollover",
+			conversation: {
+				sessionId: "session-2",
+				createdAt: 2,
+				version: 0,
+				messages: [],
+				events: [],
+			},
+			document: continuedDocument,
+			timestamp: 2,
+		});
+		expect(assembly.lifecycle).toMatchObject({
+			sessionId: "session-1",
+			sessionDirectory: "sessions/continued",
+			sessionPath: "sessions/session-2.conversation.jsonl",
+		});
 
 		await assembly.lifecycle.dispose();
 		await expect(session.getMessages()).rejects.toMatchObject({ code: "session_closed" });
@@ -878,6 +916,7 @@ function runtimeAssemblyDetails(sessionId: string) {
 		modelRuntime,
 		identity: {
 			cwd: `workspace/${sessionId}`,
+			sessionDirectory: "sessions",
 			sessionPath: `sessions/${sessionId}.conversation.jsonl`,
 		},
 		stateSource: {

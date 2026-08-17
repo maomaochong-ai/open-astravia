@@ -7,6 +7,11 @@ import type {
 import { createLimiter } from "../src/concurrency/index.js";
 import * as config from "../src/config.js";
 import { createExtensionEventBus } from "../src/extensions/runtime/event-bus.js";
+import {
+	createCodingAgentEditPathPolicy,
+	createCodingAgentWritePathPolicy,
+	getCodingAgentOcrExecutionGate,
+} from "../src/host/tool-environment/node/index.js";
 import * as root from "../src/index.js";
 import { CODING_AGENT_SDK_HOST_ERROR_CODES, createCodingAgentBootstrap } from "../src/public-api/bootstrap.js";
 import { runCodingAgentCliControl } from "../src/public-api/cli-control.js";
@@ -20,6 +25,7 @@ import {
 } from "../src/public-api/historical-sessions.js";
 import {
 	createCodingAgentModelRuntime,
+	createCodingAgentNodeToolEnvironment,
 	createCodingAgentSharedModelController,
 	AuthStorage as HostAuthStorage,
 	SettingsRuntime as HostSettingsRuntime,
@@ -87,6 +93,10 @@ describe("coding-agent public subpaths", () => {
 		expect(HostAuthStorage).toBeTypeOf("function");
 		expect(createCodingAgentModelRuntime).toBeTypeOf("function");
 		expect(createCodingAgentSharedModelController).toBeTypeOf("function");
+		expect(createCodingAgentNodeToolEnvironment).toBeTypeOf("function");
+		expect(createCodingAgentEditPathPolicy).toBeTypeOf("function");
+		expect(createCodingAgentWritePathPolicy).toBeTypeOf("function");
+		expect(getCodingAgentOcrExecutionGate).toBeTypeOf("function");
 		expect(HostSettingsRuntime).toBe(SettingsRuntime);
 		expect(runCodingAgentCliControl).toBeTypeOf("function");
 		expect(createCodingAgentHtmlExportRuntime).toBeTypeOf("function");

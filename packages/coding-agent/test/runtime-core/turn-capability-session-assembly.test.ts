@@ -11,12 +11,12 @@ import {
 	type RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it } from "vitest";
-import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
-import { CodingAgentExtensionRunAdapter } from "../../src/adapters/runtime-core/extension-run-adapter.js";
 import { createCodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
 import { createCodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
+import { CodingAgentExtensionRunBridge } from "../../src/extensions/runtime/extension-run-bridge.js";
 import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
+import type { CodingAgentContextRuntime } from "../../src/runtime-contracts/index.js";
 import { DEFAULT_HEAVY_TOOL_CONFIRMATION_TEXTS } from "../../src/tool-policy/heavy-tool-confirmation.js";
 import { createFileSettingsRuntime } from "../fixtures/file-settings-runtime.js";
 import { createTestSessionResourceRuntime } from "../fixtures/node-resource-runtime.js";
@@ -43,7 +43,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		const todoRuntime = new CodingAgentTodoRuntime();
 		disposals.push(() => todoRuntime.dispose());
 		const contextRuntime = createContextRuntime();
-		const extensionEvents = new CodingAgentExtensionRunAdapter();
+		const extensionEvents = new CodingAgentExtensionRunBridge();
 		const specializedTool = createTool("specialized_tool");
 		const executionTool = createTool("execution_tool");
 		const executionFeature = createFeature("execution", []);
@@ -172,7 +172,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			conversationContextProjector: { project: () => [] } satisfies ConversationContextProjector,
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime,
-			extensionEvents: new CodingAgentExtensionRunAdapter(),
+			extensionEvents: new CodingAgentExtensionRunBridge(),
 		});
 		disposals.push(() => assembly.dispose());
 
@@ -234,7 +234,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			conversationContextProjector: { project: () => [] } satisfies ConversationContextProjector,
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime: createPassthroughHookRuntime(),
-			extensionEvents: new CodingAgentExtensionRunAdapter(),
+			extensionEvents: new CodingAgentExtensionRunBridge(),
 			askUserQuestion: {
 				isEnabled: () => true,
 				ask: async (request) => {

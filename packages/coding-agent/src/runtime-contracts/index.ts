@@ -1,6 +1,14 @@
 export type {
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentCompactionRuntimeOptions,
+	CodingAgentContextRuntime,
+	CodingAgentContextRuntimeFactory,
+	CodingAgentContextRuntimeOptions,
+	CodingAgentContextUsage,
+	CodingAgentModelCallFailureRecovery,
+	CodingAgentModelCallFailureRecoveryInput,
+	CodingAgentModelCallFailureRecoveryResult,
+	ContextHookRuntime,
 } from "./context-runtime.js";
 export type { CodingAgentContinuationSource } from "./continuation-runtime.js";
 export type {
@@ -17,6 +25,7 @@ export type {
 } from "./plugin-runtime.js";
 export type {
 	CodingAgentModelCallPromptContext,
+	CodingAgentPromptRequestRuntime,
 	CodingAgentPromptResourceExpansion,
 	CodingAgentPromptResourceResolver,
 	CodingAgentPromptResourceSource,

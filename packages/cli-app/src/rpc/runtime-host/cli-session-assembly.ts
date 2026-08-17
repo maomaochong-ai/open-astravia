@@ -15,7 +15,6 @@ import {
 import { getKnowledgeDir, getVettaHomePath } from "@vetta/coding-agent/config";
 import {
 	createCodingAgentMcpRuntimeToolSource,
-	createCodingAgentNodeToolEnvironment,
 	createCodingAgentPluginMcpRuntime,
 } from "@vetta/coding-agent/host-services";
 import {
@@ -43,6 +42,10 @@ import {
 	createNodeResultArtifactStorage,
 	NodeTextFileStorage,
 } from "@vetta/runtime-node/host";
+import {
+	createCliCodingAgentSessionExecutionEnvironmentFactory,
+	createCliCodingAgentToolEnvironmentFactory,
+} from "./cli-tool-environment.js";
 
 export const CLI_RUNTIME_HOST_STARTUP_FAILURE = "CLI Runtime startup and cleanup failed";
 
@@ -83,6 +86,14 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 	const { bootstrap } = options;
 	const { parsed } = bootstrap;
 	const mcpDebug = bootstrap.settingsManager.getMcpDebug();
+	const createToolEnvironment = createCliCodingAgentToolEnvironmentFactory({
+		agentDir: bootstrap.agentDir,
+		settings: bootstrap.settingsManager,
+	});
+	const createSessionExecutionEnvironment = createCliCodingAgentSessionExecutionEnvironmentFactory({
+		agentDir: bootstrap.agentDir,
+		settings: bootstrap.settingsManager,
+	});
 	const resultArtifacts = createNodeResultArtifactStorage({
 		codingRoot: join(bootstrap.agentDir, "tool-results"),
 		mcpRoot: join(bootstrap.agentDir, "mcp-results"),
@@ -112,7 +123,8 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 		runtime = await createCodingAgentRuntimeComposition({
 			conversationDir: options.conversationDir,
 			createConversationPersistence: () => createFileConversationPersistence(options.conversationDir),
-			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			createToolEnvironment,
+			createSessionExecutionEnvironment,
 			codingToolResultPolicy,
 			modelRegistry: bootstrap.modelRegistry,
 			initialModel: options.initialModel,

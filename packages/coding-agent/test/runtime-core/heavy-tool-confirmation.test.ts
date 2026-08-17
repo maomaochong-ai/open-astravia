@@ -1,5 +1,5 @@
+import type { RuntimeSessionAskUserQuestionCapability, RuntimeUserQuestionRequest } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { AskUserQuestionCapability, AskUserQuestionRequest } from "@vetta/runtime-node/coding";
 import { describe, expect, it } from "vitest";
 import { DynamicContributionCatalog } from "../../src/interception/contribution-catalog.js";
 import {
@@ -166,9 +166,9 @@ interface HarnessOptions {
 }
 
 function createHarness(options: HarnessOptions = {}) {
-	const asked: AskUserQuestionRequest[] = [];
+	const asked: Array<Pick<RuntimeUserQuestionRequest, "questions">> = [];
 	const executed: string[] = [];
-	const capability: AskUserQuestionCapability | undefined = options.withoutCapability
+	const capability: RuntimeSessionAskUserQuestionCapability | undefined = options.withoutCapability
 		? undefined
 		: {
 				isEnabled: () => options.enabled ?? true,

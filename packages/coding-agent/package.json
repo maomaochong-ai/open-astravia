@@ -90,8 +90,8 @@
 			"import": "./dist/public-api/settings.js"
 		},
 		"./host": {
-			"types": "./dist/adapters/runtime-tools/index.d.ts",
-			"import": "./dist/adapters/runtime-tools/index.js"
+			"types": "./dist/host/tool-environment/node/index.d.ts",
+			"import": "./dist/host/tool-environment/node/index.js"
 		},
 		"./composition": {
 			"types": "./dist/composition/index.d.ts",

@@ -21,6 +21,7 @@ describe("Runtime Node conversation persistence", () => {
 
 		expect(persistence.documentStore).toBe(persistence.repository);
 		expect(persistence.continuationStore).toBe(persistence.repository);
+		expect(persistence.resolveSessionDirectory("session")).toBe(rootDir);
 		expect(persistence.resolveSessionPath("session")).toBe(persistence.resolveConversationPath("session"));
 		const sessionPath = persistence.resolveConversationPath("session");
 		await writeFile(sessionPath, "", "utf8");
@@ -42,6 +43,7 @@ describe("Runtime Node conversation persistence", () => {
 		const persistence = createInMemoryConversationPersistence();
 
 		expect(persistence.resolveConversationPath("session")).toBe("memory://conversation/session");
+		expect(persistence.resolveSessionDirectory("session")).toBeUndefined();
 		expect(persistence.resolveSessionPath("session")).toBeUndefined();
 		expect(await persistence.assessSessionPath("session", "memory://conversation/session")).toBe("path-mismatch");
 

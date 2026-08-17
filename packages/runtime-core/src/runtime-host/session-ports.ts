@@ -24,6 +24,7 @@ import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 /** 会话身份与资源释放；不承载宿主 UI 绑定或业务外围能力。 */
 export interface RuntimeSessionIdentityLifecycle {
 	readonly sessionId: string;
+	readonly sessionDirectory?: string;
 	readonly sessionPath: string | undefined;
 	dispose(): Promise<void>;
 }

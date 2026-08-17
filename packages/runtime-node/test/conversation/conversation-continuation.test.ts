@@ -27,6 +27,7 @@ describe("FileConversationRepository continuation", () => {
 		});
 
 		expect(transition.sessionId).not.toBe("source-session");
+		expect(transition.sessionDirectory).toBe(rootDir);
 		expect(transition.sourceSessionPath).toBe(repository.resolveConversationPath("source-session"));
 		expect(transition.sessionPath).toBe(repository.resolveConversationPath(transition.sessionId));
 		expect(transition.seedDocument).toMatchObject({

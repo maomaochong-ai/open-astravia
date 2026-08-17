@@ -143,6 +143,43 @@ describe("Coding Agent model call and prompt runtime", () => {
 		});
 	});
 
+	it("delegates Turn binding and release to a replaceable product Prompt Runtime", async () => {
+		const releaseTurnBinding = vi.fn();
+		const prepare = vi.fn(async () => ({ action: "handled" as const }));
+		const bindForTurn = vi.fn(() => ({ prepare, releaseTurnBinding }));
+		const adapter = new CodingAgentPromptRequestAdapter({
+			runtime: {
+				prepare: vi.fn(async () => ({ action: "handled" as const })),
+				bindForTurn,
+			},
+		});
+		const signal = new AbortController().signal;
+		const bound = await adapter.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal,
+		});
+		const request = adapter.createRequest({ text: "delegated" });
+
+		await expect(
+			bound.prepare(request, {
+				sessionId: "session-1",
+				turnId: "turn-1",
+				queueing: false,
+				signal,
+			}),
+		).resolves.toEqual({ action: "handled" });
+		await bound.releaseTurnBinding?.();
+
+		expect(bindForTurn).toHaveBeenCalledOnce();
+		expect(prepare).toHaveBeenCalledWith(
+			expect.objectContaining({ text: "delegated" }),
+			expect.objectContaining({ sessionId: "session-1", turnId: "turn-1" }),
+		);
+		expect(releaseTurnBinding).toHaveBeenCalledOnce();
+	});
+
 	it("translates legacy prompt contributions into ordered generic context records", async () => {
 		const adapter = new CodingAgentPromptRequestAdapter({
 			now: () => 42,

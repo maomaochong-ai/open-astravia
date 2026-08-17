@@ -24,7 +24,7 @@ describe("Coding Agent Turn admission preparation", () => {
 				readSessionId: () => "session",
 				cwd: "C:\\workspace",
 			},
-			conversation: { resolveSessionPath: () => undefined },
+			conversation: { resolveSessionDirectory: () => undefined, resolveSessionPath: () => undefined },
 			turnCapabilityAssembly: {
 				capabilities: { acquire },
 				promptAdapter: {},
@@ -58,7 +58,7 @@ describe("Coding Agent Turn admission preparation", () => {
 				readSessionId: () => "session",
 				cwd: "C:\\workspace",
 			},
-			conversation: { resolveSessionPath: () => undefined },
+			conversation: { resolveSessionDirectory: () => undefined, resolveSessionPath: () => undefined },
 			turnCapabilityAssembly: {
 				capabilities: {},
 				promptAdapter: { createRequest },

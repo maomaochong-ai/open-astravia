@@ -12,6 +12,7 @@ import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type {
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentCompactionRuntimeOptions,
+	CodingAgentContextRuntimeFactory,
 	CodingAgentExtensionToolSource,
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
@@ -24,6 +25,7 @@ import type {
 import type { CodingAgentConversationPersistenceFactory } from "./conversation-persistence.js";
 import type { CodingAgentMemoryRuntimeFactoryOptions } from "./memory-runtime.js";
 import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
+import type { CodingAgentSessionExecutionEnvironmentFactory } from "./session-execution-environment.js";
 import type {
 	CodingAgentSubagentChildFactory,
 	CodingAgentSubagentChildFactoryContext,
@@ -64,6 +66,8 @@ export interface CodingAgentRuntimeModelOptions {
 export interface CodingAgentRuntimeToolOptions {
 	/** 平台工具环境由最终宿主显式选择；Coding Agent 不提供 Node 默认实现。 */
 	readonly createToolEnvironment: CodingAgentToolEnvironmentFactory;
+	/** 为每个 Session 创建独占的命令、后台任务与 sandbox 宿主环境。 */
+	readonly createSessionExecutionEnvironment: CodingAgentSessionExecutionEnvironmentFactory;
 	/** 大结果如何投影由宿主显式选择；缺省保留完整结果且不产生环境副作用。 */
 	readonly codingToolResultPolicy?: CodingToolResultPolicy;
 	readonly activation?: CodingToolActivation;
@@ -148,6 +152,8 @@ export interface CodingAgentRuntimeExtensionOptions {
 }
 
 export interface CodingAgentRuntimeContextOptions {
+	/** 替换完整的 Session Context/Compaction 产品能力；Runtime Core 仍拥有提交与生命周期机制。 */
+	readonly createContextRuntime?: CodingAgentContextRuntimeFactory;
 	/** 为每个 Session 贡献产品能力定义；具体状态与副作用由各 Extension Instance 自己持有。 */
 	readonly createSessionExtensionDefinitions?: (
 		sessionOptions: CodingAgentRuntimeSessionOptions,

@@ -3,7 +3,6 @@ import type { RuntimeSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
-import { createCodingAgentNodeToolEnvironment } from "../../src/adapters/runtime-tools/node-tool-environment.js";
 import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
@@ -17,6 +16,8 @@ import type {
 	CodingAgentSubagentChildCompositionRequest,
 	CodingAgentSubagentChildSessionOptions,
 } from "../../src/composition/subagent/session-assembly.js";
+import { createCodingAgentNodeSessionExecutionEnvironment } from "../../src/host/tool-environment/node/node-session-execution-environment.js";
+import { createCodingAgentNodeToolEnvironment } from "../../src/host/tool-environment/node/node-tool-environment.js";
 import { createTestConversationPersistence } from "../fixtures/conversation-persistence.js";
 
 describe("Coding Agent Child Composition policy", () => {
@@ -43,6 +44,7 @@ describe("Coding Agent Child Composition policy", () => {
 			conversationDir: "C:\\conversations",
 			createConversationPersistence: createTestConversationPersistence,
 			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
 			modelRegistry: {} as CodingAgentRuntimeCompositionOptions["modelRegistry"],
 			initialModel: MODEL,
 			initialThinkingLevel: "off",

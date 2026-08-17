@@ -1,7 +1,7 @@
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
-import { createCodingAgentNodeToolEnvironment } from "../src/adapters/runtime-tools/node-tool-environment.js";
 import { createCodingToolsRuntimeComposition } from "../src/composition/tool-surface/runtime-tools-composition.js";
+import { createCodingAgentNodeToolEnvironment } from "../src/host/tool-environment/node/node-tool-environment.js";
 import { ALL_SCENARIOS } from "../src/profiles/index.js";
 
 const DEFAULT_TOOL_NAMES = {

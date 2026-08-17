@@ -1169,6 +1169,7 @@ function checkCodingAgentCompactionBoundary(posixPath, specifiers, findings) {
 	}
 
 	if (!posixPath.startsWith("packages/coding-agent/src/compaction/")) return;
+	const isCompactionRuntime = posixPath.startsWith("packages/coding-agent/src/compaction/runtime/");
 	for (const specifier of specifiers) {
 		const dependsOnSessionImplementation = specifier.includes("/core/") || specifier.includes("/adapters/");
 		const dependsOnRuntimeStorage =
@@ -1176,8 +1177,11 @@ function checkCodingAgentCompactionBoundary(posixPath, specifiers, findings) {
 			specifier.startsWith("@vetta/runtime-core/") ||
 			specifier === "@vetta/runtime-storage" ||
 			specifier.startsWith("@vetta/runtime-storage/");
-		if (dependsOnSessionImplementation || dependsOnRuntimeStorage) {
-			findings.push(`${posixPath}: Compaction domain must depend on neutral history contracts (${specifier})`);
+		if (dependsOnSessionImplementation || (dependsOnRuntimeStorage && !isCompactionRuntime)) {
+			findings.push(
+				`${posixPath}: Compaction policy must not depend on Session implementations; ` +
+					`only compaction/runtime may consume Runtime Core contracts (${specifier})`,
+			);
 		}
 	}
 }

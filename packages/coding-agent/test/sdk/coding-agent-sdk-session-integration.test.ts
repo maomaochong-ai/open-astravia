@@ -5,7 +5,6 @@ import type { Api, AssistantMessage, AssistantMessageEvent, Model } from "@vetta
 import { EventStream } from "@vetta/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/model-runtime-adapter.js";
-import { createCodingAgentNodeToolEnvironment } from "../../src/adapters/runtime-tools/node-tool-environment.js";
 import type { CodingAgentRuntimeComposition } from "../../src/composition/contracts/index.js";
 import { nodeCodingAgentSdkSessionIdentityRuntime } from "../../src/host/sdk-session/node-session-identity-runtime.js";
 import { bindCodingAgentSdkSessionRuntime } from "../../src/host/sdk-session/runtime-binding.js";
@@ -15,6 +14,8 @@ import {
 } from "../../src/host/sdk-session/runtime-factory.js";
 import { CodingAgentSdkSessionAdapter } from "../../src/host/sdk-session/session-adapter.js";
 import { CodingAgentSdkSessionCapabilityHost } from "../../src/host/sdk-session/session-capability-host.js";
+import { createCodingAgentNodeSessionExecutionEnvironment } from "../../src/host/tool-environment/node/node-session-execution-environment.js";
+import { createCodingAgentNodeToolEnvironment } from "../../src/host/tool-environment/node/node-tool-environment.js";
 import type { CodingAgentFixedSession } from "../../src/public-api/sdk/sdk-session-contract.js";
 import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-persistence.js";
 
@@ -411,6 +412,7 @@ describe("Coding Agent SDK session integration", () => {
 function factoryComposition(workspace: string) {
 	return {
 		createToolEnvironment: createCodingAgentNodeToolEnvironment,
+		createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
 		cwd: workspace,
 		modelRegistry: modelRegistry(),
 		initialModel: MODEL,

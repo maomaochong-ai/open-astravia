@@ -2,6 +2,7 @@ import type { Api, Model } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import type { CodingAgentRuntimeCompositionOptions } from "../../src/composition/contracts/index.js";
 import { createCodingAgentSessionInitializationProfile } from "../../src/composition/session-initialization/profile.js";
+import { createCodingAgentNodeSessionExecutionEnvironment } from "../../src/host/tool-environment/node/node-session-execution-environment.js";
 import { createTestConversationPersistence } from "../fixtures/conversation-persistence.js";
 
 describe("Coding Agent session initialization profile", () => {
@@ -13,12 +14,16 @@ describe("Coding Agent session initialization profile", () => {
 			settingsSource: promptSettingsSource,
 		});
 		const createPluginRuntime = () => undefined;
+		const createContextRuntime = (() => {
+			throw new Error("not called by profile projection");
+		}) as NonNullable<CodingAgentRuntimeCompositionOptions["createContextRuntime"]>;
 		const options = {
 			...createBaseOptions(),
 			promptResourceSource,
 			promptSettingsSource,
 			createPromptRuntimeSources,
 			createPluginRuntime,
+			createContextRuntime,
 			enableSubagents: false,
 			subagentMaxConcurrent: 4,
 			systemPromptAdvertisedToolNames: ["read", "write"],
@@ -30,11 +35,13 @@ describe("Coding Agent session initialization profile", () => {
 			"additionalHookAdapterFactories",
 			"agentDir",
 			"createCompactionExtensionRuntime",
+			"createContextRuntime",
 			"createMemoryRolloverRuntime",
 			"createPluginMcpRuntime",
 			"createPluginRuntime",
 			"createPromptResourceResolver",
 			"createPromptRuntimeSources",
+			"createSessionExecutionEnvironment",
 			"createSessionExtensionDefinitions",
 			"createSubagentChildFactory",
 			"createSystemPromptOptionsResolver",
@@ -59,6 +66,7 @@ describe("Coding Agent session initialization profile", () => {
 		expect(profile.promptSettingsSource).toBe(promptSettingsSource);
 		expect(profile.createPromptRuntimeSources).toBe(createPromptRuntimeSources);
 		expect(profile.createPluginRuntime).toBe(createPluginRuntime);
+		expect(profile.createContextRuntime).toBe(createContextRuntime);
 		expect(profile.initialModel).toBe(MODEL);
 		expect("conversationDir" in profile).toBe(false);
 		expect("mcpSource" in profile).toBe(false);
@@ -89,6 +97,7 @@ function createBaseOptions(): CodingAgentRuntimeCompositionOptions {
 		conversationDir: "C:\\conversations",
 		createConversationPersistence: createTestConversationPersistence,
 		createToolEnvironment: () => ({ registrations: [], dispose() {} }),
+		createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
 		modelRegistry: {} as CodingAgentRuntimeCompositionOptions["modelRegistry"],
 		initialModel: MODEL,
 		initialThinkingLevel: "off",

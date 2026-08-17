@@ -4,6 +4,7 @@ import type { AgentFeatureDefinition, AgentProfile, ModelCallContributionContext
 import { SessionExtensionComposition, sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
+import { createCodingAgentAskUserQuestionFeature } from "../../features/ask-user-question/index.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import {
 	CODING_AGENT_TODO_RUNTIME,
@@ -20,7 +21,6 @@ import type {
 } from "../../runtime-contracts/index.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
-import { createCodingAgentAskUserQuestionFeature } from "../tool-surface/ask-user-question-feature.js";
 import type { CodingAgentMcpSessionCoordinator } from "../tool-surface/mcp-session-coordinator.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import {
@@ -135,19 +135,31 @@ export async function createCodingAgentSessionPeripheralAssembly(
 		});
 	}
 
-	const executionRuntime = new CodingAgentSessionExecutionRuntime({
+	const executionEnvironment = await profile.createSessionExecutionEnvironment({
 		cwd: options.sessionCwd,
-		activation: options.activation,
-		enableBackgroundTasks: sessionOptions.enableBackgroundTasks,
-		initialMode: sessionOptions.executionMode,
+		agentDir: profile.agentDir,
+		scenario: options.scenario,
 		env: sessionOptions.env,
-		sandboxHostPath: sessionOptions.sandboxHostPath,
-		linuxBubblewrapPath: sessionOptions.linuxBubblewrapPath,
-		macosSandboxExecPath: sessionOptions.macosSandboxExecPath,
-		readSessionId: options.readSessionId,
-		resolveToolEntry: (toolName) => options.codingTools.registry.resolve(toolName),
-		resourceContext: options.resourceContext,
 	});
+	let executionRuntime: CodingAgentSessionExecutionRuntime;
+	try {
+		executionRuntime = new CodingAgentSessionExecutionRuntime({
+			cwd: options.sessionCwd,
+			activation: options.activation,
+			environment: executionEnvironment,
+			enableBackgroundTasks: sessionOptions.enableBackgroundTasks,
+			initialMode: sessionOptions.executionMode,
+			sandboxHostPath: sessionOptions.sandboxHostPath,
+			linuxBubblewrapPath: sessionOptions.linuxBubblewrapPath,
+			macosSandboxExecPath: sessionOptions.macosSandboxExecPath,
+			readSessionId: options.readSessionId,
+			resolveToolEntry: (toolName) => options.codingTools.registry.resolve(toolName),
+			resourceContext: options.resourceContext,
+		});
+	} catch (error) {
+		await executionEnvironment.dispose();
+		throw error;
+	}
 	options.indexes.executionRuntimes.set(options.readSessionId(), executionRuntime);
 	options.deferRollback({
 		id: "execution-runtime",

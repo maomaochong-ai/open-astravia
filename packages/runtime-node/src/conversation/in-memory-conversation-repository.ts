@@ -255,6 +255,7 @@ export class InMemoryConversationRepository
 			sourceSessionId: input.sourceSessionId,
 			sourceVersion: input.expectedVersion + 1,
 			sessionId,
+			sessionDirectory: undefined,
 			version: 1,
 			seedConversation,
 			seedDocument,

@@ -9,8 +9,8 @@ import {
 	type UserMessage,
 } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
-import { projectModelCallContext } from "../src/adapters/runtime-core/context-runtime/model-call-context-projection.js";
 import { estimateContextTokens } from "../src/compaction/index.js";
+import { projectModelCallContext } from "../src/compaction/runtime/model-call-context-projection.js";
 import { buildSystemPromptDraft, compileSystemPromptDraft } from "../src/model-context/index.js";
 import { getModePrompt } from "../src/profiles/index.js";
 

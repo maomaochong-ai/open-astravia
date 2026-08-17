@@ -44,8 +44,11 @@ export {
 } from "./host/index.js";
 export {
 	createNodeCodingToolEnvironment,
+	createNodeCommandToolEnvironment,
 	type NodeCodingToolEnvironment,
 	type NodeCodingToolEnvironmentOptions,
+	type NodeCommandToolEnvironment,
+	type NodeCommandToolEnvironmentOptions,
 } from "./node-tool-environment.js";
 export { createAsyncExecutionGate } from "./shared/async-execution-gate.js";
 export {
@@ -127,27 +130,6 @@ export {
 	selectCodingToolsForScope,
 } from "./tool-registration.js";
 export {
-	ASK_USER_QUESTION_HEADER_MAX,
-	ASK_USER_QUESTION_TOOL_CATEGORY,
-	ASK_USER_QUESTION_TOOL_DESCRIPTION,
-	ASK_USER_QUESTION_TOOL_REQUIRES,
-	ASK_USER_QUESTION_TOOL_SCOPES,
-	type AskUserQuestionAnswer,
-	type AskUserQuestionCapability,
-	type AskUserQuestionFn,
-	type AskUserQuestionItem,
-	type AskUserQuestionOption,
-	type AskUserQuestionRequest,
-	type AskUserQuestionResult,
-	type AskUserQuestionToolDetails,
-	type AskUserQuestionToolInput,
-	AskUserQuestionToolInputSchema,
-	type AskUserQuestionToolOptions,
-	type AskUserQuestionToolRegistrationOptions,
-	createAskUserQuestionTool,
-	createAskUserQuestionToolRegistration,
-} from "./tools/ask-user-question/index.js";
-export {
 	BASH_TOOL_CATEGORY,
 	BASH_TOOL_DESCRIPTION,
 	type BashToolInput,
@@ -168,18 +150,6 @@ export {
 	createCurrentTimeTool,
 	createCurrentTimeToolRegistration,
 } from "./tools/current-time/index.js";
-export {
-	createDispatchWorkflowsTool,
-	createDispatchWorkflowsToolRegistration,
-	DISPATCH_WORKFLOWS_MAX_BATCH,
-	DISPATCH_WORKFLOWS_TOOL_CATEGORY,
-	DISPATCH_WORKFLOWS_TOOL_DESCRIPTION,
-	DISPATCH_WORKFLOWS_TOOL_SCOPES,
-	type DispatchWorkflowsToolInput,
-	DispatchWorkflowsToolInputSchema,
-	type DispatchWorkflowsToolOptions,
-	type DispatchWorkflowsToolRegistrationOptions,
-} from "./tools/dispatch-workflows/index.js";
 export {
 	createDocToPdfTool,
 	createDocToPdfToolRegistration,
@@ -241,17 +211,6 @@ export {
 	type FindToolOptions,
 } from "./tools/find/index.js";
 export {
-	createFollowupTaskTool,
-	createFollowupTaskToolRegistration,
-	FOLLOWUP_TASK_TOOL_CATEGORY,
-	FOLLOWUP_TASK_TOOL_DESCRIPTION,
-	FOLLOWUP_TASK_TOOL_SCOPES,
-	type FollowupTaskToolInput,
-	FollowupTaskToolInputSchema,
-	type FollowupTaskToolOptions,
-	type FollowupTaskToolRegistrationOptions,
-} from "./tools/followup-task/index.js";
-export {
 	createGlobTool,
 	createGlobToolRegistration,
 	GLOB_TOOL_CATEGORY,
@@ -299,41 +258,6 @@ export {
 	type ImSendAttachmentToolOptions,
 	type ImSendAttachmentToolRegistrationOptions,
 } from "./tools/im-send-attachment/index.js";
-export {
-	createInterruptAgentTool,
-	createInterruptAgentToolRegistration,
-	INTERRUPT_AGENT_TOOL_CATEGORY,
-	INTERRUPT_AGENT_TOOL_DESCRIPTION,
-	INTERRUPT_AGENT_TOOL_SCOPES,
-	type InterruptAgentToolInput,
-	InterruptAgentToolInputSchema,
-	type InterruptAgentToolOptions,
-	type InterruptAgentToolRegistrationOptions,
-} from "./tools/interrupt-agent/index.js";
-export {
-	createInvokeSkillTool,
-	createInvokeSkillToolRegistration,
-	INVOKE_SKILL_TOOL_CATEGORY,
-	INVOKE_SKILL_TOOL_DESCRIPTION,
-	INVOKE_SKILL_TOOL_SCOPES,
-	type InvokableSkillDescriptor,
-	type InvokeSkillToolDetails,
-	type InvokeSkillToolInput,
-	InvokeSkillToolInputSchema,
-	type InvokeSkillToolOptions,
-	type InvokeSkillToolRegistrationOptions,
-} from "./tools/invoke-skill/index.js";
-export {
-	createListAgentsTool,
-	createListAgentsToolRegistration,
-	LIST_AGENTS_TOOL_CATEGORY,
-	LIST_AGENTS_TOOL_DESCRIPTION,
-	LIST_AGENTS_TOOL_SCOPES,
-	type ListAgentsToolInput,
-	ListAgentsToolInputSchema,
-	type ListAgentsToolOptions,
-	type ListAgentsToolRegistrationOptions,
-} from "./tools/list-agents/index.js";
 export {
 	createLsTool,
 	createLsToolRegistration,
@@ -393,17 +317,6 @@ export {
 	type RenderPdfPageToolOptions,
 } from "./tools/render-pdf-page/index.js";
 export {
-	createSendMessageTool,
-	createSendMessageToolRegistration,
-	SEND_MESSAGE_TOOL_CATEGORY,
-	SEND_MESSAGE_TOOL_DESCRIPTION,
-	SEND_MESSAGE_TOOL_SCOPES,
-	type SendMessageToolInput,
-	SendMessageToolInputSchema,
-	type SendMessageToolOptions,
-	type SendMessageToolRegistrationOptions,
-} from "./tools/send-message/index.js";
-export {
 	createShellTool,
 	createShellToolRegistration,
 	getShellToolScopes,
@@ -414,17 +327,6 @@ export {
 	type ShellToolOptions,
 	type ShellToolRegistrationOptions,
 } from "./tools/shell/index.js";
-export {
-	createSpawnAgentTool,
-	createSpawnAgentToolRegistration,
-	SPAWN_AGENT_TOOL_CATEGORY,
-	SPAWN_AGENT_TOOL_DESCRIPTION,
-	SPAWN_AGENT_TOOL_SCOPES,
-	type SpawnAgentToolInput,
-	SpawnAgentToolInputSchema,
-	type SpawnAgentToolOptions,
-	type SpawnAgentToolRegistrationOptions,
-} from "./tools/spawn-agent/index.js";
 export {
 	createTaskOutputTool,
 	createTaskOutputToolRegistration,
@@ -450,21 +352,6 @@ export {
 	type TaskStopToolOptions,
 } from "./tools/task-stop/index.js";
 export {
-	createToolSearchTool,
-	createToolSearchToolRegistration,
-	type DeferredToolIndexEntry,
-	scoreDeferredTools,
-	TOOL_SEARCH_TOOL_CATEGORY,
-	TOOL_SEARCH_TOOL_DESCRIPTION,
-	TOOL_SEARCH_TOOL_SCOPES,
-	type ToolSearchResult,
-	type ToolSearchToolDetails,
-	type ToolSearchToolInput,
-	ToolSearchToolInputSchema,
-	type ToolSearchToolOptions,
-	type ToolSearchToolRegistrationOptions,
-} from "./tools/tool-search/index.js";
-export {
 	createTreeTool,
 	createTreeToolRegistration,
 	TREE_TOOL_CATEGORY,
@@ -476,18 +363,6 @@ export {
 	TreeToolInputSchema,
 	type TreeToolOptions,
 } from "./tools/tree/index.js";
-export {
-	createWaitAgentTool,
-	createWaitAgentToolRegistration,
-	WAIT_AGENT_TOOL_CATEGORY,
-	WAIT_AGENT_TOOL_DESCRIPTION,
-	WAIT_AGENT_TOOL_SCOPES,
-	type WaitAgentToolInput,
-	WaitAgentToolInputSchema,
-	type WaitAgentToolOptions,
-	type WaitAgentToolRegistrationOptions,
-	WORKFLOW_NO_WAIT_TEXT,
-} from "./tools/wait-agent/index.js";
 export {
 	createWriteTool,
 	createWriteToolRegistration,

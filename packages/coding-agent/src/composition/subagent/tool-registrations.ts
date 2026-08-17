@@ -1,3 +1,8 @@
+import type { SubagentCoordinatorPort } from "@vetta/runtime-subagents";
+import {
+	CODING_AGENT_MODEL_TOOL_ORDER,
+	CODING_AGENT_SUBAGENT_MODEL_TOOL_ORDER_STEP,
+} from "../../tool-policy/model-tool-order.js";
 import {
 	createDispatchWorkflowsToolRegistration,
 	createFollowupTaskToolRegistration,
@@ -6,12 +11,7 @@ import {
 	createSendMessageToolRegistration,
 	createSpawnAgentToolRegistration,
 	createWaitAgentToolRegistration,
-} from "@vetta/runtime-node/coding";
-import type { SubagentCoordinatorPort } from "@vetta/runtime-subagents";
-import {
-	CODING_AGENT_MODEL_TOOL_ORDER,
-	CODING_AGENT_SUBAGENT_MODEL_TOOL_ORDER_STEP,
-} from "../../tool-policy/model-tool-order.js";
+} from "./tools/index.js";
 
 /** 组装产品工具顺序；协议归 @vetta/runtime-tools，Node 实现归 @vetta/runtime-node。 */
 export function createCodingAgentSubagentRuntimeToolRegistrations(

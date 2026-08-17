@@ -64,7 +64,7 @@ composition is Node-oriented and is not part of this portable boundary.
 - `RuntimeHostSessionBackend` and `KernelRuntimeSessionBackend` for composition-root session creation
 - `RuntimeSessionCreateRequest` for backend-neutral creation without SessionManager, custom tools or ModelRegistry
 - `RuntimeSessionTurnControl`, `RuntimeSessionEventStream` and `RuntimeSessionStateReader` core host ports
-- `RuntimeSessionIdentityLifecycle` and `RuntimeSessionHistoryReader` for identity, disposal and history projection
+- `RuntimeSessionIdentityLifecycle` and `RuntimeSessionHistoryReader` for host-owned identity/location facts, disposal and history projection
 - `RuntimeSessionHistoryController` for guarded history mutation and live-session naming
 - `RuntimeSessionModelController` for model selection and model-related write configuration
 - `RuntimeSessionModelView` for current/available models and credential lookup without exposing the registry

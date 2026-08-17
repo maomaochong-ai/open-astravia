@@ -3,8 +3,12 @@ import {
 	type KnowledgeProcessingSessionFactory,
 } from "@vetta/coding-agent/composition";
 import { getAgentDir } from "@vetta/coding-agent/config";
-import { type CodingAgentModelRuntime, createCodingAgentNodeToolEnvironment } from "@vetta/coding-agent/host-services";
-import { createDesktopResultArtifactRuntime } from "@vetta/runtime-desktop";
+import type { CodingAgentModelRuntime } from "@vetta/coding-agent/host-services";
+import {
+	createDesktopCodingAgentSessionExecutionEnvironment,
+	createDesktopCodingAgentToolEnvironment,
+	createDesktopResultArtifactRuntime,
+} from "@vetta/runtime-desktop";
 import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";
 import { createNodeKnowledgeRuntime } from "@vetta/runtime-node/host";
 import { getKnowledgeRoot } from "./knowledge-layout.js";
@@ -21,7 +25,8 @@ export function createDesktopKnowledgeProcessingSessionFactory(
 	return createKnowledgeProcessingSessionFactory({
 		getModelRegistry: options.getModelRegistry,
 		createConversationPersistence: ({ conversationDir }) => createFileConversationPersistence(conversationDir),
-		createToolEnvironment: createCodingAgentNodeToolEnvironment,
+		createToolEnvironment: createDesktopCodingAgentToolEnvironment,
+		createSessionExecutionEnvironment: createDesktopCodingAgentSessionExecutionEnvironment,
 		codingToolResultPolicy: resultArtifacts.codingToolResultPolicy,
 		knowledgeRuntime: createNodeKnowledgeRuntime(getKnowledgeRoot()),
 	});

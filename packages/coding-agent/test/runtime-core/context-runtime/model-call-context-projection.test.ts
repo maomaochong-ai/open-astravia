@@ -1,6 +1,6 @@
 import type { Api, Message, Model, UserMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
-import { projectModelCallContext } from "../../../src/adapters/runtime-core/context-runtime/model-call-context-projection.js";
+import { projectModelCallContext } from "../../../src/compaction/runtime/model-call-context-projection.js";
 
 describe("model call context projection", () => {
 	it("applies the extension transform while keeping model-invisible context out of the call", async () => {

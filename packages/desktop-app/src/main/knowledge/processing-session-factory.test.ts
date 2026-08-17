@@ -4,10 +4,13 @@ import { createDesktopKnowledgeProcessingSessionFactory } from "./processing-ses
 
 const factoryMocks = vi.hoisted(() => ({
 	codingToolResultPolicy: { project: vi.fn() },
+	createDesktopCodingAgentToolEnvironment: vi.fn(),
+	createDesktopCodingAgentSessionExecutionEnvironment: vi.fn(),
 	create: vi.fn(
 		(_options: {
 			readonly createConversationPersistence: (context: { readonly conversationDir: string }) => unknown;
 			readonly createToolEnvironment: (...args: never[]) => unknown;
+			readonly createSessionExecutionEnvironment: (...args: never[]) => unknown;
 			readonly codingToolResultPolicy: unknown;
 			readonly knowledgeRuntime: unknown;
 		}) => ({ create: vi.fn() }),
@@ -34,6 +37,9 @@ vi.mock("@vetta/runtime-node/host", () => ({
 }));
 
 vi.mock("@vetta/runtime-desktop", () => ({
+	createDesktopCodingAgentSessionExecutionEnvironment:
+		factoryMocks.createDesktopCodingAgentSessionExecutionEnvironment,
+	createDesktopCodingAgentToolEnvironment: factoryMocks.createDesktopCodingAgentToolEnvironment,
 	createDesktopResultArtifactRuntime: () => ({
 		codingToolResultPolicy: factoryMocks.codingToolResultPolicy,
 	}),
@@ -58,7 +64,8 @@ describe("createDesktopKnowledgeProcessingSessionFactory", () => {
 		expect(factoryMocks.create).toHaveBeenCalledWith({
 			getModelRegistry,
 			createConversationPersistence: expect.any(Function),
-			createToolEnvironment: expect.any(Function),
+			createToolEnvironment: factoryMocks.createDesktopCodingAgentToolEnvironment,
+			createSessionExecutionEnvironment: factoryMocks.createDesktopCodingAgentSessionExecutionEnvironment,
 			codingToolResultPolicy: factoryMocks.codingToolResultPolicy,
 			knowledgeRuntime: factoryMocks.knowledgeRuntime,
 		});

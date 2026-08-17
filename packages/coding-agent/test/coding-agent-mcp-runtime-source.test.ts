@@ -13,7 +13,7 @@ import type {
 import { createMcpToolResultPolicy, DEFAULT_MCP_MAX_INLINE_RESULT_BYTES } from "@vetta/runtime-mcp";
 import { NodeMcpToolResultArtifactStore } from "@vetta/runtime-node/mcp";
 import { describe, expect, it, vi } from "vitest";
-import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
+import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/ecosystem/tool-interceptor-adapter.js";
 import { createCodingAgentMcpRuntimeToolSource } from "../src/mcp/runtime/tool-source.js";
 
 describe("Coding Agent native MCP runtime source", () => {

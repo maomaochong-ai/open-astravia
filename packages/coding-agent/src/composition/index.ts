@@ -16,6 +16,21 @@ export type {
 	CodingAgentMemoryRuntimeFactoryOptions,
 } from "./contracts/runtime-composition-options.js";
 export type {
+	CodingAgentSandboxEnvironment,
+	CodingAgentSandboxHostOptions,
+	CodingAgentSandboxHostServices,
+	CodingAgentSandboxToolSet,
+	CodingAgentSandboxWorkspacePathAccess,
+	CodingAgentSessionExecutionEnvironment,
+	CodingAgentSessionExecutionEnvironmentContext,
+	CodingAgentSessionExecutionEnvironmentFactory,
+} from "./contracts/session-execution-environment.js";
+export type {
+	CodingAgentToolEnvironment,
+	CodingAgentToolEnvironmentContext,
+	CodingAgentToolEnvironmentFactory,
+} from "./contracts/tool-environment.js";
+export type {
 	KnowledgeProcessingPageWriter,
 	KnowledgeProcessingSession,
 	KnowledgeProcessingSessionFactory,
@@ -42,3 +57,10 @@ export {
 	type CodingAgentSessionTransitionLifecycle,
 } from "./session-host/active-session-transition-host.js";
 export { CodingAgentProcessSessionHost } from "./session-host/index.js";
+export {
+	type CodingAgentEditPathPolicy,
+	type CodingAgentPathPolicyBoundaries,
+	type CodingAgentWritePathPolicy,
+	createCodingAgentEditPathPolicy,
+	createCodingAgentWritePathPolicy,
+} from "./tool-path-policy.js";

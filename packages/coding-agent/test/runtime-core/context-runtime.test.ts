@@ -19,15 +19,15 @@ import type {
 	StoredSessionEvent,
 } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
-import {
-	CodingAgentContextRuntime,
-	type CodingAgentContextRuntimeOptions,
-} from "../../src/adapters/runtime-core/context-runtime/index.js";
 import type { CompactionPreparation, CompactionResult, CompactionSettings } from "../../src/compaction/index.js";
+import {
+	DefaultCodingAgentContextRuntime as CodingAgentContextRuntime,
+	type CodingAgentContextRuntimeOptions,
+} from "../../src/compaction/runtime/index.js";
 import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../../src/model-context/index.js";
 import type { CodingAgentCompactionExtensionRuntime } from "../../src/runtime-contracts/index.js";
 
-describe("CodingAgentContextRuntime", () => {
+describe("DefaultCodingAgentContextRuntime", () => {
 	it("freezes time-based projection decisions for every model call in a Turn", async () => {
 		let now = 100_000;
 		const runtime = new CodingAgentContextRuntime({

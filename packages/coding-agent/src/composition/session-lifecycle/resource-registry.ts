@@ -4,7 +4,7 @@ import {
 	type RuntimeResourceContext,
 } from "@vetta/runtime-core";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
+import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryController } from "../../memory/index.js";
@@ -51,7 +51,7 @@ export class CodingAgentCompositionResourceRegistry implements CodingAgentCompos
 		executionRuntimes: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
 		configurationStates: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionConfigurationState>(),
 		resourceContexts: new InMemoryRuntimeSessionValueIndex<RuntimeResourceContext>(),
-		extensionEventBridges: new InMemoryRuntimeSessionValueIndex<CodingAgentExtensionRunAdapter>(),
+		extensionEventBridges: new InMemoryRuntimeSessionValueIndex<CodingAgentExtensionRunBridge>(),
 		memoryControllers: new InMemoryRuntimeSessionValueIndex<CodingAgentMemoryController>(),
 		hookSessionControllers: new InMemoryRuntimeSessionValueIndex<CodingAgentSessionHookController>(),
 		mcpRefreshObservedSessions: new InMemoryRuntimeSessionMarkerIndex(),

@@ -9,6 +9,7 @@ export interface RuntimeNodeConversationPersistence {
 	readonly documentStore: ConversationDocumentStore;
 	readonly continuationStore: ConversationContinuationStore;
 	resolveConversationPath(sessionId: string): string;
+	resolveSessionDirectory(sessionId: string): string | undefined;
 	resolveSessionPath(sessionId: string): string | undefined;
 	assessSessionPath(sessionId: string, sessionPath: string): Promise<RuntimeNodeConversationSessionPathAssessment>;
 	dispose(): Promise<void>;
@@ -23,6 +24,7 @@ export function createFileConversationPersistence(rootDir: string): RuntimeNodeC
 		documentStore: repository,
 		continuationStore: repository,
 		resolveConversationPath: (sessionId) => repository.resolveConversationPath(sessionId),
+		resolveSessionDirectory: (_sessionId) => repository.resolveSessionDirectory(),
 		resolveSessionPath: (sessionId) => repository.resolveConversationPath(sessionId),
 		assessSessionPath: (sessionId, sessionPath) =>
 			assessFileConversationSessionPath(repository.resolveConversationPath(sessionId), sessionPath),
@@ -37,6 +39,7 @@ export function createInMemoryConversationPersistence(): RuntimeNodeConversation
 		documentStore: repository,
 		continuationStore: repository,
 		resolveConversationPath: (sessionId) => repository.resolveConversationPath(sessionId),
+		resolveSessionDirectory: (_sessionId) => undefined,
 		resolveSessionPath: () => undefined,
 		assessSessionPath: async () => "path-mismatch",
 		dispose: () => repository.close(),

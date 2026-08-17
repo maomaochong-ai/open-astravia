@@ -12,11 +12,12 @@ import {
 } from "@vetta/runtime-knowledge";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../src/adapters/runtime-core/model-runtime-adapter.js";
-import { createCodingAgentNodeToolEnvironment } from "../src/adapters/runtime-tools/node-tool-environment.js";
 import {
 	createKnowledgeProcessingSessionFactory,
 	type KnowledgeProcessingSessionFactoryOptions,
 } from "../src/composition/knowledge-processing-session.js";
+import { createCodingAgentNodeSessionExecutionEnvironment } from "../src/host/tool-environment/node/node-session-execution-environment.js";
+import { createCodingAgentNodeToolEnvironment } from "../src/host/tool-environment/node/node-tool-environment.js";
 import {
 	createCodingAgentRuntimeComposition,
 	createTestConversationPersistence,
@@ -51,6 +52,7 @@ describe("Knowledge processing batches", () => {
 			getModelRegistry: () => modelRegistry(),
 			createConversationPersistence: createTestConversationPersistence,
 			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
 			knowledgeRuntime: createTestKnowledgeRuntime(root),
 			createSessionId: () => `knowledge-batch-${nextSessionId++}`,
 			createComposition: createBatchComposition(requests, disposeComposition),

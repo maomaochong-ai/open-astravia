@@ -9,6 +9,8 @@ import type { RuntimeSessionState } from "./session-ports.js";
 
 export interface RuntimeSessionIdentity {
 	readonly cwd?: string;
+	/** 宿主持有的持久化会话制品位置；Runtime 不解释其格式。 */
+	readonly sessionDirectory?: string;
 	readonly sessionPath?: string;
 	readonly parentSessionPath?: string;
 	readonly parentEntryId?: string;

@@ -463,6 +463,9 @@ export class RuntimeSession {
 				get sessionPath() {
 					return runtimeSession.eventSink.readIdentity().sessionPath;
 				},
+				get sessionDirectory() {
+					return runtimeSession.eventSink.readIdentity().sessionDirectory;
+				},
 				dispose: () => this.dispose(),
 			},
 			historyReader: {
@@ -694,6 +697,7 @@ class RuntimeSessionEventSink implements EventSink {
 			);
 			this.identity = {
 				cwd: event.document.identity.cwd,
+				sessionDirectory: event.sessionDirectory ?? this.identity.sessionDirectory,
 				sessionPath: event.sessionPath,
 				parentSessionPath: event.document.identity.parentSessionPath,
 				parentEntryId: event.document.identity.parentEntryId,

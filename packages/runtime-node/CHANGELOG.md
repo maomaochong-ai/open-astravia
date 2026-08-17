@@ -6,6 +6,21 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Breaking Changes
 
+- 移除 `@vetta/runtime-node/coding` 的 7 个子代理控制 Tool（`spawn_agent`、`dispatch_workflows`、`wait_agent`、
+  `list_agents`、`interrupt_agent`、`send_message`、`followup_task`）及其 Schema、描述和注册导出。它们不依赖
+  Node 环境，现由 `@vetta/coding-agent` 的 Subagent Feature 持有；Node Runtime 继续只提供平台实现。
+
+- 移除 `@vetta/runtime-node/coding` 中无人使用的重复 `tool_search` Tool、评分器、Schema 与注册导出。
+  会话级渐进披露的唯一生产实现和公共合同位于平台中立的 `@vetta/runtime-mcp`。
+
+- 移除 `@vetta/runtime-node/coding` 的 `invoke_skill` Tool、Schema、描述和注册导出。Skill 已在进入
+  Coding Agent 领域时完成物化，该模型可见语义现由 `@vetta/coding-agent` 的 Skill 领域持有；Node Runtime
+  不再承载无平台依赖的产品 Tool 定义。
+
+- 移除 `@vetta/runtime-node/coding` 的 `ask_user_question` Tool、Schema、描述、Capability 类型和注册导出。
+  该模型可见交互语义现由 `@vetta/coding-agent` 的 Ask User Question Feature 持有，并直接消费
+  `runtime-core` 的通用宿主提问 Capability；用户行为保持不变。
+
 - 移除 `@vetta/runtime-node/coding` 的 `memory` Tool、Schema、描述和注册导出。模型可见 Memory 语义现由
   `@vetta/coding-agent` 拥有；Node Runtime 只提供通用文本文件存储适配器。
 
@@ -20,6 +35,26 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
   产品规则，现由 `@vetta/coding-agent` 的 Todo Feature 直接拥有；Coding Agent 用户行为保持不变。
 
 ### Added
+
+- Conversation persistence bundle 新增 `resolveSessionDirectory(sessionId)`；文件实现直接返回其已知根目录，内存实现返回
+  `undefined`，上层不再从可恢复会话路径反推制品目录。
+
+- `@vetta/runtime-node/coding` 新增 `createNodeSandboxCodingToolEnvironment()`，从显式路径策略与 Host
+  选项统一创建 `read`、`write`、`edit`、平台命令 Tool 和 Node sandbox services；上层产品只需装饰权限语义，
+  不再重复选择具体 Tool 构造器。
+
+- `@vetta/runtime-node/coding` 新增 `createNodeCommandToolEnvironment()` 与
+  `createNodeHostSessionCommandEnvironment()`，为每个 Session 组合独占的命令注册、环境覆盖、后台任务服务和释放生命周期；
+  完整 Node ToolEnvironment 复用同一命令装配路径，避免两套执行实现漂移。
+
+- `@vetta/runtime-node/coding` 新增 `createNodePathBoundaryClassifier()` 与
+  `createNodeHostCodingToolEnvironment()`：前者统一处理平台路径规范化和目录边界，后者组合 Shell、前后台命令、
+  托管可执行文件与基础 Coding Tool；产品路径策略和目录选择仍由最终宿主显式传入。
+
+- `@vetta/runtime-node/coding` 新增 `createNodeDocToPdfOperations()`，统一拥有 Office/WPS 探测、
+  平台命令构造、文件存在性检查和进程错误映射；Coding Agent 只负责工具注册与模型顺序策略。
+- `@vetta/runtime-node/coding` 新增 `createNodeVettaDesktopCommandPort()`，统一拥有 Desktop 可执行文件定位、
+  配置读取和 Node 进程取消错误映射，并允许宿主显式注入平台与环境事实用于测试和非默认部署。
 
 - `@vetta/runtime-node/host` 新增 `NodeTextFileStorage`，以缺失读取、临时文件替换和追加能力实现平台中立的
   `MemoryTextStorage` 合同，由 CLI、Desktop 与 SDK Composition Root 显式选择具体 Memory 与 Journal 路径。
