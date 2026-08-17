@@ -145,6 +145,7 @@ const mediaGenerateCapabilityType = Type.Object(
 		modes: Type.Array(mediaGenerationModeType, { minItems: 1 }),
 		aspectRatios: Type.Optional(Type.Array(requiredStringType)),
 		resolutions: Type.Optional(Type.Array(requiredStringType)),
+		defaultResolution: Type.Optional(requiredStringType),
 		durationsSeconds: Type.Optional(Type.Array(Type.Number({ exclusiveMinimum: 0 }))),
 		modeCapabilities: Type.Optional(Type.Array(mediaGenerationModeCapabilityType)),
 	},

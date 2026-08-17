@@ -75,6 +75,8 @@ describe("media domain capabilities", () => {
 							operation: "generate",
 							kind: "video",
 							modes: ["image-to-video"],
+							resolutions: ["0_5mp", "0_75mp", "1mp"],
+							defaultResolution: "0_75mp",
 							modeCapabilities: [
 								{
 									mode: "image-to-video",
@@ -90,7 +92,11 @@ describe("media domain capabilities", () => {
 		).toMatchObject([
 			{
 				capabilities: [
-					{ modeCapabilities: [{ inputs: [{ role: "firstFrame" }], aspectRatioPolicy: "input-derived" }] },
+					{
+						resolutions: ["0_5mp", "0_75mp", "1mp"],
+						defaultResolution: "0_75mp",
+						modeCapabilities: [{ inputs: [{ role: "firstFrame" }], aspectRatioPolicy: "input-derived" }],
+					},
 				],
 			},
 		]);

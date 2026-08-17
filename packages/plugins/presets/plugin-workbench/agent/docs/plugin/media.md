@@ -90,6 +90,8 @@ ctx.media.registerProvider({
     kind: "video",
     modes: ["image-to-video"],
     aspectRatios: ["16:9", "9:16"],
+    resolutions: ["efficient", "balanced", "quality"],
+    defaultResolution: "balanced",
     durationsSeconds: [5, 10],
   }],
   async submit(request, context) {
@@ -124,9 +126,11 @@ ctx.media.registerProvider({
 
 Provider 收到的 `inputs` 只有不透明 ID、媒体类型和 MIME，不包含插件 Blob 命名空间或工作区路径。只有当前任务上下文能用 `uploadInput()` 把对应文件流式上传到 HTTP(S) 服务。Provider 输出 source 支持 `remote-url`、`plugin-blob` 和 `workspace-file`，宿主会按 Provider 权限读取并导入为消费方临时产物。
 
+`resolutions` 是 Provider 自定义的稳定选项 ID，不保证具有 `720p`、`2K` 等固定视频制式语义；例如本地模型可以用它表达像素预算档位，再在 Provider 内转换为最终宽高。若声明 `defaultResolution`，该值必须同时出现在 `resolutions` 中。消费者在没有已保存值或已有值不受当前模型支持时优先采用这个显式默认值。
+
 ## Provider SPI
 
-通用媒体契约和 capability token 定义在 `@vetta/capability-sdk`，当前协议版本为 3。注册表、通用任务、临时产物存储、输入解析与网络传输位于 desktop 主进程。插件 Provider 通过受控 IPC 回调桥接到同一个 Registry，注销时会中止仍在执行的调用。
+通用媒体契约和 capability token 定义在 `@vetta/capability-sdk`，当前协议版本为 4。注册表、通用任务、临时产物存储、输入解析与网络传输位于 desktop 主进程。插件 Provider 通过受控 IPC 回调桥接到同一个 Registry，注销时会中止仍在执行的调用。
 
 需要宿主凭据或其它主进程特权的实现仍应注册为宿主 Provider；普通远端服务、本地模型或 sidecar 可用 Provider 插件适配。两者对消费者暴露同一契约。
 

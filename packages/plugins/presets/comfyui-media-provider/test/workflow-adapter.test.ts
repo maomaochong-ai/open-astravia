@@ -4,17 +4,30 @@ import { adaptMinimaxWorkflow, isCompatibleMinimaxPrompt, type ComfyPrompt } fro
 const frameTemplate: ComfyPrompt = {
 	first: { class_type: "LoadImage", inputs: { image: "old-first.png" } },
 	last: { class_type: "LoadImage", inputs: { image: "old-last.png" } },
-	resolution: { class_type: "ResolutionSelector", inputs: { aspect_ratio: "1:1 (Square)" } },
+	resolution: {
+		class_type: "ResolutionSelector",
+		inputs: { aspect_ratio: "1:1 (Square)", megapixels: 0.5, multiple: 8 },
+	},
 	noise: { class_type: "RandomNoise", inputs: { noise_seed: 1 } },
 	duration: { class_type: "PrimitiveFloat", inputs: { value: 5 }, _meta: { title: "Float (duration)" } },
 	generate: {
 		class_type: "MiniMaxH3ImageToVideo",
-		inputs: { prompt: "old", first_frame: ["first", 0], last_frame: ["last", 0] },
+		inputs: {
+			prompt: "old",
+			width: ["resolution", 0],
+			height: ["resolution", 1],
+			first_frame: ["first", 0],
+			last_frame: ["last", 0],
+		},
 	},
 	save: { class_type: "SaveVideo", inputs: {} },
 };
 
 const referenceTemplate: ComfyPrompt = {
+	resolution: {
+		class_type: "ResolutionSelector",
+		inputs: { aspect_ratio: "1:1 (Square)", megapixels: 0.5, multiple: 8 },
+	},
 	image: { class_type: "LoadImage", inputs: { image: "old-image.png" } },
 	video: { class_type: "LoadVideo", inputs: { video: "old-video.mp4" } },
 	audio: { class_type: "LoadAudio", inputs: { audio: "old-audio.wav" } },
@@ -22,6 +35,8 @@ const referenceTemplate: ComfyPrompt = {
 		class_type: "MiniMaxH3ReferenceToVideo",
 		inputs: {
 			prompt: "old",
+			width: ["resolution", 0],
+			height: ["resolution", 1],
 			"ref_images.ref_image_0": ["image", 0],
 			"ref_videos.ref_video_0": ["video", 0],
 			"ref_video_audios.ref_video_audio_0": ["video", 1],
@@ -32,9 +47,13 @@ const referenceTemplate: ComfyPrompt = {
 };
 
 const referenceTemplateWithoutMediaLoaders: ComfyPrompt = {
+	resolution: {
+		class_type: "ResolutionSelector",
+		inputs: { aspect_ratio: "1:1 (Square)", megapixels: 0.5, multiple: 8 },
+	},
 	generate: {
 		class_type: "MiniMaxH3ReferenceToVideo",
-		inputs: { prompt: "old" },
+		inputs: { prompt: "old", width: ["resolution", 0], height: ["resolution", 1] },
 	},
 	save: { class_type: "SaveVideo", inputs: {} },
 };
@@ -49,6 +68,7 @@ describe("adaptMinimaxWorkflow", () => {
 				mode: "image-to-video",
 				prompt: "camera slowly moves forward",
 				aspectRatio: "16:9",
+				resolution: "1mp",
 				durationSeconds: 10,
 				inputs: [],
 			},
@@ -68,6 +88,8 @@ describe("adaptMinimaxWorkflow", () => {
 			last_frame: ["last", 0],
 		});
 		expect(result.prompt.resolution.inputs.aspect_ratio).toBe("16:9 (Widescreen)");
+		expect(result.prompt.resolution.inputs.megapixels).toBe(0.98);
+		expect(result.prompt.resolution.inputs.multiple).toBe(32);
 		expect(result.prompt.duration.inputs.value).toBe(10);
 		expect(result.prompt.noise.inputs.noise_seed).toBe(42);
 		expect(frameTemplate.first.inputs.image).toBe("old-first.png");
@@ -81,6 +103,7 @@ describe("adaptMinimaxWorkflow", () => {
 				kind: "video",
 				mode: "reference-to-video",
 				prompt: "use <Picture 1>, <Picture 2>, <Video 1> and <Audio 1>",
+				resolution: "0_5mp",
 				inputs: [],
 			},
 			[
@@ -101,6 +124,7 @@ describe("adaptMinimaxWorkflow", () => {
 		expect(result.prompt.vetta_image_input_1.inputs.image).toBe("uploads/image-2.png");
 		expect(result.prompt.video.inputs.video).toBe("uploads/video-1.mp4");
 		expect(result.prompt.audio.inputs.audio).toBe("uploads/audio-1.wav");
+		expect(result.prompt.resolution.inputs.megapixels).toBe(0.5);
 	});
 
 	it("creates standard video and audio loaders when the reference template has no prototypes", () => {
@@ -111,6 +135,7 @@ describe("adaptMinimaxWorkflow", () => {
 				kind: "video",
 				mode: "reference-to-video",
 				prompt: "use <Video 1> and <Audio 1>",
+				resolution: "0_75mp",
 				inputs: [],
 			},
 			[
@@ -135,9 +160,62 @@ describe("adaptMinimaxWorkflow", () => {
 		});
 	});
 
+	it("writes aligned literal dimensions when the template does not use ResolutionSelector", () => {
+		const template: ComfyPrompt = {
+			generate: {
+				class_type: "MiniMaxH3ImageToVideo",
+				inputs: { prompt: "old", width: 1344, height: 768 },
+			},
+			save: { class_type: "SaveVideo", inputs: {} },
+		};
+		const result = adaptMinimaxWorkflow(
+			template,
+			{
+				operation: "generate",
+				kind: "video",
+				mode: "text-to-video",
+				prompt: "city lights",
+				aspectRatio: "9:16",
+				resolution: "0_5mp",
+				inputs: [],
+			},
+			[],
+			9,
+		);
+
+		expect(result.prompt.generate.inputs).toMatchObject({ width: 544, height: 960 });
+	});
+
+	it("rejects unknown resolution presets instead of silently keeping template dimensions", () => {
+		expect(() =>
+			adaptMinimaxWorkflow(
+				frameTemplate,
+				{
+					operation: "generate",
+					kind: "video",
+					mode: "text-to-video",
+					prompt: "city lights",
+					resolution: "2k",
+					inputs: [],
+				},
+				[],
+				9,
+			),
+		).toThrow("Unsupported MiniMax H3 resolution preset: 2k");
+	});
+
 	it("recognizes only templates compatible with the selected mode", () => {
 		expect(isCompatibleMinimaxPrompt(frameTemplate, "image-to-video")).toBe(true);
 		expect(isCompatibleMinimaxPrompt(frameTemplate, "reference-to-video")).toBe(false);
 		expect(isCompatibleMinimaxPrompt(referenceTemplate, "reference-to-video")).toBe(true);
+		expect(
+			isCompatibleMinimaxPrompt(
+				{
+					generate: { class_type: "MiniMaxH3ImageToVideo", inputs: { prompt: "old" } },
+					save: { class_type: "SaveVideo", inputs: {} },
+				},
+				"image-to-video",
+			),
+		).toBe(false);
 	});
 });

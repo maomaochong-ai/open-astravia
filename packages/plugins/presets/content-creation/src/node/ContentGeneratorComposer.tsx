@@ -226,7 +226,11 @@ export function ContentGeneratorComposer({
 			...(kind === "video-generator"
 				? {
 						duration: resolveSupportedModelOption(draft.duration, selectedModel.durations),
-						resolution: resolveSupportedModelOption(draft.resolution, selectedModel.resolutions),
+						resolution: resolveSupportedModelOption(
+							draft.resolution,
+							selectedModel.resolutions,
+							selectedModel.defaultResolution,
+						),
 					}
 				: {}),
 		};
@@ -366,7 +370,11 @@ export function ContentGeneratorComposer({
 						...(kind === "video-generator"
 							? {
 									duration: resolveSupportedModelOption(draft.duration, model.durations),
-									resolution: resolveSupportedModelOption(draft.resolution, model.resolutions),
+									resolution: resolveSupportedModelOption(
+										draft.resolution,
+										model.resolutions,
+										model.defaultResolution,
+									),
 								}
 							: {}),
 					});

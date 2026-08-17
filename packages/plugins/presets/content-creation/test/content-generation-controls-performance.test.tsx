@@ -26,7 +26,14 @@ interface MockPopoverProps {
 }
 
 vi.mock("@vetta-org/plugin-sdk", () => ({
-	useTranslation: () => ({ t: (key: string) => key }),
+	useTranslation: () => ({
+		t: (key: string) =>
+			({
+				"option.resolution.0_5mp": "标清",
+				"option.resolution.0_75mp": "高清",
+				"option.resolution.1mp": "超清",
+			})[key] ?? key,
+	}),
 }));
 
 vi.mock("@vetta/ui", () => ({
@@ -177,7 +184,7 @@ describe("ContentGenerationControls option mounting", () => {
 		expect(screen.getByLabelText("nodeEditor.videoSettings.open").className).toContain("bg-transparent");
 		expect(screen.getByText("nodeEditor.videoSettings.method.frames")).toBeTruthy();
 		expect(screen.getByText("nodeEditor.videoSettings.method.omni").closest("button")).toHaveProperty("disabled", true);
-		expect(screen.getByText("option.resolution.720p")).toBeTruthy();
+		expect(screen.getByText("720p")).toBeTruthy();
 		expect(screen.getAllByText("option.duration.seconds")).toHaveLength(videoModel.durations?.length ?? 0);
 		fireEvent.pointerDown(screen.getByText("nodeEditor.videoSettings.method.frames"));
 		expect(screen.getByTestId("video-settings-panel")).toBeTruthy();
@@ -231,6 +238,54 @@ describe("ContentGenerationControls option mounting", () => {
 		);
 
 		expect(screen.getByLabelText("nodeEditor.videoSettings.open").textContent).not.toContain("720p");
+	});
+
+	it("uses the model's explicit default resolution for a stale saved value", () => {
+		const model: ContentModelDescriptor = { ...videoModel, defaultResolution: "1080p" };
+		render(
+			<ContentGenerationControls
+				kind="video-generator"
+				draft={{ duration: 5, resolution: "480p" }}
+				models={[model]}
+				selectedModel={model}
+				isRunning={false}
+				canGenerate
+				onChange={vi.fn()}
+				onModelChange={vi.fn()}
+				onSubmit={vi.fn()}
+			/>,
+		);
+
+		expect(screen.getByLabelText("nodeEditor.videoSettings.open").textContent).toContain("1080p");
+	});
+
+	it("renders translated H3 resolution labels in the summary and option list", () => {
+		const model: ContentModelDescriptor = {
+			...videoModel,
+			resolutions: ["0_5mp", "0_75mp", "1mp"],
+			defaultResolution: "0_75mp",
+		};
+		render(
+			<ContentGenerationControls
+				kind="video-generator"
+				draft={{ duration: 5, resolution: "720p" }}
+				models={[model]}
+				selectedModel={model}
+				isRunning={false}
+				canGenerate
+				onChange={vi.fn()}
+				onModelChange={vi.fn()}
+				onSubmit={vi.fn()}
+			/>,
+		);
+
+		const triggerText = screen.getByLabelText("nodeEditor.videoSettings.open").textContent;
+		expect(triggerText).toContain("高清");
+		expect(triggerText).not.toContain("0_75mp");
+		fireEvent.click(screen.getByTestId("popover-toggle"));
+		expect(screen.getByText("标清")).toBeTruthy();
+		expect(screen.getByText("高清")).toBeTruthy();
+		expect(screen.getByText("超清")).toBeTruthy();
 	});
 
 	it("switches to omni reference when the selected model supports it", () => {

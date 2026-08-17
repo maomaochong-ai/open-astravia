@@ -1,4 +1,9 @@
 import type { PluginMediaGenerationMode, PluginMediaProviderSubmitRequest } from "@vetta-org/plugin-sdk";
+import {
+	calculateH3Dimensions,
+	H3_CANVAS_MULTIPLE,
+	resolveH3ResolutionPreset,
+} from "./h3-resolution";
 
 type GenerateRequest = Extract<PluginMediaProviderSubmitRequest, { operation: "generate" }>;
 
@@ -50,7 +55,8 @@ function isPrompt(value: unknown): value is ComfyPrompt {
 export function isCompatibleMinimaxPrompt(value: unknown, mode: PluginMediaGenerationMode): value is ComfyPrompt {
 	if (!isPrompt(value)) return false;
 	const generatorClass = mode === "reference-to-video" ? "MiniMaxH3ReferenceToVideo" : "MiniMaxH3ImageToVideo";
-	return nodesByClass(value, generatorClass).length > 0 && nodesByClass(value, "SaveVideo").length > 0;
+	const generator = nodesByClass(value, generatorClass)[0]?.[1];
+	return Boolean(generator && hasResolutionControl(value, generator) && nodesByClass(value, "SaveVideo").length > 0);
 }
 
 function linkedNode(prompt: ComfyPrompt, value: unknown): [string, ComfyPromptNode] | undefined {
@@ -161,11 +167,35 @@ function connectReferenceGroup(
 	});
 }
 
-function applyCommonSettings(prompt: ComfyPrompt, request: GenerateRequest, seed: number): void {
-	const resolution = nodesByClass(prompt, "ResolutionSelector")[0]?.[1];
-	if (request.aspectRatio && resolution) {
-		resolution.inputs.aspect_ratio = ASPECT_RATIO_VALUES[request.aspectRatio] ?? request.aspectRatio;
+function applyResolution(prompt: ComfyPrompt, generator: ComfyPromptNode, request: GenerateRequest): void {
+	const preset = resolveH3ResolutionPreset(request.resolution);
+	const selector = linkedResolutionSelector(prompt, generator);
+	if (selector) {
+		if (request.aspectRatio) {
+			selector.inputs.aspect_ratio = ASPECT_RATIO_VALUES[request.aspectRatio] ?? request.aspectRatio;
+		}
+		selector.inputs.megapixels = preset.megapixels;
+		selector.inputs.multiple = H3_CANVAS_MULTIPLE;
+		return;
 	}
+	const width = generator.inputs.width;
+	const height = generator.inputs.height;
+	if (isPositiveNumber(width) && isPositiveNumber(height)) {
+		const dimensions = calculateH3Dimensions(request.aspectRatio, preset.megapixels, { width, height });
+		generator.inputs.width = dimensions.width;
+		generator.inputs.height = dimensions.height;
+		return;
+	}
+	throw new Error("ComfyUI MiniMax H3 template has no supported width/height control");
+}
+
+function applyCommonSettings(
+	prompt: ComfyPrompt,
+	generator: ComfyPromptNode,
+	request: GenerateRequest,
+	seed: number,
+): void {
+	applyResolution(prompt, generator, request);
 	const duration = nodesByClass(prompt, "PrimitiveFloat").find(([, node]) =>
 		node._meta?.title?.toLowerCase().includes("duration"),
 	)?.[1];
@@ -182,19 +212,52 @@ export function adaptMinimaxWorkflow(
 ): AdaptedWorkflow {
 	const prompt = structuredClone(template);
 	const [outputNodeId] = requiredNode(prompt, "SaveVideo");
+	let generator: ComfyPromptNode;
 	if (request.mode === "reference-to-video") {
-		const [, generator] = requiredNode(prompt, "MiniMaxH3ReferenceToVideo");
+		[, generator] = requiredNode(prompt, "MiniMaxH3ReferenceToVideo");
 		generator.inputs.prompt = request.prompt;
 		connectReferenceGroup(prompt, generator, "referenceImages", uploadedInputs.filter((input) => input.role === "referenceImages"));
 		connectReferenceGroup(prompt, generator, "referenceVideos", uploadedInputs.filter((input) => input.role === "referenceVideos"));
 		connectReferenceGroup(prompt, generator, "referenceAudios", uploadedInputs.filter((input) => input.role === "referenceAudios"));
 	} else {
-		const [, generator] = requiredNode(prompt, "MiniMaxH3ImageToVideo");
+		[, generator] = requiredNode(prompt, "MiniMaxH3ImageToVideo");
 		generator.inputs.prompt = request.prompt;
 		const claimed = new Set<string>();
 		connectFrame(prompt, generator, "first_frame", uploadedInputs.find((input) => input.role === "firstFrame"), claimed);
 		connectFrame(prompt, generator, "last_frame", uploadedInputs.find((input) => input.role === "lastFrame"), claimed);
 	}
-	applyCommonSettings(prompt, request, seed);
+	applyCommonSettings(prompt, generator, request, seed);
 	return { prompt, outputNodeId };
+}
+
+function linkedResolutionSelector(prompt: ComfyPrompt, generator: ComfyPromptNode): ComfyPromptNode | undefined {
+	const widthLink = inputLink(generator.inputs.width);
+	const heightLink = inputLink(generator.inputs.height);
+	if (
+		!widthLink ||
+		!heightLink ||
+		widthLink.nodeId !== heightLink.nodeId ||
+		widthLink.outputIndex !== 0 ||
+		heightLink.outputIndex !== 1
+	) {
+		return undefined;
+	}
+	const node = prompt[widthLink.nodeId];
+	return node?.class_type === "ResolutionSelector" ? node : undefined;
+}
+
+function hasResolutionControl(prompt: ComfyPrompt, generator: ComfyPromptNode): boolean {
+	return Boolean(
+		linkedResolutionSelector(prompt, generator) ||
+		(isPositiveNumber(generator.inputs.width) && isPositiveNumber(generator.inputs.height)),
+	);
+}
+
+function inputLink(value: unknown): { nodeId: string; outputIndex: number } | undefined {
+	if (!Array.isArray(value) || typeof value[0] !== "string" || typeof value[1] !== "number") return undefined;
+	return { nodeId: value[0], outputIndex: value[1] };
+}
+
+function isPositiveNumber(value: unknown): value is number {
+	return typeof value === "number" && Number.isFinite(value) && value > 0;
 }

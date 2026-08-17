@@ -13,9 +13,20 @@ import type { ComfyPrompt } from "../src/workflow-adapter";
 
 const template: ComfyPrompt = {
 	load: { class_type: "LoadImage", inputs: { image: "old.png" } },
-	resolution: { class_type: "ResolutionSelector", inputs: { aspect_ratio: "1:1 (Square)" } },
+	resolution: {
+		class_type: "ResolutionSelector",
+		inputs: { aspect_ratio: "1:1 (Square)", megapixels: 0.5, multiple: 8 },
+	},
 	duration: { class_type: "PrimitiveFloat", inputs: { value: 5 }, _meta: { title: "Float (duration)" } },
-	generate: { class_type: "MiniMaxH3ImageToVideo", inputs: { prompt: "old", first_frame: ["load", 0] } },
+	generate: {
+		class_type: "MiniMaxH3ImageToVideo",
+		inputs: {
+			prompt: "old",
+			width: ["resolution", 0],
+			height: ["resolution", 1],
+			first_frame: ["load", 0],
+		},
+	},
 	save: { class_type: "SaveVideo", inputs: {} },
 };
 
@@ -33,6 +44,8 @@ describe("ComfyUI media provider", () => {
 		const provider = createComfyUiProvider(context);
 
 		expect(provider.capabilities[0]).toMatchObject({
+			resolutions: ["0_5mp", "0_75mp", "1mp"],
+			defaultResolution: "0_75mp",
 			modes: ["text-to-video", "image-to-video", "reference-to-video"],
 			modeCapabilities: [
 				expect.objectContaining({ mode: "text-to-video", inputs: [] }),
@@ -132,6 +145,7 @@ describe("ComfyUI media provider", () => {
 				mode: "image-to-video",
 				prompt: "a slow camera move",
 				aspectRatio: "16:9",
+				resolution: "1mp",
 				durationSeconds: 10,
 				inputs: [{ id: "input-1", role: "firstFrame", kind: "image", mimeType: "image/png" }],
 			},
@@ -152,6 +166,8 @@ describe("ComfyUI media provider", () => {
 		expect(submittedPrompt?.load.inputs.image).toBe("uploads/input.png");
 		expect(submittedPrompt?.generate.inputs.prompt).toBe("a slow camera move");
 		expect(submittedPrompt?.resolution.inputs.aspect_ratio).toBe("16:9 (Widescreen)");
+		expect(submittedPrompt?.resolution.inputs.megapixels).toBe(0.98);
+		expect(submittedPrompt?.resolution.inputs.multiple).toBe(32);
 		expect(submittedPrompt?.duration.inputs.value).toBe(10);
 
 		completed = true;
@@ -209,5 +225,39 @@ describe("ComfyUI media provider", () => {
 		expect(submittedPrompt?.generate.inputs.prompt).toBe("a quiet city at dawn");
 		expect(submittedPrompt?.generate.inputs).not.toHaveProperty("first_frame");
 		expect(submittedPrompt?.generate.inputs).not.toHaveProperty("last_frame");
+	});
+
+	it("rejects an unknown resolution before loading a template or uploading media", async () => {
+		const networkRequest = vi.fn();
+		const uploadInput = vi.fn();
+		const ctx = {
+			network: { request: networkRequest },
+			settings: { get: () => "http://comfy.local:8188" },
+			i18n: { t: () => "ComfyUI · MiniMax H3" },
+		} as unknown as PluginContext;
+		const provider = createComfyUiProvider(ctx);
+
+		await expect(
+			provider.submit(
+				{
+					operation: "generate",
+					kind: "video",
+					mode: "text-to-video",
+					prompt: "city lights",
+					resolution: "2k",
+					inputs: [],
+				},
+				{ invocationId: "invalid-resolution", uploadInput },
+			),
+		).resolves.toMatchObject({
+			status: "failed",
+			error: {
+				code: "invalid-request",
+				message: "Unsupported MiniMax H3 resolution preset: 2k",
+				retryable: false,
+			},
+		});
+		expect(networkRequest).not.toHaveBeenCalled();
+		expect(uploadInput).not.toHaveBeenCalled();
 	});
 });

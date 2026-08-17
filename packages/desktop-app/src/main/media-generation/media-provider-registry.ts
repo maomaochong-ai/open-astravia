@@ -75,7 +75,8 @@ export function cloneMediaProviderCapabilities(
 ): MediaProviderDescriptor["capabilities"] {
 	return capabilities.map((capability) => {
 		if (capability.operation === "generate") {
-			const { aspectRatios, durationsSeconds, modeCapabilities, resolutions, ...required } = capability;
+			const { aspectRatios, defaultResolution, durationsSeconds, modeCapabilities, resolutions, ...required } =
+				capability;
 			return {
 				...required,
 				modes: [...capability.modes],
@@ -97,6 +98,7 @@ export function cloneMediaProviderCapabilities(
 					: {}),
 				...(aspectRatios !== undefined ? { aspectRatios: [...aspectRatios] } : {}),
 				...(resolutions !== undefined ? { resolutions: [...resolutions] } : {}),
+				...(defaultResolution !== undefined ? { defaultResolution } : {}),
 				...(durationsSeconds !== undefined ? { durationsSeconds: [...durationsSeconds] } : {}),
 			};
 		}
@@ -198,6 +200,13 @@ export class MediaProviderRegistry {
 				(capability.modes.length === 0 || capability.modes.some((mode) => MODE_KIND[mode] !== capability.kind))
 			) {
 				throw new Error(`Media provider capability is invalid: ${descriptor.id}`);
+			}
+			if (
+				capability.operation === "generate" &&
+				capability.defaultResolution !== undefined &&
+				!capability.resolutions?.includes(capability.defaultResolution)
+			) {
+				throw new Error(`Media provider default resolution is not declared: ${descriptor.id}`);
 			}
 		}
 		const provider: RegisteredProvider = { registration, calls: new Set(), active: true };
