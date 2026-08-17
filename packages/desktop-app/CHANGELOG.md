@@ -107,6 +107,11 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **自定义模型的 API 类型改为下拉选择**：模型设置里新增/编辑模型时不再手工输入 API 类型，
+  与自定义服务商表单一致改用下拉，首项为「继承服务商」（即不显式设置）；配置里已有的
+  非内置 api 值会作为额外选项保留，不会被下拉悄悄改写。内置选项补齐了此前缺失的
+  `openai-completions-deepseek`，服务商表单同样可选。
+
 - **发送一条消息的渲染开销收敛（低配设备可感）**：用户气泡取消入场动画（弹入 + 正文去模糊），
   静态气泡不再挂载 motion 组件；驱动该动画的「挂起 / 进行中」状态机连同消息列表滚动模型里
   的 layout-effect setState 一并移除——此前每次发送都会因此额外同步重渲整张可见列表

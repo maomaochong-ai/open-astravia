@@ -1,11 +1,13 @@
 import { getReasoningPreset } from "@vetta/ai/reasoning-presets";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@vetta/ui";
 import { cn } from "@shared/lib/utils";
 import { CheckboxField } from "./McpSettings";
-import { InputField } from "@vetta/theme-ui/settings";
+import { InputField, SelectField } from "@vetta/theme-ui/settings";
 import { CONTEXT_WINDOW_PICKS, MAX_OUTPUT_PICKS, NumberQuickPicks } from "./NumberQuickPicks";
 import {
+	buildModelApiOptions,
 	CANDIDATE_REASONING_LEVELS,
 	INPUT_OPTIONS,
 	type ModelFormState,
@@ -27,6 +29,8 @@ export function ModelsModelForm({
 	saveLabel: string;
 }): JSX.Element {
 	const { t } = useTranslation("settings");
+	const inheritLabel = t("inheritedFromProvider");
+	const apiOptions = useMemo(() => buildModelApiOptions(form.api, inheritLabel), [form.api, inheritLabel]);
 
 	const toggleInput = (value: string) => {
 		setForm((current) => {
@@ -56,10 +60,10 @@ export function ModelsModelForm({
 				</div>
 				<div>
 					<label className="mb-1 block text-[11px] text-muted-foreground">{t("apiType")}</label>
-					<InputField
+					<SelectField
 						value={form.api}
 						onChange={(value) => setForm((current) => ({ ...current, api: value }))}
-						placeholder={t("inheritedFromProvider")}
+						options={apiOptions}
 					/>
 				</div>
 				<div>
