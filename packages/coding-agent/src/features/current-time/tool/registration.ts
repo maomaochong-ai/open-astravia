@@ -1,4 +1,4 @@
-import type { CodingToolRegistration, CodingToolScope } from "../../tool-registration.js";
+import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools/coding";
 import { type CurrentTimeToolInput, type CurrentTimeToolOptions, createCurrentTimeTool } from "./current-time-tool.js";
 
 export const CURRENT_TIME_TOOL_SCOPES = [

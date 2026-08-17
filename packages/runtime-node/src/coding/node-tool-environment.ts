@@ -9,7 +9,6 @@ import {
 	type ForegroundCommandExecutorOptions,
 } from "./shared/foreground-command-executor.js";
 import { createBashToolRegistration } from "./tools/bash/index.js";
-import { createCurrentTimeToolRegistration } from "./tools/current-time/index.js";
 import { createEditToolRegistration, type EditPathPolicy } from "./tools/edit/index.js";
 import { createFindToolRegistration } from "./tools/find/index.js";
 import { createGlobToolRegistration } from "./tools/glob/index.js";
@@ -17,8 +16,6 @@ import { createGrepToolRegistration } from "./tools/grep/index.js";
 import { createLsToolRegistration } from "./tools/ls/index.js";
 import { createReadToolRegistration } from "./tools/read/index.js";
 import { createShellToolRegistration } from "./tools/shell/index.js";
-import { createTaskOutputToolRegistration } from "./tools/task-output/index.js";
-import { createTaskStopToolRegistration } from "./tools/task-stop/index.js";
 import { createTreeToolRegistration } from "./tools/tree/index.js";
 import { createWriteToolRegistration, type WritePathPolicy } from "./tools/write/index.js";
 
@@ -78,12 +75,6 @@ export function createNodeCommandToolEnvironment(
 		registrations: [
 			createBashToolRegistration(options.cwd, { executor: commandExecutor }),
 			createShellToolRegistration(options.cwd, { executor: commandExecutor }),
-			...(backgroundService
-				? [
-						createTaskOutputToolRegistration({ backgroundService }),
-						createTaskStopToolRegistration({ backgroundService }),
-					]
-				: []),
 		],
 		backgroundService,
 		dispose: () => backgroundService?.dispose(),
@@ -96,7 +87,6 @@ export function createNodeCodingToolEnvironment(options: NodeCodingToolEnvironme
 
 	return {
 		registrations: [
-			createCurrentTimeToolRegistration(),
 			createReadToolRegistration(options.cwd),
 			createEditToolRegistration(options.cwd, { pathPolicy: options.editPathPolicy }),
 			...commandEnvironment.registrations,

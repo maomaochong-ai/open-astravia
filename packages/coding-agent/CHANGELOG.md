@@ -2,10 +2,19 @@
 
 ### Breaking Changes
 
+- `current_time`、`progress`、`task_output` 与 `task_stop` 的模型名称、Schema、描述、Scope、Category 和结果语义
+  迁入对应 Coding Agent Feature。`CodingAgentToolEnvironment` 现在只提供平台 Tool 与可选
+  `BackgroundCommandService`；产品组合会忽略 Host 中同名的旧注册并使用内置定义，避免迁移期重复注册。
+  Node、CLI、Desktop 与 SDK 的可见工具集合、顺序和后台任务行为保持不变。
+
+- `im_send_attachment` 的模型合同、外发结果和 heavy 副作用声明迁入 Coding Agent IM Feature，并要求显式注入
+  `ImSendAttachmentFileOperations`。CLI RPC Host 使用 `runtime-node` 的本地文件检查实现；路径校验、发送行为和错误文本
+  保持不变。
+
 - 子代理控制 Tool（`spawn_agent`、`dispatch_workflows`、`wait_agent`、`list_agents`、`interrupt_agent`、
   `send_message`、`followup_task`）的模型名称、Schema、描述、Scope、Category、结果和注册顺序现由
   `composition/subagent/tools` 持有，并直接消费 `SubagentCoordinatorPort`；Node Runtime 不再承载这些产品语义，
-  用户可观察行为保持不变。
+  子代理完成通知的模型投影也归入同一 Feature，用户可观察行为保持不变。
 
 - `CodingAgentConversationPersistence` 新增必填 `resolveSessionDirectory(sessionId)`，由宿主持久化实现显式提供会话制品目录；
   Extension Session View 不再使用 Node path API 解析 `sessionPath`，内存会话仍回退到工作目录。

@@ -13,31 +13,34 @@ import {
 	StaticRuntimeSnapshotProvider,
 	type TurnEngineEvent,
 } from "@vetta/runtime-core/kernel";
-import { describe, expect, it } from "vitest";
 import {
-	CODING_TOOL_SCOPES,
-	type CodingToolActivation,
-	type CodingToolCatalog,
-	CURRENT_TIME_TOOL_CATEGORY,
-	CURRENT_TIME_TOOL_SCOPES,
-	createCodingToolsFeature,
-	createCurrentTimeTool,
-	createCurrentTimeToolRegistration,
 	createFindToolRegistration,
 	createGlobToolRegistration,
 	createGrepToolRegistration,
 	createLsToolRegistration,
 	createReadToolRegistration,
-	InMemoryCodingToolRegistry,
 	LS_TOOL_CATEGORY,
 	LS_TOOL_SCOPES,
 	READ_TOOL_CATEGORY,
 	READ_TOOL_SCOPES,
+} from "@vetta/runtime-node/coding";
+import {
+	CODING_TOOL_SCOPES,
+	type CodingToolActivation,
+	type CodingToolCatalog,
+	createCodingToolsFeature,
+	InMemoryCodingToolRegistry,
 	selectCodingToolRegistrations,
 	selectCodingToolsForScope,
-	TASK_OUTPUT_TOOL_REQUIRES,
-	TASK_OUTPUT_TOOL_SCOPES,
-} from "../../src/coding/index.js";
+} from "@vetta/runtime-tools";
+import { describe, expect, it } from "vitest";
+import { TASK_OUTPUT_TOOL_REQUIRES, TASK_OUTPUT_TOOL_SCOPES } from "../../src/features/background-tasks/index.js";
+import {
+	CURRENT_TIME_TOOL_CATEGORY,
+	CURRENT_TIME_TOOL_SCOPES,
+	createCurrentTimeTool,
+	createCurrentTimeToolRegistration,
+} from "../../src/features/current-time/index.js";
 
 class SnapshotIdGenerator implements IdGenerator {
 	next(scope: "snapshot" | "turn"): string {

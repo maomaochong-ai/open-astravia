@@ -3,6 +3,7 @@ import type { CodingAgentActiveSessionHost, CodingAgentRuntimeComposition } from
 import { type CodingAgentHtmlExportRuntime, createCodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import {
 	type CodingAgentTurnRetryEvent,
+	createImSendAttachmentToolRegistration,
 	exportCodingAgentRpcConversation,
 	RPC_IM_SESSION_PROFILE,
 	type RpcSessionCapabilities,
@@ -20,7 +21,7 @@ import {
 	readCodingAgentTurnFailure,
 } from "@vetta/coding-agent/runtime";
 import { type HistoryEntry, RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
-import { type CodingToolRegistration, createImSendAttachmentToolRegistration } from "@vetta/runtime-node/coding";
+import { type CodingToolRegistration, createNodeFileInspectionOperations } from "@vetta/runtime-node/coding";
 import { RpcSessionEventAdapter } from "./rpc-session-event-adapter.js";
 
 type RpcResourceLoader = Pick<CodingAgentBootstrap["resourceLoader"], "getPrompts" | "getSkills">;
@@ -119,7 +120,11 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 		this.disposeFailureMessage = options.disposeFailureMessage ?? "Failed to dispose RPC resources";
 		this.createHostToolRegistration =
 			options.createHostToolRegistration ??
-			((hostBridge) => createImSendAttachmentToolRegistration({ sender: hostBridge }));
+			((hostBridge) =>
+				createImSendAttachmentToolRegistration({
+					sender: hostBridge,
+					fileOperations: createNodeFileInspectionOperations(),
+				}));
 		this.cleanup.add({
 			id: "host-tool",
 			phase: 0,

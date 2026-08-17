@@ -101,10 +101,6 @@ export {
 	type ForegroundCommandToolDetails,
 } from "./shared/foreground-command-executor.js";
 export { resolveExistingPath } from "./shared/path-resolution.js";
-export {
-	buildSubagentNotification,
-	type SubagentNotificationPayload,
-} from "./shared/subagent-notification.js";
 export { decodeTextBuffer, sanitizeBinaryOutput } from "./shared/text-decoding.js";
 export {
 	DEFAULT_MAX_BYTES,
@@ -140,16 +136,6 @@ export {
 	createBashToolRegistration,
 	getBashToolScopes,
 } from "./tools/bash/index.js";
-export {
-	CURRENT_TIME_TOOL_CATEGORY,
-	CURRENT_TIME_TOOL_SCOPES,
-	type CurrentTimeToolDetails,
-	type CurrentTimeToolInput,
-	CurrentTimeToolInputSchema,
-	type CurrentTimeToolOptions,
-	createCurrentTimeTool,
-	createCurrentTimeToolRegistration,
-} from "./tools/current-time/index.js";
 export {
 	createDocToPdfTool,
 	createDocToPdfToolRegistration,
@@ -245,20 +231,6 @@ export {
 	type HtmlToPdfToolOptions,
 } from "./tools/html-to-pdf/index.js";
 export {
-	createImSendAttachmentTool,
-	createImSendAttachmentToolRegistration,
-	IM_SEND_ATTACHMENT_TOOL_CATEGORY,
-	IM_SEND_ATTACHMENT_TOOL_DESCRIPTION,
-	IM_SEND_ATTACHMENT_TOOL_SCOPES,
-	type ImSendAttachmentFileOperations,
-	type ImSendAttachmentSender,
-	type ImSendAttachmentToolDetails,
-	type ImSendAttachmentToolInput,
-	ImSendAttachmentToolInputSchema,
-	type ImSendAttachmentToolOptions,
-	type ImSendAttachmentToolRegistrationOptions,
-} from "./tools/im-send-attachment/index.js";
-export {
 	createLsTool,
 	createLsToolRegistration,
 	LS_TOOL_CATEGORY,
@@ -271,17 +243,6 @@ export {
 	LsToolInputSchema,
 	type LsToolOptions,
 } from "./tools/ls/index.js";
-export {
-	createProgressTool,
-	createProgressToolRegistration,
-	PROGRESS_TOOL_CATEGORY,
-	PROGRESS_TOOL_DESCRIPTION,
-	PROGRESS_TOOL_SCOPES,
-	type ProgressToolDetails,
-	type ProgressToolInput,
-	ProgressToolInputSchema,
-	type ProgressToolRegistrationOptions,
-} from "./tools/progress/index.js";
 export {
 	createReadTool,
 	createReadToolRegistration,
@@ -327,30 +288,6 @@ export {
 	type ShellToolOptions,
 	type ShellToolRegistrationOptions,
 } from "./tools/shell/index.js";
-export {
-	createTaskOutputTool,
-	createTaskOutputToolRegistration,
-	TASK_OUTPUT_TOOL_CATEGORY,
-	TASK_OUTPUT_TOOL_DESCRIPTION,
-	TASK_OUTPUT_TOOL_REQUIRES,
-	TASK_OUTPUT_TOOL_SCOPES,
-	type TaskOutputToolDetails,
-	type TaskOutputToolInput,
-	TaskOutputToolInputSchema,
-	type TaskOutputToolOptions,
-} from "./tools/task-output/index.js";
-export {
-	createTaskStopTool,
-	createTaskStopToolRegistration,
-	TASK_STOP_TOOL_CATEGORY,
-	TASK_STOP_TOOL_DESCRIPTION,
-	TASK_STOP_TOOL_REQUIRES,
-	TASK_STOP_TOOL_SCOPES,
-	type TaskStopToolDetails,
-	type TaskStopToolInput,
-	TaskStopToolInputSchema,
-	type TaskStopToolOptions,
-} from "./tools/task-stop/index.js";
 export {
 	createTreeTool,
 	createTreeToolRegistration,

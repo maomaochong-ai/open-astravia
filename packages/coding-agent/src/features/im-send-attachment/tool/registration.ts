@@ -1,4 +1,4 @@
-import type { CodingToolRegistration, CodingToolScope } from "../../tool-registration.js";
+import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools/coding";
 import {
 	createImSendAttachmentTool,
 	type ImSendAttachmentToolInput,

@@ -1,4 +1,4 @@
-import type { CodingToolRegistration, CodingToolScope } from "../../tool-registration.js";
+import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools/coding";
 import { createTaskStopTool, type TaskStopToolInput, type TaskStopToolOptions } from "./task-stop-tool.js";
 
 export const TASK_STOP_TOOL_SCOPES = [

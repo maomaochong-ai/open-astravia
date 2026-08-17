@@ -13,7 +13,6 @@ describe("Node coding tool environment", () => {
 		});
 
 		expect(environment.registrations.map(({ tool }) => tool.name)).toEqual([
-			"current_time",
 			"read",
 			"edit",
 			"bash",

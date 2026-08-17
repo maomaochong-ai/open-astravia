@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { type CommandToolExecutor, createNodeHostCodingToolEnvironment } from "../../src/coding/index.js";
 
 describe("Node host coding tool environment", () => {
-	it("assembles the complete tool set from explicit host and product policy inputs", () => {
+	it("assembles the Node platform Tool set from explicit host inputs", () => {
 		const environment = createNodeHostCodingToolEnvironment({
 			cwd: "C:/workspace",
 			toolsDirectory: "C:/tools",
@@ -15,7 +15,6 @@ describe("Node host coding tool environment", () => {
 		});
 
 		expect(environment.registrations.map(({ tool }) => tool.name)).toEqual([
-			"current_time",
 			"read",
 			"edit",
 			"bash",

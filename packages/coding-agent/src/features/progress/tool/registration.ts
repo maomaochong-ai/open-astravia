@@ -1,4 +1,4 @@
-import type { CodingToolRegistration, CodingToolScope } from "../../tool-registration.js";
+import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools/coding";
 import { createProgressTool, type ProgressToolInput } from "./progress-tool.js";
 
 export const PROGRESS_TOOL_SCOPES = [

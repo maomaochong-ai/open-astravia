@@ -19,6 +19,10 @@ export {
 	type LocalCodingToolExecutableResolverOptions,
 } from "./executable-resolver.js";
 export {
+	createNodeFileInspectionOperations,
+	type NodeFileInspectionOperations,
+} from "./file-inspection.js";
+export {
 	createNodeBackgroundCommandHost,
 	createNodeForegroundCommandHost,
 	type NodeBackgroundCommandHostOptions,

@@ -22,6 +22,10 @@ import {
 	InMemoryCodingToolRegistry,
 } from "@vetta/runtime-tools";
 import type { CodingAgentSessionExecutionEnvironment } from "../../composition/contracts/session-execution-environment.js";
+import {
+	createTaskOutputToolRegistration,
+	createTaskStopToolRegistration,
+} from "../../features/background-tasks/index.js";
 import { createCodingAgentSandboxToolRegistrations } from "./sandbox-tool-registrations.js";
 
 const SESSION_EXECUTION_FEATURE_ID = "coding-session-execution-tools";
@@ -55,9 +59,11 @@ export class CodingAgentSessionExecutionRuntime {
 	constructor(private readonly options: CodingAgentSessionExecutionRuntimeOptions) {
 		this.mode = options.initialMode ?? "full-access";
 		this.backgroundService = options.environment.backgroundService;
-		this.fullAccessRegistrations = options.environment.registrations.map((registration) =>
-			inheritModelOrder(registration, options.resolveToolEntry?.(registration.tool.name)),
-		);
+		this.fullAccessRegistrations = [
+			...options.environment.registrations.filter(({ tool }) => !BACKGROUND_TASK_TOOL_NAMES.has(tool.name)),
+			createTaskOutputToolRegistration({ backgroundService: this.backgroundService }),
+			createTaskStopToolRegistration({ backgroundService: this.backgroundService }),
+		].map((registration) => inheritModelOrder(registration, options.resolveToolEntry?.(registration.tool.name)));
 		for (const toolName of SESSION_EXECUTION_TOOL_NAMES) {
 			this.sourceBindings.set(toolName, options.resolveToolEntry?.(toolName)?.binding);
 		}

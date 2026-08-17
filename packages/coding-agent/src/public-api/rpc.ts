@@ -1,4 +1,10 @@
 export {
+	createImSendAttachmentToolRegistration,
+	type ImSendAttachmentFileOperations,
+	type ImSendAttachmentSender,
+	type ImSendAttachmentToolRegistrationOptions,
+} from "../features/im-send-attachment/index.js";
+export {
 	CodingAgentRpcBashCapability,
 	CodingAgentSessionTurnRetryController,
 	type CodingAgentTurnRetryEvent,
