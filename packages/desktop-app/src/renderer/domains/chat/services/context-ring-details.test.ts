@@ -1,6 +1,12 @@
 import type { ContextCompositionReport } from "@vetta/runtime-core";
 import { describe, expect, it } from "vitest";
-import { buildContextRingDetails, formatTokens, toggleExpandedContextGroup } from "./context-ring-details";
+import {
+	buildContextRingBarSegments,
+	buildContextRingDetails,
+	type ContextRingDetailGroup,
+	type ContextRingDetailGroupKind,
+	formatTokens,
+} from "./context-ring-details";
 
 describe("context ring details", () => {
 	it("groups sections into stable user-facing categories", () => {
@@ -29,6 +35,7 @@ describe("context ring details", () => {
 				metadata: "",
 				tokens: "30",
 				share: "30.0%",
+				tokenCount: 30,
 				itemCount: 2,
 				unknownCount: 0,
 			},
@@ -38,6 +45,7 @@ describe("context ring details", () => {
 				metadata: "",
 				tokens: "10",
 				share: "10.0%",
+				tokenCount: 10,
 				itemCount: 1,
 				unknownCount: 0,
 			},
@@ -63,10 +71,53 @@ describe("context ring details", () => {
 		expect(details?.groups.find(({ id }) => id === "instructions")?.tokens).toBe("20");
 	});
 
-	it("expands one group at a time and collapses the selected group", () => {
-		expect(toggleExpandedContextGroup(null, "tools")).toBe("tools");
-		expect(toggleExpandedContextGroup("tools", "conversation")).toBe("conversation");
-		expect(toggleExpandedContextGroup("conversation", "conversation")).toBeNull();
+	it("measures stacked bar segments against the model context window", () => {
+		const details = buildContextRingDetails(report(), labels);
+
+		const segments = buildContextRingBarSegments(details?.groups ?? [], details?.windowTokens ?? null, 0);
+
+		// 窗口 1000，已用 100，因此各段合计只占条的 10%，其余留白。
+		expect(details?.windowTokens).toBe(1_000);
+		expect(segments).toEqual([
+			{ id: "instructions", percent: 2 },
+			{ id: "capabilities", percent: 2 },
+			{ id: "tools", percent: 2 },
+			{ id: "conversation", percent: 4 },
+		]);
+	});
+
+	it("keeps a clickable minimum width for near-empty segments", () => {
+		const segments = buildContextRingBarSegments([group("instructions", 500), group("tools", 1)], 1_000, 1.5);
+
+		expect(segments).toEqual([
+			{ id: "instructions", percent: 50 },
+			{ id: "tools", percent: 1.5 },
+		]);
+	});
+
+	it("scales segments back to the full bar when minimum widths overflow the window", () => {
+		const segments = buildContextRingBarSegments([group("instructions", 990), group("tools", 1)], 1_000, 5);
+
+		expect(segments.reduce((sum, segment) => sum + segment.percent, 0)).toBeCloseTo(100, 5);
+		expect(segments[1]?.percent).toBeGreaterThan(0);
+	});
+
+	it("falls back to normalizing across groups when the window is unknown", () => {
+		const segments = buildContextRingBarSegments([group("instructions", 30), group("tools", 10)], null, 0);
+
+		expect(segments).toEqual([
+			{ id: "instructions", percent: 75 },
+			{ id: "tools", percent: 25 },
+		]);
+	});
+
+	it("splits the bar evenly when neither window nor known tokens are available", () => {
+		const segments = buildContextRingBarSegments([group("instructions", 0), group("tools", 0)], null);
+
+		expect(segments).toEqual([
+			{ id: "instructions", percent: 50 },
+			{ id: "tools", percent: 50 },
+		]);
 	});
 
 	it.each([
@@ -106,6 +157,19 @@ const labels = {
 		runtime: "group:runtime",
 	},
 } as const;
+
+function group(id: ContextRingDetailGroupKind, tokenCount: number): ContextRingDetailGroup {
+	return {
+		id,
+		title: id,
+		tokens: String(tokenCount),
+		share: "",
+		tokenCount,
+		itemCount: 1,
+		unknownCount: 0,
+		sections: [],
+	};
+}
 
 function report(): ContextCompositionReport {
 	return {

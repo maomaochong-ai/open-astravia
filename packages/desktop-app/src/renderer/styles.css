@@ -61,6 +61,13 @@
 	--chart-3: rgb(116, 116, 116);
 	--chart-4: rgb(82, 82, 82);
 	--chart-5: rgb(228, 228, 228);
+	/* 上下文构成分段：等亮度、等饱和，只靠色相区分，
+	   避免相邻分段因明度差被读成“一高一低”。 */
+	--context-segment-1: oklch(0.72 0.12 268);
+	--context-segment-2: oklch(0.72 0.12 215);
+	--context-segment-3: oklch(0.72 0.12 165);
+	--context-segment-4: oklch(0.72 0.12 95);
+	--context-segment-5: oklch(0.72 0.12 25);
 
 	--font-sans: -apple-system, "SF Pro Text", "SF Pro Display", "Helvetica Neue",
 		sans-serif;
@@ -123,6 +130,11 @@
 	--chart-3: rgb(164, 164, 164);
 	--chart-4: rgb(228, 228, 228);
 	--chart-5: rgb(116, 116, 116);
+	--context-segment-1: oklch(0.62 0.14 268);
+	--context-segment-2: oklch(0.62 0.14 215);
+	--context-segment-3: oklch(0.62 0.14 165);
+	--context-segment-4: oklch(0.62 0.14 95);
+	--context-segment-5: oklch(0.62 0.14 25);
 
 	--shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
 	--shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);

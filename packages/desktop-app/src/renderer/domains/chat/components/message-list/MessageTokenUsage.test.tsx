@@ -109,6 +109,8 @@ describe("MessageTokenUsage", () => {
 		expect(within(panel).getByText("plugin.router（内容变化）")).toBeTruthy();
 		expect(within(panel).getByText("变化工具")).toBeTruthy();
 		expect(within(panel).getByText("todo_write（新增）、read（内容变化）")).toBeTruthy();
+		// 该面板是数据卡片而非普通提示，不渲染 Tooltip 的箭头菱形。
+		expect(panel.querySelector("svg")).toBeNull();
 	});
 
 	it("explains that write metrics are unavailable for read-only providers", async () => {
