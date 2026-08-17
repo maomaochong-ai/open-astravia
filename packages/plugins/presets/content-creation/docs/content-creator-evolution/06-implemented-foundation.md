@@ -5,10 +5,10 @@
 ## 贡献与路由
 
 - 插件启用后以固定顺序贡献 Skill 和 `inspect`、`assets`、`edit`、`run` 四个领域 Tool；输入栏不再提供“内容创作”开关。
-- 插件不注册静态或动态 System Prompt，不申请 `agent.systemPrompt.write` 或 `agent.tools.control`。
-- 模型通过稳定 Skill 索引调用宿主 `invoke_skill`；Skill 正文作为工具结果进入消息历史，再按任务读取必要 reference。
+- 插件通过静态 prompt path 固定贡献一段工作流路由提示，只申请 `agent.systemPrompt.write`；不注册逐轮执行的动态 System Prompt Provider，也不申请 `agent.tools.control`。
+- 模型先按稳定路由提示区分工作流生产与简单直接生成，再通过 Skill 索引调用宿主 `invoke_skill`；Skill 正文作为工具结果进入消息历史，并按任务读取必要 reference。
 
-结果：用户措辞和工作流阶段不会改写 system prompt；模型面对的工具名称、顺序和 Schema 保持稳定，方法知识在稳定前缀之后按需进入历史。
+结果：用户措辞和工作流阶段不会改写静态 system prompt 内容；模型面对的工具名称、顺序和 Schema 保持稳定，方法知识在固定路由之后按需进入历史。
 
 ## 四个领域工具
 
@@ -40,7 +40,7 @@
 
 ## 已验证合同
 
-- 工具注册面固定为 4 个领域工具，插件没有 System Prompt 或工具控制权限。
+- 工具注册面固定为 4 个领域工具；插件只有静态路由提示所需的 System Prompt 写权限，没有工具控制权限或动态路由 Provider。
 - 只读诊断、工作流规划和端到端生成请求复用同一工具集合，通过 `invoke_skill` 和必要 reference 获取不同方法知识。
 - 创建、编辑、删除、语义连线和素材绑定都直接原子应用，revision conflict 不得覆盖并发修改。
 - 生成准备不消耗额度，用户必须在全局弹窗确认；运行仍按依赖排序。

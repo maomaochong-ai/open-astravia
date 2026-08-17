@@ -17,6 +17,7 @@
 		"ui.slot.input-action",
 		"ui.slot.global",
 		"ui.shortcuts.register",
+		"agent.systemPrompt.write",
 		"agent.skills.control",
 		"agent.tools.register",
 		"agent.toolHandler.execute",
@@ -30,6 +31,9 @@
 		"storage.write"
 	],
 	"agent": {
+		"systemPrompt": {
+			"promptPaths": ["agent/prompts/content-workflow-routing.md"]
+		},
 		"skillPaths": ["agent/skills"]
 	},
 	"network": {
