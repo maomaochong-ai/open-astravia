@@ -1,4 +1,5 @@
-import type { CodingToolExecutableResolver, CodingToolRegistration } from "@vetta/runtime-tools";
+import type { AsyncExecutionGate, CodingToolExecutableResolver, CodingToolRegistration } from "@vetta/runtime-tools";
+import { createNodeSpecializedToolRegistrations } from "./host/specialized-tool-registrations.js";
 import { createBackgroundCommandToolExecutor } from "./shared/background-command-executor.js";
 import type { BackgroundCommandHost } from "./shared/background-command-host.js";
 import { createBackgroundCommandService } from "./shared/background-command-lifecycle.js";
@@ -44,7 +45,16 @@ export interface NodeCommandToolEnvironment {
 	dispose(): void;
 }
 
-export interface NodeCodingToolEnvironment extends NodeCommandToolEnvironment {}
+export interface NodeSpecializedToolRegistrationContext {
+	readonly cwd: string;
+	readonly ocrExecutionGate: AsyncExecutionGate;
+}
+
+export interface NodeCodingToolEnvironment extends NodeCommandToolEnvironment {
+	readonly createSpecializedToolRegistrations: (
+		context: NodeSpecializedToolRegistrationContext,
+	) => readonly CodingToolRegistration[];
+}
 
 /** 创建可由 Session 独占的 Node 命令工具与后台任务环境。 */
 export function createNodeCommandToolEnvironment(
@@ -98,6 +108,8 @@ export function createNodeCodingToolEnvironment(options: NodeCodingToolEnvironme
 			createWriteToolRegistration(options.cwd, { pathPolicy: options.writePathPolicy }),
 		],
 		backgroundService: commandEnvironment.backgroundService,
+		createSpecializedToolRegistrations: ({ cwd, ocrExecutionGate }) =>
+			createNodeSpecializedToolRegistrations(cwd, { executionGate: ocrExecutionGate }),
 		dispose: () => commandEnvironment.dispose(),
 	};
 }

@@ -6,6 +6,10 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Breaking Changes
 
+- 文档转换与 OCR 的 Node 组合收敛为 `createNodeSpecializedToolRegistrations()`，并由 Node Tool Environment
+  以每 Session 工厂形式交给产品组合；`runtime-node` 不再由 Coding Agent 内部直接选择。平台无关的
+  `createAsyncExecutionGate()` 迁至 `@vetta/runtime-tools`，不再从 `@vetta/runtime-node/coding` 导出。
+
 - 移除 `@vetta/runtime-node/coding` 的 `current_time`、`progress`、`task_output`、`task_stop` Tool 定义、Schema、
   描述和注册导出。Node Tool Environment 现在只组合文件、命令与进程等平台实现；后台任务服务仍由
   `runtime-node` 创建并通过 `BackgroundCommandService` Port 交给 Coding Agent 产品 Feature。

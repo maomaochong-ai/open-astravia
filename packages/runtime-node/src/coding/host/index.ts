@@ -56,6 +56,10 @@ export {
 	type NodeHostSessionCommandEnvironmentOptions,
 } from "./session-command-environment.js";
 export {
+	createNodeSpecializedToolRegistrations,
+	type NodeSpecializedToolRegistrationOptions,
+} from "./specialized-tool-registrations.js";
+export {
 	createNodeHostCodingToolEnvironment,
 	type NodeHostCodingToolEnvironmentOptions,
 } from "./tool-environment.js";

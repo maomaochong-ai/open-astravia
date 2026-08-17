@@ -1,6 +1,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Type } from "@sinclair/typebox";
 import {
 	DOC_TO_PDF_TOOL_CATEGORY,
 	DOC_TO_PDF_TOOL_SCOPES,
@@ -39,10 +40,23 @@ describe("Coding Agent specialized tool surface", () => {
 	});
 
 	it("assembles the complete specialized tool definitions and activation metadata", () => {
-		const cwd = process.cwd();
 		const knowledgeOperations = createKnowledgeOperations();
 		const registrations = createCodingAgentSpecializedToolRegistrations({
-			cwd,
+			platformRegistrations: [
+				platformRegistration("doc_to_pdf", DOC_TO_PDF_TOOL_SCOPES, DOC_TO_PDF_TOOL_CATEGORY),
+				platformRegistration("html_to_pdf", HTML_TO_PDF_TOOL_SCOPES, HTML_TO_PDF_TOOL_CATEGORY),
+				platformRegistration(
+					"extract_text_from_pdf",
+					EXTRACT_TEXT_FROM_PDF_TOOL_SCOPES,
+					EXTRACT_TEXT_FROM_PDF_TOOL_CATEGORY,
+				),
+				platformRegistration(
+					"extract_text_from_img",
+					EXTRACT_TEXT_FROM_IMAGE_TOOL_SCOPES,
+					EXTRACT_TEXT_FROM_IMAGE_TOOL_CATEGORY,
+				),
+				platformRegistration("render_pdf_page", RENDER_PDF_PAGE_TOOL_SCOPES, RENDER_PDF_PAGE_TOOL_CATEGORY),
+			],
 			knowledgePageWriter: knowledgeOperations,
 		});
 		expect(registrations.map(runtimeActivationDefinition)).toEqual([
@@ -68,6 +82,9 @@ describe("Coding Agent specialized tool surface", () => {
 			expect(tool.description.length).toBeGreaterThan(0);
 			expect(tool.inputSchema).toMatchObject({ type: "object" });
 		}
+		expect(registrations.map(({ tool }) => tool.modelOrder)).toEqual([
+			1_000, 1_100, 1_200, 1_300, 1_400, 1_600, 1_700,
+		]);
 	});
 
 	it("freezes skill visibility and content per Turn", async () => {
@@ -141,6 +158,24 @@ function createKnowledgeOperations(): CodingAgentKnowledgeWriteOperations {
 	return {
 		write: async () => ({ action: "create", id: "page-1", path: "page.md" }),
 		resolveAbsolutePath: (path) => path,
+	};
+}
+
+function platformRegistration(
+	name: string,
+	scopeUse: CodingAgentRuntimeToolRegistration["scopeUse"],
+	category: CodingAgentRuntimeToolRegistration["category"],
+): CodingAgentRuntimeToolRegistration {
+	return {
+		tool: {
+			name,
+			label: name,
+			description: `${name} description`,
+			inputSchema: Type.Object({}),
+			execute: async () => ({ content: [{ type: "text", text: "ok" }] }),
+		},
+		scopeUse,
+		category,
 	};
 }
 

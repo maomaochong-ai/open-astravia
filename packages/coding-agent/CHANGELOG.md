@@ -2,6 +2,10 @@
 
 ### Breaking Changes
 
+- `CodingAgentToolEnvironment` 新增可选 `createSpecializedToolRegistrations()`，文档转换与 OCR 的 Node
+  进程/Desktop Port 选择移至平台环境；Coding Agent 现在按 Session `cwd` 调用宿主工厂，只叠加产品模型顺序并组合
+  `progress`、Knowledge 等产品 Tool。CLI、Desktop 与 SDK Node 环境自动提供该工厂，工具合同和行为保持不变。
+
 - `current_time`、`progress`、`task_output` 与 `task_stop` 的模型名称、Schema、描述、Scope、Category 和结果语义
   迁入对应 Coding Agent Feature。`CodingAgentToolEnvironment` 现在只提供平台 Tool 与可选
   `BackgroundCommandService`；产品组合会忽略 Host 中同名的旧注册并使用内置定义，避免迁移期重复注册。

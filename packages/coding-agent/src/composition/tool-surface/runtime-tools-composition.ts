@@ -25,7 +25,7 @@ import {
 } from "../../features/background-tasks/index.js";
 import { createCurrentTimeToolRegistration } from "../../features/current-time/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
-import type { CodingAgentToolEnvironment } from "../contracts/index.js";
+import type { CodingAgentSpecializedToolRegistrationContext, CodingAgentToolEnvironment } from "../contracts/index.js";
 
 export interface CodingToolsRuntimeCompositionOptions {
 	readonly cwd: string;
@@ -43,6 +43,9 @@ export interface CodingToolsRuntimeCompositionOptions {
 export interface CodingToolsRuntimeComposition {
 	readonly cwd: string;
 	readonly backgroundService?: BackgroundCommandService;
+	readonly createSpecializedToolRegistrations?: (
+		context: CodingAgentSpecializedToolRegistrationContext,
+	) => readonly CodingToolRegistration[] | Promise<readonly CodingToolRegistration[]>;
 	readonly registry: CodingToolRegistry;
 	readonly feature: AgentFeatureDefinition;
 	readonly profile: AgentProfile;
@@ -103,6 +106,7 @@ export function createCodingToolsRuntimeComposition(
 	return {
 		cwd,
 		backgroundService,
+		createSpecializedToolRegistrations: options.environment.createSpecializedToolRegistrations,
 		registry,
 		feature,
 		profile,

@@ -12,6 +12,8 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Changed
 
+- `createAsyncExecutionGate()` 的实现和测试由 Node 平台层迁入本包；FIFO、并发上限归一化和失败释放额度语义保持不变。
+
 - Coding Tools Feature 的 Turn-bound activation/filter 现在同时接收 admission 原始请求；需要在 Prompt
   展开前决定的动态能力可据此绑定本 Turn，后续模型调用继续使用同一冻结选择。
 - **`agentModes` / `agentMode` 字段整体删除（ADR-0071，接续上一条）**：`CodingToolRegistration.agentModes` 与 `CodingToolActivation.agentMode` 不再存在，6 个内置工具的 `*_TOOL_AGENT_MODES` 常量删除。上一版把 agent_mode 从过滤降级为「宿主排序偏好」，本版确认排序对模型选择无可观察影响后整体废弃：工作模式不以任何形式参与工具选择与排序，`scopeUse` ∩ `requires` 仍是仅有的两条 fail-closed 轴。
