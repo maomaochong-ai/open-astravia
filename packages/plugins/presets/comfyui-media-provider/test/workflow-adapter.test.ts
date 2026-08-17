@@ -88,7 +88,7 @@ describe("adaptMinimaxWorkflow", () => {
 			last_frame: ["last", 0],
 		});
 		expect(result.prompt.resolution.inputs.aspect_ratio).toBe("16:9 (Widescreen)");
-		expect(result.prompt.resolution.inputs.megapixels).toBe(0.98);
+		expect(result.prompt.resolution.inputs.megapixels).toBe(2.25);
 		expect(result.prompt.resolution.inputs.multiple).toBe(32);
 		expect(result.prompt.duration.inputs.value).toBe(10);
 		expect(result.prompt.noise.inputs.noise_seed).toBe(42);
@@ -176,14 +176,14 @@ describe("adaptMinimaxWorkflow", () => {
 				mode: "text-to-video",
 				prompt: "city lights",
 				aspectRatio: "9:16",
-				resolution: "0_5mp",
+				resolution: "1mp",
 				inputs: [],
 			},
 			[],
 			9,
 		);
 
-		expect(result.prompt.generate.inputs).toMatchObject({ width: 544, height: 960 });
+		expect(result.prompt.generate.inputs).toMatchObject({ width: 1152, height: 2048 });
 	});
 
 	it("rejects unknown resolution presets instead of silently keeping template dimensions", () => {
@@ -195,13 +195,13 @@ describe("adaptMinimaxWorkflow", () => {
 					kind: "video",
 					mode: "text-to-video",
 					prompt: "city lights",
-					resolution: "2k",
+					resolution: "8k",
 					inputs: [],
 				},
 				[],
 				9,
 			),
-		).toThrow("Unsupported MiniMax H3 resolution preset: 2k");
+		).toThrow("Unsupported MiniMax H3 resolution preset: 8k");
 	});
 
 	it("recognizes only templates compatible with the selected mode", () => {

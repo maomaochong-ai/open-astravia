@@ -92,9 +92,25 @@ export const API_OPTIONS = [
 	"google-vertex",
 	"nvidia-openai-responses",
 	"qwen-openai-completions",
+	"openai-completions-deepseek",
 	"zai-openai-completions",
 	"zhipu-openai-completions",
 ].map((api) => ({ value: api, label: api }));
+
+/**
+ * 模型级 API 类型下拉的选项：
+ * - 空串表示「继承服务商」，是模型 api 未显式设置时的语义；
+ * - `Api` 类型对自定义值开放，配置里可能出现内置列表之外的 api，
+ *   保留当前值作为额外选项，避免打开表单就被下拉悄悄改写。
+ */
+export function buildModelApiOptions(currentApi: string, inheritLabel: string): { value: string; label: string }[] {
+	const options = [{ value: "", label: inheritLabel }, ...API_OPTIONS];
+	const current = currentApi.trim();
+	if (current && !options.some((option) => option.value === current)) {
+		options.push({ value: current, label: current });
+	}
+	return options;
+}
 
 export const INPUT_OPTIONS = [
 	{ value: "text", label: "Text" },
