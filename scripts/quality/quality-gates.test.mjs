@@ -7,6 +7,11 @@ import {
 import { findPackageBoundaryViolations, findPackageManifestBoundaryViolations } from "./check-package-boundaries.mjs";
 import { batchPaths, createQuickCheckPlan, isBiomeGlobalTrigger } from "./check-quick.mjs";
 import { findSkillFrontmatterProblems } from "./check-skill-frontmatter.mjs";
+import {
+	collectTypeScriptExportEntries,
+	findSourcePathMapViolations,
+	typesExportToSourceRel,
+} from "./check-source-path-maps.mjs";
 import { findStandaloneCliBuildViolations } from "./check-standalone-cli-build.mjs";
 import { findVitestRunnerViolations } from "./check-vitest-runner.mjs";
 import { changedFiles, expandTestablePackages, packagesFromPaths, parseBaseArgs, stagedFiles } from "./lib.mjs";
@@ -114,6 +119,52 @@ describe("vitest runner 守卫", () => {
 		expect(
 			findVitestRunnerViolations("packages/foo/package.json", {
 				scripts: { build: "tsgo -p tsconfig.build.json", "test:e2e": "wdio run ./wdio.conf.ts" },
+			}),
+		).toEqual([]);
+	});
+});
+
+describe("source path maps", () => {
+	it("maps package.json types exports onto source files", () => {
+		expect(typesExportToSourceRel("./dist/auth/index.d.ts")).toBe("src/auth/index.ts");
+		expect(typesExportToSourceRel("./dist/npm-package.d.ts")).toBe("src/npm-package.ts");
+		expect(typesExportToSourceRel("./src/tailwind-theme.css")).toBeNull();
+	});
+
+	it("ignores CSS and wildcard exports", () => {
+		expect(
+			collectTypeScriptExportEntries({
+				name: "@vetta/example",
+				exports: {
+					".": { types: "./dist/index.d.ts", import: "./dist/index.js" },
+					"./theme.css": "./src/theme.css",
+					"./*": "./dist/*",
+				},
+			}),
+		).toEqual([{ specifier: "@vetta/example", sourceRel: "src/index.ts", types: "./dist/index.d.ts" }]);
+	});
+
+	it("requires an explicit root path map to the source file", () => {
+		const packages = [
+			{
+				dir: "packages/runtime-mcp",
+				manifest: {
+					name: "@vetta/runtime-mcp",
+					exports: {
+						"./auth": { types: "./dist/auth/index.d.ts", import: "./dist/auth/index.js" },
+					},
+				},
+			},
+		];
+
+		expect(findSourcePathMapViolations({ paths: {}, packages, fileExists: () => true })).toEqual([
+			"@vetta/runtime-mcp/auth: root tsconfig.json is missing an explicit source path map to ./packages/runtime-mcp/src/auth/index.ts",
+		]);
+		expect(
+			findSourcePathMapViolations({
+				paths: { "@vetta/runtime-mcp/auth": ["./packages/runtime-mcp/src/auth/index.ts"] },
+				packages,
+				fileExists: () => true,
 			}),
 		).toEqual([]);
 	});

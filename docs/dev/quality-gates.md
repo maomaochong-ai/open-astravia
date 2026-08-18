@@ -34,6 +34,7 @@ scripts/quality/
                                Coding Agent 当前架构依赖与公开面
   run-vitest.mjs               用 Node 启动 Vitest（Windows 上禁止 Bun 拉起 worker）
   check-vitest-runner.mjs      package.json 测试脚本必须走 run-vitest.mjs
+  check-source-path-maps.mjs   根 tsconfig path map 必须显式覆盖 workspace 包的 types 子路径导出
   test-pkg.mjs                 按包名跑 vitest
   test-changed.mjs             按 git 变更和依赖图选包
   quality-gates.test.mjs       质量脚本定向测试
@@ -144,6 +145,11 @@ Desktop 前置构建脚本只维护参与构建的包和并行层，包之间的
 根 `tsconfig.json` 已包含 `apps/cli-host/src/**/*` 和 `apps/cli-host/test/**/*`。完整 `check`
 仍额外显式执行 `apps/cli-host` 的 `typecheck`，避免未来调整根 `include` 时静默漏掉 CLI，也让
 日志直接显示 CLI 门禁。
+
+根 `tsconfig.json` 的 path map 必须为每个 workspace `package.json#exports` 的 types 子路径
+写明源文件（例如 `@vetta/runtime-mcp/auth` → `src/auth/index.ts`）。`check` 在干净树里
+typecheck，不会先生成 `dist/*.d.ts`；`moduleResolution: Node16` 下通配 `src/*` 也不会把
+目录解析成 `index.ts`。`check-source-path-maps.mjs` 机械检查这条合同。
 
 `check:types:build-surfaces` 与源码 typecheck 是不同口径：它不使用根源码 path map，而是按真实
 workspace 包声明解析。因此，上游源码修改但 `dist/*.d.ts` 尚未重新生成时，该命令会失败。这是

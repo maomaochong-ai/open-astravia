@@ -22,7 +22,10 @@ describe("parseInputSegments", () => {
 	});
 
 	it("scene 使用独立命名空间并保留在文本流结构中", () => {
+		const { segments } = parseInputSegments("@scene:review 审查这些材料");
+		expect(deriveSceneNames(segments)).toEqual(["review"]);
 		expect(segments).toEqual([
+			{ kind: "scene", name: "review" },
 			{ kind: "text", text: " 审查这些材料" },
 		]);
 	});
@@ -103,6 +106,7 @@ describe("segmentsToText", () => {
 
 	it("scene token 可以往返序列化", () => {
 		const segments: InputSegment[] = [
+			{ kind: "scene", name: "review" },
 			{ kind: "text", text: " 开始审查" },
 		];
 		const text = segmentsToText(segments);
@@ -111,9 +115,11 @@ describe("segmentsToText", () => {
 
 	it("scene token 与紧随其后的正文补出边界，正文不会并入场景名称", () => {
 		const text = segmentsToText([
+			{ kind: "scene", name: "review" },
 			{ kind: "text", text: "看到我的东西了吗" },
 		]);
 		expect(parseInputSegments(text).segments).toEqual([
+			{ kind: "scene", name: "review" },
 			{ kind: "text", text: " 看到我的东西了吗" },
 		]);
 	});

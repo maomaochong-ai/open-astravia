@@ -4,8 +4,7 @@ import { parseFrontmatter, rewriteFrontmatterDescription } from "./skill-frontma
 describe("parseFrontmatter", () => {
 	it("从 metadata 块读出 scene 类型", () => {
 		const fm = parseFrontmatter(
-				"\n",
-			),
+			["---", "name: demo", "description: d", "metadata:", "  type: scene", "---"].join("\n"),
 		);
 		expect(fm.type).toBe("scene");
 	});

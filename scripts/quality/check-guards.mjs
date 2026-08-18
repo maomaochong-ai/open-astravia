@@ -22,6 +22,7 @@ const steps = [
 	["scripts/quality/check-standalone-cli-build.mjs"],
 	["scripts/quality/check-skill-frontmatter.mjs"],
 	["scripts/quality/check-vitest-runner.mjs"],
+	["scripts/quality/check-source-path-maps.mjs"],
 ];
 
 function runStep(args) {
