@@ -14,6 +14,7 @@ import {
 } from "@vetta/capability-sdk";
 import { persistArtifact } from "../artifacts/artifact-persistence.js";
 import type { ArtifactStore } from "../artifacts/artifact-store.js";
+import { gatewayUnavailableResponse, getCloudBridge } from "../cloud-bridge.js";
 import {
 	assertFilesystemRealPathWithinProject,
 	createFilesystemDirectory,
@@ -27,7 +28,6 @@ import {
 	statFilesystemPath,
 	writeFilesystemFile,
 } from "../filesystem/filesystem-service.js";
-import { requestVettaGateway as requestGateway } from "../gateway/vetta-gateway-service.js";
 import type { JobManager } from "../jobs/job-manager.js";
 import { listPlugins } from "../plugins/plugin-catalog.js";
 import { requestForPlugin as requestNetwork } from "../plugins/plugin-network-service.js";
@@ -221,10 +221,15 @@ export function registerDesktopFoundationProviders(
 		bindCapability(FOUNDATION_GATEWAY_CAPABILITIES.REQUEST, {
 			execute: async ({ request }, context) => {
 				assertNotAborted(context.signal);
-				const response = await requestGateway(
-					request as unknown as Parameters<typeof requestGateway>[0],
-					context.signal,
-				);
+				// 网关中转属于云服务：lite 构建（bridge 为 null）返回统一失败回执，
+				// 保持 envelope 形状，调用方按 !ok 处理，不改变能力合同。
+				const cloud = getCloudBridge();
+				const response = cloud
+					? await cloud.requestGateway(
+							request as unknown as Parameters<typeof cloud.requestGateway>[0],
+							context.signal,
+						)
+					: gatewayUnavailableResponse();
 				return parseCapabilityJsonValue(response);
 			},
 		}),

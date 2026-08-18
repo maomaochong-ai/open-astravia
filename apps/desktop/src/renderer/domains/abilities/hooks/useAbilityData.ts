@@ -14,6 +14,7 @@ import type {
 	OpenMarketplaceCatalog,
 	SkillInfo,
 } from "@preload/api";
+import { cloudEnabled } from "@shared/components/cloud-slots";
 import { i18n } from "@shared/i18n";
 import type { MarketAbility } from "@shared/lib/api";
 import { fetchMarketAbilities } from "@shared/lib/api";
@@ -77,8 +78,9 @@ export function useAbilityData(): AbilityData {
 				window.vetta.plugins.listAll(),
 			]);
 
-			// 市场浏览无需登录；有 token 时仍带上。
-			const remote = fetchMarketAbilities(token);
+			// 市场浏览无需登录；有 token 时仍带上。lite 构建无 vetta 官方市场，
+			// 只保留 github 开放市场（openMarketplaces）与本地来源。
+			const remote = cloudEnabled ? fetchMarketAbilities(token) : Promise.resolve([]);
 			const open = forceOpenMarketplaceRefresh
 				? window.vetta.abilities.refreshOpenMarketplaces()
 				: window.vetta.abilities.listOpenMarketplaces();

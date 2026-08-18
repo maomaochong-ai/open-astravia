@@ -2,9 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import { net } from "electron";
-// TODO(cloud-phase-2): probe 本体是宿主逻辑，只有「远程 provider 目录回退」属于云服务；
-// 应改为由 cloud 模块注入的可选查询（lite 构建不挂载），消除此跨界 import。
-import { fetchRemoteProviders } from "../cloud/auth-session.js";
+import { getCloudBridge } from "../cloud-bridge.js";
 
 /**
  * Probe the given (provider, model)'s baseUrl to see if the model server is
@@ -38,10 +36,12 @@ export async function probeModelProvider(ref: {
 		// File missing/unreadable is fine — fall through to remote.
 	}
 
-	// 2) Fall back to remote provider catalogue.
+	// 2) Fall back to the cloud provider catalogue (Vetta Go)。
+	//    lite 构建没有云端目录，本地查不到就直接失败。
 	let source: "local" | "remote" = "local";
-	if (!provider) {
-		const remote = await fetchRemoteProviders();
+	const cloud = getCloudBridge();
+	if (!provider && cloud) {
+		const remote = await cloud.fetchRemoteProviders();
 		const r = remote.providers[ref.provider] as { baseUrl?: string } | undefined;
 		if (r) {
 			provider = r;

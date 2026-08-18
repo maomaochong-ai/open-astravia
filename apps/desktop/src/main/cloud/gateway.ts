@@ -1,8 +1,10 @@
-// TODO(cloud-phase-2): gateway 属于云服务，迁入 main/cloud 后此跨界 import 一并消失。
-import { tryRefreshAccessToken } from "../cloud/auth-session.js";
+import type { VettaGatewayRequest, VettaGatewayResponse } from "../cloud-bridge.js";
 import { DEFAULT_SERVER_URL } from "../constants.js";
 import { readSettings } from "../ipc/settings.js";
 import { getAppLogger } from "../logger.js";
+import { tryRefreshAccessToken } from "./auth-session.js";
+
+export type { VettaGatewayRequest, VettaGatewayResponse };
 
 const log = getAppLogger("vetta-gateway");
 
@@ -10,21 +12,6 @@ const DEFAULT_TIMEOUT_MS = 300_000;
 const MAX_TIMEOUT_MS = 300_000;
 const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
-
-export interface VettaGatewayRequest {
-	path: string;
-	method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-	body?: unknown;
-	timeoutMs?: number;
-}
-
-export interface VettaGatewayResponse<T = unknown> {
-	ok: boolean;
-	status: number;
-	code: number;
-	message: string;
-	data?: T;
-}
 
 interface ApiEnvelope<T> {
 	code?: number;

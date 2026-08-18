@@ -5,16 +5,17 @@
  * `isCloudBuildEnabled()` 判断里用动态 import 加载——lite 构建
  * （VETTA_CLOUD_ENABLED=false）经常量折叠后整个模块不进产物。
  *
- * 尚未迁入的服务端功能（models/probe、skills 市场安装、gateway、
- * media-generation 的 vetta provider）暂时直接 import 本目录内部文件，
- * 待后续阶段迁入后收敛为仅此入口。
+ * 宿主功能需要云能力（远程模型目录、网关中转、token refresh）时，
+ * 一律经 `../cloud-bridge.js` 的 CloudBridge 间接调用，由本入口注入实现。
  */
 
 import { ipcMain } from "electron";
+import { setCloudBridge } from "../cloud-bridge.js";
 import { getMainWindow } from "../window-manager.js";
 import { consumeOAuthCallback, reopenOAuthLogin, startOAuthLogin } from "./auth/oauth-login.js";
 import { setLoopbackCallbackHandler } from "./auth/oauth-loopback.js";
-import { registerCloudAuthIpc } from "./auth-session.js";
+import { fetchRemoteProviders, registerCloudAuthIpc, tryRefreshAccessToken } from "./auth-session.js";
+import { requestVettaGateway } from "./gateway.js";
 
 export interface CloudMainHandle {
 	/**
@@ -49,6 +50,14 @@ export function startCloudMain(options: StartCloudMainOptions): CloudMainHandle 
 
 	const teardownAuthIpc = registerCloudAuthIpc();
 
+	// 宿主功能（模型探测回退 / 网关能力 / 市场安装鉴权）经 bridge 使用云服务，
+	// 不直接 import cloud 内部实现。
+	setCloudBridge({
+		fetchRemoteProviders,
+		requestGateway: requestVettaGateway,
+		tryRefreshAccessToken,
+	});
+
 	return {
 		handleProtocolUrl(parsed: URL): boolean {
 			if (parsed.hostname !== "oauth" || !parsed.pathname.startsWith("/callback")) return false;
@@ -65,6 +74,7 @@ export function startCloudMain(options: StartCloudMainOptions): CloudMainHandle 
 			return true;
 		},
 		teardown(): void {
+			setCloudBridge(null);
 			teardownAuthIpc();
 			ipcMain.removeHandler("vetta:auth:start-oauth");
 			ipcMain.removeHandler("vetta:auth:reopen-oauth");

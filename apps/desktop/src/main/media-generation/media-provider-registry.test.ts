@@ -1,12 +1,10 @@
 import { DOMAIN_MEDIA_CAPABILITIES, MEDIA_PROTOCOL_VERSION, type MediaProviderJob } from "@vetta/capability-sdk";
 import { describe, expect, it, vi } from "vitest";
-import type { VettaGatewayRequest, VettaGatewayResponse } from "../gateway/vetta-gateway-service.js";
+import type { VettaGatewayRequest, VettaGatewayResponse } from "../cloud-bridge.js";
 import { JobManager } from "../jobs/job-manager.js";
 import { MediaArtifactStore } from "./media-artifact-store.js";
 import { MediaProviderRegistry } from "./media-provider-registry.js";
 import { createVettaImageProvider } from "./vetta-image-provider.js";
-
-vi.mock("../gateway/vetta-gateway-service.js", () => ({ requestVettaGateway: vi.fn() }));
 
 const signal = new AbortController().signal;
 

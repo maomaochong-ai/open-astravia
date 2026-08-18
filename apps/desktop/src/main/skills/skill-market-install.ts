@@ -8,8 +8,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import { recordAbilityInstall } from "../abilities/ability-ledger.js";
-// TODO(cloud-phase-3): 技能市场安装属于云服务，迁入 main/cloud 后此跨界 import 一并消失。
-import { tryRefreshAccessToken } from "../cloud/auth-session.js";
+import { getCloudBridge } from "../cloud-bridge.js";
 import { DEFAULT_SERVER_URL } from "../constants.js";
 import { readSettings } from "../ipc/settings.js";
 import { getAppLogger } from "../logger.js";
@@ -58,6 +57,11 @@ function currentToken(): string | undefined {
 }
 
 async function fetchWithOptionalAuth(path: string, accept: string): Promise<Response> {
+	// vetta 官方市场是云服务渠道：lite 构建不可用（github 来源不走这里）。
+	const cloud = getCloudBridge();
+	if (!cloud) {
+		throw new Error("Vetta market is not available in this build");
+	}
 	const url = `${baseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
 	const doFetch = async (token?: string): Promise<Response> => {
 		const headers: Record<string, string> = { Accept: accept };
@@ -68,7 +72,7 @@ async function fetchWithOptionalAuth(path: string, accept: string): Promise<Resp
 	let token = currentToken();
 	let response = await doFetch(token);
 	if (response.status === 401 && token) {
-		const outcome = await tryRefreshAccessToken();
+		const outcome = await cloud.tryRefreshAccessToken();
 		if (outcome.status === "ok") {
 			token = outcome.accessToken;
 			response = await doFetch(token);

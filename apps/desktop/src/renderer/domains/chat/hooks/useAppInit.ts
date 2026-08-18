@@ -1,5 +1,6 @@
 import { useBatchTasks } from "@domains/batch-tasks/hooks/useBatchTasks";
 import { useProjectActions } from "@domains/project/hooks/useProjects";
+import { cloudEnabled } from "@shared/components/cloud-slots";
 import { fetchServerInfo } from "@shared/lib/api";
 import {
 	defaultConversationCwdAtom,
@@ -28,10 +29,12 @@ export function useAppInit(): void {
 	const { refreshProjects: refreshBatchProjects } = useBatchTasks();
 
 	useEffect(() => {
-		// Fetch deploy mode from server
-		void fetchServerInfo()
-			.then((info) => setDeployMode(info.deploy_mode))
-			.catch(console.error);
+		// Fetch deploy mode from server（lite 构建不询问服务端，保持默认部署形态）
+		if (cloudEnabled) {
+			void fetchServerInfo()
+				.then((info) => setDeployMode(info.deploy_mode))
+				.catch(console.error);
+		}
 		// Sync workspace path from config file
 		void window.vetta.config.get().then((config) => {
 			if (config.workspacePath) {

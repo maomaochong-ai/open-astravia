@@ -1,3 +1,4 @@
+import { cloudEnabled } from "@shared/components/cloud-slots";
 import { abilityToMarketMcpServer, fetchMarketAbilities, type MarketMcpServer } from "@shared/lib/api";
 import { authTokenAtom } from "@shared/store/auth-atoms";
 import { useAtomValue } from "jotai";
@@ -28,6 +29,11 @@ export function useRemoteMcpSectionModel({
 	const [busy, setBusy] = useState<string | null>(null);
 
 	const load = useCallback(() => {
+		// lite 构建无 vetta 市场：不发请求也不提示登录（对应 UI 区段整体隐藏）。
+		if (!cloudEnabled) {
+			setItems([]);
+			return;
+		}
 		if (!token) {
 			setError(t("loginRequired"));
 			setItems([]);

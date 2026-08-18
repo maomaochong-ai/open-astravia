@@ -2,10 +2,11 @@ import { randomUUID } from "node:crypto";
 import type { MediaDimensions, MediaFailure, MediaProviderJob } from "@vetta/capability-sdk";
 import { MEDIA_PROTOCOL_VERSION } from "@vetta/capability-sdk";
 import {
-	requestVettaGateway,
+	gatewayUnavailableResponse,
+	getCloudBridge,
 	type VettaGatewayRequest,
 	type VettaGatewayResponse,
-} from "../gateway/vetta-gateway-service.js";
+} from "../cloud-bridge.js";
 import type { MediaArtifactStore } from "./media-artifact-store.js";
 import type { MediaHostProviderSubmitInput, MediaProviderRegistration } from "./media-provider-registry.js";
 
@@ -124,9 +125,16 @@ async function createImageJob(
 	};
 }
 
+// 默认经 cloud-bridge 走 vetta 网关；lite 构建不注册本 provider（见 media-providers.ts），
+// 这里的兜底失败回执只在 bridge 意外缺失时可达。
+const bridgeGatewayRequest: GatewayRequest = (request, signal) => {
+	const cloud = getCloudBridge();
+	return cloud ? cloud.requestGateway(request, signal) : Promise.resolve(gatewayUnavailableResponse());
+};
+
 export function createVettaImageProvider(
 	artifacts: MediaArtifactStore,
-	requestGateway: GatewayRequest = requestVettaGateway,
+	requestGateway: GatewayRequest = bridgeGatewayRequest,
 ): MediaProviderRegistration {
 	return {
 		descriptor: {

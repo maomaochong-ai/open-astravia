@@ -1,5 +1,6 @@
 import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
 import { type Disposable, DOMAIN_MEDIA_CAPABILITIES } from "@vetta/capability-sdk";
+import { isCloudBuildEnabled } from "../../shared/feature-flags.js";
 import type { ArtifactStore } from "../artifacts/artifact-store.js";
 import type { JobManager } from "../jobs/job-manager.js";
 import { MediaArtifactStore } from "../media-generation/media-artifact-store.js";
@@ -28,7 +29,10 @@ export function registerDesktopMediaProviders(
 	const providers = new MediaProviderRegistry(jobs);
 	const artifacts = new MediaArtifactStore(artifactStore);
 	desktopMediaRuntime = { providers, artifacts };
-	const vettaRegistration = providers.registerProvider(createVettaImageProvider(artifacts));
+	// Vetta 图像生成走云端网关：lite 构建不注册，provider 列表中不出现。
+	const vettaRegistration = isCloudBuildEnabled()
+		? providers.registerProvider(createVettaImageProvider(artifacts))
+		: undefined;
 	const capabilityRegistration = registry.registerOwner(DOMAIN_MEDIA_PROVIDER_OWNER, [
 		bindCapability(DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS, {
 			execute: async () => providers.listProviders(),
@@ -41,7 +45,7 @@ export function registerDesktopMediaProviders(
 		dispose: () => {
 			if (desktopMediaRuntime?.providers === providers) desktopMediaRuntime = undefined;
 			capabilityRegistration.dispose();
-			vettaRegistration.dispose();
+			vettaRegistration?.dispose();
 		},
 	};
 }

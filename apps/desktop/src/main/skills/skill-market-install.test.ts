@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const fetchMock = vi.fn();
 vi.stubGlobal("fetch", fetchMock);
@@ -9,7 +9,6 @@ vi.mock("../constants.js", () => ({
 
 vi.mock("../ipc/settings.js", () => ({
 	readSettings: vi.fn(() => ({})),
-	tryRefreshAccessToken: vi.fn(),
 }));
 
 vi.mock("../logger.js", () => ({
@@ -55,7 +54,23 @@ vi.mock("node:child_process", () => ({
 	execSync: vi.fn(),
 }));
 
+import { setCloudBridge } from "../cloud-bridge.js";
+
+/** 市场安装依赖云服务：默认给测试挂一个已登录形态的 bridge。 */
+function mountCloudBridge(): void {
+	setCloudBridge({
+		fetchRemoteProviders: vi.fn(async () => ({ providers: {} })),
+		requestGateway: vi.fn(),
+		tryRefreshAccessToken: vi.fn(async () => ({ status: "transient" as const })),
+	});
+}
+
+beforeEach(() => {
+	mountCloudBridge();
+});
+
 afterEach(() => {
+	setCloudBridge(null);
 	fetchMock.mockReset();
 	vi.clearAllMocks();
 });
@@ -100,5 +115,14 @@ describe("installSkillFromMarketSlug", () => {
 			"https://api.example.com/api/v1/abilities/skill/demo/download",
 			expect.objectContaining({ headers: expect.any(Object) }),
 		);
+	});
+});
+
+describe("lite 构建（无 cloud bridge）", () => {
+	it("市场安装直接失败，不发出任何网络请求", async () => {
+		setCloudBridge(null);
+		const { installSkillFromMarketSlug } = await import("./skill-market-install.js");
+		await expect(installSkillFromMarketSlug("skill", "demo")).rejects.toThrow(/not available in this build/);
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 });
