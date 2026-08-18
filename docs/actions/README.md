@@ -46,9 +46,9 @@ bun run verify:ui:pw -- click "getByRole('button', { name: '当前页面显示�
 只读 query（`*.query` 的 list/get/help）可直接：
 
 ```powershell
-bun apps/cli-app/src/cli.ts action run general.query '{"operation":"get"}'
-bun apps/cli-app/src/cli.ts action run appearance.query '{"type":"get"}'
-bun apps/cli-app/src/cli.ts action run navigation.query '{"type":"help"}'
+bun apps/cli-host/src/cli.ts action run general.query '{"operation":"get"}'
+bun apps/cli-host/src/cli.ts action run appearance.query '{"type":"get"}'
+bun apps/cli-host/src/cli.ts action run navigation.query '{"type":"help"}'
 ```
 
 无需 Playwright，也不应弹出授权。

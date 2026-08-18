@@ -21,7 +21,7 @@ CLI 显式 Composition Root
 ### 1. 通用工厂属于 Runtime Core，产品资源选择属于应用组合根
 
 `AgentSession`、`TurnPipeline` 和 `AgentCoreTurnEngine` 是 Runtime-owned 对象，组装规则应由
-`runtime-core` 提供。文件目录、模型注册表、工具激活和工作目录是产品决策，由 `cli-app`
+`runtime-core` 提供。文件目录、模型注册表、工具激活和工作目录是产品决策，由 `cli-host`
 显式注入。这样工厂不依赖 Coding Agent，应用也不需要复制 Kernel 内部组装细节。
 
 ### 2. Model Runtime 必须同时服务 Session Port 和 Turn Pipeline
@@ -107,7 +107,7 @@ Legacy Session、平台 sandbox 和宿主模块。新增
 
 - `packages/runtime-core`：24 个测试文件、113 项测试全部通过。
 - `packages/coding-agent` Greenfield Adapter 定向测试：2 个测试文件、3 项测试全部通过。
-- `apps/cli-app`：2 个测试文件、10 项测试全部通过。
+- `apps/cli-host`：2 个测试文件、10 项测试全部通过。
 - 全仓 `tsgo --noEmit` 通过。
 - `bun run check:quick` 与根目录 `bun run check` 通过。
 

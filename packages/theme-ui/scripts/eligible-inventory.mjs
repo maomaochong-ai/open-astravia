@@ -23,7 +23,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const rendererRoot = path.join(repoRoot, "apps/desktop-app/src/renderer");
+const rendererRoot = path.join(repoRoot, "apps/desktop/src/renderer");
 const deferralsPath = path.join(repoRoot, "docs/theme/ui/deferrals.json");
 const wantJson = process.argv.includes("--json");
 

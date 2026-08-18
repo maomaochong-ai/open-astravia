@@ -25,7 +25,7 @@ Node 有 npmmirror(稳定);Python 用 python-build-standalone,**仅 GitHub 发�
 ## 3. 关键文件地图
 
 ```
-apps/desktop-app/
+apps/desktop/
 ├── src/main/runtimes/
 │   ├── manifest.json     # 单一推荐版本 + 各平台字面量文件名 + 镜像源(单一真源)
 │   ├── paths.ts          # 路径/平台标识/bin 目录/vendor 解析

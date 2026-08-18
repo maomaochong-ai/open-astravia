@@ -26,7 +26,7 @@
 |------|----------|
 | 根 `tsconfig.json` → `compilerOptions.paths` | `"@vetta/<name>": ["./packages/<name>/src/index.ts"]`，`"@vetta/<name>/*": ["./packages/<name>/src/*"]` |
 | 根 `tsconfig.json` → `include` | `"packages/<name>/src/**/*"`（若有测试一并加入） |
-| `apps/desktop-app/tsconfig.json` → `paths` | **仅当** desktop 引用该包时：`"@vetta/<name>": ["../../packages/<name>/src/index.ts"]`，`"@vetta/<name>/*": ["../../packages/<name>/src/*"]` |
+| `apps/desktop/tsconfig.json` → `paths` | **仅当** desktop 引用该包时：`"@vetta/<name>": ["../../packages/<name>/src/index.ts"]`，`"@vetta/<name>/*": ["../../packages/<name>/src/*"]` |
 
 其它自带 `paths` 的消费方（若有）同样处理。
 
@@ -47,7 +47,7 @@
 ```bash
 # 建议：无 dist 时类型检查也应通过
 rm -rf packages/<name>/dist   # 可选压力测试
-bun run check                 # Biome + 根 tsgo + desktop-app tsc
+bun run check                 # Biome + 根 tsgo + desktop tsc
 cd packages/<name> && bun run build
 ```
 

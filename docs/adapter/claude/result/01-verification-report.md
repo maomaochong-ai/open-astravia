@@ -28,10 +28,10 @@ bunx vitest --run test/claude-hooks.test.ts
 前置：
 
 ```powershell
-cd apps/desktop-app
+cd apps/desktop
 bun dev
 # 另开终端
-bun apps/cli-app/src/cli.ts debug run ui.info
+bun apps/cli-host/src/cli.ts debug run ui.info
 ```
 
 `ui.info` 结果：`configured/reachable/targetFound = true`，endpoint `http://127.0.0.1:9223`。
@@ -46,7 +46,7 @@ $payload = @{
   timeoutMs = 180000
 } | ConvertTo-Json -Compress
 
-bun apps/cli-app/src/cli.ts debug run conversation.create $payload
+bun apps/cli-host/src/cli.ts debug run conversation.create $payload
 ```
 
 结果：
@@ -76,7 +76,7 @@ bun apps/cli-app/src/cli.ts debug run conversation.create $payload
 ### 2.2 UserPromptSubmit（模拟 cdt 阻断）
 
 ```powershell
-bun apps/cli-app/src/cli.ts debug run conversation.continue '{
+bun apps/cli-host/src/cli.ts debug run conversation.continue '{
   "sessionPath":"<上一轮 sessionPath>",
   "prompt":"/cdt plan implement auth",
   "executionMode":"full-access",
@@ -101,7 +101,7 @@ bun apps/cli-app/src/cli.ts debug run conversation.continue '{
 ### 2.3 PreToolUse Write deny
 
 ```powershell
-bun apps/cli-app/src/cli.ts debug run conversation.continue '{
+bun apps/cli-host/src/cli.ts debug run conversation.continue '{
   "sessionPath":"<同一 sessionPath>",
   "prompt":"请用 write 工具创建 hook-write-test.txt ...",
   "executionMode":"full-access",

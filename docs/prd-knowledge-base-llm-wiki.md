@@ -23,7 +23,7 @@
 - agent 按语义把 wiki 页组织成树形，维护 `indexes/` 语义导航层，并给页面打扁平标签；
 - 检索是多模态的：标签捷径(`filter_by_tags`)、走 indexes 导航、渐进式探索(遍历树/读页/顺 `[[id]]` 链接)、全文搜索；
 - 每一轮加工 = 一次可在 UI 回看的 agent 会话，过程透明不暗盒；
-- 所有策略（轮询间隔、加工模型、手动触发）在 desktop-app「知识库设置」页可配。
+- 所有策略（轮询间隔、加工模型、手动触发）在 desktop「知识库设置」页可配。
 
 对用户而言：把文件丢进 raws，过一会儿就能得到一个结构化、可被 agent 精准检索、可视化可回看的知识库；文件增删改后知识库自动跟随。
 
@@ -97,7 +97,7 @@
 - raw ↔ wiki = **1:1**。
 
 ### 摄入：惰性轮询 + 后台 agent 会话
-- 工程侧调度器（仿 `apps/desktop-app/src/main/scheduler/` 的 `ToadScheduler` 用法）每 N 分钟对 raws 算 hash diff，攒批。
+- 工程侧调度器（仿 `apps/desktop/src/main/scheduler/` 的 `ToadScheduler` 用法）每 N 分钟对 raws 算 hash diff，攒批。
 - diff 非空则用无头会话 API（`createAgentSession({ cwd, model, skill })` + `session.sendPrompt()`，见 coding-agent SDK）起一个加工会话，cwd = `KB_PROCESSING_CWD`，prompt = 本轮 diff 批次 + 上轮孤儿复判清单。一轮一会话。
 - diff 四态及后果：
   - **added**（新 path、新 hash、无 path 匹配）→ agent 新建页，`kb_write_page` 分配 id。
@@ -117,9 +117,9 @@
 
 ### 会话集成
 - 新增常量 `KB_PROCESSING_CWD = ~/.vetta/knowledges/processing_records` 与 `KB_PROCESSING_SESSION_DIR = <cwd>/.vetta/sessions`。
-- 在 `resolveSessionDirForCwd()`（desktop-app `main/ipc/session.ts`，现已处理 `DEFAULT_CONVERSATION_CWD`）注册该 cwd→sessionDir 映射，使加工会话自包含且在 sidebar 透明可发现。
+- 在 `resolveSessionDirForCwd()`（desktop `main/ipc/session.ts`，现已处理 `DEFAULT_CONVERSATION_CWD`）注册该 cwd→sessionDir 映射，使加工会话自包含且在 sidebar 透明可发现。
 
-### desktop-app「知识库设置」
+### desktop「知识库设置」
 - 注册进 settings `registry.ts` 的 `SETTINGS_SECTIONS` → 新建 `KnowledgeBaseSettings.tsx` → 接入 `SETTINGS_CONTENT`。
 - 配置走 `vetta:config:get/set`（preload `system.ts`）落 `~/.vetta/settings.json`，扩展 `DesktopConfigData`。
 - 设置项：轮询间隔下拉（3/5/10/30 min）、加工模型选择、手动按钮（立即扫描+加工 / 重建索引）。

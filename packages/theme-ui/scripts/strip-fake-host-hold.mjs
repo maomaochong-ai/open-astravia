@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const rendererRoot = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
-	"../../../apps/desktop-app/src/renderer",
+	"../../../apps/desktop/src/renderer",
 );
 
 function walk(dir, acc = []) {

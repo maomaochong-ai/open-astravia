@@ -226,8 +226,8 @@ SessionStart/SessionEnd 等非 Turn 事件可以在事件发生时使用当时 p
 - `packages/coding-agent/src/plugins/runtime/tool-runtime.ts`
 - `packages/coding-agent/src/plugins/runtime/run-orchestrator.ts`
 - `packages/coding-agent/src/interception/tool/pipeline.ts`
-- `apps/desktop-app/src/main/plugins/coding-agent-hook-adapter.ts`
-- `apps/desktop-app/src/main/plugins/**`
+- `apps/desktop/src/main/plugins/coding-agent-hook-adapter.ts`
+- `apps/desktop/src/main/plugins/**`
 - `packages/plugins/plugin-sdk/src/**`
 
 Plugin SDK 如果新增 generation-aware binding，必须保留旧 Plugin 的兼容适配层，并明确旧 API 只能在宿主包装后进入 Turn-bound runtime。

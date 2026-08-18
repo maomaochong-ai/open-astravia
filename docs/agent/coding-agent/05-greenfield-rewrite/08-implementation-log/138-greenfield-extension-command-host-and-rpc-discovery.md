@@ -55,11 +55,11 @@ Greenfield IM 的 Extension capability descriptor 仍未声明 `commands: true`�
   - 六个动作完整委托。
   - 多空格参数保持。
   - 未知命令、队列拒绝和 handler 错误上报。
-- `apps/cli-app/test/greenfield-im-rpc-adapter.test.ts`：9 个测试通过。
+- `apps/cli-host/test/greenfield-im-rpc-adapter.test.ts`：9 个测试通过。
   - Prompt/Skill 发现。
   - 显式 Command Host 的 prompt 拦截。
   - steer/follow-up 拒绝。
-- `apps/cli-app/test/greenfield-im-runtime-host.test.ts`：10 个测试通过。
+- `apps/cli-host/test/greenfield-im-runtime-host.test.ts`：10 个测试通过。
   - 真实 Greenfield 宿主暴露 `get_commands`。
   - Command-only Extension 仍稳定回退 Legacy。
 

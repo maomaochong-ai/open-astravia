@@ -10,7 +10,7 @@
 
 ## 实施假设
 
-- `apps/cli-app/scripts/compile-standalone.mjs` 是唯一标准独立产物编译入口，不另建测试专用打包流程。
+- `apps/cli-host/scripts/compile-standalone.mjs` 是唯一标准独立产物编译入口，不另建测试专用打包流程。
 - `greenfield-im` 当前只接受 `im-claw`；本轮不以测试为由扩大场景支持。
 - RPC 兼容性沿用既有宿主观察合同。Legacy 额外 progress Frame 不是 Greenfield 必须复制的产品语义。
 - 默认 selector 保持 Legacy；本轮只闭合切换前证据，不执行默认切换。
@@ -19,7 +19,7 @@
 
 ### 标准安装产物差分
 
-扩展 `apps/cli-app/test/installed-artifact-runtime.test.ts`：
+扩展 `apps/cli-host/test/installed-artifact-runtime.test.ts`：
 
 - 编译一次标准 standalone CLI，再复制到隔离安装目录。
 - 校验 metafile 后删除编译期仓库路径，避免测试运行时依赖源码树。

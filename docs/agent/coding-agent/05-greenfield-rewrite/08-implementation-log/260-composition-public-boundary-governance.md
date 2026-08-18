@@ -36,7 +36,7 @@
 
 - 从 `composition/index.ts` 删除原始 Setup Seed 执行函数及其输入类型；CLI 继续使用拥有明确生命周期的 Seed Initializer 工厂。
 - 从公共 Composition 入口删除 `CodingToolsRuntimeComposition`、Options 和创建工厂；这些对象仍是 `coding-agent` 组合根内部实现。
-- 将 Coding Tools Composition 的 9 个行为用例从 `cli-app` 迁入 `coding-agent`，继续覆盖默认工具顺序、按场景激活、显式 fail-closed 工具和外部工具探测行为。
+- 将 Coding Tools Composition 的 9 个行为用例从 `cli-host` 迁入 `coding-agent`，继续覆盖默认工具顺序、按场景激活、显式 fail-closed 工具和外部工具探测行为。
 - 保留公开类和工厂签名所依赖的 Active Session、Runtime controls、Knowledge Processing 与 Session Host 合同；没有根据仓库内直接引用数删除必要类型。
 - 重写进度守卫使用 TypeScript AST 收集 `composition/index.ts` 的具名导出，冻结 34 个允许项和精确基线。
 - 守卫覆盖 CLI 测试，并禁止 Coding Agent 包外通过 `@vetta/coding-agent/composition/*` 深层导入实现。
@@ -58,7 +58,7 @@
 - 重写治理测试：1 个文件、18 个测试通过。
 - CLI 和 Desktop 独立类型检查通过。
 - `packages/coding-agent` 全包测试：128 个文件通过、1 个文件跳过；890 个测试通过、17 个跳过。
-- `apps/cli-app` 全包测试：34 个文件、185 个测试全部通过。
+- `apps/cli-host` 全包测试：34 个文件、185 个测试全部通过。
 - 测试迁移前后两个包的通过用例总数保持 `1075`，没有删除行为场景。
 - `bun run check:quick` 通过。
 - 根 `bun run check` 通过，覆盖 Biome、monorepo、CLI、Desktop、Admin 类型检查和全部质量守卫。

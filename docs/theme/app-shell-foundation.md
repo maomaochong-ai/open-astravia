@@ -7,7 +7,7 @@ App shell 是应用入口层，负责侧边栏、页面头部、主内容区和�
 ## 当前目录
 
 ```txt
-apps/desktop-app/src/renderer/shared/app-shell/page-header/
+apps/desktop/src/renderer/shared/app-shell/page-header/
   PageHeader.tsx
   PageHeaderSidebarTrigger.tsx
   PageHeaderTitle.tsx
@@ -16,7 +16,7 @@ apps/desktop-app/src/renderer/shared/app-shell/page-header/
   usePageHeaderModel.ts
   index.ts
 
-apps/desktop-app/src/renderer/shared/app-shell/window-controls/
+apps/desktop/src/renderer/shared/app-shell/window-controls/
   WindowControls.tsx
   WindowControlButton.tsx
   useWindowControlsModel.ts
@@ -38,19 +38,19 @@ apps/desktop-app/src/renderer/shared/app-shell/window-controls/
 />
 ```
 
-`PageHeader` 是 desktop-app 内部 connected 容器。它负责：
+`PageHeader` 是 desktop 内部 connected 容器。它负责：
 
 - 通过 `@vetta/theme-sdk/app-shell` 的 `usePageHeaderModel` facade 读取页面头部 model。
 - 接入主题 region/component/surface。
 - 在没有 region override 时，把 model 传给 `DefaultPageHeader`。
 
-真实 `usePageHeaderModel` 实现仍在 desktop-app 内部，负责读取当前路由、解析默认标题、读取 page header 的 left/right/title/badge atoms、判断侧边栏触发按钮是否显示。主题不应直接 import 这个内部实现。
+真实 `usePageHeaderModel` 实现仍在 desktop 内部，负责读取当前路由、解析默认标题、读取 page header 的 left/right/title/badge atoms、判断侧边栏触发按钮是否显示。主题不应直接 import 这个内部实现。
 
 `DefaultPageHeader` 是 props 驱动的默认 view。它不自己取数，只消费 `PageHeaderRegionProps.model` 和传入的 actions，适合后续迁入官方 UI 包。
 
 窗口控制同理：
 
-- `WindowControls` 是 desktop-app connected 容器。
+- `WindowControls` 是 desktop connected 容器。
 - `useWindowControlsModel` 的主题公开入口来自 `@vetta/theme-sdk/app-shell`。
 - `DefaultWindowControls` 是 props 驱动 view，接收 `WindowControlsComponentProps.model`。
 
@@ -115,7 +115,7 @@ export function ThemePageHeader(props: PageHeaderProps) {
 }
 ```
 
-当前 `DefaultPageHeader` / `DefaultWindowControls` 仍位于 desktop-app 公开 UI 出口；后续迁入官方 UI 包时，应保持这个 props 驱动 contract，不迁移 connected 容器。
+当前 `DefaultPageHeader` / `DefaultWindowControls` 仍位于 desktop 公开 UI 出口；后续迁入官方 UI 包时，应保持这个 props 驱动 contract，不迁移 connected 容器。
 
 ## Surface Slot
 

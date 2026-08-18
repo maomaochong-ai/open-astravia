@@ -66,8 +66,8 @@ Layer 3
   runtime-mcp
 
 Layer 4
-  cli-app
-  desktop-app
+  cli-host
+  desktop
 ```
 
 `runtime-core` 的 `devDependencies` 包含 `coding-agent`，但只用于测试，不是 `runtime-core/src` 的生产依赖，因此不构成生产构建环。

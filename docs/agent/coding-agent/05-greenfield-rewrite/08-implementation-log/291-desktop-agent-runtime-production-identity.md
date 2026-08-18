@@ -36,7 +36,7 @@
 
 ### 生产目录与类型身份
 
-- `apps/desktop-app/src/main/greenfield-runtime` 迁移为 `main/agent-runtime`；
+- `apps/desktop/src/main/greenfield-runtime` 迁移为 `main/agent-runtime`；
 - `DesktopGreenfieldRuntimeBackendPool` 改为 `DesktopRuntimeBackendPool`；
 - `DesktopGreenfieldRuntimeSessionCatalog` 改为 `DesktopRuntimeSessionCatalog`；
 - MCP Scope、Managed Source、Backend Entry 等内部类型去除 Greenfield 迁移前缀；

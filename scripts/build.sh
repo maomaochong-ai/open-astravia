@@ -97,8 +97,8 @@ build_layer7() {
 
 # ── Layer 8: apps ──
 build_apps() {
-  build_pkg apps/cli-app
-  build_pkg apps/desktop-app
+  build_pkg apps/cli-host
+  build_pkg apps/desktop
 }
 
 build_admin() {
@@ -109,12 +109,12 @@ build_admin() {
 # Reuses desktop-app 的 build-presets.mjs（含按需 bun install、遍历全部 preset）。
 build_presets() {
   printf "${DIM}[build]${RESET} %-24s" "presets"
-  if node apps/desktop-app/scripts/build-presets.mjs > /dev/null 2>&1; then
+  if node apps/desktop/scripts/build-presets.mjs > /dev/null 2>&1; then
     printf "${GREEN}ok${RESET}\n"
   else
     printf "${RED}FAIL${RESET}\n"
     echo "  Re-running with output:"
-    node apps/desktop-app/scripts/build-presets.mjs
+    node apps/desktop/scripts/build-presets.mjs
     exit 1
   fi
 }
@@ -141,7 +141,7 @@ case "${1:-all}" in
   lib|libs) build_libs; build_presets ;;
   app|apps) build_apps ;;
   desktop)  build_libs && build_apps ;;
-  cli)      build_libs && build_pkg apps/cli-app && build_presets ;;
+  cli)      build_libs && build_pkg apps/cli-host && build_presets ;;
   admin)    build_admin ;;
   preset|presets) build_presets ;;
   *)

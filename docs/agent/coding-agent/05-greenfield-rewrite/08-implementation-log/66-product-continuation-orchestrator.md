@@ -231,7 +231,7 @@ Admin 和质量 guards。
   - Todo 与 Stop Hook Source。
   - Todo 纯函数的最小状态接口和可测试时钟。
   - Greenfield 公共导出与单元测试。
-- `apps/cli-app`
+- `apps/cli-host`
   - Session 级 Todo/Stop Hook 工厂、最终 Policy 组合和端到端测试。
 - 本实施日志与索引。
 

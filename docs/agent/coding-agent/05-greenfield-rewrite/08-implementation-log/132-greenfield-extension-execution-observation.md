@@ -112,13 +112,13 @@ CLI Greenfield Runtime Composition 在初始化能力时等待 Event Host 的异
 
 - `runtime-core`：36 个相关测试通过；
 - `coding-agent`：10 个相关测试通过；
-- `cli-app`：8 个相关测试通过；
+- `cli-host`：8 个相关测试通过；
 - 根 TypeScript `tsgo --noEmit` 通过。
 
 完整验证结果：
 
 - `runtime-core` 全包：31 个测试文件、153 个测试全部通过；
-- `cli-app` 全包：22 个测试文件中 21 个通过，87 个测试中 86 个通过；唯一失败是
+- `cli-host` 全包：22 个测试文件中 21 个通过，87 个测试中 86 个通过；唯一失败是
   既有 System Prompt 用例少预期了一次会话创建期的空上下文解析，与本轮执行观察
   文件及事件链路无关；
 - `coding-agent` 全包仍有既有 Windows 路径、旧 `pi` 文案、模型夹具和 mock

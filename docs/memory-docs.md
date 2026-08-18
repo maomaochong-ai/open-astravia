@@ -148,7 +148,7 @@ memory(action, content?, match?)
 | rollover continuation | `runtime-core/src/kernel/turn-pipeline.ts`、`runtime-node/src/conversation/file-conversation-repository.ts` |
 | `--memory-mode` / `--memory-file` 解析 | `coding-agent/src/bootstrap/launch-arguments.ts`、贯通 SDK 与 Runtime Composition |
 | `/new` 显式凝结：`flush_memory` RPC + `flushMemory()` | `coding-agent/src/rpc/rpc-command-dispatcher.ts`、`adapters/runtime-core/greenfield-memory-controller.ts`；`im-gateway/internal/command/router.go: flushSessionMemory` |
-| `session_path_changed` 事件投影 | `cli-app/src/rpc/greenfield-im-rpc-events.ts` |
+| `session_path_changed` 事件投影 | `cli-host/src/rpc/greenfield-im-rpc-events.ts` |
 | spawn 参数透传 | `im-gateway/internal/hostclient/local/client.go`（`MemoryMode`/`MemoryFile`） |
 | host 恒开 + 日期 cwd | `im-gateway/cmd/im-gateway/host.go`（`MemoryMode=true`、`SetDatedCwd(true)`） |
 | 日期 cwd / 路径回传 | `im-gateway/internal/router/router.go`（`agentCwd`、`SetPathChangeHandler`） |

@@ -2,7 +2,7 @@
 
 ## 8.1 已实现边界
 
-当前 desktop-app 已落地以下闭环：
+当前 desktop 已落地以下闭环：
 
 - `@sentry/electron/main` 覆盖 Main、原生崩溃和 Renderer 事件接收；
 - Main、Pet、Quick Panel、Onboarding 的 Renderer 均初始化 Sentry；

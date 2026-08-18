@@ -302,8 +302,8 @@ admission 前允许的逻辑仅限协议解析、大小限制、身份认证和�
 | `runtime-tools` | versioned tool catalog、implementation lease、retirement 与 hard revoke 分离 |
 | `runtime-mcp` | immutable MCP config/tool generation、连接 lease 与同配置重连 |
 | `plugins` | Plugin generation contract、不可变 manifest/config snapshot、SDK 兼容约束 |
-| `desktop-app` | 设置来源、Plugin handler generation router、desired/published/effective UI |
-| `cli-app` | 配置更新发布与当前/下个 Turn 状态展示 |
+| `desktop` | 设置来源、Plugin handler generation router、desired/published/effective UI |
+| `cli-host` | 配置更新发布与当前/下个 Turn 状态展示 |
 
 下层包不得依赖 Desktop 或 Coding Agent 的 revision 类型。跨包能力通过各包公开 exports 和小型 lease contract 暴露。
 

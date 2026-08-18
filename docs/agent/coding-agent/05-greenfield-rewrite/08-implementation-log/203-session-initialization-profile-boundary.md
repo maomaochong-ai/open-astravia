@@ -85,7 +85,7 @@ bun run check:quick
 
 bun run check
   lint passed
-  types passed（root tsgo、cli-app、desktop-app、admin）
+  types passed（root tsgo、cli-host、desktop、admin）
   guards passed
 ```
 

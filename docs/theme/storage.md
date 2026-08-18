@@ -51,7 +51,7 @@ function SanctumPage() {
 | 层级 | 职责 |
 |------|------|
 | `@vetta/theme-sdk/storage` | 类型与 facade hook |
-| desktop-app `ThemeHost.storage` | 绑定 active themeId、内存缓存、乐观更新 |
+| desktop `ThemeHost.storage` | 绑定 active themeId、内存缓存、乐观更新 |
 | main `theme-data-store` | 校验、配额、原子写文件 |
 | preload `vetta.themes.storage` | IPC 桥（仅 host 使用） |
 
@@ -91,7 +91,7 @@ function SanctumPage() {
 ```txt
 Theme component
   → useThemeStorageValue / useThemeStorage   (sdk facade)
-    → ThemeHost.storage.useThemeStorage()    (desktop-app)
+    → ThemeHost.storage.useThemeStorage()    (desktop)
       → 内存 cache
       → window.vetta.themes.storage.*        (preload, host only)
         → main theme-data-store
@@ -118,7 +118,7 @@ import { useThemeStorage, useThemeUsageStats } from "@vetta/theme-sdk";
 runtime: [MyCultivationRuntime]
 ```
 
-desktop-app 在主题激活时挂载 `runtime`。xianxia 示例：
+desktop 在主题激活时挂载 `runtime`。xianxia 示例：
 
 - 组件：`XianxiaCultivationRuntime`（无 UI）
 - 规则：多指标合成 `score`（活跃时长、消息、回合、工具、会话、token、连续活跃天、批量/自动化、知识库、项目、长会话深度等），再按主题自有 `targetScore` 映射 15 境

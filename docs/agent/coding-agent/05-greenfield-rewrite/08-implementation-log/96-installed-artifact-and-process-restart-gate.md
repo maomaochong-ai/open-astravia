@@ -15,7 +15,7 @@
 
 ## 2. 真实产物探针暴露的问题
 
-按 Desktop 打包使用的 `bun build --compile` 方式编译 `apps/cli-app/src/cli.ts` 后，探针发现两处
+按 Desktop 打包使用的 `bun build --compile` 方式编译 `apps/cli-host/src/cli.ts` 后，探针发现两处
 此前源码测试无法覆盖的问题。
 
 ### 2.1 顶层 CLI 不能进入 Agent
@@ -41,7 +41,7 @@ process.execPath ./agent-cli.js
 ### 2.2 Coding Agent 元数据依赖相邻 `package.json`
 
 单文件产物启动 Agent 后，`coding-agent/config.ts` 会从可执行文件所在目录读取 `package.json`。
-但 Desktop 的平台二进制位于 `cli-app/bin/<platform>/`，Windows 安装过程还会只复制
+但 Desktop 的平台二进制位于 `cli-host/bin/<platform>/`，Windows 安装过程还会只复制
 `vetta.exe` 到用户 bin 目录，因此这个隐式文件依赖并不成立。
 
 修复方式：
@@ -118,7 +118,7 @@ bun run check:quick
 
 ```text
 bun run check
-Biome、monorepo tsgo、cli-app tsgo、desktop-app tsc、admin tsc 与 guards 全部通过
+Biome、monorepo tsgo、cli-host tsgo、desktop tsc、admin tsc 与 guards 全部通过
 ```
 
 ## 6. 结论

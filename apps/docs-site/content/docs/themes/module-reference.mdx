@@ -117,9 +117,9 @@ storage.set("progress", { score: 42 });
 | `@vetta/theme-sdk` | 主题协议、registry、host facade、model hook 和 props 类型 |
 | `@vetta/theme-ui` | 不绑定 Desktop 私有状态的表面、装饰和布局 primitive |
 | 具体主题包 | 主题组件、图片、样式、页面和 runtime |
-| `desktop-app` | 真实业务状态、IPC、router、host adapter 和默认 connected container |
+| `desktop` | 真实业务状态、IPC、router、host adapter 和默认 connected container |
 
-主题不得导入 `@shared/*`、`@domains/*` 或 `desktop-app/src/**`。需要新的稳定能力时，先把窄合同加入 Theme SDK，而不是深度导入宿主实现。
+主题不得导入 `@shared/*`、`@domains/*` 或 `desktop/src/**`。需要新的稳定能力时，先把窄合同加入 Theme SDK，而不是深度导入宿主实现。
 
 ## 验收清单
 

@@ -43,9 +43,9 @@ Renderer 与 CDP 仍由既有验证宿主管理，但本轮验证主体是 CLI�
 
 新增 Runtime Canary 目录：
 
-- `apps/desktop-app/src/main/app-debug/runtime-canary/contracts.ts`
-- `apps/desktop-app/src/main/app-debug/runtime-canary/provider.ts`
-- `apps/desktop-app/src/main/app-debug/runtime-canary/runner.ts`
+- `apps/desktop/src/main/app-debug/runtime-canary/contracts.ts`
+- `apps/desktop/src/main/app-debug/runtime-canary/provider.ts`
+- `apps/desktop/src/main/app-debug/runtime-canary/runner.ts`
 
 Provider 为每次执行创建独立目录，并写入：
 
@@ -70,10 +70,10 @@ Desktop 仅在本次验证进程中接收：
 
 新增两个薄脚本：
 
-- `apps/desktop-app/scripts/runtime-canary-provider.ts`
-- `apps/desktop-app/scripts/runtime-canary-runner.ts`
+- `apps/desktop/scripts/runtime-canary-provider.ts`
+- `apps/desktop/scripts/runtime-canary-runner.ts`
 
-Runner 通过既有 `apps/cli-app/src/cli.ts debug run` 依次执行：
+Runner 通过既有 `apps/cli-host/src/cli.ts debug run` 依次执行：
 
 1. `conversation.create`；
 2. `conversation.continue`；
@@ -88,14 +88,14 @@ Runner 通过既有 `apps/cli-app/src/cli.ts debug run` 依次执行：
 
 新增开发态 Debug 合同：
 
-- `apps/desktop-app/src/main/app-debug/lifecycle/definitions.ts`
+- `apps/desktop/src/main/app-debug/lifecycle/definitions.ts`
 
 `lifecycle.quit` 先返回 `{ status: "scheduled", delayMs: 75 }`，再异步调用 `app.quit()`，保证 CLI
 可以收到完整响应。该合同只注册在现有开发态 App Debug Runtime；打包生产路径没有新增远程退出面。
 
 ## 5. 验证宿主接入
 
-`apps/desktop-app/scripts/ui-verification.mjs` 新增：
+`apps/desktop/scripts/ui-verification.mjs` 新增：
 
 ```powershell
 bun run verify:ui:start -- --runtime-canary greenfield
@@ -159,9 +159,9 @@ unhandledRejection AbortError: This operation was aborted
 packages/agent/test/agent-loop.test.ts
   13 tests passed
 
-apps/desktop-app/src/main/app-debug/lifecycle/definitions.test.ts
-apps/desktop-app/src/main/app-debug/runtime-canary/provider.test.ts
-apps/desktop-app/src/main/app-debug/runtime-canary/runner.test.ts
+apps/desktop/src/main/app-debug/lifecycle/definitions.test.ts
+apps/desktop/src/main/app-debug/runtime-canary/provider.test.ts
+apps/desktop/src/main/app-debug/runtime-canary/runner.test.ts
   3 files, 6 tests passed
 ```
 

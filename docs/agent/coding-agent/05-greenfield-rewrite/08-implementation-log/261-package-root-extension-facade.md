@@ -55,7 +55,7 @@
 - 重写治理测试：1 个文件、19 个测试通过。
 - `packages/coding-agent` 全包测试：128 个文件通过、1 个文件跳过；891 个测试通过、17 个跳过。
 - 首次全包测试发现 `createEventBus` 未进入新门面，2 个测试失败；该 API 被确认属于 Extension 能力并恢复，随后定向和全包测试均通过。
-- `apps/cli-app` 的 `package-entrypoints`、CLI intent 及非 Extension RPC 用例通过；CLI 全包测试在 Bun 1.3.9 编译的 RPC Extension 子进程中两次复现固定地址段错误，之后产生 18 个临时目录 `EBUSY`/超时级联失败。CLI 生产代码不存在包根导入边，根级 CLI 类型检查和 standalone 构建守卫通过，因此记录为测试运行时残余风险，不归因于本阶段模块边界变更。
+- `apps/cli-host` 的 `package-entrypoints`、CLI intent 及非 Extension RPC 用例通过；CLI 全包测试在 Bun 1.3.9 编译的 RPC Extension 子进程中两次复现固定地址段错误，之后产生 18 个临时目录 `EBUSY`/超时级联失败。CLI 生产代码不存在包根导入边，根级 CLI 类型检查和 standalone 构建守卫通过，因此记录为测试运行时残余风险，不归因于本阶段模块边界变更。
 - `bun run check:quick` 通过。
 - 根 `bun run check` 通过，覆盖 Biome、monorepo、CLI、Desktop、Admin 类型检查和全部质量守卫。
 - 实际架构扫描：包根导出边 `1`、非 Extension 导出 `0/0`，旧实现相关指标继续全部为 `0/0`。

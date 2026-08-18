@@ -63,7 +63,7 @@ Composition Root 直接使用中性实现构造，不再通过 Legacy 对象转�
 
 扩展 `check-package-boundaries.mjs`：
 
-- 将 `apps/cli-app` 纳入实际扫描范围；
+- 将 `apps/cli-host` 纳入实际扫描范围；
 - `@vetta/coding-agent/legacy/cli` 只允许出现在 CLI Runtime 选择入口；
 - `@vetta/coding-agent/legacy/*` 的其他生产导入会失败；
 - Legacy Runtime Adapter 符号只允许存在于 Coding Agent Adapter 目录和 Desktop 单一兼容模块；

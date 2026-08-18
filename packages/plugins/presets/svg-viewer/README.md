@@ -17,7 +17,7 @@ cannot override built-in previews).
 
 This lives under `packages/plugins/presets/`, so it ships with the app as a
 system plugin (auto-enabled, permissions auto-granted, users cannot delete or
-modify it). It is built by `bun run build:presets` from `apps/desktop-app`
+modify it). It is built by `bun run build:presets` from `apps/desktop`
 (run automatically by `dev` / `start` / packaging); no manual install needed.
 
 Install dependencies from the monorepo root, then build from this directory:
@@ -30,5 +30,5 @@ bun run build   # writes dist/ and release/svg-viewer-<version>.zip
 ```
 
 Desktop development and packaging consume the generated zip. Run
-`bun run build:presets` from `apps/desktop-app` to validate and extract it
+`bun run build:presets` from `apps/desktop` to validate and extract it
 to the development system-plugin staging directory.

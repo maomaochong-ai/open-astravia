@@ -121,7 +121,7 @@ Legacy/Greenfield 差分继续只允许三项选择轴或内部实现差异：
 
 - Selector、Canary 合同、Runner、Provider：4 个文件、18 项测试通过；
 - Desktop Catalog、生命周期与 Legacy/Greenfield 宿主差分：3 个文件、8 项测试通过；
-- `apps/desktop-app` 独立 `tsc --noEmit`：通过；
+- `apps/desktop` 独立 `tsc --noEmit`：通过；
 - 根目录 `bun run check:quick`：通过；
 - 根目录 `bun run verify:ui:runtime-diff`：三路真实 Desktop Canary 通过；
 - 根目录 `bun run check`：Biome、root/CLI/Desktop/Admin 类型检查和质量守卫全部通过。

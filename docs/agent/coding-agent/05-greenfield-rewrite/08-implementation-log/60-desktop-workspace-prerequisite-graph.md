@@ -16,7 +16,7 @@ because it would overwrite input file.
 仓库有两个独立的 workspace 构建入口：
 
 1. 根 `scripts/build.sh`；
-2. `apps/desktop-app/scripts/build-workspace-prereqs.mjs`。
+2. `apps/desktop/scripts/build-workspace-prereqs.mjs`。
 
 第 59 轮只纠正了根构建脚本。Desktop 脚本仍维护一份手写依赖图，其中：
 
@@ -61,7 +61,7 @@ agent / capability-runtime
   -> runtime-core
   -> coding-agent
   -> runtime-tools / runtime-storage / runtime-mcp
-  -> cli-app
+  -> cli-host
 ```
 
 这与正式 package manifests 以及根构建入口保持一致。
@@ -96,7 +96,7 @@ Desktop 构建配置以 import-safe 方式导出；被质量门导入时不会�
 - `bun run check:quick`：通过；构建顺序守卫检查根入口 18 个包、Desktop 前置入口 16 个包；
 - `bun run test:quality`：26 项全部通过；
 - `runtime-mcp/tsconfig.build.json` 独立无输出检查：通过；
-- `cli-app/tsconfig.json` 独立无输出检查：通过；
+- `cli-host/tsconfig.json` 独立无输出检查：通过；
 - 根 `bun run check`：Biome、根/desktop/admin 类型检查和全部 guards 通过；
 - 先执行 `runtime-core/tsconfig.build.json`，再执行 `coding-agent/tsconfig.build.json` 的真实声明输出：两步均通过，未再出现 `TS5055`。
 

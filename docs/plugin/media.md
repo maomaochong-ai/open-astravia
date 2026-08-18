@@ -136,6 +136,6 @@ Provider 收到的 `inputs` 只有不透明 ID、媒体类型和 MIME，不包�
 
 ## Desktop 内置 Vetta Provider
 
-desktop-app 默认注册 `desktop-app:vetta`，当前支持 `text-to-image` 与 `image-to-image`。它的实现位于主进程：renderer 只提交媒体协议请求，主进程固定选择 `images/generate` 或 `images/edit`，并负责注入 JWT 与刷新凭据。插件拿不到用户 token，也不能通过该接口传入任意网关路径。
+desktop 默认注册 `desktop:vetta`，当前支持 `text-to-image` 与 `image-to-image`。它的实现位于主进程：renderer 只提交媒体协议请求，主进程固定选择 `images/generate` 或 `images/edit`，并负责注入 JWT 与刷新凭据。插件拿不到用户 token，也不能通过该接口传入任意网关路径。
 
 该内置实现不是底层协议的前提。没有它的宿主构建仍可暴露一个空 Registry；消费者必须处理 `listProviders()` 为空和 `provider-unavailable`。

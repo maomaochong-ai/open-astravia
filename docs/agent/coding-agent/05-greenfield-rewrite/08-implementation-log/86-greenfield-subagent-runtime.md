@@ -36,7 +36,7 @@ CLI Composition Root
   └─ RuntimeHost backgroundWorkController
 ```
 
-`runtime-subagents` 不依赖 `coding-agent` 或 `cli-app`。它只认识 `SubagentChildHandle`、
+`runtime-subagents` 不依赖 `coding-agent` 或 `cli-host`。它只认识 `SubagentChildHandle`、
 `SubagentChildFactory`、`SubagentTypeDefinition` 和 `SubagentLifecycle` 等 Port。具体子会话由
 Composition Root 创建，因此协调器不会绑定某一种 Session、存储格式或工具注册表。
 

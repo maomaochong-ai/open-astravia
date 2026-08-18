@@ -10,6 +10,6 @@
 
 ## 依赖边界
 
-- 可以依赖协议包与 `runtime-core`，不得依赖 `desktop-app`、`cli-app`、`admin`、`site` 或 `runtime-desktop`。
+- 可以依赖协议包与 `runtime-core`，不得依赖 `desktop`、`cli-host`、`admin`、`site` 或 `runtime-desktop`。
 - 公共入口必须是实际实现所有者，不得只做应用源码的转发层。
 - Node 实现必须由对应协议的合同测试覆盖。

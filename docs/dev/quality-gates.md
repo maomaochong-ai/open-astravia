@@ -9,7 +9,7 @@
 | 提交前（快） | `bun run check:precommit`（husky 自动） | 每次 commit | staged 私钥/冲突标记 + Biome `--staged --write`；格式化后重新暂存整文件 |
 | 开发中（快） | `bun run check:quick` | 一轮编辑后 | 准确合并分支已提交差异、暂存、未暂存和未跟踪文件；对变更文件运行 Biome，并运行架构守卫；不做类型检查 |
 | 完整本地/PR | `bun run check` | 一轮代码任务完成、交付或开 PR 前一次 | 对显式源码根运行 Biome，并行执行根 `tsgo`、CLI 显式 `tsgo`、增量 desktop `tsc`、admin `tsc` 与架构守卫 |
-| 构建声明消费 | `bun run check:types:build-surfaces` | workspace 前置声明生成后 | 按 `cli-app/tsconfig.build.json` 验证真实包声明消费；会拒绝陈旧 `dist/*.d.ts` |
+| 构建声明消费 | `bun run check:types:build-surfaces` | workspace 前置声明生成后 | 按 `cli-host/tsconfig.build.json` 验证真实包声明消费；会拒绝陈旧 `dist/*.d.ts` |
 | 质量脚本测试 | `bun run test:quality` | 修改 `scripts/quality` | 变更选择、依赖传播与包边界规则 |
 | 单元测试 | `bun run test:unit` | 逻辑变更 | 当前有测试的核心包 |
 | 按包 | `bun run test:pkg <name>` | 改单包 | 例：`test:pkg ai` |
@@ -68,7 +68,7 @@ knip.config.ts                 Knip（可选）
 
 ```bash
 bun run --cwd packages/coding-agent test:coverage
-bun run --cwd apps/desktop-app test:coverage
+bun run --cwd apps/desktop test:coverage
 ```
 
 - 报告目录：包内 `coverage/`（已 gitignore）；含 text / html / lcov
@@ -97,9 +97,9 @@ bun run test:pkg <name>
 
 守卫会扫描 lib/plugin 源码，禁止：
 
-- 从 `packages/ai`、`agent`、`coding-agent`、`runtime-*`、`plugin-sdk` 等 **import 宿主应用**（`desktop-app` / `cli-app` / `admin` / `site` 及对应路径）
+- 从 `packages/ai`、`agent`、`coding-agent`、`runtime-*`、`plugin-sdk` 等 **import 宿主应用**（`desktop` / `cli-host` / `admin` / `site` 及对应路径）
 - 生产代码 import 其它包的 `test/` 树
-- plugin presets/externals **deep-import** `desktop-app/src/**`
+- plugin presets/externals **deep-import** `desktop/src/**`
 
 `coding-agent/examples/**` 已排除。
 
@@ -125,7 +125,7 @@ Greenfield/Legacy 名称墓碑、固定文件数量、行数阈值及实施日�
 
 ## Workspace 构建顺序（`check-build-order`）
 
-根 `scripts/build.sh` 与 Desktop 的 `apps/desktop-app/scripts/build-workspace-prereqs.mjs` 都必须先构建正式 workspace 依赖，再构建依赖方。守卫会分别检查：
+根 `scripts/build.sh` 与 Desktop 的 `apps/desktop/scripts/build-workspace-prereqs.mjs` 都必须先构建正式 workspace 依赖，再构建依赖方。守卫会分别检查：
 
 - 根脚本中的 `build_pkg` 顺序；
 - Desktop 前置构建脚本导出的分层；
@@ -141,8 +141,8 @@ Desktop 前置构建脚本只维护参与构建的包和并行层，包之间的
 
 `check:quick` 复用同一套 Git 变更选择器，因此不会漏掉未暂存或未跟踪文件。删除文件会从 Biome 输入中排除；修改任意 `biome.json` / `biome.jsonc` 或根 `.editorconfig` 时，会自动回退为全仓 Biome，避免配置影响未被检查。它不做类型检查，不能替代任务结束时的完整 `check`。
 
-根 `tsconfig.json` 已包含 `apps/cli-app/src/**/*` 和 `apps/cli-app/test/**/*`。完整 `check`
-仍额外显式执行 `apps/cli-app` 的 `typecheck`，避免未来调整根 `include` 时静默漏掉 CLI，也让
+根 `tsconfig.json` 已包含 `apps/cli-host/src/**/*` 和 `apps/cli-host/test/**/*`。完整 `check`
+仍额外显式执行 `apps/cli-host` 的 `typecheck`，避免未来调整根 `include` 时静默漏掉 CLI，也让
 日志直接显示 CLI 门禁。
 
 `check:types:build-surfaces` 与源码 typecheck 是不同口径：它不使用根源码 path map，而是按真实
@@ -209,7 +209,7 @@ bun run deadcode:report
 - [ ] `bun run check:precommit` 在有 staged 文件时行为正确  
 - [ ] `bun run test:pkg --list` 列出 4 个可测包  
 - [ ] `bun run check` 仍包含类型检查（比 pre-commit 更严）  
-- [ ] `bun run check` 输出中包含 `apps/cli-app` 的显式 `typecheck`
+- [ ] `bun run check` 输出中包含 `apps/cli-host` 的显式 `typecheck`
 - [ ] 生成当前 workspace 声明后，`bun run check:types:build-surfaces` 通过
 - [ ] husky `.husky/pre-commit` 调用的是 `check:precommit` 而非整仓慢 `check`  
 - [ ] 未新增 oxlint/oxfmt/pnpm 强制依赖  

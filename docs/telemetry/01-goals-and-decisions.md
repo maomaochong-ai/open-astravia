@@ -63,7 +63,7 @@ Sentry Electron 的跨进程、原生崩溃和 source map 能力，以及 PostHo
 
 平台依赖只能位于：
 
-- desktop-app 的 Main/Renderer 装配入口；
+- desktop 的 Main/Renderer 装配入口；
 - Sentry/PostHog 专用 adapter；
 - release 构建脚本。
 
@@ -74,7 +74,7 @@ Sentry Electron 的跨进程、原生崩溃和 source map 能力，以及 PostHo
 packages/runtime-telemetry 当前明确不负责 business analytics，因此：
 
 - ErrorReporter 和通用错误上下文可以属于 runtime-telemetry；
-- AnalyticsClient、ReplayRecorder 和 FeatureFlagClient 首版属于 desktop-app；
+- AnalyticsClient、ReplayRecorder 和 FeatureFlagClient 首版属于 desktop；
 - 如果未来多个宿主确实需要共享产品分析契约，再单独评估抽包。
 
 ### 决策 C：建立窄的跨系统桥

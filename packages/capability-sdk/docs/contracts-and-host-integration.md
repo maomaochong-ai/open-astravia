@@ -18,7 +18,7 @@ SDK 不反向认识调用者。
 
 最重要的不变量是：**能力合同是具体实现所依赖的抽象；合同不依赖宿主实现，宿主实现反向依赖合同。**
 
-因此，本包不引用 `desktop-app` 并不意味着它不能描述 Desktop 提供的能力。恰恰相反，正确的依赖
+因此，本包不引用 `desktop` 并不意味着它不能描述 Desktop 提供的能力。恰恰相反，正确的依赖
 倒置要求 Desktop 导入这里的 Token，并在自己的组合根注册 Provider。
 
 ## 两种方向不要混淆
@@ -27,8 +27,8 @@ SDK 不反向认识调用者。
 
 ```text
 capability-runtime ──> capability-sdk
-desktop-app        ──> capability-sdk
-desktop-app        ──> capability-runtime
+desktop        ──> capability-sdk
+desktop        ──> capability-runtime
 ```
 
 一次受授权调用的运行时流向：
@@ -59,10 +59,10 @@ Desktop domain service / Electron / OS
 项目查询展示了完整结构：
 
 1. `src/domain/project.ts` 定义 `cap.domain.vetta.project.list`、输入输出 Schema 和 Token。
-2. `desktop-app/src/main/capabilities/domain-providers.ts` 导入 Token，将 `ProjectService.list()` 绑定为 Provider。
-3. `desktop-app/src/main/capabilities/integrations/plugin/domain/project.ts` 在 Plugin 集成层通过已授权 Client
+2. `desktop/src/main/capabilities/domain-providers.ts` 导入 Token，将 `ProjectService.list()` 绑定为 Provider。
+3. `desktop/src/main/capabilities/integrations/plugin/domain/project.ts` 在 Plugin 集成层通过已授权 Client
    调用 Token，不知道 Provider 的实现类型。
-4. `desktop-app/src/main/capabilities/capability-host.ts` 创建 Hub、Provider、Access Controller 和系统集成，
+4. `desktop/src/main/capabilities/capability-host.ts` 创建 Hub、Provider、Access Controller 和系统集成，
    并统一负责释放。
 
 这里的 SDK 是端口，Desktop Provider 是适配器，Desktop Capability Host 是组合根。

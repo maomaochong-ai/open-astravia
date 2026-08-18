@@ -140,7 +140,7 @@ bun run check
 
 - Biome。
 - monorepo `tsgo --noEmit`。
-- desktop-app `tsc --noEmit`。
+- desktop `tsc --noEmit`。
 - admin `tsc -b`。
 - private key、冲突标记、构建顺序和包边界 guards。
 

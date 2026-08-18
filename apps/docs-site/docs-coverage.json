@@ -4,13 +4,13 @@
 	"areas": [
 		{
 			"id": "onboarding-auth",
-			"source": "apps/desktop-app/src/renderer/onboarding and domains/auth",
+			"source": "apps/desktop/src/renderer/onboarding and domains/auth",
 			"status": "complete",
 			"pages": ["/getting-started/"]
 		},
 		{
 			"id": "core-workflow",
-			"source": "apps/desktop-app/src/renderer/domains/chat",
+			"source": "apps/desktop/src/renderer/domains/chat",
 			"status": "complete",
 			"pages": [
 				"/getting-started/first-task/",
@@ -22,61 +22,61 @@
 		},
 		{
 			"id": "project-files",
-			"source": "apps/desktop-app/src/renderer/domains/project and domains/file-explorer",
+			"source": "apps/desktop/src/renderer/domains/project and domains/file-explorer",
 			"status": "complete",
 			"pages": ["/core/workspaces-and-sessions/", "/core/progress-results-and-recovery/"]
 		},
 		{
 			"id": "models",
-			"source": "apps/desktop-app/src/renderer/domains/settings",
+			"source": "apps/desktop/src/renderer/domains/settings",
 			"status": "complete",
 			"pages": ["/product/models/"]
 		},
 		{
 			"id": "abilities",
-			"source": "apps/desktop-app/src/renderer/domains/abilities",
+			"source": "apps/desktop/src/renderer/domains/abilities",
 			"status": "complete",
 			"pages": ["/product/abilities/", "/product/mcp/", "/plugins/overview/"]
 		},
 		{
 			"id": "knowledge-base",
-			"source": "apps/desktop-app/src/renderer/domains/knowledge-base",
+			"source": "apps/desktop/src/renderer/domains/knowledge-base",
 			"status": "complete",
 			"pages": ["/product/knowledge-base/"]
 		},
 		{
 			"id": "batch-tasks",
-			"source": "apps/desktop-app/src/renderer/domains/batch-tasks",
+			"source": "apps/desktop/src/renderer/domains/batch-tasks",
 			"status": "complete",
 			"pages": ["/product/batch-tasks/"]
 		},
 		{
 			"id": "automation",
-			"source": "apps/desktop-app/src/renderer/domains/scheduler",
+			"source": "apps/desktop/src/renderer/domains/scheduler",
 			"status": "complete",
 			"pages": ["/product/automation/"]
 		},
 		{
 			"id": "application-environment",
-			"source": "apps/desktop-app/src/renderer/domains/settings",
+			"source": "apps/desktop/src/renderer/domains/settings",
 			"status": "complete",
 			"pages": ["/product/application-environment/"]
 		},
 		{
 			"id": "claw-im",
-			"source": "apps/desktop-app/src/main/im-host",
+			"source": "apps/desktop/src/main/im-host",
 			"status": "complete",
 			"pages": ["/product/claw/", "/product/im/"]
 		},
 		{
 			"id": "notifications-webhook",
-			"source": "apps/desktop-app/src/renderer/domains/settings",
+			"source": "apps/desktop/src/renderer/domains/settings",
 			"status": "complete",
 			"pages": ["/product/webhook/"]
 		},
 		{
 			"id": "desktop-pet",
-			"source": "apps/desktop-app/src/renderer/domains/pet",
+			"source": "apps/desktop/src/renderer/domains/pet",
 			"status": "complete",
 			"pages": ["/product/desktop-pet/"]
 		},

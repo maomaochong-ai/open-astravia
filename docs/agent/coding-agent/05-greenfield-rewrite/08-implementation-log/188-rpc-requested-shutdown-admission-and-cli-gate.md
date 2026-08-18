@@ -51,13 +51,13 @@ fresh、resume、continue 用例连续启动三个真实 CLI 进程，隔离运�
 
 ### CLI 差异测试
 
-修改 `apps/cli-app/test/agent-runtime-command-admission-differential.test.ts`：
+修改 `apps/cli-host/test/agent-runtime-command-admission-differential.test.ts`：
 
 - 定义受 `StartAgentRpcOptions` 静态约束的共享 Host profile；
 - Legacy 与 Greenfield 均启用 Host Bridge 并使用 `im-claw` 场景；
 - 套件中的全部 RPC 进程使用相同 Host profile，只替换 backend。
 
-修改 `apps/cli-app/test/agent-runtime-selection.test.ts`，仅为启动三个真实进程的 fresh/resume/continue 用例设置 30 秒局部超时，没有修改全局测试预算。
+修改 `apps/cli-host/test/agent-runtime-selection.test.ts`，仅为启动三个真实进程的 fresh/resume/continue 用例设置 30 秒局部超时，没有修改全局测试预算。
 
 本阶段不需要 TypeBox 或 Zod。改动没有新增不可信运行时输入边界，测试选项已有 TypeScript 类型约束。
 
@@ -70,7 +70,7 @@ fresh、resume、continue 用例连续启动三个真实 CLI 进程，隔离运�
 - 默认并行套件唯一失败为既有 Subagent 状态持久化 revision 冲突，隔离运行 3/3 通过；
 - CLI 单 worker 全量套件：210/210 通过；
 - `bun run check:quick`：通过。
-- `bun run check`：通过，包含 Biome、monorepo 与 CLI/desktop-app/admin 类型检查及质量守卫。
+- `bun run check`：通过，包含 Biome、monorepo 与 CLI/desktop/admin 类型检查及质量守卫。
 
 coding-agent 全包测试当前为 1018 项通过、76 项失败、45 项跳过，并有 3 个未处理错误。失败集中在既有 Windows 路径与 PowerShell 假设、模型 fixture、旧提示词、SettingsManager 和并发知识写入测试；本阶段新增 RPC 测试通过，未将这些独立基线问题混入当前修复。
 

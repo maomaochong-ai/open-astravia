@@ -3,7 +3,7 @@
 ## 问题
 
 第 62 轮执行 `bun run check` 时，根 `tsgo --noEmit` 通过。后续单独使用
-`apps/cli-app/tsconfig.build.json` 检查时出现三个错误：
+`apps/cli-host/tsconfig.build.json` 检查时出现三个错误：
 
 ```text
 缺少 createCodingAgentPromptRuntime 导出
@@ -14,10 +14,10 @@ CodingAgentModelCallFrameComposerOptions 缺少 readMcpPromptState
 这暴露出两个不同的类型检查口径：
 
 1. 根 `tsconfig.json` 使用 workspace 源码 path map，检查当前源码。
-2. `cli-app/tsconfig.build.json` 按 workspace 包的 `dist/*.d.ts` 检查真实构建消费面。
+2. `cli-host/tsconfig.build.json` 按 workspace 包的 `dist/*.d.ts` 检查真实构建消费面。
 
 根 `--listFiles` 已确认包含
-`apps/cli-app/src/greenfield-runtime-composition.ts`，所以问题不是根检查漏掉该文件；三个错误来自
+`apps/cli-host/src/greenfield-runtime-composition.ts`，所以问题不是根检查漏掉该文件；三个错误来自
 `coding-agent` 和 `runtime-mcp` 的声明产物仍是第 61 轮版本。
 
 此前将 `bun run check` 通过概括为“全部类型检查通过”不够准确：它只证明源码图通过，不证明生成
@@ -31,8 +31,8 @@ CodingAgentModelCallFrameComposerOptions 缺少 readMcpPromptState
 
 ```text
 root tsgo --noEmit
-cli-app bun run typecheck
-desktop-app tsc --noEmit
+cli-host bun run typecheck
+desktop tsc --noEmit
 admin tsc -b
 ```
 
@@ -53,7 +53,7 @@ bun run check:types:build-surfaces
 该命令执行：
 
 ```text
-tsgo --noEmit -p apps/cli-app/tsconfig.build.json
+tsgo --noEmit -p apps/cli-host/tsconfig.build.json
 ```
 
 它有意不并入只读 `bun run check`，原因是 build config 按真实 `dist/*.d.ts` 解析；上游源码修改后，
@@ -74,7 +74,7 @@ tsgo --noEmit -p apps/cli-app/tsconfig.build.json
 ```text
 coding-agent
 -> runtime-mcp
--> cli-app build-surface noEmit check
+-> cli-host build-surface noEmit check
 ```
 
 没有手工编辑 `dist`，也没有改变正式构建图。刷新后，原来的三个 CLI build-config 错误全部消失。
@@ -86,14 +86,14 @@ coding-agent
 根和包级 `--listFiles` 均包含：
 
 ```text
-apps/cli-app/src/greenfield-runtime-composition.ts
+apps/cli-host/src/greenfield-runtime-composition.ts
 ```
 
 以下两种源码检查均通过：
 
 ```text
-bun run --cwd apps/cli-app typecheck
-bunx tsc --noEmit -p apps/cli-app/tsconfig.json
+bun run --cwd apps/cli-host typecheck
+bunx tsc --noEmit -p apps/cli-host/tsconfig.json
 ```
 
 ### Build Surface
@@ -114,7 +114,7 @@ bun run check
 结果：全部通过。`check` 输出已明确显示：
 
 ```text
-bun run --cwd apps/cli-app typecheck
+bun run --cwd apps/cli-host typecheck
 ```
 
 ## 边界

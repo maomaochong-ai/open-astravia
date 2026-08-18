@@ -8,7 +8,7 @@
 
 1. `ecosystem-adapter` 保持生态协议适配职责，不拥有插件商店 UI、安装目录和用户授权。
 2. `coding-agent` 只接收归一化资源和能力，不扫描 Claude marketplace 缓存。
-3. `desktop-app` 拥有本地安装、信任、进程环境和插件生命周期。
+3. `desktop` 拥有本地安装、信任、进程环境和插件生命周期。
 4. Claude/Codex/Vetta 三种清单、工具名和 Hook wire contract 不互相冒充。
 5. 首版以 `cc-skills@f5359d9` 契约测试为准，官方扩展功能通过新 profile 增量加入。
 
@@ -83,7 +83,7 @@ packages/ecosystem-adapter/src/claude/
 - 在用户目录中安装或升级文件；
 - 静默下载外部 CLI。
 
-### 2.3 `desktop-app`
+### 2.3 `desktop`
 
 负责：
 

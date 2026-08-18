@@ -4,7 +4,7 @@
 
 本阶段只迁移可执行入口与发布产物的架构所有权，不删除仍作为测试基线的 Legacy Session、Runtime Backend 和 Knowledge 实现：
 
-- `cli-app` 成为 `vetta`、`vetta-agent`、`vetta-agent-rpc` 的唯一所有者；
+- `cli-host` 成为 `vetta`、`vetta-agent`、`vetta-agent-rpc` 的唯一所有者；
 - `coding-agent` 回归能力内核与兼容适配包，不再发布可执行文件；
 - 所有独立编译、全局链接和 SDK 默认 RPC 启动路径指向 Canonical CLI；
 - Legacy CLI 不再通过 package export 或根导出公开；
@@ -25,7 +25,7 @@
 
 ### 1. CLI App 获得 Agent 专用入口
 
-新增 `apps/cli-app/src/agent-cli.ts`，它只调用现有 `runAgentCli()`。三个入口职责现在是：
+新增 `apps/cli-host/src/agent-cli.ts`，它只调用现有 `runAgentCli()`。三个入口职责现在是：
 
 | 命令 | 入口 | 职责 |
 | --- | --- | --- |
@@ -68,16 +68,16 @@ Legacy `main.ts` 暂时保留为测试参照，但已不存在生产 import、pa
 - 未传 `cliPath` 时直接启动 Canonical RPC 命令；
 - 显式传入 JavaScript `cliPath` 时继续通过 Node 启动，保持既有测试和自定义入口兼容；
 - 示例不再依赖 `coding-agent/dist/cli.js`；
-- 源码集成测试的显式路径改为 `cli-app/dist/agent-rpc-cli.js`。
+- 源码集成测试的显式路径改为 `cli-host/dist/agent-rpc-cli.js`。
 
-这样避免了 `coding-agent -> cli-app` 的反向包依赖和依赖环。
+这样避免了 `coding-agent -> cli-host` 的反向包依赖和依赖环。
 
 ### 5. 测试专用 Legacy 基线
 
 Print 和 RPC 差分测试不再导入已删除的 `@vetta/coding-agent/legacy/cli`。测试目录中的专用入口直接调用内部 `main.ts`：
 
 - 不参与 `coding-agent` package exports；
-- 不进入 `cli-app` build；
+- 不进入 `cli-host` build；
 - 不进入独立安装产物；
 - 只用于下一阶段删除 Legacy 实现前的行为比较。
 
@@ -86,7 +86,7 @@ Print 和 RPC 差分测试不再导入已删除的 `@vetta/coding-agent/legacy/c
 Legacy retirement gate 现在同时约束：
 
 - `coding-agent` 不得发布任何 bin；
-- `cli-app` 的 `vetta-agent` 必须指向 `dist/agent-cli.js`；
+- `cli-host` 的 `vetta-agent` 必须指向 `dist/agent-cli.js`；
 - 已删除的两个 Legacy CLI 源文件不得恢复；
 - `./legacy/cli` 不得恢复；
 - standalone Agent 产物必须经过统一 compiler，禁止直接编译源入口。
@@ -116,7 +116,7 @@ Legacy 执行边从 10 条降到 7 条：
 
 ## 兼容性结论
 
-- 用户已有 `vetta-agent` 命令名保留，但实现所有权迁移到 `cli-app`；
+- 用户已有 `vetta-agent` 命令名保留，但实现所有权迁移到 `cli-host`；
 - `vetta` 和 `vetta-agent-rpc` 行为未改变；
 - `--agent-runtime legacy` 仍可解析，但实际执行 Greenfield；
 - Legacy 会话读取、迁移和显式不兼容错误未改变；

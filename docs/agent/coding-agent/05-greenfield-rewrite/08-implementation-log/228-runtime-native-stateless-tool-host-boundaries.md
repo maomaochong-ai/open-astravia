@@ -70,7 +70,7 @@
 ```text
 packages/runtime-tools: async gate + product/read/write/edit contracts — 63 passed
 packages/coding-agent: process/doc/path/product/block-images contracts — 26 passed
-apps/cli-app: agent-print-mode.test.ts — 18 passed
+apps/cli-host: agent-print-mode.test.ts — 18 passed
 bun run check:quick — passed
 bun run check — passed（Biome、monorepo/CLI/Desktop/Admin 类型检查与全部 guards）
 ```

@@ -4,7 +4,7 @@ status: accepted
 
 # 插件 i18n：NLS `%key%` 占位符 + 宿主加载 sidecar catalog + locale 跟随宿主
 
-desktop-app 自身 i18n 已落地（[[0031-desktop-i18n-i18next-semantic-keys-main-owned-language]]），但插件系统（preset 系统插件 + external 外置插件）面向用户的文案全是裸字符串、不随宿主语言切换。本 ADR 定义插件 i18n 的承载形态、加载/同步路径与 SDK 表面。一旦定型，`%key%` 约定与 SDK i18n API 即成为第三方插件的对外契约，极难回退，故记此 ADR。
+desktop 自身 i18n 已落地（[[0031-desktop-i18n-i18next-semantic-keys-main-owned-language]]），但插件系统（preset 系统插件 + external 外置插件）面向用户的文案全是裸字符串、不随宿主语言切换。本 ADR 定义插件 i18n 的承载形态、加载/同步路径与 SDK 表面。一旦定型，`%key%` 约定与 SDK i18n API 即成为第三方插件的对外契约，极难回退，故记此 ADR。
 
 范围：**全套**——`plugin.json` 静态文案 + 插件运行期组件文案。**排除** agent 面向串（`registerTool` 的 description、`agent.systemPrompt`、skills），它们是喂给模型的，比照 [[0031-desktop-i18n-i18next-semantic-keys-main-owned-language]] 的「发给 LLM 的不抽」一致保持原样。
 

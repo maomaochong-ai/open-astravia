@@ -99,7 +99,7 @@ Host request
 - `@vetta/coding-agent/runtime`：Runtime 产品入口
 - `@vetta/coding-agent/sdk`：嵌入式会话 API
 - `@vetta/coding-agent/rpc`：平台无关的 RPC Frame、命令分发、桥接和会话能力合同；传输、进程退出与请求 ID
-  由宿主注入。CLI 的 Node JSONL 适配位于 `@vetta/cli-app`，不属于协议核心
+  由宿主注入。CLI 的 Node JSONL 适配位于 `@vetta/cli-host`，不属于协议核心
 - `@vetta/coding-agent/extensions`：扩展合同
 - `@vetta/coding-agent/host`：Node Tool Host 兼容入口，不得作为新产品能力依赖
 - `@vetta/coding-agent/resources`：Skill、提示词等资源入口

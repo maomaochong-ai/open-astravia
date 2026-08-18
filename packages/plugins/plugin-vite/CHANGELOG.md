@@ -7,7 +7,7 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 ### Fixed
 
 - Made the host `@vetta/theme-ui/plugin-ui` share explicitly opt-in through `hostThemeUi`, so plugins that do not use host-built Theme UI components no longer emit missing-dependency warnings or inherit an unnecessary build-time dependency.
-- Raised production `assetsInlineLimit` so small plugin assets (for example package `icon.png`) stay data-URL inlined; absolute `/…` asset URLs resolve against the host origin and can pick up desktop-app `public/icon.png` by mistake.
+- Raised production `assetsInlineLimit` so small plugin assets (for example package `icon.png`) stay data-URL inlined; absolute `/…` asset URLs resolve against the host origin and can pick up desktop `public/icon.png` by mistake.
 - Kept CSS resource-module requests such as `?raw`, `?url`, and `?inline` out of the development PostCSS scoping pipeline, while preserving scoping for normal, direct, and HMR stylesheet requests.
 - Made the development ready handshake transform the plugin-local module graph before publishing the source overlay, so entry dependency compilation failures retain the stable plugin instead of surfacing later in Renderer.
 - Exposed the project-local `vetta-plugin` CLI through the stable `@vetta-org/plugin-vite/cli` subpath so ESM-only package exports can be resolved by Desktop without pretending the package has a CommonJS entry.
@@ -29,7 +29,7 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 ### Added
 
 - Added the `vetta-plugin validate` and `vetta-plugin pack` CLI so external projects and the plugin workbench use the same manifest parser and archive implementation as Vite builds.
-- **宿主共享 `@vetta/ui`**：`vettaPluginFederation` 默认将 `@vetta/ui` 设为 MF `singleton + import:false`，并 rollup external 到 `vetta-host://ui`，与 desktop-app 的 share scope / host shim 对齐；插件可选用宿主 primitives 而不打进 bundle。
+- **宿主共享 `@vetta/ui`**：`vettaPluginFederation` 默认将 `@vetta/ui` 设为 MF `singleton + import:false`，并 rollup external 到 `vetta-host://ui`，与 desktop 的 share scope / host shim 对齐；插件可选用宿主 primitives 而不打进 bundle。
 - **打包纳入能力详情**：根目录存在 `ability.json` 时随 zip 分发，并连带约定的 `presentation/` 展示资源目录；打包期校验 `schemaVersion` / `type` / `slug` / `version` 与 `plugin.json` 身份一致，不一致直接报错。`ability.json` 缺省时行为不变。
 
 ### Changed

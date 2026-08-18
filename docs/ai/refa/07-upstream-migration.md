@@ -35,7 +35,7 @@
 
 对 `agent-core` 的依赖只允许出现在 engine composition/adapter 目录。compaction、memory、RPC、sessions、extensions 和 public SDK 不得依赖 Agent 类型。
 
-### `desktop-app` / `cli-app`
+### `desktop` / `cli-host`
 
 会话功能只依赖 Runtime Host/Public SDK。允许直接使用 AI 的纯 `ModelDescriptor` 做模型目录 UI，但不能导入 Provider adapter、stream event 或认证实现。
 

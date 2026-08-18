@@ -1,6 +1,6 @@
 # AI 与 Agent 长期重构方案
 
-本目录给出 `packages/ai` 与 `packages/agent` 的长期重构方案。分析范围不止两个包本身，还包括实际承载产品运行时的 `packages/runtime-core`、工具定义层 `packages/runtime-tools`，以及 `packages/coding-agent`、`apps/desktop-app`、`apps/cli-app` 等上游应用。
+本目录给出 `packages/ai` 与 `packages/agent` 的长期重构方案。分析范围不止两个包本身，还包括实际承载产品运行时的 `packages/runtime-core`、工具定义层 `packages/runtime-tools`，以及 `packages/coding-agent`、`apps/desktop`、`apps/cli-host` 等上游应用。
 
 ## 核心结论
 

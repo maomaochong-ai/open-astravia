@@ -103,7 +103,7 @@ Canary Runner 现在接受该恢复结果，校验问题身份后通过 `convers
 Desktop 定向类型检查：
 
 ```text
-tsc --noEmit -p apps/desktop-app/tsconfig.json
+tsc --noEmit -p apps/desktop/tsconfig.json
 通过
 ```
 
@@ -142,7 +142,7 @@ bun run check:quick
 
 ```text
 bun run check
-Biome、monorepo tsgo、cli-app tsgo、desktop-app tsc、admin tsc 与 guards 全部通过
+Biome、monorepo tsgo、cli-host tsgo、desktop tsc、admin tsc 与 guards 全部通过
 ```
 
 ## 6. 结论与下一步

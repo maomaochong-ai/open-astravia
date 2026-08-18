@@ -90,11 +90,11 @@ Greenfield IM Runtime Host 新增 Session 级 Extension Binding Controller：
   - 真实 `SessionManager setup` 导入 V2 Conversation。
   - fork 绑定失败时删除新产物。
 - `packages/coding-agent/test/rpc/rpc-command-dispatcher.test.ts`：6 个测试通过。
-- `apps/cli-app/test/greenfield-im-rpc-adapter.test.ts`：10 个测试通过。
+- `apps/cli-host/test/greenfield-im-rpc-adapter.test.ts`：10 个测试通过。
   - 动态 Session 身份读取。
   - new/switch/fork 委托到 Active Session Host。
   - 固定订阅与资源释放合同。
-- `apps/cli-app/test/greenfield-im-runtime-host.test.ts`：11 个测试通过。
+- `apps/cli-host/test/greenfield-im-runtime-host.test.ts`：11 个测试通过。
   - 真实 Conversation ownership 的 new → switch → resume 闭环。
   - Runtime Host 的活动 Session getter 随事务切换。
   - 跨会话后 `session_start/session_shutdown` 仍各发送一次。
@@ -102,7 +102,7 @@ Greenfield IM Runtime Host 新增 Session 级 Extension Binding Controller：
 验证命令：
 
 - 上述 4 个定向测试文件：32 个测试全部通过。
-- `apps/cli-app` `bun run typecheck`：通过。
+- `apps/cli-host` `bun run typecheck`：通过。
 - 根目录 `bun run check:quick`：通过。
 - 根目录 `bun run check`：通过。
 

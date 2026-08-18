@@ -18,7 +18,7 @@ export const TESTABLE_PACKAGES = {
 	"runtime-mcp": "packages/runtime-mcp",
 	"coding-agent": "packages/coding-agent",
 	"ecosystem-adapter": "packages/ecosystem-adapter",
-	"desktop-app": "apps/desktop-app",
+	desktop: "apps/desktop",
 	"plugin-cli": "packages/plugins/plugin-cli",
 };
 
@@ -27,8 +27,8 @@ export const PACKAGE_DIRS = {
 	...TESTABLE_PACKAGES,
 	"capability-sdk": "packages/capability-sdk",
 	"capability-runtime": "packages/capability-runtime",
-	"desktop-app": "apps/desktop-app",
-	"cli-app": "apps/cli-app",
+	desktop: "apps/desktop",
+	"cli-host": "apps/cli-host",
 	"plugin-sdk": "packages/plugins/plugin-sdk",
 	"plugin-vite": "packages/plugins/plugin-vite",
 	"theme-sdk": "packages/theme-sdk",

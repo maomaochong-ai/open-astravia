@@ -51,13 +51,13 @@ const config = await store.read();
 await store.write(config);
 ```
 
-Business schemas and migrations stay in the consuming package (e.g. desktop-app pet / app-monitor).
+Business schemas and migrations stay in the consuming package (e.g. desktop pet / app-monitor).
 
 Detailed conventions and recommended consumer directory structure are documented in
 [`docs/migrations.md`](docs/migrations.md).
 
 ## Design rules
 
-- **No** Electron / desktop-app / theme dependencies.
+- **No** Electron / desktop / theme dependencies.
 - Prefer small, composable tools; domain config lives with the product.
 - Mark Node-only APIs clearly (fs-backed modules).

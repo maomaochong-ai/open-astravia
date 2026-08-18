@@ -2,13 +2,13 @@
 
 > 本文记录 Vetta **所有面向用户可见文案**的原则：桌面端 UI、官网营销与 FAQ、方案/定价说明等。  
 > 读者：写 UI / 官网文案的人、改设置或首页的 agent、做产品交互的人。  
-> **不是** API 文档，也不是 i18n 工程规范（桌面见 [ADR-0031](./adr/0031-desktop-i18n-i18next-semantic-keys-main-owned-language.md) 与 `apps/desktop-app` 的 AGENTS；官网文案在 `apps/site/messages/`）。
+> **不是** API 文档，也不是 i18n 工程规范（桌面见 [ADR-0031](./adr/0031-desktop-i18n-i18next-semantic-keys-main-owned-language.md) 与 `apps/desktop` 的 AGENTS；官网文案在 `apps/site/messages/`）。
 
 适用范围简述：
 
 | 场景 | 典型位置 | 额外注意 |
 |------|----------|----------|
-| 桌面设置 / 能力 | `desktop-app` i18n | 结果优先、实现下沉（见 §2–§5、§10） |
+| 桌面设置 / 能力 | `desktop` i18n | 结果优先、实现下沉（见 §2–§5、§10） |
 | 官网 Hero / 方案 / Q&A | `apps/site` i18n | 产品定位与品牌词统一（见 §1.1、§4.3、§11） |
 | 日志 / CHANGELOG / ADR | 仓库文档与代码 | **可以说实现**，不进用户主路径 |
 
@@ -225,7 +225,7 @@ stdio
 - 中文：短句、动词靠前、少从句套从句。  
 - 英文：同样 outcome-first；不要把中文技术说明直译成协议说明书。  
 - **中英语义对齐即可，不必字字对译**（例如中文「简单说」↔ 英文 `In short` 已足够，不必硬改 `Simply put`）。  
-- 统一走 i18n key；用户可见字符串不写死在组件里（desktop-app / site 均有约定）。  
+- 统一走 i18n key；用户可见字符串不写死在组件里（desktop / site 均有约定）。  
 - 空状态写 **下一步**：「还没有…，可在下方「发现」中选择。」而不是只写「暂无配置。」
 
 ### 6.1 语气刻度

@@ -18,9 +18,9 @@ export const REQUIRED_RUNTIME_FAILURE_MARKERS = Object.freeze({
 		"CONVERSATION_STORAGE_ERROR_CODES.OWNERSHIP_CONFLICT",
 		'runtimeError("SESSION_LOCKED"',
 	],
-	"apps/cli-app/src/session-compatibility-error.ts": ["recoverability"],
+	"apps/cli-host/src/session-compatibility-error.ts": ["recoverability"],
 	"packages/runtime-core/src/errors.ts": ["SESSION_BUSY", "SESSION_LOCKED", "isSessionError"],
-	"apps/desktop-app/src/main/conversations/desktop-conversation-service.ts": [
+	"apps/desktop/src/main/conversations/desktop-conversation-service.ts": [
 		"RUNTIME_ERROR_CODES.SESSION_BUSY",
 		"RUNTIME_ERROR_CODES.SESSION_LOCKED",
 	],
@@ -43,13 +43,13 @@ const BOUNDARY_ROOTS = [
 ];
 
 const BOUNDARY_FILES = [
-	"apps/cli-app/src/agent-runtime-selection.ts",
-	"apps/cli-app/src/extension-compatibility-error.ts",
-	"apps/cli-app/src/session-compatibility-error.ts",
-	"apps/cli-app/src/rpc/node-rpc-client-transport.ts",
-	"apps/desktop-app/src/main/agent-runtime/composition.ts",
-	"apps/desktop-app/src/main/conversations/desktop-conversation-service.ts",
-	"apps/desktop-app/src/main/runtime.ts",
+	"apps/cli-host/src/agent-runtime-selection.ts",
+	"apps/cli-host/src/extension-compatibility-error.ts",
+	"apps/cli-host/src/session-compatibility-error.ts",
+	"apps/cli-host/src/rpc/node-rpc-client-transport.ts",
+	"apps/desktop/src/main/agent-runtime/composition.ts",
+	"apps/desktop/src/main/conversations/desktop-conversation-service.ts",
+	"apps/desktop/src/main/runtime.ts",
 	"packages/runtime-core/src/errors.ts",
 	"packages/runtime-core/src/runtime-host/runtime-host.ts",
 	"packages/coding-agent/src/host/runtime-host/session-backend.ts",

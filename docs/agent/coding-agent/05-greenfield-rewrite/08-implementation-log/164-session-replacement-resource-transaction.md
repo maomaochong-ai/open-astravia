@@ -108,7 +108,7 @@ resume 前发生，同时 source Session 仍是活动 Session 且未被 dispose�
 ## 验证结果
 
 - `packages/coding-agent/test/runtime-core/greenfield-active-session-transition-host.test.ts`：12 项通过。
-- `apps/cli-app/test/agent-runtime-session-replacement-differential.test.ts`：3 项通过。
+- `apps/cli-host/test/agent-runtime-session-replacement-differential.test.ts`：3 项通过。
 - Legacy 与 Greenfield 的三条 replacement 观察结果完全一致。
 
 ## TypeBox / Zod 判断

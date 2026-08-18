@@ -72,7 +72,7 @@ CLI 收到 `extension-incompatible` 后不再适配为 Legacy fallback，而是�
 - Greenfield Host 中性 Extension 不兼容事实：1 项通过。
 - 质量门禁测试：36 项通过。
 - 根 `tsgo --noEmit`：通过。
-- `apps/cli-app` 独立 `tsgo --noEmit -p tsconfig.json`：通过。
+- `apps/cli-host` 独立 `tsgo --noEmit -p tsconfig.json`：通过。
 - 全仓 Biome 与全部 guards：通过。
 
 真实 RPC、Print 和安装产物测试已经更新为新错误合同，但当前受控 Windows 环境中的 Bun standalone 编译器

@@ -105,7 +105,7 @@ Greenfield Core Assembly 交付真实 `RuntimeSessionHistoryController`。
 - `packages/runtime-core`：22 个测试文件、105 项测试全部通过。
 - `packages/runtime-storage`：4 个测试文件、25 项测试全部通过。
 - 根目录 `bun run check:quick` 通过。
-- 根目录 `bun run check` 通过：Biome、monorepo `tsgo`、desktop-app `tsc`、admin `tsc -b` 和
+- 根目录 `bun run check` 通过：Biome、monorepo `tsgo`、desktop `tsc`、admin `tsc -b` 和
   `check:guards` 均无错误。
 
 ## 明确未修改

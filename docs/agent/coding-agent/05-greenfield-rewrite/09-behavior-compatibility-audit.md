@@ -262,7 +262,7 @@ Runtime 提供的本地 Adapter 只检查受管 bin 目录和 PATH，不下载�
   不 chmod，以及成功和失败时的归档/临时目录清理。
 - 网络边界合同覆盖 GitHub 版本响应解析、HTTP 503、瞬时 TypeError 重试、HTTP 404 不重试；
   本地真实 tar.gz 产物验证覆盖实际归档、安装二进制内容和 staging 清理。
-- `cli-app` 已建立过渡 Composition Root，使用 coding-agent Adapter 创建 Runtime Resolver，
+- `cli-host` 已建立过渡 Composition Root，使用 coding-agent Adapter 创建 Runtime Resolver，
   注册 current_time/read/ls/glob/grep/find/tree/bash/shell，并通过 FeatureCompiler 生成新 Profile；旧
   CLI 入口仍未切换。
 - Runtime 源码没有新增 `coding-agent` 或下载器导入。
@@ -1403,7 +1403,7 @@ Composition 总释放路径逐层等待该 Promise，ownership 只在后台进�
 | `write` Tool | 独立 Runtime Tool、WriteOperations、必需的宿主 WritePathPolicy、路径/取消/错误合同和全场景 Profile 差分已通过 | 旧 AgentSession 和生产入口仍使用旧 Tool Factory | 工具模块迁移完成；旧生产入口尚不可删除 |
 | `edit` Tool | 独立 Runtime Tool、双模式纯编辑引擎、EditOperations、必需的宿主 EditPathPolicy、22 项差分合同和全场景 Profile 差分已通过 | 旧 AgentSession 和生产入口仍使用旧 Tool Factory | 工具模块迁移完成；旧生产入口尚不可删除 |
 | `bash/shell` Tool | Runtime Definition、Registration、前台执行器、后台协调、独立后台生命周期、task 工具、通知格式、低层 Host Adapter、平台 scope 和过渡 Composition Root 已通过；后台 Service 具备可等待 `shutdown()`，Greenfield Session 释放会等待真实进程退出 | 旧 AgentSession 仍使用旧工具/Manager；同步 `dispose()` 兼容入口仍保留 | 新 Runtime 工具链与异步关闭合同已完成；旧生产兼容路径尚不可删除 |
-| 宿主可执行文件解析 | Runtime Port、本地 PATH/managed-bin Adapter、grep/find 注入合同、旧 ensureTool 适配、网络/归档合同和 cli-app Composition Root 已通过 | 真实 GitHub 网络、最终独立可执行发布物和完整 Tool Profile 迁移尚未完成；包根兼容导出必须继续保留 | 新 Profile 可并行验证；旧宿主仍不可切换 |
+| 宿主可执行文件解析 | Runtime Port、本地 PATH/managed-bin Adapter、grep/find 注入合同、旧 ensureTool 适配、网络/归档合同和 cli-host Composition Root 已通过 | 真实 GitHub 网络、最终独立可执行发布物和完整 Tool Profile 迁移尚未完成；包根兼容导出必须继续保留 | 新 Profile 可并行验证；旧宿主仍不可切换 |
 | Coding Tools Feature | 只依赖版本化 Catalog，按 Model Call 动态解析 scope、agent mode、explicit 激活和 requires/capabilities，使用稳定 binding 和原子 Catalog 执行仲裁，并支持 deactivate/revoke/unregister；产品工具按 Session cwd 创建，文档/OCR/progress 已由 Runtime Tools 原生拥有，模型顺序由通用 `modelOrder` 稳定物化；Desktop 与 CLI/RPC/IM 源码 Provider Frame 已精确差分，安装产物 `im-claw` Provider Frame 与有序 Tool Surface 也已验证 | 安装产物 Greenfield CLI 仍只支持 `im-claw`；默认 selector 尚未切换 | 模型调用级工具面与 Runtime-native 所有权已闭合；进入默认切换准备度审计 |
 | Composition Root 与依赖图 | 产品装配已归属 `@vetta/coding-agent/composition`；CLI/Desktop 直接消费；`runtime-composition` 无包装兼容转发；Runtime 子路径与旧根兼容面采用分段构建；manifest truth 和 forwarding-only 守卫已接入 | `runtime-tools`、`runtime-storage` 包根仍需为外部消费者保留 Coding Agent 兼容转发；默认 selector 仍是 Legacy | 产品所有权和 clean build 顺序已收口；兼容根入口只能在外部迁移窗口后删除 |
 | Coding Agent 公开 API | Bootstrap、Config、Knowledge、Profile、Resources、RPC 已有显式子路径；Legacy CLI/Host Service 与 Runtime 包根使用用途明确的迁移期入口；受治理生产源码的精确根入口消费者已归零 | Legacy/Compat 子路径仍转发具体实现，外部消费者迁移窗口尚未建立；根入口仍是已发布兼容面 | 仓库内依赖不再经过聚合根；兼容入口只能按各自迁移合同逐项删除 |

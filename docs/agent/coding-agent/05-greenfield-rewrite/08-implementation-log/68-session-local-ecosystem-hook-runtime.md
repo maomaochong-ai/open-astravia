@@ -195,7 +195,7 @@ bunx vitest --run \
 
 ```text
 bunx tsgo --noEmit
-bunx tsc --noEmit -p apps/cli-app/tsconfig.json
+bunx tsc --noEmit -p apps/cli-host/tsconfig.json
 ```
 
 `bun run check:quick` 与完整 `bun run check` 均通过。完整门禁覆盖 Biome、根 monorepo `tsgo`、CLI 独立

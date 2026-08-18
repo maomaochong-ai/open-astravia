@@ -39,7 +39,7 @@
 - 新建 `greenfield-rpc-runtime-capabilities.ts`，只连接 Bash、通用 RPC/IM Adapter 与 Session Host，并继续拥有订阅、初始化和分阶段释放语义。
 - 新建 `greenfield-runtime-host.ts` 作为唯一实现入口，保留迁移判断、模型解析、RPC/IM/Print 启动和不兼容结果映射。
 - 删除 670 行的旧聚合实现 `rpc/greenfield-im-runtime-host.ts` 和纯转发文件 `rpc/greenfield-rpc-runtime-host.ts`；调用方直接引用唯一入口。
-- `cli-app` 包根只将原有 IM 公共函数切换到新入口，并用 RPC 命名的通用合同替代旧 IM 类型别名；没有额外公开内部 RPC/Print 启动函数。
+- `cli-host` 包根只将原有 IM 公共函数切换到新入口，并用 RPC 命名的通用合同替代旧 IM 类型别名；没有额外公开内部 RPC/Print 启动函数。
 - 未引入 TypeBox 或 Zod：本阶段没有新增外部数据格式或运行时反序列化边界，现有静态联合类型足以表达宿主结果。
 
 ## 旧实现依赖变化
@@ -54,10 +54,10 @@
 
 ## 行为兼容性验证
 
-- `cli-app` 独立类型检查通过。
+- `cli-host` 独立类型检查通过。
 - Runtime Host、IM RPC Adapter 与两类不兼容策略定向测试：4 个文件、36 个测试通过。
 - 重写治理测试：1 个文件、17 个测试通过。
-- `apps/cli-app` 全包测试：35 个文件、194 个测试全部通过。
+- `apps/cli-host` 全包测试：35 个文件、194 个测试全部通过。
 - 全包测试覆盖旧会话迁移与恢复、初始化失败清理、Extension/Hook/MCP 生命周期、Print/RPC/IM、安装后独立可执行产物、动态 Skill/MCP 更新和进程重启。
 - `bun run check:quick` 通过，新增架构守卫实际扫描结果均为 `0/0`。
 

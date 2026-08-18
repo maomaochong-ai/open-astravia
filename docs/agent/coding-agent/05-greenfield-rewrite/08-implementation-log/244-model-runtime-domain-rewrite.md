@@ -65,9 +65,9 @@
 ## 行为兼容性验证
 
 - monorepo `tsgo --noEmit` 通过。
-- desktop-app 独立 `tsc --noEmit` 通过。
+- desktop 独立 `tsc --noEmit` 通过。
 - `bun run check:quick` 通过；Biome 和全部质量守卫通过。
-- `bun run check` 中 lint、根级类型、CLI、desktop-app 与守卫通过，最后仅 admin `tsc -b` 因蓝屏后 `apps/admin/node_modules/@types/*` 文件 ACL 拒绝读取而失败；尝试 `bun install --force` 也因当前沙箱临时目录 ACL 报 `AccessDenied`，未改动依赖或锁文件。
+- `bun run check` 中 lint、根级类型、CLI、desktop 与守卫通过，最后仅 admin `tsc -b` 因蓝屏后 `apps/admin/node_modules/@types/*` 文件 ACL 拒绝读取而失败；尝试 `bun install --force` 也因当前沙箱临时目录 ACL 报 `AccessDenied`，未改动依赖或锁文件。
 - 新增远程模型运行时测试，覆盖缺少 URL/Token、并发去重、实时 Token、响应映射、401、HTTP/Schema 失败和失败后重试。
 - 原模型目录与模型选择行为测试已迁移到新运行时，并使用确定性内置模型 fixture。
 - 当前 Windows/Bun 测试执行器在收集测试前失败：fork 池报 `File URL path must be an absolute path`，thread/vmThread 池报 `port.addListener is not a function`；没有测试用例被执行，因此不能把这次 Vitest 尝试记为通过。

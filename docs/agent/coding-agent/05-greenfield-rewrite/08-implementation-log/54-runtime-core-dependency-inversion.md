@@ -8,7 +8,7 @@
 错误：runtime-core ──> coding-agent
 
 目标：coding-agent ──> runtime-core
-      desktop-app ──> RuntimeHost + coding-agent Legacy Adapter
+      desktop ──> RuntimeHost + coding-agent Legacy Adapter
 ```
 
 本轮只移动实现归属和组合责任，不改 Session、历史、工具、沙箱、模型或宿主交互行为。

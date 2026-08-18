@@ -48,7 +48,7 @@
 - `@vetta/runtime-composition` 生产与配置引用：`0`。
 - CLI Composition 转发模块：`10 -> 0`。
 - CLI 公共 Composition 转发边：`1 -> 0`。
-- Desktop 经 `@vetta/cli-app` 获取 Composition 合同的边：`1 -> 0`。
+- Desktop 经 `@vetta/cli-host` 获取 Composition 合同的边：`1 -> 0`。
 - Coding Agent 旧实现文件、旧实现依赖、Runtime 反向依赖仍均为 `0`。
 
 `check-coding-agent-rewrite-progress.mjs` 已将以上五项加入固定零目标；`check-package-boundaries.mjs` 同时拒绝恢复包、依赖声明、CLI 转发文件、CLI 公共转发和 Desktop 绕行依赖。它们不能通过更新 baseline 合法化。
@@ -57,7 +57,7 @@
 
 - `bun run check:quick`：通过；包含 package boundaries、rewrite progress、build order 和 standalone CLI build 守卫。
 - `bun run test:quality`：通过，4 个测试文件、89 个测试。
-- `apps/cli-app` 执行 `bun run test`：通过，36 个测试文件、195 个测试。
+- `apps/cli-host` 执行 `bun run test`：通过，36 个测试文件、195 个测试。
 - `packages/coding-agent` 执行迁移后的 4 个测试文件：通过，12 个测试。
 - Coding Agent 全包测试执行过但未全绿：897 个测试中 868 通过、17 跳过、12 失败。10 个失败来自既有 Windows shell/API key 测试；另 2 个来自本阶段未修改的 Session initialization profile 和 Subagent assembly 断言。上述失败不涉及本阶段删除的包、转发层或迁移测试，未在架构阶段顺带修改。
 

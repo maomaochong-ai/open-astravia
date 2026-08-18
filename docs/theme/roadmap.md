@@ -55,7 +55,7 @@ packages/themes/
   remote/
 ```
 
-desktop-app 主进程扫描 staging、应用 Resources 和用户主题目录，renderer 通过 `shared/theme/runtime` 的 provider 与 Module Federation loader 选择主题。desktop-app 不静态依赖任何具体主题包。
+desktop 主进程扫描 staging、应用 Resources 和用户主题目录，renderer 通过 `shared/theme/runtime` 的 provider 与 Module Federation loader 选择主题。desktop 不静态依赖任何具体主题包。
 
 暂时不做：
 
@@ -145,7 +145,7 @@ return <SidebarRenderer model={model} onOpenSession={props.onOpenSession} />;
 目标：
 
 - 主题可以声明自己的独立页面。
-- desktop-app 通过固定 `/theme/$themeId/$pageId` 路由承载页面，不允许主题动态注入任意路由。
+- desktop 通过固定 `/theme/$themeId/$pageId` 路由承载页面，不允许主题动态注入任意路由。
 - 主题页支持 `content` / `main` / `app` 三档受控覆盖范围。
 - 主题页导航数据通过 `useThemePagesModel()` 暴露。主题可以替换 `sidebar.navigation`，复用公开的 `SidebarNavigation` / `SidebarNavItemButton`，把默认导航项和主题页导航项合并渲染。
 
@@ -168,7 +168,7 @@ return <SidebarRenderer model={model} onOpenSession={props.onOpenSession} />;
 已落地点：
 
 - `@vetta/theme-sdk/storage`：`useThemeStorage`、`useThemeStorageValue`。
-- desktop-app host + preload IPC + `~/.vetta/desktop-app/themes/<themeId>/data.json`。
+- desktop host + preload IPC + `~/.vetta/desktop-app/themes/<themeId>/data.json`。
 
 暂不做：
 
@@ -246,9 +246,9 @@ interface ThemePackageManifest {
 复杂组件应先拆成：
 
 ```txt
-useXxxModel   -> desktop-app
+useXxxModel   -> desktop
 XxxView       -> theme-ui / official UI package
-XxxContainer  -> desktop-app
+XxxContainer  -> desktop
 ```
 
 ## 阶段 8：聊天页主题化
@@ -287,7 +287,7 @@ ChatPage
 
 - 默认 UI 行为不变。
 - `bun run check` 通过。
-- desktop-app 修改后 `bunx tsc --noEmit` 通过。
+- desktop 修改后 `bunx tsc --noEmit` 通过。
 - 新增用户可见文案走 i18n。
 - 不让主题直接访问内部 store / IPC。
 - 加载失败能回退默认 UI。

@@ -29,7 +29,7 @@
   - 使用系统 tar 创建临时归档。
   - 走实际解压、嵌套目录二进制定位、移动、chmod 和清理。
   - 验证最终二进制内容和 staging 文件删除。
-- 在 `cli-app` 新增 `createCodingToolsRuntimeComposition`：
+- 在 `cli-host` 新增 `createCodingToolsRuntimeComposition`：
   - 创建旧 `ensureTool` 的 Runtime Resolver Adapter。
   - 注册 current_time/read/ls/glob/grep/find。
   - 通过 `CodingToolsFeature` 和 `FeatureCompiler` 生成 Runtime Profile。
@@ -39,10 +39,10 @@
 ## 依赖边界决策
 
 当前 `runtime-tools` 包根仍保留旧 `@vetta/coding-agent` 兼容导出，因此不能让
-`coding-agent` 直接依赖 `runtime-tools` 作为组合根。组合根暂时放在 `cli-app`：
+`coding-agent` 直接依赖 `runtime-tools` 作为组合根。组合根暂时放在 `cli-host`：
 
 ```text
-cli-app
+cli-host
   -> coding-agent Adapter
   -> runtime-tools/coding
   -> runtime-core
@@ -64,7 +64,7 @@ Composition Root 上移回 coding-agent。
 ## 验证
 
 - `packages/coding-agent/test/tools-manager-resolver.test.ts`：20 项通过。
-- `apps/cli-app/test/runtime-tools-composition.test.ts`：2 项通过。
+- `apps/cli-host/test/runtime-tools-composition.test.ts`：2 项通过。
 - `bun install --lockfile-only` 完成 workspace 依赖锁定。
 - `bun run check:quick` 通过。
 - `bun run check` 通过。
@@ -72,7 +72,7 @@ Composition Root 上移回 coding-agent。
 ## 未解决问题
 
 - 真实 GitHub 网络、生产包管理器和最终独立可执行文件仍需发布前验证。
-- `cli-app` Composition Root 目前是并行新链路，未替代旧入口。
+- `cli-host` Composition Root 目前是并行新链路，未替代旧入口。
 - runtime-tools 包根兼容导出仍阻止 coding-agent 直接消费 runtime-tools。
 
 ## 下一步

@@ -93,9 +93,9 @@ TypeScript 穷尽类型，RPC Frame 继续复用既有 TypeBox 校验边界。�
 
 ```text
 bunx vitest --run test/runtime-core/greenfield-extension-tool-runtime.test.ts（coding-agent，4 项）
-bun run verify:runtime-cutover（cli-app，34 项）
-bun run verify:artifact:installed（cli-app，4 项）
-bunx vitest --run src/main/im-host/coding-agent-spec.test.ts（desktop-app，5 项）
+bun run verify:runtime-cutover（cli-host，34 项）
+bun run verify:artifact:installed（cli-host，4 项）
+bunx vitest --run src/main/im-host/coding-agent-spec.test.ts（desktop，5 项）
 bun run check:quick
 bun run check
 ```

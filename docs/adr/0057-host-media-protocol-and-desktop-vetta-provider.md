@@ -22,9 +22,9 @@ Provider 插件只接收统一的提示词、比例、尺寸、时长和不透�
 
 插件负责服务特有的工作流发现、字段映射、提交、轮询与取消。消费者不传工作流 ID、节点 ID、URL、header 或其它底层字段。Provider 增删通过事件通知消费插件，避免并行激活产生加载顺序竞态。
 
-### 3. Vetta 图片 Provider 内置于 desktop-app
+### 3. Vetta 图片 Provider 内置于 desktop
 
-默认 Provider ID 为 `desktop-app:vetta`。renderer 只传通用 `MediaCreateJobInput`，主进程校验 capability session 与 `media.generate` 权限，并把请求映射到固定的 `images/generate` 或 `images/edit` 端点。
+默认 Provider ID 为 `desktop:vetta`。renderer 只传通用 `MediaCreateJobInput`，主进程校验 capability session 与 `media.generate` 权限，并把请求映射到固定的 `images/generate` 或 `images/edit` 端点。
 
 JWT、刷新流程、服务端地址和网关路径均由主进程掌握。媒体 API 不接受 path、URL、header 或 token，因而不会把通用登录网关能力暴露给媒体消费者。
 

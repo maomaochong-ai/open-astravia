@@ -14,7 +14,7 @@ The sidecar's lifecycle is strictly bound to the desktop app: completely quittin
 
 | Subcommand | Audience | Purpose |
 |---|---|---|
-| `host` | **End users** (driven by desktop-app) | Embedded mode. Reads NDJSON config from stdin, emits NDJSON events on stdout. Lifecycle bound to parent process. No filesystem state. |
+| `host` | **End users** (driven by desktop) | Embedded mode. Reads NDJSON config from stdin, emits NDJSON events on stdout. Lifecycle bound to parent process. No filesystem state. |
 | `start` | Developers | Standalone mode. Reads `~/.vetta/im-gateway/config.yaml`. Useful for local debugging of router / bridge / transport without running the full desktop app. |
 | `init` | Developers | Generate yaml config templates for `start` mode. |
 | `status` / `logs` | Developers | Inspect a running `start`-mode process. |
@@ -37,11 +37,11 @@ The `host` subcommand is the only one wired into the user deployment path. Every
                             ▼                                ▼
                     ~/.vetta/im-gateway/         ~/.vetta/conversation/
                     state.json                   .vetta/sessions/<id>.jsonl
-                    config.yaml                  (shared with desktop-app's
+                    config.yaml                  (shared with desktop's
                                                   default "对话" project)
 ```
 
-- **All IM sessions live in `~/.vetta/conversation`** — the same default "对话" project desktop-app uses, so a conversation started in IM shows up in the desktop sidebar (with an "IM" badge) and vice-versa. No `/projects` / `/use` switching.
+- **All IM sessions live in `~/.vetta/conversation`** — the same default "对话" project desktop uses, so a conversation started in IM shows up in the desktop sidebar (with an "IM" badge) and vice-versa. No `/projects` / `/use` switching.
 - **Same session files** as the desktop app — pick up a conversation in IM, continue it on your laptop, single-writer enforced via the `<file>.lock` protocol added to `SessionManager`
 - **Routes by `(im_user, chatID)`** — private chat and group chat are independent sessions for the same user
 - **Process pool** keyed by absolute session path; LRU eviction; one subprocess per active conversation
@@ -79,4 +79,4 @@ docs/           # feishu-setup, troubleshooting
 - ❌ Image / file attachments
 - ❌ Enterprise / multi-tenant mode (interface preserves the extension point)
 - ❌ Windows (macOS + linux first)
-- ❌ Modifying `desktop-app` / `coding-agent` / `api`
+- ❌ Modifying `desktop` / `coding-agent` / `api`
