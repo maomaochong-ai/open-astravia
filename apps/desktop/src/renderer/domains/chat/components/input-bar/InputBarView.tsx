@@ -241,6 +241,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 							onSelectFiles={() => void model.actions.handleSelectFiles()}
 							onSelectImages={() => void model.actions.handleSelectImages()}
 							onSend={model.actions.handleSend}
+							sendPending={model.sendPending}
 							slashOpen={model.slashOpen}
 							speechInput={model.speechInput}
 						/>

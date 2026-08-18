@@ -198,6 +198,12 @@ export { NewSessionPageLayoutView } from "./NewSessionPageLayoutView";
 export type { ProgressGroupRowProps, ProgressGroupViewProps } from "./ProgressGroupView";
 export { ProgressGroupRow, ProgressGroupView } from "./ProgressGroupView";
 export type {
+	ProjectSelectorOptionView,
+	ProjectSelectorViewLabels,
+	ProjectSelectorViewProps,
+} from "./ProjectSelectorView";
+export { ProjectSelectorView } from "./ProjectSelectorView";
+export type {
 	QueueCardItem,
 	QueueCardPausedBanner,
 	QueueCardViewLabels,

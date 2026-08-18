@@ -27,6 +27,7 @@ declare module "@vetta/theme-sdk" {
 		readonly "chat.newSessionPage"?: ThemeSurfaceConfig;
 		readonly "chat.newSessionSceneCard"?: ThemeSurfaceConfig;
 		readonly "chat.newSessionSkillCard"?: ThemeSurfaceConfig;
+		readonly "chat.projectSelectorMenu"?: ThemeSurfaceConfig;
 		readonly "chat.questionPanel"?: ThemeSurfaceConfig;
 		readonly "chat.sessionViewerPage"?: ThemeSurfaceConfig;
 		readonly "chat.slashPanel"?: ThemeSurfaceConfig;

@@ -23,7 +23,11 @@ export interface InputBarProps {
 	 * （新会话页把整条输入栏下移，避免下方留白过大）。
 	 */
 	onExpandedChange?: (expanded: boolean) => void;
-	/** A new Session is being initialized; input stays editable but duplicate sends are disabled. */
+	/**
+	 * 发送前还有一步准备工作在跑（新会话页要先把待创建的项目落盘）。
+	 * 输入内容保持可编辑，发送按钮就地展开成带文案的胶囊并拒绝重复点击。
+	 */
+	sendPending?: { readonly label: string };
 }
 
 export interface SendInteractionContext {
@@ -98,6 +102,8 @@ export interface SpeechInputModel {
 
 export interface InputBarModel {
 	isStreaming: boolean;
+	/** 宿主传入的发送前准备态，原样透给发送按钮。 */
+	sendPending?: { readonly label: string };
 	pendingQuestion: ComponentProps<typeof QuestionPanel>["pending"] | undefined;
 	firstSuggestion?: string;
 	/** 输入卡片上方的图片缩略图行；label 与文本流里的「图 N」胶囊同源。 */

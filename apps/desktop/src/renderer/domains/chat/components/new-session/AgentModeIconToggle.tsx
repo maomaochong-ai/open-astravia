@@ -1,6 +1,7 @@
 import { useDefaultAgentMode } from "@shared/hooks/useDefaultAgentMode";
 import { cn } from "@shared/lib/utils";
-import { useEffect, useState } from "react";
+import { FACTORY_DEFAULT_AGENT_MODE } from "@shared/store/atoms";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentModeOption } from "../../../../../preload/api-types/session";
 
@@ -11,7 +12,7 @@ import type { AgentModeOption } from "../../../../../preload/api-types/session";
 const EMPTY_MODES: readonly AgentModeOption[] = [];
 
 /**
- * 新会话欢迎区的胶囊形工作模式切换，也是工作模式在整个 App 里唯一的调整入口。
+ * 输入框上方选项行里的工作模式切换，也是工作模式在整个 App 里唯一的调整入口。
  * 写的是「新会话默认模式」：会话创建时把它固化进 SessionConfig，之后会话内不可变，
  * 所以侧边栏与设置菜单都不再提供切换入口。
  *
@@ -23,6 +24,14 @@ export function AgentModeIconToggle({ className }: { className?: string }): JSX.
 	const { t, i18n } = useTranslation("settings");
 	const { defaultAgentMode, setDefaultAgentMode } = useDefaultAgentMode();
 	const [modes, setModes] = useState<readonly AgentModeOption[]>(EMPTY_MODES);
+	// 显示顺序：出厂默认模式排最前（它是绝大多数用户的选中态），其余保持注册表顺序。
+	const orderedModes = useMemo(
+		() => [
+			...modes.filter((mode) => mode.id === FACTORY_DEFAULT_AGENT_MODE),
+			...modes.filter((mode) => mode.id !== FACTORY_DEFAULT_AGENT_MODE),
+		],
+		[modes],
+	);
 
 	useEffect(() => {
 		let disposed = false;
@@ -42,11 +51,13 @@ export function AgentModeIconToggle({ className }: { className?: string }): JSX.
 			role="group"
 			aria-label={t("agentMode.title")}
 			className={cn(
-				"relative inline-flex h-7 shrink-0 items-center rounded-full border border-primary/40 p-0.5",
+				// 经典 segmented control：半透明凹槽轨道 + 浮起的选中段。与同一行的项目选择器
+				// 共用同一层 accent 底色，两枚控件读作一组静默 chip，亮度层级让位给下方输入框。
+				"relative inline-flex h-7 shrink-0 items-center rounded-lg bg-accent/50 p-0.5",
 				className,
 			)}
 		>
-			{modes.map((mode) => {
+			{orderedModes.map((mode) => {
 				const active = mode.id === defaultAgentMode;
 				// key 由注册表驱动、无法静态枚举，绕过 typed-i18n 的字面量约束；缺译回落注册表 label。
 				const key = `agentMode.${mode.id}`;
@@ -60,14 +71,14 @@ export function AgentModeIconToggle({ className }: { className?: string }): JSX.
 						aria-pressed={active}
 						title={label}
 						className={cn(
-							"relative z-10 flex h-6 items-center justify-center rounded-full transition-[color,background-color,padding] duration-200 ease-out",
+							"relative z-10 flex h-6 items-center justify-center rounded-md text-[12px] font-medium transition-[color,background-color,padding] duration-200 ease-out",
 							active
-								? "gap-1 bg-primary px-2 text-primary-foreground"
-								: "w-7 text-muted-foreground hover:text-foreground",
+								? "gap-1.5 bg-background px-2 text-foreground shadow-sm"
+								: "w-7 text-muted-foreground/70 hover:text-foreground",
 						)}
 					>
 						<span className={cn(mode.icon, "h-3.5 w-3.5 shrink-0")} aria-hidden />
-						{active && <span className="text-[11px] font-medium leading-none">{label}</span>}
+						{active && <span className="leading-none">{label}</span>}
 					</button>
 				);
 			})}

@@ -161,6 +161,7 @@ export const xianxiaAppearance: ThemeAppearance = {
 			rootClassName: "xianxia-skill-card-background border-transparent bg-transparent",
 			surfaceClassName: "overflow-visible",
 		},
+		"chat.projectSelectorMenu": xianxiaPanelSurface,
 		"chat.questionPanel": xianxiaPanelSurface,
 		"chat.slashPanel": xianxiaPanelSurface,
 		"root.confirmDialog.panel": xianxiaPanelSurface,

@@ -85,7 +85,6 @@
 		"htmlPreview": {
 			"title": "HTML 预览"
 		},
-
 		"workflow": {
 			"empty": "暂无工作流",
 			"noTranscript": "工作流尚未产生消息",
@@ -145,8 +144,8 @@
 		"confirmDeleteMultiplePrefix": "确定要删除这 {{count}} 项",
 		"confirmDeleteMultipleMore": " 等 {{count}} 项",
 		"confirmDeleteMultipleSuffix": "吗？此操作无法撤销。",
-		"cancel": "取消"
-		,"transfer": {
+		"cancel": "取消",
+		"transfer": {
 			"title": "将文件添加到项目",
 			"pasteCopyTitle": "粘贴文件",
 			"pasteMoveTitle": "移动文件",
@@ -669,6 +668,19 @@
 			"hideMascot": "关闭吉祥物",
 			"showMascot": "显示吉祥物",
 			"playOnce": "播放一次当前吉祥物动画"
+		},
+		"projectSelector": {
+			"placeholder": "选择项目",
+			"clear": "不指定项目",
+			"searchPlaceholder": "搜索项目",
+			"empty": "没有匹配的项目",
+			"newProject": "新建项目",
+			"openProject": "打开本地项目",
+			"pendingHint": "待创建",
+			"creating": "正在创建…",
+			"preparing": "正在准备项目",
+			"triggerTitle": "选择本次会话所属的项目",
+			"createFailedTitle": "项目创建失败"
 		}
 	},
 	"questionPanel": {

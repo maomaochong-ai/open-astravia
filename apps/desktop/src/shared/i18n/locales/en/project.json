@@ -144,7 +144,8 @@
 		"cancel": "Cancel",
 		"create": "Create",
 		"emptyError": "Please enter a project name",
-		"invalidError": "Project name cannot contain special characters"
+		"invalidError": "Project name cannot contain special characters",
+		"duplicateError": "A project with this name already exists"
 	},
 	"update": {
 		"newVersion": "New version {{version}} available — click to download in the background",

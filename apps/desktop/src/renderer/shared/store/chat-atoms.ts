@@ -416,7 +416,9 @@ export const sessionExecutionModeAtom = atom<SessionExecutionMode>(getStoredExec
  * 改这个值不会影响任何已存在的会话。
  */
 export type AgentMode = string;
-export const defaultAgentModeAtom = atom<AgentMode>("work");
+/** 出厂默认模式：atom 水合前的初始值，也是模式 toggle 的显示排序锚点（默认模式排最前）。 */
+export const FACTORY_DEFAULT_AGENT_MODE: AgentMode = "work";
+export const defaultAgentModeAtom = atom<AgentMode>(FACTORY_DEFAULT_AGENT_MODE);
 
 /**
  * 当前打开会话的工作模式，来自 SessionStateSnapshot.agentMode（会话创建时固化）。
