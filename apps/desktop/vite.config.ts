@@ -93,6 +93,11 @@ export default defineConfig(({ mode }) => {
 	return {
 		define: {
 			"process.env.VETTA_SHOW_UI_THEME": JSON.stringify(showUiTheme),
+			// 云服务构建期开关：默认 true；VETTA_CLOUD_ENABLED=false 产出 lite 构建，
+			// cloud 分支经常量折叠被整体裁掉（含动态 import 的 chunk）。
+			"process.env.VETTA_CLOUD_ENABLED": JSON.stringify(
+				(process.env.VETTA_CLOUD_ENABLED ?? env.VETTA_CLOUD_ENABLED) === "false" ? "false" : "true",
+			),
 			[`process.env.${SPEECH_INPUT_ENABLED_ENV}`]: JSON.stringify(String(speechInputBuildConfig.enabled)),
 			"process.env.VETTA_SENTRY_ENABLED": JSON.stringify(
 				readValue(env, "VETTA_SENTRY_DSN") ? "true" : "false",
@@ -119,6 +124,7 @@ export default defineConfig(({ mode }) => {
 			alias: {
 				"@shared": path.resolve(__dirname, "./src/renderer/shared"),
 				"@domains": path.resolve(__dirname, "./src/renderer/domains"),
+				"@cloud": path.resolve(__dirname, "./src/renderer/cloud"),
 				"@vetta/theme-sdk": path.resolve(__dirname, "../../packages/theme-sdk/src"),
 				"@vetta/theme-ui": path.resolve(__dirname, "../../packages/theme-ui/src"),
 				"@vetta/ui": path.resolve(__dirname, "../../packages/ui/src/index.ts"),

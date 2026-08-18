@@ -1,5 +1,5 @@
+import type { LoginPopoverView } from "@cloud/auth/components/LoginPopoverView";
 import type { ActivityPanelFrame } from "@domains/activity-panel/components/activity-panel/ActivityPanelFrame";
-import type { LoginPopoverView } from "@domains/auth/components/LoginPopoverView";
 import type { AtPanelView } from "@domains/chat/components/at-panel/AtPanelView";
 import type { CommandPanelView } from "@domains/chat/components/command-panel/CommandPanelView";
 import type { SkillPickerPanelView } from "@domains/chat/components/command-panel/SkillPickerPanel";

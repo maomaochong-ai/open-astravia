@@ -4,7 +4,7 @@ import { useAtomValue } from "jotai";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useOAuthLogin } from "../../../auth/hooks/useOAuthLogin";
+import { useOAuthLogin } from "../hooks/useOAuthLogin";
 
 interface LoginStepProps {
 	/** 授权成功后步进到下一步，不展示成功态。 */

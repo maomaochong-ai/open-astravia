@@ -1,4 +1,5 @@
 import { isMac } from "@shared/lib/platform";
+import { isCloudBuildEnabled } from "@/shared/feature-flags";
 
 export type SetupWizardStepId = "permissions" | "languageAppearance" | "login" | "welcome";
 
@@ -12,7 +13,8 @@ export function getSetupWizardSteps(options?: GetSetupWizardStepsOptions): reado
 	const base: readonly SetupWizardStepId[] = isMac
 		? ["languageAppearance", "permissions", "login", "welcome"]
 		: ["languageAppearance", "login", "welcome"];
-	if (options?.isLoggedIn) {
+	// lite 构建（无云服务）不引导登录；已登录用户同样跳过。
+	if (!isCloudBuildEnabled() || options?.isLoggedIn) {
 		return base.filter((step) => step !== "login");
 	}
 	return base;

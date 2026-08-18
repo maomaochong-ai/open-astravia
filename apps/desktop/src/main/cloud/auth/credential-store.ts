@@ -15,8 +15,8 @@
 import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { DEFAULT_SERVER_URL } from "../constants.js";
-import { getAppLogger } from "../logger.js";
+import { DEFAULT_SERVER_URL } from "../../constants.js";
+import { getAppLogger } from "../../logger.js";
 
 const log = getAppLogger("auth");
 

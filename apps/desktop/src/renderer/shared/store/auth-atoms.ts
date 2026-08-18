@@ -1,5 +1,7 @@
 import type { SubscriptionStatus } from "@preload/api.js";
+import { logoutOnServer } from "@shared/lib/api";
 import { atom } from "jotai";
+import { sseClientAtom } from "./sse-atoms";
 
 export interface AuthUser {
 	id: number;
@@ -17,6 +19,30 @@ localStorage.removeItem("vetta-refresh-token");
 export const authTokenAtom = atom<string | null>(null);
 export const authUserAtom = atom<AuthUser | null>(null);
 export const loginPopoverOpenAtom = atom<boolean>(false);
+
+/**
+ * 登出：只清服务器侧状态（token / user / 远程 providers / SSE）。
+ * 不中断正在运行的会话，也不清 selectedModel——用户可能正用本地模型
+ * 离线工作，token 掉了完全不影响他们。套餐状态的重置由 cloud 模块的
+ * token effect 统一处理（token 变 null 时触发）。
+ *
+ * 放在 shared store 而不是 cloud 模块里，是为了让宿主 UI（设置菜单）能在
+ * 不 import cloud 代码的前提下触发登出；lite 构建下 user 恒为 null，
+ * 登出入口不渲染，本 atom 不可达。
+ */
+export const cloudLogoutAtom = atom(null, (get, set) => {
+	void window.vetta.settings
+		.getServerRefreshToken()
+		.then((storedRefresh) => logoutOnServer(storedRefresh))
+		// 服务端登出失败（网络等）不阻塞本地登出，只留痕
+		.catch((err) => console.warn("[cloudLogout] logoutOnServer failed:", err))
+		.finally(() => window.vetta.settings.setServerRefreshToken(undefined));
+	set(authTokenAtom, null);
+	set(authUserAtom, null);
+	void window.vetta.settings.setServerToken(undefined);
+	set(remoteProvidersAtom, {});
+	get(sseClientAtom).disconnect();
+});
 
 // ─── Remote providers (from server) ───
 

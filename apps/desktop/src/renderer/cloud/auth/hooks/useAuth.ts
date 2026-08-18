@@ -1,4 +1,4 @@
-import { fetchCurrentUser, logoutOnServer, onTokenRefreshed, onUnauthorized } from "@shared/lib/api";
+import { fetchCurrentUser, onTokenRefreshed, onUnauthorized } from "@shared/lib/api";
 import { cancelProactiveRefresh, scheduleProactiveRefresh } from "@shared/lib/token-scheduler";
 import {
 	authTokenAtom,
@@ -8,9 +8,9 @@ import {
 	sseClientAtom,
 	sseConnectionStateAtom,
 } from "@shared/store/atoms";
-import { subscriptionStatusAtom } from "@shared/store/auth-atoms";
+import { cloudLogoutAtom, subscriptionStatusAtom } from "@shared/store/auth-atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { setProductAnalyticsUser } from "../../../telemetry/product-analytics";
 
 export function useAuth() {
@@ -26,20 +26,8 @@ export function useAuth() {
 		setProductAnalyticsUser(user?.id ?? null);
 	}, [user]);
 
-	const logout = useCallback(() => {
-		// 注意：这里只清服务器侧状态（token / user / 远程 providers / SSE）。
-		// 不要中断正在运行的会话，也不要清 selectedModel——
-		// 用户可能正用本地模型离线工作，token 掉了完全不影响他们。
-		void window.vetta.settings
-			.getServerRefreshToken()
-			.then((storedRefresh) => logoutOnServer(storedRefresh))
-			.finally(() => window.vetta.settings.setServerRefreshToken(undefined));
-		setToken(null);
-		setUser(null);
-		void window.vetta.settings.setServerToken(undefined);
-		setRemoteProviders({});
-		sseClient.disconnect();
-	}, [setToken, setUser, setRemoteProviders, sseClient]);
+	// 登出逻辑收敛在 cloudLogoutAtom（见 auth-atoms.ts）：设置菜单等宿主 UI 也直接写它。
+	const logout = useSetAtom(cloudLogoutAtom);
 
 	// 启动时只从主进程凭据存储读取一次，renderer 不再持久化 token。
 	//

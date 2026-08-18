@@ -16,3 +16,14 @@ export function isAppearanceUiThemeEnabled(): boolean {
 export function isSpeechInputBuildEnabled(): boolean {
 	return process.env.VETTA_SPEECH_INPUT_ENABLED === "true";
 }
+
+/** Vetta 云服务（登录 / 订阅 / 远程模型等增值能力）：构建期开关。 */
+export const CLOUD_ENABLED_ENV = "VETTA_CLOUD_ENABLED";
+
+/**
+ * 云服务是否编入本构建。默认开启（完全体）；`VETTA_CLOUD_ENABLED=false` 产出 lite 构建，
+ * 相关代码经构建期常量折叠后不进产物，发布后不能由运行环境重新开启。
+ */
+export function isCloudBuildEnabled(): boolean {
+	return process.env.VETTA_CLOUD_ENABLED !== "false";
+}

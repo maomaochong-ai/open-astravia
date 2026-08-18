@@ -3,8 +3,8 @@ import { Button } from "@vetta/ui";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import type { SetupWizardModel } from "../hooks/useSetupWizard";
 import type { SetupWizardStepId } from "../steps";
+import { CloudLoginStep } from "@shared/components/cloud-slots";
 import { LanguageAppearanceStep } from "./steps/LanguageAppearanceStep";
-import { LoginStep } from "./steps/LoginStep";
 import { PermissionsStep } from "./steps/PermissionsStep";
 import { WelcomeStep } from "./steps/WelcomeStep";
 
@@ -21,7 +21,8 @@ function StepBody({
 		case "languageAppearance":
 			return <LanguageAppearanceStep />;
 		case "login":
-			return <LoginStep onSuccess={onLoginSuccess} />;
+			// lite 构建下 steps 列表不含 login，此分支不可达（槽位渲染 null 兜底）
+			return <CloudLoginStep onSuccess={onLoginSuccess} />;
 		case "welcome":
 			return <WelcomeStep />;
 	}

@@ -16,6 +16,7 @@ export default defineConfig({
 			{ find: "@", replacement: resolve(__dirname, "./src") },
 			{ find: "@shared", replacement: resolve(__dirname, "./src/renderer/shared") },
 			{ find: "@domains", replacement: resolve(__dirname, "./src/renderer/domains") },
+			{ find: "@cloud", replacement: resolve(__dirname, "./src/renderer/cloud") },
 			{
 				find: "@vetta-org/plugin-sdk/manifest",
 				replacement: resolve(__dirname, "../../packages/plugins/plugin-sdk/src/manifest.ts"),

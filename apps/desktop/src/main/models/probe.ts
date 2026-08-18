@@ -2,7 +2,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import { net } from "electron";
-import { fetchRemoteProviders } from "../ipc/settings.js";
+// TODO(cloud-phase-2): 本模块整体属于云服务，迁入 main/cloud 后此跨界 import 一并消失。
+import { fetchRemoteProviders } from "../cloud/auth-session.js";
 
 /**
  * Probe the given (provider, model)'s baseUrl to see if the model server is

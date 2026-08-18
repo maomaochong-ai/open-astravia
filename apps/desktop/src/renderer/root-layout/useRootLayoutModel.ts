@@ -3,7 +3,6 @@ import { useMatches, useNavigate } from "@tanstack/react-router";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FILE_EDITOR_SAVE_EVENT } from "@/shared/shortcuts";
-import { useAuth } from "../domains/auth/hooks/useAuth";
 import { loadNewSessionPage } from "../domains/chat/components/loadNewSessionPage";
 import { useAppInit } from "../domains/chat/hooks/useAppInit";
 import { useSessionManager } from "../domains/chat/hooks/useSessionManager";
@@ -84,7 +83,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 	}, [narrow, cancelOverlayClose]);
 
 	useTheme();
-	useAuth();
+	// 云会话生命周期已上移到 App 根部的 <CloudAuthBoot />（lite 构建不挂载）
 	useAppInit();
 	useNotificationInit();
 	useUpdaterInit();

@@ -6,6 +6,7 @@ import { URL } from "node:url";
 import { getVettaHomePath, VETTA_HOME_ENV } from "@vetta/action-rpc";
 import { app, type BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, protocol, session, shell } from "electron";
 import { APP_RUNTIME_NAME } from "../shared/app-identity.js";
+import { isCloudBuildEnabled } from "../shared/feature-flags.js";
 import { ActionApprovalBroker } from "./app-actions/approval-broker.js";
 import { createAppActionSystem } from "./app-actions/index.js";
 import { createActionRpcRuntime } from "./app-actions/rpc.js";
@@ -15,8 +16,6 @@ import { createDebugRpcRuntime } from "./app-debug/rpc.js";
 import { configureRendererCdp } from "./app-debug/ui/renderer-cdp.js";
 import { registerAppLifecycleIpc } from "./app-lifecycle.js";
 import { initializeAppMonitor, shutdownAppMonitor } from "./app-monitor/app-monitor-service.js";
-import { consumeOAuthCallback, reopenOAuthLogin, startOAuthLogin } from "./auth/oauth-login.js";
-import { setLoopbackCallbackHandler } from "./auth/oauth-loopback.js";
 import { shutdownBatchTaskExecutor } from "./batch-tasks/batch-task-executor.js";
 import { initializeDesktopBatchTaskService } from "./batch-tasks/batch-task-service.js";
 import { parseActionCliCommand, runActionCliCommand } from "./cli/action-command.js";
@@ -24,6 +23,7 @@ import { parseAgentRpcCommand, runAgentRpcCommand } from "./cli/agent-rpc-comman
 import { parseHelpCliCommand, runHelpCliCommand } from "./cli/help-command.js";
 import { parseOcrCliCommand, runOcrCliCommand } from "./cli/ocr-command.js";
 import { parsePdfCliCommand, runPdfCliCommand } from "./cli/pdf-command.js";
+import type { CloudMainHandle } from "./cloud/index.js";
 import { ensureDevCliShim, ensureDevVettaCliShim, ensureVettaCommandShim } from "./dev-cli-shim.js";
 import {
 	getDiagnosticsLogPath,
@@ -293,21 +293,15 @@ if (!isCliMode) {
 	}
 }
 
+// 云服务模块句柄：lite 构建（VETTA_CLOUD_ENABLED=false）恒为 null。
+let cloudMain: CloudMainHandle | null = null;
+
 function handleProtocolUrl(rawUrl: string): void {
 	try {
 		const parsed = new URL(rawUrl);
-		if (parsed.hostname === "oauth" && parsed.pathname.startsWith("/callback")) {
-			const mainWindow = getMainWindow();
-			if (!mainWindow) return;
-			// state 不匹配时 tokens 为 null——绝不把未校验的 token 转给渲染层，
-			// 只通知它把「等待授权」切回可重试状态，否则用户会一直干等。
-			const tokens = consumeOAuthCallback(parsed);
-			if (tokens) {
-				mainWindow.webContents.send("vetta:auth:oauth-callback", tokens);
-			} else {
-				mainWindow.webContents.send("vetta:auth:oauth-rejected");
-			}
-		}
+		// OAuth 回调（vetta://oauth/callback）由 cloud 模块处理；
+		// lite 构建没有 cloud 模块，深链直接忽略。
+		cloudMain?.handleProtocolUrl(parsed);
 	} catch {
 		// Ignore malformed URLs
 	}
@@ -323,9 +317,6 @@ function receiveProtocolUrl(rawUrl: string): void {
 		mainWindow.focus();
 	}
 }
-
-// 开发模式没有可用的自定义 scheme，回调从本机 loopback HTTP 服务进来。
-setLoopbackCallbackHandler(receiveProtocolUrl);
 
 // macOS: app may already be running when protocol URL is opened
 app.on("open-url", (event, url) => {
@@ -590,19 +581,18 @@ if (!gotSingleLock) {
 			getTray()?.setToolTip(tooltip);
 		});
 
+		// 注意：channel 名叫 auth 只是历史沿革，实际是通用的「用系统浏览器打开 URL」，
+		// 浏览器面板等非云功能也在用，因此留在宿主、不随 cloud 模块裁剪。
 		ipcMain.handle("vetta:auth:open-external", async (_event, url: string) => {
 			await openExternalUrl(url);
 		});
 
-		// 授权登录由主进程发起：state 的生成与校验都在这里，渲染层碰不到，
-		// 未通过校验的 token 也就永远进不了渲染层。
-		ipcMain.handle("vetta:auth:start-oauth", async () => {
-			await startOAuthLogin();
-		});
-
-		ipcMain.handle("vetta:auth:reopen-oauth", async () => {
-			await reopenOAuthLogin();
-		});
+		// Vetta 云服务（登录 / 订阅 / 远程模型）：构建期开关。lite 构建下该分支
+		// 被常量折叠，整个 cloud chunk 不进产物。
+		if (isCloudBuildEnabled()) {
+			const { startCloudMain } = await import("./cloud/index.js");
+			cloudMain = startCloudMain({ receiveProtocolUrl });
+		}
 
 		if (process.platform === "darwin") {
 			app.dock.setIcon(nativeImage.createFromPath(join(buildDir, "icon-dock.png")));

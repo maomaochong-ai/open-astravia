@@ -54,6 +54,10 @@ export default defineConfig(({ mode }) => {
 		define[`process.env.${key}`] = JSON.stringify(value);
 	}
 	define[`process.env.${SPEECH_INPUT_ENABLED_ENV}`] = JSON.stringify(String(speechInputBuildConfig.enabled));
+	// 云服务构建期开关：未配置时按 true（完全体）内联，保证 lite 判断能被常量折叠。
+	define["process.env.VETTA_CLOUD_ENABLED"] = JSON.stringify(
+		env.VETTA_CLOUD_ENABLED === "false" ? "false" : "true",
+	);
 
 	return {
 		define,

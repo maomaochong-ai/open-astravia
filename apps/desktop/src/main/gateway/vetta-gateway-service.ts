@@ -1,5 +1,7 @@
+// TODO(cloud-phase-2): gateway 属于云服务，迁入 main/cloud 后此跨界 import 一并消失。
+import { tryRefreshAccessToken } from "../cloud/auth-session.js";
 import { DEFAULT_SERVER_URL } from "../constants.js";
-import { readSettings, tryRefreshAccessToken } from "../ipc/settings.js";
+import { readSettings } from "../ipc/settings.js";
 import { getAppLogger } from "../logger.js";
 
 const log = getAppLogger("vetta-gateway");

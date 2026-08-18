@@ -15,9 +15,9 @@
 
 import { randomUUID } from "node:crypto";
 import { app } from "electron";
-import { DEFAULT_SITE_URL } from "../constants.js";
-import { getAppLogger } from "../logger.js";
-import { openExternalUrl } from "../open-external.js";
+import { DEFAULT_SITE_URL } from "../../constants.js";
+import { getAppLogger } from "../../logger.js";
+import { openExternalUrl } from "../../open-external.js";
 import { ensureLoopbackCallbackUrl } from "./oauth-loopback.js";
 
 const log = getAppLogger("auth");

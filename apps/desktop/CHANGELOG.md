@@ -6,6 +6,8 @@ All notable changes to `@vetta/desktop` are documented in this file.
 
 ### Added
 
+- **云服务构建期开关（lite 形态第一阶段）**：新增 `VETTA_CLOUD_ENABLED` 构建期环境变量（默认 `true`）。`false` 时产出不含 Vetta 云服务代码的 lite 构建：登录/OAuth、token 刷新、远程模型与订阅相关 IPC 不注册，侧边栏设置菜单隐藏账户区段，引导向导跳过登录步。主进程 OAuth 与云会话逻辑收敛到 `src/main/cloud/`，渲染层登录 UI 收敛到 `src/renderer/cloud/`，宿主经 `@shared/components/cloud-slots` 懒加载挂载。完全体行为不变。
+
 - **新会话首条消息直发与可观测**：新建会话不再等待空历史、状态水合与侧边栏对账，事件订阅建立后立即派发首条 Prompt；插件 Skill 路径合并进首次资源加载，避免初始化期间重复全量扫描。Renderer、IPC 与 Desktop 会话服务沿用同一隐私安全的 interaction ID，再用 session ID 关联 Coding Agent Runtime 分阶段耗时；诊断不记录 Prompt、路径或资源正文。
 - **未知扩展名的文本文件可预览**：本地文件没有内置或插件预览器时，Desktop 会在主进程按内容严格探测 UTF-8；文本以只读纯文本形式展示，无效 UTF-8、NUL 或控制字符密集的二进制仍保持不支持，且不扩大原有路径读取与编辑权限。
 - **插件热重载与缓存失效可验证诊断**：Dev 日志记录 Renderer full reload 和插件开发更新的触发路径；插件 Runtime 以完整配置指纹跳过 staged 注册产生的重复重配，同时保留 activation/handler 路由更新和资源强制刷新。逐轮 Token 面板新增具体变化的 Prompt Block ID、工具名及变化类型。

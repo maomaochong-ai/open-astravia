@@ -16,6 +16,7 @@
 			"@/*": ["./src/*"],
 			"@shared/*": ["./src/renderer/shared/*"],
 			"@domains/*": ["./src/renderer/domains/*"],
+			"@cloud/*": ["./src/renderer/cloud/*"],
 			"@preload/*": ["./src/preload/*"],
 			"@vetta/capability-sdk": ["../../packages/capability-sdk/src/index.ts"],
 			"@vetta/capability-sdk/*": ["../../packages/capability-sdk/src/*"],

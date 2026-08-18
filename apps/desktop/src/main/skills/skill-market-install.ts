@@ -8,8 +8,10 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import { recordAbilityInstall } from "../abilities/ability-ledger.js";
+// TODO(cloud-phase-3): 技能市场安装属于云服务，迁入 main/cloud 后此跨界 import 一并消失。
+import { tryRefreshAccessToken } from "../cloud/auth-session.js";
 import { DEFAULT_SERVER_URL } from "../constants.js";
-import { readSettings, tryRefreshAccessToken } from "../ipc/settings.js";
+import { readSettings } from "../ipc/settings.js";
 import { getAppLogger } from "../logger.js";
 import { verifySha256 } from "../utils/integrity.js";
 import {
