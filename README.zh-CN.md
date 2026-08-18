@@ -285,8 +285,13 @@ SDK 与构建工具位于 [packages/plugins](packages/plugins)。
 
 ### 下载安装包
 
-从 [Releases](../../releases) 获取 macOS、Windows、Linux 安装包。三平台由
-`.github/workflows/desktop-release.yml` 分别构建发布。
+macOS、Windows、Linux 安装包由我们的 CDN 分发：
+
+**→ [www.openvetta.com/download](https://www.openvetta.com/download)**
+
+我们不用 GitHub Releases 分发安装包，本仓库只承载源码，官方构建产物发往 CDN。你的 fork
+不必如此：`.github/workflows/desktop-release.yml` 构建三平台后**默认就发布到 GitHub Releases**，
+把仓库变量 `VETTA_RELEASE_TARGET` 设为 `r2` 才会改发 Cloudflare R2——那是我们的用法。
 
 ### 从源码构建
 

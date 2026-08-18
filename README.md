@@ -304,8 +304,14 @@ configure anything.
 
 ### Download
 
-Grab macOS, Windows and Linux installers from [Releases](../../releases). All three platforms
-are built and published by `.github/workflows/desktop-release.yml`.
+Installers for macOS, Windows and Linux are distributed from our CDN:
+
+**→ [www.openvetta.com/download](https://www.openvetta.com/download)**
+
+We do not publish installers to GitHub Releases — this repository hosts the source, and our
+official builds go to the CDN. Your fork does not have to: `.github/workflows/desktop-release.yml`
+builds all three platforms and **publishes to GitHub Releases by default**; setting the repository
+variable `VETTA_RELEASE_TARGET=r2` is what redirects it to Cloudflare R2, which is what we do.
 
 ### Build from Source
 
