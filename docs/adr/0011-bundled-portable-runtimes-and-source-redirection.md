@@ -4,7 +4,7 @@ status: accepted
 
 # 面向普通用户内置可移植运行时 + bash 源重定向：以 python-build-standalone 内置而非赌公共镜像
 
-desktop-app 的 agent 能力大量依赖 Node / Python 运行时与三方包（npm / pip），但目标用户是**没有开发环境的普通用户**：机器上没装 node/python，且网络只能直连国内公共镜像、**官方源（nodejs.org / pypi.org / registry.npmjs.org / github.com）不可达，也没有代理**。直觉方案是「在系统设置加个面板让用户点击下载运行时，再在 bash 执行时注入环境变量把包源指向国内镜像」。本 ADR 记录把这个直觉收敛成的具体架构，以及其中最难逆、最反直觉的一环：**Python 必须随安装包内置 python-build-standalone,而不能依赖任何公共镜像**。
+desktop 的 agent 能力大量依赖 Node / Python 运行时与三方包（npm / pip），但目标用户是**没有开发环境的普通用户**：机器上没装 node/python，且网络只能直连国内公共镜像、**官方源（nodejs.org / pypi.org / registry.npmjs.org / github.com）不可达，也没有代理**。直觉方案是「在系统设置加个面板让用户点击下载运行时，再在 bash 执行时注入环境变量把包源指向国内镜像」。本 ADR 记录把这个直觉收敛成的具体架构，以及其中最难逆、最反直觉的一环：**Python 必须随安装包内置 python-build-standalone,而不能依赖任何公共镜像**。
 
 ## 决定
 
@@ -14,7 +14,7 @@ desktop-app 的 agent 能力大量依赖 Node / Python 运行时与三方包（n
 - **来源三层**：① 内置 vendor（随安装包打入当前平台二进制，首启本地拷贝进 `~/.vetta/runtimes`，零下载秒级可用，是普通用户主路径）；② 下载源列表（`urlTemplate + priority` 有序回退，仅用于升级 / 装非内置版本）；③ 系统探测（扫已有 node/python，仅作展示与兜底）。
 - **优先托管版**：PATH 永远把托管运行时前置，盖过系统版——目标用户多半没有系统运行时，「碰巧有」的复用会让 agent 行为不可预测。
 - **面板定位**：获取是自动的（内置 + 首启拷贝 + 自动注入），面板只负责可见性 / 升级 / 装非默认版本。普通用户 happy path 上无需打开。
-- **注入机制**：[[源重定向]] 由 desktop-app 在 Electron main 启动时（seed 完运行时后）**一次性改全局 `process.env`**——桌面会话（in-process bash 走 `getShellEnv()` spread main env）与 IM 链路（im-gateway sidecar 继承 main env → coding-agent → bash）两条链全部自动继承。coding-agent 保持 portable、对此无感（延续 ADR-0009「宿主注入不猜环境」纪律）。注入项：`PATH` 前置、`npm_config_registry`（npmmirror）、`npm_config_prefix`（私有全局目录,与运行时版本解耦）、`npm_config_cache`、`PIP_INDEX_URL`（清华）、`PIP_TRUSTED_HOST`。
+- **注入机制**：[[源重定向]] 由 desktop 在 Electron main 启动时（seed 完运行时后）**一次性改全局 `process.env`**——桌面会话（in-process bash 走 `getShellEnv()` spread main env）与 IM 链路（im-gateway sidecar 继承 main env → coding-agent → bash）两条链全部自动继承。coding-agent 保持 portable、对此无感（延续 ADR-0009「宿主注入不猜环境」纪律）。注入项：`PATH` 前置、`npm_config_registry`（npmmirror）、`npm_config_prefix`（私有全局目录,与运行时版本解耦）、`npm_config_cache`、`PIP_INDEX_URL`（清华）、`PIP_TRUSTED_HOST`。
 - **版本管理**：单一 recommended 版本，面板可升级；不做多版本并存。
 
 ## 关键取舍

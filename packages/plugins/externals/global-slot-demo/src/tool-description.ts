@@ -1,0 +1,2 @@
+export const NOVEL_WRITE_CHAPTER_FILE_TOOL_DESCRIPTION =
+	"Demo-plugin writer for saving one generated novel chapter as Markdown. It always writes '# <title>' followed by the supplied content. Use this instead of the general write tool only when the Global Slot Demo fiction workflow is active and the user asks to save a chapter draft. Do NOT use for non-fiction, arbitrary files, editing an existing chapter, or content that must not receive the automatic heading.";

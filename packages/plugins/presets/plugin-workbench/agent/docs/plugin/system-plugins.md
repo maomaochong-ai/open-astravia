@@ -26,7 +26,7 @@ packages/plugins/presets/
 - **构建制品**：`bun run build:presets` 先构建根 workspace 中的插件 SDK / 构建包，再逐个产出 `release/<id>-<version>.zip`。`dev` / `start` / 打包流程都会先跑它。
 - **依赖管理**：presets 与其它 monorepo 包统一属于根 workspace、共用根 `bun.lock`；`@vetta-org/plugin-sdk`、`@vetta-org/plugin-vite` 等本地包经 `workspace:*` 直链仓库源码。
 - **校验**：Desktop 按 preset 的 `plugin.json` 精确定位 zip，拒绝路径穿越、id/version 不一致、入口或样式缺失的归档。
-- **dev**：zip 解压到 `packages/desktop-app/.artifacts/system-plugins/<id>/`，主进程只读该 staging，不直接读 preset 源码或 `dist/`。
+- **dev**：zip 解压到 `apps/desktop/.artifacts/system-plugins/<id>/`，主进程只读该 staging，不直接读 preset 源码或 `dist/`。
 - **打包**：`prepare-pack.js` 从 zip 解压到打包 staging 的 `system-plugins/<id>/`，再随 `extraResources` 进入 `Resources/system-plugins/<id>/`。
 
 ## 环境与租户打包（tenants.json）

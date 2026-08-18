@@ -67,7 +67,7 @@
 - `runtime-subagents` 定向测试：18 个通过，覆盖创建、恢复、消息、跟进、并发、持久化、通知、生命周期和关闭竞态。
 - `coding-agent` Greenfield Session Assembly 定向测试：6 个通过，覆盖工具顺序、Profile、子会话创建及每次创建边界读取实时父会话 MCP 视图。
 - `bun run check:quick` 通过。
-- `bun run check` 通过；Biome、monorepo `tsgo`、CLI、desktop-app、admin 和全部质量守卫均无错误。
+- `bun run check` 通过；Biome、monorepo `tsgo`、CLI、desktop、admin 和全部质量守卫均无错误。
 
 ## 旧实现依赖变化
 

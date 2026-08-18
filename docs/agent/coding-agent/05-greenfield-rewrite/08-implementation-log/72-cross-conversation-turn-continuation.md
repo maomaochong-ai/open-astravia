@@ -159,7 +159,7 @@ runtime-storage
   新续接测试：4 passed
   Conversation 测试：33 passed
 
-cli-app
+cli-host
   Greenfield Runtime Composition：12 passed
 
 repository root
@@ -169,7 +169,7 @@ repository root
 当前 Bun 直接启动 Vitest 的 worker 在 Windows 报 `File URL path must be an absolute path`；
 改用工作区随 Codex 提供的 Node 可执行文件运行同一 Vitest 入口后，上述测试通过。
 
-完整 `bun run check` 中，本轮相关 Biome、monorepo tsgo、cli-app 和 desktop-app 类型检查已通过；
+完整 `bun run check` 中，本轮相关 Biome、monorepo tsgo、cli-host 和 desktop 类型检查已通过；
 最终被 admin 本地缺失的 `@types/d3-*`、`@types/estree` 和 `@types/json-schema` 声明文件阻断。
 这是依赖安装状态问题，本轮没有删除或降级 admin 代码/类型来规避。
 

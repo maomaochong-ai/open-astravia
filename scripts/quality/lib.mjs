@@ -18,7 +18,7 @@ export const TESTABLE_PACKAGES = {
 	"runtime-mcp": "packages/runtime-mcp",
 	"coding-agent": "packages/coding-agent",
 	"ecosystem-adapter": "packages/ecosystem-adapter",
-	"desktop-app": "packages/desktop-app",
+	desktop: "apps/desktop",
 	"plugin-cli": "packages/plugins/plugin-cli",
 };
 
@@ -27,8 +27,8 @@ export const PACKAGE_DIRS = {
 	...TESTABLE_PACKAGES,
 	"capability-sdk": "packages/capability-sdk",
 	"capability-runtime": "packages/capability-runtime",
-	"desktop-app": "packages/desktop-app",
-	"cli-app": "packages/cli-app",
+	desktop: "apps/desktop",
+	"cli-host": "apps/cli-host",
 	"plugin-sdk": "packages/plugins/plugin-sdk",
 	"plugin-vite": "packages/plugins/plugin-vite",
 	"theme-sdk": "packages/theme-sdk",
@@ -42,10 +42,10 @@ export const PACKAGE_DIRS = {
 	toolkit: "packages/toolkit",
 	markdown: "packages/markdown",
 	ui: "packages/ui",
-	admin: "packages/admin",
-	site: "packages/site",
-	api: "packages/api",
-	"im-gateway": "packages/im-gateway",
+	admin: "apps/admin",
+	site: "apps/site",
+	api: "apps/api",
+	"im-gateway": "apps/im-gateway",
 };
 
 export function fail(message) {
@@ -114,7 +114,7 @@ export function packagesFromPaths(paths) {
 	const found = new Set();
 	for (const file of paths) {
 		const norm = file.replaceAll("\\", "/");
-		if (!norm.startsWith("packages/")) continue;
+		if (!norm.startsWith("packages/") && !norm.startsWith("apps/")) continue;
 		const parts = norm.split("/");
 		if (parts[1] === "plugins") {
 			if (parts[2] === "plugin-sdk") found.add("plugin-sdk");

@@ -47,7 +47,7 @@
 
 ```bash
 # dev：仅构建并 staging 当前租户的系统插件
-cd packages/desktop-app
+cd apps/desktop
 VETTA_TENANT=tenantb bun run dev
 
 # 打包 App：build:presets 与 prepare-pack 都读取同一 VETTA_TENANT
@@ -229,7 +229,7 @@ bun run build
 验证当前 profile + 租户选中的 Preset 和仓库：
 
 ```bash
-cd packages/desktop-app
+cd apps/desktop
 bun run build:presets
 bunx tsc --noEmit
 
@@ -241,7 +241,7 @@ bun run check
 执行一次 `bun install --frozen-lockfile`，构建根 workspace 中的 SDK/构建包，
 再遍历 `presets/` 构建。每个插件构建会生成 `dist/` 和
 `release/<id>-<version>.zip`，随后 zip 会经过路径、manifest 和入口校验，
-解压到 `packages/desktop-app/.artifacts/system-plugins/<id>/` 供开发加载。
+解压到 `apps/desktop/.artifacts/system-plugins/<id>/` 供开发加载。
 
 ## 提交前检查
 

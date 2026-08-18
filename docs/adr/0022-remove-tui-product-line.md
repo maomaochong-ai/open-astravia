@@ -1,6 +1,6 @@
 # 移除交互式终端（TUI）产品线，coding-agent 退为 print/RPC/SDK 三模式
 
-本项目不再需要终端交互产品（用户的交互前端是 desktop-app）。但 `coding-agent` 不能整包删——desktop-app 经 `--agent-rpc` 拉起它跑 RPC 模式，且 `runtime-core / runtime-mcp / runtime-tools / runtime-storage` 与 desktop 的 7 个文件都 import 它的非 UI 能力（`getAgentDir`、`AuthStorage`、`ModelRegistry`、`PERSONAS`、`DefaultResourceLoader` 等）。
+本项目不再需要终端交互产品（用户的交互前端是 desktop）。但 `coding-agent` 不能整包删——desktop 经 `--agent-rpc` 拉起它跑 RPC 模式，且 `runtime-core / runtime-mcp / runtime-tools / runtime-storage` 与 desktop 的 7 个文件都 import 它的非 UI 能力（`getAgentDir`、`AuthStorage`、`ModelRegistry`、`PERSONAS`、`DefaultResourceLoader` 等）。
 
 决定：精确切除交互层而非删包。删除 `packages/tui`（`@mariozechner/pi-tui`）整包、`coding-agent/src/modes/interactive/` 的交互宿主与全部终端 UI 组件、`pi config` / `--resume` 交互选择器；`main()` 在无 `--print`、无 `--mode` 时报错退出而非进 REPL。`coding-agent` 自此只剩 print / RPC / SDK 三模式。
 

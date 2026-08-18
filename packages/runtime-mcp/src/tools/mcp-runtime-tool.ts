@@ -98,7 +98,9 @@ export function createMcpRuntimeTool(
 	return {
 		name: `mcp_${serverName}_${mcpTool.name}`,
 		label: `${serverName}: ${mcpTool.name}`,
-		description: mcpTool.description || `MCP tool from ${serverName}`,
+		description:
+			mcpTool.description?.trim() ||
+			`External MCP tool "${mcpTool.name}" from server "${serverName}". The server did not provide a capability description. Use only when the user explicitly refers to this tool or its input schema clearly matches the requested operation; do not infer behavior from the server name alone.`,
 		inputSchema: convertMcpJsonSchemaToTypeBox(mcpTool.inputSchema),
 		execute: (request) =>
 			executeMcpToolCall(client, mcpTool, request.input, {

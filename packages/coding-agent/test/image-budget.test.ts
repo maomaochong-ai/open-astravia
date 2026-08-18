@@ -44,6 +44,15 @@ function omittedCount(messages: AgentMessage[]): number {
 }
 
 describe("applyImageBudget", () => {
+	it("measures serialized requests in UTF-8 bytes", () => {
+		const messages = [user(text("中文🙂"))];
+
+		expect(estimateModelMessageRequestBytes(messages)).toBe(
+			new TextEncoder().encode(JSON.stringify(messages)).byteLength,
+		);
+		expect(estimateModelMessageRequestBytes(messages)).toBeGreaterThan(JSON.stringify(messages).length);
+	});
+
 	it("keeps any number of seen and unseen images while the request remains below the byte watermark", () => {
 		const messages = [
 			toolResult(img("p1")),

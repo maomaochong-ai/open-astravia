@@ -1,6 +1,6 @@
-# 仓库根作为 docker build context 时生效（目前只有 packages/admin/Dockerfile 这么用）。
+# 仓库根作为 docker build context 时生效（目前只有 apps/admin/Dockerfile 这么用）。
 # 注意 Docker 只读 context 根目录下的这一份，子目录里的 .dockerignore 不生效——
-# admin 的 context 从 packages/admin 改到仓库根时就是漏了这点，导致 .env 泄漏进产物。
+# admin 的 context 从 apps/admin 改到仓库根时就是漏了这点，导致 .env 泄漏进产物。
 **/node_modules
 **/dist
 **/.next

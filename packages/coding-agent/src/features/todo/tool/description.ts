@@ -1,15 +1,15 @@
 export const TODO_TOOL_DESCRIPTION = `Manage a todo list to plan and track progress on multi-step tasks.
 
-When to create a todo plan:
+Create a todo plan only when you will execute and track the work in the current task:
 - Task requires 3 or more distinct steps
 - User asks to modify multiple files
 - Task involves sequential work (step A must finish before step B)
-- User explicitly asks for a plan ("plan", "todo", "step by step", "分步", "计划", "列个清单")
+- User explicitly asks you to track an execution plan or todo list while carrying out the work
 
 When NOT to create:
 - Single file edit or simple question
 - Task completable in 1-2 trivial steps
-- Purely informational or conversational request
+- Purely informational or conversational request, including a request to explain, propose, or review a plan without executing it
 
 Workflow:
 1. If a todo list may already exist, call todo(action="list") before creating a new plan.

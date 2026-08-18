@@ -9,7 +9,7 @@
 
 1. Desktop IM 宿主未配置时继续启动 Legacy。
 2. 只有显式选择 `greenfield-im` 时才请求 Greenfield。
-3. Windows、macOS、Linux 最终都经过同一个 `cli-app` Runtime Selector。
+3. Windows、macOS、Linux 最终都经过同一个 `cli-host` Runtime Selector。
 4. Greenfield 启动条件不满足并 fallback 时，宿主能够区分“请求的后端”和“实际运行的后端”。
 5. 不提前切换 Desktop 主对话 Runtime，也不制造只能看见、不能打开的 Greenfield 会话。
 
@@ -33,7 +33,7 @@ Desktop IM Composition
   └─ requested runtimeBackend（启动期不可变）
       └─ IM Gateway host protocol
           └─ local hostclient 追加 --agent-runtime
-              └─ cli-app Runtime Selector
+              └─ cli-host Runtime Selector
                   ├─ Legacy
                   └─ Greenfield IM → 必要时 Legacy fallback
                       └─ get_state.runtimeBackend（实际后端）
@@ -43,7 +43,7 @@ Desktop IM Composition
 
 - Desktop 只决定请求哪个 Runtime，不实现选择或 fallback 算法。
 - Go Sidecar 只透传类型化配置并观察结果，不了解 Greenfield 的组装细节。
-- `cli-app` 是 Runtime Composition Root 和选择策略的唯一事实源。
+- `cli-host` 是 Runtime Composition Root 和选择策略的唯一事实源。
 - 平台分支只处理可执行文件形态、Electron discriminator 和 stdio 差异，不再决定 Runtime。
 
 ## 4. 实际修改
@@ -66,10 +66,10 @@ VETTA_IM_AGENT_RUNTIME=greenfield-im
 
 ### 4.2 三平台统一 Runtime Selector
 
-- Electron `--agent-rpc` 改为调用 `@vetta/cli-app.runAgentRuntimeCli()`。
-- Windows staged `agent-rpc-cli.mjs` 改由 `cli-app/src/agent-rpc-cli.ts` 打包。
-- `@vetta/cli-app` 加入 Desktop workspace 依赖。
-- Desktop TypeScript source path map 补齐 `cli-app` 及其直接 Runtime 依赖，避免独立 Desktop `tsc`
+- Electron `--agent-rpc` 改为调用 `@vetta/cli-host.runAgentRuntimeCli()`。
+- Windows staged `agent-rpc-cli.mjs` 改由 `cli-host/src/agent-rpc-cli.ts` 打包。
+- `@vetta/cli-host` 加入 Desktop workspace 依赖。
+- Desktop TypeScript source path map 补齐 `cli-host` 及其直接 Runtime 依赖，避免独立 Desktop `tsc`
   错误读取陈旧 `dist/*.d.ts`。
 
 最终各平台 argv 仍保留原有模型、scenario、sandbox、`ELECTRON_RUN_AS_NODE` 和资源目录行为；变化只在入口
@@ -103,7 +103,7 @@ IM Gateway 在握手时读取该字段，并通过结构化宿主日志上报：
    - 默认 Legacy、显式 Greenfield、非法值 fail closed。
    - Windows 可执行 prefix 与 Runtime 配置分离。
    - Electron `--agent-rpc` 实际调用共享 Runtime Selector。
-   - 打包脚本从 `cli-app/src/agent-rpc-cli.ts` 生成 Windows RPC 入口，不再引用 Legacy CLI。
+   - 打包脚本从 `cli-host/src/agent-rpc-cli.ts` 生成 Windows RPC 入口，不再引用 Legacy CLI。
 2. Coding Agent / CLI App：
    - Legacy 与 Greenfield Adapter 分别报告实际 `runtimeBackend`。
    - 既有真实 Selector 子进程测试继续验证 fresh/resume、ownership conflict 和 Legacy fallback。
@@ -126,24 +126,24 @@ IM Gateway 在握手时读取该字段，并通过结构化宿主日志上报：
 定向验证：
 
 ```text
-packages/desktop-app:
+apps/desktop:
   bunx vitest --run src/main/im-host/coding-agent-spec.test.ts
 
 packages/coding-agent:
   bunx vitest --run test/rpc/legacy-rpc-session-adapter.test.ts test/rpc/rpc-command-dispatcher.test.ts
 
-packages/cli-app:
+apps/cli-host:
   bun run typecheck
   bunx vitest --run test/greenfield-im-rpc-adapter.test.ts test/agent-runtime-selection.test.ts
 
-packages/im-gateway:
+apps/im-gateway:
   go test ./internal/hostclient/local
   go test ./internal/hostproto
   go test ./cmd/im-gateway
 
 repository root:
   bun run check:quick
-  bunx tsc --noEmit -p packages/desktop-app/tsconfig.json
+  bunx tsc --noEmit -p apps/desktop/tsconfig.json
   bun run check
 ```
 

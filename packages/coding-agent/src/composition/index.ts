@@ -26,6 +26,11 @@ export type {
 	CodingAgentSessionExecutionEnvironmentFactory,
 } from "./contracts/session-execution-environment.js";
 export type {
+	CodingAgentSessionInitializationObservation,
+	CodingAgentSessionInitializationObserver,
+	CodingAgentSessionInitializationStage,
+} from "./contracts/session-initialization-observability.js";
+export type {
 	CodingAgentToolEnvironment,
 	CodingAgentToolEnvironmentContext,
 	CodingAgentToolEnvironmentFactory,
@@ -56,7 +61,6 @@ export {
 	type CodingAgentSessionTransition,
 	type CodingAgentSessionTransitionLifecycle,
 } from "./session-host/active-session-transition-host.js";
-export { CodingAgentProcessSessionHost } from "./session-host/index.js";
 export {
 	type CodingAgentEditPathPolicy,
 	type CodingAgentPathPolicyBoundaries,

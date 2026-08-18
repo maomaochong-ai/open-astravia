@@ -19,7 +19,7 @@
 依赖方向为：
 
 ```text
-cli-app Composition Root
+cli-host Composition Root
   -> runtime-tools bash/shell Registration
   -> CommandToolExecutor Port
   -> coding-agent compatibility Adapter
@@ -54,7 +54,7 @@ coding-agent Adapter。bash/shell 始终同时注册，由平台 scope 保证 Wi
 packages/runtime-tools:
   bunx vitest --run test/coding/command/command-runtime-contract.test.ts
 
-packages/cli-app:
+apps/cli-host:
   bunx vitest --run test/runtime-tools-composition.test.ts
 ```
 

@@ -1,6 +1,39 @@
 ## [Unreleased]
 
+### Added
+
+- 新增 `@vetta/coding-agent/model-context` 产品上下文入口。工作区技术栈识别与提示词渲染仍由 Coding Agent
+  持有，Node 文件探测迁至 `@vetta/runtime-node/coding`，CLI、Desktop、SDK 与 Knowledge Processing
+  在 Composition Root 显式注入会话级快照；探测失败降级和会话内固定语义保持不变。
+
+### Fixed
+
+- 内置 Theme JSON 在构建期生成 TypeScript 文档，避免 Electron/Node ESM 加载 Coding Agent 产物时因缺少
+  JSON import attribute 导致应用启动失败；`dark.json` 与 `light.json` 继续作为唯一编辑来源。
+
 ### Breaking Changes
+
+- **MCP Supervisor 改为 Host 注入**：Coding Agent 的 MCP Tool Source 与 Plugin MCP Runtime 不再创建或选择
+  `runtime-node` Supervisor，改为接收由 CLI、Desktop 或 SDK Host 创建的 `McpServerSupervisor` 并负责其会话内初始化和释放。
+  Node 文件配置、OAuth 和 transport 的所有权集中在 `runtime-node`，MCP 产品装饰、动态同步和结果策略保持不变。
+
+- **配置实现与产品身份分离**：`@vetta/coding-agent/config` 继续作为兼容门面，但产品域改用无副作用的身份常量；Node
+  包目录、manifest、环境目录和安装方式解析集中到 Host 配置实现。现有环境变量名、默认目录、包版本和路径合同保持兼容。
+
+- **历史 Session API 显式接收 Host**：历史目录、文件读取、锁和迁移副作用由平台 Host 提供；Coding Agent 只保留格式解析、
+  分类和迁移策略。CLI/Desktop 已显式创建 Legacy Session Host，活动 Session 执行路径不再依赖历史格式实现。
+
+- **Print 输出改为显式 Host Port**：`runPrintMode()` 不再直接调用 `console`、`process.stdout` 或
+  `process.exit()`，改为要求宿主提供 `CodingAgentPrintOutputPort`。CLI 的 Node 输出实现位于 `@vetta/cli-host`，
+  Print 会话、JSON 事件和错误语义保持不变；其他宿主可复用同一 Print 产品流程。
+
+- **配置值环境解析迁至 Node Runtime**：删除 `@vetta/coding-agent/configuration` 子路径；模型和认证改为消费
+  `CodingAgentConfigurationValueResolver` 窄 Port，CLI、Desktop 与 SDK Node 宿主显式注入
+  `runtime-node` 实现。环境变量优先、`!command`、10 秒超时、结果缓存、空值和失败降级语义保持不变。
+
+- **通用并发 Gate 归回 Runtime Tools**：删除重复的 `@vetta/coding-agent/concurrency#createLimiter` 子路径，
+  Desktop Knowledge Processing 改用现有 `@vetta/runtime-tools#createAsyncExecutionGate`。FIFO、并发上限、异常释放
+  和无效上限收敛行为保持不变，通用机制现在只有一个事实源。
 
 - `CodingAgentToolEnvironment` 新增可选 `createSpecializedToolRegistrations()`，文档转换与 OCR 的 Node
   进程/Desktop Port 选择移至平台环境；Coding Agent 现在按 Session `cwd` 调用宿主工厂，只叠加产品模型顺序并组合
@@ -40,7 +73,7 @@
   `@vetta/runtime-node/coding` 的 `createNodeDocToPdfOperations()`。内置工具行为、探测顺序、命令参数和错误语义保持不变。
 
 - **Node RPC Client Transport 迁至 CLI 包**：子进程启动、JSONL stdout 读取、环境变量与信号管理从 Coding Agent
-  移至 `@vetta/cli-app`。Coding Agent RPC facade 保留注入 `RpcClientTransport` 的可移植 `RpcClient`、wire
+  移至 `@vetta/cli-host`。Coding Agent RPC facade 保留注入 `RpcClientTransport` 的可移植 `RpcClient`、wire
   类型、`RpcClientError` 与结构化失败映射；CLI 根入口导出绑定 `NodeRpcClientTransport` 的零配置 `RpcClient`。
   Client 方法、默认可执行文件、超时和错误语义保持不变。
 
@@ -189,7 +222,7 @@
 - **SDK 自定义 `agentDir` 未覆盖默认会话存储**：公共 SDK 此前只把 `agentDir` 用于认证、模型、设置与资源，默认会话目录仍从全局 Vetta Home 解析，导致嵌入式宿主把会话写入用户目录。默认文件存储现在与同一次 Session 组合使用相同的 `agentDir`；未指定 `agentDir` 或显式传入 `storage` 时的行为保持不变。
 - **自动重试提前结束宿主生命周期**：失败尝试的 `error` 虽被延迟，但配套 `agent_end` 此前仍会先发出，导致 Desktop 提前停止流式态、重拉历史并覆盖最终错误。重试适配层现在一并延迟失败尝试的终止事件；重试成功时丢弃中间错误与终止事件，彻底失败时按 `error → agent_end` 顺序只结算一次。
 
-- **Turn 绑定后 Session Plugin MCP 工具对模型不可见（回归）**：Turn-bound runtime generation（ADR-0069 落地）在 admission 冻结 MCP 可见集时只从 `readAvailableTools()` 取候选名，而 plugin MCP 工具要到 compose 阶段才由 pluginMcpRuntime 并入 frame、不在该表里，于是被整体冻结成不可见——插件声明的 MCP 工具在真实会话中从模型工具清单里消失。修复为冻结时把 MCP prompt state 的受管工具名并入候选集再过滤。回归由 `packages/cli-app/test/plugin-mcp-session-contract.test.ts` 锁定（原「isolates two sessions」用例在回归下失败）。该文件中 workflow 编排会话的 `rootMcpTools` 断言同步修正：旧断言 `[]` 锁定的是已删除的「MCP server agent_mode 与会话模式不匹配即排除」硬闸行为，零硬闸下 root 会话自己声明的 plugin MCP 工具对 root 模型同样可见。
+- **Turn 绑定后 Session Plugin MCP 工具对模型不可见（回归）**：Turn-bound runtime generation（ADR-0069 落地）在 admission 冻结 MCP 可见集时只从 `readAvailableTools()` 取候选名，而 plugin MCP 工具要到 compose 阶段才由 pluginMcpRuntime 并入 frame、不在该表里，于是被整体冻结成不可见——插件声明的 MCP 工具在真实会话中从模型工具清单里消失。修复为冻结时把 MCP prompt state 的受管工具名并入候选集再过滤。回归由 `apps/cli-host/test/plugin-mcp-session-contract.test.ts` 锁定（原「isolates two sessions」用例在回归下失败）。该文件中 workflow 编排会话的 `rootMcpTools` 断言同步修正：旧断言 `[]` 锁定的是已删除的「MCP server agent_mode 与会话模式不匹配即排除」硬闸行为，零硬闸下 root 会话自己声明的 plugin MCP 工具对 root 模型同样可见。
 
 ### Changed
 
@@ -349,7 +382,7 @@
 - **RPC EOF 与 Extension shutdown 生命周期竞态**：JSONL 输入关闭后会先 drain 已接收的命令处理器，再释放 Session，避免在途 `new_session` 丢失响应或与 dispose 争用所有权；Extension 异步调用 `ctx.shutdown()` 现在无需等待下一条 RPC 命令即可触发关闭，并由共享 Promise 保证 `session_shutdown`、transport close 与资源释放各执行一次。Host/UI 响应仍保持并发，不进入全局串行队列。
 - **独立 CLI 产物可加载显式 TypeScript Extension**：Extension Loader 始终注入已打包的公共 virtual modules，仅在本地依赖可解析时附加 Jiti alias，避免无相邻 `node_modules` 的 standalone bundle 在解析 TypeBox 等公共模块时以 `ENOENT` 失败。
 - **常驻工具描述里的中文把英文会话翻成中文**：`ask_user_question` 的描述用中文举例徽章（`["推荐"]`、`"更快"`、`"成本低"`），而这正是「向用户列选项」这件事在上下文里唯一的输出范例——模型在英文会话里照着写出了整屏中文选项，随后 autotitle（输入含该条 assistant 文本）与输入预测一并被带偏。现改为英文示例，并明确「问题/选项/徽章跟用户最新消息的语言走，示例是英文只因为这份描述是英文」。同时删掉 `bash` / `shell` 描述末尾误从本仓库 AGENTS.md 漏进去的 `注意：对用户可见的输出文案禁止硬编码中文…`——它与工具本身无关，却每轮常驻。（OCR/`read` 里的「盖章/印章/公章」与 `todo` 的「分步/计划」是**用户输入侧**的识别词，保留。）
-- **真正的断网 / 连不上一次都不会自动重试**：`RetryController.isRetryableError` 的可重试正则只认 `connection refused` 这类英文短语，而 Node 抛的原文是 `connect ECONNREFUSED 1.2.3.4:443`、`getaddrinfo EAI_AGAIN …`，两者对不上——网络类错误因此直接落到「不可重试」，用户看到的是一次就放弃。现补上 `ECONNREFUSED` / `ECONNRESET` / `ETIMEDOUT` / `ENOTFOUND` / `EAI_AGAIN` / `EPIPE` / `EHOSTUNREACH` / `ENETUNREACH` 分支。（由 desktop-app `classifyChatError.test.ts` 的跨包一致性断言发现，见 ADR-0057。）
+- **真正的断网 / 连不上一次都不会自动重试**：`RetryController.isRetryableError` 的可重试正则只认 `connection refused` 这类英文短语，而 Node 抛的原文是 `connect ECONNREFUSED 1.2.3.4:443`、`getaddrinfo EAI_AGAIN …`，两者对不上——网络类错误因此直接落到「不可重试」，用户看到的是一次就放弃。现补上 `ECONNREFUSED` / `ECONNRESET` / `ETIMEDOUT` / `ENOTFOUND` / `EAI_AGAIN` / `EPIPE` / `EHOSTUNREACH` / `ENETUNREACH` 分支。（由 desktop `classifyChatError.test.ts` 的跨包一致性断言发现，见 ADR-0057。）
 - **GPT 模型把 `progress` / `todo` 的参数当正文明文吐出来、阶段标题与 todo 状态一起丢失**：`ominiroute-hellox/gpt-5.6-luna` 在同一轮里既要叙述又要干活时，会把 `progress` 的参数写成 tool call 前的 preamble 正文（用真实会话上下文重放，8/8 复现；旧会话里同一机制让 8 次 `todo` 状态更新静默丢失）。抓包确认参数逐 token 从 `delta.content` 出来、流里没有对应 `tool_calls`，本地解析链路无关。现向 `@vetta/agent` 传 `salvageTextToolCalls: ["progress", "todo"]`，把这类正文还原成真实调用；白名单只含无副作用工具，且参数键需唯一匹配工具 schema，不会误执行 `write` / `bash`。
 - **Windows 上进程已死但 `.jsonl.lock` 永久占死、会话无法打开**：`process.kill(pid, 0)` 在 Windows 上对**已不存在**的 PID 也会抛 `EPERM`（POSIX 语义下 EPERM 才表示进程仍在），旧逻辑把 EPERM 当存活，再叠加 `Get-Process` 失败时「无法证明复用 → 假定仍占用」，崩溃/强杀后留下的锁永远回收不了。现 Windows 以 `Get-Process` 为存活源：明确不存在则回收；探测失败时也不再把 EPERM 当存活。顺带 `Get-Process -ErrorAction SilentlyContinue`，避免抢锁时刷 PowerShell 红字。
 - **`tool_search` 激活 MCP 工具后模型仍拿不到、反复检索同一个工具**：根因在 `@vetta/agent`（loop 复制 context，本轮不再重读 tools，已随该包修复）。这里配套两处：`setActiveToolsByName` 同步更新本轮激活名单快照 `_currentRunActiveToolNames`，避免随后的插件 runtime effect 用旧快照重建 tools 把刚激活的工具又摘掉；`tool_search` 的描述与返回文案改为明确「已激活/已在激活集 → 直接调用，不要再检索」。
@@ -361,7 +394,7 @@
 - **锚点编辑容忍「只传哈希」的常见误用**：模型常把 read 输出 `101:ahs8→` 里的 `101:` 当纯展示前缀丢掉、只传哈希 `ahs8`，原先一律报 malformed。现降级找回：纯哈希在全文件唯一命中时照常接受（哈希本身仍来自工具输出，身份不丢）；多个命中（无法消歧）或纯数字（丢的是哈希）给针对性报错而非笼统 malformed。同步把 edit/read 工具描述与报错里的锚点示例从失真的 2 位哈希（`42:ab`）统一为真实的 4 位格式，并明示「行号是锚点的一部分，不是展示装饰」。
 - **锚点找回不再把重复行的多次编辑坍缩到同一行（重复片段根因）**：`validateAnchor` 漂移找回原先在 ±20 行半径内「就近取胜」，遇到空行 / 重复 `}` 等同内容行时会把不同编辑目标解析到同一行，多次编辑后产生重复片段、被迫整文件重写。现改为——行号精确命中仍直接信任（常态好路径），但漂移找回时半径内出现 ≥2 个同哈希候选即判 `stale`（原子拒绝并回传新鲜锚点），绝不静默猜行。配套把锚点哈希从 2 位 base36（1296 取值）加宽到 4 位（约 168 万），使不同内容行在窗口内的偶然碰撞可忽略、歧义判定只对真正的重复行触发；`parseAnchor` 放宽为接受 2..8 位哈希（兼容历史锚点）。`edit` 批量重叠检查补上「两处编辑落到同一行即冲突」的兜底。
 - **bash/shell 命令工具不再双双激活**：场景解析原先把 `bash` 与 `shell` 同时激活，每轮请求多发一份无用的命令工具 schema（约 1.5k token；mac/linux 上 `shell` 是 PowerShell 版本、根本不可用）。改为非本平台的命令工具 `scope_use` 置空（注册但默认不激活），显式 tools 名单仍可强制启用。
-- **工具的 `description.txt` 从未真正生效**：`loadToolDescription` 原先在运行时按 `import.meta.url` 读同目录的 `description.txt`，但本包会被 desktop-app 的 vite 打进 main bundle、也会被 `bun build --compile` 打进单文件二进制，两种形态下该路径都不指向源码目录；`copy-assets` 也没把这些文件拷进 `dist`。于是 26 份工具说明书全部静默退回代码里的一行 fallback（`catch` 吞掉异常，无日志、check 与测试均无感）。改为构建期内联（`scripts/generate-tool-descriptions.mjs` → `src/core/tools/descriptions-data.ts`），与 personas / modes 同一套做法，运行时零文件系统依赖；调用点由 `import.meta.url` 改为显式工具目录名。此修复会显著增加 system prompt 长度（约 35KB / 9–12k token）。
+- **工具的 `description.txt` 从未真正生效**：`loadToolDescription` 原先在运行时按 `import.meta.url` 读同目录的 `description.txt`，但本包会被 desktop 的 vite 打进 main bundle、也会被 `bun build --compile` 打进单文件二进制，两种形态下该路径都不指向源码目录；`copy-assets` 也没把这些文件拷进 `dist`。于是 26 份工具说明书全部静默退回代码里的一行 fallback（`catch` 吞掉异常，无日志、check 与测试均无感）。改为构建期内联（`scripts/generate-tool-descriptions.mjs` → `src/core/tools/descriptions-data.ts`），与 personas / modes 同一套做法，运行时零文件系统依赖；调用点由 `import.meta.url` 改为显式工具目录名。此修复会显著增加 system prompt 长度（约 35KB / 9–12k token）。
 
 ### Added
 
@@ -409,7 +442,7 @@
 
 ### Removed
 
-- **移除交互式终端（TUI）产品线（ADR-0022）**：删除 `src/modes/interactive/`（交互宿主 + 全部终端 UI 组件）、`packages/tui`（`@mariozechner/pi-tui`）整包，以及 `pi config` / `--resume` 的交互式选择器。`coding-agent` 现仅保留 print / RPC / SDK 三种模式——desktop-app 经 `--agent-rpc` 驱动的 RPC 模式与所有 runtime-\* 消费者不受影响。`main()` 在无 `--print`、无 `--mode` 时不再进入 REPL，而是打印提示并退出。SDK 入口（`src/index.ts`）不再导出 `InteractiveMode` 及交互组件（`CustomEditor`、`BorderedLoader`、`*Component`、`*Selector` 等）和终端渲染主题函数（`getMarkdownTheme` / `getSelectListTheme` / `getSettingsListTheme`）。扩展 API 的 UI 表面（`setWidget` / `setHeader` / `setFooter` / `custom` / `setEditorComponent` 等）签名保留但 `@mariozechner/pi-tui` 类型改由 `src/core/extensions/ui-types.ts` 的本地结构化替身承接；`KeyId` 与编辑器键位默认值内化进 `src/core/keybindings.ts`——RPC→desktop 的 widget 转发与 HTML 导出的 `Component.render` 契约保持不变。
+- **移除交互式终端（TUI）产品线（ADR-0022）**：删除 `src/modes/interactive/`（交互宿主 + 全部终端 UI 组件）、`packages/tui`（`@mariozechner/pi-tui`）整包，以及 `pi config` / `--resume` 的交互式选择器。`coding-agent` 现仅保留 print / RPC / SDK 三种模式——desktop 经 `--agent-rpc` 驱动的 RPC 模式与所有 runtime-\* 消费者不受影响。`main()` 在无 `--print`、无 `--mode` 时不再进入 REPL，而是打印提示并退出。SDK 入口（`src/index.ts`）不再导出 `InteractiveMode` 及交互组件（`CustomEditor`、`BorderedLoader`、`*Component`、`*Selector` 等）和终端渲染主题函数（`getMarkdownTheme` / `getSelectListTheme` / `getSettingsListTheme`）。扩展 API 的 UI 表面（`setWidget` / `setHeader` / `setFooter` / `custom` / `setEditorComponent` 等）签名保留但 `@mariozechner/pi-tui` 类型改由 `src/core/extensions/ui-types.ts` 的本地结构化替身承接；`KeyId` 与编辑器键位默认值内化进 `src/core/keybindings.ts`——RPC→desktop 的 widget 转发与 HTML 导出的 `Component.render` 契约保持不变。
 
 ### Changed
 
@@ -431,7 +464,7 @@
 - Langfuse tracing 不再通过 `VETTA_TRACING_DETAIL` / `VETTA_TRACING_CAPTURE_CONTENT` 区分采集粒度和正文开关；启用 `VETTA_TRACING=langfuse` 后固定使用 `standard` 粒度并上传 prompt、completion、tool input/output 正文。
 - todo 工具区分严格/宽松两档：来自 scene `tasks.json` 的 locked 列表保持严格（顺序锁定、禁止 create/clear、未完成强制续跑）；常规临时（unlocked）列表放宽——允许乱序更新、新增 `action="clear"` 主动放弃重建，未完成时仅软提醒一次并提示在用户转向时调用 `clear`，避免被打断后被旧计划绑架。常规列表已有条目时，`action="create"` 不再静默追加新计划，而是拒绝并要求先 `list` 判断是否继续旧计划，或先 `clear` 再创建新计划。
 - Vetta CLI guidance is no longer injected into every command-capable agent session; desktop hosts now opt in by appending `VETTA_CLI_GUIDANCE` only for eligible conversation sessions.
-- **`models.json` ProviderConfig schema 容忍预设模板字段（ADR-0015）**：`ProviderConfigSchema` 新增可选 `source` / `templateId` / `icon` 三个字段。这些由 desktop-app 的「预设服务商」(BYOK 模板) 采纳流程写入共享的 `~/.vetta/agent/models.json`；coding-agent 不感知模板、不做拉取/合并，仅需校验时容忍这些字段不报错，照常把采纳后的条目当普通 provider 加载使用。
+- **`models.json` ProviderConfig schema 容忍预设模板字段（ADR-0015）**：`ProviderConfigSchema` 新增可选 `source` / `templateId` / `icon` 三个字段。这些由 desktop 的「预设服务商」(BYOK 模板) 采纳流程写入共享的 `~/.vetta/agent/models.json`；coding-agent 不感知模板、不做拉取/合并，仅需校验时容忍这些字段不报错，照常把采纳后的条目当普通 provider 加载使用。
 - Changed `glob` tool implementation from ripgrep-backed file matching to Node glob matching so it can return both files and directories while keeping relative path output and `.gitignore` filtering.
 - **知识库孤儿删除改为纯工程动作、加工轮按需起 LLM**：`buildProcessingPrompt` 移除「待回收孤儿（复判抢救）」段与 `toReap` 入参——孤儿 wiki 页的物理删除一直由工程侧 `finalizeRound` 完成，不再把孤儿塞进 agent 任务让其复判/合并（删除是确定性动作，不该耗 token，也不该由 LLM 决策）。新增 `diffNeedsProcessing(diff)`（仅 `added>0 || changed>0` 为真）：moved（纯元数据）、deleted（标孤儿）、孤儿回收均为工程侧动作，调用方据此跳过 LLM 加工会话。
 - **`scope_use` 具名化（开发系统 tool 时有类型参照）**：`AgentTool`（@vetta/agent-core）新增第三个泛型参数 `TScenario extends string = string`，`scope_use` 改为 `readonly TScenario[]`（默认 `string`，保持 agent-core 与场景词汇解耦）。`ToolDefinition.scope_use` 同步改为 `readonly ConversationScenario[]`；所有内置工具工厂返回类型改用新别名 `CodingAgentTool`，声明 `scope_use` 时即获得场景联合的补全与拼写校验。纯类型收紧，运行时与激活逻辑不变。
@@ -460,7 +493,7 @@
 
 - **工具调用 timing 元数据持久化（含工具自报阶段）**：新增 `ToolTimingEntry` SessionEntry 类型（`type: "tool_timing"`，含 `toolCallId / toolName / startedAt / durationMs / phases`），与 `SessionMessageEntry` 平行落盘。**关键架构选择**：放在 message 之外的独立 entry，让 `buildSessionContext` 在拼 LLM payload 时压根看不见——timing 数据不被发回大模型当作上下文，是硬性架构边界而非过滤约定。详见 `docs/adr/0001-tool-timing-as-separate-session-entry.md`。`SessionManager` 新增 `appendToolTiming(toolCallId, toolName, startedAt, durationMs, phases)`，agent-session 在 `tool_execution_end` 事件处自动调用。同时扩展 `@vetta/agent-core` 的 `AgentTool.execute` 签名加入第五个可选参数 `ctx: { phase(label) }`：工具内部调用 `ctx.phase("ocr")` 即可上报阶段边界，agent-loop 累积成 `phases: [{label, atMs}]` 数组（区间语义——下一次调用隐含上一段结束）。`AgentEvent` 联合新增 `tool_execution_phase` 事件 + `tool_execution_start` 加 `startedAt` + `tool_execution_end` 加 `startedAt/durationMs/phases`，对应的 `ToolExecutionStartEvent / ToolExecutionPhaseEvent / ToolExecutionEndEvent` 全部同步扩展。tools 侧已接入：`extract_text_from_pdf`（locate → ocr → read）、`extract_text_from_img`（locate → ocr → read）、`html_to_pdf`（locate → render）、`doc_to_pdf`（locate → detect → convert）。
 
-- **`CreateAgentSessionOptions.serverUrl`：允许调用方注入权威 Vetta server URL**：原先 `createAgentSession` 在 `settings.json` 没有 `serverUrl` 时强制 fallback 到 `packages/coding-agent/src/config.ts` 里硬编码的 `http://127.0.0.1:8080/api/v1` 并**把它静默写回 settings.json**。这在 desktop-app prod 构建里直接踩坑：desktop-app 自己的 main 进程模块（`vetta:settings:get-server-url` / `fetchRemoteProviders` / `fetchCreditsBalance`）走编译期注入的 `VETTA_SERVER_URL`（prod = `118.89.84.172:8080`），而同一进程内的 coding-agent SDK 却用 `127.0.0.1:8080`——renderer 看到的 remote 模型来自 prod server，但 `ModelRegistry.loadRemoteModels` / LLM 流式请求全部打到 LAN dev，prod 用户网络下静默超时，`findInitialModel` 返回 undefined，`session.prompt` 抛 `No model selected` 被链路上的没 try/catch 处吞掉，表现为「发消息无任何反应」。修复：`createAgentSession` 接收 `options.serverUrl`，存在时优先使用且**不**回写 settings.json（调用方是权威源，跨环境切换不应被持久化污染）；不传时维持旧行为兼容 CLI。runtime-core `RuntimeHost` 同步暴露 `serverUrl` option 透传过来。
+- **`CreateAgentSessionOptions.serverUrl`：允许调用方注入权威 Vetta server URL**：原先 `createAgentSession` 在 `settings.json` 没有 `serverUrl` 时强制 fallback 到 `packages/coding-agent/src/config.ts` 里硬编码的 `http://127.0.0.1:8080/api/v1` 并**把它静默写回 settings.json**。这在 desktop prod 构建里直接踩坑：desktop 自己的 main 进程模块（`vetta:settings:get-server-url` / `fetchRemoteProviders` / `fetchCreditsBalance`）走编译期注入的 `VETTA_SERVER_URL`（prod = `118.89.84.172:8080`），而同一进程内的 coding-agent SDK 却用 `127.0.0.1:8080`——renderer 看到的 remote 模型来自 prod server，但 `ModelRegistry.loadRemoteModels` / LLM 流式请求全部打到 LAN dev，prod 用户网络下静默超时，`findInitialModel` 返回 undefined，`session.prompt` 抛 `No model selected` 被链路上的没 try/catch 处吞掉，表现为「发消息无任何反应」。修复：`createAgentSession` 接收 `options.serverUrl`，存在时优先使用且**不**回写 settings.json（调用方是权威源，跨环境切换不应被持久化污染）；不传时维持旧行为兼容 CLI。runtime-core `RuntimeHost` 同步暴露 `serverUrl` option 透传过来。
 
 - **Session-level 图片预算（默认保留最近 2 张）**：新增 `packages/coding-agent/src/core/image-budget.ts` 中的 `applyImageBudget(messages, budget)`，并在 `sdk.ts` 的 `transformContext` 里挂在 `extensionRunner.emitContext` + `session.preCallCompaction` 之后调用。每次发起 LLM 调用前从最新消息往前扫描，最多保留 `budget` 张 `ImageContent`，更早的图片就地替换为占位文本 `[earlier image omitted to conserve memory]`。配套在 `SettingsManager` 暴露 `getMaxRecentImages()` / `setMaxRecentImages()`，对应 `settings.json` 的 `images.maxRecentImages`（默认 `2`，`<=0` 关闭预算/保留全部）。**解决的具体问题**：单张图被 resize 到合规上限不等于 N 张并存也合规——VL 后端是按"当前请求里所有图的视觉 token 总和"占显存的，旧会话每多保留一张大图就多 5000+ patch tokens，到第 2~3 张时本地推理服务就 CUDA OOM 直接返 500。通过把超出预算的旧图替换为短文本，既保住最近上下文的视觉能力，又把累积视觉 token 钉死在常数级。
 - Added `html_to_pdf` tool as a thin wrapper around Vetta Desktop's PDF command-line mode.
@@ -483,14 +516,14 @@
 - **图片预算改判定：未看过的图永不驱逐，修复批量读图「读了=没读」（ADR-0012）**：`applyImageBudget` 原本每次 LLM 调用前纯按数量只留最新 N 张图（默认 2）、其余换占位符。问题是它不区分模型是否看过这张图——agent 一轮里批量 `read` 多张图（如逐页读 PDF）时，即将发起的这次调用本是模型第一次看它们，却已被砍到只剩 N 张，模型对其余图收到占位符、从没真正看过却以为读过（截图里表现为对占位符幻觉成「文件不存在」）。改为以**最后一条 assistant 消息**为界：在它之后的图属于「未看过」（这次调用是首次查看）→ 无条件保留；在它之前的图模型已看过 → 才进入预算被砍。判定是消息数组结构的纯函数、无状态、不 mutate 原始历史。**取舍**：此举刻意移除了算法层对本地 VL 模型的 OOM 硬保护（未看过的图全保留 ⇒ 批量读图会同时进显存）——显存受限的本地模型改由提示词软引导「一张一张 read」兜底，云端模型无显存墙不受影响。详见 `docs/adr/0012-image-budget-keeps-unseen-images.md`。
 - **`maxRecentImages` 改动在运行中的 session 下一轮 prompt 即生效**：`SettingsManager` 新增 `reloadImageSettings()`（仅重读 `images` 块、纯文件读、不动其他 in-memory 状态），`AgentSession.prompt()` 入口调用一次（落在 MCP 懒重载之后）。这样 desktop「上下文策略」滑块改动写盘后，运行中的 session 在下一轮 prompt 懒重读生效、新建/重开的 session 在构造时直接读到，无需重启或广播——沿用 MCP/skills 的 lazy-reload-at-prompt 模式。
 - `extract_text_from_pdf` OCR fallback DPI 默认值从 200 调整为 150；未显式传入 DPI 时，会根据 `pdfinfo -box` 读取到的 PDF 页面尺寸自动下调 DPI，避免超大页面经 `pdftoppm` 渲染出过大图片导致 OOM。
-- **用户粘贴/拖入/桌面端上传的图片也走 resize 管线**：`packages/coding-agent/src/core/agent-session.ts` 新增 `_normalizeUserImages(images)`，在 `prompt()` 内取到 `currentImages`、且 extension input transform 跑完之后调用，对每张 `ImageContent` 跑 `resizeImage()`（默认 1280×1280 / 2MB），再分发给 `_queueSteer` / `_queueFollowUp` / userContent。原先 resize 只接在 `read` 工具里——但 desktop-app `InputBar.tsx` / web-ui 上传图片走的是 RPC `PromptRequest.images`，**完全跳过 resize**，到达本地 VL 后端时仍是原始分辨率（实测 qwen3.6-35b 单张 4032×3024 图 = 17,057 input tokens），叠加 2 张就足以 CUDA OOM。新增 `images.autoResize` 设置项（已存在）现在同时管 read 工具与用户上传两路；关掉后保持原行为。Photon WASM 加载或处理失败时省略图片附件并给模型返回文本说明，不再按原图透传。
+- **用户粘贴/拖入/桌面端上传的图片也走 resize 管线**：`packages/coding-agent/src/core/agent-session.ts` 新增 `_normalizeUserImages(images)`，在 `prompt()` 内取到 `currentImages`、且 extension input transform 跑完之后调用，对每张 `ImageContent` 跑 `resizeImage()`（默认 1280×1280 / 2MB），再分发给 `_queueSteer` / `_queueFollowUp` / userContent。原先 resize 只接在 `read` 工具里——但 desktop `InputBar.tsx` / web-ui 上传图片走的是 RPC `PromptRequest.images`，**完全跳过 resize**，到达本地 VL 后端时仍是原始分辨率（实测 qwen3.6-35b 单张 4032×3024 图 = 17,057 input tokens），叠加 2 张就足以 CUDA OOM。新增 `images.autoResize` 设置项（已存在）现在同时管 read 工具与用户上传两路；关掉后保持原行为。Photon WASM 加载或处理失败时省略图片附件并给模型返回文本说明，不再按原图透传。
 - **图片预处理默认值面向本地 VL 模型调低**：`packages/coding-agent/src/utils/image-resize.ts` 中 `DEFAULT_OPTIONS` 的 `maxWidth/maxHeight` 由 `2000` → `1280`，`jpegQuality` 由 `80` → `70`，`DEFAULT_MAX_BYTES` 由 `4.5MB` → `2MB`。原值是按 Anthropic 5MB 字节限制设计的；但本地/开源视觉模型（Qwen-VL、InternVL 等）的瓶颈不是字节数而是 vision encoder 中的视觉 token 数（patch tokens），2000×2000 单张图就有 5000+ tokens，连续读两张就足以撑爆 GPU 显存返回 `500 (no body)` / CUDA OOM。新默认 1280×1280 把单图视觉 token 量降到约 1/2.4，给多图场景留出预算。如果只用 Claude，可通过 `ReadToolOptions.imageResize` 自定义拉回 2000（待后续暴露）。
 - Scene 触发时按 `tasks.json` 1:1 工程化加载 todo 列表：先重置已有 todos，再批量创建，并锁定列表禁止 LLM 通过 `todo(action="create")` 追加。同 session 内重复触发同一 scene 会被无视；新 session 自动解锁。锁定状态会随 `todo_snapshot` 持久化以支持会话恢复。
 
 ### Removed
 
 - **移除 `easy_use_vettaApp` 工具与宿主 capability**：Vetta Desktop action 改为由 agent 直接调用 `vetta action run`；需要授权的 action 会在同一次 CLI/RPC 调用中由 Desktop 自动展示授权 UI 并继续执行。系统提示词继续强制先查询 `vetta action` 帮助，禁止通过 `.vetta` 配置文件猜测应用功能，并要求用户拒绝后不得自动重试。
-- **移除 `SessionHeader.origin` 字段、`SessionOrigin` 类型与 `--origin` CLI 参数**：原本由 im-gateway 启动子进程时传 `--origin im` 给会话打标，desktop-app sidebar 据此渲染「IM」badge。ADR-0005 把 im-gateway 和 desktop「对话」的 cwd 物理分家后，"哪个 cwd 出来的就是哪一类 session" 已是单一可信源，origin 字段沦为冗余。`SessionManager` 的 `defaultOrigin` 私字段、`NewSessionOptions.origin`、构造器对 origin 的 backfill 一并清除；`@vetta/coding-agent` 不再导出 `SessionOrigin`。下游 desktop-app 改用 `session.cwd === imConversationCwd` 判定 IM 会话。
+- **移除 `SessionHeader.origin` 字段、`SessionOrigin` 类型与 `--origin` CLI 参数**：原本由 im-gateway 启动子进程时传 `--origin im` 给会话打标，desktop sidebar 据此渲染「IM」badge。ADR-0005 把 im-gateway 和 desktop「对话」的 cwd 物理分家后，"哪个 cwd 出来的就是哪一类 session" 已是单一可信源，origin 字段沦为冗余。`SessionManager` 的 `defaultOrigin` 私字段、`NewSessionOptions.origin`、构造器对 origin 的 backfill 一并清除；`@vetta/coding-agent` 不再导出 `SessionOrigin`。下游 desktop 改用 `session.cwd === imConversationCwd` 判定 IM 会话。
 - 移除 `invoke_scene` 工具及其在 system prompt 中的指引。Scene 完全由服务端 `_expandSkillCommand` 在 `/scene:` 前缀进入时直接处理（注入隐藏 scene 内容 + 预填 todo 列表），不再依赖大模型自行调用工具。
 - **移除 LLM 调用 500 错误时的"鞭策机制"（inject-and-retry）**：之前 provider 返回 `stopReason === "error"` 时会注入一条 user 消息（"这通常由以下原因导致：1. 输入图片过大触发后端 CUDA OOM / 2. 上下文过长超出后端预分配显存 / 3. 后端服务临时不可用 / 5xx ……"）让模型自行换路径继续，连续失败 3 次才 halt。实测该机制对本地 VL 模型的恢复价值有限，反而把失败原因揉进上下文干扰后续 turn，且 `Session-level 图片预算` 已从源头解决主要诱因（多图累计 OOM）。删除 `Settings.errorRecovery`、`SettingsManager#getErrorRecoverySettings()`、`ErrorRecoverySettings` 类型，以及 `sdk.ts` 中向 `AgentOptions.errorRecovery` 的透传；同时删除 `@vetta/agent-core` 的 `AgentLoopConfig.errorRecovery`、`AgentOptions.errorRecovery`、`Agent#errorRecovery` 与 `ErrorRecoveryConfig` 类型。恢复旧的 halt 语义：LLM 返 error 即 `agent_end`，由上层（如 batch executor）决定如何重试。
 

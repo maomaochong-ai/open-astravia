@@ -162,7 +162,7 @@ runtime-core:
 coding-agent:
   runtime-core/composition.test.ts
 
-desktop-app:
+desktop:
   desktop-greenfield-runtime-candidate.test.ts
 
 root:

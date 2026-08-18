@@ -225,7 +225,7 @@ bunx vitest --run test/greenfield-runtime-composition.test.ts
 
 ```text
 bunx tsgo --noEmit -p tsconfig.json
-bunx tsc --noEmit -p packages/cli-app/tsconfig.json
+bunx tsc --noEmit -p apps/cli-host/tsconfig.json
 bun run check:quick
 bun run check
 ```

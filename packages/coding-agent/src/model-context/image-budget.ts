@@ -1,4 +1,3 @@
-import { Buffer } from "node:buffer";
 import type { AgentMessage } from "@vetta/agent-core";
 import type { ImageContent, TextContent, ToolResultMessage, UserMessage } from "@vetta/ai";
 
@@ -99,7 +98,7 @@ function projectOmittedImages(
 }
 
 export function estimateModelMessageRequestBytes(messages: readonly AgentMessage[]): number {
-	return Buffer.byteLength(JSON.stringify(messages), "utf8");
+	return new TextEncoder().encode(JSON.stringify(messages)).byteLength;
 }
 
 function positiveInteger(value: number | undefined, fallback: number): number {

@@ -1,6 +1,6 @@
 import type { SandboxPermissionContext, SandboxPermissionRequest } from "@vetta/runtime-core/sandbox";
 import { describe, expect, it, vi } from "vitest";
-import { confirmSandboxPermission } from "../../src/host/session-execution/sandbox/sandbox-permission-policy.js";
+import { confirmSandboxPermission } from "../../src/execution/sandbox/permission-policy.js";
 
 const REQUEST: SandboxPermissionRequest = {
 	capability: "file.write",

@@ -108,7 +108,7 @@
 - Runtime Storage 完整套件 19 个文件、95 项通过。
 - `bun run check:quick` 通过。
 - 根 `bun run check` 通过，覆盖 Lint、Root/CLI/Desktop/Admin/Docs 类型检查和全部质量守卫。
-- 曾用根 Vitest 直接运行 CLI 测试时误加载旧 `dist`，出现新增导出不存在；按 `packages/cli-app/vitest.config.ts` 的源码别名重跑后 26 项全部通过。该问题属于测试入口错误，未以修改生产架构规避。
+- 曾用根 Vitest 直接运行 CLI 测试时误加载旧 `dist`，出现新增导出不存在；按 `apps/cli-host/vitest.config.ts` 的源码别名重跑后 26 项全部通过。该问题属于测试入口错误，未以修改生产架构规避。
 
 ## 后续方向
 

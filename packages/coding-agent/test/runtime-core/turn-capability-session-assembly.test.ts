@@ -10,12 +10,12 @@ import {
 	PassthroughContextStrategy,
 	type RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
 import { createCodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
+import type { CodingAgentSessionExecutionRuntime } from "../../src/execution/session/runtime.js";
 import { CodingAgentExtensionRunBridge } from "../../src/extensions/runtime/extension-run-bridge.js";
 import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
-import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
 import type { CodingAgentContextRuntime } from "../../src/runtime-contracts/index.js";
 import { DEFAULT_HEAVY_TOOL_CONFIRMATION_TEXTS } from "../../src/tool-policy/heavy-tool-confirmation.js";
 import { createFileSettingsRuntime } from "../fixtures/file-settings-runtime.js";
@@ -143,6 +143,10 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			noThemes: true,
 		});
 		await resourceSource.reload();
+		const runtimeSourceFactory = vi.fn(async (_context: { readonly runtimeSkillPaths: readonly string[] }) => ({
+			resourceSource,
+			settingsSource,
+		}));
 		const assembly = await createCodingAgentTurnCapabilitySessionAssembly({
 			session: {
 				initialSessionId: "session-1",
@@ -155,11 +159,13 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			activation: {
 				resolve: () => ({ mode: "explicit", toolNames: [] }),
 				readAgentMode: () => undefined,
-				readAgentPlugins: () => undefined,
+				readAgentPlugins: () => ({
+					skillPathContributions: [{ pluginId: "scene-plugin", paths: [sceneDir] }],
+				}),
 				readActiveToolNamesOverride: () => undefined,
 			},
 			prompt: {
-				runtimeSourceFactory: async () => ({ resourceSource, settingsSource }),
+				runtimeSourceFactory,
 			},
 			baseProfile: codingTools.profile,
 			codingTools,
@@ -175,6 +181,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			extensionEvents: new CodingAgentExtensionRunBridge(),
 		});
 		disposals.push(() => assembly.dispose());
+		expect(runtimeSourceFactory).toHaveBeenCalledWith({ runtimeSkillPaths: [sceneDir] });
 
 		const prepared = await preparePrompt(
 			assembly.promptAdapter,

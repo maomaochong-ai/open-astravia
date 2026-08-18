@@ -93,7 +93,7 @@ CLI process
 
 - `runtime-core/test/runtime-host/greenfield-runtime-factory.test.ts`：2 个测试通过。
 - `runtime-mcp/test/server-supervisor.test.ts`：4 个测试通过。
-- `cli-app/test/agent-runtime-initialization-failure.test.ts`：2 个真实 CLI 测试通过。
+- `cli-host/test/agent-runtime-initialization-failure.test.ts`：2 个真实 CLI 测试通过。
 - 相关 Greenfield IM Host、Extension Host 与 Composition 测试纳入本轮回归。
 - 根级 `check:quick` 与完整 `check` 在本轮结束前执行，最终结果以交付说明为准。
 

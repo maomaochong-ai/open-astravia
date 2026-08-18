@@ -86,7 +86,7 @@
   - 全量 TypeScript 检查通过。
   - 整体命令因两个非本次变更问题失败：
     - Capability Catalog 文档过期。
-    - `packages/admin/src/routeTree.gen.ts` 不符合当前 Biome 格式。
+    - `apps/admin/src/routeTree.gen.ts` 不符合当前 Biome 格式。
 
 ### 结果
 

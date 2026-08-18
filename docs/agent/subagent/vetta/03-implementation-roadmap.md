@@ -151,7 +151,7 @@ RPC 当前直接输出 `AgentSessionEvent`，基础事件无需另造一套；�
 建议把展示放入现有 `activity-panel` 领域，而不是塞进 ChatPage：
 
 ```text
-packages/desktop-app/src/renderer/domains/activity-panel/
+apps/desktop/src/renderer/domains/activity-panel/
 ├── components/SubagentsPanel.tsx
 ├── components/SubagentRow.tsx
 └── services/subagent-status.ts

@@ -84,7 +84,7 @@ fire-and-forget 写入无法保证成功、顺序或关闭前落盘。因此本�
 - `packages/runtime-core`：24 个测试文件、111 项测试全部通过。
 - `packages/runtime-storage`：4 个测试文件、25 项测试全部通过。
 - 根目录 `bun run check:quick` 通过。
-- 根目录 `bun run check` 通过：Biome、monorepo `tsgo`、desktop-app `tsc`、admin `tsc -b` 和
+- 根目录 `bun run check` 通过：Biome、monorepo `tsgo`、desktop `tsc`、admin `tsc -b` 和
   `check:guards` 均无错误。
 
 ## 明确未修改

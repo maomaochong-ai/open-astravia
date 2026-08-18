@@ -13,7 +13,7 @@ import {
 	createWaitAgentToolRegistration,
 } from "./tools/index.js";
 
-/** 组装产品工具顺序；协议归 @vetta/runtime-tools，Node 实现归 @vetta/runtime-node。 */
+/** 组装 Coding Agent 工具顺序；协议归 @vetta/runtime-tools，Node 实现归 @vetta/runtime-node。 */
 export function createCodingAgentSubagentRuntimeToolRegistrations(
 	getCoordinator: () => SubagentCoordinatorPort | undefined,
 	workflowTypeId = "workflow",

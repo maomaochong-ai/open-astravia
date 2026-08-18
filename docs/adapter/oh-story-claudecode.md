@@ -6,7 +6,7 @@
 - 外部仓库：[`worldwonderer/oh-story-claudecode`](https://github.com/worldwonderer/oh-story-claudecode)
 - 评估基线：[`12a9655a21abacfbd1c01eb41b98f2af007ab5be`](https://github.com/worldwonderer/oh-story-claudecode/tree/12a9655a21abacfbd1c01eb41b98f2af007ab5be)
 - Vetta 基线：`56f96cb885e06a7fd2dfd56bda5af33bba93e786`
-- 评估范围：Vetta desktop-app、coding-agent、Skill 市场和插件系统
+- 评估范围：Vetta desktop、coding-agent、Skill 市场和插件系统
 - 本文是兼容性评估与实施依据，不表示已经完成集成。
 
 ## 结论
@@ -84,7 +84,7 @@ Vetta 当前可以运行它的 generic/solo 路径：写作、拆文、导入、
 | `ask_user_question` | 已支持 | desktop 有完整问答 UI 与阻塞式返回能力 |
 | Node/Python | 已支持 | desktop 托管运行时会注入 PATH，见 [`managed-runtimes.md`](../managed-runtimes.md) |
 | 后台 Shell 任务 | 已支持 | 普通会话提供后台任务及查询/停止工具 |
-| 原生图像生成/编辑 | 已支持 | RuntimeHost 注入 `generate_image` / `edit_image`，见 [`runtime.ts`](../../packages/desktop-app/src/main/runtime.ts) |
+| 原生图像生成/编辑 | 已支持 | RuntimeHost 注入 `generate_image` / `edit_image`，见 [`runtime.ts`](../../apps/desktop/src/main/runtime.ts) |
 | MCP | 已支持 | 可用于补充搜索或浏览器服务 |
 | Custom agent registry | 未支持 | coding-agent 核心没有内置 sub-agent/custom-agent 注册表 |
 | Agent/Task spawn | 未支持 | Skill 不能按 `agent_type` / `subagent_type` 调度隔离会话 |
@@ -97,9 +97,9 @@ Vetta 当前可以运行它的 generic/solo 路径：写作、拆文、导入、
 
 ### 1. 整仓不能作为一个市场 Skill 上传
 
-后端上传只在压缩包根目录或单层顶级目录中寻找一个 `SKILL.md`，见 [`findSkillMd`](../../packages/api/internal/service/skill.go)。外部仓库的文件位于 `skills/{skill-name}/SKILL.md`，因此整仓压缩包不符合市场上传结构。
+后端上传只在压缩包根目录或单层顶级目录中寻找一个 `SKILL.md`，见 [`findSkillMd`](../../apps/api/internal/service/skill.go)。外部仓库的文件位于 `skills/{skill-name}/SKILL.md`，因此整仓压缩包不符合市场上传结构。
 
-desktop 自定义导入虽然递归查找 `SKILL.md`，但只选择一个最浅结果，并只复制该 Skill 的父目录，见 [`findShallowestSkillMd`](../../packages/desktop-app/src/main/ipc/skills.ts)。直接导入整仓最多得到其中一个 Skill，不能得到完整套件。
+desktop 自定义导入虽然递归查找 `SKILL.md`，但只选择一个最浅结果，并只复制该 Skill 的父目录，见 [`findShallowestSkillMd`](../../apps/desktop/src/main/ipc/skills.ts)。直接导入整仓最多得到其中一个 Skill，不能得到完整套件。
 
 适配结论：不要把外部仓库当作单个市场 Skill；应包装成 Vetta 插件或 coding-agent package，一次声明整个 `skills/` 目录。
 

@@ -1,6 +1,5 @@
-import { basename } from "node:path";
 import type { ConversationDocument } from "@vetta/runtime-core";
-import { APP_NAME } from "../config.js";
+import { APP_NAME } from "../identity.js";
 import type {
 	CodingAgentHtmlExportRuntime,
 	HtmlExportFileWriter,
@@ -23,7 +22,7 @@ export class DefaultCodingAgentHtmlExportRuntime implements CodingAgentHtmlExpor
 		if (!this.options.legacySessions.exists(inputPath)) throw new Error(`File not found: ${inputPath}`);
 		const resolved = resolveOptions(options);
 		const document = projectLegacyHtmlExportDocument(this.options.legacySessions.read(inputPath));
-		const outputPath = resolved.outputPath ?? `${APP_NAME}-session-${basename(inputPath, ".jsonl")}.html`;
+		const outputPath = resolved.outputPath ?? `${APP_NAME}-session-${fileStem(inputPath, ".jsonl")}.html`;
 		this.options.writer.write(outputPath, this.options.renderer.render(document, resolved.themeName));
 		return outputPath;
 	}
@@ -36,10 +35,15 @@ export class DefaultCodingAgentHtmlExportRuntime implements CodingAgentHtmlExpor
 		const resolved = resolveOptions(options);
 		const exportDocument = projectConversationHtmlExportDocument(document, resolved);
 		const outputPath =
-			resolved.outputPath ?? `${APP_NAME}-session-${basename(sessionFile, ".conversation.jsonl")}.html`;
+			resolved.outputPath ?? `${APP_NAME}-session-${fileStem(sessionFile, ".conversation.jsonl")}.html`;
 		this.options.writer.write(outputPath, this.options.renderer.render(exportDocument, resolved.themeName));
 		return outputPath;
 	}
+}
+
+function fileStem(path: string, suffix: string): string {
+	const name = path.split(/[\\/]/).at(-1) ?? path;
+	return name.endsWith(suffix) ? name.slice(0, -suffix.length) : name;
 }
 
 function resolveOptions(options: HtmlExportOptions | string | undefined): HtmlExportOptions {

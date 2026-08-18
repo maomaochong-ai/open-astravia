@@ -9,6 +9,7 @@ import type { CodingToolActivation, CodingToolResultPolicy } from "@vetta/runtim
 import type { CodingAgentKnowledgeRuntime } from "../../features/knowledge/contracts.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
+import type { ModelInputImageProcessor } from "../../model-context/image-normalization.js";
 import type {
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentCompactionRuntimeOptions,
@@ -26,6 +27,7 @@ import type { CodingAgentConversationPersistenceFactory } from "./conversation-p
 import type { CodingAgentMemoryRuntimeFactoryOptions } from "./memory-runtime.js";
 import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
 import type { CodingAgentSessionExecutionEnvironmentFactory } from "./session-execution-environment.js";
+import type { CodingAgentSessionInitializationObserver } from "./session-initialization-observability.js";
 import type {
 	CodingAgentSubagentChildFactory,
 	CodingAgentSubagentChildFactoryContext,
@@ -61,6 +63,8 @@ export interface CodingAgentRuntimeModelOptions {
 	readonly initialModel: NonNullable<SessionConfig["model"]>;
 	readonly initialThinkingLevel: NonNullable<SessionConfig["thinkingLevel"]>;
 	readonly streamFn?: AgentCoreTurnEngineOptions["streamFn"];
+	/** 模型图片处理由最终平台选择；缺省时安全省略图片，不隐式选择 Node 实现。 */
+	readonly modelInputImageProcessor?: ModelInputImageProcessor;
 }
 
 export interface CodingAgentRuntimeToolOptions {
@@ -78,6 +82,8 @@ export interface CodingAgentRuntimeToolOptions {
 	readonly mcpSource?: McpRuntimeToolSource;
 	readonly tokenBudget?: number;
 	readonly reservedOutputTokens?: number;
+	/** Host-resolved process-wide OCR concurrency. */
+	readonly ocrMaxConcurrent?: number;
 }
 
 export interface CodingAgentRuntimeSubagentOptions {
@@ -86,6 +92,11 @@ export interface CodingAgentRuntimeSubagentOptions {
 	readonly subagentMaxConcurrent?: number;
 	/** 运行时实时读取的子代理类型注册表；注册变化影响后续 spawn，不重建当前 Session。 */
 	readonly subagentTypeRegistry?: SubagentTypeRegistryLike<CodingAgentSubagentProfile>;
+	readonly createSubagentId?: () => string;
+	readonly subagentPathPort?: {
+		dirname(path: string): string;
+		join(...parts: readonly string[]): string;
+	};
 	/** 子代理 Child 创建的产品边界；未提供时使用 Coding Agent Child Composition。 */
 	readonly createSubagentChildFactory?: (
 		context: CodingAgentSubagentChildFactoryContext,
@@ -93,6 +104,8 @@ export interface CodingAgentRuntimeSubagentOptions {
 }
 
 export interface CodingAgentRuntimePromptOptions {
+	/** 会话创建前由宿主探测并固化的工作区事实；Prompt Runtime 不直接读取文件系统。 */
+	readonly workspaceFacts?: string;
 	/** 为每个 Session 创建资源与设置事实源；文件与环境实现由最终宿主选择。 */
 	readonly createPromptRuntimeSources?: (
 		context: CodingAgentPromptRuntimeSourceContext,
@@ -121,6 +134,8 @@ export interface CodingAgentPromptRuntimeSourceContext {
 	readonly cwd: string;
 	readonly agentDir?: string;
 	readonly scenario: ConversationScenario;
+	/** Plugin-owned Skill paths folded into the first resource load to avoid a second full scan. */
+	readonly runtimeSkillPaths: readonly string[];
 }
 
 export interface CodingAgentPromptRuntimeSources {
@@ -180,6 +195,8 @@ export interface CodingAgentRuntimeObservabilityOptions {
 	readonly tracer?: AgentCoreTurnEngineOptions["tracer"];
 	/** Session 间共享的观测策略；Turn Engine 会覆盖真实 Session 身份。 */
 	readonly tracing?: AgentCoreTurnEngineOptions["tracing"];
+	/** Session 初始化阶段观测；只包含阶段耗时与身份，不包含 Prompt、路径或资源正文。 */
+	readonly observeSessionInitialization?: CodingAgentSessionInitializationObserver;
 }
 
 export interface CodingAgentRuntimeCompositionOptions

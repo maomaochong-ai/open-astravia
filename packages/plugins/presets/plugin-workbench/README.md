@@ -10,7 +10,7 @@
 agent/docs/plugin/     ← 与仓库 docs/plugin 同源
 ```
 
-- **Desktop 构建会自动同步**：`packages/desktop-app` 的 `bun run build:presets` / `build:presets:dev`（dev 与 dist 都走）在构建前调用 `scripts/sync-plugin-docs.mjs`，把 monorepo `docs/plugin` 拷进本包；一般**不必**再手跑 sync。
+- **Desktop 构建会自动同步**：`apps/desktop` 的 `bun run build:presets` / `build:presets:dev`（dev 与 dist 都走）在构建前调用 `scripts/sync-plugin-docs.mjs`，把 monorepo `docs/plugin` 拷进本包；一般**不必**再手跑 sync。
 - 本地单独构建本包时：`bun run sync-docs` 或 `prebuild` 仍会跑。
 - Skill：`agent/skills/plugin-workbench/SKILL.md` 强制 agent 先 `read` 上述手册再实现。
 - 索引：`agent/skills/plugin-workbench/references/doc-index.md`

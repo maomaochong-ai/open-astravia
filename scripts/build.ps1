@@ -56,7 +56,7 @@ function Build-Layer2 {
 }
 
 function Build-Apps {
-	Build-Pkg "packages/cli-app"
+	Build-Pkg "apps/cli-host"
 }
 
 function Build-Admin {
@@ -81,7 +81,7 @@ switch ($Target.ToLowerInvariant()) {
 	"app" { Build-Apps; break }
 	"apps" { Build-Apps; break }
 	"desktop" { Build-Libs; Build-Apps; break }
-	"cli" { Build-Libs; Build-Pkg "packages/cli-app"; break }
+	"cli" { Build-Libs; Build-Pkg "apps/cli-host"; break }
 	"admin" { Build-Admin; break }
 	default {
 		Write-Host "Unknown target: $Target" -ForegroundColor Red

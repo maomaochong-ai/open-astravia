@@ -122,7 +122,7 @@ rollover 提交后只更新捕获了旧存储身份的引用：
 - 根 TypeScript：`bunx tsgo --noEmit -p tsconfig.json`。
 - `bun run check:quick`：通过。
 
-完整 `bun run check` 中 Biome、guards、根 TypeScript、CLI TypeScript 与 Desktop TypeScript 均通过；随后 Admin `tsc -b` 因本地 `packages/admin/node_modules/@types` 缺失 `d3-*`、`estree`、`json-schema` 等声明文件而报 TS6053。该依赖安装状态与本轮修改无关，本轮没有通过删除功能、降低类型或改动 Admin 配置规避。
+完整 `bun run check` 中 Biome、guards、根 TypeScript、CLI TypeScript 与 Desktop TypeScript 均通过；随后 Admin `tsc -b` 因本地 `apps/admin/node_modules/@types` 缺失 `d3-*`、`estree`、`json-schema` 等声明文件而报 TS6053。该依赖安装状态与本轮修改无关，本轮没有通过删除功能、降低类型或改动 Admin 配置规避。
 
 真实 CLI memory-rollover 差分门禁已尝试执行，但当前受控环境中的测试子进程在读取若干 workspace 源文件时收到 `EPERM`，suite 在用例收集前中止；该失败不是行为断言失败，也未据此声称差分门禁通过。
 

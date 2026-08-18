@@ -4,7 +4,7 @@ status: accepted
 
 # desktop「对话」项目按 session 拆产物 cwd
 
-「对话」是 desktop-app 侧栏的默认项目、不可删除，扮演"sink"角色——任何无明确归属的 session 都落在它下面。ADR-0005 已经把 IM 与 desktop「对话」分家解决了渠道间窜味，但「对话」内部多个 desktop session 仍共用同一 cwd `~/.vetta/conversation`，agent 写出的 html/py/md 等产物全部堆在根目录：(1) 同名文件互相覆盖（A 的 `report.html` 被 B 覆盖）；(2) B 的 agent 在 ls 时能看到 A 的残留并可能误读。和 ADR-0005 同形态的「窜味」问题，只是发生在更细粒度。
+「对话」是 desktop 侧栏的默认项目、不可删除，扮演"sink"角色——任何无明确归属的 session 都落在它下面。ADR-0005 已经把 IM 与 desktop「对话」分家解决了渠道间窜味，但「对话」内部多个 desktop session 仍共用同一 cwd `~/.vetta/conversation`，agent 写出的 html/py/md 等产物全部堆在根目录：(1) 同名文件互相覆盖（A 的 `report.html` 被 B 覆盖）；(2) B 的 agent 在 ls 时能看到 A 的残留并可能误读。和 ADR-0005 同形态的「窜味」问题，只是发生在更细粒度。
 
 决定：「对话」项目下任何**新建** session（手动 / scheduler / IPC 等所有口子），在创建时 main 进程 eager `mkdir -p ~/.vetta/conversation/<sessionId>/`，并把该 session 的运行 cwd 设为此子目录。Session jsonl 仍集中存于项目根 `~/.vetta/conversation/.vetta/sessions/`，不挪——sidebar 列表逻辑不动。删除 session 时一并递归删除其产物子目录，二次确认弹窗提示包含 N 个文件。
 

@@ -115,7 +115,7 @@ bun run check:quick
 bun run check:types
 vitest --run（runtime-core 定向 29 项）
 vitest --run（coding-agent 定向 22 项）
-vitest --run（cli-app 定向 22 项）
+vitest --run（cli-host 定向 22 项）
 bun run check
 ```
 

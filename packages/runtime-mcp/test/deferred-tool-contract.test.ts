@@ -73,6 +73,7 @@ describe("MCP deferred tool contract", () => {
 			},
 		});
 		expect(tool.description).toContain("next model step in the same turn");
+		expect(tool.description).toContain("at most one broader retry");
 		const result = await tool.execute({
 			sessionId: "session",
 			turnId: "turn",

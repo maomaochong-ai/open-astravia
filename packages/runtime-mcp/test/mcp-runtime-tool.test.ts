@@ -134,6 +134,18 @@ describe("MCP Runtime Tool result policy", () => {
 		});
 	});
 
+	it("marks descriptionless MCP tools as low-confidence instead of implying a capability", () => {
+		const tool = createMcpRuntimeTool(
+			{ name: "mystery", description: "   ", inputSchema: { type: "object" as const } },
+			createClient({ content: [] }),
+			"external",
+		);
+
+		expect(tool.description).toContain('tool "mystery" from server "external"');
+		expect(tool.description).toContain("did not provide a capability description");
+		expect(tool.description).toContain("do not infer behavior from the server name alone");
+	});
+
 	it("always invokes the Runtime Tool policy with complete execution identity", async () => {
 		const resultPolicy: McpToolResultPolicy = {
 			project: async (_result, context) => ({

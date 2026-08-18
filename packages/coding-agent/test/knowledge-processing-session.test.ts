@@ -32,6 +32,7 @@ describe("Knowledge processing session", () => {
 		const observedFrames: string[] = [];
 		const observedModels: Model<Api>[] = [];
 		const observedReasoning: unknown[] = [];
+		let observedWorkspaceFacts: string | undefined;
 		const responses = [
 			assistantMessage(
 				[
@@ -94,8 +95,12 @@ describe("Knowledge processing session", () => {
 			createToolEnvironment: createCodingAgentNodeToolEnvironment,
 			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
 			knowledgeRuntime: createTestKnowledgeRuntime(knowledgeDirectory),
+			resolveWorkspaceFacts: (root) => `# Workspace\n\n- ${root}`,
 			createSessionId: () => "knowledge-session",
 			createComposition: createRecordedComposition({
+				onCompositionOptions(options) {
+					observedWorkspaceFacts = options.workspaceFacts;
+				},
 				onFrame(model, context, streamOptions) {
 					observedModels.push(model);
 					observedFrames.push(JSON.stringify(context));
@@ -136,6 +141,7 @@ describe("Knowledge processing session", () => {
 		expect(registryEvents.indexOf("loadRemoteModels")).toBeGreaterThanOrEqual(0);
 		expect(firstFind).toBeGreaterThan(registryEvents.indexOf("loadRemoteModels"));
 		expect(observedModels).toEqual([TARGET_MODEL, TARGET_MODEL, TARGET_MODEL]);
+		expect(observedWorkspaceFacts).toBe(`# Workspace\n\n- ${cwd}`);
 		expect(observedReasoning).toEqual(["high", "high", "high"]);
 		expect(observedFrames[0]).toContain("knowledge instructions");
 		expect(observedFrames[0]).toContain('"name":"kb_write_page"');
@@ -236,6 +242,7 @@ function createTestKnowledgeRuntime(root: string) {
 }
 
 function createRecordedComposition(options: {
+	readonly onCompositionOptions?: (options: CodingAgentRuntimeCompositionOptions) => void;
 	readonly onFrame: (
 		model: Parameters<GreenfieldStreamFn>[0],
 		context: Parameters<GreenfieldStreamFn>[1],
@@ -245,6 +252,7 @@ function createRecordedComposition(options: {
 	readonly onDispose: () => Promise<void>;
 }): NonNullable<KnowledgeProcessingSessionFactoryOptions["createComposition"]> {
 	return async (compositionOptions) => {
+		options.onCompositionOptions?.(compositionOptions);
 		const composition = await createCodingAgentRuntimeComposition({
 			...compositionOptions,
 			resolveSystemPromptOptions: () => ({

@@ -2,15 +2,15 @@
  * Tests for image processing utilities using Photon.
  */
 
-import { describe, expect, it } from "vitest";
-import { convertToPng } from "../src/utils/image-convert.js";
 import {
+	convertToPng,
 	formatDimensionNote,
 	formatImageResizeFailureNote,
 	isImageResizeFailure,
 	resizeImage,
 	resizeImageBuffer,
-} from "../src/utils/image-resize.js";
+} from "@vetta/runtime-node/coding";
+import { describe, expect, it } from "vitest";
 
 // Small 2x2 red PNG image (base64) - generated with ImageMagick
 const TINY_PNG =

@@ -40,11 +40,11 @@ describe("platform Runtime package boundary", () => {
 	it("rejects a runtime-desktop back edge into desktop-app", () => {
 		const findings = findPackageBoundaryViolations(
 			"packages/runtime-desktop/src/composition.ts",
-			'import { getDesktopConfig } from "@vetta/desktop-app/config";',
+			'import { getDesktopConfig } from "@vetta/desktop/config";',
 		);
 
 		expect(findings).toContain(
-			"packages/runtime-desktop/src/composition.ts: libs/plugins must not import app package (@vetta/desktop-app)",
+			"packages/runtime-desktop/src/composition.ts: libs/plugins must not import app package (@vetta/desktop)",
 		);
 	});
 });

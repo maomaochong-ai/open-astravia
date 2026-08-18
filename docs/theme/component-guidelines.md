@@ -249,7 +249,7 @@ Theme SDK 是主题唯一应依赖的应用协议 API。它不承载具体 UI �
 - 不绑定应用内部数据的布局 primitive。
 - 接收 `model` / `actions` props 的官方默认 view 组件。
 
-desktop-app 可以额外提供窄口径的官方 UI primitive 出口，例如 `@vetta/desktop-theme-ui/sidebar`。这类出口只应导出稳定的 props-driven 子组件和类型，例如 `SidebarNavigation`、`SidebarNavItemButton`、`SidebarNavigationProps`、`SidebarNavItem`；不要从该出口导出完整 sidebar connected container 或会牵出整个领域依赖树的组件。
+desktop 可以额外提供窄口径的官方 UI primitive 出口，例如 `@vetta/desktop-theme-ui/sidebar`。这类出口只应导出稳定的 props-driven 子组件和类型，例如 `SidebarNavigation`、`SidebarNavItemButton`、`SidebarNavigationProps`、`SidebarNavItem`；不要从该出口导出完整 sidebar connected container 或会牵出整个领域依赖树的组件。
 
 具体主题组件应放在主题包内。新增主题不应修改 SDK；只有协议、registry、host 能力变化时才修改 SDK。
 
@@ -263,7 +263,7 @@ UI 包导出组件时，要同步导出 props 类型。主题作者不应该通�
 <DefaultWindowControls model={model} />
 ```
 
-不推荐把内部调用 `useSidebarModel()`、`usePageHeaderModel()` 这类 SDK model hook 的 connected 容器作为公共 UI 组件暴露。connected 容器可以留在 desktop-app 内部，用于默认应用入口；主题复用的组件应接收调用方传入的 model。
+不推荐把内部调用 `useSidebarModel()`、`usePageHeaderModel()` 这类 SDK model hook 的 connected 容器作为公共 UI 组件暴露。connected 容器可以留在 desktop 内部，用于默认应用入口；主题复用的组件应接收调用方传入的 model。
 
 ### Public Model Hooks
 
@@ -274,7 +274,7 @@ import { useSidebarModel } from "@vetta/theme-sdk/sidebar";
 import { usePageHeaderModel } from "@vetta/theme-sdk/app-shell";
 ```
 
-这些 hook 是 facade。它们只读取 `ThemeHostProvider` 中应用注入的能力，并返回稳定 model。真实实现仍留在 desktop-app，可以访问内部 store、router 和 IPC，但这些细节不能穿透到主题包。
+这些 hook 是 facade。它们只读取 `ThemeHostProvider` 中应用注入的能力，并返回稳定 model。真实实现仍留在 desktop，可以访问内部 store、router 和 IPC，但这些细节不能穿透到主题包。
 
 主题如果要复用官方 UI，推荐在主题 region 中先调用 SDK hook，再把 model 作为 props 传给官方 view：
 
@@ -297,7 +297,7 @@ export function ThemeSidebar(props: SidebarProps) {
 - hook input 类型。
 - model 返回类型。
 - host capability 类型。
-- desktop-app host adapter。
+- desktop host adapter。
 - 文档中的数据/UI 边界说明。
 
 ## 命名约定
@@ -357,4 +357,4 @@ chat.inputBar
 - `className` / `classNames` 生效。
 - 用户可见文案走 i18n。
 - `bun run check` 通过。
-- desktop-app 修改后 `bunx tsc --noEmit` 通过。
+- desktop 修改后 `bunx tsc --noEmit` 通过。

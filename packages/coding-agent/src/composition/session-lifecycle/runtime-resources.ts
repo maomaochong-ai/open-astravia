@@ -9,14 +9,14 @@ import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel"
 import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
+import { CodingAgentBackgroundWorkController } from "../../execution/background/work-controller.js";
+import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import {
 	CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME,
 	isCodingAgentAskUserQuestionEnabled,
 } from "../../features/ask-user-question/index.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
-import { CodingAgentBackgroundWorkController } from "../../host/session-execution/background-work-controller.js";
-import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type {
 	CodingAgentContextRuntime,

@@ -20,32 +20,32 @@ describe("runtime failure contract gate", () => {
 		const files = contractFixture();
 		files[0].text = files[0].text.replace('"retry_safe"', "");
 		files.push({
-			path: "packages/coding-agent/src/modes/rpc/example.ts",
+			path: "packages/coding-agent/src/rpc/example.ts",
 			text: 'if (error.message.includes("timeout")) return "automatic_replay";',
 		});
 
 		expect(findRuntimeFailureContractViolations(files)).toEqual([
-			'packages/coding-agent/src/modes/rpc/rpc-failure.ts: missing contract marker ("retry_safe")',
-			"packages/coding-agent/src/modes/rpc/example.ts: classifies recovery by JavaScript error message",
-			"packages/coding-agent/src/modes/rpc/example.ts: reintroduces automatic Turn replay",
+			'packages/coding-agent/src/rpc/rpc-failure.ts: missing contract marker ("retry_safe")',
+			"packages/coding-agent/src/rpc/example.ts: classifies recovery by JavaScript error message",
+			"packages/coding-agent/src/rpc/example.ts: reintroduces automatic Turn replay",
 		]);
 	});
 
 	it("can inspect isolated forbidden-pattern fixtures", () => {
 		const files = [
 			{
-				path: "packages/im-gateway/internal/hostclient/example.go",
+				path: "apps/im-gateway/internal/hostclient/example.go",
 				text: 'strings.Contains(err.Error(), "timeout")',
 			},
 			{
-				path: "packages/desktop-app/src/main/conversations/example.ts",
+				path: "apps/desktop/src/main/conversations/example.ts",
 				text: 'if (error.name === "SessionLockError") return "locked";',
 			},
 		];
 
 		expect(findRuntimeFailureContractViolations(files, { requireBaseline: false })).toEqual([
-			"packages/im-gateway/internal/hostclient/example.go: classifies recovery by Go error message",
-			"packages/desktop-app/src/main/conversations/example.ts: classifies recovery by JavaScript error name",
+			"apps/im-gateway/internal/hostclient/example.go: classifies recovery by Go error message",
+			"apps/desktop/src/main/conversations/example.ts: classifies recovery by JavaScript error name",
 		]);
 	});
 });

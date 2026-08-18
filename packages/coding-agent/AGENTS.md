@@ -43,10 +43,13 @@ Runtime 和应用提供产品 Feature、策略、默认配置和稳定产品 API
 
 - `src/composition/`：产品定义和默认 Feature/策略集合；通用 Session 装配与生命周期应迁入 Runtime。
 - `src/composition/contracts/`、`src/runtime-contracts/`：稳定产品合同与依赖倒置边界。
+- `src/execution/`：Coding Agent 的 Turn 重试、Session 执行、后台工作投影与 Sandbox 产品策略；环境机制必须通过窄 Port 注入。
+- `src/rpc/`：平台无关的 RPC 协议、命令分发、客户端与桥接；传输、进程退出和请求 ID 必须由宿主注入。
 - `src/sessions/`：会话产品语义、投影、迁移和历史格式隔离。
 - `src/features/`：Todo 等完整产品能力，按领域共同放置状态、Tool、Extension 和产品策略。
 - `src/extensions/`、`src/plugins/`、`src/resources/`：扩展、Plugin、Skill 和 Prompt 的产品域。
 - `src/model-context/`、`src/compaction/`、`src/memory/`：待按产品能力或策略继续收敛的现有领域。
+- `src/theme/`：Coding Agent Theme 合同、解析、颜色投影与活动状态；历史 `modes/interactive/theme` 仅保留兼容导出和资产。
 - `src/mcp/`：Coding Agent 的 MCP 路径、OAuth 和宿主组合；通用 MCP 实现仍属于 `runtime-mcp`。
 - `src/adapters/`、`src/host/`：迁移中的混合区域；只允许保留产品语义映射，通用机制和环境实现应迁出。
 - `src/public-api/`：稳定公开入口；入口文件只导出，不承载业务实现。

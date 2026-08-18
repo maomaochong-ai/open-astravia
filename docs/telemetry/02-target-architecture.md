@@ -70,7 +70,7 @@ flowchart LR
 - Replay 和 Feature Flag；
 - source map 上传。
 
-### packages/desktop-app
+### apps/desktop
 
 建议拥有：
 
@@ -134,7 +134,7 @@ packages/runtime-telemetry/src/
 ├── errors.ts
 └── index.ts
 
-packages/desktop-app/src/
+apps/desktop/src/
 ├── main/telemetry/
 │   ├── sentry-main.ts
 │   ├── telemetry-context.ts

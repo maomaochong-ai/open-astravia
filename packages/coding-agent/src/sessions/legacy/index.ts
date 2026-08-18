@@ -5,10 +5,11 @@ export {
 	restoreCodingAgentSessionAgentMessageEntry as restoreCodingAgentLegacyAgentMessageEntry,
 } from "./entry-normalizer.js";
 export { LegacyRuntimeSessionFileHistoryReader } from "./history-reader.js";
-export {
-	acquireLegacySessionFormatLease,
-	type LegacySessionFormatLeaseResult,
-} from "./lease.js";
+export type {
+	LegacySessionFileHost,
+	LegacySessionFormatLeaseResult,
+	LegacySessionMigrationHost,
+} from "./host-contracts.js";
 export {
 	type CodingAgentLegacySessionIncompatibilityCode,
 	type CodingAgentLegacySessionMigration,

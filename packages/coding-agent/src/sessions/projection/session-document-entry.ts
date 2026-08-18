@@ -1,4 +1,3 @@
-import { isDeepStrictEqual } from "node:util";
 import { Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import type { AgentMessage } from "@vetta/agent-core";
@@ -14,6 +13,7 @@ import {
 	PROMPT_RESOURCE_REFERENCE_TYPE,
 } from "../../model-context/index.js";
 import type { CodingAgentSessionEntry, CodingAgentSessionMessageEntry } from "../contracts/session-entry.js";
+import { areStructuredValuesEqual } from "./structural-equality.js";
 
 export const CODING_AGENT_EXTENDED_MESSAGE_CONTEXT_TYPE = "vetta.legacy_agent_message";
 
@@ -157,7 +157,7 @@ export function restoreCodingAgentSessionAgentMessageEntry(
 	const projected = convertToLlm([message])[0];
 	if (
 		entry.modelVisible !== (projected !== undefined) ||
-		!isDeepStrictEqual(entry.content, projected?.content ?? "")
+		!areStructuredValuesEqual(entry.content, projected?.content ?? "")
 	) {
 		return undefined;
 	}

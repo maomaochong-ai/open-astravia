@@ -446,7 +446,7 @@ export interface SystemAdapterContext {
 ```
 
 `SystemAdapterContext` 不包含 Plugin、Theme、Action 字段。具体权限映射、Subject 生成和 facade 包装放在其
-所有者目录；当前 Desktop 集成位于 `packages/desktop-app/src/main/capabilities/integrations/` 及对应 Renderer
+所有者目录；当前 Desktop 集成位于 `apps/desktop/src/main/capabilities/integrations/` 及对应 Renderer
 Plugin/Theme runtime，`capability-sdk` 不提供系统 Adapter 或内部导出。
 
 适配层是完整的一层，不是散落在 Desktop IPC 目录中的辅助函数。一个系统的权限展开、Subject 生成、namespace 绑定和 Capability 调用包装应聚合在同一个系统模块中；只有当单个系统适配器本身复杂到包含多个独立职责时才继续拆分，避免按每个能力创建一个文件。
@@ -495,7 +495,7 @@ Plugin Adapter 负责：
 
 Plugin 开发者仍然只导入 `plugin-sdk` 并调用 `ctx.fs.readFile()`。宿主桥接把调用交给 Plugin Adapter，后者包装 `FS_READ_FILE` Token，不再直接调用原始 `window.vetta.fs.*`。Plugin Adapter 本身不作为第三方 API 导出。
 
-Plugin Loader 激活插件时向宿主打开一个与 `pluginId` 绑定的 Capability Session，并把不透明的 session ID 封装在 `ctx.fs` 实现中；插件停用、激活失败或重新加载时关闭或替换该 session。每次调用都重新读取插件当前的启用状态、声明权限和用户授权，因此撤销 `fs.read`、`fs.write` 或禁用插件后无需等待旧 session 过期。跨进程接口只暴露 Plugin Adapter 已封装的文件操作，不提供任意 Capability ID 调用入口。
+Plugin Loader 激活插件时向宿主打开一个与 `pluginId` 绑定的 Capability Session，并把不透明的 session ID 封装在 `ctx.fs` 实现中；插件停用、激活失败或重新加载时关闭对应 activation 的 session。事务式重新加载会在新 activation 就绪前暂时保留旧 activation 及其 session，成功发布后再按 session ID 精确关闭旧实例，失败则只关闭新实例并继续使用 last-known-good。每次调用都重新读取插件当前的启用状态、声明权限和用户授权，因此撤销 `fs.read`、`fs.write` 或禁用插件后无需等待旧 session 过期。跨进程接口只暴露 Plugin Adapter 已封装的文件操作，不提供任意 Capability ID 调用入口。
 
 ### 7.4 Theme Adapter
 
@@ -549,7 +549,7 @@ packages/capability-sdk/
 packages/capability-runtime/
   src/                    # Registry、Hub、权限执行、审计
 
-packages/desktop-app/src/main/capabilities/integrations/
+apps/desktop/src/main/capabilities/integrations/
   plugin/                 # Desktop Plugin 权限映射与 facade
   theme-capability-adapter.ts
 
@@ -578,7 +578,7 @@ packages/plugins/plugin-sdk/ # Plugin 开发者公开 API
 Desktop Provider 建议放置在：
 
 ```text
-packages/desktop-app/src/main/capabilities/
+apps/desktop/src/main/capabilities/
   capability-host.ts
   foundation-providers.ts
   domain-providers.ts
@@ -617,12 +617,12 @@ window.vetta.capabilities.invoke({
 - Capability Token 已统一使用 TypeBox Schema 作为静态类型、运行时 parser 与 JSON Schema 的单一来源，并由 Token 生成不包含执行函数的只读 Catalog。当前已声明的 29 个 Foundation Token 和 103 个 Domain Token 已全部完成迁移；TypeBox 校验错误会转换为稳定 Capability 错误码，`undefined` 输出使用独立的无载荷 Schema，Token 定义在类型层强制提供输入和输出 Schema。
 - Foundation、Domain 聚合 Catalog 以及公开文档由 Token 自动生成；完整 Schema 见 [`catalog.json`](catalog.json)，可读目录见 [`catalog.md`](catalog.md)。质量门禁会拒绝过期的生成文件、手写 parser Token 和未发布 Catalog 的能力定义文件。
 - `packages/capability-runtime` 提供 Foundation/Domain 双 Registry、Capability Hub、Provider 原子替换、替换或卸载时的在途调用中止、Capability Module/publisher 校验、精确 Grant、AccessSession、namespace constraint 和审计事件。
-- `packages/desktop-app/src/main/capabilities` 提供 Desktop Capability Host、基础存储/文件/网络 Provider、Agent 设置/通用设置/IM 桥接/模型配置/MCP 配置/项目/会话/下载/调度/Webhook/知识库/批量任务/应用更新/技能管理/全局快捷键/快捷面板领域 Provider 和原生后端装配；已抽取领域服务的原 IPC 与 Capability Provider 复用同一实现，通用配置桥则与领域服务共享底层 config store。
+- `apps/desktop/src/main/capabilities` 提供 Desktop Capability Host、基础存储/文件/网络 Provider、Agent 设置/通用设置/IM 桥接/模型配置/MCP 配置/项目/会话/下载/调度/Webhook/知识库/批量任务/应用更新/技能管理/全局快捷键/快捷面板领域 Provider 和原生后端装配；已抽取领域服务的原 IPC 与 Capability Provider 复用同一实现，通用配置桥则与领域服务共享底层 config store。
 - Desktop Capability Host 单例持有 Theme Adapter 和 Plugin Adapter；IPC 只复用实例，不重复创建或负责销毁。
 - Theme Storage 主进程路径已经迁移为 `Theme SDK facade -> 宿主桥接 -> 内置 Theme Adapter -> AccessSession -> Foundation Storage Capability -> 现有持久化后端`。
 - Theme SDK、renderer storage hook、preload API、IPC channel 和磁盘格式保持兼容。
 - Plugin `ctx.fs` 的读写与元数据操作已迁移为 `plugin-sdk facade -> Plugin Loader/Preload/IPC 桥接 -> 内置 Plugin Adapter -> AccessSession -> Foundation Filesystem Capability -> 文件服务`；目录监听作为 Plugin 系统订阅 facade 由 `PluginFsApi.watchDirectory()` 统一封装并检查 `fs.read`，普通插件源码不再直接访问 Desktop preload API。
-- Plugin Adapter 将 `fs.read` 和 `fs.write` 精确展开为各文件 Capability Grant；每次调用都会核验当前有效插件权限，同一插件重新激活时自动撤销旧 session。
+- Plugin Adapter 将 `fs.read` 和 `fs.write` 精确展开为各文件 Capability Grant；每次调用都会核验当前有效插件权限。同一插件事务式重新激活时允许新旧 activation 的 session 短暂重叠，宿主在发布新实例或回滚失败实例后按 session ID 精确撤销对应 session，避免破坏 last-known-good 回退。
 - Plugin `ctx.network` 和 `ctx.storage` 已迁移为 `plugin-sdk facade -> Plugin Loader/Preload/IPC 桥接 -> 内置 Plugin Adapter -> AccessSession -> Foundation Network/Storage Capability -> 网络与私有存储后端`。`network.fetch` 映射为通用网络请求 Grant；`storage.read`、`storage.write` 按 JSON、文件和 Blob 操作展开为独立 Grant，并通过 namespace constraint 固定到当前插件。Capability 契约与 Provider 不接收 Plugin 身份，公开 facade 和既有磁盘格式保持兼容。
 - 官方插件的 Agent 实验设置已迁移为 `PluginOfficialApi agent facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Agent Settings Capability -> AgentSettingsService`；读取与局部更新使用两个精确 Grant，局部更新在主进程单次读写中完成并返回完整规范化快照。Desktop UI 的通用 Config IPC 保持兼容并共享同一个 config store；公开 `plugin-sdk` 签名保持兼容，不再直连 `window.vetta.config.*`。
 - 官方插件的通用设置已迁移为 `PluginOfficialApi general facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain General Settings Capability -> GeneralSettingsService`；读取设置、设置通知、设置默认执行模式和设置工作区分别使用精确 Grant。工作区路径校验、持久化与文件根授权集中在主进程单例服务中，Desktop UI 的通用 Config IPC 保持兼容并共享同一个 config store；公开 `plugin-sdk` 签名保持兼容，不再直连 `window.vetta.config.*`。

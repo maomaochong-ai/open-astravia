@@ -1,5 +1,8 @@
 import type { Api, Model, OpenAICompletionsCompat, OpenAIResponsesCompat } from "@vetta/ai";
-import { resolveConfigHeaders } from "../../configuration/config-value-resolver.js";
+import {
+	type CodingAgentConfigurationValueResolver,
+	literalCodingAgentConfigurationValueResolver,
+} from "../../runtime-contracts/configuration-runtime.js";
 import type { ModelOverride } from "./model-config-schema.js";
 
 export interface ProviderOverride {
@@ -22,11 +25,12 @@ export function applyProviderAndModelOverrides(
 	models: readonly Model<Api>[],
 	providerOverride: ProviderOverride | undefined,
 	modelOverrides: ReadonlyMap<string, ModelOverride> | undefined,
+	configurationValueResolver: CodingAgentConfigurationValueResolver = literalCodingAgentConfigurationValueResolver,
 ): Model<Api>[] {
 	return models.map((source) => {
 		let model = source;
 		if (providerOverride) {
-			const headers = resolveConfigHeaders(providerOverride.headers);
+			const headers = configurationValueResolver.resolveHeaders(providerOverride.headers);
 			model = {
 				...model,
 				baseUrl: providerOverride.baseUrl ?? model.baseUrl,
@@ -34,7 +38,7 @@ export function applyProviderAndModelOverrides(
 			};
 		}
 		const override = modelOverrides?.get(source.id);
-		return override ? applyModelOverride(model, override) : model;
+		return override ? applyModelOverride(model, override, configurationValueResolver) : model;
 	});
 }
 
@@ -66,7 +70,11 @@ export function mergeCompat(
 	return merged as Model<Api>["compat"];
 }
 
-function applyModelOverride(model: Model<Api>, override: ModelOverride): Model<Api> {
+function applyModelOverride(
+	model: Model<Api>,
+	override: ModelOverride,
+	configurationValueResolver: CodingAgentConfigurationValueResolver,
+): Model<Api> {
 	const result = { ...model };
 	if (override.name !== undefined) result.name = override.name;
 	if (override.reasoning !== undefined) result.reasoning = override.reasoning;
@@ -82,7 +90,7 @@ function applyModelOverride(model: Model<Api>, override: ModelOverride): Model<A
 		};
 	}
 	if (override.headers) {
-		const headers = resolveConfigHeaders(override.headers);
+		const headers = configurationValueResolver.resolveHeaders(override.headers);
 		result.headers = headers ? { ...model.headers, ...headers } : model.headers;
 	}
 	result.compat = mergeCompat(model.compat, override.compat);

@@ -31,6 +31,8 @@
 			"scripts/quality/**/*.mjs",
 			"packages/*/src/**/*.ts",
 			"packages/*/test/**/*.ts",
+			"apps/*/src/**/*.ts",
+			"apps/*/test/**/*.ts",
 			"packages/coding-agent/examples/**/*.ts",
 			"!**/node_modules/**/*",
 			"!**/test-sessions.ts",
@@ -38,6 +40,7 @@
 			"!**/routeTree.gen.ts",
 			"!**/personas-data.ts",
 			"!**/modes-data.ts",
+			"!**/builtin-theme-documents.ts",
 			"!**/descriptions-data.ts",
 			"!!**/node_modules"
 		]

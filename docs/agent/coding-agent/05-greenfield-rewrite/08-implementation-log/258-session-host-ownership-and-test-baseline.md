@@ -58,13 +58,13 @@
 - Session Host 治理测试：1 个文件、16 个测试通过。
 - CLI IM Runtime Host 与 RPC Adapter 定向测试：2 个文件、32 个测试通过。
 - `packages/coding-agent` 全包测试：127 个文件通过、1 个文件跳过；881 个测试通过、17 个跳过。
-- `packages/cli-app` 全包测试：35 个文件、194 个测试全部通过。
+- `apps/cli-host` 全包测试：35 个文件、194 个测试全部通过。
 - 两个包并行测试时曾有 1 个 5 秒集成测试因资源争用超时；该文件单跑 2/2 通过，随后 CLI 全包顺序重跑 194/194 通过，因此没有修改产品代码或放宽测试超时。
 - `bun run check:quick` 通过。
 - 根 `bun run check` 通过，覆盖 Biome、monorepo tsgo、CLI、Desktop、Admin 类型检查和全部质量守卫。
 
 ## 尚未完成的替换
 
-- `packages/cli-app/src/rpc/greenfield-im-runtime-host.ts` 仍同时承担 Bootstrap 输入映射、Composition 创建、Extension Host 工厂、命令动作装配与协议能力连接；这些都属于 CLI，但文件内职责仍需按边界拆分。
+- `apps/cli-host/src/rpc/greenfield-im-runtime-host.ts` 仍同时承担 Bootstrap 输入映射、Composition 创建、Extension Host 工厂、命令动作装配与协议能力连接；这些都属于 CLI，但文件内职责仍需按边界拆分。
 - `@vetta/coding-agent/composition` 仍暴露较宽的产品组合表面；后续应按真实消费者区分稳定 Session 合同、宿主装配入口和内部实现，但不能恢复 CLI 转发层或旧别名。
 - 下一阶段应先拆分 CLI Runtime Host 的启动装配与 RPC capability 连接，保持 `CodingAgentProcessSessionHost` 为唯一进程级能力所有者，并用现有 194 个 CLI 行为测试验证没有功能变化。

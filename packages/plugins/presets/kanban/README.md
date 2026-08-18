@@ -69,7 +69,7 @@ bunx vitest --run     # 单测
 bunx vite build       # 产出 dist/ 与 release/kanban-<version>.zip
 
 # 装进开发中的 Desktop
-cd ../../../desktop-app && bun run build:presets
+cd ../../../desktop && bun run build:presets
 ```
 
 修改 SDK（`packages/plugins/plugin-sdk`）后需要先在 SDK 目录跑一次 `bun run build`，

@@ -22,7 +22,7 @@ import {
 	type SubagentTypeRegistryLike,
 	taskPath,
 } from "@vetta/runtime-subagents";
-import type { CodingAgentSubagentWorkRuntime } from "../../host/session-execution/background-work-controller.js";
+import type { CodingAgentSubagentWorkRuntime } from "../../execution/background/work-controller.js";
 import type { CodingAgentSubagentProfile } from "../contracts/index.js";
 import { CODING_AGENT_SUBAGENT_TYPE_WORKFLOW, createDefaultCodingAgentSubagentTypeRegistry } from "./profiles.js";
 import { CodingAgentSubagentStatePersistence } from "./state-persistence.js";
@@ -38,6 +38,7 @@ export {
 export interface CodingAgentSubagentRuntimeOptions {
 	readonly parentSessionId: string;
 	readonly maxConcurrent?: number;
+	readonly createEntryId?: () => string;
 	readonly lifecycle?: SubagentLifecycle;
 	readonly typeRegistry?: SubagentTypeRegistryLike<CodingAgentSubagentProfile>;
 	readonly readParentMessages: () => Promise<readonly Message[]>;
@@ -112,6 +113,7 @@ export class CodingAgentSubagentRuntime implements CodingAgentSubagentWorkRuntim
 				}
 			},
 			onRecoveryIssue: options.onRecoveryIssue,
+			createEntryId: options.createEntryId,
 		});
 		this.tools = createCodingAgentSubagentRuntimeToolRegistrations(
 			() => this.coordinator,

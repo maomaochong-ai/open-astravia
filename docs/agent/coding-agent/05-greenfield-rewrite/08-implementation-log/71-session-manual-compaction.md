@@ -119,7 +119,7 @@ packages/runtime-storage
   bunx vitest --run test/conversation/compaction-persistence.test.ts
   2 passed
 
-packages/cli-app
+apps/cli-host
   bunx vitest --run test/greenfield-runtime-composition.test.ts
   12 passed
 
@@ -128,7 +128,7 @@ repository root
   passed
 
   bun run check
-  passed（Biome、monorepo tsgo、cli-app、desktop-app、admin、quality guards）
+  passed（Biome、monorepo tsgo、cli-host、desktop、admin、quality guards）
 ```
 
 首次完整检查发现测试把可选 `onManualCompactionCommitted` 直接作为 `vi.fn` 泛型，类型中包含

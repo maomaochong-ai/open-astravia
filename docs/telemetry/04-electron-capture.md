@@ -167,7 +167,7 @@ sequenceDiagram
 
 ## 4.7 与现有日志的关系
 
-packages/desktop-app/src/main/logger.ts 继续负责 main、render、im 文本日志：
+apps/desktop/src/main/logger.ts 继续负责 main、render、im 文本日志：
 
 - 不新增第二套文本日志文件；
 - 不把整份日志作为 Sentry attachment；
@@ -185,7 +185,7 @@ packages/desktop-app/src/main/logger.ts 继续负责 main、render、im 文本�
 Session Replay
 ```
 
-Replay 的敏感度高于普通产品事件，不能只用一个总开关。所有设置文案必须走 desktop-app i18n。关闭后：
+Replay 的敏感度高于普通产品事件，不能只用一个总开关。所有设置文案必须走 desktop i18n。关闭后：
 
 - Sentry 停止新错误/Trace 上传，并按 SDK 能力有界 flush；
 - PostHog 停止产品事件；

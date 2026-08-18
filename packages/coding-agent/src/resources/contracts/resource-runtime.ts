@@ -5,7 +5,7 @@ import type {
 	ExtensionFactoryLoader,
 	LoadExtensionsResult,
 } from "../../extensions/index.js";
-import type { Theme } from "../../modes/interactive/theme/theme.js";
+import type { Theme } from "../../theme/index.js";
 import type { PromptTemplate } from "../prompts/index.js";
 import type { Skill } from "../skills/index.js";
 import type { ResourceDiagnostic } from "./diagnostics.js";
@@ -58,6 +58,8 @@ export interface SessionResourceRuntimeOptions {
 	eventBus?: EventBus;
 	additionalExtensionPaths?: string[];
 	additionalSkillPaths?: string[];
+	/** Dynamic host/plugin Skill paths known before the first reload. */
+	runtimeSkillPaths?: string[];
 	additionalPromptTemplatePaths?: string[];
 	additionalThemePaths?: string[];
 	extensionFactories?: ExtensionFactory[];

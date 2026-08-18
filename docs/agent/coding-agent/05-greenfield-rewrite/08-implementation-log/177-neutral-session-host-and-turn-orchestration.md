@@ -86,7 +86,7 @@ Extension Session Host 实现移动到 `src/agent-runtime/greenfield-extension-s
 ## 验证结果
 
 - coding-agent 定向测试：3 个文件、20 项通过。
-- cli-app 定向测试：6 个文件、39 项通过。
+- cli-host 定向测试：6 个文件、39 项通过。
 - `bun run check:quick` 通过。
 - 根目录 `bun run check` 通过：Biome、monorepo/CLI/Desktop/Admin 类型检查和全部质量守卫均通过。
 

@@ -2,7 +2,7 @@
  * Guard SKILL.md frontmatter against the mistakes that make a skill vanish.
  *
  * Why a guard and not just care: frontmatter is parsed with a real YAML parser
- * (packages/coding-agent/src/utils/frontmatter.ts). When it throws, nothing the
+ * (packages/coding-agent/src/resources/shared/frontmatter.ts). When it throws, nothing the
  * author can see reports it — the loader drops the skill, and it silently
  * disappears from the agent's skill list and the slash menu. The description is
  * long prose written by hand, so the usual break is plain YAML syntax: an
@@ -24,7 +24,7 @@ import { fail, isDirectRun, ok, readText, rel, repoRoot, stagedFiles } from "./l
 /** Mirrors MAX_DESCRIPTION_LENGTH in packages/coding-agent/src/core/skills.ts. */
 const MAX_DESCRIPTION_LENGTH = 1024;
 
-const SCAN_ROOTS = ["packages", ".claude"];
+const SCAN_ROOTS = ["packages", "apps", ".claude"];
 const SKIP_DIRS = new Set([
 	"node_modules",
 	"dist",
@@ -73,7 +73,7 @@ function collectTargets(stagedOnly) {
 	return results;
 }
 
-/** Same extraction as packages/coding-agent/src/utils/frontmatter.ts. */
+/** Same extraction as packages/coding-agent/src/resources/shared/frontmatter.ts. */
 function frontmatterOf(text) {
 	const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 	if (!normalized.startsWith("---")) return null;

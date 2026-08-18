@@ -1,5 +1,5 @@
 /**
- * Vetta 品牌图标（packages/desktop-app/build/icon.png 缩到 96px 后内联）。
+ * Vetta 品牌图标（apps/desktop/build/icon.png 缩到 96px 后内联）。
  * 插件是独立 bundle，运行时读不到宿主的 build 资源，只能打包进来；
  * 换品牌图标时这里要跟着更新。
  */

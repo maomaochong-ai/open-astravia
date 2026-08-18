@@ -17,7 +17,7 @@
 
 ## 本阶段实施
 
-修改 `packages/cli-app/test/agent-runtime-provider-differential.test.ts`：
+修改 `apps/cli-host/test/agent-runtime-provider-differential.test.ts`：
 
 1. 增加类型受约束的共享配置 `PROVIDER_DIFFERENTIAL_HOST_OPTIONS`，统一启用 Host Bridge 并使用 `im-claw` 场景；
 2. 将共享配置应用到主测试进程、上下文压缩后的重启进程，以及迁移会话后的重启进程；
@@ -33,7 +33,7 @@
 - CLI 全量测试在修改超时前：204/210 通过；其中 Provider 的 2 项是默认 5 秒超时，Runtime 选择与旧会话回退各 1 项只在并行负载下超时，另外 2 项稳定失败仅存在于既有命令准入差异测试；
 - CLI 全量测试在修改超时后：207/210 通过，Provider 差异测试全部通过；剩余 2 项命令准入稳定失败和 1 项已隔离通过的 Runtime 选择并行超时；
 - `bun run check:quick`：通过。
-- `bun run check`：通过，包含 Biome、monorepo 与 CLI/desktop-app/admin 类型检查及质量守卫。
+- `bun run check`：通过，包含 Biome、monorepo 与 CLI/desktop/admin 类型检查及质量守卫。
 
 命令准入差异测试的两个独立失败分别是 Legacy 异步关闭审计顺序不符，以及等待 Host Response 时未收到 RPC frame。它们不涉及本阶段修改文件，应作为后续独立阶段分析，而不是通过放宽本阶段断言掩盖。
 

@@ -2,10 +2,10 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { UserMessage } from "@vetta/ai";
+import { createNodeLegacySessionHost } from "@vetta/runtime-node/host";
 import { afterEach, describe, expect, it } from "vitest";
 import { LegacyRuntimeSessionCatalog } from "../../src/sessions/legacy/catalog.js";
 import { LegacyRuntimeSessionFileHistoryReader } from "../../src/sessions/legacy/history-reader.js";
-import { acquireLegacySessionFormatLease } from "../../src/sessions/legacy/lease.js";
 
 describe("Legacy session format boundary", () => {
 	const temporaryDirectories: string[] = [];
@@ -30,7 +30,8 @@ describe("Legacy session format boundary", () => {
 			`${JSON.stringify({ type: "conversation", sessionId: "native" })}\n`,
 		);
 
-		const catalog = new LegacyRuntimeSessionCatalog();
+		const host = createNodeLegacySessionHost({ defaultCwd: directory, sessionsDirectory: directory });
+		const catalog = new LegacyRuntimeSessionCatalog(host);
 		const sessions = await catalog.listSessions("C:\\workspace", directory);
 		expect(sessions).toHaveLength(1);
 		expect(sessions[0]).toMatchObject({
@@ -47,7 +48,7 @@ describe("Legacy session format boundary", () => {
 		expect((await catalog.listSessions("C:\\workspace", directory))[0]?.name).toBe("renamed session");
 		expect(existsSync(`${sessionPath}.lock`)).toBe(false);
 
-		const history = new LegacyRuntimeSessionFileHistoryReader().read(sessionPath).history;
+		const history = new LegacyRuntimeSessionFileHistoryReader(host).read(sessionPath).history;
 		expect(history.filter(({ type }) => type === "message")).toHaveLength(3);
 	});
 
@@ -56,13 +57,14 @@ describe("Legacy session format boundary", () => {
 		const sessionPath = join(directory, "lease.jsonl");
 		writeFileSync(sessionPath, "");
 
-		const first = acquireLegacySessionFormatLease(sessionPath);
+		const host = createNodeLegacySessionHost({ defaultCwd: directory, sessionsDirectory: directory });
+		const first = host.acquireLease(sessionPath);
 		expect(first.kind).toBe("acquired");
-		const second = acquireLegacySessionFormatLease(sessionPath);
+		const second = host.acquireLease(sessionPath);
 		expect(second.kind).toBe("locked");
 		if (first.kind !== "acquired") throw new Error("Expected the first lease to be acquired");
 		first.lease.release();
-		const third = acquireLegacySessionFormatLease(sessionPath);
+		const third = host.acquireLease(sessionPath);
 		expect(third.kind).toBe("acquired");
 		if (third.kind === "acquired") third.lease.release();
 	});

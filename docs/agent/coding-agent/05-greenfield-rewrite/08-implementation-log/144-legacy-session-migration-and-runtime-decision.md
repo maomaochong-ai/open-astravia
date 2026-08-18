@@ -67,7 +67,7 @@ IM Gateway 握手优先读取该结构化对象，同时保留旧 `runtimeBacken
 - Legacy RPC Adapter 接受宿主传入的决策，不自行推断迁移原因；
 - CLI 帮助移除 `--resume` 的旧说明，明确确定性替代参数。
 
-### cli-app
+### cli-host
 
 - 新增 Greenfield IM 旧会话迁移适配器；
 - Runtime Host 在会话选择后执行加锁、迁移或 Legacy fallback；
@@ -109,7 +109,7 @@ IM Gateway 握手优先读取该结构化对象，同时保留旧 `runtimeBacken
 - Runtime Host、真实 CLI 子进程和 standalone 安装产物迁移；
 - RPC `get_state` 的 Greenfield、Legacy 和结构化 fallback 决策；
 - IM Gateway 结构化决策解析及迁移后路径回写；
-- coding-agent、cli-app、runtime-storage 定向测试和仓库质量门禁。
+- coding-agent、cli-host、runtime-storage 定向测试和仓库质量门禁。
 
 ## 结果
 

@@ -2,9 +2,9 @@
 status: accepted
 ---
 
-# desktop-app i18n：i18next + 语义 key + main 持有语言 SoT
+# desktop i18n：i18next + 语义 key + main 持有语言 SoT
 
-desktop-app 原本全量中文硬编码（renderer ~237 文件、main ~73 文件含中文）。本次目标**只搭框架 + 抽离**：接入 i18n 框架、把用户可见中文抽成 key、做到「中文走 key、可切换」，en 译文后续再填（验收标准不是「英文完整」）。框架一旦定型，库选型与 key 形态都极难回退（换库 / 重新 key 化 310 文件成本以人月计），故记此 ADR。
+desktop 原本全量中文硬编码（renderer ~237 文件、main ~73 文件含中文）。本次目标**只搭框架 + 抽离**：接入 i18n 框架、把用户可见中文抽成 key、做到「中文走 key、可切换」，en 译文后续再填（验收标准不是「英文完整」）。框架一旦定型，库选型与 key 形态都极难回退（换库 / 重新 key 化 310 文件成本以人月计），故记此 ADR。
 
 ## 决定
 

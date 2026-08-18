@@ -103,7 +103,7 @@ VETTA_DESKTOP_AGENT_RUNTIME=greenfield
 
 ## 5. Desktop 生产组合
 
-`packages/desktop-app/src/main/runtime.ts` 现在组合：
+`apps/desktop/src/main/runtime.ts` 现在组合：
 
 ```text
 shared RuntimeHost
@@ -205,7 +205,7 @@ IM 路径不会注册到 Desktop Greenfield Session Backend 路由，因此即�
 执行：
 
 ```text
-cd packages/desktop-app
+cd apps/desktop
 bunx vitest --run \
   src/main/greenfield-runtime/desktop-runtime-selector.test.ts \
   src/main/conversations/session-paths.test.ts \

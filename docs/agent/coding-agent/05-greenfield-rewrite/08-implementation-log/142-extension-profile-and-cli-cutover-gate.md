@@ -89,8 +89,8 @@ Greenfield/Legacy 的功能选择结果保持如下：
 
 ```text
 bunx vitest --run test/extension-compatibility.test.ts（coding-agent，8 项）
-bunx vitest --run test/agent-runtime-selection.test.ts（cli-app，8 项）
-bunx vitest --run test/greenfield-im-runtime-host.test.ts（cli-app，16 项）
+bunx vitest --run test/agent-runtime-selection.test.ts（cli-host，8 项）
+bunx vitest --run test/greenfield-im-runtime-host.test.ts（cli-host，16 项）
 bun run check:quick
 bun run check
 git diff --check

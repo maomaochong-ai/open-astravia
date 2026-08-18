@@ -1,8 +1,8 @@
 import { createNodeResourceAccess, nodeResourcePackageDigest } from "@vetta/runtime-node/host";
 import { describe, expect, it } from "vitest";
+import type { GitSource } from "../src/resources/packages/git-source.js";
 import { ResourcePackageLocations } from "../src/resources/packages/resource-package-locations.js";
 import { parseResourceSource } from "../src/resources/packages/source-spec.js";
-import type { GitSource } from "../src/utils/git.js";
 
 const locations = new ResourcePackageLocations({
 	cwd: process.cwd(),

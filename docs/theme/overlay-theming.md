@@ -18,7 +18,7 @@ props-driven view
   提供 ThemeSurface 装饰层
 ```
 
-connected container 留在 desktop-app 内部。主题替换的是 props-driven view，而不是审批中心、插件宿主或 IPC 接入层。
+connected container 留在 desktop 内部。主题替换的是 props-driven view，而不是审批中心、插件宿主或 IPC 接入层。
 
 ## 已接入的覆盖点
 

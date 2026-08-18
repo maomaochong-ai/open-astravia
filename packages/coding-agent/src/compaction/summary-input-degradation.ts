@@ -1,8 +1,8 @@
-import { Buffer } from "node:buffer";
 import type { AgentMessage } from "@vetta/agent-core";
 import type { AssistantMessage, ToolResultMessage } from "@vetta/ai";
 import type { BashExecutionMessage } from "../model-context/index.js";
 import { findRecentUserTurnBoundary } from "./user-turn-boundary.js";
+import { sliceUtf8Start, utf8ByteLength } from "./utf8.js";
 
 export type CompactionSummaryInputLevel = "full" | "compact-tool-results" | "essential" | "recent-three-turns";
 
@@ -31,7 +31,7 @@ function compactMessage(message: AgentMessage): AgentMessage {
 	if (message.role === "toolResult") {
 		const toolResult = message as ToolResultMessage;
 		const text = toolResult.content.flatMap((item) => (item.type === "text" ? [item.text] : [])).join("\n\n");
-		if (Buffer.byteLength(text, "utf8") <= COMPACT_TOOL_RESULT_BYTES && !hasImage(toolResult)) return message;
+		if (utf8ByteLength(text) <= COMPACT_TOOL_RESULT_BYTES && !hasImage(toolResult)) return message;
 		return {
 			...toolResult,
 			content: [{ type: "text", text: truncateUtf8(text, COMPACT_TOOL_RESULT_BYTES) }],
@@ -39,7 +39,7 @@ function compactMessage(message: AgentMessage): AgentMessage {
 	}
 	if (message.role === "bashExecution") {
 		const bash = message as BashExecutionMessage;
-		if (Buffer.byteLength(bash.output, "utf8") <= COMPACT_TOOL_RESULT_BYTES) return message;
+		if (utf8ByteLength(bash.output) <= COMPACT_TOOL_RESULT_BYTES) return message;
 		return { ...bash, output: truncateUtf8(bash.output, COMPACT_TOOL_RESULT_BYTES) };
 	}
 	return message;
@@ -75,13 +75,7 @@ function hasImage(message: ToolResultMessage): boolean {
 }
 
 function truncateUtf8(value: string, maxBytes: number): string {
-	const bytes = Buffer.from(value, "utf8");
-	if (bytes.length <= maxBytes) return value;
-	let end = maxBytes;
-	while (end > 0 && isUtf8ContinuationByte(bytes[end])) end -= 1;
-	return `${bytes.subarray(0, end).toString("utf8")}\n[truncated for compaction input]`;
-}
-
-function isUtf8ContinuationByte(value: number | undefined): boolean {
-	return value !== undefined && (value & 0xc0) === 0x80;
+	return utf8ByteLength(value) <= maxBytes
+		? value
+		: `${sliceUtf8Start(value, maxBytes)}\n[truncated for compaction input]`;
 }

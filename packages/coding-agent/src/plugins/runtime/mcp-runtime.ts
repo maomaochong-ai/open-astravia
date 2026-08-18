@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type {
 	ModelCallFrame,
 	ModelCallFrameCompositionContext,
@@ -8,8 +7,6 @@ import type {
 import {
 	createMcpDynamicServerRuntimeToolSource,
 	createMcpRuntimeToolSynchronizer,
-	type McpConfig,
-	type McpConfigSource,
 	type McpRuntimeToolSnapshot,
 	type McpRuntimeToolView,
 	type McpServerConfig,
@@ -17,7 +14,6 @@ import {
 	type McpToolResultPolicy,
 	PRESERVE_MCP_TOOL_RESULT_POLICY,
 } from "@vetta/runtime-mcp";
-import { type CodingAgentMcpSupervisorOptions, createCodingAgentMcpSupervisor } from "../../mcp/runtime/supervisor.js";
 import { decorateCodingAgentMcpRuntimeTool } from "../../mcp/runtime/tool-source.js";
 import type { AgentPluginRuntimeConfig } from "../../model-context/index.js";
 import type {
@@ -25,8 +21,10 @@ import type {
 	CodingAgentPluginMcpToolComposer,
 } from "../../runtime-contracts/index.js";
 
-export interface CodingAgentPluginMcpRuntimeOptions
-	extends Pick<CodingAgentMcpSupervisorOptions, "agentDir" | "clientFactory" | "debug"> {
+export interface CodingAgentPluginMcpRuntimeOptions {
+	/** Ownership transfers to the plugin runtime, which shuts the supervisor down on dispose. */
+	readonly supervisor: McpServerSupervisor;
+	readonly debug?: boolean;
 	readonly resultPolicy?: McpToolResultPolicy;
 }
 
@@ -173,35 +171,16 @@ function fingerprintPluginMcpServers(servers: ReadonlyMap<string, McpServerConfi
 	const payload = [...servers]
 		.sort(([left], [right]) => left.localeCompare(right))
 		.map(([runtimeName, config]) => ({ runtimeName, config }));
-	return createHash("sha1").update(JSON.stringify(payload)).digest("hex").slice(0, 16);
+	return `plugin-mcp:${JSON.stringify(payload)}`;
 }
 
 export async function createCodingAgentPluginMcpRuntime(
-	options: CodingAgentPluginMcpRuntimeOptions = {},
+	options: CodingAgentPluginMcpRuntimeOptions,
 ): Promise<CodingAgentPluginMcpRuntime> {
-	const composition = createCodingAgentMcpSupervisor(
-		{
-			...options,
-			configSource: EMPTY_MCP_CONFIG_SOURCE,
-			enabled: true,
-			includeBuiltinServers: false,
-		},
-		(message) => {
-			if (options.debug) console.error(`[MCPManager] ${message}`);
-		},
-	);
-	await composition.supervisor.initialize();
-	const source = createMcpDynamicServerRuntimeToolSource(composition.supervisor, {
+	await options.supervisor.initialize();
+	const source = createMcpDynamicServerRuntimeToolSource(options.supervisor, {
 		decorateTool: decorateCodingAgentMcpRuntimeTool,
 		resultPolicy: options.resultPolicy ?? PRESERVE_MCP_TOOL_RESULT_POLICY,
 	});
-	return new CodingAgentPluginMcpRuntime(composition.supervisor, source, options.debug ?? false);
+	return new CodingAgentPluginMcpRuntime(options.supervisor, source, options.debug ?? false);
 }
-
-const EMPTY_MCP_CONFIG_SOURCE: McpConfigSource = {
-	loadGlobal: () => null,
-	loadProject: () => null,
-	loadMerged: (): McpConfig => ({ mcpServers: {} }),
-	getMergedSignature: () => "empty",
-	getConfigPaths: () => ({ global: "<dynamic>", project: "<dynamic>" }),
-};

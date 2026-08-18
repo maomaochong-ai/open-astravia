@@ -1,6 +1,7 @@
 import { definePlugin } from "@vetta-org/plugin-sdk";
 import "./style.css";
 import { ToolChartSlot } from "./ToolChartSlot";
+import { RENDER_CHART_TOOL_DESCRIPTION } from "./tool-description";
 
 export const CHART_CARD_TYPE = "chart-renderer.chart";
 
@@ -67,8 +68,7 @@ export default definePlugin({
 			id: "chart-renderer",
 			name: "render_chart",
 			label: "渲染图表",
-			description:
-				"在当前对话消息下方渲染一个交互式 Chart.js 图表。传入标准 Chart.js data；不要用 Markdown 表格代替图表。",
+			description: RENDER_CHART_TOOL_DESCRIPTION,
 			parameters,
 			timeoutMs: 10_000,
 			scope_use: ["conversation", "project"],

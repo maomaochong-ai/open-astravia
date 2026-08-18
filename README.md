@@ -8,6 +8,17 @@ Vetta 是一套面向企业与个人的 AI Agent 产品栈：在本地/桌面运
 
 ---
 
+## 目录结构
+
+顶层按「是否被别的包依赖」划分：
+
+- **`apps/`** — 可交付的应用，依赖图的叶子节点，不被任何包 import：`desktop`、`cli-host`、`admin`、`site`、`docs-site`、`mobile`（Kotlin Multiplatform，Android）、`api` 与 `im-gateway`（Go）。
+- **`packages/`** — 可复用模块，只能被 `apps/` 或其它 `packages/` 依赖：`coding-agent`、`runtime-*`、`capability-*`、`ai`、`agent`、`plugins`、`theme-*` 等。
+
+`packages/*` 不得反向依赖 `apps/*`；该规则由 `scripts/quality/check-package-boundaries.mjs` 机械校验。
+
+---
+
 ## 快速开始
 
 ```bash
@@ -24,13 +35,13 @@ bun run build:cli          # 构建 CLI 应用
 bun run build:admin        # 构建 React 管理台
 
 # 后端服务（Go）
-cd packages/api && make run            # 启动业务 API
-cd packages/im-gateway && make build   # 构建 IM 旁路网关
+cd apps/api && make run            # 启动业务 API
+cd apps/im-gateway && make build   # 构建 IM 旁路网关
 ```
 
 质量门禁分层、husky 快路径与守卫说明见 [docs/dev/quality-gates.md](docs/dev/quality-gates.md)。
 
-桌面应用入口：`packages/desktop-app`；API 服务入口：`packages/api/cmd/server/main.go`。
+桌面应用入口：`apps/desktop`；API 服务入口：`apps/api/cmd/server/main.go`。
 
 ---
 
@@ -40,17 +51,17 @@ cd packages/im-gateway && make build   # 构建 IM 旁路网关
 
 | 包 | 角色 | 技术栈 |
 |----|------|--------|
-| [packages/desktop-app](packages/desktop-app) | Vetta 桌面应用。对话、文件浏览、批量任务、定时自动化、技能广场、工作流流转、下载中心、IM 旁路宿主 | Electron + React + Vite + Jotai + TanStack Router + shadcn/ui + Tailwind v4 |
+| [apps/desktop](apps/desktop) | Vetta 桌面应用。对话、文件浏览、批量任务、定时自动化、技能广场、工作流流转、下载中心、IM 旁路宿主 | Electron + React + Vite + Jotai + TanStack Router + shadcn/ui + Tailwind v4 |
 | [packages/coding-agent](packages/coding-agent) | Vetta 编码智能体核心产品。CLI、交互模式、SDK、Extensions/Skills/Themes 生态 | TypeScript |
-| [packages/cli-app](packages/cli-app) | 基于 `coding-agent` 的纯 CLI 封装 | TypeScript |
+| [apps/cli-host](apps/cli-host) | 基于 `coding-agent` 的纯 CLI 封装 | TypeScript |
 
 ### 业务服务
 
 | 包 | 角色 | 技术栈 |
 |----|------|--------|
-| [packages/api](packages/api) | 企业后端：鉴权、Provider 管理、技能市场、工作流、SSE 推送 | Go 1.25 · Gin · GORM · PostgreSQL · Redis · Casbin · S3 |
-| [packages/admin](packages/admin) | 后台管理控制台：用户/组织/团队、Provider 审批、技能审核 | React + Vite + shadcn/ui |
-| [packages/im-gateway](packages/im-gateway) | IM 平台旁路（飞书先行，Telegram/钉钉规划中）。作为桌面应用的 sidecar，桥接 IM 消息至本地 `coding-agent --mode rpc` | Go · NDJSON IPC |
+| [apps/api](apps/api) | 企业后端：鉴权、Provider 管理、技能市场、工作流、SSE 推送 | Go 1.25 · Gin · GORM · PostgreSQL · Redis · Casbin · S3 |
+| [apps/admin](apps/admin) | 后台管理控制台：用户/组织/团队、Provider 审批、技能审核 | React + Vite + shadcn/ui |
+| [apps/im-gateway](apps/im-gateway) | IM 平台旁路（飞书先行，Telegram/钉钉规划中）。作为桌面应用的 sidecar，桥接 IM 消息至本地 `coding-agent --mode rpc` | Go · NDJSON IPC |
 
 ### 核心库
 
@@ -75,9 +86,9 @@ cd packages/im-gateway && make build   # 构建 IM 旁路网关
 
 ---
 
-## desktop-app 关键能力
+## desktop 关键能力
 
-`packages/desktop-app` 是 Vetta 在最终用户侧的主产品，承载以下 Domain（见 `src/renderer/domains/`）：
+`apps/desktop` 是 Vetta 在最终用户侧的主产品，承载以下 Domain（见 `src/renderer/domains/`）：
 
 - **chat** — 主对话界面，消息流、Artifact、工具调用、回到底部与自动跟随
 - **project** — 侧边栏项目/会话管理，支持普通、批量（batch）、定时（schedule）、流转（flowing）四类项目
@@ -105,7 +116,7 @@ cd packages/im-gateway && make build   # 构建 IM 旁路网关
 
 ## api 后端
 
-`packages/api` 是基于 Gin + GORM 的业务后端，模块名 `vetta-api`。
+`apps/api` 是基于 Gin + GORM 的业务后端，模块名 `vetta-api`。
 
 - 入口：`cmd/server/main.go`
 - 启动序：`config.Load` → `logger.Init` → `database.Init` → `store.InitRedis` → `rbac.InitEnforcer`（Casbin）→ `database.Seed` → `s3.Client` → `sse.Manager` → `router.Setup`
@@ -121,18 +132,18 @@ cd packages/im-gateway && make build   # 构建 IM 旁路网关
   - `gateway` — 对外统一网关
 - 常用命令（`Makefile`）：`make run` / `make dev`（air 热重载）/ `make build` / `make migrate` / `make check`（`go build ./... && go vet ./...`）
 
-配置优先级：`config.yaml` > `VETTA_*` 环境变量 > 默认值。示例见 `packages/api/config.example.yaml`。
+配置优先级：`config.yaml` > `VETTA_*` 环境变量 > 默认值。示例见 `apps/api/config.example.yaml`。
 
 ---
 
 ## im-gateway IM 旁路
 
-`packages/im-gateway` 将 IM 平台事件桥接到本地 `coding-agent --mode rpc` 子进程，让用户用手机或 IM 客户端驱动本地智能体，同时所有代码、工具、凭证都留在本机。
+`apps/im-gateway` 将 IM 平台事件桥接到本地 `coding-agent --mode rpc` 子进程，让用户用手机或 IM 客户端驱动本地智能体，同时所有代码、工具、凭证都留在本机。
 
 - **部署模式**：以 sidecar 形式嵌入 Vetta 桌面应用；用户在「设置 → IM 集成」填飞书凭证后，桌面主进程 spawn `im-gateway host` 子进程，生命周期绑定桌面应用（退出即终止）。
 - **子命令**：`host`（嵌入式，stdin NDJSON 配置、stdout NDJSON 事件）/ `start`（开发者独立模式）/ `init` / `status` / `logs`。
-- **共享会话**：与 desktop-app 共用 `~/.vetta/agent/sessions/` 会话文件，通过 `<file>.lock` 单写入协议保证一致性。IM 发起的对话可在桌面应用中继续。
-- **架构**（详见 `packages/im-gateway/README.md`）：transport（Feishu/Mock）→ command → router（(im_user, project) → session）→ bridge → hostclient（coding-agent rpc）。
+- **共享会话**：与 desktop 共用 `~/.vetta/agent/sessions/` 会话文件，通过 `<file>.lock` 单写入协议保证一致性。IM 发起的对话可在桌面应用中继续。
+- **架构**（详见 `apps/im-gateway/README.md`）：transport（Feishu/Mock）→ command → router（(im_user, project) → session）→ bridge → hostclient（coding-agent rpc）。
 
 ---
 
@@ -189,6 +200,8 @@ bun run release:minor    # API Breaking
 
 桌面安装包由 `.github/workflows/desktop-release.yml` 在三个操作系统分别构建，再发布到官方 R2/CDN 或公开 GitHub Releases；详见 [`docs/deploy/desktop-releases.md`](docs/deploy/desktop-releases.md)。
 
+服务端（`apps/api` + `apps/admin`）自托管部署走 `deploy/` 下的 Docker Compose 栈，目录说明见 [`deploy/README.md`](deploy/README.md)，完整流程见 [`docs/deploy/deploy-runbook.md`](docs/deploy/deploy-runbook.md)。
+
 ---
 
 ## 目录速览
@@ -198,7 +211,7 @@ vetta-mono/
 ├── packages/
 │   ├── ai · agent · tui · web-ui            # 核心库
 │   ├── runtime-core · runtime-tools · runtime-mcp · runtime-storage · runtime-telemetry
-│   ├── coding-agent · cli-app · desktop-app # 终端应用
+│   ├── coding-agent · cli-host · desktop # 终端应用
 │   ├── api · admin · im-gateway             # 业务服务
 │   └── coding-agent/examples/extensions/*   # 扩展示例
 ├── docs/                                    # 架构文档

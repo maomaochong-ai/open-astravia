@@ -119,5 +119,5 @@ store、session store）等多处的 `"work" | "coding"` 硬编码联合类型�
   `docs/plugin/manifest.md` 相应段落改为 deprecated 声明。
 - **迁移（类型）**：`AgentMode` 联合类型收敛为注册表派生；plugin-sdk 的 `ctx.getAgentMode()` 返回类型
   放宽为 `string`（宿主保证值来自注册表），属 SDK 类型层面的宽化，运行时兼容。
-- **CHANGELOG**：coding-agent、runtime-tools、plugin-sdk、desktop-app 各记一条。
+- **CHANGELOG**：coding-agent、runtime-tools、plugin-sdk、desktop 各记一条。
 - **护栏**：`generate-modes.mjs` 校验 frontmatter 完整性（含 icon）；可选的模式路线断言 evals。

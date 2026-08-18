@@ -191,7 +191,7 @@ $vettaEvents |
 在 Dev Profile 中遇到异常低命中时：
 
 1. 把 Provider 调用时间转换为本地时间。
-2. 对照 `<VETTA_HOME>/desktop-app/logs/main/<date>.log` 和 Renderer 日志。
+2. 对照 `<VETTA_HOME>/desktop/logs/main/<date>.log` 和 Renderer 日志。
 3. 搜索 `[vite-hmr] before-full-reload`；该日志包含 Vite 的 `path` 和 `triggeredBy`，用于定位触发
    Renderer 整页重载的文件。插件开发服务器的更新则搜索 `dev-watch: refreshed`，并读取
    `pluginId`、`reason`、`path` 和 `triggeredBy`。

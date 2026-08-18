@@ -16,10 +16,10 @@ import {
 } from "../../src/composition/session-lifecycle/resource-lifecycle.js";
 import type { CodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
+import type { CodingAgentSessionExecutionRuntime } from "../../src/execution/session/runtime.js";
 import type { CodingAgentExtensionRunBridge } from "../../src/extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentTodoRuntime } from "../../src/features/todo/contracts.js";
 import type { CodingAgentSessionConfigurationState } from "../../src/host/session-configuration/configuration-state.js";
-import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryController, CodingAgentMemoryRolloverRuntime } from "../../src/memory/index.js";
 import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
 import type {

@@ -1,5 +1,5 @@
-import { parseFrontmatter } from "../../utils/frontmatter.js";
 import type { ResourceAccessPort, ResourceDirectoryEntry, ResourceFileInfo } from "../contracts/resource-access.js";
+import { parseFrontmatter } from "../shared/frontmatter.js";
 import type { LoadPromptTemplatesOptions, PromptTemplate } from "./contracts.js";
 
 const CONFIG_DIRECTORY = ".vetta";

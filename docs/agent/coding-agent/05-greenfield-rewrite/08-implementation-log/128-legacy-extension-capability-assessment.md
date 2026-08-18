@@ -100,7 +100,7 @@ Legacy、Greenfield Session、模型、Tool、Prompt、Skill、MCP 和持久化�
 针对性测试结果：
 
 - `coding-agent`：2 个文件，4 项测试通过；
-- `cli-app`：1 个文件，5 项测试通过；
+- `cli-host`：1 个文件，5 项测试通过；
 - 合计：3 个文件，9 项测试通过。
 
 最终质量门：

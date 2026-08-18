@@ -146,12 +146,12 @@ renameSessionById(sessionId: string, name: string): Promise<void>
 packages/runtime-core/test/runtime-host/session-backend.test.ts
   11 tests passed
 
-packages/desktop-app/src/main/greenfield-runtime/desktop-runtime-lifecycle.test.ts
-packages/desktop-app/src/main/scheduler/task-executor.test.ts
-packages/desktop-app/src/main/batch-tasks/batch-task-executor.test.ts
-packages/desktop-app/src/main/app-debug/runtime-canary/provider.test.ts
-packages/desktop-app/src/main/app-debug/runtime-canary/consumer-definitions.test.ts
-packages/desktop-app/src/main/app-debug/runtime-canary/runner.test.ts
+apps/desktop/src/main/greenfield-runtime/desktop-runtime-lifecycle.test.ts
+apps/desktop/src/main/scheduler/task-executor.test.ts
+apps/desktop/src/main/batch-tasks/batch-task-executor.test.ts
+apps/desktop/src/main/app-debug/runtime-canary/provider.test.ts
+apps/desktop/src/main/app-debug/runtime-canary/consumer-definitions.test.ts
+apps/desktop/src/main/app-debug/runtime-canary/runner.test.ts
   6 files, 14 tests passed
 ```
 

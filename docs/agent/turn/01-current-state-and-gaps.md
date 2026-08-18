@@ -106,7 +106,7 @@ current generation、活动 lease 数和 retired 状态：
 `plugin_tool_revoked`。普通热重载和安全撤权因此没有区分。
 
 Desktop Hook adapter 在每次 dispatch 调用
-[`DesktopPluginHookRegistry.snapshot()`](../../../packages/desktop-app/src/main/plugins/coding-agent-hook-registry.ts)，
+[`DesktopPluginHookRegistry.snapshot()`](../../../apps/desktop/src/main/plugins/coding-agent-hook-registry.ts)，
 所以 `UserPromptSubmit`、`PreToolUse`、`PostToolUse`、`Stop` 可能来自不同插件 activation 集。
 
 Tool interception wrapper 也在工具真正执行时调用

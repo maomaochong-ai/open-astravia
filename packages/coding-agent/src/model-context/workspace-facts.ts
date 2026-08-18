@@ -8,8 +8,16 @@
  * 结果在会话创建时探测一次并固化，不逐轮重算，否则会造成系统提示词前缀缓存抖动。
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+/**
+ * 工作区事实探测所需的最小文件读取能力。
+ *
+ * 该接口保持产品规则与具体宿主文件系统解耦；Node、Desktop 沙箱和测试
+ * 可以分别提供自己的实现。
+ */
+export interface WorkspaceFactsFileSource {
+	readonly exists: (root: string, relativePath: string) => boolean;
+	readonly readText: (root: string, relativePath: string) => string;
+}
 
 export interface WorkspaceSignals {
 	/** cwd 下存在 `.git`。 */
@@ -58,17 +66,17 @@ const dependencyStacks: ReadonlyArray<readonly [dependency: string, stack: strin
 ];
 
 /** 从文件系统探测 cwd 的工作区信号。调用方负责处理异常。 */
-export function probeWorkspaceSignals(cwd: string): WorkspaceSignals {
+export function probeWorkspaceSignals(cwd: string, files: WorkspaceFactsFileSource): WorkspaceSignals {
 	const stacks: string[] = [];
 	for (const [file, stack] of markerFileStacks) {
-		if (existsSync(join(cwd, file)) && !stacks.includes(stack)) stacks.push(stack);
+		if (files.exists(cwd, file) && !stacks.includes(stack)) stacks.push(stack);
 	}
-	const manifest = readPackageManifest(join(cwd, "package.json"));
+	const manifest = readPackageManifest(cwd, files);
 	for (const [dependency, stack] of dependencyStacks) {
 		if (manifest?.dependencyNames.has(dependency) && !stacks.includes(stack)) stacks.push(stack);
 	}
 	return {
-		isGitRepository: existsSync(join(cwd, ".git")),
+		isGitRepository: files.exists(cwd, ".git"),
 		...(manifest?.name ? { packageName: manifest.name } : {}),
 		stacks,
 	};
@@ -99,10 +107,7 @@ export function renderWorkspaceFacts(signals: WorkspaceSignals): string | undefi
  * 探测并渲染工作区事实。探测失败静默降级为 undefined，绝不让会话创建失败。
  * `probe` 参数只用于测试注入。
  */
-export function detectWorkspaceFacts(
-	cwd: string,
-	probe: (cwd: string) => WorkspaceSignals = probeWorkspaceSignals,
-): string | undefined {
+export function detectWorkspaceFacts(cwd: string, probe: (cwd: string) => WorkspaceSignals): string | undefined {
 	try {
 		return renderWorkspaceFacts(probe(cwd));
 	} catch {
@@ -115,11 +120,11 @@ interface PackageManifestFacts {
 	readonly dependencyNames: ReadonlySet<string>;
 }
 
-function readPackageManifest(path: string): PackageManifestFacts | undefined {
-	if (!existsSync(path)) return undefined;
+function readPackageManifest(cwd: string, files: WorkspaceFactsFileSource): PackageManifestFacts | undefined {
+	if (!files.exists(cwd, "package.json")) return undefined;
 	let parsed: unknown;
 	try {
-		parsed = JSON.parse(readFileSync(path, "utf-8"));
+		parsed = JSON.parse(files.readText(cwd, "package.json"));
 	} catch {
 		return undefined;
 	}

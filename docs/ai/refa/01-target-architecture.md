@@ -17,7 +17,7 @@
 ## 2. 目标依赖方向
 
 ```text
-desktop-app / cli-app / other hosts
+desktop / cli-host / other hosts
                  |
                  v
           runtime-core host ports
@@ -118,7 +118,7 @@ desktop-app / cli-app / other hosts
 
 ### 3.6 应用层
 
-`desktop-app`、`cli-app` 和其他宿主只通过 `runtime-core` 的 Host Ports 访问：
+`desktop`、`cli-host` 和其他宿主只通过 `runtime-core` 的 Host Ports 访问：
 
 - Session 控制。
 - 事件与状态。

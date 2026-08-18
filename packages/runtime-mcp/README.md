@@ -19,7 +19,7 @@ Vetta 平台无关的 MCP 协议、Port 与 Runtime 状态协调层。
 - Desktop 回调页面、系统浏览器、配置路径、UI 或交互授权策略
 
 Node 实现由 `@vetta/runtime-node/mcp` 提供；Desktop 专属交互由 `runtime-desktop` 或
-`desktop-app` Host 适配器提供。`runtime-mcp/src` 不得导入平台 Runtime 或 `node:*`。
+`desktop` Host 适配器提供。`runtime-mcp/src` 不得导入平台 Runtime 或 `node:*`。
 
 依赖方向：
 

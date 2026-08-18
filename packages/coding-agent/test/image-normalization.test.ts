@@ -35,6 +35,19 @@ describe("model input image normalization", () => {
 		expect(imageData(normalized[0])).toEqual([]);
 	});
 
+	it("safely omits images when a host does not provide an image processor", async () => {
+		const finalizer = new CodingAgentModelCallMessageFinalizer();
+
+		const finalized = await finalizer.finalize(
+			finalizationInput("turn-1", [userImage("aGVsbG8=")]),
+			new AbortController().signal,
+		);
+
+		expect(imageData(finalized[0])).toEqual([]);
+		expect(textContent(finalized[0])).toContain("image processing is currently unavailable");
+		expect(textContent(finalized[0])).toContain("5 B");
+	});
+
 	it("honors the existing auto-resize setting at the final model boundary", async () => {
 		const processor = imageProcessor(async () => resized("must-not-run", "image/jpeg"));
 		const finalizer = new CodingAgentModelCallMessageFinalizer(

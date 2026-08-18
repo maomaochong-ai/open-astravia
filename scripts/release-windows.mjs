@@ -9,7 +9,7 @@ import { join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 
 const repoRoot = resolve(import.meta.dirname, "..");
-const desktopDir = join(repoRoot, "packages", "desktop-app");
+const desktopDir = join(repoRoot, "apps", "desktop");
 const releaseDir = join(desktopDir, "release");
 const desktopPackagePath = join(desktopDir, "package.json");
 const bunExecutable = process.platform === "win32" ? "bun.exe" : "bun";
@@ -38,7 +38,7 @@ function usage(exitCode = 1) {
 配置优先级：当前 Shell > ~/.config/vetta/r2-<channel>.env
             > ~/.config/vetta/r2.env > desktop-app 对应环境文件
 
-test 读取 packages/desktop-app/.env.development，且必须显式指定版本；
+test 读取 apps/desktop/.env.development，且必须显式指定版本；
 stable 的服务器、站点和发布目标强制读取 .env.production，版本只取 package.json。`);
 	process.exit(exitCode);
 }
@@ -343,14 +343,14 @@ async function main() {
 	await rm(releaseDir, { recursive: true, force: true });
 
 	step(`构建 Windows Inno ${version}`);
-	runBun(["run", "--cwd", "packages/desktop-app", "dist:win:inno"], childEnvironment);
+	runBun(["run", "--cwd", "apps/desktop", "dist:win:inno"], childEnvironment);
 	if (options.channel === "stable") {
 		step("校验 stable 产物未混入开发环境地址");
 		await verifyPackagedStableEnvironment(version);
 	}
 
 	step("校验 Windows 安装产物");
-	runBun(["run", "--cwd", "packages/desktop-app", "verify:updates:windows"], childEnvironment);
+	runBun(["run", "--cwd", "apps/desktop", "verify:updates:windows"], childEnvironment);
 
 	if (options.skipPublish) {
 		step("已跳过 R2 发布（--skip-publish）");
@@ -359,7 +359,7 @@ async function main() {
 	}
 
 	step(`发布到 ${options.channel}：${updateUrl}`);
-	runBun(["run", "--cwd", "packages/desktop-app", "publish:updates:r2"], childEnvironment);
+	runBun(["run", "--cwd", "apps/desktop", "publish:updates:r2"], childEnvironment);
 
 	step(`完成：Windows ${version} 已发布到 ${options.channel}`);
 	console.log("下一步：从更低版本安装包完成一次「检查 -> 差分下载 -> 更新并重启」闭环。");

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	CodingAgentBackgroundWorkController,
 	type CodingAgentSubagentWorkRuntime,
-} from "../../src/host/session-execution/background-work-controller.js";
+} from "../../src/execution/background/work-controller.js";
 
 describe("Coding Agent background work controller", () => {
 	it("separates subagent cleanup from the combined background cleanup", () => {

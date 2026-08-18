@@ -33,7 +33,7 @@ Vetta 已经具备三块可复用基础：标准 Agent Skill 发现、可扩展�
 
 - `ecosystem-adapter` 负责 Claude marketplace/plugin/resource 的纯解析、版本化 Hook wire contract 和工具名映射。
 - `coding-agent` 负责 Skill 调用语义、custom agent 注册、子会话以及未来的 Agent Teams 运行时。
-- `desktop-app` 负责安装、信任、权限、插件根路径、托管命令环境和 UI 诊断。
+- `desktop` 负责安装、信任、权限、插件根路径、托管命令环境和 UI 诊断。
 - Vetta 原生插件清单继续保持自身语义；Claude `plugin.json` 先解析成中立资源图，再进入宿主，不直接互读字段。
 
 ## 交付边界

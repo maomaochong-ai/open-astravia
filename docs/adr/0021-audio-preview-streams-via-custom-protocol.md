@@ -1,6 +1,6 @@
 # 音频预览经自定义流式 protocol 加载，不复用 readFile base64
 
-`FilePreviewView` 既有所有预览类型（图片/pdf/docx/文本）都经 `window.vetta.fs.readFile` IPC 以 utf8/base64 字符串全量送进渲染进程。音频不同：wav/flac 无损文件可达百 MB，沿用该路径会全量驻留内存、IPC 传输期间明显阻塞，且 seek 要等整文件就绪。决定在 desktop-app 主进程用 `protocol.handle()` 注册 `vetta-media://`（[[媒体流协议]]），把校验过的本地路径映射为支持 Range 请求的流式响应，`<audio src>` 直接指向它。既有小文件预览类型**不迁移**，两条路径长期并存。
+`FilePreviewView` 既有所有预览类型（图片/pdf/docx/文本）都经 `window.vetta.fs.readFile` IPC 以 utf8/base64 字符串全量送进渲染进程。音频不同：wav/flac 无损文件可达百 MB，沿用该路径会全量驻留内存、IPC 传输期间明显阻塞，且 seek 要等整文件就绪。决定在 desktop 主进程用 `protocol.handle()` 注册 `vetta-media://`（[[媒体流协议]]），把校验过的本地路径映射为支持 Range 请求的流式响应，`<audio src>` 直接指向它。既有小文件预览类型**不迁移**，两条路径长期并存。
 
 ## Considered Options
 

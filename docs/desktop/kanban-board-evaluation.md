@@ -99,7 +99,7 @@ batch-tasks 已经有队列、并发、每任务一会话，看起来很接近�
 
 **合计 79 条新增用例，全部通过。**
 
-全量门禁：`bun run check` 通过（lint 2750 文件、5 个 typecheck 目标、13 项架构守卫）；`packages/desktop-app` 渲染层既有 76 个测试文件 / 332 条用例全部通过，无回归；`bun run build:presets` 正常产出并 staging `kanban@0.1.0`。
+全量门禁：`bun run check` 通过（lint 2750 文件、5 个 typecheck 目标、13 项架构守卫）；`apps/desktop` 渲染层既有 76 个测试文件 / 332 条用例全部通过，无回归；`bun run build:presets` 正常产出并 staging `kanban@0.1.0`。
 
 ## 五、风险与遗留
 

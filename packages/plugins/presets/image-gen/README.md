@@ -10,7 +10,7 @@
 
 ## 出图链路
 
-一律走宿主 `ctx.media` 协议，默认选择 desktop-app 内置的 `desktop-app:vetta` 图片 Provider。
+一律走宿主 `ctx.media` 协议，默认选择 desktop 内置的 `desktop:vetta` 图片 Provider。
 插件不感知模型、不持有任何 key，也不能指定网关路径；内置 Provider 在主进程固定调用
 `POST /api/v1/images/{generate,edit}`。模型选择、provider 形态适配（含改图协议差异）、
 尺寸白名单与按次计费都在服务端，管理员在 admin 配置；能不能出图由用户的订阅档位决定

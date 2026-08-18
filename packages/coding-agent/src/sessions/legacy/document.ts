@@ -1,7 +1,6 @@
-import { readFileSync } from "node:fs";
 import type { AgentMessage } from "@vetta/agent-core";
 import type { ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
-import { parseLegacySessionDocumentSource } from "@vetta/runtime-node/conversation/legacy";
+import { parseLegacySessionDocumentSource } from "@vetta/runtime-storage/conversation";
 import type {
 	CodingAgentCustomMessageEntry,
 	CodingAgentSessionEntry,
@@ -16,10 +15,6 @@ export interface CodingAgentLegacySessionDocument {
 	readonly header: CodingAgentSessionHeader;
 	readonly entries: readonly CodingAgentSessionEntry[];
 	readonly activeLeafId: string | null;
-}
-
-export function readCodingAgentLegacySessionDocument(sessionPath: string): CodingAgentLegacySessionDocument {
-	return parseCodingAgentLegacySessionDocument(readFileSync(sessionPath, "utf8"));
 }
 
 export function parseCodingAgentLegacySessionDocument(content: string): CodingAgentLegacySessionDocument {

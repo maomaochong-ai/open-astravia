@@ -1,7 +1,7 @@
 import type { Static, TSchema } from "@sinclair/typebox";
 import type { AgentToolResult, AgentToolUpdateCallback } from "@vetta/agent-core";
 import type { ConversationScenario } from "@vetta/runtime-core";
-import type { Theme } from "../modes/interactive/theme/theme.js";
+import type { Theme } from "../theme/index.js";
 import type { ExtensionContext } from "./context-contracts.js";
 import type { Component } from "./ui-primitives.js";
 

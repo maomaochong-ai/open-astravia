@@ -12,6 +12,9 @@ const WASM_FILENAME = "photon_rs_bg.wasm";
 type PhotonModule = typeof PhotonNode;
 type ReadFileSync = typeof fs.readFileSync;
 
+let embeddedWasmPath: string | undefined;
+let embeddedPhotonLoader: (() => Promise<unknown>) | undefined;
+
 let photonModule: PhotonModule | null = null;
 let loadPromise: Promise<PhotonModule | null> | null = null;
 
@@ -28,10 +31,29 @@ function pathOrNull(file: PathOrFileDescriptor): string | null {
 function getFallbackWasmPaths(): string[] {
 	const executableDirectory = dirname(process.execPath);
 	return [
+		...(embeddedWasmPath ? [embeddedWasmPath] : []),
 		join(executableDirectory, WASM_FILENAME),
 		join(executableDirectory, "photon", WASM_FILENAME),
 		join(process.cwd(), WASM_FILENAME),
 	];
+}
+
+/** Install the Bun-embedded Photon asset path before the first image operation. */
+export function installPhotonWasmPath(wasmPath: string): void {
+	embeddedWasmPath = wasmPath;
+}
+
+/** Install a compile-time-visible loader so standalone binaries include the Photon module. */
+export function installPhotonModuleLoader(loader: () => Promise<unknown>): void {
+	embeddedPhotonLoader = loader;
+}
+
+function normalizePhotonModule(value: unknown): PhotonModule {
+	const candidate =
+		typeof value === "object" && value !== null && Reflect.get(value, "default")
+			? Reflect.get(value, "default")
+			: value;
+	return candidate as PhotonModule;
 }
 
 function patchPhotonWasmRead(): () => void {
@@ -102,7 +124,9 @@ export async function loadPhoton(): Promise<PhotonModule | null> {
 	loadPromise = (async () => {
 		const restoreReadFileSync = patchPhotonWasmRead();
 		try {
-			const required = require("@silvia-odwyer/photon-node") as PhotonModule;
+			const required = embeddedPhotonLoader
+				? normalizePhotonModule(await embeddedPhotonLoader())
+				: (require("@silvia-odwyer/photon-node") as PhotonModule);
 			photonModule = required;
 			return photonModule;
 		} catch (error) {

@@ -71,6 +71,18 @@ describe("buildSystemPrompt", () => {
 			expect(prompt).toContain("ALWAYS use dir_tree");
 		});
 
+		test("accepts the host-selected default command tool without reading process state", () => {
+			const prompt = buildSystemPrompt({
+				defaultCommandTool: "shell",
+				cwd: "C:/workspace",
+				contextFiles: [],
+				skills: [],
+			});
+
+			expect(prompt).toContain("Current working directory: C:/workspace");
+			expect(prompt).toContain("run_in_background: true");
+		});
+
 		test("includes foreground vs background guideline when bash is selected", () => {
 			const prompt = buildSystemPrompt({
 				selectedTools: ["bash", "read"],

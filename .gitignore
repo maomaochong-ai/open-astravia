@@ -10,6 +10,9 @@ dist/
 packages/*/dist/
 packages/*/dist-chrome/
 packages/*/dist-firefox/
+apps/*/dist/
+apps/*/dist-chrome/
+apps/*/dist-firefox/
 
 # Environment
 .env
@@ -56,16 +59,16 @@ out.html
 packages/coding-agent/binaries/
 routeTree.gen.ts
 *.bun-build
-packages/desktop-app/release/
-packages/desktop-app/.desktop-dev/
-packages/desktop-app/build/pet/*.compressed.webm
+apps/desktop/release/
+apps/desktop/.desktop-dev/
+apps/desktop/build/pet/*.compressed.webm
 # PP-OCRv5 ONNX models are fetched on demand into resources/ocr-models/
 # at build time (see scripts/fetch-ocr-models.js); not checked in.
-packages/desktop-app/resources/ocr-models/
+apps/desktop/resources/ocr-models/
 
 # Windows Sherpa-ONNX speech model is fetched and verified at build time,
 # then packaged as an Electron extraResource; model weights are not source.
-packages/desktop-app/resources/speech-models/
+apps/desktop/resources/speech-models/
 /releases/
 todo.md
 

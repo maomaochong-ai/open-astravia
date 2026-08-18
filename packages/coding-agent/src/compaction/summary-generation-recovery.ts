@@ -1,5 +1,5 @@
-import { classifyRuntimeFailure } from "../utils/retryable-error.js";
-import { sleep } from "../utils/sleep.js";
+import { classifyRuntimeFailure } from "../execution/failure-classification.js";
+import { sleepWithAbort } from "./abortable-sleep.js";
 import type { CompactionSummaryInputCandidate } from "./summary-input-degradation.js";
 import { isDegradedCompactionSummary } from "./summary-quality.js";
 
@@ -19,7 +19,7 @@ export async function generateCompactionSummaryWithRecovery(
 	const maxTransientRetries = nonNegativeInteger(options.maxTransientRetries, 2);
 	const maxDegradedRetries = nonNegativeInteger(options.maxDegradedRetries, 1);
 	const baseDelayMs = nonNegativeInteger(options.baseDelayMs, 250);
-	const wait = options.wait ?? sleep;
+	const wait = options.wait ?? sleepWithAbort;
 	let lastInputError: unknown;
 
 	for (const candidate of candidates) {

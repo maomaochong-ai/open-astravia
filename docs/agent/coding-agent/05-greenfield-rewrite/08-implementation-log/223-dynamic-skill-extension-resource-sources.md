@@ -83,7 +83,7 @@ Source 是进程内受信任的 TypeScript 回调和值合同，没有 JSON、IP
 - 动态资源定向测试：4 个测试文件、23 个测试通过。
 - 覆盖内联 Skill、声明式 policy、revision 刷新、Skill/Extension 移除、显式 reload、普通 prompt 自动刷新、steer 不刷新以及 close 释放。
 - `bun run check:quick`：通过。
-- `bun run check`：通过；覆盖 Biome、根 monorepo 类型、CLI、desktop-app、admin 与全部质量守卫。
+- `bun run check`：通过；覆盖 Biome、根 monorepo 类型、CLI、desktop、admin 与全部质量守卫。
 
 ## 后续方向
 

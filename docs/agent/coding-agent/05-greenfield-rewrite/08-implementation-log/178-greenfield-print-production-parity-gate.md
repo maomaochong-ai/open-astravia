@@ -62,7 +62,7 @@ Runtime Core 新增逐层一致的 retry 入口：
 
 ## 测试与验证
 
-- cli-app Print 差分：1 个文件、15 项通过。
+- cli-host Print 差分：1 个文件、15 项通过。
 - runtime-core Session Backend：1 个文件、14 项通过。
 - coding-agent Turn Executor：1 个文件、5 项通过。
 - `bun run check:quick` 通过，包含 standalone CLI build guard。

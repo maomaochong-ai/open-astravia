@@ -2,7 +2,7 @@
 
 ## 背景
 
-`runtime-storage`、`runtime-tools`、`runtime-mcp` 和 `runtime-core` 此前同时包含公开合同与 Node 环境实现。Desktop 的 Runtime 组合、进程生命周期、会话目录策略和历史导入又位于 `desktop-app` 内部。这样的依赖图无法证明 Agent Kernel 可在其他平台运行，也使平台行为只能通过具体应用源码复用。
+`runtime-storage`、`runtime-tools`、`runtime-mcp` 和 `runtime-core` 此前同时包含公开合同与 Node 环境实现。Desktop 的 Runtime 组合、进程生命周期、会话目录策略和历史导入又位于 `desktop` 内部。这样的依赖图无法证明 Agent Kernel 可在其他平台运行，也使平台行为只能通过具体应用源码复用。
 
 ## 决策
 
@@ -19,7 +19,7 @@ Runtime 分为协议/Kernel 与平台 Runtime 两类：
 当前生产依赖方向为：
 
 ```text
-desktop-app -> runtime-desktop -> coding-agent
+desktop -> runtime-desktop -> coding-agent
              |                 |-> runtime-node
              |                 `-> runtime-core + runtime protocols
              `-------------------> runtime-node

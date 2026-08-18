@@ -4,7 +4,7 @@ status: accepted
 
 # ask_user_question 以 user question handler 存在与否门控（能力=注册）
 
-[[ask_user_question]] 是 coding-agent 的内置交互工具，由 desktop-app 设置页「Agent配置 → [[实验性功能]]」开关控制是否启用。问题是：这个「开/关」如何抵达 coding-agent，让工具在 agent 的 active tool set + system prompt 里出现或消失，且要像 MCP / [[个性化]] 那样**新旧会话都在下一个 prompt 懒生效**。
+[[ask_user_question]] 是 coding-agent 的内置交互工具，由 desktop 设置页「Agent配置 → [[实验性功能]]」开关控制是否启用。问题是：这个「开/关」如何抵达 coding-agent，让工具在 agent 的 active tool set + system prompt 里出现或消失，且要像 MCP / [[个性化]] 那样**新旧会话都在下一个 prompt 懒生效**。
 
 直觉做法是新增一个显式布尔（`enableAskUserQuestion`）：从 DesktopConfig 读出后，经 `createAgentSession` 或某个 `runtime.setToolFlags()` 透传进 coding-agent，coding-agent 存下该布尔、每轮 prompt 比对决定注册。但工具「能阻塞等回答」本身就**依赖一个宿主回调**——没有回调，工具即便注册了也无法工作。于是布尔与回调成了两个必须保持同步的状态，会出现「flag=on 但 handler 未注入」的不一致窗口。
 

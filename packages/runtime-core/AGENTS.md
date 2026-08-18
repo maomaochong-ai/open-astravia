@@ -18,7 +18,7 @@ Document、生命周期事务、恢复、资源所有权、Port、Session Extens
 
 ## 注意事项
 
-- 本包是 `desktop-app` 和 `cli-app` 的直接依赖，接口变更影响所有应用层
+- 本包是 `desktop` 和 `cli-host` 的直接依赖，接口变更影响所有应用层
 - 公开事件和 Port 是 `coding-agent` 与应用宿主消费的下层合同，变更需同步检查消费者
 - Kernel 与 Runtime 合同必须保持产品无关，不得导入 `@vetta/coding-agent`
 - 生产代码、测试、配置和包清单均不得反向依赖 `@vetta/coding-agent`

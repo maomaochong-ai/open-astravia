@@ -539,7 +539,7 @@ MCP 元数据保存在工具对象的 `ecosystemHook` descriptor 中。这样未
 ### 10.6 验证
 
 - 已运行根目录 `bun run check`。
-- Biome、monorepo `tsgo --noEmit`、desktop-app `tsc --noEmit` 均通过。
+- Biome、monorepo `tsgo --noEmit`、desktop `tsc --noEmit` 均通过。
 - 按仓库规则未运行测试；本轮未执行 `bun test`。
 
 ### 10.7 oh-story 样本复核

@@ -1,6 +1,6 @@
 # @vetta/markdown
 
-博客正文的共享 Markdown 渲染器。`packages/admin` 的编辑预览与 `packages/site` 的公众页共用同一份实现与样式，保证后台看到的效果就是线上效果。
+博客正文的共享 Markdown 渲染器。`apps/admin` 的编辑预览与 `apps/site` 的公众页共用同一份实现与样式，保证后台看到的效果就是线上效果。
 
 源码包，不产出 `dist/`：消费方直接引用 `src/`（Next 侧需要在 `transpilePackages` 里声明）。
 

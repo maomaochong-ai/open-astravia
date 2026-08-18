@@ -17,7 +17,7 @@ Desktop、Plugin、Theme 或 Action 业务。
 
 ## 边界规则
 
-- 本包只能依赖 `@vetta/capability-sdk` 的通用合同，不得导入或根据 `desktop-app`、`plugin-sdk`、
+- 本包只能依赖 `@vetta/capability-sdk` 的通用合同，不得导入或根据 `desktop`、`plugin-sdk`、
   `theme-sdk`、Action、trust level、manifest 或系统权限名称分支。
 - Runtime 可以由 main、renderer、CLI 或测试宿主实例化；部署在 renderer 不等于可以依赖 DOM、React、
   Jotai 或 Router。具体 UI/宿主行为必须由上层 Provider 实现。

@@ -8,9 +8,14 @@
 
 Vetta 是私有的 AI Agent 产品栈。仓库包含 TypeScript/Bun monorepo、Electron 桌面应用、React 管理端，以及 Go API 和 IM 网关。
 
+顶层目录按「是否被别的包依赖」划分，新增目录必须遵守：
+
+- `apps/`：可交付的应用，依赖图的叶子节点，不被任何包 import。`desktop`、`cli-host`、`admin`、`site`、`docs-site`、`mobile`（Kotlin Multiplatform，仅 Android）、`api` 与 `im-gateway`（Go）。
+- `packages/`：可复用模块，只能被 `apps/` 或其它 `packages/` 依赖。
+
 主要分层：
 
-- 应用与宿主：`desktop-app`、`cli-app`、`admin`、`site`、`api`、`im-gateway`
+- 应用与宿主：`apps/*`
 - 产品组合：`coding-agent`
 - 通用运行时：`runtime-*`、`capability-*`、`action-rpc`
 - 核心库：`ai`、`agent`
@@ -19,7 +24,7 @@ Vetta 是私有的 AI Agent 产品栈。仓库包含 TypeScript/Bun monorepo、E
 核心依赖方向：
 
 ```text
-desktop / cli / admin / site / api / im-gateway
+apps/*  (desktop / cli / admin / site / docs-site / mobile / api / im-gateway)
                       |
                       v
        coding-agent / runtime-* / capability-*
@@ -28,7 +33,7 @@ desktop / cli / admin / site / api / im-gateway
                  agent / ai
 ```
 
-下层包不得反向依赖具体宿主。跨包调用优先使用目标包在 `package.json#exports` 中声明的公开入口，不得从其他包深度导入 `src/**`。
+`packages/*` 不得反向依赖 `apps/*`，跨包调用优先使用目标包在 `package.json#exports` 中声明的公开入口，不得从其他包深度导入 `src/**`。
 
 ## 开始任务
 
@@ -51,16 +56,16 @@ desktop / cli / admin / site / api / im-gateway
 | AI Provider 与模型协议 | [`packages/ai/AGENTS.md`](packages/ai/AGENTS.md) |
 | Agent Loop | [`packages/agent/AGENTS.md`](packages/agent/AGENTS.md) |
 | Coding Agent 产品组合 | [`packages/coding-agent/AGENTS.md`](packages/coding-agent/AGENTS.md) |
-| Desktop 主进程与 Renderer | [`packages/desktop-app/AGENTS.md`](packages/desktop-app/AGENTS.md) |
+| Desktop 主进程与 Renderer | [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md) |
 | Plugin SDK、Preset 与外置插件 | [`packages/plugins/AGENTS.md`](packages/plugins/AGENTS.md) |
-| CLI、Admin | [`packages/cli-app/AGENTS.md`](packages/cli-app/AGENTS.md)、[`packages/admin/AGENTS.md`](packages/admin/AGENTS.md) |
+| CLI、Admin | [`apps/cli-host/AGENTS.md`](apps/cli-host/AGENTS.md)、[`apps/admin/AGENTS.md`](apps/admin/AGENTS.md) |
 | Runtime 与 Toolkit | 目标 `packages/runtime-*/AGENTS.md` 或 [`packages/toolkit/AGENTS.md`](packages/toolkit/AGENTS.md) |
 
 Desktop 主进程部分目录还有更细规则；修改对应目录时必须继续读取：
 
-- [`app-actions`](packages/desktop-app/src/main/app-actions/AGENTS.md)
-- [`app-monitor`](packages/desktop-app/src/main/app-monitor/AGENTS.md)
-- [`ipc`](packages/desktop-app/src/main/ipc/AGENTS.md)
+- [`app-actions`](apps/desktop/src/main/app-actions/AGENTS.md)
+- [`app-monitor`](apps/desktop/src/main/app-monitor/AGENTS.md)
+- [`ipc`](apps/desktop/src/main/ipc/AGENTS.md)
 
 没有包级 `AGENTS.md` 的目录遵循本文件，并以该包 README、测试和现有代码模式为补充。
 
@@ -133,7 +138,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 - 类型使用标准顶层 `import type`，不得使用 `import("pkg").Type`。运行时动态 `import()` 仅用于明确的懒加载或代码分割。
 - 不通过删除功能、降低类型安全或降级依赖来消除类型错误。依赖升级会扩大任务范围时，先说明影响并征得用户同意。
 - 快捷键必须进入现有可配置 keybinding 对象，不得在业务逻辑中写死按键组合。
-- `packages/desktop-app` 中所有用户可见文案必须走 i18n，包括 label、按钮、placeholder、菜单、通知、title 和 aria 属性。
+- `apps/desktop` 中所有用户可见文案必须走 i18n，包括 label、按钮、placeholder、菜单、通知、title 和 aria 属性。
 - UI 修改遵循现有设计系统和组件模式；交互行为变化应优先抽取可测试的纯逻辑，不默认挂载大型 React 树。
 
 ## AI 与安全边界
@@ -215,8 +220,8 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 
 ## Changelog 与新增包
 
-- 影响已发布包的用户可见功能、修复或公共 API 时，检查对应 `packages/*/CHANGELOG.md` 的完整 `[Unreleased]` 段并追加到已有分类；不得修改已发布版本段。
-- 新增 `packages/*` workspace 包时遵循 [`docs/monorepo-new-package.md`](docs/monorepo-new-package.md)，同时更新 workspace、TypeScript path maps、构建分层和必要的 Desktop 源码映射。
+- 影响已发布包的用户可见功能、修复或公共 API 时，检查对应 `packages/*/CHANGELOG.md` 或 `apps/*/CHANGELOG.md` 的完整 `[Unreleased]` 段并追加到已有分类；不得修改已发布版本段。
+- 新增 workspace 包时先判断归属：应用进 `apps/*`，可复用模块进 `packages/*`。随后遵循 [`docs/monorepo-new-package.md`](docs/monorepo-new-package.md)，同时更新 workspace、TypeScript path maps、构建分层和必要的 Desktop 源码映射。
 - 不执行版本发布、制品上传、registry 发布或部署，除非用户明确要求。
 
 ## Git 与并行工作区

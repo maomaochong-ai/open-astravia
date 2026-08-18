@@ -3,31 +3,29 @@ import {
 	createMcpServerRuntimeToolSource,
 	type ManagedMcpRuntimeToolSource,
 	type McpRuntimeToolDecorationContext,
+	type McpServerSupervisor,
 	type McpToolResultPolicy,
 	PRESERVE_MCP_TOOL_RESULT_POLICY,
 } from "@vetta/runtime-mcp";
 import type { EcosystemHookAwareRuntimeTool } from "../../extensions/runtime/ecosystem-hook-tool-wrapper.js";
-import { type CodingAgentMcpSupervisorOptions, createCodingAgentMcpSupervisor } from "./supervisor.js";
 
-export interface CodingAgentMcpRuntimeToolSourceOptions extends CodingAgentMcpSupervisorOptions {
+export interface CodingAgentMcpRuntimeToolSourceOptions {
+	/** Ownership transfers to the returned managed source, which shuts the supervisor down on dispose. */
+	readonly supervisor: McpServerSupervisor;
 	readonly resultPolicy?: McpToolResultPolicy;
 }
 
 /** Coding Agent MCP composition built directly on the Runtime Tool protocol. */
 export async function createCodingAgentMcpRuntimeToolSource(
-	options: CodingAgentMcpRuntimeToolSourceOptions = {},
+	options: CodingAgentMcpRuntimeToolSourceOptions,
 ): Promise<ManagedMcpRuntimeToolSource> {
-	const debug = options.debug || false;
-	const composition = createCodingAgentMcpSupervisor(options, (message) => {
-		if (debug) console.error(`[MCPManager] ${message}`);
-	});
-	await composition.supervisor.initialize();
+	await options.supervisor.initialize();
 	return {
-		source: createMcpServerRuntimeToolSource(composition.supervisor, {
+		source: createMcpServerRuntimeToolSource(options.supervisor, {
 			decorateTool: decorateCodingAgentMcpRuntimeTool,
 			resultPolicy: options.resultPolicy ?? PRESERVE_MCP_TOOL_RESULT_POLICY,
 		}),
-		dispose: () => composition.supervisor.shutdown(),
+		dispose: () => options.supervisor.shutdown(),
 	};
 }
 

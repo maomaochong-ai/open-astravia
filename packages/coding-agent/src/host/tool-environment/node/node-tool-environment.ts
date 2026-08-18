@@ -8,10 +8,10 @@ import type {
 	CodingAgentToolEnvironment,
 	CodingAgentToolEnvironmentContext,
 } from "../../../composition/contracts/index.js";
-import { getBinDir } from "../../../config.js";
 import { createCodingAgentEditPathPolicy } from "../../../tool-policy/path/edit-path-policy.js";
 import { createCodingAgentWritePathPolicy } from "../../../tool-policy/path/write-path-policy.js";
 import { getDefaultShellCommandPrefix, getShellConfig, getShellEnv } from "../../command-execution/shell-runtime.js";
+import { getBinDir } from "../../node-config.js";
 import { createCodingAgentNodePathPolicy } from "./node-path-policy.js";
 
 export interface CodingAgentNodeToolEnvironmentOptions {

@@ -42,6 +42,7 @@ export {
 	type NodeForegroundCommandHostOptions,
 	type NodeShellCommand,
 } from "./host/index.js";
+export { nodeModelInputImageProcessor } from "./model-input-image-processor.js";
 export {
 	createNodeCodingToolEnvironment,
 	createNodeCommandToolEnvironment,
@@ -244,14 +245,19 @@ export {
 	type LsToolOptions,
 } from "./tools/ls/index.js";
 export {
+	convertToPng,
 	createReadTool,
 	createReadToolRegistration,
+	detectSupportedImageMimeTypeFromFile,
 	formatDimensionNote,
 	formatImageResizeFailureNote,
 	type ImageResizeFailure,
 	type ImageResizeOptions,
 	type ImageResizeResult,
+	installPhotonModuleLoader,
+	installPhotonWasmPath,
 	isImageResizeFailure,
+	loadPhoton,
 	READ_TOOL_CATEGORY,
 	READ_TOOL_DESCRIPTION,
 	READ_TOOL_SCOPES,
@@ -262,6 +268,7 @@ export {
 	ReadToolInputSchema,
 	type ReadToolOptions,
 	type ResizedImage,
+	resizeImage,
 	resizeImageBuffer,
 } from "./tools/read/index.js";
 export {
@@ -312,3 +319,4 @@ export {
 	WriteToolInputSchema,
 	type WriteToolOptions,
 } from "./tools/write/index.js";
+export { nodeWorkspaceFactsFileSource } from "./workspace-facts.js";

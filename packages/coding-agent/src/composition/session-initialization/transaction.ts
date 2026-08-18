@@ -16,6 +16,7 @@ import type { CodingAgentContextRuntime } from "../../runtime-contracts/index.js
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
 import type { CodingAgentConversationSessionPathAssessment } from "../contracts/conversation-persistence.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
+import type { CodingAgentSessionInitializationObserver } from "../contracts/session-initialization-observability.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
 import { createCodingAgentSessionResourceLifecycle } from "../session-lifecycle/resource-lifecycle.js";
 import type { CodingAgentSessionConversationResources } from "../session-lifecycle/runtime-resources.js";
@@ -30,6 +31,7 @@ import {
 	createCodingAgentTurnCapabilitySessionAssembly,
 } from "../turn/capability-session-assembly.js";
 import { createCodingAgentSessionContextAssembly } from "./context-assembly.js";
+import { createCodingAgentSessionInitializationTimeline } from "./initialization-timeline.js";
 import { createCodingAgentSessionPeripheralAssembly } from "./peripheral-assembly.js";
 import type { CodingAgentSessionInitializationProfile } from "./profile.js";
 
@@ -77,6 +79,7 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 		sessionId: string,
 		sessionPath: string,
 	) => Promise<CodingAgentConversationSessionPathAssessment>;
+	readonly observer?: CodingAgentSessionInitializationObserver;
 }
 
 export interface CodingAgentSessionInitializationTransaction {
@@ -102,30 +105,36 @@ async function initializeSession<TOwnershipBinding>(
 ): Promise<RuntimeResources> {
 	const profile = options.profile;
 	let activeSessionId = sessionOptions.sessionId;
-	let activeOwnership = await options.acquireOwnership(activeSessionId);
+	const timeline = createCodingAgentSessionInitializationTimeline({
+		sessionId: sessionOptions.sessionId,
+		operation: resourceContext.operation,
+		observer: options.observer,
+	});
+	let activeOwnership: TOwnershipBinding | undefined;
 	const rollback = new InitializationRollbackScope();
-	rollback.defer({
-		id: "conversation-ownership",
-		rollback: async () => {
-			await options.releaseOwnership(activeOwnership);
-			activeOwnership = undefined;
-		},
-	});
 	const extensionEvents = new CodingAgentExtensionRunBridge(options.extensionToolRuntime?.runnerGenerations);
-	options.registry.indexes.resourceContexts.set(activeSessionId, resourceContext);
-	rollback.defer({
-		id: "resource-context-binding",
-		rollback: () => {
-			if (options.registry.indexes.resourceContexts.get(activeSessionId) === resourceContext) {
-				options.registry.indexes.resourceContexts.delete(activeSessionId);
-			}
-		},
-	});
-	rollback.defer({
-		id: "conversation-context-overlay",
-		rollback: () => options.conversationContextOverlay.clear(activeSessionId),
-	});
 	try {
+		activeOwnership = await timeline.measure("ownership", () => options.acquireOwnership(activeSessionId));
+		rollback.defer({
+			id: "conversation-ownership",
+			rollback: async () => {
+				await options.releaseOwnership(activeOwnership);
+				activeOwnership = undefined;
+			},
+		});
+		options.registry.indexes.resourceContexts.set(activeSessionId, resourceContext);
+		rollback.defer({
+			id: "resource-context-binding",
+			rollback: () => {
+				if (options.registry.indexes.resourceContexts.get(activeSessionId) === resourceContext) {
+					options.registry.indexes.resourceContexts.delete(activeSessionId);
+				}
+			},
+		});
+		rollback.defer({
+			id: "conversation-context-overlay",
+			rollback: () => options.conversationContextOverlay.clear(activeSessionId),
+		});
 		if (sessionOptions.sessionTools) {
 			options.extensionToolRuntime?.replaceSessionTools(activeSessionId, sessionOptions.sessionTools);
 			rollback.defer({
@@ -134,49 +143,53 @@ async function initializeSession<TOwnershipBinding>(
 			});
 		}
 		const sessionCwd = sessionOptions.cwd ?? options.cwd;
-		const peripherals = await createCodingAgentSessionPeripheralAssembly({
-			profile,
-			sessionOptions,
-			sessionCwd,
-			scenario: options.scenario,
-			activation: options.activation,
-			codingTools: options.codingTools,
-			indexes: options.registry.indexes,
-			mcpCoordinator: options.mcpCoordinator,
-			resourceContext,
-			readSessionId: () => activeSessionId,
-			resolveActivation: options.resolveActivation,
-			trackMemoryRuntime: (runtime) => options.registry.trackMemoryRuntime(runtime),
-			untrackMemoryRuntime: (runtime) => options.registry.untrackMemoryRuntime(runtime),
-			trackSessionExtensionComposition: (extensions) =>
-				options.registry.trackSessionExtensionComposition(extensions),
-			untrackSessionExtensionComposition: (extensions) =>
-				options.registry.untrackSessionExtensionComposition(extensions),
-			deferRollback: (task) => {
-				rollback.defer(task);
-			},
-		});
-		const context = createCodingAgentSessionContextAssembly({
-			profile,
-			sessionOptions,
-			sessionCwd,
-			scenario: options.scenario,
-			resourceContext,
-			peripherals,
-			modelAdapter: options.modelAdapter,
-			extensionEvents,
-			mcpCoordinator: options.mcpCoordinator,
-			readSessionId: () => activeSessionId,
-			resolveConversationPath: options.conversation.resolveConversationPath,
-			readConversationModelMessages: options.readConversationModelMessages,
-			createChildComposition: options.createChildComposition,
-			assessChildSessionPath: options.assessChildSessionPath,
-			trackContextRuntime: (runtime) => options.registry.trackContextRuntime(runtime),
-			untrackContextRuntime: (runtime) => options.registry.untrackContextRuntime(runtime),
-			deferRollback: (task) => {
-				rollback.defer(task);
-			},
-		});
+		const peripherals = await timeline.measure("peripherals", () =>
+			createCodingAgentSessionPeripheralAssembly({
+				profile,
+				sessionOptions,
+				sessionCwd,
+				scenario: options.scenario,
+				activation: options.activation,
+				codingTools: options.codingTools,
+				indexes: options.registry.indexes,
+				mcpCoordinator: options.mcpCoordinator,
+				resourceContext,
+				readSessionId: () => activeSessionId,
+				resolveActivation: options.resolveActivation,
+				trackMemoryRuntime: (runtime) => options.registry.trackMemoryRuntime(runtime),
+				untrackMemoryRuntime: (runtime) => options.registry.untrackMemoryRuntime(runtime),
+				trackSessionExtensionComposition: (extensions) =>
+					options.registry.trackSessionExtensionComposition(extensions),
+				untrackSessionExtensionComposition: (extensions) =>
+					options.registry.untrackSessionExtensionComposition(extensions),
+				deferRollback: (task) => {
+					rollback.defer(task);
+				},
+			}),
+		);
+		const context = timeline.measureSync("context", () =>
+			createCodingAgentSessionContextAssembly({
+				profile,
+				sessionOptions,
+				sessionCwd,
+				scenario: options.scenario,
+				resourceContext,
+				peripherals,
+				modelAdapter: options.modelAdapter,
+				extensionEvents,
+				mcpCoordinator: options.mcpCoordinator,
+				readSessionId: () => activeSessionId,
+				resolveConversationPath: options.conversation.resolveConversationPath,
+				readConversationModelMessages: options.readConversationModelMessages,
+				createChildComposition: options.createChildComposition,
+				assessChildSessionPath: options.assessChildSessionPath,
+				trackContextRuntime: (runtime) => options.registry.trackContextRuntime(runtime),
+				untrackContextRuntime: (runtime) => options.registry.untrackContextRuntime(runtime),
+				deferRollback: (task) => {
+					rollback.defer(task);
+				},
+			}),
+		);
 		const {
 			baseProfile,
 			configurationState,
@@ -256,70 +269,77 @@ async function initializeSession<TOwnershipBinding>(
 			rollback: () => resourceLifecycleAssembly.disposeHookSession(),
 		});
 		const createPromptRuntimeSources = profile.createPromptRuntimeSources;
-		const turnCapabilityAssembly = await createCodingAgentTurnCapabilitySessionAssembly({
-			session: {
-				initialSessionId: activeSessionId,
-				readSessionId: () => activeSessionId,
-				cwd: sessionCwd,
-				scenario: options.scenario,
-				agentDir: profile.agentDir,
-				includeAgentSkills: sessionOptions.includeAgentSkills,
-				systemPromptAddon: sessionOptions.systemPromptAddon,
-			},
-			activation: {
-				resolve: (context) => options.resolveActivation(context, configurationState.readActiveToolNamesOverride()),
-				readAgentMode: () => configurationState.readAgentMode(),
-				readAgentPlugins: () => configurationState.readAgentPlugins(),
-				readActiveToolNamesOverride: () => configurationState.readActiveToolNamesOverride(),
-				bindForTurn: () => {
-					const revision = configurationState.captureRevision();
-					return {
-						resolve: (context) => options.resolveActivation(context, revision.activeToolNamesOverride),
-						agentMode: revision.agentMode,
-						agentPlugins: revision.agentPlugins,
-						activeToolNamesOverride: revision.activeToolNamesOverride,
-					};
+		const turnCapabilityAssembly = await timeline.measure("turn-capabilities", () =>
+			createCodingAgentTurnCapabilitySessionAssembly({
+				session: {
+					initialSessionId: activeSessionId,
+					readSessionId: () => activeSessionId,
+					cwd: sessionCwd,
+					scenario: options.scenario,
+					agentDir: profile.agentDir,
+					includeAgentSkills: sessionOptions.includeAgentSkills,
+					systemPromptAddon: sessionOptions.systemPromptAddon,
 				},
-			},
-			prompt: {
-				runtimeSourceFactory: createPromptRuntimeSources
-					? () =>
-							createPromptRuntimeSources({
-								sessionOptions,
-								cwd: sessionCwd,
-								agentDir: profile.agentDir,
-								scenario: options.scenario,
-							})
-					: undefined,
-				systemPromptOptionsResolver:
-					profile.createSystemPromptOptionsResolver?.(sessionOptions) ?? profile.resolveSystemPromptOptions,
-				promptResourceResolver:
-					profile.createPromptResourceResolver?.(sessionOptions, todoRuntime) ?? profile.resolvePromptResource,
-				resourceSource: profile.promptResourceSource,
-				settingsSource: profile.promptSettingsSource,
-				systemPromptAdvertisedToolNames: profile.systemPromptAdvertisedToolNames,
-			},
-			baseProfile,
-			codingTools: options.codingTools,
-			executionRuntime,
-			specializedToolFeature,
-			specializedToolRegistrations,
-			continuationSources: sessionExtensions.continuationSources,
-			todoRuntime,
-			todoToolRegistration: todoEnabled ? todoRegistration : undefined,
-			memoryRuntime,
-			subagentRuntime,
-			contextRuntime,
-			conversationContextProjector: options.conversationContextOverlay,
-			modelRuntime,
-			hookRuntime,
-			pluginRuntime,
-			pluginMcpRuntime,
-			mcpController,
-			extensionEvents,
-			extensionToolRuntime: options.extensionToolRuntime,
-			askUserQuestion: sessionOptions.askUserQuestion,
-		});
+				activation: {
+					resolve: (context) =>
+						options.resolveActivation(context, configurationState.readActiveToolNamesOverride()),
+					readAgentMode: () => configurationState.readAgentMode(),
+					readAgentPlugins: () => configurationState.readAgentPlugins(),
+					readActiveToolNamesOverride: () => configurationState.readActiveToolNamesOverride(),
+					bindForTurn: () => {
+						const revision = configurationState.captureRevision();
+						return {
+							resolve: (context) => options.resolveActivation(context, revision.activeToolNamesOverride),
+							agentMode: revision.agentMode,
+							agentPlugins: revision.agentPlugins,
+							activeToolNamesOverride: revision.activeToolNamesOverride,
+						};
+					},
+				},
+				prompt: {
+					runtimeSourceFactory: createPromptRuntimeSources
+						? ({ runtimeSkillPaths }) =>
+								createPromptRuntimeSources({
+									sessionOptions,
+									cwd: sessionCwd,
+									agentDir: profile.agentDir,
+									scenario: options.scenario,
+									runtimeSkillPaths,
+								})
+						: undefined,
+					systemPromptOptionsResolver:
+						profile.createSystemPromptOptionsResolver?.(sessionOptions) ?? profile.resolveSystemPromptOptions,
+					promptResourceResolver:
+						profile.createPromptResourceResolver?.(sessionOptions, todoRuntime) ?? profile.resolvePromptResource,
+					resourceSource: profile.promptResourceSource,
+					settingsSource: profile.promptSettingsSource,
+					systemPromptAdvertisedToolNames: profile.systemPromptAdvertisedToolNames,
+					workspaceFacts: profile.workspaceFacts,
+				},
+				baseProfile,
+				codingTools: options.codingTools,
+				executionRuntime,
+				specializedToolFeature,
+				specializedToolRegistrations,
+				continuationSources: sessionExtensions.continuationSources,
+				todoRuntime,
+				todoToolRegistration: todoEnabled ? todoRegistration : undefined,
+				memoryRuntime,
+				subagentRuntime,
+				contextRuntime,
+				conversationContextProjector: options.conversationContextOverlay,
+				modelRuntime,
+				modelInputImageProcessor: profile.modelInputImageProcessor,
+				hookRuntime,
+				pluginRuntime,
+				pluginMcpRuntime,
+				mcpController,
+				extensionEvents,
+				extensionToolRuntime: options.extensionToolRuntime,
+				askUserQuestion: sessionOptions.askUserQuestion,
+				initializationTimeline: timeline,
+			}),
+		);
 		options.registry.trackTurnCapabilityAssembly(turnCapabilityAssembly);
 		rollback.defer({
 			id: "capability-composition",
@@ -331,15 +351,20 @@ async function initializeSession<TOwnershipBinding>(
 				}
 			},
 		});
-		await turnCapabilityAssembly.previewInitialSystemPrompt();
+		await timeline.measure("initial-system-prompt", () => turnCapabilityAssembly.previewInitialSystemPrompt());
 		const resources = resourceLifecycleAssembly.attachTurnCapabilityAssembly(turnCapabilityAssembly);
 		rollback.defer({
 			id: "session-bindings",
 			rollback: () => resourceLifecycleAssembly.rollbackBindings(),
 		});
 		rollback.commit();
+		timeline.finish("completed");
 		return resources;
 	} catch (error) {
-		return rollback.rollback(error, "Session resource initialization and rollback failed");
+		try {
+			return await rollback.rollback(error, "Session resource initialization and rollback failed");
+		} finally {
+			timeline.finish("failed");
+		}
 	}
 }

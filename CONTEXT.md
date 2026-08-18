@@ -66,7 +66,7 @@ A user-attached file or directory reference carried alongside a chat prompt. Sha
 
 ### conversation cwd
 
-`~/.vetta/conversation`，desktop-app 中虚拟注入的「对话」项目的**项目根 cwd**（常量 `DEFAULT_CONVERSATION_CWD`，`packages/desktop-app/src/main/ipc/fs.ts`）。session jsonl 文件集中落在 `<conversation cwd>/.vetta/sessions/`。
+`~/.vetta/conversation`，desktop 中虚拟注入的「对话」项目的**项目根 cwd**（常量 `DEFAULT_CONVERSATION_CWD`，`apps/desktop/src/main/ipc/fs.ts`）。session jsonl 文件集中落在 `<conversation cwd>/.vetta/sessions/`。
 
 **项目根 cwd ≠ session 运行 cwd。** ADR-0007 起，「对话」下新建的每个 session 拿到自己的 [[session 产物子目录]] (`<conversation cwd>/<sessionId>/`) 作为运行 cwd，agent 产物落在那里，避免不同 session 在根目录互相窜味。读 session.cwd 而不是项目 cwd 才能拿到 agent 当时的真实工作目录。fs IPC 沙箱边界仍是项目根整体，不按 session 收紧——隔离的是状态不是权限。
 
@@ -190,7 +190,7 @@ im-gateway 一个 IM 会话（路由 key `(userID, chatID)`）从**首条消息*
 
 ### 托管运行时（managed runtime）
 
-由 desktop-app 替普通用户托管、落在用户目录下的语言运行时（v1 = Node、Python）。与「系统运行时」（用户机器上原本就有的、由用户自己装的 node/python）对立。bash tool 执行命令时优先让托管运行时可见，目的是让缺少开发环境的普通用户也能跑依赖 node/python 的 agent 能力。
+由 desktop 替普通用户托管、落在用户目录下的语言运行时（v1 = Node、Python）。与「系统运行时」（用户机器上原本就有的、由用户自己装的 node/python）对立。bash tool 执行命令时优先让托管运行时可见，目的是让缺少开发环境的普通用户也能跑依赖 node/python 的 agent 能力。
 
 刻意**不含原生编译工具链**（gcc/make/MSVC）——那是另一类问题（见 [[源重定向]] 不解决编译，只解决「源不可达」）。git/ffmpeg 等通用 CLI 可作为同构的可选附加项，但不属 v1「运行时」叙事。
 
@@ -212,17 +212,17 @@ im-gateway 一个 IM 会话（路由 key `(userID, chatID)`）从**首条消息*
 
 ### 环境管理（Environment Management）
 
-desktop-app 系统设置中新增的面板，普通用户在此查看/获取 [[托管运行时]]。是「专业性太强、依赖开发环境」这一痛点的用户入口。面板暴露的是运行时本身，[[源重定向]] 对用户透明（在 bash 执行时自动发生）。
+desktop 系统设置中新增的面板，普通用户在此查看/获取 [[托管运行时]]。是「专业性太强、依赖开发环境」这一痛点的用户入口。面板暴露的是运行时本身，[[源重定向]] 对用户透明（在 bash 执行时自动发生）。
 
 ### image budget
 
-coding-agent 在每次 LLM 调用前（`transformContext` 钩子，`applyImageBudget`）对消息历史里的图片做的保留策略：对**看过的**旧图只保留最新 N 张（`maxRecentImages`，默认 2，desktop-app 设置页可调；`<=0` 禁用即全保留），其余替换为文本占位符以省视觉 token。是**只作用于本次发送 payload 的纯函数变换**，不 mutate 原始历史、不落盘（脏读不可能）。
+coding-agent 在每次 LLM 调用前（`transformContext` 钩子，`applyImageBudget`）对消息历史里的图片做的保留策略：对**看过的**旧图只保留最新 N 张（`maxRecentImages`，默认 2，desktop 设置页可调；`<=0` 禁用即全保留），其余替换为文本占位符以省视觉 token。是**只作用于本次发送 payload 的纯函数变换**，不 mutate 原始历史、不落盘（脏读不可能）。
 
 ADR-0012 起判定依据从「留最新 N 张」改为引入 [[未看过的图]]：N 只约束「看过的」旧图，未看过的图无条件保留。原本附带的 OOM 硬保护（把批量读的图强砍到 N）被**刻意移除**——显存受限的本地模型改由部署方提示词软引导「一张一张读」来兜底，云端模型无显存墙不受影响。文档/代码里出现「图片预算」「视觉 token 封顶」时即指本机制。
 
 ### 系统通知（system notification）
 
-desktop-app 经由 OS 原生通知中心（macOS / Windows）向用户推送的、APP 内事件的横向通知能力。设计为**类型化**：每条通知带一个 [[通知类型]] 判别字段，共用同一套「是否展示 → 构造内容 → 点击路由」基础设施。点击通知统一**前台化 APP** 并按该类型的路由意图跳转。首期只落地 [[agent 完成通知]] 一种类型，其余类型（更新提醒、错误告警等）为未来横向扩充预留位。
+desktop 经由 OS 原生通知中心（macOS / Windows）向用户推送的、APP 内事件的横向通知能力。设计为**类型化**：每条通知带一个 [[通知类型]] 判别字段，共用同一套「是否展示 → 构造内容 → 点击路由」基础设施。点击通知统一**前台化 APP** 并按该类型的路由意图跳转。首期只落地 [[agent 完成通知]] 一种类型，其余类型（更新提醒、错误告警等）为未来横向扩充预留位。
 
 权限**交给操作系统**：不在代码层主动申请或检测授权，依赖 OS 首次弹窗接管。设置层面只提供一个全局总开关（「通用设置」下），不按类型拆分开关。
 
@@ -256,7 +256,7 @@ desktop-app 经由 OS 原生通知中心（macOS / Windows）向用户推送的�
 
 ### 个性化（personalization）
 
-一个**全局、跨所有项目/session** 的系统提示词追加能力，入口在 desktop-app 设置页「Agent配置」最上方。由两部分组成：一个 [[人设]] 单选 + 一段 [[自定义指令]] 自由文本。配置写入 `~/.vetta/agent/settings.json` 的 `personalization` 块（`{ personaId, customPrompt }`），与 [[image budget]] 的 `maxRecentImages` 同文件不同字段。
+一个**全局、跨所有项目/session** 的系统提示词追加能力，入口在 desktop 设置页「Agent配置」最上方。由两部分组成：一个 [[人设]] 单选 + 一段 [[自定义指令]] 自由文本。配置写入 `~/.vetta/agent/settings.json` 的 `personalization` 块（`{ personaId, customPrompt }`），与 [[image budget]] 的 `maxRecentImages` 同文件不同字段。
 
 生效走 [[个性化懒重建]]：点「应用」只落盘、不触发任何 session 重建；每个 session 在**下一个 user prompt** 时按需检测并重建系统提示词。语义刻意复刻 MCP 的懒重建（mcp.json 写盘不 fan-out，prompt 入口 diff-reload）。
 
@@ -296,7 +296,7 @@ desktop-app 经由 OS 原生通知中心（macOS / Windows）向用户推送的�
 
 **在线合并 / 离线回退快照**:每次 fetch 成功,用服务端最新的 url/模型/参数**覆写** `source:"template"` 的本地条目(只保留用户填的 `apiKey`);服务端删除该模板或 fetch 失败时,本地已持久化的快照照常可用——「服务端能修正错误配置」与「离线/下线不影响存量用户」二者兼得。
 
-设置页中作为**独立的「预设服务商」区**呈现,与「服务商」(手搓自定义、models.json 中无 `source` 标记)、[[远程网关]]「远程服务商」三区语义并列、互不重复:`source:"template"` 的条目只在预设区显示、从手搓区隐藏。fetch / 合并 / 写回 [[models.json]] **只发生在 desktop-app main 进程**;coding-agent 不感知模板,仅需其 ProviderConfigSchema 容忍 `source`/`templateId`/`icon` 字段,复用同一份已持久化的 models.json。无内置种子目录:首启离线且 fetch 失败时预设区为空 + 提示重试。填入 key 即持久化启用、**不做 /models 校验**,首次真实请求才暴露无效 key。
+设置页中作为**独立的「预设服务商」区**呈现,与「服务商」(手搓自定义、models.json 中无 `source` 标记)、[[远程网关]]「远程服务商」三区语义并列、互不重复:`source:"template"` 的条目只在预设区显示、从手搓区隐藏。fetch / 合并 / 写回 [[models.json]] **只发生在 desktop main 进程**;coding-agent 不感知模板,仅需其 ProviderConfigSchema 容忍 `source`/`templateId`/`icon` 字段,复用同一份已持久化的 models.json。无内置种子目录:首启离线且 fetch 失败时预设区为空 + 提示重试。填入 key 即持久化启用、**不做 /models 校验**,首次真实请求才暴露无效 key。
 
 ### 远程网关（remote gateway）
 
@@ -320,7 +320,7 @@ coding-agent 的一个内置工具，让 agent 在执行途中**主动向用户�
 
 ### 问答面板
 
-ask_user_question 待答时，desktop-app 聊天页**输入栏被完全接管**转换成的 Q&A 选择 UI。多问题(问题组)以**紧凑可折叠的堆叠列表**呈现、可在问题间自由切换，不占过大篇幅；已答问题折叠成所选答案摘要。逃生出口=**显式取消按钮**（→ 触发 abort 语义，工具回传「用户拒绝回答」）+ 每题 Other 自由输入；接管期间隐藏普通文本输入。
+ask_user_question 待答时，desktop 聊天页**输入栏被完全接管**转换成的 Q&A 选择 UI。多问题(问题组)以**紧凑可折叠的堆叠列表**呈现、可在问题间自由切换，不占过大篇幅；已答问题折叠成所选答案摘要。逃生出口=**显式取消按钮**（→ 触发 abort 语义，工具回传「用户拒绝回答」）+ 每题 Other 自由输入；接管期间隐藏普通文本输入。
 
 **绑定所属 [[交互式 session]]**：请求携 sessionId，切到别的 session 只是隐藏面板（该 agent 仍阻塞），切回恢复待答；后台 session 提问时在侧边栏该会话上打待答徽标。App 关闭/刷新（webContents 销毁）视为取消。
 
@@ -330,11 +330,11 @@ ask_user_question 待答时，desktop-app 聊天页**输入栏被完全接管**�
 
 ### 实验性功能（experimental features）
 
-desktop-app 设置页「Agent配置」下的一个分类，首个成员是 [[ask_user_question]] 的开关。配置存储预留分组结构 `experimental.askUserQuestion`，将来加实验项只是加一个键、UI 同区域追加一行。**默认关、用户手动开**——「实验性」只是标签，不代表工具不可用或有额外使用成本，开关只控制是否把工具加载给 agent（经 [[user question handler]] 的注入/清除生效）。
+desktop 设置页「Agent配置」下的一个分类，首个成员是 [[ask_user_question]] 的开关。配置存储预留分组结构 `experimental.askUserQuestion`，将来加实验项只是加一个键、UI 同区域追加一行。**默认关、用户手动开**——「实验性」只是标签，不代表工具不可用或有额外使用成本，开关只控制是否把工具加载给 agent（经 [[user question handler]] 的注入/清除生效）。
 
 ### 输入预测（prompt prediction）
 
-desktop-app 的一项[[实验性功能]]（`experimental.promptPrediction`，**缺省关**，区别于该分组其他键的缺省开）：agent 一轮回答**正常完成**（`agent_end`，aborted / error / 待答 [[ask_user_question]] 均不触发）后，预测用户下一个可能输入的 prompt。
+desktop 的一项[[实验性功能]]（`experimental.promptPrediction`，**缺省关**，区别于该分组其他键的缺省开）：agent 一轮回答**正常完成**（`agent_end`，aborted / error / 待答 [[ask_user_question]] 均不触发）后，预测用户下一个可能输入的 prompt。
 
 生成走 auto-title 同款模式：独立的轻量 LLM 调用（`completeSimple`，会话当前模型），取最近 2-3 轮对话文本（截断）为上下文，**不**进主对话历史、不由主回答顺带输出。条数由 LLM 自行决定 **0-3 条**——语境无明显走向时返回 0、即不出任何 UI；失败同样静默降级。
 
@@ -426,7 +426,7 @@ _Avoid_: 把 `agents-*` 来源当成可在市场管理的条目——它们无 m
 
 ### 黑胶播放器（vinyl player）
 
-desktop-app 文件预览（`FilePreviewView`）中音频文件的预览形态：旋转黑胶唱片 + 唱臂起落动画 + 常规进度条 + 频谱可视化（Web Audio AnalyserNode 驱动）。覆盖 Chromium 原生可解格式（mp3/wav/ogg/flac/m4a/aac/opus/webm），其余音频格式维持「不支持 + 下载」现状。
+desktop 文件预览（`FilePreviewView`）中音频文件的预览形态：旋转黑胶唱片 + 唱臂起落动画 + 常规进度条 + 频谱可视化（Web Audio AnalyserNode 驱动）。覆盖 Chromium 原生可解格式（mp3/wav/ogg/flac/m4a/aac/opus/webm），其余音频格式维持「不支持 + 下载」现状。
 
 唱片中心贴文件内嵌封面（ID3 APIC / FLAC picture，主进程经 music-metadata 解析并连同标题/艺术家经 IPC 返回），无封面降级为纯 CSS 盘面 + 文件名。播放/暂停驱动唱臂搭上/抬起与唱片加速起转/减速停下；打开**不自动播放**。控制集：播放/暂停、进度 seek、音量、循环、倍速。
 
@@ -438,7 +438,7 @@ Vetta 桌面插件的信任定位：**一方/可信 + 策展分发**——插件
 
 ### 文件预览插槽（file preview slot）
 
-[[可信插件]] 的第二类 UI 扩展点（第一类是 App.tsx 的全局 slot）：插件按**文件扩展名**贡献一个预览组件，挂进 desktop-app 活动面板的 `FilePreviewView`。
+[[可信插件]] 的第二类 UI 扩展点（第一类是 App.tsx 的全局 slot）：插件按**文件扩展名**贡献一个预览组件，挂进 desktop 活动面板的 `FilePreviewView`。
 
 **优先级 = 仅补空白**：内置显式支持的扩展名（image/audio/pdf/html/docx/markdown/json，见 `FilePreviewView` 的 `*_EXTENSIONS` 集）一律走内置，插件**无法**抢占；只有内置不认、本会掉进文本兜底（`CodePreview`）的扩展名（如 `.drawio`）才查插件注册表，命中即渲染插件组件，否则维持文本兜底。一个坏插件不会退化任何现有内置预览体验。
 
@@ -470,7 +470,7 @@ _Avoid_: 把设备边框当像素级真机渲染——逻辑分辨率 + 整体 s
 
 ### 静态文件协议（vetta-file://）
 
-desktop-app 主进程注册的通用静态文件协议：`vetta-file://local/<绝对路径>`，**pathname 承载路径**（区别于 [[媒体流协议]] 的 query 参数形态），故 HTML 内的相对资源（css/js/图片）能按目录正确解析；mime 按扩展名映射常见 web 资源，路径校验复用预览沙箱（项目根/主目录内可读）。动机：iframe `srcDoc` 无法加载相对资源，凡需「整页带资源地预览项目内 HTML」走本协议。见 ADR-0027。
+desktop 主进程注册的通用静态文件协议：`vetta-file://local/<绝对路径>`，**pathname 承载路径**（区别于 [[媒体流协议]] 的 query 参数形态），故 HTML 内的相对资源（css/js/图片）能按目录正确解析；mime 按扩展名映射常见 web 资源，路径校验复用预览沙箱（项目根/主目录内可读）。动机：iframe `srcDoc` 无法加载相对资源，凡需「整页带资源地预览项目内 HTML」走本协议。见 ADR-0027。
 
 _Avoid_: 与 [[媒体流协议]] 混用——vetta-media 专责音视频 Range 流，vetta-file 专责静态整文件，不合并。
 
@@ -478,7 +478,7 @@ _Avoid_: 与 [[媒体流协议]] 混用——vetta-media 专责音视频 Range �
 
 [[可信插件]] 在 agent 对话场景可用的能力出口，首期三类（斜杠命令明确**不**做、steer 缓）：
 
-**读状态（hook 为主 + 事件补非 React）**：宿主从 `@vetta-org/plugin-sdk` 导出 hook —— `useActiveConversation()`（→ id/cwd/title/model/isStreaming）、`useConversationMessages()`（→ ChatMessage[]）等，hook 内部读宿主默认 store 的 `activeSessionAtom` / `chatMessagesAtom` / `isStreamingAtom`、自动 rerender。落地靠：宿主在 `installPluginHostShim` 时把 jotai store/atoms/actions 注入 plugin-sdk 的内部 bridge，Module Federation 令宿主与插件共享同一份 pluginSdk 实例，故注入对插件 hook 可见（plugin-sdk 不反向依赖 desktop-app）。权限：`agent.session.read`。
+**读状态（hook 为主 + 事件补非 React）**：宿主从 `@vetta-org/plugin-sdk` 导出 hook —— `useActiveConversation()`（→ id/cwd/title/model/isStreaming）、`useConversationMessages()`（→ ChatMessage[]）等，hook 内部读宿主默认 store 的 `activeSessionAtom` / `chatMessagesAtom` / `isStreamingAtom`、自动 rerender。落地靠：宿主在 `installPluginHostShim` 时把 jotai store/atoms/actions 注入 plugin-sdk 的内部 bridge，Module Federation 令宿主与插件共享同一份 pluginSdk 实例，故注入对插件 hook 可见（plugin-sdk 不反向依赖 desktop）。权限：`agent.session.read`。
 
 **事件（实时、细粒度）**：`ctx.conversation.on(event, cb)`，是 `window.vetta.session.subscribe` 生命周期流策展成的插件友好事件，刻意做到「agent 每次调用都有事件、可实时反应」——成员：`turn-start` / `turn-end`（agent_end，携 stopReason）/ `message-added` / `message-updated`(delta) / `tool-call-start` / `tool-call-end` / `conversation-changed`(活动 session 切换)。权限：`agent.session.read`。
 
@@ -498,7 +498,7 @@ _Avoid_: 把插件 MCP 写入 `~/.vetta/agent/mcp.json`——卸载与版本切�
 
 ### 预置插件（preset plugin）
 
-`packages/plugins/presets/<name>/` 下的插件**源码**，在 monorepo 内授权、维护——是[[系统插件]]的「源」面。构建期逐个 build 产出**解压态** `dist/ + plugin.json`（非 zip）：打包时拷进 desktop-app 的 `resources/system-plugins/<id>/` 随包发布，dev 下直接就地读 `packages/plugins/presets/<id>/{plugin.json, dist/}`。运行时零解压、零拷贝。「放进 `packages/plugins/presets/` 即成系统插件」是该目录的约定语义。
+`packages/plugins/presets/<name>/` 下的插件**源码**，在 monorepo 内授权、维护——是[[系统插件]]的「源」面。构建期逐个 build 产出**解压态** `dist/ + plugin.json`（非 zip）：打包时拷进 desktop 的 `resources/system-plugins/<id>/` 随包发布，dev 下直接就地读 `packages/plugins/presets/<id>/{plugin.json, dist/}`。运行时零解压、零拷贝。「放进 `packages/plugins/presets/` 即成系统插件」是该目录的约定语义。
 
 ### 插件市场（plugin marketplace）
 
@@ -525,7 +525,7 @@ _Avoid_: 把引导词与 NewSessionPage 的[[技能管理字段|场景/技能]]�
 
 ### 媒体流协议（media streaming protocol）
 
-desktop-app 主进程注册的自定义 protocol（`vetta-media://`），把校验过的本地媒体路径映射为支持 Range 的流式 URL，供 `<audio>`（未来含 `<video>`）直接作 `src`。与既有预览的 `readFile` IPC + base64 全量加载**并存**：图片/pdf/docx 等小文件维持旧路径，只有音视频走本协议。见 ADR-0021。
+desktop 主进程注册的自定义 protocol（`vetta-media://`），把校验过的本地媒体路径映射为支持 Range 的流式 URL，供 `<audio>`（未来含 `<video>`）直接作 `src`。与既有预览的 `readFile` IPC + base64 全量加载**并存**：图片/pdf/docx 等小文件维持旧路径，只有音视频走本协议。见 ADR-0021。
 
 _Avoid_: 把音频也塞进 readFile base64 路径——无损音频可达百 MB，全量 IPC 会阻塞且内存翻倍。
 
@@ -535,7 +535,7 @@ _Avoid_: 把音频也塞进 readFile base64 路径——无损音频可达百 MB
 
 > 历史备注：曾有第三处 UI——活动面板「图像编辑」选项卡，编辑在面板内直调 IPC、不经 agent、不写会话历史（见 ADR-0028 原方案）。后废弃：编辑统一收敛到 AI 输入栏，改走 agent `edit_image` tool、成为正式[[生成轮次]]（见 ADR-0029）。
 
-> 历史备注：曾考虑用 coding-agent extension 注册该 tool，但 desktop-app 当前不加载 extension（`ExtensionUIContext` 全 no-op、扫描目录未启用），建整套 extension 加载子系统比内置 tool 的 6+ 注册点更重，故改为内置 tool。
+> 历史备注：曾考虑用 coding-agent extension 注册该 tool，但 desktop 当前不加载 extension（`ExtensionUIContext` 全 no-op、扫描目录未启用），建整套 extension 加载子系统比内置 tool 的 6+ 注册点更重，故改为内置 tool。
 
 ### 图像模式（Image Mode）
 
@@ -565,11 +565,11 @@ _Avoid_: 把音频也塞进 readFile base64 路径——无损音频可达百 MB
 
 ### 插件设置（Plugin Settings）
 
-类似 VSCode `settings.json` + 设置视图的通用机制：每个插件可声明自己想要的设置项，desktop-app 提供统一的「插件配置」入口渲染它们，值持久化后由插件（renderer）与相关主进程服务共同读取。[[图像生成插件]]用它来配置图像 endpoint / 图像模型 / api key——即[[主进程图像服务]]读取的就是该插件的设置值，而非独立配置文件，也非复用对话模型的 models 配置。
+类似 VSCode `settings.json` + 设置视图的通用机制：每个插件可声明自己想要的设置项，desktop 提供统一的「插件配置」入口渲染它们，值持久化后由插件（renderer）与相关主进程服务共同读取。[[图像生成插件]]用它来配置图像 endpoint / 图像模型 / api key——即[[主进程图像服务]]读取的就是该插件的设置值，而非独立配置文件，也非复用对话模型的 models 配置。
 
 ### 主进程图像服务（Image Service）
 
-desktop-app 主进程的图像 IPC 服务：读[[插件设置]]拿 endpoint/模型/key，调用 OpenAI `/v1/images`（生成 / 编辑），把图像字节按 session 落盘，返回引用 id + `vetta-media://` URL。两条入口共用它：生成走 coding-agent 内置 image tool（薄包装转调，tool 通过 host 注入拿到该服务句柄，因 coding-agent 不能依赖 desktop-app）；[[图改图]]面板编辑走插件经 SDK 直调。是「一份实现、两条入口」的单一真相源。
+desktop 主进程的图像 IPC 服务：读[[插件设置]]拿 endpoint/模型/key，调用 OpenAI `/v1/images`（生成 / 编辑），把图像字节按 session 落盘，返回引用 id + `vetta-media://` URL。两条入口共用它：生成走 coding-agent 内置 image tool（薄包装转调，tool 通过 host 注入拿到该服务句柄，因 coding-agent 不能依赖 desktop）；[[图改图]]面板编辑走插件经 SDK 直调。是「一份实现、两条入口」的单一真相源。
 
 ### 卡片描述符（card descriptor）
 
@@ -605,7 +605,7 @@ _Avoid_: 把卡片数据塞回 `content`——那会污染模型可见通道、�
 
 ### 快捷面板（Quick Panel）
 
-desktop-app 一个**全局快捷键唤出的独立悬浮窗**（frameless、alwaysOnTop、居中靠上、Spotlight 式），用于不切换上下文地**快速询问 agent**。是与主窗口物理分离的第二个 BrowserWindow（own renderer entry，循 `renderer-ocr` 先例），故**不共享主窗的 jotai store**——它需要的[[最近会话面板]]列表与实时状态全部由 main 进程经 IPC 推送。窗口在启动时创建一次并隐藏，靠 show/hide 切换（非每次重建）；失焦自动隐藏、Esc 隐藏、再次按快捷键 toggle 隐藏。
+desktop 一个**全局快捷键唤出的独立悬浮窗**（frameless、alwaysOnTop、居中靠上、Spotlight 式），用于不切换上下文地**快速询问 agent**。是与主窗口物理分离的第二个 BrowserWindow（own renderer entry，循 `renderer-ocr` 先例），故**不共享主窗的 jotai store**——它需要的[[最近会话面板]]列表与实时状态全部由 main 进程经 IPC 推送。窗口在启动时创建一次并隐藏，靠 show/hide 切换（非每次重建）；失焦自动隐藏、Esc 隐藏、再次按快捷键 toggle 隐藏。
 
 面板由上到下两块：一个**纯文本输入框**（v1 不支持 [[mentionedFile]] / [[attachedImage]] / `/skill`，复杂带附件任务回主窗做）+ 一个[[最近会话面板]]列表。输入框打字 + Enter 在「对话」scope（[[conversation cwd]]）**新建一个 session 并运行**，复用「对话」默认模型与 `defaultExecutionMode`（面板无模型选择器）。
 

@@ -48,7 +48,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 	options: CodingAgentRuntimeCompositionOptions,
 	inheritedMcpView: McpRuntimeToolView,
 ): Promise<CodingAgentRuntimeComposition> {
-	const cwd = options.cwd ?? process.cwd();
+	const cwd = options.cwd ?? ".";
 	const scenario = options.scenario ?? "cli";
 	const sessionInitializationProfile = createCodingAgentSessionInitializationProfile(options);
 	const extensionToolRuntime = new CodingAgentExtensionToolRuntime(options.extensionTools ?? []);
@@ -142,6 +142,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 		resolveActivation: toolSurface.resolveActivation,
 		createChildComposition,
 		assessChildSessionPath,
+		observer: options.observeSessionInitialization,
 	});
 	const runtimeFactory = new ComposedRuntimeFactory<CodingAgentRuntimeSessionOptions>({
 		streamFn: options.streamFn,

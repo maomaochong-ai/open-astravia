@@ -71,7 +71,7 @@ Runtime 实现，因此覆盖的是宿主真正能够观察的行为。
   - 新增异步进程退出 fixture，确认 `shutdown()` 已发出 stop 但在 exit callback 前不会完成。
 - `packages/coding-agent/test/runtime-core/greenfield-active-session-transition-host.test.ts`
   - 确认抛错观察者在切换前后均不阻断后续观察者。
-- `packages/cli-app/test/agent-runtime-provider-differential.test.ts`
+- `apps/cli-host/test/agent-runtime-provider-differential.test.ts`
   - replacement × Legacy/Greenfield；
   - storage continuation × Legacy/Greenfield；
   - Todo、后台进程、document path、path event、ownership 和最终关闭全部纳入同一矩阵。

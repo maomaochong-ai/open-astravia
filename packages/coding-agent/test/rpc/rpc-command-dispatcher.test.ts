@@ -1,14 +1,14 @@
 import { PassThrough } from "node:stream";
 import { describe, expect, test, vi } from "vitest";
-import { createRpcCommandDispatcher, type RpcFrameOutput } from "../../src/modes/rpc/rpc-command-dispatcher.js";
-import { type RpcFrameTransport, runRpcModeWithCapabilities } from "../../src/modes/rpc/rpc-mode.js";
+import { createRpcCommandDispatcher, type RpcFrameOutput } from "../../src/rpc/rpc-command-dispatcher.js";
+import { type RpcFrameTransport, runRpcModeWithCapabilities } from "../../src/rpc/rpc-mode.js";
 import {
 	RPC_FULL_SESSION_PROFILE,
 	RPC_IM_SESSION_PROFILE,
 	type RpcSessionCapabilities,
 	type RpcSessionInitialization,
-} from "../../src/modes/rpc/rpc-session-capabilities.js";
-import type { RpcCommand, RpcResponse, RpcSessionState, RpcSlashCommand } from "../../src/modes/rpc/rpc-types.js";
+} from "../../src/rpc/rpc-session-capabilities.js";
+import type { RpcCommand, RpcResponse, RpcSessionState, RpcSlashCommand } from "../../src/rpc/rpc-types.js";
 
 describe("RPC command dispatcher", () => {
 	test("dispatches the complete valid command surface through grouped capabilities", async () => {

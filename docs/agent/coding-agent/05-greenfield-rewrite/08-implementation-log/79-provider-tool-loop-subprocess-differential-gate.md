@@ -119,7 +119,7 @@ packages/runtime-core:
 packages/coding-agent:
   bunx vitest --run test/im-send-attachment.test.ts
 
-packages/cli-app:
+apps/cli-host:
   bun run typecheck
   bunx vitest --run test/greenfield-im-rpc-adapter.test.ts
   bunx vitest --run test/agent-runtime-selection.test.ts

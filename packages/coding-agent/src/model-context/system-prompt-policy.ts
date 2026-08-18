@@ -22,8 +22,8 @@ const builtInToolDescriptions: Record<string, string> = {
 	edit: "Make surgical edits to files — anchor mode (batch, atomic, anchors from read/grep output) or exact-text replace",
 	write: "Create or overwrite files",
 	grep: "Search file contents for patterns (respects .gitignore)",
-	glob: "Find files by glob pattern (respects .gitignore)",
-	find: "Find files by glob pattern (respects .gitignore)",
+	glob: "Primary file and directory path matcher for exact names and glob patterns (respects .gitignore)",
+	find: "Deferred high-volume path matcher; use only after activation when glob is insufficient",
 	ls: "List directory contents",
 	dir_tree: "Render directory tree with [D]/[F] node types and child counts",
 	invoke_skill: "Invoke a skill by name to handle specialized tasks (e.g., PDF, DOCX processing)",
@@ -31,8 +31,7 @@ const builtInToolDescriptions: Record<string, string> = {
 	task_output: "Read incremental output of a background task started via bash/shell with run_in_background",
 	task_stop: "Terminate a running background task started via bash/shell with run_in_background",
 	current_time: "Get the current date and time (preferred over bash date/time commands)",
-	progress:
-		"Announce the current stage in plain language so the user sees readable steps instead of raw tool calls (Work mode only)",
+	progress: "Announce readable milestones during substantive multi-step tool work",
 	ask_user_question:
 		"Ask the user multiple-choice questions and wait for their answers (clarify ambiguity, gather preferences, offer decisions)",
 	doc_to_pdf: "Convert .doc/.docx files to PDF using Microsoft Office or WPS Office",
@@ -129,8 +128,10 @@ export interface BuildSystemPromptOptions {
 	promptBudgetTokens?: number;
 	/** Text to append to system prompt. */
 	appendSystemPrompt?: string;
-	/** Working directory. Default: process.cwd() */
+	/** Working directory. Runtime composition should provide it; direct helpers fall back to ".". */
 	cwd?: string;
+	/** Command tool used only when selectedTools is omitted. Default: "bash". */
+	defaultCommandTool?: "bash" | "shell";
 	/** Pre-loaded context files. */
 	contextFiles?: Array<{ path: string; content: string }>;
 	/**
@@ -344,6 +345,7 @@ export function buildSystemPromptDraft(options: BuildSystemPromptOptions = {}): 
 		promptBudgetTokens,
 		appendSystemPrompt,
 		cwd,
+		defaultCommandTool = "bash",
 		contextFiles: providedContextFiles,
 		workspaceFacts,
 		skills: providedSkills,
@@ -355,9 +357,8 @@ export function buildSystemPromptDraft(options: BuildSystemPromptOptions = {}): 
 		scenario,
 		mcpDeferred,
 	} = options;
-	const resolvedCwd = cwd ?? process.cwd();
+	const resolvedCwd = cwd ?? ".";
 	const dateTime = buildDateTime();
-	const defaultCommandTool = process.platform === "win32" ? "shell" : "bash";
 	const contextFiles = providedContextFiles ?? [];
 	const skills = providedSkills ?? [];
 	const mcpTools = providedMcpTools ?? [];

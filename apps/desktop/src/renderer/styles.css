@@ -1,0 +1,960 @@
+@layer vetta-plugins, theme, base, components, utilities;
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@vetta/theme-ui/styles.css";
+@plugin "@iconify/tailwind4";
+
+/* Scan official theme UI package so utilities / iconify classes in migrated
+   components (e.g. window minimize/maximize icons) are generated. */
+@source "../../../../packages/theme-ui/src/**/*.{ts,tsx}";
+/* Host design-system primitives live in @vetta/ui; re-exports under
+   desktop-app no longer contain className literals for Tailwind to see. */
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+
+/* 系统插件贡献的侧边栏图标。
+ *
+ * 工作区视图的 icon 是插件在自己的源码里声明的 iconify class 字符串，宿主只是把它
+ * 原样挂到导航按钮上——而 Tailwind 只生成**它扫得到的字面量**，插件源码不在宿主的
+ * 扫描范围内，于是那条 class 没有规则、图标是个空格子。
+ *
+ * 不整目录 @source 进插件源码：那会把 preset 里成百上千个只有插件自己用的工具类
+ * 一并生成进宿主 CSS。这里按图标逐条放行，与 SOLAR_SKILL_ICON_CLASS 同一个思路
+ * （让编译器看见字面量），新增系统插件的导航图标时在这儿补一行。
+ * 第三方插件仍然只能拿到默认图标，那需要运行时渲染，不在本清单能解决的范围内。 */
+@source inline("icon-[solar--ruler-pen-linear]");
+@source inline("icon-[solar--archive-minimalistic-outline]");
+
+@custom-variant dark (&:is([data-mode="dark"] *));
+/* Radix sets data-state="open"|"closed"; @vetta/ui uses data-open:/data-closed: utilities. */
+@custom-variant data-open (&:is([data-state="open"]));
+@custom-variant data-closed (&:is([data-state="closed"]));
+
+/* ─── Dark mode (default) ─── */
+:root,
+[data-mode="dark"] {
+	color-scheme: dark;
+
+	--background: rgb(20, 22, 30);
+	--foreground: rgb(220, 224, 234);
+	--card: rgb(26, 28, 36);
+	--card-foreground: rgb(220, 224, 234);
+	--popover: rgb(50, 53, 67);
+	--popover-foreground: rgb(220, 224, 234);
+	--primary: rgb(99, 102, 241);
+	--primary-foreground: rgb(255, 255, 255);
+	--secondary: rgb(38, 38, 40);
+	--secondary-foreground: rgb(220, 224, 234);
+	--muted: rgb(30, 30, 32);
+	--muted-foreground: rgb(138, 144, 160);
+	--accent: rgb(41, 41, 43);
+	--accent-foreground: rgb(220, 224, 234);
+	--destructive: rgb(255, 91, 91);
+	--destructive-foreground: rgb(0, 0, 0);
+	--border: rgb(42, 45, 56);
+	--input: rgb(48, 51, 64);
+	/* AI 输入栏底色：深色跟随 card，浅色为纯白 */
+	--input-bar-bg: rgb(26, 28, 36);
+	--ring: rgb(129, 132, 248);
+	--chart-1: rgb(255, 174, 4);
+	--chart-2: rgb(38, 113, 244);
+	--chart-3: rgb(116, 116, 116);
+	--chart-4: rgb(82, 82, 82);
+	--chart-5: rgb(228, 228, 228);
+	/* 上下文构成分段：等亮度、等饱和，只靠色相区分，
+	   避免相邻分段因明度差被读成“一高一低”。 */
+	--context-segment-1: oklch(0.72 0.12 268);
+	--context-segment-2: oklch(0.72 0.12 215);
+	--context-segment-3: oklch(0.72 0.12 165);
+	--context-segment-4: oklch(0.72 0.12 95);
+	--context-segment-5: oklch(0.72 0.12 25);
+
+	--font-sans: -apple-system, "SF Pro Text", "SF Pro Display", "Helvetica Neue",
+		sans-serif;
+	--font-serif: Georgia, serif;
+	--font-mono: "SF Mono", "Fira Code", monospace;
+	--radius: 0.5rem;
+
+	--shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+	--shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+	--shadow-sm: 0px 1px 2px 0px hsl(0 0% 0% / 0.18),
+		0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+	--shadow: 0px 1px 2px 0px hsl(0 0% 0% / 0.18),
+		0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+	--shadow-md: 0px 1px 2px 0px hsl(0 0% 0% / 0.18),
+		0px 2px 4px -1px hsl(0 0% 0% / 0.18);
+	--shadow-lg: 0px 1px 2px 0px hsl(0 0% 0% / 0.18),
+		0px 4px 6px -1px hsl(0 0% 0% / 0.18);
+	--shadow-xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.18),
+		0px 8px 10px -1px hsl(0 0% 0% / 0.18);
+	--shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
+
+	--tool-call-shimmer-base: color-mix(
+		in srgb,
+		var(--muted-foreground) 85%,
+		var(--foreground)
+	);
+	--tool-call-shimmer-peak: color-mix(
+		in srgb,
+		var(--foreground) 72%,
+		var(--primary)
+	);
+}
+
+/* ─── Light mode ─── */
+[data-mode="light"] {
+	color-scheme: light;
+
+	--background: rgb(255, 255, 255);
+	--foreground: rgb(0, 0, 0);
+	--card: rgb(250, 250, 250);
+	--card-foreground: rgb(0, 0, 0);
+	--popover: rgb(255, 255, 255);
+	--popover-foreground: rgb(0, 0, 0);
+	--primary: rgb(79, 70, 229);
+	--primary-foreground: rgb(255, 255, 255);
+	--secondary: rgb(235, 235, 235);
+	--secondary-foreground: rgb(0, 0, 0);
+	--muted: rgb(242, 242, 242);
+	--muted-foreground: rgb(82, 82, 82);
+	--accent: rgb(235, 235, 235);
+	--accent-foreground: rgb(0, 0, 0);
+	--destructive: rgb(229, 75, 79);
+	--destructive-foreground: rgb(255, 255, 255);
+	--border: rgb(230, 230, 230);
+	--input: rgb(230, 230, 230);
+	--input-bar-bg: rgb(255, 255, 255);
+	--ring: rgb(79, 70, 229);
+	--chart-1: rgb(255, 174, 4);
+	--chart-2: rgb(45, 98, 239);
+	--chart-3: rgb(164, 164, 164);
+	--chart-4: rgb(228, 228, 228);
+	--chart-5: rgb(116, 116, 116);
+	--context-segment-1: oklch(0.62 0.14 268);
+	--context-segment-2: oklch(0.62 0.14 215);
+	--context-segment-3: oklch(0.62 0.14 165);
+	--context-segment-4: oklch(0.62 0.14 95);
+	--context-segment-5: oklch(0.62 0.14 25);
+
+	--shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+	--shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+	--shadow-sm: 0px 1px 2px 0px hsl(0 0% 0% / 0.18),
+		0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+	--shadow: 0px 1px 2px 0px hsl(0 0% 0% / 0.18),
+		0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+	--shadow-md: 0px 1px 2px 0px hsl(0 0% 0% / 0.18),
+		0px 2px 4px -1px hsl(0 0% 0% / 0.18);
+	--shadow-lg: 0px 1px 2px 0px hsl(0 0% 0% / 0.18),
+		0px 4px 6px -1px hsl(0 0% 0% / 0.18);
+	--shadow-xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.18),
+		0px 8px 10px -1px hsl(0 0% 0% / 0.18);
+	--shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
+
+	--tool-call-shimmer-base: color-mix(
+		in srgb,
+		var(--muted-foreground) 85%,
+		var(--foreground)
+	);
+	--tool-call-shimmer-peak: color-mix(
+		in srgb,
+		var(--foreground) 72%,
+		var(--primary)
+	);
+}
+
+@theme inline {
+	--font-sans: var(--font-sans);
+	--font-mono: var(--font-mono);
+	--font-serif: var(--font-serif);
+
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+
+	--shadow-2xs: var(--shadow-2xs);
+	--shadow-xs: var(--shadow-xs);
+	--shadow-sm: var(--shadow-sm);
+	--shadow: var(--shadow);
+	--shadow-md: var(--shadow-md);
+	--shadow-lg: var(--shadow-lg);
+	--shadow-xl: var(--shadow-xl);
+	--shadow-2xl: var(--shadow-2xl);
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+}
+
+/* 黑白主题浅色：纯黑 primary 的 15%/10% 叠色作侧栏选中过深，压到约 7%/5%。
+   仅覆盖 tint 工具类，不影响 solid bg-primary 按钮。 */
+[data-theme="mono"][data-mode="light"] .bg-primary\/15 {
+	background-color: color-mix(in srgb, var(--primary) 7%, transparent);
+}
+[data-theme="mono"][data-mode="light"] .bg-primary\/10 {
+	background-color: color-mix(in srgb, var(--primary) 5%, transparent);
+}
+
+/* 黑白主题：深色灰眼（浅色脸底）；浅色保持默认白眼 */
+[data-theme="mono"][data-mode="dark"] .bot-avatar-eye {
+	background-color: rgb(150, 150, 150);
+}
+
+/* 黑白主题浅色：发送按钮禁用态默认用 muted-foreground，偏深；压浅为中性灰 */
+[data-theme="mono"][data-mode="light"] .send-button {
+	--send-button-inactive-background: color-mix(in srgb, rgb(180, 180, 180) 22%, transparent);
+	--send-button-inactive-foreground: rgb(180, 180, 180);
+}
+
+/* 切换主题/模式时短暂启用过渡。由 shared/theme/apply.ts 的
+   withThemeTransition() 添加/移除根节点 class。仅作用于颜色/边框/阴影，
+   不影响 transform、opacity 等交互反馈相关的属性。 */
+[data-theme].theme-transitioning,
+[data-theme].theme-transitioning *,
+[data-theme].theme-transitioning *::before,
+[data-theme].theme-transitioning *::after {
+	transition:
+		background-color 180ms ease,
+		color 180ms ease,
+		border-color 180ms ease,
+		fill 180ms ease,
+		stroke 180ms ease,
+		box-shadow 180ms ease !important;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+	animation: theme-reveal 620ms ease-in-out both;
+	z-index: 1;
+}
+
+@keyframes theme-reveal {
+	from {
+		clip-path: circle(
+			0 at var(--theme-transition-x, 50%) var(--theme-transition-y, 50%)
+		);
+	}
+	to {
+		clip-path: circle(
+			var(--theme-transition-radius, 150vmax) at var(--theme-transition-x, 50%)
+				var(--theme-transition-y, 50%)
+		);
+	}
+}
+
+:root {
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+
+	/* 默认使用系统原生光标。仅当 html.custom-cursor（白鼬样式）时覆盖为内置素材，
+	   入口见「外观设置 → 鼠标指针」。 */
+	--cursor-default: default;
+	--cursor-click: pointer;
+	--cursor-help: help;
+	--cursor-hover: pointer;
+	--cursor-horizontal-resize: ew-resize;
+	--cursor-loading: wait;
+	--cursor-move: move;
+	--cursor-not-allowed: not-allowed;
+	--cursor-pointer: pointer;
+	--cursor-text: text;
+	--cursor-vertical-resize: ns-resize;
+	--cursor-diagonal-resize: nwse-resize;
+	--cursor-diagonal-resize-flipped: nesw-resize;
+}
+
+html.custom-cursor {
+	--cursor-default: url("/cursors/default.png") 3 3, default;
+	--cursor-click: url("/cursors/click.png") 3 3, pointer;
+	--cursor-help: url("/cursors/help.png") 3 2, help;
+	--cursor-hover: url("/cursors/hover.png") 3 3, pointer;
+	--cursor-horizontal-resize: url("/cursors/horizontal_resize.png") 15 13,
+		ew-resize;
+	--cursor-loading: url("/cursors/loading.png") 14 15, wait;
+	--cursor-move: url("/cursors/move.png") 15 14, move;
+	--cursor-not-allowed: url("/cursors/not_allowed.png") 15 15, not-allowed;
+	--cursor-pointer: url("/cursors/pointer.png") 3 2, pointer;
+	--cursor-text: url("/cursors/text.png") 13 15, text;
+	--cursor-vertical-resize: url("/cursors/vertical_resize.png") 12 15, ns-resize;
+	--cursor-diagonal-resize: url("/cursors/diagonal_resize.png") 14 15,
+		nwse-resize;
+	--cursor-diagonal-resize-flipped: url("/cursors/diagonal_resize_flipped.png")
+		12 15, nesw-resize;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	min-height: 100vh;
+	background: transparent;
+	color: var(--foreground);
+}
+
+#root {
+	min-height: 100vh;
+}
+
+html,
+body,
+#root {
+	cursor: var(--cursor-default);
+}
+
+button,
+a,
+label,
+summary,
+select,
+[role="button"],
+.cursor-pointer {
+	cursor: var(--cursor-pointer);
+}
+
+button:hover,
+a:hover,
+label:hover,
+summary:hover,
+select:hover,
+[role="button"]:hover,
+.cursor-pointer:hover {
+	cursor: var(--cursor-hover);
+}
+
+button:active,
+a:active,
+label:active,
+summary:active,
+select:active,
+[role="button"]:active,
+.cursor-pointer:active {
+	cursor: var(--cursor-click);
+}
+
+input,
+textarea,
+[contenteditable="true"],
+.cursor-text {
+	cursor: var(--cursor-text);
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"],
+.cursor-not-allowed {
+	cursor: var(--cursor-not-allowed);
+}
+
+.cursor-default {
+	cursor: var(--cursor-default);
+}
+
+.cursor-help {
+	cursor: var(--cursor-help);
+}
+
+.cursor-wait,
+.cursor-progress {
+	cursor: var(--cursor-loading);
+}
+
+.cursor-move,
+.cursor-grab,
+.cursor-grabbing {
+	cursor: var(--cursor-move);
+}
+
+.cursor-col-resize,
+.cursor-ew-resize {
+	cursor: var(--cursor-horizontal-resize);
+}
+
+.cursor-row-resize,
+.cursor-ns-resize {
+	cursor: var(--cursor-vertical-resize);
+}
+
+.cursor-nwse-resize {
+	cursor: var(--cursor-diagonal-resize);
+}
+
+.cursor-nesw-resize {
+	cursor: var(--cursor-diagonal-resize-flipped);
+}
+
+/* macOS-style overlay scrollbars: hidden by default, fade in on hover.
+   Width/height stays reserved so layout doesn't shift; only thumb opacity changes. */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: transparent transparent;
+}
+*:hover,
+*:focus-within {
+	scrollbar-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent)
+		transparent;
+}
+
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background: transparent;
+	border-radius: 4px;
+	border: 2px solid transparent;
+	background-clip: padding-box;
+	transition: background-color 0.2s ease;
+}
+::-webkit-scrollbar-corner {
+	background: transparent;
+}
+/* Show thumb only when the scrollable container is hovered or focused. */
+*:hover::-webkit-scrollbar-thumb,
+*:focus-within::-webkit-scrollbar-thumb {
+	background: color-mix(in srgb, var(--muted-foreground) 35%, transparent);
+	background-clip: padding-box;
+}
+*:hover::-webkit-scrollbar-thumb:hover {
+	background: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+	background-clip: padding-box;
+}
+
+/* Fully hide scrollbar (still scrollable). Unlayered so it overrides the
+   global overlay-scrollbar rules above, which Tailwind utilities cannot. */
+.no-scrollbar {
+	scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+	display: none;
+}
+
+/* macOS window drag region */
+.drag-region {
+	-webkit-app-region: drag;
+}
+.no-drag {
+	-webkit-app-region: no-drag;
+}
+
+/* Sidebar: transparent for native macOS vibrancy */
+.sidebar-vibrancy {
+	background: transparent;
+}
+
+/* Sidebar surface: pin children to z:1 so inline z-index overrides
+   (e.g. filter dropdown) can float above the project list below. */
+.sidebar-surface > *:not(.absolute) {
+	position: relative;
+	z-index: 1;
+}
+
+/* 侧边栏样式「经典」：抵消 AppFrame 的 p-2，让常驻侧边栏贴住窗口左/上/下边，
+   并去掉圆角与四周边框，只保留右侧一条分隔线。窄屏 overlay 侧边栏不受影响。
+   取值见 shared/theme/sidebar-style.ts。 */
+:root[data-sidebar-style="classic"] .sidebar-dock {
+	margin: -0.5rem 0 -0.5rem -0.5rem;
+}
+
+:root[data-sidebar-style="classic"] .sidebar-dock .sidebar-surface {
+	border-radius: 0;
+	border-width: 0;
+	border-right-width: 1px;
+}
+
+/* 顶栏内容与 macOS 红绿灯对齐。h-11 自身居中：悬浮时顶栏占 8~52、中线 30 偏下；
+   经典下从 y=0 起算、中线 22 偏上。两边各补一侧内边距把中线挪到实测位置
+   （悬浮 28、经典 29）。padding 记在 h-11 元素自身（border-box，总高不变），
+   drag-region 仍覆盖整条顶栏。数值是照实机目测调的，要挪就改这两个。 */
+:root[data-platform="mac"] .sidebar-dock .sidebar-top-bar {
+	padding-bottom: 0.25rem;
+}
+
+:root[data-platform="mac"][data-sidebar-style="classic"]
+	.sidebar-dock
+	.sidebar-top-bar {
+	padding-top: 0.875rem;
+	padding-bottom: 0;
+}
+
+/* macOS 经典侧边栏用系统原生毛玻璃（窗口已带 vibrancy: "sidebar"，见 main/window-manager.ts）。
+   放行的做法是整帧 + 侧边栏都不上底色，再由主内容区自己补回不透明底色：
+   ::before 向上/右/下各溢出 8px 盖住 AppFrame 的 p-2 留白，所以布局与非 mac 完全一致，
+   只有侧边栏那一条透出桌面。 */
+:root[data-platform="mac"][data-sidebar-style="classic"] .app-frame {
+	background-color: transparent;
+}
+
+/* 侧边栏不全透：在毛玻璃上再铺一层半透明 --background，压住桌面壁纸的杂色，
+   同时保留 vibrancy 的通透感。浓淡调 --sidebar-vibrancy-tint 即可。
+
+   主题里的 --accent 是不透明实色，铺在这层半透明底上会出问题：侧边栏底色跟着背后
+   桌面的明暗走，选中块却纹丝不动，背后亮的那一段底色会被抬得比选中块还亮，高亮与
+   底色的明暗关系当场反转，看着就像那半边的选中背景没了。所以在侧边栏子树内把
+   --accent 换成半透明叠加色——始终是「在当前合成底色上再压 10% 前景色」，背后黑白
+   都成立。导航指示条、项目行/会话行选中与 hover:bg-accent/50 一起生效。 */
+:root[data-platform="mac"][data-sidebar-style="classic"]
+	.sidebar-dock
+	.sidebar-surface {
+	background-color: color-mix(
+		in srgb,
+		var(--background) var(--sidebar-vibrancy-tint, 60%),
+		transparent
+	);
+	--accent: color-mix(in srgb, var(--foreground) 10%, transparent);
+	transition: background-color 240ms ease;
+}
+
+/* 浅色的 --background 是纯白，同样的浓度压得比深色狠得多，透明感几乎没了，所以单独调淡。 */
+:root[data-platform="mac"][data-sidebar-style="classic"][data-mode="light"]
+	.sidebar-dock
+	.sidebar-surface {
+	--sidebar-vibrancy-tint: 35%;
+}
+
+/* 明暗切换期间先遮住原生 vibrancy（它由主进程翻转，动不了也不进 View Transition 快照，
+   否则会比页面动画早一步瞬变）；属性移除后按上面的 240ms 淡回半透明。 */
+:root[data-platform="mac"][data-sidebar-style="classic"][data-theme-transition]
+	.sidebar-dock
+	.sidebar-surface {
+	background-color: var(--background);
+	transition: none;
+}
+
+:root[data-platform="mac"][data-sidebar-style="classic"] .app-main-frame::before {
+	content: "";
+	position: absolute;
+	inset: -0.5rem;
+	z-index: -1;
+	background-color: var(--background);
+}
+
+/* 侧边栏在位时，左边那 8px 已经被它自己盖住，::before 不能再往左伸——否则会压住毛玻璃右缘。
+   侧边栏收起（或窄屏浮层态）时 .sidebar-dock 整个不渲染，此规则不命中，
+   ::before 就按上面的 inset 一路铺到窗口左边，不会留下透出桌面的空白条。 */
+:root[data-platform="mac"][data-sidebar-style="classic"]
+	.sidebar-dock
+	~ .app-main-frame::before {
+	left: 0;
+}
+
+.project-list-containment {
+	contain: layout paint style;
+}
+
+.project-group-contain {
+	contain: layout style;
+}
+
+.project-running-icon,
+.project-running-ping {
+	contain: layout paint style;
+	will-change: transform;
+}
+
+/* Selection highlight */
+::selection {
+	background: color-mix(in srgb, var(--primary) 42%, transparent);
+	color: var(--foreground);
+}
+
+/* Focus: no global outline/ring; interactive controls use 1px border color change */
+:focus-visible {
+	outline: none;
+}
+textarea:focus-visible,
+textarea:focus {
+	outline: none;
+	box-shadow: none;
+}
+
+/* Markdown body: readable text should use text-selection cursor. */
+.markdown-body,
+.markdown-body :where(p, li, blockquote, td, th, h1, h2, h3, h4, h5, h6, span, strong, em, code, pre),
+.code-preview,
+.code-preview :where(pre, code, span),
+.text-preview-content {
+	cursor: var(--cursor-text);
+}
+
+.markdown-body :where(a, button, [role="button"]),
+.markdown-body :where(a, button, [role="button"]) :where(span, strong, em, code) {
+	cursor: var(--cursor-pointer);
+}
+
+.markdown-body :where(a:hover, button:hover, [role="button"]:hover),
+.markdown-body :where(a:hover, button:hover, [role="button"]:hover) :where(span, strong, em, code) {
+	cursor: var(--cursor-hover);
+}
+
+/* Markdown body: remove margin on first/last children */
+.markdown-body > :first-child {
+	margin-top: 0 !important;
+}
+.markdown-body > :last-child {
+	margin-bottom: 0 !important;
+}
+
+/* Streaming tail: 分块淡入。rehype 插件把流式末尾消息的文字按稳定片段包成 .streaming-chunk，
+   只在「该 span 首次 mount」时跑一次动画 —— 依赖 React reconciliation 复用旧 span 的 DOM，
+   旧片段的动画自然停留在终态（opacity 1），只有新追加的 span 触发新动画。
+   不使用 blur，避免大段消息持续追加时产生额外绘制压力。 */
+.markdown-streaming-tail .streaming-chunk {
+	display: inline-block;
+	vertical-align: baseline;
+	animation: streaming-chunk-fade 360ms ease-out both;
+	/* 刻意不加 will-change：每 10 个字符就是一个 chunk span，加了会把每个都
+	   永久提升成合成层——一条长回复几百个活层，GPU 进程和 WindowServer 一起被
+	   打满。动画期间浏览器本来就会自动提升，360ms 完了让它自然降回普通内容。 */
+}
+@keyframes streaming-chunk-fade {
+	from {
+		opacity: 0.12;
+		transform: translate3d(0, 6px, 0);
+	}
+	to {
+		opacity: 1;
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+/* Markdown unordered list: tree connector (matches NewSession guiding words) */
+.md-bullet-list {
+	list-style: none;
+	padding-left: 0.625rem; /* pl-2.5 */
+}
+.md-bullet-list > li {
+	position: relative;
+	padding-left: 18px;
+	padding-top: 0.25rem;
+	padding-bottom: 0.25rem;
+}
+/* Tight paragraphs so the branch aligns with the first text line */
+.md-bullet-list > li > p {
+	margin-top: 0;
+	margin-bottom: 0;
+}
+.md-bullet-list > li > p + p {
+	margin-top: 0.375rem;
+}
+/* Non-last: full-height vertical rail */
+.md-bullet-list > li:not(:last-child)::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 0;
+	border-left: 1px solid color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+}
+/* Non-last: horizontal branch at first-line height */
+.md-bullet-list > li:not(:last-child)::after {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0.95rem;
+	width: 12px;
+	border-top: 1px solid color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+}
+/* Last: L-shaped corner */
+.md-bullet-list > li:last-child::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: 0.95rem;
+	width: 12px;
+	border-left: 1px solid color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+	border-bottom: 1px solid color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+	border-bottom-left-radius: 7px;
+}
+.md-bullet-list > li:last-child::after {
+	content: none;
+}
+
+/* Smooth transitions globally */
+button,
+a {
+	transition:
+		color 0.15s ease,
+		background-color 0.15s ease,
+		border-color 0.15s ease;
+}
+
+/* ─── InputBar visual effects ─── */
+
+@keyframes input-shimmer {
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
+}
+
+@keyframes input-focus-pulse {
+	0%,
+	100% {
+		opacity: 0.3;
+	}
+	50% {
+		opacity: 0.5;
+	}
+}
+
+@keyframes context-ring-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes message-bell-swing {
+	0%,
+	28%,
+	100% {
+		transform: rotate(0deg);
+	}
+	3% {
+		transform: rotate(-22deg);
+	}
+	6% {
+		transform: rotate(20deg);
+	}
+	9% {
+		transform: rotate(-16deg);
+	}
+	13% {
+		transform: rotate(12deg);
+	}
+	17% {
+		transform: rotate(-7deg);
+	}
+	22% {
+		transform: rotate(3deg);
+	}
+}
+
+.message-bell-swing {
+	transform-origin: top center;
+	animation: message-bell-swing 3.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+	will-change: transform;
+}
+
+@keyframes bash-cursor-blink {
+	0%,
+	50% {
+		opacity: 1;
+	}
+	51%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes tool-call-text-shimmer {
+	from {
+		background-position: 200% 0;
+	}
+	to {
+		background-position: -200% 0;
+	}
+}
+
+.tool-call-shimmer-text {
+	background: linear-gradient(
+		90deg,
+		var(--tool-call-shimmer-base) 0%,
+		var(--tool-call-shimmer-base) 42%,
+		var(--tool-call-shimmer-peak) 50%,
+		var(--tool-call-shimmer-base) 58%,
+		var(--tool-call-shimmer-base) 100%
+	);
+	background-size: 220% 100%;
+	background-position: 200% 0;
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	animation: tool-call-text-shimmer 2.4s linear infinite;
+	will-change: background-position;
+}
+
+/* Soft halo behind the card on focus. */
+.input-halo::after {
+	content: "";
+	position: absolute;
+	inset: -4px;
+	border-radius: inherit;
+	background: radial-gradient(
+		60% 80% at 50% 100%,
+		color-mix(in srgb, var(--primary) 14%, transparent),
+		transparent 70%
+	);
+	filter: blur(10px);
+	pointer-events: none;
+	z-index: -1;
+	animation: input-focus-pulse 4s ease-in-out infinite;
+}
+
+/* Shimmer text used as the streaming placeholder. */
+.input-shimmer-text {
+	background: linear-gradient(
+		90deg,
+		color-mix(in srgb, var(--muted-foreground) 50%, transparent) 0%,
+		var(--primary) 50%,
+		color-mix(in srgb, var(--muted-foreground) 50%, transparent) 100%
+	);
+	background-size: 200% 100%;
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	animation: input-shimmer 2s linear infinite;
+}
+
+/* 主题色卡（active）blob 漂移缩放，叠加容器重模糊后呈现混沌涟漪流转感。
+   旋转交给外层 wrapper，这里只动 translate/scale，避免与内联 transform 冲突。 */
+.theme-blob-ripple {
+	animation-name: theme-blob-drift;
+	animation-timing-function: ease-in-out;
+	animation-iteration-count: infinite;
+	animation-direction: alternate;
+	will-change: transform;
+}
+
+@keyframes theme-blob-drift {
+	0% {
+		transform: translate(0%, 0%) scale(1);
+	}
+	25% {
+		transform: translate(22%, -16%) scale(1.22);
+	}
+	50% {
+		transform: translate(-14%, 20%) scale(0.82);
+	}
+	75% {
+		transform: translate(16%, 14%) scale(1.12);
+	}
+	100% {
+		transform: translate(-20%, -10%) scale(0.94);
+	}
+}
+
+/* 整个 blob 层绕中心缓慢 360° 无限旋转，让背景颜色不停绕圈流转。 */
+.theme-blob-spin {
+	animation: theme-blob-spin 36s linear infinite;
+	will-change: transform;
+}
+
+@keyframes theme-blob-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tool-call-shimmer-text {
+		color: var(--muted-foreground);
+		background: none;
+		-webkit-text-fill-color: currentColor;
+		animation: none;
+	}
+
+	.theme-blob-ripple,
+	.theme-blob-spin {
+		animation: none;
+	}
+}
+
+/* ─── Dialog 入场/出场动画 ───
+   radix 在 overlay/content 上写 data-state="open"|"closed"，关闭时 Presence
+   会等动画结束再卸载，因此出场动画也能完整播放。content 的 to 态保持
+   translate(-50%,-50%) 与 Tailwind 的居中类一致，动画结束后无跳动。 */
+@keyframes vetta-dialog-overlay-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes vetta-dialog-overlay-out {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+
+@keyframes vetta-dialog-content-in {
+	from {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+	}
+}
+
+@keyframes vetta-dialog-content-out {
+	from {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+	}
+	to {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.96);
+	}
+}
+
+[data-slot="dialog-overlay"][data-state="open"] {
+	animation: vetta-dialog-overlay-in 200ms ease-out;
+}
+
+[data-slot="dialog-overlay"][data-state="closed"] {
+	animation: vetta-dialog-overlay-out 150ms ease-in;
+}
+
+/*
+  Safety net for DialogContent width after primitives moved to @vetta/ui.
+  Utility max-w-* / sm:max-w-* (utilities layer) still override this when present.
+  Without a cap, only w-full may apply and dialogs span nearly the full viewport.
+*/
+@layer components {
+	[data-slot="dialog-content"] {
+		width: 100%;
+		max-width: min(24rem, calc(100% - 2rem));
+	}
+}
+
+[data-slot="dialog-content"][data-state="open"] {
+	animation: vetta-dialog-content-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-slot="dialog-content"][data-state="closed"] {
+	animation: vetta-dialog-content-out 150ms ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[data-slot="dialog-overlay"][data-state="open"],
+	[data-slot="dialog-overlay"][data-state="closed"],
+	[data-slot="dialog-content"][data-state="open"],
+	[data-slot="dialog-content"][data-state="closed"] {
+		animation: none;
+	}
+}

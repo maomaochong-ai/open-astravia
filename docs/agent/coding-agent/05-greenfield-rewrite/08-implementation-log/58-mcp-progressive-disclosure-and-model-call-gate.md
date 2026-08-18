@@ -133,7 +133,7 @@ MCP 范围的断言包括：
 
 ## 验证结果
 
-- `packages/cli-app` 完整包测试：2 个文件、17 项全部通过。
+- `apps/cli-host` 完整包测试：2 个文件、17 项全部通过。
 - `tool-search.test.ts`：9 项全部通过，确认复用的搜索和结果行为未变化。
 - `bun run check:quick`：通过。
 - 根目录 `bun run check`：Biome、monorepo tsgo、desktop tsc、admin tsc 与 guards 全部通过。

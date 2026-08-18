@@ -1,11 +1,11 @@
-import { CONFIG_DIR_NAME } from "../../config.js";
 import {
 	createExtensionEventBus,
 	createExtensionRuntime,
 	type EventBus,
 	type LoadExtensionsResult,
 } from "../../extensions/index.js";
-import type { Theme } from "../../modes/interactive/theme/theme.js";
+import { CONFIG_DIR_NAME } from "../../identity.js";
+import type { Theme } from "../../theme/index.js";
 import type { ResourceDiagnostic } from "../contracts/diagnostics.js";
 import type {
 	ResourceExtensionPaths,
@@ -33,7 +33,7 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 	private readonly eventBus: EventBus;
 	private additionalExtensionPaths: string[];
 	private additionalSkillPaths: string[];
-	private runtimeSkillPaths: string[] = [];
+	private runtimeSkillPaths: string[];
 	private extensionsResult: LoadExtensionsResult;
 	private skills: Skill[] = [];
 	private skillDiagnostics: ResourceDiagnostic[] = [];
@@ -60,6 +60,7 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		this.eventBus = options.eventBus ?? createExtensionEventBus();
 		this.additionalExtensionPaths = options.additionalExtensionPaths ?? [];
 		this.additionalSkillPaths = options.additionalSkillPaths ?? [];
+		this.runtimeSkillPaths = this.merge([], options.runtimeSkillPaths ?? []);
 		this.extensionsResult = { extensions: [], errors: [], runtime: createExtensionRuntime() };
 	}
 

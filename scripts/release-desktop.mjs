@@ -3,8 +3,8 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 
-const DESKTOP_PACKAGE_PATH = "packages/desktop-app/package.json";
-const DESKTOP_CHANGELOG_PATH = "packages/desktop-app/CHANGELOG.md";
+const DESKTOP_PACKAGE_PATH = "apps/desktop/package.json";
+const DESKTOP_CHANGELOG_PATH = "apps/desktop/CHANGELOG.md";
 const LOCKFILE_PATH = "bun.lock";
 const RELEASE_FILES = [DESKTOP_PACKAGE_PATH, DESKTOP_CHANGELOG_PATH, LOCKFILE_PATH];
 const bumpType = process.argv[2];
@@ -93,7 +93,7 @@ function assertOnlyReleaseFilesChanged() {
 assertCleanWorktree();
 const branch = assertBranch();
 run("bun", ["run", "check:lint"]);
-run("bun", ["run", "--cwd", "packages/desktop-app", "typecheck"]);
+run("bun", ["run", "--cwd", "apps/desktop", "typecheck"]);
 run("bun", ["run", "check:guards"]);
 assertCleanWorktree();
 

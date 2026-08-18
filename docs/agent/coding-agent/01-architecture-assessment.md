@@ -2,7 +2,7 @@
 
 > 状态：初步评估  
 > 日期：2026-07-25  
-> 范围：`packages/coding-agent` 及其与 `runtime-*`、`desktop-app` 的直接边界
+> 范围：`packages/coding-agent` 及其与 `runtime-*`、`desktop` 的直接边界
 
 ## 1. 结论摘要
 

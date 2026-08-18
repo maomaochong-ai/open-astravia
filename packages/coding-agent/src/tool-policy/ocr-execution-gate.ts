@@ -3,12 +3,8 @@ import { type AsyncExecutionGate, createAsyncExecutionGate } from "@vetta/runtim
 let sharedOcrExecutionGate: AsyncExecutionGate | undefined;
 
 /** Coding Agent 的所有 Session 共用同一 OCR 并发策略。 */
-export function getCodingAgentOcrExecutionGate(): AsyncExecutionGate {
-	sharedOcrExecutionGate ??= createAsyncExecutionGate(resolveOcrConcurrency());
+export function getCodingAgentOcrExecutionGate(maxConcurrent = 1): AsyncExecutionGate {
+	const concurrency = Number.isInteger(maxConcurrent) && maxConcurrent >= 1 ? maxConcurrent : 1;
+	sharedOcrExecutionGate ??= createAsyncExecutionGate(concurrency);
 	return sharedOcrExecutionGate;
-}
-
-function resolveOcrConcurrency(): number {
-	const parsed = Number.parseInt(process.env.VETTA_KB_OCR_CONCURRENCY ?? "", 10);
-	return Number.isFinite(parsed) && parsed >= 1 ? parsed : 1;
 }

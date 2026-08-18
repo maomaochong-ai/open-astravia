@@ -138,10 +138,10 @@ Composer 输出仍由 Runtime Core 做结构冲突、不可变复制和 Schema �
 - CLI Greenfield Composition：10 项；
 - `runtime-core` 全包：25 个文件，118 项；
 - `runtime-tools` 全包：18 个文件，190 项；
-- `cli-app` 全包：2 个文件，19 项；
+- `cli-host` 全包：2 个文件，19 项；
 - 根源码 `tsgo --noEmit`；
-- `runtime-core` 发布声明输出后，`coding-agent` 与 `cli-app` 包级发布配置无输出类型检查。
-- 按 `runtime-core -> coding-agent -> runtime-mcp -> cli-app` 的真实发布顺序执行声明输出/发布配置检查；
+- `runtime-core` 发布声明输出后，`coding-agent` 与 `cli-host` 包级发布配置无输出类型检查。
+- 按 `runtime-core -> coding-agent -> runtime-mcp -> cli-host` 的真实发布顺序执行声明输出/发布配置检查；
 - 根 `bun run check`：Biome、根/desktop/admin 类型检查和全部 guards 通过。
 
 `coding-agent` 全包在当前 Windows/本机资源环境运行结果为 51 个文件通过、14 个文件失败，

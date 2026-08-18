@@ -25,7 +25,10 @@ export interface KnowledgeProcessingSessionFactoryOptions {
 	readonly createToolEnvironment: CodingAgentToolEnvironmentFactory;
 	readonly createSessionExecutionEnvironment: CodingAgentSessionExecutionEnvironmentFactory;
 	readonly codingToolResultPolicy?: CodingAgentRuntimeCompositionOptions["codingToolResultPolicy"];
+	readonly modelInputImageProcessor?: CodingAgentRuntimeCompositionOptions["modelInputImageProcessor"];
 	readonly knowledgeRuntime: CodingAgentKnowledgeRuntime;
+	/** 由最终宿主探测工作区事实；产品组合不直接读取文件系统。 */
+	readonly resolveWorkspaceFacts?: (cwd: string) => string | undefined;
 	readonly createSessionId?: () => string;
 	readonly createComposition?: (
 		options: CodingAgentRuntimeCompositionOptions,
@@ -55,10 +58,12 @@ export function createKnowledgeProcessingSessionFactory(
 				createToolEnvironment: options.createToolEnvironment,
 				createSessionExecutionEnvironment: options.createSessionExecutionEnvironment,
 				codingToolResultPolicy: options.codingToolResultPolicy,
+				modelInputImageProcessor: options.modelInputImageProcessor,
 				modelRegistry: modelRuntime,
 				initialModel,
 				initialThinkingLevel: "off",
 				cwd: request.cwd,
+				workspaceFacts: options.resolveWorkspaceFacts?.(request.cwd),
 				scenario: "kb-processing",
 				knowledgeRuntime: options.knowledgeRuntime,
 				enableSubagents: false,

@@ -140,5 +140,5 @@ Zod 只负责“输入形状是否合法”，不负责 block、stop、fail-open
 ## 10. 验证
 
 - 根目录 `bun run check` 通过。
-- Biome、monorepo `tsgo --noEmit`、desktop-app `tsc --noEmit` 通过。
+- Biome、monorepo `tsgo --noEmit`、desktop `tsc --noEmit` 通过。
 - 按仓库规则未运行 `bun test`。

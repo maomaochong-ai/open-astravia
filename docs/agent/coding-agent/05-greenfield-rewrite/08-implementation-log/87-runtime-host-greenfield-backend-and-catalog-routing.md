@@ -49,7 +49,7 @@ Greenfield，而不把格式判断写入 RuntimeHost。
 
 ## 4. Greenfield RuntimeHost Session Backend
 
-`cli-app` 新增 `GreenfieldRuntimeHostSessionBackend`，负责：
+`cli-host` 新增 `GreenfieldRuntimeHostSessionBackend`，负责：
 
 - 新会话生成 Greenfield Session ID。
 - 恢复时从 canonical conversation path 解析 Session ID。

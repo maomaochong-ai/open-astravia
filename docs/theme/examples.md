@@ -10,20 +10,20 @@ packages/themes/builtin/xianxia/
 
 ## Xianxia
 
-Xianxia 由 `build:themes` 独立构建为主题归档。开发环境从 `.artifacts/system-themes/xianxia` 发现，发布环境从 `Resources/system-themes/xianxia` 发现；desktop-app 不导入它的源码。
+Xianxia 由 `build:themes` 独立构建为主题归档。开发环境从 `.artifacts/system-themes/xianxia` 发现，发布环境从 `Resources/system-themes/xianxia` 发现；desktop 不导入它的源码。
 
 效果：
 
 - 默认应用结构不变。
 - `appearance.surfaces` 提供仙侠背景、图片边框和面板装饰。
 - `components["app.background"]` 和 `components["chat.inputBarBackground"]` 提供主题自有装饰组件。
-- 图片资源与主题源码位于同一个主题包，不依赖 desktop-app public 目录。
+- 图片资源与主题源码位于同一个主题包，不依赖 desktop public 目录。
 
 ## 依赖边界
 
 Xianxia 只依赖 `@vetta/theme-sdk` 和 `@vetta/theme-ui`。`AppBackground`、`InputBarBackground` 等应用 UI view 及其 registry contract 由 `@vetta/theme-ui` 导出。
 
-远程主题不应 import `@shared/*`、`@domains/*` 或 desktop-app 内部 hook。需要数据时调用 SDK facade hook；需要复用 UI 时，把 hook 返回的 model 作为 props 传给官方 view。
+远程主题不应 import `@shared/*`、`@domains/*` 或 desktop 内部 hook。需要数据时调用 SDK facade hook；需要复用 UI 时，把 hook 返回的 model 作为 props 传给官方 view。
 
 ## 当前约束
 

@@ -2,7 +2,7 @@
 
 子进程通过 **stdin/stdout 逐行 JSON** 驱动单会话。协议类型和可移植 `RpcClient` 由
 `@vetta/coding-agent/rpc` 导出，Client 需要显式 `RpcClientTransport`；绑定 Node 子进程的零配置
-`RpcClient` 由 `@vetta/cli-app` 导出。协议核心不负责启动子进程或选择传输。
+`RpcClient` 由 `@vetta/cli-host` 导出。协议核心不负责启动子进程或选择传输。
 
 同进程嵌入请用 [sdk.md](sdk.md)，不要走子进程。
 
@@ -66,6 +66,6 @@ agent → host 反向调用（如 IM 发附件）：
 
 ## 参考
 
-- 命令分发：`src/modes/rpc/rpc-command-dispatcher.ts`
-- 模式入口：`src/modes/rpc/rpc-mode.ts`
+- 命令分发：`src/rpc/rpc-command-dispatcher.ts`
+- 模式入口：`src/rpc/rpc-mode.ts`
 - im-gateway / desktop 以本协议驱动子进程

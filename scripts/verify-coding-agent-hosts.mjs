@@ -5,9 +5,9 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 
 const repositoryRoot = dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
-const compileScript = join(repositoryRoot, "packages", "cli-app", "scripts", "compile-standalone.mjs");
+const compileScript = join(repositoryRoot, "apps", "cli-host", "scripts", "compile-standalone.mjs");
 const packageDir = join(repositoryRoot, "packages", "coding-agent");
-const imGatewayDir = join(repositoryRoot, "packages", "im-gateway");
+const imGatewayDir = join(repositoryRoot, "apps", "im-gateway");
 const compileTargets = {
 	"darwin-arm64": "bun-darwin-arm64",
 	"darwin-x64": "bun-darwin-x64",
@@ -27,13 +27,13 @@ const suites = [
 		name: "CLI host functional suite",
 		command: process.execPath,
 		args: ["run", "test", "--silent"],
-		cwd: join(repositoryRoot, "packages", "cli-app"),
+		cwd: join(repositoryRoot, "apps", "cli-host"),
 	},
 	{
 		name: "Desktop host functional suite",
 		command: process.execPath,
 		args: ["run", "test", "--silent"],
-		cwd: join(repositoryRoot, "packages", "desktop-app"),
+		cwd: join(repositoryRoot, "apps", "desktop"),
 	},
 ];
 

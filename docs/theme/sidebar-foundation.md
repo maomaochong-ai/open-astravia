@@ -5,7 +5,7 @@
 ## 当前目录
 
 ```txt
-packages/desktop-app/src/renderer/domains/project/components/sidebar/
+apps/desktop/src/renderer/domains/project/components/sidebar/
   Sidebar.tsx
   DefaultSidebar.tsx
   SidebarPanel.tsx
@@ -54,9 +54,9 @@ export function Sidebar(props: SidebarProps): JSX.Element {
 
 这个结构保证：
 
-- `Sidebar` 是 desktop-app 内部 connected 容器。
+- `Sidebar` 是 desktop 内部 connected 容器。
 - 主题公开的 `useSidebarModel` 入口来自 `@vetta/theme-sdk/sidebar`。
-- 真实 `useSidebarModel` 实现仍在 desktop-app 内部，并通过 `ThemeHostProvider` 注入。
+- 真实 `useSidebarModel` 实现仍在 desktop 内部，并通过 `ThemeHostProvider` 注入。
 - `DefaultSidebar` 是 props 驱动 view，接收 `SidebarModel` 和 actions。
 - 主题可以复用默认 UI，也可以通过 `regions.sidebar` 替换完整侧边栏。
 

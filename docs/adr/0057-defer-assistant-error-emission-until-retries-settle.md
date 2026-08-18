@@ -8,9 +8,9 @@
 
 1. **延迟发射，不在 `message_end` 当场发 error。** `mapAgentSessionEvent` 把失败挂进 `MapAgentEventState.pendingError`（每会话至多一条）。挂起项只有三个去向：被 `auto_retry_end(success)` 或后续成功的 `message_end` 清掉、被 `aborted` 清掉、或由 `flushPendingError()` 兑现成唯一一条 `error` 事件。
 2. **flush 点是 `RuntimeHost.prompt()` / `continue()` 的 `finally`。** `session.prompt()` 内部 `await retry.waitForRetry()`（`input-pipeline.ts`），所以它 resolve 时重试必然已经结束。放在 `finally` 而非成功分支，是为了让 abort 与 throw 路径同样兑现——**挂起而不 flush 是这个机制唯一的失败模式，等于静默吞错**。
-3. **不在 coding-agent 侧加 `turn_failed` 终态事件。** 语义上更干净，但要改 coding-agent 的事件协议（`session/types.ts`），影响 im-gateway、cli-app 等所有消费者；而延迟发射把改动圈在 runtime-core 一个文件里。
+3. **不在 coding-agent 侧加 `turn_failed` 终态事件。** 语义上更干净，但要改 coding-agent 的事件协议（`session/types.ts`），影响 im-gateway、cli-host 等所有消费者；而延迟发射把改动圈在 runtime-core 一个文件里。
 4. **`auto_retry_start/end` 翻译成专用的 `retry.start` / `retry.end`**，不再复用 `error`。`retry.end` 此前根本没有翻译分支，UI 因此无从得知重试结束。`error` 事件新增 `retryAttempts`，让 UI 能说「已自动重试 3 次仍失败」。
-5. **历史回放另走一条路。** 会话文件保留了每一次失败的 assistant message（`retry-controller` 有意为之：keep in session for history），延迟发射管不到。desktop-app 的 `fullHistoryToChat` / `historyToChat` 在回放时折叠连续同类错误并计数。判定「同类」用 `classifyChatError`，与错误卡的分类同源。
+5. **历史回放另走一条路。** 会话文件保留了每一次失败的 assistant message（`retry-controller` 有意为之：keep in session for history），延迟发射管不到。desktop 的 `fullHistoryToChat` / `historyToChat` 在回放时折叠连续同类错误并计数。判定「同类」用 `classifyChatError`，与错误卡的分类同源。
 
 ## 后果
 

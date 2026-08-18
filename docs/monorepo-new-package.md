@@ -1,6 +1,8 @@
 # 新增 Monorepo 包（TypeScript workspace）
 
-在 `packages/*` 下新增 `@vetta/*` 包时，**不能只改包目录**。漏接 TypeScript path map 是常见问题：有 `dist/` 时类型检查看起来正常，干净树或未 build 时出现 `TS2307 Cannot find module '@vetta/…'`。
+先确定归属：可交付的应用放 `apps/*`，可复用模块放 `packages/*`（见 [`AGENTS.md`](../AGENTS.md) 的目录约定）。本文以新增 `packages/*` 下的 `@vetta/*` 包为例；放到 `apps/*` 时把下文路径中的 `packages` 换成 `apps` 即可。
+
+新增包时**不能只改包目录**。漏接 TypeScript path map 是常见问题：有 `dist/` 时类型检查看起来正常，干净树或未 build 时出现 `TS2307 Cannot find module '@vetta/…'`。
 
 ## Checklist
 
@@ -24,7 +26,7 @@
 |------|----------|
 | 根 `tsconfig.json` → `compilerOptions.paths` | `"@vetta/<name>": ["./packages/<name>/src/index.ts"]`，`"@vetta/<name>/*": ["./packages/<name>/src/*"]` |
 | 根 `tsconfig.json` → `include` | `"packages/<name>/src/**/*"`（若有测试一并加入） |
-| `packages/desktop-app/tsconfig.json` → `paths` | **仅当** desktop 引用该包时：`"@vetta/<name>": ["../<name>/src/index.ts"]`，`"@vetta/<name>/*": ["../<name>/src/*"]` |
+| `apps/desktop/tsconfig.json` → `paths` | **仅当** desktop 引用该包时：`"@vetta/<name>": ["../../packages/<name>/src/index.ts"]`，`"@vetta/<name>/*": ["../../packages/<name>/src/*"]` |
 
 其它自带 `paths` 的消费方（若有）同样处理。
 
@@ -45,11 +47,11 @@
 ```bash
 # 建议：无 dist 时类型检查也应通过
 rm -rf packages/<name>/dist   # 可选压力测试
-bun run check                 # Biome + 根 tsgo + desktop-app tsc
+bun run check                 # Biome + 根 tsgo + desktop tsc
 cd packages/<name> && bun run build
 ```
 
 ## 不在本文范围
 
 - `packages/plugins` 下的 preset / external → 见 `packages/plugins/AGENTS.md`（根 workspace 下的插件约定）
-- Go 包（`packages/api`、`packages/im-gateway`）→ 无 TS path map 要求
+- Go 包（`apps/api`、`apps/im-gateway`）→ 无 TS path map 要求

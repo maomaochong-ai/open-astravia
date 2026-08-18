@@ -195,7 +195,7 @@ Windows 发布 EXE 的原因：
 
 ### 7.1 环境变量
 
-构建期变量写在已忽略的 `packages/desktop-app/.env.development`：
+构建期变量写在已忽略的 `apps/desktop/.env.development`：
 
 ```dotenv
 VETTA_UPDATE_PROVIDER=generic
@@ -219,8 +219,8 @@ export VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
 
 推荐使用仓库的一键脚本，它会读取频道配置并把变量显式传给构建和发布子进程：
 
-- `test` 基础配置读取已忽略的 `packages/desktop-app/.env.development`，兼容现有本地配置。
-- `stable` 基础配置读取已提交的 `packages/desktop-app/.env.production`。
+- `test` 基础配置读取已忽略的 `apps/desktop/.env.development`，兼容现有本地配置。
+- `stable` 基础配置读取已提交的 `apps/desktop/.env.production`。
 - 两个频道都可从 `~/.config/vetta/r2.env` 补充共用 R2 凭据，再由 `~/.config/vetta/r2-test.env` 或 `r2-stable.env` 覆盖频道配置。
 - 当前 Shell 中显式设置的变量通常优先级最高；但 stable 的服务器、站点、更新 provider/URL、R2 bucket/prefix 始终以 `.env.production` 为准，不能被 `--env-file=.env.development` 覆盖。
 
@@ -245,7 +245,7 @@ R2 Token 只授予目标 Bucket 的对象读写权限。凭据只供发布脚本
 bun scripts/release-windows.mjs test --version 0.5.61
 ```
 
-稳定频道拒绝 `--version`，始终读取 `packages/desktop-app/package.json`：
+稳定频道拒绝 `--version`，始终读取 `apps/desktop/package.json`：
 
 ```powershell
 bun scripts/release-windows.mjs stable
@@ -274,7 +274,7 @@ bun scripts/release-windows.mjs stable --yes
 
 ```powershell
 $env:VETTA_DESKTOP_BUILD_VERSION = "0.5.57"
-bun run --cwd packages/desktop-app dist:win
+bun run --cwd apps/desktop dist:win
 ```
 
 必须满足：
@@ -286,7 +286,7 @@ bun run --cwd packages/desktop-app dist:win
 Windows 构建产物：
 
 ```text
-packages/desktop-app/release/
+apps/desktop/release/
   Vetta-0.5.57-win-x64.exe
   Vetta-0.5.57-win-x64.exe.blockmap
   Vetta-0.5.57-win-x64.exe.files.json
@@ -298,7 +298,7 @@ packages/desktop-app/release/
 ### 7.4 手动发布到 test
 
 ```powershell
-bun run --cwd packages/desktop-app publish:updates:r2
+bun run --cwd apps/desktop publish:updates:r2
 ```
 
 这个命令先做 Inno 产物预检，再执行 R2 发布：
@@ -396,7 +396,7 @@ curl.exe -H "Range: bytes=0-9,100-109" -o NUL -D - "https://releases.openvetta.c
 
 ### 9.1 R2 stable
 
-正式版本以 `packages/desktop-app/package.json` 为版本真源，不使用 `VETTA_DESKTOP_BUILD_VERSION` 覆盖。配置：
+正式版本以 `apps/desktop/package.json` 为版本真源，不使用 `VETTA_DESKTOP_BUILD_VERSION` 覆盖。配置：
 
 ```text
 VETTA_UPDATE_PROVIDER=generic
@@ -406,7 +406,7 @@ VETTA_R2_PREFIX=desktop/stable
 
 必须先在 test 完成真实的“旧安装版 → CDN → 新版本 → 重启”闭环，再发布 stable。不要用 stable 通道迭代更新功能。
 
-test 与 stable 是两个独立版本序列：`VETTA_DESKTOP_BUILD_VERSION` 只用于 test 客户端之间的版本比较，不决定正式版从哪个数字开始。正式版只要求高于 stable 通道已经发布的版本，并始终与 `packages/desktop-app/package.json` 一致。
+test 与 stable 是两个独立版本序列：`VETTA_DESKTOP_BUILD_VERSION` 只用于 test 客户端之间的版本比较，不决定正式版从哪个数字开始。正式版只要求高于 stable 通道已经发布的版本，并始终与 `apps/desktop/package.json` 一致。
 
 ### 9.2 GitHub Releases
 
@@ -418,14 +418,14 @@ VETTA_UPDATE_GITHUB_OWNER=<owner>
 VETTA_UPDATE_GITHUB_REPO=<repository>
 ```
 
-公开 Release 的客户端读取不需要 GitHub Token。桌面端使用标准 `v<version>` tag；tag 属于 desktop-app 发版，不应使用 coding-agent 专用 tag 语义。
+公开 Release 的客户端读取不需要 GitHub Token。桌面端使用标准 `v<version>` tag；tag 属于 desktop 发版，不应使用 coding-agent 专用 tag 语义。
 
 `workflow_dispatch` 的工作流定义必须存在于 GitHub 默认分支，执行时可以选择其它分支。`push.tags: v*` 则由 tag 触发。
 
 ### 9.3 Action 发布边界
 
 - `workflow_dispatch` 只构建、校验并保留三平台 Artifact，不上传 R2，也不创建 GitHub Release；因此可以在启用 CI 后用它做正式发布前演练。
-- 只有 `v<packages/desktop-app/package.json version>` tag 才进入发布 Job。
+- 只有 `v<apps/desktop/package.json version>` tag 才进入发布 Job。
 - 其它同样使用标准 `v*` 命名的仓库 tag 只运行一个轻量 scope Job；版本不等于 desktop package 时直接跳过三平台构建，不消耗打包 runner。
 - Windows Inno 完整安装校验在 Windows build Job 内完成；Linux 汇总发布 Job 不再尝试执行 Windows 安装器。
 - macOS 凭据完全未配置时允许生成未签名包；只配置一部分时失败；凭据齐全时强制校验签名、公证和 Gatekeeper。
@@ -532,7 +532,7 @@ ready 弹窗只会在以下三项同时存在后出现：
 **当前保护**：
 
 - `prepare-pack.js` 显式 staging `electron-updater`、`builder-util-runtime` 等 external 依赖及其生产依赖闭包。
-- coding-agent runtime、agent-rpc CLI 和 cli-app 作为资源进入安装包。
+- coding-agent runtime、agent-rpc CLI 和 cli-host 作为资源进入安装包。
 - 打包前扫描 `dist/main`，若仍有 `@vetta/*` workspace import 会直接失败。
 - R2 发布前 Inno 预检会把版本目录全部展开并按 manifest 校验文件数量与大小。
 
@@ -702,17 +702,17 @@ install failed
 
 | 文件 | 职责 |
 |---|---|
-| `packages/desktop-app/src/main/updater.ts` | 初始化 electron-updater 和 Windows Inno controller；处理 CommonJS 导入边界 |
-| `packages/desktop-app/src/main/updater-service.ts` | 更新状态机、自动下载、重试、stall timeout 和 UI 状态广播 |
-| `packages/desktop-app/src/main/updater-engine.ts` | electron-updater 适配、进度映射、差分缓存基线提升 |
-| `packages/desktop-app/src/main/inno-windows-update.ts` | Inno 后台安装、物理文件校验、激活指针、健康确认和旧版本清理 |
-| `packages/desktop-app/native/windows-launcher/main.go` | 稳定入口、版本选择和 pending 回退 |
-| `packages/desktop-app/build/installer.iss` | Inno 普通/后台模式、版本目录写入、进度文件和首次缓存播种 |
-| `packages/desktop-app/scripts/windows-version-layout.mjs` | 把 electron-builder 目录转换为稳定启动器 + 版本目录布局 |
-| `packages/desktop-app/scripts/build-inno-installer.mjs` | 构建 EXE、blockmap、files manifest 和 `latest.yml` |
-| `packages/desktop-app/scripts/verify-inno-update.mjs` | 发布前临时安装与全文件预检 |
-| `packages/desktop-app/scripts/publish-update-artifacts-r2.mjs` | R2 原子发布、缓存头、幂等校验和公开可读验证 |
-| `packages/desktop-app/scripts/resolve-update-publish-config.mjs` | generic/GitHub/none 构建期 provider 配置 |
+| `apps/desktop/src/main/updater.ts` | 初始化 electron-updater 和 Windows Inno controller；处理 CommonJS 导入边界 |
+| `apps/desktop/src/main/updater-service.ts` | 更新状态机、自动下载、重试、stall timeout 和 UI 状态广播 |
+| `apps/desktop/src/main/updater-engine.ts` | electron-updater 适配、进度映射、差分缓存基线提升 |
+| `apps/desktop/src/main/inno-windows-update.ts` | Inno 后台安装、物理文件校验、激活指针、健康确认和旧版本清理 |
+| `apps/desktop/native/windows-launcher/main.go` | 稳定入口、版本选择和 pending 回退 |
+| `apps/desktop/build/installer.iss` | Inno 普通/后台模式、版本目录写入、进度文件和首次缓存播种 |
+| `apps/desktop/scripts/windows-version-layout.mjs` | 把 electron-builder 目录转换为稳定启动器 + 版本目录布局 |
+| `apps/desktop/scripts/build-inno-installer.mjs` | 构建 EXE、blockmap、files manifest 和 `latest.yml` |
+| `apps/desktop/scripts/verify-inno-update.mjs` | 发布前临时安装与全文件预检 |
+| `apps/desktop/scripts/publish-update-artifacts-r2.mjs` | R2 原子发布、缓存头、幂等校验和公开可读验证 |
+| `apps/desktop/scripts/resolve-update-publish-config.mjs` | generic/GitHub/none 构建期 provider 配置 |
 | `scripts/release-windows.mjs` | Windows test/stable 频道校验、构建、Inno 预检与 R2 发布编排 |
 | `.github/workflows/desktop-release.yml` | 三平台构建及 R2/GitHub Release 发布编排 |
 

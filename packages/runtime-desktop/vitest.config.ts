@@ -29,6 +29,10 @@ export default defineConfig({
 				replacement: fileURLToPath(new URL("../coding-agent/src/composition/index.ts", import.meta.url)),
 			},
 			{
+				find: "@vetta/coding-agent/model-context",
+				replacement: fileURLToPath(new URL("../coding-agent/src/public-api/model-context.ts", import.meta.url)),
+			},
+			{
 				find: "@vetta/coding-agent/historical-sessions",
 				replacement: fileURLToPath(
 					new URL("../coding-agent/src/public-api/historical-sessions.ts", import.meta.url),
@@ -72,6 +76,10 @@ export default defineConfig({
 			{
 				find: "@vetta/runtime-tools/coding",
 				replacement: fileURLToPath(new URL("../runtime-tools/src/coding/index.ts", import.meta.url)),
+			},
+			{
+				find: "@vetta/runtime-tools",
+				replacement: fileURLToPath(new URL("../runtime-tools/src/index.ts", import.meta.url)),
 			},
 			{
 				find: "@vetta/runtime-storage/conversation",

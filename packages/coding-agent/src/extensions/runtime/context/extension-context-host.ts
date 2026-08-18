@@ -1,5 +1,5 @@
 import type { Api, Model } from "@vetta/ai";
-import { type Theme, theme } from "../../../modes/interactive/theme/theme.js";
+import { type Theme, theme } from "../../../theme/index.js";
 import type {
 	CompactOptions,
 	ContextUsage,

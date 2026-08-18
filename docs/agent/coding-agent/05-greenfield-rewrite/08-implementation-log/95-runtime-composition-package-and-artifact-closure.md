@@ -6,7 +6,7 @@
 但生产接线仍存在一个架构倒置：
 
 ```text
-desktop-app -> cli-app/src/greenfield-runtime-composition.ts
+desktop -> cli-host/src/greenfield-runtime-composition.ts
 ```
 
 这使 Desktop 依赖另一个宿主应用的源码路径，也让 Composition Root 的产物完整性依赖开发态 TS
@@ -38,7 +38,7 @@ Greenfield Composition
 
 ## 3. 代码归位
 
-以下实现从 `packages/cli-app/src` 迁入 `packages/runtime-composition/src`：
+以下实现从 `apps/cli-host/src` 迁入 `packages/runtime-composition/src`：
 
 - Greenfield Runtime Composition；
 - RuntimeHost Session Backend；
@@ -55,11 +55,11 @@ Greenfield Composition
 CLI 原路径现在只有窄 re-export：
 
 ```text
-cli-app/src/* -> @vetta/runtime-composition
+cli-host/src/* -> @vetta/runtime-composition
 ```
 
 这样现有 CLI 内部导入、测试和外部导出保持兼容；新的 Desktop 生产接线则直接依赖
-`@vetta/runtime-composition`，不再经过 `cli-app/src`。
+`@vetta/runtime-composition`，不再经过 `cli-host/src`。
 
 ## 4. Workspace 与构建图
 
@@ -79,8 +79,8 @@ runtime-core
   -> coding-agent
   -> runtime-tools / runtime-storage / runtime-mcp
   -> runtime-composition
-  -> cli-app
-  -> desktop-app
+  -> cli-host
+  -> desktop
 ```
 
 构建顺序守卫确认所有生产 workspace dependency 都先于消费者构建。
@@ -102,14 +102,14 @@ runtime-core
 
 1. `dist` 中每个相对 JS / declaration import 都仍位于 `dist` 内；
 2. 每个相对 import 的目标文件真实存在；
-3. 产物不依赖 `@vetta/cli-app`；
+3. 产物不依赖 `@vetta/cli-host`；
 4. manifest 中的入口、类型入口和资源全部存在；
 5. Node 能够直接导入 `dist/index.js` 并读取 manifest。
 
 该校验已接到包的正式 build script，因此 Desktop 前置构建在生成 Composition 产物时会自动执行，
 而不是依赖人工检查。
 
-额外扫描编译后的 Desktop Main、CLI 与 Runtime Composition，未发现 `cli-app/src`、
+额外扫描编译后的 Desktop Main、CLI 与 Runtime Composition，未发现 `cli-host/src`、
 `runtime-composition/src` 或其他指向该 Composition 源码目录的路径。
 
 ## 6. 持续边界门禁
@@ -117,7 +117,7 @@ runtime-core
 包边界质量门新增两项约束：
 
 - `runtime-composition` 被视为宿主无关 library，禁止反向依赖 CLI/Desktop 等应用包；
-- Desktop 生产源码禁止直接导入 `cli-app/src`，必须消费正式 package export。
+- Desktop 生产源码禁止直接导入 `cli-host/src`，必须消费正式 package export。
 
 对应质量测试同时验证违规相对源码导入会失败，而 `@vetta/runtime-composition` 合法。
 

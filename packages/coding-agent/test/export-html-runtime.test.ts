@@ -130,6 +130,19 @@ describe("CodingAgentHtmlExportRuntime", () => {
 			}),
 		).toThrow("mutually exclusive");
 	});
+
+	it("reports a stable capability error when a host omits file adapters", async () => {
+		const runtime = createCodingAgentHtmlExportRuntime();
+		const document = createSeededConversationDocument(
+			{ sessionId: "session-1", createdAt: 1, cwd: "C:/workspace" },
+			[],
+			null,
+		);
+
+		await expect(runtime.exportConversation(document, "session-1.conversation.jsonl")).rejects.toThrow(
+			"HTML export template assets were not configured by the host",
+		);
+	});
 });
 
 function missingLegacySessions() {

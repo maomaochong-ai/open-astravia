@@ -29,7 +29,7 @@ Greenfield 选择失败时直接调用 `runLegacyAgentWithBootstrap()`。这不�
 
 ## 3. 显式 Runtime Selector
 
-`@vetta/cli-app` 新增宿主级参数：
+`@vetta/cli-host` 新增宿主级参数：
 
 ```text
 --agent-runtime legacy
@@ -112,7 +112,7 @@ Runtime Storage 内部字段 `acquiredAt` 只在反腐层映射为旧 wire 的 `
 验证命令：
 
 ```text
-packages/cli-app:
+apps/cli-host:
   bun run typecheck
   bunx vitest --run test/agent-runtime-selection.test.ts
 

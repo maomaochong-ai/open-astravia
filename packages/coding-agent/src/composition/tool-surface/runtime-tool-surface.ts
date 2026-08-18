@@ -2,13 +2,13 @@ import type { ConversationScenario, RuntimeSessionValueIndex } from "@vetta/runt
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { CODING_TOOL_SCOPES, type CodingToolActivation, type CodingToolResultPolicy } from "@vetta/runtime-tools";
+import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import {
 	type CodingAgentKnowledgeRuntime,
 	createCodingAgentKnowledgeFilterByTagsToolRegistration,
 	createCodingAgentKnowledgeListTagsToolRegistration,
 } from "../../features/knowledge/index.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
-import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import {
 	isCodingAgentKnowledgeToolEnabled,
 	resolveCodingAgentToolActivation,

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { RpcExtensionUIBridge } from "../../src/modes/rpc/rpc-extension-ui-bridge.js";
-import { RpcHostBridge } from "../../src/modes/rpc/rpc-host-bridge.js";
-import type { RpcExtensionUIRequest, RpcHostRequest } from "../../src/modes/rpc/rpc-types.js";
+import { RpcExtensionUIBridge } from "../../src/rpc/rpc-extension-ui-bridge.js";
+import { RpcHostBridge } from "../../src/rpc/rpc-host-bridge.js";
+import type { RpcExtensionUIRequest, RpcHostRequest } from "../../src/rpc/rpc-types.js";
 
 afterEach(() => {
 	vi.useRealTimers();

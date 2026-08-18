@@ -34,7 +34,7 @@ jobs:
             echo "should-build=true" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
-          VERSION="$(node -p "require('./packages/desktop-app/package.json').version")"
+          VERSION="$(node -p "require('./apps/desktop/package.json').version")"
           if [[ "${REF_NAME}" == "v${VERSION}" ]]; then
             echo "should-build=true" >> "${GITHUB_OUTPUT}"
           else
@@ -170,10 +170,10 @@ jobs:
       # 残留的旧版本 latest*.yml 会让合并与发布脚本读到多个版本直接失败。
       - name: Clean previous release artifacts
         shell: bash
-        run: rm -rf packages/desktop-app/release
+        run: rm -rf apps/desktop/release
 
       - name: Build updater artifacts
-        working-directory: packages/desktop-app
+        working-directory: apps/desktop
         env:
           VETTA_UPDATE_PROVIDER: ${{ env.RELEASE_TARGET == 'r2' && 'generic' || 'github' }}
           VETTA_UPDATE_URL: ${{ vars.VETTA_UPDATE_URL }}
@@ -183,12 +183,12 @@ jobs:
 
       - name: Verify platform updater artifacts
         if: matrix.verify != ''
-        working-directory: packages/desktop-app
+        working-directory: apps/desktop
         run: bun run ${{ matrix.verify }}
 
       - name: Name macOS update metadata per architecture
         if: matrix.macArch != ''
-        working-directory: packages/desktop-app
+        working-directory: apps/desktop
         shell: bash
         run: mv release/latest-mac.yml "release/latest-mac-${{ matrix.macArch }}.yml"
 
@@ -199,12 +199,12 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           path: |
-            packages/desktop-app/release/*.AppImage
-            packages/desktop-app/release/*.blockmap
-            packages/desktop-app/release/*.dmg
-            packages/desktop-app/release/*.exe
-            packages/desktop-app/release/*.zip
-            packages/desktop-app/release/latest*.yml
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.blockmap
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.zip
+            apps/desktop/release/latest*.yml
 
   publish-r2:
     name: publish R2
@@ -233,14 +233,14 @@ jobs:
         with:
           pattern: desktop-*
           merge-multiple: true
-          path: packages/desktop-app/release
+          path: apps/desktop/release
 
       - name: Merge macOS update metadata
-        working-directory: packages/desktop-app
+        working-directory: apps/desktop
         run: bun run merge:updates:mac
 
       - name: Publish artifacts before metadata
-        working-directory: packages/desktop-app
+        working-directory: apps/desktop
         env:
           VETTA_R2_ACCOUNT_ID: ${{ secrets.VETTA_R2_ACCOUNT_ID }}
           VETTA_R2_ACCESS_KEY_ID: ${{ secrets.VETTA_R2_ACCESS_KEY_ID }}
@@ -279,10 +279,10 @@ jobs:
         with:
           pattern: desktop-*
           merge-multiple: true
-          path: packages/desktop-app/release
+          path: apps/desktop/release
 
       - name: Merge macOS update metadata
-        working-directory: packages/desktop-app
+        working-directory: apps/desktop
         run: bun run merge:updates:mac
 
       - name: Publish release after all assets are ready
@@ -290,7 +290,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          VERSION="$(node -p "require('./packages/desktop-app/package.json').version")"
+          VERSION="$(node -p "require('./apps/desktop/package.json').version")"
           TAG="v${VERSION}"
           if gh release view "${TAG}" >/dev/null 2>&1; then
             IS_DRAFT="$(gh release view "${TAG}" --json isDraft --jq .isDraft)"
@@ -302,6 +302,6 @@ jobs:
           else
             gh release create "${TAG}" --draft --generate-notes --title "Vetta ${VERSION}"
           fi
-          find packages/desktop-app/release -maxdepth 1 -type f -print0 \
+          find apps/desktop/release -maxdepth 1 -type f -print0 \
             | xargs -0 gh release upload "${TAG}" --clobber
           gh release edit "${TAG}" --draft=false

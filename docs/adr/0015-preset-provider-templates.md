@@ -4,7 +4,7 @@
 
 为让普通用户「免配置、只填 key 就能用大模型」，新增**预设模板**机制：服务端维护一份 provider 模板目录（`baseUrl`、模型列表与能力参数、`api` 类型、图标 symbol，**不含 key**），客户端公开免登录拉取（新接口 `/providers/templates.json`）。用户填入**自己的 key**，请求**直连服务商原站**（BYOK），服务端不碰 key、不转发流量、不计费——与现有[远程网关](./0004-im-gateway-collapses-to-default-conversation.md)（JWT 代理转发、服务端计费）是两条独立并存的链路，术语上刻意不复用 "remote"。
 
-**持久化用 snapshot-on-key**：用户给某模板填 key 的那一刻，模板被落成本地 `~/.vetta/agent/models.json` 的一个普通 provider 条目（带 `apiKey`），打标 `source:"template"` + `templateId`。由此 `getAvailable()` / `ModelSelector` / 离线 fallback 全部复用既有 model-registry 机制；coding-agent 无需感知模板，仅让其 `ProviderConfigSchema` 容忍 `source`/`templateId`/`icon` 字段即可共享同一份 models.json。fetch / 合并 / 写回只发生在 desktop-app main 进程。
+**持久化用 snapshot-on-key**：用户给某模板填 key 的那一刻，模板被落成本地 `~/.vetta/agent/models.json` 的一个普通 provider 条目（带 `apiKey`），打标 `source:"template"` + `templateId`。由此 `getAvailable()` / `ModelSelector` / 离线 fallback 全部复用既有 model-registry 机制；coding-agent 无需感知模板，仅让其 `ProviderConfigSchema` 容忍 `source`/`templateId`/`icon` 字段即可共享同一份 models.json。fetch / 合并 / 写回只发生在 desktop main 进程。
 
 **更新语义为「在线合并 / 离线回退快照」**：每次 fetch 成功用服务端最新 url/模型/参数覆写 `source:"template"` 的本地条目（只保留用户 `apiKey`）；服务端删除该模板或 fetch 失败时，本地快照照常可用。兼得「服务端能修正错误配置/推送新模型」与「下线/离线不影响存量用户」。
 

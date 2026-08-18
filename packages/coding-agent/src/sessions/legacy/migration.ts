@@ -1,16 +1,12 @@
-import { createHash } from "node:crypto";
-import { readFile, realpath } from "node:fs/promises";
-import { resolve } from "node:path";
 import {
 	CONVERSATION_STORAGE_ERROR_CODES,
 	ConversationOwnershipConflictError,
 	ConversationStorageError,
 	LegacySessionImportError,
 	type LegacySessionImportIssueCode,
-	migrateLegacySessionToV2,
-} from "@vetta/runtime-node/conversation";
+} from "@vetta/runtime-storage/conversation";
 import { normalizeCodingAgentLegacySessionEntry } from "./entry-normalizer.js";
-import { acquireLegacySessionFormatLease } from "./lease.js";
+import type { LegacySessionMigrationHost } from "./host-contracts.js";
 
 export type CodingAgentLegacySessionIncompatibilityCode =
 	| "session_corrupt"
@@ -44,9 +40,10 @@ export type CodingAgentLegacySessionMigration =
 export async function migrateCodingAgentLegacySession(
 	sourcePath: string,
 	targetRootDir: string,
+	host: LegacySessionMigrationHost,
 ): Promise<CodingAgentLegacySessionMigration> {
-	const canonicalSourcePath = await realpath(resolve(sourcePath));
-	const lease = acquireLegacySessionFormatLease(canonicalSourcePath);
+	const canonicalSourcePath = await host.canonicalize(sourcePath);
+	const lease = host.acquireLease(canonicalSourcePath);
 	if (lease.kind === "locked") {
 		throw new ConversationOwnershipConflictError(canonicalSourcePath, lease.lockPath, {
 			token: "legacy-session-lock",
@@ -57,10 +54,10 @@ export async function migrateCodingAgentLegacySession(
 	}
 
 	try {
-		const sourceContent = await readFile(canonicalSourcePath);
-		const targetSessionId = deterministicTargetSessionId(canonicalSourcePath, sourceContent);
+		const sourceContent = await host.readBytes(canonicalSourcePath);
+		const targetSessionId = `legacy-import-${host.digest([canonicalSourcePath, sourceContent])}`;
 		try {
-			const result = await migrateWithConflictRecovery(canonicalSourcePath, targetRootDir, targetSessionId);
+			const result = await migrateWithConflictRecovery(host, canonicalSourcePath, targetRootDir, targetSessionId);
 			return {
 				kind: "greenfield",
 				status: result.created ? "migrated" : "reused",
@@ -77,17 +74,27 @@ export async function migrateCodingAgentLegacySession(
 	}
 }
 
-async function migrateWithConflictRecovery(sourcePath: string, targetRootDir: string, targetSessionId: string) {
+async function migrateWithConflictRecovery(
+	host: LegacySessionMigrationHost,
+	sourcePath: string,
+	targetRootDir: string,
+	targetSessionId: string,
+) {
 	try {
-		return await migrateToTarget(sourcePath, targetRootDir, targetSessionId);
+		return await migrateToTarget(host, sourcePath, targetRootDir, targetSessionId);
 	} catch (error) {
 		if (!isTargetConflict(error)) throw error;
-		return migrateToTarget(sourcePath, targetRootDir, `${targetSessionId}-recovery`);
+		return migrateToTarget(host, sourcePath, targetRootDir, `${targetSessionId}-recovery`);
 	}
 }
 
-function migrateToTarget(sourcePath: string, targetRootDir: string, targetSessionId: string) {
-	return migrateLegacySessionToV2({
+function migrateToTarget(
+	host: LegacySessionMigrationHost,
+	sourcePath: string,
+	targetRootDir: string,
+	targetSessionId: string,
+) {
+	return host.migrate({
 		sourcePath,
 		targetRootDir,
 		targetSessionId,
@@ -130,11 +137,6 @@ function classifyImportFailure(error: LegacySessionImportError): CodingAgentLega
 	}
 	if (error.analysis.issues.some((issue) => issue.code === "invalid-payload")) return "session_incompatible";
 	return "session_corrupt";
-}
-
-function deterministicTargetSessionId(sourcePath: string, sourceContent: Uint8Array): string {
-	const digest = createHash("sha256").update(sourcePath).update("\0").update(sourceContent).digest("base64url");
-	return `legacy-import-${digest}`;
 }
 
 function isNotRepresentable(error: unknown): error is ConversationStorageError {

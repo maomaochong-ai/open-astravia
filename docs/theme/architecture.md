@@ -72,10 +72,10 @@ UI 抽象层负责把内部状态整理成适合渲染的 model。
 当前侧边栏已有这些 model hook：
 
 ```txt
-packages/desktop-app/src/renderer/domains/project/components/sidebar/useSidebarModel.ts
-packages/desktop-app/src/renderer/domains/project/components/sidebar/projects/panel/useProjectsPanelModel.ts
-packages/desktop-app/src/renderer/domains/project/components/sidebar/settings-menu/useSettingsMenuModel.ts
-packages/desktop-app/src/renderer/domains/project/components/sidebar/message-center/useMessageCenterModel.ts
+apps/desktop/src/renderer/domains/project/components/sidebar/useSidebarModel.ts
+apps/desktop/src/renderer/domains/project/components/sidebar/projects/panel/useProjectsPanelModel.ts
+apps/desktop/src/renderer/domains/project/components/sidebar/settings-menu/useSettingsMenuModel.ts
+apps/desktop/src/renderer/domains/project/components/sidebar/message-center/useMessageCenterModel.ts
 ```
 
 model hook 对外提供：
@@ -94,7 +94,7 @@ UI 实现层只负责渲染和组合。默认主题也是 UI 实现层。
 侧边栏默认 UI 当前位于：
 
 ```txt
-packages/desktop-app/src/renderer/domains/project/components/sidebar/
+apps/desktop/src/renderer/domains/project/components/sidebar/
 ```
 
 拆分原则是按 UI 区域和可组合部件拆，而不是按业务流程堆在单文件里。
@@ -104,7 +104,7 @@ UI 实现层需要区分两类组件：
 ```txt
 Connected container
   调用 SDK hook 或应用内部 hook，负责取 model 和接入 registry。
-  留在 desktop-app 内部，不作为主题复用的首选组件。
+  留在 desktop 内部，不作为主题复用的首选组件。
 
 Props-driven view
   只通过 props 接收 model、actions、className/classNames。
@@ -221,7 +221,7 @@ Theme Page 用于主题新增自己的页面，而不是替换宿主已有页面
 /theme/$themeId/$pageId
 ```
 
-主题不能向 TanStack Router 动态注入任意路由，也不能覆盖 `/settings`、`/skills`、`/automation` 等宿主页面路径。这样可以保持 router、权限、全局浮层和错误回退仍由 desktop-app 管理。
+主题不能向 TanStack Router 动态注入任意路由，也不能覆盖 `/settings`、`/skills`、`/automation` 等宿主页面路径。这样可以保持 router、权限、全局浮层和错误回退仍由 desktop 管理。
 
 页面覆盖范围由 `layout` 受控声明：
 
@@ -270,7 +270,7 @@ Component override 的 props 必须与默认 fallback 组件兼容。需要作�
 
 主题需要根据当前页面做视觉判断或受控导航时，应使用 `@vetta/theme-sdk` 暴露的 `useThemeRouteModel()`。它只返回稳定路由语义，例如 `pathname` 和 `area`，不暴露 TanStack Router 实例、route match、内部 params 或 search。
 
-`area` 适合主题判断页面场景，例如给 `automation`、`batchTasks`、`knowledgeBase`、`skills` 等宿主页面添加主内容背景。`navigate` 只接受 desktop-app 明确允许的目标，不支持任意路径跳转。主题不应直接 import router，也不应通过 `window.location` 或 body class 反推业务状态。
+`area` 适合主题判断页面场景，例如给 `automation`、`batchTasks`、`knowledgeBase`、`skills` 等宿主页面添加主内容背景。`navigate` 只接受 desktop 明确允许的目标，不支持任意路径跳转。主题不应直接 import router，也不应通过 `window.location` 或 body class 反推业务状态。
 
 ### Theme Module
 
@@ -351,7 +351,7 @@ packages/theme-ui/
 
 `@vetta/theme-ui` 是可选依赖，主题可以复用它，也可以完全自定义 UI。新增可复用组件的具体标准见 [组件设计要求](./component-guidelines.md)。
 
-进入 `@vetta/theme-ui` 或官方默认 UI 包的组件应优先是 props-driven view。调用 SDK hook 的 connected container 留在 desktop-app，作为应用默认入口和 host adapter 的一部分。
+进入 `@vetta/theme-ui` 或官方默认 UI 包的组件应优先是 props-driven view。调用 SDK hook 的 connected container 留在 desktop，作为应用默认入口和 host adapter 的一部分。
 
 SDK hook 必须是 facade。真实实现由应用通过 `ThemeHostProvider` 注入：
 
@@ -369,7 +369,7 @@ SDK hook 必须是 facade。真实实现由应用通过 `ThemeHostProvider` 注�
 import { useSidebarModel } from "@vetta/theme-sdk/sidebar";
 ```
 
-但 SDK 内部不直接 import desktop-app 的 store、router、IPC 或 domain 私有 hook。
+但 SDK 内部不直接 import desktop 的 store、router、IPC 或 domain 私有 hook。
 
 ## 边界
 
@@ -379,7 +379,7 @@ import { useSidebarModel } from "@vetta/theme-sdk/sidebar";
 - 直接调用 `window.vetta.*`。
 - 复制删除、登录、导入、导航等业务逻辑。
 - 绕过 i18n。
-- 绕过 desktop-app 的 `DESIGN.md` 约束。
+- 绕过 desktop 的 `DESIGN.md` 约束。
 
 主题可以：
 

@@ -105,7 +105,7 @@ RPC transport 会并发启动两个 handler，但先收到的 `switch_session` �
 
 ## 验证结果
 
-- `packages/cli-app/test/agent-runtime-session-replacement-admission-differential.test.ts`
+- `apps/cli-host/test/agent-runtime-session-replacement-admission-differential.test.ts`
   - 5 项测试通过；
   - Legacy 与 Greenfield 五组观察完全一致。
 - 本轮未修改生产代码，因此没有为已经正确的实现制造额外抽象。

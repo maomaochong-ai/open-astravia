@@ -26,6 +26,7 @@ export type {
 export type { SettingsError, SettingsLifecyclePort } from "./contracts/settings-lifecycle.js";
 export type { SettingsStoragePort } from "./contracts/settings-storage.js";
 export { MemorySettingsStorage } from "./storage/memory-settings-storage.js";
+export type { HostSettingsDefaults } from "./views/host-settings.js";
 
 export type SettingsRuntime = SettingsRuntimeContract;
 

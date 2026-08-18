@@ -106,14 +106,14 @@ Greenfield 的 Extension `setModel()` 已经能调用 Runtime Model Controller�
 
 ```text
 bunx vitest --run（coding-agent 定向 12 项）
-bunx vitest --run test/greenfield-im-runtime-host.test.ts（cli-app 16 项）
+bunx vitest --run test/greenfield-im-runtime-host.test.ts（cli-host 16 项）
 bun run check:quick
 bun run check:types
 bun run check
 git diff --check
 ```
 
-还尝试运行了 coding-agent 与 cli-app 的完整包测试。与本轮直接相关的测试均通过；完整测试集仍存在
+还尝试运行了 coding-agent 与 cli-host 的完整包测试。与本轮直接相关的测试均通过；完整测试集仍存在
 当前工作树和 Windows 环境中的既有失败，包括路径分隔符、旧命令文案、模型 fixture、并发超时和
 历史 mock 缺失。本轮唯一直接相关的 Host Bootstrap 精确对象断言已随新增诊断字段修正并重新通过。
 

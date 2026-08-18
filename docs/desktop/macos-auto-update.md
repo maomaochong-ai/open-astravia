@@ -201,10 +201,10 @@ scripts/release-mac.sh local --version 0.5.62
 # 装 release/ 里的 DMG 到 /Applications
 
 # 2. 起分发服务（另开终端，保持运行）
-bun run --cwd packages/desktop-app serve:updates:local
+bun run --cwd apps/desktop serve:updates:local
 
 # 3. 播种差分基线（第一次需要，之后 electron-updater 会自动维护）
-cp packages/desktop-app/release/Vetta-0.5.62-arm64-mac.zip ~/Library/Caches/vetta-updater/update.zip
+cp apps/desktop/release/Vetta-0.5.62-arm64-mac.zip ~/Library/Caches/vetta-updater/update.zip
 
 # 4. 改点东西，出下一版
 scripts/release-mac.sh local --version 0.5.63
@@ -236,7 +236,7 @@ security find-identity -v -p codesigning        # 期望 1 valid identity
 与 Windows 同构，注意同一个坑：**构建期变量走 `.env.development`，发布期变量必须 export 到 Shell**（原因见 `windows-auto-update.md` §7.1）。
 
 ```dotenv
-# packages/desktop-app/.env.development
+# apps/desktop/.env.development
 VETTA_UPDATE_PROVIDER=generic
 VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
 ```
@@ -256,7 +256,7 @@ export VETTA_REQUIRE_MAC_SIGNATURE=1
 与 Windows 一样用 `VETTA_DESKTOP_BUILD_VERSION` 覆盖版本号，不改 `package.json`、不打 tag：
 
 ```bash
-cd packages/desktop-app
+cd apps/desktop
 rm -rf release                                  # 残留清单会让发布脚本判定版本不唯一
 VETTA_DESKTOP_BUILD_VERSION=0.5.60 bun run dist:mac:arm64
 VETTA_REQUIRE_MAC_SIGNATURE=1 bun run verify:updates:mac
@@ -371,7 +371,7 @@ APPLE_API_ISSUER=<uuid>
 
 ```text
 tag v<version>
-  -> 校验 tag 名与 packages/desktop-app/package.json 版本一致
+  -> 校验 tag 名与 apps/desktop/package.json 版本一致
   -> 读取签名凭据，打开 VETTA_REQUIRE_MAC_SIGNATURE=1
   -> 清理上一轮的 release/（自持 runner 复用工作目录）
   -> dist:mac:<arch>
@@ -498,7 +498,7 @@ Vetta.app/Contents/Resources/vendor/python/cpython-...tar.gz/cpython-...tar/pyth
 
 **原因**：内置运行时曾统一以原始 `tar.gz` 形态打包（为了避免 Inno 每次重建数千个不变小文件）。electron-builder 只签得到文件系统上可见的二进制，签不进归档内部，于是 `python3.13`、`libpython3.13.dylib`、`libtcl9.0.dylib` 和一堆 `.so` 全部裸奔。
 
-**修复**：`prepare-pack.js` 按目标平台分支——darwin 内置**解压目录**，Windows / Linux 保留归档。解压后 osx-sign 会像处理 `im-gateway`、`cli-app` 那样逐个签名（可用 `codesign -dvv` 验证它们带 `flags=0x10000(runtime)`）。`RuntimeManager.seedFromVendor` 相应地优先使用解压目录，找不到才回退归档解压。
+**修复**：`prepare-pack.js` 按目标平台分支——darwin 内置**解压目录**，Windows / Linux 保留归档。解压后 osx-sign 会像处理 `im-gateway`、`cli-host` 那样逐个签名（可用 `codesign -dvv` 验证它们带 `flags=0x10000(runtime)`）。`RuntimeManager.seedFromVendor` 相应地优先使用解压目录，找不到才回退归档解压。
 
 代价是 macOS 的 `.app` 体积增大，Squirrel 暂存也更慢——5.3 的 600 秒兜底超时正是为此留的余量。
 
@@ -506,7 +506,7 @@ Vetta.app/Contents/Resources/vendor/python/cpython-...tar.gz/cpython-...tar/pyth
 
 ### 10.7 公证返回 Invalid（其它嵌套二进制）
 
-产物里有没签到的嵌套 Mach-O 二进制。`Contents/Resources/` 下带了 `im-gateway`、`cli-app`、`vendor/node`、`vendor/python`、`appshot` 等一堆可执行文件，用 `xcrun notarytool log <submissionId>` 看具体路径。排查时可先 `VETTA_SKIP_VENDOR=1` 摘掉内置运行时缩小范围。
+产物里有没签到的嵌套 Mach-O 二进制。`Contents/Resources/` 下带了 `im-gateway`、`cli-host`、`vendor/node`、`vendor/python`、`appshot` 等一堆可执行文件，用 `xcrun notarytool log <submissionId>` 看具体路径。排查时可先 `VETTA_SKIP_VENDOR=1` 摘掉内置运行时缩小范围。
 
 ## 11. 日志与诊断
 
@@ -597,15 +597,15 @@ install failed
 
 | 文件 | 职责 |
 |---|---|
-| `packages/desktop-app/src/main/updater.ts` | 按平台装配引擎；macOS 注入原生 `autoUpdater` 事件源 |
-| `packages/desktop-app/src/main/updater-service.ts` | 平台无关的状态机、自动下载、重试、停滞与暂存超时 |
-| `packages/desktop-app/src/main/updater-engine.ts` | electron-updater 适配、进度压缩、Squirrel.Mac 暂存等待 |
-| `packages/desktop-app/scripts/prepare-pack.js` | `resolveMacSigning()` 决定签名开关；生成 electron-builder 配置 |
-| `packages/desktop-app/scripts/verify-mac-update.mjs` | 发布前清单、哈希、签名、公证票据校验 |
-| `packages/desktop-app/scripts/merge-mac-update-metadata.mjs` | 合并双架构 `latest-mac-<arch>.yml` |
+| `apps/desktop/src/main/updater.ts` | 按平台装配引擎；macOS 注入原生 `autoUpdater` 事件源 |
+| `apps/desktop/src/main/updater-service.ts` | 平台无关的状态机、自动下载、重试、停滞与暂存超时 |
+| `apps/desktop/src/main/updater-engine.ts` | electron-updater 适配、进度压缩、Squirrel.Mac 暂存等待 |
+| `apps/desktop/scripts/prepare-pack.js` | `resolveMacSigning()` 决定签名开关；生成 electron-builder 配置 |
+| `apps/desktop/scripts/verify-mac-update.mjs` | 发布前清单、哈希、签名、公证票据校验 |
+| `apps/desktop/scripts/merge-mac-update-metadata.mjs` | 合并双架构 `latest-mac-<arch>.yml` |
 | `scripts/release-mac.sh` | 构建 + 校验 + 合并 + 发布的一键入口，含全部前置校验 |
-| `packages/desktop-app/scripts/publish-update-artifacts-r2.mjs` | R2 原子发布、缓存头、幂等校验（跨平台共用） |
-| `packages/desktop-app/build/entitlements.mac.plist` | hardened runtime entitlements |
+| `apps/desktop/scripts/publish-update-artifacts-r2.mjs` | R2 原子发布、缓存头、幂等校验（跨平台共用） |
+| `apps/desktop/build/entitlements.mac.plist` | hardened runtime entitlements |
 | `docs/deploy/apple-code-signing.md` | 证书申请、公证凭据、注入与故障排查 |
 | `.github/workflows/desktop-release.yml` | 三平台构建及 R2/GitHub Release 发布编排 |
 

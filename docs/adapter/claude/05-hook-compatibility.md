@@ -251,7 +251,7 @@ packages/ecosystem-adapter/src/claude-code/hooks/
 
 - `ecosystem-adapter`：Claude JSON 解析、matcher、wire contract、工具名映射和诊断。
 - `coding-agent`：在真实生命周期节点发出事件，应用 block/context 决策，并处理 `Stop` 重入。
-- `desktop-app`：插件信任、命令权限、运行环境检测和用户可见诊断；所有文案走 i18n。
+- `desktop`：插件信任、命令权限、运行环境检测和用户可见诊断；所有文案走 i18n。
 
 命令执行继续复用通用 executor，不在 Claude adapter 内再实现一套进程管理。
 

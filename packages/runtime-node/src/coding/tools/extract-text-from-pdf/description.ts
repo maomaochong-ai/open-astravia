@@ -23,11 +23,10 @@ Limitations
   - Confidence numbers in the JSON are 0..100 but reflect a coarse mapping of CTC logits — use them for relative comparison between pages, not as a hard quality threshold.
 
 When to use
-  - You need the textual content of a scanned PDF or one whose text layer you suspect is unreliable.
+  - You need textual content from any PDF, whether it has a clean text layer or requires OCR. With prefer_text_layer=true, clean pages are extracted directly and only other pages use OCR.
   - You need a structured per-page JSON to feed downstream code (use the output file).
 
 When NOT to use
   - You need a VISUAL judgment on the page — presence/absence of seals (盖章/印章/公章), signatures, handwriting, logos, layout, watermarks, figures, color. Use \`render_pdf_page\` to produce a PNG, then \`read\` that PNG. Do NOT call this tool hoping the text output will reveal a stamp — it will not.
-  - You want to manipulate the PDF itself (merge/split/rotate/watermark/fill form). Use \`invoke_skill(name="pdf")\`.
-  - The PDF clearly has a clean text layer and you only want raw text — \`read\` plus a PDF-text-extracting tool would be cheaper.
+  - You want to manipulate the PDF itself (merge/split/rotate/watermark/fill form). Invoke a currently available skill that explicitly supports that operation; use its exact advertised name.
   - You need layout fidelity (PP-Structure / table extraction is out of scope here).`;

@@ -29,7 +29,7 @@
 改动方向：
 
 - runtime-telemetry 增加 ErrorReporter 和错误上下文；
-- desktop-app 增加 AnalyticsClient、TelemetryContext 和 Noop 实现；
+- desktop 增加 AnalyticsClient、TelemetryContext 和 Noop 实现；
 - Main 生成 appSessionId 和统一身份；
 - Preload 提供只读、强类型桥；
 - 登录、登出和账号切换统一编排。

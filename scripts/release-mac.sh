@@ -23,12 +23,12 @@
 #   ~/.config/vetta/r2-<channel>.env   R2 凭据与通道配置（local 通道不需要）
 #
 # 构建期的 VETTA_UPDATE_PROVIDER / VETTA_UPDATE_URL 由本脚本直接注入，
-# 因此不依赖 packages/desktop-app/.env.development 里有没有配这两项。
+# 因此不依赖 apps/desktop/.env.development 里有没有配这两项。
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DESKTOP_DIR="${REPO_ROOT}/packages/desktop-app"
+DESKTOP_DIR="${REPO_ROOT}/apps/desktop"
 SIGNING_ENV="${HOME}/.config/vetta/mac-signing.env"
 # 一切都以脚本自身位置为准，不依赖调用者的 cwd。
 cd "${REPO_ROOT}"
@@ -260,7 +260,7 @@ if [[ "${CHANNEL}" == "local" ]]; then
 	echo
 	echo "下一步："
 	echo "  1. 起分发服务（另开一个终端，必须保持运行）："
-	echo "       bun run --cwd packages/desktop-app serve:updates:local"
+	echo "       bun run --cwd apps/desktop serve:updates:local"
 	echo "  2. 首次：装 release/ 里的 DMG 到 /Applications，然后播种差分基线："
 	echo "       cp release/Vetta-${VERSION}-arm64-mac.zip ~/Library/Caches/vetta-updater/update.zip"
 	echo "  3. 再构建一个更高版本，从终端启动旧版验证更新："
