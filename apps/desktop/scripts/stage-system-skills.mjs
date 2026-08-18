@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const desktopAppDir = join(import.meta.dirname, "..");
@@ -44,7 +44,13 @@ export function stageSystemSkills(targetDir, logPrefix = "system-skills") {
 		}
 	}
 
+	// lite 构建（VETTA_CLOUD_ENABLED=false）连文件都不进包：requiresCloud 技能的
+	// prompt/脚本属于云服务形态，开源安装包里不该出现。与主进程运行时过滤
+	// （builtin-skills.ts 的同名标记）共用 manifest 这一个事实源。
+	const cloudEnabled = process.env.VETTA_CLOUD_ENABLED !== "false";
+
 	let count = 0;
+	const stagedManifest = {};
 	for (const [name, rawEntry] of Object.entries(manifest)) {
 		if (!rawEntry || typeof rawEntry !== "object" || Array.isArray(rawEntry)) {
 			throw new Error(`[${logPrefix}] 内置 Skill 清单条目格式无效：${name}`);
@@ -53,6 +59,11 @@ export function stageSystemSkills(targetDir, logPrefix = "system-skills") {
 		if (entry.name !== name) {
 			throw new Error(`[${logPrefix}] 内置 Skill 清单 name 与键不一致：${name}`);
 		}
+		if (!cloudEnabled && entry.requiresCloud === true) {
+			console.log(`[${logPrefix}] skipped ${name} (requiresCloud, lite build)`);
+			continue;
+		}
+		stagedManifest[name] = entry;
 		if (entry.enabled === false) continue;
 
 		const source = join(skillPresetsDir, name);
@@ -67,6 +78,7 @@ export function stageSystemSkills(targetDir, logPrefix = "system-skills") {
 	if (count === 0) {
 		throw new Error(`[${logPrefix}] ${manifestFileName} 中没有启用的内置 Skill`);
 	}
-	cpSync(join(skillPresetsDir, manifestFileName), join(targetDir, manifestFileName));
+	// 写入过滤后的清单而不是原样复制：lite 包的清单里也不该出现被裁掉的条目。
+	writeFileSync(join(targetDir, manifestFileName), `${JSON.stringify(stagedManifest, null, 2)}\n`);
 	return count;
 }
