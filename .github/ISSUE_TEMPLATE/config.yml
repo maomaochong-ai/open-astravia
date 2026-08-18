@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/openvetta/open-vetta/discussions/new?category=q-a
+    about: How do I use X? Why does Y behave like that? Q&A stays searchable for the next person.
+  - name: Discuss an idea
+    url: https://github.com/openvetta/open-vetta/discussions/new?category=ideas
+    about: A half-formed idea belongs in Discussions first, before a formal feature request.
+  - name: Show what you made
+    url: https://github.com/openvetta/open-vetta/discussions/new?category=show-and-tell
+    about: Share a plugin, skill, theme, or workflow built with Open Vetta.
+  - name: Report a security vulnerability
+    url: https://github.com/openvetta/open-vetta/security/advisories/new
+    about: Do not file public issues for security reports. Use a private advisory.

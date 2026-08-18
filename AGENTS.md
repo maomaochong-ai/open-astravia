@@ -6,7 +6,7 @@
 
 ## 项目概览
 
-Vetta 是一套 AI Agent 产品栈。**本仓库是客户端侧的开源仓库**：TypeScript/Bun monorepo、Electron 桌面应用、Kotlin 移动端、Next.js 文档站，以及 Go 写的 IM 旁路网关。
+Vetta 是一套 AI Agent 产品栈。**本仓库是客户端侧的开源仓库**：TypeScript/Bun monorepo、Electron 桌面应用、Kotlin 移动端、Next.js 文档站，以及 Go 写的 IM 旁路网关。面向外部贡献者的入口是 [`CONTRIBUTING.md`](CONTRIBUTING.md)，不要把本文件当成对外贡献指南。
 
 服务端（业务 API、管理控制台、官网）在独立的私有仓库 `vetta-serv`，不在此处。涉及计费、配额、订阅、权益的决策文档（ADR-0016/0017/0019/0038/0039/0051/0052/0056）同样只存在于那边——本仓库的 `docs/adr/` 会有对应的编号空洞，这是刻意的，见 `docs/adr/README.md`。
 

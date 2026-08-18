@@ -19,7 +19,10 @@
   <b>English</b> ·
   <a href="README.zh-CN.md">简体中文</a> ·
   <a href="https://www.openvetta.com">Website</a> ·
-  <a href="https://www.openvetta.com/download">Download</a>
+  <a href="https://www.openvetta.com/download">Download</a> ·
+  <a href="https://docs.openvetta.com">Docs</a> ·
+  <a href="https://github.com/openvetta/open-vetta/discussions">Discussions</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
 ---
@@ -57,6 +60,12 @@ every environment variable are documented in
 <p align="center">
   <img src="docs/assets/screenshot.png" alt="Open Vetta desktop app">
 </p>
+
+### Quick start
+
+- **Use it:** [Download](https://www.openvetta.com/download) · product guides on [docs.openvetta.com](https://docs.openvetta.com)
+- **Hack on it:** [`QUICKSTART.md`](QUICKSTART.md) — `bun install`, then `cd apps/desktop && bun run dev`
+- **Ask or show work:** [GitHub Discussions](https://github.com/openvetta/open-vetta/discussions)
 
 ---
 
@@ -302,6 +311,8 @@ configure anything.
 
 ## Installation
 
+Clone-and-run steps, data directories, and the checks you will actually use are in [`QUICKSTART.md`](QUICKSTART.md).
+
 ### Download
 
 Installers for macOS, Windows and Linux are distributed from our CDN:
@@ -526,27 +537,40 @@ configured; if that matters to you, build from source.
 
 ---
 
+## Community
+
+The project is maintained. Questions, ideas, and “is this still developed?” belong in
+[Discussions](https://github.com/openvetta/open-vetta/discussions), not a blank issue.
+
+| Channel | Use it for |
+|---|---|
+| [Discussions](https://github.com/openvetta/open-vetta/discussions) | Q&A, ideas, show and tell, announcements |
+| [Issues](https://github.com/openvetta/open-vetta/issues/new/choose) | Reproducible bugs and concrete feature requests |
+| [Security advisories](https://github.com/openvetta/open-vetta/security/advisories/new) | Private vulnerability reports — never a public issue |
+| [docs.openvetta.com](https://docs.openvetta.com) | Product and plugin documentation |
+
 ## Contributing
 
+The highest-leverage contributions are usually one folder. Pick a row and open a PR against **`dev`**.
+
+| Want to ship… | Start here |
+|---|---|
+| A plugin | [`docs/plugin/getting-started.md`](docs/plugin/getting-started.md) |
+| A skill or marketplace ability | [`docs/open-marketplace.md`](docs/open-marketplace.md) |
+| A theme | [Theme guide](https://docs.openvetta.com/themes/getting-started/) |
+| Docs or translation | [`apps/docs-site/content/docs/`](apps/docs-site/content/docs/) |
+| A bug fix or product change | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+
 ```bash
-bun run check              # Biome + typecheck + architecture guards (required before a PR)
-bun run check:quick        # fast feedback on changed files (no typecheck)
-bun run test:unit          # core library unit tests
-bun run test:pkg ai        # single-package tests; test:pkg --list shows what's testable
-bun run test:changed       # only packages affected by your changes
+bun run check:quick        # Biome + architecture guards on changed files
+bun run check              # lint + types + guards (required before a PR)
+bun run test:pkg ai        # one package; test:pkg --list shows names
+bun run test:changed       # only packages touched by your diff
 ```
 
-Conventions worth knowing:
-
-- **Bun** (`bun` / `bunx`) is the package manager, everywhere.
-- No `any` in TypeScript unless genuinely necessary, and no inline `import()` used to obtain
-  types. On the Go side, run `make check` after changes.
-- All user-facing copy goes through i18n. Never hardcode strings.
-- Commit messages are written in Chinese; reference issues with `fixes #N` / `closes #N`.
-- Do not run `bun run dev` / `bun run build` / `bun test` directly.
-
-Full rules in [AGENTS.md](AGENTS.md); the layered quality gates are described in
-[docs/dev/quality-gates.md](docs/dev/quality-gates.md).
+Setup, the PR bar, and what we will not merge: [CONTRIBUTING.md](CONTRIBUTING.md)
+([中文](CONTRIBUTING.zh-CN.md)). Agent and package-boundary rules: [AGENTS.md](AGENTS.md).
+Quality gates: [docs/dev/quality-gates.md](docs/dev/quality-gates.md).
 
 ### Versioning and Releases
 
@@ -563,6 +587,10 @@ released sections are never edited.
 
 ### Documentation
 
+- [QUICKSTART.md](QUICKSTART.md) — clone, run the desktop app, run the docs site
+- [CONTRIBUTING.md](CONTRIBUTING.md) — contribution map and PR bar
+- [SECURITY.md](SECURITY.md) — private vulnerability reporting
+- [docs.openvetta.com](https://docs.openvetta.com) — public product and plugin docs
 - [docs/plugin/README.md](docs/plugin/README.md) — plugin developer handbook (11 documents)
 - [docs/adr/](docs/adr) — architecture decision records
 - [docs/capabilities/README.md](docs/capabilities/README.md) — foundation/domain capabilities and the permission layer

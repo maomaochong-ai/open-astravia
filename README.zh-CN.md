@@ -19,7 +19,10 @@
   <a href="README.md">English</a> ·
   <b>简体中文</b> ·
   <a href="https://www.openvetta.com">官网</a> ·
-  <a href="https://www.openvetta.com/download">下载</a>
+  <a href="https://www.openvetta.com/download">下载</a> ·
+  <a href="https://docs.openvetta.com">文档</a> ·
+  <a href="https://github.com/openvetta/open-vetta/discussions">Discussions</a> ·
+  <a href="CONTRIBUTING.zh-CN.md">参与贡献</a>
 </p>
 
 ---
@@ -53,6 +56,12 @@ Open Vetta 运行在你指定的环境中。你可以连接自己的模型、工
 <p align="center">
   <img src="docs/assets/screenshot.png" alt="Open Vetta 桌面应用界面">
 </p>
+
+### 快速开始
+
+- **直接使用：** [下载](https://www.openvetta.com/download) · 产品指南见 [docs.openvetta.com](https://docs.openvetta.com)
+- **改代码：** [`QUICKSTART.zh-CN.md`](QUICKSTART.zh-CN.md) — `bun install`，然后 `cd apps/desktop && bun run dev`
+- **提问或展示：** [GitHub Discussions](https://github.com/openvetta/open-vetta/discussions)
 
 ---
 
@@ -283,6 +292,8 @@ SDK 与构建工具位于 [packages/plugins](packages/plugins)。
 
 ## 安装
 
+克隆后如何跑起来、数据目录、以及实际会用到的检查命令见 [`QUICKSTART.zh-CN.md`](QUICKSTART.zh-CN.md)。
+
 ### 下载安装包
 
 macOS、Windows、Linux 安装包由我们的 CDN 分发：
@@ -493,25 +504,40 @@ MCP 配置示例：
 
 ---
 
+## 社区
+
+项目在持续维护。提问、想法、「后面还做不做」请走
+[Discussions](https://github.com/openvetta/open-vetta/discussions)，不要开空白 Issue。
+
+| 渠道 | 用来做什么 |
+|---|---|
+| [Discussions](https://github.com/openvetta/open-vetta/discussions) | 问答、想法、作品展示、公告 |
+| [Issues](https://github.com/openvetta/open-vetta/issues/new/choose) | 可复现的缺陷和已经说清的功能请求 |
+| [Security advisories](https://github.com/openvetta/open-vetta/security/advisories/new) | 私下报告漏洞，不要开公开 Issue |
+| [docs.openvetta.com](https://docs.openvetta.com) | 产品与插件文档 |
+
 ## 参与开发
 
+最有杠杆的贡献通常是一个目录。选一行，PR 发到 **`dev`**。
+
+| 想交什么 | 从这里开始 |
+|---|---|
+| 插件 | [`docs/plugin/getting-started.md`](docs/plugin/getting-started.md) |
+| Skill 或市场能力 | [`docs/open-marketplace.md`](docs/open-marketplace.md) |
+| 主题 | [主题指南](https://docs.openvetta.com/themes/getting-started/) |
+| 文档或翻译 | [`apps/docs-site/content/docs/`](apps/docs-site/content/docs/) |
+| 修 bug 或改产品 | [`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md) |
+
 ```bash
-bun run check              # Biome + 类型检查 + 架构守卫（开 PR 前必跑）
-bun run check:quick        # 改动文件的快速反馈（不含类型检查）
-bun run test:unit          # 核心库单元测试
-bun run test:pkg ai        # 单包测试；test:pkg --list 查看可测包
-bun run test:changed       # 只跑受改动影响的包
+bun run check:quick        # 对改动文件跑 Biome + 架构守卫
+bun run check              # lint + 类型 + 守卫（开 PR 前必跑）
+bun run test:pkg ai        # 单包；test:pkg --list 查看包名
+bun run test:changed       # 只跑本次 diff 触及的包
 ```
 
-约定要点：
-
-- **包管理器**统一使用 Bun（`bun` / `bunx`）。
-- TypeScript 侧禁止 `any`（除非确有必要）、禁止用于取类型的内联 `import()`；Go 侧改完必须跑 `make check`。
-- 面向用户的文案必须走 i18n，不得硬编码。
-- 提交信息使用中文；关联工单写 `fixes #N` / `closes #N`。
-- 不要直接运行 `bun run dev` / `bun run build` / `bun test`。
-
-完整规范见 [AGENTS.md](AGENTS.md)，质量门禁分层见 [docs/dev/quality-gates.md](docs/dev/quality-gates.md)。
+环境、PR 门槛和不会合并的改动见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)
+（[English](CONTRIBUTING.md)）。Agent 与包边界规则见 [AGENTS.md](AGENTS.md)。
+质量门禁见 [docs/dev/quality-gates.md](docs/dev/quality-gates.md)。
 
 ### 版本与发布
 
@@ -526,6 +552,10 @@ bun run release:minor    # API Breaking
 
 ### 文档
 
+- [QUICKSTART.zh-CN.md](QUICKSTART.zh-CN.md) — 克隆、跑桌面应用、跑文档站
+- [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md) — 贡献地图与 PR 门槛
+- [SECURITY.md](SECURITY.md) — 私下报告漏洞
+- [docs.openvetta.com](https://docs.openvetta.com) — 公开产品与插件文档
 - [docs/plugin/README.md](docs/plugin/README.md) — 插件开发手册（11 篇）
 - [docs/adr/](docs/adr) — 架构决策记录
 - [docs/capabilities/README.md](docs/capabilities/README.md) — 基础/领域能力与权限层

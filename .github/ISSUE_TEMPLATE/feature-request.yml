@@ -1,0 +1,53 @@
+name: Feature request
+description: Suggest a feature or improvement for Open Vetta.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea.
+
+        If you are still exploring scope or UX, open [Discussions → Ideas](https://github.com/openvetta/open-vetta/discussions/new?category=ideas) first. Use this form when the problem is clear enough to track.
+
+        若想法还在讨论阶段，请先走 Discussions。这里只收已经能说清问题的正式请求。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the pain or limitation, not the implementation.
+      placeholder: When I try to do X, the current flow forces me to … which makes it hard to …
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you would like
+      description: Proposed behavior, UI, or capability.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Other approaches, and why they fall short.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, related issues, or prior art in other tools.
+
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Would you be willing to contribute a PR?
+      options:
+        - "Yes, I can take this on"
+        - "Yes, with guidance"
+        - "No, just suggesting"
+    validations:
+      required: true

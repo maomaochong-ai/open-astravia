@@ -1,3 +1,4 @@
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildReminder, evaluateHookInput, formatHookOutput } from "./check-file-lines.mjs";
 
@@ -25,15 +26,19 @@ describe("Claude Code file line hook", () => {
 	});
 
 	it("checks the edited file and returns official PostToolUse context JSON", async () => {
+		// Use host path APIs: this suite also runs on Linux CI, where `C:\repo`
+		// is a relative path and `path.resolve` would prefix the workspace root.
+		const cwd = resolve("/repo");
+		const relativeFile = join("src", "large.ts");
 		const reminder = await evaluateHookInput(
 			{
-				cwd: "C:\\repo",
+				cwd,
 				hook_event_name: "PostToolUse",
 				tool_name: "Edit",
-				tool_input: { file_path: "src\\large.ts" },
+				tool_input: { file_path: relativeFile },
 			},
 			async (filePath) => {
-				expect(filePath).toBe("C:\\repo\\src\\large.ts");
+				expect(filePath).toBe(resolve(cwd, relativeFile));
 				return 900;
 			},
 		);

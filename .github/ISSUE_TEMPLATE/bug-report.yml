@@ -1,0 +1,104 @@
+name: Bug report
+description: Something is not working as expected in Open Vetta.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. A reproducible description is much faster to fix.
+
+        提交前请先搜索 [open issues](https://github.com/openvetta/open-vetta/issues?q=is%3Aissue) 和 [Discussions](https://github.com/openvetta/open-vetta/discussions)。用法问题请走 Discussions，不要开 Issue。
+
+        Before you submit:
+        - Search [open issues](https://github.com/openvetta/open-vetta/issues?q=is%3Aissue) and [Discussions](https://github.com/openvetta/open-vetta/discussions).
+        - Usage questions belong in Discussions, not here.
+        - Do not paste API keys, tokens, cookies, or private files.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched existing issues and Discussions; this is not a duplicate.
+          required: true
+        - label: I replaced placeholder text with the real behavior, steps, expected result, and version.
+          required: true
+        - label: This report does not contain secrets, tokens, or private user data.
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the real bug, not example text.
+      placeholder: When I do X, I expected Y but I see Z.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps that reliably reproduce the problem.
+      placeholder: |
+        1. Open Open Vetta
+        2. …
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Open Vetta version
+      description: Settings → General, or `apps/desktop/package.json` if you built from source.
+      placeholder: e.g. 0.5.41
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source
+    attributes:
+      label: How did you install it?
+      options:
+        - Official installer (openvetta.com)
+        - Built from source (lite)
+        - Built from source (full / VETTA_CLOUD_ENABLED)
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional)
+      description: Paste relevant console or diagnostic output. Redact secrets. Settings → General can export a diagnostics bundle; inspect it before attaching.
+      render: shell
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, plugins, marketplace sources, related issues.
