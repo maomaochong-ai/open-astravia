@@ -7,7 +7,7 @@ import {
 	recordInputContextUsed,
 } from "@shared/lib/app-monitor-events";
 import { deriveSkillNames, MultipleSceneReferencesError, prepareInputPrompt } from "@shared/lib/input-tokens";
-import { perfSendMark } from "@shared/lib/perf-send";
+import { perfSendComplete, perfSendMark } from "@shared/lib/perf-send";
 import {
 	activeInputActionIdsAtom,
 	activeSessionAtom,
@@ -96,15 +96,8 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 	defaultConversationCwdRef.current = defaultConversationCwd;
 
 	const sendMessage = useCallback(
-		async (
-			overrideText?: string,
-			options?: {
-				metadata?: Record<string, unknown>;
-				settingsAssistTabId?: string;
-				/** 插件 sendPrompt 路径：不清用户输入预测、不消费用户挂的 promptAttachment（ADR-0060）。 */
-				source?: "plugin";
-			},
-		): Promise<SendMessageResult | undefined> => {
+		async (overrideText?: string, options?: SendMessageOptions): Promise<SendMessageResult | undefined> => {
+			const interactionId = options?.interactionId;
 			// 目标会话读共享 atom（store 直读，不走 React 闭包）：openSession 同步写入
 			// activeSessionAtom，同一 tick 内「创建会话+发送」的组合仍读得到新值。不能读
 			// 实例级 activeSessionRef——useSessionManager 同时挂载多份（RootLayout /
@@ -143,7 +136,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					return next;
 				});
 			}
-			perfSendMark("sender-enter");
+			perfSendMark("sender-enter", interactionId);
 			const rawText = hasOverride ? override : inputValue.trim();
 			let preparedInput: ReturnType<typeof prepareInputPrompt>;
 			try {
@@ -206,9 +199,9 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			}
 			if (!hasOverride) {
 				// 记入本作用域历史并清草稿（含 input / skill / appshot 工作集与 map 条目）。
-				perfSendMark("clear-draft-start");
+				perfSendMark("clear-draft-start", interactionId);
 				recordSentInputAndClearDraft(rawText);
-				perfSendMark("clear-draft-end");
+				perfSendMark("clear-draft-end", interactionId);
 				setAttachedImages([]);
 				setMentionedFiles([]);
 			}
@@ -313,7 +306,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					userMsg.settingsAssistTabId = settingsAssistTabId;
 				}
 				rememberOptimisticUserMessage(session.runtimeId, userMsg, store.get(chatMessagesAtom));
-				perfSendMark("optimistic-append");
+				perfSendMark("optimistic-append", interactionId);
 				setChatMessages((prev) => [...prev, userMsg]);
 				optimisticUserMsgId = userMsg.id;
 			}
@@ -480,11 +473,17 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			promptReq.streamingBehavior = "followUp";
 			let sendResult: SendMessageResult | undefined;
 			try {
-				perfSendMark("await-plugin-host");
+				perfSendMark("await-plugin-host", interactionId);
 				await waitForPluginHostReady();
-				perfSendMark("prompt-ipc-start");
-				const outcome = await window.vetta.session.prompt(session.runtimeId, promptReq);
-				perfSendMark("prompt-ipc-end");
+				perfSendMark("prompt-ipc-start", interactionId);
+				const promptPromise = window.vetta.session.prompt(
+					session.runtimeId,
+					promptReq,
+					interactionId ? { interactionId } : undefined,
+				);
+				perfSendComplete("prompt-dispatched", interactionId);
+				const outcome = await promptPromise;
+				perfSendMark("prompt-ipc-end", interactionId);
 				if (outcome?.status === "queued") {
 					if (optimisticUserMsgId) {
 						// 以为空闲实则已在跑：消息已入 kernel 队列，撤掉抢先的乐观气泡，

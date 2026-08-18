@@ -22,6 +22,7 @@ import {
 	resolveDesktopSessionConfig,
 } from "./resolve-session-config.js";
 import { recordSessionAgentMode } from "./session-agent-mode-store.js";
+import { DesktopSessionCreationTrace } from "./session-creation-trace.js";
 import {
 	isConversationCwd,
 	readDesktopSessionHeader,
@@ -77,6 +78,10 @@ export interface RunDesktopConversationTurnOptions {
 	signal?: AbortSignal;
 }
 
+export interface DesktopConversationCreateTraceContext {
+	readonly interactionId?: string;
+}
+
 function hasRuntimeErrorCode(error: unknown, code: string): boolean {
 	return isSessionError(error) && error.code === code;
 }
@@ -116,21 +121,27 @@ export class DesktopConversationService {
 		config: SessionConfig | undefined,
 		kind: DesktopSessionKind,
 		source: DesktopConversationSource,
+		traceContext?: DesktopConversationCreateTraceContext,
 	): Promise<DesktopConversationSession> {
-		await assertSandboxAvailableForMode(config?.executionMode, async () => {
-			const desktopConfig = await readDesktopConfig();
-			return desktopConfig.defaultExecutionMode;
-		});
-		const resolvedConfig = await resolveDesktopSessionConfig(config, kind, source);
+		const trace = new DesktopSessionCreationTrace(log, traceContext?.interactionId);
 		try {
-			const result = await this.runtime.createSession(resolvedConfig.config);
+			await trace.measure("sandbox-check", () =>
+				assertSandboxAvailableForMode(config?.executionMode, async () => {
+					const desktopConfig = await readDesktopConfig();
+					return desktopConfig.defaultExecutionMode;
+				}),
+			);
+			const resolvedConfig = await trace.measure("resolve-config", () =>
+				resolveDesktopSessionConfig(config, kind, source),
+			);
+			const result = await trace.measure("runtime-create", () => this.runtime.createSession(resolvedConfig.config));
 			const sessionPath = this.runtime.getSessionPath(result.sessionId);
 			if (!sessionPath) {
 				throw new DesktopConversationError("TURN_FAILED", "Runtime did not expose the created session path.");
 			}
 			// 工作模式在这里固化：新会话写入当前默认值，历史会话补写回落值。
 			// 已有记录不覆盖，所以之后改默认值不会改写任何已存在会话。
-			await recordSessionAgentMode(sessionPath, resolvedConfig.agentMode);
+			await trace.measure("record-agent-mode", () => recordSessionAgentMode(sessionPath, resolvedConfig.agentMode));
 			monitorRuntimeSession(this.runtime, result.sessionId, "interactive");
 			log.info("session created", {
 				sessionId: result.sessionId,
@@ -148,8 +159,10 @@ export class DesktopConversationService {
 				listCwd: resolveSessionListCwd(config?.cwd ?? resolvedConfig.cwd),
 				source,
 			};
+			trace.complete({ sessionId: result.sessionId, kind, source });
 			return session;
 		} catch (error) {
+			trace.fail({ kind, source });
 			if (error instanceof DesktopConversationError) throw error;
 			if (hasRuntimeErrorCode(error, RUNTIME_ERROR_CODES.SESSION_LOCKED)) {
 				throw new DesktopConversationError("SESSION_LOCKED", "Session is locked by another process.");

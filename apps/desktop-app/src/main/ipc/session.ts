@@ -55,6 +55,7 @@ import {
 	readDesktopConfig,
 	writeDesktopConfig,
 } from "./fs.js";
+import { parseSessionTraceContext } from "./session-trace-context.js";
 import { readSettings, updateSettings } from "./settings.js";
 
 export { ensureConversationSubCwd, resolveSessionDirForCwd } from "../conversations/session-paths.js";
@@ -712,21 +713,25 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		});
 	});
 
-	ipcMain.handle(CHANNELS.CREATE, async (_event, config: SessionConfig | undefined, kind: unknown) => {
-		assertSessionKind(kind);
-		assertExecutionMode(config?.executionMode);
-		const result = await conversationService.createSession(config, kind, "interactive");
-		const effectiveCwd = result.cwd;
-		if (effectiveCwd) {
-			sessionCwdMap.set(result.sessionId, effectiveCwd);
-		}
-		// ADR-0002: 经本通道创建的即交互式 session，挂常驻通知订阅。
-		attachNotificationSub(result.sessionId, effectiveCwd);
-		// ADR-0007: 把实际 cwd（可能是「对话」per-session 子目录）返回给渲染端，
-		// 否则 activeSession.cwd 仍是用户传入的项目根，ActivityPanel 文件树会
-		// 落到项目根、看到其他 session 的子目录。
-		return { sessionId: result.sessionId, sessionPath: result.sessionPath, cwd: effectiveCwd };
-	});
+	ipcMain.handle(
+		CHANNELS.CREATE,
+		async (_event, config: SessionConfig | undefined, kind: unknown, rawTraceContext: unknown) => {
+			assertSessionKind(kind);
+			assertExecutionMode(config?.executionMode);
+			const traceContext = parseSessionTraceContext(rawTraceContext);
+			const result = await conversationService.createSession(config, kind, "interactive", traceContext);
+			const effectiveCwd = result.cwd;
+			if (effectiveCwd) {
+				sessionCwdMap.set(result.sessionId, effectiveCwd);
+			}
+			// ADR-0002: 经本通道创建的即交互式 session，挂常驻通知订阅。
+			attachNotificationSub(result.sessionId, effectiveCwd);
+			// ADR-0007: 把实际 cwd（可能是「对话」per-session 子目录）返回给渲染端，
+			// 否则 activeSession.cwd 仍是用户传入的项目根，ActivityPanel 文件树会
+			// 落到项目根、看到其他 session 的子目录。
+			return { sessionId: result.sessionId, sessionPath: result.sessionPath, cwd: effectiveCwd };
+		},
+	);
 
 	ipcMain.handle(CHANNELS.LIST_PROJECTS, async () => {
 		return listRuntimeSessionProjects();
@@ -737,11 +742,13 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		return listSessionHistory(cwd);
 	});
 
-	ipcMain.handle(CHANNELS.PROMPT, async (_event, sessionId: unknown, request: unknown) => {
+	ipcMain.handle(CHANNELS.PROMPT, async (_event, sessionId: unknown, request: unknown, rawTraceContext: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
+		const traceContext = parseSessionTraceContext(rawTraceContext);
 		const req = parsePromptRequest(request);
 		sessionLog.info(
 			`prompt session=${sessionId} textLength=${req.text.length} images=${req.images?.length ?? 0} streamingBehavior=${req.streamingBehavior ?? "default"}`,
+			traceContext ? { interactionId: traceContext.interactionId } : undefined,
 		);
 		pluginLog.debug("session prompt plugin snapshot", {
 			sessionId,

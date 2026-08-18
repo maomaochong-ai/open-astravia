@@ -8,6 +8,7 @@ import type {
 } from "@vetta-org/plugin-sdk";
 import { PluginMediaError } from "@vetta-org/plugin-sdk";
 import type { ImageRepository } from "./image-repository";
+import { EDIT_IMAGE_TOOL_DESCRIPTION, GENERATE_IMAGE_TOOL_DESCRIPTION } from "./tool-descriptions";
 
 interface GenerateImageInput {
 	description?: string;
@@ -198,8 +199,7 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 		id: "generate-image",
 		name: "generate_image",
 		label: "%tool.generate_image%",
-		description:
-			"Generate an actual new image from text, then optimize the request into a detailed prompt. Every call is billed and cannot be un-billed.\nDo NOT use to produce UI, screens, mockups, diagrams, charts or icons for software — build those in code (or in a design document) and use icon sets instead.\nOnly for a picture the user explicitly asked for as the deliverable.",
+		description: GENERATE_IMAGE_TOOL_DESCRIPTION,
 		parameters: generateParameters,
 		timeoutMs: 300_000,
 		scope_use: SCOPE_USE,
@@ -223,8 +223,7 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 		id: "edit-image",
 		name: "edit_image",
 		label: "%tool.edit_image%",
-		description:
-			"Edit a specific existing image. Use sourceImageId for a previously generated image or sourceImagePath for a local file, never both. Every call is billed and cannot be un-billed.\nDo NOT use for deterministic image work — cropping, resizing, format conversion, compositing or annotating a screenshot; use an image-processing tool or code for those instead.\nOnly for a generative change to the picture itself, asked for by the user.",
+		description: EDIT_IMAGE_TOOL_DESCRIPTION,
 		parameters: editParameters,
 		timeoutMs: 300_000,
 		scope_use: SCOPE_USE,

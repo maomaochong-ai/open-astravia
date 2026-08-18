@@ -78,6 +78,34 @@ Skill content here.`,
 			expect(skills.some((s) => s.name === "test-skill")).toBe(true);
 		});
 
+		it("loads initial runtime Skill paths in the first scan and treats reapplying them as a no-op", async () => {
+			const runtimeSkillDir = join(tempDir, "plugin-skill");
+			mkdirSync(runtimeSkillDir, { recursive: true });
+			writeFileSync(
+				join(runtimeSkillDir, "SKILL.md"),
+				"---\nname: plugin-skill\ndescription: Plugin workflow\n---\nPlugin instructions.",
+			);
+			let loadCount = 0;
+			const loader = createCodingAgentSessionResourceRuntime({
+				cwd,
+				agentDir,
+				includeAgentSkills: false,
+				noSkills: true,
+				runtimeSkillPaths: [runtimeSkillDir],
+				skillsOverride: (result) => {
+					loadCount += 1;
+					return result;
+				},
+			});
+
+			await loader.reload();
+			expect(loader.getSkills().skills.map((skill) => skill.name)).toContain("plugin-skill");
+			expect(loadCount).toBe(1);
+
+			await loader.setRuntimeSkillPaths([runtimeSkillDir]);
+			expect(loadCount).toBe(1);
+		});
+
 		it("should refresh a project skill directory created after session initialization", async () => {
 			const loader = createCodingAgentSessionResourceRuntime({ cwd, agentDir });
 			await loader.reload();

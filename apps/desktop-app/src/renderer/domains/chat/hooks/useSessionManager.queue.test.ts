@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { OpenSessionOptions, SessionExecutionMode } from "@shared/store/atoms";
 import { getDefaultStore } from "jotai";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -52,11 +53,24 @@ interface SessionManagerProbe {
 	sendMessage(): Promise<
 		{ status: "sent" | "queued" | "failed"; error?: { message: string }; queueItemId?: string } | undefined
 	>;
-	openSession(cwd: string, sessionPath?: string): Promise<void>;
+	openSession(
+		cwd: string,
+		sessionPath?: string,
+		executionMode?: SessionExecutionMode,
+		options?: OpenSessionOptions,
+	): Promise<void>;
 	sendQueuedNow(runtimeId: string, id: string): Promise<void>;
 }
 
 type SessionEventHandler = (event: unknown) => void;
+
+function deferred<T>(): { readonly promise: Promise<T>; resolve(value: T): void } {
+	let resolvePromise: ((value: T) => void) | undefined;
+	const promise = new Promise<T>((resolve) => {
+		resolvePromise = resolve;
+	});
+	return { promise, resolve: (value) => resolvePromise?.(value) };
+}
 
 function installStorage(): void {
 	const values = new Map<string, string>();
@@ -135,6 +149,60 @@ async function mount(input: string, streaming: boolean): Promise<ReturnType<type
 	});
 	return store;
 }
+
+it("新会话在订阅建立后立即发送，不等待空历史与状态水合", { timeout: 15_000 }, async () => {
+	const state = deferred<{
+		activeToolNames: never[];
+		contextPercent: null;
+		contextWindow: number;
+		executionMode: "sandbox";
+		isStreaming: boolean;
+		messageCount: number;
+		model: null;
+		scenario: "project";
+	}>();
+	let stateResolved = false;
+	const sessionApi = (window as unknown as { vetta: { session: Record<string, unknown> } }).vetta.session;
+	const getFullHistory = vi.fn(async () => []);
+	sessionApi.create = vi.fn(async () => ({ cwd, sessionId: runtimeId, sessionPath }));
+	sessionApi.getFullHistory = getFullHistory;
+	sessionApi.getSessionPath = vi.fn(async () => sessionPath);
+	sessionApi.getState = vi.fn(() => state.promise);
+	sessionApi.updateSettings = vi.fn(async () => undefined);
+	mocks.prompt.mockImplementation(async () => {
+		// getState 只能由 prompt 触发后释放；若 opener 仍等待状态水合，这个测试会超时。
+		expect(stateResolved).toBe(false);
+		stateResolved = true;
+		state.resolve({
+			activeToolNames: [],
+			contextPercent: null,
+			contextWindow: 128_000,
+			executionMode: "sandbox",
+			isStreaming: true,
+			messageCount: 1,
+			model: null,
+			scenario: "project",
+		});
+		return { status: "completed" };
+	});
+	const store = await mount("立即发送", false);
+	const { chatMessagesAtom } = await import("@shared/store/atoms");
+
+	await act(async () => {
+		await manager?.openSession(cwd, undefined, "sandbox", {
+			onPromptReady: () => {
+				void manager?.sendMessage();
+			},
+		});
+	});
+
+	expect(mocks.prompt).toHaveBeenCalledOnce();
+	expect(stateResolved).toBe(true);
+	expect(getFullHistory).not.toHaveBeenCalled();
+	expect(store.get(chatMessagesAtom).some((message) => message.role === "user" && message.text === "立即发送")).toBe(
+		true,
+	);
+});
 
 it(
 	"streaming 中发送：带 streamingBehavior=followUp 直发 kernel，收 queued 回执且不加乐观气泡",

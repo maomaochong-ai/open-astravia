@@ -246,9 +246,9 @@ export function useInputBarModel({
 	}, [focusInputRequest]);
 
 	const handleSend = useCallback(() => {
-		perfSendBegin("send-button");
-		void onSend();
-		perfSendMark("handler-return");
+		const interactionId = perfSendBegin("send-button");
+		void onSend(undefined, { interactionId });
+		perfSendMark("handler-return", interactionId);
 	}, [onSend]);
 
 	const handleAbort = useCallback(() => {
@@ -258,9 +258,9 @@ export function useInputBarModel({
 	/** 回车：能发就发，生成中则入队，空输入时用输入预测直发。返回是否已处理。 */
 	const handleEnter = useCallback((): boolean => {
 		if (canSend) {
-			perfSendBegin("enter");
-			void onSend();
-			perfSendMark("handler-return");
+			const interactionId = perfSendBegin("enter");
+			void onSend(undefined, { interactionId });
+			perfSendMark("handler-return", interactionId);
 			return true;
 		}
 		if (isStreaming && hasSession && !isEmpty) {
@@ -268,7 +268,9 @@ export function useInputBarModel({
 			return true;
 		}
 		if (hasSession && !isStreaming && isEmpty && firstSuggestion) {
-			void onSend(firstSuggestion);
+			const interactionId = perfSendBegin("suggestion-enter");
+			void onSend(firstSuggestion, { interactionId });
+			perfSendMark("handler-return", interactionId);
 			return true;
 		}
 		return false;

@@ -107,6 +107,7 @@ export async function createDesktopPromptRuntimeSources(
 		agentDir,
 		settings: settingsSource,
 		includeAgentSkills: context.sessionOptions.includeAgentSkills,
+		runtimeSkillPaths: [...context.runtimeSkillPaths],
 		noExtensions: true,
 		noPromptTemplates: true,
 		noThemes: true,

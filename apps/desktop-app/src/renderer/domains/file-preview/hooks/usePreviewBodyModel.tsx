@@ -12,7 +12,8 @@ import { downloadItem, isPreviewSupported, isTextExtension } from "../preview-ut
 type LoadState =
 	| { status: "loading" }
 	| { status: "error"; message: string }
-	| { status: "loaded"; content: string; encoding: "utf8" | "base64" };
+	| { status: "unsupported" }
+	| { status: "loaded"; content: string; extension: string };
 
 export function usePreviewBodyModel(
 	item: FilePreviewItem,
@@ -20,6 +21,7 @@ export function usePreviewBodyModel(
 ): PreviewBodyViewProps {
 	const ext = useMemo(() => getExtension(item.name), [item.name]);
 	const supported = isPreviewSupported(item.name);
+	const canLoad = supported || Boolean(item.path);
 	const { t } = useTranslation("chat");
 	const pluginPreviews = useAtomValue(pluginFilePreviewsAtom);
 	const pluginPreview = useMemo(
@@ -29,19 +31,21 @@ export function usePreviewBodyModel(
 
 	const [state, setState] = useState<LoadState>({ status: "loading" });
 	const [watchTick, setWatchTick] = useState(0);
-	const itemKey = item.path ?? item.url ?? item.name;
+	const itemPath = item.path;
+	const itemUrl = item.url;
+	const itemKey = itemPath ?? itemUrl ?? item.name;
 	const prevKeyRef = useRef<string | null>(null);
 
 	useEffect(() => {
-		if (pluginPreview || !supported) return;
+		if (pluginPreview || !canLoad) return;
 		let cancelled = false;
 		const isNewItem = prevKeyRef.current !== itemKey;
 		prevKeyRef.current = itemKey;
 		if (isNewItem) setState({ status: "loading" });
 
-		void loadItem(item, ext)
+		void loadItem(itemPath, itemUrl, ext, supported)
 			.then((result) => {
-				if (!cancelled) setState({ status: "loaded", ...result });
+				if (!cancelled) setState(result);
 			})
 			.catch((err: Error) => {
 				if (!cancelled) {
@@ -55,11 +59,11 @@ export function usePreviewBodyModel(
 		return () => {
 			cancelled = true;
 		};
-	}, [item, ext, supported, pluginPreview, itemKey, watchTick, refreshNonce, t]);
+	}, [itemPath, itemUrl, ext, supported, canLoad, pluginPreview, itemKey, watchTick, refreshNonce, t]);
 
 	useEffect(() => {
-		const path = item.path;
-		if (!path || pluginPreview || !supported) return;
+		const path = itemPath;
+		if (!path || pluginPreview || !canLoad) return;
 		const slash = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
 		const dir = slash > 0 ? path.slice(0, slash) : path;
 		void window.vetta.fs.watchDir(dir);
@@ -70,7 +74,7 @@ export function usePreviewBodyModel(
 			unsub();
 			void window.vetta.fs.unwatchDir(dir);
 		};
-	}, [item.path, supported, pluginPreview]);
+	}, [itemPath, canLoad, pluginPreview]);
 
 	const labels = {
 		unsupported: t("fileEditor.unsupported"),
@@ -97,7 +101,7 @@ export function usePreviewBodyModel(
 		};
 	}
 
-	if (!supported) {
+	if (!canLoad || state.status === "unsupported") {
 		return {
 			state: { status: "unsupported", item },
 			labels,
@@ -117,7 +121,7 @@ export function usePreviewBodyModel(
 		};
 	}
 
-	const content = <TextPreviewRenderer content={state.content} extension={ext} />;
+	const content = <TextPreviewRenderer content={state.content} extension={state.extension} />;
 
 	return {
 		state: { status: "content", content },
@@ -127,24 +131,34 @@ export function usePreviewBodyModel(
 }
 
 async function loadItem(
-	item: FilePreviewItem,
+	path: string | undefined,
+	url: string | undefined,
 	ext: string,
-): Promise<{ content: string; encoding: "utf8" | "base64" }> {
-	if (item.path) {
-		return await window.vetta.fs.readFile(item.path);
+	declaredTextFormat: boolean,
+): Promise<Extract<LoadState, { status: "loaded" | "unsupported" }>> {
+	if (path) {
+		if (declaredTextFormat) {
+			const result = await window.vetta.fs.readFile(path);
+			return { status: "loaded", content: result.content, extension: ext };
+		}
+		const result = await window.vetta.fs.readTextPreviewFile(path);
+		return result.status === "text"
+			? { status: "loaded", content: result.content, extension: "" }
+			: { status: "unsupported" };
 	}
-	if (!item.url) {
+	if (!url) {
 		throw new Error("FILE_PREVIEW_NO_SOURCE");
 	}
-	const res = await fetch(item.url);
+	if (!declaredTextFormat) return { status: "unsupported" };
+	const res = await fetch(url);
 	if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
 	if (isTextExtension(ext)) {
 		const text = await res.text();
-		return { content: text, encoding: "utf8" };
+		return { status: "loaded", content: text, extension: ext };
 	}
 	const buf = await res.arrayBuffer();
-	return { content: arrayBufferToBase64(buf), encoding: "base64" };
+	return { status: "loaded", content: arrayBufferToBase64(buf), extension: ext };
 }
 
 function arrayBufferToBase64(buf: ArrayBuffer): string {

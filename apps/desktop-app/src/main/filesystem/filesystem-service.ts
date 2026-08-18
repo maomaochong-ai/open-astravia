@@ -16,7 +16,9 @@ import {
 	type FsSaveEditableTextOptions,
 	type FsSaveEditableTextResult,
 	type FsStatResult,
+	type FsTextPreviewResult,
 } from "../../preload/fs-types.js";
+import { decodeProbableUtf8Prefix, decodeProbableUtf8Text, decodeUtf8Text } from "./text-content.js";
 
 const BINARY_EXTENSIONS = new Set([
 	"png",
@@ -37,6 +39,7 @@ const BINARY_EXTENSIONS = new Set([
 	"pptx",
 ]);
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_TEXT_PROBE_SIZE = 64 * 1024;
 const MAX_BINARY_FILE_SIZE = 32 * 1024 * 1024;
 const MAX_EDITABLE_TEXT_FILE_SIZE = 2 * 1024 * 1024;
 const HIDDEN_FILES = new Set([".DS_Store", "Thumbs.db", "desktop.ini"]);
@@ -167,19 +170,45 @@ export async function readFilesystemFile(filePath: string): Promise<{ content: s
 	return { content: await readFile(resolved, "utf8"), encoding: "utf8" };
 }
 
+/**
+ * Content-based fallback for files without a declared preview renderer.
+ * Binary data is reported explicitly instead of reaching the renderer as
+ * replacement-character-filled text.
+ */
+export async function readTextPreviewFile(filePath: string): Promise<FsTextPreviewResult> {
+	assertPathReadableForPreview(filePath);
+	const resolved = resolve(filePath);
+	const stats = await stat(resolved);
+	if (!stats.isFile()) throw new Error("Path is not a file");
+
+	const probeSize = Math.min(stats.size, MAX_TEXT_PROBE_SIZE);
+	const probeBuffer = Buffer.allocUnsafe(probeSize);
+	const handle = await open(resolved, "r");
+	let bytesRead = 0;
+	try {
+		({ bytesRead } = await handle.read(probeBuffer, 0, probeSize, 0));
+	} finally {
+		await handle.close();
+	}
+	const probe = probeBuffer.subarray(0, bytesRead);
+	const decodedProbe = stats.size > probe.byteLength ? decodeProbableUtf8Prefix(probe) : decodeProbableUtf8Text(probe);
+	if (!decodedProbe) return { status: "binary", size: stats.size };
+	if (stats.size > MAX_FILE_SIZE) throw new Error("File too large to preview (>10 MB)");
+
+	const buffer = await readFile(resolved);
+	const decoded = decodeProbableUtf8Text(buffer);
+	if (!decoded) return { status: "binary", size: buffer.byteLength };
+	return { status: "text", content: decoded.content, size: buffer.byteLength };
+}
+
 function getFileRevision(buffer: Buffer): string {
 	return createHash("sha256").update(buffer).digest("hex");
 }
 
 function decodeEditableText(buffer: Buffer): { content: string; hasBom: boolean; lineEnding: "lf" | "crlf" } {
-	const hasBom = buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf;
-	const body = hasBom ? buffer.subarray(3) : buffer;
-	let content: string;
-	try {
-		content = new TextDecoder("utf-8", { fatal: true }).decode(body);
-	} catch {
-		throw new Error(FS_EDITABLE_TEXT_ERROR.NOT_UTF8);
-	}
+	const decoded = decodeUtf8Text(buffer);
+	if (!decoded) throw new Error(FS_EDITABLE_TEXT_ERROR.NOT_UTF8);
+	const { content, hasBom } = decoded;
 	return {
 		content,
 		hasBom,

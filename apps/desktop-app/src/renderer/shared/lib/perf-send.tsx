@@ -1,17 +1,18 @@
 /**
- * [PERF-send] 临时插桩：定位「点击发送 / 回车后界面冻结」的耗时归属。
+ * [PERF-send] 发送链路本地诊断：定位「点击发送 / 回车后界面冻结」的耗时归属。
  *
  * 打开方式（渲染进程 DevTools Console）：
  *   localStorage.setItem("vetta-perf-send", "1"); location.reload()
  * 关闭：localStorage.removeItem("vetta-perf-send")
  *
- * 诊断结束后整个文件连同调用点一起删除。
+ * 即使未开启本地诊断，perfSendBegin 仍生成 privacy-safe interaction id，供主进程日志关联。
  */
 
 import { Profiler, type ProfilerOnRenderCallback, type ReactNode } from "react";
 
 const ENABLED_KEY = "vetta-perf-send";
-const REPORT_DELAY_MS = 3000;
+const MAX_REPORT_DELAY_MS = 15_000;
+const COMPLETION_REPORT_DELAY_MS = 1_000;
 
 let enabledCache: boolean | null = null;
 
@@ -35,6 +36,7 @@ interface Commit {
 }
 
 interface Session {
+	interactionId: string;
 	t0: number;
 	trigger: string;
 	marks: Array<{ label: string; at: number }>;
@@ -52,12 +54,14 @@ function now(): number {
 }
 
 /** 发送动作起点：按钮 click / 编辑器 Enter。 */
-export function perfSendBegin(trigger: string): void {
-	if (!perfSendEnabled()) return;
+export function perfSendBegin(trigger: string): string {
+	const interactionId = crypto.randomUUID();
+	if (!perfSendEnabled()) return interactionId;
 	if (session?.timer) window.clearTimeout(session.timer);
 	session?.observer?.disconnect();
 
 	const started: Session = {
+		interactionId,
 		t0: now(),
 		trigger,
 		marks: [],
@@ -88,13 +92,25 @@ export function perfSendBegin(trigger: string): void {
 	};
 	requestAnimationFrame(trackFrame);
 
-	started.timer = window.setTimeout(() => report(started), REPORT_DELAY_MS);
+	started.timer = window.setTimeout(() => report(started), MAX_REPORT_DELAY_MS);
+	return interactionId;
 }
 
 /** 发送链路上的阶段点。 */
-export function perfSendMark(label: string): void {
+export function perfSendMark(label: string, interactionId?: string): void {
 	if (!session || !perfSendEnabled()) return;
+	if (interactionId && session.interactionId !== interactionId) return;
 	session.marks.push({ label, at: now() });
+}
+
+/** Report shortly after dispatch while retaining enough post-send React commits for diagnosis. */
+export function perfSendComplete(label: string, interactionId?: string): void {
+	if (!session || !perfSendEnabled()) return;
+	if (interactionId && session.interactionId !== interactionId) return;
+	perfSendMark(label, interactionId);
+	if (session.timer) window.clearTimeout(session.timer);
+	const target = session;
+	target.timer = window.setTimeout(() => report(target), COMPLETION_REPORT_DELAY_MS);
 }
 
 export const perfSendProfilerCallback: ProfilerOnRenderCallback = (id, phase, actualDuration, baseDuration) => {
@@ -125,7 +141,7 @@ function report(target: Session): void {
 		commitTotals.set(commit.id, entry);
 	}
 
-	console.group(`[PERF-send] trigger=${target.trigger}`);
+	console.group(`[PERF-send] interaction=${target.interactionId} trigger=${target.trigger}`);
 	console.log(
 		"marks:",
 		target.marks.map((mark) => `${mark.label}@${rel(mark.at)}`).join("  "),

@@ -26,6 +26,11 @@ export type {
 	CodingAgentSessionExecutionEnvironmentFactory,
 } from "./contracts/session-execution-environment.js";
 export type {
+	CodingAgentSessionInitializationObservation,
+	CodingAgentSessionInitializationObserver,
+	CodingAgentSessionInitializationStage,
+} from "./contracts/session-initialization-observability.js";
+export type {
 	CodingAgentToolEnvironment,
 	CodingAgentToolEnvironmentContext,
 	CodingAgentToolEnvironmentFactory,

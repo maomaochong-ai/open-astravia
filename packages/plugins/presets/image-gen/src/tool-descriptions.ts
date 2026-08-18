@@ -1,0 +1,5 @@
+export const GENERATE_IMAGE_TOOL_DESCRIPTION =
+	"Generate an actual new image from a detailed prompt. Before calling, translate and expand the user's request into the English subject, style, lighting, and composition required by the prompt field; the tool forwards that prompt and does not optimize it for you. Every call is billed and cannot be un-billed.\nDo NOT use to produce UI, screens, mockups, diagrams, charts or icons for software — build those in code (or in a design document) and use icon sets instead.\nOnly for a picture the user explicitly asked for as the deliverable.";
+
+export const EDIT_IMAGE_TOOL_DESCRIPTION =
+	"Edit a specific existing image. Use sourceImageId for a previously generated image or sourceImagePath for a local file, never both. Every call is billed and cannot be un-billed.\nDo NOT use for deterministic image work — cropping, resizing, format conversion, compositing or annotating a screenshot; use an image-processing tool or code for those instead.\nOnly for a generative change to the picture itself, asked for by the user.";

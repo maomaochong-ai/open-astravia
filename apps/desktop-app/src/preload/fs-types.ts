@@ -19,6 +19,12 @@ export interface FsStatResult {
 	createdAt: number;
 }
 
+export const FS_READ_TEXT_PREVIEW_CHANNEL = "vetta:fs:read-text-preview";
+
+export type FsTextPreviewResult =
+	| { status: "text"; content: string; size: number }
+	| { status: "binary"; size: number };
+
 export const FS_EDITABLE_TEXT_ERROR = {
 	TOO_LARGE: "FS_EDITABLE_TEXT_TOO_LARGE",
 	NOT_UTF8: "FS_EDITABLE_TEXT_NOT_UTF8",
@@ -82,6 +88,8 @@ export interface FileTransferResult {
 export interface DesktopFsApi {
 	readDir(dirPath: string): Promise<FsEntry[]>;
 	readFile(filePath: string): Promise<{ content: string; encoding: "utf8" | "base64" }>;
+	/** Strict, content-based UTF-8 reader used only as a read-only preview fallback. */
+	readTextPreviewFile(filePath: string): Promise<FsTextPreviewResult>;
 	readEditableTextFile(filePath: string): Promise<FsEditableTextSnapshot>;
 	saveEditableTextFile(
 		filePath: string,

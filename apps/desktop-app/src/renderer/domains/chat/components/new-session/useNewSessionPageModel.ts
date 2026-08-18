@@ -26,7 +26,9 @@ import { startTransition, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSessionManager } from "../../hooks/useSessionManager";
 import { useSkillList } from "../../hooks/useSkillList";
+import type { SendInteractionContext } from "../input-bar/types";
 import { PANEL_SHIFT_MIN_ITEMS } from "./constants";
+import { useNewSessionSend } from "./useNewSessionSend";
 import { useShortViewport } from "./useShortViewport";
 
 interface NewSessionPageModel {
@@ -46,7 +48,7 @@ interface NewSessionPageModel {
 	mounted: boolean;
 	onAbort: () => Promise<void>;
 	onCommandPanelExpandedChange: (expanded: boolean) => void;
-	onSend: () => Promise<void>;
+	onSend: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
 	onToggleActivity: () => void;
 	onTogglePin: () => Promise<void>;
 	panelTitle: string;
@@ -87,6 +89,12 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const authUser = useAtomValue(authUserAtom);
 	const executionMode = useAtomValue(sessionExecutionModeAtom);
 	const { openSession, sendMessage, abortMessage } = useSessionManager();
+	const newSessionSend = useNewSessionSend({
+		cwd: decodedCwd,
+		executionMode,
+		openSession,
+		sendMessage,
+	});
 	const isShort = useShortViewport();
 	// 不带过滤词：要的是面板刚展开时那份完整列表的条目数，不能随用户打字过滤而抖。
 	// 数据与命令区共用模块级缓存（InputBar 里的 CommandPanel 挂载即预取），命中即立即可用。
@@ -160,15 +168,6 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		};
 	}, [decodedCwd]);
 
-	// 发送：先创建/打开会话（openSession 内部会 navigate('/')），再触发 sendMessage。
-	// sendMessage 现在从 activeSessionRef 读取 session，因此 await 链可以串起来。
-	const handleSend = useCallback(async () => {
-		// 欢迎页选中的执行模式（沙盒受限/完全访问）必须随会话创建一起传给后端，
-		// 否则 session.create 会落到默认 full-access，再被 getState 回填覆盖。
-		await openSession(decodedCwd, undefined, executionMode);
-		await sendMessage();
-	}, [decodedCwd, executionMode, openSession, sendMessage]);
-
 	useEffect(() => {
 		void window.vetta.window.isAlwaysOnTop().then(setPinned);
 	}, []);
@@ -197,7 +196,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		mounted,
 		onAbort: abortMessage,
 		onCommandPanelExpandedChange: setCommandPanelExpanded,
-		onSend: handleSend,
+		onSend: newSessionSend.send,
 		onToggleActivity: handleToggleActivity,
 		onTogglePin: handleTogglePin,
 		panelTitle: activityOpen ? t("chat:chatView.panelButton.open") : t("chat:chatView.panelButton.closed"),

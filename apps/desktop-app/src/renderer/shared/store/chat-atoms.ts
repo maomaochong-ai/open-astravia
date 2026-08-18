@@ -548,6 +548,10 @@ export interface OpenSessionOptions {
 	 * current route (e.g. Settings AI assist fly-to-sidebar). Default true.
 	 */
 	navigate?: boolean;
+	/** Correlates Renderer interaction timing with the Main-process creation trace. */
+	interactionId?: string;
+	/** Runs once the event subscription is live, before nonessential Session hydration finishes. */
+	onPromptReady?: () => void;
 }
 
 /** Global callback to open a session (set by useSessionManager, consumed by other pages) */
@@ -567,6 +571,8 @@ export const openSessionFnRef: {
 
 /** Optional per-send options for {@link sendMessageFnRef} / useSessionManager.sendMessage. */
 export interface SendMessageOptions {
+	/** Diagnostic correlation only; never merged into Prompt metadata or model context. */
+	interactionId?: string;
 	/**
 	 * Merged into PromptRequest.metadata (host-side / input-pipeline only; not shown as
 	 * user bubble text). e.g. settingsAssistInstruction for model-only settings assist.

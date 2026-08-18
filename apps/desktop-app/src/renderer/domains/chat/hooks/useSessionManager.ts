@@ -1,5 +1,6 @@
 import { pluginSendMessageRef } from "@domains/plugins/runtime/plugin-host-bridge";
 import {
+	type OpenSessionOptions,
 	openSessionFnRef,
 	type SendMessageOptions,
 	type SendMessageResult,
@@ -15,7 +16,7 @@ interface SessionManagerResult {
 		cwd: string,
 		sessionPath?: string,
 		executionMode?: SessionExecutionMode,
-		options?: { navigate?: boolean },
+		options?: OpenSessionOptions,
 	) => Promise<void>;
 	sendMessage: (overrideText?: string, options?: SendMessageOptions) => Promise<SendMessageResult | undefined>;
 	abortMessage: () => Promise<void>;

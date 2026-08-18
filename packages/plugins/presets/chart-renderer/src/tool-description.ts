@@ -1,0 +1,2 @@
+export const RENDER_CHART_TOOL_DESCRIPTION =
+	"Render one to four interactive Chart.js charts below the current conversation message. Use only when the user explicitly asks for a chart or when a visual comparison, trend, distribution, or relationship materially improves the answer. Do NOT use for a small lookup, a single value, or data that is clearer as short prose or a compact table. Preserve exact values in accompanying text when the chart alone would make them hard to read.";

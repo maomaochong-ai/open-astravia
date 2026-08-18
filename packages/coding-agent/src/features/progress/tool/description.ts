@@ -1,8 +1,6 @@
-export const PROGRESS_TOOL_DESCRIPTION = `Announce what you are about to do next, so the user sees readable stages instead of raw tool calls.
+export const PROGRESS_TOOL_DESCRIPTION = `Announce the current stage of multi-step work so the user sees readable milestones instead of raw tool calls. This is presentation metadata only; it does not execute work or report evidence.
 
-The user you are talking to is NOT a developer. They should never have to read a wall of file
-reads, greps and shell commands. Instead, they see a short list of stages you narrate with this
-tool, each collapsing all the tool calls you made inside it.
+Use it for tasks that need multiple substantive tool calls or distinct phases, regardless of the user's technical level. Skip it for a single trivial lookup, a brief conversational answer, or a task with no tool calls.
 
 How stages work (sliding window):
 - One call does two things at once: \`summary\` closes and re-titles the stage you just finished,
@@ -13,7 +11,7 @@ How stages work (sliding window):
   \`progress\` call just to close it.
 
 Workflow:
-1. Call progress(label="…") BEFORE your first tool call of a task.
+1. For a qualifying multi-step task, call progress(label="…") before the first work tool.
 2. Do the work: read, search, extract, convert, whatever the stage needs.
 3. When you move to a genuinely different stage, call
    progress(summary="<what the finished stage achieved>", label="<what you start now>").
@@ -30,7 +28,7 @@ Writing good titles:
 When to open a new stage:
 - Open one whenever the purpose of your work changes, even if the tools are the same.
 - 2 to 5 stages is typical for a real task. Do not open a stage per tool call.
-- For a single trivial lookup answered in one tool call, skip this tool entirely.
+- Do not create a stage per tool call, and do not use this tool merely because it is available.
 
 Important:
 - Tool calls that produce something the user must see (writing a file, generating a document,

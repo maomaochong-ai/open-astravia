@@ -17,7 +17,9 @@ import type {
 	FsFileRef,
 	FsSaveEditableTextOptions,
 	FsSaveEditableTextResult,
+	FsTextPreviewResult,
 } from "../../preload/fs-types.js";
+import { FS_READ_TEXT_PREVIEW_CHANNEL } from "../../preload/fs-types.js";
 import {
 	type AppshotConfig,
 	type AppshotGesture,
@@ -56,6 +58,7 @@ import {
 	readEditableTextFile,
 	readFilesystemDirectory,
 	readFilesystemFile,
+	readTextPreviewFile,
 	renameFilesystemPath,
 	saveEditableTextFile,
 	statFilesystemPath,
@@ -183,6 +186,11 @@ export function registerFsIpc(): () => void {
 			return readFilesystemFile(filePath);
 		},
 	);
+
+	ipcMain.handle(FS_READ_TEXT_PREVIEW_CHANNEL, async (_event, filePath: unknown): Promise<FsTextPreviewResult> => {
+		assertNonEmptyString(filePath, "filePath");
+		return readTextPreviewFile(filePath);
+	});
 
 	ipcMain.handle(CHANNELS.READ_EDITABLE_TEXT, async (_event, filePath: unknown): Promise<FsEditableTextSnapshot> => {
 		assertNonEmptyString(filePath, "filePath");
@@ -549,6 +557,7 @@ export function registerFsIpc(): () => void {
 
 		ipcMain.removeHandler(CHANNELS.READ_DIR);
 		ipcMain.removeHandler(CHANNELS.READ_FILE);
+		ipcMain.removeHandler(FS_READ_TEXT_PREVIEW_CHANNEL);
 		ipcMain.removeHandler(CHANNELS.READ_EDITABLE_TEXT);
 		ipcMain.removeHandler(CHANNELS.SAVE_EDITABLE_TEXT);
 		ipcMain.removeHandler(CHANNELS.WRITE_FILE);

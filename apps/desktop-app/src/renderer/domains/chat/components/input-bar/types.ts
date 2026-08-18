@@ -10,7 +10,7 @@ import type { ActiveActionCapsule } from "./ActiveActionCapsules";
 import type { TriggerMatch } from "./editor/tokens/trigger";
 
 export interface InputBarProps {
-	onSend: (overrideText?: string) => Promise<void>;
+	onSend: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
 	onAbort: () => Promise<void>;
 	onSendQueued?: (runtimeId: string, id: string) => void;
 	/**
@@ -23,6 +23,11 @@ export interface InputBarProps {
 	 * （新会话页把整条输入栏下移，避免下方留白过大）。
 	 */
 	onExpandedChange?: (expanded: boolean) => void;
+	/** A new Session is being initialized; input stays editable but duplicate sends are disabled. */
+}
+
+export interface SendInteractionContext {
+	interactionId: string;
 }
 
 export interface InputBarLabels {

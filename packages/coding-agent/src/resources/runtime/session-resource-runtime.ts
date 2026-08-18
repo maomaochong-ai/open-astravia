@@ -33,7 +33,7 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 	private readonly eventBus: EventBus;
 	private additionalExtensionPaths: string[];
 	private additionalSkillPaths: string[];
-	private runtimeSkillPaths: string[] = [];
+	private runtimeSkillPaths: string[];
 	private extensionsResult: LoadExtensionsResult;
 	private skills: Skill[] = [];
 	private skillDiagnostics: ResourceDiagnostic[] = [];
@@ -60,6 +60,7 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		this.eventBus = options.eventBus ?? createExtensionEventBus();
 		this.additionalExtensionPaths = options.additionalExtensionPaths ?? [];
 		this.additionalSkillPaths = options.additionalSkillPaths ?? [];
+		this.runtimeSkillPaths = this.merge([], options.runtimeSkillPaths ?? []);
 		this.extensionsResult = { extensions: [], errors: [], runtime: createExtensionRuntime() };
 	}
 

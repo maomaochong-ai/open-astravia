@@ -56,6 +56,7 @@ import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./host-servi
 import { createDesktopMcpSupervisor } from "./mcp-supervisor.js";
 import { getDesktopProviderObservationRuntime } from "./provider-observation.js";
 import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
+import { createSessionInitializationLogObserver } from "./session-initialization-log-observer.js";
 
 const log = getAppLogger("runtime");
 
@@ -98,6 +99,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 					journalStorage: new NodeTextFileStorage(join(options.cwd, "JOURNAL.md")),
 				});
 			},
+			observeSessionInitialization: createSessionInitializationLogObserver(log),
 			...(providerObservationRuntime ? { streamFn: providerObservationRuntime.streamFn } : {}),
 			createPluginMcpRuntime: ({ cwd, agentDir }) => {
 				const resolvedAgentDir = agentDir ?? getAgentDir();
