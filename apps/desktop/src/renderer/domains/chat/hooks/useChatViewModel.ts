@@ -21,14 +21,24 @@ import {
 } from "@shared/store/atoms";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { selectAtom } from "jotai/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatViewModelResult } from "../components/chat-view/types";
 
+/**
+ * ChatView 只需要当前会话的 path / cwd。订阅 activeSession 整个对象会让流式期间
+ * 的任意字段变动（token 计数、运行态）把 ChatView 整棵树连带 header slot 写入
+ * 一起重跑，低配机上发送时的级联提交主要来自这里。
+ */
+const activeSessionPathAtom = selectAtom(activeSessionAtom, (session) => session?.sessionPath ?? null);
+const activeSessionCwdAtom = selectAtom(activeSessionAtom, (session) => session?.cwd ?? null);
+
 export function useChatViewModel(): ChatViewModelResult {
 	const { t } = useTranslation("chat");
 	const surface = useThemeSurface("chat.view");
-	const activeSession = useAtomValue(activeSessionAtom);
+	const activeSessionPath = useAtomValue(activeSessionPathAtom);
+	const activeSessionCwd = useAtomValue(activeSessionCwdAtom);
 	const messages = useAtomValue(chatMessagesAtom);
 	const isStreaming = useAtomValue(isStreamingAtom);
 	const [panelOpen, setPanelOpen] = useAtom(activityPanelOpenAtom);
@@ -46,7 +56,7 @@ export function useChatViewModel(): ChatViewModelResult {
 	const prevSessionPathRef = useRef<string | null | undefined>(undefined);
 
 	useEffect(() => {
-		const nextPath = activeSession?.sessionPath || null;
+		const nextPath = activeSessionPath || null;
 		const prevPath = prevSessionPathRef.current;
 
 		if (prevPath === undefined) {
@@ -87,7 +97,7 @@ export function useChatViewModel(): ChatViewModelResult {
 		}
 
 		prevSessionPathRef.current = nextPath;
-	}, [activeSession?.sessionPath, setPromptAttachment]);
+	}, [activeSessionPath, setPromptAttachment]);
 
 	const [pinned, setPinned] = useState(false);
 	const [exporting, setExporting] = useState(false);
@@ -111,42 +121,56 @@ export function useChatViewModel(): ChatViewModelResult {
 	}, [closeInlinePreview, inlinePreviewActive, setPanelOpen]);
 
 	const sessionTitle = useMemo(() => {
-		if (!activeSession) return null;
+		if (activeSessionPath === null && activeSessionCwd === null) return null;
 		for (const list of sessionsMap.values()) {
-			const found = list.find((session) => session.path === activeSession.sessionPath);
+			const found = list.find((session) => session.path === activeSessionPath);
 			if (found) return sessionDisplayLabel(found);
 		}
-		return getProjectDisplayName(activeSession.cwd, defaultCwd);
-	}, [activeSession, defaultCwd, sessionsMap]);
+		return getProjectDisplayName(activeSessionCwd ?? "", defaultCwd);
+	}, [activeSessionPath, activeSessionCwd, defaultCwd, sessionsMap]);
 
 	useEffect(() => {
 		setHeaderTitle(sessionTitle);
 		return () => setHeaderTitle(null);
 	}, [sessionTitle, setHeaderTitle]);
 
-	return {
-		actions: {
+	// actions / header 保持引用稳定：ChatView 用它们 memo 出 header slot 元素并写进
+	// 全局 pageHeader atom；若每次渲染都换引用，发送/流式期间每条消息都会级联一次
+	// RootLayout header 提交。
+	const actions = useMemo(
+		() => ({
 			finishExport,
 			openExport,
 			togglePanel,
 			togglePin,
-		},
+		}),
+		[finishExport, openExport, togglePanel, togglePin],
+	);
+
+	const hasMessages = messages.length > 0;
+	const header = useMemo(
+		() => ({
+			exportDisabled: !hasMessages || isStreaming || exporting,
+			exporting,
+			exportTitle: t("chatView.exportButton.title"),
+			panelOpen,
+			panelTitle: panelOpen ? t("chatView.panelButton.open") : t("chatView.panelButton.closed"),
+			pinTitle: pinned ? t("chatView.pinButton.pinned") : t("chatView.pinButton.unpinned"),
+			pinned,
+		}),
+		[exporting, hasMessages, isStreaming, panelOpen, pinned, t],
+	);
+
+	return {
+		actions,
 		model: {
 			exporting,
 			exportTitle: sessionTitle ?? t("chatView.defaultSessionTitle"),
-			header: {
-				exportDisabled: messages.length === 0 || isStreaming || exporting,
-				exporting,
-				exportTitle: t("chatView.exportButton.title"),
-				panelOpen,
-				panelTitle: panelOpen ? t("chatView.panelButton.open") : t("chatView.panelButton.closed"),
-				pinTitle: pinned ? t("chatView.pinButton.pinned") : t("chatView.pinButton.unpinned"),
-				pinned,
-			},
+			header,
 			isStreaming,
 			messages,
 			rootClassName: surface?.rootClassName,
-			sessionId: activeSession?.sessionPath ?? null,
+			sessionId: activeSessionPath,
 		},
 	};
 }
