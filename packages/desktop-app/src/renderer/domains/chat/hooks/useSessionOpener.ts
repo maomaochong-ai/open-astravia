@@ -1,5 +1,6 @@
 import { useProjectActions } from "@domains/project/hooks/useProjects";
 import { i18n } from "@shared/i18n";
+import { perfSendMark } from "@shared/lib/perf-send";
 import {
 	activeSessionAtom,
 	activeSessionStreamingAtom,
@@ -18,6 +19,7 @@ import {
 	lastTurnUsageAtom,
 	modelSupportsImagesAtom,
 	newSessionInputDraftKey,
+	type OpenSessionOptions,
 	type Project,
 	pendingMessageEditAtom,
 	projectsAtom,
@@ -54,7 +56,7 @@ export interface SessionOpenerController {
 		cwd: string,
 		sessionPath?: string,
 		executionMode?: SessionExecutionMode,
-		options?: { navigate?: boolean },
+		options?: OpenSessionOptions,
 	) => Promise<void>;
 	openSessionRef: MutableRefObject<SessionOpenerController["openSession"] | undefined>;
 	bumpSuggestionToken: (runtimeId: string) => void;
@@ -104,18 +106,15 @@ export function useSessionOpener(): SessionOpenerController {
 				cwd: string,
 				sessionPath?: string,
 				executionMode?: SessionExecutionMode,
-				options?: { navigate?: boolean },
+				options?: OpenSessionOptions,
 		  ) => Promise<void>)
 		| undefined
 	>(undefined);
 
 	const openSession = useCallback(
-		async (
-			cwd: string,
-			sessionPath?: string,
-			executionMode?: SessionExecutionMode,
-			options?: { navigate?: boolean },
-		) => {
+		async (cwd: string, sessionPath?: string, executionMode?: SessionExecutionMode, options?: OpenSessionOptions) => {
+			const interactionId = options?.interactionId;
+			perfSendMark("open-session-enter", interactionId);
 			// 取自己的调用令牌；若中途被新的 openSession 抢跑，会在 subscribe()
 			// 返回后被发现并立即清理自己刚建好的 IPC 订阅，避免泄漏。
 			const myOpenToken = bumpOpenSessionToken();
@@ -169,11 +168,15 @@ export function useSessionOpener(): SessionOpenerController {
 						: "project";
 			let createResult: Awaited<ReturnType<typeof window.vetta.session.create>>;
 			try {
+				perfSendMark("session-create-start", interactionId);
 				createResult = await window.vetta.session.create(
 					{ cwd, sessionPath, executionMode, scenario },
 					sessionKind,
+					interactionId ? { interactionId } : undefined,
 				);
+				perfSendMark("session-create-end", interactionId);
 			} catch (error) {
+				perfSendMark("session-create-failed", interactionId);
 				const message = error instanceof Error ? error.message : String(error);
 				console.error("[useSessionOpener] session.create failed:", error);
 				setChatMessages((prev) => {
@@ -205,16 +208,52 @@ export function useSessionOpener(): SessionOpenerController {
 			if (shouldNavigate) {
 				void navigate({ to: "/" });
 			}
+			const resolvedSessionPath =
+				canonicalSessionPath || (await window.vetta.session.getSessionPath(sessionId)) || sessionPath || "";
+			const cachedKey = resolvedSessionPath;
+			let subscribed = false;
+			const subscribeForPrompt = async (): Promise<boolean> => {
+				perfSendMark("session-subscribe-start", interactionId);
+				const unsubscribeFn = await window.vetta.session.subscribe(sessionId, createSessionEventHandler(sessionId));
+				perfSendMark("session-subscribe-end", interactionId);
+
+				// 校验令牌：如果 await 期间用户已经切换到下一个 session，本次的
+				// subscribe 已经成了孤儿，必须立即释放，不能覆盖后来者的订阅。
+				if (myOpenToken !== getOpenSessionToken()) {
+					unsubscribeFn();
+					return false;
+				}
+				setCurrentUnsubscribe(unsubscribeFn);
+				subscribed = true;
+				perfSendMark("open-session-ready", interactionId);
+				if (cachedKey) setLastActiveSession({ cwd, sessionPath: cachedKey });
+				options?.onPromptReady?.();
+				return true;
+			};
+
+			// 新会话没有历史需要回放。草稿迁移后先建立事件订阅并立刻派发首条 Prompt；
+			// getState、上下文恢复和侧边栏对账都不再位于首条发送的关键路径。
+			if (sessionPath === undefined) {
+				claimNewSessionInputDraft(cachedKey, newSessionInputDraftKey(cwd));
+				if (!(await subscribeForPrompt())) return;
+			}
 
 			// Fire history + state in parallel so renderer doesn't wait on two
 			// sequential IPC round-trips. History is rendered as soon as it lands;
 			// state arrives shortly after and fills in context/streaming UI.
-			const historyPromise = window.vetta.session.getFullHistory(sessionId);
+			perfSendMark("session-state-load-start", interactionId);
+			const historyPromise =
+				sessionPath === undefined ? Promise.resolve([]) : window.vetta.session.getFullHistory(sessionId);
 			const statePromise = window.vetta.session.getState(sessionId);
 
 			const history = await historyPromise;
+			perfSendMark("session-history-loaded", interactionId);
 			const mapped = reconcileOptimisticUserMessages(sessionId, fullHistoryToChat(history));
-			setChatMessages(mapped);
+			// 新会话在 subscribe 后已经允许首条消息直发，此时 sendMessage 可能已经
+			// 写入乐观用户气泡。空历史没有需要恢复的内容，不能再用 [] 覆盖该气泡。
+			if (sessionPath !== undefined) {
+				setChatMessages(mapped);
+			}
 
 			// If this session already has any prior turn (loaded from disk) we never
 			// want to auto-rename — only brand-new sessions on their first round.
@@ -223,9 +262,7 @@ export function useSessionOpener(): SessionOpenerController {
 			}
 
 			const state = await statePromise;
-			const resolvedSessionPath =
-				canonicalSessionPath || (await window.vetta.session.getSessionPath(sessionId)) || sessionPath || "";
-			const cachedKey = resolvedSessionPath;
+			perfSendMark("session-state-loaded", interactionId);
 			const contextComposition = resolveSessionContextComposition(resolvedSessionPath, state.contextComposition);
 			setContextUsage({
 				percent: state.contextPercent,
@@ -334,27 +371,12 @@ export function useSessionOpener(): SessionOpenerController {
 
 			// 输入草稿按 sessionPath 隔离：打开已有会话装入该会话草稿；
 			// 新建会话保留工作集（随即 sendMessage），只把归属从 new:cwd 迁到真实 path。
-			if (sessionPath === undefined) {
-				claimNewSessionInputDraft(cachedKey, newSessionInputDraftKey(cwd));
-			} else {
+			if (sessionPath !== undefined) {
 				adoptExistingSessionInputDraft(cachedKey);
 			}
 
-			// ─── Subscribe to live session events ───
-			const unsubscribeFn = await window.vetta.session.subscribe(sessionId, createSessionEventHandler(sessionId));
-
-			// 校验令牌：如果 await 期间用户已经切换到下一个 session，本次的
-			// subscribe 已经成了孤儿——立刻 unsub，绝不要写进 currentUnsubscribe，
-			// 否则它会覆盖后来者，新订阅永不被清理；而每个泄漏的订阅都会在 preload
-			// 全局 ipcRenderer 上留下一个 listener，长期累积会触发 Oilpan OOM。
-			if (myOpenToken !== getOpenSessionToken()) {
-				unsubscribeFn();
-				return;
-			}
-			setCurrentUnsubscribe(unsubscribeFn);
-			if (cachedKey) {
-				setLastActiveSession({ cwd, sessionPath: cachedKey });
-			}
+			// 已有会话必须先完成历史/流式草稿恢复，再接入实时事件；新会话已在上方订阅。
+			if (!subscribed && !(await subscribeForPrompt())) return;
 
 			// kernel 队列镜像初始化（ADR-0060）：整体替换、不做消费差分——后台期间被
 			// 消费的条目由历史重放呈现，这里只要拿到当前真实队列与 paused 状态。

@@ -142,6 +142,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 		resolveActivation: toolSurface.resolveActivation,
 		createChildComposition,
 		assessChildSessionPath,
+		observer: options.observeSessionInitialization,
 	});
 	const runtimeFactory = new ComposedRuntimeFactory<CodingAgentRuntimeSessionOptions>({
 		streamFn: options.streamFn,

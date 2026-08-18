@@ -52,6 +52,11 @@ export interface PersonalizationConfig {
 
 export type DesktopSessionKind = "conversation" | "other";
 
+/** Privacy-safe correlation only; never forwarded into Prompt metadata or model context. */
+export interface DesktopSessionTraceContext {
+	interactionId: string;
+}
+
 export type DesktopUserQuestionRequest = RuntimeUserQuestionRequest;
 
 export interface DesktopUserQuestionResolvedEvent {
@@ -63,6 +68,7 @@ export interface DesktopSessionApi {
 	create(
 		config: SessionConfig | undefined,
 		kind: DesktopSessionKind,
+		traceContext?: DesktopSessionTraceContext,
 	): Promise<{ sessionId: string; sessionPath: string; cwd?: string }>;
 	listProjects(): Promise<ProjectInfo[]>;
 	listSessions(cwd: string): Promise<DesktopSessionHistoryInfo[]>;
@@ -74,7 +80,11 @@ export interface DesktopSessionApi {
 		}) => void,
 	): () => void;
 	/** 回执（ADR-0060）：streaming 中带 streamingBehavior 的请求入 kernel 队列并立即返回 queued。 */
-	prompt(sessionId: string, request: PromptRequest): Promise<RuntimeTurnPromptOutcome>;
+	prompt(
+		sessionId: string,
+		request: PromptRequest,
+		traceContext?: DesktopSessionTraceContext,
+	): Promise<RuntimeTurnPromptOutcome>;
 	continue(sessionId: string): Promise<void>;
 	abort(sessionId: string): Promise<void>;
 	/** kernel 输入队列快照（ADR-0060）。 */

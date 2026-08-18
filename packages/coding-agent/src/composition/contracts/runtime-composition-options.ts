@@ -27,6 +27,7 @@ import type { CodingAgentConversationPersistenceFactory } from "./conversation-p
 import type { CodingAgentMemoryRuntimeFactoryOptions } from "./memory-runtime.js";
 import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
 import type { CodingAgentSessionExecutionEnvironmentFactory } from "./session-execution-environment.js";
+import type { CodingAgentSessionInitializationObserver } from "./session-initialization-observability.js";
 import type {
 	CodingAgentSubagentChildFactory,
 	CodingAgentSubagentChildFactoryContext,
@@ -133,6 +134,8 @@ export interface CodingAgentPromptRuntimeSourceContext {
 	readonly cwd: string;
 	readonly agentDir?: string;
 	readonly scenario: ConversationScenario;
+	/** Plugin-owned Skill paths folded into the first resource load to avoid a second full scan. */
+	readonly runtimeSkillPaths: readonly string[];
 }
 
 export interface CodingAgentPromptRuntimeSources {
@@ -192,6 +195,8 @@ export interface CodingAgentRuntimeObservabilityOptions {
 	readonly tracer?: AgentCoreTurnEngineOptions["tracer"];
 	/** Session 间共享的观测策略；Turn Engine 会覆盖真实 Session 身份。 */
 	readonly tracing?: AgentCoreTurnEngineOptions["tracing"];
+	/** Session 初始化阶段观测；只包含阶段耗时与身份，不包含 Prompt、路径或资源正文。 */
+	readonly observeSessionInitialization?: CodingAgentSessionInitializationObserver;
 }
 
 export interface CodingAgentRuntimeCompositionOptions

@@ -56,6 +56,7 @@ import {
 	HeavyToolConfirmationLedger,
 } from "../../tool-policy/heavy-tool-confirmation.js";
 import { createCodingAgentToolSideEffectResolver } from "../../tool-policy/tool-side-effect.js";
+import type { CodingAgentSessionInitializationTimeline } from "../session-initialization/initialization-timeline.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import { CodingAgentContinuationOrchestrator } from "./continuation-orchestrator.js";
@@ -85,7 +86,7 @@ export interface CodingAgentTurnCapabilityActivationPort {
 }
 
 export interface CodingAgentTurnCapabilityPromptOptions {
-	readonly runtimeSourceFactory?: () => Promise<{
+	readonly runtimeSourceFactory?: (context: { readonly runtimeSkillPaths: readonly string[] }) => Promise<{
 		readonly resourceSource: CodingAgentPromptResourceSource;
 		readonly settingsSource: CodingAgentPromptSettingsSource;
 	}>;
@@ -123,6 +124,7 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
 	/** 宿主提问能力，heavy 工具首调确认闸的后端；缺省时确认闸走降级路径。 */
 	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
+	readonly initializationTimeline?: CodingAgentSessionInitializationTimeline;
 }
 
 export interface CodingAgentTurnCapabilitySessionAssembly {
@@ -195,14 +197,23 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			},
 		],
 	});
-	const promptRuntime = await createPromptRuntime(options);
+	const promptRuntime = options.initializationTimeline
+		? await options.initializationTimeline.measure("prompt-runtime", () => createPromptRuntime(options))
+		: await createPromptRuntime(options);
 	const resolveSystemPromptOptions =
 		options.prompt.systemPromptOptionsResolver ?? promptRuntime?.resolveSystemPromptOptions;
 	if (!resolveSystemPromptOptions) {
 		throw new Error("Coding Agent system prompt resolver was not created");
 	}
 	const promptResourceSource = options.prompt.resourceSource ?? promptRuntime?.readResourceSource();
-	await promptResourceSource?.setRuntimeSkillPaths(readPluginSkillPaths(options.activation.readAgentPlugins()));
+	const applyPluginSkills = async (): Promise<void> => {
+		await promptResourceSource?.setRuntimeSkillPaths(readPluginSkillPaths(options.activation.readAgentPlugins()));
+	};
+	if (options.initializationTimeline) {
+		await options.initializationTimeline.measure("plugin-skills", applyPluginSkills);
+	} else {
+		await applyPluginSkills();
+	}
 	const modelCallMessageFinalizer = new CodingAgentModelCallMessageFinalizer(
 		options.prompt.settingsSource ?? promptRuntime?.readSettingsSource(),
 		options.modelInputImageProcessor,
@@ -404,11 +415,15 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		modelCallFrameComposer,
 		inputRequestPreparer: promptAdapter,
 	};
-	const capabilities = await RuntimeCapabilityComposition.create({
-		initialProfile: profile,
-		compiler: options.codingTools.compiler,
-		modelBindingProvider: options.modelRuntime,
-	});
+	const createCapabilities = () =>
+		RuntimeCapabilityComposition.create({
+			initialProfile: profile,
+			compiler: options.codingTools.compiler,
+			modelBindingProvider: options.modelRuntime,
+		});
+	const capabilities = options.initializationTimeline
+		? await options.initializationTimeline.measure("runtime-capabilities", createCapabilities)
+		: await createCapabilities();
 	return {
 		capabilities,
 		promptAdapter,
@@ -462,7 +477,9 @@ async function createPromptRuntime(
 	const factorySources =
 		options.prompt.resourceSource && options.prompt.settingsSource
 			? undefined
-			: await options.prompt.runtimeSourceFactory?.();
+			: await options.prompt.runtimeSourceFactory?.({
+					runtimeSkillPaths: readPluginSkillPaths(options.activation.readAgentPlugins()),
+				});
 	const resourceSource = options.prompt.resourceSource ?? factorySources?.resourceSource;
 	const settingsSource = options.prompt.settingsSource ?? factorySources?.settingsSource;
 	if (!resourceSource || !settingsSource) return undefined;

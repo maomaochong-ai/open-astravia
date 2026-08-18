@@ -11,6 +11,7 @@ import {
 import { NewSessionBackground } from "./NewSessionBackground";
 import { NewSessionHero } from "./NewSessionHero";
 import { InputBar } from "../InputBar";
+import type { SendInteractionContext } from "../input-bar/types";
 
 
 /** 命令区展开时输入栏下移的距离：面板向上生长，下方留白同步收掉。 */
@@ -27,7 +28,7 @@ interface NewSessionPageViewProps {
 	mounted: boolean;
 	onAbort: () => Promise<void>;
 	onCommandPanelExpandedChange: (expanded: boolean) => void;
-	onSend: () => Promise<void>;
+	onSend: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
 	subtitle: string;
 }
 

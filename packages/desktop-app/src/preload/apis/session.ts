@@ -73,11 +73,11 @@ const CHANNELS = {
 export function createSessionApi(ipc: IpcRenderer): Pick<DesktopApi, "session"> {
 	return {
 		session: {
-			create: (config, kind) => ipc.invoke(CHANNELS.CREATE, config, kind),
+			create: (config, kind, traceContext) => ipc.invoke(CHANNELS.CREATE, config, kind, traceContext),
 			listProjects: () => ipc.invoke(CHANNELS.LIST_PROJECTS),
 			listSessions: (cwd) => ipc.invoke(CHANNELS.LIST_SESSIONS, cwd),
 			onSessionsChanged: (handler) => onIpcEvent(ipc, CHANNELS.SESSIONS_CHANGED, handler),
-			prompt: (sessionId, request) => ipc.invoke(CHANNELS.PROMPT, sessionId, request),
+			prompt: (sessionId, request, traceContext) => ipc.invoke(CHANNELS.PROMPT, sessionId, request, traceContext),
 			continue: (sessionId) => ipc.invoke(CHANNELS.CONTINUE, sessionId),
 			abort: (sessionId) => ipc.invoke(CHANNELS.ABORT, sessionId),
 			getQueueState: (sessionId) => ipc.invoke(CHANNELS.QUEUE_STATE, sessionId),
