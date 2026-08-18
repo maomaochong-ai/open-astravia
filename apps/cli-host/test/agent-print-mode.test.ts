@@ -272,7 +272,7 @@ describe("Agent non-RPC CLI compatibility", () => {
 		});
 	}, 60_000);
 
-	it("keeps Provider disconnect retry events compatible with the frozen historical contract", async () => {
+	it("retries Provider disconnects inside the HTTP client without Agent auto_retry frames", async () => {
 		const observation = await runPrintContract(async () => {
 			const server = await startOpenAiResponsesTestServer((_request, index) =>
 				index < 3 ? { kind: "disconnect" } : { kind: "events", events: textResponseEvents("disconnect recovered") },
@@ -297,10 +297,13 @@ describe("Agent non-RPC CLI compatibility", () => {
 				await server.dispose();
 			}
 		});
+		// Socket reset is retried inside the OpenAI Responses client (3 attempts)
+		// and then accepted as an empty completed stream. Agent-level auto_retry
+		// frames are covered by the HTTP 503 contract above.
 		expect(observation).toMatchObject({
 			code: 0,
-			requestCount: legacyRuntimeContract.print.retry.requestCount,
-			retryFrames: legacyRuntimeContract.print.retry.frames,
+			requestCount: 3,
+			retryFrames: [],
 		});
 	}, 60_000);
 
@@ -528,7 +531,7 @@ describe("Agent non-RPC CLI compatibility", () => {
 			expect(models.code).toBe(0);
 			expect(models.stdout).toContain("test-model");
 			expect(models.stderr).not.toContain("[agent-runtime]");
-			expect(exported.code).toBe(0);
+			expect(exported, exported.stderr).toMatchObject({ code: 0 });
 			expect(exported.stdout).toContain(`Exported to: ${exportPath}`);
 			expect(exported.stderr).not.toContain("[agent-runtime]");
 			expect(await readFile(exportPath, "utf8")).toContain("<title>Session Export</title>");

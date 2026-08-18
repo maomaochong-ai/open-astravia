@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createStandaloneEntry } from "./compile-standalone-entry.mjs";
 
 const cliAppRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryRoot = resolve(cliAppRoot, "../..");
@@ -43,38 +44,6 @@ try {
 	await rm(temporaryRoot, { force: true, recursive: true });
 }
 
-
-function createStandaloneEntry(entry) {
-	const runtimeImport =
-		entry === "agent"
-			? 'import { runAgentCli } from "../src/run-agent-cli.ts";'
-			: 'import { runCli } from "../src/run-cli.ts";';
-	const runtimeCall =
-		entry === "agent"
-			? "await runAgentCli(process.argv.slice(2), { htmlExporter });"
-			: "await runCli(process.argv.slice(2), { htmlExporter });";
-	return [
-		runtimeImport,
-		'import { createCodingAgentHtmlExportRuntime } from "../../../packages/coding-agent/src/public-api/export-html.ts";',
-		'import { installBuiltinThemeDocuments } from "../../../packages/coding-agent/src/modes/interactive/theme/theme.ts";',
-		'import { installPhotonModuleLoader, installPhotonWasmPath } from "../../../packages/runtime-node/src/coding/tools/read/photon.ts";',
-		'import template from "../../../packages/coding-agent/src/export-html/assets/template.html" with { type: "text" };',
-		'import css from "../../../packages/coding-agent/src/export-html/assets/template.css" with { type: "text" };',
-		'import js from "../../../packages/coding-agent/src/export-html/assets/template.js" with { type: "text" };',
-		'import markedJs from "../../../packages/coding-agent/src/export-html/assets/vendor/marked.min.js" with { type: "text" };',
-		'import highlightJs from "../../../packages/coding-agent/src/export-html/assets/vendor/highlight.min.js" with { type: "text" };',
-		'import darkTheme from "../../../packages/coding-agent/src/modes/interactive/theme/dark.json";',
-		'import lightTheme from "../../../packages/coding-agent/src/modes/interactive/theme/light.json";',
-		'import photonWasmPath from "../../../packages/coding-agent/node_modules/@silvia-odwyer/photon-node/photon_rs_bg.wasm" with { type: "file" };',
-		"",
-		"const htmlExporter = createCodingAgentHtmlExportRuntime({ assets: { template, css, js, markedJs, highlightJs } });",
-		"installBuiltinThemeDocuments({ dark: darkTheme, light: lightTheme });",
-		"installPhotonWasmPath(photonWasmPath);",
-		'installPhotonModuleLoader(() => import("../../../packages/coding-agent/node_modules/@silvia-odwyer/photon-node/photon_rs.js"));',
-		runtimeCall,
-		"",
-	].join("\n");
-}
 
 function parseArgs(args) {
 	let outfile;

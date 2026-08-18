@@ -153,6 +153,14 @@ export default defineConfig({
 				replacement: fileURLToPath(new URL("../../packages/runtime-storage/src/conversation/index.ts", import.meta.url)),
 			},
 			{
+				find: "@vetta/runtime-storage",
+				replacement: fileURLToPath(new URL("../../packages/runtime-storage/src/index.ts", import.meta.url)),
+			},
+			{
+				find: "@vetta/action-rpc",
+				replacement: fileURLToPath(new URL("../../packages/action-rpc/src/index.ts", import.meta.url)),
+			},
+			{
 				find: "@vetta/runtime-node/conversation",
 				replacement: fileURLToPath(new URL("../../packages/runtime-node/src/conversation/index.ts", import.meta.url)),
 			},
