@@ -7,6 +7,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 ### Added
 
 - **新会话首条消息直发与可观测**：新建会话不再等待空历史、状态水合与侧边栏对账，事件订阅建立后立即派发首条 Prompt；插件 Skill 路径合并进首次资源加载，避免初始化期间重复全量扫描。Renderer、IPC 与 Desktop 会话服务沿用同一隐私安全的 interaction ID，再用 session ID 关联 Coding Agent Runtime 分阶段耗时；诊断不记录 Prompt、路径或资源正文。
+- **未知扩展名的文本文件可预览**：本地文件没有内置或插件预览器时，Desktop 会在主进程按内容严格探测 UTF-8；文本以只读纯文本形式展示，无效 UTF-8、NUL 或控制字符密集的二进制仍保持不支持，且不扩大原有路径读取与编辑权限。
 - **插件热重载与缓存失效可验证诊断**：Dev 日志记录 Renderer full reload 和插件开发更新的触发路径；插件 Runtime 以完整配置指纹跳过 staged 注册产生的重复重配，同时保留 activation/handler 路由更新和资源强制刷新。逐轮 Token 面板新增具体变化的 Prompt Block ID、工具名及变化类型。
 - **Debug Provider 观测与认证预检**：UI Verification 可通过显式实验 `runId` 启用隔离的模型调用链，将脱敏后的请求前缀、Provider payload/wire 和真实缓存 usage 追加到应用缓存 NDJSON；新增 `provider.preflight`，在正式实验前用低 Token、禁用缓存的真实请求区分模型缺失、凭据缺失、认证失败、计费、限流和超时。验证脚本改用轻量 Debug CLI，不再为 RPC 调用加载完整 Agent/Extension CLI 源码。
 - **缓存前缀连续性诊断**：逐轮 Token 面板现在显示稳定前缀是首次诊断、连续扩展、已改变还是因历史版本不可比较，并列出变化发生在系统提示词、工具或消息历史；只提供读取观测的 Provider 会明确显示写入数据“未上报（只读）”。

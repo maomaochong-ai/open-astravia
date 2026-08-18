@@ -9,6 +9,7 @@ import {
 	createFilesystemEntry,
 	readEditableTextFile,
 	readFilesystemBinaryFile,
+	readTextPreviewFile,
 	saveEditableTextFile,
 } from "./filesystem-service";
 
@@ -146,5 +147,70 @@ describe("editable text files", () => {
 		await writeFile(filePath, Buffer.from([0xff, 0xfe, 0x00, 0x00]));
 
 		await expect(readEditableTextFile(filePath)).rejects.toThrow(FS_EDITABLE_TEXT_ERROR.NOT_UTF8);
+	});
+});
+
+describe("text preview fallback", () => {
+	let projectRoot = "";
+
+	beforeEach(async () => {
+		projectRoot = await mkdtemp(join(tmpdir(), "vetta-text-preview-"));
+		allowProjectRoot(projectRoot);
+	});
+
+	afterEach(async () => {
+		if (projectRoot) await rm(projectRoot, { recursive: true, force: true });
+	});
+
+	it("returns UTF-8 text without relying on the file extension", async () => {
+		const filePath = join(projectRoot, "notes.unknown-format");
+		await writeFile(filePath, "first line\n第二行\n", "utf8");
+
+		await expect(readTextPreviewFile(filePath)).resolves.toEqual({
+			status: "text",
+			content: "first line\n第二行\n",
+			size: Buffer.byteLength("first line\n第二行\n"),
+		});
+	});
+
+	it("strips an UTF-8 BOM from fallback preview content", async () => {
+		const filePath = join(projectRoot, "bom.custom");
+		await writeFile(filePath, Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from("content")]));
+
+		await expect(readTextPreviewFile(filePath)).resolves.toMatchObject({
+			status: "text",
+			content: "content",
+		});
+	});
+
+	it("classifies invalid UTF-8 as binary instead of returning replacement characters", async () => {
+		const filePath = join(projectRoot, "payload.custom");
+		await writeFile(filePath, Buffer.from([0xff, 0xfe, 0x00, 0x61]));
+
+		await expect(readTextPreviewFile(filePath)).resolves.toEqual({
+			status: "binary",
+			size: 4,
+		});
+	});
+
+	it("classifies control-character-heavy UTF-8 as binary", async () => {
+		const filePath = join(projectRoot, "payload.custom");
+		await writeFile(filePath, Buffer.from([0x01, 0x02, 0x03, 0x04, 0x41]));
+
+		await expect(readTextPreviewFile(filePath)).resolves.toEqual({
+			status: "binary",
+			size: 5,
+		});
+	});
+
+	it("classifies an obviously binary file before applying the text preview size limit", async () => {
+		const filePath = join(projectRoot, "large.custom");
+		const binarySize = 10 * 1024 * 1024 + 1;
+		await writeFile(filePath, Buffer.alloc(binarySize));
+
+		await expect(readTextPreviewFile(filePath)).resolves.toEqual({
+			status: "binary",
+			size: binarySize,
+		});
 	});
 });

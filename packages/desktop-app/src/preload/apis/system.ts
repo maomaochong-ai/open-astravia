@@ -2,6 +2,7 @@ import type { IpcRenderer, IpcRendererEvent, WebUtils } from "electron";
 import { PROJECTS_CHANNELS } from "../../shared/projects-ipc.js";
 import type { DesktopApi } from "../api.js";
 import type { DesktopThemeChangeRequest } from "../api-types/theme.js";
+import { FS_READ_TEXT_PREVIEW_CHANNEL } from "../fs-types.js";
 import { onIpcEvent, onIpcVoidEvent } from "./helper.js";
 
 export function createSystemApi(
@@ -117,6 +118,7 @@ export function createSystemApi(
 		fs: {
 			readDir: (dirPath) => ipc.invoke("vetta:fs:read-dir", dirPath),
 			readFile: (filePath) => ipc.invoke("vetta:fs:read-file", filePath),
+			readTextPreviewFile: (filePath) => ipc.invoke(FS_READ_TEXT_PREVIEW_CHANNEL, filePath),
 			readEditableTextFile: (filePath) => ipc.invoke("vetta:fs:read-editable-text", filePath),
 			saveEditableTextFile: (filePath, content, options) =>
 				ipc.invoke("vetta:fs:save-editable-text", filePath, content, options),
