@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { validateRpcInboundFrame } from "../../src/modes/rpc/rpc-frame-validator.js";
+import { validateRpcInboundFrame } from "../../src/rpc/rpc-frame-validator.js";
 
 describe("RPC inbound frame validation", () => {
 	test("accepts every documented command shape while preserving extra compatible fields", () => {

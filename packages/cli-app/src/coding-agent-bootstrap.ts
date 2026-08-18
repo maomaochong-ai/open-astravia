@@ -5,11 +5,15 @@ import {
 	createCodingAgentBootstrap,
 } from "@vetta/coding-agent/bootstrap";
 import { ENV_SERVER_URL, getAgentDir } from "@vetta/coding-agent/config";
-import { runCodingAgentStartupMigrations } from "@vetta/coding-agent/historical-sessions";
 import { createCodingAgentAuthRuntime, createCodingAgentModelRuntime } from "@vetta/coding-agent/host-services";
-import { NodeTransactionalTextStorage } from "@vetta/runtime-node/host";
+import {
+	NodeTransactionalTextStorage,
+	nodeConfigurationValueResolver,
+	nodeSyncTextFileSource,
+} from "@vetta/runtime-node/host";
 import chalk from "chalk";
 import { createCliSessionResourceRuntime, createCliSettingsRuntime } from "./coding-agent-resource-runtime.js";
+import { runMigrations as runCodingAgentStartupMigrations } from "./startup-migrations.js";
 
 export interface CreateCliCodingAgentBootstrapOptions extends CodingAgentBootstrapDiagnostics {
 	readonly args: string[];
@@ -27,9 +31,13 @@ export async function createCliCodingAgentBootstrap(
 	runCodingAgentStartupMigrations({ cwd, agentDir });
 
 	const settingsManager = createCliSettingsRuntime(cwd, agentDir);
-	const authStorage = createCodingAgentAuthRuntime(new NodeTransactionalTextStorage(join(agentDir, "auth.json")));
+	const authStorage = createCodingAgentAuthRuntime(new NodeTransactionalTextStorage(join(agentDir, "auth.json")), {
+		configurationValueResolver: nodeConfigurationValueResolver,
+	});
 	const modelRegistry = createCodingAgentModelRuntime(authStorage, {
 		modelsJsonPath: join(agentDir, "models.json"),
+		configFileSource: nodeSyncTextFileSource,
+		configurationValueResolver: nodeConfigurationValueResolver,
 	});
 
 	return createCodingAgentBootstrap({
@@ -58,6 +66,7 @@ export async function createCliCodingAgentBootstrap(
 			}),
 		onSettingsError: options.onSettingsError ?? reportSettingsError,
 		onExtensionError: options.onExtensionError ?? reportExtensionError,
+		onArgumentWarning: options.onArgumentWarning ?? reportArgumentWarning,
 	});
 }
 
@@ -80,4 +89,8 @@ function reportExtensionError({
 	error,
 }: Parameters<NonNullable<CodingAgentBootstrapDiagnostics["onExtensionError"]>>[0]): void {
 	console.error(chalk.red(`Failed to load extension "${path}": ${error}`));
+}
+
+function reportArgumentWarning(warning: string): void {
+	console.error(chalk.yellow(`Warning: ${warning}`));
 }

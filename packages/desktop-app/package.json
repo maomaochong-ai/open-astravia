@@ -125,6 +125,7 @@
 		"@vetta/runtime-node": "workspace:*",
 		"@vetta/runtime-knowledge": "workspace:*",
 		"@vetta/runtime-storage": "workspace:*",
+		"@vetta/runtime-tools": "workspace:*",
 		"@vetta/theme-sdk": "workspace:*",
 		"@vetta/theme-ui": "workspace:*",
 		"@vetta/toolkit": "workspace:*",

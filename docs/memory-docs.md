@@ -92,7 +92,7 @@ Turn 完成后，Memory Runtime 通过独立 `TurnObserver` 取得该 Turn 最�
 
 ### 3.5 路径回传（让下一条消息续接）
 
-`session_path_changed` 是 AgentSession 事件，经 `session.subscribe → output` 自动写到 stdout（`src/modes/rpc/rpc-mode.ts`）。im-gateway 侧：
+`session_path_changed` 是 AgentSession 事件，经 `session.subscribe → output` 自动写到 stdout（`src/rpc/rpc-mode.ts`）。im-gateway 侧：
 
 1. `bridge` 的 `handle` / `handleDeferred` 都有 `case session_path_changed`，调 `handleSessionPathChanged` 解析 `to` → 触发 `pathChange` 回调（`internal/bridge/bridge.go`）。
 2. `router.forwardToAgent` 用 `br.SetPathChangeHandler` 注册回调：`r.state.SetSession(user, chat, newPath)`（`internal/router/router.go`）。
@@ -109,7 +109,7 @@ Turn 完成后，Memory Runtime 通过独立 `TurnObserver` 取得该 Turn 最�
 自动 flush 只在 **rollover**（上下文逼近阈值）时触发。但用户在飞书/微信里 `/new` 可能发生在**远未到阈值**时——这样一个短会话若被直接丢弃，它的持久事实就没机会凝结。为此 `/new` 增加了一次显式 flush：
 
 1. im-gateway 的 `newCmd`（`internal/command/router.go`）在清空路由前调 `flushSessionMemory`：查到该 chat 当前 sessionPath → `HostPool.Acquire` 起一个一次性进程 → 发 `flush_memory` RPC（60s 超时，best-effort）→ 释放。
-2. coding-agent 的 RPC dispatcher 收到 `flush_memory`（`src/modes/rpc/rpc-command-dispatcher.ts`）→ 调用 Session capability host → `CodingAgentGreenfieldMemoryController.flushMemory()`：对**当前完整上下文**跑一次 flush 抽取，写进 MEMORY.md，返回写入条数。非 memory-mode 返回 0（no-op）。
+2. coding-agent 的 RPC dispatcher 收到 `flush_memory`（`src/rpc/rpc-command-dispatcher.ts`）→ 调用 Session capability host → `CodingAgentGreenfieldMemoryController.flushMemory()`：对**当前完整上下文**跑一次 flush 抽取，写进 MEMORY.md，返回写入条数。非 memory-mode 返回 0（no-op）。
 3. 凝结成功（`written>0`）时，`/new` 回复附「已凝结 N 条记忆到长期记忆」。
 
 > 与 rollover flush 的区别：rollover flush 针对**即将被丢弃的那段**（`messagesToSummarize`），`/new` flush 针对**当前整段上下文**（rollover 已凝结过的更早内容由 flush 内的去重 + 字符预算自然挡掉）。`flush_memory` 是无副作用的可重入操作。
@@ -146,8 +146,8 @@ memory(action, content?, match?)
 | 快照、flush+journal 接线与 70% 策略 | `coding-agent/src/memory/memory-rollover-runtime.ts` |
 | system prompt 的 `memory` 段 | `coding-agent/src/model-context/memory-prompt.ts` |
 | rollover continuation | `runtime-core/src/kernel/turn-pipeline.ts`、`runtime-node/src/conversation/file-conversation-repository.ts` |
-| `--memory-mode` / `--memory-file` 解析 | `coding-agent/src/cli/args.ts`、贯通 `sdk.ts` / `main.ts` |
-| `/new` 显式凝结：`flush_memory` RPC + `flushMemory()` | `coding-agent/src/modes/rpc/rpc-command-dispatcher.ts`、`adapters/runtime-core/greenfield-memory-controller.ts`；`im-gateway/internal/command/router.go: flushSessionMemory` |
+| `--memory-mode` / `--memory-file` 解析 | `coding-agent/src/bootstrap/launch-arguments.ts`、贯通 SDK 与 Runtime Composition |
+| `/new` 显式凝结：`flush_memory` RPC + `flushMemory()` | `coding-agent/src/rpc/rpc-command-dispatcher.ts`、`adapters/runtime-core/greenfield-memory-controller.ts`；`im-gateway/internal/command/router.go: flushSessionMemory` |
 | `session_path_changed` 事件投影 | `cli-app/src/rpc/greenfield-im-rpc-events.ts` |
 | spawn 参数透传 | `im-gateway/internal/hostclient/local/client.go`（`MemoryMode`/`MemoryFile`） |
 | host 恒开 + 日期 cwd | `im-gateway/cmd/im-gateway/host.go`（`MemoryMode=true`、`SetDatedCwd(true)`） |

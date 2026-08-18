@@ -1,0 +1,143 @@
+import { mkdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { APP_NAME, ENV_AGENT_DIR } from "@vetta/coding-agent/config";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { runCodingAgentCliControl } from "../src/coding-agent-cli-control.js";
+import { createCliResourcePackageRuntime, createCliSettingsRuntime } from "../src/coding-agent-resource-runtime.js";
+
+describe("package commands", () => {
+	let tempDir: string;
+	let agentDir: string;
+	let projectDir: string;
+	let packageDir: string;
+	let originalCwd: string;
+	let originalAgentDir: string | undefined;
+	let originalExitCode: typeof process.exitCode;
+
+	beforeEach(() => {
+		tempDir = join(tmpdir(), `pi-package-commands-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+		agentDir = join(tempDir, "agent");
+		projectDir = join(tempDir, "project");
+		packageDir = join(tempDir, "local-package");
+		mkdirSync(agentDir, { recursive: true });
+		mkdirSync(projectDir, { recursive: true });
+		mkdirSync(packageDir, { recursive: true });
+
+		originalCwd = process.cwd();
+		originalAgentDir = process.env[ENV_AGENT_DIR];
+		originalExitCode = process.exitCode;
+		process.exitCode = undefined;
+		process.env[ENV_AGENT_DIR] = agentDir;
+		process.chdir(projectDir);
+	});
+
+	afterEach(() => {
+		process.chdir(originalCwd);
+		process.exitCode = originalExitCode;
+		if (originalAgentDir === undefined) {
+			delete process.env[ENV_AGENT_DIR];
+		} else {
+			process.env[ENV_AGENT_DIR] = originalAgentDir;
+		}
+		rmSync(tempDir, { recursive: true, force: true });
+	});
+
+	it("should persist global relative local package paths relative to settings.json", async () => {
+		const relativePkgDir = join(projectDir, "packages", "local-package");
+		mkdirSync(relativePkgDir, { recursive: true });
+
+		await runPackageCommand(["install", "./packages/local-package"]);
+
+		const settingsPath = join(agentDir, "settings.json");
+		const settings = JSON.parse(readFileSync(settingsPath, "utf-8")) as { packages?: string[] };
+		expect(settings.packages?.length).toBe(1);
+		const stored = settings.packages?.[0] ?? "";
+		const resolvedFromSettings = realpathSync(join(agentDir, stored));
+		expect(resolvedFromSettings).toBe(realpathSync(relativePkgDir));
+	});
+
+	it("should remove local packages using a path with a trailing slash", async () => {
+		await runPackageCommand(["install", `${packageDir}/`]);
+
+		const settingsPath = join(agentDir, "settings.json");
+		const installedSettings = JSON.parse(readFileSync(settingsPath, "utf-8")) as { packages?: string[] };
+		expect(installedSettings.packages?.length).toBe(1);
+
+		await runPackageCommand(["remove", `${packageDir}/`]);
+
+		const removedSettings = JSON.parse(readFileSync(settingsPath, "utf-8")) as { packages?: string[] };
+		expect(removedSettings.packages ?? []).toHaveLength(0);
+	});
+
+	it("shows install subcommand help", async () => {
+		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		try {
+			await expect(runCodingAgentCliControl(["install", "--help"])).resolves.toBe(true);
+
+			const stdout = logSpy.mock.calls.map(([message]) => String(message)).join("\n");
+			expect(stdout).toContain("Usage:");
+			expect(stdout).toContain(`${APP_NAME} install <source> [-l]`);
+			expect(errorSpy).not.toHaveBeenCalled();
+			expect(process.exitCode).toBeUndefined();
+		} finally {
+			logSpy.mockRestore();
+			errorSpy.mockRestore();
+		}
+	});
+
+	it("shows a friendly error for unknown install options", async () => {
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		try {
+			await expect(runCodingAgentCliControl(["install", "--unknown"])).resolves.toBe(true);
+
+			const stderr = errorSpy.mock.calls.map(([message]) => String(message)).join("\n");
+			expect(stderr).toContain('Unknown option --unknown for "install".');
+			expect(stderr).toContain(`Use "${APP_NAME} --help" or "${APP_NAME} install <source> [-l]".`);
+			expect(process.exitCode).toBe(1);
+		} finally {
+			errorSpy.mockRestore();
+		}
+	});
+
+	it("shows a friendly error for missing install source", async () => {
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		try {
+			await expect(runCodingAgentCliControl(["install"])).resolves.toBe(true);
+
+			const stderr = errorSpy.mock.calls.map(([message]) => String(message)).join("\n");
+			expect(stderr).toContain("Missing install source.");
+			expect(stderr).toContain(`Usage: ${APP_NAME} install <source> [-l]`);
+			expect(stderr).not.toContain("at ");
+			expect(process.exitCode).toBe(1);
+		} finally {
+			errorSpy.mockRestore();
+		}
+	});
+
+	it("requires the application host for package side effects", async () => {
+		await expect(runCodingAgentCliControl(["install", packageDir])).rejects.toThrow(
+			"Package commands require a host-provided Resource Package runtime factory",
+		);
+	});
+
+	function runPackageCommand(args: string[]) {
+		return runCodingAgentCliControl(args, {
+			createPackageCommandRuntime: () => {
+				const settings = createCliSettingsRuntime(projectDir, agentDir);
+				return {
+					settings,
+					packages: createCliResourcePackageRuntime({
+						cwd: projectDir,
+						agentDir,
+						settings,
+					}),
+				};
+			},
+		});
+	}
+});

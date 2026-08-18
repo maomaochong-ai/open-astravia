@@ -53,12 +53,12 @@
 - operation schema 改为真正的 discriminated union，避免所有 action 共享几十个可选字段。
 - 使用 TypeBox 或仓库现有结构化 schema 事实源，同时生成运行时校验和工具 schema，避免双份合同。
 - 四个领域工具按固定注册序进入模型工具面，不随当前消息或工作流阶段逐轮增删。
-- 不注册插件 System Prompt Provider；通过稳定 Skill 索引和宿主 `invoke_skill` 按需读取任务相关方法资料，不申请 `agent.systemPrompt.write` 或 `agent.tools.control`。
+- 通过静态 prompt path 提供简洁的工作流准入与退出条件，不注册逐轮执行的 System Prompt Provider；通过稳定 Skill 索引和宿主 `invoke_skill` 按需读取任务相关方法资料，只申请静态提示所需的 `agent.systemPrompt.write`，不申请 `agent.tools.control`。
 
 验收：
 
 - 不同内容意图下的工具名称、顺序和 Schema 完全一致；
-- 方法切换只增加 `invoke_skill` 工具结果与后续 reference 内容，不改变 system prompt 或工具缓存前缀；
+- 方法切换只增加 `invoke_skill` 工具结果与后续 reference 内容，不改变静态 system prompt 内容或工具缓存前缀；
 - 模型无需知道 destructive operation 对应哪个工具；
 - 同一 safety 测试集行为不变；
 - schema token 相比 Phase 0 明显下降。
@@ -92,7 +92,7 @@
 
 工作项：
 
-- 移除插件专属 system prompt，把触发边界放在 Skill description、执行边界放在 Tool description/Schema。
+- 将插件专属 system prompt 收敛为固定、简短的工作流路由边界；具体任务触发放在 Skill description，执行边界放在 Tool description/Schema。
 - 新建 image、video、quality-review Skill。
 - 按 universal/model/task/failure 拆 reference。
 - recipe Skill 只声明输入、阶段、gate、fallback 和交付物。

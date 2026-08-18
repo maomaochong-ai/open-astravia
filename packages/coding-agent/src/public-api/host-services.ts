@@ -28,7 +28,11 @@ import {
 	type CodingAgentPluginMcpToolSurface,
 	createCodingAgentPluginMcpRuntime,
 } from "../plugins/runtime/mcp-runtime.js";
-import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "../runtime-contracts/index.js";
+import type {
+	CodingAgentConfigurationValueResolver,
+	CodingAgentPluginRuntimeSource,
+	CodingAgentRuntimeModelSource,
+} from "../runtime-contracts/index.js";
 import { SettingsRuntime } from "../settings/index.js";
 import type { CodingAgentHost, CodingAgentHostSessionDefaults } from "./sdk/index.js";
 
@@ -48,6 +52,7 @@ export {
 export type { HostBashExecutor } from "../host/command-execution/index.js";
 export type {
 	CodingAgentAuthRuntime,
+	CodingAgentConfigurationValueResolver,
 	CodingAgentHtmlExportRuntime,
 	CodingAgentMcpRuntimeToolSourceOptions,
 	CodingAgentModelRuntime,

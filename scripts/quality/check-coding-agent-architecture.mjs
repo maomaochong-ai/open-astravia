@@ -16,6 +16,7 @@ const RETIRED_LAYER_TERM_PATTERN = new RegExp(
 );
 
 const DOMAIN_ROOTS = Object.freeze([
+	`${SOURCE_ROOT}/execution/`,
 	`${SOURCE_ROOT}/extensions/`,
 	`${SOURCE_ROOT}/features/`,
 	`${SOURCE_ROOT}/memory/`,
@@ -23,7 +24,9 @@ const DOMAIN_ROOTS = Object.freeze([
 	`${SOURCE_ROOT}/model-context/`,
 	`${SOURCE_ROOT}/plugins/`,
 	`${SOURCE_ROOT}/resources/`,
+	`${SOURCE_ROOT}/rpc/`,
 	`${SOURCE_ROOT}/sessions/`,
+	`${SOURCE_ROOT}/theme/`,
 ]);
 
 const COMPOSITION_PUBLIC_SOURCE_ROOTS = Object.freeze([
@@ -52,24 +55,24 @@ const TOOL_ENVIRONMENT_COMPOSITION_ROOTS = Object.freeze([
 	"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
 	"packages/runtime-desktop/src/backend-pool.ts",
 	"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
-	`${SOURCE_ROOT}/host/sdk-session/session-host.ts`,
+	`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
 ]);
 const TOOL_RESULT_POLICY_COMPOSITION_ROOTS = Object.freeze([
 	"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
 	"packages/runtime-desktop/src/backend-pool.ts",
 	"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
-	`${SOURCE_ROOT}/host/sdk-session/session-host.ts`,
+	`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
 ]);
 const KNOWLEDGE_RUNTIME_COMPOSITION_ROOTS = Object.freeze([
 	"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
 	"packages/desktop-app/src/main/agent-runtime/composition.ts",
 	"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
-	`${SOURCE_ROOT}/host/sdk-session/session-host.ts`,
+	`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
 ]);
 const MEMORY_RUNTIME_COMPOSITION_ROOTS = Object.freeze([
 	"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
 	"packages/desktop-app/src/main/agent-runtime/composition.ts",
-	`${SOURCE_ROOT}/host/sdk-session/session-host.ts`,
+	`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
 ]);
 const RPC_HOST_COMPOSITION_ROOTS = Object.freeze(["packages/cli-app/src/rpc/runtime-host/runtime-host.ts"]);
 
@@ -94,12 +97,23 @@ export function findCodingAgentArchitectureViolations(state) {
 	checkCodingAgentCompositionPersistenceBoundary(state, violations);
 	checkToolEnvironmentBoundary(state, violations);
 	checkPromptRequestAdapterBoundary(state, violations);
+	checkRetiredConcurrencyBoundary(state, violations);
+	checkRetiredConfigurationImplementationBoundary(state, violations);
+	checkRetiredUtilsBoundary(state, violations);
+	checkCliHostBoundary(state, violations);
 	checkRetiredAdapterOwnershipPaths(state, violations);
 	checkNodeStateBackendBoundary(state, violations);
 	checkExtensionModuleBoundary(state, violations);
 	checkResourceAccessBoundary(state, violations);
 	checkCommandExecutionBoundary(state, violations);
 	checkExecutionModeHostBoundary(state, violations);
+	checkPrintModeTransportBoundary(state, violations);
+	checkWorkspaceFactsBoundary(state, violations);
+	checkModelInputImageBoundary(state, violations);
+	checkModelDomainBoundary(state, violations);
+	checkHtmlExportBoundary(state, violations);
+	checkThemeDomainBoundary(state, violations);
+	checkPortableProductDomainBoundary(state, violations);
 	checkToolResultArtifactBoundary(state, violations);
 	checkBootstrapBoundary(state, violations);
 	checkResourcePackageHostBoundary(state, violations);
@@ -151,8 +165,16 @@ export function findCodingAgentArchitectureViolations(state) {
 				);
 			}
 		}
-		if (edge.names.includes("migrateLegacySessionToV2") && !edge.path.startsWith(`${HISTORICAL_ROOT}/`)) {
-			violations.push(`${edge.path}:${edge.line}: historical conversion is outside its owner (${edge.specifier})`);
+		if (edge.names.includes("migrateLegacySessionToV2") && edge.path.startsWith(`${SOURCE_ROOT}/`)) {
+			violations.push(`${edge.path}:${edge.line}: historical migration execution must be injected by a Host`);
+		}
+		if (
+			edge.path.startsWith(`${HISTORICAL_ROOT}/`) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(
+				`${edge.path}:${edge.line}: historical format policy must consume host-provided file operations`,
+			);
 		}
 
 		if (!target?.startsWith(`${SOURCE_ROOT}/`)) continue;
@@ -179,7 +201,151 @@ export function findCodingAgentArchitectureViolations(state) {
 		}
 	}
 
+	for (const path of [
+		"packages/cli-app/src/historical-session-host.ts",
+		"packages/runtime-desktop/src/historical-session-host.ts",
+	]) {
+		const file = state.files.find((candidate) => candidate.path === path);
+		if (file && !/\bcreateNodeLegacySessionHost\s*\(/.test(file.text)) {
+			violations.push(`${path}: platform historical-session Host must inject Node file execution`);
+		}
+	}
+
 	return violations;
+}
+
+function checkPortableProductDomainBoundary(state, violations) {
+	const portableRoots = [
+		`${SOURCE_ROOT}/compaction/`,
+		`${SOURCE_ROOT}/composition/subagent/`,
+		`${SOURCE_ROOT}/mcp/`,
+		`${SOURCE_ROOT}/plugins/runtime/`,
+		`${SOURCE_ROOT}/sessions/projection/`,
+		`${SOURCE_ROOT}/sessions/setup/`,
+		`${SOURCE_ROOT}/settings/`,
+		`${SOURCE_ROOT}/tool-policy/`,
+	];
+	for (const edge of state.edges) {
+		if (
+			portableRoots.some((root) => edge.path.startsWith(root)) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: portable product domain must consume host-provided capabilities`);
+		}
+		const target = resolveSourceTarget(edge.path, edge.specifier);
+		if (
+			edge.path.startsWith(`${SOURCE_ROOT}/`) &&
+			!edge.path.startsWith(`${SOURCE_ROOT}/host/`) &&
+			edge.path !== `${SOURCE_ROOT}/config.ts` &&
+			target === `${SOURCE_ROOT}/config.ts`
+		) {
+			violations.push(`${edge.path}:${edge.line}: portable product code must import identity, not Node config`);
+		}
+	}
+	for (const file of state.files) {
+		if (
+			portableRoots.some((root) => file.path.startsWith(root)) &&
+			/\bprocess\.(?:env|cwd|pid|platform|execPath|stdin|stdout|stderr)\b/.test(file.text)
+		) {
+			violations.push(`${file.path}: portable product domain must not read Node process state`);
+		}
+	}
+
+	const productIdentity = state.files.find((file) => file.path === `${SOURCE_ROOT}/identity.ts`);
+	if (
+		productIdentity &&
+		(/\bprocess\b/.test(productIdentity.text) ||
+			state.edges.some(
+				(edge) =>
+					edge.path === productIdentity.path &&
+					(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node")),
+			))
+	) {
+		violations.push(`${productIdentity.path}: identity must remain portable and side-effect free`);
+	}
+	const configFacade = state.files.find((file) => file.path === `${SOURCE_ROOT}/config.ts`);
+	if (configFacade && /\b(?:process|readFile|existsSync|function|class)\b/.test(configFacade.text)) {
+		violations.push(`${configFacade.path}: public config must remain a thin Node-host compatibility facade`);
+	}
+
+	for (const retiredPath of [`${SOURCE_ROOT}/mcp/runtime/supervisor.ts`, `${SOURCE_ROOT}/migrations.ts`]) {
+		if (state.sourcePaths.includes(retiredPath)) {
+			violations.push(
+				`${retiredPath}: platform lifecycle implementation belongs to an application Composition Root`,
+			);
+		}
+	}
+
+	for (const path of [
+		"packages/cli-app/src/rpc/runtime-host/mcp-supervisor.ts",
+		"packages/desktop-app/src/main/agent-runtime/mcp-supervisor.ts",
+		`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
+	]) {
+		const file = state.files.find((candidate) => candidate.path === path);
+		if (file && !/\bcreateNodeMcpSupervisor\s*\(/.test(file.text)) {
+			violations.push(`${path}: Node Composition Root must select the runtime-node MCP supervisor`);
+		}
+	}
+}
+
+function checkRetiredConcurrencyBoundary(state, violations) {
+	const retiredRoot = `${SOURCE_ROOT}/concurrency/`;
+	for (const path of state.sourcePaths) {
+		if (path.startsWith(retiredRoot)) {
+			violations.push(`${path}: generic concurrency belongs to Runtime Tools`);
+		}
+	}
+	if (state.packageExports.includes("./concurrency")) {
+		violations.push(`${PACKAGE_ROOT}/package.json: generic concurrency must not be published by Coding Agent`);
+	}
+}
+
+function checkRetiredConfigurationImplementationBoundary(state, violations) {
+	const retiredRoot = `${SOURCE_ROOT}/configuration/`;
+	for (const path of state.sourcePaths) {
+		if (path.startsWith(retiredRoot)) {
+			violations.push(`${path}: environment configuration resolution belongs to the platform Runtime`);
+		}
+	}
+	if (state.packageExports.includes("./configuration")) {
+		violations.push(
+			`${PACKAGE_ROOT}/package.json: environment configuration resolution must not be published by Coding Agent`,
+		);
+	}
+}
+
+function checkRetiredUtilsBoundary(state, violations) {
+	const retiredRoot = `${SOURCE_ROOT}/utils/`;
+	for (const path of state.sourcePaths) {
+		if (path.startsWith(retiredRoot)) {
+			violations.push(`${path}: generic utility dumping ground is retired; place code in its owning domain`);
+		}
+	}
+}
+
+function checkCliHostBoundary(state, violations) {
+	const retiredPaths = new Set([
+		`${SOURCE_ROOT}/cli/args.ts`,
+		`${SOURCE_ROOT}/cli/file-processor.ts`,
+		`${SOURCE_ROOT}/cli/list-models.ts`,
+		`${SOURCE_ROOT}/host/coding-agent-cli-control.ts`,
+		`${SOURCE_ROOT}/public-api/cli-control.ts`,
+		`${SOURCE_ROOT}/composition/session-host/process-session-host.ts`,
+	]);
+	for (const path of state.sourcePaths) {
+		if (retiredPaths.has(path)) {
+			violations.push(`${path}: terminal CLI behavior belongs to cli-app`);
+		}
+	}
+	if (state.packageExports.includes("./cli-control")) {
+		violations.push(`${PACKAGE_ROOT}/package.json: CLI process control must not be published by Coding Agent`);
+	}
+
+	const printInvocationPath = `${SOURCE_ROOT}/host/coding-agent-print-invocation.ts`;
+	const printInvocation = state.files.find((file) => file.path === printInvocationPath);
+	if (printInvocation && /\bprocess\s*\.|\bconsole\.(?:log|error)\s*\(/.test(printInvocation.text)) {
+		violations.push(`${printInvocationPath}: Print input assembly must consume host-provided I/O Ports`);
+	}
 }
 
 function checkRetiredAdapterOwnershipPaths(state, violations) {
@@ -391,13 +557,13 @@ function checkCommandExecutionBoundary(state, violations) {
 
 function checkExecutionModeHostBoundary(state, violations) {
 	const retiredExecutionModeRoot = `${SOURCE_ROOT}/adapters/runtime-core/execution-mode/`;
-	const sandboxHostRoot = `${SOURCE_ROOT}/host/session-execution/sandbox/`;
+	const sandboxPolicyRoot = `${SOURCE_ROOT}/execution/sandbox/`;
 	const retiredPlatformFiles = new Set([
-		`${sandboxHostRoot}linux-bwrap-tools.ts`,
-		`${sandboxHostRoot}macos-seatbelt-tools.ts`,
-		`${sandboxHostRoot}windows-sandbox-policy.ts`,
-		`${sandboxHostRoot}windows-sandbox-tools.ts`,
-		`${sandboxHostRoot}workspace-guard.ts`,
+		`${sandboxPolicyRoot}linux-bwrap-tools.ts`,
+		`${sandboxPolicyRoot}macos-seatbelt-tools.ts`,
+		`${sandboxPolicyRoot}windows-sandbox-policy.ts`,
+		`${sandboxPolicyRoot}windows-sandbox-tools.ts`,
+		`${sandboxPolicyRoot}workspace-guard.ts`,
 	]);
 	for (const file of state.files) {
 		if (file.path.startsWith(retiredExecutionModeRoot)) {
@@ -407,18 +573,195 @@ function checkExecutionModeHostBoundary(state, violations) {
 			violations.push(`${file.path}: OS sandbox implementation belongs to runtime-node`);
 		}
 		if (
-			file.path.startsWith(sandboxHostRoot) &&
+			file.path.startsWith(sandboxPolicyRoot) &&
 			(/\bNodeJS\s*\./.test(file.text) || /\bprocess\s*\./.test(file.text))
 		) {
 			violations.push(`${file.path}: sandbox policy must consume Host Services, not Node globals`);
 		}
 	}
 	for (const edge of state.edges) {
-		if (edge.path.startsWith(sandboxHostRoot) && edge.specifier.startsWith("node:")) {
+		if (edge.path.startsWith(sandboxPolicyRoot) && edge.specifier.startsWith("node:")) {
 			violations.push(`${edge.path}:${edge.line}: OS sandbox implementation belongs to runtime-node`);
 		}
-		if (edge.path.startsWith(sandboxHostRoot) && edge.specifier.startsWith("@vetta/runtime-node")) {
+		if (edge.path.startsWith(sandboxPolicyRoot) && edge.specifier.startsWith("@vetta/runtime-node")) {
 			violations.push(`${edge.path}:${edge.line}: sandbox policy must consume injected Host Services`);
+		}
+	}
+}
+
+function checkPrintModeTransportBoundary(state, violations) {
+	const printModePath = `${SOURCE_ROOT}/modes/print-mode.ts`;
+	const printMode = state.files.find((file) => file.path === printModePath);
+	if (printMode && /\bprocess\.|\bconsole\.(log|error)\s*\(/.test(printMode.text)) {
+		violations.push(`${printModePath}: Print mode must consume the host PrintOutput Port`);
+	}
+	const outputPath = "packages/cli-app/src/print-output.ts";
+	const output = state.files.find((file) => file.path === outputPath);
+	if (output && !/CodingAgentPrintOutputPort/.test(output.text)) {
+		violations.push(`${outputPath}: CLI Print output must implement CodingAgentPrintOutputPort`);
+	}
+}
+
+function checkWorkspaceFactsBoundary(state, violations) {
+	const productPaths = new Set([
+		`${SOURCE_ROOT}/model-context/workspace-facts.ts`,
+		`${SOURCE_ROOT}/model-context/prompt-runtime.ts`,
+		`${SOURCE_ROOT}/model-context/system-prompt-policy.ts`,
+	]);
+	for (const edge of state.edges) {
+		if (
+			productPaths.has(edge.path) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(
+				`${edge.path}:${edge.line}: Workspace facts product policy must consume host-provided facts or file access`,
+			);
+		}
+	}
+	for (const file of state.files) {
+		if (productPaths.has(file.path) && /\bprocess\s*\./.test(file.text)) {
+			violations.push(`${file.path}: Workspace facts product policy must not read Node process state`);
+		}
+	}
+	const compositionRoots = [
+		{
+			path: "packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+			pattern: /\bworkspaceFacts\s*:/,
+		},
+		{ path: "packages/runtime-desktop/src/backend-pool.ts", pattern: /\bworkspaceFacts\s*:/ },
+		{ path: `${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`, pattern: /\bworkspaceFacts\s*[,/:]/ },
+		{
+			path: "packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+			pattern: /\bresolveWorkspaceFacts\s*:/,
+		},
+	];
+	for (const requirement of compositionRoots) {
+		const file = state.files.find((candidate) => candidate.path === requirement.path);
+		if (file && !requirement.pattern.test(file.text)) {
+			violations.push(`${requirement.path}: platform Composition Root must inject workspace facts`);
+		}
+	}
+}
+
+function checkModelInputImageBoundary(state, violations) {
+	const portablePaths = new Set([
+		`${SOURCE_ROOT}/model-context/image-normalization.ts`,
+		`${SOURCE_ROOT}/model-context/image-budget.ts`,
+	]);
+	for (const edge of state.edges) {
+		if (
+			portablePaths.has(edge.path) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: Model input image policy must consume a host-provided processor`);
+		}
+	}
+	for (const file of state.files) {
+		if (portablePaths.has(file.path) && /\b(?:Buffer|process)\b/.test(file.text)) {
+			violations.push(`${file.path}: Model input image policy must remain platform-neutral`);
+		}
+	}
+
+	const compositionRoots = [
+		"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+		"packages/runtime-desktop/src/backend-pool.ts",
+		"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+		`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
+	];
+	for (const path of compositionRoots) {
+		const file = state.files.find((candidate) => candidate.path === path);
+		if (file && !/\bmodelInputImageProcessor\s*:/.test(file.text)) {
+			violations.push(`${path}: Node Composition Root must inject modelInputImageProcessor`);
+		}
+	}
+}
+
+function checkModelDomainBoundary(state, violations) {
+	const modelRoot = `${SOURCE_ROOT}/models/`;
+	for (const edge of state.edges) {
+		if (
+			edge.path.startsWith(modelRoot) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: Model product policy must consume host-provided state`);
+		}
+	}
+	for (const file of state.files) {
+		if (file.path.startsWith(modelRoot) && /\bprocess\s*\./.test(file.text)) {
+			violations.push(`${file.path}: Model product policy must not control the host process`);
+		}
+	}
+
+	const modelHosts = [
+		"packages/cli-app/src/coding-agent-bootstrap.ts",
+		"packages/desktop-app/src/main/agent-runtime/host-services.ts",
+		`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
+	];
+	for (const path of modelHosts) {
+		const file = state.files.find((candidate) => candidate.path === path);
+		if (file && !/\bconfigFileSource\s*:/.test(file.text)) {
+			violations.push(`${path}: Node model host must inject configFileSource`);
+		}
+	}
+}
+
+function checkHtmlExportBoundary(state, violations) {
+	const exportRoot = `${SOURCE_ROOT}/export-html/`;
+	for (const edge of state.edges) {
+		if (
+			edge.path.startsWith(exportRoot) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(`${edge.path}:${edge.line}: HTML export product logic must consume host file adapters`);
+		}
+	}
+	const nodeHosts = [
+		"packages/cli-app/src/html-export-runtime.ts",
+		`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
+	];
+	for (const path of nodeHosts) {
+		const file = state.files.find((candidate) => candidate.path === path);
+		if (file && !/\bcreateNodeHtmlExportFileAdapters\s*\(/.test(file.text)) {
+			violations.push(`${path}: Node HTML export host must inject file adapters`);
+		}
+	}
+}
+
+function checkThemeDomainBoundary(state, violations) {
+	const legacyThemeFacade = `${SOURCE_ROOT}/modes/interactive/theme/theme.ts`;
+	const themeEntry = `${SOURCE_ROOT}/theme/index.ts`;
+	const themeRoot = `${SOURCE_ROOT}/theme/`;
+	for (const edge of state.edges) {
+		if (
+			edge.path.startsWith(themeRoot) &&
+			(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+		) {
+			violations.push(
+				`${edge.path}:${edge.line}: Theme product policy must consume host-provided environment ports`,
+			);
+		}
+		const target = resolveSourceTarget(edge.path, edge.specifier);
+		if (edge.path !== legacyThemeFacade && edge.path.startsWith(`${SOURCE_ROOT}/`) && target === legacyThemeFacade) {
+			violations.push(`${edge.path}:${edge.line}: internal Theme consumers must use the Theme domain entry`);
+		}
+		if (edge.path === legacyThemeFacade && (edge.kind !== "export" || target !== themeEntry)) {
+			violations.push(`${edge.path}:${edge.line}: legacy Theme facade may only export the Theme domain entry`);
+		}
+	}
+	for (const file of state.files) {
+		if (file.path.startsWith(themeRoot) && /\bprocess\.(?:env|platform|cwd)\b/.test(file.text)) {
+			violations.push(`${file.path}: Theme product policy must not read the Node process environment`);
+		}
+	}
+	const nodeHosts = [
+		"packages/cli-app/src/coding-agent-resource-runtime.ts",
+		"packages/desktop-app/src/main/agent-runtime/resource-runtime.ts",
+		`${SOURCE_ROOT}/host/sdk-session/resource-runtime.ts`,
+	];
+	for (const path of nodeHosts) {
+		const file = state.files.find((candidate) => candidate.path === path);
+		if (file && (!/\bconfigureThemeRuntime\s*\(/.test(file.text) || !/\bnodeTextFileWatchPort\b/.test(file.text))) {
+			violations.push(`${path}: Node Theme host must inject environment defaults and file watching`);
 		}
 	}
 }
@@ -494,7 +837,6 @@ function checkHostOwnedResourceCompositionBoundary(state, violations) {
 	const publicResourcesPath = `${SOURCE_ROOT}/public-api/resources.ts`;
 	const compositionOptionsPath = `${SOURCE_ROOT}/composition/contracts/runtime-composition-options.ts`;
 	const transactionPath = `${SOURCE_ROOT}/composition/session-initialization/transaction.ts`;
-	const cliControlPath = `${SOURCE_ROOT}/host/coding-agent-cli-control.ts`;
 
 	if (state.sourcePaths.includes(retiredResourceFactoryPath)) {
 		violations.push(`${retiredResourceFactoryPath}: Node resource composition belongs to application hosts`);
@@ -521,11 +863,6 @@ function checkHostOwnedResourceCompositionBoundary(state, violations) {
 	const transaction = state.files.find((file) => file.path === transactionPath);
 	if (transaction && !/\bruntimeSourceFactory\s*:\s*createPromptRuntimeSources\b/.test(transaction.text)) {
 		violations.push(`${transactionPath}: Session initialization must forward host-owned Prompt runtime sources`);
-	}
-
-	const cliControl = state.files.find((file) => file.path === cliControlPath);
-	if (cliControl && !/\bcreatePackageCommandRuntime\b/.test(cliControl.text)) {
-		violations.push(`${cliControlPath}: CLI package commands must receive an explicit runtime factory`);
 	}
 }
 
@@ -843,7 +1180,7 @@ function checkPortableProductToolOwnership(state, violations) {
 }
 
 function checkRpcHostBoundary(state, violations) {
-	const rpcRoot = `${SOURCE_ROOT}/modes/rpc/`;
+	const rpcRoot = `${SOURCE_ROOT}/rpc/`;
 	const rpcModePath = `${rpcRoot}rpc-mode.ts`;
 	const rpcClientPath = `${rpcRoot}rpc-client.ts`;
 	const hostBridgePaths = new Set([`${rpcRoot}rpc-extension-ui-bridge.ts`, `${rpcRoot}rpc-host-bridge.ts`]);
@@ -897,6 +1234,7 @@ function checkRpcHostBoundary(state, violations) {
 function checkSdkSessionIdentityRuntimeBoundary(state, violations) {
 	const runtimeFactoryPath = `${SOURCE_ROOT}/host/sdk-session/runtime-factory.ts`;
 	const sessionHostPath = `${SOURCE_ROOT}/host/sdk-session/session-host.ts`;
+	const nodeSessionHostPath = `${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`;
 	const nodeRuntimePath = `${SOURCE_ROOT}/host/sdk-session/node-session-identity-runtime.ts`;
 	for (const edge of state.edges) {
 		if (
@@ -923,14 +1261,26 @@ function checkSdkSessionIdentityRuntimeBoundary(state, violations) {
 
 	const sessionHost = state.files.find((file) => file.path === sessionHostPath);
 	if (sessionHost) {
+		for (const edge of state.edges) {
+			if (
+				edge.path === sessionHostPath &&
+				(edge.specifier.startsWith("node:") || edge.specifier.startsWith("@vetta/runtime-node"))
+			) {
+				violations.push(`${edge.path}:${edge.line}: public SDK mapping must not select Node implementations`);
+			}
+		}
+	}
+
+	const nodeSessionHost = state.files.find((file) => file.path === nodeSessionHostPath);
+	if (nodeSessionHost) {
 		const importsNodeRuntime = state.edges.some(
-			(edge) => edge.path === sessionHostPath && edge.names.includes("nodeCodingAgentSdkSessionIdentityRuntime"),
+			(edge) => edge.path === nodeSessionHostPath && edge.names.includes("nodeCodingAgentSdkSessionIdentityRuntime"),
 		);
 		if (
 			!importsNodeRuntime ||
-			!/identityRuntime:\s*[^,]*nodeCodingAgentSdkSessionIdentityRuntime/.test(sessionHost.text)
+			!/identityRuntime:\s*[^,]*nodeCodingAgentSdkSessionIdentityRuntime/.test(nodeSessionHost.text)
 		) {
-			violations.push(`${sessionHostPath}: default SDK Host must inject the Node Session identity runtime`);
+			violations.push(`${nodeSessionHostPath}: default SDK Host must inject the Node Session identity runtime`);
 		}
 	}
 
@@ -942,15 +1292,15 @@ function checkSdkSessionIdentityRuntimeBoundary(state, violations) {
 
 function checkToolEnvironmentBoundary(state, violations) {
 	const toolCompositionPath = `${SOURCE_ROOT}/composition/tool-surface/runtime-tools-composition.ts`;
-	const sessionExecutionPath = `${SOURCE_ROOT}/host/session-execution/execution-runtime.ts`;
-	const sandboxRegistrationPath = `${SOURCE_ROOT}/host/session-execution/sandbox-tool-registrations.ts`;
+	const sessionExecutionPath = `${SOURCE_ROOT}/execution/session/runtime.ts`;
+	const sandboxRegistrationPath = `${SOURCE_ROOT}/execution/sandbox/tool-registrations.ts`;
 	const pathPolicyRoot = `${SOURCE_ROOT}/tool-policy/path/`;
 	const platformFactories = [
 		"packages/cli-app/src/rpc/runtime-host/cli-tool-environment.ts",
 		"packages/runtime-desktop/src/coding-agent-tool-environment.ts",
 	];
 	const migratedCompositionRoots = TOOL_ENVIRONMENT_COMPOSITION_ROOTS.filter(
-		(path) => path !== `${SOURCE_ROOT}/host/sdk-session/session-host.ts`,
+		(path) => path !== `${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
 	);
 	const retiredNodeImplementationPaths = [`${SOURCE_ROOT}/adapters/runtime-tools/`];
 	for (const file of state.files) {
@@ -1232,6 +1582,7 @@ function isHistoricalExecutionTarget(path) {
 	return (
 		isAdapterPath(path) ||
 		path.startsWith(`${SOURCE_ROOT}/composition/`) ||
+		path.startsWith(`${SOURCE_ROOT}/execution/`) ||
 		path.startsWith(`${SOURCE_ROOT}/host/`) ||
 		path.startsWith(`${SOURCE_ROOT}/modes/`) ||
 		path.startsWith(`${SOURCE_ROOT}/public-api/sdk`)

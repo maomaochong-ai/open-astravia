@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import {
 	type Api,
 	getModels,
@@ -9,8 +8,10 @@ import {
 	registerOAuthProvider,
 	type SimpleStreamOptions,
 } from "@vetta/ai";
-import { getAgentDir } from "../config.js";
-import { resolveConfigHeaders, resolveConfigValue } from "../configuration/config-value-resolver.js";
+import {
+	type CodingAgentConfigurationValueResolver,
+	literalCodingAgentConfigurationValueResolver,
+} from "../runtime-contracts/configuration-runtime.js";
 import { loadLocalModelConfig, type ModelConfigFileSource } from "./configuration/local-model-config.js";
 import { applyProviderAndModelOverrides, mergeCompat, mergeModels } from "./configuration/model-merge.js";
 import type { CodingAgentModelRuntime, CodingAgentProviderConfig, ModelCredentialStore } from "./model-contracts.js";
@@ -22,6 +23,7 @@ export interface CreateCodingAgentModelRuntimeOptions {
 	readonly modelsJsonPath?: string;
 	readonly configFileSource?: ModelConfigFileSource;
 	readonly remoteSource?: RemoteModelSourceOptions;
+	readonly configurationValueResolver?: CodingAgentConfigurationValueResolver;
 	/** 仅用于确定性测试或嵌入式宿主；生产默认读取 @vetta/ai 目录。 */
 	readonly builtInModels?: readonly Model<Api>[];
 }
@@ -32,10 +34,11 @@ export function createCodingAgentModelRuntime(
 ): CodingAgentModelRuntime {
 	return new ModelRuntimeImplementation(
 		credentials,
-		options.modelsJsonPath ?? join(getAgentDir(), "models.json"),
+		options.modelsJsonPath,
 		options.configFileSource,
 		options.remoteSource,
 		options.builtInModels,
+		options.configurationValueResolver ?? literalCodingAgentConfigurationValueResolver,
 	);
 }
 
@@ -59,10 +62,11 @@ class ModelRuntimeImplementation implements CodingAgentModelRuntime {
 		private readonly configFileSource: ModelConfigFileSource | undefined,
 		private readonly remoteSource: RemoteModelSourceOptions | undefined,
 		private readonly builtInModels: readonly Model<Api>[] | undefined,
+		private readonly configurationValueResolver: CodingAgentConfigurationValueResolver,
 	) {
 		credentials.setFallbackResolver((provider) => {
 			const configured = this.customProviderApiKeys.get(provider);
-			return configured ? resolveConfigValue(configured) : undefined;
+			return configured ? this.configurationValueResolver.resolve(configured) : undefined;
 		});
 		this.rebuildModels();
 	}
@@ -167,7 +171,7 @@ class ModelRuntimeImplementation implements CodingAgentModelRuntime {
 	}
 
 	private rebuildModels(): void {
-		const local = loadLocalModelConfig(this.modelsJsonPath, this.configFileSource);
+		const local = loadLocalModelConfig(this.modelsJsonPath, this.configFileSource, this.configurationValueResolver);
 		this.customProviderApiKeys = new Map(local.apiKeys);
 		this.customProviderNames = new Set(local.providerNames);
 		this.loadError = local.error;
@@ -178,6 +182,7 @@ class ModelRuntimeImplementation implements CodingAgentModelRuntime {
 						[{ ...model }],
 						local.overrides.get(model.provider),
 						local.modelOverrides.get(model.provider),
+						this.configurationValueResolver,
 					),
 				)
 			: getProviders().flatMap((provider) =>
@@ -185,6 +190,7 @@ class ModelRuntimeImplementation implements CodingAgentModelRuntime {
 						getModels(provider as KnownProvider) as Model<Api>[],
 						local.overrides.get(provider),
 						local.modelOverrides.get(provider),
+						this.configurationValueResolver,
 					),
 				);
 		let combined = mergeModels(builtInModels, local.models);
@@ -221,11 +227,11 @@ class ModelRuntimeImplementation implements CodingAgentModelRuntime {
 			for (const definition of config.models) {
 				const api = definition.api || config.api;
 				if (!api) throw new Error(`Provider ${providerName}, model ${definition.id}: no "api" specified.`);
-				const providerHeaders = resolveConfigHeaders(config.headers);
-				const modelHeaders = resolveConfigHeaders(definition.headers);
+				const providerHeaders = this.configurationValueResolver.resolveHeaders(config.headers);
+				const modelHeaders = this.configurationValueResolver.resolveHeaders(definition.headers);
 				let headers = providerHeaders || modelHeaders ? { ...providerHeaders, ...modelHeaders } : undefined;
 				if (config.authHeader && config.apiKey) {
-					const key = resolveConfigValue(config.apiKey);
+					const key = this.configurationValueResolver.resolve(config.apiKey);
 					if (key) headers = { ...headers, Authorization: `Bearer ${key}` };
 				}
 				this.models.push({
@@ -243,7 +249,7 @@ class ModelRuntimeImplementation implements CodingAgentModelRuntime {
 				if (credential?.type === "oauth") this.models = config.oauth.modifyModels(this.models, credential);
 			}
 		} else if (config.baseUrl) {
-			const headers = resolveConfigHeaders(config.headers);
+			const headers = this.configurationValueResolver.resolveHeaders(config.headers);
 			this.models = this.models.map((model) =>
 				model.provider === providerName
 					? {

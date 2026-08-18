@@ -136,6 +136,8 @@ export function createCodingAgentSessionContextAssembly(
 	const subagentRuntime = createCodingAgentSubagentSessionAssembly({
 		enabled: profile.enableSubagents === true,
 		maxConcurrent: profile.subagentMaxConcurrent,
+		createEntryId: profile.createSubagentId,
+		pathPort: profile.subagentPathPort,
 		cwd: options.sessionCwd,
 		scenario: options.scenario,
 		readParentSessionId: options.readSessionId,

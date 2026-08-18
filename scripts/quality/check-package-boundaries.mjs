@@ -1196,6 +1196,7 @@ function checkCodingAgentLegacyBoundaries(posixPath, text, specifiers, findings)
 		"packages/cli-app/src/rpc/runtime-host/runtime-host-contract.ts",
 		"packages/cli-app/src/rpc/runtime-host/runtime-host.ts",
 		"packages/cli-app/src/session-compatibility-error.ts",
+		"packages/cli-app/src/html-export-runtime.ts",
 		"packages/runtime-desktop/src/historical-session-format.ts",
 		"packages/runtime-desktop/src/historical-session-import-backend.ts",
 	]);

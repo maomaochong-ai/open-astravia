@@ -11,7 +11,7 @@ import type {
 	CodingAgentSessionResourceIndexes,
 } from "../../src/composition/session-lifecycle/resource-lifecycle.js";
 import { createCodingAgentRuntimeSessionControls } from "../../src/composition/session-lifecycle/session-controls.js";
-import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
+import type { CodingAgentSessionExecutionRuntime } from "../../src/execution/session/runtime.js";
 import type { CodingAgentMemoryController } from "../../src/memory/index.js";
 
 describe("Coding Agent Runtime Session Controls", () => {

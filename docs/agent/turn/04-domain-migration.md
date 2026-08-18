@@ -73,7 +73,7 @@ packages/coding-agent/src/composition/turn-state/
 ### 主要文件
 
 - `packages/coding-agent/src/host/session-configuration/configuration-state.ts`
-- `packages/coding-agent/src/host/session-execution/execution-runtime.ts`
+- `packages/coding-agent/src/execution/session/runtime.ts`
 - `packages/coding-agent/src/composition/runtime-composition.ts`
 - `packages/runtime-core/src/runtime-host/runtime-host.ts`
 - `packages/runtime-core/src/runtime-host/types.ts`
@@ -151,7 +151,7 @@ admission 物化时获取 catalog 与 implementation leases。Model Call 仍可�
 - `packages/runtime-tools/src/coding/coding-tool-catalog.ts`
 - `packages/runtime-tools/src/coding/coding-tool-availability.ts`
 - `packages/coding-agent/src/composition/tool-surface/runtime-tool-surface.ts`
-- `packages/coding-agent/src/host/session-execution/execution-runtime.ts`
+- `packages/coding-agent/src/execution/session/runtime.ts`
 
 ## 6. MCP
 

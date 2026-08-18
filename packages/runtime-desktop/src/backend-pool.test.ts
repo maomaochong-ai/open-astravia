@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
@@ -226,6 +226,32 @@ describe("DesktopRuntimeBackendPool", () => {
 
 		expect(createCodingToolResultPolicy).toHaveBeenCalledWith({ cwd, agentDir });
 		expect(capturedPolicy).toBe(resultPolicy);
+	});
+
+	it("captures workspace facts at the Desktop composition boundary", async () => {
+		const cwd = await temporaryDirectory("desktop-runtime-workspace-facts-");
+		await writeFile(join(cwd, "package.json"), JSON.stringify({ name: "desktop-workspace" }), "utf-8");
+		let capturedWorkspaceFacts: string | undefined;
+		const pool = new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
+			},
+			createComposition: async (options) => {
+				capturedWorkspaceFacts = options.workspaceFacts;
+				return await createCodingAgentRuntimeComposition(options);
+			},
+		});
+		const runtime = new RuntimeHost({ sessionBackend: pool, getDefaultExecutionMode: () => "full-access" });
+		pools.push(pool);
+		runtimes.push(runtime);
+
+		await runtime.createSession({ cwd, model: MODEL, scenario: "batch" });
+
+		expect(capturedWorkspaceFacts).toContain("`desktop-workspace`");
+		expect(capturedWorkspaceFacts).toContain("Detected stack: Node.js.");
 	});
 
 	it("deduplicates concurrent host ownership and resumes after the backend pool is recreated", async () => {

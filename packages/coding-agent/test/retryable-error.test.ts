@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyRuntimeFailure, isRetryableRuntimeError } from "../src/utils/retryable-error.js";
+import { classifyRuntimeFailure, isRetryableRuntimeError } from "../src/execution/failure-classification.js";
 
 describe("runtime failure classification", () => {
 	it.each([

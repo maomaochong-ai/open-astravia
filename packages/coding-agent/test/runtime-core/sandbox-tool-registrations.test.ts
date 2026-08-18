@@ -16,7 +16,7 @@ import {
 } from "@vetta/runtime-node/coding";
 import { clearSessionGrants, getSandboxShellGrant, type NodeSandboxPlatform } from "@vetta/runtime-node/sandbox";
 import { afterEach, describe, expect, it } from "vitest";
-import { createCodingAgentSandboxToolRegistrations } from "../../src/host/session-execution/sandbox-tool-registrations.js";
+import { createCodingAgentSandboxToolRegistrations } from "../../src/execution/sandbox/tool-registrations.js";
 
 const SESSION_IDS = ["sandbox-read-session", "sandbox-deny-session", "sandbox-shell-session"] as const;
 

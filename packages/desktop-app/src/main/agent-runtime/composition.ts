@@ -53,6 +53,7 @@ import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "../sandbox/windows-binary-resolver.js";
 import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./host-services.js";
+import { createDesktopMcpSupervisor } from "./mcp-supervisor.js";
 import { getDesktopProviderObservationRuntime } from "./provider-observation.js";
 import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
 
@@ -102,7 +103,12 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				const resolvedAgentDir = agentDir ?? getAgentDir();
 				const resultArtifacts = createDesktopResultArtifactRuntime(resolvedAgentDir);
 				return createCodingAgentPluginMcpRuntime({
-					agentDir: resolvedAgentDir,
+					supervisor: createDesktopMcpSupervisor({
+						projectRoot: cwd,
+						agentDir: resolvedAgentDir,
+						debug: readDesktopMcpDebug(cwd, resolvedAgentDir),
+						dynamicOnly: true,
+					}),
 					debug: readDesktopMcpDebug(cwd, resolvedAgentDir),
 					resultPolicy: resultArtifacts.mcpToolResultPolicy,
 				});
@@ -120,10 +126,11 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 			const resolvedAgentDir = agentDir ?? getAgentDir();
 			const resultArtifacts = createDesktopResultArtifactRuntime(resolvedAgentDir);
 			return await createCodingAgentMcpRuntimeToolSource({
-				projectRoot: cwd,
-				agentDir: resolvedAgentDir,
-				debug: readDesktopMcpDebug(cwd, resolvedAgentDir),
-				enabled: true,
+				supervisor: createDesktopMcpSupervisor({
+					projectRoot: cwd,
+					agentDir: resolvedAgentDir,
+					debug: readDesktopMcpDebug(cwd, resolvedAgentDir),
+				}),
 				resultPolicy: resultArtifacts.mcpToolResultPolicy,
 			});
 		},

@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
-import { ENV_AGENT_DIR } from "@vetta/coding-agent/config";
+import { ENV_AGENT_DIR, getAgentDir } from "@vetta/coding-agent/config";
 import {
 	type CodingAgentRuntimeModelSource,
 	createCodingAgentMcpRuntimeToolSource,
@@ -19,6 +19,7 @@ import {
 	textResponseEvents,
 	toolCallResponseEvents,
 } from "../../../../cli-app/test/support/openai-responses-test-server.js";
+import { createDesktopMcpSupervisor } from "./mcp-supervisor.js";
 import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
 
 type RuntimeBackend = "runtime";
@@ -417,14 +418,25 @@ function createRuntimeFixture(_backend: RuntimeBackend, _agentStateDir: string, 
 			initialModel: model,
 			initialThinkingLevel: "off",
 			createPromptRuntimeSources: createDesktopPromptRuntimeSources,
-			createPluginMcpRuntime: () => createCodingAgentPluginMcpRuntime(),
+			createPluginMcpRuntime: ({ cwd, agentDir }) =>
+				createCodingAgentPluginMcpRuntime({
+					supervisor: createDesktopMcpSupervisor({
+						projectRoot: cwd,
+						agentDir: agentDir ?? getAgentDir(),
+						debug: false,
+						dynamicOnly: true,
+					}),
+				}),
 		},
 		// Legacy MCP resolves its global config from getAgentDir(), even when the
 		// session uses an isolated agentDir. Mirror that compatibility behavior.
 		createMcpRuntimeSource: ({ cwd }) =>
 			createCodingAgentMcpRuntimeToolSource({
-				projectRoot: cwd,
-				enabled: true,
+				supervisor: createDesktopMcpSupervisor({
+					projectRoot: cwd,
+					agentDir: getAgentDir(),
+					debug: false,
+				}),
 			}),
 	});
 	const runtime = new RuntimeHost({

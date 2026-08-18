@@ -1,5 +1,4 @@
 import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
-import { runCodingAgentCliControl } from "@vetta/coding-agent/cli-control";
 import { getAgentDir } from "@vetta/coding-agent/config";
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import type { CodingAgentAuthRuntime } from "@vetta/coding-agent/host-services";
@@ -7,8 +6,10 @@ import { RPC_FAILURE_CODES, stringifyRpcStartupFailure } from "@vetta/coding-age
 import { ConversationOwnershipConflictError } from "@vetta/runtime-storage/conversation";
 import { classifyAgentCliIntent } from "./agent-cli-intent.js";
 import { createCliCodingAgentBootstrap } from "./coding-agent-bootstrap.js";
+import { runCodingAgentCliControl } from "./coding-agent-cli-control.js";
 import { createCliResourcePackageRuntime, createCliSettingsRuntime } from "./coding-agent-resource-runtime.js";
 import { ExtensionCompatibilityError } from "./extension-compatibility-error.js";
+import { CliFileInputError } from "./file-processor.js";
 import { createCliRuntimeSessionCatalog } from "./rpc/cli-session-format-compatibility.js";
 import {
 	prepareImRuntimeHost,
@@ -108,6 +109,11 @@ export async function runAgentRuntimeCli(
 		else if (imHost) await runImRuntimeHost(prepared);
 		else await runRpcRuntimeHost(prepared);
 	} catch (error) {
+		if (error instanceof CliFileInputError) {
+			process.stderr.write(`${error.message}\n`);
+			process.exitCode = 1;
+			return;
+		}
 		if (error instanceof ExtensionCompatibilityError) {
 			if (intent === "rpc") process.stdout.write(stringifyRpcStartupFailure(error.toRpcStartupFailure()));
 			else writeExtensionCompatibilityFailure(error);

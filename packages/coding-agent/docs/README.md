@@ -15,6 +15,6 @@
 | [packages.md](packages.md) | 扩展包安装 |
 | [tool.md](tool.md) | 内置工具归属（贡献者） |
 
-类型与协议以源码为准：`src/public-api/`、`src/modes/rpc/rpc-types.ts`、`src/extensions/api-contracts.ts`、`src/settings/schema/`。
+类型与协议以源码为准：`src/public-api/`、`src/rpc/rpc-types.ts`、`src/extensions/api-contracts.ts`、`src/settings/schema/`。
 
 示例：`examples/sdk/`、`examples/extensions/`。

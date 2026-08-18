@@ -26,4 +26,20 @@ export {
 	ConversationStorageError,
 	type ConversationStorageErrorCode,
 } from "./errors.js";
+export {
+	type LegacySessionDocumentSource,
+	parseLegacySessionDocument,
+	parseLegacySessionDocumentSource,
+} from "./legacy-session-document.js";
+export {
+	analyzeLegacySessionImport,
+	type LegacySessionImportAnalysis,
+	type LegacySessionImportAnalyzerOptions,
+	type LegacySessionImportEntryNormalizer,
+	LegacySessionImportError,
+	type LegacySessionImportIssue,
+	type LegacySessionImportIssueCode,
+	type RepresentableLegacySessionImportAnalysis,
+	type UnrepresentableLegacySessionImportAnalysis,
+} from "./legacy-session-import-analyzer.js";
 export * from "./record-schema.js";

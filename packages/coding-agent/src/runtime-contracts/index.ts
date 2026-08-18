@@ -1,3 +1,7 @@
+export {
+	type CodingAgentConfigurationValueResolver,
+	literalCodingAgentConfigurationValueResolver,
+} from "./configuration-runtime.js";
 export type {
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentCompactionRuntimeOptions,
@@ -23,6 +27,7 @@ export type {
 	CodingAgentPluginMcpToolComposer,
 	CodingAgentPluginRuntimeSource,
 } from "./plugin-runtime.js";
+export type { CodingAgentPrintOutputPort } from "./print-output.js";
 export type {
 	CodingAgentModelCallPromptContext,
 	CodingAgentPromptRequestRuntime,

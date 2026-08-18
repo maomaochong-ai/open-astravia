@@ -1,4 +1,5 @@
-import { dirname, resolve } from "node:path";
+import { randomUUID } from "node:crypto";
+import { dirname, join, resolve } from "node:path";
 import type { Api, Model } from "@vetta/ai";
 import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
 import {
@@ -7,6 +8,7 @@ import {
 	CodingAgentRuntimeHostSessionBackend,
 	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
+import { detectWorkspaceFacts, probeWorkspaceSignals } from "@vetta/coding-agent/model-context";
 import type {
 	ConversationScenario,
 	RuntimeHostSessionAssembly,
@@ -16,6 +18,7 @@ import type {
 	RuntimeSessionCreateRequest,
 } from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
+import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
 import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";
 import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
 import {
@@ -33,7 +36,8 @@ type CompositionFixedOption =
 	| "enableSubagents"
 	| "initialModel"
 	| "initialThinkingLevel"
-	| "scenario";
+	| "scenario"
+	| "workspaceFacts";
 
 export type DesktopCodingAgentRuntimeCompositionDefaults = Omit<
 	CodingAgentRuntimeCompositionOptions,
@@ -204,6 +208,11 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		});
 		const composition = await this.createComposition({
 			...this.options.compositionDefaults,
+			modelInputImageProcessor:
+				this.options.compositionDefaults.modelInputImageProcessor ?? nodeModelInputImageProcessor,
+			ocrMaxConcurrent:
+				this.options.compositionDefaults.ocrMaxConcurrent ??
+				resolvePositiveInteger(process.env.VETTA_KB_OCR_CONCURRENCY),
 			createConversationPersistence:
 				this.options.compositionDefaults.createConversationPersistence ??
 				(() => createFileConversationPersistence(scope.conversationDir)),
@@ -221,9 +230,14 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 			...(managedMcpSource ? { mcpSource: managedMcpSource.source } : {}),
 			conversationDir: scope.conversationDir,
 			cwd: scope.cwd,
+			workspaceFacts: detectWorkspaceFacts(scope.cwd, (cwd) =>
+				probeWorkspaceSignals(cwd, nodeWorkspaceFactsFileSource),
+			),
 			agentDir: scope.agentDir,
 			scenario: scope.scenario,
 			enableSubagents: scope.enableSubagents,
+			createSubagentId: randomUUID,
+			subagentPathPort: { dirname, join },
 			initialModel,
 			initialThinkingLevel,
 		});
@@ -291,6 +305,11 @@ function resolveInitialModel(
 		throw new Error("Desktop Runtime requires at least one available model");
 	}
 	return model;
+}
+
+function resolvePositiveInteger(value: string | undefined): number | undefined {
+	const parsed = Number.parseInt(value ?? "", 10);
+	return Number.isInteger(parsed) && parsed >= 1 ? parsed : undefined;
 }
 
 function runtimeScopeKey(scope: DesktopRuntimeScope): string {

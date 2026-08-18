@@ -14,6 +14,7 @@ export type CodingAgentSessionInitializationProfile = Pick<
 	| "createPromptResourceResolver"
 	| "createSessionExtensionDefinitions"
 	| "createSubagentChildFactory"
+	| "createSubagentId"
 	| "createSystemPromptOptionsResolver"
 	| "createTodoRuntime"
 	| "enableSubagents"
@@ -23,6 +24,8 @@ export type CodingAgentSessionInitializationProfile = Pick<
 	| "initialThinkingLevel"
 	| "knowledgeRuntime"
 	| "maxStopHookContinuations"
+	| "modelInputImageProcessor"
+	| "ocrMaxConcurrent"
 	| "promptResourceSource"
 	| "promptSettingsSource"
 	| "resolveCompactionSettings"
@@ -30,7 +33,9 @@ export type CodingAgentSessionInitializationProfile = Pick<
 	| "resolveSystemPromptOptions"
 	| "subagentMaxConcurrent"
 	| "subagentTypeRegistry"
+	| "subagentPathPort"
 	| "systemPromptAdvertisedToolNames"
+	| "workspaceFacts"
 >;
 
 export function createCodingAgentSessionInitializationProfile(
@@ -53,6 +58,7 @@ export function createCodingAgentSessionInitializationProfile(
 		createPromptResourceResolver: options.createPromptResourceResolver,
 		createSessionExtensionDefinitions: options.createSessionExtensionDefinitions,
 		createSubagentChildFactory: options.createSubagentChildFactory,
+		createSubagentId: options.createSubagentId,
 		createSystemPromptOptionsResolver: options.createSystemPromptOptionsResolver,
 		createTodoRuntime: options.createTodoRuntime,
 		enableSubagents: options.enableSubagents,
@@ -62,6 +68,8 @@ export function createCodingAgentSessionInitializationProfile(
 		initialThinkingLevel: options.initialThinkingLevel,
 		knowledgeRuntime: options.knowledgeRuntime,
 		maxStopHookContinuations: options.maxStopHookContinuations,
+		modelInputImageProcessor: options.modelInputImageProcessor,
+		ocrMaxConcurrent: options.ocrMaxConcurrent,
 		promptResourceSource: options.promptResourceSource,
 		promptSettingsSource: options.promptSettingsSource,
 		resolveCompactionSettings: options.resolveCompactionSettings,
@@ -69,6 +77,8 @@ export function createCodingAgentSessionInitializationProfile(
 		resolveSystemPromptOptions: options.resolveSystemPromptOptions,
 		subagentMaxConcurrent: options.subagentMaxConcurrent,
 		subagentTypeRegistry: options.subagentTypeRegistry,
+		subagentPathPort: options.subagentPathPort,
 		systemPromptAdvertisedToolNames: options.systemPromptAdvertisedToolNames,
+		workspaceFacts: options.workspaceFacts,
 	};
 }

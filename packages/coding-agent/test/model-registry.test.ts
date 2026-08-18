@@ -2,12 +2,16 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Api, Model, OpenAICompletionsCompat } from "@vetta/ai";
+import {
+	clearNodeConfigurationValueCache,
+	nodeConfigurationValueResolver,
+	nodeSyncTextFileSource,
+} from "@vetta/runtime-node/host";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { AuthStorage } from "../src/auth/index.js";
 import {
 	type CodingAgentModelRuntime,
 	type CreateCodingAgentModelRuntimeOptions,
-	clearApiKeyCache,
 	createCodingAgentModelRuntime as createModelRuntime,
 	type ModelCredentialStore,
 } from "../src/models/index.js";
@@ -42,7 +46,12 @@ function createCodingAgentModelRuntime(
 	credentials: ModelCredentialStore,
 	options: CreateCodingAgentModelRuntimeOptions,
 ): CodingAgentModelRuntime {
-	return createModelRuntime(credentials, { ...options, builtInModels: BUILT_IN_MODELS });
+	return createModelRuntime(credentials, {
+		...options,
+		configFileSource: options.configFileSource ?? nodeSyncTextFileSource,
+		builtInModels: BUILT_IN_MODELS,
+		configurationValueResolver: nodeConfigurationValueResolver,
+	});
 }
 
 function quoteShellArgument(value: string): string {
@@ -77,7 +86,7 @@ describe("CodingAgentModelRuntime", () => {
 		if (tempDir && existsSync(tempDir)) {
 			rmSync(tempDir, { recursive: true });
 		}
-		clearApiKeyCache();
+		clearNodeConfigurationValueCache();
 	});
 
 	/** Create minimal provider config  */
@@ -778,7 +787,7 @@ describe("CodingAgentModelRuntime", () => {
 				expect(count).toBe(1);
 			});
 
-			test("clearApiKeyCache allows command to run again", async () => {
+			test("clearNodeConfigurationValueCache allows command to run again", async () => {
 				const counterFile = join(tempDir, "counter");
 				writeFileSync(counterFile, "0");
 
@@ -791,7 +800,7 @@ describe("CodingAgentModelRuntime", () => {
 				await registry.getApiKeyForProvider("custom-provider");
 
 				// Clear cache and call again
-				clearApiKeyCache();
+				clearNodeConfigurationValueCache();
 				await registry.getApiKeyForProvider("custom-provider");
 
 				// Command should have run twice

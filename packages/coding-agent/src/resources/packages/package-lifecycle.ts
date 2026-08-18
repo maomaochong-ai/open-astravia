@@ -1,4 +1,3 @@
-import type { GitSource } from "../../utils/git.js";
 import type { ResourceAccessPort } from "../contracts/resource-access.js";
 import type {
 	ResourcePackageCommandPort,
@@ -7,6 +6,7 @@ import type {
 	ResourcePackageRegistryPort,
 	ResourceScope,
 } from "../contracts/resource-source.js";
+import type { GitSource } from "./git-source.js";
 import type { ResourcePackageLocations } from "./resource-package-locations.js";
 import { type NpmResourceSource, type ParsedResourceSource, parseNpmResourceSpec } from "./source-spec.js";
 

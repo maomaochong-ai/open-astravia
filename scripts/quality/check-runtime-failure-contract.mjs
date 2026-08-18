@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { fail, isDirectRun, ok, readText, repoRoot, walkFiles } from "./lib.mjs";
 
 export const REQUIRED_RUNTIME_FAILURE_MARKERS = Object.freeze({
-	"packages/coding-agent/src/modes/rpc/rpc-failure.ts": [
+	"packages/coding-agent/src/rpc/rpc-failure.ts": [
 		"RpcFailureMetadataSchema",
 		'"retry_safe"',
 		'"continue_session"',
@@ -12,8 +12,8 @@ export const REQUIRED_RUNTIME_FAILURE_MARKERS = Object.freeze({
 		'"user_action"',
 		'"fatal"',
 	],
-	"packages/coding-agent/src/modes/rpc/rpc-types.ts": ["RpcFailureMetadata"],
-	"packages/coding-agent/src/modes/rpc/rpc-client.ts": ["reject(rpcClientErrorFromResponse(response))"],
+	"packages/coding-agent/src/rpc/rpc-types.ts": ["RpcFailureMetadata"],
+	"packages/coding-agent/src/rpc/rpc-client.ts": ["reject(rpcClientErrorFromResponse(response))"],
 	"packages/coding-agent/src/host/runtime-host/session-backend.ts": [
 		"CONVERSATION_STORAGE_ERROR_CODES.OWNERSHIP_CONFLICT",
 		'runtimeError("SESSION_LOCKED"',
@@ -35,7 +35,7 @@ export const REQUIRED_RUNTIME_FAILURE_MARKERS = Object.freeze({
 });
 
 const BOUNDARY_ROOTS = [
-	"packages/coding-agent/src/modes/rpc",
+	"packages/coding-agent/src/rpc",
 	"packages/runtime-desktop/src",
 	"packages/im-gateway/internal/hostclient",
 	"packages/im-gateway/internal/bridge",

@@ -57,7 +57,7 @@ function createStandaloneEntry(entry) {
 		runtimeImport,
 		'import { createCodingAgentHtmlExportRuntime } from "../../coding-agent/src/public-api/export-html.ts";',
 		'import { installBuiltinThemeDocuments } from "../../coding-agent/src/modes/interactive/theme/theme.ts";',
-		'import { installPhotonModuleLoader, installPhotonWasmPath } from "../../coding-agent/src/utils/photon.ts";',
+		'import { installPhotonModuleLoader, installPhotonWasmPath } from "../../runtime-node/src/coding/tools/read/photon.ts";',
 		'import template from "../../coding-agent/src/export-html/assets/template.html" with { type: "text" };',
 		'import css from "../../coding-agent/src/export-html/assets/template.css" with { type: "text" };',
 		'import js from "../../coding-agent/src/export-html/assets/template.js" with { type: "text" };',

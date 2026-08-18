@@ -11,6 +11,8 @@ import type {
 	McpToolCallResult,
 	RuntimeMcpClientFactory,
 } from "@vetta/runtime-mcp";
+import { EMPTY_MCP_CONFIG_SOURCE } from "@vetta/runtime-mcp";
+import { createNodeMcpSupervisor } from "@vetta/runtime-node/mcp";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 
@@ -37,7 +39,7 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
 			enableSubagents: false,
-			createPluginMcpRuntime: () => createCodingAgentPluginMcpRuntime({ clientFactory: clients.create }),
+			createPluginMcpRuntime: () => createTestPluginMcpRuntime(clients),
 			streamFn: (_model, context) => {
 				modelMcpTools.push(
 					(context.tools ?? []).map(({ name }) => name).filter((name) => name.startsWith("mcp_plugin-")),
@@ -88,7 +90,7 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
 			enableSubagents: false,
-			createPluginMcpRuntime: () => createCodingAgentPluginMcpRuntime({ clientFactory: clients.create }),
+			createPluginMcpRuntime: () => createTestPluginMcpRuntime(clients),
 			streamFn: (_model, context) => {
 				modelMcpTools.push(
 					(context.tools ?? [])
@@ -116,7 +118,7 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 	it("projects parent plugin MCP bindings into workflow children without creating another plugin runtime", async () => {
 		const conversationDir = await temporaryDirectory("runtime-plugin-mcp-subagent-");
 		const clients = new FakeClientFactory();
-		const createPluginMcpRuntime = vi.fn(() => createCodingAgentPluginMcpRuntime({ clientFactory: clients.create }));
+		const createPluginMcpRuntime = vi.fn(() => createTestPluginMcpRuntime(clients));
 		const rootMcpTools: string[][] = [];
 		const childMcpTools: string[][] = [];
 		let rootCalls = 0;
@@ -199,6 +201,19 @@ function pluginConfiguration(name: string): AgentPluginRuntimeConfig {
 			},
 		],
 	};
+}
+
+function createTestPluginMcpRuntime(clients: FakeClientFactory) {
+	return createCodingAgentPluginMcpRuntime({
+		supervisor: createNodeMcpSupervisor({
+			projectRoot: "C:/plugin-mcp-project",
+			agentDir: "C:/plugin-mcp-agent",
+			clientVersion: "test",
+			configSource: EMPTY_MCP_CONFIG_SOURCE,
+			clientFactory: clients.create,
+			includeBuiltinServers: false,
+		}).supervisor,
+	});
 }
 
 class FakeClientFactory {

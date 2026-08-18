@@ -9,7 +9,12 @@ import {
 	createCodingAgentModelRuntime,
 	SettingsRuntime,
 } from "@vetta/coding-agent/host-services";
-import { NodeScopedTextStorage, NodeTransactionalTextStorage } from "@vetta/runtime-node/host";
+import {
+	NodeScopedTextStorage,
+	NodeTransactionalTextStorage,
+	nodeConfigurationValueResolver,
+	nodeSyncTextFileSource,
+} from "@vetta/runtime-node/host";
 import { DEFAULT_SERVER_URL } from "../constants.js";
 import { getDesktopModelCredentialStore, type ModelCredentialStore } from "../models/model-credential-store.js";
 import { readModelsConfigSync } from "../models/model-settings-service.js";
@@ -21,10 +26,16 @@ let syncedCredentialProviderIds = new Set<string>();
 export function getOrCreateSharedModelRuntime(): CodingAgentModelRuntime {
 	if (sharedModelRuntime) return sharedModelRuntime;
 	const agentDir = getAgentDir();
-	const authStorage = AuthStorage.fromStorage(new NodeTransactionalTextStorage(join(agentDir, "auth.json")));
+	const authStorage = AuthStorage.fromStorage(new NodeTransactionalTextStorage(join(agentDir, "auth.json")), {
+		configurationValueResolver: nodeConfigurationValueResolver,
+	});
 	sharedModelAuth = authStorage;
 	syncSharedModelRuntimeCredentials(getDesktopModelCredentialStore(), readModelsConfigSync().providers);
-	const runtime = createCodingAgentModelRuntime(authStorage, { modelsJsonPath: join(agentDir, "models.json") });
+	const runtime = createCodingAgentModelRuntime(authStorage, {
+		modelsJsonPath: join(agentDir, "models.json"),
+		configFileSource: nodeSyncTextFileSource,
+		configurationValueResolver: nodeConfigurationValueResolver,
+	});
 	runtime.setServerUrl(DEFAULT_SERVER_URL);
 	runtime.setServerToken(readServerTokenFromDisk());
 	runtime.setServerTokenGetter(readServerTokenFromDisk);

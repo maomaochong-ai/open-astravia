@@ -9,10 +9,10 @@ export type {
 	CodingAgentTurnRetryEvent,
 	CodingAgentTurnRetrySettings,
 	CodingAgentTurnSessionHost,
-} from "../../host/session-execution/contracts.js";
+} from "../../execution/turn/contracts.js";
 export {
 	createCodingAgentTurnExecutor,
 	readCodingAgentFailedTurnMessage,
 	readCodingAgentTurnFailure,
-} from "../../host/session-execution/turn-executor.js";
-export { createCodingAgentTurnRetryController } from "../../host/session-execution/turn-retry-controller.js";
+} from "../../execution/turn/turn-executor.js";
+export { createCodingAgentTurnRetryController } from "../../execution/turn/turn-retry-controller.js";

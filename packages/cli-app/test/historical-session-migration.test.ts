@@ -2,6 +2,7 @@ import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { migrateCodingAgentHistoricalSession } from "@vetta/coding-agent/historical-sessions";
+import { createNodeLegacySessionHost } from "@vetta/runtime-node/host";
 import { ConversationOwnershipConflictError } from "@vetta/runtime-storage/conversation";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -17,8 +18,12 @@ describe("historical session migration", () => {
 		const fixture = await createFixture(legacySession("hello"));
 		const sourceContent = await readFile(fixture.sourcePath, "utf8");
 
-		const migrated = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
-		const reused = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
+		const migrated = await migrateCodingAgentHistoricalSession(
+			fixture.sourcePath,
+			fixture.targetRootDir,
+			fixture.host,
+		);
+		const reused = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir, fixture.host);
 
 		expect(migrated).toMatchObject({ kind: "greenfield", status: "migrated" });
 		expect(reused).toEqual({ ...migrated, status: "reused" });
@@ -27,10 +32,10 @@ describe("historical session migration", () => {
 
 	it("creates a new deterministic target when the source content changes", async () => {
 		const fixture = await createFixture(legacySession("before"));
-		const before = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
+		const before = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir, fixture.host);
 		await writeFile(fixture.sourcePath, legacySession("after"), "utf8");
 
-		const after = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
+		const after = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir, fixture.host);
 
 		expect(before).toMatchObject({ kind: "greenfield", status: "migrated" });
 		expect(after).toMatchObject({ kind: "greenfield", status: "migrated" });
@@ -40,12 +45,20 @@ describe("historical session migration", () => {
 
 	it("uses and reuses a stable recovery target without overwriting a conflicting deterministic target", async () => {
 		const fixture = await createFixture(legacySession("target conflict"));
-		const migrated = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
+		const migrated = await migrateCodingAgentHistoricalSession(
+			fixture.sourcePath,
+			fixture.targetRootDir,
+			fixture.host,
+		);
 		if (migrated.kind !== "greenfield") throw new Error("Expected initial migration");
 		await writeFile(migrated.targetPath, "conflicting target", "utf8");
 
-		const recovered = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
-		const reused = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
+		const recovered = await migrateCodingAgentHistoricalSession(
+			fixture.sourcePath,
+			fixture.targetRootDir,
+			fixture.host,
+		);
+		const reused = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir, fixture.host);
 
 		expect(recovered).toMatchObject({ kind: "greenfield", status: "migrated" });
 		expect(reused).toEqual({ ...recovered, status: "reused" });
@@ -78,7 +91,7 @@ describe("historical session migration", () => {
 			]),
 		);
 
-		const result = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
+		const result = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir, fixture.host);
 
 		expect(result).toMatchObject({ kind: "greenfield", status: "migrated" });
 		if (result.kind !== "greenfield") throw new Error("Expected session migration");
@@ -109,7 +122,7 @@ describe("historical session migration", () => {
 		);
 
 		try {
-			const migration = migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
+			const migration = migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir, fixture.host);
 			await expect(migration).rejects.toBeInstanceOf(ConversationOwnershipConflictError);
 			await expect(migration).rejects.toMatchObject({
 				name: "ConversationOwnershipConflictError",
@@ -131,7 +144,7 @@ describe("historical session migration", () => {
 		await writeFile(fixture.targetRootDir, "not a directory", "utf8");
 
 		await expect(
-			migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir),
+			migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir, fixture.host),
 		).rejects.toMatchObject({
 			code: expect.stringMatching(/^(?:EEXIST|ENOTDIR)$/),
 		});
@@ -152,7 +165,7 @@ describe("historical session migration", () => {
 		);
 
 		await expect(
-			migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir),
+			migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir, fixture.host),
 		).resolves.toMatchObject({
 			kind: "session-incompatible",
 			status: "not-representable",
@@ -173,7 +186,7 @@ describe("historical session migration", () => {
 			})}\n{broken}\n`,
 		);
 
-		const result = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
+		const result = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir, fixture.host);
 
 		expect(result).toMatchObject({
 			kind: "session-incompatible",
@@ -186,13 +199,17 @@ describe("historical session migration", () => {
 	});
 });
 
-async function createFixture(content: string): Promise<{ sourcePath: string; targetRootDir: string }> {
+async function createFixture(content: string) {
 	const root = await mkdtemp(join(tmpdir(), "vetta-greenfield-legacy-migration-"));
 	temporaryRoots.add(root);
 	const sourcePath = join(root, "legacy.jsonl");
 	const targetRootDir = join(root, "conversations");
 	await writeFile(sourcePath, content, "utf8");
-	return { sourcePath, targetRootDir };
+	return {
+		sourcePath,
+		targetRootDir,
+		host: createNodeLegacySessionHost({ defaultCwd: root, sessionsDirectory: join(root, "sessions") }),
+	};
 }
 
 function legacySession(content: string): string {

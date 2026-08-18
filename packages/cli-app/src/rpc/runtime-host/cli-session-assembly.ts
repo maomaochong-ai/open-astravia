@@ -1,9 +1,9 @@
-import { join } from "node:path";
+import { randomUUID } from "node:crypto";
+import { dirname, join } from "node:path";
 import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
 import {
 	CodingAgentActiveSessionHost,
 	type CodingAgentMemoryRuntimeFactoryOptions,
-	CodingAgentProcessSessionHost,
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
 	type CodingAgentRuntimeSessionOptions,
@@ -17,6 +17,7 @@ import {
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentPluginMcpRuntime,
 } from "@vetta/coding-agent/host-services";
+import { detectWorkspaceFacts, probeWorkspaceSignals } from "@vetta/coding-agent/model-context";
 import {
 	type CodingAgentRuntimeExtensionEventHost,
 	type CodingAgentRuntimeExtensionSessionHost,
@@ -30,7 +31,9 @@ import {
 import { buildDefaultHookConfigLayers } from "@vetta/ecosystem-adapter";
 import { InitializationRollbackScope, type RuntimeSession, type RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { createMcpToolResultPolicy } from "@vetta/runtime-mcp";
+import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
 import {
+	createConversationSeedDraft,
 	createFileConversationPersistence,
 	FileConversationOwnershipManager,
 	type FileConversationOwnershipManagerOptions,
@@ -46,6 +49,8 @@ import {
 	createCliCodingAgentSessionExecutionEnvironmentFactory,
 	createCliCodingAgentToolEnvironmentFactory,
 } from "./cli-tool-environment.js";
+import { CliCodingAgentProcessSessionHost } from "./coding-agent-process-session-host.js";
+import { createCliMcpSupervisor } from "./mcp-supervisor.js";
 
 export const CLI_RUNTIME_HOST_STARTUP_FAILURE = "CLI Runtime startup and cleanup failed";
 
@@ -77,7 +82,7 @@ function createCliMemoryRolloverRuntime(options: CodingAgentMemoryRuntimeFactory
 
 export interface CliSessionAssembly {
 	readonly runtime: CodingAgentRuntimeComposition;
-	readonly sessionHost: CodingAgentProcessSessionHost;
+	readonly sessionHost: CliCodingAgentProcessSessionHost;
 	readonly extensionSessionHost: CodingAgentRuntimeExtensionSessionHost;
 	dispose(): Promise<void>;
 }
@@ -101,10 +106,11 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 	const codingToolResultPolicy = createCodingAgentCodingToolResultPolicy({ artifactStore: resultArtifacts.coding });
 	const mcpToolResultPolicy = createMcpToolResultPolicy({ artifactStore: resultArtifacts.mcp });
 	const managedMcpSource = await createCodingAgentMcpRuntimeToolSource({
-		projectRoot: bootstrap.cwd,
-		agentDir: bootstrap.agentDir,
-		debug: mcpDebug,
-		enabled: true,
+		supervisor: createCliMcpSupervisor({
+			projectRoot: bootstrap.cwd,
+			agentDir: bootstrap.agentDir,
+			debug: mcpDebug,
+		}),
 		resultPolicy: mcpToolResultPolicy,
 	});
 	const rollback = new InitializationRollbackScope();
@@ -127,9 +133,14 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 			createSessionExecutionEnvironment,
 			codingToolResultPolicy,
 			modelRegistry: bootstrap.modelRegistry,
+			modelInputImageProcessor: nodeModelInputImageProcessor,
 			initialModel: options.initialModel,
 			initialThinkingLevel: options.initialThinkingLevel,
+			ocrMaxConcurrent: resolvePositiveInteger(process.env.VETTA_KB_OCR_CONCURRENCY),
 			cwd: bootstrap.cwd,
+			workspaceFacts: detectWorkspaceFacts(bootstrap.cwd, (cwd) =>
+				probeWorkspaceSignals(cwd, nodeWorkspaceFactsFileSource),
+			),
 			agentDir: bootstrap.agentDir,
 			knowledgeRuntime:
 				process.env.VETTA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeDir()),
@@ -147,6 +158,8 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 							scope: options.backend === "im" ? "im-claw" : (parsed.scenario ?? "cli"),
 						},
 			enableSubagents: options.backend !== "im" && options.intent === "rpc",
+			createSubagentId: randomUUID,
+			subagentPathPort: { dirname, join },
 			systemPromptAdvertisedToolNames:
 				options.backend === "im" && !parsed.noTools && !parsed.tools
 					? ["kb_filter_by_tags", "kb_list_available_tags"]
@@ -159,8 +172,17 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 				createCodingAgentCompactionExtensionRuntime(() => extensionSessionHost?.readRunner()),
 			createPluginRuntime: options.createPluginRuntime,
 			extensionTools: bootstrap.extensionsResult.extensions,
-			createPluginMcpRuntime: ({ agentDir }) =>
-				createCodingAgentPluginMcpRuntime({ agentDir, debug: mcpDebug, resultPolicy: mcpToolResultPolicy }),
+			createPluginMcpRuntime: ({ cwd, agentDir }) =>
+				createCodingAgentPluginMcpRuntime({
+					supervisor: createCliMcpSupervisor({
+						projectRoot: cwd,
+						agentDir: agentDir ?? bootstrap.agentDir,
+						debug: mcpDebug,
+						dynamicOnly: true,
+					}),
+					debug: mcpDebug,
+					resultPolicy: mcpToolResultPolicy,
+				}),
 			conversationOwnershipManager: new FileConversationOwnershipManager(options.ownership),
 		});
 		const acquiredRuntime = runtime;
@@ -258,14 +280,19 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 		const extensionCommandActions = createCodingAgentRuntimeExtensionCommandActions({
 			waitForIdle: () => activeSessionHost.waitForIdle(),
 			newSession: (newSessionOptions) => activeSessionHost.newSession(newSessionOptions),
-			createSessionSetupInitializer: createCodingAgentSessionSetupSeedInitializer,
+			createSessionSetupInitializer: (setup) =>
+				createCodingAgentSessionSetupSeedInitializer(setup, {
+					createEntryId: randomUUID,
+					now: Date.now,
+					createSeedDraft: createConversationSeedDraft,
+				}),
 			fork: (entryId) => activeSessionHost.fork(entryId),
 			navigateTree: (targetId, navigateOptions) => branchNavigationHost.navigateTree(targetId, navigateOptions),
 			switchSession: (targetPath) => activeSessionHost.switchSession(targetPath),
 			reload: () => activeSessionHost.runActiveSessionMutation(() => resourceReloadHost.reload()),
 		});
 		extensionSessionHost.bindCommandContext(extensionCommandActions);
-		const sessionHost = new CodingAgentProcessSessionHost({
+		const sessionHost = new CliCodingAgentProcessSessionHost({
 			runtime,
 			activeSessionHost,
 			extensionSessionHost,
@@ -287,4 +314,9 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 	} catch (error) {
 		return rollback.rollback(error, CLI_RUNTIME_HOST_STARTUP_FAILURE);
 	}
+}
+
+function resolvePositiveInteger(value: string | undefined): number | undefined {
+	const parsed = Number.parseInt(value ?? "", 10);
+	return Number.isInteger(parsed) && parsed >= 1 ? parsed : undefined;
 }

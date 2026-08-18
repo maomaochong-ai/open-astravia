@@ -1,6 +1,6 @@
 import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
 import type { CodingAgentActiveSessionHost, CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
-import { type CodingAgentHtmlExportRuntime, createCodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
+import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import {
 	type CodingAgentTurnRetryEvent,
 	createImSendAttachmentToolRegistration,
@@ -22,6 +22,7 @@ import {
 } from "@vetta/coding-agent/runtime";
 import { type HistoryEntry, RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
 import { type CodingToolRegistration, createNodeFileInspectionOperations } from "@vetta/runtime-node/coding";
+import { createCliCodingAgentHtmlExportRuntime } from "../html-export-runtime.js";
 import { RpcSessionEventAdapter } from "./rpc-session-event-adapter.js";
 
 type RpcResourceLoader = Pick<CodingAgentBootstrap["resourceLoader"], "getPrompts" | "getSkills">;
@@ -104,7 +105,7 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 		this.sessionHost = options.sessionHost;
 		this.runtime = options.runtime;
 		this.resourceLoader = options.resourceLoader;
-		this.htmlExporter = options.htmlExporter ?? createCodingAgentHtmlExportRuntime();
+		this.htmlExporter = options.htmlExporter ?? createCliCodingAgentHtmlExportRuntime();
 		this.retryController = options.retryController;
 		this.turnExecutor = options.turnExecutor;
 		this.retry = options.retryController;

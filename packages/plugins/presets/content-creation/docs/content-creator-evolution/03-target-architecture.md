@@ -98,9 +98,11 @@ type EditRequest =
 插件贡献启用期间，`inspect`、`assets`、`edit`、`run` 保持固定的模型工具集合与注册顺序。工具的
 name、description 和判别式 Schema 负责选择语义；heavy 首调确认与 run 全局确认继续承担执行安全边界。
 
-插件不注册静态或动态 System Prompt，也不申请 `agent.systemPrompt.write` 或 `agent.tools.control`。稳定的 Skill
-索引负责说明触发边界；模型命中后调用宿主 `invoke_skill`，Skill 正文以工具结果进入消息历史，并按正文路由
-读取必要 reference。这样用户措辞和工作流阶段不会改写 system 前缀或工具定义，专业知识仍可按任务渐进披露。
+插件通过 `agent.systemPrompt.promptPaths` 固定贡献一段简洁的工作流路由提示，并申请最小的
+`agent.systemPrompt.write` 权限；它只区分复杂、规范、可审查的内容生产与简单、一次性、要求立即出结果的
+直接生成，不注册逐轮执行的动态 System Prompt Provider，也不申请 `agent.tools.control`。稳定的 Skill 索引负责
+进一步说明具体任务入口；模型命中后调用宿主 `invoke_skill`，Skill 正文以工具结果进入消息历史，并按正文路由
+读取必要 reference。这样用户措辞和工作流阶段不会改变 system prompt 内容或工具定义，专业知识仍可按任务渐进披露。
 
 ### L3：宿主级 deferred plugin tools
 

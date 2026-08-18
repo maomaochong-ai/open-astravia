@@ -1,11 +1,11 @@
-import { CONFIG_DIR_NAME } from "../../config.js";
-import type { GitSource } from "../../utils/git.js";
+import { CONFIG_DIR_NAME } from "../../identity.js";
 import type { ResourcePathPort } from "../contracts/resource-access.js";
 import type {
 	ResourcePackageDigestPort,
 	ResourcePackageLocationFacts,
 	ResourceScope,
 } from "../contracts/resource-source.js";
+import type { GitSource } from "./git-source.js";
 import { type NpmResourceSource, parseResourceSource } from "./source-spec.js";
 
 export interface ResourcePackageLocationsOptions {

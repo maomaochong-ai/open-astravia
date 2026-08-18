@@ -32,6 +32,13 @@ export interface ImageResizeFailure {
 
 export type ImageResizeResult = ResizedImage | ImageResizeFailure;
 
+export async function resizeImage(
+	image: { readonly data: string; readonly mimeType: string; readonly type?: "image" },
+	options?: ImageResizeOptions,
+): Promise<ImageResizeResult> {
+	return resizeImageBuffer(Buffer.from(image.data, "base64"), image.mimeType, options, image.data);
+}
+
 const DEFAULT_OPTIONS: Required<ImageResizeOptions> = {
 	maxWidth: 1280,
 	maxHeight: 1280,

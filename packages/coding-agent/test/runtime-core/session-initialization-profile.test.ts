@@ -44,6 +44,7 @@ describe("Coding Agent session initialization profile", () => {
 			"createSessionExecutionEnvironment",
 			"createSessionExtensionDefinitions",
 			"createSubagentChildFactory",
+			"createSubagentId",
 			"createSystemPromptOptionsResolver",
 			"createTodoRuntime",
 			"enableSubagents",
@@ -53,14 +54,18 @@ describe("Coding Agent session initialization profile", () => {
 			"initialThinkingLevel",
 			"knowledgeRuntime",
 			"maxStopHookContinuations",
+			"modelInputImageProcessor",
+			"ocrMaxConcurrent",
 			"promptResourceSource",
 			"promptSettingsSource",
 			"resolveCompactionSettings",
 			"resolvePromptResource",
 			"resolveSystemPromptOptions",
 			"subagentMaxConcurrent",
+			"subagentPathPort",
 			"subagentTypeRegistry",
 			"systemPromptAdvertisedToolNames",
+			"workspaceFacts",
 		]);
 		expect(profile.promptResourceSource).toBe(promptResourceSource);
 		expect(profile.promptSettingsSource).toBe(promptSettingsSource);

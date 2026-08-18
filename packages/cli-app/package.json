@@ -20,6 +20,7 @@
 		"verify:runtime-contract": "bun ../../scripts/quality/run-vitest.mjs --run --maxWorkers=4 contract.test.ts test/runtime-host.test.ts test/agent-runtime-selection.test.ts test/rpc-session-adapter.test.ts test/session-resource-close.test.ts test/agent-runtime-initialization-failure.test.ts test/agent-print-mode.test.ts"
 	},
 	"dependencies": {
+		"@vetta/ai": "workspace:*",
 		"@vetta/action-rpc": "workspace:*",
 		"@vetta/coding-agent": "workspace:*",
 		"@vetta/ecosystem-adapter": "workspace:*",
@@ -31,8 +32,10 @@
 		"chalk": "^5.5.0",
 		"zod": "^4.4.3"
 	},
+	"optionalDependencies": {
+		"@mariozechner/clipboard": "^0.3.2"
+	},
 	"devDependencies": {
-		"@vetta/ai": "workspace:*",
 		"typescript": "^5.9.2",
 		"@types/node": "^22.10.5"
 	}

@@ -5,8 +5,8 @@ import type {
 	KnowledgeProcessingSessionFactory,
 	KnowledgeProcessingUsage,
 } from "@vetta/coding-agent/composition";
-import { createLimiter } from "@vetta/coding-agent/concurrency";
 import * as knowledge from "@vetta/runtime-knowledge";
+import { createAsyncExecutionGate } from "@vetta/runtime-tools";
 
 const KB_MAX_FILES_PER_BATCH = 20;
 const KB_MAX_BYTES_PER_BATCH = 8 * 1024 * 1024;
@@ -247,7 +247,7 @@ export class KnowledgeRoundController {
 				maxBytesPerBatch: KB_MAX_BYTES_PER_BATCH,
 			});
 			this.options.logger.info(`processing in ${batches.length} batch(es), agent concurrency=${agentConcurrency}`);
-			const limit = createLimiter(agentConcurrency);
+			const limit = createAsyncExecutionGate(agentConcurrency);
 			await Promise.all(
 				batches.map((batch) =>
 					limit.run(async () => {

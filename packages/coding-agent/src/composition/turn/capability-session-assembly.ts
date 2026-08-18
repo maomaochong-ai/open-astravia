@@ -18,11 +18,11 @@ import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools";
 import { createEcosystemToolInterceptor } from "../../adapters/ecosystem/tool-interceptor-adapter.js";
 import { CodingAgentPromptRequestAdapter } from "../../adapters/runtime-core/prompt-request-adapter.js";
+import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import { CodingAgentStopHookContinuationSource } from "../../extensions/runtime/stop-hook-continuation-source.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
-import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import { DynamicContributionCatalog } from "../../interception/contribution-catalog.js";
 import {
 	CODING_AGENT_TOOL_INTERCEPTION_ORDER,
@@ -30,6 +30,7 @@ import {
 } from "../../interception/tool/contracts.js";
 import { wrapRuntimeToolsWithInterceptionPipeline } from "../../interception/tool/pipeline.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
+import type { ModelInputImageProcessor } from "../../model-context/image-normalization.js";
 import { CodingAgentModelCallFrameComposer } from "../../model-context/model-call-frame-composer.js";
 import { CodingAgentModelCallMessageFinalizer } from "../../model-context/model-call-message-finalizer.js";
 import { CodingAgentPromptRuntime } from "../../model-context/prompt-runtime.js";
@@ -93,6 +94,7 @@ export interface CodingAgentTurnCapabilityPromptOptions {
 	readonly resourceSource?: CodingAgentPromptResourceSource;
 	readonly settingsSource?: CodingAgentPromptSettingsSource;
 	readonly systemPromptAdvertisedToolNames?: readonly string[];
+	readonly workspaceFacts?: string;
 }
 
 export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
@@ -112,6 +114,7 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly contextRuntime: CodingAgentContextRuntime;
 	readonly conversationContextProjector: NonNullable<AgentProfile["conversationContextProjector"]>;
 	readonly modelRuntime: RuntimeModel;
+	readonly modelInputImageProcessor?: ModelInputImageProcessor;
 	readonly hookRuntime: EcosystemHookRuntime;
 	readonly pluginRuntime?: CodingAgentPluginRuntimeSource;
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
@@ -202,6 +205,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 	await promptResourceSource?.setRuntimeSkillPaths(readPluginSkillPaths(options.activation.readAgentPlugins()));
 	const modelCallMessageFinalizer = new CodingAgentModelCallMessageFinalizer(
 		options.prompt.settingsSource ?? promptRuntime?.readSettingsSource(),
+		options.modelInputImageProcessor,
 	);
 	const enhanceSystemPromptOptions = async (
 		resolver: CodingAgentSystemPromptOptionsResolver,
@@ -471,6 +475,7 @@ async function createPromptRuntime(
 		readAgentMode: options.activation.readAgentMode,
 		readMemory: memoryRuntime ? () => memoryRuntime.readPromptMemory() : undefined,
 		readAgentPlugins: options.activation.readAgentPlugins,
+		workspaceFacts: options.prompt.workspaceFacts,
 	});
 }
 

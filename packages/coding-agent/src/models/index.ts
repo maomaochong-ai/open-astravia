@@ -1,4 +1,3 @@
-export { clearConfigValueCache as clearApiKeyCache } from "../configuration/config-value-resolver.js";
 export type {
 	CodingAgentModelCatalogView,
 	CodingAgentModelRuntime,

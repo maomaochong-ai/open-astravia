@@ -5,6 +5,10 @@ Vetta Coding Agent 的能力、策略与稳定 API 语义层。
 本包定义 Coding Agent 的 Profile、Prompt、Mode、Todo、Memory、Knowledge、Skill、Plugin、Extension、
 IM、Compaction 与工具策略。平台 Runtime 负责选择环境实现并完成最终装配。
 
+包内的 `execution/` 按 Turn、Session、后台工作与 Sandbox 组织产品执行策略，`rpc/` 独立拥有平台无关的
+协议和客户端，`theme/` 独立拥有 Theme 合同、解析和投影。`host/` 只保留迁移中的宿主接线，不再作为产品
+执行逻辑的默认归档位置。
+
 ## 架构定位
 
 ```text
@@ -27,8 +31,9 @@ CLI / Desktop / IM
 Runtime Kernel 和协议，不应选择 `runtime-node` 默认实现；`runtime-core`、协议包和 `runtime-node`
 不得反向依赖 `coding-agent`。
 
-迁移期间，`host`、`adapters`、SDK 兼容入口和部分资源加载仍包含 Node 接线。它们是待迁移清单，
-不是新的职责边界；新增能力不得继续依赖这些隐式默认值。
+`adapters/` 只保留合同防腐映射，产品域通过窄 Port 使用环境能力。`host/` 中的 Node 实现仅保留两类明确边界：
+公开 SDK 的零配置兼容根，以及供应用复用的 Host 适配器；它们不属于产品策略，也不能被新的产品能力依赖。
+CLI、Desktop 和 Runtime Node 的最终组合根负责选择 MCP Supervisor、文件、进程、资源和配置实现。
 
 ## 本包拥有
 
@@ -50,8 +55,8 @@ Runtime Kernel 和协议，不应选择 `runtime-node` 默认实现；`runtime-c
 - Desktop UI、CLI 进程入口或 IM 传输协议，分别属于对应应用包
 - 最终平台 Composition Root 与 Node 文件、进程、网络、锁和动态模块加载实现
 
-平台能力必须通过 Runtime Port 注入。现有宿主实现迁出后，本包不得重新引入文件系统、进程、凭证、
-下载器或平台生命周期实现。
+平台能力必须通过 Runtime Port 注入。可移植产品域不得重新引入文件系统、进程、凭证、下载器或平台生命周期实现；
+兼容 Host 的 Node 默认值只允许位于显式命名的 Host 文件，并由架构守卫保护。
 
 工具与 MCP 的大结果投影也遵循同一边界：本包定义 Coding Agent 的截断策略，平台宿主通过
 `codingToolResultPolicy` / `McpToolResultPolicy` 选择 Artifact Store。未注入时保留完整结果，不隐式写入本地文件。
@@ -89,20 +94,23 @@ Host request
 包根仅保留稳定 Extension API。其他能力使用显式子路径：
 
 - `@vetta/coding-agent/composition`：Coding Agent Feature 与策略组合合同；平台实现由宿主注入
+- `@vetta/coding-agent/model-context`：工作区事实等产品上下文规则；文件访问由宿主注入
 - `@vetta/coding-agent/bootstrap`：平台无关的启动编排；Settings、Auth、Model 与 Resource 实现由宿主注入
 - `@vetta/coding-agent/runtime`：Runtime 产品入口
 - `@vetta/coding-agent/sdk`：嵌入式会话 API
 - `@vetta/coding-agent/rpc`：平台无关的 RPC Frame、命令分发、桥接和会话能力合同；传输、进程退出与请求 ID
   由宿主注入。CLI 的 Node JSONL 适配位于 `@vetta/cli-app`，不属于协议核心
 - `@vetta/coding-agent/extensions`：扩展合同
-- `@vetta/coding-agent/host`：迁移中的 Node Host 兼容入口，不得作为新功能依赖
-- `@vetta/coding-agent/configuration`：配置合同
+- `@vetta/coding-agent/host`：Node Tool Host 兼容入口，不得作为新产品能力依赖
 - `@vetta/coding-agent/resources`：Skill、提示词等资源入口
 - `@vetta/coding-agent/settings`：设置入口
 - `@vetta/coding-agent/historical-sessions`：历史会话读取
 
 应用不得深度导入 `src/` 或未导出的内部文件。新增公开入口前，应先确认它是跨包稳定合同，
 而不是某个组合实现的便利函数。
+
+`@vetta/coding-agent/config` 保留为历史 Node 配置门面。产品常量位于无副作用的内部 `identity.ts`，
+Node 包目录探测、环境目录解析和 manifest 读取位于 `host/node-config.ts`；产品域不得直接导入配置门面。
 
 ## 功能兼容原则
 

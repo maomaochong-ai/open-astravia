@@ -129,8 +129,10 @@ export interface BuildSystemPromptOptions {
 	promptBudgetTokens?: number;
 	/** Text to append to system prompt. */
 	appendSystemPrompt?: string;
-	/** Working directory. Default: process.cwd() */
+	/** Working directory. Runtime composition should provide it; direct helpers fall back to ".". */
 	cwd?: string;
+	/** Command tool used only when selectedTools is omitted. Default: "bash". */
+	defaultCommandTool?: "bash" | "shell";
 	/** Pre-loaded context files. */
 	contextFiles?: Array<{ path: string; content: string }>;
 	/**
@@ -344,6 +346,7 @@ export function buildSystemPromptDraft(options: BuildSystemPromptOptions = {}): 
 		promptBudgetTokens,
 		appendSystemPrompt,
 		cwd,
+		defaultCommandTool = "bash",
 		contextFiles: providedContextFiles,
 		workspaceFacts,
 		skills: providedSkills,
@@ -355,9 +358,8 @@ export function buildSystemPromptDraft(options: BuildSystemPromptOptions = {}): 
 		scenario,
 		mcpDeferred,
 	} = options;
-	const resolvedCwd = cwd ?? process.cwd();
+	const resolvedCwd = cwd ?? ".";
 	const dateTime = buildDateTime();
-	const defaultCommandTool = process.platform === "win32" ? "shell" : "bash";
 	const contextFiles = providedContextFiles ?? [];
 	const skills = providedSkills ?? [];
 	const mcpTools = providedMcpTools ?? [];

@@ -9,6 +9,11 @@ export {
 	resolveCodingAgentInitialModel,
 } from "../bootstrap/coding-agent-bootstrap.js";
 export type {
+	Args as CodingAgentLaunchArguments,
+	Mode as CodingAgentOutputMode,
+} from "../bootstrap/launch-arguments.js";
+export { CODING_AGENT_BUILT_IN_TOOL_NAMES } from "../composition/coding-agent-built-in-tool-names.js";
+export type {
 	CodingAgentExtensionBootstrapContributions,
 	CodingAgentExtensionCompatibilityAssessment,
 	CodingAgentExtensionEventCompatibilityProfile,
@@ -24,6 +29,7 @@ export {
 	resolveCodingAgentExtensionCompatibility,
 } from "../extensions/compatibility/index.js";
 export {
+	type CodingAgentPrintFileProcessor,
 	type CodingAgentPrintInvocation,
 	type PrepareCodingAgentPrintInvocationOptions,
 	prepareCodingAgentPipedStdin,
@@ -37,3 +43,4 @@ export {
 } from "../host/sdk-session/index.js";
 export { type PrintModeOptions, runPrintMode } from "../modes/print-mode.js";
 export type { PrintExtensionError, PrintSessionCapabilities } from "../modes/print-session-capabilities.js";
+export type { CodingAgentPrintOutputPort } from "../runtime-contracts/print-output.js";

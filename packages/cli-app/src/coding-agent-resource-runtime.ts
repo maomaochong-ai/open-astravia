@@ -10,7 +10,12 @@ import {
 	getUserSkillsDir,
 	getVettaHomePath,
 } from "@vetta/coding-agent/config";
-import { loadThemeFromContent } from "@vetta/coding-agent/extensions";
+import {
+	configureThemeRuntime,
+	detectColorMode,
+	detectTerminalBackground,
+	loadThemeFromContent,
+} from "@vetta/coding-agent/extensions";
 import { createCodingAgentNodeExtensionFactoryLoader } from "@vetta/coding-agent/host-services";
 import {
 	createResourcePackageRuntime,
@@ -25,6 +30,7 @@ import {
 	createNodeCommandExecutor,
 	createNodeResourcePackageHost,
 	NodeScopedTextStorage,
+	nodeTextFileWatchPort,
 } from "@vetta/runtime-node/host";
 
 export interface CliResourceRuntimeScope {
@@ -54,6 +60,10 @@ export function createCliSettingsRuntime(cwd: string, agentDir: string): Setting
 			global: join(agentDir, "settings.json"),
 			project: join(cwd, CONFIG_DIR_NAME, "settings.json"),
 		}),
+		{
+			clearOnShrink: process.env.PI_CLEAR_ON_SHRINK === "1",
+			showHardwareCursor: process.env.PI_HARDWARE_CURSOR === "1",
+		},
 	);
 }
 
@@ -71,6 +81,11 @@ export function createCliResourcePackageRuntime(scope: CliResourceRuntimeScope):
 export function createCliSessionResourceRuntime(
 	options: CreateCliSessionResourceRuntimeOptions,
 ): SessionResourceRuntime {
+	configureThemeRuntime({
+		colorMode: detectColorMode(process.env),
+		defaultThemeName: detectTerminalBackground(process.env),
+		watcher: nodeTextFileWatchPort,
+	});
 	const host = createNodeResourcePackageHost();
 	const packages = createResourcePackageRuntime({
 		cwd: options.cwd,

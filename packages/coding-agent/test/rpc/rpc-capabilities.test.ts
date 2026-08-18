@@ -1,10 +1,10 @@
 import type { RuntimeSessionContextDeliveryController } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
+import type { CodingAgentTurnRetryEvent } from "../../src/execution/turn/contracts.js";
+import { readCodingAgentTurnFailure } from "../../src/execution/turn/turn-executor.js";
+import { CodingAgentSessionTurnRetryController } from "../../src/execution/turn/turn-retry-controller.js";
 import type { HostBashExecutor } from "../../src/host/command-execution/index.js";
-import type { CodingAgentTurnRetryEvent } from "../../src/host/session-execution/contracts.js";
-import { readCodingAgentTurnFailure } from "../../src/host/session-execution/turn-executor.js";
-import { CodingAgentSessionTurnRetryController } from "../../src/host/session-execution/turn-retry-controller.js";
-import { CodingAgentRpcBashCapability } from "../../src/modes/rpc/rpc-bash-capability.js";
+import { CodingAgentRpcBashCapability } from "../../src/rpc/rpc-bash-capability.js";
 
 describe("Coding Agent RPC capabilities", () => {
 	it("executes user Bash through the injected host boundary and records the unchanged RPC result", async () => {

@@ -3,7 +3,7 @@ import {
 	isRpcStartupFailure,
 	type RpcStartupFailure,
 	stringifyRpcStartupFailure,
-} from "../../src/modes/rpc/rpc-startup-failure.js";
+} from "../../src/rpc/rpc-startup-failure.js";
 
 describe("RPC startup failure contract", () => {
 	it("accepts a typed ownership conflict wire", () => {

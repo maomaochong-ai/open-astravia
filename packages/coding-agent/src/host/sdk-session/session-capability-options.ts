@@ -1,5 +1,6 @@
 import type { Api, Model } from "@vetta/ai";
 import type { AgentPluginRuntimeConfig, RuntimeSession, RuntimeSessionInputQueueMode } from "@vetta/runtime-core";
+import type { CodingAgentTurnRetryController, CodingAgentTurnRetrySettings } from "../../execution/turn/contracts.js";
 import type {
 	CodingAgentMemoryConfiguration,
 	CodingAgentPromptTemplate,
@@ -7,7 +8,6 @@ import type {
 	CodingAgentSkillInfo,
 } from "../../public-api/sdk/sdk-session-contract.js";
 import type { CodingAgentSessionToolDefinition } from "../../public-api/sdk/sdk-tool-contract.js";
-import type { CodingAgentTurnRetryController, CodingAgentTurnRetrySettings } from "../session-execution/contracts.js";
 
 export interface CodingAgentSdkSessionCapabilitySettings {
 	setDefaultModelAndProvider(provider: string, modelId: string): void;

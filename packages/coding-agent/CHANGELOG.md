@@ -1,6 +1,39 @@
 ## [Unreleased]
 
+### Added
+
+- 新增 `@vetta/coding-agent/model-context` 产品上下文入口。工作区技术栈识别与提示词渲染仍由 Coding Agent
+  持有，Node 文件探测迁至 `@vetta/runtime-node/coding`，CLI、Desktop、SDK 与 Knowledge Processing
+  在 Composition Root 显式注入会话级快照；探测失败降级和会话内固定语义保持不变。
+
+### Fixed
+
+- 内置 Theme JSON 在构建期生成 TypeScript 文档，避免 Electron/Node ESM 加载 Coding Agent 产物时因缺少
+  JSON import attribute 导致应用启动失败；`dark.json` 与 `light.json` 继续作为唯一编辑来源。
+
 ### Breaking Changes
+
+- **MCP Supervisor 改为 Host 注入**：Coding Agent 的 MCP Tool Source 与 Plugin MCP Runtime 不再创建或选择
+  `runtime-node` Supervisor，改为接收由 CLI、Desktop 或 SDK Host 创建的 `McpServerSupervisor` 并负责其会话内初始化和释放。
+  Node 文件配置、OAuth 和 transport 的所有权集中在 `runtime-node`，MCP 产品装饰、动态同步和结果策略保持不变。
+
+- **配置实现与产品身份分离**：`@vetta/coding-agent/config` 继续作为兼容门面，但产品域改用无副作用的身份常量；Node
+  包目录、manifest、环境目录和安装方式解析集中到 Host 配置实现。现有环境变量名、默认目录、包版本和路径合同保持兼容。
+
+- **历史 Session API 显式接收 Host**：历史目录、文件读取、锁和迁移副作用由平台 Host 提供；Coding Agent 只保留格式解析、
+  分类和迁移策略。CLI/Desktop 已显式创建 Legacy Session Host，活动 Session 执行路径不再依赖历史格式实现。
+
+- **Print 输出改为显式 Host Port**：`runPrintMode()` 不再直接调用 `console`、`process.stdout` 或
+  `process.exit()`，改为要求宿主提供 `CodingAgentPrintOutputPort`。CLI 的 Node 输出实现位于 `@vetta/cli-app`，
+  Print 会话、JSON 事件和错误语义保持不变；其他宿主可复用同一 Print 产品流程。
+
+- **配置值环境解析迁至 Node Runtime**：删除 `@vetta/coding-agent/configuration` 子路径；模型和认证改为消费
+  `CodingAgentConfigurationValueResolver` 窄 Port，CLI、Desktop 与 SDK Node 宿主显式注入
+  `runtime-node` 实现。环境变量优先、`!command`、10 秒超时、结果缓存、空值和失败降级语义保持不变。
+
+- **通用并发 Gate 归回 Runtime Tools**：删除重复的 `@vetta/coding-agent/concurrency#createLimiter` 子路径，
+  Desktop Knowledge Processing 改用现有 `@vetta/runtime-tools#createAsyncExecutionGate`。FIFO、并发上限、异常释放
+  和无效上限收敛行为保持不变，通用机制现在只有一个事实源。
 
 - `CodingAgentToolEnvironment` 新增可选 `createSpecializedToolRegistrations()`，文档转换与 OCR 的 Node
   进程/Desktop Port 选择移至平台环境；Coding Agent 现在按 Session `cwd` 调用宿主工厂，只叠加产品模型顺序并组合

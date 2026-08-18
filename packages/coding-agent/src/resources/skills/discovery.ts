@@ -1,7 +1,7 @@
 import ignore from "ignore";
-import { parseFrontmatter } from "../../utils/frontmatter.js";
 import type { ResourceDiagnostic } from "../contracts/diagnostics.js";
 import type { ResourceAccessPort } from "../contracts/resource-access.js";
+import { parseFrontmatter } from "../shared/frontmatter.js";
 import type {
 	LoadSkillsFromDirOptions,
 	LoadSkillsOptions,

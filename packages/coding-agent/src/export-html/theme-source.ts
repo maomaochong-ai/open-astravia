@@ -1,4 +1,4 @@
-import { getResolvedThemeColors, getThemeExportColors } from "../modes/interactive/theme/theme.js";
+import { getResolvedThemeColors, getThemeExportColors } from "../theme/index.js";
 import type { HtmlExportTheme, HtmlExportThemeSource } from "./contracts.js";
 
 export class CodingAgentHtmlExportThemeSource implements HtmlExportThemeSource {

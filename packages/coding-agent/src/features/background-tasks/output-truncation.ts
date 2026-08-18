@@ -6,7 +6,7 @@ export interface BackgroundTaskOutputTail {
 	readonly truncated: boolean;
 }
 
-/** Product output budget implemented with platform-neutral UTF-8 primitives. */
+/** Coding Agent output budget implemented with platform-neutral UTF-8 primitives. */
 export function truncateBackgroundTaskOutputTail(
 	content: string,
 	options: { readonly maxLines?: number; readonly maxBytes?: number } = {},

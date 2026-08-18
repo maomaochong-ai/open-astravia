@@ -4,6 +4,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { runPrintMode } from "../src/modes/print-mode.js";
 import type { PrintExtensionError, PrintSessionCapabilities } from "../src/modes/print-session-capabilities.js";
 
+function createTestOutput(output: string[], errors: string[]) {
+	return {
+		writeLine: (value: string) => output.push(value),
+		writeErrorLine: (value: string) => errors.push(value),
+		flush: async () => {},
+		exit: (code: number): never => {
+			throw new Error(`exit:${code}`);
+		},
+	};
+}
+
 afterEach(() => {
 	vi.restoreAllMocks();
 });
@@ -12,17 +23,19 @@ describe("Print mode host contract", () => {
 	it("drives JSON output through neutral session capabilities", async () => {
 		const output: string[] = [];
 		const errors: string[] = [];
-		vi.spyOn(console, "log").mockImplementation((value: string) => output.push(value));
-		vi.spyOn(console, "error").mockImplementation((value: string) => errors.push(value));
 		const session = new FakePrintSession();
 		const images: ImageContent[] = [{ type: "image", data: "aW1hZ2U=", mimeType: "image/png" }];
 
-		await runPrintMode(session, {
-			mode: "json",
-			initialMessage: "first",
-			initialImages: images,
-			messages: ["second"],
-		});
+		await runPrintMode(
+			session,
+			{
+				mode: "json",
+				initialMessage: "first",
+				initialImages: images,
+				messages: ["second"],
+			},
+			createTestOutput(output, errors),
+		);
 
 		expect(session.initialized).toBe(true);
 		expect(session.prompts).toEqual([

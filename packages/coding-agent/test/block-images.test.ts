@@ -3,7 +3,6 @@ import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { processFileArguments } from "../src/cli/file-processor.js";
 import { SettingsRuntime } from "../src/settings/index.js";
 
 // 1x1 red PNG image as base64 (smallest valid PNG)
@@ -78,41 +77,6 @@ describe("blockImages setting", () => {
 			expect(result.content[0].type).toBe("text");
 			const textContent = result.content[0] as { type: "text"; text: string };
 			expect(textContent.text).toContain("Hello, world!");
-		});
-	});
-
-	describe("processFileArguments", () => {
-		let testDir: string;
-
-		beforeEach(() => {
-			testDir = join(tmpdir(), `block-images-process-test-${Date.now()}`);
-			mkdirSync(testDir, { recursive: true });
-		});
-
-		afterEach(() => {
-			rmSync(testDir, { recursive: true, force: true });
-		});
-
-		it("should always process images (filtering happens at convertToLlm layer)", async () => {
-			// Create test image
-			const imagePath = join(testDir, "test.png");
-			writeFileSync(imagePath, Buffer.from(TINY_PNG_BASE64, "base64"));
-
-			const result = await processFileArguments([imagePath]);
-
-			expect(result.images).toHaveLength(1);
-			expect(result.images[0].type).toBe("image");
-		});
-
-		it("should process text files normally", async () => {
-			// Create test text file
-			const textPath = join(testDir, "test.txt");
-			writeFileSync(textPath, "Hello, world!");
-
-			const result = await processFileArguments([textPath]);
-
-			expect(result.images).toHaveLength(0);
-			expect(result.text).toContain("Hello, world!");
 		});
 	});
 });

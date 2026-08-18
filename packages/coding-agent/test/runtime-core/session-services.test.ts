@@ -10,6 +10,7 @@ import {
 	type RuntimeSessionCatalog,
 	type RuntimeSessionFileHistoryReader,
 } from "@vetta/runtime-core";
+import { createNodeLegacySessionHost } from "@vetta/runtime-node/host";
 import { describe, expect, it, vi } from "vitest";
 import {
 	createCodingAgentHistoricalSessionCatalog,
@@ -214,8 +215,9 @@ describe("runtime host process services", () => {
 				"utf8",
 			);
 
-			const catalog = createCodingAgentHistoricalSessionCatalog();
-			const historyReader = createCodingAgentHistoricalSessionFileHistoryReader();
+			const historicalHost = createNodeLegacySessionHost({ defaultCwd: root, sessionsDirectory: sessionDir });
+			const catalog = createCodingAgentHistoricalSessionCatalog(historicalHost);
+			const historyReader = createCodingAgentHistoricalSessionFileHistoryReader(historicalHost);
 			const listed = await catalog.listSessions(root, sessionDir);
 			expect(listed).toHaveLength(1);
 			expect(listed[0]).toMatchObject({ path: sessionPath, cwd: root, firstMessage: "hello" });

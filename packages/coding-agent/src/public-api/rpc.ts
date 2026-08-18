@@ -1,3 +1,5 @@
+export type { CodingAgentTurnRetryEvent, CodingAgentTurnRetrySettings } from "../execution/turn/contracts.js";
+export { CodingAgentSessionTurnRetryController } from "../execution/turn/turn-retry-controller.js";
 export {
 	createImSendAttachmentToolRegistration,
 	type ImSendAttachmentFileOperations,
@@ -6,9 +8,6 @@ export {
 } from "../features/im-send-attachment/index.js";
 export {
 	CodingAgentRpcBashCapability,
-	CodingAgentSessionTurnRetryController,
-	type CodingAgentTurnRetryEvent,
-	type CodingAgentTurnRetrySettings,
 	computeCodingAgentRpcSessionStats,
 	exportCodingAgentRpcConversation,
 	type ImHostBridge,
@@ -51,4 +50,4 @@ export {
 	runRpcModeWithCapabilities,
 	type SessionStats,
 	stringifyRpcStartupFailure,
-} from "../modes/index.js";
+} from "../rpc/index.js";

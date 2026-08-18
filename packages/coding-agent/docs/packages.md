@@ -28,4 +28,8 @@ vetta list
 
 `package.json` 可声明 `pi`（历史键名）资源，或使用约定目录：`extensions/`、`skills/`、`prompts/` 等。过滤与启停字段见 `src/resources/packages/` 与 settings 中的 package 对象（`source` + 可选 `extensions`/`skills`/`prompts` 白名单）。
 
-实现：`src/resources/packages/`、`src/host/coding-agent-cli-control.ts`。
+产品包规则实现在 `src/resources/packages/`；终端命令编排与输出由 `packages/cli-app/src/coding-agent-cli-control.ts` 承担。
+
+资源目录中的格式解析、优先级和快照属于 Coding Agent；文件遍历、摘要、Git/NPM 命令和临时目录由宿主通过
+`ResourceAccessPort`、`ResourcePackageHost` 等合同注入。不要从资源规则直接导入 `node:fs`、`node:path` 或
+`@vetta/runtime-node`。

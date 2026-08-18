@@ -1,7 +1,9 @@
-import { existsSync, readFileSync } from "node:fs";
 import { Value } from "@sinclair/typebox/value";
 import type { Api, Model } from "@vetta/ai";
-import { resolveConfigHeaders, resolveConfigValue } from "../../configuration/config-value-resolver.js";
+import {
+	type CodingAgentConfigurationValueResolver,
+	literalCodingAgentConfigurationValueResolver,
+} from "../../runtime-contracts/configuration-runtime.js";
 import { type ModelOverride, type ModelsConfig, ModelsConfigSchema } from "./model-config-schema.js";
 import { mergeCompat, type ProviderOverride } from "./model-merge.js";
 
@@ -19,11 +21,6 @@ export interface ModelConfigFileSource {
 	read(path: string): string;
 }
 
-const nodeModelConfigFileSource: ModelConfigFileSource = {
-	exists: existsSync,
-	read: (path) => readFileSync(path, "utf-8"),
-};
-
 const API_TYPE_ALIASES: Readonly<Record<string, string>> = {
 	anthropic: "anthropic-messages",
 	openai: "openai-completions",
@@ -31,9 +28,10 @@ const API_TYPE_ALIASES: Readonly<Record<string, string>> = {
 
 export function loadLocalModelConfig(
 	path: string | undefined,
-	fileSource: ModelConfigFileSource = nodeModelConfigFileSource,
+	fileSource: ModelConfigFileSource | undefined,
+	configurationValueResolver: CodingAgentConfigurationValueResolver = literalCodingAgentConfigurationValueResolver,
 ): LocalModelConfigResult {
-	if (!path || !fileSource.exists(path)) return emptyResult();
+	if (!path || !fileSource?.exists(path)) return emptyResult();
 	try {
 		const parsed: unknown = JSON.parse(fileSource.read(path));
 		stripRetiredFields(parsed);
@@ -70,7 +68,7 @@ export function loadLocalModelConfig(
 			validation.errors.length > 0
 				? `Some providers in models.json were skipped:\n${validation.errors.map((issue) => `  - ${issue}`).join("\n")}\n\nFile: ${path}`
 				: undefined;
-		const parsedModels = parseModels(validConfig);
+		const parsedModels = parseModels(validConfig, configurationValueResolver);
 		return {
 			models: parsedModels.models,
 			overrides,
@@ -89,7 +87,10 @@ export function loadLocalModelConfig(
 	}
 }
 
-function parseModels(config: ModelsConfig): { models: Model<Api>[]; providerNames: Set<string> } {
+function parseModels(
+	config: ModelsConfig,
+	configurationValueResolver: CodingAgentConfigurationValueResolver,
+): { models: Model<Api>[]; providerNames: Set<string> } {
 	const models: Model<Api>[] = [];
 	const providerNames = new Set<string>();
 	for (const [providerName, provider] of Object.entries(config.providers)) {
@@ -99,11 +100,11 @@ function parseModels(config: ModelsConfig): { models: Model<Api>[]; providerName
 		for (const definition of definitions) {
 			const rawApi = definition.api || provider.api;
 			if (!rawApi) continue;
-			const providerHeaders = resolveConfigHeaders(provider.headers);
-			const modelHeaders = resolveConfigHeaders(definition.headers);
+			const providerHeaders = configurationValueResolver.resolveHeaders(provider.headers);
+			const modelHeaders = configurationValueResolver.resolveHeaders(definition.headers);
 			let headers = providerHeaders || modelHeaders ? { ...providerHeaders, ...modelHeaders } : undefined;
 			if (provider.authHeader && provider.apiKey) {
-				const key = resolveConfigValue(provider.apiKey);
+				const key = configurationValueResolver.resolve(provider.apiKey);
 				if (key) headers = { ...headers, Authorization: `Bearer ${key}` };
 			}
 			models.push({
