@@ -3,6 +3,7 @@ import { createCodingAgentHistoricalSessionCatalog } from "@vetta/coding-agent/h
 import { CompositeRuntimeSessionCatalog, type RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { FileConversationRuntimeSessionCatalog } from "@vetta/runtime-node/conversation";
 import { createNodeResultArtifactStorage } from "@vetta/runtime-node/host";
+import { createCliHistoricalSessionHost } from "../historical-session-host.js";
 
 export interface CliRuntimeSessionCatalogOptions {
 	readonly cwd: string;
@@ -17,7 +18,9 @@ export function createCliRuntimeSessionCatalog(options: CliRuntimeSessionCatalog
 		mcpRoot: join(options.agentDir, "mcp-results"),
 	});
 	return new CompositeRuntimeSessionCatalog([
-		createCodingAgentHistoricalSessionCatalog(),
+		createCodingAgentHistoricalSessionCatalog(
+			createCliHistoricalSessionHost({ cwd: options.cwd, agentDir: options.agentDir }),
+		),
 		new FileConversationRuntimeSessionCatalog({
 			roots: [{ cwd: options.cwd, sessionDir: options.sessionDir }],
 			artifactCleaner: resultArtifacts.cleaner,

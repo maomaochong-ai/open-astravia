@@ -1,5 +1,8 @@
 import { getEnvApiKey, type OAuthCredentials, type OAuthLoginCallbacks, type OAuthProviderId } from "@vetta/ai";
-import { resolveConfigValue } from "../configuration/config-value-resolver.js";
+import {
+	type CodingAgentConfigurationValueResolver,
+	literalCodingAgentConfigurationValueResolver,
+} from "../runtime-contracts/configuration-runtime.js";
 import { parseAuthDocument, serializeAuthDocument } from "./auth-document.js";
 import type { AuthCredential, AuthStorageBackend, AuthStorageData, CodingAgentAuthRuntime } from "./contracts.js";
 import { createOAuthCredentialRuntime, type OAuthCredentialRuntime } from "./oauth-credential-runtime.js";
@@ -7,6 +10,7 @@ import { InMemoryAuthStorageBackend } from "./storage/in-memory-auth-storage-bac
 
 export interface AuthStorageDependencies {
 	readonly oauth?: OAuthCredentialRuntime;
+	readonly configurationValueResolver?: CodingAgentConfigurationValueResolver;
 }
 
 export class AuthStorage implements CodingAgentAuthRuntime {
@@ -16,12 +20,15 @@ export class AuthStorage implements CodingAgentAuthRuntime {
 	private loadError: Error | undefined;
 	private errors: Error[] = [];
 	private readonly oauth: OAuthCredentialRuntime;
+	private readonly configurationValueResolver: CodingAgentConfigurationValueResolver;
 
 	private constructor(
 		private readonly storage: AuthStorageBackend,
 		dependencies: AuthStorageDependencies = {},
 	) {
 		this.oauth = dependencies.oauth ?? createOAuthCredentialRuntime();
+		this.configurationValueResolver =
+			dependencies.configurationValueResolver ?? literalCodingAgentConfigurationValueResolver;
 		this.reload();
 	}
 
@@ -113,7 +120,7 @@ export class AuthStorage implements CodingAgentAuthRuntime {
 		if (runtimeKey) return runtimeKey;
 
 		const credential = this.data[providerId];
-		if (credential?.type === "api_key") return resolveConfigValue(credential.key);
+		if (credential?.type === "api_key") return this.configurationValueResolver.resolve(credential.key);
 		if (credential?.type === "oauth") {
 			if (!this.oauth.hasProvider(providerId)) return undefined;
 			if (Date.now() < credential.expires) return this.oauth.getApiKey(providerId, credential);

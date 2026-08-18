@@ -11,7 +11,7 @@ import type {
 	RuntimeMcpClientFactoryOptions,
 } from "@vetta/runtime-mcp";
 import { createMcpToolResultPolicy, DEFAULT_MCP_MAX_INLINE_RESULT_BYTES } from "@vetta/runtime-mcp";
-import { NodeMcpToolResultArtifactStore } from "@vetta/runtime-node/mcp";
+import { createNodeMcpSupervisor, NodeMcpToolResultArtifactStore } from "@vetta/runtime-node/mcp";
 import { describe, expect, it, vi } from "vitest";
 import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/ecosystem/tool-interceptor-adapter.js";
 import { createCodingAgentMcpRuntimeToolSource } from "../src/mcp/runtime/tool-source.js";
@@ -30,10 +30,14 @@ describe("Coding Agent native MCP runtime source", () => {
 			return client;
 		};
 		const managed = await createCodingAgentMcpRuntimeToolSource({
-			configSource: source,
-			clientFactory,
-			agentDir: "C:/native-mcp-agent",
-			includeBuiltinServers: false,
+			supervisor: createNodeMcpSupervisor({
+				projectRoot: "C:/native-mcp-project",
+				agentDir: "C:/native-mcp-agent",
+				clientVersion: "test",
+				configSource: source,
+				clientFactory,
+				includeBuiltinServers: false,
+			}).supervisor,
 		});
 
 		const view = await managed.source.refresh();
@@ -80,10 +84,14 @@ describe("Coding Agent native MCP runtime source", () => {
 			artifactStore: new NodeMcpToolResultArtifactStore(join(agentDir, "mcp-results")),
 		});
 		const managed = await createCodingAgentMcpRuntimeToolSource({
-			configSource: source,
-			clientFactory: () => client,
-			agentDir,
-			includeBuiltinServers: false,
+			supervisor: createNodeMcpSupervisor({
+				projectRoot: join(agentDir, "project"),
+				agentDir,
+				clientVersion: "test",
+				configSource: source,
+				clientFactory: () => client,
+				includeBuiltinServers: false,
+			}).supervisor,
 			resultPolicy,
 		});
 		try {

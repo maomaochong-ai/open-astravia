@@ -33,6 +33,10 @@ export default defineConfig({
 				replacement: resolve(__dirname, "../coding-agent/src/composition/index.ts"),
 			},
 			{
+				find: "@vetta/coding-agent/model-context",
+				replacement: resolve(__dirname, "../coding-agent/src/public-api/model-context.ts"),
+			},
+			{
 				find: "@vetta/coding-agent/session-extensions",
 				replacement: resolve(__dirname, "../coding-agent/src/public-api/session-extensions.ts"),
 			},
@@ -41,10 +45,6 @@ export default defineConfig({
 				replacement: resolve(__dirname, "../coding-agent/src/public-api/bootstrap.ts"),
 			},
 			{ find: "@vetta/coding-agent/config", replacement: resolve(__dirname, "../coding-agent/src/config.ts") },
-			{
-				find: "@vetta/coding-agent/concurrency",
-				replacement: resolve(__dirname, "../coding-agent/src/concurrency/index.ts"),
-			},
 			{
 				find: "@vetta/coding-agent/extensions",
 				replacement: resolve(__dirname, "../coding-agent/src/public-api/extensions.ts"),

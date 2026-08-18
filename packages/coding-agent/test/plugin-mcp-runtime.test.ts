@@ -12,6 +12,8 @@ import type {
 	McpToolResultPolicy,
 	RuntimeMcpClientFactory,
 } from "@vetta/runtime-mcp";
+import { EMPTY_MCP_CONFIG_SOURCE } from "@vetta/runtime-mcp";
+import { createNodeMcpSupervisor } from "@vetta/runtime-node/mcp";
 import { describe, expect, it, vi } from "vitest";
 import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/ecosystem/tool-interceptor-adapter.js";
 import type { AgentPluginRuntimeConfig } from "../src/model-context/index.js";
@@ -20,8 +22,8 @@ import { createCodingAgentPluginMcpRuntime } from "../src/plugins/runtime/mcp-ru
 describe("CodingAgentPluginMcpRuntime", () => {
 	it("isolates dynamic servers and preserves metadata", async () => {
 		const clients = new FakeClientFactory();
-		const first = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
-		const second = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
+		const first = await createTestPluginMcpRuntime(clients);
+		const second = await createTestPluginMcpRuntime(clients);
 
 		await first.reconfigure(pluginConfig("alpha"));
 		await second.reconfigure(pluginConfig("beta"));
@@ -56,7 +58,7 @@ describe("CodingAgentPluginMcpRuntime", () => {
 
 	it("keeps plugin MCP tool order at registration order, repeatably (ADR-0071)", async () => {
 		const clients = new FakeClientFactory();
-		const runtime = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
+		const runtime = await createTestPluginMcpRuntime(clients);
 		await runtime.reconfigure({
 			mcpServerContributions: [
 				...(pluginConfig("alpha").mcpServerContributions ?? []),
@@ -81,7 +83,7 @@ describe("CodingAgentPluginMcpRuntime", () => {
 
 	it("reconciles only real changes and lets a session plugin server override a base tool", async () => {
 		const clients = new FakeClientFactory();
-		const runtime = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
+		const runtime = await createTestPluginMcpRuntime(clients);
 		const initial = pluginConfig("alpha", "alpha");
 
 		expect(await runtime.reconfigure(initial)).toBe(true);
@@ -109,7 +111,7 @@ describe("CodingAgentPluginMcpRuntime", () => {
 
 	it("keeps a Turn-bound plugin MCP catalog stable across ordinary reconfiguration", async () => {
 		const clients = new FakeClientFactory();
-		const runtime = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
+		const runtime = await createTestPluginMcpRuntime(clients);
 		await runtime.reconfigure(pluginConfig("alpha"));
 		const admitted = runtime.bindForTurn(acquireContext());
 
@@ -138,10 +140,7 @@ describe("CodingAgentPluginMcpRuntime", () => {
 				details: { projected: true },
 			})),
 		};
-		const runtime = await createCodingAgentPluginMcpRuntime({
-			clientFactory: clients.create,
-			resultPolicy,
-		});
+		const runtime = await createTestPluginMcpRuntime(clients, resultPolicy);
 		await runtime.reconfigure(pluginConfig("alpha"));
 		const surface = runtime.compose(compositionContext(), new Map(), {
 			isToolVisible: () => true,
@@ -164,6 +163,20 @@ describe("CodingAgentPluginMcpRuntime", () => {
 		await runtime.dispose();
 	});
 });
+
+function createTestPluginMcpRuntime(clients: FakeClientFactory, resultPolicy?: McpToolResultPolicy) {
+	return createCodingAgentPluginMcpRuntime({
+		supervisor: createNodeMcpSupervisor({
+			projectRoot: "C:/plugin-mcp-project",
+			agentDir: "C:/plugin-mcp-agent",
+			clientVersion: "test",
+			configSource: EMPTY_MCP_CONFIG_SOURCE,
+			clientFactory: clients.create,
+			includeBuiltinServers: false,
+		}).supervisor,
+		resultPolicy,
+	});
+}
 
 function acquireContext(): RuntimeSnapshotAcquireContext {
 	return {

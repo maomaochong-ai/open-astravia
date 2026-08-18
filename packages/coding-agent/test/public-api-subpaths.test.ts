@@ -4,7 +4,6 @@ import type {
 	CodingAgentPromptRuntimeSourceContext,
 	CodingAgentPromptRuntimeSources,
 } from "../src/composition/index.js";
-import { createLimiter } from "../src/concurrency/index.js";
 import * as config from "../src/config.js";
 import { createExtensionEventBus } from "../src/extensions/runtime/event-bus.js";
 import {
@@ -14,7 +13,6 @@ import {
 } from "../src/host/tool-environment/node/index.js";
 import * as root from "../src/index.js";
 import { CODING_AGENT_SDK_HOST_ERROR_CODES, createCodingAgentBootstrap } from "../src/public-api/bootstrap.js";
-import { runCodingAgentCliControl } from "../src/public-api/cli-control.js";
 import { VETTA_CLI_GUIDANCE } from "../src/public-api/cli-guidance.js";
 import { createCodingAgentHtmlExportRuntime } from "../src/public-api/export-html.js";
 import * as extensionApi from "../src/public-api/extensions.js";
@@ -30,6 +28,7 @@ import {
 	AuthStorage as HostAuthStorage,
 	SettingsRuntime as HostSettingsRuntime,
 } from "../src/public-api/host-services.js";
+import { detectWorkspaceFacts, probeWorkspaceSignals } from "../src/public-api/model-context.js";
 import { ALL_SCENARIOS, PERSONAS } from "../src/public-api/profile.js";
 import * as resourceApi from "../src/public-api/resources.js";
 import {
@@ -83,12 +82,13 @@ describe("coding-agent public subpaths", () => {
 		expect(CODING_AGENT_SDK_HOST_ERROR_CODES.NO_MODEL).toBe("greenfield_sdk_no_model");
 		expect(ALL_SCENARIOS.length).toBeGreaterThan(0);
 		expect(PERSONAS.length).toBeGreaterThan(0);
+		expect(detectWorkspaceFacts).toBeTypeOf("function");
+		expect(probeWorkspaceSignals).toBeTypeOf("function");
 		expect(config.getAgentDir).toBeTypeOf("function");
 		expect(resourceApi.createResourcePackageRuntime).toBeTypeOf("function");
 		expect(resourceApi.createSessionResourceRuntime).toBeTypeOf("function");
 		expect(Reflect.has(resourceApi, "createCodingAgentResourcePackageRuntime")).toBe(false);
 		expect(Reflect.has(resourceApi, "createCodingAgentSessionResourceRuntime")).toBe(false);
-		expect(createLimiter).toBeTypeOf("function");
 		expect(createExtensionEventBus).toBeTypeOf("function");
 		expect(HostAuthStorage).toBeTypeOf("function");
 		expect(createCodingAgentModelRuntime).toBeTypeOf("function");
@@ -98,7 +98,6 @@ describe("coding-agent public subpaths", () => {
 		expect(createCodingAgentWritePathPolicy).toBeTypeOf("function");
 		expect(getCodingAgentOcrExecutionGate).toBeTypeOf("function");
 		expect(HostSettingsRuntime).toBe(SettingsRuntime);
-		expect(runCodingAgentCliControl).toBeTypeOf("function");
 		expect(createCodingAgentHtmlExportRuntime).toBeTypeOf("function");
 		expect(createCodingAgentHistoricalSessionCatalog).toBeTypeOf("function");
 		expect(createCodingAgentHistoricalSessionFileHistoryReader).toBeTypeOf("function");
@@ -118,25 +117,17 @@ describe("coding-agent public subpaths", () => {
 				types: "./dist/composition/index.d.ts",
 				import: "./dist/composition/index.js",
 			},
+			"./model-context": {
+				types: "./dist/public-api/model-context.d.ts",
+				import: "./dist/public-api/model-context.js",
+			},
 			"./bootstrap": {
 				types: "./dist/public-api/bootstrap.d.ts",
 				import: "./dist/public-api/bootstrap.js",
 			},
-			"./cli-control": {
-				types: "./dist/public-api/cli-control.d.ts",
-				import: "./dist/public-api/cli-control.js",
-			},
 			"./config": {
 				types: "./dist/config.d.ts",
 				import: "./dist/config.js",
-			},
-			"./configuration": {
-				types: "./dist/configuration/index.d.ts",
-				import: "./dist/configuration/index.js",
-			},
-			"./concurrency": {
-				types: "./dist/concurrency/index.d.ts",
-				import: "./dist/concurrency/index.js",
 			},
 			"./hooks": {
 				types: "./dist/public-api/hooks.d.ts",

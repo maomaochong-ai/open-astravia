@@ -1,6 +1,5 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Api, KnownProvider, Model } from "@vetta/ai";
-import chalk from "chalk";
 import type { CodingAgentModelCatalogView } from "../model-contracts.js";
 import { parseModelPattern } from "./model-pattern.js";
 import type { ScopedModel } from "./model-scope.js";
@@ -88,8 +87,6 @@ export interface InitialModelResult {
 }
 
 export async function findInitialModel(options: {
-	readonly cliProvider?: string;
-	readonly cliModel?: string;
 	readonly scopedModels: readonly ScopedModel[];
 	readonly isContinuing: boolean;
 	readonly defaultProvider?: string;
@@ -98,14 +95,6 @@ export async function findInitialModel(options: {
 	readonly models: Pick<ModelSelectionCatalog, "find" | "getAvailable">;
 }): Promise<InitialModelResult> {
 	const { models } = options;
-	if (options.cliProvider && options.cliModel) {
-		const found = models.find(options.cliProvider, options.cliModel);
-		if (!found) {
-			console.error(chalk.red(`Model ${options.cliProvider}/${options.cliModel} not found`));
-			process.exit(1);
-		}
-		return { model: found, thinkingLevel: DEFAULT_THINKING_LEVEL, fallbackMessage: undefined };
-	}
 	if (options.scopedModels.length > 0 && !options.isContinuing) {
 		return {
 			model: options.scopedModels[0].model,
@@ -135,22 +124,16 @@ export async function restoreModelFromSession(
 	savedProvider: string,
 	savedModelId: string,
 	currentModel: Model<Api> | undefined,
-	shouldPrintMessages: boolean,
 	models: ModelSelectionCatalog,
 ): Promise<{ model: Model<Api> | undefined; fallbackMessage: string | undefined }> {
 	const restored = models.find(savedProvider, savedModelId);
 	const hasApiKey = restored ? !!(await models.getApiKey(restored)) : false;
 	if (restored && hasApiKey) {
-		if (shouldPrintMessages) console.log(chalk.dim(`Restored model: ${savedProvider}/${savedModelId}`));
 		return { model: restored, fallbackMessage: undefined };
 	}
 	const reason = !restored ? "model no longer exists" : "no API key available";
-	if (shouldPrintMessages) {
-		console.error(chalk.yellow(`Warning: Could not restore model ${savedProvider}/${savedModelId} (${reason}).`));
-	}
 	const fallback = currentModel ?? findPreferredModel(await models.getAvailable());
 	if (!fallback) return { model: undefined, fallbackMessage: undefined };
-	if (shouldPrintMessages) console.log(chalk.dim(`Falling back to: ${fallback.provider}/${fallback.id}`));
 	return {
 		model: fallback,
 		fallbackMessage: `Could not restore model ${savedProvider}/${savedModelId} (${reason}). Using ${fallback.provider}/${fallback.id}.`,

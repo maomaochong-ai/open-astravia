@@ -4,6 +4,10 @@ import { createDesktopKnowledgeProcessingSessionFactory } from "./processing-ses
 
 const factoryMocks = vi.hoisted(() => ({
 	codingToolResultPolicy: { project: vi.fn() },
+	detectWorkspaceFacts: vi.fn(() => "# Workspace"),
+	probeWorkspaceSignals: vi.fn(() => ({ isGitRepository: true, stacks: [] })),
+	nodeWorkspaceFactsFileSource: {},
+	nodeModelInputImageProcessor: {},
 	createDesktopCodingAgentToolEnvironment: vi.fn(),
 	createDesktopCodingAgentSessionExecutionEnvironment: vi.fn(),
 	create: vi.fn(
@@ -13,6 +17,7 @@ const factoryMocks = vi.hoisted(() => ({
 			readonly createSessionExecutionEnvironment: (...args: never[]) => unknown;
 			readonly codingToolResultPolicy: unknown;
 			readonly knowledgeRuntime: unknown;
+			readonly resolveWorkspaceFacts: (cwd: string) => string | undefined;
 		}) => ({ create: vi.fn() }),
 	),
 	createFileConversationPersistence: vi.fn((conversationDir: string) => ({ conversationDir })),
@@ -24,6 +29,16 @@ factoryMocks.createNodeKnowledgeRuntime.mockReturnValue(factoryMocks.knowledgeRu
 
 vi.mock("@vetta/coding-agent/composition", () => ({
 	createKnowledgeProcessingSessionFactory: factoryMocks.create,
+}));
+
+vi.mock("@vetta/coding-agent/model-context", () => ({
+	detectWorkspaceFacts: factoryMocks.detectWorkspaceFacts,
+	probeWorkspaceSignals: factoryMocks.probeWorkspaceSignals,
+}));
+
+vi.mock("@vetta/runtime-node/coding", () => ({
+	nodeModelInputImageProcessor: factoryMocks.nodeModelInputImageProcessor,
+	nodeWorkspaceFactsFileSource: factoryMocks.nodeWorkspaceFactsFileSource,
 }));
 
 vi.mock("@vetta/runtime-node/conversation", () => ({
@@ -67,7 +82,9 @@ describe("createDesktopKnowledgeProcessingSessionFactory", () => {
 			createToolEnvironment: factoryMocks.createDesktopCodingAgentToolEnvironment,
 			createSessionExecutionEnvironment: factoryMocks.createDesktopCodingAgentSessionExecutionEnvironment,
 			codingToolResultPolicy: factoryMocks.codingToolResultPolicy,
+			modelInputImageProcessor: factoryMocks.nodeModelInputImageProcessor,
 			knowledgeRuntime: factoryMocks.knowledgeRuntime,
+			resolveWorkspaceFacts: expect.any(Function),
 		});
 		expect(factoryMocks.createNodeKnowledgeRuntime).toHaveBeenCalledOnce();
 		const compositionOptions = factoryMocks.create.mock.calls[0]?.[0];
@@ -76,5 +93,7 @@ describe("createDesktopKnowledgeProcessingSessionFactory", () => {
 		});
 		expect(factoryMocks.createFileConversationPersistence).toHaveBeenCalledWith("C:\\sessions");
 		expect(persistence).toEqual({ conversationDir: "C:\\sessions" });
+		expect(compositionOptions?.resolveWorkspaceFacts("C:\\workspace")).toBe("# Workspace");
+		expect(factoryMocks.detectWorkspaceFacts).toHaveBeenCalledWith("C:\\workspace", expect.any(Function));
 	});
 });

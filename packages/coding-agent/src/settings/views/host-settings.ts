@@ -1,7 +1,15 @@
 import type { HostSettingsPort } from "../contracts/host-settings.js";
 import type { SettingsStatePort } from "../runtime/settings-state.js";
 
-export function createHostSettingsView(state: SettingsStatePort): HostSettingsPort {
+export interface HostSettingsDefaults {
+	readonly clearOnShrink?: boolean;
+	readonly showHardwareCursor?: boolean;
+}
+
+export function createHostSettingsView(
+	state: SettingsStatePort,
+	defaults: HostSettingsDefaults = {},
+): HostSettingsPort {
 	return {
 		getLastChangelogVersion: () => state.read().lastChangelogVersion,
 		setLastChangelogVersion: (lastChangelogVersion) => state.patchGlobal({ lastChangelogVersion }),
@@ -15,11 +23,11 @@ export function createHostSettingsView(state: SettingsStatePort): HostSettingsPo
 		setCollapseChangelog: (collapseChangelog) => state.patchGlobal({ collapseChangelog }),
 		getShowImages: () => state.read().terminal?.showImages ?? true,
 		setShowImages: (showImages) => state.patchGlobal({ terminal: { showImages } }),
-		getClearOnShrink: () => state.read().terminal?.clearOnShrink ?? process.env.PI_CLEAR_ON_SHRINK === "1",
+		getClearOnShrink: () => state.read().terminal?.clearOnShrink ?? defaults.clearOnShrink ?? false,
 		setClearOnShrink: (clearOnShrink) => state.patchGlobal({ terminal: { clearOnShrink } }),
 		getDoubleEscapeAction: () => state.read().doubleEscapeAction ?? "tree",
 		setDoubleEscapeAction: (doubleEscapeAction) => state.patchGlobal({ doubleEscapeAction }),
-		getShowHardwareCursor: () => state.read().showHardwareCursor ?? process.env.PI_HARDWARE_CURSOR === "1",
+		getShowHardwareCursor: () => state.read().showHardwareCursor ?? defaults.showHardwareCursor ?? false,
 		setShowHardwareCursor: (showHardwareCursor) => state.patchGlobal({ showHardwareCursor }),
 		getEditorPaddingX: () => state.read().editorPaddingX ?? 0,
 		setEditorPaddingX: (editorPaddingX) =>

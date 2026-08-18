@@ -3,7 +3,9 @@ import {
 	createCodingAgentRuntimeComposition as createRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import { getAgentDir } from "@vetta/coding-agent/config";
+import { detectWorkspaceFacts, probeWorkspaceSignals } from "@vetta/coding-agent/model-context";
 import { SettingsRuntime } from "@vetta/coding-agent/settings";
+import { nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
 import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";
 import {
 	createCliCodingAgentSessionExecutionEnvironmentFactory,
@@ -34,6 +36,11 @@ type TestCompositionOptions = Omit<
 export function createCodingAgentRuntimeComposition(options: TestCompositionOptions) {
 	return createRuntimeComposition({
 		...options,
+		workspaceFacts:
+			options.workspaceFacts ??
+			detectWorkspaceFacts(options.cwd ?? process.cwd(), (cwd) =>
+				probeWorkspaceSignals(cwd, nodeWorkspaceFactsFileSource),
+			),
 		resolveSystemPromptOptions:
 			options.resolveSystemPromptOptions ??
 			(options.createPromptRuntimeSources || options.promptResourceSource

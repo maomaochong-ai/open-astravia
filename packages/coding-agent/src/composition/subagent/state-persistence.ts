@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type {
 	ConversationDocument,
 	RuntimeDocumentParticipant,
@@ -7,6 +6,7 @@ import type {
 import type { StoredSessionEvent } from "@vetta/runtime-core/kernel";
 import type { SubagentDeliveryMarker, SubagentRecoveryState, SubagentSnapshot } from "@vetta/runtime-subagents";
 import { z } from "zod";
+import { createLocalSubagentId } from "./local-id.js";
 
 export const CODING_AGENT_SUBAGENT_STATE_CUSTOM_TYPE = "subagent_state_v1";
 
@@ -98,7 +98,7 @@ export class CodingAgentSubagentStatePersistence implements RuntimeDocumentParti
 	private disposed = false;
 
 	constructor(private readonly options: CodingAgentSubagentStatePersistenceOptions) {
-		this.createEntryId = options.createEntryId ?? randomUUID;
+		this.createEntryId = options.createEntryId ?? createLocalSubagentId;
 		this.now = options.now ?? Date.now;
 	}
 

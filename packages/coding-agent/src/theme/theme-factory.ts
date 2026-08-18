@@ -1,5 +1,6 @@
-import { detectColorMode, resolveThemeColors } from "./colors.js";
+import { resolveThemeColors } from "./colors.js";
 import type { ColorMode, ThemeBg, ThemeColor } from "./contracts.js";
+import { getThemeRuntimeConfiguration } from "./runtime-configuration.js";
 import { parseThemeDocumentContent, type ThemeDocument } from "./schema.js";
 import { Theme } from "./theme.js";
 
@@ -20,9 +21,10 @@ export function createTheme(document: ThemeDocument, mode?: ColorMode, sourcePat
 		if (BACKGROUND_COLOR_KEYS.has(key)) backgroundColors[key as ThemeBg] = value;
 		else foregroundColors[key as ThemeColor] = value;
 	}
-	return new Theme(foregroundColors, backgroundColors, mode ?? detectColorMode(), {
+	return new Theme(foregroundColors, backgroundColors, mode ?? getThemeRuntimeConfiguration().colorMode, {
 		name: document.name,
 		sourcePath,
+		sourceDocument: document,
 	});
 }
 

@@ -9,6 +9,7 @@ import type {
 	RuntimeHostSessionBackend,
 	RuntimeSessionCreateRequest,
 } from "@vetta/runtime-core";
+import { createDesktopHistoricalSessionHost } from "./historical-session-host.js";
 
 export class DesktopHistoricalSessionImportError extends Error {
 	constructor(readonly incompatibility: CodingAgentHistoricalSessionMigrationIncompatible) {
@@ -25,7 +26,11 @@ export class DesktopHistoricalSessionImportBackend implements RuntimeHostSession
 		const sourcePath = request.sessionPath?.trim();
 		if (!sourcePath) throw new Error("Historical session import requires a source path");
 		const targetRootDir = resolve(request.sessionDir ?? dirname(sourcePath));
-		const migration = await migrateCodingAgentHistoricalSession(sourcePath, targetRootDir);
+		const migration = await migrateCodingAgentHistoricalSession(
+			sourcePath,
+			targetRootDir,
+			createDesktopHistoricalSessionHost(),
+		);
 		if (migration.kind === "session-incompatible") {
 			throw new DesktopHistoricalSessionImportError(migration);
 		}

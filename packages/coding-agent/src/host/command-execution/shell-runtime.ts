@@ -6,7 +6,7 @@ import {
 	resolveNodeShell,
 	WINDOWS_POWERSHELL_UTF8_COMMAND_PREFIX,
 } from "@vetta/runtime-node/coding";
-import { getBinDir, getSettingsPath } from "../../config.js";
+import { getBinDir, getSettingsPath } from "../node-config.js";
 import { createCodingAgentNodeSettingsRuntime } from "../node-state-services.js";
 
 export interface ShellCommand {

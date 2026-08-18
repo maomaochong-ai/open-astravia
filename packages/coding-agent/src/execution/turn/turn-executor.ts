@@ -1,4 +1,4 @@
-import { isRetryableRuntimeError } from "../../utils/retryable-error.js";
+import { isRetryableRuntimeError } from "../failure-classification.js";
 import type {
 	CodingAgentTurnExecutor,
 	CodingAgentTurnExecutorOptions,

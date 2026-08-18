@@ -1,5 +1,13 @@
+export { detectColorMode, detectTerminalBackground } from "./colors.js";
 export type { ThemeBg, ThemeColor, ThemeInfo } from "./contracts.js";
 export { getResolvedThemeColors, getThemeExportColors, isLightTheme } from "./html-theme.js";
+export {
+	configureThemeRuntime,
+	type ThemeRuntimeConfiguration,
+	type ThemeWatchEvent,
+	type ThemeWatchPort,
+	type ThemeWatchSubscription,
+} from "./runtime-configuration.js";
 export { getLanguageFromPath, highlightCode } from "./syntax-highlighting.js";
 export { Theme } from "./theme.js";
 export {

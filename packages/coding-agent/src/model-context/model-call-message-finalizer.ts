@@ -6,7 +6,11 @@ import type {
 	RuntimeSnapshotAcquireContext,
 } from "@vetta/runtime-core/kernel";
 import { applyImageBudget } from "./image-budget.js";
-import { type ModelInputImageProcessor, normalizeModelInputImages } from "./image-normalization.js";
+import {
+	type ModelInputImageProcessor,
+	normalizeModelInputImages,
+	resolveModelInputImageProcessor,
+} from "./image-normalization.js";
 
 export interface CodingAgentImageSettingsSource {
 	reloadImageSettings?(): void;
@@ -48,11 +52,9 @@ export class CodingAgentModelCallMessageFinalizer implements ModelCallMessageFin
 		const normalized =
 			this.settings?.getImageAutoResize?.() === false
 				? [...input.messages]
-				: await normalizeModelInputImages(
-						input.messages,
-						signal,
-						this.imageProcessor ? { processor: this.imageProcessor } : {},
-					);
+				: await normalizeModelInputImages(input.messages, signal, {
+						processor: resolveModelInputImageProcessor(this.imageProcessor),
+					});
 		const budgeted = applyImageBudget([...normalized] satisfies AgentMessage[], {
 			highWatermarkBytes: this.settings?.getImageRequestHighWatermarkBytes?.(),
 			lowWatermarkBytes: this.settings?.getImageRequestLowWatermarkBytes?.(),

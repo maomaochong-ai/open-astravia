@@ -5,10 +5,10 @@ import { createNodeDynamicModuleLoader, nodeFileUrlToPath, resolveNodeModuleSpec
 import * as piTypebox from "typebox";
 import * as piCompile from "typebox/compile";
 import * as piValue from "typebox/value";
-import { isBunBinary } from "../../config.js";
 import type { ExtensionFactory } from "../../extensions/api-contracts.js";
 import type { ExtensionFactoryLoader } from "../../extensions/host-contracts.js";
 import * as bundledCodingAgent from "../../index.js";
+import { isBunBinary } from "../node-config.js";
 
 const NATIVE_VIRTUAL_MODULES: Readonly<Record<string, unknown>> = {
 	"@sinclair/typebox": bundledTypebox,

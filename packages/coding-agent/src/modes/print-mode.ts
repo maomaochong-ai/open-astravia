@@ -7,6 +7,7 @@
  */
 
 import type { AssistantMessage, ImageContent } from "@vetta/ai";
+import type { CodingAgentPrintOutputPort } from "../runtime-contracts/print-output.js";
 import type { PrintSessionCapabilities } from "./print-session-capabilities.js";
 
 /**
@@ -27,24 +28,28 @@ export interface PrintModeOptions {
  * Run in print (single-shot) mode.
  * Sends prompts to the agent and outputs the result.
  */
-export async function runPrintMode(session: PrintSessionCapabilities, options: PrintModeOptions): Promise<void> {
+export async function runPrintMode(
+	session: PrintSessionCapabilities,
+	options: PrintModeOptions,
+	output: CodingAgentPrintOutputPort,
+): Promise<void> {
 	const { mode, messages = [], initialMessage, initialImages } = options;
 	if (mode === "json") {
 		const header = session.readHeader();
 		if (header) {
-			console.log(JSON.stringify(header));
+			output.writeLine(JSON.stringify(header));
 		}
 	}
 	// Set up extensions for print mode (no UI)
 	await session.initializeExtensions((err) => {
-		console.error(`Extension error (${err.extensionPath}): ${err.error}`);
+		output.writeErrorLine(`Extension error (${err.extensionPath}): ${err.error}`);
 	});
 
 	// Always subscribe to enable session persistence via _handleAgentEvent
 	session.subscribe((event) => {
 		// In JSON mode, output all events
 		if (mode === "json") {
-			console.log(JSON.stringify(event));
+			output.writeLine(JSON.stringify(event));
 		}
 	});
 
@@ -68,14 +73,14 @@ export async function runPrintMode(session: PrintSessionCapabilities, options: P
 
 			// Check for error/aborted
 			if (assistantMsg.stopReason === "error" || assistantMsg.stopReason === "aborted") {
-				console.error(assistantMsg.errorMessage || `Request ${assistantMsg.stopReason}`);
-				process.exit(1);
+				output.writeErrorLine(assistantMsg.errorMessage || `Request ${assistantMsg.stopReason}`);
+				output.exit(1);
 			}
 
 			// Output text content
 			for (const content of assistantMsg.content) {
 				if (content.type === "text") {
-					console.log(content.text);
+					output.writeLine(content.text);
 				}
 			}
 		}
@@ -83,10 +88,5 @@ export async function runPrintMode(session: PrintSessionCapabilities, options: P
 
 	// Ensure stdout is fully flushed before returning
 	// This prevents race conditions where the process exits before all output is written
-	await new Promise<void>((resolve, reject) => {
-		process.stdout.write("", (err) => {
-			if (err) reject(err);
-			else resolve();
-		});
-	});
+	await output.flush();
 }

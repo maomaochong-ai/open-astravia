@@ -1,4 +1,4 @@
-import { type GitSource, parseGitUrl } from "../../utils/git.js";
+import { type GitSource, parseGitUrl } from "./git-source.js";
 
 export interface NpmResourceSource {
 	type: "npm";

@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { getAgentDir } from "../config.js";
+import { getAgentDir } from "./node-config.js";
 
 /**
  * 某个工作目录对应的会话分片目录（`<agentDir>/sessions/--<编码后的 cwd>--`）。

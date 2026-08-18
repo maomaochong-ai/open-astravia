@@ -2,10 +2,10 @@ import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { registerOAuthProvider } from "@vetta/ai";
+import { clearNodeConfigurationValueCache } from "@vetta/runtime-node/host";
 import lockfile from "proper-lockfile";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { AuthStorage } from "../src/auth/index.js";
-import { clearConfigValueCache } from "../src/configuration/index.js";
 import { createFileAuthStorage } from "./fixtures/file-auth-storage.js";
 
 describe("AuthStorage", () => {
@@ -23,7 +23,7 @@ describe("AuthStorage", () => {
 		if (tempDir && existsSync(tempDir)) {
 			rmSync(tempDir, { recursive: true });
 		}
-		clearConfigValueCache();
+		clearNodeConfigurationValueCache();
 		vi.restoreAllMocks();
 	});
 
@@ -209,7 +209,7 @@ describe("AuthStorage", () => {
 				expect(count).toBe(1);
 			});
 
-			test("clearConfigValueCache allows command to run again", async () => {
+			test("clearNodeConfigurationValueCache allows command to run again", async () => {
 				const counterFile = join(tempDir, "counter");
 				writeFileSync(counterFile, "0");
 
@@ -222,7 +222,7 @@ describe("AuthStorage", () => {
 				await authStorage.getApiKey("anthropic");
 
 				// Clear cache and call again
-				clearConfigValueCache();
+				clearNodeConfigurationValueCache();
 				await authStorage.getApiKey("anthropic");
 
 				// Command should have run twice

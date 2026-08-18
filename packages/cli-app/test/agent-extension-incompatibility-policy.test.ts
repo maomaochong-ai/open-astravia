@@ -20,7 +20,7 @@ vi.mock("../src/coding-agent-bootstrap.js", () => ({
 	createCliCodingAgentBootstrap: runtimeMocks.createBootstrap,
 }));
 
-vi.mock("@vetta/coding-agent/cli-control", () => ({
+vi.mock("../src/coding-agent-cli-control.js", () => ({
 	runCodingAgentCliControl: vi.fn<() => Promise<boolean>>(),
 }));
 

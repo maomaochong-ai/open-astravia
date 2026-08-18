@@ -1,9 +1,7 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { getCustomThemesDir } from "../config.js";
-import { detectTerminalBackground } from "./colors.js";
+import { getThemeRuntimeConfiguration, type ThemeWatchSubscription } from "./runtime-configuration.js";
 import type { Theme } from "./theme.js";
-import { loadTheme } from "./theme-catalog.js";
+import { loadTheme, registerTheme } from "./theme-catalog.js";
+import { loadThemeFromContent } from "./theme-factory.js";
 
 const THEME_KEY = Symbol.for("@vetta/coding-agent:theme");
 
@@ -16,7 +14,7 @@ export const theme: Theme = new Proxy({} as Theme, {
 });
 
 let currentThemeName: string | undefined;
-let themeWatcher: fs.FSWatcher | undefined;
+let themeWatcher: ThemeWatchSubscription | undefined;
 let onThemeChangeCallback: (() => void) | undefined;
 
 function setGlobalTheme(nextTheme: Theme): void {
@@ -28,7 +26,7 @@ export function getCurrentThemeName(): string | undefined {
 }
 
 export function getDefaultThemeName(): string {
-	return detectTerminalBackground();
+	return getThemeRuntimeConfiguration().defaultThemeName;
 }
 
 export function initTheme(themeName?: string, enableWatcher = false): void {
@@ -71,32 +69,33 @@ export function onThemeChange(callback: () => void): void {
 function startThemeWatcher(): void {
 	stopThemeWatcher();
 	if (!currentThemeName || currentThemeName === "dark" || currentThemeName === "light") return;
-
-	const themeFile = path.join(getCustomThemesDir(), `${currentThemeName}.json`);
-	if (!fs.existsSync(themeFile)) return;
-
+	const current = loadTheme(currentThemeName);
+	const themeFile = current.sourcePath;
+	const watcher = getThemeRuntimeConfiguration().watcher;
+	if (!themeFile || !watcher) return;
 	try {
-		themeWatcher = fs.watch(themeFile, (eventType) => {
-			if (eventType === "change") setTimeout(reloadCurrentTheme, 100);
-			else if (eventType === "rename") setTimeout(() => fallbackWhenThemeWasRemoved(themeFile), 100);
+		themeWatcher = watcher.watch(themeFile, (event) => {
+			if (event.kind === "changed") reloadCurrentTheme(themeFile, event.content);
+			else fallbackWhenThemeWasRemoved();
 		});
 	} catch {
 		// Watching is optional; the selected theme remains active.
 	}
 }
 
-function reloadCurrentTheme(): void {
+function reloadCurrentTheme(themeFile: string, content: string): void {
 	try {
 		if (!currentThemeName) return;
-		setGlobalTheme(loadTheme(currentThemeName));
+		const current = loadThemeFromContent(themeFile, content, loadTheme(currentThemeName).getColorMode());
+		registerTheme(current);
+		setGlobalTheme(current);
 		onThemeChangeCallback?.();
 	} catch {
 		// Editors may expose a temporarily invalid document while writing.
 	}
 }
 
-function fallbackWhenThemeWasRemoved(themeFile: string): void {
-	if (fs.existsSync(themeFile)) return;
+function fallbackWhenThemeWasRemoved(): void {
 	currentThemeName = "dark";
 	setGlobalTheme(loadTheme("dark"));
 	stopThemeWatcher();

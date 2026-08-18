@@ -1,10 +1,10 @@
 import { join } from "node:path";
 import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
-import { getDocsPath } from "../../config.js";
 import { type CodingAgentModelRuntime, DEFAULT_THINKING_LEVEL, findInitialModel } from "../../models/index.js";
 import type { CreateCodingAgentSessionOptions } from "../../public-api/sdk/index.js";
 import type { SettingsRuntime } from "../../settings/index.js";
+import { getDocsPath } from "../node-config.js";
 import { CODING_AGENT_SDK_HOST_ERROR_CODES, CodingAgentSdkHostError } from "./contracts.js";
 
 export interface CodingAgentSdkInitialModel {

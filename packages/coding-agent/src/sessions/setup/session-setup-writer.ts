@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { AgentMessage, ToolPhase } from "@vetta/agent-core";
 import type { ImageContent, TextContent } from "@vetta/ai";
 import type { ExtensionSessionWriter } from "../../extensions/index.js";
@@ -18,6 +17,7 @@ export interface CodingAgentSessionSetupWriterOptions {
 	readonly sessionPath: string;
 	readonly sessionId: string;
 	readonly parentSession?: string;
+	readonly createEntryId: () => string;
 	readonly onSnapshotChanged?: (snapshot: CodingAgentSessionSetupSnapshot) => void;
 }
 
@@ -219,9 +219,9 @@ export class CodingAgentSessionSetupWriter implements ExtensionSessionWriter {
 
 	private createEntryId(): string {
 		for (let attempt = 0; attempt < 100; attempt += 1) {
-			const id = randomUUID().slice(0, 8);
+			const id = this.options.createEntryId().slice(0, 8);
 			if (!this.byId.has(id)) return id;
 		}
-		return randomUUID();
+		return this.options.createEntryId();
 	}
 }

@@ -1,5 +1,5 @@
 import { CLAUDE_CODE_HOOK_PROFILE_ID, type EcosystemHookContributionSource } from "@vetta/ecosystem-adapter";
-import { parseFrontmatter } from "../../utils/frontmatter.js";
+import { parseFrontmatter } from "../shared/frontmatter.js";
 import type { Skill, SkillFrontmatter } from "./index.js";
 
 export interface SkillInvocationDocument {

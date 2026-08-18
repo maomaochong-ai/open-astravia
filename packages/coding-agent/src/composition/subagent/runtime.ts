@@ -38,6 +38,7 @@ export {
 export interface CodingAgentSubagentRuntimeOptions {
 	readonly parentSessionId: string;
 	readonly maxConcurrent?: number;
+	readonly createEntryId?: () => string;
 	readonly lifecycle?: SubagentLifecycle;
 	readonly typeRegistry?: SubagentTypeRegistryLike<CodingAgentSubagentProfile>;
 	readonly readParentMessages: () => Promise<readonly Message[]>;
@@ -112,6 +113,7 @@ export class CodingAgentSubagentRuntime implements CodingAgentSubagentWorkRuntim
 				}
 			},
 			onRecoveryIssue: options.onRecoveryIssue,
+			createEntryId: options.createEntryId,
 		});
 		this.tools = createCodingAgentSubagentRuntimeToolRegistrations(
 			() => this.coordinator,

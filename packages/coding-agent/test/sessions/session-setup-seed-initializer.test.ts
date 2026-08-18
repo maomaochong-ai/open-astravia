@@ -1,7 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { FileConversationRepository } from "@vetta/runtime-node/conversation";
+import { createConversationSeedDraft, FileConversationRepository } from "@vetta/runtime-node/conversation";
 import { afterEach, describe, expect, it } from "vitest";
 import { initializeCodingAgentSessionSetupSeed } from "../../src/sessions/setup/session-setup-seed-initializer.js";
 
@@ -17,39 +18,42 @@ describe("Coding Agent Session setup seed initializer", () => {
 	it("preserves setup views and publishes the complete native document graph", async () => {
 		const targetRootDir = await temporaryDirectory(temporaryDirectories);
 		let targetPath: string | undefined;
-		await initializeCodingAgentSessionSetupSeed({
-			cwd: "C:\\workspace",
-			parentSession: "C:\\sessions\\parent.conversation.jsonl",
-			targetRootDir,
-			targetSessionId: "setup-seed",
-			setup: async (writer) => {
-				expect(writer.getSessionId()).toBe("setup-seed");
-				expect(writer.getSessionDir()).toBe(targetRootDir);
-				const sessionFile = writer.getSessionFile();
-				if (!sessionFile) throw new Error("Expected setup to expose the target Session path");
-				targetPath = sessionFile;
+		await initializeCodingAgentSessionSetupSeed(
+			{
+				cwd: "C:\\workspace",
+				parentSession: "C:\\sessions\\parent.conversation.jsonl",
+				targetRootDir,
+				targetSessionId: "setup-seed",
+				setup: async (writer) => {
+					expect(writer.getSessionId()).toBe("setup-seed");
+					expect(writer.getSessionDir()).toBe(targetRootDir);
+					const sessionFile = writer.getSessionFile();
+					if (!sessionFile) throw new Error("Expected setup to expose the target Session path");
+					targetPath = sessionFile;
 
-				const promptId = writer.appendMessage({ role: "user", content: "seed prompt", timestamp: 1 });
-				expect(await readFile(sessionFile, "utf8")).toContain("seed prompt");
-				writer.appendLabelChange(promptId, "prompt");
-				writer.branch(promptId);
-				writer.appendMessage({
-					role: "bashExecution",
-					command: "echo seed",
-					output: "seed",
-					exitCode: 0,
-					cancelled: false,
-					truncated: false,
-					timestamp: 2,
-				});
-				writer.branchWithSummary(promptId, "branch summary");
-				writer.appendSessionInfo("  seeded session  ");
+					const promptId = writer.appendMessage({ role: "user", content: "seed prompt", timestamp: 1 });
+					expect(await readFile(sessionFile, "utf8")).toContain("seed prompt");
+					writer.appendLabelChange(promptId, "prompt");
+					writer.branch(promptId);
+					writer.appendMessage({
+						role: "bashExecution",
+						command: "echo seed",
+						output: "seed",
+						exitCode: 0,
+						cancelled: false,
+						truncated: false,
+						timestamp: 2,
+					});
+					writer.branchWithSummary(promptId, "branch summary");
+					writer.appendSessionInfo("  seeded session  ");
 
-				expect(writer.getLabel(promptId)).toBe("prompt");
-				expect(writer.getSessionName()).toBe("seeded session");
-				expect(writer.getTree()).toHaveLength(1);
+					expect(writer.getLabel(promptId)).toBe("prompt");
+					expect(writer.getSessionName()).toBe("seeded session");
+					expect(writer.getTree()).toHaveLength(1);
+				},
 			},
-		});
+			{ createEntryId: randomUUID, now: Date.now, createSeedDraft: createConversationSeedDraft },
+		);
 
 		if (!targetPath) throw new Error("Expected setup to expose the target Session path");
 		const repository = new FileConversationRepository({ rootDir: targetRootDir });

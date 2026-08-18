@@ -21,6 +21,6 @@ export {
 	type DefaultCodingAgentHtmlExportRuntimeOptions,
 } from "./export-runtime.js";
 export { HtmlDocumentRenderer, type HtmlDocumentRendererOptions } from "./html-renderer.js";
-export { EmbeddedExportTemplateAssetsSource, FileExportTemplateAssetsSource } from "./template-assets.js";
+export { EmbeddedExportTemplateAssetsSource } from "./template-assets.js";
 export { CodingAgentHtmlExportThemeSource } from "./theme-source.js";
 export { createToolHtmlRenderer, type ToolHtmlRendererOptions } from "./tool-renderer.js";

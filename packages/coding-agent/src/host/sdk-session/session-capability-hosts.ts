@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import type { RuntimeSession } from "@vetta/runtime-core";
+import { createConversationSeedDraft } from "@vetta/runtime-node/conversation";
 import {
 	type CodingAgentHtmlExportRuntime,
 	createToolHtmlRenderer,
@@ -146,7 +148,12 @@ export function createCodingAgentSdkActiveSessionCapabilityHostFactory(
 			sessionHost,
 			bash,
 			treeNavigation,
-			createSessionSetupInitializer: createCodingAgentSessionSetupSeedInitializer,
+			createSessionSetupInitializer: (setup) =>
+				createCodingAgentSessionSetupSeedInitializer(setup, {
+					createEntryId: randomUUID,
+					now: Date.now,
+					createSeedDraft: createConversationSeedDraft,
+				}),
 		});
 	};
 }

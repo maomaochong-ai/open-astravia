@@ -2,11 +2,18 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+	configureThemeRuntime,
+	getAvailableThemes,
 	getLanguageFromPath,
 	getResolvedThemeColors,
 	getThemeExportColors,
+	initTheme,
 	installBuiltinThemeDocuments,
 	loadThemeFromContent,
+	onThemeChange,
+	setRegisteredThemes,
+	stopThemeWatcher,
+	theme,
 } from "../src/modes/interactive/theme/theme.js";
 
 const darkThemePath = fileURLToPath(new URL("../src/modes/interactive/theme/dark.json", import.meta.url));
@@ -58,6 +65,61 @@ describe("theme runtime", () => {
 			cardBg: "#1e1e24",
 			infoBg: "#3c3728",
 		});
+	});
+
+	it("keeps built-in and registered theme documents in the product catalog", () => {
+		const document = readThemeDocument(darkThemePath);
+		document.name = "catalog-theme";
+		const custom = loadThemeFromContent("memory://catalog-theme.json", JSON.stringify(document), "truecolor");
+		setRegisteredThemes([custom]);
+
+		expect(getAvailableThemes()).toEqual(["catalog-theme", "dark", "light"]);
+		expect(getThemeExportColors("catalog-theme")).toEqual({
+			pageBg: "#18181e",
+			cardBg: "#1e1e24",
+			infoBg: "#3c3728",
+		});
+	});
+
+	it("delegates custom-theme watching while retaining reload and removal policy", () => {
+		const original = readThemeDocument(darkThemePath);
+		original.name = "watched-theme";
+		const sourcePath = "memory://watched-theme.json";
+		setRegisteredThemes([loadThemeFromContent(sourcePath, JSON.stringify(original), "truecolor")]);
+
+		let listener: ((event: { kind: "changed"; content: string } | { kind: "removed" }) => void) | undefined;
+		let closed = false;
+		configureThemeRuntime({
+			colorMode: "truecolor",
+			defaultThemeName: "light",
+			watcher: {
+				watch(path, next) {
+					expect(path).toBe(sourcePath);
+					listener = next;
+					return {
+						close: () => {
+							closed = true;
+						},
+					};
+				},
+			},
+		});
+		let changes = 0;
+		onThemeChange(() => changes++);
+		initTheme("watched-theme", true);
+
+		const updated = structuredClone(original);
+		(updated.colors as Record<string, unknown>).accent = "#010203";
+		listener?.({ kind: "changed", content: JSON.stringify(updated) });
+		expect(theme.getFgAnsi("accent")).toBe("\u001b[38;2;1;2;3m");
+		expect(changes).toBe(1);
+
+		listener?.({ kind: "removed" });
+		expect(theme.name).toBe("dark");
+		expect(closed).toBe(true);
+		expect(changes).toBe(2);
+		stopThemeWatcher();
+		onThemeChange(() => {});
 	});
 
 	it.each([

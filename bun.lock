@@ -185,6 +185,7 @@
         "vetta-agent-rpc": "dist/agent-rpc-cli.js",
       },
       "dependencies": {
+        "@vetta/ai": "workspace:*",
         "@vetta/action-rpc": "workspace:*",
         "@vetta/coding-agent": "workspace:*",
         "@vetta/ecosystem-adapter": "workspace:*",
@@ -198,8 +199,10 @@
       },
       "devDependencies": {
         "@types/node": "^22.10.5",
-        "@vetta/ai": "workspace:*",
         "typescript": "^5.9.2",
+      },
+      "optionalDependencies": {
+        "@mariozechner/clipboard": "^0.3.2",
       },
     },
     "packages/coding-agent": {
@@ -246,9 +249,6 @@
         "proper-lockfile": "^4.1.2",
         "shx": "^0.4.0",
         "typescript": "^5.7.3",
-      },
-      "optionalDependencies": {
-        "@mariozechner/clipboard": "^0.3.2",
       },
     },
     "packages/coding-agent/examples/extensions/custom-provider-anthropic": {
@@ -305,6 +305,7 @@
         "@vetta/runtime-mcp": "workspace:*",
         "@vetta/runtime-node": "workspace:*",
         "@vetta/runtime-storage": "workspace:*",
+        "@vetta/runtime-tools": "workspace:*",
         "@vetta/theme-sdk": "workspace:*",
         "@vetta/theme-ui": "workspace:*",
         "@vetta/toolkit": "workspace:*",

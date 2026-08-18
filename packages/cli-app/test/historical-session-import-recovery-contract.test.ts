@@ -2,6 +2,7 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join } from "node:path";
 import { migrateCodingAgentHistoricalSession } from "@vetta/coding-agent/historical-sessions";
+import { createNodeLegacySessionHost } from "@vetta/runtime-node/host";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
 	type AgentRpcExecutable,
@@ -71,7 +72,14 @@ describe("Historical session import recovery", { timeout: INTEGRATION_TEST_TIMEO
 	it("keeps a conflicting primary target and reuses one stable Runtime recovery target", async () => {
 		const fixture = await createFixture();
 		const sourcePath = await writeLegacySession(fixture, "target conflict");
-		const primary = await migrateCodingAgentHistoricalSession(sourcePath, fixture.conversationDir);
+		const primary = await migrateCodingAgentHistoricalSession(
+			sourcePath,
+			fixture.conversationDir,
+			createNodeLegacySessionHost({
+				defaultCwd: fixture.workspace,
+				sessionsDirectory: fixture.conversationDir,
+			}),
+		);
 		if (primary.kind !== "greenfield") throw new Error("Expected imported Runtime session");
 		await writeFile(primary.targetPath, "conflicting primary target", "utf8");
 

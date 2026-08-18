@@ -3,7 +3,7 @@ import type { ColorMode, ColorValue } from "./contracts.js";
 const CUBE_VALUES = [0, 95, 135, 175, 215, 255];
 const GRAY_VALUES = Array.from({ length: 24 }, (_, index) => 8 + index * 10);
 
-export function detectColorMode(environment: Readonly<Record<string, string | undefined>> = process.env): ColorMode {
+export function detectColorMode(environment: Readonly<Record<string, string | undefined>> = {}): ColorMode {
 	if (environment.COLORTERM === "truecolor" || environment.COLORTERM === "24bit" || environment.WT_SESSION) {
 		return "truecolor";
 	}
@@ -15,7 +15,7 @@ export function detectColorMode(environment: Readonly<Record<string, string | un
 }
 
 export function detectTerminalBackground(
-	environment: Readonly<Record<string, string | undefined>> = process.env,
+	environment: Readonly<Record<string, string | undefined>> = {},
 ): "dark" | "light" {
 	const colorfgbg = environment.COLORFGBG ?? "";
 	if (colorfgbg) {

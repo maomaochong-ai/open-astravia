@@ -10,7 +10,6 @@ import type { CodingAgentSystemPromptOptions } from "./model-call-frame-composer
 import type { AgentPluginRuntimeConfig } from "./plugin-runtime.js";
 import { capturePromptResourceSource, capturePromptSettingsSource } from "./prompt-snapshot.js";
 import { resolveSystemPromptOptionsFromSources } from "./system-prompt-sources.js";
-import { detectWorkspaceFacts } from "./workspace-facts.js";
 
 export type {
 	CodingAgentPromptResourceSource,
@@ -22,8 +21,8 @@ export type CodingAgentPromptMemoryState = CodingAgentMemoryPromptState;
 export interface CodingAgentPromptRuntimeOptions {
 	readonly cwd: string;
 	/**
-	 * 工作区性质事实。未传时在构造（= 会话创建）时按 cwd 探测一次并在会话内固化，
-	 * 保证两个构造点行为一致，也避免逐轮 fs 探测造成前缀缓存抖动。
+	 * 由宿主在会话创建前探测并固化的工作区性质事实。
+	 * Prompt Runtime 不读取文件系统，避免逐轮探测和平台依赖。
 	 */
 	readonly workspaceFacts?: string;
 	readonly resourceLoader: CodingAgentPromptResourceSource;
@@ -44,7 +43,7 @@ export class CodingAgentPromptRuntime {
 	private readonly workspaceFacts: string | undefined;
 
 	constructor(private readonly options: CodingAgentPromptRuntimeOptions) {
-		this.workspaceFacts = options.workspaceFacts ?? detectWorkspaceFacts(options.cwd);
+		this.workspaceFacts = options.workspaceFacts;
 		this.resolveSystemPromptOptions = (context) => this.resolve(context);
 	}
 

@@ -1,8 +1,8 @@
-import { Buffer } from "node:buffer";
 import type { AgentMessage } from "@vetta/agent-core";
 import type { ToolResultMessage } from "@vetta/ai";
 import type { BashExecutionMessage } from "../model-context/index.js";
 import { findRecentMatchingUserTurnBoundary } from "./user-turn-boundary.js";
+import { sliceUtf8End, sliceUtf8Start, utf8ByteLength } from "./utf8.js";
 
 export const DEFAULT_CONTEXT_REDUCTION_SOFT_PRESSURE = 0.5;
 export const DEFAULT_CONTEXT_REDUCTION_HARD_PRESSURE = 0.75;
@@ -69,7 +69,7 @@ function truncateToolResult(message: ToolResultMessage, maxBytes: number): ToolR
 		.filter((item): item is Extract<(typeof message.content)[number], { type: "text" }> => item.type === "text")
 		.map((item) => item.text)
 		.join("\n\n");
-	if (Buffer.byteLength(text, "utf8") <= maxBytes) return message;
+	if (utf8ByteLength(text) <= maxBytes) return message;
 	const images = message.content.filter(
 		(item): item is Extract<(typeof message.content)[number], { type: "image" }> => item.type === "image",
 	);
@@ -91,7 +91,7 @@ function clearToolResult(message: ToolResultMessage): ToolResultMessage {
 }
 
 function truncateBashResult(message: BashExecutionMessage, maxBytes: number): BashExecutionMessage {
-	if (Buffer.byteLength(message.output, "utf8") <= maxBytes) return message;
+	if (utf8ByteLength(message.output) <= maxBytes) return message;
 	return { ...message, output: truncateText(message.output, maxBytes) };
 }
 
@@ -101,32 +101,12 @@ function clearBashResult(message: BashExecutionMessage): BashExecutionMessage {
 
 function truncateText(value: string, maxBytes: number): string {
 	const notice = "\n...[tool result shortened by context pressure]...\n";
-	const noticeBytes = Buffer.byteLength(notice, "utf8");
+	const noticeBytes = utf8ByteLength(notice);
 	const available = Math.max(2, maxBytes - noticeBytes);
 	return `${sliceUtf8Start(value, Math.floor(available * 0.7))}${notice}${sliceUtf8End(
 		value,
 		Math.floor(available * 0.3),
 	)}`;
-}
-
-function sliceUtf8Start(value: string, maxBytes: number): string {
-	const bytes = Buffer.from(value, "utf8");
-	if (bytes.length <= maxBytes) return value;
-	let end = maxBytes;
-	while (end > 0 && isUtf8ContinuationByte(bytes[end])) end -= 1;
-	return bytes.subarray(0, end).toString("utf8");
-}
-
-function sliceUtf8End(value: string, maxBytes: number): string {
-	const bytes = Buffer.from(value, "utf8");
-	if (bytes.length <= maxBytes) return value;
-	let start = bytes.length - maxBytes;
-	while (start < bytes.length && isUtf8ContinuationByte(bytes[start])) start += 1;
-	return bytes.subarray(start).toString("utf8");
-}
-
-function isUtf8ContinuationByte(value: number | undefined): boolean {
-	return value !== undefined && (value & 0xc0) === 0x80;
 }
 
 function ratio(value: number | undefined, fallback: number): number {

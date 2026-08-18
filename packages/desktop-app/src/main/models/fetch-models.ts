@@ -1,4 +1,4 @@
-import { resolveConfigHeaders, resolveConfigValue } from "@vetta/coding-agent/configuration";
+import { resolveNodeConfigurationHeaders, resolveNodeConfigurationValue } from "@vetta/runtime-node/host";
 import { net } from "electron";
 import { getDesktopModelSettingsService } from "./model-settings-host.js";
 
@@ -26,9 +26,9 @@ export async function fetchProviderModels(providerName: string): Promise<{ model
 		return { models: [], error: `baseUrl 解析失败：${provider.baseUrl}` };
 	}
 
-	const headers: Record<string, string> = { ...resolveConfigHeaders(provider.headers) };
+	const headers: Record<string, string> = { ...resolveNodeConfigurationHeaders(provider.headers) };
 	if (provider.apiKey) {
-		const key = resolveConfigValue(provider.apiKey);
+		const key = resolveNodeConfigurationValue(provider.apiKey);
 		if (key) headers.Authorization = `Bearer ${key}`;
 	}
 

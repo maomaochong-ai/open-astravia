@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { CONFIG_DIR_NAME } from "../../config.js";
+import { CONFIG_DIR_NAME } from "../../identity.js";
 import type { ResourceAccessPort } from "../contracts/resource-access.js";
 
 export async function resolvePromptInput(

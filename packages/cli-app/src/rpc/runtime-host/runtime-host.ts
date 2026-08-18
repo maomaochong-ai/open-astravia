@@ -13,6 +13,10 @@ import { runRpcModeWithCapabilities } from "@vetta/coding-agent/rpc";
 import { InitializationRollbackScope } from "@vetta/runtime-core";
 import { resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
 import { createCliCodingAgentBootstrap } from "../../coding-agent-bootstrap.js";
+import { processCliFileArguments } from "../../file-processor.js";
+import { createCliHistoricalSessionHost } from "../../historical-session-host.js";
+import { readPipedStdin } from "../../piped-stdin.js";
+import { nodePrintOutput } from "../../print-output.js";
 import { CliPrintSessionAdapter } from "../../print-session-adapter.js";
 import { resolveImSessionPath } from "../im-session-selection.js";
 import { NodeRpcJsonlTransport } from "../node-rpc-jsonl-transport.js";
@@ -144,7 +148,11 @@ async function prepareRuntimeHost(
 	let sessionId = resolveSessionId(options.conversationDir, sessionPath, options.createSessionId ?? randomUUID);
 	if (!sessionId) {
 		if (!sessionPath) throw new Error("Historical session import requires a source path");
-		const migration = await migrateCodingAgentHistoricalSession(sessionPath, options.conversationDir);
+		const migration = await migrateCodingAgentHistoricalSession(
+			sessionPath,
+			options.conversationDir,
+			createCliHistoricalSessionHost({ cwd: bootstrap.cwd, agentDir: bootstrap.agentDir }),
+		);
 		if (migration.kind === "session-incompatible") {
 			return {
 				kind: "session-incompatible",
@@ -219,11 +227,13 @@ export async function runPrintRuntimeHost(prepared: PrintRuntimeHostReady): Prom
 		const invocation = await prepareCodingAgentPrintInvocation({
 			parsed: prepared.bootstrap.parsed,
 			autoResizeImages: prepared.bootstrap.settingsManager.getImageAutoResize(),
+			readStdin: readPipedStdin,
+			processFiles: processCliFileArguments,
 		});
 		if (invocation.kind === "interactive-unsupported") {
 			throw new Error("交互式终端模式已移除。请使用 --print 进行单次执行，或使用 Vetta 桌面应用。");
 		}
-		await runPrintMode(prepared.printSession, invocation.options);
+		await runPrintMode(prepared.printSession, invocation.options, nodePrintOutput);
 	} finally {
 		await prepared.printSession.dispose();
 	}

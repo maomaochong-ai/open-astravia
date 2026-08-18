@@ -1,25 +1,26 @@
-import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { appendFile, readdir, rm, stat } from "node:fs/promises";
-import { join } from "node:path";
 import type { ProjectInfo, RuntimeSessionCatalog, SessionHistoryInfo } from "@vetta/runtime-core";
-import { getSessionsDir } from "../../config.js";
 import type { CodingAgentSessionEntry } from "../contracts/session-entry.js";
-import { readCodingAgentLegacySessionDocument } from "./document.js";
-import { isLegacySessionFile } from "./header-reader.js";
-import { acquireLegacySessionFormatLease } from "./lease.js";
+import { parseCodingAgentLegacySessionDocument } from "./document.js";
+import { isLegacySessionHeader } from "./header-reader.js";
+import type { LegacySessionFileHost } from "./host-contracts.js";
 
 /** 旧 Coding Agent JSONL 的发现、命名与删除适配；不创建 AgentSession。 */
 export class LegacyRuntimeSessionCatalog implements RuntimeSessionCatalog {
-	ownsSession(sessionPath: string): Promise<boolean> {
-		return isLegacySessionFile(sessionPath);
+	constructor(private readonly host: LegacySessionFileHost) {}
+
+	async ownsSession(sessionPath: string): Promise<boolean> {
+		try {
+			return isLegacySessionHeader(await this.host.readFirstLine(sessionPath));
+		} catch {
+			return false;
+		}
 	}
 
 	async listProjects(): Promise<ProjectInfo[]> {
-		const sessions = await listAllLegacySessions();
+		const sessions = await this.listAllLegacySessions();
 		const byCwd = new Map<string, number>();
 		for (const session of sessions) {
-			const cwd = session.cwd || process.cwd();
+			const cwd = session.cwd || this.host.defaultCwd;
 			byCwd.set(cwd, (byCwd.get(cwd) ?? 0) + 1);
 		}
 		return Array.from(byCwd, ([cwd, sessionCount]) => ({ cwd, sessionCount })).sort((left, right) =>
@@ -28,11 +29,11 @@ export class LegacyRuntimeSessionCatalog implements RuntimeSessionCatalog {
 	}
 
 	async listSessions(cwd: string, sessionDir?: string): Promise<SessionHistoryInfo[]> {
-		return listLegacySessionsFromDirectory(sessionDir ?? resolveLegacySessionDirectory(cwd));
+		return this.listLegacySessionsFromDirectory(sessionDir ?? this.resolveLegacySessionDirectory(cwd));
 	}
 
 	async renameSession(sessionPath: string, name: string): Promise<void> {
-		const leaseResult = acquireLegacySessionFormatLease(sessionPath);
+		const leaseResult = this.host.acquireLease(sessionPath);
 		if (leaseResult.kind === "locked") {
 			throw new Error(
 				`Session file is in use by another process (pid ${leaseResult.holder.pid}@${leaseResult.holder.hostname}). ` +
@@ -40,18 +41,17 @@ export class LegacyRuntimeSessionCatalog implements RuntimeSessionCatalog {
 			);
 		}
 		try {
-			const document = readCodingAgentLegacySessionDocument(sessionPath);
+			const document = parseCodingAgentLegacySessionDocument(this.host.readText(sessionPath));
 			const ids = new Set(document.entries.map(({ id }) => id));
-			await appendFile(
+			await this.host.appendText(
 				sessionPath,
 				`${JSON.stringify({
 					type: "session_info",
-					id: createEntryId(ids),
+					id: this.createEntryId(ids),
 					parentId: document.activeLeafId,
 					timestamp: new Date().toISOString(),
 					name: name.trim(),
 				})}\n`,
-				"utf8",
 			);
 		} finally {
 			leaseResult.lease.release();
@@ -59,71 +59,80 @@ export class LegacyRuntimeSessionCatalog implements RuntimeSessionCatalog {
 	}
 
 	async deleteSessionArtifacts(sessionPath: string): Promise<void> {
-		await rm(sessionPath, { force: true });
-		await rm(`${sessionPath}.lock`, { force: true });
+		await this.host.remove(sessionPath);
+		await this.host.remove(`${sessionPath}.lock`);
 	}
-}
 
-function resolveLegacySessionDirectory(cwd: string): string {
-	const safePath = `--${cwd.replace(/^[/\\]/, "").replace(/[/\\:]/g, "-")}--`;
-	return join(getSessionsDir(), safePath);
-}
-
-async function listAllLegacySessions(): Promise<SessionHistoryInfo[]> {
-	const sessionsDirectory = getSessionsDir();
-	if (!existsSync(sessionsDirectory)) return [];
-	try {
-		const entries = await readdir(sessionsDirectory, { withFileTypes: true });
-		const lists = await Promise.all(
-			entries
-				.filter((entry) => entry.isDirectory())
-				.map((entry) => listLegacySessionsFromDirectory(join(sessionsDirectory, entry.name))),
-		);
-		return lists.flat().sort((left, right) => right.modifiedAt - left.modifiedAt);
-	} catch {
-		return [];
+	private resolveLegacySessionDirectory(cwd: string): string {
+		const safePath = `--${cwd.replace(/^[/\\]/, "").replace(/[/\\:]/g, "-")}--`;
+		return this.host.join(this.host.sessionsDirectory, safePath);
 	}
-}
 
-async function listLegacySessionsFromDirectory(directory: string): Promise<SessionHistoryInfo[]> {
-	if (!existsSync(directory)) return [];
-	try {
-		const names = await readdir(directory);
-		const sessions = await Promise.all(
-			names
-				.filter((name) => name.endsWith(".jsonl"))
-				.map((name) => buildLegacySessionHistoryInfo(join(directory, name))),
-		);
-		return sessions
-			.filter((session): session is SessionHistoryInfo => session !== undefined)
-			.sort((left, right) => right.modifiedAt - left.modifiedAt);
-	} catch {
-		return [];
+	private async listAllLegacySessions(): Promise<SessionHistoryInfo[]> {
+		if (!this.host.exists(this.host.sessionsDirectory)) return [];
+		try {
+			const entries = await this.host.readDirectory(this.host.sessionsDirectory);
+			const lists = await Promise.all(
+				entries
+					.filter((entry) => entry.kind === "directory")
+					.map((entry) =>
+						this.listLegacySessionsFromDirectory(this.host.join(this.host.sessionsDirectory, entry.name)),
+					),
+			);
+			return lists.flat().sort((left, right) => right.modifiedAt - left.modifiedAt);
+		} catch {
+			return [];
+		}
 	}
-}
 
-async function buildLegacySessionHistoryInfo(sessionPath: string): Promise<SessionHistoryInfo | undefined> {
-	try {
-		if (!(await isLegacySessionFile(sessionPath))) return undefined;
-		const document = readCodingAgentLegacySessionDocument(sessionPath);
-		const fileStats = await stat(sessionPath);
-		const messages = document.entries.flatMap((entry) => readConversationMessage(entry));
-		const textMessages = messages.filter(({ text }) => text.length > 0);
-		const firstMessage = textMessages.find(({ role }) => role === "user")?.text ?? "(no messages)";
-		const lastMessage = textMessages.at(-1);
-		return {
-			id: document.header.id,
-			path: sessionPath,
-			cwd: document.header.cwd,
-			name: readSessionName(document.entries),
-			firstMessage,
-			modifiedAt: readLastActivityTime(messages) ?? readTimestamp(document.header.timestamp) ?? fileStats.mtimeMs,
-			lastMessagePreview: lastMessage?.text.trim().slice(0, 120) ?? "",
-			parentSessionPath: document.header.parentSession,
-			parentEntryId: document.header.parentEntryId,
-		};
-	} catch {
-		return undefined;
+	private async listLegacySessionsFromDirectory(directory: string): Promise<SessionHistoryInfo[]> {
+		if (!this.host.exists(directory)) return [];
+		try {
+			const entries = await this.host.readDirectory(directory);
+			const sessions = await Promise.all(
+				entries
+					.filter((entry) => entry.kind === "file" && entry.name.endsWith(".jsonl"))
+					.map((entry) => this.buildLegacySessionHistoryInfo(this.host.join(directory, entry.name))),
+			);
+			return sessions
+				.filter((session): session is SessionHistoryInfo => session !== undefined)
+				.sort((left, right) => right.modifiedAt - left.modifiedAt);
+		} catch {
+			return [];
+		}
+	}
+
+	private async buildLegacySessionHistoryInfo(sessionPath: string): Promise<SessionHistoryInfo | undefined> {
+		try {
+			if (!(await this.ownsSession(sessionPath))) return undefined;
+			const document = parseCodingAgentLegacySessionDocument(this.host.readText(sessionPath));
+			const modifiedAt = await this.host.statModifiedAt(sessionPath);
+			const messages = document.entries.flatMap((entry) => readConversationMessage(entry));
+			const textMessages = messages.filter(({ text }) => text.length > 0);
+			const firstMessage = textMessages.find(({ role }) => role === "user")?.text ?? "(no messages)";
+			const lastMessage = textMessages.at(-1);
+			return {
+				id: document.header.id,
+				path: sessionPath,
+				cwd: document.header.cwd,
+				name: readSessionName(document.entries),
+				firstMessage,
+				modifiedAt: readLastActivityTime(messages) ?? readTimestamp(document.header.timestamp) ?? modifiedAt,
+				lastMessagePreview: lastMessage?.text.trim().slice(0, 120) ?? "",
+				parentSessionPath: document.header.parentSession,
+				parentEntryId: document.header.parentEntryId,
+			};
+		} catch {
+			return undefined;
+		}
+	}
+
+	private createEntryId(existingIds: ReadonlySet<string>): string {
+		for (let attempt = 0; attempt < 100; attempt += 1) {
+			const id = this.host.createRandomId().slice(0, 8);
+			if (!existingIds.has(id)) return id;
+		}
+		return this.host.createRandomId();
 	}
 }
 
@@ -181,12 +190,4 @@ function readLastActivityTime(messages: readonly LegacyConversationMessage[]): n
 function readTimestamp(value: string): number | undefined {
 	const timestamp = new Date(value).getTime();
 	return Number.isFinite(timestamp) ? timestamp : undefined;
-}
-
-function createEntryId(existingIds: ReadonlySet<string>): string {
-	for (let attempt = 0; attempt < 100; attempt += 1) {
-		const id = randomUUID().slice(0, 8);
-		if (!existingIds.has(id)) return id;
-	}
-	return randomUUID();
 }

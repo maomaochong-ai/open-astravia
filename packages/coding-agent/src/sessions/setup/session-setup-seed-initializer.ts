@@ -1,4 +1,4 @@
-import { createConversationSeedDraft } from "@vetta/runtime-node/conversation";
+import type { ConversationDocument, ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
 import type { ExtensionSessionSetup } from "../../extensions/index.js";
 import type {
 	CodingAgentSessionSeedInitializer,
@@ -13,15 +13,38 @@ export interface CodingAgentSessionSetupSeedInput extends CodingAgentSessionSeed
 	readonly setup: CodingAgentSessionSetup;
 }
 
-export function createCodingAgentSessionSetupSeedInitializer(
-	setup: CodingAgentSessionSetup,
-): CodingAgentSessionSeedInitializer {
-	return { initializeSeed: (target) => initializeCodingAgentSessionSetupSeed({ ...target, setup }) };
+export interface CodingAgentSessionSetupHost {
+	readonly createEntryId: () => string;
+	readonly now: () => number;
+	createSeedDraft(options: {
+		readonly targetRootDir: string;
+		readonly targetSessionId: string;
+		readonly createdAt: number;
+		readonly cwd?: string;
+		readonly parentSessionPath?: string;
+	}): Promise<{
+		readonly targetPath: string;
+		update(snapshot: {
+			readonly entries: readonly ConversationDocumentEntry[];
+			readonly activeLeafId: string | null;
+			readonly name?: string;
+		}): ConversationDocument;
+	}>;
 }
 
-export async function initializeCodingAgentSessionSetupSeed(input: CodingAgentSessionSetupSeedInput): Promise<void> {
-	const createdAt = Date.now();
-	const draft = await createConversationSeedDraft({
+export function createCodingAgentSessionSetupSeedInitializer(
+	setup: CodingAgentSessionSetup,
+	host: CodingAgentSessionSetupHost,
+): CodingAgentSessionSeedInitializer {
+	return { initializeSeed: (target) => initializeCodingAgentSessionSetupSeed({ ...target, setup }, host) };
+}
+
+export async function initializeCodingAgentSessionSetupSeed(
+	input: CodingAgentSessionSetupSeedInput,
+	host: CodingAgentSessionSetupHost,
+): Promise<void> {
+	const createdAt = host.now();
+	const draft = await host.createSeedDraft({
 		targetRootDir: input.targetRootDir,
 		targetSessionId: input.targetSessionId,
 		createdAt,
@@ -35,6 +58,7 @@ export async function initializeCodingAgentSessionSetupSeed(input: CodingAgentSe
 		sessionPath: draft.targetPath,
 		sessionId: input.targetSessionId,
 		parentSession: input.parentSession,
+		createEntryId: host.createEntryId,
 		onSnapshotChanged: (snapshot) =>
 			draft.update({
 				entries: snapshot.entries.map(projectCodingAgentSessionDocumentEntry),

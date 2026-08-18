@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +8,7 @@ import type {
 	RuntimeSessionExecutionObservation,
 	SessionEvent,
 } from "@vetta/runtime-core";
+import { createConversationSeedDraft } from "@vetta/runtime-node/conversation";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeComposition } from "../../src/composition/runtime-composition.js";
 import {
@@ -252,15 +254,18 @@ describe("CodingAgentActiveSessionHost", () => {
 		await expect(
 			fixture.host.newSession({
 				parentSession: fixture.initial.path,
-				seedInitializer: createCodingAgentSessionSetupSeedInitializer(async (sessionManager) => {
-					setupSessionFile = sessionManager.getSessionFile();
-					expect(sessionManager.getSessionId()).toBe("created");
-					sessionManager.appendMessage({
-						role: "user",
-						content: [{ type: "text", text: "setup context" }],
-						timestamp: 10,
-					});
-				}),
+				seedInitializer: createCodingAgentSessionSetupSeedInitializer(
+					async (sessionManager) => {
+						setupSessionFile = sessionManager.getSessionFile();
+						expect(sessionManager.getSessionId()).toBe("created");
+						sessionManager.appendMessage({
+							role: "user",
+							content: [{ type: "text", text: "setup context" }],
+							timestamp: 10,
+						});
+					},
+					{ createEntryId: randomUUID, now: Date.now, createSeedDraft: createConversationSeedDraft },
+				),
 			}),
 		).resolves.toEqual({ cancelled: false });
 

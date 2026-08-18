@@ -1,13 +1,12 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
 import { type Api, type Model, supportsXhigh } from "@vetta/ai";
 import type { CodingAgentAuthRuntime } from "../auth/index.js";
-import { type Args, parseArgs } from "../cli/args.js";
-import { DEFAULT_SERVER_URL } from "../config.js";
 import {
 	type CodingAgentExtensionRequirements,
 	collectCodingAgentExtensionRequirements,
 } from "../extensions/compatibility/index.js";
 import type { LoadExtensionsResult } from "../extensions/index.js";
+import { DEFAULT_SERVER_URL } from "../identity.js";
 import {
 	type CodingAgentModelRuntime,
 	DEFAULT_THINKING_LEVEL,
@@ -18,10 +17,12 @@ import {
 } from "../models/index.js";
 import type { SessionResourceRuntime } from "../resources/index.js";
 import type { SettingsError, SettingsRuntime } from "../settings/index.js";
+import { type Args, parseArgs } from "./launch-arguments.js";
 
 export interface CodingAgentBootstrapDiagnostics {
 	readonly onSettingsError?: (error: SettingsError) => void;
 	readonly onExtensionError?: (error: LoadExtensionsResult["errors"][number]) => void;
+	readonly onArgumentWarning?: (warning: string) => void;
 }
 
 export interface CodingAgentBootstrapResourceRequest {
@@ -105,7 +106,10 @@ export async function createCodingAgentBootstrap(options: CodingAgentBootstrapOp
 	for (const extension of extensionsResult.extensions) {
 		for (const [name, flag] of extension.flags) extensionFlags.set(name, { type: flag.type });
 	}
-	const parsed = parseArgs(options.args, extensionFlags);
+	const parsed = parseArgs(options.args, {
+		extensionFlags,
+		onWarning: options.onArgumentWarning,
+	});
 	for (const [name, value] of parsed.unknownFlags) {
 		extensionsResult.runtime.flagValues.set(name, value);
 	}

@@ -8,10 +8,14 @@ export {
 } from "../extensions/runtime/event-bus.js";
 export { convertToLlm } from "../model-context/index.js";
 export {
+	configureThemeRuntime,
+	detectColorMode,
+	detectTerminalBackground,
 	getLanguageFromPath,
 	highlightCode,
 	initTheme,
 	loadThemeFromContent,
 	Theme,
 	type ThemeColor,
+	type ThemeRuntimeConfiguration,
 } from "../theme/index.js";

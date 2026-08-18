@@ -1,5 +1,8 @@
 /** @deprecated Internal consumers should import from `src/theme` instead. */
 export {
+	configureThemeRuntime,
+	detectColorMode,
+	detectTerminalBackground,
 	getAvailableThemes,
 	getAvailableThemesWithPaths,
 	getLanguageFromPath,
@@ -20,5 +23,7 @@ export {
 	type ThemeBg,
 	type ThemeColor,
 	type ThemeInfo,
+	type ThemeRuntimeConfiguration,
+	type ThemeWatchPort,
 	theme,
 } from "../../../theme/index.js";

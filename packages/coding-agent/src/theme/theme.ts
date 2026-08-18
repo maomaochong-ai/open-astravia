@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import { backgroundAnsi, foregroundAnsi } from "./colors.js";
 import type { ColorMode, ThemeBg, ThemeColor } from "./contracts.js";
+import type { ThemeDocument } from "./schema.js";
 
 export class Theme {
 	readonly name?: string;
@@ -12,16 +13,24 @@ export class Theme {
 		foregroundColors: Record<ThemeColor, string | number>,
 		backgroundColors: Record<ThemeBg, string | number>,
 		private readonly mode: ColorMode,
-		options: { name?: string; sourcePath?: string } = {},
+		options: { name?: string; sourcePath?: string; sourceDocument?: ThemeDocument } = {},
 	) {
 		this.name = options.name;
 		this.sourcePath = options.sourcePath;
+		this.sourceDocument = options.sourceDocument;
 		for (const [key, value] of Object.entries(foregroundColors) as [ThemeColor, string | number][]) {
 			this.foregroundColors.set(key, foregroundAnsi(value, mode));
 		}
 		for (const [key, value] of Object.entries(backgroundColors) as [ThemeBg, string | number][]) {
 			this.backgroundColors.set(key, backgroundAnsi(value, mode));
 		}
+	}
+
+	private readonly sourceDocument: ThemeDocument | undefined;
+
+	/** Original validated document used by non-terminal projections such as HTML export. */
+	getSourceDocument(): ThemeDocument | undefined {
+		return this.sourceDocument;
 	}
 
 	fg(color: ThemeColor, text: string): string {

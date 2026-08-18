@@ -1,5 +1,8 @@
-import { createNodeCommandExecutor, createNodeResourcePackageHost } from "@vetta/runtime-node/host";
-import { getSceneDir, getUserSkillsDir, getVettaHomePath } from "../../config.js";
+import {
+	createNodeCommandExecutor,
+	createNodeResourcePackageHost,
+	nodeTextFileWatchPort,
+} from "@vetta/runtime-node/host";
 import type {
 	SessionResourceRuntime,
 	SessionResourceRuntimeOptions,
@@ -7,8 +10,14 @@ import type {
 import type { ResourceSettingsPort } from "../../resources/contracts/resource-source.js";
 import { createResourcePackageRuntime } from "../../resources/packages/package-source-runtime.js";
 import { createSessionResourceRuntime } from "../../resources/runtime/session-resource-runtime.js";
-import { loadThemeFromContent } from "../../theme/index.js";
+import {
+	configureThemeRuntime,
+	detectColorMode,
+	detectTerminalBackground,
+	loadThemeFromContent,
+} from "../../theme/index.js";
 import { createCodingAgentNodeExtensionFactoryLoader } from "../extensions/node-extension-factory-loader.js";
+import { getSceneDir, getUserSkillsDir, getVettaHomePath } from "../node-config.js";
 
 export interface CreateCodingAgentSdkSessionResourceRuntimeOptions
 	extends Omit<
@@ -31,6 +40,11 @@ export interface CreateCodingAgentSdkSessionResourceRuntimeOptions
 export function createCodingAgentSdkSessionResourceRuntime(
 	options: CreateCodingAgentSdkSessionResourceRuntimeOptions,
 ): SessionResourceRuntime {
+	configureThemeRuntime({
+		colorMode: detectColorMode(process.env),
+		defaultThemeName: detectTerminalBackground(process.env),
+		watcher: nodeTextFileWatchPort,
+	});
 	const host = createNodeResourcePackageHost();
 	const packages = createResourcePackageRuntime({
 		cwd: options.cwd,

@@ -29,21 +29,9 @@
 			"types": "./dist/public-api/bootstrap.d.ts",
 			"import": "./dist/public-api/bootstrap.js"
 		},
-		"./cli-control": {
-			"types": "./dist/public-api/cli-control.d.ts",
-			"import": "./dist/public-api/cli-control.js"
-		},
 		"./config": {
 			"types": "./dist/config.d.ts",
 			"import": "./dist/config.js"
-		},
-		"./configuration": {
-			"types": "./dist/configuration/index.d.ts",
-			"import": "./dist/configuration/index.js"
-		},
-		"./concurrency": {
-			"types": "./dist/concurrency/index.d.ts",
-			"import": "./dist/concurrency/index.js"
 		},
 		"./extensions": {
 			"types": "./dist/public-api/extensions.d.ts",
@@ -96,6 +84,10 @@
 		"./composition": {
 			"types": "./dist/composition/index.d.ts",
 			"import": "./dist/composition/index.js"
+		},
+		"./model-context": {
+			"types": "./dist/public-api/model-context.d.ts",
+			"import": "./dist/public-api/model-context.js"
 		}
 	},
 	"files": [
@@ -108,10 +100,11 @@
 	"scripts": {
 		"clean": "shx rm -rf dist",
 		"dev": "tsgo -p tsconfig.build.json --watch --preserveWatchOutput",
-		"build": "bun run generate:personas && bun run generate:modes && tsgo -p tsconfig.build.json && bun run copy-assets",
+		"build": "bun run generate:personas && bun run generate:modes && bun run generate:themes && tsgo -p tsconfig.build.json && bun run copy-assets",
 		"generate:personas": "node scripts/generate-personas.mjs",
 		"generate:modes": "node scripts/generate-modes.mjs",
-		"check:generated-prompts": "node scripts/generate-personas.mjs --check && node scripts/generate-modes.mjs --check",
+		"generate:themes": "node scripts/generate-themes.mjs",
+		"check:generated-prompts": "node scripts/generate-personas.mjs --check && node scripts/generate-modes.mjs --check && node scripts/generate-themes.mjs --check",
 		"copy-assets": "shx mkdir -p dist/modes/interactive/theme && shx cp src/modes/interactive/theme/*.json dist/modes/interactive/theme/ && shx mkdir -p dist/export-html/vendor && shx cp src/export-html/assets/template.html src/export-html/assets/template.css src/export-html/assets/template.js dist/export-html/ && shx cp src/export-html/assets/vendor/*.js dist/export-html/vendor/",
 		"test": "bun ../../scripts/quality/run-vitest.mjs --run",
 		"test:coverage": "bun ../../scripts/quality/run-vitest.mjs --run --coverage",
@@ -154,9 +147,6 @@
 		"gaxios": {
 			"rimraf": "6.1.2"
 		}
-	},
-	"optionalDependencies": {
-		"@mariozechner/clipboard": "^0.3.2"
 	},
 	"devDependencies": {
 		"@types/diff": "^7.0.2",

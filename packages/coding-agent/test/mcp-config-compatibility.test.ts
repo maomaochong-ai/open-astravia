@@ -1,8 +1,8 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { createNodeMcpSupervisor } from "@vetta/runtime-node/mcp";
 import { afterEach, describe, expect, it } from "vitest";
-import { createCodingAgentMcpSupervisor } from "../src/mcp/runtime/supervisor.js";
 
 describe("MCP config compatibility", () => {
 	const temporaryDirectories: string[] = [];
@@ -107,7 +107,10 @@ describe("MCP config compatibility", () => {
 });
 
 function createConfigSource(fixture: { readonly projectRoot: string; readonly agentDir: string }) {
-	return createCodingAgentMcpSupervisor(fixture).configSource;
+	return createNodeMcpSupervisor({
+		...fixture,
+		clientVersion: "test",
+	}).configSource;
 }
 
 async function writeJson(path: string, value: unknown): Promise<void> {

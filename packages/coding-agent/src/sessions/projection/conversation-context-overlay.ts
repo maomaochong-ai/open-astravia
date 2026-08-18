@@ -1,6 +1,6 @@
-import { isDeepStrictEqual } from "node:util";
 import type { ConversationDocument, RuntimeMessageEnvelope } from "@vetta/runtime-core";
 import type { ConversationContextProjector } from "@vetta/runtime-core/kernel";
+import { areStructuredValuesEqual } from "./structural-equality.js";
 
 interface ConversationContextOverlay {
 	readonly source: readonly RuntimeMessageEnvelope[];
@@ -50,5 +50,7 @@ export class CodingAgentConversationContextOverlay implements ConversationContex
 }
 
 function hasPrefix(values: readonly RuntimeMessageEnvelope[], prefix: readonly RuntimeMessageEnvelope[]): boolean {
-	return prefix.length <= values.length && prefix.every((value, index) => isDeepStrictEqual(value, values[index]));
+	return (
+		prefix.length <= values.length && prefix.every((value, index) => areStructuredValuesEqual(value, values[index]))
+	);
 }

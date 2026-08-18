@@ -146,7 +146,7 @@ memory(action, content?, match?)
 | 快照、flush+journal 接线与 70% 策略 | `coding-agent/src/memory/memory-rollover-runtime.ts` |
 | system prompt 的 `memory` 段 | `coding-agent/src/model-context/memory-prompt.ts` |
 | rollover continuation | `runtime-core/src/kernel/turn-pipeline.ts`、`runtime-node/src/conversation/file-conversation-repository.ts` |
-| `--memory-mode` / `--memory-file` 解析 | `coding-agent/src/cli/args.ts`、贯通 `sdk.ts` / `main.ts` |
+| `--memory-mode` / `--memory-file` 解析 | `coding-agent/src/bootstrap/launch-arguments.ts`、贯通 SDK 与 Runtime Composition |
 | `/new` 显式凝结：`flush_memory` RPC + `flushMemory()` | `coding-agent/src/rpc/rpc-command-dispatcher.ts`、`adapters/runtime-core/greenfield-memory-controller.ts`；`im-gateway/internal/command/router.go: flushSessionMemory` |
 | `session_path_changed` 事件投影 | `cli-app/src/rpc/greenfield-im-rpc-events.ts` |
 | spawn 参数透传 | `im-gateway/internal/hostclient/local/client.go`（`MemoryMode`/`MemoryFile`） |

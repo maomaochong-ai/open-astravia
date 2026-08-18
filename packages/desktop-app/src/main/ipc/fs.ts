@@ -2,7 +2,7 @@ import type { FSWatcher } from "node:fs";
 import { watch } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { resolveConfigValue } from "@vetta/coding-agent/configuration";
+import { resolveNodeConfigurationValue } from "@vetta/runtime-node/host";
 import { BrowserWindow, clipboard, ipcMain } from "electron";
 import type {
 	McpConfigData,
@@ -437,7 +437,7 @@ export function registerFsIpc(): () => void {
 	ipcMain.handle(CHANNELS.MODELS_COPY_API_KEY, async (_event, providerId: unknown): Promise<boolean> => {
 		assertNonEmptyString(providerId, "providerId");
 		const keyConfig = await models.getProviderApiKey(providerId.trim());
-		const apiKey = keyConfig ? resolveConfigValue(keyConfig) : undefined;
+		const apiKey = keyConfig ? resolveNodeConfigurationValue(keyConfig) : undefined;
 		if (!apiKey) return false;
 
 		clipboard.writeText(apiKey);

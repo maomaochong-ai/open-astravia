@@ -1,4 +1,4 @@
-import { CONFIG_DIR_NAME } from "../../config.js";
+import { CONFIG_DIR_NAME } from "../../identity.js";
 import type { ResourcePathPort } from "../contracts/resource-access.js";
 import type { ResolvedResourcePath, ResourcePathMetadata } from "../contracts/resource-source.js";
 

@@ -12,10 +12,9 @@
 			"@vetta/capability-runtime/*": ["./packages/capability-runtime/src/*"],
 			"@vetta/coding-agent": ["./packages/coding-agent/src/index.ts"],
 			"@vetta/coding-agent/bootstrap": ["./packages/coding-agent/src/public-api/bootstrap.ts"],
-			"@vetta/coding-agent/cli-control": ["./packages/coding-agent/src/public-api/cli-control.ts"],
 			"@vetta/coding-agent/composition": ["./packages/coding-agent/src/composition/index.ts"],
+			"@vetta/coding-agent/model-context": ["./packages/coding-agent/src/public-api/model-context.ts"],
 			"@vetta/coding-agent/config": ["./packages/coding-agent/src/config.ts"],
-			"@vetta/coding-agent/concurrency": ["./packages/coding-agent/src/concurrency/index.ts"],
 			"@vetta/coding-agent/extensions": ["./packages/coding-agent/src/public-api/extensions.ts"],
 			"@vetta/coding-agent/export-html": ["./packages/coding-agent/src/public-api/export-html.ts"],
 			"@vetta/coding-agent/compat/runtime-storage": [

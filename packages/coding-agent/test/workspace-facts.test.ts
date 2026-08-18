@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	detectWorkspaceFacts,
@@ -23,6 +24,8 @@ function createWorkspace(files: Record<string, string>, dirs: string[] = []): st
 	return root;
 }
 
+const probeNodeWorkspaceSignals = (cwd: string) => probeWorkspaceSignals(cwd, nodeWorkspaceFactsFileSource);
+
 describe("probeWorkspaceSignals", () => {
 	it("detects a Git repository with a Node/TypeScript framework stack", () => {
 		const cwd = createWorkspace(
@@ -37,7 +40,7 @@ describe("probeWorkspaceSignals", () => {
 			[".git"],
 		);
 
-		expect(probeWorkspaceSignals(cwd)).toEqual({
+		expect(probeNodeWorkspaceSignals(cwd)).toEqual({
 			isGitRepository: true,
 			packageName: "acme-web",
 			stacks: ["Node.js", "TypeScript", "Next.js", "React", "Vite"],
@@ -47,19 +50,19 @@ describe("probeWorkspaceSignals", () => {
 	it("detects non-Node marker files", () => {
 		const cwd = createWorkspace({ "go.mod": "module example.com/x\n" });
 
-		expect(probeWorkspaceSignals(cwd)).toEqual({ isGitRepository: false, stacks: ["Go"] });
+		expect(probeNodeWorkspaceSignals(cwd)).toEqual({ isGitRepository: false, stacks: ["Go"] });
 	});
 
 	it("degrades to no signals for an empty directory", () => {
 		const cwd = createWorkspace({});
 
-		expect(probeWorkspaceSignals(cwd)).toEqual({ isGitRepository: false, stacks: [] });
+		expect(probeNodeWorkspaceSignals(cwd)).toEqual({ isGitRepository: false, stacks: [] });
 	});
 
 	it("ignores an unparsable package.json but keeps the marker-file signal", () => {
 		const cwd = createWorkspace({ "package.json": "{ not json" });
 
-		expect(probeWorkspaceSignals(cwd)).toEqual({ isGitRepository: false, stacks: ["Node.js"] });
+		expect(probeNodeWorkspaceSignals(cwd)).toEqual({ isGitRepository: false, stacks: ["Node.js"] });
 	});
 });
 
@@ -89,11 +92,11 @@ describe("detectWorkspaceFacts", () => {
 	it("returns rendered facts on a hit", () => {
 		const cwd = createWorkspace({ "Cargo.toml": "[package]\n" }, [".git"]);
 
-		expect(detectWorkspaceFacts(cwd)).toContain("Detected stack: Rust.");
+		expect(detectWorkspaceFacts(cwd, probeNodeWorkspaceSignals)).toContain("Detected stack: Rust.");
 	});
 
 	it("returns undefined on a miss", () => {
-		expect(detectWorkspaceFacts(createWorkspace({}))).toBeUndefined();
+		expect(detectWorkspaceFacts(createWorkspace({}), probeNodeWorkspaceSignals)).toBeUndefined();
 	});
 
 	it("silently degrades when probing throws", () => {

@@ -38,6 +38,7 @@
 			"!**/routeTree.gen.ts",
 			"!**/personas-data.ts",
 			"!**/modes-data.ts",
+			"!**/builtin-theme-documents.ts",
 			"!**/descriptions-data.ts",
 			"!!**/node_modules"
 		]

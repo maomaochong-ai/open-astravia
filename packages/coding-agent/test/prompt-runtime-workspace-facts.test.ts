@@ -1,8 +1,10 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
 import { afterEach, describe, expect, it } from "vitest";
 import { CodingAgentPromptRuntime } from "../src/model-context/prompt-runtime.js";
+import { detectWorkspaceFacts, probeWorkspaceSignals } from "../src/model-context/workspace-facts.js";
 import type { CodingAgentModelCallPromptContext } from "../src/runtime-contracts/index.js";
 
 const createdDirs: string[] = [];
@@ -21,7 +23,9 @@ function createWorkspace(): string {
 function createRuntime(cwd: string, workspaceFacts?: string): CodingAgentPromptRuntime {
 	return new CodingAgentPromptRuntime({
 		cwd,
-		...(workspaceFacts !== undefined ? { workspaceFacts } : {}),
+		workspaceFacts:
+			workspaceFacts ??
+			detectWorkspaceFacts(cwd, (root) => probeWorkspaceSignals(root, nodeWorkspaceFactsFileSource)),
 		scenario: "cli",
 		resourceLoader: {
 			refreshContextResourcesIfChanged: async () => false,

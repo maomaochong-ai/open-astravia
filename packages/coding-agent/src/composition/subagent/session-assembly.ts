@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-import { dirname, join } from "node:path";
 import type { Message } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
 import type { ConversationScenario, RuntimeResourceContext, RuntimeSession, SessionConfig } from "@vetta/runtime-core";
@@ -22,6 +20,7 @@ import type {
 	CodingAgentSubagentProfile,
 } from "../contracts/index.js";
 import { createCodingAgentSubagentChildHandle } from "./child-handle.js";
+import { createLocalSubagentId } from "./local-id.js";
 import { buildSubagentNotification } from "./notification.js";
 import { CodingAgentSubagentRuntime } from "./runtime.js";
 
@@ -60,6 +59,8 @@ export interface CodingAgentSubagentChildComposition {
 export interface CodingAgentSubagentSessionAssemblyOptions {
 	readonly enabled: boolean;
 	readonly maxConcurrent?: number;
+	readonly createEntryId?: () => string;
+	readonly pathPort?: { dirname(path: string): string; join(...parts: readonly string[]): string };
 	readonly cwd: string;
 	readonly scenario: ConversationScenario;
 	readonly readParentSessionId: () => string;
@@ -105,6 +106,7 @@ export function createCodingAgentSubagentSessionAssembly(
 	return new CodingAgentSubagentRuntime({
 		parentSessionId: options.readParentSessionId(),
 		maxConcurrent: options.maxConcurrent,
+		createEntryId: options.createEntryId ?? createLocalSubagentId,
 		lifecycle,
 		formatInitialMessage: formatCodingAgentSubagentTaskMessage,
 		typeRegistry: options.typeRegistry,
@@ -118,7 +120,12 @@ export function createCodingAgentSubagentSessionAssembly(
 				: undefined
 			: (snapshot, type, forkContext) => openChild("resume", snapshot, type, forkContext, options),
 		validateRecoveredChild: (snapshot) =>
-			validateRecoveredSubagentTranscript(snapshot, options.readParentSessionPath(), options.assessChildSessionPath),
+			validateRecoveredSubagentTranscript(
+				snapshot,
+				options.readParentSessionPath(),
+				options.pathPort,
+				options.assessChildSessionPath,
+			),
 		onRecoveryIssue: (message) => {
 			console.warn("[coding-agent-runtime] subagent recovery issue", message);
 		},
@@ -171,12 +178,19 @@ async function openChild(
 	forkContext: readonly Message[] | undefined,
 	options: CodingAgentSubagentSessionAssemblyOptions,
 ): Promise<SubagentChildHandle> {
-	const childSessionId = operation === "create" ? randomUUID() : (requestOrSnapshot as SubagentSnapshot).id;
+	const childSessionId =
+		operation === "create"
+			? (options.createEntryId ?? createLocalSubagentId)()
+			: (requestOrSnapshot as SubagentSnapshot).id;
 	const snapshot = operation === "resume" ? (requestOrSnapshot as SubagentSnapshot) : undefined;
 	const parentSessionId = options.readParentSessionId();
 	const childConversationDir = snapshot?.sessionFile
-		? dirname(snapshot.sessionFile)
-		: join(dirname(options.readParentSessionPath()), ".subagents", parentSessionId);
+		? dirname(snapshot.sessionFile, options.pathPort)
+		: joinPath(
+				dirname(options.readParentSessionPath(), options.pathPort),
+				[".subagents", parentSessionId],
+				options.pathPort,
+			);
 	const inheritedMcpView = type.profile.inheritParentMcp
 		? filterDeniedMcpTools(await options.readInheritedMcpView(), type.profile.denyToolNamePrefixes)
 		: EMPTY_MCP_TOOL_VIEW;
@@ -323,11 +337,16 @@ function toSubagentInfo(snapshot: SubagentSnapshot): Omit<SubagentSnapshot, "usa
 async function validateRecoveredSubagentTranscript(
 	snapshot: SubagentSnapshot,
 	parentSessionPath: string,
+	pathPort: CodingAgentSubagentSessionAssemblyOptions["pathPort"],
 	assessSessionPath: CodingAgentSubagentSessionAssemblyOptions["assessChildSessionPath"],
 ): Promise<string | undefined> {
 	const sessionFile = snapshot.sessionFile;
 	if (!sessionFile) return "Recovered subagent has no child session transcript";
-	const expectedDirectory = join(dirname(parentSessionPath), ".subagents", snapshot.parentSessionId);
+	const expectedDirectory = joinPath(
+		dirname(parentSessionPath, pathPort),
+		[".subagents", snapshot.parentSessionId],
+		pathPort,
+	);
 	const assessment = await assessSessionPath(expectedDirectory, snapshot.id, sessionFile);
 	if (assessment === "valid") return undefined;
 	if (assessment === "path-mismatch") {
@@ -336,6 +355,26 @@ async function validateRecoveredSubagentTranscript(
 	return assessment === "not-file"
 		? "Recovered subagent transcript is not a file"
 		: "Recovered subagent transcript is missing";
+}
+
+function dirname(path: string, pathPort: CodingAgentSubagentSessionAssemblyOptions["pathPort"]): string {
+	if (pathPort) return pathPort.dirname(path);
+	const separatorIndex = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+	if (separatorIndex < 0) return ".";
+	if (separatorIndex === 0) return path.slice(0, 1);
+	return path.slice(0, separatorIndex);
+}
+
+function joinPath(
+	base: string,
+	parts: readonly string[],
+	pathPort: CodingAgentSubagentSessionAssemblyOptions["pathPort"],
+): string {
+	if (pathPort) return pathPort.join(base, ...parts);
+	const normalizedBase = base.replace(/[\\/]+$/u, "");
+	// Hosts with a real path port still own canonical normalization.
+	const separator = base.includes("\\") ? "\\" : "/";
+	return [normalizedBase || ".", ...parts].join(separator);
 }
 
 const EMPTY_MCP_TOOL_VIEW: McpRuntimeToolView = Object.freeze({ tools: Object.freeze([]) });
