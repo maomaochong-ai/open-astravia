@@ -1,7 +1,8 @@
 import { useBatchTasks } from "@domains/batch-tasks/hooks/useBatchTasks";
-import { confirmDialogAtom } from "@shared/store/atoms";
+import { isDuplicateProjectName } from "@shared/lib/project-name";
+import { confirmDialogAtom, projectsAtom } from "@shared/store/atoms";
 import { useNavigate } from "@tanstack/react-router";
-import { useSetAtom } from "jotai";
+import { getDefaultStore, useSetAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useProjectActions } from "../../../hooks/useProjects";
@@ -14,9 +15,12 @@ export function useAddProjectMenuModel(): {
 	showNewProject: boolean;
 	closeNewProjectDialog: () => void;
 	confirmNewProject: (name: string) => void;
+	isProjectNameTaken: (name: string) => boolean;
 	toggleOpen: () => void;
 } {
 	const { t } = useTranslation("project");
+	// 判重只在点确认时读一次项目列表：这里刻意不订阅 projectsAtom，保持菜单模型零订阅面。
+	const store = getDefaultStore();
 	const { createProject, openProject, refreshProjects } = useProjectActions();
 	const { refreshProjects: refreshBatchProjects } = useBatchTasks();
 	const setConfirm = useSetAtom(confirmDialogAtom);
@@ -118,6 +122,14 @@ export function useAddProjectMenuModel(): {
 		open,
 		showNewProject,
 		closeNewProjectDialog: () => setShowNewProject(false),
+		isProjectNameTaken: (name: string) =>
+			isDuplicateProjectName(
+				name,
+				store
+					.get(projectsAtom)
+					.map((project) => project.name)
+					.filter((name): name is string => Boolean(name)),
+			),
 		confirmNewProject: (name: string) => {
 			setShowNewProject(false);
 			void createProject(name);

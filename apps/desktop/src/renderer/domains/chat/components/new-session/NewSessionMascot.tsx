@@ -69,7 +69,10 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 			initial={{ opacity: 0 }}
 			animate={{ opacity: mounted ? 1 : 0 }}
 			transition={{ duration: 0.5, delay: 0.2 }}
-			className="pointer-events-none absolute inset-x-0 -bottom-6 z-30 h-20 select-none"
+			// 锚在 hero 根节点上、往下越过「hero mb-3(12) + 选项行 h-7(28) + 行 mb-4(16)」共 56px，
+			// 再往下 19px：素材自带底部留白，这个量让爪子底缘刚好碰到输入框顶边、不进框 → 75px。
+			// 选项行尺寸变了要同步这里。
+			className="pointer-events-none absolute inset-x-0 -bottom-[75px] z-30 h-20 select-none"
 		>
 			<Button
 				aria-label={t(
@@ -99,7 +102,7 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 					<video
 						aria-hidden="true"
 						autoPlay
-						className="pointer-events-none absolute right-0 -bottom-10 h-36 w-36 object-contain object-center"
+						className="pointer-events-none absolute right-0 -bottom-6 h-36 w-36 object-contain object-center"
 						draggable={false}
 						muted
 						onEnded={handleComplete}
@@ -112,10 +115,11 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 				<>
 					<video
 						aria-hidden="true"
-						className={cn(
-							"pointer-events-none absolute right-0 h-36 w-36 object-contain object-center",
-							action === "crawl" ? "-bottom-[30px]" : "-bottom-10",
-						)}
+						// 三个素材首帧的地线实测一致（底部留白 169/576 ≈ 渲染后 42px），
+						// 统一偏移：容器底在输入框顶下 19px（容器 -bottom-[75px] − 56px 行高），
+						// 42-19≈23px → -bottom-6 时爪子刚好贴边。按动作分档会让随机初始动作
+						// 在「悬空/进框」之间跳。
+						className="pointer-events-none absolute right-0 -bottom-6 h-36 w-36 object-contain object-center"
 						draggable={false}
 						muted
 						playsInline
@@ -127,7 +131,7 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 							aria-label={t("newSession.mascot.playOnce")}
 							className={cn(
 								"no-drag pointer-events-auto absolute right-0 z-10 h-20 w-36 bg-transparent p-0 hover:bg-transparent",
-								action === "crawl" ? "-bottom-[10px]" : "-bottom-5",
+								"-bottom-1",
 							)}
 							onClick={handlePlayOnce}
 							variant="ghost"
@@ -204,7 +208,9 @@ function CrawlPass({ onComplete }: CrawlPassProps): JSX.Element {
 		<motion.video
 			aria-hidden="true"
 			autoPlay
-			className="pointer-events-none absolute -bottom-[30px] h-36 w-36 object-contain object-center"
+			// 爬行素材腿部伸展时地线更低（最深帧底部留白 ≈31.5px，静止帧 ≈42px）。
+			// 用最深帧对齐输入框顶边（19+12=31），走动全程不进框；起步略悬空是有意取舍。
+			className="pointer-events-none absolute -bottom-3 h-36 w-36 object-contain object-center"
 			draggable={false}
 			muted
 			onEnded={handleEnded}

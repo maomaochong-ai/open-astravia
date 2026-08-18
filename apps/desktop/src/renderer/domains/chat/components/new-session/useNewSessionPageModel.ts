@@ -1,3 +1,4 @@
+import { useProjectActions } from "@domains/project/hooks/useProjects";
 import { i18n } from "@shared/i18n";
 import {
 	activeSessionAtom,
@@ -6,16 +7,15 @@ import {
 	applyInputActionWorkingState,
 	attachedImagesAtom,
 	authUserAtom,
+	confirmDialogAtom,
 	contextUsageAtom,
 	currentScenarioAtom,
-	defaultConversationCwdAtom,
 	emptySessionInputActionState,
 	lastActiveSessionAtom,
 	newSessionInputDraftKey,
 	pageHeaderTitleAtom,
 	pageHeaderTitleBadgeAtom,
 	pageHeaderTitleHiddenAtom,
-	projectsAtom,
 	promptAttachmentAtom,
 	sessionExecutionModeAtom,
 	switchSessionInputDraftScope,
@@ -28,6 +28,9 @@ import { useSessionManager } from "../../hooks/useSessionManager";
 import { useSkillList } from "../../hooks/useSkillList";
 import type { SendInteractionContext } from "../input-bar/types";
 import { PANEL_SHIFT_MIN_ITEMS } from "./constants";
+import { prepareProjectCwd } from "./project-selector/prepare-project-cwd";
+import type { ProjectOption, ProjectSelection } from "./project-selector/project-selection";
+import { useNewSessionProjectSelection } from "./project-selector/useNewSessionProjectSelection";
 import { useNewSessionSend } from "./useNewSessionSend";
 import { useShortViewport } from "./useShortViewport";
 
@@ -49,8 +52,15 @@ interface NewSessionPageModel {
 	onAbort: () => Promise<void>;
 	onCommandPanelExpandedChange: (expanded: boolean) => void;
 	onSend: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
+	onSelectPendingProject: (name: string) => void;
+	onSelectProject: (cwd: string | null) => void;
 	onToggleActivity: () => void;
 	onTogglePin: () => Promise<void>;
+	/** 待创建项目正在落盘：发送按钮与项目选择器都进入准备态。 */
+	preparingProject: boolean;
+	projectOptions: readonly ProjectOption[];
+	projectSelection: ProjectSelection;
+	projectTakenNames: readonly string[];
 	panelTitle: string;
 	pinTitle: string;
 	pinned: boolean;
@@ -61,12 +71,14 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const { t } = useTranslation(["common", "chat"]);
 	const { cwd } = useParams({ strict: false }) as { cwd: string };
 	const decodedCwd = decodeURIComponent(cwd);
-	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
-	const projects = useAtomValue(projectsAtom);
-	const project = projects.find((candidate) => candidate.cwd === decodedCwd);
-	const contextName = project?.name ?? decodedCwd.split(/[\\/]/).filter(Boolean).pop() ?? decodedCwd;
+	// 项目选择器只覆盖页面本地上下文，不切路由：草稿按 `new:${routeCwd}` 隔离，
+	// 换项目若走路由就会把用户已经打好的正文换走。
+	const projectSelection = useNewSessionProjectSelection(decodedCwd);
+	const contextCwd = projectSelection.contextCwd;
+	const contextName =
+		projectSelection.selection?.name ?? contextCwd.split(/[\\/]/).filter(Boolean).pop() ?? contextCwd;
 	const contextLabel =
-		project?.isDefault || decodedCwd === defaultConversationCwd
+		projectSelection.selection === null
 			? t("chat:newSession.defaultContext")
 			: t("chat:newSession.projectContext", { name: contextName });
 
@@ -89,9 +101,36 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const authUser = useAtomValue(authUserAtom);
 	const executionMode = useAtomValue(sessionExecutionModeAtom);
 	const { openSession, sendMessage, abortMessage } = useSessionManager();
+	const { createProject } = useProjectActions();
+	const setConfirm = useSetAtom(confirmDialogAtom);
+	const [preparingProject, setPreparingProject] = useState(false);
+	const { selection: currentSelection, applyCreatedProject } = projectSelection;
+
+	// 待创建项目落盘 → 发送，失败则保留输入与选择、只弹错误，不导航。
+	const prepareCwd = useCallback(
+		(): Promise<string | null> =>
+			prepareProjectCwd({
+				selection: currentSelection,
+				contextCwd,
+				createProject,
+				onCreated: applyCreatedProject,
+				onPreparingChange: setPreparingProject,
+				onError: (error) =>
+					setConfirm({
+						title: i18n.t("chat:newSession.projectSelector.createFailedTitle"),
+						message: error instanceof Error ? error.message : String(error),
+						confirmLabel: i18n.t("common:actions.close"),
+						variant: "danger",
+						onConfirm: () => {},
+					}),
+			}),
+		[applyCreatedProject, contextCwd, createProject, currentSelection, setConfirm],
+	);
+
 	const newSessionSend = useNewSessionSend({
-		cwd: decodedCwd,
+		cwd: contextCwd,
 		executionMode,
+		prepareCwd,
 		openSession,
 		sendMessage,
 	});
@@ -100,7 +139,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	// 数据与命令区共用模块级缓存（InputBar 里的 CommandPanel 挂载即预取），命中即立即可用。
 	const { items: skillItems } = useSkillList({
 		open: commandPanelExpanded,
-		cwd: decodedCwd,
+		cwd: contextCwd,
 		filter: "",
 		prefetch: true,
 	});
@@ -190,15 +229,21 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		avatarAutoplay,
 		commandPanelExpanded,
 		commandPanelShift: commandPanelExpanded && skillItems.length > PANEL_SHIFT_MIN_ITEMS,
-		cwd: decodedCwd,
+		cwd: contextCwd,
 		greetingTitle,
 		isShort,
 		mounted,
 		onAbort: abortMessage,
 		onCommandPanelExpandedChange: setCommandPanelExpanded,
+		onSelectPendingProject: projectSelection.selectPendingProject,
+		onSelectProject: projectSelection.selectProject,
 		onSend: newSessionSend.send,
 		onToggleActivity: handleToggleActivity,
 		onTogglePin: handleTogglePin,
+		preparingProject,
+		projectOptions: projectSelection.options,
+		projectSelection: projectSelection.selection,
+		projectTakenNames: projectSelection.takenNames,
 		panelTitle: activityOpen ? t("chat:chatView.panelButton.open") : t("chat:chatView.panelButton.closed"),
 		pinTitle: pinned ? t("chat:chatView.pinButton.pinned") : t("chat:chatView.pinButton.unpinned"),
 		pinned,

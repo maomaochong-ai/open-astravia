@@ -8,7 +8,6 @@ import type {
 	NewSessionSceneItem,
 } from "@vetta/theme-ui";
 import { GuideBadgeSwiper } from "../GuideBadgeSwiper";
-import { AgentModeIconToggle } from "./AgentModeIconToggle";
 import { easeOut } from "./constants";
 import { NewSessionMascot } from "./NewSessionMascot";
 
@@ -73,11 +72,8 @@ export function DefaultNewSessionHero({
 				transition={{ duration: 0.5, ease: easeOut }}
 				className="flex w-full flex-col items-start"
 			>
-				{/* 欢迎语上方：引导 badge 轮播 + 工作/编程模式切换 */}
+				{/* 欢迎语上方：引导 badge 轮播。工作模式切换已移到输入框上方的选项行。 */}
 				<GuideBadgeSwiper mounted={mounted} />
-				<div className="mb-2 flex items-center">
-					<AgentModeIconToggle />
-				</div>
 
 				{/* 标题块：问候语 + 副标题（吉祥物改为绝对定位，见下） */}
 				<div className="flex w-full min-w-0 flex-col">

@@ -144,7 +144,8 @@
 		"cancel": "取消",
 		"create": "创建",
 		"emptyError": "请输入项目名称",
-		"invalidError": "项目名称不能包含特殊字符"
+		"invalidError": "项目名称不能包含特殊字符",
+		"duplicateError": "已存在同名项目"
 	},
 	"update": {
 		"newVersion": "发现新版本 {{version}}，点击后台下载",

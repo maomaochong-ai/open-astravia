@@ -9,18 +9,25 @@ export interface NewProjectDialogViewLabels {
 	readonly create: string;
 	readonly emptyError: string;
 	readonly invalidError: string;
+	readonly duplicateError: string;
 }
 
 export interface NewProjectDialogViewProps {
 	readonly onConfirm: (name: string) => void;
 	readonly onCancel: () => void;
 	readonly labels: NewProjectDialogViewLabels;
+	/**
+	 * 已被占用的项目名。命中时在确认那一刻就拦下来——否则重名会一路走到落盘，
+	 * 静默复用同名项目，用户以为新建了一个却发现会话进了旧项目。
+	 */
+	readonly isNameTaken?: (name: string) => boolean;
 }
 
 export function NewProjectDialogView({
 	onConfirm,
 	onCancel,
 	labels,
+	isNameTaken,
 }: NewProjectDialogViewProps): JSX.Element {
 	const [name, setName] = useState("");
 	const [error, setError] = useState("");
@@ -40,8 +47,12 @@ export function NewProjectDialogView({
 			setError(labels.invalidError);
 			return;
 		}
+		if (isNameTaken?.(trimmed)) {
+			setError(labels.duplicateError);
+			return;
+		}
 		onConfirm(trimmed);
-	}, [name, onConfirm, labels.emptyError, labels.invalidError]);
+	}, [name, onConfirm, isNameTaken, labels.emptyError, labels.invalidError, labels.duplicateError]);
 
 	return (
 		<Dialog

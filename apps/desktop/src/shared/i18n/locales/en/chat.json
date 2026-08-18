@@ -85,7 +85,6 @@
 		"htmlPreview": {
 			"title": "HTML preview"
 		},
-
 		"workflow": {
 			"empty": "No workflows",
 			"noTranscript": "No messages from this workflow yet",
@@ -145,8 +144,8 @@
 		"confirmDeleteMultiplePrefix": "Delete these {{count}} items",
 		"confirmDeleteMultipleMore": " and {{count}} more",
 		"confirmDeleteMultipleSuffix": "? This cannot be undone.",
-		"cancel": "Cancel"
-		,"transfer": {
+		"cancel": "Cancel",
+		"transfer": {
 			"title": "Add files to project",
 			"pasteCopyTitle": "Paste files",
 			"pasteMoveTitle": "Move files",
@@ -669,6 +668,19 @@
 			"hideMascot": "Hide mascot",
 			"showMascot": "Show mascot",
 			"playOnce": "Play the current mascot animation once"
+		},
+		"projectSelector": {
+			"placeholder": "Select project",
+			"clear": "No project",
+			"searchPlaceholder": "Search projects",
+			"empty": "No matching project",
+			"newProject": "New project",
+			"openProject": "Open local project",
+			"pendingHint": "pending",
+			"creating": "Creating…",
+			"preparing": "Preparing project",
+			"triggerTitle": "Choose the project for this session",
+			"createFailedTitle": "Failed to create project"
 		}
 	},
 	"questionPanel": {

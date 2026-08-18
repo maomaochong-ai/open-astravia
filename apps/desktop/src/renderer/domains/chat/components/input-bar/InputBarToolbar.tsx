@@ -26,6 +26,8 @@ interface InputBarToolbarProps {
 	onSelectFiles: () => void;
 	onSelectImages: () => void;
 	onSend: () => void;
+	/** 发送前的准备态（如新会话页正在创建待建项目）。 */
+	sendPending?: { readonly label: string };
 	slashOpen: boolean;
 	speechInput: SpeechInputModel;
 }
@@ -43,6 +45,7 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 	onSelectFiles,
 	onSelectImages,
 	onSend,
+	sendPending,
 	slashOpen,
 	speechInput,
 }: InputBarToolbarProps): JSX.Element {
@@ -145,7 +148,7 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 						active={speechInput.active}
 					/>
 				)}
-				{isStreaming && !isEmpty ? (
+				{isStreaming && !isEmpty && !sendPending ? (
 					<button
 						type="button"
 						onClick={onSend}
@@ -156,7 +159,13 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 					</button>
 				) : (
 					<div className="shrink-0">
-						<SendButton canSend={canSend} isStreaming={isStreaming} onSend={onSend} onAbort={onAbort} />
+						<SendButton
+							canSend={canSend}
+							isStreaming={isStreaming}
+							pending={sendPending}
+							onSend={onSend}
+							onAbort={onAbort}
+						/>
 					</div>
 				)}
 			</div>

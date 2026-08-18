@@ -275,3 +275,44 @@
 		transform: rotate(45deg);
 	}
 }
+
+/* Pending morph: the round button grows leftwards into a labelled pill while a
+   preparation step runs (e.g. the new-session page creating a project before it
+   can open the session). Width is animated with the 0fr → 1fr grid trick so the
+   whole morph stays in CSS — no second JS animation racing the popovers above. */
+.send-button-pending {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	padding-inline: 0.5rem;
+	white-space: nowrap;
+}
+
+.send-button-pending-label {
+	display: grid;
+	grid-template-columns: 0fr;
+	transition: grid-template-columns 180ms ease-out;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1;
+}
+
+.send-button-wrap[data-pending="true"] .send-button-pending-label {
+	grid-template-columns: 1fr;
+}
+
+.send-button-pending-label > span {
+	overflow: hidden;
+}
+
+/* The morphing send/stop glyph shares the button box; hide it while pending so
+   the two icons never overlap during the width transition. */
+.send-button-icon[data-hidden="true"] {
+	display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.send-button-pending-label {
+		transition: none;
+	}
+}

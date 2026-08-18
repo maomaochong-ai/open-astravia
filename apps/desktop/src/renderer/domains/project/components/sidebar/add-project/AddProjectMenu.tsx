@@ -26,6 +26,7 @@ export function AddProjectMenu({ className, variant = "icon" }: AddProjectMenuPr
 				<NewProjectDialog
 					onConfirm={model.confirmNewProject}
 					onCancel={model.closeNewProjectDialog}
+					isNameTaken={model.isProjectNameTaken}
 				/>
 			)}
 		</>

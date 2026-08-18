@@ -1,5 +1,6 @@
 import { ActivityPanel } from "@domains/activity-panel/components/ActivityPanel";
 import { motion, useReducedMotion } from "motion/react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@shared/lib/utils";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import { NewSessionPageLayoutView } from "@vetta/theme-ui/chat";
@@ -10,6 +11,8 @@ import {
 } from "../command-panel/constants";
 import { NewSessionBackground } from "./NewSessionBackground";
 import { NewSessionHero } from "./NewSessionHero";
+import { NewSessionOptionsRow } from "./NewSessionOptionsRow";
+import type { ProjectOption, ProjectSelection } from "./project-selector/project-selection";
 import { InputBar } from "../InputBar";
 import type { SendInteractionContext } from "../input-bar/types";
 
@@ -28,7 +31,13 @@ interface NewSessionPageViewProps {
 	mounted: boolean;
 	onAbort: () => Promise<void>;
 	onCommandPanelExpandedChange: (expanded: boolean) => void;
+	onSelectPendingProject: (name: string) => void;
+	onSelectProject: (cwd: string | null) => void;
 	onSend: (overrideText?: string, context?: SendInteractionContext) => Promise<void>;
+	preparingProject: boolean;
+	projectOptions: readonly ProjectOption[];
+	projectSelection: ProjectSelection;
+	projectTakenNames: readonly string[];
 	subtitle: string;
 }
 
@@ -43,13 +52,21 @@ export function NewSessionPageView({
 	mounted,
 	onAbort,
 	onCommandPanelExpandedChange,
+	onSelectPendingProject,
+	onSelectProject,
 	onSend,
+	preparingProject,
+	projectOptions,
+	projectSelection,
+	projectTakenNames,
 	subtitle,
 }: NewSessionPageViewProps): JSX.Element {
 	const ThemedNewSessionBackground = useThemeComponent(
 		"chat.newSessionBackground",
 		EmptyNewSessionBackground,
 	);
+	const { t } = useTranslation("chat");
+	const preparingLabel = t("newSession.projectSelector.preparing");
 	const reduceMotion = useReducedMotion();
 	// hero 淡出、输入栏位移、命令区揭幕三条动画同时跑，共用同一条曲线：各跑各的弹簧时
 	// 长度不一致，掉帧时能明显看出它们互相在「追」。
@@ -95,6 +112,15 @@ export function NewSessionPageView({
 							mounted={mounted}
 							subtitle={subtitle}
 						/>
+						{/* 会话前置选项（项目 / 工作模式）与 hero 同淡出：命令区向上生长时会盖到这一行。 */}
+						<NewSessionOptionsRow
+							creatingProject={preparingProject}
+							onSelectPendingProject={onSelectPendingProject}
+							onSelectProject={onSelectProject}
+							options={projectOptions}
+							selection={projectSelection}
+							takenNames={projectTakenNames}
+						/>
 					</motion.div>
 				}
 				inputBar={
@@ -109,6 +135,7 @@ export function NewSessionPageView({
 							onAbort={onAbort}
 							cwdOverride={cwd}
 							onExpandedChange={onCommandPanelExpandedChange}
+							sendPending={preparingProject ? { label: preparingLabel } : undefined}
 						/>
 					</motion.div>
 				}

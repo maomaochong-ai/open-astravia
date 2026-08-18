@@ -107,6 +107,7 @@ export function useInputBarModel({
 	onSendQueued,
 	cwdOverride,
 	onExpandedChange,
+	sendPending,
 }: InputBarProps): InputBarModel {
 	const { t } = useTranslation("chat");
 	/**
@@ -583,6 +584,7 @@ export function useInputBarModel({
 
 	return {
 		isStreaming,
+		sendPending,
 		pendingQuestion,
 		firstSuggestion,
 		imageAttachments,
