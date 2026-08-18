@@ -11,8 +11,10 @@ import type {
 	BuiltinAbilityPresentations,
 	InstalledPlugin,
 	InstalledSkill,
+	MarketplaceSource,
 	OpenMarketplaceCatalog,
 	SkillInfo,
+	UpdateMarketplaceSourceInput,
 } from "@preload/api";
 import { cloudEnabled } from "@shared/components/cloud-slots";
 import { i18n } from "@shared/i18n";
@@ -32,6 +34,8 @@ import { mergeAbilityCatalogs } from "../lib/merge-ability-catalogs";
 
 export interface AbilityData {
 	market: MarketAbility[];
+	/** 已配置的 GitHub 市场来源（含内置默认源）。 */
+	marketplaceSources: MarketplaceSource[];
 	ledger: AbilityLedger;
 	skillManifest: Record<string, InstalledSkill>;
 	/** 通用 Agent / 内置 skill 与 scene（只读展示）。 */
@@ -43,6 +47,8 @@ export interface AbilityData {
 	error: string | null;
 	refresh: () => void;
 	addMarketplaceSource: (input: AddMarketplaceSourceInput) => Promise<void>;
+	updateMarketplaceSource: (id: string, input: UpdateMarketplaceSourceInput) => Promise<void>;
+	removeMarketplaceSource: (id: string) => Promise<void>;
 }
 
 export function useAbilityData(): AbilityData {
@@ -184,6 +190,28 @@ export function useAbilityData(): AbilityData {
 		}
 	}, []);
 
+	const reloadCatalog = useCallback(async (): Promise<void> => {
+		setOpenMarketplace(await window.vetta.abilities.listOpenMarketplaces());
+	}, []);
+
+	const updateMarketplaceSource = useCallback(
+		async (id: string, input: UpdateMarketplaceSourceInput): Promise<void> => {
+			await window.vetta.abilities.updateMarketplaceSource(id, input);
+			// 改分支后旧快照已失效，先按新配置同步一次再重读目录。
+			if (input.ref !== undefined) await window.vetta.abilities.refreshMarketplaceSource(id);
+			await reloadCatalog();
+		},
+		[reloadCatalog],
+	);
+
+	const removeMarketplaceSource = useCallback(
+		async (id: string): Promise<void> => {
+			await window.vetta.abilities.removeMarketplaceSource(id);
+			await reloadCatalog();
+		},
+		[reloadCatalog],
+	);
+
 	useEffect(
 		() =>
 			window.vetta.abilities.onOpenMarketplacesUpdated(() => {
@@ -210,6 +238,7 @@ export function useAbilityData(): AbilityData {
 
 	return {
 		market,
+		marketplaceSources: openMarketplace.sources,
 		ledger,
 		skillManifest,
 		localSkills,
@@ -220,5 +249,7 @@ export function useAbilityData(): AbilityData {
 		error,
 		refresh,
 		addMarketplaceSource,
+		updateMarketplaceSource,
+		removeMarketplaceSource,
 	};
 }

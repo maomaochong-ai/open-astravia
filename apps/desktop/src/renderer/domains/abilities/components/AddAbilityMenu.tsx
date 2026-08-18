@@ -13,13 +13,11 @@ export function AddAbilityMenu({
 	importing,
 	onImportSkill,
 	onImportPlugin,
-	onAddRepository,
 	onAddMcp,
 }: {
 	importing: boolean;
 	onImportSkill: () => void;
 	onImportPlugin: () => void;
-	onAddRepository: () => void;
 	onAddMcp: () => void;
 }): JSX.Element {
 	const { t } = useTranslation("abilities");
@@ -58,15 +56,6 @@ export function AddAbilityMenu({
 						<span className="block text-[13px] font-medium">{t("add.importPlugin")}</span>
 						<span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground/70">
 							{t("add.importPluginHint")}
-						</span>
-					</span>
-				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={onAddRepository} className="items-start gap-2.5 py-2.5">
-					<span className="icon-[solar--cloud-download-linear] mt-0.5 h-4 w-4 shrink-0" />
-					<span className="min-w-0">
-						<span className="block text-[13px] font-medium">{t("add.externalRepository")}</span>
-						<span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground/70">
-							{t("add.externalRepositoryHint")}
 						</span>
 					</span>
 				</DropdownMenuItem>

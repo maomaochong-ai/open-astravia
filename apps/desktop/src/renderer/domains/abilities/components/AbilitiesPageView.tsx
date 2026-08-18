@@ -17,7 +17,7 @@ import { AbilitiesBanner } from "./AbilitiesBanner";
 import { AbilityCard } from "./AbilityCard";
 import { AbilityMcpDialogs } from "./AbilityMcpDialogs";
 import { AddAbilityMenu } from "./AddAbilityMenu";
-import { ExternalRepositoryDialog } from "./ExternalRepositoryDialog";
+import { MarketplaceSourcesDialog } from "./MarketplaceSourcesDialog";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
@@ -25,7 +25,7 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 	const { t, i18n } = useTranslation("abilities");
 	const skillFileInputRef = useRef<HTMLInputElement>(null);
 	const pluginFileInputRef = useRef<HTMLInputElement>(null);
-	const [repositoryDialogOpen, setRepositoryDialogOpen] = useState(false);
+	const [sourcesDialogOpen, setSourcesDialogOpen] = useState(false);
 
 	return (
 		<div className="relative flex h-full w-full flex-1 flex-col overflow-hidden">
@@ -97,7 +97,6 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 									model.setScope("mine");
 									pluginFileInputRef.current?.click();
 								}}
-								onAddRepository={() => setRepositoryDialogOpen(true)}
 								onAddMcp={() => {
 									model.setScope("mine");
 									model.startAddManualMcp();
@@ -105,6 +104,10 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 							/>
 						</div>
 						<div className="flex items-center gap-2">
+							<Button variant="ghost" size="sm" onClick={() => setSourcesDialogOpen(true)}>
+								<span className="icon-[mdi--github] h-3.5 w-3.5" />
+								{t("sources.trigger")}
+							</Button>
 							<Button variant="ghost" size="sm" disabled={model.refreshing} onClick={model.refresh}>
 								<span
 									className={`icon-[solar--refresh-linear] h-3.5 w-3.5 ${model.refreshing ? "animate-spin" : ""}`}
@@ -191,13 +194,16 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 			</div>
 
 			<AbilityMcpDialogs mcp={model.mcp} />
-			{repositoryDialogOpen && (
-				<ExternalRepositoryDialog
-					onClose={() => setRepositoryDialogOpen(false)}
+			{sourcesDialogOpen && (
+				<MarketplaceSourcesDialog
+					sources={model.marketplaceSources}
 					onAdd={async (input) => {
 						await model.addMarketplaceSource(input);
 						model.setScope("discover");
 					}}
+					onUpdate={model.updateMarketplaceSource}
+					onRemove={model.removeMarketplaceSource}
+					onClose={() => setSourcesDialogOpen(false)}
 				/>
 			)}
 			<CapabilitiesTour />

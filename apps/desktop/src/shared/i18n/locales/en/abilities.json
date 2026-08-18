@@ -61,21 +61,8 @@
 		"importSkillHint": "Install from a local zip, tar.gz or tgz archive",
 		"importPlugin": "Import plugin archive",
 		"importPluginHint": "Install from a local zip that contains plugin.json",
-		"externalRepository": "Add external repository",
-		"externalRepositoryHint": "Sync an open ability catalog from a GitHub repository",
 		"addMcp": "Add MCP manually",
-		"addMcpHint": "Configure a stdio or HTTP MCP server by hand",
-		"repositoryDialog": {
-			"title": "Add external repository",
-			"description": "The repository must contain .vetta/marketplace.json. Its abilities will be synced immediately.",
-			"repositoryLabel": "GitHub repository",
-			"repositoryPlaceholder": "owner/repo or https://github.com/owner/repo",
-			"refLabel": "Branch",
-			"refPlaceholder": "main",
-			"submit": "Add and sync",
-			"syncing": "Syncing…",
-			"error": "Repository sync failed: {{error}}"
-		}
+		"addMcpHint": "Configure a stdio or HTTP MCP server by hand"
 	},
 	"empty": {
 		"noMatch": "No matching abilities",
@@ -386,5 +373,34 @@
 		"repository": "Repository",
 		"docs": "Documentation",
 		"license": "License"
+	},
+	"sources": {
+		"trigger": "Sources",
+		"dialog": {
+			"title": "Marketplace sources",
+			"description": "Manage GitHub marketplace sources. Enabled sources are aggregated in the marketplace; built-in sources cannot be removed."
+		},
+		"empty": "No sources configured yet",
+		"builtinBadge": "Built-in",
+		"actions": {
+			"add": "Add source",
+			"edit": "Edit source",
+			"remove": "Remove source",
+			"confirmRemove": "Confirm removal",
+			"toggle": "Enable source"
+		},
+		"form": {
+			"addTitle": "Add source",
+			"editTitle": "Edit source",
+			"repositoryLabel": "GitHub repository",
+			"repositoryPlaceholder": "owner/repo or https://github.com/owner/repo",
+			"nameLabel": "Name",
+			"namePlaceholder": "Defaults to the repository name",
+			"refLabel": "Branch",
+			"refPlaceholder": "main",
+			"submitAdd": "Add and sync",
+			"submitEdit": "Save"
+		},
+		"error": "Operation failed: {{error}}"
 	}
 }

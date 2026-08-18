@@ -6,6 +6,7 @@ All notable changes to `@vetta/desktop` are documented in this file.
 
 ### Added
 
+- **GitHub 能力市场来源管理**（开源版与完全体共用，交互对齐 open-vetta）：能力页工具栏新增「来源」入口，打开来源管理对话框，可添加、编辑（名称/分支）、启停与删除 GitHub 市场来源；内置默认源仅可启停、不可删除，删除需行内二次确认，改分支后自动重新同步快照。原「添加外置仓库」菜单项与单一添加对话框由此取代。
 - **云服务剥离完成（lite 形态可独立运行）**：在第一阶段基础上完成剩余渠道剥离。Vetta Go 渠道（服务端网关中转、Vetta 图像生成 provider、模型探测的云端目录回退）经宿主 `cloud-bridge` 挂载点由 cloud 模块注入，lite 构建下媒体 provider 列表不含 vetta、网关能力返回统一失败回执；能力广场在 lite 下不再匿名请求 vetta 官方市场（github 开放市场与本地来源保留），MCP 连接器页隐藏「广场」区段，vetta 市场安装通道直接拒绝且不发网络请求；启动时不再向服务端询问部署形态。新增 cloud 边界守卫测试，宿主代码直接 import cloud 内部实现会在测试期失败。
 - **云服务构建期开关（lite 形态第一阶段）**：新增 `VETTA_CLOUD_ENABLED` 构建期环境变量（默认 `true`）。`false` 时产出不含 Vetta 云服务代码的 lite 构建：登录/OAuth、token 刷新、远程模型与订阅相关 IPC 不注册，侧边栏设置菜单隐藏账户区段，引导向导跳过登录步。主进程 OAuth 与云会话逻辑收敛到 `src/main/cloud/`，渲染层登录 UI 收敛到 `src/renderer/cloud/`，宿主经 `@shared/components/cloud-slots` 懒加载挂载。完全体行为不变。
 

@@ -61,21 +61,8 @@
 		"importSkillHint": "从本地 zip、tar.gz 或 tgz 压缩包安装",
 		"importPlugin": "导入插件压缩包",
 		"importPluginHint": "从本地 zip 安装（需包含 plugin.json）",
-		"externalRepository": "添加外置仓库",
-		"externalRepositoryHint": "从 GitHub 仓库同步开源能力目录",
 		"addMcp": "手动添加 MCP",
-		"addMcpHint": "手动配置 stdio 或 HTTP MCP 服务",
-		"repositoryDialog": {
-			"title": "添加外置仓库",
-			"description": "仓库需要包含 .vetta/marketplace.json，添加后会立即同步其中的能力。",
-			"repositoryLabel": "GitHub 仓库",
-			"repositoryPlaceholder": "owner/repo 或 https://github.com/owner/repo",
-			"refLabel": "分支",
-			"refPlaceholder": "main",
-			"submit": "添加并同步",
-			"syncing": "正在同步…",
-			"error": "仓库同步失败：{{error}}"
-		}
+		"addMcpHint": "手动配置 stdio 或 HTTP MCP 服务"
 	},
 	"empty": {
 		"noMatch": "没有匹配的能力",
@@ -386,5 +373,34 @@
 		"repository": "代码仓库",
 		"docs": "文档",
 		"license": "开源协议"
+	},
+	"sources": {
+		"trigger": "来源",
+		"dialog": {
+			"title": "能力来源",
+			"description": "管理 GitHub 能力市场来源。启用的来源会在能力市场中聚合展示，内置来源不可删除。"
+		},
+		"empty": "还没有配置任何来源",
+		"builtinBadge": "内置",
+		"actions": {
+			"add": "添加来源",
+			"edit": "编辑来源",
+			"remove": "删除来源",
+			"confirmRemove": "确认删除",
+			"toggle": "启用来源"
+		},
+		"form": {
+			"addTitle": "添加来源",
+			"editTitle": "编辑来源",
+			"repositoryLabel": "GitHub 仓库",
+			"repositoryPlaceholder": "owner/repo 或 https://github.com/owner/repo",
+			"nameLabel": "名称",
+			"namePlaceholder": "留空则取仓库名",
+			"refLabel": "分支",
+			"refPlaceholder": "main",
+			"submitAdd": "添加并同步",
+			"submitEdit": "保存"
+		},
+		"error": "操作失败：{{error}}"
 	}
 }
