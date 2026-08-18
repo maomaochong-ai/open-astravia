@@ -66,7 +66,7 @@ A user-attached file or directory reference carried alongside a chat prompt. Sha
 
 ### conversation cwd
 
-`~/.vetta/conversation`，desktop-app 中虚拟注入的「对话」项目的**项目根 cwd**（常量 `DEFAULT_CONVERSATION_CWD`，`packages/desktop-app/src/main/ipc/fs.ts`）。session jsonl 文件集中落在 `<conversation cwd>/.vetta/sessions/`。
+`~/.vetta/conversation`，desktop-app 中虚拟注入的「对话」项目的**项目根 cwd**（常量 `DEFAULT_CONVERSATION_CWD`，`apps/desktop-app/src/main/ipc/fs.ts`）。session jsonl 文件集中落在 `<conversation cwd>/.vetta/sessions/`。
 
 **项目根 cwd ≠ session 运行 cwd。** ADR-0007 起，「对话」下新建的每个 session 拿到自己的 [[session 产物子目录]] (`<conversation cwd>/<sessionId>/`) 作为运行 cwd，agent 产物落在那里，避免不同 session 在根目录互相窜味。读 session.cwd 而不是项目 cwd 才能拿到 agent 当时的真实工作目录。fs IPC 沙箱边界仍是项目根整体，不按 session 收紧——隔离的是状态不是权限。
 

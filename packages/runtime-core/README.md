@@ -56,7 +56,7 @@ composition is Node-oriented and is not part of this portable boundary.
 - [packages/runtime-node](../runtime-node)
 - [packages/coding-agent](../coding-agent)
 - [packages/runtime-desktop](../runtime-desktop)
-- [packages/cli-app](../cli-app) and [packages/desktop-app](../desktop-app)
+- [apps/cli-app](../cli-app) and [apps/desktop-app](../desktop-app)
 
 ## Main Exports
 

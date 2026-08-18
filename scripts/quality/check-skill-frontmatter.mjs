@@ -24,7 +24,7 @@ import { fail, isDirectRun, ok, readText, rel, repoRoot, stagedFiles } from "./l
 /** Mirrors MAX_DESCRIPTION_LENGTH in packages/coding-agent/src/core/skills.ts. */
 const MAX_DESCRIPTION_LENGTH = 1024;
 
-const SCAN_ROOTS = ["packages", ".claude"];
+const SCAN_ROOTS = ["packages", "apps", ".claude"];
 const SKIP_DIRS = new Set([
 	"node_modules",
 	"dist",

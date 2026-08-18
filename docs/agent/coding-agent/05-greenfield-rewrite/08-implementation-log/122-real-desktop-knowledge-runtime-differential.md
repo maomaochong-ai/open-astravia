@@ -106,7 +106,7 @@ processing(true)
 ## 验证
 
 - Desktop Runtime Canary 差分、Runner、Provider、Poller 与 Round Controller：5 个文件、15 项测试通过；
-- `packages/desktop-app` 的 `bunx tsc --noEmit`：通过；
+- `apps/desktop-app` 的 `bunx tsc --noEmit`：通过；
 - 根目录 `bun run check:quick`：通过；
 - 根目录 `bun run verify:ui:runtime-diff`：通过；
 - 根目录 `bun run check`：Biome、root/CLI/Desktop/Admin 类型检查与质量守卫全部通过；

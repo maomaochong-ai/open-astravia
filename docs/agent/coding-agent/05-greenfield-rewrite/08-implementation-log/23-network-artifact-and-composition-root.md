@@ -64,7 +64,7 @@ Composition Root 上移回 coding-agent。
 ## 验证
 
 - `packages/coding-agent/test/tools-manager-resolver.test.ts`：20 项通过。
-- `packages/cli-app/test/runtime-tools-composition.test.ts`：2 项通过。
+- `apps/cli-app/test/runtime-tools-composition.test.ts`：2 项通过。
 - `bun install --lockfile-only` 完成 workspace 依赖锁定。
 - `bun run check:quick` 通过。
 - `bun run check` 通过。

@@ -246,7 +246,7 @@ Admin 和质量 guards。
   - 通用 Runtime Tool Request 消息字段和 Agent Core Adapter。
 - `packages/coding-agent`
   - Plugin Tool Runtime、TypeBox 校验、Run Orchestrator 接口、Composer 接入、导出和测试。
-- `packages/cli-app`
+- `apps/cli-app`
   - Session 级生产组合和端到端测试。
 - 本实施日志与索引。
 

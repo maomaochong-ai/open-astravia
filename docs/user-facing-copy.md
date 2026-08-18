@@ -2,14 +2,14 @@
 
 > 本文记录 Vetta **所有面向用户可见文案**的原则：桌面端 UI、官网营销与 FAQ、方案/定价说明等。  
 > 读者：写 UI / 官网文案的人、改设置或首页的 agent、做产品交互的人。  
-> **不是** API 文档，也不是 i18n 工程规范（桌面见 [ADR-0031](./adr/0031-desktop-i18n-i18next-semantic-keys-main-owned-language.md) 与 `packages/desktop-app` 的 AGENTS；官网文案在 `packages/site/messages/`）。
+> **不是** API 文档，也不是 i18n 工程规范（桌面见 [ADR-0031](./adr/0031-desktop-i18n-i18next-semantic-keys-main-owned-language.md) 与 `apps/desktop-app` 的 AGENTS；官网文案在 `apps/site/messages/`）。
 
 适用范围简述：
 
 | 场景 | 典型位置 | 额外注意 |
 |------|----------|----------|
 | 桌面设置 / 能力 | `desktop-app` i18n | 结果优先、实现下沉（见 §2–§5、§10） |
-| 官网 Hero / 方案 / Q&A | `packages/site` i18n | 产品定位与品牌词统一（见 §1.1、§4.3、§11） |
+| 官网 Hero / 方案 / Q&A | `apps/site` i18n | 产品定位与品牌词统一（见 §1.1、§4.3、§11） |
 | 日志 / CHANGELOG / ADR | 仓库文档与代码 | **可以说实现**，不进用户主路径 |
 
 ---
@@ -298,7 +298,7 @@ stdio
 
 ## 11. 官网 Hero、方案与 Q&A
 
-`packages/site` 首页等营销文案除遵守上文通则外，额外约定：
+`apps/site` 首页等营销文案除遵守上文通则外，额外约定：
 
 ### 11.1 Hero
 
@@ -316,7 +316,7 @@ stdio
 
 ### 11.4 官网 i18n
 
-- 中英文键放在 `packages/site/messages/{zh-CN,en-US}.json`。  
+- 中英文键放在 `apps/site/messages/{zh-CN,en-US}.json`。  
 - 改用户可见句时**双语一起改**（语义对齐，非逐字翻译）。  
 - 列表类 Q&A 的题目顺序由代码中的 id 列表控制；增删题时同步 i18n 与 id 列表。
 

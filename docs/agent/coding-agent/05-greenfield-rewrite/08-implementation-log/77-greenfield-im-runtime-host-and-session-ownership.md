@@ -114,7 +114,7 @@ packages/runtime-storage:
 packages/coding-agent:
   bunx vitest --run test/host-bootstrap.test.ts
 
-packages/cli-app:
+apps/cli-app:
   bunx vitest --run test/conversation-ownership-binding.test.ts test/greenfield-im-runtime-host.test.ts
   bun run typecheck
 

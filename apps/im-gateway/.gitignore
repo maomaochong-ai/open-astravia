@@ -1,0 +1,15 @@
+# Build artifacts
+bin/
+tmp/
+dist/
+
+# Test artifacts
+coverage.out
+*.test
+*.out
+
+# OS
+.DS_Store
+
+# Local credentials never go in the repo
+credentials.local.yaml

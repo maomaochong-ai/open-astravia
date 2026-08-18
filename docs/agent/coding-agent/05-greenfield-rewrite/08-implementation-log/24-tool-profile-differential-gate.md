@@ -37,7 +37,7 @@
 
 ## 验证
 
-在 `packages/cli-app` 运行：
+在 `apps/cli-app` 运行：
 
 ```text
 bunx vitest --run test/runtime-tools-composition.test.ts

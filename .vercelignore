@@ -1,6 +1,6 @@
 # 仓库根作为 Vercel 上传根时生效。
 #
-# 为什么不能只传 packages/site：site 依赖 @vetta/{ui,theme-ui,theme-sdk,markdown}
+# 为什么不能只传 apps/site：site 依赖 @vetta/{ui,theme-ui,theme-sdk,markdown}
 # 四个 workspace 包，单独上传时 package.json 里的 "workspace:*" npm/bun 解析不了
 # （报 Unsupported URL Type "workspace:"）。依赖必须在仓库根安装，所以要传仓库。
 #
@@ -9,7 +9,7 @@
 # 不要排除 workspace 成员目录本身——根 package.json 的 workspaces 里列到的包若缺失，
 # 仓库根的 bun install 会直接失败。
 #
-# 注意：Vercel 只读上传根目录下的这一份，packages/site/.vercelignore 不再生效。
+# 注意：Vercel 只读上传根目录下的这一份，apps/site/.vercelignore 不再生效。
 
 # ── 依赖与构建产物（任意层级）──
 node_modules
@@ -36,5 +36,5 @@ release
 releases
 deploy
 docs
-packages/api
-packages/im-gateway
+apps/api
+apps/im-gateway

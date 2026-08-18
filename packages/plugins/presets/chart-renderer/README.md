@@ -19,5 +19,5 @@ cd packages/plugins/presets/chart-renderer
 bun run build   # 生成 dist/ 与 release/chart-renderer-<version>.zip
 ```
 
-Desktop 开发与打包消费该 zip：在 `packages/desktop-app` 执行
+Desktop 开发与打包消费该 zip：在 `apps/desktop-app` 执行
 `bun run build:presets` 校验并解压到开发 staging 目录。

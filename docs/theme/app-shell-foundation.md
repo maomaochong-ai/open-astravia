@@ -7,7 +7,7 @@ App shell 是应用入口层，负责侧边栏、页面头部、主内容区和�
 ## 当前目录
 
 ```txt
-packages/desktop-app/src/renderer/shared/app-shell/page-header/
+apps/desktop-app/src/renderer/shared/app-shell/page-header/
   PageHeader.tsx
   PageHeaderSidebarTrigger.tsx
   PageHeaderTitle.tsx
@@ -16,7 +16,7 @@ packages/desktop-app/src/renderer/shared/app-shell/page-header/
   usePageHeaderModel.ts
   index.ts
 
-packages/desktop-app/src/renderer/shared/app-shell/window-controls/
+apps/desktop-app/src/renderer/shared/app-shell/window-controls/
   WindowControls.tsx
   WindowControlButton.tsx
   useWindowControlsModel.ts

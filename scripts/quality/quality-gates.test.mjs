@@ -71,7 +71,7 @@ describe("standalone CLI 编译入口守卫", () => {
 	it("拒绝在 Desktop 生产代码中直接编译 CLI 源入口", () => {
 		expect(
 			findStandaloneCliBuildViolations(
-				"packages/desktop-app/src/main/example.ts",
+				"apps/desktop-app/src/main/example.ts",
 				`spawn("bun", ["build", join(cliAppRoot, "src", "cli.ts"), "--compile"]);`,
 			),
 		).toHaveLength(1);
@@ -80,13 +80,13 @@ describe("standalone CLI 编译入口守卫", () => {
 	it("允许调用统一编译器和编译其他入口", () => {
 		expect(
 			findStandaloneCliBuildViolations(
-				"packages/desktop-app/src/main/example.ts",
+				"apps/desktop-app/src/main/example.ts",
 				`spawn("bun", [join(cliAppRoot, "scripts", "compile-standalone.mjs")]);`,
 			),
 		).toEqual([]);
 		expect(
 			findStandaloneCliBuildViolations(
-				"packages/desktop-app/src/main/dev-cli-shim.ts",
+				"apps/desktop-app/src/main/dev-cli-shim.ts",
 				`spawn("bun", ["build", launcherEntryPath, "--compile"]);`,
 			),
 		).toEqual([]);
@@ -172,7 +172,7 @@ describe("affected package selection", () => {
 			"coding-agent",
 			"desktop-app",
 		]);
-		expect(createChangedTestPlan(["packages/desktop-app/src/main.ts"]).toTest).toEqual(["desktop-app"]);
+		expect(createChangedTestPlan(["apps/desktop-app/src/main.ts"]).toTest).toEqual(["desktop-app"]);
 	});
 
 	it("runs every core test package for global quality inputs", () => {
@@ -264,13 +264,13 @@ describe("package boundary analysis", () => {
 	it("blocks Desktop production imports from cli-app source paths", () => {
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/runtime.ts",
+				"apps/desktop-app/src/main/runtime.ts",
 				'import { createRuntime } from "../../../../cli-app/src/runtime.js";',
 			),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/runtime.ts",
+				"apps/desktop-app/src/main/runtime.ts",
 				'import { createRuntime } from "@vetta/runtime-composition";',
 			),
 		).toHaveLength(1);
@@ -314,19 +314,19 @@ describe("package boundary analysis", () => {
 	it("keeps the retired Coding Agent Runtime Host public resolution deleted", () => {
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/test/example.test.ts",
+				"apps/cli-app/test/example.test.ts",
 				'import { createHost } from "@vetta/coding-agent/runtime-host/greenfield";',
 			),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/vitest.config.ts",
-				'const alias = { "@vetta/coding-agent/runtime-host": "../coding-agent/src/adapters/runtime-core" };',
+				"apps/cli-app/vitest.config.ts",
+				'const alias = { "@vetta/coding-agent/runtime-host": "../../packages/coding-agent/src/adapters/runtime-core" };',
 			),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/test/example.test.ts",
+				"apps/cli-app/test/example.test.ts",
 				'import { createCodingAgentTurnExecutor } from "@vetta/coding-agent/runtime";',
 			),
 		).toEqual([]);
@@ -370,17 +370,17 @@ describe("package boundary analysis", () => {
 
 	it("keeps greenfield product modules independent from legacy startup symbols", () => {
 		const source = "const startup = runLegacyAgentWithBootstrap;";
-		expect(
-			findPackageBoundaryViolations("packages/cli-app/src/rpc/runtime-host/runtime-host.ts", source),
-		).toHaveLength(1);
+		expect(findPackageBoundaryViolations("apps/cli-app/src/rpc/runtime-host/runtime-host.ts", source)).toHaveLength(
+			1,
+		);
 		expect(
 			findPackageBoundaryViolations("packages/runtime-composition/src/greenfield-runtime-composition.ts", source),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations("packages/coding-agent/src/composition/runtime-composition.ts", source),
 		).toHaveLength(1);
-		expect(findPackageBoundaryViolations("packages/cli-app/src/agent-runtime-selection.ts", source)).toHaveLength(1);
-		expect(findPackageBoundaryViolations("packages/cli-app/src/legacy-runtime-gateway.ts", source)).toHaveLength(1);
+		expect(findPackageBoundaryViolations("apps/cli-app/src/agent-runtime-selection.ts", source)).toHaveLength(1);
+		expect(findPackageBoundaryViolations("apps/cli-app/src/legacy-runtime-gateway.ts", source)).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
 				"packages/coding-agent/src/composition/runtime-composition.ts",
@@ -392,19 +392,19 @@ describe("package boundary analysis", () => {
 	it("keeps Extension Legacy policy out of Greenfield product modules", () => {
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/rpc/runtime-host/runtime-host.ts",
+				"apps/cli-app/src/rpc/runtime-host/runtime-host.ts",
 				'const reason = "legacy-extension";',
 			),
 		).toHaveLength(2);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/rpc/runtime-host/runtime-host.ts",
+				"apps/cli-app/src/rpc/runtime-host/runtime-host.ts",
 				'const kind = "extension-incompatible";',
 			),
 		).toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/agent-runtime-selection.ts",
+				"apps/cli-app/src/agent-runtime-selection.ts",
 				'const reason = "legacy-extension";',
 			),
 		).toHaveLength(1);
@@ -413,19 +413,19 @@ describe("package boundary analysis", () => {
 	it("keeps automatic Legacy Session execution out of production hosts", () => {
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/agent-runtime-selection.ts",
+				"apps/cli-app/src/agent-runtime-selection.ts",
 				'const reason = "legacy-session";',
 			),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/legacy-runtime-gateway.ts",
+				"apps/cli-app/src/legacy-runtime-gateway.ts",
 				'const cause = "session-migration-gap";',
 			),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/agent-runtime-selection.ts",
+				"apps/cli-app/src/agent-runtime-selection.ts",
 				'const kind = "session-incompatible";',
 			),
 		).toEqual([]);
@@ -443,19 +443,16 @@ describe("package boundary analysis", () => {
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/greenfield-runtime-composition.ts",
+				"apps/cli-app/src/greenfield-runtime-composition.ts",
 				'export * from "@vetta/coding-agent/composition";',
 			),
 		).toHaveLength(1);
 		expect(
-			findPackageBoundaryViolations(
-				"packages/cli-app/src/index.ts",
-				'export * from "@vetta/coding-agent/composition";',
-			),
+			findPackageBoundaryViolations("apps/cli-app/src/index.ts", 'export * from "@vetta/coding-agent/composition";'),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/runtime.ts",
+				"apps/desktop-app/src/main/runtime.ts",
 				'import type { CodingAgentRuntimeCompositionOptions } from "@vetta/cli-app";',
 			),
 		).toHaveLength(1);
@@ -469,19 +466,15 @@ describe("package boundary analysis", () => {
 
 	it("requires all internal consumers to use explicit coding-agent subpaths", () => {
 		const rootImport = 'import { getAgentDir } from "@vetta/coding-agent";';
-		expect(findPackageBoundaryViolations("packages/desktop-app/src/main/new-consumer.ts", rootImport)).toHaveLength(
-			1,
-		);
+		expect(findPackageBoundaryViolations("apps/desktop-app/src/main/new-consumer.ts", rootImport)).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/new-consumer.ts",
+				"apps/desktop-app/src/main/new-consumer.ts",
 				'import { getAgentDir } from "@vetta/coding-agent/config";',
 			),
 		).toEqual([]);
-		expect(findPackageBoundaryViolations("packages/desktop-app/src/main/runtime.ts", rootImport)).toHaveLength(1);
-		expect(findPackageBoundaryViolations("packages/desktop-app/src/main/runtime.test.ts", rootImport)).toHaveLength(
-			1,
-		);
+		expect(findPackageBoundaryViolations("apps/desktop-app/src/main/runtime.ts", rootImport)).toHaveLength(1);
+		expect(findPackageBoundaryViolations("apps/desktop-app/src/main/runtime.test.ts", rootImport)).toHaveLength(1);
 		expect(findPackageBoundaryViolations("packages/runtime-core/test/runtime.test.ts", rootImport)).toHaveLength(1);
 		expect(findPackageBoundaryViolations("packages/runtime-tools/src/index.ts", rootImport)).toHaveLength(1);
 	});
@@ -489,7 +482,7 @@ describe("package boundary analysis", () => {
 	it("keeps the retired Coding Agent Knowledge surface deleted", () => {
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/knowledge/example.ts",
+				"apps/desktop-app/src/main/knowledge/example.ts",
 				'import { scanRaws } from "@vetta/coding-agent/knowledge";',
 			),
 		).toHaveLength(1);
@@ -581,31 +574,31 @@ describe("package boundary analysis", () => {
 	it("keeps production Legacy imports and Runtime adapters inside explicit compatibility boundaries", () => {
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/legacy-runtime-gateway.ts",
+				"apps/cli-app/src/legacy-runtime-gateway.ts",
 				'import { main } from "@vetta/coding-agent/legacy/cli";',
 			),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/agent-runtime-selection.ts",
+				"apps/cli-app/src/agent-runtime-selection.ts",
 				'import { main } from "@vetta/coding-agent/legacy/cli";',
 			),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/new-consumer.ts",
+				"apps/desktop-app/src/main/new-consumer.ts",
 				'import { main } from "@vetta/coding-agent/legacy/cli";',
 			),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-execution-compatibility.ts",
+				"apps/desktop-app/src/main/greenfield-runtime/desktop-legacy-execution-compatibility.ts",
 				'import { LegacyCodingAgentSessionBackend } from "@vetta/coding-agent/runtime-host";',
 			),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/test/support/legacy-runtime.ts",
+				"apps/cli-app/test/support/legacy-runtime.ts",
 				'import { main } from "@vetta/coding-agent/legacy/cli";',
 			),
 		).toEqual([]);
@@ -617,49 +610,49 @@ describe("package boundary analysis", () => {
 		).toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/coding-agent-bootstrap.ts",
+				"apps/cli-app/src/coding-agent-bootstrap.ts",
 				'import { runCodingAgentStartupMigrations } from "@vetta/coding-agent/historical-sessions";',
 			),
 		).toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/rpc/cli-session-format-compatibility.ts",
+				"apps/cli-app/src/rpc/cli-session-format-compatibility.ts",
 				'import { createCodingAgentHistoricalSessionCatalog } from "@vetta/coding-agent/historical-sessions";',
 			),
 		).toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/rpc/runtime-host/runtime-host.ts",
+				"apps/cli-app/src/rpc/runtime-host/runtime-host.ts",
 				'import { migrateCodingAgentHistoricalSession } from "@vetta/coding-agent/historical-sessions";',
 			),
 		).toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/new-consumer.ts",
+				"apps/desktop-app/src/main/new-consumer.ts",
 				'import { createCodingAgentHistoricalSessionCatalog } from "@vetta/coding-agent/historical-sessions";',
 			),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/new-consumer.ts",
+				"apps/desktop-app/src/main/new-consumer.ts",
 				'import { LegacyCodingAgentSessionBackend } from "@vetta/coding-agent/runtime-host";',
 			),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-execution-compatibility.ts",
+				"apps/desktop-app/src/main/greenfield-runtime/desktop-legacy-execution-compatibility.ts",
 				'import { LegacyRuntimeSessionCatalog } from "@vetta/coding-agent/runtime-host";',
 			),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-format-compatibility.ts",
+				"apps/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-format-compatibility.ts",
 				'import { LegacyCodingAgentSessionBackend } from "@vetta/coding-agent/runtime-host";',
 			),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/rpc/cli-session-format-compatibility.ts",
+				"apps/cli-app/src/rpc/cli-session-format-compatibility.ts",
 				'import { LegacyCodingAgentSessionBackend } from "@vetta/coding-agent/runtime-host";',
 			),
 		).toHaveLength(1);

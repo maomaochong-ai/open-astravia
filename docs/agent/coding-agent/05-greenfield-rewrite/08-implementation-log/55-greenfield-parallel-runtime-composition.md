@@ -107,7 +107,7 @@ Legacy Session、平台 sandbox 和宿主模块。新增
 
 - `packages/runtime-core`：24 个测试文件、113 项测试全部通过。
 - `packages/coding-agent` Greenfield Adapter 定向测试：2 个测试文件、3 项测试全部通过。
-- `packages/cli-app`：2 个测试文件、10 项测试全部通过。
+- `apps/cli-app`：2 个测试文件、10 项测试全部通过。
 - 全仓 `tsgo --noEmit` 通过。
 - `bun run check:quick` 与根目录 `bun run check` 通过。
 

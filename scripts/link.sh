@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-CLI_APP_DIR="$ROOT_DIR/packages/cli-app"
+CLI_APP_DIR="$ROOT_DIR/apps/cli-app"
 BUN_BIN="${BUN_BIN:-bun}"
 
 if [[ ! -d "$CLI_APP_DIR" ]]; then

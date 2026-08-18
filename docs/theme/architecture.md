@@ -72,10 +72,10 @@ UI 抽象层负责把内部状态整理成适合渲染的 model。
 当前侧边栏已有这些 model hook：
 
 ```txt
-packages/desktop-app/src/renderer/domains/project/components/sidebar/useSidebarModel.ts
-packages/desktop-app/src/renderer/domains/project/components/sidebar/projects/panel/useProjectsPanelModel.ts
-packages/desktop-app/src/renderer/domains/project/components/sidebar/settings-menu/useSettingsMenuModel.ts
-packages/desktop-app/src/renderer/domains/project/components/sidebar/message-center/useMessageCenterModel.ts
+apps/desktop-app/src/renderer/domains/project/components/sidebar/useSidebarModel.ts
+apps/desktop-app/src/renderer/domains/project/components/sidebar/projects/panel/useProjectsPanelModel.ts
+apps/desktop-app/src/renderer/domains/project/components/sidebar/settings-menu/useSettingsMenuModel.ts
+apps/desktop-app/src/renderer/domains/project/components/sidebar/message-center/useMessageCenterModel.ts
 ```
 
 model hook 对外提供：
@@ -94,7 +94,7 @@ UI 实现层只负责渲染和组合。默认主题也是 UI 实现层。
 侧边栏默认 UI 当前位于：
 
 ```txt
-packages/desktop-app/src/renderer/domains/project/components/sidebar/
+apps/desktop-app/src/renderer/domains/project/components/sidebar/
 ```
 
 拆分原则是按 UI 区域和可组合部件拆，而不是按业务流程堆在单文件里。

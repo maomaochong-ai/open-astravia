@@ -94,7 +94,7 @@ Greenfield 直接复用，避免建立第二套校验模型。宿主 capability 
 这不是差分断言或 TypeScript 失败。CI 门禁保留独立产物构建，不以源码直跑替代。
 
 根 `bun run check` 已执行：Biome、质量守卫、根 tsgo、CLI typecheck 与 Desktop typecheck 均通过，
-最终在既有 Admin `tsc -b` 阶段因 `packages/admin/node_modules/@types/*` 的多项声明文件缺失而失败。
+最终在既有 Admin `tsc -b` 阶段因 `apps/admin/node_modules/@types/*` 的多项声明文件缺失而失败。
 该依赖安装状态与本轮文件无关，未通过修改类型配置或删除类型引用规避。
 
 ## 明确未修改

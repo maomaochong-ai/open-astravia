@@ -57,7 +57,7 @@
 - `cli-app` 独立类型检查通过。
 - Runtime Host、IM RPC Adapter 与两类不兼容策略定向测试：4 个文件、36 个测试通过。
 - 重写治理测试：1 个文件、17 个测试通过。
-- `packages/cli-app` 全包测试：35 个文件、194 个测试全部通过。
+- `apps/cli-app` 全包测试：35 个文件、194 个测试全部通过。
 - 全包测试覆盖旧会话迁移与恢复、初始化失败清理、Extension/Hook/MCP 生命周期、Print/RPC/IM、安装后独立可执行产物、动态 Skill/MCP 更新和进程重启。
 - `bun run check:quick` 通过，新增架构守卫实际扫描结果均为 `0/0`。
 

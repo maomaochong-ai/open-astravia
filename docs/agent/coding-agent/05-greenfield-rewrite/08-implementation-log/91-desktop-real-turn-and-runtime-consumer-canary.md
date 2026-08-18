@@ -177,7 +177,7 @@ agent backend selected: greenfield
 定向执行：
 
 ```text
-cd packages/desktop-app
+cd apps/desktop-app
 bunx vitest --run \
   src/main/greenfield-runtime/desktop-runtime-host-differential.test.ts \
   src/main/greenfield-runtime/desktop-runtime-host-capabilities.test.ts \

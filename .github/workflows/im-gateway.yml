@@ -1,0 +1,83 @@
+# CI for apps/im-gateway (Go).
+#
+# This is the first GitHub Actions workflow in the repo. Future workflows
+# (TS lint, web-ui build, etc.) can be added as sibling files. Keep this
+# one scoped to the Go module so a TS-only PR does not pay the Go CI cost.
+#
+# Triggered only on changes that touch the im-gateway package or its specs.
+
+name: im-gateway
+
+on:
+  push:
+    paths:
+      - "apps/im-gateway/**"
+      - "openspec/changes/add-im-gateway-feishu/**"
+      - ".github/workflows/im-gateway.yml"
+  pull_request:
+    paths:
+      - "apps/im-gateway/**"
+      - "openspec/changes/add-im-gateway-feishu/**"
+      - ".github/workflows/im-gateway.yml"
+
+jobs:
+  build-test:
+    name: build + test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/im-gateway
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: apps/im-gateway/go.sum
+
+      - name: Verify go.mod is tidy
+        run: |
+          cp go.mod go.mod.bak
+          cp go.sum go.sum.bak
+          go mod tidy
+          diff -u go.mod.bak go.mod
+          diff -u go.sum.bak go.sum
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test
+        run: go test ./...
+
+  interface-discipline:
+    name: interface discipline grep
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/im-gateway
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upper layers must not import IM platform SDKs
+        run: ./scripts/check-interface-discipline.sh
+
+  golangci-lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: apps/im-gateway/go.sum
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: apps/im-gateway

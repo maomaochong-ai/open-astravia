@@ -12,12 +12,14 @@ const ROOT_TARGETS = ["package.json", "knip.config.ts", "scripts/quality", "pack
 
 export function collectBiomeTargets() {
 	const targets = [...ROOT_TARGETS];
-	const packagesDir = join(repoRoot, "packages");
-	for (const entry of readdirSync(packagesDir, { withFileTypes: true })) {
-		if (!entry.isDirectory()) continue;
-		for (const subdir of PACKAGE_SUBDIRS) {
-			const target = join(packagesDir, entry.name, subdir);
-			if (existsSync(target)) targets.push(relative(repoRoot, target));
+	for (const workspaceRoot of ["packages", "apps"]) {
+		const workspaceDir = join(repoRoot, workspaceRoot);
+		for (const entry of readdirSync(workspaceDir, { withFileTypes: true })) {
+			if (!entry.isDirectory()) continue;
+			for (const subdir of PACKAGE_SUBDIRS) {
+				const target = join(workspaceDir, entry.name, subdir);
+				if (existsSync(target)) targets.push(relative(repoRoot, target));
+			}
 		}
 	}
 	return targets.sort();

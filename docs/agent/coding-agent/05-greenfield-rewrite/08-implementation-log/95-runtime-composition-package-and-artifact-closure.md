@@ -38,7 +38,7 @@ Greenfield Composition
 
 ## 3. 代码归位
 
-以下实现从 `packages/cli-app/src` 迁入 `packages/runtime-composition/src`：
+以下实现从 `apps/cli-app/src` 迁入 `packages/runtime-composition/src`：
 
 - Greenfield Runtime Composition；
 - RuntimeHost Session Backend；

@@ -68,7 +68,7 @@ knip.config.ts                 Knip（可选）
 
 ```bash
 bun run --cwd packages/coding-agent test:coverage
-bun run --cwd packages/desktop-app test:coverage
+bun run --cwd apps/desktop-app test:coverage
 ```
 
 - 报告目录：包内 `coverage/`（已 gitignore）；含 text / html / lcov
@@ -125,7 +125,7 @@ Greenfield/Legacy 名称墓碑、固定文件数量、行数阈值及实施日�
 
 ## Workspace 构建顺序（`check-build-order`）
 
-根 `scripts/build.sh` 与 Desktop 的 `packages/desktop-app/scripts/build-workspace-prereqs.mjs` 都必须先构建正式 workspace 依赖，再构建依赖方。守卫会分别检查：
+根 `scripts/build.sh` 与 Desktop 的 `apps/desktop-app/scripts/build-workspace-prereqs.mjs` 都必须先构建正式 workspace 依赖，再构建依赖方。守卫会分别检查：
 
 - 根脚本中的 `build_pkg` 顺序；
 - Desktop 前置构建脚本导出的分层；
@@ -141,8 +141,8 @@ Desktop 前置构建脚本只维护参与构建的包和并行层，包之间的
 
 `check:quick` 复用同一套 Git 变更选择器，因此不会漏掉未暂存或未跟踪文件。删除文件会从 Biome 输入中排除；修改任意 `biome.json` / `biome.jsonc` 或根 `.editorconfig` 时，会自动回退为全仓 Biome，避免配置影响未被检查。它不做类型检查，不能替代任务结束时的完整 `check`。
 
-根 `tsconfig.json` 已包含 `packages/cli-app/src/**/*` 和 `packages/cli-app/test/**/*`。完整 `check`
-仍额外显式执行 `packages/cli-app` 的 `typecheck`，避免未来调整根 `include` 时静默漏掉 CLI，也让
+根 `tsconfig.json` 已包含 `apps/cli-app/src/**/*` 和 `apps/cli-app/test/**/*`。完整 `check`
+仍额外显式执行 `apps/cli-app` 的 `typecheck`，避免未来调整根 `include` 时静默漏掉 CLI，也让
 日志直接显示 CLI 门禁。
 
 `check:types:build-surfaces` 与源码 typecheck 是不同口径：它不使用根源码 path map，而是按真实
@@ -196,7 +196,7 @@ bun run deadcode:report
 
 1. desktop i18n CJK **ratchet**（基线文件数，只许下降）——当前硬编码存量大，全量 fail 不现实  
 2. CI path filter：只改 `packages/ai` 时跳过 desktop `tsc`  
-3. Go：`packages/api` / `im-gateway` 的 `go test` / golangci-lint 挂到根 `check:go`  
+3. Go：`apps/api` / `im-gateway` 的 `go test` / golangci-lint 挂到根 `check:go`  
 4. Knip 收紧后纳入 `check`  
 5. 插件 SDK **契约测试**（public API 形状快照）
 
@@ -209,7 +209,7 @@ bun run deadcode:report
 - [ ] `bun run check:precommit` 在有 staged 文件时行为正确  
 - [ ] `bun run test:pkg --list` 列出 4 个可测包  
 - [ ] `bun run check` 仍包含类型检查（比 pre-commit 更严）  
-- [ ] `bun run check` 输出中包含 `packages/cli-app` 的显式 `typecheck`
+- [ ] `bun run check` 输出中包含 `apps/cli-app` 的显式 `typecheck`
 - [ ] 生成当前 workspace 声明后，`bun run check:types:build-surfaces` 通过
 - [ ] husky `.husky/pre-commit` 调用的是 `check:precommit` 而非整仓慢 `check`  
 - [ ] 未新增 oxlint/oxfmt/pnpm 强制依赖  

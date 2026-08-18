@@ -1,0 +1,35 @@
+# golangci-lint config for apps/im-gateway.
+#
+# Mirrors the modest set of linters used by other Go packages in the repo
+# (apps/api). Adjust here if upstream packages move first; we follow.
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - gofmt
+    - goimports
+
+linters-settings:
+  goimports:
+    local-prefixes: vetta-im-gateway
+  misspell:
+    locale: US
+
+issues:
+  exclude-dirs:
+    - bin
+    - tmp
+  exclude-rules:
+    # Test files often need wide-open expectations; let them ignore errcheck
+    # for things like setup helpers.
+    - path: _test\.go
+      linters:
+        - errcheck

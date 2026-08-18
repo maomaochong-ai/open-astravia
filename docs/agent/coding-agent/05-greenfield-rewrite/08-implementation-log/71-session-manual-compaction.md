@@ -119,7 +119,7 @@ packages/runtime-storage
   bunx vitest --run test/conversation/compaction-persistence.test.ts
   2 passed
 
-packages/cli-app
+apps/cli-app
   bunx vitest --run test/greenfield-runtime-composition.test.ts
   12 passed
 

@@ -101,7 +101,7 @@ HTML 模板、CSS 和脚本是编译期受控的内部字符串资产，不是�
 
 ## 验证结果
 
-- `packages/cli-app` 定向安装产物测试：`bunx vitest --run test/installed-artifact-runtime.test.ts`，13 项全部通过。
+- `apps/cli-app` 定向安装产物测试：`bunx vitest --run test/installed-artifact-runtime.test.ts`，13 项全部通过。
 - 门禁覆盖普通 RPC 默认完整能力、IM provider frame、Provider 失败恢复、会话切换与 drain、Memory 取消、Legacy 后台任务、host response、动态 Skill/MCP、Legacy 会话迁移、不兼容回退、Extension profile 与关闭重试。
 - `bun run check:quick` 通过，包含 package boundary 和 standalone CLI build guard。
 - 根目录 `bun run check` 通过：Biome、monorepo/CLI/Desktop/Admin 类型检查和全部质量守卫均通过。

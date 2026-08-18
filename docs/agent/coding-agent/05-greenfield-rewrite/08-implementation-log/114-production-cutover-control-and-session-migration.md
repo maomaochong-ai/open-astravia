@@ -50,7 +50,7 @@ CLI、独立 Agent RPC 和 Desktop Agent RPC 入口统一将决策写入 stderr�
 
 包边界质量守卫现在禁止以下 Greenfield 产品区域使用 Legacy 启动符号：
 
-- `packages/cli-app/src/rpc/greenfield*`
+- `apps/cli-app/src/rpc/greenfield*`
 - `packages/runtime-composition/src/*`
 
 禁止符号为 `createLegacyAgentBootstrap` 和 `runLegacyAgentWithBootstrap`。检查使用 TypeScript AST，注释不会

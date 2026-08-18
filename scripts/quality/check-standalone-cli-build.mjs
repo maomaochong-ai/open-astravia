@@ -3,13 +3,13 @@ import { extname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
-const canonicalCompilerPath = "packages/cli-app/scripts/compile-standalone.mjs";
+const canonicalCompilerPath = "apps/cli-app/scripts/compile-standalone.mjs";
 const governedConsumers = [
 	"scripts/build-binaries.sh",
-	"packages/desktop-app/scripts/prepare-pack.js",
-	"packages/desktop-app/src/main/dev-cli-shim.ts",
+	"apps/desktop-app/scripts/prepare-pack.js",
+	"apps/desktop-app/src/main/dev-cli-shim.ts",
 ];
-const scanRoots = ["packages/cli-app/src", "packages/desktop-app/scripts", "packages/desktop-app/src/main"];
+const scanRoots = ["apps/cli-app/src", "apps/desktop-app/scripts", "apps/desktop-app/src/main"];
 const sourceExtensions = new Set([".js", ".mjs", ".ts", ".tsx"]);
 
 function normalizePath(value) {

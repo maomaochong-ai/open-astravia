@@ -102,16 +102,16 @@ const RETIRED_CODING_AGENT_TOOL_EXPORTS = new Set([
 ]);
 
 const RETIRED_CLI_COMPOSITION_FORWARDERS = new Set([
-	"packages/cli-app/src/conversation-ownership-binding.ts",
-	"packages/cli-app/src/greenfield-runtime-composition.ts",
-	"packages/cli-app/src/greenfield-runtime-host-session-backend.ts",
-	"packages/cli-app/src/greenfield-session-execution-runtime.ts",
-	"packages/cli-app/src/greenfield-session-peripherals.ts",
-	"packages/cli-app/src/greenfield-subagent-child.ts",
-	"packages/cli-app/src/greenfield-subagent-runtime.ts",
-	"packages/cli-app/src/greenfield-subagent-state-persistence.ts",
-	"packages/cli-app/src/rpc/greenfield-conversation-path.ts",
-	"packages/cli-app/src/runtime-tools-composition.ts",
+	"apps/cli-app/src/conversation-ownership-binding.ts",
+	"apps/cli-app/src/greenfield-runtime-composition.ts",
+	"apps/cli-app/src/greenfield-runtime-host-session-backend.ts",
+	"apps/cli-app/src/greenfield-session-execution-runtime.ts",
+	"apps/cli-app/src/greenfield-session-peripherals.ts",
+	"apps/cli-app/src/greenfield-subagent-child.ts",
+	"apps/cli-app/src/greenfield-subagent-runtime.ts",
+	"apps/cli-app/src/greenfield-subagent-state-persistence.ts",
+	"apps/cli-app/src/rpc/greenfield-conversation-path.ts",
+	"apps/cli-app/src/runtime-tools-composition.ts",
 ]);
 
 const RETIRED_CODING_AGENT_RUNTIME_HOST = "@vetta/coding-agent/runtime-host";
@@ -223,7 +223,7 @@ function checkPluginDesktopDeepImport(posixPath, specifiers, findings) {
 }
 
 function checkDesktopCliSourceImports(posixPath, specifiers, findings) {
-	if (!posixPath.startsWith("packages/desktop-app/src/")) return;
+	if (!posixPath.startsWith("apps/desktop-app/src/")) return;
 	for (const specifier of specifiers) {
 		const normalized = specifier.replaceAll("\\", "/");
 		if (normalized.includes("cli-app/src/")) {
@@ -391,8 +391,7 @@ function checkRuntimeCorePlatformImports(posixPath, text, specifiers, findings) 
 
 function checkGreenfieldLegacyStartupSymbols(posixPath, text, findings) {
 	const isGreenfieldProductModule =
-		posixPath.startsWith("packages/cli-app/src/rpc/") ||
-		posixPath.startsWith("packages/coding-agent/src/composition/");
+		posixPath.startsWith("apps/cli-app/src/rpc/") || posixPath.startsWith("packages/coding-agent/src/composition/");
 	if (!isGreenfieldProductModule) return;
 
 	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
@@ -1035,7 +1034,7 @@ function checkCodingAgentSessionHostOwnershipBoundary(posixPath, text, findings)
 
 function checkRetiredAutomaticLegacyFallback(posixPath, text, findings) {
 	const isRuntimeProductionSource =
-		(posixPath.startsWith("packages/cli-app/src/") || posixPath.startsWith("packages/coding-agent/src/")) &&
+		(posixPath.startsWith("apps/cli-app/src/") || posixPath.startsWith("packages/coding-agent/src/")) &&
 		!posixPath.endsWith(".d.ts") &&
 		!/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(posixPath);
 	if (!isRuntimeProductionSource) return;
@@ -1069,11 +1068,11 @@ function checkRetiredCompositionBoundaries(posixPath, text, specifiers, findings
 	if (RETIRED_CLI_COMPOSITION_FORWARDERS.has(posixPath)) {
 		findings.push(`${posixPath}: retired CLI composition forwarding module must stay deleted`);
 	}
-	if (posixPath === "packages/cli-app/src/index.ts" && specifiers.includes("@vetta/coding-agent/composition")) {
+	if (posixPath === "apps/cli-app/src/index.ts" && specifiers.includes("@vetta/coding-agent/composition")) {
 		findings.push(`${posixPath}: CLI public API must not re-export Coding Agent composition`);
 	}
 	if (
-		posixPath.startsWith("packages/desktop-app/src/") &&
+		posixPath.startsWith("apps/desktop-app/src/") &&
 		specifiers.includes("@vetta/cli-app") &&
 		/\b(?:CodingAgentGreenfieldActiveSessionHost|CodingToolsRuntimeComposition|GreenfieldCliSessionOptions|CodingAgentRuntimeComposition(?:Options)?|GreenfieldRuntimeHostSessionBackend|resolveGreenfieldSessionIdFromPath)\b/.test(
 			text,
@@ -1084,7 +1083,9 @@ function checkRetiredCompositionBoundaries(posixPath, text, specifiers, findings
 }
 
 function checkCodingAgentRootImports(posixPath, specifiers, findings) {
-	const isInternalConsumer = posixPath.startsWith("packages/") && !posixPath.startsWith("packages/coding-agent/");
+	const isInternalConsumer =
+		(posixPath.startsWith("packages/") || posixPath.startsWith("apps/")) &&
+		!posixPath.startsWith("packages/coding-agent/");
 	const hasStricterProductionBoundary =
 		posixPath.startsWith("packages/agent/src/") ||
 		posixPath.startsWith("packages/runtime-core/src/") ||
@@ -1191,12 +1192,12 @@ function checkCodingAgentLegacyBoundaries(posixPath, text, specifiers, findings)
 	if (!isProductionSource) return;
 	const historicalSessionPublicSubpath = "@vetta/coding-agent/historical-sessions";
 	const historicalSessionConsumers = new Set([
-		"packages/cli-app/src/coding-agent-bootstrap.ts",
-		"packages/cli-app/src/rpc/cli-session-format-compatibility.ts",
-		"packages/cli-app/src/rpc/runtime-host/runtime-host-contract.ts",
-		"packages/cli-app/src/rpc/runtime-host/runtime-host.ts",
-		"packages/cli-app/src/session-compatibility-error.ts",
-		"packages/cli-app/src/html-export-runtime.ts",
+		"apps/cli-app/src/coding-agent-bootstrap.ts",
+		"apps/cli-app/src/rpc/cli-session-format-compatibility.ts",
+		"apps/cli-app/src/rpc/runtime-host/runtime-host-contract.ts",
+		"apps/cli-app/src/rpc/runtime-host/runtime-host.ts",
+		"apps/cli-app/src/session-compatibility-error.ts",
+		"apps/cli-app/src/html-export-runtime.ts",
 		"packages/runtime-desktop/src/historical-session-format.ts",
 		"packages/runtime-desktop/src/historical-session-import-backend.ts",
 	]);
@@ -1218,7 +1219,7 @@ function checkCodingAgentLegacyBoundaries(posixPath, text, specifiers, findings)
 	};
 	visit(sourceFile);
 
-	if (posixPath.startsWith("packages/cli-app/src/") && !posixPath.startsWith("packages/cli-app/src/rpc/")) {
+	if (posixPath.startsWith("apps/cli-app/src/") && !posixPath.startsWith("apps/cli-app/src/rpc/")) {
 		for (const symbol of ["runLegacyAgent", "runLegacyAgentWithBootstrap"]) {
 			if (usedSymbols.has(symbol)) {
 				findings.push(`${posixPath}: Legacy startup symbol ${symbol} is outside the execution gateway`);
@@ -1460,8 +1461,8 @@ const roots = [
 	join(repoRoot, "packages/ui"),
 	join(repoRoot, "packages/plugins"),
 	join(repoRoot, "packages/themes"),
-	join(repoRoot, "packages/cli-app"),
-	join(repoRoot, "packages/desktop-app"),
+	join(repoRoot, "apps/cli-app"),
+	join(repoRoot, "apps/desktop-app"),
 ];
 
 export function main() {

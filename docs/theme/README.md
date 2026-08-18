@@ -4,7 +4,7 @@
 
 当前主题系统分三条线演进：
 
-- 颜色主题：已有 `packages/desktop-app/src/renderer/shared/theme/`，负责 CSS token。
+- 颜色主题：已有 `apps/desktop-app/src/renderer/shared/theme/`，负责 CSS token。
 - 主题协议：`packages/theme-sdk/` 负责主题模块、registry、appearance 配置和运行时上下文。
 - 可选 UI 库：`packages/theme-ui/` 负责 `ThemeSurface`、`CornerImageFrame` 和通用 layout primitives 等可复用 building blocks。
 

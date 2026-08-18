@@ -39,7 +39,7 @@ const COMPOSITION_PUBLIC_SOURCE_ROOTS = Object.freeze([
 const COMPOSITION_PUBLIC_EXTERNAL_SOURCES = new Set(["@vetta/runtime-storage/conversation"]);
 const PLATFORM_PERSISTENCE_COMPOSITION_ROOTS = Object.freeze([
 	{
-		path: "packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+		path: "apps/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
 		factory: "createFileConversationPersistence",
 	},
 	{
@@ -47,34 +47,34 @@ const PLATFORM_PERSISTENCE_COMPOSITION_ROOTS = Object.freeze([
 		factory: "createFileConversationPersistence",
 	},
 	{
-		path: "packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+		path: "apps/desktop-app/src/main/knowledge/processing-session-factory.ts",
 		factory: "createFileConversationPersistence",
 	},
 ]);
 const TOOL_ENVIRONMENT_COMPOSITION_ROOTS = Object.freeze([
-	"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+	"apps/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
 	"packages/runtime-desktop/src/backend-pool.ts",
-	"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+	"apps/desktop-app/src/main/knowledge/processing-session-factory.ts",
 	`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
 ]);
 const TOOL_RESULT_POLICY_COMPOSITION_ROOTS = Object.freeze([
-	"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+	"apps/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
 	"packages/runtime-desktop/src/backend-pool.ts",
-	"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+	"apps/desktop-app/src/main/knowledge/processing-session-factory.ts",
 	`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
 ]);
 const KNOWLEDGE_RUNTIME_COMPOSITION_ROOTS = Object.freeze([
-	"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
-	"packages/desktop-app/src/main/agent-runtime/composition.ts",
-	"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+	"apps/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+	"apps/desktop-app/src/main/agent-runtime/composition.ts",
+	"apps/desktop-app/src/main/knowledge/processing-session-factory.ts",
 	`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
 ]);
 const MEMORY_RUNTIME_COMPOSITION_ROOTS = Object.freeze([
-	"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
-	"packages/desktop-app/src/main/agent-runtime/composition.ts",
+	"apps/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+	"apps/desktop-app/src/main/agent-runtime/composition.ts",
 	`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
 ]);
-const RPC_HOST_COMPOSITION_ROOTS = Object.freeze(["packages/cli-app/src/rpc/runtime-host/runtime-host.ts"]);
+const RPC_HOST_COMPOSITION_ROOTS = Object.freeze(["apps/cli-app/src/rpc/runtime-host/runtime-host.ts"]);
 
 export function collectCodingAgentArchitectureState({ files, packageJson }) {
 	const normalizedFiles = files.map((file) => ({ ...file, path: normalizePath(file.path) }));
@@ -202,7 +202,7 @@ export function findCodingAgentArchitectureViolations(state) {
 	}
 
 	for (const path of [
-		"packages/cli-app/src/historical-session-host.ts",
+		"apps/cli-app/src/historical-session-host.ts",
 		"packages/runtime-desktop/src/historical-session-host.ts",
 	]) {
 		const file = state.files.find((candidate) => candidate.path === path);
@@ -277,8 +277,8 @@ function checkPortableProductDomainBoundary(state, violations) {
 	}
 
 	for (const path of [
-		"packages/cli-app/src/rpc/runtime-host/mcp-supervisor.ts",
-		"packages/desktop-app/src/main/agent-runtime/mcp-supervisor.ts",
+		"apps/cli-app/src/rpc/runtime-host/mcp-supervisor.ts",
+		"apps/desktop-app/src/main/agent-runtime/mcp-supervisor.ts",
 		`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
 	]) {
 		const file = state.files.find((candidate) => candidate.path === path);
@@ -366,8 +366,8 @@ function checkRetiredAdapterOwnershipPaths(state, violations) {
 function checkBootstrapBoundary(state, violations) {
 	const bootstrapRoot = `${SOURCE_ROOT}/bootstrap/`;
 	const bootstrapPath = `${bootstrapRoot}coding-agent-bootstrap.ts`;
-	const cliCompositionPath = "packages/cli-app/src/coding-agent-bootstrap.ts";
-	const cliResourceCompositionPath = "packages/cli-app/src/coding-agent-resource-runtime.ts";
+	const cliCompositionPath = "apps/cli-app/src/coding-agent-bootstrap.ts";
+	const cliResourceCompositionPath = "apps/cli-app/src/coding-agent-resource-runtime.ts";
 	const retiredPaths = new Set([
 		`${SOURCE_ROOT}/host/coding-agent-host-bootstrap.ts`,
 		`${SOURCE_ROOT}/host/coding-agent-cli-bootstrap.ts`,
@@ -595,7 +595,7 @@ function checkPrintModeTransportBoundary(state, violations) {
 	if (printMode && /\bprocess\.|\bconsole\.(log|error)\s*\(/.test(printMode.text)) {
 		violations.push(`${printModePath}: Print mode must consume the host PrintOutput Port`);
 	}
-	const outputPath = "packages/cli-app/src/print-output.ts";
+	const outputPath = "apps/cli-app/src/print-output.ts";
 	const output = state.files.find((file) => file.path === outputPath);
 	if (output && !/CodingAgentPrintOutputPort/.test(output.text)) {
 		violations.push(`${outputPath}: CLI Print output must implement CodingAgentPrintOutputPort`);
@@ -625,13 +625,13 @@ function checkWorkspaceFactsBoundary(state, violations) {
 	}
 	const compositionRoots = [
 		{
-			path: "packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+			path: "apps/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
 			pattern: /\bworkspaceFacts\s*:/,
 		},
 		{ path: "packages/runtime-desktop/src/backend-pool.ts", pattern: /\bworkspaceFacts\s*:/ },
 		{ path: `${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`, pattern: /\bworkspaceFacts\s*[,/:]/ },
 		{
-			path: "packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+			path: "apps/desktop-app/src/main/knowledge/processing-session-factory.ts",
 			pattern: /\bresolveWorkspaceFacts\s*:/,
 		},
 	];
@@ -663,9 +663,9 @@ function checkModelInputImageBoundary(state, violations) {
 	}
 
 	const compositionRoots = [
-		"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+		"apps/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
 		"packages/runtime-desktop/src/backend-pool.ts",
-		"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+		"apps/desktop-app/src/main/knowledge/processing-session-factory.ts",
 		`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
 	];
 	for (const path of compositionRoots) {
@@ -693,8 +693,8 @@ function checkModelDomainBoundary(state, violations) {
 	}
 
 	const modelHosts = [
-		"packages/cli-app/src/coding-agent-bootstrap.ts",
-		"packages/desktop-app/src/main/agent-runtime/host-services.ts",
+		"apps/cli-app/src/coding-agent-bootstrap.ts",
+		"apps/desktop-app/src/main/agent-runtime/host-services.ts",
 		`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
 	];
 	for (const path of modelHosts) {
@@ -716,7 +716,7 @@ function checkHtmlExportBoundary(state, violations) {
 		}
 	}
 	const nodeHosts = [
-		"packages/cli-app/src/html-export-runtime.ts",
+		"apps/cli-app/src/html-export-runtime.ts",
 		`${SOURCE_ROOT}/host/sdk-session/node-session-host.ts`,
 	];
 	for (const path of nodeHosts) {
@@ -754,8 +754,8 @@ function checkThemeDomainBoundary(state, violations) {
 		}
 	}
 	const nodeHosts = [
-		"packages/cli-app/src/coding-agent-resource-runtime.ts",
-		"packages/desktop-app/src/main/agent-runtime/resource-runtime.ts",
+		"apps/cli-app/src/coding-agent-resource-runtime.ts",
+		"apps/desktop-app/src/main/agent-runtime/resource-runtime.ts",
 		`${SOURCE_ROOT}/host/sdk-session/resource-runtime.ts`,
 	];
 	for (const path of nodeHosts) {
@@ -1216,7 +1216,7 @@ function checkRpcHostBoundary(state, violations) {
 		}
 	}
 
-	const nodeClientTransportPath = "packages/cli-app/src/rpc/node-rpc-client-transport.ts";
+	const nodeClientTransportPath = "apps/cli-app/src/rpc/node-rpc-client-transport.ts";
 	const nodeClientTransport = state.files.find((file) => file.path === nodeClientTransportPath);
 	if (nodeClientTransport) {
 		const importsPort = state.edges.some(
@@ -1296,7 +1296,7 @@ function checkToolEnvironmentBoundary(state, violations) {
 	const sandboxRegistrationPath = `${SOURCE_ROOT}/execution/sandbox/tool-registrations.ts`;
 	const pathPolicyRoot = `${SOURCE_ROOT}/tool-policy/path/`;
 	const platformFactories = [
-		"packages/cli-app/src/rpc/runtime-host/cli-tool-environment.ts",
+		"apps/cli-app/src/rpc/runtime-host/cli-tool-environment.ts",
 		"packages/runtime-desktop/src/coding-agent-tool-environment.ts",
 	];
 	const migratedCompositionRoots = TOOL_ENVIRONMENT_COMPOSITION_ROOTS.filter(
@@ -1611,9 +1611,10 @@ function readCurrentInput() {
 		path: rel(path),
 		text: readText(path),
 	}));
-	const consumerFiles = walkFiles(join(repoRoot, "packages"), {
-		extensions: [".ts", ".tsx", ".js", ".mjs", ".cjs"],
-	})
+	const consumerFiles = ["packages", "apps"]
+		.flatMap((workspaceRoot) =>
+			walkFiles(join(repoRoot, workspaceRoot), { extensions: [".ts", ".tsx", ".js", ".mjs", ".cjs"] }),
+		)
 		.filter((path) => !normalizePath(path).includes("/node_modules/") && !normalizePath(path).includes("/dist/"))
 		.map((path) => ({ path: rel(path), text: readText(path) }))
 		.filter(

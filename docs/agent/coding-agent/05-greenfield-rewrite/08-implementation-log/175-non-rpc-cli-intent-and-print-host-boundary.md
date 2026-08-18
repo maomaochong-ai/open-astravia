@@ -81,7 +81,7 @@ CLI 组合仍创建原有 `AgentSession`，随后包装为适配器交给 Print 
 
 ### 标准 CLI 进程测试
 
-从 `packages/cli-app/src/cli.ts` 构建标准 `vetta` 测试入口，连接本地 OpenAI Responses fixture，验证：
+从 `apps/cli-app/src/cli.ts` 构建标准 `vetta` 测试入口，连接本地 OpenAI Responses fixture，验证：
 
 - `--print` 仍通过 Legacy Session 返回最终文本。
 - `--mode json` 仍产生 JSON 事件和模型响应。

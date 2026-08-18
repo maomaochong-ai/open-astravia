@@ -15,7 +15,7 @@
 
 ## 2. 真实产物探针暴露的问题
 
-按 Desktop 打包使用的 `bun build --compile` 方式编译 `packages/cli-app/src/cli.ts` 后，探针发现两处
+按 Desktop 打包使用的 `bun build --compile` 方式编译 `apps/cli-app/src/cli.ts` 后，探针发现两处
 此前源码测试无法覆盖的问题。
 
 ### 2.1 顶层 CLI 不能进入 Agent

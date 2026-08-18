@@ -25,7 +25,7 @@ TypeBox 识别、但不属于当前 Profile 的命令返回明确的 unsupported
 
 ## 3. Greenfield IM RPC Adapter
 
-`packages/cli-app/src/rpc/greenfield-im-rpc-session-adapter.ts` 位于产品宿主组合层，不进入 Kernel 或
+`apps/cli-app/src/rpc/greenfield-im-rpc-session-adapter.ts` 位于产品宿主组合层，不进入 Kernel 或
 Runtime Core。它负责：
 
 - 将 RPC prompt、steer/follow-up 语义适配到 Greenfield PromptRequest。

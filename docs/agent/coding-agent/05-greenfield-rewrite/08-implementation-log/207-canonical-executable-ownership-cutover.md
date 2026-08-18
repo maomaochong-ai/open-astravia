@@ -25,7 +25,7 @@
 
 ### 1. CLI App 获得 Agent 专用入口
 
-新增 `packages/cli-app/src/agent-cli.ts`，它只调用现有 `runAgentCli()`。三个入口职责现在是：
+新增 `apps/cli-app/src/agent-cli.ts`，它只调用现有 `runAgentCli()`。三个入口职责现在是：
 
 | 命令 | 入口 | 职责 |
 | --- | --- | --- |

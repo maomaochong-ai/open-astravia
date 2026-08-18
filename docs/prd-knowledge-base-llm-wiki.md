@@ -97,7 +97,7 @@
 - raw ↔ wiki = **1:1**。
 
 ### 摄入：惰性轮询 + 后台 agent 会话
-- 工程侧调度器（仿 `packages/desktop-app/src/main/scheduler/` 的 `ToadScheduler` 用法）每 N 分钟对 raws 算 hash diff，攒批。
+- 工程侧调度器（仿 `apps/desktop-app/src/main/scheduler/` 的 `ToadScheduler` 用法）每 N 分钟对 raws 算 hash diff，攒批。
 - diff 非空则用无头会话 API（`createAgentSession({ cwd, model, skill })` + `session.sendPrompt()`，见 coding-agent SDK）起一个加工会话，cwd = `KB_PROCESSING_CWD`，prompt = 本轮 diff 批次 + 上轮孤儿复判清单。一轮一会话。
 - diff 四态及后果：
   - **added**（新 path、新 hash、无 path 匹配）→ agent 新建页，`kb_write_page` 分配 id。

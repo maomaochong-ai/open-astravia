@@ -5,7 +5,7 @@
 ## 当前目录
 
 ```txt
-packages/desktop-app/src/renderer/domains/project/components/sidebar/
+apps/desktop-app/src/renderer/domains/project/components/sidebar/
   Sidebar.tsx
   DefaultSidebar.tsx
   SidebarPanel.tsx

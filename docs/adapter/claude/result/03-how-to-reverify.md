@@ -15,7 +15,7 @@ bunx vitest --run test/claude-hooks.test.ts
 ### 1. 启动
 
 ```powershell
-cd C:\develop\yiyun\vetta-mono\packages\desktop-app
+cd C:\develop\yiyun\vetta-mono\apps\desktop-app
 bun dev
 ```
 
@@ -23,7 +23,7 @@ bun dev
 
 ```powershell
 cd C:\develop\yiyun\vetta-mono
-bun packages/cli-app/src/cli.ts debug run ui.info
+bun apps/cli-app/src/cli.ts debug run ui.info
 ```
 
 ### 3. SessionStart
@@ -36,7 +36,7 @@ $payload = @{
   timeoutMs = 180000
 } | ConvertTo-Json -Compress
 
-bun packages/cli-app/src/cli.ts debug run conversation.create $payload
+bun apps/cli-app/src/cli.ts debug run conversation.create $payload
 ```
 
 保存返回的 `sessionPath`。
@@ -61,7 +61,7 @@ $payload = @{
   timeoutMs = 60000
 } | ConvertTo-Json -Compress
 
-bun packages/cli-app/src/cli.ts debug run conversation.continue $payload
+bun apps/cli-app/src/cli.ts debug run conversation.continue $payload
 ```
 
 期望：`ok:false`，message 含 `Agent Teams`。
@@ -122,4 +122,4 @@ playwright-cli -s=vetta snapshot
 playwright-cli -s=vetta detach
 ```
 
-定位失败时对照 `packages/desktop-app/src/renderer` 源码，不要只猜 aria/selector。
+定位失败时对照 `apps/desktop-app/src/renderer` 源码，不要只猜 aria/selector。

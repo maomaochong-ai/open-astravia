@@ -103,7 +103,7 @@ Canary Runner 现在接受该恢复结果，校验问题身份后通过 `convers
 Desktop 定向类型检查：
 
 ```text
-tsc --noEmit -p packages/desktop-app/tsconfig.json
+tsc --noEmit -p apps/desktop-app/tsconfig.json
 通过
 ```
 

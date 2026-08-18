@@ -52,7 +52,7 @@ export function findVitestRunnerViolations(manifestPath, manifest) {
 
 function collectPackageManifests(rootPath) {
 	const files = [join(rootPath, "package.json")];
-	const stack = [join(rootPath, "packages")];
+	const stack = [join(rootPath, "packages"), join(rootPath, "apps")];
 	while (stack.length > 0) {
 		const current = stack.pop();
 		let entries;

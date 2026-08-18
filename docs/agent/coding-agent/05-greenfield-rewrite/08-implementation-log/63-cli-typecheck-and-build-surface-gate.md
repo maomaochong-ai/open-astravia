@@ -3,7 +3,7 @@
 ## 问题
 
 第 62 轮执行 `bun run check` 时，根 `tsgo --noEmit` 通过。后续单独使用
-`packages/cli-app/tsconfig.build.json` 检查时出现三个错误：
+`apps/cli-app/tsconfig.build.json` 检查时出现三个错误：
 
 ```text
 缺少 createCodingAgentPromptRuntime 导出
@@ -17,7 +17,7 @@ CodingAgentModelCallFrameComposerOptions 缺少 readMcpPromptState
 2. `cli-app/tsconfig.build.json` 按 workspace 包的 `dist/*.d.ts` 检查真实构建消费面。
 
 根 `--listFiles` 已确认包含
-`packages/cli-app/src/greenfield-runtime-composition.ts`，所以问题不是根检查漏掉该文件；三个错误来自
+`apps/cli-app/src/greenfield-runtime-composition.ts`，所以问题不是根检查漏掉该文件；三个错误来自
 `coding-agent` 和 `runtime-mcp` 的声明产物仍是第 61 轮版本。
 
 此前将 `bun run check` 通过概括为“全部类型检查通过”不够准确：它只证明源码图通过，不证明生成
@@ -53,7 +53,7 @@ bun run check:types:build-surfaces
 该命令执行：
 
 ```text
-tsgo --noEmit -p packages/cli-app/tsconfig.build.json
+tsgo --noEmit -p apps/cli-app/tsconfig.build.json
 ```
 
 它有意不并入只读 `bun run check`，原因是 build config 按真实 `dist/*.d.ts` 解析；上游源码修改后，
@@ -86,14 +86,14 @@ coding-agent
 根和包级 `--listFiles` 均包含：
 
 ```text
-packages/cli-app/src/greenfield-runtime-composition.ts
+apps/cli-app/src/greenfield-runtime-composition.ts
 ```
 
 以下两种源码检查均通过：
 
 ```text
-bun run --cwd packages/cli-app typecheck
-bunx tsc --noEmit -p packages/cli-app/tsconfig.json
+bun run --cwd apps/cli-app typecheck
+bunx tsc --noEmit -p apps/cli-app/tsconfig.json
 ```
 
 ### Build Surface
@@ -114,7 +114,7 @@ bun run check
 结果：全部通过。`check` 输出已明确显示：
 
 ```text
-bun run --cwd packages/cli-app typecheck
+bun run --cwd apps/cli-app typecheck
 ```
 
 ## 边界

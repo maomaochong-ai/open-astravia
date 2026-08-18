@@ -65,12 +65,12 @@ Legacy CLI 在构造 `AgentSession` 前已经写入模型和思考级别元数�
 
 ## 实施范围
 
-- `packages/cli-app/src/rpc/greenfield-im-runtime-host.ts`
+- `apps/cli-app/src/rpc/greenfield-im-runtime-host.ts`
   - 注入默认 Vetta 嵌套 Hook 配置层；
   - 通过现有 Session Hook Port 保留 CLI 首次 `resume` 兼容语义。
 - `packages/coding-agent/src/modes/rpc/rpc-mode.ts`
   - EOF 与主动关闭统一为一次性 `shutdown → dispose` 生命周期。
-- `packages/cli-app/test/agent-runtime-session-lifecycle-side-effects-differential.test.ts`
+- `apps/cli-app/test/agent-runtime-session-lifecycle-side-effects-differential.test.ts`
   - 构建真实 RPC CLI bundle；
   - 创建真实 TypeScript Extension、Codex/Claude 项目 Hook 配置和 command 子进程；
   - 对 Legacy/Greenfield 的完整联合时间线做精确差分。

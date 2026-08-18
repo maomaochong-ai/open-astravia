@@ -167,7 +167,7 @@ sequenceDiagram
 
 ## 4.7 与现有日志的关系
 
-packages/desktop-app/src/main/logger.ts 继续负责 main、render、im 文本日志：
+apps/desktop-app/src/main/logger.ts 继续负责 main、render、im 文本日志：
 
 - 不新增第二套文本日志文件；
 - 不把整份日志作为 Sentry attachment；

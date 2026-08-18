@@ -126,24 +126,24 @@ IM Gateway 在握手时读取该字段，并通过结构化宿主日志上报：
 定向验证：
 
 ```text
-packages/desktop-app:
+apps/desktop-app:
   bunx vitest --run src/main/im-host/coding-agent-spec.test.ts
 
 packages/coding-agent:
   bunx vitest --run test/rpc/legacy-rpc-session-adapter.test.ts test/rpc/rpc-command-dispatcher.test.ts
 
-packages/cli-app:
+apps/cli-app:
   bun run typecheck
   bunx vitest --run test/greenfield-im-rpc-adapter.test.ts test/agent-runtime-selection.test.ts
 
-packages/im-gateway:
+apps/im-gateway:
   go test ./internal/hostclient/local
   go test ./internal/hostproto
   go test ./cmd/im-gateway
 
 repository root:
   bun run check:quick
-  bunx tsc --noEmit -p packages/desktop-app/tsconfig.json
+  bunx tsc --noEmit -p apps/desktop-app/tsconfig.json
   bun run check
 ```
 

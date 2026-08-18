@@ -446,7 +446,7 @@ export interface SystemAdapterContext {
 ```
 
 `SystemAdapterContext` 不包含 Plugin、Theme、Action 字段。具体权限映射、Subject 生成和 facade 包装放在其
-所有者目录；当前 Desktop 集成位于 `packages/desktop-app/src/main/capabilities/integrations/` 及对应 Renderer
+所有者目录；当前 Desktop 集成位于 `apps/desktop-app/src/main/capabilities/integrations/` 及对应 Renderer
 Plugin/Theme runtime，`capability-sdk` 不提供系统 Adapter 或内部导出。
 
 适配层是完整的一层，不是散落在 Desktop IPC 目录中的辅助函数。一个系统的权限展开、Subject 生成、namespace 绑定和 Capability 调用包装应聚合在同一个系统模块中；只有当单个系统适配器本身复杂到包含多个独立职责时才继续拆分，避免按每个能力创建一个文件。
@@ -549,7 +549,7 @@ packages/capability-sdk/
 packages/capability-runtime/
   src/                    # Registry、Hub、权限执行、审计
 
-packages/desktop-app/src/main/capabilities/integrations/
+apps/desktop-app/src/main/capabilities/integrations/
   plugin/                 # Desktop Plugin 权限映射与 facade
   theme-capability-adapter.ts
 
@@ -578,7 +578,7 @@ packages/plugins/plugin-sdk/ # Plugin 开发者公开 API
 Desktop Provider 建议放置在：
 
 ```text
-packages/desktop-app/src/main/capabilities/
+apps/desktop-app/src/main/capabilities/
   capability-host.ts
   foundation-providers.ts
   domain-providers.ts
@@ -617,7 +617,7 @@ window.vetta.capabilities.invoke({
 - Capability Token 已统一使用 TypeBox Schema 作为静态类型、运行时 parser 与 JSON Schema 的单一来源，并由 Token 生成不包含执行函数的只读 Catalog。当前已声明的 29 个 Foundation Token 和 103 个 Domain Token 已全部完成迁移；TypeBox 校验错误会转换为稳定 Capability 错误码，`undefined` 输出使用独立的无载荷 Schema，Token 定义在类型层强制提供输入和输出 Schema。
 - Foundation、Domain 聚合 Catalog 以及公开文档由 Token 自动生成；完整 Schema 见 [`catalog.json`](catalog.json)，可读目录见 [`catalog.md`](catalog.md)。质量门禁会拒绝过期的生成文件、手写 parser Token 和未发布 Catalog 的能力定义文件。
 - `packages/capability-runtime` 提供 Foundation/Domain 双 Registry、Capability Hub、Provider 原子替换、替换或卸载时的在途调用中止、Capability Module/publisher 校验、精确 Grant、AccessSession、namespace constraint 和审计事件。
-- `packages/desktop-app/src/main/capabilities` 提供 Desktop Capability Host、基础存储/文件/网络 Provider、Agent 设置/通用设置/IM 桥接/模型配置/MCP 配置/项目/会话/下载/调度/Webhook/知识库/批量任务/应用更新/技能管理/全局快捷键/快捷面板领域 Provider 和原生后端装配；已抽取领域服务的原 IPC 与 Capability Provider 复用同一实现，通用配置桥则与领域服务共享底层 config store。
+- `apps/desktop-app/src/main/capabilities` 提供 Desktop Capability Host、基础存储/文件/网络 Provider、Agent 设置/通用设置/IM 桥接/模型配置/MCP 配置/项目/会话/下载/调度/Webhook/知识库/批量任务/应用更新/技能管理/全局快捷键/快捷面板领域 Provider 和原生后端装配；已抽取领域服务的原 IPC 与 Capability Provider 复用同一实现，通用配置桥则与领域服务共享底层 config store。
 - Desktop Capability Host 单例持有 Theme Adapter 和 Plugin Adapter；IPC 只复用实例，不重复创建或负责销毁。
 - Theme Storage 主进程路径已经迁移为 `Theme SDK facade -> 宿主桥接 -> 内置 Theme Adapter -> AccessSession -> Foundation Storage Capability -> 现有持久化后端`。
 - Theme SDK、renderer storage hook、preload API、IPC channel 和磁盘格式保持兼容。

@@ -39,10 +39,10 @@
 
 新增：
 
-- `packages/desktop-app/src/main/app-debug/conversation/cli-runtime-canary.test.ts`
+- `apps/desktop-app/src/main/app-debug/conversation/cli-runtime-canary.test.ts`
 
 Canary 没有直接调用 Debug Definition，也没有直接调用 `RuntimeHost.prompt()`。三个会话动作均由
-`packages/cli-app/src/cli.ts` 启动的独立进程完成。
+`apps/cli-app/src/cli.ts` 启动的独立进程完成。
 
 测试断言：
 
@@ -72,7 +72,7 @@ Debug 命令尚未解析，就被无关 Runtime 模块的工作区链接或陈�
 
 新增：
 
-- `packages/cli-app/src/run-cli.ts`
+- `apps/cli-app/src/run-cli.ts`
 
 调整：
 
@@ -168,7 +168,7 @@ schema 负责。
 定向执行：
 
 ```text
-cd packages/desktop-app
+cd apps/desktop-app
 bunx vitest --run src/main/app-debug/conversation/cli-runtime-canary.test.ts
 
 cd packages/runtime-storage

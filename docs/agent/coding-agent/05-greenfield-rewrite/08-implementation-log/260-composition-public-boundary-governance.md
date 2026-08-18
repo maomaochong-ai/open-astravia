@@ -58,7 +58,7 @@
 - 重写治理测试：1 个文件、18 个测试通过。
 - CLI 和 Desktop 独立类型检查通过。
 - `packages/coding-agent` 全包测试：128 个文件通过、1 个文件跳过；890 个测试通过、17 个跳过。
-- `packages/cli-app` 全包测试：34 个文件、185 个测试全部通过。
+- `apps/cli-app` 全包测试：34 个文件、185 个测试全部通过。
 - 测试迁移前后两个包的通过用例总数保持 `1075`，没有删除行为场景。
 - `bun run check:quick` 通过。
 - 根 `bun run check` 通过，覆盖 Biome、monorepo、CLI、Desktop、Admin 类型检查和全部质量守卫。

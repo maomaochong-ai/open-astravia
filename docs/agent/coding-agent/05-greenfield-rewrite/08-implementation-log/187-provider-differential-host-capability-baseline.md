@@ -17,7 +17,7 @@
 
 ## 本阶段实施
 
-修改 `packages/cli-app/test/agent-runtime-provider-differential.test.ts`：
+修改 `apps/cli-app/test/agent-runtime-provider-differential.test.ts`：
 
 1. 增加类型受约束的共享配置 `PROVIDER_DIFFERENTIAL_HOST_OPTIONS`，统一启用 Host Bridge 并使用 `im-claw` 场景；
 2. 将共享配置应用到主测试进程、上下文压缩后的重启进程，以及迁移会话后的重启进程；

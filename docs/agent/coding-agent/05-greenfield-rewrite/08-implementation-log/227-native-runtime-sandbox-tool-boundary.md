@@ -66,7 +66,7 @@ Sandbox 是 Greenfield Session 的真实生产执行路径。旧实现此前仍�
 
 ```text
 packages/coding-agent: greenfield-sandbox-runtime-tools.test.ts — 6 passed
-packages/cli-app: greenfield-session-execution-runtime.test.ts — 3 passed
+apps/cli-app: greenfield-session-execution-runtime.test.ts — 3 passed
 packages/runtime-tools: read/write/edit runtime contracts — 54 passed
 packages/runtime-tools: command-runtime-contract.test.ts — 11 passed
 bun run check:quick — passed

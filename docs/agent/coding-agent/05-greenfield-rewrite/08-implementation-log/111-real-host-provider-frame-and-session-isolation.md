@@ -13,7 +13,7 @@
 
 ## 2. 真实 CLI/RPC/IM Provider Frame
 
-现有差分测试会从 `packages/cli-app/src/agent-rpc-cli.ts` 构建临时可执行文件，再以独立子进程、独立工作区、
+现有差分测试会从 `apps/cli-app/src/agent-rpc-cli.ts` 构建临时可执行文件，再以独立子进程、独立工作区、
 独立 Agent 配置目录和本地 OpenAI Responses Server 分别运行 `legacy` 与 `greenfield-im`。新增合同直接比较
 第一轮完整 Provider 请求：
 

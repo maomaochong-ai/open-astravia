@@ -57,7 +57,7 @@
 
 - `bun run check:quick`：通过；包含 package boundaries、rewrite progress、build order 和 standalone CLI build 守卫。
 - `bun run test:quality`：通过，4 个测试文件、89 个测试。
-- `packages/cli-app` 执行 `bun run test`：通过，36 个测试文件、195 个测试。
+- `apps/cli-app` 执行 `bun run test`：通过，36 个测试文件、195 个测试。
 - `packages/coding-agent` 执行迁移后的 4 个测试文件：通过，12 个测试。
 - Coding Agent 全包测试执行过但未全绿：897 个测试中 868 通过、17 跳过、12 失败。10 个失败来自既有 Windows shell/API key 测试；另 2 个来自本阶段未修改的 Session initialization profile 和 Subagent assembly 断言。上述失败不涉及本阶段删除的包、转发层或迁移测试，未在架构阶段顺带修改。
 

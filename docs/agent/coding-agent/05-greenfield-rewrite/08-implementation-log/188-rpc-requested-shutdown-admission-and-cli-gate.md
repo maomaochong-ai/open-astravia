@@ -51,13 +51,13 @@ fresh、resume、continue 用例连续启动三个真实 CLI 进程，隔离运�
 
 ### CLI 差异测试
 
-修改 `packages/cli-app/test/agent-runtime-command-admission-differential.test.ts`：
+修改 `apps/cli-app/test/agent-runtime-command-admission-differential.test.ts`：
 
 - 定义受 `StartAgentRpcOptions` 静态约束的共享 Host profile；
 - Legacy 与 Greenfield 均启用 Host Bridge 并使用 `im-claw` 场景；
 - 套件中的全部 RPC 进程使用相同 Host profile，只替换 backend。
 
-修改 `packages/cli-app/test/agent-runtime-selection.test.ts`，仅为启动三个真实进程的 fresh/resume/continue 用例设置 30 秒局部超时，没有修改全局测试预算。
+修改 `apps/cli-app/test/agent-runtime-selection.test.ts`，仅为启动三个真实进程的 fresh/resume/continue 用例设置 30 秒局部超时，没有修改全局测试预算。
 
 本阶段不需要 TypeBox 或 Zod。改动没有新增不可信运行时输入边界，测试选项已有 TypeScript 类型约束。
 

@@ -69,7 +69,7 @@ Vetta 要把 Agent 分成 Work（偏文档处理）与 Coding（偏严谨编程�
   `selectCodingToolRegistrations`）同样删除了 agent_mode 过滤分支：`agentModes: ["work"]` 的 5 个文档工具与
   `progress` 现在在两种模式下都激活。该函数只保留 `scopeUse` ∩ `requires` 两轴，模式偏好由宿主消费。
 - **插件**：插件级 `agent_mode` 硬闸删除。插件的 UI 面板、侧边栏入口、命令与 MF bundle 一律常驻加载，
-  不再按模式排除（`packages/desktop-app/src/main/plugins/plugin-agent-mode-policy.ts` 整文件删除，
+  不再按模式排除（`apps/desktop-app/src/main/plugins/plugin-agent-mode-policy.ts` 整文件删除，
   `PluginLifecycleService.listVisible()` 改名 `list()` 且不再过滤）。
 - **Hook**：插件 hook 的模式闸一并取消，任何模式下都触发，只由 `scope_use`、`eventName` 与 `toolNames`
   matcher 决定。Hook 没有「排序」这种中间态，软化即等于不过滤。
@@ -130,7 +130,7 @@ session overlay 接受并在后续 Turn 发布」的 pending 分支因为不再�
 - **已知行为变化：hook 不再按模式过滤。** 工作模式下会触发编程类插件声明的 hook，反之亦然。这是权衡后
   明确接受的代价：hook 的正确边界本来就该由 `scope_use` 与事件/工具 matcher 表达，用模式兜底属于借位；
   代价是声明了 `agent_mode` 却依赖它做过滤的既有 hook 会在更多场景被触发，需要作者改用真正的 matcher。
-  这一点在代码注释与 `packages/desktop-app/CHANGELOG.md`、`packages/plugins/plugin-sdk/CHANGELOG.md`
+  这一点在代码注释与 `apps/desktop-app/CHANGELOG.md`、`packages/plugins/plugin-sdk/CHANGELOG.md`
   中同样写明。
 - **manifest 与注册字段全部保留**：`plugin.agent_mode`、tool / hook 注册的 `agent_mode`、MCP server 配置的
   `agent_mode` 仍被解析、存储并透传，下游只可用于排序与提示词详略。既有插件无需改 manifest，语义从
@@ -141,7 +141,7 @@ session overlay 接受并在后续 Turn 发布」的 pending 分支因为不再�
 - **迁移影响（runtime-core）**：`setGlobalAgentMode()` / `applyPendingAgentMode()` 及 `SessionHandle` 的
   mode pending 通道删除，属 Breaking Change，已记入 `packages/runtime-core/CHANGELOG.md`。
 - **历史会话**：desktop 侧以会话文件同目录的 `agent-modes.json` 轻量索引记录 sessionId → mode
-  （`packages/desktop-app/src/main/conversations/session-agent-mode-store.ts`），已有记录不覆盖。缺记录的
+  （`apps/desktop-app/src/main/conversations/session-agent-mode-store.ts`），已有记录不覆盖。缺记录的
   历史会话回落到常量 `"work"`，**不回落当前默认值**——否则改默认值会改写老会话的表现。
 - **CLI / headless 不变**：不传 mode 即无偏好，行为与原决策一致。
 - **ADR-0041 不受影响**：见该 ADR 的补充说明，`contributionMode.hardIsolation` 是另一条独立机制。

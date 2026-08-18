@@ -18,7 +18,7 @@ function collectTargets(stagedOnly) {
 			.map((f) => join(repoRoot, f))
 			.filter((f) => existsSync(f) && !isBinaryLike(f));
 	}
-	const roots = ["packages", "scripts"].map((d) => join(repoRoot, d));
+	const roots = ["packages", "apps", "scripts"].map((d) => join(repoRoot, d));
 	const files = [];
 	for (const root of roots) {
 		files.push(...walkFiles(root));

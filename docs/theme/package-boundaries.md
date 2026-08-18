@@ -147,13 +147,13 @@ packages/themes/
 
 - `packages/theme-sdk`：主题协议和运行时上下文。
 - `packages/theme-ui`：`ThemeSurface`、`CornerImageFrame` 和基础 layout primitives。
-- desktop-app：通过 `packages/desktop-app/src/renderer/shared/theme/registry.ts` 声明当前支持的 region/component/surface id。
+- desktop-app：通过 `apps/desktop-app/src/renderer/shared/theme/registry.ts` 声明当前支持的 region/component/surface id。
 - `packages/themes/builtin/xianxia`：第一个独立内置主题包。
 - desktop-app：主进程扫描内置/远程主题目录，renderer 通过统一 runtime loader 恢复已选择主题并在失败时回退默认主题。
 
 当前仍保留在 desktop-app：
 
 - 默认 sidebar/app-shell 组件。
-- `packages/desktop-app/src/renderer/shared/theme/sdk/` 作为桌面端公开 UI 导出桶。
+- `apps/desktop-app/src/renderer/shared/theme/sdk/` 作为桌面端公开 UI 导出桶。
 
 后续如果要让默认 UI 组件被远程主题稳定复用，应把 props 驱动的 view 迁入独立默认主题 UI 包或更明确的 desktop theme UI 包，而不是放进 `@vetta/theme-sdk`。connected 容器继续留在 desktop-app。

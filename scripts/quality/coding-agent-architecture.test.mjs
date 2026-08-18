@@ -46,7 +46,7 @@ describe("Coding Agent architecture gate", () => {
 				text: 'import type { RuntimeOptions } from "../../composition/contracts/index.js";',
 			},
 			{
-				path: "packages/cli-app/src/runtime.ts",
+				path: "apps/cli-app/src/runtime.ts",
 				text: 'import { createCodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";',
 			},
 		]);
@@ -81,7 +81,7 @@ describe("Coding Agent architecture gate", () => {
 		],
 		[
 			"consumer deep import",
-			"packages/cli-app/src/runtime.ts",
+			"apps/cli-app/src/runtime.ts",
 			'import { value } from "@vetta/coding-agent/src/private.js";',
 			"consumer uses a non-public Coding Agent subpath",
 		],
@@ -210,7 +210,7 @@ describe("Coding Agent architecture gate", () => {
 		const valid = createState([
 			{ path: `${SOURCE_ROOT}/modes/print-mode.ts`, text: "output.writeLine(value);" },
 			{
-				path: "packages/cli-app/src/print-output.ts",
+				path: "apps/cli-app/src/print-output.ts",
 				text: "import type { CodingAgentPrintOutputPort } from '@vetta/coding-agent/bootstrap';",
 			},
 		]);
@@ -347,7 +347,7 @@ describe("Coding Agent architecture gate", () => {
 					text: 'export { createNewCapability } from "./new-capability.js";',
 				},
 				{
-					path: "packages/cli-app/src/new-capability.ts",
+					path: "apps/cli-app/src/new-capability.ts",
 					text: 'import { createNewCapability } from "@vetta/coding-agent/new-capability";',
 				},
 			],
@@ -374,7 +374,7 @@ describe("Coding Agent architecture gate", () => {
 		const state = createState(
 			[
 				{
-					path: "packages/cli-app/src/plugins.ts",
+					path: "apps/cli-app/src/plugins.ts",
 					text: [
 						'import { official } from "@vetta/coding-agent/plugins/official";',
 						'import { privateValue } from "@vetta/coding-agent/private/value";',
@@ -401,13 +401,13 @@ describe("Coding Agent architecture gate", () => {
 	});
 
 	it.each([
-		"packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
+		"apps/cli-app/src/rpc/runtime-host/cli-session-assembly.ts",
 		"packages/runtime-desktop/src/backend-pool.ts",
-		"packages/desktop-app/src/main/knowledge/processing-session-factory.ts",
+		"apps/desktop-app/src/main/knowledge/processing-session-factory.ts",
 	])("requires %s to select and inject Node conversation persistence", (path) => {
-		const requiresMemoryStorage = path === "packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts";
+		const requiresMemoryStorage = path === "apps/cli-app/src/rpc/runtime-host/cli-session-assembly.ts";
 		const workspaceFactsProperty =
-			path === "packages/desktop-app/src/main/knowledge/processing-session-factory.ts"
+			path === "apps/desktop-app/src/main/knowledge/processing-session-factory.ts"
 				? "resolveWorkspaceFacts: hostWorkspaceFactsResolver,"
 				: "workspaceFacts: hostWorkspaceFacts,";
 		const missing = createState([
@@ -493,7 +493,7 @@ describe("Coding Agent architecture gate", () => {
 		const selectionPath = `${SOURCE_ROOT}/models/selection/model-selection.ts`;
 		const importingNode = createState([{ path: configPath, text: 'import { readFileSync } from "node:fs";' }]);
 		const exitingProcess = createState([{ path: selectionPath, text: "process.exit(1);" }]);
-		const hostPath = "packages/cli-app/src/coding-agent-bootstrap.ts";
+		const hostPath = "apps/cli-app/src/coding-agent-bootstrap.ts";
 		const missingHostSource = createState([
 			{ path: hostPath, text: "createCodingAgentModelRuntime(auth, { modelsJsonPath });" },
 		]);
@@ -512,7 +512,7 @@ describe("Coding Agent architecture gate", () => {
 	it("keeps HTML export rendering independent from Node files", () => {
 		const runtimePath = `${SOURCE_ROOT}/export-html/create-runtime.ts`;
 		const importingNode = createState([{ path: runtimePath, text: 'import { writeFileSync } from "node:fs";' }]);
-		const hostPath = "packages/cli-app/src/html-export-runtime.ts";
+		const hostPath = "apps/cli-app/src/html-export-runtime.ts";
 		const missingHostAdapter = createState([{ path: hostPath, text: "createCodingAgentHtmlExportRuntime();" }]);
 
 		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
@@ -569,8 +569,8 @@ describe("Coding Agent architecture gate", () => {
 
 	it("keeps path policy portable and selects Node ToolEnvironment mechanisms in platform roots", () => {
 		const pathPolicyPath = `${SOURCE_ROOT}/tool-policy/path/path-policy-boundaries.ts`;
-		const cliCompositionPath = "packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts";
-		const cliFactoryPath = "packages/cli-app/src/rpc/runtime-host/cli-tool-environment.ts";
+		const cliCompositionPath = "apps/cli-app/src/rpc/runtime-host/cli-session-assembly.ts";
+		const cliFactoryPath = "apps/cli-app/src/rpc/runtime-host/cli-tool-environment.ts";
 		const importingNode = createState([{ path: pathPolicyPath, text: 'import { resolve } from "node:path";' }]);
 		const selectingLegacyFactory = createState([
 			{
@@ -646,7 +646,7 @@ describe("Coding Agent architecture gate", () => {
 		const themePath = `${SOURCE_ROOT}/theme/theme-state.ts`;
 		const importingNode = createState([{ path: themePath, text: 'import { watch } from "node:fs";' }]);
 		const readingProcess = createState([{ path: themePath, text: "const environment = process.env;" }]);
-		const cliHostPath = "packages/cli-app/src/coding-agent-resource-runtime.ts";
+		const cliHostPath = "apps/cli-app/src/coding-agent-resource-runtime.ts";
 		const missingHost = createState([{ path: cliHostPath, text: "loadThemeFromContent(path, content);" }]);
 
 		expect(findCodingAgentArchitectureViolations(importingNode)).toContain(
@@ -826,8 +826,8 @@ describe("Coding Agent architecture gate", () => {
 		const rpcModePath = `${SOURCE_ROOT}/rpc/rpc-mode.ts`;
 		const bridgePath = `${SOURCE_ROOT}/rpc/rpc-host-bridge.ts`;
 		const clientPath = `${SOURCE_ROOT}/rpc/rpc-client.ts`;
-		const hostPath = "packages/cli-app/src/rpc/runtime-host/runtime-host.ts";
-		const nodeClientTransportPath = "packages/cli-app/src/rpc/node-rpc-client-transport.ts";
+		const hostPath = "apps/cli-app/src/rpc/runtime-host/runtime-host.ts";
+		const nodeClientTransportPath = "apps/cli-app/src/rpc/node-rpc-client-transport.ts";
 		const importingNode = createState([
 			{ path: rpcModePath, text: 'import { randomUUID } from "node:crypto"; export interface RunRpcModeOptions {}' },
 		]);
@@ -1059,8 +1059,8 @@ describe("Coding Agent architecture gate", () => {
 	});
 
 	it("allows CLI Bootstrap and resource Node selection to use adjacent host modules", () => {
-		const cliCompositionPath = "packages/cli-app/src/coding-agent-bootstrap.ts";
-		const cliResourceCompositionPath = "packages/cli-app/src/coding-agent-resource-runtime.ts";
+		const cliCompositionPath = "apps/cli-app/src/coding-agent-bootstrap.ts";
+		const cliResourceCompositionPath = "apps/cli-app/src/coding-agent-resource-runtime.ts";
 		const completeHost = createState([
 			{
 				path: cliCompositionPath,
@@ -1192,7 +1192,7 @@ describe("Coding Agent architecture gate", () => {
 		const optionsPath = `${SOURCE_ROOT}/composition/contracts/runtime-composition-options.ts`;
 		const nodeToolPath = "packages/runtime-node/src/coding/tools/kb-list-tags/index.ts";
 		const nodeEntryPath = "packages/runtime-node/src/coding/index.ts";
-		const cliPath = "packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts";
+		const cliPath = "apps/cli-app/src/rpc/runtime-host/cli-session-assembly.ts";
 		const state = createState([
 			{ path: featurePath, text: 'import { join } from "node:path";' },
 			{ path: retiredFactoryPath, text: "export function createKnowledge() {}" },
@@ -1224,7 +1224,7 @@ describe("Coding Agent architecture gate", () => {
 		const peripheralPath = `${SOURCE_ROOT}/composition/session-initialization/peripheral-assembly.ts`;
 		const nodeToolPath = "packages/runtime-node/src/coding/tools/memory/memory-tool.ts";
 		const nodeEntryPath = "packages/runtime-node/src/coding/index.ts";
-		const cliPath = "packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts";
+		const cliPath = "apps/cli-app/src/rpc/runtime-host/cli-session-assembly.ts";
 		const state = createState([
 			{ path: featurePath, text: 'import { readFile } from "node:fs";' },
 			{ path: optionsPath, text: "export interface Options {}" },

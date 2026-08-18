@@ -100,8 +100,8 @@
 			"@vetta/runtime-telemetry": ["./packages/runtime-telemetry/src/index.ts"],
 			"@vetta/runtime-telemetry/langfuse": ["./packages/runtime-telemetry/src/langfuse.ts"],
 			"@vetta/runtime-telemetry/*": ["./packages/runtime-telemetry/src/*"],
-			"@vetta/cli-app": ["./packages/cli-app/src/index.ts"],
-			"@vetta/cli-app/*": ["./packages/cli-app/src/*"],
+			"@vetta/cli-app": ["./apps/cli-app/src/index.ts"],
+			"@vetta/cli-app/*": ["./apps/cli-app/src/*"],
 			"@vetta/toolkit": ["./packages/toolkit/src/index.ts"],
 			"@vetta/toolkit/*": ["./packages/toolkit/src/*"]
 		}
@@ -140,8 +140,8 @@
 		"packages/runtime-node/src/**/*",
 		"packages/runtime-node/test/**/*",
 		"packages/runtime-telemetry/src/**/*",
-		"packages/cli-app/src/**/*",
-		"packages/cli-app/test/**/*",
+		"apps/cli-app/src/**/*",
+		"apps/cli-app/test/**/*",
 		"packages/toolkit/src/**/*",
 		"packages/coding-agent/examples/**/*"
 	],

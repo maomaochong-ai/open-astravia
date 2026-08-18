@@ -49,7 +49,7 @@ bun run verify:ui:sync:debug
 要附着已经运行的普通开发应用，先在另一个终端启动 Desktop，再使用 Dev 命令：
 
 ```powershell
-bun run --cwd packages/desktop-app dev
+bun run --cwd apps/desktop-app dev
 bun run verify:ui:status:dev
 bun run verify:ui:attach:dev
 bun run verify:ui:pw:dev -- snapshot

@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const rendererRoot = path.join(repoRoot, "packages/desktop-app/src/renderer");
+const rendererRoot = path.join(repoRoot, "apps/desktop-app/src/renderer");
 const deferralsPath = path.join(repoRoot, "docs/theme/ui/deferrals.json");
 const themeUiRoot = path.join(repoRoot, "packages/theme-ui/src");
 

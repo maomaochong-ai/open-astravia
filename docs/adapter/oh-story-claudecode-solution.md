@@ -430,8 +430,8 @@ POST /v1/images/edits
 | `packages/coding-agent/src/core/hooks/` | Codex/Claude 配置归一、command runner、JSON 协议 |
 | `packages/coding-agent/src/core/extensions/` | Hook 与现有生命周期事件桥接 |
 | `packages/coding-agent/src/core/session/` | 子 Agent 取消、usage、递归保护、资源热更新 |
-| `packages/desktop-app/src/main/` | 项目信任、进程树、托管 POSIX runtime、image bridge |
-| `packages/desktop-app/src/renderer/` | Agent/Hook 状态、授权和诊断 UI，所有用户文案接 i18n |
+| `apps/desktop-app/src/main/` | 项目信任、进程树、托管 POSIX runtime、image bridge |
+| `apps/desktop-app/src/renderer/` | Agent/Hook 状态、授权和诊断 UI，所有用户文案接 i18n |
 | `packages/plugins/plugin-sdk/` | `compatibilityProfiles` / `agentPaths` 等通用清单类型 |
 | `packages/plugins/plugin-vite/` | 打包 Agent、runtime manifest 和上游 snapshot |
 | `packages/plugins/externals/oh-story-vetta/` | 资源插件和固定上游快照 |

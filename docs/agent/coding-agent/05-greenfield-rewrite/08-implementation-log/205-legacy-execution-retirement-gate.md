@@ -47,9 +47,9 @@
 - `packages/coding-agent/src/adapters/runtime-core/legacy-session-format/history-reader.ts`
 - `packages/coding-agent/src/adapters/runtime-core/legacy-session-format/index.ts`
 - `packages/coding-agent/src/adapters/runtime-core/legacy-session-format/lease.ts`
-- `packages/cli-app/src/rpc/cli-session-format-compatibility.ts`
-- `packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-format-compatibility.ts`
-- `packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-migration-backend.ts`
+- `apps/cli-app/src/rpc/cli-session-format-compatibility.ts`
+- `apps/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-format-compatibility.ts`
+- `apps/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-migration-backend.ts`
 
 `legacy-session-format/*` 还被禁止反向依赖 AgentSession、Legacy Session Backend 或 SDK 执行层，确保历史数据能力可以独立于旧执行内核继续存在。
 

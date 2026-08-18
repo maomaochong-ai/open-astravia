@@ -16,7 +16,7 @@ because it would overwrite input file.
 仓库有两个独立的 workspace 构建入口：
 
 1. 根 `scripts/build.sh`；
-2. `packages/desktop-app/scripts/build-workspace-prereqs.mjs`。
+2. `apps/desktop-app/scripts/build-workspace-prereqs.mjs`。
 
 第 59 轮只纠正了根构建脚本。Desktop 脚本仍维护一份手写依赖图，其中：
 

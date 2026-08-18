@@ -185,7 +185,7 @@ Vercel AI 的强项是将公开模型协议、Provider 实现和测试工具分�
 - `packages/ai/src/index.ts`
 - `packages/ai/package.json`
 - `tsconfig.json`
-- `packages/desktop-app/tsconfig.json`
+- `apps/desktop-app/tsconfig.json`
 
 边界与测试：
 

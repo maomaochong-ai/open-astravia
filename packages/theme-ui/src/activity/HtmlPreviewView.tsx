@@ -12,7 +12,7 @@ export interface HtmlPreviewViewProps {
 }
 
 /**
- * Match packages/site `globals.css` thin scrollbar (6px rounded thumb).
+ * Match apps/site `globals.css` thin scrollbar (6px rounded thumb).
  * Must live inside the iframe document — parent CSS never applies to srcDoc.
  *
  * Why body scroll (not the viewport root):

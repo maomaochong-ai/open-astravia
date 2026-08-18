@@ -115,7 +115,7 @@ RPC dispatcher 将 `new_session`、`switch_session` 与 `fork` 的同步或异�
 - `packages/coding-agent` SessionManager 文件操作与锁测试：31 个。
 - Session identity、关闭、自动压缩队列、prefire、Runtime close、Tool Search、Plugin MCP 与 RPC dispatcher 回归：57 个。
 - Session identity 与关闭专项回归：15 个。
-- `packages/cli-app` 真实 Legacy/Greenfield Session transition 差分：4 个。
+- `apps/cli-app` 真实 Legacy/Greenfield Session transition 差分：4 个。
 - 根 TypeScript：`bunx tsgo --noEmit -p tsconfig.json`。
 - 仓库完整质量门禁：`bun run check`（Biome、根/CLI/Desktop/Admin 类型检查与 guards）。
 

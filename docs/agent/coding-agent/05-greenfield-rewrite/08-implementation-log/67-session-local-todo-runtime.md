@@ -254,7 +254,7 @@ Continuation 集成没有回归。
 ```text
 bun run check:quick
 bunx tsgo --noEmit
-bunx tsc --noEmit -p packages/cli-app/tsconfig.json
+bunx tsc --noEmit -p apps/cli-app/tsconfig.json
 ```
 
 最终完整 `bun run check` 通过：Biome、根 monorepo `tsgo`、CLI 独立类型检查、Desktop `tsc`、

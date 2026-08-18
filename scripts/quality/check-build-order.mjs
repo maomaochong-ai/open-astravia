@@ -11,10 +11,10 @@ import { join } from "node:path";
 import {
 	workspaceLayers as desktopWorkspaceLayers,
 	workspacePackages as desktopWorkspacePackages,
-} from "../../packages/desktop-app/scripts/build-workspace-prereqs.mjs";
+} from "../../apps/desktop-app/scripts/build-workspace-prereqs.mjs";
 import { fail, isDirectRun, ok, repoRoot } from "./lib.mjs";
 
-const BUILD_PACKAGE_PATTERN = /^\s*build_pkg(?:_script)?\s+(packages\/[A-Za-z0-9_./-]+)/gm;
+const BUILD_PACKAGE_PATTERN = /^\s*build_pkg(?:_script)?\s+((?:packages|apps)\/[A-Za-z0-9_./-]+)/gm;
 
 export function parseBuildPackageOrder(source) {
 	const order = [];

@@ -65,7 +65,7 @@
 
 ### 防回退门禁
 
-- 迁移残留门禁扩展到 `packages/cli-app/src` 与 `packages/cli-app/test`；
+- 迁移残留门禁扩展到 `apps/cli-app/src` 与 `apps/cli-app/test`；
 - 新增 CLI `greenfield-*` 文件零基线；
 - 本轮退休的 12 个 Coding Agent/CLI 源文件路径及旧符号加入禁止恢复清单；
 - Runtime Host 所有权门禁改为监控正式 `runtime-host.ts` 与 `cli-session-assembly.ts`；

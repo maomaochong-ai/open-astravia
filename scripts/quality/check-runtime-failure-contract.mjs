@@ -18,38 +18,38 @@ export const REQUIRED_RUNTIME_FAILURE_MARKERS = Object.freeze({
 		"CONVERSATION_STORAGE_ERROR_CODES.OWNERSHIP_CONFLICT",
 		'runtimeError("SESSION_LOCKED"',
 	],
-	"packages/cli-app/src/session-compatibility-error.ts": ["recoverability"],
+	"apps/cli-app/src/session-compatibility-error.ts": ["recoverability"],
 	"packages/runtime-core/src/errors.ts": ["SESSION_BUSY", "SESSION_LOCKED", "isSessionError"],
-	"packages/desktop-app/src/main/conversations/desktop-conversation-service.ts": [
+	"apps/desktop-app/src/main/conversations/desktop-conversation-service.ts": [
 		"RUNTIME_ERROR_CODES.SESSION_BUSY",
 		"RUNTIME_ERROR_CODES.SESSION_LOCKED",
 	],
 	"packages/runtime-desktop/src/lifecycle.ts": ["DesktopRuntimeFailure", "DesktopRuntimeHealth"],
-	"packages/im-gateway/internal/hostclient/types.go": [
+	"apps/im-gateway/internal/hostclient/types.go": [
 		"type TypedFailure interface",
 		"FailureRecoverability() FailureRecoverability",
 	],
-	"packages/im-gateway/internal/hostclient/local/session.go": ["failureFromResponse(resp, commandPhase(cmd.Type))"],
-	"packages/im-gateway/internal/hostclient/pool.go": ["func (a *Acquired) Discard() error"],
-	"packages/im-gateway/internal/router/router.go": ["discardRestartRequiredSession", "FailureRestartSession"],
+	"apps/im-gateway/internal/hostclient/local/session.go": ["failureFromResponse(resp, commandPhase(cmd.Type))"],
+	"apps/im-gateway/internal/hostclient/pool.go": ["func (a *Acquired) Discard() error"],
+	"apps/im-gateway/internal/router/router.go": ["discardRestartRequiredSession", "FailureRestartSession"],
 });
 
 const BOUNDARY_ROOTS = [
 	"packages/coding-agent/src/rpc",
 	"packages/runtime-desktop/src",
-	"packages/im-gateway/internal/hostclient",
-	"packages/im-gateway/internal/bridge",
-	"packages/im-gateway/internal/router",
+	"apps/im-gateway/internal/hostclient",
+	"apps/im-gateway/internal/bridge",
+	"apps/im-gateway/internal/router",
 ];
 
 const BOUNDARY_FILES = [
-	"packages/cli-app/src/agent-runtime-selection.ts",
-	"packages/cli-app/src/extension-compatibility-error.ts",
-	"packages/cli-app/src/session-compatibility-error.ts",
-	"packages/cli-app/src/rpc/node-rpc-client-transport.ts",
-	"packages/desktop-app/src/main/agent-runtime/composition.ts",
-	"packages/desktop-app/src/main/conversations/desktop-conversation-service.ts",
-	"packages/desktop-app/src/main/runtime.ts",
+	"apps/cli-app/src/agent-runtime-selection.ts",
+	"apps/cli-app/src/extension-compatibility-error.ts",
+	"apps/cli-app/src/session-compatibility-error.ts",
+	"apps/cli-app/src/rpc/node-rpc-client-transport.ts",
+	"apps/desktop-app/src/main/agent-runtime/composition.ts",
+	"apps/desktop-app/src/main/conversations/desktop-conversation-service.ts",
+	"apps/desktop-app/src/main/runtime.ts",
 	"packages/runtime-core/src/errors.ts",
 	"packages/runtime-core/src/runtime-host/runtime-host.ts",
 	"packages/coding-agent/src/host/runtime-host/session-backend.ts",

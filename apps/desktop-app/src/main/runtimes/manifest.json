@@ -1,0 +1,36 @@
+{
+	"$comment": "运行时来源清单(ADR-0011)。单一推荐版本;每平台 filename/dir 用字面量避免模板拼接漂移。node 走 npmmirror 兜底官方;python(python-build-standalone)仅 GitHub 发布、国内无稳定公共镜像,故首启主路径靠内置 vendor 拷贝,sources 仅用于升级/装非内置版本(将来插入自建 CDN 作首位)。",
+	"node": {
+		"version": "22.22.2",
+		"sources": [
+			"https://npmmirror.com/mirrors/node/v{version}/{filename}",
+			"https://nodejs.org/dist/v{version}/{filename}"
+		],
+		"platforms": {
+			"darwin-arm64": { "filename": "node-v22.22.2-darwin-arm64.tar.gz", "dir": "node-v22.22.2-darwin-arm64", "archive": "tar.gz" },
+			"darwin-x64": { "filename": "node-v22.22.2-darwin-x64.tar.gz", "dir": "node-v22.22.2-darwin-x64", "archive": "tar.gz" },
+			"linux-x64": { "filename": "node-v22.22.2-linux-x64.tar.gz", "dir": "node-v22.22.2-linux-x64", "archive": "tar.gz" },
+			"linux-arm64": { "filename": "node-v22.22.2-linux-arm64.tar.gz", "dir": "node-v22.22.2-linux-arm64", "archive": "tar.gz" },
+			"win32-x64": { "filename": "node-v22.22.2-win-x64.zip", "dir": "node-v22.22.2-win-x64", "archive": "zip" }
+		}
+	},
+	"python": {
+		"version": "3.13.12",
+		"release": "20260203",
+		"sources": [
+			"https://github.com/astral-sh/python-build-standalone/releases/download/{release}/{filename}"
+		],
+		"platforms": {
+			"darwin-arm64": { "filename": "cpython-3.13.12+20260203-aarch64-apple-darwin-install_only.tar.gz", "dir": "python", "archive": "tar.gz" },
+			"darwin-x64": { "filename": "cpython-3.13.12+20260203-x86_64-apple-darwin-install_only.tar.gz", "dir": "python", "archive": "tar.gz" },
+			"linux-x64": { "filename": "cpython-3.13.12+20260203-x86_64-unknown-linux-gnu-install_only.tar.gz", "dir": "python", "archive": "tar.gz" },
+			"linux-arm64": { "filename": "cpython-3.13.12+20260203-aarch64-unknown-linux-gnu-install_only.tar.gz", "dir": "python", "archive": "tar.gz" },
+			"win32-x64": { "filename": "cpython-3.13.12+20260203-x86_64-pc-windows-msvc-install_only.tar.gz", "dir": "python", "archive": "tar.gz" }
+		}
+	},
+	"mirrors": {
+		"npmRegistry": "https://registry.npmmirror.com/",
+		"pipIndexUrl": "https://pypi.tuna.tsinghua.edu.cn/simple",
+		"pipTrustedHost": "pypi.tuna.tsinghua.edu.cn"
+	}
+}

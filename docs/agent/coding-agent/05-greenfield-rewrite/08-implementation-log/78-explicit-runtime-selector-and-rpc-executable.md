@@ -112,7 +112,7 @@ Runtime Storage 内部字段 `acquiredAt` 只在反腐层映射为旧 wire 的 `
 验证命令：
 
 ```text
-packages/cli-app:
+apps/cli-app:
   bun run typecheck
   bunx vitest --run test/agent-runtime-selection.test.ts
 
