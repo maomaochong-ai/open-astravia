@@ -2,7 +2,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import { net } from "electron";
-// TODO(cloud-phase-2): 本模块整体属于云服务，迁入 main/cloud 后此跨界 import 一并消失。
+// TODO(cloud-phase-2): probe 本体是宿主逻辑，只有「远程 provider 目录回退」属于云服务；
+// 应改为由 cloud 模块注入的可选查询（lite 构建不挂载），消除此跨界 import。
 import { fetchRemoteProviders } from "../cloud/auth-session.js";
 
 /**
