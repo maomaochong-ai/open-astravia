@@ -1,4 +1,3 @@
-import { motion } from "motion/react";
 import { useMemo, type JSX, type RefCallback } from "react";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import type { NavIndicatorBounds, SidebarNavItem } from "@vetta/theme-sdk/sidebar";
@@ -77,22 +76,23 @@ export function SidebarNavigation({
 	return (
 		<nav className={cn("relative flex flex-col gap-0.5 px-1.5 pb-2 pt-2", className)}>
 			{indicatorBounds && (
-				<motion.span
+				// CSS 过渡替代 motion spring：位置走 transform（合成器承担），宽高只重排这个
+				// absolute 元素自身，低配机上不再逐帧触发整条侧栏 layout。
+				<span
+					data-sidebar-nav-indicator=""
 					className={cn(
-						"pointer-events-none absolute z-10 overflow-visible rounded-md bg-accent",
+						"pointer-events-none absolute left-0 top-0 z-10 overflow-visible rounded-md bg-accent",
+						"transition-[transform,width,height] duration-200 ease-out motion-reduce:transition-none",
 						classNames?.indicator,
 					)}
-					initial={false}
-					animate={{
-						left: indicatorBounds.left,
-						top: indicatorBounds.top,
+					style={{
+						transform: `translate3d(${indicatorBounds.left}px, ${indicatorBounds.top}px, 0)`,
 						width: indicatorBounds.width,
 						height: indicatorBounds.height,
 					}}
-					transition={{ type: "spring", stiffness: 430, damping: 28, mass: 0.75 }}
 				>
 					<ThemeSurface slot="sidebar.navigationIndicator" />
-				</motion.span>
+				</span>
 			)}
 			{items.map((item, index) => {
 				const dragProps = customizable ? drag.itemProps(item, "pinned") : undefined;
