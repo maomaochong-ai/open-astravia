@@ -325,9 +325,73 @@ bun run build:cli          # build the CLI app
 bun run build:docs         # build the documentation site
 ```
 
-This produces a `lite` build: no account system, no subscription, marketplace served from a
-GitHub repository you choose. See [Build Modes](docs/desktop/build-modes.en.md) to build against a
-Vetta Serv instance instead.
+### Two Build Modes
+
+Everything above produces a **lite** build — that is the default and needs no configuration.
+
+| | **lite** (serv-less, default) | **full** (Vetta Serv) |
+|---|---|---|
+| Flag | nothing to set | `VETTA_CLOUD_ENABLED=true` |
+| Account login / OAuth | not in the bundle | ✅ |
+| Subscription / credits / quota | not in the bundle | ✅ |
+| Marketplace | a GitHub repository you choose | served by Vetta Serv |
+| Remote model catalog | ❌ | ✅ |
+| `VETTA_SERVER_URL` | not needed | required |
+
+Both modes give you local sessions, the coding agent, plugins, themes, BYOK models, the IM
+gateway and the knowledge base. The flag is applied **at build time** and folded away as a
+constant — a lite build does not contain the cloud code at all, and cannot be switched back on
+at runtime.
+
+**→ [Build Modes and Environment Variables](docs/desktop/build-modes.en.md)** ([中文](docs/desktop/build-modes.md))
+— the full comparison, every environment variable, secrets handling and CI setup.
+
+### Developing the Desktop App
+
+Note that `bun run dev` **at the repository root** starts watch-mode compilation of the core
+libraries (`ai`, `agent`, `coding-agent`) — it does not launch the app. The desktop app is
+started from its own workspace:
+
+```bash
+cd apps/desktop
+bun run dev            # renderer (Vite) + theme dev server + Electron, all in one
+```
+
+Three variants differ only in **which data directory the running app uses**:
+
+| Command | Data root | Use it when |
+|---------|-----------|-------------|
+| `bun run dev` | `~/.vetta-dev` | Default. A sandbox — your real sessions, skills and plugins are untouched |
+| `bun run dev:isolated` | `~/.vetta-dev` | Identical to `dev`, just spelled out explicitly |
+| `bun run dev:home` | `~/.vetta` | You want the dev build to read and write your **real** data, as the installed app does |
+
+The data root is `~/$VETTA_CONFIG_DIR`; the dev launcher defaults that variable to `.vetta-dev`,
+while the installed app uses `.vetta`. Electron's own `userData` follows along, at
+`<data root>/electron-user-data`, so `dev:home` still keeps window state separate from the
+installed app.
+
+### Production Builds
+
+Run these from `apps/desktop`. `pack` stops at an unpacked directory (fast, good for smoke
+tests); `dist:*` produces real installers.
+
+```bash
+bun run pack                 # unpacked build for the current platform
+bun run dist:mac             # .dmg / .zip      (dist:mac:arm64, dist:mac:x64)
+bun run dist:win             # Inno installer   (dist:win:inno, :portable, :zip)
+bun run dist:linux           # AppImage/deb/rpm (dist:linux:appimage, :deb, :rpm, :tar.gz)
+```
+
+Build configuration comes from `.env.<mode>`, selected with `VETTA_BUILD_ENV`:
+
+```bash
+VETTA_BUILD_ENV=production bun run dist:mac   # reads apps/desktop/.env.production
+bun run dist:win:test                         # shorthand for VETTA_BUILD_ENV=test
+```
+
+No `.env.*` file is tracked in git — copy `apps/desktop/.env.example` and fill in what you need.
+To produce a **full** build, that file is where `VETTA_CLOUD_ENABLED=true` and `VETTA_SERVER_URL`
+go; see [Build Modes](docs/desktop/build-modes.en.md).
 
 The IM bridge gateway (Go):
 

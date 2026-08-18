@@ -305,8 +305,68 @@ bun run build:cli          # 构建 CLI 应用
 bun run build:docs         # 构建文档站
 ```
 
-这样得到的是 `lite` 构建：没有账号体系与订阅，能力市场来自你指定的 GitHub 仓库。若要接入
-Vetta Serv，见[构建模式与环境变量](docs/desktop/build-modes.md)。
+### 两种构建模式
+
+上面得到的是 **lite** 构建——这是默认形态，零配置。
+
+| | **lite**（serv-less，默认） | **完全体**（Vetta Serv） |
+|---|---|---|
+| 开关 | 什么都不用设 | `VETTA_CLOUD_ENABLED=true` |
+| 账号登录 / OAuth | 不进产物 | ✅ |
+| 订阅 / 积分 / 配额 | 不进产物 | ✅ |
+| 能力市场 | 你指定的 GitHub 仓库 | 由 Vetta Serv 提供 |
+| 远程模型目录下发 | ❌ | ✅ |
+| `VETTA_SERVER_URL` | 不需要 | 必填 |
+
+两种模式都有本地会话、编码 Agent、插件、主题、自带 Key 的模型、IM 旁路与知识库。这个开关在
+**构建期**生效并被常量折叠——lite 构建里根本不含云服务代码，发包后也无法在运行期重新打开。
+
+**→ [构建模式与环境变量](docs/desktop/build-modes.md)**（[English](docs/desktop/build-modes.en.md)）
+—— 完整对照、全部环境变量、机密约定与 CI 配置。
+
+### 开发桌面应用
+
+注意：**仓库根目录**的 `bun run dev` 是核心库（`ai`、`agent`、`coding-agent`）的 watch 编译，
+并不会启动应用。桌面应用要在它自己的工作区里启动：
+
+```bash
+cd apps/desktop
+bun run dev            # 渲染层（Vite）+ 主题 dev server + Electron，一条命令全起
+```
+
+三个变体的区别只在**运行时用哪个数据目录**：
+
+| 命令 | 数据根 | 什么时候用 |
+|------|--------|-----------|
+| `bun run dev` | `~/.vetta-dev` | 默认。沙箱环境，不动你的真实会话、技能与插件 |
+| `bun run dev:isolated` | `~/.vetta-dev` | 与 `dev` 完全等价，只是把默认值显式写出来 |
+| `bun run dev:home` | `~/.vetta` | 想让开发版直接读写你的**真实**数据，和正式安装版一样 |
+
+数据根是 `~/$VETTA_CONFIG_DIR`；开发启动器把这个变量默认成 `.vetta-dev`，而正式安装版用
+`.vetta`。Electron 自己的 `userData` 跟着走，落在 `<数据根>/electron-user-data`——所以即使
+`dev:home` 也不会和正式安装版共用窗口状态。
+
+### 构建生产版本
+
+以下命令在 `apps/desktop` 下执行。`pack` 只产出解包目录（快，适合冒烟验证），`dist:*` 才出真正的安装包。
+
+```bash
+bun run pack                 # 当前平台的解包构建
+bun run dist:mac             # .dmg / .zip       （dist:mac:arm64、dist:mac:x64）
+bun run dist:win             # Inno 安装包        （dist:win:inno、:portable、:zip）
+bun run dist:linux           # AppImage/deb/rpm  （dist:linux:appimage、:deb、:rpm、:tar.gz）
+```
+
+构建配置来自 `.env.<mode>`，用 `VETTA_BUILD_ENV` 选择：
+
+```bash
+VETTA_BUILD_ENV=production bun run dist:mac   # 读 apps/desktop/.env.production
+bun run dist:win:test                         # 等价于 VETTA_BUILD_ENV=test
+```
+
+任何 `.env.*` 都不纳入版本控制——复制 `apps/desktop/.env.example` 按需填写。要产出**完全体**，
+`VETTA_CLOUD_ENABLED=true` 与 `VETTA_SERVER_URL` 就写在那里，详见
+[构建模式与环境变量](docs/desktop/build-modes.md)。
 
 IM 旁路网关（Go）：
 
