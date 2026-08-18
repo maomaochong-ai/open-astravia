@@ -28,7 +28,7 @@ export function NewSessionOptionsRow({
 	return (
 		// 与 hero 标题、输入框卡片共用 max-w-2xl 且不加横向 padding：两枚 chip 都有可见容器，
 		// 容器左缘直接压在标题文字的基线上，不需要光学补偿。
-		<div className="mx-auto mb-2 flex w-full max-w-2xl items-center gap-2">
+		<div className="mx-auto mb-4 flex w-full max-w-2xl items-center gap-2">
 			<AgentModeIconToggle />
 			<NewSessionProjectSelector
 				selection={selection}
