@@ -1,10 +1,10 @@
-# Vetta Monorepo
+# OpenVetta
 
-> **Private / Internal** — 公司内部私有项目。未经授权，请勿外传源码、凭证或构建产物。
+Vetta 是一套面向企业与个人的 AI Agent 产品栈。本仓库是 Vetta 的**客户端侧开源仓库**：桌面应用、编码智能体、CLI、移动端、IM 旁路网关和文档站，连同它们依赖的全部运行时包。
 
-Vetta 是一套面向企业与个人的 AI Agent 产品栈：在本地/桌面运行的编码与自动化智能体、企业后台、管理控制台，以及打通 IM 平台的旁路网关。本仓库以 monorepo 组织所有应用、运行时包和业务服务，统一版本发布。
+> 服务端（业务 API、管理控制台、官网）在独立的 `vetta-serv` 仓库，不在此处。**文档站 `apps/docs-site` 在本仓库，欢迎社区参与维护。**
 
-> 仓库由 `@mariozechner/pi-ai` / `pi-mono` 演化而来，上游保留了通用的 LLM API 与 Agent Loop 能力；Vetta 在其基础上增加了桌面宿主（Electron）、业务后台（Go/Gin）、IM 旁路（Go）、管理台（React）以及批量任务、定时自动化、技能广场、工作流流转等企业侧能力。
+> 仓库由 `@mariozechner/pi-ai` / `pi-mono` 演化而来，上游保留了通用的 LLM API 与 Agent Loop 能力；Vetta 在其基础上增加了桌面宿主（Electron）、IM 旁路（Go）以及批量任务、定时自动化、技能广场、工作流流转等企业侧能力。
 
 ---
 
@@ -12,7 +12,7 @@ Vetta 是一套面向企业与个人的 AI Agent 产品栈：在本地/桌面运
 
 顶层按「是否被别的包依赖」划分：
 
-- **`apps/`** — 可交付的应用，依赖图的叶子节点，不被任何包 import：`desktop`、`cli-host`、`admin`、`site`、`docs-site`、`mobile`（Kotlin Multiplatform，Android）、`api` 与 `im-gateway`（Go）。
+- **`apps/`** — 可交付的应用，依赖图的叶子节点，不被任何包 import：`desktop`、`cli-host`、`docs-site`、`mobile`（Kotlin Multiplatform，Android）与 `im-gateway`（Go）。
 - **`packages/`** — 可复用模块，只能被 `apps/` 或其它 `packages/` 依赖：`coding-agent`、`runtime-*`、`capability-*`、`ai`、`agent`、`plugins`、`theme-*` 等。
 
 `packages/*` 不得反向依赖 `apps/*`；该规则由 `scripts/quality/check-package-boundaries.mjs` 机械校验。
@@ -32,16 +32,15 @@ bun run test:changed       # 相对 origin/dev 只测变更触及的包
 # 应用
 bun run build:desktop      # 构建 Electron 桌面应用
 bun run build:cli          # 构建 CLI 应用
-bun run build:admin        # 构建 React 管理台
+bun run build:docs         # 构建文档站
 
-# 后端服务（Go）
-cd apps/api && make run            # 启动业务 API
+# IM 旁路（Go）
 cd apps/im-gateway && make build   # 构建 IM 旁路网关
 ```
 
 质量门禁分层、husky 快路径与守卫说明见 [docs/dev/quality-gates.md](docs/dev/quality-gates.md)。
 
-桌面应用入口：`apps/desktop`；API 服务入口：`apps/api/cmd/server/main.go`。
+桌面应用入口：`apps/desktop`；文档站入口：`apps/docs-site`。
 
 ---
 
@@ -55,12 +54,11 @@ cd apps/im-gateway && make build   # 构建 IM 旁路网关
 | [packages/coding-agent](packages/coding-agent) | Vetta 编码智能体核心产品。CLI、交互模式、SDK、Extensions/Skills/Themes 生态 | TypeScript |
 | [apps/cli-host](apps/cli-host) | 基于 `coding-agent` 的纯 CLI 封装 | TypeScript |
 
-### 业务服务
+### 旁路服务与文档站
 
 | 包 | 角色 | 技术栈 |
 |----|------|--------|
-| [apps/api](apps/api) | 企业后端：鉴权、Provider 管理、技能市场、工作流、SSE 推送 | Go 1.25 · Gin · GORM · PostgreSQL · Redis · Casbin · S3 |
-| [apps/admin](apps/admin) | 后台管理控制台：用户/组织/团队、Provider 审批、技能审核 | React + Vite + shadcn/ui |
+| [apps/docs-site](apps/docs-site) | 官方文档站，内容在 `content/`，欢迎社区 PR | Next.js |
 | [apps/im-gateway](apps/im-gateway) | IM 平台旁路（飞书先行，Telegram/钉钉规划中）。作为桌面应用的 sidecar，桥接 IM 消息至本地 `coding-agent --mode rpc` | Go · NDJSON IPC |
 
 ### 核心库
@@ -69,8 +67,6 @@ cd apps/im-gateway && make build   # 构建 IM 旁路网关
 |----|------|--------|
 | [packages/ai](packages/ai) | 多 Provider LLM API、模型注册表、Provider Adapter | Agent Loop、UI、会话持久化 |
 | [packages/agent](packages/agent) | 有状态 Agent Loop、工具调用、事件流 | 终端/桌面 UI、业务规则 |
-| [packages/tui](packages/tui) | 终端渲染原语与编辑器组件 | Agent 策略、会话存储 |
-| [packages/web-ui](packages/web-ui) | 浏览器端可复用聊天 UI、Artifact、附件预览 | 桌面生命周期、服务端业务 |
 
 ### 运行时包（被宿主应用复用）
 
@@ -82,7 +78,7 @@ cd apps/im-gateway && make build   # 构建 IM 旁路网关
 | [packages/runtime-mcp](packages/runtime-mcp) | MCP Manager 与 MCP Runtime 绑定 |
 | [packages/runtime-telemetry](packages/runtime-telemetry) | 运行时日志与遥测抽象 |
 
-依赖方向：应用 → runtime-\* → coding-agent / agent / ai。核心库不感知宿主；宿主包不引入业务后端规则；业务后端不依赖前端包。
+依赖方向：应用 → runtime-\* → coding-agent / agent / ai。核心库不感知宿主；宿主包不引入业务后端规则。
 
 ---
 
@@ -111,28 +107,6 @@ cd apps/im-gateway && make build   # 构建 IM 旁路网关
 - IM 旁路子进程宿主（`im-host/`，拉起 `im-gateway host`）
 
 渲染进程与主进程通过 preload 暴露的 `window.vetta.*` 通信（类型见 `src/renderer/global.d.ts`）。状态使用 Jotai atoms 按领域分层（`src/renderer/shared/store/*-atoms.ts`）。
-
----
-
-## api 后端
-
-`apps/api` 是基于 Gin + GORM 的业务后端，模块名 `vetta-api`。
-
-- 入口：`cmd/server/main.go`
-- 启动序：`config.Load` → `logger.Init` → `database.Init` → `store.InitRedis` → `rbac.InitEnforcer`（Casbin）→ `database.Seed` → `s3.Client` → `sse.Manager` → `router.Setup`
-- 部署模式：`enterprise`（完整鉴权/组织/团队）与 `personal`（精简表与路由）由 `config.C.DeployMode` 切换
-- 主要 Handler（见 `internal/handler/`）：
-  - `auth` / `user` / `org` / `team` — 鉴权、用户、组织、团队
-  - `provider` — LLM Provider 管理与审批
-  - `skill` — 技能市场（CRUD、审核、分发）
-  - `chat` — 基础聊天与流式响应
-  - `workflow_admin` / `workflow` — 工作流管理与执行
-  - `flowing_admin` / `flowing` — 工作流流转
-  - `sse` — Server-Sent Events 推送
-  - `gateway` — 对外统一网关
-- 常用命令（`Makefile`）：`make run` / `make dev`（air 热重载）/ `make build` / `make migrate` / `make check`（`go build ./... && go vet ./...`）
-
-配置优先级：`config.yaml` > `VETTA_*` 环境变量 > 默认值。示例见 `apps/api/config.example.yaml`。
 
 ---
 
@@ -196,23 +170,25 @@ bun run release:patch    # Bug 修复与新增功能
 bun run release:minor    # API Breaking
 ```
 
-发布脚本完成版本号同步、CHANGELOG 定版、commit、tag、可选私服发布，并为下一轮补充 `[Unreleased]` 节。默认**不推送**私服；设置 `RELEASE_PUBLISH=true` 方可发布到配置的私有 registry。产物与安装指引生成于 `releases/v<version>/`，供上传到 Gitee Releases。
+发布脚本完成版本号同步、CHANGELOG 定版、commit、tag、可选私服发布，并为下一轮补充 `[Unreleased]` 节。默认**不推送**私服；设置 `RELEASE_PUBLISH=true` 方可发布到配置的私有 registry。产物与安装指引生成于 `releases/v<version>/`。
 
-桌面安装包由 `.github/workflows/desktop-release.yml` 在三个操作系统分别构建，再发布到官方 R2/CDN 或公开 GitHub Releases；详见 [`docs/deploy/desktop-releases.md`](docs/deploy/desktop-releases.md)。
+桌面安装包由 `.github/workflows/desktop-release.yml` 在三个操作系统分别构建，再发布到官方 CDN 或 GitHub Releases；详见 [`docs/deploy/desktop-releases.md`](docs/deploy/desktop-releases.md)，macOS 签名与公证见 [`docs/deploy/apple-code-signing.md`](docs/deploy/apple-code-signing.md)。
 
-服务端（`apps/api` + `apps/admin`）自托管部署走 `deploy/` 下的 Docker Compose 栈，目录说明见 [`deploy/README.md`](deploy/README.md)，完整流程见 [`docs/deploy/deploy-runbook.md`](docs/deploy/deploy-runbook.md)。
+服务端（业务 API、管理控制台）的自托管部署不在本仓库，见 `vetta-serv` 仓库的 `deploy/` 与 `docs/deploy/deploy-runbook.md`。
 
 ---
 
 ## 目录速览
 
 ```
-vetta-mono/
+openvetta/
+├── apps/
+│   └── desktop · cli-host · im-gateway · mobile · docs-site
 ├── packages/
-│   ├── ai · agent · tui · web-ui            # 核心库
+│   ├── ai · agent · coding-agent            # 核心库
 │   ├── runtime-core · runtime-tools · runtime-mcp · runtime-storage · runtime-telemetry
-│   ├── coding-agent · cli-host · desktop # 终端应用
-│   ├── api · admin · im-gateway             # 业务服务
+│   ├── capability-* · theme-* · ui · markdown · toolkit
+│   ├── plugins/                             # 插件 SDK 与系统插件 preset
 │   └── coding-agent/examples/extensions/*   # 扩展示例
 ├── docs/                                    # 架构文档
 ├── scripts/                                 # 构建与发布脚本

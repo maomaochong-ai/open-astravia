@@ -28,21 +28,6 @@ const productionPluginIds = [
 	"git",
 ];
 
-const tenantbDevelopmentPluginIds = [
-	"vetta-actions",
-	"image-gen",
-	"media-viewer",
-	"office-viewer",
-	"svg-viewer",
-	"chart-renderer",
-	"demo-map",
-	"git",
-	"plugin-workbench",
-	"comfyui-media-provider",
-	"content-creation",
-	"remotion-renderer",
-	"kanban",
-];
 
 test("common keeps the full plugin set in development", () => {
 	const tenant = resolveSystemPluginSelection("common", "development");
@@ -60,17 +45,11 @@ test("common packages only the production plugin set", () => {
 	assert.deepEqual([...tenant.pluginIds], productionPluginIds);
 });
 
-test("tenantb keeps its full plugin set in development", () => {
-	const tenant = resolveSystemPluginSelection("tenantb", "development");
-
-	assert.deepEqual([...tenant.pluginIds], tenantbDevelopmentPluginIds);
-});
-
-test("production profile is identical across business tenants", () => {
-	const tenant = resolveSystemPluginSelection("tenantb", "production");
-
-	assert.equal(tenant.name, "tenantb");
-	assert.deepEqual([...tenant.pluginIds], productionPluginIds);
+test("rejects an unknown tenant", () => {
+	assert.throws(
+		() => resolveSystemPluginSelection("nope", "production"),
+		/未知租户：nope/,
+	);
 });
 
 test("rejects an unknown system plugin profile", () => {

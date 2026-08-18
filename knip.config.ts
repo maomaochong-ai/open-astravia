@@ -13,14 +13,12 @@
 const config = {
 	ignoreWorkspaces: [
 		"packages/action-rpc",
-		"apps/admin",
 		"apps/cli-host",
 		"packages/coding-agent/examples/**",
 		"apps/desktop",
 		"packages/markdown",
 		"packages/plugins/**",
 		"packages/runtime-*",
-		"apps/site",
 		"packages/theme-*",
 		"packages/themes/**",
 		"packages/toolkit",

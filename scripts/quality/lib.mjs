@@ -42,9 +42,6 @@ export const PACKAGE_DIRS = {
 	toolkit: "packages/toolkit",
 	markdown: "packages/markdown",
 	ui: "packages/ui",
-	admin: "apps/admin",
-	site: "apps/site",
-	api: "apps/api",
 	"im-gateway": "apps/im-gateway",
 };
 

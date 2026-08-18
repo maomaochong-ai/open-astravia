@@ -101,10 +101,6 @@ build_apps() {
   build_pkg apps/desktop
 }
 
-build_admin() {
-  build_pkg apps/admin
-}
-
 # ── Preset plugins (packages/plugins/presets/*) ──
 # Reuses desktop-app 的 build-presets.mjs（含按需 bun install、遍历全部 preset）。
 build_presets() {
@@ -133,7 +129,6 @@ build_libs() {
 build_all() {
   build_libs
   build_apps
-  build_admin
 }
 
 case "${1:-all}" in
@@ -142,11 +137,10 @@ case "${1:-all}" in
   app|apps) build_apps ;;
   desktop)  build_libs && build_apps ;;
   cli)      build_libs && build_pkg apps/cli-host && build_presets ;;
-  admin)    build_admin ;;
   preset|presets) build_presets ;;
   *)
     echo "Unknown target: $1"
-    echo "Usage: $0 [all|libs|apps|desktop|cli|admin|preset]"
+    echo "Usage: $0 [all|libs|apps|desktop|cli|preset]"
     exit 1
     ;;
 esac

@@ -1,4 +1,4 @@
-# Vetta Monorepo Agent Guide
+# OpenVetta Agent Guide
 
 > 本文件适用于整个仓库。更深目录中的 `AGENTS.md` 可补充或收紧规则；发生冲突时，以离目标文件最近的规则为准。
 >
@@ -6,11 +6,13 @@
 
 ## 项目概览
 
-Vetta 是私有的 AI Agent 产品栈。仓库包含 TypeScript/Bun monorepo、Electron 桌面应用、React 管理端，以及 Go API 和 IM 网关。
+Vetta 是一套 AI Agent 产品栈。**本仓库是客户端侧的开源仓库**：TypeScript/Bun monorepo、Electron 桌面应用、Kotlin 移动端、Next.js 文档站，以及 Go 写的 IM 旁路网关。
+
+服务端（业务 API、管理控制台、官网）在独立的私有仓库 `vetta-serv`，不在此处。涉及计费、配额、订阅、权益的决策文档（ADR-0016/0017/0019/0038/0039/0051/0052/0056）同样只存在于那边——本仓库的 `docs/adr/` 会有对应的编号空洞，这是刻意的，见 `docs/adr/README.md`。
 
 顶层目录按「是否被别的包依赖」划分，新增目录必须遵守：
 
-- `apps/`：可交付的应用，依赖图的叶子节点，不被任何包 import。`desktop`、`cli-host`、`admin`、`site`、`docs-site`、`mobile`（Kotlin Multiplatform，仅 Android）、`api` 与 `im-gateway`（Go）。
+- `apps/`：可交付的应用，依赖图的叶子节点，不被任何包 import。`desktop`、`cli-host`、`docs-site`、`mobile`（Kotlin Multiplatform，仅 Android）与 `im-gateway`（Go）。
 - `packages/`：可复用模块，只能被 `apps/` 或其它 `packages/` 依赖。
 
 主要分层：
@@ -24,7 +26,7 @@ Vetta 是私有的 AI Agent 产品栈。仓库包含 TypeScript/Bun monorepo、E
 核心依赖方向：
 
 ```text
-apps/*  (desktop / cli / admin / site / docs-site / mobile / api / im-gateway)
+apps/*  (desktop / cli-host / docs-site / mobile / im-gateway)
                       |
                       v
        coding-agent / runtime-* / capability-*
@@ -58,7 +60,7 @@ apps/*  (desktop / cli / admin / site / docs-site / mobile / api / im-gateway)
 | Coding Agent 产品组合 | [`packages/coding-agent/AGENTS.md`](packages/coding-agent/AGENTS.md) |
 | Desktop 主进程与 Renderer | [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md) |
 | Plugin SDK、Preset 与外置插件 | [`packages/plugins/AGENTS.md`](packages/plugins/AGENTS.md) |
-| CLI、Admin | [`apps/cli-host/AGENTS.md`](apps/cli-host/AGENTS.md)、[`apps/admin/AGENTS.md`](apps/admin/AGENTS.md) |
+| CLI | [`apps/cli-host/AGENTS.md`](apps/cli-host/AGENTS.md) |
 | Runtime 与 Toolkit | 目标 `packages/runtime-*/AGENTS.md` 或 [`packages/toolkit/AGENTS.md`](packages/toolkit/AGENTS.md) |
 
 Desktop 主进程部分目录还有更细规则；修改对应目录时必须继续读取：

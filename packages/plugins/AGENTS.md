@@ -25,12 +25,10 @@
   "defaultProfile": "development",
   "profiles": {
     "development": {
-      "common": ["vetta-actions", "image-gen", "svg-viewer"],
-      "tenantb": ["vetta-actions", "image-gen", "svg-viewer", "demo-map"]
+      "common": ["vetta-actions", "image-gen", "svg-viewer"]
     },
     "production": {
-      "common": ["image-gen", "svg-viewer"],
-      "tenantb": ["image-gen", "svg-viewer"]
+      "common": ["image-gen", "svg-viewer"]
     }
   }
 }
@@ -48,10 +46,10 @@
 ```bash
 # dev：仅构建并 staging 当前租户的系统插件
 cd apps/desktop
-VETTA_TENANT=tenantb bun run dev
+VETTA_TENANT=common bun run dev
 
 # 打包 App：build:presets 与 prepare-pack 都读取同一 VETTA_TENANT
-VETTA_TENANT=tenantb bun run dist:win
+VETTA_TENANT=common bun run dist:win
 ```
 
 `build-presets.mjs` 只构建/staging 当前 profile + 租户的插件，切换组合时会自动清理
