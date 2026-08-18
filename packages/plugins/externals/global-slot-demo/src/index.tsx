@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Type, type Static } from "@sinclair/typebox";
 import { definePlugin } from "@vetta-org/plugin-sdk";
 import "./style.css";
+import { NOVEL_WRITE_CHAPTER_FILE_TOOL_DESCRIPTION } from "./tool-description";
 
 const writeChapterSchema = Type.Object({
 	path: Type.String({
@@ -108,8 +109,7 @@ export default definePlugin({
 			id: "write-chapter-file",
 			name: "novel_write_chapter_file",
 			label: "Write Chapter",
-			description:
-				"Write a novel chapter draft to a file through the host-controlled plugin file API. Use this when the user asks to save generated fiction content.",
+			description: NOVEL_WRITE_CHAPTER_FILE_TOOL_DESCRIPTION,
 			parameters: writeChapterSchema,
 			timeoutMs: 30_000,
 			scope_use: ["conversation", "cli"],

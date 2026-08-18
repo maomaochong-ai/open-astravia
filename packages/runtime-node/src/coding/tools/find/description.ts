@@ -1,9 +1,11 @@
-export const FIND_TOOL_DESCRIPTION = `Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to 1000 results or 30KB (whichever is hit first).
+export const FIND_TOOL_DESCRIPTION = `Deferred high-volume path matching by glob pattern. Returns matching file and directory paths relative to the search directory, respects .gitignore, and defaults to 1000 results.
 
-ALWAYS use this tool for file name search. NEVER use bash find, fd, or locate — this tool is faster, respects .gitignore, and has consistent output formatting.
+Use this tool only when it has been explicitly activated and you intentionally need a large path result set, such as continuing an inventory after the primary \`glob\` tool reached its practical limit. For ordinary file or directory name matching, use \`glob\` instead; do not call both tools for the same search.
 
-When to use \`find\` vs other tools:
-- Use \`find\` to search for files BY NAME or glob pattern (e.g., "*.ts", "config.*", "**/*.test.js")
-- Use \`grep\` to search for text/patterns INSIDE file contents
-- Use \`dir_tree\` to visualize directory structure with hierarchy
-- Use \`ls\` to list immediate contents of a single directory`;
+Routing:
+- Use \`glob\` for normal file or directory path matching by exact name or wildcard pattern.
+- Use \`find\` only as the high-volume fallback described above.
+- Use \`grep\` for text or patterns inside file contents.
+- Use \`dir_tree\` to inspect directory hierarchy.
+- Use \`ls\` to list one directory's immediate children.
+- Do not use shell commands such as find, fd, rg --files, or locate for these path searches.`;

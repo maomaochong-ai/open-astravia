@@ -38,7 +38,7 @@ Guidance:
 - Prefer keywords copied from the MCP tool index in the system prompt.
 - When the user names a specific MCP server or tool, search for that name.
 - Activation persists for the rest of the session; there is no need to re-search for tools already activated.
-- If nothing matches, retry with broader or different keywords before telling the user the capability is unavailable.`;
+- If nothing matches, make at most one broader retry using terms from the index. Then stop; do not loop or guess tool names.`;
 
 export function scoreMcpDeferredTools(
 	query: string,
