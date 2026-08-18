@@ -7,14 +7,21 @@
  * runner 压缩后仍有上百 KB，而 Windows 单个环境变量上限 32767 字符。所以分块写。
  */
 import type { PluginContext } from "@vetta-org/plugin-sdk";
-import runnerSource from "../../history-runner/dist/runner.mjs?raw";
 
 /*
- * runner 源码 ~380KB，静态引入把它压进插件主 chunk（421KB → 801KB）。动态引入能让
- * 它独立成块、按需加载，但这个插件目前没有任何自己的动态 import 先例——异步 chunk
- * 能否经 vetta-plugin:// 取到没有被验证过，而它一旦取不到，表现是历史对所有人静默
- * 失效。等有人在真实 Electron 里验证过之后再拆。
+ * runner 源码 ~380KB，改为首次执行历史命令时动态 import（?raw 独立成 chunk）。
+ * 异步 chunk 经 vetta-plugin:// 加载的机制是可用的：宿主协议按 standard scheme
+ * 服务插件目录下任意文件（desktop plugin-protocol.ts），且 Module Federation
+ * runtime 本就通过动态 import() 拉取 exposed chunk——每次插件加载都在验证这条
+ * 路。静态引入的代价是 App 启动即求值 400KB 字符串（低配机上直接拖慢插件宿主
+ * 就绪，进而挡住冷启动首轮发送）。
  */
+let runnerSourcePromise: Promise<string> | null = null;
+
+function loadRunnerSource(): Promise<string> {
+	runnerSourcePromise ??= import("../../history-runner/dist/runner.mjs?raw").then((m) => m.default);
+	return runnerSourcePromise;
+}
 
 /** 一块 base64 的大小。留足余量给脚本本身与其它环境变量。 */
 const CHUNK_CHARS = 16_000;
@@ -93,7 +100,7 @@ export function ensureRunner(ctx: PluginContext): Promise<string> {
 }
 
 async function materialize(ctx: PluginContext): Promise<string> {
-	const home = await resolveHome(ctx);
+	const [home, runnerSource] = await Promise.all([resolveHome(ctx), loadRunnerSource()]);
 	const hash = sourceHash(runnerSource);
 	const dir = `${home}/.vetta/plugin-data/vetta-ui-design/history-runner/${hash}`;
 	const file = `${dir}/runner.mjs`;

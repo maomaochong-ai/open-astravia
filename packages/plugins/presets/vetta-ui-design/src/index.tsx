@@ -1,8 +1,7 @@
 import { type CardDescriptor, definePlugin, type PluginPendingToolCall } from "@vetta-org/plugin-sdk";
+import { type ComponentType, lazy, Suspense } from "react";
 import "./style.css";
-import { ScreenshotCard } from "./cards/ScreenshotCard";
 import { SCREENSHOT_CARD_TYPE, SCREENSHOT_TOOL_NAME, screenshotCardDescriptor } from "./cards/screenshot-card";
-import { CanvasTab } from "./canvas/CanvasTab";
 import {
 	getCanvasController,
 	notifyAgentToolArgs,
@@ -14,16 +13,38 @@ import {
 import { refreshDesignCatalog } from "./design-systems/index";
 import { stopAllDesignServers } from "./engine/engine-manager";
 import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "./export/share-format";
-import { ExportMockupDialog } from "./mockup/ExportMockupDialog";
-import { GalleryView } from "./gallery/GalleryView";
 import { claimCanvasReveal } from "./gallery/open-project";
 import { registerTurnHistory } from "./history/turn-history";
 import { setPluginCtx } from "./plugin-context";
-import { VetdPreview } from "./preview/VetdPreview";
 import { CANVAS_TAB_ID, GALLERY_VIEW_ID } from "./tab-ids";
 import { registerDesignTools } from "./tools";
 import { claimCanvasAutoOpen } from "./vetd/auto-open";
 import { isPureDesignProject, pickDesignPaths } from "./vetd/discover";
+
+/**
+ * 大件 UI 面组件全部懒加载：App 启动时宿主会整包求值本插件的入口 chunk，
+ * 画布 / 画廊 / 导出 / 预览的代码只有在对应面真正打开时才需要。切开后
+ * activate() 只注册描述符，入口 chunk 的解析与求值成本大幅下降（低配机
+ * 上直接决定「设计入口首开」与冷启动首轮发送的等待时长）。
+ */
+function lazySurface<P extends object>(load: () => Promise<{ default: ComponentType<P> }>): (props: P) => JSX.Element {
+	const Lazy = lazy(load);
+	return function LazyPluginSurface(props: P) {
+		return (
+			<Suspense fallback={null}>
+				<Lazy {...props} />
+			</Suspense>
+		);
+	};
+}
+
+const CanvasTab = lazySurface(async () => ({ default: (await import("./canvas/CanvasTab")).CanvasTab }));
+const GalleryView = lazySurface(async () => ({ default: (await import("./gallery/GalleryView")).GalleryView }));
+const ExportMockupDialog = lazySurface(async () => ({
+	default: (await import("./mockup/ExportMockupDialog")).ExportMockupDialog,
+}));
+const VetdPreview = lazySurface(async () => ({ default: (await import("./preview/VetdPreview")).VetdPreview }));
+const ScreenshotCard = lazySurface(async () => ({ default: (await import("./cards/ScreenshotCard")).ScreenshotCard }));
 
 function DesignIcon() {
 	return (
