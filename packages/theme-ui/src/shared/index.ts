@@ -21,3 +21,4 @@ export type { TabBarDragEvent, TabBarItem, TabBarProps } from "./TabBar";
 export { TabBar } from "./TabBar";
 export type { TimePickerProps } from "./TimePicker";
 export { TimePicker } from "./TimePicker";
+export { useDelayedUnmount } from "./useDelayedUnmount";

@@ -5,6 +5,7 @@ import { useThemeComponent } from "@vetta/theme-sdk";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import { InputBarContextMenuView, InputBarPlaceholder, SessionDropZoneView } from "@vetta/theme-ui/chat";
+import { useDelayedUnmount } from "@vetta/theme-ui/shared";
 import { CommandPanel } from "../command-panel/CommandPanel";
 import { AtPanel } from "../AtPanel";
 import { ActionButtonBar } from "../ActionButtonBar";
@@ -22,9 +23,6 @@ import { InputEditor } from "./editor/InputEditor";
 import type { InputBarViewProps } from "./types";
 
 const SOFT = { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] as const };
-const COLLAPSE_INITIAL = { height: 0, opacity: 0 };
-const COLLAPSE_ANIMATE = { height: "auto", opacity: 1 };
-const COLLAPSE_EXIT = { height: 0, opacity: 0 };
 
 export function InputBarView({ model, className, classNames }: InputBarViewProps): JSX.Element {
 	const surface = useThemeSurface("chat.inputBar");
@@ -38,6 +36,8 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 	);
 	// Drop target = the visual input card only (not outer padding / max-width gutters).
 	const dropZone = useSessionDropZoneModel(model.effectiveCwd || undefined);
+	// 附件胶囊区折叠动画播完（200ms）后再卸载内容，动画本身是纯 CSS grid 过渡。
+	const renderCapsules = useDelayedUnmount(model.hasCapsules, 220);
 
 	const cardClass = [
 		// 浅色下输入栏与页面同为白底，靠一层大扩散低透明的外投影把它从背景里托起
@@ -138,16 +138,17 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 						 * 顶部附件区只剩「不是一个词」的东西：重编辑提示、Appshot 复合卡片、
 						 * 插件上下文、场景胶囊。文件 / 图片 / skill 都已进入文本流。
 						 */}
-						<AnimatePresence initial={false}>
-							{model.hasCapsules && (
-								<motion.div
-									key="capsules"
-									initial={COLLAPSE_INITIAL}
-									animate={COLLAPSE_ANIMATE}
-									exit={COLLAPSE_EXIT}
-									transition={SOFT}
-									className="overflow-hidden rounded-t-[inherit]"
-								>
+						{/* 纯 CSS grid 过渡替代 motion height:auto：发送清空附件的瞬间不再有逐帧 JS 高度动画。 */}
+						<div
+							aria-hidden={!model.hasCapsules}
+							className="grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none"
+							style={{
+								gridTemplateRows: model.hasCapsules ? "1fr" : "0fr",
+								opacity: model.hasCapsules ? 1 : 0,
+							}}
+						>
+							<div className="min-h-0 overflow-hidden rounded-t-[inherit]">
+								{renderCapsules && (
 									<div className={["space-y-1.5 px-3 pt-3", classNames?.capsules].filter(Boolean).join(" ")}>
 										{model.pendingMessageEdit && (
 											<div className="flex items-center justify-between gap-2 rounded-md border border-primary/25 bg-primary/5 px-2.5 py-1.5 text-[11px] text-primary">
@@ -203,9 +204,9 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 
 										{/* 插件附件不画在卡片里：它是「你现在正看着什么」，画在卡片外面顶部（PromptAttachmentLabels）。 */}
 									</div>
-								</motion.div>
-							)}
-						</AnimatePresence>
+								)}
+							</div>
+						</div>
 
 						<div className={["px-4 pb-1 pt-3", classNames?.editorWrap].filter(Boolean).join(" ")}>
 							<div className="relative">
