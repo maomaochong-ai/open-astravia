@@ -1,4 +1,4 @@
-import { waitForPluginHostReady } from "@domains/plugins/runtime/plugin-events";
+import { waitForPluginHostFirstReady } from "@domains/plugins/runtime/plugin-events";
 import { useProjectActions } from "@domains/project/hooks/useProjects";
 import { i18n } from "@shared/i18n";
 import {
@@ -474,7 +474,9 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			let sendResult: SendMessageResult | undefined;
 			try {
 				perfSendMark("await-plugin-host", interactionId);
-				await waitForPluginHostReady();
+				// 只等首次激活：热重载期间旧工具注册仍有效（last-known-good），
+				// 不再让插件集合变化把每次发送挡住最长 5 秒。
+				await waitForPluginHostFirstReady();
 				perfSendMark("prompt-ipc-start", interactionId);
 				const promptPromise = window.vetta.session.prompt(
 					session.runtimeId,
