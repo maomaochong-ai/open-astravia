@@ -5,20 +5,80 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      cloud_enabled:
+        description: "VETTA_CLOUD_ENABLED. default = Environment / repo variable (unset is lite)."
+        type: choice
+        options: [default, "true", "false"]
+        default: default
+      server_url:
+        description: "VETTA_SERVER_URL override. Required when this run is a full build."
+        type: string
+        required: false
+      site_url:
+        description: "VETTA_SITE_URL override. Empty keeps Environment / repo value."
+        type: string
+        required: false
+      marketplace_repository:
+        description: "Lite-only built-in GitHub marketplace source."
+        type: string
+        required: false
+      tenant:
+        description: "VETTA_TENANT override (packages/plugins/tenants.json)."
+        type: string
+        required: false
+      speech_input:
+        description: "VETTA_SPEECH_INPUT_ENABLED. default = Environment / repo variable."
+        type: choice
+        options: [default, "true", "false"]
+        default: default
+      channel:
+        description: "Rewrite update URL / R2 prefix to stable or test when those path segments exist. Dedicated VETTA_*_TEST / _STABLE vars win."
+        type: choice
+        options: [default, stable, test]
+        default: default
+      update_url:
+        description: "VETTA_UPDATE_URL override."
+        type: string
+        required: false
+      r2_prefix:
+        description: "VETTA_R2_PREFIX override (publish job only)."
+        type: string
+        required: false
+      release_target:
+        description: "Where a matching v* tag publishes. default = VETTA_RELEASE_TARGET or github."
+        type: choice
+        options: [default, r2, github]
+        default: default
+      notes:
+        description: "Shown on the run summary. Not a secret; do not paste keys."
+        type: string
+        required: false
 
 permissions:
   contents: read
-
-env:
-  RELEASE_TARGET: ${{ vars.VETTA_RELEASE_TARGET || 'github' }}
 
 jobs:
   prepare:
     name: resolve desktop release scope
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    environment: desktop-production
     outputs:
       should-build: ${{ steps.scope.outputs.should-build }}
+      channel: ${{ steps.config.outputs.channel }}
+      cloud_enabled: ${{ steps.config.outputs.cloud_enabled }}
+      marketplace_repository: ${{ steps.config.outputs.marketplace_repository }}
+      notes: ${{ steps.config.outputs.notes }}
+      r2_bucket: ${{ steps.config.outputs.r2_bucket }}
+      r2_prefix: ${{ steps.config.outputs.r2_prefix }}
+      release_target: ${{ steps.config.outputs.release_target }}
+      server_url: ${{ steps.config.outputs.server_url }}
+      site_url: ${{ steps.config.outputs.site_url }}
+      speech_input: ${{ steps.config.outputs.speech_input }}
+      tenant: ${{ steps.config.outputs.tenant }}
+      update_provider: ${{ steps.config.outputs.update_provider }}
+      update_url: ${{ steps.config.outputs.update_url }}
 
     steps:
       - uses: actions/checkout@v4
@@ -41,6 +101,57 @@ jobs:
             echo "::notice::Ignoring ${REF_NAME}; desktop package version is ${VERSION}."
             echo "should-build=false" >> "${GITHUB_OUTPUT}"
           fi
+
+      - name: Resolve release configuration
+        if: steps.scope.outputs.should-build == 'true'
+        id: config
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_CHANNEL: ${{ github.event.inputs.channel }}
+          INPUT_CLOUD_ENABLED: ${{ github.event.inputs.cloud_enabled }}
+          INPUT_MARKETPLACE_REPOSITORY: ${{ github.event.inputs.marketplace_repository }}
+          INPUT_NOTES: ${{ github.event.inputs.notes }}
+          INPUT_R2_PREFIX: ${{ github.event.inputs.r2_prefix }}
+          INPUT_RELEASE_TARGET: ${{ github.event.inputs.release_target }}
+          INPUT_SERVER_URL: ${{ github.event.inputs.server_url }}
+          INPUT_SITE_URL: ${{ github.event.inputs.site_url }}
+          INPUT_SPEECH_INPUT: ${{ github.event.inputs.speech_input }}
+          INPUT_TENANT: ${{ github.event.inputs.tenant }}
+          INPUT_UPDATE_URL: ${{ github.event.inputs.update_url }}
+          VAR_CLOUD_ENABLED: ${{ vars.VETTA_CLOUD_ENABLED }}
+          VAR_MARKETPLACE_REPOSITORY: ${{ vars.VETTA_OPEN_MARKETPLACE_REPOSITORY }}
+          VAR_R2_BUCKET: ${{ vars.VETTA_R2_BUCKET }}
+          VAR_R2_PREFIX: ${{ vars.VETTA_R2_PREFIX }}
+          VAR_R2_PREFIX_STABLE: ${{ vars.VETTA_R2_PREFIX_STABLE }}
+          VAR_R2_PREFIX_TEST: ${{ vars.VETTA_R2_PREFIX_TEST }}
+          VAR_RELEASE_CHANNEL: ${{ vars.VETTA_RELEASE_CHANNEL }}
+          VAR_RELEASE_TARGET: ${{ vars.VETTA_RELEASE_TARGET }}
+          VAR_SERVER_URL: ${{ vars.VETTA_SERVER_URL }}
+          VAR_SITE_URL: ${{ vars.VETTA_SITE_URL }}
+          VAR_SPEECH_INPUT: ${{ vars.VETTA_SPEECH_INPUT_ENABLED }}
+          VAR_TENANT: ${{ vars.VETTA_TENANT }}
+          VAR_UPDATE_URL: ${{ vars.VETTA_UPDATE_URL }}
+          VAR_UPDATE_URL_STABLE: ${{ vars.VETTA_UPDATE_URL_STABLE }}
+          VAR_UPDATE_URL_TEST: ${{ vars.VETTA_UPDATE_URL_TEST }}
+        run: node scripts/release/resolve-desktop-release-config.mjs --github-output >> "${GITHUB_OUTPUT}"
+
+      - name: Write resolved config to the job summary
+        if: steps.scope.outputs.should-build == 'true'
+        env:
+          OUTPUT_CHANNEL: ${{ steps.config.outputs.channel }}
+          OUTPUT_CLOUD_ENABLED: ${{ steps.config.outputs.cloud_enabled }}
+          OUTPUT_MARKETPLACE_REPOSITORY: ${{ steps.config.outputs.marketplace_repository }}
+          OUTPUT_NOTES: ${{ steps.config.outputs.notes }}
+          OUTPUT_R2_BUCKET: ${{ steps.config.outputs.r2_bucket }}
+          OUTPUT_R2_PREFIX: ${{ steps.config.outputs.r2_prefix }}
+          OUTPUT_RELEASE_TARGET: ${{ steps.config.outputs.release_target }}
+          OUTPUT_SERVER_URL: ${{ steps.config.outputs.server_url }}
+          OUTPUT_SITE_URL: ${{ steps.config.outputs.site_url }}
+          OUTPUT_SPEECH_INPUT: ${{ steps.config.outputs.speech_input }}
+          OUTPUT_TENANT: ${{ steps.config.outputs.tenant }}
+          OUTPUT_UPDATE_PROVIDER: ${{ steps.config.outputs.update_provider }}
+          OUTPUT_UPDATE_URL: ${{ steps.config.outputs.update_url }}
+        run: node scripts/release/resolve-desktop-release-config.mjs --from-outputs --summary >> "${GITHUB_STEP_SUMMARY}"
 
   build:
     name: build ${{ matrix.platform }}
@@ -172,19 +283,29 @@ jobs:
         shell: bash
         run: rm -rf apps/desktop/release
 
+      - name: Apply resolved release configuration
+        shell: bash
+        env:
+          OUTPUT_CHANNEL: ${{ needs.prepare.outputs.channel }}
+          OUTPUT_CLOUD_ENABLED: ${{ needs.prepare.outputs.cloud_enabled }}
+          OUTPUT_MARKETPLACE_REPOSITORY: ${{ needs.prepare.outputs.marketplace_repository }}
+          OUTPUT_NOTES: ${{ needs.prepare.outputs.notes }}
+          OUTPUT_R2_BUCKET: ${{ needs.prepare.outputs.r2_bucket }}
+          OUTPUT_R2_PREFIX: ${{ needs.prepare.outputs.r2_prefix }}
+          OUTPUT_RELEASE_TARGET: ${{ needs.prepare.outputs.release_target }}
+          OUTPUT_SERVER_URL: ${{ needs.prepare.outputs.server_url }}
+          OUTPUT_SITE_URL: ${{ needs.prepare.outputs.site_url }}
+          OUTPUT_SPEECH_INPUT: ${{ needs.prepare.outputs.speech_input }}
+          OUTPUT_TENANT: ${{ needs.prepare.outputs.tenant }}
+          OUTPUT_UPDATE_PROVIDER: ${{ needs.prepare.outputs.update_provider }}
+          OUTPUT_UPDATE_URL: ${{ needs.prepare.outputs.update_url }}
+        run: node scripts/release/resolve-desktop-release-config.mjs --from-outputs --export-env >> "${GITHUB_ENV}"
+
       - name: Build updater artifacts
         working-directory: apps/desktop
         env:
-          # 云服务是构建期开关，默认关闭（lite）。fork 不配这些 vars 就得到
-          # serv-less 构建；官方发版在仓库 Variables 里设 VETTA_CLOUD_ENABLED=true
-          # 与 VETTA_SERVER_URL 才产出完全体。
-          VETTA_CLOUD_ENABLED: ${{ vars.VETTA_CLOUD_ENABLED }}
-          VETTA_SERVER_URL: ${{ vars.VETTA_SERVER_URL }}
-          VETTA_SITE_URL: ${{ vars.VETTA_SITE_URL }}
-          # 仅 lite 构建会内置这个 GitHub 来源；完全体走 Serv 官方市场并忽略它。
-          VETTA_OPEN_MARKETPLACE_REPOSITORY: ${{ vars.VETTA_OPEN_MARKETPLACE_REPOSITORY }}
-          VETTA_UPDATE_PROVIDER: ${{ env.RELEASE_TARGET == 'r2' && 'generic' || 'github' }}
-          VETTA_UPDATE_URL: ${{ vars.VETTA_UPDATE_URL }}
+          # 由 prepare 解析：dispatch 表单 > desktop-production Environment/仓库 Variables。
+          # fork 不配任何值就得到 lite。空 optional 键不会写入 GITHUB_ENV。
           VETTA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
           VETTA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
         run: bun run ${{ matrix.command }}
@@ -216,7 +337,7 @@ jobs:
 
   publish-r2:
     name: publish R2
-    if: needs.prepare.outputs.should-build == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && vars.VETTA_RELEASE_TARGET == 'r2'
+    if: needs.prepare.outputs.should-build == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.prepare.outputs.release_target == 'r2'
     needs: [prepare, build]
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -247,20 +368,35 @@ jobs:
         working-directory: apps/desktop
         run: bun run merge:updates:mac
 
+      - name: Apply resolved release configuration
+        shell: bash
+        env:
+          OUTPUT_CHANNEL: ${{ needs.prepare.outputs.channel }}
+          OUTPUT_CLOUD_ENABLED: ${{ needs.prepare.outputs.cloud_enabled }}
+          OUTPUT_MARKETPLACE_REPOSITORY: ${{ needs.prepare.outputs.marketplace_repository }}
+          OUTPUT_NOTES: ${{ needs.prepare.outputs.notes }}
+          OUTPUT_R2_BUCKET: ${{ needs.prepare.outputs.r2_bucket }}
+          OUTPUT_R2_PREFIX: ${{ needs.prepare.outputs.r2_prefix }}
+          OUTPUT_RELEASE_TARGET: ${{ needs.prepare.outputs.release_target }}
+          OUTPUT_SERVER_URL: ${{ needs.prepare.outputs.server_url }}
+          OUTPUT_SITE_URL: ${{ needs.prepare.outputs.site_url }}
+          OUTPUT_SPEECH_INPUT: ${{ needs.prepare.outputs.speech_input }}
+          OUTPUT_TENANT: ${{ needs.prepare.outputs.tenant }}
+          OUTPUT_UPDATE_PROVIDER: ${{ needs.prepare.outputs.update_provider }}
+          OUTPUT_UPDATE_URL: ${{ needs.prepare.outputs.update_url }}
+        run: node scripts/release/resolve-desktop-release-config.mjs --from-outputs --export-env >> "${GITHUB_ENV}"
+
       - name: Publish artifacts before metadata
         working-directory: apps/desktop
         env:
           VETTA_R2_ACCOUNT_ID: ${{ secrets.VETTA_R2_ACCOUNT_ID }}
           VETTA_R2_ACCESS_KEY_ID: ${{ secrets.VETTA_R2_ACCESS_KEY_ID }}
           VETTA_R2_SECRET_ACCESS_KEY: ${{ secrets.VETTA_R2_SECRET_ACCESS_KEY }}
-          VETTA_R2_BUCKET: ${{ vars.VETTA_R2_BUCKET }}
-          VETTA_R2_PREFIX: ${{ vars.VETTA_R2_PREFIX }}
-          VETTA_UPDATE_URL: ${{ vars.VETTA_UPDATE_URL }}
         run: bun run publish:updates:r2
 
   publish-github:
     name: publish GitHub Release
-    if: needs.prepare.outputs.should-build == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && vars.VETTA_RELEASE_TARGET != 'r2'
+    if: needs.prepare.outputs.should-build == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.prepare.outputs.release_target != 'r2'
     needs: [prepare, build]
     runs-on: ubuntu-latest
     timeout-minutes: 15

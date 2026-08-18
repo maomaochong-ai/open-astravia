@@ -169,12 +169,26 @@ VETTA_UPDATE_PROVIDER=none
 
 ## CI
 
-`.github/workflows/desktop-release.yml` 从仓库 Variables 读取构建配置。**fork 不配任何 Variables 就得到 lite 构建**；要产出完全体，在仓库 Settings → Variables 里设置：
+`.github/workflows/desktop-release.yml` 在 `prepare` job 解析构建配置，并写入 `desktop-production` Environment。优先级：
+
+1. **Actions → desktop-release → Run workflow 表单**（仅 `workflow_dispatch`；选 `default` 或留空表示不覆盖）
+2. **Environment / 仓库 Variables**（job 声明了 `environment: desktop-production` 时，Environment 覆盖同名仓库变量）
+3. 内置默认：不设 `VETTA_CLOUD_ENABLED` 就是 lite；`VETTA_RELEASE_TARGET` 缺省为 `github`
+
+**fork 不配任何 Variables 就得到 lite 构建。** 官方完全体把这些放到 Settings → Environments → `desktop-production` → Environment variables（密钥走 Environment secrets）：
 
 ```
 VETTA_CLOUD_ENABLED = true
 VETTA_SERVER_URL    = https://api.example.com/api/v1
 VETTA_SITE_URL      = https://www.example.com
+VETTA_RELEASE_TARGET = r2
+VETTA_UPDATE_URL     = https://releases.example.com/desktop/stable
+VETTA_R2_BUCKET      = vetta-releases
+VETTA_R2_PREFIX      = desktop/stable
 ```
 
-`workflow_dispatch` 只构建并保留 Actions Artifact；只有匹配 `package.json` 版本的正式 tag 才会发布到 R2 / GitHub Releases。
+可选：`VETTA_UPDATE_URL_TEST` / `VETTA_R2_PREFIX_TEST`（以及 `_STABLE`）。手动 Run 时把 channel 选成 `test` 会优先用它们；没有的话，若现有 URL/前缀末段是 `stable`/`test`/`beta`/`prod`/`production`，则改写成 `test`。
+
+表单可以覆盖 lite/full、服务端地址、租户、语音开关、发布目标和通道。**不要在表单里填 R2 key、证书或 DSN**——它们继续走 Secrets。
+
+`workflow_dispatch` 只构建并保留 Actions Artifact，并在 job summary 打印本次解析结果；只有匹配 `package.json` 版本的正式 tag 才会发布到 R2 / GitHub Releases。表单定义必须在 GitHub 默认分支上才看得到。

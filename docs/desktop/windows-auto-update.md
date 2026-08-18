@@ -424,8 +424,8 @@ VETTA_UPDATE_GITHUB_REPO=<repository>
 
 ### 9.3 Action 发布边界
 
-- `workflow_dispatch` 只构建、校验并保留三平台 Artifact，不上传 R2，也不创建 GitHub Release；因此可以在启用 CI 后用它做正式发布前演练。
-- 只有 `v<apps/desktop/package.json version>` tag 才进入发布 Job。
+- `workflow_dispatch` 只构建、校验并保留三平台 Artifact，不上传 R2，也不创建 GitHub Release；因此可以在启用 CI 后用它做正式发布前演练。Run workflow 表单可覆盖本次构建的非机密变量；未填则用 `desktop-production` Environment / 仓库 Variables。解析结果写在 job summary。
+- 只有 `v<apps/desktop/package.json version>` tag 才进入发布 Job。tag 发版忽略表单，只吃 Environment / 仓库 Variables，避免过期 UI 状态改写生产。
 - 其它同样使用标准 `v*` 命名的仓库 tag 只运行一个轻量 scope Job；版本不等于 desktop package 时直接跳过三平台构建，不消耗打包 runner。
 - Windows Inno 完整安装校验在 Windows build Job 内完成；Linux 汇总发布 Job 不再尝试执行 Windows 安装器。
 - macOS 凭据完全未配置时允许生成未签名包；只配置一部分时失败；凭据齐全时强制校验签名、公证和 Gatekeeper。

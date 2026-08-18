@@ -169,12 +169,26 @@ The update source is build configuration and is independent of the operating sys
 
 ## CI
 
-`.github/workflows/desktop-release.yml` reads build configuration from repository Variables. **A fork with no Variables set produces a lite build.** To produce a full build, set these under Settings → Variables:
+`.github/workflows/desktop-release.yml` resolves build configuration in the `prepare` job, which uses the `desktop-production` Environment. Precedence:
+
+1. **Actions → desktop-release → Run workflow form** (`workflow_dispatch` only; `default` / empty means no override)
+2. **Environment / repository Variables** (when the job sets `environment: desktop-production`, Environment values overlay same-named repository variables)
+3. Built-in defaults: unset `VETTA_CLOUD_ENABLED` is lite; `VETTA_RELEASE_TARGET` defaults to `github`
+
+**A fork with no Variables set produces a lite build.** For an official full build, put these on Settings → Environments → `desktop-production` → Environment variables (credentials stay in Environment secrets):
 
 ```
 VETTA_CLOUD_ENABLED = true
 VETTA_SERVER_URL    = https://api.example.com/api/v1
 VETTA_SITE_URL      = https://www.example.com
+VETTA_RELEASE_TARGET = r2
+VETTA_UPDATE_URL     = https://releases.example.com/desktop/stable
+VETTA_R2_BUCKET      = vetta-releases
+VETTA_R2_PREFIX      = desktop/stable
 ```
 
-`workflow_dispatch` only builds and retains an Actions artifact; only a release tag matching the `package.json` version publishes to R2 / GitHub Releases.
+Optional: `VETTA_UPDATE_URL_TEST` / `VETTA_R2_PREFIX_TEST` (and `_STABLE`). Choosing channel `test` on a manual run prefers those; otherwise a trailing `stable` / `test` / `beta` / `prod` / `production` segment is rewritten.
+
+The form can override lite/full, server URLs, tenant, speech input, publish target, and channel. **Do not type R2 keys, certificates, or DSNs into the form** — those stay in Secrets.
+
+`workflow_dispatch` only builds and keeps an Actions artifact, and prints the resolved config on the job summary. Only a release tag matching the `package.json` version publishes to R2 / GitHub Releases. The form is visible only after this workflow exists on the repository default branch.
