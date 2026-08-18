@@ -1,4 +1,5 @@
 import { config } from "dotenv";
+import { isCloudBuildEnabled } from "../shared/feature-flags.js";
 
 // 仅在源码模式（bun run start，tsx 直跑 src/main/main.ts）下生效：
 // 通过 dotenv 加载本地 .env 文件，让源码运行也能拿到 VETTA_SERVER_URL。
@@ -8,13 +9,16 @@ import { config } from "dotenv";
 config({ path: ".env.development", quiet: true });
 config({ path: ".env", quiet: true });
 
-if (!process.env.VETTA_SERVER_URL) {
+// lite 构建（VETTA_CLOUD_ENABLED=false）不含云服务：登录、网关、官方市场与
+// 远程模型目录全部不进产物，SERVER_URL 没有实际消费方，因此不作要求。
+// 完全体构建缺了它会在运行期一路失败到「Unknown provider」，必须尽早拦住。
+if (isCloudBuildEnabled() && !process.env.VETTA_SERVER_URL) {
 	throw new Error("VETTA_SERVER_URL 未配置。请检查 .env.<mode> 文件，或在打包时通过 VETTA_BUILD_ENV 指定构建模式。");
 }
 
-export const DEFAULT_SERVER_URL: string = process.env.VETTA_SERVER_URL;
+export const DEFAULT_SERVER_URL: string = process.env.VETTA_SERVER_URL ?? "";
 
-export const DEFAULT_SITE_URL: string = process.env.VETTA_SITE_URL || deriveSiteUrl(process.env.VETTA_SERVER_URL);
+export const DEFAULT_SITE_URL: string = process.env.VETTA_SITE_URL || deriveSiteUrl(DEFAULT_SERVER_URL);
 
 function deriveSiteUrl(serverUrl: string): string {
 	try {
