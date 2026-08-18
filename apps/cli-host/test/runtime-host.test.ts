@@ -416,7 +416,10 @@ describe("IM Runtime Host", () => {
 	});
 
 	it("exposes both resource and Extension command discovery", async () => {
-		const fixture = await createFixture([]);
+		const fixture = await createFixture([], undefined, {
+			name: "review",
+			content: "---\ndescription: Review changes\n---\nReview the current changes.",
+		});
 		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
@@ -429,7 +432,7 @@ describe("IM Runtime Host", () => {
 
 		expect(result.capabilities.profile.commands).toContain("get_commands");
 		const commands = result.capabilities.commands?.readCommands() ?? [];
-		expect(commands.length).toBeGreaterThan(0);
+		expect(commands).toContainEqual(expect.objectContaining({ name: "review", source: "prompt", location: "user" }));
 		expect(commands.every(({ source }) => source === "prompt" || source === "skill")).toBe(true);
 
 		const commandFixture = await createFixture(
@@ -613,6 +616,7 @@ async function initialize(result: RpcRuntimeHostReady): Promise<void> {
 async function createFixture(
 	extraArgs: string[],
 	extensionSource?: string,
+	promptFixture?: { readonly name: string; readonly content: string },
 ): Promise<{
 	readonly root: string;
 	readonly agentDir: string;
@@ -630,6 +634,11 @@ async function createFixture(
 		conversationDir: join(root, "conversations"),
 	};
 	await Promise.all([mkdir(fixture.workspace, { recursive: true }), mkdir(fixture.agentDir, { recursive: true })]);
+	if (promptFixture) {
+		const promptsDir = join(fixture.agentDir, "prompts");
+		await mkdir(promptsDir, { recursive: true });
+		await writeFile(join(promptsDir, `${promptFixture.name}.md`), promptFixture.content, "utf8");
+	}
 	await writeFile(
 		join(fixture.agentDir, "models.json"),
 		JSON.stringify({
