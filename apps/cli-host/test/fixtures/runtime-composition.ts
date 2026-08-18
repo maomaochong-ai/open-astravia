@@ -1,5 +1,6 @@
 import {
 	type CodingAgentRuntimeCompositionOptions,
+	type CodingAgentSessionExecutionEnvironmentFactory,
 	createCodingAgentRuntimeComposition as createRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import { getAgentDir } from "@vetta/coding-agent/config";
@@ -20,6 +21,16 @@ const createTestSessionExecutionEnvironment = createCliCodingAgentSessionExecuti
 	agentDir: getAgentDir(),
 	settings: SettingsRuntime.inMemory(),
 });
+
+export const createUnsandboxedTestSessionExecutionEnvironment: CodingAgentSessionExecutionEnvironmentFactory = async (
+	context,
+) => {
+	const environment = await createTestSessionExecutionEnvironment(context);
+	return {
+		...environment,
+		sandbox: { createToolSet: () => undefined },
+	};
+};
 
 type TestCompositionOptions = Omit<
 	CodingAgentRuntimeCompositionOptions,

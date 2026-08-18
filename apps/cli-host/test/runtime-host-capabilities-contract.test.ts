@@ -14,7 +14,10 @@ import {
 	RuntimeHost,
 } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
+import {
+	createCodingAgentRuntimeComposition,
+	createUnsandboxedTestSessionExecutionEnvironment,
+} from "./fixtures/runtime-composition.js";
 
 const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
 
@@ -43,6 +46,7 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,
+			createSessionExecutionEnvironment: createUnsandboxedTestSessionExecutionEnvironment,
 			scenario: "batch",
 			enableSubagents: false,
 			activation: { mode: "explicit", toolNames: ["plugin_artifact"] },
@@ -152,6 +156,7 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,
+			createSessionExecutionEnvironment: createUnsandboxedTestSessionExecutionEnvironment,
 			scenario: "conversation",
 			enableSubagents: true,
 			activation: { mode: "explicit", toolNames: [] },

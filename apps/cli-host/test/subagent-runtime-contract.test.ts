@@ -206,7 +206,8 @@ describe("Subagent Runtime composition contract", () => {
 
 		expect(childInputs[0]?.join("\n")).toContain("Implement this feature in parallel.");
 		expect(childInputs[0]?.join("\n")).toContain("Change the assigned files.");
-		expect(childToolSurfaces[0]).toEqual(expect.arrayContaining(["shell", "read", "edit", "write", "todo"]));
+		const commandToolName = process.platform === "win32" ? "shell" : "bash";
+		expect(childToolSurfaces[0]).toEqual(expect.arrayContaining([commandToolName, "read", "edit", "write", "todo"]));
 		expect(childToolSurfaces[0]).not.toEqual(
 			expect.arrayContaining(["spawn_agent", "dispatch_workflows", "wait_agent"]),
 		);
