@@ -13,6 +13,7 @@
     "version": "2.1.0",
     "source": "builtin",
     "enabled": true,
+    "requiresCloud": true,
     "type": "skill",
     "alias": "发布能力",
     "description": "把 skill、scene、MCP、插件或能力套装提交到 Vetta 能力市场，讲清必填字段、多语言与审核流程。"

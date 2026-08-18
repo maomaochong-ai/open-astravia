@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { app } from "electron";
+import { isCloudBuildEnabled } from "../shared/feature-flags.js";
 import { mainT } from "./i18n/index.js";
 
 const BUILTIN_SKILLS_RESOURCE_DIR = "system-skills";
@@ -14,6 +15,8 @@ export interface BuiltinSkillRegistration {
 	type: "skill" | "scene";
 	alias?: string;
 	description?: string;
+	/** 依赖 vetta 云服务（登录 / 官方市场）的技能：lite 构建下整个隐藏、不加载。 */
+	requiresCloud?: boolean;
 }
 
 function isSkillsDir(dir: string): boolean {
@@ -47,13 +50,22 @@ export function getBuiltinSkillsDir(): string | undefined {
 	return undefined;
 }
 
+/**
+ * lite 构建过滤依赖云服务的技能（如 publish-ability：发布到官方市场需要登录）。
+ * 在唯一的清单读取入口过滤，技能列表、能力页与 Agent 装配自然一致。
+ */
+function filterForBuild(manifest: Record<string, BuiltinSkillRegistration>): Record<string, BuiltinSkillRegistration> {
+	if (isCloudBuildEnabled()) return manifest;
+	return Object.fromEntries(Object.entries(manifest).filter(([, entry]) => entry.requiresCloud !== true));
+}
+
 export function readBuiltinSkillsManifest(): Record<string, BuiltinSkillRegistration> {
 	const skillsDir = getBuiltinSkillsDir();
 	if (!skillsDir) return {};
 	try {
 		const parsed = JSON.parse(readFileSync(join(skillsDir, BUILTIN_SKILLS_MANIFEST), "utf-8")) as unknown;
 		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-		return parsed as Record<string, BuiltinSkillRegistration>;
+		return filterForBuild(parsed as Record<string, BuiltinSkillRegistration>);
 	} catch {
 		return {};
 	}
