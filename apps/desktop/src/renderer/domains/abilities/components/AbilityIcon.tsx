@@ -30,7 +30,15 @@ export function AbilityIcon({
 			)}
 		>
 			{showImage && icon ? (
-				<img src={icon} alt="" className="h-full w-full object-contain" onError={() => setFailedIcon(icon)} />
+				/* 首屏最多几十张远程图标：懒加载 + 异步解码，避免首开时集中抢主线程与网络。 */
+				<img
+					src={icon}
+					alt=""
+					loading="lazy"
+					decoding="async"
+					className="h-full w-full object-contain"
+					onError={() => setFailedIcon(icon)}
+				/>
 			) : isIconifyIcon(icon) ? (
 				<SkillTypeIcon type={type === "scene" ? "scene" : "skill"} icon={icon} className={iconClassName} />
 			) : type === "skill" ? (
