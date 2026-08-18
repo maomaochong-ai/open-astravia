@@ -1,6 +1,6 @@
-import { AnimatePresence, motion } from "motion/react";
 import { useRef, type JSX, type ReactNode } from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
+import { useDelayedUnmount } from "../shared/useDelayedUnmount";
 import { ShowMoreSessionsButton } from "../sidebar/ShowMoreSessionsButton";
 import { ProjectSessionsLoadingView } from "./ProjectSessionsLoadingView";
 import {
@@ -50,18 +50,18 @@ export function ProjectSessionsView<T extends ProjectSessionsViewItem>({
 	const activeIndex = sessions.findIndex((session) => session.active);
 	const activeKey = activeIndex >= 0 ? sessions[activeIndex]?.key : undefined;
 	useActiveSessionAutoScroll({ activeIndex, activeKey, enabled: expanded, scrollParent, virtuosoRef });
+	// 纯 CSS grid-rows 过渡替代 motion 的 height:auto 动画：折叠动画播完（200ms）后才卸载
+	// 子树，动画期间没有任何逐帧 JS 测量/写高度。
+	const renderContent = useDelayedUnmount(expanded, 220);
 
 	return (
-		<AnimatePresence initial={false}>
-			{expanded && (
-				<motion.div
-					key="sessions"
-					initial={{ height: 0, opacity: 0 }}
-					animate={{ height: "auto", opacity: 1 }}
-					exit={{ height: 0, opacity: 0 }}
-					transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
-					style={{ overflow: "hidden" }}
-				>
+		<div
+			aria-hidden={!expanded}
+			className="grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none"
+			style={{ gridTemplateRows: expanded ? "1fr" : "0fr", opacity: expanded ? 1 : 0 }}
+		>
+			<div className="min-h-0 overflow-hidden">
+				{renderContent && (
 					<div className="mt-px space-y-px">
 						{loading ? (
 							<ProjectSessionsLoadingView />
@@ -89,8 +89,8 @@ export function ProjectSessionsView<T extends ProjectSessionsViewItem>({
 							/>
 						)}
 					</div>
-				</motion.div>
-			)}
-		</AnimatePresence>
+				)}
+			</div>
+		</div>
 	);
 }
