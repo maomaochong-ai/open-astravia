@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/runtime-Bun%201.3%2B-black" alt="Bun">
+  <a href="https://coderabbit.ai"><img src="https://img.shields.io/coderabbit/prs/github/openvetta/open-vetta?utm_source=oss&utm_medium=github&utm_campaign=openvetta%2Fopen-vetta&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Pull Request Reviews"></a>
 </p>
 
 <p align="center">
