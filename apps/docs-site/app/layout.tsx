@@ -1,3 +1,5 @@
+import { buildRootMetadata } from "@/lib/seo/metadata";
+import { site } from "@/lib/site";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
@@ -20,18 +22,13 @@ const translations = {
 	"System(theme switcher)(aria-label)": "跟随系统",
 };
 
-export const metadata: Metadata = {
-	metadataBase: new URL(process.env.DOCS_SITE_URL ?? "https://docs.openvetta.com"),
-	title: "Vetta 开发者文档",
-	description: "配置 Vetta、运行 Agent 任务，并通过插件、主题和 MCP 扩展桌面能力。",
-	icons: { icon: "/favicon.svg" },
-};
+export const metadata: Metadata = buildRootMetadata();
 
 export default function RootLayout({ children }: { children: ReactNode }) {
 	return (
-		<html lang="zh-CN" suppressHydrationWarning>
+		<html lang={site.locale} suppressHydrationWarning>
 			<body className="vetta-docs flex min-h-screen flex-col">
-				<RootProvider i18n={{ locale: "zh-CN", translations }}>{children}</RootProvider>
+				<RootProvider i18n={{ locale: site.locale, translations }}>{children}</RootProvider>
 			</body>
 		</html>
 	);

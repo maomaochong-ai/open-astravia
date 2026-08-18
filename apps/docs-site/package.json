@@ -7,7 +7,8 @@
 		"dev": "next dev --hostname 0.0.0.0 --port 4321",
 		"build": "next build",
 		"preview": "next start --hostname 0.0.0.0 --port 4321",
-		"check": "next typegen && tsc --noEmit"
+		"check": "next typegen && tsc --noEmit",
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run"
 	},
 	"dependencies": {
 		"fumadocs-core": "16.14.1",

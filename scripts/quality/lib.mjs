@@ -43,6 +43,7 @@ export const PACKAGE_DIRS = {
 	markdown: "packages/markdown",
 	ui: "packages/ui",
 	"im-gateway": "apps/im-gateway",
+	"docs-site": "apps/docs-site",
 };
 
 export function fail(message) {

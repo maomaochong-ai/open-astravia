@@ -28,6 +28,15 @@ Fumadocs 搜索索引由站点内容生成，因此需要通过构建后的站�
 
 页面示例只使用公开包入口。可执行代码的签名以 `package.json#exports` 和类型定义为准，不能从内部文档复制后长期脱离实现。
 
+## SEO 与发现入口
+
+站点在构建时生成面向搜索引擎和社交平台的元数据，不单独维护页面副本：
+
+- `/robots.txt`：允许搜索与 AI 检索爬虫，并声明 sitemap。
+- `/sitemap.xml`：收录全部公开文档页；`lastmod` 取自内容文件的 Git 提交时间。
+- 每页 `canonical`、Open Graph、Twitter Card，以及 `application/ld+json`（Organization、SoftwareApplication、WebSite、WebPage/TechArticle、BreadcrumbList）。
+- 文档页另提供 `text/markdown` alternate，例如 `/product/models.md`。
+
 ## LLM 入口
 
 - `/llms.txt`：文档索引，适合 Agent 发现页面。
