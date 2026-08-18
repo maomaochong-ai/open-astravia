@@ -42,7 +42,7 @@ function Sidebar() {
 
 ## 对话：事件
 
-`ctx.conversation.on(listener)` 推实时事件，返回 `Disposable`。需要 `agent.session.read`。
+`ctx.conversation.on(listener)` 推实时事件，返回 `Disposable`。需要 `agent.session.read`。调用方可提前 `dispose()`；插件 activation 结束时宿主也会兜底释放仍存活的订阅，避免重载后的旧 listener 继续收到事件。
 
 ```ts
 const sub = ctx.conversation.on((event) => {

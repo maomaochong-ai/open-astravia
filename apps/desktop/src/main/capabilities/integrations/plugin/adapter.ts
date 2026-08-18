@@ -60,7 +60,7 @@ export interface PluginCapabilityAdapter
 
 /** Internal Plugin-system adapter. Plugin authors consume host-exposed capability APIs instead. */
 export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
-	private readonly sessionIdByPlugin = new Map<string, string>();
+	private readonly sessionIdsByPlugin = new Map<string, Set<string>>();
 	private readonly sessions = new Map<string, PluginCapabilitySession>();
 
 	constructor(
@@ -68,13 +68,17 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 		private readonly options: PluginCapabilityAdapterOptions,
 	) {}
 
-	openSession(pluginId: string): string {
+	openSession(pluginId: string, ownerId = "direct"): string {
 		if (!PLUGIN_ID_PATTERN.test(pluginId)) throw new Error(`Invalid plugin id: ${pluginId}`);
+		if (!ownerId.trim()) throw new Error("Plugin capability session owner id is required");
+		// 同一 renderer 文档内的新旧 activation 需要重叠到事务式发布完成；新文档则没有
+		// 机会替旧文档执行 cleanup，打开首个 session 时直接回收其遗留授权。
+		for (const existingSessionId of this.sessionIdsByPlugin.get(pluginId) ?? []) {
+			const existing = this.sessions.get(existingSessionId);
+			if (existing && existing.ownerId !== ownerId) this.closeSession(existingSessionId);
+		}
 		const permissions = new Set(this.options.resolvePermissions(pluginId));
 		const official = this.options.isOfficialPlugin(pluginId);
-		const previousSessionId = this.sessionIdByPlugin.get(pluginId);
-		if (previousSessionId) this.closeSession(previousSessionId);
-
 		const sessionId = randomUUID();
 		const grants = buildPluginCapabilityGrants(pluginId, permissions, official);
 		const access = this.access.createSession({
@@ -84,8 +88,10 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 			},
 			grants,
 		});
-		this.sessions.set(sessionId, { access, pluginId });
-		this.sessionIdByPlugin.set(pluginId, sessionId);
+		this.sessions.set(sessionId, { access, ownerId, pluginId });
+		const pluginSessionIds = this.sessionIdsByPlugin.get(pluginId) ?? new Set<string>();
+		pluginSessionIds.add(sessionId);
+		this.sessionIdsByPlugin.set(pluginId, pluginSessionIds);
 		return sessionId;
 	}
 
@@ -94,9 +100,9 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 		if (!session) return;
 		session.access.revoke();
 		this.sessions.delete(sessionId);
-		if (this.sessionIdByPlugin.get(session.pluginId) === sessionId) {
-			this.sessionIdByPlugin.delete(session.pluginId);
-		}
+		const pluginSessionIds = this.sessionIdsByPlugin.get(session.pluginId);
+		pluginSessionIds?.delete(sessionId);
+		if (pluginSessionIds?.size === 0) this.sessionIdsByPlugin.delete(session.pluginId);
 		this.options.onSessionClosed?.(session.pluginId);
 	}
 

@@ -22,10 +22,11 @@ import type {
 import { resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import { router } from "../../../router";
+import { trackActivationDisposable } from "./plugin-activation-disposables";
 import { pluginHostBridge, registerPluginMediaProviderHandler } from "./plugin-host-bridge";
 import { createPluginPermissionApi as createPermissionApi } from "./plugin-permissions";
 
-export function createConversationApi(plugin: InstalledPlugin): PluginConversationApi {
+export function createConversationApi(plugin: InstalledPlugin, disposers: Array<() => void>): PluginConversationApi {
 	const permissions = createPermissionApi(plugin);
 	return {
 		sendPrompt: async (text) => {
@@ -47,7 +48,7 @@ export function createConversationApi(plugin: InstalledPlugin): PluginConversati
 		},
 		on: (listener) => {
 			permissions.require("agent.session.read");
-			return pluginHostBridge.conversation.on(listener);
+			return trackActivationDisposable(pluginHostBridge.conversation.on(listener), disposers);
 		},
 	};
 }

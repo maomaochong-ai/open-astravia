@@ -154,6 +154,11 @@ All notable changes to `@vetta/desktop` are documented in this file.
 
 ### Fixed
 
+- **启动和热重载不再出现插件 Capability Session 失效报错**：插件替换保持 last-known-good 的事务语义，
+  新旧 activation 在发布交接前可短暂持有各自的受限 session，随后按 session ID 精确关闭；加载失败只
+  回滚新实例，不再提前撤销仍在工作的旧实例。对话事件订阅也纳入 activation 级清理，避免已卸载插件的
+  listener 在后续会话事件中继续调用 `ctx.fs`。
+
 - **设计任务不再卡在「正在工作」**：插件离屏截图的 `timeoutMs` 此前只覆盖就绪表达式的轮询间隙，
   `loadURL`、`executeJavaScript`、`capturePage` 任何一步永不返回（隐藏 renderer 崩溃、设计稿主线程
   被死循环占住）就会无限期挂着；同 `sessionKey` 的请求又是串行的，一次卡死会把后续截图全部堵在

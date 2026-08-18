@@ -46,16 +46,20 @@ describe("PluginRendererCapabilityHost", () => {
 		);
 	});
 
-	it("revokes the previous renderer session when the same plugin is rebound", () => {
+	it("keeps both renderer sessions available until the replaced activation is explicitly closed", () => {
 		const host = new PluginRendererCapabilityHost();
 		const plugin = { id: "official-plugin", enabled: true, trustLevel: "official" as const };
 		host.bindSession("first-session", plugin);
 		host.bindSession("second-session", plugin);
 
-		expect(() => host.invokeOfficial("first-session", () => {})).toThrow(
+		expect(host.invokeOfficial("first-session", () => "old")).toBe("old");
+		expect(host.invokeOfficial("second-session", () => "new")).toBe("new");
+
+		host.closeSession("first-session");
+		expect(() => host.invokeOfficial("first-session", () => "old")).toThrow(
 			"Plugin renderer capability session is not active",
 		);
-		expect(host.invokeOfficial("second-session", () => "ok")).toBe("ok");
+		expect(host.invokeOfficial("second-session", () => "new")).toBe("new");
 	});
 
 	it("grants hosted-route navigation only to enabled plugins with workspace-view permission", async () => {
