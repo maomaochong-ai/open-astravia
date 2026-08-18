@@ -38,6 +38,8 @@ bun run build:docs         # 构建文档站
 cd apps/im-gateway && make build   # 构建 IM 旁路网关
 ```
 
+**桌面端默认构建 lite（serv-less）形态**：不含账号登录、Vetta Go 渠道与订阅计费，能力广场走 GitHub 仓库来源，零配置即可跑。本地会话、编码 Agent、插件系统、主题、自带 API Key 的模型一应俱全。要构建接入 Vetta 服务端的完全体，设 `VETTA_CLOUD_ENABLED=true`。两种模式的完整差异与全部环境变量见 [构建模式与环境变量](docs/desktop/build-modes.md)（[English](docs/desktop/build-modes.en.md)）。
+
 质量门禁分层、husky 快路径与守卫说明见 [docs/dev/quality-gates.md](docs/dev/quality-gates.md)。
 
 桌面应用入口：`apps/desktop`；文档站入口：`apps/docs-site`。
@@ -199,6 +201,7 @@ openvetta/
 
 架构文档：
 
+- [`docs/adr/README.md`](docs/adr/README.md) — 架构决策记录索引，含编号规则与空洞说明
 - [`docs/capabilities/README.md`](docs/capabilities/README.md) — 基础/领域能力、直接基于 Capability ID 的通用权限层与系统适配层
-- [`docs/architecture-overview.md`](docs/architecture-overview.md) — 依赖方向、请求流、应用/运行时边界
-- [`docs/package-conventions.md`](docs/package-conventions.md) — 包与目录所有权约定
+- [`docs/desktop/build-modes.md`](docs/desktop/build-modes.md) — 桌面端两种构建形态与全部环境变量
+- [`docs/monorepo-new-package.md`](docs/monorepo-new-package.md) — 新增 workspace 包的完整步骤

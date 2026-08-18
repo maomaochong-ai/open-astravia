@@ -39,13 +39,17 @@ export default defineConfig(({ mode }) => {
 	const sourcemapEnabled = (process.env.VETTA_MAIN_SOURCEMAP ?? env.VETTA_MAIN_SOURCEMAP) === "true";
 	const sentry = createSentryBuildSetup(env, "dist/main");
 
-	if (!env.VETTA_SERVER_URL) {
+	// 云服务构建期开关：默认关闭（lite）；只有显式 true 才产出完全体。
+	const cloudEnabled = env.VETTA_CLOUD_ENABLED === "true";
+
+	// SERVER_URL 只对完全体是必需的——lite 里登录、网关、官方市场都不进产物。
+	if (cloudEnabled && !env.VETTA_SERVER_URL) {
 		throw new Error(
-			`[vite.main.config] VETTA_SERVER_URL 未配置，请检查 .env.${effectiveMode}（mode=${effectiveMode}）`,
+			`[vite.main.config] VETTA_CLOUD_ENABLED=true 需要 VETTA_SERVER_URL，请检查 .env.${effectiveMode}（mode=${effectiveMode}）`,
 		);
 	}
 	console.log(
-		`[vite.main.config] mode=${effectiveMode}, VETTA_SERVER_URL=${env.VETTA_SERVER_URL}, speechInput=${speechInputBuildConfig.enabled}`,
+		`[vite.main.config] mode=${effectiveMode}, cloud=${cloudEnabled}, VETTA_SERVER_URL=${env.VETTA_SERVER_URL ?? "(unset)"}, speechInput=${speechInputBuildConfig.enabled}`,
 	);
 
 	// 将 .env.<mode> 中的 VETTA_* 变量内联到构建产物
@@ -54,10 +58,8 @@ export default defineConfig(({ mode }) => {
 		define[`process.env.${key}`] = JSON.stringify(value);
 	}
 	define[`process.env.${SPEECH_INPUT_ENABLED_ENV}`] = JSON.stringify(String(speechInputBuildConfig.enabled));
-	// 云服务构建期开关：未配置时按 true（完全体）内联，保证 lite 判断能被常量折叠。
-	define["process.env.VETTA_CLOUD_ENABLED"] = JSON.stringify(
-		env.VETTA_CLOUD_ENABLED === "false" ? "false" : "true",
-	);
+	// 未配置时按 false（lite）内联，保证 cloud 判断能被常量折叠掉。
+	define["process.env.VETTA_CLOUD_ENABLED"] = JSON.stringify(cloudEnabled ? "true" : "false");
 
 	return {
 		define,

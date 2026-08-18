@@ -44,10 +44,10 @@ export function stageSystemSkills(targetDir, logPrefix = "system-skills") {
 		}
 	}
 
-	// lite 构建（VETTA_CLOUD_ENABLED=false）连文件都不进包：requiresCloud 技能的
+	// lite 构建（默认，即未显式 VETTA_CLOUD_ENABLED=true）连文件都不进包：requiresCloud 技能的
 	// prompt/脚本属于云服务形态，开源安装包里不该出现。与主进程运行时过滤
 	// （builtin-skills.ts 的同名标记）共用 manifest 这一个事实源。
-	const cloudEnabled = process.env.VETTA_CLOUD_ENABLED !== "false";
+	const cloudEnabled = process.env.VETTA_CLOUD_ENABLED === "true";
 
 	let count = 0;
 	const stagedManifest = {};

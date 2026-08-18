@@ -220,7 +220,7 @@ export VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
 推荐使用仓库的一键脚本，它会读取频道配置并把变量显式传给构建和发布子进程：
 
 - `test` 基础配置读取已忽略的 `apps/desktop/.env.development`，兼容现有本地配置。
-- `stable` 基础配置读取已提交的 `apps/desktop/.env.production`。
+- `stable` 基础配置读取 `apps/desktop/.env.production`（本地文件，不纳入版本控制；内容参考 [build-modes.md](./build-modes.md)）。
 - 两个频道都可从 `~/.config/vetta/r2.env` 补充共用 R2 凭据，再由 `~/.config/vetta/r2-test.env` 或 `r2-stable.env` 覆盖频道配置。
 - 当前 Shell 中显式设置的变量通常优先级最高；但 stable 的服务器、站点、更新 provider/URL、R2 bucket/prefix 始终以 `.env.production` 为准，不能被 `--env-file=.env.development` 覆盖。
 

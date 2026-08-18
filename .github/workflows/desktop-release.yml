@@ -175,6 +175,13 @@ jobs:
       - name: Build updater artifacts
         working-directory: apps/desktop
         env:
+          # 云服务是构建期开关，默认关闭（lite）。fork 不配这些 vars 就得到
+          # serv-less 构建；官方发版在仓库 Variables 里设 VETTA_CLOUD_ENABLED=true
+          # 与 VETTA_SERVER_URL 才产出完全体。
+          VETTA_CLOUD_ENABLED: ${{ vars.VETTA_CLOUD_ENABLED }}
+          VETTA_SERVER_URL: ${{ vars.VETTA_SERVER_URL }}
+          VETTA_SITE_URL: ${{ vars.VETTA_SITE_URL }}
+          VETTA_OPEN_MARKETPLACE_REPOSITORY: ${{ vars.VETTA_OPEN_MARKETPLACE_REPOSITORY }}
           VETTA_UPDATE_PROVIDER: ${{ env.RELEASE_TARGET == 'r2' && 'generic' || 'github' }}
           VETTA_UPDATE_URL: ${{ vars.VETTA_UPDATE_URL }}
           VETTA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}

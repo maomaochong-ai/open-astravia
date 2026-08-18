@@ -1,8 +1,7 @@
-# 反向白名单：根 .gitignore 把 .env.* 全部忽略，但 desktop-app 的环境配置
-# （仅是后端地址，不含密钥）需要纳入版本管理，方便团队/CI 共享。
-# .env.development 改由各开发者本地维护（本地后端地址各异），不纳入版本管理。
-!/.env.test
-!/.env.production
+# .env.* 一律不纳入版本管理（根 .gitignore 已全部忽略）。
+# 曾经把 .env.production / .env.test 加进白名单，但那是本团队的发布约定，
+# 不该强加给下游——生产端点、更新源、租户各家不同。
+# 构建配置改由 CI 变量或本地 .env.<mode> 提供，示例见 docs/desktop/build-modes.md。
 
 # DMG 背景图由 scripts/generate-dmg-background.js 在 mac 打包时生成
 /build/background.png
