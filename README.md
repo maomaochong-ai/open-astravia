@@ -200,6 +200,8 @@ bun run release:minor    # API Breaking
 
 桌面安装包由 `.github/workflows/desktop-release.yml` 在三个操作系统分别构建，再发布到官方 R2/CDN 或公开 GitHub Releases；详见 [`docs/deploy/desktop-releases.md`](docs/deploy/desktop-releases.md)。
 
+服务端（`apps/api` + `apps/admin`）自托管部署走 `deploy/` 下的 Docker Compose 栈，目录说明见 [`deploy/README.md`](deploy/README.md)，完整流程见 [`docs/deploy/deploy-runbook.md`](docs/deploy/deploy-runbook.md)。
+
 ---
 
 ## 目录速览
