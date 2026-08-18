@@ -46,6 +46,8 @@ interface NewSessionPageModel {
 	 */
 	commandPanelShift: boolean;
 	cwd: string;
+	/** 活动面板根目录；「对话」与待创建项目下为 null，文件面板走空态而不是暴露 conversation 根。 */
+	activityPanelCwd: string | null;
 	greetingTitle: string;
 	isShort: boolean;
 	mounted: boolean;
@@ -230,6 +232,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		commandPanelExpanded,
 		commandPanelShift: commandPanelExpanded && skillItems.length > PANEL_SHIFT_MIN_ITEMS,
 		cwd: contextCwd,
+		activityPanelCwd: projectSelection.activityPanelCwd,
 		greetingTitle,
 		isShort,
 		mounted,

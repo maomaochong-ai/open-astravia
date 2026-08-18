@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
 	type ProjectOption,
 	type ProjectSelection,
+	resolveActivityPanelCwd,
 	resolveContextCwd,
 	resolveInitialSelection,
 	selectableProjects,
@@ -12,8 +13,10 @@ import {
 export interface NewSessionProjectSelectionModel {
 	/** 当前选择；null 表示「不指定项目」。 */
 	readonly selection: ProjectSelection;
-	/** 页面里除输入框文字以外的一切（发送目标、@文件、活动面板、技能）都用它。 */
+	/** 发送目标、@文件补全、拖拽落点与技能列表都用它。 */
 	readonly contextCwd: string;
+	/** 活动面板根目录；「对话」与待创建项目没有可浏览的目录，为 null 走空态。 */
+	readonly activityPanelCwd: string | null;
 	readonly options: readonly ProjectOption[];
 	/** 已被占用的项目名，供「新建项目」对话框判重。 */
 	readonly takenNames: readonly string[];
@@ -89,6 +92,7 @@ export function useNewSessionProjectSelection(routeCwd: string): NewSessionProje
 	return {
 		selection,
 		contextCwd: resolveContextCwd({ selection, routeCwd, defaultConversationCwd }),
+		activityPanelCwd: resolveActivityPanelCwd(selection),
 		options,
 		takenNames,
 		selectProject,

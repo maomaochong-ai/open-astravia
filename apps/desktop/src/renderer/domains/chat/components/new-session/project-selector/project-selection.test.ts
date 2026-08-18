@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	filterProjects,
 	moveHighlight,
+	resolveActivityPanelCwd,
 	resolveContextCwd,
 	resolveInitialSelection,
 	selectableProjects,
@@ -136,5 +137,19 @@ describe("moveHighlight", () => {
 
 	it("候选为空时没有可高亮项", () => {
 		expect(moveHighlight(0, 1, 0)).toBe(-1);
+	});
+});
+
+describe("resolveActivityPanelCwd", () => {
+	it("选中项目时活动面板按项目根取上下文", () => {
+		expect(resolveActivityPanelCwd({ kind: "project", cwd: "/w/alpha", name: "Alpha" })).toBe("/w/alpha");
+	});
+
+	it("未选中（「对话」）时为 null：conversation 根是各会话工作区的父目录，不能当文件树根", () => {
+		expect(resolveActivityPanelCwd(null)).toBeNull();
+	});
+
+	it("待创建项目在磁盘上还不存在，同样为 null", () => {
+		expect(resolveActivityPanelCwd({ kind: "pending-create", name: "新项目" })).toBeNull();
 	});
 });

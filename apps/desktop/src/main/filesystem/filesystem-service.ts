@@ -18,6 +18,7 @@ import {
 	type FsStatResult,
 	type FsTextPreviewResult,
 } from "../../preload/fs-types.js";
+import { isConversationWorkspaceDirEntry } from "../conversations/session-paths.js";
 import { decodeProbableUtf8Prefix, decodeProbableUtf8Text, decodeUtf8Text } from "./text-content.js";
 
 const BINARY_EXTENSIONS = new Set([
@@ -130,6 +131,8 @@ export async function readFilesystemDirectory(dirPath: string): Promise<FsEntry[
 	const results: FsEntry[] = [];
 	for (const entry of entries) {
 		if (HIDDEN_FILES.has(entry.name) || entry.name.startsWith(".")) continue;
+		// 「对话」根下的会话工作区目录是内部状态，不进入 UI 列举（ADR-0007 修订）。
+		if (entry.isDirectory() && isConversationWorkspaceDirEntry(resolved, entry.name)) continue;
 		const fullPath = join(resolved, entry.name);
 		try {
 			const stats = await stat(fullPath);
@@ -406,6 +409,7 @@ export async function listFilesystemFilesRecursive(rootPath: string): Promise<Fs
 			const fullPath = join(dir, entry.name);
 			if (entry.isDirectory()) {
 				if (RECURSIVE_IGNORED_DIRS.has(entry.name)) continue;
+				if (isConversationWorkspaceDirEntry(dir, entry.name)) continue;
 				await walk(fullPath);
 			} else if (entry.isFile()) {
 				results.push({ name: entry.name, path: fullPath, relPath: relative(root, fullPath) });

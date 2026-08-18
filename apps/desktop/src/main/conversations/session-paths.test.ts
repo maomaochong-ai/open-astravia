@@ -2,7 +2,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { readDesktopSessionHeader } from "./session-paths.js";
+import { DEFAULT_CONVERSATION_CWD } from "../config/desktop-config-store.js";
+import { isConversationWorkspaceDirEntry, readDesktopSessionHeader } from "./session-paths.js";
 
 describe("readDesktopSessionHeader", () => {
 	const directories: string[] = [];
@@ -61,4 +62,24 @@ describe("readDesktopSessionHeader", () => {
 		directories.push(directory);
 		return directory;
 	}
+});
+
+describe("isConversationWorkspaceDirEntry", () => {
+	const uuidName = "0c558d85-6603-4e52-81a4-ba686d57a3e4";
+
+	it("识别「对话」根下 uuid 命名的会话工作区目录（大小写不敏感）", () => {
+		expect(isConversationWorkspaceDirEntry(DEFAULT_CONVERSATION_CWD, uuidName)).toBe(true);
+		expect(isConversationWorkspaceDirEntry(DEFAULT_CONVERSATION_CWD, uuidName.toUpperCase())).toBe(true);
+	});
+
+	it("「对话」根下的老产物目录（非 uuid 命名）不受影响", () => {
+		expect(isConversationWorkspaceDirEntry(DEFAULT_CONVERSATION_CWD, "报告素材")).toBe(false);
+		expect(isConversationWorkspaceDirEntry(DEFAULT_CONVERSATION_CWD, "report.html")).toBe(false);
+		expect(isConversationWorkspaceDirEntry(DEFAULT_CONVERSATION_CWD, `${uuidName}-extra`)).toBe(false);
+	});
+
+	it("只作用于「对话」根这一层：其它目录与工作区内部的 uuid 目录都不匹配", () => {
+		expect(isConversationWorkspaceDirEntry("/tmp/some-project", uuidName)).toBe(false);
+		expect(isConversationWorkspaceDirEntry(join(DEFAULT_CONVERSATION_CWD, uuidName), uuidName)).toBe(false);
+	});
 });

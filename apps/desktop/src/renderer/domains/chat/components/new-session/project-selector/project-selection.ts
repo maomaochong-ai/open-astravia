@@ -87,6 +87,15 @@ export function resolveContextCwd(input: {
 	return defaultConversationCwd || routeCwd;
 }
 
+/**
+ * 活动面板（文件树等）的根目录，与 {@link resolveContextCwd} 刻意分开：未选中（「对话」）时
+ * contextCwd 是 conversation 根——那是所有会话工作区的父目录，把它当文件树根会把内部状态
+ * 摆到用户面前；待创建项目在磁盘上还不存在。两者都返回 null，面板走「选择项目」空态。
+ */
+export function resolveActivityPanelCwd(selection: ProjectSelection): string | null {
+	return selection?.kind === "project" ? selection.cwd : null;
+}
+
 /** 大小写不敏感的子串匹配：项目名是用户自己取的短名字，模糊匹配只会带来意外命中。 */
 export function filterProjects(options: readonly ProjectOption[], query: string): readonly ProjectOption[] {
 	const normalized = query.trim().toLowerCase();

@@ -21,6 +21,7 @@ import type { SendInteractionContext } from "../input-bar/types";
 const PANEL_SHIFT_Y = 120;
 
 interface NewSessionPageViewProps {
+	activityPanelCwd: string | null;
 	avatarAutoplay: boolean;
 	className?: string;
 	commandPanelExpanded: boolean;
@@ -42,6 +43,7 @@ interface NewSessionPageViewProps {
 }
 
 export function NewSessionPageView({
+	activityPanelCwd,
 	avatarAutoplay,
 	className,
 	commandPanelExpanded,
@@ -140,8 +142,9 @@ export function NewSessionPageView({
 					</motion.div>
 				}
 			/>
-			{/* 会话尚未创建，活动面板按当前项目 cwd 取上下文。 */}
-			<ActivityPanel cwd={cwd} />
+			{/* 会话尚未创建：选中项目时活动面板按项目根取上下文；「对话」与待创建项目没有
+			    可浏览目录，传 null 走空态（conversation 根是所有会话工作区的父目录，不展示）。 */}
+			<ActivityPanel cwd={activityPanelCwd} />
 		</div>
 	);
 }

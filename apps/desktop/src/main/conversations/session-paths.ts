@@ -101,3 +101,17 @@ export async function readDesktopSessionHeader(sessionPath: string): Promise<Des
 export async function readSessionCwdFromHeader(sessionPath: string): Promise<string | undefined> {
 	return (await readDesktopSessionHeader(sessionPath))?.cwd;
 }
+
+/** 会话工作区目录名由 {@link ensureConversationSubCwd} 以 randomUUID() 生成。 */
+const WORKSPACE_DIR_NAME_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * 「对话」根目录下 uuid 命名的会话工作区子目录是内部状态，不应出现在文件面板、
+ * @文件补全等 UI 目录列举中；根目录下的老产物（非 uuid 命名）仍保持可见。
+ * 只隐藏展示，不收紧 fs 权限边界——显式绝对路径（如 mentionedFile 拖拽）仍可读取。
+ * 见 ADR-0007 修订。
+ */
+export function isConversationWorkspaceDirEntry(parentDir: string, entryName: string): boolean {
+	if (resolve(parentDir) !== resolve(DEFAULT_CONVERSATION_CWD)) return false;
+	return WORKSPACE_DIR_NAME_RE.test(entryName);
+}

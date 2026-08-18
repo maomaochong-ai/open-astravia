@@ -17,3 +17,21 @@ fs IPC 沙箱边界**不**收紧，仍是 `~/.vetta/conversation` 整体。隔�
 子目录命名用不可变的 `sessionId` 而非 session title slug：session 可重命名，title slug 同步要么需要 mv + 改产物内相对引用，要么和真实目录脱节；sessionId 不可变换来稳定性，代价是 Finder 不可读，由 UI 提供"在 Finder 中打开本 session 产物目录"入口补偿。
 
 权衡：放弃了"对话项目下所有 session 共享一个工作目录"的便利性（比如 sess_A 的 `data.csv` sess_B 直接 `./data.csv` 引）——但这种便利本质就是污染源。需要跨 session 复用产物时，走 mentionedFile 拖拽的显式路径，比靠 cwd 隐式共享更可控。
+
+## 修订（2026-08-18）：工作区子目录不再作为「索引页」暴露
+
+两点与最初决定不符的地方一并修正：
+
+1. 实现中子目录名一直是 `randomUUID()` 而非本文写的 `<sessionId>`，以实现为准。
+2. 撤回「Files 面板把项目根当索引页、可见各工作区子目录」的设计：uuid 目录对用户无可读性，
+   在文件面板里呈现为一长列乱码目录，被用户理解为数据泄露而非索引。
+
+改为：
+
+- fs 的 UI 目录列举（文件面板树 `read-dir`、@文件递归补全 `list-files-recursive`）在「对话」根目录
+  这一层隐藏 uuid 命名的工作区子目录（谓词 `isConversationWorkspaceDirEntry`，
+  `apps/desktop/src/main/conversations/session-paths.ts`）。根目录下的老产物（非 uuid 命名）仍可见。
+- fs 权限边界维持不变（仍是 `~/.vetta/conversation` 整体）：隐藏的只是列举展示，显式绝对路径
+  （mentionedFile 拖拽等跨 session 引用）仍可读取，本 ADR 原有的「隔离状态而非权限」立场不变。
+- 新会话页在「对话」/待创建项目上下文中不再把 conversation 根传给活动面板，文件面板显示
+  「选择项目」空态；选中项目后按项目根展示。

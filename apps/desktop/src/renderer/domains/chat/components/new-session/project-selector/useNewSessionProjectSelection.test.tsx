@@ -31,16 +31,18 @@ function renderSelection(routeCwd: string) {
 }
 
 describe("useNewSessionProjectSelection", () => {
-	it("从默认「对话」进入：未选中，上下文仍是默认项目", () => {
+	it("从默认「对话」进入：未选中，上下文仍是默认项目，活动面板没有可浏览目录", () => {
 		const { result } = renderSelection(DEFAULT_CWD);
 		expect(result.current.selection).toBeNull();
 		expect(result.current.contextCwd).toBe(DEFAULT_CWD);
+		expect(result.current.activityPanelCwd).toBeNull();
 	});
 
 	it("从项目进入：默认选中该项目，可选列表里没有默认「对话」与批量项目", () => {
 		const { result } = renderSelection("/w/alpha");
 		expect(result.current.selection).toEqual({ kind: "project", cwd: "/w/alpha", name: "Alpha" });
 		expect(result.current.options).toEqual([{ cwd: "/w/alpha", name: "Alpha" }]);
+		expect(result.current.activityPanelCwd).toBe("/w/alpha");
 	});
 
 	it("选「不指定项目」后上下文回到默认「对话」，路由不参与", () => {
@@ -55,6 +57,7 @@ describe("useNewSessionProjectSelection", () => {
 		act(() => result.current.selectPendingProject("新项目"));
 		expect(result.current.selection).toEqual({ kind: "pending-create", name: "新项目" });
 		expect(result.current.contextCwd).toBe(DEFAULT_CWD);
+		expect(result.current.activityPanelCwd).toBeNull();
 
 		act(() => result.current.applyCreatedProject("/w/created", "新项目"));
 		expect(result.current.contextCwd).toBe("/w/created");
