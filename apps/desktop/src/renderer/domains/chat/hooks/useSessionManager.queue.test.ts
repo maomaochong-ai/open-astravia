@@ -28,6 +28,7 @@ vi.mock("@domains/project/hooks/useProjects", () => ({
 
 vi.mock("@domains/plugins/runtime/plugin-events", () => ({
 	waitForPluginHostReady: async () => undefined,
+	waitForPluginHostFirstReady: async () => undefined,
 }));
 
 vi.mock("@domains/plugins/runtime/plugin-host-bridge", () => ({
