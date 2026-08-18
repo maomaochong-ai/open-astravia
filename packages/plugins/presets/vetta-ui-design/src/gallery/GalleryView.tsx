@@ -52,28 +52,32 @@ export function GalleryView() {
 	/** 右键菜单的定位基准：菜单是这个容器的 absolute 子节点。 */
 	const rootRef = useRef<HTMLDivElement | null>(null);
 
-	const refresh = useCallback(async () => {
-		setLoading(true);
-		// 顺带强制刷新风格库：用户点「刷新」就是要看最新的，不该被 6 小时 TTL 挡住。
-		void refreshDesignCatalog(getPluginCtx(), Date.now(), { force: true });
-		try {
-			setSnapshot(await loadGallery());
-		} catch (error) {
-			notify({ message: t("gallery.load.failed"), error });
-		} finally {
-			setLoading(false);
-		}
-	}, [t]);
+	const refresh = useCallback(
+		async (options?: { forceCatalog?: boolean }) => {
+			setLoading(true);
+			// 用户手动点「刷新」才强制拉风格库（不受 TTL 挡）；进入页面的自动刷新
+			// 走 TTL + ETag（见下方 mount effect），低配机首开不再固定多扛一次
+			// 300+ KB 的清单下载。
+			if (options?.forceCatalog) {
+				void refreshDesignCatalog(getPluginCtx(), Date.now(), { force: true });
+			}
+			try {
+				setSnapshot(await loadGallery());
+			} catch (error) {
+				notify({ message: t("gallery.load.failed"), error });
+			} finally {
+				setLoading(false);
+			}
+		},
+		[t],
+	);
 
+	// 进设计页扫一遍项目 + 顺带看一眼风格库有没有更新。风格库走 TTL 节流 + ETag，
+	// 内容没变时只是一个 304，所以用户不需要记得点刷新。
 	useEffect(() => {
 		void refresh();
-	}, [refresh]);
-
-	// 进设计页就顺带看一眼风格库有没有更新。走 TTL 节流 + ETag，内容没变时只是一个
-	// 304，所以用户不需要记得点刷新——推上去的新风格下次打开这页就在了。
-	useEffect(() => {
 		void refreshDesignCatalog(getPluginCtx());
-	}, []);
+	}, [refresh]);
 
 	/** 导完直接进项目看设计：包里已经有成品，用户刚表达的意图就是「打开它」。 */
 	const enterCreated = useCallback(
@@ -288,7 +292,7 @@ export function GalleryView() {
 				<div className="flex-1" />
 				<button
 					type="button"
-					onClick={() => void refresh()}
+					onClick={() => void refresh({ forceCatalog: true })}
 					disabled={loading}
 					aria-label={t("gallery.action.refresh")}
 					title={t("gallery.action.refresh")}
