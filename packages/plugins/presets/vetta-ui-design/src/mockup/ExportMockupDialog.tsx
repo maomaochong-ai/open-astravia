@@ -1,9 +1,10 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type MockupExportRequest, onMockupExport, requestMockupExport } from "../canvas/design-runtime";
 import { byCanvasOrder } from "../canvas/frame-order";
 import { loadRasters } from "../canvas/raster-cache";
 import { parseThemeTokens } from "../canvas/theme-tokens";
+import { fitViewport, useViewport } from "../canvas/use-viewport";
 import { getPluginCtx, notify } from "../plugin-context";
 import { attachFrame, detachFrame, railFrames, swapFrames } from "./attach";
 import { bytesToBase64, dataUrlToBytes } from "./binary";
@@ -18,7 +19,7 @@ import { paginate } from "./paginate";
 import { buildImagePdf, type PdfPageImage } from "./pdf";
 import { canvasToJpegDataUrl, renderMockupToCanvas, stitchPagesVertically } from "./render";
 import { FRAMES_PER_PAGE, type MockupOptions, type MockupShot } from "./types";
-import { centerView, fitView, panBy, stackPages, type ViewTransform, zoomAt } from "./workbench-view";
+import { centerViewport, stackPages } from "./workbench-view";
 
 type ExportFormat = "image" | "pdf";
 
@@ -27,8 +28,13 @@ const PREVIEW_PIXEL_RATIO = 2;
 const MAX_PIXEL_RATIO = 4;
 /** 页与页之间的留白，按整叠图的宽度取——页本身已经自带内边距。 */
 const PAGE_GAP_RATIO = 0.04;
-/** 滚轮一格的缩放步进。 */
-const WHEEL_ZOOM = 1.0015;
+/** 自动 fit 时四周的留白（屏幕像素）。 */
+const FIT_PADDING = 24;
+/**
+ * 缩放停下多久后按最终倍率重新光栅化。手势进行中位图只被 CSS 拉伸——
+ * 每个 pinch tick 都重画整页位图正是预览卡顿的原因。
+ */
+const RASTER_SETTLE_MS = 160;
 
 interface CaptureState {
 	image: HTMLImageElement | null;
@@ -59,8 +65,9 @@ export function ExportMockupDialog() {
 	const [palette, setPalette] = useState<string[]>([]);
 	const [logo, setLogo] = useState<HTMLImageElement | null>(null);
 	const [drag, setDrag] = useState<MockupDrag | null>(null);
-	const [view, setView] = useState<ViewTransform>({ scale: 1, x: 0, y: 0 });
-	const [viewport, setViewport] = useState({ width: 0, height: 0 });
+	/** 视图落定后的光栅化倍率；手势中的实时缩放由 world 层的 transform 承担。 */
+	const [rasterScale, setRasterScale] = useState(1);
+	const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
 	const requestRef = useRef<MockupExportRequest | null>(null);
 	requestRef.current = request;
 	/**
@@ -74,7 +81,18 @@ export function ExportMockupDialog() {
 	const inFlightRef = useRef(new Set<string>());
 	/** 这次会话是否已经自动 fit 过一次：之后只听用户的缩放。 */
 	const fittedRef = useRef(false);
-	const panRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+	/**
+	 * 与设计画布同一套视口手感：滚轮平移、Ctrl/⌘+滚轮绕光标缩放，平移途中
+	 * 只改 world 层的 transform、落定才回 state——预览要与画布一样丝滑。
+	 */
+	const view = useViewport({ initial: { x: 0, y: 0, zoom: 1 } });
+	const stageRef = useCallback(
+		(node: HTMLDivElement | null) => {
+			view.containerRef.current = node;
+			setStage(node);
+		},
+		[view.containerRef],
+	);
 
 	useEffect(() => onMockupExport(setRequest), []);
 
@@ -173,13 +191,34 @@ export function ExportMockupDialog() {
 	useLayoutEffect(() => {
 		if (!stage) return;
 		const rect = stage.getBoundingClientRect();
-		setViewport({ width: rect.width, height: rect.height });
+		setStageSize({ width: rect.width, height: rect.height });
 		const observer = new ResizeObserver(([entry]) => {
-			setViewport({ width: entry.contentRect.width, height: entry.contentRect.height });
+			setStageSize({ width: entry.contentRect.width, height: entry.contentRect.height });
 		});
 		observer.observe(stage);
 		return () => observer.disconnect();
 	}, [stage]);
+
+	// 原生 wheel 且 passive:false：pinch 缩放必须 preventDefault，否则浏览器的
+	// 页面缩放会跟手势抢，这正是「不顺滑」的另一半来源。悬浮面板要自己滚动，
+	// 落在它们上面的滚轮不归预览台。
+	useEffect(() => {
+		if (!stage) return;
+		const onWheel = (event: WheelEvent): void => {
+			if (event.target instanceof Element && event.target.closest("[data-mockup-overlay]")) return;
+			event.preventDefault();
+			view.applyWheel(event);
+		};
+		stage.addEventListener("wheel", onWheel, { passive: false });
+		return () => stage.removeEventListener("wheel", onWheel);
+	}, [stage, view.applyWheel]);
+
+	// 缩放落定后按最终倍率重新光栅化位图；手势中位图只被 CSS 拉伸。
+	const settledZoom = view.viewport.zoom;
+	useEffect(() => {
+		const id = window.setTimeout(() => setRasterScale(settledZoom), RASTER_SETTLE_MS);
+		return () => window.clearTimeout(id);
+	}, [settledZoom]);
 
 	const shots = useMemo<ShotEntry[]>(() => {
 		const byId = new Map(frames.map((frame) => [frame.id, frame]));
@@ -218,10 +257,11 @@ export function ExportMockupDialog() {
 	// 内容第一次有东西可看时铺满窗口；之后的缩放只由用户决定。
 	useLayoutEffect(() => {
 		if (fittedRef.current) return;
-		if (stack.world.width <= 0 || viewport.width <= 0) return;
+		const fitted = fitViewport({ x: 0, y: 0, ...stack.world }, stageSize, FIT_PADDING);
+		if (!fitted) return;
 		fittedRef.current = true;
-		setView(fitView(stack.world, viewport));
-	}, [stack.world, viewport]);
+		view.commitViewport(fitted);
+	}, [stack.world, stageSize, view.commitViewport]);
 
 	const errors = useMemo(() => {
 		const map = new Map<string, string>();
@@ -352,10 +392,6 @@ export function ExportMockupDialog() {
 		}
 	};
 
-	const zoomBy = (factor: number): void => {
-		setView((current) => zoomAt(current, factor, { x: viewport.width / 2, y: viewport.height / 2 }));
-	};
-
 	if (!request || !options) return null;
 
 	const multiPage = pages.length > 1;
@@ -398,40 +434,22 @@ export function ExportMockupDialog() {
 					{/* 预览台：整块都是图片，可自由缩放平移。 */}
 					{/* biome-ignore lint/a11y/noStaticElementInteractions: 平移/缩放手势面，语义由下方缩放按钮承担 */}
 					<div
-						ref={setStage}
+						ref={stageRef}
 						className="relative min-h-0 min-w-0 flex-1 cursor-grab overflow-hidden bg-muted/30 active:cursor-grabbing"
 						onPointerDown={(event) => {
 							if (event.button !== 0 && event.button !== 1) return;
-							panRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+							view.beginPan(event.pointerId, event.clientX, event.clientY);
 							event.currentTarget.setPointerCapture(event.pointerId);
 							setSelectedFrameId(null);
 						}}
 						onPointerMove={(event) => {
-							const pan = panRef.current;
-							if (!pan || pan.pointerId !== event.pointerId) return;
-							const dx = event.clientX - pan.x;
-							const dy = event.clientY - pan.y;
-							pan.x = event.clientX;
-							pan.y = event.clientY;
-							setView((current) => panBy(current, dx, dy));
+							view.panMove(event.pointerId, event.clientX, event.clientY);
 						}}
 						onPointerUp={(event) => {
-							if (panRef.current?.pointerId !== event.pointerId) return;
-							panRef.current = null;
-							event.currentTarget.releasePointerCapture(event.pointerId);
+							if (view.endPan(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
 						}}
-						onPointerCancel={() => {
-							panRef.current = null;
-						}}
-						// Figma 手势：滚轮平移，按住 Cmd/Ctrl 才是以光标为锚缩放。
-						onWheel={(event) => {
-							const rect = event.currentTarget.getBoundingClientRect();
-							if (event.ctrlKey || event.metaKey) {
-								const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-								setView((current) => zoomAt(current, WHEEL_ZOOM ** -event.deltaY, point));
-							} else {
-								setView((current) => panBy(current, -event.deltaX, -event.deltaY));
-							}
+						onPointerCancel={(event) => {
+							view.endPan(event.pointerId);
 						}}
 						onDragOver={(event) => {
 							if (drag) event.preventDefault();
@@ -442,8 +460,16 @@ export function ExportMockupDialog() {
 						}}
 					>
 						<div
+							ref={view.worldRef}
 							className="absolute left-0 top-0"
-							style={{ transform: `translate(${view.x}px, ${view.y}px)` }}
+							style={
+								{
+									transform: view.worldTransform,
+									transformOrigin: "0 0",
+									// 选中框、报错卡片、页码标签按它反向缩放，保持恒定视觉大小。
+									"--vetd-lscale": Math.min(1 / view.viewport.zoom, 8),
+								} as CSSProperties
+							}
 						>
 							{pages.map((pageShots, index) => {
 								const box = stack.boxes[index];
@@ -452,10 +478,13 @@ export function ExportMockupDialog() {
 									<div
 										key={pageShots[0]?.frameId ?? index}
 										className="absolute"
-										style={{ left: box.left * view.scale, top: box.top * view.scale }}
+										style={{ left: box.left, top: box.top }}
 									>
 										{multiPage ? (
-											<span className="pointer-events-none absolute -top-5 left-0 text-[11px] tabular-nums text-muted-foreground">
+											<span
+												className="pointer-events-none absolute left-0 top-0 pb-1.5 text-[11px] tabular-nums text-muted-foreground"
+												style={{ transform: "translateY(-100%) scale(var(--vetd-lscale, 1))", transformOrigin: "0 100%" }}
+											>
 												{t("mockup.page.index", { index: index + 1, total: pages.length })}
 											</span>
 										) : null}
@@ -466,7 +495,7 @@ export function ExportMockupDialog() {
 											options={options}
 											brandLogo={logo}
 											errors={errors}
-											scale={view.scale}
+											rasterScale={rasterScale}
 											selectedFrameId={selectedFrameId}
 											drag={drag}
 											onSelect={setSelectedFrameId}
@@ -494,7 +523,7 @@ export function ExportMockupDialog() {
 						) : null}
 
 						{/* 悬浮选项卡片：右上角，不占预览宽度。 */}
-						<div className="pointer-events-none absolute bottom-3 right-3 top-3 flex justify-end">
+						<div data-mockup-overlay className="pointer-events-none absolute bottom-3 right-3 top-3 flex justify-end">
 							<MockupOptionsPanel
 								options={options}
 								maxRadius={normalizedHeight / 2}
@@ -511,6 +540,7 @@ export function ExportMockupDialog() {
 						{/* 每张图的画框数：底部居中悬浮——它决定的是「图怎么分页」，
 						    比右侧那些外观参数更靠近画面本身。 */}
 						<div
+							data-mockup-overlay
 							className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-border bg-popover/95 px-2 py-1 shadow-md backdrop-blur-md"
 							onPointerDown={(event) => event.stopPropagation()}
 						>
@@ -533,38 +563,43 @@ export function ExportMockupDialog() {
 
 						{/* 缩放控件：左下角，与预览台同层。 */}
 						<div
+							data-mockup-overlay
 							className="absolute bottom-3 left-3 flex items-center gap-0.5 rounded-lg border border-border bg-popover/95 p-0.5 shadow-md backdrop-blur-md"
 							onPointerDown={(event) => event.stopPropagation()}
 						>
 							<button
 								type="button"
 								aria-label={t("mockup.view.zoomOut")}
-								onClick={() => zoomBy(1 / 1.2)}
+								onClick={() => view.zoomBy(-1)}
 								className="rounded-md px-2 py-1 text-xs text-foreground hover:bg-accent"
 							>
 								−
 							</button>
 							<span className="min-w-11 text-center text-[11px] tabular-nums text-muted-foreground">
-								{Math.round(view.scale * 100)}%
+								{Math.round(view.viewport.zoom * 100)}%
 							</span>
 							<button
 								type="button"
 								aria-label={t("mockup.view.zoomIn")}
-								onClick={() => zoomBy(1.2)}
+								onClick={() => view.zoomBy(1)}
 								className="rounded-md px-2 py-1 text-xs text-foreground hover:bg-accent"
 							>
 								+
 							</button>
 							<button
 								type="button"
-								onClick={() => setView(fitView(stack.world, viewport))}
+								onClick={() =>
+									view.commitViewport(
+										fitViewport({ x: 0, y: 0, ...stack.world }, stageSize, FIT_PADDING) ?? { x: 0, y: 0, zoom: 1 },
+									)
+								}
 								className="rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent"
 							>
 								{t("mockup.view.fit")}
 							</button>
 							<button
 								type="button"
-								onClick={() => setView(centerView(stack.world, viewport, 1))}
+								onClick={() => view.commitViewport(centerViewport(stack.world, stageSize, 1))}
 								className="rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent"
 							>
 								{t("mockup.view.actual")}

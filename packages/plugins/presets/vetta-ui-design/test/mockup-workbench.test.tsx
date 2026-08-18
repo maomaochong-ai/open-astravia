@@ -74,6 +74,31 @@ function railItem(title: string): HTMLElement | null {
 	) ?? null;
 }
 
+/** 预览位图。工作台没内容时它不存在。 */
+function previewCanvas(): HTMLCanvasElement {
+	const canvas = document.body.querySelector<HTMLCanvasElement>("canvas[aria-label='mockup.preview.alt']");
+	if (!canvas) throw new Error("missing preview canvas");
+	return canvas;
+}
+
+/** 被 transform 缩放的 world 层：stage > world > pageBox > page 包装 > canvas。 */
+function worldLayer(): HTMLElement {
+	const world = previewCanvas().parentElement?.parentElement?.parentElement;
+	if (!world) throw new Error("missing world layer");
+	return world;
+}
+
+function scaleOf(transform: string): number {
+	const match = /scale\((-?[\d.]+)\)/.exec(transform);
+	return match?.[1] ? Number.parseFloat(match[1]) : 1;
+}
+
+function translateOf(transform: string): { x: number; y: number } {
+	const match = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(transform);
+	if (!match?.[1] || !match[2]) throw new Error(`no translate in "${transform}"`);
+	return { x: Number.parseFloat(match[1]), y: Number.parseFloat(match[2]) };
+}
+
 function byText(text: string): HTMLElement | null {
 	return [...document.body.querySelectorAll<HTMLElement>("button")].find(
 		(element) => element.textContent?.trim() === text,
@@ -187,12 +212,76 @@ describe("ExportMockupDialog", () => {
 		act(() => requestMockupExport(makeRequest(["a"])));
 		await flush();
 
-		const page = document.body.querySelector<HTMLElement>("canvas[aria-label='mockup.preview.alt']")?.parentElement;
-		const width = Number.parseFloat(page?.style.width ?? "0");
-		const height = Number.parseFloat(page?.style.height ?? "0");
+		// 页面在世界坐标里排版，屏幕尺寸 = 世界尺寸 * world 层的 transform 缩放。
+		const zoom = scaleOf(worldLayer().style.transform);
+		const page = previewCanvas().parentElement;
+		const width = Number.parseFloat(page?.style.width ?? "0") * zoom;
+		const height = Number.parseFloat(page?.style.height ?? "0") * zoom;
+		expect(zoom).toBeGreaterThan(0);
 		expect(width).toBeGreaterThan(0);
 		expect(width).toBeLessThanOrEqual(STAGE.width);
 		expect(height).toBeLessThanOrEqual(STAGE.height);
+	});
+
+	/**
+	 * 触控板两指缩放的顺滑来源：手势中只动 world 层的 CSS transform（位图被拉伸），
+	 * 停下来才按最终倍率重新光栅化。曾经每个 pinch tick 都重画整页位图，预览一缩就卡。
+	 */
+	it("pinch-zooms via the world transform and re-rasterizes only after the gesture settles", async () => {
+		vi.useFakeTimers();
+		try {
+			act(() => root.render(<ExportMockupDialog />));
+			act(() => requestMockupExport(makeRequest(["a"])));
+			await flush();
+			// 吃掉初始 fit 的光栅化落定，拿到稳定基线。
+			act(() => vi.advanceTimersByTime(500));
+
+			const world = worldLayer();
+			const stage = world.parentElement;
+			if (!stage) throw new Error("missing stage");
+			const scaleBefore = scaleOf(world.style.transform);
+			const rasterBefore = previewCanvas().width;
+
+			act(() => {
+				const pinch = new WheelEvent("wheel", { deltaY: -200, clientX: 100, clientY: 100, bubbles: true, cancelable: true });
+				// happy-dom 的 WheelEventInit 丢掉修饰键；pinch 在浏览器里就是 ctrl+wheel。
+				Object.defineProperty(pinch, "ctrlKey", { value: true });
+				stage.dispatchEvent(pinch);
+			});
+
+			// 手势 tick：transform 立即变，位图不重画。
+			expect(scaleOf(world.style.transform)).toBeGreaterThan(scaleBefore);
+			expect(previewCanvas().width).toBe(rasterBefore);
+
+			// 落定：位图按新倍率重画。
+			act(() => vi.advanceTimersByTime(500));
+			expect(previewCanvas().width).toBeGreaterThan(rasterBefore);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	// 滚轮/触控板双指平移不进 React state：直接写 world 层的 transform（rAF 折叠）。
+	it("pans with the wheel by writing the world transform directly", async () => {
+		act(() => root.render(<ExportMockupDialog />));
+		act(() => requestMockupExport(makeRequest(["a"])));
+		await flush();
+
+		const world = worldLayer();
+		const stage = world.parentElement;
+		if (!stage) throw new Error("missing stage");
+		const before = translateOf(world.style.transform);
+
+		act(() => {
+			stage.dispatchEvent(new WheelEvent("wheel", { deltaX: 30, deltaY: 40, bubbles: true, cancelable: true }));
+		});
+		await act(async () => {
+			await new Promise((resolve) => requestAnimationFrame(resolve));
+		});
+
+		const after = translateOf(world.style.transform);
+		expect(after.x).toBeCloseTo(before.x - 30);
+		expect(after.y).toBeCloseTo(before.y - 40);
 	});
 
 	// 每页画框数是导出页数的唯一来源：超出就换页，导出入口也跟着从 PNG 变长图。

@@ -43,19 +43,32 @@
 	background: color-mix(in oklab, var(--vetd-selected) 12%, transparent);
 }
 
-/* 导出预览的透明背景棋盘格 */
+/* 导出预览的透明背景棋盘格。挂在被 world transform 缩放的层里：
+   尺寸与错位量都乘 --vetd-lscale（抵消缩放），格子在屏幕上才恒定 16px。 */
 .vetd-checkerboard {
 	background-image:
 		linear-gradient(45deg, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 25%, transparent 25%),
 		linear-gradient(-45deg, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 25%, transparent 25%),
 		linear-gradient(45deg, transparent 75%, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 75%),
 		linear-gradient(-45deg, transparent 75%, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 75%);
-	background-size: 16px 16px;
+	background-size: calc(16px * var(--vetd-lscale, 1)) calc(16px * var(--vetd-lscale, 1));
 	background-position:
 		0 0,
-		0 8px,
-		8px -8px,
-		-8px 0;
+		0 calc(8px * var(--vetd-lscale, 1)),
+		calc(8px * var(--vetd-lscale, 1)) calc(-8px * var(--vetd-lscale, 1)),
+		calc(-8px * var(--vetd-lscale, 1)) 0;
+}
+
+/* 渲染图工作台的命中区描边：命中层在 world transform 里，Tailwind 的 ring
+   会跟着缩放；这里用乘了 --vetd-lscale 的 box-shadow 保持恒定 2px 视觉粗细。 */
+.vetd-mockup-hit {
+	transition: box-shadow 150ms;
+}
+.vetd-mockup-hit-selected {
+	box-shadow: 0 0 0 calc(2px * var(--vetd-lscale, 1)) var(--primary);
+}
+.vetd-mockup-hit-hover:hover {
+	box-shadow: 0 0 0 calc(2px * var(--vetd-lscale, 1)) color-mix(in oklab, var(--primary) 50%, transparent);
 }
 
 /* 会话卡片横排滚动条隐藏（翻页靠左右箭头） */

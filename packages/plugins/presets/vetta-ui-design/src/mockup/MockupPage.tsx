@@ -18,8 +18,12 @@ interface MockupPageProps {
 	brandLogo: CanvasImageSource | null;
 	/** Per-shot capture error, keyed by frame id. */
 	errors: ReadonlyMap<string, string>;
-	/** 世界坐标到屏幕的缩放比，由工作台的视口统一给。 */
-	scale: number;
+	/**
+	 * 位图的光栅化倍率，只决定 canvas 的像素密度，不参与布局——页面在世界坐标里
+	 * 排版，屏幕缩放由外层 world 的 CSS transform 承担。手势进行中它保持不变
+	 * （位图被 CSS 拉伸），视图落定后工作台再把它对齐到最终缩放，文字才是锐的。
+	 */
+	rasterScale: number;
 	selectedFrameId: string | null;
 	drag: MockupDrag | null;
 	onSelect(frameId: string | null): void;
@@ -33,6 +37,9 @@ interface MockupPageProps {
 /**
  * 一页渲染图，由导出用的同一个渲染器画出来。命中区不重复推导几何：
  * layout 的 rects 再以透明 div 铺一层，负责选中、拖拽换位和重试入口。
+ *
+ * 整个组件都在被 transform 缩放的 world 层里：尺寸一律世界坐标。选中框、
+ * 报错卡片这些「屏幕元素」按 `--vetd-lscale` 反向缩放保持恒定视觉大小。
  */
 export function MockupPage({
 	shots,
@@ -41,7 +48,7 @@ export function MockupPage({
 	options,
 	brandLogo,
 	errors,
-	scale,
+	rasterScale,
 	selectedFrameId,
 	drag,
 	onSelect,
@@ -56,22 +63,22 @@ export function MockupPage({
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
-		if (!canvas || scale <= 0 || layout.width <= 0) return;
+		if (!canvas || rasterScale <= 0 || layout.width <= 0) return;
 		const dpr = window.devicePixelRatio || 1;
-		canvas.width = Math.max(1, Math.round(layout.width * scale * dpr));
-		canvas.height = Math.max(1, Math.round(layout.height * scale * dpr));
+		canvas.width = Math.max(1, Math.round(layout.width * rasterScale * dpr));
+		canvas.height = Math.max(1, Math.round(layout.height * rasterScale * dpr));
 		const g = canvas.getContext("2d");
 		// happy-dom / 无 GPU 环境下拿不到 2D 上下文：不画就是了，命中区照旧可用。
 		if (!g) return;
-		renderMockup(g, shots, options, layout, scale * dpr, brandLogo);
-	}, [shots, options, layout, scale, brandLogo]);
+		renderMockup(g, shots, options, layout, rasterScale * dpr, brandLogo);
+	}, [shots, options, layout, rasterScale, brandLogo]);
 
 	if (layout.width <= 0) return null;
 
 	return (
 		<div
 			className={`relative ${options.transparent ? "vetd-checkerboard" : ""}`}
-			style={{ width: layout.width * scale, height: layout.height * scale }}
+			style={{ width: layout.width, height: layout.height }}
 		>
 			<canvas ref={canvasRef} className="block h-full w-full" aria-label={t("mockup.preview.alt")} role="img" />
 			{layout.rects.map((rect, index) => {
@@ -103,24 +110,27 @@ export function MockupPage({
 						onPointerDown={(event) => event.stopPropagation()}
 						onClick={() => onSelect(selected ? null : shot.frameId)}
 						title={shot.title}
-						className={`absolute flex items-center justify-center rounded-md transition-colors ${
+						className={`vetd-mockup-hit absolute flex items-center justify-center rounded-md ${
 							error
 								? "bg-black/55"
 								: dragging
 									? "cursor-grabbing opacity-60"
 									: selected
-										? "cursor-grab ring-2 ring-primary"
-										: "cursor-grab hover:ring-2 hover:ring-primary/50"
+										? "vetd-mockup-hit-selected cursor-grab"
+										: "vetd-mockup-hit-hover cursor-grab"
 						}`}
 						style={{
-							left: rect.x * scale,
-							top: rect.y * scale,
-							width: rect.width * scale,
-							height: rect.height * scale,
+							left: rect.x,
+							top: rect.y,
+							width: rect.width,
+							height: rect.height,
 						}}
 					>
 						{error ? (
-							<div className="flex flex-col items-center gap-2 p-3 text-center">
+							<div
+								className="flex flex-col items-center gap-2 p-3 text-center"
+								style={{ transform: "scale(var(--vetd-lscale, 1))" }}
+							>
 								<span className="text-xs font-medium text-white">{t("mockup.shot.failed")}</span>
 								<span className="line-clamp-2 text-[10px] text-white/70">{error}</span>
 								<button
