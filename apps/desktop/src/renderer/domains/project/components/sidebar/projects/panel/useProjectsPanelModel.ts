@@ -14,7 +14,7 @@ import {
 import { useMatches, useNavigate } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveProjectGoneCleanup } from "../../../../hooks/project-gone-cleanup";
 import { resolveSessionOpenTarget } from "../../../../hooks/session-open-target";
@@ -152,9 +152,17 @@ export function useProjectsPanelModel({
 		[navigate],
 	);
 
+	// sessionsMap 每次 listSessions 回填都会换 Map 引用。openSessionByTarget 作为
+	// onSelectSession 传进每个 memo 的 ProjectGroup，若直接依赖 sessionsMap，任意一次
+	// 回填都会击穿所有项目组的 memo。事件回调只在点击时才需要最新值，走 ref 读取。
+	const sessionsMapRef = useRef(sessionsMap);
+	useEffect(() => {
+		sessionsMapRef.current = sessionsMap;
+	}, [sessionsMap]);
+
 	const openSessionByTarget = useCallback(
 		(cwd: string, path: string) => {
-			const target = resolveSessionOpenTarget(sessionsMap.get(cwd), path);
+			const target = resolveSessionOpenTarget(sessionsMapRef.current.get(cwd), path);
 			if (target === "viewer") {
 				void navigate({ to: "/viewer/$path", params: { path: encodeURIComponent(path) } });
 				return;
@@ -162,7 +170,7 @@ export function useProjectsPanelModel({
 			if (target === "unavailable") return;
 			void onOpenSession(cwd, path);
 		},
-		[onOpenSession, sessionsMap, navigate],
+		[onOpenSession, navigate],
 	);
 
 	const selectSession = openSessionByTarget;
