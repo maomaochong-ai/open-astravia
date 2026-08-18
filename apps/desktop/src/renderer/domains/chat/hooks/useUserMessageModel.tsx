@@ -25,8 +25,13 @@ import {
 	type UserMessageViewProps,
 } from "@vetta/theme-ui/chat";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { selectAtom } from "jotai/utils";
 import { useCallback, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+
+/** 用户气泡只关心当前会话的 runtimeId / cwd，收窄订阅避免流式期间整屏气泡重渲染。 */
+const activeSessionRuntimeIdAtom = selectAtom(activeSessionAtom, (session) => session?.runtimeId);
+const activeSessionCwdAtom = selectAtom(activeSessionAtom, (session) => session?.cwd);
 import {
 	fullHistoryToChat,
 	isSystemAttachmentPath,
@@ -278,13 +283,16 @@ export function useUserMessageModel({
 	const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null);
 	const setFilePreview = useSetAtom(filePreviewAtom);
 	const setConfirmDialog = useSetAtom(confirmDialogAtom);
-	const activeSession = useAtomValue(activeSessionAtom);
+	// 只订阅 runtimeId / cwd：视窗内每条用户气泡都挂着本 hook，若订阅 activeSession
+	// 整个对象，流式期间任意字段变动都会把所有可见用户气泡连同前缀解析重跑一遍。
+	const activeSessionRuntimeId = useAtomValue(activeSessionRuntimeIdAtom);
+	const activeSessionCwd = useAtomValue(activeSessionCwdAtom);
 	const pendingEdit = useAtomValue(pendingMessageEditAtom);
 
 	const hasPersistedEntry = Boolean(message.entryId);
-	const canEdit = isLastUserMessage && Boolean(activeSession?.runtimeId);
-	const canDelete = hasPersistedEntry && Boolean(activeSession?.runtimeId);
-	const canFork = hasPersistedEntry && Boolean(activeSession?.runtimeId);
+	const canEdit = isLastUserMessage && Boolean(activeSessionRuntimeId);
+	const canDelete = hasPersistedEntry && Boolean(activeSessionRuntimeId);
+	const canFork = hasPersistedEntry && Boolean(activeSessionRuntimeId);
 	const branch = message.branch;
 	const canSwitchBranch = Boolean(branch && branch.siblings.length > 1 && message.entryId);
 	const isPendingEdit = Boolean(
@@ -293,8 +301,8 @@ export function useUserMessageModel({
 
 	const applyEditFill = useCallback(async () => {
 		let entryId = message.entryId;
-		if (!entryId && activeSession?.runtimeId) {
-			const history = await window.vetta.session.getFullHistory(activeSession.runtimeId);
+		if (!entryId && activeSessionRuntimeId) {
+			const history = await window.vetta.session.getFullHistory(activeSessionRuntimeId);
 			for (let index = history.length - 1; index >= 0; index--) {
 				const entry = history[index];
 				if (entry.type === "message" && entry.message.role === "user" && entry.entryId) {
@@ -306,13 +314,13 @@ export function useUserMessageModel({
 		if (!entryId) return;
 		fillInputFromUserText(message.text, message.promptRef, message.attachments);
 		getDefaultStore().set(pendingMessageEditAtom, { entryId });
-	}, [activeSession?.runtimeId, message.attachments, message.entryId, message.promptRef, message.text]);
+	}, [activeSessionRuntimeId, message.attachments, message.entryId, message.promptRef, message.text]);
 
 	const runWithInterruptConfirm = useCallback(
 		(kind: "switch" | "fork", action: () => void | Promise<void>) => {
 			const run = (): void => {
 				void (async () => {
-					const runtimeId = activeSession?.runtimeId;
+					const runtimeId = activeSessionRuntimeId;
 					if (isStreaming && runtimeId) {
 						onAbortEdit?.();
 						await abortAndWait(runtimeId);
@@ -337,7 +345,7 @@ export function useUserMessageModel({
 				onConfirm: run,
 			});
 		},
-		[activeSession?.runtimeId, isStreaming, onAbortEdit, setConfirmDialog, t],
+		[activeSessionRuntimeId, isStreaming, onAbortEdit, setConfirmDialog, t],
 	);
 
 	const handleEdit = useCallback(() => {
@@ -361,7 +369,7 @@ export function useUserMessageModel({
 
 	const handleSwitchBranch = useCallback(
 		(direction: -1 | 1) => {
-			if (!branch || !message.entryId || !activeSession?.runtimeId) return;
+			if (!branch || !message.entryId || !activeSessionRuntimeId) return;
 			const nextIndex = branch.index + direction;
 			if (nextIndex < 0 || nextIndex >= branch.siblings.length) return;
 			const targetId = branch.siblings[nextIndex];
@@ -369,16 +377,16 @@ export function useUserMessageModel({
 			// Cancel pending edit when switching branches
 			getDefaultStore().set(pendingMessageEditAtom, null);
 			runWithInterruptConfirm("switch", async () => {
-				const runtimeId = activeSession.runtimeId;
+				const runtimeId = activeSessionRuntimeId;
 				await window.vetta.session.switchBranch(runtimeId, targetId);
 				await reloadChatHistory(runtimeId);
 			});
 		},
-		[activeSession?.runtimeId, branch, message.entryId, runWithInterruptConfirm],
+		[activeSessionRuntimeId, branch, message.entryId, runWithInterruptConfirm],
 	);
 
 	const handleFork = useCallback(() => {
-		if (!message.entryId || !activeSession?.runtimeId) return;
+		if (!message.entryId || !activeSessionRuntimeId) return;
 		runWithInterruptConfirm("fork", async () => {
 			// Drop any in-progress re-edit before switching sessions — pending entryIds
 			// belong to the source session and cannot be replaced after opening the fork.
@@ -387,18 +395,18 @@ export function useUserMessageModel({
 			// 避免误把父会话未发送内容写成空并丢掉。
 			store.set(pendingMessageEditAtom, null);
 
-			const runtimeId = activeSession.runtimeId;
-			const cwd = activeSession.cwd;
+			const runtimeId = activeSessionRuntimeId;
+			const cwd = activeSessionCwd;
 			const { path } = await window.vetta.session.forkSession(runtimeId, message.entryId!);
 			const open = openSessionFnRef.current;
-			if (open) {
+			if (open && cwd) {
 				await open(cwd, path);
 			}
 			// Fork file includes the selected user message; leaf is that message.
 			// Do not set pendingMessageEdit — next send is a normal follow-up.
 			store.set(pendingMessageEditAtom, null);
 		});
-	}, [activeSession?.cwd, activeSession?.runtimeId, message.entryId, runWithInterruptConfirm]);
+	}, [activeSessionCwd, activeSessionRuntimeId, message.entryId, runWithInterruptConfirm]);
 
 	const closeContextMenu = useCallback(() => setContextMenuPosition(null), []);
 
@@ -431,8 +439,8 @@ export function useUserMessageModel({
 
 	const performDelete = useCallback(
 		async (suppressForOneMinute: boolean): Promise<void> => {
-			if (!message.entryId || !activeSession?.runtimeId) return;
-			const runtimeId = activeSession.runtimeId;
+			if (!message.entryId || !activeSessionRuntimeId) return;
+			const runtimeId = activeSessionRuntimeId;
 			if (isStreaming) {
 				onAbortEdit?.();
 				await abortAndWait(runtimeId);
@@ -446,7 +454,7 @@ export function useUserMessageModel({
 			}
 			await reloadChatHistory(runtimeId);
 		},
-		[activeSession?.runtimeId, isStreaming, message.entryId, onAbortEdit, pendingEdit?.entryId],
+		[activeSessionRuntimeId, isStreaming, message.entryId, onAbortEdit, pendingEdit?.entryId],
 	);
 
 	const runDelete = useCallback(
