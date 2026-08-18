@@ -7,6 +7,7 @@ import type {
 	MarketplaceSource,
 	UpdateMarketplaceSourceInput,
 } from "../../../preload/api-types/abilities.js";
+import { isCloudBuildEnabled } from "../../../shared/feature-flags.js";
 import { DEFAULT_MARKETPLACE_SOURCE_ID } from "./open-marketplace-service.js";
 
 const SOURCE_FILE_VERSION = 1;
@@ -121,6 +122,10 @@ function parseSource(value: unknown): MarketplaceSource | null {
 }
 
 function createDefaultSources(now: Date): MarketplaceSource[] {
+	// 完全体接的是 Vetta Serv 的官方能力市场，再内置一个 GitHub 来源会让同一个
+	// 能力出现两个渠道，版本口径与安装态互相打架。GitHub 来源只在 lite 构建里内置；
+	// 完全体下用户仍可手动添加（那是非 builtin 来源，不受此处影响）。
+	if (isCloudBuildEnabled()) return [];
 	const configuredRepository = process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY?.trim();
 	if (!configuredRepository) return [];
 	const normalizedRepository = normalizeGitHubRepository(configuredRepository);

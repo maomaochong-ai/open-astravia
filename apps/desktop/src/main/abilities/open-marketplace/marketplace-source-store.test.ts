@@ -9,6 +9,7 @@ const temporaryRoots: string[] = [];
 const originalRepository = process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY;
 const originalRef = process.env.VETTA_OPEN_MARKETPLACE_REF;
 const originalArchiveUrl = process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL;
+const originalCloudEnabled = process.env.VETTA_CLOUD_ENABLED;
 
 function restoreEnvironment(name: string, value: string | undefined): void {
 	if (value === undefined) delete process.env[name];
@@ -43,9 +44,21 @@ afterEach(async () => {
 	restoreEnvironment("VETTA_OPEN_MARKETPLACE_REPOSITORY", originalRepository);
 	restoreEnvironment("VETTA_OPEN_MARKETPLACE_REF", originalRef);
 	restoreEnvironment("VETTA_OPEN_MARKETPLACE_ARCHIVE_URL", originalArchiveUrl);
+	restoreEnvironment("VETTA_CLOUD_ENABLED", originalCloudEnabled);
 });
 
 describe("MarketplaceSourceStore", () => {
+	it("does not create a built-in source in full (cloud) builds", async () => {
+		// 完全体走 Vetta Serv 的官方能力市场；再内置一个 GitHub 来源会让同一个能力
+		// 出现两个渠道。即便配了仓库变量也不该内置。
+		process.env.VETTA_CLOUD_ENABLED = "true";
+		process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY = "https://github.com/example/environment-market";
+		delete process.env.VETTA_OPEN_MARKETPLACE_REF;
+		delete process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL;
+
+		expect(new MarketplaceSourceStore({ filePath: await temporaryFile() }).list()).toEqual([]);
+	});
+
 	it("does not create a built-in source without an environment repository", async () => {
 		delete process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY;
 		delete process.env.VETTA_OPEN_MARKETPLACE_REF;
@@ -60,6 +73,7 @@ describe("MarketplaceSourceStore", () => {
 	});
 
 	it("creates the built-in source entirely from environment configuration", async () => {
+		delete process.env.VETTA_CLOUD_ENABLED; // lite 构建才内置 GitHub 来源
 		process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY = "https://github.com/example/environment-market";
 		process.env.VETTA_OPEN_MARKETPLACE_REF = "testing/v2";
 		delete process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL;

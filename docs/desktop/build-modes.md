@@ -10,11 +10,13 @@ Vetta Desktop 有两种构建形态，由构建期开关 `VETTA_CLOUD_ENABLED` �
 | 账号登录 / OAuth | ❌ 代码不进产物 | ✅ |
 | Vetta Go 模型渠道 | ❌ | ✅ |
 | 订阅 / 积分 / 配额 | ❌ | ✅ |
-| 能力广场来源 | GitHub 仓库 | 官方市场 |
+| 能力广场来源 | GitHub 仓库（内置） | 官方市场（Vetta Serv） |
 | 远程模型目录下发 | ❌ | ✅ |
 | 内置技能 | 不含 `requiresCloud` 标记的 | 全部 |
 
 **两种模式共有**：本地会话、编码 Agent、插件系统、主题、自带 API Key 的模型、IM 旁路、知识库。
+
+> 能力广场的 GitHub 内置来源**只在 lite 下生效**。完全体走 Vetta Serv 的官方市场，此时即使设置了 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 也不会内置 GitHub 来源——同一个能力有两个渠道会让版本口径与安装态互相打架。完全体下用户仍可在界面里手动添加 GitHub 来源。
 
 > `VETTA_CLOUD_ENABLED` 是**构建期**开关，经常量折叠写死进产物：lite 构建里 cloud 模块连同它的 chunk 都不会被打包。**发包之后无法由运行环境重新开启**，切换必须重新构建。
 
@@ -102,7 +104,7 @@ VETTA_UPDATE_PROVIDER=none
 | `VETTA_CLOUD_ENABLED` | `true` 产出完全体；缺省或其它值均为 lite |
 | `VETTA_SERVER_URL` | 服务端 API 端点。完全体必填，lite 不需要 |
 | `VETTA_SITE_URL` | 站点地址，用于 OAuth 登录跳转。缺省从 `VETTA_SERVER_URL` 推导 |
-| `VETTA_OPEN_MARKETPLACE_REPOSITORY` | lite 的能力广场来源仓库 |
+| `VETTA_OPEN_MARKETPLACE_REPOSITORY` | 能力广场的内置 GitHub 来源仓库。**仅 lite 生效**，完全体忽略 |
 | `VETTA_OPEN_MARKETPLACE_REF` | 分支或标签，缺省 `main` |
 | `VETTA_OPEN_MARKETPLACE_ARCHIVE_URL` | 直接指定归档地址，省略时由仓库与 REF 推导 |
 

@@ -10,11 +10,13 @@ Vetta Desktop ships in two shapes, selected by the build-time flag `VETTA_CLOUD_
 | Account login / OAuth | ❌ not in the bundle | ✅ |
 | Vetta Go model channel | ❌ | ✅ |
 | Subscription / credits / quota | ❌ | ✅ |
-| Ability marketplace source | GitHub repository | official marketplace |
+| Ability marketplace source | GitHub repository (built in) | official marketplace (Vetta Serv) |
 | Remote model catalog | ❌ | ✅ |
 | Built-in skills | those without `requiresCloud` | all |
 
 **Available in both modes**: local sessions, the coding agent, the plugin system, themes, bring-your-own-key models, the IM gateway, and the knowledge base.
+
+> The built-in GitHub marketplace source applies **to lite builds only**. A full build uses the official marketplace served by Vetta Serv; setting `VETTA_OPEN_MARKETPLACE_REPOSITORY` there has no effect, because two channels offering the same ability would disagree on versions and installation state. Users of a full build can still add GitHub sources manually from the UI.
 
 > `VETTA_CLOUD_ENABLED` is a **build-time** flag, inlined as a constant and folded away: in a lite build the cloud module and its chunks are never bundled. **It cannot be re-enabled at runtime after shipping** — switching modes requires a rebuild.
 
@@ -102,7 +104,7 @@ VETTA_UPDATE_PROVIDER=none
 | `VETTA_CLOUD_ENABLED` | `true` produces a full build; unset or any other value means lite |
 | `VETTA_SERVER_URL` | Server API endpoint. Required for full builds, unused in lite |
 | `VETTA_SITE_URL` | Site URL used for the OAuth login redirect. Derived from `VETTA_SERVER_URL` when unset |
-| `VETTA_OPEN_MARKETPLACE_REPOSITORY` | Marketplace source repository for lite builds |
+| `VETTA_OPEN_MARKETPLACE_REPOSITORY` | Built-in GitHub marketplace source. **lite only** — ignored in full builds |
 | `VETTA_OPEN_MARKETPLACE_REF` | Branch or tag, defaults to `main` |
 | `VETTA_OPEN_MARKETPLACE_ARCHIVE_URL` | Explicit archive URL; derived from repository and ref when omitted |
 
