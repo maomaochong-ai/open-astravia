@@ -68,10 +68,21 @@ export function QuickScrollOverlay({
 			);
 		};
 
-		sync();
-		scrollElement.addEventListener("scroll", sync, { passive: true });
+		// 观察者回调合帧：DOM 高频变动（虚拟列表换页、折叠动画）时每帧至多读一次布局，
+		// 避免「回调强制 layout → 又触发观察者」的自激循环。
+		let frame: number | null = null;
+		const scheduleSync = () => {
+			if (frame !== null) return;
+			frame = requestAnimationFrame(() => {
+				frame = null;
+				sync();
+			});
+		};
 
-		const resizeObserver = new ResizeObserver(sync);
+		sync();
+		scrollElement.addEventListener("scroll", scheduleSync, { passive: true });
+
+		const resizeObserver = new ResizeObserver(scheduleSync);
 		const observeChildren = () => {
 			resizeObserver.disconnect();
 			resizeObserver.observe(scrollElement);
@@ -79,22 +90,23 @@ export function QuickScrollOverlay({
 				resizeObserver.observe(child);
 			}
 		};
-		const mutationObserver = new MutationObserver((records) => {
-			if (records.some((record) => record.target === scrollElement)) {
-				observeChildren();
-			}
-			sync();
+		// 只监听直接子节点增删；深层内容的尺寸变化由子节点上的 ResizeObserver 覆盖，
+		// 不再用 subtree 监听把整棵列表的每次行级变动都变成回调。
+		const mutationObserver = new MutationObserver(() => {
+			observeChildren();
+			scheduleSync();
 		});
 
 		observeChildren();
-		mutationObserver.observe(scrollElement, { childList: true, subtree: true });
-		window.addEventListener("resize", sync);
+		mutationObserver.observe(scrollElement, { childList: true });
+		window.addEventListener("resize", scheduleSync);
 
 		return () => {
+			if (frame !== null) cancelAnimationFrame(frame);
 			mutationObserver.disconnect();
 			resizeObserver.disconnect();
-			scrollElement.removeEventListener("scroll", sync);
-			window.removeEventListener("resize", sync);
+			scrollElement.removeEventListener("scroll", scheduleSync);
+			window.removeEventListener("resize", scheduleSync);
 		};
 	}, [scrollElement]);
 

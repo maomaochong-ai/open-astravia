@@ -54,25 +54,39 @@ export function ScrollFade({
 			setCanScrollMore((prev) => (prev === more ? prev : more));
 		};
 
+		// 与 QuickScrollOverlay 同款合帧：高频 DOM 变动下每帧至多一次布局读取。
+		let frame: number | null = null;
+		const scheduleSync = () => {
+			if (frame !== null) return;
+			frame = requestAnimationFrame(() => {
+				frame = null;
+				sync();
+			});
+		};
+
 		sync();
-		el.addEventListener("scroll", sync, { passive: true });
+		el.addEventListener("scroll", scheduleSync, { passive: true });
 
-		const ro = new ResizeObserver(sync);
-		ro.observe(el);
-		for (const child of el.children) {
-			ro.observe(child);
-		}
-
-		const mo = new MutationObserver(() => {
+		const ro = new ResizeObserver(scheduleSync);
+		const observeChildren = () => {
+			ro.disconnect();
+			ro.observe(el);
 			for (const child of el.children) {
 				ro.observe(child);
 			}
-			sync();
+		};
+		observeChildren();
+
+		// 深层变动由子节点 ResizeObserver 覆盖，childList 只为重建子节点观察列表。
+		const mo = new MutationObserver(() => {
+			observeChildren();
+			scheduleSync();
 		});
-		mo.observe(el, { childList: true, subtree: true });
+		mo.observe(el, { childList: true });
 
 		return () => {
-			el.removeEventListener("scroll", sync);
+			if (frame !== null) cancelAnimationFrame(frame);
+			el.removeEventListener("scroll", scheduleSync);
 			ro.disconnect();
 			mo.disconnect();
 		};

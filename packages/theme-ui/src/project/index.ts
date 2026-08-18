@@ -51,6 +51,8 @@ export type { ProjectsPanelMenusViewProps } from "./ProjectsPanelMenusView";
 export { ProjectsPanelMenusView } from "./ProjectsPanelMenusView";
 export type { ProjectsPanelViewProps } from "./ProjectsPanelView";
 export { ProjectsPanelView } from "./ProjectsPanelView";
+export type { QuickScrollLabels, QuickScrollOverlayProps } from "./QuickScrollOverlay";
+export { QuickScrollOverlay } from "./QuickScrollOverlay";
 export type {
 	ScheduleStatusViewLabels,
 	ScheduleStatusViewProps,
