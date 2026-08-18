@@ -68,8 +68,8 @@ function requireExecutionMode(value: unknown): "sandbox" | "full-access" {
 
 export function registerPluginCapabilitiesIpc(): () => void {
 	const adapter = getDesktopCapabilityHost().adapters.plugin;
-	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.OPEN_SESSION, (_event, pluginId: unknown) =>
-		adapter.openSession(requireString(pluginId, "pluginId")),
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.OPEN_SESSION, (event, pluginId: unknown) =>
+		adapter.openSession(requireString(pluginId, "pluginId"), `${event.processId}:${event.frameId}`),
 	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.CLOSE_SESSION, (_event, sessionId: unknown) =>
 		adapter.closeSession(requireString(sessionId, "sessionId")),

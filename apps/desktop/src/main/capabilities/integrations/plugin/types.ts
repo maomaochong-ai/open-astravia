@@ -21,6 +21,7 @@ export interface PluginCapabilityAdapterOptions {
 
 export interface PluginCapabilitySession {
 	readonly access: CapabilityAccessHandle;
+	readonly ownerId: string;
 	readonly pluginId: string;
 }
 

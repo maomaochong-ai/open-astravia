@@ -15,13 +15,11 @@ interface RendererPluginSubject {
 }
 
 interface RendererPluginCapabilitySession {
-	readonly pluginId: string;
 	readonly official: boolean;
 	readonly hostedRoutes: PluginRendererHostedRouteSession;
 }
 
 export class PluginRendererCapabilityHost {
-	private readonly sessionIdByPlugin = new Map<string, string>();
 	private readonly sessions = new Map<string, RendererPluginCapabilitySession>();
 
 	constructor(private readonly accessSessionFactory: CapabilityAccessSessionFactory = rendererCapabilityHost) {}
@@ -30,11 +28,9 @@ export class PluginRendererCapabilityHost {
 		if (!sessionId.trim()) throw new Error("Plugin renderer capability session id is required");
 		if (!plugin.id.trim()) throw new Error("Plugin renderer capability subject id is required");
 
-		const previousSessionId = this.sessionIdByPlugin.get(plugin.id);
-		if (previousSessionId) this.closeSession(previousSessionId);
-
+		// PluginGlobalSlotHost 会先发布 replacement，再释放旧 activation；两个 session
+		// 在这段事务窗口内都必须可用，并由各自的 LoadedPlugin.dispose() 精确关闭。
 		this.sessions.set(sessionId, {
-			pluginId: plugin.id,
 			official: plugin.enabled && plugin.trustLevel === "official",
 			hostedRoutes: createPluginRendererHostedRouteSession(this.accessSessionFactory, sessionId, {
 				id: plugin.id,
@@ -43,7 +39,6 @@ export class PluginRendererCapabilityHost {
 				grantedPermissions: plugin.grantedPermissions ?? [],
 			}),
 		});
-		this.sessionIdByPlugin.set(plugin.id, sessionId);
 	}
 
 	closeSession(sessionId: string): void {
@@ -51,9 +46,6 @@ export class PluginRendererCapabilityHost {
 		if (!session) return;
 		session.hostedRoutes.revoke();
 		this.sessions.delete(sessionId);
-		if (this.sessionIdByPlugin.get(session.pluginId) === sessionId) {
-			this.sessionIdByPlugin.delete(session.pluginId);
-		}
 	}
 
 	assertOfficialSession(sessionId: string): void {

@@ -495,7 +495,7 @@ Plugin Adapter 负责：
 
 Plugin 开发者仍然只导入 `plugin-sdk` 并调用 `ctx.fs.readFile()`。宿主桥接把调用交给 Plugin Adapter，后者包装 `FS_READ_FILE` Token，不再直接调用原始 `window.vetta.fs.*`。Plugin Adapter 本身不作为第三方 API 导出。
 
-Plugin Loader 激活插件时向宿主打开一个与 `pluginId` 绑定的 Capability Session，并把不透明的 session ID 封装在 `ctx.fs` 实现中；插件停用、激活失败或重新加载时关闭或替换该 session。每次调用都重新读取插件当前的启用状态、声明权限和用户授权，因此撤销 `fs.read`、`fs.write` 或禁用插件后无需等待旧 session 过期。跨进程接口只暴露 Plugin Adapter 已封装的文件操作，不提供任意 Capability ID 调用入口。
+Plugin Loader 激活插件时向宿主打开一个与 `pluginId` 绑定的 Capability Session，并把不透明的 session ID 封装在 `ctx.fs` 实现中；插件停用、激活失败或重新加载时关闭对应 activation 的 session。事务式重新加载会在新 activation 就绪前暂时保留旧 activation 及其 session，成功发布后再按 session ID 精确关闭旧实例，失败则只关闭新实例并继续使用 last-known-good。每次调用都重新读取插件当前的启用状态、声明权限和用户授权，因此撤销 `fs.read`、`fs.write` 或禁用插件后无需等待旧 session 过期。跨进程接口只暴露 Plugin Adapter 已封装的文件操作，不提供任意 Capability ID 调用入口。
 
 ### 7.4 Theme Adapter
 
@@ -622,7 +622,7 @@ window.vetta.capabilities.invoke({
 - Theme Storage 主进程路径已经迁移为 `Theme SDK facade -> 宿主桥接 -> 内置 Theme Adapter -> AccessSession -> Foundation Storage Capability -> 现有持久化后端`。
 - Theme SDK、renderer storage hook、preload API、IPC channel 和磁盘格式保持兼容。
 - Plugin `ctx.fs` 的读写与元数据操作已迁移为 `plugin-sdk facade -> Plugin Loader/Preload/IPC 桥接 -> 内置 Plugin Adapter -> AccessSession -> Foundation Filesystem Capability -> 文件服务`；目录监听作为 Plugin 系统订阅 facade 由 `PluginFsApi.watchDirectory()` 统一封装并检查 `fs.read`，普通插件源码不再直接访问 Desktop preload API。
-- Plugin Adapter 将 `fs.read` 和 `fs.write` 精确展开为各文件 Capability Grant；每次调用都会核验当前有效插件权限，同一插件重新激活时自动撤销旧 session。
+- Plugin Adapter 将 `fs.read` 和 `fs.write` 精确展开为各文件 Capability Grant；每次调用都会核验当前有效插件权限。同一插件事务式重新激活时允许新旧 activation 的 session 短暂重叠，宿主在发布新实例或回滚失败实例后按 session ID 精确撤销对应 session，避免破坏 last-known-good 回退。
 - Plugin `ctx.network` 和 `ctx.storage` 已迁移为 `plugin-sdk facade -> Plugin Loader/Preload/IPC 桥接 -> 内置 Plugin Adapter -> AccessSession -> Foundation Network/Storage Capability -> 网络与私有存储后端`。`network.fetch` 映射为通用网络请求 Grant；`storage.read`、`storage.write` 按 JSON、文件和 Blob 操作展开为独立 Grant，并通过 namespace constraint 固定到当前插件。Capability 契约与 Provider 不接收 Plugin 身份，公开 facade 和既有磁盘格式保持兼容。
 - 官方插件的 Agent 实验设置已迁移为 `PluginOfficialApi agent facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Agent Settings Capability -> AgentSettingsService`；读取与局部更新使用两个精确 Grant，局部更新在主进程单次读写中完成并返回完整规范化快照。Desktop UI 的通用 Config IPC 保持兼容并共享同一个 config store；公开 `plugin-sdk` 签名保持兼容，不再直连 `window.vetta.config.*`。
 - 官方插件的通用设置已迁移为 `PluginOfficialApi general facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain General Settings Capability -> GeneralSettingsService`；读取设置、设置通知、设置默认执行模式和设置工作区分别使用精确 Grant。工作区路径校验、持久化与文件根授权集中在主进程单例服务中，Desktop UI 的通用 Config IPC 保持兼容并共享同一个 config store；公开 `plugin-sdk` 签名保持兼容，不再直连 `window.vetta.config.*`。

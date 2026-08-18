@@ -20,7 +20,7 @@ describe("PluginCapabilityAdapter session lifecycle", () => {
 		);
 	});
 
-	it("revokes the previous session when the same plugin is opened again", () => {
+	it("keeps the previous session active until its reload activation is explicitly closed", () => {
 		const access = new RecordingAccessFactory();
 		const adapter = new PluginCapabilityAdapter(access, {
 			isOfficialPlugin: () => false,
@@ -29,6 +29,10 @@ describe("PluginCapabilityAdapter session lifecycle", () => {
 		const firstSessionId = adapter.openSession("reloadable");
 		const secondSessionId = adapter.openSession("reloadable");
 
+		expect(() => adapter.readFile(firstSessionId, "C:/project/file.txt")).not.toThrow();
+		expect(() => adapter.readFile(secondSessionId, "C:/project/file.txt")).not.toThrow();
+
+		adapter.closeSession(firstSessionId);
 		expect(() => adapter.readFile(firstSessionId, "C:/project/file.txt")).toThrowError(
 			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.SESSION_REVOKED }),
 		);
@@ -38,6 +42,20 @@ describe("PluginCapabilityAdapter session lifecycle", () => {
 		expect(() => adapter.readFile(secondSessionId, "C:/project/file.txt")).toThrowError(
 			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.SESSION_REVOKED }),
 		);
+	});
+
+	it("revokes sessions left by an older renderer document", () => {
+		const adapter = new PluginCapabilityAdapter(new RecordingAccessFactory(), {
+			isOfficialPlugin: () => false,
+			resolvePermissions: () => [PLUGIN_CAPABILITY_PERMISSIONS.FILESYSTEM_READ],
+		});
+		const oldSessionId = adapter.openSession("reloadable", "web-1:frame-1");
+		const replacementSessionId = adapter.openSession("reloadable", "web-1:frame-2");
+
+		expect(() => adapter.readFile(oldSessionId, "C:/project/file.txt")).toThrowError(
+			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.SESSION_REVOKED }),
+		);
+		expect(() => adapter.readFile(replacementSessionId, "C:/project/file.txt")).not.toThrow();
 	});
 
 	it("resolves the owning plugin id only for active sessions", () => {

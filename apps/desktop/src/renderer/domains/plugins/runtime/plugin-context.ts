@@ -50,7 +50,7 @@ export function createPluginContext({
 	 * `rendersCard`——同一次激活内两者顺序不固定，靠重推让状态收敛（主进程按 tool.id 覆盖，幂等）。
 	 */
 	const fs = createFsApi(plugin, capabilitySessionId);
-	const conversation = createConversationApi(plugin);
+	const conversation = createConversationApi(plugin, disposers);
 	const agentContributions = createPluginAgentApi({
 		plugin,
 		activationId,
