@@ -367,7 +367,7 @@ the session facade), [runtime-tools](packages/runtime-tools) (built-in tool re-e
 ### Layout
 
 ```
-openvetta/
+open-vetta/
 ├── apps/
 │   ├── desktop · cli-host                          # Electron host and CLI
 │   ├── im-gateway                                  # IM bridge (Go)

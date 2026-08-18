@@ -344,7 +344,7 @@ Monorepo 分四层，依赖方向单向向下：**应用 → runtime-\* → codi
 ### 目录速览
 
 ```
-openvetta/
+open-vetta/
 ├── apps/
 │   ├── desktop · cli-host                          # Electron 宿主与 CLI
 │   ├── im-gateway                                  # IM 旁路（Go）
