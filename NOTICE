@@ -1,0 +1,130 @@
+Open Vetta
+Copyright 2026 Vetta
+
+This product includes software developed at Vetta (https://www.openvetta.com).
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License in the LICENSE file distributed with this work, or at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+================================================================================
+THIRD-PARTY SOFTWARE
+================================================================================
+
+This product includes, derives from, or distributes the following third-party
+software. Each component remains under its own license.
+
+--------------------------------------------------------------------------------
+pi (pi-mono)
+--------------------------------------------------------------------------------
+Copyright (c) Mario Zechner
+Source:  https://github.com/badlogic/pi-mono
+License: MIT
+
+The packages `packages/ai`, `packages/agent`, `packages/coding-agent` and
+`packages/ecosystem-adapter` are derived from pi and have been substantially
+rewritten and extended. The agent loop, provider abstraction and extension
+mechanism originate from that work.
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+Codex CLI
+--------------------------------------------------------------------------------
+Copyright (c) OpenAI
+Source:  https://github.com/openai/codex
+License: Apache-2.0
+
+The execution sandbox design draws on the approach taken by Codex CLI. On
+Windows, the sandbox host binary (`codex-windows-sandbox-host.exe`) from that
+project is distributed with this application.
+
+Licensed under the Apache License, Version 2.0. See LICENSE for the full text.
+
+--------------------------------------------------------------------------------
+bubblewrap
+--------------------------------------------------------------------------------
+Copyright (c) Project Atomic / bubblewrap contributors
+Source:  https://github.com/containers/bubblewrap
+License: LGPL-2.0-or-later
+
+The `bwrap` binary is used as the Linux sandbox backend and is distributed with
+the Linux installer, unmodified.
+
+This component is licensed under the GNU Lesser General Public License,
+version 2.0 or (at your option) any later version. A copy of the LGPL and the
+complete corresponding source code for the distributed binary are available
+from the upstream project at the URL above. You may obtain, modify and relink
+this component under the terms of the LGPL.
+
+--------------------------------------------------------------------------------
+PP-OCRv5 (PaddleOCR)
+--------------------------------------------------------------------------------
+Copyright (c) PaddlePaddle Authors
+Source:  https://github.com/PaddlePaddle/PaddleOCR
+License: Apache-2.0
+
+The text detection and recognition model weights used for offline PDF OCR
+(`ppocrv5_det.onnx`, `ppocrv5_rec.onnx`, `ppocrv5_dict.txt`) originate from
+PaddleOCR.
+
+Licensed under the Apache License, Version 2.0. See LICENSE for the full text.
+
+--------------------------------------------------------------------------------
+python-build-standalone
+--------------------------------------------------------------------------------
+Copyright (c) Astral Software Inc. and contributors
+Source:  https://github.com/astral-sh/python-build-standalone
+
+Used as the distribution source for the portable Python runtime provisioned on
+demand. The distributed CPython builds carry the Python Software Foundation
+License; the build tooling carries its own license. See the upstream project
+for details.
+
+--------------------------------------------------------------------------------
+Node.js
+--------------------------------------------------------------------------------
+Copyright (c) Node.js contributors
+Source:  https://nodejs.org
+License: MIT
+
+Used as the distribution source for the portable Node runtime provisioned on
+demand.
+
+--------------------------------------------------------------------------------
+Cowart
+--------------------------------------------------------------------------------
+Source: https://github.com/zhongerxin/Cowart
+
+The plugin at `packages/plugins/externals/cowart-vetta` is adapted from Cowart.
+It resides under `externals/` and is NOT bundled with the application; it
+exists in this repository as a source example only.
+
+================================================================================
+
+This product also builds on the Model Context Protocol specification
+(https://modelcontextprotocol.io) and the public model catalog at
+https://models.dev, and depends on a broad set of open-source libraries
+including Electron, React, Vite, Tailwind CSS, shadcn/ui, Jotai, TanStack
+Router, Biome and Bun. Their licenses are distributed with the respective
+packages under `node_modules`.
