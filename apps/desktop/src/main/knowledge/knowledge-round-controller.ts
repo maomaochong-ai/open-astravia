@@ -129,7 +129,6 @@ export class KnowledgeRoundController {
 			const prepared = await knowledge.prepareRound(root, now);
 
 			if (knowledge.isEmptyDiff(prepared.diff) && prepared.toReap.length === 0) {
-				this.options.logger.info("no raws changes, nothing to process");
 				this.scheduleCurrentSnapshot();
 				return { skipped: true };
 			}

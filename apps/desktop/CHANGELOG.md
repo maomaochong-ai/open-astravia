@@ -2,6 +2,8 @@
 
 ### Added
 
+- 开发环境的 Vetta Debug 新增只读 `provider.models.list`，可刷新并列出 Runtime 当前可用的本地模型与登录后远程模型；
+  返回值只包含模型身份、来源和公开能力元数据，不读取凭据、不发起模型请求。
 - 开发环境的 Vetta Debug 新增 `conversation.compact`，可对持久会话手动执行生产 Runtime 的上下文压缩；
   Desktop 主进程同时记录自动/手动压缩的阈值、Token、结果、耗时和脱敏失败原因，打包环境不注册该调试命令。
 - 新会话页在 hero 与输入框之间新增会话前置选项行：左侧是项目选择 popover，可选范围与侧边栏「项目」区一致

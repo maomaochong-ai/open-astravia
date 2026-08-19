@@ -1,9 +1,11 @@
 import { z } from "zod";
 import type { DebugDefinition, JsonValue } from "../types.js";
 import { DebugError } from "../types.js";
+import { listAvailableProviderModels } from "./models.js";
 import { type ProviderPreflightDependencies, ProviderPreflightError, runProviderPreflight } from "./preflight.js";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+const emptyInputSchema = z.object({}).strict();
 const preflightInputSchema = z
 	.object({
 		modelKey: z.string().trim().min(3),
@@ -48,6 +50,28 @@ export function createProviderDebugDefinitions(dependencies: ProviderPreflightDe
 					if (!(error instanceof ProviderPreflightError)) throw error;
 					throw new DebugError(`DEBUG_PROVIDER_${error.code}`, error.message, error.details as JsonValue);
 				}
+			},
+		},
+		{
+			id: "provider.models.list",
+			category: "provider",
+			title: "List available provider models",
+			summary: "List the runtime's available local and Desktop-login models without calling a provider.",
+			keywords: ["provider", "model", "catalog", "available", "remote", "login", "list"],
+			inputSchema: { description: "No input. Pass an empty object." },
+			examples: [{ description: "List available local and remote models", input: {} }],
+			validateInput(input) {
+				const result = emptyInputSchema.safeParse(input);
+				if (result.success) return result.data;
+				throw new DebugError("DEBUG_INVALID_INPUT", "Provider model list input must be an empty object.", {
+					issues: result.error.issues.map((issue) => ({
+						path: issue.path.map(String).join("."),
+						message: issue.message,
+					})),
+				});
+			},
+			async run(_input, context) {
+				return (await listAvailableProviderModels(dependencies, context.signal)) as JsonValue;
 			},
 		},
 	];

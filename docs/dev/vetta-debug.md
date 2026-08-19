@@ -42,6 +42,18 @@ bun run verify:ui:start:debug
 
 ## Provider 请求观测
 
+正式实验前，可以先读取当前 Runtime 合并后的可用模型目录。该能力会刷新登录后的远程模型目录，但不会读取
+模型凭据或发送 Provider 请求；返回值只包含模型身份、来源和公开能力元数据，不包含 Base URL、Header、价格或
+凭据：
+
+```powershell
+bun run verify:ui:debug:debug -- run provider.models.list '{}'
+```
+
+返回的 `source` 区分 `local` 与 `remote`，`remoteCatalogStatus` 为 `checked` 表示远程目录加载尝试已经完成，
+为 `unauthorized` 表示当前 Profile 的 Desktop 登录态无效。Dev Profile 下将命令中的第二个 `debug` 改为 `dev`，
+即可读取正在运行的普通开发应用实际使用的合并目录。
+
 需要验证上下文缓存或检查模型供应商实际请求时，可以在启动 Debug Profile 前启用测试观测中间件：
 
 ```powershell

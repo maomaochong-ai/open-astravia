@@ -8,6 +8,7 @@ import {
 	type SimpleStreamFunction,
 } from "@vetta/ai";
 import type { CodingAgentModelRuntime } from "@vetta/coding-agent/host-services";
+import { waitForSignal } from "./wait-for-signal.js";
 
 const PREFLIGHT_SYSTEM_PROMPT = "You are a provider connection probe. Reply with OK only.";
 const PREFLIGHT_USER_PROMPT = "OK";
@@ -120,27 +121,6 @@ export async function runProviderPreflight(
 	} catch (error) {
 		throw mapPreflightError(error, request.modelKey, timeoutSignal.aborted || signal?.aborted === true);
 	}
-}
-
-function waitForSignal<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-	if (signal.aborted) return Promise.reject(signal.reason);
-	return new Promise<T>((resolve, reject) => {
-		const onAbort = () => {
-			signal.removeEventListener("abort", onAbort);
-			reject(signal.reason);
-		};
-		signal.addEventListener("abort", onAbort, { once: true });
-		void promise.then(
-			(value) => {
-				signal.removeEventListener("abort", onAbort);
-				resolve(value);
-			},
-			(error: unknown) => {
-				signal.removeEventListener("abort", onAbort);
-				reject(error);
-			},
-		);
-	});
 }
 
 function parseModelKey(modelKey: string): { provider: string; modelId: string } {
