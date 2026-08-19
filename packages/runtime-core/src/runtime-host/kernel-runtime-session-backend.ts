@@ -557,7 +557,7 @@ export class RuntimeSession {
 	 * 是否允许接入 RuntimeHost；这里不使用 no-op 伪造功能。
 	 */
 	createRuntimeHostAssemblyCandidate(): RuntimeHostSessionAssemblyCandidate {
-		const { contextController: _contextController, ...coreAssembly } = this.createCoreAssembly();
+		const coreAssembly = this.createCoreAssembly();
 		return {
 			...coreAssembly,
 			hostInteraction: this.hostInteraction,

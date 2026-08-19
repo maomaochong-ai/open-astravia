@@ -12,6 +12,8 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Changed
 
+- `RuntimeHost` 新增可选的压缩生命周期观察端口和 Session 上下文控制端口；自动压缩事件透传上下文 Token、窗口、
+  阈值、原因与压缩前 Token，并在持久化失败时补发失败终态，供宿主建立不依赖 UI 订阅的诊断。
 - `ModelCallContributionContext` 在 Turn admission 绑定时可读取尚未展开的 `SessionInputRequest`；Runtime Core
   仅透传不透明 payload，使动态能力可以在输入准备前完成本 Turn 隔离，而不引入产品语义。
 - Runtime Model Call Frame 现在把系统提示词块位置随稳定切分点一同透传给 AI 请求诊断，并在 instruction override 替换提示词时同时丢弃两者，避免错误的块级缓存归因。

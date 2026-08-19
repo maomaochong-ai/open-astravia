@@ -13,6 +13,7 @@ import type { RuntimeHostSessionBackend } from "./session-backend.js";
 import type {
 	RuntimeSessionBackgroundWorkController,
 	RuntimeSessionConfigurationController,
+	RuntimeSessionContextController,
 	RuntimeSessionEventStream,
 	RuntimeSessionExecutionController,
 	RuntimeSessionExtensionHost,
@@ -48,6 +49,7 @@ export interface SessionHandle {
 	backgroundWorkController: RuntimeSessionBackgroundWorkController;
 	extensionHost: RuntimeSessionExtensionHost | undefined;
 	configurationController: RuntimeSessionConfigurationController;
+	contextController: RuntimeSessionContextController | undefined;
 	modelController: RuntimeSessionModelController;
 	modelView: RuntimeSessionModelView;
 	turnControl: RuntimeSessionTurnControl;
@@ -142,6 +144,10 @@ export interface RuntimeHostOptions {
 	 * telemetry 等旁路；观察端抛错不会影响会话执行或事件分发。
 	 */
 	sessionErrorObserver?: (event: Extract<SessionEvent, { readonly type: "error" }>) => void;
+	/** 自动压缩生命周期的宿主观察端口；观察端抛错不会影响会话执行或事件分发。 */
+	sessionCompactionObserver?: (
+		event: Extract<SessionEvent, { readonly type: "compaction.start" | "compaction.end" }>,
+	) => void;
 	getDefaultExecutionMode?: () => SessionExecutionMode | Promise<SessionExecutionMode>;
 	additionalSkillPaths?: string[];
 	sandboxHostPath?: string;

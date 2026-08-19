@@ -36,6 +36,9 @@ import { debugPluginAgent, summarizeAgentPlugins } from "./plugin-debug.js";
 import type { RuntimeHostSessionBackend, RuntimeSessionCreateRequest } from "./session-backend.js";
 import { baseSessionEvent, lifecycleSessionEvent, mapRuntimeSessionObservationEvent } from "./session-events.js";
 import type {
+	RuntimeContextCompactionRequest,
+	RuntimeContextCompactionResult,
+	RuntimeContextCompactionState,
 	RuntimeSessionEventStream,
 	RuntimeSessionHostInteractionContext,
 	RuntimeSessionQueueStateView,
@@ -110,6 +113,9 @@ export class RuntimeHost implements SessionFacade {
 	private readonly sessionErrorObserver:
 		| ((event: Extract<SessionEvent, { readonly type: "error" }>) => void)
 		| undefined;
+	private readonly sessionCompactionObserver:
+		| ((event: Extract<SessionEvent, { readonly type: "compaction.start" | "compaction.end" }>) => void)
+		| undefined;
 	private userConfirmationHandler:
 		| ((request: RuntimeUserConfirmationRequest, signal?: AbortSignal) => Promise<boolean>)
 		| undefined;
@@ -139,6 +145,7 @@ export class RuntimeHost implements SessionFacade {
 		this.queueSidecarStore = options.queueSidecarStore;
 		this.sandboxGrantStore = options.sandboxGrantStore;
 		this.sessionErrorObserver = options.sessionErrorObserver;
+		this.sessionCompactionObserver = options.sessionCompactionObserver;
 		this.sessionBackend = options.sessionBackend;
 		this.userConfirmationHandler = options.userConfirmationHandler;
 		this.userQuestionHandler = options.userQuestionHandler;
@@ -449,6 +456,7 @@ export class RuntimeHost implements SessionFacade {
 			modelController,
 			modelView,
 			corePorts,
+			contextController,
 			queueController,
 			metadataController,
 		} = await this.requireSessionBackend().createAssembly(request);
@@ -467,6 +475,7 @@ export class RuntimeHost implements SessionFacade {
 			configurationController,
 			modelController,
 			modelView,
+			contextController,
 			...corePorts,
 			queueController,
 			metadataController,
@@ -561,6 +570,7 @@ export class RuntimeHost implements SessionFacade {
 		this.inFlightBuffers.set(sessionId, buffer);
 		const unsubscribe = eventStream.subscribe((event) => {
 			this.observeSessionError(event);
+			this.observeSessionCompaction(event);
 			if (event.type === "queue.changed") {
 				this.persistQueueSidecar(sessionPath, event);
 				return;
@@ -909,6 +919,38 @@ export class RuntimeHost implements SessionFacade {
 		} catch (error) {
 			console.warn("[RuntimeHost.observeSessionError] observer threw:", error);
 		}
+	}
+
+	private observeSessionCompaction(event: SessionEvent): void {
+		if ((event.type !== "compaction.start" && event.type !== "compaction.end") || !this.sessionCompactionObserver) {
+			return;
+		}
+		try {
+			this.sessionCompactionObserver(event);
+		} catch (error) {
+			console.warn("[RuntimeHost.observeSessionCompaction] observer threw:", error);
+		}
+	}
+
+	readSessionContextCompactionState(sessionId: string): RuntimeContextCompactionState {
+		const controller = this.requireSession(sessionId).contextController;
+		if (!controller) throw new Error("Session context controller is unavailable");
+		return controller.readState();
+	}
+
+	async compactSessionContext(
+		sessionId: string,
+		request?: RuntimeContextCompactionRequest,
+	): Promise<RuntimeContextCompactionResult> {
+		const controller = this.requireSession(sessionId).contextController;
+		if (!controller) throw new Error("Session context controller is unavailable");
+		return await controller.compact(request);
+	}
+
+	abortSessionContextCompaction(sessionId: string): void {
+		const controller = this.requireSession(sessionId).contextController;
+		if (!controller) throw new Error("Session context controller is unavailable");
+		controller.abortCompaction();
 	}
 
 	async updateSettings(sessionId: string, partialSettings: SettingsPatch): Promise<void> {

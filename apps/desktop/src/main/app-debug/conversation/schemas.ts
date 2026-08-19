@@ -31,6 +31,14 @@ export const continueConversationInputSchema = z
 	})
 	.strict();
 
+export const compactConversationInputSchema = z
+	.object({
+		sessionPath: z.string().trim().min(1),
+		executionMode: executionModeSchema.optional(),
+		customInstructions: z.string().trim().min(1).max(10_000).optional(),
+	})
+	.strict();
+
 export const listConversationsInputSchema = z
 	.object({
 		cwd: z.string().trim().min(1),

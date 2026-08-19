@@ -160,7 +160,15 @@ describe("DefaultCodingAgentContextRuntime", () => {
 		]);
 		expect(hooks.runPreCompact).toHaveBeenCalledWith("auto", expect.any(AbortSignal));
 		expect(hooks.runPostCompact).not.toHaveBeenCalled();
-		expect(observations).toEqual([{ type: "compaction.start", reason: "threshold", source: "agent" }]);
+		expect(observations).toMatchObject([
+			{
+				type: "compaction.start",
+				reason: "threshold",
+				contextWindow: 100,
+				thresholdTokens: 80,
+				source: "agent",
+			},
+		]);
 
 		const commitResult = await runtime.onCompactionCommitted(
 			prepared.compaction!,
@@ -171,7 +179,7 @@ describe("DefaultCodingAgentContextRuntime", () => {
 		expect(commitResult).toEqual({ continueExecution: true });
 		expect(hooks.runPostCompact).toHaveBeenCalledWith("auto", expect.any(AbortSignal));
 		expect(hooks.markSessionStart).toHaveBeenCalledWith("compact");
-		expect(observations).toEqual([{ type: "compaction.start", reason: "threshold", source: "agent" }]);
+		expect(observations).toMatchObject([{ type: "compaction.start", reason: "threshold", source: "agent" }]);
 	});
 
 	it("persists recoverable work state in both the compaction record and model-visible summary", async () => {
@@ -251,11 +259,12 @@ describe("DefaultCodingAgentContextRuntime", () => {
 		expect(prepared.messages).toEqual(history);
 		expect(prepared.compaction).toBeUndefined();
 		expect(generateCompaction).not.toHaveBeenCalled();
-		expect(observations).toEqual([
-			{ type: "compaction.start", reason: "threshold", source: "agent" },
+		expect(observations).toMatchObject([
+			{ type: "compaction.start", reason: "threshold", contextWindow: 100, thresholdTokens: 80, source: "agent" },
 			{
 				type: "compaction.end",
 				success: false,
+				reason: "threshold",
 				errorMessage: "blocked by test",
 				source: "agent",
 			},
@@ -302,7 +311,7 @@ describe("DefaultCodingAgentContextRuntime", () => {
 			"kept request",
 			"result-1",
 		]);
-		expect(observations).toEqual([{ type: "compaction.start", reason: "threshold", source: "agent" }]);
+		expect(observations).toMatchObject([{ type: "compaction.start", reason: "threshold", source: "agent" }]);
 	});
 
 	it("compacts and retries only the first matching-model overflow without retaining the error message", async () => {
@@ -353,7 +362,7 @@ describe("DefaultCodingAgentContextRuntime", () => {
 		expect(prepared.compaction?.reason).toBe("overflow");
 		expect(prepared.messages.map(messageText)).not.toContain("prompt is too long");
 		expect(repeated.compaction).toBeUndefined();
-		expect(observations).toEqual([{ type: "compaction.start", reason: "overflow", source: "agent" }]);
+		expect(observations).toMatchObject([{ type: "compaction.start", reason: "overflow", source: "agent" }]);
 	});
 
 	it("retries an image-rejected request once without images before falling back to overflow compaction", async () => {
@@ -450,7 +459,7 @@ describe("DefaultCodingAgentContextRuntime", () => {
 
 		expect(prepared.compaction?.reason).toBe("overflow");
 		expect(prepared.messages.map(messageText)).not.toContain("truncated response");
-		expect(observations).toEqual([{ type: "compaction.start", reason: "overflow", source: "agent" }]);
+		expect(observations).toMatchObject([{ type: "compaction.start", reason: "overflow", source: "agent" }]);
 	});
 
 	it("runs manual compaction through extension override and committed callback without invoking the summarizer", async () => {

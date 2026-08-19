@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,7 +10,7 @@ import type { Api, Model } from "@vetta/ai";
 import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
 import { ENV_AGENT_DIR } from "@vetta/coding-agent/config";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import { CatalogRoutedRuntimeSessionAccessResolver, RuntimeHost } from "@vetta/runtime-core";
+import { CatalogRoutedRuntimeSessionAccessResolver, RuntimeHost, type SessionEvent } from "@vetta/runtime-core";
 import { DesktopRuntimeBackendPool, DesktopRuntimeSessionCatalog } from "@vetta/runtime-desktop";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -75,6 +75,13 @@ const debugCliPath = fileURLToPath(new URL("../../../../../cli-host/src/debug-cl
 const repositoryRoot = fileURLToPath(new URL("../../../../../..", import.meta.url));
 const firstPrompt = "Reply with exactly DESKTOP_CLI_CANARY_FIRST.";
 const secondPrompt = "Reply with exactly DESKTOP_CLI_CANARY_SECOND.";
+const automaticCompactionPrompt = `Reply with exactly DESKTOP_CLI_CANARY_AUTO. ${"automatic compaction payload ".repeat(350)}`;
+const automaticCompactionContinuation = `Reply with exactly DESKTOP_CLI_CANARY_AUTO_AFTER_COMPACTION. ${"continued compaction payload ".repeat(350)}`;
+const compactionSummary = `## Primary Goal
+Verify the Desktop CLI can create and continue a persistent conversation.
+
+## Current State
+The first and second canary prompts completed successfully. Preserve both results for the retained conversation tail.`;
 const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
 
 const completedOperationSchema = z
@@ -112,6 +119,23 @@ const listCliResponseSchema = z
 	})
 	.strict();
 
+const compactCliResponseSchema = z
+	.object({
+		ok: z.literal(true),
+		result: z
+			.object({
+				status: z.literal("compacted"),
+				sessionId: z.string().min(1),
+				sessionPath: z.string().min(1),
+				cwd: z.string().min(1),
+				tokensBefore: z.number().int().nonnegative(),
+				firstKeptEntryId: z.string().min(1),
+				summaryChars: z.number().int().positive(),
+			})
+			.strict(),
+	})
+	.strict();
+
 interface CliResult {
 	readonly code: number;
 	readonly stdout: string;
@@ -142,7 +166,7 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 		else process.env[ENV_AGENT_DIR] = originalAgentDir;
 	}, INTEGRATION_TEST_TIMEOUT_MS);
 
-	it("creates, continues and lists a persistent conversation through the existing CLI", async () => {
+	it("creates, continues, manually and automatically compacts, and lists persistent conversations", async () => {
 		const root = await temporaryDirectory("vetta-desktop-cli-canary-");
 		const workspace = join(root, "workspace");
 		const agentDir = join(root, "agent");
@@ -153,8 +177,20 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 
 		provider = await startOpenAiResponsesTestServer(({ body }) => {
 			const input = JSON.stringify(body.input);
+			if (input.includes("UNTRUSTED_SUMMARY_INPUT_JSON")) {
+				return {
+					kind: "events",
+					events: textResponseEvents(`<analysis>canary</analysis><summary>${compactionSummary}</summary>`),
+				};
+			}
 			if (input.includes("DESKTOP_CLI_CANARY_SECOND")) {
 				return { kind: "events", events: textResponseEvents("DESKTOP_CLI_CANARY_SECOND") };
+			}
+			if (input.includes("DESKTOP_CLI_CANARY_AUTO_AFTER_COMPACTION")) {
+				return { kind: "events", events: textResponseEvents("DESKTOP_CLI_CANARY_AUTO_AFTER_COMPACTION") };
+			}
+			if (input.includes("DESKTOP_CLI_CANARY_AUTO")) {
+				return { kind: "events", events: textResponseEvents("DESKTOP_CLI_CANARY_AUTO") };
 			}
 			if (input.includes("DESKTOP_CLI_CANARY_FIRST")) {
 				return { kind: "events", events: textResponseEvents("DESKTOP_CLI_CANARY_FIRST") };
@@ -165,6 +201,8 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 		const model: Model<Api> = {
 			...canaryModel,
 			baseUrl: provider.baseUrl,
+			contextWindow: 2_000,
+			maxTokens: 500,
 		};
 		pool = new DesktopRuntimeBackendPool({
 			compositionDefaults: {
@@ -172,6 +210,12 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 				initialModel: model,
 				initialThinkingLevel: "off",
 				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
+				resolveCompactionSettings: () => ({
+					enabled: true,
+					reserveTokens: 400,
+					minFreePercent: 20,
+					keepRecentTokens: 1,
+				}),
 			},
 		});
 		const sessionCatalog = new DesktopRuntimeSessionCatalog({
@@ -180,6 +224,9 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 				{ cwd: workspace, sessionDir: join(workspace, ".vetta", "sessions") },
 			],
 		});
+		const observedCompactions: Array<
+			Extract<SessionEvent, { readonly type: "compaction.start" | "compaction.end" }>
+		> = [];
 		runtime = new RuntimeHost({
 			sessionBackend: pool,
 			sessionCatalog,
@@ -195,6 +242,7 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 				},
 			]),
 			getDefaultExecutionMode: () => "full-access",
+			sessionCompactionObserver: (event) => observedCompactions.push(event),
 		});
 
 		const catalog = new AppDebugCatalog();
@@ -241,6 +289,93 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 			messageCount: 4,
 		});
 
+		const compactResponse = compactCliResponseSchema.parse(
+			await runVettaDebug(endpointFilePath, "conversation.compact", {
+				sessionPath: createResponse.result.sessionPath,
+				executionMode: "full-access",
+				customInstructions: "Preserve canary decisions",
+			}),
+		);
+		expect(compactResponse.result).toMatchObject({
+			status: "compacted",
+			sessionId: createResponse.result.sessionId,
+			sessionPath: createResponse.result.sessionPath,
+			cwd: workspace,
+		});
+		const persistedCompaction = await readPersistedCompaction(createResponse.result.sessionPath, "manual");
+		expect(persistedCompaction).toMatchObject({
+			reason: "manual",
+			firstKeptEntryId: compactResponse.result.firstKeptEntryId,
+			tokensBefore: compactResponse.result.tokensBefore,
+			hasTurnId: false,
+		});
+		expect(persistedCompaction.summary).toContain(compactionSummary);
+		expect(compactResponse.result.summaryChars).toBe(persistedCompaction.summary.length);
+
+		const automaticResponse = completedCliResponseSchema.parse(
+			await runVettaDebug(endpointFilePath, "conversation.create", {
+				cwd: workspace,
+				prompt: automaticCompactionPrompt,
+				executionMode: "full-access",
+				modelKey: `${model.provider}/${model.id}`,
+				timeoutMs: 30_000,
+			}),
+		);
+		expect(automaticResponse.result).toMatchObject({
+			cwd: workspace,
+			assistantText: "DESKTOP_CLI_CANARY_AUTO",
+		});
+		const initialAutomaticEnd = observedCompactions.find(
+			(event) => event.sessionId === automaticResponse.result.sessionId && event.type === "compaction.end",
+		);
+		expect(initialAutomaticEnd).toMatchObject({
+			type: "compaction.end",
+			success: false,
+			reason: "threshold",
+			errorMessage: "No eligible history prefix remained after applying the compaction keep-tail policy",
+		});
+
+		const automaticContinuationResponse = completedCliResponseSchema.parse(
+			await runVettaDebug(endpointFilePath, "conversation.continue", {
+				sessionPath: automaticResponse.result.sessionPath,
+				prompt: automaticCompactionContinuation,
+				executionMode: "full-access",
+				modelKey: `${model.provider}/${model.id}`,
+				timeoutMs: 30_000,
+			}),
+		);
+		expect(automaticContinuationResponse.result).toMatchObject({
+			sessionId: automaticResponse.result.sessionId,
+			assistantText: "DESKTOP_CLI_CANARY_AUTO_AFTER_COMPACTION",
+		});
+		const automaticSessionEvents = observedCompactions.filter(
+			(event) => event.sessionId === automaticResponse.result.sessionId,
+		);
+		const automaticStart = automaticSessionEvents.filter((event) => event.type === "compaction.start").at(-1);
+		const automaticEnd = automaticSessionEvents.find((event) => event.type === "compaction.end" && event.success);
+		if (!automaticEnd) {
+			throw new Error(`Automatic compaction did not succeed: ${JSON.stringify(automaticSessionEvents)}`);
+		}
+		expect(automaticStart).toMatchObject({
+			type: "compaction.start",
+			reason: "threshold",
+			contextWindow: 2_000,
+			thresholdTokens: 1_600,
+		});
+		if (automaticStart?.type !== "compaction.start") throw new Error("Automatic compaction did not start");
+		expect(automaticStart.contextTokens).toBeGreaterThan(automaticStart.thresholdTokens ?? Number.MAX_SAFE_INTEGER);
+		expect(automaticEnd).toMatchObject({
+			type: "compaction.end",
+			success: true,
+			reason: "threshold",
+		});
+		const persistedAutomaticCompaction = await readPersistedCompaction(
+			automaticResponse.result.sessionPath,
+			"threshold",
+		);
+		expect(persistedAutomaticCompaction).toMatchObject({ reason: "threshold", hasTurnId: true });
+		expect(persistedAutomaticCompaction.summary).toContain(compactionSummary);
+
 		const listResponse = listCliResponseSchema.parse(
 			await runVettaDebug(endpointFilePath, "conversation.list", { cwd: workspace, limit: 20 }),
 		);
@@ -252,6 +387,12 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 		);
 		expect(provider.requests.some(({ rawBody }) => rawBody.includes("DESKTOP_CLI_CANARY_FIRST"))).toBe(true);
 		expect(provider.requests.some(({ rawBody }) => rawBody.includes("DESKTOP_CLI_CANARY_SECOND"))).toBe(true);
+		expect(
+			provider.requests.some(
+				({ rawBody }) =>
+					rawBody.includes("UNTRUSTED_SUMMARY_INPUT_JSON") && rawBody.includes("Preserve canary decisions"),
+			),
+		).toBe(true);
 
 		await runtime.disposeAllSessions();
 		expect(() => runtime?.getState(createResponse.result.sessionId)).toThrow("Session not found");
@@ -270,6 +411,49 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 		return directory;
 	}
 });
+
+interface PersistedCompaction {
+	readonly reason: string;
+	readonly summary: string;
+	readonly firstKeptEntryId: string;
+	readonly tokensBefore: number;
+	readonly hasTurnId: boolean;
+}
+
+async function readPersistedCompaction(
+	sessionPath: string,
+	expectedReason: "manual" | "threshold",
+): Promise<PersistedCompaction> {
+	const records: unknown[] = (await readFile(sessionPath, "utf8"))
+		.trim()
+		.split(/\r?\n/)
+		.map((line) => JSON.parse(line));
+	for (const record of records) {
+		if (!isRecord(record) || !isRecord(record.event) || record.event.type !== "context.compacted") continue;
+		const compaction = record.event.record;
+		if (
+			!isRecord(compaction) ||
+			compaction.reason !== expectedReason ||
+			typeof compaction.summary !== "string" ||
+			typeof compaction.firstKeptEntryId !== "string" ||
+			typeof compaction.tokensBefore !== "number"
+		) {
+			continue;
+		}
+		return {
+			reason: expectedReason,
+			summary: compaction.summary,
+			firstKeptEntryId: compaction.firstKeptEntryId,
+			tokensBefore: compaction.tokensBefore,
+			hasTurnId: "turnId" in record.event,
+		};
+	}
+	throw new Error(`${expectedReason} compaction record was not persisted: ${sessionPath}`);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 async function runVettaDebug(endpointFilePath: string, debugId: string, input: unknown): Promise<unknown> {
 	const result = await runCli(["debug", "run", debugId, JSON.stringify(input)], {

@@ -18,6 +18,7 @@ describe("RuntimeHost running-changed reason", () => {
 	async function setup(): Promise<{
 		emit(event: SessionEvent): void;
 		reasons: Array<{ running: boolean; reason: RunningChangedReason | undefined }>;
+		observedCompactions: Array<Extract<SessionEvent, { readonly type: "compaction.start" | "compaction.end" }>>;
 		observedErrors: Array<Extract<SessionEvent, { readonly type: "error" }>>;
 	}> {
 		let handler: ((event: SessionEvent) => void) | undefined;
@@ -28,9 +29,13 @@ describe("RuntimeHost running-changed reason", () => {
 				}),
 		};
 		const observedErrors: Array<Extract<SessionEvent, { readonly type: "error" }>> = [];
+		const observedCompactions: Array<
+			Extract<SessionEvent, { readonly type: "compaction.start" | "compaction.end" }>
+		> = [];
 		const host = new RuntimeHost({
 			sessionBackend: backend,
 			sessionErrorObserver: (event) => observedErrors.push(event),
+			sessionCompactionObserver: (event) => observedCompactions.push(event),
 		});
 		const reasons: Array<{ running: boolean; reason: RunningChangedReason | undefined }> = [];
 		host.onRunningChanged((_path, running, _sessionId, reason) => {
@@ -39,7 +44,7 @@ describe("RuntimeHost running-changed reason", () => {
 		await host.createSession({});
 		if (!handler) throw new Error("event stream not subscribed");
 		const emit = (event: SessionEvent): void => handler?.(event);
-		return { emit, observedErrors, reasons };
+		return { emit, observedCompactions, observedErrors, reasons };
 	}
 
 	function lifecycle(phase: "agent_start" | "agent_end" | "aborted"): SessionEvent {
@@ -102,6 +107,30 @@ describe("RuntimeHost running-changed reason", () => {
 		emit(lifecycle("agent_start"));
 		emit(lifecycle("agent_end"));
 		expect(reasons.at(-1)).toEqual({ running: false, reason: "agent_end" });
+	});
+
+	it("不依赖外部订阅即可旁路观察上下文压缩生命周期", async () => {
+		const { emit, observedCompactions } = await setup();
+		emit({
+			...base(),
+			type: "compaction.start",
+			reason: "threshold",
+			contextTokens: 91_000,
+			contextWindow: 100_000,
+			thresholdTokens: 90_000,
+		} as SessionEvent);
+		emit({
+			...base(),
+			type: "compaction.end",
+			success: true,
+			reason: "threshold",
+			tokensBefore: 91_000,
+		} as SessionEvent);
+
+		expect(observedCompactions).toMatchObject([
+			{ type: "compaction.start", contextTokens: 91_000, thresholdTokens: 90_000 },
+			{ type: "compaction.end", success: true, tokensBefore: 91_000 },
+		]);
 	});
 });
 

@@ -19,6 +19,7 @@ import {
 	createDesktopHistoricalSessionFormat,
 	createDesktopResultArtifactRuntime,
 	createDesktopRuntimeHostPlatformServices,
+	createRuntimeSessionCompactionLogger,
 	DesktopHistoricalSessionImportBackend,
 	DesktopRuntimeBackendPool,
 	type DesktopRuntimeComposition,
@@ -208,6 +209,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 			]),
 			sharedModelController: createCodingAgentSharedModelController(modelRuntime),
 			sessionErrorObserver: (event) => logRuntimeSessionError(event, log),
+			sessionCompactionObserver: createRuntimeSessionCompactionLogger(log),
 			userQuestionHandler,
 		}),
 	};

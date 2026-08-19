@@ -544,11 +544,16 @@ export interface ActiveToolsUpdateEvent extends SessionEventBase {
 export interface CompactionStartEvent extends SessionEventBase {
 	type: "compaction.start";
 	reason: "threshold" | "overflow";
+	contextTokens?: number;
+	contextWindow?: number;
+	thresholdTokens?: number;
 }
 
 export interface CompactionEndEvent extends SessionEventBase {
 	type: "compaction.end";
 	success: boolean;
+	reason?: "threshold" | "overflow";
+	tokensBefore?: number;
 	errorMessage?: string;
 	failure?: RuntimeFailure;
 }

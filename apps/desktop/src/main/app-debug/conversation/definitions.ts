@@ -10,6 +10,7 @@ import { DebugConversationOperationCoordinator } from "./operation-coordinator.j
 import {
 	abortConversationInputSchema,
 	answerConversationInputSchema,
+	compactConversationInputSchema,
 	continueConversationInputSchema,
 	createConversationInputSchema,
 	listConversationsInputSchema,
@@ -180,6 +181,46 @@ export function createConversationDebugDefinitions(service: DesktopConversationS
 						request.timeoutMs ?? DEFAULT_TIMEOUT_MS,
 						context.signal,
 					);
+				} catch (error) {
+					return mapConversationError(error);
+				}
+			},
+		},
+		{
+			id: "conversation.compact",
+			category: "conversation",
+			title: "Compact conversation context",
+			summary: "Manually compact a persistent Vetta conversation through the production Runtime context controller.",
+			keywords: ["conversation", "session", "context", "compact", "debug"],
+			inputSchema: {
+				description:
+					"Absolute sessionPath, optional executionMode, and optional custom compaction instructions (maximum 10000 characters).",
+			},
+			examples: [
+				{
+					description: "Compact an existing conversation",
+					input: { sessionPath: "C:\\project\\.vetta\\sessions\\session.jsonl" },
+				},
+			],
+			validateInput: (input) => validateInput(compactConversationInputSchema, input),
+			run: async (input, context) => {
+				const request = compactConversationInputSchema.parse(input);
+				try {
+					const session = await service.openSession(
+						request.sessionPath,
+						request.executionMode ?? "sandbox",
+						"debug",
+					);
+					const result = await service.compactSessionContext(session, request.customInstructions, context.signal);
+					return {
+						status: "compacted",
+						sessionId: session.sessionId,
+						sessionPath: session.sessionPath,
+						cwd: session.cwd,
+						tokensBefore: result.tokensBefore,
+						firstKeptEntryId: result.firstKeptEntryId,
+						summaryChars: result.summary.length,
+					};
 				} catch (error) {
 					return mapConversationError(error);
 				}

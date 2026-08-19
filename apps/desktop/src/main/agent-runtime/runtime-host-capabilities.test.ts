@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
+import type { CodingAgentRuntimeCompositionOptions } from "@vetta/coding-agent/composition";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import {
 	type AgentPluginContinuationInvocation,
@@ -183,6 +184,59 @@ describe("Desktop RuntimeHost capabilities", () => {
 
 		expect(toolSurfaces[2]).not.toContain("ask_user_question");
 		expect(runtime.getState(created.sessionId).activeToolNames).not.toContain("ask_user_question");
+	});
+
+	it("exposes the assembled context controller for development-time manual compaction", async () => {
+		const cwd = await temporaryDirectory("desktop-runtime-compaction-workspace-");
+		const sessionDir = await temporaryDirectory("desktop-runtime-compaction-sessions-");
+		const generateCompaction: NonNullable<CodingAgentRuntimeCompositionOptions["generateCompaction"]> = vi.fn(
+			async (preparation, _model, _apiKey, customInstructions) => ({
+				summary: "manual summary",
+				firstKeptEntryId: preparation.firstKeptEntryId,
+				tokensBefore: preparation.tokensBefore,
+				details: { customInstructions },
+			}),
+		);
+		const pool = new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: () => ({ customPrompt: "Compaction test", scenario: "batch" }),
+				resolveCompactionSettings: () => ({
+					enabled: false,
+					reserveTokens: 20,
+					minFreePercent: 20,
+					keepRecentTokens: 1,
+				}),
+				generateCompaction,
+				streamFn: () => new RecordedAssistantStream(assistantText("first answer")),
+			},
+		});
+		const runtime = new RuntimeHost({
+			sessionBackend: pool,
+			getDefaultExecutionMode: () => "full-access",
+		});
+		registerDisposal(runtime, pool);
+
+		const created = await runtime.createSession({ cwd, sessionDir, executionMode: "full-access" });
+		await runtime.prompt(created.sessionId, { text: "old request ".repeat(80) });
+
+		expect(runtime.readSessionContextCompactionState(created.sessionId)).toEqual({
+			isCompacting: false,
+			autoCompactionEnabled: false,
+		});
+		const result = await runtime.compactSessionContext(created.sessionId, {
+			customInstructions: "preserve decisions",
+		});
+
+		expect(result).toMatchObject({
+			summary: "manual summary",
+			details: { customInstructions: "preserve decisions" },
+		});
+		expect(generateCompaction).toHaveBeenCalledOnce();
+		expect(runtime.getFullHistory(created.sessionId).map(({ type }) => type)).toContain("compaction");
+		expect(runtime.readSessionContextCompactionState(created.sessionId).isCompacting).toBe(false);
 	});
 
 	function registerDisposal(runtime: RuntimeHost, pool: DesktopRuntimeBackendPool): void {

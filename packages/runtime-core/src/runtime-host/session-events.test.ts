@@ -68,11 +68,31 @@ describe("mapRuntimeSessionObservationEvent", () => {
 		const compaction = mapRuntimeSessionObservationEvent("session-1", {
 			type: "compaction.end",
 			success: false,
+			reason: "threshold",
+			tokensBefore: 91_000,
 			errorMessage: failure.message,
 			failure,
 			source: "agent",
 		});
 		expect(retry).toMatchObject({ failure });
-		expect(compaction).toMatchObject({ failure });
+		expect(compaction).toMatchObject({ reason: "threshold", tokensBefore: 91_000, failure });
+	});
+
+	it("preserves automatic compaction threshold diagnostics", () => {
+		const event = mapRuntimeSessionObservationEvent("session-1", {
+			type: "compaction.start",
+			reason: "threshold",
+			contextTokens: 91_000,
+			contextWindow: 100_000,
+			thresholdTokens: 90_000,
+			source: "agent",
+		});
+
+		expect(event).toMatchObject({
+			type: "compaction.start",
+			contextTokens: 91_000,
+			contextWindow: 100_000,
+			thresholdTokens: 90_000,
+		});
 	});
 });

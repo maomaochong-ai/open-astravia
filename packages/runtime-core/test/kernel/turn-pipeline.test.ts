@@ -61,6 +61,7 @@ class CollectingEventSink implements EventSink {
 class InMemoryConversationRepository implements ConversationRepository {
 	private readonly conversations = new Map<string, StoredConversation>();
 	failTerminalAppend = false;
+	failCompactionAppend = false;
 
 	async create(input: CreateConversationInput): Promise<ConversationMetadata> {
 		if (this.conversations.has(input.sessionId)) {
@@ -94,6 +95,9 @@ class InMemoryConversationRepository implements ConversationRepository {
 			events.some((event) => event.type === "turn.cancelled" || event.type === "turn.failed")
 		) {
 			throw new Error("terminal append failed");
+		}
+		if (this.failCompactionAppend && events.some((event) => event.type === "context.compacted")) {
+			throw new Error("compaction append failed");
 		}
 		if (conversation.version !== expectedVersion) {
 			throw new Error(`Version mismatch: expected ${expectedVersion}, received ${conversation.version}`);
@@ -236,9 +240,11 @@ async function createHarness(options?: {
 	readonly conversationDocumentReader?: ConversationDocumentReader;
 	readonly modelBindingProvider?: RuntimeTurnModelBindingProvider;
 	readonly failTerminalAppend?: boolean;
+	readonly failCompactionAppend?: boolean;
 }) {
 	const repository = new InMemoryConversationRepository();
 	repository.failTerminalAppend = options?.failTerminalAppend === true;
+	repository.failCompactionAppend = options?.failCompactionAppend === true;
 	const contextStrategy = options?.contextStrategy ?? new RecordingContextStrategy();
 	const turnEngine = options?.turnEngine ?? new CompletingTurnEngine(assistantMessage("done"));
 	const eventSink = options?.eventSink ?? new CollectingEventSink();
@@ -581,6 +587,40 @@ describe("greenfield runtime kernel", () => {
 			"message.appended",
 			"turn.completed",
 		]);
+	});
+
+	it("publishes a failed compaction observation when the prepared record cannot be persisted", async () => {
+		const contextStrategy: ContextStrategy = {
+			async prepare(input) {
+				return {
+					messages: input.messages,
+					estimatedTokens: 1,
+					compaction: {
+						summary: "summary",
+						summaryMessage: userMessage("summary"),
+						firstKeptEntryId: "existing-entry",
+						tokensBefore: 10,
+						reason: "threshold",
+					},
+				};
+			},
+		};
+		const harness = await createHarness({ contextStrategy, failCompactionAppend: true });
+
+		const result = await harness.session.send({ message: userMessage("current input") });
+
+		expect(result).toMatchObject({ status: "failed" });
+		expect((harness.eventSink as CollectingEventSink).events).toContainEqual(
+			expect.objectContaining({
+				type: "session.observation",
+				observation: expect.objectContaining({
+					type: "compaction.end",
+					success: false,
+					reason: "threshold",
+					errorMessage: "Failed to persist context compaction: compaction append failed",
+				}),
+			}),
+		);
 	});
 
 	it("commits same-turn compaction checkpoints after prior model messages are persisted", async () => {

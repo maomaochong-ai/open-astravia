@@ -33,6 +33,7 @@ import {
 	compact,
 	DEFAULT_COMPACTION_SETTINGS,
 	estimateContextTokens,
+	getCompactThreshold,
 	prepareCompaction,
 	shouldCompact,
 	shouldPrefire,
@@ -193,10 +194,25 @@ export class DefaultCodingAgentContextRuntime
 			}
 			return unchanged(callMessages, assembledTokens);
 		}
-		if (!this.circuitBreaker.canAttempt()) return unchanged(callMessages, assembledTokens);
-
 		const compactionReason = overflow ? "overflow" : "threshold";
-		await input.reportObservation({ type: "compaction.start", reason: compactionReason, source: "agent" });
+		await input.reportObservation({
+			type: "compaction.start",
+			reason: compactionReason,
+			contextTokens: estimate.tokens,
+			contextWindow,
+			thresholdTokens: getCompactThreshold(contextWindow, settings),
+			source: "agent",
+		});
+		if (!this.circuitBreaker.canAttempt()) {
+			await input.reportObservation({
+				type: "compaction.end",
+				success: false,
+				reason: compactionReason,
+				errorMessage: "Compaction circuit breaker is open after repeated failures",
+				source: "agent",
+			});
+			return unchanged(callMessages, assembledTokens);
+		}
 		try {
 			const apiKey = input.modelBinding?.credential
 				? await input.modelBinding.credential.resolve()
@@ -205,6 +221,7 @@ export class DefaultCodingAgentContextRuntime
 				await input.reportObservation({
 					type: "compaction.end",
 					success: false,
+					reason: compactionReason,
 					errorMessage: `No API key for ${model.provider}`,
 					failure: runtimeFailureFromError(
 						providerAuthenticationError(model, `No credentials configured for ${model.provider}/${model.id}`),
@@ -215,7 +232,13 @@ export class DefaultCodingAgentContextRuntime
 			}
 			const preparation = prepareCompaction(entries, settings);
 			if (!preparation) {
-				await input.reportObservation({ type: "compaction.end", success: false, source: "agent" });
+				await input.reportObservation({
+					type: "compaction.end",
+					success: false,
+					reason: compactionReason,
+					errorMessage: "No eligible history prefix remained after applying the compaction keep-tail policy",
+					source: "agent",
+				});
 				return unchanged(callMessages, assembledTokens);
 			}
 			const preHookOutcome = await this.options.hookRuntime.runPreCompact("auto", signal);
@@ -223,6 +246,7 @@ export class DefaultCodingAgentContextRuntime
 				await input.reportObservation({
 					type: "compaction.end",
 					success: false,
+					reason: compactionReason,
 					errorMessage:
 						preHookOutcome.stopReason ?? preHookOutcome.blockReason ?? "Compaction blocked by ecosystem hook",
 					source: "agent",
@@ -237,7 +261,13 @@ export class DefaultCodingAgentContextRuntime
 				signal,
 			});
 			if (extensionResult?.cancel) {
-				await input.reportObservation({ type: "compaction.end", success: false, source: "agent" });
+				await input.reportObservation({
+					type: "compaction.end",
+					success: false,
+					reason: compactionReason,
+					errorMessage: "Compaction cancelled by extension",
+					source: "agent",
+				});
 				return unchanged(callMessages, assembledTokens);
 			}
 			const prefired = extensionResult?.compaction ? undefined : this.prefire.take(entries);
@@ -263,6 +293,7 @@ export class DefaultCodingAgentContextRuntime
 			await input.reportObservation({
 				type: "compaction.end",
 				success: false,
+				reason: compactionReason,
 				errorMessage: error instanceof Error ? error.message : String(error),
 				failure: runtimeFailureFromError(error, { origin: "provider", code: "COMPACTION_FAILED" }),
 				source: "agent",

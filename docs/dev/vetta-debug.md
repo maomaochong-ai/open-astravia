@@ -148,6 +148,7 @@ CLI stdout 返回一个 JSON 对象：
 | `conversation.list` | `cwd` | 列出项目的持久化普通会话 |
 | `conversation.create` | `cwd`、`prompt` | 创建可见会话并执行首轮 Agent |
 | `conversation.continue` | `sessionPath`、`prompt` | 继续已有会话并执行下一轮 Agent |
+| `conversation.compact` | `sessionPath` | 通过生产 Runtime 手动压缩已有会话上下文；仅开发环境注册 |
 | `conversation.answer` | `operationId`、`interactionId`、答案 | 回答当前 Ask User 并继续等待 |
 | `conversation.wait` | `operationId` | 等待下一次可报告状态 |
 | `conversation.abort` | `operationId` | 中止运行中或等待回答的操作 |
@@ -195,6 +196,18 @@ bun run verify:ui:debug -- run conversation.continue '{"sessionPath":"C:\\path\\
 ```powershell
 bun run verify:ui:debug -- run conversation.list '{"cwd":"C:\\develop\\my-project","limit":20}'
 ```
+
+## 手动上下文压缩
+
+自动压缩问题需要与摘要模型、持久化和事件日志分开定位时，可以对同一个持久会话执行一次手动压缩：
+
+```powershell
+bun run verify:ui:debug -- run conversation.compact '{"sessionPath":"C:\\path\\to\\session.jsonl"}'
+```
+
+可选的 `customInstructions` 会传给既有压缩摘要链路；返回值只包含 `tokensBefore`、保留边界和摘要字符数，
+不会把摘要正文输出到终端。该能力属于 Vetta Debug，打包环境不注册。自动和手动压缩的结构化诊断写入
+`<VETTA_HOME>/desktop-app/logs/main/<date>.log`，搜索 `context compaction` 可看到阈值、上下文 Token、结果和耗时。
 
 不要手工猜测 `sessionPath`，应从 `create` 返回值或 `conversation.list` 获取。
 

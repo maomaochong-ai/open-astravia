@@ -4,11 +4,13 @@ import {
 	isSessionError,
 	type PromptRequest,
 	RUNTIME_ERROR_CODES,
+	type RuntimeContextCompactionResult,
 	type RuntimeFailure,
 	type RuntimeHost,
 	runtimeFailureFromAIErrorDetails,
 	type SessionConfig,
 } from "@vetta/runtime-core";
+import { sanitizeRuntimeErrorMessage } from "@vetta/runtime-desktop";
 import { type DesktopSessionHistoryInfo, UNAVAILABLE_RUNTIME_SESSION_ACCESS } from "../../shared/session-access.js";
 import { monitorRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
@@ -222,6 +224,55 @@ export class DesktopConversationService {
 			isConversationCwd(header.cwd) ? "conversation" : "other",
 			source,
 		);
+	}
+
+	async compactSessionContext(
+		session: DesktopConversationSession,
+		customInstructions?: string,
+		signal?: AbortSignal,
+	): Promise<RuntimeContextCompactionResult> {
+		if (signal?.aborted) {
+			throw new DesktopConversationError("TURN_ABORTED", "Context compaction was aborted before it started.");
+		}
+		const before = this.runtime.getState(session.sessionId);
+		const onAbort = (): void => this.runtime.abortSessionContextCompaction(session.sessionId);
+		signal?.addEventListener("abort", onAbort, { once: true });
+		log.info("manual context compaction started", {
+			sessionId: session.sessionId,
+			sessionPath: session.sessionPath,
+			contextTokens: before.contextTokens,
+			contextWindow: before.contextWindow,
+			hasCustomInstructions: customInstructions !== undefined,
+		});
+		try {
+			const result = await this.runtime.compactSessionContext(
+				session.sessionId,
+				customInstructions === undefined ? undefined : { customInstructions },
+			);
+			log.info("manual context compaction completed", {
+				sessionId: session.sessionId,
+				tokensBefore: result.tokensBefore,
+				summaryChars: result.summary.length,
+				firstKeptEntryId: result.firstKeptEntryId,
+			});
+			emitConversationListChanged({ cwd: session.listCwd, sessionPath: session.sessionPath });
+			return result;
+		} catch (error) {
+			const message = sanitizeRuntimeErrorMessage(error instanceof Error ? error.message : String(error));
+			log.warn("manual context compaction failed", {
+				sessionId: session.sessionId,
+				message,
+			});
+			if (signal?.aborted) {
+				throw new DesktopConversationError("TURN_ABORTED", "Context compaction was aborted.");
+			}
+			if (hasRuntimeErrorCode(error, RUNTIME_ERROR_CODES.SESSION_BUSY)) {
+				throw new DesktopConversationError("SESSION_BUSY", "Session context compaction is already running.");
+			}
+			throw new DesktopConversationError("TURN_FAILED", message);
+		} finally {
+			signal?.removeEventListener("abort", onAbort);
+		}
 	}
 
 	async listSessions(cwd: string): Promise<DesktopSessionHistoryInfo[]> {

@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- 自动上下文压缩现在为阈值触发、熔断器、凭证缺失、保留尾部无可压缩前缀、Hook/Extension 拦截与摘要失败
+  统一报告结构化生命周期诊断，避免超过阈值后静默不压缩且无法定位原因。
 - 自动重试取消现在覆盖整次重试操作，消除 `auto_retry_start` 与 backoff controller 建立之间的竞态；同时遵守 Provider 的 `Retry-After` 最小等待时间，超出用户配置等待上限时停止自动重试。
 - 内置 Theme JSON 在构建期生成 TypeScript 文档，避免 Electron/Node ESM 加载 Coding Agent 产物时因缺少
   JSON import attribute 导致应用启动失败；`dark.json` 与 `light.json` 继续作为唯一编辑来源。

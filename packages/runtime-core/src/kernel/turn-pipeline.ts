@@ -758,16 +758,29 @@ export class TurnPipeline {
 		signal: AbortSignal,
 		snapshot: RuntimeSnapshot,
 	): Promise<ConversationDocument | undefined> {
-		const result = await this.contextCompactionCommitter.commit({
-			sessionId: state.sessionId,
-			turnId,
-			expectedVersion: state.version,
-			record,
-			snapshot,
-			signal,
-		});
-		state.version = result.version;
-		return result.document;
+		try {
+			const result = await this.contextCompactionCommitter.commit({
+				sessionId: state.sessionId,
+				turnId,
+				expectedVersion: state.version,
+				record,
+				snapshot,
+				signal,
+			});
+			state.version = result.version;
+			return result.document;
+		} catch (error) {
+			if (record.reason !== "manual") {
+				await this.publishObservation(state.sessionId, turnId, {
+					type: "compaction.end",
+					success: false,
+					reason: record.reason,
+					errorMessage: `Failed to persist context compaction: ${errorMessage(error)}`,
+					source: "runtime-core",
+				});
+			}
+			throw error;
+		}
 	}
 
 	private async continueAfterCompaction(

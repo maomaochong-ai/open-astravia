@@ -108,7 +108,13 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 			type: "context.compacted",
 			sessionId: "session-1",
 			turnId: "turn-1",
-			record: { id: "compact-1", sourceMessageCount: 10, resultMessageCount: 2 },
+			record: {
+				summary: "summary",
+				summaryMessage: { role: "user", content: "summary", timestamp: 12 },
+				firstKeptEntryId: "message-2",
+				tokensBefore: 91_000,
+				reason: "threshold",
+			},
 			timestamp: 12,
 		});
 
@@ -116,7 +122,9 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 		expect(cancelled.map(payload)).toMatchObject([{ phase: "aborted" }, { phase: "agent_end" }]);
 		expect(failed.map((event) => event.type)).toEqual(["error", "session.lifecycle"]);
 		expect(payload(failed[0])).toMatchObject({ turnId: "turn-1", error: { code: "turn_failed", origin: "runtime" } });
-		expect(compacted.map(payload)).toMatchObject([{ type: "compaction.end", success: true }]);
+		expect(compacted.map(payload)).toMatchObject([
+			{ type: "compaction.end", success: true, reason: "threshold", tokensBefore: 91_000 },
+		]);
 	});
 
 	it("maps transient execution failures independently from durable turn failure", () => {

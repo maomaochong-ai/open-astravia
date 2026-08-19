@@ -191,6 +191,36 @@ describe("DesktopConversationService session access", () => {
 			},
 		});
 	});
+
+	it("runs manual context compaction through the RuntimeHost control port", async () => {
+		const compactSessionContext = vi.fn(async () => ({
+			summary: "summary",
+			firstKeptEntryId: "entry-2",
+			tokensBefore: 91_000,
+		}));
+		const runtime = {
+			getState: vi.fn(() => ({ contextTokens: 91_000, contextWindow: 100_000 })),
+			compactSessionContext,
+			abortSessionContextCompaction: vi.fn(),
+		} as unknown as RuntimeHost;
+		const service = new DesktopConversationService(runtime);
+
+		const result = await service.compactSessionContext(
+			{
+				sessionId: "session-1",
+				sessionPath: "C:/sessions/session-1.conversation.jsonl",
+				cwd: "C:/workspace",
+				listCwd: "C:/workspace",
+				source: "debug",
+			},
+			"preserve decisions",
+		);
+
+		expect(result).toMatchObject({ tokensBefore: 91_000, firstKeptEntryId: "entry-2" });
+		expect(compactSessionContext).toHaveBeenCalledWith("session-1", {
+			customInstructions: "preserve decisions",
+		});
+	});
 });
 
 async function createTemporaryRoot(): Promise<string> {

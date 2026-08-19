@@ -156,12 +156,21 @@ export function mapRuntimeSessionObservationEvent(
 		case "active_tools_update":
 			return { ...base, type: event.type, activeToolNames: [...event.activeToolNames] };
 		case "compaction.start":
-			return { ...base, type: event.type, reason: event.reason };
+			return {
+				...base,
+				type: event.type,
+				reason: event.reason,
+				contextTokens: event.contextTokens,
+				contextWindow: event.contextWindow,
+				thresholdTokens: event.thresholdTokens,
+			};
 		case "compaction.end":
 			return {
 				...base,
 				type: event.type,
 				success: event.success,
+				reason: event.reason,
+				tokensBefore: event.tokensBefore,
 				errorMessage: event.errorMessage,
 				...(event.failure ? { failure: event.failure } : {}),
 			};

@@ -117,10 +117,18 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 				readonly failure?: RuntimeFailure;
 		  }
 		| { readonly type: "active_tools_update"; readonly activeToolNames: readonly string[] }
-		| { readonly type: "compaction.start"; readonly reason: "threshold" | "overflow" }
+		| {
+				readonly type: "compaction.start";
+				readonly reason: "threshold" | "overflow";
+				readonly contextTokens?: number;
+				readonly contextWindow?: number;
+				readonly thresholdTokens?: number;
+		  }
 		| {
 				readonly type: "compaction.end";
 				readonly success: boolean;
+				readonly reason?: "threshold" | "overflow";
+				readonly tokensBefore?: number;
 				readonly errorMessage?: string;
 				readonly failure?: RuntimeFailure;
 		  }
