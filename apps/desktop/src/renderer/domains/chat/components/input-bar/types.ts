@@ -176,7 +176,7 @@ export interface InputBarModel {
 		handleSelectImages: () => Promise<void>;
 		handleSelectFiles: () => Promise<void>;
 		handleSend: () => void;
-		handleAbort: () => void;
+		handleAbort: () => Promise<void>;
 		cancelPendingEdit: () => void;
 	};
 }

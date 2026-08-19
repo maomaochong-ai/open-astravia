@@ -18,7 +18,7 @@ export interface SendButtonProps {
 	 */
 	pending?: { readonly label: string };
 	onSend: () => void;
-	onAbort: () => void;
+	onAbort: () => void | Promise<void>;
 }
 
 type IconState = "send" | "to-stop" | "stop" | "to-send";
@@ -27,17 +27,23 @@ export const SendButton = memo(function SendButton({
 	canSend,
 	isStreaming,
 	labels,
-	pending,
+	pending: externalPending,
 	onSend,
 	onAbort,
 }: SendButtonProps): JSX.Element {
 	const surface = useThemeSurface("chat.sendButton");
-	const isActive = isStreaming || canSend || Boolean(pending);
+	const [abortPending, setAbortPending] = useState(false);
+	const abortRequestRef = useRef(0);
+	const isActive = isStreaming || canSend || Boolean(externalPending);
 	const wasStreamingRef = useRef(isStreaming);
 	const [iconState, setIconState] = useState<IconState>(isStreaming ? "stop" : "send");
 	const [showOutgoingArrow, setShowOutgoingArrow] = useState(false);
 
 	useEffect(() => {
+		if (!isStreaming) {
+			abortRequestRef.current += 1;
+			setAbortPending(false);
+		}
 		if (!wasStreamingRef.current && isStreaming) {
 			setShowOutgoingArrow(true);
 			setIconState("to-stop");
@@ -47,6 +53,17 @@ export const SendButton = memo(function SendButton({
 		}
 		wasStreamingRef.current = isStreaming;
 	}, [isStreaming]);
+
+	function handleAbort(): void {
+		const request = ++abortRequestRef.current;
+		setAbortPending(true);
+		void Promise.resolve()
+			.then(onAbort)
+			.catch(() => undefined)
+			.finally(() => {
+				if (abortRequestRef.current === request) setAbortPending(false);
+			});
+	}
 
 	function handleStemAnimationEnd(): void {
 		if (iconState === "to-stop") {
@@ -66,11 +83,12 @@ export const SendButton = memo(function SendButton({
 				.join(" ")}
 			data-active={isActive}
 			data-streaming={isStreaming}
-			data-pending={Boolean(pending)}
+			data-pending={Boolean(externalPending)}
+			data-aborting={abortPending}
 			data-theme-surface-root="chat.sendButton"
 		>
 			<ThemeSurface slot="chat.sendButton" />
-			{isStreaming && !pending ? (
+			{isStreaming && !externalPending ? (
 				<>
 					<span aria-hidden className="send-button-ripple send-button-ripple-1" />
 					<span aria-hidden className="send-button-ripple send-button-ripple-2" />
@@ -78,23 +96,23 @@ export const SendButton = memo(function SendButton({
 			) : null}
 			<button
 				type="button"
-				onClick={pending ? undefined : isStreaming ? onAbort : onSend}
-				disabled={Boolean(pending) || (!isStreaming && !canSend)}
-				aria-busy={Boolean(pending)}
+				onClick={externalPending || abortPending ? undefined : isStreaming ? handleAbort : onSend}
+				disabled={Boolean(externalPending) || abortPending || (!isStreaming && !canSend)}
+				aria-busy={Boolean(externalPending) || abortPending}
 				className="send-button relative z-10 flex h-8 min-w-8 items-center justify-center overflow-hidden rounded-full transition-shadow disabled:cursor-not-allowed"
 				data-icon-state={iconState}
-				title={pending ? pending.label : isStreaming ? labels.stopGenerating : labels.sendMessage}
+				title={externalPending ? externalPending.label : isStreaming ? labels.stopGenerating : labels.sendMessage}
 			>
-				{pending ? (
+				{externalPending ? (
 					<span className="send-button-pending">
 						<span className="icon-[mdi--loading] h-4 w-4 shrink-0 animate-spin" aria-hidden />
 						{/* 0fr → 1fr 的栅格过渡：宽度形变全部交给 CSS，不引入第二条 JS 动画。 */}
 						<span className="send-button-pending-label">
-							<span className="min-w-0 truncate">{pending.label}</span>
+							<span className="min-w-0 truncate">{externalPending.label}</span>
 						</span>
 					</span>
 				) : null}
-				{showOutgoingArrow && !pending ? (
+				{showOutgoingArrow && !externalPending ? (
 					<span
 						aria-hidden
 						className="send-button-outgoing-arrow"
@@ -106,7 +124,7 @@ export const SendButton = memo(function SendButton({
 					</span>
 				) : null}
 
-				<span aria-hidden className="send-button-icon" data-hidden={Boolean(pending)}>
+				<span aria-hidden className="send-button-icon" data-hidden={Boolean(externalPending)}>
 					<span className="send-button-stem" onAnimationEnd={handleStemAnimationEnd} />
 					<span className="send-button-side send-button-side-left" />
 					<span className="send-button-side send-button-side-right" />

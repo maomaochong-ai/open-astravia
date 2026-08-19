@@ -3,9 +3,9 @@
  * 发送按钮的 pending 变形态：宿主在发送前还有一步要跑完时（新会话页要先把待创建的
  * 项目落盘），按钮就地展开成带文案的胶囊、停止接受点击，跑完后恢复原样。
  */
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key, i18n: { exists: () => true } }),
@@ -15,6 +15,7 @@ const { SendButton } = await import("./SendButton.js");
 
 describe("SendButton", () => {
 	beforeEach(() => vi.clearAllMocks());
+	afterEach(cleanup);
 
 	it("常态下可点击发送", async () => {
 		const user = userEvent.setup();
@@ -63,6 +64,37 @@ describe("SendButton", () => {
 
 		const button = screen.getByRole("button", { name: "正在准备项目" });
 		expect((button as HTMLButtonElement).disabled).toBe(true);
+	});
+
+	it("点击停止后保持纯图标并拒绝重复取消", async () => {
+		const user = userEvent.setup();
+		const onAbort = vi.fn(() => new Promise<void>(() => undefined));
+		render(<SendButton canSend={false} isStreaming onSend={vi.fn()} onAbort={onAbort} />);
+
+		await user.click(screen.getByRole("button", { name: "sendButton.stopGenerating" }));
+
+		const button = screen.getByRole("button", { name: "sendButton.stopGenerating" });
+		expect(button.textContent).toBe("");
+		expect(button.getAttribute("aria-busy")).toBe("true");
+		expect((button as HTMLButtonElement).disabled).toBe(true);
+		expect(onAbort).toHaveBeenCalledOnce();
+		await user.click(button);
+		expect(onAbort).toHaveBeenCalledOnce();
+	});
+
+	it("停止请求失败时恢复停止按钮，允许用户重试", async () => {
+		const user = userEvent.setup();
+		const onAbort = vi.fn(async () => {
+			throw new Error("IPC failed");
+		});
+		render(<SendButton canSend={false} isStreaming onSend={vi.fn()} onAbort={onAbort} />);
+
+		await user.click(screen.getByRole("button", { name: "sendButton.stopGenerating" }));
+		await waitFor(() => {
+			expect(
+				(screen.getByRole("button", { name: "sendButton.stopGenerating" }) as HTMLButtonElement).disabled,
+			).toBe(false);
+		});
 	});
 
 	it("pending 结束后回到普通发送按钮", async () => {

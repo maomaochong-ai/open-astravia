@@ -252,8 +252,13 @@ export function useInputBarModel({
 		perfSendMark("handler-return", interactionId);
 	}, [onSend]);
 
-	const handleAbort = useCallback(() => {
-		void onAbort();
+	const handleAbort = useCallback(async () => {
+		try {
+			await onAbort();
+		} catch (error) {
+			console.error("[useInputBarModel] abort failed", error);
+			throw error;
+		}
 	}, [onAbort]);
 
 	/** 回车：能发就发，生成中则入队，空输入时用输入预测直发。返回是否已处理。 */

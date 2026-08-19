@@ -21,7 +21,7 @@ interface InputBarToolbarProps {
 	isEmpty: boolean;
 	isStreaming: boolean;
 	labels: Pick<InputBarLabels, "capsule" | "toolbar">;
-	onAbort: () => void;
+	onAbort: () => void | Promise<void>;
 	onPlusClick: () => void;
 	onSelectFiles: () => void;
 	onSelectImages: () => void;
