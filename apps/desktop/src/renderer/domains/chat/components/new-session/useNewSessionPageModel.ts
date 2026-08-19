@@ -3,7 +3,6 @@ import { i18n } from "@shared/i18n";
 import {
 	activeSessionAtom,
 	activeToolNamesAtom,
-	activityPanelOpenAtom,
 	applyInputActionWorkingState,
 	attachedImagesAtom,
 	authUserAtom,
@@ -21,7 +20,7 @@ import {
 	switchSessionInputDraftScope,
 } from "@shared/store/atoms";
 import { useParams } from "@tanstack/react-router";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { startTransition, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSessionManager } from "../../hooks/useSessionManager";
@@ -31,6 +30,7 @@ import { PANEL_SHIFT_MIN_ITEMS } from "./constants";
 import { prepareProjectCwd } from "./project-selector/prepare-project-cwd";
 import type { ProjectOption, ProjectSelection } from "./project-selector/project-selection";
 import { useNewSessionProjectSelection } from "./project-selector/useNewSessionProjectSelection";
+import { useNewSessionActivityPanel } from "./useNewSessionActivityPanel";
 import { useNewSessionSend } from "./useNewSessionSend";
 import { useShortViewport } from "./useShortViewport";
 
@@ -88,7 +88,9 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const [mounted, setMounted] = useState(false);
 	const [avatarAutoplay, setAvatarAutoplay] = useState(false);
 	const [commandPanelExpanded, setCommandPanelExpanded] = useState(false);
-	const [activityOpen, setActivityOpen] = useAtom(activityPanelOpenAtom);
+	const { open: activityOpen, toggle: handleToggleActivity } = useNewSessionActivityPanel(
+		projectSelection.activityPanelCwd,
+	);
 	const [pinned, setPinned] = useState(false);
 	const setAttachedImages = useSetAtom(attachedImagesAtom);
 	const setHeaderTitle = useSetAtom(pageHeaderTitleAtom);
@@ -217,10 +219,6 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		const next = await window.vetta.window.toggleAlwaysOnTop();
 		setPinned(next);
 	}, []);
-
-	const handleToggleActivity = useCallback(() => {
-		setActivityOpen((open) => !open);
-	}, [setActivityOpen]);
 
 	const greetingTitle = authUser?.nickname
 		? i18n.t("chat:newSession.greetingTitle", { nickname: authUser.nickname })
