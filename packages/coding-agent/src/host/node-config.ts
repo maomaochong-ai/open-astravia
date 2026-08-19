@@ -106,6 +106,14 @@ interface CodingAgentPackageMetadata {
 	readonly version: string;
 }
 
+/**
+ * 宿主把 coding-agent 打进自己的 bundle 时（Electron asar 等），`getPackageDir()`
+ * 的 walk-up 只能找到宿主自己的 package.json。那不是本包的清单，读不出版本号，
+ * 但也绝不能让宿主进程在模块求值阶段崩溃——VERSION 只用于 MCP clientVersion 和
+ * CLI 版本展示，缺失时降级即可。
+ */
+const UNKNOWN_VERSION = "0.0.0";
+
 function parsePackageMetadata(value: unknown): CodingAgentPackageMetadata | undefined {
 	if (typeof value !== "object" || value === null) return undefined;
 	const name = Reflect.get(value, "name");
@@ -113,26 +121,26 @@ function parsePackageMetadata(value: unknown): CodingAgentPackageMetadata | unde
 	return typeof name === "string" && typeof version === "string" ? { name, version } : undefined;
 }
 
-function loadPackageMetadata(): CodingAgentPackageMetadata {
+/** 只接受确实属于本包的清单，其余一律降级为未知版本。 */
+export function resolveCodingAgentVersion(manifest: unknown): string {
+	const metadata = parsePackageMetadata(manifest);
+	return metadata?.name === PACKAGE_NAME ? metadata.version : UNKNOWN_VERSION;
+}
+
+function loadPackageManifest(): unknown {
 	const packageJsonPath = getPackageJsonPath();
 	if (existsSync(packageJsonPath)) {
-		const metadata = parsePackageMetadata(JSON.parse(readFileSync(packageJsonPath, "utf8")));
-		if (!metadata) throw new Error(`Invalid coding-agent package metadata: ${packageJsonPath}`);
-		return metadata;
+		try {
+			return JSON.parse(readFileSync(packageJsonPath, "utf8"));
+		} catch {
+			return undefined;
+		}
 	}
-	if (isBunBinary && typeof VETTA_COMPILED_PACKAGE_METADATA !== "undefined") {
-		const metadata = parsePackageMetadata(VETTA_COMPILED_PACKAGE_METADATA);
-		if (metadata) return metadata;
-	}
-	throw new Error(`Coding-agent package metadata not found: ${packageJsonPath}`);
+	if (isBunBinary && typeof VETTA_COMPILED_PACKAGE_METADATA !== "undefined") return VETTA_COMPILED_PACKAGE_METADATA;
+	return undefined;
 }
 
-const packageMetadata = loadPackageMetadata();
-if (packageMetadata.name !== PACKAGE_NAME) {
-	throw new Error(`Unexpected coding-agent package name: ${packageMetadata.name}`);
-}
-
-export const VERSION = packageMetadata.version;
+export const VERSION = resolveCodingAgentVersion(loadPackageManifest());
 
 const DEFAULT_SHARE_VIEWER_URL = "https://pi.dev/session/";
 

@@ -21,6 +21,10 @@ export default defineConfig({
 				find: "@vetta-org/plugin-sdk/manifest",
 				replacement: resolve(__dirname, "../../packages/plugins/plugin-sdk/src/manifest.ts"),
 			},
+			{
+				find: "@vetta/ai/reasoning-presets",
+				replacement: resolve(__dirname, "../../packages/ai/src/reasoning-presets.ts"),
+			},
 			{ find: "@vetta/ai/testing", replacement: resolve(__dirname, "../../packages/ai/src/testing/index.ts") },
 			{ find: "@vetta/ai/protocol", replacement: resolve(__dirname, "../../packages/ai/src/protocol/index.ts") },
 			{ find: "@vetta/ai", replacement: resolve(__dirname, "../../packages/ai/src/index.ts") },

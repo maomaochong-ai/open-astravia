@@ -6,6 +6,7 @@ import { RouteContentLoadingView } from "@vetta/theme-ui/app";
 import { AppFrame, MainContentFrame, SidebarDock, SidebarOverlay } from "@vetta/theme-ui/layout";
 import { useThemeComponent, useThemeSurface } from "@vetta/theme-sdk";
 import { useCallback, useEffect } from "react";
+import { useActiveWorkspaceViewHeader } from "../domains/plugins/components/WorkspaceViewHeaderSlot";
 import { Sidebar } from "../domains/project/components/sidebar/Sidebar";
 import { PageHeader } from "../shared/app-shell/page-header";
 import { TooltipProvider } from "../shared/components/ui/tooltip";
@@ -24,6 +25,9 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 	const appFrameSurface = useThemeSurface("app.frame");
 	const themePageRoute = useActiveThemePageRoute();
 	const pageLayout = themePageRoute?.page ? themePageRoute.layout : "content";
+	// 插件工作区视图可声明沉浸式页头：页头浮在内容之上（拖拽区/触发器照常在最上层），
+	// 内容占满全高，视图自己的门面从窗口第一像素开始，不再被 44px 页头推出一条空带。
+	const workspaceViewHeader = useActiveWorkspaceViewHeader();
 	const {
 		actions,
 		narrow,
@@ -95,7 +99,11 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 						{routePending ? <RouteContentLoadingView /> : <Outlet />}
 					</div>
 				) : (
-					<MainContentFrame className="app-main-frame" header={pageHeader}>
+					<MainContentFrame
+						className="app-main-frame"
+						header={pageHeader}
+						headerOverlay={workspaceViewHeader?.immersive === true}
+					>
 						<PerfSendProfiler id="RouteOutlet">
 							{routePending ? <RouteContentLoadingView /> : <Outlet />}
 						</PerfSendProfiler>

@@ -4,6 +4,7 @@ import { DesignSystemTileContent } from "../cards/DesignSystemTileContent";
 import { refreshDesignCatalog, useCatalogState } from "../design-systems/index";
 import type { DesignSystem } from "../design-systems/types";
 import { getPluginCtx } from "../plugin-context";
+import { SectionHeader } from "./SectionHeader";
 
 /**
  * 侧边栏「设计」页的风格库：和项目卡片同一套宫格语言，作为页面内容的一部分往下滚。
@@ -34,11 +35,8 @@ export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystem
 	const [hovered, setHovered] = useState<string | null>(null);
 
 	return (
-		<section className={divided ? "mt-6 border-t border-border pt-5" : ""}>
-			<header className="mb-3 flex min-w-0 items-baseline gap-2">
-				<h2 className="shrink-0 text-sm font-medium text-foreground">{t("gallery.styles.title")}</h2>
-				<p className="min-w-0 truncate text-[11px] text-muted-foreground">{t("gallery.styles.hint")}</p>
-			</header>
+		<section className={divided ? "mt-8 border-t border-border/60 pt-6" : ""}>
+			<SectionHeader title={t("gallery.styles.title")} hint={t("gallery.styles.hint")} />
 
 			{systems.length > 0 ? (
 				<div className={GRID_CLASS}>

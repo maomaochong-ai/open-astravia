@@ -55,6 +55,7 @@ export type {
 	PluginNavBadgeTone,
 	PluginWorkspaceViewProps,
 	PluginWorkspaceViewContribution,
+	PluginWorkspaceViewHeader,
 	PluginAudioMetadata,
 	PluginPreviewUrlOptions,
 	PluginPreviewFile,
