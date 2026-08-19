@@ -248,6 +248,10 @@ async function consumeModelResponse(
 		return await interruptible(
 			(async (): Promise<{ message: AssistantMessage; failure?: unknown }> => {
 				for await (const event of resolved.response.events) {
+					// Promise racing does not cancel the losing async iterator. Stop the
+					// detached consumer before it can forward already-buffered provider
+					// deltas after the user has requested cancellation.
+					if (signal.aborted) throw abortError(signal.reason);
 					if ("partial" in event && event.partial) lastPartial = event.partial;
 					emit({ type: "model_event", modelCallIndex, event });
 					if (event.type === "error") {

@@ -92,6 +92,41 @@ describe("runAgentTurn abort salvage", () => {
 		expect(text).toBe("部分回复");
 	});
 
+	it("abort 后不再向 observer 转发事件流中已经积压的 delta", async () => {
+		const partial = abortedAssistant("部分回复");
+		(partial as { stopReason: string }).stopReason = "stop";
+		const stream = new LanguageModelStream();
+		const controller = new AbortController();
+		const observedDeltas: string[] = [];
+
+		const run = runAgentTurn({
+			messages: [{ role: "user", content: "start", timestamp: 1 }],
+			resolveModelCall: async () => ({
+				callId: "call-1",
+				snapshotId: "snapshot-1",
+				response: { events: stream, result: stream.result() },
+			}),
+			resolveTools: async () => [],
+			toolPolicy: { authorize: async () => undefined },
+			limits: { maxModelCalls: 10, maxToolCalls: 10, maxRecoveryAttempts: 2, checkpointTimeoutMs: 50 },
+			signal: controller.signal,
+			observer: (event) => {
+				if (event.type !== "model_event" || event.event.type !== "text_delta") return;
+				observedDeltas.push(event.event.delta);
+				if (event.event.delta === "first") controller.abort("user interrupted");
+			},
+		} satisfies AgentTurnRequest);
+
+		stream.push({ type: "start", partial } as never);
+		stream.push({ type: "text_delta", partial, contentIndex: 0, delta: "first" } as never);
+		stream.push({ type: "text_delta", partial, contentIndex: 0, delta: "queued-after-abort" } as never);
+		stream.fail(new Error("aborted by provider"));
+
+		await run.result;
+		await Promise.resolve();
+		expect(observedDeltas).toEqual(["first"]);
+	});
+
 	it("provider 宽限期内不 resolve 时按原语义终止（不产生 assistant 消息）", async () => {
 		const stream = new LanguageModelStream();
 		const controller = new AbortController();

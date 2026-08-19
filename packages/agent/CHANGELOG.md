@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- 用户取消模型流后，Agent Loop 不再继续向 observer 转发 Provider 队列中已经积压的增量事件；已产生的部分回复仍按原有中断恢复语义保留。
 - 兼容 Agent API 的 `AgentState` 继续保留 `error` 文本字段，同时新增 `errorDetails` 保存 Provider 的结构化错误诊断；旧宿主无需迁移，新宿主不再解析错误文案。
 
 - **Provider 终端错误不再静默丢失**：模型流发出 `error` 事件时，Agent Loop 直接使用事件中的 `AssistantMessage` 完成消息收尾，不再等待随后 rejected 的 result Promise；错误消息会进入 Agent 上下文、生命周期和宿主事件，额度不足、鉴权失败等情况可被 UI 持久化展示。
