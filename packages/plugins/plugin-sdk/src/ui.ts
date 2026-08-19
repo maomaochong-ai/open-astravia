@@ -83,6 +83,41 @@ export interface PluginWorkspaceViewContribution {
 	navOrder?: number;
 }
 
+/**
+ * What a workspace view puts into the **host page header** — the window's top
+ * bar that also carries the drag region, the macOS traffic-light gutter and the
+ * sidebar trigger.
+ *
+ * Without this the header still renders, showing the app name above the
+ * plugin's own toolbar — two stacked bars. Set `hideTitle` and move the view's
+ * toolbar in here and the surface gets a single, host-consistent header.
+ *
+ * `left` / `right` are ReactNodes rendered by the host inside that bar (left:
+ * right after the sidebar trigger; right: before the window controls). They are
+ * rendered in the plugin's i18n + CSS scope, so `useTranslation()` and the
+ * plugin's own classes work as usual. Pass fresh nodes whenever the view's
+ * state changes — this is a live setter, not a one-time registration.
+ */
+export interface PluginWorkspaceViewHeader {
+	/** Replaces the host title text. Supports `%catalogKey%` i18n lookup. */
+	title?: string;
+	/** Drop the host title entirely (use when {@link left} carries its own). */
+	hideTitle?: boolean;
+	/** Rendered in the header's left cluster, after the sidebar trigger. */
+	left?: ReactNode;
+	/** Rendered in the header's action cluster, before the window controls. */
+	right?: ReactNode;
+	/**
+	 * Float the host header OVER the view instead of stacking above it. The view
+	 * then owns the full content height, and its top `~44px` sit under the
+	 * transparent header strip (window drag region / traffic lights / sidebar
+	 * trigger all keep working on top). Use for immersive full-page surfaces
+	 * whose own hero starts at the very top; leave unset for toolbar-style
+	 * headers that need their own opaque row.
+	 */
+	immersive?: boolean;
+}
+
 export interface PluginAudioMetadata {
 	/** Embedded title; preview renderers should fall back to file.name. */
 	title?: string;
@@ -406,6 +441,18 @@ export interface PluginUiApi {
 	 * No-op when the view is not registered (e.g. permission missing).
 	 */
 	setWorkspaceViewBadge(viewId: string, badge: PluginNavBadge | null): void;
+	/**
+	 * Fill (or clear, with `null`) the host page header while one of this
+	 * plugin's workspace views is open. Call it from the view component (an
+	 * effect that re-runs on state change) and clear it on unmount — the host
+	 * keeps the entry keyed by view, and only applies it on that view's route.
+	 *
+	 * The header itself is never removed: it owns the window drag region and the
+	 * macOS traffic-light gutter. This is how a view takes it over instead.
+	 *
+	 * No-op when the view is not registered (e.g. permission missing).
+	 */
+	setWorkspaceViewHeader(viewId: string, header: PluginWorkspaceViewHeader | null): void;
 	/**
 	 * Register a preview component keyed by file extension. The host dispatches
 	 * registered extensions before its built-in fallback renderers; first

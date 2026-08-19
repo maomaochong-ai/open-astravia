@@ -8,6 +8,8 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 - 媒体生成能力新增可选 `defaultResolution`，分辨率字符串明确作为 Provider 自定义的稳定选项 ID；消费者在已有值不受支持时可使用显式默认档，而不必把数组顺序当作默认策略。
 - `registerTool` 新增 `side_effect?: "light" | "heavy"` 声明：heavy 工具（在用户工作区创建目录/文件树、产生外部计费、发起不可撤销外部动作）会话内首次调用前由宿主向用户确认，拒绝则零副作用；不声明按 light 处理并收到宿主告警。扩展设计指南见 docs/plugin/guiding-the-agent.md。
+- `PluginWorkspaceViewHeader.immersive`：页头浮在工作区视图之上（视图占满全高、顶端滑入透明页头条下），用于门面从窗口第一像素开始的沉浸式整页。
+- `ui.setWorkspaceViewHeader(viewId, header | null)`：工作区视图可以把标题与工具栏搬进宿主页头（`hideTitle` / `title` / `left` / `right`），不必在内容区里再画一条顶栏。实时 setter，权限沿用 `ui.slot.workspace-view`，只在该视图自己的路由上生效，视图注销或插件卸载时宿主自动撤下。
 - 新增 `tool-call-args` 会话事件（`ConversationEvent`）：模型还在生成这次工具调用，流式参数已解析出的部分键。用于「agent 正在动某个目标」这类实时 UI——`edit` / `write` 等到 `tool-call-start` 时活已经干完了。参数天然残缺，权威全量值仍取 `tool-call-start`。权限沿用 `agent.session.read`。
 
 ### Breaking Changes

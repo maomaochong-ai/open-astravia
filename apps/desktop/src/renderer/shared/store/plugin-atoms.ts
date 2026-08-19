@@ -13,6 +13,7 @@ import type {
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
 	PluginWorkspaceViewContribution,
+	PluginWorkspaceViewHeader,
 } from "@vetta-org/plugin-sdk";
 import { atom, getDefaultStore } from "jotai";
 
@@ -118,6 +119,26 @@ export interface RegisteredWorkspaceView {
  * 已注册的插件工作区视图。侧边栏据此生成导航项，路由据此挂载整页组件。
  */
 export const pluginWorkspaceViewsAtom = atom<RegisteredWorkspaceView[]>([]);
+
+/** 一个工作区视图当前占用的宿主页头内容（插件随自身状态实时更新）。 */
+export interface RegisteredWorkspaceViewHeader extends PluginWorkspaceViewHeader {
+	pluginId: string;
+	viewId: string;
+}
+
+/**
+ * 工作区视图对宿主页头的接管，键为 `${pluginId}:${viewId}`。
+ *
+ * 刻意与 {@link pluginWorkspaceViewsAtom} 分开：页头内容会随插件视图的每一次
+ * 状态变化重写（搜索框输入、loading 态…），塞进注册表会让侧边栏导航跟着一起
+ * 重算；而注册表是低频的结构信息。
+ */
+export const pluginWorkspaceViewHeadersAtom = atom<Record<string, RegisteredWorkspaceViewHeader>>({});
+
+/** 页头接管条目的键：与路由参数（pluginId / viewId）一一对应。 */
+export function workspaceViewHeaderKey(pluginId: string, viewId: string): string {
+	return `${pluginId}:${viewId}`;
+}
 
 /** An input-action (toggle) contribution registered by a loaded plugin. */
 export interface RegisteredInputAction {

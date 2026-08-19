@@ -159,6 +159,37 @@ ctx.ui.setWorkspaceViewBadge("board", null); // 清掉
 
 认不出的角标（未知 `kind`、空文本、非有限数）一律当作「没有角标」，不会让视图注册失败。
 
+### 接管宿主页头 setWorkspaceViewHeader
+
+宿主页头（窗口顶部那条）在工作区视图路由上照常渲染，缺省显示应用名。插件如果再画一条
+自己的顶栏，用户看到的就是两条叠在一起。`setWorkspaceViewHeader` 让视图把自己的标题与
+工具栏**搬进**那条栏：
+
+```tsx
+useEffect(() => {
+  ctx.ui.setWorkspaceViewHeader("board", {
+    hideTitle: true,                 // 收掉宿主标题，自己在 left 里写
+    left: <BoardTitle keyword={keyword} onKeywordChange={setKeyword} />,
+    right: <BoardActions busy={busy} onCreate={create} />,
+  });
+});
+useEffect(() => () => ctx.ui.setWorkspaceViewHeader("board", null), []);
+```
+
+- 权限：`ui.slot.workspace-view`（与注册同一个）；视图未注册时 **warn+noop**
+- 只在**该视图自己的路由**上生效；用户切走后页头自动回到宿主标题，不需要手动撤销
+- 这是**实时 setter**，不是一次性注册：`left` / `right` 是普通 ReactNode，闭包里的状态变了
+  就重新推一次（放在没有依赖数组的 effect 里最省心）。宿主在插件自己的 i18n 目录与 CSS
+  `@scope` 内渲染它们，`useTranslation()` 和插件的 Tailwind 类照常可用
+- 节点必须带 `no-drag`：整条页头是窗口拖拽区，不摘出来的话输入框和按钮点不动
+- 视图注销、插件停用或重载时，接管会被宿主自动撤下
+- 页头本身**不会**被移除：它同时是窗口拖拽区与 macOS 红绿灯安全区，还挂着侧边栏展开
+  按钮。这个 API 是「占用它」，不是「换掉它」
+- `immersive: true` 让页头**浮在视图之上**而不是把视图往下推：视图占满全高，顶端约
+  44px 处在透明页头条下方（拖拽、红绿灯、侧边栏展开按钮照常工作在最上层）。适合门面
+  从窗口第一像素开始的沉浸式整页；页头里放了 `left`/`right` 工具栏时不要开——工具栏
+  会压在内容上
+
 **该用哪个插槽**
 
 | 场景 | 用 |
@@ -168,9 +199,10 @@ ctx.ui.setWorkspaceViewBadge("board", null); // 清掉
 | 全局浮层 / 对话框 | [全局浮层](#全局浮层-registerglobalslot) |
 
 **与面板类插槽的关键差别**：工作区视图**独占内容区**，所以它可以（也应该）自带
-页面级 header 和滚动容器，不受「面板内禁止 viewport 级浮层」的约束。但它仍在宿主
-窗口内——不要覆盖宿主 chrome（侧边栏、标题栏），顶部留一条 `drag-region` 高度以免
-盖住窗口拖拽区。
+滚动容器，不受「面板内禁止 viewport 级浮层」的约束。但它仍在宿主窗口内——不要覆盖
+宿主 chrome（侧边栏、标题栏）。页面级 header 优先用
+[`setWorkspaceViewHeader`](#接管宿主页头-setworkspaceviewheader) 搬进宿主那条栏，
+而不是在内容区里再画一条。
 
 插件被禁用时，它的导航入口消失；用户如果正停在该路由上，宿主会把他送回首页。
 持久化的侧边栏布局按 key 保留，插件装回来后位置复原。

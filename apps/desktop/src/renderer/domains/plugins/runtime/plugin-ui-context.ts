@@ -9,8 +9,10 @@ import {
 	filePreviewAtom,
 	persistCurrentInputActionState,
 	pluginInputActionsAtom,
+	pluginWorkspaceViewHeadersAtom,
 	promptAttachmentAtom,
 	setActivityPanelWidthAtom,
+	workspaceViewHeaderKey,
 } from "@shared/store/atoms";
 import { showToast } from "@shared/store/toast-atoms";
 import type {
@@ -30,6 +32,7 @@ import type {
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
 	PluginWorkspaceViewContribution,
+	PluginWorkspaceViewHeader,
 } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import { type ComponentType, createElement, type ReactNode } from "react";
@@ -397,6 +400,9 @@ export function createPluginUiApi({
 			dispose: () => {
 				const index = workspaceViews.findIndex((view) => view.id === normalized.id);
 				if (index >= 0) workspaceViews.splice(index, 1);
+				// 视图没了，它接管的页头也必须跟着撤，否则宿主页头会一直挂着
+				// 一个指向已卸载组件的节点。
+				clearWorkspaceViewHeader(normalized.id);
 				onChanged();
 			},
 		};
@@ -427,6 +433,54 @@ export function createPluginUiApi({
 		else delete view.badge;
 		onChanged();
 	};
+	/** 撤下某个视图的页头接管（视图注销、插件卸载或插件显式传 null 时）。 */
+	const clearWorkspaceViewHeader = (viewId: string): void => {
+		const store = getDefaultStore();
+		const key = workspaceViewHeaderKey(plugin.id, viewId);
+		const current = store.get(pluginWorkspaceViewHeadersAtom);
+		if (!(key in current)) return;
+		const next = { ...current };
+		delete next[key];
+		store.set(pluginWorkspaceViewHeadersAtom, next);
+	};
+	const setWorkspaceViewHeader = (viewId: string, header: PluginWorkspaceViewHeader | null): void => {
+		createPluginPermissionApi(plugin).require("ui.slot.workspace-view");
+		const id = typeof viewId === "string" ? viewId.trim() : "";
+		if (!workspaceViews.some((view) => view.id === id)) {
+			console.warn(`[plugin:${plugin.id}] setWorkspaceViewHeader: unknown view ${JSON.stringify(viewId)}`);
+			return;
+		}
+		// 页头是每次状态变化都会重写的高频接口：认不出的入参当「撤下接管」处理，
+		// 而不是抛错——插件视图正在渲染中，一个坏值不该把整页打成错误态。
+		if (header === null || header === undefined || typeof header !== "object") {
+			clearWorkspaceViewHeader(id);
+			return;
+		}
+		const title = typeof header.title === "string" ? header.title.trim() : "";
+		const store = getDefaultStore();
+		store.set(pluginWorkspaceViewHeadersAtom, {
+			...store.get(pluginWorkspaceViewHeadersAtom),
+			[workspaceViewHeaderKey(plugin.id, id)]: {
+				pluginId: plugin.id,
+				viewId: id,
+				...(title ? { title } : {}),
+				...(header.hideTitle === true ? { hideTitle: true } : {}),
+				...(header.immersive === true ? { immersive: true } : {}),
+				...(header.left != null ? { left: header.left } : {}),
+				...(header.right != null ? { right: header.right } : {}),
+			},
+		});
+	};
+	// 插件整体卸载/重载时注册项是被整表清空的（不逐个走 dispose），页头接管必须
+	// 在这里兜底撤下，否则重载后的宿主页头会留着上一份已失效的节点。
+	disposers.push(() => {
+		const store = getDefaultStore();
+		const current = store.get(pluginWorkspaceViewHeadersAtom);
+		const next = Object.fromEntries(Object.entries(current).filter(([, entry]) => entry.pluginId !== plugin.id));
+		if (Object.keys(next).length !== Object.keys(current).length) {
+			store.set(pluginWorkspaceViewHeadersAtom, next);
+		}
+	});
 	const registerShortcutScope = (contribution: PluginShortcutScopeContribution): Disposable => {
 		createPluginPermissionApi(plugin).require("ui.shortcuts.register");
 		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
@@ -610,6 +664,7 @@ export function createPluginUiApi({
 		registerWorkspaceView,
 		openWorkspaceView,
 		setWorkspaceViewBadge,
+		setWorkspaceViewHeader,
 		registerShortcutScope,
 		openActivityTab,
 		setActivityTabVisible,

@@ -552,6 +552,16 @@ textarea:disabled,
 	left: 0;
 }
 
+/* 沉浸式页头（插件工作区视图声明 immersive）：主内容帧吃掉 AppFrame 的 p-2 留白，
+   铺到窗口边缘——沉浸页的门面从窗口第一像素开始，四周不能露出一圈底色缝隙。
+   左侧跟随侧边栏：侧边栏在位时由它占住左缘，不在位（收起/窄屏）时一并铺满。 */
+.app-main-frame[data-header-overlay] {
+	margin: -0.5rem -0.5rem -0.5rem -0.5rem;
+}
+.sidebar-dock ~ .app-main-frame[data-header-overlay] {
+	margin-left: 0;
+}
+
 .project-list-containment {
 	contain: layout paint style;
 }
