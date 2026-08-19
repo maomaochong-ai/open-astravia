@@ -1,7 +1,7 @@
 import { Button } from "@shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@shared/components/ui/popover";
 import { aggregatePromptCacheUsage, type Usage } from "@vetta/ai/protocol";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 interface MessageTokenUsageProps {
@@ -37,6 +37,20 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 		[language],
 	);
 	const [detailsExpanded, setDetailsExpanded] = useState(false);
+	const [open, setOpen] = useState(false);
+	const contentRef = useRef<HTMLDivElement>(null);
+
+	// 面板锚定在消息气泡上：列表一滚动锚点就跑掉了，此时关闭比跟随更符合预期。
+	useEffect(() => {
+		if (!open) return;
+		const closeOnOutsideScroll = (event: Event) => {
+			const target = event.target;
+			if (target instanceof Node && contentRef.current?.contains(target)) return;
+			setOpen(false);
+		};
+		window.addEventListener("scroll", closeOnOutsideScroll, true);
+		return () => window.removeEventListener("scroll", closeOnOutsideScroll, true);
+	}, [open]);
 
 	if (!details) return null;
 	const latestPromptCache = details.latestPromptCache;
@@ -141,7 +155,7 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 	];
 
 	return (
-		<Popover>
+		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<Button
 					type="button"
@@ -154,6 +168,7 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent
+				ref={contentRef}
 				side="top"
 				align="start"
 				sideOffset={6}

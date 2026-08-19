@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { Usage } from "@vetta/ai";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -157,6 +157,17 @@ describe("MessageTokenUsage", () => {
 		const panel = await screen.findByRole("dialog");
 		// 缓存读取与缓存写入均为 0。
 		expect(within(panel).getAllByText("--")).toHaveLength(2);
+	});
+
+	it("closes when the message list scrolls behind the panel", async () => {
+		const user = userEvent.setup();
+		render(<MessageTokenUsage usages={[usage({ input: 40, output: 10 })]} />);
+
+		await user.click(screen.getByRole("button", { name: "查看本轮 Token 用量" }));
+		await screen.findByRole("dialog");
+
+		fireEvent.scroll(document.body);
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 	});
 
 	it("renders nothing when a historical message has no usage", () => {

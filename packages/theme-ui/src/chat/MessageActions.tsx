@@ -98,7 +98,7 @@ export function CopyButton({
 			<span
 				className={cn(
 					"h-3.5 w-3.5",
-					copied ? "icon-[mdi--check]" : "icon-[mdi--content-copy]",
+					copied ? "icon-[mdi--check]" : "icon-[solar--copy-linear]",
 				)}
 			/>
 		</button>
