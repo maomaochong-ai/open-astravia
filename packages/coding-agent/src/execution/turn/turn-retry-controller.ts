@@ -6,7 +6,8 @@ import type {
 } from "./contracts.js";
 
 export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRetryController {
-	private abortController: AbortController | undefined;
+	private readonly activeOperations = new Set<AbortController>();
+	private retryOwner: AbortController | undefined;
 	private attempt = 0;
 
 	constructor(private readonly options: CodingAgentTurnRetryControllerOptions) {}
@@ -24,7 +25,7 @@ export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRet
 	}
 
 	abortRetry(): void {
-		this.abortController?.abort();
+		for (const operation of this.activeOperations) operation.abort("Retry cancelled");
 	}
 
 	async run<T>(
@@ -32,66 +33,84 @@ export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRet
 		executeRetry: () => Promise<T>,
 		readFailure: (result: T) => CodingAgentTurnFailure | undefined,
 	): Promise<T> {
-		let result = await executeInitial();
-		let failure = readFailure(result);
-		while (failure?.retryable) {
-			const settings = this.options.readSettings();
-			if (!settings.enabled || this.attempt >= settings.maxRetries) break;
-			this.attempt += 1;
-			const delayMs = Math.min(
-				settings.baseDelayMs * 2 ** (this.attempt - 1),
-				settings.maxDelayMs ?? Number.POSITIVE_INFINITY,
-			);
-			this.options.emit({
-				type: "auto_retry_start",
-				attempt: this.attempt,
-				maxAttempts: settings.maxRetries,
-				delayMs,
-				errorMessage: failure.message,
-				failure: toRuntimeFailure(failure),
-			});
-			this.abortController = new AbortController();
-			try {
-				await waitForDelay(delayMs, this.abortController.signal);
-			} catch {
+		const operation = new AbortController();
+		this.activeOperations.add(operation);
+		let attempt = 0;
+		try {
+			let result = await executeInitial();
+			let failure = readFailure(result);
+			while (failure?.retryable && !operation.signal.aborted) {
+				const settings = this.options.readSettings();
+				if (!settings.enabled || attempt >= settings.maxRetries) break;
+				// Prompt receipts may enter this wrapper while another Turn is still
+				// active. They must remain concurrent, but only one failed Turn may own
+				// the session-level retry/backoff state at a time.
+				if (this.retryOwner && this.retryOwner !== operation) break;
+				const retryAfterMs = failure.details?.retryAfterMs;
+				const maxDelayMs = settings.maxDelayMs ?? Number.POSITIVE_INFINITY;
+				// A provider Retry-After is a minimum, not a suggestion. If the user
+				// configured a lower ceiling, stop automatic retries instead of
+				// hammering the unavailable endpoint before it asked us to return.
+				if (retryAfterMs !== undefined && retryAfterMs > maxDelayMs) break;
+				attempt += 1;
+				this.retryOwner = operation;
+				this.attempt = attempt;
+				const delayMs = Math.min(
+					Math.max(settings.baseDelayMs * 2 ** (attempt - 1), retryAfterMs ?? 0),
+					maxDelayMs,
+				);
+				this.options.emit({
+					type: "auto_retry_start",
+					attempt,
+					maxAttempts: settings.maxRetries,
+					delayMs,
+					errorMessage: failure.message,
+					failure: toRuntimeFailure(failure),
+				});
+				if (operation.signal.aborted) return this.finishCancelled(result, attempt);
+				try {
+					await waitForDelay(delayMs, operation.signal);
+					operation.signal.throwIfAborted();
+					result = await executeRetry();
+				} catch (error) {
+					if (operation.signal.aborted) return this.finishCancelled(result, attempt);
+					this.emitRetryEnd(false, error, attempt);
+					throw error;
+				}
+				failure = readFailure(result);
+			}
+			if (operation.signal.aborted) return this.finishCancelled(result, attempt);
+			if (attempt > 0) {
 				this.options.emit({
 					type: "auto_retry_end",
-					success: false,
-					attempt: this.attempt,
-					finalError: "Retry cancelled",
-					failure: runtimeFailureFromError(new Error("Retry cancelled"), { code: "RETRY_CANCELLED" }),
+					success: failure === undefined,
+					attempt,
+					...(failure ? { finalError: failure.message, failure: toRuntimeFailure(failure) } : {}),
 				});
-				this.attempt = 0;
-				return result;
-			} finally {
-				this.abortController = undefined;
 			}
-			try {
-				result = await executeRetry();
-			} catch (error) {
-				this.options.emit({
-					type: "auto_retry_end",
-					success: false,
-					attempt: this.attempt,
-					finalError: error instanceof Error ? error.message : String(error),
-					failure: runtimeFailureFromError(error),
-				});
+			return result;
+		} finally {
+			this.activeOperations.delete(operation);
+			if (this.retryOwner === operation) {
+				this.retryOwner = undefined;
 				this.attempt = 0;
-				throw error;
 			}
-			failure = readFailure(result);
 		}
-		if (this.attempt > 0) {
-			this.options.emit({
-				type: "auto_retry_end",
-				success: failure === undefined,
-				attempt: this.attempt,
-				...(failure ? { finalError: failure.message } : {}),
-				...(failure ? { failure: toRuntimeFailure(failure) } : {}),
-			});
-			this.attempt = 0;
-		}
+	}
+
+	private finishCancelled<T>(result: T, attempt: number): T {
+		if (attempt > 0) this.emitRetryEnd(false, new Error("Retry cancelled"), attempt, "RETRY_CANCELLED");
 		return result;
+	}
+
+	private emitRetryEnd(success: boolean, error: unknown, attempt: number, code?: string): void {
+		this.options.emit({
+			type: "auto_retry_end",
+			success,
+			attempt,
+			finalError: error instanceof Error ? error.message : String(error),
+			failure: runtimeFailureFromError(error, code ? { code } : undefined),
+		});
 	}
 }
 
@@ -117,14 +136,15 @@ function waitForDelay(delayMs: number, signal: AbortSignal): Promise<void> {
 			reject(signal.reason);
 			return;
 		}
-		const timeout = setTimeout(resolve, delayMs);
-		signal.addEventListener(
-			"abort",
-			() => {
-				clearTimeout(timeout);
-				reject(signal.reason);
-			},
-			{ once: true },
-		);
+		const handleAbort = (): void => {
+			clearTimeout(timeout);
+			signal.removeEventListener("abort", handleAbort);
+			reject(signal.reason);
+		};
+		const timeout = setTimeout(() => {
+			signal.removeEventListener("abort", handleAbort);
+			resolve();
+		}, delayMs);
+		signal.addEventListener("abort", handleAbort, { once: true });
 	});
 }
