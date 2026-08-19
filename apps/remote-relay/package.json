@@ -1,0 +1,22 @@
+{
+	"name": "@vetta/remote-relay",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "wrangler dev",
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run --config vitest.config.ts",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"deploy:dry": "wrangler deploy --dry-run",
+		"pair": "bun scripts/create-pairing.ts"
+	},
+	"dependencies": {
+		"@vetta/remote-control": "workspace:*",
+		"@vetta/remote-desktop": "workspace:*"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "0.12.21",
+		"@cloudflare/workers-types": "^5.20260819.1",
+		"wrangler": "^4.39.0"
+	}
+}

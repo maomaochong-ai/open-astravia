@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openvetta.com/schemas/remote-frame.v1.json",
+  "title": "Vetta Remote Control Frame v1",
+  "oneOf": [
+    { "$ref": "#/$defs/hello" }, { "$ref": "#/$defs/helloAck" }, { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/response" }, { "$ref": "#/$defs/event" }, { "$ref": "#/$defs/ack" }, { "$ref": "#/$defs/resume" }
+  ],
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "nonNegativeSequence": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "capabilities": {
+      "type": "object", "additionalProperties": false, "required": ["chat", "sessionRead"],
+      "properties": {
+        "chat": { "type": "boolean" }, "sessionRead": { "type": "boolean" }, "fileRead": { "type": "boolean" },
+        "fileWrite": { "type": "boolean" }, "terminal": { "type": "boolean" }, "screen": { "type": "boolean" }, "input": { "type": "boolean" }
+      }
+    },
+    "error": {
+      "type": "object", "additionalProperties": false, "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": { "enum": ["invalid_frame", "unsupported_version", "unauthorized", "not_found", "busy", "request_timeout", "transport_closed", "internal_error"] },
+        "message": { "type": "string", "minLength": 1, "maxLength": 512 }, "retryable": { "type": "boolean" }
+      }
+    },
+    "hello": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "protocolVersion", "role", "deviceId", "deviceName", "capabilities", "connectionId"],
+      "properties": {
+        "type": { "const": "hello" }, "protocolVersion": { "const": 1 }, "role": { "enum": ["mobile", "desktop"] },
+        "deviceId": { "$ref": "#/$defs/id" }, "deviceName": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "capabilities": { "$ref": "#/$defs/capabilities" }, "connectionId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "helloAck": {
+      "type": "object", "additionalProperties": false, "required": ["type", "protocolVersion", "connectionId", "peerDeviceId"],
+      "properties": { "type": { "const": "hello_ack" }, "protocolVersion": { "const": 1 }, "connectionId": { "$ref": "#/$defs/id" }, "peerDeviceId": { "$ref": "#/$defs/id" } }
+    },
+    "request": {
+      "type": "object", "additionalProperties": false, "required": ["type", "requestId", "method"],
+      "properties": {
+        "type": { "const": "request" }, "requestId": { "$ref": "#/$defs/id" },
+        "method": { "enum": ["session.list", "session.open", "session.prompt", "session.abort", "session.resume", "diagnostics.snapshot"] },
+        "sessionId": { "$ref": "#/$defs/id" }, "payload": true
+      }
+    },
+    "response": {
+      "type": "object", "additionalProperties": false, "required": ["type", "requestId", "success"],
+      "properties": { "type": { "const": "response" }, "requestId": { "$ref": "#/$defs/id" }, "success": { "type": "boolean" }, "payload": true, "error": { "$ref": "#/$defs/error" } }
+    },
+    "event": {
+      "type": "object", "additionalProperties": false, "required": ["type", "eventId", "sequence", "name"],
+      "properties": {
+        "type": { "const": "event" }, "eventId": { "$ref": "#/$defs/id" }, "sequence": { "$ref": "#/$defs/sequence" },
+        "name": { "enum": ["device.status", "session.state", "session.message", "session.tool", "diagnostics.updated"] },
+        "sessionId": { "$ref": "#/$defs/id" }, "payload": true
+      }
+    },
+    "ack": { "type": "object", "additionalProperties": false, "required": ["type", "sequence"], "properties": { "type": { "const": "ack" }, "sequence": { "$ref": "#/$defs/sequence" } } },
+    "resume": { "type": "object", "additionalProperties": false, "required": ["type", "lastEventSequence"], "properties": { "type": { "const": "resume" }, "lastEventSequence": { "$ref": "#/$defs/nonNegativeSequence" } } }
+  }
+}

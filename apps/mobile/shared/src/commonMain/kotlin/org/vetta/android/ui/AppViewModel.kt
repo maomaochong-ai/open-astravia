@@ -24,9 +24,9 @@ import org.vetta.android.domain.chat.shouldClearPendingImagesOnSessionChange
 import org.vetta.android.domain.error.ErrorMapper
 import org.vetta.android.domain.error.UiError
 import org.vetta.android.domain.error.UiErrorAction
-import org.vetta.android.domain.device.DemoDevices
 import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.SessionListItem
+import org.vetta.android.domain.session.ConversationOrigin
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageImage
 import org.vetta.android.domain.session.MessageStatus
@@ -64,7 +64,7 @@ data class AppUiState(
     val sessionFilterIndex: Int = 0,
     val discoverChannelIndex: Int = 0,
     val newConversationChannelIndex: Int = 0,
-    val devices: List<DesktopDevice> = DemoDevices.all,
+    val devices: List<DesktopDevice> = emptyList(),
 )
 
 class AppViewModel(
@@ -98,6 +98,11 @@ class AppViewModel(
                 if (epoch > 0) {
                     forceLogout(keepLocalSessions = true, message = "登录已失效，请重新登录")
                 }
+            }
+        }
+        viewModelScope.launch {
+            container.remoteConversationGateway.devices.collect { devices ->
+                _state.update { it.copy(devices = devices) }
             }
         }
         bootstrap()
@@ -222,6 +227,31 @@ class AppViewModel(
         _state.update { it.copy(discoverChannelIndex = index) }
     }
 
+    fun connectDesktop(target: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(globalError = null) }
+            val connected = runCatching { container.remoteConversationGateway.connect(target) }
+            if (connected.getOrDefault(false)) return@launch
+            _state.update {
+                it.copy(
+                    globalError =
+                        UiError(
+                            title = Str.remoteConnectFailed,
+                            message = Str.remoteConnectFailedHint,
+                            action = UiErrorAction.Retry,
+                        ),
+                )
+            }
+        }
+    }
+
+    fun disconnectDesktop(deviceId: String) {
+        viewModelScope.launch {
+            runCatching { container.remoteConversationGateway.disconnect(deviceId) }
+            navigateBackFromSecondary()
+        }
+    }
+
     fun setSessionQuery(query: String) {
         _state.update { it.copy(sessionQuery = query) }
     }
@@ -282,13 +312,24 @@ class AppViewModel(
 
     fun sessionListItems(): List<SessionListItem> =
         container.sessionStore.sessions.value.map { s ->
+            val remoteDevice = s.remoteDeviceId?.let { id -> _state.value.devices.firstOrNull { it.id == id } }
             SessionListItem(
                 id = s.id,
                 title = s.title,
-                subtitle = s.modelName.orEmpty(),
-                sourceLabel = s.modelName?.takeIf { it.isNotBlank() } ?: Str.filterCloud,
+                subtitle =
+                    if (s.origin == ConversationOrigin.Desktop) {
+                        remoteDevice?.host.orEmpty()
+                    } else {
+                        s.modelName.orEmpty()
+                    },
+                sourceLabel =
+                    if (s.origin == ConversationOrigin.Desktop) {
+                        remoteDevice?.name ?: Str.desktopDevice
+                    } else {
+                        s.modelName?.takeIf { it.isNotBlank() } ?: Str.filterCloud
+                    },
                 timeLabel = relativeTime(s.updatedAtEpochMs),
-                isCloud = true,
+                isCloud = s.origin == ConversationOrigin.Cloud,
             )
         }
 
@@ -343,6 +384,7 @@ class AppViewModel(
         if (sid != null) {
             viewModelScope.launch {
                 val session = container.sessionStore.getSession(sid) ?: return@launch
+                if (session.origin != ConversationOrigin.Cloud) return@launch
                 container.sessionStore.updateSession(
                     session.copy(modelId = model.id, modelName = model.name),
                 )
@@ -484,12 +526,25 @@ class AppViewModel(
 
     fun startDesktopConversation(deviceId: String) {
         viewModelScope.launch {
-            val device = DemoDevices.find(deviceId)
+            val device = _state.value.devices.firstOrNull { it.id == deviceId }
+            if (device == null) {
+                _state.update {
+                    it.copy(
+                        globalError =
+                            UiError(
+                                title = Str.desktopUnavailable,
+                                message = Str.desktopUnavailableHint,
+                                action = UiErrorAction.None,
+                            ),
+                    )
+                }
+                return@launch
+            }
             val session =
                 container.sessionStore.createSession(
-                    title = device?.let { "与 ${it.name} 的对话" } ?: SessionStore.DEFAULT_TITLE,
-                    modelId = currentModel()?.id,
-                    modelName = currentModel()?.name,
+                    title = Str.conversationWith.replace("%s", device.name),
+                    origin = ConversationOrigin.Desktop,
+                    remoteDeviceId = deviceId,
                 )
             openChat(
                 sessionId = session.id,
@@ -528,28 +583,41 @@ class AppViewModel(
         val text = _state.value.draft.trim()
         val images = _state.value.pendingImages
         if ((text.isEmpty() && images.isEmpty()) || _state.value.isStreaming) return
-        val model = currentModel()
-        if (model == null) {
-            _state.update {
-                it.copy(
-                    globalError =
-                        UiError(
-                            title = Str.noModels,
-                            message = Str.noModelsHint,
-                            action = UiErrorAction.OpenPlan,
-                        ),
-                )
-            }
-            return
-        }
 
         viewModelScope.launch {
+            val model = currentModel()
             var sessionId = _state.value.currentSessionId
             if (sessionId == null) {
+                val route = _state.value.route as? AppRoute.Chat
+                val origin =
+                    if (route?.surface == ChatSurface.Desktop) {
+                        ConversationOrigin.Desktop
+                    } else {
+                        ConversationOrigin.Cloud
+                    }
+                if (origin == ConversationOrigin.Cloud && model == null) {
+                    showNoModelError()
+                    return@launch
+                }
+                if (origin == ConversationOrigin.Desktop && route?.deviceId == null) {
+                    _state.update {
+                        it.copy(
+                            globalError =
+                                UiError(
+                                    title = Str.desktopUnavailable,
+                                    message = Str.desktopSessionMissingHint,
+                                    action = UiErrorAction.None,
+                                ),
+                        )
+                    }
+                    return@launch
+                }
                 val session =
                     container.sessionStore.createSession(
-                        modelId = model.id,
-                        modelName = model.name,
+                        modelId = model?.id,
+                        modelName = model?.name,
+                        origin = origin,
+                        remoteDeviceId = route?.deviceId,
                     )
                 sessionId = session.id
                 container.preferences.lastSessionId = sessionId
@@ -571,6 +639,11 @@ class AppViewModel(
             }
 
             val sid = sessionId
+            val session = container.sessionStore.getSession(sid) ?: return@launch
+            if (session.origin == ConversationOrigin.Cloud && model == null && session.modelId == null) {
+                showNoModelError()
+                return@launch
+            }
             val userMsg =
                 LocalMessage(
                     id = newMessageId(),
@@ -612,8 +685,12 @@ class AppViewModel(
                 viewModelScope.launch {
                     var assembled = ""
                     try {
-                        container.client.chat
-                            .stream(model = model.id, messages = history)
+                        container.conversationRouter
+                            .stream(
+                                session = session,
+                                selectedModelId = model?.id,
+                                messages = history,
+                            )
                             .collect { event ->
                                 when (event) {
                                     is ChatStreamEvent.Delta -> {
@@ -647,6 +724,11 @@ class AppViewModel(
                                     }
                                 }
                             }
+                        if (session.origin == ConversationOrigin.Desktop && session.remoteSessionId == null) {
+                            container.conversationRouter.resolvedRemoteSessionId(session.id)?.let { remoteId ->
+                                container.sessionStore.updateSession(session.copy(remoteSessionId = remoteId))
+                            }
+                        }
                         // 正常结束后若仍 streaming 则 complete
                         val latest =
                             container.sessionStore.getMessages(sid).firstOrNull { it.id == assistantId }
@@ -687,6 +769,9 @@ class AppViewModel(
         streamJob = null
         val sid = _state.value.currentSessionId ?: return
         viewModelScope.launch {
+            container.sessionStore.getSession(sid)?.let { session ->
+                runCatching { container.conversationRouter.abort(session) }
+            }
             val streaming =
                 container.sessionStore.getMessages(sid).lastOrNull {
                     it.role == ChatRole.Assistant && it.status == MessageStatus.Streaming
@@ -773,6 +858,19 @@ class AppViewModel(
     private fun currentModel(): LlmModel? {
         val id = _state.value.selectedModelId
         return _state.value.models.firstOrNull { it.id == id } ?: _state.value.models.firstOrNull()
+    }
+
+    private fun showNoModelError() {
+        _state.update {
+            it.copy(
+                globalError =
+                    UiError(
+                        title = Str.noModels,
+                        message = Str.noModelsHint,
+                        action = UiErrorAction.OpenPlan,
+                    ),
+            )
+        }
     }
 
     private fun resolveModelId(preferred: String?, models: List<LlmModel>): String? {

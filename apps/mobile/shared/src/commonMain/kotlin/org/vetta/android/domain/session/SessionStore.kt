@@ -16,6 +16,9 @@ interface SessionStore {
         title: String = DEFAULT_TITLE,
         modelId: String? = null,
         modelName: String? = null,
+        origin: ConversationOrigin = ConversationOrigin.Cloud,
+        remoteDeviceId: String? = null,
+        remoteSessionId: String? = null,
     ): ChatSession
 
     suspend fun updateSession(session: ChatSession)

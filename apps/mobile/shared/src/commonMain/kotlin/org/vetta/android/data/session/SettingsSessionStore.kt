@@ -12,6 +12,7 @@ import kotlinx.serialization.Serializable
 import org.vetta.android.core.model.ChatRole
 import org.vetta.android.core.net.VettaJson
 import org.vetta.android.domain.session.ChatSession
+import org.vetta.android.domain.session.ConversationOrigin
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageStatus
 import org.vetta.android.domain.session.SessionStore
@@ -44,6 +45,9 @@ class SettingsSessionStore(
         title: String,
         modelId: String?,
         modelName: String?,
+        origin: ConversationOrigin,
+        remoteDeviceId: String?,
+        remoteSessionId: String?,
     ): ChatSession =
         mutex.withLock {
             val now = nowEpochMs()
@@ -55,6 +59,9 @@ class SettingsSessionStore(
                     modelName = modelName,
                     createdAtEpochMs = now,
                     updatedAtEpochMs = now,
+                    origin = origin,
+                    remoteDeviceId = remoteDeviceId,
+                    remoteSessionId = remoteSessionId,
                 )
             val next = (loadSessionsRaw() + session.toDto()).sortedByDescending { it.updatedAtEpochMs }
             persistSessions(next)
@@ -180,6 +187,9 @@ private data class SessionDto(
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
     val pinned: Boolean = false,
+    val origin: String = ConversationOrigin.Cloud.name,
+    val remoteDeviceId: String? = null,
+    val remoteSessionId: String? = null,
 )
 
 @Serializable
@@ -214,6 +224,9 @@ private fun SessionDto.toDomain() =
         createdAtEpochMs = createdAtEpochMs,
         updatedAtEpochMs = updatedAtEpochMs,
         pinned = pinned,
+        origin = ConversationOrigin.entries.firstOrNull { it.name == origin } ?: ConversationOrigin.Cloud,
+        remoteDeviceId = remoteDeviceId,
+        remoteSessionId = remoteSessionId,
     )
 
 private fun ChatSession.toDto() =
@@ -225,6 +238,9 @@ private fun ChatSession.toDto() =
         createdAtEpochMs = createdAtEpochMs,
         updatedAtEpochMs = updatedAtEpochMs,
         pinned = pinned,
+        origin = origin.name,
+        remoteDeviceId = remoteDeviceId,
+        remoteSessionId = remoteSessionId,
     )
 
 private fun MessageDto.toDomain() =

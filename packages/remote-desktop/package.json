@@ -1,0 +1,29 @@
+{
+	"name": "@vetta/remote-desktop",
+	"version": "0.0.1",
+	"description": "WebRTC screen and remote input contracts for Vetta",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./protocol": {
+			"types": "./dist/protocol-entry.d.ts",
+			"import": "./dist/protocol-entry.js"
+		}
+	},
+	"files": ["dist"],
+	"scripts": {
+		"clean": "rm -rf dist",
+		"build": "tsgo -p tsconfig.build.json",
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run --config vitest.config.ts",
+		"test:e2e": "bun run build && electron scripts/webrtc-e2e-main.cjs"
+	},
+	"devDependencies": {
+		"electron": "^34.2.0",
+		"typescript": "^5.9.2"
+	}
+}

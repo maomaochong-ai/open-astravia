@@ -64,6 +64,11 @@ import { PLUGIN_PROTOCOL_PRIVILEGES, registerPluginProtocols } from "./plugins/p
 import { stopAllUiohookConsumers } from "./quickpanel-trigger.js";
 import { createQuickPanelWindow } from "./quickpanel-window.js";
 import { isQuitCleanupStarted, runQuitCleanup, setQuitCleanup } from "./quit-cleanup.js";
+import { startDesktopRemoteAccess, stopDesktopRemoteAccess } from "./remote-control/desktop-remote-access-service.js";
+import {
+	startDesktopRemoteDesktopHost,
+	stopDesktopRemoteDesktopHost,
+} from "./remote-control/desktop-remote-desktop-host.js";
 import { beginSharedRuntimeShutdown, disposeSharedRuntime, getSharedRuntime } from "./runtime.js";
 import { getRuntimeManager } from "./runtimes/manager.js";
 import { initializeSandboxCapability } from "./sandbox/capability.js";
@@ -421,6 +426,23 @@ if (!gotSingleLock) {
 		const mainWindow = createWindow();
 		attachMainWindowLifecycle(mainWindow);
 		void loadMainWindow(mainWindow);
+		const remoteControlUrl = process.env.VETTA_REMOTE_CONTROL_URL;
+		const remotePairingToken = process.env.VETTA_REMOTE_PAIRING_TOKEN;
+		const remoteDesktopTarget =
+			process.env.VETTA_REMOTE_DESKTOP_SIGNALING_URL ?? desktopSignalingTarget(remoteControlUrl);
+		const remoteDesktopToken = process.env.VETTA_REMOTE_DESKTOP_PAIRING_TOKEN ?? remotePairingToken;
+		if (remoteDesktopTarget && remoteDesktopToken) {
+			void startDesktopRemoteDesktopHost({
+				signalingUrl: remoteDesktopTarget,
+				pairingToken: remoteDesktopToken,
+				inputEnabled: process.env.VETTA_REMOTE_DESKTOP_INPUT_ENABLED === "true",
+				appRoot,
+				isPackaged: app.isPackaged,
+				devServerUrl: process.env.VETTA_DESKTOP_DEV_URL,
+			}).catch((error: unknown) => {
+				mainLog.error("remote desktop host failed to start", error);
+			});
+		}
 		const rendererBootPaintPromise = appLifecycle.waitForRendererBootPaint();
 		const rendererContentPaintPromise = appLifecycle.waitForRendererContentPaint();
 		void rendererBootPaintPromise.then((result) => {
@@ -606,7 +628,6 @@ if (!gotSingleLock) {
 		} catch (err) {
 			mainLog.error("failed to ensure default conversation dir", err);
 		}
-
 		// im-gateway 独立 cwd（ADR-0005）：跟桌面「对话」物理分家。先把空目录建好，
 		// 这样 sidecar 启动前 desktop 的 Claw tab 也能正常 listSessions（拿到空列表）。
 		try {
@@ -623,6 +644,15 @@ if (!gotSingleLock) {
 		// 首帧之后执行，避免这些维护工作阻塞窗口出现。
 		const runtimeManager = getRuntimeManager();
 		runtimeManager.applyEnv();
+		if (remoteControlUrl && remotePairingToken) {
+			void startDesktopRemoteAccess({
+				controlUrl: remoteControlUrl,
+				pairingToken: remotePairingToken,
+				conversationCwd: join(getVettaHomePath(), "conversation"),
+			}).catch((error: unknown) => {
+				mainLog.error("remote access connector failed to start", error);
+			});
+		}
 		const initializeManagedRuntimeAndCli = async (): Promise<void> => {
 			try {
 				const runtimeStartedAt = Date.now();
@@ -809,6 +839,11 @@ app.on("window-all-closed", () => {
 	}
 });
 
+function desktopSignalingTarget(controlUrl: string | undefined): string | undefined {
+	if (!controlUrl) return undefined;
+	return controlUrl.replace(/\/v1\/relay\/([A-Za-z0-9_-]{24,128})\/desktop$/, "/v1/desktop/$1/host");
+}
+
 // Critical: ensure IM sidecar is killed before the main process exits.
 // 先发起 Knowledge 中止，再等待本地 RPC 关闭。进行中的 `knowledge.manage`
 // Action 会因 Session abort 自然结束，避免 server.close() 等待活动请求而与
@@ -817,6 +852,8 @@ app.on("window-all-closed", () => {
 // 之前先调用它——原因见该模块的注释。
 setQuitCleanup(async () => {
 	mainLog.info("quit cleanup started");
+	await stopDesktopRemoteAccess();
+	await stopDesktopRemoteDesktopHost();
 	beginSharedRuntimeShutdown();
 	const knowledgeShutdown = shutdownKnowledgePoller();
 	if (teardownSchedulerIpc) {

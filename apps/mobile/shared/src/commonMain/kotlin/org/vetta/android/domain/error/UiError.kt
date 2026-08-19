@@ -1,6 +1,7 @@
 package org.vetta.android.domain.error
 
 import org.vetta.android.core.error.VettaException
+import org.vetta.android.domain.conversation.RemoteConversationException
 
 enum class UiErrorAction {
     None,
@@ -43,6 +44,12 @@ object ErrorMapper {
                     action = UiErrorAction.Retry,
                 )
             is VettaException.Api -> mapApi(e)
+            is RemoteConversationException ->
+                UiError(
+                    title = "桌面连接不可用",
+                    message = e.message.orEmpty().ifBlank { "请检查桌面端连接后重试" },
+                    action = UiErrorAction.Retry,
+                )
             else ->
                 UiError(
                     title = "出错了",

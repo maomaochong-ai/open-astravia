@@ -12,6 +12,11 @@ enum class MessageStatus {
     Aborted,
 }
 
+enum class ConversationOrigin {
+    Cloud,
+    Desktop,
+}
+
 data class ChatSession(
     val id: String,
     val title: String,
@@ -20,6 +25,9 @@ data class ChatSession(
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
     val pinned: Boolean = false,
+    val origin: ConversationOrigin = ConversationOrigin.Cloud,
+    val remoteDeviceId: String? = null,
+    val remoteSessionId: String? = null,
 )
 
 data class MessageImage(

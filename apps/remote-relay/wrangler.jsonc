@@ -1,0 +1,21 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "vetta-remote-relay",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-03-10",
+	"workers_dev": true,
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 0.1
+	},
+	"durable_objects": {
+		"bindings": [
+			{ "name": "REMOTE_PAIR_ROOM", "class_name": "RemotePairRoom" },
+			{ "name": "REMOTE_DESKTOP_ROOM", "class_name": "RemoteDesktopRoom" }
+		]
+	},
+	"migrations": [
+		{ "tag": "v1", "new_sqlite_classes": ["RemotePairRoom"] },
+		{ "tag": "v2", "new_sqlite_classes": ["RemoteDesktopRoom"] }
+	]
+}

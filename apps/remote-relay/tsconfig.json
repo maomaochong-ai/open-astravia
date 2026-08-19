@@ -1,0 +1,17 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"types": ["@cloudflare/workers-types", "@cloudflare/vitest-pool-workers"],
+		"paths": {
+			"@vetta/remote-control": ["../../packages/remote-control/src/index.ts"],
+			"@vetta/remote-control/*": ["../../packages/remote-control/src/*"],
+			"@vetta/remote-desktop": ["../../packages/remote-desktop/src/index.ts"],
+			"@vetta/remote-desktop/protocol": ["../../packages/remote-desktop/src/protocol-entry.ts"],
+			"@vetta/remote-desktop/*": ["../../packages/remote-desktop/src/*"]
+		}
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts"]
+}

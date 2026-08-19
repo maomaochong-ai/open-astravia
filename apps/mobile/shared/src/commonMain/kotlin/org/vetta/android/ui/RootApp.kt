@@ -16,7 +16,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.vetta.android.app.AppContainer
-import org.vetta.android.domain.device.DemoDevices
 import org.vetta.android.ui.auth.LoginScreen
 import org.vetta.android.ui.auth.ServerSetupScreen
 import org.vetta.android.ui.auth.WelcomeScreen
@@ -149,7 +148,7 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                                     channelIndex = state.discoverChannelIndex,
                                     onChannelChange = vm::setDiscoverChannel,
                                     onOpenDevice = vm::openDeviceDetail,
-                                    onConnectManual = { /* UI 占位：后续接真实发现协议 */ },
+                                    onConnectManual = vm::connectDesktop,
                                     onUseCloud = {
                                         vm.openNewConversation(1)
                                     },
@@ -172,16 +171,15 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                 }
             }
             is AppRoute.DeviceDetail -> {
-                val device = DemoDevices.find(route.deviceId) ?: state.devices.firstOrNull()
+                val device = state.devices.firstOrNull { it.id == route.deviceId }
                 if (device == null) {
                     vm.navigateBackFromSecondary()
                 } else {
                     DeviceDetailScreen(
                         device = device,
                         onBack = vm::navigateBackFromSecondary,
-                        onDisconnect = vm::navigateBackFromSecondary,
+                        onDisconnect = { vm.disconnectDesktop(device.id) },
                         onNewChat = { vm.startDesktopConversation(device.id) },
-                        onOpenFiles = { vm.openFilesContext(device.id) },
                     )
                 }
             }

@@ -17,6 +17,9 @@ function workspaceSourceAlias(): Plugin {
 			if (source.startsWith("@vetta/toolkit/")) {
 				return resolve(process.cwd(), `../../packages/toolkit/src/${source.slice("@vetta/toolkit/".length)}.ts`);
 			}
+			if (source === "@vetta/remote-desktop") {
+				return resolve(process.cwd(), "../../packages/remote-desktop/src/index.ts");
+			}
 			return null;
 		},
 	};
@@ -34,7 +37,7 @@ export default defineConfig(({ mode }) => {
 	const speechInputBuildConfig = resolveSpeechInputBuildConfig({ env });
 	const developmentWorkspacePackages =
 		effectiveMode === "development"
-			? [/^@vetta\/(?:action-rpc|ai|coding-agent|runtime-core)(?:\/|$)/]
+			? [/^@vetta\/(?:action-rpc|ai|coding-agent|remote-control|runtime-core)(?:\/|$)/]
 			: [];
 	const sourcemapEnabled = (process.env.VETTA_MAIN_SOURCEMAP ?? env.VETTA_MAIN_SOURCEMAP) === "true";
 	const sentry = createSentryBuildSetup(env, "dist/main");
@@ -114,6 +117,7 @@ export default defineConfig(({ mode }) => {
 					// electron-liquid-glass 同为原生模块（node-gyp-build + prebuilds），
 					// 提供 macOS 液态玻璃/磨砂玻璃效果，运行时从 node_modules 解析。
 					"electron-liquid-glass",
+					"koffi",
 					// Windows-only Sherpa-ONNX native runtime; model files are staged as extraResources at build time.
 					...(speechInputBuildConfig.enabled ? ["sherpa-onnx-win-x64"] : []),
 				],

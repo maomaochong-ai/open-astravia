@@ -1,12 +1,9 @@
 package org.vetta.android.ui.connect
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,14 +13,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.PowerSettingsNew
-import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,7 +27,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -42,11 +37,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.DeviceStatus
+import org.vetta.android.domain.remote.remoteDesktopViewerTarget
 import org.vetta.android.ui.components.FilterChipRow
 import org.vetta.android.ui.components.PrimaryBlackButton
 import org.vetta.android.ui.components.SectionHeader
@@ -55,6 +49,7 @@ import org.vetta.android.ui.components.StatusDot
 import org.vetta.android.ui.components.VettaCard
 import org.vetta.android.ui.i18n.Str
 import org.vetta.android.ui.theme.vettaExtra
+import org.vetta.android.ui.remote.RemoteDesktopSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -155,13 +150,6 @@ fun DiscoverConnectScreen(
                         onClick = { onConnectManual(host.trim()) },
                         enabled = host.isNotBlank(),
                     )
-                    TextButton(onClick = { }) {
-                        Text(
-                            Str.howToConnect,
-                            color = MaterialTheme.vettaExtra.secondaryText,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
                 }
             }
             Spacer(Modifier.height(24.dp))
@@ -176,7 +164,6 @@ fun DeviceDetailScreen(
     onBack: () -> Unit,
     onDisconnect: () -> Unit,
     onNewChat: () -> Unit,
-    onOpenFiles: () -> Unit,
 ) {
     Scaffold(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
@@ -214,22 +201,22 @@ fun DeviceDetailScreen(
             Spacer(Modifier.height(12.dp))
             PrimaryBlackButton(text = Str.disconnect, onClick = onDisconnect)
 
-            Spacer(Modifier.height(20.dp))
-            SectionHeader(title = Str.desktopPreview)
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 10f)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(
-                            Brush.linearGradient(
-                                listOf(Color(0xFF1A1A1A), Color(0xFF3A3A3C), Color(0xFF111111)),
-                            ),
-                        ),
-                contentAlignment = Alignment.Center,
+            val desktopTarget = remoteDesktopViewerTarget(device.host)
+            AnimatedVisibility(
+                visible = desktopTarget != null,
+                enter = fadeIn(),
+                exit = fadeOut(),
             ) {
-                Text("Desktop", color = Color.White.copy(alpha = 0.7f))
+                desktopTarget?.let {
+                    Column {
+                        Spacer(Modifier.height(20.dp))
+                        SectionHeader(title = Str.desktopPreview)
+                        RemoteDesktopSurface(
+                            target = it.url,
+                            modifier = Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(8.dp)),
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(20.dp))
@@ -243,14 +230,6 @@ fun DeviceDetailScreen(
             }
 
             Spacer(Modifier.height(20.dp))
-            SectionHeader(title = Str.quickActions)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                QuickAction(Icons.Default.UploadFile, Str.sendFile, onOpenFiles)
-                QuickAction(Icons.Default.ContentCopy, Str.clipboard) {}
-                QuickAction(Icons.Default.Terminal, Str.terminal) {}
-                QuickAction(Icons.Default.PowerSettingsNew, Str.power) {}
-            }
-            Spacer(Modifier.height(20.dp))
             PrimaryBlackButton(text = Str.startConversation, onClick = onNewChat)
             Spacer(Modifier.height(24.dp))
         }
@@ -262,28 +241,5 @@ private fun Metric(label: String, value: String) {
     Column {
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
         Text(value, style = MaterialTheme.typography.titleMedium)
-    }
-}
-
-@Composable
-private fun QuickAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier =
-            Modifier
-                .width(72.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(vertical = 12.dp)
-                .let { it },
-    ) {
-        IconButton(onClick = onClick) {
-            Icon(icon, contentDescription = label)
-        }
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.vettaExtra.secondaryText)
     }
 }

@@ -87,6 +87,10 @@
 			"@vetta/runtime-telemetry/*": ["../../packages/runtime-telemetry/src/*"],
 			"@vetta/action-rpc": ["../../packages/action-rpc/src/index.ts"],
 			"@vetta/action-rpc/*": ["../../packages/action-rpc/src/*"],
+			"@vetta/remote-control": ["../../packages/remote-control/src/index.ts"],
+			"@vetta/remote-control/*": ["../../packages/remote-control/src/*"],
+			"@vetta/remote-desktop": ["../../packages/remote-desktop/src/index.ts"],
+			"@vetta/remote-desktop/*": ["../../packages/remote-desktop/src/*"],
 			"@vetta/toolkit": ["../../packages/toolkit/src/index.ts"],
 			"@vetta/toolkit/*": ["../../packages/toolkit/src/*"]
 		},

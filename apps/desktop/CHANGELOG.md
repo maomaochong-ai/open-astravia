@@ -2,6 +2,7 @@
 
 ### Added
 
+- 新增可选的手机远程接入宿主：Desktop 可主动连接 Cloudflare Worker 中继，将本地对话会话暴露为受版本化协议约束的远程请求；屏幕画面和鼠标键盘输入使用独立 WebRTC 通道，输入默认关闭并由本地配置显式授权。
 - 开发环境的 Vetta Debug 新增只读 `provider.models.list`，可刷新并列出 Runtime 当前可用的本地模型与登录后远程模型；
   返回值只包含模型身份、来源和公开能力元数据，不读取凭据、不发起模型请求。
 - 开发环境的 Vetta Debug 新增 `conversation.compact`，可对持久会话手动执行生产 Runtime 的上下文压缩；

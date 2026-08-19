@@ -151,6 +151,10 @@ export default defineConfig({
 				replacement: resolve(__dirname, "../../packages/runtime-subagents/src/index.ts"),
 			},
 			{
+				find: "@vetta/remote-control",
+				replacement: resolve(__dirname, "../../packages/remote-control/src/index.ts"),
+			},
+			{
 				find: "@vetta/runtime-tools/coding",
 				replacement: resolve(__dirname, "../../packages/runtime-tools/src/coding/index.ts"),
 			},

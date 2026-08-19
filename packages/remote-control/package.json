@@ -1,0 +1,26 @@
+{
+	"name": "@vetta/remote-control",
+	"version": "0.0.1",
+	"description": "Platform-neutral remote control protocol and test transport for Vetta",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": ["dist", "schemas"],
+	"scripts": {
+		"clean": "rm -rf dist",
+		"build": "tsgo -p tsconfig.build.json",
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run --config vitest.config.ts",
+		"fake-relay": "bun scripts/fake-relay-server.ts"
+	},
+	"devDependencies": {
+		"ajv": "^8.20.0",
+		"@types/node": "^22.10.5",
+		"typescript": "^5.9.2"
+	}
+}

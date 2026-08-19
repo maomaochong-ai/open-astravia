@@ -29,7 +29,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -165,9 +164,6 @@ fun ChatScreen(
                                 style = MaterialTheme.typography.labelLarge,
                             )
                         }
-                    }
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Default.MoreHoriz, contentDescription = null)
                     }
                 },
                 colors =

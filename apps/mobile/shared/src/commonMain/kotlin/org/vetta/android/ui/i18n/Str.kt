@@ -80,6 +80,13 @@ object Str {
     const val howToConnect = "如何在 Desktop 启用连接？"
     const val discoverTitle = "发现"
     const val discoverSubtitle = "连接 Desktop，或直接使用云端 AI"
+    const val remoteConnectFailed = "无法连接桌面"
+    const val remoteConnectFailedHint = "请确认中继地址和配对信息正确，并检查桌面端是否在线"
+    const val desktopDevice = "桌面设备"
+    const val desktopUnavailable = "桌面设备不可用"
+    const val desktopUnavailableHint = "找不到该设备，请返回设备列表后重试"
+    const val desktopSessionMissingHint = "此会话没有关联桌面设备，请重新创建"
+    const val conversationWith = "与 %s 的对话"
 
     // Device detail
     const val deviceConnected = "已连接"

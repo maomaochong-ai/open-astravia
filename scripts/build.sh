@@ -49,6 +49,8 @@ build_layer0() {
   build_pkg packages/ai
   build_pkg packages/ecosystem-adapter
   build_pkg packages/action-rpc
+  build_pkg packages/remote-control
+  build_pkg packages/remote-desktop
   build_pkg packages/runtime-subagents
   build_pkg packages/toolkit
   build_pkg packages/plugins/plugin-sdk

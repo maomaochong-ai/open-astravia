@@ -1,7 +1,6 @@
 package org.vetta.android.ui.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,12 +16,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -61,11 +58,6 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 title = { Text(Str.tabHome, style = MaterialTheme.typography.titleMedium) },
-                actions = {
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Default.NotificationsNone, contentDescription = Str.notifications)
-                    }
-                },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.vettaExtra.pageBackground,

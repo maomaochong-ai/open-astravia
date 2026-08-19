@@ -20,6 +20,11 @@ Use the run configurations provided by the run widget in your IDE's toolbar. You
 Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
 
 - Android tests: `./gradlew :shared:testAndroidHostTest`
+- Android emulator/device tests: `./gradlew :shared:connectedAndroidDeviceTest`
+
+### Remote Desktop developer preview
+
+Run the Cloudflare relay locally, generate a pairing with `bun run --cwd ../remote-relay pair`, and paste the printed mobile target into the app's remote connection field. The device detail screen renders the peer-to-peer desktop stream; pointer, wheel, and hardware keyboard events use the WebRTC DataChannel rather than the relay.
 
 ---
 
