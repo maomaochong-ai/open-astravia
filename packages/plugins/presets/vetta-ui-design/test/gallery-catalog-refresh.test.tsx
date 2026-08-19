@@ -16,6 +16,7 @@ vi.mock("@vetta-org/plugin-sdk", () => {
 const refreshDesignCatalog = vi.fn();
 vi.mock("../src/design-systems/index", () => ({
 	refreshDesignCatalog: (...args: unknown[]) => refreshDesignCatalog(...args),
+	useCatalogState: () => ({ systems: [], status: "ready" }),
 }));
 
 const loadGallery = vi.fn(async () => ({ cards: [], workspacePath: "/tmp/designs" }));
@@ -24,8 +25,17 @@ vi.mock("../src/gallery/gallery-store", () => ({
 	loadGallery: () => loadGallery(),
 }));
 
+// 工具栏现在挂在宿主页头上（ui.setWorkspaceViewHeader），测试扮演宿主：接住
+// 插件推过来的节点，自己渲染出来，再按用户行为点它。
+const hostHeader = vi.hoisted(() => ({ current: null as { left?: unknown; right?: unknown } | null }));
 vi.mock("../src/plugin-context", () => ({
-	getPluginCtx: () => ({}),
+	getPluginCtx: () => ({
+		ui: {
+			setWorkspaceViewHeader: (_viewId: string, header: { left?: unknown; right?: unknown } | null) => {
+				hostHeader.current = header;
+			},
+		},
+	}),
 	notify: vi.fn(),
 }));
 
@@ -52,16 +62,24 @@ import { GalleryView } from "../src/gallery/GalleryView";
 
 let host: HTMLDivElement;
 let root: Root;
+let headerHost: HTMLDivElement;
+let headerRoot: Root;
 
 beforeEach(() => {
 	refreshDesignCatalog.mockClear();
 	loadGallery.mockClear();
+	hostHeader.current = null;
 	host = document.createElement("div");
 	document.body.appendChild(host);
 	root = createRoot(host);
+	headerHost = document.createElement("div");
+	document.body.appendChild(headerHost);
+	headerRoot = createRoot(headerHost);
 });
 
 afterEach(() => {
+	act(() => headerRoot.unmount());
+	headerHost.remove();
 	act(() => root.unmount());
 	host.remove();
 	document.body.innerHTML = "";
@@ -73,6 +91,15 @@ async function mountGallery(): Promise<void> {
 	});
 	await act(async () => {
 		await Promise.resolve();
+	});
+	// 宿主页头的那半边 UI：插件推什么就渲染什么。
+	await act(async () => {
+		headerRoot.render(
+			<>
+				{hostHeader.current?.left as React.ReactNode}
+				{hostHeader.current?.right as React.ReactNode}
+			</>,
+		);
 	});
 }
 

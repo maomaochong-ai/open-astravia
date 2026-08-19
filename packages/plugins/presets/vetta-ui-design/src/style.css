@@ -71,6 +71,93 @@
 	box-shadow: 0 0 0 calc(2px * var(--vetd-lscale, 1)) color-mix(in oklab, var(--primary) 50%, transparent);
 }
 
+/* ---------- 画廊 Hero ----------
+   通版的页面顶部，不是卡片：没有圆角、没有描边，层次只由光晕、点阵和底部一条
+   发丝线承担。发丝线两端渐隐，免得看起来又变成一条分割线。 */
+.vetd-hero::after {
+	content: "";
+	position: absolute;
+	inset: auto 0 0 0;
+	height: 1px;
+	background: linear-gradient(
+		to right,
+		transparent,
+		color-mix(in oklab, var(--foreground, #000) 10%, transparent) 12%,
+		color-mix(in oklab, var(--foreground, #000) 10%, transparent) 72%,
+		transparent
+	);
+}
+
+/* 左上角的主色光晕：Hero 唯一一处敢用饱和度的地方，收在 16% 以内，
+   mono 主题下退化成一团更亮的灰，不会打架。向下渐隐到内容区。 */
+.vetd-hero-glow {
+	background:
+		radial-gradient(60% 130% at 10% -10%, color-mix(in oklab, var(--primary, #6366f1) 15%, transparent), transparent 64%),
+		radial-gradient(45% 90% at 92% 0%, color-mix(in oklab, var(--primary, #6366f1) 8%, transparent), transparent 70%);
+	/* Hero 处在窗口最顶端（沉浸式页头浮在其上），光晕从第一像素全亮，
+	   只向内容区一侧渐隐。 */
+	-webkit-mask-image: linear-gradient(to bottom, #000 58%, transparent);
+	mask-image: linear-gradient(to bottom, #000 58%, transparent);
+}
+
+/* 极淡点阵：给平面一点「纸面」质感，向右下渐隐，避免和插画抢注意力。 */
+.vetd-hero-dots {
+	background-image: radial-gradient(color-mix(in oklab, var(--foreground, #000) 12%, transparent) 1px, transparent 1px);
+	background-size: 12px 12px;
+	opacity: 0.4;
+	-webkit-mask-image: radial-gradient(70% 100% at 0% 0%, #000, transparent 72%);
+	mask-image: radial-gradient(70% 100% at 0% 0%, #000, transparent 72%);
+}
+
+/* Hero 里的输入框与次级按钮：微微下沉的凹槽，聚焦时才浮起主色描边。
+   用 inset 阴影而不是 border，控件在通版底色上不会显出四条硬边。 */
+.vetd-hero-field {
+	background: color-mix(in oklab, var(--foreground, #000) 4%, transparent);
+	box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--foreground, #000) 8%, transparent);
+}
+.vetd-hero-field:focus {
+	background: var(--card);
+	box-shadow:
+		inset 0 0 0 1px color-mix(in oklab, var(--primary, #6366f1) 55%, transparent),
+		0 0 0 3px color-mix(in oklab, var(--primary, #6366f1) 14%, transparent);
+}
+
+/* 插画的呼吸：只动 transform，且幅度小到「像是活的」而不是「在动」。 */
+.vetd-hero-frame {
+	animation: vetd-hero-float 9s ease-in-out infinite;
+}
+.vetd-hero-mote {
+	animation: vetd-hero-float 6s ease-in-out infinite;
+}
+.vetd-hero-mote-slow {
+	animation-duration: 8.5s;
+	animation-delay: -2s;
+}
+@keyframes vetd-hero-float {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-4px);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.vetd-hero-frame,
+	.vetd-hero-mote {
+		animation: none;
+	}
+}
+
+/* 画廊滚动容器：不显示滚动条（滚轮/触控板照常滚），沉浸页右缘不挂一条竖槽。 */
+.vetd-gallery-scroll {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.vetd-gallery-scroll::-webkit-scrollbar {
+	display: none;
+}
+
 /* 会话卡片横排滚动条隐藏（翻页靠左右箭头） */
 .vetd-swiper {
 	scrollbar-width: none;

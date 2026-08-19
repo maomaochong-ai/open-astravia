@@ -4,12 +4,16 @@ import { ConfirmDialog } from "../canvas/ConfirmDialog";
 import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "../export/share-format";
 import { refreshDesignCatalog } from "../design-systems/index";
 import { getPluginCtx, notify } from "../plugin-context";
+import { GALLERY_VIEW_ID } from "../tab-ids";
 import { AllProjectsView } from "./AllProjectsView";
 import { CardContextMenu, type CardMenuAnchor } from "./CardContextMenu";
 import { CreateDesignDialog } from "./CreateDesignDialog";
 import { DesignSystemDetailDialog } from "./DesignSystemDetailDialog";
 import { DesignSystemGrid } from "./DesignSystemGrid";
 import { GalleryCard } from "./GalleryCard";
+import { GalleryHero } from "./GalleryHero";
+import { GalleryToolbarLeft, GalleryToolbarRight } from "./GalleryToolbar";
+import { SectionHeader } from "./SectionHeader";
 import { hasMoreProjects, homeVisibleCount, PROJECT_GRID_CLASS } from "./gallery-layout";
 import { useGalleryColumns } from "./use-gallery-columns";
 import {
@@ -51,6 +55,8 @@ export function GalleryView() {
 	const [archiveTarget, setArchiveTarget] = useState<GalleryCardData | null>(null);
 	/** 右键菜单的定位基准：菜单是这个容器的 absolute 子节点。 */
 	const rootRef = useRef<HTMLDivElement | null>(null);
+	/** Hero 的「逛逛风格库」滚动目标。 */
+	const stylesRef = useRef<HTMLDivElement | null>(null);
 
 	const refresh = useCallback(
 		async (options?: { forceCatalog?: boolean }) => {
@@ -210,6 +216,7 @@ export function GalleryView() {
 
 	// memo 不只是省一次 filter：AllProjectsView 以数组引用变化为「重置分页」的信号。
 	const cards = useMemo(() => filterGalleryProjects(snapshot?.cards ?? [], keyword), [snapshot, keyword]);
+	const designCount = useMemo(() => cards.reduce((total, card) => total + card.designs.length, 0), [cards]);
 	const empty = !loading && (snapshot?.cards.length ?? 0) === 0;
 
 	/** 首页资产宫格：量出实际列数，只铺前 3 行，其余收进列表页。 */
@@ -231,11 +238,69 @@ export function GalleryView() {
 		});
 	}, []);
 
+	/**
+	 * 页头接管。首页把工具栏长在 Hero 里（见 GalleryHero 的说明），页头因此只需要
+	 * 收掉宿主标题、留作窗口拖拽区；「全部设计」列表页没有 Hero，工具栏回到页头。
+	 *
+	 * 刻意不写依赖数组——节点闭包着 keyword / loading / busy 等每次渲染都可能变的
+	 * 状态，漏一个依赖就会让页头里的搜索框停在旧值上。写入是幂等的 store.set，
+	 * 且页头不会反过来触发本组件重渲染，不存在循环。
+	 */
+	useEffect(() => {
+		if (view !== "projects") {
+			// immersive：页头浮在画廊之上，Hero 从窗口第一像素开始铺，
+			// 不再被 44px 页头推出一条谁也画不了的空带。
+			getPluginCtx().ui.setWorkspaceViewHeader(GALLERY_VIEW_ID, { hideTitle: true, immersive: true });
+			return;
+		}
+		getPluginCtx().ui.setWorkspaceViewHeader(GALLERY_VIEW_ID, {
+			hideTitle: true,
+			left: (
+				<GalleryToolbarLeft
+					view={view}
+					count={cards.length}
+					keyword={keyword}
+					onKeywordChange={setKeyword}
+					onBack={() => setView("home")}
+				/>
+			),
+			right: (
+				<GalleryToolbarRight
+					loading={loading}
+					busy={busy}
+					onRefresh={() => void refresh({ forceCatalog: true })}
+					onImport={() => void onPickImport()}
+					onCreate={() => setCreating(true)}
+				/>
+			),
+		});
+	});
+
+	// 离开画廊就把页头还给宿主（否则切到别的页面还挂着已卸载组件的节点）。
+	useEffect(() => () => getPluginCtx().ui.setWorkspaceViewHeader(GALLERY_VIEW_ID, null), []);
+
+	// 首页与空态共用同一块 Hero，只有副标题和统计随「库里有没有东西」变。
+	const hero = (
+		<GalleryHero
+			projectCount={cards.length}
+			designCount={designCount}
+			empty={empty}
+			loading={loading}
+			busy={busy}
+			keyword={keyword}
+			onKeywordChange={setKeyword}
+			onRefresh={() => void refresh({ forceCatalog: true })}
+			onImport={() => void onPickImport()}
+			onCreate={() => setCreating(true)}
+			onBrowseStyles={() => stylesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+		/>
+	);
+
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: 整页都是分享包的放置区
 		<div
 			ref={rootRef}
-			className="relative flex h-full w-full flex-col overflow-hidden bg-background"
+			className="relative flex h-full w-full flex-col overflow-hidden"
 			onDragOver={(event) => {
 				event.preventDefault();
 				setDragging(true);
@@ -247,90 +312,7 @@ export function GalleryView() {
 			}}
 			onDrop={onDrop}
 		>
-			<header className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
-				{view === "projects" ? (
-					<button
-						type="button"
-						onClick={() => setView("home")}
-						aria-label={t("gallery.projects.back")}
-						title={t("gallery.projects.back")}
-						className="flex size-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-					>
-						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-							<path d="M14 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-						</svg>
-					</button>
-				) : null}
-				<span className="text-sm font-semibold text-foreground">
-					{view === "projects" ? t("gallery.projects.title") : t("gallery.title")}
-				</span>
-				{view === "projects" ? (
-					<span className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-muted-foreground">
-						{t("gallery.count", { count: cards.length })}
-					</span>
-				) : null}
-				<div className="relative ml-2">
-					<svg
-						viewBox="0 0 24 24"
-						className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="2"
-						aria-hidden
-					>
-						<circle cx="11" cy="11" r="7" />
-						<path d="M20 20l-3.5-3.5" strokeLinecap="round" />
-					</svg>
-					<input
-						value={keyword}
-						onChange={(event) => setKeyword(event.target.value)}
-						placeholder={t("gallery.search")}
-						aria-label={t("gallery.search")}
-						className="w-52 rounded-lg border border-border bg-card py-1.5 pl-8 pr-2.5 text-xs text-foreground outline-none transition-colors focus:border-primary"
-					/>
-				</div>
-				<div className="flex-1" />
-				<button
-					type="button"
-					onClick={() => void refresh({ forceCatalog: true })}
-					disabled={loading}
-					aria-label={t("gallery.action.refresh")}
-					title={t("gallery.action.refresh")}
-					className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
-				>
-					<svg
-						viewBox="0 0 24 24"
-						className={`size-3.5 ${loading ? "animate-spin" : ""}`}
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="2"
-						aria-hidden
-					>
-						<path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4" strokeLinecap="round" strokeLinejoin="round" />
-					</svg>
-				</button>
-				<button
-					type="button"
-					onClick={() => void onPickImport()}
-					disabled={busy}
-					className="rounded-lg border border-border px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-accent disabled:opacity-40"
-				>
-					{t("gallery.action.import")}
-				</button>
-				<button
-					type="button"
-					onClick={() => setCreating(true)}
-					disabled={busy}
-					className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
-				>
-					<svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
-						<path d="M12 5v14M5 12h14" strokeLinecap="round" />
-					</svg>
-					{t("gallery.action.create")}
-				</button>
-			</header>
-
-			<div className="flex-1 overflow-y-auto px-4 py-4">
+			<div className="vetd-gallery-scroll flex-1 overflow-y-auto overflow-x-hidden px-5 pb-8">
 				{view === "projects" ? (
 					// 全部设计：整页宫格，滚动到底部自动翻页。
 					<>
@@ -340,45 +322,43 @@ export function GalleryView() {
 						) : null}
 					</>
 				) : empty ? (
-					// 空态：风格库是首屏主角。点一套风格就能开工，比对着空白画布想第一句话快。
-					<div className="flex flex-col gap-6">
-						<div className="mt-2 flex flex-col items-center gap-1.5 text-center">
-							<p className="text-sm font-medium text-foreground">{t("gallery.empty.title")}</p>
-							<p className="max-w-96 text-xs leading-relaxed text-muted-foreground">
-								{t("gallery.empty.description", { ext: SHARE_EXTENSION })}
-							</p>
+					// 空态：Hero 换一句更具引导性的副标题，风格库紧随其后当首屏主角——
+					// 点一套风格就能开工，比对着空白画布想第一句话快。
+					<>
+						{hero}
+						<div ref={stylesRef}>
+							<DesignSystemGrid busy={busy} onPick={setDetailSystem} />
 						</div>
-						<DesignSystemGrid busy={busy} onPick={setDetailSystem} />
-					</div>
+					</>
 				) : (
 					<>
+						{hero}
 						<section>
-							<header className="mb-3 flex min-w-0 items-baseline gap-2">
-								<h2 className="shrink-0 text-sm font-medium text-foreground">{t("gallery.section.mine")}</h2>
-								<span className="text-[11px] text-muted-foreground">
-									{t("gallery.count", { count: cards.length })}
-								</span>
-								<div className="flex-1" />
-								{overflowing ? (
-									<button
-										type="button"
-										onClick={() => setView("projects")}
-										className="flex shrink-0 items-center gap-0.5 rounded-lg px-1.5 py-0.5 text-xs text-primary transition-colors hover:bg-accent"
-									>
-										{t("gallery.section.more")}
-										<svg
-											viewBox="0 0 24 24"
-											className="size-3"
-											fill="none"
-											stroke="currentColor"
-											strokeWidth="2"
-											aria-hidden
+							<SectionHeader
+								title={t("gallery.section.mine")}
+								badge={t("gallery.count", { count: cards.length })}
+								action={
+									overflowing ? (
+										<button
+											type="button"
+											onClick={() => setView("projects")}
+											className="group flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
 										>
-											<path d="M10 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-										</svg>
-									</button>
-								) : null}
-							</header>
+											{t("gallery.section.more")}
+											<svg
+												viewBox="0 0 24 24"
+												className="size-3 transition-transform duration-200 group-hover:translate-x-0.5"
+												fill="none"
+												stroke="currentColor"
+												strokeWidth="2"
+												aria-hidden
+											>
+												<path d="M10 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+											</svg>
+										</button>
+									) : null
+								}
+							/>
 							<div ref={homeGridRef} className={PROJECT_GRID_CLASS}>
 								{cards.slice(0, homeCount).map((card) => (
 									<GalleryCard
@@ -395,7 +375,9 @@ export function GalleryView() {
 						) : null}
 
 						{/* 风格库排在用户自己的作品之后，同一套宫格、跟着一起滚。 */}
-						<DesignSystemGrid divided busy={busy} onPick={setDetailSystem} />
+						<div ref={stylesRef}>
+							<DesignSystemGrid divided busy={busy} onPick={setDetailSystem} />
+						</div>
 					</>
 				)}
 			</div>
