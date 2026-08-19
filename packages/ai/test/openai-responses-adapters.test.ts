@@ -260,6 +260,38 @@ describe("Responses family streaming laws", () => {
 		]);
 	});
 
+	it("routes interleaved compatible-gateway events by item_id when output_index is omitted", async () => {
+		const transport = createProviderTestTransport([responsesSse(interleavedEventsWithoutOutputIndexes())]);
+		const response = await openAIResponsesAdapter.stream({
+			model: openAIModel,
+			context,
+			options: { apiKey: "test", fetch: transport.fetch },
+		});
+		const result = await response.result;
+
+		expect(result.content).toMatchObject([
+			{ type: "text", text: "hello" },
+			{ type: "toolCall", name: "lookup", arguments: { query: "test" } },
+		]);
+	});
+
+	it("still rejects a genuine output item type change", async () => {
+		const transport = createProviderTestTransport([
+			responsesSse([messageAdded(0, "msg-1"), toolDone(0), completedEvent()]),
+		]);
+		const response = await openAIResponsesAdapter.stream({
+			model: openAIModel,
+			context,
+			options: { apiKey: "test", fetch: transport.fetch },
+		});
+		const settled = await settleResponse(response);
+
+		expect(settled.resultError).toMatchObject({
+			code: "AI_STREAM_PROTOCOL_FAILED",
+			message: "Output item type changed while streaming",
+		});
+	});
+
 	it("propagates cancellation after transport starts", async () => {
 		for (const fixture of fixtures) {
 			const controlled = createControlledSseResponse();
@@ -538,6 +570,28 @@ function interleavedEvents(): unknown[] {
 		toolDone(1),
 		completedEvent(),
 	];
+}
+
+function interleavedEventsWithoutOutputIndexes(): unknown[] {
+	return [
+		withoutOutputIndex(messageAdded(0, "msg-1")),
+		withoutOutputIndex(toolAdded(1)),
+		{ type: "response.output_text.delta", item_id: "msg-1", delta: "hello" },
+		{
+			type: "response.function_call_arguments.delta",
+			item_id: "fc-1",
+			delta: '{"query":"test"}',
+		},
+		withoutOutputIndex(messageDone(0, "msg-1", "hello")),
+		withoutOutputIndex(toolDone(1)),
+		completedEvent(),
+	];
+}
+
+function withoutOutputIndex(value: unknown): unknown {
+	if (typeof value !== "object" || value === null) return value;
+	const { output_index: _outputIndex, ...event } = value as Record<string, unknown>;
+	return event;
 }
 
 function messageAdded(outputIndex: number, id: string): unknown {

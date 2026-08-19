@@ -32,16 +32,22 @@ export interface ResponsesEventSink {
 interface ReasoningItemState {
 	readonly kind: "reasoning";
 	readonly blockIndex: number;
+	readonly outputIndex: number;
+	readonly itemId?: string;
 }
 
 interface MessageItemState {
 	readonly kind: "message";
 	readonly blockIndex: number;
+	readonly outputIndex: number;
+	readonly itemId?: string;
 }
 
 interface ToolItemState {
 	readonly kind: "function_call";
 	readonly blockIndex: number;
+	readonly outputIndex: number;
+	readonly itemId?: string;
 	partialJson: string;
 }
 
@@ -54,9 +60,7 @@ export async function processResponsesStream<TApi extends Api>(
 	model: Model<TApi>,
 	options?: OpenAIResponsesStreamOptions,
 ): Promise<void> {
-	const itemStates = new Map<number, ItemState>();
-	let currentOutputIndex: number | undefined;
-	let fallbackOutputIndex = 0;
+	const itemTracker = new ResponsesItemTracker(model);
 	let receivedProviderEvent = false;
 	let receivedTerminalEvent = false;
 
@@ -66,18 +70,16 @@ export async function processResponsesStream<TApi extends Api>(
 		const event = validateResponsesStreamEvent(value, model.provider);
 
 		if (event.type === "response.output_item.added") {
-			const outputIndex = readOutputIndex(event, fallbackOutputIndex++);
-			currentOutputIndex = outputIndex;
 			const item = event.item;
 			if (item.type === "reasoning") {
 				const block: ThinkingContent = { type: "thinking", thinking: "" };
 				output.content.push(block);
-				itemStates.set(outputIndex, { kind: "reasoning", blockIndex: output.content.length - 1 });
+				itemTracker.add(event, { kind: "reasoning", blockIndex: output.content.length - 1 });
 				stream.push({ type: "thinking_start", contentIndex: output.content.length - 1, partial: output });
 			} else if (item.type === "message") {
 				const block: TextContent = { type: "text", text: "" };
 				output.content.push(block);
-				itemStates.set(outputIndex, { kind: "message", blockIndex: output.content.length - 1 });
+				itemTracker.add(event, { kind: "message", blockIndex: output.content.length - 1 });
 				stream.push({ type: "text_start", contentIndex: output.content.length - 1, partial: output });
 			} else if (item.type === "function_call") {
 				const block: ToolCall = {
@@ -87,7 +89,7 @@ export async function processResponsesStream<TApi extends Api>(
 					arguments: parseStreamingJson(item.arguments || ""),
 				};
 				output.content.push(block);
-				itemStates.set(outputIndex, {
+				itemTracker.add(event, {
 					kind: "function_call",
 					blockIndex: output.content.length - 1,
 					partialJson: item.arguments || "",
@@ -95,7 +97,7 @@ export async function processResponsesStream<TApi extends Api>(
 				stream.push({ type: "toolcall_start", contentIndex: output.content.length - 1, partial: output });
 			}
 		} else if (event.type === "response.reasoning_summary_text.delta") {
-			const state = requireState(itemStates, event, currentOutputIndex, "reasoning", model);
+			const state = itemTracker.require(event, "reasoning");
 			const block = output.content[state.blockIndex];
 			if (block?.type !== "thinking") throw protocolError(model, "Reasoning block state is inconsistent");
 			block.thinking += event.delta;
@@ -106,7 +108,7 @@ export async function processResponsesStream<TApi extends Api>(
 				partial: output,
 			});
 		} else if (event.type === "response.reasoning_summary_part.done") {
-			const state = requireState(itemStates, event, currentOutputIndex, "reasoning", model);
+			const state = itemTracker.require(event, "reasoning");
 			const block = output.content[state.blockIndex];
 			if (block?.type !== "thinking") throw protocolError(model, "Reasoning block state is inconsistent");
 			block.thinking += "\n\n";
@@ -117,15 +119,15 @@ export async function processResponsesStream<TApi extends Api>(
 				partial: output,
 			});
 		} else if (event.type === "response.content_part.added") {
-			requireState(itemStates, event, currentOutputIndex, "message", model);
+			itemTracker.require(event, "message");
 		} else if (event.type === "response.output_text.delta" || event.type === "response.refusal.delta") {
-			const state = requireState(itemStates, event, currentOutputIndex, "message", model);
+			const state = itemTracker.require(event, "message");
 			const block = output.content[state.blockIndex];
 			if (block?.type !== "text") throw protocolError(model, "Text block state is inconsistent");
 			block.text += event.delta;
 			stream.push({ type: "text_delta", contentIndex: state.blockIndex, delta: event.delta, partial: output });
 		} else if (event.type === "response.function_call_arguments.delta") {
-			const state = requireState(itemStates, event, currentOutputIndex, "function_call", model);
+			const state = itemTracker.require(event, "function_call");
 			state.partialJson += event.delta;
 			const block = output.content[state.blockIndex];
 			if (block?.type !== "toolCall") throw protocolError(model, "Tool call block state is inconsistent");
@@ -137,21 +139,18 @@ export async function processResponsesStream<TApi extends Api>(
 				partial: output,
 			});
 		} else if (event.type === "response.function_call_arguments.done") {
-			const state = requireState(itemStates, event, currentOutputIndex, "function_call", model);
+			const state = itemTracker.require(event, "function_call");
 			state.partialJson = event.arguments;
 			const block = output.content[state.blockIndex];
 			if (block?.type !== "toolCall") throw protocolError(model, "Tool call block state is inconsistent");
 			block.arguments = parseStreamingJson(event.arguments);
 		} else if (event.type === "response.output_item.done") {
-			const outputIndex = resolveOutputIndex(event, currentOutputIndex, model);
-			const state = itemStates.get(outputIndex);
-			if (!state) throw protocolError(model, "Output item completed before it was added", { outputIndex });
+			const state = itemTracker.take(event);
 			finalizeOutputItem(event, state, output, stream, model);
-			itemStates.delete(outputIndex);
 		} else if (event.type === "response.completed" || event.type === "response.incomplete") {
-			if (itemStates.size > 0) {
+			if (itemTracker.size > 0) {
 				throw protocolError(model, "Response completed with unfinished output items", {
-					outputIndexes: [...itemStates.keys()],
+					outputIndexes: itemTracker.outputIndexes,
 				});
 			}
 			applyCompletedResponse(event.response, output, model, options);
@@ -240,38 +239,108 @@ function applyCompletedResponse<TApi extends Api>(
 	}
 }
 
-function requireState<TState extends ItemState["kind"], TApi extends Api>(
-	itemStates: ReadonlyMap<number, ItemState>,
-	event: { readonly output_index?: number; readonly type: string },
-	currentOutputIndex: number | undefined,
-	kind: TState,
-	model: Model<TApi>,
-): Extract<ItemState, { kind: TState }> {
-	const outputIndex = resolveOutputIndex(event, currentOutputIndex, model);
-	const state = itemStates.get(outputIndex);
-	if (!state) throw protocolError(model, `${event.type} arrived before response.output_item.added`, { outputIndex });
-	if (state.kind !== kind) {
-		throw protocolError(model, `${event.type} targeted the wrong output item`, {
-			outputIndex,
-			expected: kind,
-			actual: state.kind,
-		});
+type PendingItemState =
+	| Omit<ReasoningItemState, "outputIndex" | "itemId">
+	| Omit<MessageItemState, "outputIndex" | "itemId">
+	| Omit<ToolItemState, "outputIndex" | "itemId">;
+
+interface ResponsesItemEvent {
+	readonly type: string;
+	readonly output_index?: number;
+	readonly item_id?: string;
+	readonly item?: { readonly id?: string };
+}
+
+class ResponsesItemTracker<TApi extends Api> {
+	private readonly byOutputIndex = new Map<number, ItemState>();
+	private readonly byItemId = new Map<string, ItemState>();
+	private nextFallbackOutputIndex = -1;
+
+	constructor(private readonly model: Model<TApi>) {}
+
+	get size(): number {
+		return this.byOutputIndex.size;
 	}
-	return state as Extract<ItemState, { kind: TState }>;
+
+	get outputIndexes(): readonly number[] {
+		return [...this.byOutputIndex.keys()];
+	}
+
+	add(event: ResponsesItemEvent, pending: PendingItemState): void {
+		const outputIndex = this.allocateOutputIndex(event.output_index);
+		const itemId = readItemId(event);
+		if (this.byOutputIndex.has(outputIndex) || (itemId !== undefined && this.byItemId.has(itemId))) {
+			throw protocolError(this.model, "Provider added the same output item more than once", { outputIndex, itemId });
+		}
+		const state = { ...pending, outputIndex, ...(itemId === undefined ? {} : { itemId }) } as ItemState;
+		this.byOutputIndex.set(outputIndex, state);
+		if (itemId !== undefined) this.byItemId.set(itemId, state);
+	}
+
+	require<TKind extends ItemState["kind"]>(
+		event: ResponsesItemEvent,
+		kind: TKind,
+	): Extract<ItemState, { kind: TKind }> {
+		const state = this.resolve(event, kind);
+		if (state.kind !== kind) {
+			throw protocolError(this.model, `${event.type} targeted the wrong output item`, {
+				outputIndex: state.outputIndex,
+				itemId: state.itemId,
+				expected: kind,
+				actual: state.kind,
+			});
+		}
+		return state as Extract<ItemState, { kind: TKind }>;
+	}
+
+	take(event: ResponsesItemEvent): ItemState {
+		const state = this.resolve(event);
+		this.byOutputIndex.delete(state.outputIndex);
+		if (state.itemId !== undefined) this.byItemId.delete(state.itemId);
+		return state;
+	}
+
+	private resolve(event: ResponsesItemEvent, expectedKind?: ItemState["kind"]): ItemState {
+		const itemId = readItemId(event);
+		const byId = itemId === undefined ? undefined : this.byItemId.get(itemId);
+		const byIndex = typeof event.output_index === "number" ? this.byOutputIndex.get(event.output_index) : undefined;
+		if (byId && byIndex && byId !== byIndex) {
+			throw protocolError(this.model, `${event.type} identified conflicting output items`, {
+				outputIndex: event.output_index,
+				itemId,
+			});
+		}
+		const identified = byId ?? byIndex;
+		if (identified) return identified;
+		if (itemId !== undefined || typeof event.output_index === "number") {
+			throw protocolError(this.model, `${event.type} arrived before response.output_item.added`, {
+				outputIndex: event.output_index,
+				itemId,
+			});
+		}
+
+		const candidates = [...this.byOutputIndex.values()].filter(
+			(state) => expectedKind === undefined || state.kind === expectedKind,
+		);
+		if (candidates.length === 1) return candidates[0]!;
+		throw protocolError(
+			this.model,
+			candidates.length === 0
+				? `${event.type} arrived before response.output_item.added`
+				: `${event.type} did not unambiguously identify an output item`,
+			{ expected: expectedKind, activeOutputIndexes: this.outputIndexes },
+		);
+	}
+
+	private allocateOutputIndex(explicit: number | undefined): number {
+		if (explicit !== undefined) return explicit;
+		return this.nextFallbackOutputIndex--;
+	}
 }
 
-function readOutputIndex(event: { readonly output_index?: number }, fallback: number): number {
-	return typeof event.output_index === "number" ? event.output_index : fallback;
-}
-
-function resolveOutputIndex<TApi extends Api>(
-	event: { readonly output_index?: number; readonly type: string },
-	currentOutputIndex: number | undefined,
-	model: Model<TApi>,
-): number {
-	if (typeof event.output_index === "number") return event.output_index;
-	if (currentOutputIndex !== undefined) return currentOutputIndex;
-	throw protocolError(model, `${event.type} did not identify an output item`);
+function readItemId(event: ResponsesItemEvent): string | undefined {
+	if (typeof event.item_id === "string" && event.item_id.length > 0) return event.item_id;
+	return typeof event.item?.id === "string" && event.item.id.length > 0 ? event.item.id : undefined;
 }
 
 function protocolError<TApi extends Api>(

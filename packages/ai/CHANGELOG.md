@@ -39,6 +39,7 @@
 
 ### Fixed
 
+- OpenAI Responses 兼容网关省略 `output_index` 时，交错的消息与工具事件改按稳定 `item_id` 关联；不再把合法流误报为 `Output item type changed while streaming`，真实类型错配仍保持协议失败。
 - `http-proxy` 的 `import("undici")` 现在自己收口失败：加载不到 undici 时打印一条明确告警，而不是逃逸成
   `UnhandledPromiseRejectionWarning` 污染宿主 stderr、同时让代理失效毫无提示。
 - `AI_RESPONSE_VALIDATION_FAILED` 的白名单诊断现在会穿过流事件错误投影并在恢复 `AIError` 时重建 `metadata`；结构校验失败不再丢失 `payloadType`、失败路径和截断后的实际取值，同时仍不会传播任意 metadata 或原始 payload。
