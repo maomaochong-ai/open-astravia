@@ -15,8 +15,17 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@vetta/theme-ui/chat", () => ({
-	MessageListFooterView: ({ retryDetail, retryLabel }: { retryDetail?: string; retryLabel?: string }) => (
+	MessageListFooterView: ({
+		pendingLabel,
+		retryDetail,
+		retryLabel,
+	}: {
+		pendingLabel?: string;
+		retryDetail?: string;
+		retryLabel?: string;
+	}) => (
 		<div>
+			{pendingLabel ? <span>{pendingLabel}</span> : null}
 			{retryLabel ? <span>{retryLabel}</span> : null}
 			{retryDetail ? <span>{retryDetail}</span> : null}
 		</div>
@@ -49,5 +58,15 @@ describe("MessageListFooter retry progress", () => {
 
 		expect(screen.getByText("正在重新连接（1/3）")).toBeTruthy();
 		expect(screen.getByText("上次请求失败：服务暂时出了点问题")).toBeTruthy();
+	});
+
+	it("shows session startup status in the message list footer", () => {
+		render(
+			<Provider store={store}>
+				<MessageListFooter isCompacting={false} pendingLabel="正在启动会话" showWaiting={false} />
+			</Provider>,
+		);
+
+		expect(screen.getByText("正在启动会话")).toBeTruthy();
 	});
 });

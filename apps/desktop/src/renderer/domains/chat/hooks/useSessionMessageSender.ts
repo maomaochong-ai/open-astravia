@@ -10,6 +10,7 @@ import { deriveSkillNames, MultipleSceneReferencesError, prepareInputPrompt } fr
 import { perfSendComplete, perfSendMark } from "@shared/lib/perf-send";
 import {
 	activeInputActionIdsAtom,
+	activeInputDraftKeyAtom,
 	activeSessionAtom,
 	activeSessionStreamingAtom,
 	appshotAttachmentAtom,
@@ -28,6 +29,7 @@ import {
 	projectsAtom,
 	promptAttachmentAtom,
 	promptSuggestionsAtom,
+	pushSessionInputHistory,
 	reasoningByModelAtom,
 	recordSentInputAndClearDraft,
 	retryProgressAtom,
@@ -98,6 +100,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 	const sendMessage = useCallback(
 		async (overrideText?: string, options?: SendMessageOptions): Promise<SendMessageResult | undefined> => {
 			const interactionId = options?.interactionId;
+			const stagedInput = options?.stagedInput;
 			// 目标会话读共享 atom（store 直读，不走 React 闭包）：openSession 同步写入
 			// activeSessionAtom，同一 tick 内「创建会话+发送」的组合仍读得到新值。不能读
 			// 实例级 activeSessionRef——useSessionManager 同时挂载多份（RootLayout /
@@ -106,15 +109,15 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			// 激活会话可能相差很久：插件派活曾因此落进另一个 workspace 的陈年会话。
 			const session = getDefaultStore().get(activeSessionAtom);
 			// 不订阅输入 atom；调用时读取还能覆盖“先写草稿、同一流程立即发送”的场景。
-			const inputValue = getDefaultStore().get(inputValueAtom);
-			const attachedImages = attachedImagesRef.current;
-			const mentionedFiles = mentionedFilesRef.current;
-			const appshot = appshotRef.current;
-			const selectedModel = selectedModelRef.current;
+			const inputValue = stagedInput?.rawText ?? getDefaultStore().get(inputValueAtom);
+			const attachedImages = stagedInput?.attachedImages ?? attachedImagesRef.current;
+			const mentionedFiles = stagedInput?.mentionedFiles ?? mentionedFilesRef.current;
+			const appshot = stagedInput ? stagedInput.appshot : appshotRef.current;
+			const selectedModel = stagedInput ? stagedInput.selectedModel : selectedModelRef.current;
 			// overrideText：来自输入预测建议（点击 bubble / 空输入回车按 placeholder 发送），
 			// 作为独立 prompt 直发，不带技能 / @文件前缀，也不消费当前草稿与附图。
 			const override = typeof overrideText === "string" ? overrideText.trim() : "";
-			const hasOverride = override.length > 0;
+			const hasOverride = stagedInput?.hasOverride ?? override.length > 0;
 			if (
 				!session?.runtimeId ||
 				(!hasOverride &&
@@ -137,7 +140,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				});
 			}
 			perfSendMark("sender-enter", interactionId);
-			const rawText = hasOverride ? override : inputValue.trim();
+			const rawText = stagedInput?.rawText ?? (hasOverride ? override : inputValue.trim());
 			let preparedInput: ReturnType<typeof prepareInputPrompt>;
 			try {
 				preparedInput = prepareInputPrompt(rawText);
@@ -185,6 +188,14 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			}
 			const attachments = [...attachmentsByPath.values()];
 			const text = hasOverride ? rawText : preparedInput.text;
+			if (stagedInput && imagePaths.length > 0) {
+				const stagedId = stagedInput.optimisticMessage.id;
+				setChatMessages((messages) =>
+					messages.map((message) =>
+						message.id === stagedId ? { ...message, attachments, images: undefined } : message,
+					),
+				);
+			}
 			recordInputContextUsed({
 				files: hasOverride ? [] : mentionedFiles,
 				images: images ?? [],
@@ -198,12 +209,18 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				}
 			}
 			if (!hasOverride) {
-				// 记入本作用域历史并清草稿（含 input / skill / appshot 工作集与 map 条目）。
+				// 普通发送清理当前草稿；提前上屏的新会话首条只补记历史。
 				perfSendMark("clear-draft-start", interactionId);
-				recordSentInputAndClearDraft(rawText);
+				if (stagedInput) {
+					// 用户可能已在 Runtime 创建期间输入下一条消息。首条只补记历史，
+					// 不得清掉当前编辑器中后来产生的新草稿与附件。
+					pushSessionInputHistory(getDefaultStore().get(activeInputDraftKeyAtom), rawText);
+				} else {
+					recordSentInputAndClearDraft(rawText);
+					setAttachedImages([]);
+					setMentionedFiles([]);
+				}
 				perfSendMark("clear-draft-end", interactionId);
-				setAttachedImages([]);
-				setMentionedFiles([]);
 			}
 			// 最后一条用户消息重编辑：提交时先中止当前生成，再删除旧消息及其回复子树；
 			// 随后的正常 prompt 从原 parent 继续，因此不会创建会话内分支。
@@ -253,7 +270,18 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			// （输入框已在上方清空，符合「入队后清空输入框」语义。）
 			const streaming = pendingEdit ? false : getDefaultStore().get(isStreamingAtom);
 			let optimisticUserMsgId: string | undefined;
-			if (!streaming) {
+			if (!streaming && stagedInput) {
+				optimisticUserMsgId = stagedInput.optimisticMessage.id;
+				rememberOptimisticUserMessage(
+					session.runtimeId,
+					{
+						...stagedInput.optimisticMessage,
+						attachments,
+						...(imagePaths.length > 0 ? { images: undefined } : {}),
+					},
+					[],
+				);
+			} else if (!streaming) {
 				// 失败重发去重（ADR-0060）：上一轮以错误收尾且最后一条用户消息与本次
 				// 文本相同时，先 replaceLastUserMessage 回退再发，避免 jsonl 双份 user
 				// 记录、也避免下一轮模型上下文里出现两条相同消息。

@@ -17,6 +17,8 @@ export function DefaultChatView({
 	onAbort,
 	onSend,
 	onSendQueued,
+	cwdOverride,
+	sessionPendingLabel,
 }: DefaultChatViewProps): JSX.Element {
 	return (
 		<PerfSendProfiler id="ChatView(total)">
@@ -31,6 +33,7 @@ export function DefaultChatView({
 							messages={model.messages}
 							isStreaming={model.isStreaming}
 							sessionId={model.sessionId}
+							pendingLabel={sessionPendingLabel}
 							onSend={onSend}
 							onAbort={onAbort}
 						/>
@@ -38,7 +41,13 @@ export function DefaultChatView({
 					{/* Drop target lives on the input card inside InputBar (not outer padding). */}
 					<div className="relative shrink-0">
 						<PerfSendProfiler id="InputBar">
-							<InputBar onSend={onSend} onAbort={onAbort} onSendQueued={onSendQueued} />
+							<InputBar
+								onSend={onSend}
+								onAbort={onAbort}
+								onSendQueued={onSendQueued}
+								cwdOverride={cwdOverride}
+								sendDisabled={sessionPendingLabel !== undefined}
+							/>
 						</PerfSendProfiler>
 					</div>
 				</div>

@@ -245,6 +245,16 @@ export interface ActiveSession {
 	parentEntryId?: string;
 }
 
+/**
+ * Renderer-only state while a brand-new session is being created. It keeps the
+ * chat route renderable before a runtimeId exists; runtime-bound features must
+ * continue to use {@link activeSessionAtom} as their readiness boundary.
+ */
+export interface PendingSessionCreation {
+	cwd: string;
+	interactionId: string;
+}
+
 /** After opening a parent session from a fork banner, scroll to this entry. */
 export interface PendingScrollToEntry {
 	entryId: string;
@@ -339,6 +349,7 @@ export const pendingMessageEditAtom = atom<PendingMessageEdit | null>(null);
 export const inputValueAtom = atom<string>("");
 export const attachedImagesAtom = atom<AttachedImage[]>([]);
 export const activeSessionAtom = atom<ActiveSession | null>(null);
+export const pendingSessionCreationAtom = atom<PendingSessionCreation | null>(null);
 
 const LAST_ACTIVE_SESSION_STORAGE_KEY = "vetta-last-active-session";
 
@@ -554,6 +565,26 @@ export interface OpenSessionOptions {
 	interactionId?: string;
 	/** Runs once the event subscription is live, before nonessential Session hydration finishes. */
 	onPromptReady?: () => void;
+	/**
+	 * For a new session, render the chat route and yield a paint before starting
+	 * runtime creation. Existing-session opens ignore this option.
+	 */
+	navigateBeforeCreate?: boolean;
+	/** Keep a caller-staged optimistic message instead of clearing the message list. */
+	preserveMessagesBeforeCreate?: boolean;
+	/** Lets a staged new-session send restore its input snapshot if creation fails. */
+	onCreateError?: (error: unknown) => void;
+}
+
+/** Immutable input captured before a new session has a runtimeId. */
+export interface StagedSendInput {
+	rawText: string;
+	hasOverride: boolean;
+	attachedImages: AttachedImage[];
+	mentionedFiles: MentionedFile[];
+	appshot: AppshotAttachment | null;
+	selectedModel: string | null;
+	optimisticMessage: ChatMessage;
 }
 
 /** Global callback to open a session (set by useSessionManager, consumed by other pages) */
@@ -584,6 +615,8 @@ export interface SendMessageOptions {
 	settingsAssistTabId?: string;
 	/** 插件 sendPrompt 路径：不清用户输入预测、不消费用户挂的 promptAttachment（ADR-0060）。 */
 	source?: "plugin";
+	/** New-session input already rendered optimistically before runtime creation. */
+	stagedInput?: StagedSendInput;
 }
 
 /** sendMessage 的回执（ADR-0060）：streaming 中入 kernel 队列时返回 queued + 条目 id。 */

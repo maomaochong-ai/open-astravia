@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { OpenSessionOptions, SessionExecutionMode } from "@shared/store/atoms";
 import { getDefaultStore } from "jotai";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -50,7 +51,12 @@ vi.mock("../services/context-composition-cache", () => ({
 }));
 
 interface SessionManagerProbe {
-	openSession(cwd: string, sessionPath?: string): Promise<void>;
+	openSession(
+		cwd: string,
+		sessionPath?: string,
+		executionMode?: SessionExecutionMode,
+		options?: OpenSessionOptions,
+	): Promise<void>;
 	sendMessage(): Promise<unknown>;
 }
 
@@ -195,4 +201,89 @@ it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户�
 
 	pendingPrompt?.resolve(undefined);
 	await sendPromise;
+});
+
+it("新会话先导航并完成一帧绘制，再创建 runtime，同时保留暂存消息", { timeout: 10_000 }, async () => {
+	const { activeSessionAtom, chatMessagesAtom, pendingSessionCreationAtom } = await import("@shared/store/atoms");
+	const { useSessionManager } = await import("./useSessionManager");
+	const store = getDefaultStore();
+	const frames: FrameRequestCallback[] = [];
+	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+		frames.push(callback);
+		return frames.length;
+	});
+	const onPromptReady = vi.fn();
+	const sessionApi = {
+		autoTitle: vi.fn(),
+		create: vi.fn(async () => ({
+			cwd,
+			sessionId: "runtime-new",
+			sessionPath: firstCanonicalPath,
+		})),
+		getFullHistory: vi.fn(async () => []),
+		getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
+		getSessionPath: vi.fn(async () => firstCanonicalPath),
+		getState: vi.fn(async () => ({
+			activeToolNames: [],
+			contextPercent: null,
+			contextWindow: 128_000,
+			executionMode: "sandbox" as const,
+			isStreaming: false,
+			messageCount: 0,
+			model: null,
+			scenario: "project" as const,
+		})),
+		prompt: vi.fn(),
+		subscribe: vi.fn(async () => vi.fn()),
+		updateSettings: vi.fn(async () => undefined),
+	};
+	Object.defineProperty(window, "vetta", {
+		configurable: true,
+		value: {
+			batchTasks: { resumeTaskWithText: vi.fn() },
+			config: { get: vi.fn() },
+			dialog: { persistImages: vi.fn() },
+			session: sessionApi,
+		},
+	});
+	store.set(activeSessionAtom, null);
+	store.set(chatMessagesAtom, [{ id: "staged-user", role: "user", text: "hello" }]);
+
+	function Probe() {
+		manager = useSessionManager();
+		return null;
+	}
+
+	await act(async () => {
+		root = createRoot(container as HTMLDivElement);
+		root.render(createElement(Probe));
+	});
+
+	let opening: Promise<void> | undefined;
+	await act(async () => {
+		opening = manager?.openSession(cwd, undefined, "sandbox", {
+			navigateBeforeCreate: true,
+			preserveMessagesBeforeCreate: true,
+			onPromptReady,
+			interactionId: "interaction-new",
+		});
+		await Promise.resolve();
+	});
+
+	expect(mocks.navigate).toHaveBeenCalledWith({ to: "/" });
+	expect(sessionApi.create).not.toHaveBeenCalled();
+	expect(store.get(pendingSessionCreationAtom)).toEqual({ cwd, interactionId: "interaction-new" });
+	expect(store.get(chatMessagesAtom)).toEqual([{ id: "staged-user", role: "user", text: "hello" }]);
+
+	await act(async () => {
+		frames.shift()?.(0);
+		frames.shift()?.(16);
+		await opening;
+	});
+
+	expect(sessionApi.create).toHaveBeenCalledOnce();
+	expect(onPromptReady).toHaveBeenCalledOnce();
+	expect(store.get(pendingSessionCreationAtom)).toBeNull();
+	expect(store.get(activeSessionAtom)?.runtimeId).toBe("runtime-new");
+	expect(store.get(chatMessagesAtom)).toEqual([{ id: "staged-user", role: "user", text: "hello" }]);
 });

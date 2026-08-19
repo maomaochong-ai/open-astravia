@@ -244,6 +244,7 @@
 	},
 	"chatView": {
 		"defaultSessionTitle": "Vetta 会话",
+		"startingSession": "正在启动会话",
 		"exportButton": {
 			"title": "导出完整会话 HTML"
 		},

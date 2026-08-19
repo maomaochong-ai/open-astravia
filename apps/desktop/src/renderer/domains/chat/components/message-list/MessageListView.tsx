@@ -33,11 +33,13 @@ export function MessageListView({
 	onAbort,
 	onSend,
 	sessionId = null,
+	pendingLabel,
 }: {
 	model: MessageListModel;
 	onAbort: MessageListProps["onAbort"];
 	onSend: MessageListProps["onSend"];
 	sessionId?: MessageListProps["sessionId"];
+	pendingLabel?: MessageListProps["pendingLabel"];
 }): JSX.Element {
 	const {
 		isCompacting,
@@ -125,11 +127,12 @@ export function MessageListView({
 					isCompacting={isCompacting}
 					showWaiting={showWaiting}
 					showWorkflows={sessionId != null}
+					pendingLabel={pendingLabel}
 				/>
 				{onSend && <SuggestionBubbles onSend={onSend} />}
 			</div>
 		),
-		[isCompacting, showWaiting, onSend, sessionId],
+		[isCompacting, showWaiting, onSend, pendingLabel, sessionId],
 	);
 	const components = useMemo(
 		() => ({ List: VirtuosoListContainer, Footer: footer }),

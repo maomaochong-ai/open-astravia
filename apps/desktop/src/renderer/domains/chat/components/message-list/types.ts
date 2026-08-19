@@ -9,6 +9,7 @@ export interface MessageListProps {
 	messages: ChatMessage[];
 	isStreaming: boolean;
 	sessionId?: string | null;
+	pendingLabel?: string;
 	onSend?: (overrideText?: string) => Promise<void>;
 	onAbort?: () => void;
 }

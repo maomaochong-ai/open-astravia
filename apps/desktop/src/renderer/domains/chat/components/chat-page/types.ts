@@ -1,5 +1,7 @@
 export interface ChatPageModel {
 	hasActiveSession: boolean;
+	pendingCwd?: string;
+	sessionPendingLabel?: string;
 }
 
 export interface ChatPageViewProps {

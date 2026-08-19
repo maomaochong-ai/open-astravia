@@ -15,6 +15,7 @@ import {
 	pageHeaderTitleAtom,
 	pageHeaderTitleBadgeAtom,
 	pageHeaderTitleHiddenAtom,
+	pendingSessionCreationAtom,
 	promptAttachmentAtom,
 	sessionExecutionModeAtom,
 	switchSessionInputDraftScope,
@@ -98,6 +99,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
 	const setContextUsage = useSetAtom(contextUsageAtom);
 	const setActiveSession = useSetAtom(activeSessionAtom);
+	const setPendingSessionCreation = useSetAtom(pendingSessionCreationAtom);
 	const setLastActiveSession = useSetAtom(lastActiveSessionAtom);
 	const setPromptAttachment = useSetAtom(promptAttachmentAtom);
 	const setCurrentScenario = useSetAtom(currentScenarioAtom);
@@ -170,6 +172,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		setContextUsage(null);
 		// 清掉 activeSession，避免 InputBar 的 todo 抽屉等仍读取旧会话状态。
 		setActiveSession(null);
+		setPendingSessionCreation(null);
 		// 用户主动进入新会话页后，不应在后续刷新/回到根路由时恢复旧会话。
 		setLastActiveSession(null);
 	}, [
@@ -180,6 +183,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		setActiveToolNames,
 		setContextUsage,
 		setActiveSession,
+		setPendingSessionCreation,
 		setLastActiveSession,
 	]);
 

@@ -22,6 +22,7 @@ import {
 	type OpenSessionOptions,
 	type Project,
 	pendingMessageEditAtom,
+	pendingSessionCreationAtom,
 	projectsAtom,
 	retryProgressAtom,
 	type SessionExecutionMode,
@@ -66,8 +67,20 @@ function getProjects(): Project[] {
 	return getDefaultStore().get(projectsAtom);
 }
 
+function waitForCommittedPaint(): Promise<void> {
+	if (typeof window.requestAnimationFrame !== "function") {
+		return new Promise((resolve) => window.setTimeout(resolve, 0));
+	}
+	return new Promise((resolve) => {
+		window.requestAnimationFrame(() => {
+			window.requestAnimationFrame(() => resolve());
+		});
+	});
+}
+
 export function useSessionOpener(): SessionOpenerController {
 	const setActiveSession = useSetAtom(activeSessionAtom);
+	const setPendingSessionCreation = useSetAtom(pendingSessionCreationAtom);
 	const setChatMessages = useSetAtom(chatMessagesAtom);
 	const setActiveSessionStreaming = useSetAtom(activeSessionStreamingAtom);
 	const navigate = useNavigate();
@@ -119,6 +132,20 @@ export function useSessionOpener(): SessionOpenerController {
 			// 返回后被发现并立即清理自己刚建好的 IPC 订阅，避免泄漏。
 			const myOpenToken = bumpOpenSessionToken();
 			const shouldNavigate = options?.navigate !== false;
+			const navigateBeforeCreate =
+				sessionPath === undefined && shouldNavigate && options?.navigateBeforeCreate === true;
+			if (navigateBeforeCreate) {
+				setPendingSessionCreation({ cwd, interactionId: interactionId ?? "" });
+				perfSendMark("session-route-start", interactionId);
+				await navigate({ to: "/" });
+				perfSendMark("session-route-ready", interactionId);
+				await waitForCommittedPaint();
+				perfSendMark("session-route-painted", interactionId);
+				if (myOpenToken !== getOpenSessionToken()) {
+					setPendingSessionCreation(null);
+					return;
+				}
+			}
 			// 切换 session 前清掉内嵌文件预览（指向旧 cwd 的某个具体文件），但
 			// **保留**活动面板的展开状态：用户在上一个 session 打开过 ActivityPanel
 			// 后，切到新 session 仍维持打开，避免每次切换都要重新点开。
@@ -138,7 +165,7 @@ export function useSessionOpener(): SessionOpenerController {
 			setRetryProgress(null);
 			// Clear messages immediately so the user sees the switch take effect
 			// instead of staring at the old session while history loads.
-			setChatMessages([]);
+			if (!options?.preserveMessagesBeforeCreate) setChatMessages([]);
 			getDefaultStore().set(pendingMessageEditAtom, null);
 			// 切会话先把激活工具集置未知（null）→ badge 回退显示，等 getState 回填真实集合。
 			setActiveToolNames(null);
@@ -187,7 +214,20 @@ export function useSessionOpener(): SessionOpenerController {
 				});
 				setActiveSession(null);
 				activeSessionRef.current = null;
-				if (shouldNavigate) void navigate({ to: "/" });
+				if (navigateBeforeCreate) {
+					try {
+						options?.onCreateError?.(error);
+					} catch (restoreError) {
+						console.error("[useSessionOpener] staged input restore failed:", restoreError);
+					}
+					setPendingSessionCreation(null);
+					void navigate({
+						to: "/new-session/$cwd",
+						params: { cwd: encodeURIComponent(cwd) },
+					});
+				} else if (shouldNavigate) {
+					void navigate({ to: "/" });
+				}
 				return;
 			}
 			const { sessionId } = createResult;
@@ -205,7 +245,8 @@ export function useSessionOpener(): SessionOpenerController {
 			const earlySessionInfo = { cwd: effectiveCwd, sessionPath: canonicalSessionPath, runtimeId: sessionId };
 			setActiveSession(earlySessionInfo);
 			activeSessionRef.current = earlySessionInfo;
-			if (shouldNavigate) {
+			if (navigateBeforeCreate) setPendingSessionCreation(null);
+			if (shouldNavigate && !navigateBeforeCreate) {
 				void navigate({ to: "/" });
 			}
 			const resolvedSessionPath =
@@ -430,6 +471,7 @@ export function useSessionOpener(): SessionOpenerController {
 		[
 			setChatMessages,
 			setActiveSession,
+			setPendingSessionCreation,
 			setActiveSessionStreaming,
 			setIsCompacting,
 			setRetryProgress,

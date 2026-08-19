@@ -9,5 +9,13 @@ export function ChatPageView({
 }: ChatPageViewProps): JSX.Element | null {
 	if (!model.hasActiveSession) return null;
 
-	return <ChatView onSend={onSend} onAbort={onAbort} onSendQueued={onSendQueued} />;
+	return (
+		<ChatView
+			onSend={onSend}
+			onAbort={onAbort}
+			onSendQueued={onSendQueued}
+			cwdOverride={model.pendingCwd}
+			sessionPendingLabel={model.sessionPendingLabel}
+		/>
+	);
 }

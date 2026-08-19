@@ -1,6 +1,7 @@
 import { perfSendBegin, perfSendMark } from "@shared/lib/perf-send";
 import type { OpenSessionOptions, SendMessageOptions, SessionExecutionMode } from "@shared/store/atoms";
 import { useCallback, useRef } from "react";
+import { restoreStagedNewSessionSend, stageNewSessionSend } from "../../services/staged-new-session-send";
 import type { SendInteractionContext } from "../input-bar/types";
 
 interface NewSessionSendOptions {
@@ -37,10 +38,15 @@ export function useNewSessionSend(options: NewSessionSendOptions): {
 				// 准备阶段也在闸门内：连点两下发送不会创建出两个项目。
 				const targetCwd = prepareCwd ? await prepareCwd() : cwd;
 				if (!targetCwd) return;
+				const stagedInput = stageNewSessionSend(overrideText, interactionId);
+				if (!stagedInput) return;
 				await openSession(targetCwd, undefined, executionMode, {
 					interactionId,
+					navigateBeforeCreate: true,
+					preserveMessagesBeforeCreate: true,
+					onCreateError: () => restoreStagedNewSessionSend(stagedInput),
 					onPromptReady: () => {
-						void sendMessage(overrideText, { interactionId }).catch((error: unknown) => {
+						void sendMessage(undefined, { interactionId, stagedInput }).catch((error: unknown) => {
 							console.error("[useNewSessionSend] prompt-ready send failed", error);
 						});
 					},

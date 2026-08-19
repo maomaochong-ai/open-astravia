@@ -22,6 +22,7 @@ import {
 	focusInputRequestAtom,
 	lastActiveSessionAtom,
 	pendingQuestionsAtom,
+	pendingSessionCreationAtom,
 	projectsAtom,
 	sandboxPermissionDrawerAtom,
 	scheduledSessionPathsAtom,
@@ -39,6 +40,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 	const setSandboxPermissionDrawer = useSetAtom(sandboxPermissionDrawerAtom);
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
 	const activeSession = useAtomValue(activeSessionAtom);
+	const pendingSessionCreation = useAtomValue(pendingSessionCreationAtom);
 	const setActiveSession = useSetAtom(activeSessionAtom);
 	const [lastActiveSession, setLastActiveSession] = useAtom(lastActiveSessionAtom);
 	const matchesForGuard = useMatches();
@@ -107,11 +109,11 @@ export function useRootLayoutModel(): RootLayoutModel {
 	// 没有待恢复会话时提前加载 NewSession 路由代码；侧栏项目/会话列表可继续独立加载。
 	// 页面本身仍等路由守卫确认后再挂载，避免其初始化 effect 清除待恢复记录。
 	useEffect(() => {
-		if (currentPath !== "/" || activeSession || lastActiveSession) return;
+		if (currentPath !== "/" || activeSession || pendingSessionCreation || lastActiveSession) return;
 		void loadNewSessionPage().catch((error: unknown) => {
 			console.warn("[RootLayout] preload new session page failed", error);
 		});
-	}, [currentPath, activeSession, lastActiveSession]);
+	}, [currentPath, activeSession, pendingSessionCreation, lastActiveSession]);
 
 	// 刷新根路由时先用持久化的 cwd + sessionPath 重建 runtime session。
 	// 持久化定位信息已足够恢复，无需等待默认 cwd 或侧栏历史列表完成加载。
@@ -121,7 +123,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 			return;
 		}
 		sessionRestoreAttemptedRef.current = true;
-		if (activeSession || !lastActiveSession) {
+		if (activeSession || pendingSessionCreation || !lastActiveSession) {
 			setSessionRestoreState("complete");
 			return;
 		}
@@ -133,18 +135,32 @@ export function useRootLayoutModel(): RootLayoutModel {
 				setLastActiveSession(null);
 			})
 			.finally(() => setSessionRestoreState("complete"));
-	}, [currentPath, activeSession, lastActiveSession, openSession, setActiveSession, setLastActiveSession]);
+	}, [
+		currentPath,
+		activeSession,
+		pendingSessionCreation,
+		lastActiveSession,
+		openSession,
+		setActiveSession,
+		setLastActiveSession,
+	]);
 
 	// 路由守卫：仅在确认没有可恢复会话后，才跳到默认「对话」项目的 NewSession 页。
 	useEffect(() => {
-		if (currentPath !== "/" || activeSession || !defaultConversationCwd || sessionRestoreState !== "complete") {
+		if (
+			currentPath !== "/" ||
+			activeSession ||
+			pendingSessionCreation ||
+			!defaultConversationCwd ||
+			sessionRestoreState !== "complete"
+		) {
 			return;
 		}
 		void navigate({
 			to: "/new-session/$cwd",
 			params: { cwd: encodeURIComponent(defaultConversationCwd) },
 		});
-	}, [currentPath, activeSession, defaultConversationCwd, sessionRestoreState, navigate]);
+	}, [currentPath, activeSession, pendingSessionCreation, defaultConversationCwd, sessionRestoreState, navigate]);
 
 	// 上报「聊天页当前所在 session」给主进程：仅在聊天路由 "/" 且有 activeSession
 	// 时报其 sessionPath，否则 null。主进程据此 + 窗口聚焦态做系统通知抑制判定。
@@ -426,6 +442,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 		routePending:
 			currentPath === "/" &&
 			!activeSession &&
+			!pendingSessionCreation &&
 			(sessionRestoreState !== "complete" || Boolean(defaultConversationCwd)),
 		sidebarCollapsed,
 	};

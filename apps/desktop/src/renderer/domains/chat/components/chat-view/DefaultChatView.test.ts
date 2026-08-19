@@ -3,6 +3,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { DefaultChatView } from "./DefaultChatView";
 
+const capturedProps = vi.hoisted(() => ({
+	inputBar: undefined as Record<string, unknown> | undefined,
+	messageList: undefined as Record<string, unknown> | undefined,
+}));
+
 vi.mock("@domains/activity-panel/components/ActivityPanel", () => ({
 	ActivityPanel: () => createElement("aside", { "data-testid": "activity-panel" }),
 }));
@@ -12,11 +17,17 @@ vi.mock("../ChatExportHost", () => ({
 }));
 
 vi.mock("../InputBar", () => ({
-	InputBar: () => createElement("div", { "data-testid": "input-bar" }),
+	InputBar: (props: Record<string, unknown>) => {
+		capturedProps.inputBar = props;
+		return createElement("div", { "data-testid": "input-bar" });
+	},
 }));
 
 vi.mock("../MessageList", () => ({
-	MessageList: () => createElement("div", { "data-testid": "message-list" }),
+	MessageList: (props: Record<string, unknown>) => {
+		capturedProps.messageList = props;
+		return createElement("div", { "data-testid": "message-list" });
+	},
 }));
 
 describe("DefaultChatView layout", () => {
@@ -57,5 +68,42 @@ describe("DefaultChatView layout", () => {
 
 		expect(messageList).toBeLessThan(inputBar);
 		expect(inputBar).toBeLessThan(activityPanel);
+	});
+
+	it("routes session startup status to the message list while keeping the input button icon-only", () => {
+		renderToStaticMarkup(
+			createElement(DefaultChatView, {
+				actions: {
+					finishExport: vi.fn(),
+					openExport: vi.fn(),
+					togglePanel: vi.fn(),
+					togglePin: vi.fn(async () => {}),
+				},
+				model: {
+					exporting: false,
+					exportTitle: "Session",
+					header: {
+						exportDisabled: false,
+						exporting: false,
+						exportTitle: "Export",
+						panelOpen: false,
+						panelTitle: "Panel",
+						pinTitle: "Pin",
+						pinned: false,
+					},
+					isStreaming: false,
+					messages: [],
+					sessionId: null,
+				},
+				onAbort: vi.fn(async () => {}),
+				onSend: vi.fn(async () => {}),
+				onSendQueued: vi.fn(async () => {}),
+				sessionPendingLabel: "正在启动会话",
+			}),
+		);
+
+		expect(capturedProps.messageList?.pendingLabel).toBe("正在启动会话");
+		expect(capturedProps.inputBar?.sendDisabled).toBe(true);
+		expect(capturedProps.inputBar?.sendPending).toBeUndefined();
 	});
 });

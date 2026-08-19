@@ -10,10 +10,12 @@ import { WorkflowFooterItems } from "./WorkflowFooterItems";
 
 export const MessageListFooter = memo(function MessageListFooter({
 	isCompacting,
+	pendingLabel,
 	showWaiting,
 	showWorkflows = false,
 }: {
 	isCompacting: boolean;
+	pendingLabel?: string;
 	showWaiting: boolean;
 	/** Only the live chat list shows workflow items (not read-only viewers). */
 	showWorkflows?: boolean;
@@ -24,6 +26,7 @@ export const MessageListFooter = memo(function MessageListFooter({
 	return (
 		<MessageListFooterView
 			compactionLabel={t("messageList.compactionIndicator")}
+			pendingLabel={pendingLabel}
 			retryLabel={
 				retryProgress
 					? t("messageList.retryIndicator", {
