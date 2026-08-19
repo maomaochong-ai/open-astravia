@@ -8,6 +8,10 @@
 
 ### Fixed
 
+- 宿主把 Coding Agent 打进自己的 bundle 时（Electron `app.asar`），`VERSION` 的清单查找会命中宿主的
+  `package.json`，模块求值阶段直接抛 `Unexpected coding-agent package name` 导致打包后的 Desktop 主进程
+  启动即崩溃。现在清单名与本包不一致或读取失败时降级为 `0.0.0`（仅影响 MCP `clientVersion` 与版本展示），
+  不再中断宿主启动。
 - 自动上下文压缩现在为阈值触发、熔断器、凭证缺失、保留尾部无可压缩前缀、Hook/Extension 拦截与摘要失败
   统一报告结构化生命周期诊断，避免超过阈值后静默不压缩且无法定位原因。
 - 自动重试取消现在覆盖整次重试操作，消除 `auto_retry_start` 与 backoff controller 建立之间的竞态；同时遵守 Provider 的 `Retry-After` 最小等待时间，超出用户配置等待上限时停止自动重试。
