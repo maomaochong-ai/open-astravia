@@ -4,6 +4,7 @@ import { motion, useMotionValue, useReducedMotion } from "motion/react";
 import type { SyntheticEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useMascotSlot } from "./useMascotSlot";
 
 const FERRET_VIDEO_SOURCES = {
 	blink: "./new-session/ferret-blink.webm",
@@ -33,6 +34,8 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 	const [action, setAction] = useState<MascotAction>(() => pickRandomAction());
 	const [mascotVisible, setMascotVisible] = useState(readMascotVisible);
 	const [playing, setPlaying] = useState(false);
+	// 页面被压窄（窗口小、活动面板/侧边栏展开）时插槽放不下素材，整块吉祥物连同显隐按钮一起不渲染。
+	const slot = useMascotSlot();
 
 	const handleComplete = useCallback(() => {
 		setAction((current) => pickRandomAction(current));
@@ -43,14 +46,14 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 	}, []);
 
 	useEffect(() => {
-		if (!mascotVisible || !autoplay || reduceMotion || playing) return;
+		if (!slot.visible || !mascotVisible || !autoplay || reduceMotion || playing) return;
 
 		const timer = window.setTimeout(() => {
 			setPlaying(true);
 		}, randomActionInterval());
 
 		return () => window.clearTimeout(timer);
-	}, [autoplay, mascotVisible, playing, reduceMotion]);
+	}, [autoplay, mascotVisible, playing, reduceMotion, slot.visible]);
 
 	const handleVisibilityToggle = useCallback(() => {
 		setMascotVisible((current) => {
@@ -61,7 +64,7 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 		setPlaying(false);
 	}, []);
 
-	const canPlay = mascotVisible && autoplay && !reduceMotion;
+	const canPlay = slot.visible && mascotVisible && autoplay && !reduceMotion;
 	const actionPlaying = canPlay && playing;
 
 	return (
@@ -73,74 +76,80 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 			// 再往下 19px：素材自带底部留白，这个量让爪子底缘刚好碰到输入框顶边、不进框 → 75px。
 			// 选项行尺寸变了要同步这里。
 			className="pointer-events-none absolute inset-x-0 -bottom-[75px] z-30 h-20 select-none"
+			ref={slot.ref}
 		>
-			<Button
-				aria-label={t(
-					mascotVisible ? "newSession.mascot.hideMascot" : "newSession.mascot.showMascot",
-				)}
-				className={cn(
-					"no-drag pointer-events-auto absolute right-2 z-20 rounded-md border border-border/40 bg-background/80 text-muted-foreground backdrop-blur-sm transition-[top] duration-200",
-					mascotVisible ? "-top-5" : "top-11",
-				)}
-				onClick={handleVisibilityToggle}
-				size="icon-xs"
-				variant="ghost"
-			>
-				<span
-					aria-hidden
-					className={cn(
-						"icon-[solar--alt-arrow-down-linear] h-3 w-3 transition-transform duration-200",
-						mascotVisible && "rotate-180",
-					)}
-				/>
-			</Button>
-
-			{!mascotVisible ? null : actionPlaying ? (
-				action === "crawl" ? (
-					<CrawlPass onComplete={handleComplete} />
-				) : (
-					<video
-						aria-hidden="true"
-						autoPlay
-						className="pointer-events-none absolute right-0 -bottom-6 h-36 w-36 object-contain object-center"
-						draggable={false}
-						muted
-						onEnded={handleComplete}
-						playsInline
-						preload="auto"
-						src={FERRET_VIDEO_SOURCES[action]}
-					/>
-				)
-			) : (
+			{/* 插槽放不下素材时整块吉祥物（含显隐按钮）不渲染，容器仍在，变宽后自动恢复。 */}
+			{slot.visible ? (
 				<>
-					<video
-						aria-hidden="true"
-						// 三个素材首帧的地线实测一致（底部留白 169/576 ≈ 渲染后 42px），
-						// 统一偏移：容器底在输入框顶下 19px（容器 -bottom-[75px] − 56px 行高），
-						// 42-19≈23px → -bottom-6 时爪子刚好贴边。按动作分档会让随机初始动作
-						// 在「悬空/进框」之间跳。
-						className="pointer-events-none absolute right-0 -bottom-6 h-36 w-36 object-contain object-center"
-						draggable={false}
-						muted
-						playsInline
-						preload="auto"
-						src={FERRET_VIDEO_SOURCES[action]}
-					/>
-					{canPlay ? (
-						<Button
-							aria-label={t("newSession.mascot.playOnce")}
+					<Button
+						aria-label={t(
+							mascotVisible ? "newSession.mascot.hideMascot" : "newSession.mascot.showMascot",
+						)}
+						className={cn(
+							"no-drag pointer-events-auto absolute right-2 z-20 rounded-md border border-border/40 bg-background/80 text-muted-foreground backdrop-blur-sm transition-[top] duration-200",
+							mascotVisible ? "-top-5" : "top-11",
+						)}
+						onClick={handleVisibilityToggle}
+						size="icon-xs"
+						variant="ghost"
+					>
+						<span
+							aria-hidden
 							className={cn(
-								"no-drag pointer-events-auto absolute right-0 z-10 h-20 w-36 bg-transparent p-0 hover:bg-transparent",
-								"-bottom-1",
+								"icon-[solar--alt-arrow-down-linear] h-3 w-3 transition-transform duration-200",
+								mascotVisible && "rotate-180",
 							)}
-							onClick={handlePlayOnce}
-							variant="ghost"
-						>
-							<span className="sr-only">{t("newSession.mascot.playOnce")}</span>
-						</Button>
-					) : null}
+						/>
+					</Button>
+
+					{!mascotVisible ? null : actionPlaying ? (
+						action === "crawl" ? (
+							<CrawlPass onComplete={handleComplete} />
+						) : (
+							<video
+								aria-hidden="true"
+								autoPlay
+								className="pointer-events-none absolute right-0 -bottom-6 h-36 w-36 object-contain object-center"
+								draggable={false}
+								muted
+								onEnded={handleComplete}
+								playsInline
+								preload="auto"
+								src={FERRET_VIDEO_SOURCES[action]}
+							/>
+						)
+					) : (
+						<>
+							<video
+								aria-hidden="true"
+								// 三个素材首帧的地线实测一致（底部留白 169/576 ≈ 渲染后 42px），
+								// 统一偏移：容器底在输入框顶下 19px（容器 -bottom-[75px] − 56px 行高），
+								// 42-19≈23px → -bottom-6 时爪子刚好贴边。按动作分档会让随机初始动作
+								// 在「悬空/进框」之间跳。
+								className="pointer-events-none absolute right-0 -bottom-6 h-36 w-36 object-contain object-center"
+								draggable={false}
+								muted
+								playsInline
+								preload="auto"
+								src={FERRET_VIDEO_SOURCES[action]}
+							/>
+							{canPlay ? (
+								<Button
+									aria-label={t("newSession.mascot.playOnce")}
+									className={cn(
+										"no-drag pointer-events-auto absolute right-0 z-10 h-20 w-36 bg-transparent p-0 hover:bg-transparent",
+										"-bottom-1",
+									)}
+									onClick={handlePlayOnce}
+									variant="ghost"
+								>
+									<span className="sr-only">{t("newSession.mascot.playOnce")}</span>
+								</Button>
+							) : null}
+						</>
+					)}
 				</>
-			)}
+			) : null}
 		</motion.div>
 	);
 }
