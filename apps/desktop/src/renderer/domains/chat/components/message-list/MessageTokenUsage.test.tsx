@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { TooltipProvider } from "@shared/components/ui/tooltip";
 import type { Usage } from "@vetta/ai";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -18,11 +17,12 @@ const labels: Record<string, string> = {
 	"messageList.tokenUsage.title": "本轮 Token",
 	"messageList.tokenUsage.total": "总计",
 	"messageList.tokenUsage.prompt": "Prompt Token",
-	"messageList.tokenUsage.uncachedInput": "未缓存输入",
+	"messageList.tokenUsage.uncachedInput": "输入",
 	"messageList.tokenUsage.output": "输出",
-	"messageList.tokenUsage.cacheRead": "缓存读取",
+	"messageList.tokenUsage.cacheRead": "缓存命中",
 	"messageList.tokenUsage.cacheWrite": "缓存写入",
 	"messageList.tokenUsage.cacheHitRate": "缓存命中率",
+	"messageList.tokenUsage.moreParameters": "更多参数",
 	"messageList.tokenUsage.readCoverage": "读取观测覆盖率",
 	"messageList.tokenUsage.writeCoverage": "写入观测覆盖率",
 	"messageList.tokenUsage.readOnlyReporting": "未上报（只读）",
@@ -66,38 +66,45 @@ vi.mock("react-i18next", () => ({
 import { MessageTokenUsage } from "./MessageTokenUsage";
 
 describe("MessageTokenUsage", () => {
-	it("shows aggregated turn token and cache details on hover", async () => {
+	it("opens the usage panel on click and keeps developer diagnostics collapsed", async () => {
 		const user = userEvent.setup();
 		render(
-			<TooltipProvider>
-				<MessageTokenUsage
-					usages={[
-						usage({
-							input: 20,
-							output: 10,
-							cacheRead: 70,
-							cacheWrite: 10,
-							cacheUsageReporting: "read-write",
-						}),
-						usage({
-							input: 50,
-							output: 20,
-							cacheRead: 50,
-							cacheUsageReporting: "read-only",
-							promptCache: promptCacheDiagnostics(),
-						}),
-					]}
-				/>
-			</TooltipProvider>,
+			<MessageTokenUsage
+				usages={[
+					usage({
+						input: 20,
+						output: 10,
+						cacheRead: 70,
+						cacheWrite: 10,
+						cacheUsageReporting: "read-write",
+					}),
+					usage({
+						input: 50,
+						output: 20,
+						cacheRead: 50,
+						cacheUsageReporting: "read-only",
+						promptCache: promptCacheDiagnostics(),
+					}),
+				]}
+			/>,
 		);
 
-		await user.hover(screen.getByRole("button", { name: "查看本轮 Token 用量" }));
-		const panel = await screen.findByRole("tooltip");
+		const trigger = screen.getByRole("button", { name: "查看本轮 Token 用量" });
+		await user.hover(trigger);
+		expect(screen.queryByRole("dialog")).toBeNull();
+
+		await user.click(trigger);
+		const panel = await screen.findByRole("dialog");
 		expect(within(panel).getByText("本轮 Token")).toBeTruthy();
 		expect(within(panel).getByText("2 次模型调用")).toBeTruthy();
 		expect(within(panel).getByText("230")).toBeTruthy();
-		expect(within(panel).getAllByText("120")).toHaveLength(2);
 		expect(within(panel).getByText("60%")).toBeTruthy();
+		expect(within(panel).queryByText("前缀诊断覆盖")).toBeNull();
+		expect(within(panel).queryByText("读取观测覆盖率")).toBeNull();
+		expect(within(panel).queryByText("pc1:1234567890abcdef")).toBeNull();
+
+		await user.click(within(panel).getByRole("button", { name: "更多参数" }));
+		expect(within(panel).getByText("读取观测覆盖率")).toBeTruthy();
 		expect(within(panel).getByText("100%")).toBeTruthy();
 		expect(within(panel).getByText("50%")).toBeTruthy();
 		expect(within(panel).getByText("前缀诊断覆盖")).toBeTruthy();
@@ -109,31 +116,51 @@ describe("MessageTokenUsage", () => {
 		expect(within(panel).getByText("plugin.router（内容变化）")).toBeTruthy();
 		expect(within(panel).getByText("变化工具")).toBeTruthy();
 		expect(within(panel).getByText("todo_write（新增）、read（内容变化）")).toBeTruthy();
-		// 该面板是数据卡片而非普通提示，不渲染 Tooltip 的箭头菱形。
-		expect(panel.querySelector("svg")).toBeNull();
 	});
 
 	it("explains that write metrics are unavailable for read-only providers", async () => {
 		const user = userEvent.setup();
 		render(
-			<TooltipProvider>
-				<MessageTokenUsage
-					usages={[usage({ input: 20, output: 2, cacheRead: 80, cacheUsageReporting: "read-only" })]}
-				/>
-			</TooltipProvider>,
+			<MessageTokenUsage
+				usages={[usage({ input: 20, output: 2, cacheRead: 80, cacheUsageReporting: "read-only" })]}
+			/>,
 		);
 
-		await user.hover(screen.getByRole("button", { name: "查看本轮 Token 用量" }));
-		const panel = await screen.findByRole("tooltip");
+		await user.click(screen.getByRole("button", { name: "查看本轮 Token 用量" }));
+		const panel = await screen.findByRole("dialog");
+		await user.click(within(panel).getByRole("button", { name: "更多参数" }));
 		expect(within(panel).getByText("未上报（只读）")).toBeTruthy();
 	});
 
-	it("renders nothing when a historical message has no usage", () => {
-		const { container } = render(
-			<TooltipProvider>
-				<MessageTokenUsage usages={[]} />
-			</TooltipProvider>,
+	it("abbreviates large token counts with K and M units", async () => {
+		const user = userEvent.setup();
+		render(
+			<MessageTokenUsage
+				usages={[usage({ input: 1500, output: 2_400_000, cacheRead: 12_000, cacheWrite: 999 })]}
+			/>,
 		);
+
+		await user.click(screen.getByRole("button", { name: "查看本轮 Token 用量" }));
+		const panel = await screen.findByRole("dialog");
+		// 总计与「输出」都落在 2.4M。
+		expect(within(panel).getAllByText("2.4M")).toHaveLength(2);
+		expect(within(panel).getByText("1.5K")).toBeTruthy();
+		expect(within(panel).getByText("12K")).toBeTruthy();
+		expect(within(panel).getByText("999")).toBeTruthy();
+	});
+
+	it("shows a placeholder instead of a zero token count", async () => {
+		const user = userEvent.setup();
+		render(<MessageTokenUsage usages={[usage({ input: 40, output: 10 })]} />);
+
+		await user.click(screen.getByRole("button", { name: "查看本轮 Token 用量" }));
+		const panel = await screen.findByRole("dialog");
+		// 缓存读取与缓存写入均为 0。
+		expect(within(panel).getAllByText("--")).toHaveLength(2);
+	});
+
+	it("renders nothing when a historical message has no usage", () => {
+		const { container } = render(<MessageTokenUsage usages={[]} />);
 		expect(container.childElementCount).toBe(0);
 	});
 });

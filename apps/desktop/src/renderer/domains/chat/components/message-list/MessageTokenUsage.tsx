@@ -1,7 +1,7 @@
 import { Button } from "@shared/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@shared/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@shared/components/ui/popover";
 import { aggregatePromptCacheUsage, type Usage } from "@vetta/ai/protocol";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 interface MessageTokenUsageProps {
@@ -36,6 +36,7 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 			}),
 		[language],
 	);
+	const [detailsExpanded, setDetailsExpanded] = useState(false);
 
 	if (!details) return null;
 	const latestPromptCache = details.latestPromptCache;
@@ -86,13 +87,13 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 	] as const;
 	const partsTotal = parts.reduce((sum, part) => sum + part.value, 0);
 
-	const cacheStats: readonly (readonly [string, string])[] = [
-		[
-			t("messageList.tokenUsage.cacheHitRate"),
-			details.tokenHitRate === null
-				? t("messageList.tokenUsage.unavailable")
-				: percentFormatter.format(details.tokenHitRate),
-		],
+	const hitRateText =
+		details.tokenHitRate === null
+			? t("messageList.tokenUsage.unavailable")
+			: percentFormatter.format(details.tokenHitRate);
+
+	/** 覆盖率与前缀诊断只对开发者有意义，默认折叠避免干扰普通用户。 */
+	const developerRows: readonly (readonly [string, string])[] = [
 		[
 			t("messageList.tokenUsage.readCoverage"),
 			details.readCallCoverage === null
@@ -107,56 +108,56 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 					? t("messageList.tokenUsage.unavailable")
 					: percentFormatter.format(details.writeCallCoverage),
 		],
+		...(latestPromptCache
+			? ([
+					[
+						t("messageList.tokenUsage.diagnosticCoverage"),
+						`${numberFormatter.format(details.diagnosedCalls)}/${numberFormatter.format(details.modelCalls)}`,
+					],
+					[
+						t("messageList.tokenUsage.stableSystemChars"),
+						numberFormatter.format(latestPromptCache.stableSystemPromptLength),
+					],
+					[
+						t("messageList.tokenUsage.volatileSystemChars"),
+						numberFormatter.format(latestPromptCache.volatileSystemPromptLength),
+					],
+					[
+						t("messageList.tokenUsage.historyMessages"),
+						numberFormatter.format(latestPromptCache.historyPrefixMessages),
+					],
+					[t("messageList.tokenUsage.toolCount"), numberFormatter.format(latestPromptCache.toolCount)],
+					...(prefixStatus ? [[t("messageList.tokenUsage.prefixStatus"), prefixStatus] as const] : []),
+					...(changedSegments
+						? [[t("messageList.tokenUsage.changedSegments"), changedSegments] as const]
+						: []),
+					...(changedPromptBlocks
+						? [[t("messageList.tokenUsage.changedPromptBlocks"), changedPromptBlocks] as const]
+						: []),
+					...(changedTools ? [[t("messageList.tokenUsage.changedTools"), changedTools] as const] : []),
+					[t("messageList.tokenUsage.prefixHash"), latestPromptCache.cachePrefixHash],
+				] as const)
+			: []),
 	];
 
-	const diagnosticRows: readonly (readonly [string, string])[] = latestPromptCache
-		? [
-				[
-					t("messageList.tokenUsage.diagnosticCoverage"),
-					`${numberFormatter.format(details.diagnosedCalls)}/${numberFormatter.format(details.modelCalls)}`,
-				],
-				[
-					t("messageList.tokenUsage.stableSystemChars"),
-					numberFormatter.format(latestPromptCache.stableSystemPromptLength),
-				],
-				[
-					t("messageList.tokenUsage.volatileSystemChars"),
-					numberFormatter.format(latestPromptCache.volatileSystemPromptLength),
-				],
-				[
-					t("messageList.tokenUsage.historyMessages"),
-					numberFormatter.format(latestPromptCache.historyPrefixMessages),
-				],
-				[t("messageList.tokenUsage.toolCount"), numberFormatter.format(latestPromptCache.toolCount)],
-				...(prefixStatus ? [[t("messageList.tokenUsage.prefixStatus"), prefixStatus] as const] : []),
-				...(changedSegments ? [[t("messageList.tokenUsage.changedSegments"), changedSegments] as const] : []),
-				...(changedPromptBlocks
-					? [[t("messageList.tokenUsage.changedPromptBlocks"), changedPromptBlocks] as const]
-					: []),
-				...(changedTools ? [[t("messageList.tokenUsage.changedTools"), changedTools] as const] : []),
-				[t("messageList.tokenUsage.prefixHash"), latestPromptCache.cachePrefixHash],
-			]
-		: [];
-
 	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
+		<Popover>
+			<PopoverTrigger asChild>
 				<Button
 					type="button"
 					variant="ghost"
 					size="icon-xs"
-					className="text-muted-foreground/45 hover:text-muted-foreground"
+					className="text-muted-foreground/45 hover:text-muted-foreground data-[state=open]:text-muted-foreground"
 					aria-label={t("messageList.tokenUsage.trigger")}
 				>
-					<span className="icon-[solar--chart-2-linear] h-3.5 w-3.5" aria-hidden />
+					<span className="icon-[solar--chart-square-linear] h-3.5 w-3.5" aria-hidden />
 				</Button>
-			</TooltipTrigger>
-			<TooltipContent
+			</PopoverTrigger>
+			<PopoverContent
 				side="top"
 				align="start"
 				sideOffset={6}
-				showArrow={false}
-				className="w-60 max-w-60 flex-col items-stretch gap-0 rounded-lg border border-border/60 bg-popover p-2.5 text-popover-foreground shadow-md"
+				className="w-64 max-w-64 gap-0 border-border/60 shadow-md"
 			>
 				<div className="flex items-baseline justify-between gap-2">
 					<span className="text-[11px] font-semibold">{t("messageList.tokenUsage.title")}</span>
@@ -164,12 +165,34 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 						{t("messageList.tokenUsage.modelCalls", { count: details.modelCalls })}
 					</span>
 				</div>
-				<div className="mt-1 flex items-baseline gap-1.5">
-					<span className="text-[18px] font-semibold leading-none tabular-nums">
-						{numberFormatter.format(details.totalTokens)}
-					</span>
-					<span className="truncate text-[10px] text-muted-foreground">
-						{t("messageList.tokenUsage.prompt")} {numberFormatter.format(details.promptTokens)}
+				<div className="mt-2 flex items-end justify-between gap-3 rounded-md bg-muted/50 px-2 py-1.5">
+					<div className="min-w-0">
+						<div className="truncate text-[10px] text-muted-foreground">
+							{t("messageList.tokenUsage.cacheHitRate")}
+						</div>
+						<div
+							className="mt-0.5 text-[22px] font-semibold leading-none tabular-nums"
+							style={{ color: SEGMENT_COLORS[1] }}
+						>
+							{hitRateText}
+						</div>
+					</div>
+					<div className="shrink-0 text-right">
+						<div className="text-[10px] text-muted-foreground">{t("messageList.tokenUsage.total")}</div>
+						<div
+							className="mt-0.5 text-[13px] font-semibold leading-none tabular-nums"
+							title={numberFormatter.format(details.totalTokens)}
+						>
+							{formatCompactTokens(details.totalTokens)}
+						</div>
+					</div>
+				</div>
+				<div className="mt-2 flex items-baseline gap-1.5">
+					<span
+						className="truncate text-[10px] text-muted-foreground"
+						title={numberFormatter.format(details.promptTokens)}
+					>
+						{t("messageList.tokenUsage.prompt")} {formatCompactTokens(details.promptTokens)}
 					</span>
 				</div>
 				<div className="mt-1.5 flex h-1.5 gap-px overflow-hidden rounded-full bg-muted/50">
@@ -193,39 +216,61 @@ export function MessageTokenUsage({ usages }: MessageTokenUsageProps): JSX.Eleme
 								aria-hidden
 							/>
 							<dt className="truncate text-muted-foreground">{part.label}</dt>
-							<dd className="ml-auto tabular-nums">{numberFormatter.format(part.value)}</dd>
-						</div>
-					))}
-				</dl>
-				<dl className="mt-2 grid grid-cols-3 gap-1 border-t border-border/50 pt-1.5 text-[10px]">
-					{cacheStats.map(([label, value]) => (
-						<div key={label} className="min-w-0">
-							<dt className="truncate text-muted-foreground" title={label}>
-								{label}
-							</dt>
-							<dd className="truncate text-[11px] tabular-nums" title={value}>
-								{value}
+							<dd className="ml-auto tabular-nums" title={numberFormatter.format(part.value)}>
+								{formatCompactTokens(part.value)}
 							</dd>
 						</div>
 					))}
 				</dl>
-				{diagnosticRows.length > 0 ? (
-					<dl className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-0.5 border-t border-border/50 pt-1.5 text-[10px]">
-						{diagnosticRows.map(([label, value]) => (
-							<div key={label} className="contents">
-								<dt className="truncate text-muted-foreground" title={label}>
-									{label}
-								</dt>
-								<dd className="max-w-32 truncate text-right tabular-nums text-popover-foreground" title={value}>
-									{value}
-								</dd>
-							</div>
-						))}
-					</dl>
-				) : null}
-			</TooltipContent>
-		</Tooltip>
+				<div className="mt-2 border-t border-border/50 pt-1.5">
+					<button
+						type="button"
+						className="flex w-full items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+						aria-expanded={detailsExpanded}
+						onClick={() => setDetailsExpanded((expanded) => !expanded)}
+					>
+						<span
+							className={`icon-[solar--alt-arrow-right-linear] h-3 w-3 transition-transform ${
+								detailsExpanded ? "rotate-90" : ""
+							}`}
+							aria-hidden
+						/>
+						{t("messageList.tokenUsage.moreParameters")}
+					</button>
+					{detailsExpanded ? (
+						<dl className="mt-1.5 grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-0.5 text-[10px]">
+							{developerRows.map(([label, value]) => (
+								<div key={label} className="contents">
+									<dt className="truncate text-muted-foreground" title={label}>
+										{label}
+									</dt>
+									<dd
+										className="max-w-32 truncate text-right tabular-nums text-popover-foreground"
+										title={value}
+									>
+										{value}
+									</dd>
+								</div>
+							))}
+						</dl>
+					) : null}
+				</div>
+			</PopoverContent>
+		</Popover>
 	);
+}
+
+/**
+ * Token 计数按 K/M 收敛，避免面板里出现整串数字；零值用占位符表示「本轮没有这部分消耗」。
+ * 千位以下保留原值，精确数字通过 title 保留。
+ */
+export function formatCompactTokens(value: number): string {
+	if (value === 0) return "--";
+	const trim = (scaled: number, suffix: string) =>
+		`${scaled.toFixed(1).replace(/\.0$/, "")}${suffix}`;
+	if (Math.abs(value) >= 1_000_000) return trim(value / 1_000_000, "M");
+	if (Math.abs(value) >= 1_000) return trim(value / 1_000, "K");
+	return String(value);
 }
 
 /** 与上下文构成条共用主题色板，保持等亮度、只靠色相区分。 */
