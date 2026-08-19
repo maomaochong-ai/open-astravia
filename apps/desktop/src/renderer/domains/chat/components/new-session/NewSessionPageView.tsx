@@ -104,7 +104,11 @@ export function NewSessionPageView({
 						// 重绘整块。will-change 必须在动画开始前就位才有用，因此常驻。
 						style={{ willChange: "opacity" }}
 						className={cn(
-							"relative z-20 flex w-full flex-col items-center",
+							// 横向 padding 必须与 InputBarView 根节点的 `px-2 sm:px-4` 一致：
+							// 两边都是「全宽容器 + 内层 mx-auto max-w-2xl」，窗口宽到放得下 2xl 时
+							// 两者自然对齐，窄到内层被压缩时只有这层 padding 决定左缘，缺了就会
+							// 出现 hero/选项行比输入框卡片更靠左的错位。
+							"relative z-20 flex w-full flex-col items-center px-2 sm:px-4",
 							commandPanelExpanded && "pointer-events-none",
 						)}
 					>
