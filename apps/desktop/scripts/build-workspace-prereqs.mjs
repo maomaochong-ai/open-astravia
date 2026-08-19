@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, readlink, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getWorkspaceBuildDependencyNames } from "../../../scripts/workspace-build-dependencies.mjs";
 
 const desktopRoot = join(import.meta.dirname, "..");
 const repoRoot = join(desktopRoot, "..", "..");
@@ -43,9 +44,8 @@ export const workspaceLayers = [
 		"runtime-subagents",
 		"toolkit",
 		"plugin-sdk",
-		"plugin-vite",
 	],
-	["capability-runtime", "agent"],
+	["capability-runtime", "plugin-vite", "agent"],
 	["runtime-core", "runtime-telemetry"],
 	["runtime-mcp"],
 	["runtime-tools", "runtime-storage"],
@@ -104,13 +104,8 @@ async function resolveWorkspacePackageGraph() {
 	const keysByPackageName = new Map(entries.map(([key, _config, manifest]) => [manifest.name, key]));
 	return Object.fromEntries(
 		entries.map(([key, config, manifest]) => {
-			const productionDependencies = {
-				...manifest.dependencies,
-				...manifest.optionalDependencies,
-			};
-			const dependencies = Object.entries(productionDependencies)
-				.filter(([_name, range]) => typeof range === "string" && range.startsWith("workspace:"))
-				.map(([name]) => keysByPackageName.get(name))
+			const dependencies = getWorkspaceBuildDependencyNames(manifest)
+				.map((name) => keysByPackageName.get(name))
 				.filter((name) => name !== undefined);
 			return [key, { ...config, dependencies }];
 		}),
@@ -143,6 +138,7 @@ async function main() {
 		"package.json",
 		"bun.lock",
 		"tsconfig.base.json",
+		"scripts/workspace-build-dependencies.mjs",
 		"apps/desktop/scripts/build-workspace-prereqs.mjs",
 	]);
 	const buildHashes = new Map();

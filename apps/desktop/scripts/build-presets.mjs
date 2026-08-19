@@ -204,11 +204,9 @@ if (cache.installHash === installHash && workspaceNodeModulesDirs.every((dir) =>
 if (process.env.VETTA_SKIP_PLUGIN_TOOLING_BUILD === "1") {
 	console.log("[build-presets] 插件工具包已由 workspace 前置构建完成，跳过");
 } else {
-	await Promise.all(
-		["plugin-sdk", "plugin-vite"].map((name) =>
-			run("bun", ["run", "build"], join(pluginsDir, name), `构建插件工具包 ${name}`),
-		),
-	);
+	for (const name of ["plugin-sdk", "plugin-vite"]) {
+		await run("bun", ["run", "build"], join(pluginsDir, name), `构建插件工具包 ${name}`);
+	}
 }
 
 const toolingHash = createHash("sha256");

@@ -1248,6 +1248,36 @@ describe("workspace build order", () => {
 		expect(findBuildOrderViolations(["packages/runtime-tools", "packages/coding-agent"], manifests)).toEqual([]);
 	});
 
+	it("builds a locally developed peer before its consumer", () => {
+		const manifests = [
+			{
+				dir: "packages/plugins/plugin-sdk",
+				name: "@vetta-org/plugin-sdk",
+			},
+			{
+				dir: "packages/plugins/plugin-vite",
+				name: "@vetta-org/plugin-vite",
+				peerDependencies: { "@vetta-org/plugin-sdk": ">=0.1.1 <0.2.0" },
+				devDependencies: { "@vetta-org/plugin-sdk": "workspace:*" },
+			},
+		];
+
+		expect(
+			findBuildOrderViolations(["packages/plugins/plugin-vite", "packages/plugins/plugin-sdk"], manifests),
+		).toEqual(["packages/plugins/plugin-vite is built before its workspace dependency packages/plugins/plugin-sdk"]);
+		expect(
+			findBuildOrderViolations(["packages/plugins/plugin-sdk", "packages/plugins/plugin-vite"], manifests),
+		).toEqual([]);
+		const packageConfigs = {
+			"plugin-sdk": { dir: "packages/plugins/plugin-sdk" },
+			"plugin-vite": { dir: "packages/plugins/plugin-vite" },
+		};
+		expect(findLayeredBuildOrderViolations(packageConfigs, [["plugin-sdk", "plugin-vite"]], manifests)).toEqual([
+			"plugin-vite is not in a later build layer than its workspace dependency plugin-sdk",
+		]);
+		expect(findLayeredBuildOrderViolations(packageConfigs, [["plugin-sdk"], ["plugin-vite"]], manifests)).toEqual([]);
+	});
+
 	it("rejects parallel or reversed desktop prerequisite layers", () => {
 		const packageConfigs = {
 			"runtime-core": { dir: "packages/runtime-core" },

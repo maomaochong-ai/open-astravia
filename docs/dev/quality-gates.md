@@ -130,11 +130,12 @@ Greenfield/Legacy 名称墓碑、固定文件数量、行数阈值及实施日�
 
 - 根脚本中的 `build_pkg` 顺序；
 - Desktop 前置构建脚本导出的分层；
-- 各包 `dependencies`、`optionalDependencies`、`peerDependencies` 中声明的 `workspace:*` 正式依赖。
+- 各包 `dependencies`、`optionalDependencies` 中声明的 `workspace:*` 正式依赖；
+- 同时声明为 peer、并通过 `devDependencies: workspace:*` 链接本地实现的构建期依赖。
 
 Desktop 前置构建脚本只维护参与构建的包和并行层，包之间的依赖直接从 manifest 推导，不再维护第二份容易过期的手写依赖图。
 
-`devDependencies` 不参与生产构建顺序：例如 `runtime-core` 的测试会引用 `coding-agent`，但 `runtime-core/src` 不依赖它；把测试边计入会制造不存在的生产依赖环。
+普通 `devDependencies` 不参与生产构建顺序：例如 `runtime-core` 的测试会引用 `coding-agent`，但 `runtime-core/src` 不依赖它；把测试边计入会制造不存在的生产依赖环。例外是同时存在于 `peerDependencies` 的本地 workspace 开发实现：发布包仍保留 peer 合同，但首次构建必须先生成该实现的声明文件。
 
 该守卫防止构建错误地读取上一次残留的 `dist/*.d.ts` 而偶然成功。新增 workspace 依赖后仍必须执行正常的 `bun install`；`bun install --lockfile-only` 只更新锁文件，不创建包级 workspace 链接。
 

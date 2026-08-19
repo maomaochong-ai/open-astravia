@@ -1,9 +1,10 @@
 /**
  * Ensure scripts/build.sh builds workspace production dependencies first.
  *
- * Dev dependencies are intentionally excluded: package build configs compile
- * production sources only, and including test-only edges would create false
- * cycles such as runtime-core -> coding-agent.
+ * Test-only dev dependencies are intentionally excluded: package build configs
+ * compile production sources only, and including them would create false cycles
+ * such as runtime-core -> coding-agent. A workspace dev dependency that supplies
+ * a declared peer is a build edge because clean builds need its declarations.
  */
 
 import { readFileSync } from "node:fs";
@@ -12,6 +13,7 @@ import {
 	workspaceLayers as desktopWorkspaceLayers,
 	workspacePackages as desktopWorkspacePackages,
 } from "../../apps/desktop/scripts/build-workspace-prereqs.mjs";
+import { getWorkspaceBuildDependencyNames } from "../workspace-build-dependencies.mjs";
 import { fail, isDirectRun, ok, repoRoot } from "./lib.mjs";
 
 const BUILD_PACKAGE_PATTERN = /^\s*build_pkg(?:_script)?\s+((?:packages|apps)\/[A-Za-z0-9_./-]+)/gm;
@@ -36,12 +38,7 @@ export function findBuildOrderViolations(buildOrder, manifests) {
 	for (const manifest of manifests) {
 		const consumerIndex = orderIndex.get(manifest.dir);
 		if (consumerIndex === undefined) continue;
-		const productionDependencies = {
-			...manifest.dependencies,
-			...manifest.optionalDependencies,
-		};
-		for (const [dependencyName, range] of Object.entries(productionDependencies)) {
-			if (typeof range !== "string" || !range.startsWith("workspace:")) continue;
+		for (const dependencyName of getWorkspaceBuildDependencyNames(manifest)) {
 			const dependency = manifestsByName.get(dependencyName);
 			if (!dependency) continue;
 			const dependencyIndex = orderIndex.get(dependency.dir);
@@ -83,12 +80,7 @@ export function findLayeredBuildOrderViolations(packageConfigs, layers, manifest
 			violations.push(`package ${key} is missing manifest metadata`);
 			continue;
 		}
-		const productionDependencies = {
-			...manifest.dependencies,
-			...manifest.optionalDependencies,
-		};
-		for (const [dependencyName, range] of Object.entries(productionDependencies)) {
-			if (typeof range !== "string" || !range.startsWith("workspace:")) continue;
+		for (const dependencyName of getWorkspaceBuildDependencyNames(manifest)) {
 			const dependencyKey = keysByPackageName.get(dependencyName);
 			if (!dependencyKey) {
 				violations.push(`${key} workspace dependency ${dependencyName} is missing from package configs`);
@@ -136,6 +128,7 @@ function readManifest(packageDir) {
 		dependencies: json.dependencies,
 		optionalDependencies: json.optionalDependencies,
 		peerDependencies: json.peerDependencies,
+		devDependencies: json.devDependencies,
 	};
 }
 
