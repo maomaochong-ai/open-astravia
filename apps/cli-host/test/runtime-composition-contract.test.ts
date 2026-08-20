@@ -604,7 +604,7 @@ describe("Runtime composition contract", () => {
 		await second.dispose();
 	});
 
-	it("projects all parent file MCP bindings into explorer children without child-side deferral", async () => {
+	it("projects all parent file MCP bindings into general children without child-side deferral", async () => {
 		const conversations = await createTemporaryDirectory("runtime-subagent-mcp-");
 		const fixture = createMcpSourceFixture(16);
 		const rootMcpTools: string[][] = [];
@@ -635,7 +635,7 @@ describe("Runtime composition contract", () => {
 											description: "Inspect inherited MCP tools",
 											task_name: "inspect_file_mcp",
 											message: "Report the available MCP tools.",
-											agent_type: "explorer",
+											agent_type: "general",
 										},
 									},
 								],

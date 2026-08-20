@@ -48,8 +48,8 @@ export function createCodingAgentSubagentSessionExtension(): SessionExtensionDef
 				],
 				async dispose() {
 					const owned = runtime;
-					runtime = undefined;
 					await owned?.dispose();
+					if (runtime === owned) runtime = undefined;
 				},
 			};
 		},
