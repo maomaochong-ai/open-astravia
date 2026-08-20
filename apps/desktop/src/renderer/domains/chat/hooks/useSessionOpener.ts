@@ -73,9 +73,10 @@ function getProjects(): Project[] {
 	return getDefaultStore().get(projectsAtom);
 }
 
-type PaintBarrierResult = "painted" | "timeout";
+type PaintBarrierResult = "painted" | "skipped-hidden" | "timeout";
 
 function waitForCommittedPaint(): Promise<PaintBarrierResult> {
+	if (document.visibilityState === "hidden") return Promise.resolve("skipped-hidden");
 	if (typeof window.requestAnimationFrame !== "function") {
 		return new Promise((resolve) => window.setTimeout(() => resolve("timeout"), 0));
 	}
@@ -92,6 +93,15 @@ function waitForCommittedPaint(): Promise<PaintBarrierResult> {
 			window.requestAnimationFrame(() => finish("painted"));
 		});
 	});
+}
+
+function areChatMessagesEquivalent(
+	left: ReturnType<typeof fullHistoryToChat>,
+	right: ReturnType<typeof fullHistoryToChat>,
+): boolean {
+	if (left === right) return true;
+	if (left.length !== right.length) return false;
+	return JSON.stringify(left) === JSON.stringify(right);
 }
 
 export function useSessionOpener(): SessionOpenerController {
@@ -249,6 +259,57 @@ export function useSessionOpener(): SessionOpenerController {
 				// Renderer event loop so the browser can paint without delaying Runtime
 				// restoration. A hard rAF/timer barrier can be throttled for occluded windows.
 				markSessionSwitch("pending-ui-scheduled");
+			}
+
+			// Existing-session history is a presentation concern and does not depend on
+			// acquiring the interactive Runtime handle. Read the file through the existing
+			// lock-free viewer path so the first meaningful content can render before Runtime
+			// capabilities, state and the live subscription begin restoring.
+			// Runtime hydration below remains canonical and will reconcile streaming drafts.
+			let previewMessagesSnapshot: ReturnType<typeof fullHistoryToChat> | undefined;
+			let previewPresentation: Promise<void> | undefined;
+			if (stageExistingSessionOpen) {
+				markSessionSwitch("session-preview-history-start");
+				previewPresentation = window.vetta.session
+					.openViewer(sessionPath)
+					.then(async (snapshot) => {
+						markSessionSwitch("session-preview-history-loaded");
+						if (myOpenToken !== getOpenSessionToken()) {
+							markSessionSwitch("session-preview-history-superseded");
+							return;
+						}
+						const previewMessages = fullHistoryToChat(snapshot.history);
+						previewMessagesSnapshot = previewMessages;
+						markSessionSwitch("session-preview-history-mapped");
+						if (myOpenToken !== getOpenSessionToken()) {
+							markSessionSwitch("session-preview-history-superseded");
+							return;
+						}
+						setChatMessages(previewMessages);
+						markSessionSwitch("session-preview-history-committed");
+						const paintBarrierResult = await waitForCommittedPaint();
+						if (myOpenToken === getOpenSessionToken()) {
+							markSessionSwitch(
+								paintBarrierResult === "painted"
+									? "session-preview-history-painted"
+									: paintBarrierResult === "skipped-hidden"
+										? "session-preview-history-paint-skipped-hidden"
+										: "session-preview-history-paint-timeout",
+							);
+						}
+					})
+					.catch(() => {
+						// Preview is best-effort. The canonical Runtime history load below still
+						// owns error reporting and can complete the open normally.
+						markSessionSwitch("session-preview-history-failed");
+					});
+			}
+			if (previewPresentation) {
+				await previewPresentation;
+				if (myOpenToken !== getOpenSessionToken()) {
+					finishCancelledOpen();
+					return;
+				}
 			}
 
 			const isBatchSession =
@@ -416,8 +477,13 @@ export function useSessionOpener(): SessionOpenerController {
 			markSessionSwitch("session-history-mapped");
 			// 新会话在 subscribe 后已经允许首条消息直发，此时 sendMessage 可能已经
 			// 写入乐观用户气泡。空历史没有需要恢复的内容，不能再用 [] 覆盖该气泡。
-			if (sessionPath !== undefined) {
+			if (
+				sessionPath !== undefined &&
+				(!previewMessagesSnapshot || !areChatMessagesEquivalent(previewMessagesSnapshot, mapped))
+			) {
 				setChatMessages(mapped);
+			} else if (sessionPath !== undefined) {
+				markSessionSwitch("session-history-commit-skipped-equivalent");
 			}
 
 			// If this session already has any prior turn (loaded from disk) we never

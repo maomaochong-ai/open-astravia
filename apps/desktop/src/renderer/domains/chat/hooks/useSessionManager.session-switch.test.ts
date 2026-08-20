@@ -97,6 +97,16 @@ function installStorage(): void {
 	});
 }
 
+function userHistory(text: string, entryId: string) {
+	return [
+		{
+			type: "message" as const,
+			entryId,
+			message: { role: "user" as const, content: text, timestamp: 1 },
+		},
+	];
+}
+
 const cwd = "C:\\workspace";
 const firstSessionPath = "C:\\sessions\\first.jsonl";
 const firstCanonicalPath = "C:\\sessions\\first.conversation.jsonl";
@@ -157,6 +167,7 @@ it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户�
 		getSessionPath: vi.fn(async (sessionId: string) =>
 			sessionId === "runtime-first" ? firstSessionPath : secondSessionPath,
 		),
+		openViewer: vi.fn(async () => ({ history: [] })),
 		getState: vi.fn(async (sessionId: string) => ({
 			activeToolNames: [],
 			contextPercent: null,
@@ -315,18 +326,28 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 	const { activeSessionAtom, chatMessagesAtom, pendingSessionOpenAtom } = await import("@shared/store/atoms");
 	const { useSessionManager } = await import("./useSessionManager");
 	const store = getDefaultStore();
+	const frames: FrameRequestCallback[] = [];
+	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+		frames.push(callback);
+		return frames.length;
+	});
 	const firstCreate = deferred<{ cwd: string; sessionId: string; sessionPath: string }>();
 	const secondCreate = deferred<{ cwd: string; sessionId: string; sessionPath: string }>();
+	const firstViewer = deferred<{ history: ReturnType<typeof userHistory> }>();
+	const secondViewer = deferred<{ history: ReturnType<typeof userHistory> }>();
 	const sessionApi = {
 		autoTitle: vi.fn(),
 		create: vi.fn((config: { sessionPath?: string }) =>
 			config.sessionPath === firstSessionPath ? firstCreate.promise : secondCreate.promise,
 		),
-		getFullHistory: vi.fn(async () => []),
+		getFullHistory: vi.fn(async (sessionId: string) =>
+			sessionId === "runtime-second" ? userHistory("second preview", "second-preview") : [],
+		),
 		getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
 		getSessionPath: vi.fn(async (sessionId: string) =>
 			sessionId === "runtime-first" ? firstCanonicalPath : secondSessionPath,
 		),
+		openViewer: vi.fn((path: string) => (path === firstSessionPath ? firstViewer.promise : secondViewer.promise)),
 		getState: vi.fn(async () => ({
 			activeToolNames: [],
 			contextPercent: null,
@@ -377,7 +398,8 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 	});
 	expect(store.get(activeSessionAtom)).toBeNull();
 	expect(store.get(chatMessagesAtom)).toEqual([]);
-	expect(sessionApi.create).toHaveBeenCalledTimes(1);
+	expect(sessionApi.create).not.toHaveBeenCalled();
+	expect(sessionApi.openViewer).toHaveBeenCalledWith(firstSessionPath);
 
 	let secondOpening: Promise<void> | undefined;
 	await act(async () => {
@@ -388,18 +410,45 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 	expect(store.get(pendingSessionOpenAtom)?.interactionId).toBe("open-second");
 
 	await act(async () => {
+		secondViewer.resolve({ history: userHistory("second preview", "second-preview") });
+		await Promise.resolve();
+	});
+	expect(store.get(activeSessionAtom)).toBeNull();
+	expect(store.get(chatMessagesAtom).map((message) => message.text)).toEqual(["second preview"]);
+	expect(mocks.perfSessionSwitchMark).toHaveBeenCalledWith("session-preview-history-committed", "open-second");
+	expect(mocks.perfSessionSwitchMark).not.toHaveBeenCalledWith("session-create-end", "open-second");
+	expect(sessionApi.create).not.toHaveBeenCalled();
+	const previewMessages = store.get(chatMessagesAtom);
+
+	await act(async () => {
+		frames.shift()?.(0);
+		frames.shift()?.(16);
+		await Promise.resolve();
+	});
+	expect(sessionApi.create).toHaveBeenCalledOnce();
+	expect(sessionApi.create).toHaveBeenCalledWith(
+		expect.objectContaining({ sessionPath: secondSessionPath }),
+		"conversation",
+		{ interactionId: "open-second" },
+	);
+
+	await act(async () => {
 		secondCreate.resolve({ cwd, sessionId: "runtime-second", sessionPath: secondSessionPath });
 		await secondOpening;
 	});
 	expect(store.get(activeSessionAtom)?.runtimeId).toBe("runtime-second");
 	expect(store.get(pendingSessionOpenAtom)).toBeNull();
+	expect(store.get(chatMessagesAtom)).toBe(previewMessages);
+	expect(mocks.perfSessionSwitchMark).toHaveBeenCalledWith("session-history-commit-skipped-equivalent", "open-second");
 
 	await act(async () => {
+		firstViewer.resolve({ history: userHistory("stale first preview", "first-preview") });
 		firstCreate.resolve({ cwd, sessionId: "runtime-first", sessionPath: firstCanonicalPath });
 		await firstOpening;
 	});
 
 	expect(store.get(activeSessionAtom)?.runtimeId).toBe("runtime-second");
+	expect(store.get(chatMessagesAtom)).toBe(previewMessages);
 	expect(mocks.perfSessionSwitchComplete).toHaveBeenCalledWith("cancelled", "open-first");
 	expect(mocks.perfSessionSwitchComplete).toHaveBeenCalledWith("completed", "open-second");
 });
@@ -418,6 +467,7 @@ it("已有会话创建失败时退出加载态并保留可诊断错误", { timeo
 			session: {
 				autoTitle: vi.fn(),
 				create: vi.fn(async () => Promise.reject(failure)),
+				openViewer: vi.fn(async () => ({ history: [] })),
 				prompt: vi.fn(),
 			},
 		},
@@ -442,4 +492,65 @@ it("已有会话创建失败时退出加载态并保留可诊断错误", { timeo
 	expect(store.get(activeSessionAtom)).toBeNull();
 	expect(store.get(chatMessagesAtom).at(-1)?.blocks?.at(-1)).toMatchObject({ type: "error", text: failure.message });
 	expect(mocks.perfSessionSwitchComplete).toHaveBeenCalledWith("failed", "open-failed");
+});
+
+it("只读历史预览失败时回退到 Runtime 历史水合", { timeout: 10_000 }, async () => {
+	const { activeSessionAtom, chatMessagesAtom, pendingSessionOpenAtom } = await import("@shared/store/atoms");
+	const { useSessionManager } = await import("./useSessionManager");
+	const store = getDefaultStore();
+	const sessionApi = {
+		autoTitle: vi.fn(),
+		create: vi.fn(async () => ({
+			cwd,
+			sessionId: "runtime-fallback",
+			sessionPath: firstCanonicalPath,
+		})),
+		getFullHistory: vi.fn(async () => userHistory("runtime fallback", "fallback-user")),
+		getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
+		getSessionPath: vi.fn(async () => firstCanonicalPath),
+		getState: vi.fn(async () => ({
+			activeToolNames: [],
+			contextPercent: null,
+			contextWindow: 128_000,
+			executionMode: "full-access" as const,
+			isStreaming: false,
+			messageCount: 1,
+			model: null,
+			scenario: "project" as const,
+		})),
+		openViewer: vi.fn(async () => Promise.reject(new Error("preview unavailable"))),
+		prompt: vi.fn(),
+		subscribe: vi.fn(async () => vi.fn()),
+		updateSettings: vi.fn(async () => undefined),
+	};
+	Object.defineProperty(window, "vetta", {
+		configurable: true,
+		value: {
+			batchTasks: { resumeTaskWithText: vi.fn() },
+			config: { get: vi.fn() },
+			dialog: { persistImages: vi.fn() },
+			session: sessionApi,
+		},
+	});
+	store.set(activeSessionAtom, null);
+	store.set(chatMessagesAtom, []);
+
+	function Probe() {
+		manager = useSessionManager();
+		return null;
+	}
+
+	await act(async () => {
+		root = createRoot(container as HTMLDivElement);
+		root.render(createElement(Probe));
+	});
+	await act(async () => {
+		await manager?.openSession(cwd, firstSessionPath, undefined, { interactionId: "open-fallback" });
+	});
+
+	expect(store.get(activeSessionAtom)?.runtimeId).toBe("runtime-fallback");
+	expect(store.get(pendingSessionOpenAtom)).toBeNull();
+	expect(store.get(chatMessagesAtom).map((message) => message.text)).toEqual(["runtime fallback"]);
+	expect(mocks.perfSessionSwitchMark).toHaveBeenCalledWith("session-preview-history-failed", "open-fallback");
+	expect(mocks.perfSessionSwitchComplete).toHaveBeenCalledWith("completed", "open-fallback");
 });
