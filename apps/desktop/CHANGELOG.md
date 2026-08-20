@@ -41,6 +41,16 @@
 
 ### Fixed
 
+- 修复全局键盘手势整体失效：快捷面板（双击 ⌘ / Ctrl）与应用快照（左右修饰键同按）在开发和生产环境都无法触发。
+  两个原因叠加，前者掩盖了后者：
+  1. uiohook 宿主入口路径写成了 `new URL(<字面量>, import.meta.url)`，Vite 将其识别为静态资源引用并把宿主源码内联成
+     `data:` URL，运行时 `fileURLToPath` 抛 `ERR_INVALID_URL_SCHEME`，宿主重试 3 次后放弃启动。现改为按同目录路径拼接解析，
+     并加入源码守卫测试（`uiohook-host-entry.test.ts`）防止该写法再次进入主进程。
+  2. 宿主起来之后仍收不到事件：Electron utilityProcess 内的 CGEventTap 至多投递一个事件就永久失聪，双击 ⌘ / 双 Shift
+     同按依赖的修饰键事件（macOS `flagsChanged`）一个都收不到。现把 uIOhook 宿主从 utilityProcess 改为主进程内的
+     worker 线程（`uiohook-worker.ts`）——实测可完整收到全部手势事件，同时 `uIOhook.start()` 的上游启动死锁只会冻住
+     worker 线程，Electron 主线程不会再出现彩虹圈，`UiohookSupervisor` 的看门狗与重试预算保持不变。
+
 - 新会话首条消息发送改为先切入聊天页并显示用户气泡，再在页面完成绘制后异步创建 Runtime；初始化状态显示在消息列表中，发送按钮保持纯图标样式，期间输入的下一条草稿不会被首条消息真正派发时清空，创建失败则恢复原始输入。
 - 流式回复点击停止后，纯图标按钮立即进入不可重复点击的忙碌状态，直到主进程确认取消完成；取消失败时恢复为可重试的停止按钮。
 - 新会话页窄屏下 hero（问候语、副标题、选项行）与输入框卡片左缘不再错位：hero 容器补上与输入栏

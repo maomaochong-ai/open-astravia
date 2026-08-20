@@ -1,15 +1,15 @@
-// uiohook 宿主子进程的监督器：spawn / 看门狗 / 重试 / kill。
-// 背景见 uiohook-host.ts 头注释——uiohook-napi 启动竞态死锁只会冻结子进程，
-// 这里以「启动超时即杀掉重拉」兜底，主进程 UI 永不因此阻塞。
-// 不依赖 electron，fork 实现由调用方注入（quickpanel-trigger.ts 注入 utilityProcess.fork），
-// 便于用 fake child 做单元测试。
+// uiohook 宿主 worker 线程的监督器：spawn / 看门狗 / 重试 / terminate。
+// 背景见 uiohook-worker.ts 头注释——uiohook-napi 启动竞态死锁只会冻结 worker 线程，
+// 这里以「启动超时即终止重拉」兜底，Electron 主线程 UI 永不因此阻塞。
+// 不依赖 electron 与 node:worker_threads，宿主创建由调用方注入
+// （quickpanel-trigger.ts 注入 new Worker(...) 的适配器），便于用 fake child 做单元测试。
 
 import { getAppLogger } from "./logger.js";
 import { isUiohookHostMessage } from "./uiohook-protocol.js";
 
 const log = getAppLogger("uiohook-supervisor");
 
-/** utilityProcess 的最小结构子集（Electron.UtilityProcess 满足）。 */
+/** 宿主句柄的最小结构子集（node:worker_threads 的 Worker 经适配后满足）。 */
 export interface UiohookHostChild {
 	on(event: "message", listener: (message: unknown) => void): unknown;
 	on(event: "exit", listener: (code: number) => void): unknown;
@@ -20,7 +20,7 @@ export interface UiohookSupervisorOptions {
 	forkChild: () => UiohookHostChild;
 	onKeydown: (keycode: number) => void;
 	onKeyup: (keycode: number) => void;
-	/** 子进程上报 "started" 的期限，超时视为命中启动死锁。 */
+	/** worker 上报 "started" 的期限，超时视为命中启动死锁。 */
 	startTimeoutMs?: number;
 	/** 单轮启动周期内的最大 spawn 次数，用尽后进入 failed 直到下次 ensureRunning。 */
 	maxStartAttempts?: number;
@@ -37,7 +37,7 @@ type SupervisorState = "stopped" | "starting" | "running" | "failed";
 export class UiohookSupervisor {
 	private state: SupervisorState = "stopped";
 	private child: UiohookHostChild | null = null;
-	/** 递增代号：kill 后在途子进程的 message/exit 一律按代号失效丢弃。 */
+	/** 递增代号：terminate 后在途 worker 的 message/exit 一律按代号失效丢弃。 */
 	private generation = 0;
 	private startAttempts = 0;
 	private watchdog: ReturnType<typeof setTimeout> | null = null;
@@ -66,7 +66,7 @@ export class UiohookSupervisor {
 		this.spawn();
 	}
 
-	/** 幂等：杀掉子进程并清空定时器，随后的在途消息全部失效。 */
+	/** 幂等：终止 worker 并清空定时器，随后的在途消息全部失效。 */
 	stop(): void {
 		this.clearTimers();
 		this.generation += 1;
@@ -128,7 +128,7 @@ export class UiohookSupervisor {
 				log.info("uiohook host started");
 				break;
 			case "start-failed":
-				// 子进程随后自行 exit(1)，统一走 handleExit 的重试路径，这里只记录原因。
+				// worker 随后自行 exit(1)，统一走 handleExit 的重试路径，这里只记录原因。
 				log.error("uiohook host reported start failure", { message: message.message });
 				break;
 			case "keydown":

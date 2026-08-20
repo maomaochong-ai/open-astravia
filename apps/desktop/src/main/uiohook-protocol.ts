@@ -1,6 +1,6 @@
-// uiohook 宿主子进程 ↔ 主进程的消息合同。
-// 子进程（uiohook-host.ts）经 parentPort 单向上报；主进程不下发控制消息，
-// 生命周期通过 spawn/kill 管理（见 uiohook-supervisor.ts）。
+// uiohook 宿主 worker 线程 ↔ 主线程的消息合同。
+// worker（uiohook-worker.ts）经 parentPort 单向上报；主线程不下发控制消息，
+// 生命周期通过 spawn/terminate 管理（见 uiohook-supervisor.ts）。
 
 export type UiohookHostMessage =
 	| { type: "started" }
@@ -8,7 +8,7 @@ export type UiohookHostMessage =
 	| { type: "keydown"; keycode: number }
 	| { type: "keyup"; keycode: number };
 
-/** 进程边界收窄：只放行结构合法的宿主消息，其余丢弃。 */
+/** 线程边界收窄：只放行结构合法的宿主消息，其余丢弃。 */
 export function isUiohookHostMessage(value: unknown): value is UiohookHostMessage {
 	if (typeof value !== "object" || value === null) return false;
 	const message = value as Record<string, unknown>;

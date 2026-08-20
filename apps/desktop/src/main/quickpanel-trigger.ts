@@ -1,19 +1,23 @@
-// 全局键盘手势共享监听器（uiohook 宿主子进程的消费者管理）。
+// 全局键盘手势共享监听器（uiohook 宿主 worker 线程的消费者管理）。
 // Electron globalShortcut 无法监听裸功能键的双击/双键同按，这里用 uiohook-napi 做原生全局键盘监听。
-// uIOhook 不在主进程运行：uiohook-napi ≤1.5.5 的 hook_enable() 存在启动竞态死锁，会把调用
-// 进程的主线程永久冻住（macOS 彩虹圈），故隔离到 utilityProcess（uiohook-host.ts），由
-// UiohookSupervisor 负责 spawn/看门狗/重试，键盘事件经 IPC 回传本模块的状态机。
+// uIOhook 不在主线程运行：uiohook-napi ≤1.5.5 的 hook_enable() 存在启动竞态死锁，会把**调用
+// 线程**永久冻住（macOS 彩虹圈），故隔离到 worker 线程（uiohook-worker.ts），由
+// UiohookSupervisor 负责 spawn/看门狗/重试，键盘事件经 parentPort 回传本模块的状态机。
+// 宿主必须留在主进程内：实测 Electron utilityProcess 里的 CGEventTap 至多投递一个事件后就
+// 永久失聪，双击 ⌘ / 双 Shift 同按依赖的修饰键事件一个都收不到（详见 uiohook-worker.ts）。
 // 两个消费者共用同一宿主：
 //   - quickpanel：「干净双击」某个功能键唤出快捷面板；
 //   - appshot：左右同一功能键「双键同按持按 250ms」触发前台窗口捕获。
-// 活跃消费者集合管理启停：首个消费者出现时拉起宿主、集合清空时杀掉（不申请权限/无开销）。
+// 活跃消费者集合管理启停：首个消费者出现时拉起宿主、集合清空时终止（不申请权限/无开销）。
 // macOS 首次启动监听会触发系统「输入监控」授权；未授权时收不到事件——设置页有提示。
 
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { utilityProcess } from "electron";
+import { Worker } from "node:worker_threads";
 import { UiohookKey } from "uiohook-napi";
 import type { AppshotGesture, QuickPanelTrigger } from "./config/desktop-config-store.js";
 import { getAppLogger } from "./logger.js";
+import type { UiohookHostChild } from "./uiohook-supervisor.js";
 import { UiohookSupervisor } from "./uiohook-supervisor.js";
 
 const log = getAppLogger("quickpanel-trigger");
@@ -60,13 +64,37 @@ const activeConsumers = new Set<UiohookConsumer>();
 
 let supervisor: UiohookSupervisor | null = null;
 
+// 宿主入口与本文件同目录输出（见 vite.main.config.ts 的多入口配置）。
+// 必须用 dirname(import.meta.url) 拼路径：若改成把入口文件名作为字面量传给 new URL 再配
+// import.meta.url，Vite 会将其识别为静态资源引用，把 uiohook-worker.ts 的源码内联成
+// data:video/mp2t;base64,... URL，运行时 fileURLToPath 立即抛 ERR_INVALID_URL_SCHEME，
+// 宿主永远起不来（快捷面板与应用快照整体失效）。守卫见 uiohook-host-entry.test.ts。
+const HOST_DIR = dirname(fileURLToPath(import.meta.url));
+
+/** 把 node:worker_threads 的 Worker 适配成 UiohookSupervisor 需要的最小句柄。 */
+function spawnUiohookWorker(): UiohookHostChild {
+	const worker = new Worker(join(HOST_DIR, "uiohook-worker.js"));
+	// worker 抛错后仍会派发 exit，重试交给 supervisor；这里只补上失败原因日志。
+	worker.on("error", (err) => log.error("uiohook worker error", err));
+	return {
+		on(event: "message" | "exit", listener: ((message: unknown) => void) | ((code: number) => void)) {
+			// message 传 unknown、exit 传退出码，两者都是单参数；由 supervisor 侧收窄。
+			const forward = listener as (value: unknown) => void;
+			return worker.on(event, (value: unknown) => forward(value));
+		},
+		// terminate() 是异步的，而 supervisor 只需要「已请求终止」的同步语义；
+		// 真命中原生死锁时线程可能终止不掉，但那只泄漏一个 worker，主线程不受影响。
+		kill() {
+			void worker.terminate();
+			return true;
+		},
+	};
+}
+
 function getSupervisor(): UiohookSupervisor {
 	if (!supervisor) {
 		supervisor = new UiohookSupervisor({
-			forkChild: () =>
-				utilityProcess.fork(fileURLToPath(new URL("./uiohook-host.js", import.meta.url)), [], {
-					serviceName: "vetta-uiohook-host",
-				}),
+			forkChild: spawnUiohookWorker,
 			onKeydown: handleKeydown,
 			onKeyup: handleKeyup,
 		});
@@ -74,7 +102,7 @@ function getSupervisor(): UiohookSupervisor {
 	return supervisor;
 }
 
-/** 依据活跃消费者集合启停宿主子进程：首个出现拉起、集合空杀掉。 */
+/** 依据活跃消费者集合启停宿主 worker：首个出现拉起、集合空终止。 */
 function syncHookLifecycle(): void {
 	if (activeConsumers.size > 0) {
 		getSupervisor().ensureRunning();
@@ -260,7 +288,7 @@ export function stopQuickPanelTrigger(): void {
 	syncHookLifecycle();
 }
 
-/** 注销全部消费者并停止底层监听（退出 APP 时，避免 uiohook 线程残留）。 */
+/** 注销全部消费者并停止底层监听（退出 APP 时，避免 uiohook worker 线程残留）。 */
 export function stopAllUiohookConsumers(): void {
 	resetQuickPanelState();
 	resetAppshotState();

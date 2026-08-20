@@ -80,9 +80,9 @@ export default defineConfig(({ mode }) => {
 			lib: {
 				entry: {
 					index: resolve(process.cwd(), "src/main/main.ts"),
-					// uiohook 宿主 utilityProcess 独立入口：与 index.js 同目录输出，
-					// 运行时以 new URL("./uiohook-host.js", import.meta.url) 定位。
-					"uiohook-host": resolve(process.cwd(), "src/main/uiohook-host.ts"),
+					// uiohook 宿主 worker 线程独立入口：与 index.js 同目录输出，
+					// 运行时由 quickpanel-trigger.ts 按同目录路径拼接后交给 new Worker()。
+					"uiohook-worker": resolve(process.cwd(), "src/main/uiohook-worker.ts"),
 					...(speechInputBuildConfig.enabled
 						? { "speech-input-host": resolve(process.cwd(), "src/main/speech-input-host.ts") }
 						: {}),
