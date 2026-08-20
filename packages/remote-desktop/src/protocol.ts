@@ -15,6 +15,7 @@ export function decodeRemoteDesktopSignal(value: unknown): RemoteDesktopSignal {
 	const input = exactRecord(value, signalFields(value));
 	const type = text(input.type, "type", 32);
 	if (input.protocolVersion !== 1) throw new RemoteDesktopProtocolError("unsupported desktop protocol version");
+	if (type === "peer_ready") return { type, protocolVersion: 1 };
 	const sessionId = text(input.sessionId, "sessionId", 128);
 	if (type === "offer" || type === "answer") {
 		return { type, protocolVersion: 1, sessionId, sdp: text(input.sdp, "sdp", 262_144) };
@@ -129,6 +130,7 @@ function exactRecord(value: unknown, allowed: readonly string[]): Record<string,
 
 function signalFields(value: unknown): readonly string[] {
 	const type = typeof value === "object" && value !== null ? (value as Record<string, unknown>).type : undefined;
+	if (type === "peer_ready") return ["type", "protocolVersion"];
 	if (type === "offer" || type === "answer") return ["type", "protocolVersion", "sessionId", "sdp"];
 	if (type === "ice") return ["type", "protocolVersion", "sessionId", "candidate", "sdpMid", "sdpMLineIndex"];
 	if (type === "end") return ["type", "protocolVersion", "sessionId", "reason"];

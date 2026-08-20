@@ -52,6 +52,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
     private var inputChannel: DataChannel? = null
     private var sequence = 1L
     private var renderer: SurfaceViewRenderer? = null
+    private var remoteVideoTrack: VideoTrack? = null
     private var stopped = false
     private var remoteDescriptionSet = false
     private val pendingCandidates = mutableListOf<IceCandidate>()
@@ -61,6 +62,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         it.init(eglBase.eglBaseContext, null)
         it.setEnableHardwareScaler(true)
         it.setScalingType(org.webrtc.RendererCommon.ScalingType.SCALE_ASPECT_FIT)
+        remoteVideoTrack?.addSink(it)
     }
 
     fun start() {
@@ -78,6 +80,8 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         peerConnection?.dispose()
         factory?.dispose()
         signaling?.cancel()
+        renderer?.let { remoteVideoTrack?.removeSink(it) }
+        remoteVideoTrack = null
         renderer?.release()
         eglBase.release()
         client.close()
@@ -138,6 +142,7 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                 headers.append(HttpHeaders.SecWebSocketProtocol, listOf("vetta.desktop.v1", "vetta.pairing.$token").joinToString(", "))
             }
             signaling = socket
+            PlatformRemoteLogger.info("native WebRTC signaling connected")
             createPeerConnection()
             for (frame in socket.incoming) if (frame is Frame.Text) handleSignal(frame.readText())
         } catch (error: Throwable) {
@@ -152,7 +157,9 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
         configuration.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
         peerConnection = factory?.createPeerConnection(configuration, object : PeerConnection.Observer {
             override fun onSignalingChange(state: PeerConnection.SignalingState) = Unit
-            override fun onIceConnectionChange(state: PeerConnection.IceConnectionState) = Unit
+            override fun onIceConnectionChange(state: PeerConnection.IceConnectionState) {
+                PlatformRemoteLogger.info("native WebRTC ICE state", mapOf("state" to state.name))
+            }
             override fun onIceConnectionReceivingChange(receiving: Boolean) = Unit
             override fun onIceGatheringChange(state: PeerConnection.IceGatheringState) = Unit
             override fun onIceCandidate(candidate: IceCandidate) = sendSignal(candidateSignal(candidate))
@@ -162,7 +169,10 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
             override fun onDataChannel(channel: DataChannel) { if (channel.label() == INPUT_CHANNEL) inputChannel = channel }
             override fun onRenegotiationNeeded() = Unit
             override fun onAddTrack(receiver: RtpReceiver, streams: Array<out MediaStream>) {
-                (receiver.track() as? VideoTrack)?.addSink(renderer)
+                val track = receiver.track() as? VideoTrack ?: return
+                remoteVideoTrack = track
+                renderer?.let(track::addSink)
+                PlatformRemoteLogger.info("native WebRTC video track attached")
             }
         })
     }
@@ -173,20 +183,27 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
             when (signal["type"]?.jsonPrimitive?.contentOrNull) {
                 "offer" -> {
                     val sdp = signal["sdp"]?.jsonPrimitive?.content ?: return
+                    PlatformRemoteLogger.info("native WebRTC offer received")
                     peerConnection?.setRemoteDescription(object : SdpObserver by LoggingSdpObserver {
                         override fun onSetSuccess() {
+                            PlatformRemoteLogger.info("native WebRTC remote description set")
                             remoteDescriptionSet = true
                             pendingCandidates.forEach { peerConnection?.addIceCandidate(it) }
                             pendingCandidates.clear()
                             peerConnection?.createAnswer(object : SdpObserver by LoggingSdpObserver {
                                 override fun onCreateSuccess(description: SessionDescription) {
-                                    peerConnection?.setLocalDescription(LoggingSdpObserver, description)
-                                    sendSignal(buildJsonObject {
-                                        put("type", "answer")
-                                        put("protocolVersion", PROTOCOL_VERSION)
-                                        put("sessionId", sessionId())
-                                        put("sdp", description.description)
-                                    })
+                                    peerConnection?.setLocalDescription(object : SdpObserver by LoggingSdpObserver {
+                                        override fun onSetSuccess() {
+                                            PlatformRemoteLogger.info("native WebRTC local description set")
+                                            sendSignal(buildJsonObject {
+                                                put("type", "answer")
+                                                put("protocolVersion", PROTOCOL_VERSION)
+                                                put("sessionId", sessionId())
+                                                put("sdp", description.description)
+                                            })
+                                            PlatformRemoteLogger.info("native WebRTC answer sent")
+                                        }
+                                    }, description)
                                 }
                             }, MediaConstraints())
                         }

@@ -95,7 +95,9 @@ describe("remote relay Worker", () => {
 	it("keeps WebRTC signaling separate and never relays input or media through the Worker", async () => {
 		const roomId = "desktop_signaling_abcdefghijklmnop";
 		const host = await requireSocket(await upgradeDesktop("host", pairingSecret, roomId));
+		const peerReady = nextDesktopSignal(host);
 		const viewer = await requireSocket(await upgradeDesktop("viewer", pairingSecret, roomId));
+		await expect(peerReady).resolves.toEqual({ type: "peer_ready", protocolVersion: 1 });
 		const offer = {
 			type: "offer",
 			protocolVersion: 1,
@@ -110,6 +112,16 @@ describe("remote relay Worker", () => {
 		viewer.send(JSON.stringify({ type: "pointer.move", sequence: 1, x: 0.5, y: 0.5 }));
 		await expect(closed).resolves.toMatchObject({ code: 4002 });
 		host.close(1000, "test complete");
+	});
+
+	it("rejects clients that forge the relay-owned peer-ready event", async () => {
+		const roomId = "desktop_ready_forgery_abcdefghijkl";
+		const host = await requireSocket(await upgradeDesktop("host", pairingSecret, roomId));
+		const closed = nextClose(host);
+
+		host.send(encodeRemoteDesktopSignal({ type: "peer_ready", protocolVersion: 1 }));
+
+		await expect(closed).resolves.toMatchObject({ code: 4002 });
 	});
 });
 

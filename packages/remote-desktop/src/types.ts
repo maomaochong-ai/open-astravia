@@ -5,6 +5,10 @@ export type RemoteDesktopRole = "viewer" | "host";
 
 export type RemoteDesktopSignal =
 	| {
+			readonly type: "peer_ready";
+			readonly protocolVersion: typeof REMOTE_DESKTOP_PROTOCOL_VERSION;
+	  }
+	| {
 			readonly type: "offer";
 			readonly protocolVersion: typeof REMOTE_DESKTOP_PROTOCOL_VERSION;
 			readonly sessionId: string;

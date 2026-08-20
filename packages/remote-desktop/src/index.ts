@@ -1,4 +1,4 @@
-export type { RemoteDesktopSignalSender } from "./peer.js";
+export type { RemoteDesktopHostStartOptions, RemoteDesktopSignalSender } from "./peer.js";
 export { RemoteDesktopHost, RemoteDesktopViewer } from "./peer.js";
 export type { RemoteDesktopLogger, RemoteDesktopPeerOptions } from "./peer-types.js";
 export { NOOP_REMOTE_DESKTOP_LOGGER } from "./peer-types.js";

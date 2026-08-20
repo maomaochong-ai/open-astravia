@@ -29,9 +29,16 @@ await signaling.connect({
 
 const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
 host = new RemoteDesktopHost(
-	{ sessionId },
+	{
+		sessionId,
+		logger: {
+			debug: (message, fields) => console.debug(message, fields),
+			info: (message, fields) => console.info(message, fields),
+			warn: (message, fields) => console.warn(message, fields),
+		},
+	},
 	async (signal) => signaling.send(signal),
 	(message) => window.vettaRemoteDesktop?.onInput(message),
 );
-await host.start(stream);
+await host.start(stream, { waitForPeerReady: true });
 for (const signal of pending.splice(0)) await host.acceptSignal(signal);

@@ -25,6 +25,8 @@ vetta.pairing.<base64url-secret>
 
 WebRTC signaling uses `vetta.desktop.v1` plus the same pairing protocol. SDP and ICE are validated and forwarded, never logged. Screen pixels and input messages never pass through the Worker.
 
+The host may connect before the viewer. Once both roles are online, the Worker sends a relay-owned `peer_ready` event to the host; clients cannot submit this event. The host creates or refreshes its WebRTC offer only after that event, so signaling does not require buffering SDP or ICE in Durable Object storage.
+
 The relay consumes the `hello` frames to validate the declared role and emits `hello_ack` only after both endpoints complete their handshake. All other valid protocol frames are forwarded unchanged.
 
 ## Local verification

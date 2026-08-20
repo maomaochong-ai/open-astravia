@@ -6,6 +6,11 @@ import { REMOTE_DESKTOP_PROTOCOL_VERSION } from "./types.js";
 
 export type RemoteDesktopSignalSender = (signal: RemoteDesktopSignal) => void | Promise<void>;
 
+export interface RemoteDesktopHostStartOptions {
+	/** Wait for the relay to confirm that a viewer is online before creating an offer. */
+	readonly waitForPeerReady?: boolean;
+}
+
 export class RemoteDesktopHost {
 	private readonly peer: RTCPeerConnection;
 	private readonly logger;
@@ -13,6 +18,10 @@ export class RemoteDesktopHost {
 	private inputChannel: RTCDataChannel | undefined;
 	private lastInputSequence = 0;
 	private closed = false;
+	private started = false;
+	private peerReady = false;
+	private hasNegotiated = false;
+	private negotiation: Promise<void> | undefined;
 
 	constructor(
 		private readonly options: RemoteDesktopPeerOptions,
@@ -40,25 +49,24 @@ export class RemoteDesktopHost {
 		};
 	}
 
-	async start(stream: MediaStream): Promise<void> {
+	async start(stream: MediaStream, startOptions: RemoteDesktopHostStartOptions = {}): Promise<void> {
 		if (this.closed) throw new Error("remote desktop host is closed");
+		if (this.started) throw new Error("remote desktop host is already started");
 		if (stream.getVideoTracks().length === 0) throw new Error("screen stream must contain a video track");
 		for (const track of stream.getTracks()) this.peer.addTrack(track, stream);
 		this.inputChannel = this.peer.createDataChannel("vetta-input-v1", { ordered: true });
 		this.configureInputChannel(this.inputChannel);
-		const offer = await this.peer.createOffer();
-		await this.peer.setLocalDescription(offer);
-		if (!offer.sdp) throw new Error("WebRTC offer did not include SDP");
-		await this.sendSignal({
-			type: "offer",
-			protocolVersion: REMOTE_DESKTOP_PROTOCOL_VERSION,
-			sessionId: this.options.sessionId,
-			sdp: offer.sdp,
-		});
+		this.started = true;
+		if (startOptions.waitForPeerReady !== true || this.peerReady) await this.negotiate();
 	}
 
 	async acceptSignal(signal: RemoteDesktopSignal): Promise<void> {
 		const frame = decodeRemoteDesktopSignal(signal);
+		if (frame.type === "peer_ready") {
+			this.peerReady = true;
+			if (this.started) await this.negotiate();
+			return;
+		}
 		if (frame.sessionId !== this.options.sessionId) throw new Error("remote desktop signal session mismatch");
 		if (frame.type === "answer") {
 			await this.peer.setRemoteDescription({ type: "answer", sdp: frame.sdp });
@@ -126,6 +134,35 @@ export class RemoteDesktopHost {
 	private async flushPendingIce(): Promise<void> {
 		for (const candidate of this.pendingIce.splice(0)) await this.peer.addIceCandidate(candidate);
 	}
+
+	private async negotiate(): Promise<void> {
+		if (this.negotiation) return this.negotiation;
+		if (this.peer.signalingState !== "stable") {
+			this.logger.debug("remote desktop host negotiation already pending", {
+				sessionId: this.options.sessionId,
+				state: this.peer.signalingState,
+			});
+			return;
+		}
+		const negotiation = (async () => {
+			const offer = await this.peer.createOffer(this.hasNegotiated ? { iceRestart: true } : undefined);
+			await this.peer.setLocalDescription(offer);
+			if (!offer.sdp) throw new Error("WebRTC offer did not include SDP");
+			await this.sendSignal({
+				type: "offer",
+				protocolVersion: REMOTE_DESKTOP_PROTOCOL_VERSION,
+				sessionId: this.options.sessionId,
+				sdp: offer.sdp,
+			});
+			this.hasNegotiated = true;
+		})();
+		this.negotiation = negotiation;
+		try {
+			await negotiation;
+		} finally {
+			if (this.negotiation === negotiation) this.negotiation = undefined;
+		}
+	}
 }
 
 export class RemoteDesktopViewer {
@@ -180,6 +217,7 @@ export class RemoteDesktopViewer {
 
 	async acceptSignal(signal: RemoteDesktopSignal): Promise<void> {
 		const frame = decodeRemoteDesktopSignal(signal);
+		if (frame.type === "peer_ready") return;
 		if (frame.sessionId !== this.options.sessionId) throw new Error("remote desktop signal session mismatch");
 		if (frame.type === "offer") {
 			await this.peer.setRemoteDescription({ type: "offer", sdp: frame.sdp });

@@ -47,6 +47,11 @@ export async function startDesktopRemoteDesktopHost(
 			preload: paths.preloadPath,
 		},
 	});
+	window.webContents.on("console-message", (_event, level, message) => {
+		const fields = { sessionId, level };
+		if (level >= 2) log.warn(`renderer: ${message}`, fields);
+		else log.info(`renderer: ${message}`, fields);
+	});
 	const onInput = (_event: Electron.IpcMainEvent, message: unknown): void => {
 		if (_event.sender.id !== window.webContents.id) return;
 		try {

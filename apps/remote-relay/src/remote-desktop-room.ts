@@ -1,6 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 import {
+	encodeRemoteDesktopSignal,
 	parseRemoteDesktopSignal,
+	REMOTE_DESKTOP_PROTOCOL_VERSION,
 	REMOTE_DESKTOP_WEBSOCKET_PROTOCOL,
 	type RemoteDesktopSignal,
 } from "@vetta/remote-desktop/protocol";
@@ -52,6 +54,7 @@ export class RemoteDesktopRoom extends DurableObject<Env> {
 		const server = pair[1];
 		server.serializeAttachment({ role, roomTag } satisfies DesktopAttachment);
 		this.ctx.acceptWebSocket(server, [role]);
+		this.notifyHostWhenPeerReady(role, server, roomTag);
 		await this.refreshExpiry();
 		relayInfo("desktop_socket_connected", { roomTag, role });
 		return new Response(null, {
@@ -75,6 +78,7 @@ export class RemoteDesktopRoom extends DurableObject<Env> {
 			return;
 		}
 		if (
+			signal.type === "peer_ready" ||
 			(signal.type === "offer" && attachment.role !== "host") ||
 			(signal.type === "answer" && attachment.role !== "viewer")
 		) {
@@ -126,6 +130,19 @@ export class RemoteDesktopRoom extends DurableObject<Env> {
 	private reject(socket: WebSocket, attachment: DesktopAttachment, reason: string, code = 4002): void {
 		relayWarn("desktop_socket_rejected", { roomTag: attachment.roomTag, role: attachment.role, reason });
 		socket.close(code, "Invalid remote desktop signal");
+	}
+
+	private notifyHostWhenPeerReady(role: DesktopRole, socket: WebSocket, roomTag: string): void {
+		const host = role === "host" ? socket : this.ctx.getWebSockets("host")[0];
+		const viewer = role === "viewer" ? socket : this.ctx.getWebSockets("viewer")[0];
+		if (!host || !viewer) return;
+		host.send(
+			encodeRemoteDesktopSignal({
+				type: "peer_ready",
+				protocolVersion: REMOTE_DESKTOP_PROTOCOL_VERSION,
+			}),
+		);
+		relayInfo("desktop_peer_ready", { roomTag });
 	}
 
 	private async refreshExpiry(): Promise<void> {
