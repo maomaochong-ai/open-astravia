@@ -2,6 +2,7 @@ import { builtinModules } from "node:module";
 import { resolve } from "node:path";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import { createSentryBuildSetup } from "./sentry-vite";
+import { resolveMainBundleExternals } from "./scripts/packaged-native-dependencies.mjs";
 import {
 	resolveSpeechInputBuildConfig,
 	SPEECH_INPUT_ENABLED_ENV,
@@ -101,27 +102,10 @@ export default defineConfig(({ mode }) => {
 					...builtinModules.filter((m) => m !== "sqlite" && m !== "node:sqlite"),
 					...builtinModules.filter((m) => m !== "sqlite" && m !== "node:sqlite").map((m) => `node:${m}`),
 					...developmentWorkspacePackages,
-					// Photon-node ships as CJS with __dirname-based WASM loading.
-					// Inlining it into this ESM bundle makes Node interpret its .js
-					// as ESM (because desktop-app/package.json has "type":"module"),
-					// which breaks __dirname and silently disables image resize ->
-					// large images reach the model at original resolution and OOM
-					// local VL backends.
-					"@silvia-odwyer/photon-node",
-					// electron-updater 运行时读取 app-update.yml，并按平台加载差分更新实现；
-					// 保留为 external，随 staged node_modules 一起打包。
-					"builder-util-runtime",
-					"electron-updater",
-					// uiohook-napi 是原生模块（.node + node-gyp-build 定位 prebuild），
-					// 不能打进 bundle，运行时从 node_modules 解析。
-					"uiohook-napi",
-					// electron-liquid-glass 同为原生模块（node-gyp-build + prebuilds），
-					// 提供 macOS 液态玻璃/磨砂玻璃效果，运行时从 node_modules 解析。
-					"electron-liquid-glass",
-					"koffi",
-					"ws",
-					// Windows-only Sherpa-ONNX native runtime; model files are staged as extraResources at build time.
-					...(speechInputBuildConfig.enabled ? ["sherpa-onnx-win-x64"] : []),
+					// 运行时依赖（photon-node / electron-updater / uiohook-napi / ws / koffi 等）
+					// 的清单在 scripts/packaged-native-dependencies.mjs：那里同时驱动
+					// prepare-pack 的 staging，两边不会再各写一份而漏掉其中之一。
+					...resolveMainBundleExternals({ speechInputEnabled: speechInputBuildConfig.enabled }),
 				],
 			},
 			minify: false,
