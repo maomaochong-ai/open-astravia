@@ -169,6 +169,8 @@ bun run verify:desktop:contracts
 bun run test:desktop:packaging
 ```
 
+正式 Desktop 发布 workflow 还会在平台矩阵前运行 `bun run check`、`bun run test:quality` 与 `bun run test:desktop:packaging`；发布 R2/GitHub 后通过 `apps/desktop/scripts/verify-update-feed.mjs` 检查公开更新 feed。手动 `workflow_dispatch` 只验证本地产物，不代表线上更新源已经可读。
+
 需要验证真实生产布局时运行 Windows packaged smoke：
 
 ```text

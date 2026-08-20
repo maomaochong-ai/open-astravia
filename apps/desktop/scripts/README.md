@@ -195,6 +195,8 @@ bun run dist:opensource -- --target dir
 
 该入口读取 `.env.opensource`，固定关闭 cloud、使用 GitHub provider，并为官方仓库与公开 Marketplace 提供默认值；fork 可在文件或 shell 中覆盖 owner、repo 和 Marketplace 仓库。
 
+正式发布 workflow 会先运行根 `check`、质量脚本测试和 Desktop packaging 测试，全部通过后才启动四个 Windows / macOS 双架构 / Linux 构建任务。构建后的每个平台还会校验 updater metadata、hash、blockmap 和可安装内容；真正发布到 R2 或 GitHub 后，再由 `verify-update-feed.mjs` 通过公开 URL 检查三平台 metadata 与其引用的安装包是否可读。
+
 ## Desktop 自动更新发布
 
 客户端统一使用 `electron-updater`，更新源由打包时的环境变量决定，与目标操作系统无关：
@@ -203,6 +205,8 @@ bun run dist:opensource -- --target dir
 - `VETTA_UPDATE_PROVIDER=github`：公开 GitHub Releases。
 - 未设置 `VETTA_UPDATE_PROVIDER`：默认使用 stable 更新源 `https://releases.openvetta.com/desktop/stable`。
 - `VETTA_UPDATE_PROVIDER=none`：不受支持，打包时直接失败；所有可打包产物都必须有更新源配置。
+
+发布 workflow 的最后一步会执行 `node scripts/verify-update-feed.mjs`：它读取三平台 metadata，确认版本与本次 Tag 一致，并对每个引用的安装包执行公开可读性检查。CDN 不支持 HEAD 时会回退到 Range GET。该检查只在 R2/GitHub 真实发布后执行，手动构建仍只验证本地 Artifact。
 
 正式环境默认读取：
 

@@ -20,7 +20,7 @@ on:
         type: string
         required: false
       marketplace_repository:
-        description: "Lite-only built-in GitHub marketplace source."
+        description: "Open-source-only built-in GitHub marketplace source."
         type: string
         required: false
       tenant:
@@ -153,9 +153,39 @@ jobs:
           OUTPUT_UPDATE_URL: ${{ steps.config.outputs.update_url }}
         run: node scripts/release/resolve-desktop-release-config.mjs --from-outputs --summary >> "${GITHUB_STEP_SUMMARY}"
 
+  quality:
+    name: validate and test Desktop release
+    needs: prepare
+    if: needs.prepare.outputs.should-build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.7"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run repository checks
+        run: bun run check
+
+      - name: Test quality and release configuration
+        run: bun run test:quality
+
+      - name: Verify Desktop packaging contract
+        run: bun run verify:desktop:contracts
+
+      - name: Test Desktop packaging helpers
+        run: bun run test:desktop:packaging
+
   build:
     name: build ${{ matrix.platform }}
-    needs: prepare
+    needs: [prepare, quality]
     if: needs.prepare.outputs.should-build == 'true'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
@@ -338,7 +368,7 @@ jobs:
   publish-r2:
     name: publish R2
     if: needs.prepare.outputs.should-build == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.prepare.outputs.release_target == 'r2'
-    needs: [prepare, build]
+    needs: [prepare, quality, build]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: desktop-production
@@ -394,10 +424,16 @@ jobs:
           VETTA_R2_SECRET_ACCESS_KEY: ${{ secrets.VETTA_R2_SECRET_ACCESS_KEY }}
         run: bun run publish:updates:r2
 
+      - name: Verify published update feed
+        working-directory: apps/desktop
+        env:
+          VETTA_DESKTOP_RELEASE_VERSION: ${{ github.ref_name }}
+        run: node scripts/verify-update-feed.mjs
+
   publish-github:
     name: publish GitHub Release
     if: needs.prepare.outputs.should-build == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.prepare.outputs.release_target != 'r2'
-    needs: [prepare, build]
+    needs: [prepare, quality, build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: desktop-production
@@ -449,3 +485,12 @@ jobs:
           find apps/desktop/release -maxdepth 1 -type f -print0 \
             | xargs -0 gh release upload "${TAG}" --clobber
           gh release edit "${TAG}" --draft=false
+
+      - name: Verify published update feed
+        working-directory: apps/desktop
+        env:
+          VETTA_DESKTOP_RELEASE_VERSION: ${{ github.ref_name }}
+          VETTA_UPDATE_PROVIDER: github
+          VETTA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
+          VETTA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
+        run: node scripts/verify-update-feed.mjs
