@@ -13,6 +13,7 @@ import {
 	adoptExistingSessionInputDraft,
 	batchProjectsAtom,
 	chatMessagesAtom,
+	claimExistingSessionInputDraft,
 	claimNewSessionInputDraft,
 	contextUsageAtom,
 	conversationBucketCwd,
@@ -42,7 +43,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { type MutableRefObject, useCallback, useRef } from "react";
-import { shareChatMessageSnapshot } from "../services/chat-message-snapshot";
+import { preserveMessagesAddedAfterSnapshot, shareChatMessageSnapshot } from "../services/chat-message-snapshot";
 import {
 	adoptDraftId,
 	appendError,
@@ -190,6 +191,9 @@ export function useSessionOpener(): SessionOpenerController {
 				setPendingSessionCreation({ cwd, interactionId: interactionId ?? "" });
 			} else if (stageExistingSessionOpen) {
 				setPendingSessionOpen({ cwd, sessionPath, interactionId: interactionId ?? "" });
+				// Draft ownership follows the user's click immediately. Runtime readiness
+				// must not be required for typing, attachments or sending to target state.
+				adoptExistingSessionInputDraft(sessionPath);
 			}
 			if (navigateBeforeCreate) {
 				perfSendMark("session-route-start", interactionId);
@@ -293,6 +297,7 @@ export function useSessionOpener(): SessionOpenerController {
 					.catch(() => {
 						// Preview is best-effort. The canonical Runtime history load below still
 						// owns error reporting and can complete the open normally.
+						if (myOpenToken === getOpenSessionToken()) previewMessagesSnapshot = [];
 						markSessionSwitch("session-preview-history-failed");
 					});
 			}
@@ -385,7 +390,6 @@ export function useSessionOpener(): SessionOpenerController {
 			setActiveSession(earlySessionInfo);
 			activeSessionRef.current = earlySessionInfo;
 			markSessionSwitch("active-session-set");
-			if (navigateBeforeCreate) clearOwnPendingTransition();
 			if (shouldNavigate && !navigateBeforeCreate && !stageExistingSessionOpen) {
 				void navigate({ to: "/" });
 				markSessionSwitch("navigation-dispatched");
@@ -428,7 +432,13 @@ export function useSessionOpener(): SessionOpenerController {
 				subscribed = true;
 				perfSendMark("open-session-ready", interactionId);
 				if (cachedKey) setLastActiveSession({ cwd, sessionPath: cachedKey });
-				options?.onPromptReady?.();
+				try {
+					await options?.onPromptReady?.();
+				} catch (error) {
+					console.error("[useSessionOpener] prompt-ready callback failed", error);
+				} finally {
+					if (navigateBeforeCreate) clearOwnPendingTransition();
+				}
 				return true;
 			};
 
@@ -470,17 +480,20 @@ export function useSessionOpener(): SessionOpenerController {
 			// 新会话在 subscribe 后已经允许首条消息直发，此时 sendMessage 可能已经
 			// 写入乐观用户气泡。空历史没有需要恢复的内容，不能再用 [] 覆盖该气泡。
 			if (sessionPath !== undefined) {
-				if (!previewMessagesSnapshot) {
+				const previewSnapshot = previewMessagesSnapshot;
+				if (!previewSnapshot) {
 					setChatMessages(mapped);
 				} else {
-					const sharedSnapshot = shareChatMessageSnapshot(previewMessagesSnapshot, mapped);
-					if (sharedSnapshot.messages === previewMessagesSnapshot) {
+					const sharedSnapshot = shareChatMessageSnapshot(previewSnapshot, mapped);
+					if (sharedSnapshot.messages === previewSnapshot) {
 						markSessionSwitch("session-history-commit-skipped-equivalent");
 					} else {
 						if (sharedSnapshot.reusedCount > 0) {
 							markSessionSwitch("session-history-commit-structural-share");
 						}
-						setChatMessages(sharedSnapshot.messages);
+						setChatMessages((current) =>
+							preserveMessagesAddedAfterSnapshot(previewSnapshot, sharedSnapshot.messages, current),
+						);
 					}
 				}
 			}
@@ -602,7 +615,7 @@ export function useSessionOpener(): SessionOpenerController {
 			// 输入草稿按 sessionPath 隔离：打开已有会话装入该会话草稿；
 			// 新建会话保留工作集（随即 sendMessage），只把归属从 new:cwd 迁到真实 path。
 			if (sessionPath !== undefined) {
-				adoptExistingSessionInputDraft(cachedKey);
+				claimExistingSessionInputDraft(cachedKey, sessionPath);
 			}
 
 			// 已有会话必须先完成历史/流式草稿恢复，再接入实时事件；新会话已在上方订阅。

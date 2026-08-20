@@ -48,3 +48,17 @@ export function shareChatMessageSnapshot(
 	}
 	return { messages, reusedCount };
 }
+
+/**
+ * Keeps renderer-only rows accepted after a Viewer snapshot was committed while
+ * replacing that persisted base with Runtime-canonical history.
+ */
+export function preserveMessagesAddedAfterSnapshot(
+	preview: readonly ChatMessage[],
+	canonical: readonly ChatMessage[],
+	current: readonly ChatMessage[],
+): ChatMessage[] {
+	const previewIds = new Set(preview.map((message) => message.id));
+	const additions = current.filter((message) => !previewIds.has(message.id));
+	return additions.length === 0 ? (canonical as ChatMessage[]) : [...canonical, ...additions];
+}

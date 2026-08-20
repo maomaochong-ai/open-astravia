@@ -45,16 +45,19 @@ export interface UserMessageViewProps {
 	hasAppshot: boolean;
 	copyText: string;
 	isLastUserMessage: boolean;
-	/** Keep action geometry stable while the host restores its Runtime. */
+	/** Host-owned visibility policy; Runtime readiness should not affect it. */
 	showEditAction?: boolean;
+	/** A real permission or operation constraint, not a loading-state signal. */
 	editActionDisabled?: boolean;
-	/** @deprecated Use showEditAction + editActionDisabled to separate geometry from readiness. */
+	/** @deprecated Use showEditAction and keep readiness coordination in the host. */
 	canEdit?: boolean;
 	canSwitchBranch: boolean;
+	/** A real branch constraint, not a loading-state signal. */
 	branchActionDisabled?: boolean;
 	showForkAction?: boolean;
+	/** A real permission or operation constraint, not a loading-state signal. */
 	forkActionDisabled?: boolean;
-	/** @deprecated Use showForkAction + forkActionDisabled to separate geometry from readiness. */
+	/** @deprecated Use showForkAction and keep readiness coordination in the host. */
 	canFork?: boolean;
 	isPendingEdit: boolean;
 	branchIndex: number;

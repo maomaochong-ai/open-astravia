@@ -453,6 +453,94 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 	expect(mocks.perfSessionSwitchComplete).toHaveBeenCalledWith("completed", "open-second");
 });
 
+it("会话恢复期间立即接受发送并在订阅就绪后派发到目标 Runtime", { timeout: 10_000 }, async () => {
+	const { activeSessionAtom, chatMessagesAtom, inputValueAtom, pendingSessionOpenAtom } = await import(
+		"@shared/store/atoms"
+	);
+	const { useSessionManager } = await import("./useSessionManager");
+	const store = getDefaultStore();
+	const frames: FrameRequestCallback[] = [];
+	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+		frames.push(callback);
+		return frames.length;
+	});
+	const sessionApi = {
+		autoTitle: vi.fn(),
+		create: vi.fn(async () => ({ cwd, sessionId: "runtime-second", sessionPath: secondSessionPath })),
+		getFullHistory: vi.fn(async () => userHistory("history", "history-user")),
+		getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
+		getSessionPath: vi.fn(async () => secondSessionPath),
+		getState: vi.fn(async () => ({
+			activeToolNames: [],
+			contextPercent: null,
+			contextWindow: 128_000,
+			executionMode: "full-access" as const,
+			isStreaming: false,
+			messageCount: 1,
+			model: null,
+			scenario: "project" as const,
+		})),
+		openViewer: vi.fn(async () => ({ history: userHistory("history", "history-user") })),
+		prompt: mocks.prompt,
+		subscribe: vi.fn(async () => vi.fn()),
+		updateSettings: vi.fn(async () => undefined),
+	};
+	Object.defineProperty(window, "vetta", {
+		configurable: true,
+		value: {
+			batchTasks: { resumeTaskWithText: vi.fn() },
+			config: { get: vi.fn() },
+			dialog: { persistImages: vi.fn(async () => []) },
+			session: sessionApi,
+		},
+	});
+	store.set(activeSessionAtom, { cwd, runtimeId: "runtime-current", sessionPath: firstSessionPath });
+	store.set(chatMessagesAtom, []);
+
+	function Probe() {
+		manager = useSessionManager();
+		return null;
+	}
+
+	await act(async () => {
+		root = createRoot(container as HTMLDivElement);
+		root.render(createElement(Probe));
+	});
+
+	let opening: Promise<void> | undefined;
+	let sending: Promise<unknown> | undefined;
+	await act(async () => {
+		opening = manager?.openSession(cwd, secondSessionPath, undefined, { interactionId: "open-send" });
+		await Promise.resolve();
+		await Promise.resolve();
+		store.set(inputValueAtom, "send while restoring");
+		sending = manager?.sendMessage();
+		await Promise.resolve();
+	});
+
+	expect(store.get(pendingSessionOpenAtom)?.interactionId).toBe("open-send");
+	expect(store.get(chatMessagesAtom).map((message) => message.text)).toEqual(["history", "send while restoring"]);
+	expect(store.get(inputValueAtom)).toBe("");
+	expect(mocks.prompt).not.toHaveBeenCalled();
+
+	await act(async () => {
+		frames.shift()?.(0);
+		frames.shift()?.(16);
+		await opening;
+		await Promise.resolve();
+	});
+	expect(sessionApi.subscribe).toHaveBeenCalledWith("runtime-second", expect.any(Function));
+	expect(mocks.prompt).toHaveBeenCalledWith(
+		"runtime-second",
+		expect.objectContaining({ text: "send while restoring" }),
+		undefined,
+	);
+	expect(store.get(chatMessagesAtom).map((message) => message.text)).toEqual(["history", "send while restoring"]);
+
+	pendingPrompt?.resolve(undefined);
+	await sending;
+});
+
 it("已有会话创建失败时退出加载态并保留可诊断错误", { timeout: 10_000 }, async () => {
 	const { activeSessionAtom, chatMessagesAtom, pendingSessionOpenAtom } = await import("@shared/store/atoms");
 	const { useSessionManager } = await import("./useSessionManager");

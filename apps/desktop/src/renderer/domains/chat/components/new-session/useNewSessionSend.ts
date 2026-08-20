@@ -45,8 +45,8 @@ export function useNewSessionSend(options: NewSessionSendOptions): {
 					navigateBeforeCreate: true,
 					preserveMessagesBeforeCreate: true,
 					onCreateError: () => restoreStagedNewSessionSend(stagedInput),
-					onPromptReady: () => {
-						void sendMessage(undefined, { interactionId, stagedInput }).catch((error: unknown) => {
+					onPromptReady: async () => {
+						await sendMessage(undefined, { interactionId, stagedInput }).catch((error: unknown) => {
 							console.error("[useNewSessionSend] prompt-ready send failed", error);
 						});
 					},

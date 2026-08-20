@@ -70,7 +70,7 @@ describe("DefaultChatView layout", () => {
 		expect(inputBar).toBeLessThan(activityPanel);
 	});
 
-	it("routes session startup status to the message list while keeping the input button icon-only", () => {
+	it("does not expose session startup state as presentation or interaction props", () => {
 		renderToStaticMarkup(
 			createElement(DefaultChatView, {
 				actions: {
@@ -98,49 +98,13 @@ describe("DefaultChatView layout", () => {
 				onAbort: vi.fn(async () => {}),
 				onSend: vi.fn(async () => {}),
 				onSendQueued: vi.fn(async () => {}),
-				sessionPending: true,
-				sessionPendingLabel: "正在启动会话",
-			}),
-		);
-
-		expect(capturedProps.messageList?.pendingLabel).toBe("正在启动会话");
-		expect(capturedProps.inputBar?.sendDisabled).toBe(true);
-		expect(capturedProps.inputBar?.sendPending).toBeUndefined();
-	});
-
-	it("keeps existing-session restore silent while the input remains disabled", () => {
-		renderToStaticMarkup(
-			createElement(DefaultChatView, {
-				actions: {
-					finishExport: vi.fn(),
-					openExport: vi.fn(),
-					togglePanel: vi.fn(),
-					togglePin: vi.fn(async () => {}),
-				},
-				model: {
-					exporting: false,
-					exportTitle: "Session",
-					header: {
-						exportDisabled: false,
-						exporting: false,
-						exportTitle: "Export",
-						panelOpen: false,
-						panelTitle: "Panel",
-						pinTitle: "Pin",
-						pinned: false,
-					},
-					isStreaming: false,
-					messages: [],
-					sessionId: "session-2",
-				},
-				onAbort: vi.fn(async () => {}),
-				onSend: vi.fn(async () => {}),
-				onSendQueued: vi.fn(async () => {}),
-				sessionPending: true,
+				cwdOverride: "C:/repo",
 			}),
 		);
 
 		expect(capturedProps.messageList?.pendingLabel).toBeUndefined();
-		expect(capturedProps.inputBar?.sendDisabled).toBe(true);
+		expect(capturedProps.inputBar).not.toHaveProperty("sendDisabled");
+		expect(capturedProps.inputBar?.sendPending).toBeUndefined();
+		expect(capturedProps.inputBar?.cwdOverride).toBe("C:/repo");
 	});
 });

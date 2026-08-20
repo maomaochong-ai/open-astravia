@@ -160,6 +160,25 @@ export function adoptExistingSessionInputDraft(sessionPath: string): void {
 }
 
 /**
+ * Re-keys the already visible draft after Main canonicalizes an imported or
+ * legacy Session path. Unlike a normal scope switch, it keeps the current
+ * working set because both paths identify the same user-visible session.
+ */
+export function claimExistingSessionInputDraft(sessionPath: string, sourceSessionPath: string): void {
+	if (!sessionPath || sessionPath === sourceSessionPath) return;
+	const store = getDefaultStore();
+	const draft = captureSessionInputDraft();
+	persistSessionInputDraft(sessionPath, draft);
+	store.set(activeInputDraftKeyAtom, sessionPath);
+	const map = store.get(sessionInputDraftMapAtom);
+	if (sourceSessionPath in map) {
+		const next = { ...map };
+		delete next[sourceSessionPath];
+		store.set(sessionInputDraftMapAtom, next);
+	}
+}
+
+/**
  * 新建会话首条落地真实 path：工作集保留给随后的 sendMessage，
  * 只改归属 key，并丢掉 `new:${cwd}` 上的挂起草稿（已迁到真实 path）。
  */

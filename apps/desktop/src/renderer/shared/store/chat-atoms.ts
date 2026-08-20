@@ -247,8 +247,8 @@ export interface ActiveSession {
 
 /**
  * Renderer-only state while a brand-new session is being created. It keeps the
- * chat route renderable before a runtimeId exists; runtime-bound features must
- * continue to use {@link activeSessionAtom} as their readiness boundary.
+ * chat route renderable before a runtimeId exists and coordinates deferred work.
+ * It must not be used as a presentation or interaction-disabled signal.
  */
 export interface PendingSessionCreation {
 	cwd: string;
@@ -257,8 +257,9 @@ export interface PendingSessionCreation {
 
 /**
  * Renderer-only transition state while an existing Session runtime is restored.
- * The target path is available before runtimeId, so the sidebar can acknowledge
- * the click immediately while runtime-bound features remain gated by activeSessionAtom.
+ * The target path is available before runtimeId, so the sidebar, draft scope and
+ * Viewer history can switch immediately. Runtime-bound work waits internally for
+ * this exact transition; UI controls remain available.
  */
 export interface PendingSessionOpen {
 	cwd: string;
@@ -576,7 +577,7 @@ export interface OpenSessionOptions {
 	/** Correlates Renderer interaction timing with the Main-process creation trace. */
 	interactionId?: string;
 	/** Runs once the event subscription is live, before nonessential Session hydration finishes. */
-	onPromptReady?: () => void;
+	onPromptReady?: () => void | Promise<void>;
 	/**
 	 * For a new session, render the chat route and yield a paint before starting
 	 * runtime creation. Existing-session opens ignore this option.
@@ -590,6 +591,8 @@ export interface OpenSessionOptions {
 
 /** Immutable input captured before a new session has a runtimeId. */
 export interface StagedSendInput {
+	/** Draft scope that owned the input when the user submitted it. */
+	draftKey: string | null;
 	rawText: string;
 	hasOverride: boolean;
 	attachedImages: AttachedImage[];

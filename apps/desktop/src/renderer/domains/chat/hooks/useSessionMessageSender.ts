@@ -25,6 +25,8 @@ import {
 	knowledgeRetrievalActiveAtom,
 	mentionedFilesAtom,
 	pendingMessageEditAtom,
+	pendingSessionCreationAtom,
+	pendingSessionOpenAtom,
 	pluginInputActionsAtom,
 	projectsAtom,
 	promptAttachmentAtom,
@@ -45,6 +47,12 @@ import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
 import { appendError, fullHistoryToChat, isUserImageFile, nextId, toChatErrorDetails } from "../services/chat-service";
 import { rememberOptimisticUserMessage } from "../services/optimistic-user-message-cache";
+import { getSessionRuntimeWhenReady } from "../services/session-runtime-readiness";
+import {
+	restoreStagedPendingSessionSend,
+	stagePendingSessionSend,
+	takeStagedPendingSessionSend,
+} from "../services/staged-new-session-send";
 
 interface SessionMessageSenderOptions {
 	bumpSuggestionToken: (runtimeId: string) => void;
@@ -100,16 +108,33 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 	const sendMessage = useCallback(
 		async (overrideText?: string, options?: SendMessageOptions): Promise<SendMessageResult | undefined> => {
 			const interactionId = options?.interactionId;
-			const stagedInput = options?.stagedInput;
+			let stagedInput = options?.stagedInput;
 			// 目标会话读共享 atom（store 直读，不走 React 闭包）：openSession 同步写入
 			// activeSessionAtom，同一 tick 内「创建会话+发送」的组合仍读得到新值。不能读
 			// 实例级 activeSessionRef——useSessionManager 同时挂载多份（RootLayout /
 			// ChatPage / NewSessionPage），pluginSendMessageRef 只留最后渲染者的
 			// sendMessage，而该实例的 ref 记的是「它自己最后打开的会话」，与用户当前
 			// 激活会话可能相差很久：插件派活曾因此落进另一个 workspace 的陈年会话。
-			const session = getDefaultStore().get(activeSessionAtom);
+			const store = getDefaultStore();
+			const transitionPending =
+				store.get(pendingSessionOpenAtom) !== null || store.get(pendingSessionCreationAtom) !== null;
+			let session = store.get(activeSessionAtom);
+			if (transitionPending && !stagedInput) {
+				const deferredInteractionId = interactionId ?? `pending-send-${Date.now()}`;
+				stagedInput = stagePendingSessionSend(overrideText, deferredInteractionId) ?? undefined;
+				if (!stagedInput) return;
+				const stagedMessageId = stagedInput.optimisticMessage.id;
+				session = await getSessionRuntimeWhenReady();
+				const acceptedInput = takeStagedPendingSessionSend(stagedMessageId);
+				if (!acceptedInput) return;
+				stagedInput = acceptedInput;
+				if (!session) {
+					restoreStagedPendingSessionSend(stagedInput);
+					return;
+				}
+			}
 			// 不订阅输入 atom；调用时读取还能覆盖“先写草稿、同一流程立即发送”的场景。
-			const inputValue = stagedInput?.rawText ?? getDefaultStore().get(inputValueAtom);
+			const inputValue = stagedInput?.rawText ?? store.get(inputValueAtom);
 			const attachedImages = stagedInput?.attachedImages ?? attachedImagesRef.current;
 			const mentionedFiles = stagedInput?.mentionedFiles ?? mentionedFilesRef.current;
 			const appshot = stagedInput ? stagedInput.appshot : appshotRef.current;
@@ -224,7 +249,6 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			}
 			// 最后一条用户消息重编辑：提交时先中止当前生成，再删除旧消息及其回复子树；
 			// 随后的正常 prompt 从原 parent 继续，因此不会创建会话内分支。
-			const store = getDefaultStore();
 			const pendingEdit = store.get(pendingMessageEditAtom);
 			if (pendingEdit) {
 				if (store.get(isStreamingAtom)) {

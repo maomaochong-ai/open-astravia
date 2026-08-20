@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { UserMessageView } from "@vetta/theme-ui/chat";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 
@@ -16,7 +17,11 @@ beforeAll(() => {
 
 afterAll(() => vi.unstubAllGlobals());
 
-it("Runtime 恢复期间保留消息操作位置但禁用依赖 Runtime 的按钮", () => {
+it("Runtime 恢复期间消息操作保持可用并立即接受点击", async () => {
+	const user = userEvent.setup();
+	const onEdit = vi.fn();
+	const onFork = vi.fn();
+	const onBranchNext = vi.fn();
 	render(
 		<UserMessageView
 			entryState="static"
@@ -29,11 +34,8 @@ it("Runtime 恢复期间保留消息操作位置但禁用依赖 Runtime 的按�
 			copyText=""
 			isLastUserMessage
 			showEditAction
-			editActionDisabled
 			canSwitchBranch
-			branchActionDisabled
 			showForkAction
-			forkActionDisabled
 			isPendingEdit={false}
 			branchIndex={0}
 			branchTotal={2}
@@ -57,16 +59,24 @@ it("Runtime 恢复期间保留消息操作位置但禁用依赖 Runtime 的按�
 			relativeTime={null}
 			copyButton={null}
 			onContextMenu={vi.fn()}
-			onEdit={vi.fn()}
-			onFork={vi.fn()}
+			onEdit={onEdit}
+			onFork={onFork}
 			onBranchPrev={vi.fn()}
-			onBranchNext={vi.fn()}
+			onBranchNext={onBranchNext}
 			onActionsVisibleChange={vi.fn()}
 		/>,
 	);
 
-	expect((screen.getByLabelText("edit") as HTMLButtonElement).disabled).toBe(true);
-	expect((screen.getByLabelText("fork") as HTMLButtonElement).disabled).toBe(true);
+	expect((screen.getByLabelText("edit") as HTMLButtonElement).disabled).toBe(false);
+	expect((screen.getByLabelText("fork") as HTMLButtonElement).disabled).toBe(false);
+	// Previous remains disabled because it is a real branch boundary, unrelated to Runtime readiness.
 	expect((screen.getByLabelText("previous") as HTMLButtonElement).disabled).toBe(true);
-	expect((screen.getByLabelText("next") as HTMLButtonElement).disabled).toBe(true);
+	expect((screen.getByLabelText("next") as HTMLButtonElement).disabled).toBe(false);
+
+	await user.click(screen.getByLabelText("edit"));
+	await user.click(screen.getByLabelText("fork"));
+	await user.click(screen.getByLabelText("next"));
+	expect(onEdit).toHaveBeenCalledOnce();
+	expect(onFork).toHaveBeenCalledOnce();
+	expect(onBranchNext).toHaveBeenCalledOnce();
 });

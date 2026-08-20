@@ -18,8 +18,6 @@ export function DefaultChatView({
 	onSend,
 	onSendQueued,
 	cwdOverride,
-	sessionPending = false,
-	sessionPendingLabel,
 }: DefaultChatViewProps): JSX.Element {
 	return (
 		<PerfSendProfiler id="ChatView(total)">
@@ -34,7 +32,6 @@ export function DefaultChatView({
 							messages={model.messages}
 							isStreaming={model.isStreaming}
 							sessionId={model.sessionId}
-							pendingLabel={sessionPendingLabel}
 							onSend={onSend}
 							onAbort={onAbort}
 						/>
@@ -47,7 +44,6 @@ export function DefaultChatView({
 								onAbort={onAbort}
 								onSendQueued={onSendQueued}
 								cwdOverride={cwdOverride}
-								sendDisabled={sessionPending}
 							/>
 						</PerfSendProfiler>
 					</div>

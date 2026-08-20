@@ -1,6 +1,6 @@
 import type { ChatMessage } from "@shared/store/atoms";
 import { describe, expect, it } from "vitest";
-import { shareChatMessageSnapshot } from "./chat-message-snapshot";
+import { preserveMessagesAddedAfterSnapshot, shareChatMessageSnapshot } from "./chat-message-snapshot";
 
 function message(id: string, text: string): ChatMessage {
 	return { id, role: "assistant", text, blocks: [{ id: `${id}-text`, type: "text", text }] };
@@ -38,5 +38,15 @@ describe("shareChatMessageSnapshot", () => {
 
 		expect(result.messages).toEqual([second, first]);
 		expect(result.reusedCount).toBe(2);
+	});
+
+	it("Runtime 水合替换预览基线时保留其后接受的乐观消息", () => {
+		const preview = [message("a", "preview")];
+		const canonical = [message("a", "canonical")];
+		const optimistic = { id: "user-pending", role: "user" as const, text: "accepted" };
+
+		const result = preserveMessagesAddedAfterSnapshot(preview, canonical, [...preview, optimistic]);
+
+		expect(result).toEqual([...canonical, optimistic]);
 	});
 });

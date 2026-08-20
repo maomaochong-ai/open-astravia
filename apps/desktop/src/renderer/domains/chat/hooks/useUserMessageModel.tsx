@@ -1,5 +1,5 @@
 import {
-	activeSessionAtom,
+	type ActiveSession,
 	appshotAttachmentAtom,
 	chatMessagesAtom,
 	confirmDialogAtom,
@@ -25,19 +25,20 @@ import {
 	type UserMessageViewProps,
 } from "@vetta/theme-ui/chat";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
-import { selectAtom } from "jotai/utils";
 import { useCallback, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-/** 用户气泡只关心当前会话的 runtimeId / cwd，收窄订阅避免流式期间整屏气泡重渲染。 */
-const activeSessionRuntimeIdAtom = selectAtom(activeSessionAtom, (session) => session?.runtimeId);
-const activeSessionCwdAtom = selectAtom(activeSessionAtom, (session) => session?.cwd);
 import {
 	fullHistoryToChat,
 	isSystemAttachmentPath,
 	isUserImageFile,
 	parseUserPrefixes,
 } from "../services/chat-service";
+import { getSessionRuntimeWhenReady } from "../services/session-runtime-readiness";
+import {
+	cancelStagedPendingSessionSend,
+	restoreStagedPendingSessionSend,
+} from "../services/staged-new-session-send";
 import { AppshotCard, type AppshotCardData } from "../components/AppshotCard";
 import { TextBlockView } from "../components/blocks/TextBlock";
 import { CopyButton } from "../components/message-list/MessageActions";
@@ -283,20 +284,13 @@ export function useUserMessageModel({
 	const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null);
 	const setFilePreview = useSetAtom(filePreviewAtom);
 	const setConfirmDialog = useSetAtom(confirmDialogAtom);
-	// 只订阅 runtimeId / cwd：视窗内每条用户气泡都挂着本 hook，若订阅 activeSession
-	// 整个对象，流式期间任意字段变动都会把所有可见用户气泡连同前缀解析重跑一遍。
-	const activeSessionRuntimeId = useAtomValue(activeSessionRuntimeIdAtom);
-	const activeSessionCwd = useAtomValue(activeSessionCwdAtom);
 	const pendingEdit = useAtomValue(pendingMessageEditAtom);
 
 	const hasPersistedEntry = Boolean(message.entryId);
-	const runtimeReady = Boolean(activeSessionRuntimeId);
-	const showEditAction = isLastUserMessage && (hasPersistedEntry || runtimeReady);
-	const editActionDisabled = !runtimeReady;
-	const canEdit = showEditAction && !editActionDisabled;
-	const canDelete = hasPersistedEntry && Boolean(activeSessionRuntimeId);
+	const showEditAction = isLastUserMessage;
+	const canEdit = showEditAction;
+	const canDelete = hasPersistedEntry;
 	const showForkAction = hasPersistedEntry;
-	const forkActionDisabled = !runtimeReady;
 	const branch = message.branch;
 	const canSwitchBranch = Boolean(branch && branch.siblings.length > 1 && message.entryId);
 	const isPendingEdit = Boolean(
@@ -305,8 +299,15 @@ export function useUserMessageModel({
 
 	const applyEditFill = useCallback(async () => {
 		let entryId = message.entryId;
-		if (!entryId && activeSessionRuntimeId) {
-			const history = await window.vetta.session.getFullHistory(activeSessionRuntimeId);
+		if (!entryId) {
+			const staged = cancelStagedPendingSessionSend(message.id);
+			if (staged) {
+				restoreStagedPendingSessionSend(staged, { overwriteComposer: true });
+				return;
+			}
+			const session = await getSessionRuntimeWhenReady();
+			if (!session) return;
+			const history = await window.vetta.session.getFullHistory(session.runtimeId);
 			for (let index = history.length - 1; index >= 0; index--) {
 				const entry = history[index];
 				if (entry.type === "message" && entry.message.role === "user" && entry.entryId) {
@@ -318,18 +319,19 @@ export function useUserMessageModel({
 		if (!entryId) return;
 		fillInputFromUserText(message.text, message.promptRef, message.attachments);
 		getDefaultStore().set(pendingMessageEditAtom, { entryId });
-	}, [activeSessionRuntimeId, message.attachments, message.entryId, message.promptRef, message.text]);
+	}, [message.attachments, message.entryId, message.promptRef, message.text]);
 
 	const runWithInterruptConfirm = useCallback(
-		(kind: "switch" | "fork", action: () => void | Promise<void>) => {
+		(kind: "switch" | "fork", action: (session: ActiveSession) => void | Promise<void>) => {
 			const run = (): void => {
 				void (async () => {
-					const runtimeId = activeSessionRuntimeId;
-					if (isStreaming && runtimeId) {
+					const session = await getSessionRuntimeWhenReady();
+					if (!session) return;
+					if (isStreaming) {
 						onAbortEdit?.();
-						await abortAndWait(runtimeId);
+						await abortAndWait(session.runtimeId);
 					}
-					await action();
+					await action(session);
 				})();
 			};
 			if (!isStreaming) {
@@ -349,7 +351,7 @@ export function useUserMessageModel({
 				onConfirm: run,
 			});
 		},
-		[activeSessionRuntimeId, isStreaming, onAbortEdit, setConfirmDialog, t],
+		[isStreaming, onAbortEdit, setConfirmDialog, t],
 	);
 
 	const handleEdit = useCallback(() => {
@@ -373,25 +375,24 @@ export function useUserMessageModel({
 
 	const handleSwitchBranch = useCallback(
 		(direction: -1 | 1) => {
-			if (!branch || !message.entryId || !activeSessionRuntimeId) return;
+			if (!branch || !message.entryId) return;
 			const nextIndex = branch.index + direction;
 			if (nextIndex < 0 || nextIndex >= branch.siblings.length) return;
 			const targetId = branch.siblings[nextIndex];
 			if (!targetId || targetId === message.entryId) return;
 			// Cancel pending edit when switching branches
 			getDefaultStore().set(pendingMessageEditAtom, null);
-			runWithInterruptConfirm("switch", async () => {
-				const runtimeId = activeSessionRuntimeId;
-				await window.vetta.session.switchBranch(runtimeId, targetId);
-				await reloadChatHistory(runtimeId);
+			runWithInterruptConfirm("switch", async (session) => {
+				await window.vetta.session.switchBranch(session.runtimeId, targetId);
+				await reloadChatHistory(session.runtimeId);
 			});
 		},
-		[activeSessionRuntimeId, branch, message.entryId, runWithInterruptConfirm],
+		[branch, message.entryId, runWithInterruptConfirm],
 	);
 
 	const handleFork = useCallback(() => {
-		if (!message.entryId || !activeSessionRuntimeId) return;
-		runWithInterruptConfirm("fork", async () => {
+		if (!message.entryId) return;
+		runWithInterruptConfirm("fork", async (session) => {
 			// Drop any in-progress re-edit before switching sessions — pending entryIds
 			// belong to the source session and cannot be replaced after opening the fork.
 			const store = getDefaultStore();
@@ -399,18 +400,16 @@ export function useUserMessageModel({
 			// 避免误把父会话未发送内容写成空并丢掉。
 			store.set(pendingMessageEditAtom, null);
 
-			const runtimeId = activeSessionRuntimeId;
-			const cwd = activeSessionCwd;
-			const { path } = await window.vetta.session.forkSession(runtimeId, message.entryId!);
+			const { path } = await window.vetta.session.forkSession(session.runtimeId, message.entryId!);
 			const open = openSessionFnRef.current;
-			if (open && cwd) {
-				await open(cwd, path);
+			if (open) {
+				await open(session.cwd, path);
 			}
 			// Fork file includes the selected user message; leaf is that message.
 			// Do not set pendingMessageEdit — next send is a normal follow-up.
 			store.set(pendingMessageEditAtom, null);
 		});
-	}, [activeSessionCwd, activeSessionRuntimeId, message.entryId, runWithInterruptConfirm]);
+	}, [message.entryId, runWithInterruptConfirm]);
 
 	const closeContextMenu = useCallback(() => setContextMenuPosition(null), []);
 
@@ -443,8 +442,10 @@ export function useUserMessageModel({
 
 	const performDelete = useCallback(
 		async (suppressForOneMinute: boolean): Promise<void> => {
-			if (!message.entryId || !activeSessionRuntimeId) return;
-			const runtimeId = activeSessionRuntimeId;
+			if (!message.entryId) return;
+			const session = await getSessionRuntimeWhenReady();
+			if (!session) return;
+			const runtimeId = session.runtimeId;
 			if (isStreaming) {
 				onAbortEdit?.();
 				await abortAndWait(runtimeId);
@@ -458,7 +459,7 @@ export function useUserMessageModel({
 			}
 			await reloadChatHistory(runtimeId);
 		},
-		[activeSessionRuntimeId, isStreaming, message.entryId, onAbortEdit, pendingEdit?.entryId],
+		[isStreaming, message.entryId, onAbortEdit, pendingEdit?.entryId],
 	);
 
 	const runDelete = useCallback(
@@ -594,11 +595,8 @@ export function useUserMessageModel({
 			: null,
 		isLastUserMessage,
 		showEditAction,
-		editActionDisabled,
 		canSwitchBranch,
-		branchActionDisabled: !runtimeReady,
 		showForkAction,
-		forkActionDisabled,
 		isPendingEdit,
 		branchIndex: branch?.index ?? 0,
 		branchTotal: branch?.siblings.length ?? 0,

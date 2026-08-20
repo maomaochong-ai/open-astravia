@@ -5,8 +5,6 @@ export interface ChatViewProps {
 	onSend: (overrideText?: string) => Promise<void>;
 	onSendQueued: (runtimeId: string, id: string) => Promise<void>;
 	cwdOverride?: string;
-	sessionPending?: boolean;
-	sessionPendingLabel?: string;
 }
 
 export interface ChatViewHeaderModel {

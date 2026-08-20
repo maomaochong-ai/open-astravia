@@ -13,6 +13,7 @@ const perf = vi.hoisted(() => ({
 const stagedSend = vi.hoisted(() => ({
 	restore: vi.fn(),
 	stage: vi.fn<(overrideText?: string, interactionId?: string) => StagedSendInput | null>(() => ({
+		draftKey: "new:C:/workspace",
 		rawText: "hello",
 		hasOverride: false,
 		attachedImages: [],
@@ -50,6 +51,7 @@ describe("useNewSessionSend", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		stagedSend.stage.mockReturnValue({
+			draftKey: "new:C:/workspace",
 			rawText: "hello",
 			hasOverride: false,
 			attachedImages: [],

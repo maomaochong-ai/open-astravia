@@ -251,8 +251,6 @@
 	},
 	"chatView": {
 		"defaultSessionTitle": "Vetta Session",
-		"startingSession": "Starting session",
-		"openingSession": "Opening session",
 		"exportButton": {
 			"title": "Export full session as HTML"
 		},

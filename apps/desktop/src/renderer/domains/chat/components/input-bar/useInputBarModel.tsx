@@ -107,7 +107,6 @@ export function useInputBarModel({
 	onSendQueued,
 	cwdOverride,
 	onExpandedChange,
-	sendDisabled = false,
 	sendPending,
 }: InputBarProps): InputBarModel {
 	const { t } = useTranslation("chat");
@@ -158,7 +157,7 @@ export function useInputBarModel({
 	const hasSession = Boolean(activeSession) || Boolean(cwdOverride);
 	const speechInput = useSpeechInput(hasSession);
 	// 文件与图片如今都是文本流里的 token，因此文本非空即代表有内容可发。
-	const canSend = !sendDisabled && hasSession && !isStreaming && (!isBlank || Boolean(appshotAttachment));
+	const canSend = hasSession && !isStreaming && (!isBlank || Boolean(appshotAttachment));
 	const isEmpty = isBlank;
 	const showPlaceholder = placeholderVisible;
 	/**

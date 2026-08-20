@@ -12,11 +12,9 @@ export function ChatPageView({
 	return (
 		<ChatView
 			onSend={onSend}
-			onAbort={onAbort}
-			onSendQueued={onSendQueued}
-			cwdOverride={model.pendingCwd}
-			sessionPending={model.sessionPending}
-			sessionPendingLabel={model.sessionPendingLabel}
+			 onAbort={onAbort}
+			 onSendQueued={onSendQueued}
+			 cwdOverride={model.pendingCwd}
 		/>
 	);
 }
