@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Session 初始化生成 Extension Context 的 system prompt 基线时复用刚完成加载的资源 generation，不再立即重复一次 Turn 级文件变更扫描；真实 Turn 仍在 admission 时刷新动态 Prompt/Skill 资源。
+
 - 宿主把 Coding Agent 打进自己的 bundle 时（Electron `app.asar`），`VERSION` 的清单查找会命中宿主的
   `package.json`，模块求值阶段直接抛 `Unexpected coding-agent package name` 导致打包后的 Desktop 主进程
   启动即崩溃。现在清单名与本包不一致或读取失败时降级为 `0.0.0`（仅影响 MCP `clientVersion` 与版本展示），

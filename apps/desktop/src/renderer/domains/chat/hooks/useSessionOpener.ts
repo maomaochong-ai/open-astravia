@@ -2,6 +2,11 @@ import { useProjectActions } from "@domains/project/hooks/useProjects";
 import { i18n } from "@shared/i18n";
 import { perfSendMark } from "@shared/lib/perf-send";
 import {
+	perfSessionSwitchBegin,
+	perfSessionSwitchComplete,
+	perfSessionSwitchMark,
+} from "@shared/lib/perf-session-switch";
+import {
 	activeSessionAtom,
 	activeSessionStreamingAtom,
 	activeToolNamesAtom,
@@ -23,6 +28,7 @@ import {
 	type Project,
 	pendingMessageEditAtom,
 	pendingSessionCreationAtom,
+	pendingSessionOpenAtom,
 	projectsAtom,
 	retryProgressAtom,
 	type SessionExecutionMode,
@@ -67,13 +73,23 @@ function getProjects(): Project[] {
 	return getDefaultStore().get(projectsAtom);
 }
 
-function waitForCommittedPaint(): Promise<void> {
+type PaintBarrierResult = "painted" | "timeout";
+
+function waitForCommittedPaint(): Promise<PaintBarrierResult> {
 	if (typeof window.requestAnimationFrame !== "function") {
-		return new Promise((resolve) => window.setTimeout(resolve, 0));
+		return new Promise((resolve) => window.setTimeout(() => resolve("timeout"), 0));
 	}
 	return new Promise((resolve) => {
+		let settled = false;
+		const finish = (result: PaintBarrierResult): void => {
+			if (settled) return;
+			settled = true;
+			window.clearTimeout(timeoutId);
+			resolve(result);
+		};
+		const timeoutId = window.setTimeout(() => finish("timeout"), 100);
 		window.requestAnimationFrame(() => {
-			window.requestAnimationFrame(() => resolve());
+			window.requestAnimationFrame(() => finish("painted"));
 		});
 	});
 }
@@ -81,6 +97,7 @@ function waitForCommittedPaint(): Promise<void> {
 export function useSessionOpener(): SessionOpenerController {
 	const setActiveSession = useSetAtom(activeSessionAtom);
 	const setPendingSessionCreation = useSetAtom(pendingSessionCreationAtom);
+	const setPendingSessionOpen = useSetAtom(pendingSessionOpenAtom);
 	const setChatMessages = useSetAtom(chatMessagesAtom);
 	const setActiveSessionStreaming = useSetAtom(activeSessionStreamingAtom);
 	const navigate = useNavigate();
@@ -126,25 +143,66 @@ export function useSessionOpener(): SessionOpenerController {
 
 	const openSession = useCallback(
 		async (cwd: string, sessionPath?: string, executionMode?: SessionExecutionMode, options?: OpenSessionOptions) => {
-			const interactionId = options?.interactionId;
+			const isExistingSessionOpen = sessionPath !== undefined;
+			const interactionId =
+				options?.interactionId ??
+				(isExistingSessionOpen ? perfSessionSwitchBegin("existing-session-open") : undefined);
+			const markSessionSwitch = (label: string): void => {
+				if (isExistingSessionOpen) perfSessionSwitchMark(label, interactionId);
+			};
 			perfSendMark("open-session-enter", interactionId);
-			// 取自己的调用令牌；若中途被新的 openSession 抢跑，会在 subscribe()
-			// 返回后被发现并立即清理自己刚建好的 IPC 订阅，避免泄漏。
+			markSessionSwitch("open-session-enter");
+			// 取自己的调用令牌；每个异步边界都执行 newest-wins 校验。
+			// subscribe() 若已完成还会立即释放旧操作刚建好的 IPC 订阅，避免泄漏。
 			const myOpenToken = bumpOpenSessionToken();
 			const shouldNavigate = options?.navigate !== false;
 			const navigateBeforeCreate =
 				sessionPath === undefined && shouldNavigate && options?.navigateBeforeCreate === true;
+			const stageExistingSessionOpen = isExistingSessionOpen && shouldNavigate;
+			const clearOwnPendingTransition = (): void => {
+				if (navigateBeforeCreate) {
+					setPendingSessionCreation((current) => (current?.interactionId === interactionId ? null : current));
+				}
+				if (stageExistingSessionOpen) {
+					setPendingSessionOpen((current) => (current?.interactionId === interactionId ? null : current));
+				}
+			};
+			const finishCancelledOpen = (): void => {
+				clearOwnPendingTransition();
+				if (isExistingSessionOpen) perfSessionSwitchComplete("cancelled", interactionId);
+			};
+			const failSessionHydration = (stage: "path" | "history" | "state" | "subscribe", error: unknown): void => {
+				if (myOpenToken !== getOpenSessionToken()) {
+					finishCancelledOpen();
+					return;
+				}
+				console.error("[useSessionOpener] session hydration failed", { interactionId, stage, error });
+				clearOwnPendingTransition();
+				const message = error instanceof Error ? error.message : String(error);
+				setChatMessages((previous) => appendError(previous, message));
+				setActiveSession(null);
+				activeSessionRef.current = null;
+				if (isExistingSessionOpen) perfSessionSwitchComplete("failed", interactionId);
+			};
 			if (navigateBeforeCreate) {
 				setPendingSessionCreation({ cwd, interactionId: interactionId ?? "" });
+			} else if (stageExistingSessionOpen) {
+				setPendingSessionOpen({ cwd, sessionPath, interactionId: interactionId ?? "" });
+			}
+			if (navigateBeforeCreate) {
 				perfSendMark("session-route-start", interactionId);
 				await navigate({ to: "/" });
 				perfSendMark("session-route-ready", interactionId);
-				await waitForCommittedPaint();
-				perfSendMark("session-route-painted", interactionId);
 				if (myOpenToken !== getOpenSessionToken()) {
-					setPendingSessionCreation(null);
+					finishCancelledOpen();
 					return;
 				}
+			} else if (stageExistingSessionOpen) {
+				// Existing-session restoration must not await a route commit before the old
+				// message tree is cleared. Keeping navigation, pending state and teardown in
+				// one event batch avoids an expensive intermediate render of the old history.
+				void navigate({ to: "/" });
+				markSessionSwitch("navigation-dispatched");
 			}
 			// 切换 session 前清掉内嵌文件预览（指向旧 cwd 的某个具体文件），但
 			// **保留**活动面板的展开状态：用户在上一个 session 打开过 ActivityPanel
@@ -173,6 +231,25 @@ export function useSessionOpener(): SessionOpenerController {
 			setCurrentScenario(null);
 			// 本会话工作模式同样置未知，等 getState 回填；绝不回退到全局默认值。
 			setSessionAgentMode(null);
+			if (stageExistingSessionOpen) {
+				setActiveSession(null);
+				activeSessionRef.current = null;
+			}
+			markSessionSwitch("renderer-reset-complete");
+			if (navigateBeforeCreate) {
+				const paintBarrierResult = await waitForCommittedPaint();
+				perfSendMark("session-route-painted", interactionId);
+				markSessionSwitch(paintBarrierResult === "painted" ? "pending-ui-painted" : "pending-ui-paint-timeout");
+				if (myOpenToken !== getOpenSessionToken()) {
+					finishCancelledOpen();
+					return;
+				}
+			} else if (stageExistingSessionOpen) {
+				// Atom updates are committed synchronously; the async IPC below yields the
+				// Renderer event loop so the browser can paint without delaying Runtime
+				// restoration. A hard rAF/timer barrier can be throttled for occluded windows.
+				markSessionSwitch("pending-ui-scheduled");
+			}
 
 			const isBatchSession =
 				sessionPath !== undefined &&
@@ -196,14 +273,18 @@ export function useSessionOpener(): SessionOpenerController {
 			let createResult: Awaited<ReturnType<typeof window.vetta.session.create>>;
 			try {
 				perfSendMark("session-create-start", interactionId);
+				markSessionSwitch("session-create-start");
 				createResult = await window.vetta.session.create(
 					{ cwd, sessionPath, executionMode, scenario },
 					sessionKind,
 					interactionId ? { interactionId } : undefined,
 				);
 				perfSendMark("session-create-end", interactionId);
+				markSessionSwitch("session-create-end");
 			} catch (error) {
 				perfSendMark("session-create-failed", interactionId);
+				markSessionSwitch("session-create-failed");
+				if (isExistingSessionOpen) perfSessionSwitchComplete("failed", interactionId);
 				const message = error instanceof Error ? error.message : String(error);
 				console.error("[useSessionOpener] session.create failed:", error);
 				setChatMessages((prev) => {
@@ -214,13 +295,13 @@ export function useSessionOpener(): SessionOpenerController {
 				});
 				setActiveSession(null);
 				activeSessionRef.current = null;
+				clearOwnPendingTransition();
 				if (navigateBeforeCreate) {
 					try {
 						options?.onCreateError?.(error);
 					} catch (restoreError) {
 						console.error("[useSessionOpener] staged input restore failed:", restoreError);
 					}
-					setPendingSessionCreation(null);
 					void navigate({
 						to: "/new-session/$cwd",
 						params: { cwd: encodeURIComponent(cwd) },
@@ -231,6 +312,11 @@ export function useSessionOpener(): SessionOpenerController {
 				return;
 			}
 			const { sessionId } = createResult;
+			if (myOpenToken !== getOpenSessionToken()) {
+				markSessionSwitch("session-create-superseded");
+				finishCancelledOpen();
+				return;
+			}
 			const canonicalSessionPath = createResult.sessionPath || sessionPath || "";
 			// ADR-0007: 「对话」项目下 main 会把 cwd 改写成 per-session 子目录，
 			// 这里以 main 返回的 effective cwd 为准，保证 FilesPanel/调试 cwd 都指向子目录。
@@ -245,23 +331,44 @@ export function useSessionOpener(): SessionOpenerController {
 			const earlySessionInfo = { cwd: effectiveCwd, sessionPath: canonicalSessionPath, runtimeId: sessionId };
 			setActiveSession(earlySessionInfo);
 			activeSessionRef.current = earlySessionInfo;
-			if (navigateBeforeCreate) setPendingSessionCreation(null);
-			if (shouldNavigate && !navigateBeforeCreate) {
+			markSessionSwitch("active-session-set");
+			if (navigateBeforeCreate) clearOwnPendingTransition();
+			if (shouldNavigate && !navigateBeforeCreate && !stageExistingSessionOpen) {
 				void navigate({ to: "/" });
+				markSessionSwitch("navigation-dispatched");
 			}
-			const resolvedSessionPath =
-				canonicalSessionPath || (await window.vetta.session.getSessionPath(sessionId)) || sessionPath || "";
+			let resolvedSessionPath: string;
+			try {
+				resolvedSessionPath =
+					canonicalSessionPath || (await window.vetta.session.getSessionPath(sessionId)) || sessionPath || "";
+			} catch (error) {
+				failSessionHydration("path", error);
+				return;
+			}
+			if (myOpenToken !== getOpenSessionToken()) {
+				finishCancelledOpen();
+				return;
+			}
 			const cachedKey = resolvedSessionPath;
 			let subscribed = false;
 			const subscribeForPrompt = async (): Promise<boolean> => {
 				perfSendMark("session-subscribe-start", interactionId);
-				const unsubscribeFn = await window.vetta.session.subscribe(sessionId, createSessionEventHandler(sessionId));
+				markSessionSwitch("session-subscribe-start");
+				let unsubscribeFn: () => void;
+				try {
+					unsubscribeFn = await window.vetta.session.subscribe(sessionId, createSessionEventHandler(sessionId));
+				} catch (error) {
+					failSessionHydration("subscribe", error);
+					return false;
+				}
 				perfSendMark("session-subscribe-end", interactionId);
+				markSessionSwitch("session-subscribe-end");
 
 				// 校验令牌：如果 await 期间用户已经切换到下一个 session，本次的
 				// subscribe 已经成了孤儿，必须立即释放，不能覆盖后来者的订阅。
 				if (myOpenToken !== getOpenSessionToken()) {
 					unsubscribeFn();
+					finishCancelledOpen();
 					return false;
 				}
 				setCurrentUnsubscribe(unsubscribeFn);
@@ -279,17 +386,34 @@ export function useSessionOpener(): SessionOpenerController {
 				if (!(await subscribeForPrompt())) return;
 			}
 
-			// Fire history + state in parallel so renderer doesn't wait on two
-			// sequential IPC round-trips. History is rendered as soon as it lands;
-			// state arrives shortly after and fills in context/streaming UI.
+			// Fetch history + state in parallel, then commit both in one renderer job.
+			// They normally land within a few milliseconds of each other; committing
+			// history first caused an expensive intermediate render of the message tree.
+			// allSettled preserves stage-specific diagnostics without unhandled rejection.
 			perfSendMark("session-state-load-start", interactionId);
+			markSessionSwitch("session-hydration-start");
 			const historyPromise =
 				sessionPath === undefined ? Promise.resolve([]) : window.vetta.session.getFullHistory(sessionId);
 			const statePromise = window.vetta.session.getState(sessionId);
-
-			const history = await historyPromise;
+			const [historyResult, stateResult] = await Promise.allSettled([historyPromise, statePromise]);
+			if (historyResult.status === "rejected") {
+				failSessionHydration("history", historyResult.reason);
+				return;
+			}
+			if (stateResult.status === "rejected") {
+				failSessionHydration("state", stateResult.reason);
+				return;
+			}
+			if (myOpenToken !== getOpenSessionToken()) {
+				finishCancelledOpen();
+				return;
+			}
+			const history = historyResult.value;
+			const state = stateResult.value;
 			perfSendMark("session-history-loaded", interactionId);
+			markSessionSwitch("session-history-loaded");
 			const mapped = reconcileOptimisticUserMessages(sessionId, fullHistoryToChat(history));
+			markSessionSwitch("session-history-mapped");
 			// 新会话在 subscribe 后已经允许首条消息直发，此时 sendMessage 可能已经
 			// 写入乐观用户气泡。空历史没有需要恢复的内容，不能再用 [] 覆盖该气泡。
 			if (sessionPath !== undefined) {
@@ -302,8 +426,8 @@ export function useSessionOpener(): SessionOpenerController {
 				markAutoTitleHandled(canonicalSessionPath);
 			}
 
-			const state = await statePromise;
 			perfSendMark("session-state-loaded", interactionId);
+			markSessionSwitch("session-state-loaded");
 			const contextComposition = resolveSessionContextComposition(resolvedSessionPath, state.contextComposition);
 			setContextUsage({
 				percent: state.contextPercent,
@@ -418,6 +542,9 @@ export function useSessionOpener(): SessionOpenerController {
 
 			// 已有会话必须先完成历史/流式草稿恢复，再接入实时事件；新会话已在上方订阅。
 			if (!subscribed && !(await subscribeForPrompt())) return;
+			markSessionSwitch("session-hydration-committed");
+			if (stageExistingSessionOpen) clearOwnPendingTransition();
+			if (isExistingSessionOpen) perfSessionSwitchComplete("completed", interactionId);
 
 			// kernel 队列镜像初始化（ADR-0060）：整体替换、不做消费差分——后台期间被
 			// 消费的条目由历史重放呈现，这里只要拿到当前真实队列与 paused 状态。
@@ -472,6 +599,7 @@ export function useSessionOpener(): SessionOpenerController {
 			setChatMessages,
 			setActiveSession,
 			setPendingSessionCreation,
+			setPendingSessionOpen,
 			setActiveSessionStreaming,
 			setIsCompacting,
 			setRetryProgress,

@@ -10,6 +10,7 @@ import {
 	defaultImConversationCwdAtom,
 	expandedBatchProjectsAtom,
 	inlineFilePreviewAtom,
+	pendingSessionOpenAtom,
 } from "@shared/store/atoms";
 import { useMatches, useNavigate } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -29,6 +30,7 @@ const EMPTY_SESSIONS: SessionInfo[] = [];
  */
 const activeSessionPathAtom = selectAtom(activeSessionAtom, (session) => session?.sessionPath ?? "");
 const activeSessionCwdAtom = selectAtom(activeSessionAtom, (session) => session?.cwd ?? "");
+const pendingSessionPathAtom = selectAtom(pendingSessionOpenAtom, (session) => session?.sessionPath ?? "");
 
 export function useProjectsPanelModel({
 	filter,
@@ -51,6 +53,7 @@ export function useProjectsPanelModel({
 		loadSessions,
 	} = useProjects();
 	const activeSessionPathValue = useAtomValue(activeSessionPathAtom);
+	const pendingSessionPath = useAtomValue(pendingSessionPathAtom);
 	const activeSessionCwd = useAtomValue(activeSessionCwdAtom);
 	const imCwd = useAtomValue(defaultImConversationCwdAtom);
 	const setActiveSession = useSetAtom(activeSessionAtom);
@@ -63,7 +66,7 @@ export function useProjectsPanelModel({
 	const viewerSessionPath = routeParams?.path ? decodeURIComponent(routeParams.path) : "";
 	/** `/project/$cwd` 与 `/new-session/$cwd` 的参数值本身是编码过的（见导航处的 encodeURIComponent）。 */
 	const routeCwd = routeParams?.cwd ? decodeURIComponent(routeParams.cwd) : "";
-	const activeSessionPath = viewerSessionPath || activeSessionPathValue;
+	const activeSessionPath = viewerSessionPath || pendingSessionPath || activeSessionPathValue;
 	const batchProjects = useAtomValue(batchProjectsAtom);
 	const [expandedBatchProjects, setExpandedBatchProjects] = useAtom(expandedBatchProjectsAtom);
 	const { deleteTask: deleteBatchTask, deleteProject: deleteBatchProject } = useBatchTasks();

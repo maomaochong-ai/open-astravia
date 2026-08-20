@@ -439,12 +439,12 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			const sessionId = options.session.readSessionId();
 			const operationId = `${sessionId}:extension-context-preview`;
 			const signal = new AbortController().signal;
-			const initialSnapshotLease = await capabilities.acquire({
-				sessionId,
-				operationId,
-				reason: "preview",
-				signal,
-			});
+			// Initialization has just loaded the Session resource generation and applied
+			// plugin Skill paths. Bind-free acquisition preserves that committed snapshot
+			// for the extension-context baseline without immediately repeating the
+			// Turn-admission filesystem freshness scan. A real Turn still binds normally
+			// and therefore observes resource changes made after initialization.
+			const initialSnapshotLease = await capabilities.acquire();
 			try {
 				const admittedComposer = initialSnapshotLease.snapshot.modelCallFrameComposer;
 				const previewComposer =

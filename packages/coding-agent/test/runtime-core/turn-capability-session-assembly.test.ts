@@ -197,6 +197,79 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		expect(todoRuntime.getAll()).toHaveLength(2);
 	});
 
+	it("previews the initial system prompt from the freshly loaded resource generation", async () => {
+		const root = mkdtempSync(join(tmpdir(), "turn-capability-preview-"));
+		temporaryDirectories.push(root);
+		const workspace = join(root, "workspace");
+		const agentDir = join(root, "agent");
+		mkdirSync(workspace, { recursive: true });
+
+		const codingTools = createCodingToolsRuntimeComposition({
+			cwd: workspace,
+			environment: emptyToolEnvironment(),
+			activation: { mode: "explicit", toolNames: [] },
+		});
+		disposals.push(() => codingTools.dispose());
+		const todoRuntime = new CodingAgentTodoRuntime();
+		disposals.push(() => todoRuntime.dispose());
+		const settingsSource = createFileSettingsRuntime(workspace, agentDir);
+		const resourceSource = createTestSessionResourceRuntime({
+			cwd: workspace,
+			agentDir,
+			settings: settingsSource,
+			includeAgentSkills: false,
+			noExtensions: true,
+			noPromptTemplates: true,
+			noThemes: true,
+		});
+		await resourceSource.reload();
+		const refreshContext = vi.spyOn(resourceSource, "refreshContextResourcesIfChanged");
+		const refreshSkills = vi.spyOn(resourceSource, "refreshSkillsIfChanged");
+		const extensionEvents = new CodingAgentExtensionRunBridge();
+		const assembly = await createCodingAgentTurnCapabilitySessionAssembly({
+			session: {
+				initialSessionId: "session-preview",
+				readSessionId: () => "session-preview",
+				cwd: workspace,
+				agentDir,
+				includeAgentSkills: false,
+				scenario: "conversation",
+			},
+			activation: {
+				resolve: () => ({ mode: "explicit", toolNames: [] }),
+				readAgentMode: () => undefined,
+				readAgentPlugins: () => undefined,
+				readActiveToolNamesOverride: () => undefined,
+			},
+			prompt: {
+				runtimeSourceFactory: async () => ({ resourceSource, settingsSource }),
+			},
+			baseProfile: codingTools.profile,
+			codingTools,
+			executionRuntime: {
+				feature: createFeature("execution", []),
+				ownsTool: () => false,
+				readAvailableTools: () => new Map(),
+			} as unknown as CodingAgentSessionExecutionRuntime,
+			specializedToolFeature: createFeature("specialized", []),
+			specializedToolRegistrations: [],
+			continuationSources: [],
+			todoRuntime,
+			contextRuntime: createContextRuntime(),
+			conversationContextProjector: { project: () => [] } satisfies ConversationContextProjector,
+			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
+			hookRuntime: createPassthroughHookRuntime(),
+			extensionEvents,
+		});
+		disposals.push(() => assembly.dispose());
+
+		await assembly.previewInitialSystemPrompt();
+
+		expect(extensionEvents.readSystemPrompt()).not.toBe("");
+		expect(refreshContext).not.toHaveBeenCalled();
+		expect(refreshSkills).not.toHaveBeenCalled();
+	});
+
 	it("gates a heavy specialized tool behind one confirmation per session", async () => {
 		const codingTools = createCodingToolsRuntimeComposition({
 			cwd: "C:\\workspace",

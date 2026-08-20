@@ -255,6 +255,17 @@ export interface PendingSessionCreation {
 	interactionId: string;
 }
 
+/**
+ * Renderer-only transition state while an existing Session runtime is restored.
+ * The target path is available before runtimeId, so the sidebar can acknowledge
+ * the click immediately while runtime-bound features remain gated by activeSessionAtom.
+ */
+export interface PendingSessionOpen {
+	cwd: string;
+	sessionPath: string;
+	interactionId: string;
+}
+
 /** After opening a parent session from a fork banner, scroll to this entry. */
 export interface PendingScrollToEntry {
 	entryId: string;
@@ -350,6 +361,7 @@ export const inputValueAtom = atom<string>("");
 export const attachedImagesAtom = atom<AttachedImage[]>([]);
 export const activeSessionAtom = atom<ActiveSession | null>(null);
 export const pendingSessionCreationAtom = atom<PendingSessionCreation | null>(null);
+export const pendingSessionOpenAtom = atom<PendingSessionOpen | null>(null);
 
 const LAST_ACTIVE_SESSION_STORAGE_KEY = "vetta-last-active-session";
 
