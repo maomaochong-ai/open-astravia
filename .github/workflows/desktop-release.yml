@@ -37,6 +37,10 @@ on:
         type: choice
         options: [default, stable, test]
         default: default
+      build_version:
+        description: "Test channel only. Semver override for an upgrade candidate, for example 0.5.47."
+        type: string
+        required: false
       update_url:
         description: "VETTA_UPDATE_URL override."
         type: string
@@ -46,7 +50,7 @@ on:
         type: string
         required: false
       release_target:
-        description: "Where a matching v* tag publishes. default = VETTA_RELEASE_TARGET or github."
+        description: "Where a matching tag or test-channel dispatch publishes. default = VETTA_RELEASE_TARGET or github."
         type: choice
         options: [default, r2, github]
         default: default
@@ -63,9 +67,10 @@ jobs:
     name: resolve desktop release scope
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    environment: desktop-production
+    environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.channel == 'test' && 'desktop-test' || 'desktop-production' }}
     outputs:
       should-build: ${{ steps.scope.outputs.should-build }}
+      build-version: ${{ steps.config.outputs.build_version }}
       channel: ${{ steps.config.outputs.channel }}
       cloud_enabled: ${{ steps.config.outputs.cloud_enabled }}
       marketplace_repository: ${{ steps.config.outputs.marketplace_repository }}
@@ -107,6 +112,7 @@ jobs:
         id: config
         env:
           EVENT_NAME: ${{ github.event_name }}
+          INPUT_BUILD_VERSION: ${{ github.event.inputs.build_version }}
           INPUT_CHANNEL: ${{ github.event.inputs.channel }}
           INPUT_CLOUD_ENABLED: ${{ github.event.inputs.cloud_enabled }}
           INPUT_MARKETPLACE_REPOSITORY: ${{ github.event.inputs.marketplace_repository }}
@@ -125,6 +131,7 @@ jobs:
           VAR_R2_PREFIX_STABLE: ${{ vars.VETTA_R2_PREFIX_STABLE }}
           VAR_R2_PREFIX_TEST: ${{ vars.VETTA_R2_PREFIX_TEST }}
           VAR_RELEASE_CHANNEL: ${{ vars.VETTA_RELEASE_CHANNEL }}
+          VAR_TEST_BUILD_VERSION: ${{ vars.VETTA_TEST_BUILD_VERSION }}
           VAR_RELEASE_TARGET: ${{ vars.VETTA_RELEASE_TARGET }}
           VAR_SERVER_URL: ${{ vars.VETTA_SERVER_URL }}
           VAR_SITE_URL: ${{ vars.VETTA_SITE_URL }}
@@ -138,6 +145,7 @@ jobs:
       - name: Write resolved config to the job summary
         if: steps.scope.outputs.should-build == 'true'
         env:
+          OUTPUT_BUILD_VERSION: ${{ steps.config.outputs.build_version }}
           OUTPUT_CHANNEL: ${{ steps.config.outputs.channel }}
           OUTPUT_CLOUD_ENABLED: ${{ steps.config.outputs.cloud_enabled }}
           OUTPUT_MARKETPLACE_REPOSITORY: ${{ steps.config.outputs.marketplace_repository }}
@@ -276,8 +284,8 @@ jobs:
             fi
           done
           if [[ "${PROVIDED}" -eq 0 ]]; then
-            # publish-r2 已收紧为「只在 push tag 时发布」，但那拦不住「打了 tag 却没配
-            # 凭据」——那样会把未签名包发到 stable。两道闸互补，这里保留 tag 硬失败。
+            # stable 发布只接受 push tag；test channel 的 workflow_dispatch 使用独立
+            # desktop-test Environment，不允许未签名产物进入 stable。
             if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
               echo "A tagged macOS release requires signing and notarization credentials." >&2
               exit 1
@@ -316,6 +324,7 @@ jobs:
       - name: Apply resolved release configuration
         shell: bash
         env:
+          OUTPUT_BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
           OUTPUT_CHANNEL: ${{ needs.prepare.outputs.channel }}
           OUTPUT_CLOUD_ENABLED: ${{ needs.prepare.outputs.cloud_enabled }}
           OUTPUT_MARKETPLACE_REPOSITORY: ${{ needs.prepare.outputs.marketplace_repository }}
@@ -381,13 +390,13 @@ jobs:
 
   publish-r2:
     name: publish R2
-    if: needs.prepare.outputs.should-build == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.prepare.outputs.release_target == 'r2'
+    if: needs.prepare.outputs.should-build == 'true' && needs.prepare.outputs.release_target == 'r2' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && needs.prepare.outputs.channel == 'test'))
     needs: [prepare, quality, build]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: desktop-production
+    environment: ${{ needs.prepare.outputs.channel == 'test' && 'desktop-test' || 'desktop-production' }}
     concurrency:
-      group: desktop-production-publish
+      group: desktop-${{ needs.prepare.outputs.channel }}-publish
       cancel-in-progress: false
 
     steps:
@@ -415,6 +424,7 @@ jobs:
       - name: Apply resolved release configuration
         shell: bash
         env:
+          OUTPUT_BUILD_VERSION: ${{ needs.prepare.outputs.build-version }}
           OUTPUT_CHANNEL: ${{ needs.prepare.outputs.channel }}
           OUTPUT_CLOUD_ENABLED: ${{ needs.prepare.outputs.cloud_enabled }}
           OUTPUT_MARKETPLACE_REPOSITORY: ${{ needs.prepare.outputs.marketplace_repository }}
@@ -441,7 +451,7 @@ jobs:
       - name: Verify published update feed
         working-directory: apps/desktop
         env:
-          VETTA_DESKTOP_RELEASE_VERSION: ${{ github.ref_name }}
+          VETTA_DESKTOP_RELEASE_VERSION: ${{ needs.prepare.outputs.build-version }}
         run: node scripts/verify-update-feed.mjs
 
   publish-github:

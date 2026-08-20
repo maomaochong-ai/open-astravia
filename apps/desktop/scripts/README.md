@@ -214,6 +214,17 @@ bun run dist:opensource -- --target dir
 https://releases.openvetta.com/desktop/stable
 ```
 
+### 使用 test 通道验证真实升级
+
+完整的安装、重启和版本切换验证应使用独立的 `test` 通道，不要覆盖 stable。通过 `desktop-release` 的
+`workflow_dispatch` 选择 `release_target=r2`、`channel=test`，并为升级候选填写递增的 `build_version`
+（例如当前 test 为 `0.5.46` 时填写 `0.5.47`）。配置会自动切换到 `VETTA_R2_PREFIX_TEST` /
+`VETTA_UPDATE_URL_TEST`，并使用 `desktop-test` Environment；`build_version` 在 stable/default 通道会被拒绝。
+
+建议先发布一个 test 基线版本，再发布更高的 test 候选版本，然后从基线安装包启动应用，执行 Windows Inno、
+macOS Squirrel.Mac 或 Linux AppImage 的真实更新和重启验证。test 通道可以保留多个版本供回归，验证完成后只需清理
+test prefix，不会影响 stable 客户端。
+
 electron-builder 会随各平台产物生成更新清单：
 
 - Windows：`latest.yml`、Inno Setup 安装包与 blockmap。应用运行时由 Inno Setup 静默安装到新版本目录，重启时由稳定启动器切换版本。

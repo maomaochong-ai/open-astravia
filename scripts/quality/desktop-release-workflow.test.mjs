@@ -36,4 +36,11 @@ describe("Desktop release workflow contracts", () => {
 		expect(packagedWorkflow).toContain("bun run test:e2e:packaged");
 		expect(packagedWorkflow).toContain("xvfb-run --auto-servernum");
 	});
+
+	it("allows workflow_dispatch to publish only the isolated R2 test channel", () => {
+		expect(workflow).toContain("build_version:");
+		expect(workflow).toContain("needs.prepare.outputs.channel == 'test'");
+		expect(workflow).toContain("'desktop-test'");
+		expect(workflow).toContain("OUTPUT_BUILD_VERSION");
+	});
 });

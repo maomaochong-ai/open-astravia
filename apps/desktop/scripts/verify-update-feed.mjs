@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { parse } from "yaml";
 import { pathToFileURL } from "node:url";
 import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
@@ -126,7 +128,22 @@ function isExecutedDirectly() {
 }
 
 if (isExecutedDirectly()) {
-	verifyUpdateFeed({ version: process.env.VETTA_DESKTOP_RELEASE_VERSION })
+	const localMetadataPath = join(import.meta.dirname, "../release/latest.yml");
+	const resolveDirectVersion = async () => {
+		const configured = process.env.VETTA_DESKTOP_RELEASE_VERSION?.trim();
+		if (configured) return configured;
+		try {
+			const document = parse(await readFile(localMetadataPath, "utf8"));
+			return document?.version;
+		} catch (error) {
+			throw new Error(
+				"[verify-update-feed] set VETTA_DESKTOP_RELEASE_VERSION or provide release/latest.yml",
+				{ cause: error },
+			);
+		}
+	};
+	resolveDirectVersion()
+		.then((version) => verifyUpdateFeed({ version }))
 		.then((result) => {
 			console.log(
 				`[verify-update-feed] ${result.version}: ${result.metadataFiles.length} metadata files and ${result.artifacts.length} artifacts are publicly reachable`,

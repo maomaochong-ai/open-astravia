@@ -16,6 +16,7 @@ const CHANNELS = new Set(["default", "stable", "test"]);
 const FLAGS = new Set(["true", "false"]);
 const CHANNEL_SEGMENTS = new Set(["stable", "test", "beta", "prod", "production"]);
 const DEFAULT_OPEN_SOURCE_MARKETPLACE = "https://github.com/openvetta/vetta-official-marketplace";
+const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
 
 /**
  * @param {unknown} value
@@ -116,6 +117,16 @@ export function resolveDesktopReleaseConfig(request = {}) {
 	if (!CHANNELS.has(channel)) {
 		throw new Error(`channel must be default, stable, or test (received ${JSON.stringify(channel)})`);
 	}
+	if (channel === "test" && releaseTarget !== "r2") {
+		throw new Error("the test channel must publish to R2");
+	}
+	const buildVersion = pick("build_version", "VETTA_TEST_BUILD_VERSION");
+	if (buildVersion && channel !== "test") {
+		throw new Error("build_version is only allowed for the test channel");
+	}
+	if (buildVersion && !VERSION_PATTERN.test(buildVersion)) {
+		throw new Error(`build_version must be a semantic desktop version (received ${JSON.stringify(buildVersion)})`);
+	}
 
 	const serverUrl = cloudEnabled === "true" ? pick("server_url", "VETTA_SERVER_URL") : "";
 	const siteUrl = cloudEnabled === "true" ? pick("site_url", "VETTA_SITE_URL") : "";
@@ -148,6 +159,7 @@ export function resolveDesktopReleaseConfig(request = {}) {
 	}
 
 	return {
+		buildVersion,
 		channel,
 		cloudEnabled,
 		marketplaceRepository,
@@ -169,6 +181,7 @@ export function resolveDesktopReleaseConfig(request = {}) {
  */
 export function toGithubOutput(config) {
 	return [
+		`build_version=${config.buildVersion}`,
 		`channel=${config.channel}`,
 		`cloud_enabled=${config.cloudEnabled}`,
 		`marketplace_repository=${config.marketplaceRepository}`,
@@ -190,6 +203,7 @@ export function toGithubOutput(config) {
  */
 export function toGithubEnv(config) {
 	const entries = [
+		["VETTA_DESKTOP_BUILD_VERSION", config.buildVersion],
 		["VETTA_CLOUD_ENABLED", config.cloudEnabled],
 		["VETTA_SERVER_URL", config.serverUrl],
 		["VETTA_SITE_URL", config.siteUrl],
@@ -212,6 +226,7 @@ export function toGithubEnv(config) {
  */
 export function toSummaryMarkdown(config) {
 	const rows = [
+		["build_version", config.buildVersion || "(package version)"],
 		["channel", config.channel],
 		["cloud_enabled", config.cloudEnabled || "(invalid: unset)"],
 		["server_url", config.serverUrl || "(unset)"],
@@ -234,6 +249,7 @@ function readRequestFromEnv(env = process.env) {
 	return {
 		eventName: env.EVENT_NAME,
 		inputs: {
+			build_version: env.INPUT_BUILD_VERSION,
 			channel: env.INPUT_CHANNEL,
 			cloud_enabled: env.INPUT_CLOUD_ENABLED,
 			marketplace_repository: env.INPUT_MARKETPLACE_REPOSITORY,
@@ -248,6 +264,7 @@ function readRequestFromEnv(env = process.env) {
 			update_url: env.INPUT_UPDATE_URL,
 		},
 		vars: {
+			VETTA_TEST_BUILD_VERSION: env.VAR_TEST_BUILD_VERSION,
 			VETTA_CLOUD_ENABLED: env.VAR_CLOUD_ENABLED,
 			VETTA_OPEN_MARKETPLACE_REPOSITORY: env.VAR_MARKETPLACE_REPOSITORY,
 			VETTA_R2_BUCKET: env.VAR_R2_BUCKET,
@@ -269,6 +286,7 @@ function readRequestFromEnv(env = process.env) {
 
 function readConfigFromOutputs(env = process.env) {
 	return {
+		buildVersion: normalizeToken(env.OUTPUT_BUILD_VERSION),
 		channel: normalizeToken(env.OUTPUT_CHANNEL) || "default",
 		cloudEnabled: normalizeToken(env.OUTPUT_CLOUD_ENABLED),
 		marketplaceRepository: normalizeToken(env.OUTPUT_MARKETPLACE_REPOSITORY),

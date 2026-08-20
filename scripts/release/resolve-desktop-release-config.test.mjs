@@ -98,6 +98,38 @@ describe("resolveDesktopReleaseConfig", () => {
 		expect(config.r2Prefix).toBe("desktop/nightly");
 	});
 
+	it("allows an explicit monotonic test build version only on the test channel", () => {
+		const config = resolveDesktopReleaseConfig({
+			eventName: "workflow_dispatch",
+			inputs: { channel: "test", build_version: "0.5.47", release_target: "r2" },
+			vars: { VETTA_SERVER_URL: "https://api.example.com/api/v1" },
+		});
+		expect(config.buildVersion).toBe("0.5.47");
+		expect(toGithubEnv(config)).toContain("VETTA_DESKTOP_BUILD_VERSION=0.5.47");
+		expect(toGithubOutput(config)).toContain("build_version=0.5.47");
+	});
+
+	it("rejects a test build version on stable or with an invalid version", () => {
+		expect(() =>
+			resolveDesktopReleaseConfig({
+				eventName: "workflow_dispatch",
+				inputs: { channel: "stable", build_version: "0.5.47" },
+			}),
+		).toThrow(/only allowed for the test channel/);
+		expect(() =>
+			resolveDesktopReleaseConfig({
+				eventName: "workflow_dispatch",
+				inputs: { channel: "test", build_version: "0.5", release_target: "r2" },
+			}),
+		).toThrow(/semantic desktop version/);
+		expect(() =>
+			resolveDesktopReleaseConfig({
+				eventName: "workflow_dispatch",
+				inputs: { channel: "test", release_target: "github" },
+			}),
+		).toThrow(/test channel must publish to R2/);
+	});
+
 	it("rejects a full build without a server URL", () => {
 		expect(() =>
 			resolveDesktopReleaseConfig({
