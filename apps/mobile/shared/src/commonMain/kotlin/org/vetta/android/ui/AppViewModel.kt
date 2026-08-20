@@ -234,25 +234,36 @@ class AppViewModel(
         viewModelScope.launch {
             try {
                 val invite = org.vetta.android.domain.remote.parsePairingInvite(target)
-                val actualTarget =
-                    if (invite == null) {
-                        target
-                    } else {
-                        val resume =
-                            if (container.preferences.remotePairingId == invite.pairingId) {
-                                container.preferences.remoteResumeSecret ?: newRemoteResumeSecret().also {
-                                    container.preferences.remoteResumeSecret = it
-                                }
-                            } else {
-                                newRemoteResumeSecret().also {
-                                    container.preferences.remotePairingId = invite.pairingId
-                                    container.preferences.remoteResumeSecret = it
-                                }
-                            }
-                        org.vetta.android.domain.remote.buildMobilePairingTarget(invite, resume)
+                val savedResume =
+                    invite?.let {
+                        container.preferences.remoteResumeSecret?.takeIf { secret ->
+                            container.preferences.remotePairingId == it.pairingId && secret.isNotBlank()
+                        }
                     }
-                val connected = runCatching { container.remoteConversationGateway.connect(actualTarget) }
-                if (connected.getOrDefault(false)) {
+                val resume = invite?.let { savedResume ?: newRemoteResumeSecret() }
+                val candidateTargets =
+                    if (invite == null) {
+                        listOf(target)
+                    } else {
+                        buildList {
+                            if (savedResume != null) {
+                                add(org.vetta.android.domain.remote.buildMobileResumeTarget(invite, savedResume))
+                            }
+                            add(org.vetta.android.domain.remote.buildMobileBootstrapTarget(invite, requireNotNull(resume)))
+                        }
+                    }
+                var connected = false
+                for (candidate in candidateTargets) {
+                    if (runCatching { container.remoteConversationGateway.connect(candidate) }.getOrDefault(false)) {
+                        connected = true
+                        break
+                    }
+                }
+                if (connected) {
+                    if (invite != null && resume != null) {
+                        container.preferences.remotePairingId = invite.pairingId
+                        container.preferences.remoteResumeSecret = resume
+                    }
                     val device = container.remoteConversationGateway.devices.value.firstOrNull()
                     if (device != null) openDeviceDetail(device.id)
                     return@launch

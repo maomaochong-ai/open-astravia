@@ -17,9 +17,14 @@ fun parsePairingInvite(value: String): PairingInvite? {
     return PairingInvite(relay, pairingId, bootstrap)
 }
 
-fun buildMobilePairingTarget(invite: PairingInvite, resumeSecret: String): String {
+fun buildMobileBootstrapTarget(invite: PairingInvite, resumeSecret: String): String {
     val socketBase = invite.relayBaseUrl.replaceFirst("https://", "wss://").replaceFirst("http://", "ws://")
     return "$socketBase/v1/relay/${invite.pairingId}/mobile#pairing=${encode(invite.bootstrapSecret)}&resume=${encode(resumeSecret)}"
+}
+
+fun buildMobileResumeTarget(invite: PairingInvite, resumeSecret: String): String {
+    val socketBase = invite.relayBaseUrl.replaceFirst("https://", "wss://").replaceFirst("http://", "ws://")
+    return "$socketBase/v1/relay/${invite.pairingId}/mobile#pairing=${encode(resumeSecret)}"
 }
 
 private fun encode(value: String): String = java.net.URLEncoder.encode(value, "UTF-8")

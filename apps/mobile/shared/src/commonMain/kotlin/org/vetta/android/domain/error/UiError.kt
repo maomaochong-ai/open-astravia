@@ -2,6 +2,8 @@ package org.vetta.android.domain.error
 
 import org.vetta.android.core.error.VettaException
 import org.vetta.android.domain.conversation.RemoteConversationException
+import org.vetta.android.domain.remote.connection.RemoteRequestException
+import org.vetta.android.domain.remote.protocol.RemoteErrorCode
 
 enum class UiErrorAction {
     None,
@@ -50,10 +52,48 @@ object ErrorMapper {
                     message = e.message.orEmpty().ifBlank { "请检查桌面端连接后重试" },
                     action = UiErrorAction.Retry,
                 )
+            is RemoteRequestException -> mapRemoteRequest(e)
             else ->
                 UiError(
                     title = "出错了",
                     message = throwable.message?.takeIf { it.isNotBlank() } ?: "未知错误",
+                    action = UiErrorAction.Retry,
+                )
+        }
+
+    private fun mapRemoteRequest(e: RemoteRequestException): UiError =
+        when (e.remoteError.code) {
+            RemoteErrorCode.Unauthorized ->
+                UiError(
+                    title = "桌面模型认证失败",
+                    message = "请在电脑端检查默认模型与 API Key 后重试",
+                )
+            RemoteErrorCode.NotFound ->
+                UiError(
+                    title = "桌面会话不可用",
+                    message = "会话或模型已不存在，请重新创建对话",
+                )
+            RemoteErrorCode.Busy ->
+                UiError(
+                    title = "桌面正在处理其他请求",
+                    message = "请稍后重试",
+                    action = UiErrorAction.Retry,
+                )
+            RemoteErrorCode.RequestTimeout,
+            RemoteErrorCode.TransportClosed,
+            ->
+                UiError(
+                    title = "桌面连接暂时不可用",
+                    message = "请检查电脑端连接后重试",
+                    action = UiErrorAction.Retry,
+                )
+            RemoteErrorCode.InvalidFrame,
+            RemoteErrorCode.UnsupportedVersion,
+            RemoteErrorCode.InternalError,
+            ->
+                UiError(
+                    title = "桌面执行失败",
+                    message = "请在电脑端检查模型配置和运行日志后重试",
                     action = UiErrorAction.Retry,
                 )
         }

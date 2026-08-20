@@ -1,3 +1,4 @@
+import { AI_ERROR_CODES, isAIError } from "@vetta/ai";
 import type { RemoteConnection, RemoteError, RemoteRequest } from "@vetta/remote-control";
 
 export interface DesktopRemoteSessionSummary {
@@ -114,9 +115,64 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function toRemoteError(error: unknown): RemoteError {
 	const message = error instanceof Error ? error.message : "Remote desktop operation failed";
+	if (isAIError(error)) {
+		return mapModelFailure(error.code, error.retryable);
+	}
+	const wrappedFailure = readWrappedFailure(error);
+	if (wrappedFailure) {
+		return mapModelFailure(wrappedFailure.code, wrappedFailure.retryable);
+	}
+	const operationCode = isRecord(error) && typeof error.code === "string" ? error.code : undefined;
+	if (operationCode === "SESSION_NOT_FOUND") {
+		return remoteError("not_found", "Desktop session was not found", false);
+	}
+	if (operationCode === "SESSION_BUSY") {
+		return remoteError("busy", "Desktop session is already processing a turn", true);
+	}
+	if (operationCode === "TURN_TIMEOUT") {
+		return remoteError("request_timeout", "Desktop conversation turn timed out", true);
+	}
+	if (message.includes("not found")) {
+		return remoteError("not_found", "Desktop session was not found", false);
+	}
+	if (message.includes("already processing")) {
+		return remoteError("busy", "Desktop session is already processing a turn", true);
+	}
+	if (message.includes("required")) {
+		return remoteError("invalid_frame", "Remote request is missing a required field", false);
+	}
 	return {
-		code: message.includes("required") ? "invalid_frame" : "internal_error",
-		message: message.slice(0, 512),
-		retryable: !message.includes("required"),
+		code: "internal_error",
+		message: "Remote desktop operation failed",
+		retryable: false,
 	};
+}
+
+function readWrappedFailure(error: unknown): { code: string; retryable: boolean } | undefined {
+	if (!isRecord(error) || !isRecord(error.details)) return undefined;
+	const { code, retryable } = error.details;
+	if (typeof code !== "string" || typeof retryable !== "boolean") return undefined;
+	return { code, retryable };
+}
+
+function mapModelFailure(code: string, retryable: boolean): RemoteError {
+	switch (code) {
+		case AI_ERROR_CODES.AUTHENTICATION_FAILED:
+		case AI_ERROR_CODES.PERMISSION_DENIED:
+			return remoteError("unauthorized", "Desktop model authentication failed", false);
+		case AI_ERROR_CODES.MODEL_NOT_FOUND:
+			return remoteError("not_found", "Desktop model is not available", false);
+		case AI_ERROR_CODES.RATE_LIMITED:
+			return remoteError("busy", "Desktop model is rate limited", true);
+		case AI_ERROR_CODES.TIMEOUT:
+			return remoteError("request_timeout", "Desktop model request timed out", true);
+		case AI_ERROR_CODES.BILLING_REQUIRED:
+			return remoteError("internal_error", "Desktop model billing is unavailable", false);
+		default:
+			return remoteError("internal_error", "Desktop model request failed", retryable);
+	}
+}
+
+function remoteError(code: RemoteError["code"], message: string, retryable: boolean): RemoteError {
+	return { code, message, retryable };
 }

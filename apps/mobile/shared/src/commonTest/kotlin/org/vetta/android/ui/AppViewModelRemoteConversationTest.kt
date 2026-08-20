@@ -24,6 +24,9 @@ import org.vetta.android.domain.conversation.RemoteConversationGateway
 import org.vetta.android.domain.device.ConnectChannel
 import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.DeviceStatus
+import org.vetta.android.domain.remote.buildMobileBootstrapTarget
+import org.vetta.android.domain.remote.buildMobileResumeTarget
+import org.vetta.android.domain.remote.parsePairingInvite
 import org.vetta.android.domain.session.ConversationOrigin
 import org.vetta.android.domain.session.MessageStatus
 import org.vetta.android.ui.i18n.Str
@@ -119,9 +122,59 @@ class AppViewModelRemoteConversationTest {
             assertEquals(Str.remoteConnectFailed, viewModel.state.value.globalError?.title)
         }
 
-    private fun container(gateway: RemoteConversationGateway) =
+    @Test
+    fun savedPairingUsesResumeCredentialBeforeBootstrapFallback() =
+        runTest(dispatcher) {
+            val gateway = FakeRemoteConversationGateway().apply { connectResults = listOf(false, true) }
+            val preferences = AppPreferences(MapSettings())
+            val inviteText =
+                "vetta://pair?relay=https%3A%2F%2Frelay.example&pairingId=pairing_0123456789abcdefghijklmno&bootstrap=secret_0123456789abcdefghijklmnopqrstuvwxyz"
+            val invite = requireNotNull(parsePairingInvite(inviteText))
+            val resume = "resume_0123456789abcdefghijklmnopqrstuvwxyz"
+            preferences.remotePairingId = invite.pairingId
+            preferences.remoteResumeSecret = resume
+            val viewModel = AppViewModel(container(gateway, preferences))
+            advanceUntilIdle()
+
+            viewModel.connectDesktop(inviteText)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(
+                    buildMobileResumeTarget(invite, resume),
+                    buildMobileBootstrapTarget(invite, resume),
+                ),
+                gateway.connectTargets,
+            )
+            assertEquals(null, viewModel.state.value.globalError)
+        }
+
+    @Test
+    fun failedNewPairingDoesNotReplaceSavedResumeCredential() =
+        runTest(dispatcher) {
+            val gateway = FakeRemoteConversationGateway().apply { connectResults = listOf(false) }
+            val preferences = AppPreferences(MapSettings())
+            preferences.remotePairingId = "existing-pairing"
+            preferences.remoteResumeSecret = "existing-resume"
+            val viewModel = AppViewModel(container(gateway, preferences))
+            advanceUntilIdle()
+
+            viewModel.connectDesktop(
+                "vetta://pair?relay=https%3A%2F%2Frelay.example&pairingId=pairing_0123456789abcdefghijklmno&bootstrap=secret_0123456789abcdefghijklmnopqrstuvwxyz",
+            )
+            advanceUntilIdle()
+
+            assertEquals("existing-pairing", preferences.remotePairingId)
+            assertEquals("existing-resume", preferences.remoteResumeSecret)
+            assertEquals(Str.remoteConnectFailed, viewModel.state.value.globalError?.title)
+        }
+
+    private fun container(
+        gateway: RemoteConversationGateway,
+        preferences: AppPreferences = AppPreferences(MapSettings()),
+    ) =
         AppContainer(
-            preferences = AppPreferences(MapSettings()),
+            preferences = preferences,
             tokenStore = InMemoryTokenStore(),
             sessionStore = SettingsSessionStore(MapSettings()),
             remoteConversationGateway = gateway,
@@ -151,11 +204,14 @@ private class FakeRemoteConversationGateway : RemoteConversationGateway {
     val streamCalls = mutableListOf<StreamCall>()
     val aborted = mutableListOf<String>()
     var pendingConnection: CompletableDeferred<Boolean>? = null
+    var connectResults: List<Boolean> = emptyList()
     var connectCalls = 0
+    val connectTargets = mutableListOf<String>()
 
     override suspend fun connect(target: String): Boolean {
+        connectTargets += target
         connectCalls += 1
-        return pendingConnection?.await() ?: true
+        return pendingConnection?.await() ?: connectResults.getOrNull(connectCalls - 1) ?: true
     }
 
     override suspend fun disconnect(deviceId: String) {
