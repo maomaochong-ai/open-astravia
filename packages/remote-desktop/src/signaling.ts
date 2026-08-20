@@ -71,8 +71,12 @@ export class WebSocketRemoteDesktopSignaling {
 function splitTarget(target: string): { readonly url: string; readonly token?: string } {
 	const separator = target.indexOf("#");
 	if (separator < 0) return { url: target };
-	const token = target.slice(separator + 1);
-	return token ? { url: target.slice(0, separator), token } : { url: target.slice(0, separator) };
+	const fragment = target.slice(separator + 1);
+	const url = target.slice(0, separator);
+	if (!fragment) return { url };
+	if (!fragment.includes("=")) return { url, token: fragment };
+	const token = new URLSearchParams(fragment).get("pairing") ?? undefined;
+	return token ? { url, token } : { url };
 }
 
 function defaultSocket(url: string, protocols?: readonly string[]): RemoteDesktopWebSocket {

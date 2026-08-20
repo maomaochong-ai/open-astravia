@@ -1,9 +1,13 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "vetta-remote-relay",
+	"account_id": "0357cf29270289865e31d10d38ffecec",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-03-10",
 	"workers_dev": true,
+	"routes": [
+		{ "pattern": "relay.flowerwine.dpdns.org", "custom_domain": true }
+	],
 	"observability": {
 		"enabled": true,
 		"head_sampling_rate": 0.1

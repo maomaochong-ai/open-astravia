@@ -26,6 +26,7 @@ const ModelsSettings = lazy(async () => ({ default: (await import("./ModelsSetti
 const PermissionsSettings = lazy(async () => ({
 	default: (await import("./PermissionsSettings")).PermissionsSettings,
 }));
+const RemotePairingSettings = lazy(async () => ({ default: (await import("./RemotePairingSettings")).RemotePairingSettings }));
 const PetSettings = lazy(async () => ({ default: (await import("./PetSettings")).PetSettings }));
 const PluginsSettings = lazy(async () => ({ default: (await import("./PluginsSettings")).PluginsSettings }));
 const ShortcutsSettings = lazy(async () => ({
@@ -52,6 +53,7 @@ const SETTINGS_CONTENT: Record<Exclude<SettingsTab, "mcp">, LazyExoticComponent<
 	plugins: PluginsSettings,
 	knowledge: KnowledgeBaseSettings,
 	pet: PetSettings,
+	remote: RemotePairingSettings,
 };
 
 export function SettingsPage(): JSX.Element {

@@ -33,7 +33,12 @@ export class RemoteDesktopRoom extends DurableObject<Env> {
 		const credentialHash = request.headers.get("X-Vetta-Credential-Hash");
 		const roomTag = request.headers.get("X-Vetta-Room-Tag");
 		if (!role || !credentialHash || !roomTag) return response("Invalid desktop relay request", 400);
-		if (!(await this.authorization.authorize(role === "host", credentialHash))) {
+		const authorized =
+			role === "host"
+				? await this.authorization.authorizeDesktop(credentialHash)
+				: request.headers.get("X-Vetta-Preauthorized") === "mobile" ||
+					Boolean(await this.authorization.authorizeMobile(credentialHash));
+		if (!authorized) {
 			relayWarn("desktop_connection_rejected", { roomTag, role, reason: "invalid_pairing" });
 			return response("Pairing authorization failed", 401);
 		}

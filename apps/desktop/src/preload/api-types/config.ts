@@ -90,6 +90,11 @@ export interface DesktopConfigData {
 		/** 发送后行为：foreground=打开主窗定位新会话；background=后台运行仅关面板。缺省 foreground。 */
 		postSendBehavior?: "foreground" | "background";
 	};
+	remoteControl?: {
+		relayBaseUrl?: string;
+		pairingId?: string;
+		inputEnabled?: boolean;
+	};
 }
 
 export interface ShortcutsBindingsChangedEvent {

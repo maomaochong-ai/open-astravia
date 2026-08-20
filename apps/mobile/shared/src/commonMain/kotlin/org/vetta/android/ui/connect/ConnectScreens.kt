@@ -50,6 +50,7 @@ import org.vetta.android.ui.components.VettaCard
 import org.vetta.android.ui.i18n.Str
 import org.vetta.android.ui.theme.vettaExtra
 import org.vetta.android.ui.remote.RemoteDesktopSurface
+import org.vetta.android.ui.remote.PairingScannerButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,14 +137,18 @@ fun DiscoverConnectScreen(
                     }
                     Spacer(Modifier.height(16.dp))
                     SectionHeader(title = Str.manualConnect)
-                    OutlinedTextField(
-                        value = host,
-                        onValueChange = { host = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        placeholder = { Text(Str.hostPlaceholder) },
-                        shape = MaterialTheme.shapes.medium,
-                    )
+					Row(verticalAlignment = Alignment.CenterVertically) {
+					OutlinedTextField(
+						value = host,
+						onValueChange = { host = it },
+						modifier = Modifier.weight(1f),
+						singleLine = true,
+						placeholder = { Text(Str.hostPlaceholder) },
+						shape = MaterialTheme.shapes.medium,
+					)
+					Spacer(Modifier.width(6.dp))
+					PairingScannerButton(onScanned = { value -> host = value })
+					}
                     Spacer(Modifier.height(10.dp))
                     PrimaryBlackButton(
                         text = Str.connectAction,

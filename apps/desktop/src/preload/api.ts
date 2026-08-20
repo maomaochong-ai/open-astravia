@@ -21,6 +21,7 @@ import type { DesktopPetApi } from "./api-types/pet.js";
 import type { DesktopPluginsApi } from "./api-types/plugins.js";
 import type { DesktopProjectApi } from "./api-types/project.js";
 import type { DesktopQuickPanelApi } from "./api-types/quick-panel.js";
+import type { RemotePairingApi } from "./api-types/remote-pairing.js";
 import type { DesktopSchedulerApi } from "./api-types/scheduler.js";
 import type { DesktopSessionApi } from "./api-types/session.js";
 import type { DesktopSkillsApi } from "./api-types/skills.js";
@@ -96,6 +97,7 @@ export interface DesktopApi {
 	fs: DesktopFsApi;
 	skills: DesktopSkillsApi;
 	config: DesktopConfigApi;
+	remotePairing: RemotePairingApi;
 	knowledge: DesktopKnowledgeApi;
 	models: DesktopModelsApi;
 	mcp: DesktopMcpApi;

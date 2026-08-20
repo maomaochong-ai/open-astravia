@@ -11,5 +11,9 @@ fun remoteDesktopViewerTarget(controlUrl: String): RemoteDesktopTarget? {
     val pairingId = match.groupValues[2]
     val secret = match.groupValues[3]
     val base = match.groupValues[1].substringBefore("/v1/relay/")
-    return RemoteDesktopTarget("$base/v1/desktop/$pairingId/viewer$secret", pairingId)
+	val viewerSecret = if (secret.startsWith("#") && secret.contains("resume=")) {
+		val resume = secret.substringAfter("resume=").substringBefore('&')
+		"#pairing=$resume"
+	} else secret
+    return RemoteDesktopTarget("$base/v1/desktop/$pairingId/viewer$viewerSecret", pairingId)
 }

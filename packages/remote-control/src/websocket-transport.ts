@@ -15,6 +15,8 @@ export type RemoteWebSocketFactory = (url: string, protocols?: readonly string[]
 
 export const REMOTE_WEBSOCKET_PROTOCOL = "vetta.remote.v1";
 export const PAIRING_PROTOCOL_PREFIX = "vetta.pairing.";
+export const BOOTSTRAP_PROTOCOL_PREFIX = "vetta.bootstrap.";
+export const RESUME_PROTOCOL_PREFIX = "vetta.resume.";
 
 /** WebSocket adapter with no dependency on DOM, Electron, or a specific runtime. */
 export class WebSocketRemoteTransport implements RemoteTransport {
@@ -28,9 +30,14 @@ export class WebSocketRemoteTransport implements RemoteTransport {
 
 	async connect(handlers: RemoteTransportHandlers): Promise<void> {
 		this.handlers = handlers;
-		const { url, pairingToken } = splitPairingTarget(this.url);
+		const { url, pairingToken, bootstrapToken, resumeToken } = splitPairingTarget(this.url);
 		const protocols = pairingToken
-			? [REMOTE_WEBSOCKET_PROTOCOL, `${PAIRING_PROTOCOL_PREFIX}${pairingToken}`]
+			? [
+					REMOTE_WEBSOCKET_PROTOCOL,
+					`${PAIRING_PROTOCOL_PREFIX}${pairingToken}`,
+					...(bootstrapToken ? [`${BOOTSTRAP_PROTOCOL_PREFIX}${bootstrapToken}`] : []),
+					...(resumeToken ? [`${RESUME_PROTOCOL_PREFIX}${resumeToken}`] : []),
+				]
 			: undefined;
 		const socket = this.createSocket(url, protocols);
 		this.socket = socket;
@@ -68,11 +75,23 @@ export class WebSocketRemoteTransport implements RemoteTransport {
 	}
 }
 
-function splitPairingTarget(target: string): { readonly url: string; readonly pairingToken?: string } {
+export function splitPairingTarget(target: string): {
+	readonly url: string;
+	readonly pairingToken?: string;
+	readonly bootstrapToken?: string;
+	readonly resumeToken?: string;
+} {
 	const separator = target.indexOf("#");
 	if (separator < 0) return { url: target };
-	const pairingToken = target.slice(separator + 1);
-	return pairingToken ? { url: target.slice(0, separator), pairingToken } : { url: target.slice(0, separator) };
+	const fragment = target.slice(separator + 1);
+	const url = target.slice(0, separator);
+	if (!fragment) return { url };
+	if (!fragment.includes("=")) return { url, pairingToken: fragment };
+	const values = new URLSearchParams(fragment);
+	const pairingToken = values.get("pairing") ?? undefined;
+	const bootstrapToken = values.get("bootstrap") ?? undefined;
+	const resumeToken = values.get("resume") ?? undefined;
+	return { url, pairingToken, bootstrapToken, resumeToken };
 }
 
 function defaultWebSocketFactory(url: string, protocols?: readonly string[]): RemoteWebSocket {

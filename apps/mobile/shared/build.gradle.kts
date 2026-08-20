@@ -63,6 +63,8 @@ kotlin {
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.core.ktx)
+            implementation(libs.webrtc.android)
+            implementation(libs.google.code.scanner)
         }
         getByName("androidDeviceTest").dependencies {
             implementation(libs.androidx.activity.compose)

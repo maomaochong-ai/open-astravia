@@ -6,8 +6,9 @@ import { getAppLogger } from "../logger.js";
 import { createSystemInputAdapter } from "./system-input.js";
 
 export interface DesktopRemoteDesktopHostOptions {
-	readonly signalingUrl: string;
-	readonly pairingToken: string;
+	readonly signalingUrl?: string;
+	readonly pairingToken?: string;
+	readonly signalingTarget?: string;
 	readonly inputEnabled: boolean;
 	readonly appRoot: string;
 	readonly isPackaged: boolean;
@@ -16,6 +17,7 @@ export interface DesktopRemoteDesktopHostOptions {
 
 export interface DesktopRemoteDesktopHostHandle {
 	readonly sessionId: string;
+	readonly inputSupported: boolean;
 	revokeInput(): void;
 	grantInput(): void;
 	stop(): Promise<void>;
@@ -29,7 +31,8 @@ export async function startDesktopRemoteDesktopHost(
 	options: DesktopRemoteDesktopHostOptions,
 ): Promise<DesktopRemoteDesktopHostHandle> {
 	if (activeHost) return activeHost;
-	const sessionId = remoteDesktopSessionId(options.signalingUrl) ?? `desktop-${randomUUID()}`;
+	const sessionId =
+		remoteDesktopSessionId(options.signalingTarget ?? options.signalingUrl ?? "") ?? `desktop-${randomUUID()}`;
 	const input = createSystemInputAdapter({ enabled: options.inputEnabled });
 	input.setEnabled(options.inputEnabled);
 	const window = new BrowserWindow({
@@ -67,7 +70,7 @@ export async function startDesktopRemoteDesktopHost(
 		});
 	});
 
-	const target = `${options.signalingUrl}#${options.pairingToken}`;
+	const target = options.signalingTarget ?? `${options.signalingUrl}#${options.pairingToken}`;
 	if (options.isPackaged) {
 		await window.loadFile(join(options.appRoot, "dist/renderer/remote-desktop-host.html"), {
 			query: { target, sessionId },
@@ -80,6 +83,7 @@ export async function startDesktopRemoteDesktopHost(
 
 	const handle: DesktopRemoteDesktopHostHandle = {
 		sessionId,
+		inputSupported: input.supported,
 		revokeInput() {
 			input.setEnabled(false);
 		},

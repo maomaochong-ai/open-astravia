@@ -23,6 +23,7 @@ import { registerPluginMediaProvidersIpc } from "./plugin-media-providers.js";
 import { registerPluginsIpc } from "./plugins.js";
 import { registerProjectExportIpc } from "./project-export.js";
 import { registerQuickPanelIpc } from "./quickpanel.js";
+import { registerRemotePairingIpc } from "./remote-pairing.js";
 import { registerRuntimesIpc } from "./runtimes.js";
 import { registerSessionIpc } from "./session.js";
 import { registerSettingsIpc } from "./settings.js";
@@ -63,11 +64,16 @@ interface IpcTeardown {
 	teardownAppshot: () => void;
 	teardownDiagnostics: () => void;
 	teardownOnboarding: () => void;
+	teardownRemotePairing: () => void;
 }
 
 export function registerAllIpc(
 	webContents: WebContents,
-	options: { actionApprovalBroker: ActionApprovalBroker; pluginActionService: PluginActionService },
+	options: {
+		actionApprovalBroker: ActionApprovalBroker;
+		pluginActionService: PluginActionService;
+		remotePairingService: import("../remote-control/desktop-remote-pairing-service.js").DesktopRemotePairingService;
+	},
 ): IpcTeardown {
 	return {
 		teardownAbilities: registerAbilitiesIpc(),
@@ -100,6 +106,7 @@ export function registerAllIpc(
 		teardownAppshot: registerAppshotIpc(),
 		teardownDiagnostics: registerDiagnosticsIpc(),
 		teardownOnboarding: registerOnboardingIpc(),
+		teardownRemotePairing: registerRemotePairingIpc(options.remotePairingService),
 	};
 }
 
@@ -134,6 +141,7 @@ export function teardownAllIpc(teardown: IpcTeardown): void {
 	teardown.teardownAppshot();
 	teardown.teardownDiagnostics();
 	teardown.teardownOnboarding();
+	teardown.teardownRemotePairing();
 }
 
 export { registerBatchTasksIpc } from "./batch-tasks.js";

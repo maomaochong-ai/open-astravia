@@ -14,6 +14,7 @@ import { createNotificationApi } from "./apis/notification.js";
 import { createPetApi } from "./apis/pet.js";
 import { createPluginsApi } from "./apis/plugins.js";
 import { createQuickPanelApi } from "./apis/quick-panel.js";
+import { createRemotePairingApi } from "./apis/remote-pairing.js";
 import { createSchedulerApi } from "./apis/scheduler.js";
 import { createSessionApi } from "./apis/session.js";
 import { createSpeechInputApi } from "./apis/speech-input.js";
@@ -47,6 +48,7 @@ const rawApi: Omit<DesktopApi, "hostAccess"> = {
 	...createThemesApi(ipcRenderer),
 	...createPetApi(ipcRenderer),
 	...createQuickPanelApi(ipcRenderer),
+	remotePairing: createRemotePairingApi(ipcRenderer),
 	...createAppshotApi(ipcRenderer),
 	...createI18nApi(ipcRenderer),
 	...createTelemetryApi(ipcRenderer),

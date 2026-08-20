@@ -43,6 +43,18 @@ class AppPreferences(
             if (value.isNullOrBlank()) settings.remove(KEY_LAST_MODEL) else settings[KEY_LAST_MODEL] = value
         }
 
+    var remoteResumeSecret: String?
+        get() = settings.getStringOrNull(KEY_REMOTE_RESUME)?.takeIf { it.isNotBlank() }
+        set(value) {
+            if (value.isNullOrBlank()) settings.remove(KEY_REMOTE_RESUME) else settings[KEY_REMOTE_RESUME] = value
+        }
+
+    var remotePairingId: String?
+        get() = settings.getStringOrNull(KEY_REMOTE_PAIRING_ID)?.takeIf { it.isNotBlank() }
+        set(value) {
+            if (value.isNullOrBlank()) settings.remove(KEY_REMOTE_PAIRING_ID) else settings[KEY_REMOTE_PAIRING_ID] = value
+        }
+
     fun setServerUrl(url: String) {
         val normalized = url.trim().trimEnd('/')
         require(normalized.isNotBlank()) { "serverUrl blank" }
@@ -66,5 +78,7 @@ class AppPreferences(
         private const val KEY_THEME = "vetta.prefs.theme"
         private const val KEY_LAST_SESSION = "vetta.prefs.last_session"
         private const val KEY_LAST_MODEL = "vetta.prefs.last_model"
+        private const val KEY_REMOTE_RESUME = "vetta.prefs.remote_resume"
+        private const val KEY_REMOTE_PAIRING_ID = "vetta.prefs.remote_pairing_id"
     }
 }

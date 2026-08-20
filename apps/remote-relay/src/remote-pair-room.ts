@@ -16,6 +16,8 @@ interface ConnectionAttachment {
 	readonly superseded?: boolean;
 	readonly deviceId?: string;
 	readonly connectionId?: string;
+	readonly credentialMode?: "desktop" | "bootstrap" | "resume" | "legacy";
+	readonly resumeHash?: string;
 }
 
 const EXPIRES_AT_KEY = "expiresAt";
@@ -26,6 +28,13 @@ export class RemotePairRoom extends DurableObject<Env> {
 	private readonly authorization = new RoomAuthorization(this.ctx);
 
 	async fetch(request: Request): Promise<Response> {
+		if (request.method === "POST" && new URL(request.url).pathname.endsWith("/authorize")) {
+			const role = parseRole(request.headers.get("X-Vetta-Relay-Role"));
+			const credentialHash = request.headers.get("X-Vetta-Credential-Hash");
+			if (role !== "mobile" || !credentialHash) return response("Unauthorized", 401);
+			const mode = await this.authorization.authorizeMobile(credentialHash);
+			return mode ? new Response(null, { status: 204 }) : response("Unauthorized", 401);
+		}
 		if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
 			return response("WebSocket upgrade required", 426);
 		}
@@ -33,7 +42,15 @@ export class RemotePairRoom extends DurableObject<Env> {
 		const credentialHash = request.headers.get("X-Vetta-Credential-Hash");
 		const roomTag = request.headers.get("X-Vetta-Room-Tag");
 		if (!role || !credentialHash || !roomTag) return response("Invalid relay request", 400);
-		if (!(await this.authorization.authorize(role === "desktop", credentialHash))) {
+		const resumeHash = request.headers.get("X-Vetta-Resume-Hash") ?? undefined;
+		const bootstrapHash = request.headers.get("X-Vetta-Bootstrap-Hash") ?? undefined;
+		const authorization =
+			role === "desktop"
+				? (await this.authorization.authorizeDesktop(credentialHash, bootstrapHash))
+					? "desktop"
+					: false
+				: await this.authorization.authorizeMobile(credentialHash);
+		if (!authorization) {
 			relayWarn("connection_rejected", {
 				roomTag,
 				role,
@@ -51,7 +68,12 @@ export class RemotePairRoom extends DurableObject<Env> {
 		const pair = new WebSocketPair();
 		const client = pair[0];
 		const server = pair[1];
-		server.serializeAttachment({ role, roomTag, authenticated: false } satisfies ConnectionAttachment);
+		server.serializeAttachment({
+			role,
+			roomTag,
+			authenticated: false,
+			...(role === "mobile" ? { credentialMode: authorization, resumeHash } : {}),
+		} satisfies ConnectionAttachment);
 		this.ctx.acceptWebSocket(server, [role]);
 		await this.refreshExpiry();
 		relayInfo("socket_connected", { roomTag, role });
@@ -129,6 +151,20 @@ export class RemotePairRoom extends DurableObject<Env> {
 	}
 
 	private acceptHello(socket: WebSocket, attachment: ConnectionAttachment, hello: RemoteHello): void {
+		if (attachment.role === "mobile" && attachment.credentialMode === "bootstrap") {
+			void this.authorization.consumeBootstrap(attachment.resumeHash).then((consumed) => {
+				if (!consumed) {
+					this.rejectSocket(socket, attachment, "bootstrap_already_consumed");
+					return;
+				}
+				this.finishHello(socket, attachment, hello);
+			});
+			return;
+		}
+		this.finishHello(socket, attachment, hello);
+	}
+
+	private finishHello(socket: WebSocket, attachment: ConnectionAttachment, hello: RemoteHello): void {
 		socket.serializeAttachment({
 			...attachment,
 			authenticated: true,

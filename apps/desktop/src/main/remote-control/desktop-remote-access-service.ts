@@ -6,8 +6,9 @@ import { DesktopConversationRemoteOperations } from "./desktop-conversation-remo
 import { DesktopRemoteConnector } from "./desktop-remote-connector.js";
 
 export interface DesktopRemoteAccessOptions {
-	readonly controlUrl: string;
-	readonly pairingToken: string;
+	readonly controlUrl?: string;
+	readonly pairingToken?: string;
+	readonly controlTarget?: string;
 	readonly conversationCwd: string;
 }
 
@@ -46,7 +47,7 @@ async function connect(options: DesktopRemoteAccessOptions, runGeneration: numbe
 		.replace(/[^A-Za-z0-9_-]/g, "-")
 		.slice(0, 64)}`;
 	const connection = new RemoteConnection(
-		new WebSocketRemoteTransport(`${options.controlUrl}#${options.pairingToken}`),
+		new WebSocketRemoteTransport(options.controlTarget ?? `${options.controlUrl}#${options.pairingToken}`),
 		{
 			role: "desktop",
 			deviceId,

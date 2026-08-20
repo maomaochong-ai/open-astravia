@@ -30,14 +30,33 @@ export default {
 			return json({ error: "websocket_upgrade_required" }, 426);
 		}
 		const requiredProtocol = desktopRoute ? REMOTE_DESKTOP_WEBSOCKET_PROTOCOL : undefined;
-		const secret = pairingSecretFromHeaders(request.headers, requiredProtocol);
-		if (!secret) {
+		const credentials = pairingSecretFromHeaders(request.headers, requiredProtocol);
+		if (!credentials) {
 			relayWarn("upgrade_rejected", { role: route.role, reason: "missing_pairing_protocol" });
 			return json({ error: "unauthorized" }, 401);
 		}
-		const [credentialHash, pairingHash] = await Promise.all([sha256(secret), sha256(route.pairingId)]);
+		const [credentialHash, bootstrapHash, resumeHash, pairingHash] = await Promise.all([
+			sha256(credentials.pairingSecret),
+			credentials.bootstrapSecret ? sha256(credentials.bootstrapSecret) : Promise.resolve(undefined),
+			credentials.resumeSecret ? sha256(credentials.resumeSecret) : Promise.resolve(undefined),
+			sha256(route.pairingId),
+		]);
 		const roomTag = pairingHash.slice(0, 12);
 		const namespace = desktopRoute ? env.REMOTE_DESKTOP_ROOM : env.REMOTE_PAIR_ROOM;
+		let preauthorizedViewer = false;
+		if (desktopRoute?.role === "viewer") {
+			const authStub = env.REMOTE_PAIR_ROOM.get(env.REMOTE_PAIR_ROOM.idFromName(route.pairingId));
+			const authResponse = await authStub.fetch(
+				new Request("https://remote-pair-room.internal/authorize", {
+					method: "POST",
+					headers: {
+						"X-Vetta-Relay-Role": "mobile",
+						"X-Vetta-Credential-Hash": credentialHash,
+					},
+				}),
+			);
+			preauthorizedViewer = authResponse.ok;
+		}
 		const id = namespace.idFromName(route.pairingId);
 		const stub = namespace.get(id);
 		const internalRequest = new Request("https://remote-pair-room.internal/connect", {
@@ -45,6 +64,9 @@ export default {
 				Upgrade: "websocket",
 				...(desktopRoute ? { "X-Vetta-Desktop-Role": desktopRoute.role } : { "X-Vetta-Relay-Role": route.role }),
 				"X-Vetta-Credential-Hash": credentialHash,
+				...(resumeHash ? { "X-Vetta-Resume-Hash": resumeHash } : {}),
+				...(bootstrapHash ? { "X-Vetta-Bootstrap-Hash": bootstrapHash } : {}),
+				...(preauthorizedViewer ? { "X-Vetta-Preauthorized": "mobile" } : {}),
 				"X-Vetta-Room-Tag": roomTag,
 			},
 		});

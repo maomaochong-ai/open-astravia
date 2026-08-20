@@ -28,7 +28,9 @@ export type {
 export { NOOP_REMOTE_LOGGER, REMOTE_PROTOCOL_VERSION } from "./types.js";
 export type { RemoteWebSocket, RemoteWebSocketFactory } from "./websocket-transport.js";
 export {
+	BOOTSTRAP_PROTOCOL_PREFIX,
 	PAIRING_PROTOCOL_PREFIX,
 	REMOTE_WEBSOCKET_PROTOCOL,
+	RESUME_PROTOCOL_PREFIX,
 	WebSocketRemoteTransport,
 } from "./websocket-transport.js";

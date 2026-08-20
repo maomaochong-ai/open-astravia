@@ -31,14 +31,14 @@ class KtorWebSocketRemoteTransport(
     override val incoming: Flow<RemoteFrame> = incomingChannel.receiveAsFlow()
 
     override suspend fun connect() {
-        val (socketUrl, pairingToken) = splitPairingTarget(url)
+		val target = splitPairingTarget(url)
         val socket =
             client.webSocketSession {
-                url.takeFrom(socketUrl)
-                pairingToken?.let {
+				url.takeFrom(target.url)
+				target.pairingToken?.let {
                     headers.append(
                         HttpHeaders.SecWebSocketProtocol,
-                        listOf("vetta.remote.v1", "vetta.pairing.$it").joinToString(", "),
+						listOfNotNull("vetta.remote.v1", "vetta.pairing.$it", target.resumeToken?.let { token -> "vetta.resume.$token" }).joinToString(", "),
                     )
                 }
             }
@@ -69,10 +69,17 @@ class KtorWebSocketRemoteTransport(
         client.close()
     }
 
-    private fun splitPairingTarget(target: String): Pair<String, String?> {
+    private data class Target(val url: String, val pairingToken: String?, val resumeToken: String?)
+
+    private fun splitPairingTarget(target: String): Target {
         val separator = target.indexOf('#')
-        if (separator < 0) return target to null
-        val token = target.substring(separator + 1).takeIf { it.isNotEmpty() }
-        return target.substring(0, separator) to token
+		if (separator < 0) return Target(target, null, null)
+		val fragment = target.substring(separator + 1)
+		if (!fragment.contains('=')) return Target(target.substring(0, separator), fragment.takeIf { it.isNotEmpty() }, null)
+		val values = fragment.split('&').mapNotNull {
+			val index = it.indexOf('=')
+			if (index <= 0) null else it.substring(0, index) to java.net.URLDecoder.decode(it.substring(index + 1), "UTF-8")
+		}.toMap()
+		return Target(target.substring(0, separator), values["pairing"], values["resume"])
     }
 }

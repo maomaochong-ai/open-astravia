@@ -63,7 +63,8 @@ export type SettingsTab =
 	| "context"
 	| "plugins"
 	| "knowledge"
-	| "pet";
+	| "pet"
+	| "remote";
 
 // ─── Theme ───
 

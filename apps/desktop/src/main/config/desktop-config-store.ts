@@ -40,6 +40,11 @@ export interface DesktopConfig {
 	shortcuts?: ShortcutsConfig;
 	quickPanel?: QuickPanelConfig;
 	appshot?: AppshotConfig;
+	remoteControl?: {
+		relayBaseUrl?: string;
+		pairingId?: string;
+		inputEnabled?: boolean;
+	};
 }
 
 export type AppshotGesture = "both-shift" | "both-mod" | "both-alt";
@@ -212,6 +217,17 @@ function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 		shortcuts: normalizeShortcuts(parsed.shortcuts),
 		quickPanel: normalizeQuickPanel(parsed.quickPanel),
 		appshot: normalizeAppshot(parsed.appshot),
+		remoteControl: normalizeRemoteControl(parsed.remoteControl),
+	};
+}
+
+function normalizeRemoteControl(value: unknown): DesktopConfig["remoteControl"] {
+	if (typeof value !== "object" || value === null) return undefined;
+	const input = value as Record<string, unknown>;
+	return {
+		relayBaseUrl: typeof input.relayBaseUrl === "string" ? input.relayBaseUrl : undefined,
+		pairingId: typeof input.pairingId === "string" ? input.pairingId : undefined,
+		inputEnabled: input.inputEnabled === true,
 	};
 }
 

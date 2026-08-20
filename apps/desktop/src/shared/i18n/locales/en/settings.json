@@ -1,5 +1,25 @@
 {
   "title": "Settings",
+  "remote": {
+    "title": "Remote access",
+    "description": "Securely connect your phone to this computer. Screen and input use peer-to-peer WebRTC; the relay only handles pairing and signaling.",
+    "pairingTitle": "Pair a phone",
+    "pairingDescription": "Generating a new code revokes the previous pairing. The QR code is only used for the first device binding.",
+    "relayLabel": "Relay address",
+    "create": "Generate QR code",
+    "creating": "Generating",
+    "qrAlt": "Vetta phone pairing QR code",
+    "qrHint": "Open Remote access on your phone and scan this code. After the first connection, it cannot bind another device.",
+    "empty": "Generate a QR code to scan from your phone",
+    "inputTitle": "Allow remote input",
+    "inputDescription": "Allow the paired phone to control the mouse and keyboard. macOS also requires Accessibility permission in System Settings.",
+    "revoke": "Revoke pairing",
+    "status": {
+      "idle": "Not paired",
+      "ready": "Waiting for phone",
+      "error": "Needs attention"
+    }
+  },
   "general": "General",
   "appearance": {
     "title": "Appearance",
@@ -866,6 +886,9 @@
   "tabKnowledge": "Knowledge Base",
   "tabPet": "Vetta Vivi",
   "tabPermissions": "Permissions",
+  "tabRemote": "Remote access",
+  "section_remote-pairing": "Phone pairing",
+  "section_remote-permissions": "Control permissions",
   "section_general-basics": "Basics",
   "section_general-app": "App",
   "section_general-developer": "Developer",

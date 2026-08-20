@@ -1,5 +1,25 @@
 {
   "title": "设置",
+  "remote": {
+    "title": "远程连接",
+    "description": "让手机安全连接这台电脑。屏幕画面和输入通过点对点 WebRTC 传输，中继只负责配对与信令。",
+    "pairingTitle": "手机配对",
+    "pairingDescription": "生成新的二维码会撤销旧配对；二维码仅用于首次绑定。",
+    "relayLabel": "中继地址",
+    "create": "生成二维码",
+    "creating": "生成中",
+    "qrAlt": "Vetta 手机配对二维码",
+    "qrHint": "在手机端打开远程连接并扫描。完成首次连接后，此二维码将不能绑定其他设备。",
+    "empty": "生成二维码后即可在手机上扫描",
+    "inputTitle": "允许远程输入",
+    "inputDescription": "允许已配对手机控制鼠标和键盘。macOS 还需要在系统设置中授予辅助功能权限。",
+    "revoke": "撤销配对",
+    "status": {
+      "idle": "未配对",
+      "ready": "等待手机",
+      "error": "需要检查"
+    }
+  },
   "general": "常规",
   "appearance": {
     "title": "外观",
@@ -866,6 +886,9 @@
   "tabKnowledge": "知识库设置",
   "tabPet": "Vetta Vivi",
   "tabPermissions": "权限管理",
+  "tabRemote": "远程连接",
+  "section_remote-pairing": "手机配对",
+  "section_remote-permissions": "控制权限",
   "section_general-basics": "基础",
   "section_general-app": "应用",
   "section_general-developer": "开发者",

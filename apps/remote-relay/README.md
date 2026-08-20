@@ -8,6 +8,8 @@ The desktop creates a random pairing identifier and a high-entropy pairing secre
 
 The first connection for a room must be the desktop. A room expires after 24 hours without active WebSockets. Re-pairing requires a new desktop connection and secret.
 
+The production deployment uses `relay.flowerwine.dpdns.org`. The custom domain is configured in `wrangler.jsonc`; credentials and pairing identifiers are still generated locally by the desktop.
+
 ## Routes
 
 - `GET /health` returns relay health metadata.

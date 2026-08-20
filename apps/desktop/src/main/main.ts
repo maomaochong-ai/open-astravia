@@ -69,6 +69,7 @@ import {
 	startDesktopRemoteDesktopHost,
 	stopDesktopRemoteDesktopHost,
 } from "./remote-control/desktop-remote-desktop-host.js";
+import { DesktopRemotePairingService } from "./remote-control/desktop-remote-pairing-service.js";
 import { beginSharedRuntimeShutdown, disposeSharedRuntime, getSharedRuntime } from "./runtime.js";
 import { getRuntimeManager } from "./runtimes/manager.js";
 import { initializeSandboxCapability } from "./sandbox/capability.js";
@@ -702,14 +703,26 @@ if (!gotSingleLock) {
 		});
 		const actionSystem = createAppActionSystem(actionApprovalBroker);
 		const pluginActionService = new PluginActionService(mainWindow.webContents, actionSystem.catalog);
+		const remotePairingService = new DesktopRemotePairingService({
+			appRoot,
+			isPackaged: app.isPackaged,
+			devServerUrl: process.env.VETTA_DESKTOP_DEV_URL,
+			conversationCwd: join(getVettaHomePath(), "conversation"),
+			defaultRelayBaseUrl: process.env.VETTA_REMOTE_RELAY_BASE_URL,
+		});
 
 		// Register IPC handlers
-		ipcTeardown = registerAllIpc(mainWindow.webContents, { actionApprovalBroker, pluginActionService });
+		ipcTeardown = registerAllIpc(mainWindow.webContents, {
+			actionApprovalBroker,
+			pluginActionService,
+			remotePairingService,
+		});
 		teardownBatchTasksIpc = registerBatchTasksIpc(mainWindow.webContents, batchTaskService, batchTaskReadyPromise);
 		// 知识库手动操作 IPC 只做桥接，先注册以保证 renderer 不会遇到缺失 handler；
 		// 后台 poller 等真实内容绘制后再启动。
 		registerKnowledgeIpc();
 		appLifecycle.markReady();
+		void remotePairingService.restore();
 		if (!app.isPackaged) {
 			void startConfiguredPluginDevWatches(appRoot)
 				.then(({ ready, failures }) => {

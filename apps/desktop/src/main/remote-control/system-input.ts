@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
 import type { RemoteInputMessage } from "@vetta/remote-desktop";
+import { systemPreferences } from "electron";
 import type * as Koffi from "koffi";
 import { getAppLogger } from "../logger.js";
 
@@ -26,20 +27,34 @@ const log = (() => {
  * granting a relay peer the ability to control the local machine.
  */
 export function createSystemInputAdapter(options: { readonly enabled: boolean }): SystemInputAdapter {
-	if (!options.enabled || process.platform !== "win32") {
-		return {
-			supported: false,
-			setEnabled: () => undefined,
-			apply(message) {
-				log.debug("remote input ignored", {
-					type: message.type,
-					reason: options.enabled ? "unsupported_platform" : "disabled",
-				});
-			},
-		};
+	try {
+		const adapter =
+			process.platform === "win32"
+				? createWindowsInputAdapter()
+				: process.platform === "darwin"
+					? createMacInputAdapter()
+					: process.platform === "linux"
+						? createLinuxX11InputAdapter()
+						: unsupportedInputAdapter("unsupported_platform");
+		adapter.setEnabled(options.enabled);
+		return adapter;
+	} catch (error) {
+		log.warn("remote input adapter initialization failed", {
+			platform: process.platform,
+			error: error instanceof Error ? error.message : String(error),
+		});
 	}
+	return unsupportedInputAdapter("unsupported_platform");
+}
 
-	return createWindowsInputAdapter();
+function unsupportedInputAdapter(reason: string): SystemInputAdapter {
+	return {
+		supported: false,
+		setEnabled: () => undefined,
+		apply(message) {
+			log.debug("remote input ignored", { type: message.type, reason });
+		},
+	};
 }
 
 function createWindowsInputAdapter(): SystemInputAdapter {
@@ -66,7 +81,7 @@ function createWindowsInputAdapter(): SystemInputAdapter {
 		wParamL: "uint16_t",
 		wParamH: "uint16_t",
 	});
-	const INPUT = koffi.struct({
+	const INPUT = koffi.struct("INPUT", {
 		type: "uint32_t",
 		u: koffi.union({ mi: MOUSEINPUT, ki: KEYBDINPUT, hi: HARDWAREINPUT }),
 	});
@@ -127,6 +142,227 @@ function createWindowsInputAdapter(): SystemInputAdapter {
 			}
 		},
 	};
+}
+
+function createMacInputAdapter(): SystemInputAdapter {
+	if (!systemPreferences.isTrustedAccessibilityClient(false)) {
+		log.warn("macOS accessibility permission is required for remote input");
+		return unsupportedInputAdapter("accessibility_permission_required");
+	}
+	const koffi = createRequire(import.meta.url)("koffi") as typeof Koffi;
+	const coreGraphics = koffi.load("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics");
+	const coreFoundation = koffi.load("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation");
+	const _CGPoint = koffi.struct("CGPoint", { x: "double", y: "double" });
+	const CGEventCreateMouseEvent = coreGraphics.func("void *CGEventCreateMouseEvent(void *, uint32, CGPoint, uint32)");
+	const CGEventCreateKeyboardEvent = coreGraphics.func("void *CGEventCreateKeyboardEvent(void *, uint16, bool)");
+	const CGEventCreateScrollWheelEvent = coreGraphics.func(
+		"void *CGEventCreateScrollWheelEvent(void *, uint32, uint32, int32, int32)",
+	);
+	const CGEventPost = coreGraphics.func("void CGEventPost(uint32, void *)");
+	const CGMainDisplayID = coreGraphics.func("uint32 CGMainDisplayID()");
+	const CGDisplayPixelsWide = coreGraphics.func("size_t CGDisplayPixelsWide(uint32)");
+	const CGDisplayPixelsHigh = coreGraphics.func("size_t CGDisplayPixelsHigh(uint32)");
+	const CFRelease = coreFoundation.func("void CFRelease(void *)");
+	let enabled = true;
+	const post = (event: unknown): void => {
+		if (!event) return;
+		CGEventPost(0, event);
+		CFRelease(event);
+	};
+	return {
+		supported: true,
+		setEnabled(value) {
+			enabled = value;
+			log.info("remote input grant changed", { enabled: value, platform: "darwin" });
+		},
+		apply(message) {
+			if (!enabled) return;
+			if (message.type === "pointer.move" || message.type === "pointer.button") {
+				const display = CGMainDisplayID();
+				const point = {
+					x: message.x * Math.max(1, Number(CGDisplayPixelsWide(display)) - 1),
+					y: message.y * Math.max(1, Number(CGDisplayPixelsHigh(display)) - 1),
+				};
+				const eventType = message.type === "pointer.move" ? 5 : macMouseEventType(message.button, message.action);
+				post(
+					CGEventCreateMouseEvent(
+						null,
+						eventType,
+						point,
+						message.type === "pointer.button" ? macMouseButton(message.button) : 0,
+					),
+				);
+				return;
+			}
+			if (message.type === "pointer.scroll") {
+				post(CGEventCreateScrollWheelEvent(null, 0, 2, Math.round(-message.deltaY), Math.round(-message.deltaX)));
+				return;
+			}
+			if (message.type === "key") {
+				const keyCode = macVirtualKey(message.code);
+				if (keyCode !== undefined) post(CGEventCreateKeyboardEvent(null, keyCode, message.action === "down"));
+			}
+		},
+	};
+}
+
+function createLinuxX11InputAdapter(): SystemInputAdapter {
+	if (!process.env.DISPLAY) return unsupportedInputAdapter("x11_display_unavailable");
+	const koffi = createRequire(import.meta.url)("koffi") as typeof Koffi;
+	const x11 = koffi.load("libX11.so.6");
+	const xtst = koffi.load("libXtst.so.6");
+	const XOpenDisplay = x11.func("void *XOpenDisplay(char *)");
+	const XFlush = x11.func("int XFlush(void *)");
+	const XDefaultScreen = x11.func("int XDefaultScreen(void *)");
+	const XDisplayWidth = x11.func("int XDisplayWidth(void *, int)");
+	const XDisplayHeight = x11.func("int XDisplayHeight(void *, int)");
+	const XStringToKeysym = x11.func("uintptr_t XStringToKeysym(char *)");
+	const XKeysymToKeycode = x11.func("uint8_t XKeysymToKeycode(void *, uintptr_t)");
+	const XTestFakeMotionEvent = xtst.func("int XTestFakeMotionEvent(void *, int, int, int, ulong)");
+	const XTestFakeButtonEvent = xtst.func("int XTestFakeButtonEvent(void *, uint32, bool, ulong)");
+	const XTestFakeKeyEvent = xtst.func("int XTestFakeKeyEvent(void *, uint32, bool, ulong)");
+	const display = XOpenDisplay(null);
+	if (!display) return unsupportedInputAdapter("x11_open_display_failed");
+	let enabled = true;
+	return {
+		supported: true,
+		setEnabled(value) {
+			enabled = value;
+			log.info("remote input grant changed", { enabled: value, platform: "linux-x11" });
+			if (!value) XFlush(display);
+		},
+		apply(message) {
+			if (!enabled) return;
+			if (message.type === "pointer.move" || message.type === "pointer.button") {
+				const screen = XDefaultScreen(display);
+				XTestFakeMotionEvent(
+					display,
+					screen,
+					Math.round(message.x * (XDisplayWidth(display, screen) - 1)),
+					Math.round(message.y * (XDisplayHeight(display, screen) - 1)),
+					0,
+				);
+				if (message.type === "pointer.button")
+					XTestFakeButtonEvent(display, linuxMouseButton(message.button), message.action === "down", 0);
+			} else if (message.type === "pointer.scroll") {
+				const button = message.deltaY < 0 ? 4 : 5;
+				for (
+					let count = 0;
+					count < Math.max(1, Math.min(12, Math.round(Math.abs(message.deltaY) / 40)));
+					count += 1
+				) {
+					XTestFakeButtonEvent(display, button, true, 0);
+					XTestFakeButtonEvent(display, button, false, 0);
+				}
+			} else if (message.type === "key") {
+				const keysym = XStringToKeysym(linuxKeySym(message.code));
+				const keyCode = XKeysymToKeycode(display, keysym);
+				if (keyCode) XTestFakeKeyEvent(display, keyCode, message.action === "down", 0);
+			}
+			XFlush(display);
+		},
+	};
+}
+
+function macMouseButton(button: "left" | "middle" | "right"): number {
+	return button === "left" ? 0 : button === "right" ? 1 : 2;
+}
+
+function macMouseEventType(button: "left" | "middle" | "right", action: "down" | "up"): number {
+	if (button === "left") return action === "down" ? 1 : 2;
+	if (button === "right") return action === "down" ? 3 : 4;
+	return action === "down" ? 25 : 26;
+}
+
+function macVirtualKey(code: string): number | undefined {
+	const keys: Record<string, number> = {
+		KeyA: 0,
+		KeyS: 1,
+		KeyD: 2,
+		KeyF: 3,
+		KeyH: 4,
+		KeyG: 5,
+		KeyZ: 6,
+		KeyX: 7,
+		KeyC: 8,
+		KeyV: 9,
+		KeyB: 11,
+		KeyQ: 12,
+		KeyW: 13,
+		KeyE: 14,
+		KeyR: 15,
+		KeyY: 16,
+		KeyT: 17,
+		Digit1: 18,
+		Digit2: 19,
+		Digit3: 20,
+		Digit4: 21,
+		Digit6: 22,
+		Digit5: 23,
+		Digit9: 25,
+		Digit7: 26,
+		Digit8: 28,
+		Digit0: 29,
+		KeyO: 31,
+		KeyU: 32,
+		KeyI: 34,
+		KeyP: 35,
+		Enter: 36,
+		KeyL: 37,
+		KeyJ: 38,
+		KeyK: 40,
+		Tab: 48,
+		Space: 49,
+		Backspace: 51,
+		Escape: 53,
+		MetaLeft: 55,
+		ShiftLeft: 56,
+		AltLeft: 58,
+		ControlLeft: 59,
+		ArrowLeft: 123,
+		ArrowRight: 124,
+		ArrowDown: 125,
+		ArrowUp: 126,
+		Delete: 117,
+		Home: 115,
+		End: 119,
+		PageUp: 116,
+		PageDown: 121,
+	};
+	return keys[code];
+}
+
+function linuxMouseButton(button: "left" | "middle" | "right"): number {
+	return button === "left" ? 1 : button === "middle" ? 2 : 3;
+}
+
+function linuxKeySym(code: string): string {
+	if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();
+	if (/^Digit[0-9]$/.test(code)) return code.slice(5);
+	return (
+		(
+			{
+				Enter: "Return",
+				Escape: "Escape",
+				Backspace: "BackSpace",
+				Tab: "Tab",
+				Space: "space",
+				ArrowUp: "Up",
+				ArrowDown: "Down",
+				ArrowLeft: "Left",
+				ArrowRight: "Right",
+				Delete: "Delete",
+				Home: "Home",
+				End: "End",
+				PageUp: "Page_Up",
+				PageDown: "Page_Down",
+				ShiftLeft: "Shift_L",
+				ControlLeft: "Control_L",
+				AltLeft: "Alt_L",
+				MetaLeft: "Super_L",
+			} as Record<string, string>
+		)[code] ?? code
+	);
 }
 
 function buttonFlag(button: "left" | "middle" | "right", action: "down" | "up"): number {

@@ -82,6 +82,7 @@ object Str {
     const val discoverSubtitle = "连接 Desktop，或直接使用云端 AI"
     const val remoteConnectFailed = "无法连接桌面"
     const val remoteConnectFailedHint = "请确认中继地址和配对信息正确，并检查桌面端是否在线"
+    const val scanPairingQr = "扫描配对二维码"
     const val desktopDevice = "桌面设备"
     const val desktopUnavailable = "桌面设备不可用"
     const val desktopUnavailableHint = "找不到该设备，请返回设备列表后重试"
