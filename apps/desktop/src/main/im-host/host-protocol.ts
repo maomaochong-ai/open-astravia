@@ -18,6 +18,8 @@ export const FRAME_CONFIG_UPDATE = "config_update" as const;
 export const FRAME_SHUTDOWN = "shutdown" as const;
 export const FRAME_WECHAT_BIND_START = "wechat_bind_start" as const;
 export const FRAME_WECHAT_LOGOUT = "wechat_logout" as const;
+export const FRAME_WHATSAPP_BIND_START = "whatsapp_bind_start" as const;
+export const FRAME_WHATSAPP_LOGOUT = "whatsapp_logout" as const;
 
 export const EVENT_READY = "ready" as const;
 export const EVENT_LOG = "log" as const;
@@ -28,6 +30,10 @@ export const EVENT_WECHAT_QR = "wechat_qr" as const;
 export const EVENT_WECHAT_BIND_STATUS = "wechat_bind_status" as const;
 export const EVENT_WECHAT_BOUND = "wechat_bound" as const;
 export const EVENT_WECHAT_UNBOUND = "wechat_unbound" as const;
+export const EVENT_WHATSAPP_QR = "whatsapp_qr" as const;
+export const EVENT_WHATSAPP_BIND_STATUS = "whatsapp_bind_status" as const;
+export const EVENT_WHATSAPP_BOUND = "whatsapp_bound" as const;
+export const EVENT_WHATSAPP_UNBOUND = "whatsapp_unbound" as const;
 
 // =============================================================================
 // Shared payload types
@@ -57,6 +63,69 @@ export interface FeishuConfig {
 export interface WechatConfig {
 	enabled: boolean;
 	statePath?: string;
+}
+
+/**
+ * Telegram slot (official Bot API, long polling — no public ingress
+ * needed). `allowedUserIds` empty/absent means accept all DMs.
+ */
+export interface TelegramConfig {
+	botToken: string;
+	allowedUserIds?: number[];
+}
+
+/**
+ * Slack slot (Socket Mode: bot token + app-level token, no public
+ * ingress). `allowedChannelIds` carries channel IDs, not names.
+ */
+export interface SlackConfig {
+	botToken: string;
+	appToken: string;
+	allowedUserIds?: string[];
+	allowedChannelIds?: string[];
+}
+
+export interface DiscordConfig {
+	botToken: string;
+	allowedUserIds?: string[];
+	allowedGuildIds?: string[];
+}
+
+/**
+ * Signal slot: points the transport at a user-managed signal-cli daemon
+ * (HTTP JSON-RPC + SSE). The daemon owns the Signal credentials; this
+ * slot only says where it listens and which account it serves.
+ * `attachmentsDir` is signal-cli's attachment cache, for inbound media.
+ */
+export interface SignalConfig {
+	endpoint: string;
+	account: string;
+	allowedNumbers?: string[];
+	attachmentsDir?: string;
+}
+
+/**
+ * Whatsapp slot, mirroring WechatConfig's shape: no long-lived
+ * credentials in the protocol — the session is established via the QR
+ * pairing flow (whatsapp_bind_start) and persisted by the sidecar in
+ * `statePath` (a sqlite database owned by whatsmeow).
+ */
+export interface WhatsappConfig {
+	enabled: boolean;
+	statePath?: string;
+	allowedNumbers?: string[];
+}
+
+/**
+ * macOS-local imessage transport (chat.db polling + Messages.app
+ * automation). No credentials — access is granted via macOS permissions
+ * (Full Disk Access + Automation) on the host Mac. `dbPath` defaults to
+ * ~/Library/Messages/chat.db on the sidecar side.
+ */
+export interface IMessageConfig {
+	enabled: boolean;
+	dbPath?: string;
+	allowedHandles?: string[];
 }
 
 export interface SessionStateEntry {
@@ -125,6 +194,12 @@ export interface InitFrame {
 	type: typeof FRAME_INIT;
 	feishu?: FeishuConfig;
 	wechat?: WechatConfig;
+	telegram?: TelegramConfig;
+	slack?: SlackConfig;
+	discord?: DiscordConfig;
+	signal?: SignalConfig;
+	whatsapp?: WhatsappConfig;
+	imessage?: IMessageConfig;
 	conversationCwd: string;
 	state: SessionStateEntry[];
 	logLevel?: "debug" | "info" | "warn" | "error";
@@ -135,6 +210,12 @@ export interface ConfigUpdateFrame {
 	type: typeof FRAME_CONFIG_UPDATE;
 	feishu?: FeishuConfig;
 	wechat?: WechatConfig;
+	telegram?: TelegramConfig;
+	slack?: SlackConfig;
+	discord?: DiscordConfig;
+	signal?: SignalConfig;
+	whatsapp?: WhatsappConfig;
+	imessage?: IMessageConfig;
 }
 
 export interface ShutdownFrame {
@@ -159,7 +240,32 @@ export interface WechatLogoutFrame {
 	type: typeof FRAME_WECHAT_LOGOUT;
 }
 
-export type InboundFrame = InitFrame | ConfigUpdateFrame | ShutdownFrame | WechatBindStartFrame | WechatLogoutFrame;
+/**
+ * Request the sidecar begin (or restart) a whatsapp QR pairing flow. Same
+ * semantics as WechatBindStartFrame: no payload, the sidecar knows
+ * StatePath from the latest init/config_update; a bind already in
+ * progress continues.
+ */
+export interface WhatsappBindStartFrame {
+	type: typeof FRAME_WHATSAPP_BIND_START;
+}
+
+/**
+ * Request the sidecar drop the persisted whatsapp session, stop any
+ * running whatsapp transport, and re-enter awaiting_bind state.
+ */
+export interface WhatsappLogoutFrame {
+	type: typeof FRAME_WHATSAPP_LOGOUT;
+}
+
+export type InboundFrame =
+	| InitFrame
+	| ConfigUpdateFrame
+	| ShutdownFrame
+	| WechatBindStartFrame
+	| WechatLogoutFrame
+	| WhatsappBindStartFrame
+	| WhatsappLogoutFrame;
 
 // =============================================================================
 // Outbound events (child → parent)
@@ -244,6 +350,46 @@ export interface WechatUnboundEvent {
 	reason?: string;
 }
 
+/**
+ * One QR pairing code for the parent to render. `code` is the raw pairing
+ * string WhatsApp expects inside the QR image. `attempt` is 1-indexed and
+ * increments on each refresh after expiry.
+ */
+export interface WhatsappQREvent {
+	type: typeof EVENT_WHATSAPP_QR;
+	code: string;
+	attempt: number;
+}
+
+/**
+ * A transition in the whatsapp pairing state machine. Status reuses the
+ * WechatBindStatus values; `error` is set only on "failed".
+ */
+export interface WhatsappBindStatusEvent {
+	type: typeof EVENT_WHATSAPP_BIND_STATUS;
+	status: WechatBindStatus;
+	error?: string;
+}
+
+/**
+ * Successful pairing, emitted after the session has been persisted to
+ * StatePath. `jid` is the paired account's WhatsApp JID
+ * (user@s.whatsapp.net).
+ */
+export interface WhatsappBoundEvent {
+	type: typeof EVENT_WHATSAPP_BOUND;
+	jid?: string;
+}
+
+/**
+ * Whatsapp session cleared (explicit logout frame or server-side logout).
+ * After this event the sidecar is in awaiting_bind state.
+ */
+export interface WhatsappUnboundEvent {
+	type: typeof EVENT_WHATSAPP_UNBOUND;
+	reason?: string;
+}
+
 export type OutboundEvent =
 	| ReadyEvent
 	| LogEvent
@@ -253,7 +399,11 @@ export type OutboundEvent =
 	| WechatQREvent
 	| WechatBindStatusEvent
 	| WechatBoundEvent
-	| WechatUnboundEvent;
+	| WechatUnboundEvent
+	| WhatsappQREvent
+	| WhatsappBindStatusEvent
+	| WhatsappBoundEvent
+	| WhatsappUnboundEvent;
 
 // =============================================================================
 // Encode / decode helpers
@@ -288,6 +438,10 @@ export function decodeEvent(line: string): OutboundEvent | null {
 		case EVENT_WECHAT_BIND_STATUS:
 		case EVENT_WECHAT_BOUND:
 		case EVENT_WECHAT_UNBOUND:
+		case EVENT_WHATSAPP_QR:
+		case EVENT_WHATSAPP_BIND_STATUS:
+		case EVENT_WHATSAPP_BOUND:
+		case EVENT_WHATSAPP_UNBOUND:
 			return parsed as OutboundEvent;
 		default:
 			throw new Error(`hostproto: unknown event type "${parsed.type}"`);

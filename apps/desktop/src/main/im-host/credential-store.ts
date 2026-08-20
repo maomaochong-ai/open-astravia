@@ -23,6 +23,20 @@ export interface ImCredentials {
 		verificationToken?: string;
 		encryptKey?: string;
 	};
+	telegram?: {
+		botToken: string;
+	};
+	slack?: {
+		botToken: string;
+		appToken: string;
+	};
+	discord?: {
+		botToken: string;
+	};
+	// signal / whatsapp / imessage carry no secrets: signal's daemon owns
+	// its own credentials (endpoint/account are non-secret and live in
+	// config-store), whatsapp's session is sidecar-owned via QR pairing,
+	// and imessage is gated by macOS permissions only.
 }
 
 const DEFAULT_DIR = join(getVettaHomePath(), "desktop-app");

@@ -1,7 +1,13 @@
 import { mkdirSync, watch } from "node:fs";
 import { ipcMain, type WebContents } from "electron";
+import {
+	getImChannelDescriptor,
+	type ImTestConnectionPayload,
+	isImTransportSelector,
+	TEST_CONNECTION_PASS_MESSAGE,
+} from "../im-host/channels.js";
 import type { LogEvent } from "../im-host/host-protocol.js";
-import { getImHost, type SetConfigPayload, type WechatBindEvent } from "../im-host/index.js";
+import { getImHost, type SetConfigPayload, type WechatBindEvent, type WhatsappBindEvent } from "../im-host/index.js";
 import type { LegacyDetection } from "../im-host/migration.js";
 import { DEFAULT_IM_CONVERSATION_SESSION_DIR } from "./fs.js";
 
@@ -25,6 +31,11 @@ const CHANNELS = {
 	WECHAT_SUBSCRIBE: "vetta:im:wechat:subscribe",
 	WECHAT_UNSUBSCRIBE: "vetta:im:wechat:unsubscribe",
 	WECHAT_BIND_EVENT: "vetta:im:wechat:bind-event",
+	WHATSAPP_START_BIND: "vetta:im:whatsapp:start-bind",
+	WHATSAPP_LOGOUT: "vetta:im:whatsapp:logout",
+	WHATSAPP_SUBSCRIBE: "vetta:im:whatsapp:subscribe",
+	WHATSAPP_UNSUBSCRIBE: "vetta:im:whatsapp:unsubscribe",
+	WHATSAPP_BIND_EVENT: "vetta:im:whatsapp:bind-event",
 	// Fire-and-forget broadcast: "something in the IM routing table
 	// changed, you may want to refresh." No payload, no subscription
 	// handshake — every webContents that wants it just listens.
@@ -38,8 +49,10 @@ interface SubscriptionEntry {
 
 const subscriptions = new Map<string, SubscriptionEntry>();
 const wechatSubscriptions = new Map<string, () => void>();
+const whatsappSubscriptions = new Map<string, () => void>();
 let counter = 0;
 let wechatCounter = 0;
+let whatsappCounter = 0;
 
 export function registerImIpc(webContents: WebContents): () => void {
 	const host = getImHost();
@@ -123,22 +136,19 @@ export function registerImIpc(webContents: WebContents): () => void {
 		}
 	});
 
-	ipcMain.handle(CHANNELS.TEST_CONNECTION, async (_event, payload: SetConfigPayload["feishu"]) => {
+	ipcMain.handle(CHANNELS.TEST_CONNECTION, async (_event, payload: ImTestConnectionPayload | undefined) => {
 		// First milestone: a "test" is a structural sanity check on the
-		// fields. Real network probing would require either a parallel
-		// sidecar or a feishu HTTP call from main; both have follow-up
-		// scope. We at least surface fast feedback for empty fields and
-		// obviously malformed identifiers.
-		if (!payload?.appId || payload.appId.trim() === "") {
-			return { ok: false, error: "App ID 不能为空" };
+		// fields, dispatched to the channel descriptor registry. Real
+		// network probing is follow-up scope. An absent transport defaults
+		// to feishu for backwards compat with older renderers.
+		const transport = isImTransportSelector(payload?.transport) ? payload.transport : "feishu";
+		const descriptor = getImChannelDescriptor(transport);
+		if (!descriptor.validate) {
+			return { ok: true, message: TEST_CONNECTION_PASS_MESSAGE };
 		}
-		if (!payload?.appSecret || payload.appSecret.trim() === "") {
-			return { ok: false, error: "App Secret 不能为空" };
-		}
-		if (!/^cli_[a-zA-Z0-9]+$/.test(payload.appId.trim())) {
-			return { ok: false, error: "App ID 格式不正确（应以 cli_ 开头）" };
-		}
-		return { ok: true, message: "字段格式校验通过；保存后将由桥接进程进行真实连接验证。" };
+		const error = descriptor.validate(payload ?? {});
+		if (error) return { ok: false, error };
+		return { ok: true, message: TEST_CONNECTION_PASS_MESSAGE };
 	});
 
 	ipcMain.handle(CHANNELS.RESTART, async () => {
@@ -208,6 +218,36 @@ export function registerImIpc(webContents: WebContents): () => void {
 		}
 	});
 
+	// =========================================================================
+	// Whatsapp bind flow — mirrors the wechat channel set above.
+	// =========================================================================
+	ipcMain.handle(CHANNELS.WHATSAPP_START_BIND, async () => {
+		return host.startWhatsappBind();
+	});
+
+	ipcMain.handle(CHANNELS.WHATSAPP_LOGOUT, async () => {
+		return host.whatsappLogout();
+	});
+
+	ipcMain.handle(CHANNELS.WHATSAPP_SUBSCRIBE, () => {
+		whatsappCounter += 1;
+		const id = `im-whatsapp-sub-${whatsappCounter}`;
+		const unsub = host.subscribeWhatsappBind((event: WhatsappBindEvent) => {
+			if (webContents.isDestroyed()) return;
+			webContents.send(CHANNELS.WHATSAPP_BIND_EVENT, id, event);
+		});
+		whatsappSubscriptions.set(id, unsub);
+		return { subscriptionId: id };
+	});
+
+	ipcMain.handle(CHANNELS.WHATSAPP_UNSUBSCRIBE, (_event, id: string) => {
+		const unsub = whatsappSubscriptions.get(id);
+		if (unsub) {
+			unsub();
+			whatsappSubscriptions.delete(id);
+		}
+	});
+
 	return () => {
 		sessionChangeUnsub();
 		if (fsDebounce) clearTimeout(fsDebounce);
@@ -232,6 +272,10 @@ export function registerImIpc(webContents: WebContents): () => void {
 		ipcMain.removeHandler(CHANNELS.WECHAT_LOGOUT);
 		ipcMain.removeHandler(CHANNELS.WECHAT_SUBSCRIBE);
 		ipcMain.removeHandler(CHANNELS.WECHAT_UNSUBSCRIBE);
+		ipcMain.removeHandler(CHANNELS.WHATSAPP_START_BIND);
+		ipcMain.removeHandler(CHANNELS.WHATSAPP_LOGOUT);
+		ipcMain.removeHandler(CHANNELS.WHATSAPP_SUBSCRIBE);
+		ipcMain.removeHandler(CHANNELS.WHATSAPP_UNSUBSCRIBE);
 		for (const entry of subscriptions.values()) {
 			entry.statusUnsub();
 			entry.logUnsub();
@@ -241,5 +285,9 @@ export function registerImIpc(webContents: WebContents): () => void {
 			unsub();
 		}
 		wechatSubscriptions.clear();
+		for (const unsub of whatsappSubscriptions.values()) {
+			unsub();
+		}
+		whatsappSubscriptions.clear();
 	};
 }

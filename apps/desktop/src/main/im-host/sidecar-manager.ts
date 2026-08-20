@@ -2,6 +2,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { createInterface, type Interface } from "node:readline";
 import {
 	type CodingAgentSpec,
+	type DiscordConfig,
 	decodeEvent,
 	EVENT_LOG,
 	EVENT_METRIC,
@@ -12,6 +13,10 @@ import {
 	EVENT_WECHAT_BOUND,
 	EVENT_WECHAT_QR,
 	EVENT_WECHAT_UNBOUND,
+	EVENT_WHATSAPP_BIND_STATUS,
+	EVENT_WHATSAPP_BOUND,
+	EVENT_WHATSAPP_QR,
+	EVENT_WHATSAPP_UNBOUND,
 	encodeFrame,
 	type FeishuConfig,
 	FRAME_CONFIG_UPDATE,
@@ -19,18 +24,29 @@ import {
 	FRAME_SHUTDOWN,
 	FRAME_WECHAT_BIND_START,
 	FRAME_WECHAT_LOGOUT,
+	FRAME_WHATSAPP_BIND_START,
+	FRAME_WHATSAPP_LOGOUT,
+	type IMessageConfig,
 	type LogEvent,
 	type MetricEvent,
 	type OutboundEvent,
 	type ReadyEvent,
 	type SessionStateEntry,
+	type SignalConfig,
+	type SlackConfig,
 	type StatePatchEvent,
 	type StatusEvent,
+	type TelegramConfig,
 	type WechatBindStatusEvent,
 	type WechatBoundEvent,
 	type WechatConfig,
 	type WechatQREvent,
 	type WechatUnboundEvent,
+	type WhatsappBindStatusEvent,
+	type WhatsappBoundEvent,
+	type WhatsappConfig,
+	type WhatsappQREvent,
+	type WhatsappUnboundEvent,
 } from "./host-protocol.js";
 
 /**
@@ -77,20 +93,38 @@ export interface SidecarHooks {
 	onWechatBound?: (event: WechatBoundEvent) => void;
 	/** Credentials cleared (logout or expiry). Sidecar is now in awaiting_bind. */
 	onWechatUnbound?: (event: WechatUnboundEvent) => void;
+
+	// Whatsapp-specific bind flow events, mirroring the wechat set. Emitted
+	// only when whatsapp is the active transport AND the parent has driven
+	// a bind via startWhatsappBind() (or a bind auto-starts after logout).
+	/** A new QR pairing code is ready for the user to scan. */
+	onWhatsappQR?: (event: WhatsappQREvent) => void;
+	/** A transition in the pairing state machine. */
+	onWhatsappBindStatus?: (event: WhatsappBindStatusEvent) => void;
+	/** Pairing succeeded — session persisted, transport about to start. */
+	onWhatsappBound?: (event: WhatsappBoundEvent) => void;
+	/** Session cleared (logout or server-side). Sidecar is now in awaiting_bind. */
+	onWhatsappUnbound?: (event: WhatsappUnboundEvent) => void;
 }
 
 /**
- * SidecarConfig describes one (feishu, wechat) selection. Exactly one of
- * `feishu` / `wechat` should be populated; the other should be undefined.
+ * SidecarConfig describes one transport selection. Exactly one of the
+ * channel slots should be populated; the others should be undefined.
  *
- * The sidecar prefers wechat over feishu when both are present, but the
- * parent should never rely on that — pick one based on the user's
+ * The sidecar has its own preference order when several are present, but
+ * the parent should never rely on that — pick one based on the user's
  * `transport` setting in im-config.json.
  */
 export interface SidecarConfig {
 	binaryPath: string;
 	feishu?: FeishuConfig;
 	wechat?: WechatConfig;
+	telegram?: TelegramConfig;
+	slack?: SlackConfig;
+	discord?: DiscordConfig;
+	signal?: SignalConfig;
+	whatsapp?: WhatsappConfig;
+	imessage?: IMessageConfig;
 	/**
 	 * Absolute cwd of desktop-app's default "对话" project. The sidecar
 	 * routes every IM session into this directory (see ADR-0004 +
@@ -252,6 +286,12 @@ export class SidecarManager {
 			type: FRAME_INIT,
 			feishu: cfg.feishu,
 			wechat: cfg.wechat,
+			telegram: cfg.telegram,
+			slack: cfg.slack,
+			discord: cfg.discord,
+			signal: cfg.signal,
+			whatsapp: cfg.whatsapp,
+			imessage: cfg.imessage,
 			conversationCwd: cfg.conversationCwd,
 			state: cfg.state,
 			codingAgent: cfg.codingAgent,
@@ -294,6 +334,43 @@ export class SidecarManager {
 			return;
 		}
 		this.writeFrame({ type: FRAME_WECHAT_LOGOUT });
+	}
+
+	/**
+	 * Send a whatsapp_bind_start frame to a running sidecar. Same caveats
+	 * as startWechatBind(): the sidecar silently ignores it unless
+	 * whatsapp is the active transport.
+	 */
+	startWhatsappBind(): void {
+		if (this.state.kind !== "running") {
+			this.hooks.onLog?.({
+				type: EVENT_LOG,
+				level: "warn",
+				msg: `sidecar not running; cannot start whatsapp bind (state=${this.state.kind})`,
+				time: new Date().toISOString(),
+			});
+			return;
+		}
+		this.writeFrame({ type: FRAME_WHATSAPP_BIND_START });
+	}
+
+	/**
+	 * Send a whatsapp_logout frame to a running sidecar. Clears the
+	 * sidecar-owned whatsapp session and parks it in awaiting_bind state.
+	 * The caller updates its UI from the resulting onWhatsappUnbound +
+	 * onStatus events.
+	 */
+	whatsappLogout(): void {
+		if (this.state.kind !== "running") {
+			this.hooks.onLog?.({
+				type: EVENT_LOG,
+				level: "warn",
+				msg: `sidecar not running; cannot send whatsapp logout (state=${this.state.kind})`,
+				time: new Date().toISOString(),
+			});
+			return;
+		}
+		this.writeFrame({ type: FRAME_WHATSAPP_LOGOUT });
 	}
 
 	private attachReaders(child: ChildProcess): void {
@@ -361,6 +438,18 @@ export class SidecarManager {
 				break;
 			case EVENT_WECHAT_UNBOUND:
 				this.hooks.onWechatUnbound?.(event);
+				break;
+			case EVENT_WHATSAPP_QR:
+				this.hooks.onWhatsappQR?.(event);
+				break;
+			case EVENT_WHATSAPP_BIND_STATUS:
+				this.hooks.onWhatsappBindStatus?.(event);
+				break;
+			case EVENT_WHATSAPP_BOUND:
+				this.hooks.onWhatsappBound?.(event);
+				break;
+			case EVENT_WHATSAPP_UNBOUND:
+				this.hooks.onWhatsappUnbound?.(event);
 				break;
 		}
 	}

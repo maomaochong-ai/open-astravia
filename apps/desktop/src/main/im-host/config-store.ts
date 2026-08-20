@@ -2,21 +2,23 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
+import { type ImTransportSelector, isImTransportSelector } from "./channels.js";
 
 /**
  * Non-secret IM bridge configuration. Stored in plaintext under
  *   ~/.vetta/desktop-app/im-config.json
  *
- * Sensitive fields (App Secret, Verification Token, Encrypt Key) live in
- * credential-store.ts; this file only carries the toggles and identifiers
- * the user is willing to expose to the filesystem in plaintext.
+ * Sensitive fields (App Secret, Verification Token, Encrypt Key, bot
+ * tokens) live in credential-store.ts; this file only carries the toggles
+ * and identifiers the user is willing to expose to the filesystem in
+ * plaintext.
  *
  * `transport` selects which IM platform the sidecar will run. Only one
  * transport runs at a time. Switching it persists the new value but does
- * not erase the other transport's credentials, so the user can flip
- * between feishu and wechat without re-binding.
+ * not erase the other transports' credentials, so the user can flip
+ * between channels without re-entering tokens or re-binding.
  */
-export type ImTransportSelector = "feishu" | "wechat";
+export type { ImTransportSelector };
 
 /**
  * Optional override telling coding-agent which model to use for IM
@@ -26,9 +28,9 @@ export type ImTransportSelector = "feishu" | "wechat";
  * to the spawned agent-rpc subprocess via `--model <provider>:<model>`
  * (or just `<model>` if provider is omitted).
  *
- * Scope decision: one model for ALL IM channels (feishu + wechat). Each
- * channel gets its own card, but the model picker lives at the page
- * top because we don't have a real need yet for per-channel routing.
+ * Scope decision: one model for ALL IM channels. Each channel gets its
+ * own card, but the model picker lives at the page top because we don't
+ * have a real need yet for per-channel routing.
  */
 export interface ImAgentModelRef {
 	provider: string;
@@ -53,6 +55,34 @@ export interface ImConfig {
 		ilinkBotId?: string;
 		ilinkUserId?: string;
 	};
+	telegram: {
+		allowedUserIds?: number[];
+	};
+	slack: {
+		allowedUserIds?: string[];
+		allowedChannelIds?: string[];
+	};
+	discord: {
+		allowedUserIds?: string[];
+		allowedGuildIds?: string[];
+	};
+	signal: {
+		// Non-secret identifiers of the user-managed signal-cli daemon.
+		// The daemon itself owns the Signal credentials.
+		endpoint: string;
+		account: string;
+		allowedNumbers?: string[];
+		attachmentsDir?: string;
+	};
+	whatsapp: {
+		// Same convenience-cache semantics as `wechat.bound`.
+		bound: boolean;
+		allowedNumbers?: string[];
+	};
+	imessage: {
+		dbPath?: string;
+		allowedHandles?: string[];
+	};
 	transportMode: "long-connection";
 	agentModel?: ImAgentModelRef;
 }
@@ -69,8 +99,30 @@ export function defaultImConfig(): ImConfig {
 		transport: "feishu",
 		feishu: { appId: "" },
 		wechat: { bound: false },
+		telegram: {},
+		slack: {},
+		discord: {},
+		signal: { endpoint: "", account: "" },
+		whatsapp: { bound: false },
+		imessage: {},
 		transportMode: "long-connection",
 	};
+}
+
+function optionalString(value: unknown): string | undefined {
+	return typeof value === "string" && value !== "" ? value : undefined;
+}
+
+function optionalStringArray(value: unknown): string[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const filtered = value.filter((v): v is string => typeof v === "string");
+	return filtered.length > 0 ? filtered : undefined;
+}
+
+function optionalNumberArray(value: unknown): number[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const filtered = value.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+	return filtered.length > 0 ? filtered : undefined;
 }
 
 export function loadImConfig(filePath = DEFAULT_PATH): ImConfig {
@@ -78,7 +130,8 @@ export function loadImConfig(filePath = DEFAULT_PATH): ImConfig {
 	try {
 		const raw = readFileSync(filePath, "utf-8");
 		const parsed = JSON.parse(raw) as Partial<ImConfig>;
-		const transport: ImTransportSelector = parsed.transport === "wechat" ? "wechat" : "feishu";
+		// Unknown / legacy transport values fall back to feishu.
+		const transport: ImTransportSelector = isImTransportSelector(parsed.transport) ? parsed.transport : "feishu";
 		return {
 			enabled: Boolean(parsed.enabled),
 			transport,
@@ -90,6 +143,31 @@ export function loadImConfig(filePath = DEFAULT_PATH): ImConfig {
 				bound: Boolean(parsed.wechat?.bound),
 				ilinkBotId: parsed.wechat?.ilinkBotId,
 				ilinkUserId: parsed.wechat?.ilinkUserId,
+			},
+			telegram: {
+				allowedUserIds: optionalNumberArray(parsed.telegram?.allowedUserIds),
+			},
+			slack: {
+				allowedUserIds: optionalStringArray(parsed.slack?.allowedUserIds),
+				allowedChannelIds: optionalStringArray(parsed.slack?.allowedChannelIds),
+			},
+			discord: {
+				allowedUserIds: optionalStringArray(parsed.discord?.allowedUserIds),
+				allowedGuildIds: optionalStringArray(parsed.discord?.allowedGuildIds),
+			},
+			signal: {
+				endpoint: typeof parsed.signal?.endpoint === "string" ? parsed.signal.endpoint : "",
+				account: typeof parsed.signal?.account === "string" ? parsed.signal.account : "",
+				allowedNumbers: optionalStringArray(parsed.signal?.allowedNumbers),
+				attachmentsDir: optionalString(parsed.signal?.attachmentsDir),
+			},
+			whatsapp: {
+				bound: Boolean(parsed.whatsapp?.bound),
+				allowedNumbers: optionalStringArray(parsed.whatsapp?.allowedNumbers),
+			},
+			imessage: {
+				dbPath: optionalString(parsed.imessage?.dbPath),
+				allowedHandles: optionalStringArray(parsed.imessage?.allowedHandles),
 			},
 			transportMode: "long-connection",
 			agentModel:
@@ -116,4 +194,13 @@ export function saveImConfig(config: ImConfig, filePath = DEFAULT_PATH): void {
  */
 export function defaultWechatStatePath(): string {
 	return join(getVettaHomePath(), "desktop-app", "im-wechat.json");
+}
+
+/**
+ * Default absolute path for the whatsapp session store (a sqlite database
+ * owned by whatsmeow inside the sidecar). Same placement rationale as
+ * defaultWechatStatePath().
+ */
+export function defaultWhatsappStatePath(): string {
+	return join(getVettaHomePath(), "desktop-app", "im-whatsapp.db");
 }

@@ -2,6 +2,8 @@
 
 ### Added
 
+- IM 桥接主进程新增六个渠道的协议与配置合同：Telegram、Slack、Discord、Signal（静态凭证）、WhatsApp（扫码配对，含 `vetta:im:whatsapp:*` 绑定 IPC）与 iMessage（macOS 本地权限）。渠道能力收敛到 `im-host/channels.ts` 描述符注册表，测试连接按渠道分派校验；本次仅覆盖主进程与 preload 合同层，设置页 UI 与 i18n 文案随后续任务提供。
+
 - 新增可选的手机远程接入宿主：Desktop 可主动连接 Cloudflare Worker 中继，将本地对话会话暴露为受版本化协议约束的远程请求；屏幕画面和鼠标键盘输入使用独立 WebRTC 通道，输入默认关闭并由本地配置显式授权。
 - 开发环境的 Vetta Debug 新增只读 `provider.models.list`，可刷新并列出 Runtime 当前可用的本地模型与登录后远程模型；
   返回值只包含模型身份、来源和公开能力元数据，不读取凭据、不发起模型请求。

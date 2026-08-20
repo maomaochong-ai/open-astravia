@@ -4,7 +4,17 @@
 
 export type ImTransportStatus = "offline" | "connecting" | "online" | "error" | "awaiting_bind";
 
-export type ImTransportSelector = "feishu" | "wechat";
+// Manual snapshot of src/main/im-host/channels.ts → ImTransportSelector.
+// Keep in sync by hand: preload contracts are independent copies.
+export type ImTransportSelector =
+	| "feishu"
+	| "wechat"
+	| "telegram"
+	| "slack"
+	| "discord"
+	| "signal"
+	| "whatsapp"
+	| "imessage";
 
 export interface ImAgentModelRef {
 	provider: string;
@@ -28,6 +38,35 @@ export interface ImBridgeConfig {
 		ilinkBotId?: string;
 		ilinkUserId?: string;
 	};
+	telegram: {
+		botToken: string;
+		allowedUserIds?: number[];
+	};
+	slack: {
+		botToken: string;
+		appToken: string;
+		allowedUserIds?: string[];
+		allowedChannelIds?: string[];
+	};
+	discord: {
+		botToken: string;
+		allowedUserIds?: string[];
+		allowedGuildIds?: string[];
+	};
+	signal: {
+		endpoint: string;
+		account: string;
+		allowedNumbers?: string[];
+		attachmentsDir?: string;
+	};
+	whatsapp: {
+		bound: boolean;
+		allowedNumbers?: string[];
+	};
+	imessage: {
+		dbPath?: string;
+		allowedHandles?: string[];
+	};
 	transportMode: "long-connection";
 	encryptionAvailable: boolean;
 	agentModel?: ImAgentModelRef;
@@ -42,6 +81,36 @@ export interface ImSetConfigPayload {
 		verificationToken?: string;
 		encryptKey?: string;
 		baseUrl?: string;
+	};
+	// Per-channel blocks: omitting a block preserves the stored values;
+	// sending one replaces that channel's config (and secret credentials).
+	telegram?: {
+		botToken?: string;
+		allowedUserIds?: number[];
+	};
+	slack?: {
+		botToken?: string;
+		appToken?: string;
+		allowedUserIds?: string[];
+		allowedChannelIds?: string[];
+	};
+	discord?: {
+		botToken?: string;
+		allowedUserIds?: string[];
+		allowedGuildIds?: string[];
+	};
+	signal?: {
+		endpoint: string;
+		account: string;
+		allowedNumbers?: string[];
+		attachmentsDir?: string;
+	};
+	whatsapp?: {
+		allowedNumbers?: string[];
+	};
+	imessage?: {
+		dbPath?: string;
+		allowedHandles?: string[];
 	};
 	// null clears the override; undefined preserves the current value.
 	agentModel?: ImAgentModelRef | null;
@@ -72,6 +141,28 @@ export interface ImLogEvent {
 	time: string;
 }
 
+/**
+ * Superset of every channel's testable fields; `transport` selects which
+ * channel validates it (absent → feishu for backwards compat). Mirror of
+ * src/main/im-host/channels.ts → ImTestConnectionPayload.
+ */
+export interface ImTestConnectionPayload {
+	transport?: ImTransportSelector;
+	// feishu
+	appId?: string;
+	appSecret?: string;
+	verificationToken?: string;
+	encryptKey?: string;
+	baseUrl?: string;
+	// telegram / slack / discord
+	botToken?: string;
+	// slack
+	appToken?: string;
+	// signal
+	endpoint?: string;
+	account?: string;
+}
+
 export interface ImTestConnectionResult {
 	ok: boolean;
 	error?: string;
@@ -83,6 +174,7 @@ export interface ImPathInfo {
 	credentials: string;
 	state: string;
 	wechatState: string;
+	whatsappState: string;
 }
 
 // =============================================================================
@@ -143,6 +235,51 @@ export interface ImWechatApi {
 	subscribeBind(handler: (event: ImWechatBindEvent) => void): Promise<() => void>;
 }
 
+// =============================================================================
+// Whatsapp bind flow (mirrors the wechat flow; QR carries a raw pairing
+// code instead of a URL, and bound carries the account JID)
+// =============================================================================
+
+export type ImWhatsappBindStatus = ImWechatBindStatus;
+
+export type ImWhatsappBindEvent =
+	| { kind: "qr"; type: "whatsapp_qr"; code: string; attempt: number }
+	| {
+			kind: "status";
+			type: "whatsapp_bind_status";
+			status: ImWhatsappBindStatus;
+			error?: string;
+	  }
+	| { kind: "bound"; type: "whatsapp_bound"; jid?: string }
+	| { kind: "unbound"; type: "whatsapp_unbound"; reason?: string };
+
+export interface ImWhatsappStartBindResult {
+	ok: boolean;
+	error?: string;
+}
+
+export interface ImWhatsappLogoutResult {
+	ok: boolean;
+	error?: string;
+}
+
+export interface ImWhatsappApi {
+	/**
+	 * Start (or restart) a QR pairing flow. Auto-flips the active
+	 * transport to whatsapp if needed. Returns immediately; live progress
+	 * arrives via subscribeBind().
+	 */
+	startBind(): Promise<ImWhatsappStartBindResult>;
+	/** Forget the paired session and re-enter awaiting_bind state. */
+	logout(): Promise<ImWhatsappLogoutResult>;
+	/**
+	 * Subscribe to live bind-flow events. The handler is called with every
+	 * qr / status / bound / unbound event in arrival order. Returns an
+	 * unsubscribe function.
+	 */
+	subscribeBind(handler: (event: ImWhatsappBindEvent) => void): Promise<() => void>;
+}
+
 export interface ImLegacyDetection {
 	hasLegacyData: boolean;
 	configPath?: string;
@@ -163,7 +300,7 @@ export interface DesktopImApi {
 		handler: (snapshot: ImBridgeStatus) => void,
 		onLog: (event: ImLogEvent) => void,
 	): Promise<() => void>;
-	testConnection(payload: ImSetConfigPayload["feishu"]): Promise<ImTestConnectionResult>;
+	testConnection(payload: ImTestConnectionPayload): Promise<ImTestConnectionResult>;
 	restart(): Promise<{ ok: boolean }>;
 	getRecentLogs(): Promise<ImLogEvent[]>;
 	getPaths(): Promise<ImPathInfo>;
@@ -181,4 +318,6 @@ export interface DesktopImApi {
 	onSessionChanged(handler: () => void): () => void;
 	/** Wechat (iLink) bind flow. See ImWechatApi. */
 	wechat: ImWechatApi;
+	/** Whatsapp QR pairing flow. See ImWhatsappApi. */
+	whatsapp: ImWhatsappApi;
 }

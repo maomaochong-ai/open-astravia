@@ -22,6 +22,11 @@ const IM_CHANNELS = {
 	WECHAT_SUBSCRIBE: "vetta:im:wechat:subscribe",
 	WECHAT_UNSUBSCRIBE: "vetta:im:wechat:unsubscribe",
 	WECHAT_BIND_EVENT: "vetta:im:wechat:bind-event",
+	WHATSAPP_START_BIND: "vetta:im:whatsapp:start-bind",
+	WHATSAPP_LOGOUT: "vetta:im:whatsapp:logout",
+	WHATSAPP_SUBSCRIBE: "vetta:im:whatsapp:subscribe",
+	WHATSAPP_UNSUBSCRIBE: "vetta:im:whatsapp:unsubscribe",
+	WHATSAPP_BIND_EVENT: "vetta:im:whatsapp:bind-event",
 	SESSION_CHANGED: "vetta:im:session-changed",
 } as const;
 
@@ -90,6 +95,19 @@ export function createImApi(ipc: IpcRenderer): Pick<DesktopApi, "im"> {
 						IM_CHANNELS.WECHAT_SUBSCRIBE,
 						IM_CHANNELS.WECHAT_BIND_EVENT,
 						IM_CHANNELS.WECHAT_UNSUBSCRIBE,
+						handler,
+						[],
+					),
+			},
+			whatsapp: {
+				startBind: () => ipc.invoke(IM_CHANNELS.WHATSAPP_START_BIND),
+				logout: () => ipc.invoke(IM_CHANNELS.WHATSAPP_LOGOUT),
+				subscribeBind: (handler) =>
+					subscribeById(
+						ipc,
+						IM_CHANNELS.WHATSAPP_SUBSCRIBE,
+						IM_CHANNELS.WHATSAPP_BIND_EVENT,
+						IM_CHANNELS.WHATSAPP_UNSUBSCRIBE,
 						handler,
 						[],
 					),

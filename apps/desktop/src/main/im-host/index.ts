@@ -2,11 +2,13 @@ import { DEFAULT_IM_CONVERSATION_CWD } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
 import { probeModelProvider } from "../models/probe.js";
 import { resolveImGatewayBinary } from "./binary-resolver.js";
+import { getImChannelDescriptor } from "./channels.js";
 import { buildCodingAgentSpec } from "./coding-agent-spec.js";
 import {
 	defaultImConfig,
 	defaultImConfigPath,
 	defaultWechatStatePath,
+	defaultWhatsappStatePath,
 	type ImConfig,
 	type ImTransportSelector,
 	loadImConfig,
@@ -14,18 +16,28 @@ import {
 } from "./config-store.js";
 import { defaultCredentialsPath, type ImCredentials, loadCredentials, saveCredentials } from "./credential-store.js";
 import type {
+	DiscordConfig,
 	FeishuConfig,
+	IMessageConfig,
 	LogEvent,
 	SessionStateEntry,
+	SignalConfig,
+	SlackConfig,
+	TelegramConfig,
 	WechatBindStatusEvent,
 	WechatBoundEvent,
 	WechatConfig,
 	WechatQREvent,
 	WechatUnboundEvent,
+	WhatsappBindStatusEvent,
+	WhatsappBoundEvent,
+	WhatsappConfig,
+	WhatsappQREvent,
+	WhatsappUnboundEvent,
 } from "./host-protocol.js";
 import { LogBuffer } from "./log-buffer.js";
 import { archiveLegacyFiles, detectLegacyImGateway, type LegacyDetection } from "./migration.js";
-import { SidecarManager } from "./sidecar-manager.js";
+import { type SidecarConfig, SidecarManager } from "./sidecar-manager.js";
 import { applyStatePatch, defaultImStatePath, type ImStateFile, loadImState, saveImState } from "./state-store.js";
 import { type ImBridgeStatus, StatusStore } from "./status-store.js";
 
@@ -64,6 +76,37 @@ export interface ImHostPublicConfig {
 		ilinkBotId?: string;
 		ilinkUserId?: string;
 	};
+	// Static-credential channels mirror the feishu pattern: secrets are
+	// echoed back so the settings form can re-render saved values.
+	telegram: {
+		botToken: string;
+		allowedUserIds?: number[];
+	};
+	slack: {
+		botToken: string;
+		appToken: string;
+		allowedUserIds?: string[];
+		allowedChannelIds?: string[];
+	};
+	discord: {
+		botToken: string;
+		allowedUserIds?: string[];
+		allowedGuildIds?: string[];
+	};
+	signal: {
+		endpoint: string;
+		account: string;
+		allowedNumbers?: string[];
+		attachmentsDir?: string;
+	};
+	whatsapp: {
+		bound: boolean;
+		allowedNumbers?: string[];
+	};
+	imessage: {
+		dbPath?: string;
+		allowedHandles?: string[];
+	};
 	transportMode: "long-connection";
 	// Retained for backwards compat with renderer; always false now that
 	// we no longer encrypt via safeStorage.
@@ -85,6 +128,37 @@ export interface SetConfigPayload {
 		verificationToken?: string;
 		encryptKey?: string;
 		baseUrl?: string;
+	};
+	// Per-channel blocks follow the feishu convention: omitting a block
+	// preserves the stored values; sending one replaces that channel's
+	// config (and, for secret fields, its credentials).
+	telegram?: {
+		botToken?: string;
+		allowedUserIds?: number[];
+	};
+	slack?: {
+		botToken?: string;
+		appToken?: string;
+		allowedUserIds?: string[];
+		allowedChannelIds?: string[];
+	};
+	discord?: {
+		botToken?: string;
+		allowedUserIds?: string[];
+		allowedGuildIds?: string[];
+	};
+	signal?: {
+		endpoint: string;
+		account: string;
+		allowedNumbers?: string[];
+		attachmentsDir?: string;
+	};
+	whatsapp?: {
+		allowedNumbers?: string[];
+	};
+	imessage?: {
+		dbPath?: string;
+		allowedHandles?: string[];
 	};
 	// `null` clears the override (use agent settings default).
 	// `undefined` (key omitted) preserves the existing value.
@@ -108,6 +182,13 @@ export type WechatBindEvent =
 	| ({ kind: "bound" } & WechatBoundEvent)
 	| ({ kind: "unbound" } & WechatUnboundEvent);
 
+/** Whatsapp counterpart of WechatBindEvent, same dispatch shape. */
+export type WhatsappBindEvent =
+	| ({ kind: "qr" } & WhatsappQREvent)
+	| ({ kind: "status" } & WhatsappBindStatusEvent)
+	| ({ kind: "bound" } & WhatsappBoundEvent)
+	| ({ kind: "unbound" } & WhatsappUnboundEvent);
+
 export class ImHost {
 	readonly statusStore = new StatusStore();
 	readonly logBuffer = new LogBuffer(500);
@@ -123,6 +204,9 @@ export class ImHost {
 	// Wechat bind subscribers. Multiple renderer windows may subscribe;
 	// each gets every event in arrival order.
 	private wechatBindHandlers: Set<(event: WechatBindEvent) => void> = new Set();
+
+	// Whatsapp bind subscribers, same semantics as wechatBindHandlers.
+	private whatsappBindHandlers: Set<(event: WhatsappBindEvent) => void> = new Set();
 
 	// Listeners notified after every state_patch is applied. The IPC layer
 	// uses this to broadcast "im session list changed" to the renderer so
@@ -236,6 +320,39 @@ export class ImHost {
 					}
 					this.dispatchWechatBindEvent({ kind: "unbound", ...event });
 				},
+				onWhatsappQR: (event) => {
+					this.dispatchWhatsappBindEvent({ kind: "qr", ...event });
+				},
+				onWhatsappBindStatus: (event) => {
+					this.dispatchWhatsappBindEvent({ kind: "status", ...event });
+				},
+				onWhatsappBound: (event) => {
+					// Same convenience-cache persistence as the wechat path:
+					// flip `bound` so the renderer shows the state without an
+					// extra roundtrip on next launch.
+					this.config = {
+						...this.config,
+						whatsapp: { ...this.config.whatsapp, bound: true },
+					};
+					try {
+						saveImConfig(this.config);
+					} catch (err) {
+						this.appendLog("warn", `save whatsapp bound state failed: ${(err as Error).message}`);
+					}
+					this.dispatchWhatsappBindEvent({ kind: "bound", ...event });
+				},
+				onWhatsappUnbound: (event) => {
+					this.config = {
+						...this.config,
+						whatsapp: { ...this.config.whatsapp, bound: false },
+					};
+					try {
+						saveImConfig(this.config);
+					} catch (err) {
+						this.appendLog("warn", `save whatsapp unbound state failed: ${(err as Error).message}`);
+					}
+					this.dispatchWhatsappBindEvent({ kind: "unbound", ...event });
+				},
 			},
 		});
 	}
@@ -342,6 +459,78 @@ export class ImHost {
 		}
 	}
 
+	// =========================================================================
+	// whatsapp bind flow API (mirrors the wechat flow above)
+	// =========================================================================
+
+	/**
+	 * Begin (or restart) a whatsapp QR pairing flow. Transparently flips
+	 * the config to whatsapp + enabled if needed so the bind dialog "just
+	 * works" from any starting state, then waits briefly for the sidecar
+	 * to reach awaiting_bind before sending the bind-start frame.
+	 */
+	async startWhatsappBind(): Promise<{ ok: boolean; error?: string }> {
+		if (this.config.transport !== "whatsapp" || !this.config.enabled) {
+			const flip = await this.setConfig({
+				enabled: true,
+				transport: "whatsapp",
+			});
+			if (!flip.ok) {
+				return { ok: false, error: flip.error ?? "切换到 WhatsApp 失败" };
+			}
+		}
+		const deadline = Date.now() + 5000;
+		while (Date.now() < deadline) {
+			if (this.statusStore.get().transport === "awaiting_bind" || this.config.whatsapp.bound) {
+				break;
+			}
+			await new Promise((r) => setTimeout(r, 100));
+		}
+		this.manager.startWhatsappBind();
+		return { ok: true };
+	}
+
+	/**
+	 * Clear the sidecar-owned whatsapp session and re-enter awaiting_bind
+	 * state. When the sidecar isn't running on whatsapp, only the cached
+	 * bound flag is wiped so the UI updates.
+	 */
+	async whatsappLogout(): Promise<{ ok: boolean; error?: string }> {
+		if (this.config.transport === "whatsapp" && this.manager.getCurrentChild()) {
+			this.manager.whatsappLogout();
+		} else {
+			this.config = { ...this.config, whatsapp: { ...this.config.whatsapp, bound: false } };
+			try {
+				saveImConfig(this.config);
+			} catch (err) {
+				return { ok: false, error: (err as Error).message };
+			}
+		}
+		return { ok: true };
+	}
+
+	/**
+	 * Subscribe to whatsapp bind-flow events. Returns an unsubscribe
+	 * function. Multiple subscribers are supported (one per renderer
+	 * window).
+	 */
+	subscribeWhatsappBind(handler: (event: WhatsappBindEvent) => void): () => void {
+		this.whatsappBindHandlers.add(handler);
+		return () => {
+			this.whatsappBindHandlers.delete(handler);
+		};
+	}
+
+	private dispatchWhatsappBindEvent(event: WhatsappBindEvent): void {
+		for (const h of this.whatsappBindHandlers) {
+			try {
+				h(event);
+			} catch (err) {
+				this.appendLog("warn", `whatsapp bind handler threw: ${(err as Error).message}`);
+			}
+		}
+	}
+
 	getPublicConfig(): ImHostPublicConfig {
 		return {
 			enabled: this.config.enabled,
@@ -357,6 +546,35 @@ export class ImHost {
 				bound: this.config.wechat.bound,
 				ilinkBotId: this.config.wechat.ilinkBotId,
 				ilinkUserId: this.config.wechat.ilinkUserId,
+			},
+			telegram: {
+				botToken: this.credentials.telegram?.botToken ?? "",
+				allowedUserIds: this.config.telegram.allowedUserIds,
+			},
+			slack: {
+				botToken: this.credentials.slack?.botToken ?? "",
+				appToken: this.credentials.slack?.appToken ?? "",
+				allowedUserIds: this.config.slack.allowedUserIds,
+				allowedChannelIds: this.config.slack.allowedChannelIds,
+			},
+			discord: {
+				botToken: this.credentials.discord?.botToken ?? "",
+				allowedUserIds: this.config.discord.allowedUserIds,
+				allowedGuildIds: this.config.discord.allowedGuildIds,
+			},
+			signal: {
+				endpoint: this.config.signal.endpoint,
+				account: this.config.signal.account,
+				allowedNumbers: this.config.signal.allowedNumbers,
+				attachmentsDir: this.config.signal.attachmentsDir,
+			},
+			whatsapp: {
+				bound: this.config.whatsapp.bound,
+				allowedNumbers: this.config.whatsapp.allowedNumbers,
+			},
+			imessage: {
+				dbPath: this.config.imessage.dbPath,
+				allowedHandles: this.config.imessage.allowedHandles,
 			},
 			transportMode: this.config.transportMode,
 			encryptionAvailable: false,
@@ -390,6 +608,39 @@ export class ImHost {
 					}
 				: this.config.feishu,
 			wechat: this.config.wechat,
+			telegram: payload.telegram ? { allowedUserIds: payload.telegram.allowedUserIds } : this.config.telegram,
+			slack: payload.slack
+				? {
+						allowedUserIds: payload.slack.allowedUserIds,
+						allowedChannelIds: payload.slack.allowedChannelIds,
+					}
+				: this.config.slack,
+			discord: payload.discord
+				? {
+						allowedUserIds: payload.discord.allowedUserIds,
+						allowedGuildIds: payload.discord.allowedGuildIds,
+					}
+				: this.config.discord,
+			signal: payload.signal
+				? {
+						endpoint: payload.signal.endpoint,
+						account: payload.signal.account,
+						allowedNumbers: payload.signal.allowedNumbers,
+						attachmentsDir: payload.signal.attachmentsDir,
+					}
+				: this.config.signal,
+			whatsapp: payload.whatsapp
+				? {
+						bound: this.config.whatsapp.bound,
+						allowedNumbers: payload.whatsapp.allowedNumbers,
+					}
+				: this.config.whatsapp,
+			imessage: payload.imessage
+				? {
+						dbPath: payload.imessage.dbPath,
+						allowedHandles: payload.imessage.allowedHandles,
+					}
+				: this.config.imessage,
 			transportMode: "long-connection",
 			agentModel: nextAgentModel,
 		};
@@ -410,7 +661,9 @@ export class ImHost {
 			}
 		}
 
-		// Update credentials only when the payload sent a feishu block.
+		// Update credentials only for the channels whose block the payload
+		// sent — same convention as the config merge above. Secrets never
+		// enter config-store; non-secret allow-lists never enter here.
 		const nextCreds: ImCredentials = { ...this.credentials };
 		if (payload.feishu) {
 			nextCreds.feishu = {
@@ -418,6 +671,18 @@ export class ImHost {
 				verificationToken: payload.feishu.verificationToken,
 				encryptKey: payload.feishu.encryptKey,
 			};
+		}
+		if (payload.telegram) {
+			nextCreds.telegram = { botToken: payload.telegram.botToken ?? "" };
+		}
+		if (payload.slack) {
+			nextCreds.slack = {
+				botToken: payload.slack.botToken ?? "",
+				appToken: payload.slack.appToken ?? "",
+			};
+		}
+		if (payload.discord) {
+			nextCreds.discord = { botToken: payload.discord.botToken ?? "" };
 		}
 
 		this.config = nextConfig;
@@ -486,12 +751,13 @@ export class ImHost {
 		};
 	}
 
-	getPaths(): { config: string; credentials: string; state: string; wechatState: string } {
+	getPaths(): { config: string; credentials: string; state: string; wechatState: string; whatsappState: string } {
 		return {
 			config: defaultImConfigPath(),
 			credentials: defaultCredentialsPath(),
 			state: defaultImStatePath(),
 			wechatState: defaultWechatStatePath(),
+			whatsappState: defaultWhatsappStatePath(),
 		};
 	}
 
@@ -535,13 +801,6 @@ export class ImHost {
 	// =========================================================================
 
 	/**
-	 * Whether the active transport has enough info to start the sidecar.
-	 *
-	 *   - feishu: needs both app id and secret in credentials
-	 *   - wechat: always true — the sidecar boots into awaiting_bind when
-	 *     no credentials are present and waits for the user to scan a QR
-	 */
-	/**
 	 * Probe the given (provider, model)'s baseUrl to see if the model
 	 * server is reachable. Returns ok=true on a 2xx/4xx response (4xx
 	 * still proves the host answered — auth issue is a separate concern
@@ -563,11 +822,10 @@ export class ImHost {
 		return probeModelProvider(ref);
 	}
 
+	/** Whether the active transport has enough info to start the sidecar.
+	 * The per-channel rules live in the descriptor registry (channels.ts). */
 	private hasRequiredCredentials(): boolean {
-		if (this.config.transport === "wechat") {
-			return true;
-		}
-		return Boolean(this.config.feishu.appId && this.credentials.feishu?.appSecret);
+		return getImChannelDescriptor(this.config.transport).hasRequiredCredentials(this.config, this.credentials);
 	}
 
 	private buildFeishuConfig(): FeishuConfig {
@@ -587,29 +845,83 @@ export class ImHost {
 		};
 	}
 
-	private buildSidecarConfig() {
+	private buildTelegramConfig(): TelegramConfig {
+		return {
+			botToken: this.credentials.telegram?.botToken ?? "",
+			allowedUserIds: this.config.telegram.allowedUserIds,
+		};
+	}
+
+	private buildSlackConfig(): SlackConfig {
+		return {
+			botToken: this.credentials.slack?.botToken ?? "",
+			appToken: this.credentials.slack?.appToken ?? "",
+			allowedUserIds: this.config.slack.allowedUserIds,
+			allowedChannelIds: this.config.slack.allowedChannelIds,
+		};
+	}
+
+	private buildDiscordConfig(): DiscordConfig {
+		return {
+			botToken: this.credentials.discord?.botToken ?? "",
+			allowedUserIds: this.config.discord.allowedUserIds,
+			allowedGuildIds: this.config.discord.allowedGuildIds,
+		};
+	}
+
+	private buildSignalConfig(): SignalConfig {
+		return {
+			endpoint: this.config.signal.endpoint,
+			account: this.config.signal.account,
+			allowedNumbers: this.config.signal.allowedNumbers,
+			attachmentsDir: this.config.signal.attachmentsDir,
+		};
+	}
+
+	private buildWhatsappConfig(): WhatsappConfig {
+		return {
+			enabled: true,
+			statePath: defaultWhatsappStatePath(),
+			allowedNumbers: this.config.whatsapp.allowedNumbers,
+		};
+	}
+
+	private buildIMessageConfig(): IMessageConfig {
+		return {
+			enabled: true,
+			dbPath: this.config.imessage.dbPath,
+			allowedHandles: this.config.imessage.allowedHandles,
+		};
+	}
+
+	/**
+	 * Per-transport channel slot builders. Exactly one slot is sent per
+	 * init/config_update frame — the sidecar uses nil-discrimination to
+	 * pick which transport to start.
+	 */
+	private readonly channelSlotBuilders: Record<ImTransportSelector, () => Partial<SidecarConfig>> = {
+		feishu: () => ({ feishu: this.buildFeishuConfig() }),
+		wechat: () => ({ wechat: this.buildWechatConfig() }),
+		telegram: () => ({ telegram: this.buildTelegramConfig() }),
+		slack: () => ({ slack: this.buildSlackConfig() }),
+		discord: () => ({ discord: this.buildDiscordConfig() }),
+		signal: () => ({ signal: this.buildSignalConfig() }),
+		whatsapp: () => ({ whatsapp: this.buildWhatsappConfig() }),
+		imessage: () => ({ imessage: this.buildIMessageConfig() }),
+	};
+
+	private buildSidecarConfig(): SidecarConfig {
 		if (!this.binaryPath) {
 			this.binaryPath = resolveImGatewayBinary().path;
 			this.statusStore.patch({ binaryPath: this.binaryPath });
 		}
 		const codingAgent = buildCodingAgentSpec({ agentModel: this.config.agentModel });
-		// Send only the slot for the currently selected transport. The
-		// sidecar uses nil-discriminator to pick which to start.
-		if (this.config.transport === "wechat") {
-			return {
-				binaryPath: this.binaryPath,
-				wechat: this.buildWechatConfig(),
-				conversationCwd: DEFAULT_IM_CONVERSATION_CWD,
-				state: this.stateAsEntries(),
-				codingAgent,
-			};
-		}
 		return {
 			binaryPath: this.binaryPath,
-			feishu: this.buildFeishuConfig(),
 			conversationCwd: DEFAULT_IM_CONVERSATION_CWD,
 			state: this.stateAsEntries(),
 			codingAgent,
+			...this.channelSlotBuilders[this.config.transport](),
 		};
 	}
 
