@@ -1,7 +1,7 @@
 import { useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { Button } from "@shared/components/ui/button";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
-import { isMac } from "@shared/lib/platform";
+import { isMac, isWindows } from "@shared/lib/platform";
 import {
 	isPersonalModeAtom,
 	pageHeaderLeftSlotAtom,
@@ -12,7 +12,7 @@ import { authUserAtom } from "@shared/store/auth-atoms";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { findSettingsSection, SETTINGS_TABS } from "../registry";
+import { filterVisibleSettingsTabs, findSettingsSection, SETTINGS_TABS } from "../registry";
 import type { SettingsPageModel, SettingsNavigationItem } from "./types";
 
 export function useSettingsPageModel(): SettingsPageModel {
@@ -52,12 +52,12 @@ export function useSettingsPageModel(): SettingsPageModel {
 
 	const visibleTabRegistrations = useMemo(
 		() =>
-			SETTINGS_TABS.filter(
-				(tab) =>
-					(!tab.personalOnly || isPersonal) &&
-					(!tab.requireAuth || authUser) &&
-					(!tab.macOnly || isMac),
-			),
+			filterVisibleSettingsTabs(SETTINGS_TABS, {
+				isPersonal,
+				hasAuthUser: Boolean(authUser),
+				isMac,
+				isWindows,
+			}),
 		[authUser, isPersonal],
 	);
 	const validTabKeys = useMemo(

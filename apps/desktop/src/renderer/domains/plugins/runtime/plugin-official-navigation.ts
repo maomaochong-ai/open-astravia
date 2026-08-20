@@ -168,6 +168,7 @@ function buildSettingsCatalog(): unknown {
 			...(tab.personalOnly ? { personalOnly: true } : {}),
 			...(tab.requireAuth ? { requireAuth: true } : {}),
 			...(tab.macOnly ? { macOnly: true } : {}),
+			...(tab.windowsOnly ? { windowsOnly: true } : {}),
 		},
 		sections: getVisibleSettingsSections()
 			.filter((section) => section.tab === tab.key)

@@ -26,6 +26,7 @@ export interface SettingsTabRegistration {
 	personalOnly?: boolean;
 	requireAuth?: boolean;
 	macOnly?: boolean;
+	windowsOnly?: boolean;
 	/** 侧栏标签显示 BETA 徽标 */
 	beta?: boolean;
 }
@@ -40,7 +41,13 @@ export interface SettingsSectionRegistration {
 export const SETTINGS_TABS: readonly SettingsTabRegistration[] = [
 	{ key: "account", label: "账户", labelKey: "tabAccount", icon: "icon-[mdi--account-outline]", requireAuth: true },
 	{ key: "general", label: "通用设置", labelKey: "tabGeneral", icon: "icon-[mdi--cog-outline]" },
-	{ key: "remote", label: "远程连接", labelKey: "tabRemote", icon: "icon-[solar--smartphone-rotate-angle-linear]" },
+	{
+		key: "remote",
+		label: "远程连接",
+		labelKey: "tabRemote",
+		icon: "icon-[solar--smartphone-rotate-angle-linear]",
+		windowsOnly: true,
+	},
 	{ key: "appearance", label: "外观", labelKey: "tabAppearance", icon: "icon-[mdi--palette-outline]" },
 	{ key: "context", label: "Agent配置", labelKey: "tabContext", icon: "icon-[mdi--robot-outline]" },
 	{ key: "models", label: "模型配置", labelKey: "tabModels", icon: "icon-[mdi--brain]" },
@@ -147,4 +154,25 @@ export function getSettingsSectionsByTab(tab: SettingsTab): SettingsSectionRegis
 
 export function findSettingsSection(id: string): SettingsSectionRegistration | undefined {
 	return SETTINGS_SECTIONS.find((section) => section.id === id);
+}
+
+export interface SettingsTabVisibilityContext {
+	isPersonal: boolean;
+	hasAuthUser: boolean;
+	isMac: boolean;
+	isWindows: boolean;
+}
+
+/** 标签可见性：平台与账号维度的过滤规则集中在此，便于测试与复用。 */
+export function filterVisibleSettingsTabs(
+	tabs: readonly SettingsTabRegistration[],
+	{ isPersonal, hasAuthUser, isMac, isWindows }: SettingsTabVisibilityContext,
+): readonly SettingsTabRegistration[] {
+	return tabs.filter(
+		(tab) =>
+			(!tab.personalOnly || isPersonal) &&
+			(!tab.requireAuth || hasAuthUser) &&
+			(!tab.macOnly || isMac) &&
+			(!tab.windowsOnly || isWindows),
+	);
 }
