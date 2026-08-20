@@ -16,7 +16,7 @@ violations=0
 
 # Pattern: any import path that contains a known IM SDK module.
 # Add new SDKs to this list when adding new transports.
-sdk_pattern='larksuite/oapi-sdk-go|telegram-bot-api|github.com/.*tg|github.com/.*dingtalk|github.com/.*feishu'
+sdk_pattern='larksuite/oapi-sdk-go|telegram-bot-api|github.com/.*tg|github.com/.*dingtalk|github.com/.*feishu|slack-go/slack|bwmarrin/discordgo|go.mau.fi/whatsmeow|modernc.org/sqlite|api\.telegram\.org'
 
 # Layers that MUST NOT touch SDKs.
 restricted_dirs=(

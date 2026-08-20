@@ -9,22 +9,28 @@ import (
 // Frame type discriminators. Strings are the wire format.
 const (
 	// Inbound (parent → child)
-	TypeInit            = "init"
-	TypeConfigUpdate    = "config_update"
-	TypeShutdown        = "shutdown"
-	TypeWechatBindStart = "wechat_bind_start"
-	TypeWechatLogout    = "wechat_logout"
+	TypeInit              = "init"
+	TypeConfigUpdate      = "config_update"
+	TypeShutdown          = "shutdown"
+	TypeWechatBindStart   = "wechat_bind_start"
+	TypeWechatLogout      = "wechat_logout"
+	TypeWhatsappBindStart = "whatsapp_bind_start"
+	TypeWhatsappLogout    = "whatsapp_logout"
 
 	// Outbound (child → parent)
-	TypeReady            = "ready"
-	TypeLog              = "log"
-	TypeStatus           = "status"
-	TypeStatePatch       = "state_patch"
-	TypeMetric           = "metric"
-	TypeWechatQR         = "wechat_qr"
-	TypeWechatBindStatus = "wechat_bind_status"
-	TypeWechatBound      = "wechat_bound"
-	TypeWechatUnbound    = "wechat_unbound"
+	TypeReady              = "ready"
+	TypeLog                = "log"
+	TypeStatus             = "status"
+	TypeStatePatch         = "state_patch"
+	TypeMetric             = "metric"
+	TypeWechatQR           = "wechat_qr"
+	TypeWechatBindStatus   = "wechat_bind_status"
+	TypeWechatBound        = "wechat_bound"
+	TypeWechatUnbound      = "wechat_unbound"
+	TypeWhatsappQR         = "whatsapp_qr"
+	TypeWhatsappBindStatus = "whatsapp_bind_status"
+	TypeWhatsappBound      = "whatsapp_bound"
+	TypeWhatsappUnbound    = "whatsapp_unbound"
 )
 
 // Transport status values reported on TypeStatus events.
@@ -67,6 +73,58 @@ type WechatConfig struct {
 	StatePath string `json:"statePath,omitempty"`
 }
 
+// TelegramConfig carries the credentials and options for the telegram
+// transport (official Bot API, long polling — no public ingress needed).
+type TelegramConfig struct {
+	BotToken       string  `json:"botToken"`
+	AllowedUserIDs []int64 `json:"allowedUserIds,omitempty"` // empty = accept all DMs
+}
+
+// SlackConfig carries the credentials for the slack transport (Socket Mode:
+// bot token + app-level token, no public ingress needed).
+type SlackConfig struct {
+	BotToken          string   `json:"botToken"` // xoxb-…
+	AppToken          string   `json:"appToken"` // xapp-…
+	AllowedUserIDs    []string `json:"allowedUserIds,omitempty"`
+	AllowedChannelIDs []string `json:"allowedChannelIds,omitempty"` // channel IDs, not names
+}
+
+// DiscordConfig carries the credentials for the discord transport.
+type DiscordConfig struct {
+	BotToken        string   `json:"botToken"`
+	AllowedUserIDs  []string `json:"allowedUserIds,omitempty"`
+	AllowedGuildIDs []string `json:"allowedGuildIds,omitempty"`
+}
+
+// SignalConfig points the signal transport at a user-managed signal-cli
+// daemon (HTTP JSON-RPC + SSE). The daemon owns the Signal credentials;
+// this slot only says where it listens and which account it serves.
+type SignalConfig struct {
+	Endpoint       string   `json:"endpoint"` // e.g. http://127.0.0.1:8080
+	Account        string   `json:"account"`  // E.164 number the daemon serves
+	AllowedNumbers []string `json:"allowedNumbers,omitempty"`
+	AttachmentsDir string   `json:"attachmentsDir,omitempty"` // signal-cli attachment cache, for inbound media
+}
+
+// WhatsappConfig mirrors WechatConfig's shape: no long-lived credentials in
+// the protocol — the session is established via the QR pairing flow
+// (TypeWhatsappBindStart) and persisted by the sidecar in StatePath (a
+// sqlite database owned by whatsmeow).
+type WhatsappConfig struct {
+	Enabled        bool     `json:"enabled"`
+	StatePath      string   `json:"statePath,omitempty"`
+	AllowedNumbers []string `json:"allowedNumbers,omitempty"`
+}
+
+// IMessageConfig configures the macOS-local imessage transport (chat.db
+// polling + Messages.app automation). No credentials — access is granted
+// via macOS permissions (Full Disk Access + Automation) on the host Mac.
+type IMessageConfig struct {
+	Enabled        bool     `json:"enabled"`
+	DBPath         string   `json:"dbPath,omitempty"` // default ~/Library/Messages/chat.db
+	AllowedHandles []string `json:"allowedHandles,omitempty"`
+}
+
 // SessionStateEntry mirrors a single (im_user, chatID) routing entry.
 type SessionStateEntry struct {
 	UserID      string    `json:"userId"`
@@ -84,17 +142,27 @@ type SessionStateEntry struct {
 //
 // The active transport is determined by which sub-config is non-nil:
 //
-//   - Feishu non-nil → run the feishu transport with these credentials
-//   - Wechat non-nil with Enabled=true → run the wechat transport. Sidecar
-//     loads credentials from Wechat.StatePath; if missing, sidecar enters
-//     awaiting_bind state and waits for a TypeWechatBindStart frame.
+//   - Feishu / Telegram / Slack / Discord / Signal non-nil → run that
+//     transport with the carried credentials.
+//   - Wechat / Whatsapp non-nil with Enabled=true → run that transport.
+//     Credentials live in the sidecar-owned StatePath; if missing, the
+//     sidecar enters awaiting_bind and waits for the matching bind-start
+//     frame (TypeWechatBindStart / TypeWhatsappBindStart).
+//   - IMessage non-nil with Enabled=true → run the imessage transport
+//     (macOS-local, no credentials).
 //
-// Exactly one of Feishu / Wechat should be non-nil for a configured run;
-// neither yields the legacy "fall back to mock" behavior used in tests.
+// Exactly one sub-config should be non-nil for a configured run; none
+// yields the legacy "fall back to mock" behavior used in tests.
 type InitFrame struct {
 	Type            string              `json:"type"` // always TypeInit
 	Feishu          *FeishuConfig       `json:"feishu,omitempty"`
 	Wechat          *WechatConfig       `json:"wechat,omitempty"`
+	Telegram        *TelegramConfig     `json:"telegram,omitempty"`
+	Slack           *SlackConfig        `json:"slack,omitempty"`
+	Discord         *DiscordConfig      `json:"discord,omitempty"`
+	Signal          *SignalConfig       `json:"signal,omitempty"`
+	Whatsapp        *WhatsappConfig     `json:"whatsapp,omitempty"`
+	IMessage        *IMessageConfig     `json:"imessage,omitempty"`
 	ConversationCwd string              `json:"conversationCwd"`
 	State           []SessionStateEntry `json:"state"`
 	LogLevel        string              `json:"logLevel,omitempty"` // debug|info|warn|error
@@ -146,9 +214,15 @@ type CodingAgentSpec struct {
 // active transport. Triggers a reconnect because the underlying clients
 // cannot swap creds in flight. Same nil-discriminator rule as InitFrame.
 type ConfigUpdateFrame struct {
-	Type   string        `json:"type"` // always TypeConfigUpdate
-	Feishu *FeishuConfig `json:"feishu,omitempty"`
-	Wechat *WechatConfig `json:"wechat,omitempty"`
+	Type     string          `json:"type"` // always TypeConfigUpdate
+	Feishu   *FeishuConfig   `json:"feishu,omitempty"`
+	Wechat   *WechatConfig   `json:"wechat,omitempty"`
+	Telegram *TelegramConfig `json:"telegram,omitempty"`
+	Slack    *SlackConfig    `json:"slack,omitempty"`
+	Discord  *DiscordConfig  `json:"discord,omitempty"`
+	Signal   *SignalConfig   `json:"signal,omitempty"`
+	Whatsapp *WhatsappConfig `json:"whatsapp,omitempty"`
+	IMessage *IMessageConfig `json:"imessage,omitempty"`
 }
 
 // ShutdownFrame requests graceful shutdown. Equivalent semantics to closing
@@ -266,6 +340,53 @@ const (
 	WechatBindStatusCancelled  = "cancelled"
 )
 
+// WhatsappBindStartFrame requests the sidecar begin (or restart) a whatsapp
+// QR pairing flow. Same semantics as WechatBindStartFrame: no payload, the
+// sidecar knows StatePath from the latest init/config_update; a bind already
+// in progress continues.
+type WhatsappBindStartFrame struct {
+	Type string `json:"type"` // always TypeWhatsappBindStart
+}
+
+// WhatsappLogoutFrame requests the sidecar drop the persisted whatsapp
+// session, stop any running whatsapp transport, and re-enter awaiting_bind.
+type WhatsappLogoutFrame struct {
+	Type string `json:"type"` // always TypeWhatsappLogout
+}
+
+// WhatsappQREvent carries one QR pairing code. Code is the raw pairing
+// string WhatsApp expects inside the QR image; the parent renders it.
+// Attempt is 1-indexed and increments on each refresh after expiry.
+type WhatsappQREvent struct {
+	Type    string `json:"type"` // always TypeWhatsappQR
+	Code    string `json:"code"`
+	Attempt int    `json:"attempt"`
+}
+
+// WhatsappBindStatusEvent reports a transition in the whatsapp pairing state
+// machine. Status reuses the WechatBindStatus* values (scanned / expired /
+// confirmed / failed / cancelled); Error is set only on failed.
+type WhatsappBindStatusEvent struct {
+	Type   string `json:"type"` // always TypeWhatsappBindStatus
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
+}
+
+// WhatsappBoundEvent reports a successful pairing, emitted after the session
+// has been persisted to StatePath.
+type WhatsappBoundEvent struct {
+	Type string `json:"type"` // always TypeWhatsappBound
+	// JID is the paired account's WhatsApp JID (user@s.whatsapp.net).
+	JID string `json:"jid,omitempty"`
+}
+
+// WhatsappUnboundEvent reports that the whatsapp session has been cleared
+// (explicit logout frame or server-side logout). Sidecar is awaiting_bind.
+type WhatsappUnboundEvent struct {
+	Type   string `json:"type"` // always TypeWhatsappUnbound
+	Reason string `json:"reason,omitempty"`
+}
+
 // envelope is a minimal probe used to discriminate inbound frames before
 // dispatching to the typed decoder.
 type envelope struct {
@@ -309,6 +430,18 @@ func DecodeInbound(line []byte) (any, error) {
 		var f WechatLogoutFrame
 		if err := json.Unmarshal(line, &f); err != nil {
 			return nil, fmt.Errorf("hostproto: parse wechat_logout: %w", err)
+		}
+		return &f, nil
+	case TypeWhatsappBindStart:
+		var f WhatsappBindStartFrame
+		if err := json.Unmarshal(line, &f); err != nil {
+			return nil, fmt.Errorf("hostproto: parse whatsapp_bind_start: %w", err)
+		}
+		return &f, nil
+	case TypeWhatsappLogout:
+		var f WhatsappLogoutFrame
+		if err := json.Unmarshal(line, &f); err != nil {
+			return nil, fmt.Errorf("hostproto: parse whatsapp_logout: %w", err)
 		}
 		return &f, nil
 	case "":

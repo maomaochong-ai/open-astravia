@@ -26,6 +26,16 @@ type credentialsFileShape struct {
 		AppID     string `yaml:"appId"`
 		AppSecret string `yaml:"appSecret"`
 	} `yaml:"feishu"`
+	Telegram struct {
+		BotToken string `yaml:"botToken"`
+	} `yaml:"telegram"`
+	Slack struct {
+		BotToken string `yaml:"botToken"`
+		AppToken string `yaml:"appToken"`
+	} `yaml:"slack"`
+	Discord struct {
+		BotToken string `yaml:"botToken"`
+	} `yaml:"discord"`
 }
 
 // loadCredentials assembles credentials from the three sources documented
@@ -37,8 +47,30 @@ type credentialsFileShape struct {
 // gateway will fail later when the transport that needs it tries to start.
 // We deliberately do not error here on missing values, because the mock
 // transport doesn't need any credentials at all.
+// credentialField declares one secret's three source addresses (keychain
+// key, credentials.yaml value, env var) and its destination. New channels
+// add a row in credentialFields — no new loader code.
+type credentialField struct {
+	keychainKey string
+	fileValue   func(*credentialsFileShape) string
+	envVar      string
+	dst         func(*Credentials) *string
+}
+
+func credentialFields() []credentialField {
+	return []credentialField{
+		{"feishu_app_id", func(f *credentialsFileShape) string { return f.Feishu.AppID }, "IM_GATEWAY_FEISHU_APP_ID", func(c *Credentials) *string { return &c.Feishu.AppID }},
+		{"feishu_app_secret", func(f *credentialsFileShape) string { return f.Feishu.AppSecret }, "IM_GATEWAY_FEISHU_APP_SECRET", func(c *Credentials) *string { return &c.Feishu.AppSecret }},
+		{"telegram_bot_token", func(f *credentialsFileShape) string { return f.Telegram.BotToken }, "IM_GATEWAY_TELEGRAM_BOT_TOKEN", func(c *Credentials) *string { return &c.Telegram.BotToken }},
+		{"slack_bot_token", func(f *credentialsFileShape) string { return f.Slack.BotToken }, "IM_GATEWAY_SLACK_BOT_TOKEN", func(c *Credentials) *string { return &c.Slack.BotToken }},
+		{"slack_app_token", func(f *credentialsFileShape) string { return f.Slack.AppToken }, "IM_GATEWAY_SLACK_APP_TOKEN", func(c *Credentials) *string { return &c.Slack.AppToken }},
+		{"discord_bot_token", func(f *credentialsFileShape) string { return f.Discord.BotToken }, "IM_GATEWAY_DISCORD_BOT_TOKEN", func(c *Credentials) *string { return &c.Discord.BotToken }},
+	}
+}
+
 func loadCredentials() (*Credentials, error) {
 	creds := &Credentials{}
+	fields := credentialFields()
 
 	// 1. Keychain. On headless / CI systems the keychain may be entirely
 	// unavailable; we treat any non-ErrNotFound failure as "no keychain
@@ -46,16 +78,14 @@ func loadCredentials() (*Credentials, error) {
 	// designed exactly for that case. Hard failures are still surfaced to
 	// stderr so users can investigate if they expected keychain to work.
 	keychainContributed := false
-	if v, err := tryKeychain("feishu_app_id"); err == nil && v != "" {
-		creds.Feishu.AppID = v
-		keychainContributed = true
-	}
-	if v, err := tryKeychain("feishu_app_secret"); err == nil && v != "" {
-		creds.Feishu.AppSecret = v
-		keychainContributed = true
+	for _, f := range fields {
+		if v, err := tryKeychain(f.keychainKey); err == nil && v != "" {
+			*f.dst(creds) = v
+			keychainContributed = true
+		}
 	}
 
-	// 2. credentials.yaml
+	// 2. credentials.yaml — fills only values the keychain left empty.
 	fileContributed := false
 	credsPath, err := defaultCredentialsPath()
 	if err != nil {
@@ -65,23 +95,20 @@ func loadCredentials() (*Credentials, error) {
 		return nil, err
 	} else if ok {
 		fileContributed = true
-		if creds.Feishu.AppID == "" {
-			creds.Feishu.AppID = file.Feishu.AppID
-		}
-		if creds.Feishu.AppSecret == "" {
-			creds.Feishu.AppSecret = file.Feishu.AppSecret
+		for _, f := range fields {
+			if dst := f.dst(creds); *dst == "" {
+				*dst = f.fileValue(&file)
+			}
 		}
 	}
 
-	// 3. Environment
+	// 3. Environment — overrides unconditionally.
 	envContributed := false
-	if v := os.Getenv("IM_GATEWAY_FEISHU_APP_ID"); v != "" {
-		creds.Feishu.AppID = v
-		envContributed = true
-	}
-	if v := os.Getenv("IM_GATEWAY_FEISHU_APP_SECRET"); v != "" {
-		creds.Feishu.AppSecret = v
-		envContributed = true
+	for _, f := range fields {
+		if v := os.Getenv(f.envVar); v != "" {
+			*f.dst(creds) = v
+			envContributed = true
+		}
 	}
 
 	creds.Source = describeSources(keychainContributed, fileContributed, envContributed)

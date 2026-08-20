@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -110,10 +111,14 @@ func applyDefaults(cfg *Config) error {
 	if cfg.Paths.WechatState == "" {
 		cfg.Paths.WechatState = filepath.Join(gatewayDir, "wechat.json")
 	}
+	if cfg.Paths.WhatsappState == "" {
+		cfg.Paths.WhatsappState = filepath.Join(gatewayDir, "whatsapp.db")
+	}
 	cfg.Paths.ConversationCwd = expandTilde(cfg.Paths.ConversationCwd, home)
 	cfg.Paths.State = expandTilde(cfg.Paths.State, home)
 	cfg.Paths.LogsDir = expandTilde(cfg.Paths.LogsDir, home)
 	cfg.Paths.WechatState = expandTilde(cfg.Paths.WechatState, home)
+	cfg.Paths.WhatsappState = expandTilde(cfg.Paths.WhatsappState, home)
 	return nil
 }
 
@@ -131,11 +136,12 @@ func expandTilde(p, home string) string {
 // recognized. Returns a descriptive error pointing the user at the
 // offending field.
 func validate(cfg *Config) error {
-	switch cfg.Transport.Name {
-	case TransportMock, TransportFeishu, TransportWechat:
-		// ok
-	default:
-		return fmt.Errorf("config: transport.name must be one of [mock, feishu, wechat], got %q", cfg.Transport.Name)
+	if !slices.Contains(TransportNames, cfg.Transport.Name) {
+		names := make([]string, len(TransportNames))
+		for i, n := range TransportNames {
+			names[i] = string(n)
+		}
+		return fmt.Errorf("config: transport.name must be one of [%s], got %q", strings.Join(names, ", "), cfg.Transport.Name)
 	}
 	if cfg.HostClient.PoolMaxSize < 1 {
 		return fmt.Errorf("config: hostClient.poolMaxSize must be >= 1, got %d", cfg.HostClient.PoolMaxSize)

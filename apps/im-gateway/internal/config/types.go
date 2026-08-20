@@ -17,19 +17,39 @@ type Config struct {
 // platform-specific options. Exactly one of the per-platform sub-configs is
 // honored based on Name.
 type TransportConfig struct {
-	Name   TransportName `yaml:"name"`
-	Feishu *FeishuConfig `yaml:"feishu,omitempty"`
-	Mock   *MockConfig   `yaml:"mock,omitempty"`
-	Wechat *WechatConfig `yaml:"wechat,omitempty"`
+	Name     TransportName   `yaml:"name"`
+	Feishu   *FeishuConfig   `yaml:"feishu,omitempty"`
+	Mock     *MockConfig     `yaml:"mock,omitempty"`
+	Wechat   *WechatConfig   `yaml:"wechat,omitempty"`
+	Telegram *TelegramConfig `yaml:"telegram,omitempty"`
+	Slack    *SlackConfig    `yaml:"slack,omitempty"`
+	Discord  *DiscordConfig  `yaml:"discord,omitempty"`
+	Signal   *SignalConfig   `yaml:"signal,omitempty"`
+	Whatsapp *WhatsappConfig `yaml:"whatsapp,omitempty"`
+	IMessage *IMessageConfig `yaml:"imessage,omitempty"`
 }
 
 type TransportName string
 
 const (
-	TransportFeishu TransportName = "feishu"
-	TransportMock   TransportName = "mock"
-	TransportWechat TransportName = "wechat"
+	TransportFeishu   TransportName = "feishu"
+	TransportMock     TransportName = "mock"
+	TransportWechat   TransportName = "wechat"
+	TransportTelegram TransportName = "telegram"
+	TransportSlack    TransportName = "slack"
+	TransportDiscord  TransportName = "discord"
+	TransportSignal   TransportName = "signal"
+	TransportWhatsapp TransportName = "whatsapp"
+	TransportIMessage TransportName = "imessage"
 )
+
+// TransportNames lists every recognized transport.name value, in the order
+// shown in error messages and the config template.
+var TransportNames = []TransportName{
+	TransportMock, TransportFeishu, TransportWechat, TransportTelegram,
+	TransportSlack, TransportDiscord, TransportSignal, TransportWhatsapp,
+	TransportIMessage,
+}
 
 // FeishuConfig holds the non-secret part of feishu transport configuration.
 // Secrets (AppSecret) live in Credentials.
@@ -54,6 +74,51 @@ type WechatConfig struct {
 	// QuotaWindow is the rolling window length for QuotaPerWindow.
 	// Defaults to 24h.
 	QuotaWindow time.Duration `yaml:"quotaWindow,omitempty"`
+}
+
+// TelegramConfig holds the non-secret part of telegram transport
+// configuration. The bot token lives in Credentials.
+type TelegramConfig struct {
+	AllowedUserIDs []int64 `yaml:"allowedUserIds,omitempty"` // empty = accept all DMs
+}
+
+// SlackConfig holds the non-secret part of slack transport configuration.
+// Tokens live in Credentials.
+type SlackConfig struct {
+	AllowedUserIDs    []string `yaml:"allowedUserIds,omitempty"`
+	AllowedChannelIDs []string `yaml:"allowedChannelIds,omitempty"` // channel IDs, not names
+}
+
+// DiscordConfig holds the non-secret part of discord transport
+// configuration. The bot token lives in Credentials.
+type DiscordConfig struct {
+	AllowedUserIDs  []string `yaml:"allowedUserIds,omitempty"`
+	AllowedGuildIDs []string `yaml:"allowedGuildIds,omitempty"`
+}
+
+// SignalConfig configures the signal transport, which talks to a
+// user-managed signal-cli daemon. Nothing here is secret — the daemon owns
+// the Signal credentials.
+type SignalConfig struct {
+	Endpoint       string   `yaml:"endpoint,omitempty"` // default http://127.0.0.1:8080
+	Account        string   `yaml:"account,omitempty"`  // E.164 number the daemon serves
+	AllowedNumbers []string `yaml:"allowedNumbers,omitempty"`
+	AttachmentsDir string   `yaml:"attachmentsDir,omitempty"` // signal-cli attachment cache dir
+}
+
+// WhatsappConfig holds the non-secret part of whatsapp transport
+// configuration. Credentials are NOT here — the whatsmeow session lives in
+// the sqlite database at cfg.Paths.WhatsappState, established via QR
+// pairing.
+type WhatsappConfig struct {
+	AllowedNumbers []string `yaml:"allowedNumbers,omitempty"` // E.164, empty = accept all DMs
+}
+
+// IMessageConfig configures the macOS-local imessage transport. No
+// credentials — access is granted via macOS permissions on the host Mac.
+type IMessageConfig struct {
+	DBPath         string   `yaml:"dbPath,omitempty"` // default ~/Library/Messages/chat.db
+	AllowedHandles []string `yaml:"allowedHandles,omitempty"`
 }
 
 // HostClientConfig governs how the gateway spawns and manages
@@ -107,6 +172,7 @@ type PathsConfig struct {
 	State           string `yaml:"state,omitempty"`         // ~/.vetta/im-gateway/state.json
 	LogsDir         string `yaml:"logsDir,omitempty"`       // ~/.vetta/im-gateway/logs/
 	WechatState     string `yaml:"wechatState,omitempty"`   // ~/.vetta/im-gateway/wechat.json
+	WhatsappState   string `yaml:"whatsappState,omitempty"` // ~/.vetta/im-gateway/whatsapp.db
 }
 
 // Credentials carries secret values loaded separately from Config.
@@ -120,13 +186,29 @@ type PathsConfig struct {
 // Source records which mechanism actually provided the values, used in
 // startup logging so users can audit where their secrets came from.
 type Credentials struct {
-	Feishu FeishuCredentials
-	Source string // "keychain" | "credentials.yaml" | "env" | "merged"
+	Feishu   FeishuCredentials
+	Telegram TelegramCredentials
+	Slack    SlackCredentials
+	Discord  DiscordCredentials
+	Source   string // "keychain" | "credentials.yaml" | "env" | "merged"
 }
 
 type FeishuCredentials struct {
 	AppID     string
 	AppSecret string
+}
+
+type TelegramCredentials struct {
+	BotToken string
+}
+
+type SlackCredentials struct {
+	BotToken string // xoxb-…
+	AppToken string // xapp-…
+}
+
+type DiscordCredentials struct {
+	BotToken string
 }
 
 // LoadConfig reads and parses the gateway YAML config from the given path,
