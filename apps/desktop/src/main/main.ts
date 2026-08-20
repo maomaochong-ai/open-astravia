@@ -86,7 +86,7 @@ import {
 	setHideToTrayOnClose,
 } from "./tray-manager.js";
 import { consumePendingUpdateRelaunch } from "./update-relaunch-marker.js";
-import { getAppVersion, updaterService } from "./updater.js";
+import { getAppVersion, runUpgradeE2e, updaterService } from "./updater.js";
 import {
 	createWindow,
 	getMainWindow,
@@ -829,6 +829,7 @@ if (!gotSingleLock) {
 				// 启动 Updater：绑定主窗口并在打包环境后台检查一次
 				updaterService.setMainWindow(mainWindow);
 				void updaterService.onAppReady();
+				void runUpgradeE2e();
 
 				void reloadKnowledgePoller().catch((err) => {
 					mainLog.error("failed to start knowledge poller:", err);

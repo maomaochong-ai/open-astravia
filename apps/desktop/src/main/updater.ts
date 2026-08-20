@@ -1,4 +1,6 @@
 import { readFileSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getVettaHomePath } from "@vetta/action-rpc";
@@ -32,9 +34,9 @@ export function getAppVersion(): string {
 const { autoUpdater } = electronUpdater;
 
 /**
- * Packaged E2E runs against an ephemeral local feed. Keeping this override
- * behind the E2E marker prevents runtime environment variables from changing
- * the update source in production builds.
+ * Packaged E2E runs against an explicitly supplied test feed. Keeping this
+ * override behind the E2E marker prevents runtime environment variables from
+ * changing the update source in production builds.
  */
 function configureE2eUpdateFeed(): void {
 	if (!app.isPackaged || process.env.VETTA_E2E !== "1") return;
@@ -42,8 +44,14 @@ function configureE2eUpdateFeed(): void {
 	if (!feedUrl) return;
 	try {
 		const parsedUrl = new URL(feedUrl);
-		if (parsedUrl.protocol !== "http:" || !["127.0.0.1", "localhost", "::1"].includes(parsedUrl.hostname)) {
-			console.warn("[updater] ignored non-local E2E update feed");
+		const isLocalHttp =
+			parsedUrl.protocol === "http:" && ["127.0.0.1", "localhost", "::1"].includes(parsedUrl.hostname);
+		if (parsedUrl.protocol !== "https:" && !isLocalHttp) {
+			console.warn("[updater] ignored insecure or unsupported E2E update feed");
+			return;
+		}
+		if (parsedUrl.username || parsedUrl.password || parsedUrl.search || parsedUrl.hash) {
+			console.warn("[updater] ignored E2E update feed with credentials or URL decorations");
 			return;
 		}
 		autoUpdater.setFeedURL({
@@ -121,3 +129,135 @@ const systemEvents = {
 export const updaterService = new UpdaterService(updaterEngine, currentVersion, app.isPackaged, mainT, {
 	systemEvents,
 });
+
+interface UpgradeE2eState {
+	phase: "pending" | "checking" | "available" | "downloading" | "installing" | "verified" | "failed";
+	baselineVersion: string;
+	expectedVersion: string;
+	currentVersion?: string;
+	latestVersion?: string;
+	error?: string;
+	updatedAt: string;
+}
+
+function upgradeE2eStatePaths(): string[] {
+	return [
+		process.env.VETTA_E2E_UPGRADE_STATE?.trim(),
+		join(getVettaHomePath(), "desktop-upgrade-e2e.json"),
+		// ShipIt can relaunch without the test environment. Keep one fallback marker
+		// under the runner user's normal Vetta home so the second process can find it.
+		join(homedir(), ".vetta", "desktop-upgrade-e2e.json"),
+	].filter((path, index, paths): path is string => Boolean(path) && paths.indexOf(path) === index);
+}
+
+async function readUpgradeE2eState(paths: readonly string[]): Promise<{ path: string; state: UpgradeE2eState } | null> {
+	for (const path of paths) {
+		try {
+			const value: unknown = JSON.parse(await readFile(path, "utf8"));
+			if (!value || typeof value !== "object") continue;
+			const state = value as Partial<UpgradeE2eState>;
+			if (!state.baselineVersion || !state.expectedVersion || !state.phase) continue;
+			return { path, state: state as UpgradeE2eState };
+		} catch {
+			// Try the next marker location; a macOS relaunch may only see the fallback.
+		}
+	}
+	return null;
+}
+
+async function writeUpgradeE2eState(
+	paths: readonly string[],
+	state: Omit<UpgradeE2eState, "updatedAt">,
+): Promise<void> {
+	const body = `${JSON.stringify({ ...state, updatedAt: new Date().toISOString() }, null, 2)}\n`;
+	await Promise.all(
+		paths.map(async (path) => {
+			await mkdir(dirname(path), { recursive: true });
+			await writeFile(path, body, "utf8");
+		}),
+	);
+}
+
+/**
+ * Drive the real updater from a packaged app for the cross-platform release gate.
+ * The marker file is deliberately opt-in and is never created by production code.
+ */
+export async function runUpgradeE2e(): Promise<void> {
+	if (!app.isPackaged) return;
+	const statePaths = upgradeE2eStatePaths();
+	const marker = await readUpgradeE2eState(statePaths);
+	if (!marker) return;
+	const { state } = marker;
+	if (state.phase === "verified" || state.phase === "failed") return;
+	if (state.phase === "installing") {
+		const updatedAt = Date.parse(state.updatedAt ?? "");
+		if (!Number.isFinite(updatedAt) || Date.now() - updatedAt > 30 * 60 * 1000) return;
+	}
+	// ShipIt may start the relaunched macOS process without inheriting the shell
+	// environment. The persisted installing marker is the only second-launch opt-in.
+	if (process.env.VETTA_E2E !== "1" && state.phase !== "installing") return;
+
+	const current = getAppVersion();
+	if (state.phase === "installing") {
+		if (current !== state.expectedVersion) {
+			await writeUpgradeE2eState(statePaths, {
+				...state,
+				phase: "failed",
+				currentVersion: current,
+				error: `relaunch returned version ${current}, expected ${state.expectedVersion}`,
+			});
+			return;
+		}
+		await writeUpgradeE2eState(statePaths, { ...state, phase: "verified", currentVersion: current });
+		setTimeout(() => app.exit(0), 500).unref?.();
+		return;
+	}
+
+	if (current !== state.baselineVersion) {
+		await writeUpgradeE2eState(statePaths, {
+			...state,
+			phase: "failed",
+			currentVersion: current,
+			error: `baseline started at ${current}, expected ${state.baselineVersion}`,
+		});
+		return;
+	}
+
+	try {
+		await writeUpgradeE2eState(statePaths, { ...state, phase: "checking", currentVersion: current });
+		const checked = await updaterService.check();
+		if (checked.phase !== "available" || checked.latestVersion !== state.expectedVersion) {
+			throw new Error(`feed returned ${checked.latestVersion ?? "no update"}, expected ${state.expectedVersion}`);
+		}
+		await writeUpgradeE2eState(statePaths, {
+			...state,
+			phase: "available",
+			currentVersion: current,
+			latestVersion: checked.latestVersion,
+		});
+		const downloaded = await updaterService.startDownload();
+		if (downloaded.phase !== "ready") {
+			throw new Error(`download ended in phase ${downloaded.phase}`);
+		}
+		await writeUpgradeE2eState(statePaths, {
+			...state,
+			phase: "installing",
+			currentVersion: current,
+			latestVersion: downloaded.latestVersion,
+		});
+		await updaterService.install();
+		const finalState = updaterService.getState();
+		if (finalState.phase !== "installing") {
+			throw new Error(`install ended in phase ${finalState.phase}`);
+		}
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		console.error("[updater-e2e] upgrade failed", error);
+		await writeUpgradeE2eState(statePaths, {
+			...state,
+			phase: "failed",
+			currentVersion: current,
+			error: message,
+		});
+	}
+}

@@ -221,9 +221,10 @@ https://releases.openvetta.com/desktop/stable
 （例如当前 test 为 `0.5.46` 时填写 `0.5.47`）。配置会自动切换到 `VETTA_R2_PREFIX_TEST` /
 `VETTA_UPDATE_URL_TEST`，并使用 `desktop-test` Environment；`build_version` 在 stable/default 通道会被拒绝。
 
-建议先发布一个 test 基线版本，再发布更高的 test 候选版本，然后从基线安装包启动应用，执行 Windows Inno、
-macOS Squirrel.Mac 或 Linux AppImage 的真实更新和重启验证。test 通道可以保留多个版本供回归，验证完成后只需清理
-test prefix，不会影响 stable 客户端。
+建议先发布一个 test 基线版本，再发布更高的 test 候选版本。随后运行仓库的 `desktop-upgrade-e2e` Action，填写
+`baseline_version` 和 `candidate_version`；Action 会在 Windows、macOS、Linux runner 上下载并安装基线包，启动真实
+应用，执行 `check -> download -> install -> quit -> restart`，最后从重启后的应用进程读取版本并校验候选版本。test
+通道可以保留多个版本供回归，验证完成后只需清理 test prefix，不会影响 stable 客户端。
 
 electron-builder 会随各平台产物生成更新清单：
 

@@ -180,7 +180,11 @@ bun run --cwd apps/desktop test:e2e:packaged
 
 该 E2E 会在 WDIO 启动 Electron 前创建本地 generic feed，通过真实 `window.vetta.updater.check()` 验证 `app-update.yml`、feed 请求、版本解析和 renderer/main IPC 链路；它不会安装伪造的更新包。发布后的真实安装包可读性、hash、blockmap 和平台安装准备仍由各平台 `verify:updates:*` 以及发布后 `verify-update-feed.mjs` 负责。
 
-需要验证真实安装、重启和版本切换时，使用 `desktop-release` 的 `workflow_dispatch` + `channel=test`，并填写递增的 `build_version`。测试发布使用独立的 `desktop-test` Environment、R2 prefix 和更新 URL，不会覆盖 stable；它仍要求生产级签名、公证和所有发布前门禁。稳定发布可以使用匹配正式版本的 tag，也可以在 `desktop-production` Environment 审批后用 `workflow_dispatch` + `channel=stable`，两者进入同一发布 Job。当前 packaged E2E 只验证应用启动和 updater feed/IPC 链路；真实安装、重启和版本切换仍需要在对应平台测试机或自持 runner 上执行，不能把本地 feed 测试当作安装验收。
+需要验证真实安装、重启和版本切换时，先使用 `desktop-release` 的 `workflow_dispatch` + `channel=test` 发布基线和候选，
+再运行 `.github/workflows/desktop-upgrade-e2e.yml` 并填写 `baseline_version`、`candidate_version`。该 workflow 在
+Windows、macOS、Linux runner 上真实安装基线包，驱动现有 updater 完成下载、安装、退出、重启和版本切换；失败时上传
+应用日志和升级状态文件。它使用独立的 `desktop-test` Environment，不会触碰 stable。当前 GitHub macOS runner 只验收
+其实际架构；macOS arm64 需要额外的自持 runner 矩阵。
 
 四个核心包的历史测试目前仍有模型目录和跨平台相关的基线失败，因此暂不作为 PR 强制门禁。修复这些基线后，再将 `bun run test:unit` 加入 CI；在此之前它仍用于本地完整诊断，`bun run test:changed` 用于按影响范围验证。
 

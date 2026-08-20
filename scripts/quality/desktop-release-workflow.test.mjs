@@ -7,6 +7,10 @@ const packagedWorkflow = readFileSync(
 	join(import.meta.dirname, "../../.github/workflows/desktop-packaged.yml"),
 	"utf8",
 );
+const upgradeWorkflow = readFileSync(
+	join(import.meta.dirname, "../../.github/workflows/desktop-upgrade-e2e.yml"),
+	"utf8",
+);
 
 describe("Desktop release workflow contracts", () => {
 	it("runs quality and packaging tests before the platform matrix", () => {
@@ -48,5 +52,14 @@ describe("Desktop release workflow contracts", () => {
 		expect(workflow).toContain("REQUIRE_RELEASE_SIGNATURE");
 		expect(workflow).toContain("needs.prepare.outputs.should-publish == 'true'");
 		expect(workflow).toContain('--target "' + "$" + '{GITHUB_SHA}"');
+	});
+
+	it("provides an isolated test-channel workflow for real install and restart upgrades", () => {
+		expect(upgradeWorkflow).toContain("baseline_version:");
+		expect(upgradeWorkflow).toContain("candidate_version:");
+		expect(upgradeWorkflow).toContain("environment: desktop-test");
+		expect(upgradeWorkflow).toContain("bun run test:e2e:upgrade");
+		expect(upgradeWorkflow).toContain("xvfb-run --auto-servernum");
+		expect(upgradeWorkflow).toContain("upgrade-e2e-diagnostics");
 	});
 });

@@ -1,0 +1,102 @@
+name: desktop-upgrade-e2e
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_version:
+        description: "Installed test-channel version to upgrade from, for example 0.5.46."
+        type: string
+        required: true
+      candidate_version:
+        description: "Published test-channel version to upgrade to, for example 0.5.47."
+        type: string
+        required: true
+      update_url:
+        description: "Optional test feed override. Empty uses desktop-test Environment VETTA_UPDATE_URL_TEST."
+        type: string
+        required: false
+      notes:
+        description: "Shown on the run summary. Not a secret."
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade:
+    name: ${{ matrix.platform }} real install and restart
+    runs-on: ${{ matrix.runner }}
+    environment: desktop-test
+    timeout-minutes: 45
+    concurrency:
+      group: desktop-test-upgrade-${{ matrix.platform }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            runner: windows-latest
+          - platform: macos
+            runner: macos-latest
+          - platform: linux
+            runner: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.7"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run real install, update, quit, restart and version check
+        working-directory: apps/desktop
+        env:
+          VETTA_DESKTOP_UPGRADE_URL: ${{ inputs.update_url || vars.VETTA_UPDATE_URL_TEST }}
+          VETTA_DESKTOP_UPGRADE_BASELINE: ${{ inputs.baseline_version }}
+          VETTA_DESKTOP_UPGRADE_CANDIDATE: ${{ inputs.candidate_version }}
+          VETTA_DESKTOP_UPGRADE_WORKDIR: ${{ runner.temp }}
+          VETTA_E2E: "1"
+          VETTA_SPEECH_INPUT_ENABLED: "false"
+        shell: bash
+        run: |
+          if [[ "${{ matrix.platform }}" == "linux" ]]; then
+            xvfb-run --auto-servernum bun run test:e2e:upgrade
+          else
+            bun run test:e2e:upgrade
+          fi
+
+      - name: Upload upgrade diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}-upgrade-e2e-diagnostics
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/vetta-upgrade-e2e-*/desktop.log
+            ${{ runner.temp }}/vetta-upgrade-e2e-*/desktop-upgrade-e2e.json
+
+      - name: Write test-channel upgrade summary
+        if: always()
+        env:
+          SUMMARY_FEED: ${{ inputs.update_url || vars.VETTA_UPDATE_URL_TEST }}
+          SUMMARY_NOTES: ${{ inputs.notes }}
+        shell: bash
+        run: |
+          {
+            echo "### Desktop upgrade E2E"
+            echo ""
+            echo "| Key | Value |"
+            echo "| --- | --- |"
+            echo "| platform | `${{ matrix.platform }}` |"
+            echo "| baseline | `${{ inputs.baseline_version }}` |"
+            echo "| candidate | `${{ inputs.candidate_version }}` |"
+            echo "| feed | `${SUMMARY_FEED}` |"
+            if [[ -n "${SUMMARY_NOTES}" ]]; then echo "| notes | ${SUMMARY_NOTES} |"; fi
+          } >> "${GITHUB_STEP_SUMMARY}"

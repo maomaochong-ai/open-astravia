@@ -10,6 +10,8 @@
 - [发布配置解析器](../../scripts/release/resolve-desktop-release-config.mjs)
 - [配置解析测试](../../scripts/release/resolve-desktop-release-config.test.mjs)
 - [workflow 合同测试](../../scripts/quality/desktop-release-workflow.test.mjs)
+- [真实安装升级 workflow](../../.github/workflows/desktop-upgrade-e2e.yml)
+- [真实安装升级脚本](../../apps/desktop/scripts/desktop-upgrade-e2e.mjs)
 - [Desktop 打包与更新脚本说明](../../apps/desktop/scripts/README.md)
 - [Windows 更新与 R2 细节](../desktop/windows-auto-update.md)
 - [macOS 更新、签名与公证](../desktop/macos-auto-update.md)
@@ -170,17 +172,52 @@ GitHub target 的手动发布会以当前 workflow SHA 创建对应版本 Releas
 
 ## Test 升级验收操作
 
-1. 从当前稳定版本构建或取得 test 基线，并发布到 `desktop-test`。
-2. 在另一轮手动运行中选择 `release_target=r2`、`channel=test`，填写高于基线的 `build_version`。
-3. 确认 job summary 显示 test URL、test prefix、商业版和 `should_publish=true`。
-4. 从基线安装包启动应用，点击检查更新或调用现有 updater E2E 接口。
-5. 在对应平台完成下载、安装、退出、重启和新版本号确认：
-   - Windows：Inno Setup 版本目录、稳定启动器和回退路径；
-   - macOS：签名 ZIP、Squirrel.Mac 暂存、ShipIt 重启和应用签名；
-   - Linux：AppImage 替换/重启和新版本启动。
-6. 记录安装前后版本、安装包路径、更新日志和失败截图/日志。
+真实安装升级使用独立的 `desktop-upgrade-e2e` workflow，不覆盖 stable，也不把“下载了一个伪造更新文件”当成升级成功。
 
-当前 CI packaged E2E 会真实启动 packaged Electron、检查 `app-update.yml`、feed、版本解析、下载链路和 IPC；它不会替代真实安装器重启。完整安装验收需要隔离的 Windows/macOS 测试机或自持 runner，不能用一个伪造的 ZIP/AppImage 下载通过来宣称升级成功。
+### 前置发布
+
+1. 使用 `desktop-release` 手动运行发布 test 基线：选择 `release_target=r2`、`channel=test`，填写当前基线版本的 `build_version`，例如 `0.5.46`。
+2. 再运行一次相同 workflow，发布更高版本的 test 候选，例如 `0.5.47`。
+3. 确认两次运行都通过构建、平台制品校验、packaged updater E2E、R2 上传和公开 feed 校验，并且版本化安装包仍保留在 `VETTA_R2_PREFIX_TEST`。
+4. 确认 `desktop-test` Environment 的 `VETTA_UPDATE_URL_TEST` 与 `VETTA_R2_PREFIX_TEST` 对应同一个公开 feed。通常不需要在升级 workflow 中手动填写 `update_url`。
+
+### 触发真实升级验证
+
+在 GitHub Actions 中手动运行 `desktop-upgrade-e2e`，填写：
+
+| 输入 | 填写内容 |
+| --- | --- |
+| `baseline_version` | 已发布的 test 基线，例如 `0.5.46` |
+| `candidate_version` | 已发布的更高 test 候选，例如 `0.5.47` |
+| `update_url` | 可留空，默认读取 `desktop-test` Environment 的 `VETTA_UPDATE_URL_TEST` |
+| `notes` | 可选，仅写入本次运行摘要 |
+
+workflow 会在 Windows、macOS、Linux runner 上并行执行，分别：
+
+1. 下载并安装基线版本；
+2. 启动已安装的真实应用；
+3. 通过现有 updater 执行 `check -> download -> install`；
+4. 等待安装器接管并退出应用；
+5. 等待新版本重新启动；
+6. 从重启后的应用进程读取版本并写入验证状态；
+7. 失败时上传应用日志和 `desktop-upgrade-e2e.json` 状态文件。
+
+各平台实际覆盖：
+
+- Windows：Inno Setup 静默安装、版本目录切换、稳定启动器重启；
+- macOS：ZIP 解压、Squirrel.Mac/ShipIt 替换、重启后版本确认；
+- Linux：AppImage 执行、electron-updater 安装和重启后版本确认。
+
+当前 GitHub `macos-latest` 只验证该 runner 的实际架构；如果要强制验证 macOS arm64，需要增加自托管 arm64 runner 矩阵。真实升级 workflow 依赖远程 test feed，因此必须在两个 test 版本上传完成后运行；它不是发布前的本地产物门禁。
+
+验证成功后记录：
+
+- 基线和候选版本；
+- workflow run URL、平台和 runner 架构；
+- 更新源 URL 与 R2 test prefix；
+- 失败时的应用日志、升级状态文件和安装器日志。
+
+当前发布 workflow 中的 packaged E2E 仍然保留，用于发布前验证 `app-update.yml`、feed、版本解析、下载链路和 IPC；`desktop-upgrade-e2e` 则补充真实安装器、退出、重启和版本切换，不应相互替代。
 
 ## 门禁顺序
 
