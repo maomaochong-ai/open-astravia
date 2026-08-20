@@ -1,3 +1,4 @@
+import { subagentErrorPresentation, subagentObjective, subagentUsageLabel } from "@shared/lib/subagent-presentation";
 import {
 	activeSessionAtom,
 	type BackgroundTask,
@@ -22,25 +23,25 @@ function bashStatusMeta(
 	switch (status) {
 		case "running":
 			return {
-				icon: "icon-[mdi--loading] animate-spin",
+				icon: "icon-[solar--refresh-linear] animate-spin",
 				label: t("activityPanel.backgroundTasks.statusRunning"),
-				className: "text-blue-500",
+				className: "text-emerald-400",
 			};
 		case "completed":
 			return {
-				icon: "icon-[mdi--check-circle-outline]",
+				icon: "icon-[solar--check-circle-linear]",
 				label: t("activityPanel.backgroundTasks.statusCompleted"),
-				className: "text-emerald-600",
+				className: "text-emerald-400",
 			};
 		case "failed":
 			return {
-				icon: "icon-[mdi--close-circle-outline]",
+				icon: "icon-[solar--danger-circle-linear]",
 				label: t("activityPanel.backgroundTasks.statusFailed"),
 				className: "text-destructive",
 			};
 		case "killed":
 			return {
-				icon: "icon-[mdi--stop-circle-outline]",
+				icon: "icon-[solar--stop-circle-linear]",
 				label: t("activityPanel.backgroundTasks.statusKilled"),
 				className: "text-muted-foreground",
 			};
@@ -55,31 +56,31 @@ function subagentStatusMeta(
 		case "queued":
 		case "pending":
 			return {
-				icon: "icon-[mdi--clock-outline]",
+				icon: "icon-[solar--clock-circle-linear]",
 				label: t("activityPanel.backgroundTasks.subagentStatusPending"),
 				className: "text-muted-foreground",
 			};
 		case "running":
 			return {
-				icon: "icon-[mdi--loading] animate-spin",
+				icon: "icon-[solar--refresh-linear] animate-spin",
 				label: t("activityPanel.backgroundTasks.statusRunning"),
-				className: "text-blue-500",
+				className: "text-emerald-400",
 			};
 		case "completed":
 			return {
-				icon: "icon-[mdi--check-circle-outline]",
+				icon: "icon-[solar--check-circle-linear]",
 				label: t("activityPanel.backgroundTasks.statusCompleted"),
-				className: "text-emerald-600",
+				className: "text-emerald-400",
 			};
 		case "failed":
 			return {
-				icon: "icon-[mdi--close-circle-outline]",
+				icon: "icon-[solar--danger-circle-linear]",
 				label: t("activityPanel.backgroundTasks.statusFailed"),
 				className: "text-destructive",
 			};
 		case "interrupted":
 			return {
-				icon: "icon-[mdi--stop-circle-outline]",
+				icon: "icon-[solar--stop-circle-linear]",
 				label: t("activityPanel.backgroundTasks.subagentStatusInterrupted"),
 				className: "text-muted-foreground",
 			};
@@ -114,6 +115,7 @@ function toBashItem(task: BackgroundTask, now: number, t: TFunction<"chat">): Ba
 
 function toSubagentItem(agent: SubagentTask, now: number, t: TFunction<"chat">): BackgroundWorkViewItem {
 	const meta = subagentStatusMeta(agent.status, t);
+	const error = subagentErrorPresentation(agent.errorMessage, t);
 	return {
 		kind: "subagent",
 		id: agent.id,
@@ -121,9 +123,15 @@ function toSubagentItem(agent: SubagentTask, now: number, t: TFunction<"chat">):
 		taskName: agent.taskName,
 		path: agent.path,
 		status: agent.status,
-		taskPreview: agent.task,
+		taskPreview: subagentObjective(agent.task),
 		finalText: agent.finalText,
-		errorMessage: agent.errorMessage,
+		errorLabel: error?.label,
+		errorDetail: error?.detail,
+		progressLabel:
+			agent.todoProgress && agent.todoProgress.total > 0
+				? `${agent.todoProgress.done}/${agent.todoProgress.total}`
+				: undefined,
+		usageLabel: subagentUsageLabel(agent.usage, t),
 		statusIcon: meta.icon,
 		statusLabel: meta.label,
 		statusClassName: meta.className,

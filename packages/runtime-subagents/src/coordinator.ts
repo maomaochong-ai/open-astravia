@@ -30,7 +30,7 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 			...options,
 			onTerminal: (snapshot) => {
 				this.delivery.wake();
-				this.delivery.queue(snapshot);
+				this.queueAutomaticDelivery(snapshot);
 			},
 		});
 	}
@@ -99,4 +99,20 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 	private assertNotDisposed(): void {
 		if (this.disposed) throw new Error("SubagentCoordinator is disposed");
 	}
+
+	private queueAutomaticDelivery(snapshot: SubagentSnapshot): void {
+		if (snapshot.deliveryMode !== "batch" || !snapshot.batchId) {
+			this.delivery.queue(snapshot);
+			return;
+		}
+		const batch = this.dispatcher
+			.list()
+			.filter((candidate) => candidate.deliveryMode === "batch" && candidate.batchId === snapshot.batchId);
+		if (batch.length === 0 || batch.some((candidate) => !isTerminal(candidate.status))) return;
+		for (const candidate of batch) this.delivery.queue(candidate);
+	}
+}
+
+function isTerminal(status: SubagentSnapshot["status"]): boolean {
+	return status === "completed" || status === "failed" || status === "interrupted";
 }

@@ -3,6 +3,7 @@ import type { CodingAgentRuntimeCompositionOptions } from "../contracts/index.js
 export type CodingAgentSessionInitializationProfile = Pick<
 	CodingAgentRuntimeCompositionOptions,
 	| "additionalHookAdapterFactories"
+	| "activation"
 	| "agentDir"
 	| "createCompactionExtensionRuntime"
 	| "createContextRuntime"
@@ -34,6 +35,7 @@ export type CodingAgentSessionInitializationProfile = Pick<
 	| "subagentMaxConcurrent"
 	| "subagentTypeRegistry"
 	| "subagentPathPort"
+	| "subagentWorkspacePort"
 	| "systemPromptAdvertisedToolNames"
 	| "workspaceFacts"
 >;
@@ -47,6 +49,7 @@ export function createCodingAgentSessionInitializationProfile(
 
 	return {
 		additionalHookAdapterFactories: options.additionalHookAdapterFactories,
+		activation: options.activation,
 		agentDir: options.agentDir,
 		createCompactionExtensionRuntime: options.createCompactionExtensionRuntime,
 		createContextRuntime: options.createContextRuntime,
@@ -78,6 +81,7 @@ export function createCodingAgentSessionInitializationProfile(
 		subagentMaxConcurrent: options.subagentMaxConcurrent,
 		subagentTypeRegistry: options.subagentTypeRegistry,
 		subagentPathPort: options.subagentPathPort,
+		subagentWorkspacePort: options.subagentWorkspacePort,
 		systemPromptAdvertisedToolNames: options.systemPromptAdvertisedToolNames,
 		workspaceFacts: options.workspaceFacts,
 	};

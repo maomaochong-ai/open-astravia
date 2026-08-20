@@ -19,6 +19,14 @@ export interface SubagentTask {
 	todoProgress?: { done: number; total: number };
 	/** Human-readable one-line summary for UI display. */
 	title?: string;
+	/** Aggregate child token/cache/cost usage. Missing on legacy replay events. */
+	usage?: {
+		input: number;
+		output: number;
+		cacheRead: number;
+		cacheWrite: number;
+		costTotal: number;
+	};
 }
 
 /** Display name for a workflow: human-readable title, falling back to the id. */

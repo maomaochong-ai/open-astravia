@@ -18,10 +18,14 @@ import type {
 	CodingAgentSubagentChildFactory,
 	CodingAgentSubagentChildFactoryContext,
 	CodingAgentSubagentProfile,
+	CodingAgentSubagentWorkspaceLease,
+	CodingAgentSubagentWorkspacePort,
 } from "../contracts/index.js";
 import { createCodingAgentSubagentChildHandle } from "./child-handle.js";
 import { createLocalSubagentId } from "./local-id.js";
 import { buildSubagentNotification } from "./notification.js";
+import { resolveCodingAgentSubagentProfile } from "./profile-policy.js";
+import { createSubagentReportToParentToolRegistration, formatSubagentReport } from "./report-to-parent-tool.js";
 import { CodingAgentSubagentRuntime } from "./runtime.js";
 
 export type {
@@ -46,6 +50,7 @@ export interface CodingAgentSubagentChildCompositionRequest {
 	readonly initialThinkingLevel: NonNullable<SessionConfig["thinkingLevel"]>;
 	readonly activation: CodingToolActivation;
 	readonly inheritedMcpView: McpRuntimeToolView;
+	readonly skillPolicy: NonNullable<CodingAgentSubagentProfile["skillPolicy"]>;
 }
 
 export interface CodingAgentSubagentChildComposition {
@@ -69,6 +74,8 @@ export interface CodingAgentSubagentSessionAssemblyOptions {
 	readonly readModel: () => NonNullable<SessionConfig["model"]>;
 	readonly readThinkingLevel: () => NonNullable<SessionConfig["thinkingLevel"]>;
 	readonly readInheritedMcpView: () => Promise<McpRuntimeToolView>;
+	readonly readParentToolActivation?: () => CodingToolActivation | undefined;
+	readonly workspacePort?: CodingAgentSubagentWorkspacePort;
 	readonly typeRegistry?: SubagentTypeRegistryLike<CodingAgentSubagentProfile>;
 	readonly createChildFactory?: (context: CodingAgentSubagentChildFactoryContext) => CodingAgentSubagentChildFactory;
 	readonly createChildComposition: (
@@ -101,6 +108,8 @@ export function createCodingAgentSubagentSessionAssembly(
 		readModel: options.readModel,
 		readThinkingLevel: options.readThinkingLevel,
 		readInheritedMcpView: options.readInheritedMcpView,
+		readParentToolActivation: options.readParentToolActivation ?? (() => undefined),
+		workspacePort: options.workspacePort,
 	});
 	const reopenChild = childFactory?.reopen;
 	return new CodingAgentSubagentRuntime({
@@ -178,11 +187,24 @@ async function openChild(
 	forkContext: readonly Message[] | undefined,
 	options: CodingAgentSubagentSessionAssemblyOptions,
 ): Promise<SubagentChildHandle> {
+	const resolvedProfile = resolveCodingAgentSubagentProfile(
+		type.profile,
+		options.scenario,
+		options.readParentToolActivation?.(),
+	);
 	const childSessionId =
 		operation === "create"
 			? (options.createEntryId ?? createLocalSubagentId)()
 			: (requestOrSnapshot as SubagentSnapshot).id;
 	const snapshot = operation === "resume" ? (requestOrSnapshot as SubagentSnapshot) : undefined;
+	const workspaceLease = await acquireWorkspaceLease(
+		options.cwd,
+		childSessionId,
+		requestOrSnapshot.taskName,
+		resolvedProfile.workspacePolicy,
+		options.workspacePort,
+	);
+	const childCwd = workspaceLease.cwd;
 	const parentSessionId = options.readParentSessionId();
 	const childConversationDir = snapshot?.sessionFile
 		? dirname(snapshot.sessionFile, options.pathPort)
@@ -191,37 +213,59 @@ async function openChild(
 				[".subagents", parentSessionId],
 				options.pathPort,
 			);
-	const inheritedMcpView = type.profile.inheritParentMcp
-		? filterDeniedMcpTools(await options.readInheritedMcpView(), type.profile.denyToolNamePrefixes)
-		: EMPTY_MCP_TOOL_VIEW;
+	const inheritedMcpView =
+		resolvedProfile.mcpPolicy.mode === "inherit"
+			? filterDeniedMcpTools(await options.readInheritedMcpView(), resolvedProfile.mcpPolicy.denyNamePrefixes)
+			: EMPTY_MCP_TOOL_VIEW;
+	const reportTool = createSubagentReportToParentToolRegistration({
+		id: childSessionId,
+		taskName: requestOrSnapshot.taskName,
+		onReport: async (envelope) => {
+			await options.resourceContext.deliverAsyncContext([
+				{
+					type: "subagent-report",
+					content: [{ type: "text", text: formatSubagentReport(envelope) }],
+					modelVisible: true,
+					display: true,
+				},
+			]);
+		},
+	});
 	const sessionRuntimeTools = filterDeniedRuntimeTools(
-		type.profile.createRuntimeTools?.(options.cwd) ?? [],
-		type.profile.denyToolNamePrefixes,
+		[...(type.profile.createRuntimeTools?.(childCwd) ?? []), reportTool],
+		resolvedProfile.mcpPolicy.mode === "inherit" ? resolvedProfile.mcpPolicy.denyNamePrefixes : undefined,
 	);
 	const additionallyEnabledToolNames = [
 		...sessionRuntimeTools.map(({ tool }) => tool.name),
-		...(type.profile.includeTodo ? ["todo"] : []),
+		...(resolvedProfile.todoPolicy.mode === "enabled" ? ["todo"] : []),
 	];
-	const childComposition = await options.createChildComposition({
-		conversationDir: childConversationDir,
-		cwd: options.cwd,
-		initialModel: options.readModel(),
-		initialThinkingLevel: options.readThinkingLevel(),
-		activation: withAdditionalTools(
-			withInheritedMcpTools(withScenario(type.profile.activation, options.scenario), inheritedMcpView),
-			additionallyEnabledToolNames,
-		),
-		inheritedMcpView,
-	});
+	let childComposition: CodingAgentSubagentChildComposition;
+	try {
+		childComposition = await options.createChildComposition({
+			conversationDir: childConversationDir,
+			cwd: childCwd,
+			initialModel: options.readModel(),
+			initialThinkingLevel: options.readThinkingLevel(),
+			activation: withAdditionalTools(
+				withInheritedMcpTools(resolvedProfile.activation, inheritedMcpView),
+				additionallyEnabledToolNames,
+			),
+			inheritedMcpView,
+			skillPolicy: resolvedProfile.skillPolicy,
+		});
+	} catch (error) {
+		await workspaceLease.release();
+		throw error;
+	}
 	try {
 		const childOptions: CodingAgentSubagentChildSessionOptions = {
 			sessionId: childSessionId,
-			cwd: options.cwd,
+			cwd: childCwd,
 			parentSessionPath: options.readParentSessionPath(),
 			systemPromptAddon: type.profile.systemPromptAddon,
 			forkContextMessages: operation === "create" ? forkContext : undefined,
 			initialTodos:
-				operation === "create" && type.profile.includeTodo
+				operation === "create" && resolvedProfile.todoPolicy.mode === "enabled"
 					? (requestOrSnapshot as SubagentSpawnRequest).todos
 					: undefined,
 			sessionRuntimeTools,
@@ -236,12 +280,38 @@ async function openChild(
 			sessionFile: childSessionFile,
 			appendContext: (records) => childComposition.appendSessionContext(childSession.sessionId, records),
 			deliverContext: (records) => childComposition.deliverSessionContext(childSession.sessionId, records),
-			disposeComposition: () => childComposition.dispose(),
+			disposeComposition: async () => {
+				try {
+					await childComposition.dispose();
+				} finally {
+					await workspaceLease.release();
+				}
+			},
 		});
 	} catch (error) {
-		await childComposition.dispose();
+		try {
+			await childComposition.dispose();
+		} finally {
+			await workspaceLease.release();
+		}
 		throw error;
 	}
+}
+
+async function acquireWorkspaceLease(
+	parentCwd: string,
+	childId: string,
+	taskName: string,
+	policy: NonNullable<CodingAgentSubagentProfile["workspacePolicy"]>,
+	port: CodingAgentSubagentWorkspacePort | undefined,
+): Promise<CodingAgentSubagentWorkspaceLease> {
+	if (policy.mode === "shared" || !port) {
+		if (policy.mode === "isolated" && policy.fallback === "error") {
+			throw new Error(`Subagent "${taskName}" requires an isolated workspace, but the host has no workspace port`);
+		}
+		return { cwd: parentCwd, mode: "shared", release: () => {} };
+	}
+	return await port.acquire({ parentCwd, childId, taskName, policy });
 }
 
 function withAdditionalTools(activation: CodingToolActivation, toolNames: readonly string[]): CodingToolActivation {
@@ -325,13 +395,12 @@ function withInheritedMcpTools(
 	};
 }
 
-function withScenario(activation: CodingToolActivation, scenario: ConversationScenario): CodingToolActivation {
-	return activation.mode === "scope" ? { ...activation, scope: scenario } : activation;
-}
-
-function toSubagentInfo(snapshot: SubagentSnapshot): Omit<SubagentSnapshot, "usage"> {
-	const { usage: _usage, ...info } = snapshot;
-	return info;
+function toSubagentInfo(snapshot: SubagentSnapshot): SubagentSnapshot {
+	return {
+		...snapshot,
+		usage: { ...snapshot.usage },
+		todoProgress: snapshot.todoProgress ? { ...snapshot.todoProgress } : undefined,
+	};
 }
 
 async function validateRecoveredSubagentTranscript(

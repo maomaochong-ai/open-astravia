@@ -66,6 +66,7 @@ describe("Coding Agent Subagent session assembly", () => {
 			readModel: () => MODEL,
 			readThinkingLevel: () => "off",
 			readInheritedMcpView: async () => inheritedMcpView,
+			readParentToolActivation: () => ({ mode: "explicit", toolNames: ["read", "write"] }),
 			createChildComposition: async (request) => {
 				compositionRequests.push(request);
 				return {
@@ -98,7 +99,7 @@ describe("Coding Agent Subagent session assembly", () => {
 				description: "Inspect repository",
 				task_name: "inspect_repo",
 				message: "Inspect the repository.",
-				agent_type: "explorer",
+				agent_type: "general",
 			},
 		});
 		await vi.waitFor(() => {
@@ -113,7 +114,7 @@ describe("Coding Agent Subagent session assembly", () => {
 			initialThinkingLevel: "off",
 			activation: {
 				mode: "explicit",
-				toolNames: expect.arrayContaining(["read", "grep", "glob", "find", "ls", "dir_tree", "mcp_parent_search"]),
+				toolNames: expect.arrayContaining(["read", "write", "todo", "mcp_parent_search", "report_to_parent"]),
 			},
 			inheritedMcpView,
 		});
@@ -167,7 +168,7 @@ describe("Coding Agent Subagent session assembly", () => {
 					description: "Fail child creation",
 					task_name: "fail_child",
 					message: "Fail while opening the child Session.",
-					agent_type: "explorer",
+					agent_type: "general",
 				},
 			}),
 		).rejects.toThrow("child creation failed");
@@ -211,7 +212,7 @@ describe("Coding Agent Subagent session assembly", () => {
 				input: {
 					task_name: taskName,
 					message: `Inspect ${taskName}.`,
-					agent_type: "explorer",
+					agent_type: "general",
 				},
 			});
 
@@ -347,13 +348,79 @@ describe("Coding Agent Subagent session assembly", () => {
 		});
 		expect(compositionRequests[0]?.activation).toEqual({
 			mode: "explicit",
-			toolNames: ["review_code"],
+			toolNames: ["review_code", "report_to_parent"],
 		});
 		expect(childOptions[0]).toMatchObject({
-			sessionRuntimeTools: [expect.objectContaining({ tool: expect.objectContaining({ name: "review_code" }) })],
+			sessionRuntimeTools: expect.arrayContaining([
+				expect.objectContaining({ tool: expect.objectContaining({ name: "review_code" }) }),
+				expect.objectContaining({ tool: expect.objectContaining({ name: "report_to_parent" }) }),
+			]),
 		});
 
 		await runtime.dispose();
+	});
+
+	it("uses and releases a host-owned isolated workspace lease", async () => {
+		const registry = new SubagentTypeRegistry<CodingAgentSubagentProfile>().register({
+			id: "isolated",
+			label: "Isolated",
+			description: "Runs in an isolated host workspace.",
+			profile: {
+				systemPromptAddon: "Stay isolated.",
+				workspacePolicy: { mode: "isolated", fallback: "error" },
+			},
+		});
+		const release = vi.fn(async () => {});
+		const acquire = vi.fn(async () => ({
+			cwd: "C:\\workspace\\.subagents\\isolated",
+			mode: "isolated" as const,
+			release,
+		}));
+		const compositionRequests: CodingAgentSubagentChildCompositionRequest[] = [];
+		const runtime = createCodingAgentSubagentSessionAssembly({
+			...baseOptions(),
+			typeRegistry: registry,
+			workspacePort: { acquire },
+			createChildComposition: async (request) => {
+				compositionRequests.push(request);
+				return {
+					createSession: async (options) => childSession(options.sessionId, []),
+					resumeSession: async (options) => childSession(options.sessionId, []),
+					appendSessionContext() {},
+					async deliverSessionContext() {},
+					async dispose() {},
+				};
+			},
+		});
+		if (!runtime) throw new Error("Expected enabled Subagent runtime");
+		const spawnTool = runtime.readTools().find(({ name }) => name === "spawn_agent");
+		if (!spawnTool) throw new Error("Expected spawn_agent tool");
+
+		await spawnTool.execute({
+			sessionId: "parent",
+			turnId: "turn-isolated",
+			toolCallId: "spawn-isolated",
+			signal: new AbortController().signal,
+			input: {
+				task_name: "isolated_task",
+				message: "Run in the leased workspace.",
+				agent_type: "isolated",
+			},
+		});
+		await vi.waitFor(() => expect(runtime.list()[0]?.status).toBe("completed"));
+
+		expect(acquire).toHaveBeenCalledWith(
+			expect.objectContaining({
+				parentCwd: "C:\\workspace",
+				taskName: "isolated_task",
+				policy: { mode: "isolated", fallback: "error" },
+			}),
+		);
+		expect(compositionRequests[0]?.cwd).toBe("C:\\workspace\\.subagents\\isolated");
+		expect(release).not.toHaveBeenCalled();
+
+		await runtime.dispose();
+		expect(release).toHaveBeenCalledOnce();
 	});
 });
 
@@ -368,6 +435,7 @@ function baseOptions() {
 		readModel: () => MODEL,
 		readThinkingLevel: () => "off" as const,
 		readInheritedMcpView: async () => ({ tools: [] }) as McpRuntimeToolView,
+		readParentToolActivation: () => ({ mode: "scope", scope: "cli" }) as const,
 		createChildComposition: async () => {
 			throw new Error("disabled assembly must not create a child composition");
 		},

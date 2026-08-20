@@ -31,6 +31,7 @@ import { createCodingAgentSubagentRuntimeToolRegistrations } from "./tool-regist
 export type { CodingAgentSubagentProfile } from "../contracts/index.js";
 export {
 	CODING_AGENT_SUBAGENT_TYPE_EXPLORER,
+	CODING_AGENT_SUBAGENT_TYPE_GENERAL,
 	CODING_AGENT_SUBAGENT_TYPE_WORKFLOW,
 	createDefaultCodingAgentSubagentTypeRegistry,
 } from "./profiles.js";
@@ -94,7 +95,7 @@ export class CodingAgentSubagentRuntime implements CodingAgentSubagentWorkRuntim
 					options.createChild(
 						request,
 						type,
-						type.profile.forkParentContext ? [...(await options.readParentMessages())] : undefined,
+						shouldForkParentContext(type.profile) ? [...(await options.readParentMessages())] : undefined,
 						signal,
 					),
 				reopen: reopenChild
@@ -163,6 +164,10 @@ export class CodingAgentSubagentRuntime implements CodingAgentSubagentWorkRuntim
 		await this.coordinator.dispose();
 		await this.persistence.dispose();
 	}
+}
+
+function shouldForkParentContext(profile: CodingAgentSubagentProfile): boolean {
+	return profile.contextPolicy ? profile.contextPolicy.mode === "full" : profile.forkParentContext !== false;
 }
 
 async function prepareRecoveredAgents(

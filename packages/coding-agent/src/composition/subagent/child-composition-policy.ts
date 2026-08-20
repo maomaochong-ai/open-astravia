@@ -1,5 +1,10 @@
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
-import type { CodingAgentRuntimeComposition, CodingAgentRuntimeCompositionOptions } from "../contracts/index.js";
+import type { CodingAgentPromptResourceSource } from "../../runtime-contracts/index.js";
+import type {
+	CodingAgentRuntimeComposition,
+	CodingAgentRuntimeCompositionOptions,
+	CodingAgentSubagentSkillPolicy,
+} from "../contracts/index.js";
 import type {
 	CodingAgentSubagentChildComposition,
 	CodingAgentSubagentChildCompositionRequest,
@@ -44,13 +49,50 @@ function createChildCompositionOptions(
 		extensionTools: _extensionTools,
 		...inheritedOptions
 	} = parent;
+	const promptResourceSource = parent.promptResourceSource
+		? applySkillPolicy(parent.promptResourceSource, request.skillPolicy)
+		: undefined;
+	const createPromptRuntimeSources = parent.createPromptRuntimeSources
+		? async (context: Parameters<NonNullable<typeof parent.createPromptRuntimeSources>>[0]) => {
+				const sources = await parent.createPromptRuntimeSources!(context);
+				return {
+					...sources,
+					resourceSource: applySkillPolicy(sources.resourceSource, request.skillPolicy),
+				};
+			}
+		: undefined;
 	return {
 		...inheritedOptions,
+		promptResourceSource,
+		createPromptRuntimeSources,
 		conversationDir: request.conversationDir,
 		initialModel: request.initialModel,
 		initialThinkingLevel: request.initialThinkingLevel,
 		cwd: request.cwd,
 		activation: request.activation,
 		enableSubagents: false,
+	};
+}
+
+function applySkillPolicy(
+	source: CodingAgentPromptResourceSource,
+	policy: CodingAgentSubagentSkillPolicy,
+): CodingAgentPromptResourceSource {
+	if (policy.mode === "inherit") return source;
+	const allowedNames = policy.mode === "allow" ? new Set(policy.names) : undefined;
+	return {
+		getAgentsFiles: () => source.getAgentsFiles(),
+		getAppendSystemPrompt: () => source.getAppendSystemPrompt(),
+		getSkills: () => {
+			const result = source.getSkills();
+			return {
+				...result,
+				skills: allowedNames ? result.skills.filter(({ name }) => allowedNames.has(name)) : [],
+			};
+		},
+		getSystemPrompt: () => source.getSystemPrompt(),
+		refreshContextResourcesIfChanged: (signal) => source.refreshContextResourcesIfChanged(signal),
+		refreshSkillsIfChanged: (signal) => source.refreshSkillsIfChanged(signal),
+		setRuntimeSkillPaths: (paths, signal) => source.setRuntimeSkillPaths(paths, signal),
 	};
 }

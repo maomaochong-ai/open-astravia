@@ -32,6 +32,7 @@ describe("Coding Agent session initialization profile", () => {
 		const profile = createCodingAgentSessionInitializationProfile(options);
 
 		expect(Object.keys(profile).sort()).toEqual([
+			"activation",
 			"additionalHookAdapterFactories",
 			"agentDir",
 			"createCompactionExtensionRuntime",
@@ -64,6 +65,7 @@ describe("Coding Agent session initialization profile", () => {
 			"subagentMaxConcurrent",
 			"subagentPathPort",
 			"subagentTypeRegistry",
+			"subagentWorkspacePort",
 			"systemPromptAdvertisedToolNames",
 			"workspaceFacts",
 		]);

@@ -97,11 +97,7 @@ export function createCodingAgentSessionRuntimeResources(
 		promptAdapter: options.turnCapabilityAssembly.promptAdapter,
 		snapshotProvider,
 		modelRuntime: options.modelRuntime,
-		documentParticipants: [
-			...options.sessionExtensions.documentParticipants,
-			options.contextRuntime,
-			...(options.subagentRuntime ? [options.subagentRuntime] : []),
-		],
+		documentParticipants: [...options.sessionExtensions.documentParticipants, options.contextRuntime],
 		extensionHost,
 		toolController: {
 			readActiveToolNames: () => {

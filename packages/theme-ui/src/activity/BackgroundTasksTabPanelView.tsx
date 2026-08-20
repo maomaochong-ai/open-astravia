@@ -1,3 +1,4 @@
+import { Button } from "@vetta/ui";
 import type { JSX } from "react";
 import { useEffect, useRef } from "react";
 
@@ -29,7 +30,10 @@ export interface SubagentWorkViewItem {
 	status: SubagentWorkStatus;
 	taskPreview: string;
 	finalText?: string;
-	errorMessage?: string;
+	errorLabel?: string;
+	errorDetail?: string;
+	progressLabel?: string;
+	usageLabel: string;
 	statusIcon: string;
 	statusLabel: string;
 	statusClassName: string;
@@ -69,7 +73,7 @@ function BashTaskCard({
 	const running = task.status === "running";
 
 	return (
-		<div className="min-w-0 overflow-hidden rounded-lg border border-border bg-background p-2.5">
+		<div className="min-w-0 overflow-hidden rounded-xl bg-muted/30 px-3 py-2.5 transition-colors duration-200 hover:bg-muted/50">
 			{/* Left: badges (name truncates). Right: status/duration/stop never wrap or shrink. */}
 			<div className="flex min-w-0 items-center gap-1.5">
 				<span className={`${task.statusIcon} h-3.5 w-3.5 shrink-0 ${task.statusClassName}`} />
@@ -92,16 +96,18 @@ function BashTaskCard({
 					{task.durationLabel}
 				</span>
 				{running && (
-					<button
+					<Button
 						type="button"
+						variant="ghost"
+						size="xs"
 						onClick={() => onStop(task.id)}
 						title={stopLabel}
 						aria-label={stopLabel}
-						className="flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] whitespace-nowrap text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+						className="h-6 shrink-0 rounded-lg px-1.5 text-[10px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
 					>
-						<span className="icon-[mdi--stop-circle-outline] h-3 w-3" />
+						<span className="icon-[solar--stop-circle-linear] h-3 w-3" />
 						<span>{stopLabel}</span>
-					</button>
+					</Button>
 				)}
 			</div>
 			<div className="mt-1.5 min-w-0 truncate font-mono text-[11px] text-foreground" title={task.command}>
@@ -128,9 +134,9 @@ function SubagentCard({
 	stopLabel: string;
 	onStop: (id: string) => void;
 }): JSX.Element {
-	const active = item.status === "pending" || item.status === "running";
+	const active = item.status === "queued" || item.status === "pending" || item.status === "running";
 	return (
-		<div className="min-w-0 overflow-hidden rounded-lg border border-border bg-background p-2.5">
+		<div className="min-w-0 overflow-hidden rounded-xl bg-muted/30 px-3 py-2.5 transition-colors duration-200 hover:bg-muted/50">
 			{/* taskName is the only flexible chip; status/duration/stop stay on one line. */}
 			<div className="flex min-w-0 items-center gap-1.5">
 				<span className={`${item.statusIcon} h-3.5 w-3.5 shrink-0 ${item.statusClassName}`} />
@@ -150,23 +156,33 @@ function SubagentCard({
 					{item.durationLabel}
 				</span>
 				{active && (
-					<button
+					<Button
 						type="button"
+						variant="ghost"
+						size="icon-xs"
 						onClick={() => onStop(item.id)}
 						title={stopLabel}
 						aria-label={stopLabel}
-						className="flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] whitespace-nowrap text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+						className="h-6 w-6 shrink-0 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
 					>
-						<span className="icon-[mdi--stop-circle-outline] h-3 w-3" />
-						<span>{stopLabel}</span>
-					</button>
+						<span className="icon-[solar--stop-circle-linear] h-3.5 w-3.5" />
+					</Button>
 				)}
 			</div>
-			<div className="mt-1.5 min-w-0 truncate text-[11px] text-foreground" title={item.taskPreview}>
+			<div className="mt-1.5 min-w-0 line-clamp-2 text-[11px] leading-relaxed text-foreground" title={item.taskPreview}>
 				{item.taskPreview}
 			</div>
-			{item.errorMessage && (
-				<div className="mt-1 min-w-0 break-words text-[10px] text-destructive">{item.errorMessage}</div>
+			{(item.progressLabel || item.usageLabel) && (
+				<div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+					{item.progressLabel && <span>{item.progressLabel}</span>}
+					{item.usageLabel && <span>{item.usageLabel}</span>}
+				</div>
+			)}
+			{item.errorLabel && (
+				<div className="mt-2 min-w-0 rounded-lg bg-destructive/10 px-2.5 py-2 text-[10px] text-destructive">
+					<div className="font-medium">{item.errorLabel}</div>
+					{item.errorDetail && <div className="mt-0.5 max-h-16 overflow-auto break-words">{item.errorDetail}</div>}
+				</div>
 			)}
 			{item.finalText && (
 				<pre className="mt-1.5 max-h-[120px] overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted/60 p-1.5 font-mono text-[10px] leading-relaxed text-muted-foreground">
@@ -187,8 +203,9 @@ export function BackgroundTasksTabPanelView({
 }: BackgroundTasksTabPanelViewProps): JSX.Element {
 	if (items.length === 0) {
 		return (
-			<div className="flex flex-1 items-center justify-center p-4 text-sm text-muted-foreground">
-				{emptyLabel}
+			<div className="flex flex-1 flex-col items-center justify-center gap-2 p-4 text-[12px] text-muted-foreground">
+				<span className="icon-[solar--server-square-cloud-linear] h-8 w-8 text-muted-foreground/40" />
+				<span>{emptyLabel}</span>
 			</div>
 		);
 	}
@@ -197,14 +214,16 @@ export function BackgroundTasksTabPanelView({
 		<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 			{clearFinishedLabel !== null && (
 				<div className="flex shrink-0 items-center justify-end px-2.5 pt-2">
-					<button
+					<Button
 						type="button"
+						variant="ghost"
+						size="xs"
 						onClick={onClearFinished}
-						className="flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+						className="h-6 max-w-full rounded-lg px-1.5 text-[11px] text-muted-foreground"
 					>
-						<span className="icon-[mdi--broom] h-3 w-3 shrink-0" />
+						<span className="icon-[solar--trash-bin-minimalistic-linear] h-3 w-3 shrink-0" />
 						<span className="truncate">{clearFinishedLabel}</span>
-					</button>
+					</Button>
 				</div>
 			)}
 			<div className="min-w-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden p-2.5">

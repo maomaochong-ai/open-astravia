@@ -1,5 +1,7 @@
 # 4. 测试与验收
 
+> 本文保留首版故障矩阵；命令和新增 V2 合同以当前仓库脚本为准。
+
 ## 4.1 测试策略
 
 subagent 的主要风险不是工具 schema，而是并发竞态、权限漂移、重复唤醒、文件锁和宿主关闭。因此测试顺序应是：纯 coordinator → 真实 child session → 权限/Hook → runtime 协议 → desktop 消费。
@@ -7,7 +9,7 @@ subagent 的主要风险不是工具 schema，而是并发竞态、权限漂移�
 按仓库规则，新增测试后只运行具体测试文件，例如在对应包根目录：
 
 ```bash
-bunx tsx ../../node_modules/vitest/dist/cli.js --run test/subagent-coordinator.test.ts
+bun scripts/quality/run-vitest.mjs --run packages/runtime-subagents/test packages/coding-agent/test/runtime-core/subagent-control-tools.test.ts packages/coding-agent/test/runtime-core/subagent-session-assembly.test.ts
 ```
 
 完成代码改动后仍需在仓库根运行完整 `bun run check`；它不包含测试。

@@ -397,7 +397,6 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			...options.baseProfile.features,
 			options.specializedToolFeature,
 			...(invokeSkillFeature ? [invokeSkillFeature] : []),
-			...(options.subagentRuntime ? [options.subagentRuntime.feature] : []),
 		],
 		observers: [
 			...(options.baseProfile.observers ?? []),

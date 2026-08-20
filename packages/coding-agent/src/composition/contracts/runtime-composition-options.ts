@@ -32,6 +32,7 @@ import type {
 	CodingAgentSubagentChildFactory,
 	CodingAgentSubagentChildFactoryContext,
 	CodingAgentSubagentProfile,
+	CodingAgentSubagentWorkspacePort,
 } from "./subagent.js";
 import type { CodingAgentToolEnvironmentFactory } from "./tool-environment.js";
 
@@ -97,6 +98,8 @@ export interface CodingAgentRuntimeSubagentOptions {
 		dirname(path: string): string;
 		join(...parts: readonly string[]): string;
 	};
+	/** Host-owned workspace lease provider for definitions that request isolation. */
+	readonly subagentWorkspacePort?: CodingAgentSubagentWorkspacePort;
 	/** 子代理 Child 创建的产品边界；未提供时使用 Coding Agent Child Composition。 */
 	readonly createSubagentChildFactory?: (
 		context: CodingAgentSubagentChildFactoryContext,

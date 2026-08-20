@@ -16,7 +16,11 @@ describe("CodingAgentSubagentStatePersistence", () => {
 		const onRecoveryIssue = vi.fn();
 		const runtime = new CodingAgentSubagentStatePersistence({ restore, onRecoveryIssue });
 		const context = recordingContext();
-		const initial = snapshot("child-1", "completed");
+		const initial: SubagentSnapshot = {
+			...snapshot("child-1", "completed"),
+			deliveryMode: "batch",
+			batchId: "workflow-batch-2",
+		};
 		const document = conversationDocument([
 			customEntry("state-1", {
 				version: 1,

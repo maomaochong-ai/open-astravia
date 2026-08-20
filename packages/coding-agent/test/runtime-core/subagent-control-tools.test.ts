@@ -15,6 +15,7 @@ import {
 	createSpawnAgentToolRegistration,
 	createWaitAgentToolRegistration,
 	DISPATCH_WORKFLOWS_MAX_BATCH,
+	renderSubagentTaskContract,
 	WORKFLOW_NO_WAIT_TEXT,
 } from "../../src/composition/subagent/tools/index.js";
 
@@ -46,6 +47,9 @@ describe("subagent control runtime tools", () => {
 				workflows: { minItems: 1, maxItems: DISPATCH_WORKFLOWS_MAX_BATCH },
 			},
 		});
+		expect(registrations[0].tool.inputSchema).toMatchObject({
+			properties: { task: { type: "object" }, message: { type: "string" } },
+		});
 	});
 
 	it("fails closed when the session has no coordinator", async () => {
@@ -65,15 +69,16 @@ describe("subagent control runtime tools", () => {
 	it("spawns and dispatches through the coordinator port without changing results", async () => {
 		const fixture = createCoordinatorFixture();
 		const [spawn, dispatch] = createRegistrations(fixture.port);
+		const task = detailedTask("Inspect the runtime contracts.");
 
 		const spawnResult = await execute(spawn.tool, {
 			task_name: "inspect",
-			message: "inspect the runtime",
+			task,
 			agent_type: "explorer",
 		});
 		expect(fixture.spawn).toHaveBeenCalledWith({
 			taskName: "inspect",
-			message: "inspect the runtime",
+			message: renderSubagentTaskContract(task),
 			agentType: "explorer",
 		});
 		expect(spawnResult.content).toEqual([
@@ -95,7 +100,7 @@ describe("subagent control runtime tools", () => {
 				{
 					task_name: "refactor_api",
 					title: "Refactor API",
-					message: "refactor the API",
+					task: detailedTask("Refactor the API behavior."),
 					todos: ["inspect", "change"],
 				},
 			],
@@ -104,9 +109,11 @@ describe("subagent control runtime tools", () => {
 			{
 				taskName: "refactor_api",
 				title: "Refactor API",
-				message: "refactor the API",
+				message: renderSubagentTaskContract(detailedTask("Refactor the API behavior.")),
 				agentType: "workflow",
 				todos: ["inspect", "change"],
+				deliveryMode: "batch",
+				batchId: "workflow-batch-1",
 			},
 		]);
 		expect(dispatchResult.content).toEqual([
@@ -115,7 +122,7 @@ describe("subagent control runtime tools", () => {
 				text: [
 					"Dispatched 1 workflow(s):",
 					"- refactor_api [queued] id: workflow-1 todos: 0/2",
-					"You will receive <subagent_notification> as each workflow reaches a terminal state. Do NOT call wait_agent — end your turn (or continue other work) and handle the notifications passively.",
+					"You will receive one <subagent_notification> after every workflow in this batch reaches a terminal state. Do NOT call wait_agent — end your turn (or continue other work) and handle the batch result passively.",
 				].join("\n"),
 			},
 		]);
@@ -273,4 +280,17 @@ function execute<TInput extends object>(tool: RuntimeToolDefinition<TInput>, inp
 		input,
 		signal: new AbortController().signal,
 	});
+}
+
+function detailedTask(objective: string) {
+	return {
+		history: "The root already inspected the relevant architecture and decisions.",
+		current_state: "The existing behavior and failing boundary are known.",
+		objective,
+		scope: "Only the assigned non-overlapping files and behavior.",
+		constraints: ["Preserve public contracts", "Do not overwrite unrelated changes"],
+		relevant_context: ["Use current source and tests as facts"],
+		deliverables: ["A complete implementation", "A concise result report"],
+		validation: ["Run the directly related functional tests"],
+	};
 }

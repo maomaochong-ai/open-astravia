@@ -2,6 +2,7 @@ import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { SubagentCoordinatorPort } from "@vetta/runtime-subagents";
 import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
+import { resolveSubagentTaskMessage, SubagentTaskContractSchema } from "../../task-contract.js";
 import { SPAWN_AGENT_TOOL_DESCRIPTION } from "./description.js";
 
 export const SpawnAgentToolInputSchema = Type.Object({
@@ -10,9 +11,12 @@ export const SpawnAgentToolInputSchema = Type.Object({
 		description:
 			"Unique snake_case name for this child under the root (e.g. api_trace). Lowercase letters, digits, underscore; start with a letter.",
 	}),
-	message: Type.String({
-		description: "Task instructions for the subagent. Be specific about what to investigate and what to return.",
-	}),
+	task: Type.Optional(SubagentTaskContractSchema),
+	message: Type.Optional(
+		Type.String({
+			description: "Legacy task text. New calls must use the structured task contract.",
+		}),
+	),
 	agent_type: Type.String({
 		description: "Registered subagent type id (e.g. explorer). See tool description for available types.",
 	}),
@@ -32,9 +36,10 @@ export function createSpawnAgentTool(options: SpawnAgentToolOptions): RuntimeToo
 		inputSchema: SpawnAgentToolInputSchema,
 		async execute({ input }) {
 			const coordinator = requireCoordinator(options);
+			const message = resolveSubagentTaskMessage(input);
 			const snapshot = await coordinator.spawn({
 				taskName: input.task_name,
-				message: input.message,
+				message,
 				agentType: input.agent_type,
 			});
 			const text = [

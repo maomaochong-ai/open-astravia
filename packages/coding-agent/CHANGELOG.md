@@ -2,11 +2,15 @@
 
 ### Added
 
+- 子代理新增通用 `general` 定义与可组合的 Tool/MCP/Skill/Context/Todo/Workspace 策略；Composition Root 可注入自定义类型注册表和宿主工作区租约端口。新委派调用使用包含历史、现状、目标、边界、产物与功能验证的结构化任务合同，child 可通过 `report_to_parent` 回传进展、阻塞和验证证据。
+
 - 新增 `@vetta/coding-agent/model-context` 产品上下文入口。工作区技术栈识别与提示词渲染仍由 Coding Agent
   持有，Node 文件探测迁至 `@vetta/runtime-node/coding`，CLI、Desktop、SDK 与 Knowledge Processing
   在 Composition Root 显式注入会话级快照；探测失败降级和会话内固定语义保持不变。
 
 ### Fixed
+
+- 子代理 Todo 改为订阅 child Session Extension observation 实时更新；Explorer MCP 改为 fail-closed，usage 保留到宿主观察事件。子代理生命周期由 `coding-agent.subagents` Session Extension 唯一拥有，避免手工 Feature、Document Participant 与释放路径并存。`subagent_state_v1` 恢复 Schema 同步接受可选批次交付字段，修复新格式记录在进程重启后被拒绝、Desktop 无法回放子代理的问题。
 
 - Session 初始化生成 Extension Context 的 system prompt 基线时复用刚完成加载的资源 generation，不再立即重复一次 Turn 级文件变更扫描；真实 Turn 仍在 admission 时刷新动态 Prompt/Skill 资源。
 

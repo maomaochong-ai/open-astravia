@@ -2,7 +2,10 @@ import type { AssistantMessage, Message } from "@vetta/ai";
 import type { RuntimeSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { SubagentChildHandle, SubagentTodoProgress, SubagentUsageSnapshot } from "@vetta/runtime-subagents";
-import { CODING_AGENT_TODO_READ } from "../../features/todo/todo-session-extension-contract.js";
+import {
+	CODING_AGENT_TODO_READ,
+	readCodingAgentTodoObservation,
+} from "../../features/todo/todo-session-extension-contract.js";
 
 export interface CodingAgentSubagentChildHandleOptions {
 	readonly session: RuntimeSession;
@@ -58,6 +61,14 @@ export function createCodingAgentSubagentChildHandle(
 		getTodoProgress:
 			extensionHost?.hasEndpoint(CODING_AGENT_TODO_READ) === true
 				? () => readTodoProgress(extensionHost.invokeSync(CODING_AGENT_TODO_READ, undefined))
+				: undefined,
+		subscribeTodos:
+			extensionHost?.hasEndpoint(CODING_AGENT_TODO_READ) === true
+				? (listener) =>
+						options.session.subscribe((event) => {
+							const items = readCodingAgentTodoObservation(event);
+							if (items) listener(readTodoProgress(items));
+						})
 				: undefined,
 	};
 }

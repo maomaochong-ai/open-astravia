@@ -1,3 +1,9 @@
+export {
+	renderSubagentTaskContract,
+	resolveSubagentTaskMessage,
+	type SubagentTaskContract,
+	SubagentTaskContractSchema,
+} from "../../task-contract.js";
 export { SPAWN_AGENT_TOOL_DESCRIPTION } from "./description.js";
 export {
 	createSpawnAgentToolRegistration,

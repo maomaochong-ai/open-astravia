@@ -23,6 +23,13 @@
 			"clearFinished": "清除已结束 ({{count}})",
 			"stop": "终止"
 		},
+		"subagents": {
+			"usage": "{{tokens}} tokens · {{cost}}",
+			"errorPermission": "权限受限",
+			"errorContext": "上下文超限",
+			"errorConnection": "连接中断",
+			"errorExecution": "执行失败"
+		},
 		"batchProgress": {
 			"notFound": "未找到批量任务项目"
 		},

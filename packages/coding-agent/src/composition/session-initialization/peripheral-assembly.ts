@@ -22,6 +22,7 @@ import type {
 import { getCodingAgentOcrExecutionGate } from "../../tool-policy/ocr-execution-gate.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
+import { createCodingAgentSubagentSessionExtension } from "../subagent/subagent-session-extension.js";
 import type { CodingAgentMcpSessionCoordinator } from "../tool-surface/mcp-session-coordinator.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import {
@@ -218,6 +219,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 						source: "tool",
 					}),
 			}),
+			...(profile.enableSubagents === true ? [createCodingAgentSubagentSessionExtension()] : []),
 			...(additionalExtensions ?? []),
 		],
 	});

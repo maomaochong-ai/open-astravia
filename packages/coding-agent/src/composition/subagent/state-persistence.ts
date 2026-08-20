@@ -44,6 +44,8 @@ const SubagentSnapshotSchema = z
 			.strict()
 			.optional(),
 		title: z.string().optional(),
+		deliveryMode: z.enum(["terminal", "batch"]).optional(),
+		batchId: z.string().min(1).optional(),
 	})
 	.strict();
 const SubagentStateEventSchema = z.discriminatedUnion("event", [

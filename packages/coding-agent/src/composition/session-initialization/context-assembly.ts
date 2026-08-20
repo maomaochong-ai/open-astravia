@@ -19,6 +19,7 @@ import {
 	type CodingAgentSubagentChildCompositionRequest,
 	createCodingAgentSubagentSessionAssembly,
 } from "../subagent/session-assembly.js";
+import { CODING_AGENT_SUBAGENT_RUNTIME_OWNER } from "../subagent/subagent-session-extension.js";
 import type { CodingAgentMcpSessionCoordinator } from "../tool-surface/mcp-session-coordinator.js";
 import type { CodingAgentSessionPeripheralAssembly } from "./peripheral-assembly.js";
 import type { CodingAgentSessionInitializationProfile } from "./profile.js";
@@ -146,6 +147,8 @@ export function createCodingAgentSessionContextAssembly(
 		readModel: () => modelRuntime.readCurrentModel(),
 		readThinkingLevel: () => modelRuntime.readThinkingLevel(),
 		readInheritedMcpView: () => options.mcpCoordinator.readInheritedToolView(peripherals.pluginMcpRuntime),
+		readParentToolActivation: () => profile.activation,
+		workspacePort: profile.subagentWorkspacePort,
 		typeRegistry: profile.subagentTypeRegistry,
 		createChildFactory: profile.createSubagentChildFactory,
 		createChildComposition: options.createChildComposition,
@@ -154,10 +157,13 @@ export function createCodingAgentSessionContextAssembly(
 		resourceContext: options.resourceContext,
 	});
 	if (subagentRuntime) {
-		options.deferRollback({
-			id: "subagent-runtime",
-			rollback: () => subagentRuntime.dispose(),
-		});
+		const owner = peripherals.sessionExtensions.services.require(CODING_AGENT_SUBAGENT_RUNTIME_OWNER);
+		try {
+			owner.attach(subagentRuntime);
+		} catch (error) {
+			void subagentRuntime.dispose();
+			throw error;
+		}
 	}
 	return {
 		modelRuntime,

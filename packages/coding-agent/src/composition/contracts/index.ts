@@ -40,7 +40,15 @@ export type {
 export type {
 	CodingAgentSubagentChildFactory,
 	CodingAgentSubagentChildFactoryContext,
+	CodingAgentSubagentContextPolicy,
+	CodingAgentSubagentMcpPolicy,
 	CodingAgentSubagentProfile,
+	CodingAgentSubagentSkillPolicy,
+	CodingAgentSubagentTodoPolicy,
+	CodingAgentSubagentToolPolicy,
+	CodingAgentSubagentWorkspaceLease,
+	CodingAgentSubagentWorkspacePolicy,
+	CodingAgentSubagentWorkspacePort,
 } from "./subagent.js";
 export type {
 	CodingAgentSpecializedToolRegistrationContext,

@@ -12,37 +12,37 @@ export function workflowStatusMeta(status: SubagentTask["status"], t: TFunction<
 	switch (status) {
 		case "queued":
 			return {
-				icon: "icon-[mdi--tray-full]",
+				icon: "icon-[solar--inbox-linear]",
 				label: t("activityPanel.workflow.statusQueued"),
 				className: "text-muted-foreground",
 			};
 		case "pending":
 			return {
-				icon: "icon-[mdi--clock-outline]",
+				icon: "icon-[solar--clock-circle-linear]",
 				label: t("activityPanel.workflow.statusPending"),
 				className: "text-muted-foreground",
 			};
 		case "running":
 			return {
-				icon: "icon-[mdi--loading] animate-spin",
+				icon: "icon-[solar--refresh-linear] animate-spin",
 				label: t("activityPanel.workflow.statusRunning"),
-				className: "text-blue-500",
+				className: "text-emerald-400",
 			};
 		case "completed":
 			return {
-				icon: "icon-[mdi--check-circle-outline]",
+				icon: "icon-[solar--check-circle-linear]",
 				label: t("activityPanel.workflow.statusCompleted"),
-				className: "text-emerald-600",
+				className: "text-emerald-400",
 			};
 		case "failed":
 			return {
-				icon: "icon-[mdi--close-circle-outline]",
+				icon: "icon-[solar--danger-circle-linear]",
 				label: t("activityPanel.workflow.statusFailed"),
 				className: "text-destructive",
 			};
 		case "interrupted":
 			return {
-				icon: "icon-[mdi--stop-circle-outline]",
+				icon: "icon-[solar--stop-circle-linear]",
 				label: t("activityPanel.workflow.statusInterrupted"),
 				className: "text-muted-foreground",
 			};

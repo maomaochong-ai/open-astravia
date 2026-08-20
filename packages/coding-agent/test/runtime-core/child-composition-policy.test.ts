@@ -18,6 +18,7 @@ import type {
 } from "../../src/composition/subagent/session-assembly.js";
 import { createCodingAgentNodeSessionExecutionEnvironment } from "../../src/host/tool-environment/node/node-session-execution-environment.js";
 import { createCodingAgentNodeToolEnvironment } from "../../src/host/tool-environment/node/node-tool-environment.js";
+import type { CodingAgentPromptResourceSource } from "../../src/runtime-contracts/index.js";
 import { createTestConversationPersistence } from "../fixtures/conversation-persistence.js";
 
 describe("Coding Agent Child Composition policy", () => {
@@ -69,6 +70,7 @@ describe("Coding Agent Child Composition policy", () => {
 			initialThinkingLevel: "high",
 			activation: { mode: "explicit", toolNames: ["read", "mcp_parent_lookup"] },
 			inheritedMcpView,
+			skillPolicy: { mode: "inherit" },
 		};
 		const compositionCalls: Array<{
 			readonly options: CodingAgentRuntimeCompositionOptions;
@@ -121,6 +123,57 @@ describe("Coding Agent Child Composition policy", () => {
 		expect(fixture.appendSessionContext).toHaveBeenCalledWith("child-create", records);
 		expect(fixture.deliverSessionContext).toHaveBeenCalledWith("child-create", records);
 		expect(fixture.dispose).toHaveBeenCalledOnce();
+	});
+
+	it("applies a child skill allow-list without mutating the parent resource source", async () => {
+		const fixture = compositionFixture();
+		const resourceSource = {
+			getAgentsFiles: () => ({ agentsFiles: [] }),
+			getAppendSystemPrompt: () => [],
+			getSkills: () => ({
+				skills: [{ name: "allowed" }, { name: "hidden" }],
+				diagnostics: [],
+			}),
+			getSystemPrompt: () => undefined,
+			refreshContextResourcesIfChanged: async () => false,
+			refreshSkillsIfChanged: async () => false,
+			setRuntimeSkillPaths: async () => {},
+		} as unknown as CodingAgentPromptResourceSource;
+		const parentOptions: CodingAgentRuntimeCompositionOptions = {
+			conversationDir: "C:\\conversations",
+			createConversationPersistence: createTestConversationPersistence,
+			createToolEnvironment: createCodingAgentNodeToolEnvironment,
+			createSessionExecutionEnvironment: createCodingAgentNodeSessionExecutionEnvironment,
+			modelRegistry: {} as CodingAgentRuntimeCompositionOptions["modelRegistry"],
+			initialModel: MODEL,
+			initialThinkingLevel: "off",
+			promptResourceSource: resourceSource,
+			promptSettingsSource: {
+				reloadPersonalizationSettings() {},
+				getPersonalizationSettings: () => ({}),
+			} as unknown as NonNullable<CodingAgentRuntimeCompositionOptions["promptSettingsSource"]>,
+		};
+		let childOptions: CodingAgentRuntimeCompositionOptions | undefined;
+		const createChild = createCodingAgentChildCompositionFactory({
+			parentOptions,
+			createComposition: async (options) => {
+				childOptions = options;
+				return fixture.composition;
+			},
+		});
+
+		await createChild({
+			conversationDir: "C:\\conversations\\.subagents\\parent",
+			cwd: "C:\\child",
+			initialModel: CHILD_MODEL,
+			initialThinkingLevel: "off",
+			activation: { mode: "scope", scope: "cli" },
+			inheritedMcpView: { tools: [] },
+			skillPolicy: { mode: "allow", names: ["allowed"] },
+		});
+
+		expect(childOptions?.promptResourceSource?.getSkills().skills.map(({ name }) => name)).toEqual(["allowed"]);
+		expect(resourceSource.getSkills().skills.map(({ name }) => name)).toEqual(["allowed", "hidden"]);
 	});
 });
 

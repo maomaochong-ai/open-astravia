@@ -1,3 +1,4 @@
+import { subagentErrorPresentation, subagentObjective, subagentUsageLabel } from "@shared/lib/subagent-presentation";
 import { workflowProgressLabel, workflowStatusMeta } from "@shared/lib/workflow-status";
 import {
 	activeSessionAtom,
@@ -52,12 +53,18 @@ export function useWorkflowTabPanelModel(): WorkflowTabPanelModel {
 		() =>
 			workflows.map((task) => {
 				const meta = workflowStatusMeta(task.status, t);
+				const error = subagentErrorPresentation(task.errorMessage, t);
 				return {
 					id: task.id,
 					name: workflowDisplayName(task),
 					progressLabel: workflowProgressLabel(task),
+					statusLabel: meta.label,
 					statusIcon: meta.icon,
 					statusClassName: meta.className,
+					objective: subagentObjective(task.task),
+					usageLabel: subagentUsageLabel(task.usage, t),
+					errorLabel: error?.label,
+					errorDetail: error?.detail,
 					selected: task.id === selected?.id,
 					active: isSubagentActive(task.status),
 				};

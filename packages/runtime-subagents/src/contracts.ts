@@ -32,6 +32,10 @@ export interface SubagentSnapshot {
 	readonly generation: number;
 	readonly todoProgress?: SubagentTodoProgress;
 	readonly title?: string;
+	/** Automatic parent notification policy for this generation. */
+	readonly deliveryMode?: "terminal" | "batch";
+	/** Stable batch barrier identity when deliveryMode is batch. */
+	readonly batchId?: string;
 }
 
 export interface SubagentSpawnRequest {
@@ -40,6 +44,8 @@ export interface SubagentSpawnRequest {
 	readonly agentType: SubagentTypeId;
 	readonly todos?: readonly string[];
 	readonly title?: string;
+	readonly deliveryMode?: "terminal" | "batch";
+	readonly batchId?: string;
 }
 
 export interface SubagentTypeDefinition<TProfile = unknown> {

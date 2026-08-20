@@ -50,6 +50,41 @@ describe("SubagentCoordinator delivery", () => {
 		]);
 	});
 
+	it("holds batch-barrier delivery until every member reaches a terminal state", async () => {
+		const onNotify = vi.fn();
+		const fixture = createFixture({ onNotify, notificationDelayMs: 1 });
+		fixture.coordinator.spawnMany(
+			[request("first"), request("second")].map((entry) => ({
+				...entry,
+				deliveryMode: "batch" as const,
+				batchId: "batch-1",
+			})),
+		);
+		await waitUntil(() => fixture.children.length === 2);
+		await waitUntil(() => fixture.children.every(({ prompts }) => prompts.length === 1));
+
+		fixture.children[0]?.complete("first result");
+		await delay(10);
+		expect(onNotify).not.toHaveBeenCalled();
+
+		fixture.children[1]?.complete("second result");
+		await delay(20);
+		expect(fixture.coordinator.list()).toEqual([
+			expect.objectContaining({ taskName: "first", status: "completed", deliveryMode: "batch", batchId: "batch-1" }),
+			expect.objectContaining({
+				taskName: "second",
+				status: "completed",
+				deliveryMode: "batch",
+				batchId: "batch-1",
+			}),
+		]);
+		await vi.waitFor(() => expect(onNotify).toHaveBeenCalledOnce());
+		expect(onNotify.mock.calls[0]?.[0].map(({ taskName }: SubagentSnapshot) => taskName)).toEqual([
+			"first",
+			"second",
+		]);
+	});
+
 	it("wakes active waiters with interrupted snapshots during shutdown", async () => {
 		const fixture = createFixture();
 		await fixture.coordinator.spawn(request("waiting"));

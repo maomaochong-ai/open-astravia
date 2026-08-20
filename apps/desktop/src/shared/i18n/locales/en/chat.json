@@ -23,6 +23,13 @@
 			"clearFinished": "Clear finished ({{count}})",
 			"stop": "Stop"
 		},
+		"subagents": {
+			"usage": "{{tokens}} tokens · {{cost}}",
+			"errorPermission": "Permission blocked",
+			"errorContext": "Context limit reached",
+			"errorConnection": "Connection interrupted",
+			"errorExecution": "Run failed"
+		},
 		"batchProgress": {
 			"notFound": "Batch project not found"
 		},

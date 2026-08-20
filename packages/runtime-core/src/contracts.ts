@@ -524,6 +524,14 @@ export interface SubagentInfo {
 	todoProgress?: { done: number; total: number };
 	/** Human-readable one-line summary for UI display. */
 	title?: string;
+	/** Aggregate child usage when the producing host supports it. Optional for replay compatibility. */
+	usage?: {
+		input: number;
+		output: number;
+		cacheRead: number;
+		cacheWrite: number;
+		costTotal: number;
+	};
 }
 
 export interface SubagentsUpdateEvent extends SessionEventBase {

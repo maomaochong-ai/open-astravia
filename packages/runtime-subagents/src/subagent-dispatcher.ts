@@ -197,6 +197,8 @@ export class SubagentDispatcher<TProfile> {
 			usage: emptyUsage(),
 			generation: 0,
 			title: request.title?.trim() || undefined,
+			deliveryMode: request.deliveryMode ?? "terminal",
+			batchId: request.batchId,
 			todoProgress: request.todos ? { done: 0, total: request.todos.length } : undefined,
 		};
 		const run = this.createRun(snapshot, request);
@@ -261,6 +263,8 @@ export class SubagentDispatcher<TProfile> {
 				message: request.task,
 				agentType: request.agentType,
 				title: request.title,
+				deliveryMode: request.deliveryMode,
+				batchId: request.batchId,
 			});
 		}
 	}

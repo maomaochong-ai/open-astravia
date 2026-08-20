@@ -1,5 +1,7 @@
 # 1. Vetta 现状与设计决策
 
+> 历史基线：本文描述首版实现前的状态。当前实现与 V2 决策见 [README.md](README.md) 和 [05-v2-implementation.md](05-v2-implementation.md)。
+
 ## 1.1 当前分层
 
 Vetta 已有的相关边界是：
@@ -150,4 +152,3 @@ Vetta 要同时支持 Windows、普通目录和非 Git 工作区。worktree 应�
 ### 决策 E：完成状态不等于语义成功
 
 `completed` 只表示 child 正常结束一次 Agent run。它不证明代码正确、测试通过或用户目标完成。最终验收仍由 root 承担，运行时只提供真实状态、结果摘要、transcript 和验证信息。
-

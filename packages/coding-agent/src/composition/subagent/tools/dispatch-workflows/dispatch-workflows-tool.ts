@@ -2,6 +2,7 @@ import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { SubagentCoordinatorPort } from "@vetta/runtime-subagents";
 import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
+import { resolveSubagentTaskMessage, SubagentTaskContractSchema } from "../../task-contract.js";
 import { DISPATCH_WORKFLOWS_TOOL_DESCRIPTION } from "./description.js";
 
 export const DISPATCH_WORKFLOWS_MAX_BATCH = 8;
@@ -15,10 +16,12 @@ const WorkflowItemSchema = Type.Object({
 		description:
 			"Human-readable one-line summary of this workflow, shown in the UI (e.g. 重构 API 鉴权层). Write it in the user's language.",
 	}),
-	message: Type.String({
-		description:
-			"Task brief for this workflow. It already sees a snapshot of this conversation; state its scope and deliverables.",
-	}),
+	task: Type.Optional(SubagentTaskContractSchema),
+	message: Type.Optional(
+		Type.String({
+			description: "Legacy task text. New calls must use the structured task contract.",
+		}),
+	),
 	todos: Type.Array(Type.String(), {
 		minItems: 1,
 		description: "Ordered todo items pre-filled into the workflow's own todo list.",
@@ -44,6 +47,7 @@ export interface DispatchWorkflowsToolOptions {
 export function createDispatchWorkflowsTool(
 	options: DispatchWorkflowsToolOptions,
 ): RuntimeToolDefinition<DispatchWorkflowsToolInput> {
+	let batchSequence = 0;
 	return {
 		name: "dispatch_workflows",
 		label: "dispatch_workflows",
@@ -51,13 +55,17 @@ export function createDispatchWorkflowsTool(
 		inputSchema: DispatchWorkflowsToolInputSchema,
 		async execute({ input }) {
 			const coordinator = requireCoordinator(options);
+			batchSequence += 1;
+			const batchId = `workflow-batch-${batchSequence}`;
 			const snapshots = coordinator.spawnMany(
 				input.workflows.map((workflow) => ({
 					taskName: workflow.task_name,
 					title: workflow.title,
-					message: workflow.message,
+					message: resolveSubagentTaskMessage(workflow),
 					agentType: options.workflowTypeId,
 					todos: workflow.todos,
+					deliveryMode: "batch",
+					batchId,
 				})),
 			);
 			const lines = [`Dispatched ${snapshots.length} workflow(s):`];
@@ -68,7 +76,7 @@ export function createDispatchWorkflowsTool(
 				lines.push(`- ${snapshot.taskName} [${snapshot.status}] id: ${snapshot.id}${todo}`);
 			}
 			lines.push(
-				"You will receive <subagent_notification> as each workflow reaches a terminal state. Do NOT call wait_agent — end your turn (or continue other work) and handle the notifications passively.",
+				"You will receive one <subagent_notification> after every workflow in this batch reaches a terminal state. Do NOT call wait_agent — end your turn (or continue other work) and handle the batch result passively.",
 			);
 			return {
 				content: [{ type: "text", text: lines.join("\n") }],

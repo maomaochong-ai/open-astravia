@@ -1,5 +1,7 @@
 # 2. 目标架构
 
+> 历史基线：本文是首版目标，不再代表当前内置定义和 Session Extension 所有权。当前实现见 [05-v2-implementation.md](05-v2-implementation.md)。
+
 ## 2.1 总体结构
 
 ```mermaid

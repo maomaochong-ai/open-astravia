@@ -224,7 +224,7 @@ export interface RuntimeSubagentUsageSnapshot {
 	readonly costTotal: number;
 }
 
-/** 保留旧宿主重放所需的完整子代理快照，包括事件投影之外的 usage。 */
+/** 宿主控制面中的完整子代理快照；usage 在直接读取时始终存在。 */
 export interface RuntimeSubagentSnapshot extends SubagentInfo {
 	readonly usage: RuntimeSubagentUsageSnapshot;
 }
