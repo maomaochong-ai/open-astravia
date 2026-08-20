@@ -81,11 +81,13 @@ function parseFlag(flag, name) {
 /**
  * @param {object} request
  * @param {string} [request.eventName]
+ * @param {string} [request.refType]
  * @param {Record<string, unknown>} [request.inputs]
  * @param {Record<string, unknown>} [request.vars]
  */
 export function resolveDesktopReleaseConfig(request = {}) {
 	const eventName = normalizeToken(request.eventName) || "workflow_dispatch";
+	const refType = normalizeToken(request.refType);
 	const inputs = request.inputs ?? {};
 	const vars = request.vars ?? {};
 	const acceptInputs = eventName === "workflow_dispatch";
@@ -120,6 +122,9 @@ export function resolveDesktopReleaseConfig(request = {}) {
 	if (channel === "test" && releaseTarget !== "r2") {
 		throw new Error("the test channel must publish to R2");
 	}
+	if (eventName !== "workflow_dispatch" && channel === "test") {
+		throw new Error("the test channel is only available through workflow_dispatch");
+	}
 	const buildVersion = pick("build_version", "VETTA_TEST_BUILD_VERSION");
 	if (buildVersion && channel !== "test") {
 		throw new Error("build_version is only allowed for the test channel");
@@ -127,6 +132,9 @@ export function resolveDesktopReleaseConfig(request = {}) {
 	if (buildVersion && !VERSION_PATTERN.test(buildVersion)) {
 		throw new Error(`build_version must be a semantic desktop version (received ${JSON.stringify(buildVersion)})`);
 	}
+	const shouldPublish =
+		(eventName === "push" && refType === "tag") ||
+		(eventName === "workflow_dispatch" && (channel === "test" || channel === "stable"));
 
 	const serverUrl = cloudEnabled === "true" ? pick("server_url", "VETTA_SERVER_URL") : "";
 	const siteUrl = cloudEnabled === "true" ? pick("site_url", "VETTA_SITE_URL") : "";
@@ -167,6 +175,7 @@ export function resolveDesktopReleaseConfig(request = {}) {
 		r2Bucket,
 		r2Prefix,
 		releaseTarget,
+		shouldPublish,
 		serverUrl,
 		siteUrl,
 		speechInput,
@@ -189,6 +198,7 @@ export function toGithubOutput(config) {
 		`r2_bucket=${config.r2Bucket}`,
 		`r2_prefix=${config.r2Prefix}`,
 		`release_target=${config.releaseTarget}`,
+		`should_publish=${config.shouldPublish}`,
 		`server_url=${config.serverUrl}`,
 		`site_url=${config.siteUrl}`,
 		`speech_input=${config.speechInput}`,
@@ -204,6 +214,7 @@ export function toGithubOutput(config) {
 export function toGithubEnv(config) {
 	const entries = [
 		["VETTA_DESKTOP_BUILD_VERSION", config.buildVersion],
+		["VETTA_RELEASE_PUBLISH", config.shouldPublish ? "true" : "false"],
 		["VETTA_CLOUD_ENABLED", config.cloudEnabled],
 		["VETTA_SERVER_URL", config.serverUrl],
 		["VETTA_SITE_URL", config.siteUrl],
@@ -235,6 +246,7 @@ export function toSummaryMarkdown(config) {
 		["tenant", config.tenant || "(unset)"],
 		["speech_input", config.speechInput || "(unset)"],
 		["release_target", config.releaseTarget],
+		["should_publish", config.shouldPublish ? "true" : "false"],
 		["update_provider", config.updateProvider],
 		["update_url", config.updateUrl || "(unset)"],
 		["r2_bucket", config.r2Bucket || "(unset)"],
@@ -248,6 +260,7 @@ export function toSummaryMarkdown(config) {
 function readRequestFromEnv(env = process.env) {
 	return {
 		eventName: env.EVENT_NAME,
+		refType: env.REF_TYPE,
 		inputs: {
 			build_version: env.INPUT_BUILD_VERSION,
 			channel: env.INPUT_CHANNEL,
@@ -294,6 +307,7 @@ function readConfigFromOutputs(env = process.env) {
 		r2Bucket: normalizeToken(env.OUTPUT_R2_BUCKET),
 		r2Prefix: normalizeToken(env.OUTPUT_R2_PREFIX),
 		releaseTarget: normalizeToken(env.OUTPUT_RELEASE_TARGET) || "github",
+		shouldPublish: normalizeToken(env.OUTPUT_SHOULD_PUBLISH) === "true",
 		serverUrl: normalizeToken(env.OUTPUT_SERVER_URL),
 		siteUrl: normalizeToken(env.OUTPUT_SITE_URL),
 		speechInput: normalizeToken(env.OUTPUT_SPEECH_INPUT),

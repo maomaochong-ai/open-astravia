@@ -169,7 +169,7 @@ bun run verify:desktop:contracts
 bun run test:desktop:packaging
 ```
 
-正式 Desktop 发布 workflow 还会在平台矩阵前运行 `bun run check`、`bun run test:quality` 与 `bun run test:desktop:packaging`；发布 R2/GitHub 后通过 `apps/desktop/scripts/verify-update-feed.mjs` 检查公开更新 feed。手动 `workflow_dispatch` 只验证本地产物，不代表线上更新源已经可读。
+正式 Desktop 发布 workflow 还会在平台矩阵前运行 `bun run check`、`bun run test:quality` 与 `bun run test:desktop:packaging`；每个平台构建后运行 packaged smoke/updater E2E，发布 R2/GitHub 后通过 `apps/desktop/scripts/verify-update-feed.mjs` 检查公开更新 feed。手动 `workflow_dispatch` 默认只验证本地产物；`channel=test` 或 `channel=stable` 的发布型手动运行会进入与 tag 相同的发布门禁和公开 feed 检查。
 
 需要验证真实生产布局时运行 packaged smoke 与 updater E2E（当前平台需先生成对应 `release/*-unpacked` 目录）：
 
@@ -180,7 +180,7 @@ bun run --cwd apps/desktop test:e2e:packaged
 
 该 E2E 会在 WDIO 启动 Electron 前创建本地 generic feed，通过真实 `window.vetta.updater.check()` 验证 `app-update.yml`、feed 请求、版本解析和 renderer/main IPC 链路；它不会安装伪造的更新包。发布后的真实安装包可读性、hash、blockmap 和平台安装准备仍由各平台 `verify:updates:*` 以及发布后 `verify-update-feed.mjs` 负责。
 
-需要验证真实安装、重启和版本切换时，使用 `desktop-release` 的 `workflow_dispatch` + `channel=test`，并填写递增的 `build_version`。测试发布使用独立的 `desktop-test` Environment、R2 prefix 和更新 URL，不会覆盖 stable；稳定发布只接受匹配正式版本的 tag。
+需要验证真实安装、重启和版本切换时，使用 `desktop-release` 的 `workflow_dispatch` + `channel=test`，并填写递增的 `build_version`。测试发布使用独立的 `desktop-test` Environment、R2 prefix 和更新 URL，不会覆盖 stable；它仍要求生产级签名、公证和所有发布前门禁。稳定发布可以使用匹配正式版本的 tag，也可以在 `desktop-production` Environment 审批后用 `workflow_dispatch` + `channel=stable`，两者进入同一发布 Job。当前 packaged E2E 只验证应用启动和 updater feed/IPC 链路；真实安装、重启和版本切换仍需要在对应平台测试机或自持 runner 上执行，不能把本地 feed 测试当作安装验收。
 
 四个核心包的历史测试目前仍有模型目录和跨平台相关的基线失败，因此暂不作为 PR 强制门禁。修复这些基线后，再将 `bun run test:unit` 加入 CI；在此之前它仍用于本地完整诊断，`bun run test:changed` 用于按影响范围验证。
 

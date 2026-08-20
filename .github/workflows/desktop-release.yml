@@ -50,7 +50,7 @@ on:
         type: string
         required: false
       release_target:
-        description: "Where a matching tag or test-channel dispatch publishes. default = VETTA_RELEASE_TARGET or github."
+        description: "Where a matching tag or stable/test dispatch publishes. default = VETTA_RELEASE_TARGET or github."
         type: choice
         options: [default, r2, github]
         default: default
@@ -70,6 +70,7 @@ jobs:
     environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.channel == 'test' && 'desktop-test' || 'desktop-production' }}
     outputs:
       should-build: ${{ steps.scope.outputs.should-build }}
+      should-publish: ${{ steps.config.outputs.should_publish }}
       build-version: ${{ steps.config.outputs.build_version }}
       channel: ${{ steps.config.outputs.channel }}
       cloud_enabled: ${{ steps.config.outputs.cloud_enabled }}
@@ -93,6 +94,7 @@ jobs:
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
         run: |
           if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
@@ -112,6 +114,7 @@ jobs:
         id: config
         env:
           EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
           INPUT_BUILD_VERSION: ${{ github.event.inputs.build_version }}
           INPUT_CHANNEL: ${{ github.event.inputs.channel }}
           INPUT_CLOUD_ENABLED: ${{ github.event.inputs.cloud_enabled }}
@@ -153,6 +156,7 @@ jobs:
           OUTPUT_R2_BUCKET: ${{ steps.config.outputs.r2_bucket }}
           OUTPUT_R2_PREFIX: ${{ steps.config.outputs.r2_prefix }}
           OUTPUT_RELEASE_TARGET: ${{ steps.config.outputs.release_target }}
+          OUTPUT_SHOULD_PUBLISH: ${{ steps.config.outputs.should_publish }}
           OUTPUT_SERVER_URL: ${{ steps.config.outputs.server_url }}
           OUTPUT_SITE_URL: ${{ steps.config.outputs.site_url }}
           OUTPUT_SPEECH_INPUT: ${{ steps.config.outputs.speech_input }}
@@ -197,6 +201,7 @@ jobs:
     if: needs.prepare.outputs.should-build == 'true'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
+    environment: ${{ needs.prepare.outputs.channel == 'test' && 'desktop-test' || 'desktop-production' }}
     strategy:
       fail-fast: false
       matrix:
@@ -250,6 +255,7 @@ jobs:
           SECRET_APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           SECRET_APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           SECRET_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          REQUIRE_RELEASE_SIGNATURE: ${{ needs.prepare.outputs.should-publish == 'true' }}
         run: |
           # 自持 runner 把凭据放在 runner 目录的 .env 里，证书不进 CI Secret。
           if [[ -n "${CSC_LINK:-}${CSC_NAME:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
@@ -284,13 +290,13 @@ jobs:
             fi
           done
           if [[ "${PROVIDED}" -eq 0 ]]; then
-            # stable 发布只接受 push tag；test channel 的 workflow_dispatch 使用独立
-            # desktop-test Environment，不允许未签名产物进入 stable。
-            if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-              echo "A tagged macOS release requires signing and notarization credentials." >&2
+            # 任何会进入发布 job 的构建都必须使用生产级签名；只有不发布的
+            # workflow_dispatch 构建才允许生成未签名包供本地调试。
+            if [[ "${REQUIRE_RELEASE_SIGNATURE}" == "true" ]]; then
+              echo "A published macOS build requires signing and notarization credentials." >&2
               exit 1
             fi
-            echo "No macOS signing credentials configured; workflow_dispatch will build an unsigned test package."
+            echo "No macOS signing credentials configured; this non-publishing workflow_dispatch will build an unsigned package."
             exit 0
           fi
           if [[ "${#MISSING[@]}" -ne 0 ]]; then
@@ -332,6 +338,7 @@ jobs:
           OUTPUT_R2_BUCKET: ${{ needs.prepare.outputs.r2_bucket }}
           OUTPUT_R2_PREFIX: ${{ needs.prepare.outputs.r2_prefix }}
           OUTPUT_RELEASE_TARGET: ${{ needs.prepare.outputs.release_target }}
+          OUTPUT_SHOULD_PUBLISH: ${{ needs.prepare.outputs.should-publish }}
           OUTPUT_SERVER_URL: ${{ needs.prepare.outputs.server_url }}
           OUTPUT_SITE_URL: ${{ needs.prepare.outputs.site_url }}
           OUTPUT_SPEECH_INPUT: ${{ needs.prepare.outputs.speech_input }}
@@ -390,7 +397,7 @@ jobs:
 
   publish-r2:
     name: publish R2
-    if: needs.prepare.outputs.should-build == 'true' && needs.prepare.outputs.release_target == 'r2' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && needs.prepare.outputs.channel == 'test'))
+    if: needs.prepare.outputs.should-build == 'true' && needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.release_target == 'r2'
     needs: [prepare, quality, build]
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -432,6 +439,7 @@ jobs:
           OUTPUT_R2_BUCKET: ${{ needs.prepare.outputs.r2_bucket }}
           OUTPUT_R2_PREFIX: ${{ needs.prepare.outputs.r2_prefix }}
           OUTPUT_RELEASE_TARGET: ${{ needs.prepare.outputs.release_target }}
+          OUTPUT_SHOULD_PUBLISH: ${{ needs.prepare.outputs.should-publish }}
           OUTPUT_SERVER_URL: ${{ needs.prepare.outputs.server_url }}
           OUTPUT_SITE_URL: ${{ needs.prepare.outputs.site_url }}
           OUTPUT_SPEECH_INPUT: ${{ needs.prepare.outputs.speech_input }}
@@ -456,7 +464,7 @@ jobs:
 
   publish-github:
     name: publish GitHub Release
-    if: needs.prepare.outputs.should-build == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.prepare.outputs.release_target != 'r2'
+    if: needs.prepare.outputs.should-build == 'true' && needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.release_target != 'r2'
     needs: [prepare, quality, build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -504,7 +512,7 @@ jobs:
             fi
             echo "Resuming draft release ${TAG}"
           else
-            gh release create "${TAG}" --draft --generate-notes --title "Vetta ${VERSION}"
+            gh release create "${TAG}" --draft --generate-notes --title "Vetta ${VERSION}" --target "${GITHUB_SHA}"
           fi
           find apps/desktop/release -maxdepth 1 -type f -print0 \
             | xargs -0 gh release upload "${TAG}" --clobber

@@ -34,7 +34,7 @@
 ### Changed
 
 - Desktop 打包新增跨平台环境前置检查，在清理和编译前统一校验开源/商业版本、服务端与更新源、Marketplace、目标平台、遥测参数和 macOS 签名组合；新增 `dist:opensource` 作为 Windows、macOS、Linux 共用的开源版构建入口，GitHub Releases 与开源版、R2 与商业版不再允许混用。
-- Desktop 正式发布 Action 新增独立质量门禁：根检查、质量脚本测试和 packaging 合同测试全部通过后才启动平台矩阵；R2/GitHub 发布完成后验证三平台公开更新 feed 与其引用的安装包可读，手动构建仍明确只验证本地 Artifact。
+- Desktop 正式发布 Action 新增独立质量门禁：根检查、质量脚本测试和 packaging 合同测试全部通过后才启动平台矩阵；R2/GitHub 发布完成后验证三平台公开更新 feed 与其引用的安装包可读；默认手动构建只保留临时 Artifact，手动 `test` / `stable` 发布与 tag 发布走同一发布门禁。
 - Desktop packaged E2E 扩展到 Windows、macOS、Linux：真实启动 unpacked 应用并通过 renderer updater bridge 检查本地隔离 feed，发布矩阵在上传产物前即可发现启动、`app-update.yml`、feed 请求和 IPC 回归；本地 feed 不会触碰真实生产更新源。
 - Desktop 发布 workflow 支持通过 `workflow_dispatch` 发布隔离的 R2 `test` 通道；`build_version` 只允许用于 test channel 并注入 `VETTA_DESKTOP_BUILD_VERSION`，测试升级候选不会覆盖 stable，R2 凭据使用独立的 `desktop-test` Environment。
 - Desktop 打包未配置更新源时默认使用官方 stable 更新源，并在显式传入不支持的 `none` provider 时于构建期失败，避免安装包缺少 `app-update.yml` 导致检查更新时报 `ENOENT`。

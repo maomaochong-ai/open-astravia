@@ -37,10 +37,16 @@ describe("Desktop release workflow contracts", () => {
 		expect(packagedWorkflow).toContain("xvfb-run --auto-servernum");
 	});
 
-	it("allows workflow_dispatch to publish only the isolated R2 test channel", () => {
+	it("uses the same publish jobs for tagged stable and dispatched test/stable releases", () => {
 		expect(workflow).toContain("build_version:");
-		expect(workflow).toContain("needs.prepare.outputs.channel == 'test'");
+		expect(workflow).toContain("should-publish: $" + "{{ steps.config.outputs.should_publish }}");
+		expect(workflow).toContain("needs.prepare.outputs.should-publish == 'true'");
 		expect(workflow).toContain("'desktop-test'");
+		expect(workflow).toContain("environment: $" + "{{");
+		expect(workflow).toContain("'desktop-production' }}");
 		expect(workflow).toContain("OUTPUT_BUILD_VERSION");
+		expect(workflow).toContain("REQUIRE_RELEASE_SIGNATURE");
+		expect(workflow).toContain("needs.prepare.outputs.should-publish == 'true'");
+		expect(workflow).toContain('--target "' + "$" + '{GITHUB_SHA}"');
 	});
 });

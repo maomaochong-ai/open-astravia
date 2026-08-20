@@ -31,11 +31,12 @@ describe("replaceLastPathSegment", () => {
 
 describe("resolveDesktopReleaseConfig", () => {
 	it("defaults a fork-style tag run to open-source + GitHub Releases", () => {
-		expect(resolveDesktopReleaseConfig({ eventName: "push", vars: {} })).toMatchObject({
+		expect(resolveDesktopReleaseConfig({ eventName: "push", refType: "tag", vars: {} })).toMatchObject({
 			channel: "default",
 			cloudEnabled: "false",
 			marketplaceRepository: "https://github.com/openvetta/vetta-official-marketplace",
 			releaseTarget: "github",
+			shouldPublish: true,
 			updateProvider: "github",
 			serverUrl: "",
 		});
@@ -82,6 +83,28 @@ describe("resolveDesktopReleaseConfig", () => {
 		expect(config.r2Prefix).toBe("desktop/test");
 	});
 
+	it("marks only explicit stable/test dispatches and matching tags for publication", () => {
+		expect(
+			resolveDesktopReleaseConfig({
+				eventName: "workflow_dispatch",
+				inputs: { channel: "stable" },
+			}),
+		).toMatchObject({ shouldPublish: true });
+		expect(
+			resolveDesktopReleaseConfig({
+				eventName: "workflow_dispatch",
+				inputs: { channel: "default" },
+			}),
+		).toMatchObject({ shouldPublish: false });
+		expect(
+			resolveDesktopReleaseConfig({
+				eventName: "push",
+				refType: "branch",
+				vars: {},
+			}),
+		).toMatchObject({ shouldPublish: false });
+	});
+
 	it("prefers dedicated test vars over last-segment rewrite", () => {
 		const config = resolveDesktopReleaseConfig({
 			eventName: "workflow_dispatch",
@@ -106,6 +129,7 @@ describe("resolveDesktopReleaseConfig", () => {
 		});
 		expect(config.buildVersion).toBe("0.5.47");
 		expect(toGithubEnv(config)).toContain("VETTA_DESKTOP_BUILD_VERSION=0.5.47");
+		expect(toGithubEnv(config)).toContain("VETTA_RELEASE_PUBLISH=true");
 		expect(toGithubOutput(config)).toContain("build_version=0.5.47");
 	});
 
@@ -128,6 +152,16 @@ describe("resolveDesktopReleaseConfig", () => {
 				inputs: { channel: "test", release_target: "github" },
 			}),
 		).toThrow(/test channel must publish to R2/);
+		expect(() =>
+			resolveDesktopReleaseConfig({
+				eventName: "push",
+				vars: {
+					VETTA_RELEASE_CHANNEL: "test",
+					VETTA_RELEASE_TARGET: "r2",
+					VETTA_SERVER_URL: "https://api.example.com/api/v1",
+				},
+			}),
+		).toThrow(/only available through workflow_dispatch/);
 	});
 
 	it("rejects a full build without a server URL", () => {

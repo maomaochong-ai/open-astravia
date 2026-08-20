@@ -206,7 +206,7 @@ bun run dist:opensource -- --target dir
 - 未设置 `VETTA_UPDATE_PROVIDER`：默认使用 stable 更新源 `https://releases.openvetta.com/desktop/stable`。
 - `VETTA_UPDATE_PROVIDER=none`：不受支持，打包时直接失败；所有可打包产物都必须有更新源配置。
 
-发布 workflow 的最后一步会执行 `node scripts/verify-update-feed.mjs`：它读取三平台 metadata，确认版本与本次 Tag 一致，并对每个引用的安装包执行公开可读性检查。CDN 不支持 HEAD 时会回退到 Range GET。该检查只在 R2/GitHub 真实发布后执行，手动构建仍只验证本地 Artifact。
+发布 workflow 的最后一步会执行 `node scripts/verify-update-feed.mjs`：它读取三平台 metadata，确认版本与本次发布版本一致，并对每个引用的安装包执行公开可读性检查。CDN 不支持 HEAD 时会回退到 Range GET。只有不发布的手动构建跳过公开 feed 检查；手动 `test` / `stable` 发布与 tag 发布一样会在上传后执行该检查。
 
 正式环境默认读取：
 
@@ -272,6 +272,6 @@ bun run dist:opensource
 
 Windows 的 Inno Setup 安装包是自定义产物，应由仓库的 release workflow（或 `gh release upload`）连同 `latest.yml` 和 blockmap 上传。各操作系统仍应在对应系统的 CI runner 上构建；它们可以共同上传到同一个 GitHub Release。
 
-工作流的 `workflow_dispatch` 只执行三平台构建、校验并保留临时 Artifact，不发布 stable。只有 `v<package-version>` tag 触发的任务才进入 R2/GitHub 发布 Job；其它 `v*` tag 经轻量 scope Job 判定后跳过打包。发布 Job 使用 `desktop-production` environment 且全局串行。GitHub Release 已经公开后不允许 CI 用 `--clobber` 修改，只能恢复尚未公开的 draft。
+工作流的 `workflow_dispatch` 默认只执行三平台构建、校验并保留临时 Artifact；选择 `channel=test` 会发布到隔离的 `desktop-test` R2，选择 `channel=stable` 会在 `desktop-production` Environment 审批后进入与匹配 tag 相同的 R2/GitHub 发布 Job。生产 tag 仍必须是 `v<package-version>`；其它 `v*` tag 经轻量 scope Job 判定后跳过打包。所有会发布的构建都要求 macOS 签名与公证。GitHub Release 已经公开后不允许 CI 用 `--clobber` 修改，只能恢复尚未公开的 draft。
 
 打包时会从本包 `CHANGELOG.md` 提取与当前版本完全匹配的 `## [version]` 区段作为更新说明。正式发布必须先完成 Changelog 定版；找不到版本区段的本地 QA 构建只告警并省略更新说明。
