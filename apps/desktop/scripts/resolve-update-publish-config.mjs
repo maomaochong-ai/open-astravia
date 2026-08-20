@@ -1,4 +1,6 @@
-const SUPPORTED_PROVIDERS = new Set(["none", "generic", "github"]);
+const SUPPORTED_PROVIDERS = new Set(["generic", "github"]);
+const DEFAULT_UPDATE_PROVIDER = "generic";
+const DEFAULT_UPDATE_URL = "https://releases.openvetta.com/desktop/stable";
 
 function requireValue(env, key, provider) {
 	const value = env[key]?.trim();
@@ -17,18 +19,16 @@ function normalizeHttpUrl(rawUrl) {
 }
 
 export function resolveUpdatePublishConfig(env = process.env) {
-	const provider = (env.VETTA_UPDATE_PROVIDER ?? "none").trim().toLowerCase();
+	const provider = (env.VETTA_UPDATE_PROVIDER?.trim() || DEFAULT_UPDATE_PROVIDER).toLowerCase();
 	if (!SUPPORTED_PROVIDERS.has(provider)) {
 		throw new Error(
-			`[update-publish] unsupported VETTA_UPDATE_PROVIDER=${provider}; expected none, generic, or github`,
+			`[update-publish] unsupported VETTA_UPDATE_PROVIDER=${provider}; expected generic or github`,
 		);
 	}
-	if (provider === "none") return null;
-
 	if (provider === "generic") {
 		return {
 			provider: "generic",
-			url: normalizeHttpUrl(requireValue(env, "VETTA_UPDATE_URL", provider)),
+			url: normalizeHttpUrl(env.VETTA_UPDATE_URL?.trim() || DEFAULT_UPDATE_URL),
 			useMultipleRangeRequest: true,
 		};
 	}

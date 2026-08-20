@@ -15,6 +15,7 @@ const RELEASE_TARGETS = new Set(["github", "r2"]);
 const CHANNELS = new Set(["default", "stable", "test"]);
 const FLAGS = new Set(["true", "false"]);
 const CHANNEL_SEGMENTS = new Set(["stable", "test", "beta", "prod", "production"]);
+const DEFAULT_OPEN_SOURCE_MARKETPLACE = "https://github.com/openvetta/vetta-official-marketplace";
 
 /**
  * @param {unknown} value
@@ -94,21 +95,38 @@ export function resolveDesktopReleaseConfig(request = {}) {
 		return firstExplicit(inputValue, ...varValues) || fallback;
 	};
 
-	const cloudEnabled = parseFlag(pick("cloud_enabled", "VETTA_CLOUD_ENABLED"), "cloud_enabled");
-	const speechInput = parseFlag(pick("speech_input", "VETTA_SPEECH_INPUT_ENABLED"), "speech_input");
 	const releaseTarget = pick("release_target", "VETTA_RELEASE_TARGET", "github");
 	if (!RELEASE_TARGETS.has(releaseTarget)) {
 		throw new Error(`release_target must be github or r2 (received ${JSON.stringify(releaseTarget)})`);
 	}
+	const configuredCloudEnabled = parseFlag(
+		pick("cloud_enabled", "VETTA_CLOUD_ENABLED"),
+		"cloud_enabled",
+	);
+	const cloudEnabled = configuredCloudEnabled || (releaseTarget === "github" ? "false" : "true");
+	if (releaseTarget === "github" && cloudEnabled !== "false") {
+		throw new Error("GitHub Releases can only publish the open-source build (cloud_enabled=false)");
+	}
+	if (releaseTarget === "r2" && cloudEnabled !== "true") {
+		throw new Error("R2 can only publish the commercial build (cloud_enabled=true)");
+	}
+	const speechInput = parseFlag(pick("speech_input", "VETTA_SPEECH_INPUT_ENABLED"), "speech_input");
 
 	const channel = pick("channel", "VETTA_RELEASE_CHANNEL", "default");
 	if (!CHANNELS.has(channel)) {
 		throw new Error(`channel must be default, stable, or test (received ${JSON.stringify(channel)})`);
 	}
 
-	const serverUrl = pick("server_url", "VETTA_SERVER_URL");
-	const siteUrl = pick("site_url", "VETTA_SITE_URL");
-	const marketplaceRepository = pick("marketplace_repository", "VETTA_OPEN_MARKETPLACE_REPOSITORY");
+	const serverUrl = cloudEnabled === "true" ? pick("server_url", "VETTA_SERVER_URL") : "";
+	const siteUrl = cloudEnabled === "true" ? pick("site_url", "VETTA_SITE_URL") : "";
+	const marketplaceRepository =
+		cloudEnabled === "false"
+			? pick(
+					"marketplace_repository",
+					"VETTA_OPEN_MARKETPLACE_REPOSITORY",
+					DEFAULT_OPEN_SOURCE_MARKETPLACE,
+				)
+			: "";
 	const tenant = pick("tenant", "VETTA_TENANT");
 	const notes = acceptInputs ? normalizeToken(inputs.notes).replaceAll(/\s+/g, " ") : "";
 
@@ -123,6 +141,7 @@ export function resolveDesktopReleaseConfig(request = {}) {
 		updateUrl = firstExplicit(acceptInputs ? inputs.update_url : "", vars.VETTA_UPDATE_URL_STABLE, updateUrl);
 		r2Prefix = firstExplicit(acceptInputs ? inputs.r2_prefix : "", vars.VETTA_R2_PREFIX_STABLE, r2Prefix);
 	}
+	if (releaseTarget === "github") updateUrl = "";
 
 	if (cloudEnabled === "true" && !serverUrl) {
 		throw new Error("VETTA_SERVER_URL is required when VETTA_CLOUD_ENABLED=true");
@@ -194,7 +213,7 @@ export function toGithubEnv(config) {
 export function toSummaryMarkdown(config) {
 	const rows = [
 		["channel", config.channel],
-		["cloud_enabled", config.cloudEnabled || "(unset → lite)"],
+		["cloud_enabled", config.cloudEnabled || "(invalid: unset)"],
 		["server_url", config.serverUrl || "(unset)"],
 		["site_url", config.siteUrl || "(unset)"],
 		["marketplace_repository", config.marketplaceRepository || "(unset)"],

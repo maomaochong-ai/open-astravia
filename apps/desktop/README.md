@@ -44,7 +44,7 @@ Sherpa native runtime, speech utility-process entry, microphone permission, or R
 
 ```powershell
 $env:VETTA_SPEECH_INPUT_ENABLED="false"
-bun run dist:win
+bun run dist:opensource
 ```
 
 The value is a build-time contract and must be exactly `true` or `false`; it cannot be changed after
@@ -115,8 +115,8 @@ bun run build
 # 2) Unpackaged smoke (default: dist/main/index.js)
 bun run test:e2e
 
-# Or smoke against electron-builder unpacked binary
-bun run pack:win:test   # or pack:linux:test / platform equivalent
+# Or smoke against an open-source electron-builder unpacked binary
+bun run dist:opensource -- --target dir
 bun run test:e2e:packaged
 ```
 

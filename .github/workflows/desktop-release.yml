@@ -7,12 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       cloud_enabled:
-        description: "VETTA_CLOUD_ENABLED. default = Environment / repo variable (unset is lite)."
+        description: "Desktop edition. default = release target (GitHub=open-source, R2=commercial)."
         type: choice
         options: [default, "true", "false"]
         default: default
       server_url:
-        description: "VETTA_SERVER_URL override. Required when this run is a full build."
+        description: "VETTA_SERVER_URL override. Required for a commercial build."
         type: string
         required: false
       site_url:
@@ -305,7 +305,7 @@ jobs:
         working-directory: apps/desktop
         env:
           # 由 prepare 解析：dispatch 表单 > desktop-production Environment/仓库 Variables。
-          # fork 不配任何值就得到 lite。空 optional 键不会写入 GITHUB_ENV。
+          # fork 不配任何值就得到开源版。空 optional 键不会写入 GITHUB_ENV。
           VETTA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
           VETTA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
         run: bun run ${{ matrix.command }}

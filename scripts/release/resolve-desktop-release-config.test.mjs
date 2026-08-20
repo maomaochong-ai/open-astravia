@@ -30,10 +30,11 @@ describe("replaceLastPathSegment", () => {
 });
 
 describe("resolveDesktopReleaseConfig", () => {
-	it("defaults a fork-style tag run to lite + GitHub Releases", () => {
+	it("defaults a fork-style tag run to open-source + GitHub Releases", () => {
 		expect(resolveDesktopReleaseConfig({ eventName: "push", vars: {} })).toMatchObject({
 			channel: "default",
-			cloudEnabled: "",
+			cloudEnabled: "false",
+			marketplaceRepository: "https://github.com/openvetta/vetta-official-marketplace",
 			releaseTarget: "github",
 			updateProvider: "github",
 			serverUrl: "",
@@ -66,6 +67,7 @@ describe("resolveDesktopReleaseConfig", () => {
 			inputs: {
 				channel: "test",
 				cloud_enabled: "true",
+				release_target: "r2",
 				server_url: "https://api.staging.example.com/api/v1",
 			},
 			vars: {
@@ -83,8 +85,9 @@ describe("resolveDesktopReleaseConfig", () => {
 	it("prefers dedicated test vars over last-segment rewrite", () => {
 		const config = resolveDesktopReleaseConfig({
 			eventName: "workflow_dispatch",
-			inputs: { channel: "test" },
+			inputs: { channel: "test", release_target: "r2" },
 			vars: {
+				VETTA_SERVER_URL: "https://api.example.com/api/v1",
 				VETTA_R2_PREFIX: "desktop/stable",
 				VETTA_R2_PREFIX_TEST: "desktop/nightly",
 				VETTA_UPDATE_URL: "https://releases.example.com/desktop/stable",
@@ -99,10 +102,25 @@ describe("resolveDesktopReleaseConfig", () => {
 		expect(() =>
 			resolveDesktopReleaseConfig({
 				eventName: "workflow_dispatch",
-				inputs: { cloud_enabled: "true" },
+				inputs: { cloud_enabled: "true", release_target: "r2" },
 				vars: {},
 			}),
 		).toThrow(/VETTA_SERVER_URL/);
+	});
+
+	it("rejects mixing release targets and desktop editions", () => {
+		expect(() =>
+			resolveDesktopReleaseConfig({
+				eventName: "workflow_dispatch",
+				inputs: { release_target: "github", cloud_enabled: "true" },
+			}),
+		).toThrow(/open-source build/);
+		expect(() =>
+			resolveDesktopReleaseConfig({
+				eventName: "workflow_dispatch",
+				inputs: { release_target: "r2", cloud_enabled: "false" },
+			}),
+		).toThrow(/commercial build/);
 	});
 
 	it("omits empty optional keys from GITHUB_ENV", () => {
@@ -110,12 +128,15 @@ describe("resolveDesktopReleaseConfig", () => {
 			resolveDesktopReleaseConfig({
 				eventName: "workflow_dispatch",
 				inputs: { release_target: "r2" },
-				vars: { VETTA_UPDATE_URL: "https://releases.example.com/desktop/stable" },
+				vars: {
+					VETTA_SERVER_URL: "https://api.example.com/api/v1",
+					VETTA_UPDATE_URL: "https://releases.example.com/desktop/stable",
+				},
 			}),
 		);
 		expect(env).toContain("VETTA_UPDATE_PROVIDER=generic");
 		expect(env).toContain("VETTA_UPDATE_URL=https://releases.example.com/desktop/stable");
-		expect(env).not.toContain("VETTA_CLOUD_ENABLED=");
+		expect(env).toContain("VETTA_CLOUD_ENABLED=true");
 		expect(env).not.toContain("VETTA_TENANT=");
 	});
 

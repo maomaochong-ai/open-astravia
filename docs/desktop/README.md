@@ -1,6 +1,6 @@
 # Desktop 开发文档
 
-- [构建模式与环境变量](./build-modes.md) · [English](./build-modes.en.md)：lite（serv-less，默认）与完全体两种构建形态的差异、全部环境变量参考、机密变量约定与 CI 配置。
+- [构建模式与环境变量](./build-modes.md) · [English](./build-modes.en.md)：开源版（serv-less）与商业版两种发行形态、跨平台前置检查、环境变量参考、机密变量约定与 CI 配置。
 - [Windows 自动更新、R2 发版与排障](./windows-auto-update.md)：Inno 后台版本目录、稳定启动器与回退、增量下载原理、历史问题和排障清单。
 - [macOS 自动更新、R2 发版与排障](./macos-auto-update.md)：Squirrel.Mac 暂存流程、双架构与元数据合并、签名公证门禁、自持 runner 和排障清单。
 - [桌面应用发布入口](../deploy/desktop-releases.md)：兼容旧链接的导航页。

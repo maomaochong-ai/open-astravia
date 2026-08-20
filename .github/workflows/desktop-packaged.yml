@@ -1,0 +1,95 @@
+name: desktop-packaged
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Desktop packaging contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify packaging contract
+        run: node apps/desktop/scripts/verify-packaging-contract.mjs
+
+      - name: Test packaging contract helpers
+        run: node --test apps/desktop/scripts/desktop-packaging-layout.test.mjs apps/desktop/scripts/packaged-native-dependencies.test.mjs
+
+  scope:
+    name: Detect packaged smoke scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      packaged-smoke: ${{ steps.detect.outputs.packaged-smoke }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect packaging-sensitive changes
+        id: detect
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: node scripts/quality/desktop-packaging-scope.mjs
+
+  smoke:
+    name: Windows packaged smoke
+    needs: scope
+    if: needs.scope.outputs.packaged-smoke == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Windows unpacked Desktop package
+        working-directory: apps/desktop
+        env:
+          VETTA_BUILD_ENV: test
+          VETTA_CLOUD_ENABLED: "false"
+          VETTA_OPEN_MARKETPLACE_REPOSITORY: openvetta/vetta-official-marketplace
+          VETTA_SPEECH_INPUT_ENABLED: "false"
+          VETTA_UPDATE_GITHUB_OWNER: openvetta
+          VETTA_UPDATE_GITHUB_REPO: open-vetta
+          VETTA_UPDATE_PROVIDER: github
+        run: bun run pack:win:test
+
+      - name: Run packaged Electron smoke tests
+        working-directory: apps/desktop
+        env:
+          VETTA_E2E_PACKAGED: "1"
+          VETTA_BUILD_ENV: test
+          VETTA_SPEECH_INPUT_ENABLED: "false"
+        run: bun run test:e2e:packaged
+
+      - name: Upload packaged diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-packaged-smoke-diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            apps/desktop/release/**
+            apps/desktop/.wdio-electron-user-data/**

@@ -47,7 +47,7 @@ Windows 只需要发布一个 EXE 安装包及其 blockmap，不需要为了自�
 | 官方稳定版 | `generic` | R2 + Cloudflare CDN | `https://releases.openvetta.com/desktop/stable` |
 | 本地闭环测试 | `generic` | R2 独立前缀 | `https://releases.openvetta.com/desktop/test` |
 | 开源版本 | `github` | 公开 GitHub Releases | 仓库 Release |
-| 开发/QA 无更新包 | `none` | 无 | 不生成 `app-update.yml` |
+| 未配置 provider | (默认) | R2 + Cloudflare CDN | 使用 stable 默认地址 |
 
 R2 推荐对象布局：
 
@@ -202,7 +202,7 @@ VETTA_UPDATE_PROVIDER=generic
 VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
 ```
 
-构建脚本默认 `VETTA_BUILD_ENV=development`，`prepare-pack.js` 显式调用 `loadBuildEnv()` 读取 `.env.development`；Shell 中显式设置的变量优先级更高。**没有设 `VETTA_UPDATE_PROVIDER` 就不会生成 `latest*.yml`**，后续验证与发布全部无从谈起。
+构建脚本默认 `VETTA_BUILD_ENV=development`，`prepare-pack.js` 显式调用 `loadBuildEnv()` 读取 `.env.development`；Shell 中显式设置的变量优先级更高。未设置 `VETTA_UPDATE_PROVIDER` 时默认使用 `generic`，更新地址默认为 `https://releases.openvetta.com/desktop/stable`，因此会生成 `app-update.yml`。打包不支持无更新源配置；`VETTA_UPDATE_PROVIDER=none` 会在构建期直接失败。
 
 直接调用底层发布命令时，发布期变量必须写在 Shell 里：
 
@@ -712,7 +712,7 @@ install failed
 | `apps/desktop/scripts/build-inno-installer.mjs` | 构建 EXE、blockmap、files manifest 和 `latest.yml` |
 | `apps/desktop/scripts/verify-inno-update.mjs` | 发布前临时安装与全文件预检 |
 | `apps/desktop/scripts/publish-update-artifacts-r2.mjs` | R2 原子发布、缓存头、幂等校验和公开可读验证 |
-| `apps/desktop/scripts/resolve-update-publish-config.mjs` | generic/GitHub/none 构建期 provider 配置 |
+| `apps/desktop/scripts/resolve-update-publish-config.mjs` | generic/GitHub 构建期 provider 配置与 stable 默认值 |
 | `scripts/release-windows.mjs` | Windows test/stable 频道校验、构建、Inno 预检与 R2 发布编排 |
 | `.github/workflows/desktop-release.yml` | 三平台构建及 R2/GitHub Release 发布编排 |
 

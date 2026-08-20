@@ -4,6 +4,8 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { resolveBuildResourceFilters } from "./build-resource-filters.mjs";
+import { validateDesktopBuildEnvironment } from "./desktop-build-environment.mjs";
+import { DESKTOP_BUILD_OUTPUTS } from "./desktop-packaging-layout.mjs";
 import { loadBuildEnv } from "./load-build-env.mjs";
 import { resolvePackagedNativeDependencies } from "./packaged-native-dependencies.mjs";
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
@@ -12,17 +14,18 @@ import {
 	resolveSpeechInputBuildConfig,
 	resolveSpeechInputTargetTags,
 } from "./speech-input-build-config.js";
-import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
 import {
-	resolveSystemPluginSelection,
 	stageSystemPluginsFromArchives,
 } from "./stage-system-plugins.mjs";
 import { stageSystemSkills } from "./stage-system-skills.mjs";
 import { stageSystemThemesFromArchives } from "./stage-system-themes.mjs";
 
 // 从 .env.<mode>/.env 注入构建期变量（如 VETTA_TENANT），命令行内联优先。
-loadBuildEnv();
-const updatePublishConfig = resolveUpdatePublishConfig();
+const buildEnvMode = loadBuildEnv();
+const buildEnvironment = validateDesktopBuildEnvironment({ env: process.env, mode: buildEnvMode });
+const updatePublishConfig = buildEnvironment.updateConfig;
+const pluginSelection = buildEnvironment.pluginSelection;
+const macSigning = buildEnvironment.macSigning;
 
 const projectRoot = join(import.meta.dirname, "..");
 const buildStageDir = join(tmpdir(), "vetta-desktop-build");
@@ -135,53 +138,7 @@ console.log(
 			: "[prepare-pack] speech input disabled by VETTA_SPEECH_INPUT_ENABLED=false",
 );
 
-// macOS 代码签名 / 公证：凭据齐全时自动开启，一个都不设时保持未签名产物。
-// 变量含义与申请流程见 docs/deploy/apple-code-signing.md。
-const MAC_SIGN_ENV_KEYS = [
-	"CSC_LINK",
-	"CSC_NAME",
-	"APPLE_TEAM_ID",
-	"APPLE_ID",
-	"APPLE_APP_SPECIFIC_PASSWORD",
-	"APPLE_API_KEY",
-	"APPLE_API_KEY_ID",
-	"APPLE_API_ISSUER",
-];
-
-function resolveMacSigning() {
-	const has = (key) => typeof process.env[key] === "string" && process.env[key].trim().length > 0;
-	if (!MAC_SIGN_ENV_KEYS.some(has)) return { enabled: false };
-
-	// VETTA_SKIP_NOTARIZE=1：保留签名、只跳过公证，供本地更新闭环快速迭代。
-	// Squirrel.Mac 只校验代码签名，不要求公证票据；本地构建的产物没有 quarantine
-	// 属性，Gatekeeper 也不会拦。因此这种产物能完整跑通更新链路，但**不可分发**——
-	// 用户下载到的包带 quarantine，没有票据会被判「已损坏」。
-	// 兜底：verify-mac-update.mjs 在 VETTA_REQUIRE_MAC_SIGNATURE=1 时会跑
-	// `xcrun stapler validate`，未公证的产物过不了 test/stable 的发布门禁。
-	const skipNotarize = process.env.VETTA_SKIP_NOTARIZE === "1";
-
-	// 半配置状态最危险：签了名却没公证的产物照样被 Gatekeeper 拦，
-	// 而 DMG 里的修复助手此时已被移除。宁可直接失败。
-	const missing = [];
-	if (!has("CSC_LINK") && !has("CSC_NAME")) missing.push("CSC_LINK 或 CSC_NAME");
-	if (!has("APPLE_TEAM_ID")) missing.push("APPLE_TEAM_ID");
-	if (!skipNotarize) {
-		const hasApiKey = has("APPLE_API_KEY") && has("APPLE_API_KEY_ID") && has("APPLE_API_ISSUER");
-		const hasAppleId = has("APPLE_ID") && has("APPLE_APP_SPECIFIC_PASSWORD");
-		if (!hasApiKey && !hasAppleId) {
-			missing.push("APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER，或 APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD");
-		}
-	}
-	if (missing.length > 0) {
-		throw new Error(
-			`[prepare-pack] macOS 签名凭据不完整，缺少：${missing.join("；")}。` +
-				"申请与注入流程见 docs/deploy/apple-code-signing.md；要出未签名包请清空所有 CSC_* / APPLE_* 变量。",
-		);
-	}
-	return { enabled: true, notarize: !skipNotarize, teamId: process.env.APPLE_TEAM_ID.trim() };
-}
-
-const macSigning = resolveMacSigning();
+// 签名配置已经由统一构建环境检查解析；这里仅负责把结果映射到 builder 配置。
 if (!macSigning.enabled) {
 	console.log("[prepare-pack] macOS 签名凭据未配置，产出未签名包");
 } else if (macSigning.notarize) {
@@ -323,14 +280,11 @@ const appPkg = {
 writeFileSync(join(buildStageDir, "package.json"), JSON.stringify(appPkg, null, "\t") + "\n");
 
 // Copy build outputs
-cpSync(join(projectRoot, "dist/main"), join(buildStageDir, "main"), { recursive: true });
-cpSync(join(projectRoot, "dist/preload"), join(buildStageDir, "preload"), { recursive: true });
-cpSync(join(projectRoot, "dist/renderer"), join(buildStageDir, "renderer"), { recursive: true });
-// OCR headless runner: dedicated hidden BrowserWindow entry + its preload.
-// The CLI flow `Vetta --ocr-pdf <pdf> --output <json>` loads this HTML and
-// drives the per-page render + OCR pipeline inside Electron's renderer.
-cpSync(join(projectRoot, "dist/ocr-preload"), join(buildStageDir, "ocr-preload"), { recursive: true });
-cpSync(join(projectRoot, "dist/ocr-runner"), join(buildStageDir, "ocr-runner"), { recursive: true });
+for (const { source, target } of DESKTOP_BUILD_OUTPUTS) {
+	// OCR outputs are included in the same manifest so staging and runtime
+	// resource checks cannot silently drift from the main app layout.
+	cpSync(join(projectRoot, source), join(buildStageDir, target), { recursive: true });
+}
 
 // macOS DMG: 生成背景图（写入 repo build/，下面 cpSync 会一并带到 staging）。
 // 仅 darwin host 跑；非 darwin 上即使存在 mac target，也不会真正出 dmg。
@@ -666,7 +620,6 @@ await stageVendorRuntimes();
 // build:presets 已为每个 preset 生成 release/<id>-<version>.zip。打包阶段只消费
 // zip 制品，校验后解压到 Resources/system-plugins/<id>/，不读取源码 dist。
 // 按 profile + 租户筛选打包进 App 的系统插件。
-const pluginSelection = resolveSystemPluginSelection();
 console.log(
 	`[prepare-pack] 系统插件 profile=${pluginSelection.profile ?? "(未配置)"}，租户=${pluginSelection.name ?? "(未配置)"}：${
 		pluginSelection.pluginIds ? [...pluginSelection.pluginIds].join(", ") : "(全部 preset)"

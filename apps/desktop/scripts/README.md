@@ -175,13 +175,34 @@ cd apps/desktop && bun run build:ocr-runner
 cd apps/desktop && bun run build:main
 ```
 
+## 构建环境前置检查
+
+所有 `dist:*` / `pack:*` 命令都会先执行 `bun run validate:pack-env`，而且检查发生在清理旧产物、准备原生依赖和编译之前。`prepare-pack.js` 还会复用同一校验器做第二道防线。检查覆盖：
+
+- `VETTA_CLOUD_ENABLED` 必须明确为 `true`（商业版）或 `false`（开源版）；
+- 商业版必须有合法的服务端 URL，并使用 `generic` 更新源；开源版必须使用 GitHub 更新源和 GitHub Marketplace；
+- Windows、macOS、Linux 目标标签、语音开关、生产插件租户；
+- Sentry / PostHog 的 URL、布尔值、采样率及 Source Map 上传变量组合；
+- macOS 签名、公证与强制验签变量组合。
+
+开源版在三种宿主系统上统一执行：
+
+```bash
+bun run dist:opensource
+# 仅生成 unpacked 目录
+bun run dist:opensource -- --target dir
+```
+
+该入口读取 `.env.opensource`，固定关闭 cloud、使用 GitHub provider，并为官方仓库与公开 Marketplace 提供默认值；fork 可在文件或 shell 中覆盖 owner、repo 和 Marketplace 仓库。
+
 ## Desktop 自动更新发布
 
 客户端统一使用 `electron-updater`，更新源由打包时的环境变量决定，与目标操作系统无关：
 
 - `VETTA_UPDATE_PROVIDER=generic`：R2、自建对象存储或任意静态 HTTP/CDN。
 - `VETTA_UPDATE_PROVIDER=github`：公开 GitHub Releases。
-- `VETTA_UPDATE_PROVIDER=none`：不生成更新源配置，适合开发和 QA 包。
+- 未设置 `VETTA_UPDATE_PROVIDER`：默认使用 stable 更新源 `https://releases.openvetta.com/desktop/stable`。
+- `VETTA_UPDATE_PROVIDER=none`：不受支持，打包时直接失败；所有可打包产物都必须有更新源配置。
 
 正式环境默认读取：
 
@@ -228,10 +249,10 @@ VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/stable
 
 ### 发布到 GitHub Releases
 
-开源构建只需覆盖发布源，不需要改客户端代码。仓库工作流默认使用 GitHub Releases；官方仓库设置 `VETTA_RELEASE_TARGET=r2` 后切到 R2：
+开源构建使用专用入口。仓库工作流默认将 GitHub Releases 与开源版配对；官方仓库设置 `VETTA_RELEASE_TARGET=r2` 后切到商业版与 R2：
 
 ```bash
-bun run dist:win
+bun run dist:opensource
 ```
 
 Windows 的 Inno Setup 安装包是自定义产物，应由仓库的 release workflow（或 `gh release upload`）连同 `latest.yml` 和 blockmap 上传。各操作系统仍应在对应系统的 CI runner 上构建；它们可以共同上传到同一个 GitHub Release。

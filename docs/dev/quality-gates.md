@@ -15,6 +15,7 @@
 | 按包 | `bun run test:pkg <name>` | 改单包 | 例：`test:pkg ai` |
 | 按变更 | `bun run test:changed` | 提 PR 前可选 | 合并已提交/工作区/未跟踪改动，测试触达包及其下游依赖 |
 | UI | `bun run verify:ui:*` | Renderer/Main 可见变更 | 见 [README](./README.md) |
+| Desktop 生产边界 | `bun run verify:desktop:contracts`；受影响时由 GitHub Actions 自动运行 Windows packaged smoke | 修改 Desktop 主进程、preload、打包脚本、原生依赖或远程控制 | 见下文 |
 | 死代码（可选） | `bun run deadcode:report` | 清理时 | Knip 报告，**默认不阻断** `check` |
 
 ## 新增脚本
@@ -159,7 +160,21 @@ workspace 包声明解析。因此，上游源码修改但 `dist/*.d.ts` 尚未�
 
 ## CI
 
-`.github/workflows/quality.yml` 在 PR 和推送到 `dev` 时执行冻结依赖安装、`bun run check` 和质量脚本测试。CI 使用只读检查，不会自动修复候选提交。
+`.github/workflows/quality.yml` 只负责通用质量门禁：冻结依赖安装、`bun run check`、质量脚本测试和 Runtime 合同检查。Desktop 生产边界由独立的 `.github/workflows/desktop-packaged.yml` 负责：它始终运行打包合同检查，涉及 Desktop 主进程、preload、打包脚本、原生依赖、远程控制或锁文件的变更才会启动 Windows runner，构建 unpacked packaged 应用并运行最小 Electron smoke；无关变更不会构建 Desktop。两个 workflow 都使用只读检查，不会自动修复候选提交。
+
+Desktop 打包合同可在本地快速运行：
+
+```text
+bun run verify:desktop:contracts
+bun run test:desktop:packaging
+```
+
+需要验证真实生产布局时运行 Windows packaged smoke：
+
+```text
+bun run --cwd apps/desktop dist:opensource -- --target dir
+bun run --cwd apps/desktop test:e2e:packaged
+```
 
 四个核心包的历史测试目前仍有模型目录和跨平台相关的基线失败，因此暂不作为 PR 强制门禁。修复这些基线后，再将 `bun run test:unit` 加入 CI；在此之前它仍用于本地完整诊断，`bun run test:changed` 用于按影响范围验证。
 
