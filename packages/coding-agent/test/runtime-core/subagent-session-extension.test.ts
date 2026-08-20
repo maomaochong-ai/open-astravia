@@ -50,4 +50,29 @@ describe("Coding Agent Subagent Session Extension", () => {
 		);
 		await composition.dispose();
 	});
+
+	it("keeps the runtime attached while disposal drains document callbacks", async () => {
+		const composition = await SessionExtensionComposition.create({
+			definitions: [createCodingAgentSubagentSessionExtension()],
+		});
+		const onDocumentChanged = vi.fn(async () => {});
+		const dispose = vi.fn(async () => {
+			await composition.documentParticipants[0]!.onDocumentChanged({} as never);
+		});
+		composition.services.require(CODING_AGENT_SUBAGENT_RUNTIME_OWNER).attach({
+			feature: { id: "coding-agent-subagents", prepare: vi.fn() },
+			initialize: vi.fn(),
+			onDocumentChanged,
+			onSessionEvent: vi.fn(),
+			dispose,
+		} as unknown as CodingAgentSubagentRuntime);
+
+		await composition.dispose();
+
+		expect(dispose).toHaveBeenCalledOnce();
+		expect(onDocumentChanged).toHaveBeenCalledOnce();
+		expect(() => composition.documentParticipants[0]!.onDocumentChanged({} as never)).toThrow(
+			"Coding Agent Subagent runtime has not been attached",
+		);
+	});
 });

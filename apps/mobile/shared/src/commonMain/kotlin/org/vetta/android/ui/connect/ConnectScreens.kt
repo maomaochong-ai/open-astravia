@@ -170,6 +170,12 @@ fun DeviceDetailScreen(
     onDisconnect: () -> Unit,
     onNewChat: () -> Unit,
 ) {
+    val statusLabel =
+        when (device.status) {
+            DeviceStatus.Online -> Str.deviceConnected
+            DeviceStatus.Connecting -> Str.connectingDesktop
+            DeviceStatus.Offline -> Str.disconnected
+        }
     Scaffold(
         containerColor = MaterialTheme.vettaExtra.pageBackground,
         topBar = {
@@ -195,7 +201,7 @@ fun DeviceDetailScreen(
                 .padding(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                StatusChip(text = Str.deviceConnected, positive = device.status == DeviceStatus.Online)
+                StatusChip(text = statusLabel, positive = device.status == DeviceStatus.Online)
                 Spacer(Modifier.weight(1f))
             }
             Spacer(Modifier.height(12.dp))
@@ -235,7 +241,11 @@ fun DeviceDetailScreen(
             }
 
             Spacer(Modifier.height(20.dp))
-            PrimaryBlackButton(text = Str.startConversation, onClick = onNewChat)
+            PrimaryBlackButton(
+                text = Str.startConversation,
+                onClick = onNewChat,
+                enabled = device.status == DeviceStatus.Online,
+            )
             Spacer(Modifier.height(24.dp))
         }
     }

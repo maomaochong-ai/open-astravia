@@ -16,10 +16,15 @@ export function RemotePairingSettings(): JSX.Element {
 	const [busy, setBusy] = useState(false);
 
 	useEffect(() => {
-		void window.vetta.remotePairing.getState().then((next) => {
-			setState(next);
-			if (next.relayBaseUrl) setRelay(next.relayBaseUrl.replace(/^ws/, "http"));
-		});
+		const sync = (): void => {
+			void window.vetta.remotePairing.getState().then((next) => {
+				setState(next);
+				if (next.relayBaseUrl) setRelay(next.relayBaseUrl.replace(/^ws/, "http"));
+			});
+		};
+		sync();
+		const timer = window.setInterval(sync, 1000);
+		return () => window.clearInterval(timer);
 	}, []);
 
 	useEffect(() => {
@@ -104,11 +109,11 @@ export function RemotePairingSettings(): JSX.Element {
 					</div>
 					<Switch
 						checked={state.inputEnabled}
-						disabled={state.status !== "ready" || !state.inputSupported}
+						disabled={(state.status !== "ready" && state.status !== "connected") || !state.inputSupported}
 						onCheckedChange={(enabled) => void setInputEnabled(enabled)}
 					/>
 				</div>
-				{state.status === "ready" ? (
+				{state.status === "ready" || state.status === "connected" ? (
 					<Button variant="outline" onClick={() => void revoke()}>
 						<span className="icon-[solar--link-broken-linear] h-4 w-4" />
 						{t("remote.revoke")}

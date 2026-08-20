@@ -30,6 +30,8 @@ import org.vetta.android.domain.remote.parsePairingInvite
 import org.vetta.android.domain.session.ConversationOrigin
 import org.vetta.android.domain.session.MessageStatus
 import org.vetta.android.ui.i18n.Str
+import org.vetta.android.ui.navigation.AppRoute
+import org.vetta.android.ui.navigation.MainTab
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -98,6 +100,22 @@ class AppViewModelRemoteConversationTest {
             assertTrue(container.sessionStore.sessions.value.isEmpty())
             assertEquals("桌面设备不可用", viewModel.state.value.globalError?.title)
         }
+
+    @Test
+    fun connectedDesktopBackReturnsToMainWithoutLogin() =
+        runTest(dispatcher) {
+            val gateway = FakeRemoteConversationGateway()
+            val viewModel = AppViewModel(container(gateway))
+            advanceUntilIdle()
+
+            viewModel.startDesktopConversation("desktop-1")
+            advanceUntilIdle()
+            gateway.devices.value = emptyList()
+            viewModel.navigateBackFromSecondary()
+
+            assertEquals(AppRoute.Main(MainTab.Home), viewModel.state.value.route)
+        }
+
 
     @Test
     fun pairingConnectionIsSingleFlightAndSurfacesFailure() =
