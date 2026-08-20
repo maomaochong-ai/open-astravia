@@ -19,6 +19,7 @@ const developmentPluginIds = [
 ];
 
 const productionPluginIds = [
+	"vetta-actions",
 	"vetta-ui-design",
 	"image-gen",
 	"media-viewer",
@@ -26,6 +27,7 @@ const productionPluginIds = [
 	"svg-viewer",
 	"chart-renderer",
 	"git",
+	"plugin-workbench",
 ];
 
 
