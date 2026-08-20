@@ -30,6 +30,7 @@ const TypingHeartbeatInterval = 5 * time.Second
 // final assistant text and no error to report.
 const DeferredEmptyText = "⚠️ 未返回文本内容"
 
+
 // HostResponder is the optional callback the bridge uses to answer
 // `host_request` events emitted by built-in coding-agent tools (see
 // ADR-0006). Receiving a host_request and not having a responder set is
@@ -72,6 +73,16 @@ type Bridge struct {
 	caps       transport.Capabilities
 	responder  HostResponder
 	pathChange PathChangeHandler
+
+	// inboundRef is the platform message ID of the inbound message that
+	// triggered this turn (set by the router via SetInboundRef). Drives two
+	// best-effort niceties: the first outbound message of the turn replies
+	// to it on thread-capable platforms, and status reactions are attached
+	// to it on reaction-capable platforms.
+	inboundRef     string
+	reactor        transport.Reactor // non-nil only when caps.SupportsReactions and the transport implements it
+	statusReaction string            // currently applied status emoji, "" if none
+	replyAnchored  bool              // first outbound message already carried ReplyToID
 
 	// streaming state
 	buf           strings.Builder
@@ -131,6 +142,11 @@ func New(tr transport.Transport, chatID string) *Bridge {
 		// elapsed-time display rounded to whole seconds.
 		b.deferred = &deferredState{promptAt: time.Now()}
 	}
+	if b.caps.SupportsReactions {
+		if r, ok := tr.(transport.Reactor); ok {
+			b.reactor = r
+		}
+	}
 	return b
 }
 
@@ -174,9 +190,18 @@ func (b *Bridge) handleSessionPathChanged(raw json.RawMessage) {
 // reporting). Run is intended to be called from one goroutine; the caller
 // owns goroutine lifetime.
 func (b *Bridge) Run(ctx context.Context, events <-chan hostclient.AgentEvent) error {
+	b.setStatusReaction(ctx, StatusReactionWorking)
+	var err error
 	if b.caps.DeferUntilTurnEnd {
-		return b.runDeferred(ctx, events)
+		err = b.runDeferred(ctx, events)
+	} else {
+		err = b.runStreaming(ctx, events)
 	}
+	b.finishStatusReaction(ctx, err)
+	return err
+}
+
+func (b *Bridge) runStreaming(ctx context.Context, events <-chan hostclient.AgentEvent) error {
 	var firstErr error
 	for {
 		select {
@@ -345,7 +370,7 @@ func (b *Bridge) sendDeferredDigest(ctx context.Context, allowEmpty bool) error 
 	if d.toolCount > 0 {
 		out = fmt.Sprintf("调用了 %d 次工具，耗时 %d 秒。\n\n%s", d.toolCount, elapsedSec, body)
 	}
-	_, err := b.tr.SendMessage(ctx, b.chatID, transport.OutboundMessage{Text: out})
+	_, err := b.tr.SendMessage(ctx, b.chatID, b.outbound(transport.OutboundMessage{Text: out}))
 	return err
 }
 
@@ -500,7 +525,7 @@ func (b *Bridge) commitEdit(ctx context.Context, text string) error {
 	if b.editMessageID == "" {
 		// First frame of a streaming response — hint the transport so it
 		// can pick its dedicated streaming path (e.g. cardkit on Feishu).
-		id, err := b.tr.SendMessage(ctx, b.chatID, transport.OutboundMessage{Text: text, Streaming: true})
+		id, err := b.tr.SendMessage(ctx, b.chatID, b.outbound(transport.OutboundMessage{Text: text, Streaming: true}))
 		if err != nil {
 			return err
 		}
@@ -542,7 +567,7 @@ func (b *Bridge) maybeChunk(ctx context.Context) error {
 		}
 		head := strings.TrimRight(text[:split], "\n")
 		if head != "" {
-			if _, err := b.tr.SendMessage(ctx, b.chatID, transport.OutboundMessage{Text: head}); err != nil {
+			if _, err := b.tr.SendMessage(ctx, b.chatID, b.outbound(transport.OutboundMessage{Text: head})); err != nil {
 				return err
 			}
 			b.markOutputSent()
@@ -571,9 +596,9 @@ func (b *Bridge) flushThinking(ctx context.Context) error {
 		return nil
 	}
 	b.thinkingBuf.Reset()
-	_, err := b.tr.SendMessage(ctx, b.chatID, transport.OutboundMessage{
+	_, err := b.tr.SendMessage(ctx, b.chatID, b.outbound(transport.OutboundMessage{
 		Text: "思考：\n" + text,
-	})
+	}))
 	return err
 }
 
@@ -602,7 +627,7 @@ func (b *Bridge) flushText(ctx context.Context) error {
 		return b.flushPendingErrors(ctx)
 	}
 	b.buf.Reset()
-	if _, err := b.tr.SendMessage(ctx, b.chatID, transport.OutboundMessage{Text: text}); err != nil {
+	if _, err := b.tr.SendMessage(ctx, b.chatID, b.outbound(transport.OutboundMessage{Text: text})); err != nil {
 		return err
 	}
 	b.markOutputSent()
@@ -620,7 +645,7 @@ func (b *Bridge) flushPendingErrors(ctx context.Context) error {
 	}
 	combined := strings.Join(b.pendingErrors, "\n")
 	b.pendingErrors = nil
-	_, err := b.tr.SendMessage(ctx, b.chatID, transport.OutboundMessage{Text: combined})
+	_, err := b.tr.SendMessage(ctx, b.chatID, b.outbound(transport.OutboundMessage{Text: combined}))
 	return err
 }
 
@@ -629,9 +654,9 @@ func (b *Bridge) sendToolCallSummary(ctx context.Context, raw json.RawMessage) e
 	if toolName == "" {
 		toolName = "unknown"
 	}
-	if _, err := b.tr.SendMessage(ctx, b.chatID, transport.OutboundMessage{
+	if _, err := b.tr.SendMessage(ctx, b.chatID, b.outbound(transport.OutboundMessage{
 		Text: "调用工具：`" + toolName + "`",
-	}); err != nil {
+	})); err != nil {
 		return err
 	}
 	b.markOutputSent()

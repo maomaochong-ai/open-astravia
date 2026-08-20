@@ -20,6 +20,7 @@ type InboundMessage struct {
 	MessageID   string       // platform-native
 	ReplyToID   string       // empty if not a reply
 	Text        string       // already stripped of @bot prefixes and command noise marker is preserved
+	ActionID    string       // non-empty when this message is a button/interaction callback; Text carries the pressed Button.Value
 	Attachments []Attachment // empty for first milestone (text-only)
 	ReceivedAt  time.Time
 	Raw         any // platform-specific, do not touch from upper layers
@@ -40,6 +41,26 @@ type OutboundMessage struct {
 	Blocks      []Block      // optional structured content
 	Attachments []Attachment // first milestone: empty
 	Streaming   bool         // see doc above
+	// ReplyToID asks the transport to send this message as a reply to (or in
+	// the thread of) an earlier platform message. Transports whose
+	// Capabilities.SupportsThreads is false ignore it.
+	ReplyToID string
+	// Buttons is an optional inline keyboard, expressed as rows of buttons.
+	// Transports whose Capabilities.SupportsButtons is false render the
+	// buttons as a numbered plain-text list appended to Text so the user can
+	// answer by typing the number or value. When a user presses a button the
+	// transport delivers an InboundMessage with ActionID set and Text equal
+	// to the pressed Button.Value.
+	Buttons [][]Button
+}
+
+// Button is one pressable element of an inline keyboard. Value is the
+// payload that round-trips back through InboundMessage.Text when pressed;
+// keep it short — several platforms cap callback payloads (Telegram: 64
+// bytes).
+type Button struct {
+	Text  string // user-visible label
+	Value string // callback payload, echoed back as InboundMessage.Text
 }
 
 // Block is a piece of structured content the bridge can emit. Transports
@@ -89,7 +110,13 @@ type Capabilities struct {
 	SupportsButtons     bool
 	SupportsFileUpload  bool
 	SupportsThreads     bool
-	MaxMessageLength    int // 0 = unlimited
+	// SupportsReactions declares that the transport also implements the
+	// optional Reactor interface (see transport.go). The bridge uses
+	// reactions on the triggering inbound message as a lightweight turn
+	// status indicator (received / done / failed) on platforms that have
+	// them.
+	SupportsReactions bool
+	MaxMessageLength  int // 0 = unlimited
 	// DeferUntilTurnEnd makes the bridge skip every intermediate
 	// emission (text deltas, thinking, tool-call summaries) and instead
 	// send a single digest message at agent_end. Used by transports with

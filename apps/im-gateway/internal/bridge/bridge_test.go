@@ -24,10 +24,11 @@ type fakeTransport struct {
 }
 
 type transportCall struct {
-	Action    string // "send" | "edit" | "delete" | "typing"
+	Action    string // "send" | "edit" | "delete" | "typing" | "react+" | "react-"
 	ChatID    string
 	MessageID string
 	Text      string
+	ReplyToID string
 }
 
 func newFakeTransport(caps transport.Capabilities) *fakeTransport {
@@ -46,7 +47,7 @@ func (f *fakeTransport) SendMessage(_ context.Context, chatID string, msg transp
 	defer f.mu.Unlock()
 	f.nextID++
 	id := "m" + itoa(f.nextID)
-	f.calls = append(f.calls, transportCall{Action: "send", ChatID: chatID, MessageID: id, Text: msg.Text})
+	f.calls = append(f.calls, transportCall{Action: "send", ChatID: chatID, MessageID: id, Text: msg.Text, ReplyToID: msg.ReplyToID})
 	return id, nil
 }
 

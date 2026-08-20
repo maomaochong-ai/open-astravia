@@ -269,6 +269,9 @@ drain:
 	}
 
 	br := bridge.New(r.tr, seed.ChatID)
+	// Reply anchoring + status reactions target the message that triggered
+	// the turn (best-effort; only used on platforms that support it).
+	br.SetInboundRef(seed.MessageID)
 	// host_request → host_response reverse RPC. The bridge invokes this
 	// when the agent's `im_send_attachment` tool fires; we route the
 	// command back to the same coding-agent subprocess via the session's

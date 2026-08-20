@@ -82,6 +82,25 @@ type Transport interface {
 	SendAttachment(ctx context.Context, chatID string, att OutboundAttachment) (messageID string, err error)
 }
 
+// Reactor is the optional emoji-reaction extension of Transport. It is a
+// separate interface (asserted via type switch, never added to Transport
+// itself) so that adding reaction support does not break every existing
+// implementation. A transport that implements Reactor MUST also declare
+// Capabilities.SupportsReactions=true — upper layers check the flag first
+// and only then assert the interface.
+//
+// Emoji is always a unicode emoji (e.g. "👀", "✅", "❌"); transports whose
+// platform addresses reactions by name (e.g. Slack's "eyes") translate
+// internally.
+type Reactor interface {
+	// AddReaction attaches an emoji reaction to an existing message.
+	AddReaction(ctx context.Context, chatID, messageID, emoji string) error
+
+	// RemoveReaction removes a previously added reaction. Removing a
+	// reaction that is not present is a no-op (return nil).
+	RemoveReaction(ctx context.Context, chatID, messageID, emoji string) error
+}
+
 // OutboundAttachment is the bridge → transport payload for SendAttachment.
 // The path is read from local disk by the transport; the bridge never reads
 // the bytes itself.
