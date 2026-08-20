@@ -5,17 +5,19 @@ import { Popover, PopoverTrigger } from "@shared/components/ui/popover";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import { SettingsMenuPopover } from "./SettingsMenuPopover";
 import { SettingsMenuTrigger } from "./SettingsMenuTrigger";
-import { useRefreshBillingOnOpen, useSettingsMenuModel } from "./useSettingsMenuModel";
+import { useRefreshBillingOnOpen, useSettingsMenuModel, useSyncUpdateOnOpen } from "./useSettingsMenuModel";
 
 export function SettingsMenu(): JSX.Element {
 	const [open, setOpen] = useState(false);
 	const model = useSettingsMenuModel(open, setOpen);
 	const refreshBillingOnOpen = useRefreshBillingOnOpen();
+	const syncUpdateOnOpen = useSyncUpdateOnOpen();
 	const ThemeSettingsMenuTrigger = useThemeComponent("sidebar.settingsTrigger", SettingsMenuTrigger);
 
 	const handleOpenChange = (next: boolean): void => {
 		model.actions.setOpen(next);
 		refreshBillingOnOpen(next, model.user !== null);
+		syncUpdateOnOpen(next);
 	};
 
 	return (

@@ -255,6 +255,7 @@ export function createSystemApi(
 		},
 		updater: {
 			check: () => ipc.invoke("vetta:updater:check"),
+			sync: () => ipc.invoke("vetta:updater:sync"),
 			getState: () => ipc.invoke("vetta:updater:get-state"),
 			getCurrentVersion: () => ipc.invoke("vetta:updater:get-current-version"),
 			download: () => ipc.invoke("vetta:updater:download"),

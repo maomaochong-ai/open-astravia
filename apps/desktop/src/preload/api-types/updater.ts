@@ -15,6 +15,8 @@ export interface UpdaterState {
 
 export interface DesktopUpdaterApi {
 	check(): Promise<UpdaterState>;
+	/** 机会性后台补查：忙碌或距上次检查太近时静默跳过，不改变 UI 的忙碌态。 */
+	sync(): Promise<void>;
 	getState(): Promise<UpdaterState>;
 	getCurrentVersion(): Promise<string>;
 	/** 启动后台下载（无感）。返回最终状态。 */

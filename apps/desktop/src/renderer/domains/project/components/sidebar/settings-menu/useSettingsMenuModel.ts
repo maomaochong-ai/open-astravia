@@ -86,3 +86,15 @@ export function useRefreshBillingOnOpen(): (open: boolean, userPresent: boolean)
 			.catch(console.error);
 	};
 }
+
+/**
+ * 打开设置菜单时顺带补一次更新检查：这是用户最可能注意到「有新版本」的时机，
+ * 也是长期不退出应用的用户与周期性重查之外的第二条同步入口。节流与忙碌判断
+ * 都在主进程（见 UpdaterService.syncInBackground），这里不做 UI 忙碌态。
+ */
+export function useSyncUpdateOnOpen(): (open: boolean) => void {
+	return (open: boolean): void => {
+		if (!open) return;
+		void window.vetta.updater.sync().catch(console.error);
+	};
+}

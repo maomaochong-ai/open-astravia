@@ -6,6 +6,10 @@ export function registerUpdaterIpc(): () => void {
 		return updaterService.check();
 	});
 
+	ipcMain.handle("vetta:updater:sync", async () => {
+		await updaterService.syncInBackground();
+	});
+
 	ipcMain.handle("vetta:updater:get-state", () => {
 		return updaterService.getState();
 	});
@@ -32,6 +36,7 @@ export function registerUpdaterIpc(): () => void {
 
 	return () => {
 		ipcMain.removeHandler("vetta:updater:check");
+		ipcMain.removeHandler("vetta:updater:sync");
 		ipcMain.removeHandler("vetta:updater:get-state");
 		ipcMain.removeHandler("vetta:updater:get-current-version");
 		ipcMain.removeHandler("vetta:updater:download");

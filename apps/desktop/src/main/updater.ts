@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getVettaHomePath } from "@vetta/action-rpc";
-import { app, autoUpdater as nativeAutoUpdater } from "electron";
+import { app, autoUpdater as nativeAutoUpdater, powerMonitor } from "electron";
 import electronUpdater from "electron-updater";
 
 import { mainT } from "./i18n/index.js";
@@ -82,4 +82,14 @@ const updaterEngine = new ElectronUpdaterEngine(autoUpdater, innoWindowsUpdate, 
 	prepare: prepareQuit,
 	finalize: finalizeQuit,
 });
-export const updaterService = new UpdaterService(updaterEngine, currentVersion, app.isPackaged, mainT);
+// powerMonitor 只能在 app ready 之后订阅，因此这里只传订阅函数，
+// 由 UpdaterService.onAppReady() 在合适的时机调用。
+const systemEvents = {
+	onResume: (listener: () => void) => {
+		powerMonitor.on("resume", listener);
+		return () => powerMonitor.off("resume", listener);
+	},
+};
+export const updaterService = new UpdaterService(updaterEngine, currentVersion, app.isPackaged, mainT, {
+	systemEvents,
+});
