@@ -40,6 +40,7 @@ import kotlin.random.Random
 
 data class AppUiState(
     val bootstrapped: Boolean = false,
+    val mainAccessGranted: Boolean = false,
     val route: AppRoute = AppRoute.Boot,
     val mainTab: MainTab = MainTab.Home,
     val themeMode: ThemeMode = ThemeMode.System,
@@ -167,6 +168,7 @@ class AppViewModel(
             _state.update {
                 it.copy(
                     bootstrapped = true,
+                    mainAccessGranted = true,
                     user = user,
                     subscription = sub,
                     models = models,
@@ -260,6 +262,7 @@ class AppViewModel(
                     }
                 }
                 if (connected) {
+                    _state.update { it.copy(mainAccessGranted = true) }
                     if (invite != null && resume != null) {
                         container.preferences.remotePairingId = invite.pairingId
                         container.preferences.remoteResumeSecret = resume
@@ -343,7 +346,12 @@ class AppViewModel(
     fun openFilesContext(deviceId: String) = navigate(AppRoute.FilesContext(deviceId))
 
     fun navigateBackFromSecondary() {
-        if (_state.value.user == null) navigate(AppRoute.Welcome) else navigate(AppRoute.Main(_state.value.mainTab))
+        // QR pairing is an independent entry path; a connected Desktop is enough to use the main shell.
+        if (_state.value.mainAccessGranted || _state.value.user != null || _state.value.devices.isNotEmpty()) {
+            navigate(AppRoute.Main(_state.value.mainTab))
+        } else {
+            navigate(AppRoute.Welcome)
+        }
     }
 
     private fun navigate(route: AppRoute) {
@@ -584,6 +592,7 @@ class AppViewModel(
                 }
                 return@launch
             }
+            _state.update { it.copy(mainAccessGranted = true) }
             val session =
                 container.sessionStore.createSession(
                     title = Str.conversationWith.replace("%s", device.name),

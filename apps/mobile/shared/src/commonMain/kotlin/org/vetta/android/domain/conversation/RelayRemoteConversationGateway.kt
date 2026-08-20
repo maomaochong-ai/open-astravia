@@ -3,6 +3,7 @@ package org.vetta.android.domain.conversation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
@@ -39,6 +41,7 @@ class RelayRemoteConversationGateway(
 ) : RemoteConversationGateway {
     private val _devices = MutableStateFlow<List<DesktopDevice>>(emptyList())
     private var connection: RemoteConnection? = null
+    private var connectionStateJob: Job? = null
     private val remoteSessionIds = mutableMapOf<String, String>()
 
     override val devices: StateFlow<List<DesktopDevice>> = _devices
@@ -46,6 +49,8 @@ class RelayRemoteConversationGateway(
     override suspend fun connect(target: String): Boolean {
         val url = normalizeRelayUrl(target)
         val old = connection
+        connectionStateJob?.cancel()
+        connectionStateJob = null
         old?.close()
         val next =
             RemoteConnection(
@@ -61,8 +66,25 @@ class RelayRemoteConversationGateway(
                 scope = scope,
                 logger = PlatformRemoteLogger,
                 now = { kotlin.time.Clock.System.now().toEpochMilliseconds() },
-            )
+        )
         connection = next
+        connectionStateJob = scope.launch {
+            next.state.collect { state ->
+                val status =
+                    when (state) {
+                        RemoteConnectionState.Online -> DeviceStatus.Online
+                        RemoteConnectionState.Connecting,
+                        RemoteConnectionState.Reconnecting,
+                        RemoteConnectionState.Recovering,
+                        -> DeviceStatus.Connecting
+                        RemoteConnectionState.Idle -> DeviceStatus.Connecting
+                        RemoteConnectionState.Closed,
+                        RemoteConnectionState.Failed,
+                        -> DeviceStatus.Offline
+                    }
+                _devices.updateStatus(status)
+            }
+        }
         next.connect()
         waitUntilOnline(next)
         val snapshot = next.snapshot()
@@ -81,6 +103,8 @@ class RelayRemoteConversationGateway(
     }
 
     override suspend fun disconnect(deviceId: String) {
+        connectionStateJob?.cancel()
+        connectionStateJob = null
         connection?.close()
         connection = null
         remoteSessionIds.clear()
@@ -147,5 +171,9 @@ class RelayRemoteConversationGateway(
         val host = if (separator >= 0) value.substring(0, separator) else value
         val pairing = if (separator >= 0) value.substring(separator + 1) else "default"
         return "ws://$host/relay/$pairing/mobile"
+    }
+
+    private fun MutableStateFlow<List<DesktopDevice>>.updateStatus(status: DeviceStatus) {
+        update { devices -> devices.map { device -> device.copy(status = status) } }
     }
 }

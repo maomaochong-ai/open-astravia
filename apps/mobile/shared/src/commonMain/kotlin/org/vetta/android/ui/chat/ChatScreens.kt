@@ -127,7 +127,7 @@ fun ChatScreen(
 
     val canSend =
         !isStreaming &&
-            selectedModel != null &&
+            (surface == ChatSurface.Desktop || selectedModel != null) &&
             (draft.isNotBlank() || pendingImages.isNotEmpty())
 
     Scaffold(

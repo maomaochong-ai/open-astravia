@@ -1,4 +1,5 @@
 import { hostname } from "node:os";
+import type { RemoteConnectionState } from "@vetta/remote-control";
 import { RemoteConnection, WebSocketRemoteTransport } from "@vetta/remote-control";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
 import { getAppLogger } from "../logger.js";
@@ -11,6 +12,7 @@ export interface DesktopRemoteAccessOptions {
 	readonly pairingToken?: string;
 	readonly controlTarget?: string;
 	readonly conversationCwd: string;
+	readonly onStateChange?: (state: RemoteConnectionState) => void;
 }
 
 interface ActiveConnector {
@@ -71,6 +73,7 @@ async function connect(options: DesktopRemoteAccessOptions, runGeneration: numbe
 	});
 	const connector = new DesktopRemoteConnector(connection, operations);
 	const unsubscribe = connection.onEvent((event) => {
+		if (event.type === "state") options.onStateChange?.(event.state);
 		if (event.type === "state" && event.state === "online") reconnectDelayMs = 1_000;
 		if (event.type === "state" && (event.state === "reconnecting" || event.state === "failed")) {
 			void scheduleReconnect(options, runGeneration);

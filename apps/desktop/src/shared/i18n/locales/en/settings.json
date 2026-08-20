@@ -17,6 +17,7 @@
     "status": {
       "idle": "Not paired",
       "ready": "Waiting for phone",
+      "connected": "Connected",
       "error": "Needs attention"
     }
   },

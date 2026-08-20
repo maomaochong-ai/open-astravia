@@ -1,5 +1,5 @@
 export interface RemotePairingState {
-	status: "idle" | "ready" | "error";
+	status: "idle" | "ready" | "connected" | "error";
 	relayBaseUrl?: string;
 	pairingId?: string;
 	inviteUri?: string;

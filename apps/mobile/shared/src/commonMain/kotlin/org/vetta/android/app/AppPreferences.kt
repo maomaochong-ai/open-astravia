@@ -14,7 +14,7 @@ enum class ThemeMode {
 
     companion object {
         fun fromStorage(value: String?): ThemeMode =
-            entries.firstOrNull { it.name == value } ?: System
+            entries.firstOrNull { it.name == value } ?: Light
     }
 }
 

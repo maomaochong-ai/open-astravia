@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { hostname } from "node:os";
+import type { RemoteConnectionState } from "@vetta/remote-control";
 import { type DesktopConfig, readDesktopConfig, writeDesktopConfig } from "../config/desktop-config-store.js";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getAppLogger } from "../logger.js";
@@ -24,7 +25,7 @@ export interface DesktopRemotePairingServiceOptions {
 }
 
 export interface DesktopRemotePairingState {
-	readonly status: "idle" | "ready" | "error";
+	readonly status: "idle" | "ready" | "connected" | "error";
 	readonly relayBaseUrl?: string;
 	readonly pairingId?: string;
 	readonly inviteUri?: string;
@@ -41,6 +42,7 @@ export class DesktopRemotePairingService {
 		inputSupported: false,
 	};
 	private host: DesktopRemoteDesktopHostHandle | undefined;
+	private connectionState: RemoteConnectionState = "idle";
 
 	constructor(private readonly options: DesktopRemotePairingServiceOptions) {}
 
@@ -53,12 +55,18 @@ export class DesktopRemotePairingService {
 		const remote = config.remoteControl;
 		const secret = this.readDesktopSecret();
 		if (!remote?.pairingId || !remote.relayBaseUrl || !secret) return;
+		this.state = {
+			status: "ready",
+			relayBaseUrl: remote.relayBaseUrl,
+			pairingId: remote.pairingId,
+			inputEnabled: remote.inputEnabled === true,
+			inputSupported: false,
+		};
 		try {
 			await this.startActive(remote.relayBaseUrl, remote.pairingId, secret, remote.inputEnabled === true);
 			this.state = {
-				status: "ready",
-				relayBaseUrl: remote.relayBaseUrl,
-				pairingId: remote.pairingId,
+				...this.state,
+				status: this.connectionState === "online" ? "connected" : this.state.status,
 				inputEnabled: remote.inputEnabled === true && this.host?.inputSupported === true,
 				inputSupported: this.host?.inputSupported === true,
 			};
@@ -91,7 +99,7 @@ export class DesktopRemotePairingService {
 		await this.persistRemoteConfig(config, { relayBaseUrl: relay, pairingId, inputEnabled: false });
 		await this.startActive(relay, pairingId, desktopSecret, false, bootstrapSecret);
 		this.state = {
-			status: "ready",
+			status: this.connectionState === "online" ? "connected" : "ready",
 			relayBaseUrl: relay,
 			pairingId,
 			inviteUri: buildInviteUri(relay, pairingId, bootstrapSecret),
@@ -116,6 +124,7 @@ export class DesktopRemotePairingService {
 		await stopDesktopRemoteAccess();
 		await stopDesktopRemoteDesktopHost();
 		this.host = undefined;
+		this.connectionState = "idle";
 		if (clearCredential)
 			this.vault.remove({ namespace: CREDENTIAL_NAMESPACE, ownerId: CREDENTIAL_OWNER, name: CREDENTIAL_NAME });
 		const config = await readDesktopConfig();
@@ -133,7 +142,11 @@ export class DesktopRemotePairingService {
 	): Promise<void> {
 		const controlTarget = `${relay}/v1/relay/${pairingId}/desktop#${new URLSearchParams({ pairing: desktopSecret, ...(bootstrapSecret ? { bootstrap: bootstrapSecret } : {}) }).toString()}`;
 		const signalingTarget = `${relay}/v1/desktop/${pairingId}/host#pairing=${encodeURIComponent(desktopSecret)}`;
-		await startDesktopRemoteAccess({ controlTarget, conversationCwd: this.options.conversationCwd });
+		await startDesktopRemoteAccess({
+			controlTarget,
+			conversationCwd: this.options.conversationCwd,
+			onStateChange: (state) => this.handleConnectionState(state),
+		});
 		this.host = await startDesktopRemoteDesktopHost({
 			signalingTarget,
 			inputEnabled,
@@ -141,6 +154,21 @@ export class DesktopRemotePairingService {
 			isPackaged: this.options.isPackaged,
 			devServerUrl: this.options.devServerUrl,
 		});
+	}
+
+	private handleConnectionState(state: RemoteConnectionState): void {
+		this.connectionState = state;
+		if (state === "online") {
+			this.state = { ...this.state, status: "connected", error: undefined };
+			return;
+		}
+		if (state === "connecting" || state === "reconnecting" || state === "recovering") {
+			this.state = { ...this.state, status: "ready", error: undefined };
+			return;
+		}
+		if (state === "failed") {
+			this.state = { ...this.state, status: "error", error: "远程连接失败" };
+		}
 	}
 
 	private readDesktopSecret(): string | undefined {

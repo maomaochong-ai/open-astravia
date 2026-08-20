@@ -17,6 +17,7 @@
     "status": {
       "idle": "未配对",
       "ready": "等待手机",
+      "connected": "已连接",
       "error": "需要检查"
     }
   },
