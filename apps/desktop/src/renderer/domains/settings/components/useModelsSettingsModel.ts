@@ -1,5 +1,7 @@
 import type { ModelsConfigData } from "@preload/api.js";
+import { localModelsConfigAtom, modelCatalog } from "@shared/store/model-catalog";
 import { showToast } from "@shared/store/toast-atoms";
+import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { recordSettingsUsage } from "./recordSettingsUsage";
@@ -142,7 +144,8 @@ export const emptyModel: ModelFormState = {
 
 export function useModelsSettingsModel(): ModelsSettingsModel {
 	const { t } = useTranslation("settings");
-	const [config, setConfig] = useState<ModelsConfigData | null>(null);
+	// 与所有模型选择器共用同一份本地配置：这里保存后，已挂载的 popover 立刻同步。
+	const config = useAtomValue(localModelsConfigAtom);
 	const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
 	const [addingProvider, setAddingProvider] = useState(false);
 	const [providerForm, setProviderForm] = useState<ProviderFormState>({ ...emptyProvider });
@@ -155,16 +158,15 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 	const [fetchedModels, setFetchedModels] = useState<FetchedModelsState | null>(null);
 
 	useEffect(() => {
-		void window.vetta.models.get().then((loadedConfig) => {
-			setConfig(loadedConfig);
-		});
+		void modelCatalog.revalidate({ sources: ["local"] });
 	}, []);
 
 	const saveConfig = useCallback(async (newConfig: ModelsConfigData) => {
 		setSaving(true);
 		try {
 			await window.vetta.models.set(newConfig);
-			setConfig(await window.vetta.models.get());
+			// 刚写过盘，必须绕开 TTL 重新读回主进程规范化后的结果。
+			await modelCatalog.revalidate({ force: true, sources: ["local"] });
 		} finally {
 			setSaving(false);
 		}

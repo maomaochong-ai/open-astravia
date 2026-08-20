@@ -1,7 +1,8 @@
 import type { ResetCountdown } from "@shared/lib/subscription-format";
 import { formatExpiry, getResetCountdown, WINDOW_LABEL_KEYS } from "@shared/lib/subscription-format";
 import { remoteProvidersAtom, subscriptionStatusAtom } from "@shared/store/atoms";
-import { useAtom } from "jotai";
+import { modelCatalog } from "@shared/store/model-catalog";
+import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { recordSettingsUsage } from "./recordSettingsUsage";
@@ -67,7 +68,7 @@ export function formatWindowReset(resetAt: string, now: number): ResetCountdown 
 
 export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 	const { t } = useTranslation("settings");
-	const [remoteProviders, setRemoteProviders] = useAtom(remoteProvidersAtom);
+	const remoteProviders = useAtomValue(remoteProvidersAtom);
 	const [subscriptionStatus, setSubscriptionStatus] = useAtom(subscriptionStatusAtom);
 	const [refreshing, setRefreshing] = useState(false);
 	const [now, setNow] = useState(() => Date.now());
@@ -75,11 +76,10 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 	const handleRefreshRemote = useCallback(async () => {
 		setRefreshing(true);
 		try {
-			const [result, sub] = await Promise.all([
-				window.vetta.models.fetchRemote(),
+			const [, sub] = await Promise.all([
+				modelCatalog.revalidate({ force: true, sources: ["remote"] }),
 				window.vetta.subscription.getStatus(),
 			]);
-			setRemoteProviders(result.providers);
 			if (sub.status) setSubscriptionStatus(sub.status);
 			recordSettingsUsage({ tab: "subscription", action: "refreshed", target: "status" });
 		} catch {
@@ -87,7 +87,7 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 		} finally {
 			setRefreshing(false);
 		}
-	}, [setRemoteProviders, setSubscriptionStatus]);
+	}, [setSubscriptionStatus]);
 
 	useEffect(() => {
 		void window.vetta.subscription

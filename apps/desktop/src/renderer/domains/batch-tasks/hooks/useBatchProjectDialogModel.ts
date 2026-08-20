@@ -1,6 +1,7 @@
 import type { ModelsConfigData } from "@preload/api";
 import type { BatchProject } from "@shared/store/atoms";
-import { remoteProvidersAtom } from "@shared/store/atoms";
+import { localModelsConfigAtom, remoteProvidersAtom } from "@shared/store/atoms";
+import { modelCatalog } from "@shared/store/model-catalog";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import type { BatchProjectEditableData } from "../components/BatchProjectFormFields";
@@ -54,25 +55,30 @@ export function useBatchProjectDialogModel({
 }): BatchProjectDialogModel {
 	const { createProject, updateProject } = useBatchTasks();
 	const remoteProviders = useAtomValue(remoteProvidersAtom);
+	const config = useAtomValue(localModelsConfigAtom);
 	const [data, setData] = useState<BatchProjectEditableData>(() => getProjectData(project));
 
 	useEffect(() => {
 		setData(getProjectData(project));
 	}, [project]);
 
+	// 打开对话框时按 TTL 重新校验目录，随后跟着共享 config/remoteProviders 变化重算可选模型。
 	useEffect(() => {
 		if (!open) return;
-		void window.vetta.models.get().then((config) => {
-			const allModelKeys = flattenModelKeys(config, remoteProviders as ModelsConfigData["providers"]);
-			const currentSelected = localStorage.getItem("vetta-selected-model") ?? undefined;
-			const fallback = project?.modelKey ?? currentSelected ?? config.defaultModel;
-			setData((current) => {
-				if (current.modelKey && allModelKeys.includes(current.modelKey)) return current;
-				if (fallback && allModelKeys.includes(fallback)) return { ...current, modelKey: fallback };
-				return allModelKeys[0] ? { ...current, modelKey: allModelKeys[0] } : { ...current, modelKey: undefined };
-			});
+		void modelCatalog.revalidate();
+	}, [open]);
+
+	useEffect(() => {
+		if (!open || !config) return;
+		const allModelKeys = flattenModelKeys(config, remoteProviders as ModelsConfigData["providers"]);
+		const currentSelected = localStorage.getItem("vetta-selected-model") ?? undefined;
+		const fallback = project?.modelKey ?? currentSelected ?? config.defaultModel;
+		setData((current) => {
+			if (current.modelKey && allModelKeys.includes(current.modelKey)) return current;
+			if (fallback && allModelKeys.includes(fallback)) return { ...current, modelKey: fallback };
+			return allModelKeys[0] ? { ...current, modelKey: allModelKeys[0] } : { ...current, modelKey: undefined };
 		});
-	}, [open, project?.modelKey, remoteProviders]);
+	}, [open, config, project?.modelKey, remoteProviders]);
 
 	const canSubmit = useMemo(
 		() => Boolean(data.name?.trim() && data.prompt?.trim() && (data.folders?.length ?? 0) > 0),

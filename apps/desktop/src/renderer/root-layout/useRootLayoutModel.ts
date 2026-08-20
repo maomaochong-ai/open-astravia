@@ -8,6 +8,7 @@ import { useAppInit } from "../domains/chat/hooks/useAppInit";
 import { useSessionManager } from "../domains/chat/hooks/useSessionManager";
 import { useNotificationInit } from "../domains/message/hooks/useNotificationInit";
 import { useProjectActions } from "../domains/project/hooks/useProjects";
+import { useModelCatalogSync } from "../shared/hooks/useModelCatalogSync";
 import { useNarrowScreen } from "../shared/hooks/useNarrowScreen";
 import { useRunningSessionsSync } from "../shared/hooks/useRunningSessionsSync";
 import { useGlobalShortcuts } from "../shared/hooks/useShortcuts";
@@ -92,6 +93,8 @@ export function useRootLayoutModel(): RootLayoutModel {
 	useAppInit();
 	useNotificationInit();
 	useUpdaterInit();
+	// 模型目录保鲜：focus / 切回可见时按 TTL 重拉，服务端增删模型无需重启应用。
+	useModelCatalogSync();
 	// 全局 running-sessions 订阅必须挂在始终挂载的 App 上：它是 streaming 状态真值
 	// 来源之一，挂在会被卸载的 Sidebar 上会在卸载期间丢 RUNNING_CHANGED 事件。
 	useRunningSessionsSync();

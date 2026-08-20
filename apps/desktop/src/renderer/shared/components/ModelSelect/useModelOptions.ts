@@ -1,7 +1,8 @@
 import type { ModelsConfigData } from "@preload/api";
-import { remoteProvidersAtom } from "@shared/store/atoms";
+import { localModelsConfigAtom, remoteProvidersAtom } from "@shared/store/atoms";
+import { modelCatalog } from "@shared/store/model-catalog";
 import { useAtomValue } from "jotai";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 export interface ModelOption {
 	provider: string;
@@ -69,13 +70,17 @@ export interface UseModelOptionsResult {
  * catalog, merges them (local overrides remote on duplicate key) and exposes
  * grouping + provider label/icon helpers. Used by every model selector so the
  * option list and provider metadata stay consistent across the app.
+ *
+ * 两份数据都来自 modelCatalog 的共享 atom：目录变化（服务端增删模型、设置页
+ * 保存本地 provider）会立刻反映到所有已挂载的选择器上，无需重启应用。
  */
 export function useModelOptions(): UseModelOptionsResult {
 	const remoteProviders = useAtomValue(remoteProvidersAtom);
-	const [config, setConfig] = useState<ModelsConfigData | null>(null);
+	const config = useAtomValue(localModelsConfigAtom);
 
+	// 挂载即校验一次；TTL 内命中缓存不会真的打接口，所以多个选择器同时挂载也只有一次请求。
 	useEffect(() => {
-		void window.vetta.models.get().then(setConfig);
+		void modelCatalog.revalidate();
 	}, []);
 
 	const localModels = useMemo(() => (config ? flattenModels(config) : []), [config]);

@@ -9,6 +9,7 @@ import {
 	sseConnectionStateAtom,
 } from "@shared/store/atoms";
 import { cloudLogoutAtom, subscriptionStatusAtom } from "@shared/store/auth-atoms";
+import { modelCatalog } from "@shared/store/model-catalog";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 import { setProductAnalyticsUser } from "../../../telemetry/product-analytics";
@@ -115,19 +116,16 @@ export function useAuth() {
 	// 登录态变化时刷新远程模型列表与套餐状态；登出时清空。
 	useEffect(() => {
 		if (!token) {
+			modelCatalog.reset();
 			setRemoteProviders({});
 			// 登出：重置内存态为 null，读 atom 时回退到 localStorage 缓存(保留上次已知)。
 			setSubscriptionStatus(null);
 			return;
 		}
-		void window.vetta.models
-			.fetchRemote()
-			.then((result) => {
-				// 无条件赋值：401 时主进程返回 {}，必须覆盖旧的远程 providers，
-				// 否则 ModelSelector 仍会展示已失效的线上模型。
-				setRemoteProviders((result.providers ?? {}) as Record<string, unknown>);
-			})
-			.catch(console.error);
+		// force：登录/换 token 是确定的变更时机，忽略 TTL 直接拉。
+		// 401 时主进程返回 {}，会无条件覆盖旧的远程 providers，
+		// 否则 ModelSelector 仍会展示已失效的线上模型。
+		void modelCatalog.revalidate({ force: true, sources: ["remote"] });
 		void window.vetta.subscription
 			.getStatus()
 			.then((result) => {

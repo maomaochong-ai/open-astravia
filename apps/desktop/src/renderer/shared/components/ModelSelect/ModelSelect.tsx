@@ -1,5 +1,6 @@
 import { ProviderIcon } from "@vetta/theme-ui/shared";
 import { cn } from "@shared/lib/utils";
+import { modelCatalog } from "@shared/store/model-catalog";
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import {
 	DropdownMenu,
@@ -139,6 +140,8 @@ export function ModelSelect({
 
 	const handleOpenChange = useCallback((nextOpen: boolean) => {
 		setOpen(nextOpen);
+		// 打开时按 TTL 后台重新校验目录：服务端增删模型后，用户看到列表的那一刻就是最新的。
+		if (nextOpen) void modelCatalog.revalidate();
 		if (!nextOpen) {
 			setReasoningOpen(false);
 			setSearchQuery("");

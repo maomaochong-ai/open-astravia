@@ -7,6 +7,7 @@ import {
 	SELECTED_MODEL_STORAGE_KEY,
 	selectedModelAtom,
 } from "@shared/store/atoms";
+import { modelCatalog } from "@shared/store/model-catalog";
 import type { ModelSelectorViewProps } from "@vetta/theme-ui/chat";
 import { fmtMultiplier } from "@vetta/theme-ui/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -140,6 +141,11 @@ export function useModelSelectorModel(): ModelSelectorModel {
 		[options, t],
 	);
 
+	// 打开模型菜单时按 TTL 后台重校验目录，服务端增删模型无需重启即可看到。
+	const handleOpenChange = useCallback((open: boolean) => {
+		if (open) void modelCatalog.revalidate();
+	}, []);
+
 	const handleReasoningSelect = useCallback(
 		(value: string) => {
 			if (!selectedModel) return;
@@ -176,6 +182,7 @@ export function useModelSelectorModel(): ModelSelectorModel {
 			},
 			menuLevels,
 			onModelSelect: handleModelSelect,
+			onOpenChange: handleOpenChange,
 			onReasoningSelect: handleReasoningSelect,
 			selectedModel: selectedModel ?? undefined,
 			selectedOption,

@@ -1,6 +1,7 @@
 import type { SubscriptionStatus } from "@preload/api.js";
 import { logoutOnServer } from "@shared/lib/api";
 import { atom } from "jotai";
+import { remoteProvidersAtom } from "./model-catalog-atoms";
 import { sseClientAtom } from "./sse-atoms";
 
 export interface AuthUser {
@@ -45,8 +46,9 @@ export const cloudLogoutAtom = atom(null, (get, set) => {
 });
 
 // ─── Remote providers (from server) ───
+// 定义在 model-catalog-atoms（叶子模块），这里转出以保持既有引用路径。
 
-export const remoteProvidersAtom = atom<Record<string, unknown>>({});
+export { remoteProvidersAtom } from "./model-catalog-atoms";
 
 // ─── Subscription status (Vetta Go 套餐，ADR-0016 离线回退) ───
 

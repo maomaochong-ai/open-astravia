@@ -83,6 +83,8 @@ export interface ModelSelectorViewProps {
 	};
 	onModelSelect: (key: string) => void;
 	onReasoningSelect: (value: string) => void;
+	/** 菜单开合回调，宿主可借此在打开时刷新模型目录 */
+	onOpenChange?: (open: boolean) => void;
 }
 
 const MODEL_ITEM_SELECTOR = "[data-model-key]";
@@ -107,6 +109,7 @@ export function ModelSelectorView({
 	classNames,
 	onModelSelect,
 	onReasoningSelect,
+	onOpenChange,
 }: ModelSelectorViewProps): JSX.Element {
 	const [open, setOpen] = useState(false);
 	const [reasoningOpen, setReasoningOpen] = useState(false);
@@ -132,13 +135,17 @@ export function ModelSelectorView({
 		});
 	}, [groups, searchQuery]);
 
-	const handleOpenChange = useCallback((nextOpen: boolean) => {
-		setOpen(nextOpen);
-		if (!nextOpen) {
-			setReasoningOpen(false);
-			setSearchQuery("");
-		}
-	}, []);
+	const handleOpenChange = useCallback(
+		(nextOpen: boolean) => {
+			setOpen(nextOpen);
+			if (!nextOpen) {
+				setReasoningOpen(false);
+				setSearchQuery("");
+			}
+			onOpenChange?.(nextOpen);
+		},
+		[onOpenChange],
+	);
 
 	useEffect(() => {
 		if (!open) return;
