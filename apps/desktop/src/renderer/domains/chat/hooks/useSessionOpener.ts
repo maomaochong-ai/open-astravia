@@ -432,8 +432,18 @@ export function useSessionOpener(): SessionOpenerController {
 				subscribed = true;
 				perfSendMark("open-session-ready", interactionId);
 				if (cachedKey) setLastActiveSession({ cwd, sessionPath: cachedKey });
+				// 只派发首条 Prompt，绝不等它跑完：session.prompt 的 IPC 要到整轮 turn
+				// 结束（或用户暂停）才 resolve。一旦 await，下面的 getState 回填
+				// （scenario / activeToolNames / 上下文用量 / 工作模式）和本次过渡的收尾
+				// 都会被推迟到本轮流式输出之后——期间 scenario 停在 null，插件页签与输入
+				// 栏动作会整体消失，pending 过渡还会挡住本轮内的后续发送。
 				try {
-					await options?.onPromptReady?.();
+					const promptReady = options?.onPromptReady?.();
+					if (promptReady) {
+						void promptReady.catch((error: unknown) => {
+							console.error("[useSessionOpener] prompt-ready callback failed", error);
+						});
+					}
 				} catch (error) {
 					console.error("[useSessionOpener] prompt-ready callback failed", error);
 				} finally {

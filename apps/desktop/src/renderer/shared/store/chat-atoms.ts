@@ -576,7 +576,11 @@ export interface OpenSessionOptions {
 	navigate?: boolean;
 	/** Correlates Renderer interaction timing with the Main-process creation trace. */
 	interactionId?: string;
-	/** Runs once the event subscription is live, before nonessential Session hydration finishes. */
+	/**
+	 * Runs once the event subscription is live, before nonessential Session hydration
+	 * finishes. Dispatched, never awaited: the first prompt's IPC only settles when the
+	 * whole turn ends, so awaiting it would hold Session hydration for the turn.
+	 */
 	onPromptReady?: () => void | Promise<void>;
 	/**
 	 * For a new session, render the chat route and yield a paint before starting

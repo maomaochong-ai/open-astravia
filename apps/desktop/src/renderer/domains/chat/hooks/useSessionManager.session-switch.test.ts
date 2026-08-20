@@ -642,3 +642,93 @@ it("只读历史预览失败时回退到 Runtime 历史水合", { timeout: 10_00
 	expect(mocks.perfSessionSwitchMark).toHaveBeenCalledWith("session-preview-history-failed", "open-fallback");
 	expect(mocks.perfSessionSwitchComplete).toHaveBeenCalledWith("completed", "open-fallback");
 });
+
+// 回归：session.prompt 的 IPC 直到整轮 turn 结束才 resolve。首发派发一旦被 await，
+// getState 回填（scenario / activeToolNames / 上下文用量）与 pending 过渡的结束都会
+// 被推迟到本轮流式输出之后，期间 scenario=null 会让插件页签与输入栏动作整体消失。
+it("新会话首发不等整轮 prompt 跑完就回填会话状态", { timeout: 10_000 }, async () => {
+	const { activeSessionAtom, activeToolNamesAtom, chatMessagesAtom, currentScenarioAtom, pendingSessionCreationAtom } =
+		await import("@shared/store/atoms");
+	const { useSessionManager } = await import("./useSessionManager");
+	const store = getDefaultStore();
+	const frames: FrameRequestCallback[] = [];
+	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+		frames.push(callback);
+		return frames.length;
+	});
+	// 整轮 turn 尚未结束：onPromptReady 永不 resolve。
+	const runningTurn = deferred<void>();
+	const onPromptReady = vi.fn(async () => {
+		await runningTurn.promise;
+	});
+	const sessionApi = {
+		autoTitle: vi.fn(),
+		create: vi.fn(async () => ({ cwd, sessionId: "runtime-new", sessionPath: firstCanonicalPath })),
+		getFullHistory: vi.fn(async () => []),
+		getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
+		getSessionPath: vi.fn(async () => firstCanonicalPath),
+		getState: vi.fn(async () => ({
+			activeToolNames: ["read_file"],
+			contextPercent: null,
+			contextWindow: 128_000,
+			executionMode: "sandbox" as const,
+			isStreaming: true,
+			messageCount: 0,
+			model: null,
+			scenario: "conversation" as const,
+		})),
+		prompt: vi.fn(),
+		subscribe: vi.fn(async () => vi.fn()),
+		updateSettings: vi.fn(async () => undefined),
+	};
+	Object.defineProperty(window, "vetta", {
+		configurable: true,
+		value: {
+			batchTasks: { resumeTaskWithText: vi.fn() },
+			config: { get: vi.fn() },
+			dialog: { persistImages: vi.fn() },
+			session: sessionApi,
+		},
+	});
+	store.set(activeSessionAtom, null);
+	store.set(chatMessagesAtom, [{ id: "staged-user", role: "user", text: "design something" }]);
+	store.set(currentScenarioAtom, "conversation");
+	store.set(activeToolNamesAtom, new Set(["read_file"]));
+
+	function Probe() {
+		manager = useSessionManager();
+		return null;
+	}
+
+	await act(async () => {
+		root = createRoot(container as HTMLDivElement);
+		root.render(createElement(Probe));
+	});
+
+	let opening: Promise<void> | undefined;
+	await act(async () => {
+		opening = manager?.openSession(cwd, undefined, "sandbox", {
+			navigateBeforeCreate: true,
+			preserveMessagesBeforeCreate: true,
+			onPromptReady,
+			interactionId: "interaction-running-turn",
+		});
+		await Promise.resolve();
+	});
+
+	await act(async () => {
+		frames.shift()?.(0);
+		frames.shift()?.(16);
+		await opening;
+	});
+
+	expect(onPromptReady).toHaveBeenCalledOnce();
+	// 首条 Prompt 仍在跑，但会话状态必须已经回填，插件插槽不能因 scenario=null 消失。
+	expect(sessionApi.getState).toHaveBeenCalledWith("runtime-new");
+	expect(store.get(currentScenarioAtom)).toBe("conversation");
+	expect(store.get(activeToolNamesAtom)).toEqual(new Set(["read_file"]));
+	// pending 过渡也不能挂到整轮结束，否则本轮内的后续发送会一直等下去。
+	expect(store.get(pendingSessionCreationAtom)).toBeNull();
+
+	runningTurn.resolve(undefined);
+});
