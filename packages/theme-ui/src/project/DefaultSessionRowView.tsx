@@ -14,7 +14,6 @@ export interface DefaultSessionRowViewProps {
 	titleExtra?: string;
 	/** Session was forked from another session. */
 	forked?: boolean;
-	onBeforeSelect?: () => void;
 	onOpenContextMenu: (event: React.MouseEvent) => void;
 	onRename: (name: string) => void;
 	onRenameDone: () => void;
@@ -33,7 +32,6 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 	sessionPath,
 	titleExtra,
 	forked,
-	onBeforeSelect,
 	onOpenContextMenu,
 	onRename,
 	onRenameDone,
@@ -51,7 +49,6 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 			data-session-path={sessionPath || undefined}
 			onClick={(event) => {
 				if (renaming) return;
-				onBeforeSelect?.();
 				prepareSidebarSelection(event.currentTarget);
 				onSelect();
 			}}

@@ -3,13 +3,11 @@ import type { ProjectsPanelModel } from "./types";
 
 interface ProjectGroupsSectionProps {
 	model: ProjectsPanelModel;
-	onProjectInteract: () => void;
 	scrollParent: HTMLElement | null;
 }
 
 export function ProjectGroupsSection({
 	model,
-	onProjectInteract,
 	scrollParent,
 }: ProjectGroupsSectionProps): JSX.Element {
 	return (
@@ -28,7 +26,6 @@ export function ProjectGroupsSection({
 					onCollapse={model.actions.collapseProject}
 					onNavigateProject={model.actions.navigateProject}
 					onNewSession={model.actions.batchNewSession}
-					onProjectInteract={onProjectInteract}
 					onSelectSession={model.actions.selectSession}
 					onRenameSession={model.actions.renameSession}
 				/>
@@ -48,7 +45,6 @@ export function ProjectGroupsSection({
 						onCollapse={model.actions.collapseBatchProject}
 						onNavigateProject={model.actions.navigateProject}
 						onNewSession={model.actions.batchNewSession}
-						onProjectInteract={onProjectInteract}
 						onSelectSession={model.actions.selectBatchSession}
 						onRenameSession={model.actions.renameSession}
 					/>

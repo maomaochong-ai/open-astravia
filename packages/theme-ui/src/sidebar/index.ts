@@ -66,8 +66,6 @@ export type {
 export { NotificationMessageListView } from "./NotificationMessageListView";
 export type { ProjectsPanelEmptyStateLabels, ProjectsPanelEmptyStateProps } from "./ProjectsPanelEmptyState";
 export { ProjectsPanelEmptyState } from "./ProjectsPanelEmptyState";
-export type { ProjectsPanelSplitHandleProps } from "./ProjectsPanelSplitHandle";
-export { ProjectsPanelSplitHandle } from "./ProjectsPanelSplitHandle";
 export { RunningPulseDot } from "./RunningPulseDot";
 export type { SessionStatusIconProps } from "./SessionStatusIcon";
 export { SessionStatusIcon } from "./SessionStatusIcon";

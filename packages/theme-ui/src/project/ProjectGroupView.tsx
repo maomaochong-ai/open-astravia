@@ -7,7 +7,6 @@ import {
 } from "./useActiveSessionAutoScroll";
 
 export interface ProjectGroupViewProps<T extends { key: string }> {
-	onProjectInteract: () => void;
 	projectRow: ProjectRowViewProps;
 	sessions: Omit<ProjectSessionsViewProps<T>, "empty">;
 	/** Empty sessions label node. */
@@ -15,7 +14,6 @@ export interface ProjectGroupViewProps<T extends { key: string }> {
 }
 
 export function ProjectGroupView<T extends { key: string }>({
-	onProjectInteract,
 	projectRow,
 	sessions,
 	emptySessions,
@@ -27,7 +25,6 @@ export function ProjectGroupView<T extends { key: string }>({
 		scrollParent: sessions.scrollParent,
 	});
 	const handleProjectInteract = (): void => {
-		onProjectInteract();
 		if (projectRowRef.current) prepareSidebarSelection(projectRowRef.current);
 	};
 

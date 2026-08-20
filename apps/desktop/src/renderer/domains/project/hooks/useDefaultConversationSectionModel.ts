@@ -1,7 +1,6 @@
 import type { DefaultConversationFilter, Project, SessionInfo } from "@shared/store/atoms";
 import { projectContextMenuAtom } from "@shared/store/atoms";
 import { useAtom } from "jotai";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 interface UseDefaultConversationSectionModelArgs {
@@ -17,15 +16,12 @@ export function useDefaultConversationSectionModel({
 }: UseDefaultConversationSectionModelArgs) {
 	const { t } = useTranslation("project");
 	const [, setProjectMenu] = useAtom(projectContextMenuAtom);
-	const [listScrollEl, setListScrollEl] = useState<HTMLDivElement | null>(null);
 
 	return {
 		labels: {
 			more: t("actions.more"),
 			newSession: t("sidebar.nav.newSession"),
 		},
-		listScrollEl,
-		setListScrollEl,
 		showNewSession: defaultConversationFilter !== "claw",
 		actions: {
 			newSession: () => onNewSession(project.cwd),

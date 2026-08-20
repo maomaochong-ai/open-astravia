@@ -48,11 +48,11 @@ function renderSection(sessionsCwd: string, filter: "conversation" | "claw"): vo
 		<DefaultConversationSection
 			activeSessionPath=""
 			defaultConversationFilter={filter}
-			onBeforeSelectSession={() => {}}
 			onNewSession={() => {}}
 			onRenameSession={() => {}}
 			onSelectSession={() => {}}
 			project={DEFAULT_PROJECT}
+			scrollParent={null}
 			sessions={[CLAW_SESSION]}
 			sessionsCwd={sessionsCwd}
 			sessionsLoading={false}

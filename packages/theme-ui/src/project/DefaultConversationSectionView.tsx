@@ -1,7 +1,5 @@
 import { cn } from "@vetta/ui";
 import type { JSX, ReactNode } from "react";
-import { ScrollFade } from "../shared/ScrollFade";
-import { QuickScrollOverlay, type QuickScrollLabels } from "./QuickScrollOverlay";
 
 export interface DefaultConversationSectionViewLabels {
 	more: string;
@@ -13,12 +11,9 @@ export interface DefaultConversationSectionViewProps {
 	filterSelect: ReactNode;
 	labels: DefaultConversationSectionViewLabels;
 	list: ReactNode;
-	listScrollElement: HTMLElement | null;
-	onListScrollRef: (el: HTMLDivElement | null) => void;
 	onMoreClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
 	onNewSession?: () => void;
 	onOpenContextMenu: (event: React.MouseEvent) => void;
-	quickScrollLabels: QuickScrollLabels;
 	showNewSession: boolean;
 	/**
 	 * When the conversation list is empty, keep header actions visible so users
@@ -27,17 +22,17 @@ export interface DefaultConversationSectionViewProps {
 	actionsAlwaysVisible?: boolean;
 }
 
+/**
+ * 该区块不再自带滚动容器：项目区与对话区共用侧栏面板的同一个滚动区。
+ */
 export function DefaultConversationSectionView({
 	className,
 	filterSelect,
 	labels,
 	list,
-	listScrollElement,
-	onListScrollRef,
 	onMoreClick,
 	onNewSession,
 	onOpenContextMenu,
-	quickScrollLabels,
 	showNewSession,
 	actionsAlwaysVisible = false,
 }: DefaultConversationSectionViewProps): JSX.Element {
@@ -46,7 +41,7 @@ export function DefaultConversationSectionView({
 		: "flex items-center justify-center rounded-md p-1.5 text-foreground opacity-0 transition-opacity hover:bg-accent group-hover:opacity-60 group-hover:hover:opacity-100";
 
 	return (
-		<div className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", className)}>
+		<div className={cn("flex flex-col", className)}>
 			<div
 				className="group -mx-1.5 flex shrink-0 items-center justify-between pb-1 pl-2 pr-1 pt-1"
 				onContextMenu={onOpenContextMenu}
@@ -73,19 +68,7 @@ export function DefaultConversationSectionView({
 					)}
 				</div>
 			</div>
-			<QuickScrollOverlay
-				labels={quickScrollLabels}
-				scrollElement={listScrollElement}
-				className="min-h-0 flex-1"
-			>
-				<ScrollFade
-					data-sidebar-selection-scroll="true"
-					onScrollRef={onListScrollRef}
-					className="min-h-0 flex-1 overflow-y-auto no-scrollbar"
-				>
-					{list}
-				</ScrollFade>
-			</QuickScrollOverlay>
+			{list}
 		</div>
 	);
 }

@@ -14,7 +14,6 @@ import {
 const DefaultSessionRow = memo(function DefaultSessionRow({
 	item,
 	contextMenuEnabled,
-	onBeforeSelect,
 	onOpenContextMenu,
 	onRename,
 	onRenameDone,
@@ -22,7 +21,6 @@ const DefaultSessionRow = memo(function DefaultSessionRow({
 }: {
 	item: DefaultSessionListItemView;
 	contextMenuEnabled: boolean;
-	onBeforeSelect: () => void;
 	onOpenContextMenu: (event: React.MouseEvent, session: SessionInfo) => void;
 	onRename: (sessionPath: string, name: string) => void;
 	onRenameDone: () => void;
@@ -41,7 +39,6 @@ const DefaultSessionRow = memo(function DefaultSessionRow({
 			active={item.active}
 			contextMenuEnabled={contextMenuEnabled}
 			label={item.label}
-			onBeforeSelect={onBeforeSelect}
 			renaming={item.renaming}
 			running={item.running}
 			scheduled={item.scheduled}
@@ -60,7 +57,6 @@ interface DefaultSessionListProps {
 	cwd: string;
 	filter: DefaultConversationFilter;
 	loading: boolean;
-	onBeforeSelect: () => void;
 	onNewSession?: () => void;
 	onRenameSession: (cwd: string, sessionPath: string, name: string) => void;
 	onSelectSession: (cwd: string, sessionPath: string) => void;
@@ -91,7 +87,6 @@ export const DefaultSessionList = memo(function DefaultSessionList(
 					key={item.key}
 					item={item}
 					contextMenuEnabled={model.contextMenuEnabled}
-					onBeforeSelect={props.onBeforeSelect}
 					onOpenContextMenu={model.actions.openContextMenu}
 					onRename={model.actions.rename}
 					onRenameDone={model.actions.renameDone}

@@ -9,14 +9,12 @@ import {
 /** 每行一个 memo 组件，per-row 回调在这里固定引用（理由同 DefaultSessionRow）。 */
 const ProjectSessionRow = memo(function ProjectSessionRow({
 	item,
-	onBeforeSelect,
 	onOpenContextMenu,
 	onRename,
 	onRenameDone,
 	onSelect,
 }: {
 	item: ProjectGroupSessionView;
-	onBeforeSelect: () => void;
 	onOpenContextMenu: (event: React.MouseEvent, session: SessionInfo) => void;
 	onRename: (sessionPath: string, name: string) => void;
 	onRenameDone: () => void;
@@ -38,7 +36,6 @@ const ProjectSessionRow = memo(function ProjectSessionRow({
 			running={item.running}
 			scheduled={item.scheduled}
 			timeLabel={item.timeLabel}
-			onBeforeSelect={onBeforeSelect}
 			onOpenContextMenu={handleContextMenu}
 			onRename={handleRename}
 			onRenameDone={onRenameDone}
@@ -59,7 +56,6 @@ interface ProjectGroupProps {
 	onCollapse: (cwd: string) => void;
 	onNavigateProject: (cwd: string) => void;
 	onNewSession: (cwd: string) => void;
-	onProjectInteract: () => void;
 	onSelectSession: (cwd: string, sessionPath: string) => void;
 	onRenameSession: (cwd: string, sessionPath: string, name: string) => void;
 }
@@ -69,7 +65,6 @@ export const ProjectGroup = memo(function ProjectGroup(props: ProjectGroupProps)
 
 	return (
 		<ProjectGroupView
-			onProjectInteract={props.onProjectInteract}
 			projectRow={{
 				badge: model.projectBadge,
 				displayName: model.displayName,
@@ -103,7 +98,6 @@ export const ProjectGroup = memo(function ProjectGroup(props: ProjectGroupProps)
 					<ProjectSessionRow
 						key={session.key}
 						item={session}
-						onBeforeSelect={props.onProjectInteract}
 						onOpenContextMenu={model.actions.openSessionContextMenu}
 						onRename={model.actions.renameSession}
 						onRenameDone={model.actions.renameDone}
