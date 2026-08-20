@@ -95,13 +95,31 @@ export function findLayeredBuildOrderViolations(packageConfigs, layers, manifest
 	return violations;
 }
 
+export function findMissingConsumerBuildDependencies(packageConfigs, consumerManifest, manifests) {
+	const configuredDirectories = new Set(Object.values(packageConfigs).map(({ dir }) => dir));
+	const manifestsByName = new Map(manifests.map((manifest) => [manifest.name, manifest]));
+	const violations = [];
+
+	for (const dependencyName of getWorkspaceBuildDependencyNames(consumerManifest)) {
+		const dependency = manifestsByName.get(dependencyName);
+		if (!dependency || configuredDirectories.has(dependency.dir)) continue;
+		violations.push(`${consumerManifest.dir} workspace dependency ${dependency.dir} is missing from package configs`);
+	}
+
+	return violations;
+}
+
 export function main() {
 	const buildScript = readFileSync(join(repoRoot, "scripts/build.sh"), "utf8");
 	const buildOrder = parseBuildPackageOrder(buildScript);
 	const manifests = buildOrder.map(readManifest);
 	const desktopManifests = Object.values(desktopWorkspacePackages).map(({ dir }) => readManifest(dir));
+	const desktopManifest = readManifest("apps/desktop");
 	const violations = [
 		...findBuildOrderViolations(buildOrder, manifests).map((violation) => `scripts/build.sh: ${violation}`),
+		...findMissingConsumerBuildDependencies(desktopWorkspacePackages, desktopManifest, manifests).map(
+			(violation) => `desktop workspace prereqs: ${violation}`,
+		),
 		...findLayeredBuildOrderViolations(desktopWorkspacePackages, desktopWorkspaceLayers, desktopManifests).map(
 			(violation) => `desktop workspace prereqs: ${violation}`,
 		),
