@@ -17,36 +17,79 @@ import (
 // parent to drive a TypeWechatBindStart frame.
 var errAwaitingBind = errors.New("im-gateway host: wechat selected but no credentials")
 
-// buildSpec is what transportBuilder consumes. Exactly one of Feishu /
-// Wechat should be non-nil; both nil is an error.
+// buildSpec is what transportBuilder consumes. Exactly one channel slot
+// should be non-nil; all nil is an error. See hostChannels (host_channels.go)
+// for the slot → transport mapping.
 type buildSpec struct {
-	Feishu          *hostproto.FeishuConfig
-	Wechat          *hostproto.WechatConfig
-	WechatStatePath string // resolved absolute path; empty → use wechat package default
+	Feishu   *hostproto.FeishuConfig
+	Wechat   *hostproto.WechatConfig
+	Telegram *hostproto.TelegramConfig
+	Slack    *hostproto.SlackConfig
+	Discord  *hostproto.DiscordConfig
+	Signal   *hostproto.SignalConfig
+	Whatsapp *hostproto.WhatsappConfig
+	IMessage *hostproto.IMessageConfig
+
+	WechatStatePath   string // resolved absolute path; empty → use wechat package default
+	WhatsappStatePath string // resolved absolute path to the whatsmeow session db
 
 	// ConversationCwd is the host runtime's working directory for the
-	// gateway. The wechat transport uses `<ConversationCwd>/inbox/` (well,
-	// the directory itself per ADR-0006) as the destination for decrypted
-	// inbound media. Empty disables inbound media handling.
+	// gateway. Transports use it (the directory itself per ADR-0006) as the
+	// destination for inbound media. Empty disables inbound media handling.
 	ConversationCwd string
 }
 
 // fromInit constructs a buildSpec from an InitFrame.
 func specFromInit(f *hostproto.InitFrame) *buildSpec {
-	s := &buildSpec{Feishu: f.Feishu, Wechat: f.Wechat, ConversationCwd: f.ConversationCwd}
-	if s.Wechat != nil {
-		s.WechatStatePath = s.Wechat.StatePath
+	s := &buildSpec{
+		Feishu:          f.Feishu,
+		Wechat:          f.Wechat,
+		Telegram:        f.Telegram,
+		Slack:           f.Slack,
+		Discord:         f.Discord,
+		Signal:          f.Signal,
+		Whatsapp:        f.Whatsapp,
+		IMessage:        f.IMessage,
+		ConversationCwd: f.ConversationCwd,
 	}
+	s.resolveStatePaths()
 	return s
 }
 
 // fromConfigUpdate constructs a buildSpec from a ConfigUpdateFrame.
 func specFromConfigUpdate(f *hostproto.ConfigUpdateFrame) *buildSpec {
-	s := &buildSpec{Feishu: f.Feishu, Wechat: f.Wechat}
+	s := &buildSpec{
+		Feishu:   f.Feishu,
+		Wechat:   f.Wechat,
+		Telegram: f.Telegram,
+		Slack:    f.Slack,
+		Discord:  f.Discord,
+		Signal:   f.Signal,
+		Whatsapp: f.Whatsapp,
+		IMessage: f.IMessage,
+	}
+	s.resolveStatePaths()
+	return s
+}
+
+// resolveStatePaths lifts the per-channel state file paths out of their
+// config slots so buildHostTransport and the bind coordinators can read
+// them without re-checking each slot for nil.
+func (s *buildSpec) resolveStatePaths() {
 	if s.Wechat != nil {
 		s.WechatStatePath = s.Wechat.StatePath
 	}
-	return s
+	if s.Whatsapp != nil {
+		s.WhatsappStatePath = s.Whatsapp.StatePath
+	}
+}
+
+// hasChannel reports whether any channel slot is populated. Used by the
+// config_update handler to reject empty bodies.
+func (s *buildSpec) hasChannel() bool {
+	return s.Feishu != nil || s.Wechat != nil || s.Telegram != nil ||
+		s.Slack != nil || s.Discord != nil || s.Signal != nil ||
+		s.Whatsapp != nil || s.IMessage != nil
 }
 
 // wechatBindCoordinator owns the lifecycle of an in-progress QR scan

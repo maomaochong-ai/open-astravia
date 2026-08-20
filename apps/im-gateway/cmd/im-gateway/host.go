@@ -16,8 +16,6 @@ import (
 	"vetta-im-gateway/internal/router"
 	"vetta-im-gateway/internal/state"
 	"vetta-im-gateway/internal/transport"
-	"vetta-im-gateway/internal/transport/feishu"
-	"vetta-im-gateway/internal/transport/wechat"
 	"vetta-im-gateway/internal/transport/wechat/ilink"
 )
 
@@ -448,11 +446,12 @@ func (h *hostRuntime) handleFrame(frame any) frameAction {
 		return frameAction{}
 
 	case *hostproto.ConfigUpdateFrame:
-		if f.Feishu == nil && f.Wechat == nil {
+		next := specFromConfigUpdate(f)
+		if !next.hasChannel() {
 			h.emitLog("warn", "config_update with empty body, ignored", nil)
 			return frameAction{}
 		}
-		h.spec = specFromConfigUpdate(f)
+		h.spec = next
 		// If the active transport is now wechat, ensure the bind
 		// coordinator is constructed (or refreshed with the new path).
 		if h.spec.Wechat != nil && h.spec.Wechat.Enabled {
@@ -510,48 +509,6 @@ func waitForInit(rdr *hostproto.Reader, timeout time.Duration) (*hostproto.InitF
 	case <-time.After(timeout):
 		return nil, fmt.Errorf("init frame timeout after %s", timeout)
 	}
-}
-
-// buildHostTransport constructs the IM transport from the supplied
-// build spec.
-//
-// Selection rule: spec.Wechat takes precedence over spec.Feishu when
-// both are non-nil. The parent is expected to send only one slot at a
-// time, but defending against both lets us evolve the protocol without
-// risking a hard error.
-//
-// Returns errAwaitingBind when wechat is selected but no credentials
-// have been persisted yet — the host runtime catches this and parks the
-// sidecar in awaiting_bind mode instead of failing init.
-func buildHostTransport(spec *buildSpec) (transport.Transport, error) {
-	if spec == nil {
-		return nil, errors.New("build spec missing")
-	}
-	if spec.Wechat != nil && spec.Wechat.Enabled {
-		tr, err := wechat.New(wechat.Options{
-			StatePath: spec.WechatStatePath,
-			InboxDir:  spec.ConversationCwd,
-		})
-		if err != nil {
-			if errors.Is(err, wechat.ErrNotBound) {
-				return nil, errAwaitingBind
-			}
-			return nil, fmt.Errorf("build wechat transport: %w", err)
-		}
-		return tr, nil
-	}
-	if spec.Feishu != nil {
-		if spec.Feishu.AppID == "" || spec.Feishu.AppSecret == "" {
-			return nil, errors.New("feishu config missing AppID/AppSecret")
-		}
-		return feishu.New(feishu.Options{
-			AppID:     spec.Feishu.AppID,
-			AppSecret: spec.Feishu.AppSecret,
-			Domain:    spec.Feishu.BaseURL,
-			InboxDir:  spec.ConversationCwd,
-		})
-	}
-	return nil, errors.New("build spec selects no transport")
 }
 
 // placeholderTransport is a no-op transport.Transport used while the

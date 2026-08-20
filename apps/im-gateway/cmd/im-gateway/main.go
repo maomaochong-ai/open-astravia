@@ -39,8 +39,13 @@ import (
 	"vetta-im-gateway/internal/router"
 	"vetta-im-gateway/internal/state"
 	"vetta-im-gateway/internal/transport"
+	"vetta-im-gateway/internal/transport/discord"
 	"vetta-im-gateway/internal/transport/feishu"
+	"vetta-im-gateway/internal/transport/imessage"
 	"vetta-im-gateway/internal/transport/mock"
+	signalcli "vetta-im-gateway/internal/transport/signal"
+	"vetta-im-gateway/internal/transport/slack"
+	"vetta-im-gateway/internal/transport/telegram"
 	"vetta-im-gateway/internal/transport/wechat"
 )
 
@@ -241,10 +246,75 @@ func buildTransport(cfg *config.Config, creds *config.Credentials, log *zap.Logg
 			opts.QuotaWindow = cfg.Transport.Wechat.QuotaWindow
 		}
 		return wechat.New(opts)
+	case config.TransportTelegram:
+		if creds.Telegram.BotToken == "" {
+			return nil, errors.New("telegram transport requires a bot token in credentials")
+		}
+		opts := telegram.Options{
+			BotToken: creds.Telegram.BotToken,
+			InboxDir: cfg.Paths.ConversationCwd,
+		}
+		if cfg.Transport.Telegram != nil {
+			opts.AllowedUserIDs = cfg.Transport.Telegram.AllowedUserIDs
+		}
+		return telegram.New(opts)
+	case config.TransportSlack:
+		if creds.Slack.BotToken == "" || creds.Slack.AppToken == "" {
+			return nil, errors.New("slack transport requires a bot token and an app token in credentials")
+		}
+		opts := slack.Options{
+			BotToken: creds.Slack.BotToken,
+			AppToken: creds.Slack.AppToken,
+			InboxDir: cfg.Paths.ConversationCwd,
+		}
+		if cfg.Transport.Slack != nil {
+			opts.AllowedUserIDs = cfg.Transport.Slack.AllowedUserIDs
+			opts.AllowedChannelIDs = cfg.Transport.Slack.AllowedChannelIDs
+		}
+		return slack.New(opts)
+	case config.TransportDiscord:
+		if creds.Discord.BotToken == "" {
+			return nil, errors.New("discord transport requires a bot token in credentials")
+		}
+		opts := discord.Options{
+			BotToken: creds.Discord.BotToken,
+			InboxDir: cfg.Paths.ConversationCwd,
+		}
+		if cfg.Transport.Discord != nil {
+			opts.AllowedUserIDs = cfg.Transport.Discord.AllowedUserIDs
+			opts.AllowedGuildIDs = cfg.Transport.Discord.AllowedGuildIDs
+		}
+		return discord.New(opts)
+	case config.TransportSignal:
+		if cfg.Transport.Signal == nil || cfg.Transport.Signal.Account == "" {
+			return nil, errors.New("signal transport requires transport.signal.account (the E.164 number your signal-cli daemon serves)")
+		}
+		endpoint := cfg.Transport.Signal.Endpoint
+		if endpoint == "" {
+			endpoint = defaultSignalEndpoint
+		}
+		return signalcli.New(signalcli.Options{
+			Endpoint:       endpoint,
+			Account:        cfg.Transport.Signal.Account,
+			AllowedNumbers: cfg.Transport.Signal.AllowedNumbers,
+			AttachmentsDir: cfg.Transport.Signal.AttachmentsDir,
+			InboxDir:       cfg.Paths.ConversationCwd,
+		})
+	case config.TransportIMessage:
+		opts := imessage.Options{InboxDir: cfg.Paths.ConversationCwd}
+		if cfg.Transport.IMessage != nil {
+			opts.DBPath = cfg.Transport.IMessage.DBPath
+			opts.AllowedHandles = cfg.Transport.IMessage.AllowedHandles
+		}
+		return imessage.New(opts)
 	default:
 		return nil, fmt.Errorf("unknown transport: %s", cfg.Transport.Name)
 	}
 }
+
+// defaultSignalEndpoint is where `signal-cli daemon --http` listens unless
+// the user pointed it elsewhere.
+const defaultSignalEndpoint = "http://127.0.0.1:8080"
 
 func printBanner(cfg *config.Config, creds *config.Credentials, cfgPath, transportName string) {
 	fmt.Printf("im-gateway %s\n", version)
