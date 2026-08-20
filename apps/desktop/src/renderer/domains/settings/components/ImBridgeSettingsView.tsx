@@ -10,6 +10,7 @@ import { ImLegacyImportBanner } from "./ImLegacyImportBanner";
 import { ImLogDrawer } from "./ImLogDrawer";
 import { ImStatusBadge } from "./ImStatusBadge";
 import type { ImBridgeSettingsModel } from "./useImBridgeSettingsModel";
+import { ImChannelConfigDialog } from "./ImChannelConfigDialog";
 import { WechatBindDialog } from "./WechatBindDialog";
 
 export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }): JSX.Element {
@@ -110,50 +111,32 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 				</SettingRow>
 			</SettingSection>
 
-			{/* 消息渠道：飞书 / 微信卡片 */}
+			{/* 消息渠道：飞书、微信及六个 im-gateway 通道 */}
 			<div className="mb-6 p-1.5" data-setting-section-highlight-target={SETTINGS_SECTION["imbridge-channels"].id}>
 				<div className="mb-3 flex items-baseline gap-2">
-					<SettingHeading
-						section={SETTINGS_SECTION["imbridge-channels"]}
-						title={t("section_imbridge-channels")}
-					/>
+					<SettingHeading section={SETTINGS_SECTION["imbridge-channels"]} title={t("section_imbridge-channels")} />
 					<span className="text-[12px] text-muted-foreground">{t("channelsCount")}</span>
 				</div>
 				<div className="grid grid-cols-2 gap-3">
-					<ImChannelCard
-						name={t("feishuName")}
-						subtitle={t("feishuSubtitle")}
-						iconClass="icon-[mdi--message-text] text-primary"
-						configured={Boolean(model.config.feishu.appId)}
-						isActive={model.config.transport === "feishu"}
-						transportStatus={model.transportStatus}
-						actionLabel={t("feishuSetting")}
-						onAction={model.onOpenFeishuDialog}
-						onActivate={
-							model.config.transport === "feishu" ? undefined : () => void model.onSwitchTransport("feishu")
-						}
-					/>
-					<ImChannelCard
-						name={t("wechatName")}
-						subtitle={
-							model.config.wechat.bound
-								? `${t("bound")} (${model.config.wechat.ilinkBotId ?? "iLink"})`
-								: t("wechatSubtitle")
-						}
-						iconClass="icon-[mdi--wechat] text-emerald-400"
-						configured={model.config.wechat.bound}
-						isActive={model.config.transport === "wechat"}
-						transportStatus={model.transportStatus}
-						actionLabel={model.config.wechat.bound ? t("wechatManage") : t("wechatBind")}
-						onAction={model.onOpenWechatDialog}
-						onActivate={
-							model.config.transport === "wechat" ? undefined : () => void model.onSwitchTransport("wechat")
-						}
-					/>
+					<ImChannelCard name={t("feishuName")} subtitle={t("feishuSubtitle")} iconClass="icon-[mdi--message-text] text-primary" configured={Boolean(model.config.feishu.appId)} isActive={model.config.transport === "feishu"} transportStatus={model.transportStatus} actionLabel={t("feishuSetting")} onAction={model.onOpenFeishuDialog} onActivate={model.config.transport === "feishu" ? undefined : () => void model.onSwitchTransport("feishu")} />
+					<ImChannelCard name={t("wechatName")} subtitle={model.config.wechat.bound ? `${t("bound")} (${model.config.wechat.ilinkBotId ?? "iLink"})` : t("wechatSubtitle")} iconClass="icon-[mdi--wechat] text-emerald-400" configured={model.config.wechat.bound} isActive={model.config.transport === "wechat"} transportStatus={model.transportStatus} actionLabel={model.config.wechat.bound ? t("wechatManage") : t("wechatBind")} onAction={model.onOpenWechatDialog} onActivate={model.config.transport === "wechat" ? undefined : () => void model.onSwitchTransport("wechat")} />
+					{(["telegram", "slack", "discord", "signal", "whatsapp", "imessage"] as const).map((transport) => {
+						const configured = (() => {
+							switch (transport) {
+								case "telegram": return Boolean(model.config?.telegram.botToken);
+								case "slack": return Boolean(model.config?.slack.botToken && model.config.slack.appToken);
+								case "discord": return Boolean(model.config?.discord.botToken);
+								case "signal": return Boolean(model.config?.signal.endpoint && model.config.signal.account);
+								case "whatsapp": return model.config?.whatsapp.bound ?? false;
+								case "imessage": return true;
+							}
+						})();
+						return <ImChannelCard key={transport} name={transport === "imessage" ? "iMessage" : transport[0].toUpperCase() + transport.slice(1)} subtitle={t(`imChannelDialogDesc.${transport}`)} iconClass="icon-[mdi--message-text-outline] text-primary" configured={configured} isActive={model.config?.transport === transport} transportStatus={model.transportStatus} actionLabel={t("configureChannel")} onAction={() => model.onOpenChannelDialog(transport)} onActivate={model.config?.transport === transport ? undefined : () => void model.onSwitchTransport(transport)} />;
+					})}
 				</div>
 			</div>
-
 			<ImFeishuDialog model={model} />
+			<ImChannelConfigDialog model={model.channelDialog} />
 			<WechatBindDialog
 				open={model.wechatDialogOpen}
 				onOpenChange={model.setWechatDialogOpen}

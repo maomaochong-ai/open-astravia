@@ -27,8 +27,39 @@ export interface ProbeResult {
 	msg: string;
 }
 
+export type ImChannelConfigTransport = Exclude<ImTransportSelector, "feishu" | "wechat">;
+
+export interface ImChannelFormState {
+	botToken: string;
+	appToken: string;
+	endpoint: string;
+	account: string;
+	attachmentsDir: string;
+	path: string;
+	allowlist: string;
+}
+
+export interface ImChannelDialogModel {
+	transport: ImChannelConfigTransport | null;
+	form: ImChannelFormState;
+	open: boolean;
+	showSecret: boolean;
+	busy: boolean;
+	error: string | null;
+	message: string | null;
+	setOpen: (open: boolean) => void;
+	setShowSecret: React.Dispatch<React.SetStateAction<boolean>>;
+	updateField: <K extends keyof ImChannelFormState>(key: K, value: ImChannelFormState[K]) => void;
+	onSave: () => Promise<void>;
+	onTest: () => Promise<void>;
+	onBind: () => Promise<void>;
+	onLogout: () => Promise<void>;
+}
+
 export interface ImBridgeSettingsModel {
 	config: ImBridgeConfig | null;
+	channelDialog: ImChannelDialogModel;
+
 	feishuForm: FeishuFormState;
 	feishuValidation: FeishuValidation;
 	feishuDialogOpen: boolean;
@@ -60,6 +91,7 @@ export interface ImBridgeSettingsModel {
 	onSwitchTransport: (next: ImTransportSelector) => Promise<void>;
 	onOpenFeishuDialog: () => void;
 	onOpenWechatDialog: () => void;
+	onOpenChannelDialog: (transport: ImChannelConfigTransport) => void;
 	onWechatLogout: () => Promise<void>;
 	onSaveFeishu: () => Promise<void>;
 	onTestFeishu: () => Promise<void>;
@@ -74,6 +106,12 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 	const [feishuForm, setFeishuForm] = useState<FeishuFormState>(emptyFeishuForm);
 	const [feishuDialogOpen, setFeishuDialogOpen] = useState(false);
 	const [wechatDialogOpen, setWechatDialogOpen] = useState(false);
+	const [channelDialogTransport, setChannelDialogTransport] = useState<ImChannelConfigTransport | null>(null);
+	const [channelForm, setChannelForm] = useState<ImChannelFormState>(emptyChannelForm);
+	const [channelShowSecret, setChannelShowSecret] = useState(false);
+	const [channelBusy, setChannelBusy] = useState(false);
+	const [channelError, setChannelError] = useState<string | null>(null);
+	const [channelMessage, setChannelMessage] = useState<string | null>(null);
 	const [status, setStatus] = useState<ImBridgeStatus | null>(null);
 	const [showSecret, setShowSecret] = useState(false);
 	const [saving, setSaving] = useState(false);
@@ -96,6 +134,7 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 			if (cancelled) return;
 			setConfig(loadedConfig);
 			setFeishuForm(feishuFormFromConfig(loadedConfig));
+			setChannelForm(channelFormFromConfig(loadedConfig, loadedConfig.transport));
 
 			const unsub = await window.vetta.im.subscribeStatus(
 				(snap) => setStatus(snap),
@@ -139,8 +178,8 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 
 	const refreshConfig = useCallback(async () => {
 		const refreshed = await window.vetta.im.getConfig();
-		setConfig(refreshed);
 		setFeishuForm(feishuFormFromConfig(refreshed));
+		setChannelForm(channelFormFromConfig(refreshed, refreshed.transport));
 		return refreshed;
 	}, []);
 
@@ -347,6 +386,88 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 		setFeishuDialogOpen(true);
 	}, []);
 
+	const handleOpenChannelDialog = useCallback(
+		(transport: ImChannelConfigTransport) => {
+			if (!config) return;
+			setSaveError(null);
+			setSaveOk(null);
+			setChannelError(null);
+			setChannelMessage(null);
+			setChannelShowSecret(false);
+			setChannelForm(channelFormFromConfig(config, transport));
+			setChannelDialogTransport(transport);
+		},
+		[config],
+	);
+
+	const handleUpdateChannelField = useCallback(
+		<K extends keyof ImChannelFormState>(key: K, value: ImChannelFormState[K]) => {
+			setChannelError(null);
+			setChannelMessage(null);
+			setChannelForm((prev) => ({ ...prev, [key]: value }));
+		},
+		[],
+	);
+
+	const handleSaveChannel = useCallback(async () => {
+		if (!config || !channelDialogTransport || channelBusy) return;
+		setChannelBusy(true);
+		setChannelError(null);
+		setChannelMessage(null);
+		try {
+			const result = await window.vetta.im.setConfig(
+				channelFormToPayload(config, channelDialogTransport, channelForm),
+			);
+			if (!result.ok) {
+				setChannelError(result.error ?? t("saveFailed"));
+				return;
+			}
+			await refreshConfig();
+			setChannelMessage(t("saveOk"));
+		} finally {
+			setChannelBusy(false);
+		}
+	}, [channelBusy, channelDialogTransport, channelForm, config, refreshConfig, t]);
+
+	const handleTestChannel = useCallback(async () => {
+		if (!channelDialogTransport || channelBusy) return;
+		setChannelBusy(true);
+		setChannelError(null);
+		setChannelMessage(null);
+		try {
+			const result = await window.vetta.im.testConnection(channelTestPayload(channelDialogTransport, channelForm));
+			if (result.ok) setChannelMessage(result.message ?? t("testPass"));
+			else setChannelError(result.error ?? t("testFail"));
+		} finally {
+			setChannelBusy(false);
+		}
+	}, [channelBusy, channelDialogTransport, channelForm, t]);
+
+	const handleChannelBind = useCallback(async () => {
+		if (channelDialogTransport !== "whatsapp" || channelBusy) return;
+		setChannelBusy(true);
+		setChannelError(null);
+		try {
+			const result = await window.vetta.im.whatsapp.startBind();
+			if (!result.ok) setChannelError(result.error ?? t("bindFailed"));
+			else setChannelMessage(t("bindStarted"));
+		} finally {
+			setChannelBusy(false);
+		}
+	}, [channelBusy, channelDialogTransport, t]);
+
+	const handleChannelLogout = useCallback(async () => {
+		if (channelDialogTransport !== "whatsapp" || channelBusy) return;
+		setChannelBusy(true);
+		try {
+			const result = await window.vetta.im.whatsapp.logout();
+			if (!result.ok) setChannelError(result.error ?? t("unbindError"));
+			else await refreshConfig();
+		} finally {
+			setChannelBusy(false);
+		}
+	}, [channelBusy, channelDialogTransport, refreshConfig, t]);
+
 	const handleOpenWechatDialog = useCallback(() => {
 		if (!config) return;
 		setSaveError(null);
@@ -359,6 +480,24 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 
 	return {
 		config,
+		channelDialog: {
+			transport: channelDialogTransport,
+			form: channelForm,
+			open: channelDialogTransport !== null,
+			showSecret: channelShowSecret,
+			busy: channelBusy,
+			error: channelError,
+			message: channelMessage,
+			setOpen: (open) => {
+				if (!open) setChannelDialogTransport(null);
+			},
+			setShowSecret: setChannelShowSecret,
+			updateField: handleUpdateChannelField,
+			onSave: handleSaveChannel,
+			onTest: handleTestChannel,
+			onBind: handleChannelBind,
+			onLogout: handleChannelLogout,
+		},
 		feishuForm,
 		feishuValidation,
 		feishuDialogOpen,
@@ -390,6 +529,7 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 		onSwitchTransport: handleSwitchTransport,
 		onOpenFeishuDialog: handleOpenFeishuDialog,
 		onOpenWechatDialog: handleOpenWechatDialog,
+		onOpenChannelDialog: handleOpenChannelDialog,
 		onWechatLogout: handleWechatLogout,
 		onSaveFeishu: handleSaveFeishu,
 		onTestFeishu: handleTestFeishu,
@@ -424,5 +564,95 @@ function feishuFormToPayload(config: ImBridgeConfig, form: FeishuFormState, enab
 			encryptKey: config.feishu.encryptKey || undefined,
 			baseUrl: config.feishu.baseUrl || undefined,
 		},
+	};
+}
+
+function emptyChannelForm(): ImChannelFormState {
+	return { botToken: "", appToken: "", endpoint: "", account: "", attachmentsDir: "", path: "", allowlist: "" };
+}
+
+function channelFormFromConfig(config: ImBridgeConfig, transport: ImTransportSelector): ImChannelFormState {
+	const values =
+		transport === "telegram"
+			? config.telegram.allowedUserIds?.join(", ")
+			: transport === "slack"
+				? [...(config.slack.allowedUserIds ?? []), ...(config.slack.allowedChannelIds ?? [])].join(", ")
+				: transport === "discord"
+					? [...(config.discord.allowedUserIds ?? []), ...(config.discord.allowedGuildIds ?? [])].join(", ")
+					: transport === "signal"
+						? config.signal.allowedNumbers?.join(", ")
+						: transport === "whatsapp"
+							? config.whatsapp.allowedNumbers?.join(", ")
+							: config.imessage.allowedHandles?.join(", ");
+	return {
+		...emptyChannelForm(),
+		botToken:
+			transport === "telegram"
+				? config.telegram.botToken
+				: transport === "slack"
+					? config.slack.botToken
+					: transport === "discord"
+						? config.discord.botToken
+						: "",
+		appToken: transport === "slack" ? config.slack.appToken : "",
+		endpoint: transport === "signal" ? config.signal.endpoint : "",
+		account: transport === "signal" ? config.signal.account : "",
+		attachmentsDir: transport === "signal" ? (config.signal.attachmentsDir ?? "") : "",
+		path: transport === "imessage" ? (config.imessage.dbPath ?? "") : "",
+		allowlist: values ?? "",
+	};
+}
+
+function splitAllowlist(value: string): string[] | undefined {
+	const items = value
+		.split(",")
+		.map((item) => item.trim())
+		.filter(Boolean);
+	return items.length > 0 ? items : undefined;
+}
+
+function channelFormToPayload(
+	config: ImBridgeConfig,
+	transport: ImChannelConfigTransport,
+	form: ImChannelFormState,
+): ImSetConfigPayload {
+	const allowlist = splitAllowlist(form.allowlist);
+	const base = { enabled: config.enabled, transport };
+	if (transport === "telegram")
+		return {
+			...base,
+			telegram: {
+				botToken: form.botToken.trim(),
+				allowedUserIds: allowlist?.flatMap((value) => (/^\\d+$/.test(value) ? [Number(value)] : [])),
+			},
+		};
+	if (transport === "slack")
+		return {
+			...base,
+			slack: { botToken: form.botToken.trim(), appToken: form.appToken.trim(), allowedUserIds: allowlist },
+		};
+	if (transport === "discord")
+		return { ...base, discord: { botToken: form.botToken.trim(), allowedUserIds: allowlist } };
+	if (transport === "signal")
+		return {
+			...base,
+			signal: {
+				endpoint: form.endpoint.trim(),
+				account: form.account.trim(),
+				attachmentsDir: form.attachmentsDir.trim() || undefined,
+				allowedNumbers: allowlist,
+			},
+		};
+	if (transport === "whatsapp") return { ...base, whatsapp: { allowedNumbers: allowlist } };
+	return { ...base, imessage: { dbPath: form.path.trim() || undefined, allowedHandles: allowlist } };
+}
+
+function channelTestPayload(transport: ImChannelConfigTransport, form: ImChannelFormState) {
+	return {
+		transport,
+		botToken: form.botToken,
+		appToken: form.appToken,
+		endpoint: form.endpoint,
+		account: form.account,
 	};
 }
