@@ -15,6 +15,7 @@ export function ChatPageView({
 			onAbort={onAbort}
 			onSendQueued={onSendQueued}
 			cwdOverride={model.pendingCwd}
+			sessionPending={model.sessionPending}
 			sessionPendingLabel={model.sessionPendingLabel}
 		/>
 	);

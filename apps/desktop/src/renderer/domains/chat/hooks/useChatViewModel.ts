@@ -12,6 +12,7 @@ import {
 	isStreamingAtom,
 	loadInputActionStateForSession,
 	pageHeaderTitleAtom,
+	pendingSessionOpenAtom,
 	persistCurrentInputActionState,
 	persistInputActionStateForSession,
 	promptAttachmentAtom,
@@ -39,6 +40,7 @@ export function useChatViewModel(): ChatViewModelResult {
 	const surface = useThemeSurface("chat.view");
 	const activeSessionPath = useAtomValue(activeSessionPathAtom);
 	const activeSessionCwd = useAtomValue(activeSessionCwdAtom);
+	const pendingSessionOpen = useAtomValue(pendingSessionOpenAtom);
 	const messages = useAtomValue(chatMessagesAtom);
 	const isStreaming = useAtomValue(isStreamingAtom);
 	const [panelOpen, setPanelOpen] = useAtom(activityPanelOpenAtom);
@@ -170,7 +172,9 @@ export function useChatViewModel(): ChatViewModelResult {
 			isStreaming,
 			messages,
 			rootClassName: surface?.rootClassName,
-			sessionId: activeSessionPath,
+			// pending path is the visual identity. It avoids old -> null -> target
+			// Virtuoso resets while Runtime-bound activeSession is intentionally absent.
+			sessionId: pendingSessionOpen?.sessionPath ?? activeSessionPath,
 		},
 	};
 }

@@ -98,6 +98,7 @@ describe("DefaultChatView layout", () => {
 				onAbort: vi.fn(async () => {}),
 				onSend: vi.fn(async () => {}),
 				onSendQueued: vi.fn(async () => {}),
+				sessionPending: true,
 				sessionPendingLabel: "正在启动会话",
 			}),
 		);
@@ -105,5 +106,41 @@ describe("DefaultChatView layout", () => {
 		expect(capturedProps.messageList?.pendingLabel).toBe("正在启动会话");
 		expect(capturedProps.inputBar?.sendDisabled).toBe(true);
 		expect(capturedProps.inputBar?.sendPending).toBeUndefined();
+	});
+
+	it("keeps existing-session restore silent while the input remains disabled", () => {
+		renderToStaticMarkup(
+			createElement(DefaultChatView, {
+				actions: {
+					finishExport: vi.fn(),
+					openExport: vi.fn(),
+					togglePanel: vi.fn(),
+					togglePin: vi.fn(async () => {}),
+				},
+				model: {
+					exporting: false,
+					exportTitle: "Session",
+					header: {
+						exportDisabled: false,
+						exporting: false,
+						exportTitle: "Export",
+						panelOpen: false,
+						panelTitle: "Panel",
+						pinTitle: "Pin",
+						pinned: false,
+					},
+					isStreaming: false,
+					messages: [],
+					sessionId: "session-2",
+				},
+				onAbort: vi.fn(async () => {}),
+				onSend: vi.fn(async () => {}),
+				onSendQueued: vi.fn(async () => {}),
+				sessionPending: true,
+			}),
+		);
+
+		expect(capturedProps.messageList?.pendingLabel).toBeUndefined();
+		expect(capturedProps.inputBar?.sendDisabled).toBe(true);
 	});
 });

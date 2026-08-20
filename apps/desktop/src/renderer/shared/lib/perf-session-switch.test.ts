@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { perfSessionSwitchBegin, perfSessionSwitchComplete, perfSessionSwitchMark } from "./perf-session-switch";
+import {
+	perfSessionSwitchBegin,
+	perfSessionSwitchComplete,
+	perfSessionSwitchMark,
+	perfSessionSwitchRecordReactCommit,
+} from "./perf-session-switch";
 
 const interactionId = "00000000-0000-4000-8000-000000000001";
 
@@ -61,6 +66,8 @@ it("开启诊断后输出可检索的单行阶段与 long-task JSON", () => {
 	perfSessionSwitchMark("session-create-start", id);
 	currentTime = 118;
 	frames.shift()?.(currentTime);
+	currentTime = 125;
+	perfSessionSwitchRecordReactCommit("MessageList:initial-viewport", "update", 23.25, 40.04);
 	observeEntries?.({
 		getEntries: () => [{ startTime: 110, duration: 64 }] as PerformanceEntry[],
 	} as PerformanceObserverEntryList);
@@ -80,6 +87,16 @@ it("开启诊断后输出可检索的单行阶段与 long-task JSON", () => {
 		status: "completed",
 		totalDurationMs: 80,
 		longTasks: [{ startMs: 10, durationMs: 64 }],
+		reactCommits: [
+			{
+				id: "MessageList:initial-viewport",
+				phase: "update",
+				atMs: 25,
+				actualDurationMs: 23.3,
+				baseDurationMs: 40,
+			},
+		],
+		droppedReactCommits: 0,
 	});
 	expect(payload.marks).toEqual([
 		{ label: "session-create-start", atMs: 12 },

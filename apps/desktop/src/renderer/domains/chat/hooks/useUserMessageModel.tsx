@@ -290,9 +290,13 @@ export function useUserMessageModel({
 	const pendingEdit = useAtomValue(pendingMessageEditAtom);
 
 	const hasPersistedEntry = Boolean(message.entryId);
-	const canEdit = isLastUserMessage && Boolean(activeSessionRuntimeId);
+	const runtimeReady = Boolean(activeSessionRuntimeId);
+	const showEditAction = isLastUserMessage && (hasPersistedEntry || runtimeReady);
+	const editActionDisabled = !runtimeReady;
+	const canEdit = showEditAction && !editActionDisabled;
 	const canDelete = hasPersistedEntry && Boolean(activeSessionRuntimeId);
-	const canFork = hasPersistedEntry && Boolean(activeSessionRuntimeId);
+	const showForkAction = hasPersistedEntry;
+	const forkActionDisabled = !runtimeReady;
 	const branch = message.branch;
 	const canSwitchBranch = Boolean(branch && branch.siblings.length > 1 && message.entryId);
 	const isPendingEdit = Boolean(
@@ -589,9 +593,12 @@ export function useUserMessageModel({
 				}
 			: null,
 		isLastUserMessage,
-		canEdit,
+		showEditAction,
+		editActionDisabled,
 		canSwitchBranch,
-		canFork,
+		branchActionDisabled: !runtimeReady,
+		showForkAction,
+		forkActionDisabled,
 		isPendingEdit,
 		branchIndex: branch?.index ?? 0,
 		branchTotal: branch?.siblings.length ?? 0,

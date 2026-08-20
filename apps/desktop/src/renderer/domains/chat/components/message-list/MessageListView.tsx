@@ -19,8 +19,10 @@ export { ExportMessageList };
 
 const STREAMING_OVERSCAN = 80;
 const IDLE_OVERSCAN = 400;
+const INITIAL_OVERSCAN = 0;
 const STREAMING_INCREASE_VIEWPORT_BY = { top: 0, bottom: 80 };
 const IDLE_INCREASE_VIEWPORT_BY = { top: 200, bottom: 200 };
+const INITIAL_INCREASE_VIEWPORT_BY = { top: 0, bottom: 0 };
 const VIRTUOSO_STYLE = { overflowX: "hidden" as const };
 /**
  * 未测量条目的高度估算。原值 80 远低于真实中位数（带工具调用的回复动辄几百 px），
@@ -32,12 +34,14 @@ export function MessageListView({
 	model,
 	onAbort,
 	onSend,
+	viewportPhase,
 	sessionId = null,
 	pendingLabel,
 }: {
 	model: MessageListModel;
 	onAbort: MessageListProps["onAbort"];
 	onSend: MessageListProps["onSend"];
+	viewportPhase: "initial" | "expanded";
 	sessionId?: MessageListProps["sessionId"];
 	pendingLabel?: MessageListProps["pendingLabel"];
 }): JSX.Element {
@@ -145,6 +149,7 @@ export function MessageListView({
 			<div
 				ref={selectionMenu.containerRef}
 				className="flex min-h-0 flex-1 flex-col"
+				data-message-viewport={viewportPhase}
 				onContextMenuCapture={selectionMenu.onContextMenuCapture}
 			>
 				<ThemeMessageListView
@@ -157,9 +162,19 @@ export function MessageListView({
 							style={VIRTUOSO_STYLE}
 							atBottomStateChange={scroll.onAtBottomChange}
 							atBottomThreshold={80}
-							overscan={isStreaming ? STREAMING_OVERSCAN : IDLE_OVERSCAN}
+							overscan={
+								viewportPhase === "initial"
+									? INITIAL_OVERSCAN
+									: isStreaming
+										? STREAMING_OVERSCAN
+										: IDLE_OVERSCAN
+							}
 							increaseViewportBy={
-								isStreaming ? STREAMING_INCREASE_VIEWPORT_BY : IDLE_INCREASE_VIEWPORT_BY
+								viewportPhase === "initial"
+									? INITIAL_INCREASE_VIEWPORT_BY
+									: isStreaming
+										? STREAMING_INCREASE_VIEWPORT_BY
+										: IDLE_INCREASE_VIEWPORT_BY
 							}
 							defaultItemHeight={DEFAULT_ITEM_HEIGHT}
 							components={components}

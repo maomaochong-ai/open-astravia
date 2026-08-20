@@ -12,10 +12,9 @@ export function useChatPageModel(): ChatPageModel {
 	return {
 		hasActiveSession: activeSession !== null || pendingSessionCreation !== null || pendingSessionOpen !== null,
 		pendingCwd: pendingSessionCreation?.cwd ?? pendingSessionOpen?.cwd,
-		sessionPendingLabel: pendingSessionCreation
-			? t("chatView.startingSession")
-			: pendingSessionOpen
-				? t("chatView.openingSession")
-				: undefined,
+		sessionPending: pendingSessionCreation !== null || pendingSessionOpen !== null,
+		// Existing-session history is its own visible feedback. Keep only the
+		// brand-new session label, where there is no history to paint yet.
+		sessionPendingLabel: pendingSessionCreation ? t("chatView.startingSession") : undefined,
 	};
 }

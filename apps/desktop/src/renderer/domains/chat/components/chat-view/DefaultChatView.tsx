@@ -18,6 +18,7 @@ export function DefaultChatView({
 	onSend,
 	onSendQueued,
 	cwdOverride,
+	sessionPending = false,
 	sessionPendingLabel,
 }: DefaultChatViewProps): JSX.Element {
 	return (
@@ -46,7 +47,7 @@ export function DefaultChatView({
 								onAbort={onAbort}
 								onSendQueued={onSendQueued}
 								cwdOverride={cwdOverride}
-								sendDisabled={sessionPendingLabel !== undefined}
+								sendDisabled={sessionPending}
 							/>
 						</PerfSendProfiler>
 					</div>

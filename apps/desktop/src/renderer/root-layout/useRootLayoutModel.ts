@@ -30,6 +30,7 @@ import {
 	sidebarCollapsedAtom,
 } from "../shared/store/atoms";
 import { showToast } from "../shared/store/toast-atoms";
+import { shouldShowChatRoutePending } from "./chat-route-pending";
 import type { RootLayoutModel } from "./types";
 
 type SessionRestoreState = "pending" | "restoring" | "complete";
@@ -452,11 +453,14 @@ export function useRootLayoutModel(): RootLayoutModel {
 		narrow,
 		onOpenSession: openSession,
 		overlayOpen,
-		routePending:
-			currentPath === "/" &&
-			!activeSession &&
-			!pendingSessionCreation &&
-			(sessionRestoreState !== "complete" || Boolean(defaultConversationCwd)),
+		routePending: shouldShowChatRoutePending({
+			hasActiveSession: Boolean(activeSession),
+			hasDefaultConversation: Boolean(defaultConversationCwd),
+			hasPendingSessionCreation: Boolean(pendingSessionCreation),
+			hasPendingSessionOpen: Boolean(pendingSessionOpen),
+			isChatRoute: currentPath === "/",
+			sessionRestoreComplete: sessionRestoreState === "complete",
+		}),
 		sidebarCollapsed,
 	};
 }

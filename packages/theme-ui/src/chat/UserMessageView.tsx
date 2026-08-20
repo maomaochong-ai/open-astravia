@@ -45,10 +45,17 @@ export interface UserMessageViewProps {
 	hasAppshot: boolean;
 	copyText: string;
 	isLastUserMessage: boolean;
-	/** True when message has a session entryId and can be re-edited. */
-	canEdit: boolean;
+	/** Keep action geometry stable while the host restores its Runtime. */
+	showEditAction?: boolean;
+	editActionDisabled?: boolean;
+	/** @deprecated Use showEditAction + editActionDisabled to separate geometry from readiness. */
+	canEdit?: boolean;
 	canSwitchBranch: boolean;
-	canFork: boolean;
+	branchActionDisabled?: boolean;
+	showForkAction?: boolean;
+	forkActionDisabled?: boolean;
+	/** @deprecated Use showForkAction + forkActionDisabled to separate geometry from readiness. */
+	canFork?: boolean;
 	isPendingEdit: boolean;
 	branchIndex: number;
 	branchTotal: number;
@@ -194,8 +201,13 @@ export function UserMessageView({
 	hasFileBadges,
 	hasAppshot,
 	copyText,
+	showEditAction,
+	editActionDisabled,
 	canEdit,
 	canSwitchBranch,
+	branchActionDisabled,
+	showForkAction,
+	forkActionDisabled,
 	canFork,
 	isPendingEdit,
 	branchIndex,
@@ -226,7 +238,9 @@ export function UserMessageView({
 		!hasFileBadges &&
 		!hasImages &&
 		!hasAppshot;
-	const showPrimaryActions = Boolean(copyText) || canEdit || canFork;
+	const editActionVisible = showEditAction ?? canEdit ?? false;
+	const forkActionVisible = showForkAction ?? canFork ?? false;
+	const showPrimaryActions = Boolean(copyText) || editActionVisible || forkActionVisible;
 	const showMetaRow = canSwitchBranch || Boolean(relativeTime);
 	const showActions = showPrimaryActions || showMetaRow;
 
@@ -283,10 +297,11 @@ export function UserMessageView({
 						{/* Row 1: edit / fork / copy */}
 						{showPrimaryActions && (
 							<div className="flex h-6 items-center justify-end gap-1 whitespace-nowrap">
-								{canEdit && (
+								{editActionVisible && (
 									<button
 										type="button"
 										onClick={onEdit}
+										disabled={editActionDisabled}
 										title={isPendingEdit ? labels.pendingEdit : labels.edit}
 										aria-label={labels.edit}
 										className={`${actionBtnClass} ${isPendingEdit ? "text-primary" : ""}`}
@@ -294,10 +309,11 @@ export function UserMessageView({
 										<span className="icon-[solar--pen-2-linear] h-3.5 w-3.5" />
 									</button>
 								)}
-								{canFork && (
+								{forkActionVisible && (
 									<button
 										type="button"
 										onClick={onFork}
+										disabled={forkActionDisabled}
 										title={labels.fork}
 										aria-label={labels.fork}
 										className={actionBtnClass}
@@ -316,7 +332,7 @@ export function UserMessageView({
 										<button
 											type="button"
 											onClick={onBranchPrev}
-											disabled={branchIndex <= 0}
+											disabled={branchActionDisabled || branchIndex <= 0}
 											title={labels.branchPrev}
 											aria-label={labels.branchPrev}
 											className={actionBtnClass}
@@ -332,7 +348,7 @@ export function UserMessageView({
 										<button
 											type="button"
 											onClick={onBranchNext}
-											disabled={branchIndex >= branchTotal - 1}
+											disabled={branchActionDisabled || branchIndex >= branchTotal - 1}
 											title={labels.branchNext}
 											aria-label={labels.branchNext}
 											className={actionBtnClass}

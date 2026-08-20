@@ -13,10 +13,19 @@ const ENABLED_KEY = "vetta-perf-session-switch";
 const MAX_REPORT_DELAY_MS = 15_000;
 const COMPLETION_REPORT_DELAY_MS = 1_000;
 const TRACKED_FRAME_COUNT = 5;
+const MAX_REACT_COMMITS = 100;
 
 interface TraceMark {
 	label: string;
 	at: number;
+}
+
+interface ReactCommit {
+	id: string;
+	phase: "mount" | "update" | "nested-update";
+	at: number;
+	actualDuration: number;
+	baseDuration: number;
 }
 
 interface SessionSwitchTrace {
@@ -25,6 +34,8 @@ interface SessionSwitchTrace {
 	startedAt: number;
 	marks: TraceMark[];
 	longTasks: Array<{ start: number; duration: number }>;
+	reactCommits: ReactCommit[];
+	droppedReactCommits: number;
 	observer?: PerformanceObserver;
 	timer?: number;
 	frames: number;
@@ -32,6 +43,7 @@ interface SessionSwitchTrace {
 }
 
 const traces = new Map<string, SessionSwitchTrace>();
+let currentInteractionId: string | null = null;
 
 function isEnabled(): boolean {
 	try {
@@ -56,9 +68,12 @@ export function perfSessionSwitchBegin(trigger: string): string {
 		startedAt: now(),
 		marks: [],
 		longTasks: [],
+		reactCommits: [],
+		droppedReactCommits: 0,
 		frames: 0,
 	};
 	traces.set(interactionId, started);
+	currentInteractionId = interactionId;
 
 	try {
 		const observer = new PerformanceObserver((list) => {
@@ -94,6 +109,23 @@ export function perfSessionSwitchMark(label: string, interactionId?: string): vo
 	trace.marks.push({ label, at: now() });
 }
 
+/** React Profiler sink. No-op unless session-switch diagnostics currently own a trace. */
+export function perfSessionSwitchRecordReactCommit(
+	id: string,
+	phase: "mount" | "update" | "nested-update",
+	actualDuration: number,
+	baseDuration: number,
+): void {
+	if (!currentInteractionId) return;
+	const trace = traces.get(currentInteractionId);
+	if (!trace) return;
+	if (trace.reactCommits.length >= MAX_REACT_COMMITS) {
+		trace.droppedReactCommits += 1;
+		return;
+	}
+	trace.reactCommits.push({ id, phase, at: now(), actualDuration, baseDuration });
+}
+
 export function perfSessionSwitchComplete(status: "completed" | "cancelled" | "failed", interactionId?: string): void {
 	if (!interactionId) return;
 	const trace = traces.get(interactionId);
@@ -107,6 +139,7 @@ export function perfSessionSwitchComplete(status: "completed" | "cancelled" | "f
 function report(trace: SessionSwitchTrace, status: "completed" | "cancelled" | "failed" | "timeout"): void {
 	if (traces.get(trace.interactionId) !== trace) return;
 	traces.delete(trace.interactionId);
+	if (currentInteractionId === trace.interactionId) currentInteractionId = null;
 	trace.observer?.disconnect();
 	if (trace.timer) window.clearTimeout(trace.timer);
 
@@ -121,6 +154,14 @@ function report(trace: SessionSwitchTrace, status: "completed" | "cancelled" | "
 			startMs: Math.round(Math.max(0, task.start) * 10) / 10,
 			durationMs: Math.round(Math.max(0, task.duration) * 10) / 10,
 		})),
+		reactCommits: trace.reactCommits.map((commit) => ({
+			id: commit.id,
+			phase: commit.phase,
+			atMs: relativeMs(commit.at),
+			actualDurationMs: Math.round(commit.actualDuration * 10) / 10,
+			baseDurationMs: Math.round(commit.baseDuration * 10) / 10,
+		})),
+		droppedReactCommits: trace.droppedReactCommits,
 	};
 
 	// 单行 JSON 可以同时被 DevTools、Renderer 文本日志和诊断包稳定检索/解析。

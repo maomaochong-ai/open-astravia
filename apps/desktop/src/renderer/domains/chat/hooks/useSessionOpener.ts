@@ -42,6 +42,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { ConversationScenario } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { type MutableRefObject, useCallback, useRef } from "react";
+import { shareChatMessageSnapshot } from "../services/chat-message-snapshot";
 import {
 	adoptDraftId,
 	appendError,
@@ -93,15 +94,6 @@ function waitForCommittedPaint(): Promise<PaintBarrierResult> {
 			window.requestAnimationFrame(() => finish("painted"));
 		});
 	});
-}
-
-function areChatMessagesEquivalent(
-	left: ReturnType<typeof fullHistoryToChat>,
-	right: ReturnType<typeof fullHistoryToChat>,
-): boolean {
-	if (left === right) return true;
-	if (left.length !== right.length) return false;
-	return JSON.stringify(left) === JSON.stringify(right);
 }
 
 export function useSessionOpener(): SessionOpenerController {
@@ -477,13 +469,20 @@ export function useSessionOpener(): SessionOpenerController {
 			markSessionSwitch("session-history-mapped");
 			// 新会话在 subscribe 后已经允许首条消息直发，此时 sendMessage 可能已经
 			// 写入乐观用户气泡。空历史没有需要恢复的内容，不能再用 [] 覆盖该气泡。
-			if (
-				sessionPath !== undefined &&
-				(!previewMessagesSnapshot || !areChatMessagesEquivalent(previewMessagesSnapshot, mapped))
-			) {
-				setChatMessages(mapped);
-			} else if (sessionPath !== undefined) {
-				markSessionSwitch("session-history-commit-skipped-equivalent");
+			if (sessionPath !== undefined) {
+				if (!previewMessagesSnapshot) {
+					setChatMessages(mapped);
+				} else {
+					const sharedSnapshot = shareChatMessageSnapshot(previewMessagesSnapshot, mapped);
+					if (sharedSnapshot.messages === previewMessagesSnapshot) {
+						markSessionSwitch("session-history-commit-skipped-equivalent");
+					} else {
+						if (sharedSnapshot.reusedCount > 0) {
+							markSessionSwitch("session-history-commit-structural-share");
+						}
+						setChatMessages(sharedSnapshot.messages);
+					}
+				}
 			}
 
 			// If this session already has any prior turn (loaded from disk) we never

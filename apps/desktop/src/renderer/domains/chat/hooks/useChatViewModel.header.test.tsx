@@ -48,6 +48,7 @@ describe("useChatViewModel 引用稳定性", () => {
 			{ id: "m1", role: "user", blocks: [{ type: "text", text: "hi" }] },
 		] as never);
 		store.set(atoms.activeSessionAtom, makeActiveSession() as never);
+		store.set(atoms.pendingSessionOpenAtom, null);
 	});
 
 	it("追加消息（非空→非空）不改变 actions / header 引用", () => {
@@ -101,5 +102,21 @@ describe("useChatViewModel 引用稳定性", () => {
 		});
 		rerender();
 		expect(result.current.model.header.exportDisabled).toBe(false);
+	});
+
+	it("打开已有会话时用目标路径稳定列表身份，并进入历史预览模式", () => {
+		const { result, rerender } = renderHook(() => useChatViewModel());
+
+		act(() => {
+			getDefaultStore().set(atoms.pendingSessionOpenAtom, {
+				cwd: "/repo/b",
+				sessionPath: "/sessions/b.jsonl",
+				interactionId: "open-b",
+			});
+			getDefaultStore().set(atoms.activeSessionAtom, null);
+		});
+		rerender();
+
+		expect(result.current.model.sessionId).toBe("/sessions/b.jsonl");
 	});
 });
