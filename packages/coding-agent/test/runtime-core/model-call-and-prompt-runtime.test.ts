@@ -225,7 +225,7 @@ describe("Coding Agent model call and prompt runtime", () => {
 		});
 	});
 
-	it("keeps unavailable resources model-invisible and flattens queued injections like the legacy path", async () => {
+	it("keeps unavailable resources model-invisible and delivers queued context as records like the idle path", async () => {
 		const unavailable = new CodingAgentPromptRequestAdapter({ now: () => 42 });
 		const prepared = await preparePrompt(
 			unavailable,
@@ -255,15 +255,15 @@ describe("Coding Agent model call and prompt runtime", () => {
 			},
 			{ sessionId: "session-1", queueing: true },
 		);
-		expect(queuedPrompt.input.context).toBeUndefined();
-		expect(queuedPrompt.input.message.content).toEqual([
-			{
-				type: "text",
-				text: expect.stringMatching(
-					/^<prompt_attachments>[\s\S]+<\/prompt_attachments>[\s\S]+<scene>deploy<\/scene>\n\nnow$/,
-				),
-			},
+		// 排队路径不再把上下文拼进正文：user 消息保持与队列条目 displayText
+		// 一致的纯文本，上下文以 contextRecords 投递（ADR-0060 遗留优化）。
+		expect(queuedPrompt.input.message.content).toEqual([{ type: "text", text: "now" }]);
+		expect(queuedPrompt.input.context?.map(({ type, modelVisible }) => ({ type, modelVisible }))).toEqual([
+			{ type: "prompt_attachment_context", modelVisible: true },
+			{ type: "scene_expansion", modelVisible: true },
 		]);
+		expect(queuedPrompt.input.context?.[0]?.content).toContain("deploy.md");
+		expect(queuedPrompt.input.context?.[1]?.content).toBe("<scene>deploy</scene>");
 	});
 
 	it("rejects a Scene instead of silently dropping it when the resolver is unavailable", async () => {

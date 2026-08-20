@@ -50,6 +50,30 @@ describe("optimistic user message reconciliation", () => {
 		expect(reconcileOptimisticUserMessages("runtime-a", [canonical])).toEqual([canonical]);
 	});
 
+	it("队列消费气泡按 matchTextOnly 吸收：规范消息带附件徽章也不残留重复", () => {
+		// 队列镜像只有 displayText；被 turn 消费后规范消息带 attachments，
+		// 严格元数据比较会失配，曾导致 agent 回复完成后气泡重复（ADR-0060）。
+		const optimistic = user("optimistic-1", "@/cache/img.png badge 字体太大");
+		rememberOptimisticUserMessage("runtime-a", optimistic, [], { matchTextOnly: true });
+
+		const canonical = {
+			...user("persisted-1", "@/cache/img.png badge 字体太大"),
+			attachments: [{ kind: "image" as const, path: "/cache/img.png" }],
+		};
+		expect(reconcileOptimisticUserMessages("runtime-a", [canonical])).toEqual([canonical]);
+		expect(reconcileOptimisticUserMessages("runtime-a", [canonical])).toEqual([canonical]);
+	});
+
+	it("matchTextOnly 仍要求文本与序号命中，防止误吸收", () => {
+		const optimistic = user("optimistic-1", "second");
+		rememberOptimisticUserMessage("runtime-a", optimistic, [user("persisted-1", "first")], {
+			matchTextOnly: true,
+		});
+
+		const history = [user("persisted-1", "first"), user("persisted-2", "different")];
+		expect(reconcileOptimisticUserMessages("runtime-a", history)).toEqual([...history, optimistic]);
+	});
+
 	it("不同 runtime 的待确认气泡互不串会话", () => {
 		const optimistic = user("optimistic-a", "session a");
 		rememberOptimisticUserMessage("runtime-a", optimistic, []);

@@ -3,6 +3,11 @@ import type { ChatMessage } from "@shared/store/atoms";
 interface PendingOptimisticUserMessage {
 	message: ChatMessage;
 	precedingUserCount: number;
+	/**
+	 * 队列镜像补的气泡只有 displayText，没有规范消息才有的 attachments /
+	 * promptRef 元数据；这类气泡只按文本 + 序号吸收（ADR-0060）。
+	 */
+	matchTextOnly?: boolean;
 }
 
 const pendingByRuntimeId = new Map<string, PendingOptimisticUserMessage[]>();
@@ -17,6 +22,7 @@ export function rememberOptimisticUserMessage(
 	runtimeId: string,
 	message: ChatMessage,
 	currentMessages: readonly ChatMessage[],
+	options?: { matchTextOnly?: boolean },
 ): void {
 	const pending = pendingByRuntimeId.get(runtimeId) ?? [];
 	pendingByRuntimeId.set(runtimeId, [
@@ -24,6 +30,7 @@ export function rememberOptimisticUserMessage(
 		{
 			message,
 			precedingUserCount: currentMessages.filter((item) => item.role === "user").length,
+			...(options?.matchTextOnly ? { matchTextOnly: true } : {}),
 		},
 	]);
 }
@@ -38,9 +45,10 @@ export function reconcileOptimisticUserMessages(runtimeId: string, history: read
 	if (!pending?.length) return [...history];
 
 	const canonicalUsers = history.filter((message) => message.role === "user");
-	const unresolved = pending.filter(({ message, precedingUserCount }) => {
+	const unresolved = pending.filter(({ message, precedingUserCount, matchTextOnly }) => {
 		const canonical = canonicalUsers[precedingUserCount];
-		return !canonical || !sameUserMessage(canonical, message);
+		if (!canonical) return true;
+		return matchTextOnly ? !sameText(canonical.text, message.text) : !sameUserMessage(canonical, message);
 	});
 
 	if (unresolved.length === 0) {

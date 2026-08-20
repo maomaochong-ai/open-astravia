@@ -28,6 +28,9 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- Turn engine 对排队输入随附的 context 记录不再发 `message` 事件：它们已由 `appendQueuedContext` 以
+  `context.appended` 落盘，此前会以 user `message.appended` 双份持久化（ADR-0060）。
+
 - Provider 终端失败进入 `turn.failed` 时保留具体 AI 错误码，不再把 `AI_BILLING_REQUIRED` 等结构化原因降级成泛化的 `PROVIDER_ERROR`。
 
 - Runtime 内核不再从 AssistantMessage 的错误文案推断重试性；有结构化 Provider failure 时严格使用其合同，没有诊断时默认不可重试。

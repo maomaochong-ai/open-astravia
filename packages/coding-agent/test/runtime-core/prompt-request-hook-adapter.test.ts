@@ -163,13 +163,13 @@ describe("CodingAgentPromptRequestAdapter ecosystem hooks", () => {
 			},
 			{ sessionId: "session-1", queueing: true },
 		);
-		expect(queued.input.context).toBeUndefined();
-		expect(queued.input.message.content).toEqual([
-			{
-				type: "text",
-				text: "prompt context: expanded prompt\n\nskill injection\n\nexpanded prompt",
-			},
+		// 排队路径与空闲路径同形：hook / skill 上下文以 contextRecords 投递，
+		// 正文保持纯文本（SessionStart 已在首次 prepare 消费，不再出现）。
+		expect(queued.input.context?.map(({ type, content }) => ({ type, content }))).toEqual([
+			{ type: "ecosystem_hook_context", content: "prompt context: expanded prompt" },
+			{ type: "skill_expansion", content: "skill injection" },
 		]);
+		expect(queued.input.message.content).toEqual([{ type: "text", text: "expanded prompt" }]);
 		expect(events.map(({ eventName }) => eventName)).toEqual([
 			"SessionStart",
 			"UserPromptSubmit",

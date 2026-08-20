@@ -437,7 +437,17 @@ class AgentEventProjector {
 				...this.finishTurn(),
 				...this.startTurn(),
 				...(envelope ? messageLifecycle(envelope) : []),
-				{ type: "message", message: event.message, ...messageOrigin(event.message, this.identities) },
+				// 排队输入随附的 context 记录已由 appendQueuedContext 以
+				// context.appended 落盘；此处再发 message 事件会双份持久化。
+				...(envelope.kind === "context"
+					? []
+					: [
+							{
+								type: "message",
+								message: event.message,
+								...messageOrigin(event.message, this.identities),
+							} as const,
+						]),
 			];
 		}
 		if (event.type === "tool_execution_start") {

@@ -200,7 +200,11 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 						text: consumed.displayText,
 						timestamp: Date.now(),
 					};
-					rememberOptimisticUserMessage(sessionId, consumedMsg, queueStore.get(chatMessagesAtom));
+					// 镜像条目只有 displayText（无 attachments/promptRef 元数据），
+					// 规范消息回流后按文本吸收即可，避免元数据不等造成气泡残留。
+					rememberOptimisticUserMessage(sessionId, consumedMsg, queueStore.get(chatMessagesAtom), {
+						matchTextOnly: true,
+					});
 					setChatMessages((prev) => [...prev, consumedMsg]);
 				}
 				return;

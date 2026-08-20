@@ -28,7 +28,7 @@ Desktop 的「streaming 中发送」此前完全由 renderer 自建：`useSessio
 ## 后果
 
 - `RuntimeHost.prompt` 返回值从 `void` 变为发送结果（`started` / `queued` / `handled`），`turnControl.prompt` 端口同步放宽；既有调用方忽略返回值不受影响。
-- `context.queueing === true` 的 prepare 分支（hook/attachment/plugin 上下文降级拼进正文文本）此前在 Desktop 是死代码，现在被真实命中。本 ADR 维持该行为不变（上下文仍能抵达模型，只是以正文形式）；将 contextRecords 随队列条目投递属后续优化。
+- `context.queueing === true` 的 prepare 分支（hook/attachment/plugin 上下文降级拼进正文文本）此前在 Desktop 是死代码，现在被真实命中。~~本 ADR 维持该行为不变（上下文仍能抵达模型，只是以正文形式）；将 contextRecords 随队列条目投递属后续优化。~~ **后续优化已落地**：queued prepare 与空闲直发同形，上下文一律以 contextRecords 投递——消费时经 `appendQueuedContext` 落盘 `context.appended`（turn engine 对 context 身份的注入消息不再发 `message` 事件，避免双份持久化），user 消息保持与队列条目 `displayText` 一致的纯文本。此前的拼正文形态曾让「带附件的排队消息」落盘文本 ≠ `displayText`，渲染端按文本吸收失败，agent 回复完成后会残留一条重复的用户气泡。
 - 渲染端 `queuedDispatchSeq` / 乐观气泡对账机制中与「跨轮出队」相关的部分随调度器删除而简化；排队消息不再有乐观气泡，其上屏时机 = 被 turn 消费时的 `message.appended` 回流，顺序与模型可见顺序严格一致。
 - 打断（abort）语义不变：仍只中止当前 turn；配合 pause-on-terminal，打断后队列可见、可清、可续，不再有静默行为。
 - SDK/RPC 宿主原有 steer/followUp 行为不变；它们与 Desktop 从此走同一条队列，`pendingMessageCount` 恢复真实含义。

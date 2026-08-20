@@ -60,13 +60,9 @@ describe("plugin prompt contexts", () => {
 			}),
 		]);
 
+		// 排队路径与空闲路径同形：上下文以 contextRecords 投递，正文保持纯文本。
 		const queued = await preparePrompt(adapter, request, { sessionId: "session-1", queueing: true });
-		expect(queued.input.context).toBeUndefined();
-		expect(queued.input.message.content).toEqual([
-			{
-				type: "text",
-				text: expect.stringContaining("<plugin_prompt_contexts>"),
-			},
-		]);
+		expect(queued.input.message.content).toEqual([{ type: "text", text: "edit selection" }]);
+		expect(queued.input.context).toEqual(idle.input.context);
 	});
 });

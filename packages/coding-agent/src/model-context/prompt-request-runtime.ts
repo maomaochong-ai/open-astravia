@@ -119,20 +119,9 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 			context.signal,
 		);
 		const timestamp = this.now();
-		const attachmentContext = request.attachments?.length
-			? buildPromptAttachmentContext(request.attachments)
-			: undefined;
 		const pluginPromptContexts = parsePluginPromptContexts(request.metadata?.pluginPromptContexts);
-		const pluginPromptContext =
-			pluginPromptContexts.length > 0 ? buildPluginPromptContextMessage(pluginPromptContexts) : undefined;
-		const queuedInjection = context.queueing
-			? [...hookContexts, attachmentContext, pluginPromptContext, expansion.skillInjection, expansion.sceneInjection]
-					.filter(isNonEmptyString)
-					.join("\n\n")
-			: "";
-		const text = queuedInjection ? `${queuedInjection}\n\n${expansion.text}` : expansion.text;
 		const content: Array<{ readonly type: "text"; readonly text: string } | ImageContent> = [
-			{ type: "text", text },
+			{ type: "text", text: expansion.text },
 			...(request.images ?? []),
 		];
 		const message: UserMessage = {
@@ -140,12 +129,13 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 			content,
 			timestamp,
 		};
-		const contextRecords = context.queueing
-			? []
-			: [
-					...hookContexts.map((content) => hiddenContext("ecosystem_hook_context", content)),
-					...this.buildContext(request, expansion, pluginPromptContexts),
-				];
+		// 排队消费与空闲直发共用同一形态：上下文一律以 contextRecords 投递
+		// （排队路径经 appendQueuedContext 落盘 context.appended），user 消息
+		// 保持与队列条目 displayText 一致的纯文本（ADR-0060 遗留优化）。
+		const contextRecords = [
+			...hookContexts.map((content) => hiddenContext("ecosystem_hook_context", content)),
+			...this.buildContext(request, expansion, pluginPromptContexts),
+		];
 		return {
 			message,
 			...(contextRecords.length > 0 ? { context: contextRecords } : {}),

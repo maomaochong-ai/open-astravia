@@ -13,6 +13,7 @@ import {
 	AgentCoreTurnEngine,
 	type RuntimeSnapshot,
 	type RuntimeToolDefinition,
+	type SessionContextRecord,
 	SessionInputQueue,
 	type TurnEngineEvent,
 	type TurnEnginePort,
@@ -119,6 +120,74 @@ describe("StatelessAgentCoreTurnEngine", () => {
 				],
 			},
 		});
+	});
+
+	it("delivers queued context via appendQueuedContext without duplicating it as a message event", async () => {
+		const queue = new SessionInputQueue();
+		const record: SessionContextRecord = {
+			type: "prompt_attachment_context",
+			content: "<prompt_attachments>[]</prompt_attachments>",
+			modelVisible: true,
+			display: false,
+		};
+		queue.steer({ message: user("badge too big"), context: [record] });
+
+		const contexts: Message[][] = [];
+		const responses = [
+			assistant([{ type: "toolCall", id: "call-1", name: "echo", arguments: { value: "hi" } }], "toolUse"),
+			assistant([{ type: "text", text: "done" }]),
+		];
+		let responseIndex = 0;
+		const engine = new StatelessAgentCoreTurnEngine({
+			model: model(),
+			streamFn: (_model, context) => {
+				contexts.push([...context.messages]);
+				const response = responses[responseIndex];
+				if (!response) throw new Error(`Missing response at index ${responseIndex}`);
+				responseIndex += 1;
+				return recordedStream(response);
+			},
+		});
+		const tool: RuntimeToolDefinition = {
+			name: "echo",
+			label: "Echo",
+			description: "Echo",
+			inputSchema: { type: "object" },
+			async execute() {
+				return { content: [{ type: "text", text: "echoed" }] };
+			},
+		};
+		const appended: SessionContextRecord[][] = [];
+		const events: TurnEngineEvent[] = [];
+		for await (const event of engine.execute({
+			sessionId: "session-1",
+			turnId: "turn-1",
+			snapshot: snapshot([tool]),
+			messages: [user("hello")],
+			signal: new AbortController().signal,
+			inputQueue: queue,
+			appendQueuedContext: async (records) => {
+				appended.push([...records]);
+			},
+		})) {
+			events.push(event);
+		}
+
+		// context 经 appendQueuedContext 落盘一次，不再以 message 事件双份持久化。
+		expect(appended).toEqual([[record]]);
+		const userMessages = events.filter(
+			(event): event is Extract<TurnEngineEvent, { type: "message" }> =>
+				event.type === "message" && event.message.role === "user",
+		);
+		expect(userMessages).toHaveLength(1);
+		expect(userMessages[0]?.message.content).toBe("badge too big");
+		// 模型在注入点仍按「context 在前、user 消息在后」看到两者。
+		const injected = contexts[1]?.map(({ role, content }) => ({ role, content }));
+		expect(injected).toContainEqual({ role: "user", content: record.content });
+		expect(injected).toContainEqual({ role: "user", content: "badge too big" });
+		expect((injected ?? []).findIndex(({ content }) => content === record.content)).toBeLessThan(
+			(injected ?? []).findIndex(({ content }) => content === "badge too big"),
+		);
 	});
 
 	it("rejects provider failures without consuming queued follow-up input", async () => {
