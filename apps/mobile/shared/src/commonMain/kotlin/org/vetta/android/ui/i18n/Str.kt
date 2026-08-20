@@ -18,6 +18,7 @@ object Str {
     const val featureSecure = "安全同步"
     const val featureSecureDesc = "端到端加密，保障数据安全"
     const val getStarted = "登录"
+    const val scanPairing = "扫码连接 Desktop"
     const val advancedServer = "服务器设置"
 
     const val loginTitle = "登录 Vetta"

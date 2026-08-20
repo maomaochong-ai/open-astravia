@@ -245,7 +245,11 @@ class AppViewModel(
 				org.vetta.android.domain.remote.buildMobilePairingTarget(invite, resume)
 			}
             val connected = runCatching { container.remoteConversationGateway.connect(actualTarget) }
-            if (connected.getOrDefault(false)) return@launch
+            if (connected.getOrDefault(false)) {
+                val device = container.remoteConversationGateway.devices.value.firstOrNull()
+                if (device != null) openDeviceDetail(device.id)
+                return@launch
+            }
             _state.update {
                 it.copy(
                     globalError =
@@ -317,7 +321,7 @@ class AppViewModel(
     fun openFilesContext(deviceId: String) = navigate(AppRoute.FilesContext(deviceId))
 
     fun navigateBackFromSecondary() {
-        navigate(AppRoute.Main(_state.value.mainTab))
+        if (_state.value.user == null) navigate(AppRoute.Welcome) else navigate(AppRoute.Main(_state.value.mainTab))
     }
 
     private fun navigate(route: AppRoute) {

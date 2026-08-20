@@ -73,6 +73,7 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                 WelcomeScreen(
                     onLogin = vm::openLogin,
                     onServerSetup = vm::openServerSetup,
+                    onScanPairing = vm::connectDesktop,
                 )
             AppRoute.Login ->
                 LoginScreen(

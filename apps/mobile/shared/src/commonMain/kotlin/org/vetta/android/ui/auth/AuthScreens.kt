@@ -51,12 +51,14 @@ import org.vetta.android.domain.error.UiError
 import org.vetta.android.ui.components.PrimaryBlackButton
 import org.vetta.android.ui.components.VettaErrorBanner
 import org.vetta.android.ui.i18n.Str
+import org.vetta.android.ui.remote.PairingScannerButton
 import org.vetta.android.ui.theme.vettaExtra
 
 @Composable
 fun WelcomeScreen(
     onLogin: () -> Unit,
     onServerSetup: () -> Unit,
+    onScanPairing: (String) -> Unit,
 ) {
     Column(
         modifier =
@@ -81,6 +83,14 @@ fun WelcomeScreen(
         FeatureRow(Icons.Default.Lock, Str.featureSecure, Str.featureSecureDesc)
         Spacer(Modifier.height(28.dp))
         PrimaryBlackButton(text = Str.getStarted, onClick = onLogin)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(Str.scanPairing, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.vettaExtra.secondaryText)
+            PairingScannerButton(onScanned = onScanPairing)
+        }
         TextButton(onClick = onServerSetup, modifier = Modifier.align(Alignment.End)) {
             Text(Str.advancedServer, color = MaterialTheme.vettaExtra.secondaryText)
         }
