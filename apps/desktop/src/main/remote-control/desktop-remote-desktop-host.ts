@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { join } from "node:path";
 import { decodeRemoteInputMessage } from "@vetta/remote-desktop";
 import { BrowserWindow, desktopCapturer, ipcMain, session } from "electron";
 import { getAppLogger } from "../logger.js";
+import { resolveDesktopRemoteDesktopHostPaths } from "./desktop-remote-desktop-host-paths.js";
 import { createSystemInputAdapter } from "./system-input.js";
 
 export interface DesktopRemoteDesktopHostOptions {
@@ -35,6 +35,7 @@ export async function startDesktopRemoteDesktopHost(
 		remoteDesktopSessionId(options.signalingTarget ?? options.signalingUrl ?? "") ?? `desktop-${randomUUID()}`;
 	const input = createSystemInputAdapter({ enabled: options.inputEnabled });
 	input.setEnabled(options.inputEnabled);
+	const paths = resolveDesktopRemoteDesktopHostPaths(options);
 	const window = new BrowserWindow({
 		show: false,
 		width: 1280,
@@ -43,7 +44,7 @@ export async function startDesktopRemoteDesktopHost(
 			backgroundThrottling: false,
 			contextIsolation: true,
 			nodeIntegration: false,
-			preload: join(options.appRoot, "dist/preload/remote-desktop.js"),
+			preload: paths.preloadPath,
 		},
 	});
 	const onInput = (_event: Electron.IpcMainEvent, message: unknown): void => {
@@ -55,29 +56,40 @@ export async function startDesktopRemoteDesktopHost(
 		}
 	};
 	ipcMain.on("vetta:remote-desktop:input", onInput);
+	let displayMediaHandlerInstalled = false;
+	try {
+		// Electron supplies the first physical display to getDisplayMedia in the
+		// hidden renderer. No screen pixels or credentials pass through the relay.
+		session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+			if (!request.frame?.url.includes("remote-desktop-host.html")) {
+				callback({ video: undefined });
+				return;
+			}
+			void desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
+				const source = sources[0];
+				if (source) callback({ video: source });
+				else callback({ video: undefined });
+			});
+		});
+		displayMediaHandlerInstalled = true;
 
-	// Electron supplies the first physical display to getDisplayMedia in the
-	// hidden renderer. No screen pixels or credentials pass through the relay.
-	session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
-		if (!request.frame?.url.includes("remote-desktop-host.html")) {
-			callback({ video: undefined });
-			return;
+		const target = options.signalingTarget ?? `${options.signalingUrl}#${options.pairingToken}`;
+		if (options.isPackaged) {
+			await window.loadFile(paths.pagePath, {
+				query: { target, sessionId },
+			});
+		} else {
+			const page = `${options.devServerUrl ?? "http://127.0.0.1:3020"}/remote-desktop-host.html`;
+			await window.loadURL(
+				`${page}?target=${encodeURIComponent(target)}&sessionId=${encodeURIComponent(sessionId)}`,
+			);
 		}
-		void desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
-			const source = sources[0];
-			if (source) callback({ video: source });
-			else callback({ video: undefined });
-		});
-	});
-
-	const target = options.signalingTarget ?? `${options.signalingUrl}#${options.pairingToken}`;
-	if (options.isPackaged) {
-		await window.loadFile(join(options.appRoot, "dist/renderer/remote-desktop-host.html"), {
-			query: { target, sessionId },
-		});
-	} else {
-		const page = `${options.devServerUrl ?? "http://127.0.0.1:3020"}/remote-desktop-host.html`;
-		await window.loadURL(`${page}?target=${encodeURIComponent(target)}&sessionId=${encodeURIComponent(sessionId)}`);
+	} catch (error) {
+		input.setEnabled(false);
+		ipcMain.removeListener("vetta:remote-desktop:input", onInput);
+		if (displayMediaHandlerInstalled) session.defaultSession.setDisplayMediaRequestHandler(null);
+		if (!window.isDestroyed()) window.destroy();
+		throw error;
 	}
 	log.info("remote desktop host started", { sessionId, inputEnabled: input.supported });
 
