@@ -46,6 +46,11 @@
 
 ### Fixed
 
+- 修复 macOS 上 ⌘Q 退出应用后系统弹出「Vetta 意外退出」崩溃弹窗的问题（进程实际以 SIGTRAP 结束）。
+  根因是全局键盘监听：主进程既在 worker 线程里 `uIOhook.start()`，又在主线程 import `uiohook-napi`
+  只为取键码常量，于是两个 Node Environment 各注册了一份 napi 清理钩子，而原生侧的「监听中」标志是
+  进程级共享的；退出时主线程那份钩子会替 worker 调 `hook_stop()`，对已失效的 CFRunLoopRef 取运行模式即崩溃。
+  现在主线程改用本地键码常量、不再加载原生模块，退出前先让 worker 自己跑完 `uIOhook.stop()`（超时才硬终止）。
 - 修复手机扫码配对后 Desktop 主进程因缺少浏览器 `WebSocket` 全局对象而持续重连、无法接入中继的问题；
   改用明确注入的 Node WebSocket 实现，并合并同一次失败触发的重复重连调度。
 - 修复手机完成首次配对后仍使用一次性 bootstrap、导致 Desktop 或手机重启后无法恢复连接的问题；已有配对优先使用恢复凭据，失败时才回退当前二维码，并且只在连接成功后持久化新凭据。

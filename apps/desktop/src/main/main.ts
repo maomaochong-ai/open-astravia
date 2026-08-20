@@ -878,8 +878,10 @@ setQuitCleanup(async () => {
 		teardownBatchTasksIpc = undefined;
 	}
 
-	// 退出前注销全部全局键盘监听消费者（快捷面板双击 + appshot 双键同按），避免 uiohook 线程残留。
-	stopAllUiohookConsumers();
+	// 退出前注销全部全局键盘监听消费者（快捷面板双击 + appshot 双键同按）。
+	// 必须等它完成：uiohook worker 要自己跑完 uIOhook.stop()，否则进程退出时
+	// uiohook-napi 的 env cleanup hook 会 SIGTRAP（macOS「意外退出」弹窗）。
+	const uiohookShutdown = stopAllUiohookConsumers();
 
 	// 停掉插件开发会话和插件命令拉起的长驻进程。
 	stopAllPluginDevWatches();
@@ -889,6 +891,7 @@ setQuitCleanup(async () => {
 		shutdownScheduler(),
 		shutdownBatchTaskExecutor(),
 		knowledgeShutdown,
+		uiohookShutdown,
 	]);
 	for (const result of consumerShutdownResults) {
 		if (result.status === "rejected") {

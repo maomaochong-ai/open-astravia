@@ -52,4 +52,21 @@ describe("main bundle asset-URL guard", () => {
 		expect(source).toContain('join(HOST_DIR, "uiohook-worker.js")');
 		expect(source).toContain("dirname(fileURLToPath(import.meta.url))");
 	});
+
+	// 回归：主线程 import uiohook-napi 只为取键码常量，却在主线程 Environment 注册了
+	// napi env cleanup hook；退出时它替 worker 跑 uiohook_worker_stop()，对已失效的
+	// CFRunLoopRef 调 CFRunLoopCopyCurrentMode → SIGTRAP，用户看到「Vetta 意外退出」。
+	// 原生 addon 只允许在 uiohook-worker.ts（worker 线程）里加载。
+	it("除 uiohook-worker.ts 外，主进程源码不加载 uiohook-napi 原生模块", () => {
+		const offenders: string[] = [];
+		for (const file of collectSourceFiles(MAIN_DIR)) {
+			if (file.endsWith("uiohook-worker.ts")) continue;
+			// 只看真实语句，注释里提到模块名不算（本守卫的理由就写在注释里）。
+			const code = readFileSync(file, "utf8").replace(/^\s*\/\/.*$/gm, "");
+			if (/from "uiohook-napi"|require\("uiohook-napi"\)/.test(code)) {
+				offenders.push(relative(MAIN_DIR, file));
+			}
+		}
+		expect(offenders).toEqual([]);
+	});
 });

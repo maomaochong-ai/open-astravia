@@ -17,6 +17,7 @@
 import { parentPort } from "node:worker_threads";
 import { uIOhook } from "uiohook-napi";
 import type { UiohookHostMessage } from "./uiohook-protocol.js";
+import { isUiohookHostRequest } from "./uiohook-protocol.js";
 
 if (!parentPort) {
 	// 不在 worker 线程上下文（被误当普通模块执行）时快速失败。
@@ -29,6 +30,20 @@ const port = parentPort;
 function post(message: UiohookHostMessage): void {
 	port.postMessage(message);
 }
+
+// 退出必须由 worker 自己调用 uIOhook.stop()：只有它会把原生侧的 is_worker_running
+// 清零。否则主线程 Environment 拆除时 uiohook-napi 的 env cleanup hook 会对已失效的
+// CFRunLoopRef 调 hook_stop()，进程以 SIGTRAP 收场（详见 uiohook-protocol.ts）。
+port.on("message", (message: unknown) => {
+	if (!isUiohookHostRequest(message)) return;
+	try {
+		uIOhook.stop();
+	} catch (err) {
+		console.error("[uiohook-worker] stop failed", err);
+	}
+	// 只结束当前 worker 线程，主进程不受影响。
+	process.exit(0);
+});
 
 uIOhook.on("keydown", (e) => post({ type: "keydown", keycode: e.keycode }));
 uIOhook.on("keyup", (e) => post({ type: "keyup", keycode: e.keycode }));

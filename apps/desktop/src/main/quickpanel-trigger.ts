@@ -5,6 +5,9 @@
 // UiohookSupervisor 负责 spawn/看门狗/重试，键盘事件经 parentPort 回传本模块的状态机。
 // 宿主必须留在主进程内：实测 Electron utilityProcess 里的 CGEventTap 至多投递一个事件后就
 // 永久失聪，双击 ⌘ / 双 Shift 同按依赖的修饰键事件一个都收不到（详见 uiohook-worker.ts）。
+// 本模块（主线程）刻意**不 import uiohook-napi**：加载 addon 会在主线程 Environment
+// 注册 env cleanup hook，退出时对 worker 的失效 CFRunLoopRef 调 hook_stop() 而 SIGTRAP。
+// 键码常量走 uiohook-keycodes.ts，停止走 worker 自己的 uIOhook.stop()（uiohook-protocol.ts）。
 // 两个消费者共用同一宿主：
 //   - quickpanel：「干净双击」某个功能键唤出快捷面板；
 //   - appshot：左右同一功能键「双键同按持按 250ms」触发前台窗口捕获。
@@ -14,9 +17,9 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-import { UiohookKey } from "uiohook-napi";
 import type { AppshotGesture, QuickPanelTrigger } from "./config/desktop-config-store.js";
 import { getAppLogger } from "./logger.js";
+import { UIOHOOK_KEYCODE } from "./uiohook-keycodes.js";
 import type { UiohookHostChild } from "./uiohook-supervisor.js";
 import { UiohookSupervisor } from "./uiohook-supervisor.js";
 
@@ -33,12 +36,12 @@ function keycodesFor(trigger: Exclude<QuickPanelTrigger, "none">): number[] {
 	switch (trigger) {
 		case "mod":
 			return process.platform === "darwin"
-				? [UiohookKey.Meta, UiohookKey.MetaRight]
-				: [UiohookKey.Ctrl, UiohookKey.CtrlRight];
+				? [UIOHOOK_KEYCODE.Meta, UIOHOOK_KEYCODE.MetaRight]
+				: [UIOHOOK_KEYCODE.Ctrl, UIOHOOK_KEYCODE.CtrlRight];
 		case "alt":
-			return [UiohookKey.Alt, UiohookKey.AltRight];
+			return [UIOHOOK_KEYCODE.Alt, UIOHOOK_KEYCODE.AltRight];
 		case "shift":
-			return [UiohookKey.Shift, UiohookKey.ShiftRight];
+			return [UIOHOOK_KEYCODE.Shift, UIOHOOK_KEYCODE.ShiftRight];
 	}
 }
 
@@ -47,12 +50,12 @@ function appshotKeycodesFor(gesture: AppshotGesture): number[] {
 	switch (gesture) {
 		case "both-mod":
 			return process.platform === "darwin"
-				? [UiohookKey.Meta, UiohookKey.MetaRight]
-				: [UiohookKey.Ctrl, UiohookKey.CtrlRight];
+				? [UIOHOOK_KEYCODE.Meta, UIOHOOK_KEYCODE.MetaRight]
+				: [UIOHOOK_KEYCODE.Ctrl, UIOHOOK_KEYCODE.CtrlRight];
 		case "both-alt":
-			return [UiohookKey.Alt, UiohookKey.AltRight];
+			return [UIOHOOK_KEYCODE.Alt, UIOHOOK_KEYCODE.AltRight];
 		case "both-shift":
-			return [UiohookKey.Shift, UiohookKey.ShiftRight];
+			return [UIOHOOK_KEYCODE.Shift, UIOHOOK_KEYCODE.ShiftRight];
 	}
 }
 
@@ -82,6 +85,9 @@ function spawnUiohookWorker(): UiohookHostChild {
 			const forward = listener as (value: unknown) => void;
 			return worker.on(event, (value: unknown) => forward(value));
 		},
+		postMessage(message) {
+			worker.postMessage(message);
+		},
 		// terminate() 是异步的，而 supervisor 只需要「已请求终止」的同步语义；
 		// 真命中原生死锁时线程可能终止不掉，但那只泄漏一个 worker，主线程不受影响。
 		kill() {
@@ -102,13 +108,16 @@ function getSupervisor(): UiohookSupervisor {
 	return supervisor;
 }
 
-/** 依据活跃消费者集合启停宿主 worker：首个出现拉起、集合空终止。 */
-function syncHookLifecycle(): void {
+/**
+ * 依据活跃消费者集合启停宿主 worker：首个出现拉起、集合空则优雅停止。
+ * 返回停止完成的 Promise（拉起路径同步完成，返回 undefined 的已决态）。
+ */
+function syncHookLifecycle(): Promise<void> {
 	if (activeConsumers.size > 0) {
 		getSupervisor().ensureRunning();
-	} else {
-		supervisor?.stop();
+		return Promise.resolve();
 	}
+	return supervisor?.stop() ?? Promise.resolve();
 }
 
 // ----- quickpanel：干净双击状态机 -------------------------------------------
@@ -263,7 +272,7 @@ export function applyQuickPanelTrigger(trigger: QuickPanelTrigger): void {
 		activeConsumers.add("quickpanel");
 		log.info("quick panel trigger set", { trigger });
 	}
-	syncHookLifecycle();
+	void syncHookLifecycle();
 }
 
 /** 依据配置启停 appshot 消费者：none 注销；其它注册并设定目标键对。设置变更后再次调用即可热切换。 */
@@ -277,7 +286,7 @@ export function applyAppshotGesture(gesture: AppshotGesture | "none"): void {
 		activeConsumers.add("appshot");
 		log.info("appshot gesture set", { gesture });
 	}
-	syncHookLifecycle();
+	void syncHookLifecycle();
 }
 
 /** 注销 quickpanel 消费者（关闭功能或 IPC teardown 时）；appshot 消费者仍活跃则底层监听不停。 */
@@ -285,15 +294,21 @@ export function stopQuickPanelTrigger(): void {
 	resetQuickPanelState();
 	qpTargets = new Set();
 	activeConsumers.delete("quickpanel");
-	syncHookLifecycle();
+	void syncHookLifecycle();
 }
 
-/** 注销全部消费者并停止底层监听（退出 APP 时，避免 uiohook worker 线程残留）。 */
-export function stopAllUiohookConsumers(): void {
+/**
+ * 注销全部消费者并停止底层监听（退出 APP 时）。
+ *
+ * 必须 await：worker 需要自己跑完 uIOhook.stop() 才会把原生侧 is_worker_running 清零，
+ * 否则进程退出时 uiohook-napi 的 env cleanup hook 会以 SIGTRAP 打死进程
+ * （macOS 上就是「Vetta 意外退出」弹窗，详见 uiohook-protocol.ts）。
+ */
+export function stopAllUiohookConsumers(): Promise<void> {
 	resetQuickPanelState();
 	resetAppshotState();
 	qpTargets = new Set();
 	axTargets = new Set();
 	activeConsumers.clear();
-	syncHookLifecycle();
+	return syncHookLifecycle();
 }

@@ -1,8 +1,9 @@
 // UiohookSupervisor 的生命周期测试：看门狗超时杀重拉、重试预算、意外退出重启、
-// stop 后在途消息失效。背景：uiohook-napi 启动竞态死锁会冻结宿主子进程且不退出，
+// stop 的优雅停止（下发 "stop" 等 worker 自行退出，超时才硬 kill）与在途消息失效。背景：uiohook-napi 启动竞态死锁会冻结宿主子进程且不退出，
 // 「启动超时 → kill → 重拉」是本模块存在的理由，必须由测试锁定。
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { UiohookHostRequest } from "./uiohook-protocol.js";
 import type { UiohookHostChild } from "./uiohook-supervisor.js";
 import { UiohookSupervisor } from "./uiohook-supervisor.js";
 
@@ -17,6 +18,7 @@ vi.mock("./logger.js", () => ({
 
 class FakeChild implements UiohookHostChild {
 	killed = false;
+	posted: UiohookHostRequest[] = [];
 	private messageListeners: Array<(message: unknown) => void> = [];
 	private exitListeners: Array<(code: number) => void> = [];
 
@@ -24,6 +26,10 @@ class FakeChild implements UiohookHostChild {
 		if (event === "message") this.messageListeners.push(listener as (message: unknown) => void);
 		else this.exitListeners.push(listener as (code: number) => void);
 		return this;
+	}
+
+	postMessage(message: UiohookHostRequest): void {
+		this.posted.push(message);
 	}
 
 	kill(): boolean {
@@ -42,6 +48,7 @@ class FakeChild implements UiohookHostChild {
 
 const START_TIMEOUT_MS = 4000;
 const RESTART_DELAY_MS = 500;
+const STOP_TIMEOUT_MS = 1500;
 
 function createSupervisor(overrides?: { maxStartAttempts?: number }) {
 	const children: FakeChild[] = [];
@@ -58,6 +65,7 @@ function createSupervisor(overrides?: { maxStartAttempts?: number }) {
 		startTimeoutMs: START_TIMEOUT_MS,
 		restartDelayMs: RESTART_DELAY_MS,
 		maxStartAttempts: overrides?.maxStartAttempts ?? 3,
+		stopTimeoutMs: STOP_TIMEOUT_MS,
 	});
 	return { supervisor, children, onKeydown, onKeyup };
 }
@@ -160,19 +168,48 @@ describe("UiohookSupervisor", () => {
 		expect(children).toHaveLength(2);
 	});
 
-	it("stop 杀掉子进程，其后在途消息与定时器全部失效", () => {
+	// 回归：曾直接 worker.terminate()，uiohook-napi 的 env cleanup hook 会在进程退出时
+	// 对失效的 CFRunLoopRef 调 hook_stop()，macOS 上退出即 SIGTRAP（「意外退出」弹窗）。
+	// 停止必须先让 worker 自己跑完 uIOhook.stop()。
+	it("stop 下发 stop 请求并等待 worker 自行退出，不硬 kill", async () => {
+		const { supervisor, children } = createSupervisor();
+		supervisor.ensureRunning();
+		children[0].emitMessage({ type: "started" });
+
+		const stopped = supervisor.stop();
+		expect(children[0].posted).toEqual([{ type: "stop" }]);
+		expect(children[0].killed).toBe(false);
+		expect(supervisor.running).toBe(false);
+
+		children[0].emitExit(0);
+		await stopped;
+		expect(children[0].killed).toBe(false);
+	});
+
+	it("stop 超时（worker 卡死）才硬 kill", async () => {
+		const { supervisor, children } = createSupervisor();
+		supervisor.ensureRunning();
+		children[0].emitMessage({ type: "started" });
+
+		const stopped = supervisor.stop();
+		await vi.advanceTimersByTimeAsync(STOP_TIMEOUT_MS);
+		await stopped;
+		expect(children[0].killed).toBe(true);
+	});
+
+	it("stop 后在途消息与定时器全部失效", async () => {
 		const { supervisor, children, onKeydown } = createSupervisor();
 		supervisor.ensureRunning();
 		children[0].emitMessage({ type: "started" });
 
-		supervisor.stop();
-		expect(children[0].killed).toBe(true);
-		expect(supervisor.running).toBe(false);
+		const stopped = supervisor.stop();
+		children[0].emitExit(0);
+		await stopped;
 
 		children[0].emitMessage({ type: "keydown", keycode: 54 });
 		expect(onKeydown).not.toHaveBeenCalled();
-		// stop 后不得有残留定时器再拉进程。
-		vi.advanceTimersByTime(START_TIMEOUT_MS + RESTART_DELAY_MS);
+		// stop 后不得有残留定时器再拉进程（worker 退出也不触发重启）。
+		await vi.advanceTimersByTimeAsync(START_TIMEOUT_MS + RESTART_DELAY_MS);
 		expect(children).toHaveLength(1);
 	});
 
