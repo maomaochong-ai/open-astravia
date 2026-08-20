@@ -30,8 +30,16 @@ class RelayRemoteConversationGatewayTest {
                 RelayRemoteConversationGateway(
                     scope = backgroundScope,
                     transportFactory = { transport },
+                    now = { 1_000L },
                 )
             gateway.connect("fake-relay")
+
+            val device = gateway.devices.value.single()
+            assertEquals("Windows 11", device.osLabel)
+            assertEquals("Test CPU", device.cpu)
+            assertEquals("16 GB", device.ram)
+            assertEquals(0, device.latencyMs)
+            assertEquals("1秒", device.connectedDuration)
 
             val events = mutableListOf<ChatStreamEvent>()
             gateway
@@ -59,6 +67,20 @@ private class FakeGatewayTransport : RemoteTransport {
             is org.vetta.android.domain.remote.protocol.RemoteHello ->
                 channel.send(RemoteHelloAck(connectionId = frame.connectionId, peerDeviceId = "desktop-1"))
             is RemoteRequest -> {
+                if (frame.method == org.vetta.android.domain.remote.protocol.RemoteRequestMethod.DiagnosticsSnapshot) {
+                    channel.send(
+                        RemoteResponse(
+                            requestId = frame.requestId,
+                            success = true,
+                            payload = buildJsonObject {
+                                put("osLabel", "Windows 11")
+                                put("cpu", "Test CPU")
+                                put("ram", "16 GB")
+                            },
+                        ),
+                    )
+                    return
+                }
                 channel.send(
                     RemoteEvent(
                         eventId = "event-1",

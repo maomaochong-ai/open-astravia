@@ -1,3 +1,4 @@
+import { cpus, platform, release, totalmem } from "node:os";
 import type {
 	DesktopConversationService,
 	DesktopConversationSession,
@@ -92,6 +93,37 @@ export class DesktopConversationRemoteOperations implements DesktopRemoteOperati
 	}
 
 	async diagnostics(): Promise<Record<string, unknown>> {
-		return { activeSessionCount: this.sessions.size, cwd: this.options.cwd };
+		return {
+			activeSessionCount: this.sessions.size,
+			cwd: this.options.cwd,
+			osLabel: formatOsLabel(),
+			cpu: cpus()[0]?.model,
+			ram: formatMemory(totalmem()),
+		};
 	}
+}
+
+function formatMemory(bytes: number): string {
+	const gigabytes = bytes / 1024 ** 3;
+	if (gigabytes >= 1) return `${gigabytes.toFixed(1)} GB`;
+	return `${Math.round(bytes / 1024 ** 2)} MB`;
+}
+
+function formatOsLabel(): string {
+	const version = release();
+	let name: string;
+	switch (platform()) {
+		case "win32":
+			name = "Windows";
+			break;
+		case "darwin":
+			name = "macOS";
+			break;
+		case "linux":
+			name = "Linux";
+			break;
+		default:
+			name = platform();
+	}
+	return `${name} (${version})`;
 }

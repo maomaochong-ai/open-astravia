@@ -23,6 +23,14 @@ describe("DesktopConversationRemoteOperations", () => {
 			}),
 		};
 		const operations = new DesktopConversationRemoteOperations(conversations, { cwd: "C:/work" });
+		const diagnostics = await operations.diagnostics();
+		expect(diagnostics).toMatchObject({
+			activeSessionCount: 0,
+			cwd: "C:/work",
+			osLabel: expect.any(String),
+			cpu: expect.any(String),
+			ram: expect.stringMatching(/(?:GB|MB)$/),
+		});
 
 		expect(await operations.createSession()).toEqual({ sessionId: "runtime-session-1" });
 		const events = [];

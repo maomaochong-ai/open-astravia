@@ -33,14 +33,47 @@ Rendered: 0
 | --- | --- | --- |
 | 设备列表都没有 Desktop | bootstrap/resume、控制 Relay、业务登录 | 还没有进入 WebRTC 页面 |
 | 设备在线但没有 `signaling connected` | viewer URL、Pairing Secret、Worker WebSocket | Android 信令连接失败 |
-| 有 signaling connected，但没有 `offer received` | host 是否等待 viewer、Worker 是否已部署新版本 | 信令顺序或旧 Desktop 进程 |
+| 有 signaling connected，但没有 `offer received` | Desktop 是否捕获到屏幕、host 是否等待 viewer、Worker 是否已部署新版本 | 屏幕权限、信令顺序或旧 Desktop 进程 |
 | 有 offer，但没有 remote description set | Android SDP 设置失败 | 查看 `native WebRTC SDP set failed` |
 | 有 video track attached，但 frames=0 | ICE、编码器、轨道生命周期、renderer | 查看 ICE 状态和系统日志 |
 | ICE 到 `FAILED` | NAT、网络策略、STUN/TURN | 换同 Wi-Fi 或手机热点复测 |
 | 对话正常、画面黑屏 | 控制和媒体链路分离 | 不要只继续查控制 Relay |
 | 画面正常、输入无效 | Desktop 权限或输入适配器 | 先确认输入开关和系统权限 |
 
-## 3. 本次真机黑屏的根因
+## 3. 已确认的真机黑屏根因
+
+### Desktop 媒体权限策略拒绝屏幕捕获
+
+一次真机复现中，Android 已完成控制通道连接和 `SurfaceViewRenderer` 初始化，但始终没有收到 offer，`EglRenderer` 持续为 `Frames received: 0`。Desktop 同期日志为：
+
+```text
+Uncaught NotAllowedError: Permission denied
+```
+
+根因不是 Windows 没有屏幕源，而是语音输入为 Electron `defaultSession` 安装的全局媒体权限策略只允许主窗口麦克风。远程桌面隐藏宿主调用 `getDisplayMedia` 时，在 `desktopCapturer` 处理器之前就被这项策略拒绝，因此后续没有视频轨，也不会创建 offer。
+
+Electron 34 对同一次屏幕捕获执行两个权限阶段：
+
+- `setPermissionCheckHandler` 收到主 Frame 的 `mediaType=video`。
+- `setPermissionRequestHandler` 收到同一主 Frame，但 `mediaTypes=[]`。
+
+修复后，Desktop 只为当前隐藏宿主登记临时视频权限，并按上述两阶段合同放行；停止或启动失败时立即撤销登记。屏幕源选择处理器还会再次核对实际 `webContents`、仅视频且无音频，普通 Renderer、子 Frame、摄像头和音频请求仍被拒绝。
+
+真机验收的成功证据为：
+
+```text
+remote desktop screen capture granted
+native WebRTC offer received
+native WebRTC video track attached
+native WebRTC ICE state state=CONNECTED
+Reporting first rendered frame
+Frames received: <持续增长>
+Rendered: <持续增长>
+```
+
+本次实测首帧分辨率为 `2560x1600`，稳定约 `20-21 FPS`，连续统计中丢帧为 `0`，手机截图能辨认电脑当前桌面内容。
+
+### Viewer 晚于一次性 offer 上线
 
 真机记录中的关键事实是：
 
@@ -111,6 +144,9 @@ Worker、Desktop 或 APK 更新后，旧 Desktop 隐藏 host 页面可能仍运�
 
 ```text
 remote-desktop-host
+remote desktop screen capture granted
+remote desktop display media request rejected
+remote desktop screen capture source unavailable
 remote desktop host peer state
 remote desktop signaling closed
 remote desktop host negotiation already pending
@@ -129,3 +165,14 @@ Invoke-WebRequest -UseBasicParsing `
 ```
 
 然后使用一次性随机 pairing 做 host/viewer WebSocket 冒烟，验证 host 收到 `peer_ready`。不要使用真实用户配对、固定 Secret 或把冒烟凭据写入文件。
+
+## 7. 详情页遥测与系统信息
+
+设备详情页的“连接时长”和“延迟”来自控制通道，而不是预览画面：
+
+- 连接成功后手机立即请求一次 `diagnostics.snapshot`，用响应往返时间作为首个 RTT。
+- 之后每秒刷新连接时长，每 5 秒请求一次诊断以更新 RTT；断开或重连时不会把旧连接的计时器带到新连接。
+- Desktop 诊断响应包含 `osLabel`、`cpu` 和 `ram`，手机按“操作系统 / 处理器 / 内存”展示。
+- `device.host` 只用于构造 WebRTC viewer 地址，不属于系统信息，不能渲染到系统信息卡片。
+
+如果详情页显示“连接中”但预览仍有最后一帧，说明媒体链路尚在而控制通道正在重连；此时应等待控制通道恢复，或断开后用最新 Resume Secret 重新连接。测试时可以用 UI 树确认 `连接时长`、`延迟`、`操作系统`、`处理器`、`内存` 节点，而无需输出包含配对信息的完整 URI。

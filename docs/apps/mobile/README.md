@@ -6,6 +6,7 @@
 
 - [真机测试操作手册](./remote-desktop-real-device-testing.md)：从 ADB、APK 安装、Desktop 启动、二维码配对到远程画面和输入验收。
 - [远程桌面黑屏诊断](./remote-desktop-debugging.md)：按控制通道、信令、ICE、视频轨和系统权限逐层定位问题。
+- [设备详情遥测调试实录](./device-detail-telemetry-debugging.md)：连接时长、RTT、系统信息的数据流定位、真机 ADB 校验和本次踩坑记录。
 - [自动化验证与可观测性](./remote-desktop-automation.md)：单元测试、Worker 合同测试、Chromium WebRTC E2E、Android 构建和日志采集。
 - [远程桌面实战记录](./remote-desktop-operation-log.md)：本次真机测试、黑屏修复、生产部署中遇到的现象、错误和经验。
 

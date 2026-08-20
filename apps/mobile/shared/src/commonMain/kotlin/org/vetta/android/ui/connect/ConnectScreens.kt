@@ -233,11 +233,9 @@ fun DeviceDetailScreen(
             Spacer(Modifier.height(20.dp))
             SectionHeader(title = Str.systemInfo)
             VettaCard {
-                Text(device.osLabel, style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(6.dp))
-                Text(device.cpu ?: Str.notAvailable, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
-                Text(device.ram ?: Str.notAvailable, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
-                Text(device.host, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
+                SystemInfoRow(Str.operatingSystem, device.osLabel)
+                SystemInfoRow(Str.processor, device.cpu)
+                SystemInfoRow(Str.memory, device.ram)
             }
 
             Spacer(Modifier.height(20.dp))
@@ -256,5 +254,17 @@ private fun Metric(label: String, value: String) {
     Column {
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
         Text(value, style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+@Composable
+private fun SystemInfoRow(label: String, value: String?) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
+        Text(value ?: Str.notAvailable, style = MaterialTheme.typography.bodySmall)
     }
 }
