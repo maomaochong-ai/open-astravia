@@ -1,6 +1,7 @@
 package org.vetta.android.ui
 
 import com.russhwolf.settings.MapSettings
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -9,6 +10,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.vetta.android.app.AppContainer
@@ -24,10 +26,12 @@ import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.DeviceStatus
 import org.vetta.android.domain.session.ConversationOrigin
 import org.vetta.android.domain.session.MessageStatus
+import org.vetta.android.ui.i18n.Str
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -92,6 +96,29 @@ class AppViewModelRemoteConversationTest {
             assertEquals("桌面设备不可用", viewModel.state.value.globalError?.title)
         }
 
+    @Test
+    fun pairingConnectionIsSingleFlightAndSurfacesFailure() =
+        runTest(dispatcher) {
+            val gateway = FakeRemoteConversationGateway()
+            val pendingConnection = CompletableDeferred<Boolean>()
+            gateway.pendingConnection = pendingConnection
+            val viewModel = AppViewModel(container(gateway))
+            advanceUntilIdle()
+
+            viewModel.connectDesktop("wss://relay.example.test/room")
+            viewModel.connectDesktop("wss://relay.example.test/room")
+            runCurrent()
+
+            assertTrue(viewModel.state.value.remoteConnecting)
+            assertEquals(1, gateway.connectCalls)
+
+            pendingConnection.complete(false)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.state.value.remoteConnecting)
+            assertEquals(Str.remoteConnectFailed, viewModel.state.value.globalError?.title)
+        }
+
     private fun container(gateway: RemoteConversationGateway) =
         AppContainer(
             preferences = AppPreferences(MapSettings()),
@@ -123,8 +150,13 @@ private class FakeRemoteConversationGateway : RemoteConversationGateway {
         )
     val streamCalls = mutableListOf<StreamCall>()
     val aborted = mutableListOf<String>()
+    var pendingConnection: CompletableDeferred<Boolean>? = null
+    var connectCalls = 0
 
-    override suspend fun connect(target: String): Boolean = true
+    override suspend fun connect(target: String): Boolean {
+        connectCalls += 1
+        return pendingConnection?.await() ?: true
+    }
 
     override suspend fun disconnect(deviceId: String) {
         devices.value = emptyList()

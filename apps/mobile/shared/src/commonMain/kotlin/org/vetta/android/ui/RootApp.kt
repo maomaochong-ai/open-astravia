@@ -71,9 +71,12 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
             AppRoute.Boot -> Unit
             AppRoute.Welcome ->
                 WelcomeScreen(
+                    connecting = state.remoteConnecting,
+                    error = state.globalError,
                     onLogin = vm::openLogin,
                     onServerSetup = vm::openServerSetup,
                     onScanPairing = vm::connectDesktop,
+                    onClearError = vm::clearGlobalError,
                 )
             AppRoute.Login ->
                 LoginScreen(

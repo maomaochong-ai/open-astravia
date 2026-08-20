@@ -64,7 +64,11 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.core.ktx)
             implementation(libs.webrtc.android)
-            implementation(libs.google.code.scanner)
+            implementation(libs.androidx.camera.camera2)
+            implementation(libs.androidx.camera.lifecycle)
+            implementation(libs.androidx.camera.mlkit.vision)
+            implementation(libs.androidx.camera.view)
+            implementation(libs.mlkit.barcode.scanning)
         }
         getByName("androidDeviceTest").dependencies {
             implementation(libs.androidx.activity.compose)

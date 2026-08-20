@@ -118,6 +118,7 @@ export default defineConfig(({ mode }) => {
 					// 提供 macOS 液态玻璃/磨砂玻璃效果，运行时从 node_modules 解析。
 					"electron-liquid-glass",
 					"koffi",
+					"ws",
 					// Windows-only Sherpa-ONNX native runtime; model files are staged as extraResources at build time.
 					...(speechInputBuildConfig.enabled ? ["sherpa-onnx-win-x64"] : []),
 				],

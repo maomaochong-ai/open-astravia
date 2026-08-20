@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
     <!-- 读取相册图片附件（API 32 及以下；33+ 由系统选择器授权） -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"

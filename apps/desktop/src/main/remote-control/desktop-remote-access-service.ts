@@ -4,6 +4,7 @@ import { getDesktopConversationService } from "../conversations/desktop-conversa
 import { getAppLogger } from "../logger.js";
 import { DesktopConversationRemoteOperations } from "./desktop-conversation-remote-operations.js";
 import { DesktopRemoteConnector } from "./desktop-remote-connector.js";
+import { createDesktopWebSocketFactory } from "./desktop-websocket.js";
 
 export interface DesktopRemoteAccessOptions {
 	readonly controlUrl?: string;
@@ -20,6 +21,7 @@ interface ActiveConnector {
 const log = getAppLogger("remote-access");
 let active: ActiveConnector | undefined;
 let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+let reconnectPending = false;
 let generation = 0;
 let reconnectDelayMs = 1_000;
 
@@ -33,6 +35,7 @@ export async function stopDesktopRemoteAccess(): Promise<void> {
 	generation += 1;
 	if (reconnectTimer) clearTimeout(reconnectTimer);
 	reconnectTimer = undefined;
+	reconnectPending = false;
 	const current = active;
 	active = undefined;
 	current?.unsubscribe();
@@ -47,7 +50,10 @@ async function connect(options: DesktopRemoteAccessOptions, runGeneration: numbe
 		.replace(/[^A-Za-z0-9_-]/g, "-")
 		.slice(0, 64)}`;
 	const connection = new RemoteConnection(
-		new WebSocketRemoteTransport(options.controlTarget ?? `${options.controlUrl}#${options.pairingToken}`),
+		new WebSocketRemoteTransport(
+			options.controlTarget ?? `${options.controlUrl}#${options.pairingToken}`,
+			createDesktopWebSocketFactory(),
+		),
 		{
 			role: "desktop",
 			deviceId,
@@ -83,11 +89,16 @@ async function connect(options: DesktopRemoteAccessOptions, runGeneration: numbe
 }
 
 async function scheduleReconnect(options: DesktopRemoteAccessOptions, runGeneration: number): Promise<void> {
-	if (runGeneration !== generation || reconnectTimer) return;
+	if (runGeneration !== generation || reconnectTimer || reconnectPending) return;
+	reconnectPending = true;
 	const current = active;
 	active = undefined;
 	current?.unsubscribe();
 	if (current) await current.connector.stop().catch(() => undefined);
+	if (runGeneration !== generation) {
+		reconnectPending = false;
+		return;
+	}
 	const delayMs = reconnectDelayMs;
 	reconnectDelayMs = Math.min(30_000, reconnectDelayMs * 2);
 	reconnectTimer = setTimeout(() => {
@@ -95,5 +106,6 @@ async function scheduleReconnect(options: DesktopRemoteAccessOptions, runGenerat
 		void connect(options, runGeneration);
 	}, delayMs);
 	reconnectTimer.unref?.();
+	reconnectPending = false;
 	log.info("remote access reconnect scheduled", { delayMs });
 }

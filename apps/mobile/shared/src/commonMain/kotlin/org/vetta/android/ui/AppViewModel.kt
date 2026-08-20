@@ -54,6 +54,7 @@ data class AppUiState(
     val pendingImages: List<MessageImage> = emptyList(),
     val isStreaming: Boolean = false,
     val modelPickerOpen: Boolean = false,
+    val remoteConnecting: Boolean = false,
     val globalError: UiError? = null,
     val authError: UiError? = null,
     val authLoading: Boolean = false,
@@ -228,44 +229,54 @@ class AppViewModel(
     }
 
     fun connectDesktop(target: String) {
+        if (_state.value.remoteConnecting) return
+        _state.update { it.copy(remoteConnecting = true, globalError = null) }
         viewModelScope.launch {
-            _state.update { it.copy(globalError = null) }
-			val invite = org.vetta.android.domain.remote.parsePairingInvite(target)
-			val actualTarget = if (invite == null) target else {
-				val resume = if (container.preferences.remotePairingId == invite.pairingId) {
-					container.preferences.remoteResumeSecret ?: newRemoteResumeSecret().also {
-						container.preferences.remoteResumeSecret = it
-					}
-				} else {
-					newRemoteResumeSecret().also {
-						container.preferences.remotePairingId = invite.pairingId
-						container.preferences.remoteResumeSecret = it
-					}
-				}
-				org.vetta.android.domain.remote.buildMobilePairingTarget(invite, resume)
-			}
-            val connected = runCatching { container.remoteConversationGateway.connect(actualTarget) }
-            if (connected.getOrDefault(false)) {
-                val device = container.remoteConversationGateway.devices.value.firstOrNull()
-                if (device != null) openDeviceDetail(device.id)
-                return@launch
-            }
-            _state.update {
-                it.copy(
-                    globalError =
-                        UiError(
-                            title = Str.remoteConnectFailed,
-                            message = Str.remoteConnectFailedHint,
-                            action = UiErrorAction.Retry,
-                        ),
-                )
+            try {
+                val invite = org.vetta.android.domain.remote.parsePairingInvite(target)
+                val actualTarget =
+                    if (invite == null) {
+                        target
+                    } else {
+                        val resume =
+                            if (container.preferences.remotePairingId == invite.pairingId) {
+                                container.preferences.remoteResumeSecret ?: newRemoteResumeSecret().also {
+                                    container.preferences.remoteResumeSecret = it
+                                }
+                            } else {
+                                newRemoteResumeSecret().also {
+                                    container.preferences.remotePairingId = invite.pairingId
+                                    container.preferences.remoteResumeSecret = it
+                                }
+                            }
+                        org.vetta.android.domain.remote.buildMobilePairingTarget(invite, resume)
+                    }
+                val connected = runCatching { container.remoteConversationGateway.connect(actualTarget) }
+                if (connected.getOrDefault(false)) {
+                    val device = container.remoteConversationGateway.devices.value.firstOrNull()
+                    if (device != null) openDeviceDetail(device.id)
+                    return@launch
+                }
+                _state.update {
+                    it.copy(
+                        globalError =
+                            UiError(
+                                title = Str.remoteConnectFailed,
+                                message = Str.remoteConnectFailedHint,
+                                action = UiErrorAction.None,
+                            ),
+                    )
+                }
+            } finally {
+                _state.update { it.copy(remoteConnecting = false) }
             }
         }
     }
 
-	private fun newRemoteResumeSecret(): String = buildString(43) {
-		repeat(43) { append("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".random()) }
-	}
+    private fun newRemoteResumeSecret(): String =
+        buildString(43) {
+            repeat(43) { append("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".random()) }
+        }
 
     fun disconnectDesktop(deviceId: String) {
         viewModelScope.launch {

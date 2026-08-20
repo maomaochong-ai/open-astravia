@@ -19,6 +19,7 @@ object Str {
     const val featureSecureDesc = "端到端加密，保障数据安全"
     const val getStarted = "登录"
     const val scanPairing = "扫码连接 Desktop"
+    const val connectingDesktop = "正在连接 Desktop…"
     const val advancedServer = "服务器设置"
 
     const val loginTitle = "登录 Vetta"
@@ -84,6 +85,10 @@ object Str {
     const val remoteConnectFailed = "无法连接桌面"
     const val remoteConnectFailedHint = "请确认中继地址和配对信息正确，并检查桌面端是否在线"
     const val scanPairingQr = "扫描配对二维码"
+    const val alignPairingQr = "将二维码置于取景框内"
+    const val closeScanner = "关闭扫码"
+    const val cameraPermissionRequired = "需要相机权限才能扫码"
+    const val cameraUnavailable = "相机暂时不可用，请稍后重试"
     const val desktopDevice = "桌面设备"
     const val desktopUnavailable = "桌面设备不可用"
     const val desktopUnavailableHint = "找不到该设备，请返回设备列表后重试"

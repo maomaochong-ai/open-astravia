@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -56,9 +57,12 @@ import org.vetta.android.ui.theme.vettaExtra
 
 @Composable
 fun WelcomeScreen(
+    connecting: Boolean,
+    error: UiError?,
     onLogin: () -> Unit,
     onServerSetup: () -> Unit,
     onScanPairing: (String) -> Unit,
+    onClearError: () -> Unit,
 ) {
     Column(
         modifier =
@@ -83,13 +87,31 @@ fun WelcomeScreen(
         FeatureRow(Icons.Default.Lock, Str.featureSecure, Str.featureSecureDesc)
         Spacer(Modifier.height(28.dp))
         PrimaryBlackButton(text = Str.getStarted, onClick = onLogin)
+        if (error != null) {
+            Spacer(Modifier.height(12.dp))
+            VettaErrorBanner(error = error, onDismiss = onClearError)
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(Str.scanPairing, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.vettaExtra.secondaryText)
-            PairingScannerButton(onScanned = onScanPairing)
+            if (connecting) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    Str.connectingDesktop,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.vettaExtra.secondaryText,
+                )
+            } else {
+                Text(
+                    Str.scanPairing,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.vettaExtra.secondaryText,
+                )
+                PairingScannerButton(onScanned = onScanPairing)
+            }
         }
         TextButton(onClick = onServerSetup, modifier = Modifier.align(Alignment.End)) {
             Text(Str.advancedServer, color = MaterialTheme.vettaExtra.secondaryText)
