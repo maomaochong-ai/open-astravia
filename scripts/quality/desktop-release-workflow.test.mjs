@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const workflow = readFileSync(join(import.meta.dirname, "../../.github/workflows/desktop-release.yml"), "utf8");
+const packagedWorkflow = readFileSync(
+	join(import.meta.dirname, "../../.github/workflows/desktop-packaged.yml"),
+	"utf8",
+);
 
 describe("Desktop release workflow contracts", () => {
 	it("runs quality and packaging tests before the platform matrix", () => {
@@ -17,5 +21,19 @@ describe("Desktop release workflow contracts", () => {
 	it("verifies the public update feed after either publish target", () => {
 		expect(workflow.match(/node scripts\/verify-update-feed\.mjs/g)).toHaveLength(2);
 		expect(workflow.match(/needs: \[prepare, quality, build\]/g)).toHaveLength(2);
+	});
+
+	it("runs packaged boot and updater E2E on every release platform", () => {
+		expect(workflow).toContain("Run packaged app and updater E2E");
+		expect(workflow).toContain('VETTA_E2E_UPDATE_FEED: "1"');
+		expect(workflow).toContain("xvfb-run --auto-servernum bun run test:e2e:packaged");
+	});
+
+	it("keeps the pull-request packaged E2E matrix cross-platform", () => {
+		expect(packagedWorkflow).toContain("runner: windows-latest");
+		expect(packagedWorkflow).toContain("runner: macos-latest");
+		expect(packagedWorkflow).toContain("runner: ubuntu-latest");
+		expect(packagedWorkflow).toContain("bun run test:e2e:packaged");
+		expect(packagedWorkflow).toContain("xvfb-run --auto-servernum");
 	});
 });

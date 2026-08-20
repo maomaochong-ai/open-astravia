@@ -345,6 +345,20 @@ jobs:
         working-directory: apps/desktop
         run: bun run ${{ matrix.verify }}
 
+      - name: Run packaged app and updater E2E
+        working-directory: apps/desktop
+        env:
+          VETTA_E2E_PACKAGED: "1"
+          VETTA_E2E_UPDATE_FEED: "1"
+          VETTA_SPEECH_INPUT_ENABLED: "false"
+        shell: bash
+        run: |
+          if [[ "${{ matrix.platform }}" == "linux" ]]; then
+            xvfb-run --auto-servernum bun run test:e2e:packaged
+          else
+            bun run test:e2e:packaged
+          fi
+
       - name: Name macOS update metadata per architecture
         if: matrix.macArch != ''
         working-directory: apps/desktop

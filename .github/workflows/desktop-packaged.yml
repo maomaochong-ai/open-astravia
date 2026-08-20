@@ -46,11 +46,24 @@ jobs:
         run: node scripts/quality/desktop-packaging-scope.mjs
 
   smoke:
-    name: Windows packaged smoke
+    name: ${{ matrix.platform }} packaged E2E
     needs: scope
     if: needs.scope.outputs.packaged-smoke == 'true'
-    runs-on: windows-latest
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Windows
+            runner: windows-latest
+            build-command: pack:win:test
+          - platform: macOS
+            runner: macos-latest
+            build-command: dist:mac:test
+          - platform: Linux
+            runner: ubuntu-latest
+            build-command: dist:linux:test
 
     steps:
       - uses: actions/checkout@v4
@@ -63,7 +76,7 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build Windows unpacked Desktop package
+      - name: Build unpacked Desktop package
         working-directory: apps/desktop
         env:
           VETTA_BUILD_ENV: test
@@ -73,21 +86,27 @@ jobs:
           VETTA_UPDATE_GITHUB_OWNER: openvetta
           VETTA_UPDATE_GITHUB_REPO: open-vetta
           VETTA_UPDATE_PROVIDER: github
-        run: bun run pack:win:test
+        run: bun run ${{ matrix.build-command }}
 
-      - name: Run packaged Electron smoke tests
+      - name: Run packaged Electron smoke and updater E2E
         working-directory: apps/desktop
         env:
           VETTA_E2E_PACKAGED: "1"
           VETTA_BUILD_ENV: test
           VETTA_SPEECH_INPUT_ENABLED: "false"
-        run: bun run test:e2e:packaged
+        shell: bash
+        run: |
+          if [[ "${{ matrix.platform }}" == "Linux" ]]; then
+            xvfb-run --auto-servernum bun run test:e2e:packaged
+          else
+            bun run test:e2e:packaged
+          fi
 
       - name: Upload packaged diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-packaged-smoke-diagnostics
+          name: desktop-${{ matrix.platform }}-packaged-e2e-diagnostics
           if-no-files-found: ignore
           retention-days: 7
           path: |

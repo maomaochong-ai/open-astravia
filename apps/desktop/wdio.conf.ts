@@ -1,8 +1,10 @@
 import { createRequire } from "node:module";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Server } from "node:http";
+import { startUpdateFeedFixture } from "./e2e/update-feed-fixture.mjs";
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
 const mainEntry = path.join(packageRoot, "dist", "main", "index.js");
@@ -12,6 +14,7 @@ const require = createRequire(import.meta.url);
 
 /** Set to `1` to use electron-builder unpacked output (`release/*-unpacked`). */
 const usePackaged = process.env.VETTA_E2E_PACKAGED === "1";
+let updateFeedServer: Server | undefined;
 
 function resolvePackagedBinaryPath(): string {
 	const candidates =
@@ -122,5 +125,20 @@ export const config = {
 	mochaOpts: {
 		ui: "bdd",
 		timeout: 120_000,
+	},
+	onPrepare: async () => {
+		if (!usePackaged || process.env.VETTA_E2E_UPDATE_FEED === "0") return;
+		const version = JSON.parse(readFileSync(path.join(packageRoot, "package.json"), "utf8")) as { version: string };
+		const fixture = await startUpdateFeedFixture({
+			version: version.version,
+			downloadable: process.platform === "linux",
+		});
+		updateFeedServer = fixture.server;
+		process.env.VETTA_E2E_UPDATE_URL = fixture.url;
+		console.log(`[wdio] packaged E2E update feed: ${fixture.url}`);
+	},
+	onComplete: () => {
+		updateFeedServer?.close();
+		updateFeedServer = undefined;
 	},
 };

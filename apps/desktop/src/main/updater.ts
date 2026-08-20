@@ -30,6 +30,34 @@ export function getAppVersion(): string {
 // electron-updater 是 CommonJS 包；主进程产物为 ESM 且将它 externalize，
 // 因此必须从默认导出解构，不能保留 ESM 命名导入。
 const { autoUpdater } = electronUpdater;
+
+/**
+ * Packaged E2E runs against an ephemeral local feed. Keeping this override
+ * behind the E2E marker prevents runtime environment variables from changing
+ * the update source in production builds.
+ */
+function configureE2eUpdateFeed(): void {
+	if (!app.isPackaged || process.env.VETTA_E2E !== "1") return;
+	const feedUrl = process.env.VETTA_E2E_UPDATE_URL?.trim();
+	if (!feedUrl) return;
+	try {
+		const parsedUrl = new URL(feedUrl);
+		if (parsedUrl.protocol !== "http:" || !["127.0.0.1", "localhost", "::1"].includes(parsedUrl.hostname)) {
+			console.warn("[updater] ignored non-local E2E update feed");
+			return;
+		}
+		autoUpdater.setFeedURL({
+			provider: "generic",
+			url: feedUrl,
+			useMultipleRangeRequest: true,
+		});
+		console.info(`[updater] E2E update feed configured: ${feedUrl}`);
+	} catch (error) {
+		console.error("[updater] failed to configure E2E update feed", error);
+	}
+}
+
+configureE2eUpdateFeed();
 const currentVersion = getAppVersion();
 const innoWindowsUpdate =
 	process.platform === "win32" && app.isPackaged && isVersionedWindowsExecutable(process.execPath, currentVersion)

@@ -195,7 +195,7 @@ bun run dist:opensource -- --target dir
 
 该入口读取 `.env.opensource`，固定关闭 cloud、使用 GitHub provider，并为官方仓库与公开 Marketplace 提供默认值；fork 可在文件或 shell 中覆盖 owner、repo 和 Marketplace 仓库。
 
-正式发布 workflow 会先运行根 `check`、质量脚本测试和 Desktop packaging 测试，全部通过后才启动四个 Windows / macOS 双架构 / Linux 构建任务。构建后的每个平台还会校验 updater metadata、hash、blockmap 和可安装内容；真正发布到 R2 或 GitHub 后，再由 `verify-update-feed.mjs` 通过公开 URL 检查三平台 metadata 与其引用的安装包是否可读。
+正式发布 workflow 会先运行根 `check`、质量脚本测试和 Desktop packaging 测试，全部通过后才启动四个 Windows / macOS 双架构 / Linux 构建任务。每个平台构建后都会启动真实 packaged 应用并运行启动与 updater E2E，再校验 updater metadata、hash、blockmap 和可安装内容；真正发布到 R2 或 GitHub 后，再由 `verify-update-feed.mjs` 通过公开 URL 检查三平台 metadata 与其引用的安装包是否可读。
 
 ## Desktop 自动更新发布
 

@@ -70,7 +70,7 @@ function collectWorkspacePackages(rootPath) {
 
 	const visit = (directory, relativeDir) => {
 		for (const name of readdirSync(directory)) {
-			if (name === "node_modules" || name === "dist") continue;
+			if (name === "node_modules" || name === "dist" || name === "release") continue;
 			const absolute = join(directory, name);
 			if (!statSync(absolute).isDirectory()) continue;
 			const manifestPath = join(absolute, "package.json");
