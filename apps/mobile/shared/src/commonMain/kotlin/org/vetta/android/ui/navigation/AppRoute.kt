@@ -23,8 +23,6 @@ sealed class AppRoute {
 
     data object Login : AppRoute()
 
-    data object ServerSetup : AppRoute()
-
     /** 带底部导航的主壳 */
     data class Main(val tab: MainTab = MainTab.Home) : AppRoute()
 
@@ -40,8 +38,6 @@ sealed class AppRoute {
         val title: String = "",
         val deviceId: String? = null,
     ) : AppRoute()
-
-    data class FilesContext(val deviceId: String) : AppRoute()
 
     data object Plan : AppRoute()
 

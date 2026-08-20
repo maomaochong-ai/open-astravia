@@ -199,7 +199,18 @@ class AppViewModel(
 
     fun openLogin() = navigate(AppRoute.Login)
 
-    fun openServerSetup() = navigate(AppRoute.ServerSetup)
+    fun skipWelcome() {
+        _state.update {
+            it.copy(
+                bootstrapped = true,
+                mainAccessGranted = true,
+                route = AppRoute.Main(MainTab.Home),
+                mainTab = MainTab.Home,
+                globalError = null,
+                authError = null,
+            )
+        }
+    }
 
     fun openPlan() = navigate(AppRoute.Plan)
 
@@ -343,8 +354,6 @@ class AppViewModel(
         openChat(sessionId = sessionId, surface = ChatSurface.Cloud, title = Str.channelCloud)
     }
 
-    fun openFilesContext(deviceId: String) = navigate(AppRoute.FilesContext(deviceId))
-
     fun navigateBackFromSecondary() {
         // QR pairing is an independent entry path; a connected Desktop is enough to use the main shell.
         if (_state.value.mainAccessGranted || _state.value.user != null || _state.value.devices.isNotEmpty()) {
@@ -446,28 +455,6 @@ class AppViewModel(
 
     fun setThemeMode(mode: ThemeMode) {
         container.preferences.setThemeMode(mode)
-    }
-
-    fun saveServerUrl(url: String) {
-        viewModelScope.launch {
-            try {
-                container.preferences.setServerUrl(url)
-                container.recreateClient(url.trim().trimEnd('/'))
-                _state.update {
-                    it.copy(
-                        serverUrl = url.trim().trimEnd('/'),
-                        globalError = null,
-                    )
-                }
-                if (container.tokenStore.accessToken != null) {
-                    loadWorkspace(openLastSession = true)
-                } else {
-                    navigate(AppRoute.Login)
-                }
-            } catch (t: Throwable) {
-                _state.update { it.copy(globalError = ErrorMapper.from(t)) }
-            }
-        }
     }
 
     fun login(accountOrEmail: String, password: String) {

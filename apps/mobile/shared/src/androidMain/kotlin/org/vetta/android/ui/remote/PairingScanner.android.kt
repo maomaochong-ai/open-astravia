@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -50,7 +51,11 @@ import org.vetta.android.domain.remote.connection.PlatformRemoteLogger
 import org.vetta.android.ui.i18n.Str
 
 @Composable
-actual fun PairingScannerButton(onScanned: (String) -> Unit, modifier: Modifier) {
+actual fun PairingScannerButton(
+    onScanned: (String) -> Unit,
+    modifier: Modifier,
+    label: String?,
+) {
     val context = LocalContext.current
     var scanning by remember { mutableStateOf(false) }
     val permissionLauncher =
@@ -63,17 +68,22 @@ actual fun PairingScannerButton(onScanned: (String) -> Unit, modifier: Modifier)
             }
         }
 
-    IconButton(
-        modifier = modifier,
-        onClick = {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                scanning = true
-            } else {
-                permissionLauncher.launch(Manifest.permission.CAMERA)
-            }
-        },
-    ) {
-        Icon(Icons.Default.QrCodeScanner, contentDescription = Str.scanPairingQr)
+    val openScanner = {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            scanning = true
+        } else {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+    if (label == null) {
+        IconButton(modifier = modifier, onClick = openScanner) {
+            Icon(Icons.Default.QrCodeScanner, contentDescription = Str.scanPairingQr)
+        }
+    } else {
+        OutlinedButton(modifier = modifier, onClick = openScanner) {
+            Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+            Text(label)
+        }
     }
 
     if (scanning) {

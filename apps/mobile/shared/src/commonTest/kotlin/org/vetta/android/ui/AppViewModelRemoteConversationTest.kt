@@ -116,6 +116,20 @@ class AppViewModelRemoteConversationTest {
             assertEquals(AppRoute.Main(MainTab.Home), viewModel.state.value.route)
         }
 
+    @Test
+    fun skipWelcomeOpensBrowsableMainShellWithoutCreatingLoginState() =
+        runTest(dispatcher) {
+            val viewModel = AppViewModel(container(FakeRemoteConversationGateway()))
+            advanceUntilIdle()
+
+            assertEquals(AppRoute.Welcome, viewModel.state.value.route)
+            viewModel.skipWelcome()
+
+            assertEquals(AppRoute.Main(MainTab.Home), viewModel.state.value.route)
+            assertTrue(viewModel.state.value.mainAccessGranted)
+            assertEquals(null, viewModel.state.value.user)
+        }
+
 
     @Test
     fun pairingConnectionIsSingleFlightAndSurfacesFailure() =

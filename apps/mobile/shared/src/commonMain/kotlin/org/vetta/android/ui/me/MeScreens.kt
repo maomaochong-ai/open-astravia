@@ -19,12 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Devices
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -64,10 +60,11 @@ fun MeScreen(
     onOpenPlan: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDevices: () -> Unit,
+    onLogin: () -> Unit,
     onLogout: (clearLocal: Boolean) -> Unit,
 ) {
     var confirmLogout by remember { mutableStateOf(false) }
-    val name = user?.nickname?.ifBlank { user.username } ?: "—"
+    val name = user?.nickname?.ifBlank { user.username } ?: Str.notLoggedIn
     val contact = user?.email ?: user?.phone ?: ""
 
     Scaffold(
@@ -108,14 +105,11 @@ fun MeScreen(
             SectionHeader(title = Str.accountAndDevices)
             VettaCard {
                 ProfileRow(Icons.Default.Devices, Str.connectedDevices, "$onlineDeviceCount", onOpenDevices)
-                ProfileRow(Icons.Default.VerifiedUser, Str.authManagement, null) { }
             }
 
             Spacer(Modifier.height(16.dp))
             SectionHeader(title = Str.settings)
             VettaCard {
-                ProfileRow(Icons.Default.NotificationsNone, Str.notificationSettings, null) { }
-                ProfileRow(Icons.Default.Lock, Str.privacySecurity, null) { }
                 ProfileRow(Icons.Default.Settings, Str.generalSettings, null, onOpenSettings)
             }
 
@@ -124,7 +118,7 @@ fun MeScreen(
             VettaCard(onClick = onOpenPlan) {
                 Text(
                     when {
-                        subscription == null -> Str.loading
+                        subscription == null -> if (user == null) Str.loginToViewPlan else Str.loading
                         !subscription.goEnabled -> Str.planDisabled
                         !subscription.active -> Str.planInactive
                         else -> "${Str.planActive} · ${subscription.tierName ?: ""}"
@@ -145,12 +139,15 @@ fun MeScreen(
             Spacer(Modifier.height(16.dp))
             SectionHeader(title = Str.aboutSection)
             VettaCard {
-                ProfileRow(Icons.Default.HelpOutline, Str.helpFeedback, null) { }
-                ProfileRow(Icons.Default.Info, Str.aboutUs, "0.1.0") { }
+                ProfileRow(Icons.Default.Info, Str.aboutUs, "0.1.0", null)
             }
 
             Spacer(Modifier.height(20.dp))
-            PrimaryBlackButton(text = Str.logout, onClick = { confirmLogout = true })
+            if (user == null) {
+                PrimaryBlackButton(text = Str.getStarted, onClick = onLogin)
+            } else {
+                PrimaryBlackButton(text = Str.logout, onClick = { confirmLogout = true })
+            }
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -203,14 +200,15 @@ private fun ProfileRow(
     icon: ImageVector,
     title: String,
     value: String?,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
 ) {
+    val rowModifier =
+        Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(vertical = 12.dp)
     Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(vertical = 12.dp),
+        modifier = rowModifier,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
@@ -220,11 +218,13 @@ private fun ProfileRow(
             Text(value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
             Spacer(Modifier.width(4.dp))
         }
-        Icon(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.vettaExtra.secondaryText,
-        )
+        if (onClick != null) {
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.vettaExtra.secondaryText,
+            )
+        }
     }
 }
 
@@ -232,6 +232,7 @@ private fun ProfileRow(
 @Composable
 fun PlanScreen(
     subscription: SubscriptionStatus?,
+    loggedIn: Boolean,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
 ) {
@@ -264,7 +265,7 @@ fun PlanScreen(
             VettaCard {
                 Text(
                     when {
-                        subscription == null -> Str.loading
+                        subscription == null -> if (loggedIn) Str.loading else Str.loginToViewPlan
                         !subscription.goEnabled -> Str.planDisabled
                         !subscription.active -> Str.planInactive
                         else -> Str.planActive
@@ -309,9 +310,7 @@ fun PlanScreen(
 @Composable
 fun SettingsScreen(
     themeMode: org.vetta.android.app.ThemeMode,
-    serverUrl: String,
     onThemeMode: (org.vetta.android.app.ThemeMode) -> Unit,
-    onOpenServer: () -> Unit,
     onBack: () -> Unit,
 ) {
     Scaffold(
@@ -353,16 +352,6 @@ fun SettingsScreen(
                         onClick = { onThemeMode(mode) },
                     )
                 }
-            }
-            Spacer(Modifier.height(16.dp))
-            SectionHeader(title = Str.server)
-            VettaCard {
-                ProfileRow(
-                    icon = Icons.Default.Settings,
-                    title = Str.serverUrl,
-                    value = serverUrl.takeLast(18),
-                    onClick = onOpenServer,
-                )
             }
         }
     }

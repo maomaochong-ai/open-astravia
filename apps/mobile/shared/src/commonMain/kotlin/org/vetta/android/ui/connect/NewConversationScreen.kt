@@ -19,7 +19,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -47,14 +46,12 @@ fun NewConversationScreen(
     channelIndex: Int,
     onChannelChange: (Int) -> Unit,
     onBack: () -> Unit,
-    onStartDesktop: (deviceId: String, syncHistory: Boolean, syncFiles: Boolean) -> Unit,
+    onStartDesktop: (deviceId: String) -> Unit,
     onStartCloud: () -> Unit,
 ) {
     var selectedDeviceId by remember {
         mutableStateOf(devices.firstOrNull { it.status == DeviceStatus.Online }?.id)
     }
-    var syncHistory by remember { mutableStateOf(true) }
-    var syncFiles by remember { mutableStateOf(true) }
     val channels = listOf(Str.pairDesktop, Str.channelCloud)
 
     Scaffold(
@@ -124,38 +121,16 @@ fun NewConversationScreen(
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
-                SectionHeader(title = Str.sessionSettings)
-                VettaCard {
-                    SettingToggle(Str.historySync, syncHistory) { syncHistory = it }
-                    Spacer(Modifier.height(8.dp))
-                    SettingToggle(Str.syncFilesContext, syncFiles) { syncFiles = it }
-                }
                 Spacer(Modifier.height(20.dp))
                 PrimaryBlackButton(
                     text = Str.startConversation,
                     enabled = selectedDeviceId != null,
                     onClick = {
                         val id = selectedDeviceId ?: return@PrimaryBlackButton
-                        onStartDesktop(id, syncHistory, syncFiles)
+                        onStartDesktop(id)
                     },
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun SettingToggle(
-    label: String,
-    checked: Boolean,
-    onChecked: (Boolean) -> Unit,
-) {
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onChecked)
     }
 }

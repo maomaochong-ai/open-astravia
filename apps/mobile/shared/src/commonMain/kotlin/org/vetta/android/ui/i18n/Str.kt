@@ -19,6 +19,9 @@ object Str {
     const val featureSecureDesc = "端到端加密，保障数据安全"
     const val getStarted = "登录"
     const val scanPairing = "扫码连接 Desktop"
+    const val skipForNow = "先逛逛"
+    const val notLoggedIn = "未登录"
+    const val notAvailable = "暂无"
     const val connectingDesktop = "正在连接 Desktop…"
     const val advancedServer = "服务器设置"
 
@@ -45,6 +48,7 @@ object Str {
     const val myDevices = "我的设备"
     const val connected = "已连接"
     const val disconnected = "未连接"
+    const val noDevicesHint = "连接 Desktop 后，可以在手机上继续工作"
     const val online = "在线"
     const val offline = "离线"
     const val recentSessions = "最近会话"
@@ -60,7 +64,6 @@ object Str {
     const val filterAll = "全部"
     const val filterDesktop = "Desktop"
     const val filterCloud = "云端 AI"
-    const val filterFavorite = "收藏"
     const val noSessions = "还没有会话"
     const val noSessionsHint = "从首页新建对话，或连接 Desktop 后继续工作"
     const val rename = "重命名"
@@ -112,8 +115,6 @@ object Str {
     const val selectDevice = "选择设备"
     const val pairDesktop = "对接 Desktop"
     const val sessionSettings = "会话设置"
-    const val historySync = "同步历史对话"
-    const val syncFilesContext = "同步文件与上下文"
     const val startConversation = "开始对话"
 
     // Chat
@@ -161,6 +162,7 @@ object Str {
     const val planInactive = "暂无有效方案"
     const val planDisabled = "服务未开放"
     const val planDefault = "默认方案"
+    const val loginToViewPlan = "登录后查看套餐与额度"
     const val remaining = "剩余"
     const val resetAt = "重置时间"
     const val window5h = "5 小时"

@@ -3,6 +3,8 @@ package org.vetta.android.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -17,7 +19,6 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.vetta.android.app.AppContainer
 import org.vetta.android.ui.auth.LoginScreen
-import org.vetta.android.ui.auth.ServerSetupScreen
 import org.vetta.android.ui.auth.WelcomeScreen
 import org.vetta.android.ui.chat.ChatScreen
 import org.vetta.android.ui.components.LoadingBlock
@@ -67,15 +68,20 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
             return@VettaTheme
         }
 
-        when (val route = state.route) {
+        Crossfade(
+            targetState = state.route,
+            animationSpec = tween(durationMillis = 200),
+            label = "app route transition",
+        ) { route ->
+            when (route) {
             AppRoute.Boot -> Unit
             AppRoute.Welcome ->
                 WelcomeScreen(
                     connecting = state.remoteConnecting,
                     error = state.globalError,
                     onLogin = vm::openLogin,
-                    onServerSetup = vm::openServerSetup,
                     onScanPairing = vm::connectDesktop,
+                    onSkip = vm::skipWelcome,
                     onClearError = vm::clearGlobalError,
                 )
             AppRoute.Login ->
@@ -84,21 +90,11 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                     error = state.authError,
                     loginModeEmail = state.loginModeEmail,
                     passwordVisible = state.passwordVisible,
-                    serverUrl = state.serverUrl,
                     onToggleMode = vm::setLoginModeEmail,
                     onTogglePassword = vm::setPasswordVisible,
                     onLogin = vm::login,
-                    onServerSetup = vm::openServerSetup,
                     onClearError = vm::clearAuthError,
                     onBack = vm::openWelcome,
-                )
-            AppRoute.ServerSetup ->
-                ServerSetupScreen(
-                    serverUrl = state.serverUrl,
-                    onSave = vm::saveServerUrl,
-                    onBack = {
-                        if (state.user != null) vm.openSettings() else vm.openWelcome()
-                    },
                 )
             is AppRoute.Main -> {
                 Scaffold(
@@ -119,6 +115,7 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                                         },
                                     recentSessions = vm.sessionListItems().take(5),
                                     onOpenDevice = vm::openDeviceDetail,
+                                    onOpenDevices = { vm.selectMainTab(MainTab.Discover) },
                                     onOpenSessions = { vm.selectMainTab(MainTab.Sessions) },
                                     onOpenSession = { id ->
                                         val item = vm.sessionListItems().firstOrNull { it.id == id }
@@ -129,7 +126,9 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                                         )
                                     },
                                     onNewConversation = { vm.openNewConversation(0) },
-                                    onUseCloudAi = { vm.openNewConversation(1) },
+                                    onUseCloudAi = {
+                                        if (state.user == null) vm.openLogin() else vm.openNewConversation(1)
+                                    },
                                 )
                             MainTab.Sessions ->
                                 SessionsScreen(
@@ -154,7 +153,7 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                                     onOpenDevice = vm::openDeviceDetail,
                                     onConnectManual = vm::connectDesktop,
                                     onUseCloud = {
-                                        vm.openNewConversation(1)
+                                        if (state.user == null) vm.openLogin() else vm.openNewConversation(1)
                                     },
                                 )
                             MainTab.Me ->
@@ -168,6 +167,7 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                                     onOpenPlan = vm::openPlan,
                                     onOpenSettings = vm::openSettings,
                                     onOpenDevices = { vm.selectMainTab(MainTab.Discover) },
+                                    onLogin = vm::openLogin,
                                     onLogout = vm::logout,
                                 )
                         }
@@ -193,11 +193,11 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                     channelIndex = state.newConversationChannelIndex,
                     onChannelChange = vm::setNewConversationChannel,
                     onBack = vm::navigateBackFromSecondary,
-                    onStartDesktop = { deviceId, _, _ ->
+                    onStartDesktop = { deviceId ->
                         vm.startDesktopConversation(deviceId)
                     },
                     onStartCloud = {
-                        vm.newChat()
+                        if (state.user == null) vm.openLogin() else vm.newChat()
                     },
                 )
             is AppRoute.Chat -> {
@@ -233,24 +233,20 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                     onRemovePendingImage = vm::removePendingImage,
                 )
             }
-            is AppRoute.FilesContext -> {
-                // 设计图中的文件/上下文页：先占位回退
-                vm.navigateBackFromSecondary()
-            }
             AppRoute.Plan ->
                 PlanScreen(
                     subscription = state.subscription,
+                    loggedIn = state.user != null,
                     onBack = vm::navigateBackFromSecondary,
                     onRefresh = vm::refreshCatalog,
                 )
             AppRoute.Settings ->
                 SettingsScreen(
                     themeMode = state.themeMode,
-                    serverUrl = state.serverUrl,
                     onThemeMode = vm::setThemeMode,
-                    onOpenServer = vm::openServerSetup,
                     onBack = vm::navigateBackFromSecondary,
                 )
+            }
         }
     }
 }

@@ -9,14 +9,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import org.vetta.android.domain.error.UiError
 import org.vetta.android.domain.error.UiErrorAction
 import org.vetta.android.ui.i18n.Str
+import org.vetta.android.ui.theme.vettaExtra
 
 @Composable
 fun VettaErrorBanner(
@@ -34,14 +35,12 @@ fun VettaErrorBanner(
     onAction: ((UiErrorAction) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    Card(
+    Surface(
         modifier = modifier.fillMaxWidth(),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-            ),
         shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.vettaExtra.chipBackground,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.vettaExtra.border),
     ) {
         Column(Modifier.padding(14.dp)) {
             Text(error.title, style = MaterialTheme.typography.titleSmall)

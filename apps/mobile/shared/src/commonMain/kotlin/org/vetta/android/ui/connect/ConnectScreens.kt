@@ -206,8 +206,8 @@ fun DeviceDetailScreen(
             }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Metric(Str.duration, device.connectedDuration ?: "—")
-                Metric(Str.latency, device.latencyMs?.let { "${it}ms" } ?: "—")
+                Metric(Str.duration, device.connectedDuration ?: Str.notAvailable)
+                Metric(Str.latency, device.latencyMs?.let { "${it}ms" } ?: Str.notAvailable)
             }
             Spacer(Modifier.height(12.dp))
             PrimaryBlackButton(text = Str.disconnect, onClick = onDisconnect)
@@ -235,8 +235,8 @@ fun DeviceDetailScreen(
             VettaCard {
                 Text(device.osLabel, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(6.dp))
-                Text(device.cpu ?: "—", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
-                Text(device.ram ?: "—", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
+                Text(device.cpu ?: Str.notAvailable, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
+                Text(device.ram ?: Str.notAvailable, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
                 Text(device.host, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.vettaExtra.secondaryText)
             }
 

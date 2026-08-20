@@ -42,7 +42,7 @@ fun SessionsScreen(
     onFilterChange: (Int) -> Unit,
     onOpenSession: (SessionListItem) -> Unit,
 ) {
-    val filters = listOf(Str.filterAll, Str.filterDesktop, Str.filterCloud, Str.filterFavorite)
+    val filters = listOf(Str.filterAll, Str.filterDesktop, Str.filterCloud)
     val filtered =
         sessions.filter { s ->
             val qOk = query.isBlank() || s.title.contains(query, ignoreCase = true)
@@ -50,7 +50,6 @@ fun SessionsScreen(
                 when (filterIndex) {
                     1 -> !s.isCloud
                     2 -> s.isCloud
-                    3 -> s.favorite
                     else -> true
                 }
             qOk && fOk

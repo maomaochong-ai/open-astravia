@@ -39,6 +39,7 @@ import org.vetta.android.ui.components.SectionHeader
 import org.vetta.android.ui.components.StatusChip
 import org.vetta.android.ui.components.StatusDot
 import org.vetta.android.ui.components.VettaCard
+import org.vetta.android.ui.components.EmptyState
 import org.vetta.android.ui.i18n.Str
 import org.vetta.android.ui.theme.vettaExtra
 
@@ -48,6 +49,7 @@ fun HomeScreen(
     primaryDevice: DesktopDevice?,
     recentSessions: List<SessionListItem>,
     onOpenDevice: (String) -> Unit,
+    onOpenDevices: () -> Unit,
     onOpenSessions: () -> Unit,
     onOpenSession: (String) -> Unit,
     onNewConversation: () -> Unit,
@@ -110,6 +112,14 @@ fun HomeScreen(
                         )
                     }
                 }
+            } else {
+                EmptyState(
+                    title = Str.disconnected,
+                    subtitle = Str.noDevicesHint,
+                    actionLabel = Str.connectTitle,
+                    onAction = onOpenDevices,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
 
             Spacer(Modifier.height(20.dp))

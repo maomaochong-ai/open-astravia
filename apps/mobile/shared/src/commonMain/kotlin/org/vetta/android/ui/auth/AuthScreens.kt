@@ -60,8 +60,8 @@ fun WelcomeScreen(
     connecting: Boolean,
     error: UiError?,
     onLogin: () -> Unit,
-    onServerSetup: () -> Unit,
     onScanPairing: (String) -> Unit,
+    onSkip: () -> Unit,
     onClearError: () -> Unit,
 ) {
     Column(
@@ -87,16 +87,30 @@ fun WelcomeScreen(
         FeatureRow(Icons.Default.Lock, Str.featureSecure, Str.featureSecureDesc)
         Spacer(Modifier.height(28.dp))
         PrimaryBlackButton(text = Str.getStarted, onClick = onLogin)
+        Spacer(Modifier.height(10.dp))
+        if (!connecting) {
+            PairingScannerButton(
+                onScanned = onScanPairing,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                label = Str.scanPairing,
+            )
+        }
+        TextButton(
+            onClick = onSkip,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        ) {
+            Text(Str.skipForNow, color = MaterialTheme.vettaExtra.secondaryText)
+        }
         if (error != null) {
             Spacer(Modifier.height(12.dp))
             VettaErrorBanner(error = error, onDismiss = onClearError)
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (connecting) {
+        if (connecting) {
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 Spacer(Modifier.width(10.dp))
                 Text(
@@ -104,17 +118,7 @@ fun WelcomeScreen(
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.vettaExtra.secondaryText,
                 )
-            } else {
-                Text(
-                    Str.scanPairing,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.vettaExtra.secondaryText,
-                )
-                PairingScannerButton(onScanned = onScanPairing)
             }
-        }
-        TextButton(onClick = onServerSetup, modifier = Modifier.align(Alignment.End)) {
-            Text(Str.advancedServer, color = MaterialTheme.vettaExtra.secondaryText)
         }
         Spacer(Modifier.height(24.dp))
     }
@@ -149,11 +153,9 @@ fun LoginScreen(
     error: UiError?,
     loginModeEmail: Boolean,
     passwordVisible: Boolean,
-    serverUrl: String,
     onToggleMode: (Boolean) -> Unit,
     onTogglePassword: (Boolean) -> Unit,
     onLogin: (account: String, password: String) -> Unit,
-    onServerSetup: () -> Unit,
     onClearError: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -189,12 +191,6 @@ fun LoginScreen(
             Text(
                 Str.loginSubtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.vettaExtra.secondaryText,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "${Str.serverHint}：$serverUrl",
-                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.vettaExtra.secondaryText,
             )
             Spacer(Modifier.height(16.dp))
@@ -260,67 +256,6 @@ fun LoginScreen(
             ) {
                 Text(if (loginModeEmail) Str.useAccountLogin else Str.useEmailLogin)
             }
-            TextButton(
-                onClick = onServerSetup,
-                modifier = Modifier.align(Alignment.End),
-            ) {
-                Text(Str.advancedServer)
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ServerSetupScreen(
-    serverUrl: String,
-    onSave: (String) -> Unit,
-    onBack: () -> Unit,
-) {
-    var value by remember(serverUrl) { mutableStateOf(serverUrl) }
-    Scaffold(
-        containerColor = MaterialTheme.vettaExtra.pageBackground,
-        topBar = {
-            TopAppBar(
-                title = { Text(Str.server, style = MaterialTheme.typography.titleMedium) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Str.back)
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.vettaExtra.pageBackground,
-                    ),
-            )
-        },
-    ) { padding ->
-        Column(
-            Modifier
-                .padding(padding)
-                .padding(24.dp)
-                .fillMaxSize(),
-        ) {
-            Text(
-                Str.serverUrlHint,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.vettaExtra.secondaryText,
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = value,
-                onValueChange = { value = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                label = { Text(Str.serverUrl) },
-                shape = MaterialTheme.shapes.medium,
-            )
-            Spacer(Modifier.height(20.dp))
-            PrimaryBlackButton(
-                text = Str.save,
-                onClick = { onSave(value) },
-                enabled = value.isNotBlank(),
-            )
         }
     }
 }
