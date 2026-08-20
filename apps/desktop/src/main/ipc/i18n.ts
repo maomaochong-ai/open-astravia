@@ -1,10 +1,11 @@
 // 语言切换的 IPC 边界。
 // - get-initial-language：同步通道（sendSync），供 renderer 在首帧前同步拿 {preference, language} 防闪。
-// - set-language：renderer 触发 → 持久化 desktop-config → 切主进程语言 → 重建托盘菜单
+// - set-language：renderer 触发 → 持久化 desktop-config → 切主进程语言 → 重建托盘菜单与应用菜单
 //   → 广播 language-changed 给所有窗口（各 renderer 据此 i18n.changeLanguage）。
 
 import { BrowserWindow, type IpcMainEvent, ipcMain } from "electron";
 import { isLanguagePreference, type LanguagePreference, type LanguageState } from "../../shared/i18n/config.js";
+import { installApplicationMenu } from "../app-menu.js";
 import { applyLanguagePreference, getAppLanguage, getLanguagePreference, getLanguageState } from "../i18n/index.js";
 import { rebuildTrayContextMenu } from "../tray-manager.js";
 import { readDesktopConfig, writeDesktopConfig } from "./fs.js";
@@ -19,7 +20,7 @@ function broadcastLanguageState(state: LanguageState): void {
 	}
 }
 
-/** 切换界面语言偏好并同步主进程 i18n、托盘菜单与全部 renderer。 */
+/** 切换界面语言偏好并同步主进程 i18n、托盘菜单、应用菜单与全部 renderer。 */
 export async function applyAppLanguage(preference: LanguagePreference): Promise<LanguageState> {
 	const prev = getLanguageState();
 	const next = applyLanguagePreference(preference);
@@ -30,6 +31,7 @@ export async function applyAppLanguage(preference: LanguagePreference): Promise<
 	const config = await readDesktopConfig();
 	await writeDesktopConfig({ ...config, language: preference });
 	rebuildTrayContextMenu();
+	installApplicationMenu();
 	broadcastLanguageState(next);
 	return next;
 }

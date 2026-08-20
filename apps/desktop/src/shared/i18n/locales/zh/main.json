@@ -6,6 +6,45 @@
 		"quit": "退出",
 		"hideToTray": "隐藏到托盘"
 	},
+	"menu": {
+		"app": {
+			"title": "Vetta",
+			"about": "关于 Vetta",
+			"services": "服务",
+			"hide": "隐藏 Vetta",
+			"hideOthers": "隐藏其他",
+			"unhide": "全部显示",
+			"quit": "退出 Vetta"
+		},
+		"edit": {
+			"title": "编辑",
+			"undo": "撤销",
+			"redo": "重做",
+			"cut": "剪切",
+			"copy": "复制",
+			"paste": "粘贴",
+			"pasteAndMatchStyle": "粘贴并匹配样式",
+			"delete": "删除",
+			"selectAll": "全选"
+		},
+		"view": {
+			"title": "视图",
+			"reload": "重新加载",
+			"forceReload": "强制重新加载",
+			"toggleDevTools": "切换开发者工具",
+			"resetZoom": "实际大小",
+			"zoomIn": "放大",
+			"zoomOut": "缩小",
+			"toggleFullScreen": "进入全屏幕"
+		},
+		"window": {
+			"title": "窗口",
+			"minimize": "最小化",
+			"zoom": "缩放",
+			"front": "前置全部窗口",
+			"close": "关闭窗口"
+		}
+	},
 	"notification": {
 		"turnComplete": "已完成回答",
 		"turnError": "本轮回答出错",

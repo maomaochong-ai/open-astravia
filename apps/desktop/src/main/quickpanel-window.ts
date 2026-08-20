@@ -157,9 +157,10 @@ export function createQuickPanelWindow(): BrowserWindow {
 		});
 	}
 	quickPanelWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-	// 禁用面板内的刷新/重载（Cmd+R、Shift+Cmd+R 等）。App 用 Electron 默认菜单，
-	// reload/forceReload 是菜单 role（mac 上优先级高于 before-input-event，拦不住），
-	// 故直接把本 webContents 的 reload 方法 no-op。否则重载瞬间 React 以默认
+	// 禁用面板内的刷新/重载（Cmd+R、Shift+Cmd+R 等）。打包版的应用菜单已不含
+	// reload/forceReload（见 app-menu.ts），但开发态仍保留这两个菜单 role，
+	// 而 role 在 mac 上优先级高于 before-input-event、拦不住，故直接把本
+	// webContents 的 reload 方法 no-op。否则重载瞬间 React 以默认
 	// glassMode=none 先渲染不透明卡片，盖住下面仍在的原生玻璃，中间「闪一下实心」。
 	const panelWebContents = quickPanelWindow.webContents;
 	panelWebContents.reload = () => {};

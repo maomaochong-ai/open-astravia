@@ -15,6 +15,7 @@ import { createAppDebugRuntime } from "./app-debug/index.js";
 import { createDebugRpcRuntime } from "./app-debug/rpc.js";
 import { configureRendererCdp } from "./app-debug/ui/renderer-cdp.js";
 import { registerAppLifecycleIpc } from "./app-lifecycle.js";
+import { installApplicationMenu } from "./app-menu.js";
 import { initializeAppMonitor, shutdownAppMonitor } from "./app-monitor/app-monitor-service.js";
 import { shutdownBatchTaskExecutor } from "./batch-tasks/batch-task-executor.js";
 import { initializeDesktopBatchTaskService } from "./batch-tasks/batch-task-service.js";
@@ -398,6 +399,9 @@ if (!gotSingleLock) {
 		// 在创建任何窗口/托盘菜单之前同步定语言：读 desktop-config.language
 		//（system | zh | en；缺省 = system）。托盘菜单与系统通知据此取文案（ADR-0031）。
 		initAppLanguage();
+		// 必须在 initAppLanguage 之后：菜单文案在构建期解析。不装配则 mac 会沿用
+		// Electron 默认菜单，打包版把 Reload / DevTools 直接暴露给终端用户。
+		installApplicationMenu();
 		// 必须在 createWindow 之前注册：renderer preload 一加载就 sendSync 取初值，
 		// 若晚于 createWindow 注册会与异步 page-load 抢跑、读到 undefined 回落错语言（首帧闪）。
 		// i18n IPC 与具体窗口无关（广播给全部窗口），故脱离 registerAllIpc 独立早注册、app 级常驻。

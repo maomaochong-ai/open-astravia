@@ -26,6 +26,7 @@ import {
 	type PetResizeCorner,
 	type PetVideoHitbox,
 } from "../shared/pet-ipc.js";
+import { isDevToolsAllowed } from "./devtools-policy.js";
 import { mainT } from "./i18n/index.js";
 import { allowProjectRoot } from "./ipc/fs.js";
 import { getAppLogger } from "./logger.js";
@@ -302,7 +303,7 @@ function stopMousePassthroughPolling(): void {
 }
 
 function shouldShowPetDevToolsMenuItem(): boolean {
-	return !app.isPackaged || process.env.VETTA_PET_DEVTOOLS === "1";
+	return isDevToolsAllowed() || process.env.VETTA_PET_DEVTOOLS === "1";
 }
 
 async function disablePetFromContextMenu(win: BrowserWindow): Promise<void> {
