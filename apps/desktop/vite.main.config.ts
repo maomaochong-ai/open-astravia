@@ -7,18 +7,15 @@ import {
 	SPEECH_INPUT_ENABLED_ENV,
 } from "./scripts/speech-input-build-config.js";
 
-function workspaceSourceAlias(): Plugin {
+function toolkitSourceAlias(): Plugin {
 	return {
-		name: "workspace-source-alias",
+		name: "toolkit-source-alias",
 		resolveId(source) {
 			if (source === "@vetta/toolkit") {
 				return resolve(process.cwd(), "../../packages/toolkit/src/index.ts");
 			}
 			if (source.startsWith("@vetta/toolkit/")) {
 				return resolve(process.cwd(), `../../packages/toolkit/src/${source.slice("@vetta/toolkit/".length)}.ts`);
-			}
-			if (source === "@vetta/remote-desktop") {
-				return resolve(process.cwd(), "../../packages/remote-desktop/src/index.ts");
 			}
 			return null;
 		},
@@ -66,15 +63,19 @@ export default defineConfig(({ mode }) => {
 
 	return {
 		define,
-		plugins: [workspaceSourceAlias(), ...sentry.plugins],
+		plugins: [toolkitSourceAlias(), ...sentry.plugins],
 		resolve: {
-			alias: {
-				x11: resolve(process.cwd(), "src/main/shims/x11.ts"),
+			alias: [
+				{
+					find: /^@vetta\/remote-desktop$/,
+					replacement: resolve(process.cwd(), "../../packages/remote-desktop/src/index.ts"),
+				},
+				{ find: "x11", replacement: resolve(process.cwd(), "src/main/shims/x11.ts") },
 				// Electron 的 Node 没有 node:sqlite。undici 的惰性探测被 Rollup 提升成
 				// chunk 顶层静态 import，真实内置模块缺失会让整个 chunk 加载失败，
 				// 连带 EnvHttpProxyAgent 装不上（详见 shims/node-sqlite.ts）。
-				"node:sqlite": resolve(process.cwd(), "src/main/shims/node-sqlite.ts"),
-			},
+				{ find: "node:sqlite", replacement: resolve(process.cwd(), "src/main/shims/node-sqlite.ts") },
+			],
 		},
 		build: {
 			lib: {

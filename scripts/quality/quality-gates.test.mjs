@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	findBuildOrderViolations,
 	findLayeredBuildOrderViolations,
+	findMissingConsumerBuildDependencies,
 	parseBuildPackageOrder,
 } from "./check-build-order.mjs";
 import { findPackageBoundaryViolations, findPackageManifestBoundaryViolations } from "./check-package-boundaries.mjs";
@@ -1229,6 +1230,29 @@ describe("workspace build order", () => {
 		];
 
 		expect(findBuildOrderViolations(["packages/runtime-core", "packages/coding-agent"], manifests)).toEqual([]);
+	});
+
+	it("requires buildable Desktop workspace dependencies in the incremental prerequisite graph", () => {
+		const packageConfigs = {
+			"remote-control": { dir: "packages/remote-control" },
+		};
+		const desktopManifest = {
+			dir: "apps/desktop",
+			name: "@vetta/desktop",
+			dependencies: {
+				"@vetta/remote-control": "workspace:*",
+				"@vetta/remote-desktop": "workspace:*",
+				"@vetta/theme-ui": "workspace:*",
+			},
+		};
+		const buildableManifests = [
+			{ dir: "packages/remote-control", name: "@vetta/remote-control" },
+			{ dir: "packages/remote-desktop", name: "@vetta/remote-desktop" },
+		];
+
+		expect(findMissingConsumerBuildDependencies(packageConfigs, desktopManifest, buildableManifests)).toEqual([
+			"apps/desktop workspace dependency packages/remote-desktop is missing from package configs",
+		]);
 	});
 
 	it("does not treat peer dependencies as source build edges", () => {
