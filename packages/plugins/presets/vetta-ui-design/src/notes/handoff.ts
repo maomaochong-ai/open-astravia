@@ -139,7 +139,7 @@ const AUTO_DISPATCH_DEBOUNCE_MS = 1_500;
  *
  * agent 正在跑的时候落下的备注一律不派，也不会等它跑完再补一条 prompt 去催——那
  * 会变成一条突兀的「继续」消息，而备注的被动特性本来就是为这个场景设计的：它收尾
- * 自检时（SKILL.md 要求报告前无条件跑一次 vetd_notes）会自己把这些捞走。
+ * 自检时（SKILL.md 要求动过 .vetd 的那一轮在报告前跑一次 vetd_notes）会自己把这些捞走。
  *
  * 派过的记在 store 上（`markDispatched`），所以 agent 处理了却忘记 resolve 的备注
  * 不会被一轮轮重新派出去空转。

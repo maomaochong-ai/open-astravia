@@ -19,6 +19,8 @@ import { setPluginCtx } from "./plugin-context";
 import { CANVAS_TAB_ID, GALLERY_VIEW_ID } from "./tab-ids";
 import { registerDesignTools } from "./tools";
 import { claimCanvasAutoOpen } from "./vetd/auto-open";
+import { setDesignPresence } from "./vetd/design-presence";
+import { registerToolGate } from "./vetd/tool-gate";
 import { isPureDesignProject, pickDesignPaths } from "./vetd/discover";
 
 /**
@@ -114,6 +116,9 @@ export default definePlugin({
 					// 还没迁移的旧格式也算数：Tab 先亮出来，真正的迁移在画布打开时发生。
 					const { bundles, legacyFiles } = pickDesignPaths(files);
 					const found = bundles.length + legacyFiles.length;
+					// 这趟全量列举同时是设计工具闸门的判定依据，顺手喂进去，
+					// 免得闸门在每次模型调用前自己再扫一遍工作区。
+					setDesignPresence(cwd, found > 0);
 					ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, found > 0);
 					if (found === 0) return;
 					// 从画廊点进来的这一次，用户已经说清楚要看设计了：混合项目也铺开，
@@ -216,6 +221,8 @@ export default definePlugin({
 		});
 
 		registerDesignTools(ctx);
+		// 设计专用工具只在有设计稿的会话里进入工具表（见 vetd/tool-gate）。
+		registerToolGate(ctx);
 	},
 	deactivate() {
 		void stopAllDesignServers();

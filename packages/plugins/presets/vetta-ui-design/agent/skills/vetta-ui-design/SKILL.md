@@ -1,6 +1,6 @@
 ---
 name: vetta-ui-design
-description: "Build and edit design documents (.vetd) on the Vetta design canvas — app screens, landing pages, slides, posters, infographics. Use when the user asks for a UI design, mockup, screen, deck, or poster, or attaches a design frame/element from the canvas. Frames are real React (TSX) routes, not pictures."
+description: "Build and edit design documents (.vetd) on the Vetta design canvas — app screens, landing pages, slides, posters, infographics. Use when the user asks for a UI design, mockup, screen, deck, or poster, or attaches a design frame/element from the canvas. Frames are real React (TSX) routes, not pictures. Do NOT use for ordinary front-end work in the user's own codebase — building, styling or reworking pages of a real app is that repo's job, and none of the vetd_* tools or canvas rules here apply to it."
 ---
 
 # Vetta UI Design
@@ -347,10 +347,10 @@ just shot.
 Notes are also how the user talks to you **while you are working**: rather than
 interrupt your turn with a new message, they pin the request onto the canvas and
 let you pick it up. So a note can appear at any moment, including after your last
-screenshot — which is exactly why the Done check below runs `vetd_notes`
-unconditionally instead of waiting for some tool response to mention one. That
-check is the only way those notes ever reach you: nothing will send you a
-follow-up message about them, so a note you skip just sits there unanswered.
+screenshot — which is exactly why the Done check below runs `vetd_notes` even when
+nothing this turn mentioned notes, instead of waiting for some tool response to
+name one. That check is the only way those notes ever reach you: nothing will send
+you a follow-up message about them, so a note you skip just sits there unanswered.
 
 Every instruction the user gives from the canvas becomes a note, so a message
 asking you to handle canvas notes never carries the request text itself — the
@@ -372,13 +372,22 @@ Read, that image is free of the three screenshot defects, `issues` came back
 empty, and no user note is left pending.
 
 That last one has a hard rule, because nothing outside this turn will catch a
-miss: **the final action of every turn — after the work, right before you write
-your summary — is one more `vetd_notes` call.** Run it even when nothing this
-turn mentioned notes. Anything still pending is work the user asked for while
-you were busy: do it now, `resolve` it, then check again, and only report once a
-check comes back clean. Do not report first and leave it for "next turn" — the
-user deliberately did not interrupt you with a message, precisely because you
-were going to look here, and nothing will nudge you afterwards.
+miss: **when you touched a `.vetd` design this turn, the final action — after the
+work, right before you write your summary — is one more `vetd_notes` call.** Run
+it even when nothing this turn mentioned notes. Anything still pending is work the
+user asked for while you were busy: do it now, `resolve` it, then check again, and
+only report once a check comes back clean. Do not report first and leave it for
+"next turn" — the user deliberately did not interrupt you with a message, precisely
+because you were going to look here, and nothing will nudge you afterwards.
+
+The condition is the whole rule, so read it literally: **a turn in which you wrote
+or edited no file inside a `.vetd/` directory ends with no `vetd_notes` call at
+all.** Canvas notes only exist for designs on the canvas, so there is nothing to
+check when the work was anywhere else — editing pages in the user's own repo,
+answering a question, running tests, writing code that has no design attached.
+Calling it there is not a harmless extra check: it fails, and it tells the user
+you mistook their codebase for a design document. Same for every other `vetd_*`
+tool — none of them apply to work outside a `.vetd`.
 
 Not one of those three is checked for you at the end of the turn — if you
 report back without them, whatever is broken simply stays broken. So before you

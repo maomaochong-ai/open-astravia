@@ -56,6 +56,14 @@ describe("重工具描述", () => {
 		expect(description).toMatch(/implement the page directly in that repo's own framework instead/);
 	});
 
+	it("vetd_notes 明确排除「与设计无关的收尾习惯」", () => {
+		// 真实故障：普通前端改页面时，agent 每轮结尾照旧补一发 vetd_notes。
+		// 工具表闸门（vetd/tool-gate）是硬防线，描述这条是软防线，两条都要在。
+		const description = descriptions.get("vetd_notes") ?? "";
+		expect(description).toMatch(/end-of-turn habit/);
+		expect(description).toMatch(/touched no \.vetd design/);
+	});
+
 	it("在工作区建目录树的工具在注册处声明 heavy，其余不声明（缺省 light）", () => {
 		expect(sideEffects.get("vetd_create")).toBe("heavy");
 		expect(sideEffects.get("vetd_install")).toBe("heavy");

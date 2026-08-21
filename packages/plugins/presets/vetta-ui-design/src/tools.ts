@@ -10,6 +10,7 @@ import { captureFrameOffscreen, offscreenRasterSupported } from "./canvas/offscr
 import { screenshotCardDescriptor, SCREENSHOT_TOOL_NAME } from "./cards/screenshot-card";
 import { pruneSnapshots, snapshotPath } from "./cards/snapshots";
 import { registerHistoryTools } from "./history/history-tools";
+import { setDesignPresence } from "./vetd/design-presence";
 import { ensureDesignIgnored } from "./vetd/design-ignore";
 import { ENGINE_PROVIDED_PACKAGES } from "./engine/engine-files";
 import { engineDiagnostics, installDesignDependencies } from "./engine/engine-manager";
@@ -142,6 +143,8 @@ export function registerDesignTools(ctx: PluginContext): void {
 				};
 			}
 			const result = await scaffoldDesign(host.fs, session.cwd, trigger.input.name ?? "design", defaultFrameSize);
+			// 这一刻起工作区里有设计了：闸门下一次模型调用就要放行其余设计工具。
+			setDesignPresence(session.cwd, true);
 			setPendingDesignPath(result.vetdPath, session.cwd);
 			console.debug(
 				`[vetta-ui-design:activity-tab-debug] vetd_create requesting canvas ${JSON.stringify({
@@ -510,7 +513,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: "vetd_notes",
 		label: "%tool.vetd_notes%",
 		description:
-			"User notes pinned on the design canvas (Figma-style comments addressed to you). No args: list PENDING notes — each with its thread, a freshly re-resolved source anchor (`element.source` = file:line, authoritative unless `anchorStale`), and per-frame screenshots where numbered pins mark note positions (numbers match `number`). `ids`: read specific notes instead. `resolve`: after fixing, reply per note to mark it resolved — this is the ONLY way to write notes; never edit .notes.json directly.\nDo NOT use for what the user wrote to you in this conversation, for code review comments or for issue trackers — act on those directly instead.\nOnly for notes pinned on the design canvas of an open .vetd design.",
+			"User notes pinned on the design canvas (Figma-style comments addressed to you). No args: list PENDING notes — each with its thread, a freshly re-resolved source anchor (`element.source` = file:line, authoritative unless `anchorStale`), and per-frame screenshots where numbered pins mark note positions (numbers match `number`). `ids`: read specific notes instead. `resolve`: after fixing, reply per note to mark it resolved — this is the ONLY way to write notes; never edit .notes.json directly.\nDo NOT use for what the user wrote to you in this conversation, for code review comments or for issue trackers — act on those directly instead; and never as an end-of-turn habit on a turn that touched no .vetd design, e.g. after editing pages in the user's own codebase.\nOnly for notes pinned on the design canvas of an open .vetd design.",
 		parameters: {
 			type: "object",
 			properties: {
