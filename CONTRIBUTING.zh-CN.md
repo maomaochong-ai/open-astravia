@@ -64,7 +64,7 @@ PR 请发到 **`dev`**，不要发到 `main`。`dev` 是集成分支，`main` �
 | 文档、文案、模板、注释 | 核对你改过的链接、命令和路径 |
 | Bug 修复或行为变化 | 一条在旧代码上会失败的测试，外加 `bun run check:quick` 和对应的 `bun run test:pkg <name>` |
 | 公共合同（IPC、Schema、导出、持久化） | 检查生产者与消费者，并补合同测试 |
-| UI 交互 | 涉及 renderer 或主进程时走现有 `verify:ui:*` |
+| UI 交互 | 在受影响层补组件/交互测试；`verify:ui:*` 不是默认 PR 要求，仅在 Issue 或评审明确要求时使用 |
 
 不要声称跑过未执行的检查。`bun run check` 是 lint + 类型 + 架构守卫，不能替代测试。
 

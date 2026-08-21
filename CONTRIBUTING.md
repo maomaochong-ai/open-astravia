@@ -64,7 +64,7 @@ We do not require a CLA. Contributions are licensed under [Apache-2.0](LICENSE),
 | Docs, copy, templates, comments | Check links, commands, and paths in the files you touched |
 | Bug fix or behavior change | A test that would have failed on the old code, plus `bun run check:quick` and the relevant `bun run test:pkg <name>` |
 | Public contract (IPC, schema, export, persistence) | Producers, consumers, and a contract test |
-| UI interaction | The existing `verify:ui:*` flow when the renderer or main process is involved |
+| UI interaction | Component/interaction tests at the affected layer; `verify:ui:*` is not a default PR requirement and is used only when an issue or reviewer explicitly requests it |
 
 Do not claim a check you did not run. `bun run check` is lint + types + architecture guards; it does not replace tests.
 

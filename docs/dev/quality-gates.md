@@ -1,6 +1,6 @@
 # 质量门禁（Quality Gates）
 
-本仓库**没有**照搬 OpenClaw 的 oxlint/pnpm/巨型 CI 矩阵。在现有 **Bun + Biome + tsgo + Vitest + husky + Desktop `verify:ui`** 之上，补了分层门禁、按包/按变更测试与轻量架构守卫。
+本仓库**没有**照搬 OpenClaw 的 oxlint/pnpm/巨型 CI 矩阵。在现有 **Bun + Biome + tsgo + Vitest + husky** 之上，补了分层门禁、按包/按变更测试与轻量架构守卫；Desktop `verify:ui` 是用户明确要求时才运行的按需验收工具，不属于默认门禁。
 
 ## 门禁分层
 
@@ -14,7 +14,7 @@
 | 单元测试 | `bun run test:unit` | 逻辑变更 | 当前有测试的核心包 |
 | 按包 | `bun run test:pkg <name>` | 改单包 | 例：`test:pkg ai` |
 | 按变更 | `bun run test:changed` | 提 PR 前可选 | 合并已提交/工作区/未跟踪改动，测试触达包及其下游依赖 |
-| UI | `bun run verify:ui:*` | Renderer/Main 可见变更 | 见 [README](./README.md) |
+| 按需 Desktop UI 验收 | `bun run verify:ui:*` | 仅用户明确要求使用 UI 验证或具体命令时 | 不由 UI、图标、样式或 Renderer/Main 改动自动触发；见 [README](./README.md) |
 | Desktop 生产边界 | `bun run verify:desktop:contracts`；受影响时由 GitHub Actions 在 Windows/macOS/Linux 运行 packaged smoke 与 updater E2E | 修改 Desktop 主进程、preload、打包脚本、原生依赖或远程控制 | 见下文 |
 | 死代码（可选） | `bun run deadcode:report` | 清理时 | Knip 报告，**默认不阻断** `check` |
 
@@ -76,7 +76,7 @@ bun run --cwd apps/desktop test:coverage
 - 报告目录：包内 `coverage/`（已 gitignore）；含 text / html / lcov
 - 分母：`src/**/*.{ts,tsx}`（诚实全量；desktop 总百分比低是现状，不是配置错误）
 - `reportOnFailure: true`：单测失败仍会出报告（coding-agent 在 Windows 上仍有已知基线失败）
-- 不设全局 thresholds；不进 husky / `check` / CI；UI 验收仍用 `verify:ui:*`
+- 不设全局 thresholds；不进 husky / `check` / CI；用户明确要求 UI 验收时使用 `verify:ui:*`
 - `@vitest/coverage-v8` 主版本须与根 `vitest` 对齐（当前均为 3.2.x）
 
 ## Windows 上必须用 Node 跑 Vitest
@@ -197,7 +197,7 @@ Windows、macOS、Linux runner 上真实安装基线包，驱动现有 updater �
 | pre-commit 全家桶 | husky + 快路径；类型检查放 `check` |
 | knip 阻断 CI | 仅扫描四个核心包，`deadcode:report` 先观察，再收紧 |
 | OpenGrep / CodeQL | 未引入；有安全面再加 |
-| Docker E2E 矩阵 | 继续用现有 `verify:ui` 与包内测试 |
+| Docker E2E 矩阵 | 继续使用包内测试和定向 Electron E2E；`verify:ui` 仅按用户明确要求运行 |
 
 ## 推荐工作流
 
@@ -215,8 +215,10 @@ bun run test:changed
 bun run check:quick
 bun run check
 
-# 改 Desktop UI
+# 改 Desktop UI（默认不启动 verify:ui）
 bun run check
+
+# 仅当用户明确要求 UI 验收时
 bun run verify:ui:start:fresh
 # ... verify:ui:pw ...
 

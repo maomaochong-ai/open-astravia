@@ -230,7 +230,7 @@ useEffect(() => {
 | 依赖底层 DOM/Pointer/Drag API 的行为 | `jsdom` 中使用 React `act()`、`createRoot` 和必要的原生事件；仅在 Testing Library 无法准确表达时使用 | 拖拽、portal、尺寸或浏览器 API 适配 |
 | preload、IPC 和主进程服务 | Vitest `node` 环境，在 Electron/系统 API 边界使用窄 fake；生产者与消费者使用同一合同夹具 | channel、参数、返回值、错误和权限边界 |
 | 真实窗口、跨进程、原生菜单、打包启动 | WebdriverIO/Electron E2E | 只覆盖低层测试无法证明的关键路径 |
-| 启动连通性、UI 观感、布局和主题 | `verify:ui:*` 与截图检查 | 作为环境与视觉补充，不是功能测试 |
+| 启动连通性、UI 观感、布局和主题 | 用户明确要求时使用 `verify:ui:*` 与截图检查 | 作为按需环境与视觉补充，不是功能测试，也不是 UI 改动的默认门禁 |
 
 以下 Renderer 变更必须有 React 组件或 Hook 测试，不能只测抽出的纯函数：
 
@@ -243,9 +243,9 @@ useEffect(() => {
 
 当前包已经配置 Vitest 和 `jsdom`，但尚未在自身 `devDependencies` 声明 React Testing Library。首次新增适合上述组件测试的行为时，应在同一任务补齐 `@testing-library/react`、`@testing-library/user-event`、统一 setup，并让 Vitest 收集 `*.test.tsx`，同时更新锁文件；不得依赖其他 workspace 偶然提升的依赖。已有 `createRoot` 测试可以渐进保留，不要求为形式批量改写。
 
-`jsdom` 不实现真实布局、完整 Pointer/Drag、Electron 和原生窗口行为。此类差异会影响正确性时，必须增加对应 E2E 或 UI 验证；若要改用 `happy-dom`，应先证明其更适合目标行为并统一相关测试，不在同一类测试中随意混用环境。
+`jsdom` 不实现真实布局、完整 Pointer/Drag、Electron 和原生窗口行为。此类差异会影响正确性时，必须增加对应的 WebdriverIO/Electron E2E；只有用户明确要求时才额外运行 `verify:ui:*`。若要改用 `happy-dom`，应先证明其更适合目标行为并统一相关测试，不在同一类测试中随意混用环境。
 
-跑测：包内 `bun run test`，或仓库根 `bunx vitest --run <具体 test 路径>`。涉及真实 Electron 行为时运行定向 `bun run test:e2e`；需要启动连通性或视觉检查时再使用规定的 `verify:ui:*` 流程。改完至少跑通本次新增/改动测试及受影响的现有测试。
+跑测：包内 `bun run test`，或仓库根 `bun scripts/quality/run-vitest.mjs --run <具体 test 路径>`。涉及真实 Electron 行为时运行定向 `bun run test:e2e`。`verify:ui:*` 不是默认测试层级：只有用户在当前任务中明确要求使用时才运行，不能由 UI、图标、样式或 Renderer/Main 改动自动触发。改完至少跑通本次新增/改动测试及受影响的现有测试。
 
 ## 缓存规范
 
@@ -332,9 +332,9 @@ imLog.debug("sidecar debug message");
 
 ## 开发注意事项
 
-### UI 验证入口（暂行）
+### UI 验证入口
 
-`bun run verify:ui:*` 目前仅用于检查 desktop 的启动与连接问题，不用于 UI 功能测试；相关验证能力尚未完善。
+`bun run verify:ui:*` 是按需启动或附着真实 Desktop、观察 Renderer UI 的人工验收入口，不是功能测试或常规质量门禁。只有用户在当前任务中明确要求运行 UI 验证、操作真实 Desktop 或执行具体 `verify:ui:*` 命令时才能使用；修改 UI、图标、样式、Renderer 或 Main 本身不构成授权。未获授权时使用组件/Hook 测试、合同测试和适用的 WebdriverIO/Electron E2E 覆盖行为风险，不要为了获得授权而例行追问。
 
 ### bun dev 前置依赖构建
 

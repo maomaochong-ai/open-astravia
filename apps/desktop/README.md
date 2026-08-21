@@ -121,6 +121,6 @@ bun run test:e2e:packaged
 ```
 
 Runtime sets `VETTA_E2E=1`, `VETTA_CONFIG_DIR=.vetta-e2e`, and isolates Chromium profile under `.wdio-electron-user-data`.
-Day-to-day agent UI verification still uses repo-root `verify:ui:*` (Playwright); this suite targets formal E2E / CI.
+When a user explicitly requests agent-driven UI verification, use repo-root `verify:ui:*` (Playwright); UI changes alone do not trigger it. This WebdriverIO suite targets formal E2E / CI.
 
 Current `e2e/smoke.e2e.ts` batch-1 covers boot only: main-process ready/version, main window `index.html`, config/userData isolation, and a `dialog` mock probe. It does not cover login, chat, or other product flows.

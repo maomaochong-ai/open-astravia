@@ -76,7 +76,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 | 任务 | 首先阅读 |
 | --- | --- |
 | 选择质量门禁与测试范围 | [`docs/dev/quality-gates.md`](docs/dev/quality-gates.md) |
-| Desktop 启动、调试与 UI 验证 | [`docs/dev/README.md`](docs/dev/README.md) |
+| Desktop 启动、调试与 UI 验证（仅在用户明确要求时） | [`docs/dev/README.md`](docs/dev/README.md) |
 | 新增 workspace 包 | [`docs/monorepo-new-package.md`](docs/monorepo-new-package.md) |
 | Plugin SDK、Preset 或外置插件 | [`packages/plugins/README.md`](packages/plugins/README.md) |
 | Coding Agent 架构修改 | [`docs/agent/coding-agent/README.md`](docs/agent/coding-agent/README.md) |
@@ -163,7 +163,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 | 新功能 | 实现、关键行为测试、必要的用户文档/i18n、适用时更新 Changelog |
 | 内部重构 | 说明保持的不变量，以现有测试、差分测试或合同测试证明行为未变 |
 | 公共合同变更 | 检查生产者与消费者、兼容或迁移策略、协议/Schema/API 合同测试 |
-| UI 交互变更 | 交互状态测试；涉及真实渲染或跨进程行为时使用现有 UI 验证流程 |
+| UI 交互变更 | 交互状态测试；真实跨进程风险使用定向 Electron E2E。只有用户明确要求时才运行 `verify:ui:*` |
 | 文档、文案或无逻辑配置 | 核对链接、路径、命令和事实；没有行为变化时无需新增单元测试 |
 
 ### 必须新增或更新测试
@@ -185,7 +185,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 只有在下列场景中，新增测试才可以省略或由已有测试覆盖；这不等于可以跳过所有验证：
 
 - 纯文档、注释、拼写、无逻辑文案或类型声明整理，没有运行时行为变化。
-- 纯视觉样式、设计 Token 或静态资源替换，且不影响交互、响应式可用性、可访问语义或内容布局；应使用适用的视觉检查代替无意义的单元测试。
+- 纯视觉样式、设计 Token 或静态资源替换，且不影响交互、响应式可用性、可访问语义或内容布局；核对设计约束和受影响资源即可。只有用户明确要求时才运行 `verify:ui:*` 做实机视觉检查。
 - 生成文件随已验证的事实源机械更新；测试和检查应针对生成器或事实源，而不是复制断言生成结果。
 - 行为保持型机械重构已经被相关现有测试准确覆盖，本次变更没有增加分支、状态或边界；必须实际运行这些测试并说明覆盖关系。
 - 无分支的薄导出、类型转发或依赖注入装配，其错误能够由类型检查、架构守卫或已有合同测试可靠捕获。
@@ -213,7 +213,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 
 - 不使用裸 `bun test`，避免扫描整个 monorepo。
 - 不使用 `bunx vitest` 或直接 `vitest`：Windows 上 Bun worker 会在收集测试前因非法 file URL 全部失败。统一走 `scripts/quality/run-vitest.mjs`（内部用 Node 启动 Vitest）。
-- 不默认启动长驻的 `bun run dev`。Desktop UI 验证只使用根目录 `bun run verify:ui:*` 流程。
+- 不默认启动长驻的 `bun run dev`。`bun run verify:ui:*` 会启动或附着 Desktop 验证实例，只有用户在当前任务中明确要求使用该流程时才能运行；UI、图标、样式或 Renderer/Main 改动本身不构成授权，也不要仅因改动属于 UI 就询问用户是否运行。获得授权后只使用根目录入口，并按 [`docs/dev/README.md`](docs/dev/README.md) 操作。
 - 只有任务或验证明确需要构建产物时才运行相应的 `bun run build:*`，不要把全量构建当作默认反馈循环。
 - 修改 Go 包时，使用该包 README/Makefile 定义的定向测试和检查；根 `bun run check` 不覆盖 Go。
 - 文档任务至少核对链接、命令和引用路径；文档专用修改不要求为了形式运行完整 TypeScript 检查。

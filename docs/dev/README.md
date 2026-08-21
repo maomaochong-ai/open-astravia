@@ -7,6 +7,12 @@
 Vetta Debug 的会话操作参数见 [Vetta Debug](./vetta-debug.md)；真实模型、多轮工具和上下文缓存实验见
 [Vetta Debug 真实 Provider 实战](./vetta-debug-real-provider-runbook.md)。
 
+## 使用授权
+
+`verify:ui:*` 是显式按需工具，不是修改 Desktop UI、图标、样式、Renderer 或 Main 后的默认质量门禁。Agent 只有在用户当前任务中明确要求运行 UI 验证、操作真实 Desktop，或执行具体 `verify:ui:*` 命令时才能使用；仓库文档、测试建议和改动类型本身都不构成授权，也不要仅因改动属于 UI 就例行询问用户是否运行。
+
+未获授权时，按改动风险使用组件/Hook 测试、合同测试和适用的 WebdriverIO/Electron E2E，并在交付中如实说明 `verify:ui:*` 因未被要求而未运行。获得授权后，再按本文选择隔离 Profile 和命令；授权使用 UI 验证不等于授权调用真实 Provider、读取真实凭据或操作用户日常实例，这些边界仍需单独满足。
+
 ## 验证 Profile
 
 所有命令都在仓库根目录执行。三个 Profile 使用不同的 Vetta home、Electron user data、Action RPC endpoint 和 Playwright session，因此可以与普通开发应用同时运行：
