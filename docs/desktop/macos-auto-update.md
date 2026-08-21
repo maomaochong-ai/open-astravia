@@ -336,13 +336,13 @@ bun run publish:updates:r2
 
 ## 9. 正式发版
 
-正式发版由 tag 触发 `.github/workflows/desktop-release.yml`，三平台一次出全，与 Windows 共用同一条编排。macOS 的特殊之处是 **runner 是自持的**。
+正式发版由 tag 触发 `.github/workflows/desktop-release.yml`，三平台一次出全，与 Windows 共用同一条编排。macOS 正式发布使用自持 runner；不发布的 `workflow_dispatch` 演练使用 GitHub 托管 runner。
 
-### 9.1 为什么用自持 runner
+### 9.1 runner 选择
 
-仓库是私有的，GitHub 托管 macOS runner 按 **10 倍**扣 Actions 分钟数。签名 + 公证的构建本就慢，再乘以两个架构，两次构建足以吃光 Free 计划每月 2,000 分钟的额度。自持 runner 不计分钟。
+仓库公开后，标准 GitHub 托管 runner 不消耗 Actions 分钟。不发布的演练按目标架构分别使用 `macos-15`（arm64）和 `macos-15-intel`（x64），即使签名机离线也能验证完整构建、更新产物与 packaged E2E。
 
-Windows 与 Linux 仍走托管 runner（倍率 2 与 1），额度充裕。
+tag 或显式 stable/test 发布仍使用带签名、公证凭据的 `vetta-mac` 自持 runner。这样凭据留在受控签名机上，且正式产物继续在固定环境中生成。Windows 与 Linux 始终使用托管 runner。
 
 ### 9.2 runner 准备
 
@@ -378,7 +378,7 @@ tag v<version>
   -> verify:updates:mac
   -> latest-mac.yml 改名为 latest-mac-<arch>.yml
   -> 上传 artifact
-（arm64 与 x64 两个 job 在同一台 runner 上串行）
+（发布时 arm64 与 x64 两个 job 在同一台 runner 上串行；非发布演练使用两个匹配架构的托管 runner）
   -> 四个平台 job 全绿后 publish-r2
   -> merge:updates:mac 合并元数据
   -> 发布到 desktop/stable

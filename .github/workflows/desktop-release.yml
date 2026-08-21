@@ -199,7 +199,7 @@ jobs:
     name: build ${{ matrix.platform }}
     needs: [prepare, quality]
     if: needs.prepare.outputs.should-build == 'true'
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ needs.prepare.outputs.should-publish == 'true' && matrix.releaseRunner || matrix.rehearsalRunner }}
     timeout-minutes: 90
     environment: ${{ needs.prepare.outputs.channel == 'test' && 'desktop-test' || 'desktop-production' }}
     strategy:
@@ -207,27 +207,31 @@ jobs:
       matrix:
         include:
           - platform: windows
-            runner: windows-latest
+            releaseRunner: windows-latest
+            rehearsalRunner: windows-latest
             command: dist:win
             verify: verify:updates:windows
             macArch: ""
           # arm64 与 x64 必须分两次构建：内置的 node/python 运行时按
           # VETTA_VENDOR_PLATFORM 单架构落盘，一次构建出不了两套。两次都会写同名的
           # latest-mac.yml，因此各自重命名后上传，由发布任务合并回单一元数据。
-          # 私有仓库的 GitHub 托管 macOS runner 按 10 倍扣分钟数，两次签名+公证的
-          # 构建足以吃光免费额度，因此 mac 走自持 runner（标签 vetta-mac）。
+          # 发布构建继续走含签名凭据的自持 runner；公开仓库的非发布演练使用与目标
+          # 架构一致的标准 GitHub-hosted runner，避免签名机离线时阻塞纯构建验证。
           - platform: macos-arm64
-            runner: vetta-mac
+            releaseRunner: vetta-mac
+            rehearsalRunner: macos-15
             command: dist:mac:arm64
             verify: verify:updates:mac
             macArch: arm64
           - platform: macos-x64
-            runner: vetta-mac
+            releaseRunner: vetta-mac
+            rehearsalRunner: macos-15-intel
             command: dist:mac:x64
             verify: verify:updates:mac
             macArch: x64
           - platform: linux
-            runner: ubuntu-latest
+            releaseRunner: ubuntu-latest
+            rehearsalRunner: ubuntu-latest
             command: dist:linux
             verify: verify:updates:linux
             macArch: ""

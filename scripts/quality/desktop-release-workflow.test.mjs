@@ -84,6 +84,16 @@ describe("Desktop release workflow contracts", () => {
 		expect(workflow).toContain('--target "' + "$" + '{GITHUB_SHA}"');
 	});
 
+	it("uses hosted macOS runners only for non-publishing rehearsals", () => {
+		expect(workflow).toContain(
+			"runs-on: $" +
+				"{{ needs.prepare.outputs.should-publish == 'true' && matrix.releaseRunner || matrix.rehearsalRunner }}",
+		);
+		expect(workflow.match(/releaseRunner: vetta-mac/g)).toHaveLength(2);
+		expect(workflow).toContain("rehearsalRunner: macos-15\n");
+		expect(workflow).toContain("rehearsalRunner: macos-15-intel\n");
+	});
+
 	it("provides an isolated test-channel workflow for real install and restart upgrades", () => {
 		expect(upgradeWorkflow).toContain("baseline_version:");
 		expect(upgradeWorkflow).toContain("candidate_version:");
