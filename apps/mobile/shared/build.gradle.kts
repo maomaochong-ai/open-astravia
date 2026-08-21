@@ -40,6 +40,8 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.material.icons.core)
             implementation(libs.compose.material.icons.extended)
+            implementation(libs.multiplatform.markdown.renderer)
+            implementation(libs.multiplatform.markdown.renderer.m3)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
 

@@ -3,6 +3,8 @@ package org.vetta.android.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +19,7 @@ import org.vetta.android.core.model.ChatRole
 import org.vetta.android.core.model.ChatStreamEvent
 import org.vetta.android.core.model.LlmModel
 import org.vetta.android.core.model.SubscriptionStatus
+import org.vetta.android.core.model.TokenUsage
 import org.vetta.android.core.model.User
 import org.vetta.android.core.net.RefreshOutcome
 import org.vetta.android.domain.chat.prepareRetryTurn
@@ -30,6 +33,8 @@ import org.vetta.android.domain.session.ConversationOrigin
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageImage
 import org.vetta.android.domain.session.MessageStatus
+import org.vetta.android.domain.session.PendingQuestion
+import org.vetta.android.domain.session.ToolTrace
 import org.vetta.android.domain.session.SessionStore
 import org.vetta.android.domain.session.nowEpochMs
 import org.vetta.android.ui.i18n.Str
@@ -57,6 +62,8 @@ data class AppUiState(
     val draft: String = "",
     val pendingImages: List<MessageImage> = emptyList(),
     val isStreaming: Boolean = false,
+    /** 面向用户的短状态，不透传 Desktop 内部思考文本或异常原文。 */
+    val streamingStatus: String? = null,
     val modelPickerOpen: Boolean = false,
     val remoteConnecting: Boolean = false,
     val globalError: UiError? = null,
@@ -70,6 +77,8 @@ data class AppUiState(
     val discoverChannelIndex: Int = 0,
     val newConversationChannelIndex: Int = 0,
     val devices: List<DesktopDevice> = emptyList(),
+    val pendingQuestion: PendingQuestion? = null,
+    val isQuestionSubmitting: Boolean = false,
 )
 
 private data class PreferenceSnapshot(
@@ -79,6 +88,8 @@ private data class PreferenceSnapshot(
     val motion: Boolean,
     val confirmDelete: Boolean,
 )
+
+private const val STREAMING_PERSIST_INTERVAL_MS = 80L
 
 class AppViewModel(
     private val container: AppContainer,
@@ -145,6 +156,7 @@ class AppViewModel(
                 _state.update {
                     it.copy(bootstrapped = true, route = AppRoute.Welcome)
                 }
+                restorePendingQuestion()
                 return@launch
             }
             when (val refresh = container.client.auth.refresh()) {
@@ -207,6 +219,7 @@ class AppViewModel(
                     catalogLoading = false,
                 )
             }
+            restorePendingQuestion()
             if (routeSession != null) {
                 // 保留 last session 引用，进入主页后用户可从最近会话打开
             }
@@ -237,6 +250,20 @@ class AppViewModel(
                 globalError = null,
                 authError = null,
             )
+        }
+        restorePendingQuestion()
+    }
+
+    /** 从本地消息恢复尚未回答的问题，让重启后仍能从主壳进入正确会话。 */
+    private fun restorePendingQuestion() {
+        viewModelScope.launch {
+            var pending: PendingQuestion? = null
+            for (session in container.sessionStore.sessions.value) {
+                if (session.origin != ConversationOrigin.Desktop) continue
+                pending = container.sessionStore.getMessages(session.id).asReversed().firstNotNullOfOrNull { it.pendingQuestion }
+                if (pending != null) break
+            }
+            if (pending != null) _state.update { it.copy(pendingQuestion = pending) }
         }
     }
 
@@ -560,6 +587,9 @@ class AppViewModel(
                     messages = emptyList(),
                     draft = "",
                     pendingImages = emptyList(),
+                    pendingQuestion = null,
+                    isStreaming = false,
+                    streamingStatus = null,
                     modelPickerOpen = false,
                 )
             }
@@ -624,6 +654,8 @@ class AppViewModel(
                 draft = "",
                 pendingImages = emptyList(),
                 isStreaming = false,
+                streamingStatus = null,
+                pendingQuestion = null,
                 route = AppRoute.Login,
                 mainTab = MainTab.Home,
                 modelPickerOpen = false,
@@ -726,6 +758,9 @@ class AppViewModel(
             if (_state.value.currentSessionId == sessionId) {
                 navigateBackFromSecondary()
             }
+            _state.update { state ->
+                state.copy(pendingQuestion = state.pendingQuestion?.takeIf { it.sessionId != sessionId })
+            }
         }
     }
 
@@ -826,7 +861,7 @@ class AppViewModel(
             container.sessionStore.upsertMessage(assistantMsg)
             drafts[sid] = ""
             _state.update {
-                it.copy(draft = "", pendingImages = emptyList(), isStreaming = true, globalError = null)
+                it.copy(draft = "", pendingImages = emptyList(), isStreaming = true, streamingStatus = "running", globalError = null)
             }
 
             val history =
@@ -842,6 +877,41 @@ class AppViewModel(
             streamJob =
                 viewModelScope.launch {
                     var assembled = ""
+                    var toolEvents = emptyList<ToolTrace>()
+                    var usage: TokenUsage? = null
+                    var contextPercent: Int? = null
+                    var pendingQuestion: PendingQuestion? = null
+                    var hasPublishedDelta = false
+                    var pendingPersist: Job? = null
+
+                    suspend fun persistAssistant(status: MessageStatus = MessageStatus.Streaming) {
+                        container.sessionStore.upsertMessage(
+                            assistantMsg.copy(
+                                content = assembled,
+                                status = status,
+                                toolEvents = toolEvents,
+                                usage = usage,
+                                contextPercent = contextPercent,
+                                pendingQuestion = pendingQuestion,
+                            ),
+                        )
+                    }
+
+                    suspend fun flushPendingPersist() {
+                        pendingPersist?.cancelAndJoin()
+                        pendingPersist = null
+                        persistAssistant()
+                    }
+
+                    fun schedulePersist() {
+                        if (pendingPersist != null) return
+                        pendingPersist = launch {
+                            delay(STREAMING_PERSIST_INTERVAL_MS)
+                            persistAssistant()
+                            pendingPersist = null
+                        }
+                    }
+
                     try {
                         container.conversationRouter
                             .stream(
@@ -853,29 +923,81 @@ class AppViewModel(
                                 when (event) {
                                     is ChatStreamEvent.Delta -> {
                                         assembled += event.text
-                                        container.sessionStore.upsertMessage(
-                                            assistantMsg.copy(
-                                                content = assembled,
-                                                status = MessageStatus.Streaming,
+                                        if (!hasPublishedDelta) {
+                                            hasPublishedDelta = true
+                                            persistAssistant()
+                                        } else {
+                                            schedulePersist()
+                                        }
+                                    }
+                                    is ChatStreamEvent.Tool -> {
+                                        flushPendingPersist()
+                                        // A response to a pending question may resume with a tool event.
+                                        // The tool event is the durable boundary that clears the prompt.
+                                        pendingQuestion = null
+                                        toolEvents = mergeToolTrace(
+                                            toolEvents,
+                                            ToolTrace(
+                                                phase = event.phase,
+                                                toolCallId = event.toolCallId,
+                                                toolName = event.toolName,
+                                                detail = event.detail,
+                                                durationMs = event.durationMs,
+                                                arguments = event.arguments,
+                                                result = event.result,
+                                                phaseLabel = event.phaseLabel,
                                             ),
                                         )
+                                        persistAssistant()
+                                    }
+                                    is ChatStreamEvent.UserInputRequired -> {
+                                        flushPendingPersist()
+                                        container.conversationRouter.resolvedRemoteSessionId(session.id)?.let { remoteId ->
+                                            container.sessionStore.updateSession(session.copy(remoteSessionId = remoteId))
+                                        }
+                                        pendingQuestion = PendingQuestion(sid, event.requestId, event.questions)
+                                        persistAssistant()
+                                        _state.update { it.copy(pendingQuestion = pendingQuestion) }
+                                    }
+                                    is ChatStreamEvent.State -> {
+                                        when (event.value) {
+                                            "usage" -> {
+                                                flushPendingPersist()
+                                                usage = event.usage
+                                                contextPercent = event.contextPercent
+                                                persistAssistant()
+                                            }
+                                            "error" ->
+                                                _state.update {
+                                                    it.copy(
+                                                        streamingStatus = null,
+                                                        globalError = UiError(title = "桌面执行失败", message = event.detail ?: "请在电脑端检查模型配置和运行日志后重试"),
+                                                    )
+                                                }
+                                            "thinking", "running", "reconnecting" -> _state.update { it.copy(streamingStatus = event.value) }
+                                            "retrying", "compacting", "preparing", "background" -> _state.update { it.copy(streamingStatus = event.value) }
+                                            "completed", "aborted" -> _state.update { it.copy(streamingStatus = null) }
+                                        }
                                     }
                                     is ChatStreamEvent.Finished -> Unit
                                     ChatStreamEvent.Done -> {
-                                        container.sessionStore.upsertMessage(
-                                            assistantMsg.copy(
-                                                content = assembled,
-                                                status = MessageStatus.Complete,
-                                            ),
-                                        )
+                                        flushPendingPersist()
+                                        pendingQuestion = null
+                                        persistAssistant(MessageStatus.Complete)
+                                        _state.update { it.copy(pendingQuestion = null, streamingStatus = null) }
                                     }
                                     is ChatStreamEvent.Error -> {
+                                        flushPendingPersist()
+                                        pendingQuestion = null
                                         val ui = ErrorMapper.from(event.exception)
                                         container.sessionStore.upsertMessage(
                                             assistantMsg.copy(
                                                 content = assembled,
                                                 status = MessageStatus.Error,
                                                 errorMessage = ui.message,
+                                                toolEvents = toolEvents,
+                                                usage = usage,
+                                                contextPercent = contextPercent,
                                             ),
                                         )
                                         _state.update { it.copy(globalError = ui) }
@@ -892,10 +1014,12 @@ class AppViewModel(
                             container.sessionStore.getMessages(sid).firstOrNull { it.id == assistantId }
                         if (latest?.status == MessageStatus.Streaming) {
                             container.sessionStore.upsertMessage(
-                                latest.copy(status = MessageStatus.Complete),
+                                latest.copy(status = MessageStatus.Complete, pendingQuestion = null),
                             )
                         }
                     } catch (t: Throwable) {
+                        pendingPersist?.cancelAndJoin()
+                        pendingPersist = null
                         val ui = ErrorMapper.from(t)
                         val latest =
                             container.sessionStore.getMessages(sid).firstOrNull { it.id == assistantId }
@@ -909,6 +1033,9 @@ class AppViewModel(
                                             MessageStatus.Error
                                         },
                                     errorMessage = if (t is kotlinx.coroutines.CancellationException) null else ui.message,
+                                    usage = usage,
+                                    contextPercent = contextPercent,
+                                    pendingQuestion = null,
                                 ),
                             )
                         }
@@ -916,9 +1043,67 @@ class AppViewModel(
                             _state.update { it.copy(globalError = ui) }
                         }
                     } finally {
-                        _state.update { it.copy(isStreaming = false) }
+                        pendingPersist?.cancel()
+                        _state.update { it.copy(isStreaming = false, streamingStatus = null) }
                     }
                 }
+        }
+    }
+
+    fun toggleQuestionOption(question: String, label: String) {
+        val pending = _state.value.pendingQuestion ?: return
+        val item = pending.questions.firstOrNull { it.question == question } ?: return
+        val current = pending.selections[question].orEmpty()
+        val next = if (label in current) current - label else if (item.multiSelect) current + label else listOf(label)
+        val updated = pending.copy(selections = pending.selections + (question to next))
+        _state.update { it.copy(pendingQuestion = updated) }
+        viewModelScope.launch {
+            val message = container.sessionStore.getMessages(pending.sessionId).lastOrNull { it.pendingQuestion?.requestId == pending.requestId }
+            if (message != null) container.sessionStore.upsertMessage(message.copy(pendingQuestion = updated))
+        }
+    }
+
+    private fun mergeToolTrace(existing: List<ToolTrace>, next: ToolTrace): List<ToolTrace> {
+        val index = existing.indexOfFirst { it.toolCallId == next.toolCallId }
+        if (index < 0) return existing + next
+        return existing.toMutableList().also {
+            val previous = it[index]
+            it[index] =
+                next.copy(
+                    detail = next.detail ?: previous.detail,
+                    durationMs = next.durationMs ?: previous.durationMs,
+                    arguments = next.arguments ?: previous.arguments,
+                    result = next.result ?: previous.result,
+                    phaseLabel = next.phaseLabel ?: previous.phaseLabel,
+                )
+        }
+    }
+
+    fun submitQuestion() {
+        val pending = _state.value.pendingQuestion ?: return
+        if (_state.value.isQuestionSubmitting) return
+        val sessionId = pending.sessionId.ifBlank { _state.value.currentSessionId ?: return }
+        _state.update { it.copy(isQuestionSubmitting = true) }
+        viewModelScope.launch {
+            try {
+                val session = container.sessionStore.getSession(sessionId) ?: return@launch
+                runCatching {
+                    container.remoteConversationGateway.respond(
+                        localSessionId = session.id,
+                        deviceId = session.remoteDeviceId.orEmpty(),
+                        remoteSessionId = session.remoteSessionId,
+                        requestId = pending.requestId,
+                        answers = pending.selections.map { it.key to it.value },
+                    )
+                }.onSuccess {
+                    val message = container.sessionStore.getMessages(session.id).lastOrNull { it.pendingQuestion?.requestId == pending.requestId }
+                    if (message != null) container.sessionStore.upsertMessage(message.copy(pendingQuestion = null))
+                    _state.update { state -> state.copy(pendingQuestion = state.pendingQuestion?.takeIf { it.requestId != pending.requestId }) }
+                }
+                    .onFailure { error -> _state.update { it.copy(globalError = ErrorMapper.from(error)) } }
+            } finally {
+                _state.update { it.copy(isQuestionSubmitting = false) }
+            }
         }
     }
 
@@ -935,9 +1120,15 @@ class AppViewModel(
                     it.role == ChatRole.Assistant && it.status == MessageStatus.Streaming
                 }
             if (streaming != null) {
-                container.sessionStore.upsertMessage(streaming.copy(status = MessageStatus.Aborted))
+                container.sessionStore.upsertMessage(streaming.copy(status = MessageStatus.Aborted, pendingQuestion = null))
             }
-            _state.update { it.copy(isStreaming = false) }
+            _state.update { state ->
+                state.copy(
+                    isStreaming = false,
+                    streamingStatus = null,
+                    pendingQuestion = state.pendingQuestion?.takeIf { it.sessionId != sid },
+                )
+            }
         }
     }
 
@@ -1003,7 +1194,15 @@ class AppViewModel(
         messagesCollectJob =
             viewModelScope.launch {
                 container.sessionStore.observeMessages(sessionId).collect { list ->
-                    _state.update { state -> state.copy(messages = list) }
+                    val persistedPending = list.asReversed().firstNotNullOfOrNull { message ->
+                        message.pendingQuestion?.takeIf { it.sessionId == sessionId }
+                    }
+                    _state.update { state ->
+                        state.copy(
+                            messages = list,
+                            pendingQuestion = persistedPending ?: state.pendingQuestion?.takeIf { it.sessionId != sessionId },
+                        )
+                    }
                 }
             }
     }

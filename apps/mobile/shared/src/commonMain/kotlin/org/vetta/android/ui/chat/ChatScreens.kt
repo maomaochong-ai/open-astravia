@@ -2,6 +2,7 @@ package org.vetta.android.ui.chat
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,23 +25,41 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -48,12 +67,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -64,6 +86,8 @@ import org.vetta.android.domain.error.UiErrorAction
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageImage
 import org.vetta.android.domain.session.MessageStatus
+import org.vetta.android.domain.session.PendingQuestion
+import org.vetta.android.domain.session.ToolTrace
 import org.vetta.android.ui.components.EmptyState
 import org.vetta.android.ui.components.ListRow
 import org.vetta.android.ui.components.VettaErrorBanner
@@ -82,6 +106,7 @@ fun ChatScreen(
     draft: String,
     pendingImages: List<MessageImage>,
     isStreaming: Boolean,
+    streamingStatus: String? = null,
     models: List<LlmModel>,
     selectedModel: LlmModel?,
     modelPickerOpen: Boolean,
@@ -97,6 +122,10 @@ fun ChatScreen(
     onDismissError: () -> Unit,
     onImagesPicked: (List<MessageImage>) -> Unit,
     onRemovePendingImage: (String) -> Unit,
+    pendingQuestion: PendingQuestion? = null,
+    questionSubmitting: Boolean = false,
+    onToggleQuestionOption: (String, String) -> Unit = { _, _ -> },
+    onSubmitQuestion: () -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -141,7 +170,7 @@ fun ChatScreen(
                         Text(title, maxLines = 1, style = MaterialTheme.typography.titleMedium)
                         Text(
                             if (isStreaming) {
-                                Str.streaming
+                                streamingStatusLabel(streamingStatus)
                             } else if (surface == ChatSurface.Desktop) {
                                 Str.generatedByDesktop
                             } else {
@@ -195,6 +224,20 @@ fun ChatScreen(
                         images = pendingImages,
                         onRemove = onRemovePendingImage,
                     )
+                }
+                AnimatedVisibility(
+                    visible = pendingQuestion != null,
+                    enter = fadeIn(tween(200)) + expandVertically(tween(200)),
+                    exit = fadeOut(tween(180)) + shrinkVertically(tween(180)),
+                ) {
+                    pendingQuestion?.let {
+                        QuestionPrompt(
+                            pending = it,
+                            submitting = questionSubmitting,
+                            onToggle = onToggleQuestionOption,
+                            onSubmit = onSubmitQuestion,
+                        )
+                    }
                 }
                 InputDock(
                     value = draft,
@@ -320,7 +363,7 @@ private fun PendingImageRow(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text("IMG", style = MaterialTheme.typography.labelSmall)
+                            Text(Str.imagePlaceholder, style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
@@ -422,7 +465,7 @@ private fun MessageBubble(message: LocalMessage) {
                     }
                     message.content.isBlank() && message.status == MessageStatus.Aborted -> {
                         Text(
-                            "（已停止）",
+                            Str.responseStopped,
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                             style = MaterialTheme.typography.bodyLarge,
                         )
@@ -435,6 +478,26 @@ private fun MessageBubble(message: LocalMessage) {
                     }
                 }
             }
+            if (message.toolEvents.isNotEmpty()) {
+                Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    message.toolEvents.forEach { tool ->
+                        ToolTraceRow(tool)
+                    }
+                }
+            }
+            if (message.usage != null) {
+                val usage = message.usage
+                Text(
+                    text = buildString {
+                        append(Str.tokensUsed)
+                        usage.totalTokens?.let { append(" $it") }
+                        message.contextPercent?.let { append(" · ${Str.contextUsed} $it%") }
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.vettaExtra.secondaryText,
+                    modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),
+                )
+            }
             if (message.status == MessageStatus.Error && message.content.isNotBlank() && !message.errorMessage.isNullOrBlank()) {
                 Text(
                     Str.responseInterrupted,
@@ -443,6 +506,204 @@ private fun MessageBubble(message: LocalMessage) {
                     modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ToolTraceRow(tool: ToolTrace) {
+    var expanded by remember(tool.toolCallId) { mutableStateOf(false) }
+    val hasDetail = !tool.arguments.isNullOrBlank() || !tool.result.isNullOrBlank() || !tool.detail.isNullOrBlank()
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f))
+                .animateContentSize(),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(enabled = hasDetail) { expanded = !expanded }
+                .padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val presentation = presentTool(tool.toolName, tool.arguments)
+            Icon(
+                imageVector = toolIcon(tool.toolName),
+                contentDescription = presentation.label,
+                tint = toolTint(tool.phase),
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = buildString {
+                    append(presentation.label)
+                    presentation.summary?.let {
+                        append(" · ")
+                        append(it)
+                    }
+                    append(" · ")
+                    append(toolPhaseLabel(tool.phase))
+                    tool.phaseLabel?.takeIf { it.isNotBlank() }?.let {
+                        append(" · ")
+                        append(it)
+                    }
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            if (hasDetail) {
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) Str.hideToolDetails else Str.showToolDetails,
+                    tint = MaterialTheme.vettaExtra.secondaryText,
+                )
+            }
+        }
+        AnimatedVisibility(
+            visible = expanded && hasDetail,
+            enter = fadeIn(tween(180)),
+            exit = fadeOut(tween(140)),
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                ToolDetailSection(Str.toolArguments, tool.arguments)
+                ToolDetailSection(Str.toolResult, tool.result)
+                parseToolQuestionResolution(tool.toolName, tool.result)?.let { resolution ->
+                    Text(
+                        text =
+                            if (resolution.cancelled) {
+                                Str.toolCancelled
+                            } else {
+                                buildString {
+                                    append(Str.toolAnswer)
+                                    val selected = resolution.answers.flatMap { it.second }
+                                    if (selected.isNotEmpty()) {
+                                        append(": ")
+                                        append(selected.joinToString("、"))
+                                    }
+                                }
+                            },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                tool.detail?.takeIf { it.isNotBlank() }?.let { detail ->
+                    MarkdownContent(source = detail)
+                }
+                tool.durationMs?.let { duration ->
+                    Text(
+                        text = "${Str.toolDuration} ${duration}ms",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.vettaExtra.secondaryText,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ToolDetailSection(label: String, value: String?) {
+    val content = value?.takeIf { it.isNotBlank() } ?: return
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.vettaExtra.secondaryText,
+        )
+        if (content.trimStart().startsWith('{') || content.trimStart().startsWith('[')) {
+            CodeBlockChrome(language = "json", code = content)
+        } else {
+            MarkdownContent(source = content)
+        }
+    }
+}
+
+private fun toolIcon(name: String): ImageVector =
+    when {
+        name.startsWith("mcp_") -> Icons.Default.Build
+        name == "read" || name == "read_file" -> Icons.Default.FolderOpen
+        name == "write" || name == "write_file" || name == "edit" || name == "edit_file" -> Icons.Default.Edit
+        name == "bash" || name == "shell" -> Icons.Default.Code
+        name == "ask_user_question" -> Icons.AutoMirrored.Filled.HelpOutline
+        name == "grep" || name == "find" || name == "ls" || name == "dir_tree" || name == "tree" -> Icons.Default.Search
+        else -> Icons.Default.Build
+    }
+
+@Composable
+private fun toolTint(phase: String) =
+    when (phase) {
+        "completed" -> MaterialTheme.colorScheme.primary
+        "failed" -> MaterialTheme.colorScheme.error.copy(alpha = 0.72f)
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+private fun toolPhaseLabel(phase: String): String =
+    when (phase) {
+        "generating", "arguments" -> Str.toolPreparing
+        "started", "updated", "phase" -> Str.toolRunning
+        "completed" -> Str.toolCompleted
+        "failed" -> Str.toolIncomplete
+        else -> phase
+    }
+
+private fun streamingStatusLabel(status: String?): String =
+    when (status) {
+        "thinking" -> Str.thinking
+        "reconnecting" -> Str.reconnecting
+        "retrying" -> Str.retrying
+        "compacting" -> Str.compacting
+        "preparing" -> Str.preparing
+        "background" -> Str.backgroundWork
+        else -> Str.streaming
+    }
+
+@Composable
+private fun QuestionPrompt(
+    pending: PendingQuestion,
+    submitting: Boolean,
+    onToggle: (String, String) -> Unit,
+    onSubmit: () -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.46f))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(Str.pendingDesktopQuestionTitle, style = MaterialTheme.typography.titleSmall)
+        pending.questions.forEach { question ->
+            if (question.header.isNotBlank()) {
+                Text(question.header, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.vettaExtra.secondaryText)
+            }
+            Text(question.question, style = MaterialTheme.typography.bodyMedium)
+            question.options.forEach { option ->
+                val selected = option.label in pending.selections[question.question].orEmpty()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (question.multiSelect) {
+                        Checkbox(checked = selected, enabled = !submitting, onCheckedChange = { onToggle(question.question, option.label) })
+                    } else {
+                        RadioButton(selected = selected, enabled = !submitting, onClick = { onToggle(question.question, option.label) })
+                    }
+                    Column {
+                        Text(option.label, style = MaterialTheme.typography.bodyMedium)
+                        if (option.description.isNotBlank()) Text(option.description, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+        Button(onClick = onSubmit, enabled = !submitting && pending.questions.all { pending.selections[it.question].orEmpty().isNotEmpty() }) {
+            Text(if (submitting) Str.submittingAnswer else Str.submitAnswer)
         }
     }
 }

@@ -59,6 +59,9 @@ enum class RemoteRequestMethod {
     @SerialName("session.prompt")
     SessionPrompt,
 
+    @SerialName("session.respond")
+    SessionRespond,
+
     @SerialName("session.abort")
     SessionAbort,
 
@@ -134,6 +137,9 @@ enum class RemoteEventName {
 
     @SerialName("session.tool")
     SessionTool,
+
+    @SerialName("session.input")
+    SessionInput,
 
     @SerialName("diagnostics.updated")
     DiagnosticsUpdated,

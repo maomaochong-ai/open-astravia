@@ -4,8 +4,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -14,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
@@ -88,11 +98,12 @@ fun RootApp(
             return@VettaTheme
         }
 
-        Crossfade(
-            targetState = state.route,
-            animationSpec = tween(durationMillis = if (state.motionEnabled) 200 else 0),
-            label = "app route transition",
-        ) { route ->
+        Box(Modifier.fillMaxSize()) {
+            Crossfade(
+                targetState = state.route,
+                animationSpec = tween(durationMillis = if (state.motionEnabled) 200 else 0),
+                label = "app route transition",
+            ) { route ->
             when (route) {
             AppRoute.Boot -> Unit
             AppRoute.Welcome ->
@@ -244,6 +255,7 @@ fun RootApp(
                     draft = state.draft,
                     pendingImages = state.pendingImages,
                     isStreaming = state.isStreaming,
+                    streamingStatus = state.streamingStatus,
                     models = state.models,
                     selectedModel = selected,
                     modelPickerOpen = state.modelPickerOpen,
@@ -259,6 +271,10 @@ fun RootApp(
                     onDismissError = vm::clearGlobalError,
                     onImagesPicked = vm::addPendingImages,
                     onRemovePendingImage = vm::removePendingImage,
+                    pendingQuestion = state.pendingQuestion?.takeIf { it.sessionId == state.currentSessionId },
+                    questionSubmitting = state.isQuestionSubmitting,
+                    onToggleQuestionOption = vm::toggleQuestionOption,
+                    onSubmitQuestion = vm::submitQuestion,
                 )
             }
             AppRoute.Plan ->
@@ -286,6 +302,45 @@ fun RootApp(
             AppRoute.About ->
                 AboutScreen(onBack = vm::navigateBackFromSecondary)
             }
+            }
+            val pending = state.pendingQuestion
+            val currentChatHasPending = state.route is AppRoute.Chat && pending?.sessionId == state.currentSessionId
+            AnimatedVisibility(
+                visible = pending != null && !currentChatHasPending,
+                modifier = Modifier.align(Alignment.TopCenter),
+                enter = fadeIn(tween(200)) + slideInVertically(tween(200)) { -it },
+                exit = fadeOut(tween(180)) + slideOutVertically(tween(180)) { -it },
+            ) {
+                PendingQuestionNotice(
+                    onOpen = {
+                        pending?.let { question ->
+                            val session = sessions.firstOrNull { it.id == question.sessionId }
+                            vm.openChat(
+                                sessionId = question.sessionId,
+                                surface = ChatSurface.Desktop,
+                                title = session?.title.orEmpty(),
+                            )
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PendingQuestionNotice(
+    modifier: Modifier = Modifier,
+    onOpen: () -> Unit,
+) {
+    Surface(
+        modifier = modifier.padding(top = 12.dp, start = 16.dp, end = 16.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        tonalElevation = 3.dp,
+    ) {
+        TextButton(onClick = onOpen) {
+            Text(Str.pendingDesktopQuestion)
         }
     }
 }

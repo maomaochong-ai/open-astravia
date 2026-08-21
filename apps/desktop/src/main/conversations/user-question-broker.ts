@@ -17,14 +17,17 @@ const CANCELLED_QUESTION: RuntimeUserQuestionResult = { cancelled: true, answers
 export class DesktopUserQuestionBroker {
 	private interactiveHandler: UserQuestionHandler | undefined;
 	private readonly debugHandlers = new Map<string, UserQuestionHandler>();
+	private readonly remoteHandlers = new Map<string, UserQuestionHandler>();
 	private readonly pendingQuestions = new Map<string, RuntimeUserQuestionRequest>();
 	private readonly resolvedListeners = new Set<UserQuestionResolvedListener>();
 
 	readonly handle: UserQuestionHandler = async (request, signal) => {
 		if (signal?.aborted) return CANCELLED_QUESTION;
-		const handlers = [this.debugHandlers.get(request.sessionId), this.interactiveHandler].filter(
-			(handler): handler is UserQuestionHandler => handler !== undefined,
-		);
+		const handlers = [
+			this.remoteHandlers.get(request.sessionId),
+			this.debugHandlers.get(request.sessionId),
+			this.interactiveHandler,
+		].filter((handler): handler is UserQuestionHandler => handler !== undefined);
 		if (handlers.length === 0) return CANCELLED_QUESTION;
 
 		this.pendingQuestions.set(request.requestId, request);
@@ -50,6 +53,16 @@ export class DesktopUserQuestionBroker {
 
 	listPendingQuestions(): RuntimeUserQuestionRequest[] {
 		return [...this.pendingQuestions.values()];
+	}
+
+	registerRemoteHandler(sessionId: string, handler: UserQuestionHandler): () => void {
+		if (this.remoteHandlers.has(sessionId)) {
+			throw new Error(`A remote question handler is already registered for session ${sessionId}.`);
+		}
+		this.remoteHandlers.set(sessionId, handler);
+		return () => {
+			if (this.remoteHandlers.get(sessionId) === handler) this.remoteHandlers.delete(sessionId);
+		};
 	}
 
 	onQuestionResolved(listener: UserQuestionResolvedListener): () => void {

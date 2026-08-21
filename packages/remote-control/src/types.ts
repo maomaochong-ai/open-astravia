@@ -44,6 +44,7 @@ export interface RemoteRequest {
 		| "session.list"
 		| "session.open"
 		| "session.prompt"
+		| "session.respond"
 		| "session.abort"
 		| "session.resume"
 		| "diagnostics.snapshot";
@@ -73,6 +74,7 @@ export type RemoteEventName =
 	| "session.state"
 	| "session.message"
 	| "session.tool"
+	| "session.input"
 	| "diagnostics.updated";
 
 export interface RemoteAck {

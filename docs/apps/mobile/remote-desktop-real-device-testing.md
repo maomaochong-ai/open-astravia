@@ -99,7 +99,7 @@ $testApk = "$repo\apps\mobile\shared\build\outputs\apk\androidTest\shared-androi
 只有在旧数据导致登录、配对或配置无法判断时才清空数据：
 
 ```powershell
-& $adb shell pm clear org.vetta.android
+& $adb -s $serial shell pm clear org.vetta.android
 ```
 
 清空数据会移除登录状态、Resume Secret 和本地配对信息。
@@ -172,7 +172,7 @@ $invite = $null
 1. **设备在线**：手机能看到 Desktop 设备。
 2. **远程对话**：发送短消息，能收到 Desktop 返回的流式或完整回复。隔离 Desktop 没有模型配置时，应显示可操作的“桌面执行失败”提示；这能证明请求到达电脑，但不能算模型回复通过。
 3. **实时画面**：打开设备详情，能看到 Desktop 屏幕；移动窗口或打开应用，手机画面应发生变化。
-4. **恢复能力**：手机切后台、锁屏后返回，连接和画面能恢复。
+4. **恢复能力**：手机切后台、锁屏后返回，先观察设备状态和页面错误是否明确；如果 WebSocket 已断开，当前版本不会后台自动重建连接，应显示离线/重连状态，重新扫码或重新连接后设备和画面可以恢复。不要把“自动恢复”作为当前版本的通过条件。
 5. **页面返回**：在聊天、设备详情和设置页按手机系统返回键，应回到应用内上一层，不能直接退出应用。
 6. **远程输入**：Desktop 打开允许远程输入后，测试点击、拖动和键盘输入。
 7. **撤销配对**：Desktop 撤销后，手机不应继续操作；重新生成二维码后可以重新配对。
@@ -205,8 +205,8 @@ $invite = $null
 清空旧日志并过滤 Android 远程链路：
 
 ```powershell
-& $adb logcat -c
-& $adb logcat -v time |
+& $adb -s $serial logcat -c
+& $adb -s $serial logcat -v time |
   Select-String "VettaRemote|org.webrtc.Logging|AndroidRuntime|FATAL EXCEPTION"
 ```
 
@@ -225,7 +225,7 @@ native WebRTC ICE state state=CONNECTED
 保存截图：
 
 ```powershell
-& $adb exec-out screencap -p > .ai/remote-control/real-device-screen.png
+& $adb -s $serial exec-out screencap -p > .ai/remote-control/real-device-screen.png
 ```
 
 不要把包含二维码、Pairing Secret、Resume Secret 或完整 WebSocket 目标的日志公开。

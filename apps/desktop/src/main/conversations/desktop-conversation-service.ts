@@ -9,6 +9,7 @@ import {
 	type RuntimeHost,
 	runtimeFailureFromAIErrorDetails,
 	type SessionConfig,
+	type SessionEvent,
 } from "@vetta/runtime-core";
 import { sanitizeRuntimeErrorMessage } from "@vetta/runtime-desktop";
 import { type DesktopSessionHistoryInfo, UNAVAILABLE_RUNTIME_SESSION_ACCESS } from "../../shared/session-access.js";
@@ -76,7 +77,8 @@ export interface DesktopConversationTurnResult {
 export interface RunDesktopConversationTurnOptions {
 	session: DesktopConversationSession;
 	prompt: PromptRequest;
-	timeoutMs: number;
+	/** null disables the wall-clock timeout for explicitly user-controlled remote turns. */
+	timeoutMs: number | null;
 	signal?: AbortSignal;
 }
 
@@ -118,6 +120,10 @@ function findLastAssistantMessage(
 
 export class DesktopConversationService {
 	constructor(private readonly runtime: RuntimeHost) {}
+
+	subscribe(sessionId: string, handler: (event: SessionEvent) => void): () => void {
+		return this.runtime.subscribe(sessionId, handler);
+	}
 
 	async createSession(
 		config: SessionConfig | undefined,
@@ -330,10 +336,13 @@ export class DesktopConversationService {
 		};
 		const onAbort = (): void => cancel("TURN_ABORTED", "Conversation turn was aborted by the caller.");
 		options.signal?.addEventListener("abort", onAbort, { once: true });
-		const timeout = setTimeout(
-			() => cancel("TURN_TIMEOUT", `Conversation turn exceeded ${options.timeoutMs}ms.`),
-			options.timeoutMs,
-		);
+		const timeout =
+			options.timeoutMs === null
+				? undefined
+				: setTimeout(
+						() => cancel("TURN_TIMEOUT", `Conversation turn exceeded ${options.timeoutMs}ms.`),
+						options.timeoutMs,
+					);
 
 		try {
 			await Promise.race([this.runtime.prompt(options.session.sessionId, options.prompt), cancellation]);
@@ -356,7 +365,7 @@ export class DesktopConversationService {
 			}
 			throw new DesktopConversationError("TURN_FAILED", error instanceof Error ? error.message : String(error));
 		} finally {
-			clearTimeout(timeout);
+			if (timeout !== undefined) clearTimeout(timeout);
 			options.signal?.removeEventListener("abort", onAbort);
 		}
 

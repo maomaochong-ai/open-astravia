@@ -61,6 +61,30 @@ sealed class ChatContentPart {
 sealed class ChatStreamEvent {
     data class Delta(val text: String) : ChatStreamEvent()
 
+    data class Tool(
+        val phase: String,
+        val toolCallId: String,
+        val toolName: String,
+        val detail: String? = null,
+        val durationMs: Long? = null,
+        val arguments: String? = null,
+        val result: String? = null,
+        val phaseLabel: String? = null,
+    ) : ChatStreamEvent()
+
+    data class UserInputRequired(
+        val requestId: String,
+        val questions: List<ChatQuestion>,
+    ) : ChatStreamEvent()
+
+    data class State(
+        val value: String,
+        val detail: String? = null,
+        val detailCode: String? = null,
+        val usage: TokenUsage? = null,
+        val contextPercent: Int? = null,
+    ) : ChatStreamEvent()
+
     data class Finished(
         val finishReason: String?,
         val usage: TokenUsage? = null,
@@ -70,6 +94,18 @@ sealed class ChatStreamEvent {
 
     data class Error(val exception: Throwable) : ChatStreamEvent()
 }
+
+data class ChatQuestion(
+    val question: String,
+    val header: String = "",
+    val options: List<ChatQuestionOption> = emptyList(),
+    val multiSelect: Boolean = false,
+)
+
+data class ChatQuestionOption(
+    val label: String,
+    val description: String = "",
+)
 
 data class TokenUsage(
     val promptTokens: Int? = null,

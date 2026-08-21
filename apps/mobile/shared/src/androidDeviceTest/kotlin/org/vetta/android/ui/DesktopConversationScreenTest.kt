@@ -15,6 +15,8 @@ import org.junit.runner.RunWith
 import org.vetta.android.app.ThemeMode
 import org.vetta.android.core.model.LlmModel
 import org.vetta.android.core.model.ChatRole
+import org.vetta.android.core.model.ChatQuestion
+import org.vetta.android.core.model.ChatQuestionOption
 import org.vetta.android.domain.device.ConnectChannel
 import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.DeviceStatus
@@ -23,6 +25,8 @@ import org.vetta.android.domain.error.UiErrorAction
 import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageImage
 import org.vetta.android.domain.session.MessageStatus
+import org.vetta.android.domain.session.PendingQuestion
+import org.vetta.android.domain.session.ToolTrace
 import org.vetta.android.ui.chat.ChatScreen
 import org.vetta.android.ui.connect.DeviceDetailScreen
 import org.vetta.android.ui.connect.NewConversationScreen
@@ -37,6 +41,93 @@ import kotlin.test.assertTrue
 class DesktopConversationScreenTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun desktopChatRendersMarkdownToolsAndPendingQuestion() {
+        var submitted = false
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) {
+                ChatScreen(
+                    title = "TEST-DESKTOP",
+                    surface = ChatSurface.Desktop,
+                    messages = listOf(
+                        LocalMessage(
+                            id = "assistant-1",
+                            sessionId = "session-1",
+                            role = ChatRole.Assistant,
+                            content =
+                                """
+                                ## 结果
+
+                                ```kotlin
+                                val answer = 42
+                                ```
+
+                                | 字段 | 值 |
+                                | --- | --- |
+                                | 状态 | 完成 |
+
+                                [查看文档](https://example.com)
+                                """.trimIndent(),
+                            status = MessageStatus.Complete,
+                            createdAtEpochMs = 1,
+                            toolEvents = listOf(
+                                ToolTrace(
+                                    phase = "completed",
+                                    toolCallId = "call-1",
+                                    toolName = "read_file",
+                                    arguments = "{\"path\":\"README.md\"}",
+                                    phaseLabel = "读取文件内容",
+                                ),
+                            ),
+                        ),
+                    ),
+                    draft = "",
+                    pendingImages = emptyList(),
+                    isStreaming = true,
+                    models = emptyList(),
+                    selectedModel = null,
+                    modelPickerOpen = false,
+                    globalError = null,
+                    onDraftChange = {},
+                    onSend = {},
+                    onStop = {},
+                    onBack = {},
+                    onOpenModelPicker = {},
+                    onCloseModelPicker = {},
+                    onSelectModel = {},
+                    onErrorAction = {},
+                    onDismissError = {},
+                    onImagesPicked = {},
+                    onRemovePendingImage = {},
+                    pendingQuestion = PendingQuestion(
+                        requestId = "request-1",
+                        questions = listOf(ChatQuestion("继续执行吗？", "确认", listOf(ChatQuestionOption("继续")))),
+                        selections = mapOf("继续执行吗？" to listOf("继续")),
+                    ),
+                    onToggleQuestionOption = { _, _ -> },
+                    onSubmitQuestion = { submitted = true },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("val answer = 42").assertIsDisplayed()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("状态", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("状态", substring = true).assertExists()
+        composeRule.onNodeWithText("查看文档").assertExists()
+        composeRule.onNodeWithContentDescription(Str.copy).performClick()
+        composeRule.onNodeWithContentDescription(Str.copied).assertIsDisplayed()
+        composeRule.onNodeWithText("读取文件 · README.md · 已完成 · 读取文件内容").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(Str.showToolDetails).performClick()
+        composeRule.onNodeWithText("{\"path\":\"README.md\"}").assertIsDisplayed()
+        composeRule.onNodeWithText("需要你的确认").assertIsDisplayed()
+        composeRule.onNodeWithText("继续执行吗？").assertIsDisplayed()
+        composeRule.onNodeWithText("提交").assertIsDisplayed().assertIsEnabled()
+        composeRule.onNodeWithText("提交").performClick()
+        assertTrue(submitted)
+    }
 
     @Test
     fun desktopDetailShowsConnectedStateAndStartsConversation() {
@@ -174,6 +265,40 @@ class DesktopConversationScreenTest {
 
         composeRule.onNodeWithContentDescription(Str.stop).performClick()
         assertTrue(stopped)
+    }
+
+    @Test
+    fun streamingChatShowsHumanReadableRuntimeStatus() {
+        composeRule.setContent {
+            VettaTheme(ThemeMode.Light) {
+                ChatScreen(
+                    title = "TEST-DESKTOP",
+                    surface = ChatSurface.Desktop,
+                    messages = emptyList(),
+                    draft = "",
+                    pendingImages = emptyList(),
+                    isStreaming = true,
+                    streamingStatus = "thinking",
+                    models = emptyList(),
+                    selectedModel = null,
+                    modelPickerOpen = false,
+                    globalError = null,
+                    onDraftChange = {},
+                    onSend = {},
+                    onStop = {},
+                    onBack = {},
+                    onOpenModelPicker = {},
+                    onCloseModelPicker = {},
+                    onSelectModel = {},
+                    onErrorAction = {},
+                    onDismissError = {},
+                    onImagesPicked = {},
+                    onRemovePendingImage = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText(Str.thinking).assertIsDisplayed()
     }
 
     @Test

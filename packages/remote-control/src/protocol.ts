@@ -16,6 +16,7 @@ const requestMethods = new Set([
 	"session.list",
 	"session.open",
 	"session.prompt",
+	"session.respond",
 	"session.abort",
 	"session.resume",
 	"diagnostics.snapshot",
@@ -25,6 +26,7 @@ const eventNames = new Set([
 	"session.state",
 	"session.message",
 	"session.tool",
+	"session.input",
 	"diagnostics.updated",
 ]);
 

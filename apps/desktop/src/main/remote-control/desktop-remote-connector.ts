@@ -1,5 +1,6 @@
 import { AI_ERROR_CODES, isAIError } from "@vetta/ai";
 import type { RemoteConnection, RemoteError, RemoteRequest } from "@vetta/remote-control";
+import type { RuntimeUserQuestionResult } from "@vetta/runtime-core";
 
 export interface DesktopRemoteSessionSummary {
 	readonly id: string;
@@ -8,7 +9,7 @@ export interface DesktopRemoteSessionSummary {
 }
 
 export interface DesktopRemotePromptEvent {
-	readonly type: "delta" | "tool" | "state";
+	readonly type: "delta" | "tool" | "input" | "state";
 	readonly text?: string;
 	readonly payload?: unknown;
 }
@@ -19,6 +20,7 @@ export interface DesktopRemoteOperations {
 	openSession(sessionId: string): Promise<{ sessionId: string }>;
 	prompt(sessionId: string, text: string): AsyncIterable<DesktopRemotePromptEvent>;
 	abort(sessionId: string): Promise<void>;
+	respond?(sessionId: string, requestId: string, result: RuntimeUserQuestionResult): Promise<void>;
 	resume(sessionId: string, lastEventSequence: number): Promise<void>;
 	diagnostics(): Promise<Record<string, unknown>>;
 }
@@ -61,11 +63,30 @@ export class DesktopRemoteConnector {
 				return await this.operations.openSession(requireSessionId(request));
 			case "session.prompt": {
 				const sessionId = request.sessionId ?? (await this.operations.createSession()).sessionId;
-				return await this.runPrompt(sessionId, readPromptText(request));
+				const text = readPromptText(request);
+				void this.runPrompt(sessionId, text).catch(async (error: unknown) => {
+					if (this.connection.getSnapshot().state === "online") {
+						const remoteError = toRemoteError(error);
+						await this.connection.emitEvent(
+							"session.state",
+							{ state: "error", code: remoteError.code, message: remoteError.message },
+							sessionId,
+						);
+					}
+				});
+				return { accepted: true, sessionId };
 			}
 			case "session.abort":
 				await this.operations.abort(requireSessionId(request));
 				return { aborted: true };
+			case "session.respond":
+				if (!this.operations.respond) throw new Error("Remote question responses are unavailable");
+				await this.operations.respond(
+					requireSessionId(request),
+					readQuestionRequestId(request),
+					readQuestionResult(request),
+				);
+				return { responded: true };
 			case "session.resume":
 				await this.operations.resume(requireSessionId(request), readSequence(request));
 				return { resumed: true };
@@ -84,10 +105,41 @@ export class DesktopRemoteConnector {
 				await this.connection.emitEvent("session.tool", event.payload, sessionId);
 				continue;
 			}
+			if (event.type === "input") {
+				await this.connection.emitEvent("session.input", event.payload, sessionId);
+				continue;
+			}
 			await this.connection.emitEvent("session.state", event.payload, sessionId);
 		}
 		return { completed: true, sessionId };
 	}
+}
+
+function readQuestionRequestId(request: RemoteRequest): string {
+	if (!isRecord(request.payload) || typeof request.payload.requestId !== "string" || !request.payload.requestId) {
+		throw new Error("question requestId is required");
+	}
+	return request.payload.requestId;
+}
+
+function readQuestionResult(request: RemoteRequest): RuntimeUserQuestionResult {
+	if (
+		!isRecord(request.payload) ||
+		typeof request.payload.cancelled !== "boolean" ||
+		!Array.isArray(request.payload.answers)
+	) {
+		throw new Error("question response is invalid");
+	}
+	const answers = request.payload.answers
+		.filter(isRecord)
+		.map((answer) => ({
+			question: typeof answer.question === "string" ? answer.question : "",
+			answers: Array.isArray(answer.answers)
+				? answer.answers.filter((value): value is string => typeof value === "string")
+				: [],
+		}))
+		.filter((answer) => answer.question.length > 0);
+	return { cancelled: request.payload.cancelled, answers };
 }
 
 function requireSessionId(request: RemoteRequest): string {

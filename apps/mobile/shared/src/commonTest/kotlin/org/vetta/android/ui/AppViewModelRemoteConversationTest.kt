@@ -17,6 +17,8 @@ import org.vetta.android.app.AppContainer
 import org.vetta.android.app.AppPreferences
 import org.vetta.android.core.auth.InMemoryTokenStore
 import org.vetta.android.core.model.ChatMessage
+import org.vetta.android.core.model.ChatQuestion
+import org.vetta.android.core.model.ChatQuestionOption
 import org.vetta.android.core.model.ChatRole
 import org.vetta.android.core.model.ChatStreamEvent
 import org.vetta.android.data.session.SettingsSessionStore
@@ -28,7 +30,9 @@ import org.vetta.android.domain.remote.buildMobileBootstrapTarget
 import org.vetta.android.domain.remote.buildMobileResumeTarget
 import org.vetta.android.domain.remote.parsePairingInvite
 import org.vetta.android.domain.session.ConversationOrigin
+import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageStatus
+import org.vetta.android.domain.session.PendingQuestion
 import org.vetta.android.ui.i18n.Str
 import org.vetta.android.ui.navigation.AppRoute
 import org.vetta.android.ui.navigation.MainTab
@@ -84,6 +88,115 @@ class AppViewModelRemoteConversationTest {
             assertEquals("桌面端回复", messages.last().content)
             assertEquals(MessageStatus.Complete, messages.last().status)
             assertEquals(null, viewModel.state.value.globalError)
+        }
+
+    @Test
+    fun desktopQuestionIsVisibleAndRespondedWithoutLosingSession() =
+        runTest(dispatcher) {
+            val gateway = FakeRemoteConversationGateway().apply {
+                streamEvents =
+                    listOf(
+                        ChatStreamEvent.UserInputRequired(
+                            requestId = "question-1",
+                            questions =
+                                listOf(
+                                    ChatQuestion(
+                                        question = "选择执行方式",
+                                        options = listOf(ChatQuestionOption("继续")),
+                                    ),
+                                ),
+                        ),
+                    )
+                streamCompletion = CompletableDeferred()
+            }
+            val container = container(gateway)
+            val viewModel = AppViewModel(container)
+            advanceUntilIdle()
+
+            viewModel.startDesktopConversation("desktop-1")
+            advanceUntilIdle()
+            viewModel.onDraftChange("执行任务")
+            viewModel.sendMessage()
+            advanceUntilIdle()
+
+            val pending = assertNotNull(viewModel.state.value.pendingQuestion)
+            assertEquals("question-1", pending.requestId)
+            viewModel.toggleQuestionOption("选择执行方式", "继续")
+            viewModel.submitQuestion()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("选择执行方式" to listOf("继续")),
+                gateway.respondCalls.single().answers,
+            )
+            assertEquals("remote-${viewModel.state.value.currentSessionId}", gateway.respondCalls.single().remoteSessionId)
+            assertEquals(null, viewModel.state.value.pendingQuestion)
+            assertTrue(viewModel.state.value.route is AppRoute.Chat)
+            assertEquals(viewModel.state.value.currentSessionId, (viewModel.state.value.route as AppRoute.Chat).sessionId)
+        }
+
+    @Test
+    fun desktopQuestionSubmitIsSingleFlight() =
+        runTest(dispatcher) {
+            val gateway = FakeRemoteConversationGateway().apply {
+                streamEvents =
+                    listOf(
+                        ChatStreamEvent.UserInputRequired(
+                            requestId = "question-single-flight",
+                            questions = listOf(ChatQuestion("选择执行方式", options = listOf(ChatQuestionOption("继续")))),
+                        ),
+                    )
+                streamCompletion = CompletableDeferred()
+            }
+            val viewModel = AppViewModel(container(gateway))
+            advanceUntilIdle()
+            viewModel.startDesktopConversation("desktop-1")
+            advanceUntilIdle()
+            viewModel.onDraftChange("执行任务")
+            viewModel.sendMessage()
+            advanceUntilIdle()
+            viewModel.toggleQuestionOption("选择执行方式", "继续")
+
+            viewModel.submitQuestion()
+            viewModel.submitQuestion()
+            advanceUntilIdle()
+
+            assertEquals(1, gateway.respondCalls.size)
+        }
+
+    @Test
+    fun pendingDesktopQuestionIsRestoredIntoMainShellAfterViewModelRecreation() =
+        runTest(dispatcher) {
+            val settings = MapSettings()
+            val store = SettingsSessionStore(settings)
+            val session = store.createSession(title = "待确认", origin = ConversationOrigin.Desktop, remoteDeviceId = "desktop-1")
+            store.upsertMessage(
+                LocalMessage(
+                    id = "assistant-pending",
+                    sessionId = session.id,
+                    role = ChatRole.Assistant,
+                    content = "",
+                    status = MessageStatus.Streaming,
+                    createdAtEpochMs = 1,
+                    pendingQuestion =
+                        PendingQuestion(
+                            sessionId = session.id,
+                            requestId = "request-rehydrated",
+                            questions = listOf(ChatQuestion("需要继续吗？")),
+                        ),
+                ),
+            )
+            val container =
+                AppContainer(
+                    preferences = AppPreferences(settings),
+                    tokenStore = InMemoryTokenStore(),
+                    sessionStore = store,
+                    remoteConversationGateway = FakeRemoteConversationGateway(),
+                )
+            val viewModel = AppViewModel(container)
+            advanceUntilIdle()
+
+            assertEquals("request-rehydrated", viewModel.state.value.pendingQuestion?.requestId)
         }
 
     @Test
@@ -310,7 +423,15 @@ private class FakeRemoteConversationGateway : RemoteConversationGateway {
             ),
         )
     val streamCalls = mutableListOf<StreamCall>()
+    val respondCalls = mutableListOf<RespondCall>()
     val aborted = mutableListOf<String>()
+    var streamEvents: List<ChatStreamEvent> =
+        listOf(
+            ChatStreamEvent.Delta("桌面端"),
+            ChatStreamEvent.Delta("回复"),
+            ChatStreamEvent.Done,
+        )
+    var streamCompletion: CompletableDeferred<Unit>? = null
     var pendingConnection: CompletableDeferred<Boolean>? = null
     var connectResults: List<Boolean> = emptyList()
     var connectCalls = 0
@@ -334,9 +455,8 @@ private class FakeRemoteConversationGateway : RemoteConversationGateway {
     ): Flow<ChatStreamEvent> =
         flow {
             streamCalls += StreamCall(deviceId, remoteSessionId, messages)
-            emit(ChatStreamEvent.Delta("桌面端"))
-            emit(ChatStreamEvent.Delta("回复"))
-            emit(ChatStreamEvent.Done)
+            for (event in streamEvents) emit(event)
+            streamCompletion?.await()
         }
 
     override fun resolvedRemoteSessionId(localSessionId: String): String? = "remote-$localSessionId"
@@ -344,4 +464,22 @@ private class FakeRemoteConversationGateway : RemoteConversationGateway {
     override suspend fun abort(localSessionId: String, deviceId: String, remoteSessionId: String?) {
         aborted += deviceId
     }
+
+    override suspend fun respond(
+        localSessionId: String,
+        deviceId: String,
+        remoteSessionId: String?,
+        requestId: String,
+        answers: List<Pair<String, List<String>>>,
+        cancelled: Boolean,
+    ) {
+        respondCalls += RespondCall(requestId, remoteSessionId, answers)
+        streamCompletion?.complete(Unit)
+    }
 }
+
+private data class RespondCall(
+    val requestId: String,
+    val remoteSessionId: String?,
+    val answers: List<Pair<String, List<String>>>,
+)

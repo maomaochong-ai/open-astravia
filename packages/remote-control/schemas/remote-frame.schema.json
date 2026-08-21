@@ -41,7 +41,7 @@
       "type": "object", "additionalProperties": false, "required": ["type", "requestId", "method"],
       "properties": {
         "type": { "const": "request" }, "requestId": { "$ref": "#/$defs/id" },
-        "method": { "enum": ["session.list", "session.open", "session.prompt", "session.abort", "session.resume", "diagnostics.snapshot"] },
+        "method": { "enum": ["session.list", "session.open", "session.prompt", "session.respond", "session.abort", "session.resume", "diagnostics.snapshot"] },
         "sessionId": { "$ref": "#/$defs/id" }, "payload": true
       }
     },
@@ -53,7 +53,7 @@
       "type": "object", "additionalProperties": false, "required": ["type", "eventId", "sequence", "name"],
       "properties": {
         "type": { "const": "event" }, "eventId": { "$ref": "#/$defs/id" }, "sequence": { "$ref": "#/$defs/sequence" },
-        "name": { "enum": ["device.status", "session.state", "session.message", "session.tool", "diagnostics.updated"] },
+        "name": { "enum": ["device.status", "session.state", "session.message", "session.tool", "session.input", "diagnostics.updated"] },
         "sessionId": { "$ref": "#/$defs/id" }, "payload": true
       }
     },

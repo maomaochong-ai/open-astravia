@@ -50,9 +50,10 @@ describe("DesktopRemoteConnector WebSocket integration", () => {
 		await connector.start();
 		await waitForOnline(mobile);
 		await expect(mobile.request("session.prompt", { text: "hello" })).resolves.toEqual({
-			completed: true,
+			accepted: true,
 			sessionId: "runtime-session-1",
 		});
+		await waitFor(() => deltas.length === 1);
 		expect(deltas).toEqual([{ kind: "delta", text: "relay:hello" }]);
 
 		await connector.stop();
@@ -69,6 +70,15 @@ function connection(url: string, role: "mobile" | "desktop", deviceId: string, c
 		connectionId,
 		requestTimeoutMs: 3_000,
 	});
+}
+
+async function waitFor(predicate: () => boolean): Promise<void> {
+	const deadline = Date.now() + 3_000;
+	while (Date.now() < deadline) {
+		if (predicate()) return;
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+	throw new Error("condition was not met");
 }
 
 async function waitForRelay(): Promise<void> {

@@ -14,18 +14,25 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.vetta.android.core.model.ChatMessage
+import org.vetta.android.core.model.ChatQuestion
+import org.vetta.android.core.model.ChatQuestionOption
 import org.vetta.android.core.model.ChatStreamEvent
+import org.vetta.android.core.model.TokenUsage
 import org.vetta.android.domain.device.ConnectChannel
 import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.DeviceStatus
@@ -35,9 +42,13 @@ import org.vetta.android.domain.remote.connection.RemoteConnection
 import org.vetta.android.domain.remote.connection.RemoteConnectionEvent
 import org.vetta.android.domain.remote.connection.RemoteConnectionOptions
 import org.vetta.android.domain.remote.connection.RemoteConnectionState
+import org.vetta.android.domain.remote.connection.RemoteRequestException
 import org.vetta.android.domain.remote.protocol.RemoteCapabilities
 import org.vetta.android.domain.remote.protocol.RemoteRole
 import org.vetta.android.domain.remote.protocol.RemoteEventName
+import org.vetta.android.domain.remote.protocol.RemoteError
+import org.vetta.android.domain.remote.protocol.RemoteErrorCode
+import org.vetta.android.domain.remote.protocol.RemoteRequestMethod
 
 class RelayRemoteConversationGateway(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
@@ -157,33 +168,88 @@ class RelayRemoteConversationGateway(
             if (active.state.value != RemoteConnectionState.Online) {
                 throw RemoteConversationException("桌面连接正在恢复，请稍后重试")
             }
-            val eventJob =
-                launch(start = CoroutineStart.UNDISPATCHED) {
-                    active.events
-                        .filterIsInstance<RemoteConnectionEvent.EventReceived>()
-                        .mapNotNull { event ->
+            val terminal = CompletableDeferred<ChatStreamEvent.State>()
+            var transportStateSent = false
+            suspend fun emitTransportState() {
+                if (transportStateSent) return
+                transportStateSent = true
+                send(
+                    ChatStreamEvent.State(
+                        value = "reconnecting",
+                        detail = "桌面连接正在恢复",
+                        detailCode = "transport_closed",
+                    ),
+                )
+            }
+            val connectionJob = launch(start = CoroutineStart.UNDISPATCHED) {
+                // RemoteConnection does not own a reconnect loop. Once the transport
+                // enters recovery, keeping the turn open would leave the user with an
+                // endless spinner and no way to answer or retry. End the current turn
+                // explicitly; a later connection can resume the session from history.
+                active.state.first {
+                    it == RemoteConnectionState.Reconnecting ||
+                        it == RemoteConnectionState.Closed ||
+                        it == RemoteConnectionState.Failed
+                }
+                emitTransportState()
+                terminal.complete(
+                    ChatStreamEvent.State(
+                        value = "error",
+                        detail = "桌面连接已断开，请重新连接后再试",
+                        detailCode = "transport_closed",
+                    ),
+                )
+            }
+            val eventJob = launch(start = CoroutineStart.UNDISPATCHED) {
+					active.events
+						.filterIsInstance<RemoteConnectionEvent.EventReceived>()
+						.mapNotNull { event ->
                             val expectedSessionId = remoteSessionId ?: remoteSessionIds[localSessionId]
                             if (expectedSessionId != null && event.event.sessionId != expectedSessionId) return@mapNotNull null
                             event.event.sessionId?.let { remoteSessionIds[localSessionId] = it }
-                            if (event.event.name != RemoteEventName.SessionMessage) return@mapNotNull null
-                            val payload = event.event.payload?.jsonObject ?: return@mapNotNull null
-                            payload["text"]?.jsonPrimitive?.content
-                        }.collect { send(ChatStreamEvent.Delta(it)) }
-                }
+							decodeConversationEvent(event.event.name, event.event.payload)
+						}.collect { event ->
+                            send(event)
+                            if (event is ChatStreamEvent.State && event.value in TERMINAL_REMOTE_STATES) terminal.complete(event)
+                        }
+		}
+
             try {
                 val payload = buildJsonObject { put("text", messages.lastOrNull()?.textContent.orEmpty()) }
-                val result = active.request(
-                    method = org.vetta.android.domain.remote.protocol.RemoteRequestMethod.SessionPrompt,
-                    payload = payload,
-                    sessionId = remoteSessionId ?: remoteSessionIds[localSessionId],
-                )
+                val result = try {
+                    active.request(
+                        method = org.vetta.android.domain.remote.protocol.RemoteRequestMethod.SessionPrompt,
+                        payload = payload,
+                        sessionId = remoteSessionId ?: remoteSessionIds[localSessionId],
+                    )
+                } catch (error: Throwable) {
+                    if (
+                        active.state.value == RemoteConnectionState.Reconnecting ||
+                            active.state.value == RemoteConnectionState.Closed ||
+                            (error is RemoteRequestException && error.remoteError.code == RemoteErrorCode.TransportClosed)
+                    ) {
+                        emitTransportState()
+                    }
+                    throw error
+                }
                 result?.jsonObject?.get("sessionId")?.jsonPrimitive?.content?.let {
                     remoteSessionIds[localSessionId] = it
                 }
                 _devices.updateLatency(active.snapshot().lastRttMs?.toIntOrNull())
-                send(ChatStreamEvent.Done)
+                val finalState = terminal.await()
+                if (finalState.value == "error") {
+                    throw RemoteRequestException(
+                        RemoteError(
+                            code = finalState.detailCode.toRemoteErrorCode(),
+                            message = finalState.detail ?: "桌面执行失败",
+                            retryable = finalState.detailCode == "request_timeout" || finalState.detailCode == "busy",
+                        ),
+                    )
+                }
+                if (finalState.value != "aborted") send(ChatStreamEvent.Done)
             } finally {
                 eventJob.cancel()
+                connectionJob.cancel()
             }
         }
 
@@ -192,6 +258,34 @@ class RelayRemoteConversationGateway(
     override suspend fun abort(localSessionId: String, deviceId: String, remoteSessionId: String?) {
         connection?.request(
             method = org.vetta.android.domain.remote.protocol.RemoteRequestMethod.SessionAbort,
+            sessionId = remoteSessionId ?: remoteSessionIds[localSessionId],
+        )
+    }
+
+    override suspend fun respond(
+        localSessionId: String,
+        deviceId: String,
+        remoteSessionId: String?,
+        requestId: String,
+        answers: List<Pair<String, List<String>>>,
+        cancelled: Boolean,
+    ) {
+        val active = connection ?: throw RemoteConversationException("请先连接桌面设备")
+        val payload = buildJsonObject {
+            put("requestId", requestId)
+            put("cancelled", cancelled)
+            put("answers", kotlinx.serialization.json.buildJsonArray {
+                answers.forEach { (question, selected) ->
+                    add(buildJsonObject {
+                        put("question", question)
+                        put("answers", kotlinx.serialization.json.buildJsonArray { selected.forEach { add(kotlinx.serialization.json.JsonPrimitive(it)) } })
+                    })
+                }
+            })
+        }
+        active.request(
+            method = RemoteRequestMethod.SessionRespond,
+            payload = payload,
             sessionId = remoteSessionId ?: remoteSessionIds[localSessionId],
         )
     }
@@ -248,6 +342,78 @@ class RelayRemoteConversationGateway(
     }
 }
 
+private fun decodeConversationEvent(name: RemoteEventName, payload: JsonElement?): ChatStreamEvent? {
+	val objectValue = payload as? JsonObject ?: return null
+	return when (name) {
+		RemoteEventName.SessionMessage -> objectValue.stringValue("text")?.let(ChatStreamEvent::Delta)
+		RemoteEventName.SessionTool -> {
+			val phase = objectValue.stringValue("phase") ?: return null
+			val callId = objectValue.stringValue("toolCallId") ?: return null
+			val toolName = objectValue.stringValue("toolName") ?: "tool"
+			val arguments = objectValue.stringValue("args")
+			val result = objectValue.stringValue("result")
+            ChatStreamEvent.Tool(
+                phase = phase,
+                toolCallId = callId,
+                toolName = toolName,
+                detail = result ?: arguments,
+                durationMs = objectValue.longValue("durationMs"),
+                arguments = arguments,
+                result = result,
+                phaseLabel = objectValue.stringValue("label"),
+            )
+		}
+		RemoteEventName.SessionInput -> {
+			if (objectValue.stringValue("kind") != "question") return null
+			val requestId = objectValue.stringValue("requestId") ?: return null
+			val questions = (objectValue["questions"] as? JsonArray).orEmpty().mapNotNull { item ->
+				val question = item as? JsonObject ?: return@mapNotNull null
+				val options = (question["options"] as? JsonArray).orEmpty().mapNotNull { raw ->
+					val option = raw as? JsonObject ?: return@mapNotNull null
+					val label = option.stringValue("label") ?: return@mapNotNull null
+					ChatQuestionOption(label, option.stringValue("description").orEmpty())
+				}
+				ChatQuestion(question.stringValue("question") ?: return@mapNotNull null, question.stringValue("header").orEmpty(), options, question["multiSelect"]?.jsonPrimitive?.booleanOrNull ?: false)
+			}
+			ChatStreamEvent.UserInputRequired(requestId, questions)
+		}
+        RemoteEventName.SessionState -> {
+            val state = objectValue.stringValue("state") ?: "unknown"
+            ChatStreamEvent.State(
+                value = state,
+                detail = objectValue.stringValue("message") ?: objectValue.stringValue("text"),
+                detailCode = objectValue.stringValue("code"),
+                usage = if (state == "usage") {
+                    TokenUsage(
+                        promptTokens = objectValue.longValue("input")?.toIntOrNull(),
+                        completionTokens = objectValue.longValue("output")?.toIntOrNull(),
+                        totalTokens = objectValue.longValue("total")?.toIntOrNull(),
+                    )
+                } else null,
+                contextPercent = objectValue.longValue("contextPercent")?.toIntOrNull(),
+            )
+        }
+		else -> null
+	}
+}
+
+private fun JsonObject.stringValue(key: String): String? = get(key)?.jsonPrimitive?.contentOrNull
+private fun JsonObject.longValue(key: String): Long? = get(key)?.jsonPrimitive?.longOrNull
+
+private val TERMINAL_REMOTE_STATES = setOf("completed", "error", "aborted")
+
+private fun String?.toRemoteErrorCode(): RemoteErrorCode =
+    when (this) {
+        "unauthorized" -> RemoteErrorCode.Unauthorized
+        "not_found" -> RemoteErrorCode.NotFound
+        "busy" -> RemoteErrorCode.Busy
+        "request_timeout" -> RemoteErrorCode.RequestTimeout
+        "transport_closed" -> RemoteErrorCode.TransportClosed
+        "invalid_frame" -> RemoteErrorCode.InvalidFrame
+        "unsupported_version" -> RemoteErrorCode.UnsupportedVersion
+        else -> RemoteErrorCode.InternalError
+    }
+
 private const val METRICS_REFRESH_INTERVAL_MS = 1_000L
 private const val METRICS_DIAGNOSTICS_INTERVAL_MS = 5_000L
 
@@ -265,8 +431,6 @@ private fun JsonElement?.toDeviceDiagnostics(): DeviceDiagnostics? {
         ram = objectValue.stringValue("ram"),
     )
 }
-
-private fun JsonObject.stringValue(key: String): String? = get(key)?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
 
 private fun Long.toIntOrNull(): Int? = takeIf { it in 0..Int.MAX_VALUE.toLong() }?.toInt()
 

@@ -24,6 +24,15 @@ interface RemoteConversationGateway {
     fun resolvedRemoteSessionId(localSessionId: String): String?
 
     suspend fun abort(localSessionId: String, deviceId: String, remoteSessionId: String?)
+
+    suspend fun respond(
+        localSessionId: String,
+        deviceId: String,
+        remoteSessionId: String?,
+        requestId: String,
+        answers: List<Pair<String, List<String>>>,
+        cancelled: Boolean = false,
+    )
 }
 
 object UnavailableRemoteConversationGateway : RemoteConversationGateway {
@@ -46,6 +55,15 @@ object UnavailableRemoteConversationGateway : RemoteConversationGateway {
     override fun resolvedRemoteSessionId(localSessionId: String): String? = null
 
     override suspend fun abort(localSessionId: String, deviceId: String, remoteSessionId: String?) = Unit
+
+    override suspend fun respond(
+        localSessionId: String,
+        deviceId: String,
+        remoteSessionId: String?,
+        requestId: String,
+        answers: List<Pair<String, List<String>>>,
+        cancelled: Boolean,
+    ) = Unit
 }
 
 class RemoteConversationException(message: String) : IllegalStateException(message)
