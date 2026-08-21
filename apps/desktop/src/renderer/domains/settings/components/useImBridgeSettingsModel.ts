@@ -178,6 +178,7 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 
 	const refreshConfig = useCallback(async () => {
 		const refreshed = await window.vetta.im.getConfig();
+		setConfig(refreshed);
 		setFeishuForm(feishuFormFromConfig(refreshed));
 		setChannelForm(channelFormFromConfig(refreshed, refreshed.transport));
 		return refreshed;
