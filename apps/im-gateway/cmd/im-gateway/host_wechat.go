@@ -110,6 +110,15 @@ type bindCoordinator interface {
 	// LogoutAndClear drops the persisted pairing and emits the channel's
 	// unbound event.
 	LogoutAndClear(reason string) error
+	// Adopt swaps in the config slots of a freshly received config_update.
+	//
+	// A coordinator outlives the spec it was built from: config_update
+	// replaces the spec wholesale, and one whose channel did not change is
+	// kept running so an in-flight scan survives. Without this it would
+	// keep reading — and, for feishu, writing credentials into — the
+	// superseded copy, and the transport would be rebuilt from the live
+	// spec that never saw them.
+	Adopt(spec *buildSpec)
 }
 
 // wechatBindCoordinator owns the lifecycle of an in-progress QR scan
@@ -148,6 +157,13 @@ func newWechatBindCoordinator(
 		emitLog:   emitLog,
 		rebuildCh: rebuildCh,
 	}
+}
+
+// Adopt picks up the state path from the latest config_update.
+func (c *wechatBindCoordinator) Adopt(spec *buildSpec) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.statePath = spec.WechatStatePath
 }
 
 // Start kicks off the bind flow in a background goroutine. Calling Start

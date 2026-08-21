@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { SettingsAiAssist } from "../ai-assist";
 import { SETTINGS_SECTION } from "../registry";
 import { ImChannelCard } from "./ImChannelCard";
+import { FeishuBindDialog } from "./FeishuBindDialog";
 import { ImFeishuDialog } from "./ImFeishuDialog";
 import { ImLegacyImportBanner } from "./ImLegacyImportBanner";
 import { ImLogDrawer } from "./ImLogDrawer";
@@ -55,9 +56,9 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 			case "feishu":
 				return {
 					name: t("feishuName"),
-					subtitle: t("feishuSubtitle"),
-					configureLabel: t("feishuSetting"),
-					onConfigure: model.onOpenFeishuDialog,
+					subtitle: config.feishu.appId ? `${t("bound")} (${config.feishu.appId})` : t("feishuSubtitle"),
+					configureLabel: config.feishu.appId ? t("feishuManage") : t("feishuBind"),
+					onConfigure: model.onOpenFeishuBindDialog,
 				};
 			case "wechat":
 				return {
@@ -250,6 +251,16 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 			</div>
 
 			<ImFeishuDialog model={model} />
+			<FeishuBindDialog
+				onOpenGuide={() => model.setGuideTransport("feishu")}
+				open={model.feishuBindDialogOpen}
+				onOpenChange={model.setFeishuBindDialogOpen}
+				bound={Boolean(config.feishu.appId)}
+				appId={config.feishu.appId || undefined}
+				onLogout={() => void model.onClearChannel("feishu")}
+				onConfirmedRefresh={model.onFeishuConfirmedRefresh}
+				onOpenManual={model.onOpenFeishuDialog}
+			/>
 			<ImChannelConfigDialog model={model.channelDialog} onOpenGuide={(transport) => model.setGuideTransport(transport)} />
 			<WechatBindDialog
 				onOpenGuide={() => model.setGuideTransport("wechat")}

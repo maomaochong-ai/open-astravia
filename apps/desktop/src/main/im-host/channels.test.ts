@@ -50,7 +50,7 @@ describe("IM_CHANNEL_DESCRIPTORS", () => {
 
 	it("assigns the expected credentialKind to each channel", () => {
 		const kinds: Record<ImTransportSelector, string> = {
-			feishu: "static",
+			feishu: "scan-or-static",
 			wechat: "qr-bind",
 			telegram: "static",
 			slack: "static",
@@ -68,11 +68,11 @@ describe("IM_CHANNEL_DESCRIPTORS", () => {
 describe("hasRequiredCredentials", () => {
 	const empty: ImCredentials = {};
 
-	it("feishu requires appId in config and appSecret in credentials", () => {
+	// Feishu is startable with nothing configured: the sidecar parks in
+	// awaiting_bind, which is where the one-click registration scan runs.
+	it("feishu is startable with or without credentials", () => {
 		const d = IM_CHANNEL_DESCRIPTORS.feishu;
-		expect(d.hasRequiredCredentials(configWith(), empty)).toBe(false);
-		expect(d.hasRequiredCredentials(configWith({ feishu: { appId: "cli_abc" } }), empty)).toBe(false);
-		expect(d.hasRequiredCredentials(configWith(), { feishu: { appSecret: "s" } })).toBe(false);
+		expect(d.hasRequiredCredentials(configWith(), empty)).toBe(true);
 		expect(
 			d.hasRequiredCredentials(configWith({ feishu: { appId: "cli_abc" } }), { feishu: { appSecret: "s" } }),
 		).toBe(true);

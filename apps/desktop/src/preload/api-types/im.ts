@@ -311,6 +311,46 @@ export type ImSignalBindEvent =
 	| { kind: "bound"; type: "signal_bound"; account?: string }
 	| { kind: "unbound"; type: "signal_unbound"; reason?: string };
 
+// Feishu one-click app registration ("扫码接入"). The QR payload is the
+// verification URL of an OAuth 2.0 device-authorization request; scanning
+// it in Feishu opens the page where the app is created and its scopes
+// confirmed. "bound" arrives after the main process has persisted the
+// minted credentials.
+export type ImFeishuBindStatus = ImWechatBindStatus;
+
+export type ImFeishuBindEvent =
+	| { kind: "qr"; type: "feishu_qr"; url: string; expireIn?: number; attempt: number }
+	| {
+			kind: "status";
+			type: "feishu_bind_status";
+			status: ImFeishuBindStatus;
+			error?: string;
+	  }
+	| {
+			kind: "bound";
+			type: "feishu_bound";
+			appId: string;
+			appSecret: string;
+			tenantBrand?: string;
+			openId?: string;
+	  }
+	| { kind: "unbound"; type: "feishu_unbound"; reason?: string };
+
+export interface ImFeishuStartBindResult {
+	ok: boolean;
+	error?: string;
+}
+
+export interface ImFeishuApi {
+	/**
+	 * Start (or restart) the scan-to-create flow. Auto-flips the active
+	 * transport to feishu, then asks the bridge for a verification link.
+	 */
+	startBind(): Promise<ImFeishuStartBindResult>;
+	/** Subscribe to registration events. Resolves to an unsubscribe fn. */
+	subscribeBind(handler: (event: ImFeishuBindEvent) => void): Promise<() => void>;
+}
+
 export interface ImSignalStartBindResult {
 	ok: boolean;
 	error?: string;
@@ -385,4 +425,6 @@ export interface DesktopImApi {
 	whatsapp: ImWhatsappApi;
 	/** Signal device link flow. See ImSignalApi. */
 	signal: ImSignalApi;
+	/** Feishu one-click app registration. See ImFeishuApi. */
+	feishu: ImFeishuApi;
 }

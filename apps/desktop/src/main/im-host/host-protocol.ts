@@ -22,6 +22,8 @@ export const FRAME_WHATSAPP_BIND_START = "whatsapp_bind_start" as const;
 export const FRAME_WHATSAPP_LOGOUT = "whatsapp_logout" as const;
 export const FRAME_SIGNAL_BIND_START = "signal_bind_start" as const;
 export const FRAME_SIGNAL_LOGOUT = "signal_logout" as const;
+export const FRAME_FEISHU_BIND_START = "feishu_bind_start" as const;
+export const FRAME_FEISHU_LOGOUT = "feishu_logout" as const;
 
 export const EVENT_READY = "ready" as const;
 export const EVENT_LOG = "log" as const;
@@ -40,17 +42,34 @@ export const EVENT_SIGNAL_QR = "signal_qr" as const;
 export const EVENT_SIGNAL_BIND_STATUS = "signal_bind_status" as const;
 export const EVENT_SIGNAL_BOUND = "signal_bound" as const;
 export const EVENT_SIGNAL_UNBOUND = "signal_unbound" as const;
+export const EVENT_FEISHU_QR = "feishu_qr" as const;
+export const EVENT_FEISHU_BIND_STATUS = "feishu_bind_status" as const;
+export const EVENT_FEISHU_BOUND = "feishu_bound" as const;
+export const EVENT_FEISHU_UNBOUND = "feishu_unbound" as const;
 
 // =============================================================================
 // Shared payload types
 // =============================================================================
 
+/**
+ * Feishu slot. Credentials reach it two ways: typed in by the user
+ * (developer-console route) or minted by the one-click registration scan
+ * the sidecar drives (`feishu_bind_start`). Empty credentials are
+ * therefore legal — the sidecar parks in awaiting_bind and waits for the
+ * scan instead of failing to start.
+ */
 export interface FeishuConfig {
 	appId: string;
 	appSecret: string;
 	verificationToken?: string;
 	encryptKey?: string;
 	baseUrl?: string;
+	/**
+	 * Authorization host for the registration scan (host only, e.g.
+	 * accounts.feishu.cn). Empty uses the mainland default; the flow
+	 * switches to the Lark host by itself for a Lark tenant.
+	 */
+	accountsDomain?: string;
 }
 
 /**
@@ -303,6 +322,24 @@ export interface SignalLogoutFrame {
 	type: typeof FRAME_SIGNAL_LOGOUT;
 }
 
+/**
+ * Ask the sidecar to begin (or restart) the feishu one-click app
+ * registration scan. No payload; a registration already in progress keeps
+ * running.
+ */
+export interface FeishuBindStartFrame {
+	type: typeof FRAME_FEISHU_BIND_START;
+}
+
+/**
+ * Ask the sidecar to drop the feishu credentials it holds and return to
+ * awaiting_bind. The app on the Feishu Open Platform is left alone — only
+ * its owner can delete it there.
+ */
+export interface FeishuLogoutFrame {
+	type: typeof FRAME_FEISHU_LOGOUT;
+}
+
 export type InboundFrame =
 	| InitFrame
 	| ConfigUpdateFrame
@@ -312,7 +349,9 @@ export type InboundFrame =
 	| WhatsappBindStartFrame
 	| WhatsappLogoutFrame
 	| SignalBindStartFrame
-	| SignalLogoutFrame;
+	| SignalLogoutFrame
+	| FeishuBindStartFrame
+	| FeishuLogoutFrame;
 
 // =============================================================================
 // Outbound events (child → parent)
@@ -469,6 +508,51 @@ export interface SignalUnboundEvent {
 	reason?: string;
 }
 
+/**
+ * Verification link of a pending feishu registration, for the parent to
+ * render as a QR code. `expireIn` is its lifetime in seconds; `attempt` is
+ * 1-indexed and increments on each refresh.
+ */
+export interface FeishuQREvent {
+	type: typeof EVENT_FEISHU_QR;
+	url: string;
+	expireIn?: number;
+	attempt: number;
+}
+
+/**
+ * A transition in the feishu registration flow. Status reuses the
+ * WechatBindStatus values; `error` is set only on "failed".
+ */
+export interface FeishuBindStatusEvent {
+	type: typeof EVENT_FEISHU_BIND_STATUS;
+	status: WechatBindStatus;
+	error?: string;
+}
+
+/**
+ * Completed registration, carrying the credentials the platform minted.
+ *
+ * This is the one event that flows child → parent with a secret in it: the
+ * sidecar persists nothing, so the parent must write `appSecret` to its
+ * credential store on receipt — and must never log it.
+ */
+export interface FeishuBoundEvent {
+	type: typeof EVENT_FEISHU_BOUND;
+	appId: string;
+	appSecret: string;
+	/** "feishu" or "lark", when the platform reported it. */
+	tenantBrand?: string;
+	/** open_id of the user who scanned, when reported. */
+	openId?: string;
+}
+
+/** Feishu credentials dropped; the sidecar is back in awaiting_bind. */
+export interface FeishuUnboundEvent {
+	type: typeof EVENT_FEISHU_UNBOUND;
+	reason?: string;
+}
+
 export type OutboundEvent =
 	| ReadyEvent
 	| LogEvent
@@ -486,7 +570,11 @@ export type OutboundEvent =
 	| SignalQREvent
 	| SignalBindStatusEvent
 	| SignalBoundEvent
-	| SignalUnboundEvent;
+	| SignalUnboundEvent
+	| FeishuQREvent
+	| FeishuBindStatusEvent
+	| FeishuBoundEvent
+	| FeishuUnboundEvent;
 
 // =============================================================================
 // Encode / decode helpers
@@ -529,6 +617,10 @@ export function decodeEvent(line: string): OutboundEvent | null {
 		case EVENT_SIGNAL_BIND_STATUS:
 		case EVENT_SIGNAL_BOUND:
 		case EVENT_SIGNAL_UNBOUND:
+		case EVENT_FEISHU_QR:
+		case EVENT_FEISHU_BIND_STATUS:
+		case EVENT_FEISHU_BOUND:
+		case EVENT_FEISHU_UNBOUND:
 			return parsed as OutboundEvent;
 		default:
 			throw new Error(`hostproto: unknown event type "${parsed.type}"`);

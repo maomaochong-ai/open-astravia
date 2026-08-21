@@ -41,10 +41,15 @@ export function isImTransportSelector(value: unknown): value is ImTransportSelec
  *     endpoint/account) go to config-store.
  *   - "qr-bind": no long-lived credentials in the protocol — the sidecar
  *     acquires them via a QR scan flow and persists them itself.
+ *   - "scan-or-static": either route works. Feishu credentials can be
+ *     minted by the sidecar's one-click registration scan (it hands them
+ *     back for the parent to persist) or typed in from the developer
+ *     console, so an empty slot is startable — the sidecar parks in
+ *     awaiting_bind and waits for the scan.
  *   - "local-permission": no credentials at all; access is granted by OS
  *     permissions on the host machine (e.g. imessage Full Disk Access).
  */
-export type ImCredentialKind = "static" | "qr-bind" | "local-permission";
+export type ImCredentialKind = "static" | "qr-bind" | "scan-or-static" | "local-permission";
 
 /**
  * Payload shape accepted by the test-connection IPC. A superset of every
@@ -114,8 +119,10 @@ function trimmed(value: string | undefined): string {
 export const IM_CHANNEL_DESCRIPTORS: Record<ImTransportSelector, ImChannelDescriptor> = {
 	feishu: {
 		id: "feishu",
-		credentialKind: "static",
-		hasRequiredCredentials: (config, credentials) => Boolean(config.feishu.appId && credentials.feishu?.appSecret),
+		credentialKind: "scan-or-static",
+		// Always startable: without credentials the sidecar parks in
+		// awaiting_bind, which is where the registration scan begins.
+		hasRequiredCredentials: () => true,
 		clearConfig: (config) => ({ ...config, feishu: { appId: "" } }),
 		clearCredentials: ({ feishu: _dropped, ...rest }) => rest,
 		validate: (payload) => {

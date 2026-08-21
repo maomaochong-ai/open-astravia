@@ -18,6 +18,8 @@ const (
 	TypeWhatsappLogout    = "whatsapp_logout"
 	TypeSignalBindStart   = "signal_bind_start"
 	TypeSignalLogout      = "signal_logout"
+	TypeFeishuBindStart   = "feishu_bind_start"
+	TypeFeishuLogout      = "feishu_logout"
 
 	// Outbound (child → parent)
 	TypeReady              = "ready"
@@ -37,6 +39,10 @@ const (
 	TypeSignalBindStatus   = "signal_bind_status"
 	TypeSignalBound        = "signal_bound"
 	TypeSignalUnbound      = "signal_unbound"
+	TypeFeishuQR           = "feishu_qr"
+	TypeFeishuBindStatus   = "feishu_bind_status"
+	TypeFeishuBound        = "feishu_bound"
+	TypeFeishuUnbound      = "feishu_unbound"
 )
 
 // Transport status values reported on TypeStatus events.
@@ -62,6 +68,12 @@ type FeishuConfig struct {
 	VerificationToken string `json:"verificationToken,omitempty"`
 	EncryptKey        string `json:"encryptKey,omitempty"`
 	BaseURL           string `json:"baseUrl,omitempty"`
+	// AccountsDomain overrides the authorization host used by the
+	// one-click registration flow (host only, e.g. accounts.feishu.cn).
+	// Empty uses the mainland Feishu default; the flow switches to the
+	// Lark host on its own when the scanning user belongs to a Lark
+	// tenant.
+	AccountsDomain string `json:"accountsDomain,omitempty"`
 }
 
 // WechatConfig is the (small) wechat slot in InitFrame. Unlike feishu,
@@ -452,6 +464,69 @@ type SignalUnboundEvent struct {
 	Reason string `json:"reason,omitempty"`
 }
 
+// FeishuBindStartFrame requests the sidecar begin (or restart) the feishu
+// one-click app registration flow (OAuth 2.0 Device Authorization Grant).
+// No payload: the sidecar knows the domain from the latest init /
+// config_update. An in-progress registration keeps running.
+type FeishuBindStartFrame struct {
+	Type string `json:"type"` // always TypeFeishuBindStart
+}
+
+// FeishuLogoutFrame requests the sidecar stop the feishu transport and
+// forget the credentials it holds in memory, returning to awaiting_bind.
+//
+// The app itself keeps existing on the Feishu Open Platform — only its
+// owner can delete it there — and the parent owns the persisted copy of
+// the credentials, so this frame only drops the sidecar's use of them.
+type FeishuLogoutFrame struct {
+	Type string `json:"type"` // always TypeFeishuLogout
+}
+
+// FeishuQREvent carries the verification URL of a pending registration.
+// The parent renders it as a QR code; scanning it in Feishu/Lark opens the
+// page where the user creates (or picks) the app and confirms the scopes.
+// ExpireIn is the URL's lifetime in seconds.
+type FeishuQREvent struct {
+	Type     string `json:"type"` // always TypeFeishuQR
+	URL      string `json:"url"`
+	ExpireIn int    `json:"expireIn,omitempty"`
+	Attempt  int    `json:"attempt"`
+}
+
+// FeishuBindStatusEvent reports a transition in the registration flow.
+// Status reuses the WechatBindStatus* values (scanned / confirmed / failed
+// / cancelled / expired); Error is set only on failed.
+type FeishuBindStatusEvent struct {
+	Type   string `json:"type"` // always TypeFeishuBindStatus
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
+}
+
+// FeishuBoundEvent reports a completed registration.
+//
+// It is the only frame that travels child → parent carrying secrets: the
+// app credentials the user just minted belong to the parent's credential
+// store, and the sidecar deliberately keeps no copy on disk. The pipe is
+// the private stdio channel between the two processes; AppSecret must
+// never be logged.
+type FeishuBoundEvent struct {
+	Type      string `json:"type"` // always TypeFeishuBound
+	AppID     string `json:"appId"`
+	AppSecret string `json:"appSecret"`
+	// Tenant brand reported by the platform: "feishu" or "lark". The
+	// parent uses it to pin the API base URL for the created app.
+	TenantBrand string `json:"tenantBrand,omitempty"`
+	// open_id of the user who scanned, when the platform returned it.
+	OpenID string `json:"openId,omitempty"`
+}
+
+// FeishuUnboundEvent reports that the sidecar dropped its feishu
+// credentials and is back in awaiting_bind.
+type FeishuUnboundEvent struct {
+	Type   string `json:"type"` // always TypeFeishuUnbound
+	Reason string `json:"reason,omitempty"`
+}
+
 // envelope is a minimal probe used to discriminate inbound frames before
 // dispatching to the typed decoder.
 type envelope struct {
@@ -519,6 +594,18 @@ func DecodeInbound(line []byte) (any, error) {
 		var f SignalLogoutFrame
 		if err := json.Unmarshal(line, &f); err != nil {
 			return nil, fmt.Errorf("hostproto: parse signal_logout: %w", err)
+		}
+		return &f, nil
+	case TypeFeishuBindStart:
+		var f FeishuBindStartFrame
+		if err := json.Unmarshal(line, &f); err != nil {
+			return nil, fmt.Errorf("hostproto: parse feishu_bind_start: %w", err)
+		}
+		return &f, nil
+	case TypeFeishuLogout:
+		var f FeishuLogoutFrame
+		if err := json.Unmarshal(line, &f); err != nil {
+			return nil, fmt.Errorf("hostproto: parse feishu_logout: %w", err)
 		}
 		return &f, nil
 	case "":

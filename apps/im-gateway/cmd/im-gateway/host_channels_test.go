@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -113,13 +114,21 @@ func TestBuildHostTransport_SelectsPerSlot(t *testing.T) {
 	}
 }
 
+// Feishu credentials can also be minted by the one-click scan flow, so an
+// empty slot parks the sidecar in awaiting_bind instead of failing.
+func TestBuildHostTransport_FeishuWithoutCredentialsAwaitsBind(t *testing.T) {
+	_, err := buildHostTransport(&buildSpec{Feishu: &hostproto.FeishuConfig{}})
+	if !errors.Is(err, errAwaitingBind) {
+		t.Fatalf("err = %v, want errAwaitingBind", err)
+	}
+}
+
 func TestBuildHostTransport_MissingCredentials(t *testing.T) {
 	cases := []struct {
 		name string
 		spec *buildSpec
 		want string
 	}{
-		{"feishu", &buildSpec{Feishu: &hostproto.FeishuConfig{}}, "AppID"},
 		{"telegram", &buildSpec{Telegram: &hostproto.TelegramConfig{}}, "botToken"},
 		{"slack", &buildSpec{Slack: &hostproto.SlackConfig{BotToken: "xoxb-a"}}, "appToken"},
 		{"discord", &buildSpec{Discord: &hostproto.DiscordConfig{}}, "botToken"},

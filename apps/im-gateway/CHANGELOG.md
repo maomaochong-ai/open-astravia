@@ -19,6 +19,11 @@ All notable changes to `@vetta/im-gateway` are documented in this file.
 
 ### Added
 
+- 扫码创建的飞书应用会自动补上事件订阅：注册链接不能携带事件投递方式（属敏感配置），只声明权限和事件的应用可能建出来「机器人能连上、消息一条不来」。现在拿到凭据、传输层连上之后，用应用自身的 tenant token 调「更新应用开发配置」显式把投递方式设为长连接并添加 `im.message.receive_v1`（新增 `feishu.EnsureWebsocketEvents`）；这一步必须在长连接建立后执行，平台会校验连接是否在线。失败不影响已建立的连接，但会以 `feishu_bind_status` 失败事件带出平台原文与手动配置指引。`addons` 相应改为在平台默认模板上增量叠加（不再 `preset:false`），并增加 `application:application:patch` 权限。
+- 修复 `config_update` 后绑定协调器仍指向旧配置槽的问题：`bindCoordinator` 新增 `Adopt`，同渠道的配置更新会把协调器指向最新的 spec。此前若在扫码期间收到同渠道的 `config_update`，飞书扫到的凭据会写进被丢弃的结构里，表现为「扫码成功但桥接停在等待绑定」。
+- 飞书扫码接入（一键创建应用）：新增 `internal/transport/feishu` 的 `Register`，按 OAuth 2.0 Device Authorization Grant（RFC 8628）驱动飞书开放平台的一键创建流程——取得设备码后把验证链接交给上层渲染成二维码，用户扫码创建应用并确认权限后直接拿回 App ID / App Secret，所需权限与 `im.message.receive_v1` 事件订阅通过 `addons`（最小基座 + 显式声明）预填在确认页上，不再需要在开发者后台逐项配置。识别到 Lark 租户时自动切到国际认证域名，并把 `baseUrl` 钉在 `https://open.larksuite.com`。
+- Host 模式飞书扫码链路：新增入站帧 `feishu_bind_start` / `feishu_logout` 与出站事件 `feishu_qr` / `feishu_bind_status` / `feishu_bound` / `feishu_unbound`（`feishu_bound` 携带新铸出的凭据交由上层持久化，sidecar 自身不落盘）。`hostproto.FeishuConfig` 新增可选的 `accountsDomain`。
+- 独立模式新增 `im-gateway feishu register` 子命令：打印验证链接，扫码确认后输出 App ID / App Secret 及其写入位置（钥匙串或 `credentials.yaml`），不自动改写用户手工维护的凭据文件。
 - Signal 接入改为「装好 signal-cli 即可扫码」：网关自己找到本机 signal-cli（PATH + Homebrew/apt/scoop 等常见安装位置）、驱动 `signal-cli link` 并把 `sgnl://linkdevice` URI 作为二维码送给上层，随后在随机 loopback 端口上托管 `signal-cli daemon --http` 的整个生命周期，账号号码由 `listAccounts` 自动发现。用户不再需要自己起 daemon、选端口、把 E.164 号码抄进设置里。新增 `internal/transport/signal` 的 `DiscoverCLI` / `ListAccounts` / `Link` / `StartDaemon` 与 `Options.Managed`。
 - signal-cli 走代理：signal-cli 是 JVM/GraalVM 程序，既不读 `HTTPS_PROXY` 也不读系统代理设置，在只能经代理访问 Signal 的网络上表现为「link 一直不打印二维码 URI，最后报 Link request timed out」。现在 `link` / `daemon` / `listAccounts` 统一带上 `-Dhttps.proxyHost/Port`（socks 代理则用 `-DsocksProxyHost/Port`），取值顺序为 `CLIOptions.ProxyURL` → 进程的 `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` → `-Djava.net.useSystemProxies=true` 兜底，并把 `NO_PROXY` 翻成 `-Dhttp.nonProxyHosts`（始终包含 loopback）。
 - `signal-cli link` 全程没有输出关联 URI 时返回新的 `ErrNoLinkURI`，host 层据此告诉用户「无法连接 Signal 服务器，请检查网络或代理」，而不是把 `exit status 1` 原样抛出。

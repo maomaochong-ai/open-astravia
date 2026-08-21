@@ -51,8 +51,10 @@ var hostChannels = []hostChannel{
 		name:     "feishu",
 		selected: func(s *buildSpec) bool { return s.Feishu != nil },
 		build: func(s *buildSpec) (transport.Transport, error) {
+			// No credentials yet: park in awaiting_bind so the parent can
+			// drive the one-click registration scan instead of failing.
 			if s.Feishu.AppID == "" || s.Feishu.AppSecret == "" {
-				return nil, errors.New("feishu config missing AppID/AppSecret")
+				return nil, errAwaitingBind
 			}
 			return feishu.New(feishu.Options{
 				AppID:     s.Feishu.AppID,

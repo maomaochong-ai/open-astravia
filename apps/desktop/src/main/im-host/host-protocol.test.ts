@@ -37,6 +37,35 @@ describe("decodeEvent", () => {
 		expect(decodeEvent(JSON.stringify({ type: "wechat_unbound" }))).toEqual({ type: "wechat_unbound" });
 	});
 
+	it("decodes the four feishu registration events", () => {
+		expect(decodeEvent(JSON.stringify({ type: "feishu_qr", url: "https://x", expireIn: 600, attempt: 1 }))).toEqual({
+			type: "feishu_qr",
+			url: "https://x",
+			expireIn: 600,
+			attempt: 1,
+		});
+		expect(decodeEvent(JSON.stringify({ type: "feishu_bind_status", status: "expired" }))).toEqual({
+			type: "feishu_bind_status",
+			status: "expired",
+		});
+		// The credentials ride on this one event and must survive intact.
+		expect(
+			decodeEvent(
+				JSON.stringify({
+					type: "feishu_bound",
+					appId: "cli_abc",
+					appSecret: "sec",
+					tenantBrand: "lark",
+					openId: "ou_1",
+				}),
+			),
+		).toEqual({ type: "feishu_bound", appId: "cli_abc", appSecret: "sec", tenantBrand: "lark", openId: "ou_1" });
+		expect(decodeEvent(JSON.stringify({ type: "feishu_unbound", reason: "user logout" }))).toEqual({
+			type: "feishu_unbound",
+			reason: "user logout",
+		});
+	});
+
 	it("throws on unknown event types and missing discriminators", () => {
 		expect(() => decodeEvent(JSON.stringify({ type: "telegram_qr" }))).toThrow(/unknown event type/);
 		expect(() => decodeEvent(JSON.stringify({ code: "x" }))).toThrow(/missing type/);
@@ -47,6 +76,8 @@ describe("encodeFrame", () => {
 	it("serializes whatsapp inbound frames as NDJSON lines", () => {
 		expect(encodeFrame({ type: "whatsapp_bind_start" })).toBe('{"type":"whatsapp_bind_start"}\n');
 		expect(encodeFrame({ type: "whatsapp_logout" })).toBe('{"type":"whatsapp_logout"}\n');
+		expect(encodeFrame({ type: "feishu_bind_start" })).toBe('{"type":"feishu_bind_start"}\n');
+		expect(encodeFrame({ type: "feishu_logout" })).toBe('{"type":"feishu_logout"}\n');
 	});
 
 	it("carries the six new channel slots on an init frame", () => {

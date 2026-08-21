@@ -39,26 +39,20 @@ export const IM_CHANNEL_GUIDES = {
 		subtitleKey: "imGuide.feishu.subtitle",
 		steps: [
 			{
-				icon: "icon-[mdi--application-outline]",
+				icon: "icon-[mdi--qrcode-scan]",
 				titleKey: "imGuide.feishu.step1Title",
 				descKey: "imGuide.feishu.step1Desc",
-				code: "https://open.feishu.cn/app",
 			},
 			{
-				icon: "icon-[mdi--robot-outline]",
+				icon: "icon-[mdi--chat-outline]",
 				titleKey: "imGuide.feishu.step2Title",
 				descKey: "imGuide.feishu.step2Desc",
 			},
 			{
-				icon: "icon-[mdi--bell-outline]",
+				icon: "icon-[mdi--application-outline]",
 				titleKey: "imGuide.feishu.step3Title",
 				descKey: "imGuide.feishu.step3Desc",
-				code: "im:message   im:message.p2p_msg   im:message:send_as_bot",
-			},
-			{
-				icon: "icon-[mdi--rocket-launch-outline]",
-				titleKey: "imGuide.feishu.step4Title",
-				descKey: "imGuide.feishu.step4Desc",
+				code: "https://open.feishu.cn/app",
 			},
 		],
 		notes: [
@@ -76,17 +70,20 @@ export const IM_CHANNEL_GUIDES = {
 				descKey: "imGuide.wechat.step1Desc",
 			},
 			{
-				icon: "icon-[mdi--login-variant]",
+				icon: "icon-[mdi--message-text-outline]",
 				titleKey: "imGuide.wechat.step2Title",
 				descKey: "imGuide.wechat.step2Desc",
 			},
 			{
-				icon: "icon-[mdi--message-text-outline]",
+				icon: "icon-[mdi--login-variant]",
 				titleKey: "imGuide.wechat.step3Title",
 				descKey: "imGuide.wechat.step3Desc",
 			},
 		],
-		notes: [{ tone: "warning", titleKey: "imGuide.wechat.note1Title", descKey: "imGuide.wechat.note1Desc" }],
+		notes: [
+			{ tone: "info", titleKey: "imGuide.wechat.note1Title", descKey: "imGuide.wechat.note1Desc" },
+			{ tone: "warning", titleKey: "imGuide.wechat.note2Title", descKey: "imGuide.wechat.note2Desc" },
+		],
 	},
 	telegram: {
 		titleKey: "imGuide.telegram.title",

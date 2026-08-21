@@ -143,9 +143,11 @@ type stubBindCoordinator struct {
 	started   bool
 	cancelled bool
 	loggedOut bool
+	adopted   *buildSpec
 }
 
 func (s *stubBindCoordinator) Start(context.Context) { s.started = true }
+func (s *stubBindCoordinator) Adopt(spec *buildSpec) { s.adopted = spec }
 func (s *stubBindCoordinator) Cancel()               { s.cancelled = true }
 func (s *stubBindCoordinator) LogoutAndClear(string) error {
 	s.loggedOut = true

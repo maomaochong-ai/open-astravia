@@ -83,6 +83,15 @@ func newSignalBindCoordinator(
 	return &signalBindCoordinator{cfg: cfg, out: out, emitLog: emitLog, rebuildCh: rebuildCh}
 }
 
+// Adopt picks up the signal slot from the latest config_update.
+func (c *signalBindCoordinator) Adopt(spec *buildSpec) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if spec.Signal != nil {
+		c.cfg = spec.Signal
+	}
+}
+
 // Start kicks off the link flow in a background goroutine. A flow already
 // in progress is left running.
 func (c *signalBindCoordinator) Start(ctx context.Context) {

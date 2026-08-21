@@ -18,7 +18,11 @@ import {
 import { defaultCredentialsPath, type ImCredentials, loadCredentials, saveCredentials } from "./credential-store.js";
 import type {
 	DiscordConfig,
+	FeishuBindStatusEvent,
+	FeishuBoundEvent,
 	FeishuConfig,
+	FeishuQREvent,
+	FeishuUnboundEvent,
 	IMessageConfig,
 	LogEvent,
 	SessionStateEntry,
@@ -213,6 +217,24 @@ export type WhatsappBindEvent =
  * Signal counterpart of WechatBindEvent. The "qr" variant carries the
  * `sgnl://linkdevice?...` URI signal-cli printed rather than an image.
  */
+/**
+ * Feishu one-click registration events. "bound" carries the credentials
+ * the platform minted; they are persisted before the event is dispatched,
+ * so subscribers only need it to close the dialog.
+ */
+/**
+ * API host for apps created inside a Lark (international) tenant. Pinned
+ * on the config when the registration reports that brand, so the transport
+ * does not call open.feishu.cn with credentials it does not know.
+ */
+const LARK_OPEN_BASE_URL = "https://open.larksuite.com";
+
+export type FeishuBindEvent =
+	| ({ kind: "qr" } & FeishuQREvent)
+	| ({ kind: "status" } & FeishuBindStatusEvent)
+	| ({ kind: "bound" } & FeishuBoundEvent)
+	| ({ kind: "unbound" } & FeishuUnboundEvent);
+
 export type SignalBindEvent =
 	| ({ kind: "qr" } & SignalQREvent)
 	| ({ kind: "status" } & SignalBindStatusEvent)
@@ -238,6 +260,7 @@ export class ImHost {
 	// Whatsapp bind subscribers, same semantics as wechatBindHandlers.
 	private whatsappBindHandlers: Set<(event: WhatsappBindEvent) => void> = new Set();
 	private signalBindHandlers: Set<(event: SignalBindEvent) => void> = new Set();
+	private feishuBindHandlers: Set<(event: FeishuBindEvent) => void> = new Set();
 
 	// Listeners notified after every state_patch is applied. The IPC layer
 	// uses this to broadcast "im session list changed" to the renderer so
@@ -383,6 +406,58 @@ export class ImHost {
 						this.appendLog("warn", `save whatsapp unbound state failed: ${(err as Error).message}`);
 					}
 					this.dispatchWhatsappBindEvent({ kind: "unbound", ...event });
+				},
+				onFeishuQR: (event) => {
+					this.dispatchFeishuBindEvent({ kind: "qr", ...event });
+				},
+				onFeishuBindStatus: (event) => {
+					// The registration dialog closes itself moments after a
+					// successful scan, but the sidecar's follow-up work (stating
+					// the app's event subscription) reports back later. Record
+					// the failure where the settings page can still show it,
+					// otherwise the user is left with a bot that connects and
+					// never answers.
+					if (event.status === "failed" && event.error) {
+						this.appendLog("warn", `feishu: ${event.error}`);
+						this.statusStore.patch({ lastError: event.error, lastErrorAt: new Date().toISOString() });
+					}
+					this.dispatchFeishuBindEvent({ kind: "status", ...event });
+				},
+				onFeishuBound: (event) => {
+					// The sidecar keeps no copy on disk: this is the only
+					// moment the freshly minted credentials can be saved.
+					// appSecret must not reach the log.
+					this.config = {
+						...this.config,
+						feishu: {
+							...this.config.feishu,
+							appId: event.appId,
+							baseUrl: event.tenantBrand === "lark" ? LARK_OPEN_BASE_URL : this.config.feishu.baseUrl,
+						},
+					};
+					this.credentials = {
+						...this.credentials,
+						feishu: { ...this.credentials.feishu, appSecret: event.appSecret },
+					};
+					try {
+						saveImConfig(this.config);
+						saveCredentials(this.credentials);
+					} catch (err) {
+						this.appendLog("error", `save feishu credentials failed: ${(err as Error).message}`);
+					}
+					this.appendLog("info", `feishu app registered: ${event.appId}`);
+					this.dispatchFeishuBindEvent({ kind: "bound", ...event });
+				},
+				onFeishuUnbound: (event) => {
+					this.config = { ...this.config, feishu: { ...this.config.feishu, appId: "" } };
+					this.credentials = getImChannelDescriptor("feishu").clearCredentials(this.credentials);
+					try {
+						saveImConfig(this.config);
+						saveCredentials(this.credentials);
+					} catch (err) {
+						this.appendLog("warn", `clear feishu credentials failed: ${(err as Error).message}`);
+					}
+					this.dispatchFeishuBindEvent({ kind: "unbound", ...event });
 				},
 				onSignalQR: (event) => {
 					this.dispatchSignalBindEvent({ kind: "qr", ...event });
@@ -596,6 +671,54 @@ export class ImHost {
 	}
 
 	// =========================================================================
+	// feishu one-click registration API
+	// =========================================================================
+
+	/**
+	 * Begin (or restart) the feishu scan-to-create flow, flipping the
+	 * active transport to feishu first so the button works from any
+	 * starting state.
+	 *
+	 * The sidecar is what talks to the platform, so it has to be up: with
+	 * no credentials yet it parks in awaiting_bind, which is exactly the
+	 * state this flow fills in.
+	 */
+	async startFeishuBind(): Promise<{ ok: boolean; error?: string }> {
+		if (this.config.transport !== "feishu" || !this.config.enabled) {
+			const flip = await this.setConfig({ enabled: true, transport: "feishu" });
+			if (!flip.ok) {
+				return { ok: false, error: flip.error ?? "切换到飞书失败" };
+			}
+		}
+		const deadline = Date.now() + 5000;
+		while (Date.now() < deadline) {
+			const status = this.statusStore.get().transport;
+			if (status === "awaiting_bind" || status === "online") break;
+			await new Promise((r) => setTimeout(r, 100));
+		}
+		this.manager.startFeishuBind();
+		return { ok: true };
+	}
+
+	/** Subscribe to feishu registration events. Returns an unsubscribe fn. */
+	subscribeFeishuBind(handler: (event: FeishuBindEvent) => void): () => void {
+		this.feishuBindHandlers.add(handler);
+		return () => {
+			this.feishuBindHandlers.delete(handler);
+		};
+	}
+
+	private dispatchFeishuBindEvent(event: FeishuBindEvent): void {
+		for (const h of this.feishuBindHandlers) {
+			try {
+				h(event);
+			} catch (err) {
+				this.appendLog("warn", `feishu bind handler threw: ${(err as Error).message}`);
+			}
+		}
+	}
+
+	// =========================================================================
 	// signal link flow API (mirrors the whatsapp flow above)
 	// =========================================================================
 
@@ -673,10 +796,15 @@ export class ImHost {
 		// Pairing channels own state inside the sidecar (wechat credentials
 		// file, whatsapp session db, signal-cli config dir). Let the
 		// existing logout paths clear it while the sidecar is still up.
-		if (descriptor.credentialKind === "qr-bind" && isActive && this.manager.getCurrentChild()) {
+		const sidecarOwnsSession =
+			descriptor.credentialKind === "qr-bind" || descriptor.credentialKind === "scan-or-static";
+		if (sidecarOwnsSession && isActive && this.manager.getCurrentChild()) {
 			if (transport === "wechat") this.manager.wechatLogout();
 			if (transport === "whatsapp") this.manager.whatsappLogout();
 			if (transport === "signal") this.manager.signalLogout();
+			// Feishu credentials live in the parent's stores, but the
+			// sidecar holds a copy in memory for the running transport.
+			if (transport === "feishu") this.manager.feishuLogout();
 		}
 
 		const nextConfig = descriptor.clearConfig(this.config);

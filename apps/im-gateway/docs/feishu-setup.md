@@ -2,6 +2,28 @@
 
 How to wire up `im-gateway` to a Feishu (Lark) bot using long-connection events. No public IP, webhook, or reverse proxy required.
 
+## Quick path: scan to create the app
+
+The Feishu Open Platform can create the app for you. `im-gateway feishu register`
+starts an OAuth 2.0 Device Authorization flow and prints a verification link:
+
+```bash
+im-gateway feishu register
+```
+
+Scan the printed link with Feishu (or open it inside the client). The page it
+opens creates the bot with the scopes and the `im.message.receive_v1`
+subscription this gateway needs already ticked; confirm it and the command
+prints the App ID and App Secret, ready to drop into the credential store
+described in step 7 below. A Lark tenant additionally needs
+`transport.feishu.baseUrl: https://open.larksuite.com` in `config.yaml`.
+
+Desktop users get the same flow with a rendered QR code under
+**设置 → Claw → 飞书 → 扫码接入**; the credentials are stored for them.
+
+The rest of this document is the manual route, for tenants where members
+cannot create apps themselves.
+
 ## 1. Create a self-built application
 
 1. Sign in to the Feishu Open Platform: <https://open.feishu.cn/app>

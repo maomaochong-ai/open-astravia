@@ -66,6 +66,7 @@ export interface ImBridgeSettingsModel {
 	feishuForm: FeishuFormState;
 	feishuValidation: FeishuValidation;
 	feishuDialogOpen: boolean;
+	feishuBindDialogOpen: boolean;
 	wechatDialogOpen: boolean;
 	signalDialogOpen: boolean;
 	/** 当前展示手册的渠道；null 表示手册未打开。 */
@@ -85,6 +86,7 @@ export interface ImBridgeSettingsModel {
 	probing: boolean;
 	probeResult: ProbeResult | null;
 	setFeishuDialogOpen: (open: boolean) => void;
+	setFeishuBindDialogOpen: (open: boolean) => void;
 	setWechatDialogOpen: (open: boolean) => void;
 	setSignalDialogOpen: (open: boolean) => void;
 	setGuideTransport: (transport: ImTransportSelector | null) => void;
@@ -98,6 +100,7 @@ export interface ImBridgeSettingsModel {
 	onToggleEnabled: (enabled: boolean) => Promise<void>;
 	onSwitchTransport: (next: ImTransportSelector) => Promise<void>;
 	onOpenFeishuDialog: () => void;
+	onOpenFeishuBindDialog: () => void;
 	onOpenWechatDialog: () => void;
 	onOpenSignalDialog: () => void;
 	onOpenChannelDialog: (transport: ImChannelConfigTransport) => void;
@@ -110,6 +113,7 @@ export interface ImBridgeSettingsModel {
 	onOpenLogs: () => Promise<void>;
 	onWechatConfirmedRefresh: () => void;
 	onSignalConfirmedRefresh: () => void;
+	onFeishuConfirmedRefresh: () => void;
 	onDismissFeedback: () => void;
 }
 
@@ -118,6 +122,7 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 	const [config, setConfig] = useState<ImBridgeConfig | null>(null);
 	const [feishuForm, setFeishuForm] = useState<FeishuFormState>(emptyFeishuForm);
 	const [feishuDialogOpen, setFeishuDialogOpen] = useState(false);
+	const [feishuBindDialogOpen, setFeishuBindDialogOpen] = useState(false);
 	const [wechatDialogOpen, setWechatDialogOpen] = useState(false);
 	const [signalDialogOpen, setSignalDialogOpen] = useState(false);
 	const [guideTransport, setGuideTransport] = useState<ImTransportSelector | null>(null);
@@ -271,9 +276,11 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 					setSaveError(t("pleaseChooseModel"));
 					return;
 				}
-				if (config.transport === "feishu" && !feishuValidation.valid) {
-					setSaveError(t("pleaseFillFeishu"));
-					setFeishuDialogOpen(true);
+				// Feishu no longer needs typed credentials up front: send the
+				// user to the scan instead of demanding the console walk.
+				if (config.transport === "feishu" && !config.feishu.appId && !feishuValidation.valid) {
+					setSaveError(t("pleaseBindFeishu"));
+					setFeishuBindDialogOpen(true);
 					return;
 				}
 				if (config.transport === "wechat" && !config.wechat.bound) {
@@ -401,6 +408,19 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 		setTestResult(null);
 		setFeishuDialogOpen(true);
 	}, []);
+
+	// Opening the scan dialog flips the active transport the way the wechat
+	// and signal ones do, so the sidecar is already parked in awaiting_bind
+	// by the time the QR shows up.
+	const handleOpenFeishuBindDialog = useCallback(() => {
+		if (!config) return;
+		setSaveError(null);
+		setSaveOk(null);
+		if (!config.feishu.appId && (config.transport !== "feishu" || !config.enabled)) {
+			void window.vetta.im.setConfig({ enabled: true, transport: "feishu" });
+		}
+		setFeishuBindDialogOpen(true);
+	}, [config]);
 
 	const handleOpenChannelDialog = useCallback(
 		(transport: ImChannelConfigTransport) => {
@@ -578,6 +598,7 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 		feishuForm,
 		feishuValidation,
 		feishuDialogOpen,
+		feishuBindDialogOpen,
 		wechatDialogOpen,
 		signalDialogOpen,
 		guideTransport,
@@ -596,6 +617,7 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 		probing,
 		probeResult,
 		setFeishuDialogOpen,
+		setFeishuBindDialogOpen,
 		setWechatDialogOpen,
 		setSignalDialogOpen,
 		setGuideTransport,
@@ -609,6 +631,7 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 		onToggleEnabled: handleToggleEnabled,
 		onSwitchTransport: handleSwitchTransport,
 		onOpenFeishuDialog: handleOpenFeishuDialog,
+		onOpenFeishuBindDialog: handleOpenFeishuBindDialog,
 		onOpenWechatDialog: handleOpenWechatDialog,
 		onOpenSignalDialog: handleOpenSignalDialog,
 		onOpenChannelDialog: handleOpenChannelDialog,
@@ -625,6 +648,9 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 			void refreshConfig();
 		},
 		onSignalConfirmedRefresh: () => {
+			void refreshConfig();
+		},
+		onFeishuConfirmedRefresh: () => {
 			void refreshConfig();
 		},
 		onDismissFeedback: () => {

@@ -2,6 +2,10 @@
 
 ### Added
 
+- Claw 的飞书渠道改为扫码接入：在「设置 → Claw → 飞书」点「扫码接入」，用飞书扫码并在页面上确认应用名称与权限，飞书就会替你创建机器人应用——所需权限与 `im.message.receive_v1` 事件订阅已预填，App ID 与 App Secret 由桥接回传后自动存到本机凭据（`im-credentials.json`，权限 0600），不必再去开放平台创建应用、开机器人能力、勾权限、发版本、抄两串密钥。Lark 租户会自动把 API 域名钉到 `open.larksuite.com`。原先手填 App ID / App Secret 的表单保留在扫码对话框底部的「手动填写」入口，供不允许自助创建应用的企业使用。飞书渠道描述符的凭据形态相应改为 `scan-or-static`：未配置凭据时 sidecar 停在 `awaiting_bind` 等待扫码，而不是拒绝启动。
+
+- Claw 八个渠道的对话框说明与「使用说明」手册改写成面向普通用户的口径：只讲去哪点、扫哪个码、贴哪串东西，去掉长连接、Socket Mode、Bot API、长轮询、chmod 0600 这类实现细节；对方平台界面上要照着找的字样（BotFather、Socket Mode、MESSAGE CONTENT INTENT、完全磁盘访问权限等）保留。
+
 - Claw 每个渠道都可以解除绑定：飞书与通用渠道对话框（Telegram / Slack / Discord / Signal 自建服务 / iMessage）新增「解除绑定」，二次确认后清除本机保存的凭据与账号标识；解除的若是当前渠道且清空后已无法启动，会顺带关闭桥接并停掉 sidecar。清空逻辑收敛到 `im-host/channels.ts` 描述符的 `clearConfig` / `clearCredentials`，微信、WhatsApp、Signal 的解绑仍沿用各自扫码流程的 API（那条路要让 sidecar 一并丢掉自己持有的会话）。
 - Claw 渠道网格补齐 Slack、WhatsApp 品牌图标，并更新飞书图标。
 - Claw 每个渠道的配置对话框（飞书 / 微信 / Signal / 通用渠道）标题旁新增「使用说明」入口，点开是一个二级引导弹窗：编号步骤 + 可复制的命令或地址 + 提醒块，视觉与「知识库是怎么工作的」同一套。八个渠道的手册内容与 `apps/im-gateway/docs/*-setup.md` 对齐，中英文齐备。
@@ -27,6 +31,8 @@
   供其它「发送前还有一步准备」的场景复用。
 
 ### Fixed
+
+- 修复飞书扫码接入后「机器人连上了但发消息没反应」：扫码创建出来的应用可能没有生效的事件订阅，桥接会在连上之后自动把投递方式设为长连接并补上接收消息事件；补配置失败时把平台原因写进 Claw 的状态栏与日志，并提示去开放平台手动开启，而不是停在一个看似正常的「已连接」上。
 
 - 修复 Agent 在后台会话调用 `vetd_create` 时，设计标签错误写入当前前台项目、导致目标会话的标签列表缺少「设计」的问题；Activity Tab 宿主命令现在可按显式 cwd 写入 attach 与 active-tab 状态。
 - 修复 Linux packaged E2E 真正启动应用后的两项误报：unpacked 可执行文件现在使用同批构建的 AppImage 作为更新器运行上下文，主进程 mock 探针改用同步 Electron API，避免 CDP 在异步 mock Promise 跨进程返回前将其回收。

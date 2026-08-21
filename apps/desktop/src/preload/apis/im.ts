@@ -32,6 +32,10 @@ const IM_CHANNELS = {
 	SIGNAL_SUBSCRIBE: "vetta:im:signal:subscribe",
 	SIGNAL_UNSUBSCRIBE: "vetta:im:signal:unsubscribe",
 	SIGNAL_BIND_EVENT: "vetta:im:signal:bind-event",
+	FEISHU_START_BIND: "vetta:im:feishu:start-bind",
+	FEISHU_SUBSCRIBE: "vetta:im:feishu:subscribe",
+	FEISHU_UNSUBSCRIBE: "vetta:im:feishu:unsubscribe",
+	FEISHU_BIND_EVENT: "vetta:im:feishu:bind-event",
 	CLEAR_CHANNEL: "vetta:im:clear-channel",
 	SESSION_CHANGED: "vetta:im:session-changed",
 } as const;
@@ -115,6 +119,18 @@ export function createImApi(ipc: IpcRenderer): Pick<DesktopApi, "im"> {
 						IM_CHANNELS.WHATSAPP_SUBSCRIBE,
 						IM_CHANNELS.WHATSAPP_BIND_EVENT,
 						IM_CHANNELS.WHATSAPP_UNSUBSCRIBE,
+						handler,
+						[],
+					),
+			},
+			feishu: {
+				startBind: () => ipc.invoke(IM_CHANNELS.FEISHU_START_BIND),
+				subscribeBind: (handler) =>
+					subscribeById(
+						ipc,
+						IM_CHANNELS.FEISHU_SUBSCRIBE,
+						IM_CHANNELS.FEISHU_BIND_EVENT,
+						IM_CHANNELS.FEISHU_UNSUBSCRIBE,
 						handler,
 						[],
 					),

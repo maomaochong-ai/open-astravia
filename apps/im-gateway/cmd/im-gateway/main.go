@@ -13,6 +13,8 @@
 //	im-gateway start     Connect to the configured IM and start serving
 //	im-gateway status    Print connection / pool status of a running gateway
 //	im-gateway logs      Tail ~/.vetta/im-gateway/logs/im-gateway.log
+//	im-gateway feishu register
+//	                     Scan-to-create a Feishu app and print its credentials
 package main
 
 import (
@@ -75,6 +77,8 @@ func main() {
 		os.Exit(runLogs(args))
 	case "wechat":
 		os.Exit(runWechat(args))
+	case "feishu":
+		os.Exit(runFeishu(args))
 	case "-h", "--help", "help":
 		printUsage(os.Stdout)
 		os.Exit(0)
@@ -510,6 +514,7 @@ func printUsage(w *os.File) {
 	fmt.Fprintln(w, "  status    Show running gateway status")
 	fmt.Fprintln(w, "  logs      Print or tail the gateway log file (-f to follow)")
 	fmt.Fprintln(w, "  wechat    Manage WeChat (iLink) account binding (login | status | logout)")
+	fmt.Fprintln(w, "  feishu    Scan-to-create a Feishu app and print its credentials (register)")
 	fmt.Fprintln(w, "  version   Print version and exit")
 	fmt.Fprintln(w, "  help      Print this message")
 }

@@ -344,6 +344,9 @@ loop:
 		case <-bindRebuildCh:
 			// Bind goroutine signalled success.
 			rebuildTransport()
+			if syncer, ok := hostState.coord.(postBindSyncer); ok {
+				go syncer.SyncAfterBind(context.Background())
+			}
 		case err := <-rdr.Err():
 			emitLog("error", "stdin reader error", map[string]any{"err": err.Error()})
 			shutdownReason = "stdin error"
@@ -465,6 +468,11 @@ func (h *hostRuntime) handleFrame(frame any) frameAction {
 				h.coord.Cancel()
 			}
 			h.coord, h.coordKind = newBindCoordinator(h.spec, h.out, h.emitLog, h.rebuildCh)
+		} else if h.coord != nil {
+			// Same channel: keep the coordinator (an in-flight scan must
+			// survive) but point it at the spec the main loop now builds
+			// from.
+			h.coord.Adopt(h.spec)
 		}
 		return frameAction{rebuild: true}
 
@@ -473,6 +481,12 @@ func (h *hostRuntime) handleFrame(frame any) frameAction {
 
 	case *hostproto.WechatLogoutFrame:
 		return h.bindFrameAction("wechat", "wechat_logout", frameAction{logout: true})
+
+	case *hostproto.FeishuBindStartFrame:
+		return h.bindFrameAction("feishu", "feishu_bind_start", frameAction{startBind: true})
+
+	case *hostproto.FeishuLogoutFrame:
+		return h.bindFrameAction("feishu", "feishu_logout", frameAction{logout: true})
 
 	case *hostproto.SignalBindStartFrame:
 		return h.bindFrameAction("signal", "signal_bind_start", frameAction{startBind: true})
@@ -500,6 +514,14 @@ func (h *hostRuntime) bindFrameAction(channel, frameName string, action frameAct
 	return action
 }
 
+// postBindSyncer is implemented by coordinators that still have work to do
+// against the remote platform once the rebuilt transport is live — feishu
+// states its event subscription there, which the platform only accepts
+// while the long connection is actually up.
+type postBindSyncer interface {
+	SyncAfterBind(ctx context.Context)
+}
+
 // bindCoordinatorKind names the pairing-based channel the spec selects, or
 // "" when the active channel needs no pairing.
 func bindCoordinatorKind(spec *buildSpec) string {
@@ -508,6 +530,11 @@ func bindCoordinatorKind(spec *buildSpec) string {
 		return ""
 	case spec.Wechat != nil && spec.Wechat.Enabled:
 		return "wechat"
+	case spec.Feishu != nil:
+		// Feishu accepts credentials either way — typed in by hand or
+		// minted by the scan flow — so the coordinator exists whenever
+		// the channel is selected, including for a re-scan while bound.
+		return "feishu"
 	case signalManaged(spec.Signal):
 		// A user-run daemon (explicit endpoint) has no link flow to drive.
 		return "signal"
@@ -527,6 +554,8 @@ func newBindCoordinator(
 	switch bindCoordinatorKind(spec) {
 	case "wechat":
 		return newWechatBindCoordinator(spec.WechatStatePath, out, emitLog, rebuildCh), "wechat"
+	case "feishu":
+		return newFeishuBindCoordinator(spec.Feishu, out, emitLog, rebuildCh), "feishu"
 	case "signal":
 		return newSignalBindCoordinator(spec.Signal, out, emitLog, rebuildCh), "signal"
 	default:

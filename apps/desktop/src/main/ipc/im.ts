@@ -8,6 +8,7 @@ import {
 } from "../im-host/channels.js";
 import type { LogEvent } from "../im-host/host-protocol.js";
 import {
+	type FeishuBindEvent,
 	getImHost,
 	type SetConfigPayload,
 	type SignalBindEvent,
@@ -47,6 +48,10 @@ const CHANNELS = {
 	SIGNAL_SUBSCRIBE: "vetta:im:signal:subscribe",
 	SIGNAL_UNSUBSCRIBE: "vetta:im:signal:unsubscribe",
 	SIGNAL_BIND_EVENT: "vetta:im:signal:bind-event",
+	FEISHU_START_BIND: "vetta:im:feishu:start-bind",
+	FEISHU_SUBSCRIBE: "vetta:im:feishu:subscribe",
+	FEISHU_UNSUBSCRIBE: "vetta:im:feishu:unsubscribe",
+	FEISHU_BIND_EVENT: "vetta:im:feishu:bind-event",
 	CLEAR_CHANNEL: "vetta:im:clear-channel",
 	// Fire-and-forget broadcast: "something in the IM routing table
 	// changed, you may want to refresh." No payload, no subscription
@@ -63,10 +68,12 @@ const subscriptions = new Map<string, SubscriptionEntry>();
 const wechatSubscriptions = new Map<string, () => void>();
 const whatsappSubscriptions = new Map<string, () => void>();
 const signalSubscriptions = new Map<string, () => void>();
+const feishuSubscriptions = new Map<string, () => void>();
 let counter = 0;
 let wechatCounter = 0;
 let whatsappCounter = 0;
 let signalCounter = 0;
+let feishuCounter = 0;
 
 export function registerImIpc(webContents: WebContents): () => void {
 	const host = getImHost();
@@ -300,6 +307,34 @@ export function registerImIpc(webContents: WebContents): () => void {
 		}
 	});
 
+	// =========================================================================
+	// Feishu one-click app registration. Same shape as the pairing channels,
+	// minus a logout entry: unbinding feishu goes through CLEAR_CHANNEL,
+	// which owns the persisted credentials.
+	// =========================================================================
+	ipcMain.handle(CHANNELS.FEISHU_START_BIND, async () => {
+		return host.startFeishuBind();
+	});
+
+	ipcMain.handle(CHANNELS.FEISHU_SUBSCRIBE, () => {
+		feishuCounter += 1;
+		const id = `im-feishu-sub-${feishuCounter}`;
+		const unsub = host.subscribeFeishuBind((event: FeishuBindEvent) => {
+			if (webContents.isDestroyed()) return;
+			webContents.send(CHANNELS.FEISHU_BIND_EVENT, id, event);
+		});
+		feishuSubscriptions.set(id, unsub);
+		return { subscriptionId: id };
+	});
+
+	ipcMain.handle(CHANNELS.FEISHU_UNSUBSCRIBE, (_event, id: string) => {
+		const unsub = feishuSubscriptions.get(id);
+		if (unsub) {
+			unsub();
+			feishuSubscriptions.delete(id);
+		}
+	});
+
 	return () => {
 		sessionChangeUnsub();
 		if (fsDebounce) clearTimeout(fsDebounce);
@@ -333,6 +368,9 @@ export function registerImIpc(webContents: WebContents): () => void {
 		ipcMain.removeHandler(CHANNELS.SIGNAL_LOGOUT);
 		ipcMain.removeHandler(CHANNELS.SIGNAL_SUBSCRIBE);
 		ipcMain.removeHandler(CHANNELS.SIGNAL_UNSUBSCRIBE);
+		ipcMain.removeHandler(CHANNELS.FEISHU_START_BIND);
+		ipcMain.removeHandler(CHANNELS.FEISHU_SUBSCRIBE);
+		ipcMain.removeHandler(CHANNELS.FEISHU_UNSUBSCRIBE);
 		for (const entry of subscriptions.values()) {
 			entry.statusUnsub();
 			entry.logUnsub();
@@ -346,6 +384,10 @@ export function registerImIpc(webContents: WebContents): () => void {
 			unsub();
 		}
 		whatsappSubscriptions.clear();
+		for (const unsub of feishuSubscriptions.values()) {
+			unsub();
+		}
+		feishuSubscriptions.clear();
 		for (const unsub of signalSubscriptions.values()) {
 			unsub();
 		}

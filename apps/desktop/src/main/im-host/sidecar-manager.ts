@@ -4,6 +4,10 @@ import {
 	type CodingAgentSpec,
 	type DiscordConfig,
 	decodeEvent,
+	EVENT_FEISHU_BIND_STATUS,
+	EVENT_FEISHU_BOUND,
+	EVENT_FEISHU_QR,
+	EVENT_FEISHU_UNBOUND,
 	EVENT_LOG,
 	EVENT_METRIC,
 	EVENT_READY,
@@ -22,8 +26,14 @@ import {
 	EVENT_WHATSAPP_QR,
 	EVENT_WHATSAPP_UNBOUND,
 	encodeFrame,
+	type FeishuBindStatusEvent,
+	type FeishuBoundEvent,
 	type FeishuConfig,
+	type FeishuQREvent,
+	type FeishuUnboundEvent,
 	FRAME_CONFIG_UPDATE,
+	FRAME_FEISHU_BIND_START,
+	FRAME_FEISHU_LOGOUT,
 	FRAME_INIT,
 	FRAME_SHUTDOWN,
 	FRAME_SIGNAL_BIND_START,
@@ -127,6 +137,18 @@ export interface SidecarHooks {
 	onSignalBound?: (event: SignalBoundEvent) => void;
 	/** Link dropped (logout). Sidecar is now in awaiting_bind. */
 	onSignalUnbound?: (event: SignalUnboundEvent) => void;
+
+	// Feishu one-click app registration events. Emitted only while feishu
+	// is the active transport and the parent has driven a registration
+	// via startFeishuBind().
+	/** The verification link is ready to be rendered as a QR code. */
+	onFeishuQR?: (event: FeishuQREvent) => void;
+	/** A transition in the registration flow. */
+	onFeishuBindStatus?: (event: FeishuBindStatusEvent) => void;
+	/** Registration succeeded — carries the credentials to persist. */
+	onFeishuBound?: (event: FeishuBoundEvent) => void;
+	/** Credentials dropped (logout). Sidecar is now in awaiting_bind. */
+	onFeishuUnbound?: (event: FeishuUnboundEvent) => void;
 }
 
 /**
@@ -438,6 +460,43 @@ export class SidecarManager {
 		this.writeFrame({ type: FRAME_SIGNAL_LOGOUT });
 	}
 
+	/**
+	 * Send a feishu_bind_start frame to a running sidecar, which drives
+	 * the one-click app registration and streams the verification link
+	 * back. Same caveats as startWechatBind(): ignored unless feishu is
+	 * the active transport.
+	 */
+	startFeishuBind(): void {
+		if (this.state.kind !== "running") {
+			this.hooks.onLog?.({
+				type: EVENT_LOG,
+				level: "warn",
+				msg: `sidecar not running; cannot start feishu registration (state=${this.state.kind})`,
+				time: new Date().toISOString(),
+			});
+			return;
+		}
+		this.writeFrame({ type: FRAME_FEISHU_BIND_START });
+	}
+
+	/**
+	 * Send a feishu_logout frame to a running sidecar. Drops the
+	 * credentials it holds and parks it in awaiting_bind; the persisted
+	 * copy is the parent's to clear.
+	 */
+	feishuLogout(): void {
+		if (this.state.kind !== "running") {
+			this.hooks.onLog?.({
+				type: EVENT_LOG,
+				level: "warn",
+				msg: `sidecar not running; cannot send feishu logout (state=${this.state.kind})`,
+				time: new Date().toISOString(),
+			});
+			return;
+		}
+		this.writeFrame({ type: FRAME_FEISHU_LOGOUT });
+	}
+
 	private attachReaders(child: ChildProcess): void {
 		if (child.stdout) {
 			const rl: Interface = createInterface({ input: child.stdout });
@@ -527,6 +586,18 @@ export class SidecarManager {
 				break;
 			case EVENT_SIGNAL_UNBOUND:
 				this.hooks.onSignalUnbound?.(event);
+				break;
+			case EVENT_FEISHU_QR:
+				this.hooks.onFeishuQR?.(event);
+				break;
+			case EVENT_FEISHU_BIND_STATUS:
+				this.hooks.onFeishuBindStatus?.(event);
+				break;
+			case EVENT_FEISHU_BOUND:
+				this.hooks.onFeishuBound?.(event);
+				break;
+			case EVENT_FEISHU_UNBOUND:
+				this.hooks.onFeishuUnbound?.(event);
 				break;
 		}
 	}
