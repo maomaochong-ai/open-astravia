@@ -49,6 +49,16 @@ describe("Desktop release workflow contracts", () => {
 		}
 	});
 
+	it("installs the Electron audio runtime required by Ubuntu 24.04", () => {
+		const packagedSmokeJob = packagedWorkflow.split("\n  smoke:\n")[1];
+		const releaseBuildJob = workflow.split("\n  build:\n")[1]?.split("\n  publish-github:\n")[0];
+		for (const jobSource of [packagedSmokeJob, releaseBuildJob]) {
+			expect(jobSource).toBeDefined();
+			expect(jobSource).toContain("Install Linux Electron runtime dependencies");
+			expect(jobSource).toContain("libasound2t64");
+		}
+	});
+
 	it("installs the IM gateway Go toolchain from its module declaration", () => {
 		const packagedSmokeJob = packagedWorkflow.split("\n  smoke:\n")[1];
 		const releaseBuildJob = workflow.split("\n  build:\n")[1]?.split("\n  publish-github:\n")[0];

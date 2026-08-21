@@ -88,6 +88,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y build-essential libcap-dev meson ninja-build pkg-config xz-utils
 
+      - name: Install Linux Electron runtime dependencies
+        if: runner.os == 'Linux'
+        # Ubuntu 24.04's libasound2t64 provides the libasound.so.2 linked by Electron.
+        run: sudo apt-get install --no-install-recommends -y libasound2t64
+
       - name: Build unpacked Desktop package
         working-directory: apps/desktop
         env:
