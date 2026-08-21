@@ -46,3 +46,10 @@ test("packaged E2E update feed serves a checksum-bearing downloadable fixture", 
 	assert.match(metadata, /version: 0\.5\.47/);
 	assert.equal(Buffer.from(artifact).toString("utf8"), "vetta-packaged-e2e-update\n");
 });
+
+test("packaged E2E update feed rejects an invalid metadata delay", async () => {
+	await assert.rejects(
+		startUpdateFeedFixture({ version: "0.5.46", metadataDelayMs: -1 }),
+		/Invalid E2E fixture metadata delay/,
+	);
+});

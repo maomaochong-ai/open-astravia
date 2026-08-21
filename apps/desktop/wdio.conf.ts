@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Server } from "node:http";
 import { startUpdateFeedFixture } from "./e2e/update-feed-fixture.mjs";
+import { resolvePackagedE2eBinaryPath } from "./scripts/packaged-e2e-binary.mjs";
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
 const mainEntry = path.join(packageRoot, "dist", "main", "index.js");
@@ -14,33 +15,10 @@ const require = createRequire(import.meta.url);
 
 /** Set to `1` to use electron-builder unpacked output (`release/*-unpacked`). */
 const usePackaged = process.env.VETTA_E2E_PACKAGED === "1";
+const packagedArtifactRoot = process.env.VETTA_E2E_PACKAGED_ROOT?.trim()
+	? path.resolve(process.env.VETTA_E2E_PACKAGED_ROOT)
+	: packageRoot;
 let updateFeedServer: Server | undefined;
-
-function resolvePackagedBinaryPath(): string {
-	const candidates =
-		process.platform === "win32"
-			? [path.join(packageRoot, "release", "win-unpacked", "Vetta.exe")]
-			: process.platform === "darwin"
-				? [
-						path.join(packageRoot, "release", "mac-arm64", "Vetta.app", "Contents", "MacOS", "Vetta"),
-						path.join(packageRoot, "release", "mac", "Vetta.app", "Contents", "MacOS", "Vetta"),
-						path.join(packageRoot, "release", "mac-x64", "Vetta.app", "Contents", "MacOS", "Vetta"),
-					]
-				: [path.join(packageRoot, "release", "linux-unpacked", "Vetta")];
-
-	const found = candidates.find((candidate) => existsSync(candidate));
-	if (!found) {
-		throw new Error(
-			[
-				"Packaged Electron binary not found. Run a pack script for this platform first, e.g.:",
-				"  bun run pack:win:test",
-				"  bun run pack:linux:test",
-				`Tried:\n${candidates.map((p) => `  - ${p}`).join("\n")}`,
-			].join("\n"),
-		);
-	}
-	return found;
-}
 
 /**
  * Resolve the real electron executable under node_modules/electron.
@@ -67,7 +45,9 @@ function resolveElectronServiceOptions(): {
 
 	if (usePackaged) {
 		return {
-			appBinaryPath: resolvePackagedBinaryPath(),
+			// Windows release/Vetta.exe is a detached stable launcher. ChromeDriver
+			// must drive the versioned Electron executable that it launches.
+			appBinaryPath: resolvePackagedE2eBinaryPath(packagedArtifactRoot),
 			appArgs: isolationArgs,
 		};
 	}
@@ -98,6 +78,9 @@ export const config = {
 	runner: "local",
 	// Resolve from apps/desktop so monorepo root cwd does not matter.
 	rootDir: packageRoot,
+	// Optional escape hatch for repairing or isolating WebDriver downloads
+	// without mutating the machine-wide temporary cache.
+	cacheDir: process.env.WEBDRIVER_CACHE_DIR,
 	specs: ["./e2e/**/*.e2e.ts"],
 	exclude: [],
 	maxInstances: 1,
@@ -132,6 +115,8 @@ export const config = {
 		const fixture = await startUpdateFeedFixture({
 			version: version.version,
 			downloadable: process.platform === "linux",
+			// Keep the checking phase observable instead of racing a loopback response.
+			metadataDelayMs: 1_000,
 		});
 		updateFeedServer = fixture.server;
 		process.env.VETTA_E2E_UPDATE_URL = fixture.url;

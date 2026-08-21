@@ -2,6 +2,7 @@ import { execFileSync, execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const buildStageDir = join(tmpdir(), "vetta-desktop-build");
 const builderConfigPath = join(buildStageDir, "electron-builder.json");
@@ -115,6 +116,15 @@ function assertLinuxSandboxBinaries(archs) {
 	}
 }
 
+export function resolveElectronBuilderPublishMode(explicitMode) {
+	const publishModes = new Set(["always", "never", "onTag", "onTagOrDraft"]);
+	const publishMode = explicitMode ?? "never";
+	if (!publishModes.has(publishMode)) {
+		throw new Error(`Unsupported electron-builder publish mode: ${publishMode}`);
+	}
+	return publishMode;
+}
+
 function main() {
 	assertBuildStageExists();
 	const cliOptions = parseCliOptions(process.argv.slice(2));
@@ -141,10 +151,7 @@ function main() {
 		throw new Error("The inno target creates custom artifacts; publish them through the release workflow.");
 	}
 	const electronBuilderTargets = usesInno ? ["dir"] : targets;
-	const publishModes = new Set(["always", "never", "onTag", "onTagOrDraft"]);
-	if (cliOptions.publish && !publishModes.has(cliOptions.publish)) {
-		throw new Error(`Unsupported electron-builder publish mode: ${cliOptions.publish}`);
-	}
+	const publishMode = resolveElectronBuilderPublishMode(cliOptions.publish);
 	const args = [
 		"electron-builder",
 		`--project=${buildStageDir}`,
@@ -152,7 +159,7 @@ function main() {
 		platformArgMap[platform],
 		...electronBuilderTargets,
 		...archs.map((arch) => archArgMap[arch]),
-		...(cliOptions.publish ? [`--publish=${cliOptions.publish}`] : []),
+		`--publish=${publishMode}`,
 	];
 
 	console.log(
@@ -179,4 +186,4 @@ function main() {
 	}
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

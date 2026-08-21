@@ -27,7 +27,12 @@ export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.El
 			onResetWorkspace={() => void model.actions.resetWorkspace()}
 			updatesDescription={updates.statusText}
 			updatesAction={
-				<UpdateCheckerAction checking={updates.checking} labels={updates.labels} onCheck={updates.onCheck} />
+				<UpdateCheckerAction
+					checking={updates.checking}
+					labels={updates.labels}
+					onCheck={updates.onCheck}
+					phase={updates.phase}
+				/>
 			}
 			updatesDetail={
 				showUpdateDetail ? (

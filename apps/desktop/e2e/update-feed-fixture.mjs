@@ -30,6 +30,10 @@ function yamlForVersion(version, artifact) {
 export async function startUpdateFeedFixture(versionOrOptions) {
 	const options = typeof versionOrOptions === "string" ? { version: versionOrOptions } : versionOrOptions;
 	const version = options.version;
+	const metadataDelayMs = options.metadataDelayMs ?? 0;
+	if (!Number.isInteger(metadataDelayMs) || metadataDelayMs < 0) {
+		throw new Error(`Invalid E2E fixture metadata delay: ${String(metadataDelayMs)}`);
+	}
 	const artifact = options.downloadable
 		? (() => {
 			const body = Buffer.from("vetta-packaged-e2e-update\n", "utf8");
@@ -41,7 +45,7 @@ export async function startUpdateFeedFixture(versionOrOptions) {
 		})()
 		: undefined;
 	const feedVersion = artifact ? incrementPatch(version) : version;
-	const server = createServer((request, response) => {
+	const server = createServer(async (request, response) => {
 		const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
 		if (artifact && pathname === `/${artifact.name}`) {
 			response.writeHead(200, {
@@ -55,6 +59,9 @@ export async function startUpdateFeedFixture(versionOrOptions) {
 		if (!/^\/latest(?:-mac|-linux)?\.yml$/.test(pathname)) {
 			response.writeHead(404).end();
 			return;
+		}
+		if (metadataDelayMs > 0) {
+			await new Promise((resolve) => setTimeout(resolve, metadataDelayMs));
 		}
 		const body = yamlForVersion(feedVersion, artifact);
 		response.writeHead(200, {

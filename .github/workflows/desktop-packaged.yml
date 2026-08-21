@@ -73,6 +73,12 @@ jobs:
         with:
           bun-version-file: package.json
 
+      - name: Set up Go for IM gateway
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/im-gateway/go.mod
+          cache-dependency-path: apps/im-gateway/go.sum
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 

@@ -40,9 +40,17 @@ export function UpdateCheckerAction({
 	checking,
 	labels,
 	onCheck,
-}: Pick<UpdateCheckerViewProps, "checking" | "labels" | "onCheck">): JSX.Element {
+	phase,
+}: Pick<UpdateCheckerViewProps, "checking" | "labels" | "onCheck" | "phase">): JSX.Element {
 	return (
-		<Button size="sm" variant="outline" onClick={onCheck} disabled={checking}>
+		<Button
+			size="sm"
+			variant="outline"
+			onClick={onCheck}
+			disabled={checking}
+			data-testid="updater-check"
+			data-updater-phase={phase}
+		>
 			<span className={`icon-[mdi--refresh] h-3.5 w-3.5 ${checking ? "animate-spin" : ""}`} />
 			{checking ? labels.checkingBtn : labels.check}
 		</Button>
@@ -67,7 +75,11 @@ export function UpdateCheckerDetail({
 	}
 
 	return (
-		<div className="space-y-2 rounded-lg border border-border bg-secondary p-3">
+		<div
+			className="space-y-2 rounded-lg border border-border bg-secondary p-3"
+			data-testid="updater-detail"
+			data-updater-phase={phase}
+		>
 			<div className="flex items-center justify-between gap-3">
 				<div className="min-w-0">
 					<span className="text-[13px] font-medium text-foreground">
@@ -78,7 +90,7 @@ export function UpdateCheckerDetail({
 					</span>
 				</div>
 				{phase === "available" && (
-					<Button size="sm" variant="primary" onClick={onPrimary}>
+					<Button size="sm" variant="primary" onClick={onPrimary} data-testid="updater-primary">
 						{labels.download}
 					</Button>
 				)}
@@ -88,7 +100,7 @@ export function UpdateCheckerDetail({
 					</span>
 				)}
 				{phase === "ready" && (
-					<Button size="sm" variant="primary" onClick={onPrimary}>
+					<Button size="sm" variant="primary" onClick={onPrimary} data-testid="updater-primary">
 						{labels.restart}
 					</Button>
 				)}
@@ -103,7 +115,12 @@ export function UpdateCheckerView(props: UpdateCheckerViewProps): JSX.Element {
 	return (
 		<div className="space-y-3">
 			<div className="flex justify-end">
-				<UpdateCheckerAction checking={props.checking} labels={props.labels} onCheck={props.onCheck} />
+				<UpdateCheckerAction
+					checking={props.checking}
+					labels={props.labels}
+					onCheck={props.onCheck}
+					phase={props.phase}
+				/>
 			</div>
 			<UpdateCheckerDetail
 				currentVersion={props.currentVersion}

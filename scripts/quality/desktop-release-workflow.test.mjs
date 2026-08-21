@@ -49,6 +49,18 @@ describe("Desktop release workflow contracts", () => {
 		}
 	});
 
+	it("installs the IM gateway Go toolchain from its module declaration", () => {
+		const packagedSmokeJob = packagedWorkflow.split("\n  smoke:\n")[1];
+		const releaseBuildJob = workflow.split("\n  build:\n")[1]?.split("\n  publish-github:\n")[0];
+		for (const jobSource of [packagedSmokeJob, releaseBuildJob]) {
+			expect(jobSource).toBeDefined();
+			expect(jobSource).toContain("Set up Go for IM gateway");
+			expect(jobSource).toContain("uses: actions/setup-go@v5");
+			expect(jobSource).toContain("go-version-file: apps/im-gateway/go.mod");
+			expect(jobSource).toContain("cache-dependency-path: apps/im-gateway/go.sum");
+		}
+	});
+
 	it("uses the same publish jobs for tagged stable and dispatched test/stable releases", () => {
 		expect(workflow).toContain("build_version:");
 		expect(workflow).toContain("should-publish: $" + "{{ steps.config.outputs.should_publish }}");
