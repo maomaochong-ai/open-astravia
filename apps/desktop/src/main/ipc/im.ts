@@ -7,7 +7,13 @@ import {
 	TEST_CONNECTION_PASS_MESSAGE,
 } from "../im-host/channels.js";
 import type { LogEvent } from "../im-host/host-protocol.js";
-import { getImHost, type SetConfigPayload, type WechatBindEvent, type WhatsappBindEvent } from "../im-host/index.js";
+import {
+	getImHost,
+	type SetConfigPayload,
+	type SignalBindEvent,
+	type WechatBindEvent,
+	type WhatsappBindEvent,
+} from "../im-host/index.js";
 import type { LegacyDetection } from "../im-host/migration.js";
 import { DEFAULT_IM_CONVERSATION_SESSION_DIR } from "./fs.js";
 
@@ -36,6 +42,12 @@ const CHANNELS = {
 	WHATSAPP_SUBSCRIBE: "vetta:im:whatsapp:subscribe",
 	WHATSAPP_UNSUBSCRIBE: "vetta:im:whatsapp:unsubscribe",
 	WHATSAPP_BIND_EVENT: "vetta:im:whatsapp:bind-event",
+	SIGNAL_START_BIND: "vetta:im:signal:start-bind",
+	SIGNAL_LOGOUT: "vetta:im:signal:logout",
+	SIGNAL_SUBSCRIBE: "vetta:im:signal:subscribe",
+	SIGNAL_UNSUBSCRIBE: "vetta:im:signal:unsubscribe",
+	SIGNAL_BIND_EVENT: "vetta:im:signal:bind-event",
+	CLEAR_CHANNEL: "vetta:im:clear-channel",
 	// Fire-and-forget broadcast: "something in the IM routing table
 	// changed, you may want to refresh." No payload, no subscription
 	// handshake — every webContents that wants it just listens.
@@ -50,9 +62,11 @@ interface SubscriptionEntry {
 const subscriptions = new Map<string, SubscriptionEntry>();
 const wechatSubscriptions = new Map<string, () => void>();
 const whatsappSubscriptions = new Map<string, () => void>();
+const signalSubscriptions = new Map<string, () => void>();
 let counter = 0;
 let wechatCounter = 0;
 let whatsappCounter = 0;
+let signalCounter = 0;
 
 export function registerImIpc(webContents: WebContents): () => void {
 	const host = getImHost();
@@ -248,6 +262,44 @@ export function registerImIpc(webContents: WebContents): () => void {
 		}
 	});
 
+	// =========================================================================
+	// Signal device link — mirrors the whatsapp channel set above. The QR
+	// payload is a sgnl:// URI rather than an image blob.
+	// =========================================================================
+	ipcMain.handle(CHANNELS.CLEAR_CHANNEL, async (_event, transport: unknown) => {
+		if (!isImTransportSelector(transport)) {
+			return { ok: false, error: `unknown transport: ${String(transport)}` };
+		}
+		return host.clearChannel(transport);
+	});
+
+	ipcMain.handle(CHANNELS.SIGNAL_START_BIND, async () => {
+		return host.startSignalBind();
+	});
+
+	ipcMain.handle(CHANNELS.SIGNAL_LOGOUT, async () => {
+		return host.signalLogout();
+	});
+
+	ipcMain.handle(CHANNELS.SIGNAL_SUBSCRIBE, () => {
+		signalCounter += 1;
+		const id = `im-signal-sub-${signalCounter}`;
+		const unsub = host.subscribeSignalBind((event: SignalBindEvent) => {
+			if (webContents.isDestroyed()) return;
+			webContents.send(CHANNELS.SIGNAL_BIND_EVENT, id, event);
+		});
+		signalSubscriptions.set(id, unsub);
+		return { subscriptionId: id };
+	});
+
+	ipcMain.handle(CHANNELS.SIGNAL_UNSUBSCRIBE, (_event, id: string) => {
+		const unsub = signalSubscriptions.get(id);
+		if (unsub) {
+			unsub();
+			signalSubscriptions.delete(id);
+		}
+	});
+
 	return () => {
 		sessionChangeUnsub();
 		if (fsDebounce) clearTimeout(fsDebounce);
@@ -276,6 +328,11 @@ export function registerImIpc(webContents: WebContents): () => void {
 		ipcMain.removeHandler(CHANNELS.WHATSAPP_LOGOUT);
 		ipcMain.removeHandler(CHANNELS.WHATSAPP_SUBSCRIBE);
 		ipcMain.removeHandler(CHANNELS.WHATSAPP_UNSUBSCRIBE);
+		ipcMain.removeHandler(CHANNELS.CLEAR_CHANNEL);
+		ipcMain.removeHandler(CHANNELS.SIGNAL_START_BIND);
+		ipcMain.removeHandler(CHANNELS.SIGNAL_LOGOUT);
+		ipcMain.removeHandler(CHANNELS.SIGNAL_SUBSCRIBE);
+		ipcMain.removeHandler(CHANNELS.SIGNAL_UNSUBSCRIBE);
 		for (const entry of subscriptions.values()) {
 			entry.statusUnsub();
 			entry.logUnsub();
@@ -289,5 +346,9 @@ export function registerImIpc(webContents: WebContents): () => void {
 			unsub();
 		}
 		whatsappSubscriptions.clear();
+		for (const unsub of signalSubscriptions.values()) {
+			unsub();
+		}
+		signalSubscriptions.clear();
 	};
 }

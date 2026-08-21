@@ -7,6 +7,10 @@ import {
 	EVENT_LOG,
 	EVENT_METRIC,
 	EVENT_READY,
+	EVENT_SIGNAL_BIND_STATUS,
+	EVENT_SIGNAL_BOUND,
+	EVENT_SIGNAL_QR,
+	EVENT_SIGNAL_UNBOUND,
 	EVENT_STATE_PATCH,
 	EVENT_STATUS,
 	EVENT_WECHAT_BIND_STATUS,
@@ -22,6 +26,8 @@ import {
 	FRAME_CONFIG_UPDATE,
 	FRAME_INIT,
 	FRAME_SHUTDOWN,
+	FRAME_SIGNAL_BIND_START,
+	FRAME_SIGNAL_LOGOUT,
 	FRAME_WECHAT_BIND_START,
 	FRAME_WECHAT_LOGOUT,
 	FRAME_WHATSAPP_BIND_START,
@@ -32,7 +38,11 @@ import {
 	type OutboundEvent,
 	type ReadyEvent,
 	type SessionStateEntry,
+	type SignalBindStatusEvent,
+	type SignalBoundEvent,
 	type SignalConfig,
+	type SignalQREvent,
+	type SignalUnboundEvent,
 	type SlackConfig,
 	type StatePatchEvent,
 	type StatusEvent,
@@ -105,6 +115,18 @@ export interface SidecarHooks {
 	onWhatsappBound?: (event: WhatsappBoundEvent) => void;
 	/** Session cleared (logout or server-side). Sidecar is now in awaiting_bind. */
 	onWhatsappUnbound?: (event: WhatsappUnboundEvent) => void;
+
+	// Signal-specific link flow events, mirroring the wechat set. Emitted
+	// only while signal is the active transport in managed mode and the
+	// parent has driven a link via startSignalBind().
+	/** The device-link URI is ready for the user to scan. */
+	onSignalQR?: (event: SignalQREvent) => void;
+	/** A transition in the link flow. */
+	onSignalBindStatus?: (event: SignalBindStatusEvent) => void;
+	/** Link succeeded — the account number signal-cli registered as. */
+	onSignalBound?: (event: SignalBoundEvent) => void;
+	/** Link dropped (logout). Sidecar is now in awaiting_bind. */
+	onSignalUnbound?: (event: SignalUnboundEvent) => void;
 }
 
 /**
@@ -138,6 +160,13 @@ export interface SidecarConfig {
 	 * on PATH); the dev path populates it too so behavior matches.
 	 */
 	codingAgent?: CodingAgentSpec;
+	/**
+	 * Extra environment for the sidecar process, merged over the parent's
+	 * env. Carries the resolved proxy (see proxy-env.ts): the Go sidecar
+	 * only honours HTTPS_PROXY / HTTP_PROXY / NO_PROXY, never the OS proxy
+	 * settings that Electron itself follows.
+	 */
+	proxyEnv?: Record<string, string>;
 }
 
 export interface SidecarManagerOptions {
@@ -247,6 +276,7 @@ export class SidecarManager {
 			child = spawn(cfg.binaryPath, ["host"], {
 				stdio: ["pipe", "pipe", "pipe"],
 				windowsHide: true,
+				env: { ...process.env, ...cfg.proxyEnv },
 			});
 		} catch (err) {
 			this.handleSpawnFailure(err instanceof Error ? err.message : String(err));
@@ -373,6 +403,41 @@ export class SidecarManager {
 		this.writeFrame({ type: FRAME_WHATSAPP_LOGOUT });
 	}
 
+	/**
+	 * Send a signal_bind_start frame to a running sidecar, which drives
+	 * `signal-cli link` and streams the QR URI back. Same caveats as
+	 * startWechatBind(): ignored unless signal is the active transport.
+	 */
+	startSignalBind(): void {
+		if (this.state.kind !== "running") {
+			this.hooks.onLog?.({
+				type: EVENT_LOG,
+				level: "warn",
+				msg: `sidecar not running; cannot start signal bind (state=${this.state.kind})`,
+				time: new Date().toISOString(),
+			});
+			return;
+		}
+		this.writeFrame({ type: FRAME_SIGNAL_BIND_START });
+	}
+
+	/**
+	 * Send a signal_logout frame to a running sidecar. Drops the linked
+	 * account and parks the sidecar in awaiting_bind state.
+	 */
+	signalLogout(): void {
+		if (this.state.kind !== "running") {
+			this.hooks.onLog?.({
+				type: EVENT_LOG,
+				level: "warn",
+				msg: `sidecar not running; cannot send signal logout (state=${this.state.kind})`,
+				time: new Date().toISOString(),
+			});
+			return;
+		}
+		this.writeFrame({ type: FRAME_SIGNAL_LOGOUT });
+	}
+
 	private attachReaders(child: ChildProcess): void {
 		if (child.stdout) {
 			const rl: Interface = createInterface({ input: child.stdout });
@@ -450,6 +515,18 @@ export class SidecarManager {
 				break;
 			case EVENT_WHATSAPP_UNBOUND:
 				this.hooks.onWhatsappUnbound?.(event);
+				break;
+			case EVENT_SIGNAL_QR:
+				this.hooks.onSignalQR?.(event);
+				break;
+			case EVENT_SIGNAL_BIND_STATUS:
+				this.hooks.onSignalBindStatus?.(event);
+				break;
+			case EVENT_SIGNAL_BOUND:
+				this.hooks.onSignalBound?.(event);
+				break;
+			case EVENT_SIGNAL_UNBOUND:
+				this.hooks.onSignalUnbound?.(event);
 				break;
 		}
 	}

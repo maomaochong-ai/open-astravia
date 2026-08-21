@@ -20,6 +20,8 @@ export const FRAME_WECHAT_BIND_START = "wechat_bind_start" as const;
 export const FRAME_WECHAT_LOGOUT = "wechat_logout" as const;
 export const FRAME_WHATSAPP_BIND_START = "whatsapp_bind_start" as const;
 export const FRAME_WHATSAPP_LOGOUT = "whatsapp_logout" as const;
+export const FRAME_SIGNAL_BIND_START = "signal_bind_start" as const;
+export const FRAME_SIGNAL_LOGOUT = "signal_logout" as const;
 
 export const EVENT_READY = "ready" as const;
 export const EVENT_LOG = "log" as const;
@@ -34,6 +36,10 @@ export const EVENT_WHATSAPP_QR = "whatsapp_qr" as const;
 export const EVENT_WHATSAPP_BIND_STATUS = "whatsapp_bind_status" as const;
 export const EVENT_WHATSAPP_BOUND = "whatsapp_bound" as const;
 export const EVENT_WHATSAPP_UNBOUND = "whatsapp_unbound" as const;
+export const EVENT_SIGNAL_QR = "signal_qr" as const;
+export const EVENT_SIGNAL_BIND_STATUS = "signal_bind_status" as const;
+export const EVENT_SIGNAL_BOUND = "signal_bound" as const;
+export const EVENT_SIGNAL_UNBOUND = "signal_unbound" as const;
 
 // =============================================================================
 // Shared payload types
@@ -97,9 +103,31 @@ export interface DiscordConfig {
  * slot only says where it listens and which account it serves.
  * `attachmentsDir` is signal-cli's attachment cache, for inbound media.
  */
+/**
+ * Signal slot. Two modes share it:
+ *
+ *   - managed (the default): `endpoint` is empty and the sidecar locates
+ *     the user's signal-cli install, drives the device-link QR flow, and
+ *     runs `signal-cli daemon --http` itself on a loopback port. `account`
+ *     is discovered from signal-cli, so the user never types it.
+ *   - user-managed (advanced): `endpoint` points at a daemon the user runs
+ *     themselves and `account` names the number it serves.
+ *
+ * signal-cli — not this protocol — always owns the Signal credentials.
+ */
 export interface SignalConfig {
-	endpoint: string;
-	account: string;
+	endpoint?: string;
+	account?: string;
+	/** Explicit signal-cli executable. Empty lets the sidecar search. */
+	cliPath?: string;
+	/** signal-cli `--config` directory. */
+	configDir?: string;
+	/**
+	 * Marks configDir as created and owned by this app, which is what
+	 * allows an unbind to delete the local account data. Never set for a
+	 * directory the user manages themselves.
+	 */
+	ownsConfigDir?: boolean;
 	allowedNumbers?: string[];
 	attachmentsDir?: string;
 }
@@ -258,6 +286,23 @@ export interface WhatsappLogoutFrame {
 	type: typeof FRAME_WHATSAPP_LOGOUT;
 }
 
+/**
+ * Ask the sidecar to begin (or restart) a signal-cli device-link flow. An
+ * in-progress link keeps running.
+ */
+export interface SignalBindStartFrame {
+	type: typeof FRAME_SIGNAL_BIND_START;
+}
+
+/**
+ * Ask the sidecar to stop the signal transport and forget the linked
+ * account. Local account data is only deleted when the config directory
+ * belongs to this app (SignalConfig.ownsConfigDir).
+ */
+export interface SignalLogoutFrame {
+	type: typeof FRAME_SIGNAL_LOGOUT;
+}
+
 export type InboundFrame =
 	| InitFrame
 	| ConfigUpdateFrame
@@ -265,7 +310,9 @@ export type InboundFrame =
 	| WechatBindStartFrame
 	| WechatLogoutFrame
 	| WhatsappBindStartFrame
-	| WhatsappLogoutFrame;
+	| WhatsappLogoutFrame
+	| SignalBindStartFrame
+	| SignalLogoutFrame;
 
 // =============================================================================
 // Outbound events (child → parent)
@@ -390,6 +437,38 @@ export interface WhatsappUnboundEvent {
 	reason?: string;
 }
 
+/**
+ * The `sgnl://linkdevice?...` URI signal-cli printed, for the parent to
+ * render as a QR code (Signal → Settings → Linked devices).
+ */
+export interface SignalQREvent {
+	type: typeof EVENT_SIGNAL_QR;
+	uri: string;
+	attempt: number;
+}
+
+/**
+ * A transition in the signal link flow. Status reuses the WechatBindStatus
+ * values (confirmed / failed / cancelled); `error` is set only on "failed".
+ */
+export interface SignalBindStatusEvent {
+	type: typeof EVENT_SIGNAL_BIND_STATUS;
+	status: WechatBindStatus;
+	error?: string;
+}
+
+/** Completed link, carrying the account signal-cli is registered as. */
+export interface SignalBoundEvent {
+	type: typeof EVENT_SIGNAL_BOUND;
+	account?: string;
+}
+
+/** Signal link dropped; the sidecar is back in awaiting_bind. */
+export interface SignalUnboundEvent {
+	type: typeof EVENT_SIGNAL_UNBOUND;
+	reason?: string;
+}
+
 export type OutboundEvent =
 	| ReadyEvent
 	| LogEvent
@@ -403,7 +482,11 @@ export type OutboundEvent =
 	| WhatsappQREvent
 	| WhatsappBindStatusEvent
 	| WhatsappBoundEvent
-	| WhatsappUnboundEvent;
+	| WhatsappUnboundEvent
+	| SignalQREvent
+	| SignalBindStatusEvent
+	| SignalBoundEvent
+	| SignalUnboundEvent;
 
 // =============================================================================
 // Encode / decode helpers
@@ -442,6 +525,10 @@ export function decodeEvent(line: string): OutboundEvent | null {
 		case EVENT_WHATSAPP_BIND_STATUS:
 		case EVENT_WHATSAPP_BOUND:
 		case EVENT_WHATSAPP_UNBOUND:
+		case EVENT_SIGNAL_QR:
+		case EVENT_SIGNAL_BIND_STATUS:
+		case EVENT_SIGNAL_BOUND:
+		case EVENT_SIGNAL_UNBOUND:
 			return parsed as OutboundEvent;
 		default:
 			throw new Error(`hostproto: unknown event type "${parsed.type}"`);

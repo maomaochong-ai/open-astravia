@@ -1,6 +1,6 @@
 import { ModelSelect } from "@shared/components/ModelSelect";
 import { Button, Switch, cn } from "@vetta/ui";
-import { SettingHeading, SettingRow, SettingSection } from "@vetta/theme-ui/settings";
+import { ImChannelIconView, SettingHeading, SettingRow, SettingSection } from "@vetta/theme-ui/settings";
 import { useTranslation } from "react-i18next";
 import { SettingsAiAssist } from "../ai-assist";
 import { SETTINGS_SECTION } from "../registry";
@@ -17,6 +17,8 @@ import {
 } from "./im-channel-catalog";
 import type { ImBridgeSettingsModel } from "./useImBridgeSettingsModel";
 import { ImChannelConfigDialog } from "./ImChannelConfigDialog";
+import { ImChannelGuideDialog } from "./ImChannelGuideDialog";
+import { SignalBindDialog } from "./SignalBindDialog";
 import { WechatBindDialog } from "./WechatBindDialog";
 
 const GENERIC_CHANNEL_DESC_KEY = {
@@ -65,6 +67,15 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 						: t("wechatSubtitle"),
 					configureLabel: config.wechat.bound ? t("wechatManage") : t("wechatBind"),
 					onConfigure: model.onOpenWechatDialog,
+				};
+			case "signal":
+				return {
+					name: channel.brandName,
+					subtitle: config.signal.bound
+						? `${t("bound")}${config.signal.account ? ` (${config.signal.account})` : ""}`
+						: t("signalSubtitle"),
+					configureLabel: config.signal.bound ? t("signalManage") : t("signalBind"),
+					onConfigure: model.onOpenSignalDialog,
 				};
 			case "generic":
 				return {
@@ -131,9 +142,7 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 			{/* 概览：当前活动渠道与连接状态 + 总开关 + 对话模型 */}
 			<SettingSection section={SETTINGS_SECTION["imbridge-basics"]} title={false}>
 				<div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4">
-					<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-						<span className={cn(activeChannel.iconClass, "h-4 w-4 text-primary")} />
-					</span>
+					<ImChannelIconView icon={activeChannel.icon} isActive className="h-10 w-10" />
 					<div className="min-w-0 flex-1 basis-40">
 						<div className="truncate text-[15px] font-semibold text-foreground">
 							{activePresentation.name}
@@ -225,7 +234,7 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 								key={channel.transport}
 								name={presentation.name}
 								subtitle={presentation.subtitle}
-								iconClass={channel.iconClass}
+								icon={channel.icon}
 								configured={isImChannelConfigured(config, channel.transport)}
 								isActive={isActive}
 								transportStatus={model.transportStatus}
@@ -241,8 +250,9 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 			</div>
 
 			<ImFeishuDialog model={model} />
-			<ImChannelConfigDialog model={model.channelDialog} />
+			<ImChannelConfigDialog model={model.channelDialog} onOpenGuide={(transport) => model.setGuideTransport(transport)} />
 			<WechatBindDialog
+				onOpenGuide={() => model.setGuideTransport("wechat")}
 				open={model.wechatDialogOpen}
 				onOpenChange={model.setWechatDialogOpen}
 				bound={config.wechat.bound}
@@ -251,6 +261,19 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 				onLogout={() => void model.onWechatLogout()}
 				onConfirmedRefresh={model.onWechatConfirmedRefresh}
 			/>
+			<SignalBindDialog
+				onOpenGuide={() => model.setGuideTransport("signal")}
+				open={model.signalDialogOpen}
+				onOpenChange={model.setSignalDialogOpen}
+				bound={config.signal.bound}
+				account={config.signal.account}
+				cliDetectedPath={config.signal.cliDetectedPath}
+				cliInstallHint={config.signal.cliInstallHint}
+				onLogout={() => void model.onSignalLogout()}
+				onConfirmedRefresh={model.onSignalConfirmedRefresh}
+				onOpenAdvanced={() => model.onOpenChannelDialog("signal")}
+			/>
+			<ImChannelGuideDialog transport={model.guideTransport} onClose={() => model.setGuideTransport(null)} />
 
 			{/* 状态与日志：一条紧凑的进程信息栏 */}
 			<SettingSection section={SETTINGS_SECTION["imbridge-status"]} title={t("section_imbridge-status")}>

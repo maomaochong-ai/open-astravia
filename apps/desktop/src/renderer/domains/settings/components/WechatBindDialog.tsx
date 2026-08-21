@@ -8,6 +8,7 @@ export function WechatBindDialog(props: {
 	ilinkBotId?: string;
 	ilinkUserId?: string;
 	onLogout: () => void;
+	onOpenGuide: () => void;
 	onConfirmedRefresh: () => void;
 }): JSX.Element {
 	return <WechatBindDialogView {...useWechatBindDialogModel(props)} />;

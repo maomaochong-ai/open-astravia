@@ -80,6 +80,19 @@ export interface ImChannelDescriptor {
 	 */
 	hasRequiredCredentials(config: ImConfig, credentials: ImCredentials): boolean;
 	/**
+	 * Strip this channel's identifiers from the config. Pure: the caller
+	 * persists the result. Fields owned by the sidecar (wechat/whatsapp
+	 * `bound`, signal's linked account) are reset here too, but clearing
+	 * the sidecar's own on-disk state is the caller's job — see
+	 * ImHost.clearChannel.
+	 */
+	clearConfig(config: ImConfig): ImConfig;
+	/**
+	 * Strip this channel's secrets from the credential store. Channels
+	 * without secrets return the input unchanged.
+	 */
+	clearCredentials(credentials: ImCredentials): ImCredentials;
+	/**
 	 * Lightweight structural check for the renderer's test-connection
 	 * button. Returns a user-facing error string or null when the payload
 	 * passes. Channels without testable fields omit it.
@@ -103,6 +116,8 @@ export const IM_CHANNEL_DESCRIPTORS: Record<ImTransportSelector, ImChannelDescri
 		id: "feishu",
 		credentialKind: "static",
 		hasRequiredCredentials: (config, credentials) => Boolean(config.feishu.appId && credentials.feishu?.appSecret),
+		clearConfig: (config) => ({ ...config, feishu: { appId: "" } }),
+		clearCredentials: ({ feishu: _dropped, ...rest }) => rest,
 		validate: (payload) => {
 			const appId = trimmed(payload.appId);
 			if (appId === "") return "App ID 不能为空";
@@ -117,11 +132,15 @@ export const IM_CHANNEL_DESCRIPTORS: Record<ImTransportSelector, ImChannelDescri
 		// The sidecar boots into awaiting_bind when no credentials exist,
 		// so wechat is always startable.
 		hasRequiredCredentials: () => true,
+		clearConfig: (config) => ({ ...config, wechat: { bound: false } }),
+		clearCredentials: (credentials) => credentials,
 	},
 	telegram: {
 		id: "telegram",
 		credentialKind: "static",
 		hasRequiredCredentials: (_config, credentials) => Boolean(credentials.telegram?.botToken),
+		clearConfig: (config) => ({ ...config, telegram: {} }),
+		clearCredentials: ({ telegram: _dropped, ...rest }) => rest,
 		validate: (payload) => {
 			const token = trimmed(payload.botToken);
 			if (token === "") return "Bot Token 不能为空";
@@ -134,6 +153,8 @@ export const IM_CHANNEL_DESCRIPTORS: Record<ImTransportSelector, ImChannelDescri
 		credentialKind: "static",
 		hasRequiredCredentials: (_config, credentials) =>
 			Boolean(credentials.slack?.botToken && credentials.slack?.appToken),
+		clearConfig: (config) => ({ ...config, slack: {} }),
+		clearCredentials: ({ slack: _dropped, ...rest }) => rest,
 		validate: (payload) => {
 			const botToken = trimmed(payload.botToken);
 			const appToken = trimmed(payload.appToken);
@@ -148,6 +169,8 @@ export const IM_CHANNEL_DESCRIPTORS: Record<ImTransportSelector, ImChannelDescri
 		id: "discord",
 		credentialKind: "static",
 		hasRequiredCredentials: (_config, credentials) => Boolean(credentials.discord?.botToken),
+		clearConfig: (config) => ({ ...config, discord: {} }),
+		clearCredentials: ({ discord: _dropped, ...rest }) => rest,
 		validate: (payload) => {
 			if (trimmed(payload.botToken) === "") return "Bot Token 不能为空";
 			return null;
@@ -155,18 +178,33 @@ export const IM_CHANNEL_DESCRIPTORS: Record<ImTransportSelector, ImChannelDescri
 	},
 	signal: {
 		id: "signal",
-		// Endpoint + account are non-secret identifiers; they live in the
-		// plaintext config-store rather than the credential-store, but the
-		// user still enters them statically.
-		credentialKind: "static",
-		hasRequiredCredentials: (config) => Boolean(config.signal.endpoint && config.signal.account),
+		// Managed by default: the sidecar finds signal-cli, drives the
+		// device link via QR, and runs the daemon itself, so there is
+		// nothing to type — same shape as wechat/whatsapp. The advanced
+		// mode (user-run daemon) still takes an endpoint + account, and
+		// those are non-secret identifiers kept in the plaintext config.
+		credentialKind: "qr-bind",
+		// The sidecar boots into awaiting_bind when no device is linked,
+		// so signal is always startable in managed mode; the advanced mode
+		// needs both identifiers before the transport can build.
+		hasRequiredCredentials: (config) => !config.signal.endpoint || Boolean(config.signal.account),
+		// The linked device itself lives in signal-cli's config directory;
+		// the sidecar clears that on signal_logout.
+		clearConfig: (config) => ({ ...config, signal: { bound: false } }),
+		clearCredentials: (credentials) => credentials,
 		validate: (payload) => {
 			const endpoint = trimmed(payload.endpoint);
 			const account = trimmed(payload.account);
-			if (endpoint === "") return "signal-cli 服务地址不能为空";
-			if (!/^https?:\/\//.test(endpoint)) return "signal-cli 服务地址格式不正确（应以 http:// 或 https:// 开头）";
-			if (account === "") return "账号不能为空";
-			if (!/^\+\d{5,}$/.test(account)) return "账号格式不正确（应为 E.164 格式，如 +8613800000000）";
+			// Managed mode: nothing to validate structurally — the QR flow
+			// is the check.
+			if (endpoint === "" && account === "") return null;
+			if (endpoint !== "" && !/^https?:\/\//.test(endpoint)) {
+				return "signal-cli 服务地址格式不正确（应以 http:// 或 https:// 开头）";
+			}
+			if (endpoint !== "" && account === "") return "填写了服务地址时，账号不能为空";
+			if (account !== "" && !/^\+\d{5,}$/.test(account)) {
+				return "账号格式不正确（应为 E.164 格式，如 +8613800000000）";
+			}
 			return null;
 		},
 	},
@@ -175,12 +213,19 @@ export const IM_CHANNEL_DESCRIPTORS: Record<ImTransportSelector, ImChannelDescri
 		credentialKind: "qr-bind",
 		// Same as wechat: sidecar enters awaiting_bind without a session.
 		hasRequiredCredentials: () => true,
+		clearConfig: (config) => ({ ...config, whatsapp: { bound: false } }),
+		clearCredentials: (credentials) => credentials,
 	},
 	imessage: {
 		id: "imessage",
 		credentialKind: "local-permission",
 		// Access is macOS permission-gated on the host; nothing to check here.
 		hasRequiredCredentials: () => true,
+		// No credentials to drop — clearing resets the local overrides. The
+		// macOS permissions themselves are the user's to revoke in System
+		// Settings; no app can take them back on their behalf.
+		clearConfig: (config) => ({ ...config, imessage: {} }),
+		clearCredentials: (credentials) => credentials,
 	},
 };
 

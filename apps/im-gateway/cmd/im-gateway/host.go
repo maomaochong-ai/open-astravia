@@ -183,6 +183,7 @@ func runHostWithIO(opts hostOptions) int {
 	//    legitimate startup state for the wechat slot — we park the
 	//    runtime instead of failing.
 	currentSpec := specFromInit(initFrame)
+	currentSpec.Log = emitLog
 	tr, err := opts.buildTransport(currentSpec)
 	awaitingBind := false
 	if errors.Is(err, errAwaitingBind) {
@@ -250,19 +251,12 @@ func runHostWithIO(opts hostOptions) int {
 			"awaitingBind":    awaitingBind,
 		})
 
-	// 5b. Set up the wechat bind coordinator if wechat is the active
-	//     transport. The rebuild channel signals the main loop that a
-	//     bind has just succeeded and the transport should be (re)built.
-	wechatRebuildCh := make(chan struct{}, 1)
-	var wcoord *wechatBindCoordinator
-	if currentSpec.Wechat != nil && currentSpec.Wechat.Enabled {
-		wcoord = newWechatBindCoordinator(
-			currentSpec.WechatStatePath,
-			out,
-			emitLog,
-			wechatRebuildCh,
-		)
-	}
+	// 5b. Set up the bind coordinator for the active pairing-based channel
+	//     (wechat QR scan / signal device link), if any. The rebuild
+	//     channel signals the main loop that a bind has just succeeded and
+	//     the transport should be (re)built.
+	bindRebuildCh := make(chan struct{}, 1)
+	coord, coordKind := newBindCoordinator(currentSpec, out, emitLog, bindRebuildCh)
 
 	// 6. Main loop: handle inbound control frames until EOF / shutdown /
 	// transport failure.
@@ -273,7 +267,9 @@ func runHostWithIO(opts hostOptions) int {
 		stateStore: stateStore,
 		emitLog:    emitLog,
 		emitStatus: emitStatus,
-		wcoord:     wcoord,
+		coord:      coord,
+		coordKind:  coordKind,
+		rebuildCh:  bindRebuildCh,
 		spec:       currentSpec,
 	}
 
@@ -302,7 +298,7 @@ func runHostWithIO(opts hostOptions) int {
 			tr = newPlaceholderTransport()
 			r.SetTransport(tr)
 			emitStatus(hostproto.TransportStatusAwaitingBind, "")
-			emitLog("info", "transport awaiting wechat bind", nil)
+			emitLog("info", "transport awaiting bind", map[string]any{"channel": hostState.coordKind})
 			return
 		}
 		if buildErr != nil {
@@ -332,12 +328,12 @@ loop:
 				shutdownReason = "shutdown frame"
 				break loop
 			}
-			if action.startBind && hostState.wcoord != nil {
-				hostState.wcoord.Start(context.Background())
+			if action.startBind && hostState.coord != nil {
+				hostState.coord.Start(context.Background())
 			}
-			if action.logout && hostState.wcoord != nil {
-				if err := hostState.wcoord.LogoutAndClear("user logout"); err != nil {
-					emitLog("error", "wechat logout failed", map[string]any{"err": err.Error()})
+			if action.logout && hostState.coord != nil {
+				if err := hostState.coord.LogoutAndClear("user logout"); err != nil {
+					emitLog("error", "logout failed", map[string]any{"channel": hostState.coordKind, "err": err.Error()})
 				} else {
 					rebuildTransport()
 				}
@@ -345,7 +341,7 @@ loop:
 			if action.rebuild {
 				rebuildTransport()
 			}
-		case <-wechatRebuildCh:
+		case <-bindRebuildCh:
 			// Bind goroutine signalled success.
 			rebuildTransport()
 		case err := <-rdr.Err():
@@ -358,9 +354,10 @@ loop:
 			// dead but the user can rescan. Clear the persisted credentials,
 			// drop back to a placeholder + awaiting_bind, and keep the
 			// sidecar alive so the next wechat_bind_start works.
-			if err != nil && errors.Is(err, ilink.ErrSessionTimeout) && hostState.wcoord != nil {
+			wcoord, isWechat := hostState.coord.(*wechatBindCoordinator)
+			if err != nil && errors.Is(err, ilink.ErrSessionTimeout) && isWechat {
 				emitLog("warn", "wechat session expired, awaiting re-bind", map[string]any{"err": err.Error()})
-				if clearErr := hostState.wcoord.LogoutAndClear("session timeout"); clearErr != nil {
+				if clearErr := wcoord.LogoutAndClear("session timeout"); clearErr != nil {
 					emitLog("error", "wechat clear after session timeout failed", map[string]any{"err": clearErr.Error()})
 				}
 				tCancel()
@@ -419,9 +416,15 @@ type hostRuntime struct {
 	emitLog    func(level, msg string, fields map[string]any)
 	emitStatus func(status, lastErr string)
 
-	// wcoord is the wechat bind coordinator. nil when wechat is not the
-	// active transport (or has not been selected via config_update yet).
-	wcoord *wechatBindCoordinator
+	// coord drives the active pairing-based channel's bind flow. nil when
+	// the active transport needs no pairing (or none has been selected via
+	// config_update yet); coordKind names the channel it belongs to so
+	// frames for a different channel are ignored rather than misrouted.
+	coord     bindCoordinator
+	coordKind string
+	// rebuildCh is handed to freshly constructed coordinators so a bind
+	// completed after a config_update still reaches the main loop.
+	rebuildCh chan<- struct{}
 
 	// spec is the most-recent build spec. Updated by config_update so
 	// rebuild calls always use the latest selection.
@@ -451,36 +454,31 @@ func (h *hostRuntime) handleFrame(frame any) frameAction {
 			h.emitLog("warn", "config_update with empty body, ignored", nil)
 			return frameAction{}
 		}
+		next.Log = h.emitLog
 		h.spec = next
-		// If the active transport is now wechat, ensure the bind
-		// coordinator is constructed (or refreshed with the new path).
-		if h.spec.Wechat != nil && h.spec.Wechat.Enabled {
-			if h.wcoord == nil {
-				h.wcoord = newWechatBindCoordinator(h.spec.WechatStatePath, h.out, h.emitLog, nil)
+		// Rebuild the coordinator for whatever channel is now active. A
+		// coordinator for a channel we just switched away from is
+		// cancelled so its in-flight bind cannot resurface.
+		kind := bindCoordinatorKind(h.spec)
+		if kind != h.coordKind {
+			if h.coord != nil {
+				h.coord.Cancel()
 			}
-		} else {
-			// Switching away from wechat — drop the coordinator so
-			// future bind frames are ignored.
-			if h.wcoord != nil {
-				h.wcoord.Cancel()
-				h.wcoord = nil
-			}
+			h.coord, h.coordKind = newBindCoordinator(h.spec, h.out, h.emitLog, h.rebuildCh)
 		}
 		return frameAction{rebuild: true}
 
 	case *hostproto.WechatBindStartFrame:
-		if h.wcoord == nil {
-			h.emitLog("warn", "wechat_bind_start ignored: wechat not active", nil)
-			return frameAction{}
-		}
-		return frameAction{startBind: true}
+		return h.bindFrameAction("wechat", "wechat_bind_start", frameAction{startBind: true})
 
 	case *hostproto.WechatLogoutFrame:
-		if h.wcoord == nil {
-			h.emitLog("warn", "wechat_logout ignored: wechat not active", nil)
-			return frameAction{}
-		}
-		return frameAction{logout: true}
+		return h.bindFrameAction("wechat", "wechat_logout", frameAction{logout: true})
+
+	case *hostproto.SignalBindStartFrame:
+		return h.bindFrameAction("signal", "signal_bind_start", frameAction{startBind: true})
+
+	case *hostproto.SignalLogoutFrame:
+		return h.bindFrameAction("signal", "signal_logout", frameAction{logout: true})
 
 	case *hostproto.ShutdownFrame:
 		return frameAction{stop: true}
@@ -488,6 +486,51 @@ func (h *hostRuntime) handleFrame(frame any) frameAction {
 	default:
 		h.emitLog("warn", "unknown frame", map[string]any{"type": fmt.Sprintf("%T", frame)})
 		return frameAction{}
+	}
+}
+
+// bindFrameAction gates a bind/logout frame on the coordinator that is
+// actually active. A frame for another channel is dropped with a warning
+// rather than driving the wrong pairing flow.
+func (h *hostRuntime) bindFrameAction(channel, frameName string, action frameAction) frameAction {
+	if h.coord == nil || h.coordKind != channel {
+		h.emitLog("warn", frameName+" ignored: "+channel+" not active", nil)
+		return frameAction{}
+	}
+	return action
+}
+
+// bindCoordinatorKind names the pairing-based channel the spec selects, or
+// "" when the active channel needs no pairing.
+func bindCoordinatorKind(spec *buildSpec) string {
+	switch {
+	case spec == nil:
+		return ""
+	case spec.Wechat != nil && spec.Wechat.Enabled:
+		return "wechat"
+	case signalManaged(spec.Signal):
+		// A user-run daemon (explicit endpoint) has no link flow to drive.
+		return "signal"
+	default:
+		return ""
+	}
+}
+
+// newBindCoordinator constructs the coordinator for the spec's active
+// pairing-based channel. Returns (nil, "") when there is nothing to pair.
+func newBindCoordinator(
+	spec *buildSpec,
+	out *hostproto.Writer,
+	emitLog func(level, msg string, fields map[string]any),
+	rebuildCh chan<- struct{},
+) (bindCoordinator, string) {
+	switch bindCoordinatorKind(spec) {
+	case "wechat":
+		return newWechatBindCoordinator(spec.WechatStatePath, out, emitLog, rebuildCh), "wechat"
+	case "signal":
+		return newSignalBindCoordinator(spec.Signal, out, emitLog, rebuildCh), "signal"
+	default:
+		return nil, ""
 	}
 }
 

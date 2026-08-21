@@ -6,6 +6,7 @@ All notable changes to `@vetta/im-gateway` are documented in this file.
 
 ### Breaking Changes
 
+- 独立模式（`im-gateway start`）的 Signal 默认行为改变：`transport.signal.endpoint` 留空不再表示「连接 127.0.0.1:8080 上的 daemon」，而是由网关自行托管 signal-cli。仍想连自己运行的 daemon 时显式写上 `endpoint`（此时 `account` 必填）。新增可选的 `transport.signal.cliPath` / `configDir`。
 - IM 侧彻底移除「项目」概念，并与 desktop「对话」物理分家：所有 IM 会话统一落在 im-gateway 自己的 cwd（`~/.vetta/im-gateway/conversation/`），与 desktop 的 `~/.vetta/conversation` 互不可见。删除 `/projects` `/use` 命令；`/new` 改为「在当前对话中开启新 session」。`config.PathsConfig.ConversationCwd` 默认值同步切换。详见 ADR-0004 与 ADR-0005（`docs/adr/`）。
 - `hostproto` 破坏性升级：`InitFrame.projects` 与 `ProjectsUpdateFrame` 删除；`InitFrame.conversationCwd`（必填，绝对路径）取而代之。`SessionStateEntry` / `StatePatchEvent` 中的 `projectId` 字段更名为 `chatId`。
 - `internal/projects` 包整体移除；`router.New` 签名从 `(tr, cmds, store, projects, pool)` 变为 `(tr, cmds, store, pool, conversationCwd)`。
@@ -17,6 +18,12 @@ All notable changes to `@vetta/im-gateway` are documented in this file.
 - `host` mode never writes log files. Logs are surfaced as NDJSON `log` events on stdout for the parent process to consume.
 
 ### Added
+
+- Signal 接入改为「装好 signal-cli 即可扫码」：网关自己找到本机 signal-cli（PATH + Homebrew/apt/scoop 等常见安装位置）、驱动 `signal-cli link` 并把 `sgnl://linkdevice` URI 作为二维码送给上层，随后在随机 loopback 端口上托管 `signal-cli daemon --http` 的整个生命周期，账号号码由 `listAccounts` 自动发现。用户不再需要自己起 daemon、选端口、把 E.164 号码抄进设置里。新增 `internal/transport/signal` 的 `DiscoverCLI` / `ListAccounts` / `Link` / `StartDaemon` 与 `Options.Managed`。
+- signal-cli 走代理：signal-cli 是 JVM/GraalVM 程序，既不读 `HTTPS_PROXY` 也不读系统代理设置，在只能经代理访问 Signal 的网络上表现为「link 一直不打印二维码 URI，最后报 Link request timed out」。现在 `link` / `daemon` / `listAccounts` 统一带上 `-Dhttps.proxyHost/Port`（socks 代理则用 `-DsocksProxyHost/Port`），取值顺序为 `CLIOptions.ProxyURL` → 进程的 `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` → `-Djava.net.useSystemProxies=true` 兜底，并把 `NO_PROXY` 翻成 `-Dhttp.nonProxyHosts`（始终包含 loopback）。
+- `signal-cli link` 全程没有输出关联 URI 时返回新的 `ErrNoLinkURI`，host 层据此告诉用户「无法连接 Signal 服务器，请检查网络或代理」，而不是把 `exit status 1` 原样抛出。
+- Host 模式 Signal 扫码链路：新增入站帧 `signal_bind_start` / `signal_logout` 与出站事件 `signal_qr` / `signal_bind_status` / `signal_bound` / `signal_unbound`，未关联设备时沿用 `awaiting_bind` 状态。`hostproto.SignalConfig` 新增 `cliPath` / `configDir` / `ownsConfigDir`，`endpoint`、`account` 变为可选。
+- Host 模式的绑定协调器抽象成 `bindCoordinator` 接口（微信扫码 / Signal 设备关联各一个实现），主循环按当前活跃渠道路由绑定帧，避免多渠道绑定流程继续以硬编码分支增长。
 
 - Claw 记忆 + 会话滚动 + 日期工作史接线（ADR-0009）：embedded `host` 模式恒开 memory-mode——`hclocal.Options` 新增 `MemoryMode` / `MemoryFile`，spawn coding-agent 时传 `--memory-mode --memory-file <conversationCwd>/MEMORY.md`（MEMORY.md 落在会话根这一稳定位置，与按日运行 cwd 解耦；SessionDir 仍钉死在根的 `.vetta/sessions`）。`Router.SetDatedCwd(true)` 让每条消息在 `<conversationCwd>/<YYYY-MM-DD>/` 下运行 agent（与 inbox 日期目录同构，产物/媒体/JOURNAL.md 按日归集）。bridge 新增 `SetPathChangeHandler` 捕获 coding-agent 的 `session_path_changed` 事件（rollover 换 jsonl），router 据此把 `(user, chat)` 路由 state 重指向新文件，使下一条消息续接滚动后的会话；新路径经既有 `state_patch` 同步给 desktop。`/new` 在清空路由前先对当前会话发 `flush_memory`（60s 超时、best-effort），把尚未到 rollover 阈值的短会话的持久事实凝结进 MEMORY.md，成功时回复里附「已凝结 N 条记忆」。新增 `hostclient.CommandTypeFlushMemory`。
 - Feishu 全形态收发（ADR-0008）：入站新增 image / file / post（富文本）——资源经鉴权 `Im.MessageResource.Get` 下载后落盘到 [[im-gateway inbox]]，post 的文本拍平进 prompt、内嵌图片各成一个附件；出站实现 `SendAttachment`，image 走 `Im.Image.Create`（格式/大小被拒时自动回退成 file 发送），file 走 `Im.File.Create`（`FileType` 按扩展名映射，默认 `stream`），caption 作为跟发文本。新增 `feishu.Options.InboxDir`（host / start 两种模式均传入 conversation cwd）。落盘/命名逻辑抽到新的 `internal/transport/inbox` 共享包，wechat 一并改用。
@@ -38,6 +45,9 @@ All notable changes to `@vetta/im-gateway` are documented in this file.
 
 ### Fixed
 
+- 修复 Discord 连接抖动导致桥接反复中断：网关一次失败的拨号（`Open() error connecting to gateway wss://gateway.discord.gg/..., EOF`）此前会让 `Start` 直接返回错误，host 把它当致命错误关掉整个 sidecar，desktop 再按退避重拉进程——一次网络抖动要付一次完整的进程重建，状态在「在线」与「错误」之间反复跳，且 desktop 的重启计数在每次 ready 后归零，因此不会收敛。现在瞬时拨号失败在 transport 内部以指数退避重试（默认 2s 起、最大 60s、最多 6 次，可经 `Options.Connect*` 覆盖），重试期间响应 ctx 取消与 `Stop()`；token 无效、intent 被拒、要求分片等永久性拒绝仍然立即失败，重试耗尽后照常上报错误，不会把真实的网络不可达藏在「在线」徽标后面。
+- 修复 Discord 桥接无法建立连接：网关的 identify 此前请求了特权 intent `MESSAGE CONTENT`，Discord 会对**未在开发者后台打开该开关**的 bot 直接以 websocket close 4014（Disallowed intent(s)）拒绝握手，桥接因此完全连不上。该 intent 对本 transport 毫无必要——它只接受私聊以及群里 @ 机器人的消息，这两种情况 Discord 本就免特权下发消息内容——现已从 intent 集合中移除，无需再改动开发者后台配置。新增假 Discord 网关的集成测试重放完整握手（Hello → Identify → Ready → MESSAGE_CREATE），锁死「不得请求特权 intent」与「私聊可端到端到达 handler」两条不变量。
+- Discord 握手失败时附带可操作提示：close 4004 指向 bot token 无效，4013/4014 指向 intent 被拒，4011 指向需要分片，不再只给一行裸 websocket 错误。
 - 握手超时默认值从 10s 放宽到 30s（`config.DefaultHandshakeTimeout` 与 `hostclient/local` 内置默认值）。
   desktop 宿主用 Vetta.app 自身作为 agent 二进制，应用启动或更新后的**首次** session 要付一次
   Electron + asar 冷启动代价（实测 arm64 Mac ~10s，缓存热了之后 ~1s），10s 预算会正好输掉这场竞速，

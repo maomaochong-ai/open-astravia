@@ -52,6 +52,7 @@ export interface WechatBindDialogModel {
 		readonly unbindAccount: string;
 	};
 	readonly onLogout: () => void;
+	readonly onOpenGuide: () => void;
 	readonly onOpenChange: (open: boolean) => void;
 	readonly onStart: () => void;
 	readonly open: boolean;
@@ -66,6 +67,7 @@ export function useWechatBindDialogModel({
 	ilinkBotId,
 	ilinkUserId,
 	onLogout,
+	onOpenGuide,
 	onConfirmedRefresh,
 }: {
 	open: boolean;
@@ -74,6 +76,7 @@ export function useWechatBindDialogModel({
 	ilinkBotId?: string;
 	ilinkUserId?: string;
 	onLogout: () => void;
+	onOpenGuide: () => void;
 	onConfirmedRefresh: () => void;
 }): WechatBindDialogModel {
 	const { t } = useTranslation("settings");
@@ -224,6 +227,7 @@ export function useWechatBindDialogModel({
 				unbindAccount: t("unbindAccount"),
 			},
 			onLogout,
+			onOpenGuide,
 			onOpenChange,
 			onStart: () => {
 				void startBind();
@@ -238,6 +242,7 @@ export function useWechatBindDialogModel({
 			ilinkBotId,
 			ilinkUserId,
 			onLogout,
+			onOpenGuide,
 			onOpenChange,
 			open,
 			progressLabel,

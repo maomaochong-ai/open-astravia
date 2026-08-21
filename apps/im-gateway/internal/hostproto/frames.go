@@ -16,6 +16,8 @@ const (
 	TypeWechatLogout      = "wechat_logout"
 	TypeWhatsappBindStart = "whatsapp_bind_start"
 	TypeWhatsappLogout    = "whatsapp_logout"
+	TypeSignalBindStart   = "signal_bind_start"
+	TypeSignalLogout      = "signal_logout"
 
 	// Outbound (child → parent)
 	TypeReady              = "ready"
@@ -31,6 +33,10 @@ const (
 	TypeWhatsappBindStatus = "whatsapp_bind_status"
 	TypeWhatsappBound      = "whatsapp_bound"
 	TypeWhatsappUnbound    = "whatsapp_unbound"
+	TypeSignalQR           = "signal_qr"
+	TypeSignalBindStatus   = "signal_bind_status"
+	TypeSignalBound        = "signal_bound"
+	TypeSignalUnbound      = "signal_unbound"
 )
 
 // Transport status values reported on TypeStatus events.
@@ -96,14 +102,28 @@ type DiscordConfig struct {
 	AllowedGuildIDs []string `json:"allowedGuildIds,omitempty"`
 }
 
-// SignalConfig points the signal transport at a user-managed signal-cli
-// daemon (HTTP JSON-RPC + SSE). The daemon owns the Signal credentials;
-// this slot only says where it listens and which account it serves.
+// SignalConfig selects the signal transport. Two modes share this slot:
+//
+//   - managed (the default): Endpoint is empty and the sidecar locates the
+//     user's signal-cli install, links the device via QR when needed, and
+//     runs `signal-cli daemon --http` itself on a loopback port. CLIPath
+//     and ConfigDir are optional overrides.
+//   - user-managed (advanced): Endpoint points at a daemon the user runs
+//     themselves, and Account names the number it serves. Nothing is
+//     spawned.
+//
+// Either way the daemon — not this protocol — owns the Signal credentials.
 type SignalConfig struct {
-	Endpoint       string   `json:"endpoint"` // e.g. http://127.0.0.1:8080
-	Account        string   `json:"account"`  // E.164 number the daemon serves
+	Endpoint  string `json:"endpoint,omitempty"`  // set = user-managed daemon, e.g. http://127.0.0.1:8080
+	Account   string `json:"account,omitempty"`   // E.164 number; discovered from signal-cli in managed mode
+	CLIPath   string `json:"cliPath,omitempty"`   // explicit signal-cli executable; empty = discover
+	ConfigDir string `json:"configDir,omitempty"` // signal-cli --config; empty = signal-cli default
+	// OwnsConfigDir marks ConfigDir as created and owned by the parent app.
+	// Only then may an unbind delete the local account data — a directory
+	// the user manages themselves is never wiped.
+	OwnsConfigDir  bool     `json:"ownsConfigDir,omitempty"`
 	AllowedNumbers []string `json:"allowedNumbers,omitempty"`
-	AttachmentsDir string   `json:"attachmentsDir,omitempty"` // signal-cli attachment cache, for inbound media
+	AttachmentsDir string   `json:"attachmentsDir,omitempty"` // signal-cli attachment cache; derived from ConfigDir when empty
 }
 
 // WhatsappConfig mirrors WechatConfig's shape: no long-lived credentials in
@@ -387,6 +407,51 @@ type WhatsappUnboundEvent struct {
 	Reason string `json:"reason,omitempty"`
 }
 
+// SignalBindStartFrame requests the sidecar begin (or restart) a signal-cli
+// device-link flow. Same semantics as the wechat/whatsapp variants: no
+// payload, an in-progress link keeps running.
+type SignalBindStartFrame struct {
+	Type string `json:"type"` // always TypeSignalBindStart
+}
+
+// SignalLogoutFrame requests the sidecar stop the signal transport and
+// forget the linked account. signal-cli's own device registration is left
+// on disk — unlinking a device is done from the phone — so this only drops
+// Vetta's use of it and returns to awaiting_bind.
+type SignalLogoutFrame struct {
+	Type string `json:"type"` // always TypeSignalLogout
+}
+
+// SignalQREvent carries the `sgnl://linkdevice?...` URI signal-cli printed.
+// The parent renders it as a QR code for Signal → Linked devices.
+type SignalQREvent struct {
+	Type    string `json:"type"` // always TypeSignalQR
+	URI     string `json:"uri"`
+	Attempt int    `json:"attempt"`
+}
+
+// SignalBindStatusEvent reports a transition in the link flow. Status reuses
+// the WechatBindStatus* values (confirmed / failed / cancelled); Error is
+// set only on failed.
+type SignalBindStatusEvent struct {
+	Type   string `json:"type"` // always TypeSignalBindStatus
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
+}
+
+// SignalBoundEvent reports a completed link, carrying the account number
+// signal-cli is now registered as so the parent can display it.
+type SignalBoundEvent struct {
+	Type    string `json:"type"` // always TypeSignalBound
+	Account string `json:"account,omitempty"`
+}
+
+// SignalUnboundEvent reports that the signal link was dropped.
+type SignalUnboundEvent struct {
+	Type   string `json:"type"` // always TypeSignalUnbound
+	Reason string `json:"reason,omitempty"`
+}
+
 // envelope is a minimal probe used to discriminate inbound frames before
 // dispatching to the typed decoder.
 type envelope struct {
@@ -442,6 +507,18 @@ func DecodeInbound(line []byte) (any, error) {
 		var f WhatsappLogoutFrame
 		if err := json.Unmarshal(line, &f); err != nil {
 			return nil, fmt.Errorf("hostproto: parse whatsapp_logout: %w", err)
+		}
+		return &f, nil
+	case TypeSignalBindStart:
+		var f SignalBindStartFrame
+		if err := json.Unmarshal(line, &f); err != nil {
+			return nil, fmt.Errorf("hostproto: parse signal_bind_start: %w", err)
+		}
+		return &f, nil
+	case TypeSignalLogout:
+		var f SignalLogoutFrame
+		if err := json.Unmarshal(line, &f); err != nil {
+			return nil, fmt.Errorf("hostproto: parse signal_logout: %w", err)
 		}
 		return &f, nil
 	case "":

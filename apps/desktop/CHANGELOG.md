@@ -2,6 +2,10 @@
 
 ### Added
 
+- Claw 每个渠道都可以解除绑定：飞书与通用渠道对话框（Telegram / Slack / Discord / Signal 自建服务 / iMessage）新增「解除绑定」，二次确认后清除本机保存的凭据与账号标识；解除的若是当前渠道且清空后已无法启动，会顺带关闭桥接并停掉 sidecar。清空逻辑收敛到 `im-host/channels.ts` 描述符的 `clearConfig` / `clearCredentials`，微信、WhatsApp、Signal 的解绑仍沿用各自扫码流程的 API（那条路要让 sidecar 一并丢掉自己持有的会话）。
+- Claw 渠道网格补齐 Slack、WhatsApp 品牌图标，并更新飞书图标。
+- Claw 每个渠道的配置对话框（飞书 / 微信 / Signal / 通用渠道）标题旁新增「使用说明」入口，点开是一个二级引导弹窗：编号步骤 + 可复制的命令或地址 + 提醒块，视觉与「知识库是怎么工作的」同一套。八个渠道的手册内容与 `apps/im-gateway/docs/*-setup.md` 对齐，中英文齐备。
+- Claw 的 Signal 渠道改为扫码接入：装好 signal-cli 后，在「设置 → Claw → Signal」点「扫码连接」，用手机 Signal 的「已关联的设备」扫码即可，桌面端会自动找到 signal-cli、托管 daemon 并回填账号号码，不再需要手填服务地址与 E.164 号码。未安装 signal-cli 时对话框直接给出本平台的安装命令。原先「连接自建 signal-cli 服务」的表单保留在对话框底部的高级入口。
 - IM 桥接主进程新增六个渠道的协议与配置合同：Telegram、Slack、Discord、Signal（静态凭证）、WhatsApp（扫码配对，含 `vetta:im:whatsapp:*` 绑定 IPC）与 iMessage（macOS 本地权限）。渠道能力收敛到 `im-host/channels.ts` 描述符注册表，测试连接按渠道分派校验；本次仅覆盖主进程与 preload 合同层，设置页 UI 与 i18n 文案随后续任务提供。
 
 - 新增可选的手机远程接入宿主：Desktop 可主动连接 Cloudflare Worker 中继，将本地对话会话暴露为受版本化协议约束的远程请求；屏幕画面和鼠标键盘输入使用独立 WebRTC 通道，输入默认关闭并由本地配置显式授权。
@@ -27,6 +31,8 @@
 - 修复 Agent 在后台会话调用 `vetd_create` 时，设计标签错误写入当前前台项目、导致目标会话的标签列表缺少「设计」的问题；Activity Tab 宿主命令现在可按显式 cwd 写入 attach 与 active-tab 状态。
 - 修复 Linux packaged E2E 真正启动应用后的两项误报：unpacked 可执行文件现在使用同批构建的 AppImage 作为更新器运行上下文，主进程 mock 探针改用同步 Electron API，避免 CDP 在异步 mock Promise 跨进程返回前将其回收。
 - 修复 Desktop packaged E2E 的后续三平台失败：构建产物默认禁止 `electron-builder` 在 CI 中隐式发布，打包矩阵显式安装 IM gateway 所需的 Go 工具链与 Linux Electron 所需的 ALSA 运行时；Ubuntu 24.04+ CI 通过 Electron Service 为测试可执行文件安装作用域受限的 AppArmor profile；Windows E2E 直接驱动版本目录中的 Electron 而不是会分离子进程的稳定启动器。
+- 修复配置了系统代理时 Claw 无法连接海外 IM 平台：im-gateway sidecar 是 Go 进程，只认 `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` 环境变量，不读 macOS 与 Windows 的系统代理设置；而 Electron 自己会跟随系统代理。于是在「系统里配了代理但没有导出对应环境变量」的机器上，Vetta 本体联网正常、sidecar 却直连并被重置，Discord 表现为 `Get "https://discord.com/api/v9/gateway": EOF`，其余需要代理的渠道同样连不上。现在主进程用 Electron 自己的 `session.resolveProxy()` 解析代理，并把结果作为环境变量注入 sidecar 进程；父进程已显式设置代理时以其为准、不覆盖，解析失败则按直连处理、不阻塞桥接启动。受进程级环境变量所限，逐主机返回不同结果的 PAC 脚本只会应用其中一条。
+- 修复 Claw 渠道配置对话框保存时损坏 Discord 与 Slack 的允许列表：读取时把「用户允许列表」和「服务器/频道允许列表」合并显示在同一个输入框，保存时却把全部内容写回用户允许列表。后果是服务器 ID 或频道 ID 被当成用户 ID，网关据此丢弃全部私聊消息且不产生任何日志，表现为「显示在线但机器人不回消息」；同时原有的服务器/频道允许列表被清空。现在输入框只呈现并写回用户允许列表，服务器/频道允许列表原样保留。
 - 修复 Vetta Claw 设置页切换消息渠道、更换对话模型后界面不更新（重开设置页才看到新值）的问题：写入成功后的配置刷新只回填了对话框表单，没有把最新配置写回页面状态。
 - 修复干净 CI 环境下 Desktop 三平台打包烟测无法进入 packaged E2E：打包前现在统一按 workspace 依赖图生成声明与产物，Windows 不再使用漂移的独立构建顺序；Linux runner 同时显式安装 Bubblewrap 源码构建依赖。
 - 修复启用语音输入能力后手机桌面预览完全黑屏的问题：全局媒体权限策略此前只允许主窗口麦克风，导致远程桌面隐藏宿主的 `getDisplayMedia` 在屏幕源选择前被拒绝。现在仅对白名单中的远程桌面主 Frame 放行 Electron 屏幕捕获的两阶段权限请求，仍拒绝其摄像头、音频、子 Frame 及其它 Renderer 请求；屏幕源授权、拒绝和枚举失败也有脱敏日志可查。
@@ -39,7 +45,7 @@
 
 ### Changed
 
-- 重做 Vetta Claw 设置页：新增概览卡直接展示当前活动渠道、连接状态、总开关与对话模型；渠道网格改为自适应列宽，八个渠道各用自己的品牌图标，活动渠道用 ring 高亮、未配置渠道走虚线弱化态，整卡点击即切换活动渠道、右下角齿轮进配置，替代过去每卡两个等权重按钮；保存与切换的成功/失败结果改为在页面上以提示条呈现（此前只有飞书对话框内可见，主页面开关失败是静默的）；状态与日志收敛为一条紧凑信息栏。渠道名称、图标与配置入口收敛到单一渠道表，新增渠道只需增加一行。
+- 重做 Vetta Claw 设置页：新增概览卡直接展示当前活动渠道、连接状态、总开关与对话模型；渠道网格改为自适应列宽，飞书、微信、Telegram、Discord、Signal、iMessage 使用品牌图标资源，Slack 与 WhatsApp 暂用单色图标，活动渠道用 ring 高亮、未配置渠道走虚线弱化态，整卡点击即切换活动渠道、右下角齿轮进配置，替代过去每卡两个等权重按钮；保存与切换的成功/失败结果改为在页面上以提示条呈现（此前只有飞书对话框内可见，主页面开关失败是静默的）；状态与日志收敛为一条紧凑信息栏。渠道名称、图标与配置入口收敛到单一渠道表，新增渠道只需增加一行。
 - Desktop 打包新增跨平台环境前置检查，在清理和编译前统一校验开源/商业版本、服务端与更新源、Marketplace、目标平台、遥测参数和 macOS 签名组合；新增 `dist:opensource` 作为 Windows、macOS、Linux 共用的开源版构建入口，GitHub Releases 与开源版、R2 与商业版不再允许混用。
 - Desktop 正式发布 Action 新增独立质量门禁：根检查、质量脚本测试和 packaging 合同测试全部通过后才启动平台矩阵；R2/GitHub 发布完成后验证三平台公开更新 feed 与其引用的安装包可读；默认手动构建只保留临时 Artifact，手动 `test` / `stable` 发布与 tag 发布走同一发布门禁。
 - Desktop packaged E2E 扩展到 Windows、macOS、Linux：真实启动 unpacked 应用并通过 renderer updater bridge 检查本地隔离 feed，发布矩阵在上传产物前即可发现启动、`app-update.yml`、feed 请求和 IPC 回归；本地 feed 不会触碰真实生产更新源。

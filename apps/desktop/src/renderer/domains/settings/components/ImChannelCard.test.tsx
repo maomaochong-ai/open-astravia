@@ -12,7 +12,7 @@ const { ImChannelCard } = await import("./ImChannelCard.js");
 const BASE = {
 	name: "Telegram",
 	subtitle: "使用 Telegram Bot API 接收消息。",
-	iconClass: "icon-[mdi--telegram]",
+	icon: { kind: "asset", url: "./channels/telegram.png" } as const,
 	transportStatus: "online" as const,
 	configureLabel: "配置渠道",
 };

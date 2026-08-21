@@ -55,6 +55,8 @@ export interface ImChannelDialogModel {
 	onTest: () => Promise<void>;
 	onBind: () => Promise<void>;
 	onLogout: () => Promise<void>;
+	/** 解除绑定：清空该渠道的凭据与标识，必要时停用桥接。 */
+	onClear: () => Promise<void>;
 }
 
 export interface ImBridgeSettingsModel {
@@ -65,6 +67,9 @@ export interface ImBridgeSettingsModel {
 	feishuValidation: FeishuValidation;
 	feishuDialogOpen: boolean;
 	wechatDialogOpen: boolean;
+	signalDialogOpen: boolean;
+	/** 当前展示手册的渠道；null 表示手册未打开。 */
+	guideTransport: ImTransportSelector | null;
 	status: ImBridgeStatus | null;
 	transportStatus: ImTransportStatus;
 	showSecret: boolean;
@@ -81,6 +86,8 @@ export interface ImBridgeSettingsModel {
 	probeResult: ProbeResult | null;
 	setFeishuDialogOpen: (open: boolean) => void;
 	setWechatDialogOpen: (open: boolean) => void;
+	setSignalDialogOpen: (open: boolean) => void;
+	setGuideTransport: (transport: ImTransportSelector | null) => void;
 	setShowSecret: React.Dispatch<React.SetStateAction<boolean>>;
 	setLogsOpen: (open: boolean) => void;
 	updateFeishuField: <K extends keyof FeishuFormState>(key: K, value: FeishuFormState[K]) => void;
@@ -92,13 +99,17 @@ export interface ImBridgeSettingsModel {
 	onSwitchTransport: (next: ImTransportSelector) => Promise<void>;
 	onOpenFeishuDialog: () => void;
 	onOpenWechatDialog: () => void;
+	onOpenSignalDialog: () => void;
 	onOpenChannelDialog: (transport: ImChannelConfigTransport) => void;
 	onWechatLogout: () => Promise<void>;
+	onSignalLogout: () => Promise<void>;
+	onClearChannel: (transport: ImTransportSelector) => Promise<void>;
 	onSaveFeishu: () => Promise<void>;
 	onTestFeishu: () => Promise<void>;
 	onRestart: () => Promise<void>;
 	onOpenLogs: () => Promise<void>;
 	onWechatConfirmedRefresh: () => void;
+	onSignalConfirmedRefresh: () => void;
 	onDismissFeedback: () => void;
 }
 
@@ -108,6 +119,8 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 	const [feishuForm, setFeishuForm] = useState<FeishuFormState>(emptyFeishuForm);
 	const [feishuDialogOpen, setFeishuDialogOpen] = useState(false);
 	const [wechatDialogOpen, setWechatDialogOpen] = useState(false);
+	const [signalDialogOpen, setSignalDialogOpen] = useState(false);
+	const [guideTransport, setGuideTransport] = useState<ImTransportSelector | null>(null);
 	const [channelDialogTransport, setChannelDialogTransport] = useState<ImChannelConfigTransport | null>(null);
 	const [channelForm, setChannelForm] = useState<ImChannelFormState>(emptyChannelForm);
 	const [channelShowSecret, setChannelShowSecret] = useState(false);
@@ -471,6 +484,64 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 		}
 	}, [channelBusy, channelDialogTransport, refreshConfig, t]);
 
+	/**
+	 * 解除绑定。静态凭据渠道（飞书 / Telegram / Slack / Discord）与 iMessage
+	 * 走这里；微信、WhatsApp、Signal 的解绑仍走各自的扫码流程 API，那条路
+	 * 还要顺带让 sidecar 丢掉自己持有的会话。
+	 */
+	const handleClearChannel = useCallback(
+		async (transport: ImTransportSelector) => {
+			if (!window.confirm(t("clearChannelConfirm"))) return;
+			setSaving(true);
+			setSaveError(null);
+			setSaveOk(null);
+			try {
+				const result = await window.vetta.im.clearChannel(transport);
+				if (!result.ok) {
+					setSaveError(result.error ?? t("clearChannelFailed"));
+					return;
+				}
+				await refreshConfig();
+				setSaveOk(t("clearChannelOk"));
+				recordSettingsUsage({ tab: "im", action: "deleted", target: "channel-credentials", value: transport });
+			} finally {
+				setSaving(false);
+			}
+		},
+		[refreshConfig, t],
+	);
+
+	const handleSignalLogout = useCallback(async () => {
+		if (!config) return;
+		if (!window.confirm(t("unbindConfirm"))) return;
+		setSaving(true);
+		try {
+			const result = await window.vetta.im.signal.logout();
+			if (!result.ok) {
+				setSaveError(result.error ?? t("unbindError"));
+				return;
+			}
+			await refreshConfig();
+			setSaveOk(t("unbindSuccess"));
+			recordSettingsUsage({ tab: "im", action: "deleted", target: "signal-binding" });
+		} finally {
+			setSaving(false);
+		}
+	}, [config, refreshConfig, t]);
+
+	// Opening the dialog flips the active transport the same way the wechat
+	// one does, so the sidecar is already parked in awaiting_bind by the
+	// time the user is looking at the QR.
+	const handleOpenSignalDialog = useCallback(() => {
+		if (!config) return;
+		setSaveError(null);
+		setSaveOk(null);
+		if (!config.signal.bound && (config.transport !== "signal" || !config.enabled)) {
+			void window.vetta.im.setConfig({ enabled: true, transport: "signal" });
+		}
+		setSignalDialogOpen(true);
+	}, [config]);
+
 	const handleOpenWechatDialog = useCallback(() => {
 		if (!config) return;
 		setSaveError(null);
@@ -500,11 +571,16 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 			onTest: handleTestChannel,
 			onBind: handleChannelBind,
 			onLogout: handleChannelLogout,
+			onClear: async () => {
+				if (channelDialogTransport) await handleClearChannel(channelDialogTransport);
+			},
 		},
 		feishuForm,
 		feishuValidation,
 		feishuDialogOpen,
 		wechatDialogOpen,
+		signalDialogOpen,
+		guideTransport,
 		status,
 		transportStatus: status?.transport ?? "offline",
 		showSecret,
@@ -521,6 +597,8 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 		probeResult,
 		setFeishuDialogOpen,
 		setWechatDialogOpen,
+		setSignalDialogOpen,
+		setGuideTransport,
 		setShowSecret,
 		setLogsOpen,
 		updateFeishuField,
@@ -532,8 +610,11 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 		onSwitchTransport: handleSwitchTransport,
 		onOpenFeishuDialog: handleOpenFeishuDialog,
 		onOpenWechatDialog: handleOpenWechatDialog,
+		onOpenSignalDialog: handleOpenSignalDialog,
 		onOpenChannelDialog: handleOpenChannelDialog,
 		onWechatLogout: handleWechatLogout,
+		onSignalLogout: handleSignalLogout,
+		onClearChannel: handleClearChannel,
 		onSaveFeishu: handleSaveFeishu,
 		onTestFeishu: handleTestFeishu,
 		onRestart: async () => {
@@ -541,6 +622,9 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 		},
 		onOpenLogs: handleOpenLogs,
 		onWechatConfirmedRefresh: () => {
+			void refreshConfig();
+		},
+		onSignalConfirmedRefresh: () => {
 			void refreshConfig();
 		},
 		onDismissFeedback: () => {
@@ -583,9 +667,9 @@ function channelFormFromConfig(config: ImBridgeConfig, transport: ImTransportSel
 		transport === "telegram"
 			? config.telegram.allowedUserIds?.join(", ")
 			: transport === "slack"
-				? [...(config.slack.allowedUserIds ?? []), ...(config.slack.allowedChannelIds ?? [])].join(", ")
+				? config.slack.allowedUserIds?.join(", ")
 				: transport === "discord"
-					? [...(config.discord.allowedUserIds ?? []), ...(config.discord.allowedGuildIds ?? [])].join(", ")
+					? config.discord.allowedUserIds?.join(", ")
 					: transport === "signal"
 						? config.signal.allowedNumbers?.join(", ")
 						: transport === "whatsapp"
@@ -602,8 +686,8 @@ function channelFormFromConfig(config: ImBridgeConfig, transport: ImTransportSel
 						? config.discord.botToken
 						: "",
 		appToken: transport === "slack" ? config.slack.appToken : "",
-		endpoint: transport === "signal" ? config.signal.endpoint : "",
-		account: transport === "signal" ? config.signal.account : "",
+		endpoint: transport === "signal" ? (config.signal.endpoint ?? "") : "",
+		account: transport === "signal" ? (config.signal.account ?? "") : "",
 		attachmentsDir: transport === "signal" ? (config.signal.attachmentsDir ?? "") : "",
 		path: transport === "imessage" ? (config.imessage.dbPath ?? "") : "",
 		allowlist: values ?? "",
@@ -633,19 +717,35 @@ function channelFormToPayload(
 				allowedUserIds: allowlist?.flatMap((value) => (/^\\d+$/.test(value) ? [Number(value)] : [])),
 			},
 		};
+	// 对话框只编辑用户允许列表；频道/服务器允许列表原样回传，
+	// 否则 setConfig 的整块替换语义会把它们清空。
 	if (transport === "slack")
 		return {
 			...base,
-			slack: { botToken: form.botToken.trim(), appToken: form.appToken.trim(), allowedUserIds: allowlist },
+			slack: {
+				botToken: form.botToken.trim(),
+				appToken: form.appToken.trim(),
+				allowedUserIds: allowlist,
+				allowedChannelIds: config.slack.allowedChannelIds,
+			},
 		};
 	if (transport === "discord")
-		return { ...base, discord: { botToken: form.botToken.trim(), allowedUserIds: allowlist } };
+		return {
+			...base,
+			discord: {
+				botToken: form.botToken.trim(),
+				allowedUserIds: allowlist,
+				allowedGuildIds: config.discord.allowedGuildIds,
+			},
+		};
 	if (transport === "signal")
 		return {
 			...base,
 			signal: {
-				endpoint: form.endpoint.trim(),
-				account: form.account.trim(),
+				// Empty strings mean managed mode; do not persist them as
+				// "configured" values.
+				endpoint: form.endpoint.trim() || undefined,
+				account: form.account.trim() || undefined,
 				attachmentsDir: form.attachmentsDir.trim() || undefined,
 				allowedNumbers: allowlist,
 			},

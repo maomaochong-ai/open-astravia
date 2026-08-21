@@ -28,7 +28,7 @@ function config(overrides: Partial<ImBridgeConfig> = {}): ImBridgeConfig {
 		telegram: { botToken: "" },
 		slack: { botToken: "", appToken: "" },
 		discord: { botToken: "" },
-		signal: { endpoint: "", account: "" },
+		signal: { bound: false, cliInstallHint: "brew install signal-cli" },
 		whatsapp: { bound: false },
 		imessage: {},
 		transportMode: "long-connection",

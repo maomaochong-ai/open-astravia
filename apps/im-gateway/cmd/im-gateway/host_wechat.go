@@ -10,12 +10,13 @@ import (
 	"vetta-im-gateway/internal/transport/wechat/ilink"
 )
 
-// errAwaitingBind is the sentinel buildHostTransport returns when the
-// active transport is wechat but no credentials are persisted yet. The
+// errAwaitingBind is the sentinel buildHostTransport returns when a
+// pairing-based channel is selected but no credentials are persisted yet
+// (wechat without a scanned session, signal without a linked device). The
 // host runtime catches it specially: instead of failing init, it leaves
 // the transport unbuilt, emits awaiting_bind status, and waits for the
-// parent to drive a TypeWechatBindStart frame.
-var errAwaitingBind = errors.New("im-gateway host: wechat selected but no credentials")
+// parent to drive the channel's *_bind_start frame.
+var errAwaitingBind = errors.New("im-gateway host: channel selected but not bound yet")
 
 // buildSpec is what transportBuilder consumes. Exactly one channel slot
 // should be non-nil; all nil is an error. See hostChannels (host_channels.go)
@@ -32,6 +33,11 @@ type buildSpec struct {
 
 	WechatStatePath   string // resolved absolute path; empty → use wechat package default
 	WhatsappStatePath string // resolved absolute path to the whatsmeow session db
+
+	// Log forwards structured lines into the sidecar's NDJSON log stream.
+	// Set by the host runtime after spec construction; transports that
+	// supervise child processes (signal-cli) use it. May be nil in tests.
+	Log func(level, msg string, fields map[string]any)
 
 	// ConversationCwd is the host runtime's working directory for the
 	// gateway. Transports use it (the directory itself per ADR-0006) as the
@@ -92,6 +98,20 @@ func (s *buildSpec) hasChannel() bool {
 		s.Whatsapp != nil || s.IMessage != nil
 }
 
+// bindCoordinator is the contract the host runtime drives for pairing-based
+// channels: one at a time, owned by the active transport selection. wechat
+// (QR scan) and signal (signal-cli device link) implement it.
+type bindCoordinator interface {
+	// Start begins (or resumes) the pairing flow. Duplicate calls while a
+	// flow is running are no-ops.
+	Start(ctx context.Context)
+	// Cancel aborts an in-progress flow. Idempotent.
+	Cancel()
+	// LogoutAndClear drops the persisted pairing and emits the channel's
+	// unbound event.
+	LogoutAndClear(reason string) error
+}
+
 // wechatBindCoordinator owns the lifecycle of an in-progress QR scan
 // flow: at most one concurrent bind goroutine per coordinator. Events are
 // emitted through the supplied hostproto.Writer; on success the
@@ -107,6 +127,11 @@ type wechatBindCoordinator struct {
 	mu     sync.Mutex
 	cancel context.CancelFunc
 }
+
+var (
+	_ bindCoordinator = (*wechatBindCoordinator)(nil)
+	_ bindCoordinator = (*signalBindCoordinator)(nil)
+)
 
 // newWechatBindCoordinator constructs a coordinator for the given state
 // path. rebuildCh is non-buffered or buffered≥1 — the coordinator does a

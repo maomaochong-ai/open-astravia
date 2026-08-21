@@ -55,7 +55,7 @@ describe("IM_CHANNEL_DESCRIPTORS", () => {
 			telegram: "static",
 			slack: "static",
 			discord: "static",
-			signal: "static",
+			signal: "qr-bind",
 			whatsapp: "qr-bind",
 			imessage: "local-permission",
 		};
@@ -99,18 +99,28 @@ describe("hasRequiredCredentials", () => {
 		expect(d.hasRequiredCredentials(configWith(), { discord: { botToken: "tok" } })).toBe(true);
 	});
 
-	it("signal requires endpoint and account from config (no secrets)", () => {
+	it("signal is startable in managed mode, and needs an account only with a user-run daemon", () => {
 		const d = IM_CHANNEL_DESCRIPTORS.signal;
-		expect(d.hasRequiredCredentials(configWith(), empty)).toBe(false);
+		// Managed mode: the sidecar links the device itself, so an empty
+		// config is enough to boot into awaiting_bind.
+		expect(d.hasRequiredCredentials(configWith(), empty)).toBe(true);
 		expect(
-			d.hasRequiredCredentials(configWith({ signal: { endpoint: "http://127.0.0.1:8080", account: "" } }), empty),
+			d.hasRequiredCredentials(configWith({ signal: { bound: false, endpoint: "http://127.0.0.1:8080" } }), empty),
 		).toBe(false);
 		expect(
 			d.hasRequiredCredentials(
-				configWith({ signal: { endpoint: "http://127.0.0.1:8080", account: "+8613800000000" } }),
+				configWith({ signal: { bound: false, endpoint: "http://127.0.0.1:8080", account: "+8613800000000" } }),
 				empty,
 			),
 		).toBe(true);
+	});
+
+	it("signal validation accepts managed mode and rejects a half-filled daemon config", () => {
+		const d = IM_CHANNEL_DESCRIPTORS.signal;
+		expect(d.validate?.({ transport: "signal" })).toBeNull();
+		expect(d.validate?.({ transport: "signal", endpoint: "127.0.0.1:8080", account: "+1234567" })).toContain("http");
+		expect(d.validate?.({ transport: "signal", endpoint: "http://127.0.0.1:8080" })).toContain("账号");
+		expect(d.validate?.({ transport: "signal", account: "not-a-number" })).toContain("E.164");
 	});
 
 	it("qr-bind and local-permission channels are always startable", () => {
@@ -161,12 +171,74 @@ describe("validate", () => {
 		expect(validate?.({})).toBeTruthy();
 	});
 
-	it("signal requires an http(s) endpoint and E.164 account", () => {
+	// Managed mode (both fields empty) is the default and needs no input;
+	// a user-run daemon still has to be described completely.
+	it("signal accepts managed mode and validates a user-run daemon config", () => {
 		const validate = IM_CHANNEL_DESCRIPTORS.signal.validate;
+		expect(validate?.({})).toBeNull();
 		expect(validate?.({ endpoint: "http://127.0.0.1:8080", account: "+8613800000000" })).toBeNull();
-		expect(validate?.({ endpoint: "", account: "+8613800000000" })).toBeTruthy();
 		expect(validate?.({ endpoint: "ftp://x", account: "+8613800000000" })).toBeTruthy();
 		expect(validate?.({ endpoint: "https://x", account: "" })).toBeTruthy();
 		expect(validate?.({ endpoint: "https://x", account: "13800000000" })).toBeTruthy();
+	});
+});
+
+describe("clearConfig / clearCredentials", () => {
+	// 解除绑定的核心不变量：只清掉自己那一格，别的渠道原样保留。
+	function populated(): ImConfig {
+		return {
+			...configWith(),
+			feishu: { appId: "cli_a", baseUrl: "https://open.feishu.cn" },
+			wechat: { bound: true, ilinkBotId: "bot" },
+			telegram: { allowedUserIds: [7] },
+			slack: { allowedUserIds: ["U1"], allowedChannelIds: ["C1"] },
+			discord: { allowedUserIds: ["u1"], allowedGuildIds: ["g1"] },
+			signal: { bound: true, account: "+8613800000000" },
+			whatsapp: { bound: true, allowedNumbers: ["+1"] },
+			imessage: { dbPath: "/tmp/chat.db", allowedHandles: ["a@b.c"] },
+		};
+	}
+
+	function populatedCredentials(): ImCredentials {
+		return {
+			feishu: { appSecret: "s" },
+			telegram: { botToken: "t" },
+			slack: { botToken: "xoxb", appToken: "xapp" },
+			discord: { botToken: "d" },
+		};
+	}
+
+	it.each(IM_TRANSPORT_SELECTORS)("%s 清空后不再具备启动条件（qr-bind 除外）", (transport) => {
+		const d = IM_CHANNEL_DESCRIPTORS[transport];
+		const config = d.clearConfig(populated());
+		const credentials = d.clearCredentials(populatedCredentials());
+		const startable = d.hasRequiredCredentials(config, credentials);
+		// 扫码类与本机权限类清空后仍可启动：sidecar 会停在 awaiting_bind。
+		expect(startable).toBe(d.credentialKind !== "static");
+	});
+
+	it.each(IM_TRANSPORT_SELECTORS)("%s 清空不会波及其它渠道", (transport) => {
+		const before = populated();
+		const config = IM_CHANNEL_DESCRIPTORS[transport].clearConfig(before);
+		for (const other of IM_TRANSPORT_SELECTORS) {
+			if (other === transport) continue;
+			expect(config[other], other).toEqual(before[other]);
+		}
+		expect(config.enabled).toBe(before.enabled);
+		expect(config.transport).toBe(before.transport);
+	});
+
+	it("清空凭据只删自己那一份", () => {
+		const rest = IM_CHANNEL_DESCRIPTORS.slack.clearCredentials(populatedCredentials());
+		expect(rest.slack).toBeUndefined();
+		expect(rest.feishu?.appSecret).toBe("s");
+		expect(rest.telegram?.botToken).toBe("t");
+		expect(rest.discord?.botToken).toBe("d");
+	});
+
+	it("扫码类渠道清空的是绑定标记", () => {
+		expect(IM_CHANNEL_DESCRIPTORS.wechat.clearConfig(populated()).wechat).toEqual({ bound: false });
+		expect(IM_CHANNEL_DESCRIPTORS.whatsapp.clearConfig(populated()).whatsapp).toEqual({ bound: false });
+		expect(IM_CHANNEL_DESCRIPTORS.signal.clearConfig(populated()).signal).toEqual({ bound: false });
 	});
 });

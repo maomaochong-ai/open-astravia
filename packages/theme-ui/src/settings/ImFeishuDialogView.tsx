@@ -40,6 +40,12 @@ export interface ImFeishuDialogViewProps {
 	readonly canSave: boolean;
 	readonly onTest: () => void;
 	readonly onSave: () => void;
+	/**
+	 * Optional control rendered at the start of the footer — the channel's
+	 * "how this works" entry. Bottom left, so it cannot collide with the
+	 * dialog's own close button in the top right corner.
+	 */
+	readonly footerExtra?: JSX.Element | null;
 	readonly labels: ImFeishuDialogViewLabels;
 }
 
@@ -62,6 +68,7 @@ export function ImFeishuDialogView({
 	canSave,
 	onTest,
 	onSave,
+	footerExtra,
 	labels,
 }: ImFeishuDialogViewProps): JSX.Element {
 	return (
@@ -130,13 +137,18 @@ export function ImFeishuDialogView({
 					</div>
 				</div>
 
-				<DialogFooter>
-					<Button variant="outline" onClick={onTest} disabled={testing || !canTest}>
-						{testing ? labels.testing : labels.testConnection}
-					</Button>
-					<Button variant="primary" onClick={onSave} disabled={!canSave || saving}>
-						{saving ? labels.saving : labels.save}
-					</Button>
+				<DialogFooter className={footerExtra ? "gap-2 sm:justify-between" : "gap-2"}>
+					{footerExtra && <div className="flex items-center gap-1">{footerExtra}</div>}
+					{/* 动作按钮成组，justify-between 才是「说明 | 动作」两端分布，
+					    而不是把每个按钮都摊开。 */}
+					<div className="flex items-center gap-2">
+						<Button variant="outline" onClick={onTest} disabled={testing || !canTest}>
+							{testing ? labels.testing : labels.testConnection}
+						</Button>
+						<Button variant="primary" onClick={onSave} disabled={!canSave || saving}>
+							{saving ? labels.saving : labels.save}
+						</Button>
+					</div>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

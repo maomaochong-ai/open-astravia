@@ -1,6 +1,7 @@
 import { Input } from "@shared/components/ui/input";
 import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@vetta/ui";
 import { useTranslation } from "react-i18next";
+import { ImChannelGuideButton } from "./ImChannelGuideButton";
 import type { ImChannelConfigTransport, ImChannelDialogModel } from "./useImBridgeSettingsModel";
 
 const CHANNEL_NAMES: Record<ImChannelConfigTransport, string> = {
@@ -12,7 +13,13 @@ const CHANNEL_NAMES: Record<ImChannelConfigTransport, string> = {
 	imessage: "iMessage",
 };
 
-export function ImChannelConfigDialog({ model }: { model: ImChannelDialogModel }): JSX.Element | null {
+export function ImChannelConfigDialog({
+	model,
+	onOpenGuide,
+}: {
+	model: ImChannelDialogModel;
+	onOpenGuide: (transport: ImChannelConfigTransport) => void;
+}): JSX.Element | null {
 	const { t } = useTranslation("settings");
 	if (!model.transport) return null;
 	const transport = model.transport;
@@ -71,15 +78,32 @@ export function ImChannelConfigDialog({ model }: { model: ImChannelDialogModel }
 					{isWhatsApp && <p className="rounded-lg border border-border/50 bg-card/40 p-3 text-[12px] text-muted-foreground">{t("imWhatsappBindDesc")}</p>}
 					{(model.error || model.message) && <p className={`text-[12px] ${model.error ? "text-destructive" : "text-emerald-400"}`}>{model.error ?? model.message}</p>}
 				</div>
-				<DialogFooter>
-					{isWhatsApp && (
-						<>
-							<Button variant="outline" onClick={() => void model.onBind()} disabled={model.busy}>{t("imWhatsappBind")}</Button>
-							<Button variant="outline" onClick={() => void model.onLogout()} disabled={model.busy}>{t("imWhatsappLogout")}</Button>
-						</>
-					)}
-					{!isWhatsApp && !isIMessage && <Button variant="outline" onClick={() => void model.onTest()} disabled={model.busy}>{t("testConnection")}</Button>}
-					{!isWhatsApp && <Button onClick={() => void model.onSave()} disabled={model.busy}>{t("saveLabel")}</Button>}
+				{/* 使用说明与解除绑定放左下：右上角是对话框自带的关闭按钮。 */}
+				<DialogFooter className="gap-2 sm:justify-between">
+					<div className="flex items-center gap-1">
+						<ImChannelGuideButton onOpen={() => onOpenGuide(transport)} />
+						{!isWhatsApp && (
+							<Button
+								variant="ghost"
+								size="sm"
+								className="text-[12px] text-destructive"
+								onClick={() => void model.onClear()}
+								disabled={model.busy}
+							>
+								{t("clearChannel")}
+							</Button>
+						)}
+					</div>
+					<div className="flex items-center gap-2">
+						{isWhatsApp && (
+							<>
+								<Button variant="outline" onClick={() => void model.onBind()} disabled={model.busy}>{t("imWhatsappBind")}</Button>
+								<Button variant="outline" onClick={() => void model.onLogout()} disabled={model.busy}>{t("imWhatsappLogout")}</Button>
+							</>
+						)}
+						{!isWhatsApp && !isIMessage && <Button variant="outline" onClick={() => void model.onTest()} disabled={model.busy}>{t("testConnection")}</Button>}
+						{!isWhatsApp && <Button onClick={() => void model.onSave()} disabled={model.busy}>{t("saveLabel")}</Button>}
+					</div>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

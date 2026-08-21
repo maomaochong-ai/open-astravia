@@ -12,10 +12,15 @@ export interface ImChannelCardViewLabels {
 	readonly statusLabel: string;
 }
 
+/** 品牌图标资源，或缺资源时退回的单色图标类。 */
+export type ImChannelCardIcon =
+	| { readonly kind: "asset"; readonly url: string }
+	| { readonly kind: "glyph"; readonly className: string };
+
 export interface ImChannelCardViewProps {
 	readonly name: string;
 	readonly subtitle: string;
-	readonly iconClass: string;
+	readonly icon: ImChannelCardIcon;
 	readonly configured: boolean;
 	readonly isActive: boolean;
 	readonly effectiveStatus: ImStatusBadgeStatus;
@@ -34,7 +39,7 @@ export interface ImChannelCardViewProps {
 export function ImChannelCardView({
 	name,
 	subtitle,
-	iconClass,
+	icon,
 	configured,
 	isActive,
 	effectiveStatus,
@@ -68,14 +73,7 @@ export function ImChannelCardView({
 			/>
 
 			<div className="pointer-events-none relative flex items-start gap-2.5">
-				<span
-					className={cn(
-						"flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-						isActive ? "bg-primary/15" : "bg-background/60",
-					)}
-				>
-					<span className={cn(iconClass, "h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
-				</span>
+				<ImChannelIconView icon={icon} isActive={isActive} className="h-9 w-9" />
 				<div className="min-w-0 flex-1">
 					<div className="flex items-center gap-1.5">
 						<span className="truncate text-[13px] font-semibold text-foreground">{name}</span>
@@ -117,5 +115,38 @@ export function ImChannelCardView({
 				</Button>
 			</div>
 		</div>
+	);
+}
+
+/** 渠道图标块：品牌资源直接铺满方块，单色图标退回带底色的图标块。 */
+export function ImChannelIconView({
+	icon,
+	isActive,
+	className,
+}: {
+	readonly icon: ImChannelCardIcon;
+	readonly isActive: boolean;
+	readonly className: string;
+}): JSX.Element {
+	if (icon.kind === "asset") {
+		return (
+			<img
+				src={icon.url}
+				alt=""
+				aria-hidden
+				className={cn("shrink-0 rounded-lg object-cover", className, !isActive && "opacity-90")}
+			/>
+		);
+	}
+	return (
+		<span
+			className={cn(
+				"flex shrink-0 items-center justify-center rounded-lg",
+				className,
+				isActive ? "bg-primary/15" : "bg-background/60",
+			)}
+		>
+			<span className={cn(icon.className, "h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
+		</span>
 	);
 }

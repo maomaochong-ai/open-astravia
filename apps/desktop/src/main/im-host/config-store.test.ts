@@ -32,7 +32,7 @@ describe("defaultImConfig", () => {
 			telegram: {},
 			slack: {},
 			discord: {},
-			signal: { endpoint: "", account: "" },
+			signal: { bound: false },
 			whatsapp: { bound: false },
 			imessage: {},
 			transportMode: "long-connection",
@@ -71,6 +71,7 @@ describe("channel slot round-trip", () => {
 			slack: { allowedUserIds: ["U1"], allowedChannelIds: ["C1", "C2"] },
 			discord: { allowedUserIds: ["u1"], allowedGuildIds: ["g1"] },
 			signal: {
+				bound: true,
 				endpoint: "http://127.0.0.1:8080",
 				account: "+8613800000000",
 				allowedNumbers: ["+8613900000000"],
@@ -88,14 +89,21 @@ describe("channel slot round-trip", () => {
 		const filePath = writeConfigFile({
 			telegram: { allowedUserIds: ["not-a-number", 7] },
 			slack: { allowedUserIds: "U1" },
-			signal: { endpoint: 42, account: null, allowedNumbers: [] },
+			signal: { endpoint: 42, account: null, cliPath: 7, allowedNumbers: [] },
 			whatsapp: { bound: "yes", allowedNumbers: [1, "+86"] },
 			imessage: { dbPath: "", allowedHandles: [null] },
 		});
 		const loaded = loadImConfig(filePath);
 		expect(loaded.telegram.allowedUserIds).toEqual([7]);
 		expect(loaded.slack.allowedUserIds).toBeUndefined();
-		expect(loaded.signal).toEqual({ endpoint: "", account: "" });
+		expect(loaded.signal).toEqual({
+			bound: false,
+			endpoint: undefined,
+			account: undefined,
+			cliPath: undefined,
+			allowedNumbers: undefined,
+			attachmentsDir: undefined,
+		});
 		expect(loaded.whatsapp).toEqual({ bound: true, allowedNumbers: ["+86"] });
 		expect(loaded.imessage).toEqual({});
 	});

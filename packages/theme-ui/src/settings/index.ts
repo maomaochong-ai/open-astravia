@@ -63,10 +63,18 @@ export { EnvironmentSettingsView } from "./EnvironmentSettingsView";
 export type { GeneralSettingsViewLabels, GeneralSettingsViewProps } from "./GeneralSettingsView";
 export { GeneralSettingsView } from "./GeneralSettingsView";
 export type {
+	ImChannelCardIcon,
 	ImChannelCardViewLabels,
 	ImChannelCardViewProps,
 } from "./ImChannelCardView";
-export { ImChannelCardView } from "./ImChannelCardView";
+export { ImChannelCardView, ImChannelIconView } from "./ImChannelCardView";
+export type {
+	ImChannelGuideDialogViewLabels,
+	ImChannelGuideDialogViewProps,
+	ImChannelGuideNoteView,
+	ImChannelGuideStepView,
+} from "./ImChannelGuideDialogView";
+export { ImChannelGuideDialogView } from "./ImChannelGuideDialogView";
 export type {
 	ImFeishuDialogViewLabels,
 	ImFeishuDialogViewProps,
@@ -131,6 +139,13 @@ export type {
 	PresetProvidersSectionViewProps,
 } from "./PresetProvidersSectionView";
 export { PresetProvidersSectionView } from "./PresetProvidersSectionView";
+export type {
+	QrBindDialogBodyKind,
+	QrBindDialogDetail,
+	QrBindDialogViewLabels,
+	QrBindDialogViewProps,
+} from "./QrBindDialogView";
+export { QrBindDialogView } from "./QrBindDialogView";
 export type {
 	QuickPanelOptionView,
 	QuickPanelSettingsSectionViewProps,

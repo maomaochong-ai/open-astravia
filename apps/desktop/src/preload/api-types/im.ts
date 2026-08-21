@@ -54,10 +54,19 @@ export interface ImBridgeConfig {
 		allowedGuildIds?: string[];
 	};
 	signal: {
-		endpoint: string;
-		account: string;
+		/** A signal-cli device is linked. */
+		bound: boolean;
+		/** Number signal-cli is registered as, once linked. */
+		account?: string;
+		/** Advanced mode only: a signal-cli daemon the user runs. */
+		endpoint?: string;
+		cliPath?: string;
 		allowedNumbers?: string[];
 		attachmentsDir?: string;
+		/** Resolved signal-cli path; undefined when it is not installed. */
+		cliDetectedPath?: string;
+		/** Install command to show when signal-cli is missing. */
+		cliInstallHint: string;
 	};
 	whatsapp: {
 		bound: boolean;
@@ -100,8 +109,10 @@ export interface ImSetConfigPayload {
 		allowedGuildIds?: string[];
 	};
 	signal?: {
-		endpoint: string;
-		account: string;
+		/** Leave empty to keep Signal in managed mode (recommended). */
+		endpoint?: string;
+		account?: string;
+		cliPath?: string;
 		allowedNumbers?: string[];
 		attachmentsDir?: string;
 	};
@@ -175,6 +186,7 @@ export interface ImPathInfo {
 	state: string;
 	wechatState: string;
 	whatsappState: string;
+	signalConfigDir: string;
 }
 
 // =============================================================================
@@ -280,6 +292,50 @@ export interface ImWhatsappApi {
 	subscribeBind(handler: (event: ImWhatsappBindEvent) => void): Promise<() => void>;
 }
 
+// =============================================================================
+// Signal device link (mirrors the whatsapp flow; the QR payload is the
+// `sgnl://linkdevice?...` URI signal-cli printed, and bound carries the
+// discovered account number)
+// =============================================================================
+
+export type ImSignalBindStatus = ImWechatBindStatus;
+
+export type ImSignalBindEvent =
+	| { kind: "qr"; type: "signal_qr"; uri: string; attempt: number }
+	| {
+			kind: "status";
+			type: "signal_bind_status";
+			status: ImSignalBindStatus;
+			error?: string;
+	  }
+	| { kind: "bound"; type: "signal_bound"; account?: string }
+	| { kind: "unbound"; type: "signal_unbound"; reason?: string };
+
+export interface ImSignalStartBindResult {
+	ok: boolean;
+	error?: string;
+}
+
+export interface ImSignalLogoutResult {
+	ok: boolean;
+	error?: string;
+}
+
+export interface ImSignalApi {
+	/**
+	 * Start (or restart) the signal-cli device-link flow. Auto-flips the
+	 * active transport to signal if needed. Fails immediately when
+	 * signal-cli is not installed — the error carries the install command.
+	 */
+	startBind(): Promise<ImSignalStartBindResult>;
+	/** Forget the linked device and re-enter awaiting_bind state. */
+	logout(): Promise<ImSignalLogoutResult>;
+	/**
+	 * Subscribe to live link-flow events. Returns an unsubscribe function.
+	 */
+	subscribeBind(handler: (event: ImSignalBindEvent) => void): Promise<() => void>;
+}
+
 export interface ImLegacyDetection {
 	hasLegacyData: boolean;
 	configPath?: string;
@@ -304,6 +360,13 @@ export interface DesktopImApi {
 	restart(): Promise<{ ok: boolean }>;
 	getRecentLogs(): Promise<ImLogEvent[]>;
 	getPaths(): Promise<ImPathInfo>;
+	/**
+	 * Disconnect one channel: clears its credentials/identifiers and, for
+	 * QR-paired channels, makes the sidecar forget its session. Clearing
+	 * the active channel also switches the bridge off when it can no
+	 * longer run.
+	 */
+	clearChannel(transport: ImTransportSelector): Promise<{ ok: boolean; error?: string }>;
 	/** Reachability check for an IM-session model. Used by the bridge
 	 * settings page's "测试连通" button and gated automatically on
 	 * setConfig(enabled=true). ok=true also for HTTP 4xx — host is up,
@@ -320,4 +383,6 @@ export interface DesktopImApi {
 	wechat: ImWechatApi;
 	/** Whatsapp QR pairing flow. See ImWhatsappApi. */
 	whatsapp: ImWhatsappApi;
+	/** Signal device link flow. See ImSignalApi. */
+	signal: ImSignalApi;
 }

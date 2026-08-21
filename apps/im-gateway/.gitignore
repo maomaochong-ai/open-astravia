@@ -2,6 +2,10 @@
 bin/
 tmp/
 dist/
+# `go build ./cmd/im-gateway` 不带 -o 时会把二进制丢在包目录里（约 20MB），
+# 正规产物走 Makefile 的 bin/ 与 dist/。
+/cmd/im-gateway/im-gateway
+/cmd/im-gateway/im-gateway.exe
 
 # Test artifacts
 coverage.out

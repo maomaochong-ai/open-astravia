@@ -96,14 +96,21 @@ type DiscordConfig struct {
 	AllowedGuildIDs []string `yaml:"allowedGuildIds,omitempty"`
 }
 
-// SignalConfig configures the signal transport, which talks to a
-// user-managed signal-cli daemon. Nothing here is secret — the daemon owns
-// the Signal credentials.
+// SignalConfig configures the signal transport. Nothing here is secret —
+// signal-cli owns the Signal credentials.
+//
+// Leaving endpoint empty (the default) puts the gateway in managed mode: it
+// locates the signal-cli you installed, discovers the linked account, and
+// runs `signal-cli daemon --http` on a loopback port for the process
+// lifetime. Set endpoint to point at a daemon you run yourself instead.
 type SignalConfig struct {
-	Endpoint       string   `yaml:"endpoint,omitempty"` // default http://127.0.0.1:8080
-	Account        string   `yaml:"account,omitempty"`  // E.164 number the daemon serves
+	Endpoint       string   `yaml:"endpoint,omitempty"`  // set = talk to your own daemon; empty = gateway runs signal-cli
+	Account        string   `yaml:"account,omitempty"`   // E.164 number; discovered from signal-cli when empty
+	CLIPath        string   `yaml:"cliPath,omitempty"`   // explicit signal-cli executable; empty = search PATH + package-manager locations
+	ConfigDir      string   `yaml:"configDir,omitempty"` // signal-cli --config; empty = signal-cli default
+	ProxyURL       string   `yaml:"proxyUrl,omitempty"`  // proxy for signal-cli; empty = HTTPS_PROXY/HTTP_PROXY, then the OS proxy settings
 	AllowedNumbers []string `yaml:"allowedNumbers,omitempty"`
-	AttachmentsDir string   `yaml:"attachmentsDir,omitempty"` // signal-cli attachment cache dir
+	AttachmentsDir string   `yaml:"attachmentsDir,omitempty"` // signal-cli attachment cache dir; derived from configDir when empty
 }
 
 // WhatsappConfig holds the non-secret part of whatsapp transport

@@ -7,6 +7,7 @@ import { buildCodingAgentSpec } from "./coding-agent-spec.js";
 import {
 	defaultImConfig,
 	defaultImConfigPath,
+	defaultSignalConfigDir,
 	defaultWechatStatePath,
 	defaultWhatsappStatePath,
 	type ImConfig,
@@ -21,7 +22,11 @@ import type {
 	IMessageConfig,
 	LogEvent,
 	SessionStateEntry,
+	SignalBindStatusEvent,
+	SignalBoundEvent,
 	SignalConfig,
+	SignalQREvent,
+	SignalUnboundEvent,
 	SlackConfig,
 	TelegramConfig,
 	WechatBindStatusEvent,
@@ -37,7 +42,9 @@ import type {
 } from "./host-protocol.js";
 import { LogBuffer } from "./log-buffer.js";
 import { archiveLegacyFiles, detectLegacyImGateway, type LegacyDetection } from "./migration.js";
+import { electronProxyResolver, resolveSidecarProxyEnv } from "./proxy-env.js";
 import { type SidecarConfig, SidecarManager } from "./sidecar-manager.js";
+import { detectSignalCli } from "./signal-cli-locator.js";
 import { applyStatePatch, defaultImStatePath, type ImStateFile, loadImState, saveImState } from "./state-store.js";
 import { type ImBridgeStatus, StatusStore } from "./status-store.js";
 
@@ -94,10 +101,19 @@ export interface ImHostPublicConfig {
 		allowedGuildIds?: string[];
 	};
 	signal: {
-		endpoint: string;
-		account: string;
+		/** A signal-cli device is linked (cached; see ImConfig.signal). */
+		bound: boolean;
+		/** Account signal-cli is registered as, once linked. */
+		account?: string;
+		/** Set only in the advanced "I run my own daemon" mode. */
+		endpoint?: string;
+		cliPath?: string;
 		allowedNumbers?: string[];
 		attachmentsDir?: string;
+		/** Resolved signal-cli path, or undefined when it is not installed. */
+		cliDetectedPath?: string;
+		/** Install command to show when signal-cli is missing. */
+		cliInstallHint: string;
 	};
 	whatsapp: {
 		bound: boolean;
@@ -148,8 +164,12 @@ export interface SetConfigPayload {
 		allowedGuildIds?: string[];
 	};
 	signal?: {
-		endpoint: string;
-		account: string;
+		// Empty endpoint (the default) keeps Signal in managed mode: the
+		// sidecar runs signal-cli itself and the account comes from the
+		// device link, so neither field needs filling in.
+		endpoint?: string;
+		account?: string;
+		cliPath?: string;
 		allowedNumbers?: string[];
 		attachmentsDir?: string;
 	};
@@ -189,6 +209,16 @@ export type WhatsappBindEvent =
 	| ({ kind: "bound" } & WhatsappBoundEvent)
 	| ({ kind: "unbound" } & WhatsappUnboundEvent);
 
+/**
+ * Signal counterpart of WechatBindEvent. The "qr" variant carries the
+ * `sgnl://linkdevice?...` URI signal-cli printed rather than an image.
+ */
+export type SignalBindEvent =
+	| ({ kind: "qr" } & SignalQREvent)
+	| ({ kind: "status" } & SignalBindStatusEvent)
+	| ({ kind: "bound" } & SignalBoundEvent)
+	| ({ kind: "unbound" } & SignalUnboundEvent);
+
 export class ImHost {
 	readonly statusStore = new StatusStore();
 	readonly logBuffer = new LogBuffer(500);
@@ -207,6 +237,7 @@ export class ImHost {
 
 	// Whatsapp bind subscribers, same semantics as wechatBindHandlers.
 	private whatsappBindHandlers: Set<(event: WhatsappBindEvent) => void> = new Set();
+	private signalBindHandlers: Set<(event: SignalBindEvent) => void> = new Set();
 
 	// Listeners notified after every state_patch is applied. The IPC layer
 	// uses this to broadcast "im session list changed" to the renderer so
@@ -352,6 +383,39 @@ export class ImHost {
 						this.appendLog("warn", `save whatsapp unbound state failed: ${(err as Error).message}`);
 					}
 					this.dispatchWhatsappBindEvent({ kind: "unbound", ...event });
+				},
+				onSignalQR: (event) => {
+					this.dispatchSignalBindEvent({ kind: "qr", ...event });
+				},
+				onSignalBindStatus: (event) => {
+					this.dispatchSignalBindEvent({ kind: "status", ...event });
+				},
+				onSignalBound: (event) => {
+					// Cache both the linked flag and the discovered number:
+					// the account is what the user would otherwise have had
+					// to look up and type into settings.
+					this.config = {
+						...this.config,
+						signal: { ...this.config.signal, bound: true, account: event.account },
+					};
+					try {
+						saveImConfig(this.config);
+					} catch (err) {
+						this.appendLog("warn", `save signal bound state failed: ${(err as Error).message}`);
+					}
+					this.dispatchSignalBindEvent({ kind: "bound", ...event });
+				},
+				onSignalUnbound: (event) => {
+					this.config = {
+						...this.config,
+						signal: { ...this.config.signal, bound: false, account: undefined },
+					};
+					try {
+						saveImConfig(this.config);
+					} catch (err) {
+						this.appendLog("warn", `save signal unbound state failed: ${(err as Error).message}`);
+					}
+					this.dispatchSignalBindEvent({ kind: "unbound", ...event });
 				},
 			},
 		});
@@ -531,7 +595,146 @@ export class ImHost {
 		}
 	}
 
+	// =========================================================================
+	// signal link flow API (mirrors the whatsapp flow above)
+	// =========================================================================
+
+	/**
+	 * Begin (or restart) the signal-cli device-link flow, flipping the
+	 * active transport to signal first so the button works from any
+	 * starting state.
+	 *
+	 * Fails fast when signal-cli is not installed: there is nothing the
+	 * sidecar could do, and the user needs the install command rather than
+	 * a QR dialog that never fills in.
+	 */
+	async startSignalBind(): Promise<{ ok: boolean; error?: string }> {
+		const detected = detectSignalCli(this.config.signal.cliPath);
+		if (!detected.path) {
+			return { ok: false, error: `未检测到 signal-cli，请先安装：${detected.installHint}` };
+		}
+		if (this.config.transport !== "signal" || !this.config.enabled) {
+			const flip = await this.setConfig({ enabled: true, transport: "signal" });
+			if (!flip.ok) {
+				return { ok: false, error: flip.error ?? "切换到 Signal 失败" };
+			}
+		}
+		const deadline = Date.now() + 5000;
+		while (Date.now() < deadline) {
+			if (this.statusStore.get().transport === "awaiting_bind" || this.config.signal.bound) {
+				break;
+			}
+			await new Promise((r) => setTimeout(r, 100));
+		}
+		this.manager.startSignalBind();
+		return { ok: true };
+	}
+
+	/**
+	 * Drop the linked Signal device. When the sidecar is running on
+	 * signal it also clears the Vetta-owned signal-cli data; otherwise
+	 * only the cached flag is wiped so the UI updates.
+	 */
+	async signalLogout(): Promise<{ ok: boolean; error?: string }> {
+		if (this.config.transport === "signal" && this.manager.getCurrentChild()) {
+			this.manager.signalLogout();
+		} else {
+			this.config = {
+				...this.config,
+				signal: { ...this.config.signal, bound: false, account: undefined },
+			};
+			try {
+				saveImConfig(this.config);
+			} catch (err) {
+				return { ok: false, error: (err as Error).message };
+			}
+		}
+		return { ok: true };
+	}
+
+	// =========================================================================
+	// unbind (every channel)
+	// =========================================================================
+
+	/**
+	 * Disconnect one channel: drop its credentials/identifiers and, for the
+	 * pairing-based ones, tell the sidecar to forget its session too.
+	 *
+	 * Static-credential channels cannot run without their tokens, so if the
+	 * cleared channel is the active transport the bridge is switched off and
+	 * the sidecar stopped — otherwise it would restart-loop against an empty
+	 * config. Pairing channels keep running: the sidecar parks in
+	 * awaiting_bind, ready for the next scan.
+	 */
+	async clearChannel(transport: ImTransportSelector): Promise<{ ok: boolean; error?: string }> {
+		const descriptor = getImChannelDescriptor(transport);
+		const isActive = this.config.transport === transport;
+
+		// Pairing channels own state inside the sidecar (wechat credentials
+		// file, whatsapp session db, signal-cli config dir). Let the
+		// existing logout paths clear it while the sidecar is still up.
+		if (descriptor.credentialKind === "qr-bind" && isActive && this.manager.getCurrentChild()) {
+			if (transport === "wechat") this.manager.wechatLogout();
+			if (transport === "whatsapp") this.manager.whatsappLogout();
+			if (transport === "signal") this.manager.signalLogout();
+		}
+
+		const nextConfig = descriptor.clearConfig(this.config);
+		const nextCredentials = descriptor.clearCredentials(this.credentials);
+		const mustDisable = isActive && !descriptor.hasRequiredCredentials(nextConfig, nextCredentials);
+
+		this.config = mustDisable ? { ...nextConfig, enabled: false } : nextConfig;
+		this.credentials = nextCredentials;
+
+		try {
+			saveImConfig(this.config);
+		} catch (err) {
+			return { ok: false, error: `save config failed: ${(err as Error).message}` };
+		}
+		try {
+			saveCredentials(this.credentials);
+		} catch (err) {
+			return { ok: false, error: `save credentials failed: ${(err as Error).message}` };
+		}
+
+		this.appendLog("info", `channel ${transport} disconnected by user`);
+
+		if (!isActive) {
+			return { ok: true };
+		}
+		if (this.config.enabled && this.hasRequiredCredentials()) {
+			if (this.manager.getCurrentChild()) {
+				await this.manager.applyConfig(this.buildSidecarConfig());
+			}
+		} else {
+			await this.manager.stop();
+			this.statusStore.patch({ transport: "offline", lastError: undefined });
+		}
+		return { ok: true };
+	}
+
+	/** Subscribe to signal link-flow events. Returns an unsubscribe fn. */
+	subscribeSignalBind(handler: (event: SignalBindEvent) => void): () => void {
+		this.signalBindHandlers.add(handler);
+		return () => {
+			this.signalBindHandlers.delete(handler);
+		};
+	}
+
+	private dispatchSignalBindEvent(event: SignalBindEvent): void {
+		for (const h of this.signalBindHandlers) {
+			try {
+				h(event);
+			} catch (err) {
+				this.appendLog("warn", `signal bind handler threw: ${(err as Error).message}`);
+			}
+		}
+	}
+
 	getPublicConfig(): ImHostPublicConfig {
+		// Detection is filesystem state, not saved config: the user may
+		// install signal-cli while this settings page is open.
+		const signalCli = detectSignalCli(this.config.signal.cliPath);
 		return {
 			enabled: this.config.enabled,
 			transport: this.config.transport,
@@ -563,10 +766,14 @@ export class ImHost {
 				allowedGuildIds: this.config.discord.allowedGuildIds,
 			},
 			signal: {
-				endpoint: this.config.signal.endpoint,
+				bound: this.config.signal.bound,
 				account: this.config.signal.account,
+				endpoint: this.config.signal.endpoint,
+				cliPath: this.config.signal.cliPath,
 				allowedNumbers: this.config.signal.allowedNumbers,
 				attachmentsDir: this.config.signal.attachmentsDir,
+				cliDetectedPath: signalCli.path,
+				cliInstallHint: signalCli.installHint,
 			},
 			whatsapp: {
 				bound: this.config.whatsapp.bound,
@@ -623,8 +830,12 @@ export class ImHost {
 				: this.config.discord,
 			signal: payload.signal
 				? {
-						endpoint: payload.signal.endpoint,
-						account: payload.signal.account,
+						// `bound` is sidecar-owned state, never sent by the
+						// settings form.
+						bound: this.config.signal.bound,
+						endpoint: payload.signal.endpoint || undefined,
+						account: payload.signal.account || undefined,
+						cliPath: payload.signal.cliPath || undefined,
 						allowedNumbers: payload.signal.allowedNumbers,
 						attachmentsDir: payload.signal.attachmentsDir,
 					}
@@ -751,13 +962,21 @@ export class ImHost {
 		};
 	}
 
-	getPaths(): { config: string; credentials: string; state: string; wechatState: string; whatsappState: string } {
+	getPaths(): {
+		config: string;
+		credentials: string;
+		state: string;
+		wechatState: string;
+		whatsappState: string;
+		signalConfigDir: string;
+	} {
 		return {
 			config: defaultImConfigPath(),
 			credentials: defaultCredentialsPath(),
 			state: defaultImStatePath(),
 			wechatState: defaultWechatStatePath(),
 			whatsappState: defaultWhatsappStatePath(),
+			signalConfigDir: defaultSignalConfigDir(),
 		};
 	}
 
@@ -869,10 +1088,21 @@ export class ImHost {
 		};
 	}
 
+	/**
+	 * Signal slot. With no endpoint configured the sidecar runs signal-cli
+	 * itself, so we hand it the executable we resolved (a launched .app has
+	 * a minimal PATH, and the sidecar inherits it) plus a Vetta-owned
+	 * config directory that an unbind may safely clear.
+	 */
 	private buildSignalConfig(): SignalConfig {
+		const managed = !this.config.signal.endpoint;
+		const detected = detectSignalCli(this.config.signal.cliPath);
 		return {
 			endpoint: this.config.signal.endpoint,
 			account: this.config.signal.account,
+			cliPath: detected.path,
+			configDir: managed ? defaultSignalConfigDir() : undefined,
+			ownsConfigDir: managed,
 			allowedNumbers: this.config.signal.allowedNumbers,
 			attachmentsDir: this.config.signal.attachmentsDir,
 		};
@@ -910,6 +1140,27 @@ export class ImHost {
 		imessage: () => ({ imessage: this.buildIMessageConfig() }),
 	};
 
+	/**
+	 * Proxy env handed to the sidecar, refreshed each time it is started.
+	 * Empty when the machine goes direct or already exports a proxy.
+	 */
+	private proxyEnv: Record<string, string> = {};
+
+	/**
+	 * Resolve the proxy the way Electron would and log the outcome, so a
+	 * "cannot reach the platform" report can be told apart from a bad
+	 * credential at a glance.
+	 */
+	private async refreshProxyEnv(): Promise<void> {
+		const resolved = await resolveSidecarProxyEnv(electronProxyResolver);
+		this.proxyEnv = resolved.env;
+		if (resolved.source === "system") {
+			this.appendLog("info", `sidecar proxy: following system proxy ${resolved.proxy}`);
+		} else if (resolved.source === "inherited") {
+			this.appendLog("info", "sidecar proxy: inheriting proxy environment from the app");
+		}
+	}
+
 	private buildSidecarConfig(): SidecarConfig {
 		if (!this.binaryPath) {
 			this.binaryPath = resolveImGatewayBinary().path;
@@ -921,6 +1172,7 @@ export class ImHost {
 			conversationCwd: DEFAULT_IM_CONVERSATION_CWD,
 			state: this.stateAsEntries(),
 			codingAgent,
+			proxyEnv: this.proxyEnv,
 			...this.channelSlotBuilders[this.config.transport](),
 		};
 	}
@@ -931,6 +1183,7 @@ export class ImHost {
 
 	private async startSidecar(): Promise<void> {
 		try {
+			await this.refreshProxyEnv();
 			const cfg = this.buildSidecarConfig();
 			this.statusStore.patch({ transport: "connecting", lastError: undefined });
 			await this.manager.start(cfg);

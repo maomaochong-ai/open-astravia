@@ -60,17 +60,34 @@ const (
 	maxButtonsPerRow = 5
 )
 
+// Gateway dial retry defaults. A dropped dial to gateway.discord.gg is
+// common on flaky or filtered networks; absorbing it here keeps one blip
+// from tearing down the whole sidecar.
+const (
+	defaultConnectInitialBackoff = 2 * time.Second
+	defaultConnectMaxBackoff     = 60 * time.Second
+	defaultConnectMaxAttempts    = 6
+)
+
 // inboundMediaHint is the friendly reply sent when a message carries
 // attachments but the gateway has no inbox configured to receive them.
 const inboundMediaHint = "暂不支持接收文件：网关未配置收件目录，请仅发送文字。"
 
-// gatewayIntents is the minimal intent set: guild + DM messages with
-// message content. MessageContent is a privileged intent and must also be
-// enabled in the Discord developer portal.
+// gatewayIntents is the minimal intent set: guilds plus guild and DM
+// messages.
+//
+// MessageContent is deliberately NOT requested. It is a privileged intent,
+// so Discord rejects the identify with websocket close 4014 ("Disallowed
+// intent(s)") for every bot whose owner has not flipped the MESSAGE
+// CONTENT toggle in the developer portal — the bridge then fails to
+// connect at all. Discord delivers message content without the privilege
+// for exactly the two cases this transport accepts: direct messages to
+// the bot, and guild messages that @-mention it (handleMessageCreate
+// drops every other guild message). Adding the intent would therefore buy
+// nothing and cost every unconfigured bot its connection.
 const gatewayIntents = discordgo.IntentGuilds |
 	discordgo.IntentGuildMessages |
-	discordgo.IntentDirectMessages |
-	discordgo.IntentMessageContent
+	discordgo.IntentDirectMessages
 
 // Options configures Transport. BotToken is required.
 type Options struct {
@@ -88,6 +105,13 @@ type Options struct {
 	// via the shared inbox package). Empty disables inbound media: messages
 	// carrying attachments get a hint reply and only their text survives.
 	InboxDir string
+
+	// ConnectInitialBackoff / ConnectMaxBackoff / ConnectMaxAttempts govern
+	// how a failed gateway dial is retried. Zero values take the package
+	// defaults; tests shrink them to keep the retry path fast.
+	ConnectInitialBackoff time.Duration
+	ConnectMaxBackoff     time.Duration
+	ConnectMaxAttempts    int
 }
 
 // Transport implements transport.Transport (and transport.Reactor) for
@@ -98,6 +122,10 @@ type Transport struct {
 	allowedUsers  map[string]struct{}
 	allowedGuilds map[string]struct{}
 	inboxDir      string
+
+	connectInitialBackoff time.Duration
+	connectMaxBackoff     time.Duration
+	connectMaxAttempts    int
 
 	closed atomic.Bool
 	done   chan struct{}
@@ -127,13 +155,16 @@ func New(opts Options) (*Transport, error) {
 	session.Identify.Intents = gatewayIntents
 
 	t := &Transport{
-		opts:          opts,
-		session:       session,
-		allowedUsers:  toSet(opts.AllowedUserIDs),
-		allowedGuilds: toSet(opts.AllowedGuildIDs),
-		inboxDir:      opts.InboxDir,
-		done:          make(chan struct{}),
-		httpClient:    &http.Client{Timeout: 60 * time.Second},
+		opts:                  opts,
+		session:               session,
+		allowedUsers:          toSet(opts.AllowedUserIDs),
+		allowedGuilds:         toSet(opts.AllowedGuildIDs),
+		inboxDir:              opts.InboxDir,
+		done:                  make(chan struct{}),
+		httpClient:            &http.Client{Timeout: 60 * time.Second},
+		connectInitialBackoff: orDuration(opts.ConnectInitialBackoff, defaultConnectInitialBackoff),
+		connectMaxBackoff:     orDuration(opts.ConnectMaxBackoff, defaultConnectMaxBackoff),
+		connectMaxAttempts:    orInt(opts.ConnectMaxAttempts, defaultConnectMaxAttempts),
 	}
 	t.ack = func(i *discordgo.Interaction) error {
 		return session.InteractionRespond(i, &discordgo.InteractionResponse{
@@ -185,8 +216,8 @@ func (t *Transport) Start(ctx context.Context, handler transport.MessageHandler)
 		t.handleInteraction(ctx, i, handler)
 	})
 
-	if err := t.session.Open(); err != nil {
-		return fmt.Errorf("discord open: %w", err)
+	if err := t.openWithRetry(ctx); err != nil {
+		return err
 	}
 
 	select {
@@ -196,6 +227,45 @@ func (t *Transport) Start(ctx context.Context, handler transport.MessageHandler)
 	case <-t.done:
 		return nil
 	}
+}
+
+// openWithRetry dials the gateway, absorbing transient dial failures with
+// exponential backoff.
+//
+// A single dropped dial ("Open() error connecting to gateway
+// wss://gateway.discord.gg/..., EOF") used to abort Start outright. The host
+// treats a returned Start error as fatal and shuts the sidecar down, so the
+// desktop respawned the whole process — one network blip cost a full process
+// rebuild and the bridge visibly flapped between online and error. Transient
+// failures are retried here instead. A permanent rejection (bad token,
+// refused intents, sharding required) still fails immediately, and giving up
+// after connectMaxAttempts keeps a genuinely unreachable gateway visible
+// instead of retrying forever behind an "online" badge.
+func (t *Transport) openWithRetry(ctx context.Context) error {
+	backoff := t.connectInitialBackoff
+	var lastErr error
+	for attempt := 1; attempt <= t.connectMaxAttempts; attempt++ {
+		err := t.session.Open()
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		if hint, permanent := openFailure(err); permanent {
+			return fmt.Errorf("discord open: %w%s", err, hint)
+		}
+		if attempt == t.connectMaxAttempts {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("discord open: %w (last dial error: %v)", ctx.Err(), err)
+		case <-t.done:
+			return fmt.Errorf("discord open: stopped while retrying (last dial error: %v)", err)
+		case <-time.After(backoff):
+		}
+		backoff = min(backoff*2, t.connectMaxBackoff)
+	}
+	return fmt.Errorf("discord open: gave up after %d attempts: %w", t.connectMaxAttempts, lastErr)
 }
 
 // Stop closes the gateway session. Safe to call multiple times.
@@ -563,6 +633,44 @@ func truncateText(s string, maxRunes int) string {
 		return cut[:i]
 	}
 	return cut
+}
+
+// openFailure classifies a failed gateway dial. permanent reports whether
+// retrying can possibly help; hint is an actionable explanation so the
+// bridge status shows a fixable cause instead of a bare websocket error.
+//
+// The close code is matched on the error text: discordgo surfaces the raw
+// *websocket.CloseError from gorilla, and reaching that type would make an
+// otherwise-indirect dependency direct. A missed match costs only the hint
+// and one wasted retry cycle, never correctness.
+func openFailure(err error) (hint string, permanent bool) {
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "4004"):
+		return " (bot token rejected: check the token in Vetta Claw settings, or reset it in the Discord developer portal)", true
+	case strings.Contains(msg, "4014"), strings.Contains(msg, "4013"):
+		return " (gateway refused the requested intents: the bot must be invited with the bot scope; " +
+			"this build does not request any privileged intent)", true
+	case strings.Contains(msg, "4011"):
+		return " (Discord requires sharding for this bot; the bridge does not support sharded gateways)", true
+	default:
+		// Network-level failures (dial EOF, timeout, DNS) are transient.
+		return "", false
+	}
+}
+
+func orDuration(value, fallback time.Duration) time.Duration {
+	if value > 0 {
+		return value
+	}
+	return fallback
+}
+
+func orInt(value, fallback int) int {
+	if value > 0 {
+		return value
+	}
+	return fallback
 }
 
 // mentionsUser reports whether the mention list contains the given user.

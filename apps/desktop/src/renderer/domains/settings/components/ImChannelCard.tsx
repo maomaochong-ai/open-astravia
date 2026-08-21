@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { ImTransportStatus } from "@preload/api";
-import { ImChannelCardView, type ImStatusBadgeStatus } from "@vetta/theme-ui/settings";
+import { ImChannelCardView, type ImChannelCardIcon, type ImStatusBadgeStatus } from "@vetta/theme-ui/settings";
 
 const STATUS_LABEL: Record<ImTransportStatus, string> = {
 	offline: "imbStatusOffline",
@@ -13,7 +13,7 @@ const STATUS_LABEL: Record<ImTransportStatus, string> = {
 export function ImChannelCard({
 	name,
 	subtitle,
-	iconClass,
+	icon,
 	configured,
 	isActive,
 	transportStatus,
@@ -23,7 +23,7 @@ export function ImChannelCard({
 }: {
 	name: string;
 	subtitle: string;
-	iconClass: string;
+	icon: ImChannelCardIcon;
 	configured: boolean;
 	isActive: boolean;
 	transportStatus: ImTransportStatus;
@@ -38,7 +38,7 @@ export function ImChannelCard({
 		<ImChannelCardView
 			name={name}
 			subtitle={subtitle}
-			iconClass={iconClass}
+			icon={icon}
 			configured={configured}
 			isActive={isActive}
 			effectiveStatus={effectiveStatus as ImStatusBadgeStatus}

@@ -1,4 +1,5 @@
 import { WechatBindDialogView as ThemeWechatBindDialogView } from "@vetta/theme-ui/settings";
+import { ImChannelGuideButton } from "./ImChannelGuideButton";
 import type { WechatBindDialogModel } from "./useWechatBindDialogModel";
 
 export function WechatBindDialogView(model: WechatBindDialogModel): JSX.Element {
@@ -10,6 +11,7 @@ export function WechatBindDialogView(model: WechatBindDialogModel): JSX.Element 
 		ilinkUserId,
 		labels,
 		onLogout,
+		onOpenGuide,
 		onOpenChange,
 		onStart,
 		open,
@@ -28,6 +30,7 @@ export function WechatBindDialogView(model: WechatBindDialogModel): JSX.Element 
 			ilinkUserId={ilinkUserId ?? null}
 			progressLabel={progressLabel}
 			qrDataUrl={qrDataUrl ?? null}
+			footerExtra={<ImChannelGuideButton onOpen={onOpenGuide} />}
 			onStart={onStart}
 			onLogout={onLogout}
 			labels={{

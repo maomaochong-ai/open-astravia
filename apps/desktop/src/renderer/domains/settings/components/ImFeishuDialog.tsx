@@ -1,5 +1,7 @@
+import { Button } from "@vetta/ui";
 import { useTranslation } from "react-i18next";
 import { ImFeishuDialogView } from "@vetta/theme-ui/settings";
+import { ImChannelGuideButton } from "./ImChannelGuideButton";
 import type { ImBridgeSettingsModel } from "./useImBridgeSettingsModel";
 
 export function ImFeishuDialog({ model }: { model: ImBridgeSettingsModel }): JSX.Element {
@@ -39,6 +41,20 @@ export function ImFeishuDialog({ model }: { model: ImBridgeSettingsModel }): JSX
 			canSave={model.feishuValidation.valid}
 			onTest={() => void model.onTestFeishu()}
 			onSave={() => void model.onSaveFeishu()}
+			footerExtra={
+				<>
+					<ImChannelGuideButton onOpen={() => model.setGuideTransport("feishu")} />
+					<Button
+						variant="ghost"
+						size="sm"
+						className="text-[12px] text-destructive"
+						onClick={() => void model.onClearChannel("feishu")}
+						disabled={model.saving || !model.config?.feishu.appId}
+					>
+						{t("clearChannel")}
+					</Button>
+				</>
+			}
 			labels={{
 				title: t("feishuSettingsTitle"),
 				description: t("feishuDesc"),

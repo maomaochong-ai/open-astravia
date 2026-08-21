@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ImBridgeConfig, ImTransportSelector } from "@preload/api";
 import { describe, expect, it } from "vitest";
 import { IM_CHANNELS, isImChannelConfigured } from "./im-channel-catalog";
@@ -22,7 +25,7 @@ function emptyConfig(): ImBridgeConfig {
 		telegram: { botToken: "" },
 		slack: { botToken: "", appToken: "" },
 		discord: { botToken: "" },
-		signal: { endpoint: "", account: "" },
+		signal: { bound: false, cliInstallHint: "brew install signal-cli" },
 		whatsapp: { bound: false },
 		imessage: {},
 		transportMode: "long-connection",
@@ -36,8 +39,19 @@ describe("IM_CHANNELS", () => {
 	});
 
 	it("每个渠道有独立图标，避免卡片互相无法区分", () => {
-		const icons = IM_CHANNELS.map((channel) => channel.iconClass);
+		const icons = IM_CHANNELS.map((channel) =>
+			channel.icon.kind === "asset" ? channel.icon.url : channel.icon.className,
+		);
 		expect(new Set(icons).size).toBe(icons.length);
+	});
+
+	it("声明的品牌图标资源真实存在于 public/channels", () => {
+		const publicDir = join(dirname(fileURLToPath(import.meta.url)), "../../../public");
+		for (const channel of IM_CHANNELS) {
+			if (channel.icon.kind !== "asset") continue;
+			expect(channel.icon.url).toMatch(/^\.\/channels\/[a-z]+\.png$/);
+			expect(existsSync(join(publicDir, channel.icon.url.replace("./", "")))).toBe(true);
+		}
 	});
 
 	it("只有飞书与微信使用专属配置对话框", () => {
@@ -72,11 +86,23 @@ describe("isImChannelConfigured", () => {
 		expect(isImChannelConfigured({ ...partial, slack: { botToken: "xoxb", appToken: "xapp" } }, "slack")).toBe(true);
 	});
 
-	it("Signal 需要服务地址与账号同时存在", () => {
-		const partial = { ...emptyConfig(), signal: { endpoint: "http://127.0.0.1:8080", account: "" } };
-		expect(isImChannelConfigured(partial, "signal")).toBe(false);
+	it("Signal 托管模式看绑定态，自建服务模式看地址与账号", () => {
+		const base = emptyConfig();
+		expect(isImChannelConfigured(base, "signal")).toBe(false);
 		expect(
-			isImChannelConfigured({ ...partial, signal: { endpoint: "http://127.0.0.1:8080", account: "+1" } }, "signal"),
+			isImChannelConfigured(
+				{ ...base, signal: { ...base.signal, bound: true, account: "+8613800000000" } },
+				"signal",
+			),
+		).toBe(true);
+		expect(
+			isImChannelConfigured({ ...base, signal: { ...base.signal, endpoint: "http://127.0.0.1:8080" } }, "signal"),
+		).toBe(false);
+		expect(
+			isImChannelConfigured(
+				{ ...base, signal: { ...base.signal, endpoint: "http://127.0.0.1:8080", account: "+1" } },
+				"signal",
+			),
 		).toBe(true);
 	});
 });

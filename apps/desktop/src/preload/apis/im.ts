@@ -27,6 +27,12 @@ const IM_CHANNELS = {
 	WHATSAPP_SUBSCRIBE: "vetta:im:whatsapp:subscribe",
 	WHATSAPP_UNSUBSCRIBE: "vetta:im:whatsapp:unsubscribe",
 	WHATSAPP_BIND_EVENT: "vetta:im:whatsapp:bind-event",
+	SIGNAL_START_BIND: "vetta:im:signal:start-bind",
+	SIGNAL_LOGOUT: "vetta:im:signal:logout",
+	SIGNAL_SUBSCRIBE: "vetta:im:signal:subscribe",
+	SIGNAL_UNSUBSCRIBE: "vetta:im:signal:unsubscribe",
+	SIGNAL_BIND_EVENT: "vetta:im:signal:bind-event",
+	CLEAR_CHANNEL: "vetta:im:clear-channel",
 	SESSION_CHANGED: "vetta:im:session-changed",
 } as const;
 
@@ -82,6 +88,7 @@ export function createImApi(ipc: IpcRenderer): Pick<DesktopApi, "im"> {
 			restart: () => ipc.invoke(IM_CHANNELS.RESTART),
 			getRecentLogs: () => ipc.invoke(IM_CHANNELS.GET_RECENT_LOGS),
 			getPaths: () => ipc.invoke(IM_CHANNELS.GET_PATHS),
+			clearChannel: (transport) => ipc.invoke(IM_CHANNELS.CLEAR_CHANNEL, transport),
 			probeAgentModel: (ref) => ipc.invoke(IM_CHANNELS.PROBE_AGENT_MODEL, ref),
 			detectLegacy: () => ipc.invoke(IM_CHANNELS.DETECT_LEGACY),
 			importLegacy: (detection) => ipc.invoke(IM_CHANNELS.IMPORT_LEGACY, detection),
@@ -108,6 +115,19 @@ export function createImApi(ipc: IpcRenderer): Pick<DesktopApi, "im"> {
 						IM_CHANNELS.WHATSAPP_SUBSCRIBE,
 						IM_CHANNELS.WHATSAPP_BIND_EVENT,
 						IM_CHANNELS.WHATSAPP_UNSUBSCRIBE,
+						handler,
+						[],
+					),
+			},
+			signal: {
+				startBind: () => ipc.invoke(IM_CHANNELS.SIGNAL_START_BIND),
+				logout: () => ipc.invoke(IM_CHANNELS.SIGNAL_LOGOUT),
+				subscribeBind: (handler) =>
+					subscribeById(
+						ipc,
+						IM_CHANNELS.SIGNAL_SUBSCRIBE,
+						IM_CHANNELS.SIGNAL_BIND_EVENT,
+						IM_CHANNELS.SIGNAL_UNSUBSCRIBE,
 						handler,
 						[],
 					),

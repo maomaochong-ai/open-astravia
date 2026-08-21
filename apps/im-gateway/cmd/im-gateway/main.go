@@ -286,20 +286,7 @@ func buildTransport(cfg *config.Config, creds *config.Credentials, log *zap.Logg
 		}
 		return discord.New(opts)
 	case config.TransportSignal:
-		if cfg.Transport.Signal == nil || cfg.Transport.Signal.Account == "" {
-			return nil, errors.New("signal transport requires transport.signal.account (the E.164 number your signal-cli daemon serves)")
-		}
-		endpoint := cfg.Transport.Signal.Endpoint
-		if endpoint == "" {
-			endpoint = defaultSignalEndpoint
-		}
-		return signalcli.New(signalcli.Options{
-			Endpoint:       endpoint,
-			Account:        cfg.Transport.Signal.Account,
-			AllowedNumbers: cfg.Transport.Signal.AllowedNumbers,
-			AttachmentsDir: cfg.Transport.Signal.AttachmentsDir,
-			InboxDir:       cfg.Paths.ConversationCwd,
-		})
+		return buildSignalTransport(cfg)
 	case config.TransportIMessage:
 		opts := imessage.Options{InboxDir: cfg.Paths.ConversationCwd}
 		if cfg.Transport.IMessage != nil {
@@ -312,9 +299,54 @@ func buildTransport(cfg *config.Config, creds *config.Credentials, log *zap.Logg
 	}
 }
 
-// defaultSignalEndpoint is where `signal-cli daemon --http` listens unless
-// the user pointed it elsewhere.
-const defaultSignalEndpoint = "http://127.0.0.1:8080"
+// buildSignalTransport wires the signal transport in either mode.
+//
+// Managed (endpoint empty): the gateway finds signal-cli, asks it which
+// account is linked, and supervises the daemon itself — the standalone
+// counterpart of what the desktop app does. User-managed (endpoint set):
+// we only speak JSON-RPC to the daemon the user already runs, and the
+// account must be given because we never inspect their config directory.
+func buildSignalTransport(cfg *config.Config) (transport.Transport, error) {
+	sig := cfg.Transport.Signal
+	if sig == nil {
+		sig = &config.SignalConfig{}
+	}
+	opts := signalcli.Options{
+		Account:        sig.Account,
+		AllowedNumbers: sig.AllowedNumbers,
+		AttachmentsDir: sig.AttachmentsDir,
+		InboxDir:       cfg.Paths.ConversationCwd,
+	}
+	if sig.Endpoint != "" {
+		if sig.Account == "" {
+			return nil, errors.New("signal transport with transport.signal.endpoint set also requires transport.signal.account (the E.164 number your daemon serves)")
+		}
+		opts.Endpoint = sig.Endpoint
+		return signalcli.New(opts)
+	}
+
+	cli := signalcli.CLIOptions{Path: sig.CLIPath, ConfigDir: sig.ConfigDir, ProxyURL: sig.ProxyURL}
+	if opts.Account == "" {
+		ctx, cancel := context.WithTimeout(context.Background(), signalAccountLookupTimeout)
+		defer cancel()
+		accounts, err := signalcli.ListAccounts(ctx, cli)
+		if err != nil {
+			if errors.Is(err, signalcli.ErrCLINotFound) {
+				return nil, fmt.Errorf("%w — install it first (%s), then link a device with `signal-cli link -n Vetta`", err, signalcli.InstallHint())
+			}
+			return nil, err
+		}
+		if len(accounts) == 0 {
+			return nil, errors.New("signal: signal-cli has no linked account — run `signal-cli link -n Vetta` and scan the QR from Signal → Linked devices")
+		}
+		opts.Account = accounts[0]
+	}
+	opts.Managed = &signalcli.ManagedOptions{CLI: cli}
+	return signalcli.New(opts)
+}
+
+// signalAccountLookupTimeout bounds the signal-cli listAccounts probe.
+const signalAccountLookupTimeout = 30 * time.Second
 
 func printBanner(cfg *config.Config, creds *config.Credentials, cfgPath, transportName string) {
 	fmt.Printf("im-gateway %s\n", version)

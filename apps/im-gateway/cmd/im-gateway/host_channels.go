@@ -111,16 +111,28 @@ var hostChannels = []hostChannel{
 		name:     "signal",
 		selected: func(s *buildSpec) bool { return s.Signal != nil },
 		build: func(s *buildSpec) (transport.Transport, error) {
-			if s.Signal.Endpoint == "" || s.Signal.Account == "" {
-				return nil, errors.New("signal config missing endpoint/account")
+			// Managed mode discovers the account from signal-cli and lets
+			// the transport own the daemon; awaiting_bind comes back when
+			// no device is linked yet. See resolveSignalAccount.
+			account, err := resolveSignalAccount(s.Signal)
+			if err != nil {
+				return nil, err
 			}
-			return signalcli.New(signalcli.Options{
-				Endpoint:       s.Signal.Endpoint,
-				Account:        s.Signal.Account,
+			opts := signalcli.Options{
+				Account:        account,
 				AllowedNumbers: s.Signal.AllowedNumbers,
 				AttachmentsDir: s.Signal.AttachmentsDir,
 				InboxDir:       s.ConversationCwd,
-			})
+			}
+			if signalManaged(s.Signal) {
+				opts.Managed = &signalcli.ManagedOptions{
+					CLI: signalCLIOptions(s.Signal),
+					Log: s.Log,
+				}
+			} else {
+				opts.Endpoint = s.Signal.Endpoint
+			}
+			return signalcli.New(opts)
 		},
 	},
 	{

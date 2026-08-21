@@ -70,6 +70,13 @@ type Options struct {
 	// inbox package). Empty disables inbound media handling — attachments
 	// are dropped and only text survives.
 	InboxDir string
+	// Managed turns on gateway-supervised signal-cli: instead of talking to
+	// a daemon the user started, the transport spawns
+	// `signal-cli daemon --http 127.0.0.1:<free port>` itself at Start and
+	// stops it on Stop. Endpoint must be empty in this mode — it is only
+	// known once the daemon is up. Account is still required: the host
+	// layer resolves it (and decides awaiting_bind) before constructing us.
+	Managed *ManagedOptions
 	// AttachmentsDir is signal-cli's own attachment cache directory
 	// (typically ~/.local/share/signal-cli/attachments). The daemon stores
 	// inbound attachment bytes there under their attachment id; we copy
@@ -78,11 +85,25 @@ type Options struct {
 	AttachmentsDir string
 }
 
+// ManagedOptions configures the supervised signal-cli child process.
+type ManagedOptions struct {
+	// CLI locates the executable and its config directory.
+	CLI CLIOptions
+	// Log receives daemon lifecycle lines. Optional.
+	Log func(level, msg string, fields map[string]any)
+}
+
 // Transport implements transport.Transport (and transport.Reactor) for
 // Signal via signal-cli.
 type Transport struct {
 	opts    Options
 	allowed map[string]struct{}
+
+	// endpoint is the daemon base URL. Fixed at construction in
+	// user-managed mode; assigned by Start in managed mode, hence the
+	// mutex — RPC calls read it from other goroutines.
+	endpointMu sync.RWMutex
+	endpoint   string
 
 	// rpcClient has a request timeout; eventClient must not (the SSE stream
 	// is long-lived and lifecycle is governed by the Start context).
@@ -99,6 +120,41 @@ type Transport struct {
 	mu      sync.Mutex
 	stopped bool
 	cancel  context.CancelFunc
+	// daemon is the supervised signal-cli child in managed mode; nil in
+	// user-managed mode and before the first Start.
+	daemon *Daemon
+}
+
+// baseURL returns the daemon endpoint currently in effect.
+func (t *Transport) baseURL() string {
+	t.endpointMu.RLock()
+	defer t.endpointMu.RUnlock()
+	return t.endpoint
+}
+
+func (t *Transport) setBaseURL(url string) {
+	t.endpointMu.Lock()
+	t.endpoint = strings.TrimRight(url, "/")
+	t.endpointMu.Unlock()
+}
+
+// defaultAttachmentsDir derives signal-cli's inbound attachment cache from
+// its config directory, so managed mode receives media without the user
+// configuring a path. Empty configDir falls back to signal-cli's own
+// default data directory (XDG_DATA_HOME or ~/.local/share on every
+// platform it supports).
+func defaultAttachmentsDir(configDir string) string {
+	if configDir != "" {
+		return filepath.Join(configDir, "attachments")
+	}
+	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
+		return filepath.Join(xdg, "signal-cli", "attachments")
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".local", "share", "signal-cli", "attachments")
 }
 
 // Compile-time interface checks.
@@ -107,15 +163,25 @@ var (
 	_ transport.Reactor   = (*Transport)(nil)
 )
 
-// New constructs a Signal transport. Endpoint and Account are required.
+// New constructs a Signal transport.
+//
+// Account is always required. Endpoint is required only in user-managed
+// mode; with Options.Managed set it must be empty, because the port is
+// chosen when Start spawns the daemon.
 func New(opts Options) (*Transport, error) {
-	if opts.Endpoint == "" {
+	if opts.Managed == nil && opts.Endpoint == "" {
 		return nil, errors.New("signal: Options.Endpoint is required")
+	}
+	if opts.Managed != nil && opts.Endpoint != "" {
+		return nil, errors.New("signal: Options.Endpoint must be empty in managed mode")
 	}
 	if opts.Account == "" {
 		return nil, errors.New("signal: Options.Account is required")
 	}
 	opts.Endpoint = strings.TrimRight(opts.Endpoint, "/")
+	if opts.Managed != nil && opts.AttachmentsDir == "" {
+		opts.AttachmentsDir = defaultAttachmentsDir(opts.Managed.CLI.ConfigDir)
+	}
 
 	allowed := make(map[string]struct{}, len(opts.AllowedNumbers))
 	for _, n := range opts.AllowedNumbers {
@@ -126,6 +192,7 @@ func New(opts Options) (*Transport, error) {
 
 	return &Transport{
 		opts:           opts,
+		endpoint:       opts.Endpoint,
 		allowed:        allowed,
 		rpcClient:      &http.Client{Timeout: 30 * time.Second},
 		eventClient:    &http.Client{},
@@ -165,6 +232,40 @@ func (t *Transport) Start(ctx context.Context, handler transport.MessageHandler)
 	t.mu.Unlock()
 	defer cancel()
 
+	// Managed mode: the daemon is ours to run. A failure here is fatal for
+	// this Start — the host layer surfaces it instead of us retrying a
+	// broken installation forever.
+	var daemon *Daemon
+	var daemonDone <-chan struct{}
+	if t.opts.Managed != nil {
+		d, err := StartDaemon(ctx, DaemonOptions{
+			CLI:     t.opts.Managed.CLI,
+			Account: t.opts.Account,
+			Log:     t.opts.Managed.Log,
+		})
+		if err != nil {
+			return err
+		}
+		t.mu.Lock()
+		stopped := t.stopped
+		t.daemon = d
+		t.mu.Unlock()
+		if stopped {
+			// Stop raced us; do not leave an orphan child behind.
+			_ = d.Stop()
+			return errors.New("signal: Start called after Stop")
+		}
+		defer func() {
+			t.mu.Lock()
+			t.daemon = nil
+			t.mu.Unlock()
+			_ = d.Stop()
+		}()
+		t.setBaseURL(d.Endpoint())
+		daemon = d
+		daemonDone = d.Done()
+	}
+
 	backoff := t.backoffInitial
 	for {
 		if err := ctx.Err(); err != nil {
@@ -181,6 +282,8 @@ func (t *Transport) Start(ctx context.Context, handler transport.MessageHandler)
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-daemonDone:
+			return fmt.Errorf("signal: signal-cli daemon exited: %v", daemon.Err())
 		case <-time.After(backoff):
 		}
 		backoff *= 2
@@ -201,6 +304,10 @@ func (t *Transport) Stop() error {
 	if t.cancel != nil {
 		t.cancel()
 	}
+	if t.daemon != nil {
+		_ = t.daemon.Stop()
+		t.daemon = nil
+	}
 	return nil
 }
 
@@ -208,7 +315,7 @@ func (t *Transport) Stop() error {
 // stream ends. Returns connected=true once a 200 response was obtained so
 // the caller can reset its backoff.
 func (t *Transport) consumeEvents(ctx context.Context, handler transport.MessageHandler) (connected bool, err error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, t.opts.Endpoint+"/api/v1/events", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, t.baseURL()+"/api/v1/events", nil)
 	if err != nil {
 		return false, fmt.Errorf("signal events: %w", err)
 	}
@@ -531,7 +638,7 @@ func (t *Transport) rpcCall(ctx context.Context, op, method string, params any) 
 	if err != nil {
 		return nil, fmt.Errorf("signal %s: %w", op, err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.opts.Endpoint+"/api/v1/rpc", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.baseURL()+"/api/v1/rpc", bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("signal %s: %w", op, err)
 	}

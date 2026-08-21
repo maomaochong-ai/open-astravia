@@ -67,10 +67,22 @@ export interface ImConfig {
 		allowedGuildIds?: string[];
 	};
 	signal: {
-		// Non-secret identifiers of the user-managed signal-cli daemon.
-		// The daemon itself owns the Signal credentials.
-		endpoint: string;
-		account: string;
+		// Nothing secret lives here — signal-cli owns the Signal
+		// credentials either way.
+		//
+		// Managed mode (the default): every field below is empty and the
+		// sidecar finds signal-cli, links the device via QR, and runs the
+		// daemon itself. `bound` caches "a device is linked" so the
+		// renderer can show it without waiting for the sidecar.
+		bound: boolean;
+		// Advanced escape hatch: point at a daemon the user runs
+		// themselves. Setting `endpoint` switches off managed mode, and
+		// then `account` is required.
+		endpoint?: string;
+		account?: string;
+		// Explicit signal-cli executable, for installs outside PATH and
+		// the well-known package-manager locations.
+		cliPath?: string;
 		allowedNumbers?: string[];
 		attachmentsDir?: string;
 	};
@@ -102,7 +114,7 @@ export function defaultImConfig(): ImConfig {
 		telegram: {},
 		slack: {},
 		discord: {},
-		signal: { endpoint: "", account: "" },
+		signal: { bound: false },
 		whatsapp: { bound: false },
 		imessage: {},
 		transportMode: "long-connection",
@@ -156,8 +168,10 @@ export function loadImConfig(filePath = DEFAULT_PATH): ImConfig {
 				allowedGuildIds: optionalStringArray(parsed.discord?.allowedGuildIds),
 			},
 			signal: {
-				endpoint: typeof parsed.signal?.endpoint === "string" ? parsed.signal.endpoint : "",
-				account: typeof parsed.signal?.account === "string" ? parsed.signal.account : "",
+				bound: parsed.signal?.bound === true,
+				endpoint: optionalString(parsed.signal?.endpoint),
+				account: optionalString(parsed.signal?.account),
+				cliPath: optionalString(parsed.signal?.cliPath),
 				allowedNumbers: optionalStringArray(parsed.signal?.allowedNumbers),
 				attachmentsDir: optionalString(parsed.signal?.attachmentsDir),
 			},
@@ -203,4 +217,16 @@ export function defaultWechatStatePath(): string {
  */
 export function defaultWhatsappStatePath(): string {
 	return join(getVettaHomePath(), "desktop-app", "im-whatsapp.db");
+}
+
+/**
+ * Default `--config` directory handed to signal-cli in managed mode.
+ *
+ * Deliberately NOT signal-cli's own default (~/.local/share/signal-cli):
+ * keeping Vetta's linked device in a directory we own means unbinding here
+ * can clear it without touching a signal-cli install the user set up for
+ * their own purposes.
+ */
+export function defaultSignalConfigDir(): string {
+	return join(getVettaHomePath(), "desktop-app", "im-signal-cli");
 }
