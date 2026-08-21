@@ -24,6 +24,7 @@
 
 ### Fixed
 
+- 修复干净 CI 环境下 Desktop 三平台打包烟测无法进入 packaged E2E：打包前现在统一按 workspace 依赖图生成声明与产物，Windows 不再使用漂移的独立构建顺序；Linux runner 同时显式安装 Bubblewrap 源码构建依赖。
 - 修复启用语音输入能力后手机桌面预览完全黑屏的问题：全局媒体权限策略此前只允许主窗口麦克风，导致远程桌面隐藏宿主的 `getDisplayMedia` 在屏幕源选择前被拒绝。现在仅对白名单中的远程桌面主 Frame 放行 Electron 屏幕捕获的两阶段权限请求，仍拒绝其摄像头、音频、子 Frame 及其它 Renderer 请求；屏幕源授权、拒绝和枚举失败也有脱敏日志可查。
 - 修复手机成功连接但桌面预览始终为空的问题：此前 Desktop 在二维码生成时立即发送一次 WebRTC offer，手机稍后进入预览时 Worker 会因 viewer 尚未在线而丢失该 offer 并关闭 host。现在 Worker 在双方信令端点都在线后发送不可由客户端伪造的 `peer_ready` 事件，Desktop 收到后才发起协商；Android 同时保证本地 description 成功后再发送 answer，并在 renderer 延迟创建时补挂视频轨。
 - 增加独立的 Desktop 生产边界自动验证 workflow：始终检查打包资源合同，触及主进程、preload、打包配置、原生依赖或远程控制时自动构建 Windows unpacked 包并运行 packaged smoke，避免开发态与生产态目录差异只能在发布后暴露。

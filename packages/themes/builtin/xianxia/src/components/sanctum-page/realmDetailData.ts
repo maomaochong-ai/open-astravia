@@ -156,7 +156,7 @@ function getRealmBenefits(
 		},
 		{ icon: "icon-[solar--medal-ribbon-star-bold]", label: `点亮${achievement.name}` },
 		{
-			icon: "icon-[solar--workflow-bold]",
+			icon: "icon-[solar--branching-paths-up-bold]",
 			label: nextRealmName ? `开启${nextRealmName}进阶` : "登临最高境界",
 		},
 	];

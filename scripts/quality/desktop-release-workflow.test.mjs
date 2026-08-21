@@ -41,6 +41,14 @@ describe("Desktop release workflow contracts", () => {
 		expect(packagedWorkflow).toContain("xvfb-run --auto-servernum");
 	});
 
+	it("installs Linux bubblewrap build dependencies in packaged and release builds", () => {
+		for (const workflowSource of [packagedWorkflow, workflow]) {
+			expect(workflowSource).toContain("Install Linux packaging dependencies");
+			expect(workflowSource).toContain("if: runner.os == 'Linux'");
+			expect(workflowSource).toContain("build-essential libcap-dev meson ninja-build pkg-config xz-utils");
+		}
+	});
+
 	it("uses the same publish jobs for tagged stable and dispatched test/stable releases", () => {
 		expect(workflow).toContain("build_version:");
 		expect(workflow).toContain("should-publish: $" + "{{ steps.config.outputs.should_publish }}");

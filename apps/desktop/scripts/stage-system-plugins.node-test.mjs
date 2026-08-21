@@ -73,7 +73,20 @@ test("development and packaging scripts pin their system plugin profiles without
 	);
 	assert.match(packageJson.scripts["build:pack"], /VETTA_SYSTEM_PLUGIN_PROFILE=production/);
 	assert.match(packageJson.scripts["prepare:pack"], /VETTA_SYSTEM_PLUGIN_PROFILE=production/);
+	assert.equal(
+		packageJson.scripts["prepare:workspace"],
+		"node scripts/build-workspace-prereqs.mjs --force",
+	);
+	assert.equal(
+		packageJson.scripts["prepare:workspace:dev"],
+		"node scripts/build-workspace-prereqs.mjs",
+	);
 	assert.equal(packageJson.scripts["prebuild:pack"], undefined);
+	assert.ok(
+		desktopPackPreparation.indexOf("bun run prepare:workspace") <
+			desktopPackPreparation.indexOf("bun run build:pack"),
+		"workspace prerequisites must be built before Desktop bundles and themes",
+	);
 	assert.match(desktopPackPreparation, /bun run build:pack/);
 	assert.match(desktopPackPreparation, /bun run prepare:pack/);
 	assert.match(packageJson.scripts["dist:desktop"], /bun run prepare:desktop-pack/);
