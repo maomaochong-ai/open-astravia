@@ -396,6 +396,11 @@ jobs:
             bun run test:e2e:packaged
           fi
 
+      - name: Re-verify platform updater artifacts after packaged E2E
+        if: matrix.verify != ''
+        working-directory: apps/desktop
+        run: bun run ${{ matrix.verify }}
+
       - name: Name macOS update metadata per architecture
         if: matrix.macArch != ''
         working-directory: apps/desktop

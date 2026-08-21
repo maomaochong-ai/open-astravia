@@ -1,5 +1,6 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
 
 const PACKAGE_VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 
@@ -33,6 +34,19 @@ export function resolvePackagedE2eAppImagePath(packageRoot, version) {
 	throw new Error(
 		`Linux packaged E2E AppImage not found: ${appImagePath}. Run bun run dist:linux:test first.`,
 	);
+}
+
+export function stagePackagedE2eAppImage(packageRoot, version, temporaryRoot = tmpdir()) {
+	const sourcePath = resolvePackagedE2eAppImagePath(packageRoot, version);
+	const stagingRoot = mkdtempSync(join(temporaryRoot, "vetta-packaged-e2e-appimage-"));
+	const appImagePath = join(stagingRoot, basename(sourcePath));
+	try {
+		copyFileSync(sourcePath, appImagePath);
+		return { appImagePath, stagingRoot };
+	} catch (error) {
+		rmSync(stagingRoot, { recursive: true, force: true });
+		throw error;
+	}
 }
 
 export function resolvePackagedE2eBinaryPath(packageRoot, platform = process.platform) {

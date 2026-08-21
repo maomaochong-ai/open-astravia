@@ -31,6 +31,13 @@ describe("Desktop release workflow contracts", () => {
 		expect(workflow).toContain("Run packaged app and updater E2E");
 		expect(workflow).toContain('VETTA_E2E_UPDATE_FEED: "1"');
 		expect(workflow).toContain("xvfb-run --auto-servernum bun run test:e2e:packaged");
+		const initialVerify = workflow.indexOf("- name: Verify platform updater artifacts");
+		const packagedE2e = workflow.indexOf("- name: Run packaged app and updater E2E");
+		const finalVerify = workflow.indexOf("- name: Re-verify platform updater artifacts after packaged E2E");
+		const upload = workflow.indexOf("- name: Upload updater artifacts");
+		expect(initialVerify).toBeLessThan(packagedE2e);
+		expect(packagedE2e).toBeLessThan(finalVerify);
+		expect(finalVerify).toBeLessThan(upload);
 	});
 
 	it("keeps the pull-request packaged E2E matrix cross-platform", () => {

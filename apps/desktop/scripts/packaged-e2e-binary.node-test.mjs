@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
 	resolvePackagedE2eAppImagePath,
 	resolvePackagedE2eBinaryPath,
+	stagePackagedE2eAppImage,
 } from "./packaged-e2e-binary.mjs";
 
 test("Linux unpacked E2E uses the built AppImage as the updater runtime image", async () => {
@@ -34,6 +35,28 @@ test("Linux packaged E2E rejects unsafe or missing AppImage paths", async () => 
 		);
 	} finally {
 		await rm(packageRoot, { recursive: true, force: true });
+	}
+});
+
+test("Linux packaged E2E stages an isolated AppImage before updater tests", async () => {
+	const packageRoot = await mkdtemp(join(tmpdir(), "vetta-packaged-e2e-"));
+	const temporaryRoot = await mkdtemp(join(tmpdir(), "vetta-packaged-e2e-stage-"));
+	const releaseAppImage = join(packageRoot, "release", "Vetta-1.2.3.AppImage");
+	await mkdir(join(packageRoot, "release"), { recursive: true });
+	await writeFile(releaseAppImage, "release-appimage");
+
+	try {
+		const staged = stagePackagedE2eAppImage(packageRoot, "1.2.3", temporaryRoot);
+		assert.notEqual(staged.appImagePath, releaseAppImage);
+		assert.equal(await readFile(staged.appImagePath, "utf8"), "release-appimage");
+
+		await writeFile(staged.appImagePath, "downloaded-e2e-update");
+		assert.equal(await readFile(releaseAppImage, "utf8"), "release-appimage");
+	} finally {
+		await Promise.all([
+			rm(packageRoot, { recursive: true, force: true }),
+			rm(temporaryRoot, { recursive: true, force: true }),
+		]);
 	}
 });
 

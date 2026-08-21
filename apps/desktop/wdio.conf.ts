@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,8 +7,8 @@ import type { Server } from "node:http";
 import { startUpdateFeedFixture } from "./e2e/update-feed-fixture.mjs";
 import { resolveElectronE2eServiceOptions } from "./scripts/electron-e2e-service-options.mjs";
 import {
-	resolvePackagedE2eAppImagePath,
 	resolvePackagedE2eBinaryPath,
+	stagePackagedE2eAppImage,
 } from "./scripts/packaged-e2e-binary.mjs";
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -26,6 +26,7 @@ const packagedArtifactRoot = process.env.VETTA_E2E_PACKAGED_ROOT?.trim()
 	? path.resolve(process.env.VETTA_E2E_PACKAGED_ROOT)
 	: packageRoot;
 let updateFeedServer: Server | undefined;
+let stagedAppImageRoot: string | undefined;
 
 /**
  * Resolve the real electron executable under node_modules/electron.
@@ -53,9 +54,11 @@ function resolveElectronServiceOptions(): {
 	if (usePackaged) {
 		if (process.platform === "linux") {
 			// WDIO drives linux-unpacked/Vetta, but electron-updater only enables its
-			// AppImage provider when the runtime supplies APPIMAGE. Point it at the
-			// real artifact from the same build so updater E2E retains that contract.
-			process.env.APPIMAGE = resolvePackagedE2eAppImagePath(packagedArtifactRoot, packageVersion);
+			// AppImage provider when the runtime supplies APPIMAGE. Stage a copy so
+			// the updater replacement flow cannot mutate the release artifact uploaded after E2E.
+			const staged = stagePackagedE2eAppImage(packagedArtifactRoot, packageVersion);
+			stagedAppImageRoot = staged.stagingRoot;
+			process.env.APPIMAGE = staged.appImagePath;
 		}
 		return {
 			// Windows release/Vetta.exe is a detached stable launcher. ChromeDriver
@@ -135,5 +138,7 @@ export const config = {
 	onComplete: () => {
 		updateFeedServer?.close();
 		updateFeedServer = undefined;
+		if (stagedAppImageRoot) rmSync(stagedAppImageRoot, { recursive: true, force: true });
+		stagedAppImageRoot = undefined;
 	},
 };
