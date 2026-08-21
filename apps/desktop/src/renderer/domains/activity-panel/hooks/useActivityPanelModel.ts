@@ -230,6 +230,44 @@ export function useActivityPanelModel({
 		if (dockedTabItems.some((item) => item.key === fallback)) return fallback;
 		return dockedTabItems[0]?.key ?? fallback;
 	}, [knowledgeHistory, cwd, tabByProject, profile, dockedTabItems, tabItems]);
+	useEffect(() => {
+		console.debug(
+			`[activity-tab-debug] resolved ${JSON.stringify({
+				cwd,
+				panelOpen: isOpen,
+				remembered: cwd ? (tabByProject.get(cwd) ?? null) : null,
+				activeTab,
+				visibilityRecords: tabVisibilityRecords,
+				hiddenKeys,
+				tabOrder,
+				definitions: definitions.map((definition) => ({
+					id: definition.id,
+					source: definition.source,
+					pluginId: definition.pluginId ?? null,
+					initiallyVisible: definition.initiallyVisible ?? true,
+					metaAvailable: metaById.get(definition.id) != null,
+				})),
+				candidates: resolved.candidates.map((tab) => tab.id),
+				onBar: resolved.onBar.map((tab) => tab.id),
+				availablePlugins: resolved.availablePlugins.map((tab) => tab.id),
+				docked: dockedTabItems.map((tab) => tab.key),
+			})}`,
+		);
+	}, [
+		activeTab,
+		cwd,
+		definitions,
+		dockedTabItems,
+		hiddenKeys,
+		isOpen,
+		metaById,
+		resolved.availablePlugins,
+		resolved.candidates,
+		resolved.onBar,
+		tabByProject,
+		tabOrder,
+		tabVisibilityRecords,
+	]);
 	// 程序切到某 tab 时若它在 hidden 列表，自动恢复（与旧行为一致）。
 	useEffect(() => {
 		if (!cwd) return;

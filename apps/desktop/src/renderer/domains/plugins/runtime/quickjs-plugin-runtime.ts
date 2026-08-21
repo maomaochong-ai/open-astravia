@@ -208,10 +208,10 @@ export function createQuickJsPluginDefinition(plugin: InstalledPlugin): PluginDe
 							nextViewStore.setView(message.tabId, message.view);
 							break;
 						case "openActivityTab":
-							context.ui.openActivityTab(message.tabId, { width: message.width });
+							context.ui.openActivityTab(message.tabId, { width: message.width, cwd: message.cwd });
 							break;
 						case "setActivityTabVisible":
-							context.ui.setActivityTabVisible(message.tabId, message.visible);
+							context.ui.setActivityTabVisible(message.tabId, message.visible, { cwd: message.cwd });
 							break;
 						case "notify":
 							context.ui.notify(message.options);

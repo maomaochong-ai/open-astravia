@@ -64,4 +64,33 @@ describe("QuickJS plugin protocol", () => {
 			}),
 		).toThrow("Invalid QuickJS activity tab retention");
 	});
+
+	it("preserves an explicit activity-tab cwd at the worker boundary", () => {
+		expect(
+			parseQuickJsWorkerMessage({
+				type: "openActivityTab",
+				tabId: "probe",
+				width: "max",
+				cwd: "C:\\work\\background",
+			}),
+		).toEqual({
+			type: "openActivityTab",
+			tabId: "probe",
+			width: "max",
+			cwd: "C:\\work\\background",
+		});
+		expect(
+			parseQuickJsWorkerMessage({
+				type: "setActivityTabVisible",
+				tabId: "probe",
+				visible: true,
+				cwd: "/work/background",
+			}),
+		).toEqual({
+			type: "setActivityTabVisible",
+			tabId: "probe",
+			visible: true,
+			cwd: "/work/background",
+		});
+	});
 });

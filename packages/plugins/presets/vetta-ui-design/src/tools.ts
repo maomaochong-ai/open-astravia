@@ -142,9 +142,16 @@ export function registerDesignTools(ctx: PluginContext): void {
 				};
 			}
 			const result = await scaffoldDesign(host.fs, session.cwd, trigger.input.name ?? "design", defaultFrameSize);
-			setPendingDesignPath(result.vetdPath);
-			ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, true);
-			ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
+			setPendingDesignPath(result.vetdPath, session.cwd);
+			console.debug(
+				`[vetta-ui-design:activity-tab-debug] vetd_create requesting canvas ${JSON.stringify({
+					sessionCwd: session.cwd,
+					vetdPath: result.vetdPath,
+					tabId: CANVAS_TAB_ID,
+				})}`,
+			);
+			ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, true, { cwd: session.cwd });
+			ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max", cwd: session.cwd });
 			return {
 				ok: true,
 				vetdPath: result.vetdPath,
@@ -176,10 +183,10 @@ export function registerDesignTools(ctx: PluginContext): void {
 		// 必须宽于画布侧那条链路（拉回活体的静置 + 30s 截图 + 落盘），否则工具会
 		// 抢在内层超时前失败，报出来的原因也就没了参考价值。
 		timeoutMs: 60_000,
-		handler: async ({ host, trigger }) => {
+		handler: async ({ host, session, trigger }) => {
 			const controller = getCanvasController();
 			if (!controller) {
-				ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
+				ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max", cwd: session.cwd });
 				return {
 					ok: false,
 					retryable: true,

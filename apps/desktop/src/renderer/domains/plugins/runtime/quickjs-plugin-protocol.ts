@@ -37,8 +37,8 @@ export type QuickJsWorkerOutboundMessage =
 	| { type: "disposed" }
 	| { type: "registerActivityTab"; contribution: PluginQuickJsActivityTab }
 	| { type: "updateActivityTab"; tabId: string; view: PluginDeclarativeNode }
-	| { type: "openActivityTab"; tabId: string; width?: number | "max" }
-	| { type: "setActivityTabVisible"; tabId: string; visible: boolean }
+	| { type: "openActivityTab"; tabId: string; width?: number | "max"; cwd?: string }
+	| { type: "setActivityTabVisible"; tabId: string; visible: boolean; cwd?: string }
 	| {
 			type: "notify";
 			options: {
@@ -236,10 +236,11 @@ export function parseQuickJsWorkerMessage(value: unknown): QuickJsWorkerOutbound
 			};
 		case "openActivityTab": {
 			const width = value.width;
+			const cwd = value.cwd === undefined ? undefined : requiredString(value.cwd, "activity tab cwd");
 			if (width !== undefined && width !== "max" && (typeof width !== "number" || !Number.isFinite(width))) {
 				throw new Error("Invalid QuickJS activity tab width");
 			}
-			return { type: "openActivityTab", tabId: requiredString(value.tabId, "activity tab id", 64), width };
+			return { type: "openActivityTab", tabId: requiredString(value.tabId, "activity tab id", 64), width, cwd };
 		}
 		case "setActivityTabVisible":
 			if (typeof value.visible !== "boolean") throw new Error("Invalid QuickJS activity tab visibility");
@@ -247,6 +248,7 @@ export function parseQuickJsWorkerMessage(value: unknown): QuickJsWorkerOutbound
 				type: "setActivityTabVisible",
 				tabId: requiredString(value.tabId, "activity tab id", 64),
 				visible: value.visible,
+				cwd: value.cwd === undefined ? undefined : requiredString(value.cwd, "activity tab cwd"),
 			};
 		case "notify": {
 			if (!isRecord(value.options)) throw new Error("Invalid QuickJS notification");

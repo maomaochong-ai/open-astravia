@@ -16,3 +16,4 @@ status: accepted
 - ADR-0007 不迁移老 session：对话项目里旧 session 的 cwd 仍是项目根，这些老 session 之间 attach 互相可见。存量有限、逐渐淘汰，明确不为其加特判。
 - IM 会话查看器（SessionViewerPage，cwd 固定为 `~/.vetta/im-gateway/conversation`，见 ADR-0005）没有 per-session cwd，无法满足隔离语义，首期直接不支持插件 tab，而非给出跨 IM 会话串扰的错误行为。
 - attach 记录持久化在 renderer localStorage（沿用 UI 偏好惯例）；插件卸载后记录残留无害，渲染取「attach 记录 ∩ 当前已注册 contribution」交集即可。
+- `openActivityTab` / `setActivityTabVisible` 允许显式传入目标 cwd；tool handler 与后台任务必须使用其会话 cwd，避免前台会话在异步执行期间切换后把记录写到别的项目。不传时仍回退到当前显示会话，兼容 UI 事件调用方。

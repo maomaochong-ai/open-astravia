@@ -6,6 +6,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- Activity Tab 命令新增可选 `cwd` 目标：tool handler 与后台任务可把 `openActivityTab` / `setActivityTabVisible` 绑定到触发会话，不再依赖调用完成时恰好处于前台的会话。
 - 媒体生成能力新增可选 `defaultResolution`，分辨率字符串明确作为 Provider 自定义的稳定选项 ID；消费者在已有值不受支持时可使用显式默认档，而不必把数组顺序当作默认策略。
 - `registerTool` 新增 `side_effect?: "light" | "heavy"` 声明：heavy 工具（在用户工作区创建目录/文件树、产生外部计费、发起不可撤销外部动作）会话内首次调用前由宿主向用户确认，拒绝则零副作用；不声明按 light 处理并收到宿主告警。扩展设计指南见 docs/plugin/guiding-the-agent.md。
 - `PluginWorkspaceViewHeader.immersive`：页头浮在工作区视图之上（视图占满全高、顶端滑入透明页头条下），用于门面从窗口第一像素开始的沉浸式整页。

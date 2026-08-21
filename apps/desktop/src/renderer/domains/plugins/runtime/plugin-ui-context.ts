@@ -18,6 +18,7 @@ import { showToast } from "@shared/store/toast-atoms";
 import type {
 	Disposable,
 	PluginActivityTabContribution,
+	PluginActivityTabTargetOptions,
 	PluginCardRendererContribution,
 	PluginContext,
 	PluginFilePreviewContribution,
@@ -65,12 +66,42 @@ export interface CreatePluginUiApiOptions {
 	capabilitySessionId: string;
 }
 
-function setPluginActivityTabVisible(pluginId: string, tabId: string, visible: boolean): boolean {
+function resolveActivityTabCwd(requestedCwd?: string): string | null {
+	return requestedCwd ?? getDefaultStore().get(activeSessionAtom)?.cwd ?? null;
+}
+
+function setPluginActivityTabVisible(
+	pluginId: string,
+	tabId: string,
+	visible: boolean,
+	requestedCwd?: string,
+): boolean {
 	const store = getDefaultStore();
-	const cwd = store.get(activeSessionAtom)?.cwd ?? null;
-	if (!cwd) return false;
-	const next = withPluginTabVisibility(store.get(attachedPluginTabsAtom), cwd, `${pluginId}:${tabId}`, visible);
+	const cwd = resolveActivityTabCwd(requestedCwd);
+	const key = `${pluginId}:${tabId}`;
+	if (!cwd) {
+		console.debug(
+			`[activity-tab-debug] set-visible skipped ${JSON.stringify({ pluginId, tabId, key, visible, cwd })}`,
+		);
+		return false;
+	}
+	const previous = store.get(attachedPluginTabsAtom);
+	const recordsBefore = previous.get(cwd) ?? [];
+	const next = withPluginTabVisibility(previous, cwd, key, visible);
 	if (next) store.set(attachedPluginTabsAtom, next);
+	console.debug(
+		`[activity-tab-debug] set-visible ${JSON.stringify({
+			pluginId,
+			tabId,
+			key,
+			visible,
+			cwd,
+			requestedCwd: requestedCwd ?? null,
+			changed: next !== null,
+			recordsBefore,
+			recordsAfter: next?.get(cwd) ?? recordsBefore,
+		})}`,
+	);
 	return true;
 }
 
@@ -78,25 +109,44 @@ function setPluginActivityTabVisible(pluginId: string, tabId: string, visible: b
  * Attach + activate a plugin's own activity tab and open the panel, driven
  * directly off the jotai store so it works regardless of whether the activity
  * panel component is currently mounted/expanded. Keyed by the active
- * conversation's cwd (same key the attach records use, see ADR-0026).
+ * conversation cwd (same key the attach records use, see ADR-0026). Commands
+ * originating outside the foreground route pass that cwd explicitly.
  */
-function openPluginActivityTab(pluginId: string, tabId: string, width?: number | "max"): void {
+function openPluginActivityTab(pluginId: string, tabId: string, options?: PluginOpenActivityTabOptions): void {
 	const store = getDefaultStore();
-	const cwd = store.get(activeSessionAtom)?.cwd ?? null;
+	const cwd = resolveActivityTabCwd(options?.cwd);
 	if (!cwd) {
 		console.warn("[plugin] openActivityTab: no active conversation cwd");
 		return;
 	}
 	const key = `${pluginId}:${tabId}`;
-	const alreadyAttached = explicitTabVisibility(store.get(attachedPluginTabsAtom).get(cwd) ?? [], key) === true;
-	setPluginActivityTabVisible(pluginId, tabId, true);
+	const recordsBefore = store.get(attachedPluginTabsAtom).get(cwd) ?? [];
+	const alreadyAttached = explicitTabVisibility(recordsBefore, key) === true;
+	setPluginActivityTabVisible(pluginId, tabId, true, cwd);
 	const active = new Map(store.get(activityPanelTabByProjectAtom));
+	const activeBefore = active.get(cwd) ?? null;
 	active.set(cwd, `plugin:${key}` as ActivityTabKey);
 	store.set(activityPanelTabByProjectAtom, active);
 	store.set(activityPanelOpenAtom, true);
 	// width 只在首次 attach 时生效：插件 activate 里的 openActivityTab 会随
 	// reload/热更新重放，不能每次都把用户手动拖出的面板宽度覆盖回初始值。
-	if (width != null && !alreadyAttached) store.set(setActivityPanelWidthAtom, width);
+	if (options?.width != null && !alreadyAttached) store.set(setActivityPanelWidthAtom, options.width);
+	console.debug(
+		`[activity-tab-debug] open ${JSON.stringify({
+			pluginId,
+			tabId,
+			key,
+			cwd,
+			width: options?.width ?? null,
+			requestedCwd: options?.cwd ?? null,
+			alreadyAttached,
+			recordsBefore,
+			recordsAfter: store.get(attachedPluginTabsAtom).get(cwd) ?? [],
+			activeBefore,
+			activeAfter: active.get(cwd) ?? null,
+			panelOpen: store.get(activityPanelOpenAtom),
+		})}`,
+	);
 }
 
 /**
@@ -217,11 +267,22 @@ export function createPluginUiApi({
 			keepAliveWhenAvailable: contribution.keepAliveWhenAvailable,
 		};
 		activityTabs.push(normalized);
+		console.debug(
+			`[activity-tab-debug] registered ${JSON.stringify({
+				pluginId: plugin.id,
+				tabId: normalized.id,
+				initiallyVisible: normalized.initiallyVisible ?? true,
+				scopeUse: normalized.scope_use ?? [],
+			})}`,
+		);
 		onChanged();
 		return {
 			dispose: () => {
 				const index = activityTabs.indexOf(normalized);
 				if (index >= 0) activityTabs.splice(index, 1);
+				console.debug(
+					`[activity-tab-debug] disposed ${JSON.stringify({ pluginId: plugin.id, tabId: normalized.id })}`,
+				);
 				onChanged();
 			},
 		};
@@ -502,19 +563,27 @@ export function createPluginUiApi({
 		disposers.push(dispose);
 		return { dispose };
 	};
+	const validateActivityTabCwd = (cwd: string | undefined): void => {
+		if (cwd === undefined) return;
+		if (typeof cwd !== "string" || cwd.trim().length === 0 || !(cwd.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(cwd))) {
+			throw new Error("Activity tab cwd must be an absolute path");
+		}
+	};
 	const openActivityTab = (tabId: string, options?: PluginOpenActivityTabOptions): void => {
 		createPluginPermissionApi(plugin).require("ui.slot.activity-tab");
 		if (typeof tabId !== "string" || tabId.trim().length === 0) {
 			throw new Error("Activity tab id is required");
 		}
-		openPluginActivityTab(plugin.id, tabId, options?.width);
+		validateActivityTabCwd(options?.cwd);
+		openPluginActivityTab(plugin.id, tabId, options);
 	};
-	const setActivityTabVisible = (tabId: string, visible: boolean): void => {
+	const setActivityTabVisible = (tabId: string, visible: boolean, options?: PluginActivityTabTargetOptions): void => {
 		createPluginPermissionApi(plugin).require("ui.slot.activity-tab");
 		if (typeof tabId !== "string" || tabId.trim().length === 0) {
 			throw new Error("Activity tab id is required");
 		}
-		setPluginActivityTabVisible(plugin.id, tabId, visible === true);
+		validateActivityTabCwd(options?.cwd);
+		setPluginActivityTabVisible(plugin.id, tabId, visible === true, options?.cwd);
 	};
 	const setActivityPanelWidth = (width: number | "max"): void => {
 		createPluginPermissionApi(plugin).require("ui.slot.activity-tab");

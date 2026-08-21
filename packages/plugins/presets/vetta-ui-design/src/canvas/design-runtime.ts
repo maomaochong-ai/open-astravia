@@ -48,14 +48,27 @@ export function getCanvasController(): CanvasController | null {
 	return controller;
 }
 
-/** Hand-off from tools (vetd_create) to the canvas: open this design when the tab mounts/refreshes. */
+/** Hand-off from tools (vetd_create) to the canvas: open this design when the matching cwd mounts/refreshes. */
 let pendingDesignPath: string | null = null;
+const pendingDesignPathsByCwd = new Map<string, string>();
 
-export function setPendingDesignPath(vetdPath: string | null): void {
+export function setPendingDesignPath(vetdPath: string | null, cwd?: string): void {
+	if (cwd) {
+		if (vetdPath) pendingDesignPathsByCwd.set(cwd, vetdPath);
+		else pendingDesignPathsByCwd.delete(cwd);
+		return;
+	}
 	pendingDesignPath = vetdPath;
 }
 
-export function takePendingDesignPath(): string | null {
+export function takePendingDesignPath(cwd?: string): string | null {
+	if (cwd) {
+		const scoped = pendingDesignPathsByCwd.get(cwd);
+		if (scoped !== undefined) {
+			pendingDesignPathsByCwd.delete(cwd);
+			return scoped;
+		}
+	}
 	const value = pendingDesignPath;
 	pendingDesignPath = null;
 	return value;

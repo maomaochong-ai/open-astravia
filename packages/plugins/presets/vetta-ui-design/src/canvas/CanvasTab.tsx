@@ -82,7 +82,7 @@ export function CanvasTab() {
 		let cancelled = false;
 		void refreshFiles().then((found) => {
 			if (cancelled) return;
-			const pending = takePendingDesignPath();
+			const pending = takePendingDesignPath(cwd ?? undefined);
 			const remembered = cwd ? localStorage.getItem(storageKey(cwd)) : null;
 			const candidate =
 				(pending && found.includes(pending) ? pending : null) ??

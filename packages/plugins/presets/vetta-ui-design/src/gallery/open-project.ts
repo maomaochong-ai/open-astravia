@@ -24,7 +24,7 @@ export interface OpenProjectTarget {
 export async function openProjectFromGallery(target: OpenProjectTarget): Promise<void> {
 	const ctx = getPluginCtx();
 	// 先记下要打开哪份设计：CanvasTab 挂载时会 take 走它（见 takePendingDesignPath）。
-	setPendingDesignPath(target.vetdPath);
+	setPendingDesignPath(target.vetdPath, target.cwd);
 	requestCanvasReveal(target.cwd);
 
 	const sessions = await ctx.official.sessions.list(target.cwd).catch(() => []);

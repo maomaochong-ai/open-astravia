@@ -36,8 +36,8 @@ export const QUICKJS_PLUGIN_BOOTSTRAP = `
       }
       actionHandlers.set(action, handler);
     },
-    openActivityTab: (tabId, options) => emit({ type: "openActivityTab", tabId, width: options?.width }),
-    setActivityTabVisible: (tabId, visible) => emit({ type: "setActivityTabVisible", tabId, visible }),
+    openActivityTab: (tabId, options) => emit({ type: "openActivityTab", tabId, width: options?.width, cwd: options?.cwd }),
+    setActivityTabVisible: (tabId, visible, options) => emit({ type: "setActivityTabVisible", tabId, visible, cwd: options?.cwd }),
     notify: (options) => emit({ type: "notify", options }),
   });
   const storage = Object.freeze({

@@ -125,8 +125,8 @@ export interface PluginQuickJsContext {
 		registerActivityTab(contribution: PluginQuickJsActivityTab): void;
 		updateActivityTab(tabId: string, view: PluginDeclarativeNode): void;
 		onAction(action: string, handler: (event: PluginDeclarativeActionEvent) => void | Promise<void>): void;
-		openActivityTab(tabId: string, options?: { width?: number | "max" }): void;
-		setActivityTabVisible(tabId: string, visible: boolean): void;
+		openActivityTab(tabId: string, options?: { width?: number | "max"; cwd?: string }): void;
+		setActivityTabVisible(tabId: string, visible: boolean, options?: { cwd?: string }): void;
 		notify(options: {
 			message: string;
 			title?: string;

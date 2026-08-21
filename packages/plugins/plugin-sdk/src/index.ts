@@ -63,6 +63,7 @@ export type {
 	PluginFilePreviewContribution,
 	PluginActivityTabContribution,
 	PluginActivityTabRetention,
+	PluginActivityTabTargetOptions,
 	PluginCaptureRegion,
 	PluginOpenActivityTabOptions,
 	PluginPromptDecoration,

@@ -344,10 +344,14 @@ function StatsPanel() {
 ### openActivityTab
 
 ```ts
-ctx.ui.openActivityTab(tabId, options?: { width?: number | "max" });
+ctx.ui.openActivityTab(tabId, options?: { width?: number | "max"; cwd?: string });
 ```
 
-编程方式 attach（如需）并激活本插件某个 tab；`width: "max"` 尽量拉满（宿主仍 clamp）。载荷经插件自己的内存状态传递。
+编程方式 attach（如需）并激活本插件某个 tab；`width: "max"` 尽量拉满（宿主仍 clamp）。载荷经插件自己的内存状态传递。缺省作用于宿主当前显示的会话；tool handler 与后台任务应传入触发会话的 `cwd`，避免异步执行期间用户切换前台后串写到别的项目。
+
+```ts
+ctx.ui.openActivityTab("preview", { width: "max", cwd: session.cwd });
+```
 
 `width` **只在该 tab 首次 attach 时生效**：tab 已 attach 的重复调用（含 reload/热更新导致的 `activate()` 重放）只做激活，不会覆盖用户手动拖出的面板宽度。
 
@@ -356,10 +360,10 @@ ctx.ui.openActivityTab(tabId, options?: { width?: number | "max" });
 ### setActivityTabVisible
 
 ```ts
-ctx.ui.setActivityTabVisible(tabId, visible: boolean);
+ctx.ui.setActivityTabVisible(tabId, visible: boolean, options?: { cwd?: string });
 ```
 
-只把 tab 放进/移出当前会话的标签栏，**不激活、不展开面板**——「它现在该不该在栏里」，而不是「用户此刻要看它」。这是插件表达自己出现条件的地方：
+只把 tab 放进/移出目标会话的标签栏，**不激活、不展开面板**——「它现在该不该在栏里」，而不是「用户此刻要看它」。`cwd` 的缺省与显式目标语义同 `openActivityTab`。这是插件表达自己出现条件的地方：
 
 ```ts
 // git：只在 git 工作区里上栏。conversation.on 订阅后会立刻回放一次

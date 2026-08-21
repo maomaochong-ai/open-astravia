@@ -218,8 +218,19 @@ export interface PluginActivityTabContribution {
 	keepAliveWhenAvailable?: boolean;
 }
 
+/** Explicit conversation scope for an activity-tab command. */
+export interface PluginActivityTabTargetOptions {
+	/**
+	 * Absolute cwd whose activity-tab state should be changed. Omit to target
+	 * the conversation currently displayed by the host. Tool handlers and
+	 * background work should pass the triggering session's cwd so a foreground
+	 * navigation change cannot redirect the command to another conversation.
+	 */
+	cwd?: string;
+}
+
 /** Options for {@link PluginUiApi.openActivityTab}. */
-export interface PluginOpenActivityTabOptions {
+export interface PluginOpenActivityTabOptions extends PluginActivityTabTargetOptions {
 	/**
 	 * Desired panel width as it opens: a pixel number, or `"max"` to track the
 	 * widest the window allows — `"max"` keeps following window resizes until the
@@ -502,7 +513,7 @@ export interface PluginUiApi {
 	registerShortcutScope(contribution: PluginShortcutScopeContribution): Disposable;
 	/**
 	 * Programmatically attach (if needed) and activate one of this plugin's
-	 * own activity tabs in the current conversation's activity panel. `tabId`
+	 * own activity tabs in a conversation's activity panel. `tabId`
 	 * is the contribution id passed to registerActivityTab. Any payload (e.g.
 	 * which image to edit) is passed via the plugin's own in-memory state.
 	 *
@@ -510,19 +521,23 @@ export interface PluginUiApi {
 	 * `"max"` to expand it to the widest the current window allows (the host
 	 * still clamps to its min/max and auto-hides the sidebar when needed). Omit
 	 * to leave the user's current width untouched.
+	 *
+	 * Omit `options.cwd` for the conversation currently displayed by the host.
+	 * Tool handlers and background work should pass their session cwd explicitly.
 	 */
 	openActivityTab(tabId: string, options?: PluginOpenActivityTabOptions): void;
 	/**
-	 * 把本插件的某个活动面板标签卡在当前会话里上栏 / 下栏，**不激活也不展开
+	 * 把本插件的某个活动面板标签卡在目标会话里上栏 / 下栏，**不激活也不展开
 	 * 面板**——`openActivityTab` 是「用户此刻要看它」，这个是「它现在该不该在
 	 * 栏里」。配合 `initiallyVisible: false` 使用，插件即可完全掌握自己标签卡的
 	 * 出现条件（如 git 只在仓库目录里上栏、工作台跟随输入栏 toggle）。
 	 *
 	 * 上栏记录按会话 cwd 持久化（ADR-0026），所以只需在条件变化时调用一次；
-	 * 用户随后用减号手动隐藏的结果不会被重复调用覆盖。当前没有活动会话时为
-	 * no-op（无处记录），插件应在会话就绪后重新判定。
+	 * 用户随后用减号手动隐藏的结果不会被重复调用覆盖。缺省作用于宿主当前显示的
+	 * 会话；工具 handler 与后台任务应通过 `options.cwd` 传入自己的会话 cwd。既没有
+	 * 显式 cwd、也没有活动会话时为 no-op（无处记录）。
 	 */
-	setActivityTabVisible(tabId: string, visible: boolean): void;
+	setActivityTabVisible(tabId: string, visible: boolean, options?: PluginActivityTabTargetOptions): void;
 	/**
 	 * 直接设置活动面板宽度：像素值，或 `"max"` 表示「跟随窗口拉满」（宿主仍会夹到
 	 * 自己的 min/max 内，必要时自动收起侧边栏）。
