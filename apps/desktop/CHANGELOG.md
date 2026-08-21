@@ -39,6 +39,7 @@
 
 ### Changed
 
+- 重做 Vetta Claw 设置页：新增概览卡直接展示当前活动渠道、连接状态、总开关与对话模型；渠道网格改为自适应列宽，八个渠道各用自己的品牌图标，活动渠道用 ring 高亮、未配置渠道走虚线弱化态，整卡点击即切换活动渠道、右下角齿轮进配置，替代过去每卡两个等权重按钮；保存与切换的成功/失败结果改为在页面上以提示条呈现（此前只有飞书对话框内可见，主页面开关失败是静默的）；状态与日志收敛为一条紧凑信息栏。渠道名称、图标与配置入口收敛到单一渠道表，新增渠道只需增加一行。
 - Desktop 打包新增跨平台环境前置检查，在清理和编译前统一校验开源/商业版本、服务端与更新源、Marketplace、目标平台、遥测参数和 macOS 签名组合；新增 `dist:opensource` 作为 Windows、macOS、Linux 共用的开源版构建入口，GitHub Releases 与开源版、R2 与商业版不再允许混用。
 - Desktop 正式发布 Action 新增独立质量门禁：根检查、质量脚本测试和 packaging 合同测试全部通过后才启动平台矩阵；R2/GitHub 发布完成后验证三平台公开更新 feed 与其引用的安装包可读；默认手动构建只保留临时 Artifact，手动 `test` / `stable` 发布与 tag 发布走同一发布门禁。
 - Desktop packaged E2E 扩展到 Windows、macOS、Linux：真实启动 unpacked 应用并通过 renderer updater bridge 检查本地隔离 feed，发布矩阵在上传产物前即可发现启动、`app-update.yml`、feed 请求和 IPC 回归；本地 feed 不会触碰真实生产更新源。

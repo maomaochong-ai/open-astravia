@@ -1,5 +1,5 @@
 import { ModelSelect } from "@shared/components/ModelSelect";
-import { Button, Switch } from "@vetta/ui";
+import { Button, Switch, cn } from "@vetta/ui";
 import { SettingHeading, SettingRow, SettingSection } from "@vetta/theme-ui/settings";
 import { useTranslation } from "react-i18next";
 import { SettingsAiAssist } from "../ai-assist";
@@ -9,14 +9,37 @@ import { ImFeishuDialog } from "./ImFeishuDialog";
 import { ImLegacyImportBanner } from "./ImLegacyImportBanner";
 import { ImLogDrawer } from "./ImLogDrawer";
 import { ImStatusBadge } from "./ImStatusBadge";
+import {
+	IM_CHANNELS,
+	isImChannelConfigured,
+	type ImChannelDescriptor,
+	type ImGenericChannelTransport,
+} from "./im-channel-catalog";
 import type { ImBridgeSettingsModel } from "./useImBridgeSettingsModel";
 import { ImChannelConfigDialog } from "./ImChannelConfigDialog";
 import { WechatBindDialog } from "./WechatBindDialog";
 
+const GENERIC_CHANNEL_DESC_KEY = {
+	telegram: "imChannelDialogDesc.telegram",
+	slack: "imChannelDialogDesc.slack",
+	discord: "imChannelDialogDesc.discord",
+	signal: "imChannelDialogDesc.signal",
+	whatsapp: "imChannelDialogDesc.whatsapp",
+	imessage: "imChannelDialogDesc.imessage",
+} as const satisfies Record<ImGenericChannelTransport, string>;
+
+interface ChannelPresentation {
+	readonly name: string;
+	readonly subtitle: string;
+	readonly configureLabel: string;
+	readonly onConfigure: () => void;
+}
+
 export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }): JSX.Element {
 	const { t } = useTranslation("settings");
+	const config = model.config;
 
-	if (!model.config) {
+	if (!config) {
 		return (
 			<div className="mx-auto w-full max-w-[680px] px-8 pt-2 pb-4">
 				<h1 className="mb-6 text-[20px] font-bold text-foreground">Vetta Claw</h1>
@@ -25,13 +48,43 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 		);
 	}
 
+	const describe = (channel: ImChannelDescriptor): ChannelPresentation => {
+		switch (channel.dialogKind) {
+			case "feishu":
+				return {
+					name: t("feishuName"),
+					subtitle: t("feishuSubtitle"),
+					configureLabel: t("feishuSetting"),
+					onConfigure: model.onOpenFeishuDialog,
+				};
+			case "wechat":
+				return {
+					name: t("wechatName"),
+					subtitle: config.wechat.bound
+						? `${t("bound")} (${config.wechat.ilinkBotId ?? "iLink"})`
+						: t("wechatSubtitle"),
+					configureLabel: config.wechat.bound ? t("wechatManage") : t("wechatBind"),
+					onConfigure: model.onOpenWechatDialog,
+				};
+			case "generic":
+				return {
+					name: channel.brandName,
+					subtitle: t(GENERIC_CHANNEL_DESC_KEY[channel.transport]),
+					configureLabel: t("configureChannel"),
+					onConfigure: () => model.onOpenChannelDialog(channel.transport),
+				};
+		}
+	};
+
+	const activeChannel = IM_CHANNELS.find((channel) => channel.transport === config.transport) ?? IM_CHANNELS[0];
+	const activePresentation = describe(activeChannel);
+	const feedback = model.saveError ?? model.saveOk;
+	const feedbackIsError = model.saveError !== null;
+
 	return (
 		<div className="mx-auto w-full max-w-[680px] px-8 pt-2 pb-4">
 			<div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-				<div className="flex min-w-0 items-center gap-3">
-					<h1 className="text-[20px] font-bold text-foreground">Vetta Claw</h1>
-					<ImStatusBadge status={model.transportStatus} />
-				</div>
+				<h1 className="text-[20px] font-bold text-foreground">Vetta Claw</h1>
 				<SettingsAiAssist tabId="im" />
 			</div>
 
@@ -44,11 +97,56 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 				/>
 			)}
 
-			{/* 基础：总开关 + 对话模型（原两个单行分区） */}
-			<SettingSection section={SETTINGS_SECTION["imbridge-basics"]} title={t("section_imbridge-basics")}>
+			{feedback && (
+				<div
+					role="status"
+					className={cn(
+						"mb-4 flex items-start gap-2 rounded-xl border px-3.5 py-2.5 text-[12px]",
+						feedbackIsError
+							? "border-destructive/40 bg-destructive/10 text-destructive"
+							: "border-emerald-500/40 bg-emerald-500/15 text-emerald-400",
+					)}
+				>
+					<span
+						className={cn(
+							feedbackIsError
+								? "icon-[solar--danger-triangle-linear]"
+								: "icon-[solar--check-circle-linear]",
+							"mt-px h-3.5 w-3.5 shrink-0",
+						)}
+					/>
+					<span className="min-w-0 flex-1">{feedback}</span>
+					<Button
+						variant="ghost"
+						size="icon-xs"
+						aria-label={t("imbDismissMessage")}
+						title={t("imbDismissMessage")}
+						onClick={model.onDismissFeedback}
+					>
+						<span className="icon-[solar--close-circle-linear] h-3 w-3" />
+					</Button>
+				</div>
+			)}
+
+			{/* 概览：当前活动渠道与连接状态 + 总开关 + 对话模型 */}
+			<SettingSection section={SETTINGS_SECTION["imbridge-basics"]} title={false}>
+				<div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4">
+					<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+						<span className={cn(activeChannel.iconClass, "h-4 w-4 text-primary")} />
+					</span>
+					<div className="min-w-0 flex-1 basis-40">
+						<div className="truncate text-[15px] font-semibold text-foreground">
+							{activePresentation.name}
+						</div>
+						<div className="mt-0.5 truncate text-[12px] text-muted-foreground">
+							{t("imbActiveChannel")} · {activePresentation.subtitle}
+						</div>
+					</div>
+					<ImStatusBadge status={model.transportStatus} />
+				</div>
 				<SettingRow title={t("enableImBridge")} description={t("enableImBridgeDesc")}>
 					<Switch
-						checked={model.config.enabled}
+						checked={config.enabled}
 						onCheckedChange={(checked) => void model.onToggleEnabled(checked)}
 						disabled={model.saving}
 					/>
@@ -56,11 +154,7 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 				<SettingRow title={t("dialogModel")} description={t("dialogModelDesc")} border={false}>
 					<div className="flex flex-wrap items-center justify-end gap-2">
 						<ModelSelect
-							value={
-								model.config.agentModel
-									? `${model.config.agentModel.provider}/${model.config.agentModel.model}`
-									: null
-							}
+							value={config.agentModel ? `${config.agentModel.provider}/${config.agentModel.model}` : null}
 							onChange={(key) => {
 								if (!key) {
 									void model.onPickModel(null);
@@ -75,9 +169,9 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 							placeholder={t("notSet")}
 							triggerClassName="h-8 min-w-[220px] rounded-lg border-border bg-card px-2.5 text-[12px] font-medium hover:bg-accent data-[state=open]:bg-accent"
 							reasoning={
-								model.config.agentModel
+								config.agentModel
 									? {
-											value: model.config.agentModel.reasoningLevel,
+											value: config.agentModel.reasoningLevel,
 											onChange: (level) => {
 												const agentModel = model.config?.agentModel;
 												if (agentModel) {
@@ -96,7 +190,7 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 							variant="outline"
 							size="sm"
 							onClick={() => void model.onProbeModel()}
-							disabled={model.probing || !model.config.agentModel}
+							disabled={model.probing || !config.agentModel}
 						>
 							<span>{t("testConnect")}</span>
 							{model.probing ? (
@@ -111,68 +205,85 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 				</SettingRow>
 			</SettingSection>
 
-			{/* 消息渠道：飞书、微信及六个 im-gateway 通道 */}
+			{/* 消息渠道：同时只有一个活动渠道，其余为待用配置 */}
 			<div className="mb-6 p-1.5" data-setting-section-highlight-target={SETTINGS_SECTION["imbridge-channels"].id}>
 				<div className="mb-3 flex items-baseline gap-2">
-					<SettingHeading section={SETTINGS_SECTION["imbridge-channels"]} title={t("section_imbridge-channels")} />
-					<span className="text-[12px] text-muted-foreground">{t("channelsCount")}</span>
+					<SettingHeading
+						section={SETTINGS_SECTION["imbridge-channels"]}
+						title={t("section_imbridge-channels")}
+					/>
+					<span className="text-[12px] text-muted-foreground">
+						{t("channelsCountValue", { count: IM_CHANNELS.length })}
+					</span>
 				</div>
-				<div className="grid grid-cols-2 gap-3">
-					<ImChannelCard name={t("feishuName")} subtitle={t("feishuSubtitle")} iconClass="icon-[mdi--message-text] text-primary" configured={Boolean(model.config.feishu.appId)} isActive={model.config.transport === "feishu"} transportStatus={model.transportStatus} actionLabel={t("feishuSetting")} onAction={model.onOpenFeishuDialog} onActivate={model.config.transport === "feishu" ? undefined : () => void model.onSwitchTransport("feishu")} />
-					<ImChannelCard name={t("wechatName")} subtitle={model.config.wechat.bound ? `${t("bound")} (${model.config.wechat.ilinkBotId ?? "iLink"})` : t("wechatSubtitle")} iconClass="icon-[mdi--wechat] text-emerald-400" configured={model.config.wechat.bound} isActive={model.config.transport === "wechat"} transportStatus={model.transportStatus} actionLabel={model.config.wechat.bound ? t("wechatManage") : t("wechatBind")} onAction={model.onOpenWechatDialog} onActivate={model.config.transport === "wechat" ? undefined : () => void model.onSwitchTransport("wechat")} />
-					{(["telegram", "slack", "discord", "signal", "whatsapp", "imessage"] as const).map((transport) => {
-						const configured = (() => {
-							switch (transport) {
-								case "telegram": return Boolean(model.config?.telegram.botToken);
-								case "slack": return Boolean(model.config?.slack.botToken && model.config.slack.appToken);
-								case "discord": return Boolean(model.config?.discord.botToken);
-								case "signal": return Boolean(model.config?.signal.endpoint && model.config.signal.account);
-								case "whatsapp": return model.config?.whatsapp.bound ?? false;
-								case "imessage": return true;
-							}
-						})();
-						return <ImChannelCard key={transport} name={transport === "imessage" ? "iMessage" : transport[0].toUpperCase() + transport.slice(1)} subtitle={t(`imChannelDialogDesc.${transport}`)} iconClass="icon-[mdi--message-text-outline] text-primary" configured={configured} isActive={model.config?.transport === transport} transportStatus={model.transportStatus} actionLabel={t("configureChannel")} onAction={() => model.onOpenChannelDialog(transport)} onActivate={model.config?.transport === transport ? undefined : () => void model.onSwitchTransport(transport)} />;
+				<div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
+					{IM_CHANNELS.map((channel) => {
+						const presentation = describe(channel);
+						const isActive = config.transport === channel.transport;
+						return (
+							<ImChannelCard
+								key={channel.transport}
+								name={presentation.name}
+								subtitle={presentation.subtitle}
+								iconClass={channel.iconClass}
+								configured={isImChannelConfigured(config, channel.transport)}
+								isActive={isActive}
+								transportStatus={model.transportStatus}
+								configureLabel={presentation.configureLabel}
+								onConfigure={presentation.onConfigure}
+								onActivate={
+									isActive ? undefined : () => void model.onSwitchTransport(channel.transport)
+								}
+							/>
+						);
 					})}
 				</div>
 			</div>
+
 			<ImFeishuDialog model={model} />
 			<ImChannelConfigDialog model={model.channelDialog} />
 			<WechatBindDialog
 				open={model.wechatDialogOpen}
 				onOpenChange={model.setWechatDialogOpen}
-				bound={model.config.wechat.bound}
-				ilinkBotId={model.config.wechat.ilinkBotId}
-				ilinkUserId={model.config.wechat.ilinkUserId}
+				bound={config.wechat.bound}
+				ilinkBotId={config.wechat.ilinkBotId}
+				ilinkUserId={config.wechat.ilinkUserId}
 				onLogout={() => void model.onWechatLogout()}
 				onConfirmedRefresh={model.onWechatConfirmedRefresh}
 			/>
 
-			{/* 状态与日志：进程信息 + 操作 */}
+			{/* 状态与日志：一条紧凑的进程信息栏 */}
 			<SettingSection section={SETTINGS_SECTION["imbridge-status"]} title={t("section_imbridge-status")}>
-				<SettingRow
-					title={t("bridgePid")}
-					description={t("bridgePidDesc")}
-					border={Boolean(model.status?.lastError)}
-				>
-					<span className="text-[13px] tabular-nums text-muted-foreground">{model.status?.sidecarPid ?? "—"}</span>
-				</SettingRow>
-				{model.status?.lastError && (
-					<SettingRow title={t("lastError")} description={model.status.lastErrorAt ?? ""} border={false}>
-						<span className="text-[12px] text-destructive">{model.status.lastError}</span>
-					</SettingRow>
-				)}
-				<div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-					<Button variant="outline" size="sm" onClick={() => void model.onOpenLogs()}>
-						{t("viewLogs")}
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => void model.onRestart()}
-						disabled={!model.config.enabled}
-					>
-						{t("restartBridgeBtn")}
-					</Button>
+				<div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+					<div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-[12px]">
+						<span className="text-muted-foreground">
+							{t("bridgePid")}
+							<span className="ml-1.5 tabular-nums text-foreground">{model.status?.sidecarPid ?? "—"}</span>
+						</span>
+						{model.status?.lastError && (
+							<span
+								className="min-w-0 truncate text-destructive"
+								title={`${model.status.lastErrorAt ?? ""} ${model.status.lastError}`}
+							>
+								{model.status.lastError}
+							</span>
+						)}
+					</div>
+					<div className="flex items-center gap-2">
+						<Button variant="outline" size="sm" onClick={() => void model.onOpenLogs()}>
+							<span className="icon-[solar--document-text-linear] h-3.5 w-3.5" />
+							{t("viewLogs")}
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => void model.onRestart()}
+							disabled={!config.enabled}
+						>
+							<span className="icon-[solar--restart-linear] h-3.5 w-3.5" />
+							{t("restartBridgeBtn")}
+						</Button>
+					</div>
 				</div>
 			</SettingSection>
 

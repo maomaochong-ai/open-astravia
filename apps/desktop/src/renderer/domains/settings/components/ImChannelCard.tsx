@@ -17,8 +17,8 @@ export function ImChannelCard({
 	configured,
 	isActive,
 	transportStatus,
-	actionLabel,
-	onAction,
+	configureLabel,
+	onConfigure,
 	onActivate,
 }: {
 	name: string;
@@ -27,8 +27,8 @@ export function ImChannelCard({
 	configured: boolean;
 	isActive: boolean;
 	transportStatus: ImTransportStatus;
-	actionLabel: string;
-	onAction: () => void;
+	configureLabel: string;
+	onConfigure: () => void;
 	onActivate?: () => void;
 }): JSX.Element {
 	const { t } = useTranslation("settings");
@@ -42,14 +42,14 @@ export function ImChannelCard({
 			configured={configured}
 			isActive={isActive}
 			effectiveStatus={effectiveStatus as ImStatusBadgeStatus}
-			actionLabel={actionLabel}
-			onAction={onAction}
+			onConfigure={onConfigure}
 			onActivate={onActivate}
 			labels={{
 				channelActive: t("channelActive"),
+				channelConfigured: t("channelConfigured"),
 				channelNotAssociated: t("channelNotAssociated"),
-				activateChannel: t("activateChannel"),
 				activateChannelTitle: t("activateChannelTitle"),
+				configureLabel,
 				statusLabel: t(STATUS_LABEL[effectiveStatus] as "imbStatusOffline"),
 			}}
 		/>

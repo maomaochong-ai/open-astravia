@@ -10,6 +10,7 @@ import type {
 } from "@preload/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { ImGenericChannelTransport } from "./im-channel-catalog";
 import { recordSettingsUsage } from "./recordSettingsUsage";
 
 export interface FeishuFormState {
@@ -27,7 +28,7 @@ export interface ProbeResult {
 	msg: string;
 }
 
-export type ImChannelConfigTransport = Exclude<ImTransportSelector, "feishu" | "wechat">;
+export type ImChannelConfigTransport = ImGenericChannelTransport;
 
 export interface ImChannelFormState {
 	botToken: string;
@@ -98,6 +99,7 @@ export interface ImBridgeSettingsModel {
 	onRestart: () => Promise<void>;
 	onOpenLogs: () => Promise<void>;
 	onWechatConfirmedRefresh: () => void;
+	onDismissFeedback: () => void;
 }
 
 export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
@@ -540,6 +542,10 @@ export function useImBridgeSettingsModel(): ImBridgeSettingsModel {
 		onOpenLogs: handleOpenLogs,
 		onWechatConfirmedRefresh: () => {
 			void refreshConfig();
+		},
+		onDismissFeedback: () => {
+			setSaveError(null);
+			setSaveOk(null);
 		},
 	};
 }
