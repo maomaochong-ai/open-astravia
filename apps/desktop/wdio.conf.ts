@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Server } from "node:http";
 import { startUpdateFeedFixture } from "./e2e/update-feed-fixture.mjs";
+import { resolveElectronE2eServiceOptions } from "./scripts/electron-e2e-service-options.mjs";
 import { resolvePackagedE2eBinaryPath } from "./scripts/packaged-e2e-binary.mjs";
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -98,9 +99,7 @@ export const config = {
 	services: [
 		[
 			"electron",
-			{
-				clearMocks: true,
-			},
+			resolveElectronE2eServiceOptions(),
 		],
 	],
 	framework: "mocha",
