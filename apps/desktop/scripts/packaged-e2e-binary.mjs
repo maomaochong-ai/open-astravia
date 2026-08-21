@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const WINDOWS_VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
+const PACKAGE_VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 
 function resolveWindowsVersionedBinary(unpackedRoot) {
 	const pointerPath = join(unpackedRoot, "current.json");
@@ -17,11 +17,22 @@ function resolveWindowsVersionedBinary(unpackedRoot) {
 		typeof version !== "string" ||
 		version === "." ||
 		version === ".." ||
-		!WINDOWS_VERSION_PATTERN.test(version)
+		!PACKAGE_VERSION_PATTERN.test(version)
 	) {
 		throw new Error(`Windows packaged E2E has an invalid version pointer: ${String(version)}`);
 	}
 	return join(unpackedRoot, "versions", version, "Vetta.exe");
+}
+
+export function resolvePackagedE2eAppImagePath(packageRoot, version) {
+	if (typeof version !== "string" || !PACKAGE_VERSION_PATTERN.test(version)) {
+		throw new Error(`Linux packaged E2E has an invalid application version: ${String(version)}`);
+	}
+	const appImagePath = join(packageRoot, "release", `Vetta-${version}.AppImage`);
+	if (existsSync(appImagePath)) return appImagePath;
+	throw new Error(
+		`Linux packaged E2E AppImage not found: ${appImagePath}. Run bun run dist:linux:test first.`,
+	);
 }
 
 export function resolvePackagedE2eBinaryPath(packageRoot, platform = process.platform) {

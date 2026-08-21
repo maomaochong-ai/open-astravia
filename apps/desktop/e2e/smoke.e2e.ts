@@ -120,20 +120,17 @@ describe("Vetta Desktop smoke — config isolation", () => {
 });
 
 describe("Vetta Desktop smoke — main-process mock probe", () => {
-	it("can mock dialog.showOpenDialog and intercept the call", async () => {
-		const mockShowOpenDialog = await browser.electron.mock("dialog", "showOpenDialog");
-		await mockShowOpenDialog.mockResolvedValue({
-			canceled: true,
-			filePaths: [],
-		});
+	it("can mock dialog.showOpenDialogSync and intercept the call", async () => {
+		const mockShowOpenDialog = await browser.electron.mock("dialog", "showOpenDialogSync");
+		await mockShowOpenDialog.mockReturnValue(["vetta-e2e-selection"]);
 
-		const result = await browser.electron.execute(async (electron) => {
-			return await electron.dialog.showOpenDialog({
+		const result = await browser.electron.execute((electron) => {
+			return electron.dialog.showOpenDialogSync({
 				properties: ["openFile"],
 			});
 		});
 
-		expect(result).toEqual({ canceled: true, filePaths: [] });
+		expect(result).toEqual(["vetta-e2e-selection"]);
 		expect(mockShowOpenDialog).toHaveBeenCalledTimes(1);
 		expect(mockShowOpenDialog).toHaveBeenCalledWith({
 			properties: ["openFile"],

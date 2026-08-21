@@ -3,7 +3,39 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { resolvePackagedE2eBinaryPath } from "./packaged-e2e-binary.mjs";
+import {
+	resolvePackagedE2eAppImagePath,
+	resolvePackagedE2eBinaryPath,
+} from "./packaged-e2e-binary.mjs";
+
+test("Linux unpacked E2E uses the built AppImage as the updater runtime image", async () => {
+	const packageRoot = await mkdtemp(join(tmpdir(), "vetta-packaged-e2e-"));
+	const appImage = join(packageRoot, "release", "Vetta-1.2.3.AppImage");
+	await mkdir(join(packageRoot, "release"), { recursive: true });
+	await writeFile(appImage, "appimage");
+
+	try {
+		assert.equal(resolvePackagedE2eAppImagePath(packageRoot, "1.2.3"), appImage);
+	} finally {
+		await rm(packageRoot, { recursive: true, force: true });
+	}
+});
+
+test("Linux packaged E2E rejects unsafe or missing AppImage paths", async () => {
+	const packageRoot = await mkdtemp(join(tmpdir(), "vetta-packaged-e2e-"));
+	try {
+		assert.throws(
+			() => resolvePackagedE2eAppImagePath(packageRoot, "../escape"),
+			/invalid application version/,
+		);
+		assert.throws(
+			() => resolvePackagedE2eAppImagePath(packageRoot, "1.2.3"),
+			/AppImage not found/,
+		);
+	} finally {
+		await rm(packageRoot, { recursive: true, force: true });
+	}
+});
 
 test("Windows packaged E2E drives the versioned Electron binary instead of the detached launcher", async () => {
 	const packageRoot = await mkdtemp(join(tmpdir(), "vetta-packaged-e2e-"));

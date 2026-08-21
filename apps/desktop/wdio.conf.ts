@@ -6,13 +6,19 @@ import { fileURLToPath } from "node:url";
 import type { Server } from "node:http";
 import { startUpdateFeedFixture } from "./e2e/update-feed-fixture.mjs";
 import { resolveElectronE2eServiceOptions } from "./scripts/electron-e2e-service-options.mjs";
-import { resolvePackagedE2eBinaryPath } from "./scripts/packaged-e2e-binary.mjs";
+import {
+	resolvePackagedE2eAppImagePath,
+	resolvePackagedE2eBinaryPath,
+} from "./scripts/packaged-e2e-binary.mjs";
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
 const mainEntry = path.join(packageRoot, "dist", "main", "index.js");
 const userDataDir = path.join(packageRoot, ".wdio-electron-user-data");
 const configDirName = ".vetta-e2e";
 const require = createRequire(import.meta.url);
+const packageVersion = (JSON.parse(readFileSync(path.join(packageRoot, "package.json"), "utf8")) as {
+	version: string;
+}).version;
 
 /** Set to `1` to use electron-builder unpacked output (`release/*-unpacked`). */
 const usePackaged = process.env.VETTA_E2E_PACKAGED === "1";
@@ -45,6 +51,12 @@ function resolveElectronServiceOptions(): {
 	const isolationArgs = [`--user-data-dir=${userDataDir}`];
 
 	if (usePackaged) {
+		if (process.platform === "linux") {
+			// WDIO drives linux-unpacked/Vetta, but electron-updater only enables its
+			// AppImage provider when the runtime supplies APPIMAGE. Point it at the
+			// real artifact from the same build so updater E2E retains that contract.
+			process.env.APPIMAGE = resolvePackagedE2eAppImagePath(packagedArtifactRoot, packageVersion);
+		}
 		return {
 			// Windows release/Vetta.exe is a detached stable launcher. ChromeDriver
 			// must drive the versioned Electron executable that it launches.
@@ -110,9 +122,8 @@ export const config = {
 	},
 	onPrepare: async () => {
 		if (!usePackaged || process.env.VETTA_E2E_UPDATE_FEED === "0") return;
-		const version = JSON.parse(readFileSync(path.join(packageRoot, "package.json"), "utf8")) as { version: string };
 		const fixture = await startUpdateFeedFixture({
-			version: version.version,
+			version: packageVersion,
 			downloadable: process.platform === "linux",
 			// Keep the checking phase observable instead of racing a loopback response.
 			metadataDelayMs: 1_000,
