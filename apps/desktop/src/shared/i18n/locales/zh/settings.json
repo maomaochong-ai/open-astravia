@@ -5,7 +5,7 @@
     "description": "让手机安全连接这台电脑。屏幕画面和输入通过点对点 WebRTC 传输，中继只负责配对与信令。",
     "pairingTitle": "手机配对",
     "pairingDescription": "生成新的二维码会撤销旧配对；二维码仅用于首次绑定。",
-    "relayLabel": "中继地址",
+    "relayConfigured": "安全中继已配置",
     "create": "生成二维码",
     "creating": "生成中",
     "qrAlt": "Vetta 手机配对二维码",

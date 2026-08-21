@@ -59,6 +59,18 @@ fun VettaCard(
     )
 }
 
+/** 无边界的内容分组，用于设置和列表，避免每一项都被包装成独立卡片。 */
+@Composable
+fun VettaListGroup(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        content = content,
+    )
+}
+
 @Composable
 fun PrimaryBlackButton(
     text: String,
@@ -89,6 +101,7 @@ fun SecondaryOutlineButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    leadingIcon: (@Composable (() -> Unit))? = null,
 ) {
     OutlinedButton(
         onClick = onClick,
@@ -100,6 +113,10 @@ fun SecondaryOutlineButton(
                 contentColor = MaterialTheme.colorScheme.onSurface,
             ),
     ) {
+        if (leadingIcon != null) {
+            leadingIcon()
+            Spacer(Modifier.width(8.dp))
+        }
         Text(text, style = MaterialTheme.typography.labelLarge)
     }
 }

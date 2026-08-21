@@ -10,8 +10,16 @@ import org.vetta.android.ui.RootApp
 
 @Composable
 @Preview
-fun App(container: AppContainer = remember { AppContainer.createDefault() }) {
+fun App(
+    container: AppContainer = remember { AppContainer.createDefault() },
+    pairingInvite: String? = null,
+    onPairingInviteHandled: () -> Unit = {},
+) {
     CompositionLocalProvider(LocalAppContainer provides container) {
-        RootApp(container)
+        RootApp(
+            container = container,
+            pairingInvite = pairingInvite,
+            onPairingInviteHandled = onPairingInviteHandled,
+        )
     }
 }

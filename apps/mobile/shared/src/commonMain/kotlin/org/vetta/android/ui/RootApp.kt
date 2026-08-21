@@ -7,6 +7,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -31,9 +32,12 @@ import org.vetta.android.ui.i18n.Str
 import org.vetta.android.ui.me.MeScreen
 import org.vetta.android.ui.me.PlanScreen
 import org.vetta.android.ui.me.SettingsScreen
+import org.vetta.android.ui.me.AboutScreen
 import org.vetta.android.ui.navigation.AppRoute
 import org.vetta.android.ui.navigation.ChatSurface
 import org.vetta.android.ui.navigation.MainTab
+import org.vetta.android.ui.navigation.PlatformBackHandler
+import org.vetta.android.ui.navigation.hasInAppBackDestination
 import org.vetta.android.ui.sessions.SessionsScreen
 import org.vetta.android.ui.theme.VettaTheme
 import kotlin.reflect.KClass
@@ -54,11 +58,27 @@ private class AppViewModelFactory(
 }
 
 @Composable
-fun RootApp(container: AppContainer = LocalAppContainer.current) {
+fun RootApp(
+    container: AppContainer = LocalAppContainer.current,
+    pairingInvite: String? = null,
+    onPairingInviteHandled: () -> Unit = {},
+) {
     val vm: AppViewModel =
         viewModel(factory = remember(container) { AppViewModelFactory(container) })
     val state by vm.state.collectAsState()
     val sessions by vm.sessions.collectAsState()
+
+    PlatformBackHandler(
+        enabled = state.route.hasInAppBackDestination(),
+        onBack = vm::handleSystemBack,
+    )
+
+    LaunchedEffect(pairingInvite, state.bootstrapped) {
+        if (pairingInvite != null && state.bootstrapped) {
+            vm.handlePairingInvite(pairingInvite)
+            onPairingInviteHandled()
+        }
+    }
 
     VettaTheme(themeMode = state.themeMode) {
         if (!state.bootstrapped || state.route is AppRoute.Boot) {
@@ -70,7 +90,7 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
 
         Crossfade(
             targetState = state.route,
-            animationSpec = tween(durationMillis = 200),
+            animationSpec = tween(durationMillis = if (state.motionEnabled) 200 else 0),
             label = "app route transition",
         ) { route ->
             when (route) {
@@ -106,7 +126,12 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                     },
                 ) { padding ->
                     Box(Modifier.padding(padding).fillMaxSize()) {
-                        when (state.mainTab) {
+                        Crossfade(
+                            targetState = state.mainTab,
+                            animationSpec = tween(durationMillis = if (state.motionEnabled) 200 else 0),
+                            label = "main tab transition",
+                        ) { tab ->
+                            when (tab) {
                             MainTab.Home ->
                                 HomeScreen(
                                     primaryDevice =
@@ -126,9 +151,7 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                                         )
                                     },
                                     onNewConversation = { vm.openNewConversation(0) },
-                                    onUseCloudAi = {
-                                        if (state.user == null) vm.openLogin() else vm.openNewConversation(1)
-                                    },
+                                    onUseCloudAi = vm::openCloudConversation,
                                 )
                             MainTab.Sessions ->
                                 SessionsScreen(
@@ -137,6 +160,10 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                                     filterIndex = state.sessionFilterIndex,
                                     onQueryChange = vm::setSessionQuery,
                                     onFilterChange = vm::setSessionFilter,
+                                    onNewConversation = { vm.openNewConversation(0) },
+                                    onRenameSession = vm::renameSession,
+                                    onDeleteSession = vm::deleteSession,
+                                    confirmBeforeDelete = state.confirmBeforeDelete,
                                     onOpenSession = { item ->
                                         vm.openChat(
                                             sessionId = item.id,
@@ -152,9 +179,7 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                                     onChannelChange = vm::setDiscoverChannel,
                                     onOpenDevice = vm::openDeviceDetail,
                                     onConnectManual = vm::connectDesktop,
-                                    onUseCloud = {
-                                        if (state.user == null) vm.openLogin() else vm.openNewConversation(1)
-                                    },
+                                    onUseCloud = vm::openCloudConversation,
                                 )
                             MainTab.Me ->
                                 MeScreen(
@@ -167,9 +192,11 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                                     onOpenPlan = vm::openPlan,
                                     onOpenSettings = vm::openSettings,
                                     onOpenDevices = { vm.selectMainTab(MainTab.Discover) },
+                                    onOpenAbout = vm::openAbout,
                                     onLogin = vm::openLogin,
                                     onLogout = vm::logout,
                                 )
+                            }
                         }
                     }
                 }
@@ -197,8 +224,9 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                         vm.startDesktopConversation(deviceId)
                     },
                     onStartCloud = {
-                        if (state.user == null) vm.openLogin() else vm.newChat()
+                        vm.openCloudConversation()
                     },
+                    onConnectDesktop = { vm.selectMainTab(MainTab.Discover) },
                 )
             is AppRoute.Chat -> {
                 val selected =
@@ -239,13 +267,24 @@ fun RootApp(container: AppContainer = LocalAppContainer.current) {
                     loggedIn = state.user != null,
                     onBack = vm::navigateBackFromSecondary,
                     onRefresh = vm::refreshCatalog,
+                    onLogin = vm::openLogin,
                 )
             AppRoute.Settings ->
                 SettingsScreen(
                     themeMode = state.themeMode,
+                    autoResumeLastSession = state.autoResumeLastSession,
+                    motionEnabled = state.motionEnabled,
                     onThemeMode = vm::setThemeMode,
+                    onAutoResumeLastSession = vm::setAutoResumeLastSession,
+                    onMotionEnabled = vm::setMotionEnabled,
+                    onClearLocalData = vm::clearLocalSessions,
+                    onOpenAbout = vm::openAbout,
                     onBack = vm::navigateBackFromSecondary,
+                    confirmBeforeDelete = state.confirmBeforeDelete,
+                    onConfirmBeforeDelete = vm::setConfirmBeforeDelete,
                 )
+            AppRoute.About ->
+                AboutScreen(onBack = vm::navigateBackFromSecondary)
             }
         }
     }

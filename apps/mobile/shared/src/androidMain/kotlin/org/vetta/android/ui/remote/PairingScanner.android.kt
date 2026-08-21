@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,7 +26,6 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -48,6 +48,7 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import org.vetta.android.domain.remote.connection.PlatformRemoteLogger
+import org.vetta.android.ui.components.SecondaryOutlineButton
 import org.vetta.android.ui.i18n.Str
 
 @Composable
@@ -80,10 +81,14 @@ actual fun PairingScannerButton(
             Icon(Icons.Default.QrCodeScanner, contentDescription = Str.scanPairingQr)
         }
     } else {
-        OutlinedButton(modifier = modifier, onClick = openScanner) {
-            Icon(Icons.Default.QrCodeScanner, contentDescription = null)
-            Text(label)
-        }
+        SecondaryOutlineButton(
+            modifier = modifier.height(48.dp),
+            onClick = openScanner,
+            text = label,
+            leadingIcon = {
+                Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+            },
+        )
     }
 
     if (scanning) {

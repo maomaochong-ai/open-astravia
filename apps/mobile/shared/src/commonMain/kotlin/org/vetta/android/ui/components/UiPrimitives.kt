@@ -6,27 +6,165 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.VisualTransformation
 import org.vetta.android.domain.error.UiError
 import org.vetta.android.domain.error.UiErrorAction
 import org.vetta.android.ui.i18n.Str
 import org.vetta.android.ui.theme.vettaExtra
+
+/** 统一输入层级、边框和高度，避免各页面自行拼接 Material 输入框。 */
+@Composable
+fun VettaTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: (@Composable (() -> Unit))? = null,
+    label: (@Composable (() -> Unit))? = null,
+    leadingIcon: (@Composable (() -> Unit))? = null,
+    trailingIcon: (@Composable (() -> Unit))? = null,
+    singleLine: Boolean = true,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier.heightIn(min = 52.dp),
+        singleLine = singleLine,
+        placeholder = placeholder,
+        label = label,
+        leadingIcon = leadingIcon,
+        trailingIcon = trailingIcon,
+        visualTransformation = visualTransformation,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        shape = RoundedCornerShape(14.dp),
+        colors =
+            OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = MaterialTheme.vettaExtra.border,
+                focusedBorderColor = MaterialTheme.colorScheme.onSurface,
+            ),
+    )
+}
+
+@Composable
+fun VettaConfirmDialog(
+    title: String,
+    message: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(confirmLabel) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(Str.cancel) }
+        },
+    )
+}
+
+@Composable
+fun VettaChoiceDialog(
+    title: String,
+    message: String,
+    primaryLabel: String,
+    onPrimary: () -> Unit,
+    secondaryLabel: String,
+    onSecondary: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onPrimary) { Text(primaryLabel) }
+        },
+        dismissButton = {
+            Column(horizontalAlignment = Alignment.End) {
+                TextButton(onClick = onSecondary) { Text(secondaryLabel) }
+                TextButton(onClick = onDismiss) { Text(Str.cancel) }
+            }
+        },
+    )
+}
+
+@Composable
+fun VettaInfoDialog(
+    title: String,
+    message: String,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(Str.close) }
+        },
+    )
+}
+
+@Composable
+fun VettaTextInputDialog(
+    title: String,
+    value: String,
+    label: String,
+    onValueChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            VettaTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(label) },
+                singleLine = true,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = value.isNotBlank()) { Text(Str.save) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(Str.cancel) }
+        },
+    )
+}
 
 @Composable
 fun VettaErrorBanner(
@@ -132,15 +270,25 @@ fun LoadingBlock(modifier: Modifier = Modifier) {
 fun EmptyState(
     title: String,
     subtitle: String? = null,
+    icon: ImageVector? = null,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.padding(horizontal = 24.dp, vertical = 32.dp),
+        modifier = modifier.padding(horizontal = 24.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.vettaExtra.secondaryText,
+                modifier = Modifier.size(36.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+        }
         Text(title, style = MaterialTheme.typography.titleMedium)
         if (!subtitle.isNullOrBlank()) {
             Spacer(Modifier.height(8.dp))
@@ -152,7 +300,11 @@ fun EmptyState(
         }
         if (actionLabel != null && onAction != null) {
             Spacer(Modifier.height(16.dp))
-            OutlinedButton(onClick = onAction) { Text(actionLabel) }
+            SecondaryOutlineButton(
+                text = actionLabel,
+                onClick = onAction,
+                modifier = Modifier.widthIn(max = 220.dp),
+            )
         }
     }
 }

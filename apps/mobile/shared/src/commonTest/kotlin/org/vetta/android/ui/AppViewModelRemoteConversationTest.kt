@@ -117,6 +117,47 @@ class AppViewModelRemoteConversationTest {
         }
 
     @Test
+    fun systemBackFromDesktopChatReturnsToMain() =
+        runTest(dispatcher) {
+            val viewModel = AppViewModel(container(FakeRemoteConversationGateway()))
+            advanceUntilIdle()
+            viewModel.startDesktopConversation("desktop-1")
+            advanceUntilIdle()
+
+            viewModel.handleSystemBack()
+
+            assertEquals(AppRoute.Main(MainTab.Home), viewModel.state.value.route)
+        }
+
+    @Test
+    fun systemBackClosesModelPickerBeforeLeavingChat() =
+        runTest(dispatcher) {
+            val viewModel = AppViewModel(container(FakeRemoteConversationGateway()))
+            advanceUntilIdle()
+            viewModel.startDesktopConversation("desktop-1")
+            advanceUntilIdle()
+            val chatRoute = viewModel.state.value.route
+            viewModel.setModelPicker(true)
+
+            viewModel.handleSystemBack()
+
+            assertEquals(chatRoute, viewModel.state.value.route)
+            assertFalse(viewModel.state.value.modelPickerOpen)
+        }
+
+    @Test
+    fun systemBackFromLoginReturnsToWelcome() =
+        runTest(dispatcher) {
+            val viewModel = AppViewModel(container(FakeRemoteConversationGateway()))
+            advanceUntilIdle()
+            viewModel.openLogin()
+
+            viewModel.handleSystemBack()
+
+            assertEquals(AppRoute.Welcome, viewModel.state.value.route)
+        }
+
+    @Test
     fun skipWelcomeOpensBrowsableMainShellWithoutCreatingLoginState() =
         runTest(dispatcher) {
             val viewModel = AppViewModel(container(FakeRemoteConversationGateway()))
@@ -152,6 +193,41 @@ class AppViewModelRemoteConversationTest {
 
             assertFalse(viewModel.state.value.remoteConnecting)
             assertEquals(Str.remoteConnectFailed, viewModel.state.value.globalError?.title)
+        }
+
+    @Test
+    fun invalidExternalPairingInviteIsRejectedBeforeNetworkAccess() =
+        runTest(dispatcher) {
+            val gateway = FakeRemoteConversationGateway()
+            val viewModel = AppViewModel(container(gateway))
+            advanceUntilIdle()
+
+            viewModel.handlePairingInvite("vetta://pair?relay=https%3A%2F%2Frelay.example&pairingId=short")
+            advanceUntilIdle()
+
+            assertEquals(0, gateway.connectCalls)
+            assertEquals(AppRoute.Welcome, viewModel.state.value.route)
+            assertEquals(Str.invalidPairingInvite, viewModel.state.value.globalError?.title)
+            assertEquals(Str.invalidPairingInviteHint, viewModel.state.value.globalError?.message)
+        }
+
+    @Test
+    fun validExternalPairingInviteConnectsAndOpensDesktopDetail() =
+        runTest(dispatcher) {
+            val gateway = FakeRemoteConversationGateway()
+            val viewModel = AppViewModel(container(gateway))
+            advanceUntilIdle()
+            val inviteText =
+                "vetta://pair?relay=https%3A%2F%2Frelay.example&pairingId=pairing_0123456789abcdefghijklmno&bootstrap=secret_0123456789abcdefghijklmnopqrstuvwxyz"
+
+            viewModel.handlePairingInvite(inviteText)
+            advanceUntilIdle()
+
+            assertEquals(1, gateway.connectCalls)
+            assertTrue(gateway.connectTargets.single().startsWith("wss://relay.example/v1/relay/"))
+            assertEquals(AppRoute.DeviceDetail("desktop-1"), viewModel.state.value.route)
+            assertTrue(viewModel.state.value.mainAccessGranted)
+            assertEquals(null, viewModel.state.value.globalError)
         }
 
     @Test

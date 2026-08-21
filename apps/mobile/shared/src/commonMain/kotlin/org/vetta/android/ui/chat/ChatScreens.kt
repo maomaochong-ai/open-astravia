@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -64,6 +65,7 @@ import org.vetta.android.domain.session.LocalMessage
 import org.vetta.android.domain.session.MessageImage
 import org.vetta.android.domain.session.MessageStatus
 import org.vetta.android.ui.components.EmptyState
+import org.vetta.android.ui.components.ListRow
 import org.vetta.android.ui.components.VettaErrorBanner
 import org.vetta.android.ui.i18n.Str
 import org.vetta.android.ui.media.imageBitmapFromBase64
@@ -203,15 +205,6 @@ fun ChatScreen(
                     onStop = onStop,
                     onAttach = launchPicker,
                 )
-                Text(
-                    text = if (surface == ChatSurface.Desktop) Str.generatedByDesktop else Str.generatedByCloud,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.vettaExtra.secondaryText,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                )
             }
         },
     ) { padding ->
@@ -269,41 +262,27 @@ fun ChatScreen(
                 if (models.isEmpty()) {
                     EmptyState(title = Str.noModels, subtitle = Str.noModelsHint)
                 } else {
-                    models.forEach { model ->
+                    models.forEachIndexed { index, model ->
                         val selected = model.id == selectedModel?.id
-                        Surface(
-                            onClick = { onSelectModel(model) },
-                            shape = RoundedCornerShape(12.dp),
-                            color =
-                                if (selected) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-                                },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                        ) {
-                            Column(Modifier.padding(14.dp)) {
-                                Text(model.name, style = MaterialTheme.typography.titleSmall)
-                                val meta =
-                                    buildString {
-                                        if (model.contextWindow != null) append("上下文 ${model.contextWindow}")
-                                        if (model.tags.isNotEmpty()) {
-                                            if (isNotEmpty()) append(" · ")
-                                            append(model.tags.take(3).joinToString(" / "))
-                                        }
-                                    }
-                                if (meta.isNotEmpty()) {
-                                    Text(
-                                        meta,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
+                        val meta =
+                            buildString {
+                                if (model.contextWindow != null) append("上下文 ${model.contextWindow}")
+                                if (model.tags.isNotEmpty()) {
+                                    if (isNotEmpty()) append(" · ")
+                                    append(model.tags.take(3).joinToString(" / "))
                                 }
                             }
-                        }
+                        ListRow(
+                            title = model.name,
+                            subtitle = meta.takeIf { it.isNotEmpty() },
+                            trailing = if (selected) {
+                                { Icon(Icons.Default.Check, contentDescription = null) }
+                            } else {
+                                null
+                            },
+                            onClick = { onSelectModel(model) },
+                            showDivider = index < models.lastIndex,
+                        )
                     }
                 }
                 Spacer(Modifier.height(24.dp))
@@ -436,7 +415,7 @@ private fun MessageBubble(message: LocalMessage) {
                     }
                     message.content.isBlank() && message.status == MessageStatus.Error -> {
                         Text(
-                            message.errorMessage ?: Str.errorGeneric,
+                            Str.responseFailed,
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                             style = MaterialTheme.typography.bodyLarge,
                         )
@@ -456,11 +435,11 @@ private fun MessageBubble(message: LocalMessage) {
                     }
                 }
             }
-            if (message.status == MessageStatus.Error && !message.errorMessage.isNullOrBlank()) {
+            if (message.status == MessageStatus.Error && message.content.isNotBlank() && !message.errorMessage.isNullOrBlank()) {
                 Text(
-                    message.errorMessage,
+                    Str.responseInterrupted,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.vettaExtra.secondaryText,
                     modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),
                 )
             }

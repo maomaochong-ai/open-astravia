@@ -103,4 +103,50 @@ class AppViewModelSessionPendingTest {
             assertEquals(null, vm.state.value.currentSessionId)
             assertTrue(vm.state.value.pendingImages.isEmpty())
         }
+
+    @Test
+    fun clearLocalSessionsDeletesStoredSessionsAndCurrentState() =
+        runTest(dispatcher) {
+            val container =
+                AppContainer(
+                    preferences = AppPreferences(MapSettings()),
+                    tokenStore = InMemoryTokenStore(),
+                    sessionStore = SettingsSessionStore(MapSettings()),
+                )
+            val vm = AppViewModel(container)
+            advanceUntilIdle()
+
+            val session = container.sessionStore.createSession(title = "to clear")
+            vm.openChat(session.id)
+            advanceUntilIdle()
+            vm.onDraftChange("本地草稿")
+            vm.clearLocalSessions()
+            advanceUntilIdle()
+
+            assertTrue(container.sessionStore.sessions.value.isEmpty())
+            assertEquals(null, vm.state.value.currentSessionId)
+            assertEquals("", vm.state.value.draft)
+        }
+
+    @Test
+    fun renameAndDeleteSessionPersistThroughViewModel() =
+        runTest(dispatcher) {
+            val container =
+                AppContainer(
+                    preferences = AppPreferences(MapSettings()),
+                    tokenStore = InMemoryTokenStore(),
+                    sessionStore = SettingsSessionStore(MapSettings()),
+                )
+            val vm = AppViewModel(container)
+            advanceUntilIdle()
+
+            val session = container.sessionStore.createSession(title = "旧标题")
+            vm.renameSession(session.id, " 新标题 ")
+            advanceUntilIdle()
+            assertEquals("新标题", container.sessionStore.getSession(session.id)?.title)
+
+            vm.deleteSession(session.id)
+            advanceUntilIdle()
+            assertEquals(null, container.sessionStore.getSession(session.id))
+        }
 }

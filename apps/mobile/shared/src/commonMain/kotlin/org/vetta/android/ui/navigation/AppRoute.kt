@@ -42,4 +42,6 @@ sealed class AppRoute {
     data object Plan : AppRoute()
 
     data object Settings : AppRoute()
+
+    data object About : AppRoute()
 }

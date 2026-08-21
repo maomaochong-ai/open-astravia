@@ -44,6 +44,9 @@ data class AppUiState(
     val route: AppRoute = AppRoute.Boot,
     val mainTab: MainTab = MainTab.Home,
     val themeMode: ThemeMode = ThemeMode.System,
+    val autoResumeLastSession: Boolean = true,
+    val motionEnabled: Boolean = true,
+    val confirmBeforeDelete: Boolean = true,
     val serverUrl: String = "",
     val user: User? = null,
     val subscription: SubscriptionStatus? = null,
@@ -69,6 +72,14 @@ data class AppUiState(
     val devices: List<DesktopDevice> = emptyList(),
 )
 
+private data class PreferenceSnapshot(
+    val theme: ThemeMode,
+    val server: String,
+    val autoResume: Boolean,
+    val motion: Boolean,
+    val confirmDelete: Boolean,
+)
+
 class AppViewModel(
     private val container: AppContainer,
 ) : ViewModel() {
@@ -77,6 +88,9 @@ class AppViewModel(
             AppUiState(
                 themeMode = container.preferences.themeMode.value,
                 serverUrl = container.preferences.serverUrl.value,
+                autoResumeLastSession = container.preferences.autoResumeLastSession.value,
+                motionEnabled = container.preferences.motionEnabled.value,
+                confirmBeforeDelete = container.preferences.confirmBeforeDelete.value,
             ),
         )
     val state: StateFlow<AppUiState> = _state.asStateFlow()
@@ -84,15 +98,29 @@ class AppViewModel(
     private var streamJob: Job? = null
     private var messagesCollectJob: Job? = null
     private val drafts = mutableMapOf<String, String>()
+    private var pendingLoginAction: PendingLoginAction? = null
 
     init {
         viewModelScope.launch {
             combine(
                 container.preferences.themeMode,
                 container.preferences.serverUrl,
-            ) { theme, server -> theme to server }
-                .collect { (theme, server) ->
-                    _state.update { it.copy(themeMode = theme, serverUrl = server) }
+                container.preferences.autoResumeLastSession,
+                container.preferences.motionEnabled,
+                container.preferences.confirmBeforeDelete,
+            ) { theme, server, autoResume, motion, confirmDelete ->
+                PreferenceSnapshot(theme, server, autoResume, motion, confirmDelete)
+            }
+                .collect { preferences ->
+                    _state.update {
+                        it.copy(
+                            themeMode = preferences.theme,
+                            serverUrl = preferences.server,
+                            autoResumeLastSession = preferences.autoResume,
+                            motionEnabled = preferences.motion,
+                            confirmBeforeDelete = preferences.confirmDelete,
+                        )
+                    }
                 }
         }
         viewModelScope.launch {
@@ -122,7 +150,7 @@ class AppViewModel(
             when (val refresh = container.client.auth.refresh()) {
                 is RefreshOutcome.Ok, RefreshOutcome.Transient -> {
                     // Transient：保留会话，尽量拉用户信息
-                    loadWorkspace(openLastSession = true)
+                    loadWorkspace(openLastSession = container.preferences.autoResumeLastSession.value)
                 }
                 RefreshOutcome.Unauthorized -> {
                     container.tokenStore.clear()
@@ -216,6 +244,18 @@ class AppViewModel(
 
     fun openSettings() = navigate(AppRoute.Settings)
 
+    fun openAbout() = navigate(AppRoute.About)
+
+    /** 登录后继续用户刚刚发起的高意图操作，避免登录成功后把用户丢回首页。 */
+    fun openCloudConversation() {
+        if (_state.value.user == null) {
+            pendingLoginAction = PendingLoginAction.CloudConversation
+            openLogin()
+        } else {
+            newChat()
+        }
+    }
+
     fun selectMainTab(tab: MainTab) {
         _state.update {
             it.copy(
@@ -239,6 +279,25 @@ class AppViewModel(
 
     fun setDiscoverChannel(index: Int) {
         _state.update { it.copy(discoverChannelIndex = index) }
+    }
+
+    fun handlePairingInvite(target: String) {
+        if (org.vetta.android.domain.remote.parsePairingInvite(target) == null) {
+            _state.update {
+                it.copy(
+                    route = AppRoute.Welcome,
+                    globalError =
+                        UiError(
+                            title = Str.invalidPairingInvite,
+                            message = Str.invalidPairingInviteHint,
+                            action = UiErrorAction.None,
+                        ),
+                )
+            }
+            return
+        }
+        navigate(AppRoute.Welcome)
+        connectDesktop(target)
     }
 
     fun connectDesktop(target: String) {
@@ -363,6 +422,21 @@ class AppViewModel(
         }
     }
 
+    fun handleSystemBack() {
+        if (_state.value.modelPickerOpen) {
+            setModelPicker(false)
+            return
+        }
+        when (_state.value.route) {
+            AppRoute.Login -> openWelcome()
+            AppRoute.Boot,
+            AppRoute.Welcome,
+            is AppRoute.Main,
+            -> Unit
+            else -> navigateBackFromSecondary()
+        }
+    }
+
     private fun navigate(route: AppRoute) {
         _state.update { it.copy(route = route, authError = null) }
     }
@@ -457,6 +531,41 @@ class AppViewModel(
         container.preferences.setThemeMode(mode)
     }
 
+    fun setAutoResumeLastSession(enabled: Boolean) {
+        container.preferences.setAutoResumeLastSession(enabled)
+    }
+
+    fun setMotionEnabled(enabled: Boolean) {
+        container.preferences.setMotionEnabled(enabled)
+    }
+
+    fun setConfirmBeforeDelete(enabled: Boolean) {
+        container.preferences.setConfirmBeforeDelete(enabled)
+    }
+
+    fun clearLocalSessions() {
+        viewModelScope.launch {
+            streamJob?.cancel()
+            streamJob = null
+            messagesCollectJob?.cancel()
+            messagesCollectJob = null
+            container.sessionStore.sessions.value.map { it.id }.forEach { id ->
+                container.sessionStore.deleteSession(id)
+            }
+            drafts.clear()
+            container.preferences.lastSessionId = null
+            _state.update {
+                it.copy(
+                    currentSessionId = null,
+                    messages = emptyList(),
+                    draft = "",
+                    pendingImages = emptyList(),
+                    modelPickerOpen = false,
+                )
+            }
+        }
+    }
+
     fun login(accountOrEmail: String, password: String) {
         viewModelScope.launch {
             _state.update { it.copy(authLoading = true, authError = null) }
@@ -466,7 +575,12 @@ class AppViewModel(
                 } else {
                     container.client.auth.loginWithAccount(accountOrEmail, password)
                 }
+                val pendingAction = pendingLoginAction
+                pendingLoginAction = null
                 loadWorkspace(openLastSession = true)
+                if (pendingAction == PendingLoginAction.CloudConversation) {
+                    newChat()
+                }
             } catch (t: Throwable) {
                 _state.update {
                     it.copy(authLoading = false, authError = ErrorMapper.from(t))
@@ -475,6 +589,10 @@ class AppViewModel(
             }
             _state.update { it.copy(authLoading = false) }
         }
+    }
+
+    private enum class PendingLoginAction {
+        CloudConversation,
     }
 
     fun logout(clearLocalSessions: Boolean) {

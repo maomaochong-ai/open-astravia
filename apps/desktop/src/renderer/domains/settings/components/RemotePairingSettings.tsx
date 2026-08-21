@@ -1,5 +1,4 @@
 import { Button } from "@shared/components/ui/button";
-import { Input } from "@shared/components/ui/input";
 import { Switch } from "@shared/components/ui/switch";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,7 +10,6 @@ const DEFAULT_RELAY = "https://relay.flowerwine.dpdns.org";
 export function RemotePairingSettings(): JSX.Element {
 	const { t } = useTranslation("settings");
 	const [state, setState] = useState<RemotePairingState>({ status: "idle", inputEnabled: false, inputSupported: false });
-	const [relay, setRelay] = useState(DEFAULT_RELAY);
 	const [qr, setQr] = useState<string>();
 	const [busy, setBusy] = useState(false);
 
@@ -19,7 +17,6 @@ export function RemotePairingSettings(): JSX.Element {
 		const sync = (): void => {
 			void window.vetta.remotePairing.getState().then((next) => {
 				setState(next);
-				if (next.relayBaseUrl) setRelay(next.relayBaseUrl.replace(/^ws/, "http"));
 			});
 		};
 		sync();
@@ -40,7 +37,7 @@ export function RemotePairingSettings(): JSX.Element {
 	const create = async (): Promise<void> => {
 		setBusy(true);
 		try {
-			setState(await window.vetta.remotePairing.create(relay));
+			setState(await window.vetta.remotePairing.create(DEFAULT_RELAY));
 		} catch {
 			setState((current) => ({ ...current, status: "error" }));
 		} finally {
@@ -79,9 +76,9 @@ export function RemotePairingSettings(): JSX.Element {
 					</div>
 					<span className={state.status === "ready" ? "text-[12px] text-emerald-400" : "text-[12px] text-muted-foreground"}>{statusLabel}</span>
 				</div>
-				<div className="flex gap-2">
-					<Input value={relay} onChange={(event) => setRelay(event.target.value)} aria-label={t("remote.relayLabel")} />
-					<Button onClick={() => void create()} disabled={busy || !relay.trim()}>
+				<div className="flex items-center justify-between gap-3">
+					<span className="text-[12px] text-muted-foreground">{t("remote.relayConfigured")}</span>
+					<Button onClick={() => void create()} disabled={busy}>
 						<span className="icon-[solar--qr-code-linear] h-4 w-4" />
 						{busy ? t("remote.creating") : t("remote.create")}
 					</Button>

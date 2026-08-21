@@ -5,7 +5,7 @@
     "description": "Securely connect your phone to this computer. Screen and input use peer-to-peer WebRTC; the relay only handles pairing and signaling.",
     "pairingTitle": "Pair a phone",
     "pairingDescription": "Generating a new code revokes the previous pairing. The QR code is only used for the first device binding.",
-    "relayLabel": "Relay address",
+    "relayConfigured": "Secure relay configured",
     "create": "Generate QR code",
     "creating": "Generating",
     "qrAlt": "Vetta phone pairing QR code",

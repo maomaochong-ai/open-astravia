@@ -29,7 +29,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,6 +49,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import org.vetta.android.domain.error.UiError
 import org.vetta.android.ui.components.PrimaryBlackButton
+import org.vetta.android.ui.components.VettaTextField
 import org.vetta.android.ui.components.VettaErrorBanner
 import org.vetta.android.ui.i18n.Str
 import org.vetta.android.ui.remote.PairingScannerButton
@@ -186,7 +186,8 @@ fun LoginScreen(
                     .fillMaxSize()
                     .imePadding()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(horizontal = 24.dp, vertical = 28.dp),
+                verticalArrangement = Arrangement.Top,
         ) {
             Text(
                 Str.loginSubtitle,
@@ -198,7 +199,7 @@ fun LoginScreen(
                 VettaErrorBanner(error = error, onDismiss = onClearError)
                 Spacer(Modifier.height(12.dp))
             }
-            OutlinedTextField(
+            VettaTextField(
                 value = account,
                 onValueChange = { account = it },
                 modifier = Modifier.fillMaxWidth(),
@@ -209,10 +210,9 @@ fun LoginScreen(
                         keyboardType = if (loginModeEmail) KeyboardType.Email else KeyboardType.Text,
                         imeAction = ImeAction.Next,
                     ),
-                shape = MaterialTheme.shapes.medium,
             )
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
+            VettaTextField(
                 value = password,
                 onValueChange = { password = it },
                 modifier = Modifier.fillMaxWidth(),
@@ -242,7 +242,6 @@ fun LoginScreen(
                             }
                         },
                     ),
-                shape = MaterialTheme.shapes.medium,
             )
             Spacer(Modifier.height(20.dp))
             PrimaryBlackButton(

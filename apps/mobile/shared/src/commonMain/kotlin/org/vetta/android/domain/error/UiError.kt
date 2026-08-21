@@ -29,7 +29,7 @@ object ErrorMapper {
             is VettaException.Unauthorized ->
                 UiError(
                     title = "需要重新登录",
-                    message = e.message.ifBlank { "登录已失效，请重新登录" },
+                    message = "登录状态已失效，请重新登录",
                     action = UiErrorAction.ReLogin,
                     technicalCode = e.code,
                 )
@@ -49,14 +49,14 @@ object ErrorMapper {
             is RemoteConversationException ->
                 UiError(
                     title = "桌面连接不可用",
-                    message = e.message.orEmpty().ifBlank { "请检查桌面端连接后重试" },
+                    message = "请确认 Desktop 在线后重试",
                     action = UiErrorAction.Retry,
                 )
             is RemoteRequestException -> mapRemoteRequest(e)
             else ->
                 UiError(
                     title = "出错了",
-                    message = throwable.message?.takeIf { it.isNotBlank() } ?: "未知错误",
+                    message = "暂时无法完成操作，请稍后重试",
                     action = UiErrorAction.Retry,
                 )
         }
@@ -125,7 +125,7 @@ object ErrorMapper {
             42902 ->
                 UiError(
                     title = "额度已用尽",
-                    message = e.message.ifBlank { "订阅额度已用尽，额度将在窗口重置后恢复" },
+                    message = "当前额度已用尽，额度会在下个周期恢复",
                     action = UiErrorAction.OpenPlan,
                     technicalCode = code,
                 )
@@ -153,7 +153,12 @@ object ErrorMapper {
             else ->
                 UiError(
                     title = "请求失败",
-                    message = e.message.ifBlank { "服务器返回错误（${e.httpStatus}）" },
+                    message =
+                        if (e.httpStatus >= 500) {
+                            "服务暂时不可用，请稍后重试"
+                        } else {
+                            "当前请求无法完成，请检查输入后重试"
+                        },
                     action = if (e.httpStatus >= 500) UiErrorAction.Retry else UiErrorAction.None,
                     technicalCode = code,
                 )

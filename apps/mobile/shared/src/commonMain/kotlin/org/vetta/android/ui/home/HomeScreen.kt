@@ -1,8 +1,6 @@
 package org.vetta.android.ui.home
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
@@ -28,7 +25,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import org.vetta.android.domain.device.DesktopDevice
 import org.vetta.android.domain.device.DeviceStatus
@@ -36,9 +32,9 @@ import org.vetta.android.domain.device.SessionListItem
 import org.vetta.android.ui.components.PrimaryBlackButton
 import org.vetta.android.ui.components.SecondaryOutlineButton
 import org.vetta.android.ui.components.SectionHeader
-import org.vetta.android.ui.components.StatusChip
 import org.vetta.android.ui.components.StatusDot
-import org.vetta.android.ui.components.VettaCard
+import org.vetta.android.ui.components.ListRow
+import org.vetta.android.ui.components.VettaListGroup
 import org.vetta.android.ui.components.EmptyState
 import org.vetta.android.ui.i18n.Str
 import org.vetta.android.ui.theme.vettaExtra
@@ -76,46 +72,31 @@ fun HomeScreen(
         ) {
             SectionHeader(title = Str.myDevices)
             if (primaryDevice != null) {
-                VettaCard(onClick = { onOpenDevice(primaryDevice.id) }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Computer,
-                            contentDescription = null,
-                            modifier =
-                                Modifier
-                                    .size(40.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(MaterialTheme.vettaExtra.chipBackground)
-                                    .padding(8.dp),
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(primaryDevice.name, style = MaterialTheme.typography.titleSmall)
-                                Spacer(Modifier.width(8.dp))
-                                StatusChip(
-                                    text = if (primaryDevice.status == DeviceStatus.Online) Str.connected else Str.disconnected,
-                                    positive = primaryDevice.status == DeviceStatus.Online,
-                                )
-                            }
-                            Spacer(Modifier.height(4.dp))
-                            Text(
+                VettaListGroup {
+                    ListRow(
+                        title = primaryDevice.name,
+                        subtitle =
+                            "${if (primaryDevice.status == DeviceStatus.Online) Str.connected else Str.disconnected} · " +
                                 primaryDevice.osLabel,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.vettaExtra.secondaryText,
+                        leading = { Icon(Icons.Default.Computer, contentDescription = null, modifier = Modifier.size(24.dp)) },
+                        trailing = {
+                            StatusDot(online = primaryDevice.status == DeviceStatus.Online)
+                            Spacer(Modifier.width(12.dp))
+                            Icon(
+                                Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.vettaExtra.secondaryText,
                             )
-                        }
-                        Icon(
-                            Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.vettaExtra.secondaryText,
-                        )
-                    }
+                        },
+                        onClick = { onOpenDevice(primaryDevice.id) },
+                        showDivider = false,
+                    )
                 }
             } else {
                 EmptyState(
                     title = Str.disconnected,
                     subtitle = Str.noDevicesHint,
+                    icon = Icons.Default.Computer,
                     actionLabel = Str.connectTitle,
                     onAction = onOpenDevices,
                     modifier = Modifier.fillMaxWidth(),
@@ -136,8 +117,12 @@ fun HomeScreen(
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
             } else {
-                recentSessions.take(5).forEach { item ->
-                    SessionMiniRow(item = item, onClick = { onOpenSession(item.id) })
+                recentSessions.take(5).forEachIndexed { index, item ->
+                    SessionMiniRow(
+                        item = item,
+                        onClick = { onOpenSession(item.id) },
+                        showDivider = index < recentSessions.take(5).lastIndex,
+                    )
                 }
             }
 
@@ -156,28 +141,20 @@ fun HomeScreen(
 private fun SessionMiniRow(
     item: SessionListItem,
     onClick: () -> Unit,
+    showDivider: Boolean,
 ) {
-    VettaCard(
-        modifier = Modifier.padding(vertical = 5.dp),
-        onClick = onClick,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            StatusDot(online = !item.isCloud)
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(item.title, style = MaterialTheme.typography.bodyLarge)
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    "${item.sourceLabel} · ${item.timeLabel}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.vettaExtra.secondaryText,
-                )
-            }
+    ListRow(
+        title = item.title,
+        subtitle = "${item.sourceLabel} · ${item.timeLabel}",
+        leading = { StatusDot(online = !item.isCloud) },
+        trailing = {
             Icon(
                 Icons.Default.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.vettaExtra.secondaryText,
             )
-        }
-    }
+        },
+        onClick = onClick,
+        showDivider = showDivider,
+    )
 }
