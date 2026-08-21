@@ -8,9 +8,9 @@
  *
  * Also: `react-markdown`'s `defaultUrlTransform` treats `C:` as an unknown
  * protocol and blanks the href — Windows paths must be allowlisted via
- * {@link chatUrlTransform}. CommonMark also eats `\f` / `\.` etc. inside link
- * destinations; {@link normalizeWindowsPathsInMarkdownLinks} rewrites those
- * destinations to `/` before parse.
+ * {@link chatUrlTransform}. Models also occasionally omit CommonMark's angle
+ * brackets around local destinations that contain whitespace. The normalizer
+ * repairs those legacy forms before parse and standardizes local destinations.
  */
 
 import { defaultUrlTransform } from "react-markdown";
@@ -49,21 +49,135 @@ export function chatUrlTransform(url: string): string {
 	return defaultUrlTransform(url);
 }
 
+interface MarkdownFence {
+	character: "`" | "~";
+	length: number;
+}
+
+const STANDARD_LINK_TITLE = /^(\S+)(\s+(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\([^()]*\)))$/;
+
+function splitStandardLinkTitle(destination: string): { path: string; title: string } {
+	const match = STANDARD_LINK_TITLE.exec(destination);
+	return match ? { path: match[1], title: match[2] } : { path: destination, title: "" };
+}
+
+function normalizeAbsoluteLocalDestination(path: string): string | null {
+	if (!path || /[<>\r\n]/.test(path)) return null;
+	if (/^\\\\[^\\]/.test(path)) {
+		return `file://${path.slice(2).replace(/\\/g, "/")}`;
+	}
+	if (/^file:/i.test(path)) return path.replace(/\\/g, "/");
+	if (/^\/?[A-Za-z]:[\\/]/.test(path)) return path.replace(/\\/g, "/");
+	if (path.startsWith("/") && !path.startsWith("//")) return path;
+	return null;
+}
+
+function normalizeBareDestination(destination: string): string | null {
+	const { path, title } = splitStandardLinkTitle(destination);
+	const normalized = normalizeAbsoluteLocalDestination(path);
+	return normalized ? `<${normalized}>${title}` : null;
+}
+
+function findBareDestinationEnd(line: string, start: number): number {
+	let parenthesesDepth = 0;
+	for (let index = start; index < line.length; index++) {
+		if (line[index] === "(") {
+			parenthesesDepth++;
+			continue;
+		}
+		if (line[index] !== ")") continue;
+		if (parenthesesDepth === 0) return index;
+		parenthesesDepth--;
+	}
+	return -1;
+}
+
+function normalizeMarkdownLine(line: string): string {
+	if (/^(?: {4}|\t)/.test(line)) return line;
+
+	let result = "";
+	let cursor = 0;
+	let codeDelimiterLength = 0;
+	for (let index = 0; index < line.length; ) {
+		if (line[index] === "`") {
+			let end = index + 1;
+			while (line[end] === "`") end++;
+			const runLength = end - index;
+			if (codeDelimiterLength === 0) codeDelimiterLength = runLength;
+			else if (runLength === codeDelimiterLength) codeDelimiterLength = 0;
+			index = end;
+			continue;
+		}
+
+		if (codeDelimiterLength !== 0 || line[index] !== "]" || line[index + 1] !== "(") {
+			index++;
+			continue;
+		}
+
+		const destinationStart = index + 2;
+		if (line[destinationStart] === "<") {
+			const angleEnd = line.indexOf(">)", destinationStart + 1);
+			if (angleEnd === -1) {
+				index++;
+				continue;
+			}
+			const normalized = normalizeAbsoluteLocalDestination(line.slice(destinationStart + 1, angleEnd));
+			if (!normalized) {
+				index = angleEnd + 2;
+				continue;
+			}
+			result += `${line.slice(cursor, destinationStart)}<${normalized}>)`;
+			cursor = angleEnd + 2;
+			index = cursor;
+			continue;
+		}
+
+		const destinationEnd = findBareDestinationEnd(line, destinationStart);
+		if (destinationEnd === -1) {
+			index++;
+			continue;
+		}
+		const normalized = normalizeBareDestination(line.slice(destinationStart, destinationEnd));
+		if (!normalized) {
+			index = destinationEnd + 1;
+			continue;
+		}
+		result += `${line.slice(cursor, destinationStart)}${normalized})`;
+		cursor = destinationEnd + 1;
+		index = cursor;
+	}
+	return result + line.slice(cursor);
+}
+
 /**
- * Rewrite Windows drive paths in markdown link destinations to use `/`.
- * CommonMark treats `\f`, `\.`, `\U`… as escapes and corrupts paths like
- * `C:\Users\x\.vetta\a.html` → `C:\Users\x.vetta\a.html`.
+ * Standardize absolute local link destinations as CommonMark angle-bracket
+ * destinations before parsing. This makes whitespace and balanced parentheses
+ * unambiguous, converts Windows separators, and repairs already persisted model
+ * output such as `[file](/C:/Users/name/My Files/file.md)`.
+ *
  */
-export function normalizeWindowsPathsInMarkdownLinks(markdown: string): string {
-	// Angle-bracket destinations: ](<C:\path\with spaces>)
-	let out = markdown.replace(/\]\(<([A-Za-z]):\\([^>]+)>\)/g, (_m, drive: string, rest: string) => {
-		return `](<${drive}:/${rest.replace(/\\/g, "/")}>)`;
-	});
-	// Bare destinations: ](C:\path\no-spaces)
-	out = out.replace(/\]\(([A-Za-z]):\\([^)\s]+)\)/g, (_m, drive: string, rest: string) => {
-		return `](${drive}:/${rest.replace(/\\/g, "/")})`;
-	});
-	return out;
+export function normalizeLocalFileLinksInMarkdown(markdown: string): string {
+	const parts = markdown.split(/(\r\n|\n|\r)/);
+	let fence: MarkdownFence | null = null;
+	return parts
+		.map((part) => {
+			if (part === "\n" || part === "\r" || part === "\r\n") return part;
+			const marker = /^ {0,3}(`{3,}|~{3,})/.exec(part)?.[1];
+			if (marker) {
+				const character = marker[0] as MarkdownFence["character"];
+				if (!fence) fence = { character, length: marker.length };
+				else if (
+					character === fence.character &&
+					marker.length >= fence.length &&
+					part.slice(part.indexOf(marker) + marker.length).trim() === ""
+				) {
+					fence = null;
+				}
+				return part;
+			}
+			return fence ? part : normalizeMarkdownLine(part);
+		})
+		.join("");
 }
 
 /**

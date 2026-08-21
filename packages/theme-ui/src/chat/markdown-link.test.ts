@@ -1,11 +1,10 @@
 import { createRequire } from "node:module";
-import path from "node:path";
 import { describe, expect, test } from "vitest";
 import {
 	chatUrlTransform,
 	classifyMarkdownLink,
 	fileUrlToPath,
-	normalizeWindowsPathsInMarkdownLinks,
+	normalizeLocalFileLinksInMarkdown,
 } from "./markdown-link";
 
 describe("fileUrlToPath", () => {
@@ -44,21 +43,49 @@ describe("chatUrlTransform", () => {
 	});
 });
 
-describe("normalizeWindowsPathsInMarkdownLinks", () => {
+describe("normalizeLocalFileLinksInMarkdown", () => {
+	test("repairs the exact Windows deliverable link emitted with spaces and parentheses", () => {
+		const input = "[travel-app.vetd](/C:/Users/admin/Desktop/新建文件夹 (7)/vetta/travel-app.vetd)";
+		expect(normalizeLocalFileLinksInMarkdown(input)).toBe(
+			"[travel-app.vetd](</C:/Users/admin/Desktop/新建文件夹 (7)/vetta/travel-app.vetd>)",
+		);
+	});
+
+	test("repairs POSIX absolute paths with spaces using a CommonMark angle-bracket destination", () => {
+		const input = "[report.pdf](/home/user/My Reports/report.pdf)";
+		expect(normalizeLocalFileLinksInMarkdown(input)).toBe("[report.pdf](</home/user/My Reports/report.pdf>)");
+	});
+
 	test("rewrites backslash destinations to forward slashes", () => {
 		const input = "[index.html](C:\\Users\\flowerwine\\.vetta\\conversation\\afc54df9\\index.html)";
-		const out = normalizeWindowsPathsInMarkdownLinks(input);
-		expect(out).toBe("[index.html](C:/Users/flowerwine/.vetta/conversation/afc54df9/index.html)");
+		const out = normalizeLocalFileLinksInMarkdown(input);
+		expect(out).toBe("[index.html](<C:/Users/flowerwine/.vetta/conversation/afc54df9/index.html>)");
 	});
 
 	test("rewrites angle-bracket destinations", () => {
 		const input = "[a](<C:\\Users\\x\\.vetta\\a.html>)";
-		expect(normalizeWindowsPathsInMarkdownLinks(input)).toBe("[a](<C:/Users/x/.vetta/a.html>)");
+		expect(normalizeLocalFileLinksInMarkdown(input)).toBe("[a](<C:/Users/x/.vetta/a.html>)");
 	});
 
-	test("leaves forward-slash and non-windows links alone", () => {
+	test("standardizes absolute local links and leaves web links alone", () => {
 		const input = "[a](C:/Users/x/a.html) and [b](https://x.com) and [c](/tmp/a)";
-		expect(normalizeWindowsPathsInMarkdownLinks(input)).toBe(input);
+		expect(normalizeLocalFileLinksInMarkdown(input)).toBe(
+			"[a](<C:/Users/x/a.html>) and [b](https://x.com) and [c](</tmp/a>)",
+		);
+	});
+
+	test("preserves standard markdown link titles", () => {
+		const input = "[a](C:/Users/x/a.html \"title\") and [b](/tmp/b.md 'title')";
+		expect(normalizeLocalFileLinksInMarkdown(input)).toBe(
+			"[a](<C:/Users/x/a.html> \"title\") and [b](</tmp/b.md> 'title')",
+		);
+	});
+
+	test("does not rewrite examples inside inline or fenced code", () => {
+		const inline = "`[a](C:/Users/x/My File.md)`";
+		const fenced = "```md\n[a](C:/Users/x/My File.md)\n```";
+		expect(normalizeLocalFileLinksInMarkdown(inline)).toBe(inline);
+		expect(normalizeLocalFileLinksInMarkdown(fenced)).toBe(fenced);
 	});
 });
 
@@ -154,8 +181,35 @@ describe("classifyMarkdownLink", () => {
 });
 
 describe("end-to-end: remark parse + urlTransform for user example", () => {
+	test("forward-slash Windows path with spaces and parentheses survives as a file link", () => {
+		const r = createRequire(import.meta.url);
+		const rmPath = r.resolve("react-markdown");
+		const r2 = createRequire(rmPath);
+		const { unified } = r2("unified");
+		const remarkParse = r2("remark-parse").default || r2("remark-parse");
+		const remarkRehype = r2("remark-rehype").default || r2("remark-rehype");
+		const { visit } = r2("unist-util-visit");
+
+		const raw = "[travel-app.vetd](/C:/Users/admin/Desktop/新建文件夹 (7)/vetta/travel-app.vetd)";
+		const source = normalizeLocalFileLinksInMarkdown(raw);
+		const processor = unified().use(remarkParse).use(remarkRehype);
+		const tree = processor.runSync(processor.parse(source));
+		let href: string | undefined;
+		visit(tree, "element", (node: { tagName?: string; properties?: { href?: string } }) => {
+			if (node.tagName === "a") href = node.properties?.href;
+		});
+
+		expect(href).toBe(
+			"/C:/Users/admin/Desktop/%E6%96%B0%E5%BB%BA%E6%96%87%E4%BB%B6%E5%A4%B9%20(7)/vetta/travel-app.vetd",
+		);
+		expect(classifyMarkdownLink(chatUrlTransform(href ?? ""))).toEqual({
+			type: "file",
+			path: "/C:/Users/admin/Desktop/新建文件夹 (7)/vetta/travel-app.vetd",
+		});
+	});
+
 	test("backslash path survives and classifies as file with .vetta intact", () => {
-		const r = createRequire(path.join(process.cwd(), "package.json"));
+		const r = createRequire(import.meta.url);
 		const rmPath = r.resolve("react-markdown");
 		const r2 = createRequire(rmPath);
 		const { unified } = r2("unified");
@@ -165,7 +219,7 @@ describe("end-to-end: remark parse + urlTransform for user example", () => {
 
 		const BS = "\\";
 		const raw = `[index.html](C:${BS}Users${BS}flowerwine${BS}.vetta${BS}conversation${BS}afc54df9-bcf0-4ec0-9632-0c2a4dde88c7${BS}index.html)`;
-		const source = normalizeWindowsPathsInMarkdownLinks(raw);
+		const source = normalizeLocalFileLinksInMarkdown(raw);
 		expect(source).toContain("flowerwine/.vetta/");
 
 		const tree = unified().use(remarkParse).use(remarkRehype).runSync(unified().use(remarkParse).parse(source));

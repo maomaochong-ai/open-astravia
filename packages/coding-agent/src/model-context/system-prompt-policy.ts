@@ -97,15 +97,15 @@ const FILENAME_FIDELITY_GUIDANCE =
  * 仅在桌面场景注入；`cli` 场景（终端无徽章/卡片渲染）剔除以省常驻 token。
  */
 const FILE_LINK_GUIDANCE =
-	"MANDATORY file-link format: EVERY time you mention a file you created, edited, read, or otherwise point the user at — anywhere in your prose, including headings, list items, and tables — you MUST write it as a markdown link to its ABSOLUTE path: [filename.ext](/abs/path/filename.ext). The UI turns these into clickable preview badges, so this is not optional styling. " +
+	"MANDATORY file-link format: EVERY time you mention a file you created, edited, read, or otherwise point the user at — anywhere in your prose, including headings, list items, and tables — you MUST write it as a standard CommonMark link to its ABSOLUTE path, with the destination enclosed in angle brackets: [filename.ext](</abs/path/with spaces/filename.ext>) on POSIX or [filename.ext](<C:/Users/name/My Files/filename.ext>) on Windows. Always use the angle brackets, even when the current path has no spaces; this is ordinary Markdown and safely preserves whitespace, Unicode, and parentheses. Copy the exact path components returned by tools; only normalize Windows `\\` separators to `/` inside the Markdown destination. The UI turns these into clickable preview badges, so this is not optional styling. " +
 	"NEVER emit a bare path as plain text, and NEVER wrap a path in backticks/inline code (`/Users/...`) when pointing the user at it — backtick paths render as dead monospace text with NO preview and cannot be clicked. Do NOT prepend file emojis like 📄 or 📁; the badge already shows a file-type icon. " +
-	"Correct: Saved to [report.md](/Users/me/Desktop/report.md). Wrong: Saved to `/Users/me/Desktop/report.md` — or — Saved to 📄 report.md. " +
+	"Correct: Saved to [report.md](</Users/me/My Reports/report.md>). Wrong: Saved to `/Users/me/My Reports/report.md` — or — Saved to 📄 report.md. " +
 	"Use the exact absolute path returned by tools — never invent one; if you genuinely only have a relative path, leave it as plain text rather than fabricating an absolute one. " +
 	"The only exception is paths inside fenced code blocks or shell command examples — keep those as-is.";
 
 const DELIVERABLES_GUIDANCE =
 	"If you created, edited, or wrote ANY file during this turn, the VERY LAST thing in your final message MUST be one aggregated deliverables block — this is mandatory with NO exception, even for a single file or a one-line edit; never end such a turn without it. " +
-	"Format: a short heading (e.g. '产物:' / 'Deliverables:') followed by an unordered list where each item is a markdown link to the file's ABSOLUTE path — `- [filename.ext](/abs/path/filename.ext)`. " +
+	"Format: a short heading (e.g. '产物:' / 'Deliverables:') followed by an unordered list where each item uses the standard CommonMark absolute file-link form — `- [filename.ext](</abs/path/with spaces/filename.ext>)`. " +
 	"This block is the ONLY place outputs are listed (do not also scatter the same links earlier). List every file you created or changed for the user, plus user-facing outputs; exclude ONLY pure throwaway scaffolding, temp files, and files you merely read without changing. " +
 	"The single case where you omit this block is a turn that changed no files at all.";
 

@@ -39,7 +39,7 @@ If you think a design pass genuinely belongs first, say so and let the user pick
 {{> deliverables-placement}}
 
 ### The Deliverables file list
-Whenever this turn created, edited, or wrote ANY file, you MUST end with a **Deliverables** section — mandatory, no exception, even for a single one-line edit. It is an unordered list (`- ` prefix, never a numbered list) with one entry per file you changed: a markdown link to its absolute path, followed by a terse note on what changed — `- [filename.ext](/abs/path/filename.ext) — what changed here`. List every changed code file plus any user-facing outputs; exclude only files you merely read without changing. Omit the section only when the turn changed no files at all.
+Whenever this turn created, edited, or wrote ANY file, you MUST end with a **Deliverables** section — mandatory, no exception, even for a single one-line edit. It is an unordered list (`- ` prefix, never a numbered list) with one entry per file you changed: a standard CommonMark link to its absolute path with an angle-bracket destination, followed by a terse note on what changed — `- [filename.ext](</abs/path/with spaces/filename.ext>) — what changed here`. Use the equivalent `<C:/...>` destination on Windows. List every changed code file plus any user-facing outputs; exclude only files you merely read without changing. Omit the section only when the turn changed no files at all.
 
 
 ## Reviews

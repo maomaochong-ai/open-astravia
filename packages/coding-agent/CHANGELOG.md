@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- Desktop 文件链接提示词改用带尖括号目标的标准 CommonMark 形式，确保模型输出的绝对路径在包含空格、Unicode 或括号时仍可渲染为可点击预览。
+
 - 子代理 Session Extension 释放时保持 runtime 挂载直到持久化回调排空，避免恢复出缺失 transcript 后关闭会话触发 `Coding Agent Subagent runtime has not been attached`；CLI 的 MCP 继承合同改由 V2 `general` 定义验证，继续保持 `explorer` fail-closed。
 
 - 子代理 Todo 改为订阅 child Session Extension observation 实时更新；Explorer MCP 改为 fail-closed，usage 保留到宿主观察事件。子代理生命周期由 `coding-agent.subagents` Session Extension 唯一拥有，避免手工 Feature、Document Participant 与释放路径并存。`subagent_state_v1` 恢复 Schema 同步接受可选批次交付字段，修复新格式记录在进程重启后被拒绝、Desktop 无法回放子代理的问题。

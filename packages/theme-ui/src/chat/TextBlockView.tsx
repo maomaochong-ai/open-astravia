@@ -8,7 +8,7 @@ import { SyntaxHighlightedCode } from "../shared/SyntaxHighlightedCode";
 import {
 	chatUrlTransform,
 	classifyMarkdownLink,
-	normalizeWindowsPathsInMarkdownLinks,
+	normalizeLocalFileLinksInMarkdown,
 } from "./markdown-link";
 
 /** Minimal hast-like nodes for the streaming chunk rehype plugin. */
@@ -610,7 +610,7 @@ export const TextBlockView = memo(function TextBlockView({
 	}, [animateChunks, inlineTokens]);
 
 	const markdownSource = useMemo(
-		() => normalizeWindowsPathsInMarkdownLinks(displayText),
+		() => normalizeLocalFileLinksInMarkdown(displayText),
 		[displayText],
 	);
 

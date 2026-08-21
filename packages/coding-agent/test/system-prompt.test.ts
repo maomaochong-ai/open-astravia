@@ -56,6 +56,10 @@ describe("buildSystemPrompt", () => {
 			});
 
 			expect(prompt).toContain("MANDATORY file-link format");
+			expect(prompt).toContain("standard CommonMark");
+			expect(prompt).toContain("[filename.ext](</abs/path/with spaces/filename.ext>)");
+			expect(prompt).toContain("[filename.ext](<C:/Users/name/My Files/filename.ext>)");
+			expect(prompt).not.toContain("[filename.ext](/abs/path/filename.ext)");
 		});
 	});
 
