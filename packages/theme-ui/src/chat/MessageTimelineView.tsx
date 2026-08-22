@@ -1,73 +1,175 @@
+import { cn } from "@vetta/ui";
 import { forwardRef, type ButtonHTMLAttributes, type JSX, type ReactNode } from "react";
 
-export interface MessageTimelineRailViewProps
-	extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
-	activeTurn: number;
+export interface MessageTimelineTickView {
+	active: boolean;
+	id: string;
 	label: string;
-	totalTurns: number;
+	name: string;
+	onClick: () => void;
 }
 
-export const MessageTimelineRailView = forwardRef<HTMLButtonElement, MessageTimelineRailViewProps>(
-	function MessageTimelineRailView({ activeTurn, className, label, totalTurns, ...buttonProps }, ref) {
-		const progress = totalTurns <= 1 ? 0 : (activeTurn - 1) / (totalTurns - 1);
-		return (
-			<button
-				{...buttonProps}
-				ref={ref}
-				type="button"
+export interface MessageTimelineTriggerViewProps
+	extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
+	label: string;
+}
+
+export const MessageTimelineTriggerView = forwardRef<
+	HTMLButtonElement,
+	MessageTimelineTriggerViewProps
+>(function MessageTimelineTriggerView({ className, label, ...buttonProps }, ref) {
+	return (
+		<button
+			{...buttonProps}
+			ref={ref}
+			type="button"
+			aria-label={label}
+			title={label}
+			className={cn(
+				"flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground/60 transition-colors",
+				"hover:bg-accent/60 hover:text-foreground",
+				"focus-visible:bg-accent/60 focus-visible:outline-none",
+				"data-[state=open]:bg-accent data-[state=open]:text-foreground",
+				className,
+			)}
+		>
+			<span className="icon-[solar--list-linear] h-3 w-3" aria-hidden />
+		</button>
+	);
+});
+
+const TICK_STEP_PX = 8;
+const TICK_PAD_PX = 4;
+const MAX_RAIL_HEIGHT_PX = 200;
+
+export function MessageTimelineView({
+	label,
+	open,
+	panel,
+	rail,
+	trigger,
+}: {
+	label: string;
+	open: boolean;
+	panel: ReactNode;
+	rail: ReactNode;
+	trigger: ReactNode;
+}): JSX.Element {
+	return (
+		<div className="relative">
+			<nav
 				aria-label={label}
-				title={label}
-				className={`group flex h-28 w-8 items-center justify-center rounded-lg opacity-35 transition-opacity hover:bg-muted/40 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-ring ${className ?? ""}`}
+				aria-expanded={open}
+				className={cn(
+					"flex w-5 flex-col items-center gap-1 transition-opacity",
+					open ? "opacity-100" : "opacity-60 hover:opacity-100",
+				)}
 			>
-				<span className="relative h-20 w-px rounded-full bg-border/70" aria-hidden>
+				{trigger}
+				{rail}
+			</nav>
+			{panel ? (
+				<div className="absolute right-full top-1/2 z-30 mr-1.5 -translate-y-1/2">{panel}</div>
+			) : null}
+		</div>
+	);
+}
+
+export function MessageTimelineRailView({
+	showPreview = true,
+	ticks,
+}: {
+	showPreview?: boolean;
+	ticks: readonly MessageTimelineTickView[];
+}): JSX.Element {
+	const last = Math.max(1, ticks.length - 1);
+	const innerHeight = Math.min(last * TICK_STEP_PX, MAX_RAIL_HEIGHT_PX);
+	return (
+		<div className="relative w-full" style={{ height: innerHeight + TICK_PAD_PX * 2 }}>
+			{ticks.map((tick, index) => (
+				<button
+					key={tick.id}
+					type="button"
+					aria-label={tick.name}
+					aria-current={tick.active ? "location" : undefined}
+					onClick={tick.onClick}
+					className="group absolute left-1/2 flex h-2 w-full -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+					style={{ top: TICK_PAD_PX + (index / last) * innerHeight }}
+				>
 					<span
-						className="absolute -left-1 h-2 w-2 rounded-full border border-primary/40 bg-primary transition-[top] duration-200"
-						style={{ top: `calc(${progress * 100}% - 4px)` }}
+						className={cn(
+							"rounded-full transition-colors",
+							tick.active
+								? "h-0.5 w-3 bg-primary"
+								: "h-0.5 w-2 bg-muted-foreground/50 group-hover:bg-muted-foreground/80",
+						)}
+						aria-hidden
 					/>
-				</span>
-			</button>
-		);
-	},
-);
+					{showPreview ? (
+						<span
+							aria-hidden
+							className="pointer-events-none absolute right-full z-30 mr-2 max-w-52 truncate rounded-md border border-border/50 bg-popover px-2 py-1 text-[11px] text-popover-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+						>
+							{tick.label}
+						</span>
+					) : null}
+				</button>
+			))}
+		</div>
+	);
+}
 
 export function MessageTimelinePanelView({
+	closeLabel,
 	countLabel,
 	emptyLabel,
 	searchInput,
 	timeline,
 	title,
+	onClose,
 }: {
+	closeLabel: string;
 	countLabel: string;
 	emptyLabel: string;
 	searchInput: ReactNode;
 	timeline: ReactNode;
 	title: string;
+	onClose: () => void;
 }): JSX.Element {
 	return (
-		<div className="flex flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground">
-			<div className="border-b border-border/50 px-3.5 pt-3 pb-2.5">
-				<div className="mb-2 flex items-center justify-between gap-3">
-					<h2 className="text-[13px] font-semibold text-foreground/85">{title}</h2>
-					<span className="text-[11px] text-muted-foreground/55">{countLabel}</span>
+		<div className="flex h-72 w-64 flex-col overflow-hidden rounded-xl border border-border/50 bg-popover shadow-md">
+			<div className="px-3 pt-2.5 pb-2">
+				<div className="mb-2 flex items-center gap-2">
+					<h2 className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground/80">{title}</h2>
+					<span className="text-[11px] text-muted-foreground/50">{countLabel}</span>
+					<button
+						type="button"
+						aria-label={closeLabel}
+						title={closeLabel}
+						onClick={onClose}
+						className="flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-accent/60 hover:text-foreground"
+					>
+						<span className="icon-[solar--close-circle-linear] h-3.5 w-3.5" aria-hidden />
+					</button>
 				</div>
 				{searchInput}
 			</div>
-			<div className="h-80 min-h-0">{timeline || <div className="p-4 text-[12px] text-muted-foreground">{emptyLabel}</div>}</div>
+			<div className="min-h-0 flex-1 px-1 pb-1">
+				{timeline || <div className="px-2 py-2 text-[12px] text-muted-foreground">{emptyLabel}</div>}
+			</div>
 		</div>
 	);
 }
 
 export function MessageTimelineEntryView({
 	active,
+	matchPreview,
 	preview,
-	roleLabel,
-	turnLabel,
 	onClick,
 }: {
 	active: boolean;
+	matchPreview?: string | null;
 	preview: string;
-	roleLabel: string;
-	turnLabel: string;
 	onClick: () => void;
 }): JSX.Element {
 	return (
@@ -75,22 +177,16 @@ export function MessageTimelineEntryView({
 			type="button"
 			onClick={onClick}
 			aria-current={active ? "location" : undefined}
-			className={`group relative flex w-full gap-2.5 px-3 py-2 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none ${active ? "bg-primary/10" : ""}`}
+			className={cn(
+				"flex w-full flex-col gap-0.5 rounded-md px-2.5 py-1.5 text-left transition-colors",
+				"hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none",
+				active ? "bg-primary/15 text-foreground" : "text-foreground/80",
+			)}
 		>
-			<span className="relative flex w-3 shrink-0 justify-center" aria-hidden>
-				<span className="absolute inset-y-0 w-px bg-border/60" />
-				<span
-					className={`relative mt-1.5 h-2 w-2 rounded-full border ${active ? "border-primary bg-primary" : "border-border bg-popover group-hover:border-primary/50"}`}
-				/>
-			</span>
-			<span className="min-w-0 flex-1">
-				<span className="flex items-center gap-1.5 text-[10px] text-muted-foreground/55">
-					<span>{turnLabel}</span>
-					<span aria-hidden>·</span>
-					<span>{roleLabel}</span>
-				</span>
-				<span className="mt-0.5 block truncate text-[12px] text-foreground/75">{preview}</span>
-			</span>
+			<span className="block truncate text-[12px]">{preview}</span>
+			{matchPreview ? (
+				<span className="block truncate text-[11px] text-muted-foreground/50">{matchPreview}</span>
+			) : null}
 		</button>
 	);
 }

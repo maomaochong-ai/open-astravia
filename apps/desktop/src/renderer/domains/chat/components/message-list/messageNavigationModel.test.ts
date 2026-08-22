@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+	buildMessageNavigationOutline,
 	buildMessageNavigationTurns,
-	filterMessageNavigationTurns,
 	findActiveNavigationTurnIndex,
 } from "./messageNavigationModel";
 import type { ChatMessage } from "./types";
@@ -35,7 +35,37 @@ describe("message navigation model", () => {
 
 		expect(Array.from(turns[0].entries[0].preview)).toHaveLength(72);
 		expect(turns[0].entries[0].preview.endsWith("…")).toBe(true);
-		expect(filterMessageNavigationTurns(turns, "TARGET")).toHaveLength(1);
+		expect(buildMessageNavigationOutline(turns, "TARGET")).toHaveLength(1);
+	});
+
+	it("lists one outline row per turn and jumps to the matching message", () => {
+		const turns = buildMessageNavigationTurns(messages);
+
+		expect(buildMessageNavigationOutline(turns, "")).toEqual([
+			{
+				id: "turn-user-1",
+				matchPreview: null,
+				preview: "First question",
+				targetMessageIndex: 0,
+				turnNumber: 1,
+			},
+			{
+				id: "turn-user-2",
+				matchPreview: null,
+				preview: "Second question",
+				targetMessageIndex: 3,
+				turnNumber: 2,
+			},
+		]);
+		expect(buildMessageNavigationOutline(turns, "useful")).toEqual([
+			{
+				id: "turn-user-2",
+				matchPreview: "Useful result",
+				preview: "Second question",
+				targetMessageIndex: 4,
+				turnNumber: 2,
+			},
+		]);
 	});
 
 	it("maps the visible message index back to its containing turn", () => {

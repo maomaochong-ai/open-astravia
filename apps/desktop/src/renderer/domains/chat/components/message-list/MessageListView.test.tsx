@@ -112,4 +112,12 @@ describe("MessageListView viewport phases", () => {
 		expect(viewProps.model.scroll.scrollToMessage).toHaveBeenCalledWith(3);
 		expect(captured.virtuosoProps?.rangeChanged).toEqual(expect.any(Function));
 	});
+
+	it("把提问目录放在会话区域右侧", () => {
+		render(<MessageListView {...props("expanded")} />);
+		const trigger = screen.getByRole("button", { name: "message timeline" });
+		const host = trigger.closest(".absolute");
+		expect(host?.className).toContain("right-6");
+		expect(host?.className).not.toMatch(/\bleft-/);
+	});
 });

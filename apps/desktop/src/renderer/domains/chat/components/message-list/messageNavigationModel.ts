@@ -18,6 +18,14 @@ export interface MessageNavigationTurn {
 	turnNumber: number;
 }
 
+export interface MessageNavigationOutlineItem {
+	id: string;
+	matchPreview: string | null;
+	preview: string;
+	targetMessageIndex: number;
+	turnNumber: number;
+}
+
 function compactText(text: string): string {
 	return text.replace(/\s+/g, " ").trim();
 }
@@ -70,10 +78,30 @@ export function buildMessageNavigationTurns(messages: ChatMessage[]): MessageNav
 	return turns;
 }
 
-export function filterMessageNavigationTurns(turns: MessageNavigationTurn[], query: string): MessageNavigationTurn[] {
+function headlineEntry(turn: MessageNavigationTurn): MessageNavigationEntry | undefined {
+	return turn.entries.find((entry) => entry.role === "user") ?? turn.entries[0];
+}
+
+export function buildMessageNavigationOutline(
+	turns: MessageNavigationTurn[],
+	query: string,
+): MessageNavigationOutlineItem[] {
 	const normalized = compactText(query).toLocaleLowerCase();
-	if (!normalized) return turns;
-	return turns.filter((turn) => turn.entries.some((entry) => entry.searchText.includes(normalized)));
+	const items: MessageNavigationOutlineItem[] = [];
+	for (const turn of turns) {
+		const headline = headlineEntry(turn);
+		if (!headline) continue;
+		const match = normalized ? turn.entries.find((entry) => entry.searchText.includes(normalized)) : headline;
+		if (!match) continue;
+		items.push({
+			id: turn.id,
+			matchPreview: match.id === headline.id || match.preview === headline.preview ? null : match.preview,
+			preview: headline.preview,
+			targetMessageIndex: match.messageIndex,
+			turnNumber: turn.turnNumber,
+		});
+	}
+	return items;
 }
 
 export function findActiveNavigationTurnIndex(turns: MessageNavigationTurn[], messageIndex: number): number {

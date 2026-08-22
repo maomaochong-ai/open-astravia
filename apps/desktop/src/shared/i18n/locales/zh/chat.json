@@ -507,17 +507,15 @@
 			"hours": "{{hours}}小时 {{minutes}}分"
 		},
 		"navigation": {
-			"title": "消息时间线",
-			"count": "{{count}}轮对话",
-			"open": "打开消息导航，第{{current}}/{{total}}轮",
-			"searchLabel": "搜索本会话消息",
-			"searchPlaceholder": "搜索本会话消息",
-			"noResults": "没有匹配的消息",
-			"turn": "第{{turn}}轮",
-			"userRole": "你",
-			"assistantRole": "Vetta",
-			"emptyUser": "附件或空消息",
-			"emptyAssistant": "正在处理"
+			"title": "提问",
+			"count": "{{count}}",
+			"open": "查看提问",
+			"close": "关闭提问目录",
+			"searchLabel": "搜索提问",
+			"searchPlaceholder": "搜索提问",
+			"noResults": "没有匹配的提问",
+			"jumpTo": "跳转到：{{preview}}",
+			"emptyUser": "（没有文字）"
 		},
 		"tokenUsage": {
 			"trigger": "查看本轮 Token 用量",

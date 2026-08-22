@@ -192,7 +192,8 @@ export function MessageListView({
 						/>
 					}
 				/>
-				<div className="pointer-events-none absolute top-1/2 right-2 z-20 -translate-y-1/2">
+				{/* 贴会话区域右缘；right-6 给 overlay 滚动条留出间距，不跟居中的消息列对齐。 */}
+				<div className="pointer-events-none absolute top-1/2 right-6 z-20 -translate-y-1/2">
 					<div className="pointer-events-auto">
 						<MessageTimeline
 							key={sessionId ?? "message-timeline"}

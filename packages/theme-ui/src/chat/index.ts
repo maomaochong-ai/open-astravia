@@ -171,11 +171,16 @@ export type {
 	MessageSelectionContextMenuViewProps,
 } from "./MessageSelectionContextMenuView";
 export { MessageSelectionContextMenuView } from "./MessageSelectionContextMenuView";
-export type { MessageTimelineRailViewProps } from "./MessageTimelineView";
+export type {
+	MessageTimelineTickView,
+	MessageTimelineTriggerViewProps,
+} from "./MessageTimelineView";
 export {
 	MessageTimelineEntryView,
 	MessageTimelinePanelView,
 	MessageTimelineRailView,
+	MessageTimelineTriggerView,
+	MessageTimelineView,
 } from "./MessageTimelineView";
 export type {
 	ModelSelectorLabels,

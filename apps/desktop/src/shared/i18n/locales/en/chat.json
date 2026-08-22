@@ -507,17 +507,15 @@
 			"hours": "{{hours}}h {{minutes}}m"
 		},
 		"navigation": {
-			"title": "Message timeline",
-			"count": "{{count}} turns",
-			"open": "Open message navigation, turn {{current}} of {{total}}",
-			"searchLabel": "Search this conversation",
-			"searchPlaceholder": "Search this conversation",
-			"noResults": "No matching messages",
-			"turn": "Turn {{turn}}",
-			"userRole": "You",
-			"assistantRole": "Vetta",
-			"emptyUser": "Attachment or empty message",
-			"emptyAssistant": "Processing"
+			"title": "Questions",
+			"count": "{{count}}",
+			"open": "View questions",
+			"close": "Close question list",
+			"searchLabel": "Search questions",
+			"searchPlaceholder": "Search questions",
+			"noResults": "No matching questions",
+			"jumpTo": "Jump to {{preview}}",
+			"emptyUser": "(No text)"
 		},
 		"tokenUsage": {
 			"trigger": "View token usage for this turn",
