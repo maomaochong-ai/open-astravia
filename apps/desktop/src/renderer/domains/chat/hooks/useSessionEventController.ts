@@ -33,20 +33,20 @@ import type { SessionEvent } from "@vetta/runtime-core";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { type MutableRefObject, useCallback, useEffect, useRef } from "react";
 import {
-	adoptDraftId,
 	appendError,
 	appendTextDelta,
 	appendThinkingDelta,
 	finalizeMessage,
+	finishAssistantTurn,
 	fullHistoryToChat,
+	getActiveAssistantTurnStartedAt,
 	handleToolEnd,
 	handleToolPhase,
 	handleToolStart,
 	nextId,
 	resetStreamState,
-	setTurnStartTime,
+	startAssistantTurn,
 	toChatErrorDetails,
-	turnStartTime,
 	turnStatsCache,
 } from "../services/chat-service";
 import { writeCachedContextComposition } from "../services/context-composition-cache";
@@ -217,17 +217,9 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 					// 快照本轮起始时的队列派发序号，供本轮 agent_end 判定重拉是否已过期。
 					turnStartDispatchSeqRef.current.set(sessionId, getQueuedDispatchSeq(sessionId));
 					resetStreamState();
-					// 无用户消息介入的唤醒（如后台任务 <task-notification> 触发的新
-					// turn）延续上一个 assistant 气泡，而不是新开一条——与重载时
-					// fullHistoryToChat 合并连续 assistant 消息的行为保持一致。
-					setChatMessages((prev) => {
-						const last = prev.at(-1);
-						if (last?.role === "assistant") {
-							adoptDraftId(last.id);
-						}
-						return prev;
-					});
-					setTurnStartTime(event.timestamp);
+					// agent_start 就建立真实 assistant 草稿：慢模型首包到达前也有稳定消息身份与
+					// 绝对 startedAt。无用户消息介入的唤醒仍复用末尾 assistant 气泡。
+					setChatMessages((prev) => startAssistantTurn(prev, event.timestamp));
 					setActiveSessionStreaming(true);
 				}
 				if (event.phase === "agent_end" || event.phase === "aborted") {
@@ -235,32 +227,15 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 					flushDeltas();
 					// Always reset streaming state first to unblock the UI
 					const endedAt = event.timestamp;
-					const startedAt = turnStartTime;
+					const startedAt = getActiveAssistantTurnStartedAt(getDefaultStore().get(chatMessagesAtom));
 					const elapsed = startedAt ? (endedAt - startedAt) / 1000 : 0;
 					resetStreamState();
 					setActiveSessionStreaming(false);
-					setTurnStartTime(0);
 					// 重试期也会走到这里（agent_end 先于 retry.start），随后的
 					// retry.start 会把进度重新点亮；真正结束时则不会，避免残留。
 					setRetryProgress(null);
 					// Write total duration onto the last assistant message
-					setChatMessages((prev) => {
-						if (elapsed > 0) {
-							for (let i = prev.length - 1; i >= 0; i--) {
-								if (prev[i].role === "assistant") {
-									const copy = [...prev];
-									copy[i] = {
-										...copy[i],
-										startedAt: copy[i].startedAt ?? startedAt,
-										endedAt,
-										durationSeconds: elapsed,
-									};
-									return copy;
-								}
-							}
-						}
-						return prev;
-					});
+					setChatMessages((prev) => finishAssistantTurn(prev, endedAt));
 
 					// Reload full history so user bubbles get session entryId / branch siblings
 					// (optimistic messages use synthetic ids and cannot be edited until this).
@@ -506,7 +481,8 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 
 			// ── Usage update (emitted per assistant message) ──
 			if (event.type === "usage.update") {
-				const elapsed = turnStartTime ? (Date.now() - turnStartTime) / 1000 : 0;
+				const startedAt = getActiveAssistantTurnStartedAt(getDefaultStore().get(chatMessagesAtom));
+				const elapsed = startedAt ? (Date.now() - startedAt) / 1000 : 0;
 				const outputSpeed = elapsed > 0 ? event.output / elapsed : 0;
 				const turnStats = { outputSpeed, durationSeconds: elapsed };
 				setLastTurnUsage(turnStats);

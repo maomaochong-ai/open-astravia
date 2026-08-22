@@ -15,8 +15,9 @@ import { segmentKey } from "./messageBlockModel";
 import { useExpansion } from "./expansionStore";
 import { workSegmentKey } from "./progressGroupModel";
 import { WorkSegmentRenderer } from "./WorkSegmentRenderer";
-import { CopyButton, formatDuration, formatTime, RelativeTimeLabel } from "./MessageActions";
+import { CopyButton, formatTime, RelativeTimeLabel } from "./MessageActions";
 import { MessageTokenUsage } from "./MessageTokenUsage";
+import { formatTurnDuration } from "./turnDuration";
 
 /** Desktop wrapper: injects i18n streaming phrases into theme-ui indicator. */
 export function StreamingIndicator(): JSX.Element {
@@ -72,9 +73,16 @@ export const AssistantMessage = memo(function AssistantMessage({
 		const foldNamespace = stagedNarration ? "messageList.assistantFoldTip.work" : "messageList.assistantFoldTip";
 		return {
 			processing: t("messageList.assistantMessage.processing"),
+			waiting: t("messageList.assistantMessage.waiting"),
 			predicting: t("messageList.assistantMessage.predicting"),
 			streamingFold: (elapsed: number) =>
-				t("messageList.assistantFoldTip.streaming", { elapsed }),
+				t("messageList.assistantFoldTip.streaming", {
+					duration: formatTurnDuration(elapsed, t),
+				}),
+			waitingFold: (elapsed: number) =>
+				t("messageList.assistantFoldTip.waiting", {
+					duration: formatTurnDuration(elapsed, t),
+				}),
 			// 被折走的过程里一个阶段都没有（例如只有零散的单次调用）时，不说数量。
 			expandFold: (count: number) =>
 				stagedNarration && count === 0
@@ -88,11 +96,14 @@ export const AssistantMessage = memo(function AssistantMessage({
 		};
 	}, [t, stagedNarration]);
 
+	const hasBlocks = Boolean(message.blocks?.length);
+	const isAwaitingFirstActivity = isCurrentlyStreaming && !hasBlocks && message.text.length === 0;
 	const fold = isCurrentlyStreaming
 		? {
 				kind: "streaming" as const,
 				count: message.blocks?.length ?? 0,
 				startedAt: message.startedAt ?? message.timestamp,
+				waitingForFirstActivity: isAwaitingFirstActivity,
 			}
 		: foldData
 			? {
@@ -103,14 +114,13 @@ export const AssistantMessage = memo(function AssistantMessage({
 				}
 			: null;
 
-	const hasBlocks = Boolean(message.blocks?.length);
 	const showTokenUsage = !exportMode && Boolean(message.usages?.length);
 
 	return (
 		<AssistantMessageView
 			rootClassName={surface?.rootClassName}
 			timestampLabel={message.timestamp ? formatTime(message.timestamp) : undefined}
-			durationLabel={formatDuration(message.durationSeconds ?? 0)}
+			durationLabel={formatTurnDuration(message.durationSeconds ?? 0, t)}
 			showDuration={showDuration}
 			isCurrentlyStreaming={isCurrentlyStreaming}
 			isPredicting={isPredicting}
@@ -160,7 +170,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 					</>
 				) : null
 			}
-			fallbackText={message.text || "\u2026"}
+			fallbackText={isAwaitingFirstActivity ? undefined : message.text || "\u2026"}
 			actions={
 				conclusionText.length > 0 || showTokenUsage ? (
 					<div className="flex items-center gap-1">

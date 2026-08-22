@@ -712,12 +712,6 @@ export function nextId(prefix: string): string {
 	return `${prefix}-${++idCounter}-${Date.now()}`;
 }
 
-/** Timestamp (ms) when the current agent turn started. */
-export let turnStartTime = 0;
-export function setTurnStartTime(t: number): void {
-	turnStartTime = t;
-}
-
 /** Per-session cache for turn stats (survives session switching). Key = sessionPath. */
 export const turnStatsCache = new Map<string, { outputSpeed: number; durationSeconds: number }>();
 
@@ -726,9 +720,60 @@ export function resetStreamState(): void {
 	draftId = null;
 }
 
-/** Adopt an existing history message as the current draft (for session restore while streaming). */
-export function adoptDraftId(id: string): void {
-	draftId = id;
+function activateAssistantTurn(prev: ChatMessage[], startedAt: number, restorePendingTools: boolean): ChatMessage[] {
+	const last = prev.at(-1);
+	if (last?.role !== "assistant") {
+		return ensureDraft(prev, startedAt)[0];
+	}
+
+	draftId = last.id;
+	const blocks = restorePendingTools
+		? last.blocks?.map((block) =>
+				block.type === "tool_call" && block.result === undefined ? { ...block, status: "pending" as const } : block,
+			)
+		: last.blocks;
+	const copy = [...prev];
+	copy[copy.length - 1] = {
+		...last,
+		startedAt,
+		timestamp: last.timestamp ?? startedAt,
+		endedAt: undefined,
+		durationSeconds: undefined,
+		blocks,
+	};
+	return copy;
+}
+
+/** Project agent_start into the message list before the provider emits its first content event. */
+export function startAssistantTurn(prev: ChatMessage[], startedAt: number): ChatMessage[] {
+	return activateAssistantTurn(prev, startedAt, false);
+}
+
+/** Restore the live assistant draft and unresolved tool state after switching back to a running session. */
+export function restoreAssistantTurn(prev: ChatMessage[], startedAt: number): ChatMessage[] {
+	return activateAssistantTurn(prev, startedAt, true);
+}
+
+/** Absolute start time for the assistant draft that currently owns the tail of the conversation. */
+export function getActiveAssistantTurnStartedAt(messages: ChatMessage[]): number | undefined {
+	const last = messages.at(-1);
+	return last?.role === "assistant" && last.endedAt === undefined ? last.startedAt : undefined;
+}
+
+/** Finish the current assistant turn using its message-owned absolute start time. */
+export function finishAssistantTurn(prev: ChatMessage[], endedAt: number): ChatMessage[] {
+	for (let index = prev.length - 1; index >= 0; index--) {
+		const message = prev[index];
+		if (message.role !== "assistant" || message.startedAt === undefined || message.endedAt !== undefined) continue;
+		const copy = [...prev];
+		copy[index] = {
+			...message,
+			endedAt,
+			durationSeconds: Math.max(0, endedAt - message.startedAt) / 1000,
+		};
+		return copy;
+	}
+	return prev;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -739,7 +784,7 @@ export function adoptDraftId(id: string): void {
  * Ensure a draft assistant message exists for the current turn.
  * Returns [newMessages, draftIndex]. Creates a new draft if needed.
  */
-export function ensureDraft(prev: ChatMessage[]): [ChatMessage[], number] {
+export function ensureDraft(prev: ChatMessage[], startedAt: number = Date.now()): [ChatMessage[], number] {
 	if (draftId) {
 		// Find existing draft
 		for (let i = prev.length - 1; i >= 0; i--) {
@@ -753,7 +798,7 @@ export function ensureDraft(prev: ChatMessage[]): [ChatMessage[], number] {
 	// Create new draft
 	const id = nextId("draft");
 	draftId = id;
-	const draftTimestamp = turnStartTime || Date.now();
+	const draftTimestamp = startedAt;
 	const draft: ChatMessage = {
 		id,
 		role: "assistant",
@@ -855,7 +900,7 @@ export function finalizeMessage(prev: ChatMessage[], content: unknown, usage?: U
 		if (targetIdx === -1) {
 			const id = nextId("final");
 			draftId = id;
-			const draftTimestamp = turnStartTime || Date.now();
+			const draftTimestamp = Date.now();
 			copy.push({
 				id,
 				role: "assistant",
@@ -1115,7 +1160,7 @@ function ensureDraftWithRef(prev: ChatMessage[], draftIdRef: { current: string |
 	}
 	const id = nextId("draft");
 	draftIdRef.current = id;
-	const draftTimestamp = turnStartTime || Date.now();
+	const draftTimestamp = Date.now();
 	const draft: ChatMessage = {
 		id,
 		role: "assistant",

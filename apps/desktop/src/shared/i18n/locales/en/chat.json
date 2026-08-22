@@ -487,7 +487,8 @@
 			"collapseLabel": "Collapse",
 			"expand": "Expand {{count}} items",
 			"expandLabel": "Expand",
-			"streaming": "Processing {{elapsed}}s",
+			"streaming": "Processing · {{duration}}",
+			"waiting": "Waiting · {{duration}}",
 			"work": {
 				"collapse": "Collapse {{count}} steps",
 				"collapseZero": "Collapse process",
@@ -497,7 +498,26 @@
 		},
 		"assistantMessage": {
 			"predicting": "Vetta is predicting…",
-			"processing": "Processing..."
+			"processing": "Processing…",
+			"waiting": "Waiting for model response"
+		},
+		"duration": {
+			"seconds": "{{seconds}}s",
+			"minutes": "{{minutes}}m {{seconds}}s",
+			"hours": "{{hours}}h {{minutes}}m"
+		},
+		"navigation": {
+			"title": "Message timeline",
+			"count": "{{count}} turns",
+			"open": "Open message navigation, turn {{current}} of {{total}}",
+			"searchLabel": "Search this conversation",
+			"searchPlaceholder": "Search this conversation",
+			"noResults": "No matching messages",
+			"turn": "Turn {{turn}}",
+			"userRole": "You",
+			"assistantRole": "Vetta",
+			"emptyUser": "Attachment or empty message",
+			"emptyAssistant": "Processing"
 		},
 		"tokenUsage": {
 			"trigger": "View token usage for this turn",

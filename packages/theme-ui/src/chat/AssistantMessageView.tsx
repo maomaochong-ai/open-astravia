@@ -20,8 +20,10 @@ const STREAM_CHAR_CSS = `
 
 export interface AssistantMessageViewLabels {
 	processing: string;
+	waiting: string;
 	predicting: string;
 	streamingFold: (elapsed: number) => string;
+	waitingFold: (elapsed: number) => string;
 	expandFold: (count: number) => string;
 	collapseFold: (count: number) => string;
 	streamingPhrases: string[];
@@ -36,7 +38,7 @@ export interface AssistantMessageViewProps {
 	isPredicting: boolean;
 	conclusionText: string;
 	fold:
-		| { kind: "streaming"; count: number; startedAt?: number }
+		| { kind: "streaming"; count: number; startedAt?: number; waitingForFirstActivity?: boolean }
 		| { kind: "complete"; count: number; expanded: boolean; exportPanelId?: string }
 		| null;
 	labels: AssistantMessageViewLabels;
@@ -71,6 +73,7 @@ function AssistantFoldTip({
 	count,
 	expanded,
 	startedAt,
+	waitingForFirstActivity = false,
 	onToggle,
 	exportPanelId,
 	labels,
@@ -79,6 +82,7 @@ function AssistantFoldTip({
 	count: number;
 	expanded: boolean;
 	startedAt?: number;
+	waitingForFirstActivity?: boolean;
 	onToggle: () => void;
 	exportPanelId?: string;
 	labels: AssistantMessageViewLabels;
@@ -86,13 +90,15 @@ function AssistantFoldTip({
 	const elapsedSeconds = useElapsedSeconds(startedAt, state === "streaming");
 	if (state === "streaming") {
 		return (
-			<div className="mb-3">
-				<div className="mb-2 flex items-center">
+			<div className={waitingForFirstActivity ? "mb-1" : "mb-3"}>
+				<div className={waitingForFirstActivity ? "flex items-center" : "mb-2 flex items-center"}>
 					<span className="processing-shimmer text-[12px] font-medium">
-						{labels.streamingFold(elapsedSeconds)}
+						{waitingForFirstActivity
+							? labels.waitingFold(elapsedSeconds)
+							: labels.streamingFold(elapsedSeconds)}
 					</span>
 				</div>
-				<div className="h-px w-full rounded-full bg-border/80" />
+				{!waitingForFirstActivity && <div className="h-px w-full rounded-full bg-border/80" />}
 			</div>
 		);
 	}
@@ -195,7 +201,11 @@ export function AssistantMessageView({
 								className="h-1.5 w-1.5 rounded-full bg-primary/60"
 								style={{ animation: "pulse 1.5s infinite" }}
 							/>
-							<span className="text-[11px] text-muted-foreground/35">{labels.processing}</span>
+							<span className="text-[11px] text-muted-foreground/35">
+								{fold?.kind === "streaming" && fold.waitingForFirstActivity
+									? labels.waiting
+									: labels.processing}
+							</span>
 						</div>
 					)}
 				</div>
@@ -205,6 +215,7 @@ export function AssistantMessageView({
 						count={fold.count}
 						expanded
 						startedAt={fold.startedAt}
+						waitingForFirstActivity={fold.waitingForFirstActivity}
 						onToggle={() => undefined}
 						labels={labels}
 					/>
@@ -224,16 +235,16 @@ export function AssistantMessageView({
 							{exportProcessSegments}
 							{segments}
 						</div>
-					) : (
+					) : fallbackText ? (
 						<div
 							className="text-[14px] leading-[1.6] text-foreground"
 							style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
 						>
-							{fallbackText || "\u2026"}
+							{fallbackText}
 						</div>
-					)}
+					) : null}
 				</div>
-				{isCurrentlyStreaming && (
+				{isCurrentlyStreaming && !(fold?.kind === "streaming" && fold.waitingForFirstActivity) && (
 					<div className="mt-2 flex items-center">
 						<StreamingIndicator phrases={labels.streamingPhrases} />
 					</div>

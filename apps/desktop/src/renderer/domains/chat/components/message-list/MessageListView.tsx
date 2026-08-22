@@ -5,14 +5,15 @@ import {
 	VirtuosoListContainer,
 } from "@vetta/theme-ui/chat";
 import { useAtomValue } from "jotai";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Virtuoso } from "react-virtuoso";
+import { type ListRange, Virtuoso } from "react-virtuoso";
 import { useMessageSelectionContextMenu } from "../../hooks/useMessageSelectionContextMenu";
 import { SuggestionBubbles } from "../SuggestionBubbles";
 import { ForkOriginBanner, resolveForkOriginPlacement } from "./ForkOriginBanner";
 import { MessageItem, ModelSwitchBoundary, ExportMessageList } from "./MessageItem";
 import { MessageListFooter } from "./MessageListFooter";
+import { MessageTimeline } from "./MessageTimeline";
 import type { ChatMessage, MessageListModel, MessageListProps } from "./types";
 
 export { ExportMessageList };
@@ -55,6 +56,13 @@ export function MessageListView({
 		tailMessageId,
 	} = model;
 	const activeSession = useAtomValue(activeSessionAtom);
+	const [activeMessageIndex, setActiveMessageIndex] = useState(() => Math.max(0, messages.length - 1));
+	useEffect(() => {
+		setActiveMessageIndex(Math.max(0, messages.length - 1));
+	}, [sessionId]);
+	const onVisibleRangeChanged = useCallback((range: ListRange) => {
+		setActiveMessageIndex(range.startIndex);
+	}, []);
 	const forkOriginPlacement = useMemo(
 		() =>
 			resolveForkOriginPlacement(
@@ -148,7 +156,7 @@ export function MessageListView({
 		<>
 			<div
 				ref={selectionMenu.containerRef}
-				className="flex min-h-0 flex-1 flex-col"
+				className="relative flex min-h-0 flex-1 flex-col"
 				data-message-viewport={viewportPhase}
 				onContextMenuCapture={selectionMenu.onContextMenuCapture}
 			>
@@ -162,6 +170,7 @@ export function MessageListView({
 							style={VIRTUOSO_STYLE}
 							atBottomStateChange={scroll.onAtBottomChange}
 							atBottomThreshold={80}
+							rangeChanged={onVisibleRangeChanged}
 							overscan={
 								viewportPhase === "initial"
 									? INITIAL_OVERSCAN
@@ -183,6 +192,16 @@ export function MessageListView({
 						/>
 					}
 				/>
+				<div className="pointer-events-none absolute top-1/2 right-2 z-20 -translate-y-1/2">
+					<div className="pointer-events-auto">
+						<MessageTimeline
+							key={sessionId ?? "message-timeline"}
+							activeMessageIndex={activeMessageIndex}
+							messages={messages}
+							onNavigate={scroll.scrollToMessage}
+						/>
+					</div>
+				</div>
 			</div>
 			{selectionMenu.contextMenu
 				? createPortal(

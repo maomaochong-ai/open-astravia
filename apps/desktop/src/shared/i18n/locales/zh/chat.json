@@ -487,7 +487,8 @@
 			"collapseLabel": "收起",
 			"expand": "展开{{count}}条内容",
 			"expandLabel": "展开",
-			"streaming": "正在处理{{elapsed}}s",
+			"streaming": "正在处理 · {{duration}}",
+			"waiting": "已等待 · {{duration}}",
 			"work": {
 				"collapse": "收起{{count}}个步骤",
 				"collapseZero": "收起过程",
@@ -497,7 +498,26 @@
 		},
 		"assistantMessage": {
 			"predicting": "Vetta 正在预测…",
-			"processing": "处理中..."
+			"processing": "处理中…",
+			"waiting": "等待模型响应"
+		},
+		"duration": {
+			"seconds": "{{seconds}}秒",
+			"minutes": "{{minutes}}分 {{seconds}}秒",
+			"hours": "{{hours}}小时 {{minutes}}分"
+		},
+		"navigation": {
+			"title": "消息时间线",
+			"count": "{{count}}轮对话",
+			"open": "打开消息导航，第{{current}}/{{total}}轮",
+			"searchLabel": "搜索本会话消息",
+			"searchPlaceholder": "搜索本会话消息",
+			"noResults": "没有匹配的消息",
+			"turn": "第{{turn}}轮",
+			"userRole": "你",
+			"assistantRole": "Vetta",
+			"emptyUser": "附件或空消息",
+			"emptyAssistant": "正在处理"
 		},
 		"tokenUsage": {
 			"trigger": "查看本轮 Token 用量",

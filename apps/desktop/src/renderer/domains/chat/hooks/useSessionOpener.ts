@@ -45,15 +45,14 @@ import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { type MutableRefObject, useCallback, useRef } from "react";
 import { preserveMessagesAddedAfterSnapshot, shareChatMessageSnapshot } from "../services/chat-message-snapshot";
 import {
-	adoptDraftId,
 	appendError,
 	bumpOpenSessionToken,
 	currentUnsubscribe,
 	fullHistoryToChat,
 	getOpenSessionToken,
 	resetStreamState,
+	restoreAssistantTurn,
 	setCurrentUnsubscribe,
-	setTurnStartTime,
 	turnStatsCache,
 } from "../services/chat-service";
 import { resolveSessionContextComposition } from "../services/context-composition-cache";
@@ -566,46 +565,10 @@ export function useSessionOpener(): SessionOpenerController {
 			// render above the user bubble.
 			if (state.isStreaming) {
 				const startedAt = state.currentTurnStartedAt ?? Date.now();
-				let adoptedId: string | null = null;
-				let lastUserIdx = -1;
-				for (let i = mapped.length - 1; i >= 0; i--) {
-					if (mapped[i].role === "user") {
-						lastUserIdx = i;
-						break;
-					}
-				}
-				for (let i = mapped.length - 1; i > lastUserIdx; i--) {
-					if (mapped[i].role === "assistant") {
-						adoptDraftId(mapped[i].id);
-						adoptedId = mapped[i].id;
-						break;
-					}
-				}
-				if (adoptedId) {
-					setChatMessages((prev) =>
-						prev.map((message) =>
-							message.id === adoptedId
-								? {
-										...message,
-										startedAt,
-										timestamp: message.timestamp ?? startedAt,
-										// History rebuild (messageToBlocks) defaults tool_call status to
-										// "success". For the still-streaming turn, calls without a result
-										// are actually in-flight — restore "pending" so in-progress UI (e.g.
-										// the image-gen 处理中 skeleton) survives a session switch instead of
-										// vanishing while the tool keeps running in the background.
-										blocks: message.blocks?.map((b) =>
-											b.type === "tool_call" && b.result === undefined
-												? { ...b, status: "pending" as const }
-												: b,
-										),
-									}
-								: message,
-						),
-					);
-				}
+				// 即使慢模型尚未产生任何可持久化 assistant 内容，也恢复一个带绝对
+				// startedAt 的草稿，避免切回会话后等待态和计时从零开始。
+				setChatMessages((prev) => restoreAssistantTurn(prev, startedAt));
 				setActiveSessionStreaming(true);
-				setTurnStartTime(startedAt);
 			}
 
 			// 补一次写入：真实 sessionPath + fork 血缘（parentSession/parentEntryId）。

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { type ComponentProps, Fragment } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageListView } from "./MessageListView";
@@ -49,10 +50,18 @@ vi.mock("./MessageItem", () => ({
 	ModelSwitchBoundary: () => null,
 }));
 vi.mock("./MessageListFooter", () => ({ MessageListFooter: () => null }));
+vi.mock("./MessageTimeline", () => ({
+	MessageTimeline: ({ onNavigate }: { onNavigate: (index: number) => void }) => (
+		<button type="button" onClick={() => onNavigate(3)}>
+			message timeline
+		</button>
+	),
+}));
 
 function props(
 	viewportPhase: "initial" | "expanded",
 ): ComponentProps<typeof MessageListView> {
+	const scrollToMessage = vi.fn();
 	return {
 		model: {
 			isCompacting: false,
@@ -63,6 +72,7 @@ function props(
 				virtuosoRef: { current: null },
 				scrollerRef: vi.fn(),
 				onAtBottomChange: vi.fn(),
+				scrollToMessage,
 			} as never,
 			showWaiting: false,
 			tailMessageId: "message-1",
@@ -91,5 +101,15 @@ describe("MessageListView viewport phases", () => {
 		expect(screen.getByTestId("full-message").textContent).toBe("message-1");
 		expect(captured.virtuosoProps?.overscan).toBe(400);
 		expect(captured.virtuosoProps?.increaseViewportBy).toEqual({ top: 200, bottom: 200 });
+	});
+
+	it("把时间线的消息索引交给统一滚动模型", async () => {
+		const viewProps = props("expanded");
+		render(<MessageListView {...viewProps} />);
+
+		await userEvent.click(screen.getByRole("button", { name: "message timeline" }));
+
+		expect(viewProps.model.scroll.scrollToMessage).toHaveBeenCalledWith(3);
+		expect(captured.virtuosoProps?.rangeChanged).toEqual(expect.any(Function));
 	});
 });

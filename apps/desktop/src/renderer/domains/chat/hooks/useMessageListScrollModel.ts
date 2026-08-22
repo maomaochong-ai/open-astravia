@@ -25,6 +25,7 @@ interface MessageListScrollModelInput {
 export interface MessageListScrollModel {
 	onAtBottomChange: (atBottom: boolean) => void;
 	scrollerRef: (element: HTMLElement | Window | null) => void;
+	scrollToMessage: (index: number) => void;
 	virtuosoRef: React.RefObject<VirtuosoHandle | null>;
 }
 
@@ -105,6 +106,15 @@ export function useMessageListScrollModel({
 			lerpAnimationFrameRef.current = null;
 		}
 	}, []);
+	const scrollToMessage = useCallback(
+		(index: number) => {
+			stopFollowingBottom();
+			atBottomRef.current = false;
+			skipNextLerpRef.current = true;
+			virtuosoRef.current?.scrollToIndex({ index, align: "start", behavior: "smooth" });
+		},
+		[stopFollowingBottom],
+	);
 
 	const onWheel = useCallback(
 		(event: WheelEvent) => {
@@ -257,6 +267,7 @@ export function useMessageListScrollModel({
 	return {
 		onAtBottomChange,
 		scrollerRef,
+		scrollToMessage,
 		virtuosoRef,
 	};
 }
