@@ -652,7 +652,8 @@
 			"fallbackTitle": "正在处理",
 			"genericDone": "完成了 {{count}} 步操作",
 			"genericRunning": "正在处理…",
-			"thinking": "正在思考"
+			"thinking": "正在思考",
+			"thinkingActivity": "思考：{{text}}"
 		},
 		"toolCallGroup": {
 			"completed": "{{count}} 个工具调用完成",

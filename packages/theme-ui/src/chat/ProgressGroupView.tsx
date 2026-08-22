@@ -3,7 +3,7 @@ import { useId, useState } from "react";
 import { CollapsePanel } from "../shared/CollapsePanel";
 
 export interface ProgressGroupViewProps {
-	/** Agent-authored stage title (in-progress or completed wording). */
+	/** Agent-authored stage title, or a host-projected live activity while in progress. */
 	title: string;
 	/** Number of calls folded into this stage. */
 	blockCount: number;

@@ -143,6 +143,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 									key={workSegmentKey(segment)}
 									segment={segment}
 									isStreamingTail={index === streamingTailIndex}
+									isLiveActivity={isCurrentlyStreaming && index === segments.length - 1}
 									animateIn={isCurrentlyStreaming && index === segments.length - 1}
 									exportMode={exportMode}
 								/>

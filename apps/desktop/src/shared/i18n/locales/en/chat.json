@@ -652,7 +652,8 @@
 			"fallbackTitle": "Working",
 			"genericDone": "Completed {{count}} steps",
 			"genericRunning": "Working on it",
-			"thinking": "Thinking"
+			"thinking": "Thinking",
+			"thinkingActivity": "Thinking: {{text}}"
 		},
 		"toolCallGroup": {
 			"completed": "{{count}} tool calls completed",
