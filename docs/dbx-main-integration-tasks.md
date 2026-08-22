@@ -322,18 +322,18 @@ B1 MVP ──→ B2 自有化 ──→ B3 增强
 - **验证**：写操作与导出可用，操作有确认与审计日志 ✅（确认弹窗 + `[write-audit]` 日志 + 导出/复制已可用）
 
 
-#### B3.2-R 对齐 dbx 数据编辑与结果工具栏（2026-08-20 用户要求：数据编辑不做入口限制，工作台 = dbx 桌面壳的同等能力；参照 dbx 查询结果工具栏设计）
+#### B3.2-R 对齐 dbx 数据编辑与结果工具栏（2026-08-20 用户要求：数据编辑不做入口限制，工作台 = dbx 桌面壳的同等能力；参照 dbx 查询结果工具栏设计）✅ R1 五项全部完成（2026-08-22 核实，sql-editability 单测 15 例通过，zh/en i18n 就位）
 
 **调研结论（dbx-main 代码核查，2026-08-20）**：dbx 查询结果**默认可编辑**，三件套 = ① SQL 可编辑性分析（`crates/dbx-core/src/sql_editability.rs`：纯 SELECT、拒 WITH/CTE/集合运算/聚合/多语句；多源 join 仅允许更新）② 隐藏主键列注入（`editableQueryHiddenKeys.ts`：mysql/postgres/sqlserver/oracle 追加 `id AS "__DBX_PK_0"` 投影并隐藏显示）③ 行定位 = 主键等值 → 唯一索引 → keyless 整行等值（`tableEditing.ts` 能力表，PG/MySQL/SQLite 支持 keylessRowPredicate）。编辑模型 = **批量暂存 + 统一保存/回滚**（`useDataGridEditor.ts` dirtyRows/newRows/deletedRows + 待存计数徽标 + Ctrl+S；事务库走 BEGIN/COMMIT，非事务库逐条执行失败不回滚提示 partial）。不可编辑时显示**只读徽章 + 原因**（`grid.queryEditReadOnly` + `queryEditUnsupported.<reason>`：not-select/cte/set-operation/aggregation/external-source/complex-source/computed-columns/no-table/no-primary-key/primary-key-not-returned/aliased-columns/metadata-unavailable），无主键警告徽章（keylessEditWarning）。工具栏（`DataGridToolbar.vue`）capability 驱动：刷新 / 自动刷新（间隔下拉）/ 添加行 / 导出菜单 / 转置 / 表信息 / 预览 / 保存（待存徽标）/ 回滚 + 行状态筛选（all/changed/edited/new/deleted）+ 脏单元格黄色高亮 + 行号状态色。
 
 **Astravia 现状差距**：① 编辑入口限制——仅「打开表」可编辑（`editable = openTableMeta !== null`），自由 SQL 结果一律不可编辑，与 dbx 相反；② 定位方式——主键等值已实现，keyless 整行等值仅注释声明未验证；③ 不可编辑反馈——按钮 disabled + tooltip，无 dbx 式只读徽章/原因枚举；④ 编辑模型——单条即时确认执行，非批量暂存；⑤ 工具栏缺刷新/自动刷新/转置/表信息/预览/保存/回滚。
 
-**R1 实施（本次，2026-08-20）**：
+**R1 实施（2026-08-20 落地，2026-08-22 核实勾选）**：
 - [x] R1-① SQL 可编辑性分析纯 TS 模块（`lib/sql-editability.ts`，等效 sql_editability.rs 判定子集）
-- [ ] R1-② 自由 SQL 结果可编辑解锁：`editable = (openTableMeta 非空 || 分析通过) && status success`；定位 = 结果含主键列 → PK 等值；否则 keyless 整行等值；均不可 → 只读原因徽章
-- [ ] R1-③ 只读徽章 + 无主键警告徽章（对齐 `grid.queryEditReadOnly` / `keylessEditWarning` 文案）
-- [ ] R1-④ 结果工具栏补齐：刷新（重跑当前 SQL）、自动刷新（5/10/30/60s 间隔下拉 toggle）、添加行（工具栏入口，与网格底部 footer 并存）
-- [ ] R1-⑤ i18n zh/en + 单测 + `bun run check` 全绿
+- [x] R1-② 自由 SQL 结果可编辑解锁：`editable = (openTableMeta 非空 || 分析通过) && status success`；定位 = 结果含主键列 → PK 等值；否则 keyless 整行等值；均不可 → 只读原因徽章
+- [x] R1-③ 只读徽章 + 无主键警告徽章（对齐 `grid.queryEditReadOnly` / `keylessEditWarning` 文案）
+- [x] R1-④ 结果工具栏补齐：刷新（重跑当前 SQL）、自动刷新（5/10/30/60s 间隔下拉 toggle）、添加行（工具栏入口，与网格底部 footer 并存）
+- [x] R1-⑤ i18n zh/en + 单测 + `bun run check` 全绿（2026-08-22 核实：sql-editability.test.ts 15 例通过；zh/en key 就位）
 
 **R2 后续增强（记录，按需排期）**：R2-① 隐藏主键列注入（自由 SQL 结果缺主键列时自动追加 `__DBX_PK_0` 投影并隐藏显示）；R2-② 批量暂存编辑模型（dirty/new/deleted + 保存/回滚 + 待存徽标 + 事务模式，对齐 `useDataGridEditor.ts`）；R2-③ 行状态可视化（脏单元格高亮 / 行号状态色 / 行状态筛选）；R2-④ 转置 / 表信息面板 / SQL 预览（对齐 `DataGridToolbar.vue` 剩余项）
 ### B3.3 AI 原生能力
