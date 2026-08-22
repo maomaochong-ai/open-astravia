@@ -2,6 +2,7 @@
 
 > 目标:在 astravia 中恢复「侧边栏设计」完整功能 —— 用户能从 Design 工作台选择风格模板(来自**自己的**模板仓库),「从风格开工」建设计项目,或在画布上套用设计体系。
 > 文档编号:02 · 前置阅读:同目录 [`01-upstream-sidebar-design-analysis.md`](01-upstream-sidebar-design-analysis.md)
+> 执行状态:**P1 内容仓库已完成**(2026-08-22),详见文末「执行记录」;P2/P3 应用侧尚未开始。
 > 日期:2026-08-22
 
 ---
@@ -105,15 +106,23 @@ brands-design-md 的 `registry.json` 提供 11 个字段,8 个字段新增/需�
 
 跳过 vetta 的 11 条同名目录,直接以 brands 版本覆盖(改名后的 slug 不同则同时保留两个)。注意:brands 版本若在 vetta 里不存在 slug 冲突,无需改名。
 
+**执行结果**:11 个重叠品牌(airbnb、apple、duolingo、figma、linear、notion、shopify、slack、spotify、stripe、vercel)已由 brands 版本覆盖,保留 vetta 的 `order`(展示位置不变);其余 13 个 vetta 条目(anthropic、claymorphism、coinbase、discord、doodle-pop、geometric-bold、github、glassmorphism、headspace、medium、netflix、openai、retro-95)原样保留。合计 82 个条目。
+
+跳过 vetta 的 11 条同名目录,直接以 brands 版本覆盖(改名后的 slug 不同则同时保留两个)。注意:brands 版本若在 vetta 里不存在 slug 冲突,无需改名。
+
 ### 3.3 slug 处理
 
-- 5 个带点目录(如 `facebook.com` 类)→ 改成 `^[a-z0-9][a-z0-9-]{0,63}$` 格式,并在 `origin.note` 注明原名。
-- 15 个 "Inspired" 变体:建议统一规范为「品牌名」+ `origin.note` 注明改编(而不是 `stripe-inspired` 这类 slug),避免风格库出现 15 对相似条目。
-- 全部 69+24 条 `order` 全局唯一。
+- 5 个带点目录(`linear.app`、`mistral.ai`、`opencode.ai`、`together.ai`、`x.ai`)→ 规范化:前 4 个把点换成 `-`(linear 因与 vetta 重叠直接用 `linear`),`x.ai` 规范为 `x-ai`。
+- **16 个** "Inspired" 变体:统一规范为「品牌名」(如 `Stripe` 而非 `stripi-inspired`),`origin.note` 注明改编;`vercel` 的 Inspired 变体与 vetta 重叠,以 brands 版覆盖。
+- 全部 82 条 `order` 全局唯一:重叠 11 条沿用 vetta 原 order,新品牌从最大 order+10 起递增。
 
 ### 3.4 目录生成与 CI
 
 1. 转换脚本产出全部 `templates/<slug>/`。
+2. `node scripts/build-catalog.mjs` 生成 `.vetta/design-templates.json`(catalogVersion 自动递增为 `2026.08.22-1` 格式,无前导零)。
+3. 本地 `node scripts/build-catalog.mjs --check` 通过(等价 CI 门槛)。
+4. 首次提交(`a2ac552`)+ `git push -u origin main` 推送到 `sikongyue/astravia-design-system-templates.git`(注:当前因 GitHub token 缺 `workflow` 权限推送被拒,待用户处理)。
+5. 后续每次模板改动:改 `templates/` → 重新生成 catalog → 提交两者 → CI 校验。
 2. `node scripts/build-catalog.mjs` 生成 `.vetta/design-templates.json`(catalogVersion 自动递增为 `2026.08.22-01`)。
 3. 本地 `node scripts/build-catalog.mjs --check` 通过(等价 CI 门槛)。
 4. 首次提交 + `git push -u origin main` 推送到 `sikongyue/astravia-design-system-templates.git`。
@@ -278,14 +287,16 @@ brands-design-md 的 `registry.json` 提供 11 个字段,8 个字段新增/需�
 
 | # | 事项 | 建议 | 状态 |
 | --- | --- | --- | --- |
-| 1 | brands-design-md **无 LICENSE 文件**,69 品牌内容许可未声明(自述 unofficial/inspired,部分为抓取来源) | 仓库自产内容统一 MIT;每个条目的 `origin.note` 注明来源;涉及第三方素材的条目在 meta.origin 里写明 upstream | **需用户拍板** |
-| 2 | 15 个 "Inspired" 变体入库策略 | 规范为品牌名 + note 注明改编,不单独成 slug | 已建议,可再确认 |
-| 3 | 5 个带点 slug 改名 | 自动规范化,note 注明原名 | 已建议 |
-| 4 | demo.html 合规化后视觉质量下降(删了 script/外链) | 第一版接受,后续按 vetta 规范逐条重写封面 | 接受 |
-| 5 | tagline.zh 69 条翻译质量 | AI 批量翻译 + 人工抽查 | 接受 |
+| 1 | brands-design-md **无 LICENSE 文件**,69 品牌内容许可未声明(自述 unofficial/inspired,部分为抓取来源) | 仓库自产内容统一 MIT;每个条目的 `origin.note` 注明来源;涉及第三方素材的条目在 meta.origin 里写明 upstream | **已按建议执行**(meta.license=MIT,origin.upstream=brands-design-md) |
+| 2 | **16** 个 "Inspired" 变体入库策略 | 规范为品牌名 + note 注明改编,不单独成 slug | **已执行**(slug 用品牌名,origin.note 注明改编) |
+| 3 | 5 个带点 slug 改名 | 自动规范化(点→连字符) | **已执行**(linear.app→linear 覆盖 vetta 条目,其余 4 个规范化) |
+| 4 | demo.html 合规化后视觉质量下降(删了 script/外链) | 第一版接受,后续按 vetta 规范逐条重写封面 | **已执行**(61 个含 script 的 preview 全部自动化删减,全量 0 不合规;视觉细节待后续打磨) |
+| 5 | tagline.zh 69 条翻译质量 | AI 批量翻译 + 人工抽查 | **已执行**(脚本内置 69 条中英映射,待人工抽查) |
 | 6 | 宿主移植与 astravia 既有改动(dbx、AI 侧边栏)冲突 | 增量合并而非整文件覆盖;P2 单独验证 | 计划内 |
 | 7 | `minPluginVersion` 兼容校验在宿主端 | 确认 astravia 插件加载器是否校验;不行则同步 bump | 待核实 |
 | 8 | 新仓库 CI(GitHub Actions)首次运行需 Node 22 | workflows/catalog.yml 照搬即含 | 无风险 |
+| 9 | **GitHub 推送权限**:OAuth token 缺 `workflow` scope,首次 push 被拒(`remote rejected ... without workflow scope`) | 用户在 GitHub Settings → Developer settings → tokens 给 token 加 `workflow` 权限后重新 push;或先移除 catalog.yml 推送主体再补 CI | **阻塞中,待用户处理** |
+| 10 | catalog 体积 ~4.8MB(82 条 demo.html 内联,单条 40-55KB) | 文本内联上限 256KB 未超,客户端单资源 8MB 限制内;后续可按 vetta 规范重写精简 demo | 已知,可接受 |
 
 ---
 
@@ -300,6 +311,27 @@ brands-design-md 的 `registry.json` 提供 11 个字段,8 个字段新增/需�
 宿主(open-vetta/apps/desktop/src/renderer/):
 - §6 表格所列 workspace-view 全套
 
+---
+
+## 8.5 执行记录(P1 内容仓库,2026-08-22)
+
+| 步骤 | 结果 |
+| --- | --- |
+| 基底搭建 | 拷贝 vetta 机制:AGENTS(改 astravia 语境)/README(重写)/LICENSE/build-catalog.mjs/CI(purge URL 改新仓库)/.gitignore |
+| 24 条 vetta 模板 | 原样拷贝进 `templates/`(order 10-210) |
+| 品牌转换 | `scripts/convert-brands.mjs` 一次性脚本:69 品牌 → 82 条目(11 重叠覆盖) |
+| theme.css | 合并 variables.css+tokens.json、去 `@import`、补 7 基础 token、去品牌 token 与基础 token 重名 |
+| demo.html | preview.html 去 script/外链/@import(61 个含 script,全量 0 不合规);DESIGN.md 修复 em-dash 乱码(linear.app/figma) |
+| meta.json | 69 条 tagline 双语内置、category 归一化(14 类 → 12 值)、origin 注明来源 |
+| catalog | `node scripts/build-catalog.mjs` 生成 `.vetta/design-templates.json`(82 条,catalogVersion `2026.08.22-2`);`--check` 通过;模拟 `parseRemoteCatalog` 校验通过(spec/theme/demo 尺寸与合规全部达标);后重建至 `2026.08.22-4` |
+| demo 空白修复 | brands 的 preview.html 用 JS 入场动画(初始 opacity:0),删 script 后 60 个 demo 打开空白;convert 脚本按括号配对解析 CSS 规则,将 opacity:0 → opacity:1 并移除位移(commit `4014be7`,catalogVersion 升至 `2026.08.22-4`) |
+| 提交 | root commit `a2ac552`,610 文件 |
+| 推送 | **被 GitHub 拒绝**:OAuth token 缺 `workflow` scope 无法创建 CI 文件;待用户授权后重试 |
+| 待办 | P1.7 模拟校验已并入;P2/P3 应用侧集成尚未开始 |
+
+---
+
+## 9. 定义/术语
 ---
 
 ## 9. 定义/术语
