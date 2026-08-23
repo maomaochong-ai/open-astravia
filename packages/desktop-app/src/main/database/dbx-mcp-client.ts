@@ -44,10 +44,10 @@ export class DbxMcpClient {
 	}
 
 	/** 调用 dbx MCP 工具，返回结构化结果。工具错误（isError）不抛异常，由上层判断。 */
-	async callTool(name: string, args: Record<string, unknown>): Promise<DbxToolResult> {
+	async callTool(name: string, args: Record<string, unknown>, timeoutMs?: number): Promise<DbxToolResult> {
 		await this.ensureInitialized();
 		const id = this.nextId++;
-		const result = await this.request(id, "tools/call", { name, arguments: args }, CALL_TIMEOUT_MS);
+		const result = await this.request(id, "tools/call", { name, arguments: args }, timeoutMs ?? CALL_TIMEOUT_MS);
 		return result as DbxToolResult;
 	}
 

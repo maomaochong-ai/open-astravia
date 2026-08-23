@@ -47,6 +47,8 @@ export interface DbQueryResult {
 	durationMs: string;
 	/** 原始 Markdown 文本，供需要原文的场景使用。 */
 	rawText: string;
+	/** 结果行数被产品层 rowLimit 截断（B3.1-②-A），UI 据此提示。 */
+	truncated?: boolean;
 }
 
 /** 数据库操作的稳定错误码（对 dbx 原始错误归类后的产物）。 */
@@ -54,14 +56,8 @@ export type DatabaseErrorCode =
 	| "SQL_BLOCKED"
 	| "READ_ONLY"
 	| "PROD_WRITE_BLOCKED"
-	| "TIMEOUT"
-	| "CONNECTION_NOT_FOUND"
-	| "CONNECTION_FAILED"
-	| "CONNECTION_EXISTS"
-	| "INVALID_PARAMS"
-	| "DBX_NOT_RUNNING"
-	| "READ_ONLY"
-	| "PROD_WRITE_BLOCKED"
+	| "WRITE_BLOCKED"
+	| "DDL_BLOCKED"
 	| "TIMEOUT"
 	| "CONNECTION_NOT_FOUND"
 	| "CONNECTION_FAILED"

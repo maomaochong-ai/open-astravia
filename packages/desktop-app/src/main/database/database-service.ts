@@ -13,7 +13,7 @@ import type {
 import { readConfigSync, writeDesktopConfig } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
 import { getDbxMcpClient } from "./dbx-mcp-client.js";
-import { isWriteStatement, maybeBlockProdWrite } from "./sql-safety.js";
+import { isWriteStatement, maybeBlockWrite } from "./sql-safety.js";
 
 /**
  * 数据库能力桥接服务（main 进程）。
@@ -380,13 +380,14 @@ export const databaseService = {
 	/** 执行查询（SELECT），返回结构化结果。B3.2 起写语句（INSERT/UPDATE/DELETE）同样走此链路，并记录审计日志。 */
 	async executeQuery(connectionName: string, sql: string): Promise<DatabaseResult<DbQueryResult>> {
 		try {
-			// W4-② 生产连接写保护：env=prod 且未显式授权时，写语句直接拦截（不触达引擎）。
+			// B3.1-① 写保护拦截（不触达引擎）：strict 模式所有连接写需授权；DDL/多语句保守拦截。
 			const dbConfig = readConfigSync().database;
 			const env = dbConfig?.connectionEnv?.[connectionName] ?? "dev";
 			const writeApproved = dbConfig?.prodWriteApproved?.[connectionName] === true;
+			const safetyMode = dbConfig?.safetyMode ?? "strict";
 			const isWrite = isWriteStatement(sql);
 			if (isWrite) auditWrite("info", `[write-audit] start connection="${connectionName}" env=${env} sql=${sql}`);
-			const blocked = maybeBlockProdWrite({ env, writeApproved, sql });
+			const blocked = maybeBlockWrite({ env, writeApproved, safetyMode, sql });
 			if (blocked) {
 				if (isWrite)
 					auditWrite(
@@ -396,24 +397,35 @@ export const databaseService = {
 				return err(blocked);
 			}
 
+			// B3.1-②-B 查询超时：引擎调用超时由 dbx-mcp-client 控制（超时返回 TIMEOUT）。
+			const queryTimeoutMs = dbConfig?.queryTimeoutMs ?? 30_000;
 			const client = getDbxMcpClient();
-			const result = await client.callTool("dbx_execute_query", { connection_name: connectionName, sql });
+			const result = await client.callTool(
+				"dbx_execute_query",
+				{ connection_name: connectionName, sql },
+				queryTimeoutMs,
+			);
 			const text = textOf(result);
 			if (result.isError) return err(classifyError(text));
 
 			const { columns, rows } = parseMarkdownTable(text);
+			// B3.1-②-A 行数上限：引擎最多返回 100 行，产品层按 rowLimit 截断并标记（UI 提示）。
+			const rowLimit = dbConfig?.rowLimit ?? 100;
+			const truncated = rows.length > rowLimit;
+			const visibleRows = truncated ? rows.slice(0, rowLimit) : rows;
 			const durationMatch = text.match(/(\d+)\s*(ms|s)\b/i);
 			if (isWrite)
 				auditWrite(
 					"info",
-					`[write-audit] ok connection="${connectionName}" env=${env} rows=${rows.length} sql=${sql}`,
+					`[write-audit] ok connection="${connectionName}" env=${env} rows=${visibleRows.length} sql=${sql}`,
 				);
 			return ok({
 				columns,
-				rows,
-				rowCount: rows.length,
+				rows: visibleRows,
+				rowCount: visibleRows.length,
 				durationMs: durationMatch?.[0] ?? "",
 				rawText: text,
+				truncated,
 			});
 		} catch (e) {
 			return err(toDatabaseError(e));

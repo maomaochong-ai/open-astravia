@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { cn, Switch } from "@astravia/ui";
+import { cn, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from "@astravia/ui";
 import { useTranslation } from "react-i18next";
 import type { DbConnection } from "../../../../preload/api-types/database";
 import { getDatabaseTypeMeta } from "./database-type-catalog";
@@ -189,6 +189,100 @@ export function DbxToolAccessRow({ model }: { model: DatabaseWorkspaceModel }): 
 				disabled={model.dbxToolBusy}
 				onCheckedChange={() => void model.actions.toggleDbxToolAccess()}
 			/>
+		</DatabaseSurface>
+	);
+}
+
+/**
+ * B3.1-①-B 安全执行模式开关行（全局配置区）：
+ * strict（缺省，最严）——所有连接（含 dev）的写操作需显式授权；
+ * relaxed——仅 prod 连接未授权时拦截（W4-② 原行为）。
+ */
+export function SafetyModeRow({ model }: { model: DatabaseWorkspaceModel }): JSX.Element {
+	const { t } = useTranslation("settings");
+	return (
+		<DatabaseSurface className="flex items-start justify-between gap-4 px-4 py-3.5">
+			<div className="flex min-w-0 items-start gap-2.5">
+				<span className="icon-[mdi--shield-check-outline] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+				<div className="min-w-0">
+					<p className="text-[12.5px] font-semibold text-foreground">{t("databaseSafetyMode")}</p>
+					<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+						{t(
+							model.safetyMode === "strict"
+								? "databaseSafetyModeStrictDescription"
+								: "databaseSafetyModeRelaxedDescription",
+						)}
+					</p>
+				</div>
+			</div>
+			<Switch
+				checked={model.safetyMode === "strict"}
+				disabled={model.safetyModeBusy}
+				onCheckedChange={() => model.actions.toggleSafetyMode()}
+			/>
+		</DatabaseSurface>
+	);
+}
+
+/**
+ * B3.1-② 执行限制行（全局配置区）：行数上限 + 查询超时。
+ * rowLimit：结果行数上限（引擎最多返回 100 行，超过产品层截断并提示）；
+ * queryTimeout：引擎调用超时（毫秒，UI 按秒展示）。
+ */
+export function DatabaseLimitsRow({ model }: { model: DatabaseWorkspaceModel }): JSX.Element {
+	const { t } = useTranslation("settings");
+	return (
+		<DatabaseSurface className="flex flex-col gap-3 px-4 py-3.5">
+			<div className="flex items-start justify-between gap-4">
+				<div className="flex min-w-0 items-start gap-2.5">
+					<span className="icon-[mdi--format-list-numbered] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+					<div className="min-w-0">
+						<p className="text-[12.5px] font-semibold text-foreground">{t("databaseRowLimit")}</p>
+						<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{t("databaseRowLimitDescription")}</p>
+					</div>
+				</div>
+				<Select
+					value={String(model.rowLimit)}
+					onValueChange={(value) => void model.actions.changeRowLimit(value)}
+					disabled={model.rowLimitBusy}
+				>
+					<SelectTrigger size="sm" className="w-fit shrink-0">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{[50, 100, 200, 500].map((n) => (
+							<SelectItem key={n} value={String(n)}>
+								{n}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
+			<div className="flex items-start justify-between gap-4 border-t border-border/40 pt-3">
+				<div className="flex min-w-0 items-start gap-2.5">
+					<span className="icon-[mdi--timer-outline] mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+					<div className="min-w-0">
+						<p className="text-[12.5px] font-semibold text-foreground">{t("databaseQueryTimeout")}</p>
+						<p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{t("databaseQueryTimeoutDescription")}</p>
+					</div>
+				</div>
+				<Select
+					value={String(model.queryTimeoutMs / 1000)}
+					onValueChange={(value) => void model.actions.changeQueryTimeout(value)}
+					disabled={model.queryTimeoutBusy}
+				>
+					<SelectTrigger size="sm" className="w-fit shrink-0">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{[15, 30, 60, 120].map((seconds) => (
+							<SelectItem key={seconds} value={String(seconds)}>
+								{t("databaseQueryTimeoutSeconds", { seconds })}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
 		</DatabaseSurface>
 	);
 }

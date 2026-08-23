@@ -102,6 +102,14 @@ export interface DesktopConfigData {
 		connectionEnv?: Record<string, "prod" | "dev">;
 		/** 生产写授权（W4-②）：连接名 → 已显式授权允许生产写操作。 */
 		prodWriteApproved?: Record<string, boolean>;
+		/** 安全执行模式（B3.1-①-B）：strict 所有连接写需授权（缺省）；relaxed 仅 prod 拦截。 */
+		safetyMode?: "strict" | "relaxed";
+		/** 查询结果行数上限（B3.1-②-A），缺省 100。 */
+		rowLimit?: number;
+		/** 查询执行超时毫秒（B3.1-②-B），缺省 30000。 */
+		queryTimeoutMs?: number;
+		/** 连接级「允许 AI 访问」白名单（B3.1-①-C）：连接名 → 允许（缺省按 connectionEnv：prod 关 / dev 开）。 */
+		connectionAiAccess?: Record<string, boolean>;
 	};
 }
 

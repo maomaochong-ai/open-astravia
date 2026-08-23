@@ -100,6 +100,23 @@ export function DatabaseConnectionDetails({
 							/>
 						</div>
 					) : null}
+					{/* B3.1-①-C 连接级「允许 AI 访问」白名单（生效值：显式配置 ?? env 缺省 prod 关 / dev 开）。 */}
+					<div className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2">
+						<div className="min-w-0">
+							<p className="flex items-center gap-1.5 text-[12px] font-medium text-foreground">
+								<span className="icon-[mdi--robot-outline] h-3.5 w-3.5 text-muted-foreground" />
+								{t("databaseConnectionAiAccess")}
+							</p>
+							<p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+								{t("databaseConnectionAiAccessDescription")}
+							</p>
+						</div>
+						<Switch
+							checked={model.aiAccessEffective[selected.name] === true}
+							disabled={model.connectionAiAccessBusy}
+							onCheckedChange={() => model.actions.toggleConnectionAiAccess(selected.name)}
+						/>
+					</div>
 				</InfoSection>
 
 				{selectedStatus === "ok" || selectedStatus === "failed" ? (

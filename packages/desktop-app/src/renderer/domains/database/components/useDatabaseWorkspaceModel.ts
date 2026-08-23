@@ -77,6 +77,20 @@ export interface DatabaseWorkspaceModel {
 	/** W4-② 生产写授权：连接名 → 已显式授权（生产连接默认禁写）。 */
 	readonly prodWriteApproved: Readonly<Record<string, boolean>>;
 	readonly prodWriteApprovedBusy: boolean;
+	/** B3.1-①-B 安全执行模式（strict 所有连接写需授权 / relaxed 仅 prod 拦截）。 */
+	readonly safetyMode: "strict" | "relaxed";
+	readonly safetyModeBusy: boolean;
+	/** B3.1-②-A 查询结果行数上限。 */
+	readonly rowLimit: number;
+	readonly rowLimitBusy: boolean;
+	/** B3.1-②-B 查询执行超时（毫秒）。 */
+	readonly queryTimeoutMs: number;
+	readonly queryTimeoutBusy: boolean;
+	/** B3.1-①-C 连接级「允许 AI 访问」白名单（显式配置）。 */
+	readonly connectionAiAccess: Readonly<Record<string, boolean>>;
+	/** B3.1-①-C 生效值：显式白名单 ?? 按 env 缺省（prod 关 / dev 开）。 */
+	readonly aiAccessEffective: Readonly<Record<string, boolean>>;
+	readonly connectionAiAccessBusy: boolean;
 	readonly selected: DbConnection | null;
 	readonly testSnapshots: Readonly<Record<string, DatabaseConnectionTestSnapshot>>;
 	readonly testingName: string | null;
@@ -99,6 +113,14 @@ export interface DatabaseWorkspaceModel {
 		readonly toggleDbxToolAccess: () => Promise<void>;
 		/** W4-② 显式授权/撤销生产写操作（授权前弹确认）。 */
 		readonly toggleProdWriteApproved: (name: string) => void;
+		/** B3.1-①-B 切换安全执行模式（切到 relaxed 前弹确认）。 */
+		readonly toggleSafetyMode: () => void;
+		/** B3.1-②-A 设置行数上限。 */
+		readonly changeRowLimit: (value: string) => Promise<void>;
+		/** B3.1-②-B 设置查询超时。 */
+		readonly changeQueryTimeout: (value: string) => Promise<void>;
+		/** B3.1-①-C 切换连接级「允许 AI 访问」。 */
+		readonly toggleConnectionAiAccess: (name: string) => void;
 	};
 }
 
@@ -162,6 +184,17 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 	// W4-② 生产写授权状态（desktop-config database.prodWriteApproved，缺省无授权）。
 	const [prodWriteApproved, setProdWriteApproved] = useState<Record<string, boolean>>({});
 	const [prodWriteApprovedBusy, setProdWriteApprovedBusy] = useState(false);
+	// B3.1-①-B 安全执行模式（缺省 strict：默认最严）。
+	const [safetyMode, setSafetyMode] = useState<"strict" | "relaxed">("strict");
+	const [safetyModeBusy, setSafetyModeBusy] = useState(false);
+	// B3.1-②-A/B 执行限制（行数上限 / 查询超时，毫秒）。
+	const [rowLimit, setRowLimit] = useState(100);
+	const [rowLimitBusy, setRowLimitBusy] = useState(false);
+	const [queryTimeoutMs, setQueryTimeoutMs] = useState(30_000);
+	const [queryTimeoutBusy, setQueryTimeoutBusy] = useState(false);
+	// B3.1-①-C 连接级「允许 AI 访问」白名单。
+	const [connectionAiAccess, setConnectionAiAccess] = useState<Record<string, boolean>>({});
+	const [connectionAiAccessBusy, setConnectionAiAccessBusy] = useState(false);
 
 	const refresh = useCallback(async () => {
 		try {
@@ -189,6 +222,10 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 			setSchemaInjectionScope(config.database?.schemaInjectionScope ?? DEFAULT_SCHEMA_INJECTION_SCOPE);
 			setDbxToolEnabled(config.database?.dbxToolEnabled === true);
 			setProdWriteApproved(config.database?.prodWriteApproved ?? {});
+			setSafetyMode(config.database?.safetyMode ?? "strict");
+			setRowLimit(config.database?.rowLimit ?? 100);
+			setQueryTimeoutMs(config.database?.queryTimeoutMs ?? 30_000);
+			setConnectionAiAccess(config.database?.connectionAiAccess ?? {});
 		});
 	}, []);
 
@@ -466,6 +503,98 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 		[prodWriteApproved, setConfirm, t],
 	);
 
+	// B3.1-①-C 连接级「允许 AI 访问」生效值：显式白名单 ?? 按 env 缺省（prod 关 / dev 开）。
+	const aiAccessEffective = useMemo(() => {
+		const out: Record<string, boolean> = {};
+		for (const connection of connections) {
+			out[connection.name] = connectionAiAccess[connection.name] ?? connection.env !== "prod";
+		}
+		return out;
+	}, [connections, connectionAiAccess]);
+
+	// B3.1-①-B 切换安全执行模式：从 strict 切到 relaxed 是放宽安全策略，需确认弹窗；切回 strict 直接生效。
+	const toggleSafetyMode = useCallback(() => {
+		const next: "strict" | "relaxed" = safetyMode === "strict" ? "relaxed" : "strict";
+		const persist = async (): Promise<void> => {
+			setSafetyModeBusy(true);
+			try {
+				await window.astravia.config.set({ database: { safetyMode: next } });
+				setSafetyMode(next);
+				recordSettingsUsage({ tab: "database", action: "changed", target: "dbx-safety-mode", value: next });
+			} finally {
+				setSafetyModeBusy(false);
+			}
+		};
+		if (next === "relaxed") {
+			setConfirm({
+				title: t("databaseSafetyModeRelaxConfirm"),
+				message: t("databaseSafetyModeRelaxConfirmMessage"),
+				confirmLabel: t("databaseSafetyModeRelax"),
+				variant: "danger",
+				onConfirm: () => {
+					void persist();
+				},
+			});
+		} else {
+			void persist();
+		}
+	}, [safetyMode, setConfirm, t]);
+
+	// B3.1-②-A 设置行数上限（下拉选项 50/100/200/500，缺省 100）。
+	const changeRowLimit = useCallback(async (value: string) => {
+		const next = Number(value);
+		if (![50, 100, 200, 500].includes(next)) return;
+		setRowLimitBusy(true);
+		try {
+			await window.astravia.config.set({ database: { rowLimit: next } });
+			setRowLimit(next);
+			recordSettingsUsage({ tab: "database", action: "changed", target: "dbx-row-limit", value: String(next) });
+		} finally {
+			setRowLimitBusy(false);
+		}
+	}, []);
+
+	// B3.1-②-B 设置查询超时（下拉选项 15/30/60/120 秒，缺省 30s）。
+	const changeQueryTimeout = useCallback(async (value: string) => {
+		const next = Number(value);
+		if (![15, 30, 60, 120].includes(next)) return;
+		setQueryTimeoutBusy(true);
+		try {
+			await window.astravia.config.set({ database: { queryTimeoutMs: next * 1000 } });
+			setQueryTimeoutMs(next * 1000);
+			recordSettingsUsage({ tab: "database", action: "changed", target: "dbx-query-timeout", value: String(next) });
+		} finally {
+			setQueryTimeoutBusy(false);
+		}
+	}, []);
+
+	// B3.1-①-C 切换连接级「允许 AI 访问」（基于生效值取反后显式写入白名单）。
+	const toggleConnectionAiAccess = useCallback(
+		(name: string) => {
+			const effective = aiAccessEffective[name] ?? false;
+			const next = !effective;
+			const persist = async (): Promise<void> => {
+				setConnectionAiAccessBusy(true);
+				try {
+					await window.astravia.config.set({
+						database: { connectionAiAccess: { ...connectionAiAccess, [name]: next } },
+					});
+					setConnectionAiAccess((prev) => ({ ...prev, [name]: next }));
+					recordSettingsUsage({
+						tab: "database",
+						action: next ? "enabled" : "disabled",
+						target: "dbx-connection-ai-access",
+						value: name,
+					});
+				} finally {
+					setConnectionAiAccessBusy(false);
+				}
+			};
+			void persist();
+		},
+		[aiAccessEffective, connectionAiAccess],
+	);
+
 	const selected = useMemo(
 		() => connections.find((connection) => connection.name === selectedName) ?? null,
 		[connections, selectedName],
@@ -482,6 +611,15 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 		dbxToolBusy,
 		prodWriteApproved,
 		prodWriteApprovedBusy,
+		safetyMode,
+		safetyModeBusy,
+		rowLimit,
+		rowLimitBusy,
+		queryTimeoutMs,
+		queryTimeoutBusy,
+		connectionAiAccess,
+		aiAccessEffective,
+		connectionAiAccessBusy,
 		addOpen,
 		connections,
 		error,
@@ -514,6 +652,10 @@ export function useDatabaseWorkspaceModel(): DatabaseWorkspaceModel {
 			loadConnectionTables,
 			toggleDbxToolAccess,
 			toggleProdWriteApproved,
+			toggleSafetyMode,
+			changeRowLimit,
+			changeQueryTimeout,
+			toggleConnectionAiAccess,
 		},
 	};
 }
