@@ -5,7 +5,7 @@
 <h1 align="center">Open Astravia</h1>
 
 <p align="center">
-  An open-source AI agent built for real work — local, extensible, and under your control.
+  一个为真实工作而生的开源 AI Agent——本地运行、开放扩展，始终由你掌控。
 </p>
 
 <p align="center">
@@ -16,195 +16,182 @@
 </p>
 
 <p align="center">
-  <b>English</b> ·
-  <a href="README.zh-CN.md">简体中文</a> ·
-  <a href="https://www.openastravia.com">Website</a> ·
-  <a href="https://www.openastravia.com/download">Download</a>
+  <a href="README.en-US.md">English</a> ·
+  <b>简体中文</b> ·
+  <a href="https://www.openastravia.com">官网</a> ·
+  <a href="https://www.openastravia.com/download">下载</a>
 </p>
 
 ---
 
-## What This Is
+## 这是什么
 
-Your local-first AI agent for real work.
-Open Astravia is an open-source desktop AI agent for coding, documents, data, workflows, and creative tasks. Bring your own models and tools through BYOK, MCP, skills, and plugins — with your data kept under your control.
+面向实际工作的本地优先 AI 智能体。
+Open Astravia 是一款开源桌面 AI 代理，适用于编码、文档处理、数据管理、工作流搭建及创意类任务。你可通过 BYOK、MCP、技能及插件接入自有模型与工具，全程数据由你自主掌控。
 
-Designed for professional and coding workflows, it helps individuals and teams build AI agents
-that are customizable, extensible, and under their control. Whether you are working with
-documents, analyzing data, writing code, building workflows, or connecting your own models,
-tools, and knowledge, Open Astravia is designed to participate in real work and deliver results.
+它面向工作与编程场景，帮助个人与团队构建可定制、可扩展、可掌控的 AI Agent。无论是处理文档、
+分析数据、编写代码、搭建工作流，还是连接自己的模型、工具与知识，Open Astravia 都希望成为一个
+真正参与工作、持续交付结果的智能伙伴。
 
-Open Astravia runs in the environment you choose. Connect your own models, tools, and data, and use
-or extend its agent core through the desktop app, CLI, and SDK.
+Open Astravia 运行在你指定的环境中。你可以连接自己的模型、工具与数据，也可以通过桌面应用、CLI
+与 SDK 使用或扩展它的 Agent 内核。
 
-We chose open source because the future of AI-powered work should not be defined by only a few.
-Developers, creators, and real users can contribute code, develop skills, integrate new models
-and tools, and shape an agent around the way they actually work.
+我们选择开源，因为 AI 的工作方式不应由少数人单独定义。开发者、创作者和真实用户都可以贡献代码、
+开发技能、接入新的模型与工具，并围绕自己的工作方式塑造 Agent。
 
-### Your Data, Under Your Control
+### 你的数据，由你掌控
 
-Open Astravia does not depend on a Astravia-operated backend: there is no login, account, subscription
-billing, or remote admin console. You bring your own API keys; requests go directly to the model
-provider you choose, and keys stay in your local keychain. Open Astravia collects no telemetry,
-crash reports, or usage analytics. Every outbound request is explicitly triggered by your own
-configuration (see [Network Behavior](#network-behavior)).
+Open Astravia 不依赖 Astravia 运营的服务端：无需登录，没有账号、订阅计费或远程管理后台。你使用自己的
+API Key，请求直接发送给所选的模型服务商，密钥只保存在本机 keychain 中。Open Astravia 不收集遥测、
+崩溃报告或使用数据；所有网络请求都由你的配置明确触发（见[网络行为](#网络行为)）。
 
 <p align="center">
-  <img src="docs/assets/screenshot.png" alt="Open Astravia desktop app">
+  <img src="docs/assets/screenshot.png" alt="Open Astravia 桌面应用界面">
 </p>
 
 ---
 
-## Desktop Features
+## 桌面应用能力
 
-An index of what's there and how to use it. Full guides live on the [website](https://www.openastravia.com).
+下面是能力索引，只说有什么、怎么用；详细教程见[官网](https://www.openastravia.com)。
 
-### Conversation & Workspace
+### 对话与工作区
 
-| Feature | What it does |
-|---------|--------------|
-| Chat | The main surface: message stream, artifact rendering, visible tool calls, auto-follow and jump-to-bottom. |
-| Projects & sessions | Sessions organized by project in the sidebar. Projects come in three kinds — regular, batch, and scheduled — each with its own execution shape. |
-| File browser & preview | Built-in local file tree. PDFs, Office documents, spreadsheets, images, audio and video preview in-app; scanned PDFs can be OCR'd offline. |
-| Activity panel | A resizable side panel showing tool calls, request history, batch progress and debug output in real time. |
-| Execution isolation | Pick an isolation level per session to constrain which directories the agent can touch and whether it may reach the network, with stray processes reaped on exit. Backed by system-level isolation on all three platforms. |
+| 能力 | 说明 |
+|------|------|
+| 对话 | 主界面。消息流、Artifact 渲染、工具调用可视化、自动跟随与回到底部。 |
+| 项目与会话 | 侧边栏按项目组织会话，项目分普通、批量、定时三类，各自有独立的执行形态。 |
+| 文件浏览与预览 | 内置本地文件树；PDF、Office 文档、表格、图片音视频直接在应用内预览，扫描版 PDF 可离线 OCR 取文字。 |
+| 活动面板 | 右侧可拖拽面板，实时展示工具调用、请求历史、批量任务进度与调试信息。 |
+| 执行隔离 | 会话可选择执行隔离级别，限制 Agent 能读写的目录、是否允许联网，退出时回收残留进程。三个平台都有对应的系统级隔离支持。 |
 
-### Automation
+### 自动化
 
-| Feature | What it does |
-|---------|--------------|
-| Batch tasks | One prompt across many target directories, run in parallel at a concurrency you set, with pause, per-item retry, and full rerun. |
-| Scheduling | Set a cron expression and tasks fire on time. Leave the app in the tray; you don't have to sit there. |
-| Webhook notifications | Push completions and failures to Feishu or DingTalk bots. Credentials are stored encrypted, locally. |
-| IM bridge | Once credentials are set, hand work to the agent on your machine from IM on your phone and get results back — useful when you're away from the desk. Feishu today; early stage. |
+| 能力 | 说明 |
+|------|------|
+| 批量任务 | 一个 Prompt × 多个目标目录，按设定并发度并行执行，支持暂停、重试单项与全部重跑。 |
+| 定时调度 | 用 Cron 表达式设定时间，到点自动跑任务，应用留在托盘即可，不必守着。 |
+| Webhook 通知 | 任务完成或异常时推送到飞书、钉钉机器人，凭据本地加密存储。 |
+| IM 旁路 | 在设置里填好凭据后，可以从手机上的 IM 直接给本机 Agent 派活、收结果，人不在电脑前也能推进任务。目前支持飞书，处于早期阶段。 |
 
-### Extensions
+### 扩展生态
 
-| Feature | What it does |
-|---------|--------------|
-| Marketplace | Browse and install skills, MCP servers, plugins and bundles. A marketplace source is just a GitHub repository — add as many as you like, or none at all. There is no central server. |
-| Skills | Turn a way of working into something reusable. A set ships built in; more can be installed from a marketplace. |
-| MCP | Full MCP server support. Once connected, the tools are automatically visible to the agent. |
-| Plugins | Most of the app's workspace surfaces are plugins, and can be enabled or removed as you like. See [Plugin System](#plugin-system). |
-| Themes | The entire look of the app is replaceable, including third-party themes. |
+| 能力 | 说明 |
+|------|------|
+| 能力市场 | 浏览并安装 Skill、MCP Server、插件与能力包。市场来源就是普通的 GitHub 仓库，你可以添加任意多个，也可以一个都不加——没有中心服务器。 |
+| Skills | 把一套做事方法固化成可复用的技能，内置一批开箱可用的预设，也可从市场安装。 |
+| MCP | 完整支持 MCP Server，接入后工具自动对 Agent 可见。 |
+| 插件 | 应用的大部分工作区形态都由插件提供，可按需启用、卸载。详见[插件系统](#插件系统)。 |
+| 主题 | 整套界面外观可替换，支持安装第三方主题。 |
 
-### Local Data
+### 本地数据
 
-| Feature | What it does |
-|---------|--------------|
-| Knowledge base | Put local documents into a knowledge base; the app organizes them in the background into something searchable that the agent can draw on. Nothing leaves your machine. |
+| 能力 | 说明 |
+|------|------|
+| 知识库 | 把本地文档收进知识库，应用在后台整理成可检索的资料，供 Agent 随时引用。全程不出本机。 |
 
-### Native Desktop Integration
+### 桌面原生集成
 
-| Feature | What it does |
-|---------|--------------|
-| Quick panel | A global hotkey brings up an input panel from anywhere, so you can start a task without switching windows. |
-| Appshot (macOS) | One gesture captures the frontmost window along with the text on screen and hands both to the agent — no screenshotting and then describing it again. |
-| Desktop pet | A desktop mascot that reacts to session state. Can be hidden. |
-| Runtime management | When Node or Python is needed, the app provisions it — without polluting your system environment or requiring you to install anything first. |
-| Setup wizard | Walks you through model configuration, permissions, and runtime preparation on first launch. |
-| System integration | Tray residency, customizable shortcuts, native notifications, automatic updates. |
-| Bilingual UI | Full English and Chinese coverage, switchable at any time. |
+| 能力 | 说明 |
+|------|------|
+| 快捷面板 | 一个全局快捷键随时唤起输入面板，不用切窗口就能发起任务。 |
+| Appshot（macOS） | 一个手势抓取当前窗口，连同界面上的文字内容一起作为上下文交给 Agent，不用截图再描述一遍。 |
+| 桌宠 | 桌面吉祥物随会话状态做出反应，可隐藏。 |
+| 运行时管理 | 需要 Node 或 Python 时应用自动准备，不污染系统环境，也不要求你预装。 |
+| 首启向导 | 引导完成模型配置、权限授予与运行时准备。 |
+| 系统集成 | 托盘常驻、快捷键可自定义、原生通知、自动更新。 |
+| 双语界面 | 中文与 English 完整覆盖，随时切换。 |
 
 ---
 
-## Plugin System
+## 插件系统
 
-Plugins aren't decoration around the edges. The design canvas, the content workspace, Git,
-charts, the various file previewers — those surfaces are plugins. The same extension points
-are fully open to third parties.
+插件不是边角料的点缀——设计画布、内容创作、Git、图表、各类文件预览，
+这些工作区形态本身就是插件写出来的。同一套扩展点对第三方完全开放。
 
-A plugin is a React package that registers contributions in `activate(ctx)`, or declares them
-in `plugin.json`. It can extend the interface, and it can extend what the agent is capable of.
+一个插件是一个 React 包，在 `activate(ctx)` 里注册贡献，或在 `plugin.json` 里声明式贡献。
+它可以扩展界面，也可以扩展 Agent 的能力边界。
 
-### Design Stance
+### 设计取向
 
-**A plugin is part of Astravia, not a bolt-on beside it.**
-Plugins in most agent tools stop at "add a few tools, a few commands, a few MCP servers" —
-the capability is attached from outside and the product is still the same product.
-A Astravia plugin can inject system prompts, skills, tools and MCP servers into the agent,
-declare which work modes it applies to, take over the entry point of a new session, and decide
-whether a turn continues automatically. Install a set of plugins and you don't get "Astravia with
-extra buttons" — you get Astravia rearranged around how you actually work.
+**插件是 Astravia 的组成部分，不是挂在旁边的外挂。**
+大多数 Agent 工具的插件止步于「加几个工具、几条命令、几个 MCP Server」——
+能力是外接的，产品本身还是那个产品。Astravia 的插件可以往 Agent 里注入系统提示词、技能、
+工具与 MCP Server，声明自己适用的工作模式，接管新会话的引导入口，还能决定一轮结束后是否自动续跑。
+装上一组插件，你得到的不是「多了几个按钮的 Astravia」，而是按你的活法重组过的那个 Astravia。
 
-**The interface and the conversation run both ways.**
-A plugin doesn't only give the model new abilities; it can drive the conversation back.
-Select an element on the canvas, click an item in the file tree, and a turn starts carrying
-exactly that context. That return path — from interface back into the session — isn't something
-a CLI-shaped extension mechanism can offer.
+**界面和会话是双向的。**
+插件不只是给模型加能力，也能反过来驾驶对话：在画布上选中一个元素、在文件树上点一个菜单，
+就能带着精确上下文发起一轮任务。这条从界面回到会话的通道，是纯 CLI 形态的扩展机制给不出的。
 
-**Bundled features and third-party plugins use the same API.**
-The preinstalled plugins in this repository are built on the public extension points documented
-here. There are no private backdoors. System plugins differ from ordinary ones only in how they
-ship — bundled with the app, permissions granted automatically, not removable — never in what
-they're allowed to do. What you can build is the same kind of thing we build.
+**预装能力和第三方插件走同一套 API。**
+仓库里那些预装插件用的就是本文档列出的公开扩展点，没有私有后门。
+系统插件与普通插件的差别只在分发方式——随应用发布、权限自动授予、不可卸载——
+而不在能力上限。你能写出来的，和我们写出来的，是同一类东西。
 
-**Astravia writes plugins.**
-The plugin workbench packages this developer handbook and a checklist into a skill, hands it
-to the agent with a dedicated work-mode prompt, and hard-isolates those contributions inside
-workbench mode so they never leak into everyday sessions. So going from "I want a panel that
-does X" to having it installed can happen entirely in conversation — and the handbook Astravia
-reads while building it is the one you're about to read.
+**Astravia 自己会写插件。**
+插件工作台把这份开发手册连同检查清单打包成技能交给 Agent，
+配上专用的工作模式提示词，并把这套贡献硬隔离在工作台模式内，不污染日常会话。
+于是从「我想要一个能干 X 的面板」到装进本机，全程可以在对话里完成——
+Astravia 开发插件时读的，就是你现在要读的这份手册。
 
-### Extension Points
+### 扩展点
 
-**Interface**
+**界面**
 
-| Extension point | What you can do |
-|-----------------|-----------------|
-| Activity tab | Open your own workspace in the activity panel — the most common landing spot for a plugin |
-| Global overlay | Mount overlay UI across the whole app |
-| File preview | Take over rendering for a file type, with streamed URLs for large files |
-| File explorer | Add context menus, toolbar buttons and status decorations to the file tree; reveal and refresh |
-| Message cards | Register custom card renderers for structured agent output, with cross-turn deduplication |
-| Tool call rendering | Replace how a given tool call appears inline in the message stream |
-| Turn card | Pin a persistent card above the current turn |
-| Input action | Add a toggle-style action to the composer |
-| Notifications | Raise toasts and error notices — no permission required |
-| Shortcut scopes | Plug into the host's shortcut scope stack without fighting global bindings |
+| 扩展点 | 能做什么 |
+|--------|----------|
+| 活动面板 Tab | 在右侧活动面板里开一个自己的工作区，插件最常用的落脚点 |
+| 全局浮层 | 挂载覆盖整个应用的浮层 UI |
+| 文件预览 | 接管某类文件的预览渲染，大文件走流式取址 |
+| 文件列表扩展 | 给文件树加右键菜单、工具栏按钮、状态装饰，并可定位与刷新 |
+| 消息卡片 | 为 Agent 产出的结构化数据注册自定义卡片渲染器，支持跨轮去重 |
+| 工具调用渲染 | 替换某个工具调用在消息流里的行内呈现 |
+| Turn 卡 | 在本轮对话上方挂一张常驻卡片 |
+| 输入栏动作 | 往输入栏加一个开关式动作 |
+| 全局通知 | 发 Toast 与错误提示，无需权限 |
+| 快捷键作用域 | 接入宿主的快捷键作用域栈，不与全局快捷键打架 |
 
-**Conversation & agent**
+**对话与 Agent**
 
-| Extension point | What you can do |
-|-----------------|-----------------|
-| Read the conversation | Subscribe to session state and the event stream |
-| Drive the conversation | Send prompts, insert text, abort the current run on the user's behalf |
-| Register agent tools | Expose plugin capability as a tool the model can call |
-| Register app actions | Contribute app-level actions with a JSON Schema, approval flow and cancellation |
-| Ship skills | Distribute skills with the plugin; they take effect on install |
-| Bundled MCP servers | Ship an MCP server inside the plugin, aggregated alongside the user's own |
-| Dynamic system prompts | Inject a system prompt into the turn based on context |
-| Continuation strategy | Decide whether a turn continues automatically once it ends |
-| Guiding words | Offer entry points in an empty session |
-| Work-mode gating | Declare which work modes the plugin applies to, and react when the mode changes |
+| 扩展点 | 能做什么 |
+|--------|----------|
+| 读对话 | 订阅会话状态与事件流 |
+| 驾驶对话 | 代用户发起 prompt、插入文本、中断当前执行 |
+| 注册 Agent 工具 | 把插件能力做成工具交给模型调用 |
+| 注册 App Action | 贡献带 JSON Schema、走审批与取消流程的应用级动作 |
+| 打包 Skill | 随插件分发技能，安装即生效 |
+| 内聚 MCP Server | 插件自带 MCP Server，与用户配置的 MCP 一同聚合 |
+| 动态系统提示词 | 按上下文向本轮注入 system prompt |
+| 自动续跑策略 | 决定一轮结束后是否自动继续 |
+| 新会话引导词 | 在空会话里给出引导入口 |
+| 工作模式门控 | 声明插件适用的工作模式，并在运行时感知切换 |
 
-**System capabilities**
+**系统能力**
 
-| Extension point | What you can do |
-|-----------------|-----------------|
-| Filesystem | Read and write workspace files |
-| Commands | Run one-off commands, or spawn long-lived processes such as your own dev server |
-| Network | Make requests through the host, sidestepping renderer CORS constraints |
-| Private storage | Persistent storage scoped to the plugin |
-| Settings | Declare and read your own settings; the host renders the settings UI |
-| Plugin i18n | Ship locale catalogs that follow the app's language |
+| 扩展点 | 能做什么 |
+|--------|----------|
+| 文件读写 | 读写工作区文件 |
+| 命令执行 | 跑一次性命令，或拉起长驻进程（如自己的 dev server） |
+| 网络请求 | 经宿主代理发请求，绕开渲染进程的跨域限制 |
+| 私有存储 | 插件独占的持久化空间 |
+| 设置 | 声明并读取自己的设置项，宿主统一渲染设置界面 |
+| 插件 i18n | 随包分发语言包，跟随应用语言切换 |
 
-### Permission Model
+### 权限模型
 
-Every capability must be declared explicitly in `plugin.json`, granted individually by the host,
-and checked again at runtime; anything undeclared is denied. Plugins share a single React runtime
-with the host, which means they are positioned as **reviewed first-party / curated extensions**
-rather than a sandbox for arbitrary untrusted code. That tradeoff and its boundaries are spelled
-out in [permissions.md](docs/plugin/permissions.md).
+每项能力都要在 `plugin.json` 里显式声明权限，由宿主单独授权，运行时再校验一次；
+未声明即拒绝。插件与宿主共享同一份 React 运行时，因此定位是**经审核的一方/策展扩展**，
+而非任意不可信代码的沙箱容器——这个取舍与相应边界在 [permissions.md](docs/plugin/permissions.md) 里写明。
 
-### Getting Started
+### 上手
 
 ```tsx
 import { definePlugin } from "@astravia-org/plugin-sdk";
 
 export default definePlugin({
   activate(ctx) {
-    ctx.ui.registerActivityTab({ id: "my-tab", label: "My Panel", component: MyPanel });
+    ctx.ui.registerActivityTab({ id: "my-tab", label: "我的面板", component: MyPanel });
   },
 });
 ```
@@ -212,108 +199,102 @@ export default definePlugin({
 ```json
 {
   "id": "my-plugin",
-  "name": "My Plugin",
+  "name": "我的插件",
   "version": "0.1.0",
   "pluginApiVersion": "^1.0.0",
   "permissions": ["ui.slot.activity-tab"]
 }
 ```
 
-Rather not hand-write scaffolding? Use the
-[plugin workbench](packages/plugins/presets/plugin-workbench) — describe the panel you want
-in conversation, let Astravia create it, build it, and install it locally.
+不想手写脚手架，就用[插件工作台](packages/plugins/presets/plugin-workbench)——
+在对话里描述你要的面板，让 Astravia 建、让它构建、一键装进本机。
 
-### Developer Handbook
+### 开发手册
 
-| Document | Contents |
-|----------|----------|
-| [getting-started.md](docs/plugin/getting-started.md) | Environment, scaffolding, building, installing, debug loop |
-| [manifest.md](docs/plugin/manifest.md) | Every `plugin.json` field, work-mode allowlist, i18n, settings, agent-side contributions |
-| [permissions.md](docs/plugin/permissions.md) | Full permission list, gating points, declaration and grant flow |
-| [ui-slots.md](docs/plugin/ui-slots.md) | Global overlays, activity tabs, file preview, input actions, turn cards, tool slots, shortcuts |
-| [message-cards.md](docs/plugin/message-cards.md) | Card renderers and cross-turn deduplication |
-| [file-explorer.md](docs/plugin/file-explorer.md) | Context menus, toolbars, decorations, reveal and events |
-| [conversation-and-agent.md](docs/plugin/conversation-and-agent.md) | Conversation read/write, tool registration, commands, fs, network, storage, settings, i18n |
-| [app-actions.md](docs/plugin/app-actions.md) | App action schemas, approval, lifecycle, independent releases |
-| [mcp.md](docs/plugin/mcp.md) | Three-source MCP aggregation and plugin-bundled MCP |
-| [system-plugins.md](docs/plugin/system-plugins.md) | System plugins (presets) and tenant packaging |
-| [styling-and-pitfalls.md](docs/plugin/styling-and-pitfalls.md) | Styling conventions, common pitfalls, caching and versioning |
+| 文档 | 内容 |
+|------|------|
+| [getting-started.md](docs/plugin/getting-started.md) | 环境、脚手架、构建、安装与调试闭环 |
+| [manifest.md](docs/plugin/manifest.md) | `plugin.json` 全字段、工作模式白名单、i18n、设置、Agent 侧贡献 |
+| [permissions.md](docs/plugin/permissions.md) | 权限完整清单、门控点、声明与授权流程 |
+| [ui-slots.md](docs/plugin/ui-slots.md) | 全局浮层、活动 Tab、文件预览、输入栏动作、Turn 卡、工具槽、快捷键 |
+| [message-cards.md](docs/plugin/message-cards.md) | 消息卡片渲染器与跨轮去重 |
+| [file-explorer.md](docs/plugin/file-explorer.md) | 文件列表右键菜单、工具栏、装饰、定位与事件 |
+| [conversation-and-agent.md](docs/plugin/conversation-and-agent.md) | 对话读写、注册工具、命令、fs、network、storage、settings、i18n |
+| [app-actions.md](docs/plugin/app-actions.md) | App Action 的 Schema、审批、生命周期与独立发布 |
+| [mcp.md](docs/plugin/mcp.md) | MCP 三源聚合与插件内聚 MCP |
+| [system-plugins.md](docs/plugin/system-plugins.md) | 系统插件（presets）与租户打包 |
+| [styling-and-pitfalls.md](docs/plugin/styling-and-pitfalls.md) | 样式约定、常见陷阱、缓存与版本号 |
 
-Full index at [docs/plugin/README.md](docs/plugin/README.md);
-the SDK and build tooling live in [packages/plugins](packages/plugins).
+完整索引见 [docs/plugin/README.md](docs/plugin/README.md)，
+SDK 与构建工具位于 [packages/plugins](packages/plugins)。
 
-### Bundled Plugins
+### 内置插件
 
-| Plugin | Description |
-|--------|-------------|
-| [astravia-ui-design](packages/plugins/presets/astravia-ui-design) | Infinite-canvas UI design workspace — see below |
-| [content-creation](packages/plugins/presets/content-creation) | Node canvas, asset production and multi-track composition |
-| [plugin-workbench](packages/plugins/presets/plugin-workbench) | Build plugins by conversation, from creation to installation, all in-app |
-| [git](packages/plugins/presets/git) | Git status tree and file diffs in the activity panel |
-| [image-gen](packages/plugins/presets/image-gen) | Image generation |
-| [chart-renderer](packages/plugins/presets/chart-renderer) | Render agent-produced data as charts inline in the conversation |
-| [office-viewer](packages/plugins/presets/office-viewer) · [media-viewer](packages/plugins/presets/media-viewer) · [svg-viewer](packages/plugins/presets/svg-viewer) | Offline preview for PDF/DOCX/PPTX/spreadsheets, images and media, and SVG |
-| [astravia-actions](packages/plugins/presets/astravia-actions) | A set of official built-in actions the agent can call directly |
+| 插件 | 说明 |
+|------|------|
+| [astravia-ui-design](packages/plugins/presets/astravia-ui-design) | 无限画布 UI 设计工作区，详见下节 |
+| [content-creation](packages/plugins/presets/content-creation) | 节点画布、素材生产与多轨编排工作区 |
+| [plugin-workbench](packages/plugins/presets/plugin-workbench) | 用对话做插件：从新建到装进本机全程在应用里完成 |
+| [git](packages/plugins/presets/git) | 活动面板内的 Git 变更状态树与文件 diff |
+| [image-gen](packages/plugins/presets/image-gen) | 图像生成 |
+| [chart-renderer](packages/plugins/presets/chart-renderer) | 让 Agent 生成的数据直接在对话里画成图表 |
+| [office-viewer](packages/plugins/presets/office-viewer) · [media-viewer](packages/plugins/presets/media-viewer) · [svg-viewer](packages/plugins/presets/svg-viewer) | 离线预览 PDF/DOCX/PPTX/表格、图片音视频、SVG |
+| [astravia-actions](packages/plugins/presets/astravia-actions) | 一组官方内置动作，供 Agent 直接调用 |
 
-A few more plugins under `packages/plugins/externals` (Cowart infinite canvas, mobile device UI
-preview, and others) are **not bundled with the app** — they exist as source examples and
-reference material for writing your own.
+`packages/plugins/externals` 下另有几个插件（Cowart 无限画布、移动设备 UI 预览等）**不随应用打包**，
+只作为源码示例存在，可作为写自己插件时的参考。
 
 ### Astravia UI Design
 
-Design UI on an infinite canvas. A frame isn't a static layer — it's a real, running,
-interactive interface, and what you see is what it is.
+在无限画布上做 UI 设计稿。画框不是静态图层，而是真实可运行、可交互的界面，
+改完即所见即所得。
 
-- Create a design document from the "Design" tab in the activity panel, or just ask Astravia
-  to make one in conversation.
-- Select a frame, several frames, or one specific element inside a frame, hit "ask Astravia"
-  and say what you want changed. The canvas updates live — no explaining which button you meant.
-- One shared color system across the whole document; change it once and every frame follows.
-- Export frames as rendered images with adjustable corner radius, border, shadow, background
-  and output scale, or copy straight to the clipboard.
-- Package an entire design as a read-only share bundle that opens in-app on the other end,
-  with nothing to set up.
+- 在活动面板打开「设计」标签新建设计文档，或直接在对话里让 Astravia 帮你创建。
+- 选中一个画框、多个画框，或画框内的某个具体元素，点「让 Astravia 调整」说出你想要的改动，
+  画布实时更新——不需要解释"我说的是哪个按钮"。
+- 整份设计共享一套色彩系统，改一次全部画框同步换肤。
+- 画框可导出渲染图，圆角、外边框、投影、背景与输出倍率都可调，也能直接复制到剪贴板。
+- 整份设计可打包成只读分享包，对方在应用内即可查看，无需任何环境准备。
 
-The design runtime is provisioned automatically on first use — no need to install Node or
-configure anything.
+首次使用时应用会自动准备设计运行环境，无需预装 Node 或手动配置。
 
 <p align="center">
-  <img src="docs/assets/ui-design-canvas.png" alt="Conversation on the left, a design taking shape on the infinite canvas on the right">
+  <img src="docs/assets/ui-design-canvas.png" alt="左侧对话，右侧无限画布上正在生成的设计稿">
 </p>
 
 <p align="center">
-  <sub>Ask once and Astravia builds the page: conversation and outputs on the left, canvas on the right — select any frame or element to keep refining</sub>
+  <sub>一句话让 Astravia 建出页面：左边是对话与产物，右边是画布，选中任何画框或元素都能继续追加要求</sub>
 </p>
 
 <p align="center">
-  <img src="docs/assets/ui-design-export.png" alt="Exported render: three mobile frames laid out on a brand-colour background">
+  <img src="docs/assets/ui-design-export.png" alt="导出的渲染图：三个手机画框排布在品牌色背景上">
 </p>
 
 <p align="center">
-  <sub>Select frames and export a render — background, corner radius, shadow and branding are all adjustable, ready to hand off or share</sub>
+  <sub>选中画框导出渲染图，背景、圆角、投影与标识都可调，直接用于交付或分享</sub>
 </p>
 
 ---
 
-## Installation
+## 安装
 
-### Download
+### 下载安装包
 
-Grab macOS, Windows and Linux installers from [Releases](../../releases). All three platforms
-are built and published by `.github/workflows/desktop-release.yml`.
+从 [Releases](../../releases) 获取 macOS、Windows、Linux 安装包。三平台由
+`.github/workflows/desktop-release.yml` 分别构建发布。
 
-### Build from Source
+### 从源码构建
 
-Requires **Bun 1.3+** and **Node 20+**.
+需要 **Bun 1.3+** 与 **Node 20+**。
 
 ```bash
-bun install                # install all workspace dependencies
-bun run build              # build the core libraries
-bun run build:desktop      # build the desktop app
-bun run build:cli          # build the CLI app
+bun install                # 安装全部工作区依赖
+bun run build              # 构建核心库
+bun run build:desktop      # 构建桌面应用
+bun run build:cli          # 构建 CLI 应用
 ```
 
-The IM bridge gateway (Go):
+IM 旁路网关（Go）：
 
 ```bash
 cd packages/im-gateway && make build
@@ -321,82 +302,77 @@ cd packages/im-gateway && make build
 
 ---
 
-## Architecture
+## 架构
 
-The monorepo has four layers, with dependencies pointing one way:
-**apps → runtime-\* → coding-agent / agent / ai**. The core libraries know nothing about
-their host, which is why the same core runs inside Electron and in a terminal alike.
+Monorepo 分四层，依赖方向单向向下：**应用 → runtime-\* → coding-agent / agent / ai**。
+核心库不感知宿主，因此同一套内核既能跑在 Electron 里，也能跑在终端里。
 
-### Apps
+### 应用层
 
-| Package | Role | Stack |
-|---------|------|-------|
-| [desktop-app](packages/desktop-app) | Electron desktop host, home to everything above | Electron · React · Vite · Jotai · TanStack Router · shadcn/ui · Tailwind v4 |
-| [coding-agent](packages/coding-agent) | Coding agent core, with interactive / print-JSON / RPC / SDK modes | TypeScript |
-| [cli-app](packages/cli-app) | A pure CLI wrapper around coding-agent | TypeScript |
-| [im-gateway](packages/im-gateway) | IM bridge sidecar, talking to the desktop main process over NDJSON IPC | Go |
+| 包 | 角色 | 技术栈 |
+|----|------|--------|
+| [desktop-app](packages/desktop-app) | Electron 桌面宿主，承载上文全部能力 | Electron · React · Vite · Jotai · TanStack Router · shadcn/ui · Tailwind v4 |
+| [coding-agent](packages/coding-agent) | 编码智能体内核，支持交互 / print-JSON / RPC / SDK 四种运行模式 | TypeScript |
+| [cli-app](packages/cli-app) | 基于 coding-agent 的纯 CLI 封装 | TypeScript |
+| [im-gateway](packages/im-gateway) | IM 平台旁路 sidecar，NDJSON IPC 与桌面主进程通信 | Go |
 
-### Core Libraries
+### 核心库
 
-| Package | Owns | Does not own |
-|---------|------|--------------|
-| [ai](packages/ai) | Multi-provider LLM API, model registry, provider adapters, token and cost accounting | Agent loop, UI, session persistence |
-| [agent](packages/agent) | Stateful agent loop, tool calls, event stream | Terminal/desktop UI, business rules |
-| [ui](packages/ui) · [theme-ui](packages/theme-ui) · [theme-sdk](packages/theme-sdk) | Reusable UI primitives, theme view layer and theme SDK | Host lifecycle |
+| 包 | 职责 | 不包含 |
+|----|------|--------|
+| [ai](packages/ai) | 多 Provider LLM API、模型注册表、Provider Adapter、Token 与成本核算 | Agent Loop、UI、会话持久化 |
+| [agent](packages/agent) | 有状态 Agent Loop、工具调用、事件流 | 终端/桌面 UI、业务规则 |
+| [ui](packages/ui) · [theme-ui](packages/theme-ui) · [theme-sdk](packages/theme-sdk) | 可复用 UI 原语、主题视图层与主题 SDK | 宿主生命周期 |
 
-### Runtime Layer
+### 运行时层
 
-Adapter packages shared by host apps: [runtime-core](packages/runtime-core) (`RuntimeHost` and
-the session facade), [runtime-tools](packages/runtime-tools) (built-in tool re-exports),
-[runtime-storage](packages/runtime-storage) (session and settings storage),
-[runtime-mcp](packages/runtime-mcp) (MCP manager bindings), and
-[runtime-telemetry](packages/runtime-telemetry) (local logging abstraction — disk only).
+被宿主应用复用的一组适配包：[runtime-core](packages/runtime-core)（`RuntimeHost` 与 Session Facade）、
+[runtime-tools](packages/runtime-tools)（内置工具重导出）、[runtime-storage](packages/runtime-storage)（会话与设置存储）、
+[runtime-mcp](packages/runtime-mcp)（MCP Manager 绑定）、[runtime-telemetry](packages/runtime-telemetry)（本地日志抽象，仅落盘）。
 
-### Layout
+### 目录速览
 
 ```
 open-astravia-mono/
 ├── packages/
-│   ├── ai · agent · ui · theme-ui · theme-sdk      # core libraries
+│   ├── ai · agent · ui · theme-ui · theme-sdk      # 核心库
 │   ├── runtime-core · runtime-tools · runtime-mcp · runtime-storage · runtime-telemetry
-│   ├── coding-agent · cli-app · desktop-app        # apps
-│   ├── im-gateway                                  # IM bridge (Go)
-│   ├── plugins · themes · skill-presets            # extension ecosystem
-│   └── capability-sdk · capability-runtime         # capability and permission layer
-├── docs/                                           # architecture docs and ADRs
-├── scripts/                                        # build, release and quality guards
-├── AGENTS.md                                       # development and AI collaboration rules
-└── CONTEXT.md                                      # domain glossary
+│   ├── coding-agent · cli-app · desktop-app        # 应用
+│   ├── im-gateway                                  # IM 旁路（Go）
+│   ├── plugins · themes · skill-presets            # 扩展生态
+│   └── capability-sdk · capability-runtime         # 能力与权限层
+├── docs/                                           # 架构文档与 ADR
+├── scripts/                                        # 构建、发布与质量守卫
+├── AGENTS.md                                       # 开发与 AI 协作规范
+└── CONTEXT.md                                      # 领域术语表
 ```
 
 ---
 
-## Model Configuration (BYOK)
+## 模型配置（BYOK）
 
-The client ships a preset provider catalog (Claude, OpenAI, DeepSeek, Z.ai (GLM), Kimi, Gemini,
-Grok, Qwen) containing **only `baseUrl` and API type — no keys**. Once you add your own key:
+客户端内置一份预设服务商目录（Claude、OpenAI、DeepSeek、Z.ai (GLM)、Kimi、Gemini、Grok、Qwen），
+**只含 `baseUrl` 与 API 类型，不含任何 Key**。填入自己的 Key 之后：
 
-- it immediately queries that provider's `/models` for what your account can actually use,
-  then re-syncs in the background every 12 hours;
-- pricing and capability metadata are filled in from the public [models.dev](https://models.dev)
-  catalog, with a bundled snapshot as fallback;
-- requests go straight to the provider. This app does not proxy, relay, or bill.
+- 立即向该服务商的 `/models` 拉取你账号实际可用的模型，之后每 12 小时后台同步一次；
+- 价格与能力元数据由 [models.dev](https://models.dev) 公共目录补齐，随包带快照兜底；
+- 请求直发服务商原站，本应用不代理、不转发、不计费。
 
-Any OpenAI-compatible endpoint works too, including local inference via Ollama, vLLM or LM Studio.
-Background in [ADR-0050](docs/adr/0050-preset-providers-move-client-side-with-dynamic-model-lists.md).
+也可以自定义任意 OpenAI 兼容端点，包括 Ollama / vLLM / LM Studio 等本地推理服务。
+设计背景见 [ADR-0050](docs/adr/0050-preset-providers-move-client-side-with-dynamic-model-lists.md)。
 
 ---
 
-## Marketplace
+## 能力市场
 
-Capabilities — skills, MCP servers, plugins and bundles — come from **GitHub repository archives**:
-the client downloads the repo tarball, reads `.astravia/marketplace.json` inside it, and does all
-searching and filtering against the local snapshot. Add as many sources as you like, or none.
+能力（Skill / MCP Server / Plugin / Bundle）来自 **GitHub 仓库归档**：客户端下载仓库压缩包，
+读取其中的 `.astravia/marketplace.json`，搜索与筛选全部在本地快照上完成。
+你可以添加任意多个市场来源，也可以完全不加。
 
-Manifest format in [docs/open-marketplace.md](docs/open-marketplace.md); the unified model is
-described in [ADR-0049](docs/adr/0049-abilities-unify-storage-and-presentation-not-installation.md).
+清单格式见 [docs/open-marketplace.md](docs/open-marketplace.md)，
+统一模型见 [ADR-0049](docs/adr/0049-abilities-unify-storage-and-presentation-not-installation.md)。
 
-MCP configuration example:
+MCP 配置示例：
 
 ```jsonc
 // ~/.astravia/agent/mcp.json
@@ -410,95 +386,89 @@ MCP configuration example:
 }
 ```
 
-Use `/mcp` in interactive mode to check status. Details in
-[packages/coding-agent/docs/MCP.md](packages/coding-agent/docs/MCP.md).
+交互模式下用 `/mcp` 查看状态。详见 [packages/coding-agent/docs/MCP.md](packages/coding-agent/docs/MCP.md)。
 
 ---
 
-## Network Behavior
+## 网络行为
 
-The app makes network requests only in the following cases, all of them driven by your configuration:
+本应用只在以下情况发起网络请求，且全部由你的配置决定：
 
-| Purpose | Destination | Can it be turned off |
-|---------|-------------|----------------------|
-| LLM inference | The provider you configured | Doesn't happen without a key |
-| Model metadata | The public `models.dev` catalog | Falls back to the bundled snapshot |
-| Marketplace | GitHub repositories you added | Doesn't happen without a source |
-| Portable runtime download | Official Node / Python distributions (regional mirrors preferred) | Skipped if a system runtime is available |
-| Automatic updates | `ASTRAVIA_UPDATE_URL` or GitHub Releases, as you configure | Not checked if unconfigured |
-| MCP / plugins / IM / webhooks | Determined by the extensions you install and the credentials you enter | Doesn't happen if not installed |
+| 用途 | 目标 | 可否关闭 |
+|------|------|----------|
+| LLM 推理 | 你配置的服务商原站 | 不配 Key 即不发生 |
+| 模型元数据 | `models.dev` 公共目录 | 失败回退随包快照 |
+| 能力市场 | 你添加的 GitHub 仓库 | 不加来源即不发生 |
+| 便携运行时下载 | Node / Python 官方发行源（国内镜像优先） | 用系统已装运行时即可跳过 |
+| 自动更新 | 你配置的 `ASTRAVIA_UPDATE_URL` 或 GitHub Releases | 不配即不检查 |
+| MCP / 插件 / IM / Webhook | 由你安装的扩展与填写的凭据决定 | 不装即不发生 |
 
-No telemetry, no crash reporting, no usage analytics.
+没有遥测，没有崩溃上报，没有使用统计。
 
 ---
 
-## Contributing
+## 参与开发
 
 ```bash
-bun run check              # Biome + typecheck + architecture guards (required before a PR)
-bun run check:quick        # fast feedback on changed files (no typecheck)
-bun run test:unit          # core library unit tests
-bun run test:pkg ai        # single-package tests; test:pkg --list shows what's testable
-bun run test:changed       # only packages affected by your changes
+bun run check              # Biome + 类型检查 + 架构守卫（开 PR 前必跑）
+bun run check:quick        # 改动文件的快速反馈（不含类型检查）
+bun run test:unit          # 核心库单元测试
+bun run test:pkg ai        # 单包测试；test:pkg --list 查看可测包
+bun run test:changed       # 只跑受改动影响的包
 ```
 
-Conventions worth knowing:
+约定要点：
 
-- **Bun** (`bun` / `bunx`) is the package manager, everywhere.
-- No `any` in TypeScript unless genuinely necessary, and no inline `import()` used to obtain
-  types. On the Go side, run `make check` after changes.
-- All user-facing copy goes through i18n. Never hardcode strings.
-- Commit messages are written in Chinese; reference issues with `fixes #N` / `closes #N`.
-- Do not run `bun run dev` / `bun run build` / `bun test` directly.
+- **包管理器**统一使用 Bun（`bun` / `bunx`）。
+- TypeScript 侧禁止 `any`（除非确有必要）、禁止用于取类型的内联 `import()`；Go 侧改完必须跑 `make check`。
+- 面向用户的文案必须走 i18n，不得硬编码。
+- 提交信息使用中文；关联工单写 `fixes #N` / `closes #N`。
+- 不要直接运行 `bun run dev` / `bun run build` / `bun test`。
 
-Full rules in [AGENTS.md](AGENTS.md); the layered quality gates are described in
-[docs/dev/quality-gates.md](docs/dev/quality-gates.md).
+完整规范见 [AGENTS.md](AGENTS.md)，质量门禁分层见 [docs/dev/quality-gates.md](docs/dev/quality-gates.md)。
 
-### Versioning and Releases
+### 版本与发布
 
-All packages share one version (lockstep), sourced from `@astravia/coding-agent`. There are no
-major releases:
+所有包共用同一版本号（lockstep），版本源以 `@astravia/coding-agent` 为准，不做 major 发版：
 
 ```bash
-bun run release:patch    # fixes and new features
-bun run release:minor    # API breaking changes
+bun run release:patch    # Bug 修复与新增功能
+bun run release:minor    # API Breaking
 ```
 
-Each package keeps its own `packages/*/CHANGELOG.md`. New entries go under `## [Unreleased]`;
-released sections are never edited.
+每个包独立维护 `packages/*/CHANGELOG.md`，新条目写入 `## [Unreleased]`，已发布版本段不再改动。
 
-### Documentation
+### 文档
 
-- [docs/plugin/README.md](docs/plugin/README.md) — plugin developer handbook (11 documents)
-- [docs/adr/](docs/adr) — architecture decision records
-- [docs/capabilities/README.md](docs/capabilities/README.md) — foundation/domain capabilities and the permission layer
-- [docs/open-marketplace.md](docs/open-marketplace.md) — open marketplace manifest format
-- [docs/desktop/README.md](docs/desktop/README.md) — desktop packaging and the auto-update path
-- [CONTEXT.md](CONTEXT.md) — domain glossary (check existing naming before writing code)
+- [docs/plugin/README.md](docs/plugin/README.md) — 插件开发手册（11 篇）
+- [docs/adr/](docs/adr) — 架构决策记录
+- [docs/capabilities/README.md](docs/capabilities/README.md) — 基础/领域能力与权限层
+- [docs/open-marketplace.md](docs/open-marketplace.md) — 开放能力市场清单格式
+- [docs/desktop/README.md](docs/desktop/README.md) — 桌面打包与自动更新链路
+- [CONTEXT.md](CONTEXT.md) — 领域术语表（写代码前先查既有命名）
 
 ---
 
-## Credits
+## 致谢与引用
 
-This project stands on a good deal of other people's work. The following go directly into the
-code or the distributed artifacts:
+这个项目站在不少人的工作之上。以下是直接构成本仓库代码或分发物的部分：
 
-| Project | Where it's used | License |
-|---------|-----------------|---------|
-| [pi](https://github.com/badlogic/pi-mono) · Mario Zechner | `ai` / `agent` / `coding-agent` / `ecosystem-adapter` were rewritten and iterated on top of it; the agent loop, provider abstraction and extension mechanism trace back here | MIT |
-| [Codex CLI](https://github.com/openai/codex) · OpenAI | The execution sandbox design draws on theirs; on Windows we ship their sandbox host binary directly | Apache-2.0 |
-| [bubblewrap](https://github.com/containers/bubblewrap) | The Linux sandbox backend, distributed with the installer | LGPL-2.0+ |
-| [PP-OCRv5](https://github.com/PaddlePaddle/PaddleOCR) · PaddlePaddle | Detection and recognition models for offline PDF OCR | Apache-2.0 |
-| [python-build-standalone](https://github.com/astral-sh/python-build-standalone) · Astral | Distribution source for the portable Python runtime | See upstream |
-| [Node.js](https://nodejs.org) | Distribution source for the portable Node runtime | MIT |
-| [Cowart](https://github.com/zhongerxin/Cowart) | `plugins/externals/cowart-astravia` is adapted from it. That plugin lives in `externals/` and is **not bundled with the app** — it exists as a source example only | See upstream |
+| 项目 | 用在哪里 | 许可 |
+|------|----------|------|
+| [pi](https://github.com/badlogic/pi-mono) · Mario Zechner | `ai` / `agent` / `coding-agent` / `ecosystem-adapter` 四个包在其基础上重写与迭代，Agent Loop、Provider 抽象与扩展机制的骨架来自这里 | MIT |
+| [Codex CLI](https://github.com/openai/codex) · OpenAI | 执行沙箱的整体方案借鉴其设计；Windows 平台直接使用其沙箱宿主二进制 | Apache-2.0 |
+| [bubblewrap](https://github.com/containers/bubblewrap) | Linux 平台的沙箱后端，随安装包分发 | LGPL-2.0+ |
+| [PP-OCRv5](https://github.com/PaddlePaddle/PaddleOCR) · PaddlePaddle | 离线 PDF OCR 的检测与识别模型 | Apache-2.0 |
+| [python-build-standalone](https://github.com/astral-sh/python-build-standalone) · Astral | 便携 Python 运行时的发行源 | 见原仓库 |
+| [Node.js](https://nodejs.org) | 便携 Node 运行时的发行源 | MIT |
+| [Cowart](https://github.com/zhongerxin/Cowart) | `plugins/externals/cowart-astravia` 由其改编。该插件位于 `externals/`，**不随应用打包**，仅作为源码示例存在 | 见原仓库 |
 
-We're likewise indebted to the [Model Context Protocol](https://modelcontextprotocol.io)
-specification, the public model catalog at [models.dev](https://models.dev), and to Electron,
-React, Vite, Tailwind CSS, shadcn/ui, Jotai, TanStack Router, Biome and Bun.
+同样受益于 [Model Context Protocol](https://modelcontextprotocol.io) 规范、
+[models.dev](https://models.dev) 的公共模型目录，以及 Electron、React、Vite、Tailwind CSS、
+shadcn/ui、Jotai、TanStack Router、Biome、Bun 等一众基础设施。
 
-The complete third-party inventory and original copyright notices are in [NOTICE](NOTICE).
+完整的第三方组件清单与原始版权声明见 [NOTICE](NOTICE)。
 
-## License
+## 许可
 
-[Apache-2.0](LICENSE).
+[Apache-2.0](LICENSE)。
