@@ -25,7 +25,7 @@ import { DatabaseSectionLabel } from "./DatabaseSectionLabel";
 import { DatabaseStatusDot } from "./DatabaseStatus";
 import { DatabaseTypeBadge } from "./DatabaseTypeBadge";
 import { DatabaseWorkspaceHeader } from "./DatabaseWorkspaceHeader";
-import { DbxToolAccessRow, SchemaInjectionRow } from "./database-details-shared";
+import { DatabaseLimitsRow, DbxToolAccessRow, SafetyModeRow, SchemaInjectionRow } from "./database-details-shared";
 import { SchemaInjectionScopePanel } from "./SchemaInjectionScopePanel";
 import { useDatabaseWorkspaceModel } from "./useDatabaseWorkspaceModel";
 
@@ -129,6 +129,9 @@ export function DatabaseConnectionsWorkspace(): JSX.Element {
 						<SchemaInjectionRow model={model} />
 						{model.schemaInjection ? <SchemaInjectionScopePanel model={model} /> : null}
 						<DbxToolAccessRow model={model} />
+						<SafetyModeRow model={model} />
+						<DatabaseLimitsRow model={model} />
+						<DatabaseNotice tone="info" icon="icon-[mdi--shield-alert-outline]" title={t("databaseCredentialRiskNote")} />
 						<DatabaseNotice tone="info" icon="icon-[mdi--shield-lock-outline]" title={t("databaseEngineNote")} />
 					</div>
 				</section>

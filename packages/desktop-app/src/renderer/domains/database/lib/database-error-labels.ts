@@ -11,6 +11,8 @@ export const ERROR_LABEL_KEYS = {
 	DBX_NOT_RUNNING: "databaseError.engineNotRunning",
 	READ_ONLY: "databaseError.readOnly",
 	PROD_WRITE_BLOCKED: "databaseError.prodWriteBlocked",
+	WRITE_BLOCKED: "databaseError.writeBlocked",
+	DDL_BLOCKED: "databaseError.ddlBlocked",
 	TIMEOUT: "databaseError.timeout",
 	UNKNOWN: "databaseError.unknown",
 } as const;

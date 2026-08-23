@@ -12,6 +12,17 @@ import type { DatabaseError } from "../../preload/api-types/database.js";
 /** 明确只读的语句首关键字。 */
 const READ_LEADERS = new Set(["SELECT", "SHOW", "DESCRIBE", "DESC", "EXPLAIN", "PRAGMA", "USE"]);
 
+/** 安全执行模式：strict 下所有连接（含 dev）写操作需显式授权；relaxed 仅 prod 拦截（W4-② 行为）。 */
+export type SafetyMode = "strict" | "relaxed";
+
+/** DDL 关键字（B3.1-①-D：危险 SQL 拦截规则扩展）。 */
+const DDL_KEYWORDS = ["CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME"];
+const DDL_LEADERS = new Set(DDL_KEYWORDS);
+const DDL_KEYWORD_RE = new RegExp(`\\b(?:${DDL_KEYWORDS.join("|")})\\b`);
+
+/** 事务语句首关键字（B3.1-①-D 归类；BEGIN/START 已被 isWriteStatement 保守覆盖为写）。 */
+const TRANSACTION_LEADERS = new Set(["BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "START"]);
+
 /** 写操作关键字（WITH 开头语句的全文扫描用）。 */
 const WRITE_KEYWORDS = [
 	"INSERT",
@@ -110,14 +121,65 @@ export function isWriteStatement(sql: string): boolean {
 	return true;
 }
 
-/** 生产写保护拦截判定（W4-②）：prod 且未显式授权时，写语句返回 PROD_WRITE_BLOCKED。 */
-export function maybeBlockProdWrite(input: {
+/** 是否为 DDL 语句（B3.1-①-D）：CREATE/ALTER/DROP/TRUNCATE/RENAME 首关键字（含 WITH 前缀全文扫描）。 */
+export function isDdlStatement(sql: string): boolean {
+	const cleaned = stripSqlComments(sql).trim();
+	if (!cleaned) return false;
+	const first = firstKeyword(cleaned);
+	if (DDL_LEADERS.has(first)) return true;
+	if (first === "WITH") return DDL_KEYWORD_RE.test(cleaned.toUpperCase());
+	return false;
+}
+
+/** 是否为事务语句（B3.1-①-D 归类）：BEGIN/COMMIT/ROLLBACK/SAVEPOINT/START。 */
+export function isTransactionStatement(sql: string): boolean {
+	const cleaned = stripSqlComments(sql).trim();
+	if (!cleaned) return false;
+	return TRANSACTION_LEADERS.has(firstKeyword(cleaned));
+}
+
+/**
+ * 按分号拆分多语句（B3.1-①-D：多语句检测）。
+ * 剥离注释后切分；字符串字面量内的分号不处理——切分会把语句拆开逐段判定，
+ * 方向是「保守拦截」，符合安全默认语义。
+ */
+export function splitStatements(sql: string): string[] {
+	return stripSqlComments(sql)
+		.split(";")
+		.map((statement) => statement.trim())
+		.filter((statement) => statement.length > 0);
+}
+
+/**
+ * 写保护拦截判定（B3.1-①）：按安全执行模式拦截写语句。
+ * - DDL（含多语句中的 DDL）：无论模式一律拦截（与引擎 SQL_BLOCKED 默认策略一致）；
+ * - strict：所有连接（含 dev）的写操作需显式授权，否则返回 WRITE_BLOCKED；
+ * - relaxed：仅 prod 连接未授权时拦截（W4-② 原行为 PROD_WRITE_BLOCKED）；
+ * - 多语句：任一条语句为写即整体拦截。
+ */
+export function maybeBlockWrite(input: {
 	env: "prod" | "dev";
-	/** 该连接是否已显式授权生产写操作。 */
+	/** 该连接是否已显式授权写操作。 */
 	writeApproved: boolean;
+	/** 安全执行模式（缺省 strict：默认最严）。 */
+	safetyMode?: SafetyMode;
 	sql: string;
 }): DatabaseError | null {
-	if (input.env !== "prod" || input.writeApproved) return null;
-	if (!isWriteStatement(input.sql)) return null;
-	return { code: "PROD_WRITE_BLOCKED", detail: "Write statement on production connection requires explicit approval" };
+	const mode = input.safetyMode ?? "strict";
+	const statements = splitStatements(input.sql);
+	if (statements.length === 0) return null;
+	if (statements.some(isDdlStatement)) {
+		return { code: "DDL_BLOCKED", detail: "DDL statements are blocked by default safety policy" };
+	}
+	if (!statements.some(isWriteStatement)) return null;
+	if (mode === "strict" && !input.writeApproved) {
+		return { code: "WRITE_BLOCKED", detail: "Write statement requires explicit approval in strict safety mode" };
+	}
+	if (input.env === "prod" && !input.writeApproved) {
+		return {
+			code: "PROD_WRITE_BLOCKED",
+			detail: "Write statement on production connection requires explicit approval",
+		};
+	}
+	return null;
 }
