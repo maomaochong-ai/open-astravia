@@ -1,4 +1,9 @@
 {
+	"workspaceView": {
+		"loading": "正在加载插件…",
+		"missing": "该工作区视图已不存在，正在返回首页。",
+		"failed": "该工作区视图渲染失败，请查看开发者工具中的错误详情。"
+	},
 	"sidebar": {
 		"nav": {
 			"newSession": "新会话",

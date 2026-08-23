@@ -1,3 +1,4 @@
+import { useActiveWorkspaceViewHeader } from "@domains/plugins/components/WorkspaceViewHeaderSlot";
 import {
 	pageHeaderLeftSlotAtom,
 	pageHeaderRightSlotAtom,
@@ -29,6 +30,9 @@ export function usePageHeaderModel({
 	const { i18n, t } = useTranslation("common");
 	const matches = useMatches();
 	const themePageRoute = useActiveThemePageRoute();
+	// 插件工作区视图可以接管这条页头：它同时是窗口拖拽区和 macOS 红绿灯安全区，
+	// 不能整条撤掉，所以插件是「把自己的工具栏搬进来」而不是「换掉它」。
+	const workspaceViewHeader = useActiveWorkspaceViewHeader();
 	const path = matches[matches.length - 1]?.pathname ?? "/";
 	const titleOverride = useAtomValue(pageHeaderTitleAtom);
 	const titleHidden = useAtomValue(pageHeaderTitleHiddenAtom);
@@ -39,20 +43,21 @@ export function usePageHeaderModel({
 	const themePageTitle = themePageRoute?.page
 		? resolveThemePageTitle(themePageRoute.page.title, i18n.language)
 		: undefined;
-	const fallbackTitle = themePageTitle || (fallbackTitleKey ? t(fallbackTitleKey) : t("appName"));
+	const fallbackTitle =
+		workspaceViewHeader?.title || themePageTitle || (fallbackTitleKey ? t(fallbackTitleKey) : t("appName"));
 	const title = titleOverride && titleOverride.length > 0 ? titleOverride : fallbackTitle;
 	const triggerVisible = narrow || sidebarCollapsed;
 	const sidebarTriggerTitle = t(narrow ? "appShell.sidebarTrigger.open" : "appShell.sidebarTrigger.expand");
 
 	return {
 		fallbackTitleKey,
-		leftSlot,
+		leftSlot: workspaceViewHeader?.left ?? leftSlot,
 		path,
-		rightSlot,
+		rightSlot: workspaceViewHeader?.right ?? rightSlot,
 		sidebarTriggerTitle,
 		title,
 		titleBadge,
-		titleHidden,
+		titleHidden: titleHidden || workspaceViewHeader?.hideTitle === true,
 		triggerVisible,
 	};
 }

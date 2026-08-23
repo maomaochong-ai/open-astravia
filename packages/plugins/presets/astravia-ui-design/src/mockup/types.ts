@@ -1,3 +1,8 @@
+/** 一张导出图里排几个画框；超出的排到下一页。 */
+export type FramesPerPage = 1 | 2 | 3 | 4;
+
+export const FRAMES_PER_PAGE: readonly FramesPerPage[] = [1, 2, 3, 4];
+
 /** User-facing export settings. Lengths are in layout units (see layout.ts). */
 export interface MockupOptions {
 	/** Screen corner radius. The device shell's outer radius adds borderWidth. */
@@ -12,6 +17,7 @@ export interface MockupOptions {
 	/** Show the Astravia watermark. */
 	brand: boolean;
 	scale: 1 | 2;
+	perPage: FramesPerPage;
 }
 
 /** One frame ready to be composed: manifest size for layout, bitmap for paint. */

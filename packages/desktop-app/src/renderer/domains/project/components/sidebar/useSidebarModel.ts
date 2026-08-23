@@ -1,12 +1,22 @@
+import { usePluginTextResolver } from "@domains/plugins/runtime/plugin-i18n";
+import {
+	normalizePluginNavBadge,
+	sortWorkspaceViews,
+	workspaceViewNavKey,
+	workspaceViewPath,
+} from "@domains/plugins/runtime/workspace-view-registry";
+import type { RegisteredWorkspaceView } from "@shared/store/atoms";
 import {
 	activeSessionAtom,
 	conversationBucketCwd,
 	defaultConversationCwdAtom,
+	pluginWorkspaceViewsAtom,
 	SIDEBAR_WIDTH_STORAGE_KEY,
 	sidebarFilterAtom,
 	sidebarWidthAtom,
 } from "@shared/store/atoms";
 import { useMatches, useNavigate } from "@tanstack/react-router";
+import type { TFunction } from "i18next";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -136,6 +146,40 @@ function toNavItem(
 	};
 }
 
+/** 归一化 + 解析工作区视图的导航角标为可展示文本（beta 由宿主 i18n 提供文案）。 */
+function toNavBadgeText(
+	view: RegisteredWorkspaceView,
+	resolveText: (pluginId: string, raw: string | undefined) => string,
+	t: TFunction<"project">,
+): string | undefined {
+	const badge = normalizePluginNavBadge(view.badge);
+	if (!badge) return undefined;
+	if (badge.kind === "beta") return t("sidebar.nav.betaBadge");
+	if (badge.kind === "text") return resolveText(view.pluginId, badge.text);
+	if (badge.kind === "count") return badge.count > 99 ? "99+" : String(badge.count);
+	return undefined;
+}
+
+/** 插件工作区视图 → 侧边栏导航项（key 与路由都由 workspace-view-registry 给出）。 */
+function toWorkspaceNavItem(
+	view: RegisteredWorkspaceView,
+	label: string,
+	currentPath: string,
+	badge?: string,
+): SidebarNavItem {
+	const path = workspaceViewPath(view.pluginId, view.viewId);
+	return {
+		key: workspaceViewNavKey(view.pluginId, view.viewId),
+		type: "custom",
+		label,
+		icon: view.icon ?? "icon-[solar--widget-2-linear]",
+		active: currentPath === path || currentPath.startsWith(`${path}/`),
+		title: view.description ? `${label} · ${view.description}` : `${label} · ${view.pluginName}`,
+		badge,
+		workspaceView: { pluginId: view.pluginId, viewId: view.viewId },
+	};
+}
+
 export function useSidebarModel({
 	onCollapse,
 	floating = false,
@@ -197,13 +241,25 @@ export function useSidebarModel({
 	const [width, setWidth] = useAtom(sidebarWidthAtom);
 	const widthRef = useRef(width);
 	widthRef.current = width;
+	// 插件工作区视图：侧边栏导航项常驻主区（等价上游「默认钉住」），label 走插件 i18n。
+	const workspaceViews = useAtomValue(pluginWorkspaceViewsAtom);
+	const resolvePluginText = usePluginTextResolver();
 	// Resolve i18n in the model layer so theme-ui nav item stays props-driven.
 	const navItems: SidebarNavItem[] = useMemo(
-		() =>
-			PRIMARY_NAV_ITEMS.map((item) =>
+		() => [
+			...PRIMARY_NAV_ITEMS.map((item) =>
 				toNavItem(item, t(item.labelKey), currentPath, "badgeKey" in item ? t(item.badgeKey) : undefined),
 			),
-		[currentPath, t],
+			...sortWorkspaceViews(workspaceViews).map((view) =>
+				toWorkspaceNavItem(
+					view,
+					resolvePluginText(view.pluginId, view.label),
+					currentPath,
+					toNavBadgeText(view, resolvePluginText, t),
+				),
+			),
+		],
+		[currentPath, resolvePluginText, t, workspaceViews],
 	);
 	const moreNavItems: SidebarNavItem[] = useMemo(
 		() => MORE_NAV_ITEMS.map((item) => toNavItem(item, t(item.labelKey), currentPath)),
@@ -284,6 +340,10 @@ export function useSidebarModel({
 		(item: SidebarNavItem) => {
 			if (item.type === "new-session") {
 				onNewChat();
+				return;
+			}
+			if (item.workspaceView) {
+				void navigate({ to: workspaceViewPath(item.workspaceView.pluginId, item.workspaceView.viewId) });
 				return;
 			}
 			if (item.settingsTab) {

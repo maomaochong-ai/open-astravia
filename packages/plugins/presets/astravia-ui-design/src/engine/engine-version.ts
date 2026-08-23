@@ -1,6 +1,7 @@
 /**
  * Shared design-engine version. Bumping it targets a fresh
- * ~/.astravia/design-engine/<version>/ directory (files re-materialized, deps
- * re-installed), so engine upgrades never mutate a possibly-running old tree.
+ * ~/.astravia/plugin-data/astravia-ui-design/design-engine/<version>/ directory
+ * (files re-materialized, deps re-installed), so engine upgrades never mutate
+ * a possibly-running old tree.
  */
-export const ENGINE_VERSION = "0.1.0";
+export const ENGINE_VERSION = "0.4.0";

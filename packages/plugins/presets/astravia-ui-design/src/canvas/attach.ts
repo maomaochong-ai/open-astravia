@@ -1,9 +1,9 @@
 import type { PluginPromptAttachment } from "@astravia-org/plugin-sdk";
-import type { DesignSession } from "../vetd/design-session";
+import type { DesignSession } from "../astd/design-session";
 
 export function themeTokenAttachment(session: DesignSession, token: string, label: string): PluginPromptAttachment {
 	return {
-		id: `vetd-token-${token}`,
+		id: `astd-token-${token}`,
 		label,
 		icon: "palette",
 		instructions: [
@@ -13,6 +13,6 @@ export function themeTokenAttachment(session: DesignSession, token: string, labe
 				"If asked to change it, edit the token value there — every frame updates via hot reload.",
 			].join("\n"),
 		],
-		metadata: { kind: "vetd-token", token },
+		metadata: { kind: "astd-token", token },
 	};
 }

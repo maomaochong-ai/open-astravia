@@ -1,0 +1,127 @@
+import { designMdWithFrontmatter } from "../design-systems/apply";
+import type { DesignResource, DesignResourceRole, DesignSystem } from "../design-systems/types";
+import { getPluginCtx } from "../plugin-context";
+import { createDesignProject } from "./gallery-actions";
+
+/**
+ * 从一套设计体系开一份新设计（侧边栏「设计」页的风格库入口）。
+ *
+ * 只把体系**作为参考资料**落到项目的 `design-resources/<id>/`，不预先建设计文档：
+ * 设计文档由 agent 按用户的第一句需求创建（`astd_create`），名字和尺寸都该由需求
+ * 决定。之前这里先 scaffold 一份并把体系应用上去，结果 agent 照旧另建一份，用户
+ * 拿到两份设计文档，而且真正在用的那份没有体系。
+ */
+
+/** 参考资料在项目里的落点。放项目根而不是设计包内：它是资料，不是设计的一部分。 */
+export const DESIGN_RESOURCES_DIR = "design-resources";
+
+export interface StartedFromSystem {
+	cwd: string;
+	/** 参考资料目录（项目相对路径）。 */
+	resourcesDir: string;
+	/** 实际落盘成功的资源路径（相对资料目录）。 */
+	written: string[];
+}
+
+
+/**
+ * 每个角色在清单里的一句「这是什么、什么时候读」。skill 只给协议，具体到文件靠这里点名：
+ * agent 看到 `demo.html` 光凭文件名不知道它是规范的成品案例，角色注释补上这一层。
+ * 没有角色的资源就是普通参考素材，不硬造注释。
+ */
+const ROLE_HINTS: Partial<Record<DesignResourceRole, string>> = {
+	spec: "the style contract — read this first",
+	theme: "theme tokens — copy into the design's own theme.css after astd_create",
+	demo: "this style applied to a full page — Read it before your first frame (reference only, do not copy its markup)",
+	cover: "style cover image — visual reference",
+	preview: "style screenshot — visual reference",
+	package: "upstream source package",
+};
+
+/**
+ * 参考包的文件清单（`INDEX.md`），skill 指示 agent 先读它。
+ *
+ * 逐个列出**实际落盘成功**的资源而不是让 agent 自己 ls——截图这类二进制可能因网络
+ * 原因缺席，清单必须反映真实落点；顺带给翻项目的人一句「这个目录是干什么的」。
+ */
+export function buildResourceIndex(systemName: string, written: readonly DesignResource[]): string {
+	return [
+		`# ${systemName} — style reference pack`,
+		"",
+		"Written by the Astravia design sidebar when the user picked this style.",
+		"Files in this pack:",
+		"",
+		...written.map((resource) => {
+			const hint = resource.role ? ROLE_HINTS[resource.role] : undefined;
+			return hint ? `- ${resource.path} — ${hint}` : `- ${resource.path}`;
+		}),
+		"",
+	].join("\n");
+}
+
+/** 清单文件名；skill 的 design-resources 协议按这个名字点名。 */
+export const RESOURCE_INDEX_FILE = "INDEX.md";
+
+/** 下载二进制资源的超时：截图这类文件不大，卡住不如放弃。 */
+const BINARY_TIMEOUT_MS = 20_000;
+
+/**
+ * 把一套体系的全部资源按仓库里的目录结构落到 `targetRoot`。
+ *
+ * 文本随清单已经到手，直接写；二进制现下载。**单份资源失败不影响其它** —— 少一张截图
+ * 也比整个流程失败强，规范和主题（文本）总是能落下来。返回实际写成功的资源。
+ */
+async function writeResources(system: DesignSystem, targetRoot: string): Promise<DesignResource[]> {
+	const ctx = getPluginCtx();
+	const written: DesignResource[] = [];
+	for (const resource of system.resources) {
+		const target = `${targetRoot}/${resource.path}`;
+		try {
+			const slash = target.lastIndexOf("/");
+			if (slash > 0) await ctx.fs.createDirectory(target.slice(0, slash));
+			if (resource.encoding === "text") {
+				// spec 落盘时补上 frontmatter：出处和许可跟着资料走，agent 把它拷进设计时一并带过去。
+				const content = resource.role === "spec" ? designMdWithFrontmatter(system) : resource.content;
+				await ctx.fs.writeFile(target, content);
+			} else {
+				const response = await ctx.network.request<string>({
+					url: resource.url,
+					method: "GET",
+					responseType: "base64",
+					timeoutMs: BINARY_TIMEOUT_MS,
+				});
+				if (!response.ok || typeof response.body !== "string") continue;
+				await ctx.fs.writeFile(target, response.body, "base64");
+			}
+			written.push(resource);
+		} catch {
+			// 单份资源写不下来就跳过，别让整个「从风格开工」失败。
+		}
+	}
+	return written;
+}
+
+/**
+ * 建项目 + 落参考资料 + 进新会话。
+ *
+ * 资料按体系 id 分目录：以后同一个项目里可以并存多份参考，互不覆盖。
+ */
+export async function startDesignFromSystem(
+	system: DesignSystem,
+	projectName: string,
+): Promise<StartedFromSystem> {
+	const ctx = getPluginCtx();
+	// 项目名由用户在对话框里给：他点的是风格，不是在给项目起名。
+	const { cwd } = await createDesignProject(projectName);
+	const resourcesDir = `${DESIGN_RESOURCES_DIR}/${system.id}`;
+	const written = await writeResources(system, `${cwd}/${resourcesDir}`);
+	// 清单跟着资料走：一份都没落下来就不写，免得 skill 引着 agent 去读一个空包。
+	if (written.length > 0) {
+		await ctx.fs
+			.writeFile(`${cwd}/${resourcesDir}/${RESOURCE_INDEX_FILE}`, buildResourceIndex(system.name, written))
+			.catch(() => {});
+	}
+	// astravia 的 navigation.open 没有 draft 注入能力：打开项目进入会话页，用户直接输入意图。
+	await ctx.official.projects.open(cwd);
+	return { cwd, resourcesDir, written: written.map((resource) => resource.path) };
+}

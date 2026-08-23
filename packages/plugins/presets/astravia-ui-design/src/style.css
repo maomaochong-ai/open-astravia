@@ -12,6 +12,8 @@
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
 	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
 	--color-border: var(--border);
 	--color-muted: var(--muted);
 	--color-muted-foreground: var(--muted-foreground);
@@ -21,107 +23,164 @@
 	--color-primary-foreground: var(--primary-foreground);
 }
 
-/* 无限画布的点阵背景：底色与点阵都取宿主主题变量，自动跟随明暗。 */
-.vetd-canvas-bg {
+/* 无限画布：底色取宿主背景色，纹理是一层低不透明度的网格。
+   light-dark() 只是宿主变量缺失时的兜底——宿主在 [data-mode] 上写了 color-scheme，
+   该属性可继承，能穿过插件的 @scope 边界（祖先选择器和 dark: 变体都穿不过来）。 */
+.astd-canvas-bg {
 	/* 选中态固定用 Figma 蓝，刻意不跟随宿主主题色：主题色可能与设计稿本身的配色
 	   撞车，而「哪个 frame 被选中」必须在任何主题、任何设计稿上都一眼可辨。 */
-	--vetd-selected: #0d99ff;
-	background-color: var(--background, #f4f4f5);
-	background-image: radial-gradient(
-		circle,
-		color-mix(in oklab, var(--foreground, #000) 14%, transparent) 1px,
-		transparent 1px
-	);
+	--astd-selected: #0d99ff;
+	--astd-grid-line: color-mix(in oklab, var(--foreground, #000) 3%, transparent);
+	background-color: var(--background, light-dark(#f5f5f5, #1e1e1e));
+	background-image:
+		linear-gradient(to right, var(--astd-grid-line) 1px, transparent 1px),
+		linear-gradient(to bottom, var(--astd-grid-line) 1px, transparent 1px);
 	background-size: 14px 14px;
 }
 
-/* 框选选框的填充（描边直接用工具类取 --vetd-selected） */
-.vetd-marquee-fill {
-	background: color-mix(in oklab, var(--vetd-selected) 12%, transparent);
+/* 框选选框的填充（描边直接用工具类取 --astd-selected） */
+.astd-marquee-fill {
+	background: color-mix(in oklab, var(--astd-selected) 12%, transparent);
 }
 
-/* 「让 Astravia 调整」主按钮：核心入口，静止时也要有存在感。
-   这是常驻无限循环的动效，所以**只允许动 transform / opacity**——它们由合成器
-   独立完成、不触发重绘。早先动的是 background-position 与 box-shadow 扩散，
-   两者每帧都要重新光栅化，叠在一堆跨源 iframe 上会把合成器压垮、整窗口撕裂。 */
-.vetd-ask-sweep::before {
-	content: "";
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	width: 45%;
-	pointer-events: none;
-	background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.45), transparent);
-	animation: vetd-sweep 2.8s ease-in-out infinite;
-}
-@keyframes vetd-sweep {
-	0% {
-		transform: translateX(-120%);
-	}
-	/* 扫过后留一段静默，避免变成不停闪的跑马灯 */
-	55%,
-	100% {
-		transform: translateX(340%);
-	}
-}
-
-/* 光晕环：静态描边 + 缩放淡出，同样只动 transform / opacity。 */
-.vetd-ask-halo {
-	border: 2px solid var(--primary, #6366f1);
-	animation: vetd-halo 2.8s ease-out infinite;
-}
-@keyframes vetd-halo {
-	0% {
-		transform: scale(1);
-		opacity: 0.55;
-	}
-	70%,
-	100% {
-		transform: scale(1.28);
-		opacity: 0;
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.vetd-ask-sweep::before,
-	.vetd-ask-halo {
-		animation: none;
-	}
-	.vetd-ask-halo {
-		opacity: 0;
-	}
-}
-
-/* 导出预览的透明背景棋盘格 */
-.vetd-checkerboard {
+/* 导出预览的透明背景棋盘格。挂在被 world transform 缩放的层里：
+   尺寸与错位量都乘 --astd-lscale（抵消缩放），格子在屏幕上才恒定 16px。 */
+.astd-checkerboard {
 	background-image:
 		linear-gradient(45deg, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 25%, transparent 25%),
 		linear-gradient(-45deg, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 25%, transparent 25%),
 		linear-gradient(45deg, transparent 75%, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 75%),
 		linear-gradient(-45deg, transparent 75%, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 75%);
-	background-size: 16px 16px;
+	background-size: calc(16px * var(--astd-lscale, 1)) calc(16px * var(--astd-lscale, 1));
 	background-position:
 		0 0,
-		0 8px,
-		8px -8px,
-		-8px 0;
+		0 calc(8px * var(--astd-lscale, 1)),
+		calc(8px * var(--astd-lscale, 1)) calc(-8px * var(--astd-lscale, 1)),
+		calc(-8px * var(--astd-lscale, 1)) 0;
 }
 
-/* 截图卡的横排滚动条隐藏（翻页靠左右箭头） */
-.vetd-shot-swiper {
+/* 渲染图工作台的命中区描边：命中层在 world transform 里，Tailwind 的 ring
+   会跟着缩放；这里用乘了 --astd-lscale 的 box-shadow 保持恒定 2px 视觉粗细。 */
+.astd-mockup-hit {
+	transition: box-shadow 150ms;
+}
+.astd-mockup-hit-selected {
+	box-shadow: 0 0 0 calc(2px * var(--astd-lscale, 1)) var(--primary);
+}
+.astd-mockup-hit-hover:hover {
+	box-shadow: 0 0 0 calc(2px * var(--astd-lscale, 1)) color-mix(in oklab, var(--primary) 50%, transparent);
+}
+
+/* ---------- 画廊 Hero ----------
+   通版的页面顶部，不是卡片：没有圆角、没有描边，层次只由光晕、点阵和底部一条
+   发丝线承担。发丝线两端渐隐，免得看起来又变成一条分割线。 */
+.astd-hero::after {
+	content: "";
+	position: absolute;
+	inset: auto 0 0 0;
+	height: 1px;
+	background: linear-gradient(
+		to right,
+		transparent,
+		color-mix(in oklab, var(--foreground, #000) 10%, transparent) 12%,
+		color-mix(in oklab, var(--foreground, #000) 10%, transparent) 72%,
+		transparent
+	);
+}
+
+/* 左上角的主色光晕：Hero 唯一一处敢用饱和度的地方，收在 9% 以内，
+   mono 主题下退化成一团更亮的灰，不会打架。向下渐隐到内容区。 */
+.astd-hero-glow {
+	background:
+		radial-gradient(55% 110% at 10% -10%, color-mix(in oklab, var(--primary, #6366f1) 9%, transparent), transparent 62%),
+		radial-gradient(45% 85% at 92% 0%, color-mix(in oklab, var(--primary, #6366f1) 5%, transparent), transparent 68%);
+	/* Hero 处在窗口最顶端（沉浸式页头浮在其上），光晕从第一像素全亮，
+	   只向内容区一侧渐隐。 */
+	-webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent);
+	mask-image: linear-gradient(to bottom, #000 45%, transparent);
+}
+
+/* 极淡点阵：给平面一点「纸面」质感，向右下渐隐，避免和插画抢注意力。 */
+.astd-hero-dots {
+	background-image: radial-gradient(color-mix(in oklab, var(--foreground, #000) 9%, transparent) 1px, transparent 1px);
+	background-size: 12px 12px;
+	opacity: 0.32;
+	-webkit-mask-image: radial-gradient(70% 100% at 0% 0%, #000, transparent 70%);
+	mask-image: radial-gradient(70% 100% at 0% 0%, #000, transparent 70%);
+}
+
+/* Hero 里的输入框与次级按钮：微微下沉的凹槽，聚焦时才浮起主色描边。
+   用 inset 阴影而不是 border，控件在通版底色上不会显出四条硬边。 */
+.astd-hero-field {
+	background: color-mix(in oklab, var(--foreground, #000) 4%, transparent);
+	box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--foreground, #000) 8%, transparent);
+}
+.astd-hero-field:focus {
+	background: var(--card);
+	box-shadow:
+		inset 0 0 0 1px color-mix(in oklab, var(--primary, #6366f1) 55%, transparent),
+		0 0 0 3px color-mix(in oklab, var(--primary, #6366f1) 14%, transparent);
+}
+
+/* 插画的呼吸：只动 transform，且幅度小到「像是活的」而不是「在动」。 */
+.astd-hero-frame {
+	animation: astd-hero-float 9s ease-in-out infinite;
+}
+.astd-hero-mote {
+	animation: astd-hero-float 6s ease-in-out infinite;
+}
+.astd-hero-mote-slow {
+	animation-duration: 8.5s;
+	animation-delay: -2s;
+}
+@keyframes astd-hero-float {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-4px);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.astd-hero-frame,
+	.astd-hero-mote {
+		animation: none;
+	}
+}
+
+/* 画廊滚动容器：不显示滚动条（滚轮/触控板照常滚），沉浸页右缘不挂一条竖槽。 */
+.astd-gallery-scroll {
 	scrollbar-width: none;
 	-ms-overflow-style: none;
 }
-.vetd-shot-swiper::-webkit-scrollbar {
+.astd-gallery-scroll::-webkit-scrollbar {
+	display: none;
+}
+
+/* 会话卡片横排滚动条隐藏（翻页靠左右箭头） */
+.astd-swiper {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.astd-swiper::-webkit-scrollbar {
+	display: none;
+}
+
+/* 竖排缩略图列表：滚动但不显示滚动条（上下边缘用渐隐提示还有内容） */
+.astd-rail-scroll {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.astd-rail-scroll::-webkit-scrollbar {
 	display: none;
 }
 
 /* 截图进行中的骨架呼吸 */
-.vetd-shot-pulse {
-	animation: vetd-shot-pulse 1.4s ease-in-out infinite;
+.astd-shot-pulse {
+	animation: astd-shot-pulse 1.4s ease-in-out infinite;
 }
-@keyframes vetd-shot-pulse {
+@keyframes astd-shot-pulse {
 	0%,
 	100% {
 		opacity: 1;
@@ -131,24 +190,26 @@
 	}
 }
 @media (prefers-reduced-motion: reduce) {
-	.vetd-shot-pulse {
+	.astd-shot-pulse {
 		animation: none;
 	}
 }
 
 /* frame「修改中」呼吸光效：描边静态、只动 opacity。这一层紧贴 iframe，
    动 box-shadow 会让含跨源 iframe 的区域每帧重新光栅化。
-   用 inset 描边是因为宿主那层是 overflow:hidden，外扩的环会被裁掉。 */
-.vetd-modifying::after {
+   用 inset 描边是因为宿主那层是 overflow:hidden，外扩的环会被裁掉。
+   --astd-accent 只定义在浮层内部（不会向上继承到这里），所以这里取的是
+   fallback——正好是「修改中」的语义色，与浮层同调。 */
+.astd-modifying::after {
 	content: "";
 	position: absolute;
 	inset: 0;
 	pointer-events: none;
 	border-radius: inherit;
-	box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--primary, #6366f1) 65%, transparent);
-	animation: vetd-breathe 1.6s ease-in-out infinite;
+	box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--astd-accent, #6366f1) 65%, transparent);
+	animation: astd-breathe 1.6s ease-in-out infinite;
 }
-@keyframes vetd-breathe {
+@keyframes astd-breathe {
 	0%,
 	100% {
 		opacity: 1;
@@ -159,7 +220,564 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.vetd-modifying::after {
+	.astd-modifying::after {
 		animation: none;
 	}
+}
+
+/* ---------- frame 活动态浮层（FrameActivityOverlay） ----------
+   全部只动 transform / opacity：这一层压着跨源 iframe，动布局属性或
+   box-shadow 会让整个区域逐帧重新光栅化（同 astd-modifying 的教训）。
+
+   配色一律走 --astd-accent（由组件按活动态设在浮层根上）与固定色板，不读宿主
+   主题变量：mono 主题的 primary/ring/accent/chart-4 全是黑白灰，读它们的话
+   五个 blob 一模糊就互相抵消成中性灰，动画彻底糊掉。浮层是系统状态语言而非
+   内容，本就该有自己的一套语义色（同标题栏三色徽标）。 */
+
+/* 迷你 Bot 头像：theme-ui BotAvatar（sm）的纯 CSS 复刻。 */
+.astd-bot {
+	position: relative;
+	display: inline-flex;
+	width: 20px;
+	height: 20px;
+}
+.astd-bot-head {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 3px;
+	width: 20px;
+	height: 20px;
+	border-radius: 6px;
+	background: linear-gradient(
+		135deg,
+		var(--astd-accent, #6366f1),
+		color-mix(in oklab, var(--astd-accent, #6366f1) 85%, transparent)
+	);
+	box-shadow: 0 2px 6px -2px var(--astd-accent, #6366f1);
+}
+.astd-bot-eye {
+	width: 3px;
+	height: 3px;
+	border-radius: 9999px;
+	background: #fff;
+}
+/* think：歪头思考 + 泡泡飘起（浏览）。 */
+.astd-bot-think .astd-bot-head {
+	animation: astd-bot-think 1.8s ease-in-out infinite;
+}
+.astd-bot-bubble {
+	position: absolute;
+	right: -4px;
+	top: -4px;
+	width: 6px;
+	height: 6px;
+	border-radius: 9999px;
+	background: color-mix(in oklab, var(--astd-accent, #6366f1) 70%, transparent);
+	animation: astd-bot-bubble 1.8s ease-out infinite;
+}
+@keyframes astd-bot-think {
+	0%,
+	100% {
+		transform: rotate(0deg) translateY(0);
+	}
+	30% {
+		transform: rotate(6deg) translateY(-1.5px);
+	}
+	60% {
+		transform: rotate(-5deg) translateY(0);
+	}
+}
+@keyframes astd-bot-bubble {
+	0% {
+		opacity: 0;
+		transform: scale(0.4) translateY(0);
+	}
+	40% {
+		opacity: 1;
+		transform: scale(1) translateY(-5px);
+	}
+	100% {
+		opacity: 0;
+		transform: scale(0.7) translateY(-9px);
+	}
+}
+/* write：快速点头疾书（修改）。 */
+.astd-bot-write .astd-bot-head {
+	animation: astd-bot-write 0.55s ease-in-out infinite;
+	transform-origin: 50% 100%;
+}
+@keyframes astd-bot-write {
+	0%,
+	100% {
+		transform: rotate(-4deg) translateY(0);
+	}
+	50% {
+		transform: rotate(5deg) translateY(1px);
+	}
+}
+/* bounce：蹦跳带挤压回弹（创作）。 */
+.astd-bot-bounce .astd-bot-head {
+	animation: astd-bot-bounce 0.9s ease-out infinite;
+	transform-origin: 50% 100%;
+}
+@keyframes astd-bot-bounce {
+	0%,
+	100% {
+		transform: translateY(0) scale(1, 1);
+	}
+	28% {
+		transform: translateY(-6px) scale(0.94, 1.12);
+	}
+	55% {
+		transform: translateY(0) scale(1.16, 0.82);
+	}
+	80% {
+		transform: translateY(-1.5px) scale(0.98, 1.04);
+	}
+}
+
+/* 浮层整体渐入渐出：opacity 由组件驱动（挂载下一帧置 1、卸载前归 0），
+   时长与 FrameActivityOverlay 的 FADE_MS 保持一致。 */
+.astd-activity-overlay {
+	transition: opacity 300ms ease;
+}
+
+/* 混沌流体背景（对齐 image-gen 生成骨架）：实色 blob 漂移缩放 + 旋转层，
+   叠加重模糊融成流动渐变。60% 不透明度，底下的稿子仍隐约可见。
+
+   径向遮罩让它四周浓、中心淡：边缘紧贴 frame 边框，与画布背景对比最强、
+   存在感够；中心留出通透区，稿子主体始终读得到，动画不挡看稿。 */
+.astd-fluid {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	opacity: 0.6;
+	--astd-fluid-mask: radial-gradient(
+		ellipse 72% 62% at 50% 50%,
+		transparent 0%,
+		rgb(0 0 0 / 0.22) 42%,
+		rgb(0 0 0 / 0.72) 72%,
+		#000 100%
+	);
+	-webkit-mask-image: var(--astd-fluid-mask);
+	mask-image: var(--astd-fluid-mask);
+}
+/* 居中大正方形旋转层：180% 宽，任意旋转角内切圆都盖满 frame。 */
+.astd-fluid-spin {
+	position: relative;
+	width: 180%;
+	aspect-ratio: 1;
+	filter: blur(26px) saturate(120%);
+	animation: astd-fluid-spin 36s linear infinite;
+	will-change: transform;
+}
+@keyframes astd-fluid-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+.astd-fluid-blob {
+	width: 100%;
+	height: 100%;
+	border-radius: 9999px;
+	animation-name: astd-fluid-drift;
+	animation-timing-function: ease-in-out;
+	animation-iteration-count: infinite;
+	animation-direction: alternate;
+	will-change: transform;
+}
+@keyframes astd-fluid-drift {
+	0% {
+		transform: translate(0%, 0%) scale(1);
+	}
+	25% {
+		transform: translate(22%, -16%) scale(1.22);
+	}
+	50% {
+		transform: translate(-14%, 20%) scale(0.82);
+	}
+	75% {
+		transform: translate(16%, 14%) scale(1.12);
+	}
+	100% {
+		transform: translate(-20%, -10%) scale(0.94);
+	}
+}
+
+/* 毛玻璃胶囊：把头像与效果托在画面中央，避免细节淹没在 frame 内容里。
+   底色同上固定白色，不跟宿主主题。 */
+.astd-activity-chip {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 10px;
+	border-radius: 9999px;
+	background: rgb(255 255 255 / 0.88);
+	border: 1px solid color-mix(in oklab, var(--astd-accent, #6366f1) 25%, transparent);
+	backdrop-filter: blur(6px);
+	box-shadow: 0 4px 16px -8px rgb(0 0 0 / 0.25);
+}
+
+/* 浏览：扫描光带（top/height 都是常量，动画只有 transform）。 */
+.astd-scan-beam {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: -20%;
+	height: 20%;
+	background: linear-gradient(
+		to bottom,
+		transparent,
+		color-mix(in oklab, var(--astd-accent, #6366f1) 8%, transparent) 60%,
+		color-mix(in oklab, var(--astd-accent, #6366f1) 22%, transparent)
+	);
+	border-bottom: 1px solid color-mix(in oklab, var(--astd-accent, #6366f1) 45%, transparent);
+	animation: astd-scan 2.4s linear infinite;
+}
+@keyframes astd-scan {
+	to {
+		/* 自身高 20%：600% ≈ 从顶上扫出底边。 */
+		transform: translateY(600%);
+	}
+}
+
+/* 浏览：中央放大镜，缓慢游走像在找东西。 */
+.astd-magnifier {
+	position: relative;
+	width: 34px;
+	height: 34px;
+	animation: astd-magnifier-roam 3.2s ease-in-out infinite;
+}
+.astd-magnifier-glass {
+	position: absolute;
+	inset: 0;
+	border-radius: 9999px;
+	border: 3px solid color-mix(in oklab, var(--astd-accent, #6366f1) 75%, transparent);
+	background: color-mix(in oklab, var(--astd-accent, #6366f1) 10%, transparent);
+}
+.astd-magnifier-handle {
+	position: absolute;
+	width: 14px;
+	height: 4px;
+	border-radius: 9999px;
+	background: color-mix(in oklab, var(--astd-accent, #6366f1) 75%, transparent);
+	right: -10px;
+	bottom: 0;
+	transform: rotate(45deg);
+}
+@keyframes astd-magnifier-roam {
+	0%,
+	100% {
+		transform: translate(-8px, -5px);
+	}
+	30% {
+		transform: translate(7px, -2px);
+	}
+	60% {
+		transform: translate(3px, 6px);
+	}
+	80% {
+		transform: translate(-4px, 3px);
+	}
+}
+
+/* 修改：打字骨架线，逐行「写出来」再擦掉重来。 */
+.astd-typing-lines {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	width: 36px;
+}
+.astd-typing-line {
+	height: 3px;
+	border-radius: 2px;
+	background: color-mix(in oklab, var(--astd-accent, #6366f1) 55%, transparent);
+	transform-origin: left;
+	transform: scaleX(0);
+	animation: astd-typing 1.8s ease-in-out infinite;
+}
+.astd-typing-line:nth-child(2) {
+	width: 78%;
+	animation-delay: 0.2s;
+}
+.astd-typing-line:nth-child(3) {
+	width: 55%;
+	animation-delay: 0.4s;
+}
+@keyframes astd-typing {
+	0% {
+		transform: scaleX(0);
+	}
+	45%,
+	75% {
+		transform: scaleX(1);
+	}
+	100% {
+		transform: scaleX(0);
+	}
+}
+
+/* 创作：十字星光，交错闪烁。 */
+.astd-spark {
+	position: absolute;
+	width: 10px;
+	height: 10px;
+	opacity: 0;
+	animation: astd-spark 1.9s ease-in-out infinite;
+}
+.astd-spark::before,
+.astd-spark::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	border-radius: 9999px;
+	/* 以白为主、只掺一点语义色：星光压在彩色流体上，越白越跳。 */
+	background: color-mix(in oklab, var(--astd-accent, #6366f1) 25%, white);
+}
+.astd-spark::before {
+	width: 10px;
+	height: 2px;
+	transform: translate(-50%, -50%);
+}
+.astd-spark::after {
+	width: 2px;
+	height: 10px;
+	transform: translate(-50%, -50%);
+}
+@keyframes astd-spark {
+	0%,
+	100% {
+		opacity: 0;
+		transform: scale(0.3) rotate(0deg);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1) rotate(90deg);
+	}
+}
+
+/* 启动占位：三点等待，与打字骨架线同一套节奏（错开相位、循环）。 */
+.astd-loading-dots {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.astd-loading-dot {
+	width: 5px;
+	height: 5px;
+	border-radius: 9999px;
+	background: color-mix(in oklab, var(--astd-accent, #64748b) 60%, transparent);
+	animation: astd-loading-dot 1.2s ease-in-out infinite;
+}
+.astd-loading-dot:nth-child(2) {
+	animation-delay: 0.15s;
+}
+.astd-loading-dot:nth-child(3) {
+	animation-delay: 0.3s;
+}
+@keyframes astd-loading-dot {
+	0%,
+	100% {
+		opacity: 0.35;
+		transform: translateY(0) scale(0.85);
+	}
+	40% {
+		opacity: 1;
+		transform: translateY(-3px) scale(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.astd-bot-think .astd-bot-head,
+	.astd-bot-bubble,
+	.astd-bot-write .astd-bot-head,
+	.astd-bot-bounce .astd-bot-head,
+	.astd-scan-beam,
+	.astd-magnifier,
+	.astd-typing-line,
+	.astd-fluid-spin,
+	.astd-fluid-blob,
+	.astd-loading-dot,
+	.astd-spark {
+		animation: none;
+	}
+	/* 关掉动画后三点停在半透明帧，钉到可见状态。 */
+	.astd-loading-dot {
+		opacity: 0.8;
+	}
+	/* 关掉动画后骨架线/星光停在不可见帧，钉到可见状态。 */
+	.astd-typing-line {
+		transform: scaleX(1);
+	}
+	.astd-spark {
+		opacity: 0.8;
+	}
+}
+
+/* ---------- 备注（NotesLayer / NotesDrawer） ----------
+   两个状态色刻意写死、不跟宿主主题：备注要压在任意配色的设计稿上，
+   「待办 / 已完成」必须在任何主题任何画面上一眼可辨（同 --astd-selected 的理由）。 */
+.astd-note {
+	--astd-note-pending: #2563eb;
+	--astd-note-resolved: #10b981;
+}
+
+/* 气泡：圆形 + 左下尖角的 pin。头像装在里面，编号挂右上。 */
+.astd-note-pin {
+	background: var(--astd-note-pending);
+	box-shadow:
+		0 2px 8px -2px color-mix(in oklab, var(--astd-note-pending) 70%, transparent),
+		0 0 0 2px color-mix(in oklab, #fff 85%, transparent);
+	transition:
+		background 260ms ease,
+		box-shadow 260ms ease;
+}
+.astd-note-pin-resolved {
+	background: var(--astd-note-resolved);
+	box-shadow:
+		0 2px 6px -2px color-mix(in oklab, var(--astd-note-resolved) 60%, transparent),
+		0 0 0 2px color-mix(in oklab, #fff 80%, transparent);
+}
+
+/* 处理完成的正向微动效：一次弹跳 + 一圈扩散的绿色涟漪。
+   只动 transform / opacity——气泡压在跨源 iframe 上，动别的属性会让整片重新光栅化。 */
+.astd-note-celebrate {
+	animation: astd-note-pop 620ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* 每一帧都要重写完整的 transform：气泡的内联 transform 里还有钉住锚点的
+   translateY(-100%) 和抵消画布缩放的 --astd-lscale，animation 会整条覆盖它，
+   只写 scale() 的话一播动画气泡就跳到锚点上、还跟着画布缩放一起变大。 */
+@keyframes astd-note-pop {
+	0% {
+		transform: translateY(-100%) scale(var(--astd-lscale, 1));
+	}
+	38% {
+		transform: translateY(-100%) scale(calc(var(--astd-lscale, 1) * 1.32));
+	}
+	62% {
+		transform: translateY(-100%) scale(calc(var(--astd-lscale, 1) * 0.94));
+	}
+	100% {
+		transform: translateY(-100%) scale(var(--astd-lscale, 1));
+	}
+}
+.astd-note-ripple::after {
+	content: "";
+	position: absolute;
+	inset: -2px;
+	border-radius: inherit;
+	pointer-events: none;
+	box-shadow: 0 0 0 2px var(--astd-note-resolved, #10b981);
+	animation: astd-note-ripple 720ms ease-out forwards;
+}
+@keyframes astd-note-ripple {
+	0% {
+		opacity: 0.9;
+		transform: scale(1);
+	}
+	100% {
+		opacity: 0;
+		transform: scale(2.1);
+	}
+}
+
+/* 浮层入场：草稿输入框、thread 弹层、抽屉共用一套。 */
+.astd-note-enter {
+	animation: astd-note-enter 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* 同 astd-note-pop：浮层内联 transform 里的 --astd-lscale 必须逐帧带上，
+   否则入场那 180ms 里弹层会按画布缩放显示（缩到 20% 时几乎看不见）。 */
+@keyframes astd-note-enter {
+	from {
+		opacity: 0;
+		transform: translateY(-4px) scale(calc(var(--astd-lscale, 1) * 0.97));
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(var(--astd-lscale, 1));
+	}
+}
+.astd-note-drawer-enter {
+	animation: astd-note-drawer-enter 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes astd-note-drawer-enter {
+	from {
+		opacity: 0;
+		transform: translateX(-12px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+/* 备注面板的列表：不出滚动条（面板高度是跟着内容走的，一条竖轨会把它读成固定抽屉），
+   还能往下滚的时候底部渐隐一段当提示。渐隐由 JS 按滚动位置挂 class，滚到底就撤。 */
+.astd-note-scroll {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.astd-note-scroll::-webkit-scrollbar {
+	display: none;
+}
+.astd-note-scroll-fade {
+	-webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent 100%);
+	mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent 100%);
+}
+
+/* Astravia 头像：复用 .astd-bot 的形象语言（圆头 + 双眼），静态版。 */
+.astd-note-face {
+	position: relative;
+	display: block;
+	border-radius: 999px;
+	background: #ffffff;
+}
+.astd-note-face::before,
+.astd-note-face::after {
+	content: "";
+	position: absolute;
+	top: 38%;
+	width: 16%;
+	height: 22%;
+	border-radius: 999px;
+	background: currentColor;
+}
+.astd-note-face::before {
+	left: 27%;
+}
+.astd-note-face::after {
+	right: 27%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.astd-note-celebrate,
+	.astd-note-ripple::after,
+	.astd-note-enter,
+	.astd-note-drawer-enter {
+		animation: none;
+	}
+	.astd-note-ripple::after {
+		display: none;
+	}
+}
+
+/* 备注浮层的指针形态。
+   画布根在备注/画框工具下是 crosshair，而 cursor 会继承——不接管的话浮层里
+   （面板、thread、输入框）鼠标全是十字星。插件刻意不引入 preflight，button
+   也就没有 v4 默认的 pointer，一并在作用域根上给，省得逐个元素挂类。 */
+.astd-note-surface {
+	cursor: default;
+}
+.astd-note-surface button:not(:disabled),
+.astd-note-surface [role="button"]:not([aria-disabled="true"]) {
+	cursor: pointer;
+}
+.astd-note-surface textarea,
+.astd-note-surface input {
+	cursor: text;
 }

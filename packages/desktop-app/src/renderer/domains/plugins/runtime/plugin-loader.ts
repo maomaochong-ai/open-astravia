@@ -5,6 +5,8 @@ import type {
 	PluginAppActionHandler,
 	PluginAppActionReadyHandler,
 	PluginCardRendererContribution,
+	PluginCodingAgentHookEventName,
+	PluginCodingAgentHookRegistration,
 	PluginCommandApi,
 	PluginCommandSpawnExit,
 	PluginCommandSpawnHandle,
@@ -21,6 +23,7 @@ import type {
 	PluginImageRef,
 	PluginInputActionContribution,
 	PluginLocales,
+	PluginNavBadge,
 	PluginNetworkApi,
 	PluginNotifyOptions,
 	PluginOpenActivityTabOptions,
@@ -31,6 +34,8 @@ import type {
 	PluginStorageApi,
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
+	PluginWorkspaceViewContribution,
+	PluginWorkspaceViewHeader,
 } from "@astravia-org/plugin-sdk";
 import { resolveCatalogKey, resolvePluginText } from "@astravia-org/plugin-sdk";
 import {
@@ -52,9 +57,11 @@ import {
 	persistCurrentInputActionState,
 	pluginAgentToolLabelsAtom,
 	pluginInputActionsAtom,
+	pluginWorkspaceViewHeadersAtom,
 	promptAttachmentAtom,
 	type RegisteredAgentToolLabel,
 	setActivityPanelWidthAtom,
+	workspaceViewHeaderKey,
 } from "@shared/store/atoms";
 import { showToast } from "@shared/store/toast-atoms";
 import { getDefaultStore } from "jotai";
@@ -84,6 +91,7 @@ import {
 	normalizePluginShortcutBindings,
 	registerPluginShortcutScopeOnHost,
 } from "./plugin-shortcut-scope";
+import { workspaceViewPath } from "./workspace-view-registry";
 
 export interface LoadedPlugin {
 	id: string;
@@ -103,6 +111,7 @@ export interface LoadedPlugin {
 	cardRenderers: PluginCardRendererContribution[];
 	toolCallSlots: PluginToolCallSlotContribution[];
 	turnCards: PluginTurnCardContribution[];
+	workspaceViews: PluginWorkspaceViewContribution[];
 	dispose(): Promise<void>;
 }
 
@@ -632,6 +641,7 @@ function createContext(
 	cardRenderers: PluginCardRendererContribution[],
 	toolCallSlots: PluginToolCallSlotContribution[],
 	turnCards: PluginTurnCardContribution[],
+	workspaceViews: PluginWorkspaceViewContribution[],
 	settingsApi: PluginSettingsApi,
 	onChanged: () => void,
 	disposers: Array<() => void>,
@@ -813,6 +823,70 @@ function createContext(
 			},
 		};
 	};
+	const registerWorkspaceView = (contribution: PluginWorkspaceViewContribution): Disposable => {
+		if (!hasPermission(plugin, "ui.slot.workspace-view")) {
+			warnSkippedContribution(plugin, "ui.slot.workspace-view", "workspace view");
+			return noopDisposable;
+		}
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("Workspace view id is required");
+		}
+		if (typeof contribution.label !== "string" || contribution.label.trim().length === 0) {
+			throw new Error("Workspace view label is required");
+		}
+		if (typeof contribution.component !== "function" && typeof contribution.component !== "object") {
+			throw new Error("Workspace view component is invalid");
+		}
+		const normalized: PluginWorkspaceViewContribution = {
+			id: contribution.id,
+			label: contribution.label,
+			icon: contribution.icon,
+			description: contribution.description,
+			badge: contribution.badge,
+			component: contribution.component,
+			navOrder: contribution.navOrder ?? 0,
+		};
+		workspaceViews.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = workspaceViews.indexOf(normalized);
+				if (index >= 0) workspaceViews.splice(index, 1);
+				onChanged();
+			},
+		};
+	};
+
+	const setWorkspaceViewBadge = (viewId: string, badge: PluginNavBadge | null): void => {
+		const entry = workspaceViews.find((view) => view.id === viewId);
+		if (!entry) return;
+		entry.badge = badge ?? undefined;
+		onChanged();
+	};
+
+	const setWorkspaceViewHeader = (viewId: string, header: PluginWorkspaceViewHeader | null): void => {
+		const key = workspaceViewHeaderKey(plugin.id, viewId);
+		const store = getDefaultStore();
+		if (header == null) {
+			store.set(pluginWorkspaceViewHeadersAtom, (prev) => {
+				if (!(key in prev)) return prev;
+				const next = { ...prev };
+				delete next[key];
+				return next;
+			});
+			return;
+		}
+		store.set(pluginWorkspaceViewHeadersAtom, (prev) => ({
+			...prev,
+			[key]: { ...header, pluginId: plugin.id, viewId },
+		}));
+	};
+
+	const openWorkspaceView = (viewId: string): void => {
+		if (!workspaceViews.some((view) => view.id === viewId)) return;
+		void router.navigate({ to: workspaceViewPath(plugin.id, viewId) });
+	};
+
 	const fs = createFsApi(plugin, capabilitySessionId);
 	const conversation = createConversationApi(plugin);
 	const registerInputAction = (contribution: PluginInputActionContribution): Disposable => {
@@ -1060,6 +1134,12 @@ function createContext(
 		}
 		return window.astravia.clipboard.writeImage(dataUrl);
 	};
+	const openExternal: PluginContext["ui"]["openExternal"] = (url) => {
+		if (!hasPermission(plugin, "shell.openExternal")) {
+			return Promise.reject(new Error(`Plugin permission denied: shell.openExternal`));
+		}
+		return window.astravia.shell.openExternal(url);
+	};
 	const notify = (options: PluginNotifyOptions): void => {
 		if (options == null || typeof options !== "object" || typeof options.message !== "string") {
 			throw new Error("notify() requires { message: string }");
@@ -1106,6 +1186,10 @@ function createContext(
 		permissions: createPermissionApi(plugin),
 		ui: {
 			registerGlobalSlot,
+			registerWorkspaceView,
+			openWorkspaceView,
+			setWorkspaceViewBadge,
+			setWorkspaceViewHeader,
 			registerFilePreview,
 			registerActivityTab,
 			registerInputAction,
@@ -1121,6 +1205,7 @@ function createContext(
 			openPluginSettings,
 			captureRegion,
 			copyImage,
+			openExternal,
 			notify,
 		},
 		fileExplorer: {
@@ -1276,6 +1361,17 @@ function createContext(
 						void window.astravia.plugins.unregisterContinuationProvider(plugin.id, providerId, activationId);
 					},
 				};
+			},
+			registerHook: <E extends PluginCodingAgentHookEventName>(
+				_registration: PluginCodingAgentHookRegistration<E>,
+			) => {
+				// 宿主不派发 coding-agent hook 事件（P2 简化约束：不移植能力层）。
+				// 注册被接受但不会触发：插件按「钩子永不触发」降级（如历史自动提交失效），
+				// 激活与加载不受影响。
+				console.warn(
+					`[plugin:${plugin.id}] agent.registerHook 已注册，但当前宿主不派发 coding-agent hook 事件，钩子不会触发`,
+				);
+				return noopDisposable;
 			},
 			registerSystemPromptProvider: (registration) => {
 				if (
@@ -1482,6 +1578,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 	const cardRenderers: PluginCardRendererContribution[] = [];
 	const toolCallSlots: PluginToolCallSlotContribution[] = [];
 	const turnCards: PluginTurnCardContribution[] = [];
+	const workspaceViews: PluginWorkspaceViewContribution[] = [];
 	const disposers: Array<() => void> = [];
 	const styleHandle = loadPluginStyles(plugin);
 	let locallyDisposed = false;
@@ -1500,6 +1597,13 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 		cardRenderers.splice(0, cardRenderers.length);
 		toolCallSlots.splice(0, toolCallSlots.length);
 		turnCards.splice(0, turnCards.length);
+		workspaceViews.splice(0, workspaceViews.length);
+		getDefaultStore().set(pluginWorkspaceViewHeadersAtom, (prev) => {
+			const filtered = Object.fromEntries(
+				Object.entries(prev).filter(([, header]) => header.pluginId !== plugin.id),
+			);
+			return Object.keys(filtered).length === Object.keys(prev).length ? prev : filtered;
+		});
 		clearAgentToolLabelsForPlugin(plugin.id);
 		onChanged();
 	};
@@ -1538,6 +1642,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			cardRenderers,
 			toolCallSlots,
 			turnCards,
+			workspaceViews,
 			settingsApi,
 			onChanged,
 			disposers,
@@ -1561,6 +1666,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			activityTabs: activityTabs.length,
 			cardRenderers: cardRenderers.length,
 			toolCallSlots: toolCallSlots.length,
+			workspaceViews: workspaceViews.length,
 			activationId,
 		});
 		return {
@@ -1579,6 +1685,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			cardRenderers,
 			toolCallSlots,
 			turnCards,
+			workspaceViews,
 			dispose: async () => {
 				debugPluginAgent("dispose start", { pluginId: plugin.id, activationId });
 				try {

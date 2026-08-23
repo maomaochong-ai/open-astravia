@@ -136,13 +136,15 @@ function drawBrand(
 	g.restore();
 }
 
-/** Compose to an offscreen canvas and hand back a PNG data URL. */
-export function renderMockupToDataUrl(
+/** Compose to an offscreen canvas — the shared root of every export format. */
+export function renderMockupToCanvas(
 	shots: MockupShot[],
 	options: MockupOptions,
 	brandLogo: CanvasImageSource | null,
-): string {
-	const layout = layoutMockup(shots, options);
+	/** 这一页留几格；末页不满时靠它保住与其他页一致的宽度，见 layout.ts。 */
+	slots = shots.length,
+): HTMLCanvasElement {
+	const layout = layoutMockup(shots, options, slots);
 	const scale = options.scale * layout.fit;
 	const canvas = document.createElement("canvas");
 	canvas.width = Math.max(1, Math.round(layout.width * scale));
@@ -150,5 +152,49 @@ export function renderMockupToDataUrl(
 	const g = canvas.getContext("2d");
 	if (!g) throw new Error("2D canvas context unavailable");
 	renderMockup(g, shots, options, layout, scale, brandLogo);
-	return canvas.toDataURL("image/png");
+	return canvas;
+}
+
+/**
+ * 长图：把多页竖着拼成一张。页宽不一致时（末页画框少）居中，空出来的地方
+ * 补背景色，透明导出则继续留空——与单页导出的背景规则保持一致。
+ */
+export function stitchPagesVertically(pages: readonly HTMLCanvasElement[], options: MockupOptions): HTMLCanvasElement {
+	if (pages.length === 1) return pages[0];
+	const width = Math.max(1, ...pages.map((page) => page.width));
+	const height = Math.max(
+		1,
+		pages.reduce((sum, page) => sum + page.height, 0),
+	);
+	const canvas = document.createElement("canvas");
+	canvas.width = width;
+	canvas.height = height;
+	const g = canvas.getContext("2d");
+	if (!g) throw new Error("2D canvas context unavailable");
+	if (!options.transparent) {
+		g.fillStyle = options.background;
+		g.fillRect(0, 0, width, height);
+	}
+	let top = 0;
+	for (const page of pages) {
+		g.drawImage(page, Math.round((width - page.width) / 2), top);
+		top += page.height;
+	}
+	return canvas;
+}
+
+/**
+ * JPEG has no alpha, and Chromium encodes transparent pixels as black — flatten
+ * onto white first, matching where a transparent export usually ends up.
+ */
+export function canvasToJpegDataUrl(canvas: HTMLCanvasElement): string {
+	const flat = document.createElement("canvas");
+	flat.width = canvas.width;
+	flat.height = canvas.height;
+	const g = flat.getContext("2d");
+	if (!g) throw new Error("2D canvas context unavailable");
+	g.fillStyle = "#ffffff";
+	g.fillRect(0, 0, flat.width, flat.height);
+	g.drawImage(canvas, 0, 0);
+	return flat.toDataURL("image/jpeg", 0.94);
 }

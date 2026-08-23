@@ -37,7 +37,7 @@ export function FrameTitleInput({ initial, onCommit, onCancel }: FrameTitleInput
 			ref={inputRef}
 			value={value}
 			// 画布外壳是 select-none，编辑态要能正常选中文本。
-			className="w-auto min-w-0 select-text rounded-sm border border-[var(--vetd-selected)] bg-card px-1 text-xs font-medium text-foreground outline-none"
+			className="w-auto min-w-0 select-text rounded-sm border border-[var(--astd-selected)] bg-card px-1 text-xs font-medium text-foreground outline-none"
 			style={{ width: `${Math.max(MIN_CH, value.length + 1)}ch` }}
 			onChange={(event) => setValue(event.target.value)}
 			onBlur={() => settle(true)}

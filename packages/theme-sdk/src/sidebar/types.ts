@@ -65,6 +65,8 @@ export interface SidebarNavItem {
 	readonly title?: string;
 	readonly titleLabelKey?: SidebarLabelKey;
 	readonly type: "custom" | "new-session" | "route";
+	/** 插件工作区视图导航项：openNavItem 据此跳 `/workspace/<pluginId>/<viewId>`。 */
+	readonly workspaceView?: { readonly pluginId: string; readonly viewId: string };
 }
 
 export interface NavIndicatorBounds {

@@ -60,6 +60,7 @@ export const PLUGIN_CAPABILITY_CHANNELS = {
 	PROJECT_ARCHIVE: "astravia:plugins:capabilities:project:archive",
 	PROJECT_UNARCHIVE: "astravia:plugins:capabilities:project:unarchive",
 	PROJECT_REMOVE: "astravia:plugins:capabilities:project:remove",
+	DIALOG_OPEN_FILES: "astravia:plugins:capabilities:dialog:open-files",
 	SESSION_LIST: "astravia:plugins:capabilities:session:list",
 	SESSION_LIST_RUNTIME_PROJECTS: "astravia:plugins:capabilities:session:list-runtime-projects",
 	SKILL_LIST: "astravia:plugins:capabilities:skill:list",

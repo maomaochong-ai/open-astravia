@@ -6,6 +6,73 @@ import type { PluginPromptAttachment } from "./prompt-attachment.js";
 import type { ConversationScenario } from "./scenario.js";
 import type { PluginShortcutScopeContribution } from "./shortcuts.js";
 
+export interface PluginWorkspaceViewProps {
+	/** The contribution id as registered (NOT namespaced). */
+	viewId: string;
+	/** The owning plugin id. */
+	pluginId: string;
+}
+
+export type PluginNavBadgeTone = "accent" | "danger" | "default" | "warning";
+
+/**
+ * A badge on the plugin's sidebar navigation entry. `beta` is the host's own
+ * preset (wording localized by the host); `count` renders `99+` past 99 and
+ * disappears at 0.
+ */
+export type PluginNavBadge =
+	| { kind: "beta" }
+	| { kind: "text"; text: string; tone?: PluginNavBadgeTone }
+	| { kind: "count"; count: number; tone?: PluginNavBadgeTone }
+	| { kind: "dot"; tone?: PluginNavBadgeTone };
+
+/**
+ * A **workspace view**（工作区视图）: a full-page surface a plugin contributes to
+ * the host's primary navigation. The host gives it its own route
+ * (`/workspace/<pluginId>/<viewId>`) and a sidebar entry, and the plugin owns
+ * the entire content area while it is open. Use it for standalone workbenches
+ * NOT bound to one conversation (dashboards, boards, consoles).
+ */
+export interface PluginWorkspaceViewContribution {
+	/** Unique within the plugin; the host namespaces it as `${pluginId}:${id}`. */
+	id: string;
+	/** Sidebar entry label. Supports `%catalogKey%` i18n lookup. */
+	label: string;
+	/** Sidebar entry icon as an **iconify class string**, not a React node. */
+	icon?: string;
+	/** Optional one-line description; shown as the nav entry tooltip. */
+	description?: string;
+	/** Initial badge; `{ kind: "text" }` supports `%catalogKey%` lookup. */
+	badge?: PluginNavBadge;
+	/** Zero-props aside from {@link PluginWorkspaceViewProps}. */
+	component: ComponentType<PluginWorkspaceViewProps>;
+	/** Sort hint among this plugin's own views (ascending). Defaults to 0. */
+	navOrder?: number;
+}
+
+/**
+ * What a workspace view puts into the **host page header** — the window's top
+ * bar that also carries the drag region and the macOS traffic-light gutter.
+ * `left` / `right` are ReactNodes rendered by the host inside that bar, in the
+ * plugin's i18n + CSS scope. This is a live setter, not a one-time registration.
+ */
+export interface PluginWorkspaceViewHeader {
+	/** Replaces the host title text. Supports `%catalogKey%` i18n lookup. */
+	title?: string;
+	/** Drop the host title entirely (use when {@link left} carries its own). */
+	hideTitle?: boolean;
+	/** Rendered in the header's left cluster, after the sidebar trigger. */
+	left?: ReactNode;
+	/** Rendered in the header's action cluster, before the window controls. */
+	right?: ReactNode;
+	/**
+	 * Float the host header OVER the view instead of stacking above it. The
+	 * view then owns the full content height. Use for immersive full-page
+	 * surfaces whose own hero starts at the very top.
+	 */
+	immersive?: boolean;
+}
+
 export interface PluginGlobalSlotContribution {
 	id: string;
 	component: ComponentType;
@@ -290,6 +357,30 @@ export interface PluginNotifyOptions {
 export interface PluginUiApi {
 	registerGlobalSlot(contribution: PluginGlobalSlotContribution): Disposable;
 	/**
+	 * Register a **workspace view**（工作区视图）— a full-page surface with its
+	 * own route and sidebar entry, on par with the host's built-in pages.
+	 * Needs the `ui.slot.workspace-view` permission (missing = **warn+noop**).
+	 */
+	registerWorkspaceView(contribution: PluginWorkspaceViewContribution): Disposable;
+	/**
+	 * Navigate to one of this plugin's own workspace views. `viewId` is the
+	 * contribution id passed to {@link PluginUiApi.registerWorkspaceView}.
+	 * No-op when the view is not registered (e.g. permission missing).
+	 */
+	openWorkspaceView(viewId: string): void;
+	/**
+	 * Update (or clear, with `null`) the badge on one of this plugin's
+	 * workspace view entries. No-op when the view is not registered.
+	 */
+	setWorkspaceViewBadge(viewId: string, badge: PluginNavBadge | null): void;
+	/**
+	 * Fill (or clear, with `null`) the host page header while one of this
+	 * plugin's workspace views is open. Call it from the view component (an
+	 * effect that re-runs on state change) and clear it on unmount. The host
+	 * keeps the entry keyed by view and only applies it on that view's route.
+	 */
+	setWorkspaceViewHeader(viewId: string, header: PluginWorkspaceViewHeader | null): void;
+	/**
 	 * Register a preview component keyed by file extension. The host dispatches
 	 * registered extensions before its built-in fallback renderers; first
 	 * registrant wins on conflict.
@@ -402,6 +493,12 @@ export interface PluginUiApi {
 	 */
 	copyImage(dataUrl: string): Promise<void>;
 	/**
+	 * Open an http(s) URL in the system browser. Requires `shell.openExternal`.
+	 */
+	openExternal(url: string): Promise<void>;
+	/**
+	 * Show a global toast in the host UI (bottom-right). No permission required.
+	/**
 	 * Show a global toast in the host UI (bottom-right). No permission required.
 	 * Prefer this over swallowing errors into opaque UI copy: pass `error` so
 	 * the host attaches a one-click "copy stack" action for the user.
@@ -410,4 +507,37 @@ export interface PluginUiApi {
 	 * (components do not receive `ctx`).
 	 */
 	notify(options: PluginNotifyOptions): void;
+}
+
+/**
+ * 离屏渲染截图能力（实验性）：在宿主隐藏的 Chromium 窗口里加载 URL、等页面就绪后
+ * 截一张位图。与 html-to-image 之类 DOM 克隆方案不同，走的是真实渲染管线，输出与
+ * 活体逐像素一致。宿主不一定实现了它 —— 插件应用 optional 探测（运行时检查
+ * `ctx.capture` 是否存在）并准备回落路径。
+ */
+export interface PluginCaptureApi {
+	/**
+	 * 加载 URL 到隐藏窗口，等待就绪后截图。同一 `sessionKey` 的连续调用复用
+	 * 同一个隐藏窗口（适合 SPA 内切帧），不同 key 之间真并行。
+	 */
+	offscreen(input: {
+		url: string;
+		width: number;
+		height: number;
+		/** 会话复用键；插件自己保证唯一性（如 `pluginId:frameId:slot`）。 */
+		sessionKey: string;
+		/** 页面加载完成后、就绪判断前注入的脚本（如切帧消息）。 */
+		prepareScript?: string;
+		/** 页面就绪表达式（在页面上下文求值，为 true 即认为可截图）。 */
+		readyExpression?: string;
+		/** 就绪后再静置的毫秒数，等动画/字体稳定。 */
+		settleMs?: number;
+		/** 可选探针脚本，截图同时采集布局信息，结果原样放在 `probe` 里。 */
+		probeScript?: string;
+		timeoutMs?: number;
+		format: "jpeg";
+		quality: number;
+	}): Promise<{ dataUrl: string; probe?: unknown }>;
+	/** 释放某个 sessionKey 对应的隐藏窗口（下次截图会重新加载页面）。 */
+	releaseOffscreen(sessionKey: string): Promise<void>;
 }

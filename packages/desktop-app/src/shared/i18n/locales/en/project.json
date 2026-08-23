@@ -1,4 +1,9 @@
 {
+	"workspaceView": {
+		"loading": "Loading plugin…",
+		"missing": "This workspace view no longer exists — returning to the home page.",
+		"failed": "This workspace view failed to render. See the devtools console for details."
+	},
 	"sidebar": {
 		"nav": {
 			"newSession": "New Session",

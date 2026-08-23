@@ -1,5 +1,7 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { ReactNode } from "react";
+import { ColorPicker } from "./ColorPicker";
+import { OptionSlider } from "./OptionSlider";
 import type { MockupOptions } from "./types";
 
 interface MockupOptionsPanelProps {
@@ -8,62 +10,19 @@ interface MockupOptionsPanelProps {
 	maxRadius: number;
 	/** Swatches pulled from the design's own theme.css tokens. */
 	palette: string[];
+	/** 渲染区里当前选中的画框，没有就不出移除区。 */
+	selected: { frameId: string; title: string } | null;
 	onChange(patch: Partial<MockupOptions>): void;
+	onRemoveSelected(): void;
 	onReset(): void;
 }
 
-function Field({ label, value, children }: { label: string; value?: string; children: ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
 	return (
 		<label className="flex flex-col gap-1.5">
-			<span className="flex items-center justify-between text-xs text-muted-foreground">
-				{label}
-				{value ? <span className="tabular-nums">{value}</span> : null}
-			</span>
+			<span className="text-xs text-muted-foreground">{label}</span>
 			{children}
 		</label>
-	);
-}
-
-function ColorField({
-	label,
-	color,
-	palette,
-	disabled,
-	onPick,
-}: {
-	label: string;
-	color: string;
-	palette: string[];
-	disabled?: boolean;
-	onPick(next: string): void;
-}) {
-	return (
-		<Field label={label}>
-			<div className={`flex items-center gap-1.5 ${disabled ? "opacity-40" : ""}`}>
-				<input
-					type="color"
-					value={color}
-					disabled={disabled}
-					onChange={(event) => onPick(event.target.value)}
-					className="size-7 shrink-0 cursor-pointer rounded-md border border-border bg-transparent"
-				/>
-				<div className="flex min-w-0 flex-1 flex-wrap gap-1">
-					{palette.map((swatch) => (
-						<button
-							key={swatch}
-							type="button"
-							disabled={disabled}
-							title={swatch}
-							onClick={() => onPick(swatch)}
-							style={{ background: swatch }}
-							className={`size-5 rounded-md border ${
-								swatch.toLowerCase() === color.toLowerCase() ? "border-primary ring-1 ring-primary" : "border-border"
-							}`}
-						/>
-					))}
-				</div>
-			</div>
-		</Field>
 	);
 }
 
@@ -89,34 +48,58 @@ function Toggle({
 	);
 }
 
-/** Right-hand settings column of the export dialog. */
-export function MockupOptionsPanel({ options, maxRadius, palette, onChange, onReset }: MockupOptionsPanelProps) {
+/** 悬浮在预览区右上角的设置卡片。 */
+export function MockupOptionsPanel({
+	options,
+	maxRadius,
+	palette,
+	selected,
+	onChange,
+	onRemoveSelected,
+	onReset,
+}: MockupOptionsPanelProps) {
 	const { t } = useTranslation();
 	return (
-		<div className="flex w-64 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border p-4">
-			<Field label={t("mockup.option.radius")} value={`${Math.round(options.radius)}`}>
-				<input
-					type="range"
-					min={0}
-					max={Math.max(8, Math.round(maxRadius))}
-					value={Math.round(options.radius)}
-					onChange={(event) => onChange({ radius: Number(event.target.value) })}
-					className="w-full accent-[var(--primary)]"
-				/>
-			</Field>
+		<div
+			className="pointer-events-auto flex max-h-full w-64 flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-popover/95 p-3 shadow-lg backdrop-blur-md"
+			// 卡片浮在预览区之上：指针事件漏下去会变成平移画布。
+			onPointerDown={(event) => event.stopPropagation()}
+			onWheel={(event) => event.stopPropagation()}
+		>
+			{selected ? (
+				<div className="flex flex-col gap-2 rounded-lg border border-border bg-background/60 p-2.5">
+					<span className="truncate text-xs font-medium text-foreground" title={selected.title}>
+						{selected.title}
+					</span>
+					<button
+						type="button"
+						onClick={onRemoveSelected}
+						className="rounded-lg border border-border px-2 py-1 text-xs text-red-500 hover:bg-accent"
+					>
+						{t("mockup.selected.remove")}
+					</button>
+				</div>
+			) : null}
 
-			<Field label={t("mockup.option.border")} value={`${options.borderWidth}`}>
-				<input
-					type="range"
-					min={0}
-					max={48}
-					value={options.borderWidth}
-					onChange={(event) => onChange({ borderWidth: Number(event.target.value) })}
-					className="w-full accent-[var(--primary)]"
-				/>
-			</Field>
+			<OptionSlider
+				label={t("mockup.option.radius")}
+				display={`${Math.round(options.radius)}`}
+				value={Math.round(options.radius)}
+				min={0}
+				max={Math.max(8, Math.round(maxRadius))}
+				onChange={(radius) => onChange({ radius })}
+			/>
 
-			<ColorField
+			<OptionSlider
+				label={t("mockup.option.border")}
+				display={`${options.borderWidth}`}
+				value={options.borderWidth}
+				min={0}
+				max={48}
+				onChange={(borderWidth) => onChange({ borderWidth })}
+			/>
+
+			<ColorPicker
 				label={t("mockup.option.borderColor")}
 				color={options.borderColor}
 				palette={palette}
@@ -124,7 +107,7 @@ export function MockupOptionsPanel({ options, maxRadius, palette, onChange, onRe
 				onPick={(borderColor) => onChange({ borderColor })}
 			/>
 
-			<ColorField
+			<ColorPicker
 				label={t("mockup.option.background")}
 				color={options.background}
 				palette={palette}
@@ -164,7 +147,7 @@ export function MockupOptionsPanel({ options, maxRadius, palette, onChange, onRe
 			<button
 				type="button"
 				onClick={onReset}
-				className="mt-auto rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+				className="rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent"
 			>
 				{t("mockup.option.reset")}
 			</button>

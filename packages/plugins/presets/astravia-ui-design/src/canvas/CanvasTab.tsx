@@ -6,13 +6,18 @@ import {
 	stopDesignServer,
 } from "../engine/engine-manager";
 import { exportDesign } from "../export/export-design";
+import { NotesStore } from "../notes/notes-store";
+import { useNotesVisibility } from "../notes/notes-visibility";
 import { getPluginCtx, notify } from "../plugin-context";
-import { DesignSession } from "../vetd/design-session";
-import { findVetdFiles, sniffVetdKind } from "../vetd/discover";
-import { scaffoldDesign } from "../vetd/scaffold";
-import { BridgeHub } from "./bridge-client";
+import { PreviewDialog } from "../preview-mode/PreviewDialog";
+import { DesignSession } from "../astd/design-session";
+import { findAstdFiles } from "../astd/discover";
+import { scaffoldDesign } from "../astd/scaffold";
+import { BridgeHub, type ElementQuery, type SelectedElementPayload } from "./bridge-client";
+import { refreshCover } from "./cover-compose";
 import { clearFrameActivity, setCanvasController, setPendingDesignPath, takePendingDesignPath } from "./design-runtime";
 import { DesignCanvas, type FrameCapture } from "./DesignCanvas";
+import { byCanvasOrder } from "./frame-order";
 import { ThemePalette } from "./ThemePalette";
 
 type Phase =
@@ -35,14 +40,23 @@ export function CanvasTab() {
 	const [selectedPath, setSelectedPath] = useState<string | null>(null);
 	const [phase, setPhase] = useState<Phase>({ kind: "idle" });
 	const [session, setSession] = useState<DesignSession | null>(null);
+	const [notesStore, setNotesStore] = useState<NotesStore | null>(null);
 	const [showPalette, setShowPalette] = useState(false);
+	/** 画布备注气泡的显隐。开关在顶栏，自动规则（切工具/建备注/定位）只往显示推。 */
+	const notesVisibility = useNotesVisibility();
 	const [exporting, setExporting] = useState(false);
 	const [reloadNonce, setReloadNonce] = useState(0);
 	const bridgeRef = useRef(new BridgeHub());
 	/** 画布挂载后填入，见 DesignCanvas 的 captureRef。 */
 	const captureRef = useRef<FrameCapture | null>(null);
-	/** 同上，供顶部刷新按钮强制所有 frame 重载并重截位图。 */
-	const refreshRef = useRef<(() => void) | null>(null);
+	/** 同上，问画布「此刻单独选中的是哪一帧」，预览按钮据此定位起始帧。 */
+	const previewTargetRef = useRef<(() => string | null) | null>(null);
+	/** 预览窗口打开在哪一帧上；null 表示没开。 */
+	const [previewFrameId, setPreviewFrameId] = useState<string | null>(null);
+	/** 同 captureRef：astd_notes 的锚点保鲜入口，画布挂载后填入。 */
+	const resolveNoteElementsRef = useRef<
+		((frameId: string, queries: ElementQuery[]) => Promise<(SelectedElementPayload | null)[]>) | null
+	>(null);
 
 	// 画布很吃宽度：每次激活本标签卡（切走会卸载，故每次都触发）把活动面板拉满，
 	// 用户之后仍可自行拖窄。
@@ -56,15 +70,9 @@ export function CanvasTab() {
 			return [];
 		}
 		const ctx = getPluginCtx();
-		const found: string[] = [];
-		for (const path of await findVetdFiles(ctx.fs, cwd)) {
-			try {
-				const head = (await ctx.fs.readFile(path)).content.slice(0, 64);
-				if (sniffVetdKind(head) === "working") found.push(path);
-			} catch {
-				// unreadable: skip
-			}
-		}
+		// 设计包是目录，认的是里面的 design.json——不再需要按内容嗅探区分工作态与
+		// 打包分享文件（后者是 `.astdz`，压根不会出现在这个列表里）。
+		const found = await findAstdFiles(ctx.fs, cwd);
 		setFiles(found);
 		return found;
 	}, [cwd]);
@@ -92,15 +100,19 @@ export function CanvasTab() {
 	useEffect(() => {
 		if (!selectedPath || !cwd) {
 			setSession(null);
+			setNotesStore(null);
 			setPhase({ kind: "idle" });
 			return;
 		}
 		localStorage.setItem(storageKey(cwd), selectedPath);
 		const ctx = getPluginCtx();
 		const nextSession = new DesignSession(ctx, selectedPath);
+		const nextNotes = new NotesStore(ctx.fs, nextSession.dirPath);
 		let cancelled = false;
 		setPhase({ kind: "preparing", progress: { phase: "checking" } });
 		setSession(nextSession);
+		setNotesStore(nextNotes);
+		void nextNotes.load();
 		void (async () => {
 			await nextSession.open();
 			const server = await startDesignServer(ctx, nextSession.dirPath, (progress) => {
@@ -109,6 +121,7 @@ export function CanvasTab() {
 			if (cancelled) return;
 			setCanvasController({
 				session: nextSession,
+				notes: nextNotes,
 				port: server.port,
 				captureFrame: (frameId) => {
 					const capture = captureRef.current;
@@ -116,9 +129,14 @@ export function CanvasTab() {
 					if (!capture) return Promise.reject(new Error("design canvas is not rendered yet"));
 					return capture(frameId);
 				},
-				openDesign: (vetdPath) => {
-					setPendingDesignPath(vetdPath);
-					void refreshFiles().then(() => setSelectedPath(vetdPath));
+				resolveNoteElements: (frameId, queries) => {
+					const resolve = resolveNoteElementsRef.current;
+					if (!resolve) return Promise.reject(new Error("design canvas is not rendered yet"));
+					return resolve(frameId, queries);
+				},
+				openDesign: (astdPath) => {
+					setPendingDesignPath(astdPath);
+					void refreshFiles().then(() => setSelectedPath(astdPath));
 				},
 			});
 			setPhase({ kind: "ready", port: server.port });
@@ -129,24 +147,41 @@ export function CanvasTab() {
 		});
 		return () => {
 			cancelled = true;
+			// 离开这份设计（切设计稿、关面板、切会话）时留一张画廊封面。
+			// 放在拆卸时而不是每次截图后：位图落定是高频事件，而封面只要「最后那一版」。
+			// dispose 之前抄一份 frames——dispose 之后 manifest 不再更新，但读没问题；
+			// 这里先取值只是为了不依赖 dispose 的内部实现。
+			const framesSnapshot = [...nextSession.manifest.frames];
+			void refreshCover(nextSession.astdPath, framesSnapshot);
 			nextSession.dispose();
+			nextNotes.dispose();
 			setCanvasController(null);
 			clearFrameActivity();
 			void stopDesignServer(nextSession.dirPath);
 		};
 	}, [selectedPath, cwd, t, refreshFiles, reloadNonce]);
 
+
 	const createDesign = async (): Promise<void> => {
 		if (!cwd) return;
 		try {
 			const ctx = getPluginCtx();
 			const result = await scaffoldDesign(ctx.fs, cwd, "design");
-			notify({ message: t("create.done", { path: result.vetdPath }), variant: "success", durationMs: 4000 });
+			notify({ message: t("create.done", { path: result.astdPath }), variant: "success", durationMs: 4000 });
 			await refreshFiles();
-			setSelectedPath(result.vetdPath);
+			setSelectedPath(result.astdPath);
 		} catch (error) {
 			notify({ message: t("create.failed"), error });
 		}
+	};
+
+	/** 选中哪帧就从哪帧开始预览；没选中则从画布顺序里的第一帧开始。 */
+	const openPreview = (): void => {
+		if (!session) return;
+		const selected = previewTargetRef.current?.() ?? null;
+		const first = [...session.manifest.frames].sort(byCanvasOrder)[0]?.id ?? null;
+		const target = selected ?? first;
+		if (target) setPreviewFrameId(target);
 	};
 
 	const runExport = async (): Promise<void> => {
@@ -154,6 +189,8 @@ export function CanvasTab() {
 		setExporting(true);
 		try {
 			const path = await exportDesign(getPluginCtx(), session);
+			// 用户在另存为对话框里取消：什么都没写盘，也不需要提示。
+			if (path === null) return;
 			notify({ message: t("canvas.export.done", { path }), variant: "success", durationMs: 6000 });
 		} catch (error) {
 			notify({ message: t("canvas.export.failed"), error });
@@ -171,6 +208,8 @@ export function CanvasTab() {
 				return t("engine.status.materializing");
 			case "installing":
 				return t("engine.status.installing");
+			case "installing-design":
+				return t("engine.status.installingDesign");
 			case "starting":
 				return t("engine.status.starting");
 		}
@@ -183,6 +222,16 @@ export function CanvasTab() {
 					{t("canvas.empty.title")}
 				</span>
 				<p className="max-w-64 text-xs text-muted-foreground">{t("canvas.empty.desc")}</p>
+				{/* 空态里没有工具栏，重扫入口只能放这儿：目录里明明有设计却扫不到时
+				    （v1 旧格式刚被放进来、或上一次扫描时目录还没就绪），这是用户
+				    唯一能自救的按钮，否则只剩「新建」这一条会让人以为设计丢了。 */}
+				<button
+					type="button"
+					onClick={() => void refreshFiles()}
+					className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+				>
+					{t("canvas.empty.rescan")}
+				</button>
 				<button
 					type="button"
 					onClick={() => void createDesign()}
@@ -194,73 +243,64 @@ export function CanvasTab() {
 		);
 	}
 
+	/**
+	 * 画布左上角的标题区：设计切换（就是这张画布的标题，所以不套卡片底）+ 色卡开关。
+	 * 定位交给画布（它要给查看模式的横幅让位），这里只管内容。
+	 */
+	const titleSlot = (
+		<>
+			<select
+				value={selectedPath ?? ""}
+				onChange={(event) => setSelectedPath(event.target.value)}
+				title={t("canvas.picker.label")}
+				aria-label={t("canvas.picker.label")}
+				className="h-7 min-w-0 max-w-52 truncate rounded-md border-none bg-transparent px-1 text-sm font-medium text-foreground outline-none transition-colors hover:bg-accent focus:outline-none"
+			>
+				{files.map((file) => (
+					<option key={file} value={file}>
+						{file.split("/").pop()}
+					</option>
+				))}
+			</select>
+			<button
+				type="button"
+				onClick={() => setShowPalette((value) => !value)}
+				title={t("canvas.theme.title")}
+				aria-label={t("canvas.theme.title")}
+				aria-pressed={showPalette}
+				className={`flex size-7 shrink-0 items-center justify-center rounded-md text-xs transition-colors ${
+					showPalette ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+				}`}
+			>
+				◐
+			</button>
+			{SHOW_EXPORT_SHARE ? (
+				<button
+					type="button"
+					disabled={exporting || phase.kind !== "ready"}
+					onClick={() => void runExport()}
+					className="flex h-7 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+				>
+					{exporting ? t("canvas.export.running") : t("canvas.export")}
+				</button>
+			) : null}
+		</>
+	);
+
 	return (
 		<div className="relative flex h-full flex-col">
-			{/* 沉浸式标题栏：浮在画布之上，底色由主题变量渐隐到透明。 */}
-			<div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 bg-gradient-to-b from-background via-background/80 to-transparent px-3 pb-6 pt-2">
-				<label className="pointer-events-auto ml-auto flex min-w-0 max-w-64 items-center gap-2 text-xs text-muted-foreground">
-					<span className="shrink-0">{t("canvas.picker.label")}</span>
-					<select
-						value={selectedPath ?? ""}
-						onChange={(event) => setSelectedPath(event.target.value)}
-						className="min-w-0 max-w-44 truncate rounded-md border-none bg-card px-1.5 py-1 text-xs text-foreground outline-none focus:outline-none"
-					>
-						{files.map((file) => (
-							<option key={file} value={file}>
-								{file.split("/").pop()}
-							</option>
-						))}
-					</select>
-				</label>
-				<button
-					type="button"
-					onClick={() => void createDesign()}
-					title={t("canvas.empty.create")}
-					className="pointer-events-auto rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
-				>
-					＋
-				</button>
-				<button
-					type="button"
-					onClick={() => setShowPalette((value) => !value)}
-					title={t("canvas.theme.title")}
-					aria-pressed={showPalette}
-					className={`pointer-events-auto rounded-md px-2 py-1 text-xs ${showPalette ? "text-primary" : "text-muted-foreground"} hover:bg-accent`}
-				>
-					◐
-				</button>
-				{/* 手动刷新：热更新链路（文件监听 / HMR）万一没生效时的兜底出路，
-				    强制所有 frame 重新加载最新代码并重截位图。 */}
-				<button
-					type="button"
-					disabled={phase.kind !== "ready"}
-					onClick={() => refreshRef.current?.()}
-					title={t("canvas.refresh")}
-					aria-label={t("canvas.refresh")}
-					className="pointer-events-auto rounded-md px-2 py-1 text-muted-foreground hover:bg-accent disabled:opacity-50"
-				>
-					<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-						<path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6" strokeLinecap="round" strokeLinejoin="round" />
-					</svg>
-				</button>
-				{SHOW_EXPORT_SHARE ? (
-					<button
-						type="button"
-						disabled={exporting || phase.kind !== "ready"}
-						onClick={() => void runExport()}
-						className="pointer-events-auto rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-					>
-						{exporting ? t("canvas.export.running") : t("canvas.export")}
-					</button>
-				) : null}
-			</div>
-
 			<div className="relative min-h-0 flex-1">
+				{/* 画布还没起来时也要能切设计：ready 之后这块由画布自己摆（它要给查看
+				    模式的横幅让位），这里只补上引擎准备/失败期间的那段空窗。 */}
+				{phase.kind !== "ready" ? (
+					<div className="absolute left-3 top-3 z-40 flex items-center gap-1">{titleSlot}</div>
+				) : null}
 				{phase.kind === "preparing" ? (
 					<div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
 						<span className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
 						<p className="max-w-72 whitespace-pre-wrap text-xs text-muted-foreground">{progressText}</p>
-						{phase.progress.phase === "installing" && phase.progress.outputTail ? (
+						{(phase.progress.phase === "installing" || phase.progress.phase === "installing-design") &&
+						phase.progress.outputTail ? (
 							<pre className="max-h-24 max-w-full overflow-hidden text-ellipsis rounded-md bg-accent p-2 text-left text-[10px] text-muted-foreground">
 								{phase.progress.outputTail}
 							</pre>
@@ -282,16 +322,36 @@ export function CanvasTab() {
 						</button>
 					</div>
 				) : null}
-				{phase.kind === "ready" && session ? (
+				{phase.kind === "ready" && session && notesStore ? (
 					<>
 						<DesignCanvas
 							session={session}
+							notes={notesStore}
+							cwd={cwd}
 							port={phase.port}
 							bridge={bridgeRef.current}
 							captureRef={captureRef}
-							refreshRef={refreshRef}
+							onRescanDesigns={() => void refreshFiles()}
+							previewTargetRef={previewTargetRef}
+							previewing={previewFrameId !== null}
+							resolveNoteElementsRef={resolveNoteElementsRef}
+							notesVisible={notesVisibility.visible}
+							showNotes={notesVisibility.show}
+							onToggleNotes={notesVisibility.toggle}
+							onRun={openPreview}
+							runDisabled={session.manifest.frames.length === 0}
+							titleSlot={titleSlot}
 						/>
 						{showPalette ? <ThemePalette session={session} /> : null}
+						{previewFrameId !== null ? (
+							<PreviewDialog
+								port={phase.port}
+								frames={session.manifest.frames}
+								astdPath={session.astdPath}
+								initialFrameId={previewFrameId}
+								onClose={() => setPreviewFrameId(null)}
+							/>
+						) : null}
 					</>
 				) : null}
 			</div>
