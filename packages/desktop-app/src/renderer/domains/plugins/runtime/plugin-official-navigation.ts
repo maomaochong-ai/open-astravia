@@ -1,4 +1,5 @@
 import type { PluginOfficialApi } from "@astravia-org/plugin-sdk";
+import { prefillNewSessionInputDraft } from "@shared/store/session-input-draft";
 import { isAppearanceUiThemeEnabled } from "../../../../shared/feature-flags";
 import {
 	SETTINGS_SECTIONS,
@@ -183,11 +184,29 @@ export function getOfficialNavigationHelp(): unknown {
 	};
 }
 
-export function resolveOfficialNavigationOpen(input: { target: string; tab?: string; section?: string }): {
+export function resolveOfficialNavigationOpen(input: {
+	target: string;
+	tab?: string;
+	section?: string;
+	cwd?: string;
+}): {
 	hashPath: string;
 	resolved: unknown;
 } {
 	const target = normalizeTarget(input.target);
+	// 新建会话页：与侧边栏「新会话」同一个路由，插件在创建项目后跳到这里让用户直接开工。
+	if (target === "new-session") {
+		const cwd = input.cwd?.trim();
+		if (!cwd) {
+			throw new Error(
+				'Refused navigation.open before user approval: target "new-session" requires a non-empty "cwd" (the project directory).',
+			);
+		}
+		return {
+			hashPath: `/new-session/${encodeURIComponent(cwd)}`,
+			resolved: { kind: "new-session", cwd },
+		};
+	}
 	const staticTarget = STATIC_TARGETS.find((candidate) => candidate.id === target);
 	if (staticTarget && staticTarget.id !== "settings") {
 		return {
@@ -298,10 +317,18 @@ export function resolveOfficialNavigationOpen(input: { target: string; tab?: str
 	const pageIds = STATIC_TARGETS.map((item) => item.id);
 	const tabIds = [...tabsByKey.keys(), "mcp"];
 	throw new Error(
-		`Refused navigation.open before user approval: unknown target=${JSON.stringify(input.target)}. Page targets: ${pageIds
-			.map((id) => JSON.stringify(id))
-			.join(", ")}. Settings tabs: ${tabIds.map((id) => JSON.stringify(id)).join(", ")}.`,
+		`Refused navigation.open before user approval: unknown target=${JSON.stringify(input.target)}. Page targets: ${[
+			"new-session",
+			...pageIds,
+		].join(", ")}. Settings tabs: ${tabIds.map((id) => JSON.stringify(id)).join(", ")}.`,
 	);
+}
+
+/** `resolved` 是 unknown（对插件是不透明回执），这里收窄出新会话目标以取 cwd。 */
+function isNewSessionResolution(resolved: unknown): resolved is { kind: "new-session"; cwd: string } {
+	if (typeof resolved !== "object" || resolved === null) return false;
+	const candidate = resolved as { kind?: unknown; cwd?: unknown };
+	return candidate.kind === "new-session" && typeof candidate.cwd === "string";
 }
 
 export function openOfficialHashPath(hashPath: string): void {
@@ -316,6 +343,11 @@ export function createOfficialNavigationApi(capabilitySessionId: string): Plugin
 		open: (input) =>
 			pluginRendererCapabilityHost.invokeOfficial(capabilitySessionId, async () => {
 				const target = resolveOfficialNavigationOpen(input);
+				// 草稿必须先于跳转写入：新会话页挂载时按 cwd 恢复草稿，跳转后再写会被它盖掉。
+				const draft = input.draft?.trim() ? input.draft : "";
+				if (draft && isNewSessionResolution(target.resolved)) {
+					prefillNewSessionInputDraft(target.resolved.cwd, draft);
+				}
 				openOfficialHashPath(target.hashPath);
 				return { type: "open", resolved: target.resolved };
 			}),

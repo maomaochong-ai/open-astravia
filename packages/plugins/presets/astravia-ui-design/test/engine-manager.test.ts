@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { PluginCommandApi, PluginContext } from "@astravia-org/plugin-sdk";
 import { afterEach, describe, expect, it } from "vitest";
 import { engineFilesHash } from "../src/engine/engine-files";
-import { engineReady, migrateLegacyEngine } from "../src/engine/engine-manager";
+import { engineReady, migrateLegacyEngine, startDesignServer } from "../src/engine/engine-manager";
 
 const temporaryDirectories: string[] = [];
 
@@ -81,5 +81,50 @@ describe("design engine data migration", () => {
 		await expect(engineReady(pluginContext(), engineRoot)).resolves.toBe(true);
 		await rm(join(engineRoot, "node_modules", "vite", "package.json"));
 		await expect(engineReady(pluginContext(), engineRoot)).resolves.toBe(false);
+	});
+});
+
+describe("startDesignServer env", () => {
+	it("passes the design dir to the engine as ASTD_SRC (matches the vite config template)", async () => {
+		const designDir = "/w/fake-design.astd";
+		let capturedEnv: Record<string, string> | undefined;
+		const ctx = {
+			command: {
+				run: async (_file: string, args: string[] = []) => {
+					if (args.includes("-p")) {
+						return { exitCode: 0, stdout: "/tmp/fake-home", stderr: "" };
+					}
+					const script = args[1] ?? "";
+					if (script.includes("VETD_ENGINE_LEGACY")) {
+						return { exitCode: 0, stdout: "absent", stderr: "" };
+					}
+					if (script.includes(".files-hash")) {
+						return { exitCode: 0, stdout: JSON.stringify({ hash: engineFilesHash(), vite: true }), stderr: "" };
+					}
+					return { exitCode: 0, stdout: "ok", stderr: "" };
+				},
+				spawn: async (_file: string, _args: string[], options: { env?: Record<string, string> }) => {
+					capturedEnv = options.env;
+					return {
+						port: 54321,
+						stop: async () => {},
+						onExit: () => {},
+						status: async () => ({ running: true, recentOutput: "" }),
+					};
+				},
+			},
+			fs: {},
+		} as unknown as PluginContext;
+
+		const originalFetch = globalThis.fetch;
+		globalThis.fetch = (async () => ({ ok: true, status: 200 })) as typeof fetch;
+		try {
+			const server = await startDesignServer(ctx, designDir, () => {});
+			expect(server.port).toBe(54321);
+			expect(capturedEnv?.ASTD_SRC).toBe(designDir);
+			expect(capturedEnv?.VETD_SRC).toBeUndefined();
+		} finally {
+			globalThis.fetch = originalFetch;
+		}
 	});
 });

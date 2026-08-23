@@ -121,7 +121,7 @@ export function GalleryView() {
 		async (system: DesignSystem, name: string) => {
 			setBusy(true);
 			try {
-				await startDesignFromSystem(system, name);
+				await startDesignFromSystem(system, name, locale);
 				setPendingSystem(null);
 			} catch (error) {
 				notify({ message: t("gallery.styles.failed"), error });
@@ -129,7 +129,7 @@ export function GalleryView() {
 				setBusy(false);
 			}
 		},
-		[t],
+		[t, locale]
 	);
 
 	const importBytes = useCallback(

@@ -20,27 +20,38 @@ export interface OpenProjectTarget {
  * 画布的展开是「预约 + 会话切换后由 revealTabForCwd 落实」而不是在这里直接开：此刻
  * 宿主还停在画廊路由上，活动面板属于会话页，开了也没有承载它的地方。
  *
- * astravia 没有 sessions/open 续聊 API，也没有 new-session 导航目标：直接打开项目
- * （宿主切到该项目会话页），画布展开由预约机制落实。
+ * astravia 没有 sessions/open 续聊 API：不挑最近会话，统一落到该项目的新建会话页
+ * （宿主 navigation.open 的 `new-session` 目标），画布展开由预约机制落实。
  */
 export async function openProjectFromGallery(target: OpenProjectTarget): Promise<void> {
 	const ctx = getPluginCtx();
 	// 先记下要打开哪份设计：CanvasTab 挂载时会 take 走它（见 takePendingDesignPath）。
 	setPendingDesignPath(target.astdPath);
 	requestCanvasReveal(target.cwd);
-	await ctx.official.projects.open(target.cwd);
+	await ctx.official.navigation.open({ target: "new-session", cwd: target.cwd });
 }
+
+/** 本插件随包带的 skill 名（`agent/skills/astravia-ui-design`）。 */
+const DESIGN_SKILL_NAME = "astravia-ui-design";
 
 /**
- * 刚建完项目：打开它进入会话页。
+ * 输入框的 skill 软引用文本形态：宿主解析后渲染成一枚 badge。
+ * 末尾留一个空格，光标落在 badge 之后，用户直接接着敲提示词。
+ */
+export const DESIGN_SKILL_DRAFT = `@skill:${DESIGN_SKILL_NAME} `;
+/**
+ * 刚建完项目：进它的新建会话页，并把设计 skill 的 badge 预置进输入框。
  *
- * 上游会在新建会话页预置 `@skill:astravia-ui-design` badge 草稿；astravia 的
- * navigation.open 没有 draft 注入能力，这里只打开项目，由用户直接输入意图。
+ * 不预约画布展开——此刻项目里还没有任何 `.astd`，铺开的画布只会是一块空白；
+ * 设计由用户的第一句提示词驱动 agent 创建，建好后画廊自会扫出来。
  */
 export async function startDesignProject(cwd: string): Promise<void> {
-	await getPluginCtx().official.projects.open(cwd);
+	await getPluginCtx().official.navigation.open({
+		target: "new-session",
+		cwd,
+		draft: DESIGN_SKILL_DRAFT,
+	});
 }
-
 /**
  * 预约「切到这个 cwd 后把画布铺开」。
  *

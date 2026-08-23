@@ -372,7 +372,7 @@ export async function startDesignServer(
 		["node_modules/vite/bin/vite.js", "--port", "{{PORT}}", "--strictPort", "--clearScreen", "false"],
 		{
 			cwd: engineRoot,
-			env: { VETD_SRC: designDir },
+			env: { ASTD_SRC: designDir },
 			allocatePort: true,
 		},
 	);
@@ -421,7 +421,7 @@ export async function buildDesign(ctx: PluginContext, designDir: string, outDir:
 		["node_modules/vite/bin/vite.js", "build", "--outDir", outDir, "--emptyOutDir"],
 		{
 			cwd: engineRoot,
-			env: { VETD_SRC: designDir },
+			env: { ASTD_SRC: designDir },
 		},
 	);
 	await new Promise<void>((resolveBuild, rejectBuild) => {

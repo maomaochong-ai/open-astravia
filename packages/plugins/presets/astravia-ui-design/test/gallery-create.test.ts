@@ -11,7 +11,7 @@ import { startDesignProject } from "../src/gallery/open-project";
 import { setPluginCtx } from "../src/plugin-context";
 
 const createProject = vi.fn(async (name: string) => ({ path: `/w/${name}` }));
-const openProject = vi.fn(async () => ({}));
+const navigationOpen = vi.fn(async () => ({}));
 const writeFile = vi.fn(async () => {});
 const mkdir = vi.fn(async () => {});
 
@@ -20,7 +20,8 @@ beforeEach(() => {
 	setPluginCtx({
 		fs: { writeFile, mkdir, readDir: vi.fn(async () => []), exists: vi.fn(async () => false) },
 		official: {
-			projects: { create: createProject, open: openProject },
+			projects: { create: createProject },
+			navigation: { open: navigationOpen },
 		},
 	} as unknown as PluginContext);
 });
@@ -35,8 +36,12 @@ describe("createDesignProject", () => {
 });
 
 describe("startDesignProject", () => {
-	it("直接打开该项目进入会话页（astravia 无 draft 注入，设计交给用户输入）", async () => {
+	it("打开该项目进入会话页，并把设计 skill 的 badge 预置进输入框", async () => {
 		await startDesignProject("/w/my-design");
-		expect(openProject).toHaveBeenCalledWith("/w/my-design");
+		expect(navigationOpen).toHaveBeenCalledWith({
+			target: "new-session",
+			cwd: "/w/my-design",
+			draft: "@skill:astravia-ui-design ",
+		});
 	});
 });

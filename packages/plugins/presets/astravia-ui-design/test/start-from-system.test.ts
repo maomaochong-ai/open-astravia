@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DesignResource, DesignSystem } from "../src/design-systems/types";
 import {
 	buildResourceIndex,
+	buildStyleStartDraft,
 	DESIGN_RESOURCES_DIR,
 	RESOURCE_INDEX_FILE,
 	startDesignFromSystem,
@@ -35,6 +36,24 @@ function textResource(path: string, role?: DesignResource["role"]): DesignResour
 	return { path, ...(role ? { role } : {}), encoding: "text", content: `content of ${path}`, bytes: 10 };
 }
 
+
+describe("buildStyleStartDraft", () => {
+	it("只剩意图一句：skill badge + 风格名 + 光标位，跟宿主语言走", () => {
+		const zh = buildStyleStartDraft(system(), "zh-CN");
+		expect(zh).toBe("@skill:astravia-ui-design 请按「Linear」风格设计。我想做：");
+		const en = buildStyleStartDraft(system(), "en");
+		expect(en).toBe('@skill:astravia-ui-design Design this in the "Linear" style. I want to build: ');
+	});
+
+	it("协议与文件清单不再出现在草稿里——那是 skill 和 INDEX.md 的事", () => {
+		for (const locale of ["zh", "en"]) {
+			const draft = buildStyleStartDraft(system([textResource("DESIGN.md", "spec")]), locale);
+			expect(draft).not.toContain(DESIGN_RESOURCES_DIR);
+			expect(draft).not.toContain("theme.css");
+			expect(draft).not.toContain("DESIGN.md");
+		}
+	});
+});
 describe("buildResourceIndex", () => {
 	it("逐个列出实际落盘的文件，并说明目录来历", () => {
 		const index = buildResourceIndex("Linear", [
@@ -84,24 +103,26 @@ describe("协议真的住在 skill 里", () => {
 
 describe("startDesignFromSystem", () => {
 	const createProject = vi.fn(async (name: string) => ({ path: `/w/${name}` }));
-	const openProject = vi.fn(async () => ({}));
+	const navigationOpen = vi.fn(async () => ({}));
 	const writeFile = vi.fn(async () => {});
 	const createDirectory = vi.fn(async () => {});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setPluginCtx({
-			fs: { writeFile, createDirectory },
-			official: {
-				projects: { create: createProject, open: openProject },
-			},
-		} as unknown as PluginContext);
+		fs: { writeFile, createDirectory },
+		official: {
+			projects: { create: createProject },
+			navigation: { open: navigationOpen },
+		},
+	} as unknown as PluginContext);
 	});
 
-	it("资料落盘后写 INDEX.md 清单，并打开项目进入会话页", async () => {
+	it("资料落盘后写 INDEX.md 清单，草稿只带风格名", async () => {
 		await startDesignFromSystem(
 			system([textResource("DESIGN.md", "spec"), textResource("theme.css", "theme")]),
 			"my-app",
+			"zh",
 		);
 		const indexWrite = writeFile.mock.calls.find(([path]) =>
 			(path as unknown as string).endsWith(`/${RESOURCE_INDEX_FILE}`),
@@ -109,12 +130,16 @@ describe("startDesignFromSystem", () => {
 		expect(indexWrite?.[0]).toBe(`/w/my-app/${DESIGN_RESOURCES_DIR}/linear/${RESOURCE_INDEX_FILE}`);
 		expect(indexWrite?.[1]).toContain("- DESIGN.md");
 		expect(indexWrite?.[1]).toContain("- theme.css");
-		expect(openProject).toHaveBeenCalledWith("/w/my-app");
+		expect(navigationOpen).toHaveBeenCalledWith({
+			target: "new-session",
+			cwd: "/w/my-app",
+			draft: "@skill:astravia-ui-design 请按「Linear」风格设计。我想做：",
+		});
 	});
 
 	it("一份资料都没落下来时不写 INDEX.md，免得 skill 引着 agent 去读空包", async () => {
-		await startDesignFromSystem(system([]), "my-app");
+		await startDesignFromSystem(system([]), "my-app", "zh");
 		expect(writeFile).not.toHaveBeenCalled();
-		expect(openProject).toHaveBeenCalledOnce();
+		expect(navigationOpen).toHaveBeenCalledOnce();
 	});
 });

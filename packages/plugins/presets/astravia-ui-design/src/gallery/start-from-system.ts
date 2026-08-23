@@ -2,6 +2,7 @@ import { designMdWithFrontmatter } from "../design-systems/apply";
 import type { DesignResource, DesignResourceRole, DesignSystem } from "../design-systems/types";
 import { getPluginCtx } from "../plugin-context";
 import { createDesignProject } from "./gallery-actions";
+import { DESIGN_SKILL_DRAFT } from "./open-project";
 
 /**
  * 从一套设计体系开一份新设计（侧边栏「设计」页的风格库入口）。
@@ -23,6 +24,20 @@ export interface StartedFromSystem {
 	written: string[];
 }
 
+
+/**
+ * 进会话时预置的输入框草稿：只说用户的意图（用哪套风格），一句人话。
+ *
+ * 「先读 DESIGN.md、拷 theme.css、素材不抄代码」这套固定协议在 skill 的
+ * design-resources 一节里（草稿开头的 `@skill:` badge 已把它带进上下文），
+ * 文件清单在落盘时写成的 `INDEX.md` 里——两样都不该占用用户的输入框。
+ * 草稿跟宿主 locale 走，不进 locales catalog。
+ */
+export function buildStyleStartDraft(system: DesignSystem, locale: string): string {
+	return locale.toLowerCase().startsWith("zh")
+		? `${DESIGN_SKILL_DRAFT}请按「${system.name}」风格设计。我想做：`
+		: `${DESIGN_SKILL_DRAFT}Design this in the "${system.name}" style. I want to build: `;
+}
 
 /**
  * 每个角色在清单里的一句「这是什么、什么时候读」。skill 只给协议，具体到文件靠这里点名：
@@ -109,6 +124,7 @@ async function writeResources(system: DesignSystem, targetRoot: string): Promise
 export async function startDesignFromSystem(
 	system: DesignSystem,
 	projectName: string,
+	locale: string,
 ): Promise<StartedFromSystem> {
 	const ctx = getPluginCtx();
 	// 项目名由用户在对话框里给：他点的是风格，不是在给项目起名。
@@ -121,7 +137,10 @@ export async function startDesignFromSystem(
 			.writeFile(`${cwd}/${resourcesDir}/${RESOURCE_INDEX_FILE}`, buildResourceIndex(system.name, written))
 			.catch(() => {});
 	}
-	// astravia 的 navigation.open 没有 draft 注入能力：打开项目进入会话页，用户直接输入意图。
-	await ctx.official.projects.open(cwd);
+	await ctx.official.navigation.open({
+		target: "new-session",
+		cwd,
+		draft: buildStyleStartDraft(system, locale),
+	});
 	return { cwd, resourcesDir, written: written.map((resource) => resource.path) };
 }

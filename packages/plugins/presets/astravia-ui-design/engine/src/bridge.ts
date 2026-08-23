@@ -3,19 +3,21 @@
  * (plugin UI) via postMessage. The canvas and the iframe are cross-origin
  * (app shell vs http://127.0.0.1:<port>), so this module owns everything that
  * needs real DOM access: hover highlight, Figma-style drill selection,
- * data-vetd-source extraction and full-frame screenshots.
+ * data-astd-source extraction and full-frame screenshots.
  *
- * Message contract (both directions carry `{ vetd: true }`):
- *   parent → iframe: set-mode | show-frame | clear-selection | capture
+ * Message contract (both directions carry `{ astd: true }`):
+ *   parent → iframe: set-mode | show-frame | navigate | reload | clear-selection | capture
+ *                    | resolve-element
  *   iframe → parent: ready | rendered | selected | exit-inspect | captured | hmr-updated
+ *                    | frame-error | context-menu | navigated | wheel | space | element-resolved
  */
-import { toPng } from "html-to-image";
+import { toJpeg, toPng } from "html-to-image";
+import { pathOfFrame } from "./routes";
 
 type InspectMode = "off" | "inspect";
 
 interface BridgeHost {
 	getFrameId(): string | null;
-	showFrame(id: string): void;
 }
 
 export interface SelectedElementPayload {
@@ -29,7 +31,7 @@ export interface SelectedElementPayload {
 }
 
 function post(message: Record<string, unknown>): void {
-	window.parent.postMessage({ vetd: true, ...message }, "*");
+	window.parent.postMessage({ astd: true, ...message }, "*");
 }
 
 function cssPath(element: Element): string {
@@ -56,7 +58,7 @@ function cssPath(element: Element): string {
 function nearestSource(element: Element): string | null {
 	let node: Element | null = element;
 	while (node) {
-		const source = node.getAttribute("data-vetd-source");
+		const source = node.getAttribute("data-astd-source");
 		if (source) return source;
 		node = node.parentElement;
 	}
@@ -77,7 +79,7 @@ function payloadFor(element: Element): SelectedElementPayload {
 
 function makeOverlay(color: string, background: string, withLabel: boolean): HTMLDivElement {
 	const el = document.createElement("div");
-	el.setAttribute("data-vetd-overlay", "true");
+	el.setAttribute("data-astd-overlay", "true");
 	Object.assign(el.style, {
 		position: "fixed",
 		zIndex: "2147483646",
@@ -89,7 +91,7 @@ function makeOverlay(color: string, background: string, withLabel: boolean): HTM
 	} satisfies Partial<CSSStyleDeclaration>);
 	if (withLabel) {
 		const label = document.createElement("div");
-		label.setAttribute("data-vetd-overlay-label", "true");
+		label.setAttribute("data-astd-overlay-label", "true");
 		Object.assign(label.style, {
 			position: "absolute",
 			left: "-2px",
@@ -121,7 +123,7 @@ function moveOverlay(overlay: HTMLDivElement, target: Element | null): void {
 		width: `${rect.width}px`,
 		height: `${rect.height}px`,
 	});
-	const label = overlay.querySelector<HTMLDivElement>("[data-vetd-overlay-label]");
+	const label = overlay.querySelector<HTMLDivElement>("[data-astd-overlay-label]");
 	if (label) {
 		label.textContent = target.tagName.toLowerCase();
 		// Flip the label below the box when the element touches the top edge.
@@ -137,6 +139,244 @@ export function notifyFrameRendered(frameId: string | null, allFrames: string[])
 	post({ type: "rendered", frameId, allFrames });
 }
 
+/**
+ * 编译失败上报（vite 自带的红屏 overlay 已在 vite.config.mjs 里关掉）。
+ * `message` 为 null 表示这一帧当前没有错误——每次渲染都会先发一次清空。
+ */
+export function notifyFrameError(frameId: string | null, message: string | null): void {
+	post({ type: "frame-error", frameId, message });
+}
+
+type Navigator = (to: string | number) => void;
+
+let navigator: Navigator | null = null;
+/** 路由还没挂上时收到的导航（srcdoc 预览的 show-frame 就赶在这一刻），挂上后补发。 */
+let pendingNavigation: string | null = null;
+/**
+ * 自己维护的历史栈。
+ *
+ * History API 只让你 go(-1)，从不告诉你还能不能后退——而预览工具条要据此决定
+ * 前进/后退按钮的禁用态。所有导航都经过这里，所以这份栈是完整的。
+ */
+const visited: string[] = [];
+let visitedIndex = -1;
+/** 刚发出去的是一次 go(delta)：下一条 navigated 该移动指针而不是压栈。 */
+let pendingDelta: number | null = null;
+
+/** 路由就绪后由 main.tsx 注入。 */
+export function installNavigator(next: Navigator): void {
+	navigator = next;
+	if (pendingNavigation !== null) {
+		const to = pendingNavigation;
+		pendingNavigation = null;
+		next(to);
+	}
+}
+
+function go(to: string | number): void {
+	if (!navigator) {
+		if (typeof to === "string") pendingNavigation = to;
+		return;
+	}
+	if (typeof to === "number") pendingDelta = to;
+	navigator(to);
+}
+
+function pushVisited(path: string): void {
+	visited.splice(visitedIndex + 1);
+	visited.push(path);
+	visitedIndex = visited.length - 1;
+}
+
+/** 每次地址变化后调用（含首次加载）。 */
+export function notifyNavigated(path: string, frameId: string | null): void {
+	if (pendingDelta !== null) {
+		const target = visitedIndex + pendingDelta;
+		pendingDelta = null;
+		if (visited[target] === path) visitedIndex = target;
+		else pushVisited(path);
+	} else if (visited[visitedIndex] !== path) {
+		pushVisited(path);
+	}
+	post({
+		type: "navigated",
+		path,
+		frameId,
+		canBack: visitedIndex > 0,
+		canForward: visitedIndex < visited.length - 1,
+	});
+}
+
+interface ViteErrorPayload {
+	err?: { message?: string; id?: string; loc?: { file?: string; line?: number } };
+}
+
+let lastBuildError: string | null = null;
+const buildErrorListeners = new Set<(message: string) => void>();
+let reloadArmed = false;
+
+/** 最近一次 vite 编译错误。import 失败时拿它换掉「加载模块失败」这种无用信息。 */
+export function latestBuildError(): string | null {
+	return lastBuildError;
+}
+
+export function onBuildError(listener: (message: string) => void): () => void {
+	buildErrorListeners.add(listener);
+	return () => buildErrorListeners.delete(listener);
+}
+
+/**
+ * 编译失败的 frame 模块从没成功执行过，也就不在 HMR 图里：改好之后 vite 推来的
+ * 更新落不到它身上，页面会一直停在错误态。既然当前渲染已经废了，收到任何一次
+ * 更新就整页重载，代价为零。
+ */
+export function armReloadOnNextUpdate(): void {
+	if (reloadArmed || !import.meta.hot) return;
+	reloadArmed = true;
+	import.meta.hot.on("vite:beforeUpdate", () => window.location.reload());
+}
+
+if (import.meta.hot) {
+	import.meta.hot.on("vite:error", (payload: ViteErrorPayload) => {
+		const err = payload?.err;
+		if (!err) return;
+		const where = err.loc?.file ?? err.id;
+		const line = err.loc?.line;
+		const head = where ? `${where}${line ? `:${line}` : ""}\n` : "";
+		lastBuildError = `${head}${err.message ?? "build failed"}`;
+		for (const listener of buildErrorListeners) listener(lastBuildError);
+	});
+}
+
+/**
+ * 元素选择期间把光标钉成箭头。
+ *
+ * 这时候点击的语义是「选中这个元素」，不是「操作这个 UI」——让按钮继续显示手型、
+ * 输入框继续显示 I 形光标会让人以为真能点进去。!important 是必须的：要盖过页面
+ * 自己的 cursor 声明。
+ */
+const CURSOR_STYLE_ID = "astd-inspect-cursor";
+
+function setInspectCursor(on: boolean): void {
+	const existing = document.getElementById(CURSOR_STYLE_ID);
+	if (!on) {
+		existing?.remove();
+		return;
+	}
+	if (existing) return;
+	const style = document.createElement("style");
+	style.id = CURSOR_STYLE_ID;
+	style.textContent = "*, *::before, *::after { cursor: default !important; }";
+	document.head.appendChild(style);
+}
+
+/**
+ * html-to-image 的失败有一半不是 Error，而是 `<img>` 的 error **Event**——直接
+ * String() 会得到「[object Event]」，一点线索都没有。把它换成能指认现场的描述：
+ * 事件源是哪个元素、它当时想加载什么。
+ */
+function describeCaptureError(error: unknown): string {
+	if (error instanceof Error) return error.message;
+	if (typeof Event !== "undefined" && error instanceof Event) {
+		const target = error.target;
+		if (target instanceof HTMLImageElement) {
+			const src = target.currentSrc || target.src;
+			return `failed to load image while capturing: ${src ? src.slice(0, 200) : "<empty src>"}`;
+		}
+		const tag = target instanceof Element ? target.tagName.toLowerCase() : "unknown";
+		return `capture failed on <${tag}> (${error.type} event)`;
+	}
+	return String(error);
+}
+
+/**
+ * 一张截图的像素上限。超过就压 pixelRatio。
+ *
+ * html-to-image 的成本随「面积 × pixelRatio²」走：整棵 DOM 序列化进 foreignObject、
+ * 内联全部样式与素材、再解码编码一次。落地页按默认尺寸就是 1440x2000+，2 倍下已经
+ * 上千万像素，单独跑都能逼近截图超时。而 agent 要看的是版式不是像素，
+ * 12M（约 3464²）之上再涨清晰度没有意义。
+ */
+const MAX_CAPTURE_PIXELS = 12_000_000;
+
+/**
+ * 交给克隆体复制的 CSS 属性名单。
+ *
+ * 内容就是 html-to-image 自己的默认名单（`getComputedStyle(documentElement)` 的枚举
+ * 结果），末尾多加一个 `Font-Size`。
+ *
+ * 它复制 font-size 时会把值改成 `Math.floor(size) - 0.1`——上游拿这个对冲
+ * getComputedStyle 宽度值的小数截断。14px 变 13.9px 还看不太出来，`text-[13.6px]`
+ * 这种直接变 12.9px，小了 5%：位图每一行都比活动态多塞得下一个字，两态的断行位置
+ * 从此对不上。
+ *
+ * 那段改写只认字面量 `'font-size'`，而 CSSOM 的属性名是大小写不敏感的——同一个属性
+ * 用 `Font-Size` 再写一遍，读到的是真实计算值、绕过改写、落到克隆体上依然是
+ * font-size，把前面那次改小的值覆盖掉。
+ *
+ * 不用 `font` 简写走这一步：它在元素带了 `tabular-nums` / `condensed` 之类的值时会
+ * 序列化成空串，而 setProperty 收到空串是**删除**——字号连同字体族一起没了。
+ */
+let styleProperties: string[] | null = null;
+
+function captureStyleProperties(): string[] {
+	if (styleProperties) return styleProperties;
+	const computed = window.getComputedStyle(document.documentElement);
+	const names: string[] = [];
+	for (let i = 0; i < computed.length; i++) names.push(computed[i]);
+	names.push("Font-Size");
+	styleProperties = names;
+	return names;
+}
+
+/**
+ * 截图前把活体里恰好一行的文本块钉成 nowrap，结束后恢复。
+ *
+ * html-to-image 给克隆体的每个盒子内联 getComputedStyle 的宽度，序列化只有两位
+ * 小数；而「宽度由自身文字决定」的盒子（flex 收缩项、inline-block、圆角小标签）
+ * 盒宽与文字 max-content **完全相等、零富余**。克隆体重排时文字按真实精度重新
+ * 折行，盒宽却是四舍五入过的——舍入方向朝下的那些元素，最后一个词就被挤下去，
+ * 位图里「Good morning, Maya」断成两行而活动态正常正是这么来的。哪个元素中招取
+ * 决于它自身宽度的小数位，所以看起来「有概率」。
+ *
+ * 上游对此的对冲是把 font-size 改小（floor - 0.1），已被下面 Font-Size 名单项
+ * 有意关掉（那会让 13.6px 变 12.9px，两态断行同样对不上）。这里改为把「这段文字
+ * 在活体里就是一行」这个事实直接固化进克隆体：nowrap 之后亚像素误差再也触发不了
+ * 折行，而对单行文本 nowrap 本身不改变任何布局。多行段落不动——它们的盒宽不由
+ * 自身文字决定，误差最多挪动段内断点，不会溢出重叠。
+ */
+function pinSingleLineText(): () => void {
+	const touched: Array<[HTMLElement, string]> = [];
+	for (const el of document.body.querySelectorAll<HTMLElement>("*")) {
+		if (!el.textContent?.trim()) continue;
+		const style = window.getComputedStyle(el);
+		// 纯 inline 盒的折行归它所在的块管，跳过；inline-block/inline-flex 自己成块。
+		if (style.display.startsWith("inline") && style.display !== "inline-block" && style.display !== "inline-flex") {
+			continue;
+		}
+		const ws = style.whiteSpace;
+		if (ws.includes("nowrap") || ws.includes("pre") || ws.includes("break-spaces")) continue;
+		const range = document.createRange();
+		range.selectNodeContents(el);
+		const rects = [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0);
+		if (rects.length === 0) continue;
+		const tops = new Set(rects.map((rect) => Math.round(rect.top)));
+		if (tops.size !== 1) continue;
+		touched.push([el, el.style.whiteSpace]);
+		el.style.whiteSpace = "nowrap";
+	}
+	return () => {
+		for (const [el, previous] of touched) el.style.whiteSpace = previous;
+	};
+}
+
+/** 按文档实际大小把请求的 pixelRatio 压到出得来的范围内，不低于 1 倍。 */
+function safePixelRatio(requested: number): number {
+	const el = document.documentElement;
+	const area = Math.max(el.scrollWidth * el.scrollHeight, 1);
+	return Math.max(1, Math.min(requested, Math.sqrt(MAX_CAPTURE_PIXELS / area)));
+}
+
 export function installBridge(host: BridgeHost): void {
 	let mode: InspectMode = "off";
 	let selected: Element | null = null;
@@ -145,7 +385,7 @@ export function installBridge(host: BridgeHost): void {
 	const selectedOverlay = makeOverlay("#6366f1", "rgba(99,102,241,0.06)", true);
 
 	const isOwnNode = (element: Element | null): boolean =>
-		!!element?.closest?.("[data-vetd-overlay]");
+		!!element?.closest?.("[data-astd-overlay]");
 
 	const hitAt = (x: number, y: number): Element | null => {
 		const hit = document.elementFromPoint(x, y);
@@ -159,15 +399,88 @@ export function installBridge(host: BridgeHost): void {
 		post({ type: "selected", payload: element ? payloadFor(element) : null });
 	};
 
+	/**
+	 * 清掉高亮，但不往外报「选中变成了 null」。
+	 *
+	 * 报了会绕回来：画布收到空的 selected 会把这一帧退回 frame 级选中，而单独选中
+	 * 一个 frame 又等于开着元素选择——于是刚关掉的模式立刻被自己打开。取消选中、
+	 * 点别的 frame、Esc 三条路都是这么失效的。
+	 * 两个调用方各自有更准确的消息：关模式的那次由画布发起，本来就知道结果；
+	 * Esc 走 exit-inspect，带着自己的语义。
+	 */
 	const reset = (): void => {
-		select(null);
+		selected = null;
+		moveOverlay(selectedOverlay, null);
 		moveOverlay(hoverOverlay, null);
 	};
 
 	const setMode = (next: InspectMode): void => {
 		mode = next;
+		setInspectCursor(mode === "inspect");
 		if (mode === "off") reset();
 	};
+
+	// 元素选择开着时右键落在 iframe 里，画布那层的 contextmenu 再也收不到——而
+	// 右键菜单是「重命名 / 复制为图片 / 导出渲染图 / 删除」的唯一入口。这里把
+	// 它转发出去，坐标由画布换算回视口坐标（见 bridge-client）。
+	document.addEventListener(
+		"contextmenu",
+		(event) => {
+			if (mode !== "inspect") return;
+			event.preventDefault();
+			post({ type: "context-menu", x: event.clientX, y: event.clientY });
+		},
+		true,
+	);
+
+	// 画布导航（ctrl/⌘+滚轮缩放、滚轮平移）必须在 frame 内部也生效。元素选择开着时
+	// iframe 吃掉了指针事件，画布容器上的 wheel 监听再也收不到东西——表现就是鼠标一进
+	// frame 缩放/平移全失灵。frame 是定尺寸的设计稿、内部不需要滚动，所以这里一律拦下
+	// 转发给画布，由它按同一套逻辑处理。
+	document.addEventListener(
+		"wheel",
+		(event) => {
+			if (mode !== "inspect") return;
+			event.preventDefault();
+			post({
+				type: "wheel",
+				x: event.clientX,
+				y: event.clientY,
+				deltaX: event.deltaX,
+				deltaY: event.deltaY,
+				ctrlKey: event.ctrlKey,
+				metaKey: event.metaKey,
+			});
+		},
+		{ capture: true, passive: false },
+	);
+
+	// 空格 = 临时托手工具。点进 frame 之后焦点归 iframe，画布容器上的 keydown 收不到，
+	// spaceHeld 永远起不来，拖拽平移在 frame 内就失效了。
+	//
+	// keyup 不能同样只在 inspect 下转发：spaceHeld 一置起来画布就会把这一帧的模式关掉
+	// （平移期间不该开元素选择），松手时 mode 已经是 off，keyup 丢掉等于空格卡死。
+	// 所以只要按下那次发出去了，抬起就一定补一条。
+	let spaceForwarded = false;
+	document.addEventListener(
+		"keydown",
+		(event) => {
+			if (mode !== "inspect" || event.code !== "Space" || event.repeat) return;
+			event.preventDefault();
+			spaceForwarded = true;
+			post({ type: "space", down: true });
+		},
+		true,
+	);
+	document.addEventListener(
+		"keyup",
+		(event) => {
+			if (!spaceForwarded || event.code !== "Space") return;
+			spaceForwarded = false;
+			post({ type: "space", down: false });
+		},
+		true,
+	);
 
 	document.addEventListener(
 		"mousemove",
@@ -206,25 +519,55 @@ export function installBridge(host: BridgeHost): void {
 				select(parent);
 				return;
 			}
+			// 焦点在 iframe 里的时候画布层收不到 keydown，Esc 的每一级都得从这里发出去。
+			// hadSelection 就是那个级差：还选着元素就只清元素（frame 仍选中，可以接着
+			// 点下一个），已经什么都没选了才是真的要退出这个 frame。
+			const hadSelection = selected !== null;
 			reset();
-			post({ type: "exit-inspect" });
+			post({ type: "exit-inspect", hadSelection });
 		},
 		true,
 	);
 
 	window.addEventListener("message", (event: MessageEvent) => {
 		const data = event.data as Record<string, unknown> | null;
-		if (!data || data.vetd !== true) return;
+		if (!data || data.astd !== true) return;
 		switch (data.type) {
 			case "set-mode":
 				setMode(data.mode === "inspect" ? "inspect" : "off");
 				return;
+			// 导出快照走 srcdoc（没有 URL 可以拼），选帧只能靠这条消息。
 			case "show-frame":
-				if (typeof data.id === "string") host.showFrame(data.id);
+				if (typeof data.id === "string") go(pathOfFrame(data.id));
+				return;
+			case "navigate":
+				if (typeof data.to === "string") go(data.to);
+				else if (typeof data.delta === "number") go(data.delta);
+				return;
+			// 真·整页重载：预览里的「刷新」要连帧内 state 一起清掉，客户端路由做不到。
+			case "reload":
+				window.location.reload();
 				return;
 			case "clear-selection":
 				reset();
 				return;
+			// 备注锚定：放置时按坐标问「这个点下面是什么元素」，读取时按 domPath 重查
+			// 「当时那个元素现在还在吗、行号漂到哪了」。都不依赖 inspect 模式。
+			case "resolve-element": {
+				const requestId = typeof data.requestId === "string" ? data.requestId : "";
+				let target: Element | null = null;
+				if (typeof data.domPath === "string" && data.domPath) {
+					try {
+						target = document.querySelector(data.domPath);
+					} catch {
+						target = null; // 非法选择器按查不到处理
+					}
+				} else if (typeof data.x === "number" && typeof data.y === "number") {
+					target = hitAt(data.x, data.y);
+				}
+				post({ type: "element-resolved", requestId, payload: target ? payloadFor(target) : null });
+				return;
+			}
 			case "capture": {
 				const requestId = typeof data.requestId === "string" ? data.requestId : "";
 				// keepHighlight: bake the selected-element outline into the shot (used by
@@ -232,22 +575,49 @@ export function installBridge(host: BridgeHost): void {
 				const keepHighlight = data.keepHighlight === true && selected !== null;
 				// Mockup export asks for a higher ratio so the composed image stays
 				// crisp when scaled up; 2 keeps the historical behaviour.
-				const pixelRatio =
-					typeof data.pixelRatio === "number" && data.pixelRatio > 0 ? Math.min(data.pixelRatio, 4) : 2;
+				const pixelRatio = safePixelRatio(
+					typeof data.pixelRatio === "number" && data.pixelRatio > 0 ? Math.min(data.pixelRatio, 4) : 2,
+				);
 				moveOverlay(hoverOverlay, null);
 				if (!keepHighlight) moveOverlay(selectedOverlay, null);
 				// Capture documentElement: the overlay divs live on it, so a kept
 				// highlight is included; body alone would drop them.
-				// cacheBust 会给每张图片/字体的 URL 加随机查询串，强制重新下载整份
-				// 素材——图多的 frame 单次截图能拖到几十秒。它本是为绕过跨域缓存的
-				// CORS 问题，而素材由同源的引擎 dev server 提供，用不上。
-				// 只有交付物（导出渲染图 / 发给 agent）保留它兜底，画布位图化不用。
-				const cacheBust = data.cacheBust === true;
-				toPng(document.documentElement, { pixelRatio, cacheBust })
+				// 这里没有 cacheBust：它给每张素材 URL 加随机查询串强制重下，图多的 frame
+				// 能从百来毫秒拖到两秒以上，却兜不住任何东西——html-to-image 按去掉 query 的
+				// URL 缓存内联结果，随机串进不了 key，缓存在它生效前就短路了。详见
+				// DesignCanvas 里 captureFaithfully 的注释。
+				// html-to-image 会把每张 <img> 重新 fetch 成 dataURL 再塞回去；fetch 不到
+				// （跨域缺 CORS 头、404、离线）时它把 src 换成空串，于是图片报 error，整次
+				// 截图连同这个 error Event 一起 reject。而图在页面上显示正常——渲染只要
+				// <img> 加载得到，不需要 fetch 得到——所以这个失败看着毫无规律。
+				// 一张图挂掉不该毁掉整张截图：跳过它，其余照截。
+				const onImageErrorHandler = (): void => {};
+				// 画布位图化要 jpeg：同样的像素数，dataUrl 字符串小一个量级，
+				// postMessage 传输与常驻内存跟着降下来——这正是能把 pixelRatio 提到
+				// 设备像素比、让位图不再糊的前提。jpeg 没有透明通道，必须显式铺白底，
+				// 否则透明处会变黑。交付物（导出渲染图 / 发给 agent）继续走 png。
+				const includeStyleProperties = captureStyleProperties();
+				const encode = (): Promise<string> =>
+					data.format === "jpeg"
+						? toJpeg(document.documentElement, {
+								pixelRatio,
+								onImageErrorHandler,
+								includeStyleProperties,
+								quality: typeof data.quality === "number" ? data.quality : 0.92,
+								backgroundColor: "#ffffff",
+							})
+						: toPng(document.documentElement, { pixelRatio, onImageErrorHandler, includeStyleProperties });
+				// 字体没就绪就截，量到的是后备字体的断行；页面随后换上真字体重排，位图
+				// 与活动态就对不上了——每行最后一个字被挤到下一行正是这么来的。rendered
+				// 信号那边已经等过一次（见 main.tsx 的 FramePainted），这里再挡一道：
+				// 交付物那条路（astd_screenshot / 导出 / 复制）不经过那个信号。
+				document.fonts.ready
+					.then(() => {
+						const restore = pinSingleLineText();
+						return encode().finally(restore);
+					})
 					.then((dataUrl) => post({ type: "captured", requestId, dataUrl }))
-					.catch((error: unknown) =>
-						post({ type: "captured", requestId, error: error instanceof Error ? error.message : String(error) }),
-					)
+					.catch((error: unknown) => post({ type: "captured", requestId, error: describeCaptureError(error) }))
 					.finally(() => moveOverlay(selectedOverlay, selected));
 				return;
 			}

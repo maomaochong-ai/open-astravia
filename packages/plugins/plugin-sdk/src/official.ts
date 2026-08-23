@@ -550,10 +550,27 @@ export interface PluginOfficialApi {
 	};
 	navigation: {
 		help(): unknown;
-		resolveOpen(input: { target: string; tab?: string; section?: string }): {
+		/**
+		 * `target: "new-session"` 时必填：要进入新会话页的项目目录。
+		 */
+		resolveOpen(input: {
+			target: string;
+			tab?: string;
+			section?: string;
+			cwd?: string;
+			/** 仅 `target: "new-session"` 使用：预置到输入框的草稿文本，不发送，用户可继续编辑。 */
+			draft?: string;
+		}): {
 			hashPath: string;
 			resolved: unknown;
 		};
-		open(input: { target: string; tab?: string; section?: string }): Promise<unknown>;
+		open(input: {
+			target: string;
+			tab?: string;
+			section?: string;
+			cwd?: string;
+			/** 仅 `target: "new-session"` 使用：预置到输入框的草稿文本，不发送，用户可继续编辑。 */
+			draft?: string;
+		}): Promise<unknown>;
 	};
 }

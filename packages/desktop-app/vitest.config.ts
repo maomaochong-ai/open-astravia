@@ -10,6 +10,7 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
+		setupFiles: ["src/test/setup.ts"],
 		include: ["src/**/*.test.ts"],
 		// Opt-in via `bun run test:coverage` only; default `test` is unchanged.
 		// Full src denominator is intentional — low totals reflect thin unit coverage,
