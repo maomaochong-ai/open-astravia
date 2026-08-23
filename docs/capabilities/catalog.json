@@ -1025,8 +1025,9 @@
     {
       "id": "cap.domain.astravia.agent-settings.experimental.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -1097,8 +1098,9 @@
     {
       "id": "cap.domain.astravia.batch-task.project.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -2824,8 +2826,9 @@
     {
       "id": "cap.domain.astravia.download.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -2929,8 +2932,9 @@
     {
       "id": "cap.domain.astravia.general-settings.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -3191,8 +3195,9 @@
     {
       "id": "cap.domain.astravia.im.status.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -3464,8 +3469,9 @@
     {
       "id": "cap.domain.astravia.im.restart",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -3831,8 +3837,9 @@
     {
       "id": "cap.domain.astravia.knowledge.base.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -3920,8 +3927,9 @@
     {
       "id": "cap.domain.astravia.knowledge.file-status.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -3967,8 +3975,9 @@
     {
       "id": "cap.domain.astravia.knowledge.processing.status.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -3980,8 +3989,9 @@
     {
       "id": "cap.domain.astravia.knowledge.processing.settings.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -4139,8 +4149,9 @@
     {
       "id": "cap.domain.astravia.knowledge.processing.scan",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -4165,8 +4176,9 @@
     {
       "id": "cap.domain.astravia.knowledge.processing.retry-failed",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -4295,8 +4307,9 @@
     {
       "id": "cap.domain.astravia.mcp.server.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -4660,8 +4673,9 @@
     {
       "id": "cap.domain.astravia.model.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -4748,8 +4762,9 @@
     {
       "id": "cap.domain.astravia.model.config.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -5299,8 +5314,9 @@
     {
       "id": "cap.domain.astravia.project.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -5534,8 +5550,9 @@
     {
       "id": "cap.domain.astravia.scheduler.task.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -6652,8 +6669,9 @@
     {
       "id": "cap.domain.astravia.session.runtime-project.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -6682,8 +6700,9 @@
     {
       "id": "cap.domain.astravia.shortcut.settings.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -6889,8 +6908,9 @@
     {
       "id": "cap.domain.astravia.shortcut.binding.reset-all",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -7128,8 +7148,9 @@
     {
       "id": "cap.domain.astravia.skill.installed.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -7256,8 +7277,9 @@
     {
       "id": "cap.domain.astravia.updater.state.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -7336,8 +7358,9 @@
     {
       "id": "cap.domain.astravia.updater.current-version.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -7349,8 +7372,9 @@
     {
       "id": "cap.domain.astravia.updater.check",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -7429,8 +7453,9 @@
     {
       "id": "cap.domain.astravia.updater.download",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -7509,8 +7534,9 @@
     {
       "id": "cap.domain.astravia.updater.install",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -7520,8 +7546,9 @@
     {
       "id": "cap.domain.astravia.updater.dismiss",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -7531,8 +7558,9 @@
     {
       "id": "cap.domain.astravia.updater.cancel",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -7542,8 +7570,9 @@
     {
       "id": "cap.domain.astravia.webhook.endpoint.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -7629,8 +7658,9 @@
     {
       "id": "cap.domain.astravia.webhook.provider.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",

@@ -16,10 +16,7 @@ export const DOWNLOAD_STATUSES = {
 	CANCELED: "canceled",
 } as const;
 
-const downloadListInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const downloadListInputType = Type.Object({}, { additionalProperties: false });
 
 const downloadStatusType = Type.Union([
 	Type.Literal(DOWNLOAD_STATUSES.QUEUED),
