@@ -93,7 +93,7 @@ export function MessageTimelineRailView({
 					aria-label={tick.name}
 					aria-current={tick.active ? "location" : undefined}
 					onClick={tick.onClick}
-					className="group absolute left-1/2 flex h-2 w-full -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+					className="group absolute left-1/2 z-0 flex h-3 w-full -translate-x-1/2 -translate-y-1/2 items-center justify-center hover:z-20 focus-visible:z-20"
 					style={{ top: TICK_PAD_PX + (index / last) * innerHeight }}
 				>
 					<span
@@ -108,7 +108,15 @@ export function MessageTimelineRailView({
 					{showPreview ? (
 						<span
 							aria-hidden
-							className="pointer-events-none absolute right-full z-30 mr-2 max-w-52 truncate rounded-md border border-border/50 bg-popover px-2 py-1 text-[11px] text-popover-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+							className={cn(
+								"pointer-events-none absolute right-full z-30 mr-2 w-max max-w-64",
+								"rounded-lg border border-border/50 bg-popover px-2.5 py-1.5 shadow-md",
+								"text-left text-[12px] leading-snug text-popover-foreground",
+								"line-clamp-3 break-words whitespace-normal",
+								"opacity-0 delay-0 duration-150 transition-opacity",
+								"group-hover:opacity-100 group-hover:delay-150",
+								"group-focus-visible:opacity-100 group-focus-visible:delay-0",
+							)}
 						>
 							{tick.label}
 						</span>

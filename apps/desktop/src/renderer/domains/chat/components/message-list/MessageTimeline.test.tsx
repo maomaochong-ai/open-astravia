@@ -95,6 +95,20 @@ describe("MessageTimeline", () => {
 		expect(screen.getByRole("searchbox", { name: "Search questions" })).toBeTruthy();
 	});
 
+	it("keeps enough question text on a rail tick to preview several lines", () => {
+		const question =
+			"请帮我检查登录页提交后白屏的问题，控制台会出现 hydration mismatch，并对照最近一次改动里表单校验、错误边界和路由守卫的先后顺序，给出可以落地的修复建议。";
+		const messages = Array.from({ length: 8 }).flatMap((_, index) => [
+			{ id: `user-${index}`, role: "user" as const, text: index === 0 ? question : `Question ${index}` },
+			{ id: `assistant-${index}`, role: "assistant" as const, text: `Answer ${index}` },
+		]);
+		render(<MessageTimeline activeMessageIndex={0} messages={messages} onNavigate={vi.fn()} />);
+
+		expect(
+			screen.getByRole("button", { name: /Jump to 请帮我检查登录页提交后白屏的问题/ }).textContent,
+		).toContain("给出可以落地的修复建议");
+	});
+
 	it("jumps from a rail tick without opening the outline list", async () => {
 		const onNavigate = vi.fn();
 		render(<MessageTimeline activeMessageIndex={0} messages={conversation(8)} onNavigate={onNavigate} />);

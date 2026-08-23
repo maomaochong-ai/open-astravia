@@ -1,7 +1,21 @@
 import type { ChatMessage } from "./types";
 
 export const MESSAGE_NAVIGATION_MIN_TURNS = 8;
-const NAVIGATION_PREVIEW_MAX_CHARACTERS = 72;
+const NAVIGATION_PREVIEW_MAX_CHARACTERS = 120;
+
+export function shouldShowMessageNavigation(messages: readonly ChatMessage[]): boolean {
+	let turns = 0;
+	let current = false;
+	for (const message of messages) {
+		if (message.role === "compaction") continue;
+		if (message.role === "user" || !current) {
+			turns += 1;
+			current = true;
+			if (turns >= MESSAGE_NAVIGATION_MIN_TURNS) return true;
+		}
+	}
+	return false;
+}
 
 export interface MessageNavigationEntry {
 	id: string;

@@ -120,4 +120,22 @@ describe("MessageListView viewport phases", () => {
 		expect(host?.className).toContain("right-6");
 		expect(host?.className).not.toMatch(/\bleft-/);
 	});
+
+	it("长会话在窄屏为提问目录留出右侧 gutter，避免压住消息", () => {
+		const longConversation = Array.from({ length: 8 }).flatMap((_, index) => [
+			{ id: `user-${index}`, role: "user" as const, text: `Question ${index}` },
+			{ id: `assistant-${index}`, role: "assistant" as const, text: `Answer ${index}` },
+		]);
+		const viewProps = props("expanded");
+		viewProps.model = { ...viewProps.model, messages: longConversation, tailMessageId: "assistant-7" };
+		render(<MessageListView {...viewProps} />);
+
+		const outline = document.querySelector("[data-message-outline=true]");
+		expect(outline?.className).toContain("[--message-outline-gutter:3rem]");
+	});
+
+	it("短会话不预留提问目录 gutter", () => {
+		render(<MessageListView {...props("expanded")} />);
+		expect(document.querySelector("[data-message-outline=true]")).toBeNull();
+	});
 });

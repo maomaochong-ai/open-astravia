@@ -1,3 +1,4 @@
+import { cn } from "@vetta/ui";
 import { forwardRef, type JSX, type ReactNode } from "react";
 
 export interface MessageListViewProps {
@@ -26,12 +27,16 @@ export function MessageListView({ virtuoso }: MessageListViewProps): JSX.Element
 export const VirtuosoListContainer = forwardRef<
 	HTMLDivElement,
 	React.HTMLAttributes<HTMLDivElement>
->(function VirtuosoListContainer(props, ref) {
+>(function VirtuosoListContainer({ className, ...props }, ref) {
 	return (
 		<div
 			{...props}
 			ref={ref}
-			className="mx-auto flex max-w-3xl flex-col overflow-hidden px-5 pb-2"
+			className={cn(
+				"mx-auto flex max-w-3xl flex-col overflow-hidden pb-2 pl-5",
+				"pr-[var(--message-outline-gutter,1.25rem)]",
+				className,
+			)}
 			style={{ ...props.style }}
 		/>
 	);

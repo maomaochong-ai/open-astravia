@@ -3,6 +3,7 @@ import {
 	buildMessageNavigationOutline,
 	buildMessageNavigationTurns,
 	findActiveNavigationTurnIndex,
+	shouldShowMessageNavigation,
 } from "./messageNavigationModel";
 import type { ChatMessage } from "./types";
 
@@ -30,10 +31,10 @@ describe("message navigation model", () => {
 	});
 
 	it("keeps the full normalized text searchable while showing a bounded preview", () => {
-		const longText = `${"前".repeat(80)} target`;
+		const longText = `${"前".repeat(130)} target`;
 		const turns = buildMessageNavigationTurns([{ id: "user", role: "user", text: longText }]);
 
-		expect(Array.from(turns[0].entries[0].preview)).toHaveLength(72);
+		expect(Array.from(turns[0].entries[0].preview)).toHaveLength(120);
 		expect(turns[0].entries[0].preview.endsWith("…")).toBe(true);
 		expect(buildMessageNavigationOutline(turns, "TARGET")).toHaveLength(1);
 	});
@@ -66,6 +67,20 @@ describe("message navigation model", () => {
 				turnNumber: 2,
 			},
 		]);
+	});
+
+	it("shows the outline only after eight navigable turns", () => {
+		const turns = (count: number): ChatMessage[] =>
+			Array.from({ length: count }).flatMap((_, index) => [
+				{ id: `user-${index}`, role: "user" as const, text: `Question ${index}` },
+				{ id: `assistant-${index}`, role: "assistant" as const, text: `Answer ${index}` },
+			]);
+
+		expect(shouldShowMessageNavigation(turns(7))).toBe(false);
+		expect(shouldShowMessageNavigation(turns(8))).toBe(true);
+		expect(shouldShowMessageNavigation([...turns(7), { id: "compact", role: "compaction", text: "summary" }])).toBe(
+			false,
+		);
 	});
 
 	it("maps the visible message index back to its containing turn", () => {

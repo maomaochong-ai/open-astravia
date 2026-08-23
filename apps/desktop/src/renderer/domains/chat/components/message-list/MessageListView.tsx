@@ -1,3 +1,4 @@
+import { cn } from "@shared/lib/utils";
 import { activeSessionAtom } from "@shared/store/atoms";
 import {
 	MessageListView as ThemeMessageListView,
@@ -14,6 +15,7 @@ import { ForkOriginBanner, resolveForkOriginPlacement } from "./ForkOriginBanner
 import { MessageItem, ModelSwitchBoundary, ExportMessageList } from "./MessageItem";
 import { MessageListFooter } from "./MessageListFooter";
 import { MessageTimeline } from "./MessageTimeline";
+import { shouldShowMessageNavigation } from "./messageNavigationModel";
 import type { ChatMessage, MessageListModel, MessageListProps } from "./types";
 
 export { ExportMessageList };
@@ -150,48 +152,58 @@ export function MessageListView({
 		() => ({ List: VirtuosoListContainer, Footer: footer }),
 		[footer],
 	);
+	const showMessageOutline = useMemo(() => shouldShowMessageNavigation(messages), [messages]);
 	const selectionMenu = useMessageSelectionContextMenu();
 
 	return (
 		<>
 			<div
 				ref={selectionMenu.containerRef}
-				className="relative flex min-h-0 flex-1 flex-col"
+				className="@container relative flex min-h-0 flex-1 flex-col"
 				data-message-viewport={viewportPhase}
 				onContextMenuCapture={selectionMenu.onContextMenuCapture}
 			>
-				<ThemeMessageListView
-					virtuoso={
-						<Virtuoso
-							ref={scroll.virtuosoRef}
-							scrollerRef={scroll.scrollerRef}
-							data={messages}
-							className="flex-1 pt-2"
-							style={VIRTUOSO_STYLE}
-							atBottomStateChange={scroll.onAtBottomChange}
-							atBottomThreshold={80}
-							rangeChanged={onVisibleRangeChanged}
-							overscan={
-								viewportPhase === "initial"
-									? INITIAL_OVERSCAN
-									: isStreaming
-										? STREAMING_OVERSCAN
-										: IDLE_OVERSCAN
-							}
-							increaseViewportBy={
-								viewportPhase === "initial"
-									? INITIAL_INCREASE_VIEWPORT_BY
-									: isStreaming
-										? STREAMING_INCREASE_VIEWPORT_BY
-										: IDLE_INCREASE_VIEWPORT_BY
-							}
-							defaultItemHeight={DEFAULT_ITEM_HEIGHT}
-							components={components}
-							itemContent={itemContent}
-							initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0}
-						/>
-					}
-				/>
+				{/* 窄于 52rem 时消息列铺满，目录会压住右对齐气泡；把右侧 gutter 提到 3rem。宽屏仍走原来的页边空位。 */}
+				<div
+					className={cn(
+						"flex min-h-0 min-w-0 flex-1 flex-col",
+						showMessageOutline && "@max-[52rem]:[--message-outline-gutter:3rem]",
+					)}
+					data-message-outline={showMessageOutline ? "true" : undefined}
+				>
+					<ThemeMessageListView
+						virtuoso={
+							<Virtuoso
+								ref={scroll.virtuosoRef}
+								scrollerRef={scroll.scrollerRef}
+								data={messages}
+								className="flex-1 pt-2"
+								style={VIRTUOSO_STYLE}
+								atBottomStateChange={scroll.onAtBottomChange}
+								atBottomThreshold={80}
+								rangeChanged={onVisibleRangeChanged}
+								overscan={
+									viewportPhase === "initial"
+										? INITIAL_OVERSCAN
+										: isStreaming
+											? STREAMING_OVERSCAN
+											: IDLE_OVERSCAN
+								}
+								increaseViewportBy={
+									viewportPhase === "initial"
+										? INITIAL_INCREASE_VIEWPORT_BY
+										: isStreaming
+											? STREAMING_INCREASE_VIEWPORT_BY
+											: IDLE_INCREASE_VIEWPORT_BY
+								}
+								defaultItemHeight={DEFAULT_ITEM_HEIGHT}
+								components={components}
+								itemContent={itemContent}
+								initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0}
+							/>
+						}
+					/>
+				</div>
 				{/* 贴会话区域右缘；right-6 给 overlay 滚动条留出间距，不跟居中的消息列对齐。 */}
 				<div className="pointer-events-none absolute top-1/2 right-6 z-20 -translate-y-1/2">
 					<div className="pointer-events-auto">
