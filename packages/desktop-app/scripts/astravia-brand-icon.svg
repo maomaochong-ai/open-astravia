@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="0.55" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#0b0d18"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#818cf8" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#818cf8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="planet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="60"/>
+    </filter>
+  </defs>
+  <!-- 背景圆角矩形：safe area 128px（12.5%），内容不贴边 -->
+  <rect x="128" y="128" width="768" height="768" rx="224" fill="url(#bg)"/>
+  <!-- 中心光晕 -->
+  <circle cx="512" cy="512" r="260" fill="url(#glow)" filter="url(#soft)"/>
+  <!-- 星环（外轨道）：宽 stroke，16px 下仍 ≥1.5px -->
+  <ellipse cx="512" cy="512" rx="300" ry="138" fill="none" stroke="#dce0ea" stroke-opacity="0.85" stroke-width="100" transform="rotate(-24 512 512)"/>
+  <!-- 抵达的星辰：金色实心，骑在轨道上 -->
+  <circle cx="714" cy="342" r="112" fill="url(#planet)"/>
+  <!-- 点缀星：粗壮圆点，避免小尺寸噪点 -->
+  <circle cx="300" cy="280" r="48" fill="#dce0ea" fill-opacity="0.85"/>
+  <circle cx="286" cy="620" r="54" fill="#dce0ea" fill-opacity="0.7"/>
+  <circle cx="640" cy="668" r="46" fill="#fbbf24" fill-opacity="0.9"/>
+  <circle cx="470" cy="250" r="44" fill="#dce0ea" fill-opacity="0.6"/>
+  <circle cx="760" cy="570" r="50" fill="#dce0ea" fill-opacity="0.5"/>
+</svg>
