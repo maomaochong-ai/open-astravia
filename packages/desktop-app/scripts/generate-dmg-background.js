@@ -1,13 +1,8 @@
 // 生成 DMG 背景图 build/background.png (660×440) 和 build/background@2x.png (1320×880)。
 //
-// 思路：写一段 SVG → qlmanage 渲染成 PNG → sips 裁剪/缩放，全部用 macOS 自带工具，
-// 不引入 sharp/canvas 类原生依赖。仅在 macOS host 上有效（与 mac 打包前提一致）。
-//
-// qlmanage 渲染 SVG 时会强制输出正方形（-s N 给出 N×N），所以这里把 SVG 外框
-// 设成 1320×1320、viewBox 设成 0 0 1320 880、preserveAspectRatio="xMidYMid meet"，
-// 让 1320×880 的设计稿垂直居中渲染到 1320×1320 PNG（顶/底各 220px 留白），
-// 再用 sips -c 880 1320 把中间 1320×880 内容带裁出来作为 @2x；最后 sips -z 缩到 @1x。
-
+// 思路：写一段 SVG → rsvg-convert（homebrew librsvg）渲染成 1320×880 @2x PNG →
+// sips 缩到 @1x。不引入 sharp/canvas 类原生依赖。仅在 darwin host 上有效
+// （与 mac 打包前提一致）。
 import { execFileSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -23,7 +18,7 @@ if (process.platform !== "darwin") {
 // 设计稿坐标系：@2x，1320×880。@1x DMG 窗口是 660×440。
 // 图标位水平居中，间距相等。这里只画背景视觉指引；图标本身由 electron-builder
 // 通过 dmg.contents 摆放到对应 (x, y) 上（坐标用 @1x），两处必须对齐。
-//
+
 // --two-icons：签名+公证构建，DMG 不带「修复已损坏.app」，退回两图标常规版式。
 const twoIcons = process.argv.includes("--two-icons");
 const ICON_CENTERS_X_2X = twoIcons
@@ -31,13 +26,37 @@ const ICON_CENTERS_X_2X = twoIcons
 	: [200, 660, 1120]; // @1x: 100, 330, 560
 const ICON_CENTER_Y_2X = 400; // @1x: 200
 
-// 配色：warm off-white 背景 + 暖灰文字，贴合 Apple 自家 DMG 的极简调性。
+// 配色：品牌色板（astravia-brand.vetd frames/palette）——象牙白底 + 暖墨文字 +
+// 星轨 indigo 箭头，贴合 Apple 自家 DMG 极简调性。
 const COLORS = {
 	bg: "#fafaf9",
 	text: "#292524",
 	subtle: "#78716c",
-	arrow: "#a8a29e",
+	arrow: "#6366f1",
 };
+
+// 顶部品牌徽标：星轨（星环 + 行星 + 点缀星），与 scripts/astravia-brand-icon.svg
+// 图形语言一致（宽环 + 金色行星 + 少量星点，safe-area 规范见 build/ICON-SPEC.md）。
+const logoDefs = `
+	<linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+		<stop offset="0" stop-color="#4f46e5"/>
+		<stop offset="0.55" stop-color="#8b5cf6"/>
+		<stop offset="1" stop-color="#0b0d18"/>
+	</linearGradient>
+	<linearGradient id="logoPlanet" x1="0" y1="0" x2="1" y2="1">
+		<stop offset="0" stop-color="#fbbf24"/>
+		<stop offset="1" stop-color="#f59e0b"/>
+	</linearGradient>
+`;
+const logo = `
+	<g transform="translate(588 96)">
+		<rect width="144" height="144" rx="34" fill="url(#logoGrad)"/>
+		<ellipse cx="72" cy="72" rx="52" ry="24" fill="none" stroke="#dce0ea" stroke-opacity="0.85" stroke-width="14" transform="rotate(-24 72 72)"/>
+		<circle cx="100" cy="48" r="14" fill="url(#logoPlanet)"/>
+		<circle cx="42" cy="39" r="7" fill="#dce0ea" fill-opacity="0.85"/>
+		<circle cx="107" cy="80" r="7" fill="#dce0ea" fill-opacity="0.5"/>
+	</g>
+`;
 
 function arrow(fromX, toX) {
 	const y = ICON_CENTER_Y_2X;
@@ -62,8 +81,12 @@ const repairHint = twoIcons
 	</text>`;
 
 const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="1320" viewBox="0 0 1320 880" preserveAspectRatio="xMidYMid meet">
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="880" viewBox="0 0 1320 880">
+	<defs>
+	${logoDefs}
+	</defs>
 	<rect width="1320" height="880" fill="${COLORS.bg}"/>
+	${logo}
 	${arrows}
 	<text x="660" y="700" font-family="-apple-system, Helvetica Neue, Helvetica" font-size="26" fill="${COLORS.text}" text-anchor="middle">
 		拖动 Astravia 到 Applications 完成安装
@@ -80,16 +103,10 @@ mkdirSync(buildDir, { recursive: true });
 const svgPath = join(stageDir, "background.svg");
 writeFileSync(svgPath, svg);
 
-console.log("[generate-dmg-background] qlmanage -> square PNG");
-execFileSync("/usr/bin/qlmanage", ["-t", "-s", "1320", "-o", stageDir, svgPath], { stdio: "ignore" });
-const squarePng = join(stageDir, "background.svg.png");
-
 const bg2xPath = join(buildDir, "background@2x.png");
 const bgPath = join(buildDir, "background.png");
-
-console.log("[generate-dmg-background] sips -c 880x1320 -> @2x");
-// sips -c height width：从中心裁剪到指定尺寸；这里把 1320×1320 中间 880 行裁出来。
-execFileSync("/usr/bin/sips", ["-c", "880", "1320", squarePng, "--out", bg2xPath], { stdio: "ignore" });
+console.log("[generate-dmg-background] rsvg-convert -> @2x");
+execFileSync("/opt/homebrew/bin/rsvg-convert", ["-w", "1320", "-h", "880", svgPath, "-o", bg2xPath], { stdio: "ignore" });
 
 console.log("[generate-dmg-background] sips -z 440x660 -> @1x");
 execFileSync("/usr/bin/sips", ["-z", "440", "660", bg2xPath, "--out", bgPath], { stdio: "ignore" });
