@@ -73,6 +73,44 @@ describe("normalizeConnectionEnv / normalizeProdWriteApproved", () => {
 });
 
 describe("normalizeDatabase", () => {
+	it("缺失返回全缺省（含 B3.1 新字段）", () => {
+		const expected = {
+			schemaInjection: false,
+			dbxToolEnabled: false,
+			connectionEnv: {},
+			prodWriteApproved: {},
+			safetyMode: "strict",
+			rowLimit: 100,
+			queryTimeoutMs: 30_000,
+			connectionAiAccess: {},
+		};
+		expect(normalizeDatabase(undefined)).toEqual(expected);
+		expect(normalizeDatabase(null)).toEqual(expected);
+	});
+
+	it("B3.1 新字段归一化（safetyMode/rowLimit/queryTimeoutMs/connectionAiAccess）", () => {
+		const result = normalizeDatabase({
+			safetyMode: "relaxed",
+			rowLimit: 200,
+			queryTimeoutMs: 60_000,
+			connectionAiAccess: { prodDb: true, other: "yes" },
+		});
+		expect(result.safetyMode).toBe("relaxed");
+		expect(result.rowLimit).toBe(200);
+		expect(result.queryTimeoutMs).toBe(60_000);
+		expect(result.connectionAiAccess).toEqual({ prodDb: true });
+	});
+
+	it("非法值回退缺省", () => {
+		const result = normalizeDatabase({
+			safetyMode: "nope",
+			rowLimit: 999,
+			queryTimeoutMs: -1,
+		});
+		expect(result.safetyMode).toBe("strict");
+		expect(result.rowLimit).toBe(100);
+		expect(result.queryTimeoutMs).toBe(30_000);
+	});
 	it("缺失返回全缺省", () => {
 		expect(normalizeDatabase(undefined)).toEqual({
 			schemaInjection: false,

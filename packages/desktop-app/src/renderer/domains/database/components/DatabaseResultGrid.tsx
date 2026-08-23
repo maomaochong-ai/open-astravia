@@ -241,6 +241,15 @@ function downloadTextFile(filename: string, content: string, mime: string): void
 					<div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
 						<span className="truncate">{connectionName}</span>
 						<span className="shrink-0">{t("databaseResultRows", { count: result.rowCount })}</span>
+						{result.truncated ? (
+							<span
+								title={t("databaseResultTruncatedHint")}
+								className="shrink-0 rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10.5px] text-amber-700 dark:text-amber-400"
+							>
+								{t("databaseResultTruncated")}
+							</span>
+						) : null}
+						{result.durationMs ? <span className="shrink-0">{result.durationMs}</span> : null}
 						{result.durationMs ? <span className="shrink-0">{result.durationMs}</span> : null}
 						{/* B3.2-R 工具栏：只读/无主键徽章 + 刷新 + 自动刷新 + 添加行；对齐 dbx DataGridToolbar。 */}
 						{readOnlyReason ? (

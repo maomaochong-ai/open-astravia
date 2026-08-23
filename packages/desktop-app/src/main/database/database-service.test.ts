@@ -135,11 +135,18 @@ describe("databaseService 集成（真实 dbx-mcp）", () => {
 		expect(result.error.code).toBe("CONNECTION_FAILED");
 	});
 
-	it("DDL 被安全策略拦截 → SQL_BLOCKED", async () => {
+	it("DDL 被应用层安全策略拦截 → DDL_BLOCKED（B3.1-①-D 优先于引擎 SQL_BLOCKED）", async () => {
 		const result = await databaseService.executeQuery(connectionName, "DROP TABLE users");
 		expect(result.ok).toBe(false);
 		if (result.ok) return;
-		expect(result.error.code).toBe("SQL_BLOCKED");
+		expect(result.error.code).toBe("DDL_BLOCKED");
+	});
+
+	it("strict 模式（缺省）dev 连接写语句被拦截 → WRITE_BLOCKED（B3.1-①-B）", async () => {
+		const result = await databaseService.executeQuery(connectionName, "INSERT INTO users (name) VALUES ('x')");
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.error.code).toBe("WRITE_BLOCKED");
 	});
 
 	it("不存在的连接 → CONNECTION_NOT_FOUND", async () => {

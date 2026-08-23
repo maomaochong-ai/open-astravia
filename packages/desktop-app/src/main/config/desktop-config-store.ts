@@ -52,6 +52,14 @@ export interface DatabaseConfig {
 	connectionEnv?: Record<string, "prod" | "dev">;
 	/** 生产写授权（W4-②）：连接名 → 已显式授权允许生产写操作。 */
 	prodWriteApproved?: Record<string, boolean>;
+	/** 安全执行模式（B3.1-①-B）：strict 所有连接写操作需显式授权（缺省）；relaxed 仅 prod 拦截。 */
+	safetyMode?: "strict" | "relaxed";
+	/** 查询结果行数上限（B3.1-②-A，缺省 100，与引擎 max 100 一致）。 */
+	rowLimit?: number;
+	/** 查询执行超时（B3.1-②-B，毫秒，缺省 30s）。 */
+	queryTimeoutMs?: number;
+	/** 连接级「允许 AI 访问」白名单（B3.1-①-C）：连接名 → 允许（缺省按 connectionEnv：prod 关 / dev 开）。 */
+	connectionAiAccess?: Record<string, boolean>;
 }
 
 export interface DesktopConfig {
@@ -116,7 +124,16 @@ const DEFAULT_CONFIG: DesktopConfig = {
 	shortcuts: { bindings: {} },
 	quickPanel: { trigger: "none", postSendBehavior: "foreground" },
 	appshot: { enabled: false, gesture: "both-shift" },
-	database: { schemaInjection: false, dbxToolEnabled: false, connectionEnv: {}, prodWriteApproved: {} },
+	database: {
+		schemaInjection: false,
+		dbxToolEnabled: false,
+		connectionEnv: {},
+		prodWriteApproved: {},
+		safetyMode: "strict",
+		rowLimit: 100,
+		queryTimeoutMs: 30_000,
+		connectionAiAccess: {},
+	},
 };
 
 function migrateProjectEntries(entries: unknown): ProjectEntry[] {
@@ -247,17 +264,45 @@ export function normalizeProdWriteApproved(value: unknown): Record<string, boole
 	return out;
 }
 
+const ROW_LIMIT_VALUES = [50, 100, 200, 500];
+
+/** 归一化连接级「允许 AI 访问」白名单：只保留合法连接名与 true 值。 */
+export function normalizeConnectionAiAccess(value: unknown): Record<string, boolean> {
+	if (typeof value !== "object" || value === null) return {};
+	const out: Record<string, boolean> = {};
+	for (const [name, allowed] of Object.entries(value as Record<string, unknown>)) {
+		if (name.length > 0 && allowed === true) out[name] = true;
+	}
+	return out;
+}
+
 export function normalizeDatabase(value: unknown): DatabaseConfig {
 	if (typeof value !== "object" || value === null) {
-		return { schemaInjection: false, dbxToolEnabled: false, connectionEnv: {}, prodWriteApproved: {} };
+		return {
+			schemaInjection: false,
+			dbxToolEnabled: false,
+			connectionEnv: {},
+			prodWriteApproved: {},
+			safetyMode: "strict",
+			rowLimit: 100,
+			queryTimeoutMs: 30_000,
+			connectionAiAccess: {},
+		};
 	}
 	const input = value as Record<string, unknown>;
+	const rowLimit = typeof input.rowLimit === "number" ? input.rowLimit : 100;
+	const queryTimeoutMs =
+		typeof input.queryTimeoutMs === "number" && input.queryTimeoutMs > 0 ? input.queryTimeoutMs : 30_000;
 	return {
 		schemaInjection: input.schemaInjection === true,
 		schemaInjectionScope: normalizeSchemaInjectionScope(input.schemaInjectionScope),
 		dbxToolEnabled: input.dbxToolEnabled === true,
 		connectionEnv: normalizeConnectionEnv(input.connectionEnv),
 		prodWriteApproved: normalizeProdWriteApproved(input.prodWriteApproved),
+		safetyMode: input.safetyMode === "relaxed" ? "relaxed" : "strict",
+		rowLimit: ROW_LIMIT_VALUES.includes(rowLimit) ? rowLimit : 100,
+		queryTimeoutMs,
+		connectionAiAccess: normalizeConnectionAiAccess(input.connectionAiAccess),
 	};
 }
 
