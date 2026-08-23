@@ -1,9 +1,8 @@
 {
 	"id": "astravia-ui-design",
 	"name": "%plugin.name%",
-	"version": "0.1.0",
+	"version": "0.7.0",
 	"icon": "icon.png",
-	"agent_mode": ["work"],
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",
@@ -12,25 +11,52 @@
 		"remoteName": "astravia_ui_design",
 		"expose": "./plugin"
 	},
-	"styles": ["dist/style.css"],
+	"styles": [
+		"dist/style.css"
+	],
 	"permissions": [
 		"ui.slot.global",
+		"ui.slot.workspace-view",
 		"ui.slot.activity-tab",
 		"ui.slot.file-preview",
 		"ui.slot.message",
+		"ui.slot.input-action",
+		"ui.file-explorer.decorations",
+		"ui.file-explorer.context-menu",
+		"ui.shortcuts.register",
 		"agent.session.read",
 		"agent.session.write",
 		"agent.tools.register",
 		"agent.toolHandler.execute",
+		"agent.hooks.register",
+		"agent.hookHandler.execute",
 		"agent.skills.control",
 		"agent.command.run",
 		"agent.command.spawn",
+		"capture.offscreen",
 		"fs.read",
-		"fs.write"
+		"fs.write",
+		"storage.read",
+		"storage.write",
+		"shell.openExternal",
+		"network.fetch"
 	],
-	"commands": ["node", "npm"],
+	"network": {
+		"allowedHosts": [
+			"gitee.com",
+			"raw.giteeusercontent.com",
+			"cdn.jsdelivr.net",
+			"raw.githubusercontent.com"
+		]
+	},
+	"commands": [
+		"node",
+		"npm"
+	],
 	"agent": {
-		"skillPaths": ["agent/skills/astravia-ui-design"]
+		"skillPaths": [
+			"agent/skills/astravia-ui-design"
+		]
 	},
 	"description": "%plugin.description%",
 	"author": "Astravia"

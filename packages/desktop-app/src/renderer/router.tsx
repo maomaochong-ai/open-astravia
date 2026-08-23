@@ -40,6 +40,9 @@ const DatabasePage = lazy(async () => ({
 const ThemePageRoute = lazy(async () => ({
 	default: (await import("./shared/theme/pages/ThemePageRoute")).ThemePageRoute,
 }));
+const PluginWorkspaceViewRoute = lazy(async () => ({
+	default: (await import("./domains/plugins/components/PluginWorkspaceViewRoute")).PluginWorkspaceViewRoute,
+}));
 
 const rootRoute = createRootRoute({
 	component: RootLayout,
@@ -171,6 +174,13 @@ const themePageRoute = createRoute({
 	component: ThemePageRoute,
 });
 
+const workspaceViewRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/workspace/$pluginId/$viewId",
+	component: PluginWorkspaceViewRoute,
+	pendingComponent: NoPendingComponent,
+});
+
 const routeTree = rootRoute.addChildren([
 	indexRoute,
 	automationRoute,
@@ -187,6 +197,7 @@ const routeTree = rootRoute.addChildren([
 	newSessionRoute,
 	sessionViewerRoute,
 	themePageRoute,
+	workspaceViewRoute,
 ]);
 
 export const router = createRouter({

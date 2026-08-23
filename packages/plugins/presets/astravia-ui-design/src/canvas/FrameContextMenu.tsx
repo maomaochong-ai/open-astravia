@@ -10,7 +10,6 @@ export interface FrameMenuAnchor {
 
 interface FrameContextMenuProps {
 	anchor: FrameMenuAnchor;
-	onAsk(): void;
 	onRename(): void;
 	onCopyImage(): void;
 	onExportMockup(): void;
@@ -22,11 +21,6 @@ interface FrameContextMenuProps {
 const EDGE_GAP = 8;
 
 const icons = {
-	ask: (
-		<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-			<path d="M21 12a8 8 0 11-3.1-6.3M12 8v4l2.5 2.5" strokeLinecap="round" strokeLinejoin="round" />
-		</svg>
-	),
 	rename: (
 		<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
 			<path d="M4 20h16M5.5 15.5L15 6a2.1 2.1 0 013 3l-9.5 9.5-4 1 1-4z" strokeLinecap="round" strokeLinejoin="round" />
@@ -82,7 +76,6 @@ function MenuItem({
  */
 export function FrameContextMenu({
 	anchor,
-	onAsk,
 	onRename,
 	onCopyImage,
 	onExportMockup,
@@ -141,7 +134,6 @@ export function FrameContextMenu({
 			onPointerUp={(event) => event.stopPropagation()}
 			onContextMenu={(event) => event.preventDefault()}
 		>
-			<MenuItem icon={icons.ask} label={t("canvas.frame.menu.ask")} onClick={onAsk} />
 			<MenuItem icon={icons.rename} label={t("canvas.frame.menu.rename")} onClick={onRename} />
 			<MenuItem icon={icons.copy} label={t("canvas.frame.menu.copyImage")} onClick={onCopyImage} />
 			<MenuItem icon={icons.mockup} label={t("canvas.frame.menu.exportMockup")} onClick={onExportMockup} />

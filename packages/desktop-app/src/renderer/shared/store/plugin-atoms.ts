@@ -8,9 +8,12 @@ import type {
 	PluginFilePreviewContribution,
 	PluginInputActionContribution,
 	PluginLocales,
+	PluginNavBadge,
 	PluginPromptAttachment,
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
+	PluginWorkspaceViewContribution,
+	PluginWorkspaceViewHeader,
 } from "@astravia-org/plugin-sdk";
 import { atom, getDefaultStore } from "jotai";
 
@@ -340,6 +343,52 @@ export interface RegisteredTurnCard {
  * visibility (renders null when inapplicable).
  */
 export const pluginTurnCardsAtom = atom<RegisteredTurnCard[]>([]);
+
+/**
+ * 一个插件贡献的**工作区视图**（整页 surface，与自动化/知识库等内置页同级）。
+ * 由 PluginGlobalSlotHost 发布，侧边栏导航与 `/workspace/$pluginId/$viewId`
+ * 路由共同消费。
+ */
+export interface RegisteredWorkspaceView {
+	pluginId: string;
+	/** 拥有者插件展示名，作为导航项 tooltip 的副标题。 */
+	pluginName: string;
+	/** 契约 id（未命名空间化），也是路由参数。 */
+	viewId: string;
+	/** 可能是 `%catalogKey%`，由消费方按插件目录解析。 */
+	label: string;
+	/** iconify class 字符串（导航按钮直接当 className 用）。 */
+	icon?: string;
+	description?: string;
+	/**
+	 * 导航项角标。已归一化但**尚未解析文案**：`text` 仍可能是 `%catalogKey%`，
+	 * `beta` 要换成宿主自己的 i18n 文案——都在侧边栏模型层做。
+	 */
+	badge?: PluginNavBadge;
+	component: PluginWorkspaceViewContribution["component"];
+	navOrder: number;
+}
+
+/** 已注册的插件工作区视图。侧边栏据此生成导航项，路由据此挂载整页组件。 */
+export const pluginWorkspaceViewsAtom = atom<RegisteredWorkspaceView[]>([]);
+
+/** 一个工作区视图当前占用的宿主页头内容（插件随自身状态实时更新）。 */
+export interface RegisteredWorkspaceViewHeader extends PluginWorkspaceViewHeader {
+	pluginId: string;
+	viewId: string;
+}
+
+/**
+ * 工作区视图对宿主页头的接管，键为 `${pluginId}:${viewId}`。
+ * 刻意与 {@link pluginWorkspaceViewsAtom} 分开：页头内容会随插件视图的每一次
+ * 状态变化重写，塞进注册表会让侧边栏导航跟着一起重算。
+ */
+export const pluginWorkspaceViewHeadersAtom = atom<Record<string, RegisteredWorkspaceViewHeader>>({});
+
+/** 页头接管条目的键：与路由参数（pluginId / viewId）一一对应。 */
+export function workspaceViewHeaderKey(pluginId: string, viewId: string): string {
+	return `${pluginId}:${viewId}`;
+}
 
 /**
  * Plugin-owned one-shot context for the next outgoing prompt. The host renders

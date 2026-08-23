@@ -1,5 +1,7 @@
+import { readFile } from "node:fs/promises";
+import { basename } from "node:path";
 import type { DatabaseAddConnectionInput, DatabaseTestConnectionInput } from "@astravia/capability-sdk";
-import { ipcMain } from "electron";
+import { dialog, ipcMain } from "electron";
 import { PLUGIN_CAPABILITY_CHANNELS } from "../../shared/plugin-capability-ipc.js";
 import { getDesktopCapabilityHost } from "../capabilities/capability-host.js";
 
@@ -341,6 +343,36 @@ export function registerPluginCapabilitiesIpc(): () => void {
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.FS_LIST_FILES_RECURSIVE, (_event, sessionId: unknown, path: unknown) =>
 		adapter.listFilesRecursive(requireString(sessionId, "sessionId"), requireString(path, "path")),
 	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.DIALOG_OPEN_FILES, async (_event, input: unknown) => {
+		// 原生文件选择框：内容随选择一起带回（插件 fs 读不了项目外的文件）。
+		// 对话框是用户手势即授权，不绑定 capability session。
+		const options = (input ?? {}) as { title?: unknown; filters?: unknown };
+		const filters = Array.isArray(options.filters)
+			? options.filters
+					.filter(
+						(entry): entry is { name: unknown; extensions: unknown } =>
+							typeof entry === "object" && entry !== null,
+					)
+					.map((entry) => ({
+						name: typeof entry.name === "string" ? entry.name : "Files",
+						extensions: Array.isArray(entry.extensions)
+							? entry.extensions.filter((ext): ext is string => typeof ext === "string")
+							: [],
+					}))
+			: undefined;
+		const result = await dialog.showOpenDialog({
+			properties: ["openFile", "multiSelections"],
+			title: typeof options.title === "string" ? options.title : undefined,
+			...(filters && filters.length > 0 ? { filters } : {}),
+		});
+		if (result.canceled || result.filePaths.length === 0) return [];
+		return Promise.all(
+			result.filePaths.map(async (filePath) => {
+				const buffer = await readFile(filePath);
+				return { name: basename(filePath), data: buffer.toString("base64") };
+			}),
+		);
+	});
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.PROJECT_LIST, (_event, sessionId: unknown) =>
 		adapter.listProjects(requireString(sessionId, "sessionId")),
 	);

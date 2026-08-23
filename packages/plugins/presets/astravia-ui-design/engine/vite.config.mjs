@@ -1,5 +1,5 @@
 // Astravia Design Engine — shared vite template (materialized to ~/.astravia/design-engine/<version>/).
-// The design source dir (x.vetd.d/) is mounted via the VETD_SRC env var; the engine itself
+// The design bundle dir (x.astd/) is mounted via the ASTD_SRC env var; the engine itself
 // never contains user content. See ADR-0053.
 import { readdirSync, watch } from "node:fs";
 import { dirname, resolve, relative } from "node:path";
@@ -9,18 +9,18 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const engineRoot = dirname(fileURLToPath(import.meta.url));
-const designRoot = resolve(process.env.VETD_SRC ?? resolve(process.cwd(), "design"));
+const designRoot = resolve(process.env.ASTD_SRC ?? resolve(process.cwd(), "design"));
 const designRootPosix = designRoot.replaceAll("\\", "/");
 
 /**
  * Babel plugin: tag every JSX element in design sources with
- * `data-vetd-source="frames/login.tsx:42"` so the canvas can map a selected DOM
+ * `data-astd-source="frames/login.tsx:42"` so the canvas can map a selected DOM
  * node back to its exact source location. Dev-serve only — production/export
  * builds stay clean.
  */
-function vetdSourceAttr({ types: t }) {
+function astdSourceAttr({ types: t }) {
 	return {
-		name: "vetd-source-attr",
+		name: "astd-source-attr",
 		visitor: {
 			JSXOpeningElement(path, state) {
 				const filename = state.filename ? state.filename.replaceAll("\\", "/") : null;
@@ -28,12 +28,12 @@ function vetdSourceAttr({ types: t }) {
 				const loc = path.node.loc;
 				if (!loc) return;
 				const already = path.node.attributes.some(
-					(attr) => t.isJSXAttribute(attr) && attr.name.name === "data-vetd-source",
+					(attr) => t.isJSXAttribute(attr) && attr.name.name === "data-astd-source",
 				);
 				if (already) return;
 				const rel = relative(designRoot, state.filename).replaceAll("\\", "/");
 				path.node.attributes.push(
-					t.jsxAttribute(t.jsxIdentifier("data-vetd-source"), t.stringLiteral(`${rel}:${loc.start.line}`)),
+					t.jsxAttribute(t.jsxIdentifier("data-astd-source"), t.stringLiteral(`${rel}:${loc.start.line}`)),
 				);
 			},
 		},
@@ -41,13 +41,13 @@ function vetdSourceAttr({ types: t }) {
 }
 
 /** Inject the design dir as a Tailwind `@source` so utility classes in frames are detected. */
-function vetdThemeSource() {
+function astdThemeSource() {
 	return {
-		name: "vetd-theme-source",
+		name: "astd-theme-source",
 		enforce: "pre",
 		transform(code, id) {
 			if (!id.replaceAll("\\", "/").endsWith("src/styles.css")) return null;
-			return code.replace("/*__VETD_SOURCE__*/", `@source "${designRootPosix}";`);
+			return code.replace("/*__ASTD_SOURCE__*/", `@source "${designRootPosix}";`);
 		},
 	};
 }
@@ -78,16 +78,21 @@ function vetdThemeSource() {
  * Only the file SET matters here: edits keep flowing through vite's normal HMR
  * untouched, and that path already rebuilds the stylesheet.
  */
-function vetdWatchDesign() {
+function astdWatchDesign() {
 	const mainId = `${engineRoot.replaceAll("\\", "/")}/src/main.tsx`;
 	const stylesId = `${engineRoot.replaceAll("\\", "/")}/src/styles.css`;
 	/**
 	 * Dot-prefixed entries are skipped on purpose: `.snapshots/` is written on
 	 * every canvas capture, and reloading on it would loop capture ↔ reload.
+	 *
+	 * `node_modules/` is skipped for cost, not correctness: a design
+	 * declaring two libraries goes from 4 files to 7000+, and this walk runs on
+	 * every settle. Nothing in there is a design source, and a dependency change
+	 * already reaches the client through package.json moving in this same set.
 	 */
 	const listSources = (dir, prefix, out) => {
 		for (const entry of readdirSync(dir, { withFileTypes: true })) {
-			if (entry.name.startsWith(".")) continue;
+			if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
 			const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
 			if (entry.isDirectory()) listSources(`${dir}/${entry.name}`, rel, out);
 			else out.push(rel);
@@ -107,22 +112,44 @@ function vetdWatchDesign() {
 			.filter((rel) => rel.startsWith("frames/") && rel.endsWith(".tsx"))
 			.join("\n");
 	return {
-		name: "vetd-watch-design",
+		name: "astd-watch-design",
 		apply: "serve",
 		configureServer(server) {
 			let known = snapshot();
 			let timer = null;
 			let watcher;
+			/**
+			 * 依赖清单变了（astd_install）。
+			 *
+			 * 单独一个标记，因为下面的判据是**文件集合**变没变：第一次装包会新增
+			 * package-lock.json 所以能被看见，第二次装包只是改写这两个文件的内容，
+			 * 集合一模一样——不特判的话画布收不到任何通知，新装的包要等下一次改源码
+			 * 才生效。
+			 */
+			let dependenciesChanged = false;
 			try {
 				watcher = watch(designRoot, { recursive: true }, (_event, filename) => {
 					// Skip the noisy dirs before touching the disk (see listSources).
-					if (filename && filename.replaceAll("\\", "/").split("/").some((seg) => seg.startsWith("."))) return;
+					// An npm install writes thousands of files under node_modules; on
+					// platforms whose recursive watch reports them individually, every
+					// one would schedule another full-tree walk.
+					if (
+						filename &&
+						filename
+							.replaceAll("\\", "/")
+							.split("/")
+							.some((seg) => seg.startsWith(".") || seg === "node_modules")
+					)
+						return;
+					const base = (filename ?? "").replaceAll("\\", "/").split("/").pop();
+					if (base === "package.json" || base === "package-lock.json") dependenciesChanged = true;
 					// fs.watch fires several times per write; settle first, then diff.
 					if (timer) clearTimeout(timer);
 					timer = setTimeout(() => {
 						timer = null;
 						const next = snapshot();
-						if (next === known) return;
+						if (next === known && !dependenciesChanged) return;
+						dependenciesChanged = false;
 						const framesChanged = framesOf(next) !== framesOf(known);
 						known = next;
 						const environment = server.environments.client;
@@ -150,9 +177,9 @@ function vetdWatchDesign() {
 
 export default defineConfig(({ command }) => ({
 	plugins: [
-		react(command === "serve" ? { babel: { plugins: [vetdSourceAttr] } } : {}),
-		vetdThemeSource(),
-		vetdWatchDesign(),
+		react(command === "serve" ? { babel: { plugins: [astdSourceAttr] } } : {}),
+		astdThemeSource(),
+		astdWatchDesign(),
 		tailwindcss(),
 	],
 	resolve: {
@@ -162,13 +189,29 @@ export default defineConfig(({ command }) => ({
 			"@design": designRoot,
 			react: resolve(engineRoot, "node_modules/react"),
 			"react-dom": resolve(engineRoot, "node_modules/react-dom"),
+			// frame 源码里的 <Link to="..."> 会 import "react-router"，同样解析不到
+			// 引擎的 node_modules；不钉住的话每个 frame 一加链接就编译失败。
+			"react-router": resolve(engineRoot, "node_modules/react-router"),
+			// 纯兜底，skill 里一个字都没提：这里的图标是 Iconify 的 CSS 类
+			// （`icon-[lucide--search]`），但模型对「图标」的默认反应是
+			// `import { Search } from "lucide-react"`，而且提示词纠正不掉。以前这一
+			// import 就是整帧构建失败——用户拿到的是一块红色报错，不是设计稿。装上以后
+			// 两条路都通，写哪种都能出图。
+			"lucide-react": resolve(engineRoot, "node_modules/lucide-react"),
 		},
-		dedupe: ["react", "react-dom"],
+		dedupe: ["react", "react-dom", "react-router"],
 	},
+	// 设计源码在引擎 root 之外，vite 的依赖扫描够不到，得点名预构建：lucide-react
+	// 是一个图标一个模块，不预构建的话第一次 import 会几百个请求逐个打过来。
+	optimizeDeps: { include: ["lucide-react"] },
 	server: {
 		host: "127.0.0.1",
 		strictPort: true,
 		cors: true,
+		// vite 自带的错误 overlay 会把整个 frame 糊成一张红色报错页——每个 frame 都是
+		// 一个 iframe，画布上看到的就是设计稿整片消失。错误改由 src/bridge.ts 上报给
+		// 画布：那边继续显示上一张位图，只在标题栏挂一个「构建失败」徽标。
+		hmr: { overlay: false },
 		fs: { allow: [process.cwd(), designRoot] },
 	},
 	build: {

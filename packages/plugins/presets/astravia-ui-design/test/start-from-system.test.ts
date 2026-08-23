@@ -1,0 +1,120 @@
+/**
+ * 从风格库开新设计的草稿与参考包清单。
+ *
+ * 回归的行为：草稿曾把「读 DESIGN.md、拷 theme.css、素材不抄代码」整段协议塞进
+ * 用户输入框，又长又脏。现在协议住在 skill 的 design-resources 一节，文件清单落成
+ * 参考包里的 INDEX.md，草稿只剩用户的意图一句话。
+ */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import type { PluginContext } from "@astravia-org/plugin-sdk";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { DesignResource, DesignSystem } from "../src/design-systems/types";
+import {
+	buildResourceIndex,
+	DESIGN_RESOURCES_DIR,
+	RESOURCE_INDEX_FILE,
+	startDesignFromSystem,
+} from "../src/gallery/start-from-system";
+import { setPluginCtx } from "../src/plugin-context";
+
+function system(resources: DesignResource[] = []): DesignSystem {
+	return {
+		id: "linear",
+		name: "Linear",
+		category: "dev",
+		vibe: "dark",
+		blurb: "blurb",
+		resources,
+		themeCss: "@theme { --color-primary: #000; }",
+		designMd: "# Linear",
+	};
+}
+
+function textResource(path: string, role?: DesignResource["role"]): DesignResource {
+	return { path, ...(role ? { role } : {}), encoding: "text", content: `content of ${path}`, bytes: 10 };
+}
+
+describe("buildResourceIndex", () => {
+	it("逐个列出实际落盘的文件，并说明目录来历", () => {
+		const index = buildResourceIndex("Linear", [
+			textResource("DESIGN.md", "spec"),
+			textResource("theme.css", "theme"),
+			textResource("screenshots/home.webp"),
+		]);
+		expect(index).toContain("# Linear — style reference pack");
+		expect(index).toContain("- DESIGN.md");
+		expect(index).toContain("- theme.css");
+		expect(index).toContain("- screenshots/home.webp");
+	});
+
+	it("有角色的资源带「这是什么、什么时候读」注释，demo 被点名为成品案例", () => {
+		const index = buildResourceIndex("Linear", [
+			textResource("DESIGN.md", "spec"),
+			textResource("theme.css", "theme"),
+			textResource("demo.html", "demo"),
+			textResource("notes.txt"),
+		]);
+		expect(index).toContain("- DESIGN.md — the style contract");
+		expect(index).toContain("- theme.css — theme tokens");
+		expect(index).toMatch(/- demo\.html — .*Read it before your first frame/);
+		// 没有角色的普通素材保持裸列，不硬造注释。
+		expect(index).toContain("- notes.txt\n");
+	});
+});
+
+describe("协议真的住在 skill 里", () => {
+	// 草稿不再携带协议的前提，是 SKILL.md 按同一套目录/文件名约定写了这条规则。
+	// 两边由字符串约定耦合，这里把它钉死：改任何一边名字，这条测试都会叫。
+	// vitest 的 cwd 固定在包根（`bun run test` 从这里起），按它定位 skill 文件。
+	const skillMd = readFileSync(resolve(process.cwd(), "agent/skills/astravia-ui-design/SKILL.md"), "utf8");
+
+	it("SKILL.md 写明了 design-resources 参考包协议", () => {
+		expect(skillMd).toContain(`${DESIGN_RESOURCES_DIR}/`);
+		expect(skillMd).toContain(RESOURCE_INDEX_FILE);
+		// 协议的四根支柱：读规范、拷主题、开工前先看 demo/截图、素材不抄代码。
+		expect(skillMd).toContain("DESIGN.md");
+		expect(skillMd).toContain("theme.css");
+		expect(skillMd).toMatch(/before your first frame.*demo/is);
+		expect(skillMd).toMatch(/visual reference only/i);
+		// 用户优先于参考包，skill 不该把风格锁死。
+		expect(skillMd).toMatch(/user outranks the pack/i);
+	});
+});
+
+describe("startDesignFromSystem", () => {
+	const createProject = vi.fn(async (name: string) => ({ path: `/w/${name}` }));
+	const openProject = vi.fn(async () => ({}));
+	const writeFile = vi.fn(async () => {});
+	const createDirectory = vi.fn(async () => {});
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		setPluginCtx({
+			fs: { writeFile, createDirectory },
+			official: {
+				projects: { create: createProject, open: openProject },
+			},
+		} as unknown as PluginContext);
+	});
+
+	it("资料落盘后写 INDEX.md 清单，并打开项目进入会话页", async () => {
+		await startDesignFromSystem(
+			system([textResource("DESIGN.md", "spec"), textResource("theme.css", "theme")]),
+			"my-app",
+		);
+		const indexWrite = writeFile.mock.calls.find(([path]) =>
+			(path as unknown as string).endsWith(`/${RESOURCE_INDEX_FILE}`),
+		);
+		expect(indexWrite?.[0]).toBe(`/w/my-app/${DESIGN_RESOURCES_DIR}/linear/${RESOURCE_INDEX_FILE}`);
+		expect(indexWrite?.[1]).toContain("- DESIGN.md");
+		expect(indexWrite?.[1]).toContain("- theme.css");
+		expect(openProject).toHaveBeenCalledWith("/w/my-app");
+	});
+
+	it("一份资料都没落下来时不写 INDEX.md，免得 skill 引着 agent 去读空包", async () => {
+		await startDesignFromSystem(system([]), "my-app");
+		expect(writeFile).not.toHaveBeenCalled();
+		expect(openProject).toHaveBeenCalledOnce();
+	});
+});

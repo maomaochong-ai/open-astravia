@@ -11,7 +11,7 @@ import type { PluginOfficialApi } from "./official.js";
 import type { PluginPermission } from "./permissions.js";
 import type { PluginSettingsApi } from "./settings.js";
 import type { PluginStorageApi } from "./storage.js";
-import type { PluginUiApi } from "./ui.js";
+import type { PluginCaptureApi, PluginUiApi } from "./ui.js";
 
 export interface PluginPermissionApi {
 	has(permission: PluginPermission): boolean;
@@ -39,6 +39,10 @@ export interface PluginContext {
 	storage: PluginStorageApi;
 	settings: PluginSettingsApi;
 	i18n: PluginI18nApi;
+	/**
+	 * 离屏渲染截图（实验性）。宿主可能未实现 —— 使用前先探测 `ctx.capture` 是否存在。
+	 */
+	capture?: PluginCaptureApi;
 	/** 当前工作模式（agent_mode 轴）。开发者据此做模式定制。见 ADR-0046。 */
 	getAgentMode(): AgentMode;
 	/** 订阅工作模式变更（纯全局实时切换）。返回 Disposable 取消订阅。 */

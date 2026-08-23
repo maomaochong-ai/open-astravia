@@ -39,6 +39,11 @@ export type {
 // UI slots
 export type {
 	PluginGlobalSlotContribution,
+	PluginWorkspaceViewProps,
+	PluginNavBadgeTone,
+	PluginNavBadge,
+	PluginWorkspaceViewContribution,
+	PluginWorkspaceViewHeader,
 	PluginAudioMetadata,
 	PluginPreviewUrlOptions,
 	PluginPreviewFile,
@@ -59,6 +64,7 @@ export type {
 	PluginTurnCardContribution,
 	PluginNotifyOptions,
 	PluginUiApi,
+	PluginCaptureApi,
 } from "./ui.js";
 
 // Keyboard shortcuts (host ShortcutScopeStack)
@@ -91,7 +97,17 @@ export type {
 	PluginContinuationHandler,
 	PluginContinuationRegistration,
 	PluginAgentApi,
+	PluginCodingAgentHookEventName,
+	PluginCodingAgentPermissionMode,
+	PluginCodingAgentHookTool,
+	PluginCodingAgentHookEvent,
+	PluginCodingAgentHookEventOf,
+	PluginCodingAgentHookResult,
+	PluginCodingAgentHookHandlerContext,
+	PluginCodingAgentHookHandler,
+	PluginCodingAgentHookRegistration,
 } from "./agent.js";
+export { PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES } from "./agent.js";
 
 // App actions
 export type {

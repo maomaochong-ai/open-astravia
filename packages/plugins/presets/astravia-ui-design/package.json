@@ -1,14 +1,17 @@
 {
 	"name": "@astravia/plugin-astravia-ui-design",
-	"version": "0.1.0",
+	"version": "0.7.0",
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"build": "bunx vite build",
-		"check": "bunx tsc --noEmit"
+		"build:runner": "bunx vite build --config vite.runner.config.ts",
+		"build": "bun run build:runner && bunx vite build",
+		"check": "bunx tsc --noEmit",
+		"test": "bunx vitest --run"
 	},
 	"dependencies": {
-		"fflate": "^0.8.2"
+		"fflate": "^0.8.2",
+		"isomorphic-git": "^1.41.3"
 	},
 	"devDependencies": {
 		"@tailwindcss/vite": "^4.1.12",
@@ -17,10 +20,13 @@
 		"@types/react-dom": "^19.1.1",
 		"@astravia-org/plugin-sdk": "workspace:*",
 		"@astravia-org/plugin-vite": "workspace:*",
+		"@astravia/ui": "workspace:*",
+		"happy-dom": "^20.11.1",
 		"react": "19.1.1",
 		"react-dom": "19.1.1",
 		"tailwindcss": "^4.1.12",
 		"typescript": "^5.9.2",
-		"vite": "^7.1.7"
+		"vite": "^7.1.7",
+		"vitest": "^3.2.4"
 	}
 }

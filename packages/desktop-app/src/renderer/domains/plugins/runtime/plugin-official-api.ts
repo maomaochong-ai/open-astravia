@@ -3,6 +3,7 @@ import { createOfficialAgentApi } from "./plugin-official-agent";
 import { createOfficialAppearanceApi } from "./plugin-official-appearance";
 import { createOfficialBatchTasksApi } from "./plugin-official-batch-tasks";
 import { createOfficialDatabaseApi } from "./plugin-official-database";
+import { createOfficialDialogApi } from "./plugin-official-dialog";
 import { createOfficialDownloadsApi } from "./plugin-official-downloads";
 import { createOfficialGeneralApi } from "./plugin-official-general";
 import { createOfficialImApi } from "./plugin-official-im";
@@ -35,6 +36,7 @@ export function createPluginOfficialApi(capabilitySessionId: string): PluginOffi
 		im: createOfficialImApi(assertOfficial, capabilitySessionId),
 		mcp: createOfficialMcpApi(assertOfficial, capabilitySessionId),
 		models: createOfficialModelsApi(assertOfficial, capabilitySessionId),
+		dialog: createOfficialDialogApi(assertOfficial),
 		projects: createOfficialProjectsApi(assertOfficial, capabilitySessionId),
 		plugins: createOfficialPluginsApi(assertOfficial, capabilitySessionId),
 		knowledge: createOfficialKnowledgeApi(assertOfficial, capabilitySessionId),

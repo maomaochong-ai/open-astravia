@@ -454,6 +454,16 @@ export interface PluginOfficialApi {
 		unarchive(path: string): Promise<void>;
 		remove(path: string): Promise<void>;
 	};
+	dialog: {
+		/**
+		 * 原生文件选择框：文件内容随选择一起带回（插件 fs 读不了项目外的文件）。
+		 * 用户手势即授权，不额外要权限。
+		 */
+		openFiles(input?: {
+			title?: string;
+			filters?: Array<{ name: string; extensions: string[] }>;
+		}): Promise<Array<{ name: string; data: string }>>;
+	};
 	plugins: {
 		list(): Promise<PluginOfficialPluginSummary[]>;
 		get(id: string): Promise<PluginOfficialPluginSummary>;

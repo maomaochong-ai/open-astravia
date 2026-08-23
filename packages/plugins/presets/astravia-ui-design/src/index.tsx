@@ -1,27 +1,49 @@
-import {
-	type AgentMode,
-	type CardDescriptor,
-	definePlugin,
-	type Disposable,
-	type PluginPendingToolCall,
-} from "@astravia-org/plugin-sdk";
+import { type CardDescriptor, definePlugin, type PluginPendingToolCall } from "@astravia-org/plugin-sdk";
+import { type ComponentType, lazy, Suspense } from "react";
 import "./style.css";
-import { ScreenshotCard } from "./cards/ScreenshotCard";
 import { SCREENSHOT_CARD_TYPE, SCREENSHOT_TOOL_NAME, screenshotCardDescriptor } from "./cards/screenshot-card";
-import { CanvasTab } from "./canvas/CanvasTab";
 import {
 	getCanvasController,
+	notifyAgentToolEnd,
 	notifyAgentToolStart,
 	notifyFrameSettled,
-	requestMockupExport,
+	setPendingDesignPath,
 } from "./canvas/design-runtime";
+import { refreshDesignCatalog } from "./design-systems/index";
 import { stopAllDesignServers } from "./engine/engine-manager";
-import { ExportMockupDialog } from "./mockup/ExportMockupDialog";
+import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "./export/share-format";
+import { claimCanvasReveal } from "./gallery/open-project";
+import { registerTurnHistory } from "./history/turn-history";
 import { setPluginCtx } from "./plugin-context";
-import { VetdPreview } from "./preview/VetdPreview";
-import { CANVAS_TAB_ID } from "./tab-ids";
+import { CANVAS_TAB_ID, GALLERY_VIEW_ID } from "./tab-ids";
 import { registerDesignTools } from "./tools";
-import { findVetdFiles } from "./vetd/discover";
+import { claimCanvasAutoOpen } from "./astd/auto-open";
+import { isPureDesignProject, pickDesignPaths } from "./astd/discover";
+
+/**
+ * 大件 UI 面组件全部懒加载：App 启动时宿主会整包求值本插件的入口 chunk，
+ * 画布 / 画廊 / 导出 / 预览的代码只有在对应面真正打开时才需要。切开后
+ * activate() 只注册描述符，入口 chunk 的解析与求值成本大幅下降（低配机
+ * 上直接决定「设计入口首开」与冷启动首轮发送的等待时长）。
+ */
+function lazySurface<P extends object>(load: () => Promise<{ default: ComponentType<P> }>): (props: P) => JSX.Element {
+	const Lazy = lazy(load);
+	return function LazyPluginSurface(props: P) {
+		return (
+			<Suspense fallback={null}>
+				<Lazy {...props} />
+			</Suspense>
+		);
+	};
+}
+
+const CanvasTab = lazySurface(async () => ({ default: (await import("./canvas/CanvasTab")).CanvasTab }));
+const GalleryView = lazySurface(async () => ({ default: (await import("./gallery/GalleryView")).GalleryView }));
+const ExportMockupDialog = lazySurface(async () => ({
+	default: (await import("./mockup/ExportMockupDialog")).ExportMockupDialog,
+}));
+const AstdPreview = lazySurface(async () => ({ default: (await import("./preview/AstdPreview")).AstdPreview }));
+const ScreenshotCard = lazySurface(async () => ({ default: (await import("./cards/ScreenshotCard")).ScreenshotCard }));
 
 function DesignIcon() {
 	return (
@@ -54,86 +76,104 @@ function pendingScreenshotCard(toolCall: PluginPendingToolCall): CardDescriptor 
 	const frameId = typeof raw === "string" ? raw.replace(/\.tsx$/, "") : "";
 	const session = getCanvasController()?.session;
 	if (!frameId || !session) return null;
-	return screenshotCardDescriptor(session.vetdPath, session.dirPath, frameId);
+	return screenshotCardDescriptor(session.astdPath, session.dirPath, frameId);
 }
 
 export default definePlugin({
 	activate(ctx) {
 		setPluginCtx(ctx);
+		// 设计体系清单：先用打包内置那份渲染，随后静默换成缓存/远端的最新版本。
+		// 拉不到就一直用内置的，用户不感知「源」，所以这里不等待、不报错。
+		void refreshDesignCatalog(ctx);
+
+		/** 最近一次 conversation-changed 的 cwd 与会话 id，用于丢弃过期的探测结果。 */
+		let latestCwd: string | null = null;
+		let latestSessionId: string | null = null;
 
 		/**
-		 * 设计画布是「工作」模式的能力（ADR-0046）。编程模式下把画布 Tab、导出用的
-		 * 全局插槽、截图消息卡一起摘掉；tools 与 skill 各自声明 agent_mode 由宿主过滤。
-		 * 唯一跨模式保留的是 .vetd 文件预览——编程模式里仍可能点开一份设计稿看看。
+		 * cwd 里有 .astd 才把画布 Tab 上栏。
 		 *
-		 * 不用清单里的插件级 agent_mode：那是硬闸，会连预览带 bundle 一起藏掉。
+		 * 纯设计项目（除设计稿和 README 之类外没有别的文件）额外自动展开画布：
+		 * 这种目录打开就是为了看设计，先给面板。混合项目不抢；每次打开（切入）
+		 * 会话都展开一次，同一会话内关掉后不再反复弹。
 		 */
-		let workModeSlots: Disposable[] = [];
-		const isWorkMode = (): boolean => ctx.getAgentMode() === "work";
-
-		/** 最近一次 conversation-changed 的 cwd，用于丢弃过期的探测结果。 */
-		let latestCwd: string | null = null;
-
-		/** cwd 里有 .vetd 才把画布 Tab 上栏。切回工作模式时也要重跑一次。 */
-		const revealTabForCwd = (cwd: string | null): void => {
-			if (!cwd || !isWorkMode()) return;
-			void findVetdFiles(ctx.fs, cwd).then((found) => {
-				if (latestCwd !== cwd || !isWorkMode()) return;
-				ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, found.length > 0);
-			});
+		const revealTabForCwd = (cwd: string | null, sessionId: string | null): void => {
+			if (!cwd) return;
+			void ctx.fs
+				.listFilesRecursive(cwd)
+				.catch(() => [])
+				.then((files) => {
+					if (latestCwd !== cwd || latestSessionId !== sessionId) return;
+					// 还没迁移的旧格式也算数：Tab 先亮出来，真正的迁移在画布打开时发生。
+					const { bundles, legacyFiles } = pickDesignPaths(files);
+					const found = bundles.length + legacyFiles.length;
+					ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, found > 0);
+					if (found === 0) return;
+					// 从画廊点进来的这一次，用户已经说清楚要看设计了：混合项目也铺开，
+					// 且不受「同一会话只弹一次」的去重影响（那是给自动判断兜底的）。
+					if (claimCanvasReveal(cwd)) {
+						ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
+						return;
+					}
+					if (!isPureDesignProject(files)) return;
+					if (!claimCanvasAutoOpen(sessionId)) return;
+					ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
+				});
 		};
 
-		const syncWorkModeSlots = (mode: AgentMode): void => {
-			const wanted = mode === "work";
-			if (wanted === workModeSlots.length > 0) return;
-			if (wanted) {
-				workModeSlots = [
-					ctx.ui.registerActivityTab({
-						id: CANVAS_TAB_ID,
-						label: "%tab.label%",
-						icon: <DesignIcon />,
-						component: CanvasTab,
-						scope_use: ["project", "conversation"],
-						// 出现条件由插件驱动：cwd 里有 .vetd 才上栏；vetd_create / 预览「打开画布」也会拉起。
-						initiallyVisible: false,
-					}),
-					// 导出渲染图的 dialog 走全局插槽：设计画布在活动面板里太窄，
-					// 判断圆角/边框需要整窗口的预览面积。
-					ctx.ui.registerGlobalSlot({ id: "export-mockup-dialog", component: ExportMockupDialog }),
-					ctx.ui.registerCardRenderer({
-						type: SCREENSHOT_CARD_TYPE,
-						component: ScreenshotCard,
-						title: "%card.screenshot.title%",
-						icon: <ScreenshotIcon />,
-						pendingFor: pendingScreenshotCard,
-					}),
-				];
-				// 注册只是入池：切回工作模式时补跑一次探测，否则要等下次切会话才上栏。
-				revealTabForCwd(latestCwd);
-				return;
-			}
-			for (const slot of workModeSlots) slot.dispose();
-			workModeSlots = [];
-			// Tab 卸载时 CanvasTab 自己会停引擎，但模式切走属于「这个插件不该再有存在感」，
-			// 兜底收干净：别在编程模式里留一个 vite dev server 跑着。
-			requestMockupExport(null);
-			void stopAllDesignServers();
-		};
-
-		syncWorkModeSlots(ctx.getAgentMode());
-		ctx.onAgentModeChanged(syncWorkModeSlots);
+		/**
+		 * 这批 UI 一律常驻，不按工作模式装卸（见 ADR-0046 修订：模式只做提示词软引导，
+		 * 系统里不再有任何模式硬闸）。是否露出由「cwd 里有没有 .astd」决定——那本来
+		 * 就是比模式更准的条件：在代码仓库里写着写着要看设计稿，画布就该在。
+		 */
+		ctx.ui.registerActivityTab({
+			id: CANVAS_TAB_ID,
+			label: "%tab.label%",
+			icon: <DesignIcon />,
+			component: CanvasTab,
+			scope_use: ["project", "conversation"],
+			// 出现条件由插件驱动：cwd 里有 .astd 才上栏；astd_create / 预览「打开画布」也会拉起。
+			initiallyVisible: false,
+		});
+		// 导出渲染图的 dialog 走全局插槽：设计画布在活动面板里太窄，
+		// 判断圆角/边框需要整窗口的预览面积。
+		ctx.ui.registerGlobalSlot({ id: "export-mockup-dialog", component: ExportMockupDialog });
+		ctx.ui.registerCardRenderer({
+			type: SCREENSHOT_CARD_TYPE,
+			component: ScreenshotCard,
+			title: "%card.screenshot.title%",
+			icon: <ScreenshotIcon />,
+			pendingFor: pendingScreenshotCard,
+		});
+		// 画廊：跨项目的设计注册中心，整页 surface + 侧边栏入口。
+		ctx.ui.registerWorkspaceView({
+			id: GALLERY_VIEW_ID,
+			label: "%gallery.nav.label%",
+			icon: "icon-[solar--ruler-pen-linear]",
+			description: "%gallery.nav.description%",
+			component: GalleryView,
+		});
+		// 设计版本历史的自动提交（ADR-0069）。commitTurn 只遍历 cwd 下真实存在的
+		// .astd 目录，纯代码仓库里是空操作，所以无条件注册不会产生噪音提交。
+		registerTurnHistory(ctx);
 
 		ctx.conversation.on((event) => {
 			if (event.type === "conversation-changed") {
-				const { cwd } = event.conversation;
+				const { cwd, id } = event.conversation;
 				if (!cwd) return;
-				// 编程模式下也记住 cwd：切回工作模式时要靠它补跑探测。
 				latestCwd = cwd;
-				revealTabForCwd(cwd);
+				latestSessionId = id;
+				revealTabForCwd(cwd, id);
 				return;
 			}
+			// 生成阶段就点亮：edit/write 的时间几乎全花在生成参数上，等到执行事件
+			// 才亮的话，浮层是在活干完之后才出现的。
 			if (event.type === "tool-call-start") {
-				notifyAgentToolStart(event.args);
+				notifyAgentToolStart(event.toolCallId, event.toolName, event.args);
+				return;
+			}
+			if (event.type === "tool-call-end") {
+				notifyAgentToolEnd(event.toolCallId, event.isError);
 				return;
 			}
 			if (event.type === "turn-end") {
@@ -141,8 +181,20 @@ export default definePlugin({
 			}
 		});
 
-		// 跨模式唯一保留的能力：编程模式里也可能点开一份 .vetd 看看。
-		ctx.ui.registerFilePreview({ extensions: ["vetd"], component: VetdPreview });
+		// 跨模式唯一保留的能力：编程模式里也可能点开一份设计看看。分享包（`.astdz`，
+		// 以及历史导出的 `.astd` zip）是文件，走预览；设计本体是目录，走右键打开画布。
+		ctx.ui.registerFilePreview({ extensions: [...SHARE_PREVIEW_EXTENSIONS], component: AstdPreview });
+		ctx.fileExplorer.registerContextMenuAction({
+			id: "astd-open-canvas",
+			label: "%fileExplorer.openCanvas%",
+			icon: <DesignIcon />,
+			when: { resourceType: "directory", extensions: ["astd", "vetd"] },
+			run: ({ entry }) => {
+				setPendingDesignPath(entry.path);
+				ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, true);
+				ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
+			},
+		});
 
 		registerDesignTools(ctx);
 	},

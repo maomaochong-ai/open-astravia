@@ -20,6 +20,8 @@ import {
 	type RegisteredInputAction,
 	type RegisteredToolCallSlot,
 	type RegisteredTurnCard,
+	type RegisteredWorkspaceView,
+	pluginWorkspaceViewsAtom,
 	syncHardIsolationContributionModes,
 } from "@shared/store/atoms";
 import { getDefaultStore, useSetAtom } from "jotai";
@@ -70,6 +72,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	const setCardRenderers = useSetAtom(pluginCardRenderersAtom);
 	const setToolCallSlots = useSetAtom(pluginToolCallSlotsAtom);
 	const setTurnCards = useSetAtom(pluginTurnCardsAtom);
+	const setWorkspaceViews = useSetAtom(pluginWorkspaceViewsAtom);
 	const setPluginI18n = useSetAtom(pluginI18nByIdAtom);
 	const loadedPluginsRef = useRef<LoadedPlugin[]>([]);
 	const scheduledRevisionRef = useRef<number | undefined>(undefined);
@@ -311,6 +314,25 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		if (turnCards.length > 0 || !hostLoading) setTurnCards(turnCards);
 	}, [plugins, revision, hostLoading, setTurnCards]);
 
+	// Publish workspace views (full-page plugin surfaces): sidebar navigation
+	// entries and the /workspace/<pluginId>/<viewId> route both consume this.
+	useEffect(() => {
+		const workspaceViews: RegisteredWorkspaceView[] = plugins.flatMap((plugin) =>
+			plugin.workspaceViews.map((view) => ({
+				pluginId: plugin.id,
+				pluginName: plugin.name,
+				viewId: view.id,
+				label: view.label,
+				icon: view.icon,
+				description: view.description,
+				badge: view.badge,
+				component: view.component,
+				navOrder: view.navOrder ?? 0,
+			})),
+		);
+		if (workspaceViews.length > 0 || !hostLoading) setWorkspaceViews(workspaceViews);
+	}, [plugins, revision, hostLoading, setWorkspaceViews]);
+
 	// Host unmount only: clear published contributions.
 	useEffect(() => {
 		return () => {
@@ -323,6 +345,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			setCardRenderers([]);
 			setToolCallSlots([]);
 			setTurnCards([]);
+			setWorkspaceViews([]);
 			setPluginI18n({});
 		};
 	}, [
@@ -335,6 +358,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		setCardRenderers,
 		setToolCallSlots,
 		setTurnCards,
+		setWorkspaceViews,
 		setPluginI18n,
 	]);
 

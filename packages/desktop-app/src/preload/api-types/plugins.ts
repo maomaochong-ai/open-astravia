@@ -70,10 +70,15 @@ export type PluginPermission =
 	| "ui.slot.message"
 	| "ui.slot.tool-call"
 	| "ui.slot.turn-card"
+	| "ui.slot.workspace-view"
 	| "ui.shortcuts.register"
 	| "ui.file-explorer.decorations"
 	| "ui.file-explorer.context-menu"
 	| "ui.file-explorer.toolbar"
+	| "capture.offscreen"
+	| "shell.openExternal"
+	| "agent.hooks.register"
+	| "agent.hookHandler.execute"
 	| "workspace.read"
 	| "agent.session.read"
 	| "agent.session.write"
@@ -580,6 +585,13 @@ export interface DesktopPluginCapabilityProjectsApi {
 	remove(sessionId: string, path: string): Promise<void>;
 }
 
+export interface DesktopPluginCapabilityDialogApi {
+	openFiles(input?: {
+		title?: string;
+		filters?: Array<{ name: string; extensions: string[] }>;
+	}): Promise<Array<{ name: string; data: string }>>;
+}
+
 export interface DesktopPluginCapabilitySessionsApi {
 	list(sessionId: string, cwd: string): Promise<SessionHistoryEntry[]>;
 	listRuntimeProjects(sessionId: string): Promise<SessionRuntimeProject[]>;
@@ -688,6 +700,7 @@ export interface DesktopPluginInternalCapabilitiesApi {
 	downloads: DesktopPluginCapabilityDownloadsApi;
 	knowledge: DesktopPluginCapabilityKnowledgeApi;
 	database: DesktopPluginCapabilityDatabaseApi;
+	dialog: DesktopPluginCapabilityDialogApi;
 	projects: DesktopPluginCapabilityProjectsApi;
 	scheduler: DesktopPluginCapabilitySchedulerApi;
 	sessions: DesktopPluginCapabilitySessionsApi;

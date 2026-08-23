@@ -179,6 +179,10 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.PROJECT_UNARCHIVE, sessionId, path),
 					remove: (sessionId, path) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.PROJECT_REMOVE, sessionId, path),
 				},
+				dialog: {
+					// 用户手势操作，不绑定 capability session：main 侧直接 showOpenDialog 并把内容带回。
+					openFiles: (input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.DIALOG_OPEN_FILES, input),
+				},
 				sessions: {
 					list: (sessionId, cwd) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.SESSION_LIST, sessionId, cwd),
 					listRuntimeProjects: (sessionId) =>
