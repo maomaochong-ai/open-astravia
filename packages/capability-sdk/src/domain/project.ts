@@ -7,10 +7,7 @@ import {
 	defineCapabilityOutputSchema,
 } from "../schema.js";
 
-const projectEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const projectEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const projectNonBlankInputStringType = Type.String({ pattern: "\\S" });
 

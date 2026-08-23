@@ -23,10 +23,7 @@ export const IM_LOG_LEVELS = {
 	ERROR: "error",
 } as const;
 
-const imEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const imEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const imTransportType = Type.Union([Type.Literal(IM_TRANSPORTS.FEISHU), Type.Literal(IM_TRANSPORTS.WECHAT)]);
 

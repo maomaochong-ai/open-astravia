@@ -21,10 +21,7 @@ export const SANDBOX_BACKENDS = {
 	WINDOWS_HOST: "windows-host",
 } as const;
 
-const generalSettingsEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const generalSettingsEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const generalExecutionModeType = Type.Union([
 	Type.Literal(GENERAL_EXECUTION_MODES.SANDBOX),

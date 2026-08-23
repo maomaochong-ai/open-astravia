@@ -19,10 +19,7 @@ export const WEBHOOK_MESSAGE_LEVELS = {
 	SUCCESS: "success",
 } as const;
 
-const webhookEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const webhookEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const webhookKindType = Type.Union([Type.Literal(WEBHOOK_KINDS.FEISHU), Type.Literal(WEBHOOK_KINDS.DINGTALK)]);
 

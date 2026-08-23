@@ -16,10 +16,7 @@ export const INSTALLED_SKILL_SOURCES = {
 	CUSTOM: "custom",
 } as const;
 
-const skillEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const skillEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const skillTypeType = Type.Literal(SKILL_TYPES.SKILL);
 const installedSkillSourceType = Type.Union([

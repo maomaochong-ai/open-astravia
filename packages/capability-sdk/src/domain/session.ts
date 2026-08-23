@@ -3,10 +3,7 @@ import { createCapabilityCatalog } from "../catalog.js";
 import { CAPABILITY_LAYERS, defineCapability } from "../contracts.js";
 import { defineCapabilityInputSchema, defineCapabilityOutputSchema } from "../schema.js";
 
-const sessionEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const sessionEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const sessionListInputType = Type.Object(
 	{

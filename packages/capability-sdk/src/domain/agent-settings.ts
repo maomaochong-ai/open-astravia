@@ -3,10 +3,7 @@ import { createCapabilityCatalog } from "../catalog.js";
 import { CAPABILITY_LAYERS, defineCapability } from "../contracts.js";
 import { defineCapabilityInputSchema, defineCapabilityOutputSchema } from "../schema.js";
 
-const agentSettingsEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const agentSettingsEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const agentExperimentalSettingsType = Type.Object(
 	{
