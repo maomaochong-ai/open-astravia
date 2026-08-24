@@ -1076,6 +1076,8 @@
   "updaterDownload": "下载更新",
   "updaterDownloading": "下载中 {{progress}}%",
   "updaterRestart": "立即重启",
+  "updaterViewMore": "查看更多",
+  "updaterReleaseNotes": "更新说明",
   "optional": "可选",
   "requestFailed": "请求失败",
   "modelsTitle": "模型配置",

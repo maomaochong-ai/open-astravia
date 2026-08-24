@@ -1076,6 +1076,8 @@
   "updaterDownload": "Download Update",
   "updaterDownloading": "Downloading {{progress}}%",
   "updaterRestart": "Restart Now",
+  "updaterViewMore": "View more",
+  "updaterReleaseNotes": "Release notes",
   "optional": "Optional",
   "requestFailed": "Request failed",
   "modelsTitle": "Model Configuration",

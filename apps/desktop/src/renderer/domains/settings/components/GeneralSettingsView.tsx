@@ -41,6 +41,7 @@ export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.El
 						labels={updates.labels}
 						latestVersion={updates.latestVersion}
 						onPrimary={updates.onPrimary}
+						onViewMore={updates.onViewMore}
 						phase={updates.phase}
 						progress={updates.progress}
 						releaseNote={updates.releaseNote}

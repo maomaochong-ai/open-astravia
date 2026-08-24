@@ -1,13 +1,15 @@
-import { updaterRestartDialogOpenAtom, updaterStateAtom } from "@shared/store/atoms";
 import type { UpdateCheckerViewProps } from "@vetta/theme-ui/overlays";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { filePreviewAtom } from "../store/file-preview-atoms";
+import { updaterRestartDialogOpenAtom, updaterStateAtom } from "../store/updater-atoms";
 
 export function useUpdateCheckerModel(): UpdateCheckerViewProps {
 	const { t } = useTranslation("settings");
 	const state = useAtomValue(updaterStateAtom);
 	const openRestartDialog = useSetAtom(updaterRestartDialogOpenAtom);
+	const setFilePreview = useSetAtom(filePreviewAtom);
 	const [busy, setBusy] = useState(false);
 
 	const checking = busy || state.phase === "checking";
@@ -33,6 +35,7 @@ export function useUpdateCheckerModel(): UpdateCheckerViewProps {
 				idle: (version) => t("updaterIdle", { version }),
 				newVersion: (version) => t("updaterNewVersion", { version }),
 				restart: t("updaterRestart"),
+				viewMore: t("updaterViewMore"),
 			},
 			latestVersion: state.latestVersion,
 			onCheck: () => {
@@ -48,11 +51,21 @@ export function useUpdateCheckerModel(): UpdateCheckerViewProps {
 					openRestartDialog(true);
 				}
 			},
+			onViewMore: () => {
+				if (!state.releaseNote) return;
+				const blob = new Blob([state.releaseNote], { type: "text/markdown" });
+				const url = URL.createObjectURL(blob);
+				const versionName = state.latestVersion ? `v${state.latestVersion}` : "update";
+				setFilePreview({
+					name: `${versionName}_changelog.md`,
+					url,
+				});
+			},
 			phase: state.phase,
 			progress: state.progress,
 			releaseNote: state.releaseNote,
 			statusText,
 		}),
-		[checking, openRestartDialog, state, statusText, t],
+		[checking, openRestartDialog, setFilePreview, state, statusText, t],
 	);
 }
