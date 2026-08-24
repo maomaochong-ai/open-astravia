@@ -170,7 +170,7 @@ func (t *Transport) Capabilities() transport.Capabilities {
 }
 
 // Start opens chat.db, seeds the ROWID cursor at the current maximum, and
-// blocks polling for new rows until ctx is cancelled or Stop is called.
+// blocks polling for new rows until ctx is canceled or Stop is called.
 // Poll errors back off exponentially (capped) instead of aborting: chat.db
 // is briefly locked whenever Messages.app writes.
 func (t *Transport) Start(ctx context.Context, handler transport.MessageHandler) error {

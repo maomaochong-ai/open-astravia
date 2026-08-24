@@ -27,10 +27,10 @@ const stateFileVersion = 1
 // path on ilink_bot_id and add an enclosing map at the call sites — the
 // State struct itself does not need to change.
 type State struct {
-	Version       int                `json:"version"`
-	Credentials   ilink.Credentials  `json:"credentials"`
-	GetUpdatesBuf string             `json:"get_updates_buf"`
-	ContextTokens map[string]string  `json:"context_tokens"` // peer ilink_user_id → token
+	Version       int               `json:"version"`
+	Credentials   ilink.Credentials `json:"credentials"`
+	GetUpdatesBuf string            `json:"get_updates_buf"`
+	ContextTokens map[string]string `json:"context_tokens"` // peer ilink_user_id → token
 }
 
 // stateStore is the goroutine-safe atomic-write JSON store backing State.

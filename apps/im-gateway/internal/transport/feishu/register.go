@@ -232,7 +232,7 @@ type registerPollResponse struct {
 //
 // It blocks until the user confirms (returning the credentials), the
 // platform reports a terminal error, the link expires, or ctx is
-// cancelled. Cancellation surfaces as ctx.Err().
+// canceled. Cancellation surfaces as ctx.Err().
 func Register(ctx context.Context, opts RegisterOptions) (*RegisterResult, error) {
 	if opts.OnQRCode == nil {
 		return nil, errors.New("feishu register: OnQRCode is required")

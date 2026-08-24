@@ -208,7 +208,7 @@ func TestHandleMessageCreate_ReplyToID(t *testing.T) {
 	h := &captureHandler{}
 
 	m := makeMessage("", "ch-1", "u-1", "replying")
-	m.Message.MessageReference = &discordgo.MessageReference{MessageID: "orig-1"}
+	m.MessageReference = &discordgo.MessageReference{MessageID: "orig-1"}
 	tr.handleMessageCreate(context.Background(), m, h)
 
 	got := h.snapshot()

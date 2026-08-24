@@ -72,7 +72,7 @@ func TestBindFrames_RoutedToActiveChannelOnly(t *testing.T) {
 }
 
 // TestConfigUpdate_SwapsCoordinator pins the coordinator lifecycle across a
-// channel switch: the outgoing one is cancelled, the incoming one matches
+// channel switch: the outgoing one is canceled, the incoming one matches
 // the new selection.
 func TestConfigUpdate_SwapsCoordinator(t *testing.T) {
 	old := &stubBindCoordinator{}
@@ -92,8 +92,8 @@ func TestConfigUpdate_SwapsCoordinator(t *testing.T) {
 	if !action.rebuild {
 		t.Fatal("config_update should request a rebuild")
 	}
-	if !old.cancelled {
-		t.Fatal("previous coordinator was not cancelled")
+	if !old.canceled {
+		t.Fatal("previous coordinator was not canceled")
 	}
 	if h.coordKind != "signal" {
 		t.Fatalf("coordKind = %q, want signal", h.coordKind)
@@ -141,14 +141,14 @@ func TestResolveSignalAccount_CLIMissingMentionsInstall(t *testing.T) {
 
 type stubBindCoordinator struct {
 	started   bool
-	cancelled bool
+	canceled  bool
 	loggedOut bool
 	adopted   *buildSpec
 }
 
 func (s *stubBindCoordinator) Start(context.Context) { s.started = true }
 func (s *stubBindCoordinator) Adopt(spec *buildSpec) { s.adopted = spec }
-func (s *stubBindCoordinator) Cancel()               { s.cancelled = true }
+func (s *stubBindCoordinator) Cancel()               { s.canceled = true }
 func (s *stubBindCoordinator) LogoutAndClear(string) error {
 	s.loggedOut = true
 	return nil

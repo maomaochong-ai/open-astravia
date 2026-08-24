@@ -30,7 +30,7 @@ func (e *HTTPError) Error() string {
 	return fmt.Sprintf("ilink: %s HTTP %d: %s", e.Label, e.Status, e.Body)
 }
 
-// TimeoutError is returned when a request was cancelled by its per-call
+// TimeoutError is returned when a request was canceled by its per-call
 // deadline (i.e. a long-poll hit its client-side ceiling). Callers
 // distinguish this from real network failures and treat it as a normal
 // "no data, retry immediately" signal.

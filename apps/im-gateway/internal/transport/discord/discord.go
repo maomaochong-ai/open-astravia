@@ -199,7 +199,7 @@ func (t *Transport) Capabilities() transport.Capabilities {
 }
 
 // Start opens the gateway connection and blocks delivering inbound
-// messages to handler until ctx is cancelled or Stop() is called.
+// messages to handler until ctx is canceled or Stop() is called.
 //
 // Handlers are invoked from the session's own goroutines, so the
 // MessageHandler must be cheap or hand off to a worker.

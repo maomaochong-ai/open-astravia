@@ -125,7 +125,7 @@ type bindCoordinator interface {
 // flow: at most one concurrent bind goroutine per coordinator. Events are
 // emitted through the supplied hostproto.Writer; on success the
 // credentials are persisted via the wechat package's CLI store helper and
-// the rebuildCh is signalled so the main loop can construct and start the
+// the rebuildCh is signaled so the main loop can construct and start the
 // real wechat transport.
 type wechatBindCoordinator struct {
 	statePath string

@@ -213,7 +213,7 @@ func (t *Transport) Logout(ctx context.Context) error {
 }
 
 // Start connects and blocks delivering inbound messages to handler until ctx
-// is cancelled, Stop is called, or the server logs the device out (in which
+// is canceled, Stop is called, or the server logs the device out (in which
 // case the returned error wraps ErrNotLoggedIn so the host can rebind).
 // Returns ErrNotLoggedIn immediately when the store has no paired session.
 func (t *Transport) Start(ctx context.Context, handler transport.MessageHandler) error {

@@ -342,7 +342,7 @@ loop:
 				rebuildTransport()
 			}
 		case <-bindRebuildCh:
-			// Bind goroutine signalled success.
+			// Bind goroutine signaled success.
 			rebuildTransport()
 			if syncer, ok := hostState.coord.(postBindSyncer); ok {
 				go syncer.SyncAfterBind(context.Background())
@@ -461,7 +461,7 @@ func (h *hostRuntime) handleFrame(frame any) frameAction {
 		h.spec = next
 		// Rebuild the coordinator for whatever channel is now active. A
 		// coordinator for a channel we just switched away from is
-		// cancelled so its in-flight bind cannot resurface.
+		// canceled so its in-flight bind cannot resurface.
 		kind := bindCoordinatorKind(h.spec)
 		if kind != h.coordKind {
 			if h.coord != nil {

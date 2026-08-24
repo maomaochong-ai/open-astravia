@@ -2,34 +2,75 @@
 #
 # Mirrors the modest set of linters used by other Go packages in the repo
 # (apps/api). Adjust here if upstream packages move first; we follow.
-
-run:
-  timeout: 5m
+#
+# v2 schema. errcheck / govet / ineffassign / staticcheck / unused are part of
+# v2's default set, so they are no longer listed under `enable`. The
+# `exclusions.presets` below reproduce v1's built-in exclusions, keeping this
+# config behaviour-equivalent to the v1 one it replaced.
+version: "2"
 
 linters:
   enable:
-    - errcheck
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
     - misspell
+  settings:
+    misspell:
+      locale: US
+    staticcheck:
+      # Setting `checks` replaces the default set wholesale, so v2's own
+      # exclusions (the ST10xx naming/comment rules it ships disabled) have to
+      # be repeated here — otherwise they silently switch on.
+      checks:
+        - all
+        - -ST1000
+        - -ST1003
+        - -ST1016
+        - -ST1020
+        - -ST1021
+        - -ST1022
+        # QF1001 rewrites `!(a && b)` into `!a || !b`. In the loop conditions
+        # we have (`for ... && !(sawA && sawB)`) the original reads as
+        # "until both happened" and the rewrite obscures it. The rest of the
+        # QF quickfix family stays on; v1 did not run any of them.
+        - -QF1001
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      # Test files often need wide-open expectations; let them ignore errcheck
+      # for things like setup helpers.
+      - linters:
+          - errcheck
+        path: _test\.go
+    paths:
+      - bin
+      - tmp
+      - third_party$
+      - builtin$
+      - examples$
+
+formatters:
+  enable:
     - gofmt
     - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - vetta-im-gateway
+  exclusions:
+    generated: lax
+    paths:
+      - bin
+      - tmp
+      - third_party$
+      - builtin$
+      - examples$
 
-linters-settings:
-  goimports:
-    local-prefixes: vetta-im-gateway
-  misspell:
-    locale: US
-
+# Defaults cap reporting at 3 issues of the same kind, which hides the true
+# backlog while fixing one. Report everything; CI should show the full set.
 issues:
-  exclude-dirs:
-    - bin
-    - tmp
-  exclude-rules:
-    # Test files often need wide-open expectations; let them ignore errcheck
-    # for things like setup helpers.
-    - path: _test\.go
-      linters:
-        - errcheck
+  max-issues-per-linter: 0
+  max-same-issues: 0

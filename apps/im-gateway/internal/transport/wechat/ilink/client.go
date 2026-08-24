@@ -29,11 +29,11 @@ const FixedQRBaseURL = "https://ilinkai.weixin.qq.com"
 // to use these for fingerprinting / routing — diverging from them is the
 // quickest way to get our requests treated as third-party traffic.
 const (
-	DefaultILinkAppID         = "bot"
-	DefaultChannelVersion     = "2.1.7"
-	DefaultLongPollTimeout    = 35 * time.Second
-	DefaultAPITimeout         = 15 * time.Second
-	DefaultConfigCallTimeout  = 10 * time.Second
+	DefaultILinkAppID        = "bot"
+	DefaultChannelVersion    = "2.1.7"
+	DefaultLongPollTimeout   = 35 * time.Second
+	DefaultAPITimeout        = 15 * time.Second
+	DefaultConfigCallTimeout = 10 * time.Second
 )
 
 // ClientVersion encodes a SemVer string into the uint32 the iLink server
@@ -296,14 +296,13 @@ func resolve(baseURL, endpoint string) (string, error) {
 
 // httpDoOptions holds the per-call knobs for doHTTP.
 type httpDoOptions struct {
-	method     string
-	baseURL    string
-	endpoint   string
-	body       []byte
-	token      string
-	timeout    time.Duration
-	label      string
-	withAuth   bool // include Authorization header (POST only)
+	method   string
+	baseURL  string
+	endpoint string
+	body     []byte
+	token    string
+	timeout  time.Duration
+	label    string
 }
 
 // doHTTP executes a request, applying header construction, the per-call

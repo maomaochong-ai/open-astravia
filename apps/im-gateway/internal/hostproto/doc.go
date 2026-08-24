@@ -13,13 +13,13 @@
 //
 // Lifecycle:
 //
-//   parent spawns sidecar
-//   parent → child: { "type": "init", ... }              (within 10s or sidecar exits)
-//   child  → parent: { "type": "ready", ... }
-//   ... runtime ...
-//   parent → child: { "type": "config_update", ... }     (optional)
-//   parent → child: { "type": "projects_update", ... }   (optional)
-//   child  → parent: { "type": "log" | "status" | "state_patch" | "metric", ... }
-//   parent → child: { "type": "shutdown" } OR closes stdin (EOF == shutdown)
-//   child exits within 5s
+//	parent spawns sidecar
+//	parent → child: { "type": "init", ... }              (within 10s or sidecar exits)
+//	child  → parent: { "type": "ready", ... }
+//	... runtime ...
+//	parent → child: { "type": "config_update", ... }     (optional)
+//	parent → child: { "type": "projects_update", ... }   (optional)
+//	child  → parent: { "type": "log" | "status" | "state_patch" | "metric", ... }
+//	parent → child: { "type": "shutdown" } OR closes stdin (EOF == shutdown)
+//	child exits within 5s
 package hostproto

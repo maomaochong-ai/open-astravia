@@ -366,7 +366,7 @@ func printBanner(cfg *config.Config, creds *config.Credentials, cfgPath, transpo
 	fmt.Println()
 }
 
-// signalContext returns a Context that is cancelled on SIGINT / SIGTERM.
+// signalContext returns a Context that is canceled on SIGINT / SIGTERM.
 func signalContext() (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 	sigCh := make(chan os.Signal, 1)

@@ -35,7 +35,7 @@ type fakeDaemon struct {
 	events chan string
 
 	// connCount increments on every /api/v1/events connection; the current
-	// count is sent to connCh (buffered) for reconnect synchronisation.
+	// count is sent to connCh (buffered) for reconnect synchronization.
 	connCount atomic.Int32
 	connCh    chan int
 

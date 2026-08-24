@@ -17,7 +17,7 @@ import (
 )
 
 // stubTransport is a no-op transport that just blocks Start() until ctx
-// is cancelled. Used to exercise the host runtime without touching
+// is canceled. Used to exercise the host runtime without touching
 // network. Calls to Stop unblock Start by returning context.Canceled.
 type stubTransport struct {
 	name string
@@ -27,7 +27,7 @@ type stubTransport struct {
 
 func newStubTransport(name string) *stubTransport { return &stubTransport{name: name} }
 
-func (s *stubTransport) Name() string                      { return s.name }
+func (s *stubTransport) Name() string                         { return s.name }
 func (s *stubTransport) Capabilities() transport.Capabilities { return transport.Capabilities{} }
 func (s *stubTransport) Start(ctx context.Context, _ transport.MessageHandler) error {
 	if s.startErr != nil {

@@ -130,7 +130,7 @@ func (t *Transport) Capabilities() transport.Capabilities {
 }
 
 // Start resolves the bot identity (getMe) then runs the getUpdates long-poll
-// loop until ctx is cancelled or Stop is called. Hard errors back off
+// loop until ctx is canceled or Stop is called. Hard errors back off
 // exponentially (1s → 30s), same shape as the wechat poll loop; a long-poll
 // window simply expiring with no updates is a success and does not back off.
 func (t *Transport) Start(ctx context.Context, handler transport.MessageHandler) error {

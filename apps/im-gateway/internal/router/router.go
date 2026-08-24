@@ -188,7 +188,7 @@ func (r *Router) processConversation(ctx context.Context, queue chan transport.I
 // tryCommand dispatches msg through the command router. handled=true means it
 // was a slash-command (already executed, reply sent); handled=false means it's
 // a normal prompt that should seed or fold into a turn. Slash-commands are only
-// recognised in IDLE — messages folded into a live turn are never dispatched
+// recognized in IDLE — messages folded into a live turn are never dispatched
 // here (ADR-0010), they go to the agent as plain text.
 func (r *Router) tryCommand(ctx context.Context, msg transport.InboundMessage) (bool, error) {
 	env := command.Env{
@@ -358,7 +358,7 @@ func discardRestartRequiredSession(acquired *hostclient.Acquired, err error) boo
 func (r *Router) SetDatedCwd(enabled bool) { r.datedCwd = enabled }
 
 // agentCwd returns the working directory to spawn the agent in. With datedCwd
-// off it's the conversation root (legacy behaviour). With it on it's today's
+// off it's the conversation root (legacy behavior). With it on it's today's
 // date subdirectory <conversationCwd>/<YYYY-MM-DD>/ (created if missing),
 // matching the inbox layout so inbound media, artifacts, and JOURNAL.md share
 // one per-day directory.

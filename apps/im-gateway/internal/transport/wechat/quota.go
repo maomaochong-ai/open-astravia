@@ -21,9 +21,9 @@ import (
 // The quota is per-peer because the inbound reset is per-peer; a busy
 // conversation with one user does not unblock pushes to a quiet user.
 type Quota struct {
-	per   int
-	win   time.Duration
-	now   func() time.Time
+	per int
+	win time.Duration
+	now func() time.Time
 
 	mu    sync.Mutex
 	state map[string]*peerWindow

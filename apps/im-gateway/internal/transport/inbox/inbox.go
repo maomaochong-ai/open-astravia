@@ -85,7 +85,7 @@ func GuessImageExt(b []byte) string {
 }
 
 // MimeFromExt maps a file extension (with leading dot) to a MIME type,
-// defaulting to application/octet-stream for anything unrecognised.
+// defaulting to application/octet-stream for anything unrecognized.
 func MimeFromExt(ext string) string {
 	switch strings.ToLower(ext) {
 	case ".jpg", ".jpeg":

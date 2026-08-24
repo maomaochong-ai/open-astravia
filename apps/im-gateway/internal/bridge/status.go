@@ -19,7 +19,7 @@ const (
 )
 
 // finalReactionTimeout bounds the terminal status-reaction call, which runs
-// after the turn's ctx may already be cancelled (WithoutCancel).
+// after the turn's ctx may already be canceled (WithoutCancel).
 const finalReactionTimeout = 5 * time.Second
 
 // SetInboundRef records the platform message ID of the inbound message that
@@ -45,7 +45,7 @@ func (b *Bridge) setStatusReaction(ctx context.Context, emoji string) {
 }
 
 // finishStatusReaction applies the terminal done/failed reaction. Runs on a
-// detached context because the turn's ctx is often already cancelled by the
+// detached context because the turn's ctx is often already canceled by the
 // time the result is known.
 func (b *Bridge) finishStatusReaction(ctx context.Context, turnErr error) {
 	if b.reactor == nil || b.inboundRef == "" {

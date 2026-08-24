@@ -95,10 +95,12 @@ const (
 	FailureCodeProcessExited      FailureCode = "process_exited"
 	FailureCodeProcessIOFailed    FailureCode = "process_io_failed"
 	FailureCodeProcessSpawnFailed FailureCode = "process_spawn_failed"
-	FailureCodeRequestCancelled   FailureCode = "request_cancelled"
-	FailureCodeRequestTimeout     FailureCode = "request_timeout"
-	FailureCodeSessionLocked      FailureCode = "session_locked"
-	FailureCodeShutdownTimeout    FailureCode = "shutdown_timeout"
+	// 线上协议值，Desktop 与既有会话记录都按英式拼写解析，
+	// 不能为了 misspell 的 US locale 改写。
+	FailureCodeRequestCancelled FailureCode = "request_cancelled" //nolint:misspell // wire value
+	FailureCodeRequestTimeout   FailureCode = "request_timeout"
+	FailureCodeSessionLocked    FailureCode = "session_locked"
+	FailureCodeShutdownTimeout  FailureCode = "shutdown_timeout"
 )
 
 type FailurePhase string

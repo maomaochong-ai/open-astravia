@@ -33,7 +33,7 @@ func NewReader(r io.Reader) *Reader {
 }
 
 // Run pumps frames into the channels. Returns when the underlying reader
-// hits EOF, the context is cancelled, or a malformed line is encountered.
+// hits EOF, the context is canceled, or a malformed line is encountered.
 //
 // Run owns the lifecycle of the frame channel — it always closes the
 // channel before returning. Errors (including non-EOF read errors and parse

@@ -47,7 +47,7 @@ func renderButtonsFallback(rows [][]transport.Button) string {
 	for _, row := range rows {
 		for _, btn := range row {
 			n++
-			sb.WriteString(fmt.Sprintf("\n%d. %s", n, btn.Text))
+			fmt.Fprintf(&sb, "\n%d. %s", n, btn.Text)
 			if btn.Value != "" && btn.Value != btn.Text {
 				sb.WriteString(" (" + btn.Value + ")")
 			}

@@ -24,7 +24,7 @@ const intentMessageContent = 1 << 15
 // replays the real handshake (Hello → Identify → Ready) so the transport
 // can be exercised through discordgo instead of only at the handler seam.
 //
-// rejectPrivileged mirrors Discord's behaviour for a bot without the
+// rejectPrivileged mirrors Discord's behavior for a bot without the
 // MESSAGE CONTENT privilege: any identify requesting that intent is
 // closed with 4014 instead of receiving Ready.
 type fakeGateway struct {

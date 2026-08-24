@@ -111,17 +111,17 @@ type RefMessage struct {
 // MessageItem is one element of a WeixinMessage.item_list. Exactly one of
 // the *_item fields is populated, selected by Type.
 type MessageItem struct {
-	Type          int         `json:"type,omitempty"`
-	CreateTimeMs  int64       `json:"create_time_ms,omitempty"`
-	UpdateTimeMs  int64       `json:"update_time_ms,omitempty"`
-	IsCompleted   bool        `json:"is_completed,omitempty"`
-	MsgID         string      `json:"msg_id,omitempty"`
-	RefMsg        *RefMessage `json:"ref_msg,omitempty"`
-	TextItem      *TextItem   `json:"text_item,omitempty"`
-	ImageItem     *ImageItem  `json:"image_item,omitempty"`
-	VoiceItem     *VoiceItem  `json:"voice_item,omitempty"`
-	FileItem      *FileItem   `json:"file_item,omitempty"`
-	VideoItem     *VideoItem  `json:"video_item,omitempty"`
+	Type         int         `json:"type,omitempty"`
+	CreateTimeMs int64       `json:"create_time_ms,omitempty"`
+	UpdateTimeMs int64       `json:"update_time_ms,omitempty"`
+	IsCompleted  bool        `json:"is_completed,omitempty"`
+	MsgID        string      `json:"msg_id,omitempty"`
+	RefMsg       *RefMessage `json:"ref_msg,omitempty"`
+	TextItem     *TextItem   `json:"text_item,omitempty"`
+	ImageItem    *ImageItem  `json:"image_item,omitempty"`
+	VoiceItem    *VoiceItem  `json:"voice_item,omitempty"`
+	FileItem     *FileItem   `json:"file_item,omitempty"`
+	VideoItem    *VideoItem  `json:"video_item,omitempty"`
 }
 
 // WeixinMessage is the unified message envelope (proto: WeixinMessage).
@@ -181,7 +181,7 @@ type SendMessageReq struct {
 // URL string that must be encoded into a QR image for the user to scan
 // with WeChat.
 type QRCodeResp struct {
-	Qrcode          string `json:"qrcode"`
+	Qrcode           string `json:"qrcode"`
 	QrcodeImgContent string `json:"qrcode_img_content"`
 }
 

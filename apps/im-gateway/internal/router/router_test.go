@@ -309,7 +309,7 @@ func TestRouter_PerChatIsolation(t *testing.T) {
 	}
 }
 
-// gatedClient blocks OpenSession until release is closed, signalling via
+// gatedClient blocks OpenSession until release is closed, signaling via
 // opened once the first OpenSession is reached. Lets a test deterministically
 // enqueue a second message inside the acquire window (ADR-0010).
 type gatedClient struct {

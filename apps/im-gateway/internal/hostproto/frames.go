@@ -369,7 +369,8 @@ const (
 	WechatBindStatusRedirected = "redirected"
 	WechatBindStatusConfirmed  = "confirmed"
 	WechatBindStatusFailed     = "failed"
-	WechatBindStatusCancelled  = "cancelled"
+	// 线上协议值，与 Desktop 的绑定状态机对齐，不随 misspell locale 改写。
+	WechatBindStatusCancelled = "cancelled" //nolint:misspell // wire value
 )
 
 // WhatsappBindStartFrame requests the sidecar begin (or restart) a whatsapp
@@ -397,7 +398,7 @@ type WhatsappQREvent struct {
 
 // WhatsappBindStatusEvent reports a transition in the whatsapp pairing state
 // machine. Status reuses the WechatBindStatus* values (scanned / expired /
-// confirmed / failed / cancelled); Error is set only on failed.
+// confirmed / failed / canceled); Error is set only on failed.
 type WhatsappBindStatusEvent struct {
 	Type   string `json:"type"` // always TypeWhatsappBindStatus
 	Status string `json:"status"`
@@ -443,7 +444,7 @@ type SignalQREvent struct {
 }
 
 // SignalBindStatusEvent reports a transition in the link flow. Status reuses
-// the WechatBindStatus* values (confirmed / failed / cancelled); Error is
+// the WechatBindStatus* values (confirmed / failed / canceled); Error is
 // set only on failed.
 type SignalBindStatusEvent struct {
 	Type   string `json:"type"` // always TypeSignalBindStatus
@@ -495,7 +496,7 @@ type FeishuQREvent struct {
 
 // FeishuBindStatusEvent reports a transition in the registration flow.
 // Status reuses the WechatBindStatus* values (scanned / confirmed / failed
-// / cancelled / expired); Error is set only on failed.
+// / canceled / expired); Error is set only on failed.
 type FeishuBindStatusEvent struct {
 	Type   string `json:"type"` // always TypeFeishuBindStatus
 	Status string `json:"status"`

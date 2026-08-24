@@ -77,7 +77,11 @@ jobs:
         with:
           go-version: "1.25"
           cache-dependency-path: apps/im-gateway/go.sum
-      - uses: golangci/golangci-lint-action@v6
+      # v6 只支持 golangci-lint v1，而 v1 全系列都是用 go1.24 构建的，遇到
+      # go.mod 声明的 go1.25.3 会直接拒绝分析（"the Go language version used
+      # to build golangci-lint is lower than the targeted Go version"）。
+      # v9 + golangci-lint v2 用 go1.27 构建，配置也已迁移到 v2 schema。
+      - uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: v2.13.1
           working-directory: apps/im-gateway

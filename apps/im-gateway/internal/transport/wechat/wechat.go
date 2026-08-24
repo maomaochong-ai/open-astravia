@@ -188,7 +188,7 @@ func (t *Transport) Capabilities() transport.Capabilities {
 	}
 }
 
-// Start runs the long-poll loop until ctx is cancelled, Stop is called, or
+// Start runs the long-poll loop until ctx is canceled, Stop is called, or
 // an unrecoverable credential error (ErrSessionTimeout) is returned by the
 // server.
 func (t *Transport) Start(ctx context.Context, handler transport.MessageHandler) error {

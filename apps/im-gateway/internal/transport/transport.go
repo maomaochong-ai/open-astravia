@@ -30,7 +30,7 @@ type Transport interface {
 	Capabilities() Capabilities
 
 	// Start connects to the platform and begins delivering inbound messages
-	// to the handler. Returns when the context is cancelled, Stop() is
+	// to the handler. Returns when the context is canceled, Stop() is
 	// called, or an unrecoverable error occurs.
 	Start(ctx context.Context, handler MessageHandler) error
 

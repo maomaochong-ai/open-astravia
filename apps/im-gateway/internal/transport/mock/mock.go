@@ -51,7 +51,7 @@ type Transport struct {
 }
 
 // Options for New. All fields optional; defaults are os.Stdin / os.Stdout.
-// Transport owns In and closes it when stopped or when Start's context is cancelled.
+// Transport owns In and closes it when stopped or when Start's context is canceled.
 type Options struct {
 	In  io.ReadCloser
 	Out io.Writer

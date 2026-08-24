@@ -126,7 +126,7 @@ func proxyFromEnv() string {
 
 // jvmProxyArgs renders the proxy configuration as `-D` system properties.
 //
-// signal-cli ships as a JVM/GraalVM program, and neither honours the
+// signal-cli ships as a JVM/GraalVM program, and neither honors the
 // HTTPS_PROXY/HTTP_PROXY environment variables that the rest of the gateway
 // (and every Go transport) relies on. On a machine that can only reach
 // Signal through a proxy, the symptom is silent: `signal-cli link` never
@@ -383,7 +383,7 @@ func parseAccounts(raw []byte) []string {
 // as soon as signal-cli prints it. The URI is what the caller renders as a
 // QR code; the user scans it from Signal → Settings → Linked devices.
 //
-// Blocks until the link completes (the process exits), ctx is cancelled, or
+// Blocks until the link completes (the process exits), ctx is canceled, or
 // signal-cli fails. On success the newly linked account number is returned.
 func Link(ctx context.Context, opts CLIOptions, deviceName string, onURI func(string)) (string, error) {
 	bin, err := opts.resolve()
@@ -597,7 +597,7 @@ func (d *Daemon) Stop() error {
 }
 
 // waitReady polls the daemon's RPC endpoint until it answers, the child
-// exits, ctx is cancelled, or the timeout fires.
+// exits, ctx is canceled, or the timeout fires.
 func (d *Daemon) waitReady(ctx context.Context, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	probe := &Transport{endpoint: d.endpoint, rpcClient: newProbeClient()}

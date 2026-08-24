@@ -130,7 +130,7 @@ func (t *Transport) Capabilities() transport.Capabilities {
 }
 
 // Start resolves the bot identity, opens the Socket Mode connection, and
-// blocks delivering inbound envelopes to handler until ctx is cancelled or
+// blocks delivering inbound envelopes to handler until ctx is canceled or
 // Stop() is called.
 func (t *Transport) Start(ctx context.Context, handler transport.MessageHandler) error {
 	auth, err := t.api.AuthTestContext(ctx)

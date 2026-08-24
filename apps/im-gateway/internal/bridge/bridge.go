@@ -30,7 +30,6 @@ const TypingHeartbeatInterval = 5 * time.Second
 // final assistant text and no error to report.
 const DeferredEmptyText = "⚠️ 未返回文本内容"
 
-
 // HostResponder is the optional callback the bridge uses to answer
 // `host_request` events emitted by built-in coding-agent tools (see
 // ADR-0006). Receiving a host_request and not having a responder set is
@@ -115,7 +114,7 @@ type Bridge struct {
 // deferredState tracks what one turn produced when the transport defers
 // emission to agent_end. The bridge keeps last-assistant-message text
 // (overwriting on each message_end so an intermediate "I'll look that
-// up" gets discarded in favour of the final answer), the tool-call
+// up" gets discarded in favor of the final answer), the tool-call
 // count, and any error text. Progress is shown via the native typing
 // indicator (see typingHeartbeat), not a pushed ack message.
 type deferredState struct {
@@ -328,7 +327,7 @@ func (b *Bridge) handleDeferred(ctx context.Context, ev hostclient.AgentEvent) e
 
 // sendDeferredDigest assembles the single digest message for this turn
 // and sends it. Idempotent: subsequent calls are no-ops, so the
-// channel-closed / ctx-cancelled / agent_end paths can all call it
+// channel-closed / ctx-canceled / agent_end paths can all call it
 // without coordinating.
 func (b *Bridge) sendDeferredDigest(ctx context.Context, allowEmpty bool) error {
 	d := b.deferred
@@ -830,7 +829,7 @@ func (b *Bridge) dispatchSendAttachment(ctx context.Context, req hostRequest) {
 }
 
 // classifyAttachmentError maps a transport error to a short slug agent-side
-// callers can branch on. Currently only quota_exhausted is recognised
+// callers can branch on. Currently only quota_exhausted is recognized
 // specially; everything else funnels into transport_error.
 func classifyAttachmentError(err error) string {
 	if err == nil {

@@ -77,9 +77,9 @@ func TestQuota_PartialWindowExpiry(t *testing.T) {
 
 	q.RecordSend("p") // t=0
 	clock.advance(30 * time.Minute)
-	q.RecordSend("p") // t=30m
+	q.RecordSend("p")               // t=30m
 	clock.advance(40 * time.Minute) // t=70m, first send is now > 1h old
-	q.RecordSend("p") // t=70m
+	q.RecordSend("p")               // t=70m
 
 	if got := q.Remaining("p"); got != 1 {
 		t.Errorf("Remaining = %d, want 1 (only the t=30m and t=70m sends still in window)", got)
@@ -90,5 +90,5 @@ type fakeClock struct {
 	t time.Time
 }
 
-func (c *fakeClock) Now() time.Time           { return c.t }
-func (c *fakeClock) advance(d time.Duration)  { c.t = c.t.Add(d) }
+func (c *fakeClock) Now() time.Time          { return c.t }
+func (c *fakeClock) advance(d time.Duration) { c.t = c.t.Add(d) }

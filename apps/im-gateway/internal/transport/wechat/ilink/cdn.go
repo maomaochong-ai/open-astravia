@@ -321,7 +321,7 @@ func (c *Client) DownloadAndDecrypt(ctx context.Context, downloadURL, aesKeyStr 
 // caller must include in the subsequent sendmessage payload's CDNMedia.
 //
 // On 5xx the call is retried up to 3 times with a short pause between
-// attempts (matching upstream's behaviour). 4xx aborts immediately.
+// attempts (matching upstream's behavior). 4xx aborts immediately.
 func (c *Client) UploadCiphertext(ctx context.Context, uploadURL string, ciphertext []byte) (string, error) {
 	if uploadURL == "" {
 		return "", errors.New("ilink: upload url required")

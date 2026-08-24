@@ -91,11 +91,11 @@ func readJSON(t *testing.T, r *http.Request, out any) {
 
 func TestClientVersion(t *testing.T) {
 	cases := map[string]uint32{
-		"2.1.7":   (2 << 16) | (1 << 8) | 7, // 131335
-		"1.0.11":  (1 << 16) | (0 << 8) | 11, // 65547
-		"0.0.0":   0,
-		"":        0,
-		"foo":     0,
+		"2.1.7":  (2 << 16) | (1 << 8) | 7,  // 131335
+		"1.0.11": (1 << 16) | (0 << 8) | 11, // 65547
+		"0.0.0":  0,
+		"":       0,
+		"foo":    0,
 	}
 	for in, want := range cases {
 		got := ClientVersion(in)

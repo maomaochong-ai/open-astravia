@@ -49,9 +49,9 @@ import (
 	"sync/atomic"
 
 	lark "github.com/larksuite/oapi-sdk-go/v3"
-	larkcardkit "github.com/larksuite/oapi-sdk-go/v3/service/cardkit/v1"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	"github.com/larksuite/oapi-sdk-go/v3/event/dispatcher"
+	larkcardkit "github.com/larksuite/oapi-sdk-go/v3/service/cardkit/v1"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	larkws "github.com/larksuite/oapi-sdk-go/v3/ws"
 
@@ -74,7 +74,7 @@ const streamElementID = "streaming_text"
 // remember. A streaming card lives only for the duration of one assistant
 // turn (created on SendMessage(streaming=true), dropped on EndStream), so
 // 256 is far more than the steady-state need; it exists purely to bound
-// memory if a turn ever fails to call EndStream (e.g. context cancelled
+// memory if a turn ever fails to call EndStream (e.g. context canceled
 // mid-turn).
 const streamRegistryCap = 256
 
@@ -95,7 +95,7 @@ type Options struct {
 	// (image / file / post-embedded images). Each file is written under a
 	// per-day subdirectory via the shared inbox package. Empty disables
 	// inbound media handling — image/file/post images are dropped and only
-	// text survives, matching the text-only behaviour from before ADR-0008.
+	// text survives, matching the text-only behavior from before ADR-0008.
 	InboxDir string
 }
 
@@ -182,7 +182,7 @@ func (t *Transport) Capabilities() transport.Capabilities {
 }
 
 // Start opens the long-connection and blocks delivering inbound messages
-// to handler until ctx is cancelled or Stop() is called. Returns the
+// to handler until ctx is canceled or Stop() is called. Returns the
 // underlying SDK's connect/run error, if any.
 //
 // The handler is invoked from inside the SDK's event dispatcher goroutine,

@@ -48,7 +48,7 @@ func contextFailure(err error, commandType string) *hostclient.HostFailure {
 		code,
 		commandPhase(commandType),
 		hostclient.FailureContinueSession,
-		fmt.Sprintf("hostclient/local: command %s cancelled: %v", commandType, err),
+		fmt.Sprintf("hostclient/local: command %s canceled: %v", commandType, err),
 		err,
 	)
 }

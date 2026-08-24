@@ -13,7 +13,7 @@
 // data payload is a JSON-RPC notification {"method":"receive","params":
 // {"envelope":{...}}}. The stream is consumed on Start and reconnected with
 // exponential backoff (1s → 30s, mirroring the wechat poll loop) until the
-// context is cancelled or Stop is called.
+// context is canceled or Stop is called.
 //
 // Outbound: POST /api/v1/rpc with JSON-RPC 2.0 (`send`, `sendReaction`,
 // `sendTyping`, `remoteDelete`).
@@ -220,7 +220,7 @@ func (t *Transport) Capabilities() transport.Capabilities {
 }
 
 // Start consumes the SSE event stream, reconnecting with exponential backoff
-// on failures, until ctx is cancelled or Stop is called.
+// on failures, until ctx is canceled or Stop is called.
 func (t *Transport) Start(ctx context.Context, handler transport.MessageHandler) error {
 	t.mu.Lock()
 	if t.stopped {
@@ -731,7 +731,7 @@ type eventFrame struct {
 
 // envelope is the subset of signal-cli's receive envelope we consume. The
 // presence-only raw fields let us classify receipt/typing/sync envelopes
-// without modelling their bodies.
+// without modeling their bodies.
 type envelope struct {
 	SourceNumber   string          `json:"sourceNumber"`
 	SourceUUID     string          `json:"sourceUuid"`

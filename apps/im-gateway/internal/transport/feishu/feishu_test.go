@@ -46,7 +46,7 @@ func TestEncodeStreamingCardJSON_NoInlineStreamingMode(t *testing.T) {
 		t.Fatal(err)
 	}
 	var v struct {
-		Schema string `json:"schema"`
+		Schema string         `json:"schema"`
 		Config map[string]any `json:"config"`
 		Body   struct {
 			Elements []struct {
