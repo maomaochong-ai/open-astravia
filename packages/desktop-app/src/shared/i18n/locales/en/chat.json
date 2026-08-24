@@ -501,6 +501,10 @@
 		"subtitle": "I can help you get work done. What can I do for you?",
 		"defaultContext": "General conversation",
 		"projectContext": "Project · {{name}}",
+		"skillBadges": {
+			"scrollLeft": "Scroll left to see more skills",
+			"scrollRight": "Scroll right to see more skills"
+		},
 		"mascot": {
 			"menuTrigger": "Mascot settings",
 			"hideMascot": "Hide mascot",
