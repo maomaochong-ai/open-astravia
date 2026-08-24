@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type RuntimeHost, runtimeError } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { onConversationListChanged } from "./conversation-list-events.js";
 import { type DesktopConversationError, DesktopConversationService } from "./desktop-conversation-service.js";
 
 vi.mock("../logger.js", () => ({
@@ -51,11 +52,85 @@ vi.mock("../sandbox/capability.js", () => ({
 
 const temporaryRoots: string[] = [];
 
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+	let resolvePromise: ((value: T) => void) | undefined;
+	const promise = new Promise<T>((resolve) => {
+		resolvePromise = resolve;
+	});
+	return {
+		promise,
+		resolve: (value) => resolvePromise?.(value),
+	};
+}
+
 afterEach(async () => {
 	await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
 describe("DesktopConversationService session access", () => {
+	it("starts first-message auto-title when the turn is accepted without waiting for the assistant", async () => {
+		const promptResult = deferred<{ status: "completed" }>();
+		const autoTitleResult = deferred<string | null>();
+		let sessionEventHandler: ((event: { type: "session.lifecycle"; phase: "agent_start" }) => void) | undefined;
+		const unsubscribe = vi.fn();
+		const runtime = {
+			getMessages: vi.fn(() => []),
+			getSessionPath: vi.fn(() => "C:/sessions/session-1.conversation.jsonl"),
+			subscribe: vi.fn((_sessionId, handler) => {
+				sessionEventHandler = handler;
+				return unsubscribe;
+			}),
+			prompt: vi.fn(() => promptResult.promise),
+			autoTitleSession: vi.fn(() => autoTitleResult.promise),
+		} as unknown as RuntimeHost;
+		const changedEvents: Array<{ cwd: string; sessionPath: string }> = [];
+		const stopListening = onConversationListChanged((event) => changedEvents.push(event));
+		const service = new DesktopConversationService(runtime);
+
+		try {
+			const turn = service.promptInteractiveSession(
+				"session-1",
+				{ text: "Explain the retry policy" },
+				"C:/workspace",
+			);
+			expect(runtime.autoTitleSession).not.toHaveBeenCalled();
+
+			sessionEventHandler?.({ type: "session.lifecycle", phase: "agent_start" });
+			expect(runtime.autoTitleSession).toHaveBeenCalledWith("session-1", "Explain the retry policy", "");
+
+			autoTitleResult.resolve("Retry policy");
+			await vi.waitFor(() => {
+				expect(changedEvents).toEqual([
+					{ cwd: "C:/workspace", sessionPath: "C:/sessions/session-1.conversation.jsonl" },
+				]);
+			});
+
+			// The title task has completed while the agent turn is still unresolved.
+			expect(unsubscribe).toHaveBeenCalledOnce();
+			promptResult.resolve({ status: "completed" });
+			await expect(turn).resolves.toEqual({ status: "completed" });
+		} finally {
+			stopListening();
+		}
+	});
+
+	it("does not auto-title a session that already has messages", async () => {
+		const runtime = {
+			getMessages: vi.fn(() => [{ role: "user" }]),
+			getSessionPath: vi.fn(() => "C:/sessions/session-1.conversation.jsonl"),
+			subscribe: vi.fn(),
+			prompt: vi.fn(async () => ({ status: "completed" as const })),
+			autoTitleSession: vi.fn(),
+		} as unknown as RuntimeHost;
+		const service = new DesktopConversationService(runtime);
+
+		await expect(
+			service.promptInteractiveSession("session-1", { text: "Second question" }, "C:/workspace"),
+		).resolves.toEqual({ status: "completed" });
+		expect(runtime.subscribe).not.toHaveBeenCalled();
+		expect(runtime.autoTitleSession).not.toHaveBeenCalled();
+	});
+
 	it("adds host capabilities to listed sessions", async () => {
 		const cwd = await createTemporaryRoot();
 		const sessionPath = join(cwd, "session.jsonl");

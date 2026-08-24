@@ -7,6 +7,7 @@ import {
 	type RuntimeContextCompactionResult,
 	type RuntimeFailure,
 	type RuntimeHost,
+	type RuntimeTurnPromptOutcome,
 	runtimeFailureFromAIErrorDetails,
 	type SessionConfig,
 	type SessionEvent,
@@ -119,6 +120,8 @@ function findLastAssistantMessage(
 }
 
 export class DesktopConversationService {
+	private readonly autoTitleScheduledSessions = new Set<string>();
+
 	constructor(private readonly runtime: RuntimeHost) {}
 
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): () => void {
@@ -296,6 +299,62 @@ export class DesktopConversationService {
 		);
 	}
 
+	async promptInteractiveSession(
+		sessionId: string,
+		prompt: PromptRequest,
+		cwd?: string,
+	): Promise<RuntimeTurnPromptOutcome> {
+		return this.promptWithAutoTitle(
+			{
+				sessionId,
+				sessionPath: this.runtime.getSessionPath(sessionId),
+				listCwd: cwd ? resolveSessionListCwd(cwd) : undefined,
+			},
+			prompt,
+		);
+	}
+
+	private async promptWithAutoTitle(
+		session: { sessionId: string; sessionPath?: string; listCwd?: string },
+		prompt: PromptRequest,
+	): Promise<RuntimeTurnPromptOutcome> {
+		const shouldSchedule =
+			prompt.text.trim().length > 0 &&
+			this.runtime.getMessages(session.sessionId).length === 0 &&
+			!this.autoTitleScheduledSessions.has(session.sessionId);
+		let autoTitleStarted = false;
+		let unsubscribe: (() => void) | undefined;
+
+		if (shouldSchedule) {
+			this.autoTitleScheduledSessions.add(session.sessionId);
+			unsubscribe = this.runtime.subscribe(session.sessionId, (event) => {
+				if (event.type !== "session.lifecycle" || event.phase !== "agent_start") return;
+				autoTitleStarted = true;
+				unsubscribe?.();
+				unsubscribe = undefined;
+				void this.runtime
+					.autoTitleSession(session.sessionId, prompt.text, "")
+					.then((name) => {
+						if (!name || !session.sessionPath || !session.listCwd) return;
+						emitConversationListChanged({
+							cwd: session.listCwd,
+							sessionPath: session.sessionPath,
+						});
+					})
+					.catch((error) => log.warn("conversation auto-title failed", error));
+			});
+		}
+
+		try {
+			return await this.runtime.prompt(session.sessionId, prompt);
+		} finally {
+			unsubscribe?.();
+			if (shouldSchedule && !autoTitleStarted) {
+				this.autoTitleScheduledSessions.delete(session.sessionId);
+			}
+		}
+	}
+
 	async runTurn(options: RunDesktopConversationTurnOptions): Promise<DesktopConversationTurnResult> {
 		if (this.runtime.getState(options.session.sessionId).isStreaming) {
 			throw new DesktopConversationError("SESSION_BUSY", "Session is already processing another turn.", {
@@ -345,7 +404,12 @@ export class DesktopConversationService {
 					);
 
 		try {
-			await Promise.race([this.runtime.prompt(options.session.sessionId, options.prompt), cancellation]);
+			await Promise.race([
+				options.session.source === "debug"
+					? this.promptWithAutoTitle(options.session, options.prompt)
+					: this.runtime.prompt(options.session.sessionId, options.prompt),
+				cancellation,
+			]);
 		} catch (error) {
 			emitConversationListChanged({
 				cwd: options.session.listCwd,
@@ -391,18 +455,6 @@ export class DesktopConversationService {
 			);
 		}
 		emitConversationListChanged({ cwd: options.session.listCwd, sessionPath: options.session.sessionPath });
-		if (initialMessageCount === 0 && options.session.source === "debug" && assistant.text.trim().length > 0) {
-			void this.runtime
-				.autoTitleSession(options.session.sessionId, options.prompt.text, assistant.text)
-				.then((name) => {
-					if (!name) return;
-					emitConversationListChanged({
-						cwd: options.session.listCwd,
-						sessionPath: options.session.sessionPath,
-					});
-				})
-				.catch((error) => log.warn("conversation auto-title failed", error));
-		}
 		return {
 			sessionId: options.session.sessionId,
 			sessionPath: options.session.sessionPath,

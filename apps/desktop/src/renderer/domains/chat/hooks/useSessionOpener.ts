@@ -131,8 +131,9 @@ export function useSessionOpener(): SessionOpenerController {
 	const defaultConversationCwdRef = useRef(defaultConversationCwd);
 	defaultConversationCwdRef.current = defaultConversationCwd;
 	const activeSessionRef = useRef<{ cwd: string; sessionPath: string; runtimeId: string } | null>(null);
-	const { bumpSuggestionToken, createSessionEventHandler, markAutoTitleHandled, resetEventBuffers } =
-		useSessionEventController({ activeSessionRef });
+	const { bumpSuggestionToken, createSessionEventHandler, resetEventBuffers } = useSessionEventController({
+		activeSessionRef,
+	});
 	const openSessionRef = useRef<
 		| ((
 				cwd: string,
@@ -507,12 +508,6 @@ export function useSessionOpener(): SessionOpenerController {
 				}
 			}
 
-			// If this session already has any prior turn (loaded from disk) we never
-			// want to auto-rename — only brand-new sessions on their first round.
-			if (sessionPath && mapped.some((m) => m.role === "user")) {
-				markAutoTitleHandled(canonicalSessionPath);
-			}
-
 			perfSendMark("session-state-loaded", interactionId);
 			markSessionSwitch("session-state-loaded");
 			const contextComposition = resolveSessionContextComposition(resolvedSessionPath, state.contextComposition);
@@ -668,7 +663,6 @@ export function useSessionOpener(): SessionOpenerController {
 			setSelectedModel,
 			createSessionEventHandler,
 			setInlineFilePreview,
-			markAutoTitleHandled,
 			resetEventBuffers,
 		],
 	);

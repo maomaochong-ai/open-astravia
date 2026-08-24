@@ -755,7 +755,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			sessionId,
 			...summarizeAgentPluginRuntimeConfig(pluginAgentContributionService.buildRuntimeConfig()),
 		});
-		return runtime.prompt(sessionId, req);
+		return conversationService.promptInteractiveSession(sessionId, req, sessionCwdMap.get(sessionId));
 	});
 
 	ipcMain.handle(CHANNELS.CONTINUE, async (_event, sessionId: unknown) => {

@@ -1,4 +1,3 @@
-import { useProjectActions } from "@domains/project/hooks/useProjects";
 import {
 	activeSessionStreamingAtom,
 	activeToolNamesAtom,
@@ -7,8 +6,6 @@ import {
 	type ChatMessage,
 	chatMessagesAtom,
 	contextUsageAtom,
-	conversationBucketCwd,
-	defaultConversationCwdAtom,
 	isCompactingAtom,
 	isReloadingMcpAtom,
 	lastTurnUsageAtom,
@@ -30,7 +27,7 @@ import {
 } from "@shared/store/message-queue-atoms";
 import { readCodingAgentTodoObservation } from "@vetta/coding-agent/session-extensions";
 import type { SessionEvent } from "@vetta/runtime-core";
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useSetAtom } from "jotai";
 import { type MutableRefObject, useCallback, useEffect, useRef } from "react";
 import {
 	appendError,
@@ -63,7 +60,6 @@ const DELTA_FLUSH_INTERVAL_MS = 100;
 export interface SessionEventController {
 	bumpSuggestionToken: (runtimeId: string) => void;
 	createSessionEventHandler: (runtimeId: string) => (event: SessionEvent) => void;
-	markAutoTitleHandled: (sessionPath: string) => void;
 	resetEventBuffers: () => void;
 }
 
@@ -89,12 +85,6 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 	const setTodoItems = useSetAtom(todoItemsBySessionAtom);
 	const setPromptSuggestions = useSetAtom(promptSuggestionsAtom);
 	const setPromptPredicting = useSetAtom(promptPredictingAtom);
-	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
-	const { applyLocalRename, loadSessions } = useProjectActions();
-
-	const defaultConversationCwdRef = useRef(defaultConversationCwd);
-	defaultConversationCwdRef.current = defaultConversationCwd;
-	const autoTitledSessionsRef = useRef<Set<string>>(new Set());
 	const suggestionTokenRef = useRef<Map<string, number>>(new Map());
 	const turnStartDispatchSeqRef = useRef<Map<string, number>>(new Map());
 	const pendingTextDeltaRef = useRef("");
@@ -160,10 +150,6 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 	}, [flushDeltas]);
 
 	useEffect(() => resetEventBuffers, [resetEventBuffers]);
-
-	const markAutoTitleHandled = useCallback((sessionPath: string) => {
-		autoTitledSessionsRef.current.add(sessionPath);
-	}, []);
 
 	const createSessionEventHandler = useCallback(
 		(sessionId: string) => (event: SessionEvent) => {
@@ -269,74 +255,11 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 							console.warn("[useSessionManager] getFullHistory after agent_end failed", err);
 						});
 
-					// First-round auto title: trigger only on successful agent_end of
-					// a brand-new session, exactly once per sessionPath.
 					if (event.phase === "agent_end") {
 						const active = activeSessionRef.current;
-						const sp = active?.sessionPath;
 						const cwd = active?.cwd;
 						const rid = active?.runtimeId;
-						// Skip auto-title for batch-task projects entirely — those sessions
-						// are driven by the batch executor and should keep their batch-managed
-						// names (or default firstMessage label).
 						const projectType = cwd ? getProjects().find((p) => p.cwd === cwd)?.type : undefined;
-						if (sp && cwd && rid && projectType !== "batch" && !autoTitledSessionsRef.current.has(sp)) {
-							autoTitledSessionsRef.current.add(sp);
-							// Snapshot current chat messages via a no-op updater, then run
-							// the LLM call asynchronously without blocking the UI.
-							let snapshot: ChatMessage[] = [];
-							setChatMessages((prev) => {
-								snapshot = prev;
-								return prev;
-							});
-							void (async () => {
-								const firstUser = snapshot.find((m) => m.role === "user");
-								let lastAssistant: ChatMessage | undefined;
-								for (let i = snapshot.length - 1; i >= 0; i--) {
-									if (snapshot[i].role === "assistant") {
-										lastAssistant = snapshot[i];
-										break;
-									}
-								}
-								const hasTerminalError =
-									lastAssistant?.blocks?.some((block) => block.type === "error") ?? false;
-								if (!firstUser || !lastAssistant || hasTerminalError) {
-									autoTitledSessionsRef.current.delete(sp);
-									return;
-								}
-								const userText = firstUser.text ?? "";
-								const assistantText = lastAssistant.text ?? "";
-								if (!userText.trim() && !assistantText.trim()) {
-									autoTitledSessionsRef.current.delete(sp);
-									return;
-								}
-								try {
-									const titleStartedAt = Date.now();
-									console.log(`[auto-title] requesting for session=${rid} sp=${sp}`);
-									const name = await window.vetta.session.autoTitle(rid, userText, assistantText);
-									const durationMs = Date.now() - titleStartedAt;
-									console.log(
-										`[auto-title] got name=${name ?? "(null)"} durationMs=${durationMs} for sp=${sp}`,
-									);
-									if (name) {
-										// 归一到侧边栏 bucket 的 cwd：「对话」session 的 cwd 是项目根下的
-										// per-session 子目录（ADR-0007），但 sessionsMap / 侧边栏挂在根上。
-										const bucketCwd = conversationBucketCwd(cwd, defaultConversationCwdRef.current);
-										// Optimistic local update for sessions already present in the map.
-										applyLocalRename(bucketCwd, sp, name);
-										// Re-read from disk: handles brand-new sessions whose JSONL only
-										// just appeared after the assistant's first message flushed, and
-										// guarantees the persisted name is reflected in the sidebar.
-										await loadSessions(bucketCwd);
-									} else {
-										autoTitledSessionsRef.current.delete(sp);
-									}
-								} catch (err) {
-									console.warn("[useSessionManager] auto-title failed", err);
-									autoTitledSessionsRef.current.delete(sp);
-								}
-							})();
-						}
 
 						// 输入预测：仅交互式会话（排除批量 / 流转），且开关开启时。每轮
 						// 正常完成后基于最近几轮对话异步生成 0-3 条建议，回填时校验过期。
@@ -590,10 +513,8 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 		},
 		[
 			activeSessionRef,
-			applyLocalRename,
 			bumpSuggestionToken,
 			flushDeltas,
-			loadSessions,
 			markPredicting,
 			scheduleDeltaFlush,
 			setActiveSessionStreaming,
@@ -611,7 +532,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 		],
 	);
 
-	return { bumpSuggestionToken, createSessionEventHandler, markAutoTitleHandled, resetEventBuffers };
+	return { bumpSuggestionToken, createSessionEventHandler, resetEventBuffers };
 }
 
 function buildRecentConversation(messages: ChatMessage[]): string {
