@@ -223,6 +223,68 @@ describe("edit tool anchor mode", () => {
 		expect((result.details as EditToolDetails).diff).toContain("const c = 33;");
 	});
 
+	test("does not write a leaked anchor prefix into the file", async () => {
+		const source = ["  },", "", "  splitMembers: function (names) {", "    return [];", "  },"].join("\n");
+		writeFileSync(file, source);
+		const target = "  splitMembers: function (names) {";
+
+		const result = await tool().execute("t", {
+			path: file,
+			edits: [
+				{
+					anchor: anchorFor(target, 3),
+					new_text: `${anchorLineHash(target)}\u2192  splitMembers: function (names, separator) {`,
+				},
+			],
+		});
+
+		const written = readFileSync(file, "utf-8");
+		expect(written).not.toContain("\u2192");
+		expect(written.split("\n")[2]).toBe("  splitMembers: function (names, separator) {");
+		expect(result.content[0].type === "text" && result.content[0].text).toContain("leaked anchor prefix");
+	});
+
+	test("keeps a leaked prefix out of the file when the whole prefix was copied", async () => {
+		const target = "const c = 3;";
+		await tool().execute("t", {
+			path: file,
+			edits: [{ anchor: anchorFor(target, 3), new_text: `${anchorFor(target, 3)}\u2192const c = 33;` }],
+		});
+
+		expect(readFileSync(file, "utf-8").split("\n")[2]).toBe("const c = 33;");
+	});
+
+	test("keeps arrow characters that are genuine file content", async () => {
+		const replacement = 'const label = "a\u2192b";';
+		await tool().execute("t", {
+			path: file,
+			edits: [{ anchor: anchorFor("const c = 3;", 3), new_text: replacement }],
+		});
+
+		expect(readFileSync(file, "utf-8").split("\n")[2]).toBe(replacement);
+	});
+
+	test("strips a leaked prefix in exact-text mode and reports it", async () => {
+		const result = await tool().execute("t", {
+			path: file,
+			oldText: "const d = 4;",
+			newText: `${anchorLineHash("const d = 4;")}\u2192const d = 44;`,
+		});
+
+		expect(readFileSync(file, "utf-8").split("\n")[3]).toBe("const d = 44;");
+		expect(result.content[0].type === "text" && result.content[0].text).toContain("leaked anchor prefix");
+	});
+
+	test("matches oldText that still carries an anchor prefix", async () => {
+		await tool().execute("t", {
+			path: file,
+			oldText: `${anchorFor("const e = 5;", 5)}\u2192const e = 5;`,
+			newText: "const e = 55;",
+		});
+
+		expect(readFileSync(file, "utf-8").split("\n")[4]).toBe("const e = 55;");
+	});
+
 	test("preserves CRLF line endings", async () => {
 		writeFileSync(file, "a\r\nb\r\nc");
 		await tool().execute("t", {

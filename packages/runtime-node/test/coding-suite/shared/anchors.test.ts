@@ -4,6 +4,7 @@ import {
 	parseAnchor,
 	renderAnchoredLines,
 	renderAnchorRegion,
+	stripAnchorPrefixes,
 	validateAnchor,
 } from "../../../src/coding/shared/anchors.js";
 
@@ -97,5 +98,76 @@ describe("renderAnchoredLines / renderAnchorRegion", () => {
 		const region = renderAnchorRegion(lines, 1, 3);
 		expect(region.split("\n")).toHaveLength(3);
 		expect(region.startsWith(`1:${anchorLineHash("a")}→a`)).toBe(true);
+	});
+});
+
+describe("stripAnchorPrefixes", () => {
+	const anchored = (content: string, line: number) => `${line}:${anchorLineHash(content)}\u2192${content}`;
+
+	test("removes a full line:hash prefix that a model copied into replacement text", () => {
+		const content = "  splitMembers: function (names) {";
+		const result = stripAnchorPrefixes(anchored(content, 108));
+
+		expect(result.text).toBe(content);
+		expect(result.strippedLines).toEqual([1]);
+	});
+
+	test("removes a bare hash prefix when the hash still matches the rest of the line", () => {
+		const content = "  splitMembers: function (names) {";
+		const result = stripAnchorPrefixes(`${anchorLineHash(content)}\u2192${content}`);
+
+		expect(result.text).toBe(content);
+		expect(result.strippedLines).toEqual([1]);
+	});
+
+	test("removes a numbered prefix even when the model also edited that line", () => {
+		const original = "const x = 1;";
+		const result = stripAnchorPrefixes(`42:${anchorLineHash(original)}\u2192const x = 2;`);
+
+		expect(result.text).toBe("const x = 2;");
+		expect(result.strippedLines).toEqual([1]);
+	});
+
+	test("strips only the prefixed lines of a multi-line payload and leaves the rest intact", () => {
+		const first = "function f() {";
+		const body = "  return 1;";
+		const result = stripAnchorPrefixes([anchored(first, 10), body, "}"].join("\n"));
+
+		expect(result.text).toBe([first, body, "}"].join("\n"));
+		expect(result.strippedLines).toEqual([1]);
+	});
+
+	test("leaves an unverifiable arrow line alone when nothing else proves the payload carries anchors", () => {
+		const text = ["abcd\u2192something else", "plain line"].join("\n");
+
+		expect(stripAnchorPrefixes(text)).toEqual({ text, strippedLines: [] });
+	});
+
+	test("strips an unverifiable arrow line once another line proves the payload carries anchors", () => {
+		const proven = "const a = 1;";
+		const text = [anchored(proven, 3), "abcd\u2192const b = 2;"].join("\n");
+
+		const result = stripAnchorPrefixes(text);
+
+		expect(result.text).toBe([proven, "const b = 2;"].join("\n"));
+		expect(result.strippedLines).toEqual([1, 2]);
+	});
+
+	test("removes a bare hash the caller knows was shown for the replaced line", () => {
+		const original = "  splitMembers: function (names) {";
+		const rewritten = "  splitMembers: function (names, separator) {";
+		const leaked = `${anchorLineHash(original)}\u2192${rewritten}`;
+
+		expect(stripAnchorPrefixes(leaked).text).toBe(leaked);
+		expect(stripAnchorPrefixes(leaked, new Set([anchorLineHash(original)]))).toEqual({
+			text: rewritten,
+			strippedLines: [1],
+		});
+	});
+
+	test("leaves ordinary content untouched", () => {
+		const text = ['const arrow = "a\u2192b";', "// 步骤 1 → 步骤 2", "x: 1"].join("\n");
+
+		expect(stripAnchorPrefixes(text)).toEqual({ text, strippedLines: [] });
 	});
 });

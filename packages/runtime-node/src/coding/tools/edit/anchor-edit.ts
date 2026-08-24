@@ -1,9 +1,11 @@
 import {
 	ANCHOR_SEPARATOR,
+	anchorLineHash,
 	findHashLines,
 	type ParsedAnchor,
 	parseAnchor,
 	renderAnchorRegion,
+	stripAnchorPrefixes,
 	validateAnchor,
 } from "../../shared/anchors.js";
 import type { EditToolDetails } from "./edit-contracts.js";
@@ -114,9 +116,15 @@ function parseAnchorLenient(lines: readonly string[], raw: string, label: string
 	);
 }
 
-function resolveAnchorEdits(lines: readonly string[], edits: readonly AnchorEditInput[]): ResolvedAnchorEdit[] {
+interface ResolvedAnchorEdits {
+	readonly resolved: readonly ResolvedAnchorEdit[];
+	readonly strippedPrefixCount: number;
+}
+
+function resolveAnchorEdits(lines: readonly string[], edits: readonly AnchorEditInput[]): ResolvedAnchorEdits {
 	const resolved: ResolvedAnchorEdit[] = [];
 	const staleReports: string[] = [];
+	let strippedPrefixCount = 0;
 	for (let index = 0; index < edits.length; index++) {
 		const edit = edits[index];
 		const startAnchor = parseAnchorLenient(lines, edit.anchor, `edits[${index}].anchor`);
@@ -148,10 +156,16 @@ function resolveAnchorEdits(lines: readonly string[], edits: readonly AnchorEdit
 				continue;
 			}
 		}
+		const knownHashes = new Set<string>([startAnchor.hash]);
+		for (let line = startValidation.line; line <= endLine; line++) {
+			knownHashes.add(anchorLineHash(lines[line - 1]));
+		}
+		const sanitized = stripAnchorPrefixes(edit.new_text, knownHashes);
+		strippedPrefixCount += sanitized.strippedLines.length;
 		resolved.push({
 			startLine: startValidation.line,
 			endLine,
-			newText: edit.new_text,
+			newText: sanitized.text,
 			insertAfter: edit.insert_after === true,
 			index,
 		});
@@ -162,7 +176,7 @@ function resolveAnchorEdits(lines: readonly string[], edits: readonly AnchorEdit
 			`Anchor edit rejected — ${staleReports.length} of ${edits.length} anchor(s) failed; NO changes were made (edits are atomic).\n\n${staleReports.join("\n\n")}\n\nRetry the FULL batch using the fresh anchors above. Never fabricate or reuse stale anchors.`,
 		);
 	}
-	return resolved;
+	return { resolved, strippedPrefixCount };
 }
 
 function validateResolvedEdits(
@@ -207,7 +221,7 @@ export function prepareAnchorEdits(
 	const originalEnding = detectLineEnding(contentWithoutBom);
 	const normalized = normalizeToLF(contentWithoutBom);
 	const lines = normalized.split("\n");
-	const resolved = resolveAnchorEdits(lines, edits);
+	const { resolved, strippedPrefixCount } = resolveAnchorEdits(lines, edits);
 	const sorted = validateResolvedEdits(lines, resolved);
 	const newLines = [...lines];
 	let delta = 0;
@@ -240,7 +254,8 @@ export function prepareAnchorEdits(
 	const receipt =
 		`Applied ${resolved.length} anchor edit(s) to ${displayPath}.\n\n` +
 		`Fresh anchors around the changes (use these to continue editing):\n${receiptRegions}` +
-		(appliedAt.length > 8 ? `\n(… ${appliedAt.length - 8} more edit site(s) omitted)` : "");
+		(appliedAt.length > 8 ? `\n(… ${appliedAt.length - 8} more edit site(s) omitted)` : "") +
+		formatStrippedPrefixNotice(strippedPrefixCount);
 	return {
 		content: bom + restoreLineEndings(newNormalized, originalEnding),
 		receipt,
@@ -250,4 +265,12 @@ export function prepareAnchorEdits(
 			appliedEdits: resolved.length,
 		},
 	};
+}
+
+export function formatStrippedPrefixNotice(strippedPrefixCount: number): string {
+	if (strippedPrefixCount === 0) return "";
+	return (
+		`\n\nNote: removed ${strippedPrefixCount} leaked anchor prefix(es) (e.g. "42:h7x2\u2192") from the replacement text. ` +
+		"Anchors identify WHERE to edit; they are never part of file content. Send new_text without them."
+	);
 }

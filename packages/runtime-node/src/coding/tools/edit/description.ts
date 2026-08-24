@@ -5,6 +5,7 @@ export const EDIT_TOOL_DESCRIPTION = [
 	"- Anchors are the `line:hash` prefixes in read/grep/edit output (e.g. `42:h7x2` from a read line `42:h7x2→const x = 1;`). Copy them VERBATIM — never fabricate, compute, or guess an anchor; only tool output is a valid source.",
 	"- The anchor is the WHOLE `line:hash` prefix. The line number is part of the anchor, NOT display decoration — passing the hash alone (e.g. `h7x2`) is wrong.",
 	"- One edit replaces the anchor line (or the inclusive range anchor..end_anchor) with new_text. `end_anchor` is INCLUDED: if its line contains a closing brace, bracket, or JSX tag that should remain, reproduce that closer in new_text. Empty new_text deletes the range. insert_after: true inserts new_text after the anchor line instead.",
+	"- `new_text` is FILE CONTENT ONLY. The anchor says WHERE to edit; never repeat it inside new_text. A line like `42:h7x2\u2192const x = 1;` in new_text would write `42:h7x2\u2192` into the file and break it — send `const x = 1;`.",
 	"- No need to reproduce the old text — the anchor is the identity. This avoids whitespace/punctuation mismatch failures entirely.",
 	"- The batch is ATOMIC: if any anchor is stale (file changed there), ALL edits are rejected and the error returns fresh anchors around each failed target — retry the full batch with those, without re-reading the file.",
 	"- Line numbers in anchors are hints: if content merely moved a few lines, the edit finds it again automatically.",

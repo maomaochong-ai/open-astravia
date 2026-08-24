@@ -12,7 +12,8 @@ export const AnchorEditInputSchema = Type.Object({
 		}),
 	),
 	new_text: Type.String({
-		description: "Replacement for the range (may be multi-line). Empty string deletes the line(s).",
+		description:
+			"Replacement for the range (may be multi-line). Empty string deletes the line(s). Send FILE CONTENT ONLY — never prefix its lines with an anchor such as `42:h7x2\u2192`; that prefix is metadata and would be written into the file.",
 	}),
 	insert_after: Type.Optional(
 		Type.Boolean({

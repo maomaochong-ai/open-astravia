@@ -52,6 +52,12 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Fixed
 
+- `edit` Tool 不再把泄漏的 read 锚点前缀写进文件。能力较弱的模型会把 `42:h7x2→` 这类前缀连同内容一起
+  放进 `new_text`，导致文件里出现 `tirg→  splitMembers: ...` 这样的语法错误。锚点模式与 exact-text
+  模式的替换文本现在都会剥离可确证的锚点前缀，并在回执中说明剥离了几处；`oldText` 仅在原样匹配失败时
+  才回退到剥离后重试。仅当前缀形如 `line:hash`、或哈希能自证其余内容、或哈希属于被替换行时才剥离，
+  普通含 `→` 的内容不受影响。
+
 - `read` Tool 不再自动截断 `SKILL.md` 以及 `skills/` 路径段下的 Markdown。此前超过 2000 行或 50KB 的
   Skill 指令会被静默截断，模型仍把残缺内容当作完整指令执行。显式传入的 `offset`/`limit` 仍然生效。
 

@@ -2,7 +2,7 @@ import { constants } from "node:fs";
 import { access, readFile, writeFile } from "node:fs/promises";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { resolveExistingPath } from "../../shared/path-resolution.js";
-import { prepareAnchorEdits } from "./anchor-edit.js";
+import { formatStrippedPrefixNotice, prepareAnchorEdits } from "./anchor-edit.js";
 import { EDIT_TOOL_DESCRIPTION } from "./description.js";
 import type { EditOperations, EditToolDetails, EditToolOptions } from "./edit-contracts.js";
 import { generateDiffString, prepareExactTextEdit } from "./edit-text.js";
@@ -83,7 +83,14 @@ function executeExactTextMode(
 				signal.removeEventListener("abort", onAbort);
 				const diff = generateDiffString(edit.baseContent, edit.newContent);
 				resolve({
-					content: [{ type: "text", text: `Successfully replaced text in ${displayPath}.` }],
+					content: [
+						{
+							type: "text",
+							text:
+								`Successfully replaced text in ${displayPath}.` +
+								formatStrippedPrefixNotice(edit.strippedPrefixCount),
+						},
+					],
 					details: { diff: diff.diff, firstChangedLine: diff.firstChangedLine },
 				});
 			} catch (error: unknown) {

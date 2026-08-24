@@ -1,4 +1,5 @@
 import * as Diff from "diff";
+import { anchorLineHash, stripAnchorPrefixes } from "../../shared/anchors.js";
 
 export function detectLineEnding(content: string): "\r\n" | "\n" {
 	const crlfIndex = content.indexOf("\r\n");
@@ -137,6 +138,7 @@ export interface ExactTextEditResult {
 	readonly content: string;
 	readonly baseContent: string;
 	readonly newContent: string;
+	readonly strippedPrefixCount: number;
 }
 
 export function prepareExactTextEdit(
@@ -148,9 +150,22 @@ export function prepareExactTextEdit(
 	const { bom, text: content } = stripBom(rawContent);
 	const originalEnding = detectLineEnding(content);
 	const normalizedContent = normalizeToLF(content);
-	const normalizedOldText = normalizeToLF(oldText);
-	const normalizedNewText = normalizeToLF(newText);
-	const matchResult = fuzzyFindText(normalizedContent, normalizedOldText);
+	// The model was shown anchors for the lines it is replacing, so their hashes identify a
+	// prefix it copied into the replacement even after rewriting that line's content.
+	const replacedHashes = new Set(normalizeToLF(oldText).split("\n").map(anchorLineHash));
+	const sanitizedNewText = stripAnchorPrefixes(newText, replacedHashes);
+	const normalizedNewText = normalizeToLF(sanitizedNewText.text);
+	// Only fall back to a sanitized oldText: a file that genuinely contains an anchor-shaped
+	// line must still be matchable by its literal content.
+	let normalizedOldText = normalizeToLF(oldText);
+	let matchResult = fuzzyFindText(normalizedContent, normalizedOldText);
+	if (!matchResult.found) {
+		const sanitizedOldText = stripAnchorPrefixes(oldText);
+		if (sanitizedOldText.strippedLines.length > 0) {
+			normalizedOldText = normalizeToLF(sanitizedOldText.text);
+			matchResult = fuzzyFindText(normalizedContent, normalizedOldText);
+		}
+	}
 	if (!matchResult.found) {
 		throw new Error(
 			`Could not find the exact text in ${displayPath}. The old text must match exactly including all whitespace and newlines.`,
@@ -180,5 +195,6 @@ export function prepareExactTextEdit(
 		content: bom + restoreLineEndings(replacedContent, originalEnding),
 		baseContent,
 		newContent: replacedContent,
+		strippedPrefixCount: sanitizedNewText.strippedLines.length,
 	};
 }
