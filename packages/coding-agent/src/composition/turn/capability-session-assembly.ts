@@ -34,6 +34,7 @@ import type { ModelInputImageProcessor } from "../../model-context/image-normali
 import { CodingAgentModelCallFrameComposer } from "../../model-context/model-call-frame-composer.js";
 import { CodingAgentModelCallMessageFinalizer } from "../../model-context/model-call-message-finalizer.js";
 import { CodingAgentPromptRuntime } from "../../model-context/prompt-runtime.js";
+import type { CodingAgentModePromptResolver } from "../../model-context/system-prompt-sources.js";
 import { CodingAgentPluginRunOrchestrator } from "../../plugins/runtime/run-orchestrator.js";
 import {
 	type CodingAgentPluginToolActivation,
@@ -96,6 +97,8 @@ export interface CodingAgentTurnCapabilityPromptOptions {
 	readonly settingsSource?: CodingAgentPromptSettingsSource;
 	readonly systemPromptAdvertisedToolNames?: readonly string[];
 	readonly workspaceFacts?: string;
+	/** 宿主注入的 mode 提示词解析器；缺省 = 不追加 mode block（ADR-0071 修订）。 */
+	readonly resolveModePrompt?: CodingAgentModePromptResolver;
 }
 
 export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
@@ -489,6 +492,7 @@ async function createPromptRuntime(
 		settingsManager: settingsSource,
 		scenario: options.session.scenario,
 		readAgentMode: options.activation.readAgentMode,
+		resolveModePrompt: options.prompt.resolveModePrompt,
 		readMemory: memoryRuntime ? () => memoryRuntime.readPromptMemory() : undefined,
 		readAgentPlugins: options.activation.readAgentPlugins,
 		workspaceFacts: options.prompt.workspaceFacts,

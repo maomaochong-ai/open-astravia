@@ -12,7 +12,6 @@ import { describe, expect, it } from "vitest";
 import { estimateContextTokens } from "../src/compaction/index.js";
 import { projectModelCallContext } from "../src/compaction/runtime/model-call-context-projection.js";
 import { buildSystemPromptDraft, compileSystemPromptDraft } from "../src/model-context/index.js";
-import { getModePrompt } from "../src/profiles/index.js";
 
 describe("prompt cache verification", () => {
 	it("keeps an append-only Tool Loop cache-compatible below context pressure", async () => {
@@ -69,8 +68,10 @@ describe("prompt cache verification", () => {
 		});
 	});
 
-	it("classifies the default Coding Mode prompt as part of the volatile system tail", () => {
-		const modePrompt = getModePrompt("coding");
+	it("classifies a host-supplied mode prompt as part of the volatile system tail", () => {
+		// 模式注册表归宿主所有（ADR-0071 修订）：这里只验证 core.mode 槽位的缓存分层，
+		// 用合成正文即可，正文长度与内容是 desktop 注册表的事实。
+		const modePrompt = `You are operating in **Coding mode**.\n${"mode guidance line.\n".repeat(400)}`;
 		const draft = buildSystemPromptDraft({
 			cwd: "C:\\workspace",
 			modePrompt,

@@ -30,6 +30,7 @@ export type CodingAgentSessionInitializationProfile = Pick<
 	| "promptResourceSource"
 	| "promptSettingsSource"
 	| "resolveCompactionSettings"
+	| "resolveModePrompt"
 	| "resolvePromptResource"
 	| "resolveSystemPromptOptions"
 	| "subagentMaxConcurrent"
@@ -76,6 +77,7 @@ export function createCodingAgentSessionInitializationProfile(
 		promptResourceSource: options.promptResourceSource,
 		promptSettingsSource: options.promptSettingsSource,
 		resolveCompactionSettings: options.resolveCompactionSettings,
+		resolveModePrompt: options.resolveModePrompt,
 		resolvePromptResource: options.resolvePromptResource,
 		resolveSystemPromptOptions: options.resolveSystemPromptOptions,
 		subagentMaxConcurrent: options.subagentMaxConcurrent,

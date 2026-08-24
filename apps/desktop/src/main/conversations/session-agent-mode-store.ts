@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
-import { isAgentMode } from "@vetta/coding-agent/profile";
 import { atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
+import { isAgentMode } from "../agent-modes/index.js";
 
-/** 合法值来自 coding-agent 模式注册表（ADR-0071），落盘校验见 normalizeDesktopAgentMode。 */
+/** 合法值来自 main/agent-modes 的模式注册表（ADR-0071），落盘校验见 normalizeDesktopAgentMode。 */
 export type DesktopAgentMode = string;
 
 /**

@@ -1,5 +1,11 @@
 # 工作模式是任务解释的先验，资源侧 agent_mode 声明废弃
 
+> **归属修订（2026-08-24，见文末《修订：模式注册表归宿主所有》）**：正文第 5 条把模式注册表放在
+> coding-agent 并随其公开导出，该结论已被推翻。注册表（`modes/*.md`、生成脚本、`isAgentMode` 等
+> 校验入口）现归 desktop 所有，位于 `apps/desktop/src/main/agent-modes/`；coding-agent 只保留
+> `core.mode` block 槽位，正文由宿主经 `resolveModePrompt` 注入。「新增一个模式 = 一份 md + i18n
+> 文案」这条承诺不变，只是 md 换了归属地。
+
 工作模式经 ADR-0046 的 2026-08 修订已完成「零硬闸」软化：模式不再排除任何工具、Skill、MCP、插件或
 Hook，只保留两样东西——mode 系统提示词 block 与 `agent_mode` 声明驱动的清单排序偏好。产品方向要求
 模式在此基础上继续演进：不同模式要有**明确的重心偏移**（Work 优先文档路线、Coding 优先仓库路线，未来
@@ -121,3 +127,46 @@ store、session store）等多处的 `"work" | "coding"` 硬编码联合类型�
   放宽为 `string`（宿主保证值来自注册表），属 SDK 类型层面的宽化，运行时兼容。
 - **CHANGELOG**：coding-agent、runtime-tools、plugin-sdk、desktop 各记一条。
 - **护栏**：`generate-modes.mjs` 校验 frontmatter 完整性（含 icon）；可选的模式路线断言 evals。
+
+
+## 修订：模式注册表归宿主所有（2026-08-24）
+
+正文第 5 条把模式注册表数据化后留在了 coding-agent，并随其 `./profile` 子路径公开导出。实际运行一段
+时间后，这个归属被证明是错的：
+
+1. **没有第二个消费者。** cli-host 与 SDK 宿主从不传 `agentMode`（全仓 grep 零命中），模式自始至终
+   只有 desktop 一个消费方。放在 coding-agent 让一个桌面产品概念占据了通用 Agent 包的公开 API。
+2. **注册表里混着纯渲染层字段。** `icon`（iconify class）与 `narration`（会话流按 progress 阶段折叠
+   还是工具行内联）都只对 desktop 的 UI 有意义，却写在 coding-agent 的 md frontmatter 里，再经 IPC
+   绕回 renderer。iconify class 出现在 Agent 运行时包中是归属错位最直接的证据。
+3. **模式本身是产品概念，不是 Agent 能力。** 按本 ADR 的决策，模式只是任务解释的先验，全部作用发生
+   在提示词文本层；coding-agent 需要的仅仅是「在 `core.mode` 槽位放一段宿主给的文本」。
+
+### 决策
+
+**注册表归宿主，coding-agent 只保留槽位。**
+
+- `modes/*.md`、`partials/`、生成脚本与生成产物迁到 `apps/desktop/src/main/agent-modes/`，
+  生成入口为 `bun run generate:agent-modes`（接入 desktop `build`，并由 `check-guards.mjs` 做
+  `--check` 漂移校验）。
+- coding-agent 删除 `profiles/modes-data.ts`、`profiles/mode-prompt.ts` 及 `./profile` 上的
+  `MODE_PROMPTS` / `getModePrompt` / `isAgentMode` / `ALL_AGENT_MODES` / `DEFAULT_AGENT_MODE` /
+  `AgentMode` 导出。
+- 新增宿主注入口 `resolveModePrompt?: (agentMode: string | undefined) => string`，沿
+  composition options → session initialization profile → turn capability assembly → Prompt Runtime
+  抵达 `system-prompt-sources`。不注入 = 任何 `agentMode` 都不追加 mode block，即 CLI / SDK 的默认行为。
+- `agentMode` 这个 id 仍沿原链路传递并参与会话持久化，只是对 coding-agent 而言变成不透明字符串：
+  它不再知道存在哪些模式，也不解释模式语义。合法值校验归 desktop 的 `isAgentMode`。
+
+### 后果
+
+- **行为不变。** 用户可见行为、模式提示词正文、会话持久化格式（存的一直是 mode id 字符串）与历史
+  会话兼容性均无变化。
+- **公共 API 破坏性变更。** `@vetta/coding-agent/profile` 不再导出模式注册表相关符号。仓库内唯一
+  消费者是 desktop，已同步切换；外部 SDK 使用者若依赖这些符号，需自带注册表并改用 `resolveModePrompt`。
+- **回归防线。** 注入漏接不会产生类型错误、模式提示词会静默消失，因此钉了两层：
+  `composition-boundary.test.ts` 在生产装配源码层断言注入存在，
+  `model-call-frame-contract.test.ts` 端到端断言会话 `agentMode` 对应的正文确实进了 system prompt。
+- **未来。** 若 cli-host 或 im-gateway 之后也需要工作模式，正确做法是把注册表抽到一个双方都能依赖的
+  位置（如新的 `packages/agent-modes`），而不是退回 coding-agent——注入口 `resolveModePrompt` 已经
+  为此留好了边界。

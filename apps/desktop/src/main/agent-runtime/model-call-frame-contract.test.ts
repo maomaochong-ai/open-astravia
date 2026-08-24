@@ -19,6 +19,7 @@ import {
 	textResponseEvents,
 	toolCallResponseEvents,
 } from "../../../../cli-host/test/support/openai-responses-test-server.js";
+import { getModePrompt } from "../agent-modes/index.js";
 import { createDesktopMcpSupervisor } from "./mcp-supervisor.js";
 import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
 
@@ -257,6 +258,34 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 		expect(secondToolResult).not.toContain(firstCwd);
 	}, 30_000);
 
+	// 工作模式注册表归 desktop 所有（ADR-0071 修订）：coding-agent 只保留 core.mode 槽位。
+	// 这条用例验证整条注入链——宿主 resolver → composition → Prompt Runtime → system prompt。
+	it("carries the Desktop-owned mode prompt into the system prompt of the session's agentMode", async () => {
+		const cwd = await temporaryDirectory("desktop-frame-mode-prompt-workspace-");
+		const server = await createServer();
+		const model = { ...MODEL, baseUrl: server.baseUrl };
+		const agentStateDir = await temporaryDirectory("desktop-frame-mode-prompt-agent-");
+		const fixture = createRuntimeFixture("runtime", agentStateDir, model);
+		fixtures.push(fixture);
+
+		const created = await fixture.runtime.createSession({
+			cwd,
+			agentDir: agentStateDir,
+			sessionDir: await temporaryDirectory("desktop-frame-mode-prompt-sessions-"),
+			model,
+			thinkingLevel: "off",
+			scenario: "conversation",
+			agentMode: "coding",
+			executionMode: "full-access",
+			includeAgentSkills: false,
+		});
+		await fixture.runtime.prompt(created.sessionId, { text: "State the active mode" });
+
+		const systemPrompt = collectStringValues(observeRequest(server, 0).body.input).join("\n");
+		expect(systemPrompt).toContain(getModePrompt("coding"));
+		expect(systemPrompt).not.toContain(getModePrompt("work"));
+	}, 30_000);
+
 	async function observeBackends(
 		cwd: string,
 		scenario: ConversationScenario,
@@ -418,6 +447,7 @@ function createRuntimeFixture(_backend: RuntimeBackend, _agentStateDir: string, 
 			initialModel: model,
 			initialThinkingLevel: "off",
 			createPromptRuntimeSources: createDesktopPromptRuntimeSources,
+			resolveModePrompt: getModePrompt,
 			createPluginMcpRuntime: ({ cwd, agentDir }) =>
 				createCodingAgentPluginMcpRuntime({
 					supervisor: createDesktopMcpSupervisor({

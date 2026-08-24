@@ -315,6 +315,7 @@ async function initializeSession<TOwnershipBinding>(
 					settingsSource: profile.promptSettingsSource,
 					systemPromptAdvertisedToolNames: profile.systemPromptAdvertisedToolNames,
 					workspaceFacts: profile.workspaceFacts,
+					resolveModePrompt: profile.resolveModePrompt,
 				},
 				baseProfile,
 				codingTools: options.codingTools,

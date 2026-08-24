@@ -1,11 +1,10 @@
-// 把 src/profiles/modes/*.md 内联生成 src/profiles/modes-data.ts。
+// 把 src/main/agent-modes/modes/*.md 内联生成 src/main/agent-modes/modes-data.ts。
 //
-// 为何 codegen 而非运行时读盘：同 generate-personas.mjs —— coding-agent 会被 desktop-app 的
-// vite 打进 main bundle，打包后基于 __dirname 的 readdirSync 会落到错误目录、读不到 md。
-// 构建期内联成字面量后运行时零文件系统依赖。
+// 为何 codegen 而非运行时读盘：main 进程由 vite 打进单个 bundle，打包后基于 __dirname 的
+// readdirSync 会落到错误目录、读不到 md。构建期内联成字面量后运行时零文件系统依赖。
 //
-// 触发：coding-agent 的 `bun run build` 会先跑本脚本（见 package.json `build`）。
-// 手改 md 后想立即生效，单独跑 `bun run generate:modes`。
+// 触发：desktop 的 `bun run build` 会先跑本脚本（见 package.json `build`）。
+// 手改 md 后想立即生效，单独跑 `bun run generate:agent-modes`。
 
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -13,8 +12,8 @@ import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const modesDir = join(__dirname, "..", "src", "profiles", "modes");
-const outFile = join(__dirname, "..", "src", "profiles", "modes-data.ts");
+const modesDir = join(__dirname, "..", "src", "main", "agent-modes", "modes");
+const outFile = join(__dirname, "..", "src", "main", "agent-modes", "modes-data.ts");
 const checkOnly = process.argv.includes("--check");
 
 function parseMd(raw) {
@@ -44,7 +43,7 @@ function expandPartials(file, body) {
 	return body.replace(/^\{\{>\s*([a-z0-9-]+)\s*\}\}$/gm, (_match, name) => {
 		const partial = partials.get(name);
 		if (partial === undefined) {
-			throw new Error(`[generate-modes] ${file} 引用了不存在的 partial: ${name}（modes/partials/${name}.md）`);
+			throw new Error(`[build-agent-modes] ${file} 引用了不存在的 partial: ${name}（modes/partials/${name}.md）`);
 		}
 		return partial;
 	});
@@ -66,7 +65,7 @@ function assertToolMentionsSpelledCorrectly(file, body) {
 		const word = match[0];
 		const canonical = FOLDED_TOOL_NAMES.get(foldName(word));
 		if (canonical && word !== canonical) {
-			throw new Error(`[generate-modes] ${file} 引用了错误拼写的工具名 "${word}"，真名是 "${canonical}"`);
+			throw new Error(`[build-agent-modes] ${file} 引用了错误拼写的工具名 "${word}"，真名是 "${canonical}"`);
 		}
 	}
 }
@@ -81,19 +80,19 @@ for (const file of files) {
 	const label = typeof fm.label === "string" ? fm.label.trim() : "";
 	const icon = typeof fm.icon === "string" ? fm.icon.trim() : "";
 	if (!id || !label) {
-		throw new Error(`[generate-modes] ${file} 缺少 id 或 label`);
+		throw new Error(`[build-agent-modes] ${file} 缺少 id 或 label`);
 	}
 	// icon 是 UI 遍历注册表渲染 toggle 的必填项（ADR-0071）：缺了会让新模式在新会话页无图标可用。
-	if (!icon) throw new Error(`[generate-modes] ${file} 缺少 icon（iconify class，如 icon-[solar--case-linear]）`);
+	if (!icon) throw new Error(`[build-agent-modes] ${file} 缺少 icon（iconify class，如 icon-[solar--case-linear]）`);
 	// narration 是渲染层的模式能力位：staged = 会话流按 progress 阶段折叠（提示词须配套指示模型
 	// 调 progress），inline = 工具行内联展示。必填，让新模式在一份 md 里完整自描述，
 	// 渲染层据此查表而不是硬编码 mode id 判断。
 	const narration = typeof fm.narration === "string" ? fm.narration.trim() : "";
 	if (narration !== "staged" && narration !== "inline") {
-		throw new Error(`[generate-modes] ${file} 的 narration 必须是 staged 或 inline，当前: ${narration || "(缺失)"}`);
+		throw new Error(`[build-agent-modes] ${file} 的 narration 必须是 staged 或 inline，当前: ${narration || "(缺失)"}`);
 	}
-	if (!body.trim()) throw new Error(`[generate-modes] ${file} 的提示词正文为空`);
-	if (seenIds.has(id)) throw new Error(`[generate-modes] mode id 重复: ${id}`);
+	if (!body.trim()) throw new Error(`[build-agent-modes] ${file} 的提示词正文为空`);
+	if (seenIds.has(id)) throw new Error(`[build-agent-modes] mode id 重复: ${id}`);
 	seenIds.add(id);
 	modes.push({
 		id,
@@ -106,7 +105,7 @@ for (const file of files) {
 }
 
 const idUnion = modes.map((mode) => JSON.stringify(mode.id)).join(" | ");
-const content = `// AUTO-GENERATED from src/profiles/modes/*.md by scripts/generate-modes.mjs. Do not edit by hand.
+const content = `// AUTO-GENERATED from modes/*.md by scripts/build-agent-modes.mjs. Do not edit by hand.
 
 /** 合法工作模式 id 联合类型，由 modes/*.md 派生（ADR-0071）。 */
 export type AgentModeId = ${idUnion};
@@ -127,10 +126,10 @@ export const FILE_MODES: RawMode[] = ${JSON.stringify(modes, null, "\t")};
 
 if (checkOnly) {
 	if (readFileSync(outFile, "utf-8") !== content) {
-		throw new Error("[generate-modes] modes-data.ts 已过期，请运行 bun run generate:modes");
+		throw new Error("[build-agent-modes] modes-data.ts 已过期，请运行 bun run generate:agent-modes");
 	}
-	console.log(`[generate-modes] ${modes.length} modes 与 modes-data.ts 一致`);
+	console.log(`[build-agent-modes] ${modes.length} modes 与 modes-data.ts 一致`);
 } else {
 	writeFileSync(outFile, content, "utf-8");
-	console.log(`[generate-modes] wrote ${modes.length} modes to modes-data.ts`);
+	console.log(`[build-agent-modes] wrote ${modes.length} modes to modes-data.ts`);
 }

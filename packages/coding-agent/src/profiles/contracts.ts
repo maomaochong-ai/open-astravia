@@ -1,16 +1,6 @@
 import type { ConversationScenario } from "@vetta/runtime-core";
-import { type AgentModeId, FILE_MODES } from "./modes-data.js";
 
 export type { ConversationScenario } from "@vetta/runtime-core";
-
-/**
- * 合法工作模式由 `profiles/modes/*.md` 派生（ADR-0071）：新增模式 = 新增一份 md，
- * 此处的联合类型与注册表随 `bun run generate:modes` 自动更新，无需手改。
- */
-export type AgentMode = AgentModeId;
-
-export const ALL_AGENT_MODES: readonly AgentMode[] = FILE_MODES.map((mode) => mode.id);
-export const DEFAULT_AGENT_MODE: AgentMode = "work";
 
 export const ALL_SCENARIOS: readonly ConversationScenario[] = [
 	"im-claw",
@@ -71,8 +61,4 @@ export function normalizeToolSideEffect(value: unknown): ToolSideEffect | undefi
 	if (typeof value !== "string") return undefined;
 	const normalized = value.trim().toLowerCase();
 	return isToolSideEffect(normalized) ? normalized : undefined;
-}
-
-export function isAgentMode(value: unknown): value is AgentMode {
-	return typeof value === "string" && (ALL_AGENT_MODES as readonly string[]).includes(value);
 }

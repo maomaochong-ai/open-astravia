@@ -61,7 +61,7 @@
 
 ## 修改流程
 
-1. 修改 `src/profiles/modes/*.md` 或 `src/profiles/personas/*.md` 后运行对应生成脚本。
+1. 修改 `src/profiles/personas/*.md` 后运行对应生成脚本。工作模式提示词不在本包：注册表归 desktop 所有（`apps/desktop/src/main/agent-modes/`），本包只保留 `core.mode` 槽位，正文由宿主经 `resolveModePrompt` 注入。
 2. 运行 `bun run check:generated-prompts`，确认 Markdown 与生成数据一致。
 3. 运行提示词策略、不变量、摘要边界和模型调用运行时测试。
 4. 行为变更完成后运行根目录 `bun run check:quick`、相关测试和 `bun run check`。

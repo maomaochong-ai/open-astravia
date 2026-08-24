@@ -3,7 +3,7 @@ import { type Dirent, type FSWatcher, watch } from "node:fs";
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
-import { DEFAULT_PERSONA_ID, isAgentMode, MODE_PROMPTS, PERSONAS } from "@vetta/coding-agent/profile";
+import { DEFAULT_PERSONA_ID, PERSONAS } from "@vetta/coding-agent/profile";
 import { CODING_AGENT_TODO_CLEAR } from "@vetta/coding-agent/session-extensions";
 import type {
 	AgentPluginContinuationInvocation,
@@ -23,6 +23,7 @@ import type {
 } from "@vetta/runtime-core";
 import { BrowserWindow, ipcMain, type WebContents } from "electron";
 import { PLUGIN_CONTRIBUTION_CHANNELS } from "../../shared/plugin-ipc.js";
+import { DEFAULT_AGENT_MODE, isAgentMode, MODE_PROMPTS } from "../agent-modes/index.js";
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
@@ -827,7 +828,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	// （模式已不再排除任何插件，重建出来的是同一份配置）。
 	// 广播仅用于各窗口新会话页 toggle 的显示同步。
 	ipcMain.handle(CHANNELS.SET_GLOBAL_AGENT_MODE, async (_event, mode: unknown) => {
-		const next = isAgentMode(mode) ? mode : "work";
+		const next = isAgentMode(mode) ? mode : DEFAULT_AGENT_MODE;
 		const settings = await readDesktopConfig();
 		settings.defaultAgentMode = next;
 		await writeDesktopConfig(settings);
@@ -856,7 +857,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		return PERSONAS.map((p) => ({ id: p.id, label: p.label, description: p.description }));
 	});
 
-	// 工作模式注册表：唯一来源是 coding-agent 的 modes/*.md（ADR-0071），只下发
+	// 工作模式注册表：唯一来源是 main/agent-modes 的 modes/*.md（ADR-0071），只下发
 	// id/label/description/icon，不含提示词正文。renderer 的模式 toggle 据此遍历渲染，
 	// 新增模式无需改任何 UI 代码。
 	ipcMain.handle(CHANNELS.GET_AGENT_MODES, () => {

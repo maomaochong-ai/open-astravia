@@ -4,7 +4,7 @@ import type { AgentModeOption } from "../../../preload/api-types/session";
 /**
  * 工作模式注册表的 renderer 侧只读缓存（ADR-0071）。
  *
- * 注册表在 coding-agent 构建期内联、应用生命周期内不变，故只经 IPC 拉取一次、
+ * 注册表在主进程构建期内联（main/agent-modes）、应用生命周期内不变，故只经 IPC 拉取一次、
  * 全局共享；消费方（如会话流的叙事渲染）经 useAgentModeNarration 查表，
  * 不再硬编码 mode id 判断——新增模式对渲染层零改动。
  */

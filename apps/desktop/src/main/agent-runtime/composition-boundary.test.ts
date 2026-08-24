@@ -39,6 +39,14 @@ describe("Desktop Runtime composition boundary", () => {
 		expect(productionSources.knowledgeFactory).not.toContain("createLegacyKnowledgeProcessingSessionFactory");
 	});
 
+	// 工作模式注册表归 desktop 所有（ADR-0071 修订）：coding-agent 只保留 core.mode 槽位，
+	// 正文必须由生产 composition 注入。漏接这一行不会有类型错误，模式提示词会静默消失，
+	// 所以在装配源码层面钉死。
+	it("injects the Desktop-owned mode prompt resolver into the production composition", () => {
+		expect(productionSources.composition).toContain("resolveModePrompt: getModePrompt");
+		expect(productionSources.composition).toContain('from "../agent-modes/index.js"');
+	});
+
 	it("keeps the Runtime entry limited to singleton lifecycle ownership", () => {
 		expect(productionSources.runtimeEntry).toContain("DesktopRuntimeController");
 		expect(productionSources.runtimeEntry).not.toContain("CatalogRoutedRuntimeHostSessionBackend");

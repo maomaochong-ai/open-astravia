@@ -8,7 +8,7 @@
 > **再修订（ADR-0071）**：文末修订段中「`agent_mode` 降级为排序权重与提示词详情偏好」及正文
 > 「模式注册表为中心硬编码」两条已被 [ADR-0071](0071-agent-mode-is-a-task-interpretation-prior.md)
 > 取代：资源侧 `agent_mode` 声明整体废弃（解析保留、语义为零），模式重心由 mode prompt、工作区事实
-> 与工具自描述在任务解释层承担，模式注册表改由 `profiles/modes/*.md` 派生。
+> 与工具自描述在任务解释层承担，模式注册表改由 `modes/*.md` 派生（注册表归属见 ADR-0071 的 2026-08 修订）。
 
 > **机制修订（ADR-0069）**：本 ADR 的产品语义继续有效；“下一个 Turn 生效”现由统一的
 > Session configuration overlay 与 Turn-bound runtime generation 实现。活动 Turn 不重新读取全局 mode，
@@ -88,8 +88,8 @@ Runtime Host 不再有任何模式推送通道。
 2. **工作区事实注入**：`packages/coding-agent/src/model-context/workspace-facts.ts` 在会话创建时探测 `cwd`
    的工程性质，把「当前工作区是一个已有的 X 仓库、沿用既有技术栈、不要另起工程」写进 `core.context`。
    事实比规则更强，且不必等模型先 `ls`。
-3. **mode 路径声明**：`packages/coding-agent/src/profiles/modes/work.md` 与 `coding.md`（事实源，经
-   `bun run generate:modes` 生成 `modes-data.ts`）直接写明本模式下的推荐工作路径。
+3. **mode 路径声明**：`apps/desktop/src/main/agent-modes/modes/work.md` 与 `coding.md`（事实源，经
+   `bun run generate:agent-modes` 生成 `modes-data.ts`）直接写明本模式下的推荐工作路径。
 4. **heavy 工具首调确认闸**：`packages/coding-agent/src/tool-policy/tool-side-effect.ts` 与
    `heavy-tool-confirmation.ts` 把工具分 `light` / `heavy`，heavy 工具在会话内首次调用前经
    `ask_user_question` 向用户确认。这一层拦的是「不可撤销 / 有计费 / 造目录树」的动作，与模式正交，

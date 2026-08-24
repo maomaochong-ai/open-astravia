@@ -16,7 +16,7 @@ const EMPTY_MODES: readonly AgentModeOption[] = [];
  * 写的是「新会话默认模式」：会话创建时把它固化进 SessionConfig，之后会话内不可变，
  * 所以侧边栏与设置菜单都不再提供切换入口。
  *
- * 选项遍历 coding-agent 的模式注册表渲染（ADR-0071）：新增模式只需新增一份
+ * 选项遍历主进程的模式注册表渲染（ADR-0071）：新增模式只需新增一份
  * modes/*.md（可选补 i18n 文案），本组件零改动。文案优先取 i18n（agentMode.<id>），
  * 缺译时回落注册表自带的 label。
  */

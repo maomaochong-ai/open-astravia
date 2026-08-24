@@ -8,8 +8,8 @@ import { repoRoot } from "./lib.mjs";
 const steps = [
 	["packages/capability-sdk/scripts/generate-catalog.ts", "--check"],
 	["packages/coding-agent/scripts/generate-personas.mjs", "--check"],
-	["packages/coding-agent/scripts/generate-modes.mjs", "--check"],
 	["packages/coding-agent/scripts/generate-themes.mjs", "--check"],
+	["apps/desktop/scripts/build-agent-modes.mjs", "--check"],
 	["scripts/quality/check-private-keys.mjs"],
 	["scripts/quality/check-conflict-markers.mjs"],
 	["scripts/quality/check-build-order.mjs"],

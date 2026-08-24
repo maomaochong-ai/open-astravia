@@ -169,7 +169,7 @@ Skill 走渐进披露：清单里只有 name + description（每轮都在 prompt
 以下三个面属于宿主，第三方插件碰不到；内部开发者新增一条"路线级"能力（新的画布、新的重交付
 形态）时应当考虑：
 
-1. **mode md 的路线段**（`packages/coding-agent/src/profiles/modes/*.md`）：如果你的能力构成一条
+1. **mode md 的路线段**（`apps/desktop/src/main/agent-modes/modes/*.md`）：如果你的能力构成一条
    与"仓库内写代码 / 文档交付"并列的新路线，需要在相关模式的路线段用**类别措辞**声明它的
    默认位次与准入条件（参考 coding.md 的 "Default route for UI work" 段）。纪律：永不出现具体
    工具名或插件名——宿主描述任务类别，插件用 description 自归类。

@@ -111,6 +111,11 @@ export interface CreateCodingAgentSessionOptions {
 	readonly activeTools?: readonly string[];
 	readonly scenario?: ConversationScenario;
 	readonly agentMode?: string;
+	/**
+	 * 工作模式 id → mode 提示词正文的解析器（ADR-0071 修订）。模式注册表归宿主所有；
+	 * 不提供即等于 `agentMode` 不产生任何提示词影响。
+	 */
+	readonly resolveModePrompt?: (agentMode: string | undefined) => string;
 	readonly customTools?: readonly CodingAgentSessionToolDefinition[];
 	readonly additionalHookAdapterFactories?: readonly EcosystemHookAdapterFactory[];
 	readonly appendSystemPrompt?: string;

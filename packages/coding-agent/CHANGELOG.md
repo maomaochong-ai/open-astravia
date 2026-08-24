@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+### Changed
+
+- **破坏性变更**：工作模式注册表移出本包，改由宿主提供（ADR-0071 归属修订）。`@vetta/coding-agent/profile`
+  不再导出 `MODE_PROMPTS` / `getModePrompt` / `isAgentMode` / `ALL_AGENT_MODES` / `DEFAULT_AGENT_MODE` /
+  `AgentMode` / `ModePromptInfo`，`profiles/modes/*.md` 与 `generate:modes` 一并移除。本包只保留
+  `core.mode` block 槽位：新增 `resolveModePrompt?: (agentMode: string | undefined) => string`
+  注入口（Composition options 与 SDK create options 均可传），不注入即任何 `agentMode` 都不追加 mode
+  block。`agentMode` 对本包变为不透明字符串，合法值校验归宿主。模式提示词正文、会话持久化格式与
+  用户可见行为均未变化。
+
 ### Added
 
 - 扩展事件的 `ReadToolDetails` 新增可选 `totalLines`，与 `@vetta/runtime-node/coding` 的 `read` Tool 保持同形。

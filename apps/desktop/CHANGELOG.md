@@ -8,6 +8,11 @@
 
 - Vetta UI Design 的 UI 验证支持一次选择多张或全部画框：源码机检每批只跑一次、截图复用专用离屏会话，并返回一张可一次读取的总览图；单帧调用保持兼容。验证状态会按画框记录源码保鲜度，并在画面和问题连续两次不变时提示停止盲改；`vetd_status` 也不再把 source-only 的空 `issues` 当作 UI 已验证。
 
+- 工作模式注册表迁入 Desktop（`src/main/agent-modes/`，ADR-0071 归属修订）：`modes/*.md` 是唯一事实源，
+  经 `bun run generate:agent-modes` 内联成注册表，模式提示词正文在会话创建时按固化的 `agentMode` 注入
+  coding-agent 的 `core.mode` 槽位。此前注册表住在 coding-agent 并把 `icon`、`narration` 这两个纯渲染层
+  字段一并放在那里。新增模式仍是「一份 md + i18n 文案」，用户可见行为与历史会话模式记录不受影响。
+
 ## [0.5.48] - 2026-08-24
 
 ### Added

@@ -549,6 +549,9 @@ describe("Coding Agent model call and prompt runtime", () => {
 				getPersonalization: () => ({ personaId: "default", customPrompt: firstPersonalization }),
 			},
 			readAgentMode: () => firstMode,
+			// 模式注册表归宿主所有（ADR-0071 修订）；本用例验证的是 mode 在 Turn 内被冻结，
+			// 与注册表内容无关，注入一个最小解析器即可。
+			resolveModePrompt: (mode) => (mode ? `prompt for ${mode}` : ""),
 			readMemory: () => ({
 				enabled: true,
 				file: "C:\\first\\MEMORY.md",

@@ -280,6 +280,7 @@ async function createCodingAgentSdkSessionComposition(
 			},
 			promptResourceSource: resourceLoader,
 			promptSettingsSource: settingsManager,
+			resolveModePrompt: options.resolveModePrompt,
 			resolveCompactionSettings: () => settingsManager.getCompactionSettings(),
 			createCompactionExtensionRuntime: () =>
 				createCodingAgentCompactionExtensionRuntime(() => extensionTransitions.readRunnerOrUndefined()),

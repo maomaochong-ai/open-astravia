@@ -33,6 +33,7 @@ import {
 	type RuntimeConversationSessionRoot,
 } from "@vetta/runtime-node/conversation";
 import { createNodeKnowledgeRuntime, NodeTextFileStorage } from "@vetta/runtime-node/host";
+import { getModePrompt } from "../agent-modes/index.js";
 import { getBuiltinSkillPaths } from "../builtin-skills.js";
 import {
 	DEFAULT_CONVERSATION_CWD,
@@ -88,6 +89,9 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		compositionDefaults: {
 			modelRegistry: modelRuntime,
 			createPromptRuntimeSources: createDesktopPromptRuntimeSources,
+			// 工作模式注册表归 desktop 所有（ADR-0071 修订）：coding-agent 只保留 core.mode
+			// 槽位，正文由这里按会话固化的 agentMode 解析注入。
+			resolveModePrompt: getModePrompt,
 			knowledgeRuntime:
 				process.env.VETTA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeRoot()),
 			createMemoryRolloverRuntime: (options) => {

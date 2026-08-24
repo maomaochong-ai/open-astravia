@@ -1,7 +1,7 @@
 /**
- * mode 提示词的事实源合同。
+ * 工作模式注册表的事实源合同（ADR-0071）。
  *
- * `src/profiles/modes/*.md` 是唯一编辑来源，`modes-data.ts` 是 `scripts/generate-modes.mjs`
+ * `modes/*.md` 是唯一编辑来源，`modes-data.ts` 是 `scripts/build-agent-modes.mjs`
  * 的产物。手改产物在类型层完全看不出来，但会让「改了 md 却不生效」变成静默故障，
  * 所以这里按事实源逐条比对。
  */
@@ -9,11 +9,11 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { getModePrompt, MODE_PROMPTS } from "../src/profiles/mode-prompt.js";
+import { ALL_AGENT_MODES, DEFAULT_AGENT_MODE, getModePrompt, isAgentMode, MODE_PROMPTS } from "./index.js";
 
-const modesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "profiles", "modes");
+const modesDir = join(dirname(fileURLToPath(import.meta.url)), "modes");
 
-/** 与 generate-modes.mjs 相同的正文解析：frontmatter 切分 + `{{> name}}` partial 展开。 */
+/** 与 build-agent-modes.mjs 相同的正文解析：frontmatter 切分 + `{{> name}}` partial 展开。 */
 function readModeFile(file: string): { id: string; body: string } {
 	const normalized = readFileSync(join(modesDir, file), "utf-8").replace(/\r\n?/g, "\n");
 	const end = normalized.indexOf("\n---", 3);
@@ -38,13 +38,26 @@ describe("mode 提示词与 .md 事实源", () => {
 		expect(modeFiles.length).toBeGreaterThan(0);
 		expect(MODE_PROMPTS.map((mode) => mode.id).sort()).toEqual(modeFiles.map((mode) => mode.id).sort());
 		for (const { id, body } of modeFiles) {
-			expect(getModePrompt(id), `mode ${id} 的 modes-data.ts 已过期，跑 bun run generate:modes`).toBe(body);
+			expect(getModePrompt(id), `mode ${id} 的 modes-data.ts 已过期，跑 bun run generate:agent-modes`).toBe(body);
 		}
 	});
 
 	it("未知 / 未传 mode 不追加 mode block", () => {
 		expect(getModePrompt(undefined)).toBe("");
 		expect(getModePrompt("not-a-mode")).toBe("");
+	});
+});
+
+describe("注册表校验入口", () => {
+	it("isAgentMode 只接受注册表内的 id", () => {
+		for (const mode of ALL_AGENT_MODES) expect(isAgentMode(mode)).toBe(true);
+		expect(isAgentMode("not-a-mode")).toBe(false);
+		expect(isAgentMode(undefined)).toBe(false);
+		expect(isAgentMode(42)).toBe(false);
+	});
+
+	it("出厂默认模式在注册表内", () => {
+		expect(isAgentMode(DEFAULT_AGENT_MODE)).toBe(true);
 	});
 });
 

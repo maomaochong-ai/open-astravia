@@ -1,4 +1,4 @@
-// AUTO-GENERATED from src/profiles/modes/*.md by scripts/generate-modes.mjs. Do not edit by hand.
+// AUTO-GENERATED from modes/*.md by scripts/build-agent-modes.mjs. Do not edit by hand.
 
 /** 合法工作模式 id 联合类型，由 modes/*.md 派生（ADR-0071）。 */
 export type AgentModeId = "coding" | "work";

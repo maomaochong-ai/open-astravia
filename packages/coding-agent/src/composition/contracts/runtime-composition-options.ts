@@ -10,6 +10,7 @@ import type { CodingAgentKnowledgeRuntime } from "../../features/knowledge/contr
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { ModelInputImageProcessor } from "../../model-context/image-normalization.js";
+import type { CodingAgentModePromptResolver } from "../../model-context/system-prompt-sources.js";
 import type {
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentCompactionRuntimeOptions,
@@ -130,6 +131,13 @@ export interface CodingAgentRuntimePromptOptions {
 	) => CodingAgentSystemPromptOptionsResolver;
 	/** 无状态系统提示词来源的兼容入口。 */
 	readonly resolveSystemPromptOptions?: CodingAgentSystemPromptOptionsResolver;
+	/**
+	 * 工作模式 id → mode 提示词正文的宿主解析器（ADR-0071 修订）。
+	 *
+	 * 模式注册表归宿主所有（desktop 的 `main/agent-modes`）；不提供即等于任何 agentMode
+	 * 都不追加 `core.mode` block，CLI / SDK 宿主的默认行为。
+	 */
+	readonly resolveModePrompt?: CodingAgentModePromptResolver;
 }
 
 export interface CodingAgentPromptRuntimeSourceContext {

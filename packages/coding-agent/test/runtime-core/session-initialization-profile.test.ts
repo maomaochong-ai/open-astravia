@@ -60,6 +60,7 @@ describe("Coding Agent session initialization profile", () => {
 			"promptResourceSource",
 			"promptSettingsSource",
 			"resolveCompactionSettings",
+			"resolveModePrompt",
 			"resolvePromptResource",
 			"resolveSystemPromptOptions",
 			"subagentMaxConcurrent",

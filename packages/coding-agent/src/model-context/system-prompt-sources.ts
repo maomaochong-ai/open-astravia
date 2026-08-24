@@ -1,9 +1,18 @@
 import type { ConversationScenario } from "../profiles/index.js";
-import { getModePrompt, getPersonaPrompt } from "../profiles/index.js";
+import { getPersonaPrompt } from "../profiles/index.js";
 import type { SessionResourceRuntime } from "../resources/index.js";
 import { renderMemoryForPrompt } from "./memory-prompt.js";
 import type { AgentPluginRuntimeConfig } from "./plugin-runtime.js";
 import type { BuildSystemPromptOptions } from "./system-prompt-policy.js";
+
+/**
+ * 工作模式 id → mode 提示词正文的宿主解析器（ADR-0071 修订）。
+ *
+ * 模式注册表归宿主所有：桌面把 `modes/*.md` 内联成注册表并注入本解析器，CLI / SDK 宿主
+ * 不传即等于不追加 `core.mode` block。coding-agent 只认 agentMode 这个不透明 id 与
+ * block 槽位，不知道存在哪些模式，也不解释模式语义。
+ */
+export type CodingAgentModePromptResolver = (agentMode: string | undefined) => string;
 
 export interface PersonalizationSettingsSource {
 	getPersonalization(): { personaId: string; customPrompt: string };
@@ -31,6 +40,8 @@ export interface SystemPromptSourceDependencies {
 	memorySnapshot: string;
 	memoryCharLimit: number;
 	agentMode?: string;
+	/** 宿主注入的 mode 提示词解析器；缺省 = 不追加 mode block。 */
+	resolveModePrompt?: CodingAgentModePromptResolver;
 	agentPlugins?: AgentPluginRuntimeConfig;
 	scenario?: ConversationScenario;
 	mcpDeferred?: boolean;
@@ -75,7 +86,7 @@ export function resolveSystemPromptOptionsFromSources(
 		mcpTools,
 		memory,
 		personalization: buildPersonalizationBlock(dependencies.settingsManager),
-		modePrompt: getModePrompt(dependencies.agentMode),
+		modePrompt: dependencies.resolveModePrompt?.(dependencies.agentMode) ?? "",
 		agentPlugins: dependencies.agentPlugins,
 		scenario: dependencies.scenario,
 		mcpDeferred: dependencies.mcpDeferred,
