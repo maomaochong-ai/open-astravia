@@ -28,6 +28,20 @@ function getNavIndicatorBounds(element: HTMLButtonElement): NavIndicatorBounds {
 	};
 }
 
+function areNavIndicatorBoundsEqual(
+	current: NavIndicatorBounds | null,
+	next: NavIndicatorBounds | null,
+): boolean {
+	if (current === next) return true;
+	if (!current || !next) return false;
+	return (
+		current.height === next.height &&
+		current.left === next.left &&
+		current.top === next.top &&
+		current.width === next.width
+	);
+}
+
 export function XianxiaSidebarNavigation(props: SidebarNavigationProps): JSX.Element {
 	const themePages = useThemePagesModel();
 	const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -78,11 +92,10 @@ export function XianxiaSidebarNavigation(props: SidebarNavigationProps): JSX.Ele
 		// 是非选中项」时并不变化。
 		void items;
 		const activeElement = moreActive ? moreButtonRef.current : itemRefs.current[activeIndex];
-		if (!activeElement) {
-			setIndicatorBounds(null);
-			return;
-		}
-		setIndicatorBounds(getNavIndicatorBounds(activeElement));
+		const nextBounds = activeElement ? getNavIndicatorBounds(activeElement) : null;
+		setIndicatorBounds((currentBounds) =>
+			areNavIndicatorBoundsEqual(currentBounds, nextBounds) ? currentBounds : nextBounds,
+		);
 	}, [activeIndex, activeMoreKey, items, moreActive, props.moreOpen]);
 
 	return (

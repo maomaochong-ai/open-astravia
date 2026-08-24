@@ -22,6 +22,6 @@
 			"@vetta/ui/*": ["../../../ui/src/*"]
 		}
 	},
-	"include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],
+	"include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "vitest.config.ts"],
 	"exclude": ["node_modules", "dist"]
 }

@@ -15,7 +15,8 @@
 	"scripts": {
 		"build": "bun ./node_modules/vite/bin/vite.js build",
 		"check": "tsgo --noEmit -p tsconfig.json",
-		"dev": "bun ./node_modules/vite/bin/vite.js"
+		"dev": "bun ./node_modules/vite/bin/vite.js",
+		"test": "bun ../../../../scripts/quality/run-vitest.mjs --run"
 	},
 	"dependencies": {
 		"@vetta/theme-sdk": "workspace:*",
@@ -37,14 +38,17 @@
 		"@iconify/tailwind4": "^1.0.6",
 		"@module-federation/vite": "^1.16.6",
 		"@tailwindcss/vite": "^4.1.12",
+		"@testing-library/react": "^16.3.0",
 		"@types/node": "^22.10.5",
 		"@types/react": "^19.1.1",
 		"@vetta/ui": "workspace:*",
 		"motion": "^12.23.12",
 		"react": "19.1.1",
 		"react-dom": "19.1.1",
+		"jsdom": "26.1.0",
 		"tailwindcss": "^4.1.12",
 		"typescript": "^5.9.2",
-		"vite": "^7.1.7"
+		"vite": "^7.1.7",
+		"vitest": "^3.2.4"
 	}
 }
