@@ -44,6 +44,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -81,9 +82,18 @@ func main() {
 		os.Exit(1)
 	}
 	if *silent {
-		// Just block forever, never reading stdin so the parent's send
-		// goes nowhere and the handshake should time out.
-		select {}
+		// Stay alive without ever reading stdin, so the parent's send goes
+		// nowhere and its handshake deadline is what fires.
+		//
+		// Must NOT be select{}: with only the main goroutine parked the Go
+		// runtime reports "all goroutines are asleep - deadlock!" and kills
+		// the process within milliseconds. The parent then sees the child
+		// exit before its own deadline and classifies the failure as
+		// process_exited instead of handshake_timeout — which made this
+		// fake unable to model a hung agent at all. A pending timer keeps
+		// the deadlock detector quiet and the process genuinely alive.
+		time.Sleep(time.Hour)
+		return
 	}
 
 	in := bufio.NewScanner(os.Stdin)
