@@ -2,17 +2,13 @@
 
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const DESKTOP_PACKAGE_PATH = "apps/desktop/package.json";
 const DESKTOP_CHANGELOG_PATH = "apps/desktop/CHANGELOG.md";
 const LOCKFILE_PATH = "bun.lock";
 const RELEASE_FILES = [DESKTOP_PACKAGE_PATH, DESKTOP_CHANGELOG_PATH, LOCKFILE_PATH];
-const bumpType = process.argv[2];
-
-if (bumpType !== "patch" && bumpType !== "minor") {
-	console.error("Usage: node scripts/release-desktop.mjs <patch|minor>");
-	process.exit(1);
-}
 
 function run(command, args, options = {}) {
 	console.log(`$ ${command} ${args.join(" ")}`);
@@ -27,7 +23,7 @@ function readDesktopPackage() {
 	return JSON.parse(readFileSync(DESKTOP_PACKAGE_PATH, "utf8"));
 }
 
-function bumpVersion(version) {
+export function bumpVersion(version, bumpType) {
 	const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
 	if (!match) throw new Error(`Invalid desktop version: ${version}`);
 
@@ -77,12 +73,25 @@ function assertTagAvailable(tag) {
 	}
 }
 
-function assertOnlyReleaseFilesChanged() {
-	const changedFiles = run("git", ["status", "--porcelain"], { capture: true })
-		.trim()
+/**
+ * 解析 `git status --porcelain` 的输出为路径列表。
+ *
+ * 每行是固定宽度的 `XY <path>`（两位状态码 + 一个空格），未暂存修改的行以空格开头。
+ * 因此绝不能对整段输出做 trim：那会削掉第一行的前导空格，使其后的 slice(3) 吃掉
+ * 路径首字母，第一个文件永远匹配不上白名单。
+ *
+ * @param {string} stdout
+ * @returns {string[]}
+ */
+export function parsePorcelainPaths(stdout) {
+	return stdout
 		.split(/\r?\n/)
-		.filter(Boolean)
+		.filter((line) => line.length > 3)
 		.map((line) => line.slice(3).replaceAll("\\", "/"));
+}
+
+function assertOnlyReleaseFilesChanged() {
+	const changedFiles = parsePorcelainPaths(run("git", ["status", "--porcelain"], { capture: true }));
 	const allowedFiles = new Set(RELEASE_FILES);
 	const unexpectedFiles = changedFiles.filter((file) => !allowedFiles.has(file));
 	if (unexpectedFiles.length > 0) {
@@ -90,27 +99,45 @@ function assertOnlyReleaseFilesChanged() {
 	}
 }
 
-assertCleanWorktree();
-const branch = assertBranch();
-run("bun", ["run", "check:lint"]);
-run("bun", ["run", "--cwd", "apps/desktop", "typecheck"]);
-run("bun", ["run", "check:guards"]);
-assertCleanWorktree();
+function main() {
+	const bumpType = process.argv[2];
+	if (bumpType !== "patch" && bumpType !== "minor") {
+		console.error("Usage: node scripts/release-desktop.mjs <patch|minor>");
+		process.exit(1);
+	}
 
-const desktopPackage = readDesktopPackage();
-const version = bumpVersion(desktopPackage.version);
-const tag = `v${version}`;
-assertTagAvailable(tag);
+	assertCleanWorktree();
+	const branch = assertBranch();
+	run("bun", ["run", "check:lint"]);
+	run("bun", ["run", "--cwd", "apps/desktop", "typecheck"]);
+	run("bun", ["run", "check:guards"]);
+	assertCleanWorktree();
 
-desktopPackage.version = version;
-writeFileSync(DESKTOP_PACKAGE_PATH, `${JSON.stringify(desktopPackage, null, "\t")}\n`);
-updateChangelog(version);
-run("bun", ["install", "--lockfile-only"]);
-assertOnlyReleaseFilesChanged();
+	const desktopPackage = readDesktopPackage();
+	const version = bumpVersion(desktopPackage.version, bumpType);
+	const tag = `v${version}`;
+	assertTagAvailable(tag);
 
-run("git", ["add", "--", ...RELEASE_FILES]);
-run("git", ["commit", "-m", `release(desktop): 发布 ${tag}`]);
-run("git", ["tag", tag]);
-run("git", ["push", "--atomic", "origin", branch, `refs/tags/${tag}`]);
+	desktopPackage.version = version;
+	writeFileSync(DESKTOP_PACKAGE_PATH, `${JSON.stringify(desktopPackage, null, "\t")}\n`);
+	updateChangelog(version);
+	run("bun", ["install", "--lockfile-only"]);
+	assertOnlyReleaseFilesChanged();
 
-console.log(`Desktop ${tag} 已推送，等待 desktop-release 工作流完成。`);
+	run("git", ["add", "--", ...RELEASE_FILES]);
+	run("git", ["commit", "-m", `release(desktop): 发布 ${tag}`]);
+	run("git", ["tag", tag]);
+	run("git", ["push", "--atomic", "origin", branch, `refs/tags/${tag}`]);
+
+	console.log(`Desktop ${tag} 已推送，等待 desktop-release 工作流完成。`);
+}
+
+// 顶层直接执行会让测试一 import 就触发真实发版，因此与 resolve-desktop-release-config.mjs
+// 保持同一模式：只有作为入口脚本运行时才执行。
+function isExecutedDirectly() {
+	const invoked = process.argv[1];
+	if (!invoked) return false;
+	return fileURLToPath(import.meta.url).toLowerCase() === resolve(invoked).toLowerCase();
+}
+
+if (isExecutedDirectly()) main();
