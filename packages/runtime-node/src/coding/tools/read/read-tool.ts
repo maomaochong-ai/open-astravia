@@ -1,8 +1,12 @@
 import { constants } from "node:fs";
 import { access as fsAccess, readFile as fsReadFile } from "node:fs/promises";
-import { extname } from "node:path";
+import { basename, extname } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
+import {
+	type RuntimeToolDefinition,
+	RuntimeToolExecutionError,
+	type RuntimeToolResult,
+} from "@vetta/runtime-core/kernel";
 import { renderAnchoredLines } from "../../shared/anchors.js";
 import { resolveReadPath } from "../../shared/path-resolution.js";
 import { decodeTextBuffer } from "../../shared/text-decoding.js";
@@ -34,6 +38,7 @@ export const ReadToolInputSchema = Type.Object({
 export type ReadToolInput = Static<typeof ReadToolInputSchema>;
 
 export interface ReadToolDetails {
+	readonly totalLines?: number;
 	readonly truncation?: TruncationResult;
 	readonly image?: {
 		readonly originalPath: string;
@@ -172,7 +177,7 @@ export function createReadTool(cwd: string, options: ReadToolOptions = {}): Runt
 					} catch (error) {
 						request.signal.removeEventListener("abort", onAbort);
 						if (!aborted) {
-							reject(error);
+							reject(classifyReadError(error, path, absolutePath));
 						}
 					}
 				})();
@@ -271,54 +276,152 @@ async function readText(
 
 	const textContent = decodeTextBuffer(buffer);
 	const allLines = textContent.split("\n");
+	const totalLines = allLines.length;
 	const startLine = offset ? Math.max(0, offset - 1) : 0;
 	const startLineDisplay = startLine + 1;
-	if (startLine >= allLines.length) {
-		throw new Error(`Offset ${offset} is beyond end of file (${allLines.length} lines total)`);
+	if (startLine >= totalLines) {
+		throw new RuntimeToolExecutionError(`Offset ${offset} is beyond end of file (${totalLines} lines total)`, {
+			code: "read_offset_out_of_range",
+			retryable: false,
+			metadata: { path: absolutePath, offset, totalLines },
+		});
 	}
 
 	let selectedContent: string;
 	let userLimitedLines: number | undefined;
 	if (limit !== undefined) {
-		const endLine = Math.min(startLine + limit, allLines.length);
+		const endLine = Math.min(startLine + limit, totalLines);
 		selectedContent = allLines.slice(startLine, endLine).join("\n");
 		userLimitedLines = endLine - startLine;
 	} else {
 		selectedContent = allLines.slice(startLine).join("\n");
 	}
 
-	const truncation = truncateHead(selectedContent);
 	const anchorContent = (raw: string): string => renderAnchoredLines(raw.split("\n"), startLineDisplay).join("\n");
+	const remainingNote = (): string => {
+		if (userLimitedLines === undefined || startLine + userLimitedLines >= totalLines) {
+			return "";
+		}
+		const remaining = totalLines - (startLine + userLimitedLines);
+		const nextOffset = startLine + userLimitedLines + 1;
+		return `\n\n[${remaining} more lines in file. Use offset=${nextOffset} to continue.]`;
+	};
+
+	// Skill instructions must never be silently halved: a truncated SKILL.md still reads
+	// as a complete instruction set to the model, so it follows the surviving half.
+	if (isSkillMarkdownPath(absolutePath)) {
+		return {
+			content: [{ type: "text", text: anchorContent(selectedContent) + remainingNote() }],
+			details: { totalLines } satisfies ReadToolDetails,
+		};
+	}
+
+	const truncation = truncateHead(selectedContent);
 	let outputText: string;
-	let details: ReadToolDetails | undefined;
+	let details: ReadToolDetails;
 
 	if (truncation.firstLineExceedsLimit) {
 		const firstLineSize = formatSize(Buffer.byteLength(allLines[startLine], "utf-8"));
 		outputText = `[Line ${startLineDisplay} is ${firstLineSize}, exceeds ${formatSize(DEFAULT_MAX_BYTES)} limit. Use bash: sed -n '${startLineDisplay}p' ${requestedPath} | head -c ${DEFAULT_MAX_BYTES}]`;
-		details = { truncation };
+		details = { totalLines, truncation };
 	} else if (truncation.truncated) {
 		const endLineDisplay = startLineDisplay + truncation.outputLines - 1;
 		const nextOffset = endLineDisplay + 1;
 		outputText = anchorContent(truncation.content);
 		if (truncation.truncatedBy === "lines") {
-			outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${allLines.length}. Use offset=${nextOffset} to continue.]`;
+			outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalLines}. Use offset=${nextOffset} to continue.]`;
 		} else {
-			outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${allLines.length} (${formatSize(DEFAULT_MAX_BYTES)} limit). Use offset=${nextOffset} to continue.]`;
+			outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). Use offset=${nextOffset} to continue.]`;
 		}
-		details = { truncation };
-	} else if (userLimitedLines !== undefined && startLine + userLimitedLines < allLines.length) {
-		const remaining = allLines.length - (startLine + userLimitedLines);
-		const nextOffset = startLine + userLimitedLines + 1;
-		outputText = anchorContent(truncation.content);
-		outputText += `\n\n[${remaining} more lines in file. Use offset=${nextOffset} to continue.]`;
+		details = { totalLines, truncation };
 	} else {
-		outputText = anchorContent(truncation.content);
+		outputText = anchorContent(truncation.content) + remainingNote();
+		details = { totalLines };
 	}
 
 	return {
 		content: [{ type: "text", text: outputText }],
 		details,
 	};
+}
+
+const SKILL_MARKDOWN_FILENAME = "SKILL.md";
+const SKILL_DIRECTORY_SEGMENT = "skills";
+
+/**
+ * Matches `SKILL.md` anywhere, plus any Markdown file under a path segment named exactly
+ * `skills`, so docs a skill references are covered too. `.`/`..` are folded lexically;
+ * symlinks are not resolved. Near-misses such as `skills-preset` do not match.
+ */
+function isSkillMarkdownPath(absolutePath: string): boolean {
+	if (basename(absolutePath) === SKILL_MARKDOWN_FILENAME) {
+		return true;
+	}
+	if (extname(absolutePath).toLowerCase() !== ".md") {
+		return false;
+	}
+	return foldPathSegments(absolutePath).includes(SKILL_DIRECTORY_SEGMENT);
+}
+
+function foldPathSegments(absolutePath: string): string[] {
+	const segments: string[] = [];
+	for (const segment of absolutePath.split(/[/\\]+/)) {
+		if (segment === "" || segment === ".") continue;
+		if (segment === "..") {
+			segments.pop();
+			continue;
+		}
+		segments.push(segment);
+	}
+	return segments;
+}
+
+/**
+ * Maps filesystem errno values onto distinct, actionable tool errors. Without this every
+ * failure reaches the model as one undifferentiated error and it retries the same read.
+ */
+function classifyReadError(error: unknown, requestedPath: string, absolutePath: string): unknown {
+	if (error instanceof RuntimeToolExecutionError) {
+		return error;
+	}
+	const errno = errnoCode(error);
+	if (!errno) {
+		return error;
+	}
+	const location = requestedPath === absolutePath ? requestedPath : `${requestedPath} (${absolutePath})`;
+	const metadata = { path: absolutePath };
+	switch (errno) {
+		case "ENOENT":
+		case "ENOTDIR":
+			return new RuntimeToolExecutionError(
+				`File not found: ${location}`,
+				{ code: "read_file_not_found", retryable: false, metadata },
+				{ cause: error },
+			);
+		case "EISDIR":
+			return new RuntimeToolExecutionError(
+				`${location} is a directory, not a file. Use the \`ls\` tool to list its contents.`,
+				{ code: "read_is_a_directory", retryable: false, metadata },
+				{ cause: error },
+			);
+		case "EACCES":
+		case "EPERM":
+			return new RuntimeToolExecutionError(
+				`Permission denied: ${location}`,
+				{ code: "read_permission_denied", retryable: false, metadata },
+				{ cause: error },
+			);
+		default:
+			return error;
+	}
+}
+
+function errnoCode(error: unknown): string | undefined {
+	if (typeof error !== "object" || error === null) {
+		return undefined;
+	}
+	const code = (error as { readonly code?: unknown }).code;
+	return typeof code === "string" ? code : undefined;
 }
 
 function isLikelyBinaryContent(buffer: Buffer): boolean {

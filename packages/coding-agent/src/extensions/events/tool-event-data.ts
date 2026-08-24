@@ -92,6 +92,7 @@ export interface BashToolDetails {
 }
 
 export interface ReadToolDetails {
+	readonly totalLines?: number;
 	readonly truncation?: ToolOutputTruncation;
 	readonly image?: {
 		readonly originalPath: string;

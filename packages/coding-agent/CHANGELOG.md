@@ -2,6 +2,8 @@
 
 ### Added
 
+- 扩展事件的 `ReadToolDetails` 新增可选 `totalLines`，与 `@vetta/runtime-node/coding` 的 `read` Tool 保持同形。
+
 - 子代理新增通用 `general` 定义与可组合的 Tool/MCP/Skill/Context/Todo/Workspace 策略；Composition Root 可注入自定义类型注册表和宿主工作区租约端口。新委派调用使用包含历史、现状、目标、边界、产物与功能验证的结构化任务合同，child 可通过 `report_to_parent` 回传进展、阻塞和验证证据。
 
 - 新增 `@vetta/coding-agent/model-context` 产品上下文入口。工作区技术栈识别与提示词渲染仍由 Coding Agent

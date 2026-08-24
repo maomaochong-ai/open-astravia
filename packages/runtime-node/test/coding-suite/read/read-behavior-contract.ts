@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
@@ -79,6 +79,7 @@ export function defineReadBehaviorContract(subjectName: string, createSubject: C
 			expect(subject.definition.schema).not.toHaveProperty("additionalProperties");
 			expect(subject.definition.description).toContain("line:hash→content");
 			expect(subject.definition.description).toContain("extract_text_from_pdf");
+			expect(subject.definition.description).toContain("2000 lines or 50KB");
 		});
 
 		it("reads UTF-8 text with edit-compatible line anchors", async () => {
@@ -88,7 +89,7 @@ export function defineReadBehaviorContract(subjectName: string, createSubject: C
 			const result = await createSubject(testDirectory).execute({ path: "hello.txt" });
 
 			expect(textOutput(result)).toMatch(/^1:[0-9a-z]{4}→first line\n2:[0-9a-z]{4}→second line$/);
-			expect(result.details).toBeUndefined();
+			expect(result.details).toEqual({ totalLines: 2 });
 		});
 
 		it("falls back to GB18030 when UTF-8 decoding fails", async () => {
@@ -204,6 +205,7 @@ export function defineReadBehaviorContract(subjectName: string, createSubject: C
 
 			expect(textOutput(result)).toContain("[Showing lines 1-2000 of 2001. Use offset=2001 to continue.]");
 			expect(result.details).toMatchObject({
+				totalLines: 2001,
 				truncation: {
 					truncated: true,
 					truncatedBy: "lines",
@@ -307,6 +309,87 @@ export function defineReadBehaviorContract(subjectName: string, createSubject: C
 			expect(textOutput(result)).toBe(
 				"Binary file detected ((no extension), 4B). Raw bytes are not shown to avoid context pollution.\nNo matching skill found. Try converting this file with bash before reading.",
 			);
+		});
+
+		it("never auto-truncates SKILL.md or Markdown under a skills directory", async () => {
+			const oversized = Array.from({ length: 2500 }, (_, index) => `step ${index + 1}`).join("\n");
+			const skillDirectory = join(testDirectory, "skills", "deploy");
+			mkdirSync(skillDirectory, { recursive: true });
+			writeFileSync(join(skillDirectory, "SKILL.md"), oversized);
+			writeFileSync(join(skillDirectory, "reference.md"), oversized);
+			writeFileSync(join(testDirectory, "SKILL.md"), oversized);
+			const subject = createSubject(testDirectory);
+
+			for (const path of ["skills/deploy/SKILL.md", "skills/deploy/reference.md", "SKILL.md"]) {
+				const result = await subject.execute({ path });
+				expect(textOutput(result)).toContain("step 2500");
+				expect(textOutput(result)).not.toContain("Use offset=");
+				expect(result.details).toEqual({ totalLines: 2500 });
+			}
+		});
+
+		it("still truncates Markdown outside a skills directory and near-miss directory names", async () => {
+			const oversized = Array.from({ length: 2500 }, (_, index) => `step ${index + 1}`).join("\n");
+			const nearMiss = join(testDirectory, "skills-preset");
+			mkdirSync(nearMiss, { recursive: true });
+			writeFileSync(join(nearMiss, "guide.md"), oversized);
+			writeFileSync(join(testDirectory, "guide.md"), oversized);
+			const subject = createSubject(testDirectory);
+
+			for (const path of ["skills-preset/guide.md", "guide.md"]) {
+				expect(textOutput(await subject.execute({ path }))).toContain("Use offset=2001 to continue.");
+			}
+		});
+
+		it("honours an explicit range inside a skill file without auto-truncating the rest", async () => {
+			const oversized = Array.from({ length: 2500 }, (_, index) => `step ${index + 1}`).join("\n");
+			writeFileSync(join(testDirectory, "SKILL.md"), oversized);
+
+			const result = await createSubject(testDirectory).execute({ path: "SKILL.md", offset: 10, limit: 2 });
+
+			expect(textOutput(result)).toMatch(/^10:[0-9a-z]{4}→step 10\n11:[0-9a-z]{4}→step 11/);
+			expect(textOutput(result)).toContain("[2489 more lines in file. Use offset=12 to continue.]");
+		});
+
+		it("classifies missing, directory, and unreadable paths into distinct tool errors", async () => {
+			const subject = createSubject(testDirectory);
+			mkdirSync(join(testDirectory, "a-directory"), { recursive: true });
+
+			await expect(subject.execute({ path: "missing.txt" })).rejects.toMatchObject({
+				name: "RuntimeToolExecutionError",
+				details: { code: "read_file_not_found", retryable: false },
+			});
+			await expect(subject.execute({ path: "a-directory" })).rejects.toMatchObject({
+				name: "RuntimeToolExecutionError",
+				details: { code: "read_is_a_directory", retryable: false },
+			});
+			await expect(subject.execute({ path: "a-directory" })).rejects.toThrow("Use the `ls` tool");
+
+			const denied = createSubject(testDirectory, {
+				operations: {
+					async access() {
+						throw Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
+					},
+					async readFile() {
+						return Buffer.from("unreachable");
+					},
+				},
+			});
+			await expect(denied.execute({ path: "secret.txt" })).rejects.toMatchObject({
+				name: "RuntimeToolExecutionError",
+				details: { code: "read_permission_denied", retryable: false },
+			});
+		});
+
+		it("classifies an out-of-range offset without changing the legacy message", async () => {
+			const path = join(testDirectory, "two-lines.txt");
+			writeFileSync(path, "one\ntwo");
+
+			await expect(createSubject(testDirectory).execute({ path, offset: 100 })).rejects.toMatchObject({
+				name: "RuntimeToolExecutionError",
+				message: "Offset 100 is beyond end of file (2 lines total)",
+				details: { code: "read_offset_out_of_range", retryable: false },
+			});
 		});
 
 		it("uses injected read operations without changing path resolution", async () => {

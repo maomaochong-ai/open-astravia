@@ -48,6 +48,21 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Added
 
+- `read` Tool 的文本读取在 `details` 中始终返回 `totalLines`，模型与宿主无需先触发截断即可知道文件总行数。
+
+### Fixed
+
+- `read` Tool 不再自动截断 `SKILL.md` 以及 `skills/` 路径段下的 Markdown。此前超过 2000 行或 50KB 的
+  Skill 指令会被静默截断，模型仍把残缺内容当作完整指令执行。显式传入的 `offset`/`limit` 仍然生效。
+
+- `read` Tool 的失败改为 `RuntimeToolExecutionError` 并带上区分性的 `code`：`read_file_not_found`、
+  `read_is_a_directory`（提示改用 `ls`）、`read_permission_denied`、`read_offset_out_of_range`。
+  此前所有失败都是同一种无差别 Error，模型通常原样重试。越界 offset 的消息文本保持不变。
+
+- `read` Tool 描述中的截断上限由 `30KB` 更正为实际生效的 `50KB`。
+
+### Added
+
 - Conversation persistence bundle 新增 `resolveSessionDirectory(sessionId)`；文件实现直接返回其已知根目录，内存实现返回
   `undefined`，上层不再从可恢复会话路径反推制品目录。
 
