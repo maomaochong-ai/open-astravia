@@ -31,6 +31,7 @@
 		"agent.hooks.register",
 		"agent.hookHandler.execute",
 		"agent.skills.control",
+		"agent.systemPrompt.write",
 		"agent.command.run",
 		"agent.command.spawn",
 		"capture.offscreen",
