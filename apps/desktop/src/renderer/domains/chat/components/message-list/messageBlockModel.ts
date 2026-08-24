@@ -22,6 +22,17 @@ export interface AssistantFoldData {
 	hiddenCount: number;
 }
 
+/**
+ * 正在追加的 thinking：只有消息末尾那个 thinking block 还会收到 delta。
+ * 它会被提升到消息末尾单独渲染，因此原位不再重复渲染同一个 block。
+ */
+export function selectLiveThinking(blocks: readonly ContentBlock[], isStreaming: boolean): ThinkingBlock | null {
+	if (!isStreaming) return null;
+	const last = blocks[blocks.length - 1];
+	if (!last || last.type !== "thinking" || last.text.length === 0) return null;
+	return last;
+}
+
 function blockKey(block: ContentBlock): string {
 	switch (block.type) {
 		case "tool_call":

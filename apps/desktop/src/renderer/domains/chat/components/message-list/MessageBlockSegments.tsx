@@ -95,6 +95,8 @@ function ProgressDivider({ block }: { block: { args: Record<string, unknown> } }
 interface SegmentRendererProps {
 	segment: BlockSegment;
 	isStreamingTail?: boolean;
+	/** 已提升到消息末尾的 thinking block id：原位跳过，避免重复渲染。 */
+	hoistedThinkingId?: string;
 	animateIn?: boolean;
 	exportMode?: boolean;
 }
@@ -118,6 +120,7 @@ function areSegmentRendererPropsEqual(
 ): boolean {
 	return (
 		previous.isStreamingTail === next.isStreamingTail &&
+		previous.hoistedThinkingId === next.hoistedThinkingId &&
 		previous.animateIn === next.animateIn &&
 		previous.exportMode === next.exportMode &&
 		areSegmentsEqual(previous.segment, next.segment)
@@ -127,6 +130,7 @@ function areSegmentRendererPropsEqual(
 export const SegmentRenderer = memo(function SegmentRenderer({
 	segment,
 	isStreamingTail = false,
+	hoistedThinkingId,
 	animateIn = false,
 	exportMode = false,
 }: SegmentRendererProps) {
@@ -143,9 +147,11 @@ export const SegmentRenderer = memo(function SegmentRenderer({
 				);
 				break;
 			case "thinking":
-				content = (
-					<ThinkingBlockView text={segment.block.text} exportMode={exportMode} />
-				);
+				// 正在追加的那条已被提升到消息末尾常驻展示，原位不重复渲染。
+				content =
+					hoistedThinkingId === segment.block.id ? null : (
+						<ThinkingBlockView text={segment.block.text} exportMode={exportMode} />
+					);
 				break;
 			case "tool_call":
 				content = <ToolCallBlockView block={segment.block} exportMode={exportMode} />;

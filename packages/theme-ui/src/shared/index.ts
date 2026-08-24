@@ -22,3 +22,4 @@ export { TabBar } from "./TabBar";
 export type { TimePickerProps } from "./TimePicker";
 export { TimePicker } from "./TimePicker";
 export { useDelayedUnmount } from "./useDelayedUnmount";
+export { useMinimumVisible } from "./useMinimumVisible";

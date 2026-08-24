@@ -91,7 +91,7 @@ const StageGroup = memo(function StageGroup({ segment, fallbackTitle, exportMode
 						key={`thinking-${block.id}`}
 						text={block.text}
 						exportMode={exportMode}
-						title={t("messageList.progressGroup.thinking")}
+						title={t("messageList.progressGroup.thinkingLabel")}
 						showLineCount={false}
 					/>
 				),
@@ -105,6 +105,8 @@ interface WorkSegmentRendererProps {
 	isStreamingTail?: boolean;
 	/** This is the last process segment in the currently streaming assistant turn. */
 	isLiveActivity?: boolean;
+	/** 已提升到消息末尾的 thinking block id：原位跳过，避免重复渲染。 */
+	hoistedThinkingId?: string;
 	animateIn?: boolean;
 	exportMode?: boolean;
 }
@@ -117,6 +119,7 @@ function arePropsEqual(previous: WorkSegmentRendererProps, next: WorkSegmentRend
 	if (
 		previous.isStreamingTail !== next.isStreamingTail ||
 		previous.isLiveActivity !== next.isLiveActivity ||
+		previous.hoistedThinkingId !== next.hoistedThinkingId ||
 		previous.animateIn !== next.animateIn ||
 		previous.exportMode !== next.exportMode
 	) {
@@ -147,6 +150,7 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 	segment,
 	isStreamingTail = false,
 	isLiveActivity = false,
+	hoistedThinkingId,
 	animateIn = false,
 	exportMode = false,
 }: WorkSegmentRendererProps) {
@@ -184,7 +188,11 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 				fallbackTitle={
 					// 纯 thinking 的兜底组不该说「完成了 0 步操作」。
 					toolBlocks.length === 0
-						? t("messageList.progressGroup.thinking")
+						? t(
+								isLiveActivity
+									? "messageList.progressGroup.thinking"
+									: "messageList.progressGroup.thinkingLabel",
+							)
 						: done
 							? t("messageList.progressGroup.genericDone", { count: toolBlocks.length })
 							: t("messageList.progressGroup.genericRunning")
@@ -199,17 +207,12 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 				content = <TextBlockView text={segment.block.text} isStreamingTail={isStreamingTail} />;
 				break;
 			case "thinking":
-				// 组外的裸 thinking（阶段尚未开组）：流式时投影单行摘要，结束后回到稳定标题。
-				const preview = isLiveActivity ? compactWorkActivityText(segment.block.text) : "";
-				content = (
+				// 正在追加的那条已被提升到消息末尾常驻展示，原位不重复渲染。
+				content = hoistedThinkingId === segment.block.id ? null : (
 					<ThinkingBlockView
 						text={segment.block.text}
 						exportMode={exportMode}
-						title={
-							preview
-								? t("messageList.progressGroup.thinkingActivity", { text: preview })
-								: t("messageList.progressGroup.thinking")
-						}
+						title={t("messageList.progressGroup.thinkingLabel")}
 						showLineCount={false}
 					/>
 				);

@@ -12,6 +12,7 @@ vi.mock("react-i18next", () => ({
 			if (key === "messageList.progressGroup.genericRunning") return "正在处理…";
 			if (key === "messageList.progressGroup.genericDone") return `完成了 ${values?.count} 步操作`;
 			if (key === "messageList.progressGroup.thinking") return "正在思考";
+			if (key === "messageList.progressGroup.thinkingLabel") return "思考";
 			return key;
 		},
 	}),
@@ -140,16 +141,33 @@ describe("WorkSegmentRenderer live activity", () => {
 		expect(screen.getByTestId("group-title").textContent).toBe("核对项目");
 	});
 
-	it("组外的裸 thinking 在流式期间也展示内容摘要", () => {
+	it("被提升到消息末尾的 thinking 在原位不再渲染", () => {
 		render(
 			<Provider store={createStore()}>
 				<WorkSegmentRenderer
 					segment={{ type: "single", block: thinking("核对是否需要调整公共协议") }}
 					isLiveActivity
+					hoistedThinkingId="thinking-1"
 				/>
 			</Provider>,
 		);
 
-		expect(screen.getByTestId("thinking-title").textContent).toBe("思考：核对是否需要调整公共协议");
+		expect(screen.queryByTestId("thinking-title")).toBeNull();
+	});
+
+	it("流式结束后的历史 thinking 折叠条只说「思考」", () => {
+		render(
+			<Provider store={createStore()}>
+				<WorkSegmentRenderer segment={{ type: "single", block: thinking("已核对公共协议") }} />
+			</Provider>,
+		);
+
+		expect(screen.getByTestId("thinking-title").textContent).toBe("思考");
+	});
+
+	it("阶段组内的历史 thinking 折叠条只说「思考」", () => {
+		renderSegment(stage([tool("read", { status: "success" }), thinking("已核对公共协议")], { closed: true }), false);
+
+		expect(screen.getByTestId("thinking-title").textContent).toBe("思考");
 	});
 });

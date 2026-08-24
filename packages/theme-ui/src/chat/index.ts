@@ -130,6 +130,8 @@ export type {
 	KbWritePageViewProps,
 } from "./KnowledgeToolViews";
 export { KbFilterByTagsView, KbListTagsView, KbWritePageView } from "./KnowledgeToolViews";
+export type { LiveThinkingViewProps } from "./LiveThinkingView";
+export { LiveThinkingView } from "./LiveThinkingView";
 export type { CopyButtonLabels } from "./MessageActions";
 export {
 	CopyButton,

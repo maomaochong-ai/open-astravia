@@ -671,7 +671,8 @@
 			"genericDone": "Completed {{count}} steps",
 			"genericRunning": "Working on it",
 			"thinking": "Thinking",
-			"thinkingActivity": "Thinking: {{text}}"
+			"thinkingActivity": "Thinking: {{text}}",
+			"thinkingLabel": "Thinking"
 		},
 		"toolCallGroup": {
 			"completed": "{{count}} tool calls completed",
