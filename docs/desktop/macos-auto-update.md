@@ -336,36 +336,36 @@ bun run publish:updates:r2
 
 ## 9. 正式发版
 
-正式发版由 tag 触发 `.github/workflows/desktop-release.yml`，三平台一次出全，与 Windows 共用同一条编排。macOS 正式发布使用自持 runner；不发布的 `workflow_dispatch` 演练使用 GitHub 托管 runner。
+正式发版由 tag 触发 `.github/workflows/desktop-release.yml`，三平台一次出全，与 Windows 共用同一条编排。macOS 与 Windows、Linux 一样全部使用 GitHub 托管 runner，不依赖任何一台固定的签名机。
 
 ### 9.1 runner 选择
 
-仓库公开后，标准 GitHub 托管 runner 不消耗 Actions 分钟。不发布的演练按目标架构分别使用 `macos-15`（arm64）和 `macos-15-intel`（x64），即使签名机离线也能验证完整构建、更新产物与 packaged E2E。
+两个架构各自使用匹配的托管 runner：`macos-15`（arm64）与 `macos-15-intel`（x64）。发布构建与非发布演练走同一个 runner，区别只在于是否要求签名。
 
-tag 或显式 stable/test 发布仍使用带签名、公证凭据的 `vetta-mac` 自持 runner。这样凭据留在受控签名机上，且正式产物继续在固定环境中生成。Windows 与 Linux 始终使用托管 runner。
+公证不需要本地环境：`xcrun notarytool` 只是把签好名的产物传给 Apple 换回票据，托管 runner 有网络即可；`.p12` 由 electron-builder 导入临时钥匙串，不碰登录钥匙串。
 
-### 9.2 runner 准备
+私有仓库下 macOS runner 按 10 倍分钟数计费，两个架构各跑一次完整签名公证，注意配额。
 
-在签名机上注册，标签必须包含 `vetta-mac`：
+### 9.2 凭据准备
 
-```bash
-./config.sh --url https://github.com/openvetta/open-vetta --token <token> --labels vetta-mac
+签名与公证凭据全部放 Actions Secrets，共六项（申请流程见 `docs/deploy/apple-code-signing.md`）：
+
+```text
+MACOS_CERTIFICATE_P12_BASE64    # base64 -i developer-id.p12
+MACOS_CERTIFICATE_PASSWORD      # 导出 .p12 时设的密码
+APPLE_API_KEY_P8_BASE64         # base64 -i AuthKey_XXXXXXXXXX.p8
+APPLE_API_KEY_ID
+APPLE_API_ISSUER
+APPLE_TEAM_ID
 ```
 
-签名凭据放 runner 目录的 `.env`（`chmod 600`，不进版本控制）：
+工作流在 `RUNNER_TEMP` 下把 `.p12` 与 `.p8` 还原成 `chmod 600` 的文件，只通过环境变量传给 electron-builder，构建结束随 runner 一起销毁。
 
-```dotenv
-CSC_LINK=/Users/<you>/secrets/developer-id.p12
-CSC_KEY_PASSWORD=<导出 p12 时的密码>
-APPLE_TEAM_ID=<10 位>
-APPLE_API_KEY=/Users/<you>/secrets/AuthKey_XXXXXXXXXX.p8
-APPLE_API_KEY_ID=XXXXXXXXXX
-APPLE_API_ISSUER=<uuid>
-```
+**证书必须走 `CSC_LINK`（`.p12` 路径）而不是 `CSC_NAME`**：走 `.p12` 时 electron-builder 会建临时钥匙串导入证书；用 `CSC_NAME` 要读登录钥匙串，非交互环境下它是锁着的，报 `The specified item could not be found in the keychain` 或 `User interaction is not allowed`。
 
-**必须用 `CSC_LINK`（`.p12` 路径）而不是 `CSC_NAME`**：走 `.p12` 时 electron-builder 会建临时钥匙串导入证书，绕开登录钥匙串；用 `CSC_NAME` 要读登录钥匙串，runner 作为后台服务运行时它是锁着的，报 `The specified item could not be found in the keychain` 或 `User interaction is not allowed`。
+签名步骤仍会优先使用 runner 环境已提供的凭据，只有在 runner 没提供时才回退到上述 Secret——这条分支留给本地或自持签名机，托管 runner 上永远走 Secret 路径。两者都没有时，tag 发版直接失败，`workflow_dispatch` 允许产出未签名测试包。
 
-工作流的签名步骤会优先使用 runner 环境提供的凭据；只有在 runner 没提供时才回退到 CI Secret（`MACOS_CERTIFICATE_P12_BASE64` 等六项）。两者都没有时，tag 发版直接失败，`workflow_dispatch` 允许产出未签名测试包。
+注意：只要 Secret 配齐，**非发布的 `workflow_dispatch` 演练也会签名并公证**，因为开关只看凭据是否完整。想快速验证构建可以设 `VETTA_SKIP_NOTARIZE=1` 只签名不公证。
 
 ### 9.3 CI 上的 macOS 流程
 
@@ -373,18 +373,18 @@ APPLE_API_ISSUER=<uuid>
 tag v<version>
   -> 校验 tag 名与 apps/desktop/package.json 版本一致
   -> 读取签名凭据，打开 VETTA_REQUIRE_MAC_SIGNATURE=1
-  -> 清理上一轮的 release/（自持 runner 复用工作目录）
+  -> 清理上一轮的 release/（复用工作目录的 runner 才会有残留）
   -> dist:mac:<arch>
   -> verify:updates:mac
   -> latest-mac.yml 改名为 latest-mac-<arch>.yml
   -> 上传 artifact
-（发布时 arm64 与 x64 两个 job 在同一台 runner 上串行；非发布演练使用两个匹配架构的托管 runner）
+（arm64 与 x64 是两个独立 job，各自在匹配架构的托管 runner 上并行）
   -> 四个平台 job 全绿后 publish-r2
   -> merge:updates:mac 合并元数据
   -> 发布到 desktop/stable
 ```
 
-单个 runner 同时只跑一个 job，两个 macOS job 串行，墙钟时间约为单架构的两倍。需要并行可在同一台机器注册第二个 runner 实例（另建目录、同样打 `vetta-mac` 标签）。
+两个 macOS job 并行，墙钟时间约等于单架构。签名+公证会让每个 job 比未签名构建多出 10～30 分钟（产物里内置 Node/Python 运行时与多个 sidecar 二进制，逐个签名再上传公证），build job 的 `timeout-minutes` 因此设为 120。
 
 必须先在 `test` 通道完成真实的「旧安装版 → CDN → 新版本 → 重启」闭环，再发布 stable。
 

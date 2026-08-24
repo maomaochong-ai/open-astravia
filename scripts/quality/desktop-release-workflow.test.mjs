@@ -91,14 +91,17 @@ describe("Desktop release workflow contracts", () => {
 		expect(workflow).toContain('--target "' + "$" + '{GITHUB_SHA}"');
 	});
 
-	it("uses hosted macOS runners only for non-publishing rehearsals", () => {
-		expect(workflow).toContain(
-			"runs-on: $" +
-				"{{ needs.prepare.outputs.should-publish == 'true' && matrix.releaseRunner || matrix.rehearsalRunner }}",
-		);
-		expect(workflow.match(/releaseRunner: vetta-mac/g)).toHaveLength(2);
-		expect(workflow).toContain("rehearsalRunner: macos-15\n");
-		expect(workflow).toContain("rehearsalRunner: macos-15-intel\n");
+	it("builds each macOS architecture on a matching hosted runner", () => {
+		expect(workflow).toContain("runs-on: $" + "{{ matrix.runner }}");
+		expect(workflow).toContain("runner: macos-15\n");
+		expect(workflow).toContain("runner: macos-15-intel\n");
+		expect(workflow).not.toContain("vetta-mac");
+	});
+
+	it("allows enough wall clock for signing and notarizing both macOS architectures", () => {
+		const buildJob = workflow.slice(workflow.indexOf("\n  build:"), workflow.indexOf("\n  publish-r2:"));
+		const timeout = Number(buildJob.match(/timeout-minutes: (\d+)/)?.[1]);
+		expect(timeout).toBeGreaterThanOrEqual(120);
 	});
 
 	it("provides an isolated test-channel workflow for real install and restart upgrades", () => {

@@ -197,9 +197,9 @@ xcrun notarytool history --key "$APPLE_API_KEY" --key-id "$APPLE_API_KEY_ID" --i
 | `APPLE_API_ISSUER` | App Store Connect Issuer ID |
 | `APPLE_TEAM_ID` | Developer Program Team ID |
 
-macOS 在 matrix 里是 `dist:mac:arm64` 与 `dist:mac:x64` 两个任务（内置的 node/python 运行时按 `VETTA_VENDOR_PLATFORM` 单架构落盘，一次构建出不了两套），两者各自签名公证并校验，产物元数据以 `latest-mac-<arch>.yml` 上传，由发布任务的 `merge:updates:mac` 合并回单一 `latest-mac.yml`。
+macOS 在 matrix 里是 `dist:mac:arm64` 与 `dist:mac:x64` 两个任务（内置的 node/python 运行时按 `VETTA_VENDOR_PLATFORM` 单架构落盘，一次构建出不了两套），分别跑在 `macos-15` 与 `macos-15-intel` 托管 runner 上，两者各自签名公证并校验，产物元数据以 `latest-mac-<arch>.yml` 上传，由发布任务的 `merge:updates:mac` 合并回单一 `latest-mac.yml`。
 
-工作流会在 macOS runner 的临时目录还原 `.p12` 和 `.p8`，仅通过环境变量传给 electron-builder。完全没有这些 Secrets 时，tag 和手动构建都允许生成未签名包；只配置一部分仍会直接失败，避免产出「签了名但没公证」的半成品。凭据齐全时会设置 `VETTA_REQUIRE_MAC_SIGNATURE=1`，构建后自动校验 ZIP 内应用的签名、Gatekeeper 接受状态和公证票据。正式启用签名后，发布负责人还应把“macOS 必须签名”设为发布策略，不能继续把未签名包当成最终交付物。
+公证不需要专用签名机：`notarytool` 只是把签好名的产物传给 Apple 换票据，托管 runner 有网络即可。工作流会在 runner 的临时目录还原 `.p12` 和 `.p8`（`chmod 600`），仅通过环境变量传给 electron-builder，构建结束随 runner 销毁。完全没有这些 Secrets 时，tag 和手动构建都允许生成未签名包；只配置一部分仍会直接失败，避免产出「签了名但没公证」的半成品。反过来，**只要 Secrets 配齐，非发布的 `workflow_dispatch` 演练也会签名并公证**，因为开关只看凭据完整性；想快速验证构建可以设 `VETTA_SKIP_NOTARIZE=1` 只签名不公证。凭据齐全时会设置 `VETTA_REQUIRE_MAC_SIGNATURE=1`，构建后自动校验 ZIP 内应用的签名、Gatekeeper 接受状态和公证票据。正式启用签名后，发布负责人还应把“macOS 必须签名”设为发布策略，不能继续把未签名包当成最终交付物。
 
 ## 5. 验证
 

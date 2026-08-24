@@ -199,39 +199,37 @@ jobs:
     name: build ${{ matrix.platform }}
     needs: [prepare, quality]
     if: needs.prepare.outputs.should-build == 'true'
-    runs-on: ${{ needs.prepare.outputs.should-publish == 'true' && matrix.releaseRunner || matrix.rehearsalRunner }}
-    timeout-minutes: 90
+    runs-on: ${{ matrix.runner }}
+    # macOS 发布构建要对内置 node/python 运行时和各个 sidecar 二进制逐个签名再上传
+    # 公证，比未签名构建多出 10~30 分钟，托管 runner 上还要叠加 packaged E2E。
+    timeout-minutes: 120
     environment: ${{ needs.prepare.outputs.channel == 'test' && 'desktop-test' || 'desktop-production' }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: windows
-            releaseRunner: windows-latest
-            rehearsalRunner: windows-latest
+            runner: windows-latest
             command: dist:win
             verify: verify:updates:windows
             macArch: ""
           # arm64 与 x64 必须分两次构建：内置的 node/python 运行时按
           # VETTA_VENDOR_PLATFORM 单架构落盘，一次构建出不了两套。两次都会写同名的
           # latest-mac.yml，因此各自重命名后上传，由发布任务合并回单一元数据。
-          # 发布构建继续走含签名凭据的自持 runner；公开仓库的非发布演练使用与目标
-          # 架构一致的标准 GitHub-hosted runner，避免签名机离线时阻塞纯构建验证。
+          # 两个架构各自使用匹配的 GitHub-hosted runner：签名与公证凭据来自 CI Secret，
+          # notarytool 只需要网络，不依赖任何一台固定的签名机。
           - platform: macos-arm64
-            releaseRunner: vetta-mac
-            rehearsalRunner: macos-15
+            runner: macos-15
             command: dist:mac:arm64
             verify: verify:updates:mac
             macArch: arm64
           - platform: macos-x64
-            releaseRunner: vetta-mac
-            rehearsalRunner: macos-15-intel
+            runner: macos-15-intel
             command: dist:mac:x64
             verify: verify:updates:mac
             macArch: x64
           - platform: linux
-            releaseRunner: ubuntu-latest
-            rehearsalRunner: ubuntu-latest
+            runner: ubuntu-latest
             command: dist:linux
             verify: verify:updates:linux
             macArch: ""
@@ -268,8 +266,8 @@ jobs:
         if: matrix.macArch != ''
         shell: bash
         env:
-          # 一律加 SECRET_ 前缀：自持 runner 通过自身环境提供同名的 APPLE_* 变量，
-          # 未配置的 Secret 会展开成空串并把它们盖掉。
+          # 一律加 SECRET_ 前缀：runner 环境可能自带同名的 APPLE_* 变量（自持签名机
+          # 场景），未配置的 Secret 会展开成空串并把它们盖掉。
           SECRET_MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
           SECRET_MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
           SECRET_APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
@@ -278,7 +276,8 @@ jobs:
           SECRET_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           REQUIRE_RELEASE_SIGNATURE: ${{ needs.prepare.outputs.should-publish == 'true' }}
         run: |
-          # 自持 runner 把凭据放在 runner 目录的 .env 里，证书不进 CI Secret。
+          # 托管 runner 上凭据全部来自下面的 CI Secret。这个分支只在 runner 自身环境
+          # 已经提供凭据时生效（自持签名机把它们放在 runner 目录的 .env 里）。
           if [[ -n "${CSC_LINK:-}${CSC_NAME:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
             HAS_API_KEY=0
             HAS_APPLE_ID=0
@@ -342,7 +341,7 @@ jobs:
             echo "VETTA_REQUIRE_MAC_SIGNATURE=1"
           } >> "${GITHUB_ENV}"
 
-      # 自持 runner 复用工作目录，而 release/ 不在版本控制里，actions/checkout 清不掉。
+      # release/ 不在版本控制里，actions/checkout 清不掉。复用工作目录的 runner 上
       # 残留的旧版本 latest*.yml 会让合并与发布脚本读到多个版本直接失败。
       - name: Clean previous release artifacts
         shell: bash
