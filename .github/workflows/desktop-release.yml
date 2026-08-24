@@ -183,6 +183,20 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # im-gateway 的 Go 测试不在 `bun run check` 覆盖范围内，而 im-gateway.yml
+      # 只在改动命中 apps/im-gateway/** 时触发、且与本流水线没有 needs 依赖。
+      # 缺了这一步，一个测试失败的 sidecar 依然会被 prepare-pack.js 交叉编译进
+      # 发布包。lint 留在 im-gateway.yml 管：风格问题不该拦发版，行为回归该拦。
+      - name: Set up Go for IM gateway
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/im-gateway/go.mod
+          cache-dependency-path: apps/im-gateway/go.sum
+
+      - name: Test IM gateway sidecar
+        working-directory: apps/im-gateway
+        run: go test ./...
+
       - name: Run repository checks
         run: bun run check
 

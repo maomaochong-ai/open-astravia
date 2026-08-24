@@ -91,6 +91,16 @@ describe("Desktop release workflow contracts", () => {
 		expect(workflow).toContain('--target "' + "$" + '{GITHUB_SHA}"');
 	});
 
+	// im-gateway 的 sidecar 由 prepare-pack.js 交叉编译进发布包，但它的 Go 测试
+	// 既不在 `bun run check` 里，im-gateway.yml 也不 gate 本流水线。少了这道门禁，
+	// 测试失败的 sidecar 会被静默打包发布。
+	it("gates the release on the IM gateway Go tests", () => {
+		const qualityJob = workflow.slice(workflow.indexOf("\n  quality:"), workflow.indexOf("\n  build:"));
+		expect(qualityJob).toContain("go test ./...");
+		expect(qualityJob).toContain("working-directory: apps/im-gateway");
+		expect(qualityJob).toContain("go-version-file: apps/im-gateway/go.mod");
+	});
+
 	it("builds each macOS architecture on a matching hosted runner", () => {
 		expect(workflow).toContain("runs-on: $" + "{{ matrix.runner }}");
 		expect(workflow).toContain("runner: macos-15\n");
