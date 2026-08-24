@@ -9,7 +9,12 @@
  * 3. One vite dev server per open design (host-allocated port, {{PORT}}
  *    substitution), stopped when the canvas leaves the design.
  */
-import type { PluginCommandSpawnHandle, PluginContext } from "@vetta-org/plugin-sdk";
+import type {
+	Disposable,
+	PluginCommandSpawnExit,
+	PluginCommandSpawnHandle,
+	PluginContext,
+} from "@vetta-org/plugin-sdk";
 import { designPackageJson, needsDependencyInstall, PACKAGE_FILE } from "../vetd/design-package";
 import { sanitizeDesignName } from "../vetd/scaffold";
 import { ENGINE_FILES, engineFilesHash } from "./engine-files";
@@ -27,6 +32,8 @@ export interface EngineServer {
 	port: number;
 	handle: PluginCommandSpawnHandle;
 	designDir: string;
+	/** 可重放的退出信号：即使 Canvas 在 HTTP ready 之后才订阅，也不会错过早退。 */
+	whenExited: Promise<PluginCommandSpawnExit>;
 }
 
 const BOOTSTRAP_SCRIPT = [
@@ -352,6 +359,38 @@ async function waitForHttpReady(port: number, timeoutMs: number): Promise<void> 
 	throw new Error(`design engine did not become ready: ${String(lastError)}`);
 }
 
+/**
+ * 把 SDK 的一次性退出事件提升成可重放 Promise，并用 status 补上“进程已退出、监听刚
+ * 注册”的窄竞态。status 在插件重载时可能因旧 capability session 失效而拒绝；此时
+ * 宿主的全局退出事件仍是主路径，所以这里只忽略探测失败。
+ */
+export function waitForSpawnExit(handle: PluginCommandSpawnHandle): Promise<PluginCommandSpawnExit> {
+	return new Promise((resolve) => {
+		let settled = false;
+		let subscription: Disposable | null = null;
+		const finish = (exit: PluginCommandSpawnExit): void => {
+			if (settled) return;
+			settled = true;
+			subscription?.dispose();
+			resolve(exit);
+		};
+		subscription = handle.onExit(finish);
+		if (settled) subscription.dispose();
+		void handle
+			.status()
+			.then((status) => {
+				if (!status.running && status.exit) finish(status.exit);
+			})
+			.catch(() => undefined);
+	});
+}
+
+function describeSpawnExit(exit: PluginCommandSpawnExit): string {
+	return exit.exitCode === null
+		? `design engine exited with signal ${exit.signal ?? "unknown"}`
+		: `design engine exited with code ${exit.exitCode}`;
+}
+
 /** Start (or reuse) the vite dev server serving one design dir. */
 export async function startDesignServer(
 	ctx: PluginContext,
@@ -380,13 +419,23 @@ export async function startDesignServer(
 		await handle.stop();
 		throw new Error("host did not allocate a port for the design engine");
 	}
-	const server: EngineServer = { port: handle.port, handle, designDir };
+	const server: EngineServer = {
+		port: handle.port,
+		handle,
+		designDir,
+		whenExited: waitForSpawnExit(handle),
+	};
 	servers.set(designDir, server);
-	handle.onExit(() => {
+	void server.whenExited.then(() => {
 		if (servers.get(designDir) === server) servers.delete(designDir);
 	});
 	try {
-		await waitForHttpReady(handle.port, 30_000);
+		await Promise.race([
+			waitForHttpReady(handle.port, 30_000),
+			server.whenExited.then((exit) => {
+				throw new Error(describeSpawnExit(exit));
+			}),
+		]);
 	} catch (error) {
 		const status = await handle.status().catch(() => null);
 		await stopDesignServer(designDir);

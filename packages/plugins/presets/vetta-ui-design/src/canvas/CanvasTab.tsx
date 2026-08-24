@@ -5,6 +5,7 @@ import {
 	startDesignServer,
 	stopDesignServer,
 } from "../engine/engine-manager";
+import { planEngineRestart } from "../engine/engine-recovery";
 import { exportDesign } from "../export/export-design";
 import { NotesStore } from "../notes/notes-store";
 import { useNotesVisibility } from "../notes/notes-visibility";
@@ -23,6 +24,7 @@ import { ThemePalette } from "./ThemePalette";
 type Phase =
 	| { kind: "idle" }
 	| { kind: "preparing"; progress: EngineProgress }
+	| { kind: "restarting"; attempt: number; maxAttempts: number }
 	| { kind: "ready"; port: number }
 	| { kind: "error"; message: string };
 
@@ -46,6 +48,14 @@ export function CanvasTab() {
 	const notesVisibility = useNotesVisibility();
 	const [exporting, setExporting] = useState(false);
 	const [reloadNonce, setReloadNonce] = useState(0);
+	/** 当前设计在稳定窗口内的异常退出时间；切设计或手动重试会清零。 */
+	const recoveryHistoryRef = useRef<readonly number[]>([]);
+	const recoveryKeyRef = useRef<string | null>(null);
+	/** 离屏截图可作为退出事件的后备探针，两条路径汇入同一个幂等恢复函数。 */
+	const requestEngineRecoveryRef = useRef<(reason: unknown) => void>(() => undefined);
+	const onEngineUnavailable = useCallback((reason: unknown): void => {
+		requestEngineRecoveryRef.current(reason);
+	}, []);
 	const bridgeRef = useRef(new BridgeHub());
 	/** 画布挂载后填入，见 DesignCanvas 的 captureRef。 */
 	const captureRef = useRef<FrameCapture | null>(null);
@@ -105,10 +115,17 @@ export function CanvasTab() {
 			return;
 		}
 		localStorage.setItem(storageKey(cwd), selectedPath);
+		const recoveryKey = `${cwd}\0${selectedPath}`;
+		if (recoveryKeyRef.current !== recoveryKey) {
+			recoveryKeyRef.current = recoveryKey;
+			recoveryHistoryRef.current = [];
+		}
 		const ctx = getPluginCtx();
 		const nextSession = new DesignSession(ctx, selectedPath);
 		const nextNotes = new NotesStore(ctx.fs, nextSession.dirPath);
 		let cancelled = false;
+		let restartTimer: number | null = null;
+		let recoverCurrent: ((reason: unknown) => void) | null = null;
 		setPhase({ kind: "preparing", progress: { phase: "checking" } });
 		setSession(nextSession);
 		setNotesStore(nextNotes);
@@ -119,6 +136,38 @@ export function CanvasTab() {
 				if (!cancelled) setPhase({ kind: "preparing", progress });
 			});
 			if (cancelled) return;
+			let recoveryStarted = false;
+			recoverCurrent = (reason: unknown): void => {
+				if (cancelled || recoveryStarted) return;
+				recoveryStarted = true;
+				const decision = planEngineRestart(recoveryHistoryRef.current);
+				recoveryHistoryRef.current = decision.history;
+				// 先撤掉所有旧端口消费者，再等待退避：工具调用和位图队列都不该在这段
+				// 时间继续碰已经确认失效的 localhost 服务。
+				setCanvasController(null);
+				captureRef.current = null;
+				clearFrameActivity();
+				if (decision.kind === "restart") {
+					setPhase({ kind: "restarting", attempt: decision.attempt, maxAttempts: decision.maxAttempts });
+					restartTimer = window.setTimeout(() => {
+						restartTimer = null;
+						if (!cancelled) setReloadNonce((value) => value + 1);
+					}, decision.delayMs);
+					return;
+				}
+				const detail = reason instanceof Error ? reason.message : String(reason);
+				const message = t("engine.error.exited", { reason: detail });
+				setPhase({ kind: "error", message });
+				notify({ message: t("engine.status.error"), error: new Error(message) });
+			};
+			requestEngineRecoveryRef.current = recoverCurrent;
+			void server.whenExited.then((exit) => {
+				const reason =
+					exit.exitCode === null
+						? `signal ${exit.signal ?? "unknown"}`
+						: `exit code ${exit.exitCode}`;
+				recoverCurrent?.(new Error(reason));
+			});
 			setCanvasController({
 				session: nextSession,
 				notes: nextNotes,
@@ -147,6 +196,10 @@ export function CanvasTab() {
 		});
 		return () => {
 			cancelled = true;
+			if (restartTimer !== null) window.clearTimeout(restartTimer);
+			if (requestEngineRecoveryRef.current === recoverCurrent) {
+				requestEngineRecoveryRef.current = () => undefined;
+			}
 			// 离开这份设计（切设计稿、关面板、切会话）时留一张画廊封面。
 			// 放在拆卸时而不是每次截图后：位图落定是高频事件，而封面只要「最后那一版」。
 			// dispose 之前抄一份 frames——dispose 之后 manifest 不再更新，但读没问题；
@@ -157,7 +210,9 @@ export function CanvasTab() {
 			nextNotes.dispose();
 			setCanvasController(null);
 			clearFrameActivity();
-			void stopDesignServer(nextSession.dirPath);
+			void stopDesignServer(nextSession.dirPath).catch((error: unknown) => {
+				console.warn("[vetd] 设计引擎清理失败，交由宿主生命周期兜底", error);
+			});
 		};
 	}, [selectedPath, cwd, t, refreshFiles, reloadNonce]);
 
@@ -200,6 +255,9 @@ export function CanvasTab() {
 	};
 
 	const progressText = useMemo(() => {
+		if (phase.kind === "restarting") {
+			return t("engine.status.restarting", { attempt: phase.attempt, max: phase.maxAttempts });
+		}
 		if (phase.kind !== "preparing") return "";
 		switch (phase.progress.phase) {
 			case "checking":
@@ -295,11 +353,12 @@ export function CanvasTab() {
 				{phase.kind !== "ready" ? (
 					<div className="absolute left-3 top-3 z-40 flex items-center gap-1">{titleSlot}</div>
 				) : null}
-				{phase.kind === "preparing" ? (
+				{phase.kind === "preparing" || phase.kind === "restarting" ? (
 					<div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
 						<span className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
 						<p className="max-w-72 whitespace-pre-wrap text-xs text-muted-foreground">{progressText}</p>
-						{(phase.progress.phase === "installing" || phase.progress.phase === "installing-design") &&
+						{phase.kind === "preparing" &&
+						(phase.progress.phase === "installing" || phase.progress.phase === "installing-design") &&
 						phase.progress.outputTail ? (
 							<pre className="max-h-24 max-w-full overflow-hidden text-ellipsis rounded-md bg-accent p-2 text-left text-[10px] text-muted-foreground">
 								{phase.progress.outputTail}
@@ -315,7 +374,10 @@ export function CanvasTab() {
 						</pre>
 						<button
 							type="button"
-							onClick={() => setReloadNonce((value) => value + 1)}
+							onClick={() => {
+								recoveryHistoryRef.current = [];
+								setReloadNonce((value) => value + 1);
+							}}
 							className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
 						>
 							{t("engine.status.retry")}
@@ -330,6 +392,7 @@ export function CanvasTab() {
 							cwd={cwd}
 							port={phase.port}
 							bridge={bridgeRef.current}
+							onEngineUnavailable={onEngineUnavailable}
 							captureRef={captureRef}
 							onRescanDesigns={() => void refreshFiles()}
 							previewTargetRef={previewTargetRef}

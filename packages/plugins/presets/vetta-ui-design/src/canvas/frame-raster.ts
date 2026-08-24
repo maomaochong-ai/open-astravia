@@ -3,6 +3,7 @@ import type { BridgeHub } from "./bridge-client";
 import { getFrameError } from "./design-runtime";
 import {
 	captureFrameOffscreen,
+	isOffscreenServerUnavailable,
 	OFFSCREEN_RASTER_SLOTS,
 	offscreenRasterSupported,
 	releaseOffscreenRasterSession,
@@ -80,6 +81,8 @@ interface FrameRasterOptions {
 	offscreen: {
 		port: number;
 		sizeOf(frameId: string): { width: number; height: number } | null;
+		/** 预览端口拒绝连接时通知上层重启引擎；同一端口最多通知一次。 */
+		onUnavailable?(error: unknown): void;
 	} | null;
 }
 
@@ -193,10 +196,13 @@ export function useFrameRasters({
 	/** 尺寸回调随 manifest 变，走 ref 免得截图 effect 反复重排队。 */
 	const offscreenRef = useRef(offscreen);
 	offscreenRef.current = offscreen;
+	/** 同一失效端口只上报一次，避免三个并发槽各触发一轮重启和相同日志。 */
+	const unavailablePortRef = useRef<number | null>(null);
 
 	// 切设计文档（端口变化）/ 画布卸载时释放离屏窗口。
 	const offscreenPort = offscreen?.port ?? null;
 	useEffect(() => {
+		unavailablePortRef.current = null;
 		if (!offscreenActive || offscreenPort === null) return;
 		return () => releaseOffscreenRasterSession(offscreenPort);
 	}, [offscreenActive, offscreenPort]);
@@ -421,12 +427,21 @@ export function useFrameRasters({
 							void saveRaster(cacheKey, frameId, dataUrl);
 						})
 						.catch((error: unknown) => {
+							const context = offscreenRef.current;
+							let shouldLog = true;
+							if (context && isOffscreenServerUnavailable(error)) {
+								if (unavailablePortRef.current === context.port) shouldLog = false;
+								else {
+									unavailablePortRef.current = context.port;
+									context.onUnavailable?.(error);
+								}
+							}
 							// 截不到就让它继续活着——比显示一张坏图安全。但不能静默：一张都截
 							// 不成时整块优化等于没生效，而表面上看不出任何区别。
 							setFailures((current) =>
 								new Map(current).set(frameId, error instanceof Error ? error.message : String(error)),
 							);
-							console.error(`[vetd] 位图化失败，frame 保持活体渲染: ${frameId}`, error);
+							if (shouldLog) console.error(`[vetd] 位图化失败，frame 保持活体渲染: ${frameId}`, error);
 						})
 						.finally(() => {
 							capturingRef.current.delete(frameId);

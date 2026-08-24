@@ -86,6 +86,8 @@ interface DesignCanvasProps {
 	cwd: string | null;
 	port: number;
 	bridge: BridgeHub;
+	/** 离屏窗口发现 localhost 预览服务失联时，请外层结束旧会话并重启引擎。 */
+	onEngineUnavailable(error: unknown): void;
 	/**
 	 * 出口：把「先拉回活体再截」的截图函数交给 CanvasTab，vetd_screenshot 用它。
 	 * runLive 来自 useFrameRasters，只存在于本组件里；外层若直接调 bridge.capture，
@@ -269,6 +271,7 @@ export function DesignCanvas({
 	cwd,
 	port,
 	bridge,
+	onEngineUnavailable,
 	captureRef,
 	onRescanDesigns,
 	previewTargetRef,
@@ -531,6 +534,7 @@ export function DesignCanvas({
 		activeFrameId: liveFrameId,
 		offscreen: {
 			port,
+			onUnavailable: onEngineUnavailable,
 			sizeOf: (frameId) => {
 				const frame = manifest.frames.find((candidate) => candidate.id === frameId);
 				return frame ? { width: frame.width, height: frame.height } : null;

@@ -2,10 +2,16 @@ import { spawnSync } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { PluginCommandApi, PluginContext } from "@vetta-org/plugin-sdk";
+import type {
+	Disposable,
+	PluginCommandApi,
+	PluginCommandSpawnExit,
+	PluginCommandSpawnHandle,
+	PluginContext,
+} from "@vetta-org/plugin-sdk";
 import { afterEach, describe, expect, it } from "vitest";
 import { engineFilesHash } from "../src/engine/engine-files";
-import { engineReady, migrateLegacyEngine } from "../src/engine/engine-manager";
+import { engineReady, migrateLegacyEngine, waitForSpawnExit } from "../src/engine/engine-manager";
 
 const temporaryDirectories: string[] = [];
 
@@ -81,5 +87,36 @@ describe("design engine data migration", () => {
 		await expect(engineReady(pluginContext(), engineRoot)).resolves.toBe(true);
 		await rm(join(engineRoot, "node_modules", "vite", "package.json"));
 		await expect(engineReady(pluginContext(), engineRoot)).resolves.toBe(false);
+	});
+});
+
+describe("design engine process exit signal", () => {
+	it("resolves from the host exit event", async () => {
+		let listener: ((exit: PluginCommandSpawnExit) => void) | null = null;
+		const handle = {
+			status: async () => ({ running: true, pid: 1, recentOutput: "" }),
+			onExit: (next: (exit: PluginCommandSpawnExit) => void): Disposable => {
+				listener = next;
+				return { dispose: () => undefined };
+			},
+		} as unknown as PluginCommandSpawnHandle;
+
+		const exited = waitForSpawnExit(handle);
+		const exit = { exitCode: 1, signal: null };
+		if (!listener) throw new Error("exit listener was not registered");
+		(listener as (value: PluginCommandSpawnExit) => void)(exit);
+		await expect(exited).resolves.toEqual(exit);
+	});
+
+	it("replays an exit already visible through status", async () => {
+		const exit = { exitCode: 1, signal: null };
+		let disposed = false;
+		const handle = {
+			status: async () => ({ running: false, pid: 1, exit, recentOutput: "failed" }),
+			onExit: (): Disposable => ({ dispose: () => (disposed = true) }),
+		} as unknown as PluginCommandSpawnHandle;
+
+		await expect(waitForSpawnExit(handle)).resolves.toEqual(exit);
+		expect(disposed).toBe(true);
 	});
 });

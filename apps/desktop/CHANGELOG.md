@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- 修复 Vetta UI Design 的设计预览进程在插件热重载或异常退出后，Canvas 仍持有旧 localhost 端口并为每个画框重复报 `ERR_CONNECTION_REFUSED`：进程退出现在会立即撤掉旧端口消费者并有限退避重启，离屏截图同时作为失联后备探针；一分钟内连续失败超过三次才停止自动恢复并显示可手动重试的错误。
 - 修复开发态页面热刷新后 Plugin Agent 工具、Hook 与动态 Prompt handler 偶发统一报 `handler not found`：插件宿主 bridge 的 handler 表、IPC listener guard 与会话订阅现在由 renderer 全局单例持有，模块被 HMR 重新求值时不会再创建一套空 registry 和重复监听器；正式的 activation / Turn generation 隔离与释放语义保持不变。
 - 修复 Vetta UI Design 渲染机检把同一行的 checkbox + 文案、tab 下划线等多个 DOM rect 误判成文字换行，以及把 `items-center` / baseline 布局中正常的 top edge 差异误判成错位的问题；重复截同一画框前会清除旧绘制完成标记，避免复用离屏窗口时读到上一轮画面。
 

@@ -66,6 +66,12 @@ export function framePrepareScript(frameId: string): string {
 	return `window.__vetdPainted = null; window.postMessage({ vetd: true, type: "show-frame", id: ${JSON.stringify(frameId)} }, "*")`;
 }
 
+/** localhost 预览进程已经不在；与页面构建失败、截图超时等可恢复的单帧错误区分。 */
+export function isOffscreenServerUnavailable(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return message.includes("ERR_CONNECTION_REFUSED") || message.includes("ECONNREFUSED");
+}
+
 export async function captureFrameOffscreen(request: OffscreenRasterRequest): Promise<OffscreenRasterResult> {
 	const capture = getPluginCtx().capture;
 	if (!capture) throw new Error("offscreen capture unavailable");

@@ -22,6 +22,12 @@ interface PendingCapture {
 	reject: (error: unknown) => void;
 }
 
+interface TestOffscreenContext {
+	port: number;
+	sizeOf(frameId: string): { width: number; height: number } | null;
+	onUnavailable?(error: unknown): void;
+}
+
 let captures: PendingCapture[];
 let bridge: BridgeHub;
 let latest: FrameRasterState;
@@ -31,7 +37,7 @@ let container: HTMLElement;
 function Harness(props: {
 	frameIds: readonly string[];
 	activeFrameId: string | null;
-	offscreen?: { port: number; sizeOf(frameId: string): { width: number; height: number } | null } | null;
+	offscreen?: TestOffscreenContext | null;
 }): null {
 	latest = useFrameRasters({
 		bridge,
@@ -58,7 +64,7 @@ async function advance(ms: number): Promise<void> {
 
 async function mount(
 	frameIds: readonly string[],
-	offscreen?: { port: number; sizeOf(frameId: string): { width: number; height: number } | null } | null,
+	offscreen?: TestOffscreenContext | null,
 ): Promise<void> {
 	container = document.createElement("div");
 	document.body.appendChild(container);
@@ -246,6 +252,34 @@ it("离屏模式下并发截图，不同帧落在不同的离屏会话上", asyn
 		// 空出来的槽位被复用，不会无限开窗口。
 		expect(pending[3].sessionKey).toBe(pending[0].sessionKey);
 	} finally {
+		setPluginCtx(null as unknown as PluginContext);
+	}
+});
+
+it("预览端口失联时只上报一次并抑制并发槽的重复错误日志", async () => {
+	const failure = new Error("ERR_CONNECTION_REFUSED (-102) loading 'http://127.0.0.1:53114/'");
+	const onUnavailable = vi.fn();
+	const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+	setPluginCtx({
+		capture: {
+			offscreen: () => Promise.reject(failure),
+			releaseOffscreen: () => Promise.resolve(),
+		},
+	} as unknown as PluginContext);
+	try {
+		await mount(["a", "b", "c"], {
+			port: 53114,
+			sizeOf: () => ({ width: 390, height: 844 }),
+			onUnavailable,
+		});
+		await advance(50);
+		await flushMicrotasks();
+
+		expect(onUnavailable).toHaveBeenCalledTimes(1);
+		expect(onUnavailable).toHaveBeenCalledWith(failure);
+		expect(consoleError).toHaveBeenCalledTimes(1);
+	} finally {
+		consoleError.mockRestore();
 		setPluginCtx(null as unknown as PluginContext);
 	}
 });
