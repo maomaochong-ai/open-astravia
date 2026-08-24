@@ -106,7 +106,7 @@ export function useHorizontalDragScroll({
 			startScrollLeft: track.scrollLeft,
 			moved: false,
 		};
-		track.setPointerCapture(event.pointerId);
+		// 不在此处捕获指针：一旦捕获，后续 click 会派发到 track 而不是子按钮，点击将失效。
 	}, []);
 
 	const onPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -117,6 +117,8 @@ export function useHorizontalDragScroll({
 		if (!drag.moved && Math.abs(deltaX) > DRAG_THRESHOLD_PX) {
 			drag.moved = true;
 			suppressClickRef.current = true;
+			// 确认是拖动才捕获指针，保证跟手；轻点（无捕获）时 click 能正常命中按钮。
+			track.setPointerCapture(event.pointerId);
 		}
 		if (!drag.moved) return;
 		event.preventDefault();
