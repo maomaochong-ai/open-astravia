@@ -3,20 +3,6 @@ import type { ChatMessage } from "./types";
 export const MESSAGE_NAVIGATION_MIN_TURNS = 8;
 const NAVIGATION_PREVIEW_MAX_CHARACTERS = 120;
 
-export function shouldShowMessageNavigation(messages: readonly ChatMessage[]): boolean {
-	let turns = 0;
-	let current = false;
-	for (const message of messages) {
-		if (message.role === "compaction") continue;
-		if (message.role === "user" || !current) {
-			turns += 1;
-			current = true;
-			if (turns >= MESSAGE_NAVIGATION_MIN_TURNS) return true;
-		}
-	}
-	return false;
-}
-
 export interface MessageNavigationEntry {
 	id: string;
 	messageIndex: number;
@@ -126,4 +112,22 @@ export function findActiveNavigationTurnIndex(turns: MessageNavigationTurn[], me
 		activeIndex = index;
 	}
 	return activeIndex;
+}
+
+export interface RenderedMessageItem {
+	index: number;
+	offset: number;
+	size: number;
+}
+
+/**
+ * Virtuoso 的 rangeChanged 报的是「已渲染」范围，包含 overscan / increaseViewportBy 撑出来的
+ * 视窗外条目，直接拿 startIndex 当当前消息会偏到视窗上方好几条。这里改用已渲染条目的实测
+ * 偏移与 scrollTop 求真正贴着视窗顶部的那条。
+ */
+export function findTopVisibleMessageIndex(items: readonly RenderedMessageItem[], scrollTop: number): number | null {
+	for (const item of items) {
+		if (item.offset + item.size > scrollTop) return item.index;
+	}
+	return items.at(-1)?.index ?? null;
 }

@@ -3,7 +3,7 @@ import {
 	buildMessageNavigationOutline,
 	buildMessageNavigationTurns,
 	findActiveNavigationTurnIndex,
-	shouldShowMessageNavigation,
+	findTopVisibleMessageIndex,
 } from "./messageNavigationModel";
 import type { ChatMessage } from "./types";
 
@@ -69,18 +69,22 @@ describe("message navigation model", () => {
 		]);
 	});
 
-	it("shows the outline only after eight navigable turns", () => {
-		const turns = (count: number): ChatMessage[] =>
-			Array.from({ length: count }).flatMap((_, index) => [
-				{ id: `user-${index}`, role: "user" as const, text: `Question ${index}` },
-				{ id: `assistant-${index}`, role: "assistant" as const, text: `Answer ${index}` },
-			]);
+	it("resolves the top visible message from measured offsets instead of the rendered range", () => {
+		// overscan 会把视窗上方的条目也算进 rendered range，这里 index 0/1 就是那种「渲染了但看不见」的条目。
+		const rendered = [
+			{ index: 0, offset: 0, size: 100 },
+			{ index: 1, offset: 100, size: 100 },
+			{ index: 2, offset: 200, size: 100 },
+			{ index: 3, offset: 300, size: 100 },
+		];
 
-		expect(shouldShowMessageNavigation(turns(7))).toBe(false);
-		expect(shouldShowMessageNavigation(turns(8))).toBe(true);
-		expect(shouldShowMessageNavigation([...turns(7), { id: "compact", role: "compaction", text: "summary" }])).toBe(
-			false,
-		);
+		expect(findTopVisibleMessageIndex(rendered, 0)).toBe(0);
+		expect(findTopVisibleMessageIndex(rendered, 200)).toBe(2);
+		expect(findTopVisibleMessageIndex(rendered, 250)).toBe(2);
+		expect(findTopVisibleMessageIndex(rendered, 300)).toBe(3);
+		// 滚到底时最后一条可能整体位于 scrollTop 之上，仍应停在它身上而不是回退到 null。
+		expect(findTopVisibleMessageIndex(rendered, 5_000)).toBe(3);
+		expect(findTopVisibleMessageIndex([], 0)).toBeNull();
 	});
 
 	it("maps the visible message index back to its containing turn", () => {

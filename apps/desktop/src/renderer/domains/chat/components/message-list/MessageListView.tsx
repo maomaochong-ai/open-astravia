@@ -1,4 +1,3 @@
-import { cn } from "@shared/lib/utils";
 import { activeSessionAtom } from "@shared/store/atoms";
 import {
 	MessageListView as ThemeMessageListView,
@@ -6,16 +5,16 @@ import {
 	VirtuosoListContainer,
 } from "@vetta/theme-ui/chat";
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { type ListRange, Virtuoso } from "react-virtuoso";
+import { type ListItem, Virtuoso } from "react-virtuoso";
 import { useMessageSelectionContextMenu } from "../../hooks/useMessageSelectionContextMenu";
 import { SuggestionBubbles } from "../SuggestionBubbles";
 import { ForkOriginBanner, resolveForkOriginPlacement } from "./ForkOriginBanner";
 import { MessageItem, ModelSwitchBoundary, ExportMessageList } from "./MessageItem";
 import { MessageListFooter } from "./MessageListFooter";
 import { MessageTimeline } from "./MessageTimeline";
-import { shouldShowMessageNavigation } from "./messageNavigationModel";
+import { findTopVisibleMessageIndex, type RenderedMessageItem } from "./messageNavigationModel";
 import type { ChatMessage, MessageListModel, MessageListProps } from "./types";
 
 export { ExportMessageList };
@@ -62,9 +61,44 @@ export function MessageListView({
 	useEffect(() => {
 		setActiveMessageIndex(Math.max(0, messages.length - 1));
 	}, [sessionId]);
-	const onVisibleRangeChanged = useCallback((range: ListRange) => {
-		setActiveMessageIndex(range.startIndex);
-	}, []);
+	const renderedItemsRef = useRef<RenderedMessageItem[]>([]);
+	const [scrollerElement, setScrollerElement] = useState<HTMLElement | null>(null);
+	const syncActiveMessageIndex = useCallback(() => {
+		if (!scrollerElement) return;
+		const index = findTopVisibleMessageIndex(renderedItemsRef.current, scrollerElement.scrollTop);
+		if (index != null) setActiveMessageIndex(index);
+	}, [scrollerElement]);
+	const onItemsRendered = useCallback(
+		(items: ListItem<ChatMessage>[]) => {
+			renderedItemsRef.current = items.map(({ index, offset, size }) => ({ index, offset, size }));
+			syncActiveMessageIndex();
+		},
+		[syncActiveMessageIndex],
+	);
+	const setScrollerRef = useCallback(
+		(element: HTMLElement | Window | null) => {
+			scroll.scrollerRef(element);
+			setScrollerElement(element instanceof HTMLElement ? element : null);
+		},
+		[scroll.scrollerRef],
+	);
+	useEffect(() => {
+		if (!scrollerElement) return;
+		let frame: number | null = null;
+		const onScroll = (): void => {
+			if (frame != null) return;
+			frame = requestAnimationFrame(() => {
+				frame = null;
+				syncActiveMessageIndex();
+			});
+		};
+		scrollerElement.addEventListener("scroll", onScroll, { passive: true });
+		syncActiveMessageIndex();
+		return () => {
+			if (frame != null) cancelAnimationFrame(frame);
+			scrollerElement.removeEventListener("scroll", onScroll);
+		};
+	}, [scrollerElement, syncActiveMessageIndex]);
 	const forkOriginPlacement = useMemo(
 		() =>
 			resolveForkOriginPlacement(
@@ -152,7 +186,6 @@ export function MessageListView({
 		() => ({ List: VirtuosoListContainer, Footer: footer }),
 		[footer],
 	);
-	const showMessageOutline = useMemo(() => shouldShowMessageNavigation(messages), [messages]);
 	const selectionMenu = useMessageSelectionContextMenu();
 
 	return (
@@ -163,25 +196,18 @@ export function MessageListView({
 				data-message-viewport={viewportPhase}
 				onContextMenuCapture={selectionMenu.onContextMenuCapture}
 			>
-				{/* 窄于 52rem 时消息列铺满，目录会压住右对齐气泡；把右侧 gutter 提到 3rem。宽屏仍走原来的页边空位。 */}
-				<div
-					className={cn(
-						"flex min-h-0 min-w-0 flex-1 flex-col",
-						showMessageOutline && "@max-[52rem]:[--message-outline-gutter:3rem]",
-					)}
-					data-message-outline={showMessageOutline ? "true" : undefined}
-				>
+				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 					<ThemeMessageListView
 						virtuoso={
 							<Virtuoso
 								ref={scroll.virtuosoRef}
-								scrollerRef={scroll.scrollerRef}
+								scrollerRef={setScrollerRef}
 								data={messages}
 								className="flex-1 pt-2"
 								style={VIRTUOSO_STYLE}
 								atBottomStateChange={scroll.onAtBottomChange}
 								atBottomThreshold={80}
-								rangeChanged={onVisibleRangeChanged}
+								itemsRendered={onItemsRendered}
 								overscan={
 									viewportPhase === "initial"
 										? INITIAL_OVERSCAN
@@ -204,8 +230,9 @@ export function MessageListView({
 						}
 					/>
 				</div>
-				{/* 贴会话区域右缘；right-6 给 overlay 滚动条留出间距，不跟居中的消息列对齐。 */}
-				<div className="pointer-events-none absolute top-1/2 right-6 z-20 -translate-y-1/2">
+				{/* 悬浮在会话区域左缘，不占消息列宽度；窄于 52rem 时消息列铺满整个会话区，
+				    目录会压住气泡，直接整条隐藏。 */}
+				<div className="pointer-events-none absolute top-1/2 left-3 z-20 -translate-y-1/2 @max-[52rem]:hidden">
 					<div className="pointer-events-auto">
 						<MessageTimeline
 							key={sessionId ?? "message-timeline"}

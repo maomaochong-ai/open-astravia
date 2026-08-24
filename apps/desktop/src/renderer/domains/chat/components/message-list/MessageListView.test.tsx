@@ -110,32 +110,20 @@ describe("MessageListView viewport phases", () => {
 		await userEvent.click(screen.getByRole("button", { name: "message timeline" }));
 
 		expect(viewProps.model.scroll.scrollToMessage).toHaveBeenCalledWith(3);
-		expect(captured.virtuosoProps?.rangeChanged).toEqual(expect.any(Function));
+		expect(captured.virtuosoProps?.itemsRendered).toEqual(expect.any(Function));
 	});
 
-	it("把提问目录放在会话区域右侧", () => {
+	it("把提问目录悬浮在会话区域左侧，不占消息列宽度", () => {
 		render(<MessageListView {...props("expanded")} />);
 		const trigger = screen.getByRole("button", { name: "message timeline" });
 		const host = trigger.closest(".absolute");
-		expect(host?.className).toContain("right-6");
-		expect(host?.className).not.toMatch(/\bleft-/);
+		expect(host?.className).toContain("left-3");
+		expect(host?.className).not.toMatch(/\bright-/);
 	});
 
-	it("长会话在窄屏为提问目录留出右侧 gutter，避免压住消息", () => {
-		const longConversation = Array.from({ length: 8 }).flatMap((_, index) => [
-			{ id: `user-${index}`, role: "user" as const, text: `Question ${index}` },
-			{ id: `assistant-${index}`, role: "assistant" as const, text: `Answer ${index}` },
-		]);
-		const viewProps = props("expanded");
-		viewProps.model = { ...viewProps.model, messages: longConversation, tailMessageId: "assistant-7" };
-		render(<MessageListView {...viewProps} />);
-
-		const outline = document.querySelector("[data-message-outline=true]");
-		expect(outline?.className).toContain("[--message-outline-gutter:3rem]");
-	});
-
-	it("短会话不预留提问目录 gutter", () => {
+	it("窄屏隐藏提问目录，避免压住右对齐气泡", () => {
 		render(<MessageListView {...props("expanded")} />);
-		expect(document.querySelector("[data-message-outline=true]")).toBeNull();
+		const host = screen.getByRole("button", { name: "message timeline" }).closest(".absolute");
+		expect(host?.className).toContain("@max-[52rem]:hidden");
 	});
 });

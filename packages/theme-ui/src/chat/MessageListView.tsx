@@ -32,11 +32,7 @@ export const VirtuosoListContainer = forwardRef<
 		<div
 			{...props}
 			ref={ref}
-			className={cn(
-				"mx-auto flex max-w-3xl flex-col overflow-hidden pb-2 pl-5",
-				"pr-[var(--message-outline-gutter,1.25rem)]",
-				className,
-			)}
+			className={cn("mx-auto flex max-w-3xl flex-col overflow-hidden px-5 pb-2", className)}
 			style={{ ...props.style }}
 		/>
 	);

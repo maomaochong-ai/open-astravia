@@ -118,7 +118,7 @@ export function MessageTimeline({
 								visibleItems.length > 0 ? (
 									<Virtuoso
 										data={visibleItems}
-										className="h-full"
+										className="h-full overflow-x-hidden"
 										initialTopMostItemIndex={Math.max(0, activeVisibleIndex)}
 										computeItemKey={(_index, item) => item.id}
 										itemContent={(_index, item) => (
