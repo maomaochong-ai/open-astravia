@@ -2,7 +2,7 @@ import { ActivityPanel } from "@domains/activity-panel/components/ActivityPanel"
 import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@shared/lib/utils";
 import { useThemeComponent } from "@astravia/theme-sdk";
-import { NewSessionPageLayoutView } from "@astravia/theme-ui/chat";
+import { NewSessionPageLayoutView, type NewSessionSelection, type NewSessionSkillItem } from "@astravia/theme-ui/chat";
 import {
 	PANEL_REVEAL_DURATION,
 	PANEL_REVEAL_EASE,
@@ -10,6 +10,7 @@ import {
 } from "../command-panel/constants";
 import { KineticGrid } from "@shared/components/ui/kinetic-grid";
 import { NewSessionHero } from "./NewSessionHero";
+import { SkillBadgeRow } from "./SkillBadgeRow";
 import { InputBar } from "../InputBar";
 
 
@@ -18,6 +19,11 @@ const PANEL_SHIFT_Y = 120;
 
 interface NewSessionPageViewProps {
 	avatarAutoplay: boolean;
+	skillBadges: {
+		onSelect: (skill: NewSessionSkillItem) => void;
+		selected: NewSessionSelection;
+		skills: readonly NewSessionSkillItem[];
+	};
 	className?: string;
 	commandPanelExpanded: boolean;
 	commandPanelShift: boolean;
@@ -33,6 +39,7 @@ interface NewSessionPageViewProps {
 
 export function NewSessionPageView({
 	avatarAutoplay,
+	skillBadges,
 	className,
 	commandPanelExpanded,
 	commandPanelShift,
@@ -90,6 +97,21 @@ export function NewSessionPageView({
 							greetingTitle={greetingTitle}
 							mounted={mounted}
 							subtitle={subtitle}
+						/>
+				</motion.div>
+				}
+				skillBadges={
+					// 面板展开会盖住徽章行，与 hero 同曲线淡出并禁用命中。
+					<motion.div
+						animate={{ opacity: commandPanelExpanded ? 0 : 1 }}
+						transition={heroTransition}
+						style={{ willChange: "opacity" }}
+						className={cn("relative z-10", commandPanelExpanded && "pointer-events-none")}
+					>
+						<SkillBadgeRow
+							onSelect={skillBadges.onSelect}
+							selected={skillBadges.selected}
+							skills={skillBadges.skills}
 						/>
 					</motion.div>
 				}
