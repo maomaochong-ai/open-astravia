@@ -39,40 +39,22 @@ import { __setPluginHostBridge, PluginAppActionError } from "@vetta-org/plugin-s
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { pluginHandlerGenerationKey as handlerKey } from "./plugin-handler-generation-key.js";
+import {
+	getPluginHostBridgeRuntimeState,
+	type PluginAppActionHandlerEntry,
+} from "./plugin-host-bridge-runtime-state.js";
 
 const store = getDefaultStore();
-
-interface PluginAgentToolHandlerEntry {
-	handler: PluginAgentToolHandler;
-	api: PluginAgentToolApi;
-	activationId?: string;
-}
-
-const agentToolHandlers = new Map<string, PluginAgentToolHandlerEntry>();
-const agentHookHandlers = new Map<
-	string,
-	{
-		handler: PluginCodingAgentHookHandler<PluginCodingAgentHookEventName>;
-		api: PluginAgentToolApi;
-		activationId?: string;
-	}
->();
-interface PluginAppActionHandlerEntry {
-	handler: PluginAppActionHandler;
-	assertReady?: PluginAppActionReadyHandler;
-}
-
-const appActionHandlers = new Map<string, PluginAppActionHandlerEntry>();
-const appActionInvocations = new Map<string, { controller: AbortController; handlerKey: string }>();
-const continuationHandlers = new Map<
-	string,
-	{ handler: PluginContinuationHandler; api: PluginAgentToolApi; activationId?: string }
->();
-const systemPromptHandlers = new Map<
-	string,
-	{ handler: PluginSystemPromptProviderHandler; api: PluginAgentToolApi; activationId?: string }
->();
-const mediaProviderHandlers = new Map<string, PluginMediaProviderRegistration>();
+const runtimeState = getPluginHostBridgeRuntimeState();
+const {
+	agentToolHandlers,
+	agentHookHandlers,
+	appActionHandlers,
+	appActionInvocations,
+	continuationHandlers,
+	systemPromptHandlers,
+	mediaProviderHandlers,
+} = runtimeState;
 
 function createAgentActions(): {
 	actions: PluginAgentActions;
@@ -109,7 +91,7 @@ function createAgentActions(): {
 // handler untouched — IPC supports multiple subscribers per session.
 
 type Listener = (event: ConversationEvent) => void;
-const listeners = new Set<Listener>();
+const listeners = runtimeState.conversationListeners;
 
 function emit(event: ConversationEvent): void {
 	for (const listener of listeners) {
@@ -211,28 +193,24 @@ function translate(event: SessionEvent): void {
 	}
 }
 
-let translatorStarted = false;
-let currentRuntimeId: string | null = null;
-let currentUnsub: (() => void) | null = null;
-
 function startTranslator(): void {
-	if (translatorStarted) return;
-	translatorStarted = true;
+	if (runtimeState.listenerStarted.translator) return;
+	runtimeState.listenerStarted.translator = true;
 
 	const sync = (): void => {
 		const active = store.get(activeSessionAtom);
 		const runtimeId = active?.runtimeId ?? null;
-		if (runtimeId === currentRuntimeId) return;
-		currentRuntimeId = runtimeId;
-		currentUnsub?.();
-		currentUnsub = null;
+		if (runtimeId === runtimeState.currentRuntimeId) return;
+		runtimeState.currentRuntimeId = runtimeId;
+		runtimeState.currentConversationUnsubscribe?.();
+		runtimeState.currentConversationUnsubscribe = null;
 		emit({ type: "conversation-changed", conversation: snapshot() });
 		if (!runtimeId) return;
 		void window.vetta.session
 			.subscribe(runtimeId, translate)
 			.then((unsub) => {
 				// The active session may have changed again before subscribe resolved.
-				if (currentRuntimeId === runtimeId) currentUnsub = unsub;
+				if (runtimeState.currentRuntimeId === runtimeId) runtimeState.currentConversationUnsubscribe = unsub;
 				else unsub();
 			})
 			.catch((error: Error) => console.error("Plugin conversation subscribe failed", error));
@@ -242,11 +220,9 @@ function startTranslator(): void {
 	sync();
 }
 
-let toolRequestListenerStarted = false;
-
 function startToolRequestListener(): void {
-	if (toolRequestListenerStarted) return;
-	toolRequestListenerStarted = true;
+	if (runtimeState.listenerStarted.toolRequest) return;
+	runtimeState.listenerStarted.toolRequest = true;
 	window.vetta.plugins.onAgentToolRequest((request) => {
 		const entry = agentToolHandlers.get(handlerKey(request.pluginId, request.handlerId, request.activationId));
 		if (!entry) {
@@ -294,11 +270,9 @@ function startToolRequestListener(): void {
 	});
 }
 
-let hookRequestListenerStarted = false;
-
 function startHookRequestListener(): void {
-	if (hookRequestListenerStarted) return;
-	hookRequestListenerStarted = true;
+	if (runtimeState.listenerStarted.hookRequest) return;
+	runtimeState.listenerStarted.hookRequest = true;
 	window.vetta.plugins.onAgentHookRequest((request) => {
 		const entry = agentHookHandlers.get(handlerKey(request.pluginId, request.handlerId, request.activationId));
 		if (!entry) {
@@ -332,11 +306,9 @@ function startHookRequestListener(): void {
 	});
 }
 
-let hookReleaseListenerStarted = false;
-
 function startHookReleaseListener(): void {
-	if (hookReleaseListenerStarted) return;
-	hookReleaseListenerStarted = true;
+	if (runtimeState.listenerStarted.hookRelease) return;
+	runtimeState.listenerStarted.hookRelease = true;
 	window.vetta.plugins.onAgentHandlerReleased((event) => {
 		const key = handlerKey(event.pluginId, event.handlerId, event.activationId);
 		if (event.kind === "tool") releaseHandler(agentToolHandlers, key, event.activationId);
@@ -357,11 +329,9 @@ function releaseHandler<T extends { activationId?: string }>(
 	handlers.delete(key);
 }
 
-let appActionRequestListenerStarted = false;
-
 function startAppActionRequestListener(): void {
-	if (appActionRequestListenerStarted) return;
-	appActionRequestListenerStarted = true;
+	if (runtimeState.listenerStarted.appActionRequest) return;
+	runtimeState.listenerStarted.appActionRequest = true;
 	window.vetta.plugins.onAppActionRequest((request) => {
 		const key = handlerKey(request.pluginId, request.handlerId);
 		const entry = appActionHandlers.get(key);
@@ -419,11 +389,9 @@ function startAppActionRequestListener(): void {
 	});
 }
 
-let continuationRequestListenerStarted = false;
-
 function startContinuationRequestListener(): void {
-	if (continuationRequestListenerStarted) return;
-	continuationRequestListenerStarted = true;
+	if (runtimeState.listenerStarted.continuationRequest) return;
+	runtimeState.listenerStarted.continuationRequest = true;
 	window.vetta.plugins.onContinuationRequest((request) => {
 		const entry = continuationHandlers.get(handlerKey(request.pluginId, request.handlerId, request.activationId));
 		if (!entry) {
@@ -466,11 +434,9 @@ function startContinuationRequestListener(): void {
 	});
 }
 
-let systemPromptRequestListenerStarted = false;
-
 function startSystemPromptRequestListener(): void {
-	if (systemPromptRequestListenerStarted) return;
-	systemPromptRequestListenerStarted = true;
+	if (runtimeState.listenerStarted.systemPromptRequest) return;
+	runtimeState.listenerStarted.systemPromptRequest = true;
 	window.vetta.plugins.onSystemPromptRequest((request) => {
 		const entry = systemPromptHandlers.get(handlerKey(request.pluginId, request.handlerId, request.activationId));
 		if (!entry) {
@@ -518,11 +484,9 @@ function startSystemPromptRequestListener(): void {
 	});
 }
 
-let mediaProviderRequestListenerStarted = false;
-
 function startMediaProviderRequestListener(): void {
-	if (mediaProviderRequestListenerStarted) return;
-	mediaProviderRequestListenerStarted = true;
+	if (runtimeState.listenerStarted.mediaProviderRequest) return;
+	runtimeState.listenerStarted.mediaProviderRequest = true;
 	window.vetta.plugins.onMediaProviderRequest((request) => {
 		const registration = mediaProviderHandlers.get(handlerKey(request.pluginId, request.handlerId));
 		if (!registration) {
@@ -679,18 +643,7 @@ export function registerPluginMediaProviderHandler(options: {
 // ─── Conversation actions ───
 
 /** Set by useSessionManager so sendPrompt reuses the full send path. */
-export const pluginSendMessageRef: {
-	current:
-		| ((
-				text: string,
-				options?: { source?: "plugin" },
-		  ) => Promise<
-				{ status: "sent" | "queued" | "failed"; error?: { message: string }; queueItemId?: string } | undefined
-		  >)
-		| null;
-} = {
-	current: null,
-};
+export const pluginSendMessageRef = runtimeState.sendMessageRef;
 
 const conversation: PluginConversationApi = {
 	sendPrompt: async (text: string): Promise<SendPromptResult> => {
@@ -784,8 +737,6 @@ export const pluginHostBridge: PluginHostBridge = {
 	conversation,
 };
 
-let installed = false;
-
 /** Inject the bridge into the shared plugin-sdk and start the event translator. */
 export function installPluginHostBridge(): void {
 	startTranslator();
@@ -796,7 +747,5 @@ export function installPluginHostBridge(): void {
 	startContinuationRequestListener();
 	startSystemPromptRequestListener();
 	startMediaProviderRequestListener();
-	if (installed) return;
-	installed = true;
 	__setPluginHostBridge(pluginHostBridge);
 }
