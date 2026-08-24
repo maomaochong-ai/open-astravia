@@ -1,4 +1,6 @@
+import type { NewSessionSelection, NewSessionSkillItem } from "@astravia/theme-ui/chat";
 import { i18n } from "@shared/i18n";
+import { skillTokenText } from "@shared/lib/input-tokens";
 import {
 	activeSessionAtom,
 	activeToolNamesAtom,
@@ -13,6 +15,7 @@ import {
 	pageHeaderTitleAtom,
 	pageHeaderTitleBadgeAtom,
 	pageHeaderTitleHiddenAtom,
+	prefillNewSessionInputDraft,
 	projectsAtom,
 	promptAttachmentAtom,
 	sessionExecutionModeAtom,
@@ -29,6 +32,11 @@ import { PANEL_SHIFT_MIN_ITEMS } from "./constants";
 import { useShortViewport } from "./useShortViewport";
 
 interface NewSessionPageModel {
+	skillBadges: {
+		onSelect: (skill: NewSessionSkillItem) => void;
+		selected: NewSessionSelection;
+		skills: readonly NewSessionSkillItem[];
+	};
 	avatarAutoplay: boolean;
 	/** 命令区（`/` 或「+」展开）是否打开：hero 随之淡出让位。 */
 	commandPanelExpanded: boolean;
@@ -82,12 +90,27 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const isShort = useShortViewport();
 	// 不带过滤词：要的是面板刚展开时那份完整列表的条目数，不能随用户打字过滤而抖。
 	// 数据与命令区共用模块级缓存（InputBar 里的 CommandPanel 挂载即预取），命中即立即可用。
+	// 技能徽章行选中态：与输入栏草稿联动（点击填充 `@skill:<name>`，再点一次清空）。
 	const { items: skillItems } = useSkillList({
 		open: commandPanelExpanded,
 		cwd: decodedCwd,
 		filter: "",
 		prefetch: true,
 	});
+
+	const [selectedSkill, setSelectedSkill] = useState<NewSessionSelection>(null);
+	const onSelectSkill = useCallback(
+		(skill: NewSessionSkillItem) => {
+			if (selectedSkill?.name === skill.name) {
+				setSelectedSkill(null);
+				prefillNewSessionInputDraft(decodedCwd, "");
+			} else {
+				setSelectedSkill({ name: skill.name, alias: skill.alias, type: "skill" });
+				prefillNewSessionInputDraft(decodedCwd, `${skillTokenText(skill.name)} `);
+			}
+		},
+		[decodedCwd, selectedSkill],
+	);
 
 	// 进入页面：草稿按 `new:${cwd}` 隔离恢复；其它上下文仍重置，避免串会话。
 	useEffect(() => {
@@ -175,6 +198,11 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		onCommandPanelExpandedChange: setCommandPanelExpanded,
 		onSend: handleSend,
 		subtitle: i18n.t("chat:newSession.subtitle"),
+		skillBadges: {
+			onSelect: onSelectSkill,
+			selected: selectedSkill,
+			skills: skillItems,
+		},
 		winHeader,
 	};
 }
