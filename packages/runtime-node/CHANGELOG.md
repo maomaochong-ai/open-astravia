@@ -6,6 +6,15 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Breaking Changes
 
+- `glob` Tool 只返回文件路径，不再返回目录。后端从 node `glob` 换成 ripgrep（`rg --files`），因此结果
+  改为按修改时间倒序，命中上限时返回的是**最近修改的 N 个**，而不再是遍历序的前 N 个——截断结果不再
+  偏向某一棵子树。目录发现请改用 `dir_tree`；需要目录路径且已显式激活 `find` 时也可用 `find`。
+  Glob 模式语义不变（仍由 minimatch 匹配，`*.ts` 只匹配顶层，跨目录需要 `**`）。
+
+  ripgrep 的 `--glob` 会覆盖全部 ignore 规则，因此模式不下推给 ripgrep：`rg` 只产出尊重 `.gitignore`
+  的候选流（带 `--no-require-git`，非 git 目录同样生效），模式匹配仍在进程内完成。否则 `**/*.ts`
+  会把 `node_modules`、`dist` 等被忽略的文件重新拉回结果。
+
 - 文档转换与 OCR 的 Node 组合收敛为 `createNodeSpecializedToolRegistrations()`，并由 Node Tool Environment
   以每 Session 工厂形式交给产品组合；`runtime-node` 不再由 Coding Agent 内部直接选择。平台无关的
   `createAsyncExecutionGate()` 迁至 `@vetta/runtime-tools`，不再从 `@vetta/runtime-node/coding` 导出。
@@ -48,9 +57,28 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Added
 
+- `grep` Tool 新增 `filesOnly` 参数，只返回命中文件的路径而不返回匹配行。判断「哪些文件提到了 X」时
+  不必再用整页匹配内容换取一份文件清单。
+
 - `read` Tool 的文本读取在 `details` 中始终返回 `totalLines`，模型与宿主无需先触发截断即可知道文件总行数。
 
 ### Fixed
+
+- `grep` Tool 不再为了计算锚点把每个命中文件整份重新读入内存。匹配行内容直接取自 ripgrep `--json`
+  事件，`context` 前后文也改由 ripgrep 产出。此前 100 个匹配分布在 100 个文件时会触发 100 次全文件读。
+  非 UTF-8 的行走 `lines.bytes` 解码，保证锚点哈希仍与磁盘上的原始行一致。
+
+- `bash`/`shell` 描述不再把「文件名搜索」指向默认未注册的 `find`，目录列举也不再指向未注册的 `ls`；
+  `glob`、`dir_tree`、`read` 描述中对 `find`/`ls` 的交叉引用一并清除。此前模型被反复告知去使用
+  当前请求里根本不存在的工具。新增的描述引用守卫会在任一工具描述提到该 Scope 不可见的工具时失败。
+
+- `glob`、`grep`、`ls`、`dir_tree`、`find` 的「路径不存在」错误统一附带当前工作目录，并在父目录中
+  存在近似条目时一并列出。模型写错路径的常见原因是对 cwd 的认知漂移，而它看不到进程的工作目录。
+
+- `glob` 传入绝对路径模式时不再把整条路径当成模式匹配。此前提取模式静态前缀时把 `/` 当作 glob
+  元字符，导致绝对路径的首字符即被判定为通配符，搜索根无从确定。
+
+- `grep` 描述中的单行截断上限由 `2000` 更正为实际生效的 `500` 字符。
 
 - `edit` Tool 不再把泄漏的 read 锚点前缀写进文件。能力较弱的模型会把 `42:h7x2→` 这类前缀连同内容一起
   放进 `new_text`，导致文件里出现 `tirg→  splitMembers: ...` 这样的语法错误。锚点模式与 exact-text

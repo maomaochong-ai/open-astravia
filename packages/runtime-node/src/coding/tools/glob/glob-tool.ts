@@ -1,15 +1,22 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, parse, relative, sep } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import { glob, globSync } from "glob";
-import ignore from "ignore";
-import { resolveExistingPath } from "../../shared/path-resolution.js";
+import { Minimatch } from "minimatch";
+import type { CodingToolExecutableResolver } from "../../host/executable-resolver.js";
+import { formatNotFoundPath, resolveExistingPath } from "../../shared/path-resolution.js";
 import { formatSize, type TruncationResult, truncateHead } from "../../shared/truncation.js";
 import { GLOB_TOOL_DESCRIPTION } from "./description.js";
 
 const DEFAULT_LIMIT = 100;
-const IGNORE_DIRECTORIES = ["**/.git/**"];
+
+/**
+ * Metadata directories ripgrep would otherwise walk once `--hidden` is on. Excluding them
+ * explicitly keeps the result identical in a plain directory and in a checkout, instead of
+ * depending on ripgrep's git-aware defaults.
+ */
+const VCS_METADATA_DIRECTORIES = [".git", ".svn", ".hg", ".bzr", ".jj", ".sl"];
 
 export const GlobToolInputSchema = Type.Object({
 	description: Type.Optional(
@@ -20,7 +27,7 @@ export const GlobToolInputSchema = Type.Object({
 	),
 	pattern: Type.String({
 		description:
-			"Glob pattern to match files and directories, e.g. '**/*.ts', 'src/**/*.spec.ts', 'src/**', or 'package*.json'",
+			"Glob pattern to match files, e.g. '**/*.ts', 'src/**/*.spec.ts', or 'package*.json'. Use '**/' to match at any depth; a bare '*.ts' only matches the top level.",
 	}),
 	path: Type.Optional(Type.String({ description: "Directory to search in (default: current directory)" })),
 	limit: Type.Optional(Type.Number({ description: "Maximum number of results (default: 100)" })),
@@ -46,19 +53,18 @@ export interface GlobOperations {
 
 export interface GlobToolOptions {
 	readonly operations?: GlobOperations;
+	readonly rgPath?: string;
+	readonly executableResolver?: CodingToolExecutableResolver;
 }
 
 const defaultGlobOperations: Pick<GlobOperations, "isDirectory"> = {
 	isDirectory: (absolutePath) => statSync(absolutePath).isDirectory(),
 };
 
-interface IgnoreMatcher {
-	readonly basePath: string;
-	readonly ignores: ReturnType<typeof ignore>;
-}
-
 function extractGlobBaseDirectory(patternValue: string): { baseDir: string | undefined; relativePattern: string } {
-	const firstGlobChar = patternValue.search(/[*?[{/]/);
+	// `/` is a path separator, not a metacharacter: treating it as one makes every absolute
+	// pattern look like it starts with a wildcard, leaving no static prefix to search under.
+	const firstGlobChar = patternValue.search(/[*?[{]/);
 	if (firstGlobChar === -1) {
 		return { baseDir: dirname(patternValue), relativePattern: basename(patternValue) };
 	}
@@ -72,81 +78,136 @@ function extractGlobBaseDirectory(patternValue: string): { baseDir: string | und
 }
 
 function normalizeOutputPath(filePath: string, searchPath: string): string {
-	const hadTrailingSlash = filePath.endsWith("/") || filePath.endsWith("\\");
 	const absolute = isAbsolute(filePath) ? filePath : join(searchPath, filePath);
-	const normalized = (relative(searchPath, absolute) || basename(absolute)).replace(/\\/g, "/");
-	return hadTrailingSlash && !normalized.endsWith("/") ? `${normalized}/` : normalized;
+	return (relative(searchPath, absolute) || basename(absolute)).replace(/\\/g, "/");
 }
 
-function normalizeForIgnore(filePath: string): string {
-	return filePath
-		.replace(/\\/g, "/")
-		.replace(/^\.\/+/, "")
-		.replace(/^\/+/, "");
-}
-
-function loadGitignoreMatchers(searchPath: string): IgnoreMatcher[] {
-	const paths = globSync("**/.gitignore", {
-		cwd: searchPath,
-		dot: true,
-		absolute: true,
-		ignore: IGNORE_DIRECTORIES,
-		windowsPathsNoEscape: true,
-	});
-	const rootGitignore = join(searchPath, ".gitignore");
-	if (existsSync(rootGitignore) && !paths.includes(rootGitignore)) paths.push(rootGitignore);
-	return paths
-		.map((gitignorePath) => ({
-			basePath: dirname(gitignorePath),
-			ignores: ignore().add(readFileSync(gitignorePath, "utf8")),
-		}))
-		.sort((left, right) => left.basePath.length - right.basePath.length);
-}
-
-function isIgnoredByGitignore(filePath: string, searchPath: string, matchers: readonly IgnoreMatcher[]): boolean {
-	const hadTrailingSlash = filePath.endsWith("/") || filePath.endsWith("\\");
-	const absolutePath = isAbsolute(filePath) ? filePath : join(searchPath, filePath);
-	let ignored = false;
-	for (const matcher of matchers) {
-		const relativePath = relative(matcher.basePath, absolutePath);
-		if (!relativePath || relativePath.startsWith("..") || isAbsolute(relativePath)) continue;
-		let normalized = normalizeForIgnore(relativePath);
-		if (hadTrailingSlash && !normalized.endsWith("/")) normalized += "/";
-		if (!normalized) continue;
-		const result = matcher.ignores.test(normalized);
-		if (result.ignored) ignored = true;
-		else if (result.unignored) ignored = false;
+/**
+ * Builds the `rg --files` argv.
+ *
+ * The user's pattern is deliberately NOT passed as `--glob`: an inclusive `--glob` "always
+ * overrides any other ignore logic" in ripgrep, so `**\/*.ts` would drag every ignored
+ * `node_modules` and `dist` file back into the result. ripgrep therefore only produces the
+ * ignore-respecting, recency-ordered candidate stream, and the pattern is matched here.
+ * The remaining exclusive globs are safe — they can only remove entries, never resurrect them.
+ */
+function buildRipgrepFilesArgs(searchPath: string): string[] {
+	// `--sortr=modified` puts the most recently touched files first, so a capped page is the
+	// part of the tree that is actually in play rather than an arbitrary traversal prefix.
+	// `--null` keeps paths unambiguous when a file name contains a newline.
+	// `--no-require-git` keeps .gitignore authoritative outside a checkout too, which is what
+	// the previous hand-rolled matcher did and what callers searching a plain directory expect.
+	const args = ["--files", "--hidden", "--no-require-git", "--sortr=modified", "--null"];
+	for (const directory of VCS_METADATA_DIRECTORIES) {
+		args.push("--glob", `!${directory}/`);
 	}
-	return ignored;
+	args.push("--", searchPath);
+	return args;
 }
 
-async function runNodeGlob(patternValue: string, searchPath: string, limit: number, signal?: AbortSignal) {
-	if (signal?.aborted) throw new Error("Operation aborted");
-	const matchers = loadGitignoreMatchers(searchPath);
-	const results: string[] = [];
-	try {
-		for await (const entry of glob.iterate(patternValue, {
-			cwd: searchPath,
-			dot: true,
-			ignore: IGNORE_DIRECTORIES,
-			mark: true,
-			posix: true,
-			signal,
-			windowsPathsNoEscape: true,
-		})) {
-			if (isIgnoredByGitignore(entry, searchPath, matchers)) continue;
-			results.push(entry);
-			if (results.length >= limit) break;
+interface RipgrepFilesInput {
+	readonly args: readonly string[];
+	readonly rgPath: string;
+	readonly limit: number;
+	readonly signal: AbortSignal;
+	/** Applied to each candidate path, already relative to the search root and posix-separated. */
+	readonly accepts: (relativePath: string) => boolean;
+	readonly toRelativePath: (absolutePath: string) => string;
+}
+
+interface RipgrepFilesResult {
+	readonly paths: readonly string[];
+	readonly limitReached: boolean;
+}
+
+/**
+ * Runs `rg --files` and stops reading once one path past `limit` has arrived.
+ *
+ * Sorting happens inside ripgrep before the first byte is written, so the head of the stream
+ * is already the final ordering — stopping early cannot change which paths would have won.
+ */
+function runRipgrepFiles(input: RipgrepFilesInput): Promise<RipgrepFilesResult> {
+	return new Promise((resolve, reject) => {
+		const child = spawn(input.rgPath, input.args, { stdio: ["ignore", "pipe", "pipe"] });
+		const paths: string[] = [];
+		let pending = "";
+		let stderr = "";
+		let limitReached = false;
+		let killedDueToLimit = false;
+		let aborted = false;
+		let settled = false;
+
+		const settle = (callback: () => void) => {
+			if (!settled) {
+				settled = true;
+				callback();
+			}
+		};
+		const cleanup = () => input.signal.removeEventListener("abort", onAbort);
+		const stopChild = (dueToLimit = false) => {
+			killedDueToLimit = dueToLimit;
+			if (!child.killed) child.kill();
+		};
+		function onAbort() {
+			aborted = true;
+			stopChild();
 		}
-	} catch (error) {
-		if (signal?.aborted) throw new Error("Operation aborted");
-		throw error;
-	}
-	return results;
+		/** Records one candidate path; returns true once the stream can stop being read. */
+		function accept(absolutePath: string): boolean {
+			const relativePath = input.toRelativePath(absolutePath);
+			if (!input.accepts(relativePath)) return false;
+			paths.push(relativePath);
+			// One extra match proves the result was capped without needing the rest of the stream.
+			if (paths.length > input.limit) {
+				limitReached = true;
+				stopChild(true);
+				return true;
+			}
+			return false;
+		}
+
+		input.signal.addEventListener("abort", onAbort, { once: true });
+		child.stderr.on("data", (chunk: Buffer) => {
+			stderr += chunk.toString();
+		});
+		child.stdout.on("data", (chunk: Buffer) => {
+			if (limitReached) return;
+			pending += chunk.toString("utf8");
+			let separator = pending.indexOf("\0");
+			while (separator !== -1) {
+				const entry = pending.slice(0, separator);
+				pending = pending.slice(separator + 1);
+				if (entry.length > 0 && accept(entry)) return;
+				separator = pending.indexOf("\0");
+			}
+		});
+		child.on("error", (error) => {
+			cleanup();
+			settle(() => reject(new Error(`Failed to run ripgrep: ${error.message}`)));
+		});
+		child.on("close", (code) => {
+			cleanup();
+			if (aborted) {
+				settle(() => reject(new Error("Operation aborted")));
+				return;
+			}
+			if (!killedDueToLimit) {
+				if (pending.length > 0) accept(pending);
+				// 0 = matches, 1 = no matches; anything else is a real failure.
+				if (code !== 0 && code !== 1) {
+					settle(() => reject(new Error(stderr.trim() || `ripgrep exited with code ${code}`)));
+					return;
+				}
+			}
+			settle(() => resolve({ paths, limitReached }));
+		});
+	});
 }
 
 export function createGlobTool(cwd: string, options: GlobToolOptions = {}): RuntimeToolDefinition<GlobToolInput> {
 	const customOps = options.operations;
+	const rgPath = options.rgPath ?? "rg";
+
 	return {
 		name: "glob",
 		label: "glob",
@@ -168,14 +229,31 @@ export function createGlobTool(cwd: string, options: GlobToolOptions = {}): Runt
 			try {
 				isDirectory = await operations.isDirectory(searchPath);
 			} catch {
-				throw new Error(`Path not found: ${searchPath}`);
+				throw new Error(formatNotFoundPath(searchPath, cwd));
 			}
 			if (!isDirectory) throw new Error(`Not a directory: ${searchPath}`);
+
 			const limit = Math.max(1, request.input.limit ?? DEFAULT_LIMIT);
-			const rawResults = customOps
-				? await customOps.glob(pattern, searchPath, { limit, signal: request.signal })
-				: await runNodeGlob(pattern, searchPath, limit, request.signal);
-			return formatResults(rawResults, searchPath, limit, start);
+			if (customOps) {
+				const rawResults = await customOps.glob(pattern, searchPath, { limit, signal: request.signal });
+				return formatResults(rawResults, searchPath, limit, start, rawResults.length > limit);
+			}
+
+			if (request.signal.aborted) throw new Error("Operation aborted");
+			const resolvedRgPath = options.executableResolver ? await options.executableResolver.resolve("rg") : rgPath;
+			if (!resolvedRgPath) {
+				throw new Error("ripgrep (rg) is not available and could not be downloaded");
+			}
+			const matcher = new Minimatch(pattern, { dot: true });
+			const { paths, limitReached } = await runRipgrepFiles({
+				args: buildRipgrepFilesArgs(searchPath),
+				rgPath: resolvedRgPath,
+				limit,
+				signal: request.signal,
+				accepts: (relativePath) => matcher.match(relativePath),
+				toRelativePath: (absolutePath) => normalizeOutputPath(absolutePath, searchPath),
+			});
+			return formatResults(paths, searchPath, limit, start, limitReached);
 		},
 	};
 }
@@ -185,6 +263,7 @@ function formatResults(
 	searchPath: string,
 	limit: number,
 	start: number,
+	limitReached: boolean,
 ): RuntimeToolResult {
 	const normalized = rawResults.map((filePath) => normalizeOutputPath(filePath, searchPath));
 	const uniqueResults = Array.from(new Set(normalized));
@@ -197,14 +276,16 @@ function formatResults(
 		};
 	if (limitedResults.length === 0) {
 		return {
-			content: [{ type: "text", text: "No files or directories found matching pattern" }],
+			content: [{ type: "text", text: "No files found matching pattern" }],
 			details,
 		};
 	}
 	let output = truncation.content;
 	const notices: string[] = [];
-	if (uniqueResults.length >= limit) {
-		notices.push(`${limit} results limit reached. Use limit=${limit * 2} for more, or refine pattern`);
+	if (limitReached || uniqueResults.length > limit) {
+		notices.push(
+			`${limit} results limit reached, showing the ${limit} most recently modified. Use limit=${limit * 2} for more, or refine pattern`,
+		);
 		details.resultLimitReached = limit;
 	}
 	if (truncation.truncated) {

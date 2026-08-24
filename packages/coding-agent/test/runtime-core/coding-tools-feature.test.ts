@@ -1,6 +1,6 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve as resolvePath } from "node:path";
 import { type AssistantMessage, type AssistantMessageEvent, EventStream, type Message, type Model } from "@vetta/ai";
 import {
 	AgentCoreTurnEngine,
@@ -726,9 +726,9 @@ describe("greenfield coding tools feature", () => {
 					isDirectory: () => true,
 					glob: (pattern, cwd, options) => {
 						expect(pattern).toBe("**/*.ts");
-						expect(cwd.replace(/\\/g, "/")).toBe("C:/workspace");
+						expect(cwd.replace(/\\/g, "/")).toBe(resolvePath("C:/workspace").replace(/\\/g, "/"));
 						expect(options.limit).toBe(100);
-						return ["C:/workspace/src/index.ts", "C:/workspace/test/index.test.ts"];
+						return [`${cwd}/src/index.ts`, `${cwd}/test/index.test.ts`];
 					},
 				},
 			}),

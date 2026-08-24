@@ -1,10 +1,14 @@
-export const GLOB_TOOL_DESCRIPTION = `Primary tool for matching file and directory paths by exact name or glob pattern. Returns paths relative to the search directory, respects .gitignore, and defaults to 100 results.
+export const GLOB_TOOL_DESCRIPTION = `Primary tool for finding files by path pattern. Returns file paths relative to the search directory, most recently modified first, and defaults to 100 results.
 
-Use this for ordinary path searches such as "**/*.ts", "src/**/*.spec.ts", "src/**", or "package*.json". If the result is too broad, narrow the pattern or raise the limit. Do not also call \`find\` for the same search; \`find\` is a deferred high-volume fallback, not a second opinion.
+Matching rules:
+- Patterns are standard globs matched against the path relative to the search directory: \`**/*.ts\`, \`src/**/*.spec.ts\`, \`src/**\`, \`package*.json\`.
+- \`**\` is required to cross directories — a bare \`*.ts\` matches only the top level, not the whole tree.
+- Results are FILES only, never directories. Use \`dir_tree\` to inspect directory structure.
+- Respects .gitignore (in a checkout or a plain directory) and includes hidden files; VCS metadata directories are excluded.
+- When the limit is hit you get the most recently modified matches, so the page reflects what is currently in play. Raise \`limit\` or narrow the pattern for the rest.
 
 Routing:
-- Use \`glob\` for file or directory names and wildcard path patterns.
+- Use \`glob\` for file paths by name or wildcard pattern.
 - Use \`grep\` for text or patterns inside file contents.
 - Use \`dir_tree\` to inspect directory hierarchy.
-- Use \`ls\` to list one directory's immediate children.
-- Do not use shell commands such as find, fd, rg --files, or locate for path matching.`;
+- Do not use shell commands such as find, fd, or \`rg --files\` for path matching.`;

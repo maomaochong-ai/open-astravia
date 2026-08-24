@@ -3,13 +3,13 @@ export const TREE_TOOL_DESCRIPTION = `Render a compact directory tree for a path
 - [F] for files
 - Each rendered node also includes a stable path ID like \`id=@PATH_0001\`
 
-ALWAYS use this tool (not bash \`tree\` or \`find\`) when you need a directory structure overview.
+ALWAYS use this tool, not shell tree/find/ls -R, when you need a directory structure overview.
 Use path IDs directly as tool path arguments to avoid filename mutation by the model.
 
 When to use \`dir_tree\` vs other tools:
-- Use \`dir_tree\` FIRST when you need a high-level map of a codebase with minimal token usage, then drill down with \`read\`/\`find\`/\`grep\`
-- Use \`ls\` for simple flat listing of one directory
-- Use \`find\` to search for specific file name patterns
+- Use \`dir_tree\` FIRST when you need a high-level map of a codebase with minimal token usage, then drill down with \`read\`/\`glob\`/\`grep\`
+- Use \`glob\` to find files by path or name pattern
+- Use \`grep\` to search for text inside files
 - NEVER use bash commands (tree, find, ls -R) for directory structure — always use this tool
 
 Performance and safety:

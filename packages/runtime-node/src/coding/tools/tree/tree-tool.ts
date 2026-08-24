@@ -4,7 +4,7 @@ import { basename } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { CodingToolExecutableResolver } from "../../host/executable-resolver.js";
-import { resolveExistingPath } from "../../shared/path-resolution.js";
+import { formatNotFoundPath, resolveExistingPath } from "../../shared/path-resolution.js";
 import { DEFAULT_MAX_BYTES, formatSize, type TruncationResult, truncateHead } from "../../shared/truncation.js";
 import { TREE_TOOL_DESCRIPTION } from "./description.js";
 import { buildFdArgs, parseFdOutput, renderTreeOutput } from "./tree-model.js";
@@ -85,7 +85,7 @@ export function createTreeTool(cwd: string, options: TreeToolOptions = {}): Runt
 			const ignore = (request.input.ignore ?? []).filter((pattern) => pattern.trim().length > 0);
 			const scanLimit = Math.max(limit * 4, 2000);
 
-			if (!(await operations.exists(searchPath))) throw new Error(`Path not found: ${searchPath}`);
+			if (!(await operations.exists(searchPath))) throw new Error(formatNotFoundPath(searchPath, cwd));
 			const stats = await operations.stat(searchPath);
 			if (!stats.isDirectory()) throw new Error(`Not a directory: ${searchPath}`);
 			const resolvedFdPath = options.executableResolver ? await options.executableResolver.resolve("fd") : fdPath;

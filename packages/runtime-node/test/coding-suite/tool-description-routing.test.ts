@@ -9,9 +9,17 @@ import {
 describe("coding tool description routing", () => {
 	it("makes glob the primary path matcher and find a non-duplicative fallback", () => {
 		expect(GLOB_TOOL_DESCRIPTION).toContain("Primary tool");
-		expect(GLOB_TOOL_DESCRIPTION).toContain("Do not also call `find` for the same search");
+		// glob never names `find`: the fallback is unregistered by default, and a description
+		// that routes to an invisible tool is what `tool-description-references` guards against.
+		expect(GLOB_TOOL_DESCRIPTION).not.toContain("`find`");
 		expect(FIND_TOOL_DESCRIPTION).toContain("Deferred high-volume");
-		expect(FIND_TOOL_DESCRIPTION).toContain("For ordinary file or directory name matching, use `glob` instead");
+		expect(FIND_TOOL_DESCRIPTION).toContain("For ordinary file matching, use `glob` instead");
+	});
+
+	it("splits file and directory matching between glob and find", () => {
+		expect(GLOB_TOOL_DESCRIPTION).toContain("Results are FILES only, never directories");
+		expect(GLOB_TOOL_DESCRIPTION).toContain("most recently modified first");
+		expect(FIND_TOOL_DESCRIPTION).toContain("directory paths, which `glob` never returns");
 	});
 
 	it("routes every PDF text request to extraction and visual judgment to rendering", () => {

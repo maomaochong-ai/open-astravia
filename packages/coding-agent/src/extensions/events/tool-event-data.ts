@@ -40,6 +40,7 @@ export interface GrepToolInput extends ToolEventInputBase {
 	ignoreCase?: boolean;
 	literal?: boolean;
 	context?: number;
+	filesOnly?: boolean;
 	limit?: number;
 }
 

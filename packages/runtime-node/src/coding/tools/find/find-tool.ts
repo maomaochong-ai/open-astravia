@@ -4,7 +4,7 @@ import { basename, relative } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import type { CodingToolExecutableResolver } from "../../host/executable-resolver.js";
-import { resolveExistingPath } from "../../shared/path-resolution.js";
+import { formatNotFoundPath, resolveExistingPath } from "../../shared/path-resolution.js";
 import { formatSize, type TruncationResult, truncateHead } from "../../shared/truncation.js";
 import { FIND_TOOL_DESCRIPTION } from "./description.js";
 
@@ -67,7 +67,7 @@ export function createFindTool(cwd: string, options: FindToolOptions = {}): Runt
 			const limit = request.input.limit ?? DEFAULT_LIMIT;
 			if (options.operations) {
 				if (!(await operations.exists(searchPath))) {
-					throw new Error(`Path not found: ${searchPath}`);
+					throw new Error(formatNotFoundPath(searchPath, cwd));
 				}
 				const results = await operations.glob(request.input.pattern, searchPath, {
 					ignore: IGNORE_PATTERNS,

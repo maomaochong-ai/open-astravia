@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
 	createFindTool,
@@ -20,7 +21,7 @@ function operations() {
 			cwd: string,
 			options: { readonly ignore: readonly string[]; readonly limit: number },
 		) => {
-			expect(cwd.replace(/\\/g, "/")).toBe("C:/workspace");
+			expect(cwd.replace(/\\/g, "/")).toBe(resolve("C:/workspace").replace(/\\/g, "/"));
 			expect(options.ignore).toEqual(["**/node_modules/**", "**/.git/**"]);
 			return files.slice(0, options.limit).map((file) => `${cwd}/${file}`);
 		},

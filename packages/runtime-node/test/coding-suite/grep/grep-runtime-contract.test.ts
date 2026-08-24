@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -11,6 +11,7 @@ import {
 	GrepToolInputSchema,
 	selectCodingToolsForScope,
 } from "../../../src/coding/index.js";
+import { anchorLineHash } from "../../../src/coding/shared/anchors.js";
 
 describe("runtime grep tool", () => {
 	const temporaryDirectories: string[] = [];
@@ -39,7 +40,6 @@ describe("runtime grep tool", () => {
 		const runtime = createGrepTool(process.cwd(), {
 			operations: {
 				isDirectory: () => true,
-				readFile: () => "",
 			},
 			executableResolver: {
 				resolve: async (tool) => {
@@ -66,7 +66,6 @@ describe("runtime grep tool", () => {
 		const runtime = createGrepTool(process.cwd(), {
 			operations: {
 				isDirectory: () => true,
-				readFile: () => "",
 			},
 			executableResolver: {
 				resolve: async () => {
@@ -116,6 +115,65 @@ describe("runtime grep tool", () => {
 			},
 		]);
 		expect(runtimeResult.details).toMatchObject({ matchLimitReached: 1 });
+	});
+
+	it("anchors a non-UTF-8 line to the same hash the read tool would produce", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "runtime-tools-grep-bytes-"));
+		temporaryDirectories.push(directory);
+		const filePath = join(directory, "binary.txt");
+		// A latin-1 byte makes ripgrep report the line as base64 `bytes` instead of `text`.
+		writeFileSync(filePath, Buffer.concat([Buffer.from("caf"), Buffer.from([0xe9]), Buffer.from(" marker\n")]));
+
+		const runtime = createGrepTool(directory, { rgPath: "rg" });
+		const runtimeResult = await runtime.execute({
+			sessionId: "session-1",
+			turnId: "turn-1",
+			toolCallId: "runtime-grep",
+			input: { pattern: "marker", path: filePath },
+			signal: new AbortController().signal,
+		});
+
+		const text = (runtimeResult.content[0] as { text: string }).text;
+		const anchor = /^binary\.txt:1:([0-9a-z]{4}):/.exec(text)?.[1];
+		expect(anchor).toBeDefined();
+		// The `edit` tool resolves an anchor by hashing the file's own line, so the hash grep
+		// hands out must equal the hash of that exact on-disk line.
+		const onDiskLine = readFileSync(filePath, "utf8").split("\n")[0];
+		expect(anchor).toBe(anchorLineHash(onDiskLine));
+	});
+
+	it("returns only file paths when filesOnly is set", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "runtime-tools-grep-files-"));
+		temporaryDirectories.push(directory);
+		writeFileSync(join(directory, "a.txt"), "needle here\nneedle again\n");
+		writeFileSync(join(directory, "b.txt"), "nothing\n");
+
+		const runtime = createGrepTool(directory, { rgPath: "rg" });
+		const runtimeResult = await runtime.execute({
+			sessionId: "session-1",
+			turnId: "turn-1",
+			toolCallId: "runtime-grep",
+			input: { pattern: "needle", filesOnly: true },
+			signal: new AbortController().signal,
+		});
+
+		expect(runtimeResult.content).toEqual([{ type: "text", text: "a.txt" }]);
+	});
+
+	it("reports a missing path with the working directory", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "runtime-tools-grep-missing-"));
+		temporaryDirectories.push(directory);
+		const runtime = createGrepTool(directory, { rgPath: "rg" });
+
+		await expect(
+			runtime.execute({
+				sessionId: "session-1",
+				turnId: "turn-1",
+				toolCallId: "runtime-grep",
+				input: { pattern: "anything", path: "does-not-exist" },
+				signal: new AbortController().signal,
+			}),
+		).rejects.toThrow(`Note: your current working directory is ${directory}`);
 	});
 
 	it("keeps cancellation at the runtime tool boundary", async () => {

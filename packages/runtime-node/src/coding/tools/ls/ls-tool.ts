@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import { resolveExistingPath } from "../../shared/path-resolution.js";
+import { formatNotFoundPath, resolveExistingPath } from "../../shared/path-resolution.js";
 import { DEFAULT_MAX_BYTES, formatSize, type TruncationResult, truncateHead } from "../../shared/truncation.js";
 import { LS_TOOL_DESCRIPTION } from "./description.js";
 
@@ -70,7 +70,7 @@ export function createLsTool(cwd: string, options: LsToolOptions = {}): RuntimeT
 						const effectiveLimit = request.input.limit ?? DEFAULT_LIMIT;
 
 						if (!(await operations.exists(directoryPath))) {
-							reject(new Error(`Path not found: ${directoryPath}`));
+							reject(new Error(formatNotFoundPath(directoryPath, cwd)));
 							return;
 						}
 

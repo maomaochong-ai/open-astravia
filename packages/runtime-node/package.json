@@ -35,7 +35,10 @@
 			"import": "./dist/sandbox/index.js"
 		}
 	},
-	"files": ["dist", "README.md"],
+	"files": [
+		"dist",
+		"README.md"
+	],
 	"scripts": {
 		"clean": "rm -rf dist",
 		"build": "tsgo -p tsconfig.build.json",
@@ -45,6 +48,7 @@
 	"dependencies": {
 		"@mariozechner/jiti": "^2.6.2",
 		"@modelcontextprotocol/sdk": "^1.29.0",
+		"@silvia-odwyer/photon-node": "^0.3.4",
 		"@sinclair/typebox": "^0.34.41",
 		"@vetta/action-rpc": "workspace:*",
 		"@vetta/runtime-core": "workspace:*",
@@ -53,13 +57,11 @@
 		"@vetta/runtime-storage": "workspace:*",
 		"@vetta/runtime-subagents": "workspace:*",
 		"@vetta/runtime-tools": "workspace:*",
-		"@silvia-odwyer/photon-node": "^0.3.4",
 		"diff": "^8.0.2",
 		"extract-zip": "^2.0.1",
 		"file-type": "^21.1.1",
-		"glob": "^13.0.1",
-		"ignore": "^7.0.5"
-		,"proper-lockfile": "^4.1.2",
+		"minimatch": "^10.1.1",
+		"proper-lockfile": "^4.1.2",
 		"strip-ansi": "^7.1.0"
 	},
 	"devDependencies": {
