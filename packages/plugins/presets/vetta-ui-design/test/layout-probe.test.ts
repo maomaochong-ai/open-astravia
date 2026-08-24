@@ -7,7 +7,12 @@
  * 文件，比不报更糟。
  */
 import { expect, it } from "vitest";
-import { LAYOUT_PROBE_SCRIPT, layoutIssues } from "../src/vetd/layout-probe";
+import {
+	LAYOUT_PROBE_SCRIPT,
+	countTextLineBands,
+	layoutIssues,
+	shouldCheckTopAlignment,
+} from "../src/vetd/layout-probe";
 
 const finding = (over: Partial<Record<string, unknown>> = {}) => ({
 	rule: "icon-missing",
@@ -57,6 +62,28 @@ it("explains each rule in terms of what was measured and what to change", () => 
 		expect(issue, rule).toBeDefined();
 		expect(issue.message.length, rule).toBeGreaterThan(40);
 	}
+});
+
+it("counts visual lines instead of Range fragments", () => {
+	// checkbox + label text and tab text + underline can produce multiple rects on one visual line.
+	expect(countTextLineBands([{ top: 10 }, { top: 10.4 }, { top: 10.8 }])).toBe(1);
+	expect(countTextLineBands([{ top: 10 }, { top: 10.5 }, { top: 30 }, { top: 30.4 }])).toBe(2);
+	expect(countTextLineBands([{ top: 10, width: 0, height: 10 }])).toBe(0);
+});
+
+it("only compares top edges when the flex alignment requires it", () => {
+	expect(shouldCheckTopAlignment("flex-start")).toBe(true);
+	expect(shouldCheckTopAlignment("stretch")).toBe(true);
+	expect(shouldCheckTopAlignment("normal")).toBe(true);
+	expect(shouldCheckTopAlignment("center")).toBe(false);
+	expect(shouldCheckTopAlignment("baseline")).toBe(false);
+	expect(shouldCheckTopAlignment("flex-end")).toBe(false);
+});
+
+it("the browser probe honors nowrap and measures text nodes rather than element fragments", () => {
+	expect(LAYOUT_PROBE_SCRIPT).toContain('style.whiteSpace === "nowrap"');
+	expect(LAYOUT_PROBE_SCRIPT).toContain("NodeFilter.SHOW_TEXT");
+	expect(LAYOUT_PROBE_SCRIPT).toContain('style.alignItems !== "flex-start"');
 });
 
 it("runs against a real DOM without throwing and returns findings", () => {

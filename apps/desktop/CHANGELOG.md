@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+### Fixed
+
+- 修复 Vetta UI Design 渲染机检把同一行的 checkbox + 文案、tab 下划线等多个 DOM rect 误判成文字换行，以及把 `items-center` / baseline 布局中正常的 top edge 差异误判成错位的问题；重复截同一画框前会清除旧绘制完成标记，避免复用离屏窗口时读到上一轮画面。
+
+### Changed
+
+- Vetta UI Design 的 UI 验证支持一次选择多张或全部画框：源码机检每批只跑一次、截图复用专用离屏会话，并返回一张可一次读取的总览图；单帧调用保持兼容。验证状态会按画框记录源码保鲜度，并在画面和问题连续两次不变时提示停止盲改；`vetd_status` 也不再把 source-only 的空 `issues` 当作 UI 已验证。
+
 ## [0.5.48] - 2026-08-24
 
 ### Added

@@ -22,6 +22,39 @@ const MAX_PER_RULE = 3;
 const MISALIGN_MIN_PX = 0.5;
 const MISALIGN_MAX_PX = 4;
 
+interface RectTop {
+	top: number;
+	width?: number;
+	height?: number;
+}
+
+/**
+ * 把同一视觉行里由多个文本节点/内联元素产生的碎片合并。
+ *
+ * `Range.getClientRects().length` 不是行数：checkbox + 文案、tab 文案 + underline 都会
+ * 在同一行产生多个 rect。这里只按 top 聚类，1px 内的半像素差属于同一行。
+ */
+export function countTextLineBands(rects: readonly RectTop[], tolerancePx = 1): number {
+	const tops = rects
+		.filter((rect) => (rect.width ?? 1) > 0 && (rect.height ?? 1) > 0 && Number.isFinite(rect.top))
+		.map((rect) => rect.top)
+		.sort((a, b) => a - b);
+	let lines = 0;
+	let lastTop: number | null = null;
+	for (const top of tops) {
+		if (lastTop === null || top - lastTop > tolerancePx) {
+			lines += 1;
+			lastTop = top;
+		}
+	}
+	return lines;
+}
+
+/** 只在布局声明要求顶部对齐时检查 top edge；center/baseline 的 top 不相等是正常结果。 */
+export function shouldCheckTopAlignment(alignItems: string): boolean {
+	return alignItems === "normal" || alignItems === "stretch" || alignItems === "flex-start";
+}
+
 /**
  * 在离屏页面里执行的探针。
  *
@@ -103,25 +136,44 @@ export const LAYOUT_PROBE_SCRIPT = `(() => {
 	safe(() => {
 		const selector = 'button, th, label, [role="tab"], [role="button"], nav a';
 		for (const el of root.querySelectorAll(selector)) {
-			if (el.children.length > 1) continue;
 			const style = getComputedStyle(el);
-			if (style.whiteSpace === "pre" || style.whiteSpace === "pre-wrap") continue;
-			const range = document.createRange();
-			range.selectNodeContents(el);
-			const lines = range.getClientRects().length;
-			range.detach && range.detach();
+			if (style.whiteSpace === "nowrap" || style.whiteSpace === "pre" || style.whiteSpace === "pre-wrap") continue;
+			const tops = [];
+			const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+			let node = walker.nextNode();
+			while (node) {
+				if ((node.textContent || "").trim()) {
+					const range = document.createRange();
+					range.selectNodeContents(node);
+					for (const rect of range.getClientRects()) {
+						if (rect.width > 0 && rect.height > 0) tops.push(rect.top);
+					}
+					range.detach && range.detach();
+				}
+				node = walker.nextNode();
+			}
+			tops.sort((a, b) => a - b);
+			let lines = 0;
+			let lastTop = null;
+			for (const top of tops) {
+				if (lastTop === null || top - lastTop > 1) {
+					lines += 1;
+					lastTop = top;
+				}
+			}
 			if (lines <= 1) continue;
 			push("unintended-wrap", el, "renders on " + lines + " lines");
 		}
 	});
 
-	// 同一行的兄弟元素差那么几个像素。完全对齐是 0，明显的层次差不会只差 4px 以内——
-	// 落在中间的基本都是漏了 items-center 或某一处 padding 飘了。
+	// 只检查声明为顶部/拉伸对齐的行。center、baseline、flex-end 下 top edge 本就可以
+	// 不同，拿它们互相比会把正常的不同高度图标和文字误报成错位。
 	safe(() => {
 		for (const parent of root.querySelectorAll("*")) {
 			const style = getComputedStyle(parent);
 			if (style.display !== "flex" && style.display !== "inline-flex") continue;
 			if (style.flexDirection !== "row") continue;
+			if (style.alignItems !== "normal" && style.alignItems !== "stretch" && style.alignItems !== "flex-start") continue;
 			const kids = Array.from(parent.children).filter((k) => {
 				const r = k.getBoundingClientRect();
 				return r.width > 0 && r.height > 0;
@@ -157,7 +209,7 @@ const MESSAGES: Record<string, (finding: RawFinding) => string> = {
 	"unintended-wrap": (finding) =>
 		`Control ${finding.detail}${finding.text ? ` — "${finding.text}"` : ""}. Buttons, tabs, table headers and labels are sized for one line; CJK copy is wider than the English a container was sized for. Fix in this order: shorten the copy, widen the container, or \`whitespace-nowrap\` plus \`truncate\` where clipping is acceptable.`,
 	"edge-misaligned": (finding) =>
-		`Row is misaligned — ${finding.detail}. A gap this small is never intentional: it is usually a missing \`items-center\`/\`items-stretch\`, or one child carrying padding the others do not.`,
+		`Top-aligned row is misaligned — ${finding.detail}. The row declares top/stretch alignment, but one child starts lower than the others; check child margin or padding before changing the row alignment.`,
 };
 
 function isRawFinding(value: unknown): value is RawFinding {

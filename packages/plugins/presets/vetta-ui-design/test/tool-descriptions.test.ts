@@ -13,10 +13,15 @@ interface Registration {
 	name: string;
 	description?: string;
 	side_effect?: "light" | "heavy";
+	parameters?: {
+		properties?: Record<string, unknown>;
+		required?: string[];
+	};
 }
 
 const descriptions = new Map<string, string>();
 const sideEffects = new Map<string, string | undefined>();
+const parameters = new Map<string, Registration["parameters"]>();
 
 beforeAll(() => {
 	const ctx = {
@@ -24,6 +29,7 @@ beforeAll(() => {
 			registerTool: (registration: Registration) => {
 				descriptions.set(registration.name, registration.description ?? "");
 				sideEffects.set(registration.name, registration.side_effect);
+				parameters.set(registration.name, registration.parameters);
 				return { dispose: () => {} };
 			},
 		},
@@ -62,6 +68,17 @@ describe("重工具描述", () => {
 		const description = descriptions.get("vetd_notes") ?? "";
 		expect(description).toMatch(/end-of-turn habit/);
 		expect(description).toMatch(/touched no \.vetd design/);
+	});
+
+	it("vetd_screenshot 保留单帧合同并提供批量与全量选择", () => {
+		const screenshot = parameters.get("vetd_screenshot");
+		expect(screenshot?.properties).toMatchObject({
+			frame: { type: "string" },
+			frames: { type: "array", minItems: 1, maxItems: 12 },
+			all: { type: "boolean" },
+		});
+		expect(screenshot?.required).toBeUndefined();
+		expect(descriptions.get("vetd_screenshot")).toMatch(/contact-sheet path to Read once/);
 	});
 
 	it("在工作区建目录树的工具在注册处声明 heavy，其余不声明（缺省 light）", () => {

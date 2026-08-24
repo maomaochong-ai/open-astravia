@@ -25,6 +25,15 @@ import { findVetdFiles } from "./vetd/discover";
 import { inspectIssues } from "./vetd/inspect";
 import { layoutIssues } from "./vetd/layout-probe";
 import { PRODUCT_SIZE_SUMMARY, PRODUCT_TYPES, resolveDefaultFrameSize } from "./vetd/product-size";
+import {
+	composeVerificationSheet,
+	designSourceFingerprints,
+	recordVerificationCapture,
+	resolveScreenshotSelection,
+	summarizeRenderVerification,
+	type RenderVerificationSummary,
+	type ScreenshotSelectionInput,
+} from "./vetd/render-verification";
 import { scaffoldDesign } from "./vetd/scaffold";
 
 const SCOPE_USE = ["project", "conversation"] as const;
@@ -37,9 +46,7 @@ interface CreateInput {
 	frameSize?: { width: number; height: number };
 }
 
-interface ScreenshotInput {
-	frame: string;
-}
+type ScreenshotInput = ScreenshotSelectionInput;
 
 /**
  * 这份设计当前的复用面：公共外壳与已有组件。
@@ -73,6 +80,7 @@ function statusNote(
 	shell: { layout: string | null; components: string[] } | null,
 	issues: readonly SourceIssue[],
 	frameCount: number,
+	renderVerification: RenderVerificationSummary,
 ): string {
 	const syntaxCount = issues.filter((issue) => issue.rule === SYNTAX_RULE).length;
 	if (syntaxCount > 0) {
@@ -80,7 +88,16 @@ function statusNote(
 		return `${syntaxCount} file(s) do not parse — the canvas cannot build them, so those frames are frozen on their last good rendering. Fix these first, with a targeted edit at the reported line rather than a full rewrite.`;
 	}
 	if (issues.length > 0) {
-		return `${issues.length} issue(s) found in your sources — these are proven rule violations, not suggestions. Fix them with a targeted edit before reporting back; each message names the rule and the reference to read.`;
+		return `${issues.length} issue(s) found by deterministic source checks. Fix them with a targeted edit before reporting back; each message names the rule and the reference to read.`;
+	}
+	if (renderVerification.status === "stale") {
+		return `The latest rendered verification is stale for: ${renderVerification.staleFrames.join(", ")}. Those sources changed after capture; verify the touched frames again, preferably in one screenshot batch.`;
+	}
+	if (renderVerification.status === "issues") {
+		return `Rendered verification still has measured issues in: ${renderVerification.issueFrames.map((entry) => entry.frame).join(", ")}. If the same image and issue repeat twice, stop blind edits and report the stalled checker result.`;
+	}
+	if (renderVerification.status === "not-run" || renderVerification.status === "partial") {
+		return `Rendered verification is ${renderVerification.status}; unverified frames: ${renderVerification.unverifiedFrames.join(", ") || "(none)"}. Capture the frames you changed in one batch and read the returned overview once.`;
 	}
 	if (frameCount > 1 && shell && !shell.layout && shell.components.length === 0) {
 		return "Multiple screens but NO shared UI yet. If they share a nav bar / sidebar / tab bar, extract it into components/ (or frames/_layout.tsx when it must survive navigation) rather than repeating it per frame. The structure checklist is in the vetta-ui-design skill, under Workflow.";
@@ -170,22 +187,32 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: SCREENSHOT_TOOL_NAME,
 		label: "%tool.vetd_screenshot%",
 		description:
-			"Capture a rendered screenshot of one design frame from the open design canvas. Returns a PNG file path — call the Read tool on that path to actually see the rendering and verify your design changes visually. Also machine-checks the sources first: a frame that does not parse returns the syntax error instead of an image, and `issues` carries any rule violations found in that frame. This is the checkpoint after writing a frame — screenshot before revising it, never revise blind.\nDo NOT use to capture anything that is not a frame of an open .vetd design — a dev server, a website, or an app you are building in the repo; drive those with the browser tooling instead.\nOnly for verifying frames of the design document currently open on the canvas.",
+			"Capture and machine-check one or more rendered design frames. Prefer `frames` or `all: true` for a multi-screen checkpoint: the tool inspects sources once, reuses one delivery capture session, and returns one contact-sheet path to Read once. The existing `frame` form remains available for a targeted recheck. Each frame reports measured/source `issues`; `stalled: true` means two consecutive captures had the same image and issues, so stop blind edits instead of trying a third cosmetic change.\nDo NOT use to capture anything that is not a frame of an open .vetd design — a dev server, a website, or an app you are building in the repo; drive those with the browser tooling instead.\nOnly for verifying frames of the design document currently open on the canvas.",
 		parameters: {
 			type: "object",
 			properties: {
 				frame: {
 					type: "string",
-					description: "Frame id (the frames/<id>.tsx basename), e.g. `login`.",
+					description: "One frame id (the frames/<id>.tsx basename), e.g. `login`. Use for a targeted recheck.",
+				},
+				frames: {
+					type: "array",
+					items: { type: "string" },
+					minItems: 1,
+					maxItems: 12,
+					description: "Frame ids to capture as one verification batch. Prefer this after changing several screens.",
+				},
+				all: {
+					type: "boolean",
+					description: "Set to true to capture every frame in the open design as one verification batch.",
 				},
 			},
-			required: ["frame"],
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
-		// 必须宽于画布侧那条链路（拉回活体的静置 + 30s 截图 + 落盘），否则工具会
-		// 抢在内层超时前失败，报出来的原因也就没了参考价值。
-		timeoutMs: 60_000,
+		// 交付截图必须复用宿主保留的第 4 个离屏会话（另 3 个属于画布位图队列），
+		// 所以批量串行；上限 12 帧，外层留足内层极端超时与总览合成时间。
+		timeoutMs: 270_000,
 		handler: async ({ host, session, trigger }) => {
 			const controller = getCanvasController();
 			if (!controller) {
@@ -197,125 +224,190 @@ export function registerDesignTools(ctx: PluginContext): void {
 						"The design canvas is not open (it was just requested to open). Wait a moment and retry, or ask the user to open the Design tab.",
 				};
 			}
-			const frameId = trigger.input.frame.replace(/\.tsx$/, "");
-			// 机检先于截图：语法错的 frame 从磁盘上就判定得了，不必等画布那条 30s 的
-			// 链路，也不受「位图态没挂 iframe 所以 HMR 报不出错」的限制。顺带把这一帧的
-			// 风格违规一起带回去——截图本来就是每帧必调的，agent 不用再单独跑 vetd_status。
-			const issues = await inspectIssues(ctx, host.fs, controller.session.dirPath);
-			const blocking = blockingSyntaxIssues(issues, frameId);
-			if (blocking.length > 0) {
-				return {
-					ok: false,
-					retryable: true,
-					error: `Frame "${frameId}" cannot build — these sources do not parse, so the canvas is still showing the previous rendering:\n\n${blocking
-						.map((issue) => `${issue.file}${issue.line === null ? "" : `:${issue.line}`} — ${issue.message}`)
-						.join("\n")}\n\nEdit the broken region (do not rewrite the whole file), then take the screenshot again.`,
-				};
-			}
 			const known = controller.session.manifest.frames.map((frame) => frame.id);
-			if (!known.includes(frameId)) {
-				// 漏声明尺寸不再让画框掉出画布（vetd/frame-size.ts），所以源码在、画布上
-				// 没有，剩下的只有一种情况：文件刚落盘，reconcile 的防抖还没跑完。
-				const exists = await host.fs
-					.readFile(`${controller.session.dirPath}/frames/${frameId}.tsx`)
-					.then(() => true)
-					.catch(() => false);
-				return {
-					ok: false,
-					retryable: true,
-					error: exists
-						? `Frame "${frameId}" is not on the canvas yet — frames/${frameId}.tsx exists, so the canvas is still picking it up. Wait a moment and take the screenshot again.`
-						: `Unknown frame "${frameId}". Available frames: ${known.join(", ") || "(none)"}`,
-				};
-			}
-			// 坏掉的 frame 渲染不出任何东西，截图只会一路等到超时（30s+），而模型
-			// 拿到的还是一句「超时」。直接把编译报错回给它，这一轮就能去修。
-			const buildError = getFrameError(frameId);
-			if (buildError) {
-				return {
-					ok: false,
-					retryable: true,
-					error: `Frame "${frameId}" is currently broken — the canvas shows a build error, so there is nothing to capture:\n\n${buildError}\n\nFix the source, then take the screenshot again.`,
-				};
-			}
-			let dataUrl: string;
-			// 布局机检搭在出图这一次渲染上（见 vetd/layout-probe）。走离屏窗口时页面
-			// 就在手上，量一次几乎不要钱；宿主没有这个能力就照旧只出图——机检是附加
-			// 信息，不该成为截不到图的理由。
-			let probe: unknown;
+			let selection: ReturnType<typeof resolveScreenshotSelection>;
 			try {
-				const frameSize = controller.session.manifest.frames.find((frame) => frame.id === frameId);
-				if (offscreenRasterSupported() && frameSize) {
-					const raster = await captureFrameOffscreen({
-						port: controller.port,
-						frameId,
-						width: frameSize.width,
-						height: frameSize.height,
-						quality: SCREENSHOT_JPEG_QUALITY,
-						probeLayout: true,
-					});
-					dataUrl = raster.dataUrl;
-					probe = raster.probe;
-				} else {
-					dataUrl = await controller.captureFrame(frameId);
-				}
+				selection = resolveScreenshotSelection(trigger.input, known);
 			} catch (error) {
-				const reason = error instanceof Error ? error.message : String(error);
-				// 等待期间才坏掉的话，报错要带上真正的原因而不只是「超时」。
-				const late = getFrameError(frameId);
 				return {
 					ok: false,
-					retryable: true,
-					error: late
-						? `Screenshot failed (${reason}). Frame "${frameId}" has a build error:\n\n${late}\n\nFix the source, then take the screenshot again.`
-						: `Screenshot failed: ${reason}. Call vetd_status for design-engine diagnostics and recent build output.`,
+					error: error instanceof Error ? error.message : String(error),
 				};
 			}
-			// 位图态的 frame 没挂 iframe，也就没有 HMR 连接，它坏没坏是截图这一步把它
-			// 挂上来才知道的。这时截到的是引擎的兜底文案，交给模型只会让它以为渲染正常。
-			const lateError = getFrameError(frameId);
-			if (lateError) {
-				return {
-					ok: false,
-					retryable: true,
-					error: `Frame "${frameId}" failed to build, so the capture only shows the engine's fallback placeholder:\n\n${lateError}\n\nFix the source, then take the screenshot again.`,
-				};
-			}
-			const base64 = dataUrl.split(",")[1] ?? "";
 			const { dirPath, vetdPath } = controller.session;
-			const path = snapshotPath(dirPath, frameId, Date.now());
-			await host.fs.writeFile(path, base64, "base64");
-			await ensureDesignIgnored(host.fs, dirPath);
-			await pruneSnapshots(host.fs, dirPath, frameId);
-			// 只带这一帧自己的违规：截图是逐帧调的，把整份设计的 issues 全塞进来会让
-			// agent 拿着别的 frame 的报错去改当前这个。
-			// 源码机检 + 渲染机检合成一份：对 agent 来说都是「这一帧被证明有问题的地方」，
-			// 分两个字段只会让它以为其中一份是可选的。
-			const frameIssues = [
-				...issues.filter((issue) => issue.file === `frames/${frameId}.tsx`),
-				...layoutIssues(probe, frameId),
-			];
-			// 搭车提醒（与 issues 同一先例）：截图是每帧必调的，这一帧有待处理的用户
-			// 备注就在这里点名，agent 不必单独巡检。
-			const framePendingNotes = pendingNotes(controller.notes.notes).filter(
-				(note) => note.anchor.kind !== "free" && note.anchor.frameId === frameId,
-			).length;
+			// 源码检查与指纹各做一次，而不是跟帧数线性重复。
+			const [sourceIssues, sourceFingerprints] = await Promise.all([
+				inspectIssues(ctx, host.fs, dirPath),
+				designSourceFingerprints(host.fs, dirPath, known),
+			]);
+			const useOffscreen = offscreenRasterSupported();
+			type Success = {
+				ok: true;
+				frame: string;
+				path: string;
+				dataUrl: string;
+				width: number;
+				height: number;
+				issues: SourceIssue[];
+				pendingNotes: number;
+				verification: ReturnType<typeof recordVerificationCapture>;
+			};
+			type Failure = { ok: false; frame: string; retryable: boolean; error: string };
+			type Result = Success | Failure;
+
+			const captureOne = async (frameId: string): Promise<Result> => {
+				const blocking = blockingSyntaxIssues(sourceIssues, frameId);
+				if (blocking.length > 0) {
+					return {
+						ok: false,
+						frame: frameId,
+						retryable: true,
+						error: `Frame "${frameId}" cannot build:\n${blocking
+							.map((issue) => `${issue.file}${issue.line === null ? "" : `:${issue.line}`} — ${issue.message}`)
+							.join("\n")}`,
+					};
+				}
+				const frameSize = controller.session.manifest.frames.find((frame) => frame.id === frameId);
+				if (!frameSize) {
+					const exists = await host.fs
+						.readFile(`${dirPath}/frames/${frameId}.tsx`)
+						.then(() => true)
+						.catch(() => false);
+					return {
+						ok: false,
+						frame: frameId,
+						retryable: exists,
+						error: exists
+							? `Frame "${frameId}" exists but is not on the canvas yet. Wait for reconciliation and retry.`
+							: `Unknown frame "${frameId}". Available frames: ${known.join(", ") || "(none)"}`,
+					};
+				}
+				const buildError = getFrameError(frameId);
+				if (buildError) {
+					return { ok: false, frame: frameId, retryable: true, error: `Frame "${frameId}" cannot build:\n${buildError}` };
+				}
+				let dataUrl: string;
+				let probe: unknown;
+				try {
+					if (useOffscreen) {
+						const raster = await captureFrameOffscreen({
+							port: controller.port,
+							frameId,
+							width: frameSize.width,
+							height: frameSize.height,
+							quality: SCREENSHOT_JPEG_QUALITY,
+							probeLayout: true,
+						});
+						dataUrl = raster.dataUrl;
+						probe = raster.probe;
+					} else {
+						dataUrl = await controller.captureFrame(frameId);
+					}
+				} catch (error) {
+					const reason = error instanceof Error ? error.message : String(error);
+					const late = getFrameError(frameId);
+					return {
+						ok: false,
+						frame: frameId,
+						retryable: true,
+						error: late ? `Screenshot failed (${reason}); frame build error:\n${late}` : `Screenshot failed: ${reason}`,
+					};
+				}
+				const lateError = getFrameError(frameId);
+				if (lateError) {
+					return { ok: false, frame: frameId, retryable: true, error: `Frame failed to build during capture:\n${lateError}` };
+				}
+				const frameIssues = [
+					...sourceIssues.filter((issue) => issue.file === `frames/${frameId}.tsx`),
+					...layoutIssues(probe, frameId),
+				];
+				const capturedAt = Date.now();
+				const path = snapshotPath(dirPath, frameId, capturedAt);
+				await host.fs.writeFile(path, dataUrl.split(",")[1] ?? "", "base64");
+				await pruneSnapshots(host.fs, dirPath, frameId);
+				const framePendingNotes = pendingNotes(controller.notes.notes).filter(
+					(note) => note.anchor.kind !== "free" && note.anchor.frameId === frameId,
+				).length;
+				return {
+					ok: true,
+					frame: frameId,
+					path,
+					dataUrl,
+					width: frameSize.width,
+					height: frameSize.height,
+					issues: frameIssues,
+					pendingNotes: framePendingNotes,
+					verification: recordVerificationCapture({
+						vetdPath,
+						frameId,
+						dataUrl,
+						issues: frameIssues,
+						sourceFingerprint: sourceFingerprints.get(frameId) ?? "",
+						capturedAt,
+					}),
+				};
+			};
+
+			const results: Result[] = [];
+			for (const frameId of selection.frameIds) results.push(await captureOne(frameId));
+			const successful = results.filter((result): result is Success => result.ok);
+			const failed = results.filter((result): result is Failure => !result.ok);
+			if (successful.length > 0) await ensureDesignIgnored(host.fs, dirPath);
+
+			if (selection.single) {
+				const [result] = results;
+				if (!result || !result.ok) return result ?? { ok: false, error: "No frame was captured." };
+				return {
+					ok: true,
+					path: result.path,
+					...(result.pendingNotes > 0 ? { pendingNotes: result.pendingNotes } : {}),
+					...(result.issues.length > 0 ? { issues: result.issues } : {}),
+					verification: result.verification,
+					note: result.verification.stalled
+						? "The image and measured issues are unchanged across two captures. Do not make a third blind edit; inspect the image/checker assumption and report the stalled result if it is a false positive."
+						: "Read this screenshot now. Check hierarchy, copy, icon meaning, contrast, spacing, clipping and frame fill; make only evidence-based edits, then recheck this frame if needed.",
+					cards: [screenshotCardDescriptor(vetdPath, dirPath, result.frame)],
+				};
+			}
+
+			let overviewPath: string | null = null;
+			if (successful.length > 1) {
+				const sheet = await composeVerificationSheet(
+					successful.map((result) => ({
+						id: result.frame,
+						width: result.width,
+						height: result.height,
+						dataUrl: result.dataUrl,
+					})),
+				);
+				if (sheet) {
+					overviewPath = snapshotPath(dirPath, "verification-overview", Date.now());
+					await host.fs.writeFile(overviewPath, sheet.split(",")[1] ?? "", "base64");
+					await pruneSnapshots(host.fs, dirPath, "verification-overview");
+				}
+			} else if (successful.length === 1) {
+				overviewPath = successful[0].path;
+			}
+			const stalledFrames = successful.filter((result) => result.verification.stalled).map((result) => result.frame);
 			return {
-				ok: true,
-				path,
-				...(framePendingNotes > 0
-					? {
-							pendingNotes: framePendingNotes,
-							notesReminder: `This frame has ${framePendingNotes} pending user note(s). Call vetd_notes to see them (annotated screenshot + source anchors) and address them before you finish.`,
-						}
-					: {}),
-				...(frameIssues.length > 0 ? { issues: frameIssues } : {}),
-				// 光说「截好了」模型会只瞟一眼就宣布完成。把该找什么写在这里：工具返回是
-				// 每次都读的，而 references/quality.md 未必被翻开。三项是实测最高频的
-				// 渲染缺陷，共同点是源码怎么读都读不出来，只有看图才能发现。
-				note: `Screenshot saved${frameIssues.length > 0 ? " — `issues` lists what the checkers PROVED about this frame, from the source and from measuring the rendered DOM at capture time (empty icon slots, clipped text, controls wrapping to a second line, rows off by a few pixels). Each carries file:line; fix them with targeted edits" : ""}. Now read this path and actually look at the image. The checkers only report what they can prove, and they are deliberately conservative — they miss more than they catch, and they say nothing at all about these, which are yours to judge: whether the visual hierarchy leads the eye to the right thing first; whether the copy is plausible, specific and in the user's language (never Lorem ipsum or "Item 1"); whether each icon actually matches its meaning; whether text/background contrast is comfortable; whether spacing and type sizes stay on one scale; whether the frame fills its declared height; and the alignment, wrapping and empty-looking elements the measurements were too cautious to flag. Fix what you find and screenshot again — see references/quality.md for the full checklist.`,
-				// 模型不可见：宿主把顶层 cards 提到 details.cards，在消息下方渲染截图卡。
-				cards: [screenshotCardDescriptor(vetdPath, dirPath, frameId)],
+				ok: successful.length > 0,
+				...(failed.length > 0 ? { partial: successful.length > 0, failed } : {}),
+				...(overviewPath ? { path: overviewPath } : {}),
+				frames: successful.map(({ frame, path, issues, pendingNotes: count, verification }) => ({
+					frame,
+					path,
+					...(issues.length > 0 ? { issues } : {}),
+					...(count > 0 ? { pendingNotes: count } : {}),
+					verification,
+				})),
+				verification: {
+					captured: successful.map((result) => result.frame),
+					stalledFrames,
+				},
+				note: overviewPath
+					? `Read the overview path once and compare all captured frames together.${stalledFrames.length > 0 ? ` Stop blind edits on stalled frames: ${stalledFrames.join(", ")}.` : ""}`
+					: "The overview could not be composed in this host. Read the per-frame paths listed in `frames`.",
+				cards: successful.map((result) => screenshotCardDescriptor(vetdPath, dirPath, result.frame)),
 			};
 		},
 	});
@@ -325,7 +417,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: "vetd_status",
 		label: "%tool.vetd_status%",
 		description:
-			"Inspect the Vetta UI Design state: workspace designs, the design open on the canvas, its frames (id/size/title/`buildError`), its `sharedShell` (existing _layout.tsx + components/ to reuse), `issues` (files that do not parse, plus rule violations found in your sources) and engine diagnostics. Call it ONCE before editing an existing design, to learn what is already there. Afterwards you do not need it for `issues` — vetd_screenshot returns them per frame.\nDo NOT use to survey a code repository, locate its UI source files or read its build state — use the ordinary file search and read tools instead.\nOnly for .vetd design documents and the design canvas.",
+			"Inspect the Vetta UI Design state: workspace designs, the open design, frames, shared UI, source-only `issues`, `renderVerification`, pending notes and engine diagnostics. `issues: []` only means the source checks are clear; it is never proof that UI verification passed. `renderVerification` reports which latest captures are clean, stale, unverified, or still have measured issues. Call this once before editing an existing design; use vetd_screenshot batches for subsequent verification.\nDo NOT use to survey a code repository, locate its UI source files or read its build state — use the ordinary file search and read tools instead.\nOnly for .vetd design documents and the design canvas.",
 		parameters: { type: "object", properties: {}, additionalProperties: false },
 		scope_use: SCOPE_USE,
 		handler: async ({ host, session }) => {
@@ -333,7 +425,23 @@ export function registerDesignTools(ctx: PluginContext): void {
 			const controller = getCanvasController();
 			const engine = await engineDiagnostics(controller?.session.dirPath ?? null);
 			const shell = controller ? await inspectSharedShell(host.fs, controller.session.dirPath) : null;
-			const issues = controller ? await inspectIssues(ctx, host.fs, controller.session.dirPath) : [];
+			const [issues, sourceFingerprints] = controller
+				? await Promise.all([
+						inspectIssues(ctx, host.fs, controller.session.dirPath),
+						designSourceFingerprints(
+							host.fs,
+							controller.session.dirPath,
+							controller.session.manifest.frames.map((frame) => frame.id),
+						),
+					])
+				: [[], new Map<string, string>()];
+			const renderVerification = controller
+				? summarizeRenderVerification(
+						controller.session.vetdPath,
+						controller.session.manifest.frames.map((frame) => frame.id),
+						sourceFingerprints,
+					)
+				: null;
 			// 这份设计装过的第三方库。react 三件套不列：它们由引擎提供，每份设计都有，
 			// 报出来只是每轮多几个 token。
 			const dependencies = controller
@@ -358,7 +466,9 @@ export function registerDesignTools(ctx: PluginContext): void {
 							// 已装的第三方库，import 前先看这里：装过的直接用，没有的
 							// 先掂量能不能用 Tailwind + React 写出来，真需要才 vetd_install。
 							...(dependencies.length > 0 ? { dependencies } : {}),
+							// 保留 `issues` 字段兼容旧客户端/提示词，但明确它只来自源码检查。
 							issues,
+							renderVerification,
 							// 用户在画布上留的待处理备注数。非零时先调 vetd_notes 看内容。
 							pendingNotes: pendingNotes(controller.notes.notes).length,
 							frames: controller.session.manifest.frames.map((frame) => {
@@ -375,7 +485,9 @@ export function registerDesignTools(ctx: PluginContext): void {
 						}
 					: null,
 				engine,
-				...(controller ? { note: statusNote(shell, issues, controller.session.manifest.frames.length) } : {}),
+				...(controller && renderVerification
+					? { note: statusNote(shell, issues, controller.session.manifest.frames.length, renderVerification) }
+					: {}),
 			};
 		},
 	});

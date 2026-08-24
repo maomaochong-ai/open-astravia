@@ -274,9 +274,12 @@ Then, for a multi-screen product, write in two passes:
    each. The whole set lands on the canvas within seconds, so the user sees the
    screen inventory and the layout immediately, and a wrong size or a wrong
    route shows up before you have written any detail.
-2. **Detail pass, one frame at a time.** Fill in real content for one frame,
-   then `vetd_screenshot` it, then move to the next. Each save hot-reloads, so
-   the design fills in visibly instead of appearing all at once at the end.
+2. **Detail pass in coherent batches.** Fill in real content for a small group
+   of related frames (or the whole set when it is simple), then call
+   `vetd_screenshot` once with `frames: [...]`. Read the returned contact sheet
+   once and compare the screens together. Use the single `frame` form only for
+   a targeted recheck after a fix. Each save still hot-reloads, so the user sees
+   progress while one model/tool round verifies several screens.
 
 Single screens, posters and slides skip the skeleton pass — just write the file.
 
@@ -290,22 +293,31 @@ from being corrected — the response tells you where the pre-restore state went
 The user can also do it themselves from the canvas's history panel, where the
 versions carry thumbnails.
 
-**Verify visually**: `vetd_screenshot` every frame you created or changed, then
-Read the returned PNG to actually see it. You are looking for rendering defects
+**Verify visually**: call `vetd_screenshot` with all frames you created or
+changed (`frames: [...]`, or `all: true` when the whole design is in scope), then
+Read the returned overview image once. You are looking for rendering defects
 the code cannot show you — run the checklist in `references/quality.md`, which
 starts with the three that account for most of them: **misalignment**,
 **unintended text wrapping**, and **classes that resolve to nothing** (a blank
-icon, or a surface whose theme token was never defined). A frame that does not parse
-returns the syntax error instead of an image — fix the reported line and
-screenshot again.
+icon, or a surface whose theme token was never defined). A frame that does not
+parse is listed as a failed member without discarding the other captures — fix
+the reported line and recheck that frame only.
+
+Every successful frame also carries a `verification` observation. If
+`stalled: true`, two consecutive checks produced the same image and the same
+issues. Do not make a third blind edit: inspect whether the checker assumption
+fits the visible result, and report the stalled finding when it is a false
+positive. `vetd_status.issues: []` is source-only and is never visual proof;
+`renderVerification` tells you whether prior captures are current or stale.
 
 Nothing will remind you. Writing a file tells you it was written, not that it
 renders — the checker only speaks through `vetd_screenshot` and `vetd_status`,
-and neither runs by itself. A frame you wrote but never screenshotted may be
+and neither runs by itself. A frame you wrote but never included in a screenshot
+batch may be
 sitting on the canvas as a build error or at a size you never chose, and the
 turn will end that way: the user is looking at the canvas, so they see it and
-you do not. Writing several frames in a row without a single screenshot is how
-that happens; the detail pass exists to prevent it.
+you do not. Batch verification keeps that safety without spending one model
+round and one image Read per frame.
 
 **Check the structure**: for a UI product with more than one screen, or with
 chrome that repeats across screens, answer these four before reporting back.
@@ -320,7 +332,7 @@ single-screen designs.
 3. **Props actually match?** Nothing typechecks these sources at runtime, so a
    renamed prop fails silently — a component taking `name` but always called
    with `icon` renders one fallback everywhere, and the source reads fine.
-4. **Every touched frame screenshotted, and the PNG actually Read?**
+4. **Every touched frame included in the latest batch, and its overview actually Read?**
 
 **User notes on the canvas**: the user pins Figma-style notes onto frames (or
 onto empty canvas) — each is a request addressed to you. `vetd_notes` lists the
@@ -367,9 +379,10 @@ unless `anchorStale`) plus its DOM path, classes and text, which is your edit
 target. If that location points into `components/`, the change hits every frame
 using it — say so in your reply.
 
-**Done** means: every frame you touched has been screenshotted and the image
-Read, that image is free of the three screenshot defects, `issues` came back
-empty, and no user note is left pending.
+**Done** means: every frame you touched is represented in the latest screenshot
+batch and its overview was Read, each current frame capture is free of the three
+screenshot defects, its per-frame `issues` came back empty (or a repeated false
+positive is explicitly reported as stalled), and no user note is left pending.
 
 That last one has a hard rule, because nothing outside this turn will catch a
 miss: **when you touched a `.vetd` design this turn, the final action — after the
@@ -406,11 +419,14 @@ buys nothing: a revision made without looking at the render is a guess.
 - **Fix with `edit`, never by rewriting the whole file with `write`.** Both the
   `issues` and the build errors you get back name a file and a line; go there.
   A full rewrite costs many times more and usually introduces a new defect.
-- **Screenshot before revising.** Once a frame is written, the next thing you do
-  to it is `vetd_screenshot`. Do not polish it first — you cannot see what is
-  wrong yet. One frame, one revision pass per screenshot.
+- **Screenshot before revising.** Once a coherent frame batch is written, the
+  next thing you do to it is one `vetd_screenshot` batch. Do not polish it first
+  — you cannot see what is wrong yet. One evidence-based revision pass per
+  capture; recheck only the frames you changed.
 - **Do not restate the plan between steps.** A todo list is worth it only when
-  the design has more screens than you can hold at once.
+  the design has more screens than you can hold at once. Create it once and
+  update it at phase boundaries; never spend one tool round marking every frame
+  complete immediately after its write.
 
 ## References (read on demand)
 

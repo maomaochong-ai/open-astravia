@@ -56,6 +56,16 @@ function sessionKeyOf(port: number, slot: number | null): string {
 	return slot === null ? `design-raster:${port}:delivery` : `design-raster:${port}:${slot}`;
 }
 
+/**
+ * 复用离屏窗口前先清掉上一帧的完成标记。
+ *
+ * 否则连续截同一个 frame 时 readyExpression 会立刻命中旧值，截图可能发生在本轮
+ * React 更新和字体绘制之前，让“刚改完又截了一张”实际拿到旧画面。
+ */
+export function framePrepareScript(frameId: string): string {
+	return `window.__vetdPainted = null; window.postMessage({ vetd: true, type: "show-frame", id: ${JSON.stringify(frameId)} }, "*")`;
+}
+
 export async function captureFrameOffscreen(request: OffscreenRasterRequest): Promise<OffscreenRasterResult> {
 	const capture = getPluginCtx().capture;
 	if (!capture) throw new Error("offscreen capture unavailable");
@@ -67,7 +77,7 @@ export async function captureFrameOffscreen(request: OffscreenRasterRequest): Pr
 		width: request.width,
 		height: request.height,
 		sessionKey: sessionKeyOf(request.port, request.slot ?? null),
-		prepareScript: `window.postMessage({ vetd: true, type: "show-frame", id: ${frameId} }, "*")`,
+		prepareScript: framePrepareScript(request.frameId),
 		// __vetdPainted 由引擎在「chunk 到齐 + 字体就绪 + 绘制过一帧」后写入
 		// （见 engine/src/main.tsx 的 FramePainted）；图片解码另等 complete。
 		readyExpression: `window.__vetdPainted === ${frameId} && Array.from(document.images).every((img) => img.complete)`,
