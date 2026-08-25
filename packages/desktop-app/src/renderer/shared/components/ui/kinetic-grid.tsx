@@ -5,15 +5,16 @@ import { cn } from "@shared/lib/utils";
 
 /**
  * 动态网格背景（Kinetic Grid，参考 shadcn kinetic-grid）：
- * - 网格由交叉的网格线组成，交叉处绘制小圆点；
- * - 光标靠近时，线条与点被平滑推开（远离指针），形成向指针弯曲的变形；
+ * - 网格由交叉的网格线组成；
+ * - 光标靠近时，线条被平滑推开（远离指针），形成向指针弯曲的变形；
  * - 点击并按住网格时产生拖拽变形：以按点为抓取点，周围一定半径内的
- *   线条与点作为一个整体跟随指针平移（保持网格自身结构、线条不缠绕），
+ *   线条作为一个整体跟随指针平移（保持网格自身结构、线条不缠绕），
  *   边缘按距离平滑衰减融入，影响范围内呈主题色渐变；松开后平滑回弹
  *   （无涟漪、无波前传播）；
  * - 颜色读取 CSS 变量 `--primary`（canvas 无法解析 var()，通过 probe 元素取计算色），
  *   主题切换（class / data-theme / data-mode 变化）时自动刷新；
- * - 四周边缘用宽缓的 CSS mask 渐隐，与背景主题自然融入。
+ * - 四周边缘用宽缓的 CSS mask 渐隐，与背景主题自然融入；四角叠加
+ *   backdrop-filter 模糊（mask 限定只在四角生效），网格过渡更柔和。
  * 遵循 DESIGN.md：颜色不硬编码、线条 1px、reduced-motion 时只画一帧静态网格。
  */
 export interface KineticGridProps {
@@ -29,11 +30,7 @@ const DEFAULT_WAVE_RADIUS = 260;
 
 /** 网格线基础透明度（叠加在 --primary 之上）。 */
 const LINE_ALPHA = 0.06;
-/** 网格点基础透明度。 */
-const DOT_ALPHA = 0.3;
-/** 网格点基础半径（CSS 像素）。 */
-const DOT_RADIUS = 1.0;
-/** 光标推开线条/点的最大位移（CSS 像素）。 */
+/** 光标推开线条的最大位移（CSS 像素）。 */
 const CURSOR_PUSH = 22;
 /** 拖拽变形影响半径（CSS 像素）。 */
 const DRAG_RADIUS = 200;
@@ -112,15 +109,13 @@ export function KineticGrid({
 		let last = performance.now();
 		let raf = 0;
 
-		// 网格采样：垂直线（固定 x、y 采样）、水平线（固定 y、x 采样）与交叉点。
+		// 网格采样：垂直线（固定 x、y 采样）、水平线（固定 y、x 采样）。
 		let verticals: GridPoint[][] = [];
 		let horizontals: GridPoint[][] = [];
-		let dots: GridPoint[] = [];
 
 		const rebuildGrid = (): void => {
 			verticals = [];
 			horizontals = [];
-			dots = [];
 			const step = gridSize / 4;
 			for (let x = gridSize / 2; x < width; x += gridSize) {
 				const line: GridPoint[] = [];
@@ -135,13 +130,6 @@ export function KineticGrid({
 					line.push({ x, y });
 				}
 				horizontals.push(line);
-			}
-			for (let vi = 0; vi < verticals.length; vi++) {
-				const vx = verticals[vi][0].x;
-				for (let hi = 0; hi < horizontals.length; hi++) {
-					const hy = horizontals[hi][0].y;
-					dots.push({ x: vx, y: hy });
-				}
 			}
 		};
 
@@ -273,16 +261,6 @@ export function KineticGrid({
 				strokeLine(horizontals[i]);
 			}
 
-			// 交叉点：拖拽增益同步放大半径与 alpha，让渐变色在点上同样可见。
-			for (let i = 0; i < dots.length; i++) {
-				const d = dots[i];
-				const { ox, oy, bright } = pointEffect(d.x, d.y);
-				const r = DOT_RADIUS * (1 + 0.8 * (bright - 1));
-				ctx.fillStyle = toRgba(rgb, DOT_ALPHA * bright);
-				ctx.beginPath();
-				ctx.arc(d.x + ox, d.y + oy, r, 0, Math.PI * 2);
-				ctx.fill();
-			}
 		};
 
 		const loop = (): void => {
@@ -362,12 +340,25 @@ export function KineticGrid({
 			className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)}
 			style={{
 				maskImage:
-					"radial-gradient(ellipse 120% 110% at 50% 44%, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 32%, rgba(0,0,0,0.28) 55%, rgba(0,0,0,0.12) 74%, rgba(0,0,0,0.04) 88%, transparent 100%)",
+					"radial-gradient(ellipse 120% 110% at 50% 44%, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0.3) 55%, rgba(0,0,0,0.18) 74%, rgba(0,0,0,0.1) 88%, rgba(0,0,0,0.06) 100%)",
 				WebkitMaskImage:
-					"radial-gradient(ellipse 120% 110% at 50% 44%, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 32%, rgba(0,0,0,0.28) 55%, rgba(0,0,0,0.12) 74%, rgba(0,0,0,0.04) 88%, transparent 100%)",
+					"radial-gradient(ellipse 120% 110% at 50% 44%, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0.3) 55%, rgba(0,0,0,0.18) 74%, rgba(0,0,0,0.1) 88%, rgba(0,0,0,0.06) 100%)",
 			}}
 		>
 			<canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
+			{/* 四角模糊：backdrop-filter 把四角网格模糊成柔和雾状，mask 限制只在四角生效 */}
+			<div
+				aria-hidden="true"
+				className="pointer-events-none absolute inset-0"
+				style={{
+					backdropFilter: "blur(14px)",
+					WebkitBackdropFilter: "blur(14px)",
+					maskImage:
+						"radial-gradient(ellipse 120% 110% at 50% 44%, transparent 55%, rgba(0,0,0,0.55) 74%, #000 88%)",
+					WebkitMaskImage:
+						"radial-gradient(ellipse 120% 110% at 50% 44%, transparent 55%, rgba(0,0,0,0.55) 74%, #000 88%)",
+				}}
+			/>
 		</div>
 	);
 }
