@@ -1,6 +1,7 @@
 {
 	"id": "browser",
 	"name": "%plugin.name%",
+	"icon": "icon.png",
 	"version": "0.1.0",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^1.0.0",

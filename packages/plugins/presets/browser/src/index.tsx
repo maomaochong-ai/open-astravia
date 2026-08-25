@@ -99,7 +99,10 @@ export default definePlugin({
 			id: VIEW_ID,
 			label: "%view.console.label%",
 			description: "%view.console.description%",
-			icon: "icon-[solar--global-linear]",
+			// 不声明 icon：宿主会回落到 plugin.json 里打包的 icon.png。
+			// iconTint: false 保留原色——这是一枚彩色品牌图标，被主题前景色蒙版成
+			// 单色剪影就只剩一个圆形，认不出来了。橙紫配色在深浅两种侧边栏上都够亮。
+			iconTint: false,
 			component: function BrowserWorkspaceView(): JSX.Element {
 				return <BrowserConsole ports={ports} />;
 			},
