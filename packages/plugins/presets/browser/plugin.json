@@ -1,0 +1,92 @@
+{
+	"id": "browser",
+	"name": "%plugin.name%",
+	"version": "0.1.0",
+	"defaultLocale": "zh",
+	"pluginApiVersion": "^1.0.0",
+	"runtime": "module-federation",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "browser",
+		"expose": "./plugin"
+	},
+	"styles": ["dist/style.css"],
+	"permissions": [
+		"ui.slot.workspace-view",
+		"agent.mcp.control",
+		"agent.command.run",
+		"agent.command.spawn",
+		"agent.hooks.register",
+		"agent.hookHandler.execute",
+		"storage.read",
+		"storage.write"
+	],
+	"commands": ["npm", "agent-browser"],
+	"agent": {
+		"mcpServers": "./.mcp.json"
+	},
+	"contributes": {
+		"settings": [
+			{
+				"key": "browserSource",
+				"type": "enum",
+				"enum": ["managed", "attach"],
+				"default": "managed",
+				"title": "%settings.browserSource.title%",
+				"description": "%settings.browserSource.description%"
+			},
+			{
+				"key": "headed",
+				"type": "boolean",
+				"default": true,
+				"title": "%settings.headed.title%",
+				"description": "%settings.headed.description%",
+				"visibleWhen": { "key": "browserSource", "in": ["managed"] }
+			},
+			{
+				"key": "allowedDomains",
+				"type": "string",
+				"default": "",
+				"title": "%settings.allowedDomains.title%",
+				"description": "%settings.allowedDomains.description%"
+			},
+			{
+				"key": "denyEval",
+				"type": "boolean",
+				"default": true,
+				"title": "%settings.denyEval.title%",
+				"description": "%settings.denyEval.description%"
+			},
+			{
+				"key": "denyUpload",
+				"type": "boolean",
+				"default": true,
+				"title": "%settings.denyUpload.title%",
+				"description": "%settings.denyUpload.description%"
+			},
+			{
+				"key": "denyDownload",
+				"type": "boolean",
+				"default": false,
+				"title": "%settings.denyDownload.title%",
+				"description": "%settings.denyDownload.description%"
+			},
+			{
+				"key": "toolsProfile",
+				"type": "string",
+				"default": "core",
+				"title": "%settings.toolsProfile.title%",
+				"description": "%settings.toolsProfile.description%"
+			},
+			{
+				"key": "maxOutput",
+				"type": "number",
+				"default": 20000,
+				"title": "%settings.maxOutput.title%",
+				"description": "%settings.maxOutput.description%"
+			}
+		]
+	},
+	"description": "%plugin.description%",
+	"author": "Vetta"
+}

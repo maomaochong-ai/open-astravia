@@ -4,6 +4,7 @@
 
 - 侧边栏导航项支持**原色图片图标**：`SidebarNavItem` 新增可选 `iconUrl`，设置后导航项以 `<img>` 渲染而不染色，插件可用 `registerWorkspaceView({ iconTint: false })` 让自己的彩色 Logo 保持原样（`svg` / `png` / `webp` 等任意图像资源）。`icon` 仍是必填的 class 字符串并同时下发 mask 版本，因此不认识 `iconUrl` 的主题（含替换了 `sidebar.navItem` 组件的主题）继续渲染单色图标，不受影响。缺省仍为单色，与内置导航项保持一致。
 - 插件工作区视图未声明 `icon` 时回落到插件自己的 `plugin.json` Logo（此前固定落到一个通用 widget 图标）：包内图片由宿主生成 mask class 承载，跟随主题前景色着色，因此自带图形的插件不必再去 Iconify 集合里找近似图标。导航项 `icon` 仍是 class 字符串，主题层（含第三方主题）无需改动。
+- 新增系统插件**浏览器操作（Browser Use）**：内聚 `vercel-labs/agent-browser`，Agent 可驱动真实 Chrome 完成导航、a11y 快照定位、填表、点击与登录。工具面走插件内聚 MCP，宿主的插件 MCP 是 session-local 的，因此每个对话在共享浏览器里钉住自己的标签页、共用同一份登录态而互不抢导航。运行时（约 90MB 原生二进制）在首次使用时经宿主托管 npm 按需安装，未就绪时会话里会出现一个引导工具而不是静默缺失；本机已装 Chrome 时直接复用，不额外下载 Chrome for Testing。危险动作两层拦截：daemon 侧的 action policy 默认禁用页面脚本执行与文件上传，宿主侧的 `PreToolUse` Hook 承担域名白名单并给出可操作的拒绝理由（上游的域名围栏与持久 profile / CDP 附着互斥，其 TTY 确认在无头 MCP 下等价于全拒）。运行时版本不达标时（例如机器上已有旧版全局安装抢在 PATH 前面）会退回引导态并在面板给出「升级」入口，而不是让工具面静默消失。见 ADR-0079。
 - 插件 AI 能力新增无状态多轮对话 capability `cap.domain.vetta.ai.chat`（`ctx.ai.chat`）：插件自持全量消息转写（user / assistant / toolResult），可携带仅本次请求可见的插件内部工具；模型触发工具调用时按 `stopReason: "toolUse"` 原样返回 `toolCalls`，由插件在自身 loop 内执行。权限沿用 `ai.complete`，宿主不保存任何插件会话状态。
 
 ### Fixed

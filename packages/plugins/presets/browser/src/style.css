@@ -1,0 +1,79 @@
+/* 只引 theme + utilities，不引 preflight —— 插件跑在宿主页面里，reset 会污染全局。 */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+.browser-console {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	padding: 1rem;
+	overflow-y: auto;
+	height: 100%;
+}
+
+.browser-card {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding: 0.75rem;
+	border-radius: 0.5rem;
+	border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+	background: color-mix(in srgb, currentColor 3%, transparent);
+}
+
+.browser-row {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 0.75rem;
+	padding: 0.25rem 0.5rem;
+	border-radius: 0.375rem;
+	background: color-mix(in srgb, currentColor 4%, transparent);
+}
+
+.browser-button,
+.browser-button-ghost {
+	font-size: 0.75rem;
+	padding: 0.25rem 0.75rem;
+	border-radius: 0.375rem;
+	border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+	cursor: pointer;
+}
+
+.browser-button {
+	background: var(--primary, currentColor);
+	color: var(--primary-foreground, canvas);
+	border-color: transparent;
+}
+
+.browser-button:disabled,
+.browser-button-ghost:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.browser-chip {
+	font-size: 0.6875rem;
+	padding: 0.0625rem 0.375rem;
+	border-radius: 999px;
+	background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.browser-chip-deny {
+	color: #dc2626;
+	background: color-mix(in srgb, #dc2626 12%, transparent);
+}
+
+/* 安装输出可能很长且带 \r 进度条，锁高度并允许横向滚动，避免撑破面板布局。 */
+.browser-output {
+	max-height: 10rem;
+	overflow: auto;
+	font-size: 0.6875rem;
+	line-height: 1.4;
+	white-space: pre-wrap;
+	word-break: break-all;
+	padding: 0.5rem;
+	border-radius: 0.375rem;
+	background: color-mix(in srgb, currentColor 5%, transparent);
+}

@@ -15,7 +15,8 @@
         "plugin-workbench",
         "comfyui-media-provider",
         "content-creation",
-        "kanban"
+        "kanban",
+        "browser"
       ]
     },
     "production": {
@@ -28,7 +29,8 @@
         "svg-viewer",
         "chart-renderer",
         "git",
-        "plugin-workbench"
+        "plugin-workbench",
+        "browser"
       ]
     }
   }
