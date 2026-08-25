@@ -1,5 +1,5 @@
 import type { CardDescriptor, ConversationMessage, PluginCardProps } from "@vetta-org/plugin-sdk";
-import { Component, type ComponentType, type ErrorInfo, type ReactNode } from "react";
+import { Component, type ComponentType, type ErrorInfo, memo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { MessageCardsView } from "@vetta/theme-ui/chat";
 import { PluginI18nBoundary } from "../../plugins/runtime/plugin-i18n";
@@ -46,8 +46,11 @@ function CardBody({ card, message }: { card: ResolvedCard; message: Conversation
 
 /**
  * Renders a message's plugin cards. Chrome (tabs/layout toggle) lives in theme-ui.
+ *
+ * memo 是必需的而不是优化：流式期间尾部消息每 token 重渲，模型层已经把 `cards` 与
+ * `message` 稳定成不变引用，这里挡住重渲，插件卡片子树才不会每帧重建。
  */
-export function MessageCards({
+export const MessageCards = memo(function MessageCards({
 	cards,
 	message,
 }: {
@@ -71,4 +74,4 @@ export function MessageCards({
 			}))}
 		/>
 	);
-}
+});
