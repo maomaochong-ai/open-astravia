@@ -28,6 +28,10 @@ import { buildCodingAgentSpec } from "./coding-agent-spec.js";
 const originalResourcesPath = Object.getOwnPropertyDescriptor(process, "resourcesPath");
 const originalPackageDir = process.env.VETTA_PACKAGE_DIR;
 
+function normalizePathSeparators(value: string): string {
+	return value.replaceAll("\\", "/");
+}
+
 afterEach(() => {
 	vi.restoreAllMocks();
 	runtimeSelector.mockClear();
@@ -52,12 +56,19 @@ describe("IM coding-agent invocation", () => {
 		});
 
 		const spec = buildCodingAgentSpec();
+		if (!spec.prefixArgs || !spec.packageDir) {
+			throw new Error("Windows coding-agent spec must include prefixArgs and packageDir");
+		}
 
-		expect(spec).toMatchObject({
+		expect({
+			...spec,
+			prefixArgs: spec.prefixArgs.map(normalizePathSeparators),
+			packageDir: normalizePathSeparators(spec.packageDir),
+		}).toMatchObject({
 			bin: process.execPath,
-			prefixArgs: ["C:\\resources\\coding-agent\\dist\\agent-rpc-cli.mjs", "--scenario", "im-claw"],
+			prefixArgs: ["C:/resources/coding-agent/dist/agent-rpc-cli.mjs", "--scenario", "im-claw"],
 			runAsNode: true,
-			packageDir: "C:\\resources\\coding-agent",
+			packageDir: "C:/resources/coding-agent",
 			serverUrl: "https://api.test",
 		});
 		expect(spec.prefixArgs).not.toContain("--agent-runtime");
