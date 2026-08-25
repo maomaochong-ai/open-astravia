@@ -100,6 +100,9 @@ composition is Node-oriented and is not part of this portable boundary.
 每个 Definition 是平级主 Agent，不是由某个主 Agent 派发的子任务。代码、配置文件、Plugin、数据库或远端控制面
 最终都发布同一种 Definition revision：
 
+完整的创建流程、可运行示例、配置文件 Source、Tool/MCP、动态 rollout、缓存和可观测接入方式见
+[《自定义 Agent 指南》](./docs/custom-agents.md)。
+
 ```ts
 import { defineRuntimeAgent, RuntimeAgentHost } from "@vetta/runtime-core/agents";
 
