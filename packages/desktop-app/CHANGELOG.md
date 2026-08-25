@@ -93,6 +93,7 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 - **系统插件图标改用包内 PNG**：office-viewer、image-gen、svg-viewer、media-viewer、chart-renderer、plugin-workbench、astravia-actions、git 的 manifest 图标由 Iconify 名换成包内 `icon.png`。
 - **Git 插件不再限定 coding 工作模式**：manifest 去掉 `agent_mode: ["coding"]`（agent_mode 轴改为通用）。面板与 turn 卡的显隐仍只看当前 cwd 是不是 git 工作区（`git rev-parse --is-inside-work-tree`），非仓库目录照旧不占标签位。
 - **「插件工作台」更名为「制作插件」**：插件名、活动面板标题、Activity Tab、输入栏 mode 开关及配套 skill / prompt 文案统一改名（英文 `Create Plugin`）。
+- **对话界面背景网格优化**：新会话页动态网格加密（48px→32px），线条与交叉点进一步调灰（alpha 0.16→0.06 / 0.55→0.3、点半径 1.5→1.0），四周边缘改为宽缓的 CSS mask 渐隐（中心亮度 0.9→0.8、过渡带更长更密），网格与背景主题自然融合、不再生硬截断。点击背景不再出现 DOM 圆环涟漪（移除 `useChatBackgroundRipple`），改为网格自身的拖拽变形反馈：点击并按住网格时，以按点为抓取点，周围 200px 半径内的网格线与点作为一个整体跟随指针平移（位移限幅、边缘按距离² 平滑衰减融入，保持网格结构、线条不缠绕），影响范围内呈主题色渐变；松开后指数平滑回弹复位。无涟漪、无波前传播。光标靠近时的线条弯曲保留。
 
 ### Fixed
 
