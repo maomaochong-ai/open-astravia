@@ -11,8 +11,8 @@ import { describe, expect, it } from "vitest";
 
 function item(overrides: Partial<SidebarNavItem>): SidebarNavItem {
 	return {
-		key: "workspace:chinese-chess/board",
-		label: "象棋",
+		key: "workspace:demo-plugin/board",
+		label: "演示视图",
 		icon: "vetta-plugin-nav-icon-1",
 		active: false,
 		type: "custom",
@@ -40,29 +40,29 @@ function navButton(label: string): HTMLElement {
 describe("sidebar navigation icon", () => {
 	it("renders a class-string icon as a tinted span", () => {
 		renderNav([item({ icon: "icon-[solar--crown-linear]" })]);
-		const button = navButton("象棋");
+		const button = navButton("演示视图");
 		expect(button.querySelector("img")).toBeNull();
 		expect(button.querySelector("span.icon-\\[solar--crown-linear\\]")).not.toBeNull();
 	});
 
 	it("renders iconUrl as a full-color img instead of the tinted span", () => {
-		renderNav([item({ iconUrl: "vetta-plugin://chinese-chess/assets/logo.png?v=1" })]);
-		const image = within(navButton("象棋")).getByRole("presentation", { hidden: true });
+		renderNav([item({ iconUrl: "vetta-plugin://demo-plugin/assets/logo.png?v=1" })]);
+		const image = within(navButton("演示视图")).getByRole("presentation", { hidden: true });
 		expect(image.tagName).toBe("IMG");
-		expect(image.getAttribute("src")).toBe("vetta-plugin://chinese-chess/assets/logo.png?v=1");
+		expect(image.getAttribute("src")).toBe("vetta-plugin://demo-plugin/assets/logo.png?v=1");
 		// A tinted mask class would repaint it with currentColor and destroy the colors.
 		expect(image.className).not.toContain("vetta-plugin-nav-icon-1");
 	});
 
 	it("keeps the sizing classes on both shapes so the row does not shift", () => {
 		const { unmount } = renderNav([item({})]);
-		const span = navButton("象棋").querySelector("span.vetta-plugin-nav-icon-1");
+		const span = navButton("演示视图").querySelector("span.vetta-plugin-nav-icon-1");
 		expect(span?.className).toContain("h-4");
 		expect(span?.className).toContain("w-4");
 		unmount();
 
 		renderNav([item({ iconUrl: "vetta-plugin://p/logo.webp" })]);
-		const image = within(navButton("象棋")).getByRole("presentation", { hidden: true });
+		const image = within(navButton("演示视图")).getByRole("presentation", { hidden: true });
 		expect(image.className).toContain("h-4");
 		expect(image.className).toContain("w-4");
 		expect(image.className).toContain("object-contain");

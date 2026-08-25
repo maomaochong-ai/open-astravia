@@ -36,9 +36,9 @@ describe("classifyPluginNavIcon", () => {
 	});
 
 	it("treats resolved package paths and remote images as images", () => {
-		expect(classifyPluginNavIcon("vetta-plugin://chinese-chess/assets/logo.svg?v=0.1.0")).toEqual({
+		expect(classifyPluginNavIcon("vetta-plugin://demo-plugin/assets/logo.svg?v=0.1.0")).toEqual({
 			kind: "image",
-			url: "vetta-plugin://chinese-chess/assets/logo.svg?v=0.1.0",
+			url: "vetta-plugin://demo-plugin/assets/logo.svg?v=0.1.0",
 		});
 		expect(classifyPluginNavIcon("https://example.com/logo.png")).toEqual({
 			kind: "image",

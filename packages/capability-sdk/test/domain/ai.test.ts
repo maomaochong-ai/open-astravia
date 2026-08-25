@@ -23,22 +23,28 @@ describe("ai domain capabilities", () => {
 	it("accepts a full multi-turn chat request with tools and tool results", () => {
 		const parsed = DOMAIN_AI_CAPABILITIES.CHAT.parseInput({
 			modelKey: "openai/gpt-5",
-			systemPrompt: "you are a referee",
+			systemPrompt: "you answer with tools",
 			messages: [
-				{ role: "user", content: "your move" },
+				{ role: "user", content: "look it up" },
 				{
 					role: "assistant",
 					content: "",
-					toolCalls: [{ id: "call-1", name: "make_move", arguments: { from: "a1", to: "a2" } }],
+					toolCalls: [{ id: "call-1", name: "lookup_record", arguments: { id: "record-1", field: "title" } }],
 				},
-				{ role: "toolResult", toolCallId: "call-1", toolName: "make_move", content: "illegal", isError: true },
+				{
+					role: "toolResult",
+					toolCallId: "call-1",
+					toolName: "lookup_record",
+					content: "not found",
+					isError: true,
+				},
 				{ role: "assistant", content: "let me retry" },
 			],
 			tools: [
 				{
-					name: "make_move",
-					description: "Play a move",
-					parameters: { type: "object", properties: { from: { type: "string" }, to: { type: "string" } } },
+					name: "lookup_record",
+					description: "Read one record",
+					parameters: { type: "object", properties: { id: { type: "string" }, field: { type: "string" } } },
 				},
 			],
 			temperature: 0.7,
@@ -69,7 +75,7 @@ describe("ai domain capabilities", () => {
 		const result = DOMAIN_AI_CAPABILITIES.CHAT.parseOutput({
 			modelKey: "openai/gpt-5",
 			text: "",
-			toolCalls: [{ id: "call-1", name: "make_move", arguments: { from: "a1" }, ignored: true }],
+			toolCalls: [{ id: "call-1", name: "lookup_record", arguments: { id: "record-1" }, ignored: true }],
 			stopReason: "toolUse",
 			usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3, ignored: true },
 			ignored: true,
@@ -77,7 +83,7 @@ describe("ai domain capabilities", () => {
 		expect(result).toEqual({
 			modelKey: "openai/gpt-5",
 			text: "",
-			toolCalls: [{ id: "call-1", name: "make_move", arguments: { from: "a1" } }],
+			toolCalls: [{ id: "call-1", name: "lookup_record", arguments: { id: "record-1" } }],
 			stopReason: "toolUse",
 			usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
 		});

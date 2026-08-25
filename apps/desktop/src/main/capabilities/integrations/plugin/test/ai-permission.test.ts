@@ -10,7 +10,7 @@ describe("PluginCapabilityAdapter ai permission", () => {
 			isOfficialPlugin: () => false,
 			resolvePermissions: () => [PLUGIN_CAPABILITY_PERMISSIONS.AI_COMPLETE],
 		});
-		const sessionId = adapter.openSession("chess");
+		const sessionId = adapter.openSession("demo-plugin");
 
 		expect(access.sessions[0]?.grants).toEqual([
 			{ capabilityId: DOMAIN_AI_CAPABILITIES.COMPLETE.id },
@@ -25,25 +25,25 @@ describe("PluginCapabilityAdapter ai permission", () => {
 			isOfficialPlugin: () => false,
 			resolvePermissions: () => [PLUGIN_CAPABILITY_PERMISSIONS.AI_COMPLETE],
 		});
-		const sessionId = adapter.openSession("chess");
+		const sessionId = adapter.openSession("demo-plugin");
 
 		const result = await adapter.chatAi(sessionId, {
 			messages: [
-				{ role: "user", content: "your move", ignored: true },
+				{ role: "user", content: "look it up", ignored: true },
 				{ role: "assistant", content: "thinking" },
 			],
-			tools: [{ name: "make_move", description: "play", parameters: { type: "object" } }],
+			tools: [{ name: "lookup_record", description: "read", parameters: { type: "object" } }],
 		});
 		expect(result.stopReason).toBe("toolUse");
-		expect(result.toolCalls[0]).toEqual({ id: "call-1", name: "make_move", arguments: { move: "h2e2" } });
+		expect(result.toolCalls[0]).toEqual({ id: "call-1", name: "lookup_record", arguments: { id: "record-1" } });
 		expect(access.invocations.at(-1)).toEqual({
 			capabilityId: DOMAIN_AI_CAPABILITIES.CHAT.id,
 			input: {
 				messages: [
-					{ role: "user", content: "your move" },
+					{ role: "user", content: "look it up" },
 					{ role: "assistant", content: "thinking" },
 				],
-				tools: [{ name: "make_move", description: "play", parameters: { type: "object" } }],
+				tools: [{ name: "lookup_record", description: "read", parameters: { type: "object" } }],
 			},
 		});
 
@@ -58,7 +58,7 @@ describe("PluginCapabilityAdapter ai permission", () => {
 			isOfficialPlugin: () => false,
 			resolvePermissions: () => [PLUGIN_CAPABILITY_PERMISSIONS.AI_MODELS_LIST],
 		});
-		const sessionId = adapter.openSession("chess");
+		const sessionId = adapter.openSession("demo-plugin");
 		expect(() => adapter.chatAi(sessionId, { messages: [{ role: "user", content: "hi" }] })).toThrowError(
 			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.ACCESS_DENIED }),
 		);

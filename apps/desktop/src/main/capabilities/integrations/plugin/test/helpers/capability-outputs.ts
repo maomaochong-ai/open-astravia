@@ -95,7 +95,7 @@ function domainOutput(capabilityId: CapabilityId): unknown {
 		return {
 			modelKey: "openai/gpt-5",
 			text: "",
-			toolCalls: [{ id: "call-1", name: "make_move", arguments: { move: "h2e2" } }],
+			toolCalls: [{ id: "call-1", name: "lookup_record", arguments: { id: "record-1" } }],
 			stopReason: "toolUse",
 			usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
 		};

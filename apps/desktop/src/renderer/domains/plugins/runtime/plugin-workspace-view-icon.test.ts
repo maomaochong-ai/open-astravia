@@ -10,8 +10,8 @@ const PERMISSIONS: PluginPermission[] = ["ui.slot.workspace-view"];
 function createUi(iconUrl?: string) {
 	const contributions = new PluginLocalContributions();
 	const plugin = {
-		id: "chinese-chess",
-		name: "Chess",
+		id: "demo-plugin",
+		name: "Demo",
 		permissions: PERMISSIONS,
 		grantedPermissions: PERMISSIONS,
 		...(iconUrl === undefined ? {} : { iconUrl }),
@@ -43,7 +43,7 @@ function maskRuleFor(className: string): string | undefined {
 
 describe("workspace view navigation icon", () => {
 	it("keeps an explicitly declared Iconify class as-is", () => {
-		const { contributions, ui } = createUi("vetta-plugin://chinese-chess/assets/logo.svg?v=1");
+		const { contributions, ui } = createUi("vetta-plugin://demo-plugin/assets/logo.svg?v=1");
 		ui.registerWorkspaceView({
 			id: "board",
 			label: "Board",
@@ -54,13 +54,13 @@ describe("workspace view navigation icon", () => {
 	});
 
 	it("falls back to the plugin's own packaged logo, masked so it follows the theme color", () => {
-		const { contributions, ui } = createUi("vetta-plugin://chinese-chess/assets/logo.svg?v=1");
+		const { contributions, ui } = createUi("vetta-plugin://demo-plugin/assets/logo.svg?v=1");
 		const handle = ui.registerWorkspaceView({ id: "board", label: "Board", component: () => null });
 
 		const icon = registeredIcon(contributions);
 		expect(icon).toMatch(/^vetta-plugin-nav-icon-\d+$/);
 		const rule = maskRuleFor(icon as string);
-		expect(rule).toContain('mask-image:url("vetta-plugin://chinese-chess/assets/logo.svg?v=1")');
+		expect(rule).toContain('mask-image:url("vetta-plugin://demo-plugin/assets/logo.svg?v=1")');
 		expect(rule).toContain("background-color:currentColor");
 
 		// The generated rule must go away with the contribution.
@@ -83,16 +83,16 @@ describe("workspace view navigation icon", () => {
 	});
 
 	it("keeps a packaged logo tinted by default, exposing no image url", () => {
-		const { contributions, ui } = createUi("vetta-plugin://chinese-chess/assets/logo.svg?v=1");
+		const { contributions, ui } = createUi("vetta-plugin://demo-plugin/assets/logo.svg?v=1");
 		ui.registerWorkspaceView({ id: "board", label: "Board", component: () => null });
 		expect(registeredIcon(contributions)).toMatch(/^vetta-plugin-nav-icon-\d+$/);
 		expect(registeredIconUrl(contributions)).toBeUndefined();
 	});
 
 	it("iconTint:false keeps the logo in full color and still ships a mask fallback", () => {
-		const { contributions, ui } = createUi("vetta-plugin://chinese-chess/assets/logo.png?v=1");
+		const { contributions, ui } = createUi("vetta-plugin://demo-plugin/assets/logo.png?v=1");
 		ui.registerWorkspaceView({ id: "board", label: "Board", iconTint: false, component: () => null });
-		expect(registeredIconUrl(contributions)).toBe("vetta-plugin://chinese-chess/assets/logo.png?v=1");
+		expect(registeredIconUrl(contributions)).toBe("vetta-plugin://demo-plugin/assets/logo.png?v=1");
 		// Themes that do not know `iconUrl` still get a renderable class.
 		expect(registeredIcon(contributions)).toMatch(/^vetta-plugin-nav-icon-\d+$/);
 	});
