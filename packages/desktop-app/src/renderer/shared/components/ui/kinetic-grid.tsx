@@ -4,13 +4,13 @@ import { useEffect, useRef } from "react";
 import { cn } from "@shared/lib/utils";
 
 /**
- * 动态网格背景（Kinetic Grid，参考 shadcn kinetic-grid）：
+ * 动态网格背景（Gravity Grid）：
  * - 网格由交叉的网格线组成；
- * - 光标靠近时，线条被平滑推开（远离指针），形成向指针弯曲的变形；
- * - 点击并按住网格时产生拖拽变形：以按点为抓取点，周围一定半径内的
- *   线条作为一个整体跟随指针平移（保持网格自身结构、线条不缠绕），
- *   边缘按距离平滑衰减融入，影响范围内呈主题色渐变；松开后平滑回弹
- *   （无涟漪、无波前传播）；
+ * - 光标靠近时，线条被轻轻拉向指针（引力井的余韵），幅度小、无颜色变化；
+ * - 点击并按住拖拽时形成引力涡旋：以指针为涡心，周围线条被拉向涡心，
+ *   呈漏斗状汇聚并带轻微切向旋转（涡旋感）；位移按距涡心的比例限幅，
+ *   保持网格结构、线条不缠绕、不塌成一点；涡心处亮度微增、向外迅速衰减；
+ *   松开后缓慢回弹（无涟漪、无波前传播）；
  * - 颜色读取 CSS 变量 `--primary`（canvas 无法解析 var()，通过 probe 元素取计算色），
  *   主题切换（class / data-theme / data-mode 变化）时自动刷新；
  * - 四周边缘用宽缓的 CSS mask 渐隐，与背景主题自然融入；四角叠加
@@ -30,18 +30,24 @@ const DEFAULT_WAVE_RADIUS = 260;
 
 /** 网格线基础透明度（叠加在 --primary 之上）。 */
 const LINE_ALPHA = 0.06;
-/** 光标推开线条的最大位移（CSS 像素）。 */
-const CURSOR_PUSH = 22;
-/** 拖拽变形影响半径（CSS 像素）。 */
-const DRAG_RADIUS = 200;
-/** 拖拽位移上限（CSS 像素），限制幅度避免变形过猛。 */
-const DRAG_MAX_OFFSET = 72;
-/** 拖拽影响范围内的亮度增益（渐变色，中心最强、向外衰减）。 */
-const DRAG_GAIN = 1.4;
+/** 光标把线条拉向指针的最大位移（CSS 像素），幅度小、只做引力余韵。 */
+const CURSOR_PULL = 10;
+/** 拖拽涡旋影响半径（CSS 像素）。 */
+const DRAG_RADIUS = 240;
+/** 涡心相对抓取点的最大偏移（CSS 像素），限制拖拽幅度。 */
+const DRAG_MAX_OFFSET = 90;
+/** 涡旋最大径向拉力（CSS 像素），向内汇聚的强度。 */
+const DRAG_PULL = 52;
+/** 位移不超过距涡心距离的比例：线条向涡心汇聚但不会塌成一点。 */
+const DRAG_CLAMP = 0.55;
+/** 切向分量与径向拉力的比例，形成涡旋旋转感。 */
+const DRAG_SWIRL = 0.3;
+/** 涡心处亮度增益（向外以 (1-t)³ 迅速衰减），单色、不渐变到亮色。 */
+const DRAG_GAIN = 0.6;
 /** 按下时位移平滑拉起速度（1/秒）。 */
 const DRAG_RISE = 15;
-/** 松开后回弹衰减速度（1/秒），指数衰减、干净无过冲。 */
-const DRAG_FALL = 9;
+/** 松开后回弹衰减速度（1/秒），指数衰减；较慢，保留「凹痕缓缓复原」的触感。 */
+const DRAG_FALL = 5;
 interface GridPoint {
 	x: number;
 	y: number;
@@ -149,7 +155,7 @@ export function KineticGrid({
 
 		/**
 		 * 计算采样点在光标与拖拽作用下的位移与亮度。
-		 * bright 为 1 表示正常亮度，拖拽影响范围内 >1（变亮、主题色渐变）。
+		 * bright 为 1 表示正常亮度，拖拽涡心附近 >1（微增，向外迅速衰减）。
 		 */
 		const pointEffect = (
 			px: number,
@@ -159,28 +165,39 @@ export function KineticGrid({
 			let oy = 0;
 			let bright = 1;
 
-			// 光标：把点从指针处推开（方向远离指针），强度随距离平滑衰减。
-			// 拖拽进行中（dragging）时暂停该效果，避免与拖拽变形互相抵消。
+			// 光标：把点轻轻拉向指针（引力井的余韵），幅度小、无亮度变化。
+			// 拖拽进行中（dragging）时暂停该效果，避免与涡旋互相抵消。
 			const dc = Math.hypot(px - smoothed.x, py - smoothed.y);
 			if (!dragging && dc < waveRadius && dc > 0.01) {
 				const k = 1 - dc / waveRadius;
 				const falloff = Math.sin(k * Math.PI) * k;
-				ox += ((px - smoothed.x) / dc) * CURSOR_PUSH * falloff;
-				oy += ((py - smoothed.y) / dc) * CURSOR_PUSH * falloff;
+				ox -= ((px - smoothed.x) / dc) * CURSOR_PULL * falloff;
+				oy -= ((py - smoothed.y) / dc) * CURSOR_PULL * falloff;
 			}
 
-			// 拖拽变形：影响半径内的点/线作为一个整体跟随位移向量平移，
-			// 边缘按 (1 - d/R)² 平滑衰减到 0，保持网格结构、线条不缠绕；
-			// 位移与亮度同源衰减，呈主题色渐变。无涟漪：无波前传播，
-			// 整个影响区同时、持续变形。
+			// 拖拽引力涡旋：线条被拉向涡心（指针），呈漏斗状汇聚；
+			// 位移按距涡心的比例限幅，网格保持结构、不缠绕、不塌成一点；
+			// 叠加轻微切向分量形成旋转感；亮度只在涡心微增并迅速衰减。
 			if (drag) {
-				const dd = Math.hypot(px - drag.x, py - drag.y);
-				if (dd < DRAG_RADIUS) {
+				const cx = drag.x + drag.ox;
+				const cy = drag.y + drag.oy;
+				const dx = px - cx;
+				const dy = py - cy;
+				const dd = Math.hypot(dx, dy);
+				if (dd < DRAG_RADIUS && dd > 0.01) {
 					const t = dd / DRAG_RADIUS;
 					const falloff = (1 - t) * (1 - t);
-					ox += drag.ox * falloff;
-					oy += drag.oy * falloff;
-					bright += DRAG_GAIN * falloff;
+					let pull = DRAG_PULL * falloff;
+					if (pull > dd * DRAG_CLAMP) {
+						pull = dd * DRAG_CLAMP;
+					}
+					const ux = dx / dd;
+					const uy = dy / dd;
+					ox -= ux * pull;
+					oy -= uy * pull;
+					ox += -uy * pull * DRAG_SWIRL;
+					oy += ux * pull * DRAG_SWIRL;
+					bright += DRAG_GAIN * (1 - t) * (1 - t) * (1 - t);
 				}
 			}
 
