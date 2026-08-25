@@ -61,8 +61,8 @@ initialize, start, audio, and stop.
 ## Development
 
 Run `bun dev` from this package after installing the monorepo dependencies. The development startup
-builds changed workspace prerequisites, stages plugin and theme manifests, then starts the renderer,
-theme server, and Electron process in parallel.
+uses the root Turborepo task graph and local cache to build changed workspace prerequisites, stages
+plugin and theme manifests, then starts the renderer, theme server, and Electron process in parallel.
 
 Normal development is isolated from packaged application data: it defaults to
 `VETTA_CONFIG_DIR=.vetta-dev` and stores the Chromium profile under

@@ -1,0 +1,22 @@
+{
+	"$schema": "https://turborepo.dev/schema.json",
+	"globalDependencies": [".env", ".env.*"],
+	"globalEnv": ["VETTA_*"],
+	"remoteCache": {
+		"enabled": false
+	},
+	"tasks": {
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**", "release/**", ".next/**", "!.next/cache/**"]
+		},
+		"@vetta/desktop#build": {
+			"dependsOn": ["^build"],
+			"cache": false
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		}
+	}
+}

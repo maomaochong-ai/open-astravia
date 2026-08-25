@@ -23,6 +23,7 @@ const GLOBAL_TEST_FILES = new Set([
 	"biome.jsonc",
 	"bun.lock",
 	"package.json",
+	"turbo.json",
 	"tsconfig.base.json",
 	"tsconfig.json",
 ]);
@@ -39,7 +40,7 @@ export function createChangedTestPlan(files) {
 	const globalTriggers = files.filter(isGlobalTestTrigger);
 	const runQuality = files.some((file) => {
 		const normalized = file.replaceAll("\\", "/");
-		return normalized === "package.json" || normalized.startsWith("scripts/quality/");
+		return normalized === "package.json" || normalized === "turbo.json" || normalized.startsWith("scripts/quality/");
 	});
 	const direct =
 		globalTriggers.length > 0

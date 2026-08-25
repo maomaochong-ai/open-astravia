@@ -34,7 +34,8 @@
 
 ### 4. 构建顺序
 
-- `scripts/build.sh`：按依赖放入正确 layer（无 workspace 依赖 → `build_layer0`；依赖其它 `@vetta/*` → 更后的 layer）
+- 不维护手写构建 layer。包提供 `scripts.build`，并在正确的 `dependencies`、`optionalDependencies`、`peerDependencies` 或 `devDependencies` 中声明内部 workspace 依赖；Turborepo 从 manifest 推导任务顺序。
+- 新包需要参与某个产品构建时，优先让该产品通过真实 workspace 依赖引用它；只有构建期工具等不属于运行时依赖的任务才增加显式 Turbo filter 或任务依赖。
 - 运行时仍需要 `dist/`（主进程 resolve、发布）。Path map 只服务 **类型检查**。
 
 ### 5. 消费方
@@ -49,6 +50,7 @@
 rm -rf packages/<name>/dist   # 可选压力测试
 bun run check                 # Biome + 根 tsgo + desktop tsc
 cd packages/<name> && bun run build
+bunx turbo run build --dry=json --filter=@vetta/<name>
 ```
 
 ## 不在本文范围
