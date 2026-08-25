@@ -1,6 +1,6 @@
-import type { ContentBlock, ToolCallBlock } from "@shared/store/atoms";
+import type { ContentBlock, ThinkingBlock, ToolCallBlock } from "@shared/store/atoms";
 import { describe, expect, it } from "vitest";
-import { getAssistantFoldData, selectLiveThinking } from "./messageBlockModel";
+import { getAssistantFoldData, selectLiveThinkingId } from "./messageBlockModel";
 
 let counter = 0;
 
@@ -108,26 +108,26 @@ describe("getAssistantFoldData 的答案区分界", () => {
 	});
 });
 
-describe("selectLiveThinking 选出仍在追加的思考", () => {
-	function thinking(value: string): ContentBlock {
+describe("selectLiveThinkingId 选出仍在追加的思考", () => {
+	function thinking(value: string): ThinkingBlock {
 		counter += 1;
 		return { type: "thinking", id: `k${counter}`, text: value };
 	}
 
-	it("末尾是 thinking 且正在流式时返回该 block", () => {
+	it("末尾是 thinking 且正在流式时返回该 block 的 id", () => {
 		const last = thinking("正在核对协议");
-		expect(selectLiveThinking([thinking("旧的思考"), tool("read"), last], true)).toBe(last);
+		expect(selectLiveThinkingId([thinking("旧的思考"), tool("read"), last], true)).toBe(last.id);
 	});
 
-	it("非流式时不提升任何 thinking", () => {
-		expect(selectLiveThinking([thinking("已结束的思考")], false)).toBeNull();
+	it("非流式时没有进行中的 thinking", () => {
+		expect(selectLiveThinkingId([thinking("已结束的思考")], false)).toBeNull();
 	});
 
-	it("末尾不是 thinking（例如已开始调用工具）时不提升", () => {
-		expect(selectLiveThinking([thinking("旧的思考"), tool("read")], true)).toBeNull();
+	it("末尾不是 thinking（例如已开始调用工具）时没有进行中的 thinking", () => {
+		expect(selectLiveThinkingId([thinking("旧的思考"), tool("read")], true)).toBeNull();
 	});
 
-	it("thinking 还没有任何文本时不提升", () => {
-		expect(selectLiveThinking([thinking("")], true)).toBeNull();
+	it("thinking 还没有任何文本时不算进行中", () => {
+		expect(selectLiveThinkingId([thinking("")], true)).toBeNull();
 	});
 });

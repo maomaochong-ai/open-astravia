@@ -28,24 +28,16 @@ describe("ThinkingBlockView", () => {
 
 describe("LiveThinkingView", () => {
 	it("进行中时直接展示正文，不给标题也不给折叠开关", () => {
-		render(<LiveThinkingView active text={"第一行\n第二行"} />);
+		render(<LiveThinkingView text={"第一行\n第二行"} />);
 
 		expect(screen.getByText(/第二行/)).toBeTruthy();
 		expect(screen.queryByRole("button")).toBeNull();
 	});
 
-	it("未进行时不渲染任何内容", () => {
-		const { container } = render(<LiveThinkingView active={false} text="" />);
+	it("追加新内容时就地换文本，不卸载重挂", () => {
+		const { rerender } = render(<LiveThinkingView text="第一段思考" />);
+		rerender(<LiveThinkingView text="第一段思考，第二段思考" />);
 
-		expect(container.textContent).toBe("");
-	});
-
-	it("停留期间开始新一段思考时，卡片直接换成新内容（不卸载重挂）", () => {
-		const { rerender } = render(<LiveThinkingView active text="第一段思考" />);
-		rerender(<LiveThinkingView active={false} text="" />);
-		rerender(<LiveThinkingView active text="第二段思考" />);
-
-		expect(screen.getByText("第二段思考")).toBeTruthy();
-		expect(screen.queryByText("第一段思考")).toBeNull();
+		expect(screen.getByText("第一段思考，第二段思考")).toBeTruthy();
 	});
 });

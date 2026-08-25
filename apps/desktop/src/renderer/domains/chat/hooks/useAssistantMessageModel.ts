@@ -13,7 +13,7 @@ import {
 	findLastProcessBlockIndex,
 	getAssistantFoldData,
 	groupBlocks,
-	selectLiveThinking,
+	selectLiveThinkingId,
 } from "../components/message-list/messageBlockModel";
 import { groupBlocksForWork } from "../components/message-list/progressGroupModel";
 import type { AssistantMessageModel } from "../components/message-list/types";
@@ -82,8 +82,8 @@ export function useAssistantMessageModel({
 		() => (exportMode && foldData ? groupBlocks(foldData.processBlocks, customToolNames) : []),
 		[customToolNames, exportMode, foldData],
 	);
-	const liveThinking = useMemo(
-		() => selectLiveThinking(message.blocks ?? [], isCurrentlyStreaming),
+	const liveThinkingId = useMemo(
+		() => selectLiveThinkingId(message.blocks ?? [], isCurrentlyStreaming),
 		[message.blocks, isCurrentlyStreaming],
 	);
 	const streamingTailIndex = useMemo(() => {
@@ -121,7 +121,7 @@ export function useAssistantMessageModel({
 		foldData,
 		isCurrentlyStreaming,
 		isPredicting: isTailMessage && !isCurrentlyStreaming && isRuntimePredicting,
-		liveThinking,
+		liveThinkingId,
 		stagedNarration,
 		workFoldCount,
 		segments,

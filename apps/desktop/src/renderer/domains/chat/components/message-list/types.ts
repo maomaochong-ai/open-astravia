@@ -1,4 +1,4 @@
-import type { ChatMessage, ThinkingBlock } from "@shared/store/atoms";
+import type { ChatMessage } from "@shared/store/atoms";
 import type { MessageListScrollModel } from "../../hooks/useMessageListScrollModel";
 import type { AssistantFoldData, BlockSegment } from "./messageBlockModel";
 import type { WorkSegment } from "./progressGroupModel";
@@ -30,8 +30,8 @@ export interface AssistantMessageModel {
 	foldData: AssistantFoldData | null;
 	isCurrentlyStreaming: boolean;
 	isPredicting: boolean;
-	/** 仍在追加的 thinking：提升到消息末尾单独渲染，原位不再重复。 */
-	liveThinking: ThinkingBlock | null;
+	/** 仍在追加的 thinking block id：原位改用实时滚动卡片渲染。 */
+	liveThinkingId: string | null;
 	/** Work 模式（agent 声明的阶段组）；coding 模式下不折叠整段过程。 */
 	/** 会话模式的叙事能力位（注册表 narration === "staged"）：true = 按 progress 阶段折叠渲染。 */
 	stagedNarration: boolean;

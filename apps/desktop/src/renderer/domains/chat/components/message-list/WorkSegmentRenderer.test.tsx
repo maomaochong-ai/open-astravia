@@ -27,6 +27,7 @@ vi.mock("@vetta/theme-ui/chat", () => ({
 		</div>
 	),
 	ProgressGroupRow: ({ text }: { text: string }) => <span>{text}</span>,
+	LiveThinkingView: ({ text }: { text: string }) => <span data-testid="live-thinking">{text}</span>,
 	SegmentShell: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
@@ -141,17 +142,33 @@ describe("WorkSegmentRenderer live activity", () => {
 		expect(screen.getByTestId("group-title").textContent).toBe("核对项目");
 	});
 
-	it("被提升到消息末尾的 thinking 在原位不再渲染", () => {
+	it("进行中的 thinking 在原位换成实时卡片", () => {
 		render(
 			<Provider store={createStore()}>
 				<WorkSegmentRenderer
 					segment={{ type: "single", block: thinking("核对是否需要调整公共协议") }}
 					isLiveActivity
-					hoistedThinkingId="thinking-1"
+					liveThinkingId="thinking-1"
 				/>
 			</Provider>,
 		);
 
+		expect(screen.queryByTestId("thinking-title")).toBeNull();
+		expect(screen.getByTestId("live-thinking").textContent).toBe("核对是否需要调整公共协议");
+	});
+
+	it("阶段组内进行中的 thinking 也留在组内，不提升到组外", () => {
+		render(
+			<Provider store={createStore()}>
+				<WorkSegmentRenderer
+					segment={stage([tool("read", { status: "success" }), thinking("正在核对公共协议")])}
+					isLiveActivity
+					liveThinkingId="thinking-1"
+				/>
+			</Provider>,
+		);
+
+		expect(screen.getByTestId("live-thinking").textContent).toBe("正在核对公共协议");
 		expect(screen.queryByTestId("thinking-title")).toBeNull();
 	});
 

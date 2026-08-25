@@ -24,13 +24,13 @@ export interface AssistantFoldData {
 
 /**
  * 正在追加的 thinking：只有消息末尾那个 thinking block 还会收到 delta。
- * 它会被提升到消息末尾单独渲染，因此原位不再重复渲染同一个 block。
+ * 它在原位改用实时滚动卡片渲染，其余 thinking 仍是折叠条。
  */
-export function selectLiveThinking(blocks: readonly ContentBlock[], isStreaming: boolean): ThinkingBlock | null {
+export function selectLiveThinkingId(blocks: readonly ContentBlock[], isStreaming: boolean): string | null {
 	if (!isStreaming) return null;
 	const last = blocks[blocks.length - 1];
 	if (!last || last.type !== "thinking" || last.text.length === 0) return null;
-	return last;
+	return last.id;
 }
 
 function blockKey(block: ContentBlock): string {

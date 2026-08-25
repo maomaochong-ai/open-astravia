@@ -1,6 +1,6 @@
 import type { ThinkingBlock, ToolCallBlock } from "@shared/store/atoms";
 import { languageAtom, pluginAgentToolLabelsAtom, pluginI18nByIdAtom } from "@shared/store/atoms";
-import { ProgressGroupRow, ProgressGroupView, SegmentShell } from "@vetta/theme-ui/chat";
+import { LiveThinkingView, ProgressGroupRow, ProgressGroupView, SegmentShell } from "@vetta/theme-ui/chat";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
@@ -55,9 +55,16 @@ interface StageGroupProps {
 	fallbackTitle: string;
 	exportMode: boolean;
 	isLiveActivity: boolean;
+	liveThinkingId?: string | null;
 }
 
-const StageGroup = memo(function StageGroup({ segment, fallbackTitle, exportMode, isLiveActivity }: StageGroupProps) {
+const StageGroup = memo(function StageGroup({
+	segment,
+	fallbackTitle,
+	exportMode,
+	isLiveActivity,
+	liveThinkingId,
+}: StageGroupProps) {
 	const [expanded, toggle] = useExpansion(`stage:${segment.id}`);
 	const { t } = useTranslation("chat");
 	useToolLabelInputs();
@@ -86,6 +93,9 @@ const StageGroup = memo(function StageGroup({ segment, fallbackTitle, exportMode
 			{segment.blocks.map((block) =>
 				block.type === "tool_call" ? (
 					<StageRow key={block.toolCallId} block={block} exportMode={exportMode} />
+				) : liveThinkingId === block.id ? (
+					// 进行中的思考就地展示实时滚动卡片，不脱离所属阶段组。
+					<LiveThinkingView key={`thinking-${block.id}`} text={block.text} />
 				) : (
 					<ThinkingBlockView
 						key={`thinking-${block.id}`}
@@ -105,8 +115,8 @@ interface WorkSegmentRendererProps {
 	isStreamingTail?: boolean;
 	/** This is the last process segment in the currently streaming assistant turn. */
 	isLiveActivity?: boolean;
-	/** 已提升到消息末尾的 thinking block id：原位跳过，避免重复渲染。 */
-	hoistedThinkingId?: string;
+	/** 仍在追加的 thinking block id：就地换成实时滚动卡片。 */
+	liveThinkingId?: string | null;
 	animateIn?: boolean;
 	exportMode?: boolean;
 }
@@ -119,7 +129,7 @@ function arePropsEqual(previous: WorkSegmentRendererProps, next: WorkSegmentRend
 	if (
 		previous.isStreamingTail !== next.isStreamingTail ||
 		previous.isLiveActivity !== next.isLiveActivity ||
-		previous.hoistedThinkingId !== next.hoistedThinkingId ||
+		previous.liveThinkingId !== next.liveThinkingId ||
 		previous.animateIn !== next.animateIn ||
 		previous.exportMode !== next.exportMode
 	) {
@@ -150,7 +160,7 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 	segment,
 	isStreamingTail = false,
 	isLiveActivity = false,
-	hoistedThinkingId,
+	liveThinkingId,
 	animateIn = false,
 	exportMode = false,
 }: WorkSegmentRendererProps) {
@@ -167,6 +177,7 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 				fallbackTitle={t("messageList.progressGroup.fallbackTitle")}
 				exportMode={exportMode}
 				isLiveActivity={isLiveActivity}
+				liveThinkingId={liveThinkingId}
 			/>
 		);
 	} else if (segment.type === "tool_group") {
@@ -199,6 +210,7 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 				}
 				exportMode={exportMode}
 				isLiveActivity={isLiveActivity}
+				liveThinkingId={liveThinkingId}
 			/>
 		);
 	} else {
@@ -207,15 +219,18 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 				content = <TextBlockView text={segment.block.text} isStreamingTail={isStreamingTail} />;
 				break;
 			case "thinking":
-				// 正在追加的那条已被提升到消息末尾常驻展示，原位不重复渲染。
-				content = hoistedThinkingId === segment.block.id ? null : (
-					<ThinkingBlockView
-						text={segment.block.text}
-						exportMode={exportMode}
-						title={t("messageList.progressGroup.thinkingLabel")}
-						showLineCount={false}
-					/>
-				);
+				// 正在追加的那条就地展示实时滚动卡片，结束后回到折叠条。
+				content =
+					liveThinkingId === segment.block.id ? (
+						<LiveThinkingView text={segment.block.text} />
+					) : (
+						<ThinkingBlockView
+							text={segment.block.text}
+							exportMode={exportMode}
+							title={t("messageList.progressGroup.thinkingLabel")}
+							showLineCount={false}
+						/>
+					);
 				break;
 			case "tool_call":
 				content = <ToolCallBlockView block={segment.block} exportMode={exportMode} aliased />;

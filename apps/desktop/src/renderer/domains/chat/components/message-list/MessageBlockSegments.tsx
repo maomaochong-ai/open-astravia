@@ -1,4 +1,4 @@
-import { SegmentShell, ToolCallGroupView } from "@vetta/theme-ui/chat";
+import { LiveThinkingView, SegmentShell, ToolCallGroupView } from "@vetta/theme-ui/chat";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorBlockView } from "../blocks/ErrorBlock";
@@ -30,9 +30,11 @@ type GroupBlock = ToolLike | ThinkingLike;
 
 const ToolCallGroup = memo(function ToolCallGroup({
 	blocks,
+	liveThinkingId,
 	exportMode = false,
 }: {
 	blocks: GroupBlock[];
+	liveThinkingId?: string | null;
 	exportMode?: boolean;
 }) {
 	const { t } = useTranslation("chat");
@@ -66,6 +68,8 @@ const ToolCallGroup = memo(function ToolCallGroup({
 				block.type === "tool_call" ? (
 					// biome-ignore lint/suspicious/noExplicitAny: host ToolCallBlockView expects full atom type
 					<ToolCallBlockView key={block.toolCallId} block={block as any} exportMode={exportMode} />
+				) : liveThinkingId === block.id ? (
+					<LiveThinkingView key={`thinking-${block.id}`} text={block.text} />
 				) : (
 					<ThinkingBlockView key={`thinking-${block.id}`} text={block.text} exportMode={exportMode} />
 				),
@@ -95,8 +99,8 @@ function ProgressDivider({ block }: { block: { args: Record<string, unknown> } }
 interface SegmentRendererProps {
 	segment: BlockSegment;
 	isStreamingTail?: boolean;
-	/** 已提升到消息末尾的 thinking block id：原位跳过，避免重复渲染。 */
-	hoistedThinkingId?: string;
+	/** 仍在追加的 thinking block id：就地换成实时滚动卡片。 */
+	liveThinkingId?: string | null;
 	animateIn?: boolean;
 	exportMode?: boolean;
 }
@@ -120,7 +124,7 @@ function areSegmentRendererPropsEqual(
 ): boolean {
 	return (
 		previous.isStreamingTail === next.isStreamingTail &&
-		previous.hoistedThinkingId === next.hoistedThinkingId &&
+		previous.liveThinkingId === next.liveThinkingId &&
 		previous.animateIn === next.animateIn &&
 		previous.exportMode === next.exportMode &&
 		areSegmentsEqual(previous.segment, next.segment)
@@ -130,13 +134,19 @@ function areSegmentRendererPropsEqual(
 export const SegmentRenderer = memo(function SegmentRenderer({
 	segment,
 	isStreamingTail = false,
-	hoistedThinkingId,
+	liveThinkingId,
 	animateIn = false,
 	exportMode = false,
 }: SegmentRendererProps) {
 	let content: JSX.Element | null;
 	if (segment.type === "tool_group") {
-		content = <ToolCallGroup blocks={segment.blocks as GroupBlock[]} exportMode={exportMode} />;
+		content = (
+			<ToolCallGroup
+				blocks={segment.blocks as GroupBlock[]}
+				liveThinkingId={liveThinkingId}
+				exportMode={exportMode}
+			/>
+		);
 	} else if (segment.type === "progress_divider") {
 		content = <ProgressDivider block={segment.block} />;
 	} else {
@@ -147,9 +157,11 @@ export const SegmentRenderer = memo(function SegmentRenderer({
 				);
 				break;
 			case "thinking":
-				// 正在追加的那条已被提升到消息末尾常驻展示，原位不重复渲染。
+				// 正在追加的那条就地展示实时滚动卡片，结束后回到折叠条。
 				content =
-					hoistedThinkingId === segment.block.id ? null : (
+					liveThinkingId === segment.block.id ? (
+						<LiveThinkingView text={segment.block.text} />
+					) : (
 						<ThinkingBlockView text={segment.block.text} exportMode={exportMode} />
 					);
 				break;

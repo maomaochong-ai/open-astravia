@@ -3,7 +3,6 @@ import type { ChatMessage } from "@shared/store/atoms";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import {
 	AssistantMessageView,
-	LiveThinkingView,
 	StreamingIndicator as ThemeStreamingIndicator,
 } from "@vetta/theme-ui/chat";
 import { memo, useId, useMemo } from "react";
@@ -61,7 +60,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 		foldData,
 		isCurrentlyStreaming,
 		isPredicting,
-		liveThinking,
+		liveThinkingId,
 		stagedNarration,
 		segments,
 		showDuration,
@@ -156,7 +155,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 									segment={segment}
 									isStreamingTail={index === streamingTailIndex}
 									isLiveActivity={isCurrentlyStreaming && index === segments.length - 1}
-									hoistedThinkingId={liveThinking?.id}
+									liveThinkingId={liveThinkingId}
 									animateIn={isCurrentlyStreaming && index === segments.length - 1}
 									exportMode={exportMode}
 								/>
@@ -165,15 +164,11 @@ export const AssistantMessage = memo(function AssistantMessage({
 									key={workSegmentKey(segment)}
 									segment={segment as BlockSegment}
 									isStreamingTail={index === streamingTailIndex}
-									hoistedThinkingId={liveThinking?.id}
+									liveThinkingId={liveThinkingId}
 									animateIn={isCurrentlyStreaming && index === segments.length - 1}
 									exportMode={exportMode}
 								/>
 							),
-						)}
-						{/* 进行中的思考提升到消息末尾：所属阶段组是否折叠都不影响它常驻可见。 */}
-						{!exportMode && (
-							<LiveThinkingView active={Boolean(liveThinking)} text={liveThinking?.text ?? ""} />
 						)}
 					</>
 				) : null
