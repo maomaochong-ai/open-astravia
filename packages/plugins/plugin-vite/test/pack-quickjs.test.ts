@@ -113,4 +113,29 @@ describe("createVettaPluginPackage QuickJS runtime", () => {
 			"must match plugin version",
 		);
 	});
+
+	it("rejects a runtime capability whose permission is missing before writing an archive", async () => {
+		const rootDir = await mkdtemp(join(fileURLToPath(new URL(".", import.meta.url)), "tmp-pack-permission-"));
+		temporaryDirectories.push(rootDir);
+		await mkdir(join(rootDir, "dist"), { recursive: true });
+		await writeFile(
+			join(rootDir, "plugin.json"),
+			JSON.stringify({
+				id: "permission-test",
+				name: "permission test",
+				version: "1.0.0",
+				pluginApiVersion: "^1.0.0",
+				runtime: "quickjs",
+				entry: "dist/plugin.js",
+				permissions: ["agent.systemPrompt.write"],
+			}),
+		);
+		await writeFile(
+			join(rootDir, "dist", "plugin.js"),
+			'vetta.activate((ctx) => ctx.agent.registerSystemPromptProvider({ handler: () => [{ type: "setToolEnabled", toolName: "write", enabled: false }] }));\n',
+		);
+
+		await expect(createVettaPluginPackage({ rootDir })).rejects.toThrow('requires "agent.tools.control"');
+		await expect(readFile(join(rootDir, "release", "permission-test-1.0.0.zip"))).rejects.toThrow();
+	});
 });

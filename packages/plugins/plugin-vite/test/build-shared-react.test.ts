@@ -95,7 +95,19 @@ async function createCommonJsReactFixture(): Promise<string> {
 			"junction",
 		),
 		writeFile(join(rootDir, "package.json"), JSON.stringify({ private: true, type: "module" })),
-		writeFile(join(rootDir, "plugin.json"), JSON.stringify({ id: "shared-react-fixture" })),
+		writeFile(
+			join(rootDir, "plugin.json"),
+			JSON.stringify({
+				id: "shared-react-fixture",
+				name: "Shared React fixture",
+				version: "0.1.0",
+				pluginApiVersion: "^1.0.0",
+				runtime: "module-federation",
+				entry: "dist/mf-manifest.json",
+				moduleFederation: { remoteName: "shared_react_fixture", expose: "./plugin" },
+				permissions: [],
+			}),
+		),
 		writeFile(
 			join(rootDir, "src", "index.js"),
 			`import { useState } from "react";

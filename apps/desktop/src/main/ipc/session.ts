@@ -43,7 +43,7 @@ import { getPluginSettings, listPlugins, pluginAgentContributionService } from "
 import { summarizeAgentPluginRuntimeConfig } from "../plugins/plugin-runtime-config-builder.js";
 import {
 	filterSystemPromptInvocationForPlugin,
-	normalizeDynamicSystemPromptOperations,
+	tryNormalizeDynamicSystemPromptOperations,
 } from "../plugins/system-prompt-operations.js";
 import { getSharedRuntime } from "../runtime.js";
 import { assertSandboxAvailableForMode } from "../sandbox/capability.js";
@@ -482,9 +482,17 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 					reject(new Error(`Plugin not found: ${request.pluginId}`));
 					return;
 				}
+				const effects = tryNormalizeDynamicSystemPromptOperations(
+					plugin,
+					(result as { effects?: unknown }).effects ?? [],
+				);
+				if (!effects.ok) {
+					reject(effects.error);
+					return;
+				}
 				resolve({
 					value: (result as { value?: unknown })?.value,
-					effects: normalizeDynamicSystemPromptOperations(plugin, (result as { effects?: unknown }).effects ?? []),
+					effects: effects.value,
 				});
 			};
 			const onAbort = (): void => {
@@ -585,12 +593,16 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 					reject(new Error(`Plugin not found: ${request.pluginId}`));
 					return;
 				}
-				const effects = normalizeDynamicSystemPromptOperations(
+				const effects = tryNormalizeDynamicSystemPromptOperations(
 					plugin,
 					(result as { effects?: unknown }).effects ?? [],
 				);
+				if (!effects.ok) {
+					reject(effects.error);
+					return;
+				}
 				if (value === null || value === undefined) {
-					resolve({ value: null, effects });
+					resolve({ value: null, effects: effects.value });
 					return;
 				}
 				if (typeof value !== "object" || typeof (value as { text?: unknown }).text !== "string") {
@@ -603,7 +615,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 						text: candidate.text,
 						idempotencyKey: typeof candidate.idempotencyKey === "string" ? candidate.idempotencyKey : undefined,
 					},
-					effects,
+					effects: effects.value,
 				});
 			};
 			const onAbort = (): void => {
@@ -671,14 +683,21 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 					reject(new Error(`Plugin not found: ${request.pluginId}`));
 					return;
 				}
-				const operations = normalizeDynamicSystemPromptOperations(plugin, (result as { value?: unknown })?.value);
+				const operations = tryNormalizeDynamicSystemPromptOperations(
+					plugin,
+					(result as { value?: unknown })?.value,
+				);
+				if (!operations.ok) {
+					reject(operations.error);
+					return;
+				}
 				pluginLog.debug("[plugin-system-prompt] operations normalized", {
 					requestId,
 					pluginId: request.pluginId,
 					providerId: request.providerId,
-					operationTypes: operations.map((operation) => operation.type),
+					operationTypes: operations.value.map((operation) => operation.type),
 				});
-				resolve(operations);
+				resolve(operations.value);
 			};
 			const onAbort = (): void => {
 				pluginSystemPromptMap.delete(requestId);

@@ -1,7 +1,7 @@
 {
 	"id": "vetta-ui-design",
 	"name": "%plugin.name%",
-	"version": "0.7.0",
+	"version": "0.7.1",
 	"icon": "icon.png",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^1.0.0",
@@ -32,6 +32,7 @@
 		"agent.hookHandler.execute",
 		"agent.skills.control",
 		"agent.systemPrompt.write",
+		"agent.tools.control",
 		"agent.command.run",
 		"agent.command.spawn",
 		"capture.offscreen",

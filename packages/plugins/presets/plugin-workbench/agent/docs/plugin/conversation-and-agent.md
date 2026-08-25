@@ -205,7 +205,7 @@ hook.dispose();
 
 ## 注册动态系统提示词 Provider
 
-`ctx.agent.registerSystemPromptProvider()` 注册一个 TypeScript handler，在每次 **Agent run 开始、`before_agent_start` 扩展执行前**求值。它适合按插件设置、模型、会话场景、当前消息或工具状态动态生成和修改提示词。需要 `agent.systemPrompt.write`；修改非本插件 block 还需要 `agent.systemPrompt.fullControl`。
+`ctx.agent.registerSystemPromptProvider()` 注册一个 TypeScript handler，在每次 **Agent run 开始、`before_agent_start` 扩展执行前**求值。它适合按插件设置、模型、会话场景、当前消息或工具状态动态生成和修改提示词。注册需要 `agent.systemPrompt.write`；修改非本插件 block 还需要 `agent.systemPrompt.fullControl`；返回 `setToolEnabled` 或调用 `actions.tools.*` 还需要 `agent.tools.control`；请求续跑还需要 `agent.continuation.register`。
 
 ```ts
 ctx.agent.registerSystemPromptProvider({
@@ -270,7 +270,7 @@ handler 上下文按稳定职责分组：
 | `actions.tools.disable(name)` | 禁用工具 |
 | `actions.continuation.request(result)` | 请求续跑（下一轮注入用户消息） |
 
-返回 operation 按数组顺序执行，支持 `addBlock`、`replaceBlock`、`updateBlock`、`removeBlock`、`setBlockEnabled`、`setToolEnabled`、`requestContinuation`。`write` 权限只能操作 `plugin.<本插件 id>.*`；宿主会校验所有返回值并补齐可信的 block source。handler 异常或超时只跳过该 provider，不阻止模型调用。
+返回 operation 按数组顺序执行，支持 `addBlock`、`replaceBlock`、`updateBlock`、`removeBlock`、`setBlockEnabled`、`setToolEnabled`、`requestContinuation`。`write` 权限只能操作 `plugin.<本插件 id>.*`；工具开关与续跑操作还会分别校验 `agent.tools.control` 和 `agent.continuation.register`。宿主会校验所有返回值并补齐可信的 block source。handler 异常或超时只跳过该 provider，不阻止模型调用。
 
 ## 注册 Agent 自动续跑策略
 

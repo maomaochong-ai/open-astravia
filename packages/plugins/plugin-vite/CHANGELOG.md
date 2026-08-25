@@ -19,6 +19,7 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ### Added
 
+- Added a build- and pack-time permission contract check that rejects plugin runtime capabilities whose required permissions are missing from `plugin.json`.
 - Included the Vite reload reason, affected path, and triggering module in development lifecycle events so Desktop can diagnose cache-affecting plugin reloads.
 - Added opt-in npm distribution packaging that validates `package.json#vetta` identity and writes a stable `release/vetta-plugin.zip` beside the existing versioned archive.
 - Added `vetta-plugin dev`, React Fast Refresh, development CSS scoping, and versioned lifecycle events for Desktop plugin hot reload without changing production package output.

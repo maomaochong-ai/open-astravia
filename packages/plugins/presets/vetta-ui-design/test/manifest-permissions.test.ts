@@ -22,6 +22,7 @@ const REQUIRED: { call: string; permissions: string[] }[] = [
 	// 这条比 warn+noop 更狠：宿主直接 throw，activate() 中断，整个插件加载失败，
 	// 连已经注册好的画廊入口和画布 Tab 都一起消失。
 	{ call: "agent.registerSystemPromptProvider(", permissions: ["agent.systemPrompt.write"] },
+	{ call: "setToolEnabled", permissions: ["agent.tools.control"] },
 ];
 
 function sourceText(): string {

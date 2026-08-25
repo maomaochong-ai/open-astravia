@@ -157,6 +157,22 @@ export function normalizeDynamicSystemPromptOperations(
 	});
 }
 
+export type DynamicSystemPromptOperationsResult =
+	| { ok: true; value: AgentPluginRuntimeEffect[] }
+	| { ok: false; error: Error };
+
+/** Keep renderer response callbacks from throwing past the Promise boundary. */
+export function tryNormalizeDynamicSystemPromptOperations(
+	plugin: InstalledPlugin,
+	value: unknown,
+): DynamicSystemPromptOperationsResult {
+	try {
+		return { ok: true, value: normalizeDynamicSystemPromptOperations(plugin, value) };
+	} catch (error) {
+		return { ok: false, error: error instanceof Error ? error : new Error(String(error)) };
+	}
+}
+
 export function filterSystemPromptInvocationForPlugin(
 	plugin: InstalledPlugin,
 	invocation: AgentPluginSystemPromptInvocation,

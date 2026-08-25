@@ -1,4 +1,7 @@
 import { federation, type ModuleFederationOptions } from "@module-federation/vite";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { parsePluginManifest } from "@vetta-org/plugin-sdk/manifest";
 import type { Plugin, PluginOption } from "vite";
 import {
 	createVettaPluginDevPlugins,
@@ -7,6 +10,7 @@ import {
 } from "./dev-vite-plugins.js";
 import { createHostThemeBridgePlugin } from "./host-theme.js";
 import { type CreateVettaPluginPackageOptions, createVettaPluginPackage } from "./pack.js";
+import { assertPluginPermissionContract } from "./permission-contract.js";
 import { createPluginStyleScopePlugin } from "./style-scope.js";
 
 const SHARED_REACT_COMMONJS_BRIDGE_ID = "virtual:vetta-plugin-shared-react-commonjs";
@@ -182,6 +186,28 @@ function createPackagePlugin(options: VettaPluginPackageOptions): Plugin {
 	};
 }
 
+function createPermissionContractPlugin(): Plugin {
+	let rootDir = "";
+	return {
+		name: "vetta-plugin-permission-contract",
+		apply: "build",
+		configResolved(config) {
+			rootDir = config.root;
+		},
+		async generateBundle(_outputOptions, bundle) {
+			const manifest = parsePluginManifest(
+				JSON.parse(await readFile(resolve(rootDir, "plugin.json"), "utf8")) as unknown,
+			);
+			assertPluginPermissionContract(
+				manifest,
+				Object.values(bundle).flatMap((output) =>
+					output.type === "chunk" ? [{ fileName: output.fileName, code: output.code }] : [],
+				),
+			);
+		},
+	};
+}
+
 export function vettaPluginFederation(options: VettaPluginFederationOptions): PluginOption[] {
 	const packageOptions = typeof options.package === "object" ? options.package : {};
 	const entry = options.entry ?? "./src/index.tsx";
@@ -198,6 +224,7 @@ export function vettaPluginFederation(options: VettaPluginFederationOptions): Pl
 			},
 		}),
 		createPluginStyleScopePlugin(),
+		createPermissionContractPlugin(),
 	];
 	// 兼容旧宿主的 build-watch 流程：增量构建时不重复打 zip。
 	if (options.package !== false && process.env.VETTA_PLUGIN_DEV_WATCH !== "1") {

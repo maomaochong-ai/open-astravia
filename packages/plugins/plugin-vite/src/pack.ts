@@ -3,6 +3,7 @@ import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { listPluginManifestResources, parsePluginManifest, type PluginManifest } from "@vetta-org/plugin-sdk/manifest";
 import { parseVettaNpmPluginPackage } from "@vetta-org/plugin-sdk/npm-package";
+import { assertPluginPermissionContract } from "./permission-contract.js";
 
 export interface VettaPluginPackageFile {
 	fullPath: string;
@@ -329,6 +330,14 @@ export async function createVettaPluginPackage(
 	const pluginManifest = parsePluginManifest(parseJsonObject(await readFile(manifestPath), basename(manifestPath)));
 	const outputPath = join(releaseDir, `${pluginManifest.id}-${pluginManifest.version}.zip`);
 	const files = await collectRuntimeFiles(rootDir, manifestPath, distDir);
+	assertPluginPermissionContract(
+		pluginManifest,
+		await Promise.all(
+			files
+				.filter((file) => /\.(?:c|m)?js$/u.test(file.archivePath))
+				.map(async (file) => ({ fileName: file.archivePath, code: await readFile(file.fullPath, "utf8") })),
+		),
+	);
 	let npmOutputPath: string | undefined;
 	if (options.npmArchive === true) {
 		const packageManifest = parseVettaNpmPluginPackage(
