@@ -13,6 +13,7 @@ import {
 	type RpcFrame,
 	readSessionFile,
 	readSessionId,
+	waitForRpcProcessPid,
 } from "./support/agent-rpc-test-process.js";
 import {
 	LEGACY_EXECUTION_MARKERS,
@@ -269,7 +270,8 @@ describe("installed standalone CLI artifact", () => {
 		workspaceFilePath = join(fixture.workspace, "installed-artifact.txt");
 		await writeFile(workspaceFilePath, FILE_CONTENT, "utf8");
 		const skillPath = await writeInstalledSkill(fixture);
-		await writeInstalledMcpServer(fixture);
+		const mcpPidPath = join(fixture.root, "installed-mcp.pid");
+		await writeInstalledMcpServer(fixture, mcpPidPath);
 		const isolatedEnv = createIsolatedArtifactEnv(fixture);
 		expect(isOutside(repositoryRoot, artifact.binaryPath)).toBe(true);
 		expect(isOutside(repositoryRoot, fixture.workspace)).toBe(true);
@@ -285,6 +287,7 @@ describe("installed standalone CLI artifact", () => {
 		const sessionId = readSessionId(initialState);
 		const ownershipLock = `${sessionFile}.owner.lock`;
 		expect(existsSync(ownershipLock)).toBe(true);
+		const initialMcpPid = await waitForRpcProcessPid(activeProcess, mcpPidPath);
 
 		const firstTurnMark = activeProcess.mark();
 		await activeProcess.request("installed-read", "prompt", {
@@ -315,6 +318,7 @@ describe("installed standalone CLI artifact", () => {
 		expect(readSessionFile(resumedState)).toBe(sessionFile);
 		expect(readSessionId(resumedState)).toBe(sessionId);
 		expect(existsSync(ownershipLock)).toBe(true);
+		await waitForRpcProcessPid(activeProcess, mcpPidPath, { previousPid: initialMcpPid });
 
 		const secondTurnMark = activeProcess.mark();
 		await activeProcess.request("installed-mcp", "prompt", {
@@ -673,8 +677,10 @@ describe("installed standalone CLI artifact", () => {
 		expect(versionTwoRequest?.rawBody).not.toContain(DYNAMIC_SKILL_V1);
 		expect(versionTwoRequest?.rawBody).toContain(DYNAMIC_SKILL_V2);
 
-		await writeInstalledMcpServer(fixture);
+		const dynamicMcpPidPath = join(fixture.root, "installed-dynamic-mcp.pid");
+		await writeInstalledMcpServer(fixture, dynamicMcpPidPath);
 		await promptInstalledTurn(activeProcess, "installed-dynamic-mcp-added", "Observe added MCP capability");
+		await waitForRpcProcessPid(activeProcess, dynamicMcpPidPath);
 		const mcpAddedRequest = providerServer.requests.at(-1);
 		expect(readToolDescription(mcpAddedRequest?.body.tools, MCP_TOOL_NAME)).toBe(MCP_DESCRIPTION);
 
@@ -1075,13 +1081,15 @@ async function writeInstalledExtension(currentFixture: AgentRpcFixture, name: st
 	return extensionPath;
 }
 
-async function writeInstalledMcpServer(currentFixture: AgentRpcFixture): Promise<void> {
+async function writeInstalledMcpServer(currentFixture: AgentRpcFixture, pidPath: string): Promise<void> {
 	const serverPath = join(currentFixture.root, "installed-mcp-server.mjs");
 	await writeFile(
 		serverPath,
 		[
+			'import { writeFileSync } from "node:fs";',
 			'import { createInterface } from "node:readline";',
 			"",
+			`writeFileSync(${JSON.stringify(pidPath)}, String(process.pid), "utf8");`,
 			"const lines = createInterface({ input: process.stdin });",
 			"for await (const line of lines) {",
 			"\tconst request = JSON.parse(line);",

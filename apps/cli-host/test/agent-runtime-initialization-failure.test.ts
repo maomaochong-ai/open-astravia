@@ -10,6 +10,7 @@ import {
 	createAgentRpcFixture,
 	readSessionFile,
 	startAgentRpc,
+	waitForRpcProcessPid,
 } from "./support/agent-rpc-test-process.js";
 
 let executable: AgentRpcExecutable;
@@ -35,7 +36,7 @@ describe("RPC CLI initialization failure cleanup contract", () => {
 			await Promise.all([writeProjectHookConfigs(fixture, auditPath), writeHealthyMcpServer(fixture, mcpPidPath)]);
 
 			failedProcess = startAgentRpc(executable, fixture, { extraArgs: ["--extension", extensionPath] });
-			const failedMcpPid = await waitForPid(mcpPidPath);
+			const failedMcpPid = await waitForRpcProcessPid(failedProcess, mcpPidPath);
 			await expect(failedProcess.waitForExit()).resolves.toBe(1);
 			await failedProcess.close();
 			expect(failedProcess.stderr).toContain("resolveResourcePath");
@@ -53,7 +54,9 @@ describe("RPC CLI initialization failure cleanup contract", () => {
 			const state = await restartedProcess.request("restart-state", "get_state");
 			expect(readSessionFile(state)).toBe(sessionFile);
 			expect(existsSync(`${sessionFile}.owner.lock`)).toBe(true);
-			const restartedMcpPid = await waitForDifferentPid(mcpPidPath, failedMcpPid);
+			const restartedMcpPid = await waitForRpcProcessPid(restartedProcess, mcpPidPath, {
+				previousPid: failedMcpPid,
+			});
 			expect(isProcessAlive(restartedMcpPid)).toBe(true);
 
 			await expect(restartedProcess.close()).resolves.toBe(0);
@@ -78,7 +81,7 @@ describe("RPC CLI initialization failure cleanup contract", () => {
 			activeProcess = startAgentRpc(executable, fixture);
 			const state = await activeProcess.request("failed-mcp-state", "get_state");
 			const sessionFile = readSessionFile(state);
-			const failedMcpPid = await waitForPid(mcpPidPath);
+			const failedMcpPid = await waitForRpcProcessPid(activeProcess, mcpPidPath);
 
 			await expect(waitForProcessExit(failedMcpPid)).resolves.toBe(true);
 			expect(existsSync(`${sessionFile}.owner.lock`)).toBe(true);
@@ -211,37 +214,8 @@ async function readLifecycleEvents(path: string): Promise<string[]> {
 		.map((record) => `${record.owner}:${record.event}`);
 }
 
-async function waitForDifferentPid(path: string, previousPid: number): Promise<number> {
-	const deadline = Date.now() + 5_000;
-	while (Date.now() < deadline) {
-		const pid = await readPid(path);
-		if (pid !== undefined && pid !== previousPid) return pid;
-		await delay(25);
-	}
-	throw new Error(`Timed out waiting for replacement MCP PID: ${path}`);
-}
-
-async function waitForPid(path: string): Promise<number> {
-	const deadline = Date.now() + 5_000;
-	while (Date.now() < deadline) {
-		const pid = await readPid(path);
-		if (pid !== undefined) return pid;
-		await delay(25);
-	}
-	throw new Error(`Timed out waiting for MCP PID: ${path}`);
-}
-
-async function readPid(path: string): Promise<number | undefined> {
-	try {
-		const pid = Number.parseInt((await readFile(path, "utf8")).trim(), 10);
-		return Number.isSafeInteger(pid) && pid > 0 ? pid : undefined;
-	} catch {
-		return undefined;
-	}
-}
-
 async function waitForProcessExit(pid: number): Promise<boolean> {
-	const deadline = Date.now() + 5_000;
+	const deadline = Date.now() + 15_000;
 	while (Date.now() < deadline) {
 		if (!isProcessAlive(pid)) {
 			await delay(100);

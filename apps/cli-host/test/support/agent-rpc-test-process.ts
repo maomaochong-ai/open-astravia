@@ -1,5 +1,5 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
-import { copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface, type Interface } from "node:readline";
@@ -52,6 +52,20 @@ interface FrameWaiter {
 const sourceEntryPath = fileURLToPath(new URL("../../src/agent-rpc-cli.ts", import.meta.url));
 const repositoryRoot = fileURLToPath(new URL("../../../..", import.meta.url));
 const testBundleRoot = join(repositoryRoot, "node_modules", ".cache");
+const DEFAULT_PROCESS_READY_TIMEOUT_MS = 15_000;
+const PASSTHROUGH_ENV_KEYS = [
+	"ComSpec",
+	"LANG",
+	"LC_ALL",
+	"NO_PROXY",
+	"PATH",
+	"PATHEXT",
+	"SystemRoot",
+	"TEMP",
+	"TMP",
+	"TMPDIR",
+	"WINDIR",
+] as const;
 
 export async function buildAgentRpcExecutable(): Promise<AgentRpcExecutable> {
 	await mkdir(testBundleRoot, { recursive: true });
@@ -86,6 +100,9 @@ export async function createAgentRpcFixture(options: CreateAgentRpcFixtureOption
 		mkdir(fixture.agentDir, { recursive: true }),
 		mkdir(fixture.workspace, { recursive: true }),
 		mkdir(fixture.conversationDir, { recursive: true }),
+		mkdir(join(fixture.root, "app-data"), { recursive: true }),
+		mkdir(join(fixture.root, "local-app-data"), { recursive: true }),
+		mkdir(join(fixture.root, "home"), { recursive: true }),
 	]);
 	await Promise.all([
 		writeFile(
@@ -154,16 +171,58 @@ export function startAgentRpc(
 			],
 			{
 				cwd: fixture.workspace,
-				env: {
-					...process.env,
-					VETTA_CODING_AGENT_DIR: fixture.agentDir,
-					VETTA_PACKAGE_DIR: join(repositoryRoot, "packages", "coding-agent"),
-					...options.env,
-				},
+				env: createAgentRpcProcessEnv(fixture, { overrides: options.env }),
 				stdio: "pipe",
+				windowsHide: true,
 			},
 		),
 	);
+}
+
+export function createAgentRpcProcessEnv(
+	fixture: AgentRpcFixture,
+	options: {
+		readonly baseEnv?: NodeJS.ProcessEnv;
+		readonly overrides?: Readonly<Record<string, string>>;
+	} = {},
+): NodeJS.ProcessEnv {
+	const baseEnv = options.baseEnv ?? process.env;
+	const env: NodeJS.ProcessEnv = {};
+	for (const key of PASSTHROUGH_ENV_KEYS) {
+		const value = baseEnv[key];
+		if (value !== undefined) env[key] = value;
+	}
+	return {
+		...env,
+		APPDATA: join(fixture.root, "app-data"),
+		CI: "1",
+		HOME: fixture.root,
+		LOCALAPPDATA: join(fixture.root, "local-app-data"),
+		NO_COLOR: "1",
+		USERPROFILE: fixture.root,
+		VETTA_CODING_AGENT_DIR: fixture.agentDir,
+		VETTA_HOME: join(fixture.root, "home"),
+		VETTA_PACKAGE_DIR: join(repositoryRoot, "packages", "coding-agent"),
+		...options.overrides,
+	};
+}
+
+export async function waitForRpcProcessPid(
+	processHandle: AgentRpcProcess,
+	path: string,
+	options: { readonly previousPid?: number; readonly timeoutMs?: number } = {},
+): Promise<number> {
+	const timeoutMs = options.timeoutMs ?? DEFAULT_PROCESS_READY_TIMEOUT_MS;
+	const deadline = Date.now() + timeoutMs;
+	while (Date.now() < deadline) {
+		const pid = await readPid(path);
+		if (pid !== undefined && pid !== options.previousPid) return pid;
+		if (processHandle.child.exitCode !== null || processHandle.child.signalCode !== null) {
+			throw new Error(`RPC process exited before writing MCP PID: ${path}\n${processDiagnostics(processHandle)}`);
+		}
+		await delay(25);
+	}
+	throw new Error(`Timed out after ${timeoutMs}ms waiting for MCP PID: ${path}\n${processDiagnostics(processHandle)}`);
 }
 
 export class AgentRpcProcess {
@@ -291,6 +350,29 @@ export function readSessionId(frame: RpcFrame): string {
 
 function isRpcFrame(value: unknown): value is RpcFrame {
 	return typeof value === "object" && value !== null && typeof Reflect.get(value, "type") === "string";
+}
+
+async function readPid(path: string): Promise<number | undefined> {
+	try {
+		const pid = Number.parseInt((await readFile(path, "utf8")).trim(), 10);
+		return Number.isSafeInteger(pid) && pid > 0 ? pid : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function processDiagnostics(processHandle: AgentRpcProcess): string {
+	const stderr = processHandle.stderr.trim();
+	return [
+		`childPid=${processHandle.child.pid ?? "unknown"}`,
+		`exitCode=${processHandle.child.exitCode ?? "running"}`,
+		`signal=${processHandle.child.signalCode ?? "none"}`,
+		`stderr=${stderr || "<empty>"}`,
+	].join(" ");
+}
+
+function delay(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function runCommand(command: string, args: readonly string[], cwd: string): Promise<void> {
