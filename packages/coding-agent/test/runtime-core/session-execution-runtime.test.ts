@@ -1,5 +1,6 @@
 import type { RuntimeSessionObservationEvent } from "@vetta/runtime-core";
 import type { AgentSession, ModelCallContributionContext, SessionContextRecord } from "@vetta/runtime-core/kernel";
+import { createNodeSandboxCodingToolEnvironment, type ForegroundCommandOperations } from "@vetta/runtime-node/coding";
 import type { CodingToolCatalogEntry } from "@vetta/runtime-tools";
 import { describe, expect, it } from "vitest";
 import { CodingAgentSessionExecutionRuntime } from "../../src/execution/session/runtime.js";
@@ -151,10 +152,26 @@ function createRuntimeFixture(
 		cwd: process.cwd(),
 		scenario: "cli",
 	});
+	const sandboxCommandOperations: ForegroundCommandOperations = {
+		async exec(_command, _cwd, options) {
+			options.onData(Buffer.from("ok"));
+			return { exitCode: 0 };
+		},
+	};
 	const runtime = new CodingAgentSessionExecutionRuntime({
 		cwd: process.cwd(),
 		environment: {
 			...environment,
+			sandbox: {
+				createToolSet: () =>
+					createNodeSandboxCodingToolEnvironment({
+						cwd: process.cwd(),
+						platform: "linux",
+						commandOperations: sandboxCommandOperations,
+						editPathPolicy: { getRejectionReason: () => undefined },
+						writePathPolicy: { getRejectionReason: () => undefined },
+					}),
+			},
 			dispose: async () => {
 				environmentDisposeCalls += 1;
 				await environment.dispose();

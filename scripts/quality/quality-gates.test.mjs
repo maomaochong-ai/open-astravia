@@ -18,6 +18,8 @@ import {
 	parseBaseArgs,
 	repoRoot,
 	stagedFiles,
+	TESTABLE_PACKAGES,
+	WORKSPACE_PACKAGES,
 } from "./lib.mjs";
 import { createChangedTestPlan, parseArgs } from "./test-changed.mjs";
 
@@ -203,26 +205,34 @@ describe("quick check selection", () => {
 });
 
 describe("affected package selection", () => {
+	it("discovers every workspace test script, including nested plugins and themes", () => {
+		expect(Object.keys(TESTABLE_PACKAGES)).toEqual(
+			WORKSPACE_PACKAGES.filter((pkg) => Boolean(pkg.scripts.test)).map((pkg) => pkg.key),
+		);
+		expect(Object.keys(TESTABLE_PACKAGES)).toEqual(
+			expect.arrayContaining(["capability-sdk", "cli-host", "runtime-node", "presets/image-gen"]),
+		);
+	});
+
 	it("includes transitive testable dependents", () => {
-		expect(expandTestablePackages(["ai"])).toEqual([
-			"ai",
-			"agent",
-			"runtime-core",
-			"runtime-mcp",
-			"coding-agent",
-			"desktop",
-		]);
-		expect(expandTestablePackages(["runtime-mcp"])).toEqual(["runtime-mcp", "coding-agent", "desktop"]);
-		expect(expandTestablePackages(["ecosystem-adapter"])).toEqual(["coding-agent", "ecosystem-adapter", "desktop"]);
+		expect(expandTestablePackages(["ai"])).toEqual(
+			expect.arrayContaining(["ai", "agent", "runtime-core", "runtime-mcp", "coding-agent", "desktop"]),
+		);
+		expect(expandTestablePackages(["runtime-mcp"])).toEqual(
+			expect.arrayContaining(["runtime-mcp", "coding-agent", "desktop"]),
+		);
+		expect(expandTestablePackages(["ecosystem-adapter"])).toEqual(
+			expect.arrayContaining(["coding-agent", "ecosystem-adapter", "desktop"]),
+		);
+		expect(expandTestablePackages(["plugin-sdk"])).toEqual(
+			expect.arrayContaining(["presets/image-gen", "presets/vetta-ui-design", "desktop"]),
+		);
 	});
 
 	it("runs Runtime and Desktop tests when those packages change", () => {
-		expect(createChangedTestPlan(["packages/runtime-core/src/index.ts"]).toTest).toEqual([
-			"runtime-core",
-			"runtime-mcp",
-			"coding-agent",
-			"desktop",
-		]);
+		expect(createChangedTestPlan(["packages/runtime-core/src/index.ts"]).toTest).toEqual(
+			expect.arrayContaining(["runtime-core", "runtime-mcp", "coding-agent", "desktop"]),
+		);
 		expect(createChangedTestPlan(["apps/desktop/src/main.ts"]).toTest).toEqual(["desktop"]);
 	});
 
@@ -230,37 +240,42 @@ describe("affected package selection", () => {
 		const plan = createChangedTestPlan(["bun.lock", "turbo.json"]);
 		expect(plan.globalTriggers).toEqual(["bun.lock", "turbo.json"]);
 		expect(plan.runQuality).toBe(true);
-		expect(plan.toTest).toEqual([
-			"ai",
-			"agent",
-			"runtime-core",
-			"runtime-mcp",
-			"coding-agent",
-			"ecosystem-adapter",
-			"desktop",
-			"plugin-cli",
-		]);
+		expect(plan.toTest).toEqual(Object.keys(TESTABLE_PACKAGES));
 	});
 
 	it("runs quality tests when their implementation changes", () => {
 		const plan = createChangedTestPlan(["scripts/quality/test-changed.mjs"]);
 		expect(plan.runQuality).toBe(true);
-		expect(plan.toTest).toEqual([
-			"ai",
-			"agent",
-			"runtime-core",
-			"runtime-mcp",
-			"coding-agent",
-			"ecosystem-adapter",
-			"desktop",
-			"plugin-cli",
-		]);
+		expect(plan.toTest).toEqual(Object.keys(TESTABLE_PACKAGES));
 	});
 
 	it("accepts both base argument forms and rejects unknown arguments", () => {
 		expect(parseArgs(["--base", "origin/main"])).toEqual({ base: "origin/main" });
 		expect(parseArgs(["--base=origin/release"])).toEqual({ base: "origin/release" });
 		expect(() => parseArgs(["--unknown"])).toThrow("unknown argument");
+	});
+});
+
+describe("CI unit test coverage", () => {
+	const workflow = readFileSync(join(repoRoot, ".github/workflows/quality.yml"), "utf8");
+	const mobileWorkflow = readFileSync(join(repoRoot, ".github/workflows/mobile.yml"), "utf8");
+	const rootManifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+
+	it("runs affected workspace tests on Linux and Windows with complete Git history", () => {
+		expect(workflow).toContain("os: [ubuntu-latest, windows-latest]");
+		expect(workflow).toContain("fetch-depth: 0");
+		expect(workflow).toContain("bun run test:changed --base");
+	});
+
+	it("keeps the local full-test entry point sequential and discovery-based", () => {
+		expect(rootManifest.scripts.test).toBe("bun run scripts/quality/test-pkg.mjs --all");
+		expect(rootManifest.scripts["test:unit"]).toBe("bun run scripts/quality/test-pkg.mjs --all");
+	});
+
+	it("builds the Android app and runs host tests when Mobile changes", () => {
+		expect(mobileWorkflow).toContain('      - "apps/mobile/**"');
+		expect(mobileWorkflow).toContain(":shared:testAndroidHostTest");
+		expect(mobileWorkflow).toContain(":androidApp:assembleDebug");
 	});
 });
 

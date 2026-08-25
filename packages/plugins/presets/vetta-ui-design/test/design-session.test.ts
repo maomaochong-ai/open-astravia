@@ -43,7 +43,8 @@ function fakeCtx(files: Record<string, string>) {
 }
 
 const VETD = "/w/demo.vetd";
-const DIR = "/w/demo.vetd.d";
+const DIR = VETD;
+const MANIFEST = `${VETD}/design.json`;
 
 const frameSource = (title: string) =>
 	`export const frame = { width: 390, height: 844, title: "${title}" };\nexport default function F() { return null; }\n`;
@@ -57,7 +58,7 @@ it("agent 手写的、缺 meta 的 manifest 不会让 open 崩掉", async () => 
 		frames: [{ id: "index", file: "frames/index.tsx", x: 0, y: 0, width: 390, height: 844, title: "首页" }],
 	};
 	const { ctx, fs, written } = fakeCtx({
-		[VETD]: JSON.stringify(manifest),
+		[MANIFEST]: JSON.stringify(manifest),
 		[`${DIR}/frames/index.tsx`]: frameSource("首页"),
 	});
 	const session = new DesignSession(ctx, VETD);
@@ -69,7 +70,7 @@ it("agent 手写的、缺 meta 的 manifest 不会让 open 崩掉", async () => 
 	expect(session.manifest.frames[0].meta).toEqual({ width: 390, height: 844, title: "首页" });
 	// 崩在 reconcile 里就等于监听一行都没挂上——那才是「画布永远不更新」的根源。
 	expect(fs.watchDirectory).toHaveBeenCalledTimes(2);
-	expect(written[VETD]).toBeDefined();
+	expect(written[MANIFEST]).toBeDefined();
 
 	session.dispose();
 });
@@ -89,7 +90,7 @@ it("agent 自创 schema 写的 manifest：条目丢弃后由 tsx 全量重建，
 		],
 	};
 	const { ctx } = fakeCtx({
-		[VETD]: JSON.stringify(manifest),
+		[MANIFEST]: JSON.stringify(manifest),
 		[`${DIR}/frames/index.tsx`]: frameSource("首页"),
 		[`${DIR}/frames/search.tsx`]: frameSource("找车位"),
 	});

@@ -11,7 +11,7 @@
 | 完整本地/PR | `bun run check` | 一轮代码任务完成、交付或开 PR 前一次 | 对显式源码根运行 Biome，并行执行根 `tsgo`、CLI 显式 `tsgo`、增量 desktop `tsc`、docs check 与架构守卫 |
 | 构建声明消费 | `bun run check:types:build-surfaces` | workspace 前置声明生成后 | 按 `cli-host/tsconfig.build.json` 验证真实包声明消费；会拒绝陈旧 `dist/*.d.ts` |
 | 质量脚本测试 | `bun run test:quality` | 修改 `scripts/quality` | 变更选择、依赖传播与包边界规则 |
-| 单元测试 | `bun run test:unit` | 逻辑变更 | 当前有测试的核心包 |
+| 单元测试 | `bun run test` / `bun run test:unit` | 逻辑变更 | 顺序运行所有声明 `test` 的 TypeScript workspace，避免跨包资源争用 |
 | 按包 | `bun run test:pkg <name>` | 改单包 | 例：`test:pkg ai` |
 | 按变更 | `bun run test:changed` | 提 PR 前可选 | 合并已提交/工作区/未跟踪改动，测试触达包及其下游依赖 |
 | 按需 Desktop UI 验收 | `bun run verify:ui:*` | 仅用户明确要求使用 UI 验证或具体命令时 | 不由 UI、图标、样式或 Renderer/Main 改动自动触发；见 [README](./README.md) |
@@ -58,7 +58,7 @@ knip.config.ts                 Knip（可选）
 | `fix` | Biome 全量格式化与安全修复 |
 | `vitest` | 用 Node 启动仓库 Vitest；等价于 `bun scripts/quality/run-vitest.mjs` |
 | `test:quality` | 质量脚本定向测试 |
-| `test:unit` | ai / agent / coding-agent / ecosystem-adapter |
+| `test` / `test:unit` | 从 workspace manifest 自动发现并顺序运行所有声明 `test` 的包 |
 | `test:pkg` | 见 `bun run test:pkg --list` |
 | `test:changed` | 默认比较 `origin/dev`；`--base origin/main` 可改基线 |
 | `deadcode` / `deadcode:report` | Knip 严格 / 仅报告 |
@@ -141,7 +141,7 @@ Desktop 开发前置构建使用 `@vetta/desktop` 的依赖闭包，并额外包
 
 新增或修改 workspace 依赖后必须执行正常的 `bun install`；`bun install --lockfile-only` 只更新锁文件，不创建包级 workspace 链接。可用 `bunx turbo run build --dry=json --filter=<package>` 检查任务闭包和依赖原因。
 
-`test:changed` 会读取可测包的 `package.json` 自动计算下游依赖闭包。`package.json`、`bun.lock`、根 TypeScript/Biome 配置和 `scripts/quality/**` 变化会触发全部核心测试；无效基线会直接失败，不会静默跳过。
+`test:changed` 会从根 workspace 和各包 `package.json#scripts.test` 自动发现可测包，并按全部 workspace manifest 自动计算下游依赖闭包；没有测试脚本的上游包发生变化时，其可测消费者也会进入计划。`package.json`、`bun.lock`、根 TypeScript/Biome 配置和 `scripts/quality/**` 变化会触发全部 workspace 测试；无效基线会直接失败，不会静默跳过。
 
 `check:quick` 复用同一套 Git 变更选择器，因此不会漏掉未暂存或未跟踪文件。删除文件会从 Biome 输入中排除；修改任意 `biome.json` / `biome.jsonc` 或根 `.editorconfig` 时，会自动回退为全仓 Biome，避免配置影响未被检查。它不做类型检查，不能替代任务结束时的完整 `check`。
 
@@ -161,7 +161,11 @@ workspace 包声明解析。因此，上游源码修改但 `dist/*.d.ts` 尚未�
 
 ## CI
 
-`.github/workflows/quality.yml` 只负责通用质量门禁：冻结依赖安装、`bun run check`、质量脚本测试和 Runtime 合同检查。Desktop 生产边界由独立的 `.github/workflows/desktop-packaged.yml` 负责：它始终运行打包合同检查，涉及 Desktop 主进程、preload、打包脚本、原生依赖、远程控制或锁文件的变更才会启动 Windows、macOS、Linux runners，构建 unpacked packaged 应用并运行 Electron 启动与 updater E2E；无关变更不会构建 Desktop。两个 workflow 都使用只读检查，不会自动修复候选提交。
+`.github/workflows/quality.yml` 负责通用 TypeScript 质量门禁：冻结依赖安装、`bun run check`、质量脚本测试、Runtime 合同检查，并在 Ubuntu 与 Windows 上顺序运行受影响 workspace 及其可测下游。完整 Git 历史用于计算 PR base；根配置、锁文件或质量脚本变化会在两个平台运行全部 workspace 测试。
+
+非 Bun workspace 由独立的 path-filtered workflow 覆盖：`.github/workflows/im-gateway.yml` 对 Go Gateway 执行 tidy、vet、build、test、接口纪律和 golangci-lint；`.github/workflows/mobile.yml` 对 Kotlin Mobile 执行 Android host tests 和 debug APK 构建。它们只在对应目录或 workflow 自身变化时运行，不把 Go/Kotlin 生命周期伪装成 JavaScript workspace 任务。
+
+Desktop 生产边界由独立的 `.github/workflows/desktop-packaged.yml` 负责：它始终运行打包合同检查，涉及 Desktop 主进程、preload、打包脚本、原生依赖、远程控制或锁文件的变更才会启动 Windows、macOS、Linux runners，构建 unpacked packaged 应用并运行 Electron 启动与 updater E2E；无关变更不会构建 Desktop。上述 workflow 都使用只读检查，不会自动修复候选提交。
 
 Desktop 打包合同可在本地快速运行：
 
@@ -187,7 +191,7 @@ Windows、macOS、Linux runner 上真实安装基线包，驱动现有 updater �
 应用日志和升级状态文件。它使用独立的 `desktop-test` Environment，不会触碰 stable。当前 GitHub macOS runner 只验收
 其实际架构；macOS arm64 需要额外的自持 runner 矩阵。
 
-四个核心包的历史测试目前仍有模型目录和跨平台相关的基线失败，因此暂不作为 PR 强制门禁。修复这些基线后，再将 `bun run test:unit` 加入 CI；在此之前它仍用于本地完整诊断，`bun run test:changed` 用于按影响范围验证。
+单元测试按包顺序执行，不使用根 workspace 的无界并发扇出；这会牺牲少量总耗时，但能避免多个 Vitest 进程同时争用 CPU、临时目录和子进程而产生假超时。平台相关行为至少由 Ubuntu 与 Windows 两个门禁覆盖。
 
 ## 与 OpenClaw 的对应关系（有意不做的）
 
@@ -231,9 +235,8 @@ bun run deadcode:report
 
 1. desktop i18n CJK **ratchet**（基线文件数，只许下降）——当前硬编码存量大，全量 fail 不现实  
 2. CI path filter：只改 `packages/ai` 时跳过 desktop `tsc`  
-3. Go：`apps/api` / `im-gateway` 的 `go test` / golangci-lint 挂到根 `check:go`  
-4. Knip 收紧后纳入 `check`  
-5. 插件 SDK **契约测试**（public API 形状快照）
+3. Knip 收紧后纳入 `check`
+4. 插件 SDK **契约测试**（public API 形状快照）
 
 ## 核查清单
 

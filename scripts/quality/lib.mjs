@@ -10,40 +10,83 @@ import { fileURLToPath } from "node:url";
 
 export const repoRoot = process.cwd();
 
-/** Packages that currently ship a `test` script (vitest). */
-export const TESTABLE_PACKAGES = {
-	ai: "packages/ai",
-	agent: "packages/agent",
-	"runtime-core": "packages/runtime-core",
-	"runtime-mcp": "packages/runtime-mcp",
-	"coding-agent": "packages/coding-agent",
-	"ecosystem-adapter": "packages/ecosystem-adapter",
-	desktop: "apps/desktop",
-	"plugin-cli": "packages/plugins/plugin-cli",
-};
+function workspaceKey(directory) {
+	const parts = directory.replaceAll("\\", "/").split("/");
+	if (parts[0] === "packages" && parts[1] === "plugins") {
+		if ((parts[2] === "presets" || parts[2] === "externals") && parts[3]) {
+			return `${parts[2]}/${parts[3]}`;
+		}
+		return parts[2];
+	}
+	if (parts[0] === "packages" && parts[1] === "themes" && parts[2] === "builtin" && parts[3]) {
+		return `themes/${parts[3]}`;
+	}
+	return parts.length > 2 ? parts.slice(1).join("/") : parts[1];
+}
+
+function expandWorkspacePattern(pattern, root = repoRoot) {
+	const normalized = pattern.replaceAll("\\", "/");
+	if (!normalized.includes("*")) return [normalized];
+	const segments = normalized.split("/");
+	let directories = [""];
+	for (const segment of segments) {
+		if (segment !== "*") {
+			directories = directories.map((directory) => (directory ? `${directory}/${segment}` : segment));
+			continue;
+		}
+		directories = directories.flatMap((directory) => {
+			const absolute = join(root, directory);
+			if (!existsSync(absolute)) return [];
+			return readdirSync(absolute, { withFileTypes: true })
+				.filter((entry) => entry.isDirectory())
+				.map((entry) => `${directory}/${entry.name}`)
+				.sort();
+		});
+	}
+	return directories;
+}
+
+/** Workspace manifests are the single source of truth for package discovery and dependency propagation. */
+export function discoverWorkspacePackages(root = repoRoot) {
+	const rootManifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+	const packages = [];
+	const keys = new Set();
+	for (const pattern of rootManifest.workspaces ?? []) {
+		for (const dir of expandWorkspacePattern(pattern, root)) {
+			const packagePath = join(root, dir, "package.json");
+			if (!existsSync(packagePath)) continue;
+			const manifest = JSON.parse(readFileSync(packagePath, "utf8"));
+			const key = workspaceKey(dir);
+			if (!key || keys.has(key)) throw new Error(`duplicate or invalid workspace key for ${dir}: ${key ?? ""}`);
+			keys.add(key);
+			packages.push({
+				key,
+				dir,
+				name: manifest.name,
+				scripts: manifest.scripts ?? {},
+				dependencies: {
+					...manifest.dependencies,
+					...manifest.devDependencies,
+					...manifest.optionalDependencies,
+					...manifest.peerDependencies,
+				},
+			});
+		}
+	}
+	return packages;
+}
+
+export const WORKSPACE_PACKAGES = discoverWorkspacePackages();
+
+/** Every workspace that declares a `test` script, derived rather than manually registered. */
+export const TESTABLE_PACKAGES = Object.fromEntries(
+	WORKSPACE_PACKAGES.filter((pkg) => Boolean(pkg.scripts.test)).map((pkg) => [pkg.key, pkg.dir]),
+);
 
 /** Short name → directory for common workspace packages. */
 export const PACKAGE_DIRS = {
-	...TESTABLE_PACKAGES,
-	"capability-sdk": "packages/capability-sdk",
-	"capability-runtime": "packages/capability-runtime",
-	desktop: "apps/desktop",
-	"cli-host": "apps/cli-host",
-	"plugin-sdk": "packages/plugins/plugin-sdk",
-	"plugin-vite": "packages/plugins/plugin-vite",
-	"theme-sdk": "packages/theme-sdk",
-	"theme-ui": "packages/theme-ui",
-	"runtime-core": "packages/runtime-core",
-	"runtime-knowledge": "packages/runtime-knowledge",
-	"runtime-tools": "packages/runtime-tools",
-	"runtime-storage": "packages/runtime-storage",
-	"runtime-telemetry": "packages/runtime-telemetry",
-	"action-rpc": "packages/action-rpc",
-	toolkit: "packages/toolkit",
-	markdown: "packages/markdown",
-	ui: "packages/ui",
+	...Object.fromEntries(WORKSPACE_PACKAGES.map((pkg) => [pkg.key, pkg.dir])),
 	"im-gateway": "apps/im-gateway",
-	"docs-site": "apps/docs-site",
 };
 
 export function fail(message) {
@@ -110,45 +153,20 @@ export function parseBaseArgs(args, defaultBase = "origin/dev") {
 
 export function packagesFromPaths(paths) {
 	const found = new Set();
+	const workspacesBySpecificity = [...WORKSPACE_PACKAGES].sort((left, right) => right.dir.length - left.dir.length);
 	for (const file of paths) {
 		const norm = file.replaceAll("\\", "/");
 		if (!norm.startsWith("packages/") && !norm.startsWith("apps/")) continue;
-		const parts = norm.split("/");
-		if (parts[1] === "plugins") {
-			if (parts[2] === "plugin-sdk") found.add("plugin-sdk");
-			else if (parts[2] === "plugin-vite") found.add("plugin-vite");
-			else if (parts[2] === "plugin-cli") found.add("plugin-cli");
-			else if (parts[2] === "presets" && parts[3]) found.add(`presets/${parts[3]}`);
-			else if (parts[2] === "externals" && parts[3]) found.add(`externals/${parts[3]}`);
-			continue;
-		}
-		if (parts[1] === "themes" && parts[2] === "builtin" && parts[3]) {
-			found.add(`themes/${parts[3]}`);
-			continue;
-		}
-		if (parts[1]) found.add(parts[1]);
+		const workspace = workspacesBySpecificity.find(({ dir }) => norm === dir || norm.startsWith(`${dir}/`));
+		if (workspace) found.add(workspace.key);
 	}
 	return [...found].sort();
 }
 
-function readPackageMetadata(pkgDir) {
-	const packagePath = join(repoRoot, pkgDir, "package.json");
-	const json = JSON.parse(readFileSync(packagePath, "utf8"));
-	const dependencies = {
-		...json.dependencies,
-		...json.devDependencies,
-		...json.optionalDependencies,
-		...json.peerDependencies,
-	};
-	return { name: json.name, dependencies };
-}
-
-/** Include testable packages that depend on any selected testable package. */
+/** Include testable packages that transitively depend on any selected workspace package. */
 export function expandTestablePackages(names) {
-	const selected = new Set(names.filter((name) => name in TESTABLE_PACKAGES));
-	const metadata = Object.fromEntries(
-		Object.entries(TESTABLE_PACKAGES).map(([name, dir]) => [name, readPackageMetadata(dir)]),
-	);
+	const metadata = Object.fromEntries(WORKSPACE_PACKAGES.map((pkg) => [pkg.key, pkg]));
+	const selected = new Set(names.filter((name) => name in metadata));
 
 	let changed = true;
 	while (changed) {

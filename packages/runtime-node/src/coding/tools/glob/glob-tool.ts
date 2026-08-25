@@ -74,7 +74,11 @@ function extractGlobBaseDirectory(patternValue: string): { baseDir: string | und
 	let baseDir = staticPrefix.slice(0, lastSlash);
 	if (baseDir === "" && lastSlash === 0) baseDir = parse(patternValue).root || sep;
 	if (process.platform === "win32" && /^[A-Za-z]:$/.test(baseDir)) baseDir += sep;
-	return { baseDir, relativePattern: patternValue.slice(lastSlash + 1) };
+	const relativePattern = patternValue.slice(lastSlash + 1);
+	return {
+		baseDir,
+		relativePattern: process.platform === "win32" ? relativePattern.replaceAll("\\", "/") : relativePattern,
+	};
 }
 
 function normalizeOutputPath(filePath: string, searchPath: string): string {

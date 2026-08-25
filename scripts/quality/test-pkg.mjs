@@ -12,8 +12,9 @@ import { join } from "node:path";
 import { fail, ok, PACKAGE_DIRS, packageHasTestScript, repoRoot, runBun, TESTABLE_PACKAGES } from "./lib.mjs";
 
 const args = process.argv.slice(2).filter((a) => a !== "--");
+const runAll = args.includes("--all");
 
-if (args.includes("--list") || args.includes("-l") || args.length === 0) {
+if (args.includes("--list") || args.includes("-l") || (args.length === 0 && !runAll)) {
 	console.log("Testable packages:");
 	for (const [name, dir] of Object.entries(TESTABLE_PACKAGES)) {
 		console.log(`  ${name.padEnd(22)} ${dir}`);
@@ -23,7 +24,7 @@ if (args.includes("--list") || args.includes("-l") || args.length === 0) {
 	process.exit(0);
 }
 
-const names = args.filter((a) => !a.startsWith("-"));
+const names = runAll ? Object.keys(TESTABLE_PACKAGES) : args.filter((a) => !a.startsWith("-"));
 let failed = 0;
 
 for (const name of names) {

@@ -11,7 +11,6 @@ import {
 	expandTestablePackages,
 	isDirectRun,
 	ok,
-	packageHasTestScript,
 	packagesFromPaths,
 	parseBaseArgs,
 	runBun,
@@ -42,13 +41,7 @@ export function createChangedTestPlan(files) {
 		const normalized = file.replaceAll("\\", "/");
 		return normalized === "package.json" || normalized === "turbo.json" || normalized.startsWith("scripts/quality/");
 	});
-	const direct =
-		globalTriggers.length > 0
-			? Object.keys(TESTABLE_PACKAGES)
-			: touched.filter((name) => {
-					const dir = TESTABLE_PACKAGES[name];
-					return dir && packageHasTestScript(dir);
-				});
+	const direct = globalTriggers.length > 0 ? Object.keys(TESTABLE_PACKAGES) : touched;
 	return {
 		direct,
 		globalTriggers,

@@ -71,6 +71,10 @@ async function invoke(
 	capture: "metadata" | "payload" | "wire" = "metadata",
 	run?: (request: Parameters<LanguageModelAdapter["stream"]>[0]) => Promise<void>,
 ): Promise<AssistantMessage> {
+	let resolveObservation: (() => void) | undefined;
+	const observationRecorded = new Promise<void>((resolve) => {
+		resolveObservation = resolve;
+	});
 	const observed = withModelMiddleware(adapter(run), [
 		createProviderObservationMiddleware({
 			capture,
@@ -79,6 +83,7 @@ async function invoke(
 			sink: {
 				record(observation) {
 					observations.push(observation);
+					resolveObservation?.();
 				},
 			},
 		}),
@@ -94,7 +99,9 @@ async function invoke(
 				}),
 		},
 	});
-	return response.result;
+	const result = await response.result;
+	await observationRecorded;
+	return result;
 }
 
 describe("provider observation middleware", () => {
