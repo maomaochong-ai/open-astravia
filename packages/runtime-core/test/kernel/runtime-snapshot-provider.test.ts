@@ -235,6 +235,29 @@ describe("AtomicRuntimeSnapshotProvider", () => {
 		expect(disposed).toEqual(["snapshot-1", "snapshot-2"]);
 	});
 
+	it("binds the model provider from the same snapshot generation", async () => {
+		const disposed: string[] = [];
+		const oldModel = { id: "old" } as never;
+		const newModel = { id: "new" } as never;
+		const provider = new AtomicRuntimeSnapshotProvider(compiledSnapshot("snapshot-1", disposed), {
+			bind: () => ({ model: oldModel }),
+		});
+		const oldLease = await provider.acquire(turnContext("turn-old"));
+
+		await provider.swap(compiledSnapshot("snapshot-2", disposed), {
+			bind: () => ({ model: newModel }),
+		});
+		const newLease = await provider.acquire(turnContext("turn-new"));
+
+		expect(oldLease.snapshot.id).toBe("snapshot-1");
+		expect(oldLease.modelBinding?.model).toBe(oldModel);
+		expect(newLease.snapshot.id).toBe("snapshot-2");
+		expect(newLease.modelBinding?.model).toBe(newModel);
+		await oldLease.release();
+		await newLease.release();
+		await provider.close();
+	});
+
 	it("waits for active leases before close disposes the current snapshot", async () => {
 		const disposed: string[] = [];
 		const provider = new AtomicRuntimeSnapshotProvider(compiledSnapshot("snapshot-1", disposed));

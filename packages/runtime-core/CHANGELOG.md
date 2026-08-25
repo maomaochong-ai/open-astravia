@@ -6,12 +6,34 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- 新增 `@vetta/runtime-core/observation` 类型化观测端口、不可覆盖上层 identity 的 scoped Publisher、
+  Composite/Noop Adapter 与安全错误投影。Agent Registry/Source/Host/Instance/Session、Prompt Frame 和最终
+  Tool execution 已接入结构化事件；默认不记录 Prompt、用户内容、Tool 参数/结果或错误 message，Adapter
+  同步/异步失败不改变主流程。
+- Agent Instance/Session 工厂上下文现在接收已绑定 agent/revision/instance/session identity 的
+  `RuntimeObservationPublisher`，动态 Agent 可将自有 MCP、Tool 和中间件接入同一观测作用域，而无需依赖
+  具体日志或 Trace 实现。
+- Definition Source 同步状态的失败摘要只保留 `errorName/errorCode`，不再保存可能含配置正文或凭证的原始
+  error message；last-known-good 与失败状态语义不变。
+- 新增 `@vetta/runtime-core/agents` 产品无关多主 Agent 基座：动态 Definition Source、不可变
+  `RuntimeAgentRevision`、幂等 lease、原子多 Agent Registry、retire/remove、Source 全量替换与 newest-wins
+  同步器。文件、代码、Plugin、数据库和远端控制面可通过同一 Source Port 发布，失败保留 last-known-good，
+  普通更新不影响已有 revision lease。
+- 新增 `RuntimeAgentHost`、`RuntimeAgentInstance` 与 `RuntimeAgentSession`：多个平级 Agent 可创建独立
+  Instance/Session 并按 Session identity 路由；Definition 更新默认只影响新 Instance，显式 Session rollout
+  将能力和模型绑定从下一 Turn 原子切换，当前 Turn 保持旧 generation，Session Extension 拓扑禁止热换。
 - `RuntimeSessionIdentity`、`RuntimeSessionIdentityLifecycle` 与 continuation 合同新增可选 `sessionDirectory`
   宿主位置事实；Kernel 在会话续接时透明更新该事实，旧存储未提供时保留原值，不解析平台路径或改变既有
   `sessionPath` 语义。
 
 ### Changed
 
+- Kernel 的 Snapshot 编译输入由带产品含义的 `AgentProfile` 改为中性的
+  `RuntimeCapabilityDefinition`，编译器合同同步改为 `RuntimeCapabilityCompiler`；Feature 贡献上下文不再接收
+  无消费方的 `profileId`。能力合并、动态重配和在途 Turn generation lease 语义保持不变。
+- `AtomicRuntimeSnapshotProvider` 现在把模型绑定 Provider 与 Snapshot 放入同一个 generation；能力 rollout
+  不会把新 Prompt/Tool Snapshot 与旧模型选择混代。旧 generation 的异步释放失败在 close 时聚合报告，
+  不把已完成的原子 publish 误报为未应用。
 - `RuntimeHost` 新增可选的压缩生命周期观察端口和 Session 上下文控制端口；自动压缩事件透传上下文 Token、窗口、
   阈值、原因与压缩前 Token，并在持久化失败时补发失败终态，供宿主建立不依赖 UI 订阅的诊断。
 - `ModelCallContributionContext` 在 Turn admission 绑定时可读取尚未展开的 `SessionInputRequest`；Runtime Core

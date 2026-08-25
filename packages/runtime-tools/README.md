@@ -9,6 +9,7 @@ Vetta 平台无关的 Coding Tool 协议包。包根与 `@vetta/runtime-tools/co
 - 工具激活、选择、可用性校验和结果策略
 - `CodingToolsFeature`、`CodingToolExecutableResolver`、命令进程、后台任务和前台命令 Operations Port
 - 不访问环境的并发执行 Gate
+- 可选的 Coding Tool Catalog 观测 Publisher；仅发布操作、工具名与版本，不发布撤销原因或调用内容
 
 本包不拥有具体工具、TypeBox 输入 Schema、模型可见工具描述，也不访问文件系统、进程、
 网络、Electron 或宿主全局状态。Node 环境中的 `read`、`write`、`edit`、`bash`、

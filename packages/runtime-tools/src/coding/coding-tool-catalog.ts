@@ -1,3 +1,4 @@
+import type { RuntimeObservationPublisher } from "@vetta/runtime-core";
 import type {
 	CapabilityBinding,
 	RuntimeSnapshotAcquireContext,
@@ -9,6 +10,7 @@ import type {
 import { CODING_TOOL_AVAILABILITY_ERROR_CODES, CodingToolAvailabilityError } from "./coding-tool-availability.js";
 import { CodingToolExecutionTracker } from "./coding-tool-execution-tracker.js";
 import { type CodingToolResultPolicy, PRESERVE_CODING_TOOL_RESULT_POLICY } from "./coding-tool-result-policy.js";
+import { CODING_TOOL_CATALOG_OBSERVATION, type CodingToolCatalogOperation } from "./observations.js";
 import type { CodingToolRegistration } from "./tool-registration.js";
 
 export type CodingToolAvailabilityState = "active" | "deactivated" | "revoked";
@@ -57,6 +59,7 @@ export interface CodingToolRegistry extends CodingToolCatalog {
 export interface InMemoryCodingToolRegistryOptions {
 	readonly sourceId?: string;
 	readonly resultPolicy?: CodingToolResultPolicy;
+	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
 export class InMemoryCodingToolRegistry implements CodingToolRegistry {
@@ -67,6 +70,7 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 	private readonly executionTracker = new CodingToolExecutionTracker();
 	private readonly sourceId: string;
 	private readonly resultPolicy: CodingToolResultPolicy;
+	private readonly observationPublisher: RuntimeObservationPublisher | undefined;
 	private version = 0;
 	private nextRevision = 0;
 	private cachedSnapshot: CodingToolCatalogSnapshot | undefined;
@@ -77,6 +81,7 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 	) {
 		this.sourceId = options.sourceId ?? "coding-tools";
 		this.resultPolicy = options.resultPolicy ?? PRESERVE_CODING_TOOL_RESULT_POLICY;
+		this.observationPublisher = options.observationPublisher;
 		for (const registration of initialRegistrations) {
 			this.addInitialRegistration(registration);
 		}
@@ -86,6 +91,7 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 		this.assertAvailable(registration.tool.name);
 		this.entriesByName.set(registration.tool.name, this.createEntry(registration));
 		this.markChanged();
+		this.observe("register", registration.tool.name);
 	}
 
 	activate(toolName: string): boolean {
@@ -93,6 +99,7 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 		if (!current || current.state === "active" || current.state === "revoked") return false;
 		this.entriesByName.set(toolName, freezeEntry({ ...current, state: "active" }));
 		this.markChanged();
+		this.observe("activate", toolName);
 		return true;
 	}
 
@@ -101,6 +108,7 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 		if (!current || current.state !== "active") return false;
 		this.entriesByName.set(toolName, freezeEntry({ ...current, state: "deactivated" }));
 		this.markChanged();
+		this.observe("deactivate", toolName);
 		return true;
 	}
 
@@ -113,6 +121,7 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 		this.pruneRetiredBinding(current.binding);
 		this.markChanged();
 		this.executionTracker.revoke(toolName, `${options.reason} [auditId=${options.auditId}]`);
+		this.observe("revoke", toolName);
 		return true;
 	}
 
@@ -123,6 +132,7 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 		}
 		this.pruneRetiredBinding(current.binding);
 		this.markChanged();
+		this.observe("unregister", toolName);
 		return true;
 	}
 
@@ -266,6 +276,14 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 	private markChanged(): void {
 		this.version += 1;
 		this.cachedSnapshot = undefined;
+	}
+
+	private observe(operation: CodingToolCatalogOperation, toolName: string): void {
+		this.observationPublisher?.record(CODING_TOOL_CATALOG_OBSERVATION, {
+			operation,
+			toolName,
+			catalogVersion: this.version,
+		});
 	}
 
 	private pruneRetiredBinding(binding: CapabilityBinding): void {

@@ -1,6 +1,10 @@
 import type { Message } from "@vetta/ai";
 import type { ConversationScenario, InitializationRollbackTask, RuntimeResourceContext } from "@vetta/runtime-core";
-import type { AgentFeatureDefinition, AgentProfile, ModelCallContributionContext } from "@vetta/runtime-core/kernel";
+import type {
+	AgentFeatureDefinition,
+	ModelCallContributionContext,
+	RuntimeCapabilityDefinition,
+} from "@vetta/runtime-core/kernel";
 import { SessionExtensionComposition, sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
@@ -66,7 +70,7 @@ export interface CodingAgentSessionPeripheralAssembly {
 	readonly todoRegistration: CodingAgentRuntimeToolRegistration;
 	readonly todoEnabled: boolean;
 	readonly sessionExtensions: SessionExtensionComposition;
-	readonly baseProfile: AgentProfile;
+	readonly baseCapabilities: RuntimeCapabilityDefinition;
 }
 
 /** 组装 Session 配置、Plugin/MCP、执行、Memory 与 Todo 等外设能力。 */
@@ -242,7 +246,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 			})
 		: undefined;
 	const features = [
-		...options.codingTools.profile.features,
+		...options.codingTools.capabilities.features,
 		executionRuntime.feature,
 		...(sessionOptions.forkContextMessages?.length
 			? [createForkContextFeature(sessionOptions.forkContextMessages)]
@@ -252,8 +256,8 @@ export async function createCodingAgentSessionPeripheralAssembly(
 		...(askUserQuestionFeature ? [askUserQuestionFeature] : []),
 		...(mcpController ? [mcpController.createFeature({ includePromptInstruction: false })] : []),
 	];
-	const baseProfile: AgentProfile = {
-		...options.codingTools.profile,
+	const baseCapabilities: RuntimeCapabilityDefinition = {
+		...options.codingTools.capabilities,
 		salvageTextToolCalls: ["progress", "todo"],
 		features,
 	};
@@ -271,7 +275,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 		todoRegistration,
 		todoEnabled,
 		sessionExtensions,
-		baseProfile,
+		baseCapabilities,
 	};
 }
 

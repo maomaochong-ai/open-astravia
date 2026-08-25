@@ -101,7 +101,7 @@ interface PublishedAgentStateRevision {
 - 对快速连续更新执行去重与 newest-wins 调度；
 - 暴露 desired、published、failure 诊断状态。
 
-它不负责编译 Session 的 `AgentProfile`，也不持有活动 Turn。
+它不负责编译 Session 的 `RuntimeCapabilityDefinition`，也不持有活动 Turn。
 
 ### 3.3 `SessionStateOverlay`
 
@@ -159,7 +159,7 @@ interface RuntimeSnapshotProvider {
 
 ### 3.5 `TurnSnapshotMaterializer`
 
-物化器从已捕获的三层 revision 构造完全稳定的 `AgentProfile`，再复用现有 `FeatureCompiler`、`RuntimeCapabilityComposition` 与 `AtomicRuntimeSnapshotProvider` 生成 `RuntimeSnapshot`。
+物化器从已捕获的三层 revision 构造完全稳定的 `RuntimeCapabilityDefinition`，再复用现有 `FeatureCompiler`、`RuntimeCapabilityComposition` 与 `AtomicRuntimeSnapshotProvider` 生成 `RuntimeSnapshot`。
 
 物化器必须完成：
 

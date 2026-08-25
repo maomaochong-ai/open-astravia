@@ -130,10 +130,7 @@ describe("CodingAgentMemoryRolloverOrchestrator", () => {
 		const prepared = await feature.prepare({
 			signal: new AbortController().signal,
 		});
-		const contribution = await prepared.contribute({
-			profileId: "profile",
-			signal: new AbortController().signal,
-		});
+		const contribution = await prepared.contribute({ signal: new AbortController().signal });
 
 		expect(contribution.tools?.map(({ name }) => name)).toEqual(["memory"]);
 		expect(contribution.tools?.[0]?.description).toBe(runtime.toolRegistration.tool.description);

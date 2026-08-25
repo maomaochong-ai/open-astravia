@@ -33,7 +33,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		}
 	});
 
-	it("owns the session-local capability profile without changing its tool surface", async () => {
+	it("owns the session-local capability definition without changing its tool surface", async () => {
 		const codingTools = createCodingToolsRuntimeComposition({
 			cwd: "C:\\workspace",
 			environment: emptyToolEnvironment(),
@@ -68,9 +68,9 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			prompt: {
 				systemPromptOptionsResolver: async () => ({ cwd: "C:\\workspace" }),
 			},
-			baseProfile: {
-				...codingTools.profile,
-				features: [...codingTools.profile.features, executionFeature],
+			baseCapabilities: {
+				...codingTools.capabilities,
+				features: [...codingTools.capabilities.features, executionFeature],
 			},
 			codingTools,
 			executionRuntime,
@@ -167,7 +167,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			prompt: {
 				runtimeSourceFactory,
 			},
-			baseProfile: codingTools.profile,
+			baseCapabilities: codingTools.capabilities,
 			codingTools,
 			executionRuntime,
 			specializedToolFeature: createFeature("specialized", []),
@@ -244,7 +244,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			prompt: {
 				runtimeSourceFactory: async () => ({ resourceSource, settingsSource }),
 			},
-			baseProfile: codingTools.profile,
+			baseCapabilities: codingTools.capabilities,
 			codingTools,
 			executionRuntime: {
 				feature: createFeature("execution", []),
@@ -303,7 +303,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			prompt: {
 				systemPromptOptionsResolver: async () => ({ cwd: "C:\\workspace" }),
 			},
-			baseProfile: codingTools.profile,
+			baseCapabilities: codingTools.capabilities,
 			codingTools,
 			executionRuntime,
 			specializedToolFeature: createFeature("specialized", [heavyTool]),

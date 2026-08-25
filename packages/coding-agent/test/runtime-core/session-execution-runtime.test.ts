@@ -58,7 +58,7 @@ describe("CodingAgentSessionExecutionRuntime", () => {
 		);
 		const signal = new AbortController().signal;
 		const prepared = await fixture.runtime.feature.prepare({ signal });
-		const contribution = await prepared.contribute({ profileId: "coding", signal });
+		const contribution = await prepared.contribute({ signal });
 		const provider = contribution.modelCallProviders?.[0];
 		if (!provider) throw new Error("Expected session execution model-call provider");
 

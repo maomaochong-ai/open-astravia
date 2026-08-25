@@ -191,7 +191,7 @@ async function initializeSession<TOwnershipBinding>(
 			}),
 		);
 		const {
-			baseProfile,
+			baseCapabilities,
 			configurationState,
 			executionRuntime,
 			mcpController,
@@ -317,7 +317,7 @@ async function initializeSession<TOwnershipBinding>(
 					workspaceFacts: profile.workspaceFacts,
 					resolveModePrompt: profile.resolveModePrompt,
 				},
-				baseProfile,
+				baseCapabilities,
 				codingTools: options.codingTools,
 				executionRuntime,
 				specializedToolFeature,

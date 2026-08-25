@@ -10,6 +10,7 @@ Vetta 平台无关的 MCP 协议、Port 与 Runtime 状态协调层。
 - Server Supervisor 的 generation、lease、失败保持和差量协调状态机
 - MCP Tool 的 Schema/结果投影、Runtime Tool 同步与动态 Server Source
 - 会话级渐进披露、`tool_search` 和 MCP Prompt 物化
+- 可选的 MCP Tool 同步观测 Publisher；只发布阶段、revision 和数量，不发布描述、fingerprint、凭证或错误正文
 
 ## 本包不拥有
 

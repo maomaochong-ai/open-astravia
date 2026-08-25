@@ -113,7 +113,6 @@ describe("MCP deferred tool contract", () => {
 
 		const feature = await controller.createFeature().prepare({ signal: new AbortController().signal });
 		const contribution = await feature.contribute({
-			profileId: "coding-agent",
 			signal: new AbortController().signal,
 		});
 		const callContribution = await contribution.modelCallProviders?.[0]?.contribute({
@@ -150,7 +149,6 @@ describe("MCP deferred tool contract", () => {
 
 		const feature = await controller.createFeature().prepare({ signal: new AbortController().signal });
 		const contribution = await feature.contribute({
-			profileId: "coding-agent",
 			signal: new AbortController().signal,
 		});
 		const callContribution = await contribution.modelCallProviders?.[0]?.contribute({

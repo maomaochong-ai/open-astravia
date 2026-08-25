@@ -1,5 +1,5 @@
 import type { EcosystemHookAdapterFactory, HookConfigLayer } from "@vetta/ecosystem-adapter";
-import type { ConversationScenario, SessionConfig } from "@vetta/runtime-core";
+import type { ConversationScenario, RuntimeObservationPublisher, SessionConfig } from "@vetta/runtime-core";
 import type { AgentCoreTurnEngineOptions } from "@vetta/runtime-core/kernel";
 import type { SessionExtensionDefinition } from "@vetta/runtime-core/session-extensions";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
@@ -202,6 +202,8 @@ export interface CodingAgentRuntimeContextOptions {
 }
 
 export interface CodingAgentRuntimeObservabilityOptions {
+	/** Runtime Agent Host 注入的 scoped Publisher；产品只发布安全摘要，不拥有具体 Adapter。 */
+	readonly observationPublisher?: RuntimeObservationPublisher;
 	/** 平台中立的进程级观测端口；Composition 与 Runtime 均不拥有其生命周期。 */
 	readonly tracer?: AgentCoreTurnEngineOptions["tracer"];
 	/** Session 间共享的观测策略；Turn Engine 会覆盖真实 Session 身份。 */

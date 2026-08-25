@@ -1,10 +1,10 @@
 import type {
 	AgentFeature,
 	AgentFeatureDefinition,
-	AgentProfile,
 	CompiledRuntimeSnapshot,
 	FeatureContribution,
 	IdGenerator,
+	RuntimeCapabilityDefinition,
 	RuntimeSnapshot,
 } from "./contracts.js";
 import { featureConfigurationError, featureConflictError } from "./errors.js";
@@ -26,8 +26,8 @@ export class FeatureCompiler {
 		this.idGenerator = options.idGenerator;
 	}
 
-	async compile(profile: AgentProfile, signal: AbortSignal): Promise<CompiledRuntimeSnapshot> {
-		const definitions = orderFeatureDefinitions(profile.features);
+	async compile(definition: RuntimeCapabilityDefinition, signal: AbortSignal): Promise<CompiledRuntimeSnapshot> {
+		const definitions = orderFeatureDefinitions(definition.features);
 		const prepared: PreparedFeature[] = [];
 
 		try {
@@ -40,15 +40,10 @@ export class FeatureCompiler {
 			const contributions: FeatureContribution[] = [];
 			for (const feature of prepared) {
 				signal.throwIfAborted();
-				contributions.push(
-					await feature.instance.contribute({
-						profileId: profile.id,
-						signal,
-					}),
-				);
+				contributions.push(await feature.instance.contribute({ signal }));
 			}
 
-			const snapshot = createSnapshot(profile, contributions, this.idGenerator.next("snapshot"));
+			const snapshot = createSnapshot(definition, contributions, this.idGenerator.next("snapshot"));
 			return createCompiledSnapshot(snapshot, prepared);
 		} catch (error) {
 			await disposePreparedFeatures(prepared, false);
@@ -122,13 +117,13 @@ function orderFeatureDefinitions(definitions: readonly AgentFeatureDefinition[])
 }
 
 function createSnapshot(
-	profile: AgentProfile,
+	definition: RuntimeCapabilityDefinition,
 	contributions: readonly FeatureContribution[],
 	snapshotId: string,
 ): RuntimeSnapshot {
 	const instructions = uniqueValues(
 		"instruction",
-		[...profile.instructions, ...contributions.flatMap((contribution) => contribution.instructions ?? [])],
+		[...definition.instructions, ...contributions.flatMap((contribution) => contribution.instructions ?? [])],
 		({ id }) => id,
 	)
 		.sort(compareInstruction)
@@ -145,7 +140,7 @@ function createSnapshot(
 	);
 	const observers = uniqueValues(
 		"observer",
-		[...(profile.observers ?? []), ...contributions.flatMap((contribution) => contribution.observers ?? [])],
+		[...(definition.observers ?? []), ...contributions.flatMap((contribution) => contribution.observers ?? [])],
 		({ id }) => id,
 	);
 	const modelCallProviders = uniqueValues(
@@ -156,24 +151,27 @@ function createSnapshot(
 
 	return Object.freeze({
 		id: snapshotId,
-		salvageTextToolCalls: profile.salvageTextToolCalls ? Object.freeze([...profile.salvageTextToolCalls]) : undefined,
+		salvageTextToolCalls: definition.salvageTextToolCalls
+			? Object.freeze([...definition.salvageTextToolCalls])
+			: undefined,
 		instructions: Object.freeze(instructions),
 		tools: new ImmutableReadonlyMap(tools.map((tool) => [tool.name, tool])),
 		modelCallProviders: Object.freeze(modelCallProviders),
-		modelCallFrameComposer: profile.modelCallFrameComposer,
-		inputRequestPreparer: profile.inputRequestPreparer,
-		contextCompositionPublisher: profile.contextCompositionPublisher,
-		agentRunPreparer: profile.agentRunPreparer,
-		continuationPolicy: profile.continuationPolicy,
-		modelCallContextTransformer: profile.modelCallContextTransformer,
-		modelCallMessageFinalizer: profile.modelCallMessageFinalizer,
-		conversationContextProjector: profile.conversationContextProjector,
+		modelCallFrameComposer: definition.modelCallFrameComposer,
+		inputRequestPreparer: definition.inputRequestPreparer,
+		contextCompositionPublisher: definition.contextCompositionPublisher,
+		agentRunPreparer: definition.agentRunPreparer,
+		continuationPolicy: definition.continuationPolicy,
+		modelCallContextTransformer: definition.modelCallContextTransformer,
+		modelCallMessageFinalizer: definition.modelCallMessageFinalizer,
+		conversationContextProjector: definition.conversationContextProjector,
 		contextProviders: Object.freeze(contextProviders),
-		contextStrategy: profile.contextStrategy,
-		toolPolicy: profile.toolPolicy,
-		tokenBudget: profile.tokenBudget,
-		reservedOutputTokens: profile.reservedOutputTokens,
+		contextStrategy: definition.contextStrategy,
+		toolPolicy: definition.toolPolicy,
+		tokenBudget: definition.tokenBudget,
+		reservedOutputTokens: definition.reservedOutputTokens,
 		observers: Object.freeze(observers),
+		observationPublisher: definition.observationPublisher,
 	});
 }
 

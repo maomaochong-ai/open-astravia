@@ -1,4 +1,5 @@
 import type { ContextCompositionSectionInput } from "../context-composition/contracts.js";
+import { runtimeObservationFailure } from "../observation/index.js";
 import type {
 	InstructionBlock,
 	ModelCallContribution,
@@ -8,42 +9,142 @@ import type {
 	RuntimeToolDefinition,
 } from "./contracts.js";
 import { featureConflictError } from "./errors.js";
+import { RUNTIME_PROMPT_FRAME_OBSERVATION, RUNTIME_TOOL_EXECUTION_OBSERVATION } from "./runtime-observations.js";
 import { freezeInstruction, freezeTool, ImmutableReadonlyMap } from "./runtime-values.js";
 
 export async function resolveModelCallFrame(
 	snapshot: RuntimeSnapshot,
 	context: ModelCallContributionContext,
 ): Promise<ModelCallFrame> {
-	const contributions: ModelCallContribution[] = [];
-	for (const provider of snapshot.modelCallProviders ?? []) {
+	const startedAt = Date.now();
+	const publisher = snapshot.observationPublisher;
+	publisher?.record(
+		RUNTIME_PROMPT_FRAME_OBSERVATION,
+		{ phase: "started", providerCount: snapshot.modelCallProviders?.length ?? 0 },
+		{ sessionId: context.sessionId, turnId: context.turnId },
+	);
+	try {
+		const contributions: ModelCallContribution[] = [];
+		for (const provider of snapshot.modelCallProviders ?? []) {
+			context.signal.throwIfAborted();
+			contributions.push(await provider.contribute(context));
+		}
+
+		const candidate = createModelCallFrame(
+			[...snapshot.instructions, ...contributions.flatMap((contribution) => contribution.instructions ?? [])],
+			[...snapshot.tools.values(), ...contributions.flatMap((contribution) => contribution.tools ?? [])],
+		);
+		if (!snapshot.modelCallFrameComposer) {
+			return observeResolvedFrame(candidate, context, publisher, startedAt);
+		}
+
 		context.signal.throwIfAborted();
-		contributions.push(await provider.contribute(context));
+		const composed = await snapshot.modelCallFrameComposer.compose({
+			sessionId: context.sessionId,
+			turnId: context.turnId,
+			signal: context.signal,
+			input: context.input,
+			messages: context.messages ?? [],
+			modelBinding: context.modelBinding,
+			frame: candidate,
+		});
+		context.signal.throwIfAborted();
+		const frame = createModelCallFrame(
+			composed.instructions,
+			[...composed.tools.values()],
+			composed.contextCompositionSections,
+			composed.systemPromptStableLength,
+			composed.promptCacheSystemPromptBlocks,
+		);
+		return observeResolvedFrame(frame, context, publisher, startedAt);
+	} catch (error) {
+		publisher?.record(
+			RUNTIME_PROMPT_FRAME_OBSERVATION,
+			{
+				phase: "failed",
+				durationMs: Date.now() - startedAt,
+				failure: runtimeObservationFailure(error, context.signal),
+			},
+			{ sessionId: context.sessionId, turnId: context.turnId },
+		);
+		throw error;
 	}
+}
 
-	const candidate = createModelCallFrame(
-		[...snapshot.instructions, ...contributions.flatMap((contribution) => contribution.instructions ?? [])],
-		[...snapshot.tools.values(), ...contributions.flatMap((contribution) => contribution.tools ?? [])],
+function observeResolvedFrame(
+	frame: ModelCallFrame,
+	context: ModelCallContributionContext,
+	publisher: RuntimeSnapshot["observationPublisher"],
+	startedAt: number,
+): ModelCallFrame {
+	const observedFrame = publisher ? withObservedTools(frame, publisher) : frame;
+	publisher?.record(
+		RUNTIME_PROMPT_FRAME_OBSERVATION,
+		{
+			phase: "completed",
+			durationMs: Date.now() - startedAt,
+			instructionCount: observedFrame.instructions.length,
+			toolCount: observedFrame.tools.size,
+		},
+		{ sessionId: context.sessionId, turnId: context.turnId },
 	);
-	if (!snapshot.modelCallFrameComposer) return candidate;
+	return observedFrame;
+}
 
-	context.signal.throwIfAborted();
-	const composed = await snapshot.modelCallFrameComposer.compose({
-		sessionId: context.sessionId,
-		turnId: context.turnId,
-		signal: context.signal,
-		input: context.input,
-		messages: context.messages ?? [],
-		modelBinding: context.modelBinding,
-		frame: candidate,
+function withObservedTools(
+	frame: ModelCallFrame,
+	publisher: NonNullable<RuntimeSnapshot["observationPublisher"]>,
+): ModelCallFrame {
+	const tools = [...frame.tools.values()].map((tool) => {
+		const execute = tool.execute.bind(tool);
+		return freezeTool({
+			...tool,
+			async execute(request) {
+				const startedAt = Date.now();
+				const observationContext = {
+					sessionId: request.sessionId,
+					turnId: request.turnId,
+					toolCallId: request.toolCallId,
+				};
+				publisher.record(
+					RUNTIME_TOOL_EXECUTION_OBSERVATION,
+					{ phase: "started", toolName: tool.name, inputFieldCount: Object.keys(request.input).length },
+					observationContext,
+				);
+				try {
+					const result = await execute(request);
+					publisher.record(
+						RUNTIME_TOOL_EXECUTION_OBSERVATION,
+						{
+							phase: "completed",
+							toolName: tool.name,
+							durationMs: Date.now() - startedAt,
+							contentItemCount: result.content.length,
+							hasDetails: result.details !== undefined,
+						},
+						observationContext,
+					);
+					return result;
+				} catch (error) {
+					publisher.record(
+						RUNTIME_TOOL_EXECUTION_OBSERVATION,
+						{
+							phase: "failed",
+							toolName: tool.name,
+							durationMs: Date.now() - startedAt,
+							failure: runtimeObservationFailure(error, request.signal),
+						},
+						observationContext,
+					);
+					throw error;
+				}
+			},
+		});
 	});
-	context.signal.throwIfAborted();
-	return createModelCallFrame(
-		composed.instructions,
-		[...composed.tools.values()],
-		composed.contextCompositionSections,
-		composed.systemPromptStableLength,
-		composed.promptCacheSystemPromptBlocks,
-	);
+	return Object.freeze({
+		...frame,
+		tools: new ImmutableReadonlyMap(tools.map((tool) => [tool.name, tool])),
+	});
 }
 
 function createModelCallFrame(

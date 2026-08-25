@@ -1,3 +1,4 @@
+import type { RuntimeObservationPublisher } from "@vetta/runtime-core";
 import {
 	type RuntimeResourceContext,
 	type RuntimeSessionMarkerIndex,
@@ -27,6 +28,7 @@ export interface CodingAgentMcpSessionCoordinatorOptions {
 	readonly source?: McpRuntimeToolSource;
 	readonly registry: McpRuntimeToolRegistry;
 	readonly indexes: CodingAgentMcpSessionIndexes;
+	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
 export interface CodingAgentMcpSessionControllerOptions {
@@ -47,7 +49,11 @@ export interface CodingAgentMcpSessionCoordinator {
 export async function createCodingAgentMcpSessionCoordinator(
 	options: CodingAgentMcpSessionCoordinatorOptions,
 ): Promise<CodingAgentMcpSessionCoordinator> {
-	const synchronizer = options.source ? createMcpRuntimeToolSynchronizer(options.source, options.registry) : undefined;
+	const synchronizer = options.source
+		? createMcpRuntimeToolSynchronizer(options.source, options.registry, {
+				observationPublisher: options.observationPublisher,
+			})
+		: undefined;
 	try {
 		await synchronizer?.refresh();
 	} catch (error) {
