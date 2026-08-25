@@ -184,6 +184,29 @@ export function expandTestablePackages(names) {
 	return Object.keys(TESTABLE_PACKAGES).filter((name) => selected.has(name));
 }
 
+/** Buildable workspace dependencies whose package exports may be consumed by the selected tests. */
+export function buildableTestDependencies(names, packages = WORKSPACE_PACKAGES) {
+	const byKey = new Map(packages.map((pkg) => [pkg.key, pkg]));
+	const byPackageName = new Map(packages.map((pkg) => [pkg.name, pkg]));
+	const queue = names.map((name) => byKey.get(name)).filter(Boolean);
+	const traversed = new Set(queue.map((pkg) => pkg.key));
+	const required = new Set();
+
+	for (let index = 0; index < queue.length; index += 1) {
+		const pkg = queue[index];
+		for (const dependencyName of Object.keys(pkg.dependencies)) {
+			const dependency = byPackageName.get(dependencyName);
+			if (!dependency) continue;
+			required.add(dependency.key);
+			if (traversed.has(dependency.key)) continue;
+			traversed.add(dependency.key);
+			queue.push(dependency);
+		}
+	}
+
+	return packages.filter((pkg) => required.has(pkg.key) && Boolean(pkg.scripts.build)).map((pkg) => pkg.name);
+}
+
 export function walkFiles(dir, { extensions = [".ts", ".tsx", ".js", ".mjs", ".cjs"] } = {}) {
 	const results = [];
 	if (!existsSync(dir)) return results;

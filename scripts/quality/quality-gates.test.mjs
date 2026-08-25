@@ -12,6 +12,7 @@ import {
 import { findStandaloneCliBuildViolations } from "./check-standalone-cli-build.mjs";
 import { findVitestRunnerViolations } from "./check-vitest-runner.mjs";
 import {
+	buildableTestDependencies,
 	changedFiles,
 	expandTestablePackages,
 	packagesFromPaths,
@@ -253,6 +254,21 @@ describe("affected package selection", () => {
 		expect(parseArgs(["--base", "origin/main"])).toEqual({ base: "origin/main" });
 		expect(parseArgs(["--base=origin/release"])).toEqual({ base: "origin/release" });
 		expect(() => parseArgs(["--unknown"])).toThrow("unknown argument");
+	});
+
+	it("builds generated workspace exports required by tests without building leaf applications", () => {
+		const dependencies = buildableTestDependencies(Object.keys(TESTABLE_PACKAGES));
+		expect(dependencies).toEqual(
+			expect.arrayContaining([
+				"@vetta/action-rpc",
+				"@vetta/runtime-storage",
+				"@vetta-org/plugin-sdk",
+				"@vetta/toolkit",
+			]),
+		);
+		expect(dependencies).not.toEqual(
+			expect.arrayContaining(["@vetta/desktop", "@vetta/docs-site", "@vetta/remote-relay"]),
+		);
 	});
 });
 

@@ -1,4 +1,4 @@
-import { dirname, join } from "node:path";
+import { win32 } from "node:path";
 import { Type } from "@sinclair/typebox";
 import type { Api, Message, Model } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
@@ -33,7 +33,7 @@ describe("Coding Agent Subagent session assembly", () => {
 		const contexts: SessionContextRecord[] = [];
 		const observations: unknown[] = [];
 		let childCompositionDisposals = 0;
-		const parentSessionPath = join("C:\\conversations", "parent.conversation.jsonl");
+		const parentSessionPath = win32.join("C:\\conversations", "parent.conversation.jsonl");
 		const inheritedMcpView = {
 			tools: [{ tool: { name: "mcp_parent_search" } }],
 		} as unknown as McpRuntimeToolView;
@@ -108,7 +108,7 @@ describe("Coding Agent Subagent session assembly", () => {
 
 		expect(compositionRequests).toHaveLength(1);
 		expect(compositionRequests[0]).toMatchObject({
-			conversationDir: join(dirname(parentSessionPath), ".subagents", "parent"),
+			conversationDir: win32.join(win32.dirname(parentSessionPath), ".subagents", "parent"),
 			cwd: "C:\\workspace",
 			initialModel: MODEL,
 			initialThinkingLevel: "off",

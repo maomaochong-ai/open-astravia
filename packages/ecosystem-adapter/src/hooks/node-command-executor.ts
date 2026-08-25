@@ -26,11 +26,15 @@ export class NodeHookCommandExecutor implements HookCommandExecutor {
 		return new Promise((resolve) => {
 			let child: ChildProcess;
 			try {
-				child = spawn(this.shellProgram, [...this.shellArgs, request.command], {
+				const directArguments = request.args;
+				const usesDirectArguments = directArguments !== undefined;
+				const program = usesDirectArguments ? request.command : this.shellProgram;
+				const args = directArguments ? [...directArguments] : [...this.shellArgs, request.command];
+				child = spawn(program, args, {
 					cwd: request.cwd,
 					detached: process.platform !== "win32",
 					env: request.env ? { ...process.env, ...request.env } : process.env,
-					windowsVerbatimArguments: isWindowsCommandShell(this.shellProgram),
+					windowsVerbatimArguments: !usesDirectArguments && isWindowsCommandShell(this.shellProgram),
 					windowsHide: true,
 					stdio: ["pipe", "pipe", "pipe"],
 				});

@@ -9,7 +9,16 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { fail, ok, PACKAGE_DIRS, packageHasTestScript, repoRoot, runBun, TESTABLE_PACKAGES } from "./lib.mjs";
+import {
+	buildableTestDependencies,
+	fail,
+	ok,
+	PACKAGE_DIRS,
+	packageHasTestScript,
+	repoRoot,
+	runBun,
+	TESTABLE_PACKAGES,
+} from "./lib.mjs";
 
 const args = process.argv.slice(2).filter((a) => a !== "--");
 const runAll = args.includes("--all");
@@ -26,6 +35,20 @@ if (args.includes("--list") || args.includes("-l") || (args.length === 0 && !run
 
 const names = runAll ? Object.keys(TESTABLE_PACKAGES) : args.filter((a) => !a.startsWith("-"));
 let failed = 0;
+
+const buildDependencies = buildableTestDependencies(names);
+if (buildDependencies.length > 0) {
+	ok(`[test:pkg] building workspace dependencies: ${buildDependencies.join(", ")}`);
+	const buildCode = runBun([
+		"x",
+		"turbo",
+		"run",
+		"build",
+		"--env-mode=loose",
+		...buildDependencies.map((packageName) => `--filter=${packageName}`),
+	]);
+	if (buildCode !== 0) process.exit(buildCode);
+}
 
 for (const name of names) {
 	const dir = TESTABLE_PACKAGES[name] || PACKAGE_DIRS[name];
