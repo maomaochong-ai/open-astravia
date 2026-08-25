@@ -210,7 +210,7 @@ useEffect(() => () => ctx.ui.setWorkspaceViewHeader("board", null), []);
 插件被禁用时，它的导航入口消失；用户如果正停在该路由上，宿主会把他送回首页。
 持久化的侧边栏布局按 key 保留，插件装回来后位置复原。
 
-示例：`packages/plugins/presets/kanban`。
+示例：`packages/plugins/externals/kanban`。
 
 ## 文件预览 registerFilePreview
 

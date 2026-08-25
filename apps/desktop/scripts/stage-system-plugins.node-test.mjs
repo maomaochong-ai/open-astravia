@@ -15,7 +15,7 @@ const developmentPluginIds = [
 	"plugin-workbench",
 	"comfyui-media-provider",
 	"content-creation",
-	"kanban",
+	"browser",
 ];
 
 const productionPluginIds = [
@@ -28,6 +28,7 @@ const productionPluginIds = [
 	"chart-renderer",
 	"git",
 	"plugin-workbench",
+	"browser",
 ];
 
 

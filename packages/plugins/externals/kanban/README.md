@@ -1,6 +1,6 @@
 # Kanban 看板
 
-跨项目、跨会话的需求总览与派单入口。系统插件（preset），随 Vetta Desktop 发布。
+跨项目、跨会话的需求总览与派单入口。外置插件（external），构建 zip 后由用户安装。
 
 用户视角的完整说明见 [docs/desktop/kanban-board.md](../../../../docs/desktop/kanban-board.md)。
 
@@ -63,13 +63,12 @@ content 都必须补挂 `data-vetta-plugin-root="kanban"`**（沿用 content-cre
 # 在仓库根安装
 bun install
 
-cd packages/plugins/presets/kanban
+cd packages/plugins/externals/kanban
 bunx tsc --noEmit     # 类型
 bunx vitest --run     # 单测
 bunx vite build       # 产出 dist/ 与 release/kanban-<version>.zip
 
-# 装进开发中的 Desktop
-cd ../../../desktop && bun run build:presets
+# 在 Desktop 的插件管理里安装 release/kanban-<version>.zip
 ```
 
 修改 SDK（`packages/plugins/plugin-sdk`）后需要先在 SDK 目录跑一次 `bun run build`，

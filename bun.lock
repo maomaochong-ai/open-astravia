@@ -473,6 +473,28 @@
         "vite": "^7.1.7",
       },
     },
+    "packages/plugins/externals/kanban": {
+      "name": "@vetta/plugin-kanban",
+      "version": "0.4.0",
+      "devDependencies": {
+        "@iconify-json/solar": "^1.2.5",
+        "@iconify/tailwind4": "^1.0.6",
+        "@tailwindcss/vite": "^4.1.12",
+        "@types/node": "^22.10.5",
+        "@types/react": "^19.1.1",
+        "@types/react-dom": "^19.1.1",
+        "@vetta-org/plugin-sdk": "workspace:*",
+        "@vetta-org/plugin-vite": "workspace:*",
+        "@vetta/theme-ui": "workspace:*",
+        "@vetta/ui": "workspace:*",
+        "react": "19.1.1",
+        "react-dom": "19.1.1",
+        "tailwindcss": "^4.1.12",
+        "typescript": "^5.9.2",
+        "vite": "^7.1.7",
+        "vitest": "^3.2.4",
+      },
+    },
     "packages/plugins/externals/mobile-ui-preview": {
       "name": "@vetta/plugin-mobile-ui-preview",
       "version": "0.3.3",
@@ -697,28 +719,6 @@
         "tailwindcss": "^4.1.12",
         "typescript": "^5.9.2",
         "vite": "^7.1.7",
-      },
-    },
-    "packages/plugins/presets/kanban": {
-      "name": "@vetta/plugin-kanban",
-      "version": "0.4.0",
-      "devDependencies": {
-        "@iconify-json/solar": "^1.2.5",
-        "@iconify/tailwind4": "^1.0.6",
-        "@tailwindcss/vite": "^4.1.12",
-        "@types/node": "^22.10.5",
-        "@types/react": "^19.1.1",
-        "@types/react-dom": "^19.1.1",
-        "@vetta-org/plugin-sdk": "workspace:*",
-        "@vetta-org/plugin-vite": "workspace:*",
-        "@vetta/theme-ui": "workspace:*",
-        "@vetta/ui": "workspace:*",
-        "react": "19.1.1",
-        "react-dom": "19.1.1",
-        "tailwindcss": "^4.1.12",
-        "typescript": "^5.9.2",
-        "vite": "^7.1.7",
-        "vitest": "^3.2.4",
       },
     },
     "packages/plugins/presets/media-viewer": {
@@ -2643,7 +2643,7 @@
 
     "@vetta/plugin-image-gen": ["@vetta/plugin-image-gen@workspace:packages/plugins/presets/image-gen"],
 
-    "@vetta/plugin-kanban": ["@vetta/plugin-kanban@workspace:packages/plugins/presets/kanban"],
+    "@vetta/plugin-kanban": ["@vetta/plugin-kanban@workspace:packages/plugins/externals/kanban"],
 
     "@vetta/plugin-media-viewer": ["@vetta/plugin-media-viewer@workspace:packages/plugins/presets/media-viewer"],
 
