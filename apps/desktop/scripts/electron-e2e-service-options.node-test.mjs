@@ -21,21 +21,15 @@ test("local and non-Linux E2E runs do not request elevated AppArmor setup", () =
 	});
 });
 
-test("only Linux packaged E2E retries a failed spec with a fresh browser instance", () => {
-	assert.deepEqual(resolveElectronE2eSpecRetryOptions({ platform: "linux", packaged: true }), {
+test("packaged E2E retries a failed spec once with a fresh browser instance", () => {
+	assert.deepEqual(resolveElectronE2eSpecRetryOptions({ packaged: true }), {
 		specFileRetries: 1,
 		specFileRetriesDelay: 0,
 		specFileRetriesDeferred: false,
 	});
-	for (const input of [
-		{ platform: "linux", packaged: false },
-		{ platform: "win32", packaged: true },
-		{ platform: "darwin", packaged: true },
-	]) {
-		assert.deepEqual(resolveElectronE2eSpecRetryOptions(input), {
-			specFileRetries: 0,
-			specFileRetriesDelay: 0,
-			specFileRetriesDeferred: false,
-		});
-	}
+	assert.deepEqual(resolveElectronE2eSpecRetryOptions({ packaged: false }), {
+		specFileRetries: 0,
+		specFileRetriesDelay: 0,
+		specFileRetriesDeferred: false,
+	});
 });

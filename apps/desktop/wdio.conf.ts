@@ -92,7 +92,6 @@ process.env.VETTA_HOME = process.env.VETTA_HOME ?? path.join(homedir(), configDi
 
 const electronServiceOptions = resolveElectronServiceOptions();
 const specRetryOptions = resolveElectronE2eSpecRetryOptions({
-	platform: process.platform,
 	packaged: usePackaged,
 });
 
@@ -118,8 +117,8 @@ export const config = {
 	waitforTimeout: 15_000,
 	connectionRetryTimeout: 120_000,
 	connectionRetryCount: 2,
-	// The upstream CDP bridge can transiently lose its initialization promise on
-	// the first packaged AppImage process. A spec retry creates a fresh session;
+	// The upstream CDP bridge can transiently lose its initialization promise in
+	// a packaged process. A spec retry creates a fresh Electron session;
 	// all assertions remain strict and a second failure still fails the run.
 	...specRetryOptions,
 	services: [
