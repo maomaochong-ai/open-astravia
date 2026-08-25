@@ -2,6 +2,9 @@
 
 ### Changed
 
+- Coding Agent 结构化 Prompt Composer 继续拥有产品 block 的缓存稳定性判断，并透传通用
+  `InstructionBlock.cacheability` 显式覆盖；未声明的 Plugin/Feature block 仍默认易变，Runtime 自动布局不会覆盖
+  Composer 返回的 stable length 与 block spans。
 - Coding Agent 的 Runtime 装配改为向 `runtime-core` 传递中性的能力定义，不再把 Coding Profile 概念下沉为
   Kernel 编译合同；工具面、Prompt、MCP 与 Session 行为保持不变。
 - **破坏性变更**：工作模式注册表移出本包，改由宿主提供（ADR-0071 归属修订）。`@vetta/coding-agent/profile`

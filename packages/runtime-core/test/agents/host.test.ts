@@ -9,6 +9,7 @@ import {
 	type AgentFeatureDefinition,
 	PassthroughContextStrategy,
 	type RuntimeCapabilityDefinition,
+	resolveModelCallFrame,
 } from "../../src/kernel/index.js";
 import type { SessionExtensionDefinition } from "../../src/session-extensions/index.js";
 
@@ -75,10 +76,30 @@ describe("RuntimeAgentHost", () => {
 			revisionId: "revision-2",
 		});
 		const rolledTurn = await session.acquire(turnContext(session.id, "turn-rolled"));
+		const oldFrame = await resolveModelCallFrame(oldTurn.snapshot, {
+			sessionId: session.id,
+			turnId: "turn-old",
+			signal: new AbortController().signal,
+		});
+		const newFrame = await resolveModelCallFrame(newInstanceLease.snapshot, {
+			sessionId: newSession.id,
+			turnId: "turn-new-instance",
+			signal: new AbortController().signal,
+		});
+		const rolledFrame = await resolveModelCallFrame(rolledTurn.snapshot, {
+			sessionId: session.id,
+			turnId: "turn-rolled",
+			signal: new AbortController().signal,
+		});
 		expect(oldTurn.snapshot.instructions[0]?.content).toBe("v1");
 		expect((oldTurn.modelBinding?.model as unknown as { id?: string }).id).toBe("v1");
 		expect(rolledTurn.snapshot.instructions[0]?.content).toBe("v2");
 		expect((rolledTurn.modelBinding?.model as unknown as { id?: string }).id).toBe("v2");
+		expect(oldFrame.systemPromptStableLength).toBe("v1".length);
+		expect(newFrame.systemPromptStableLength).toBe("v2".length);
+		expect(rolledFrame.systemPromptStableLength).toBe("v2".length);
+		expect(oldFrame.instructions[0]?.content).toBe("v1");
+		expect(rolledFrame.instructions[0]?.content).toBe("v2");
 		expect(session.revisionId).toBe("revision-2");
 		await expect(session.rolloutToLatest()).resolves.toEqual({ status: "unchanged", revisionId: "revision-2" });
 

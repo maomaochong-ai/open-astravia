@@ -7,6 +7,10 @@ export type RuntimePromptFrameObservation =
 			readonly durationMs: number;
 			readonly instructionCount: number;
 			readonly toolCount: number;
+			readonly cacheLayoutSource: "automatic" | "composer" | "unspecified" | "degraded";
+			readonly stableCharacterCount?: number;
+			readonly stableBlockCount: number;
+			readonly volatileBlockCount: number;
 	  }
 	| { readonly phase: "failed"; readonly durationMs: number; readonly failure: RuntimeObservationFailure };
 
@@ -26,6 +30,12 @@ export type RuntimeToolExecutionObservation =
 			readonly failure: RuntimeObservationFailure;
 	  };
 
+export interface RuntimePromptCacheLayoutIssueObservation {
+	readonly reason: "invalid-stable-length" | "invalid-block-layout";
+	readonly declaredBlockCount: number;
+	readonly stableLengthDeclared: boolean;
+}
+
 export const RUNTIME_PROMPT_FRAME_OBSERVATION = defineRuntimeObservation<RuntimePromptFrameObservation>(
 	"runtime.prompt",
 	"frame",
@@ -35,3 +45,10 @@ export const RUNTIME_TOOL_EXECUTION_OBSERVATION = defineRuntimeObservation<Runti
 	"runtime.tool",
 	"execution",
 );
+
+export const RUNTIME_PROMPT_CACHE_LAYOUT_ISSUE_OBSERVATION =
+	defineRuntimeObservation<RuntimePromptCacheLayoutIssueObservation>(
+		"runtime.prompt",
+		"cache-layout-issue",
+		"warning",
+	);

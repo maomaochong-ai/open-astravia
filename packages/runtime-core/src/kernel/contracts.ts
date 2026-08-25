@@ -85,10 +85,17 @@ export interface TurnInputQueue {
 	enqueueFollowUps(messages: readonly UserMessage[]): void;
 }
 
+export type InstructionCacheability = "stable" | "volatile";
+
 export interface InstructionBlock {
 	readonly id: string;
 	readonly content: string;
 	readonly priority: number;
+	/**
+	 * 可选的 Prompt 缓存生命周期覆盖。未指定时，Snapshot 编译期内容默认为 stable，
+	 * Model Call Contribution 默认为 volatile；该字段不改变 Instruction 排序。
+	 */
+	readonly cacheability?: InstructionCacheability;
 }
 
 export interface CapabilityBinding {

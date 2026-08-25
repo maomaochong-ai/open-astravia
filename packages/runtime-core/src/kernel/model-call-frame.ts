@@ -9,8 +9,15 @@ import type {
 	RuntimeToolDefinition,
 } from "./contracts.js";
 import { featureConflictError } from "./errors.js";
-import { RUNTIME_PROMPT_FRAME_OBSERVATION, RUNTIME_TOOL_EXECUTION_OBSERVATION } from "./runtime-observations.js";
+import { compilePromptCacheLayout, sanitizePromptCacheLayout } from "./prompt-cache-layout.js";
+import {
+	RUNTIME_PROMPT_CACHE_LAYOUT_ISSUE_OBSERVATION,
+	RUNTIME_PROMPT_FRAME_OBSERVATION,
+	RUNTIME_TOOL_EXECUTION_OBSERVATION,
+} from "./runtime-observations.js";
 import { freezeInstruction, freezeTool, ImmutableReadonlyMap } from "./runtime-values.js";
+
+type PromptCacheLayoutSource = "automatic" | "composer" | "unspecified" | "degraded";
 
 export async function resolveModelCallFrame(
 	snapshot: RuntimeSnapshot,
@@ -30,12 +37,20 @@ export async function resolveModelCallFrame(
 			contributions.push(await provider.contribute(context));
 		}
 
-		const candidate = createModelCallFrame(
-			[...snapshot.instructions, ...contributions.flatMap((contribution) => contribution.instructions ?? [])],
+		const callInstructions = contributions.flatMap((contribution) => contribution.instructions ?? []);
+		const callInstructionIds = new Set(callInstructions.map(({ id }) => id));
+		const candidateWithoutLayout = createModelCallFrame(
+			[...snapshot.instructions, ...callInstructions],
 			[...snapshot.tools.values(), ...contributions.flatMap((contribution) => contribution.tools ?? [])],
 		);
+		const candidate = withPromptCacheLayout(
+			candidateWithoutLayout,
+			compilePromptCacheLayout(candidateWithoutLayout.instructions, ({ id }) =>
+				callInstructionIds.has(id) ? "volatile" : "stable",
+			),
+		);
 		if (!snapshot.modelCallFrameComposer) {
-			return observeResolvedFrame(candidate, context, publisher, startedAt);
+			return observeResolvedFrame(candidate, "automatic", context, publisher, startedAt);
 		}
 
 		context.signal.throwIfAborted();
@@ -49,14 +64,28 @@ export async function resolveModelCallFrame(
 			frame: candidate,
 		});
 		context.signal.throwIfAborted();
-		const frame = createModelCallFrame(
+		const composedFrame = createModelCallFrame(
 			composed.instructions,
 			[...composed.tools.values()],
 			composed.contextCompositionSections,
+		);
+		const resolved = resolveComposedPromptCacheLayout(
+			composedFrame,
 			composed.systemPromptStableLength,
 			composed.promptCacheSystemPromptBlocks,
 		);
-		return observeResolvedFrame(frame, context, publisher, startedAt);
+		if (resolved.degradationReason) {
+			publisher?.record(
+				RUNTIME_PROMPT_CACHE_LAYOUT_ISSUE_OBSERVATION,
+				{
+					reason: resolved.degradationReason,
+					declaredBlockCount: composed.promptCacheSystemPromptBlocks?.length ?? 0,
+					stableLengthDeclared: composed.systemPromptStableLength !== undefined,
+				},
+				{ sessionId: context.sessionId, turnId: context.turnId },
+			);
+		}
+		return observeResolvedFrame(resolved.frame, resolved.source, context, publisher, startedAt);
 	} catch (error) {
 		publisher?.record(
 			RUNTIME_PROMPT_FRAME_OBSERVATION,
@@ -73,11 +102,13 @@ export async function resolveModelCallFrame(
 
 function observeResolvedFrame(
 	frame: ModelCallFrame,
+	cacheLayoutSource: PromptCacheLayoutSource,
 	context: ModelCallContributionContext,
 	publisher: RuntimeSnapshot["observationPublisher"],
 	startedAt: number,
 ): ModelCallFrame {
 	const observedFrame = publisher ? withObservedTools(frame, publisher) : frame;
+	const cacheBlocks = observedFrame.promptCacheSystemPromptBlocks ?? [];
 	publisher?.record(
 		RUNTIME_PROMPT_FRAME_OBSERVATION,
 		{
@@ -85,6 +116,12 @@ function observeResolvedFrame(
 			durationMs: Date.now() - startedAt,
 			instructionCount: observedFrame.instructions.length,
 			toolCount: observedFrame.tools.size,
+			cacheLayoutSource,
+			...(observedFrame.systemPromptStableLength !== undefined
+				? { stableCharacterCount: observedFrame.systemPromptStableLength }
+				: {}),
+			stableBlockCount: cacheBlocks.filter(({ cacheability }) => cacheability === "stable").length,
+			volatileBlockCount: cacheBlocks.filter(({ cacheability }) => cacheability === "volatile").length,
 		},
 		{ sessionId: context.sessionId, turnId: context.turnId },
 	);
@@ -151,8 +188,6 @@ function createModelCallFrame(
 	instructionValues: readonly InstructionBlock[],
 	toolValues: readonly RuntimeToolDefinition[],
 	contextCompositionSections?: readonly ContextCompositionSectionInput[],
-	systemPromptStableLength?: number,
-	promptCacheSystemPromptBlocks?: ModelCallFrame["promptCacheSystemPromptBlocks"],
 ): ModelCallFrame {
 	const instructions = uniqueValues("instruction", instructionValues, ({ id }) => id)
 		.sort(compareInstruction)
@@ -162,16 +197,54 @@ function createModelCallFrame(
 	return Object.freeze({
 		instructions: Object.freeze(instructions),
 		tools: new ImmutableReadonlyMap(tools.map((tool) => [tool.name, tool])),
-		systemPromptStableLength,
-		promptCacheSystemPromptBlocks: promptCacheSystemPromptBlocks
-			? Object.freeze(promptCacheSystemPromptBlocks.map((block) => Object.freeze({ ...block })))
-			: undefined,
 		contextCompositionSections: contextCompositionSections
 			? Object.freeze(
 					contextCompositionSections.map((section) =>
 						Object.freeze({ ...section, source: Object.freeze({ ...section.source }) }),
 					),
 				)
+			: undefined,
+	});
+}
+
+function resolveComposedPromptCacheLayout(
+	frame: ModelCallFrame,
+	stableLength: number | undefined,
+	blocks: ModelCallFrame["promptCacheSystemPromptBlocks"],
+): {
+	readonly frame: ModelCallFrame;
+	readonly source: PromptCacheLayoutSource;
+	readonly degradationReason?: "invalid-stable-length" | "invalid-block-layout";
+} {
+	if (stableLength !== undefined || blocks !== undefined) {
+		const sanitized = sanitizePromptCacheLayout(frame.instructions, stableLength, blocks);
+		return {
+			frame: withPromptCacheLayout(frame, sanitized),
+			source: sanitized.degraded ? "degraded" : "composer",
+			...(sanitized.degradationReason ? { degradationReason: sanitized.degradationReason } : {}),
+		};
+	}
+	if (frame.instructions.some(({ cacheability }) => cacheability !== undefined)) {
+		return {
+			frame: withPromptCacheLayout(
+				frame,
+				compilePromptCacheLayout(frame.instructions, () => "volatile"),
+			),
+			source: "automatic",
+		};
+	}
+	return { frame, source: "unspecified" };
+}
+
+function withPromptCacheLayout(
+	frame: ModelCallFrame,
+	layout: Pick<ModelCallFrame, "systemPromptStableLength" | "promptCacheSystemPromptBlocks">,
+): ModelCallFrame {
+	return Object.freeze({
+		...frame,
+		systemPromptStableLength: layout.systemPromptStableLength,
+		promptCacheSystemPromptBlocks: layout.promptCacheSystemPromptBlocks
+			? Object.freeze(layout.promptCacheSystemPromptBlocks.map((block) => Object.freeze({ ...block })))
 			: undefined,
 	});
 }

@@ -366,6 +366,12 @@ describe("Coding Agent model call and prompt runtime", () => {
 				},
 			]);
 			expect(frame.instructions[0]?.content).toContain("Guidelines:");
+			expect(frame.systemPromptStableLength).toBeGreaterThan(0);
+			expect(frame.systemPromptStableLength).toBeLessThan(frame.instructions[0]?.content.length ?? 0);
+			expect(frame.promptCacheSystemPromptBlocks?.some(({ cacheability }) => cacheability === "stable")).toBe(true);
+			expect(frame.promptCacheSystemPromptBlocks?.some(({ cacheability }) => cacheability === "volatile")).toBe(
+				true,
+			);
 			expect([...frame.tools.keys()]).toEqual(["read"]);
 			const composition = frame.contextCompositionSections ?? [];
 			expect(composition).toEqual(
@@ -408,7 +414,7 @@ describe("Coding Agent model call and prompt runtime", () => {
 			frame: {
 				instructions: [
 					{ id: "feature.after", content: "After feature", priority: 650 },
-					{ id: "feature.before", content: "Before feature", priority: 450 },
+					{ id: "feature.before", content: "Before feature", priority: 450, cacheability: "stable" as const },
 				],
 				tools: new Map(),
 			},
@@ -418,6 +424,8 @@ describe("Coding Agent model call and prompt runtime", () => {
 		const prompt = frame.instructions[0]?.content ?? "";
 		expect(prompt.indexOf("Before feature")).toBeLessThan(prompt.indexOf("After feature"));
 		expect(prompt).toContain("Base prompt");
+		expect(prompt.slice(0, frame.systemPromptStableLength)).toContain("Before feature");
+		expect(prompt.slice(frame.systemPromptStableLength)).toContain("After feature");
 
 		await expect(
 			composer.compose({

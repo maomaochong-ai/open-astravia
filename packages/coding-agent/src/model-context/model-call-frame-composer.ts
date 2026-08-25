@@ -470,6 +470,7 @@ function appendFeatureInstructions(draft: SystemPromptDraft, instructions: reado
 			content: instruction.content,
 			priority: instruction.priority,
 			enabled: instruction.content.length > 0,
+			...(instruction.cacheability ? { cacheability: instruction.cacheability } : {}),
 		});
 	}
 }

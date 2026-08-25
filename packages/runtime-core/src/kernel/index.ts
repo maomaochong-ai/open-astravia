@@ -66,6 +66,7 @@ export type {
 	HandledSessionInputResult,
 	IdGenerator,
 	InstructionBlock,
+	InstructionCacheability,
 	KernelEvent,
 	LegacyCompactionRecord,
 	ManualContextCompactionInput,
@@ -162,6 +163,12 @@ export {
 export { FeatureCompiler, type FeatureCompilerOptions } from "./feature-compiler.js";
 export { composeModelCallSystemPrompt, resolveModelCallFrame } from "./model-call-frame.js";
 export {
+	type CompiledPromptCacheLayout,
+	compilePromptCacheLayout,
+	type SanitizedPromptCacheLayout,
+	sanitizePromptCacheLayout,
+} from "./prompt-cache-layout.js";
+export {
 	type RuntimeCapabilityBindingDefinition,
 	type RuntimeCapabilityCompiler,
 	RuntimeCapabilityComposition,
@@ -169,8 +176,10 @@ export {
 	type RuntimeCapabilityReconfigurationResult,
 } from "./runtime-capability-composition.js";
 export {
+	RUNTIME_PROMPT_CACHE_LAYOUT_ISSUE_OBSERVATION,
 	RUNTIME_PROMPT_FRAME_OBSERVATION,
 	RUNTIME_TOOL_EXECUTION_OBSERVATION,
+	type RuntimePromptCacheLayoutIssueObservation,
 	type RuntimePromptFrameObservation,
 	type RuntimeToolExecutionObservation,
 } from "./runtime-observations.js";

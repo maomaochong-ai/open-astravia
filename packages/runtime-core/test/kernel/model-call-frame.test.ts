@@ -75,6 +75,11 @@ describe("model call frame", () => {
 		expect(prepareCount).toBe(1);
 		expect(featureContributionCount).toBe(1);
 		expect(callContributionCount).toBe(2);
+		expect(first.systemPromptStableLength).toBe(0);
+		expect(first.promptCacheSystemPromptBlocks?.map(({ cacheability }) => cacheability)).toEqual([
+			"volatile",
+			"volatile",
+		]);
 		expect(Object.isFrozen(second)).toBe(true);
 		expect(Object.isFrozen(second.instructions)).toBe(true);
 		await compiled.dispose();
@@ -208,13 +213,99 @@ describe("model call frame", () => {
 		expect((await resolve(composerSnapshot(undefined))).systemPromptStableLength).toBeUndefined();
 	});
 
-	it("leaves the cache breakpoint undefined without a composer", async () => {
+	it("automatically caches a basic Agent prompt without requiring a composer", async () => {
 		const frame = await resolve({
 			...baseSnapshot(),
 			instructions: [{ id: "base", content: "base prompt", priority: 100 }],
 		});
 
-		expect(frame.systemPromptStableLength).toBeUndefined();
+		expect(frame.systemPromptStableLength).toBe("base prompt".length);
+		expect(frame.promptCacheSystemPromptBlocks).toEqual([
+			{ id: "base", start: 0, length: "base prompt".length, cacheability: "stable" },
+		]);
+	});
+
+	it("automatically keeps model-call contributions in a volatile tail", async () => {
+		const frame = await resolve({
+			...baseSnapshot(),
+			instructions: [{ id: "base", content: "base prompt", priority: 0 }],
+			modelCallProviders: [
+				{
+					id: "dynamic",
+					async contribute() {
+						return { instructions: [{ id: "dynamic", content: "dynamic tail", priority: 100 }] };
+					},
+				},
+			],
+		});
+
+		expect(frame.systemPromptStableLength).toBe("base prompt".length);
+		expect(frame.promptCacheSystemPromptBlocks).toEqual([
+			{ id: "base", start: 0, length: "base prompt".length, cacheability: "stable" },
+			{
+				id: "dynamic",
+				start: "base prompt\n\n".length,
+				length: "dynamic tail".length,
+				cacheability: "volatile",
+			},
+		]);
+	});
+
+	it("lets a composer opt into automatic layout with instruction cacheability", async () => {
+		const frame = await resolve({
+			...baseSnapshot(),
+			modelCallFrameComposer: {
+				async compose() {
+					return {
+						instructions: [
+							{ id: "stable", content: "stable", priority: 0, cacheability: "stable" },
+							{ id: "tail", content: "tail", priority: 10 },
+						],
+						tools: new Map(),
+					};
+				},
+			},
+		});
+
+		expect(frame.systemPromptStableLength).toBe("stable".length);
+		expect(frame.promptCacheSystemPromptBlocks?.map(({ cacheability }) => cacheability)).toEqual([
+			"stable",
+			"volatile",
+		]);
+	});
+
+	it("degrades invalid composer cache metadata to an uncached prompt", async () => {
+		const frame = await resolve(composerSnapshot(999));
+
+		expect(frame.systemPromptStableLength).toBe(0);
+		expect(frame.promptCacheSystemPromptBlocks).toBeUndefined();
+	});
+
+	it("observes malformed cache metadata as a safe warning", async () => {
+		const records: RuntimeObservationRecord[] = [];
+		const frame = await resolve({
+			...composerSnapshot(999),
+			observationPublisher: createRuntimeObservationPublisher({
+				port: {
+					record(record) {
+						records.push(record);
+					},
+				},
+			}),
+		});
+
+		expect(frame.systemPromptStableLength).toBe(0);
+		expect(records.map(({ token }) => token.id)).toEqual([
+			"runtime.prompt.frame",
+			"runtime.prompt.cache-layout-issue",
+			"runtime.prompt.frame",
+		]);
+		expect(records[1]?.payload).toEqual({
+			reason: "invalid-stable-length",
+			declaredBlockCount: 1,
+			stableLengthDeclared: true,
+		});
+		expect(records[2]?.payload).toMatchObject({ cacheLayoutSource: "degraded", stableCharacterCount: 0 });
 	});
 
 	it("observes prompt and tool boundaries without capturing prompt, arguments, results or error messages", async () => {
@@ -274,6 +365,12 @@ describe("model call frame", () => {
 			["runtime.tool.execution", "started"],
 			["runtime.tool.execution", "failed"],
 		]);
+		expect(records[1]?.payload).toMatchObject({
+			cacheLayoutSource: "automatic",
+			stableCharacterCount: "secret-prompt-value".length,
+			stableBlockCount: 1,
+			volatileBlockCount: 0,
+		});
 		const serialized = JSON.stringify(records);
 		for (const secret of [
 			"secret-prompt-value",

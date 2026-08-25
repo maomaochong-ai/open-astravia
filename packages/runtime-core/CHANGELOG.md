@@ -6,6 +6,10 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- `InstructionBlock` 新增可选 `cacheability`，Runtime 默认按生命周期生成 Prompt Cache Layout：Snapshot/Feature
+  编译期 instructions 视为稳定，模型调用期 Contribution 视为易变。基础 Agent 无需 Composer 即可自动获得
+  `systemPromptStableLength` 与 block spans；非法 Composer 元数据降级为不缓存，并发布不含正文的 warning
+  Observation。
 - 新增 `@vetta/runtime-core/observation` 类型化观测端口、不可覆盖上层 identity 的 scoped Publisher、
   Composite/Noop Adapter 与安全错误投影。Agent Registry/Source/Host/Instance/Session、Prompt Frame 和最终
   Tool execution 已接入结构化事件；默认不记录 Prompt、用户内容、Tool 参数/结果或错误 message，Adapter
@@ -95,7 +99,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
   在下一 Turn 前应用。
 - `SessionStateSnapshot` 新增可选字段 `agentMode`：回传本会话创建时固化的工作模式，供宿主按会话而非
   全局默认值渲染。未指定模式的会话（CLI/headless）不带该字段。
-- `ModelCallFrame` 新增可选字段 `systemPromptStableLength`：由 Profile 的 Frame Composer 声明系统提示词稳定前缀长度，`resolveModelCallFrame` 原样透传，Turn Engine 写入 `Context.systemPromptStableLength` 供 Provider 切缓存断点。`instructionOverride` 生效时该值被显式丢弃（override 替换了整段 Prompt，偏移不再成立）。
+- `ModelCallFrame` 新增可选字段 `systemPromptStableLength`：由产品级 Frame Composer 声明系统提示词稳定前缀长度，`resolveModelCallFrame` 原样透传，Turn Engine 写入 `Context.systemPromptStableLength` 供 Provider 切缓存断点。`instructionOverride` 生效时该值被显式丢弃（override 替换了整段 Prompt，偏移不再成立）。
 - 新增 `toolcall.args` 会话事件：模型流式生成工具参数时，每多解析出一个值已完整的键就播报一次（按键数增长节流，不逐 token）。`edit` / `write` 的开销几乎全在生成参数上，只听 `tool.start` 的消费方要等工具执行完才知道目标；路径通常是第一个键，这条事件能提前拿到。`tool.start` 仍是权威全量参数。
 - `HistoryEntry` 新增 `error` 条目；原生 Conversation 投影会把 `turn.failed` 与 `prompt_rejected` 转成可展示、可恢复的历史事实，同时继续从模型上下文中排除这些终止错误。
 

@@ -131,11 +131,30 @@ host.registry.upsert({ source: { id: "code", revision: "2026-08-25.1" }, definit
 连接，宿主应先完成 Schema 校验和组件引用解析，再通过 `RuntimeAgentDefinitionSource` 发布完整定义；Runtime
 Core 不读取文件或动态加载模块。
 
+## Default Prompt Cache Layout
+
+基础 Agent 不需要实现 `ModelCallFrameComposer` 才能获得稳定的系统提示词缓存前缀。Runtime 根据内容产生阶段自动
+推导缓存布局：
+
+- `RuntimeCapabilityDefinition.instructions` 与 Feature 编译期 instructions 在当前 Session Snapshot generation 内
+  默认 `stable`；
+- `ModelCallContributionProvider` 在模型调用期产生的 instructions 默认 `volatile`；
+- `InstructionBlock.cacheability` 可显式覆盖默认值；
+- Runtime 保持现有 `priority + id` 排序，只计算开头连续的 stable blocks，绝不为扩大缓存前缀重排 Prompt；
+- 自定义 Composer 显式返回的 `systemPromptStableLength`/block layout 优先。非法元数据降级为不缓存，并发布
+  `runtime.prompt.cache-layout-issue` warning Observation，而不会中断模型调用；
+- `instructionOverride` 清空缓存断点；Agent revision rollout 从下一 Turn 建立新的 Snapshot 与缓存 generation。
+
+因此只有静态 instructions 的 Agent 默认缓存整个 system prompt；稳定 instructions 后追加调用级动态内容时，Runtime
+自动只缓存前面的连续稳定区。若动态 instruction 以更低 priority 排在开头，Runtime 会保守地产生 0 长度前缀，调用方
+可以调整业务顺序或在能够证明其跨 Turn 不变时显式声明 `cacheability: "stable"`。
+
 ## Extension and Observation Boundaries
 
 | 变化类型 | 使用边界 |
 | --- | --- |
 | Prompt、Tool、MCP、上下文与模型调用级动态能力 | `RuntimeCapabilityDefinition`、Feature 与 Contribution Provider |
+| Prompt 缓存稳定性例外 | `InstructionBlock.cacheability` 或最终 `ModelCallFrameComposer` layout |
 | Tool 授权或会改变行为的决策 | Tool Policy 或领域 Typed Interceptor |
 | Session 状态、服务、端点、持久化参与者与 continuation | Session Extension |
 | Definition 的代码/文件/Plugin/远端动态发布 | Definition Source + Registry revision |
