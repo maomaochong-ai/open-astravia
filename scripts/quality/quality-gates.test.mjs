@@ -280,6 +280,8 @@ describe("CI unit test coverage", () => {
 	it("runs affected workspace tests on Linux and Windows with complete Git history", () => {
 		expect(workflow).toContain("os: [ubuntu-latest, windows-latest]");
 		expect(workflow).toContain("fetch-depth: 0");
+		expect(workflow).toContain("sudo apt-get update && sudo apt-get install --yes ripgrep");
+		expect(workflow).toContain("choco install ripgrep --yes --no-progress");
 		expect(workflow).toContain("bun run test:changed --base");
 	});
 

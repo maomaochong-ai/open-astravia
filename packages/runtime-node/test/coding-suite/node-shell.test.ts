@@ -45,8 +45,11 @@ describe("Node shell runtime", () => {
 	});
 
 	it("prepends the managed bin directory exactly once", () => {
-		const binDirectory = "C:/vetta/bin";
-		const initialPath = ["C:/Windows", "C:/tools"].join(delimiter);
+		const binDirectory = process.platform === "win32" ? "C:/vetta/bin" : "/vetta/bin";
+		const initialPath =
+			process.platform === "win32"
+				? ["C:/Windows", "C:/tools"].join(delimiter)
+				: ["/usr/local/bin", "/usr/bin"].join(delimiter);
 		const first = createNodeShellEnvironment(binDirectory, { Path: initialPath, KEEP: "value" });
 		const second = createNodeShellEnvironment(binDirectory, first);
 		expect(first.Path).toBe([binDirectory, initialPath].join(delimiter));
