@@ -28,7 +28,6 @@ import type { CodingAgentConversationPersistenceFactory } from "./conversation-p
 import type { CodingAgentMemoryRuntimeFactoryOptions } from "./memory-runtime.js";
 import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
 import type { CodingAgentSessionExecutionEnvironmentFactory } from "./session-execution-environment.js";
-import type { CodingAgentSessionInitializationObserver } from "./session-initialization-observability.js";
 import type {
 	CodingAgentSubagentChildFactory,
 	CodingAgentSubagentChildFactoryContext,
@@ -202,14 +201,15 @@ export interface CodingAgentRuntimeContextOptions {
 }
 
 export interface CodingAgentRuntimeObservabilityOptions {
-	/** Runtime Agent Host 注入的 scoped Publisher；产品只发布安全摘要，不拥有具体 Adapter。 */
+	/**
+	 * Runtime Agent Host 或宿主 Hub 注入的 scoped Publisher；产品只发布安全摘要，不拥有具体 Adapter。
+	 * 包括 Tool 调用与 Session 初始化观测；未提供时观测安全关闭。
+	 */
 	readonly observationPublisher?: RuntimeObservationPublisher;
 	/** 平台中立的进程级观测端口；Composition 与 Runtime 均不拥有其生命周期。 */
 	readonly tracer?: AgentCoreTurnEngineOptions["tracer"];
 	/** Session 间共享的观测策略；Turn Engine 会覆盖真实 Session 身份。 */
 	readonly tracing?: AgentCoreTurnEngineOptions["tracing"];
-	/** Session 初始化阶段观测；只包含阶段耗时与身份，不包含 Prompt、路径或资源正文。 */
-	readonly observeSessionInitialization?: CodingAgentSessionInitializationObserver;
 }
 
 export interface CodingAgentRuntimeCompositionOptions

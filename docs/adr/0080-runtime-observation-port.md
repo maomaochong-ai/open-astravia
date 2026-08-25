@@ -56,3 +56,7 @@ Agent/Session/Turn identity，也无法让 OTLP、Langfuse、JSONL、内存记�
   明示授权的合同，不能扩大本端口的默认数据面。
 - Fire-and-forget Adapter 必须在自身 `flush()` 中等待已提交记录；Host close 会调用 Publisher flush，但不会传播
   Adapter 失败。
+
+分层汇聚、动态路由、生命周期所有权以及 Trace/Session 安全桥接由
+[ADR-0082：分层 Runtime Observation Hub](./0082-hierarchical-runtime-observation-hub.md) 补充；本 ADR 的 Token、
+Publisher、Port 与安全 payload 决策保持不变。

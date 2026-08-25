@@ -31,13 +31,19 @@ export class RuntimeAgentHost {
 	private readonly createId: (scope: "instance" | "session") => string;
 	private readonly createFeatureCompiler: () => FeatureCompiler;
 	private readonly observations: RuntimeObservationPublisher;
+	private readonly ownsObservationPublisher: boolean;
 	private readonly instances = new Map<string, RuntimeAgentInstance>();
 	private readonly sessions = new Map<string, RuntimeAgentSession>();
 	private closed = false;
 	private closePromise?: Promise<void>;
 
 	constructor(options: RuntimeAgentHostOptions = {}) {
-		this.observations = createRuntimeObservationPublisher({ port: options.observationPort });
+		if (options.observationPort && options.observationPublisher) {
+			throw new Error("Runtime Agent Host accepts either observationPort or observationPublisher, not both");
+		}
+		this.observations =
+			options.observationPublisher ?? createRuntimeObservationPublisher({ port: options.observationPort });
+		this.ownsObservationPublisher = options.observationPublisher === undefined;
 		this.registry = options.registry ?? new RuntimeAgentRegistry({ observationPublisher: this.observations });
 		this.ownsRegistry = options.registry === undefined;
 		this.createId = options.createId ?? ((scope) => `${scope}-${createRuntimeId()}`);
@@ -176,7 +182,7 @@ export class RuntimeAgentHost {
 			[
 				...instances.map((instance) => () => instance.close()),
 				...(this.ownsRegistry ? [() => this.registry.close()] : []),
-				() => this.observations.flush(),
+				...(this.ownsObservationPublisher ? [() => this.observations.flush()] : []),
 			],
 			undefined,
 			"Failed to close Runtime Agent Host",

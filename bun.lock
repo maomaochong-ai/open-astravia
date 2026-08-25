@@ -991,6 +991,7 @@
         "@langfuse/tracing": "^5.4.1",
         "@opentelemetry/sdk-node": "^0.218.0",
         "@vetta/agent-core": "workspace:*",
+        "@vetta/runtime-core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^22.10.5",

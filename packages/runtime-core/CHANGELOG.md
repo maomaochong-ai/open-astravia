@@ -6,6 +6,11 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- 新增可独立、可嵌套的 `RuntimeObservationHub`：支持动态 Adapter、domain/level/predicate 路由、父级汇聚、
+  容量保护、失败隔离、安全 Hub issue、交付健康 snapshot 与幂等 close；`RuntimeAgentHost` 可注入父级 scoped
+  Publisher 且不取得其 flush 生命周期。
+- 新增 `runtime.session.event` 安全桥接，把既有 Session 业务事件投影为结构、计数、耗时、usage 与稳定失败字段，
+  不向统一 Adapter 暴露消息、Thinking、Tool 参数/结果、扩展 payload 或错误正文。
 - `InstructionBlock` 新增可选 `cacheability`，Runtime 默认按生命周期生成 Prompt Cache Layout：Snapshot/Feature
   编译期 instructions 视为稳定，模型调用期 Contribution 视为易变。基础 Agent 无需 Composer 即可自动获得
   `systemPromptStableLength` 与 block spans；非法 Composer 元数据降级为不缓存，并发布不含正文的 warning

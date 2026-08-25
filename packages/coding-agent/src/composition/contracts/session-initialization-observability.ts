@@ -1,4 +1,4 @@
-import type { RuntimeAssemblyOperation } from "@vetta/runtime-core";
+import { defineRuntimeObservation, type RuntimeAssemblyOperation } from "@vetta/runtime-core";
 
 export type CodingAgentSessionInitializationStage =
 	| "ownership"
@@ -11,7 +11,6 @@ export type CodingAgentSessionInitializationStage =
 	| "initial-system-prompt";
 
 export interface CodingAgentSessionInitializationObservation {
-	readonly sessionId: string;
 	readonly operation: RuntimeAssemblyOperation;
 	readonly status: "stage-completed" | "stage-failed" | "completed" | "failed";
 	readonly stage?: CodingAgentSessionInitializationStage;
@@ -20,6 +19,6 @@ export interface CodingAgentSessionInitializationObservation {
 	readonly totalDurationMs: number;
 }
 
-export type CodingAgentSessionInitializationObserver = (
-	observation: CodingAgentSessionInitializationObservation,
-) => void;
+/** Coding Agent 自有的安全初始化摘要；身份由 Runtime Observation context 承载。 */
+export const CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION =
+	defineRuntimeObservation<CodingAgentSessionInitializationObservation>("coding-agent.session", "initialization");

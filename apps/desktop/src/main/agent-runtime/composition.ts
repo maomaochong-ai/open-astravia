@@ -1,6 +1,9 @@
 import { join } from "node:path";
 import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
-import { createCodingAgentMemoryRolloverRuntime } from "@vetta/coding-agent/composition";
+import {
+	CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION,
+	createCodingAgentMemoryRolloverRuntime,
+} from "@vetta/coding-agent/composition";
 import { getAgentDir } from "@vetta/coding-agent/config";
 import {
 	createCodingAgentMcpRuntimeToolSource,
@@ -14,6 +17,7 @@ import {
 	CompositeRuntimeSessionFileHistoryReader,
 	RuntimeHost,
 	type RuntimeHostSessionBackendRouteDecision,
+	RuntimeObservationHub,
 } from "@vetta/runtime-core";
 import {
 	createDesktopHistoricalSessionFormat,
@@ -58,11 +62,19 @@ import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./host-servi
 import { createDesktopMcpSupervisor } from "./mcp-supervisor.js";
 import { getDesktopProviderObservationRuntime } from "./provider-observation.js";
 import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
-import { createSessionInitializationLogObserver } from "./session-initialization-log-observer.js";
+import { createSessionInitializationLogPort } from "./session-initialization-log-port.js";
 
 const log = getAppLogger("runtime");
 
 export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
+	const observationHub = new RuntimeObservationHub({
+		onIssue: (issue) => log.warn("[runtime-observation] hub issue", issue),
+	});
+	observationHub.attach(createSessionInitializationLogPort(log), {
+		id: "desktop.session-initialization-log",
+		domains: [CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION.domain],
+	});
+	const observationPublisher = observationHub.publisher();
 	const platformServices = createDesktopRuntimeHostPlatformServices();
 	const modelRuntime = getOrCreateSharedModelRuntime();
 	const providerObservationRuntime = getDesktopProviderObservationRuntime();
@@ -104,7 +116,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 					journalStorage: new NodeTextFileStorage(join(options.cwd, "JOURNAL.md")),
 				});
 			},
-			observeSessionInitialization: createSessionInitializationLogObserver(log),
+			observationPublisher,
 			...(providerObservationRuntime ? { streamFn: providerObservationRuntime.streamFn } : {}),
 			createPluginMcpRuntime: ({ cwd, agentDir }) => {
 				const resolvedAgentDir = agentDir ?? getAgentDir();
@@ -164,7 +176,15 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		onRoute: logSessionRoute,
 	});
 	return {
-		runtimeBackendPool,
+		runtimeBackendPool: {
+			async dispose() {
+				try {
+					await runtimeBackendPool.dispose();
+				} finally {
+					await observationHub.close();
+				}
+			},
+		},
 		runtime: new RuntimeHost({
 			...platformServices,
 			additionalSkillPaths,

@@ -2,6 +2,9 @@
 
 ### Changed
 
+- Session 初始化观测统一改由产品自有的 `coding-agent.session.initialization` Token 经
+  `RuntimeObservationPublisher` 发布，Session 身份进入通用 context；移除并行的
+  `observeSessionInitialization` / `CodingAgentSessionInitializationObserver` 专用回调入口。
 - Coding Agent 结构化 Prompt Composer 继续拥有产品 block 的缓存稳定性判断，并透传通用
   `InstructionBlock.cacheability` 显式覆盖；未声明的 Plugin/Feature block 仍默认易变，Runtime 自动布局不会覆盖
   Composer 返回的 stable length 与 block spans。

@@ -143,12 +143,13 @@ async function createCodingAgentRuntimeCompositionInternal(
 		resolveActivation: toolSurface.resolveActivation,
 		createChildComposition,
 		assessChildSessionPath,
-		observer: options.observeSessionInitialization,
+		observationPublisher: options.observationPublisher,
 	});
 	const runtimeFactory = new ComposedRuntimeFactory<CodingAgentRuntimeSessionOptions>({
 		streamFn: options.streamFn,
 		tracer: options.tracer,
 		tracing: options.tracing,
+		observationPublisher: options.observationPublisher,
 		createResources: (sessionOptions, resourceContext) =>
 			sessionInitialization.initialize(sessionOptions, resourceContext),
 	});

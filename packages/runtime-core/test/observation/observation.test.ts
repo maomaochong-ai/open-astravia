@@ -3,11 +3,14 @@ import {
 	CompositeRuntimeObservationPort,
 	createRuntimeObservationPublisher,
 	defineRuntimeObservation,
+	RUNTIME_OBSERVATION_HUB_ISSUE,
+	RuntimeObservationHub,
 	type RuntimeObservationRecord,
 	runtimeObservationFailure,
 } from "../../src/observation/index.js";
 
 const TEST_OBSERVATION = defineRuntimeObservation<{ readonly value: number }>("test", "event");
+const OTHER_OBSERVATION = defineRuntimeObservation<{ readonly value: number }>("other", "event", "debug");
 
 describe("runtime observation", () => {
 	it("binds identity scopes without allowing child contexts to replace parent identity", () => {
@@ -79,5 +82,115 @@ describe("runtime observation", () => {
 			errorCode: "E_SAFE",
 		});
 		expect(JSON.stringify(runtimeObservationFailure(error))).not.toContain("secret");
+	});
+
+	it("aggregates a standalone child Hub into its parent while preserving local routes", async () => {
+		const rootRecords: RuntimeObservationRecord[] = [];
+		const localRecords: RuntimeObservationRecord[] = [];
+		const root = new RuntimeObservationHub({ now: () => 42 });
+		root.attach(
+			{
+				record: (record) => {
+					rootRecords.push(record);
+				},
+			},
+			{ id: "root" },
+		);
+		const child = new RuntimeObservationHub({ parent: root, now: () => 42 });
+		const local = child.attach(
+			{
+				record: (record) => {
+					localRecords.push(record);
+				},
+			},
+			{ id: "local-test", domains: ["test"] },
+		);
+		const publisher = child.publisher({ agentId: "agent", sessionId: "session" });
+
+		publisher.record(TEST_OBSERVATION, { value: 1 });
+		publisher.record(OTHER_OBSERVATION, { value: 2 });
+		await child.flush();
+
+		expect(rootRecords.map(({ token }) => token.id)).toEqual(["test.event", "other.event"]);
+		expect(localRecords.map(({ token }) => token.id)).toEqual(["test.event"]);
+		expect(rootRecords[0]?.context).toEqual({ agentId: "agent", sessionId: "session" });
+		expect(rootRecords[0]?.timestamp).toBe(42);
+		expect(child.snapshot()).toMatchObject({
+			adapterIds: ["local-test"],
+			publishedRecordCount: 2,
+			routedDeliveryCount: 3,
+			filteredDeliveryCount: 1,
+			deliveryFailureCount: 0,
+			droppedRecordCount: 0,
+			pendingRecordCount: 0,
+		});
+
+		expect(local.detach()).toBe(true);
+		expect(local.detach()).toBe(false);
+		publisher.record(TEST_OBSERVATION, { value: 3 });
+		await child.flush();
+		expect(rootRecords).toHaveLength(3);
+		expect(localRecords).toHaveLength(1);
+	});
+
+	it("isolates route failures and reports safe Hub diagnostics to healthy adapters", async () => {
+		const records: RuntimeObservationRecord[] = [];
+		const issues: unknown[] = [];
+		const hub = new RuntimeObservationHub({ onIssue: (issue) => issues.push(issue) });
+		hub.attach(
+			{
+				record: () => Promise.reject(new Error("adapter credential=secret")),
+				flush: () => Promise.reject(new Error("flush credential=secret")),
+			},
+			{ id: "failing" },
+		);
+		hub.attach(
+			{
+				record: (record) => {
+					records.push(record);
+				},
+			},
+			{ id: "healthy" },
+		);
+
+		hub.publisher().record(TEST_OBSERVATION, { value: 1 });
+		await hub.flush();
+
+		expect(records[0]?.token).toBe(TEST_OBSERVATION);
+		const diagnostics = records.filter(({ token }) => token === RUNTIME_OBSERVATION_HUB_ISSUE);
+		expect(diagnostics.map(({ payload }) => (payload as { operation: string }).operation)).toEqual([
+			"adapter.record",
+			"adapter.flush",
+		]);
+		expect(hub.snapshot().deliveryFailureCount).toBe(2);
+		expect(issues).toHaveLength(2);
+		expect(JSON.stringify({ diagnostics, issues })).not.toContain("credential=secret");
+	});
+
+	it("bounds pending records, reports drops and closes idempotently", async () => {
+		let release!: () => void;
+		const blocked = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const issues: unknown[] = [];
+		const hub = new RuntimeObservationHub({ maxPendingRecords: 1, onIssue: (issue) => issues.push(issue) });
+		const slowRecord = vi.fn(() => blocked);
+		hub.attach({ record: slowRecord }, { id: "slow" });
+		const first = hub.record({ token: TEST_OBSERVATION, context: {}, timestamp: 1, payload: { value: 1 } });
+		const dropped = hub.record({ token: TEST_OBSERVATION, context: {}, timestamp: 2, payload: { value: 2 } });
+
+		expect(hub.snapshot()).toMatchObject({ publishedRecordCount: 1, droppedRecordCount: 1 });
+		expect(issues).toContainEqual({ operation: "hub.capacity", phase: "dropped" });
+		expect(slowRecord).toHaveBeenCalledOnce();
+		release();
+		await Promise.all([first, dropped]);
+		const closing = hub.close();
+		expect(hub.close()).toBe(closing);
+		await closing;
+		await hub.record({ token: TEST_OBSERVATION, context: {}, timestamp: 3, payload: { value: 3 } });
+		expect(hub.snapshot()).toMatchObject({ closed: true, droppedRecordCount: 2, pendingRecordCount: 0 });
+		expect(issues).toContainEqual({ operation: "hub.closed", phase: "dropped" });
+		expect(slowRecord).toHaveBeenCalledOnce();
+		expect(() => hub.attach({ record() {} }, { id: "late" })).toThrow("Runtime observation hub is closed");
 	});
 });

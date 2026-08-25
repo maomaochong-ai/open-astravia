@@ -25,6 +25,8 @@ import {
 	SystemClock,
 	TurnPipeline,
 } from "../kernel/index.js";
+import type { RuntimeObservationPublisher } from "../observation/contracts.js";
+import { publishRuntimeSessionObservation } from "../observation/session-observation-bridge.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import { InitializationRollbackScope } from "./initialization-rollback-scope.js";
 import type {
@@ -101,6 +103,8 @@ export interface ComposedRuntimeFactoryOptions<TCreateOptions> {
 	readonly streamOptions?: Omit<SimpleStreamOptions, "sessionId" | "signal">;
 	readonly tracer?: AgentCoreTurnEngineOptions["tracer"];
 	readonly tracing?: AgentCoreTurnEngineOptions["tracing"];
+	/** 将既有 Session 业务事件以内容安全摘要汇入统一 Observation Hub。 */
+	readonly observationPublisher?: RuntimeObservationPublisher;
 	readonly clock?: Clock;
 	readonly idGenerator?: IdGenerator;
 }
@@ -146,6 +150,9 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 				pendingObservations.push(observation);
 				return;
 			}
+			publishRuntimeSessionObservation(this.options.observationPublisher, observation, {
+				sessionId: observationSessionId,
+			});
 			await eventSink.publish({
 				type: "session.observation",
 				sessionId: observationSessionId,

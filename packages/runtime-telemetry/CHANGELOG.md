@@ -9,5 +9,7 @@
 
 ### Added
 
+- 新增结构化日志与 AgentTracer 的 `RuntimeObservationPort` Adapter；日志 Adapter 保留统一 identity，Tracer
+  Adapter 将每条 record 投影为平面 event 并委托 flush，不取得 tracer shutdown 所有权。
 - 新增平台无关 `RuntimeTracer` / `RuntimeObservation` tracing 契约，并提供基于 Langfuse JS/TS SDK v5 + OpenTelemetry 的 Langfuse exporter。
 - `RuntimeObservationUpdate` 支持 `userId`、`sessionId`、`traceName`、`tags`、`version` 等 trace 归属字段；Langfuse exporter 会通过 attribute propagation 写入，支持 Langfuse Sessions 与 trace 维度聚合。

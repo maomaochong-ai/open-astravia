@@ -21,7 +21,7 @@ composition is Node-oriented and is not part of this portable boundary.
 - isolated Session state machine, Typed Turn Pipeline and Feature Compiler under `./kernel`
 - process-level peer Agent Definition registry with immutable revisions, leases and dynamic Source synchronization under `./agents`
 - peer Agent Instance/Session routing with isolated capability compilation, Session Extensions and explicit next-Turn rollout
-- type-safe, failure-isolated observation ports and scoped Agent/Session/Turn identity under `./observation`
+- type-safe, failure-isolated observation ports, hierarchical Hub routing and scoped Agent/Session/Turn identity under `./observation`
 - acquire/release Runtime Snapshot lifecycle with atomic Feature-topology switching
 - per-model-call prompt and tool materialization through Model Call Contribution Providers
 - `AgentCoreTurnEngine` adapter for the `@vetta/agent-core` model and tool loop
@@ -65,7 +65,8 @@ composition is Node-oriented and is not part of this portable boundary.
 
 - `RuntimeHost`
 - `@vetta/runtime-core/agents` for `RuntimeAgentDefinition`, `RuntimeAgentRegistry`, `RuntimeAgentHost`, Instance/Session routing, revision leases and Source synchronization
-- `@vetta/runtime-core/observation` for domain-owned tokens, scoped publishers, safe failure projection and arbitrary telemetry adapters
+- `@vetta/runtime-core/observation` for domain-owned tokens, scoped publishers, hierarchical/dynamic Hub routing, safe
+  Session projection and arbitrary telemetry adapters
 - `RuntimeHostSessionBackend` and `KernelRuntimeSessionBackend` for composition-root session creation
 - `RuntimeSessionCreateRequest` for backend-neutral creation without SessionManager, custom tools or ModelRegistry
 - `RuntimeSessionTurnControl`, `RuntimeSessionEventStream` and `RuntimeSessionStateReader` core host ports
@@ -161,7 +162,7 @@ Core 不读取文件或动态加载模块。
 | Tool 授权或会改变行为的决策 | Tool Policy 或领域 Typed Interceptor |
 | Session 状态、服务、端点、持久化参与者与 continuation | Session Extension |
 | Definition 的代码/文件/Plugin/远端动态发布 | Definition Source + Registry revision |
-| 日志、Trace、Metrics、JSONL 或 UI 诊断 | 只读 `RuntimeObservationPort` |
+| 日志、Trace、Metrics、JSONL 或 UI 诊断 | 只读 `RuntimeObservationHub` + `RuntimeObservationPort` Adapter |
 
 基座不提供可任意修改共享上下文的通用 `next()` middleware。只读 Observer 必须失败隔离；会改变执行结果的逻辑
 必须进入显式 Policy、Interceptor、Feature 或 Extension 合同。`Profile`、Persona 和 Mode 属于具体产品，产品在

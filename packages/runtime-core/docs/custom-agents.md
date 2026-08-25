@@ -508,7 +508,7 @@ Instruction、Feature、Policy 或 Extension。
 
 ## 观测自定义 Agent
 
-宿主只需向 Host 注入一个抽象 Port。JSONL、OTLP、Langfuse、Metrics 或 UI 面板都是 Port 的具体实现：
+最简单的宿主仍可直接向 Host 注入一个抽象 Port。JSONL、OTLP、Langfuse、Metrics 或 UI 面板都是 Port 的具体实现：
 
 ```ts
 import { RuntimeAgentHost } from "@vetta/runtime-core/agents";
@@ -530,6 +530,37 @@ const observationPort: RuntimeObservationPort = {
 const host = new RuntimeAgentHost({ observationPort });
 ```
 
+需要模块独立观测、动态 Adapter 或多层汇聚时，使用开箱即用的 `RuntimeObservationHub`：
+
+```ts
+import { RuntimeAgentHost } from "@vetta/runtime-core/agents";
+import { RuntimeObservationHub } from "@vetta/runtime-core/observation";
+
+const agentHub = new RuntimeObservationHub({ maxPendingRecords: 1_000 });
+const localRoute = agentHub.attach(localMemoryPort, {
+  id: "reviewer.local-memory",
+  domains: ["review.index"],
+});
+
+const host = new RuntimeAgentHost({
+  observationPublisher: agentHub.publisher({ traceId: requestTraceId }),
+});
+
+// Agent 已运行时也可让未来事件汇入应用级 Hub；不改变它的能力 revision 或在途 Turn。
+const applicationRoute = agentHub.attach(applicationHub, { id: "application" });
+
+// 只停止未来投递；已经发布的记录不会重放，Adapter 的外部资源仍由其创建者释放。
+applicationRoute.detach();
+localRoute.detach();
+await host.close();
+await agentHub.close();
+```
+
+如果父子关系在组合时已经确定，也可以 `new RuntimeObservationHub({ parent: applicationHub })`。子 Hub 的 record 会
+原样进入父级，`timestamp` 和 identity 不会被重新生成；关闭子 Hub 不关闭父级。上层可统一注册 Adapter，模块仍可保留
+自己的本地 Adapter。路由支持 `domains`、`levels` 和只读 `predicate`，Hub 的 `snapshot()` 可查看交付、过滤、失败、
+丢弃和在途计数。
+
 Definition、Instance 和 Session 工厂收到的 `observationPublisher` 已绑定正确的
 `agentId/revisionId/instanceId/sessionId`，自定义能力可以定义自己的安全事件：
 
@@ -550,6 +581,27 @@ observationPublisher.record(REVIEW_INDEX_OBSERVATION, {
 Observation 是失败隔离的只读出口，不得用于授权、修改 Prompt、重试或阻止 Tool 执行。这些行为分别进入
 Tool Policy、Composer、显式重试策略或领域 Interceptor。自定义 payload 的设计者负责确保不包含 Prompt、用户内容、
 Tool 参数/结果、凭证、错误 message 或 stack。
+
+现有 Session 业务事件不能原样写入 Hub；使用 `publishRuntimeSessionObservation()` 时只会得到
+`runtime.session.event` 的安全摘要。日志与 Trace 的现成 Adapter 位于 `@vetta/runtime-telemetry`：
+
+```ts
+import {
+  createRuntimeObservationLoggerPort,
+  createRuntimeObservationTracerPort,
+} from "@vetta/runtime-telemetry";
+
+applicationHub.attach(createRuntimeObservationLoggerPort({ logger }), {
+  id: "structured-log",
+  levels: ["info", "warning", "error"],
+});
+applicationHub.attach(createRuntimeObservationTracerPort({ tracer }), {
+  id: "trace-events",
+});
+```
+
+Tracer Adapter 产生的是平面 event；模型调用、generation 和 Tool 的原生父子 Span 继续使用执行层 `tracer`。两者可通过
+Observation context 中的 Session/Turn/Tool/Trace identity 关联，但不应把平面事件冒充原生 Span。
 
 ## Coding Agent 如何接入
 
@@ -576,7 +628,7 @@ Coding Agent 是基于同一基座的复杂产品 Agent，不是 Runtime Core �
 | 多个 MCP server | 宿主创建 MCP Source，Session Feature 投影成 Tool；数量多时渐进披露 |
 | 文件或远端动态配置 | Definition Source + Synchronizer + last-known-good |
 | 在线升级已有会话 | 发布新 revision，再显式 `session.rolloutToLatest()` |
-| OTLP/JSONL/UI 诊断 | 一个或多个 `RuntimeObservationPort` Adapter |
+| OTLP/JSONL/UI 诊断 | 模块 Hub + 应用 Hub + 一个或多个 `RuntimeObservationPort` Adapter |
 | Coding 类复杂产品 | 产品包 Definition Adapter + 产品 Session facade |
 
 ## 特殊说明与检查清单
@@ -598,3 +650,4 @@ Coding Agent 是基于同一基座的复杂产品 Agent，不是 Runtime Core �
 - [ADR-0079：Runtime Core 多主 Agent Definition Registry](../../../docs/adr/0079-runtime-core-multi-agent-definition-registry.md)
 - [ADR-0080：Runtime 统一可观测端口](../../../docs/adr/0080-runtime-observation-port.md)
 - [ADR-0081：Runtime 默认 Prompt 缓存布局](../../../docs/adr/0081-runtime-default-prompt-cache-layout.md)
+- [ADR-0082：分层 Runtime Observation Hub](../../../docs/adr/0082-hierarchical-runtime-observation-hub.md)

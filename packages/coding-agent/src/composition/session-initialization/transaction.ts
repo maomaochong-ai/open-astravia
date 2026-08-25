@@ -2,6 +2,7 @@ import type { Message } from "@vetta/ai";
 import {
 	type ConversationScenario,
 	InitializationRollbackScope,
+	type RuntimeObservationPublisher,
 	type RuntimeResourceContext,
 	type RuntimeResources,
 } from "@vetta/runtime-core";
@@ -16,7 +17,6 @@ import type { CodingAgentContextRuntime } from "../../runtime-contracts/index.js
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
 import type { CodingAgentConversationSessionPathAssessment } from "../contracts/conversation-persistence.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
-import type { CodingAgentSessionInitializationObserver } from "../contracts/session-initialization-observability.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
 import { createCodingAgentSessionResourceLifecycle } from "../session-lifecycle/resource-lifecycle.js";
 import type { CodingAgentSessionConversationResources } from "../session-lifecycle/runtime-resources.js";
@@ -79,7 +79,7 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 		sessionId: string,
 		sessionPath: string,
 	) => Promise<CodingAgentConversationSessionPathAssessment>;
-	readonly observer?: CodingAgentSessionInitializationObserver;
+	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
 export interface CodingAgentSessionInitializationTransaction {
@@ -108,7 +108,7 @@ async function initializeSession<TOwnershipBinding>(
 	const timeline = createCodingAgentSessionInitializationTimeline({
 		sessionId: sessionOptions.sessionId,
 		operation: resourceContext.operation,
-		observer: options.observer,
+		observationPublisher: options.observationPublisher,
 	});
 	let activeOwnership: TOwnershipBinding | undefined;
 	const rollback = new InitializationRollbackScope();
