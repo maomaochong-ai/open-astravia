@@ -171,6 +171,7 @@ describe("Desktop RuntimeHost capabilities", () => {
 			sessionDir,
 			scenario: "conversation",
 			executionMode: "full-access",
+			includeAgentSkills: false,
 			askUserQuestion: true,
 		});
 		await runtime.prompt(created.sessionId, { text: "ask me" });

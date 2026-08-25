@@ -50,6 +50,8 @@ export interface CodingAgentSessionRuntimeResourcesOptions {
 	};
 	readonly conversation: CodingAgentSessionConversationResources;
 	readonly turnCapabilityAssembly: CodingAgentTurnCapabilitySessionAssembly;
+	/** RuntimeAgentSession 提供的唯一能力 generation 来源。 */
+	readonly capabilitySnapshotProvider: RuntimeResources["snapshotProvider"];
 	readonly modelRuntime: CodingAgentSessionModelRuntimePort;
 	readonly sessionExtensions: SessionExtensionComposition;
 	readonly contextRuntime: CodingAgentContextRuntime;
@@ -86,7 +88,7 @@ export function createCodingAgentSessionRuntimeResources(
 			// External catalogs publish first; only then may the capability composition
 			// capture one immutable Turn generation.
 			await options.refreshSessionMcp(options.session.readSessionId(), true);
-			return options.turnCapabilityAssembly.capabilities.acquire(context);
+			return options.capabilitySnapshotProvider.acquire(context);
 		},
 	};
 	return {

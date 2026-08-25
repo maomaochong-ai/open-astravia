@@ -5,13 +5,13 @@ import type {
 	RuntimeModel,
 	RuntimeSessionAskUserQuestionCapability,
 } from "@vetta/runtime-core";
-import {
-	type AgentFeatureDefinition,
-	type ContinuationPolicyContext,
-	type ModelCallContributionContext,
-	RuntimeCapabilityComposition,
-	type RuntimeCapabilityDefinition,
-	type RuntimeToolDefinition,
+import type {
+	AgentFeatureDefinition,
+	ContinuationPolicyContext,
+	ModelCallContributionContext,
+	RuntimeCapabilityDefinition,
+	RuntimeSnapshotProvider,
+	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import type { SessionExtensionContinuationSource } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
@@ -134,13 +134,14 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 }
 
 export interface CodingAgentTurnCapabilitySessionAssembly {
-	readonly capabilities: RuntimeCapabilityComposition;
+	/** 由 RuntimeAgentHost 唯一编译的产品能力定义；本装配不再拥有第二套 Snapshot generation。 */
+	readonly capabilityDefinition: RuntimeCapabilityDefinition;
 	readonly promptAdapter: CodingAgentPromptRequestAdapter;
 	readAvailableTools(): ReadonlyMap<string, RuntimeToolDefinition>;
 	readPluginActiveToolNames(): readonly string[] | undefined;
 	reconfigureAgentPluginSkills(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<void>;
 	rebindSession(sessionId: string): void;
-	previewInitialSystemPrompt(): Promise<void>;
+	previewInitialSystemPrompt(acquireSnapshot: () => ReturnType<RuntimeSnapshotProvider["acquire"]>): Promise<void>;
 	dispose(): Promise<void>;
 }
 
@@ -433,24 +434,8 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		modelCallFrameComposer,
 		inputRequestPreparer: promptAdapter,
 	};
-	const createCapabilities = () =>
-		RuntimeCapabilityComposition.create({
-			initialDefinition: capabilityDefinition,
-			compiler: options.codingTools.compiler,
-			modelBindingProvider: options.modelRuntime,
-		});
-	let capabilities: RuntimeCapabilityComposition;
-	try {
-		capabilities = options.initializationTimeline
-			? await options.initializationTimeline.measure("runtime-capabilities", createCapabilities)
-			: await createCapabilities();
-	} catch (error) {
-		options.imageSettingsSnapshots.unregister(imageSettingsScopeId, imageConfigurationRuntime);
-		await imageConfigurationRuntime.close();
-		throw error;
-	}
 	return {
-		capabilities,
+		capabilityDefinition,
 		promptAdapter,
 		readAvailableTools,
 		readPluginActiveToolNames: () => pluginRunOrchestrator?.readActiveToolNames(),
@@ -462,7 +447,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			imageSettingsScopeId = sessionId;
 			pluginSession.id = sessionId;
 		},
-		async previewInitialSystemPrompt() {
+		async previewInitialSystemPrompt(acquireSnapshot) {
 			const sessionId = options.session.readSessionId();
 			const operationId = `${sessionId}:extension-context-preview`;
 			const signal = new AbortController().signal;
@@ -471,7 +456,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			// for the extension-context baseline without immediately repeating the
 			// Turn-admission filesystem freshness scan. A real Turn still binds normally
 			// and therefore observes resource changes made after initialization.
-			const initialSnapshotLease = await capabilities.acquire();
+			const initialSnapshotLease = await acquireSnapshot();
 			try {
 				const admittedComposer = initialSnapshotLease.snapshot.modelCallFrameComposer;
 				const previewComposer =
@@ -494,16 +479,8 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			}
 		},
 		async dispose() {
-			const capabilityResult = await Promise.allSettled([capabilities.close()]);
 			options.imageSettingsSnapshots.unregister(imageSettingsScopeId, imageConfigurationRuntime);
-			const configurationResult = await Promise.allSettled([imageConfigurationRuntime.close()]);
-			const results = [...capabilityResult, ...configurationResult];
-			const errors = results
-				.filter((result): result is PromiseRejectedResult => result.status === "rejected")
-				.map(({ reason }) => reason);
-			if (errors.length > 0) {
-				throw new AggregateError(errors, "Failed to dispose Coding Agent Turn capability assembly");
-			}
+			await imageConfigurationRuntime.close();
 		},
 	};
 }

@@ -612,13 +612,20 @@ Observation context 中的 Session/Turn/Tool/Trace identity 关联，但不应�
 ## Coding Agent 如何接入
 
 Coding Agent 是基于同一基座的复杂产品 Agent，不是 Runtime Core 的特殊模式。产品包通过
-`createCodingAgentRuntimeDefinition()` 创建普通 `RuntimeAgentDefinition`，并在产品边界内完成：
+`createCodingAgentExecutionRuntimeDefinition()` 为生产 Composition 创建普通 `RuntimeAgentDefinition`。每个
+`createCodingAgentRuntimeComposition()` 默认拥有私有 Host；Desktop 等应用也可通过
+`publishCodingAgentExecutionRuntimeDefinition()` 向共享 Host 发布，再把 Host 注入多个 Composition。产品边界负责：
 
 - Coding Prompt 与产品 Profile 的解析；
 - Coding Tool Catalog 与权限策略；
 - MCP server、渐进披露和 Plugin MCP；
 - 模型选择、凭证、Context Strategy、压缩与 continuation；
 - Session Extension 和完整 SDK/Desktop/CLI Session facade。
+
+产品装配只交付未编译的通用 Session Definition，`RuntimeAgentSession` 是能力编译和 Snapshot Provider 的唯一事实源。
+`createCodingAgentRuntimeDefinition()` 仍用于调用者自行提供完整 Instance/Session assembler 的较低层场景，不是默认生产
+Composition 的桥接函数。实现细节与可运行接线见
+[《Coding Agent 与多主 Agent 基座》](../../coding-agent/docs/runtime-agent-base.md)。
 
 因此其它产品可以采用相同模式：在自己的包中提供 `createXxxRuntimeDefinition()`，只把最终通用能力交给 Runtime，
 不要把业务 Profile 或固定场景加入基座合同。

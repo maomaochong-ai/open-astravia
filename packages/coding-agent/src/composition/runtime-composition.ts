@@ -10,6 +10,20 @@ import type {
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeSessionOptions,
 } from "./contracts/index.js";
+
+export {
+	CODING_AGENT_BUILTIN_SOURCE,
+	publishCodingAgentExecutionRuntimeDefinition,
+} from "./agent-runtime/composition-agent-runtime.js";
+export {
+	type CodingAgentExecutionRuntimeDefinitionOptions,
+	createCodingAgentExecutionRuntimeDefinition,
+} from "./agent-runtime/execution-definition.js";
+
+import {
+	type CodingAgentCompositionAgentRuntime,
+	createCodingAgentCompositionAgentRuntime,
+} from "./agent-runtime/composition-agent-runtime.js";
 import { createCodingAgentChildCompositionFactory } from "./subagent/child-composition-policy.js";
 
 export type {
@@ -18,6 +32,8 @@ export type {
 	CodingAgentObservationRoute,
 	CodingAgentPromptRuntimeSourceContext,
 	CodingAgentPromptRuntimeSources,
+	CodingAgentRuntimeAgentIdentity,
+	CodingAgentRuntimeAgentOptions,
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeExtensionControls,
@@ -60,10 +76,19 @@ async function createCodingAgentRuntimeCompositionInternal(
 		publisher: options.observationPublisher,
 		hub: options.observationHub,
 	});
+	let agentRuntime: CodingAgentCompositionAgentRuntime | undefined;
 	try {
-		return await assembleCodingAgentRuntimeComposition(options, inheritedMcpView, observationRuntime);
+		agentRuntime = await createCodingAgentCompositionAgentRuntime({
+			configuration: options.agentRuntime,
+			observationPublisher: observationRuntime.publisher,
+		});
+		return await assembleCodingAgentRuntimeComposition(options, inheritedMcpView, observationRuntime, agentRuntime);
 	} catch (error) {
-		await observationRuntime.hub.close();
+		const cleanupResults = await Promise.allSettled([agentRuntime?.close(), observationRuntime.hub.close()]);
+		const cleanupErrors = cleanupResults.flatMap((result) => (result.status === "rejected" ? [result.reason] : []));
+		if (cleanupErrors.length > 0) {
+			throw new AggregateError([error, ...cleanupErrors], "Coding Agent Composition assembly and rollback failed");
+		}
 		throw error;
 	}
 }
@@ -72,6 +97,7 @@ async function assembleCodingAgentRuntimeComposition(
 	options: CodingAgentRuntimeCompositionOptions,
 	inheritedMcpView: McpRuntimeToolView,
 	observationRuntime: CodingAgentObservationRuntime,
+	agentRuntime: CodingAgentCompositionAgentRuntime,
 ): Promise<CodingAgentRuntimeComposition> {
 	const observationPublisher = observationRuntime.publisher;
 	const cwd = options.cwd ?? ".";
@@ -132,10 +158,15 @@ async function assembleCodingAgentRuntimeComposition(
 		resolveSessionDirectory: persistence.resolveSessionDirectory,
 		resolveSessionPath: persistence.resolveSessionPath,
 	};
-	const { observationPublisher: _observationPublisher, ...optionsWithoutPublisher } = options;
+	const {
+		observationPublisher: _observationPublisher,
+		agentRuntime: _agentRuntime,
+		...optionsWithoutPublisher
+	} = options;
 	const createChildComposition = createCodingAgentChildCompositionFactory({
 		parentOptions: {
 			...optionsWithoutPublisher,
+			agentRuntime: agentRuntime.childConfiguration(),
 			observationHub: createChildCodingAgentObservationOptions(options.observationHub, observationRuntime.hub),
 		},
 		createComposition: createCodingAgentRuntimeCompositionInternal,
@@ -149,6 +180,7 @@ async function assembleCodingAgentRuntimeComposition(
 		}
 	};
 	const sessionInitialization = createCodingAgentSessionInitializationTransaction({
+		agentRuntime,
 		profile: sessionInitializationProfile,
 		cwd,
 		scenario,
@@ -175,7 +207,6 @@ async function assembleCodingAgentRuntimeComposition(
 		resolveActivation: toolSurface.resolveActivation,
 		createChildComposition,
 		assessChildSessionPath,
-		observationPublisher,
 		imageSettingsSnapshots,
 	});
 	const runtimeFactory = new ComposedRuntimeFactory<CodingAgentRuntimeSessionOptions>({
@@ -193,6 +224,7 @@ async function assembleCodingAgentRuntimeComposition(
 		closeConversationRepository: () => persistence.dispose(),
 		disposeMcpSynchronizer: mcpCoordinator.sharedRuntimeAvailable ? () => mcpCoordinator.dispose() : undefined,
 		disposeCodingTools: () => tools.dispose(),
+		closeAgentRuntime: () => agentRuntime.close(),
 		closeObservationHub: () => observationRuntime.hub.close(),
 	});
 	const sessionControls = createCodingAgentRuntimeSessionControls({
@@ -212,6 +244,11 @@ async function assembleCodingAgentRuntimeComposition(
 	return {
 		backend,
 		tools,
+		agentRuntime: {
+			agentId: agentRuntime.agentId,
+			instanceId: agentRuntime.instanceId,
+			revisionId: agentRuntime.revisionId,
+		},
 		observations: observationRuntime.hub,
 		scenario,
 		...sessionControls,

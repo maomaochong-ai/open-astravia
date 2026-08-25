@@ -148,6 +148,57 @@ export class RuntimeAgentHost {
 		return session;
 	}
 
+	/**
+	 * 原子更新 Runtime Agent Host 与 Instance 的 Session 索引。
+	 * 用于持久化会话 continuation 改变 canonical session id；能力 revision 与在途 lease 不变。
+	 */
+	rebindSession(sessionId: string, nextSessionId: string): boolean {
+		if (sessionId === nextSessionId) return false;
+		let session: RuntimeAgentSession | undefined;
+		try {
+			this.assertOpen();
+			session = this.requireSession(sessionId);
+			if (!nextSessionId || nextSessionId.trim() !== nextSessionId) {
+				throw new RuntimeAgentHostError(
+					RUNTIME_AGENT_HOST_ERROR_CODES.INVALID_INSTANCE,
+					"Runtime Agent Session id must be a non-empty trimmed string",
+				);
+			}
+			if (this.sessions.has(nextSessionId)) throw runtimeAgentDuplicateIdError("Session", nextSessionId);
+			const instance = this.instances.get(session.instanceId);
+			if (!instance) throw runtimeAgentInstanceNotFoundError(session.instanceId);
+			if (instance.getSession(sessionId) !== session) {
+				throw new RuntimeAgentHostError(
+					RUNTIME_AGENT_HOST_ERROR_CODES.SESSION_NOT_FOUND,
+					`Runtime Agent Session is not registered on Instance ${instance.id}: ${sessionId}`,
+				);
+			}
+			if (instance.getSession(nextSessionId)) throw runtimeAgentDuplicateIdError("Session", nextSessionId);
+
+			session.rebindId(nextSessionId);
+			instance.rebindSession(sessionId, nextSessionId, session);
+			this.sessions.delete(sessionId);
+			this.sessions.set(nextSessionId, session);
+			this.observations.record(
+				RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
+				{ operation: "session.rebind", phase: "completed" },
+				toRuntimeAgentSessionContext(session, nextSessionId),
+			);
+			return true;
+		} catch (error) {
+			this.observations.record(
+				RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
+				{
+					operation: "session.rebind",
+					phase: "failed",
+					failure: runtimeObservationFailure(error),
+				},
+				session ? toRuntimeAgentSessionContext(session, sessionId) : { sessionId },
+			);
+			throw error;
+		}
+	}
+
 	async closeSession(sessionId: string): Promise<boolean> {
 		const session = this.sessions.get(sessionId);
 		if (!session) return false;
@@ -195,4 +246,13 @@ export class RuntimeAgentHost {
 			throw new RuntimeAgentHostError(RUNTIME_AGENT_HOST_ERROR_CODES.CLOSED, "Runtime Agent Host is closed");
 		}
 	}
+}
+
+function toRuntimeAgentSessionContext(session: RuntimeAgentSession, sessionId: string) {
+	return {
+		agentId: session.agentId,
+		revisionId: session.revisionId,
+		instanceId: session.instanceId,
+		sessionId,
+	};
 }

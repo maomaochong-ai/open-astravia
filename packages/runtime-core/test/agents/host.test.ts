@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	RUNTIME_AGENT_HOST_ERROR_CODES,
+	RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
 	type RuntimeAgentDefinition,
 	RuntimeAgentHost,
 	RuntimeAgentRegistry,
@@ -11,6 +12,7 @@ import {
 	type RuntimeCapabilityDefinition,
 	resolveModelCallFrame,
 } from "../../src/kernel/index.js";
+import type { RuntimeObservationRecord } from "../../src/observation/index.js";
 import type { SessionExtensionDefinition } from "../../src/session-extensions/index.js";
 
 describe("RuntimeAgentHost", () => {
@@ -128,6 +130,64 @@ describe("RuntimeAgentHost", () => {
 		expect(lease.snapshot.instructions[0]?.content).toBe("v1");
 		expect(session.revisionId).toBe("revision-1");
 		await lease.release();
+		await host.close();
+		await registry.close();
+	});
+
+	it("atomically rebinds a continued Session identity without changing its revision or active lease", async () => {
+		const registry = registryWithIds();
+		registry.upsert(candidate("code", "1", agentDefinition("agent", "v1", [])));
+		const observations: RuntimeObservationRecord[] = [];
+		const host = new RuntimeAgentHost({
+			registry,
+			observationPort: {
+				record: (record) => {
+					observations.push(record);
+				},
+			},
+		});
+		const instance = await host.createInstance({ agentId: "agent", instanceId: "instance" });
+		const session = await host.createSession(instance.id, { sessionId: "session-old" });
+		await host.createSession(instance.id, { sessionId: "session-conflict" });
+		const activeLease = await session.acquire(turnContext(session.id, "turn-before-rebind"));
+
+		expect(host.rebindSession("session-old", "session-new")).toBe(true);
+		expect(session.id).toBe("session-new");
+		expect(session.revisionId).toBe("revision-1");
+		expect(host.getSession("session-old")).toBeUndefined();
+		expect(host.requireSession("session-new")).toBe(session);
+		expect(instance.snapshot().sessionIds).toEqual(["session-conflict", "session-new"]);
+		expect(host.rebindSession("session-new", "session-new")).toBe(false);
+		expect(() => host.rebindSession("session-new", "session-conflict")).toThrow("already registered");
+		expect(session.id).toBe("session-new");
+		expect(activeLease.snapshot.instructions[0]?.content).toBe("v1");
+		expect(
+			observations
+				.filter(({ token }) => token === RUNTIME_AGENT_LIFECYCLE_OBSERVATION)
+				.map(({ context, payload }) => ({ context, payload })),
+		).toEqual(
+			expect.arrayContaining([
+				{
+					context: {
+						agentId: "agent",
+						revisionId: "revision-1",
+						instanceId: "instance",
+						sessionId: "session-new",
+					},
+					payload: { operation: "session.rebind", phase: "completed" },
+				},
+				expect.objectContaining({
+					context: expect.objectContaining({ sessionId: "session-new" }),
+					payload: expect.objectContaining({
+						operation: "session.rebind",
+						phase: "failed",
+						failure: expect.objectContaining({ category: "error", errorName: "RuntimeAgentHostError" }),
+					}),
+				}),
+			]),
+		);
+
+		await activeLease.release();
 		await host.close();
 		await registry.close();
 	});

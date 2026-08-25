@@ -39,6 +39,8 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 - 新增 `RuntimeAgentHost`、`RuntimeAgentInstance` 与 `RuntimeAgentSession`：多个平级 Agent 可创建独立
   Instance/Session 并按 Session identity 路由；Definition 更新默认只影响新 Instance，显式 Session rollout
   将能力和模型绑定从下一 Turn 原子切换，当前 Turn 保持旧 generation，Session Extension 拓扑禁止热换。
+- `RuntimeAgentHost` 新增原子 Session identity rebind：Host、Instance 与 Session 索引同步更新，revision 和在途 lease
+  保持不变，并发布 `runtime.agent/lifecycle` 安全观测，供 Conversation continuation 使用。
 - `RuntimeSessionIdentity`、`RuntimeSessionIdentityLifecycle` 与 continuation 合同新增可选 `sessionDirectory`
   宿主位置事实；Kernel 在会话续接时透明更新该事实，旧存储未提供时保留原值，不解析平台路径或改变既有
   `sessionPath` 语义。

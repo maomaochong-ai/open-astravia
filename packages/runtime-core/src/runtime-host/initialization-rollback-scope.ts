@@ -32,6 +32,19 @@ export class InitializationRollbackScope {
 	}
 
 	async rollback(cause: unknown, message: string): Promise<never> {
+		const errors = await this.runRollbackTasks();
+		if (errors.length === 0) throw cause;
+		throw new AggregateError([cause, ...errors], message, { cause });
+	}
+
+	/** 在初始化所有权尚未 commit 时仅执行回滚，不伪造一个业务失败原因。 */
+	async dispose(message: string): Promise<void> {
+		const errors = await this.runRollbackTasks();
+		if (errors.length === 1) throw errors[0];
+		if (errors.length > 1) throw new AggregateError(errors, message);
+	}
+
+	private async runRollbackTasks(): Promise<unknown[]> {
 		if (this.finished) throw new Error("Initialization rollback scope is already finished");
 		this.finished = true;
 		const errors: unknown[] = [];
@@ -44,7 +57,6 @@ export class InitializationRollbackScope {
 			}
 		}
 		this.tasks.length = 0;
-		if (errors.length === 0) throw cause;
-		throw new AggregateError([cause, ...errors], message, { cause });
+		return errors;
 	}
 }

@@ -4,6 +4,7 @@
 
 | 文档 | 读者 |
 |------|------|
+| [runtime-agent-base.md](runtime-agent-base.md) | 多主 Agent Host、动态 revision 与观测集成 |
 | [sdk.md](sdk.md) | 进程内嵌入 Session |
 | [rpc.md](rpc.md) | 子进程 stdin/stdout 协议（Desktop / IM） |
 | [extensions.md](extensions.md) | 编写 Extension |

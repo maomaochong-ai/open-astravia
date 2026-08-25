@@ -6,8 +6,11 @@ import type { RuntimeModel } from "@vetta/runtime-core";
 import {
 	type AgentFeatureDefinition,
 	type ConversationContextProjector,
+	FeatureCompiler,
 	type ModelCallContextTransformationInput,
 	PassthroughContextStrategy,
+	RandomIdGenerator,
+	RuntimeCapabilityComposition,
 	type RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -89,8 +92,10 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
 		});
 		disposals.push(() => assembly.dispose());
+		const capabilities = await compileAssemblyCapabilities(assembly);
+		disposals.push(() => capabilities.close());
 
-		const lease = await assembly.capabilities.acquire();
+		const lease = await capabilities.acquire();
 		try {
 			expect(lease.snapshot.tools.has(specializedTool.name)).toBe(true);
 			expect(lease.snapshot.contextStrategy).toBe(contextRuntime);
@@ -266,8 +271,10 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
 		});
 		disposals.push(() => assembly.dispose());
+		const capabilities = await compileAssemblyCapabilities(assembly);
+		disposals.push(() => capabilities.close());
 
-		await assembly.previewInitialSystemPrompt();
+		await assembly.previewInitialSystemPrompt(() => capabilities.acquire());
 
 		expect(extensionEvents.readSystemPrompt()).not.toBe("");
 		expect(refreshContext).not.toHaveBeenCalled();
@@ -335,8 +342,10 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			},
 		});
 		disposals.push(() => assembly.dispose());
+		const capabilities = await compileAssemblyCapabilities(assembly);
+		disposals.push(() => capabilities.close());
 
-		const lease = await assembly.capabilities.acquire();
+		const lease = await capabilities.acquire();
 		try {
 			const composer = lease.snapshot.modelCallFrameComposer!;
 			const frame = await composer.compose({
@@ -360,6 +369,15 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		expect(executed).toEqual([heavyTool.name, heavyTool.name]);
 	});
 });
+
+function compileAssemblyCapabilities(
+	assembly: Awaited<ReturnType<typeof createCodingAgentTurnCapabilitySessionAssembly>>,
+): Promise<RuntimeCapabilityComposition> {
+	return RuntimeCapabilityComposition.create({
+		initialDefinition: assembly.capabilityDefinition,
+		compiler: new FeatureCompiler({ idGenerator: new RandomIdGenerator() }),
+	});
+}
 
 function toolRequest(toolCallId: string) {
 	return {

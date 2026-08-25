@@ -40,6 +40,7 @@ describe("Coding Agent composition shutdown", () => {
 		registry.indexes.mcpRefreshObservedSessions.add("target");
 
 		let auxiliaryIndexesCleared = false;
+		let agentRuntimeClosed = false;
 		let repositoryClosed = false;
 		const closeConversationRepository = vi.fn(() => {
 			expect(auxiliaryIndexesCleared).toBe(true);
@@ -53,8 +54,13 @@ describe("Coding Agent composition shutdown", () => {
 		const disposeCodingTools = vi.fn(() => {
 			expect(repositoryClosed).toBe(true);
 		});
+		const closeAgentRuntime = vi.fn(() => {
+			expect(turnCapabilityAssembly.dispose).toHaveBeenCalledOnce();
+			agentRuntimeClosed = true;
+		});
 		const closeObservationHub = vi.fn(() => {
 			expect(disposeCodingTools).toHaveBeenCalledOnce();
+			expect(agentRuntimeClosed).toBe(true);
 		});
 		const shutdown = createCodingAgentCompositionShutdown({
 			registry,
@@ -65,6 +71,7 @@ describe("Coding Agent composition shutdown", () => {
 			closeConversationRepository,
 			disposeMcpSynchronizer,
 			disposeCodingTools,
+			closeAgentRuntime,
 			closeObservationHub,
 		});
 
@@ -82,6 +89,7 @@ describe("Coding Agent composition shutdown", () => {
 		expect(closeConversationRepository).toHaveBeenCalledOnce();
 		expect(disposeMcpSynchronizer).toHaveBeenCalledOnce();
 		expect(disposeCodingTools).toHaveBeenCalledOnce();
+		expect(closeAgentRuntime).toHaveBeenCalledOnce();
 		expect(closeObservationHub).toHaveBeenCalledOnce();
 
 		await expect(shutdown.dispose()).resolves.toBeUndefined();
@@ -94,6 +102,7 @@ describe("Coding Agent composition shutdown", () => {
 		expect(turnCapabilityAssembly.dispose).toHaveBeenCalledOnce();
 		expect(pluginMcpRuntime.dispose).toHaveBeenCalledOnce();
 		expect(closeConversationRepository).toHaveBeenCalledOnce();
+		expect(closeAgentRuntime).toHaveBeenCalledOnce();
 		expect(closeObservationHub).toHaveBeenCalledOnce();
 	});
 

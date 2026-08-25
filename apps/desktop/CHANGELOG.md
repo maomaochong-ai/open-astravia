@@ -19,6 +19,10 @@
 
 ### Changed
 
+- Desktop Coding Agent 改用进程级共享 `RuntimeAgentHost`：内置 Definition 在应用组合根发布，各工作区 Composition
+  创建独立且固定 revision 的 Instance。关闭时先释放 Backend Pool/Instance，再关闭 Host 与应用 Observation Hub；关键
+  revision、Session identity rebind 和失败通过安全 lifecycle Observation 投影到日志，不记录 Prompt、Tool/MCP 数据或
+  原始错误正文。
 - Coding Agent Session 初始化日志改由进程级 Runtime Observation Hub 路由；产品初始化 Token、Tool 与 Session
   安全摘要现在先经过各 Composition 自有的 Coding Agent 子 Hub，再汇入进程级应用 Hub；日志 Adapter 仍只输出原有的
   阶段耗时聚合，关闭子 Hub 不关闭应用 Hub。

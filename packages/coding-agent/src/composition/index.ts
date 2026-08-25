@@ -58,14 +58,20 @@ export {
 	DEFAULT_CODING_AGENT_RUNTIME_ID,
 } from "./runtime-agent-definition.js";
 export {
+	CODING_AGENT_BUILTIN_SOURCE,
+	type CodingAgentExecutionRuntimeDefinitionOptions,
 	type CodingAgentObservationHubOptions,
 	type CodingAgentObservationRoute,
 	type CodingAgentPromptRuntimeSourceContext,
 	type CodingAgentPromptRuntimeSources,
+	type CodingAgentRuntimeAgentIdentity,
+	type CodingAgentRuntimeAgentOptions,
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
 	type CodingAgentRuntimeSessionOptions,
+	createCodingAgentExecutionRuntimeDefinition,
 	createCodingAgentRuntimeComposition,
+	publishCodingAgentExecutionRuntimeDefinition,
 } from "./runtime-composition.js";
 export {
 	CodingAgentActiveSessionHost,

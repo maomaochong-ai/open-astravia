@@ -15,6 +15,8 @@ import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/e
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { CodingAgentContextRuntime } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
+import type { CodingAgentCompositionAgentRuntime } from "../agent-runtime/composition-agent-runtime.js";
+import type { CodingAgentPreparedRuntimeAgentSession } from "../agent-runtime/session-assembly-request.js";
 import type { CodingAgentConversationSessionPathAssessment } from "../contracts/conversation-persistence.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
@@ -51,6 +53,7 @@ export interface CodingAgentSessionInitializationRegistry {
 }
 
 export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBinding> {
+	readonly agentRuntime: CodingAgentCompositionAgentRuntime;
 	readonly profile: CodingAgentSessionInitializationProfile;
 	readonly cwd: string;
 	readonly scenario: ConversationScenario;
@@ -80,7 +83,6 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 		sessionId: string,
 		sessionPath: string,
 	) => Promise<CodingAgentConversationSessionPathAssessment>;
-	readonly observationPublisher?: RuntimeObservationPublisher;
 	readonly imageSettingsSnapshots: CodingAgentImageSettingsSnapshotRouter;
 }
 
@@ -96,7 +98,10 @@ export function createCodingAgentSessionInitializationTransaction<TOwnershipBind
 	options: CodingAgentSessionInitializationTransactionOptions<TOwnershipBinding>,
 ): CodingAgentSessionInitializationTransaction {
 	return {
-		initialize: (sessionOptions, resourceContext) => initializeSession(options, sessionOptions, resourceContext),
+		initialize: (sessionOptions, resourceContext) =>
+			options.agentRuntime.createSession(sessionOptions.sessionId, (agentSessionContext) =>
+				initializeSession(options, sessionOptions, resourceContext, agentSessionContext.observationPublisher),
+			),
 	};
 }
 
@@ -104,13 +109,14 @@ async function initializeSession<TOwnershipBinding>(
 	options: CodingAgentSessionInitializationTransactionOptions<TOwnershipBinding>,
 	sessionOptions: CodingAgentRuntimeSessionOptions,
 	resourceContext: RuntimeResourceContext,
-): Promise<RuntimeResources> {
+	agentSessionObservations: RuntimeObservationPublisher,
+): Promise<CodingAgentPreparedRuntimeAgentSession> {
 	const profile = options.profile;
 	let activeSessionId = sessionOptions.sessionId;
 	const timeline = createCodingAgentSessionInitializationTimeline({
 		sessionId: sessionOptions.sessionId,
 		operation: resourceContext.operation,
-		observationPublisher: options.observationPublisher,
+		observationPublisher: agentSessionObservations,
 	});
 	let activeOwnership: TOwnershipBinding | undefined;
 	const rollback = new InitializationRollbackScope();
@@ -320,7 +326,7 @@ async function initializeSession<TOwnershipBinding>(
 					workspaceFacts: profile.workspaceFacts,
 					resolveModePrompt: profile.resolveModePrompt,
 				},
-				baseCapabilities,
+				baseCapabilities: { ...baseCapabilities, observationPublisher: agentSessionObservations },
 				codingTools: options.codingTools,
 				executionRuntime,
 				specializedToolFeature,
@@ -356,15 +362,38 @@ async function initializeSession<TOwnershipBinding>(
 				}
 			},
 		});
-		await timeline.measure("initial-system-prompt", () => turnCapabilityAssembly.previewInitialSystemPrompt());
-		const resources = resourceLifecycleAssembly.attachTurnCapabilityAssembly(turnCapabilityAssembly);
+		const preparedResources = resourceLifecycleAssembly.prepareTurnCapabilityAssembly(turnCapabilityAssembly);
 		rollback.defer({
 			id: "session-bindings",
 			rollback: () => resourceLifecycleAssembly.rollbackBindings(),
 		});
-		rollback.commit();
-		timeline.finish("completed");
-		return resources;
+		let activated = false;
+		return {
+			definition: {
+				capabilities: turnCapabilityAssembly.capabilityDefinition,
+				modelBindingProvider: modelRuntime,
+			},
+			async activate(binding) {
+				try {
+					await timeline.measure("initial-system-prompt", () =>
+						turnCapabilityAssembly.previewInitialSystemPrompt(binding.acquirePreviewSnapshot),
+					);
+					const resources = preparedResources.activate(binding);
+					rollback.commit();
+					activated = true;
+					timeline.finish("completed");
+					return resources;
+				} catch (error) {
+					timeline.finish("failed");
+					throw error;
+				}
+			},
+			fail: () => timeline.finish("failed"),
+			dispose: () =>
+				activated
+					? preparedResources.dispose()
+					: rollback.dispose("Coding Agent Session initialization rollback failed"),
+		};
 	} catch (error) {
 		try {
 			return await rollback.rollback(error, "Session resource initialization and rollback failed");

@@ -9,6 +9,8 @@ export type {
 	CodingAgentObservationRoute,
 	CodingAgentPromptRuntimeSourceContext,
 	CodingAgentPromptRuntimeSources,
+	CodingAgentRuntimeAgentBindingOptions,
+	CodingAgentRuntimeAgentOptions,
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeContextOptions,
 	CodingAgentRuntimeConversationOptions,
@@ -22,6 +24,7 @@ export type {
 	CodingAgentRuntimeToolOptions,
 } from "./runtime-composition-options.js";
 export type {
+	CodingAgentRuntimeAgentIdentity,
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeExtensionControls,
 	CodingAgentRuntimeSessionControls,

@@ -47,7 +47,6 @@ export interface RuntimeAgentSessionOptions {
 }
 
 export class RuntimeAgentSession implements RuntimeSnapshotProvider {
-	readonly id: string;
 	readonly instanceId: string;
 	readonly agentId: string;
 	readonly extensions: SessionExtensionComposition;
@@ -57,11 +56,12 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 	private readonly retainedRollouts: RetainedSessionRollout[] = [];
 	private rolloutTail: Promise<void> = Promise.resolve();
 	private effectiveRevision: string;
+	private sessionId: string;
 	private closed = false;
 	private closePromise?: Promise<void>;
 
 	constructor(private readonly options: RuntimeAgentSessionOptions) {
-		this.id = options.id;
+		this.sessionId = options.id;
 		this.instanceId = options.instanceId;
 		this.agentId = options.agentId;
 		this.effectiveRevision = options.revisionId;
@@ -69,6 +69,10 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 		this.extensions = options.extensions;
 		this.initialSessionDefinition = options.sessionDefinition;
 		this.initialExtensionIds = runtimeAgentExtensionIds(options.sessionDefinition);
+	}
+
+	get id(): string {
+		return this.sessionId;
 	}
 
 	get revisionId(): string {
@@ -103,6 +107,18 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 		this.closed = true;
 		this.closePromise = this.rolloutTail.then(() => this.disposeResources());
 		return this.closePromise;
+	}
+
+	/** 仅由 RuntimeAgentHost 在持久化 Session continuation 提交身份时调用。 */
+	rebindId(sessionId: string): void {
+		this.assertOpen();
+		if (!sessionId || sessionId.trim() !== sessionId) {
+			throw new RuntimeAgentHostError(
+				RUNTIME_AGENT_HOST_ERROR_CODES.INVALID_INSTANCE,
+				"Runtime Agent Session id must be a non-empty trimmed string",
+			);
+		}
+		this.sessionId = sessionId;
 	}
 
 	private async applyLatestRevision(signal: AbortSignal): Promise<RuntimeAgentSessionRolloutResult> {

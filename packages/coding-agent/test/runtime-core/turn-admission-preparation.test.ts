@@ -26,9 +26,9 @@ describe("Coding Agent Turn admission preparation", () => {
 			},
 			conversation: { resolveSessionDirectory: () => undefined, resolveSessionPath: () => undefined },
 			turnCapabilityAssembly: {
-				capabilities: { acquire },
 				promptAdapter: {},
 			},
+			capabilitySnapshotProvider: { acquire },
 			sessionExtensions,
 			refreshSessionMcp: async () => {
 				order.push("publish");
@@ -60,9 +60,9 @@ describe("Coding Agent Turn admission preparation", () => {
 			},
 			conversation: { resolveSessionDirectory: () => undefined, resolveSessionPath: () => undefined },
 			turnCapabilityAssembly: {
-				capabilities: {},
 				promptAdapter: { createRequest },
 			},
+			capabilitySnapshotProvider: { acquire: vi.fn() },
 			sessionExtensions,
 			refreshSessionMcp,
 			activation: { mode: "explicit", toolNames: [] },

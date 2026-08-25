@@ -105,8 +105,22 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 export interface CodingAgentSessionResourceLifecycle {
 	readonly hookController: CodingAgentSessionHookController;
 	disposeHookSession(): Promise<void>;
-	attachTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): RuntimeResources;
+	prepareTurnCapabilityAssembly(
+		assembly: CodingAgentTurnCapabilitySessionAssembly,
+	): CodingAgentPreparedSessionResourceLifecycle;
 	rollbackBindings(): void;
+}
+
+export interface CodingAgentCapabilitySessionBinding {
+	readonly snapshotProvider: RuntimeResources["snapshotProvider"];
+	acquirePreviewSnapshot(): ReturnType<RuntimeResources["snapshotProvider"]["acquire"]>;
+	rebindSession(sessionId: string): Promise<void>;
+	dispose(): Promise<void>;
+}
+
+export interface CodingAgentPreparedSessionResourceLifecycle {
+	activate(binding: CodingAgentCapabilitySessionBinding): RuntimeResources;
+	dispose(): Promise<void>;
 }
 
 /** 组装 Session 资源适配、Hook 生命周期、正常清理与 Conversation continuation 重绑定。 */
@@ -144,11 +158,20 @@ export function createCodingAgentSessionResourceLifecycle(
 	return {
 		hookController,
 		disposeHookSession,
-		attachTurnCapabilityAssembly(assembly) {
+		prepareTurnCapabilityAssembly(assembly) {
 			if (attachedAssembly) throw new Error("Session Resource Lifecycle is already attached");
 			attachedAssembly = assembly;
 			bindAttachedResources(options, hookController, disposeHookSession);
-			return createResources(options, assembly, hookController, endHookSession);
+			const sessionCleanup = createSessionCleanup(options, assembly, hookController, endHookSession);
+			let activated = false;
+			return {
+				activate(binding) {
+					if (activated) throw new Error("Session Resource Lifecycle is already activated");
+					activated = true;
+					return createResources(options, assembly, binding, hookController);
+				},
+				dispose: () => sessionCleanup.run("Failed to dispose session assembly resources"),
+			};
 		},
 		rollbackBindings() {
 			if (!attachedAssembly) return;
@@ -186,14 +209,14 @@ function unbindAttachedResources(
 function createResources(
 	options: CodingAgentSessionResourceLifecycleOptions,
 	turnCapabilityAssembly: CodingAgentTurnCapabilitySessionAssembly,
+	capabilitySession: CodingAgentCapabilitySessionBinding,
 	hookController: CodingAgentSessionHookController,
-	endHookSession: (cause: SessionEndCause) => Promise<void>,
 ): RuntimeResources {
-	const sessionCleanup = createSessionCleanup(options, turnCapabilityAssembly, hookController, endHookSession);
 	return createCodingAgentSessionRuntimeResources({
 		session: options.session,
 		conversation: options.conversation,
 		turnCapabilityAssembly,
+		capabilitySnapshotProvider: capabilitySession.snapshotProvider,
 		modelRuntime: options.modelRuntime,
 		sessionExtensions: options.sessionExtensions,
 		contextRuntime: options.contextRuntime,
@@ -218,14 +241,14 @@ function createResources(
 			const previousSessionId = options.session.readSessionId();
 			options.conversationContextOverlay.clear(previousSessionId);
 			options.conversationContextOverlay.clear(result.sessionId);
-			await options.ownership.rebind(result.sessionId);
+			await rebindSessionIdentity(options, capabilitySession, previousSessionId, result.sessionId);
 			options.session.commitSessionId(result.sessionId);
 			options.indexes.mcpRefreshObservedSessions.rebind(previousSessionId, result.sessionId);
 			turnCapabilityAssembly.rebindSession(result.sessionId);
 			rebindSessionIndexes(options, hookController, previousSessionId, result.sessionId);
 			options.extensionToolRuntime?.rebindSession(previousSessionId, result.sessionId);
 		},
-		dispose: () => sessionCleanup.run("Failed to dispose session assembly resources"),
+		dispose: () => capabilitySession.dispose(),
 	});
 }
 
@@ -317,6 +340,25 @@ function createSessionCleanup(
 	});
 	cleanup.add({ id: "conversation-ownership", phase: 2, cleanup: () => options.ownership.release() });
 	return cleanup;
+}
+
+async function rebindSessionIdentity(
+	options: CodingAgentSessionResourceLifecycleOptions,
+	capabilitySession: CodingAgentCapabilitySessionBinding,
+	previousSessionId: string,
+	nextSessionId: string,
+): Promise<void> {
+	await capabilitySession.rebindSession(nextSessionId);
+	try {
+		await options.ownership.rebind(nextSessionId);
+	} catch (error) {
+		try {
+			await capabilitySession.rebindSession(previousSessionId);
+		} catch (rollbackError) {
+			throw new AggregateError([error, rollbackError], "Session continuation identity rebind and rollback failed");
+		}
+		throw error;
+	}
 }
 
 function unbindSessionResources(

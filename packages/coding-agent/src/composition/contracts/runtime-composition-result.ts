@@ -42,11 +42,19 @@ export interface CodingAgentRuntimeToolAccess {
 	readonly registry: CodingToolRegistry;
 }
 
+export interface CodingAgentRuntimeAgentIdentity {
+	readonly agentId: string;
+	readonly instanceId: string;
+	readonly revisionId: string;
+}
+
 export interface CodingAgentRuntimeComposition
 	extends CodingAgentRuntimeSessionControls,
 		CodingAgentRuntimeExtensionControls {
 	readonly backend: KernelRuntimeSessionBackend<CodingAgentRuntimeSessionOptions>;
 	readonly tools: CodingAgentRuntimeToolAccess;
+	/** 当前 Composition 在多主 Agent 基座中固定的 Definition revision 与 Instance 身份。 */
+	readonly agentRuntime: CodingAgentRuntimeAgentIdentity;
 	/** Composition 自有 Hub 的非所有权控制面；调用方可动态注册 Adapter 和读取健康度。 */
 	readonly observations: RuntimeObservationHubView;
 	readonly scenario: ConversationScenario;

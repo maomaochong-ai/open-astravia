@@ -64,4 +64,5 @@ Agent Definition revision 与租约，Coding Agent 只拥有其 Definition 内�
 - 配置文件与代码配置共享同一发布和校验路径；具体解析、安全校验和 I/O 仍由宿主负责。
 - 更新期间可能短暂并存多个 Agent revision，需要后续 Observation Port 记录 revision、lease age、retirement 和
   dispose failure，但不得记录 Prompt 正文、Tool 参数、凭证或用户内容。
-- Coding Agent 需要迁移为一个 `RuntimeAgentDefinition`，其复杂装配保留在产品包。
+- Coding Agent 已通过 execution-compatible `RuntimeAgentDefinition` 接入生产 Composition；默认可自建 Host，Desktop
+  使用应用级共享 Host。复杂 Session 装配仍保留在产品包，能力只由 `RuntimeAgentSession` 编译一次。

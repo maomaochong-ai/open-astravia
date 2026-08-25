@@ -3,6 +3,7 @@ import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
 import {
 	CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION,
 	createCodingAgentMemoryRolloverRuntime,
+	publishCodingAgentExecutionRuntimeDefinition,
 } from "@vetta/coding-agent/composition";
 import { getAgentDir } from "@vetta/coding-agent/config";
 import {
@@ -15,6 +16,9 @@ import {
 	CatalogRoutedRuntimeSessionAccessResolver,
 	CompositeRuntimeSessionCatalog,
 	CompositeRuntimeSessionFileHistoryReader,
+	RetryableCleanup,
+	RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
+	RuntimeAgentHost,
 	RuntimeHost,
 	type RuntimeHostSessionBackendRouteDecision,
 	RuntimeObservationHub,
@@ -62,6 +66,7 @@ import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./host-servi
 import { createDesktopMcpSupervisor } from "./mcp-supervisor.js";
 import { getDesktopProviderObservationRuntime } from "./provider-observation.js";
 import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
+import { createRuntimeAgentLifecycleLogPort } from "./runtime-agent-lifecycle-log-port.js";
 import { createSessionInitializationLogPort } from "./session-initialization-log-port.js";
 
 const log = getAppLogger("runtime");
@@ -74,6 +79,12 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		id: "desktop.session-initialization-log",
 		domains: [CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION.domain],
 	});
+	observationHub.attach(createRuntimeAgentLifecycleLogPort(log), {
+		id: "desktop.runtime-agent-lifecycle-log",
+		domains: [RUNTIME_AGENT_LIFECYCLE_OBSERVATION.domain],
+	});
+	const runtimeAgentHost = new RuntimeAgentHost({ observationPort: observationHub });
+	publishCodingAgentExecutionRuntimeDefinition(runtimeAgentHost);
 	const platformServices = createDesktopRuntimeHostPlatformServices();
 	const modelRuntime = getOrCreateSharedModelRuntime();
 	const providerObservationRuntime = getDesktopProviderObservationRuntime();
@@ -98,6 +109,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	);
 	const runtimeBackendPool = new DesktopRuntimeBackendPool({
 		compositionDefaults: {
+			agentRuntime: { host: runtimeAgentHost },
 			modelRegistry: modelRuntime,
 			createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 			// 工作模式注册表归 desktop 所有（ADR-0071 修订）：coding-agent 只保留 core.mode
@@ -160,6 +172,10 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 			agentDir,
 		}),
 	});
+	const cleanup = new RetryableCleanup();
+	cleanup.add({ id: "runtime-backend-pool", phase: 0, cleanup: () => runtimeBackendPool.dispose() });
+	cleanup.add({ id: "runtime-agent-host", phase: 1, cleanup: () => runtimeAgentHost.close() });
+	cleanup.add({ id: "runtime-observation-hub", phase: 2, cleanup: () => observationHub.close() });
 	void runtimeBackendPool.prewarmMcp({ cwd: DEFAULT_CONVERSATION_CWD }).catch((error: unknown) => {
 		log.warn("[agent-runtime] default conversation MCP prewarm failed", error);
 	});
@@ -179,13 +195,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	});
 	return {
 		runtimeBackendPool: {
-			async dispose() {
-				try {
-					await runtimeBackendPool.dispose();
-				} finally {
-					await observationHub.close();
-				}
-			},
+			dispose: () => cleanup.run("Failed to close Desktop Runtime composition"),
 		},
 		runtime: new RuntimeHost({
 			...platformServices,

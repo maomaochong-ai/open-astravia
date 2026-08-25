@@ -11,6 +11,7 @@ export type RuntimeAgentLifecycleOperation =
 	| "instance.create"
 	| "instance.close"
 	| "session.create"
+	| "session.rebind"
 	| "session.close"
 	| "session.rollout";
 

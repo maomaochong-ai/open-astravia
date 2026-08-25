@@ -12,6 +12,8 @@ export interface CodingAgentCompositionShutdownOptions {
 	readonly closeConversationRepository: () => Promise<void> | void;
 	readonly disposeMcpSynchronizer?: () => Promise<void> | void;
 	readonly disposeCodingTools: () => Promise<void> | void;
+	/** 在产品 Session 资源释放后关闭 Agent Instance；注入的应用 Host 不归 Composition 所有。 */
+	readonly closeAgentRuntime?: () => Promise<void> | void;
 	/** 必须最后关闭，使其它资源释放阶段仍可发布最终诊断。 */
 	readonly closeObservationHub?: () => Promise<void> | void;
 }
@@ -81,6 +83,9 @@ function prepareCleanup(
 	addAsynchronousResources(cleanup, "plugin-mcp-runtime", resources.pluginMcpRuntimes, (runtime) =>
 		options.registry.unbindPluginMcpRuntime(runtime),
 	);
+	if (options.closeAgentRuntime) {
+		cleanup.add({ id: "runtime-agent", phase: 1, cleanup: options.closeAgentRuntime });
+	}
 	cleanup.add({
 		id: "session-registries",
 		phase: 1,

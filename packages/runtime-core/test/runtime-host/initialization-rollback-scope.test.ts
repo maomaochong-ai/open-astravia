@@ -56,4 +56,24 @@ describe("InitializationRollbackScope", () => {
 
 		await expect(scope.rollback(initializationError, "unused message")).rejects.toBe(initializationError);
 	});
+
+	it("disposes uncommitted resources in reverse order without inventing an initialization error", async () => {
+		const order: string[] = [];
+		const scope = new InitializationRollbackScope();
+		scope.defer({
+			id: "first",
+			rollback: () => {
+				order.push("first");
+			},
+		});
+		scope.defer({
+			id: "second",
+			rollback: () => {
+				order.push("second");
+			},
+		});
+
+		await expect(scope.dispose("unused message")).resolves.toBeUndefined();
+		expect(order).toEqual(["second", "first"]);
+	});
 });

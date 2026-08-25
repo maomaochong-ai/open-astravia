@@ -105,14 +105,25 @@ Host request
 同一 Turn 的后续模型调用只观察该 Turn 自己产生的消息、工具结果与局部激活状态，不重新读取外部最新目录。
 运行时注册或移除能力不会要求重建整个 Session，也不会改变已经开始的 Turn；新状态从下一 Turn 生效。
 
+## 多主 Agent 基座接入
+
+生产 `createCodingAgentRuntimeComposition()` 已通过 `RuntimeAgentHost` 创建真正的 Coding Agent
+Definition/Instance/Session：默认模式自建私有 Host，Desktop 等应用组合根可以注入共享 Host，使多个工作区 Composition
+共享 Registry、各自固定不可变 revision。产品资源先装配成通用 Session Definition，再由 Runtime Agent Session 唯一编译
+Prompt、Tool、MCP 与 Extension；Conversation continuation 会同步重绑基座 Session identity。
+
+完整链路、共享 Host、动态 revision、自定义 Tool/Prompt、观测与生命周期示例见
+[《Coding Agent 与多主 Agent 基座》](./docs/runtime-agent-base.md)。通用自定义主 Agent 见
+[Runtime Core 自定义 Agent 指南](../runtime-core/docs/custom-agents.md)。
+
 ## 公开入口
 
 包根仅保留稳定 Extension API。其他能力使用显式子路径：
 
-- `@vetta/coding-agent/composition`：Coding Agent Feature、策略组合与
-  `createCodingAgentRuntimeDefinition()`；平台实现由宿主注入。Definition Adapter 在产品层把 Prompt Profile
-  消解为普通 Instruction，Tool、MCP、模型和 Session Extension 由完整 Session assembler 提供，Runtime
-  Registry 不接收 Profile 字段
+- `@vetta/coding-agent/composition`：Coding Agent Feature、策略组合、生产
+  `createCodingAgentExecutionRuntimeDefinition()` 与低层 `createCodingAgentRuntimeDefinition()` Adapter；平台实现由宿主
+  注入。Definition Adapter 在产品层把 Prompt Profile 消解为普通 Instruction，Tool、MCP、模型和 Session Extension 由
+  完整 Session assembler 提供，Runtime Registry 不接收 Profile 字段
 - `@vetta/coding-agent/model-context`：工作区事实等产品上下文规则；文件访问由宿主注入
 - `@vetta/coding-agent/bootstrap`：平台无关的启动编排；Settings、Auth、Model 与 Resource 实现由宿主注入
 - `@vetta/coding-agent/runtime`：Runtime 产品入口

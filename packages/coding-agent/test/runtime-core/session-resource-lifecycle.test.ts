@@ -156,16 +156,31 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 				untrackTurnCapabilityAssembly: () => {},
 			},
 		});
-		const resources = lifecycle.attachTurnCapabilityAssembly(turnCapabilityAssembly);
+		const prepared = lifecycle.prepareTurnCapabilityAssembly(turnCapabilityAssembly);
+		const resources = prepared.activate({
+			snapshotProvider: {
+				acquire: async () => {
+					throw new Error("snapshot acquisition is not expected in this lifecycle test");
+				},
+			},
+			acquirePreviewSnapshot: async () => {
+				throw new Error("preview acquisition is not expected in this lifecycle test");
+			},
+			rebindSession: async (sessionId) => {
+				events.push(`agent:${sessionId}`);
+			},
+			dispose: () => prepared.dispose(),
+		});
 		expect(hookDisposers).toHaveLength(1);
 		expect(indexes.extensionEventBridges.get("source")).toBe(extensionEvents);
 		expect(indexes.memoryControllers.get("source")).toBe(memoryController);
 
 		await resources.onConversationContinued?.(continuation("source", "target"));
 
-		expect(events.slice(0, 5)).toEqual([
+		expect(events.slice(0, 6)).toEqual([
 			"clear:source",
 			"clear:target",
+			"agent:target",
 			"ownership:target",
 			"commit:target",
 			"turn:target",

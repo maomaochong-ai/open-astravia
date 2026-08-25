@@ -134,6 +134,20 @@ export class RuntimeAgentInstance {
 		return this.sessions.get(sessionId);
 	}
 
+	/** 由 Host 在完成全局冲突检查后同步更新 Instance 局部索引。 */
+	rebindSession(previousSessionId: string, nextSessionId: string, session: RuntimeAgentSession): void {
+		if (previousSessionId === nextSessionId) return;
+		if (this.sessions.get(previousSessionId) !== session) {
+			throw new RuntimeAgentHostError(
+				RUNTIME_AGENT_HOST_ERROR_CODES.SESSION_NOT_FOUND,
+				`Runtime Agent Session is not registered on Instance ${this.id}: ${previousSessionId}`,
+			);
+		}
+		if (this.sessions.has(nextSessionId)) throw runtimeAgentDuplicateIdError("Session", nextSessionId);
+		this.sessions.delete(previousSessionId);
+		this.sessions.set(nextSessionId, session);
+	}
+
 	snapshot(): RuntimeAgentInstanceSnapshot {
 		return Object.freeze({
 			id: this.id,

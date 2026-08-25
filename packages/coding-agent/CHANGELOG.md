@@ -2,6 +2,9 @@
 
 ### Changed
 
+- 生产 `CodingAgentRuntimeComposition` 现已真正通过多主 Agent 基座创建 Definition、Instance 与 Session；能力定义只由
+  `RuntimeAgentSession` 编译一次。默认 Composition 自建 Host，应用可注入共享 Host；子代理复用 Host 但拥有独立
+  Instance，Conversation continuation 同步重绑 Agent Session identity。
 - 每个 Coding Agent Runtime Composition 现在固有并拥有一个产品子 `RuntimeObservationHub`：支持本地动态 Adapter 与
   健康 snapshot，也可通过父级 Port 或兼容 scoped Publisher 汇入应用 Hub；子代理 Hub 继续挂在产品 Hub 下，释放
   Composition 不关闭父级或 Adapter 外部资源。普通 Logger、Audit Sink 与原生 Trace Span 的边界保持不变。
@@ -23,6 +26,9 @@
 
 ### Added
 
+- 新增 `createCodingAgentExecutionRuntimeDefinition()`、`publishCodingAgentExecutionRuntimeDefinition()` 与
+  `agentRuntime` Composition 配置/identity 返回值，支持应用级共享 Registry、运行时发布新 revision，以及新 Instance
+  生效而已运行 Instance/Session 不受影响的 revision pinning。
 - 图片行为、缩放安全限制、JPEG 质量与请求预算统一改由 `coding.images` Runtime Configuration Definition
   驱动；Session 在 Turn admission 捕获不可变配置快照，普通 Read、sandbox Read 与模型输入 Finalizer 共享同一 revision。
   旧 `settings.images` 继续通过兼容 Layer 生效，并支持新增的 `resize` 与 `requestBudget` 字段。

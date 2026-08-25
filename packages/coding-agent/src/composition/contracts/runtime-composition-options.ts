@@ -1,6 +1,9 @@
 import type { EcosystemHookAdapterFactory, HookConfigLayer } from "@vetta/ecosystem-adapter";
 import type {
 	ConversationScenario,
+	RuntimeAgentDefinition,
+	RuntimeAgentDefinitionSourceRef,
+	RuntimeAgentHost,
 	RuntimeObservationHubIssue,
 	RuntimeObservationPort,
 	RuntimeObservationPublisher,
@@ -236,6 +239,24 @@ export interface CodingAgentObservationHubOptions {
 	readonly onIssue?: (issue: RuntimeObservationHubIssue) => void;
 }
 
+export interface CodingAgentRuntimeAgentOptions {
+	/** 应用级共享多主 Agent Host；未提供时 Composition 创建并拥有一个开箱即用的 Host。 */
+	readonly host?: RuntimeAgentHost;
+	/** 要从共享 Registry 获取的平级主 Agent；默认 `coding-agent`。 */
+	readonly agentId?: string;
+	readonly instanceId?: string;
+	readonly instanceConfiguration?: unknown;
+	/** 仅用于自有 Host 的 Coding Agent execution-compatible Definition。 */
+	readonly definition?: RuntimeAgentDefinition;
+	/** 自有 Host 发布 Definition 时使用的来源身份。 */
+	readonly source?: RuntimeAgentDefinitionSourceRef;
+}
+
+export interface CodingAgentRuntimeAgentBindingOptions {
+	/** Coding Agent Definition/Instance/Session 的多主 Agent 基座接线。 */
+	readonly agentRuntime?: CodingAgentRuntimeAgentOptions;
+}
+
 export interface CodingAgentRuntimeCompositionOptions
 	extends CodingAgentRuntimeEnvironmentOptions,
 		CodingAgentRuntimeConversationOptions,
@@ -246,4 +267,5 @@ export interface CodingAgentRuntimeCompositionOptions
 		CodingAgentRuntimePluginOptions,
 		CodingAgentRuntimeExtensionOptions,
 		CodingAgentRuntimeContextOptions,
-		CodingAgentRuntimeObservabilityOptions {}
+		CodingAgentRuntimeObservabilityOptions,
+		CodingAgentRuntimeAgentBindingOptions {}
