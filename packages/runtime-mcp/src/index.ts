@@ -23,6 +23,10 @@ export {
 	renderMcpToolsInstruction,
 	renderMcpToolsPromptSection,
 } from "./mcp-prompt.js";
+export {
+	MCP_RUNTIME_OBSERVATION,
+	type McpRuntimeObservation,
+} from "./observations.js";
 export * from "./protocol/index.js";
 export {
 	createMcpRuntimeToolSynchronizer,
@@ -33,6 +37,7 @@ export {
 	type McpRuntimeToolSnapshot,
 	type McpRuntimeToolSource,
 	McpRuntimeToolSynchronizer,
+	type McpRuntimeToolSynchronizerOptions,
 	type McpRuntimeToolView,
 } from "./runtime-tool-synchronizer.js";
 export * from "./server/index.js";

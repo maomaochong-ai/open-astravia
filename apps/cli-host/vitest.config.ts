@@ -200,5 +200,9 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
+		// CLI contract tests launch nested Node, Bun, MCP and shell processes. GitHub's
+		// Windows runners need a lower file-worker cap to keep process startup and
+		// cleanup within the same deadlines; other platforms retain the faster cap.
+		maxWorkers: process.platform === "win32" ? 2 : 4,
 	},
 });

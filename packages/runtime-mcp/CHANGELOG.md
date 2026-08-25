@@ -10,6 +10,8 @@ All notable changes to `@vetta/runtime-mcp` are documented in this file.
 
 ### Added
 
+- `McpRuntimeToolSynchronizer` 可注入通用 `RuntimeObservationPublisher`，发布同步开始/完成/失败、revision、
+  Tool 数量与 dispose 事件；fingerprint、描述、凭证和错误 message 不进入观测记录。
 - `McpDeferredToolController.bindToolVisibility()` 冻结当前 MCP 目录代际，同时保留 Session-local
   `tool_search` 激活的实时可见性，供单个 Turn 内的后续模型调用安全刷新工具 Frame。
 

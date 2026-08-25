@@ -1,4 +1,6 @@
+import { type RuntimeObservationPublisher, runtimeObservationFailure } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import { MCP_RUNTIME_OBSERVATION } from "./observations.js";
 
 export interface McpRuntimeToolBinding {
 	readonly tool: RuntimeToolDefinition;
@@ -40,6 +42,10 @@ export interface McpRuntimeToolSnapshot {
 	readonly tools: readonly McpRuntimeToolDescriptor[];
 }
 
+export interface McpRuntimeToolSynchronizerOptions {
+	readonly observationPublisher?: RuntimeObservationPublisher;
+}
+
 /**
  * 在每次模型调用前把 MCP Source 的当前工具集合增量同步到 Runtime registry。
  *
@@ -57,11 +63,12 @@ export class McpRuntimeToolSynchronizer {
 	constructor(
 		private readonly source: McpRuntimeToolSource,
 		private readonly registry: McpRuntimeToolRegistry,
+		private readonly options: McpRuntimeToolSynchronizerOptions = {},
 	) {}
 
 	async refresh(): Promise<McpRuntimeToolSnapshot> {
 		if (this.pendingRefresh) return this.pendingRefresh;
-		const refresh = this.refreshNow();
+		const refresh = this.refreshObserved();
 		this.pendingRefresh = refresh;
 		try {
 			return await refresh;
@@ -89,6 +96,41 @@ export class McpRuntimeToolSynchronizer {
 			tools: Object.freeze([]),
 		});
 		this.currentView = Object.freeze({ tools: Object.freeze([]) });
+		this.options.observationPublisher?.record(MCP_RUNTIME_OBSERVATION, {
+			operation: "tool.dispose",
+			phase: "completed",
+			revision: this.currentSnapshot.revision,
+			toolCount: 0,
+		});
+	}
+
+	private async refreshObserved(): Promise<McpRuntimeToolSnapshot> {
+		const previousRevision = this.currentSnapshot.revision;
+		this.options.observationPublisher?.record(MCP_RUNTIME_OBSERVATION, {
+			operation: "tool.sync",
+			phase: "started",
+			revision: previousRevision,
+			toolCount: this.currentSnapshot.tools.length,
+		});
+		try {
+			const snapshot = await this.refreshNow();
+			this.options.observationPublisher?.record(MCP_RUNTIME_OBSERVATION, {
+				operation: "tool.sync",
+				phase: "completed",
+				revision: snapshot.revision,
+				toolCount: snapshot.tools.length,
+				changed: snapshot.revision !== previousRevision,
+			});
+			return snapshot;
+		} catch (error) {
+			this.options.observationPublisher?.record(MCP_RUNTIME_OBSERVATION, {
+				operation: "tool.sync",
+				phase: "failed",
+				revision: previousRevision,
+				failure: runtimeObservationFailure(error),
+			});
+			throw error;
+		}
 	}
 
 	private async refreshNow(): Promise<McpRuntimeToolSnapshot> {
@@ -129,8 +171,9 @@ export class McpRuntimeToolSynchronizer {
 export function createMcpRuntimeToolSynchronizer(
 	source: McpRuntimeToolSource,
 	registry: McpRuntimeToolRegistry,
+	options?: McpRuntimeToolSynchronizerOptions,
 ): McpRuntimeToolSynchronizer {
-	return new McpRuntimeToolSynchronizer(source, registry);
+	return new McpRuntimeToolSynchronizer(source, registry, options);
 }
 
 function sameDescriptors(

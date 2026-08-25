@@ -93,7 +93,10 @@ Host request
 
 包根仅保留稳定 Extension API。其他能力使用显式子路径：
 
-- `@vetta/coding-agent/composition`：Coding Agent Feature 与策略组合合同；平台实现由宿主注入
+- `@vetta/coding-agent/composition`：Coding Agent Feature、策略组合与
+  `createCodingAgentRuntimeDefinition()`；平台实现由宿主注入。Definition Adapter 在产品层把 Prompt Profile
+  消解为普通 Instruction，Tool、MCP、模型和 Session Extension 由完整 Session assembler 提供，Runtime
+  Registry 不接收 Profile 字段
 - `@vetta/coding-agent/model-context`：工作区事实等产品上下文规则；文件访问由宿主注入
 - `@vetta/coding-agent/bootstrap`：平台无关的启动编排；Settings、Auth、Model 与 Resource 实现由宿主注入
 - `@vetta/coding-agent/runtime`：Runtime 产品入口

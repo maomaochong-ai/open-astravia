@@ -27,7 +27,6 @@ export {
 export type {
 	AgentFeature,
 	AgentFeatureDefinition,
-	AgentProfile,
 	AgentRunPreparationContext,
 	AgentRunPreparationResult,
 	AgentRunPreparer,
@@ -86,6 +85,7 @@ export type {
 	PreparedContext,
 	QueuedSessionInput,
 	QueuedSessionInputResult,
+	RuntimeCapabilityDefinition,
 	RuntimeExecutionObservationEnvelope,
 	RuntimeInputRequestPreparationContext,
 	RuntimeInputRequestPreparationResult,
@@ -162,11 +162,18 @@ export {
 export { FeatureCompiler, type FeatureCompilerOptions } from "./feature-compiler.js";
 export { composeModelCallSystemPrompt, resolveModelCallFrame } from "./model-call-frame.js";
 export {
+	type RuntimeCapabilityBindingDefinition,
+	type RuntimeCapabilityCompiler,
 	RuntimeCapabilityComposition,
 	type RuntimeCapabilityCompositionOptions,
 	type RuntimeCapabilityReconfigurationResult,
-	type RuntimeProfileCompiler,
 } from "./runtime-capability-composition.js";
+export {
+	RUNTIME_PROMPT_FRAME_OBSERVATION,
+	RUNTIME_TOOL_EXECUTION_OBSERVATION,
+	type RuntimePromptFrameObservation,
+	type RuntimeToolExecutionObservation,
+} from "./runtime-observations.js";
 export { AtomicRuntimeSnapshotProvider } from "./runtime-snapshot-provider.js";
 export {
 	BufferedRuntimeSessionContext,

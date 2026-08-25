@@ -64,7 +64,7 @@ packages/coding-agent/src/composition/turn-state/
 - process 与 workspace 分 scope 发布，workspace revision 显式记录父 process revision；
 - `SessionStateOverlay` 原子发布 session 级设置；
 - `SessionTurnSnapshotProvider` 在 admission 捕获 composite key；
-- `TurnSnapshotMaterializer` 构建稳定 `AgentProfile` 与 resource leases；
+- `TurnSnapshotMaterializer` 构建稳定 `RuntimeCapabilityDefinition` 与 resource leases；
 - 对相同 key 的并发物化做 single-flight；
 - 每个 Session 维护最后成功 generation、当前目标 revision 和失败诊断。
 

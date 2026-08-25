@@ -338,20 +338,16 @@ imLog.debug("sidecar debug message");
 
 ### bun dev 前置依赖构建
 
-`desktop` 的主进程（`src/main/`）依赖 workspace 中的其他包（`@vetta/ai`、`@vetta/agent-core`、`@vetta/coding-agent` 等）。这些包的 `dist/` 目录必须先构建，否则 `build:main` 会报 "Failed to resolve entry for package" 错误。
+`desktop` 的主进程（`src/main/`）依赖 workspace 中的其他包。这些包的 `dist/` 目录必须先构建，否则 `build:main` 会报 "Failed to resolve entry for package" 错误。`bun dev` 已通过 `prepare:workspace:dev` 调用根 Turborepo 任务图，自动构建 `@vetta/desktop` 的依赖闭包和 preset 开发所需的 `@vetta-org/plugin-vite`，无需手工维护或执行包顺序。
 
-**首次运行或依赖变更后**，必须先执行以下构建命令：
+单独准备依赖时使用：
 
 ```bash
-# 按依赖顺序构建 workspace 包
-cd packages/ai && bun run build              # @vetta/ai
-cd packages/agent && bun run build            # @vetta/agent-core
-cd packages/tui && bun run build             # @mariozechner/pi-tui
-cd packages/coding-agent && bun run build    # @vetta/coding-agent
-
-# 然后即可启动 desktop 开发服务器
-cd apps/desktop && bun dev
+cd apps/desktop
+bun run prepare:workspace:dev
 ```
+
+开发入口使用本地任务缓存；正式 `prepare:workspace` 带 `--force`，不得移除该发布完整性边界。新增依赖只更新对应 `package.json`，不要恢复包清单、layer 或手写哈希缓存。
 
 ## 注意事项
 

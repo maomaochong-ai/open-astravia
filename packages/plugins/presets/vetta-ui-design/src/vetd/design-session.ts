@@ -17,6 +17,50 @@ const FRAME_GAP = 80;
 const RECONCILE_DEBOUNCE_MS = 150;
 const VIEWPORT_SAVE_DEBOUNCE_MS = 800;
 
+interface RecoveredFrameEntry {
+	readonly frame: VetdFrameEntry;
+	readonly repaired: boolean;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function finiteNumber(value: unknown): value is number {
+	return typeof value === "number" && Number.isFinite(value);
+}
+
+/** Converts externally edited manifest data into the complete internal frame contract. */
+function recoverFrameEntry(value: unknown): RecoveredFrameEntry | null {
+	if (!isRecord(value)) return null;
+	if (typeof value.id !== "string" || value.id.length === 0) return null;
+	if (typeof value.file !== "string" || value.file.length === 0) return null;
+	if (!finiteNumber(value.x) || !finiteNumber(value.y)) return null;
+	if (!finiteNumber(value.width) || !finiteNumber(value.height)) return null;
+
+	const title = typeof value.title === "string" ? value.title : value.id;
+	const rawMeta = value.meta;
+	const hasMeta =
+		isRecord(rawMeta) &&
+		finiteNumber(rawMeta.width) &&
+		finiteNumber(rawMeta.height) &&
+		typeof rawMeta.title === "string";
+	return {
+		frame: {
+			id: value.id,
+			file: value.file,
+			x: value.x,
+			y: value.y,
+			width: value.width,
+			height: value.height,
+			title,
+			// An invalid snapshot must differ from every resolved frame declaration so reconcile repairs it.
+			meta: hasMeta ? rawMeta : { width: -1, height: -1, title: "" },
+		},
+		repaired: !hasMeta || title !== value.title,
+	};
+}
+
 export type DesignChange = "frames" | "theme";
 
 /**
@@ -44,6 +88,7 @@ export class DesignSession {
 	private viewportTimer: number | null = null;
 	private disposed = false;
 	private writing = Promise.resolve();
+	private manifestNeedsRepair = false;
 
 	constructor(ctx: PluginContext, vetdPath: string) {
 		this.ctx = ctx;
@@ -65,12 +110,17 @@ export class DesignSession {
 	private async loadManifest(): Promise<void> {
 		try {
 			const raw = await this.ctx.fs.readFile(this.manifestPath);
-			const parsed = JSON.parse(raw.content) as VetdManifest;
-			if (parsed && parsed.type === "vetta-design" && Array.isArray(parsed.frames)) {
+			const parsed = JSON.parse(raw.content) as unknown;
+			if (isRecord(parsed) && parsed.type === "vetta-design" && Array.isArray(parsed.frames)) {
+				const recovered = parsed.frames.map(recoverFrameEntry);
+				const frames = recovered.filter((entry): entry is RecoveredFrameEntry => entry !== null);
+				this.manifestNeedsRepair =
+					frames.length !== parsed.frames.length || frames.some((entry) => entry.repaired);
 				this.manifest = {
 					...emptyManifest(),
 					...parsed,
-					canvas: { ...emptyManifest().canvas, ...parsed.canvas },
+					canvas: { ...emptyManifest().canvas, ...(isRecord(parsed.canvas) ? parsed.canvas : {}) },
+					frames: frames.map((entry) => entry.frame),
 				};
 				return;
 			}
@@ -78,6 +128,7 @@ export class DesignSession {
 			// Corrupt/missing manifest: rebuild from the bundle sources (frames re-place).
 		}
 		this.manifest = emptyManifest();
+		this.manifestNeedsRepair = false;
 	}
 
 	/**
@@ -156,7 +207,7 @@ export class DesignSession {
 
 		const nextFrames: VetdFrameEntry[] = [];
 		const known = new Map(this.manifest.frames.map((frame) => [frame.id, frame]));
-		let dirty = false;
+		let dirty = this.manifestNeedsRepair;
 
 		const sorted = files.sort((a, b) => a.name.localeCompare(b.name));
 		const parsedFiles: { file: { name: string; path: string }; id: string; parsed: ParsedFrameMeta }[] = [];
@@ -212,6 +263,7 @@ export class DesignSession {
 		this.manifest = { ...this.manifest, frames: nextFrames };
 		if (!dirty) return;
 		await this.persist();
+		this.manifestNeedsRepair = false;
 		this.emit("frames");
 	}
 

@@ -11,7 +11,6 @@ import {
 	expandTestablePackages,
 	isDirectRun,
 	ok,
-	packageHasTestScript,
 	packagesFromPaths,
 	parseBaseArgs,
 	runBun,
@@ -23,6 +22,7 @@ const GLOBAL_TEST_FILES = new Set([
 	"biome.jsonc",
 	"bun.lock",
 	"package.json",
+	"turbo.json",
 	"tsconfig.base.json",
 	"tsconfig.json",
 ]);
@@ -39,15 +39,9 @@ export function createChangedTestPlan(files) {
 	const globalTriggers = files.filter(isGlobalTestTrigger);
 	const runQuality = files.some((file) => {
 		const normalized = file.replaceAll("\\", "/");
-		return normalized === "package.json" || normalized.startsWith("scripts/quality/");
+		return normalized === "package.json" || normalized === "turbo.json" || normalized.startsWith("scripts/quality/");
 	});
-	const direct =
-		globalTriggers.length > 0
-			? Object.keys(TESTABLE_PACKAGES)
-			: touched.filter((name) => {
-					const dir = TESTABLE_PACKAGES[name];
-					return dir && packageHasTestScript(dir);
-				});
+	const direct = globalTriggers.length > 0 ? Object.keys(TESTABLE_PACKAGES) : touched;
 	return {
 		direct,
 		globalTriggers,

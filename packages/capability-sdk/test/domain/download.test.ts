@@ -77,6 +77,7 @@ describe("download domain capabilities", () => {
 				id: DOMAIN_DOWNLOAD_CAPABILITIES.LIST.id,
 				inputSchema: {
 					type: "object",
+					properties: {},
 					additionalProperties: false,
 				},
 				kind: "query",

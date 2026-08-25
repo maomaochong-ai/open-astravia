@@ -57,7 +57,7 @@ describe("detectSignalCli", () => {
 		expect(result.source).toBe("path");
 	});
 
-	it("ignores a non-executable file with the right name", () => {
+	it("applies the platform executable-file semantics", () => {
 		const dir = mkdtempSync(join(tmpdir(), "signal-cli-"));
 		const path = join(dir, "signal-cli");
 		writeFileSync(path, "not executable");
@@ -66,7 +66,12 @@ describe("detectSignalCli", () => {
 
 		const result = detectSignalCli();
 
-		expect(result.path).not.toBe(path);
+		if (process.platform === "win32") {
+			// Windows has no POSIX executable bit; a regular file with a recognized command name is executable.
+			expect(result.path).toBe(path);
+		} else {
+			expect(result.path).not.toBe(path);
+		}
 	});
 
 	it("always carries an install hint", () => {

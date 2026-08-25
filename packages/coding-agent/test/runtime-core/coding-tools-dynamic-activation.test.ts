@@ -25,10 +25,7 @@ describe("coding tools dynamic activation", () => {
 		});
 		const signal = new AbortController().signal;
 		const feature = await definition.prepare({ signal });
-		const contribution = await feature.contribute({
-			profileId: "coding",
-			signal,
-		});
+		const contribution = await feature.contribute({ signal });
 		const provider = contribution.modelCallProviders?.[0];
 		if (!provider) throw new Error("Expected coding tools model-call provider");
 
@@ -69,10 +66,7 @@ describe("coding tools dynamic activation", () => {
 		});
 		const signal = new AbortController().signal;
 		const feature = await definition.prepare({ signal });
-		const contribution = await feature.contribute({
-			profileId: "coding",
-			signal,
-		});
+		const contribution = await feature.contribute({ signal });
 		const provider = contribution.modelCallProviders?.[0];
 		if (!provider) throw new Error("Expected coding tools model-call provider");
 
@@ -114,10 +108,7 @@ describe("coding tools dynamic activation", () => {
 		});
 		const signal = new AbortController().signal;
 		const feature = await definition.prepare({ signal });
-		const contribution = await feature.contribute({
-			profileId: "coding",
-			signal,
-		});
+		const contribution = await feature.contribute({ signal });
 		const provider = contribution.modelCallProviders?.[0];
 		if (!provider?.bindForTurn) throw new Error("Expected Turn-bindable coding tools provider");
 

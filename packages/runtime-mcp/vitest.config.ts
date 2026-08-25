@@ -7,6 +7,7 @@ export default defineConfig({
 			"@vetta/runtime-core/kernel": fileURLToPath(
 				new URL("../runtime-core/src/kernel/index.ts", import.meta.url),
 			),
+			"@vetta/runtime-core": fileURLToPath(new URL("../runtime-core/src/index.ts", import.meta.url)),
 		},
 	},
 	test: {

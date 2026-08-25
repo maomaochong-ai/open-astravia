@@ -2,6 +2,8 @@
 
 ### Changed
 
+- Coding Agent 的 Runtime 装配改为向 `runtime-core` 传递中性的能力定义，不再把 Coding Profile 概念下沉为
+  Kernel 编译合同；工具面、Prompt、MCP 与 Session 行为保持不变。
 - **破坏性变更**：工作模式注册表移出本包，改由宿主提供（ADR-0071 归属修订）。`@vetta/coding-agent/profile`
   不再导出 `MODE_PROMPTS` / `getModePrompt` / `isAgentMode` / `ALL_AGENT_MODES` / `DEFAULT_AGENT_MODE` /
   `AgentMode` / `ModePromptInfo`，`profiles/modes/*.md` 与 `generate:modes` 一并移除。本包只保留
@@ -12,6 +14,12 @@
 
 ### Added
 
+- 新增 `createCodingAgentRuntimeDefinition()` 产品 Adapter，使完整 Coding Agent Instance/Session assembler
+  可作为普通 `RuntimeAgentDefinition` 发布到多主 Agent Registry。Prompt Profile 只在产品层解析并合并为
+  `InstructionBlock`，不进入 Runtime revision、Snapshot 或观测合同；Tool、MCP、模型和 Session Extension
+  继续由产品装配显式提供。
+- Coding Agent Runtime Composition 新增可选 `observationPublisher`，贯通 Coding Tool Catalog、MCP
+  Synchronizer 与最终 capability Snapshot；它只依赖通用 Publisher，不依赖具体日志/Trace 实现。
 - 扩展事件的 `ReadToolDetails` 新增可选 `totalLines`，与 `@vetta/runtime-node/coding` 的 `read` Tool 保持同形。
 
 - 扩展事件的 `GrepToolInput` 新增可选 `filesOnly`，与 `@vetta/runtime-node/coding` 的 `grep` Tool 保持同形。

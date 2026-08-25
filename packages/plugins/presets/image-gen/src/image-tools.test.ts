@@ -1,8 +1,12 @@
 import type {
+	PluginArtifactsApi,
 	PluginAgentToolRegistration,
 	PluginContext,
 	PluginImageRef,
+	PluginJobsApi,
+	PluginMediaArtifact,
 	PluginMediaApi,
+	PluginMediaJob,
 } from "@vetta-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ImageRepository } from "./image-repository";
@@ -28,11 +32,10 @@ function toolContext<TInput>(input: TInput) {
 describe("image generation media tools", () => {
 	const registrations = new Map<string, PluginAgentToolRegistration<unknown>>();
 	const listProviders = vi.fn<PluginMediaApi["listProviders"]>();
-	const createJob = vi.fn<PluginMediaApi["createJob"]>();
-	const getJob = vi.fn<PluginMediaApi["getJob"]>();
-	const cancelJob = vi.fn<PluginMediaApi["cancelJob"]>();
-	const saveArtifact = vi.fn<PluginMediaApi["saveArtifact"]>();
-	const releaseArtifact = vi.fn<PluginMediaApi["releaseArtifact"]>();
+	const submit = vi.fn<PluginMediaApi["submit"]>();
+	const wait = vi.fn<PluginJobsApi["wait"]>();
+	const persistArtifact = vi.fn<PluginArtifactsApi["persist"]>();
+	const releaseArtifact = vi.fn<PluginArtifactsApi["release"]>();
 	const persist = vi.fn<ImageRepository["persist"]>();
 	const read = vi.fn<ImageRepository["read"]>();
 	const lineage = vi.fn<ImageRepository["lineage"]>();
@@ -42,15 +45,15 @@ describe("image generation media tools", () => {
 		registerProvider: vi.fn(),
 		listProviders,
 		onProvidersChanged: vi.fn(),
-		createJob,
-		getJob,
-		cancelJob,
-		saveArtifact,
-		releaseArtifact,
+		submit,
 	};
+	const jobs: PluginJobsApi = { get: vi.fn(), cancel: vi.fn(), wait };
+	const artifacts: PluginArtifactsApi = { persist: persistArtifact, release: releaseArtifact };
 	const repository: ImageRepository = { persist, read, lineage, sessionLineages };
 	const ctx = {
 		media,
+		jobs,
+		artifacts,
 		agent: {
 			registerTool: (registration: PluginAgentToolRegistration<unknown>) => {
 				registrations.set(registration.id, registration);
@@ -68,7 +71,9 @@ describe("image generation media tools", () => {
 				id: "desktop-app:vetta",
 				ownerId: "desktop-app",
 				protocolVersion: 2,
-				capabilities: [{ kind: "image", modes: ["text-to-image", "image-to-image"] }],
+				capabilities: [
+					{ operation: "generate", kind: "image", modes: ["text-to-image", "image-to-image"] },
+				],
 			},
 		]);
 		releaseArtifact.mockResolvedValue();
@@ -97,13 +102,11 @@ describe("image generation media tools", () => {
 	});
 
 	it("saves the generated artifact as a plugin blob and releases the temporary handle", async () => {
-		createJob.mockResolvedValue({
-			providerId: "desktop-app:vetta",
-			id: "job-1",
-			status: "succeeded",
-			artifacts: [{ id: "artifact-1", kind: "image", mimeType: "image/png", sizeBytes: 128 }],
-		});
-		saveArtifact.mockResolvedValue({
+		const artifact = imageArtifact("artifact-1", "image/png", 128);
+		const job = succeededJob("job-1", artifact);
+		submit.mockResolvedValue(job);
+		wait.mockResolvedValue(job);
+		persistArtifact.mockResolvedValue({
 			type: "plugin-blob",
 			blobId: "blob-1",
 			url: "vetta-media://local/blob-1",
@@ -121,19 +124,18 @@ describe("image generation media tools", () => {
 		await expect(
 			tool<GenerateToolInput>("generate-image").handler(toolContext({ prompt: "draw a fox", size: "1280x720" })),
 		).resolves.toMatchObject({ ok: true, images: [image] });
-		expect(createJob).toHaveBeenCalledWith({
+		expect(submit).toHaveBeenCalledWith({
+			operation: "generate",
 			providerId: "desktop-app:vetta",
 			kind: "image",
 			mode: "text-to-image",
 			prompt: "draw a fox",
 			dimensions: { width: 1280, height: 720 },
-			references: [],
+			inputs: [],
 		});
-		expect(saveArtifact).toHaveBeenCalledWith({
-			artifactId: "artifact-1",
-			destination: { type: "plugin-blob" },
-		});
-		expect(releaseArtifact).toHaveBeenCalledWith("artifact-1");
+		expect(wait).toHaveBeenCalledWith(job, { pollIntervalMs: 1_000 });
+		expect(persistArtifact).toHaveBeenCalledWith(artifact, { type: "plugin-blob" });
+		expect(releaseArtifact).toHaveBeenCalledWith(artifact);
 		expect(persist).toHaveBeenCalledWith(
 			{ id: "blob-1", url: "vetta-media://local/blob-1", mimeType: "image/png" },
 			{ sessionId: "session-1" },
@@ -141,29 +143,25 @@ describe("image generation media tools", () => {
 	});
 
 	it("releases the temporary artifact when plugin persistence fails", async () => {
-		createJob.mockResolvedValue({
-			providerId: "desktop-app:vetta",
-			id: "job-2",
-			status: "succeeded",
-			artifacts: [{ id: "artifact-2", kind: "image", mimeType: "image/png", sizeBytes: 64 }],
-		});
-		saveArtifact.mockRejectedValue(new Error("plugin storage unavailable"));
+		const artifact = imageArtifact("artifact-2", "image/png", 64);
+		const job = succeededJob("job-2", artifact);
+		submit.mockResolvedValue(job);
+		wait.mockResolvedValue(job);
+		persistArtifact.mockRejectedValue(new Error("plugin storage unavailable"));
 
 		await expect(
 			tool<GenerateToolInput>("generate-image").handler(toolContext({ prompt: "draw" })),
 		).rejects.toThrow("plugin storage unavailable");
-		expect(releaseArtifact).toHaveBeenCalledWith("artifact-2");
+		expect(releaseArtifact).toHaveBeenCalledWith(artifact);
 		expect(persist).not.toHaveBeenCalled();
 	});
 
 	it("passes a local edit source as a workspace file handle", async () => {
-		createJob.mockResolvedValue({
-			providerId: "desktop-app:vetta",
-			id: "job-3",
-			status: "succeeded",
-			artifacts: [{ id: "artifact-3", kind: "image", mimeType: "image/webp", sizeBytes: 96 }],
-		});
-		saveArtifact.mockResolvedValue({
+		const artifact = imageArtifact("artifact-3", "image/webp", 96);
+		const job = succeededJob("job-3", artifact);
+		submit.mockResolvedValue(job);
+		wait.mockResolvedValue(job);
+		persistArtifact.mockResolvedValue({
 			type: "plugin-blob",
 			blobId: "blob-3",
 			url: "vetta-media://local/blob-3",
@@ -181,15 +179,29 @@ describe("image generation media tools", () => {
 			toolContext({ prompt: "add snow", sourceImagePath: "C:/project/source.png" }),
 		);
 
-		expect(createJob).toHaveBeenCalledWith(
+		expect(submit).toHaveBeenCalledWith(
 			expect.objectContaining({
 				mode: "image-to-image",
-				references: [
+				inputs: [
 					{ kind: "image", source: { type: "workspace-file", path: "C:/project/source.png" } },
 				],
 			}),
 		);
 		expect(read).not.toHaveBeenCalled();
-		expect(releaseArtifact).toHaveBeenCalledWith("artifact-3");
+		expect(releaseArtifact).toHaveBeenCalledWith(artifact);
 	});
 });
+
+function imageArtifact(id: string, mimeType: string, sizeBytes: number): PluginMediaArtifact {
+	return { id, kind: "image", mimeType, sizeBytes, lifetime: "temporary" };
+}
+
+function succeededJob(id: string, artifact: PluginMediaArtifact): PluginMediaJob {
+	return {
+		id,
+		domain: "media",
+		operation: "generate",
+		status: "succeeded",
+		artifacts: [artifact],
+	};
+}

@@ -1,10 +1,11 @@
+import type { RuntimeObservationPublisher } from "@vetta/runtime-core";
 import {
 	type AgentFeatureDefinition,
-	type AgentProfile,
 	type CompiledRuntimeSnapshot,
 	FeatureCompiler,
 	PassthroughContextStrategy,
 	RandomIdGenerator,
+	type RuntimeCapabilityDefinition,
 } from "@vetta/runtime-core/kernel";
 import {
 	type BackgroundCommandService,
@@ -38,6 +39,7 @@ export interface CodingToolsRuntimeCompositionOptions {
 	readonly resultPolicy?: CodingToolResultPolicy;
 	readonly tokenBudget?: number;
 	readonly reservedOutputTokens?: number;
+	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
 export interface CodingToolsRuntimeComposition {
@@ -48,7 +50,7 @@ export interface CodingToolsRuntimeComposition {
 	) => readonly CodingToolRegistration[] | Promise<readonly CodingToolRegistration[]>;
 	readonly registry: CodingToolRegistry;
 	readonly feature: AgentFeatureDefinition;
-	readonly profile: AgentProfile;
+	readonly capabilities: RuntimeCapabilityDefinition;
 	readonly compiler: FeatureCompiler;
 	readonly compile: (signal?: AbortSignal) => Promise<CompiledRuntimeSnapshot>;
 	readonly dispose: () => void;
@@ -74,7 +76,10 @@ export function createCodingToolsRuntimeComposition(
 			...builtInRegistrations,
 			...(options.additionalRegistrations ?? []),
 		].map(withCodingAgentModelOrder),
-		{ resultPolicy: options.resultPolicy ?? PRESERVE_CODING_TOOL_RESULT_POLICY },
+		{
+			resultPolicy: options.resultPolicy ?? PRESERVE_CODING_TOOL_RESULT_POLICY,
+			observationPublisher: options.observationPublisher,
+		},
 	);
 	const feature = createCodingToolsFeature({
 		catalog: registry,
@@ -87,8 +92,7 @@ export function createCodingToolsRuntimeComposition(
 				? { mode: "scope", scope: "cli", capabilities: new Set(["bg-tasks"]) }
 				: { mode: "scope", scope: "cli" }),
 	});
-	const profile: AgentProfile = {
-		id: "coding-tools-runtime",
+	const capabilities: RuntimeCapabilityDefinition = {
 		instructions: [],
 		features: [feature],
 		contextStrategy: new PassthroughContextStrategy(),
@@ -100,6 +104,7 @@ export function createCodingToolsRuntimeComposition(
 		},
 		tokenBudget: options.tokenBudget ?? 8_000,
 		reservedOutputTokens: options.reservedOutputTokens ?? 1_000,
+		observationPublisher: options.observationPublisher,
 	};
 	const compiler = new FeatureCompiler({ idGenerator: new RandomIdGenerator() });
 
@@ -109,9 +114,9 @@ export function createCodingToolsRuntimeComposition(
 		createSpecializedToolRegistrations: options.environment.createSpecializedToolRegistrations,
 		registry,
 		feature,
-		profile,
+		capabilities,
 		compiler,
-		compile: (signal = new AbortController().signal) => compiler.compile(profile, signal),
+		compile: (signal = new AbortController().signal) => compiler.compile(capabilities, signal),
 		dispose: () => options.environment.dispose(),
 	};
 }

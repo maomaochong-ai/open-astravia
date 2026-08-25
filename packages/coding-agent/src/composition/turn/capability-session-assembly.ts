@@ -7,10 +7,10 @@ import type {
 } from "@vetta/runtime-core";
 import {
 	type AgentFeatureDefinition,
-	type AgentProfile,
 	type ContinuationPolicyContext,
 	type ModelCallContributionContext,
 	RuntimeCapabilityComposition,
+	type RuntimeCapabilityDefinition,
 	type RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import type { SessionExtensionContinuationSource } from "@vetta/runtime-core/session-extensions";
@@ -105,7 +105,7 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly session: CodingAgentTurnCapabilitySessionIdentity;
 	readonly activation: CodingAgentTurnCapabilityActivationPort;
 	readonly prompt: CodingAgentTurnCapabilityPromptOptions;
-	readonly baseProfile: AgentProfile;
+	readonly baseCapabilities: RuntimeCapabilityDefinition;
 	readonly codingTools: CodingToolsRuntimeComposition;
 	readonly executionRuntime: CodingAgentSessionExecutionRuntime;
 	readonly specializedToolFeature: AgentFeatureDefinition;
@@ -116,7 +116,7 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly memoryRuntime?: CodingAgentMemoryRolloverRuntime;
 	readonly subagentRuntime?: CodingAgentSubagentRuntime;
 	readonly contextRuntime: CodingAgentContextRuntime;
-	readonly conversationContextProjector: NonNullable<AgentProfile["conversationContextProjector"]>;
+	readonly conversationContextProjector: NonNullable<RuntimeCapabilityDefinition["conversationContextProjector"]>;
 	readonly modelRuntime: RuntimeModel;
 	readonly modelInputImageProcessor?: ModelInputImageProcessor;
 	readonly hookRuntime: EcosystemHookRuntime;
@@ -394,15 +394,15 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		extensionEvents: options.extensionEvents,
 		onPrepared: () => options.todoRuntime.flush(),
 	});
-	const profile: AgentProfile = {
-		...options.baseProfile,
+	const capabilityDefinition: RuntimeCapabilityDefinition = {
+		...options.baseCapabilities,
 		features: [
-			...options.baseProfile.features,
+			...options.baseCapabilities.features,
 			options.specializedToolFeature,
 			...(invokeSkillFeature ? [invokeSkillFeature] : []),
 		],
 		observers: [
-			...(options.baseProfile.observers ?? []),
+			...(options.baseCapabilities.observers ?? []),
 			options.contextRuntime,
 			createEcosystemHookTurnObserver(options.hookRuntime),
 			...(options.memoryRuntime ? [options.memoryRuntime] : []),
@@ -419,7 +419,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 	};
 	const createCapabilities = () =>
 		RuntimeCapabilityComposition.create({
-			initialProfile: profile,
+			initialDefinition: capabilityDefinition,
 			compiler: options.codingTools.compiler,
 			modelBindingProvider: options.modelRuntime,
 		});

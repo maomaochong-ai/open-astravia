@@ -18,6 +18,7 @@ import { snapshotProviderClosedError } from "./errors.js";
 
 interface SnapshotGeneration {
 	readonly compiled: CompiledRuntimeSnapshot;
+	readonly modelBindingProvider?: RuntimeTurnModelBindingProvider;
 	activeLeases: number;
 	retired: boolean;
 	disposePromise?: Promise<void>;
@@ -27,14 +28,12 @@ interface SnapshotGeneration {
 export class AtomicRuntimeSnapshotProvider implements RuntimeSnapshotProvider {
 	private current: SnapshotGeneration;
 	private readonly generations = new Set<SnapshotGeneration>();
+	private readonly cleanupErrors = new Set<unknown>();
 	private closed = false;
 	private closePromise?: Promise<void>;
 
-	constructor(
-		initial: CompiledRuntimeSnapshot,
-		private readonly modelBindingProvider?: RuntimeTurnModelBindingProvider,
-	) {
-		this.current = createGeneration(initial);
+	constructor(initial: CompiledRuntimeSnapshot, modelBindingProvider?: RuntimeTurnModelBindingProvider) {
+		this.current = createGeneration(initial, modelBindingProvider);
 		this.generations.add(this.current);
 	}
 
@@ -48,7 +47,7 @@ export class AtomicRuntimeSnapshotProvider implements RuntimeSnapshotProvider {
 			// Start every capture in the same JavaScript job. Each binder reads its
 			// published pointer before its first await, preventing cross-domain drift.
 			const [modelBindingResult, turnBindingResult] = await Promise.all([
-				settle(() => this.modelBindingProvider?.bind(context)),
+				settle(() => generation.modelBindingProvider?.bind(context)),
 				settle(() => (context ? bindRuntimeSnapshotForTurn(snapshot, context) : undefined)),
 			]);
 			if (turnBindingResult.status === "fulfilled" && turnBindingResult.value) {
@@ -87,18 +86,18 @@ export class AtomicRuntimeSnapshotProvider implements RuntimeSnapshotProvider {
 		}
 	}
 
-	async swap(next: CompiledRuntimeSnapshot): Promise<void> {
+	async swap(next: CompiledRuntimeSnapshot, modelBindingProvider?: RuntimeTurnModelBindingProvider): Promise<void> {
 		if (this.closed) {
 			await next.dispose();
 			throw snapshotProviderClosedError();
 		}
 
 		const previous = this.current;
-		const generation = createGeneration(next);
+		const generation = createGeneration(next, modelBindingProvider);
 		this.generations.add(generation);
 		this.current = generation;
 		previous.retired = true;
-		await this.disposeIfRetired(previous);
+		void this.disposeIfRetired(previous).catch(() => undefined);
 	}
 
 	close(): Promise<void> {
@@ -120,20 +119,27 @@ export class AtomicRuntimeSnapshotProvider implements RuntimeSnapshotProvider {
 				await this.disposeIfRetired(generation);
 			}),
 		);
-		const errors = results
-			.filter((result): result is PromiseRejectedResult => result.status === "rejected")
-			.map(({ reason }) => reason);
-		if (errors.length > 0) {
-			throw new AggregateError(errors, "Failed to dispose one or more runtime snapshots");
+		const errors = new Set(this.cleanupErrors);
+		for (const result of results) {
+			if (result.status === "rejected") errors.add(result.reason);
+		}
+		if (errors.size > 0) {
+			throw new AggregateError([...errors], "Failed to dispose one or more runtime snapshots");
 		}
 	}
 
 	private async disposeIfRetired(generation: SnapshotGeneration): Promise<void> {
 		if (!generation.retired || generation.activeLeases > 0) return;
 		if (!generation.disposePromise) {
-			generation.disposePromise = generation.compiled.dispose().finally(() => {
-				this.generations.delete(generation);
-			});
+			generation.disposePromise = generation.compiled
+				.dispose()
+				.catch((error: unknown) => {
+					this.cleanupErrors.add(error);
+					throw error;
+				})
+				.finally(() => {
+					this.generations.delete(generation);
+				});
 		}
 		await generation.disposePromise;
 	}
@@ -314,9 +320,13 @@ async function settle<T>(read: () => T | PromiseLike<T>): Promise<PromiseSettled
 	}
 }
 
-function createGeneration(compiled: CompiledRuntimeSnapshot): SnapshotGeneration {
+function createGeneration(
+	compiled: CompiledRuntimeSnapshot,
+	modelBindingProvider?: RuntimeTurnModelBindingProvider,
+): SnapshotGeneration {
 	return {
 		compiled,
+		modelBindingProvider,
 		activeLeases: 0,
 		retired: false,
 		unusedWaiters: [],

@@ -4,6 +4,12 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `InMemoryCodingToolRegistry` 可注入通用 `RuntimeObservationPublisher`，以领域 Token 发布 register、activate、
+  deactivate、revoke 和 unregister 的安全 Catalog 元数据；Tool 调用参数和结果仍由 Runtime Core 的最终执行
+  边界统一保护，不进入 Catalog 事件。
+
 ### Breaking Changes
 
 - **具体 Coding Tool 实现迁至 Node 平台层**：`read`、`write`、`edit`、命令、PDF/OCR、能力与 Subagent Tool 的工厂、Schema 和 Host 原语改由 `@vetta/runtime-node/coding` 导出；本包只保留注册、Catalog、激活、可用性、结果策略和执行文件解析 Port。

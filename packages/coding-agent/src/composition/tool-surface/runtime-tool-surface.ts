@@ -1,4 +1,4 @@
-import type { ConversationScenario, RuntimeSessionValueIndex } from "@vetta/runtime-core";
+import type { ConversationScenario, RuntimeObservationPublisher, RuntimeSessionValueIndex } from "@vetta/runtime-core";
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { CODING_TOOL_SCOPES, type CodingToolActivation, type CodingToolResultPolicy } from "@vetta/runtime-tools";
@@ -43,6 +43,7 @@ export interface CodingAgentRuntimeToolSurfaceOptions {
 	readonly reservedOutputTokens?: number;
 	readonly createToolEnvironment: CodingAgentToolEnvironmentFactory;
 	readonly resultPolicy?: CodingToolResultPolicy;
+	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
 export interface CodingAgentRuntimeToolSurface {
@@ -122,6 +123,7 @@ export async function createCodingAgentRuntimeToolSurface(
 		tokenBudget: options.tokenBudget,
 		reservedOutputTokens: options.reservedOutputTokens,
 		resultPolicy: options.resultPolicy,
+		observationPublisher: options.observationPublisher,
 	});
 	backgroundTasksAvailable = tools.backgroundService !== undefined;
 	try {
@@ -137,6 +139,7 @@ export async function createCodingAgentRuntimeToolSurface(
 					}),
 				unregister: (toolName) => tools.registry.unregister(toolName),
 			},
+			observationPublisher: options.observationPublisher,
 		});
 	} catch (error) {
 		tools.dispose();

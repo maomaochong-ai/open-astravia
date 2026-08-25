@@ -1,6 +1,6 @@
 # 质量门禁（Quality Gates）
 
-本仓库**没有**照搬 OpenClaw 的 oxlint/pnpm/巨型 CI 矩阵。在现有 **Bun + Biome + tsgo + Vitest + husky** 之上，补了分层门禁、按包/按变更测试与轻量架构守卫；Desktop `verify:ui` 是用户明确要求时才运行的按需验收工具，不属于默认门禁。
+本仓库**没有**照搬 OpenClaw 的 oxlint/pnpm/巨型 CI 矩阵。在现有 **Bun + Turborepo + Biome + tsgo + Vitest + husky** 之上，补了分层门禁、按包/按变更测试与轻量架构守卫；Desktop `verify:ui` 是用户明确要求时才运行的按需验收工具，不属于默认门禁。
 
 ## 门禁分层
 
@@ -8,10 +8,10 @@
 |------|------|--------|------|
 | 提交前（快） | `bun run check:precommit`（husky 自动） | 每次 commit | staged 私钥/冲突标记 + Biome `--staged --write`；格式化后重新暂存整文件 |
 | 开发中（快） | `bun run check:quick` | 一轮编辑后 | 准确合并分支已提交差异、暂存、未暂存和未跟踪文件；对变更文件运行 Biome，并运行架构守卫；不做类型检查 |
-| 完整本地/PR | `bun run check` | 一轮代码任务完成、交付或开 PR 前一次 | 对显式源码根运行 Biome，并行执行根 `tsgo`、CLI 显式 `tsgo`、增量 desktop `tsc`、admin `tsc` 与架构守卫 |
+| 完整本地/PR | `bun run check` | 一轮代码任务完成、交付或开 PR 前一次 | 对显式源码根运行 Biome，并行执行根 `tsgo`、CLI 显式 `tsgo`、增量 desktop `tsc`、docs check 与架构守卫 |
 | 构建声明消费 | `bun run check:types:build-surfaces` | workspace 前置声明生成后 | 按 `cli-host/tsconfig.build.json` 验证真实包声明消费；会拒绝陈旧 `dist/*.d.ts` |
 | 质量脚本测试 | `bun run test:quality` | 修改 `scripts/quality` | 变更选择、依赖传播与包边界规则 |
-| 单元测试 | `bun run test:unit` | 逻辑变更 | 当前有测试的核心包 |
+| 单元测试 | `bun run test` / `bun run test:unit` | 逻辑变更 | 先由 Turbo 生成测试消费的 workspace 依赖产物，再顺序运行所有声明 `test` 的 TypeScript workspace |
 | 按包 | `bun run test:pkg <name>` | 改单包 | 例：`test:pkg ai` |
 | 按变更 | `bun run test:changed` | 提 PR 前可选 | 合并已提交/工作区/未跟踪改动，测试触达包及其下游依赖 |
 | 按需 Desktop UI 验收 | `bun run verify:ui:*` | 仅用户明确要求使用 UI 验证或具体命令时 | 不由 UI、图标、样式或 Renderer/Main 改动自动触发；见 [README](./README.md) |
@@ -29,7 +29,6 @@ scripts/quality/
   check-quick.mjs              按完整 Git 工作区差异做快速检查
   check-private-keys.mjs       私钥形态检测
   check-conflict-markers.mjs   未解决冲突标记
-  check-build-order.mjs        workspace 正式依赖构建顺序
   check-package-boundaries.mjs 库/插件不得依赖 app 宿主
   check-coding-agent-architecture.mjs
                                Coding Agent 当前架构依赖与公开面
@@ -46,8 +45,10 @@ knip.config.ts                 Knip（可选）
 
 | Script | 说明 |
 |--------|------|
+| `build` / `build:all` | 由 Turborepo 按 workspace manifest 构建库或完整 Desktop 依赖图；Preset 仍走专用制品流程 |
+| `build:desktop` / `build:cli` / `build:docs` / `build:preset` | 构建指定产品或制品，依赖包由任务图自动补齐 |
 | `check:lint` / `check:lint:fix` | 对显式源码根执行 Biome 只读检查 / 写回，避免扫描无关目录 |
-| `check:types` | 并行执行根 `tsgo`、CLI 显式 `tsgo`、带持久增量缓存的 desktop `tsc`、admin `tsc -b` |
+| `check:types` | 并行执行根 `tsgo`、CLI 显式 `tsgo`、带持久增量缓存的 desktop `tsc`、docs check |
 | `check:types:build-surfaces` | 使用 CLI build config 验证上游 workspace `dist/*.d.ts` 的真实消费面；要求先生成当前声明 |
 | `check:guards` | 并行执行私钥、冲突标记、包边界等全量守卫 |
 | `check:staged` | 仅 staged Biome |
@@ -57,7 +58,7 @@ knip.config.ts                 Knip（可选）
 | `fix` | Biome 全量格式化与安全修复 |
 | `vitest` | 用 Node 启动仓库 Vitest；等价于 `bun scripts/quality/run-vitest.mjs` |
 | `test:quality` | 质量脚本定向测试 |
-| `test:unit` | ai / agent / coding-agent / ecosystem-adapter |
+| `test` / `test:unit` | 从 workspace manifest 自动发现并顺序运行所有声明 `test` 的包 |
 | `test:pkg` | 见 `bun run test:pkg --list` |
 | `test:changed` | 默认比较 `origin/dev`；`--base origin/main` 可改基线 |
 | `deadcode` / `deadcode:report` | Knip 严格 / 仅报告 |
@@ -125,22 +126,22 @@ bun run test:pkg <name>
 Greenfield/Legacy 名称墓碑、固定文件数量、行数阈值及实施日志格式不再进入构建门禁。
 架构规则测试位于 `scripts/quality/coding-agent-architecture.test.mjs`。
 
-## Workspace 构建顺序（`check-build-order`）
+## Workspace 构建编排（Turborepo）
 
-根 `scripts/build.sh` 与 Desktop 的 `apps/desktop/scripts/build-workspace-prereqs.mjs` 都必须先构建正式 workspace 依赖，再构建依赖方。守卫会分别检查：
+根 `turbo.json` 将每个 workspace 的 `package.json#scripts.build` 组成任务图，`build.dependsOn = ["^build"]` 保证内部依赖先构建。包清单和依赖边只维护在 Bun workspace 与各包 manifest 中，不再维护根 shell 顺序、Desktop 分层或第二套通用哈希实现。
 
-- 根脚本中的 `build_pkg` 顺序；
-- Desktop 前置构建脚本导出的分层；
-- 各包 `dependencies`、`optionalDependencies` 中声明的 `workspace:*` 正式依赖；
-- 同时声明为 peer、并通过 `devDependencies: workspace:*` 链接本地实现的构建期依赖。
+缓存边界如下：
 
-Desktop 前置构建脚本只维护参与构建的包和并行层，包之间的依赖直接从 manifest 推导，不再维护第二份容易过期的手写依赖图。
+- 普通包声明 `dist/**`、插件 `release/**` 和 Next `.next/**` 为输出；输入、lockfile、内部依赖任务哈希和 `VETTA_*` 构建变量共同决定本地缓存键。
+- Desktop 完整 `build` 包含平台模型、生成、插件 staging 和多入口 bundle，初始阶段明确 `cache: false`。
+- Remote Cache 默认关闭；启用前必须先验证跨平台制品、环境变量、日志脱敏和缓存完整性，并更新 ADR-0079。
+- `--env-mode=loose` 暂时保持历史脚本可见环境不变；影响输出的 `VETTA_*` 仍进入哈希。收紧为 strict 前应先完成所有构建变量清单。
 
-普通 `devDependencies` 不参与生产构建顺序：例如 `runtime-core` 的测试会引用 `coding-agent`，但 `runtime-core/src` 不依赖它；把测试边计入会制造不存在的生产依赖环。例外是同时存在于 `peerDependencies` 的本地 workspace 开发实现：发布包仍保留 peer 合同，但首次构建必须先生成该实现的声明文件。
+Desktop 开发前置构建使用 `@vetta/desktop` 的依赖闭包，并额外包含 dev preset 需要的 `@vetta-org/plugin-vite`。开发入口读取本地 Turbo 缓存；正式打包入口带 `--force`，继续无条件执行 workspace 构建并写入新缓存。Preset 的租户选择、zip 校验与 staging 仍由 `build-presets.mjs` 负责。
 
-该守卫防止构建错误地读取上一次残留的 `dist/*.d.ts` 而偶然成功。新增 workspace 依赖后仍必须执行正常的 `bun install`；`bun install --lockfile-only` 只更新锁文件，不创建包级 workspace 链接。
+新增或修改 workspace 依赖后必须执行正常的 `bun install`；`bun install --lockfile-only` 只更新锁文件，不创建包级 workspace 链接。可用 `bunx turbo run build --dry=json --filter=<package>` 检查任务闭包和依赖原因。
 
-`test:changed` 会读取可测包的 `package.json` 自动计算下游依赖闭包。`package.json`、`bun.lock`、根 TypeScript/Biome 配置和 `scripts/quality/**` 变化会触发全部核心测试；无效基线会直接失败，不会静默跳过。
+`test:changed` 会从根 workspace 和各包 `package.json#scripts.test` 自动发现可测包，并按全部 workspace manifest 自动计算下游依赖闭包；没有测试脚本的上游包发生变化时，其可测消费者也会进入计划。测试启动前，`test-pkg.mjs` 会让 Turbo 构建所选测试消费的 workspace 依赖，确保干净 checkout 中指向 `dist` 的包导出可被解析，同时不会构建 Desktop、Docs 或 Remote Relay 这些叶子应用本身。`package.json`、`bun.lock`、根 TypeScript/Biome 配置和 `scripts/quality/**` 变化会触发全部 workspace 测试；无效基线会直接失败，不会静默跳过。
 
 `check:quick` 复用同一套 Git 变更选择器，因此不会漏掉未暂存或未跟踪文件。删除文件会从 Biome 输入中排除；修改任意 `biome.json` / `biome.jsonc` 或根 `.editorconfig` 时，会自动回退为全仓 Biome，避免配置影响未被检查。它不做类型检查，不能替代任务结束时的完整 `check`。
 
@@ -160,7 +161,11 @@ workspace 包声明解析。因此，上游源码修改但 `dist/*.d.ts` 尚未�
 
 ## CI
 
-`.github/workflows/quality.yml` 只负责通用质量门禁：冻结依赖安装、`bun run check`、质量脚本测试和 Runtime 合同检查。Desktop 生产边界由独立的 `.github/workflows/desktop-packaged.yml` 负责：它始终运行打包合同检查，涉及 Desktop 主进程、preload、打包脚本、原生依赖、远程控制或锁文件的变更才会启动 Windows、macOS、Linux runners，构建 unpacked packaged 应用并运行 Electron 启动与 updater E2E；无关变更不会构建 Desktop。两个 workflow 都使用只读检查，不会自动修复候选提交。
+`.github/workflows/quality.yml` 负责通用 TypeScript 质量门禁：冻结依赖安装、`bun run check`、质量脚本测试、Runtime 合同检查，并在 Ubuntu 与 Windows 上顺序运行受影响 workspace 及其可测下游。完整 Git 历史用于计算 PR base；根配置、锁文件或质量脚本变化会在两个平台运行全部 workspace 测试。
+
+非 Bun workspace 由独立的 path-filtered workflow 覆盖：`.github/workflows/im-gateway.yml` 对 Go Gateway 执行 tidy、vet、build、test、接口纪律和 golangci-lint；`.github/workflows/mobile.yml` 对 Kotlin Mobile 执行 Android host tests 和 debug APK 构建。它们只在对应目录或 workflow 自身变化时运行，不把 Go/Kotlin 生命周期伪装成 JavaScript workspace 任务。
+
+Desktop 生产边界由独立的 `.github/workflows/desktop-packaged.yml` 负责：它始终运行打包合同检查，涉及 Desktop 主进程、preload、打包脚本、原生依赖、远程控制或锁文件的变更才会启动 Windows、macOS、Linux runners，构建 unpacked packaged 应用并运行 Electron 启动与 updater E2E；无关变更不会构建 Desktop。上述 workflow 都使用只读检查，不会自动修复候选提交。
 
 Desktop 打包合同可在本地快速运行：
 
@@ -186,7 +191,7 @@ Windows、macOS、Linux runner 上真实安装基线包，驱动现有 updater �
 应用日志和升级状态文件。它使用独立的 `desktop-test` Environment，不会触碰 stable。当前 GitHub macOS runner 只验收
 其实际架构；macOS arm64 需要额外的自持 runner 矩阵。
 
-四个核心包的历史测试目前仍有模型目录和跨平台相关的基线失败，因此暂不作为 PR 强制门禁。修复这些基线后，再将 `bun run test:unit` 加入 CI；在此之前它仍用于本地完整诊断，`bun run test:changed` 用于按影响范围验证。
+单元测试按包顺序执行，不使用根 workspace 的无界并发扇出；这会牺牲少量总耗时，但能避免多个 Vitest 进程同时争用 CPU、临时目录和子进程而产生假超时。平台相关行为至少由 Ubuntu 与 Windows 两个门禁覆盖。
 
 ## 与 OpenClaw 的对应关系（有意不做的）
 
@@ -230,18 +235,17 @@ bun run deadcode:report
 
 1. desktop i18n CJK **ratchet**（基线文件数，只许下降）——当前硬编码存量大，全量 fail 不现实  
 2. CI path filter：只改 `packages/ai` 时跳过 desktop `tsc`  
-3. Go：`apps/api` / `im-gateway` 的 `go test` / golangci-lint 挂到根 `check:go`  
-4. Knip 收紧后纳入 `check`  
-5. 插件 SDK **契约测试**（public API 形状快照）
+3. Knip 收紧后纳入 `check`
+4. 插件 SDK **契约测试**（public API 形状快照）
 
 ## 核查清单
 
 - [ ] `bun run check:guards` 通过  
-- [ ] 根构建脚本和 Desktop 前置构建脚本中，所有正式 workspace 依赖都先于依赖方
+- [ ] `turbo.json` 的 `build` 保持 `dependsOn: ["^build"]`，目标包 dry-run 包含所需依赖闭包
 - [ ] `bun run check:quick` 覆盖已提交、暂存、未暂存和未跟踪文件  
 - [ ] `bun run test:quality` 通过  
 - [ ] `bun run check:precommit` 在有 staged 文件时行为正确  
-- [ ] `bun run test:pkg --list` 列出 4 个可测包  
+- [ ] `bun run test:pkg --list` 列出当前所有可测包
 - [ ] `bun run check` 仍包含类型检查（比 pre-commit 更严）  
 - [ ] `bun run check` 输出中包含 `apps/cli-host` 的显式 `typecheck`
 - [ ] 生成当前 workspace 声明后，`bun run check:types:build-surfaces` 通过

@@ -1,13 +1,53 @@
+import { createRuntimeObservationPublisher, type RuntimeObservationRecord } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import {
 	createMcpRuntimeToolSynchronizer,
+	MCP_RUNTIME_OBSERVATION,
 	type McpRuntimeToolBinding,
 	type McpRuntimeToolRegistry,
 	type McpRuntimeToolView,
 } from "../src/index.js";
 
 describe("McpRuntimeToolSynchronizer", () => {
+	it("observes safe MCP synchronization metadata and failures", async () => {
+		const records: RuntimeObservationRecord[] = [];
+		let failure: Error | undefined;
+		const source = {
+			async refresh() {
+				if (failure) throw failure;
+				return runtimeView(binding(tool("mcp_search_alpha", "Secret description"), "secret-fingerprint"));
+			},
+		};
+		const synchronizer = createMcpRuntimeToolSynchronizer(source, new RecordingRegistry(), {
+			observationPublisher: createRuntimeObservationPublisher({
+				port: {
+					record: (record) => {
+						records.push(record);
+					},
+				},
+			}),
+		});
+
+		await synchronizer.refresh();
+		failure = new Error("secret-refresh-error");
+		await expect(synchronizer.refresh()).rejects.toThrow("secret-refresh-error");
+		synchronizer.dispose();
+
+		expect(records.every(({ token }) => token === MCP_RUNTIME_OBSERVATION)).toBe(true);
+		expect(records.map(({ payload }) => (payload as { phase?: string }).phase)).toEqual([
+			"started",
+			"completed",
+			"started",
+			"failed",
+			"completed",
+		]);
+		const serialized = JSON.stringify(records);
+		expect(serialized).not.toContain("Secret description");
+		expect(serialized).not.toContain("secret-fingerprint");
+		expect(serialized).not.toContain("secret-refresh-error");
+	});
+
 	it("updates only changed bindings while preserving unchanged tools", async () => {
 		const alphaV1 = tool("mcp_search_alpha", "Alpha");
 		const beta = tool("mcp_search_beta", "Beta");

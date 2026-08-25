@@ -96,6 +96,7 @@ export class HookDispatcher {
 				const result = await this.executor.execute(
 					{
 						command: handler.command,
+						args: handler.args,
 						cwd: request.cwd,
 						stdin: input,
 						timeoutMs: handler.timeoutMs,

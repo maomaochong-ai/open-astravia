@@ -66,6 +66,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 		reservedOutputTokens: options.reservedOutputTokens,
 		createToolEnvironment: options.createToolEnvironment,
 		resultPolicy: options.codingToolResultPolicy,
+		observationPublisher: options.observationPublisher,
 	});
 	const {
 		activation: effectiveActivation,

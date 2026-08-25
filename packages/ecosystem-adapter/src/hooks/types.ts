@@ -71,6 +71,7 @@ export interface ConfiguredHookHandler {
 	eventName: HookEventName;
 	matcher?: string;
 	command: string;
+	args?: readonly string[];
 	timeoutMs: number;
 	statusMessage?: string;
 	sourcePath: string;
@@ -219,6 +220,7 @@ export type HookRequest =
 
 export interface HookCommandExecutionRequest {
 	command: string;
+	args?: readonly string[];
 	cwd: string;
 	stdin: string;
 	timeoutMs: number;

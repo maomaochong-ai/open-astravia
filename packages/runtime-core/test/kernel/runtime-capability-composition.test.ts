@@ -1,40 +1,41 @@
 import { describe, expect, it } from "vitest";
 import {
-	type AgentProfile,
 	type CompiledRuntimeSnapshot,
 	PassthroughContextStrategy,
+	type RuntimeCapabilityCompiler,
 	RuntimeCapabilityComposition,
-	type RuntimeProfileCompiler,
+	type RuntimeCapabilityDefinition,
 	type RuntimeSnapshot,
 } from "../../src/kernel/index.js";
 
 describe("RuntimeCapabilityComposition", () => {
-	it("applies only the newest queued profile and disposes superseded generations", async () => {
+	it("applies only the newest queued definition and disposes superseded generations", async () => {
 		const disposed: string[] = [];
 		let resolveFirst: ((compiled: CompiledRuntimeSnapshot) => void) | undefined;
 		let markFirstStarted: (() => void) | undefined;
 		const firstStarted = new Promise<void>((resolve) => {
 			markFirstStarted = resolve;
 		});
-		const compiler: RuntimeProfileCompiler = {
-			async compile(profile) {
-				if (profile.id === "first") {
+		const compiler: RuntimeCapabilityCompiler = {
+			async compile(definition) {
+				const id = definition.instructions[0]?.id ?? "unknown";
+				if (id === "first") {
 					markFirstStarted?.();
 					return new Promise((resolve) => {
 						resolveFirst = resolve;
 					});
 				}
-				return compiledSnapshot(profile.id, disposed);
+				return compiledSnapshot(id, disposed);
 			},
 		};
 		const composition = await RuntimeCapabilityComposition.create({
-			initialProfile: profile("initial"),
+			initialDefinition: definition("initial"),
 			compiler,
 		});
 
-		const first = composition.reconfigure(profile("first"));
+		const first = composition.reconfigure(definition("first"));
 		await firstStarted;
-		const second = composition.reconfigure(profile("second"));
+		const second = composition.reconfigure(definition("second"));
 		resolveFirst?.(compiledSnapshot("first", disposed));
 
 		await expect(first).resolves.toEqual({ status: "superseded" });
@@ -47,22 +48,23 @@ describe("RuntimeCapabilityComposition", () => {
 		expect(disposed).toEqual(["first", "initial", "second"]);
 	});
 
-	it("keeps the current profile after compilation failure and delays retirement until lease release", async () => {
+	it("keeps the current definition after compilation failure and delays retirement until lease release", async () => {
 		const disposed: string[] = [];
-		const compiler: RuntimeProfileCompiler = {
-			async compile(currentProfile) {
-				if (currentProfile.id === "broken") throw new Error("compile failed");
-				return compiledSnapshot(currentProfile.id, disposed);
+		const compiler: RuntimeCapabilityCompiler = {
+			async compile(currentDefinition) {
+				const id = currentDefinition.instructions[0]?.id ?? "unknown";
+				if (id === "broken") throw new Error("compile failed");
+				return compiledSnapshot(id, disposed);
 			},
 		};
 		const composition = await RuntimeCapabilityComposition.create({
-			initialProfile: profile("initial"),
+			initialDefinition: definition("initial"),
 			compiler,
 		});
 		const activeLease = await composition.acquire();
 
-		await expect(composition.reconfigure(profile("broken"))).rejects.toThrow("compile failed");
-		await expect(composition.reconfigure(profile("next"))).resolves.toEqual({
+		await expect(composition.reconfigure(definition("broken"))).rejects.toThrow("compile failed");
+		await expect(composition.reconfigure(definition("next"))).resolves.toEqual({
 			status: "applied",
 			snapshotId: "next",
 		});
@@ -79,10 +81,9 @@ describe("RuntimeCapabilityComposition", () => {
 	});
 });
 
-function profile(id: string): AgentProfile {
+function definition(id: string): RuntimeCapabilityDefinition {
 	return {
-		id,
-		instructions: [],
+		instructions: [{ id, content: id, priority: 0 }],
 		features: [],
 		contextStrategy: new PassthroughContextStrategy(),
 		toolPolicy: {

@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
 	type AgentFeatureDefinition,
-	type AgentProfile,
 	FeatureCompiler,
 	type FeatureContribution,
 	type IdGenerator,
 	KERNEL_ERROR_CODES,
 	PassthroughContextStrategy,
+	type RuntimeCapabilityDefinition,
 } from "../../src/kernel/index.js";
 
 class SnapshotIdGenerator implements IdGenerator {
@@ -15,9 +15,8 @@ class SnapshotIdGenerator implements IdGenerator {
 	}
 }
 
-function profile(features: readonly AgentFeatureDefinition[]): AgentProfile {
+function definition(features: readonly AgentFeatureDefinition[]): RuntimeCapabilityDefinition {
 	return {
-		id: "coding",
 		instructions: [
 			{
 				id: "base",
@@ -76,7 +75,7 @@ describe("FeatureCompiler", () => {
 			idGenerator: new SnapshotIdGenerator(),
 		});
 		const compiled = await compiler.compile(
-			profile([
+			definition([
 				feature({
 					id: "z-dependent",
 					dependencies: ["base-feature"],
@@ -118,7 +117,7 @@ describe("FeatureCompiler", () => {
 			idGenerator: new SnapshotIdGenerator(),
 		});
 		const compiled = await compiler.compile(
-			profile([
+			definition([
 				feature({
 					id: "first-feature",
 					lifecycle,
@@ -157,7 +156,7 @@ describe("FeatureCompiler", () => {
 
 		await expect(
 			compiler.compile(
-				profile([
+				definition([
 					feature({ id: "first", dependencies: ["second"], lifecycle }),
 					feature({ id: "second", dependencies: ["first"], lifecycle }),
 				]),
@@ -186,7 +185,7 @@ describe("FeatureCompiler", () => {
 
 		await expect(
 			compiler.compile(
-				profile([
+				definition([
 					feature({
 						id: "first",
 						lifecycle,
@@ -214,7 +213,7 @@ describe("FeatureCompiler", () => {
 
 		await expect(
 			compiler.compile(
-				profile([feature({ id: "first", lifecycle }), feature({ id: "second", lifecycle, failPrepare: true })]),
+				definition([feature({ id: "first", lifecycle }), feature({ id: "second", lifecycle, failPrepare: true })]),
 				new AbortController().signal,
 			),
 		).rejects.toThrow("prepare failed: second");
@@ -235,7 +234,7 @@ describe("FeatureCompiler", () => {
 			},
 		};
 		const compiled = await compiler.compile(
-			profile([
+			definition([
 				feature({
 					id: "tools",
 					lifecycle,
@@ -287,7 +286,7 @@ describe("FeatureCompiler", () => {
 			idGenerator: new SnapshotIdGenerator(),
 		});
 		const compiled = await compiler.compile(
-			profile([
+			definition([
 				feature({ id: "first", lifecycle, failDispose: true }),
 				feature({ id: "second", lifecycle, failDispose: true }),
 			]),

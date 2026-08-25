@@ -33,6 +33,11 @@ export {
 	createCodingToolsFeature,
 } from "./coding-tools-feature.js";
 export * from "./host/index.js";
+export {
+	CODING_TOOL_CATALOG_OBSERVATION,
+	type CodingToolCatalogObservation,
+	type CodingToolCatalogOperation,
+} from "./observations.js";
 export { ToolCallDescriptionSchema } from "./tool-call-description.js";
 export {
 	CODING_TOOL_SCOPES,

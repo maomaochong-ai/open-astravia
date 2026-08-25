@@ -287,17 +287,14 @@ function appendDocument(
 
 				const defaultTimeout = typedEvent === "UserPromptSubmit" ? 30 : 600;
 				const timeoutSeconds = commandHandler.timeout ?? defaultTimeout;
-				let command = expandClaudePlaceholders(commandHandler.command, pathContext);
-				if (commandHandler.args && commandHandler.args.length > 0) {
-					const expandedArgs = commandHandler.args.map((arg) => expandClaudePlaceholders(arg, pathContext));
-					// Prefer shell-safe quoting for args form after path expansion.
-					command = [quoteIfNeeded(command), ...expandedArgs.map(quoteIfNeeded)].join(" ");
-				}
+				const command = expandClaudePlaceholders(commandHandler.command, pathContext);
+				const args = commandHandler.args?.map((arg) => expandClaudePlaceholders(arg, pathContext));
 
-				if (hasUnresolvedClaudePlaceholder(command)) {
+				const unresolvedValue = [command, ...(args ?? [])].find(hasUnresolvedClaudePlaceholder);
+				if (unresolvedValue !== undefined) {
 					diagnostics.push({
 						code: "invalid_handler",
-						message: `command still contains unresolved Claude path placeholders: ${command}`,
+						message: `command still contains unresolved Claude path placeholders: ${unresolvedValue}`,
 						sourcePath,
 					});
 					continue;
@@ -318,6 +315,7 @@ function appendDocument(
 					eventName: typedEvent,
 					matcher: matcher.value,
 					command,
+					args,
 					timeoutMs: Math.max(1, Math.floor(timeoutSeconds)) * 1000,
 					statusMessage: commandHandler.statusMessage,
 					sourcePath,
@@ -344,16 +342,6 @@ function matcherForEvent(
 	if (matcher === undefined) return { invalid: false };
 	if (matcher.length === 0 || matcher === "*") return { invalid: false, value: matcher };
 	return validateClaudeMatcher(matcher) ? { invalid: false, value: matcher } : { invalid: true };
-}
-
-function quoteIfNeeded(value: string): string {
-	if (value.length === 0) return '""';
-	if (process.platform === "win32") {
-		if (/[\s"&|<>^]/.test(value)) return `"${value.replaceAll('"', '""')}"`;
-		return value;
-	}
-	if (/[\s"'$`\\]/.test(value)) return `'${value.replaceAll("'", `'\\''`)}'`;
-	return value;
 }
 
 function isMissingFile(error: unknown): boolean {

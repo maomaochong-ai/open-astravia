@@ -1,7 +1,9 @@
+import { createRuntimeObservationPublisher, type RuntimeObservationRecord } from "@vetta/runtime-core";
 import type { RuntimeSnapshotAcquireContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import {
 	CODING_TOOL_AVAILABILITY_ERROR_CODES,
+	CODING_TOOL_CATALOG_OBSERVATION,
 	type CodingToolRegistration,
 	type CodingToolScope,
 	guardCodingToolRegistration,
@@ -10,6 +12,34 @@ import {
 } from "../../src/coding/index.js";
 
 describe("coding tool registry", () => {
+	it("publishes safe catalog changes through an arbitrary observation adapter", () => {
+		const records: RuntimeObservationRecord[] = [];
+		const registry = new InMemoryCodingToolRegistry([], {
+			observationPublisher: createRuntimeObservationPublisher({
+				port: {
+					record: (record) => {
+						records.push(record);
+					},
+				},
+			}),
+		});
+
+		registry.register(registration("observed", ["project"]));
+		registry.deactivate("observed");
+		registry.activate("observed");
+		registry.revoke("observed", { reason: "secret-reason", auditId: "secret-audit" });
+		registry.unregister("observed");
+
+		expect(records.map(({ token, payload }) => [token, (payload as { operation?: string }).operation])).toEqual([
+			[CODING_TOOL_CATALOG_OBSERVATION, "register"],
+			[CODING_TOOL_CATALOG_OBSERVATION, "deactivate"],
+			[CODING_TOOL_CATALOG_OBSERVATION, "activate"],
+			[CODING_TOOL_CATALOG_OBSERVATION, "revoke"],
+			[CODING_TOOL_CATALOG_OBSERVATION, "unregister"],
+		]);
+		expect(JSON.stringify(records)).not.toContain("secret-");
+	});
+
 	it("creates a deterministic frozen membership snapshot", () => {
 		const registry = new InMemoryCodingToolRegistry([
 			registration("zeta", ["project"]),

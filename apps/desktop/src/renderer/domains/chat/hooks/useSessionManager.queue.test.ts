@@ -108,6 +108,7 @@ beforeEach(() => {
 			session: {
 				autoTitle: vi.fn(),
 				getFullHistory: vi.fn(async () => []),
+				openViewer: vi.fn(async () => ({ history: [] })),
 				getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
 				prompt: mocks.prompt,
 				replaceLastUserMessage: vi.fn(async () => ({ leafId: null })),

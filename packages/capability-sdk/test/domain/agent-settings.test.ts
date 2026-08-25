@@ -40,6 +40,7 @@ describe("agent settings domain capabilities", () => {
 		expect(DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG).toHaveLength(2);
 		expect(DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG[0]?.inputSchema).toEqual({
 			type: "object",
+			properties: {},
 			additionalProperties: false,
 		});
 		expect(DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG[0]?.outputSchema).toMatchObject({

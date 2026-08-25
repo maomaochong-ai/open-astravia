@@ -17,6 +17,7 @@ import type {
 } from "../context-composition/contracts.js";
 import type { ConversationDocument } from "../conversation/document.js";
 import type { RecordedRuntimeFailure, RuntimeFailure } from "../failure-contract.js";
+import type { RuntimeObservationPublisher } from "../observation/contracts.js";
 import type {
 	RuntimeExecutionObservationEvent,
 	RuntimeMessageEnvelope,
@@ -381,9 +382,9 @@ export interface ModelCallFrameCompositionContext {
 }
 
 /**
- * Profile 独占的模型调用最终编译器。
+ * 单份运行时能力配置独占的模型调用最终编译器。
  *
- * 每个 Profile 最多一个 Composer；它不是可串联 Middleware，只负责把已经汇总的候选
+ * 每份配置最多一个 Composer；它不是可串联 Middleware，只负责把已经汇总的候选
  * Frame 编译成该产品最终交给模型的 Prompt 与工具集合。
  */
 export interface ModelCallFrameComposer {
@@ -432,7 +433,7 @@ export interface ContinuationMessage {
 }
 
 /**
- * Profile 独占的自然停止续跑策略。
+ * 单份运行时能力配置独占的自然停止续跑策略。
  *
  * Kernel 不解释 Todo、Plugin 或 Hook 等产品语义；策略只返回需要进入普通
  * follow-up 队列的用户消息。
@@ -465,6 +466,7 @@ export interface RuntimeSnapshot {
 	readonly tokenBudget: number;
 	readonly reservedOutputTokens: number;
 	readonly observers: readonly TurnObserver[];
+	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
 export interface RuntimeSnapshotLease {
@@ -542,7 +544,6 @@ export interface FeaturePrepareContext {
 }
 
 export interface FeatureContributionContext {
-	readonly profileId: string;
 	readonly signal: AbortSignal;
 }
 
@@ -566,8 +567,8 @@ export interface AgentFeatureDefinition {
 	prepare(context: FeaturePrepareContext): Promise<AgentFeature>;
 }
 
-export interface AgentProfile {
-	readonly id: string;
+/** 编译为单代不可变 RuntimeSnapshot 的产品无关能力输入。 */
+export interface RuntimeCapabilityDefinition {
 	/** 产品层显式选择的正文工具调用恢复白名单；Runtime Core 不解释工具语义。 */
 	readonly salvageTextToolCalls?: readonly string[];
 	readonly instructions: readonly InstructionBlock[];
@@ -585,6 +586,7 @@ export interface AgentProfile {
 	readonly toolPolicy: ToolPolicy;
 	readonly tokenBudget: number;
 	readonly reservedOutputTokens: number;
+	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
 export interface CompiledRuntimeSnapshot {

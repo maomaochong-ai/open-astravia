@@ -30,10 +30,19 @@ export class ClaudeHookCommandExecutor implements HookCommandExecutor {
 			}
 			// Ensure the script path is absolute when possible so bash -lc can find it after cd.
 			const normalized = normalizeShellCommand(request.command, request.cwd);
-			return this.bashExecutor.execute({ ...request, command: normalized }, signal);
+			const command =
+				request.args === undefined
+					? normalized
+					: [quoteBashToken(normalized), ...request.args.map(quoteBashToken)].join(" ");
+			return this.bashExecutor.execute({ ...request, command, args: undefined }, signal);
 		}
 		return this.defaultExecutor.execute(request, signal);
 	}
+}
+
+function quoteBashToken(value: string): string {
+	if (value.length === 0) return "''";
+	return `'${value.replaceAll("'", `'\\''`)}'`;
 }
 
 function commandNeedsBash(command: string): boolean {

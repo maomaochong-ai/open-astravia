@@ -6,7 +6,10 @@ import { CodingAgentRuntimeHostSessionBackend } from "@vetta/coding-agent/compos
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { RuntimeHost } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
-import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
+import {
+	createCodingAgentRuntimeComposition,
+	createUnsandboxedTestSessionExecutionEnvironment,
+} from "./fixtures/runtime-composition.js";
 
 describe("CodingAgentRuntimeHostSessionBackend", () => {
 	const directories: string[] = [];
@@ -25,6 +28,7 @@ describe("CodingAgentRuntimeHostSessionBackend", () => {
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,
+			createSessionExecutionEnvironment: createUnsandboxedTestSessionExecutionEnvironment,
 			scenario: "batch",
 			enableSubagents: false,
 			modelRegistry: modelRegistry(),
@@ -95,6 +99,7 @@ describe("CodingAgentRuntimeHostSessionBackend", () => {
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,
+			createSessionExecutionEnvironment: createUnsandboxedTestSessionExecutionEnvironment,
 			scenario: "batch",
 			enableSubagents: false,
 			modelRegistry: modelRegistry(),
@@ -142,6 +147,7 @@ describe("CodingAgentRuntimeHostSessionBackend", () => {
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,
+			createSessionExecutionEnvironment: createUnsandboxedTestSessionExecutionEnvironment,
 			scenario: "batch",
 			enableSubagents: false,
 			modelRegistry: modelRegistry(),

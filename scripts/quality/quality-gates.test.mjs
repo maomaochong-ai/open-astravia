@@ -1,10 +1,6 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-	findBuildOrderViolations,
-	findLayeredBuildOrderViolations,
-	findMissingConsumerBuildDependencies,
-	parseBuildPackageOrder,
-} from "./check-build-order.mjs";
 import { findPackageBoundaryViolations, findPackageManifestBoundaryViolations } from "./check-package-boundaries.mjs";
 import { batchPaths, createQuickCheckPlan, isBiomeGlobalTrigger } from "./check-quick.mjs";
 import { findSkillFrontmatterProblems } from "./check-skill-frontmatter.mjs";
@@ -15,7 +11,17 @@ import {
 } from "./check-source-path-maps.mjs";
 import { findStandaloneCliBuildViolations } from "./check-standalone-cli-build.mjs";
 import { findVitestRunnerViolations } from "./check-vitest-runner.mjs";
-import { changedFiles, expandTestablePackages, packagesFromPaths, parseBaseArgs, stagedFiles } from "./lib.mjs";
+import {
+	buildableTestDependencies,
+	changedFiles,
+	expandTestablePackages,
+	packagesFromPaths,
+	parseBaseArgs,
+	repoRoot,
+	stagedFiles,
+	TESTABLE_PACKAGES,
+	WORKSPACE_PACKAGES,
+} from "./lib.mjs";
 import { createChangedTestPlan, parseArgs } from "./test-changed.mjs";
 
 describe("changed file selection", () => {
@@ -200,63 +206,92 @@ describe("quick check selection", () => {
 });
 
 describe("affected package selection", () => {
+	it("discovers every workspace test script, including nested plugins and themes", () => {
+		expect(Object.keys(TESTABLE_PACKAGES)).toEqual(
+			WORKSPACE_PACKAGES.filter((pkg) => Boolean(pkg.scripts.test)).map((pkg) => pkg.key),
+		);
+		expect(Object.keys(TESTABLE_PACKAGES)).toEqual(
+			expect.arrayContaining(["capability-sdk", "cli-host", "runtime-node", "presets/image-gen"]),
+		);
+	});
+
 	it("includes transitive testable dependents", () => {
-		expect(expandTestablePackages(["ai"])).toEqual([
-			"ai",
-			"agent",
-			"runtime-core",
-			"runtime-mcp",
-			"coding-agent",
-			"desktop",
-		]);
-		expect(expandTestablePackages(["runtime-mcp"])).toEqual(["runtime-mcp", "coding-agent", "desktop"]);
-		expect(expandTestablePackages(["ecosystem-adapter"])).toEqual(["coding-agent", "ecosystem-adapter", "desktop"]);
+		expect(expandTestablePackages(["ai"])).toEqual(
+			expect.arrayContaining(["ai", "agent", "runtime-core", "runtime-mcp", "coding-agent", "desktop"]),
+		);
+		expect(expandTestablePackages(["runtime-mcp"])).toEqual(
+			expect.arrayContaining(["runtime-mcp", "coding-agent", "desktop"]),
+		);
+		expect(expandTestablePackages(["ecosystem-adapter"])).toEqual(
+			expect.arrayContaining(["coding-agent", "ecosystem-adapter", "desktop"]),
+		);
+		expect(expandTestablePackages(["plugin-sdk"])).toEqual(
+			expect.arrayContaining(["presets/image-gen", "presets/vetta-ui-design", "desktop"]),
+		);
 	});
 
 	it("runs Runtime and Desktop tests when those packages change", () => {
-		expect(createChangedTestPlan(["packages/runtime-core/src/index.ts"]).toTest).toEqual([
-			"runtime-core",
-			"runtime-mcp",
-			"coding-agent",
-			"desktop",
-		]);
+		expect(createChangedTestPlan(["packages/runtime-core/src/index.ts"]).toTest).toEqual(
+			expect.arrayContaining(["runtime-core", "runtime-mcp", "coding-agent", "desktop"]),
+		);
 		expect(createChangedTestPlan(["apps/desktop/src/main.ts"]).toTest).toEqual(["desktop"]);
 	});
 
 	it("runs every core test package for global quality inputs", () => {
-		const plan = createChangedTestPlan(["bun.lock"]);
-		expect(plan.globalTriggers).toEqual(["bun.lock"]);
-		expect(plan.toTest).toEqual([
-			"ai",
-			"agent",
-			"runtime-core",
-			"runtime-mcp",
-			"coding-agent",
-			"ecosystem-adapter",
-			"desktop",
-			"plugin-cli",
-		]);
+		const plan = createChangedTestPlan(["bun.lock", "turbo.json"]);
+		expect(plan.globalTriggers).toEqual(["bun.lock", "turbo.json"]);
+		expect(plan.runQuality).toBe(true);
+		expect(plan.toTest).toEqual(Object.keys(TESTABLE_PACKAGES));
 	});
 
 	it("runs quality tests when their implementation changes", () => {
 		const plan = createChangedTestPlan(["scripts/quality/test-changed.mjs"]);
 		expect(plan.runQuality).toBe(true);
-		expect(plan.toTest).toEqual([
-			"ai",
-			"agent",
-			"runtime-core",
-			"runtime-mcp",
-			"coding-agent",
-			"ecosystem-adapter",
-			"desktop",
-			"plugin-cli",
-		]);
+		expect(plan.toTest).toEqual(Object.keys(TESTABLE_PACKAGES));
 	});
 
 	it("accepts both base argument forms and rejects unknown arguments", () => {
 		expect(parseArgs(["--base", "origin/main"])).toEqual({ base: "origin/main" });
 		expect(parseArgs(["--base=origin/release"])).toEqual({ base: "origin/release" });
 		expect(() => parseArgs(["--unknown"])).toThrow("unknown argument");
+	});
+
+	it("builds generated workspace exports required by tests without building leaf applications", () => {
+		const dependencies = buildableTestDependencies(Object.keys(TESTABLE_PACKAGES));
+		expect(dependencies).toEqual(
+			expect.arrayContaining([
+				"@vetta/action-rpc",
+				"@vetta/runtime-storage",
+				"@vetta-org/plugin-sdk",
+				"@vetta/toolkit",
+			]),
+		);
+		expect(dependencies).not.toEqual(
+			expect.arrayContaining(["@vetta/desktop", "@vetta/docs-site", "@vetta/remote-relay"]),
+		);
+	});
+});
+
+describe("CI unit test coverage", () => {
+	const workflow = readFileSync(join(repoRoot, ".github/workflows/quality.yml"), "utf8");
+	const mobileWorkflow = readFileSync(join(repoRoot, ".github/workflows/mobile.yml"), "utf8");
+	const rootManifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+
+	it("runs affected workspace tests on Linux and Windows with complete Git history", () => {
+		expect(workflow).toContain("os: [ubuntu-latest, windows-latest]");
+		expect(workflow).toContain("fetch-depth: 0");
+		expect(workflow).toContain("bun run test:changed --base");
+	});
+
+	it("keeps the local full-test entry point sequential and discovery-based", () => {
+		expect(rootManifest.scripts.test).toBe("bun run scripts/quality/test-pkg.mjs --all");
+		expect(rootManifest.scripts["test:unit"]).toBe("bun run scripts/quality/test-pkg.mjs --all");
+	});
+
+	it("builds the Android app and runs host tests when Mobile changes", () => {
+		expect(mobileWorkflow).toContain('      - "apps/mobile/**"');
+		expect(mobileWorkflow).toContain(":shared:testAndroidHostTest");
+		expect(mobileWorkflow).toContain(":androidApp:assembleDebug");
 	});
 });
 
@@ -1185,146 +1220,45 @@ describe("package boundary analysis", () => {
 	});
 });
 
-describe("workspace build order", () => {
-	it("parses package build calls once in declaration order", () => {
-		expect(
-			parseBuildPackageOrder(`
-				build_pkg packages/runtime-core
-				build_pkg packages/runtime-tools
-				build_pkg packages/coding-agent
-				build_pkg packages/coding-agent
-			`),
-		).toEqual(["packages/runtime-core", "packages/runtime-tools", "packages/coding-agent"]);
-	});
+describe("Turborepo build orchestration", () => {
+	const rootManifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+	const turboConfig = JSON.parse(readFileSync(join(repoRoot, "turbo.json"), "utf8"));
 
-	it("rejects a production dependency built after its consumer", () => {
-		const manifests = [
-			{
-				dir: "packages/runtime-core",
-				name: "@vetta/runtime-core",
-			},
-			{
-				dir: "packages/coding-agent",
-				name: "@vetta/coding-agent",
-				dependencies: { "@vetta/runtime-core": "workspace:*" },
-			},
-		];
-
-		expect(findBuildOrderViolations(["packages/coding-agent", "packages/runtime-core"], manifests)).toEqual([
-			"packages/coding-agent is built before its workspace dependency packages/runtime-core",
-		]);
-		expect(findBuildOrderViolations(["packages/runtime-core", "packages/coding-agent"], manifests)).toEqual([]);
-	});
-
-	it("ignores test-only dependency edges", () => {
-		const manifests = [
-			{
-				dir: "packages/runtime-core",
-				name: "@vetta/runtime-core",
-				devDependencies: { "@vetta/coding-agent": "workspace:*" },
-			},
-			{
-				dir: "packages/coding-agent",
-				name: "@vetta/coding-agent",
-			},
-		];
-
-		expect(findBuildOrderViolations(["packages/runtime-core", "packages/coding-agent"], manifests)).toEqual([]);
-	});
-
-	it("requires buildable Desktop workspace dependencies in the incremental prerequisite graph", () => {
-		const packageConfigs = {
-			"remote-control": { dir: "packages/remote-control" },
-		};
-		const desktopManifest = {
-			dir: "apps/desktop",
-			name: "@vetta/desktop",
-			dependencies: {
-				"@vetta/remote-control": "workspace:*",
-				"@vetta/remote-desktop": "workspace:*",
-				"@vetta/theme-ui": "workspace:*",
-			},
-		};
-		const buildableManifests = [
-			{ dir: "packages/remote-control", name: "@vetta/remote-control" },
-			{ dir: "packages/remote-desktop", name: "@vetta/remote-desktop" },
-		];
-
-		expect(findMissingConsumerBuildDependencies(packageConfigs, desktopManifest, buildableManifests)).toEqual([
-			"apps/desktop workspace dependency packages/remote-desktop is missing from package configs",
-		]);
-	});
-
-	it("does not treat peer dependencies as source build edges", () => {
-		const manifests = [
-			{
-				dir: "packages/runtime-tools",
-				name: "@vetta/runtime-tools",
-				peerDependencies: { "@vetta/coding-agent": "workspace:*" },
-			},
-			{
-				dir: "packages/coding-agent",
-				name: "@vetta/coding-agent",
-				dependencies: { "@vetta/runtime-tools": "workspace:*" },
-			},
-		];
-
-		expect(findBuildOrderViolations(["packages/runtime-tools", "packages/coding-agent"], manifests)).toEqual([]);
-	});
-
-	it("builds a locally developed peer before its consumer", () => {
-		const manifests = [
-			{
-				dir: "packages/plugins/plugin-sdk",
-				name: "@vetta-org/plugin-sdk",
-			},
-			{
-				dir: "packages/plugins/plugin-vite",
-				name: "@vetta-org/plugin-vite",
-				peerDependencies: { "@vetta-org/plugin-sdk": ">=0.1.1 <0.2.0" },
-				devDependencies: { "@vetta-org/plugin-sdk": "workspace:*" },
-			},
-		];
-
-		expect(
-			findBuildOrderViolations(["packages/plugins/plugin-vite", "packages/plugins/plugin-sdk"], manifests),
-		).toEqual(["packages/plugins/plugin-vite is built before its workspace dependency packages/plugins/plugin-sdk"]);
-		expect(
-			findBuildOrderViolations(["packages/plugins/plugin-sdk", "packages/plugins/plugin-vite"], manifests),
-		).toEqual([]);
-		const packageConfigs = {
-			"plugin-sdk": { dir: "packages/plugins/plugin-sdk" },
-			"plugin-vite": { dir: "packages/plugins/plugin-vite" },
-		};
-		expect(findLayeredBuildOrderViolations(packageConfigs, [["plugin-sdk", "plugin-vite"]], manifests)).toEqual([
-			"plugin-vite is not in a later build layer than its workspace dependency plugin-sdk",
-		]);
-		expect(findLayeredBuildOrderViolations(packageConfigs, [["plugin-sdk"], ["plugin-vite"]], manifests)).toEqual([]);
-	});
-
-	it("rejects parallel or reversed desktop prerequisite layers", () => {
-		const packageConfigs = {
-			"runtime-core": { dir: "packages/runtime-core" },
-			"coding-agent": { dir: "packages/coding-agent" },
-		};
-		const manifests = [
-			{
-				dir: "packages/runtime-core",
-				name: "@vetta/runtime-core",
-			},
-			{
-				dir: "packages/coding-agent",
-				name: "@vetta/coding-agent",
-				dependencies: { "@vetta/runtime-core": "workspace:*" },
-			},
-		];
-
-		expect(findLayeredBuildOrderViolations(packageConfigs, [["coding-agent"], ["runtime-core"]], manifests)).toEqual([
-			"coding-agent is not in a later build layer than its workspace dependency runtime-core",
-		]);
-		expect(findLayeredBuildOrderViolations(packageConfigs, [["runtime-core"], ["coding-agent"]], manifests)).toEqual(
-			[],
+	it("derives build order from the workspace graph and caches declared artifacts", () => {
+		expect(turboConfig.tasks.build.dependsOn).toEqual(["^build"]);
+		expect(turboConfig.tasks.build.outputs).toEqual(
+			expect.arrayContaining(["dist/**", "release/**", ".next/**", "!.next/cache/**"]),
 		);
+		expect(turboConfig.globalEnv).toContain("VETTA_*");
+	});
+
+	it("keeps Desktop build and remote cache outside the initial cache boundary", () => {
+		expect(turboConfig.tasks["@vetta/desktop#build"]).toMatchObject({
+			cache: false,
+			dependsOn: ["^build"],
+		});
+		expect(turboConfig.remoteCache).toEqual({ enabled: false });
+	});
+
+	it("routes root builds through Turbo while preserving preset orchestration", () => {
+		expect(rootManifest.devDependencies.turbo).toMatch(/^\d+\.\d+\.\d+$/);
+		expect(rootManifest.scripts.build).toContain("turbo run build");
+		expect(rootManifest.scripts["build:desktop"]).toContain("--filter=@vetta/desktop");
+		expect(rootManifest.scripts["build:cli"]).toContain("--filter=@vetta/cli-host");
+		expect(rootManifest.scripts["build:preset"]).toBe("bun run --cwd apps/desktop build:presets");
+		expect(Object.values(rootManifest.scripts).join("\n")).not.toContain("scripts/build.sh");
+	});
+
+	it("removes superseded hand-written task graphs", () => {
+		for (const path of [
+			"scripts/build.sh",
+			"scripts/build.ps1",
+			"scripts/workspace-build-dependencies.mjs",
+			"scripts/quality/check-build-order.mjs",
+			"apps/desktop/scripts/build-workspace-prereqs.mjs",
+		]) {
+			expect(existsSync(join(repoRoot, path)), path).toBe(false);
+		}
 	});
 });
 

@@ -7,7 +7,7 @@
  * z-index，被 z-1000 的宫格盖住，表面症状是「点了应用只有蒙层变黑」。这里把它钉死。
  */
 import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
 
 import { act } from "react";
@@ -45,7 +45,7 @@ function sourceFiles(dir: string): string[] {
 it("作用域根只由 PluginPortal 产出，别处不许自己写", () => {
 	const offenders = sourceFiles(join(import.meta.dirname, "../src"))
 		.filter((path) => readFileSync(path, "utf8").includes("data-vetta-plugin-root"))
-		.map((path) => path.replace(/.*\/src\//, "src/"));
+		.map((path) => relative(join(import.meta.dirname, ".."), path).replaceAll("\\", "/"));
 	expect(offenders).toEqual(["src/plugin-portal.tsx"]);
 });
 

@@ -19,7 +19,7 @@ All notable changes to `@vetta/ecosystem-adapter` are documented in this file.
 
 ### Fixed
 
-- **Windows command Hook 的引号被当成参数正文**：`NodeHookCommandExecutor` 调用 `cmd.exe /C` 时启用原样参数传递，避免 Node 再次转义已经组装好的 Hook 命令；frontmatter `args` 中的 Windows 绝对脚本路径现在可以正常执行。
+- **Windows command Hook 的引号被当成参数正文**：无结构化参数的 shell 命令仍通过 `cmd.exe /C` 原样传递；Claude `command + args` 配置会保留 argv 边界并直接启动进程，含空格的 Windows 绝对脚本路径不再被 shell 二次解析。
 
 ### Changed
 

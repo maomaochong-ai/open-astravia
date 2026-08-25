@@ -4,10 +4,10 @@ import { join, resolve as resolvePath } from "node:path";
 import { type AssistantMessage, type AssistantMessageEvent, EventStream, type Message, type Model } from "@vetta/ai";
 import {
 	AgentCoreTurnEngine,
-	type AgentProfile,
 	FeatureCompiler,
 	type IdGenerator,
 	PassthroughContextStrategy,
+	type RuntimeCapabilityDefinition,
 	type RuntimeSnapshot,
 	resolveModelCallFrame,
 	StaticRuntimeSnapshotProvider,
@@ -129,12 +129,11 @@ function createDefaultRegistry(now: () => Date, cwd = process.cwd()): InMemoryCo
 	]);
 }
 
-function profile(
+function capabilities(
 	catalog: CodingToolCatalog,
 	activation: CodingToolActivation = { mode: "scope", scope: "project" },
-): AgentProfile {
+): RuntimeCapabilityDefinition {
 	return {
-		id: "coding",
 		instructions: [],
 		features: [
 			createCodingToolsFeature({
@@ -165,7 +164,7 @@ async function compileCatalogSnapshot(
 	const compiler = new FeatureCompiler({
 		idGenerator: new SnapshotIdGenerator(),
 	});
-	return compiler.compile(profile(catalog, activation), new AbortController().signal);
+	return compiler.compile(capabilities(catalog, activation), new AbortController().signal);
 }
 
 async function collectEngineEvents(

@@ -49,6 +49,15 @@ export {
 	type MemoryTextStorage,
 } from "./memory-runtime.js";
 export {
+	type CodingAgentPromptProfile,
+	type CodingAgentRuntimeDefinitionOptions,
+	type CodingAgentRuntimeInstanceAssembly,
+	type CodingAgentRuntimeInstanceContext,
+	type CodingAgentRuntimeSessionContext,
+	createCodingAgentRuntimeDefinition,
+	DEFAULT_CODING_AGENT_RUNTIME_ID,
+} from "./runtime-agent-definition.js";
+export {
 	type CodingAgentPromptRuntimeSourceContext,
 	type CodingAgentPromptRuntimeSources,
 	type CodingAgentRuntimeComposition,

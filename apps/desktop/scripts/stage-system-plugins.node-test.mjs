@@ -74,14 +74,17 @@ test("development and packaging scripts pin their system plugin profiles without
 	);
 	assert.match(packageJson.scripts["build:pack"], /VETTA_SYSTEM_PLUGIN_PROFILE=production/);
 	assert.match(packageJson.scripts["prepare:pack"], /VETTA_SYSTEM_PLUGIN_PROFILE=production/);
-	assert.equal(
-		packageJson.scripts["prepare:workspace"],
-		"node scripts/build-workspace-prereqs.mjs --force",
-	);
-	assert.equal(
-		packageJson.scripts["prepare:workspace:dev"],
-		"node scripts/build-workspace-prereqs.mjs",
-	);
+	const productionWorkspaceBuild = packageJson.scripts["prepare:workspace"];
+	const developmentWorkspaceBuild = packageJson.scripts["prepare:workspace:dev"];
+	for (const script of [productionWorkspaceBuild, developmentWorkspaceBuild]) {
+		assert.match(script, /^turbo run build /);
+		assert.match(script, /--cwd \.\.\/\.\./);
+		assert.match(script, /--filter=@vetta\/desktop\.\.\./);
+		assert.match(script, /--filter=@vetta-org\/plugin-vite\.\.\./);
+		assert.match(script, /--filter=!@vetta\/desktop/);
+	}
+	assert.match(productionWorkspaceBuild, /--force/);
+	assert.doesNotMatch(developmentWorkspaceBuild, /--force/);
 	assert.equal(packageJson.scripts["prebuild:pack"], undefined);
 	assert.ok(
 		desktopPackPreparation.indexOf("bun run prepare:workspace") <

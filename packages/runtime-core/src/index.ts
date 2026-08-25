@@ -1,3 +1,4 @@
+export * from "./agents/index.js";
 export * from "./context-composition/index.js";
 export type {
 	AgentPluginContinuationContribution,
@@ -84,6 +85,7 @@ export type {
 	RuntimeFailureOrigin,
 } from "./failure-contract.js";
 export { runtimeFailureFromAIErrorDetails, runtimeFailureFromError } from "./failure-contract.js";
+export * from "./observation/index.js";
 export type {
 	RuntimeExecutionObservationEvent,
 	RuntimeMessageEnvelope,

@@ -107,7 +107,7 @@ describe("Coding Agent specialized tool surface", () => {
 		const feature = await definition.prepare({ signal });
 
 		try {
-			const contribution = await feature.contribute({ profileId: "test", signal });
+			const contribution = await feature.contribute({ signal });
 			const provider = contribution.modelCallProviders?.[0];
 			if (!provider?.bindForTurn) throw new Error("Expected a Turn-bindable invoke_skill provider");
 			const bind = (turnId: string) =>
