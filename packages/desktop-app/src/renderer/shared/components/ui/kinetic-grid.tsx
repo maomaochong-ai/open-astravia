@@ -7,55 +7,54 @@ import { cn } from "@shared/lib/utils";
  * 动态网格背景（Kinetic Grid，参考 shadcn kinetic-grid）：
  * - 网格由交叉的网格线组成，交叉处绘制小圆点；
  * - 光标靠近时，线条与点被平滑推开（远离指针），形成向指针弯曲的变形；
- * - 点击空白处产生向外扩散的涟漪：波前把线条与点沿径向推出（几何变形），
- *   同时波前附近的线条变亮（亮度渐变亮带），随扩散衰减直至消失；
+ * - 点击并按住网格时产生拖拽变形：以按点为抓取点，周围一定半径内的
+ *   线条与点作为一个整体跟随指针平移（保持网格自身结构、线条不缠绕），
+ *   边缘按距离平滑衰减融入，影响范围内呈主题色渐变；松开后平滑回弹
+ *   （无涟漪、无波前传播）；
  * - 颜色读取 CSS 变量 `--primary`（canvas 无法解析 var()，通过 probe 元素取计算色），
  *   主题切换（class / data-theme / data-mode 变化）时自动刷新；
- * - 边缘渐隐用 CSS mask 实现。
+ * - 四周边缘用宽缓的 CSS mask 渐隐，与背景主题自然融入。
  * 遵循 DESIGN.md：颜色不硬编码、线条 1px、reduced-motion 时只画一帧静态网格。
  */
 export interface KineticGridProps {
 	className?: string;
 	/** 网格间距（CSS 像素）。 */
 	gridSize?: number;
-	/** 光标与涟漪的影响半径（CSS 像素）。 */
+	/** 光标的影响半径（CSS 像素）。 */
 	waveRadius?: number;
-	/** 涟漪扩散速度（CSS 像素/秒）。 */
-	waveSpeed?: number;
 }
 
-const DEFAULT_GRID_SIZE = 48;
+const DEFAULT_GRID_SIZE = 32;
 const DEFAULT_WAVE_RADIUS = 260;
-const DEFAULT_WAVE_SPEED = 340;
 
 /** 网格线基础透明度（叠加在 --primary 之上）。 */
-const LINE_ALPHA = 0.16;
+const LINE_ALPHA = 0.06;
 /** 网格点基础透明度。 */
-const DOT_ALPHA = 0.55;
+const DOT_ALPHA = 0.3;
 /** 网格点基础半径（CSS 像素）。 */
-const DOT_RADIUS = 1.5;
+const DOT_RADIUS = 1.0;
 /** 光标推开线条/点的最大位移（CSS 像素）。 */
 const CURSOR_PUSH = 22;
-/** 涟漪波前推出线条/点的最大位移（CSS 像素）。 */
-const WAVE_PUSH = 30;
-/** 涟漪作用环的半宽（CSS 像素），波前前后各一半。 */
-const WAVE_HALF_WIDTH = 60;
-/** 波前亮度增益（线条 alpha 的倍率增量）。 */
-const BRIGHT_GAIN = 0.9;
-/** 同时存在的最大涟漪数，超出时丢弃最旧的。 */
-const MAX_WAVES = 8;
-
-interface Wave {
-	x: number;
-	y: number;
-	age: number;
-	radius: number;
-	maxRadius: number;
-}
-
+/** 拖拽变形影响半径（CSS 像素）。 */
+const DRAG_RADIUS = 200;
+/** 拖拽位移上限（CSS 像素），限制幅度避免变形过猛。 */
+const DRAG_MAX_OFFSET = 72;
+/** 拖拽影响范围内的亮度增益（渐变色，中心最强、向外衰减）。 */
+const DRAG_GAIN = 1.4;
+/** 按下时位移平滑拉起速度（1/秒）。 */
+const DRAG_RISE = 15;
+/** 松开后回弹衰减速度（1/秒），指数衰减、干净无过冲。 */
+const DRAG_FALL = 9;
 interface GridPoint {
 	x: number;
 	y: number;
+}
+
+interface DragState {
+	x: number; // 抓取点（按下位置，固定）
+	y: number;
+	ox: number; // 当前位移向量（世界坐标）
+	oy: number;
 }
 
 let probe: HTMLDivElement | null = null;
@@ -86,7 +85,6 @@ export function KineticGrid({
 	className,
 	gridSize = DEFAULT_GRID_SIZE,
 	waveRadius = DEFAULT_WAVE_RADIUS,
-	waveSpeed = DEFAULT_WAVE_SPEED,
 }: KineticGridProps): JSX.Element {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -109,9 +107,10 @@ export function KineticGrid({
 		let rgb = readTokenRgb("--primary") ?? [99, 102, 241];
 		let cursor = { x: Number.NEGATIVE_INFINITY, y: Number.NEGATIVE_INFINITY };
 		let smoothed = { ...cursor };
-		const waves: Wave[] = [];
-		let raf = 0;
+		let drag: DragState | null = null;
+		let dragging = false;
 		let last = performance.now();
+		let raf = 0;
 
 		// 网格采样：垂直线（固定 x、y 采样）、水平线（固定 y、x 采样）与交叉点。
 		let verticals: GridPoint[][] = [];
@@ -161,8 +160,8 @@ export function KineticGrid({
 		};
 
 		/**
-		 * 计算采样点在光标与涟漪作用下的位移与亮度。
-		 * bright 为 1 表示正常亮度，涟漪波前附近 >1（变亮）。
+		 * 计算采样点在光标与拖拽作用下的位移与亮度。
+		 * bright 为 1 表示正常亮度，拖拽影响范围内 >1（变亮、主题色渐变）。
 		 */
 		const pointEffect = (
 			px: number,
@@ -173,32 +172,28 @@ export function KineticGrid({
 			let bright = 1;
 
 			// 光标：把点从指针处推开（方向远离指针），强度随距离平滑衰减。
+			// 拖拽进行中（dragging）时暂停该效果，避免与拖拽变形互相抵消。
 			const dc = Math.hypot(px - smoothed.x, py - smoothed.y);
-			if (dc < waveRadius && dc > 0.01) {
+			if (!dragging && dc < waveRadius && dc > 0.01) {
 				const k = 1 - dc / waveRadius;
 				const falloff = Math.sin(k * Math.PI) * k;
 				ox += ((px - smoothed.x) / dc) * CURSOR_PUSH * falloff;
 				oy += ((py - smoothed.y) / dc) * CURSOR_PUSH * falloff;
 			}
 
-			// 涟漪：波前附近（前后 WAVE_HALF_WIDTH 范围内）的点沿径向向外推出，
-			// 位移带正弦起伏并随扩散衰减；波前附近线条同时变亮形成亮带。
-			for (const wave of waves) {
-				const dw = Math.hypot(px - wave.x, py - wave.y);
-				if (dw < 0.01) {
-					continue;
+			// 拖拽变形：影响半径内的点/线作为一个整体跟随位移向量平移，
+			// 边缘按 (1 - d/R)² 平滑衰减到 0，保持网格结构、线条不缠绕；
+			// 位移与亮度同源衰减，呈主题色渐变。无涟漪：无波前传播，
+			// 整个影响区同时、持续变形。
+			if (drag) {
+				const dd = Math.hypot(px - drag.x, py - drag.y);
+				if (dd < DRAG_RADIUS) {
+					const t = dd / DRAG_RADIUS;
+					const falloff = (1 - t) * (1 - t);
+					ox += drag.ox * falloff;
+					oy += drag.oy * falloff;
+					bright += DRAG_GAIN * falloff;
 				}
-				const edge = dw - wave.radius;
-				if (Math.abs(edge) > WAVE_HALF_WIDTH) {
-					continue;
-				}
-				const k = 1 - Math.abs(edge) / WAVE_HALF_WIDTH;
-				const fade = 1 - wave.radius / wave.maxRadius;
-				const pulse = Math.sin((wave.radius - dw) / 26) * 0.5 + 0.5;
-				const strength = WAVE_PUSH * k * (0.35 + 0.65 * pulse) * fade;
-				ox += ((px - wave.x) / dw) * strength;
-				oy += ((py - wave.y) / dw) * strength;
-				bright += BRIGHT_GAIN * k * (0.4 + 0.6 * pulse) * fade;
 			}
 
 			return { ox, oy, bright };
@@ -247,13 +242,24 @@ export function KineticGrid({
 			smoothed.x += (cursor.x - smoothed.x) * 0.18;
 			smoothed.y += (cursor.y - smoothed.y) * 0.18;
 
-			// 涟漪推进与回收。
-			for (let i = waves.length - 1; i >= 0; i--) {
-				const wave = waves[i];
-				wave.age += dt;
-				wave.radius = wave.age * waveSpeed;
-				if (wave.radius > wave.maxRadius) {
-					waves.splice(i, 1);
+			// 拖拽场：按下时位移向量跟随指针（相对抓取点、限幅、平滑拉起），
+			// 松开后指数衰减回弹到 0 并移除。
+			if (drag) {
+				if (dragging) {
+					const dx = cursor.x - drag.x;
+					const dy = cursor.y - drag.y;
+					const dist = Math.hypot(dx, dy);
+					const scale = dist > DRAG_MAX_OFFSET ? DRAG_MAX_OFFSET / dist : 1;
+					const step = Math.min(dt * DRAG_RISE, 1);
+					drag.ox += (dx * scale - drag.ox) * step;
+					drag.oy += (dy * scale - drag.oy) * step;
+				} else {
+					const decay = Math.exp(-DRAG_FALL * dt);
+					drag.ox *= decay;
+					drag.oy *= decay;
+					if (Math.hypot(drag.ox, drag.oy) < 0.4) {
+						drag = null;
+					}
 				}
 			}
 
@@ -267,12 +273,12 @@ export function KineticGrid({
 				strokeLine(horizontals[i]);
 			}
 
-			// 交叉点。
-			ctx.fillStyle = toRgba(rgb, DOT_ALPHA);
+			// 交叉点：拖拽增益同步放大半径与 alpha，让渐变色在点上同样可见。
 			for (let i = 0; i < dots.length; i++) {
 				const d = dots[i];
 				const { ox, oy, bright } = pointEffect(d.x, d.y);
 				const r = DOT_RADIUS * (1 + 0.8 * (bright - 1));
+				ctx.fillStyle = toRgba(rgb, DOT_ALPHA * bright);
 				ctx.beginPath();
 				ctx.arc(d.x + ox, d.y + oy, r, 0, Math.PI * 2);
 				ctx.fill();
@@ -313,19 +319,15 @@ export function KineticGrid({
 				return;
 			}
 			const local = toLocal(event.clientX, event.clientY);
-			waves.push({
-				x: local.x,
-				y: local.y,
-				age: 0,
-				radius: 0,
-				maxRadius: Math.max(width, height) * 0.65,
-			});
-			if (waves.length > MAX_WAVES) {
-				waves.shift();
-			}
+			dragging = true;
+			drag = { x: local.x, y: local.y, ox: 0, oy: 0 };
+		};
+		const onPointerUp = (): void => {
+			dragging = false;
 		};
 		const onPointerLeave = (): void => {
 			cursor = { x: Number.NEGATIVE_INFINITY, y: Number.NEGATIVE_INFINITY };
+			dragging = false;
 		};
 
 		const cleanup = (): void => {
@@ -334,6 +336,7 @@ export function KineticGrid({
 			themeObserver.disconnect();
 			window.removeEventListener("pointermove", onPointerMove);
 			window.removeEventListener("pointerdown", onPointerDown);
+			window.removeEventListener("pointerup", onPointerUp);
 			window.removeEventListener("pointerleave", onPointerLeave);
 		};
 
@@ -345,11 +348,12 @@ export function KineticGrid({
 
 		window.addEventListener("pointermove", onPointerMove, { passive: true });
 		window.addEventListener("pointerdown", onPointerDown, { passive: true });
+		window.addEventListener("pointerup", onPointerUp, { passive: true });
 		window.addEventListener("pointerleave", onPointerLeave, { passive: true });
 
 		raf = requestAnimationFrame(loop);
 		return cleanup;
-	}, [reduceMotion, gridSize, waveRadius, waveSpeed]);
+	}, [reduceMotion, gridSize, waveRadius]);
 
 	return (
 		<div
@@ -358,9 +362,9 @@ export function KineticGrid({
 			className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)}
 			style={{
 				maskImage:
-					"radial-gradient(ellipse 80% 75% at 50% 45%, rgba(0,0,0,0.9) 20%, rgba(0,0,0,0.45) 55%, transparent 100%)",
+					"radial-gradient(ellipse 120% 110% at 50% 44%, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 32%, rgba(0,0,0,0.28) 55%, rgba(0,0,0,0.12) 74%, rgba(0,0,0,0.04) 88%, transparent 100%)",
 				WebkitMaskImage:
-					"radial-gradient(ellipse 80% 75% at 50% 45%, rgba(0,0,0,0.9) 20%, rgba(0,0,0,0.45) 55%, transparent 100%)",
+					"radial-gradient(ellipse 120% 110% at 50% 44%, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 32%, rgba(0,0,0,0.28) 55%, rgba(0,0,0,0.12) 74%, rgba(0,0,0,0.04) 88%, transparent 100%)",
 			}}
 		>
 			<canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
