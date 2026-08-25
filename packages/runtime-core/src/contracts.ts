@@ -148,6 +148,8 @@ export interface AgentPluginToolContribution {
 	 * heavy 工具在会话内首次调用前需要用户确认。
 	 */
 	side_effect?: string;
+	/** Host-adapted association with `plugin.<pluginId>.settings`; omitted tools have no configuration contract. */
+	configuration?: { settingKeys?: string[]; support: "adapter" };
 	context?: { conversation?: "summary" | "messages" };
 }
 

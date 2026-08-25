@@ -1,3 +1,4 @@
+import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
 import type { AsyncExecutionGate, CodingToolExecutableResolver, CodingToolRegistration } from "@vetta/runtime-tools";
 import { createNodeSpecializedToolRegistrations } from "./host/specialized-tool-registrations.js";
 import { createBackgroundCommandToolExecutor } from "./shared/background-command-executor.js";
@@ -29,6 +30,7 @@ export interface NodeCodingToolEnvironmentOptions {
 	readonly executableResolver: CodingToolExecutableResolver;
 	readonly editPathPolicy: EditPathPolicy;
 	readonly writePathPolicy: WritePathPolicy;
+	readonly configurationSource?: RuntimeConfigurationSnapshotSource;
 }
 
 export interface NodeCommandToolEnvironmentOptions {
@@ -97,7 +99,7 @@ export function createNodeCodingToolEnvironment(options: NodeCodingToolEnvironme
 
 	return {
 		registrations: [
-			createReadToolRegistration(options.cwd),
+			createReadToolRegistration(options.cwd, { configurationSource: options.configurationSource }),
 			createEditToolRegistration(options.cwd, { pathPolicy: options.editPathPolicy }),
 			...commandEnvironment.registrations,
 			createLsToolRegistration(options.cwd),

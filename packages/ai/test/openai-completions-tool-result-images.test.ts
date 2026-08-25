@@ -50,6 +50,39 @@ function buildToolResult(toolCallId: string, timestamp: number): ToolResultMessa
 }
 
 describe("openai-completions convertMessages", () => {
+	it("forwards user images when image capability metadata is missing", () => {
+		const baseModel = getModel("openai", "gpt-4o-mini");
+		const model: Model<"openai-completions"> = {
+			...baseModel,
+			api: "openai-completions",
+			input: ["text"],
+		};
+		const messages = convertMessages(
+			model,
+			{
+				messages: [
+					{
+						role: "user",
+						content: [
+							{ type: "text", text: "inspect" },
+							{ type: "image", data: "ZmFrZQ==", mimeType: "image/png" },
+						],
+						timestamp: 1,
+					},
+				],
+			},
+			compat,
+		);
+
+		expect(messages[0]).toEqual({
+			role: "user",
+			content: [
+				{ type: "text", text: "inspect" },
+				{ type: "image_url", image_url: { url: "data:image/png;base64,ZmFrZQ==" } },
+			],
+		});
+	});
+
 	it("batches tool-result images after consecutive tool results", () => {
 		const baseModel = getModel("openai", "gpt-4o-mini");
 		const model: Model<"openai-completions"> = {

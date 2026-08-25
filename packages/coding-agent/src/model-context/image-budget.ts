@@ -1,9 +1,12 @@
 import type { AgentMessage } from "@vetta/agent-core";
 import type { ImageContent, TextContent, ToolResultMessage, UserMessage } from "@vetta/ai";
+import { CODING_IMAGE_CONFIGURATION } from "@vetta/runtime-tools";
 
 const IMAGE_OMITTED_PLACEHOLDER = "[earlier image omitted to conserve memory]";
-export const DEFAULT_IMAGE_REQUEST_HIGH_WATERMARK_BYTES = 16 * 1024 * 1024;
-export const DEFAULT_IMAGE_REQUEST_LOW_WATERMARK_BYTES = 12 * 1024 * 1024;
+export const DEFAULT_IMAGE_REQUEST_HIGH_WATERMARK_BYTES =
+	CODING_IMAGE_CONFIGURATION.defaultValue.requestBudget.highWatermarkBytes;
+export const DEFAULT_IMAGE_REQUEST_LOW_WATERMARK_BYTES =
+	CODING_IMAGE_CONFIGURATION.defaultValue.requestBudget.lowWatermarkBytes;
 
 export interface ImageBudgetOptions {
 	readonly highWatermarkBytes?: number;

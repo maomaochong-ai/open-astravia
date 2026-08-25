@@ -79,8 +79,7 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 		request: PromptRequest,
 		context: RuntimeInputRequestPreparationContext,
 	): Promise<RuntimeInputRequestPreparationResult> {
-		const normalized = normalizeImagesForModel(request, context);
-		const intercepted = await this.intercept(normalized);
+		const intercepted = await this.intercept(request);
 		if (intercepted.action === "handled") return intercepted;
 		const input = await this.preparePrompt(intercepted.request, context);
 		await this.onPrepared?.();
@@ -255,28 +254,6 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 		}
 		return records;
 	}
-}
-
-function normalizeImagesForModel(
-	request: PromptRequest,
-	context: RuntimeInputRequestPreparationContext,
-): PromptRequest {
-	if (
-		!request.images ||
-		request.images.length === 0 ||
-		!context.modelBinding ||
-		context.modelBinding.model.input.includes("image")
-	) {
-		return request;
-	}
-	return {
-		...request,
-		images: undefined,
-		text:
-			request.text === "(see attached images)"
-				? "(User attempted to send images, but the current model does not support image input. Please inform the user that this model cannot process images.)"
-				: request.text,
-	};
 }
 
 interface CodingAgentPromptInputInterceptor {

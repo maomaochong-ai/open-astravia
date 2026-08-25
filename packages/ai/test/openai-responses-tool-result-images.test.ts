@@ -16,6 +16,35 @@ const model: Model<"openai-responses"> = {
 };
 
 describe("openai-responses tool-result images", () => {
+	it("forwards user images when image capability metadata is missing", () => {
+		const context: Context = {
+			messages: [
+				{
+					role: "user",
+					content: [
+						{ type: "text", text: "inspect" },
+						{ type: "image", data: "ZmFrZQ==", mimeType: "image/png" },
+					],
+					timestamp: 1,
+				},
+			],
+		};
+
+		expect(convertResponsesMessages(model, context, new Set())).toEqual([
+			{
+				role: "user",
+				content: [
+					{ type: "input_text", text: "inspect" },
+					{
+						type: "input_image",
+						detail: "auto",
+						image_url: "data:image/png;base64,ZmFrZQ==",
+					},
+				],
+			},
+		]);
+	});
+
 	it("forwards tool-result images when image capability metadata is missing", () => {
 		const context: Context = {
 			messages: [

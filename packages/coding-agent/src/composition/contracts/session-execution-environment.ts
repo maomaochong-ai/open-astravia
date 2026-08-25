@@ -1,4 +1,5 @@
 import type { ConversationScenario } from "@vetta/runtime-core";
+import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
 import type {
 	SandboxPermissionRequest,
 	SandboxSessionGrantEntry,
@@ -49,6 +50,7 @@ export interface CodingAgentSessionExecutionEnvironmentContext {
 	readonly agentDir?: string;
 	readonly scenario: ConversationScenario;
 	readonly env?: Readonly<Record<string, string>>;
+	readonly configurationSource?: RuntimeConfigurationSnapshotSource;
 }
 
 /** Session 独占的命令 Tool 与后台任务宿主；任务控制 Tool、产品模式和激活策略不属于该环境。 */

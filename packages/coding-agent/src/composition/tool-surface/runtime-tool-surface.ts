@@ -1,4 +1,5 @@
 import type { ConversationScenario, RuntimeObservationPublisher, RuntimeSessionValueIndex } from "@vetta/runtime-core";
+import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { CODING_TOOL_SCOPES, type CodingToolActivation, type CodingToolResultPolicy } from "@vetta/runtime-tools";
@@ -44,6 +45,7 @@ export interface CodingAgentRuntimeToolSurfaceOptions {
 	readonly createToolEnvironment: CodingAgentToolEnvironmentFactory;
 	readonly resultPolicy?: CodingToolResultPolicy;
 	readonly observationPublisher?: RuntimeObservationPublisher;
+	readonly configurationSource?: RuntimeConfigurationSnapshotSource;
 }
 
 export interface CodingAgentRuntimeToolSurface {
@@ -80,6 +82,7 @@ export async function createCodingAgentRuntimeToolSurface(
 		cwd: options.cwd,
 		agentDir: options.agentDir,
 		scenario: options.scenario,
+		configurationSource: options.configurationSource,
 	});
 	const tools = createCodingToolsRuntimeComposition({
 		cwd: options.cwd,

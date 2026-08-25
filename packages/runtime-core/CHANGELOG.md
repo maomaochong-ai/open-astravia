@@ -6,6 +6,12 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- 新增 `@vetta/runtime-core/configuration` 产品无关配置基座：Configuration Definition/Source revision、幂等
+  lease、原子 Source replace、retire/remove、Host 有序 Layer 深合并、逐层 Codec 校验、无效值回退和不可变
+  resolved snapshot。配置值不进入 Observation；Tool、MCP 与其它 Capability 通过上层 Adapter 选择性接入。
+- 新增 Source-owned `RuntimeConfigurationLayerRegistry` 与 `RuntimeConfigurationCenter`，统一动态 Layer 的
+  ownership、revision 去重、原子替换、跨 Source 冲突、last-known-good 和当前 generation 捕获；Host/Agent 只作为
+  Layer Source，不拥有合并规则或配置中心。
 - `RuntimeObservationPublisher` 新增已有安全 record 的无损 `forward()`，并提供标准 Publisher-to-Port Adapter；子 Hub
   可继承已 scope 的父级 Publisher，保留原 timestamp，同时继续阻止子层覆盖 Agent/revision/instance/session identity。
 - 新增可独立、可嵌套的 `RuntimeObservationHub`：支持动态 Adapter、domain/level/predicate 路由、父级汇聚、

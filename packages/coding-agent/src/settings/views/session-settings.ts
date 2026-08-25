@@ -36,6 +36,7 @@ export function createSessionSettingsView(state: SettingsStatePort): SessionSett
 		setImageAutoResize: (autoResize) => state.patchGlobal({ images: { autoResize } }),
 		getBlockImages: () => state.read().images?.blockImages ?? false,
 		setBlockImages: (blockImages) => state.patchGlobal({ images: { blockImages } }),
+		getImageSettings: () => state.read().images ?? {},
 		getPersonalization: () => ({
 			personaId: state.read().personalization?.personaId ?? "default",
 			customPrompt: state.read().personalization?.customPrompt ?? "",

@@ -6,6 +6,10 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Added
 
+- Coding Tool 可选声明通用 Runtime Configuration 关联，并通过 Turn-bound Decorator 兼容原生、Legacy
+  Adapter 与 Host Policy 三种接入方式；无配置 Tool 无需实现额外接口，既有 Tool binding/release 会被组合保留。
+- Tool 配置绑定新增安全观测：成功走 info 生命周期事件，缺失配置回退与绑定失败走 warning issue 事件；
+  配置值、异常消息和堆栈不进入事件。
 - `InMemoryCodingToolRegistry` 可注入通用 `RuntimeObservationPublisher`，以领域 Token 发布 register、activate、
   deactivate、revoke 和 unregister 的安全 Catalog 元数据；Tool 调用参数和结果仍由 Runtime Core 的最终执行
   边界统一保护，不进入 Catalog 事件。

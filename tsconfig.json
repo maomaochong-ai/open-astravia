@@ -63,6 +63,7 @@
 			"@sinclair/typebox": ["./node_modules/@sinclair/typebox"],
 			"@vetta/runtime-core": ["./packages/runtime-core/src/index.ts"],
 			"@vetta/runtime-core/agents": ["./packages/runtime-core/src/agents/index.ts"],
+			"@vetta/runtime-core/configuration": ["./packages/runtime-core/src/configuration/index.ts"],
 			"@vetta/runtime-core/conversation": ["./packages/runtime-core/src/conversation/index.ts"],
 			"@vetta/runtime-core/kernel": ["./packages/runtime-core/src/kernel/index.ts"],
 			"@vetta/runtime-core/observation": ["./packages/runtime-core/src/observation/index.ts"],

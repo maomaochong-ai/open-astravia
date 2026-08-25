@@ -92,6 +92,9 @@ interface PluginAgentToolRegistration<TInput = unknown> {
   parameters: object;         // JSON Schema（可用 TypeBox 产出）
   scope_use?: string[];       // 允许出现的对话场景（见下）。fail-closed：缺省/空 = 任何场景都不出现
   requires?: string[];        // 需要的会话能力（如 "knowledge"），一般插件无需设置
+  configuration?: {
+    settingKeys?: string[];   // 与本插件 contributes.settings 的可选关联；省略 keys 表示全部
+  };
   timeoutMs?: number;
   context?: { conversation?: "summary" | "messages" }; // 大上下文 opt-in，缺省只传消息数
   handler: (context: PluginAgentHandlerContext<{
@@ -124,6 +127,13 @@ ctx.agent.registerTool({
 - handler 的**返回值**会被宿主格式化成工具结果文本回给模型；该工具结果的 `details` 为 `{ pluginId, toolId, result }`（`result` = 你的返回值）。
 - **返回 `cards` 即可产消息卡片**：若返回值含 `cards: CardDescriptor[]`，宿主会把它**提升**到 `details.cards`（消息卡片的 settled 数据源）并从模型可见文本里**剔除**。配合 `ctx.ui.registerCardRenderer` 即可让插件**用自己的工具**在消息下方渲染卡片——见 [message-cards.md](./message-cards.md#第三方插件如何拿到卡片数据)。
 - 插件激活会等待工具 schema 注册完成；注册 / 注销 / 权限或启停变化会刷新空闲的对话 session。
+- 工具本身没有配置时不要声明 `configuration`，不会产生空 Schema 或额外运行时开销。
+- 工具使用本插件 `contributes.settings` 时可以声明 `configuration`。宿主把现有 Plugin Settings 作为
+  `plugin.<pluginId>.settings` Definition 的 Adapter 汇入统一配置目录；`settingKeys` 只声明该工具实际消费的字段，
+  省略则表示消费该插件的全部设置。未知字段和重复字段在注册边界被拒绝。
+- 这项声明建立的是配置发现和 UI 关联，不会把其它插件或宿主配置注入 handler；handler 仍通过 `ctx.settings` 读取
+  自身设置。无法修改的外部 / MCP / 黑盒工具应由拥有其 transport 或 wrapper 的宿主声明 `host-policy` Adapter，
+  不应伪造工具原生支持。
 
 ### `scope_use`：按对话场景限定工具出现范围
 

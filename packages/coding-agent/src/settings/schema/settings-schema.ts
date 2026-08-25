@@ -78,6 +78,28 @@ export const SettingsDocumentSchema = Type.Object(
 				{
 					autoResize: Type.Optional(Type.Boolean()),
 					blockImages: Type.Optional(Type.Boolean()),
+					resize: Type.Optional(
+						Type.Object(
+							{
+								maxWidth: Type.Optional(Type.Number()),
+								maxHeight: Type.Optional(Type.Number()),
+								maxInputPixels: Type.Optional(Type.Number()),
+								maxInputEdge: Type.Optional(Type.Number()),
+								maxBytes: Type.Optional(Type.Number()),
+								jpegQuality: Type.Optional(Type.Number()),
+							},
+							{ additionalProperties: true },
+						),
+					),
+					requestBudget: Type.Optional(
+						Type.Object(
+							{
+								highWatermarkBytes: Type.Optional(Type.Number()),
+								lowWatermarkBytes: Type.Optional(Type.Number()),
+							},
+							{ additionalProperties: true },
+						),
+					),
 				},
 				{ additionalProperties: true },
 			),

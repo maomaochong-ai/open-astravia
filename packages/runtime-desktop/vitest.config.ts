@@ -5,6 +5,14 @@ export default defineConfig({
 	resolve: {
 		alias: [
 			{
+				find: "@vetta/runtime-core/configuration",
+				replacement: fileURLToPath(new URL("../runtime-core/src/configuration/index.ts", import.meta.url)),
+			},
+			{
+				find: "@vetta/runtime-core/observation",
+				replacement: fileURLToPath(new URL("../runtime-core/src/observation/index.ts", import.meta.url)),
+			},
+			{
 				find: "@vetta/runtime-node/conversation/legacy",
 				replacement: fileURLToPath(new URL("../runtime-node/src/conversation/legacy.ts", import.meta.url)),
 			},

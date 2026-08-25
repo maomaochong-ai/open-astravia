@@ -2,6 +2,9 @@
 
 ### Added
 
+- 设置中的「插件设置」升级为统一「工具配置」目录：由 Runtime Core Definition/Layer 聚合内建图片处理与插件设置，
+  统一渲染可编辑 Schema、配置消费者及其 `native` / `adapter` 支持方式。敏感插件字段在进入 IPC 前删除；配置写入继续由
+  Agent Settings 与 Plugin Settings 各自的持久化 Adapter 负责。没有配置的 Tool 不显示空条目。
 - 侧边栏导航项支持**原色图片图标**：`SidebarNavItem` 新增可选 `iconUrl`，设置后导航项以 `<img>` 渲染而不染色，插件可用 `registerWorkspaceView({ iconTint: false })` 让自己的彩色 Logo 保持原样（`svg` / `png` / `webp` 等任意图像资源）。`icon` 仍是必填的 class 字符串并同时下发 mask 版本，因此不认识 `iconUrl` 的主题（含替换了 `sidebar.navItem` 组件的主题）继续渲染单色图标，不受影响。缺省仍为单色，与内置导航项保持一致。
 - 插件工作区视图未声明 `icon` 时回落到插件自己的 `plugin.json` Logo（此前固定落到一个通用 widget 图标）：包内图片由宿主生成 mask class 承载，跟随主题前景色着色，因此自带图形的插件不必再去 Iconify 集合里找近似图标。导航项 `icon` 仍是 class 字符串，主题层（含第三方主题）无需改动。
 - 新增系统插件**浏览器操作（Browser Use）**：内聚 `vercel-labs/agent-browser`，Agent 可驱动真实 Chrome 完成导航、a11y 快照定位、填表、点击与登录。能力面走 **Skill + CLI** 而不是 MCP 工具面：上游 `--tools core` 是 29 个工具、约 13.7k token 的 schema，且每个工具都重复一遍全局选项、`agent_browser_read` 与网页搜索语义高度重叠；改成 Skill 后常驻上下文只剩名称与描述（约 50 token），完整用法按需展开，超出常用范围的部分直接读上游自带的 `skills get core`。模型经由 bash 调用插件随包发布的 shim，由 shim 统一加上浏览器来源、session 与安全策略。运行时（约 90MB 原生二进制）在首次使用时经宿主托管 npm 按需安装，未就绪时 shim 打印可转述的安装引导而不是静默失败；本机已装 Chrome 时直接复用，不额外下载 Chrome for Testing。危险动作两层拦截：daemon 侧的 action policy 默认禁用页面脚本执行与文件上传，shim 侧在自己的 argv 上做域名白名单、拒绝会顶掉插件策略的托管标志（`--session` / `--profile` / `--config` / `--cdp` …）与不该由模型执行的子命令（`install` / `upgrade` / `chat` / `plugin` / `connect`）。运行时版本不达标时（例如机器上已有旧版全局安装抢在 PATH 前面）会给出点名版本号的升级引导，并在面板提供「升级」入口。session 由 workspace 根派生并钉住标签页：同一项目下的对话共用浏览器与登录态，不同项目互不打架。安装完成或改动设置后**无需新建会话**即可生效。见 ADR-0079。

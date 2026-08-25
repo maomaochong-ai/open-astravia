@@ -37,6 +37,7 @@ export function createCliCodingAgentToolEnvironmentFactory(
 			protectedDirectories: host.protectedCommandDirectories,
 			editPathPolicy: host.editPathPolicy,
 			writePathPolicy: host.writePathPolicy,
+			configurationSource: context.configurationSource,
 		});
 	};
 }
@@ -67,6 +68,7 @@ export function createCliCodingAgentSessionExecutionEnvironmentFactory(
 						protectedDirectories: host.protectedCommandDirectories,
 						editPathPolicy: host.editPathPolicy,
 						writePathPolicy: host.writePathPolicy,
+						configurationSource: context.configurationSource,
 					}),
 			},
 			dispose: () => command.dispose(),

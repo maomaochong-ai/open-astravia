@@ -34,15 +34,38 @@ export {
 } from "./coding-tools-feature.js";
 export * from "./host/index.js";
 export {
+	CODING_IMAGE_CONFIGURATION,
+	CODING_IMAGE_CONFIGURATION_ID,
+	type CodingImageConfiguration,
+	type CodingImageRequestBudgetConfiguration,
+	type CodingImageResizeConfiguration,
+} from "./image-configuration.js";
+export {
 	CODING_TOOL_CATALOG_OBSERVATION,
+	CODING_TOOL_CONFIGURATION_ISSUE_OBSERVATION,
+	CODING_TOOL_CONFIGURATION_OBSERVATION,
 	type CodingToolCatalogObservation,
 	type CodingToolCatalogOperation,
+	type CodingToolConfigurationIssueObservation,
+	type CodingToolConfigurationObservation,
 } from "./observations.js";
 export { ToolCallDescriptionSchema } from "./tool-call-description.js";
+export {
+	CODING_TOOL_CONFIGURATION_ERROR_CODES,
+	type CodingToolConfigurationAdapterOptions,
+	type CodingToolConfigurationBindContext,
+	CodingToolConfigurationError,
+	type CodingToolConfigurationErrorCode,
+	type CodingToolConfigurationMissingPolicy,
+	type RuntimeToolConfigurationSnapshotSource,
+	withCodingToolConfiguration,
+} from "./tool-configuration.js";
 export {
 	CODING_TOOL_SCOPES,
 	type CodingToolActivation,
 	type CodingToolCategory,
+	type CodingToolConfigurationAssociation,
+	type CodingToolConfigurationSupport,
 	type CodingToolRegistration,
 	type CodingToolScope,
 	type CodingToolSideEffect,

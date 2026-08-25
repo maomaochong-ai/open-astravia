@@ -105,6 +105,30 @@ describe("coding tool registry", () => {
 		expect(registry.snapshot().registrations[0]?.scopeUse).toEqual(["project"]);
 	});
 
+	it("preserves and freezes optional configuration metadata", () => {
+		const configurationIds = ["tool.output"];
+		const registry = new InMemoryCodingToolRegistry([
+			{
+				...registration("configured", ["project"]),
+				configuration: {
+					configurationIds,
+					requiredConfigurationIds: configurationIds,
+					support: "adapter",
+				},
+			},
+		]);
+		configurationIds.push("mutated");
+		const frozen = registry.snapshot().registrations[0];
+
+		expect(frozen?.configuration).toEqual({
+			configurationIds: ["tool.output"],
+			requiredConfigurationIds: ["tool.output"],
+			support: "adapter",
+		});
+		expect(Object.isFrozen(frozen?.configuration)).toBe(true);
+		expect(Object.isFrozen(frozen?.configuration?.configurationIds)).toBe(true);
+	});
+
 	it("preserves class-backed tool execution when freezing the catalog definition", async () => {
 		const registry = new InMemoryCodingToolRegistry([
 			{

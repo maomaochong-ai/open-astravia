@@ -6,6 +6,9 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- `ctx.agent.registerTool()` 新增可选 `configuration.settingKeys`：动态 Tool 可把自己与插件
+  `contributes.settings` 的全部或部分字段关联到宿主统一配置目录。未声明配置的 Tool 行为不变；宿主会拒绝未知或重复
+  setting key，并以 Adapter 而非原生 Tool 配置的方式呈现。
 - `registerWorkspaceView` 新增 `iconTint?: boolean`（缺省 `true`）：置 `false` 时侧边栏入口保留插件 Logo 的原始色彩（`svg` / `png` / `webp` 等），而不是按主题前景色染成单色。仅对图片图标生效，Iconify class 图标始终跟随主题色。入口只有 16px 且固定色彩无法跟随明暗主题，选用前请参考 ui-slots.md 的取舍说明。
 - `registerWorkspaceView` 省略 `icon` 时，侧边栏入口改用插件自己的 `plugin.json` 图标（包内图片按主题前景色 mask 渲染），与活动 Tab 的回落行为一致；两者都没有才落到宿主默认图标。已显式声明 `icon` 的插件行为不变。
 - `ctx.ai.chat()`：无状态多轮文本完成。插件自行持有并持久化 `messages` 全量转写（user / assistant / toolResult），可携带仅本次请求可见的插件内部工具（`tools` + JSON Schema）；模型触发工具调用时返回 `stopReason: "toolUse"` 与 `toolCalls`，由插件执行后以 `toolResult` 消息续写。权限沿用 `ai.complete`，宿主不保存任何会话状态。

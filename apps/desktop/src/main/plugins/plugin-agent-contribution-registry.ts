@@ -19,6 +19,11 @@ export interface PluginAgentContributionCounts {
 	continuationCount: number;
 }
 
+export interface PluginConfiguredToolSummary {
+	readonly pluginId: string;
+	readonly tools: readonly { name: string; settingKeys?: readonly string[]; support: "adapter" }[];
+}
+
 interface PendingActivation {
 	readonly activationId: string;
 	readonly tools: Map<string, RegisteredAgentTool>;
@@ -191,6 +196,23 @@ export class PluginAgentContributionRegistry {
 			pluginId,
 			tools: [...tools.values()].map((tool) => tool.name),
 		}));
+	}
+
+	getConfiguredToolSummary(): readonly PluginConfiguredToolSummary[] {
+		return [...this.tools].flatMap(([pluginId, tools]) => {
+			const configured = [...tools.values()].flatMap((tool) =>
+				tool.configuration
+					? [
+							{
+								name: tool.name,
+								settingKeys: tool.configuration.settingKeys,
+								support: tool.configuration.support,
+							},
+						]
+					: [],
+			);
+			return configured.length > 0 ? [{ pluginId, tools: configured }] : [];
+		});
 	}
 
 	private counts(pluginId: string): PluginAgentContributionCounts {

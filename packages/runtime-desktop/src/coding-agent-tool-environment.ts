@@ -36,6 +36,7 @@ export const createDesktopCodingAgentToolEnvironment: CodingAgentToolEnvironment
 		protectedDirectories: host.protectedCommandDirectories,
 		editPathPolicy: host.editPathPolicy,
 		writePathPolicy: host.writePathPolicy,
+		configurationSource: context.configurationSource,
 	});
 };
 
@@ -64,6 +65,7 @@ export const createDesktopCodingAgentSessionExecutionEnvironment: CodingAgentSes
 					protectedDirectories: host.protectedCommandDirectories,
 					editPathPolicy: host.editPathPolicy,
 					writePathPolicy: host.writePathPolicy,
+					configurationSource: context.configurationSource,
 				}),
 		},
 		dispose: () => command.dispose(),

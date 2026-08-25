@@ -40,5 +40,6 @@ export function createCodingAgentNodeToolEnvironment(
 		resolveExecutable: options.ensureTool,
 		editPathPolicy: createCodingAgentEditPathPolicy(pathPolicy.boundaries),
 		writePathPolicy: createCodingAgentWritePathPolicy(pathPolicy.boundaries),
+		configurationSource: context.configurationSource,
 	});
 }

@@ -40,6 +40,13 @@ export interface PluginAgentToolRegistration<TInput = unknown> {
 	 * 拒绝则零副作用。重副作用工具不声明会收到宿主告警。见 guiding-the-agent.md。
 	 */
 	side_effect?: "light" | "heavy";
+	/**
+	 * Optional association with this plugin's `contributes.settings` definition.
+	 * Omit `settingKeys` to associate all declared settings. The host adapts these
+	 * values into the shared Runtime Configuration catalog; tools without this
+	 * field remain completely outside that catalog.
+	 */
+	configuration?: { settingKeys?: readonly string[] };
 	context?: { conversation?: "summary" | "messages" };
 	handler: PluginAgentToolHandler<TInput>;
 }

@@ -30,6 +30,7 @@ import {
 	type CodingAgentTurnCapabilitySessionAssembly,
 	createCodingAgentTurnCapabilitySessionAssembly,
 } from "../turn/capability-session-assembly.js";
+import type { CodingAgentImageSettingsSnapshotRouter } from "../turn/image-settings-snapshot-router.js";
 import { createCodingAgentSessionContextAssembly } from "./context-assembly.js";
 import { createCodingAgentSessionInitializationTimeline } from "./initialization-timeline.js";
 import { createCodingAgentSessionPeripheralAssembly } from "./peripheral-assembly.js";
@@ -80,6 +81,7 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 		sessionPath: string,
 	) => Promise<CodingAgentConversationSessionPathAssessment>;
 	readonly observationPublisher?: RuntimeObservationPublisher;
+	readonly imageSettingsSnapshots: CodingAgentImageSettingsSnapshotRouter;
 }
 
 export interface CodingAgentSessionInitializationTransaction {
@@ -154,6 +156,7 @@ async function initializeSession<TOwnershipBinding>(
 				indexes: options.registry.indexes,
 				mcpCoordinator: options.mcpCoordinator,
 				resourceContext,
+				configurationSource: options.imageSettingsSnapshots,
 				readSessionId: () => activeSessionId,
 				resolveActivation: options.resolveActivation,
 				trackMemoryRuntime: (runtime) => options.registry.trackMemoryRuntime(runtime),
@@ -339,6 +342,7 @@ async function initializeSession<TOwnershipBinding>(
 				extensionToolRuntime: options.extensionToolRuntime,
 				askUserQuestion: sessionOptions.askUserQuestion,
 				initializationTimeline: timeline,
+				imageSettingsSnapshots: options.imageSettingsSnapshots,
 			}),
 		);
 		options.registry.trackTurnCapabilityAssembly(turnCapabilityAssembly);

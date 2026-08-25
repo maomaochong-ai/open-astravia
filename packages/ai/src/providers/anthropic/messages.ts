@@ -20,7 +20,7 @@ export function convertMessages(
 	for (let index = 0; index < transformedMessages.length; index++) {
 		const message = transformedMessages[index];
 		if (message.role === "user") {
-			appendUserMessage(params, message.content, model);
+			appendUserMessage(params, message.content);
 		} else if (message.role === "assistant") {
 			const blocks: ContentBlockParam[] = [];
 			for (const block of message.content) {
@@ -63,11 +63,7 @@ export function convertMessages(
 	return params;
 }
 
-function appendUserMessage(
-	params: MessageParam[],
-	content: string | (TextContent | ImageContent)[],
-	model: Model<"anthropic-messages">,
-): void {
+function appendUserMessage(params: MessageParam[], content: string | (TextContent | ImageContent)[]): void {
 	if (typeof content === "string") {
 		if (content.trim().length > 0) params.push({ role: "user", content: sanitizeSurrogates(content) });
 		return;
@@ -85,14 +81,7 @@ function appendUserMessage(
 					},
 				},
 	);
-	const imageCount = blocks.filter((block) => block.type === "image").length;
-	if (imageCount > 0) {
-		console.log(
-			`[anthropic convertMessages] user msg has ${imageCount} image blocks, model.input=${JSON.stringify(model?.input)}, will filter=${!model?.input.includes("image")}`,
-		);
-	}
-	const supportedBlocks = model.input.includes("image") ? blocks : blocks.filter((block) => block.type !== "image");
-	const nonEmptyBlocks = supportedBlocks.filter((block) => block.type !== "text" || block.text.trim().length > 0);
+	const nonEmptyBlocks = blocks.filter((block) => block.type !== "text" || block.text.trim().length > 0);
 	if (nonEmptyBlocks.length > 0) params.push({ role: "user", content: nonEmptyBlocks });
 }
 

@@ -66,11 +66,8 @@ export function convertMessages(
 						image_url: { url: `data:${item.mimeType};base64,${item.data}` },
 					} satisfies ChatCompletionContentPartImage;
 				});
-				const filteredContent = !model.input.includes("image")
-					? content.filter((item) => item.type !== "image_url")
-					: content;
-				if (filteredContent.length === 0) continue;
-				params.push({ role: "user", content: filteredContent });
+				if (content.length === 0) continue;
+				params.push({ role: "user", content });
 			}
 		} else if (message.role === "assistant") {
 			const assistantMessage: ChatCompletionAssistantMessageParam = {

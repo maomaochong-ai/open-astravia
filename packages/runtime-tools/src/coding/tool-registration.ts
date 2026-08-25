@@ -38,6 +38,15 @@ export type CodingToolCategory =
 	| "memory"
 	| "external";
 
+export type CodingToolConfigurationSupport = "native" | "adapter" | "host-policy";
+
+/** Tool 与通用 Runtime Configuration Definition 的可选关联，不进入模型 schema。 */
+export interface CodingToolConfigurationAssociation {
+	readonly configurationIds: readonly string[];
+	readonly requiredConfigurationIds?: readonly string[];
+	readonly support: CodingToolConfigurationSupport;
+}
+
 export interface CodingToolRegistration<TInput extends object = Readonly<Record<string, unknown>>> {
 	readonly tool: RuntimeToolDefinition<TInput>;
 	readonly scopeUse: readonly CodingToolScope[];
@@ -52,6 +61,8 @@ export interface CodingToolRegistration<TInput extends object = Readonly<Record<
 	readonly category: CodingToolCategory;
 	/** 缺省 = light；声明契约见 {@link CodingToolSideEffect}。 */
 	readonly sideEffect?: CodingToolSideEffect;
+	/** 配置行为由 Turn-bound Adapter 负责；这里只声明发现和关联元数据。 */
+	readonly configuration?: CodingToolConfigurationAssociation;
 }
 
 export type CodingToolActivation =

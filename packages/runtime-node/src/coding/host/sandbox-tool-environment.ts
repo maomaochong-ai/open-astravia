@@ -1,3 +1,4 @@
+import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
 import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import { createNodeSandboxHost, type NodeSandboxHost, type NodeSandboxHostOptions } from "../../sandbox/index.js";
 import { createForegroundCommandToolExecutor } from "../shared/foreground-command-executor.js";
@@ -13,6 +14,7 @@ export interface NodeSandboxCodingToolEnvironmentOptions extends NodeSandboxHost
 	readonly protectedDirectories?: readonly string[];
 	readonly editPathPolicy: EditPathPolicy;
 	readonly writePathPolicy: WritePathPolicy;
+	readonly configurationSource?: RuntimeConfigurationSnapshotSource;
 }
 
 export interface NodeSandboxCodingToolEnvironment {
@@ -40,7 +42,7 @@ export function createNodeSandboxCodingToolEnvironment(
 			: createBashToolRegistration(options.cwd, { executor, platform: hostServices.platform });
 
 	return {
-		read: createReadToolRegistration(options.cwd),
+		read: createReadToolRegistration(options.cwd, { configurationSource: options.configurationSource }),
 		write: createWriteToolRegistration(options.cwd, { pathPolicy: options.writePathPolicy }),
 		edit: createEditToolRegistration(options.cwd, { pathPolicy: options.editPathPolicy }),
 		command,

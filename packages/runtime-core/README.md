@@ -20,6 +20,8 @@ composition is Node-oriented and is not part of this portable boundary.
 - state snapshots and session history listing
 - isolated Session state machine, Typed Turn Pipeline and Feature Compiler under `./kernel`
 - process-level peer Agent Definition registry with immutable revisions, leases and dynamic Source synchronization under `./agents`
+- product-neutral Runtime Configuration Center under `./configuration`, including Definition revisions/leases,
+  Source-owned dynamic Layer generations, ordered resolution and immutable snapshots
 - peer Agent Instance/Session routing with isolated capability compilation, Session Extensions and explicit next-Turn rollout
 - type-safe, failure-isolated observation ports, hierarchical Hub routing and scoped Agent/Session/Turn identity under `./observation`
 - acquire/release Runtime Snapshot lifecycle with atomic Feature-topology switching
@@ -65,6 +67,7 @@ composition is Node-oriented and is not part of this portable boundary.
 
 - `RuntimeHost`
 - `@vetta/runtime-core/agents` for `RuntimeAgentDefinition`, `RuntimeAgentRegistry`, `RuntimeAgentHost`, Instance/Session routing, revision leases and Source synchronization
+- `@vetta/runtime-core/configuration` for configuration Definition/Source revisions, ordered Host layers, validation codecs and immutable resolved snapshots
 - `@vetta/runtime-core/observation` for domain-owned tokens, scoped publishers, lossless Publisher-to-Port forwarding,
   hierarchical/dynamic Hub routing, safe Session projection and arbitrary telemetry adapters
 - `RuntimeHostSessionBackend` and `KernelRuntimeSessionBackend` for composition-root session creation

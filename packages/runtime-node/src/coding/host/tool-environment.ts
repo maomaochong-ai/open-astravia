@@ -1,3 +1,4 @@
+import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
 import stripAnsi from "strip-ansi";
 import { createNodeCodingToolEnvironment, type NodeCodingToolEnvironment } from "../node-tool-environment.js";
 import type { BackgroundCommandService } from "../shared/background-command-service.js";
@@ -27,6 +28,7 @@ export interface NodeHostCodingToolEnvironmentOptions {
 	readonly commandExecutor?: CommandToolExecutor;
 	readonly resolveExecutable?: ResolveCodingToolExecutable;
 	readonly normalizeBackgroundOutput?: (value: string) => string;
+	readonly configurationSource?: RuntimeConfigurationSnapshotSource;
 }
 
 /**
@@ -56,5 +58,6 @@ export function createNodeHostCodingToolEnvironment(
 		}),
 		editPathPolicy: options.editPathPolicy,
 		writePathPolicy: options.writePathPolicy,
+		configurationSource: options.configurationSource,
 	});
 }

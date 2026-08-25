@@ -97,11 +97,10 @@ export function convertMessages<T extends GoogleApiType>(model: Model<T>, contex
 						};
 					}
 				});
-				const filteredParts = !model.input.includes("image") ? parts.filter((p) => p.text !== undefined) : parts;
-				if (filteredParts.length === 0) continue;
+				if (parts.length === 0) continue;
 				contents.push({
 					role: "user",
-					parts: filteredParts,
+					parts,
 				});
 			}
 		} else if (msg.role === "assistant") {

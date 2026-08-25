@@ -80,4 +80,50 @@ describe("PluginAgentContributionService", () => {
 			}),
 		).toThrow("Plugin permission denied: agent.tools.register");
 	});
+
+	it("validates optional tool configuration associations against contributed settings", () => {
+		const service = createService(
+			plugin({
+				settingsSchema: [
+					{ key: "help", type: "desc", description: "Tool settings" },
+					{ key: "mode", type: "string", title: "Mode" },
+				],
+			}),
+		);
+		service.registerTool("demo", {
+			id: "configured",
+			name: "configured_tool",
+			description: "Demo tool",
+			parameters: { type: "object" },
+			handlerId: "handler",
+			configuration: { support: "adapter", settingKeys: ["mode"] },
+		});
+
+		expect(service.readConfiguredToolSummary()).toEqual([
+			{
+				pluginId: "demo",
+				tools: [{ name: "configured_tool", settingKeys: ["mode"], support: "adapter" }],
+			},
+		]);
+		expect(() =>
+			service.registerTool("demo", {
+				id: "invalid",
+				name: "invalid_tool",
+				description: "Invalid tool",
+				parameters: { type: "object" },
+				handlerId: "handler",
+				configuration: { support: "adapter", settingKeys: ["missing"] },
+			}),
+		).toThrow("references an unknown setting");
+		expect(() =>
+			service.registerTool("demo", {
+				id: "description-only",
+				name: "description_only_tool",
+				description: "Invalid tool",
+				parameters: { type: "object" },
+				handlerId: "handler",
+				configuration: { support: "adapter", settingKeys: ["help"] },
+			}),
+		).toThrow("references an unknown setting");
+	});
 });

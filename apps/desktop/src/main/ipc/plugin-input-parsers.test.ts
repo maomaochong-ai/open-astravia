@@ -1,37 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { asAgentHookRegistration, asAgentToolRegistration, asAppActionRegistration } from "./plugin-input-parsers.js";
+import { asAgentToolRegistration } from "./plugin-input-parsers.js";
 
-describe("plugin IPC input parsers", () => {
-	it("normalizes bounded Agent tool registration input", () => {
-		expect(
-			asAgentToolRegistration({
-				id: "tool",
-				name: "tool_name",
-				description: "description",
-				parameters: {},
-				handlerId: "handler",
-				timeoutMs: 999_999,
-			}),
-		).toMatchObject({ id: "tool", timeoutMs: 300_000 });
+function registration(configuration?: unknown): Record<string, unknown> {
+	return {
+		id: "tool",
+		name: "demo_tool",
+		description: "Demo tool",
+		parameters: { type: "object" },
+		handlerId: "handler",
+		...(configuration === undefined ? {} : { configuration }),
+	};
+}
+
+describe("plugin agent tool configuration parser", () => {
+	it("keeps configuration optional for tools without settings", () => {
+		expect(asAgentToolRegistration(registration()).configuration).toBeUndefined();
 	});
 
-	it("rejects hooks without an explicit non-empty scope", () => {
-		expect(() =>
-			asAgentHookRegistration({ id: "hook", eventName: "SessionStart", handlerId: "handler", scope_use: [] }),
-		).toThrow("scope_use must not be empty");
-	});
-
-	it("rejects malformed app action identifiers at the IPC boundary", () => {
-		expect(() =>
-			asAppActionRegistration({
-				id: "Invalid Action",
-				title: "Title",
-				summary: "Summary",
-				effect: "read",
-				inputSchema: {},
-				handlerId: "handler",
-				activationId: "activation",
-			}),
-		).toThrow("Invalid app action id");
+	it("normalizes an adapter association and rejects duplicate setting keys", () => {
+		expect(asAgentToolRegistration(registration({ settingKeys: [" mode "] })).configuration).toEqual({
+			settingKeys: ["mode"],
+			support: "adapter",
+		});
+		expect(() => asAgentToolRegistration(registration({ settingKeys: ["mode", "mode"] }))).toThrow(
+			"must not contain duplicates",
+		);
 	});
 });

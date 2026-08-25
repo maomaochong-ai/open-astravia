@@ -1,34 +1,56 @@
 import type { AgentMessage } from "@vetta/agent-core";
 import type { Message, TextContent } from "@vetta/ai";
 import type {
+	RuntimeConfigurationSnapshotLease,
+	RuntimeConfigurationSnapshotSource,
+} from "@vetta/runtime-core/configuration";
+import type {
 	ModelCallMessageFinalizationInput,
 	ModelCallMessageFinalizer,
 	RuntimeSnapshotAcquireContext,
 } from "@vetta/runtime-core/kernel";
+import { CODING_IMAGE_CONFIGURATION, type CodingImageConfiguration } from "@vetta/runtime-tools";
 import { applyImageBudget } from "./image-budget.js";
 import {
 	type ModelInputImageProcessor,
 	normalizeModelInputImages,
 	resolveModelInputImageProcessor,
 } from "./image-normalization.js";
+import type { CodingAgentLegacyImageSettingsSource } from "./image-settings-source.js";
 
-export interface CodingAgentImageSettingsSource {
-	reloadImageSettings?(): void;
-	getImageAutoResize?(): boolean;
-	getBlockImages?(): boolean;
-	getImageRequestHighWatermarkBytes?(): number;
-	getImageRequestLowWatermarkBytes?(): number;
-}
+export type CodingAgentImageSettingsSource = CodingAgentLegacyImageSettingsSource;
 
 /** 在最终模型调用边界应用动态图片预算与全局禁图语义。 */
 export class CodingAgentModelCallMessageFinalizer implements ModelCallMessageFinalizer {
 	constructor(
 		private readonly settings?: CodingAgentImageSettingsSource,
 		private readonly imageProcessor?: ModelInputImageProcessor,
+		private readonly configurationSource?: RuntimeConfigurationSnapshotSource,
+		private readonly boundConfiguration?: CodingImageConfiguration,
+		private readonly configurationLease?: RuntimeConfigurationSnapshotLease,
 	) {}
 
 	bindForTurn(context: RuntimeSnapshotAcquireContext): ModelCallMessageFinalizer {
 		context.signal.throwIfAborted();
+		if (this.configurationSource) {
+			const lease = this.configurationSource.acquire({
+				scopeId: context.sessionId,
+				bindingId: context.operationId,
+				signal: context.signal,
+			});
+			const configuration = lease.snapshot.read(CODING_IMAGE_CONFIGURATION);
+			if (!configuration) {
+				void lease.release().catch(() => undefined);
+				throw new Error("Coding Agent image Runtime Configuration is unavailable");
+			}
+			return new CodingAgentModelCallMessageFinalizer(
+				undefined,
+				this.imageProcessor,
+				undefined,
+				configuration,
+				lease,
+			);
+		}
 		this.settings?.reloadImageSettings?.();
 		const imageAutoResize = this.settings?.getImageAutoResize?.();
 		const blockImages = this.settings?.getBlockImages?.();
@@ -47,19 +69,30 @@ export class CodingAgentModelCallMessageFinalizer implements ModelCallMessageFin
 		);
 	}
 
+	releaseTurnBinding(): Promise<void> | undefined {
+		return this.configurationLease?.release();
+	}
+
 	async finalize(input: ModelCallMessageFinalizationInput, signal: AbortSignal): Promise<readonly Message[]> {
 		signal.throwIfAborted();
+		const autoResize = this.boundConfiguration?.autoResize ?? this.settings?.getImageAutoResize?.();
 		const normalized =
-			this.settings?.getImageAutoResize?.() === false
+			autoResize === false
 				? [...input.messages]
 				: await normalizeModelInputImages(input.messages, signal, {
 						processor: resolveModelInputImageProcessor(this.imageProcessor),
+						resizeOptions: this.boundConfiguration?.resize,
 					});
 		const budgeted = applyImageBudget([...normalized] satisfies AgentMessage[], {
-			highWatermarkBytes: this.settings?.getImageRequestHighWatermarkBytes?.(),
-			lowWatermarkBytes: this.settings?.getImageRequestLowWatermarkBytes?.(),
+			highWatermarkBytes:
+				this.boundConfiguration?.requestBudget.highWatermarkBytes ??
+				this.settings?.getImageRequestHighWatermarkBytes?.(),
+			lowWatermarkBytes:
+				this.boundConfiguration?.requestBudget.lowWatermarkBytes ??
+				this.settings?.getImageRequestLowWatermarkBytes?.(),
 		}).filter(isRuntimeMessage);
-		return this.settings?.getBlockImages?.() === true ? budgeted.map(blockImages) : budgeted;
+		const block = this.boundConfiguration?.blockImages ?? this.settings?.getBlockImages?.();
+		return block === true ? budgeted.map(blockImages) : budgeted;
 	}
 }
 

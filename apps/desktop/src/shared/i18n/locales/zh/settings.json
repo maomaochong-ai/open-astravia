@@ -303,6 +303,42 @@
     "disabled": "已禁用",
     "pluginCount": "已安装 {{count}} 个插件"
   },
+  "runtimeConfiguration": {
+    "title": "工具与运行时配置",
+    "empty": "当前没有工具或运行时提供可配置项。",
+    "consumers": "使用方",
+    "applyLabel": "生效时间",
+    "apply": {
+      "immediate": "立即",
+      "next-turn": "下一回合",
+      "next-session": "下一会话",
+      "restart": "重启后"
+    },
+    "configurations": {
+      "coding": {
+        "images": {
+          "title": "图片处理",
+          "description": "配置图片规范化、安全限制、压缩和模型请求预算。"
+        }
+      }
+    },
+    "fields": {
+      "autoResize": { "title": "自动缩放", "description": "在图片超出限制时自动缩放和压缩。" },
+      "blockImages": { "title": "阻止图片", "description": "阻止图片进入模型上下文。" },
+      "resize": {
+        "maxWidth": { "title": "最大宽度", "description": "缩放后图片允许的最大宽度（像素）。" },
+        "maxHeight": { "title": "最大高度", "description": "缩放后图片允许的最大高度（像素）。" },
+        "maxInputPixels": { "title": "最大输入像素数", "description": "解码前允许处理的最大像素总数。" },
+        "maxInputEdge": { "title": "最大输入边长", "description": "解码前允许处理的最大单边长度（像素）。" },
+        "maxBytes": { "title": "最大图片字节数", "description": "规范化后单张图片允许的最大体积。" },
+        "jpegQuality": { "title": "JPEG 质量", "description": "转码为 JPEG 时使用的压缩质量（1–100）。" }
+      },
+      "requestBudget": {
+        "highWatermarkBytes": { "title": "请求高水位", "description": "图片总量超过此值时启动预算压缩。" },
+        "lowWatermarkBytes": { "title": "请求低水位", "description": "预算压缩尝试达到的图片总量。" }
+      }
+    }
+  },
   "environmentSettings": {
     "title": "环境设置",
     "addEnv": "添加环境变量",
@@ -1003,7 +1039,7 @@
   "tabAppshot": "应用快照",
   "betaBadge": "BETA",
   "tabEnvironment": "应用环境",
-  "tabPlugins": "插件设置",
+  "tabPlugins": "工具配置",
   "tabKnowledge": "知识库设置",
   "tabPet": "Vetta Vivi",
   "tabPermissions": "权限管理",

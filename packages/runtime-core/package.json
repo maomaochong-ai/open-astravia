@@ -25,6 +25,10 @@
 			"types": "./dist/conversation/index.d.ts",
 			"import": "./dist/conversation/index.js"
 		},
+		"./configuration": {
+			"types": "./dist/configuration/index.d.ts",
+			"import": "./dist/configuration/index.js"
+		},
 		"./sandbox": {
 			"types": "./dist/sandbox/index.d.ts",
 			"import": "./dist/sandbox/index.js"

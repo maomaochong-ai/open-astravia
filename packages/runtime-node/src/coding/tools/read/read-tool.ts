@@ -16,6 +16,7 @@ import { detectSupportedImageMimeTypeFromFile } from "./image-mime.js";
 import {
 	formatDimensionNote,
 	formatImageResizeFailureNote,
+	type ImageResizeOptions,
 	type ImageResizeResult,
 	isImageResizeFailure,
 	resizeImageBuffer,
@@ -61,13 +62,14 @@ export interface ReadOperations {
 }
 
 export interface ReadImageProcessor {
-	resize(buffer: Buffer, mimeType: string): Promise<ImageResizeResult>;
+	resize(buffer: Buffer, mimeType: string, options?: ImageResizeOptions): Promise<ImageResizeResult>;
 }
 
 export interface ReadToolOptions {
 	readonly autoResizeImages?: boolean;
 	readonly operations?: ReadOperations;
 	readonly imageProcessor?: ReadImageProcessor;
+	readonly imageResizeOptions?: ImageResizeOptions;
 }
 
 const defaultReadOperations: ReadOperations = {
@@ -77,7 +79,7 @@ const defaultReadOperations: ReadOperations = {
 };
 
 const defaultImageProcessor: ReadImageProcessor = {
-	resize: (buffer, mimeType) => resizeImageBuffer(buffer, mimeType),
+	resize: (buffer, mimeType, options) => resizeImageBuffer(buffer, mimeType, options),
 };
 
 const KNOWN_BINARY_EXTENSIONS = new Set([
@@ -128,6 +130,7 @@ export function createReadTool(cwd: string, options: ReadToolOptions = {}): Runt
 	const autoResizeImages = options.autoResizeImages ?? true;
 	const operations = options.operations ?? defaultReadOperations;
 	const imageProcessor = options.imageProcessor ?? defaultImageProcessor;
+	const imageResizeOptions = options.imageResizeOptions;
 
 	return {
 		name: "read",
@@ -164,7 +167,14 @@ export function createReadTool(cwd: string, options: ReadToolOptions = {}): Runt
 						let result: RuntimeToolResult;
 
 						if (mimeType) {
-							result = await readImage(absolutePath, mimeType, autoResizeImages, operations, imageProcessor);
+							result = await readImage(
+								absolutePath,
+								mimeType,
+								autoResizeImages,
+								operations,
+								imageProcessor,
+								imageResizeOptions,
+							);
 						} else {
 							result = await readText(absolutePath, path, offset, limit, operations);
 						}
@@ -192,6 +202,7 @@ async function readImage(
 	autoResizeImages: boolean,
 	operations: ReadOperations,
 	imageProcessor: ReadImageProcessor,
+	imageResizeOptions: ImageResizeOptions | undefined,
 ): Promise<RuntimeToolResult> {
 	const buffer = await operations.readFile(absolutePath);
 	if (!autoResizeImages) {
@@ -217,7 +228,7 @@ async function readImage(
 		};
 	}
 
-	const resized = await imageProcessor.resize(buffer, mimeType);
+	const resized = await imageProcessor.resize(buffer, mimeType, imageResizeOptions);
 	if (isImageResizeFailure(resized)) {
 		return {
 			content: [{ type: "text", text: formatImageResizeFailureNote(resized, absolutePath) }],

@@ -23,6 +23,9 @@
 
 ### Added
 
+- 图片行为、缩放安全限制、JPEG 质量与请求预算统一改由 `coding.images` Runtime Configuration Definition
+  驱动；Session 在 Turn admission 捕获不可变配置快照，普通 Read、sandbox Read 与模型输入 Finalizer 共享同一 revision。
+  旧 `settings.images` 继续通过兼容 Layer 生效，并支持新增的 `resize` 与 `requestBudget` 字段。
 - 新增 `createCodingAgentRuntimeDefinition()` 产品 Adapter，使完整 Coding Agent Instance/Session assembler
   可作为普通 `RuntimeAgentDefinition` 发布到多主 Agent Registry。Prompt Profile 只在产品层解析并合并为
   `InstructionBlock`，不进入 Runtime revision、Snapshot 或观测合同；Tool、MCP、模型和 Session Extension
@@ -41,6 +44,8 @@
 
 ### Fixed
 
+- 不再依据模型目录是否显式标记 `image` 输入能力而静默删除用户图片；模型元数据缺失或误标时仍把图片交给 Provider，
+  真正不支持图片的模型由 Provider 返回可见错误。用户显式 `blockImages` 和图片处理失败降级语义保持不变。
 - Desktop 文件链接提示词改用带尖括号目标的标准 CommonMark 形式，确保模型输出的绝对路径在包含空格、Unicode 或括号时仍可渲染为可点击预览。
 
 - 子代理 Session Extension 释放时保持 runtime 挂载直到持久化回调排空，避免恢复出缺失 transcript 后关闭会话触发 `Coding Agent Subagent runtime has not been attached`；CLI 的 MCP 继承合同改由 V2 `general` 定义验证，继续保持 `explorer` fail-closed。

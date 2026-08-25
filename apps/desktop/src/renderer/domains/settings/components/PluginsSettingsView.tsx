@@ -1,46 +1,7 @@
+import { MotionSelect, SettingRow, SettingSection } from "@vetta/theme-ui/settings";
 import { Switch } from "@vetta/ui";
-import { cn } from "@shared/lib/utils";
-import { openExternalLink } from "@shared/lib/open-external-link";
 import { SettingsAiAssist } from "../ai-assist";
 import type { PluginSettingFieldModel, PluginsSettingsModel } from "./usePluginsSettingsModel";
-import { MotionSelect, SettingRow, SettingSection } from "@vetta/theme-ui/settings";
-
-const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
-
-function DescRow({
-	title,
-	description,
-	border,
-}: {
-	border: boolean;
-	description: string;
-	title: string | undefined;
-}): JSX.Element {
-	const parts = description.split(URL_PATTERN);
-	return (
-		<div className={cn("px-5 py-4", border && "border-b border-border")}>
-			{title && <div className="mb-0.5 text-[13px] font-medium text-foreground">{title}</div>}
-			<div className="text-[12px] leading-relaxed text-muted-foreground">
-				{parts.map((part, index) =>
-					/^https?:\/\//.test(part) ? (
-						<a
-							// biome-ignore lint/suspicious/noArrayIndexKey: split segments are positional and stable
-							key={index}
-							href={part}
-							onClick={(event) => openExternalLink(event, part)}
-							className="text-primary underline underline-offset-2 hover:opacity-80"
-						>
-							{part}
-						</a>
-					) : (
-						// biome-ignore lint/suspicious/noArrayIndexKey: split segments are positional and stable
-						<span key={index}>{part}</span>
-					),
-				)}
-			</div>
-		</div>
-	);
-}
 
 function SettingControl({
 	field,
@@ -48,93 +9,42 @@ function SettingControl({
 	pleaseSelect,
 }: {
 	field: PluginSettingFieldModel;
-	onChange: (value: unknown) => void;
+	onChange: (value: string | number | boolean) => void;
 	pleaseSelect: string;
 }): JSX.Element {
 	const { schema, value } = field;
-	switch (schema.type) {
-		case "boolean":
-			return <Switch checked={value === true} onCheckedChange={(checked) => onChange(checked)} />;
-		case "number":
-			return (
-				<input
-					type="number"
-					className="h-8 w-[200px] min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 text-[12px] outline-none focus-visible:border-ring/60"
-					value={value === undefined || value === null ? "" : String(value)}
-					onChange={(event) => {
-						const raw = event.target.value;
-						onChange(raw === "" ? undefined : Number(raw));
-					}}
-				/>
-			);
-		case "secret":
-			return (
-				<input
-					type="password"
-					autoComplete="off"
-					className="h-8 w-[240px] min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 text-[12px] outline-none focus-visible:border-ring/60"
-					value={typeof value === "string" ? value : ""}
-					onChange={(event) => onChange(event.target.value)}
-				/>
-			);
-		case "enum":
-			return (
-				<MotionSelect
-					value={typeof value === "string" ? value : ""}
-					onValueChange={(next) => onChange(next)}
-					placeholder={pleaseSelect}
-					triggerClassName="min-w-[160px]"
-					options={(schema.enum ?? []).map((option) => ({ value: option, label: option }))}
-				/>
-			);
-		default:
-			return (
-				<input
-					type="text"
-					className="h-8 w-[240px] min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 text-[12px] outline-none focus-visible:border-ring/60"
-					value={typeof value === "string" ? value : ""}
-					onChange={(event) => onChange(event.target.value)}
-				/>
-			);
+	if (schema.type === "boolean") {
+		return <Switch checked={value === true} onCheckedChange={onChange} />;
 	}
-}
-
-function PluginSettingsSection({
-	model,
-	section,
-}: {
-	model: PluginsSettingsModel;
-	section: PluginsSettingsModel["sections"][number];
-}): JSX.Element {
+	if (schema.type === "enum") {
+		return (
+			<MotionSelect
+				value={typeof value === "string" ? value : ""}
+				onValueChange={onChange}
+				placeholder={pleaseSelect}
+				triggerClassName="min-w-[160px]"
+				options={(schema.enum ?? []).map((option) => ({ value: option, label: option }))}
+			/>
+		);
+	}
+	const numeric = schema.type === "number" || schema.type === "integer";
 	return (
-		<SettingSection section={section.section} description={section.description}>
-			{section.fields.map((field) => {
-				if (field.schema.type === "desc") {
-					return (
-						<DescRow
-							key={field.schema.key}
-							title={field.title}
-							description={field.description ?? ""}
-							border={field.border}
-						/>
-					);
+		<input
+			type={schema.type === "secret" ? "password" : numeric ? "number" : "text"}
+			autoComplete={schema.type === "secret" ? "off" : undefined}
+			min={numeric ? schema.minimum : undefined}
+			max={numeric ? schema.maximum : undefined}
+			step={schema.type === "integer" ? 1 : undefined}
+			className="h-8 w-[240px] min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 text-[12px] outline-none focus-visible:border-ring/60"
+			value={typeof value === "string" || typeof value === "number" ? String(value) : ""}
+			onChange={(event) => {
+				if (numeric) {
+					if (event.target.value !== "") onChange(Number(event.target.value));
+				} else {
+					onChange(event.target.value);
 				}
-				return (
-					<SettingRow
-						key={field.schema.key}
-						title={field.title ?? ""}
-						description={field.description}
-						border={field.border}
-					>
-						<SettingControl
-							field={field}
-							pleaseSelect={model.labels.pleaseSelect}
-							onChange={(value) => model.actions.update(section.pluginId, field.schema.key, value)}
-						/>
-					</SettingRow>
-				);
-			})}
-		</SettingSection>
+			}}
+		/>
 	);
 }
 
@@ -148,11 +58,31 @@ export function PluginsSettingsView({ model }: { model: PluginsSettingsModel }):
 
 			{model.sections.length === 0 ? (
 				<div className="rounded-xl border border-border bg-card px-5 py-4 text-[12px] text-muted-foreground">
-					{model.labels.noPlugin}
+					{model.labels.empty}
 				</div>
 			) : (
 				model.sections.map((section) => (
-					<PluginSettingsSection key={section.pluginId} model={model} section={section} />
+					<SettingSection key={section.configurationId} section={section.section} description={section.description}>
+						{section.consumers.length > 0 && (
+							<div className="border-b border-border px-5 py-3 text-[11px] text-muted-foreground">
+								{model.labels.apply}: {section.apply} · {model.labels.consumers}: {section.consumers.join(", ")}
+							</div>
+						)}
+						{section.fields.map((field) => (
+							<SettingRow
+								key={field.path.join(".")}
+								title={field.title ?? field.path.at(-1) ?? ""}
+								description={field.description}
+								border={field.border}
+							>
+								<SettingControl
+									field={field}
+									pleaseSelect={model.labels.pleaseSelect}
+									onChange={(value) => model.actions.update(section.configurationId, field.path, value)}
+								/>
+							</SettingRow>
+						))}
+					</SettingSection>
 				))
 			)}
 		</div>

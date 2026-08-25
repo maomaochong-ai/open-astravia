@@ -40,6 +40,7 @@ export function createCodingAgentNodeSessionExecutionEnvironment(
 					protectedDirectories: pathPolicy.protectedCommandDirectories,
 					editPathPolicy: createCodingAgentEditPathPolicy(pathPolicy.boundaries),
 					writePathPolicy: createCodingAgentWritePathPolicy(pathPolicy.boundaries),
+					configurationSource: context.configurationSource,
 				}),
 		},
 		dispose: () => command.dispose(),

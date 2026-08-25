@@ -24,6 +24,7 @@ import { registerPluginsIpc } from "./plugins.js";
 import { registerProjectExportIpc } from "./project-export.js";
 import { registerQuickPanelIpc } from "./quickpanel.js";
 import { registerRemotePairingIpc } from "./remote-pairing.js";
+import { registerRuntimeConfigurationIpc } from "./runtime-configuration.js";
 import { registerRuntimesIpc } from "./runtimes.js";
 import { registerSessionIpc } from "./session.js";
 import { registerSettingsIpc } from "./settings.js";
@@ -54,6 +55,7 @@ interface IpcTeardown {
 	teardownProjectExport: () => void;
 	teardownWebhook: () => void;
 	teardownRuntimes: () => void;
+	teardownRuntimeConfiguration: () => void;
 	teardownPermissions: () => void;
 	teardownPlugins: () => void;
 	teardownPluginCapabilities: () => void;
@@ -96,6 +98,7 @@ export function registerAllIpc(
 		teardownProjectExport: registerProjectExportIpc(),
 		teardownWebhook: registerWebhookIpc(),
 		teardownRuntimes: registerRuntimesIpc(),
+		teardownRuntimeConfiguration: registerRuntimeConfigurationIpc(webContents),
 		teardownPermissions: registerPermissionsIpc(),
 		teardownPlugins: registerPluginsIpc(options.pluginActionService),
 		teardownPluginCapabilities: registerPluginCapabilitiesIpc(),
@@ -131,6 +134,7 @@ export function teardownAllIpc(teardown: IpcTeardown): void {
 	teardown.teardownProjectExport();
 	teardown.teardownWebhook();
 	teardown.teardownRuntimes();
+	teardown.teardownRuntimeConfiguration();
 	teardown.teardownPermissions();
 	teardown.teardownPlugins();
 	teardown.teardownPluginCapabilities();

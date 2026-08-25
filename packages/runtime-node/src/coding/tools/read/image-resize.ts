@@ -1,3 +1,4 @@
+import { CODING_IMAGE_CONFIGURATION } from "@vetta/runtime-tools";
 import { loadPhoton } from "./photon.js";
 
 let warnedNoPhoton = false;
@@ -39,14 +40,7 @@ export async function resizeImage(
 	return resizeImageBuffer(Buffer.from(image.data, "base64"), image.mimeType, options, image.data);
 }
 
-const DEFAULT_OPTIONS: Required<ImageResizeOptions> = {
-	maxWidth: 1280,
-	maxHeight: 1280,
-	maxInputPixels: 8000 * 8000,
-	maxInputEdge: 12000,
-	maxBytes: 2 * 1024 * 1024,
-	jpegQuality: 70,
-};
+const DEFAULT_OPTIONS: Required<ImageResizeOptions> = CODING_IMAGE_CONFIGURATION.defaultValue.resize;
 
 interface ImageDimensions {
 	readonly width: number;

@@ -7,6 +7,12 @@ export default defineConfig({
 			"@vetta/agent-core": fileURLToPath(new URL("../agent/src/index.ts", import.meta.url)),
 			"@vetta/runtime-knowledge": fileURLToPath(new URL("../runtime-knowledge/src/index.ts", import.meta.url)),
 			"@vetta/runtime-subagents": fileURLToPath(new URL("../runtime-subagents/src/index.ts", import.meta.url)),
+			"@vetta/runtime-core/configuration": fileURLToPath(
+				new URL("../runtime-core/src/configuration/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-core/observation": fileURLToPath(
+				new URL("../runtime-core/src/observation/index.ts", import.meta.url),
+			),
 			"@vetta/runtime-core/kernel": fileURLToPath(
 				new URL("../runtime-core/src/kernel/index.ts", import.meta.url),
 			),

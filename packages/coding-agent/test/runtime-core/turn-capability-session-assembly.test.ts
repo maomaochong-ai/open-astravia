@@ -13,6 +13,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
 import { createCodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
+import { CodingAgentImageSettingsSnapshotRouter } from "../../src/composition/turn/image-settings-snapshot-router.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/execution/session/runtime.js";
 import { CodingAgentExtensionRunBridge } from "../../src/extensions/runtime/extension-run-bridge.js";
 import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
@@ -85,6 +86,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime: {} as unknown as EcosystemHookRuntime,
 			extensionEvents,
+			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
 		});
 		disposals.push(() => assembly.dispose());
 
@@ -179,6 +181,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime,
 			extensionEvents: new CodingAgentExtensionRunBridge(),
+			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
 		});
 		disposals.push(() => assembly.dispose());
 		expect(runtimeSourceFactory).toHaveBeenCalledWith({ runtimeSkillPaths: [sceneDir] });
@@ -260,6 +263,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime: createPassthroughHookRuntime(),
 			extensionEvents,
+			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
 		});
 		disposals.push(() => assembly.dispose());
 
@@ -315,6 +319,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime: createPassthroughHookRuntime(),
 			extensionEvents: new CodingAgentExtensionRunBridge(),
+			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
 			askUserQuestion: {
 				isEnabled: () => true,
 				ask: async (request) => {

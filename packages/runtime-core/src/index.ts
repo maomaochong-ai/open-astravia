@@ -1,4 +1,5 @@
 export * from "./agents/index.js";
+export * from "./configuration/index.js";
 export * from "./context-composition/index.js";
 export type {
 	AgentPluginContinuationContribution,

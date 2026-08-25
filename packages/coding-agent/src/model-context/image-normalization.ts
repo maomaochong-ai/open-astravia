@@ -1,4 +1,5 @@
 import type { ImageContent, Message, TextContent } from "@vetta/ai";
+import type { CodingImageResizeConfiguration } from "@vetta/runtime-tools";
 
 export interface ModelInputImage {
 	readonly data: string;
@@ -15,11 +16,17 @@ export interface ModelInputImageFailure {
 export type ModelInputImageResult = ModelInputImage | ModelInputImageFailure;
 
 export interface ModelInputImageProcessor {
-	resize(data: string, mimeType: string, signal: AbortSignal): Promise<ModelInputImageResult>;
+	resize(
+		data: string,
+		mimeType: string,
+		signal: AbortSignal,
+		options?: CodingImageResizeConfiguration,
+	): Promise<ModelInputImageResult>;
 }
 
 export interface NormalizeModelInputImagesOptions {
 	readonly processor: ModelInputImageProcessor;
+	readonly resizeOptions?: CodingImageResizeConfiguration;
 }
 
 const UNAVAILABLE_PROCESSOR: ModelInputImageProcessor = {
@@ -65,7 +72,7 @@ export async function normalizeModelInputImages(
 				content.push(item);
 				continue;
 			}
-			const normalized = await options.processor.resize(item.data, item.mimeType, signal);
+			const normalized = await options.processor.resize(item.data, item.mimeType, signal, options.resizeOptions);
 			signal.throwIfAborted();
 			if (isModelInputImageFailure(normalized)) {
 				changed = true;

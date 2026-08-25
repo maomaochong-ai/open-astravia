@@ -26,6 +26,18 @@ export interface TerminalSettings {
 export interface ImageSettings {
 	autoResize?: boolean;
 	blockImages?: boolean;
+	resize?: {
+		maxWidth?: number;
+		maxHeight?: number;
+		maxInputPixels?: number;
+		maxInputEdge?: number;
+		maxBytes?: number;
+		jpegQuality?: number;
+	};
+	requestBudget?: {
+		highWatermarkBytes?: number;
+		lowWatermarkBytes?: number;
+	};
 }
 
 export interface PersonalizationSettings {

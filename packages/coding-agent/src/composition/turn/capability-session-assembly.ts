@@ -18,6 +18,7 @@ import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools";
 import { createEcosystemToolInterceptor } from "../../adapters/ecosystem/tool-interceptor-adapter.js";
 import { CodingAgentPromptRequestAdapter } from "../../adapters/runtime-core/prompt-request-adapter.js";
+import { CodingAgentLegacyImageSettingsRuntime } from "../../adapters/settings/legacy-image-settings-adapter.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
@@ -62,6 +63,7 @@ import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import { CodingAgentContinuationOrchestrator } from "./continuation-orchestrator.js";
 import { createEcosystemHookTurnObserver } from "./ecosystem-hook-turn-observer.js";
+import type { CodingAgentImageSettingsSnapshotRouter } from "./image-settings-snapshot-router.js";
 
 export interface CodingAgentTurnCapabilitySessionIdentity {
 	readonly initialSessionId: string;
@@ -128,6 +130,7 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	/** 宿主提问能力，heavy 工具首调确认闸的后端；缺省时确认闸走降级路径。 */
 	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
 	readonly initializationTimeline?: CodingAgentSessionInitializationTimeline;
+	readonly imageSettingsSnapshots: CodingAgentImageSettingsSnapshotRouter;
 }
 
 export interface CodingAgentTurnCapabilitySessionAssembly {
@@ -217,9 +220,22 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 	} else {
 		await applyPluginSkills();
 	}
+	const imageSettingsSource = options.prompt.settingsSource ?? promptRuntime?.readSettingsSource();
+	const imageConfigurationRuntime = new CodingAgentLegacyImageSettingsRuntime({
+		settings: imageSettingsSource,
+		observationPublisher: options.baseCapabilities.observationPublisher,
+	});
+	let imageSettingsScopeId = options.session.initialSessionId;
+	try {
+		options.imageSettingsSnapshots.register(imageSettingsScopeId, imageConfigurationRuntime);
+	} catch (error) {
+		await imageConfigurationRuntime.close();
+		throw error;
+	}
 	const modelCallMessageFinalizer = new CodingAgentModelCallMessageFinalizer(
-		options.prompt.settingsSource ?? promptRuntime?.readSettingsSource(),
+		undefined,
 		options.modelInputImageProcessor,
+		options.imageSettingsSnapshots,
 	);
 	const enhanceSystemPromptOptions = async (
 		resolver: CodingAgentSystemPromptOptionsResolver,
@@ -423,9 +439,16 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			compiler: options.codingTools.compiler,
 			modelBindingProvider: options.modelRuntime,
 		});
-	const capabilities = options.initializationTimeline
-		? await options.initializationTimeline.measure("runtime-capabilities", createCapabilities)
-		: await createCapabilities();
+	let capabilities: RuntimeCapabilityComposition;
+	try {
+		capabilities = options.initializationTimeline
+			? await options.initializationTimeline.measure("runtime-capabilities", createCapabilities)
+			: await createCapabilities();
+	} catch (error) {
+		options.imageSettingsSnapshots.unregister(imageSettingsScopeId, imageConfigurationRuntime);
+		await imageConfigurationRuntime.close();
+		throw error;
+	}
 	return {
 		capabilities,
 		promptAdapter,
@@ -435,6 +458,8 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			await promptResourceSource?.setRuntimeSkillPaths(readPluginSkillPaths(agentPlugins));
 		},
 		rebindSession(sessionId) {
+			options.imageSettingsSnapshots.rebind(imageSettingsScopeId, sessionId, imageConfigurationRuntime);
+			imageSettingsScopeId = sessionId;
 			pluginSession.id = sessionId;
 		},
 		async previewInitialSystemPrompt() {
@@ -468,7 +493,18 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 				await initialSnapshotLease.release();
 			}
 		},
-		dispose: () => capabilities.close(),
+		async dispose() {
+			const capabilityResult = await Promise.allSettled([capabilities.close()]);
+			options.imageSettingsSnapshots.unregister(imageSettingsScopeId, imageConfigurationRuntime);
+			const configurationResult = await Promise.allSettled([imageConfigurationRuntime.close()]);
+			const results = [...capabilityResult, ...configurationResult];
+			const errors = results
+				.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+				.map(({ reason }) => reason);
+			if (errors.length > 0) {
+				throw new AggregateError(errors, "Failed to dispose Coding Agent Turn capability assembly");
+			}
+		},
 	};
 }
 

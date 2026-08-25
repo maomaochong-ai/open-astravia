@@ -143,6 +143,33 @@ describe("Coding Agent model call and prompt runtime", () => {
 		});
 	});
 
+	it("preserves prompt images when model capability metadata only declares text", async () => {
+		const adapter = new CodingAgentPromptRequestAdapter({ now: () => 42 });
+		const request = adapter.createRequest({
+			text: "inspect image",
+			images: [{ type: "image", data: "base64", mimeType: "image/png" }],
+		});
+		const result = await adapter.prepare(request, {
+			sessionId: "session-1",
+			turnId: "turn-1",
+			queueing: false,
+			signal: new AbortController().signal,
+			modelBinding: { model: { ...MODEL, input: ["text"] } },
+		});
+
+		expect(result).toMatchObject({
+			action: "continue",
+			input: {
+				message: {
+					content: [
+						{ type: "text", text: "inspect image" },
+						{ type: "image", data: "base64", mimeType: "image/png" },
+					],
+				},
+			},
+		});
+	});
+
 	it("delegates Turn binding and release to a replaceable product Prompt Runtime", async () => {
 		const releaseTurnBinding = vi.fn();
 		const prepare = vi.fn(async () => ({ action: "handled" as const }));

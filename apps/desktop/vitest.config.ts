@@ -10,6 +10,14 @@ export default defineConfig({
 	resolve: {
 		alias: [
 			{
+				find: "@vetta/runtime-core/configuration",
+				replacement: resolve(__dirname, "../../packages/runtime-core/src/configuration/index.ts"),
+			},
+			{
+				find: "@vetta/runtime-core/observation",
+				replacement: resolve(__dirname, "../../packages/runtime-core/src/observation/index.ts"),
+			},
+			{
 				find: "@vetta/runtime-node/conversation/legacy",
 				replacement: resolve(__dirname, "../../packages/runtime-node/src/conversation/legacy.ts"),
 			},

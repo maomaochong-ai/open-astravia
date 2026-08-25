@@ -33,5 +33,8 @@ export interface SessionSettingsPort {
 	setImageAutoResize(enabled: boolean): void;
 	getBlockImages(): boolean;
 	setBlockImages(blocked: boolean): void;
+	getImageSettings?(): ImageSettings;
 	getPersonalization(): { personaId: string; customPrompt: string };
 }
+
+import type { ImageSettings } from "./settings-document.js";

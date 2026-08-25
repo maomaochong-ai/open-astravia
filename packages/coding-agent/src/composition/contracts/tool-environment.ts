@@ -1,10 +1,12 @@
 import type { ConversationScenario } from "@vetta/runtime-core";
+import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
 import type { AsyncExecutionGate, BackgroundCommandService, CodingToolRegistration } from "@vetta/runtime-tools";
 
 export interface CodingAgentToolEnvironmentContext {
 	readonly cwd: string;
 	readonly agentDir?: string;
 	readonly scenario: ConversationScenario;
+	readonly configurationSource?: RuntimeConfigurationSnapshotSource;
 }
 
 /** 平台提供的文件、命令等基础 Tool；产品 Tool、选择、排序和结果策略由 Coding Agent 决定。 */

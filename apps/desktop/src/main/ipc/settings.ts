@@ -1,9 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { getAgentDir } from "@vetta/coding-agent/config";
-import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import { ipcMain } from "electron";
-import lockfile from "proper-lockfile";
+import { readAgentSettingsDocument, updateAgentSettingsDocument } from "../agent-settings/settings-document-store.js";
 import { DEFAULT_SERVER_URL, DEFAULT_SITE_URL } from "../constants.js";
 import {
 	listPresetProviders,
@@ -12,24 +8,8 @@ import {
 	startPresetModelsAutoSync,
 } from "../models/presets/sync.js";
 
-function getSettingsPath(): string {
-	return join(getAgentDir(), "settings.json");
-}
-
 export function readSettings(): Record<string, unknown> {
-	const path = getSettingsPath();
-	if (!existsSync(path)) return {};
-	try {
-		return JSON.parse(readFileSync(path, "utf-8"));
-	} catch {
-		return {};
-	}
-}
-
-// 刻意不导出：整份写回必须经 updateSettings 在锁内完成，
-// 裸写会绕过跨进程互斥，重新打开被覆盖的窗口。
-function writeSettings(settings: Record<string, unknown>): void {
-	atomicWriteJSON(getSettingsPath(), settings);
+	return readAgentSettingsDocument();
 }
 
 /**
@@ -45,18 +25,7 @@ function writeSettings(settings: Record<string, unknown>): void {
  * 文件尚不存在时不加锁（与 coding-agent 的处理一致）：此时没有别的内容可覆盖。
  */
 export function updateSettings(mutate: (settings: Record<string, unknown>) => void): void {
-	const path = getSettingsPath();
-	let release: (() => void) | undefined;
-	try {
-		if (existsSync(path)) {
-			release = lockfile.lockSync(path, { realpath: false });
-		}
-		const settings = readSettings();
-		mutate(settings);
-		writeSettings(settings);
-	} finally {
-		release?.();
-	}
+	updateAgentSettingsDocument(mutate);
 }
 
 export function registerSettingsIpc(): () => void {

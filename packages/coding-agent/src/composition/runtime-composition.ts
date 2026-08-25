@@ -39,6 +39,7 @@ import { createCodingAgentRuntimeExtensionControls } from "./session-lifecycle/e
 import { CodingAgentCompositionResourceRegistry } from "./session-lifecycle/resource-registry.js";
 import { createCodingAgentRuntimeSessionControls } from "./session-lifecycle/session-controls.js";
 import { createCodingAgentRuntimeToolSurface } from "./tool-surface/runtime-tool-surface.js";
+import { CodingAgentImageSettingsSnapshotRouter } from "./turn/image-settings-snapshot-router.js";
 
 /**
  * Coding Agent Runtime 的共享组合入口。
@@ -78,6 +79,7 @@ async function assembleCodingAgentRuntimeComposition(
 	const sessionInitializationProfile = createCodingAgentSessionInitializationProfile(options);
 	const extensionToolRuntime = new CodingAgentExtensionToolRuntime(options.extensionTools ?? []);
 	const resourceRegistry = new CodingAgentCompositionResourceRegistry();
+	const imageSettingsSnapshots = new CodingAgentImageSettingsSnapshotRouter(observationPublisher);
 	const toolSurface = await createCodingAgentRuntimeToolSurface({
 		cwd,
 		agentDir: options.agentDir,
@@ -91,6 +93,7 @@ async function assembleCodingAgentRuntimeComposition(
 		reservedOutputTokens: options.reservedOutputTokens,
 		createToolEnvironment: options.createToolEnvironment,
 		resultPolicy: options.codingToolResultPolicy,
+		configurationSource: imageSettingsSnapshots,
 		observationPublisher,
 	});
 	const {
@@ -173,6 +176,7 @@ async function assembleCodingAgentRuntimeComposition(
 		createChildComposition,
 		assessChildSessionPath,
 		observationPublisher,
+		imageSettingsSnapshots,
 	});
 	const runtimeFactory = new ComposedRuntimeFactory<CodingAgentRuntimeSessionOptions>({
 		streamFn: options.streamFn,

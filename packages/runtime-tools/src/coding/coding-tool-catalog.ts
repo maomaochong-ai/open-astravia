@@ -306,6 +306,15 @@ function freezeRegistration(registration: CodingToolRegistration): CodingToolReg
 		requires: registration.requires ? Object.freeze([...registration.requires]) : undefined,
 		modelOrder: registration.modelOrder,
 		category: registration.category,
+		configuration: registration.configuration
+			? Object.freeze({
+					configurationIds: Object.freeze([...registration.configuration.configurationIds]),
+					requiredConfigurationIds: registration.configuration.requiredConfigurationIds
+						? Object.freeze([...registration.configuration.requiredConfigurationIds])
+						: undefined,
+					support: registration.configuration.support,
+				})
+			: undefined,
 	});
 }
 

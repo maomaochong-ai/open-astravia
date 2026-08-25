@@ -18,6 +18,31 @@ const model: Model<"anthropic-messages"> = {
 };
 
 describe("Anthropic message conversion", () => {
+	it("forwards user images when image capability metadata is missing", () => {
+		const converted = convertMessages(
+			[
+				{
+					role: "user",
+					content: [
+						{ type: "text", text: "inspect" },
+						{ type: "image", data: "ZmFrZQ==", mimeType: "image/png" },
+					],
+					timestamp: 1,
+				},
+			],
+			{ ...model, input: ["text"] },
+			false,
+		);
+
+		expect(converted[0]).toMatchObject({
+			role: "user",
+			content: [
+				{ type: "text", text: "inspect" },
+				{ type: "image", source: { type: "base64", media_type: "image/png", data: "ZmFrZQ==" } },
+			],
+		});
+	});
+
 	it("groups consecutive tool results into one user message", () => {
 		const messages: Message[] = [
 			{

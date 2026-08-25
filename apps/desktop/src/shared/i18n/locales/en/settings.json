@@ -303,6 +303,42 @@
     "disabled": "Disabled",
     "pluginCount": "{{count}} plugin(s) installed"
   },
+  "runtimeConfiguration": {
+    "title": "Tool & Runtime Configuration",
+    "empty": "No tool or runtime currently exposes configurable options.",
+    "consumers": "Consumers",
+    "applyLabel": "Applies",
+    "apply": {
+      "immediate": "Immediately",
+      "next-turn": "Next turn",
+      "next-session": "Next session",
+      "restart": "After restart"
+    },
+    "configurations": {
+      "coding": {
+        "images": {
+          "title": "Image processing",
+          "description": "Configure image normalization, safety limits, compression, and model request budgets."
+        }
+      }
+    },
+    "fields": {
+      "autoResize": { "title": "Automatic resize", "description": "Resize and compress images when they exceed configured limits." },
+      "blockImages": { "title": "Block images", "description": "Prevent images from entering model context." },
+      "resize": {
+        "maxWidth": { "title": "Maximum width", "description": "Maximum image width after resizing, in pixels." },
+        "maxHeight": { "title": "Maximum height", "description": "Maximum image height after resizing, in pixels." },
+        "maxInputPixels": { "title": "Maximum input pixels", "description": "Maximum total pixel count accepted before decoding." },
+        "maxInputEdge": { "title": "Maximum input edge", "description": "Maximum single-edge length accepted before decoding, in pixels." },
+        "maxBytes": { "title": "Maximum image bytes", "description": "Maximum size of one normalized image." },
+        "jpegQuality": { "title": "JPEG quality", "description": "Compression quality used when transcoding to JPEG (1–100)." }
+      },
+      "requestBudget": {
+        "highWatermarkBytes": { "title": "Request high watermark", "description": "Start budget compression when total image data exceeds this value." },
+        "lowWatermarkBytes": { "title": "Request low watermark", "description": "Target total image data after budget compression." }
+      }
+    }
+  },
   "environmentSettings": {
     "title": "Environment Settings",
     "addEnv": "Add environment variable",
@@ -1003,7 +1039,7 @@
   "tabAppshot": "App Snapshot",
   "betaBadge": "BETA",
   "tabEnvironment": "Environment",
-  "tabPlugins": "Plugins",
+  "tabPlugins": "Tool Configuration",
   "tabKnowledge": "Knowledge Base",
   "tabPet": "Vetta Vivi",
   "tabPermissions": "Permissions",

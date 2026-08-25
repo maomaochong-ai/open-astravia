@@ -22,6 +22,7 @@ import type { DesktopPluginsApi } from "./api-types/plugins.js";
 import type { DesktopProjectApi } from "./api-types/project.js";
 import type { DesktopQuickPanelApi } from "./api-types/quick-panel.js";
 import type { RemotePairingApi } from "./api-types/remote-pairing.js";
+import type { DesktopRuntimeConfigurationApi } from "./api-types/runtime-configuration.js";
 import type { DesktopSchedulerApi } from "./api-types/scheduler.js";
 import type { DesktopSessionApi } from "./api-types/session.js";
 import type { DesktopSkillsApi } from "./api-types/skills.js";
@@ -64,6 +65,7 @@ export type * from "./api-types/pet.js";
 export type * from "./api-types/plugins.js";
 export type * from "./api-types/project.js";
 export type * from "./api-types/quick-panel.js";
+export type * from "./api-types/runtime-configuration.js";
 export type * from "./api-types/scheduler.js";
 export type * from "./api-types/session.js";
 export type * from "./api-types/shared.js";
@@ -124,6 +126,7 @@ export interface DesktopApi {
 	plugins: DesktopPluginsApi;
 	pet: DesktopPetApi;
 	quickPanel: DesktopQuickPanelApi;
+	runtimeConfiguration: DesktopRuntimeConfigurationApi;
 	appshot: DesktopAppshotApi;
 }
 

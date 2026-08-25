@@ -6,6 +6,7 @@ import type {
 	RuntimeInputRequestPreparationResult,
 	RuntimeSnapshotAcquireContext,
 } from "@vetta/runtime-core/kernel";
+import type { CodingAgentLegacyImageSettingsSource } from "../model-context/image-settings-source.js";
 import type { BuildSystemPromptOptions, PersonalizationSettingsSource } from "../model-context/index.js";
 import type { SessionResourceRuntime } from "../resources/index.js";
 
@@ -53,10 +54,10 @@ export type CodingAgentPromptResourceSource = Pick<
 	| "setRuntimeSkillPaths"
 >;
 
-export interface CodingAgentPromptSettingsSource extends PersonalizationSettingsSource {
+export interface CodingAgentPromptSettingsSource
+	extends PersonalizationSettingsSource,
+		CodingAgentLegacyImageSettingsSource {
 	reloadPersonalizationSettings(): void;
-	reloadImageSettings?(): void;
-	getBlockImages?(): boolean;
 }
 
 export interface CodingAgentModelCallPromptContext extends ModelCallFrameCompositionContext {

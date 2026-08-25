@@ -40,7 +40,7 @@ export function convertResponsesMessages<TApi extends Api>(
 	let messageIndex = 0;
 	for (const message of transformedMessages) {
 		if (message.role === "user") {
-			if (!appendUserMessage(messages, message.content, model)) continue;
+			if (!appendUserMessage(messages, message.content)) continue;
 		} else if (message.role === "assistant") {
 			const output: ResponseInput = [];
 			const assistantMessage = message as AssistantMessage;
@@ -97,11 +97,7 @@ export function convertResponsesTools(tools: Tool[], options?: ConvertResponsesT
 	}));
 }
 
-function appendUserMessage<TApi extends Api>(
-	messages: ResponseInput,
-	content: string | Array<TextContent | ImageContent>,
-	model: Model<TApi>,
-): boolean {
+function appendUserMessage(messages: ResponseInput, content: string | Array<TextContent | ImageContent>): boolean {
 	if (typeof content === "string") {
 		messages.push({
 			role: "user",
@@ -119,9 +115,8 @@ function appendUserMessage<TApi extends Api>(
 						image_url: `data:${item.mimeType};base64,${item.data}`,
 					} satisfies ResponseInputImage),
 	);
-	const supportedParts = model.input.includes("image") ? parts : parts.filter((part) => part.type !== "input_image");
-	if (supportedParts.length === 0) return false;
-	messages.push({ role: "user", content: supportedParts });
+	if (parts.length === 0) return false;
+	messages.push({ role: "user", content: parts });
 	return true;
 }
 

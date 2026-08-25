@@ -1,5 +1,6 @@
 import type { Message } from "@vetta/ai";
 import type { ConversationScenario, InitializationRollbackTask, RuntimeResourceContext } from "@vetta/runtime-core";
+import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
 import type {
 	AgentFeatureDefinition,
 	ModelCallContributionContext,
@@ -45,6 +46,7 @@ export interface CodingAgentSessionPeripheralAssemblyOptions {
 	readonly indexes: CodingAgentSessionResourceIndexes;
 	readonly mcpCoordinator: CodingAgentMcpSessionCoordinator;
 	readonly resourceContext: RuntimeResourceContext;
+	readonly configurationSource: RuntimeConfigurationSnapshotSource;
 	readonly readSessionId: () => string;
 	readonly resolveActivation: (
 		context: ModelCallContributionContext,
@@ -92,6 +94,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 		agentDir: profile.agentDir,
 		scenario: options.scenario,
 		ocrExecutionGate: getCodingAgentOcrExecutionGate(profile.ocrMaxConcurrent),
+		configurationSource: options.configurationSource,
 	});
 	const specializedToolRegistrations = [
 		...createCodingAgentSpecializedToolRegistrations({
@@ -152,6 +155,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 		agentDir: profile.agentDir,
 		scenario: options.scenario,
 		env: sessionOptions.env,
+		configurationSource: options.configurationSource,
 	});
 	let executionRuntime: CodingAgentSessionExecutionRuntime;
 	try {

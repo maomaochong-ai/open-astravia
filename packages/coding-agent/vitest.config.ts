@@ -44,6 +44,12 @@ export default defineConfig({
 				new URL("../runtime-mcp/src/protocol/index.ts", import.meta.url),
 			),
 			"@vetta/runtime-mcp": fileURLToPath(new URL("../runtime-mcp/src/index.ts", import.meta.url)),
+			"@vetta/runtime-core/configuration": fileURLToPath(
+				new URL("../runtime-core/src/configuration/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-core/observation": fileURLToPath(
+				new URL("../runtime-core/src/observation/index.ts", import.meta.url),
+			),
 			"@vetta/runtime-core/kernel": fileURLToPath(
 				new URL("../runtime-core/src/kernel/index.ts", import.meta.url),
 			),

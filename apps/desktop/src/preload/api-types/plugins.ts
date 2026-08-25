@@ -215,6 +215,8 @@ export interface PluginAgentToolRegistration {
 	requires?: string[];
 	/** 副作用等级（"light" | "heavy"，缺省 = light）。heavy 工具会话内首次调用前需用户确认。 */
 	side_effect?: string;
+	/** 与本插件 contributes.settings 的可选 Adapter 关联；缺省表示工具不提供配置。 */
+	configuration?: { settingKeys?: readonly string[] };
 	context?: { conversation?: "summary" | "messages" };
 	/**
 	 * 该工具带有自渲染卡片（同一插件为它注册了 tool-call slot）。由渲染进程自动探测，
