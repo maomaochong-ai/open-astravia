@@ -274,6 +274,7 @@ describe("affected package selection", () => {
 
 describe("CI unit test coverage", () => {
 	const workflow = readFileSync(join(repoRoot, ".github/workflows/quality.yml"), "utf8");
+	const imGatewayWorkflow = readFileSync(join(repoRoot, ".github/workflows/im-gateway.yml"), "utf8");
 	const mobileWorkflow = readFileSync(join(repoRoot, ".github/workflows/mobile.yml"), "utf8");
 	const rootManifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 
@@ -294,6 +295,12 @@ describe("CI unit test coverage", () => {
 		expect(mobileWorkflow).toContain('      - "apps/mobile/**"');
 		expect(mobileWorkflow).toContain(":shared:testAndroidHostTest");
 		expect(mobileWorkflow).toContain(":androidApp:assembleDebug");
+	});
+
+	it("limits path-filtered app checks to branch pushes", () => {
+		for (const appWorkflow of [imGatewayWorkflow, mobileWorkflow]) {
+			expect(appWorkflow).toMatch(/push:\r?\n {4}branches:\r?\n {6}- "\*\*"\r?\n {4}paths:/);
+		}
 	});
 });
 

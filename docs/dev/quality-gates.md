@@ -163,7 +163,7 @@ workspace 包声明解析。因此，上游源码修改但 `dist/*.d.ts` 尚未�
 
 `.github/workflows/quality.yml` 负责通用 TypeScript 质量门禁：冻结依赖安装、`bun run check`、质量脚本测试、Runtime 合同检查，并在 Ubuntu 与 Windows 上顺序运行受影响 workspace 及其可测下游。单元测试 Job 会显式安装真实 `ripgrep`，用于验证 Runtime Node 的 `grep` / `glob` 进程合同，不依赖 GitHub Runner 镜像碰巧预装该工具。完整 Git 历史用于计算 PR base；根配置、锁文件或质量脚本变化会在两个平台运行全部 workspace 测试。
 
-非 Bun workspace 由独立的 path-filtered workflow 覆盖：`.github/workflows/im-gateway.yml` 对 Go Gateway 执行 tidy、vet、build、test、接口纪律和 golangci-lint；`.github/workflows/mobile.yml` 对 Kotlin Mobile 执行 Android host tests 和 debug APK 构建。它们只在对应目录或 workflow 自身变化时运行，不把 Go/Kotlin 生命周期伪装成 JavaScript workspace 任务。
+非 Bun workspace 由独立的 path-filtered workflow 覆盖：`.github/workflows/im-gateway.yml` 对 Go Gateway 执行 tidy、vet、build、test、接口纪律和 golangci-lint；`.github/workflows/mobile.yml` 对 Kotlin Mobile 执行 Android host tests 和 debug APK 构建。它们只在分支 push 或 PR 中对应目录或 workflow 自身变化时运行，不响应 tag push，也不把 Go/Kotlin 生命周期伪装成 JavaScript workspace 任务。
 
 Desktop 生产边界由独立的 `.github/workflows/desktop-packaged.yml` 负责：它始终运行打包合同检查，涉及 Desktop 主进程、preload、打包脚本、原生依赖、远程控制或锁文件的变更才会启动 Windows、macOS、Linux runners，构建 unpacked packaged 应用并运行 Electron 启动与 updater E2E；无关变更不会构建 Desktop。上述 workflow 都使用只读检查，不会自动修复候选提交。
 

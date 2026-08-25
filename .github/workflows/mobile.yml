@@ -2,6 +2,8 @@ name: mobile
 
 on:
   push:
+    branches:
+      - "**"
     paths:
       - "apps/mobile/**"
       - ".github/workflows/mobile.yml"
