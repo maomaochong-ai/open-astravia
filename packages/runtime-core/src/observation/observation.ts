@@ -34,6 +34,14 @@ export function createRuntimeObservationPublisher(
 	);
 }
 
+/** 将已 scope 的 Publisher 适配为父级 Port，供子 Hub 无损汇聚且不取得上层生命周期所有权。 */
+export function createRuntimeObservationPublisherPort(publisher: RuntimeObservationPublisher): RuntimeObservationPort {
+	return {
+		record: (observation) => publisher.forward(observation),
+		flush: () => publisher.flush(),
+	};
+}
+
 export class NoopRuntimeObservationPort implements RuntimeObservationPort {
 	record(): void {}
 }
@@ -82,13 +90,27 @@ class DefaultRuntimeObservationPublisher implements RuntimeObservationPublisher 
 		payload: Payload,
 		context: RuntimeObservationContext = {},
 	): void {
+		this.dispatch(
+			Object.freeze({
+				token,
+				context: mergeContext(this.context, context),
+				timestamp: this.now(),
+				payload,
+			}),
+		);
+	}
+
+	forward(observation: RuntimeObservationRecord): void {
+		this.dispatch(
+			Object.freeze({
+				...observation,
+				context: mergeContext(this.context, observation.context),
+			}),
+		);
+	}
+
+	private dispatch(observation: RuntimeObservationRecord): void {
 		if (!this.port) return;
-		const observation: RuntimeObservationRecord<Payload> = Object.freeze({
-			token,
-			context: mergeContext(this.context, context),
-			timestamp: this.now(),
-			payload,
-		});
 		try {
 			const result = this.port.record(observation);
 			if (isPromiseLike(result)) void result.catch((error: unknown) => this.reportPortError(error));

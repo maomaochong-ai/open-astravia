@@ -53,6 +53,9 @@ describe("Coding Agent composition shutdown", () => {
 		const disposeCodingTools = vi.fn(() => {
 			expect(repositoryClosed).toBe(true);
 		});
+		const closeObservationHub = vi.fn(() => {
+			expect(disposeCodingTools).toHaveBeenCalledOnce();
+		});
 		const shutdown = createCodingAgentCompositionShutdown({
 			registry,
 			clearConversationContextOverlay: () => {
@@ -62,6 +65,7 @@ describe("Coding Agent composition shutdown", () => {
 			closeConversationRepository,
 			disposeMcpSynchronizer,
 			disposeCodingTools,
+			closeObservationHub,
 		});
 
 		const firstDisposal = shutdown.dispose();
@@ -78,6 +82,7 @@ describe("Coding Agent composition shutdown", () => {
 		expect(closeConversationRepository).toHaveBeenCalledOnce();
 		expect(disposeMcpSynchronizer).toHaveBeenCalledOnce();
 		expect(disposeCodingTools).toHaveBeenCalledOnce();
+		expect(closeObservationHub).toHaveBeenCalledOnce();
 
 		await expect(shutdown.dispose()).resolves.toBeUndefined();
 		expect(ownershipBinding.dispose).toHaveBeenCalledTimes(2);
@@ -89,6 +94,7 @@ describe("Coding Agent composition shutdown", () => {
 		expect(turnCapabilityAssembly.dispose).toHaveBeenCalledOnce();
 		expect(pluginMcpRuntime.dispose).toHaveBeenCalledOnce();
 		expect(closeConversationRepository).toHaveBeenCalledOnce();
+		expect(closeObservationHub).toHaveBeenCalledOnce();
 	});
 
 	it("does not dispose resources already removed by normal Session cleanup", async () => {

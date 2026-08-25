@@ -1,5 +1,5 @@
 import type { SessionEndCause, SessionStartSource } from "@vetta/ecosystem-adapter";
-import type { ConversationScenario, KernelRuntimeSessionBackend } from "@vetta/runtime-core";
+import type { ConversationScenario, KernelRuntimeSessionBackend, RuntimeObservationHubView } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { CodingToolRegistry } from "@vetta/runtime-tools";
 import type {
@@ -47,6 +47,8 @@ export interface CodingAgentRuntimeComposition
 		CodingAgentRuntimeExtensionControls {
 	readonly backend: KernelRuntimeSessionBackend<CodingAgentRuntimeSessionOptions>;
 	readonly tools: CodingAgentRuntimeToolAccess;
+	/** Composition 自有 Hub 的非所有权控制面；调用方可动态注册 Adapter 和读取健康度。 */
+	readonly observations: RuntimeObservationHubView;
 	readonly scenario: ConversationScenario;
 	dispose(): Promise<void>;
 }

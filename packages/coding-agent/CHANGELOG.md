@@ -2,6 +2,9 @@
 
 ### Changed
 
+- 每个 Coding Agent Runtime Composition 现在固有并拥有一个产品子 `RuntimeObservationHub`：支持本地动态 Adapter 与
+  健康 snapshot，也可通过父级 Port 或兼容 scoped Publisher 汇入应用 Hub；子代理 Hub 继续挂在产品 Hub 下，释放
+  Composition 不关闭父级或 Adapter 外部资源。普通 Logger、Audit Sink 与原生 Trace Span 的边界保持不变。
 - Session 初始化观测统一改由产品自有的 `coding-agent.session.initialization` Token 经
   `RuntimeObservationPublisher` 发布，Session 身份进入通用 context；移除并行的
   `observeSessionInitialization` / `CodingAgentSessionInitializationObserver` 专用回调入口。

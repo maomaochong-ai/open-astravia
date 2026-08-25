@@ -12,6 +12,8 @@ export interface CodingAgentCompositionShutdownOptions {
 	readonly closeConversationRepository: () => Promise<void> | void;
 	readonly disposeMcpSynchronizer?: () => Promise<void> | void;
 	readonly disposeCodingTools: () => Promise<void> | void;
+	/** 必须最后关闭，使其它资源释放阶段仍可发布最终诊断。 */
+	readonly closeObservationHub?: () => Promise<void> | void;
 }
 
 export interface CodingAgentCompositionShutdown {
@@ -92,6 +94,9 @@ function prepareCleanup(
 		cleanup.add({ id: "mcp-synchronizer", phase: 3, cleanup: options.disposeMcpSynchronizer });
 	}
 	cleanup.add({ id: "coding-tools", phase: 3, cleanup: options.disposeCodingTools });
+	if (options.closeObservationHub) {
+		cleanup.add({ id: "observation-hub", phase: 4, cleanup: options.closeObservationHub });
+	}
 }
 
 function addSynchronousResources(

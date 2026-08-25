@@ -561,6 +561,12 @@ await agentHub.close();
 自己的本地 Adapter。路由支持 `domains`、`levels` 和只读 `predicate`，Hub 的 `snapshot()` 可查看交付、过滤、失败、
 丢弃和在途计数。
 
+如果模块拿到的是已经绑定 Agent/revision/instance identity 的 Publisher，而不是裸 Port，应使用
+`createRuntimeObservationPublisherPort(scopedPublisher)` 作为子 Hub 的 parent。它通过 Publisher 的 `forward()` 合并
+父级 identity，同时保留子记录的 token、payload 与 timestamp。不要用普通 `publisher.record()` 手工重发已有 record，
+否则会生成新的 timestamp。Publisher 应由 `createRuntimeObservationPublisher()` 或 Runtime Agent Host 创建；自定义实现
+必须同时实现 `forward()` 的无损记录转发语义。
+
 Definition、Instance 和 Session 工厂收到的 `observationPublisher` 已绑定正确的
 `agentId/revisionId/instanceId/sessionId`，自定义能力可以定义自己的安全事件：
 

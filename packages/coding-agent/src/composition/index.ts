@@ -58,6 +58,8 @@ export {
 	DEFAULT_CODING_AGENT_RUNTIME_ID,
 } from "./runtime-agent-definition.js";
 export {
+	type CodingAgentObservationHubOptions,
+	type CodingAgentObservationRoute,
 	type CodingAgentPromptRuntimeSourceContext,
 	type CodingAgentPromptRuntimeSources,
 	type CodingAgentRuntimeComposition,

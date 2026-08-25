@@ -1,5 +1,12 @@
 import type { EcosystemHookAdapterFactory, HookConfigLayer } from "@vetta/ecosystem-adapter";
-import type { ConversationScenario, RuntimeObservationPublisher, SessionConfig } from "@vetta/runtime-core";
+import type {
+	ConversationScenario,
+	RuntimeObservationHubIssue,
+	RuntimeObservationPort,
+	RuntimeObservationPublisher,
+	RuntimeObservationRouteOptions,
+	SessionConfig,
+} from "@vetta/runtime-core";
 import type { AgentCoreTurnEngineOptions } from "@vetta/runtime-core/kernel";
 import type { SessionExtensionDefinition } from "@vetta/runtime-core/session-extensions";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
@@ -202,14 +209,31 @@ export interface CodingAgentRuntimeContextOptions {
 
 export interface CodingAgentRuntimeObservabilityOptions {
 	/**
-	 * Runtime Agent Host 或宿主 Hub 注入的 scoped Publisher；产品只发布安全摘要，不拥有具体 Adapter。
-	 * 包括 Tool 调用与 Session 初始化观测；未提供时观测安全关闭。
+	 * Runtime Agent Host 注入的兼容 scoped Publisher。Composition 会通过无损 Port Adapter 将它作为自有子 Hub
+	 * 的上游；不能与 observationHub.parent 同时提供。
 	 */
 	readonly observationPublisher?: RuntimeObservationPublisher;
+	/** Coding Agent Composition 自有 Hub 的父级、局部路由与健康诊断配置。 */
+	readonly observationHub?: CodingAgentObservationHubOptions;
 	/** 平台中立的进程级观测端口；Composition 与 Runtime 均不拥有其生命周期。 */
 	readonly tracer?: AgentCoreTurnEngineOptions["tracer"];
 	/** Session 间共享的观测策略；Turn Engine 会覆盖真实 Session 身份。 */
 	readonly tracing?: AgentCoreTurnEngineOptions["tracing"];
+}
+
+export interface CodingAgentObservationRoute {
+	readonly port: RuntimeObservationPort;
+	readonly route: RuntimeObservationRouteOptions;
+}
+
+export interface CodingAgentObservationHubOptions {
+	/** 上层应用/Agent Hub，只接收原记录且不归 Coding Agent 所有。 */
+	readonly parent?: RuntimeObservationPort;
+	/** 创建 Composition 时立即注册的局部 Adapter；外部资源仍由提供者释放。 */
+	readonly routes?: readonly CodingAgentObservationRoute[];
+	readonly maxPendingRecords?: number;
+	/** 子 Hub 自身容量、关闭或 Adapter 问题的紧急诊断旁路。 */
+	readonly onIssue?: (issue: RuntimeObservationHubIssue) => void;
 }
 
 export interface CodingAgentRuntimeCompositionOptions

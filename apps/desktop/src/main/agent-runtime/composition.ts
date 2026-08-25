@@ -68,13 +68,12 @@ const log = getAppLogger("runtime");
 
 export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	const observationHub = new RuntimeObservationHub({
-		onIssue: (issue) => log.warn("[runtime-observation] hub issue", issue),
+		onIssue: (issue) => log.warn("[runtime-observation] application hub issue", issue),
 	});
 	observationHub.attach(createSessionInitializationLogPort(log), {
 		id: "desktop.session-initialization-log",
 		domains: [CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION.domain],
 	});
-	const observationPublisher = observationHub.publisher();
 	const platformServices = createDesktopRuntimeHostPlatformServices();
 	const modelRuntime = getOrCreateSharedModelRuntime();
 	const providerObservationRuntime = getDesktopProviderObservationRuntime();
@@ -116,7 +115,10 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 					journalStorage: new NodeTextFileStorage(join(options.cwd, "JOURNAL.md")),
 				});
 			},
-			observationPublisher,
+			observationHub: {
+				parent: observationHub,
+				onIssue: (issue) => log.warn("[runtime-observation] coding agent hub issue", issue),
+			},
 			...(providerObservationRuntime ? { streamFn: providerObservationRuntime.streamFn } : {}),
 			createPluginMcpRuntime: ({ cwd, agentDir }) => {
 				const resolvedAgentDir = agentDir ?? getAgentDir();

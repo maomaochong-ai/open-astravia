@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	CompositeRuntimeObservationPort,
 	createRuntimeObservationPublisher,
+	createRuntimeObservationPublisherPort,
 	defineRuntimeObservation,
 	RUNTIME_OBSERVATION_HUB_ISSUE,
 	RuntimeObservationHub,
@@ -42,6 +43,59 @@ describe("runtime observation", () => {
 				payload: { value: 1 },
 			},
 		]);
+	});
+
+	it("forwards child records through a scoped Publisher without rebuilding their timestamp", async () => {
+		const records: RuntimeObservationRecord[] = [];
+		const upstream = createRuntimeObservationPublisher({
+			port: {
+				record: (record) => {
+					records.push(record);
+				},
+			},
+			context: { agentId: "agent", revisionId: "revision" },
+			now: () => 999,
+		});
+		const port = createRuntimeObservationPublisherPort(upstream);
+		const childRecord: RuntimeObservationRecord<{ readonly value: number }> = Object.freeze({
+			token: TEST_OBSERVATION,
+			context: Object.freeze({ agentId: "untrusted", sessionId: "session" }),
+			timestamp: 42,
+			payload: Object.freeze({ value: 1 }),
+		});
+
+		await port.record(childRecord);
+		await port.flush?.();
+
+		expect(records).toEqual([
+			{
+				token: TEST_OBSERVATION,
+				context: { agentId: "agent", revisionId: "revision", sessionId: "session" },
+				timestamp: 42,
+				payload: { value: 1 },
+			},
+		]);
+	});
+
+	it("isolates forwarded record failures from a child Hub", () => {
+		const onPortError = vi.fn();
+		const publisher = createRuntimeObservationPublisher({
+			port: {
+				record() {
+					throw new Error("forwarded adapter secret");
+				},
+			},
+			onPortError,
+		});
+		const record: RuntimeObservationRecord = {
+			token: TEST_OBSERVATION,
+			context: {},
+			timestamp: 42,
+			payload: { value: 1 },
+		};
+
+		expect(() => publisher.forward(record)).not.toThrow();
+		expect(onPortError).toHaveBeenCalledOnce();
 	});
 
 	it("isolates synchronous and asynchronous adapter failures from observed work", async () => {

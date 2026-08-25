@@ -15,12 +15,14 @@ export {
 	type RuntimeObservationHubIssueOperation,
 	type RuntimeObservationHubOptions,
 	type RuntimeObservationHubSnapshot,
+	type RuntimeObservationHubView,
 	type RuntimeObservationRouteOptions,
 	type RuntimeObservationRouteRegistration,
 } from "./hub.js";
 export {
 	CompositeRuntimeObservationPort,
 	createRuntimeObservationPublisher,
+	createRuntimeObservationPublisherPort,
 	defineRuntimeObservation,
 	NoopRuntimeObservationPort,
 	runtimeObservationFailure,

@@ -67,6 +67,12 @@ export interface RuntimeObservationHubSnapshot {
 	readonly pendingRecordCount: number;
 }
 
+/** Hub 的非所有权控制面；允许宿主动态接入 Adapter 与读取健康度，但不能关闭模块拥有的 Hub。 */
+export interface RuntimeObservationHubView {
+	attach(port: RuntimeObservationPort, options: RuntimeObservationRouteOptions): RuntimeObservationRouteRegistration;
+	snapshot(): RuntimeObservationHubSnapshot;
+}
+
 interface RuntimeObservationRoute {
 	readonly id: string;
 	readonly port: RuntimeObservationPort;
@@ -85,7 +91,7 @@ interface DeliveryTarget {
  *
  * Hub 只统一信封、身份、路由和 Adapter 生命周期，不解释领域 payload，也不拥有父级 Port。
  */
-export class RuntimeObservationHub implements RuntimeObservationPort {
+export class RuntimeObservationHub implements RuntimeObservationPort, RuntimeObservationHubView {
 	private readonly routes = new Map<string, RuntimeObservationRoute>();
 	private readonly pendingRecords = new Set<Promise<void>>();
 	private readonly parent: RuntimeObservationPort | undefined;

@@ -22,6 +22,8 @@ Span 语义、产品状态语义和安全边界；若每层继续建立自己的
    所有者定义 Token 与安全 payload。
 2. Hub 可动态 attach/detach Adapter，并按 domain、level 或 predicate 路由。子 Hub 可把原始 record 原样上送父级
    Port；也可在运行时把上层 Hub 作为普通 Adapter 接入。上层不会重新包装 record，因此 timestamp 和完整 identity 保持不变。
+   当上游只有 scoped Publisher 时，使用 Publisher 的 `forward(record)` 与标准 Publisher-to-Port Adapter：record 的
+   token、payload、timestamp 不变，只按“父 scope 优先”合并 identity。
 3. Hub 隔离 Adapter 的 filter、record 和 flush 失败，提供不含 error message/stack 的安全 Hub issue、交付/过滤/丢弃/
    在途计数，以及有界 pending 保护。观测故障不得改变 Agent 业务流程。
 4. 生命周期按所有权关闭：创建根 Hub 的组合根负责 close；子 Hub 不关闭父级；注入父级 Publisher 的 Agent Host 不 flush
@@ -32,6 +34,9 @@ Span 语义、产品状态语义和安全边界；若每层继续建立自己的
    generation/tool 生命周期仍由执行层 tracer 负责，`context.traceId` 作为 metadata 关联，不能伪装成 tracer 的原生父子关系。
 7. 产品专用观测属于产品包。例如 Coding Agent 定义 `coding-agent.session.initialization`；Runtime Core 不认识初始化阶段、
    Profile、Persona 或 Mode。产品不得再为同一事件维护并行的专用 callback。
+8. 每个 Coding Agent Runtime Composition 创建并拥有一个产品子 Hub。应用可作为 parent 统一汇聚，本地 Adapter 可动态
+   attach；Composition 在其它产品资源释放后关闭子 Hub，但不关闭父级。Coding Agent 的子代理 Composition 继续以当前
+   产品 Hub 为父级，避免全部模块绕过产品边界直接连接应用根。
 
 分层结构如下：
 
@@ -73,3 +78,5 @@ scoped Publisher（Agent / Session / Turn / Tool identity）
 - 新事件仍必须由领域所有者设计安全 payload；Hub 和 Adapter 不承担“收到敏感正文后再脱敏”的责任。
 - Hub snapshot 是交付健康度，不是业务指标；需要持久化、重试或至少一次语义的 Adapter 自行拥有队列与 flush。
 - Trace/Session 桥接是显式且有损的安全投影。需要完整业务状态或原生 Span 的消费者继续使用各自原生合同。
+- 普通工程日志、安全审计和原生 Trace Span 不因产品子 Hub 而迁入 Observation。日志 Adapter 只把已经通过安全合同的
+  Observation 投影为结构化日志；Hub 自身容量/关闭问题仍可使用不经过 Hub 的紧急诊断回调。

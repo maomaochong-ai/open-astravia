@@ -65,8 +65,8 @@ composition is Node-oriented and is not part of this portable boundary.
 
 - `RuntimeHost`
 - `@vetta/runtime-core/agents` for `RuntimeAgentDefinition`, `RuntimeAgentRegistry`, `RuntimeAgentHost`, Instance/Session routing, revision leases and Source synchronization
-- `@vetta/runtime-core/observation` for domain-owned tokens, scoped publishers, hierarchical/dynamic Hub routing, safe
-  Session projection and arbitrary telemetry adapters
+- `@vetta/runtime-core/observation` for domain-owned tokens, scoped publishers, lossless Publisher-to-Port forwarding,
+  hierarchical/dynamic Hub routing, safe Session projection and arbitrary telemetry adapters
 - `RuntimeHostSessionBackend` and `KernelRuntimeSessionBackend` for composition-root session creation
 - `RuntimeSessionCreateRequest` for backend-neutral creation without SessionManager, custom tools or ModelRegistry
 - `RuntimeSessionTurnControl`, `RuntimeSessionEventStream` and `RuntimeSessionStateReader` core host ports

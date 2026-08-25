@@ -41,6 +41,11 @@ export interface RuntimeObservationPublisher {
 		payload: Payload,
 		context?: RuntimeObservationContext,
 	): void;
+	/**
+	 * 无损转发已经构造的安全记录；保留 token、payload 与 timestamp，只叠加当前 Publisher 的父级 identity scope。
+	 * 供子 Hub/Port 组合使用，领域代码通常应调用 record()。
+	 */
+	forward(observation: RuntimeObservationRecord): void;
 	scope(context: RuntimeObservationContext): RuntimeObservationPublisher;
 	flush(): Promise<void>;
 }

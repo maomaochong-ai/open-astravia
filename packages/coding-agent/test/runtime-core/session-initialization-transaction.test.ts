@@ -2,10 +2,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
+import { RuntimeObservationHub, type RuntimeObservationRecord } from "@vetta/runtime-core";
 import type { ModelCallFrameCompositionContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/model-runtime-adapter.js";
+import { CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION } from "../../src/composition/contracts/session-initialization-observability.js";
 import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import { CodingAgentMemoryRolloverOrchestrator } from "../../src/memory/index.js";
 import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
@@ -13,6 +15,89 @@ import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-pe
 import { createMemoryTextStorage } from "../fixtures/memory-storage.js";
 
 describe("Coding Agent Session Initialization Transaction", () => {
+	it("closes its owned observation Hub when Composition assembly fails", async () => {
+		const conversationDir = await mkdtemp(join(tmpdir(), "coding-agent-observation-rollback-"));
+		const flush = vi.fn(async () => {});
+		try {
+			await expect(
+				createCodingAgentRuntimeComposition({
+					conversationDir,
+					modelRegistry: modelRegistry(),
+					initialModel: MODEL,
+					initialThinkingLevel: "off",
+					enableSubagents: false,
+					activation: { mode: "explicit", toolNames: [] },
+					createToolEnvironment: () => {
+						throw new Error("tool environment assembly failed");
+					},
+					observationHub: {
+						routes: [{ port: { record() {}, flush }, route: { id: "local" } }],
+					},
+				}),
+			).rejects.toThrow("tool environment assembly failed");
+			expect(flush).toHaveBeenCalledOnce();
+		} finally {
+			await rm(conversationDir, { force: true, recursive: true });
+		}
+	});
+
+	it("publishes real initialization observations through its owned child Hub", async () => {
+		const conversationDir = await mkdtemp(join(tmpdir(), "coding-agent-observation-hub-"));
+		const parentRecords: RuntimeObservationRecord[] = [];
+		const localRecords: RuntimeObservationRecord[] = [];
+		const parent = new RuntimeObservationHub();
+		parent.attach(
+			{
+				record: (record) => {
+					parentRecords.push(record);
+				},
+			},
+			{ id: "parent" },
+		);
+		const composition = await createCodingAgentRuntimeComposition({
+			conversationDir,
+			modelRegistry: modelRegistry(),
+			initialModel: MODEL,
+			initialThinkingLevel: "off",
+			enableSubagents: false,
+			activation: { mode: "explicit", toolNames: [] },
+			observationHub: { parent },
+		});
+		const localRoute = composition.observations.attach(
+			{
+				record: (record) => {
+					localRecords.push(record);
+				},
+			},
+			{
+				id: "local",
+				domains: [CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION.domain],
+			},
+		);
+
+		try {
+			const session = await composition.backend.create({ sessionId: "observed-session" });
+			await parent.flush();
+			const parentInitialization = parentRecords.filter(
+				({ token }) => token === CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION,
+			);
+			expect(parentInitialization.length).toBeGreaterThan(1);
+			expect(localRecords).toEqual(parentInitialization);
+			expect(parentInitialization.at(-1)).toMatchObject({
+				context: { sessionId: "observed-session" },
+				payload: { status: "completed" },
+			});
+			expect(composition.observations.snapshot()).toMatchObject({ closed: false });
+			expect(localRoute.detach()).toBe(true);
+			await session.dispose();
+		} finally {
+			await composition.dispose().catch(() => undefined);
+			await rm(conversationDir, { force: true, recursive: true });
+		}
+		expect(composition.observations.snapshot().closed).toBe(true);
+		expect(parent.snapshot().closed).toBe(false);
+	});
+
 	it("creates platform specialized tools with the current Session context", async () => {
 		const conversationDir = await mkdtemp(join(tmpdir(), "coding-agent-specialized-tool-host-"));
 		const createSpecializedToolRegistrations = vi.fn(() => []);

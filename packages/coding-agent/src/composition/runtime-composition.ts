@@ -14,6 +14,8 @@ import { createCodingAgentChildCompositionFactory } from "./subagent/child-compo
 
 export type {
 	CodingAgentInitialTodoLockSource,
+	CodingAgentObservationHubOptions,
+	CodingAgentObservationRoute,
 	CodingAgentPromptRuntimeSourceContext,
 	CodingAgentPromptRuntimeSources,
 	CodingAgentRuntimeComposition,
@@ -25,6 +27,11 @@ export type {
 	CodingAgentRuntimeToolAccess,
 } from "./contracts/index.js";
 
+import {
+	type CodingAgentObservationRuntime,
+	createChildCodingAgentObservationOptions,
+	createCodingAgentObservationRuntime,
+} from "./observability/observation-runtime.js";
 import { createCodingAgentSessionInitializationProfile } from "./session-initialization/profile.js";
 import { createCodingAgentSessionInitializationTransaction } from "./session-initialization/transaction.js";
 import { createCodingAgentCompositionShutdown } from "./session-lifecycle/composition-shutdown.js";
@@ -48,6 +55,24 @@ async function createCodingAgentRuntimeCompositionInternal(
 	options: CodingAgentRuntimeCompositionOptions,
 	inheritedMcpView: McpRuntimeToolView,
 ): Promise<CodingAgentRuntimeComposition> {
+	const observationRuntime = createCodingAgentObservationRuntime({
+		publisher: options.observationPublisher,
+		hub: options.observationHub,
+	});
+	try {
+		return await assembleCodingAgentRuntimeComposition(options, inheritedMcpView, observationRuntime);
+	} catch (error) {
+		await observationRuntime.hub.close();
+		throw error;
+	}
+}
+
+async function assembleCodingAgentRuntimeComposition(
+	options: CodingAgentRuntimeCompositionOptions,
+	inheritedMcpView: McpRuntimeToolView,
+	observationRuntime: CodingAgentObservationRuntime,
+): Promise<CodingAgentRuntimeComposition> {
+	const observationPublisher = observationRuntime.publisher;
 	const cwd = options.cwd ?? ".";
 	const scenario = options.scenario ?? "cli";
 	const sessionInitializationProfile = createCodingAgentSessionInitializationProfile(options);
@@ -66,7 +91,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 		reservedOutputTokens: options.reservedOutputTokens,
 		createToolEnvironment: options.createToolEnvironment,
 		resultPolicy: options.codingToolResultPolicy,
-		observationPublisher: options.observationPublisher,
+		observationPublisher,
 	});
 	const {
 		activation: effectiveActivation,
@@ -104,8 +129,12 @@ async function createCodingAgentRuntimeCompositionInternal(
 		resolveSessionDirectory: persistence.resolveSessionDirectory,
 		resolveSessionPath: persistence.resolveSessionPath,
 	};
+	const { observationPublisher: _observationPublisher, ...optionsWithoutPublisher } = options;
 	const createChildComposition = createCodingAgentChildCompositionFactory({
-		parentOptions: options,
+		parentOptions: {
+			...optionsWithoutPublisher,
+			observationHub: createChildCodingAgentObservationOptions(options.observationHub, observationRuntime.hub),
+		},
 		createComposition: createCodingAgentRuntimeCompositionInternal,
 	});
 	const assessChildSessionPath = async (conversationDir: string, sessionId: string, sessionPath: string) => {
@@ -143,13 +172,13 @@ async function createCodingAgentRuntimeCompositionInternal(
 		resolveActivation: toolSurface.resolveActivation,
 		createChildComposition,
 		assessChildSessionPath,
-		observationPublisher: options.observationPublisher,
+		observationPublisher,
 	});
 	const runtimeFactory = new ComposedRuntimeFactory<CodingAgentRuntimeSessionOptions>({
 		streamFn: options.streamFn,
 		tracer: options.tracer,
 		tracing: options.tracing,
-		observationPublisher: options.observationPublisher,
+		observationPublisher,
 		createResources: (sessionOptions, resourceContext) =>
 			sessionInitialization.initialize(sessionOptions, resourceContext),
 	});
@@ -160,6 +189,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 		closeConversationRepository: () => persistence.dispose(),
 		disposeMcpSynchronizer: mcpCoordinator.sharedRuntimeAvailable ? () => mcpCoordinator.dispose() : undefined,
 		disposeCodingTools: () => tools.dispose(),
+		closeObservationHub: () => observationRuntime.hub.close(),
 	});
 	const sessionControls = createCodingAgentRuntimeSessionControls({
 		indexes: resourceRegistry.indexes,
@@ -178,6 +208,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 	return {
 		backend,
 		tools,
+		observations: observationRuntime.hub,
 		scenario,
 		...sessionControls,
 		...extensionControls,

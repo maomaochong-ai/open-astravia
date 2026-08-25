@@ -6,6 +6,8 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- `RuntimeObservationPublisher` 新增已有安全 record 的无损 `forward()`，并提供标准 Publisher-to-Port Adapter；子 Hub
+  可继承已 scope 的父级 Publisher，保留原 timestamp，同时继续阻止子层覆盖 Agent/revision/instance/session identity。
 - 新增可独立、可嵌套的 `RuntimeObservationHub`：支持动态 Adapter、domain/level/predicate 路由、父级汇聚、
   容量保护、失败隔离、安全 Hub issue、交付健康 snapshot 与幂等 close；`RuntimeAgentHost` 可注入父级 scoped
   Publisher 且不取得其 flush 生命周期。

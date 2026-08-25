@@ -69,6 +69,22 @@ Memory 的文档规则、Tool、Prompt 快照、Journal 格式与 Rollover 策�
 `MemoryTextStorage`。Node 宿主使用 `NodeTextFileStorage` 选择 `MEMORY.md` 与 `JOURNAL.md`；启用
 Memory 但未提供 `createMemoryRolloverRuntime` 时，Session 初始化会明确失败，不存在隐式文件回退。
 
+## 观测边界
+
+每个 `createCodingAgentRuntimeComposition()` 都创建并拥有一个 `RuntimeObservationHub`。没有上层时它可以只接本地
+Adapter 独立观测；Desktop、CLI 或 SDK 可通过 `observationHub.parent` 注入应用级 Hub，让 Tool、MCP、Session 初始化与
+安全 Session 摘要原样向上汇聚。兼容的 `observationPublisher` 会通过无损 Publisher-to-Port Adapter 成为上游，不能与
+`observationHub.parent` 同时提供。
+
+创建时可用 `observationHub.routes` 注册必须捕获初始化阶段事件的本地 Adapter；创建完成后通过返回对象的
+`composition.observations.attach()` 动态注册或撤销 Adapter，并用 `snapshot()` 读取局部交付健康度。该控制面不暴露
+`close()`：Hub 由 Composition 在其它产品资源之后关闭，父级 Port 和 Adapter 外部资源仍由各自创建者释放。子代理
+Composition 的 Hub 以当前 Coding Agent Hub 为父级，本地路由不会重复注册到每个子代理。
+
+Observation 只承载领域所有者定义的安全事件。普通工程日志继续使用 Logger，安全审计使用独立 Audit Sink，原生 Trace
+Span 继续由 Tracer 管理；宿主可以选择把安全 Observation 通过 Adapter 投影成结构化日志，但不要对同一领域事实再手工
+记录第二条日志。
+
 ## 执行模型
 
 一次模型 Turn 的稳定主干是：
