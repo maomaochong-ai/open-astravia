@@ -10,11 +10,12 @@
 scripts/start-browser-mcp.mjs   MCP 入口：就绪则 exec 真 server，未就绪退回 stub
 scripts/lib/paths.mjs           插件数据目录解析（wrapper 独占，见下）
 scripts/lib/materialize.mjs     策略快照 → agent-browser 原生配置（纯函数）
-scripts/lib/resolve-binary.mjs  在 PATH 上定位原生可执行文件
+scripts/lib/resolve-binary.mjs  定位原生可执行文件（托管前缀优先于 PATH）
+scripts/lib/version.mjs         最低版本要求与兼容性判定
 scripts/lib/stub-server.mjs     未就绪时的最小 MCP server
 src/guard/                      PreToolUse 门禁：决策纯函数 + 注册
-src/runtime/                    就绪检测、安装编排、CLI 客户端、输出解析
-src/components/                 工作区视图（控制台面板）
+src/runtime/                    就绪检测与安装编排
+src/components/                 工作区视图：使用说明 + 运行时状态
 src/config/                     宿主设置 → 策略快照
 ```
 
@@ -66,11 +67,22 @@ src/config/                     宿主设置 → 策略快照
 - 凭据走 agent-browser 的 auth vault（本机 AES-256-GCM 加密），密码不进 CLI 输出，也不进模型上下文。插件不读、不复制用户真实 Chrome 的 cookie 目录。
 - 「连接我已打开的 Chrome」模式下 Agent 与用户共用浏览器实例，能触达用户已登录的任何站点，面板会常驻提示。
 
+## 工作区视图
+
+这个插件没有可操作的界面——真正的入口是对话框。所以工作区视图只做两件事：
+
+1. **使用说明**：能力概览、可一键复制的示例 prompt、与「网页搜索」的区别、默认的安全边界，以及上游出处。
+2. **运行时状态与安装向导**：整页唯一的功能区。
+
+早期版本还做过会话/标签页总览、凭据管理与操作日志，已移除：它们依赖上游 CLI 未稳定的 JSON 输出形状，
+而「清除登录状态」受限于插件存储沙箱只能清 Cookie 与本地存储，做不到名副其实。门禁本身不受影响，
+被拦截的原因仍会作为工具结果回给模型并由它转述给用户。
+
 ## 已知限制
 
-- 面板的「清除登录状态」清的是 Cookie 与本地存储，不含 IndexedDB 与 Service Worker 缓存——删整个 profile 目录需要越出插件存储沙箱的文件操作，v1 不做。
-- 「唤起窗口」是激活对应 CDP target，多数窗口管理器下会把 Chrome 窗口带到前台，但这不是真正的窗口置顶 API。
-- CLI 的 `--json` 输出形状属于上游契约。`tab list` / `session list` / `auth list` 三个已在 agent-browser 0.34.0 真机比对并固化成测试 fixture；其余仍按容错写（认不出就显示空态）。
+- 面板不展示浏览器实时状态（有哪些标签页、登录了哪些站点）。需要时用 `agent-browser session list` /
+  `tab list` 自己看。
+- 域名白名单只覆盖被 Hook 订阅的工具名；切换到更大的工具集时，边缘工具由 action-policy 兜底。
 
 ## 开发
 

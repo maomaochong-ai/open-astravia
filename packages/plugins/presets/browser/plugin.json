@@ -20,7 +20,8 @@
 		"agent.hooks.register",
 		"agent.hookHandler.execute",
 		"storage.read",
-		"storage.write"
+		"storage.write",
+		"shell.openExternal"
 	],
 	"commands": ["npm", "agent-browser"],
 	"agent": {

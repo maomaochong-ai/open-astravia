@@ -1,20 +1,29 @@
 /**
- * 面板的四态安装流程：未就绪 → 安装中 → 失败重试 → 就绪。
+ * 工作区视图：一页使用说明 + 唯一的功能区（运行时状态与安装向导）。
  *
- * 这是插件里最容易回归的地方——异步、多状态、按钮可用性随状态变化，而且用户第一次
- * 打开插件看到的就是它。断言按用户能看见的东西写（按钮文案、状态文案），不锁内部实现。
+ * 测的是用户真正看得见的东西：运行时的五种状态各自给出哪个入口、示例 prompt 能不能复制、
+ * 上游出处有没有写在页面上。断言按可见文案与按钮写，不锁 DOM 结构。
  */
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@vetta-org/plugin-sdk", () => ({
-	useTranslation: () => ({ t: (key: string) => key, locale: "zh" }),
+	useTranslation: () => ({
+		// 直接回 key，好让断言锁住「显示了哪条文案」而不是具体译文；带参的补出参数值，
+		// 这样「检测到 0.25.4」这种关键信息仍然可断言。
+		t: (key: string, params?: Record<string, string | number>) =>
+			params ? `${key}(${Object.values(params).join(",")})` : key,
+		locale: "zh",
+	}),
 }));
 
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserActivityLog } from "../src/activity/log";
-import { BrowserConsole, type BrowserConsolePorts } from "../src/components/BrowserConsole";
-import { DEFAULT_BROWSER_SETTINGS } from "../src/config/settings";
+import {
+	BrowserConsole,
+	type BrowserConsolePorts,
+	PLUGIN_ICON_URL,
+	UPSTREAM_REPO_URL,
+} from "../src/components/BrowserConsole";
 import type { RuntimeStatus } from "../src/runtime/runtime-controller";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -61,21 +70,14 @@ class FakeRuntime {
 function renderConsole(overrides: Partial<BrowserConsolePorts> = {}): {
 	host: HTMLElement;
 	runtime: FakeRuntime;
-	activity: BrowserActivityLog;
+	opened: string[];
 	cleanup: () => void;
 } {
 	const runtime = new FakeRuntime();
-	const activity = new BrowserActivityLog();
+	const opened: string[] = [];
 	const ports: BrowserConsolePorts = {
 		runtime: runtime as unknown as BrowserConsolePorts["runtime"],
-		activity,
-		readSettings: () => DEFAULT_BROWSER_SETTINGS,
-		onSettingsChange: () => () => undefined,
-		loadSessions: async () => ({ sessions: [] }),
-		loadCredentials: async () => ({ credentials: [] }),
-		deleteCredential: async () => undefined,
-		activateTab: async () => undefined,
-		clearSignInState: async () => undefined,
+		openExternal: (url) => opened.push(url),
 		...overrides,
 	};
 	const host = document.createElement("div");
@@ -87,7 +89,7 @@ function renderConsole(overrides: Partial<BrowserConsolePorts> = {}): {
 	return {
 		host,
 		runtime,
-		activity,
+		opened,
 		cleanup: () => {
 			act(() => root.unmount());
 			host.remove();
@@ -99,8 +101,39 @@ function buttonWithText(host: HTMLElement, text: string): HTMLButtonElement | un
 	return [...host.querySelectorAll("button")].find((button) => button.textContent === text);
 }
 
-describe("面板安装流程", () => {
-	it("未就绪时给出安装入口与说明", () => {
+describe("页头图标", () => {
+	it("走 vetta-plugin:// 协议，而不是打包器生成的资源路径", () => {
+		// 回归：`import icon from "../../icon.png"` 在 dev 链接下会变成插件 dev server 上的
+		// 路径 URL，但 remote 跑在宿主页面里、按宿主 origin 解析，开发态图标直接 404 空白。
+		const { host, cleanup } = renderConsole();
+		const img = host.querySelector("img");
+		expect(img?.getAttribute("src")).toBe(PLUGIN_ICON_URL);
+		expect(PLUGIN_ICON_URL.startsWith("vetta-plugin://")).toBe(true);
+		cleanup();
+	});
+});
+
+describe("上游出处", () => {
+	it("页面上写明基于 agent-browser 与其许可证", () => {
+		const { host, cleanup } = renderConsole();
+		expect(host.textContent).toContain("hero.upstream");
+		expect(host.textContent).toContain("hero.license");
+		expect(host.textContent).toContain(UPSTREAM_REPO_URL);
+		cleanup();
+	});
+
+	it("点击出处链接交给系统浏览器打开，而不是在应用内导航", () => {
+		const { host, opened, cleanup } = renderConsole();
+		act(() => {
+			buttonWithText(host, "hero.openRepo")?.click();
+		});
+		expect(opened).toEqual([UPSTREAM_REPO_URL]);
+		cleanup();
+	});
+});
+
+describe("运行时状态", () => {
+	it("未安装时给出安装入口与说明", () => {
 		const { host, cleanup } = renderConsole();
 		expect(host.textContent).toContain("console.status.missing");
 		expect(host.textContent).toContain("console.installHint");
@@ -108,7 +141,7 @@ describe("面板安装流程", () => {
 		cleanup();
 	});
 
-	it("点击安装会触发安装，而不是只改个本地状态", () => {
+	it("点击安装会真的触发安装，而不是只改本地状态", () => {
 		const { host, runtime, cleanup } = renderConsole();
 		act(() => {
 			buttonWithText(host, "console.install")?.click();
@@ -117,7 +150,7 @@ describe("面板安装流程", () => {
 		cleanup();
 	});
 
-	it("安装中展示输出并禁用按钮，避免用户连点起第二个下载", () => {
+	it("安装中展示输出并禁用按钮，避免连点起第二个下载", () => {
 		const { host, runtime, cleanup } = renderConsole();
 		act(() => {
 			runtime.set({ phase: "installing", step: "runtime", output: "downloading 42%" });
@@ -128,7 +161,7 @@ describe("面板安装流程", () => {
 		cleanup();
 	});
 
-	it("失败时显示原因与重试，重试再次触发安装", () => {
+	it("失败时显示原因与重试", () => {
 		const { host, runtime, cleanup } = renderConsole();
 		act(() => {
 			runtime.set({ phase: "failed", step: "runtime", message: "npm 退出码 1", output: "npm ERR! network" });
@@ -142,31 +175,17 @@ describe("面板安装流程", () => {
 		cleanup();
 	});
 
-	it("版本过旧时显示升级入口，而不是当作已就绪", () => {
+	it("版本过旧时显示升级入口，并把实际版本写进提示", () => {
 		const { host, runtime, cleanup } = renderConsole();
 		act(() => {
 			runtime.set({ phase: "outdated", version: "0.25.4" });
 		});
 		expect(host.textContent).toContain("console.status.outdated");
+		expect(host.textContent).toContain("0.25.4");
 		act(() => {
 			buttonWithText(host, "console.upgrade")?.click();
 		});
 		expect(runtime.installRuntimeCalls).toBe(1);
-		cleanup();
-	});
-
-	it("版本过旧时不去查询会话 —— 那时任何 CLI 调用都会失败", () => {
-		let calls = 0;
-		const { runtime, cleanup } = renderConsole({
-			loadSessions: async () => {
-				calls++;
-				return { sessions: [] };
-			},
-		});
-		act(() => {
-			runtime.set({ phase: "outdated", version: "0.25.4" });
-		});
-		expect(calls).toBe(0);
 		cleanup();
 	});
 
@@ -176,6 +195,7 @@ describe("面板安装流程", () => {
 			runtime.set({ phase: "ready", version: "0.34.0", chromeDetected: true });
 		});
 		expect(host.textContent).toContain("console.chromeFound");
+		expect(host.textContent).toContain("console.readyHint");
 		expect(buttonWithText(host, "console.install")).toBeUndefined();
 		cleanup();
 	});
@@ -203,40 +223,57 @@ describe("面板安装流程", () => {
 	});
 });
 
-describe("面板数据加载", () => {
-	it("未就绪时不去查询会话 —— 那时二进制都不在，只会刷一片红字", () => {
-		let calls = 0;
-		const { cleanup } = renderConsole({
-			loadSessions: async () => {
-				calls++;
-				return { sessions: [] };
+describe("使用说明", () => {
+	it("四条能力说明与安全默认值都在页面上", () => {
+		const { host, cleanup } = renderConsole();
+		for (const key of [
+			"guide.cap.navigate.title",
+			"guide.cap.interact.title",
+			"guide.cap.signin.title",
+			"guide.cap.isolation.title",
+			"guide.safety.untrusted",
+			"guide.safety.noEval",
+			"guide.vs.body",
+			"guide.newSession",
+		]) {
+			expect(host.textContent).toContain(key);
+		}
+		cleanup();
+	});
+
+	it("点示例把整条 prompt 写进剪贴板，并给出已复制反馈", async () => {
+		const written: string[] = [];
+		Object.defineProperty(navigator, "clipboard", {
+			configurable: true,
+			value: {
+				writeText: (text: string) => {
+					written.push(text);
+					return Promise.resolve();
+				},
 			},
 		});
-		expect(calls).toBe(0);
+
+		const { host, cleanup } = renderConsole();
+		const prompt = buttonWithText(host, "guide.prompt.readguide.copy");
+		expect(prompt).toBeDefined();
+		await act(async () => {
+			prompt?.click();
+		});
+		expect(written).toEqual(["guide.prompt.read"]);
+		expect(host.textContent).toContain("guide.copied");
 		cleanup();
 	});
 
-	it("被拦下的动作出现在操作日志里", () => {
-		const { host, activity, cleanup } = renderConsole();
-		act(() => {
-			activity.record({
-				tool: "agent_browser_open",
-				target: "https://evil.com",
-				outcome: "blocked",
-				blockCode: "domain-not-allowed",
-				reason: "不在白名单",
-			});
+	it("剪贴板不可用时不抛错，页面保持原状", async () => {
+		Object.defineProperty(navigator, "clipboard", {
+			configurable: true,
+			value: { writeText: () => Promise.reject(new Error("denied")) },
 		});
-		expect(host.textContent).toContain("agent_browser_open");
-		expect(host.textContent).toContain("console.log.blocked");
-		cleanup();
-	});
-
-	it("附着模式给出共用浏览器的风险提示", () => {
-		const { host, cleanup } = renderConsole({
-			readSettings: () => ({ ...DEFAULT_BROWSER_SETTINGS, browserSource: "attach" }),
+		const { host, cleanup } = renderConsole();
+		await act(async () => {
+			buttonWithText(host, "guide.prompt.readguide.copy")?.click();
 		});
-		expect(host.textContent).toContain("console.policy.attachWarning");
+		expect(host.textContent).not.toContain("guide.copied");
 		cleanup();
 	});
 });

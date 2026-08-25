@@ -1,6 +1,5 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
-import type { BrowserActivityLog } from "../activity/log";
-import { type BrowserGuardConfig, GUARDED_HOST_TOOL_NAMES, evaluateBrowserToolCall, toAgentBrowserTool } from "./policy";
+import { type BrowserGuardConfig, GUARDED_HOST_TOOL_NAMES, evaluateBrowserToolCall } from "./policy";
 
 /**
  * 把门禁挂到 Coding Agent 的 PreToolUse 上。
@@ -11,11 +10,7 @@ import { type BrowserGuardConfig, GUARDED_HOST_TOOL_NAMES, evaluateBrowserToolCa
  * 配置是**每次调用现读**而不是注册时快照：用户在设置页改完白名单，下一次工具调用就该生效，
  * 不该等到重开会话。
  */
-export function registerBrowserGuard(
-	ctx: PluginContext,
-	activity: BrowserActivityLog,
-	readConfig: () => BrowserGuardConfig,
-): void {
+export function registerBrowserGuard(ctx: PluginContext, readConfig: () => BrowserGuardConfig): void {
 	ctx.agent.registerHook({
 		id: "browser-action-guard",
 		eventName: "PreToolUse",
@@ -26,20 +21,8 @@ export function registerBrowserGuard(
 		timeoutMs: 3_000,
 		handler({ event }) {
 			const decision = evaluateBrowserToolCall(event.tool.hostName, event.toolInput, readConfig());
-			const tool = toAgentBrowserTool(event.tool.hostName) ?? event.tool.hostName;
-			const target = readTarget(event.toolInput);
-			if (decision.action === "block") {
-				activity.record({ tool, target, outcome: "blocked", blockCode: decision.code, reason: decision.reason });
-				return { action: "block", reason: decision.reason };
-			}
-			activity.record({ tool, target, outcome: "allowed" });
-			return { action: "continue" };
+			return decision.action === "block" ? { action: "block", reason: decision.reason } : { action: "continue" };
 		},
 	});
 }
 
-function readTarget(input: unknown): string | undefined {
-	if (input === null || typeof input !== "object" || Array.isArray(input)) return undefined;
-	const url = (input as Record<string, unknown>).url;
-	return typeof url === "string" && url.length > 0 ? url : undefined;
-}
