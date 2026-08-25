@@ -14,18 +14,16 @@
 	"styles": ["dist/style.css"],
 	"permissions": [
 		"ui.slot.workspace-view",
-		"agent.mcp.control",
+		"agent.skills.control",
 		"agent.command.run",
 		"agent.command.spawn",
-		"agent.hooks.register",
-		"agent.hookHandler.execute",
 		"storage.read",
 		"storage.write",
 		"shell.openExternal"
 	],
 	"commands": ["npm", "agent-browser"],
 	"agent": {
-		"mcpServers": "./.mcp.json"
+		"skillPaths": ["agent/skills/browser-use"]
 	},
 	"contributes": {
 		"settings": [
@@ -72,13 +70,6 @@
 				"default": false,
 				"title": "%settings.denyDownload.title%",
 				"description": "%settings.denyDownload.description%"
-			},
-			{
-				"key": "toolsProfile",
-				"type": "string",
-				"default": "core",
-				"title": "%settings.toolsProfile.title%",
-				"description": "%settings.toolsProfile.description%"
 			},
 			{
 				"key": "maxOutput",

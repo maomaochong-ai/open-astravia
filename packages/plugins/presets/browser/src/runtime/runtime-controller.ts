@@ -17,7 +17,7 @@ export const AGENT_BROWSER_VERSION = "0.34.0";
 /**
  * 插件依赖的不只是「有这个二进制」，还包括 `--config` 的配置键与 `--pin-tab` 这类开关。
  * 机器上常有用户自己装的旧版全局 agent-browser 抢在 PATH 前面，旧版会以 `Unknown command`
- * 立刻退出——表现为工具面整个消失且毫无提示。所以就绪判定必须比版本，而不只是「跑得起来」。
+ * 立刻退出——模型只看到一条读不懂的报错。所以就绪判定必须比版本，而不只是「跑得起来」。
  */
 export const MINIMUM_AGENT_BROWSER_VERSION = AGENT_BROWSER_VERSION;
 

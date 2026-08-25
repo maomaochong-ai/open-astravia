@@ -2,19 +2,19 @@
  * 版本闸门的回归测试。
  *
  * 真实故障：机器上先有一个用户自己装的 agent-browser 0.25.4（nvm 全局，排在 PATH 上），
- * wrapper 找到它就直接 exec，而旧版不认识 `--pin-tab`，进程立刻以 "Unknown command" 退出。
- * 结果是会话里一个 agent_browser_* 工具都没有，模型静默退回 web search，面板还显示「就绪」。
+ * shim 找到它就直接跑，而旧版不认识 `--pin-tab`，进程立刻以 "Unknown command" 退出。
+ * 结果是模型看到一条读不懂的报错，静默退回网页搜索，面板还显示「就绪」。
  *
  * 所以这里同时钉住两件事：解析到二进制 ≠ 可用（必须比版本），以及插件自己装的那份要赢过
  * 机器上已有的全局安装。
  */
 import { describe, expect, it } from "vitest";
-// @ts-expect-error -- wrapper 侧是无构建的 .mjs，没有类型声明。
-import { isAgentBrowserCompatible, MINIMUM_AGENT_BROWSER_VERSION, parseAgentBrowserVersion } from "../scripts/lib/version.mjs";
+// @ts-expect-error -- shim 侧是无构建的 .mjs，没有类型声明。
+import { isAgentBrowserCompatible, MINIMUM_AGENT_BROWSER_VERSION, parseAgentBrowserVersion } from "../agent/skills/browser-use/scripts/lib/version.mjs";
 // @ts-expect-error -- 同上。
-import { setupGuidance } from "../scripts/lib/stub-server.mjs";
+import { setupGuidance } from "../agent/skills/browser-use/scripts/lib/guidance.mjs";
 // @ts-expect-error -- 同上。
-import { resolveAgentBrowserBinary } from "../scripts/lib/resolve-binary.mjs";
+import { resolveAgentBrowserBinary } from "../agent/skills/browser-use/scripts/lib/resolve-binary.mjs";
 import {
 	isAgentBrowserCompatible as isCompatibleTs,
 	parseAgentBrowserVersion as parseVersionTs,

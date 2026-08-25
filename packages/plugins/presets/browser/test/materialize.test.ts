@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
-// @ts-expect-error -- wrapper 侧是无构建的 .mjs（宿主用 node 直接跑），没有类型声明。
-import { materializeAgentBrowserConfig, normalizeSnapshot } from "../scripts/lib/materialize.mjs";
+// @ts-expect-error -- shim 侧是无构建的 .mjs（模型用 node 直接跑），没有类型声明。
+import { materializeAgentBrowserConfig, normalizeSnapshot } from "../agent/skills/browser-use/scripts/lib/materialize.mjs";
 // @ts-expect-error -- 同上。
-import { buildMcpArgv, buildSessionId, SESSION_PREFIX } from "../scripts/lib/argv.mjs";
-// @ts-expect-error -- 同上。
-import { binaryFileName, resolveAgentBrowserBinary } from "../scripts/lib/resolve-binary.mjs";
+import { binaryFileName, resolveAgentBrowserBinary } from "../agent/skills/browser-use/scripts/lib/resolve-binary.mjs";
 
 const paths = { profileDir: "/data/browser/profile", actionPolicyPath: "/data/browser/action-policy.json" };
 
@@ -65,22 +63,6 @@ describe("materializeAgentBrowserConfig", () => {
 	});
 });
 
-describe("buildMcpArgv", () => {
-	it("全局开关在子命令之前，--tools 在 mcp 之后", () => {
-		const argv = buildMcpArgv({ configPath: "/c.json", sessionId: "vetta-a", toolsProfile: "core" });
-		expect(argv).toEqual(["--config", "/c.json", "--session", "vetta-a", "--pin-tab", "mcp", "--tools", "core"]);
-	});
-
-	it("空 profile 回落 core，避免启动失败导致整个工具面消失", () => {
-		const argv = buildMcpArgv({ configPath: "/c.json", sessionId: "s", toolsProfile: "   " });
-		expect(argv.at(-1)).toBe("core");
-	});
-
-	it("session id 带 Vetta 前缀，便于与用户自己在终端开的会话区分", () => {
-		expect(buildSessionId(() => 0.5).startsWith(SESSION_PREFIX)).toBe(true);
-	});
-});
-
 describe("resolveAgentBrowserBinary", () => {
 	it("Unix 上取 PATH 目录里的同名可执行文件", () => {
 		const found = resolveAgentBrowserBinary({
@@ -106,7 +88,7 @@ describe("resolveAgentBrowserBinary", () => {
 		expect(binaryFileName("win32", "arm64")).toBe("agent-browser-win32-x64.exe");
 	});
 
-	it("找不到时返回 null，由调用方降级到 stub server", () => {
+	it("找不到时返回 null，由调用方给出安装引导", () => {
 		expect(
 			resolveAgentBrowserBinary({ pathValue: "/a", platform: "linux", arch: "x64", exists: () => false }),
 		).toBeNull();

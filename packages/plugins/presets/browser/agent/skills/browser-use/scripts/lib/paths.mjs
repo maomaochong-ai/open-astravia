@@ -2,12 +2,11 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 /**
- * wrapper 跑在宿主 spawn 的独立进程里，拿不到 `ctx.storage`，只能自己算出插件数据目录。
+ * shim 跑在 bash 工具 spawn 的独立进程里，拿不到 `ctx.storage`，只能自己算出插件数据目录。
  * 这里刻意复刻 `@vetta/action-rpc` 的解析链（VETTA_HOME → ~/<VETTA_CONFIG_DIR|.vetta>），
- * 否则开发态用 VETTA_CONFIG_DIR 隔离环境时 wrapper 会读到生产目录。
+ * 否则开发态用 VETTA_CONFIG_DIR 隔离环境时 shim 会读到生产目录。
  *
- * 宿主 spawn MCP server 时透传整个 process.env（runtime-node 的 stdio transport 用
- * `{ ...process.env, ...config.env }`），所以这两个变量在 wrapper 里一定可见。
+ * bash 工具继承宿主主进程的完整环境，所以这两个变量在 shim 里可见。
  */
 
 const PLUGIN_ID = "browser";
@@ -30,7 +29,7 @@ export function pluginDataDir(env = process.env, home = homedir()) {
 	return join(vettaHomeDir(env, home), "plugin-data", PLUGIN_ID);
 }
 
-/** renderer 物化、wrapper 读取的 agent-browser 配置文件。 */
+/** shim 物化、agent-browser 读取的原生配置文件。 */
 export function agentBrowserConfigPath(env = process.env, home = homedir()) {
 	return join(pluginDataDir(env, home), "agent-browser.json");
 }
@@ -46,9 +45,10 @@ export function actionPolicyPath(env = process.env, home = homedir()) {
 }
 
 /**
- * 只属于本插件的 wrapper 运行时参数（当前只有 `--tools`）。
- * 刻意与 `agent-browser.json` 分开：那份文件必须严格保持上游 schema，
- * 混入我们自己的键会在上游收紧校验时把整个 MCP server 打挂。
+ * renderer 写、shim 读的策略快照。
+ * 刻意与 `agent-browser.json` 分开：那份文件必须严格保持上游 schema，混入我们自己的键
+ * （比如域名白名单——上游的 `--allowed-domains` 与 profile / auto-connect 互斥，用不了）
+ * 会在上游收紧校验时让整个 CLI 起不来。
  */
 export function wrapperRuntimePath(env = process.env, home = homedir()) {
 	return join(pluginDataDir(env, home), "runtime.json");

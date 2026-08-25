@@ -12,7 +12,6 @@ const DEFAULTS = {
 	denyEval: true,
 	denyDownload: false,
 	denyUpload: true,
-	toolsProfile: "core",
 	maxOutput: 20000,
 };
 
@@ -42,10 +41,6 @@ export function normalizeSnapshot(raw) {
 		denyEval: bool(snapshot.denyEval, DEFAULTS.denyEval),
 		denyDownload: bool(snapshot.denyDownload, DEFAULTS.denyDownload),
 		denyUpload: bool(snapshot.denyUpload, DEFAULTS.denyUpload),
-		toolsProfile:
-			typeof snapshot.toolsProfile === "string" && snapshot.toolsProfile.trim().length > 0
-				? snapshot.toolsProfile.trim()
-				: DEFAULTS.toolsProfile,
 		maxOutput: clampMaxOutput(snapshot.maxOutput),
 	};
 }

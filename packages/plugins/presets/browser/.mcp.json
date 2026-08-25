@@ -1,9 +1,0 @@
-{
-	"mcpServers": {
-		"chrome": {
-			"command": "node",
-			"args": ["./scripts/start-browser-mcp.mjs"],
-			"cwd": "."
-		}
-	}
-}

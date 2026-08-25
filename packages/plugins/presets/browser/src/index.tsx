@@ -1,17 +1,16 @@
 import { definePlugin } from "@vetta-org/plugin-sdk";
 import type { JSX } from "react";
 import { BrowserConsole, type BrowserConsolePorts } from "./components/BrowserConsole";
-import { parseAllowedDomains } from "./config/settings";
-import { readSettings, syncSettingsSnapshot } from "./config/store";
-import { registerBrowserGuard } from "./guard/register";
+import { syncSettingsSnapshot } from "./config/store";
 import { BrowserRuntimeController } from "./runtime/runtime-controller";
 import "./style.css";
 
 /**
  * 浏览器操作：把 vercel-labs/agent-browser 内聚成一个系统插件。
  *
- * 工具面走清单式 MCP（`agent.mcpServers` → `scripts/start-browser-mcp.mjs`），本文件只负责
- * 三件宿主侧的事：物化设置快照、注册工作区视图、装上危险动作的 PreToolUse 门禁。
+ * 能力面走 Skill + CLI（`agent.skillPaths` → `agent/skills/browser-use`），模型经由 bash 调用
+ * 插件自带的 shim；域名白名单、危险动作与浏览器来源都由 shim 在自己的 argv 上判定。
+ * 本文件只负责两件宿主侧的事：把设置物化成 shim 能读到的策略快照、注册工作区视图。
  */
 
 const VIEW_ID = "console";
@@ -35,15 +34,6 @@ export default definePlugin({
 		controller = runtime;
 
 		disposeSettingsSync = syncSettingsSnapshot(ctx);
-		registerBrowserGuard(ctx, () => {
-			const settings = readSettings(ctx);
-			return {
-				allowedDomains: parseAllowedDomains(settings.allowedDomains),
-				denyEval: settings.denyEval,
-				denyDownload: settings.denyDownload,
-				denyUpload: settings.denyUpload,
-			};
-		});
 
 		const ports: BrowserConsolePorts = {
 			runtime,

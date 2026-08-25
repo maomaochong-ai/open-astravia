@@ -4,7 +4,7 @@ import type { BrowserRuntimeController, RuntimeStatus } from "../runtime/runtime
 import { CapabilitiesSection, ComparisonSection, PromptsSection, SafetySection } from "./GuideSections";
 import { RuntimeSection } from "./RuntimeSection";
 
-/** 上游项目：工具面、浏览器控制与安全开关都来自这里，页面上必须把出处写清楚。 */
+/** 上游项目：命令面、浏览器控制与安全开关都来自这里，页面上必须把出处写清楚。 */
 export const UPSTREAM_REPO_URL = "https://github.com/vercel-labs/agent-browser";
 
 /**
