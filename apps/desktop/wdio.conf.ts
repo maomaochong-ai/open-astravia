@@ -5,7 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Server } from "node:http";
 import { startUpdateFeedFixture } from "./e2e/update-feed-fixture.mjs";
-import { resolveElectronE2eServiceOptions } from "./scripts/electron-e2e-service-options.mjs";
+import {
+	resolveElectronE2eServiceOptions,
+	resolveElectronE2eSpecRetryOptions,
+} from "./scripts/electron-e2e-service-options.mjs";
 import {
 	resolvePackagedE2eBinaryPath,
 	stagePackagedE2eAppImage,
@@ -88,6 +91,10 @@ process.env.VETTA_CONFIG_DIR = process.env.VETTA_CONFIG_DIR ?? configDirName;
 process.env.VETTA_HOME = process.env.VETTA_HOME ?? path.join(homedir(), configDirName);
 
 const electronServiceOptions = resolveElectronServiceOptions();
+const specRetryOptions = resolveElectronE2eSpecRetryOptions({
+	platform: process.platform,
+	packaged: usePackaged,
+});
 
 /** Excluded from the package tsconfig; loaded by @wdio/cli at runtime. */
 export const config = {
@@ -111,6 +118,10 @@ export const config = {
 	waitforTimeout: 15_000,
 	connectionRetryTimeout: 120_000,
 	connectionRetryCount: 2,
+	// The upstream CDP bridge can transiently lose its initialization promise on
+	// the first packaged AppImage process. A spec retry creates a fresh session;
+	// all assertions remain strict and a second failure still fails the run.
+	...specRetryOptions,
 	services: [
 		[
 			"electron",

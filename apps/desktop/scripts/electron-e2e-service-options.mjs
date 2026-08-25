@@ -11,3 +11,15 @@ export function resolveElectronE2eServiceOptions({ platform = process.platform, 
 		apparmorAutoInstall: "sudo",
 	};
 }
+
+export function resolveElectronE2eSpecRetryOptions({
+	platform = process.platform,
+	packaged = process.env.VETTA_E2E_PACKAGED === "1",
+} = {}) {
+	const retries = platform === "linux" && packaged ? 1 : 0;
+	return {
+		specFileRetries: retries,
+		specFileRetriesDelay: 0,
+		specFileRetriesDeferred: false,
+	};
+}
