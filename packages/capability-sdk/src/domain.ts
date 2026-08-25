@@ -10,6 +10,11 @@ export {
 	DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG,
 } from "./domain/agent-settings.js";
 export {
+	type AiChatInput,
+	type AiChatMessage,
+	type AiChatResult,
+	type AiChatTool,
+	type AiChatToolCall,
 	type AiCompleteInput,
 	type AiCompleteResult,
 	type AiModel,

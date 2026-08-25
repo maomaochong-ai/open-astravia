@@ -47,6 +47,7 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				ai: {
 					listModels: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_MODEL_LIST, sessionId),
 					complete: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_COMPLETE, sessionId, input),
+					chat: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_CHAT, sessionId, input),
 				},
 				agentSettings: {
 					getExperimental: (sessionId) =>

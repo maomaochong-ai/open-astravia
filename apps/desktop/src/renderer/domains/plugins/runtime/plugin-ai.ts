@@ -11,5 +11,9 @@ export function createPluginAiApi(permissions: PluginPermissionApi, capabilitySe
 			permissions.require("ai.complete");
 			return ai.complete(capabilitySessionId, request);
 		},
+		chat: (request) => {
+			permissions.require("ai.complete");
+			return ai.chat(capabilitySessionId, request);
+		},
 	};
 }

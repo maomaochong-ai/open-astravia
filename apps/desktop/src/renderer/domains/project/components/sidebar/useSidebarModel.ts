@@ -192,7 +192,7 @@ function toNavItem(
 
 /** 插件工作区视图 → 侧边栏导航项（key 与路由都由 workspace-view-registry 给出）。 */
 function toWorkspaceNavItem(
-	view: { pluginId: string; viewId: string; icon?: string; description?: string },
+	view: { pluginId: string; viewId: string; icon?: string; iconUrl?: string; description?: string },
 	label: string,
 	pluginName: string,
 	currentPath: string,
@@ -204,6 +204,7 @@ function toWorkspaceNavItem(
 		type: "custom",
 		label,
 		icon: view.icon ?? "icon-[solar--widget-2-linear]",
+		...(view.iconUrl ? { iconUrl: view.iconUrl } : {}),
 		active: currentPath === path,
 		title: view.description ? `${label} · ${view.description}` : `${label} · ${pluginName}`,
 		badge,

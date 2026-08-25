@@ -199,6 +199,35 @@ vettaPluginFederation({
 
 宿主热更新采用 last-known-good 替换：新 activation 准备完成后才发布，并在随后释放旧 activation。返回值 cleanup 与具体 activation 一一绑定，因此不要用模块级可变单例在新旧实例之间传递运行时所有权。模块级 `deactivate()` 仅用于兼容无重叠所有权的旧插件。
 
+**这条最容易在 UI 组件上翻车**：组件在**渲染期**回头去读模块级运行时，就会读到别的 activation 的那一份，或读到刚被旧实例 `deactivate()` 清空的 `null`——重载后一进页面就白屏报错。运行态要在 `activate()` 里建好并由该次注册的组件**闭包持有**：
+
+```tsx
+// ❌ 渲染期读模块级单例：旧实例的 deactivate() 会把它清成 null
+let store: Store | null = null;
+export default definePlugin({
+  activate(ctx) {
+    store = new Store(ctx);
+    ctx.ui.registerWorkspaceView({ id: "board", label: "…", component: BoardView });
+  },
+  deactivate() { store = null; },        // 这一句会打死「新」实例刚注册的视图
+});
+function BoardView() { return <Board store={getStore()} />; }
+
+// ✅ 闭包持有本次 activation 的运行态；层级深就用 context 往下传
+export default definePlugin({
+  activate(ctx) {
+    const store = new Store(ctx);
+    ctx.ui.registerWorkspaceView({
+      id: "board",
+      label: "…",
+      component: () => <RuntimeProvider value={store}><BoardView /></RuntimeProvider>,
+    });
+  },
+});
+```
+
+没有需要自己释放的资源（订阅、定时器、长驻进程）时，**不要为了对称写一个 `deactivate()`**——注册的贡献本来就由宿主统一处置，多写反而制造上面这条竞态。
+
 ## 权限缺失的两种后果
 
 复习 [permissions.md](./permissions.md)：部分注册点缺权限**抛错**（中断该次调用）、部分**跳过+警告**（不影响其它能力）。把可选能力的注册各自独立，避免一处 throw 掉整段 `activate()`。

@@ -139,10 +139,18 @@ export { PluginAppActionError } from "./app-actions.js";
 // Host-managed AI
 export type {
 	PluginAiApi,
+	PluginAiChatAssistantMessage,
+	PluginAiChatMessage,
+	PluginAiChatRequest,
+	PluginAiChatResult,
+	PluginAiChatTool,
+	PluginAiChatToolResultMessage,
+	PluginAiChatUserMessage,
 	PluginAiCompleteRequest,
 	PluginAiCompleteResult,
 	PluginAiModel,
 	PluginAiModelListResult,
+	PluginAiToolCall,
 	PluginAiUsage,
 } from "./ai.js";
 

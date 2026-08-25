@@ -106,12 +106,15 @@ interface PluginGlobalSlotContribution {
 - 导航入口默认落在侧边栏的「更多」收纳里；用户可以拖动排序，也可以 **pin 到左上方置顶区**（含「新会话」最多 5 个），布局按 key 持久化
 - 组件收到 `{ pluginId, viewId }`，一个组件可以服务多个注册
 - `icon` 是 **iconify class 字符串**（如 `"icon-[solar--widget-4-linear]"`），不是 ReactNode——宿主要把它渲染进自己的导航按钮，并按 key 持久化布局
+- **不写 `icon` 就用插件自己的 Logo**：宿主回落到 `plugin.json` 的 `icon`。包内图片（`svg` / `png` / `webp` 等）默认按主题前景色 mask 成**单色**，因此自带图形的插件不必去图标集里找一个近似的；Iconify 名照常当 class 用。两者都不存在时才落到宿主默认图标
+- **`iconTint: false` 保留原图色彩**：导航项改用 `<img>` 渲染。选之前先掂量：入口只有 16px、与内置单色图标并排，且固定色彩无法跟随主题——深色 logo 会在深色侧边栏里消失。**只对彩色 logo 有意义**：单色图形 tint 后反而更清晰统一，而整块不透明的彩色图 tint 后会糊成一个纯色块。对 Iconify class 图标无效（它们始终跟随主题色）
 
 ```ts
 interface PluginWorkspaceViewContribution {
   id: string;                       // 插件内唯一；进 URL，故限 [a-z0-9][a-z0-9._-]*
   label: string;                    // 侧边栏文案，支持 %catalogKey%
   icon?: string;                    // iconify class 字符串
+  iconTint?: boolean;               // 图片图标是否按主题色染成单色，缺省 true
   description?: string;             // 导航项 tooltip
   badge?: PluginNavBadge;           // 导航项角标，见下
   component: ComponentType<PluginWorkspaceViewProps>;

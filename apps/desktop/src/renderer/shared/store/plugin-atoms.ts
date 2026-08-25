@@ -103,8 +103,10 @@ export interface RegisteredWorkspaceView {
 	viewId: string;
 	/** 可能是 `%catalogKey%`，由消费方按插件目录解析。 */
 	label: string;
-	/** iconify class 字符串（导航按钮直接当 className 用）。 */
+	/** iconify class 字符串或宿主生成的 mask class（导航按钮直接当 className 用）。 */
 	icon?: string;
+	/** 原色图片图标；设置时导航项以 `<img>` 渲染，`icon` 退为主题回落。 */
+	iconUrl?: string;
 	description?: string;
 	/**
 	 * 导航项角标。已归一化但**尚未解析文案**：`text` 仍可能是 `%catalogKey%`，

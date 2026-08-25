@@ -15,6 +15,7 @@ export const PLUGIN_CAPABILITY_CHANNELS = {
 	IM_AGENT_MODEL_SET: "vetta:plugins:capabilities:im:agent-model:set",
 	AI_MODEL_LIST: "vetta:plugins:capabilities:ai:model:list",
 	AI_COMPLETE: "vetta:plugins:capabilities:ai:complete",
+	AI_CHAT: "vetta:plugins:capabilities:ai:chat",
 	MODEL_LIST: "vetta:plugins:capabilities:model:list",
 	MODEL_CONFIG_GET: "vetta:plugins:capabilities:model:config:get",
 	MODEL_PROVIDER_GET: "vetta:plugins:capabilities:model:provider:get",

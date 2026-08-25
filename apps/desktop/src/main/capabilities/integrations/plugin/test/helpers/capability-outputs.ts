@@ -1,6 +1,7 @@
 import type { CapabilityId } from "@vetta/capability-sdk";
 import {
 	DOMAIN_AGENT_SETTINGS_CAPABILITIES,
+	DOMAIN_AI_CAPABILITIES,
 	DOMAIN_BATCH_TASK_CAPABILITIES,
 	DOMAIN_DOWNLOAD_CAPABILITIES,
 	DOMAIN_GENERAL_SETTINGS_CAPABILITIES,
@@ -78,6 +79,26 @@ function domainOutput(capabilityId: CapabilityId): unknown {
 				capabilities: [{ operation: "generate", kind: "image", modes: ["text-to-image", "image-to-image"] }],
 			},
 		];
+	}
+	if (capabilityId === DOMAIN_AI_CAPABILITIES.LIST_MODELS.id) {
+		return { defaultModel: "openai/gpt-5", models: [] };
+	}
+	if (capabilityId === DOMAIN_AI_CAPABILITIES.COMPLETE.id) {
+		return {
+			modelKey: "openai/gpt-5",
+			text: "ok",
+			stopReason: "stop",
+			usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+		};
+	}
+	if (capabilityId === DOMAIN_AI_CAPABILITIES.CHAT.id) {
+		return {
+			modelKey: "openai/gpt-5",
+			text: "",
+			toolCalls: [{ id: "call-1", name: "make_move", arguments: { move: "h2e2" } }],
+			stopReason: "toolUse",
+			usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+		};
 	}
 	if (capabilityId === DOMAIN_MEDIA_CAPABILITIES.SUBMIT.id) {
 		return {

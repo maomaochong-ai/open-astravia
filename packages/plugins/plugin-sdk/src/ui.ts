@@ -67,8 +67,24 @@ export interface PluginWorkspaceViewContribution {
 	 * Sidebar entry icon as an **iconify class string** (e.g.
 	 * `"icon-[solar--widget-5-linear]"`) — NOT a React node, because the host
 	 * renders it inside its own nav button and persists nav layout by key.
+	 *
+	 * Omit it to inherit the plugin's own `plugin.json` icon: a packaged image
+	 * (svg / png / webp …) is masked with the theme's foreground color, so a plugin
+	 * that ships artwork does not have to find a lookalike in an icon set. Set
+	 * {@link PluginWorkspaceViewContribution.iconTint} to `false` to keep its colors.
 	 */
 	icon?: string;
+	/**
+	 * Whether an image icon is tinted with the theme's foreground color. Defaults to
+	 * `true`, which keeps the entry consistent with the built-in navigation and legible
+	 * in every theme.
+	 *
+	 * Pass `false` for a full-color logo. Weigh it first: the entry renders at 16px
+	 * beside monochrome built-ins, and a fixed-color image cannot follow the active
+	 * theme — a dark logo can disappear on a dark sidebar. Has no effect on Iconify
+	 * class icons, which are always tinted.
+	 */
+	iconTint?: boolean;
 	/** Optional one-line description; shown as the nav entry tooltip. */
 	description?: string;
 	/**

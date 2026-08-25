@@ -1,0 +1,24 @@
+{
+	"id": "chinese-chess",
+	"name": "%plugin.name%",
+	"icon": "assets/logo.svg",
+	"version": "0.1.0",
+	"defaultLocale": "zh",
+	"pluginApiVersion": "^1.0.0",
+	"runtime": "module-federation",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "chinese_chess",
+		"expose": "./plugin"
+	},
+	"styles": ["dist/style.css"],
+	"permissions": [
+		"ui.slot.workspace-view",
+		"storage.read",
+		"storage.write",
+		"ai.complete",
+		"ai.models.list"
+	],
+	"description": "%plugin.description%",
+	"author": "Vetta"
+}

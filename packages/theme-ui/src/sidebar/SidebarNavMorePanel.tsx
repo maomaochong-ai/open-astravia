@@ -3,6 +3,7 @@ import type { SidebarNavItem } from "@vetta/theme-sdk/sidebar";
 import { cn } from "@vetta/ui";
 import { SidebarNavBadgeView } from "./SidebarNavBadgeView";
 import type { SidebarNavDragHandlers, SidebarNavRegion } from "./useSidebarNavDrag";
+import { SidebarNavIcon } from "./SidebarNavIcon";
 
 export interface SidebarNavMorePanelLabels {
 	/** 置顶区分组标题。 */
@@ -85,7 +86,7 @@ function NavRow({
 					item.active ? "bg-accent font-semibold text-foreground" : "text-foreground hover:bg-accent/50",
 				)}
 			>
-				<span className={cn(item.icon, "h-4 w-4 shrink-0")} />
+				<SidebarNavIcon icon={item.icon} iconUrl={item.iconUrl} />
 				<span className="truncate">{item.label}</span>
 				{item.badge && <SidebarNavBadgeView badge={item.badge} />}
 			</button>

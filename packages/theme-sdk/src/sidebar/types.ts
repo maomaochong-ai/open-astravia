@@ -69,7 +69,18 @@ export type SidebarNavBadge =
 export interface SidebarNavItem {
 	readonly active: boolean;
 	readonly badge?: SidebarNavBadge;
+	/**
+	 * Icon class string (Iconify utility, or a host-generated mask class). Always
+	 * required: themes that predate {@link SidebarNavItem.iconUrl} — including any
+	 * that replace the `sidebar.navItem` component — render this and must keep working.
+	 */
 	readonly icon: string;
+	/**
+	 * Full-color image icon (svg / png / webp …). When set, renderers show this
+	 * instead of {@link SidebarNavItem.icon} and must NOT tint it, so a plugin's own
+	 * artwork keeps its colors. `icon` still carries a monochrome fallback.
+	 */
+	readonly iconUrl?: string;
 	readonly key: string;
 	readonly label?: string;
 	readonly labelKey?: SidebarLabelKey;

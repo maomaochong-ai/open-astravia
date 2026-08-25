@@ -4,6 +4,7 @@ import type { NavIndicatorBounds, SidebarNavItem } from "@vetta/theme-sdk/sideba
 import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { SidebarNavBadgeView } from "./SidebarNavBadgeView";
+import { SidebarNavIcon } from "./SidebarNavIcon";
 import { SidebarNavItemButton } from "./SidebarNavItemButton";
 import { SidebarNavMorePanel, type SidebarNavMorePanelLabels } from "./SidebarNavMorePanel";
 import { useSidebarNavDrag } from "./useSidebarNavDrag";
@@ -140,10 +141,11 @@ export function SidebarNavigation({
 								classNames?.item,
 							)}
 						>
-							<span
+							<SidebarNavIcon
+								icon={triggerIcon}
+								iconUrl={activeMoreItem?.iconUrl}
 								className={cn(
-									triggerIcon,
-									"relative z-10 h-4 w-4 shrink-0 transition-[opacity,transform] duration-200",
+									"relative z-10 transition-[opacity,transform] duration-200",
 									// 未选中收纳项时 leading 即 chevron，打开菜单时旋转。
 									!activeMoreItem && moreOpen && "rotate-180",
 									moreIdle && "opacity-50",
@@ -207,7 +209,7 @@ export function SidebarNavigation({
 											: "text-foreground hover:bg-accent/50",
 									)}
 								>
-									<span className={cn(item.icon, "h-4 w-4 shrink-0")} />
+									<SidebarNavIcon icon={item.icon} iconUrl={item.iconUrl} />
 									<span className="truncate">{item.label}</span>
 									{item.badge && <SidebarNavBadgeView badge={item.badge} />}
 								</button>

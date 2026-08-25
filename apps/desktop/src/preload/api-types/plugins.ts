@@ -1,6 +1,8 @@
 import type {
 	AgentExperimentalSettings,
 	AgentExperimentalSettingsUpdate,
+	AiChatInput,
+	AiChatResult,
 	AiCompleteInput,
 	AiCompleteResult,
 	AiModelListResult,
@@ -425,6 +427,7 @@ export interface DesktopPluginCapabilityImApi {
 export interface DesktopPluginCapabilityAiApi {
 	listModels(sessionId: string): Promise<AiModelListResult>;
 	complete(sessionId: string, input: AiCompleteInput): Promise<AiCompleteResult>;
+	chat(sessionId: string, input: AiChatInput): Promise<AiChatResult>;
 }
 
 export interface DesktopPluginCapabilityModelsApi {

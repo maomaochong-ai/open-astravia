@@ -1,0 +1,154 @@
+/* 导入 theme 层 + utilities 层（不要 preflight，避免 reset 污染宿主全局）。 */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* 无 preflight（避免污染宿主全局），插件子树内自己补 border-box，
+   否则 h-full + padding 会按 content-box 撑破容器。 */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+/* 棋子与棋盘题字的书法字体 */
+.xq-cal {
+	font-family: "Kaiti SC", "STKaiti", "KaiTi", "BiauKai", "AR PL UKai CN", serif;
+}
+
+/* —— 棋子 —— */
+.xq-piece {
+	cursor: pointer;
+	transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+	will-change: transform;
+}
+.xq-piece-disc {
+	filter: drop-shadow(0 2.5px 2px rgba(60, 30, 5, 0.45));
+	transition: filter 0.2s ease;
+}
+.xq-piece--selected .xq-piece-disc {
+	filter: drop-shadow(0 5px 6px rgba(60, 30, 5, 0.5)) drop-shadow(0 0 7px rgba(245, 179, 1, 0.9));
+}
+.xq-piece--frozen {
+	cursor: default;
+}
+
+/* 新落子入场 */
+@keyframes xq-piece-land {
+	0% {
+		transform: scale(1.18);
+	}
+	60% {
+		transform: scale(0.96);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+.xq-piece-inner {
+	transform-origin: center;
+	transform-box: fill-box;
+}
+.xq-piece--landed .xq-piece-inner {
+	animation: xq-piece-land 0.3s ease-out;
+}
+
+/* 可落点提示 */
+@keyframes xq-dot-pulse {
+	0%,
+	100% {
+		opacity: 0.55;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.95;
+		transform: scale(1.25);
+	}
+}
+.xq-target-dot {
+	animation: xq-dot-pulse 1.2s ease-in-out infinite;
+	transform-origin: center;
+	transform-box: fill-box;
+	pointer-events: none;
+}
+
+/* 将军警示 */
+@keyframes xq-check-ring {
+	0%,
+	100% {
+		opacity: 0.9;
+		stroke-width: 3;
+	}
+	50% {
+		opacity: 0.25;
+		stroke-width: 5;
+	}
+}
+.xq-check-ring {
+	animation: xq-check-ring 0.9s ease-in-out infinite;
+	pointer-events: none;
+}
+
+/* 将军横幅 */
+@keyframes xq-banner-in {
+	from {
+		opacity: 0;
+		transform: translateY(-8px) scale(0.9);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+.xq-banner {
+	animation: xq-banner-in 0.25s ease-out;
+}
+
+/* 思考中的三点 */
+@keyframes xq-think {
+	0%,
+	80%,
+	100% {
+		opacity: 0.25;
+		transform: translateY(0);
+	}
+	40% {
+		opacity: 1;
+		transform: translateY(-3px);
+	}
+}
+.xq-think-dot {
+	animation: xq-think 1.2s ease-in-out infinite;
+}
+.xq-think-dot:nth-child(2) {
+	animation-delay: 0.15s;
+}
+.xq-think-dot:nth-child(3) {
+	animation-delay: 0.3s;
+}
+
+/* 评论气泡入场 */
+@keyframes xq-bubble-in {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+.xq-bubble {
+	animation: xq-bubble-in 0.25s ease-out;
+}
+
+/* 选边卡片 */
+.xq-side-card {
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease,
+		border-color 0.2s ease;
+}
+.xq-side-card:hover {
+	transform: translateY(-3px);
+}

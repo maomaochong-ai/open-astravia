@@ -80,6 +80,9 @@ export function registerPluginCapabilitiesIpc(): () => void {
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.AI_COMPLETE, (_event, sessionId: unknown, input: unknown) =>
 		adapter.completeAi(requireString(sessionId, "sessionId"), input),
 	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.AI_CHAT, (_event, sessionId: unknown, input: unknown) =>
+		adapter.chatAi(requireString(sessionId, "sessionId"), input),
+	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.AGENT_SETTINGS_EXPERIMENTAL_GET, (_event, sessionId: unknown) =>
 		adapter.getAgentExperimental(requireString(sessionId, "sessionId")),
 	);

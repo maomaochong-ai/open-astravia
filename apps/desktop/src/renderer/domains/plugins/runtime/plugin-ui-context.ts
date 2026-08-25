@@ -43,6 +43,7 @@ import type { PluginAgentApiRegistration } from "./plugin-agent-context";
 import { copyTextToClipboard, formatPluginErrorDetail, resolvePluginDisplayText } from "./plugin-host-apis";
 import { activateInputActionIds } from "./plugin-input-action-state";
 import type { PluginLocalContributions } from "./plugin-local-contributions";
+import { classifyPluginNavIcon, resolveNavIcon } from "./plugin-nav-icon";
 import {
 	createPluginPermissionApi,
 	hasPluginPermission,
@@ -150,22 +151,17 @@ function openPluginActivityTab(pluginId: string, tabId: string, options?: Plugin
 }
 
 /**
- * Map host-resolved `InstalledPlugin.iconUrl` into an activity-tab icon.
- * - `icon-[…]` / legacy Iconify `set:name` → class string for TabBar
- * - package path already resolved to `vetta-plugin://…` (or http/data) → `<img>`
+ * Map host-resolved `InstalledPlugin.iconUrl` into an activity-tab icon. Unlike the
+ * sidebar (class strings only), a tab icon is a ReactNode, so a packaged image renders
+ * as a plain `<img>` and keeps its own colors.
  * Protocol stays host-private; plugins only see the opaque `iconUrl` string.
  */
 function resolvePluginBrandIcon(iconUrl: string): ReactNode {
-	const trimmed = iconUrl.trim();
-	if (!trimmed) return undefined;
-	if (trimmed.startsWith("icon-[")) return trimmed;
-	// Iconify passthrough from manifest: `solar:star-bold` → Tailwind Iconify class.
-	if (/^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(trimmed) && !trimmed.includes("://")) {
-		const sep = trimmed.indexOf(":");
-		return `icon-[${trimmed.slice(0, sep)}--${trimmed.slice(sep + 1)}]`;
-	}
+	const icon = classifyPluginNavIcon(iconUrl);
+	if (!icon) return undefined;
+	if (icon.kind === "class") return icon.value;
 	return createElement("img", {
-		src: trimmed,
+		src: icon.url,
 		alt: "",
 		className: "h-3.5 w-3.5 object-contain",
 		draggable: false,
@@ -442,13 +438,17 @@ export function createPluginUiApi({
 		}
 		// 角标认不出就当没有：它是导航项上的装饰，不该让整个视图注册失败。
 		const badge = normalizePluginNavBadge(contribution.badge);
+		// 未声明图标时回落到插件自己的品牌图标（与活动 Tab 一致），而不是所有插件
+		// 共用一个通用 widget 图标。缺省按主题前景色 mask 成单色，与内置导航项一致；
+		// `iconTint: false` 保留原图色彩（宿主同时给出 mask class，供不认 iconUrl 的主题回落）。
+		const tint = contribution.iconTint !== false;
+		const resolvedIcon = resolveNavIcon(contribution.icon, tint) ?? resolveNavIcon(plugin.iconUrl, tint);
 		const normalized: PluginWorkspaceViewContribution = {
 			id: viewId,
 			label,
 			component: contribution.component,
-			...(typeof contribution.icon === "string" && contribution.icon.trim()
-				? { icon: contribution.icon.trim() }
-				: {}),
+			...(resolvedIcon ? { icon: resolvedIcon.className } : {}),
+			...(resolvedIcon?.imageUrl ? { iconUrl: resolvedIcon.imageUrl } : {}),
 			...(typeof contribution.description === "string" && contribution.description.trim()
 				? { description: contribution.description.trim() }
 				: {}),
@@ -461,6 +461,7 @@ export function createPluginUiApi({
 			dispose: () => {
 				const index = workspaceViews.findIndex((view) => view.id === normalized.id);
 				if (index >= 0) workspaceViews.splice(index, 1);
+				resolvedIcon?.release();
 				// 视图没了，它接管的页头也必须跟着撤，否则宿主页头会一直挂着
 				// 一个指向已卸载组件的节点。
 				clearWorkspaceViewHeader(normalized.id);

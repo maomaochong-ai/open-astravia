@@ -1,4 +1,9 @@
-import { type AiCompleteResult, type AiModelListResult, DOMAIN_AI_CAPABILITIES } from "@vetta/capability-sdk";
+import {
+	type AiChatResult,
+	type AiCompleteResult,
+	type AiModelListResult,
+	DOMAIN_AI_CAPABILITIES,
+} from "@vetta/capability-sdk";
 import { PLUGIN_CAPABILITY_PERMISSIONS, type PluginCapabilitySessionAccess } from "../types.js";
 
 export const pluginAiMethods = {
@@ -13,6 +18,13 @@ export const pluginAiMethods = {
 		return this.client(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.AI_COMPLETE }).invoke(
 			DOMAIN_AI_CAPABILITIES.COMPLETE,
 			DOMAIN_AI_CAPABILITIES.COMPLETE.parseInput(input),
+		);
+	},
+
+	chatAi(this: PluginCapabilitySessionAccess, sessionId: string, input: unknown): Promise<AiChatResult> {
+		return this.client(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.AI_COMPLETE }).invoke(
+			DOMAIN_AI_CAPABILITIES.CHAT,
+			DOMAIN_AI_CAPABILITIES.CHAT.parseInput(input),
 		);
 	},
 };

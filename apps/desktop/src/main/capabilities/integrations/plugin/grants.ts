@@ -46,7 +46,7 @@ export function buildPluginCapabilityGrants(
 			? [createCapabilityGrant(DOMAIN_AI_CAPABILITIES.LIST_MODELS)]
 			: []),
 		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.AI_COMPLETE)
-			? [createCapabilityGrant(DOMAIN_AI_CAPABILITIES.COMPLETE)]
+			? [createCapabilityGrant(DOMAIN_AI_CAPABILITIES.COMPLETE), createCapabilityGrant(DOMAIN_AI_CAPABILITIES.CHAT)]
 			: []),
 		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.FILESYSTEM_READ)
 			? [
