@@ -79,7 +79,7 @@ export function convertResponsesMessages<TApi extends Api>(
 			if (output.length === 0) continue;
 			messages.push(...output);
 		} else {
-			appendToolResult(messages, message.toolCallId, message.content, model);
+			appendToolResult(messages, message.toolCallId, message.content);
 		}
 		messageIndex++;
 	}
@@ -125,11 +125,10 @@ function appendUserMessage<TApi extends Api>(
 	return true;
 }
 
-function appendToolResult<TApi extends Api>(
+function appendToolResult(
 	messages: ResponseInput,
 	toolCallId: string,
 	content: Array<TextContent | ImageContent>,
-	model: Model<TApi>,
 ): void {
 	const text = content
 		.filter((block): block is TextContent => block.type === "text")
@@ -141,7 +140,7 @@ function appendToolResult<TApi extends Api>(
 		call_id: toolCallId.split("|")[0],
 		output: sanitizeSurrogates(text.length > 0 ? text : "(see attached image)"),
 	});
-	if (images.length === 0 || !model.input.includes("image")) return;
+	if (images.length === 0) return;
 	const parts: ResponseInputContent[] = [
 		{ type: "input_text", text: "Attached image(s) from tool result:" } satisfies ResponseInputText,
 		...images.map(

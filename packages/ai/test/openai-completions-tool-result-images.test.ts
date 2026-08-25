@@ -96,7 +96,7 @@ describe("openai-completions convertMessages", () => {
 		expect(imageParts.length).toBe(2);
 	});
 
-	it("reports omitted tool-result images to text-only models", () => {
+	it("forwards tool-result images when image capability metadata is missing", () => {
 		const baseModel = getModel("openai", "gpt-4o-mini");
 		const model: Model<"openai-completions"> = {
 			...baseModel,
@@ -123,9 +123,12 @@ describe("openai-completions convertMessages", () => {
 
 		const messages = convertMessages(model, context, compat);
 
-		expect(messages.map((message) => message.role)).toEqual(["user", "assistant", "tool"]);
-		expect(messages[2]?.content).toContain(
-			"Image content omitted because the current model does not support image input.",
-		);
+		expect(messages.map((message) => message.role)).toEqual(["user", "assistant", "tool", "user"]);
+		const imageMessage = messages.at(-1);
+		expect(imageMessage?.role).toBe("user");
+		expect(imageMessage?.content).toEqual([
+			{ type: "text", text: "Attached image(s) from tool result:" },
+			{ type: "image_url", image_url: { url: "data:image/png;base64,ZmFrZQ==" } },
+		]);
 	});
 });

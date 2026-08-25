@@ -3,6 +3,42 @@ import { convertMessages } from "../src/providers/google-shared.js";
 import type { Context, Model } from "../src/types.js";
 
 describe("google-shared convertMessages", () => {
+	it("forwards tool-result images when image capability metadata is missing", () => {
+		const model: Model<"google-generative-ai"> = {
+			id: "gemini-3-pro-preview",
+			name: "Gemini 3 Pro Preview",
+			api: "google-generative-ai",
+			provider: "google",
+			baseUrl: "https://generativelanguage.googleapis.com",
+			reasoning: true,
+			input: ["text"],
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			contextWindow: 128000,
+			maxTokens: 8192,
+		};
+		const contents = convertMessages(model, {
+			messages: [
+				{
+					role: "toolResult",
+					toolCallId: "call-1",
+					toolName: "read",
+					content: [
+						{ type: "text", text: "Read image file [image/png]" },
+						{ type: "image", data: "ZmFrZQ==", mimeType: "image/png" },
+					],
+					isError: false,
+					timestamp: 1,
+				},
+			],
+		});
+
+		expect(contents[0]?.parts?.[0]?.functionResponse).toMatchObject({
+			name: "read",
+			response: { output: "Read image file [image/png]" },
+			parts: [{ inlineData: { mimeType: "image/png", data: "ZmFrZQ==" } }],
+		});
+	});
+
 	it("converts unsigned tool calls to text for Gemini 3", () => {
 		const model: Model<"google-generative-ai"> = {
 			id: "gemini-3-pro-preview",

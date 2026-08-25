@@ -57,6 +57,39 @@ describe("Amazon Bedrock message conversion", () => {
 		]);
 	});
 
+	it("forwards tool-result images when image capability metadata is missing", () => {
+		const converted = convertBedrockMessages(
+			{
+				messages: [
+					{
+						role: "toolResult",
+						toolCallId: "call-1",
+						toolName: "read",
+						content: [
+							{ type: "text", text: "Read image file [image/png]" },
+							{ type: "image", data: "ZmFrZQ==", mimeType: "image/png" },
+						],
+						isError: false,
+						timestamp: 1,
+					},
+				],
+			},
+			{ ...anthropicModel, input: ["text"] },
+			"none",
+		);
+
+		expect(converted[0]?.content?.[0]).toEqual({
+			toolResult: {
+				toolUseId: "call-1",
+				content: [
+					{ text: "Read image file [image/png]" },
+					{ image: { format: "png", source: { bytes: new Uint8Array([102, 97, 107, 101]) } } },
+				],
+				status: "success",
+			},
+		});
+	});
+
 	it("retains Anthropic signatures and downgrades cross-provider thinking to text", () => {
 		const messages: Message[] = [
 			{

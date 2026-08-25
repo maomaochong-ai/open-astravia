@@ -50,6 +50,43 @@ describe("Anthropic message conversion", () => {
 		});
 	});
 
+	it("forwards tool-result images when image capability metadata is missing", () => {
+		const converted = convertMessages(
+			[
+				{
+					role: "toolResult",
+					toolCallId: "call-1",
+					toolName: "read",
+					content: [
+						{ type: "text", text: "Read image file [image/png]" },
+						{ type: "image", data: "ZmFrZQ==", mimeType: "image/png" },
+					],
+					isError: false,
+					timestamp: 1,
+				},
+			],
+			{ ...model, input: ["text"] },
+			false,
+		);
+
+		expect(converted[0]).toMatchObject({
+			role: "user",
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: "call-1",
+					content: [
+						{ type: "text", text: "Read image file [image/png]" },
+						{
+							type: "image",
+							source: { type: "base64", media_type: "image/png", data: "ZmFrZQ==" },
+						},
+					],
+				},
+			],
+		});
+	});
+
 	it("adds cache control to the final string user message", () => {
 		const converted = convertMessages([{ role: "user", content: "Hello", timestamp: 1 }], model, false, {
 			type: "ephemeral",
