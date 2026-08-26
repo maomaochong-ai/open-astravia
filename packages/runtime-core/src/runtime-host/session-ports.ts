@@ -24,6 +24,8 @@ import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 /** 会话身份与资源释放；不承载宿主 UI 绑定或业务外围能力。 */
 export interface RuntimeSessionIdentityLifecycle {
 	readonly sessionId: string;
+	/** 持久化 Session 所属的平级主 Agent；历史或非 Agent Backend 可缺省。 */
+	readonly agentId?: string;
 	readonly sessionDirectory?: string;
 	readonly sessionPath: string | undefined;
 	dispose(): Promise<void>;

@@ -71,9 +71,7 @@ export interface CodingAgentSessionRuntimeResourcesOptions {
 	readonly backgroundTasksAvailable: boolean;
 	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
 	readonly scenario: ConversationScenario;
-	readonly refreshSessionMcp: (sessionId: string, reportPromptBoundary: boolean) => Promise<unknown>;
 	readonly onConversationContinued: (result: ConversationContinuationResult) => Promise<void>;
-	readonly dispose: () => Promise<void>;
 }
 
 /** 将产品 Session runtime 投影为 runtime-core 的 RuntimeResources 合同。 */
@@ -83,21 +81,13 @@ export function createCodingAgentSessionRuntimeResources(
 	const stateActivation = createStateActivation(options);
 	const pluginMcpRuntime = options.pluginMcpRuntime;
 	const extensionHost = createSessionExtensionHost(options.sessionExtensions);
-	const snapshotProvider: RuntimeResources["snapshotProvider"] = {
-		async acquire(context) {
-			// External catalogs publish first; only then may the capability composition
-			// capture one immutable Turn generation.
-			await options.refreshSessionMcp(options.session.readSessionId(), true);
-			return options.capabilitySnapshotProvider.acquire(context);
-		},
-	};
 	return {
 		sessionId: options.session.initialSessionId,
 		repository: options.conversation.repository,
 		conversationDocumentStore: options.conversation.documentStore,
 		conversationContinuationStore: options.conversation.continuationStore,
 		promptAdapter: options.turnCapabilityAssembly.promptAdapter,
-		snapshotProvider,
+		snapshotProvider: options.capabilitySnapshotProvider,
 		modelRuntime: options.modelRuntime,
 		documentParticipants: [...options.sessionExtensions.documentParticipants, options.contextRuntime],
 		extensionHost,
@@ -149,7 +139,6 @@ export function createCodingAgentSessionRuntimeResources(
 			read: () => readSessionState(options, stateActivation),
 		},
 		onConversationContinued: options.onConversationContinued,
-		dispose: options.dispose,
 	};
 }
 

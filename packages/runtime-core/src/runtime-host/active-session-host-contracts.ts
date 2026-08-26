@@ -1,4 +1,4 @@
-import type { KernelRuntimeSessionBackend, RuntimeSession } from "./kernel-runtime-session-backend.js";
+import type { RuntimeSession } from "./kernel-runtime-session-backend.js";
 import type { RuntimeSessionCatalog } from "./session-services.js";
 import type { RuntimePreparedSessionBinding } from "./session-transition-cleanup.js";
 
@@ -61,7 +61,10 @@ export interface RuntimeActiveSessionHookLifecycle {
 export interface RuntimeActiveSessionRuntimePort<
 	TSessionOptions extends RuntimeActiveSessionCreateOptions = RuntimeActiveSessionCreateOptions,
 > {
-	readonly backend: KernelRuntimeSessionBackend<TSessionOptions>;
+	readonly sessions: {
+		create(options: TSessionOptions): Promise<RuntimeSession>;
+		resume(options: TSessionOptions): Promise<RuntimeSession>;
+	};
 	readonly sessionHooks: RuntimeActiveSessionHookLifecycle;
 	quiesceSessionBackgroundCommands(sessionId: string): Promise<void>;
 	preserveSessionExecutionContext(sourceSessionId: string, targetSessionId: string): Promise<void>;

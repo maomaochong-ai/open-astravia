@@ -142,6 +142,54 @@ const reviewerSession = await reviewerInstance.createSession();
 这里没有“主 Agent 派发子 Agent”的关系。应用根据路由、用户选择、租户策略或 API 参数选择 `agentId`；如果需要
 Agent 间协作，应由更上层的编排产品显式连接它们，而不是让 Registry 隐式决定调用关系。
 
+## 接入完整 RuntimeHost 会话
+
+前面的 `instance.createSession()` 适合测试 Agent 能力和实现嵌入式模块。需要 `host.createSession()`、Conversation
+持久化、Turn Engine 与完整 Host Ports 时，使用基座提供的标准 Session Backend；产品只补平台资源，不再实现一套
+Agent Instance/Session 生命周期：
+
+```ts
+import { RuntimeAgentSessionAssemblyBackend, RuntimeHost } from "@vetta/runtime-core";
+
+const host = new RuntimeHost({
+  createSessionBackend({ agents, observationPublisher }) {
+    agents.registry.upsert({
+      source: { id: "application", revision: "2026-08-26.1" },
+      definition: createReviewerAgent(modelBindingProvider),
+    });
+
+    return new RuntimeAgentSessionAssemblyBackend({
+      runtime: agents,
+      observationPublisher,
+      identity: platformConversationIdentityResolver,
+      fallbackResources: platformRuntimeResourceFactory,
+    });
+  },
+});
+
+const { sessionId } = await host.createSession({
+  cwd: workspace,
+  agent: {
+    id: "reviewer",
+    instanceKey: "tenant-a",
+    instanceConfiguration: { tenantId: "tenant-a" },
+    sessionConfiguration: { language: "zh-CN", strict: true },
+  },
+});
+
+console.log(host.getState(sessionId).agentId); // reviewer
+```
+
+`platformConversationIdentityResolver` 负责把文件路径或数据库主键解析成 Session ID；
+`platformRuntimeResourceFactory` 提供 Conversation Repository、模型目录/凭证和其它平台端口。复杂产品也可以在
+Definition 的 Session Plan 中直接 `activate()` 这些资源，此时不需要 fallback factory。两者都必须让
+`RuntimeAgentSession` 成为唯一 Snapshot Provider。
+
+原生 Conversation V2 会可选持久化 `agentId`，Session Catalog 也会返回它。恢复历史会话时把该值重新放进
+`host.createSession({ sessionPath, agent: { id: history.agentId } })`；历史文件没有 `agentId` 时，由应用选择自己的兼容
+默认 Agent。持久化的只有稳定 Agent identity，不包含 `definitionRevisionId` 或 `instanceId`：后两者属于进程内执行代际，
+恢复时应按当前发布策略重新解析。
+
 ## 自定义 Instance 与 Session 配置
 
 代码配置和文件配置最终都会作为 `unknown` 进入 Definition。Runtime Core 不解释业务字段；Agent 必须在首次进入
@@ -658,6 +706,7 @@ Composition 的 Definition。实现细节与可运行接线见
 
 - Agent 是平级主 Agent；Registry 不表达主从或任务派发关系。
 - `agentId` 在所有 Source 之间唯一。需要覆盖时应在上层显式合并，而不是依赖隐藏优先级。
+- 持久化会话保存稳定 `agentId`，不保存 revision/Instance；恢复时由 Catalog 提供 identity，Host 再解析当前代际。
 - 配置文件只保存数据和受控引用，不保存函数、密钥、模型对象或连接实例。
 - 所有外部配置、Plugin、Skill 和 MCP 输入都在首次进入领域边界时校验。
 - Definition/Instance/Session 各自只释放自己拥有的资源；不要让多个层级重复关闭同一连接。

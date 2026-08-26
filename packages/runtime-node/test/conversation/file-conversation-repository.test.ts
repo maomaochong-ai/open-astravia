@@ -152,12 +152,13 @@ describe("FileConversationRepository", () => {
 		});
 	});
 
-	it("persists the optional workspace identity in the conversation header", async () => {
+	it("persists the optional Agent and workspace identity in the conversation header", async () => {
 		const { repository, rootDir } = await createRepository();
 		const cwd = join(rootDir, "workspace");
 		await repository.create({
 			sessionId: "session-with-cwd",
 			createdAt: 100,
+			agentId: "reviewer",
 			cwd,
 		});
 
@@ -166,9 +167,13 @@ describe("FileConversationRepository", () => {
 			recordType: "conversation.header",
 			schemaVersion: 2,
 			sessionId: "session-with-cwd",
+			agentId: "reviewer",
 			cwd,
 		});
-		expect((await repository.readDocument("session-with-cwd")).identity.cwd).toBe(cwd);
+		expect((await repository.readDocument("session-with-cwd")).identity).toMatchObject({
+			agentId: "reviewer",
+			cwd,
+		});
 	});
 
 	it("reads existing v1 records without rewriting them", async () => {
@@ -402,7 +407,7 @@ describe("FileConversationRepository", () => {
 	it("forks one user turn into an independently recoverable v2 conversation", async () => {
 		const { repository } = await createRepository();
 		const sessionId = "fork-source";
-		await repository.create({ sessionId, createdAt: 100 });
+		await repository.create({ sessionId, createdAt: 100, agentId: "reviewer" });
 		await repository.append(sessionId, 0, [
 			started(sessionId, "turn-1"),
 			message(sessionId, "turn-1", "fork me"),
@@ -418,6 +423,7 @@ describe("FileConversationRepository", () => {
 		expect(fork.path).toBe(repository.resolveConversationPath(fork.sessionId));
 		expect(forkedConversation.messages.map(messageText)).toEqual(["fork me", "forked answer"]);
 		expect(forkedDocument.identity).toMatchObject({
+			agentId: "reviewer",
 			parentSessionPath: repository.resolveConversationPath(sessionId),
 			parentEntryId: "event-2",
 		});

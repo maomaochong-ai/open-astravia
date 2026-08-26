@@ -8,13 +8,10 @@ import {
 	type RuntimeResourceContext,
 } from "@vetta/runtime-core";
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
-import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
 import { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
-import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
-import type { CodingAgentContextRuntime } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
 import type { CodingAgentConversationSessionPathAssessment } from "../contracts/conversation-persistence.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
@@ -27,10 +24,7 @@ import type {
 } from "../subagent/session-assembly.js";
 import type { CodingAgentMcpSessionCoordinator } from "../tool-surface/mcp-session-coordinator.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
-import {
-	type CodingAgentTurnCapabilitySessionAssembly,
-	createCodingAgentTurnCapabilitySessionAssembly,
-} from "../turn/capability-session-assembly.js";
+import { createCodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";
 import type { CodingAgentImageSettingsSnapshotRouter } from "../turn/image-settings-snapshot-router.js";
 import { createCodingAgentSessionContextAssembly } from "./context-assembly.js";
 import { createCodingAgentSessionInitializationTimeline } from "./initialization-timeline.js";
@@ -39,16 +33,6 @@ import type { CodingAgentSessionInitializationProfile } from "./profile.js";
 
 export interface CodingAgentSessionInitializationRegistry {
 	readonly indexes: CodingAgentSessionResourceIndexes;
-	trackContextRuntime(runtime: CodingAgentContextRuntime): void;
-	untrackContextRuntime(runtime: CodingAgentContextRuntime): void;
-	trackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
-	untrackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
-	trackSessionExtensionComposition(extensions: SessionExtensionComposition): void;
-	untrackSessionExtensionComposition(extensions: SessionExtensionComposition): void;
-	trackTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): void;
-	untrackTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): void;
-	trackHookSessionDisposer(dispose: () => Promise<void>): void;
-	untrackHookSessionDisposer(dispose: () => Promise<void>): void;
 }
 
 export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBinding> {
@@ -162,12 +146,6 @@ async function initializeSession<TOwnershipBinding>(
 				configurationSource: options.imageSettingsSnapshots,
 				readSessionId: () => activeSessionId,
 				resolveActivation: options.resolveActivation,
-				trackMemoryRuntime: (runtime) => options.registry.trackMemoryRuntime(runtime),
-				untrackMemoryRuntime: (runtime) => options.registry.untrackMemoryRuntime(runtime),
-				trackSessionExtensionComposition: (extensions) =>
-					options.registry.trackSessionExtensionComposition(extensions),
-				untrackSessionExtensionComposition: (extensions) =>
-					options.registry.untrackSessionExtensionComposition(extensions),
 				deferRollback: (task) => {
 					rollback.defer(task);
 				},
@@ -189,8 +167,6 @@ async function initializeSession<TOwnershipBinding>(
 				readConversationModelMessages: options.readConversationModelMessages,
 				createChildComposition: options.createChildComposition,
 				assessChildSessionPath: options.assessChildSessionPath,
-				trackContextRuntime: (runtime) => options.registry.trackContextRuntime(runtime),
-				untrackContextRuntime: (runtime) => options.registry.untrackContextRuntime(runtime),
 				deferRollback: (task) => {
 					rollback.defer(task);
 				},
@@ -258,17 +234,6 @@ async function initializeSession<TOwnershipBinding>(
 			backgroundTasksAvailable: options.backgroundTasksAvailable,
 			askUserQuestion: sessionOptions.askUserQuestion,
 			scenario: options.scenario,
-			refreshSessionMcp: (sessionId, reportPromptBoundary) =>
-				options.mcpCoordinator.refreshSession(sessionId, reportPromptBoundary),
-			tracking: {
-				trackHookSessionDisposer: (dispose) => options.registry.trackHookSessionDisposer(dispose),
-				untrackHookSessionDisposer: (dispose) => options.registry.untrackHookSessionDisposer(dispose),
-				untrackContextRuntime: (runtime) => options.registry.untrackContextRuntime(runtime),
-				untrackMemoryRuntime: (runtime) => options.registry.untrackMemoryRuntime(runtime),
-				untrackSessionExtensionComposition: (extensions) =>
-					options.registry.untrackSessionExtensionComposition(extensions),
-				untrackTurnCapabilityAssembly: (assembly) => options.registry.untrackTurnCapabilityAssembly(assembly),
-			},
 		});
 		rollback.defer({
 			id: "hook-session",
@@ -348,16 +313,9 @@ async function initializeSession<TOwnershipBinding>(
 				imageSettingsSnapshots: options.imageSettingsSnapshots,
 			}),
 		);
-		options.registry.trackTurnCapabilityAssembly(turnCapabilityAssembly);
 		rollback.defer({
 			id: "capability-composition",
-			rollback: async () => {
-				try {
-					await turnCapabilityAssembly.dispose();
-				} finally {
-					options.registry.untrackTurnCapabilityAssembly(turnCapabilityAssembly);
-				}
-			},
+			rollback: () => turnCapabilityAssembly.dispose(),
 		});
 		const preparedResources = resourceLifecycleAssembly.prepareTurnCapabilityAssembly(turnCapabilityAssembly);
 		rollback.defer({
@@ -369,6 +327,9 @@ async function initializeSession<TOwnershipBinding>(
 			definition: {
 				capabilities: turnCapabilityAssembly.capabilityDefinition,
 				modelBindingProvider: modelRuntime,
+			},
+			beforeSnapshotAcquire: async (context) => {
+				await options.mcpCoordinator.refreshSession(activeSessionId, context?.reason === "turn");
 			},
 			async activate(binding) {
 				try {

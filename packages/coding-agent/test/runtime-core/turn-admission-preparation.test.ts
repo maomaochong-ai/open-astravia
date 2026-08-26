@@ -7,7 +7,7 @@ import {
 } from "../../src/composition/session-lifecycle/runtime-resources.js";
 
 describe("Coding Agent Turn admission preparation", () => {
-	it("publishes refreshed MCP state before atomically capturing the Turn generation", async () => {
+	it("keeps the Agent Session as the only Snapshot Provider instead of wrapping MCP refresh", async () => {
 		const order: string[] = [];
 		const lease = {
 			snapshot: {} as RuntimeSnapshot,
@@ -16,6 +16,10 @@ describe("Coding Agent Turn admission preparation", () => {
 		const acquire = vi.fn(async () => {
 			order.push("capture");
 			return lease;
+		});
+		const capabilitySnapshotProvider = { acquire };
+		const refreshSessionMcp = vi.fn(async () => {
+			order.push("publish");
 		});
 		const sessionExtensions = await SessionExtensionComposition.create({ definitions: [] });
 		const resources = createCodingAgentSessionRuntimeResources({
@@ -28,11 +32,9 @@ describe("Coding Agent Turn admission preparation", () => {
 			turnCapabilityAssembly: {
 				promptAdapter: {},
 			},
-			capabilitySnapshotProvider: { acquire },
+			capabilitySnapshotProvider,
 			sessionExtensions,
-			refreshSessionMcp: async () => {
-				order.push("publish");
-			},
+			refreshSessionMcp,
 			activation: { mode: "explicit", toolNames: [] },
 		} as unknown as CodingAgentSessionRuntimeResourcesOptions);
 		const context: RuntimeSnapshotAcquireContext = {
@@ -44,7 +46,9 @@ describe("Coding Agent Turn admission preparation", () => {
 
 		await resources.snapshotProvider.acquire(context);
 
-		expect(order).toEqual(["publish", "capture"]);
+		expect(resources.snapshotProvider).toBe(capabilitySnapshotProvider);
+		expect(order).toEqual(["capture"]);
+		expect(refreshSessionMcp).not.toHaveBeenCalled();
 		expect(acquire).toHaveBeenCalledWith(context);
 	});
 

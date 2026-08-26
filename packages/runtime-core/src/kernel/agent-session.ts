@@ -26,6 +26,7 @@ import type { TurnPipeline } from "./turn-pipeline.js";
 export interface CreateAgentSessionOptions {
 	readonly id: string;
 	readonly pipeline: TurnPipeline;
+	readonly agentId?: string;
 	readonly cwd?: string;
 	readonly steeringMode?: SessionInputQueueMode;
 	readonly followUpMode?: SessionInputQueueMode;
@@ -63,7 +64,7 @@ export class AgentSession {
 
 	static async create(options: CreateAgentSessionOptions): Promise<AgentSession> {
 		const session = new AgentSession(options);
-		await options.pipeline.createSession(options.id, options.cwd);
+		await options.pipeline.createSession(options.id, options.cwd, options.agentId);
 		return session;
 	}
 

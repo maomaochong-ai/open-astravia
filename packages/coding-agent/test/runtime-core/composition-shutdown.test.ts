@@ -2,126 +2,58 @@ import { describe, expect, it, vi } from "vitest";
 import { createCodingAgentCompositionShutdown } from "../../src/composition/session-lifecycle/composition-shutdown.js";
 import { CodingAgentCompositionResourceRegistry } from "../../src/composition/session-lifecycle/resource-registry.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/execution/session/runtime.js";
-import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
 
 describe("Coding Agent composition shutdown", () => {
-	it("deduplicates Session aliases, preserves phase order and retries only failed resources", async () => {
+	it("keeps shared resources alive until the Agent Session owner closes and retries failed phases", async () => {
 		const registry = new CodingAgentCompositionResourceRegistry();
-		const contextRuntime = { dispose: vi.fn() };
-		const memoryRuntime = { dispose: vi.fn() };
-		const executionRuntime = { dispose: vi.fn(async () => {}) };
-		const hookSessionDisposer = vi.fn(async () => {});
-		const sessionExtensions = { dispose: vi.fn(async () => {}) };
-		const turnCapabilityAssembly = { dispose: vi.fn(async () => {}) };
-		let ownershipAttempts = 0;
-		const ownershipBinding = {
-			dispose: vi.fn(async () => {
-				ownershipAttempts += 1;
-				if (ownershipAttempts === 1) throw new Error("transient ownership failure");
-			}),
-		};
-		const pluginMcpRuntime = { dispose: vi.fn(async () => {}) };
-		registry.trackContextRuntime(contextRuntime);
-		registry.trackMemoryRuntime(memoryRuntime);
-		registry.trackHookSessionDisposer(hookSessionDisposer);
-		registry.trackSessionExtensionComposition(sessionExtensions);
-		registry.trackTurnCapabilityAssembly(turnCapabilityAssembly);
-		registry.trackOwnershipBinding(ownershipBinding);
-		registry.indexes.executionRuntimes.set(
-			"source",
-			executionRuntime as unknown as CodingAgentSessionExecutionRuntime,
-		);
-		registry.indexes.executionRuntimes.set(
-			"target",
-			executionRuntime as unknown as CodingAgentSessionExecutionRuntime,
-		);
-		registry.indexes.pluginMcpRuntimes.set("source", pluginMcpRuntime as unknown as CodingAgentPluginMcpRuntime);
-		registry.indexes.pluginMcpRuntimes.set("target", pluginMcpRuntime as unknown as CodingAgentPluginMcpRuntime);
-		registry.indexes.mcpRefreshObservedSessions.add("target");
-
-		let auxiliaryIndexesCleared = false;
-		let agentRuntimeClosed = false;
-		let repositoryClosed = false;
-		const closeConversationRepository = vi.fn(() => {
-			expect(auxiliaryIndexesCleared).toBe(true);
-			expect(contextRuntime.dispose).toHaveBeenCalledOnce();
-			expect(executionRuntime.dispose).toHaveBeenCalledOnce();
-			repositoryClosed = true;
+		const events: string[] = [];
+		let sessionCloseAttempts = 0;
+		let repositoryCloseAttempts = 0;
+		const closeAgentRuntime = vi.fn(async () => {
+			events.push("sessions");
+			sessionCloseAttempts += 1;
+			if (sessionCloseAttempts === 1) throw new Error("transient session close failure");
 		});
-		const disposeMcpSynchronizer = vi.fn(() => {
-			expect(repositoryClosed).toBe(true);
+		const closeConversationRepository = vi.fn(async () => {
+			events.push("repository");
+			repositoryCloseAttempts += 1;
+			if (repositoryCloseAttempts === 1) throw new Error("transient repository close failure");
 		});
 		const disposeCodingTools = vi.fn(() => {
-			expect(repositoryClosed).toBe(true);
-		});
-		const closeAgentRuntime = vi.fn(() => {
-			expect(turnCapabilityAssembly.dispose).toHaveBeenCalledOnce();
-			agentRuntimeClosed = true;
+			events.push("tools");
 		});
 		const closeObservationHub = vi.fn(() => {
-			expect(disposeCodingTools).toHaveBeenCalledOnce();
-			expect(agentRuntimeClosed).toBe(true);
+			events.push("observations");
 		});
 		const shutdown = createCodingAgentCompositionShutdown({
 			registry,
-			clearConversationContextOverlay: () => {
-				expect(registry.indexes.mcpRefreshObservedSessions.has("target")).toBe(false);
-				auxiliaryIndexesCleared = true;
-			},
+			clearConversationContextOverlay: () => events.push("indexes"),
 			closeConversationRepository,
-			disposeMcpSynchronizer,
 			disposeCodingTools,
 			closeAgentRuntime,
 			closeObservationHub,
 		});
 
-		const firstDisposal = shutdown.dispose();
-		await expect(firstDisposal).rejects.toThrow("Failed to dispose one or more runtime resources");
-		await expect(firstDisposal).rejects.toMatchObject({
-			errors: [expect.objectContaining({ message: "transient ownership failure" })],
-		});
-		expect(executionRuntime.dispose).toHaveBeenCalledOnce();
-		expect(pluginMcpRuntime.dispose).toHaveBeenCalledOnce();
-		expect(registry.indexes.executionRuntimes.get("source")).toBeUndefined();
-		expect(registry.indexes.executionRuntimes.get("target")).toBeUndefined();
-		expect(registry.indexes.pluginMcpRuntimes.get("source")).toBeUndefined();
-		expect(registry.indexes.pluginMcpRuntimes.get("target")).toBeUndefined();
-		expect(closeConversationRepository).toHaveBeenCalledOnce();
-		expect(disposeMcpSynchronizer).toHaveBeenCalledOnce();
-		expect(disposeCodingTools).toHaveBeenCalledOnce();
-		expect(closeAgentRuntime).toHaveBeenCalledOnce();
-		expect(closeObservationHub).toHaveBeenCalledOnce();
+		await expect(shutdown.dispose()).rejects.toThrow("transient session close failure");
+		expect(events).toEqual(["sessions"]);
+
+		await expect(shutdown.dispose()).rejects.toThrow("transient repository close failure");
+		expect(events).toEqual(["sessions", "sessions", "indexes", "repository", "tools", "observations"]);
 
 		await expect(shutdown.dispose()).resolves.toBeUndefined();
-		expect(ownershipBinding.dispose).toHaveBeenCalledTimes(2);
-		expect(contextRuntime.dispose).toHaveBeenCalledOnce();
-		expect(memoryRuntime.dispose).toHaveBeenCalledOnce();
-		expect(executionRuntime.dispose).toHaveBeenCalledOnce();
-		expect(hookSessionDisposer).toHaveBeenCalledOnce();
-		expect(sessionExtensions.dispose).toHaveBeenCalledOnce();
-		expect(turnCapabilityAssembly.dispose).toHaveBeenCalledOnce();
-		expect(pluginMcpRuntime.dispose).toHaveBeenCalledOnce();
-		expect(closeConversationRepository).toHaveBeenCalledOnce();
-		expect(closeAgentRuntime).toHaveBeenCalledOnce();
+		expect(events).toEqual(["sessions", "sessions", "indexes", "repository", "tools", "observations", "repository"]);
+		expect(closeAgentRuntime).toHaveBeenCalledTimes(2);
+		expect(closeConversationRepository).toHaveBeenCalledTimes(2);
+		expect(disposeCodingTools).toHaveBeenCalledOnce();
 		expect(closeObservationHub).toHaveBeenCalledOnce();
 	});
 
-	it("does not dispose resources already removed by normal Session cleanup", async () => {
+	it("clears lookup indexes without becoming a second Session resource owner", async () => {
 		const registry = new CodingAgentCompositionResourceRegistry();
-		const contextRuntime = { dispose: vi.fn() };
-		const sessionExtensions = { dispose: vi.fn(async () => {}) };
-		const executionRuntime = { dispose: vi.fn(async () => {}) };
-		registry.trackContextRuntime(contextRuntime);
-		registry.trackSessionExtensionComposition(sessionExtensions);
+		const indexedRuntime = { dispose: vi.fn(async () => {}) };
 		registry.indexes.executionRuntimes.set(
 			"session",
-			executionRuntime as unknown as CodingAgentSessionExecutionRuntime,
-		);
-		registry.untrackContextRuntime(contextRuntime);
-		registry.untrackSessionExtensionComposition(sessionExtensions);
-		registry.indexes.executionRuntimes.unbind(
-			"session",
-			executionRuntime as unknown as CodingAgentSessionExecutionRuntime,
+			indexedRuntime as unknown as CodingAgentSessionExecutionRuntime,
 		);
 		const shutdown = createCodingAgentCompositionShutdown({
 			registry,
@@ -131,8 +63,8 @@ describe("Coding Agent composition shutdown", () => {
 		});
 
 		await shutdown.dispose();
-		expect(contextRuntime.dispose).not.toHaveBeenCalled();
-		expect(sessionExtensions.dispose).not.toHaveBeenCalled();
-		expect(executionRuntime.dispose).not.toHaveBeenCalled();
+
+		expect(registry.indexes.executionRuntimes.get("session")).toBeUndefined();
+		expect(indexedRuntime.dispose).not.toHaveBeenCalled();
 	});
 });

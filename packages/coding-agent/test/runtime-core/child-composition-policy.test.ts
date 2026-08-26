@@ -194,6 +194,7 @@ function compositionFixture() {
 		deliverSessionContext,
 		dispose,
 		composition: {
+			sessions: { create: createSession, resume: resumeSession },
 			backend: { create: createSession, resume: resumeSession },
 			appendSessionContext,
 			deliverSessionContext,

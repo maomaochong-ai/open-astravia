@@ -18,6 +18,8 @@ export interface RuntimeAgentInstanceCreateOptions {
 	readonly instanceId?: string;
 	readonly configuration?: unknown;
 	readonly signal?: AbortSignal;
+	/** 模块级观测入口；事件仍携带 Runtime 强制绑定的 Agent/Instance identity。 */
+	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
 export interface RuntimeAgentSessionCreateOptions {

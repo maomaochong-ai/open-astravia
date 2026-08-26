@@ -1,4 +1,5 @@
 import { type FeatureCompiler, RuntimeCapabilityComposition } from "../kernel/index.js";
+import { RetryableCleanup, RetryableCloseController } from "../lifecycle/retryable-cleanup.js";
 import { type RuntimeObservationPublisher, runtimeObservationFailure } from "../observation/index.js";
 import { SessionExtensionComposition } from "../session-extensions/index.js";
 import type {
@@ -39,13 +40,19 @@ export class RuntimeAgentInstance {
 	readonly agentId: string;
 	readonly revisionId: string;
 	private readonly sessions = new Map<string, RuntimeAgentSession>();
+	private readonly cleanup = new RetryableCleanup();
+	private readonly closeController: RetryableCloseController;
+	private cleanupPrepared = false;
 	private closed = false;
-	private closePromise?: Promise<void>;
 
 	constructor(private readonly options: RuntimeAgentInstanceOptions) {
 		this.id = options.id;
 		this.agentId = options.agentId;
 		this.revisionId = options.revisionLease.revision.id;
+		this.closeController = new RetryableCloseController({
+			cleanup: () => this.disposeResources(),
+			onCompleted: () => this.options.onClosed(this),
+		});
 	}
 
 	async createSession(options: RuntimeAgentSessionCreateOptions = {}): Promise<RuntimeAgentSession> {
@@ -164,29 +171,19 @@ export class RuntimeAgentInstance {
 	}
 
 	close(): Promise<void> {
-		if (this.closePromise) return this.closePromise;
 		this.closed = true;
-		this.closePromise = this.disposeResources();
-		return this.closePromise;
+		return this.closeController.run();
 	}
 
 	private async disposeResources(): Promise<void> {
-		const sessions = [...this.sessions.values()].reverse();
+		this.prepareCleanup();
 		const observations = this.options.observationPublisher.scope({
 			agentId: this.agentId,
 			revisionId: this.revisionId,
 			instanceId: this.id,
 		});
 		try {
-			await cleanupRuntimeAgentResources(
-				[
-					...sessions.map((session) => () => session.close()),
-					() => this.options.definition.dispose?.(),
-					() => this.options.revisionLease.release(),
-				],
-				undefined,
-				"Failed to close Runtime Agent Instance",
-			);
+			await this.cleanup.run("Failed to close Runtime Agent Instance");
 			observations.record(RUNTIME_AGENT_LIFECYCLE_OBSERVATION, {
 				operation: "instance.close",
 				phase: "completed",
@@ -198,9 +195,30 @@ export class RuntimeAgentInstance {
 				failure: runtimeObservationFailure(error),
 			});
 			throw error;
-		} finally {
-			this.options.onClosed(this);
 		}
+	}
+
+	private prepareCleanup(): void {
+		if (this.cleanupPrepared) return;
+		this.cleanupPrepared = true;
+		let phase = 0;
+		for (const [index, session] of [...this.sessions.values()].reverse().entries()) {
+			this.cleanup.add({
+				id: `session:${index}`,
+				phase: phase++,
+				cleanup: () => session.close(),
+			});
+		}
+		this.cleanup.add({
+			id: "instance-definition",
+			phase: phase++,
+			cleanup: () => this.options.definition.dispose?.(),
+		});
+		this.cleanup.add({
+			id: "revision-lease",
+			phase,
+			cleanup: () => this.options.revisionLease.release(),
+		});
 	}
 
 	private assertOpen(): void {

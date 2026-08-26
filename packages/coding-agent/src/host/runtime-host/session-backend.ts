@@ -4,7 +4,6 @@ import {
 	assessRuntimeHostSessionAssembly,
 	type ConversationScenario,
 	type RuntimeHostSessionAssembly,
-	type RuntimeHostSessionAssemblyAssessment,
 	type RuntimeHostSessionBackend,
 	type RuntimeSession,
 	type RuntimeSessionCreateRequest,
@@ -36,8 +35,6 @@ export interface CodingAgentSessionBackendOptions {
  * 组合根固定的参数必须相等；尚未接线的宿主能力必须显式失败，禁止静默丢失。
  */
 export class CodingAgentSessionBackend implements RuntimeHostSessionBackend {
-	private readonly sessions = new Map<string, RuntimeSession>();
-	private readonly assessments = new Map<string, RuntimeHostSessionAssemblyAssessment>();
 	private readonly retrySettings: CodingAgentRuntimeHostRetrySettings;
 
 	constructor(private readonly options: CodingAgentSessionBackendOptions) {
@@ -51,8 +48,8 @@ export class CodingAgentSessionBackend implements RuntimeHostSessionBackend {
 		let session: RuntimeSession;
 		try {
 			session = sessionPath
-				? await this.options.composition.backend.resume(sessionOptions)
-				: await this.options.composition.backend.create(sessionOptions);
+				? await this.options.composition.sessions.resume(sessionOptions)
+				: await this.options.composition.sessions.create(sessionOptions);
 		} catch (error) {
 			throw mapRuntimeHostSessionCreationError(error);
 		}
@@ -62,33 +59,7 @@ export class CodingAgentSessionBackend implements RuntimeHostSessionBackend {
 			throw new Error(`RuntimeHost assembly is incomplete: ${assessment.missingPorts.join(", ")}`);
 		}
 
-		const sessionId = session.sessionId;
-		this.sessions.set(sessionId, session);
-		this.assessments.set(sessionId, assessment);
-		const retryAssembly = withCodingAgentRuntimeHostRetry(session, assessment.assembly, this.retrySettings);
-		const lifecycle = retryAssembly.lifecycle;
-		return {
-			...retryAssembly,
-			lifecycle: {
-				...lifecycle,
-				dispose: async () => {
-					try {
-						await lifecycle.dispose();
-					} finally {
-						this.sessions.delete(sessionId);
-						this.assessments.delete(sessionId);
-					}
-				},
-			},
-		};
-	}
-
-	readSession(sessionId: string): RuntimeSession | undefined {
-		return this.sessions.get(sessionId);
-	}
-
-	readAssessment(sessionId: string): RuntimeHostSessionAssemblyAssessment | undefined {
-		return this.assessments.get(sessionId);
+		return withCodingAgentRuntimeHostRetry(session, assessment.assembly, this.retrySettings);
 	}
 
 	private toSessionOptions(request: RuntimeSessionCreateRequest): CodingAgentRuntimeSessionOptions {
@@ -123,6 +94,11 @@ export class CodingAgentSessionBackend implements RuntimeHostSessionBackend {
 	}
 
 	private assertSupportedRequest(request: RuntimeSessionCreateRequest): void {
+		if (request.agent && request.agent.id !== this.options.composition.agentRuntime.agentId) {
+			throw new Error(
+				`Coding Agent Session Backend cannot execute Agent ${request.agent.id}; expected ${this.options.composition.agentRuntime.agentId}`,
+			);
+		}
 		assertSamePath("cwd", request.cwd, this.options.cwd);
 		assertSamePath("sessionDir", request.sessionDir, this.options.conversationDir);
 		assertSamePath("agentDir", request.agentDir, this.options.agentDir);

@@ -4,7 +4,12 @@ import { CONVERSATION_STORAGE_ERROR_CODES, InMemoryConversationRepository } from
 describe("InMemoryConversationRepository", () => {
 	it("implements repository and document semantics without a filesystem path", async () => {
 		const repository = new InMemoryConversationRepository();
-		await repository.create({ sessionId: "memory-session", createdAt: 1, cwd: "C:\\workspace" });
+		await repository.create({
+			sessionId: "memory-session",
+			createdAt: 1,
+			agentId: "reviewer",
+			cwd: "C:\\workspace",
+		});
 
 		await repository.append("memory-session", 0, [
 			{
@@ -27,7 +32,7 @@ describe("InMemoryConversationRepository", () => {
 		expect(await repository.readDocument("memory-session")).toMatchObject({
 			revision: beforeRename.revision + 1,
 			name: "In memory",
-			identity: { cwd: "C:\\workspace" },
+			identity: { agentId: "reviewer", cwd: "C:\\workspace" },
 		});
 	});
 

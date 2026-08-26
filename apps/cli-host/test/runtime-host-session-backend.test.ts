@@ -59,9 +59,6 @@ describe("CodingAgentSessionBackend", () => {
 			includeAgentSkills: false,
 			appendSystemPrompt: "runtime-host-addon",
 		});
-		const createdSession = backend.readSession(created.sessionId);
-
-		expect(createdSession).toBeDefined();
 		expect(runtime.getState(created.sessionId)).toMatchObject({
 			model: SECOND_MODEL,
 			thinkingLevel: "medium",
@@ -69,11 +66,10 @@ describe("CodingAgentSessionBackend", () => {
 			scenario: "batch",
 		});
 		expect(runtime.getState(created.sessionId).activeToolNames).not.toContain("task_output");
-		expect(backend.readAssessment(created.sessionId)).toMatchObject({ ready: true });
 		const sessionPath = runtime.getSessionPath(created.sessionId);
 		expect(sessionPath).toBeDefined();
 		await runtime.disposeSession(created.sessionId);
-		expect(backend.readSession(created.sessionId)).toBeUndefined();
+		expect(() => runtime.getState(created.sessionId)).toThrow("Session not found");
 
 		const resumed = await runtime.createSession({
 			cwd,

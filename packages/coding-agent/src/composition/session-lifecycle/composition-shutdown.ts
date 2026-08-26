@@ -1,18 +1,13 @@
 import { RetryableCleanup } from "@vetta/runtime-core";
-import type {
-	CodingAgentAsynchronousDisposableResource,
-	CodingAgentCompositionResourceCleanupRegistry,
-	CodingAgentCompositionResourceCleanupSnapshot,
-	CodingAgentSynchronousDisposableResource,
-} from "./resource-registry.js";
+import type { CodingAgentCompositionResourceRegistry } from "./resource-registry.js";
 
 export interface CodingAgentCompositionShutdownOptions {
-	readonly registry: CodingAgentCompositionResourceCleanupRegistry;
+	readonly registry: CodingAgentCompositionResourceRegistry;
 	readonly clearConversationContextOverlay: () => void;
 	readonly closeConversationRepository: () => Promise<void> | void;
 	readonly disposeMcpSynchronizer?: () => Promise<void> | void;
 	readonly disposeCodingTools: () => Promise<void> | void;
-	/** 在产品 Session 资源释放后关闭 Agent Instance；注入的应用 Host 不归 Composition 所有。 */
+	/** 必须先关闭 Session Backend；失败时不得继续释放仍被 Session 使用的共享资源。 */
 	readonly closeAgentRuntime?: () => Promise<void> | void;
 	/** 必须最后关闭，使其它资源释放阶段仍可发布最终诊断。 */
 	readonly closeObservationHub?: () => Promise<void> | void;
@@ -22,120 +17,36 @@ export interface CodingAgentCompositionShutdown {
 	dispose(): Promise<void>;
 }
 
-/** Composition 级关闭事务；第一次关闭冻结资源集合，失败项由后续调用继续重试。 */
+/** Composition 关闭事务。Session Plan 是产品 Session 资源的唯一 owner。 */
 export function createCodingAgentCompositionShutdown(
 	options: CodingAgentCompositionShutdownOptions,
 ): CodingAgentCompositionShutdown {
-	const cleanup = new RetryableCleanup();
-	let prepared = false;
-
-	return {
-		async dispose() {
-			if (!prepared) {
-				prepared = true;
-				prepareCleanup(cleanup, options, options.registry.readCleanupSnapshot());
-			}
-			try {
-				await cleanup.run("Failed to dispose one or more runtime resources");
-			} catch (error) {
-				throw new AggregateError(
-					error instanceof AggregateError ? error.errors : [error],
-					"Failed to dispose one or more runtime resources",
-				);
-			}
-		},
-	};
-}
-
-function prepareCleanup(
-	cleanup: RetryableCleanup,
-	options: CodingAgentCompositionShutdownOptions,
-	resources: CodingAgentCompositionResourceCleanupSnapshot,
-): void {
-	addSynchronousResources(cleanup, "context-runtime", resources.contextRuntimes, (runtime) =>
-		options.registry.untrackContextRuntime(runtime),
-	);
-	addSynchronousResources(cleanup, "memory-runtime", resources.memoryRuntimes, (runtime) =>
-		options.registry.untrackMemoryRuntime(runtime),
-	);
-	addAsynchronousResources(cleanup, "execution-runtime", resources.executionRuntimes, (runtime) =>
-		options.registry.unbindExecutionRuntime(runtime),
-	);
-	for (const [index, disposeHookSession] of resources.hookSessionDisposers.entries()) {
-		cleanup.add({
-			id: `hook-session:${index}`,
-			phase: 0,
-			cleanup: async () => {
-				await disposeHookSession();
-				options.registry.untrackHookSessionDisposer(disposeHookSession);
-			},
-		});
-	}
-	addAsynchronousResources(cleanup, "session-extensions", resources.sessionExtensionCompositions, (composition) =>
-		options.registry.untrackSessionExtensionComposition(composition),
-	);
-	addAsynchronousResources(cleanup, "capability-composition", resources.turnCapabilityAssemblies, (assembly) =>
-		options.registry.untrackTurnCapabilityAssembly(assembly),
-	);
-	addAsynchronousResources(cleanup, "ownership-binding", resources.ownershipBindings, (binding) =>
-		options.registry.untrackOwnershipBinding(binding),
-	);
-	addAsynchronousResources(cleanup, "plugin-mcp-runtime", resources.pluginMcpRuntimes, (runtime) =>
-		options.registry.unbindPluginMcpRuntime(runtime),
-	);
-	if (options.closeAgentRuntime) {
-		cleanup.add({ id: "runtime-agent", phase: 1, cleanup: options.closeAgentRuntime });
-	}
-	cleanup.add({
-		id: "session-registries",
-		phase: 1,
+	let sessionsClosed = options.closeAgentRuntime === undefined;
+	const sharedCleanup = new RetryableCleanup();
+	sharedCleanup.add({
+		id: "session-indexes",
+		phase: 0,
 		cleanup: () => {
-			options.registry.clearAuxiliarySessionIndexes();
+			options.registry.clear();
 			options.clearConversationContextOverlay();
 		},
 	});
-	cleanup.add({ id: "conversation-repository", phase: 2, cleanup: options.closeConversationRepository });
+	sharedCleanup.add({ id: "conversation-repository", phase: 1, cleanup: options.closeConversationRepository });
 	if (options.disposeMcpSynchronizer) {
-		cleanup.add({ id: "mcp-synchronizer", phase: 3, cleanup: options.disposeMcpSynchronizer });
+		sharedCleanup.add({ id: "mcp-synchronizer", phase: 2, cleanup: options.disposeMcpSynchronizer });
 	}
-	cleanup.add({ id: "coding-tools", phase: 3, cleanup: options.disposeCodingTools });
+	sharedCleanup.add({ id: "coding-tools", phase: 2, cleanup: options.disposeCodingTools });
 	if (options.closeObservationHub) {
-		cleanup.add({ id: "observation-hub", phase: 4, cleanup: options.closeObservationHub });
+		sharedCleanup.add({ id: "observation-hub", phase: 3, cleanup: options.closeObservationHub });
 	}
-}
 
-function addSynchronousResources(
-	cleanup: RetryableCleanup,
-	idPrefix: string,
-	resources: readonly CodingAgentSynchronousDisposableResource[],
-	untrack: (resource: CodingAgentSynchronousDisposableResource) => void,
-): void {
-	for (const [index, resource] of resources.entries()) {
-		cleanup.add({
-			id: `${idPrefix}:${index}`,
-			phase: 0,
-			cleanup: () => {
-				resource.dispose();
-				untrack(resource);
-			},
-		});
-	}
-}
-
-function addAsynchronousResources(
-	cleanup: RetryableCleanup,
-	idPrefix: string,
-	resources: readonly CodingAgentAsynchronousDisposableResource[],
-	untrack: (resource: CodingAgentAsynchronousDisposableResource) => void,
-): void {
-	for (const [index, resource] of resources.entries()) {
-		cleanup.add({
-			id: `${idPrefix}:${index}`,
-			phase: 0,
-			cleanup: async () => {
-				await resource.dispose();
-				untrack(resource);
-			},
-		});
-	}
+	return {
+		async dispose() {
+			if (!sessionsClosed) {
+				await options.closeAgentRuntime?.();
+				sessionsClosed = true;
+			}
+			await sharedCleanup.run("Failed to dispose one or more Coding Agent Composition resources");
+		},
+	};
 }

@@ -54,6 +54,9 @@ export function normalizeRuntimeAgentSessionPlan(value: unknown): RuntimeAgentSe
 		if (candidate.activate !== undefined && typeof candidate.activate !== "function") {
 			throw invalidInstanceError("Runtime Agent Session Plan activate must be a function");
 		}
+		if (candidate.beforeSnapshotAcquire !== undefined && typeof candidate.beforeSnapshotAcquire !== "function") {
+			throw invalidInstanceError("Runtime Agent Session Plan beforeSnapshotAcquire must be a function");
+		}
 		if (candidate.onFailure !== undefined && typeof candidate.onFailure !== "function") {
 			throw invalidInstanceError("Runtime Agent Session Plan onFailure must be a function");
 		}
@@ -61,10 +64,12 @@ export function normalizeRuntimeAgentSessionPlan(value: unknown): RuntimeAgentSe
 			throw invalidInstanceError("Runtime Agent Session Plan dispose must be a function");
 		}
 		const activate = candidate.activate?.bind(value);
+		const beforeSnapshotAcquire = candidate.beforeSnapshotAcquire?.bind(value);
 		const onFailure = candidate.onFailure?.bind(value);
 		const dispose = candidate.dispose?.bind(value);
 		return Object.freeze({
 			definition: normalizeRuntimeAgentSessionDefinition(candidate.definition),
+			...(beforeSnapshotAcquire ? { beforeSnapshotAcquire } : {}),
 			...(activate ? { activate } : {}),
 			...(onFailure ? { onFailure } : {}),
 			...(dispose ? { dispose } : {}),

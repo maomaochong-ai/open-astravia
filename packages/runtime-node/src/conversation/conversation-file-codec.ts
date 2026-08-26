@@ -253,6 +253,7 @@ export function documentFromFile(sessionId: string, file: ParsedConversationFile
 		createdAt: file.header.createdAt,
 		...(file.header.schemaVersion === CONVERSATION_SCHEMA_VERSION
 			? {
+					agentId: file.header.agentId,
 					cwd: file.header.cwd,
 					parentSessionPath: file.header.parentSessionPath,
 					parentEntryId: file.header.parentEntryId,

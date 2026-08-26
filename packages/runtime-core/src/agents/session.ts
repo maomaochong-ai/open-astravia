@@ -4,6 +4,7 @@ import type {
 	RuntimeSnapshotLease,
 	RuntimeSnapshotProvider,
 } from "../kernel/index.js";
+import { RetryableCleanup, RetryableCloseController } from "../lifecycle/retryable-cleanup.js";
 import { type RuntimeObservationPublisher, runtimeObservationFailure } from "../observation/index.js";
 import type { RuntimeResources } from "../runtime-host/composed-runtime-factory.js";
 import type { SessionExtensionComposition } from "../session-extensions/index.js";
@@ -53,14 +54,17 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 	readonly extensions: SessionExtensionComposition;
 	private readonly capabilities: RuntimeCapabilityComposition;
 	private readonly initialSessionPlan: RuntimeAgentSessionPlan;
+	private activeSessionPlan: RuntimeAgentSessionPlan;
 	private readonly initialExtensionIds: readonly string[];
 	private readonly retainedRollouts: RetainedSessionRollout[] = [];
 	private rolloutTail: Promise<void> = Promise.resolve();
 	private effectiveRevision: string;
 	private sessionId: string;
 	private runtimeResources?: RuntimeResources;
+	private readonly cleanup = new RetryableCleanup();
+	private readonly closeController: RetryableCloseController;
+	private cleanupPrepared = false;
 	private closed = false;
-	private closePromise?: Promise<void>;
 
 	constructor(private readonly options: RuntimeAgentSessionOptions) {
 		this.sessionId = options.id;
@@ -70,7 +74,12 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 		this.capabilities = options.capabilities;
 		this.extensions = options.extensions;
 		this.initialSessionPlan = options.sessionPlan;
+		this.activeSessionPlan = options.sessionPlan;
 		this.initialExtensionIds = runtimeAgentExtensionIds(options.sessionPlan.definition);
+		this.closeController = new RetryableCloseController({
+			cleanup: () => this.rolloutTail.then(() => this.disposeResources()),
+			onCompleted: () => this.options.onClosed(this),
+		});
 	}
 
 	get id(): string {
@@ -81,8 +90,9 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 		return this.effectiveRevision;
 	}
 
-	acquire(context?: RuntimeSnapshotAcquireContext): Promise<RuntimeSnapshotLease> {
+	async acquire(context?: RuntimeSnapshotAcquireContext): Promise<RuntimeSnapshotLease> {
 		this.assertOpen();
+		await this.activeSessionPlan.beforeSnapshotAcquire?.(context);
 		return this.capabilities.acquire(context);
 	}
 
@@ -96,9 +106,16 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 			);
 		}
 		try {
+			const previewSignal = new AbortController().signal;
 			const resources = await this.initialSessionPlan.activate({
 				snapshotProvider: this,
-				acquirePreviewSnapshot: () => this.acquire(),
+				acquirePreviewSnapshot: () =>
+					this.acquire({
+						sessionId: this.id,
+						operationId: `${this.id}:agent-session-preview`,
+						reason: "preview",
+						signal: previewSignal,
+					}),
 				rebindSession: async (sessionId) => {
 					await rebindSession(sessionId);
 				},
@@ -122,6 +139,11 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 		return this.runtimeResources;
 	}
 
+	/** 标准 Session Backend 用于区分完整产品 Plan 与需要宿主资源工厂的简单 Definition。 */
+	readRuntimeResources(): RuntimeResources | undefined {
+		return this.runtimeResources;
+	}
+
 	rolloutToLatest(signal: AbortSignal = new AbortController().signal): Promise<RuntimeAgentSessionRolloutResult> {
 		this.assertOpen();
 		let resolveResult!: (result: RuntimeAgentSessionRolloutResult) => void;
@@ -141,10 +163,8 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 	}
 
 	close(): Promise<void> {
-		if (this.closePromise) return this.closePromise;
 		this.closed = true;
-		this.closePromise = this.rolloutTail.then(() => this.disposeResources());
-		return this.closePromise;
+		return this.closeController.run();
 	}
 
 	/** 仅由 RuntimeAgentRuntime 在持久化 Session continuation 提交身份时调用。 */
@@ -232,6 +252,7 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 				);
 			}
 			this.effectiveRevision = revisionLease.revision.id;
+			this.activeSessionPlan = sessionPlan;
 			this.retainedRollouts.push({ revisionLease, instanceDefinition, sessionPlan });
 			observations.record(RUNTIME_AGENT_LIFECYCLE_OBSERVATION, {
 				operation: "session.rollout",
@@ -258,31 +279,15 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 	}
 
 	private async disposeResources(): Promise<void> {
+		this.prepareCleanup();
 		const observations = this.options.observationPublisher.scope({
 			agentId: this.agentId,
 			revisionId: this.effectiveRevision,
 			instanceId: this.instanceId,
 			sessionId: this.id,
 		});
-		const rolloutTasks = this.retainedRollouts
-			.slice()
-			.reverse()
-			.flatMap((rollout) => [
-				() => rollout.sessionPlan.dispose?.(),
-				() => rollout.instanceDefinition.dispose?.(),
-				() => rollout.revisionLease.release(),
-			]);
 		try {
-			await cleanupRuntimeAgentResources(
-				[
-					() => this.capabilities.close(),
-					() => this.extensions.dispose(),
-					...rolloutTasks,
-					() => this.initialSessionPlan.dispose?.(),
-				],
-				undefined,
-				"Failed to close Runtime Agent Session",
-			);
+			await this.cleanup.run("Failed to close Runtime Agent Session");
 			observations.record(RUNTIME_AGENT_LIFECYCLE_OBSERVATION, {
 				operation: "session.close",
 				phase: "completed",
@@ -294,9 +299,37 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 				failure: runtimeObservationFailure(error),
 			});
 			throw error;
-		} finally {
-			this.options.onClosed(this);
 		}
+	}
+
+	private prepareCleanup(): void {
+		if (this.cleanupPrepared) return;
+		this.cleanupPrepared = true;
+		let phase = 0;
+		this.cleanup.add({ id: "capabilities", phase: phase++, cleanup: () => this.capabilities.close() });
+		this.cleanup.add({ id: "extensions", phase: phase++, cleanup: () => this.extensions.dispose() });
+		for (const [index, rollout] of this.retainedRollouts.slice().reverse().entries()) {
+			this.cleanup.add({
+				id: `rollout:${index}:session-plan`,
+				phase: phase++,
+				cleanup: () => rollout.sessionPlan.dispose?.(),
+			});
+			this.cleanup.add({
+				id: `rollout:${index}:instance-definition`,
+				phase: phase++,
+				cleanup: () => rollout.instanceDefinition.dispose?.(),
+			});
+			this.cleanup.add({
+				id: `rollout:${index}:revision-lease`,
+				phase: phase++,
+				cleanup: () => rollout.revisionLease.release(),
+			});
+		}
+		this.cleanup.add({
+			id: "initial-session-plan",
+			phase,
+			cleanup: () => this.initialSessionPlan.dispose?.(),
+		});
 	}
 
 	private assertOpen(): void {

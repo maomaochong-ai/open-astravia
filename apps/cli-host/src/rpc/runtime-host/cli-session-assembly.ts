@@ -197,8 +197,8 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 			memoryFile: parsed.memoryFile,
 		};
 		const session = options.sessionPath
-			? await runtime.backend.resume(sessionOptions)
-			: await runtime.backend.create(sessionOptions);
+			? await runtime.sessions.resume(sessionOptions)
+			: await runtime.sessions.create(sessionOptions);
 		const dismissSession = rollback.defer({
 			id: "runtime-session",
 			rollback: () => session.dispose(),

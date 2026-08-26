@@ -37,6 +37,7 @@ describe("conversation seed publisher", () => {
 			targetRootDir: rootDir,
 			targetSessionId: "native-seed",
 			createdAt: 10,
+			agentId: "reviewer",
 			cwd: "C:\\workspace",
 			parentSessionPath: "C:\\sessions\\parent.conversation.jsonl",
 			entries,
@@ -48,6 +49,7 @@ describe("conversation seed publisher", () => {
 		expect(result.document).toMatchObject({
 			identity: {
 				sessionId: "native-seed",
+				agentId: "reviewer",
 				cwd: "C:\\workspace",
 				parentSessionPath: "C:\\sessions\\parent.conversation.jsonl",
 			},

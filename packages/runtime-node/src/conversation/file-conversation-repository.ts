@@ -92,6 +92,7 @@ export class FileConversationRepository
 				schemaVersion: CONVERSATION_SCHEMA_VERSION,
 				sessionId: input.sessionId,
 				createdAt: input.createdAt,
+				...(input.agentId ? { agentId: input.agentId } : {}),
 				...(input.cwd ? { cwd: input.cwd } : {}),
 			};
 			const path = this.conversationPath(input.sessionId);
@@ -241,6 +242,7 @@ export class FileConversationRepository
 					schemaVersion: CONVERSATION_SCHEMA_VERSION,
 					sessionId,
 					createdAt: input.timestamp,
+					agentId: sourceFile.header.agentId,
 					cwd: sourceFile.header.cwd,
 					parentSessionPath: sourceSessionPath,
 					parentEntryId: carried.sourceEntryId,
@@ -300,6 +302,7 @@ export class FileConversationRepository
 					{
 						sessionId,
 						createdAt: input.timestamp,
+						agentId: header.agentId,
 						cwd: header.cwd,
 						parentSessionPath: sourceSessionPath,
 						parentEntryId: carried.sourceEntryId,
@@ -510,6 +513,7 @@ export class FileConversationRepository
 			schemaVersion: CONVERSATION_SCHEMA_VERSION,
 			sessionId: newSessionId,
 			createdAt: Date.now(),
+			agentId: file.header.schemaVersion === CONVERSATION_SCHEMA_VERSION ? file.header.agentId : undefined,
 			cwd: file.header.schemaVersion === CONVERSATION_SCHEMA_VERSION ? file.header.cwd : undefined,
 			parentSessionPath: sourceSessionPath,
 			parentEntryId: entryId,
@@ -545,6 +549,7 @@ export class FileConversationRepository
 		const targetIdentity = {
 			sessionId: newSessionId,
 			createdAt: header.createdAt,
+			agentId: header.agentId,
 			cwd: header.cwd,
 			parentSessionPath: header.parentSessionPath,
 			parentEntryId: header.parentEntryId,

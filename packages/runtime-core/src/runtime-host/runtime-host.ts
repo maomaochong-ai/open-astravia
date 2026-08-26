@@ -415,6 +415,7 @@ export class RuntimeHost implements SessionFacade {
 			...summarizeAgentPlugins(config.agentPlugins),
 		});
 		const request: RuntimeSessionCreateRequest = {
+			agent: config.agent,
 			cwd: config.cwd,
 			agentDir: config.agentDir,
 			sessionPath: config.sessionPath,
@@ -1015,6 +1016,7 @@ export class RuntimeHost implements SessionFacade {
 		const state = handle.stateReader.readState();
 		return {
 			sessionId,
+			...(handle.lifecycle.agentId ? { agentId: handle.lifecycle.agentId } : {}),
 			model: state.model,
 			thinkingLevel: state.thinkingLevel,
 			executionMode: handle.executionMode,

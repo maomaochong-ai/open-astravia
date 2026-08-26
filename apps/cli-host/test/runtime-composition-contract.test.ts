@@ -498,20 +498,23 @@ describe("Runtime composition contract", () => {
 		const session = await composition.backend.create({ sessionId: "mcp-session" });
 		expect(session.readState().activeToolNames).toContain("mcp_search_lookup");
 		const initialBinding = composition.tools.registry.resolve("mcp_search_lookup")?.binding;
+		const assemblyRefreshCount = reloadIfChanged.mock.calls.length;
 
 		await session.prompt({ text: "unchanged MCP" });
+		expect(reloadIfChanged).toHaveBeenCalledTimes(assemblyRefreshCount + 1);
 		expect(modelTools[0]).toContain("mcp_search_lookup");
 		expect(composition.tools.registry.resolve("mcp_search_lookup")?.binding).toEqual(initialBinding);
 
 		available = false;
 		await session.prompt({ text: "without MCP" });
+		expect(reloadIfChanged).toHaveBeenCalledTimes(assemblyRefreshCount + 2);
 		expect(modelTools[1]).not.toContain("mcp_search_lookup");
 		expect(composition.tools.registry.resolve("mcp_search_lookup")).toBeUndefined();
 
 		available = true;
 		await session.prompt({ text: "with MCP again" });
+		expect(reloadIfChanged).toHaveBeenCalledTimes(assemblyRefreshCount + 3);
 		expect(modelTools[2]).toContain("mcp_search_lookup");
-		expect(reloadIfChanged).toHaveBeenCalledTimes(4);
 		await session.dispose();
 	});
 

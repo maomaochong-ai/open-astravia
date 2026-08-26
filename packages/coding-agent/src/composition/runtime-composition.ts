@@ -1,4 +1,8 @@
-import { ComposedRuntimeFactory, KernelRuntimeSessionBackend, RuntimeOwnershipBinding } from "@vetta/runtime-core";
+import {
+	RuntimeAgentSessionAssemblyBackend,
+	RuntimeOwnershipBinding,
+	type RuntimeSessionCreateRequest,
+} from "@vetta/runtime-core";
 import { selectConversationDocumentModelMessages } from "@vetta/runtime-core/conversation";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/model-runtime-adapter.js";
@@ -21,7 +25,6 @@ export {
 } from "./agent-runtime/execution-definition.js";
 
 import {
-	type CodingAgentCompositionAgentRuntime,
 	type CodingAgentCompositionAgentRuntimeScope,
 	createCodingAgentCompositionAgentRuntimeScope,
 } from "./agent-runtime/composition-agent-runtime.js";
@@ -147,14 +150,11 @@ async function assembleCodingAgentRuntimeComposition(
 		if (!manager) return undefined;
 		const sessionPath = persistence.resolveSessionPath(sessionId);
 		if (!sessionPath) throw new Error("Conversation ownership requires a persistent session path");
-		const binding = await RuntimeOwnershipBinding.acquire(manager, sessionPath);
-		resourceRegistry.trackOwnershipBinding(binding);
-		return binding;
+		return RuntimeOwnershipBinding.acquire(manager, sessionPath);
 	};
 	const releaseOwnership = async (binding: RuntimeOwnershipBinding<string> | undefined): Promise<void> => {
 		if (!binding) return;
 		await binding.dispose();
-		resourceRegistry.untrackOwnershipBinding(binding);
 	};
 	const conversation = {
 		repository,
@@ -214,26 +214,70 @@ async function assembleCodingAgentRuntimeComposition(
 		assessChildSessionPath,
 		imageSettingsSnapshots,
 	});
-	const agentRuntime: CodingAgentCompositionAgentRuntime = await agentRuntimeScope.createInstance(
-		(agentSessionContext, request) =>
-			sessionInitialization.prepare(request.options, request.resourceContext, agentSessionContext),
+	const agentSelection = agentRuntimeScope.createSelection((agentSessionContext, request) =>
+		sessionInitialization.prepare(request.options, request.resourceContext, agentSessionContext),
 	);
-	const runtimeFactory = new ComposedRuntimeFactory<CodingAgentRuntimeSessionOptions>({
-		streamFn: options.streamFn,
-		tracer: options.tracer,
-		tracing: options.tracing,
+	const runtimeAgentBackend = new RuntimeAgentSessionAssemblyBackend({
+		runtime: agentRuntimeScope.runtime,
 		observationPublisher,
-		createResources: (sessionOptions, resourceContext) =>
-			agentRuntime.createSession({ options: sessionOptions, resourceContext }),
+		identity: {
+			resolve: (request) => ({ sessionId: readCodingAgentSessionOptions(request).sessionId }),
+		},
+		sessionConfiguration: {
+			resolve: ({ request, resourceContext }) => ({
+				options: readCodingAgentSessionOptions(request),
+				resourceContext,
+			}),
+		},
+		engine: {
+			streamFn: options.streamFn,
+			tracer: options.tracer,
+			tracing: options.tracing,
+		},
 	});
-	const backend = new KernelRuntimeSessionBackend({ runtimeFactory });
+	const preparedAgent = await runtimeAgentBackend.prepareInstance(agentSelection);
+	const createRuntimeSessionRequest = (
+		sessionOptions: CodingAgentRuntimeSessionOptions,
+		resume: boolean,
+	): RuntimeSessionCreateRequest => ({
+		agent: { ...preparedAgent.selection!, sessionConfiguration: sessionOptions },
+		...(resume ? { sessionPath: sessionOptions.sessionId } : {}),
+		executionMode: sessionOptions.executionMode ?? "full-access",
+		enableSubagents: sessionInitializationProfile.enableSubagents === true,
+		getSessionId: () => sessionOptions.sessionId,
+	});
+	const backend = {
+		create: (sessionOptions: CodingAgentRuntimeSessionOptions) =>
+			runtimeAgentBackend.createRuntimeSession(createRuntimeSessionRequest(sessionOptions, false)),
+		resume: (sessionOptions: CodingAgentRuntimeSessionOptions) =>
+			runtimeAgentBackend.createRuntimeSession(createRuntimeSessionRequest(sessionOptions, true)),
+	};
+	const runtimeHostBackend = {
+		createAssembly: (request: RuntimeSessionCreateRequest) => {
+			if (request.agent && request.agent.id !== preparedAgent.identity.agentId) {
+				throw new Error(
+					`Coding Agent Composition cannot execute Agent ${request.agent.id}; expected ${preparedAgent.identity.agentId}`,
+				);
+			}
+			return runtimeAgentBackend.createAssembly({
+				...request,
+				agent: {
+					...preparedAgent.selection!,
+					sessionConfiguration: request.agent?.sessionConfiguration,
+				},
+			});
+		},
+	};
 	const compositionShutdown = createCodingAgentCompositionShutdown({
 		registry: resourceRegistry,
 		clearConversationContextOverlay: () => conversationContextOverlay.clearAll(),
 		closeConversationRepository: () => persistence.dispose(),
 		disposeMcpSynchronizer: mcpCoordinator.sharedRuntimeAvailable ? () => mcpCoordinator.dispose() : undefined,
 		disposeCodingTools: () => tools.dispose(),
-		closeAgentRuntime: () => agentRuntime.close(),
+		closeAgentRuntime: async () => {
+			await runtimeAgentBackend.dispose();
+			await agentRuntimeScope.close();
+		},
 		closeObservationHub: () => observationRuntime.hub.close(),
 	});
 	const sessionControls = createCodingAgentRuntimeSessionControls({
@@ -251,12 +295,14 @@ async function assembleCodingAgentRuntimeComposition(
 		extensionToolRuntime,
 	});
 	return {
+		sessions: backend,
 		backend,
+		runtimeHostBackend,
 		tools,
 		agentRuntime: {
-			agentId: agentRuntime.agentId,
-			instanceId: agentRuntime.instanceId,
-			revisionId: agentRuntime.revisionId,
+			agentId: preparedAgent.identity.agentId,
+			instanceId: preparedAgent.identity.instanceId,
+			revisionId: preparedAgent.identity.revisionId,
 		},
 		observations: observationRuntime.hub,
 		scenario,
@@ -269,3 +315,11 @@ async function assembleCodingAgentRuntimeComposition(
 }
 
 const EMPTY_MCP_TOOL_VIEW: McpRuntimeToolView = Object.freeze({ tools: Object.freeze([]) });
+
+function readCodingAgentSessionOptions(request: RuntimeSessionCreateRequest): CodingAgentRuntimeSessionOptions {
+	const value = request.agent?.sessionConfiguration;
+	if (!value || typeof value !== "object" || !("sessionId" in value) || typeof value.sessionId !== "string") {
+		throw new Error("Coding Agent Runtime request must include validated Session options");
+	}
+	return value as CodingAgentRuntimeSessionOptions;
+}

@@ -183,6 +183,32 @@ describe("RuntimeAgentRegistry", () => {
 		await expect(closing).rejects.toThrow("Failed to dispose one or more Runtime Agent revisions");
 		expect(closed).toBe(true);
 	});
+
+	it("retains a failed retired generation and retries its disposal", async () => {
+		const registry = registryWithIds();
+		let disposeAttempts = 0;
+		registry.upsert(
+			candidate("code", "1", {
+				id: "agent",
+				createInstance: () => ({ prepareSession: () => ({ capabilities: capabilities("v1") }) }),
+				dispose: async () => {
+					disposeAttempts += 1;
+					if (disposeAttempts === 1) throw new Error("transient revision cleanup failure");
+				},
+			}),
+		);
+		const lease = registry.acquire("agent");
+		const firstClose = registry.close();
+
+		await expect(lease.release()).rejects.toThrow("transient revision cleanup failure");
+		await expect(firstClose).rejects.toThrow("Failed to dispose one or more Runtime Agent revisions");
+		expect(registry.snapshot()).toMatchObject({ closed: true, revisionCount: 1, activeLeaseCount: 0 });
+
+		await expect(lease.release()).resolves.toBeUndefined();
+		await expect(registry.close()).resolves.toBeUndefined();
+		expect(disposeAttempts).toBe(2);
+		expect(registry.snapshot()).toMatchObject({ closed: true, revisionCount: 0, entries: [] });
+	});
 });
 
 function registryWithIds(): RuntimeAgentRegistry {

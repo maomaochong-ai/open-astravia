@@ -1,4 +1,5 @@
 import { createRuntimeId } from "../id-generator.js";
+import { RetryableCloseController } from "../lifecycle/retryable-cleanup.js";
 import { type RuntimeObservationPublisher, runtimeObservationFailure } from "../observation/index.js";
 import type {
 	RuntimeAgentDefinition,
@@ -53,18 +54,18 @@ export class RuntimeAgentRegistry {
 	private readonly entries = new Map<string, RuntimeAgentRegistryEntry>();
 	private readonly generations = new Set<RuntimeAgentGeneration>();
 	private readonly revisionIds = new Set<string>();
-	private readonly cleanupErrors = new Set<unknown>();
 	private readonly createRevisionId: () => string;
 	private readonly now: () => number;
 	private readonly observations?: RuntimeObservationPublisher;
+	private readonly closeController: RetryableCloseController;
 	private sequence = 0;
 	private closed = false;
-	private closePromise?: Promise<void>;
 
 	constructor(options: RuntimeAgentRegistryOptions = {}) {
 		this.createRevisionId = options.createRevisionId ?? createRuntimeId;
 		this.now = options.now ?? Date.now;
 		this.observations = options.observationPublisher;
+		this.closeController = new RetryableCloseController({ cleanup: () => this.disposeAll() });
 	}
 
 	upsert(candidate: RuntimeAgentDefinitionCandidate): RuntimeAgentPublishResult {
@@ -170,18 +171,22 @@ export class RuntimeAgentRegistry {
 			{ operation: "revision.acquire", phase: "completed" },
 			{ agentId, revisionId: generation.revision.id },
 		);
-		let released = false;
+		let leaseReleased = false;
+		let releaseCompleted = false;
 		return Object.freeze({
 			revision: generation.revision,
 			release: async () => {
-				if (released) return;
-				released = true;
-				generation.activeLeases -= 1;
-				if (generation.activeLeases === 0) {
-					for (const resolve of generation.unusedWaiters.splice(0)) resolve();
+				if (releaseCompleted) return;
+				if (!leaseReleased) {
+					leaseReleased = true;
+					generation.activeLeases -= 1;
+					if (generation.activeLeases === 0) {
+						for (const resolve of generation.unusedWaiters.splice(0)) resolve();
+					}
 				}
 				try {
 					await this.disposeIfRetired(generation);
+					releaseCompleted = true;
 					this.observations?.record(
 						RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
 						{ operation: "revision.release", phase: "completed" },
@@ -253,11 +258,11 @@ export class RuntimeAgentRegistry {
 	}
 
 	close(): Promise<void> {
-		if (this.closePromise) return this.closePromise;
-		this.closed = true;
-		for (const generation of this.generations) generation.retired = true;
-		this.closePromise = this.disposeAll();
-		return this.closePromise;
+		if (!this.closed) {
+			this.closed = true;
+			for (const generation of this.generations) generation.retired = true;
+		}
+		return this.closeController.run();
 	}
 
 	private assertOpen(): void {
@@ -302,7 +307,7 @@ export class RuntimeAgentRegistry {
 	private async disposeIfRetired(generation: RuntimeAgentGeneration): Promise<void> {
 		if (!generation.retired || generation.activeLeases > 0) return;
 		if (!generation.disposePromise) {
-			generation.disposePromise = Promise.resolve()
+			const operation = Promise.resolve()
 				.then(() => generation.revision.definition.dispose?.())
 				.then(() => {
 					this.observations?.record(
@@ -310,9 +315,9 @@ export class RuntimeAgentRegistry {
 						{ operation: "revision.dispose", phase: "completed" },
 						{ agentId: generation.revision.agentId, revisionId: generation.revision.id },
 					);
+					this.generations.delete(generation);
 				})
 				.catch((error: unknown) => {
-					this.cleanupErrors.add(error);
 					this.observations?.record(
 						RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
 						{
@@ -323,10 +328,11 @@ export class RuntimeAgentRegistry {
 						{ agentId: generation.revision.agentId, revisionId: generation.revision.id },
 					);
 					throw error;
-				})
-				.finally(() => {
-					this.generations.delete(generation);
 				});
+			const tracked = operation.finally(() => {
+				if (generation.disposePromise === tracked) generation.disposePromise = undefined;
+			});
+			generation.disposePromise = tracked;
 		}
 		await generation.disposePromise;
 	}
@@ -339,14 +345,14 @@ export class RuntimeAgentRegistry {
 				await this.disposeIfRetired(generation);
 			}),
 		);
-		this.entries.clear();
-		const errors = new Set(this.cleanupErrors);
+		const errors = new Set<unknown>();
 		for (const result of results) {
 			if (result.status === "rejected") errors.add(result.reason);
 		}
 		if (errors.size > 0) {
 			throw new AggregateError([...errors], "Failed to dispose one or more Runtime Agent revisions");
 		}
+		this.entries.clear();
 	}
 }
 

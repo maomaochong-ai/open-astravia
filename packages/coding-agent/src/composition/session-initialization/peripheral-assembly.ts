@@ -52,10 +52,6 @@ export interface CodingAgentSessionPeripheralAssemblyOptions {
 		context: ModelCallContributionContext,
 		activeToolNamesOverride?: readonly string[],
 	) => CodingToolActivation;
-	readonly trackMemoryRuntime: (runtime: CodingAgentMemoryRolloverRuntime) => void;
-	readonly untrackMemoryRuntime: (runtime: CodingAgentMemoryRolloverRuntime) => void;
-	readonly trackSessionExtensionComposition: (composition: SessionExtensionComposition) => void;
-	readonly untrackSessionExtensionComposition: (composition: SessionExtensionComposition) => void;
 	readonly deferRollback: (task: InitializationRollbackTask) => void;
 }
 
@@ -203,13 +199,9 @@ export async function createCodingAgentSessionPeripheralAssembly(
 				})()
 		: undefined;
 	if (memoryRuntime) {
-		options.trackMemoryRuntime(memoryRuntime);
 		options.deferRollback({
 			id: "memory-runtime",
-			rollback: () => {
-				memoryRuntime.dispose();
-				options.untrackMemoryRuntime(memoryRuntime);
-			},
+			rollback: () => memoryRuntime.dispose(),
 		});
 	}
 	const createTodoRuntime = profile.createTodoRuntime;
@@ -231,13 +223,9 @@ export async function createCodingAgentSessionPeripheralAssembly(
 			...(additionalExtensions ?? []),
 		],
 	});
-	options.trackSessionExtensionComposition(sessionExtensions);
 	options.deferRollback({
 		id: "session-extensions",
-		rollback: async () => {
-			await sessionExtensions.dispose();
-			options.untrackSessionExtensionComposition(sessionExtensions);
-		},
+		rollback: () => sessionExtensions.dispose(),
 	});
 	const todoExtension = sessionExtensions.services.require(CODING_AGENT_TODO_RUNTIME);
 	const todoRuntime = todoExtension.runtime;

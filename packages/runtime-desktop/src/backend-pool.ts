@@ -7,16 +7,16 @@ import {
 	type CodingAgentRuntimeCompositionOptions,
 	CodingAgentSessionBackend,
 	createCodingAgentRuntimeComposition,
+	DEFAULT_CODING_AGENT_RUNTIME_ID,
 } from "@vetta/coding-agent/composition";
 import { detectWorkspaceFacts, probeWorkspaceSignals } from "@vetta/coding-agent/model-context";
 import type {
 	ConversationScenario,
 	RuntimeHostSessionAssembly,
-	RuntimeHostSessionAssemblyAssessment,
 	RuntimeHostSessionBackend,
-	RuntimeSession,
 	RuntimeSessionCreateRequest,
 } from "@vetta/runtime-core";
+import { RetryableCleanup, RetryableCloseController } from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
 import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";
@@ -105,34 +105,39 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 	private readonly createComposition: (
 		options: CodingAgentRuntimeCompositionOptions,
 	) => Promise<CodingAgentRuntimeComposition>;
+	private readonly cleanup = new RetryableCleanup();
+	private readonly closeController: RetryableCloseController;
+	private readonly agentId: string;
+	private cleanupPrepared = false;
 	private disposed = false;
 
 	constructor(private readonly options: DesktopRuntimeBackendPoolOptions) {
 		this.createComposition = options.createComposition ?? createCodingAgentRuntimeComposition;
+		this.agentId =
+			options.compositionDefaults.agentRuntime?.agentId ??
+			options.compositionDefaults.agentRuntime?.definition?.id ??
+			DEFAULT_CODING_AGENT_RUNTIME_ID;
+		this.closeController = new RetryableCloseController({
+			cleanup: () => this.cleanup.run("Desktop Runtime backend pool disposal failed"),
+			onCompleted: () => {
+				this.entries.clear();
+				this.resolvedEntries.clear();
+				this.mcpSources.clear();
+			},
+		});
 	}
 
 	async createAssembly(request: RuntimeSessionCreateRequest): Promise<RuntimeHostSessionAssembly> {
 		if (this.disposed) throw new Error("Desktop Runtime backend pool is disposed");
+		if (request.agent && request.agent.id !== this.agentId) {
+			throw new Error(
+				`Desktop Coding Agent backend pool cannot execute Agent ${request.agent.id}; expected ${this.agentId}`,
+			);
+		}
 		const scope = resolveRuntimeScope(request);
 		const entry = await this.getOrCreateEntry(scope, request);
 		if (this.disposed) throw new Error("Desktop Runtime backend pool is disposed");
 		return entry.backend.createAssembly(request);
-	}
-
-	readSession(sessionId: string): RuntimeSession | undefined {
-		for (const entry of this.resolvedEntries.values()) {
-			const session = entry.backend.readSession(sessionId);
-			if (session) return session;
-		}
-		return undefined;
-	}
-
-	readAssessment(sessionId: string): RuntimeHostSessionAssemblyAssessment | undefined {
-		for (const entry of this.resolvedEntries.values()) {
-			const assessment = entry.backend.readAssessment(sessionId);
-			if (assessment) return assessment;
-		}
-		return undefined;
 	}
 
 	readScopeCount(): number {
@@ -148,28 +153,36 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		await this.getOrCreateMcpRuntimeSource(scope);
 	}
 
-	async dispose(): Promise<void> {
-		if (this.disposed) return;
-		this.disposed = true;
-		const pendingEntries = [...this.entries.values()];
-		const pendingMcpSources = [...this.mcpSources.values()];
-		try {
-			const entryResults = await Promise.allSettled(pendingEntries);
-			const entries = entryResults.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
-			const disposeResults = await Promise.allSettled(entries.map(disposeEntry));
-			const mcpSourceResults = await Promise.allSettled(pendingMcpSources);
-			const mcpSources = mcpSourceResults.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
-			const mcpDisposeResults = await Promise.allSettled(mcpSources.map((source) => source.dispose()));
-			const errors = [...entryResults, ...disposeResults, ...mcpSourceResults, ...mcpDisposeResults].flatMap(
-				(result) => (result.status === "rejected" ? [result.reason] : []),
-			);
-			if (errors.length > 0) {
-				throw new AggregateError(errors, "Desktop Runtime backend pool disposal failed");
-			}
-		} finally {
-			this.entries.clear();
-			this.resolvedEntries.clear();
-			this.mcpSources.clear();
+	dispose(): Promise<void> {
+		if (!this.disposed) {
+			this.disposed = true;
+			this.prepareCleanup();
+		}
+		return this.closeController.run();
+	}
+
+	private prepareCleanup(): void {
+		if (this.cleanupPrepared) return;
+		this.cleanupPrepared = true;
+		for (const [index, entry] of [...this.entries.values()].entries()) {
+			this.cleanup.add({
+				id: `composition:${index}`,
+				phase: 0,
+				cleanup: async () => {
+					const resolved = await entry.catch(() => undefined);
+					await resolved?.composition.dispose();
+				},
+			});
+		}
+		for (const [index, source] of [...this.mcpSources.values()].entries()) {
+			this.cleanup.add({
+				id: `mcp-source:${index}`,
+				phase: 1,
+				cleanup: async () => {
+					const resolved = await source.catch(() => undefined);
+					await resolved?.dispose();
+				},
+			});
 		}
 	}
 
@@ -325,8 +338,4 @@ function runtimeScopeKey(scope: DesktopRuntimeScope): string {
 
 function mcpRuntimeScopeKey(scope: DesktopMcpRuntimeScope): string {
 	return JSON.stringify([scope.cwd, scope.agentDir ?? null]);
-}
-
-async function disposeEntry(entry: DesktopRuntimeBackendEntry): Promise<void> {
-	await entry.composition.dispose();
 }

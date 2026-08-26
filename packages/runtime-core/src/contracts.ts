@@ -685,6 +685,8 @@ export interface QueueChangedEvent extends SessionEventBase {
 
 export interface SessionStateSnapshot {
 	sessionId: string;
+	/** 持久化 Session 所属的平级主 Agent；历史会话可缺省。 */
+	agentId?: string;
 	model?: Model<any>;
 	thinkingLevel: ThinkingLevel;
 	executionMode: SessionExecutionMode;
@@ -728,6 +730,8 @@ export interface ProjectInfo {
 export interface SessionHistoryInfo {
 	id: string;
 	path: string;
+	/** 创建该 Conversation 的平级主 Agent；历史格式可缺省。 */
+	agentId?: string;
 	cwd: string;
 	name?: string;
 	firstMessage: string;
@@ -742,7 +746,26 @@ export interface SessionHistoryInfo {
 
 export type SessionExecutionMode = "sandbox" | "full-access";
 
+/** RuntimeHost 创建 Conversation Session 时选择的平级主 Agent 与配置作用域。 */
+export interface RuntimeSessionAgentSelection {
+	readonly id: string;
+	/** 可选钉住已经解析的 Definition revision；主要用于长生命周期产品组合保持前缀与行为稳定。 */
+	readonly definitionRevisionId?: string;
+	/** 可选稳定 Instance identity；省略时由 Runtime 生成。 */
+	readonly instanceId?: string;
+	/** 相同 key、Definition revision 与配置 revision 可以复用一个 Agent Instance。 */
+	readonly instanceKey?: string;
+	/** Runtime Core 不解释的 Instance 配置，由 Definition 在产品边界校验。 */
+	readonly instanceConfiguration?: unknown;
+	/** 共享带配置的 Instance 时必填；Runtime Core 不比较或序列化 unknown 配置。 */
+	readonly instanceConfigurationRevision?: string;
+	/** 只传给本次 Agent Session 的产品配置。 */
+	readonly sessionConfiguration?: unknown;
+}
+
 export interface SessionConfig {
+	/** 选择本次会话使用的平级主 Agent；缺省兼容策略由最终宿主决定。 */
+	agent?: RuntimeSessionAgentSelection;
 	cwd?: string;
 	agentDir?: string;
 	sessionPath?: string;

@@ -6,6 +6,8 @@ import type { RuntimeMessageOrigin } from "../runtime-execution-observation.js";
 export interface ConversationDocumentIdentity {
 	readonly sessionId: string;
 	readonly createdAt: number;
+	/** 创建该 Conversation 的平级主 Agent；不是 revision 或 Instance 代际。 */
+	readonly agentId?: string;
 	readonly cwd?: string;
 	readonly parentSessionPath?: string;
 	readonly parentEntryId?: string;

@@ -38,7 +38,6 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 		let todoDisposals = 0;
 		let contextDisposals = 0;
 		const events: string[] = [];
-		const hookDisposers = new Set<() => Promise<void>>();
 		const indexes = createIndexes();
 		const pluginMcpRuntime = {
 			async dispose() {
@@ -146,15 +145,6 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 			knowledgeAvailable: true,
 			backgroundTasksAvailable: true,
 			scenario: "cli",
-			refreshSessionMcp: async () => undefined,
-			tracking: {
-				trackHookSessionDisposer: (dispose) => hookDisposers.add(dispose),
-				untrackHookSessionDisposer: (dispose) => hookDisposers.delete(dispose),
-				untrackContextRuntime: () => {},
-				untrackMemoryRuntime: () => {},
-				untrackSessionExtensionComposition: () => {},
-				untrackTurnCapabilityAssembly: () => {},
-			},
 		});
 		const prepared = lifecycle.prepareTurnCapabilityAssembly(turnCapabilityAssembly);
 		const resources = prepared.activate({
@@ -171,7 +161,6 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 			},
 			dispose: () => prepared.dispose(),
 		});
-		expect(hookDisposers).toHaveLength(1);
 		expect(indexes.extensionEventBridges.get("source")).toBe(extensionEvents);
 		expect(indexes.memoryControllers.get("source")).toBe(memoryController);
 
@@ -192,15 +181,13 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 
 		await lifecycle.hookController.end("switch_session");
 		lifecycle.hookController.start("resume");
-		expect(hookDisposers).toHaveLength(1);
-		await expect(disposeResources(resources)).rejects.toThrow("transient release failure");
+		await expect(prepared.dispose()).rejects.toThrow("transient release failure");
 		expect([turnDisposals, executionDisposals, pluginDisposals, todoDisposals, contextDisposals]).toEqual([
 			1, 1, 1, 1, 1,
 		]);
 		expect(indexes.executionRuntimes.get("target")).toBeUndefined();
-		expect(hookDisposers).toHaveLength(0);
 
-		await expect(disposeResources(resources)).resolves.toBeUndefined();
+		await expect(prepared.dispose()).resolves.toBeUndefined();
 		expect(releaseAttempts).toBe(2);
 		expect([turnDisposals, executionDisposals, pluginDisposals, todoDisposals, contextDisposals]).toEqual([
 			1, 1, 1, 1, 1,
@@ -236,9 +223,4 @@ function createConversationResources() {
 
 function continuation(sourceSessionId: string, sessionId: string): ConversationContinuationResult {
 	return { sourceSessionId, sessionId } as unknown as ConversationContinuationResult;
-}
-
-async function disposeResources(resources: RuntimeResources): Promise<void> {
-	if (!resources.dispose) throw new Error("Expected resource disposal");
-	await resources.dispose();
 }

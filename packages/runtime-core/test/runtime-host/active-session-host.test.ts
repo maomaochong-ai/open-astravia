@@ -17,7 +17,7 @@ describe("RuntimeActiveSessionHost", () => {
 		const hookOrder: string[] = [];
 		const host = new RuntimeActiveSessionHost({
 			runtime: {
-				backend: { create, resume } as unknown as KernelRuntimeSessionBackend<RuntimeActiveSessionCreateOptions>,
+				sessions: { create, resume } as unknown as KernelRuntimeSessionBackend<RuntimeActiveSessionCreateOptions>,
 				sessionHooks: {
 					end: async (sessionId, cause) => {
 						hookOrder.push(`end:${sessionId}:${cause}`);

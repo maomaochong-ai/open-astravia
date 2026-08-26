@@ -24,6 +24,7 @@ export interface ConversationSeedPublicationOptions {
 	readonly targetRootDir: string;
 	readonly targetSessionId: string;
 	readonly createdAt: number;
+	readonly agentId?: string;
 	readonly cwd?: string;
 	readonly parentSessionPath?: string;
 	readonly parentEntryId?: string;
@@ -122,6 +123,7 @@ function createConversationSeedPublication(options: ConversationSeedPublicationO
 		schemaVersion: CONVERSATION_SCHEMA_VERSION,
 		sessionId: options.targetSessionId,
 		createdAt: options.createdAt,
+		...(options.agentId !== undefined ? { agentId: options.agentId } : {}),
 		...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
 		...(options.parentSessionPath !== undefined ? { parentSessionPath: options.parentSessionPath } : {}),
 		...(options.parentEntryId !== undefined ? { parentEntryId: options.parentEntryId } : {}),

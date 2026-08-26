@@ -1,5 +1,6 @@
 import type {
 	RuntimeCapabilityDefinition,
+	RuntimeSnapshotAcquireContext,
 	RuntimeSnapshotProvider,
 	RuntimeTurnModelBindingProvider,
 } from "../kernel/contracts.js";
@@ -65,6 +66,8 @@ export interface RuntimeAgentSessionActivationContext {
  */
 export interface RuntimeAgentSessionPlan {
 	readonly definition: RuntimeAgentSessionDefinition;
+	/** 在同一个 Agent Session 捕获不可变能力快照前同步外部动态目录。 */
+	beforeSnapshotAcquire?(context?: RuntimeSnapshotAcquireContext): Promise<void> | void;
 	activate?(context: RuntimeAgentSessionActivationContext): Promise<RuntimeResources> | RuntimeResources;
 	onFailure?(): void;
 	dispose?(): Promise<void> | void;

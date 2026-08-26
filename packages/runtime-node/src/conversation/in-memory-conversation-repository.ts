@@ -69,6 +69,7 @@ export class InMemoryConversationRepository
 			createEmptyConversationDocument({
 				sessionId: input.sessionId,
 				createdAt: input.createdAt,
+				agentId: input.agentId,
 				cwd: input.cwd,
 			}),
 		);
@@ -129,6 +130,7 @@ export class InMemoryConversationRepository
 			{
 				sessionId: targetSessionId,
 				createdAt,
+				agentId: source.identity.agentId,
 				cwd: source.identity.cwd,
 				parentEntryId: entryId,
 			},
@@ -206,11 +208,13 @@ export class InMemoryConversationRepository
 			);
 		}
 		const sessionId = randomUUID();
+		const sourceDocument = this.requireDocument(input.sourceSessionId);
 		const seedDocument = createSeededConversationDocument(
 			{
 				sessionId,
 				createdAt: input.timestamp,
-				cwd: this.requireDocument(input.sourceSessionId).identity.cwd,
+				agentId: sourceDocument.identity.agentId,
+				cwd: sourceDocument.identity.cwd,
 				parentEntryId: carried.sourceEntryId,
 			},
 			carried.entries,

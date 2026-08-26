@@ -69,7 +69,30 @@ export {
 	type RuntimeOwnershipLease,
 	type RuntimeOwnershipManager,
 } from "./ownership-binding.js";
-export { RetryableCleanup, type RetryableCleanupTask } from "./retryable-cleanup.js";
+export {
+	RetryableCleanup,
+	type RetryableCleanupTask,
+	RetryableCloseController,
+	type RetryableCloseControllerOptions,
+} from "./retryable-cleanup.js";
+export {
+	RuntimeAgentInstancePool,
+	type RuntimeAgentInstancePoolLease,
+	type RuntimeAgentInstancePoolOptions,
+} from "./runtime-agent-instance-pool.js";
+export {
+	type RuntimeAgentAssemblyCreateInput,
+	type RuntimeAgentPreparedInstance,
+	RuntimeAgentSessionAssemblyBackend,
+	type RuntimeAgentSessionAssemblyBackendOptions,
+	type RuntimeAgentSessionAssemblyDecoratorContext,
+	type RuntimeAgentSessionConfigurationContext,
+	type RuntimeAgentSessionConfigurationResolver,
+	type RuntimeAgentSessionIdentity,
+	type RuntimeAgentSessionIdentityResolver,
+	type RuntimeAgentSessionResourceFactory,
+	type RuntimeAgentSessionResourceFactoryContext,
+} from "./runtime-agent-session-backend.js";
 export type {
 	RuntimeCustomEntryInput,
 	RuntimeDocumentParticipant,

@@ -19,6 +19,9 @@
 
 ### Changed
 
+- Desktop Coding Backend Pool 不再维护 RuntimeHost Session/assessment 的影子索引；Coding-only Scope 对其它主 Agent
+  选择 fail-closed。Pool 关闭改为可重试所有权事务，失败后保留未完成 Composition/MCP Source，再次关闭只重试失败项；
+  Agent Instance Pool 的复用/退休原因继续通过统一 lifecycle Observation 投影到安全日志。
 - Desktop Coding Agent 改用唯一进程级 `RuntimeHost` 内置的 Agent 控制面：内置 Definition 在 Backend factory 发布，
   各工作区 Composition 创建独立且固定 revision 的 Instance。关闭时只调用 `RuntimeHost.close()`，由其统一释放
   Session、Backend Pool、Instance 与应用 Observation Hub；关键

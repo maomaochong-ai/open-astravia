@@ -118,7 +118,7 @@ export async function createCodingAgentSdkSession(
 
 	try {
 		const sessionOptions = { ...options.session, sessionId: storage.sessionId };
-		const runtimeSession = await composition.backend[storage.operation](sessionOptions);
+		const runtimeSession = await composition.sessions[storage.operation](sessionOptions);
 		const dismissRuntimeSessionRollback = rollback.defer({
 			id: "runtime-session",
 			rollback: () => runtimeSession.dispose(),

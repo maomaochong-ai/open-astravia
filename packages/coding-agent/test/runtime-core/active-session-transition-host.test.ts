@@ -440,7 +440,7 @@ async function createFixture(
 	const cleanupErrors: AggregateError[] = [];
 	let finalizeAttempts = 0;
 	const runtime = {
-		backend: { create, resume },
+		sessions: { create, resume },
 		quiesceSessionBackgroundCommands,
 		preserveSessionExecutionContext,
 		sessionHooks: {

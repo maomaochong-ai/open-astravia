@@ -2,6 +2,9 @@
 
 ### Changed
 
+- Coding Agent Composition 的公开创建入口收敛为 `sessions`，产品 Session 直接通过 Runtime Core 标准 Agent Backend
+  装配；移除产品层重复的 Runtime/assessment 资源所有权与 Session 索引，MCP freshness 作为标准 Snapshot acquire
+  前置钩子执行。旧 `backend` 属性仅保留为弃用别名，CLI/SDK/Desktop 生产接线均已迁移。
 - 生产 `CodingAgentRuntimeComposition` 现已真正通过多主 Agent 基座创建 Definition、Instance 与 Session；能力定义只由
   `RuntimeAgentSession` 编译一次。独立 Composition 自建模块化 Agent 控制面，应用使用唯一
   `RuntimeHost.agents`；子代理复用控制面但拥有独立 Instance，Conversation continuation 同步重绑 Agent Session

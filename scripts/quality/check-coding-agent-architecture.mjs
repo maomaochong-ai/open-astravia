@@ -227,6 +227,17 @@ function checkRetiredRuntimeAgentHostConcepts(state, violations) {
 				violations.push(`${file.path} references retired multi-Host concept ${retiredName}`);
 			}
 		}
+		if (!file.path.startsWith(`${SOURCE_ROOT}/`)) continue;
+		if (/\b(?:composition|childComposition)\.backend\.(?:create|resume)\s*\(/.test(file.text)) {
+			violations.push(`${file.path} calls the deprecated product Backend facade instead of composition.sessions`);
+		}
+		for (const retiredOwnershipMethod of ["trackRuntime", "untrackRuntime", "trackAssessment", "untrackAssessment"]) {
+			if (file.text.includes(retiredOwnershipMethod)) {
+				violations.push(
+					`${file.path} references retired duplicate Session resource ownership ${retiredOwnershipMethod}`,
+				);
+			}
+		}
 	}
 }
 

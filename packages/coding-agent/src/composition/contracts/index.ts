@@ -27,6 +27,7 @@ export type {
 	CodingAgentRuntimeAgentIdentity,
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeExtensionControls,
+	CodingAgentRuntimeSessionBackend,
 	CodingAgentRuntimeSessionControls,
 	CodingAgentRuntimeSessionHookLifecycle,
 	CodingAgentRuntimeToolAccess,

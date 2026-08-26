@@ -16,6 +16,7 @@ const LOGGED_CONTROL_PLANE_OPERATIONS = new Set<RuntimeAgentLifecycleObservation
 	"revision.publish",
 	"revision.retire",
 	"revision.remove",
+	"instance.pool.retire",
 	"session.rebind",
 ]);
 
@@ -74,6 +75,7 @@ function toAgentLogFields(record: RuntimeObservationRecord<RuntimeAgentLifecycle
 		...(payload.sourceRevision ? { sourceRevision: payload.sourceRevision } : {}),
 		...(payload.definitionCount !== undefined ? { definitionCount: payload.definitionCount } : {}),
 		...(payload.removedCount !== undefined ? { removedCount: payload.removedCount } : {}),
+		...(payload.reason ? { reason: payload.reason } : {}),
 		...(payload.failure
 			? {
 					failureCategory: payload.failure.category,

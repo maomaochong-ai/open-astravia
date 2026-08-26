@@ -6,6 +6,12 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- 新增标准 `RuntimeAgentSessionAssemblyBackend` 与 revision-aware Instance Pool：`RuntimeHost.createSession()` 可按
+  `agent` 选择平级主 Agent，并统一复用/隔离 Instance、固定 definition revision、装配 Kernel Session 与重试释放；
+  Agent 生命周期和池复用/退休均进入同一安全 Observation。原生会话可选持久化稳定 `agentId`，活动状态与 Catalog
+  可读取它，而 revision/Instance 代际不进入持久化格式。
+- 新增通用可重试清理控制器，Agent Session、Instance、Runtime、Registry、Host Backend 与平台池在关闭失败后保留
+  未完成资源的所有权；再次关闭只重试失败项，不重复释放已完成项。
 - 新增 `@vetta/runtime-core/configuration` 产品无关配置基座：Configuration Definition/Source revision、幂等
   lease、原子 Source replace、retire/remove、Host 有序 Layer 深合并、逐层 Codec 校验、无效值回退和不可变
   resolved snapshot。配置值不进入 Observation；Tool、MCP 与其它 Capability 通过上层 Adapter 选择性接入。

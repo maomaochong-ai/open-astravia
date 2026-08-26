@@ -615,6 +615,8 @@ export interface StoredConversation extends ConversationMetadata {
 export interface CreateConversationInput {
 	readonly sessionId: string;
 	readonly createdAt: number;
+	/** 创建该 Conversation 的平级主 Agent；历史格式可缺省。 */
+	readonly agentId?: string;
 	readonly cwd?: string;
 }
 

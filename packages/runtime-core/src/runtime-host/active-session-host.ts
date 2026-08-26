@@ -84,7 +84,7 @@ export class RuntimeActiveSessionHost<
 				const sessionId = this.options.createSessionId();
 				const next = options?.seedInitializer
 					? await this.createInitializedSession(sessionId, options.parentSession, options.seedInitializer)
-					: await this.options.runtime.backend.create(
+					: await this.options.runtime.sessions.create(
 							this.createBackendOptions(sessionId, { parentSessionPath: options?.parentSession }),
 						);
 				this.options.runtime.sessionHooks.start(next.sessionId, "clear");
@@ -108,7 +108,7 @@ export class RuntimeActiveSessionHost<
 				await this.options.runtime.quiesceSessionBackgroundCommands(previous.sessionId);
 				const sessionId = this.options.resolveSessionId(sessionPath);
 				if (!sessionId) throw new Error(`Session path is invalid: ${sessionPath}`);
-				const next = await this.options.runtime.backend.resume(this.createBackendOptions(sessionId));
+				const next = await this.options.runtime.sessions.resume(this.createBackendOptions(sessionId));
 				this.options.runtime.sessionHooks.start(next.sessionId, "resume");
 				await this.commitTransition({ ...transition, next });
 				return { cancelled: false };
@@ -134,7 +134,7 @@ export class RuntimeActiveSessionHost<
 				}
 				let next: RuntimeSession | undefined;
 				try {
-					next = await this.options.runtime.backend.resume(
+					next = await this.options.runtime.sessions.resume(
 						this.createBackendOptions(sessionId, {
 							parentSessionPath: transition.previousSessionPath,
 							parentEntryId: entryId,
@@ -288,7 +288,7 @@ export class RuntimeActiveSessionHost<
 				targetRootDir: this.options.conversationDir,
 				targetSessionId: sessionId,
 			});
-			return await this.options.runtime.backend.resume(
+			return await this.options.runtime.sessions.resume(
 				this.createBackendOptions(sessionId, { parentSessionPath: parentSession }),
 			);
 		} catch (error) {

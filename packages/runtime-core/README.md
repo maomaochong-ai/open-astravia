@@ -73,6 +73,8 @@ composition is Node-oriented and is not part of this portable boundary.
 - `@vetta/runtime-core/observation` for domain-owned tokens, scoped publishers, lossless Publisher-to-Port forwarding,
   hierarchical/dynamic Hub routing, safe Session projection and arbitrary telemetry adapters
 - `RuntimeHostSessionBackend` and `KernelRuntimeSessionBackend` for composition-root session creation
+- `RuntimeAgentSessionAssemblyBackend` and `RuntimeAgentInstancePool` for the standard multi-main-Agent Host path,
+  revision-pinned instance sharing and retryable ownership cleanup
 - `RuntimeSessionCreateRequest` for backend-neutral creation without SessionManager, custom tools or ModelRegistry
 - `RuntimeSessionTurnControl`, `RuntimeSessionEventStream` and `RuntimeSessionStateReader` core host ports
 - `RuntimeSessionIdentityLifecycle` and `RuntimeSessionHistoryReader` for host-owned identity/location facts, disposal and history projection
@@ -140,6 +142,9 @@ host.agents.registry.upsert({ source: { id: "code", revision: "2026-08-25.1" }, 
 `session.rolloutToLatest()` 才从下一 Turn 原子切换可热换能力。配置文件不能直接序列化 Tool handler 或 MCP
 连接，宿主应先完成 Schema 校验和组件引用解析，再通过 `RuntimeAgentDefinitionSource` 发布完整定义；Runtime
 Core 不读取文件或动态加载模块。
+
+完整 Host 会话通过 `RuntimeAgentSessionAssemblyBackend` 选择 Agent，原生 Conversation 可选持久化稳定
+`agentId` 供 Catalog 恢复路由；revision 与 Instance identity 不进入持久化格式。
 
 ## Default Prompt Cache Layout
 

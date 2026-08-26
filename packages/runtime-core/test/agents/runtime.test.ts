@@ -3,6 +3,7 @@ import {
 	RUNTIME_AGENT_ERROR_CODES,
 	RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
 	type RuntimeAgentDefinition,
+	type RuntimeAgentLifecycleObservation,
 	RuntimeAgentRegistry,
 	RuntimeAgentRuntime,
 } from "../../src/agents/index.js";
@@ -16,6 +17,35 @@ import type { RuntimeObservationRecord } from "../../src/observation/index.js";
 import type { SessionExtensionDefinition } from "../../src/session-extensions/index.js";
 
 describe("Runtime Agent control plane", () => {
+	it("runs the Plan snapshot boundary before the single Agent Session provider acquires a generation", async () => {
+		const events: string[] = [];
+		const registry = registryWithIds();
+		registry.upsert(
+			candidate("code", "1", {
+				id: "agent",
+				createInstance: () => ({
+					prepareSession: () => ({
+						definition: { capabilities: capabilities("v1") },
+						beforeSnapshotAcquire: () => {
+							events.push("before");
+						},
+					}),
+				}),
+			}),
+		);
+		const host = new RuntimeAgentRuntime({ registry });
+		const instance = await host.createInstance({ agentId: "agent" });
+		const session = await instance.createSession();
+
+		const lease = await session.acquire();
+		events.push("acquired");
+
+		expect(events).toEqual(["before", "acquired"]);
+		await lease.release();
+		await host.close();
+		await registry.close();
+	});
+
 	it("routes multiple peer Agents, Instances and isolated Sessions", async () => {
 		const lifecycle: string[] = [];
 		const registry = registryWithIds();
@@ -271,7 +301,75 @@ describe("Runtime Agent control plane", () => {
 		await host.close();
 		await registry.close();
 	});
+
+	it("retains failed close ownership and retries only unfinished Agent resources", async () => {
+		const registry = registryWithIds();
+		const observations: RuntimeObservationRecord[] = [];
+		const extensionDispose = vi.fn(async () => {});
+		let planDisposeAttempts = 0;
+		registry.upsert(
+			candidate("code", "1", {
+				id: "retryable-close",
+				createInstance: () => ({
+					prepareSession: () => ({
+						definition: {
+							capabilities: capabilities("retryable-close"),
+							sessionExtensions: [
+								{
+									id: "state",
+									create: async () => ({ contributions: [], dispose: extensionDispose }),
+								},
+							],
+						},
+						dispose: async () => {
+							planDisposeAttempts += 1;
+							if (planDisposeAttempts === 1) throw new Error("session plan cleanup failed");
+						},
+					}),
+				}),
+			}),
+		);
+		const host = new RuntimeAgentRuntime({
+			registry,
+			observationPort: {
+				record: (record) => {
+					observations.push(record);
+				},
+			},
+		});
+		const instance = await host.createInstance({ agentId: "retryable-close", instanceId: "instance" });
+		await host.createSession(instance.id, { sessionId: "session" });
+
+		const firstClose = host.close();
+		const concurrentClose = host.close();
+		expect(concurrentClose).toBe(firstClose);
+		await expect(firstClose).rejects.toThrow("session plan cleanup failed");
+		expect(host.getSession("session")).toBeDefined();
+		expect(host.getInstance("instance")).toBeDefined();
+		expect(extensionDispose).toHaveBeenCalledOnce();
+		expect(planDisposeAttempts).toBe(1);
+
+		await expect(host.close()).resolves.toBeUndefined();
+		expect(host.getSession("session")).toBeUndefined();
+		expect(host.getInstance("instance")).toBeUndefined();
+		expect(extensionDispose).toHaveBeenCalledOnce();
+		expect(planDisposeAttempts).toBe(2);
+		expect(
+			observations
+				.filter(isAgentLifecycleObservation)
+				.filter(({ payload }) => payload.operation === "session.close")
+				.map(({ payload }) => payload.phase),
+		).toEqual(["failed", "completed"]);
+
+		await registry.close();
+	});
 });
+
+function isAgentLifecycleObservation(
+	record: RuntimeObservationRecord,
+): record is RuntimeObservationRecord<RuntimeAgentLifecycleObservation> {
+	return record.token === RUNTIME_AGENT_LIFECYCLE_OBSERVATION;
+}
 
 function registryWithIds(): RuntimeAgentRegistry {
 	let nextId = 0;

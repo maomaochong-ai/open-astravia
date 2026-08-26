@@ -491,6 +491,7 @@ export const CurrentConversationFileHeaderSchema = Type.Object(
 		schemaVersion: Type.Literal(CONVERSATION_SCHEMA_VERSION),
 		sessionId: Type.String(),
 		createdAt: Type.Number(),
+		agentId: Type.Optional(Type.String({ minLength: 1 })),
 		cwd: Type.Optional(Type.String()),
 		parentSessionPath: Type.Optional(Type.String()),
 		parentEntryId: Type.Optional(Type.String()),

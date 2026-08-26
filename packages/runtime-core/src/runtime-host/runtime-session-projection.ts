@@ -8,6 +8,8 @@ import type { StoredConversation, StoredSessionEvent } from "../kernel/contracts
 import type { RuntimeSessionState } from "./session-ports.js";
 
 export interface RuntimeSessionIdentity {
+	/** 持久化 Session 所属的平级主 Agent；revision/Instance 仍由运行时代际管理。 */
+	readonly agentId?: string;
 	readonly cwd?: string;
 	/** 宿主持有的持久化会话制品位置；Runtime 不解释其格式。 */
 	readonly sessionDirectory?: string;

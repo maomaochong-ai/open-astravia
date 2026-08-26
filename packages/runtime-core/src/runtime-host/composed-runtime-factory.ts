@@ -221,6 +221,7 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 			const sessionOptions = {
 				id: resources.sessionId,
 				pipeline,
+				agentId: resources.identity.agentId,
 				cwd: resources.identity.cwd,
 				steeringMode: resources.steeringMode,
 				followUpMode: resources.followUpMode,

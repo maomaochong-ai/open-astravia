@@ -24,7 +24,7 @@ describe("Greenfield runtime session services", () => {
 		const cwd = join(rootDir, "workspace");
 		const repository = new FileConversationRepository({ rootDir });
 		const sessionId = "greenfield/session";
-		await repository.create({ sessionId, createdAt: 100 });
+		await repository.create({ sessionId, createdAt: 100, agentId: "reviewer" });
 		await repository.append(sessionId, 0, [
 			started(sessionId),
 			userMessage(sessionId, "hello"),
@@ -58,6 +58,7 @@ describe("Greenfield runtime session services", () => {
 			expect.objectContaining({
 				id: sessionId,
 				path: sessionPath,
+				agentId: "reviewer",
 				cwd,
 				firstMessage: "hello",
 				lastMessagePreview: "world",

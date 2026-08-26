@@ -70,7 +70,7 @@ export function createKnowledgeProcessingSessionFactory(
 			});
 			let runtimeSession: Awaited<ReturnType<CodingAgentRuntimeComposition["backend"]["create"]>>;
 			try {
-				runtimeSession = await composition.backend.create({
+				runtimeSession = await composition.sessions.create({
 					sessionId: createSessionId(),
 					cwd: request.cwd,
 					model: initialModel,

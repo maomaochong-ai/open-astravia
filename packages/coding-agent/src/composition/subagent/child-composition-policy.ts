@@ -30,8 +30,8 @@ export function createCodingAgentChildCompositionFactory(
 			request.inheritedMcpView,
 		);
 		return {
-			createSession: (childOptions) => childComposition.backend.create(childOptions),
-			resumeSession: (childOptions) => childComposition.backend.resume(childOptions),
+			createSession: (childOptions) => childComposition.sessions.create(childOptions),
+			resumeSession: (childOptions) => childComposition.sessions.resume(childOptions),
 			appendSessionContext: (sessionId, records) => childComposition.appendSessionContext(sessionId, records),
 			deliverSessionContext: (sessionId, records) => childComposition.deliverSessionContext(sessionId, records),
 			dispose: () => childComposition.dispose(),

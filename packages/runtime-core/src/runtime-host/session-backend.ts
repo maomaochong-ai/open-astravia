@@ -35,6 +35,7 @@ export interface RuntimeSessionAskUserQuestionCapability {
 
 /** RuntimeHost 到 Session Backend 的实现无关创建请求。 */
 export interface RuntimeSessionCreateRequest {
+	readonly agent?: SessionConfig["agent"];
 	readonly cwd?: SessionConfig["cwd"];
 	readonly agentDir?: SessionConfig["agentDir"];
 	readonly sessionPath?: SessionConfig["sessionPath"];

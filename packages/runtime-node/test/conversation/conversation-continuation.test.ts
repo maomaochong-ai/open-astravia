@@ -56,6 +56,7 @@ describe("FileConversationRepository continuation", () => {
 			turnId: "turn-1",
 		});
 		expect((await repository.readDocument(transition.sessionId)).identity).toMatchObject({
+			agentId: "coding-agent",
 			parentSessionPath: transition.sourceSessionPath,
 			parentEntryId: "event-5",
 		});
@@ -113,7 +114,7 @@ async function createRepository(): Promise<{
 }
 
 async function seedCompactedTurn(repository: FileConversationRepository): Promise<void> {
-	await repository.create({ sessionId: "source-session", createdAt: 1 });
+	await repository.create({ sessionId: "source-session", createdAt: 1, agentId: "coding-agent" });
 	await repository.append("source-session", 0, [
 		{
 			type: "turn.started",

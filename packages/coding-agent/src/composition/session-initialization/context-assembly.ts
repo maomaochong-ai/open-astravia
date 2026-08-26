@@ -45,8 +45,6 @@ export interface CodingAgentSessionContextAssemblyOptions {
 		sessionId: string,
 		sessionPath: string,
 	) => Promise<CodingAgentConversationSessionPathAssessment>;
-	readonly trackContextRuntime: (runtime: CodingAgentContextRuntime) => void;
-	readonly untrackContextRuntime: (runtime: CodingAgentContextRuntime) => void;
 	readonly deferRollback: (task: InitializationRollbackTask) => void;
 }
 
@@ -126,13 +124,9 @@ export function createCodingAgentSessionContextAssembly(
 			})),
 		}),
 	});
-	options.trackContextRuntime(contextRuntime);
 	options.deferRollback({
 		id: "context-runtime",
-		rollback: () => {
-			contextRuntime.dispose();
-			options.untrackContextRuntime(contextRuntime);
-		},
+		rollback: () => contextRuntime.dispose(),
 	});
 	const subagentRuntime = createCodingAgentSubagentSessionAssembly({
 		enabled: profile.enableSubagents === true,

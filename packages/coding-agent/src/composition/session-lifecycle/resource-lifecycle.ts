@@ -10,7 +10,7 @@ import {
 	type RuntimeSessionValueIndex,
 } from "@vetta/runtime-core";
 import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
-import type { McpDeferredToolController, McpRuntimeToolSnapshot } from "@vetta/runtime-mcp";
+import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
@@ -89,18 +89,6 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 	readonly backgroundTasksAvailable: boolean;
 	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
 	readonly scenario: ConversationScenario;
-	readonly refreshSessionMcp: (
-		sessionId: string,
-		reportPromptBoundary: boolean,
-	) => Promise<McpRuntimeToolSnapshot | undefined>;
-	readonly tracking: {
-		trackHookSessionDisposer(dispose: () => Promise<void>): void;
-		untrackHookSessionDisposer(dispose: () => Promise<void>): void;
-		untrackContextRuntime(runtime: CodingAgentContextRuntime): void;
-		untrackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
-		untrackSessionExtensionComposition(composition: SessionExtensionComposition): void;
-		untrackTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): void;
-	};
 }
 
 export interface CodingAgentSessionResourceLifecycle {
@@ -129,7 +117,6 @@ export function createCodingAgentSessionResourceLifecycle(
 	const endHookSession = async (cause: SessionEndCause): Promise<void> => {
 		if (hookSessionEnded) return;
 		hookSessionEnded = true;
-		options.tracking.untrackHookSessionDisposer(disposeHookSession);
 		try {
 			await options.hookRuntime.runSessionEnd(cause);
 		} catch (error) {
@@ -141,13 +128,11 @@ export function createCodingAgentSessionResourceLifecycle(
 		start(source) {
 			if (hookSessionEnded) {
 				hookSessionEnded = false;
-				options.tracking.trackHookSessionDisposer(disposeHookSession);
 			}
 			options.hookRuntime.markSessionStart(source);
 		},
 		discard() {
 			hookSessionEnded = true;
-			options.tracking.untrackHookSessionDisposer(disposeHookSession);
 		},
 	};
 
@@ -157,7 +142,7 @@ export function createCodingAgentSessionResourceLifecycle(
 		prepareTurnCapabilityAssembly(assembly) {
 			if (attachedAssembly) throw new Error("Session Resource Lifecycle is already attached");
 			attachedAssembly = assembly;
-			bindAttachedResources(options, hookController, disposeHookSession);
+			bindAttachedResources(options, hookController);
 			const sessionCleanup = createSessionCleanup(options, assembly, hookController, endHookSession);
 			let activated = false;
 			return {
@@ -171,7 +156,7 @@ export function createCodingAgentSessionResourceLifecycle(
 		},
 		rollbackBindings() {
 			if (!attachedAssembly) return;
-			unbindAttachedResources(options, hookController, disposeHookSession);
+			unbindAttachedResources(options, hookController);
 			attachedAssembly = undefined;
 		},
 	};
@@ -180,26 +165,22 @@ export function createCodingAgentSessionResourceLifecycle(
 function bindAttachedResources(
 	options: CodingAgentSessionResourceLifecycleOptions,
 	hookController: CodingAgentSessionHookController,
-	disposeHookSession: () => Promise<void>,
 ): void {
 	const sessionId = options.session.readSessionId();
 	options.indexes.extensionEventBridges.set(sessionId, options.extensionEvents);
 	if (options.memoryController) options.indexes.memoryControllers.set(sessionId, options.memoryController);
-	options.tracking.trackHookSessionDisposer(disposeHookSession);
 	options.indexes.hookSessionControllers.set(sessionId, hookController);
 }
 
 function unbindAttachedResources(
 	options: CodingAgentSessionResourceLifecycleOptions,
 	hookController: CodingAgentSessionHookController,
-	disposeHookSession: () => Promise<void>,
 ): void {
 	const sessionId = options.session.readSessionId();
 	options.indexes.extensionEventBridges.unbind(sessionId, options.extensionEvents);
 	if (options.memoryController) options.indexes.memoryControllers.unbind(sessionId, options.memoryController);
 	options.indexes.hookSessionControllers.unbind(sessionId, hookController);
 	options.indexes.mcpRefreshObservedSessions.delete(sessionId);
-	options.tracking.untrackHookSessionDisposer(disposeHookSession);
 }
 
 function createResources(
@@ -232,7 +213,6 @@ function createResources(
 		backgroundTasksAvailable: options.backgroundTasksAvailable,
 		askUserQuestion: options.askUserQuestion,
 		scenario: options.scenario,
-		refreshSessionMcp: options.refreshSessionMcp,
 		onConversationContinued: async (result) => {
 			const previousSessionId = options.session.readSessionId();
 			options.conversationContextOverlay.clear(previousSessionId);
@@ -244,7 +224,6 @@ function createResources(
 			rebindSessionIndexes(options, hookController, previousSessionId, result.sessionId);
 			options.extensionToolRuntime?.rebindSession(previousSessionId, result.sessionId);
 		},
-		dispose: () => capabilitySession.dispose(),
 	});
 }
 
@@ -268,20 +247,14 @@ function createSessionCleanup(
 	cleanup.add({
 		id: "context-runtime",
 		phase: 0,
-		cleanup: () => {
-			options.contextRuntime.dispose();
-			options.tracking.untrackContextRuntime(options.contextRuntime);
-		},
+		cleanup: () => options.contextRuntime.dispose(),
 	});
 	if (options.memoryRuntime) {
 		const memoryRuntime = options.memoryRuntime;
 		cleanup.add({
 			id: "memory-runtime",
 			phase: 0,
-			cleanup: () => {
-				memoryRuntime.dispose();
-				options.tracking.untrackMemoryRuntime(memoryRuntime);
-			},
+			cleanup: () => memoryRuntime.dispose(),
 		});
 	}
 	cleanup.add({
@@ -316,18 +289,12 @@ function createSessionCleanup(
 	cleanup.add({
 		id: "session-extensions",
 		phase: 0,
-		cleanup: async () => {
-			await options.sessionExtensions.dispose();
-			options.tracking.untrackSessionExtensionComposition(options.sessionExtensions);
-		},
+		cleanup: () => options.sessionExtensions.dispose(),
 	});
 	cleanup.add({
 		id: "capability-composition",
 		phase: 0,
-		cleanup: async () => {
-			await turnCapabilityAssembly.dispose();
-			options.tracking.untrackTurnCapabilityAssembly(turnCapabilityAssembly);
-		},
+		cleanup: () => turnCapabilityAssembly.dispose(),
 	});
 	cleanup.add({
 		id: "session-bindings",

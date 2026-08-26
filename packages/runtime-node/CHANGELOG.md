@@ -57,6 +57,8 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Added
 
+- 原生文件与内存 Conversation 实现现在写入、读取并在 fork/continuation/seed 中保留可选 `agentId`；文件 Session
+  Catalog 同步返回该身份，供多主 Agent Host 恢复时选择正确 Definition。历史会话缺省该字段时保持兼容。
 - `grep` Tool 新增 `filesOnly` 参数，只返回命中文件的路径而不返回匹配行。判断「哪些文件提到了 X」时
   不必再用整页匹配内容换取一份文件清单。
 

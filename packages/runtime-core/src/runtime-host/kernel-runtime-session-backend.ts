@@ -460,6 +460,9 @@ export class RuntimeSession {
 				get sessionId() {
 					return runtimeSession.sessionId;
 				},
+				get agentId() {
+					return runtimeSession.eventSink.readIdentity().agentId;
+				},
 				get sessionPath() {
 					return runtimeSession.eventSink.readIdentity().sessionPath;
 				},
@@ -696,6 +699,7 @@ class RuntimeSessionEventSink implements EventSink {
 				this.projection?.replaceConversation(event.conversation, event.document),
 			);
 			this.identity = {
+				agentId: event.document.identity.agentId ?? this.identity.agentId,
 				cwd: event.document.identity.cwd,
 				sessionDirectory: event.sessionDirectory ?? this.identity.sessionDirectory,
 				sessionPath: event.sessionPath,

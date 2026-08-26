@@ -79,9 +79,9 @@ describe("DesktopRuntimeBackendPool", () => {
 		});
 
 		expect(pool.readScopeCount()).toBe(2);
-		expect(pool.readSession(first.sessionId)).toBeDefined();
-		expect(pool.readSession(sameScope.sessionId)).toBeDefined();
-		expect(pool.readSession(second.sessionId)).toBeDefined();
+		expect(runtime.getState(first.sessionId).sessionId).toBe(first.sessionId);
+		expect(runtime.getState(sameScope.sessionId).sessionId).toBe(sameScope.sessionId);
+		expect(runtime.getState(second.sessionId).sessionId).toBe(second.sessionId);
 		expect(runtime.getState(first.sessionId).scenario).toBe("batch");
 		expect(runtime.getState(second.sessionId).scenario).toBe("automation");
 	});
@@ -314,6 +314,53 @@ describe("DesktopRuntimeBackendPool", () => {
 		});
 		runtimes.push(runtime);
 		await expect(runtime.createSession({ cwd, model: MODEL, scenario: "batch" })).rejects.toThrow("disposed");
+	});
+
+	it("retains scoped owners after a disposal failure and retries only unfinished resources", async () => {
+		const cwd = await temporaryDirectory("desktop-runtime-retry-dispose-");
+		let disposeAttempts = 0;
+		const pool = new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
+			},
+			createComposition: async (options) => {
+				const composition = await createCodingAgentRuntimeComposition(options);
+				return {
+					...composition,
+					async dispose() {
+						disposeAttempts += 1;
+						if (disposeAttempts === 1) throw new Error("transient composition close failure");
+						await composition.dispose();
+					},
+				};
+			},
+		});
+		const runtime = new RuntimeHost({ sessionBackend: pool, getDefaultExecutionMode: () => "full-access" });
+		pools.push(pool);
+		runtimes.push(runtime);
+		await runtime.createSession({ cwd, model: MODEL, scenario: "batch" });
+		await runtime.disposeAllSessions();
+
+		await expect(pool.dispose()).rejects.toThrow("transient composition close failure");
+		expect(pool.readScopeCount()).toBe(1);
+		await expect(pool.dispose()).resolves.toBeUndefined();
+		expect(pool.readScopeCount()).toBe(0);
+		expect(disposeAttempts).toBe(2);
+	});
+
+	it("fails closed when a Coding-only scope receives another peer Agent selection", async () => {
+		const cwd = await temporaryDirectory("desktop-runtime-agent-selection-");
+		const pool = createPool();
+		const runtime = new RuntimeHost({ sessionBackend: pool, getDefaultExecutionMode: () => "full-access" });
+		pools.push(pool);
+		runtimes.push(runtime);
+
+		await expect(
+			runtime.createSession({ cwd, model: MODEL, scenario: "batch", agent: { id: "reviewer" } }),
+		).rejects.toThrow("cannot execute Agent reviewer");
 	});
 
 	it("injects and disposes one managed MCP source per workspace scope", async () => {

@@ -1,5 +1,6 @@
 import { createRuntimeId } from "../id-generator.js";
 import { FeatureCompiler, RandomIdGenerator } from "../kernel/index.js";
+import { RetryableCleanup, RetryableCloseController } from "../lifecycle/retryable-cleanup.js";
 import {
 	createRuntimeObservationPublisher,
 	type RuntimeObservationPort,
@@ -36,8 +37,10 @@ export class RuntimeAgentRuntime {
 	private readonly ownedObservationPort: RuntimeObservationPort | undefined;
 	private readonly instances = new Map<string, RuntimeAgentInstance>();
 	private readonly sessions = new Map<string, RuntimeAgentSession>();
+	private readonly cleanup = new RetryableCleanup();
+	private readonly closeController: RetryableCloseController;
+	private cleanupPrepared = false;
 	private closed = false;
-	private closePromise?: Promise<void>;
 
 	constructor(options: RuntimeAgentRuntimeOptions = {}) {
 		if (options.observationPort && options.observationPublisher) {
@@ -54,6 +57,7 @@ export class RuntimeAgentRuntime {
 		this.createId = options.createId ?? ((scope) => `${scope}-${createRuntimeId()}`);
 		this.createFeatureCompiler =
 			options.createFeatureCompiler ?? (() => new FeatureCompiler({ idGenerator: new RandomIdGenerator() }));
+		this.closeController = new RetryableCloseController({ cleanup: () => this.disposeResources() });
 	}
 
 	async createInstance(options: RuntimeAgentInstanceCreateOptions): Promise<RuntimeAgentInstance> {
@@ -62,7 +66,8 @@ export class RuntimeAgentRuntime {
 		if (this.instances.has(instanceId)) throw runtimeAgentDuplicateIdError("Instance", instanceId);
 		const signal = options.signal ?? new AbortController().signal;
 		const revisionLease = this.registry.acquire(options.agentId);
-		const observations = this.observations.scope({
+		const observationPublisher = options.observationPublisher ?? this.observations;
+		const observations = observationPublisher.scope({
 			agentId: options.agentId,
 			revisionId: revisionLease.revision.id,
 			instanceId,
@@ -90,7 +95,7 @@ export class RuntimeAgentRuntime {
 				definition,
 				configuration: options.configuration,
 				registry: this.registry,
-				observationPublisher: this.observations,
+				observationPublisher,
 				createId: this.createId,
 				createFeatureCompiler: this.createFeatureCompiler,
 				onSessionCreated: (session) => {
@@ -234,20 +239,39 @@ export class RuntimeAgentRuntime {
 	}
 
 	close(): Promise<void> {
-		if (this.closePromise) return this.closePromise;
 		this.closed = true;
-		const instances = [...this.instances.values()].reverse();
-		this.closePromise = cleanupRuntimeAgentResources(
-			[
-				...instances.map((instance) => () => instance.close()),
-				...(this.ownsRegistry ? [() => this.registry.close()] : []),
-				...(this.ownsObservationPublisher ? [() => this.observations.flush()] : []),
-				...(this.ownedObservationPort?.close ? [() => this.ownedObservationPort?.close?.()] : []),
-			],
-			undefined,
-			"Failed to close Runtime Agent control plane",
-		);
-		return this.closePromise;
+		return this.closeController.run();
+	}
+
+	private disposeResources(): Promise<void> {
+		this.prepareCleanup();
+		return this.cleanup.run("Failed to close Runtime Agent control plane");
+	}
+
+	private prepareCleanup(): void {
+		if (this.cleanupPrepared) return;
+		this.cleanupPrepared = true;
+		let phase = 0;
+		for (const [index, instance] of [...this.instances.values()].reverse().entries()) {
+			this.cleanup.add({
+				id: `instance:${index}`,
+				phase: phase++,
+				cleanup: () => instance.close(),
+			});
+		}
+		if (this.ownsRegistry) {
+			this.cleanup.add({ id: "registry", phase: phase++, cleanup: () => this.registry.close() });
+		}
+		if (this.ownsObservationPublisher) {
+			this.cleanup.add({ id: "observation-publisher", phase: phase++, cleanup: () => this.observations.flush() });
+		}
+		if (this.ownedObservationPort?.close) {
+			this.cleanup.add({
+				id: "observation-port",
+				phase,
+				cleanup: () => this.ownedObservationPort?.close?.(),
+			});
+		}
 	}
 
 	private assertOpen(): void {

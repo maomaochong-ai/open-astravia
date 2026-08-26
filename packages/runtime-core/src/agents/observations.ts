@@ -10,6 +10,8 @@ export type RuntimeAgentLifecycleOperation =
 	| "source.sync"
 	| "instance.create"
 	| "instance.close"
+	| "instance.pool.reuse"
+	| "instance.pool.retire"
 	| "session.create"
 	| "session.rebind"
 	| "session.close"
@@ -22,6 +24,7 @@ export interface RuntimeAgentLifecycleObservation {
 	readonly sourceRevision?: string;
 	readonly definitionCount?: number;
 	readonly removedCount?: number;
+	readonly reason?: "definition-revision" | "configuration-revision" | "shutdown";
 	readonly failure?: RuntimeObservationFailure;
 }
 

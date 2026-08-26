@@ -189,6 +189,7 @@ async function readSessionHistoryInfo(sessionPath: string, fallbackCwd: string):
 	return {
 		id: header.sessionId,
 		path: resolve(sessionPath),
+		agentId: document.identity.agentId,
 		cwd: document.identity.cwd ?? fallbackCwd,
 		name: document.name,
 		firstMessage,

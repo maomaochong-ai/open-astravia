@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createRuntimeLifecycleLogPort } from "./runtime-lifecycle-log-port.js";
 
 describe("runtime lifecycle log port", () => {
-	it("logs revision publication and Session rebind as privacy-safe control-plane entries", () => {
+	it("logs revision, pool retirement and Session rebind as privacy-safe control-plane entries", () => {
 		const logger = { info: vi.fn(), warn: vi.fn() };
 		const port = createRuntimeLifecycleLogPort(logger);
 
@@ -24,6 +24,12 @@ describe("runtime lifecycle log port", () => {
 					definitionCount: 1,
 				},
 				{ agentId: "coding-agent", revisionId: "revision-2" },
+			),
+		);
+		port.record(
+			observationRecord(
+				{ operation: "instance.pool.retire", phase: "completed", reason: "definition-revision" },
+				{ agentId: "coding-agent", revisionId: "revision-1", instanceId: "instance-1" },
 			),
 		);
 		port.record(
@@ -48,6 +54,14 @@ describe("runtime lifecycle log port", () => {
 			definitionCount: 1,
 		});
 		expect(logger.info).toHaveBeenNthCalledWith(2, "runtime agent lifecycle", {
+			operation: "instance.pool.retire",
+			phase: "completed",
+			agentId: "coding-agent",
+			revisionId: "revision-1",
+			instanceId: "instance-1",
+			reason: "definition-revision",
+		});
+		expect(logger.info).toHaveBeenNthCalledWith(3, "runtime agent lifecycle", {
 			operation: "session.rebind",
 			phase: "completed",
 			agentId: "coding-agent",
