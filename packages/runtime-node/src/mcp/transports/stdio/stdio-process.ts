@@ -1,6 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import type { McpStdioServerConfig } from "../../protocol/index.js";
+import { shouldUseWindowsCommandShell } from "./stdio-shell.js";
 
 export interface StdioMcpProcessOptions {
 	readonly config: McpStdioServerConfig;
@@ -50,7 +51,7 @@ export class StdioMcpProcess extends EventEmitter<StdioMcpProcessEvents> {
 					env: { ...process.env, ...this.config.env },
 					cwd: this.config.cwd,
 					stdio: ["pipe", "pipe", "pipe"],
-					shell: process.platform === "win32",
+					shell: shouldUseWindowsCommandShell(this.config.command),
 				});
 				this.process.stdout?.on("data", (data: Buffer) => this.handleStdout(data));
 				this.process.stderr?.on("data", (data: Buffer) => this.handleStderr(data));

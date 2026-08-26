@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { delimiter, join } from "node:path";
+import { posix, win32 } from "node:path";
 import { managedNpmGlobalBinDir } from "./paths.mjs";
 
 /**
@@ -35,24 +35,25 @@ export function binaryFileName(platform, arch) {
  */
 export function resolveAgentBrowserBinary(options) {
 	const exists = options.exists ?? existsSync;
-	const fromPath = (options.pathValue ?? "").split(delimiter).filter((entry) => entry.length > 0);
+	const paths = options.platform === "win32" ? win32 : posix;
+	const fromPath = (options.pathValue ?? "").split(paths.delimiter).filter((entry) => entry.length > 0);
 	const entries = [...(options.preferredDirs ?? []), ...fromPath];
 	const nativeName = binaryFileName(options.platform, options.arch);
 
 	for (const entry of entries) {
 		if (options.platform === "win32") {
 			// npm 全局 bin 在 prefix 根，包体在 <prefix>\node_modules\agent-browser\bin\。
-			const nativeInPackage = join(entry, "node_modules", "agent-browser", "bin", nativeName);
+			const nativeInPackage = paths.join(entry, "node_modules", "agent-browser", "bin", nativeName);
 			if (exists(nativeInPackage)) return nativeInPackage;
-			const exe = join(entry, "agent-browser.exe");
+			const exe = paths.join(entry, "agent-browser.exe");
 			if (exists(exe)) return exe;
 			continue;
 		}
-		const direct = join(entry, "agent-browser");
+		const direct = paths.join(entry, "agent-browser");
 		if (exists(direct)) return direct;
 		// symlink 优化失败时（权限问题）npm 留下的是指向 JS wrapper 的链接，仍然可执行，
 		// 所以上面的 direct 命中即可；这里再兜一层包内原生文件，覆盖 prefix/lib 布局。
-		const nativeInPackage = join(entry, "..", "lib", "node_modules", "agent-browser", "bin", nativeName);
+		const nativeInPackage = paths.join(entry, "..", "lib", "node_modules", "agent-browser", "bin", nativeName);
 		if (exists(nativeInPackage)) return nativeInPackage;
 	}
 	return null;

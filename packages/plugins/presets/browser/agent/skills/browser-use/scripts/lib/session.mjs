@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 /**
  * agent-browser 的 session 名派生。
@@ -22,7 +22,7 @@ const SESSION_PREFIX = "vetta-";
 export function resolveWorkspaceRoot(cwd, exists = existsSync) {
 	let current = resolve(cwd);
 	for (;;) {
-		if (exists(`${current}/.git`)) return current;
+		if (exists(join(current, ".git"))) return current;
 		const parent = dirname(current);
 		if (parent === current) return resolve(cwd);
 		current = parent;

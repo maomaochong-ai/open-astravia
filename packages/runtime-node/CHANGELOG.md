@@ -64,6 +64,9 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Fixed
 
+- Windows 上 MCP stdio 启动原生 `.exe` / `.com` 时不再统一经过 `cmd.exe`；包含空格的可执行文件路径与参数
+  现在保持 argv 边界，批处理与 PATH shim 仍沿用 shell 解析。
+
 - `grep` Tool 不再为了计算锚点把每个命中文件整份重新读入内存。匹配行内容直接取自 ripgrep `--json`
   事件，`context` 前后文也改由 ripgrep 产出。此前 100 个匹配分布在 100 个文件时会触发 100 次全文件读。
   非 UTF-8 的行走 `lines.bytes` 解码，保证锚点哈希仍与磁盘上的原始行一致。
