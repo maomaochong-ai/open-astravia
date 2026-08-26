@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -31,7 +31,9 @@ describe("plugin development watch", () => {
 		await writeFile(join(packageDir, "dist", "index.js"), "export {};\n");
 		await writeFile(join(packageDir, "dist", "cli.js"), "export {};\n");
 
-		expect(resolvePluginDevCliPath(projectRoot)).toBe(join(packageDir, "dist", "cli.js"));
+		expect(await realpath(resolvePluginDevCliPath(projectRoot))).toBe(
+			await realpath(join(packageDir, "dist", "cli.js")),
+		);
 	});
 
 	it("reports a missing project toolchain", async () => {
