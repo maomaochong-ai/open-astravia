@@ -1,7 +1,11 @@
 import type { AgentMessage } from "@vetta/agent-core";
 import type { Api, AssistantMessage, Message, Model } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter/hooks";
-import type { ContextCompositionReport, RuntimeDocumentParticipant } from "@vetta/runtime-core";
+import type {
+	ContextCompositionReport,
+	RuntimeDocumentParticipant,
+	RuntimeObservationPublisher,
+} from "@vetta/runtime-core";
 import type {
 	ContextCompositionPublisher,
 	ContextStrategy,
@@ -58,6 +62,8 @@ export interface CodingAgentContextRuntimeOptions {
 	readonly failureRecovery?: CodingAgentModelCallFailureRecovery;
 	readonly now?: () => number;
 	readonly readCompactionWorkState?: () => CompactionWorkStateSnapshot;
+	/** Receives privacy-safe Context/Compaction diagnostics; failures are isolated by the publisher. */
+	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
 export interface CodingAgentContextUsage {

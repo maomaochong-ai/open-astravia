@@ -1,7 +1,9 @@
 import type { Api, AssistantMessage, Model, UserMessage } from "@vetta/ai";
+import { createRuntimeObservationPublisher, type RuntimeObservationRecord } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import type { CompactionResult, CompactionSettings } from "../../../src/compaction/index.js";
 import { CompactionPrefireCache } from "../../../src/compaction/runtime/compaction-prefire-cache.js";
+import { CODING_AGENT_COMPACTION_PREFIRE_OBSERVATION } from "../../../src/runtime-contracts/context-observability.js";
 import type { CodingAgentSessionEntry as SessionEntry } from "../../../src/sessions/index.js";
 
 describe("CompactionPrefireCache", () => {
@@ -46,6 +48,37 @@ describe("CompactionPrefireCache", () => {
 
 		expect(observedSignal?.aborted).toBe(true);
 		expect(cache.take(ENTRIES)).toBeUndefined();
+	});
+
+	it("reports privacy-safe success and failure observations through the injected publisher", async () => {
+		const records: RuntimeObservationRecord[] = [];
+		const observations = createRuntimeObservationPublisher({
+			port: {
+				record: (record) => {
+					records.push(record);
+				},
+			},
+		});
+		const cache = new CompactionPrefireCache({
+			resolveApiKey: () => "key",
+			generateCompaction: async () => {
+				throw Object.assign(new Error("secret provider response"), { code: "RATE_LIMIT" });
+			},
+			canAttempt: () => true,
+			observations,
+		});
+
+		cache.start(ENTRIES, SETTINGS, MODEL);
+		await vi.waitFor(() => expect(records).toHaveLength(1));
+
+		expect(records[0]).toMatchObject({
+			token: CODING_AGENT_COMPACTION_PREFIRE_OBSERVATION,
+			payload: {
+				phase: "failed",
+				failure: { category: "error", errorName: "Error", errorCode: "RATE_LIMIT" },
+			},
+		});
+		expect(JSON.stringify(records[0])).not.toContain("secret provider response");
 	});
 });
 

@@ -8,6 +8,14 @@ export {
 	createCodingAgentCodingToolResultPolicy,
 	DEFAULT_CODING_AGENT_MAX_INLINE_TOOL_RESULT_BYTES,
 } from "../tool-results/result-policy.js";
+export {
+	CODING_AGENT_COMPACTION_PREFIRE_OBSERVATION,
+	type CodingAgentCompactionPrefireObservation,
+} from "./contracts/context-observability.js";
+export {
+	CODING_AGENT_LIFECYCLE_ISSUE_OBSERVATION,
+	type CodingAgentLifecycleIssueObservation,
+} from "./contracts/lifecycle-observability.js";
 export type {
 	CodingAgentKnowledgePage,
 	CodingAgentKnowledgeQueryOperations,
@@ -30,6 +38,11 @@ export type {
 	CodingAgentSessionInitializationStage,
 } from "./contracts/session-initialization-observability.js";
 export { CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION } from "./contracts/session-initialization-observability.js";
+export {
+	CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION,
+	type CodingAgentSubagentIssueObservation,
+	type CodingAgentSubagentIssueOperation,
+} from "./contracts/subagent-observability.js";
 export type {
 	CodingAgentToolEnvironment,
 	CodingAgentToolEnvironmentContext,

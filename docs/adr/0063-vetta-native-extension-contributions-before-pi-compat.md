@@ -56,6 +56,9 @@ Pi module/facade -----------> Pi ACL --------------------------+--> DynamicContr
 ## 后果
 
 - Pi 兼容必须等待对应 native contract 通过测试，初期交付速度较慢，但不会形成永久兼容执行路径。
+- Runtime Session Extension 负责通用会话生命周期和控制面；Pi loader 继续只是 Coding 反腐层。无法提供原子 registration、
+  generation-owned teardown 或稳定 settled fact 的 Pi flag/provider/event-bus 能力保持 fail-closed，不能直接映射为 Runtime
+  Extension 贡献。
 - Native Extension 将逐步获得原子注册、动态可见性、stale generation、Tool prompt/input 和 Provider 撤销能力。
 - Pi profile 只覆盖宿主中立行为子集，UI-only Extension 会被拒绝或报告展示剥离。
 - 每个能力需要 native fixture、catalog/port contract test 和 Pi projection/differential fixture 三层证据。

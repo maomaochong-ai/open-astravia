@@ -2,8 +2,8 @@ import type { RuntimeObservationPublisher } from "@vetta/runtime-core";
 import {
 	type AgentFeatureDefinition,
 	type CompiledRuntimeSnapshot,
+	createDefaultRuntimeCapabilityDefinition,
 	FeatureCompiler,
-	PassthroughContextStrategy,
 	RandomIdGenerator,
 	type RuntimeCapabilityDefinition,
 } from "@vetta/runtime-core/kernel";
@@ -92,10 +92,8 @@ export function createCodingToolsRuntimeComposition(
 				? { mode: "scope", scope: "cli", capabilities: new Set(["bg-tasks"]) }
 				: { mode: "scope", scope: "cli" }),
 	});
-	const capabilities: RuntimeCapabilityDefinition = {
-		instructions: [],
+	const capabilities: RuntimeCapabilityDefinition = createDefaultRuntimeCapabilityDefinition({
 		features: [feature],
-		contextStrategy: new PassthroughContextStrategy(),
 		toolPolicy: {
 			async authorize(_request, signal) {
 				signal.throwIfAborted();
@@ -105,7 +103,7 @@ export function createCodingToolsRuntimeComposition(
 		tokenBudget: options.tokenBudget ?? 8_000,
 		reservedOutputTokens: options.reservedOutputTokens ?? 1_000,
 		observationPublisher: options.observationPublisher,
-	};
+	});
 	const compiler = new FeatureCompiler({ idGenerator: new RandomIdGenerator() });
 
 	return {

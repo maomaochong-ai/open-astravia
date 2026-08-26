@@ -2,6 +2,17 @@
 
 ### Changed
 
+- Session Extension 暴露给 RuntimeHost 时改用 Runtime Core 标准 Adapter，删除 Coding 本地重复的 Endpoint/初始 Observation
+  转发。SessionEnd Hook 旁路失败不再直接写 `console`，改为安全 lifecycle Observation；Pi compatibility 继续作为
+  Coding 反腐层，未具备原子注册和 generation-owned teardown 的能力保持 fail-closed。
+- Session execution mode 删除私有 Tool Catalog generation/lease 状态机，改用 `runtime-tools` 通用 generational catalog；
+  Sandbox、后台任务、激活和可用性策略保持 Coding 所有。Subagent coordinator、恢复和异步投递失败改走安全
+  `coding-agent.subagent.issue` Observation，不再直接写 `console`。
+- Context Runtime 改用 Runtime Core 的通用 usage tracker 与连续失败熔断器，并按自动策略、手动策略、提交生命周期和
+  Coding 记录格式拆分；阈值、overflow、Memory、Hook、Extension、图片恢复、持久化格式与 Turn generation 语义保持不变。
+  Prefire 后台结果不再直接写 `console`，改为不含摘要、消息、凭证和错误正文的类型化 Observation。
+- 自动重试状态机、退避、取消和 RuntimeHost 失败事件顺序迁入 Runtime Core；Coding Agent 现只保留设置、历史失败兼容
+  与 SDK/RPC 事件适配，原公共类型、工厂和事件语义保持兼容。基础 Tool capability 也改用显式 Runtime 默认能力工厂。
 - Coding Agent Composition 的公开创建入口收敛为 `sessions`，产品 Session 直接通过 Runtime Core 标准 Agent Backend
   装配；移除产品层重复的 Runtime/assessment 资源所有权与 Session 索引，MCP freshness 作为标准 Snapshot acquire
   前置钩子执行。旧 `backend` 属性仅保留为弃用别名，CLI/SDK/Desktop 生产接线均已迁移。

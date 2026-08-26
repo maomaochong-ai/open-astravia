@@ -6,6 +6,7 @@ import {
 	CODING_TOOL_CATALOG_OBSERVATION,
 	type CodingToolRegistration,
 	type CodingToolScope,
+	GenerationalCodingToolCatalog,
 	guardCodingToolRegistration,
 	InMemoryCodingToolRegistry,
 	selectCodingTools,
@@ -383,6 +384,49 @@ describe("coding tool registry", () => {
 	});
 });
 
+describe("generational coding tool catalog", () => {
+	it("keeps a leased generation executable until release while new Turns see the latest catalog", async () => {
+		const first = new InMemoryCodingToolRegistry([registrationWithOutput("mode-tool", "first")], {
+			sourceId: "mode:1",
+		});
+		const catalog = new GenerationalCodingToolCatalog(first);
+		const lease = catalog.acquireSnapshot();
+		const oldEntry = lease.snapshot.entries[0];
+		if (!oldEntry) throw new Error("Missing old tool entry");
+		const oldTool = guardCodingToolRegistration(catalog, oldEntry);
+
+		catalog.publish(
+			new InMemoryCodingToolRegistry([registrationWithOutput("mode-tool", "second")], {
+				sourceId: "mode:2",
+			}),
+		);
+
+		expect(catalog.snapshot().entries[0]?.binding.sourceId).toBe("mode:2");
+		expect((await execute(oldTool)).content).toEqual([{ type: "text", text: "first" }]);
+		await lease.release();
+		await expect(execute(oldTool)).rejects.toMatchObject({
+			code: CODING_TOOL_AVAILABILITY_ERROR_CODES.UNAVAILABLE,
+		});
+	});
+
+	it("rejects binding identity reuse while the old generation is leased", () => {
+		const first = new InMemoryCodingToolRegistry([registration("mode-tool", ["cli"])], {
+			sourceId: "same-source",
+		});
+		const catalog = new GenerationalCodingToolCatalog(first);
+		const lease = catalog.acquireSnapshot();
+
+		expect(() =>
+			catalog.publish(
+				new InMemoryCodingToolRegistry([registration("mode-tool", ["cli"])], {
+					sourceId: "same-source",
+				}),
+			),
+		).toThrow("reuses a leased binding");
+		void lease.release();
+	});
+});
+
 describe("coding tool activation", () => {
 	const registrations = [
 		registration("default-project", ["project"]),
@@ -463,6 +507,17 @@ function registration(name: string, scopeUse: readonly CodingToolScope[]): Codin
 		tool,
 		scopeUse,
 		category: "core",
+	};
+}
+
+function registrationWithOutput(name: string, output: string): CodingToolRegistration {
+	const base = registration(name, ["cli"]);
+	return {
+		...base,
+		tool: {
+			...base.tool,
+			execute: async () => ({ content: [{ type: "text", text: output }] }),
+		},
 	};
 }
 

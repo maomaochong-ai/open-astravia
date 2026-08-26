@@ -35,6 +35,33 @@ export interface RecordedRuntimeFailure {
 }
 
 /**
+ * Narrows an untrusted boundary value to the safe Runtime failure contract.
+ * Error messages are retained for execution/event compatibility; Observation
+ * producers must project only code/origin and other explicitly safe fields.
+ */
+export function readRuntimeFailure(value: unknown): RuntimeFailure | undefined {
+	if (!value || typeof value !== "object") return undefined;
+	const candidate = value as Record<string, unknown>;
+	if (
+		typeof candidate.code !== "string" ||
+		typeof candidate.message !== "string" ||
+		typeof candidate.retryable !== "boolean" ||
+		!isRuntimeFailureOrigin(candidate.origin)
+	) {
+		return undefined;
+	}
+	const details = readRuntimeFailureDetails(candidate.details);
+	if (candidate.details !== undefined && !details) return undefined;
+	return {
+		code: candidate.code,
+		message: candidate.message,
+		retryable: candidate.retryable,
+		origin: candidate.origin,
+		...(details ? { details } : {}),
+	};
+}
+
+/**
  * Projects an arbitrary boundary error into the Runtime failure contract.
  * Provider errors retain their structured AI diagnostics; non-AI errors get a
  * conservative runtime projection so observation producers do not invent local
@@ -111,4 +138,53 @@ function aiDetailsToRuntimeDetails(details: ReturnType<typeof getAIErrorDetails>
 		...(responseBodyPreview === undefined ? {} : { responseBodyPreview }),
 		...(retryAfterMs === undefined ? {} : { retryAfterMs }),
 	};
+}
+
+function readRuntimeFailureDetails(value: unknown): RuntimeFailureDetails | undefined {
+	if (!value || typeof value !== "object") return undefined;
+	const candidate = value as Record<string, unknown>;
+	if (
+		(candidate.statusCode !== undefined && typeof candidate.statusCode !== "number") ||
+		(candidate.provider !== undefined && typeof candidate.provider !== "string") ||
+		(candidate.modelId !== undefined && typeof candidate.modelId !== "string") ||
+		(candidate.requestId !== undefined && typeof candidate.requestId !== "string") ||
+		(candidate.providerCode !== undefined && typeof candidate.providerCode !== "string") ||
+		(candidate.phase !== undefined && !isRuntimeFailurePhase(candidate.phase)) ||
+		(candidate.url !== undefined && typeof candidate.url !== "string") ||
+		(candidate.responseHeaders !== undefined && !isStringRecord(candidate.responseHeaders)) ||
+		(candidate.responseBodyPreview !== undefined && typeof candidate.responseBodyPreview !== "string") ||
+		(candidate.retryAfterMs !== undefined && typeof candidate.retryAfterMs !== "number")
+	) {
+		return undefined;
+	}
+	return {
+		...(candidate.statusCode === undefined ? {} : { statusCode: candidate.statusCode as number }),
+		...(candidate.provider === undefined ? {} : { provider: candidate.provider as string }),
+		...(candidate.modelId === undefined ? {} : { modelId: candidate.modelId as string }),
+		...(candidate.requestId === undefined ? {} : { requestId: candidate.requestId as string }),
+		...(candidate.providerCode === undefined ? {} : { providerCode: candidate.providerCode as string }),
+		...(candidate.phase === undefined ? {} : { phase: candidate.phase as RuntimeFailureDetails["phase"] }),
+		...(candidate.url === undefined ? {} : { url: candidate.url as string }),
+		...(candidate.responseHeaders === undefined
+			? {}
+			: { responseHeaders: candidate.responseHeaders as Readonly<Record<string, string>> }),
+		...(candidate.responseBodyPreview === undefined
+			? {}
+			: { responseBodyPreview: candidate.responseBodyPreview as string }),
+		...(candidate.retryAfterMs === undefined ? {} : { retryAfterMs: candidate.retryAfterMs as number }),
+	};
+}
+
+function isRuntimeFailureOrigin(value: unknown): value is RuntimeFailureOrigin {
+	return value === "runtime" || value === "provider" || value === "tool" || value === "mcp";
+}
+
+function isRuntimeFailurePhase(value: unknown): value is NonNullable<RuntimeFailureDetails["phase"]> {
+	return (
+		value === "resolve" || value === "request" || value === "response" || value === "stream" || value === "decode"
+	);
+}
+
+function isStringRecord(value: unknown): value is Readonly<Record<string, string>> {
+	return !!value && typeof value === "object" && Object.values(value).every((entry) => typeof entry === "string");
 }

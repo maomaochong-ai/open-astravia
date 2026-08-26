@@ -6,6 +6,8 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Added
 
+- 新增 `GenerationalCodingToolCatalog`，统一整组 Tool 定义切换、Turn lease、旧代执行与退休；在旧代仍被租赁时拒绝复用
+  binding identity，避免旧 Turn 静默执行新 handler。
 - Coding Tool 可选声明通用 Runtime Configuration 关联，并通过 Turn-bound Decorator 兼容原生、Legacy
   Adapter 与 Host Policy 三种接入方式；无配置 Tool 无需实现额外接口，既有 Tool binding/release 会被组合保留。
 - Tool 配置绑定新增安全观测：成功走 info 生命周期事件，缺失配置回退与绑定失败走 warning issue 事件；

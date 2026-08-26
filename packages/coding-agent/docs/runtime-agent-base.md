@@ -177,6 +177,28 @@ Desktop 当前只把关键控制面 Observation 投影为日志：
 - 不包含 Prompt、用户消息、Tool/MCP 参数或结果、凭证、原始错误 message/stack；
 - 普通 Session create/close 成功不逐条记录，避免高频噪声。
 
+自动重试的状态机、退避、取消和 RuntimeHost 失败事件顺序由 Runtime Core 的
+`RuntimeTurnRetryCoordinator` / `withRuntimeHostSessionRetry()` 统一实现。Coding Agent 只提供设置来源、历史失败兼容和
+SDK/RPC 事件投影。Desktop 将同一个 RuntimeHost Publisher 注入工作区 Composition 与重试装饰器，因此
+`runtime.retry.lifecycle` 和 `runtime.retry.issue` 会与 Agent/Session 事件进入同一观测树；安全 payload 不包含错误正文、
+Prompt 或用户内容。
+
+Context/Compaction 采用相同边界：Runtime Core 的 Context Strategy、Committer 与 Session Controller 负责 Turn 检查点、
+取消、持久化和 continuation 事务，并提供通用 usage tracker 与连续失败熔断器；Coding Agent 保留阈值、overflow、
+keep-tail、摘要格式、Memory、Hook、Extension、图片恢复和 Prefire。`DefaultCodingAgentContextRuntime` 只负责 Turn-bound
+generation 与合同委托，自动策略、手动策略和提交后生命周期互不混合。Prefire 的 cached/failed/cancelled 通过
+`coding-agent.context.compaction-prefire` 进入产品子 Hub，再由上层统一汇聚；安全 payload 不包含摘要、消息、凭证或错误正文。
+
+Tool 整组替换（当前用于 Session execution mode）由 `runtime-tools` 的 `GenerationalCodingToolCatalog` 统一持有代际和 lease；
+Coding 只选择具体 Sandbox/后台 Tool 与激活策略。Subagent 的 FIFO、并发、恢复和 delivery generation 继续由
+`runtime-subagents` 独立持有，Coding 只组合 Profile、child Session、持久化和模型可见 Tool。协调器、恢复、通知投递及
+Session observation 的失败通过 `coding-agent.subagent.issue` 汇入同一观测树，不包含任务正文、路径或错误 message。
+
+Session Extension 的 Definition 排序、初始化回滚、Service/Signal/Endpoint、Document Participant、continuation、迟订阅状态与
+逆序释放全部由 Runtime Core 的 `SessionExtensionComposition` 持有，并通过标准 RuntimeHost Adapter 暴露控制面。Pi
+compatibility 仍是 Coding Agent 的第三方协议反腐层；只有已经存在 Vetta native 合同且能满足原子注册、Turn generation 和
+owned teardown 的子集才会映射。Pi TUI、近似事件以及尚无稳定所有权的 flag/provider/event-bus 明确 fail-closed。
+
 ## 生命周期与特殊说明
 
 - 应用只调用 `RuntimeHost.close()`；Host 依次关闭 Session、拥有的 Backend、Agent 控制面和直接注入的根 Observation Port。

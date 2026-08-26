@@ -6,6 +6,15 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- 新增标准 `createRuntimeSessionExtensionHost()`，统一把 Session Extension Endpoint 与迟订阅初始 Observation 投影到
+  RuntimeHost 合同；产品组合不再重复编写 Endpoint 转发和 event source 映射。
+- 新增 `RuntimeContextUsageTracker` 与可注入时钟的 `ConsecutiveFailureCircuitBreaker`。自定义 Agent 可复用 document、
+  assistant usage 与 provider composition 的 Context 状态，以及连续失败 cooldown；文档投影、token 估算和具体压缩策略
+  仍由调用方注入，不新增隐藏压缩路径。
+- 新增显式 `createDefaultRuntimeCapabilityDefinition()` 安全基线，以及产品无关的重试 Strategy、Coordinator 和
+  RuntimeHost Session Decorator；统一处理动态设置、指数退避、`Retry-After`、单一 retry owner、取消与失败事件顺序。
+  `runtime.retry.lifecycle` / `runtime.retry.issue` 只记录次数、延迟、失败 code/origin 和枚举停止原因，可安全接入日志、
+  Trace、Metrics 或 UI Observation Adapter。
 - 新增标准 `RuntimeAgentSessionAssemblyBackend` 与 revision-aware Instance Pool：`RuntimeHost.createSession()` 可按
   `agent` 选择平级主 Agent，并统一复用/隔离 Instance、固定 definition revision、装配 Kernel Session 与重试释放；
   Agent 生命周期和池复用/退休均进入同一安全 Observation。原生会话可选持久化稳定 `agentId`，活动状态与 Catalog

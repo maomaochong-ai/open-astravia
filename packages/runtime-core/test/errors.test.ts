@@ -1,7 +1,7 @@
 import { AI_ERROR_CODES, AIError } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import { isSessionError, runtimeError } from "../src/errors.js";
-import { runtimeFailureFromError } from "../src/failure-contract.js";
+import { readRuntimeFailure, runtimeFailureFromError } from "../src/failure-contract.js";
 
 describe("Runtime errors", () => {
 	it("recognizes structured session failures independently of message text", () => {
@@ -65,5 +65,32 @@ describe("Runtime errors", () => {
 			retryable: false,
 			origin: "mcp",
 		});
+	});
+
+	it("narrows structured failures at untrusted boundaries", () => {
+		expect(
+			readRuntimeFailure({
+				code: "AI_RATE_LIMITED",
+				message: "rate limited",
+				retryable: true,
+				origin: "provider",
+				details: { retryAfterMs: 1_000, phase: "response" },
+			}),
+		).toEqual({
+			code: "AI_RATE_LIMITED",
+			message: "rate limited",
+			retryable: true,
+			origin: "provider",
+			details: { retryAfterMs: 1_000, phase: "response" },
+		});
+		expect(
+			readRuntimeFailure({
+				code: "AI_RATE_LIMITED",
+				message: "rate limited",
+				retryable: true,
+				origin: "provider",
+				details: { responseHeaders: { authorization: 42 } },
+			}),
+		).toBeUndefined();
 	});
 });

@@ -3,8 +3,8 @@ import type {
 	ConversationScenario,
 	RuntimeResources,
 	RuntimeSessionAskUserQuestionCapability,
-	RuntimeSessionExtensionHost,
 } from "@vetta/runtime-core";
+import { createRuntimeSessionExtensionHost } from "@vetta/runtime-core";
 import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel";
 import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
@@ -80,7 +80,10 @@ export function createCodingAgentSessionRuntimeResources(
 ): RuntimeResources {
 	const stateActivation = createStateActivation(options);
 	const pluginMcpRuntime = options.pluginMcpRuntime;
-	const extensionHost = createSessionExtensionHost(options.sessionExtensions);
+	const extensionHost = createRuntimeSessionExtensionHost({
+		endpoints: options.sessionExtensions,
+		readInitialObservations: () => options.sessionExtensions.readInitialObservations(),
+	});
 	return {
 		sessionId: options.session.initialSessionId,
 		repository: options.conversation.repository,
@@ -139,16 +142,6 @@ export function createCodingAgentSessionRuntimeResources(
 			read: () => readSessionState(options, stateActivation),
 		},
 		onConversationContinued: options.onConversationContinued,
-	};
-}
-
-function createSessionExtensionHost(extensions: SessionExtensionComposition): RuntimeSessionExtensionHost {
-	return {
-		hasEndpoint: (token) => extensions.hasEndpoint(token),
-		invoke: (token, input, signal) => extensions.invoke(token, input, signal),
-		invokeSync: (token, input, signal) => extensions.invokeSync(token, input, signal),
-		readInitialObservations: () =>
-			extensions.readInitialObservations().map((observation) => ({ ...observation, source: "agent" })),
 	};
 }
 

@@ -240,7 +240,7 @@ function readFailure(value: unknown) {
 		retryable: boolean;
 		details?: { retryAfterMs?: number };
 	};
-	return { code: "TEST_FAILURE", ...error };
+	return { code: "TEST_FAILURE", origin: "runtime" as const, ...error };
 }
 
 interface CreateExecutorOptions {

@@ -12,6 +12,8 @@
 
 ### Fixed
 
+- 修复创建新会话时 Desktop 同时把 RuntimeHost Observation Publisher 与同一个应用 Hub parent 注入 Coding Agent，
+  导致 Composition 以“双上游”拒绝初始化的问题。现在 RuntimeHost Publisher 是唯一上游，Hub 的局部路由、容量和故障诊断配置仍保留。
 - 修复消息下方存在插件卡片时，Agent 流式输出期间整页持续抖动：宿主此前把插件的 `pendingFor` 回调结果当作每帧渲染的唯一事实源，该回调读插件自身状态、相邻两帧可能返回 `null` 或不同 `key`，导致在途工具的骨架卡在「有 / 没有」之间反复翻转、卡片区高度来回跳。现在同一个在途 tool call 只认第一次合成成功的 descriptor 直到它落定，卡片归属表与本条消息的原始卡片列表在内容不变时复用旧引用，卡片子树不再随每个 token 重建。同 `key` 只挂在最后产出它的消息下这一语义保持不变。
 - 修复 Vetta UI Design 的设计预览进程在插件热重载或异常退出后，Canvas 仍持有旧 localhost 端口并为每个画框重复报 `ERR_CONNECTION_REFUSED`：进程退出现在会立即撤掉旧端口消费者并有限退避重启，离屏截图同时作为失联后备探针；一分钟内连续失败超过三次才停止自动恢复并显示可手动重试的错误。
 - 修复开发态页面热刷新后 Plugin Agent 工具、Hook 与动态 Prompt handler 偶发统一报 `handler not found`：插件宿主 bridge 的 handler 表、IPC listener guard 与会话订阅现在由 renderer 全局单例持有，模块被 HMR 重新求值时不会再创建一套空 registry 和重复监听器；正式的 activation / Turn generation 隔离与释放语义保持不变。
@@ -19,6 +21,12 @@
 
 ### Changed
 
+- Desktop 根 Runtime Observation Hub 现在汇聚 Coding Context Prefire 与 Subagent issue 诊断并投影为安全结构化日志；
+  只记录 Session identity、阶段/操作、token 计数和失败 name/code，不记录摘要、任务、路径、对话、凭证或错误正文。
+- Coding SessionEnd Hook 失败也进入同一根 Hub 的安全 lifecycle 日志，不再输出可能包含原始异常正文的直接 console 日志。
+- Desktop 将 RuntimeHost 的统一 Observation Publisher 传入工作区 Coding Composition 和自动重试装饰器；重试调度、
+  成功、取消、耗尽及 `Retry-After` 超限会写入主进程结构化日志，仅包含 Session/Turn identity、次数、延迟、失败
+  code/origin 和枚举原因，不记录错误正文、Prompt 或用户内容。
 - Desktop Coding Backend Pool 不再维护 RuntimeHost Session/assessment 的影子索引；Coding-only Scope 对其它主 Agent
   选择 fail-closed。Pool 关闭改为可重试所有权事务，失败后保留未完成 Composition/MCP Source，再次关闭只重试失败项；
   Agent Instance Pool 的复用/退休原因继续通过统一 lifecycle Observation 投影到安全日志。

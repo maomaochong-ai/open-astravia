@@ -15,6 +15,11 @@ export {
 	resumeAgentSession,
 } from "./agent-session.js";
 export {
+	ConsecutiveFailureCircuitBreaker,
+	type ConsecutiveFailureCircuitBreakerOptions,
+	type ConsecutiveFailureCircuitBreakerSnapshot,
+} from "./consecutive-failure-circuit-breaker.js";
+export {
 	type ContextCompactionCommitInput,
 	type ContextCompactionCommitOutput,
 	ContextCompactionCommitter,
@@ -24,6 +29,11 @@ export {
 	type ContextCompositionLifecycleOptions,
 	createContextCompositionLifecycle,
 } from "./context-composition-lifecycle.js";
+export {
+	type RuntimeContextUsage,
+	RuntimeContextUsageTracker,
+	type RuntimeContextUsageTrackerOptions,
+} from "./context-usage-tracker.js";
 export type {
 	AgentFeature,
 	AgentFeatureDefinition,
@@ -138,6 +148,13 @@ export {
 	type ConversationRecoveryPolicy,
 	FailInterruptedTurnRecoveryPolicy,
 } from "./conversation-recovery.js";
+export {
+	createDefaultRuntimeCapabilityDefinition,
+	DEFAULT_RUNTIME_RESERVED_OUTPUT_TOKENS,
+	DEFAULT_RUNTIME_TOKEN_BUDGET,
+	type DefaultRuntimeCapabilityOverrides,
+	DenyAllToolPolicy,
+} from "./default-capabilities.js";
 export {
 	NoopEventSink,
 	PassthroughContextStrategy,

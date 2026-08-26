@@ -11,6 +11,7 @@ Vetta 平台无关的 Coding Tool 协议包。包根与 `@vetta/runtime-tools/co
 - 不访问环境的并发执行 Gate
 - 可选的 Coding Tool Catalog 观测 Publisher；仅发布操作、工具名与版本，不发布撤销原因或调用内容
 - Turn-bound Configuration Decorator；组合原生或 Legacy Tool 的既有 binding/release，而不要求所有 Tool 实现配置协议
+- 可发布的 `GenerationalCodingToolCatalog`；新 Turn 读取新 Catalog，已租赁 Turn 保留旧 binding，释放后自动退休
 
 本包不拥有具体工具、TypeBox 输入 Schema、模型可见工具描述，也不访问文件系统、进程、
 网络、Electron 或宿主全局状态。Node 环境中的 `read`、`write`、`edit`、`bash`、
@@ -30,6 +31,9 @@ createCodingToolsFeature({
 平台 Runtime 创建具体 Registration 并注入 Host Port；产品组合根只选择平台实现与产品策略。
 普通 Registry 变化只影响后续 Turn，活动 Turn 使用已租赁的稳定 Binding；显式 hard revoke
 会使旧 Binding 失效并协作取消在途执行。
+
+需要整体替换一组 Tool（例如执行模式切换）时，将各代 Registry 包装进 `GenerationalCodingToolCatalog` 并调用
+`publish()`。仍有 lease 时，新旧 Catalog 不得复用相同 binding identity；实现会 fail-fast，避免旧 Turn 意外执行新 handler。
 
 Tool 配置是可选能力：没有配置项的 Tool 保持原注册路径；可修改定义的 Tool 使用 `native`，
 旧实现通过 `adapter` 在执行边界转换，无法修改的 MCP/黑盒 Tool 可由 Host 使用 `host-policy`

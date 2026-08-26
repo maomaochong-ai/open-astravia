@@ -4,6 +4,7 @@ import {
 	type ConversationScenario,
 	type InitializationRollbackTask,
 	RuntimeModel,
+	type RuntimeObservationPublisher,
 	type RuntimeResourceContext,
 } from "@vetta/runtime-core";
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
@@ -46,6 +47,7 @@ export interface CodingAgentSessionContextAssemblyOptions {
 		sessionPath: string,
 	) => Promise<CodingAgentConversationSessionPathAssessment>;
 	readonly deferRollback: (task: InitializationRollbackTask) => void;
+	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
 export interface CodingAgentSessionContextAssembly {
@@ -123,6 +125,7 @@ export function createCodingAgentSessionContextAssembly(
 				...(task.exitCode === undefined ? {} : { exitCode: task.exitCode }),
 			})),
 		}),
+		observationPublisher: options.observationPublisher,
 	});
 	options.deferRollback({
 		id: "context-runtime",
@@ -149,6 +152,7 @@ export function createCodingAgentSessionContextAssembly(
 		assessChildSessionPath: options.assessChildSessionPath,
 		hookRuntime,
 		resourceContext: options.resourceContext,
+		observationPublisher: options.observationPublisher,
 	});
 	if (subagentRuntime) {
 		const owner = peripherals.sessionExtensions.services.require(CODING_AGENT_SUBAGENT_RUNTIME_OWNER);

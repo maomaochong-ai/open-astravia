@@ -167,6 +167,7 @@ async function initializeSession<TOwnershipBinding>(
 				readConversationModelMessages: options.readConversationModelMessages,
 				createChildComposition: options.createChildComposition,
 				assessChildSessionPath: options.assessChildSessionPath,
+				observationPublisher: agentSessionObservations,
 				deferRollback: (task) => {
 					rollback.defer(task);
 				},
@@ -234,6 +235,7 @@ async function initializeSession<TOwnershipBinding>(
 			backgroundTasksAvailable: options.backgroundTasksAvailable,
 			askUserQuestion: sessionOptions.askUserQuestion,
 			scenario: options.scenario,
+			observationPublisher: agentSessionObservations,
 		});
 		rollback.defer({
 			id: "hook-session",

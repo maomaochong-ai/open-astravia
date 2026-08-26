@@ -5,6 +5,7 @@ import {
 	type ConversationScenario,
 	type RuntimeHostSessionAssembly,
 	type RuntimeHostSessionBackend,
+	type RuntimeObservationPublisher,
 	type RuntimeSession,
 	type RuntimeSessionCreateRequest,
 	runtimeError,
@@ -27,6 +28,7 @@ export interface CodingAgentSessionBackendOptions {
 	readonly enableSubagents: boolean;
 	readonly serverUrl?: string;
 	readonly retrySettings?: CodingAgentRuntimeHostRetrySettings;
+	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
 /**
@@ -59,7 +61,12 @@ export class CodingAgentSessionBackend implements RuntimeHostSessionBackend {
 			throw new Error(`RuntimeHost assembly is incomplete: ${assessment.missingPorts.join(", ")}`);
 		}
 
-		return withCodingAgentRuntimeHostRetry(session, assessment.assembly, this.retrySettings);
+		return withCodingAgentRuntimeHostRetry(
+			session,
+			assessment.assembly,
+			this.retrySettings,
+			this.options.observationPublisher,
+		);
 	}
 
 	private toSessionOptions(request: RuntimeSessionCreateRequest): CodingAgentRuntimeSessionOptions {

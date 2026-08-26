@@ -135,6 +135,10 @@ export {
 	RUNTIME_HOST_SESSION_PORT_NAMES,
 } from "./session-backend.js";
 export { mapRuntimeSessionObservationEvent } from "./session-events.js";
+export {
+	createRuntimeSessionExtensionHost,
+	type RuntimeSessionExtensionSource,
+} from "./session-extension-host.js";
 export { RuntimeSessionHostInteractionBroker } from "./session-host-interaction-broker.js";
 export type {
 	RuntimeContextCompactionRequest,
@@ -184,6 +188,11 @@ export {
 	type RuntimeSessionMarkerIndex,
 	type RuntimeSessionValueIndex,
 } from "./session-resource-index.js";
+export {
+	DeferredRuntimeRetryEventStream,
+	type RuntimeHostSessionRetryOptions,
+	withRuntimeHostSessionRetry,
+} from "./session-retry.js";
 export type {
 	RuntimeHostPathServices,
 	RuntimeQueueSidecarStore,

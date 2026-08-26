@@ -1,4 +1,6 @@
 import type { Api, Model } from "@vetta/ai";
+import { type RuntimeObservationPublisher, runtimeObservationFailure } from "@vetta/runtime-core";
+import { CODING_AGENT_COMPACTION_PREFIRE_OBSERVATION } from "../../runtime-contracts/context-observability.js";
 import type { CodingAgentContextRuntimeOptions } from "../../runtime-contracts/index.js";
 import type { CodingAgentSessionEntry as SessionEntry } from "../../sessions/index.js";
 import {
@@ -15,6 +17,7 @@ export interface CompactionPrefireCacheOptions {
 	readonly resolveApiKey: CodingAgentContextRuntimeOptions["resolveApiKey"];
 	readonly generateCompaction: NonNullable<CodingAgentContextRuntimeOptions["generateCompaction"]>;
 	readonly canAttempt: () => boolean;
+	readonly observations?: RuntimeObservationPublisher;
 }
 
 export class CompactionPrefireCache {
@@ -71,11 +74,16 @@ export class CompactionPrefireCache {
 			const result = await this.options.generateCompaction(preparation, model, apiKey, undefined, signal);
 			if (signal.aborted || this.disposed) return;
 			this.cache = { fingerprint, result };
-			console.info(
-				`[compaction] prefire cached (tokensBefore=${result.tokensBefore}, firstKept=${result.firstKeptEntryId})`,
-			);
-		} catch {
-			// Prefire is best-effort and does not affect the circuit breaker.
+			this.options.observations?.record(CODING_AGENT_COMPACTION_PREFIRE_OBSERVATION, {
+				phase: "cached",
+				tokensBefore: result.tokensBefore,
+			});
+		} catch (error) {
+			this.options.observations?.record(CODING_AGENT_COMPACTION_PREFIRE_OBSERVATION, {
+				phase: signal.aborted ? "cancelled" : "failed",
+				failure: runtimeObservationFailure(error, signal),
+			});
+			// Prefire is best-effort and does not affect the compaction circuit breaker.
 		}
 	}
 }

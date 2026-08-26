@@ -1,8 +1,10 @@
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
 import {
+	createRuntimeObservationPublisher,
 	InMemoryRuntimeSessionMarkerIndex,
 	InMemoryRuntimeSessionValueIndex,
 	type RuntimeModel,
+	type RuntimeObservationRecord,
 	type RuntimeResourceContext,
 	type RuntimeResources,
 } from "@vetta/runtime-core";
@@ -26,6 +28,7 @@ import type {
 	CodingAgentContextRuntime,
 	CodingAgentRuntimeToolRegistration,
 } from "../../src/runtime-contracts/index.js";
+import { CODING_AGENT_LIFECYCLE_ISSUE_OBSERVATION } from "../../src/runtime-contracts/lifecycle-observability.js";
 import type { CodingAgentConversationContextOverlay } from "../../src/sessions/projection/conversation-context-overlay.js";
 
 describe("Coding Agent Session Resource Lifecycle", () => {
@@ -38,6 +41,14 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 		let todoDisposals = 0;
 		let contextDisposals = 0;
 		const events: string[] = [];
+		const observations: RuntimeObservationRecord[] = [];
+		const observationPublisher = createRuntimeObservationPublisher({
+			port: {
+				record(observation) {
+					observations.push(observation);
+				},
+			},
+		});
 		const indexes = createIndexes();
 		const pluginMcpRuntime = {
 			async dispose() {
@@ -94,6 +105,7 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 		const hookRuntime = {
 			async runSessionEnd(cause: string) {
 				events.push(`end:${cause}`);
+				if (cause === "switch_session") throw new Error("private hook failure details");
 			},
 			markSessionStart(source: string) {
 				events.push(`start:${source}`);
@@ -145,6 +157,7 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 			knowledgeAvailable: true,
 			backgroundTasksAvailable: true,
 			scenario: "cli",
+			observationPublisher,
 		});
 		const prepared = lifecycle.prepareTurnCapabilityAssembly(turnCapabilityAssembly);
 		const resources = prepared.activate({
@@ -180,6 +193,16 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 		expect(indexes.extensionEventBridges.get("target")).toBe(extensionEvents);
 
 		await lifecycle.hookController.end("switch_session");
+		expect(observations).toHaveLength(1);
+		expect(observations[0]).toMatchObject({
+			token: CODING_AGENT_LIFECYCLE_ISSUE_OBSERVATION,
+			payload: {
+				operation: "session-end-hook",
+				cause: "switch_session",
+				failure: { category: "error", errorName: "Error" },
+			},
+		});
+		expect(JSON.stringify(observations[0])).not.toContain("private hook failure details");
 		lifecycle.hookController.start("resume");
 		await expect(prepared.dispose()).rejects.toThrow("transient release failure");
 		expect([turnDisposals, executionDisposals, pluginDisposals, todoDisposals, contextDisposals]).toEqual([

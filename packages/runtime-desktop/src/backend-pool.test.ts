@@ -10,7 +10,7 @@ import {
 } from "@vetta/coding-agent/composition";
 import type { EcosystemHookAdapterFactory } from "@vetta/coding-agent/hooks";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import { RuntimeHost } from "@vetta/runtime-core";
+import { RuntimeHost, RuntimeObservationHub } from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import { createInMemoryConversationPersistence } from "@vetta/runtime-node/conversation";
 import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
@@ -84,6 +84,51 @@ describe("DesktopRuntimeBackendPool", () => {
 		expect(runtime.getState(second.sessionId).sessionId).toBe(second.sessionId);
 		expect(runtime.getState(first.sessionId).scenario).toBe("batch");
 		expect(runtime.getState(second.sessionId).scenario).toBe("automation");
+	});
+
+	it("uses the RuntimeHost publisher as the sole Coding Agent observation upstream", async () => {
+		const cwd = await temporaryDirectory("desktop-runtime-observation-upstream-");
+		const applicationHub = new RuntimeObservationHub();
+		let observedRecordCount = 0;
+		applicationHub.attach(
+			{
+				record: () => {
+					observedRecordCount += 1;
+				},
+			},
+			{ id: "test.application-observations" },
+		);
+		const observationPublisher = applicationHub.publisher();
+		const onIssue = vi.fn();
+		let capturedOptions: CodingAgentRuntimeCompositionOptions | undefined;
+		const pool = new DesktopRuntimeBackendPool({
+			observationPublisher,
+			compositionDefaults: {
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
+				observationHub: {
+					parent: applicationHub,
+					maxPendingRecords: 32,
+					onIssue,
+				},
+			},
+			createComposition: async (options) => {
+				capturedOptions = options;
+				return await createCodingAgentRuntimeComposition(options);
+			},
+		});
+		const runtime = new RuntimeHost({ sessionBackend: pool, getDefaultExecutionMode: () => "full-access" });
+		pools.push(pool);
+		runtimes.push(runtime);
+
+		await expect(runtime.createSession({ cwd, model: MODEL, scenario: "batch" })).resolves.toMatchObject({
+			sessionId: expect.any(String),
+		});
+		expect(capturedOptions?.observationPublisher).toBe(observationPublisher);
+		expect(capturedOptions?.observationHub).toEqual({ maxPendingRecords: 32, onIssue });
+		await vi.waitFor(() => expect(observedRecordCount).toBeGreaterThan(0));
 	});
 
 	/**

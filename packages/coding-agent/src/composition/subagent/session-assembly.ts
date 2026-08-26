@@ -1,6 +1,13 @@
 import type { Message } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type { ConversationScenario, RuntimeResourceContext, RuntimeSession, SessionConfig } from "@vetta/runtime-core";
+import {
+	type ConversationScenario,
+	type RuntimeObservationPublisher,
+	type RuntimeResourceContext,
+	type RuntimeSession,
+	runtimeObservationFailure,
+	type SessionConfig,
+} from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
 import type {
@@ -13,6 +20,7 @@ import type {
 } from "@vetta/runtime-subagents";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import { CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION } from "../../runtime-contracts/subagent-observability.js";
 import type {
 	CodingAgentConversationSessionPathAssessment,
 	CodingAgentSubagentChildFactory,
@@ -91,6 +99,7 @@ export interface CodingAgentSubagentSessionAssemblyOptions {
 		"recordAdditionalContexts" | "runSubagentStart" | "runSubagentStop"
 	>;
 	readonly resourceContext: Pick<RuntimeResourceContext, "deliverAsyncContext" | "reportObservation">;
+	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
 /** 组装单个父 Session 的 Subagent 能力；Composition Root 只提供宿主端口。 */
@@ -135,9 +144,13 @@ export function createCodingAgentSubagentSessionAssembly(
 				options.pathPort,
 				options.assessChildSessionPath,
 			),
-		onRecoveryIssue: (message) => {
-			console.warn("[coding-agent-runtime] subagent recovery issue", message);
+		onRecoveryIssue: (_message) => {
+			observeSubagentIssue(options, "recovery", {
+				category: "error",
+				errorName: "SubagentRecoveryIssue",
+			});
 		},
+		onError: (error) => observeSubagentIssue(options, "coordinator", runtimeObservationFailure(error)),
 		onNotify: (agents) => {
 			const payload = buildSubagentNotification(agents);
 			void options.resourceContext
@@ -150,7 +163,7 @@ export function createCodingAgentSubagentSessionAssembly(
 					},
 				])
 				.catch((error: unknown) => {
-					console.warn("[coding-agent-runtime] failed to deliver subagent notification", error);
+					observeSubagentIssue(options, "notification-delivery", runtimeObservationFailure(error));
 				});
 		},
 		onUpdate: (agents) => {
@@ -161,10 +174,18 @@ export function createCodingAgentSubagentSessionAssembly(
 					source: "tool",
 				})
 				.catch((error: unknown) => {
-					console.warn("[coding-agent-runtime] failed to publish subagent observation", error);
+					observeSubagentIssue(options, "session-observation", runtimeObservationFailure(error));
 				});
 		},
 	});
+}
+
+function observeSubagentIssue(
+	options: CodingAgentSubagentSessionAssemblyOptions,
+	operation: "coordinator" | "recovery" | "notification-delivery" | "session-observation",
+	failure: ReturnType<typeof runtimeObservationFailure>,
+): void {
+	options.observationPublisher?.record(CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION, { operation, failure });
 }
 
 function formatCodingAgentSubagentTaskMessage(snapshot: SubagentSnapshot, message: string): string {

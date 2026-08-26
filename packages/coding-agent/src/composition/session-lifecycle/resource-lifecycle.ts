@@ -3,11 +3,13 @@ import {
 	type ConversationScenario,
 	RetryableCleanup,
 	type RuntimeAgentSessionActivationContext,
+	type RuntimeObservationPublisher,
 	type RuntimeResourceContext,
 	type RuntimeResources,
 	type RuntimeSessionAskUserQuestionCapability,
 	type RuntimeSessionMarkerIndex,
 	type RuntimeSessionValueIndex,
+	runtimeObservationFailure,
 } from "@vetta/runtime-core";
 import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
@@ -22,6 +24,7 @@ import type {
 	CodingAgentPluginMcpRuntime,
 	CodingAgentRuntimeToolRegistration,
 } from "../../runtime-contracts/index.js";
+import { CODING_AGENT_LIFECYCLE_ISSUE_OBSERVATION } from "../../runtime-contracts/lifecycle-observability.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
@@ -89,6 +92,7 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 	readonly backgroundTasksAvailable: boolean;
 	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
 	readonly scenario: ConversationScenario;
+	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
 export interface CodingAgentSessionResourceLifecycle {
@@ -120,7 +124,11 @@ export function createCodingAgentSessionResourceLifecycle(
 		try {
 			await options.hookRuntime.runSessionEnd(cause);
 		} catch (error) {
-			console.warn(`[ecosystem-hooks] SessionEnd failed during Runtime ${cause}`, error);
+			options.observationPublisher?.record(CODING_AGENT_LIFECYCLE_ISSUE_OBSERVATION, {
+				operation: "session-end-hook",
+				cause,
+				failure: runtimeObservationFailure(error),
+			});
 		}
 	};
 	const hookController: CodingAgentSessionHookController = {

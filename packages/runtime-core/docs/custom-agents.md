@@ -36,7 +36,7 @@ import {
 } from "@vetta/runtime-core/agents";
 import { RuntimeHost } from "@vetta/runtime-core";
 import {
-  PassthroughContextStrategy,
+  createDefaultRuntimeCapabilityDefinition,
   resolveModelCallFrame,
   type RuntimeTurnModelBindingProvider,
 } from "@vetta/runtime-core/kernel";
@@ -51,7 +51,7 @@ function createReviewerAgent(
       return {
         prepareSession() {
           return {
-            capabilities: {
+            capabilities: createDefaultRuntimeCapabilityDefinition({
               instructions: [
                 {
                   id: "reviewer.base",
@@ -59,12 +59,7 @@ function createReviewerAgent(
                   priority: 0,
                 },
               ],
-              features: [],
-              contextStrategy: new PassthroughContextStrategy(),
-              toolPolicy: { authorize: async () => false },
-              tokenBudget: 32_000,
-              reservedOutputTokens: 4_000,
-            },
+            }),
             modelBindingProvider,
           };
         },
@@ -116,6 +111,77 @@ try {
 
 后续代码块是在这个最小示例上的增量片段。`parseXxx()`、`createTenantClient()`、`safeTelemetry` 等未从 Runtime
 导出的名称代表宿主或产品需要实现的校验器、平台连接和 Adapter，并不是隐藏的 Runtime API。
+
+`createDefaultRuntimeCapabilityDefinition()` 是显式便利工厂，返回的仍是普通 `RuntimeCapabilityDefinition`：默认使用
+透传 Context、拒绝所有 Tool、32K token 预算和 4K 输出预留。它不会被 `defineRuntimeAgent()` 隐式注入，也不会形成
+特殊执行路径。需要 Tool 时必须同时贡献 Tool 并显式提供允许它的 `toolPolicy`；传入的普通字段会逐项覆盖默认值。
+
+## 配置产品无关自动重试
+
+Runtime 自动重试默认关闭。产品或宿主可以使用同一通用协调器，并把自己的设置来源与失败投影注入：
+
+```ts
+import {
+  ConfigurableRuntimeTurnRetryPolicy,
+  RuntimeTurnRetryCoordinator,
+} from "@vetta/runtime-core";
+
+const retry = new RuntimeTurnRetryCoordinator({
+  policy: new ConfigurableRuntimeTurnRetryPolicy({
+    readSettings: () => retrySettings.current,
+    setEnabled: (enabled) => retrySettings.update({ enabled }),
+  }),
+  observationPublisher: sessionObservations,
+  observationContext: { sessionId },
+});
+
+const result = await retry.run(
+  () => session.prompt(request),
+  () => session.retry(),
+  readProductTurnFailure,
+);
+```
+
+`readProductTurnFailure()` 必须返回已经校验的 `RuntimeFailure`。Runtime 负责单一 retry owner、指数退避、取消、
+`Retry-After` 和终止事件；产品仍负责设置存储、历史错误兼容与面向用户的事件投影。每次 retry 保持为新 Runtime Turn，
+因此会取得新的 Turn Snapshot。
+
+完整 RuntimeHost Assembly 可以用 `withRuntimeHostSessionRetry()` 装饰，它还会延迟失败尝试的 terminal error/lifecycle，
+直到重试成功或耗尽。`runtime.retry.lifecycle` 与 `runtime.retry.issue` Observation 只记录次数、延迟、失败 code/origin 和
+枚举停止原因，不记录错误正文或请求内容，可安全汇入日志、Trace、Metrics 或未来 UI。
+
+## 自定义 Context 与压缩
+
+最小 Agent 默认使用透传 Context。需要预算、裁剪或压缩时，实现普通 `ContextStrategy` 即可；Runtime 的 Turn Pipeline、
+Compaction Committer 和 Session Context Controller 会统一处理取消、持久化和手动压缩控制面，但不会规定摘要 Prompt、
+切点或 Provider。
+
+```ts
+import {
+  ConsecutiveFailureCircuitBreaker,
+  RuntimeContextUsageTracker,
+} from "@vetta/runtime-core/kernel";
+
+const usage = new RuntimeContextUsageTracker({
+  estimateDocumentTokens: (document) => estimateMyAgentDocument(document),
+});
+const compactionFailures = new ConsecutiveFailureCircuitBreaker({
+  maxConsecutiveFailures: 3,
+  resetAfterMs: 5 * 60_000,
+  now: clock.now,
+});
+
+const capabilities = createDefaultRuntimeCapabilityDefinition({
+  contextStrategy: myContextStrategy({ usage, compactionFailures }),
+  contextCompositionPublisher: usage,
+  observers: [usage],
+});
+```
+
+若 Host 希望 document 初始化/变更时同步 usage，还应把同一个 `usage` 注册为 Runtime Document Participant。估算函数、
+Context Strategy 和手动压缩实现都可以在下一 Definition revision 中整体替换；已经运行的 Session 继续使用其固定 revision，
+Session 内可热换的设置仍应在 Turn admission 绑定，避免同一 Turn 混代。熔断器只提供计数与 cooldown，不记录日志、选择
+错误类型或执行恢复；这些属于调用方策略。
 
 ## 同时运行多个平级主 Agent
 

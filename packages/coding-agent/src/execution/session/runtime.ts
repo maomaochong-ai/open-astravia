@@ -11,13 +11,11 @@ import {
 	buildBackgroundCommandNotification,
 	CODING_TOOL_AVAILABILITY_ERROR_CODES,
 	type CodingToolActivation,
-	CodingToolAvailabilityError,
 	type CodingToolAvailabilityErrorCode,
-	type CodingToolCatalog,
 	type CodingToolCatalogEntry,
-	type CodingToolCatalogSnapshot,
 	type CodingToolRegistration,
 	createCodingToolsFeature,
+	GenerationalCodingToolCatalog,
 	guardCodingToolRegistration,
 	InMemoryCodingToolRegistry,
 } from "@vetta/runtime-tools";
@@ -49,12 +47,13 @@ export class CodingAgentSessionExecutionRuntime {
 	readonly backgroundService: BackgroundCommandService;
 	readonly hostInteraction = new RuntimeSessionHostInteractionBroker();
 	readonly feature: AgentFeatureDefinition;
-	private readonly catalog: SwappableCodingToolCatalog;
+	private readonly catalog: GenerationalCodingToolCatalog;
 	private disposeTaskEvents: (() => void) | undefined;
 	private disposeTaskNotifications: (() => void) | undefined;
 	private readonly fullAccessRegistrations: readonly CodingToolRegistration[];
 	private readonly sourceBindings = new Map<string, CapabilityBinding | undefined>();
 	private mode: SessionExecutionMode;
+	private nextCatalogGeneration = 0;
 
 	constructor(private readonly options: CodingAgentSessionExecutionRuntimeOptions) {
 		this.mode = options.initialMode ?? "full-access";
@@ -67,7 +66,7 @@ export class CodingAgentSessionExecutionRuntime {
 		for (const toolName of SESSION_EXECUTION_TOOL_NAMES) {
 			this.sourceBindings.set(toolName, options.resolveToolEntry?.(toolName)?.binding);
 		}
-		const initialRegistry = new InMemoryCodingToolRegistry(
+		const initialRegistry = this.createModeRegistry(
 			this.buildModeRegistrations(this.mode, this.fullAccessRegistrations, {
 				mode: this.mode,
 				sessionId: options.readSessionId(),
@@ -75,11 +74,10 @@ export class CodingAgentSessionExecutionRuntime {
 				linuxBubblewrapPath: options.linuxBubblewrapPath,
 				macosSandboxExecPath: options.macosSandboxExecPath,
 			}),
-			{ sourceId: "coding-session-execution-tools" },
 		);
-		this.catalog = new SwappableCodingToolCatalog(initialRegistry, (toolName) =>
-			this.resolveAvailabilityErrorCode(toolName),
-		);
+		this.catalog = new GenerationalCodingToolCatalog(initialRegistry, {
+			resolveAvailabilityErrorCode: (toolName) => this.resolveAvailabilityErrorCode(toolName),
+		});
 		this.feature = createCodingToolsFeature({
 			id: SESSION_EXECUTION_FEATURE_ID,
 			catalog: this.catalog,
@@ -97,10 +95,8 @@ export class CodingAgentSessionExecutionRuntime {
 				session.state === "running" || session.state === "cancelling" || session.state === "recovery_required",
 			reconfigure: async (update) => {
 				const registrations = this.buildModeRegistrations(update.mode, this.fullAccessRegistrations, update);
-				const next = new InMemoryCodingToolRegistry(registrations, {
-					sourceId: "coding-session-execution-tools",
-				});
-				this.catalog.swap(next);
+				const next = this.createModeRegistry(registrations);
+				this.catalog.publish(next);
 				this.mode = update.mode;
 			},
 		};
@@ -229,87 +225,13 @@ export class CodingAgentSessionExecutionRuntime {
 			...taskRegistrations,
 		];
 	}
-}
 
-class SwappableCodingToolCatalog implements CodingToolCatalog {
-	private currentGeneration: SwappableCatalogGeneration;
-	private readonly generations = new Set<SwappableCatalogGeneration>();
-
-	constructor(
-		initial: InMemoryCodingToolRegistry,
-		private readonly resolveAvailabilityErrorCode: (toolName: string) => CodingToolAvailabilityErrorCode | undefined,
-	) {
-		this.currentGeneration = { catalog: initial, activeLeases: 0, retired: false };
-		this.generations.add(this.currentGeneration);
-	}
-
-	swap(next: InMemoryCodingToolRegistry): void {
-		this.currentGeneration.retired = true;
-		this.currentGeneration = { catalog: next, activeLeases: 0, retired: false };
-		this.generations.add(this.currentGeneration);
-		this.pruneGenerations();
-	}
-
-	snapshot(): CodingToolCatalogSnapshot {
-		return this.currentGeneration.catalog.snapshot();
-	}
-
-	acquireSnapshot(
-		context?: Parameters<CodingToolCatalog["acquireSnapshot"]>[0],
-	): ReturnType<CodingToolCatalog["acquireSnapshot"]> {
-		const generation = this.currentGeneration;
-		generation.activeLeases += 1;
-		const lease = generation.catalog.acquireSnapshot(context);
-		let released = false;
-		return {
-			snapshot: lease.snapshot,
-			release: async () => {
-				if (released) return;
-				released = true;
-				try {
-					await lease.release();
-				} finally {
-					generation.activeLeases -= 1;
-					this.pruneGenerations();
-				}
-			},
-		};
-	}
-
-	resolve(toolName: string): CodingToolCatalogEntry | undefined {
-		return this.currentGeneration.catalog.resolve(toolName);
-	}
-
-	async execute(
-		binding: Parameters<CodingToolCatalog["execute"]>[0],
-		request: Parameters<CodingToolCatalog["execute"]>[1],
-		implementation?: Parameters<CodingToolCatalog["execute"]>[2],
-	): ReturnType<CodingToolCatalog["execute"]> {
-		const errorCode = this.resolveAvailabilityErrorCode(binding.capabilityId);
-		if (errorCode === CODING_TOOL_AVAILABILITY_ERROR_CODES.REVOKED) {
-			throw new CodingToolAvailabilityError(errorCode, binding);
-		}
-		const generation = [...this.generations].find((candidate) => {
-			const entry = candidate.catalog.resolve(binding.capabilityId);
-			return entry ? sameBinding(entry.binding, binding) : false;
+	private createModeRegistry(registrations: readonly CodingToolRegistration[]): InMemoryCodingToolRegistry {
+		this.nextCatalogGeneration += 1;
+		return new InMemoryCodingToolRegistry(registrations, {
+			sourceId: `coding-session-execution-tools:${this.nextCatalogGeneration}`,
 		});
-		if (!generation) {
-			throw new CodingToolAvailabilityError(CODING_TOOL_AVAILABILITY_ERROR_CODES.UNAVAILABLE, binding);
-		}
-		return generation.catalog.execute(binding, request, implementation);
 	}
-
-	private pruneGenerations(): void {
-		for (const generation of this.generations) {
-			if (generation.retired && generation.activeLeases === 0) this.generations.delete(generation);
-		}
-	}
-}
-
-interface SwappableCatalogGeneration {
-	readonly catalog: InMemoryCodingToolRegistry;
-	activeLeases: number;
-	retired: boolean;
 }
 
 const SESSION_EXECUTION_TOOL_NAMES = ["bash", "shell", "read", "write", "edit", "task_output", "task_stop"] as const;

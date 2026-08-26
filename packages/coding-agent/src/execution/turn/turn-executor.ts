@@ -1,3 +1,4 @@
+import { readRuntimeFailure } from "@vetta/runtime-core";
 import { isRetryableRuntimeError } from "../failure-classification.js";
 import type {
 	CodingAgentTurnExecutor,
@@ -55,16 +56,18 @@ export function readCodingAgentTurnFailure(value: unknown): CodingAgentTurnFailu
 		typeof Reflect.get(error, "message") === "string"
 	) {
 		const message = Reflect.get(error, "message") as string;
-		const code = Reflect.get(error, "code");
-		const retryable = Reflect.get(error, "retryable");
 		const origin = Reflect.get(error, "origin");
-		const details = Reflect.get(error, "details");
+		const structured = readRuntimeFailure({
+			...(error as object),
+			origin:
+				origin === "runtime" || origin === "provider" || origin === "tool" || origin === "mcp" ? origin : "runtime",
+		});
+		if (structured) return structured;
 		return {
-			code: typeof code === "string" ? code : "TURN_FAILED",
+			code: "TURN_FAILED",
 			message,
-			retryable: typeof retryable === "boolean" ? retryable : isRetryableRuntimeError(message),
-			...(origin === "runtime" || origin === "provider" || origin === "tool" || origin === "mcp" ? { origin } : {}),
-			...(isFailureDetails(details) ? { details } : {}),
+			retryable: isRetryableRuntimeError(message),
+			origin: "runtime" as const,
 		};
 	}
 	if (Reflect.get(value, "status") !== "completed" || Reflect.get(value, "stopReason") !== "error") {
@@ -72,7 +75,7 @@ export function readCodingAgentTurnFailure(value: unknown): CodingAgentTurnFailu
 	}
 	const messages = Reflect.get(value, "messages");
 	if (!Array.isArray(messages)) {
-		return { code: "LEGACY_ASSISTANT_ERROR", message: "Request failed", retryable: false };
+		return { code: "LEGACY_ASSISTANT_ERROR", message: "Request failed", retryable: false, origin: "runtime" };
 	}
 	let assistant: unknown;
 	for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -89,28 +92,10 @@ export function readCodingAgentTurnFailure(value: unknown): CodingAgentTurnFailu
 	}
 	const errorMessage = assistant ? Reflect.get(assistant, "errorMessage") : undefined;
 	const message = typeof errorMessage === "string" && errorMessage.length > 0 ? errorMessage : "Request failed";
-	return { code: "LEGACY_ASSISTANT_ERROR", message, retryable: isRetryableRuntimeError(message) };
-}
-
-function isFailureDetails(value: unknown): value is CodingAgentTurnFailure["details"] {
-	if (typeof value !== "object" || value === null) return false;
-	const candidate = value as Record<string, unknown>;
-	return (
-		(candidate.statusCode === undefined || typeof candidate.statusCode === "number") &&
-		(candidate.provider === undefined || typeof candidate.provider === "string") &&
-		(candidate.modelId === undefined || typeof candidate.modelId === "string") &&
-		(candidate.requestId === undefined || typeof candidate.requestId === "string") &&
-		(candidate.providerCode === undefined || typeof candidate.providerCode === "string") &&
-		(candidate.phase === undefined ||
-			["resolve", "request", "response", "stream", "decode"].includes(candidate.phase as string)) &&
-		(candidate.url === undefined || typeof candidate.url === "string") &&
-		(candidate.responseHeaders === undefined || isSafeHeaders(candidate.responseHeaders)) &&
-		(candidate.responseBodyPreview === undefined || typeof candidate.responseBodyPreview === "string") &&
-		(candidate.retryAfterMs === undefined || typeof candidate.retryAfterMs === "number")
-	);
-}
-
-function isSafeHeaders(value: unknown): value is Readonly<Record<string, string>> {
-	if (typeof value !== "object" || value === null) return false;
-	return Object.values(value).every((entry) => typeof entry === "string");
+	return {
+		code: "LEGACY_ASSISTANT_ERROR",
+		message,
+		retryable: isRetryableRuntimeError(message),
+		origin: "runtime",
+	};
 }

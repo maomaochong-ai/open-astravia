@@ -3,7 +3,12 @@ import { Type } from "@sinclair/typebox";
 import type { Api, Message, Model } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
 import { emptyHookDispatchOutcome } from "@vetta/ecosystem-adapter";
-import type { RuntimeResourceContext, RuntimeSession } from "@vetta/runtime-core";
+import {
+	createRuntimeObservationPublisher,
+	type RuntimeObservationRecord,
+	type RuntimeResourceContext,
+	type RuntimeSession,
+} from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { SubagentTypeRegistry } from "@vetta/runtime-subagents";
@@ -14,6 +19,7 @@ import {
 	type CodingAgentSubagentChildFactory,
 	createCodingAgentSubagentSessionAssembly,
 } from "../../src/composition/subagent/session-assembly.js";
+import { CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION } from "../../src/runtime-contracts/subagent-observability.js";
 
 describe("Coding Agent Subagent session assembly", () => {
 	it("does not assemble the capability when it is disabled", () => {
@@ -179,6 +185,53 @@ describe("Coding Agent Subagent session assembly", () => {
 
 		await runtime.dispose();
 		expect(dispose).toHaveBeenCalledOnce();
+	});
+
+	it("reports asynchronous delivery failures through the safe observation publisher", async () => {
+		const records: RuntimeObservationRecord[] = [];
+		const runtime = createCodingAgentSubagentSessionAssembly({
+			...baseOptions(),
+			observationPublisher: createRuntimeObservationPublisher({
+				port: {
+					record: (record) => {
+						records.push(record);
+					},
+				},
+			}),
+			resourceContext: {
+				async deliverAsyncContext() {
+					throw new Error("secret notification content");
+				},
+				async reportObservation() {},
+			},
+			createChildFactory: () => ({ create: async () => completedChild("child-1") }),
+		});
+		if (!runtime) throw new Error("Expected enabled Subagent runtime");
+		const spawnTool = runtime.readTools().find(({ name }) => name === "spawn_agent");
+		if (!spawnTool) throw new Error("Expected spawn_agent tool");
+
+		await spawnTool.execute({
+			sessionId: "parent",
+			turnId: "turn-1",
+			toolCallId: "spawn-1",
+			signal: new AbortController().signal,
+			input: { task_name: "observe_failure", message: "Run.", agent_type: "general" },
+		});
+		await vi.waitFor(() =>
+			expect(records).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						token: CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION,
+						payload: {
+							operation: "notification-delivery",
+							failure: { category: "error", errorName: "Error" },
+						},
+					}),
+				]),
+			),
+		);
+		expect(JSON.stringify(records)).not.toContain("secret notification content");
+		await runtime.dispose();
 	});
 
 	it("reads the live parent MCP view at every child creation boundary", async () => {

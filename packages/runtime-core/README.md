@@ -24,6 +24,7 @@ composition is Node-oriented and is not part of this portable boundary.
 - product-neutral Runtime Configuration Center under `./configuration`, including Definition revisions/leases,
   Source-owned dynamic Layer generations, ordered resolution and immutable snapshots
 - peer Agent Instance/Session routing with isolated capability compilation, Session Extensions and explicit next-Turn rollout
+- standard Session Extension-to-RuntimeHost adapter for typed endpoints and late-subscriber initial observations
 - type-safe, failure-isolated observation ports, hierarchical Hub routing and scoped Agent/Session/Turn identity under `./observation`
 - privacy-safe `runtime.host.lifecycle` observations for Session disposal and owned-resource shutdown failures
 - acquire/release Runtime Snapshot lifecycle with atomic Feature-topology switching
@@ -48,6 +49,8 @@ composition is Node-oriented and is not part of this portable boundary.
 - backend-provided Session Configuration Controller for input queue modes, plugin runtime configuration and agent mode
 - process-level Session Catalog, direct file history reader and shared model controller ports
 - runtime-owned tool execution and policy contracts
+- explicit safe default capability definitions and product-neutral retry coordination
+- reusable Context usage tracking and clock-injected consecutive-failure protection without prescribing a compaction policy
 - host ports for path normalization, directory preparation, queue snapshot persistence and sandbox grant storage
 
 ## What It Does Not Own
@@ -91,6 +94,10 @@ composition is Node-oriented and is not part of this portable boundary.
 - `RuntimeSessionCatalog`, `RuntimeSessionFileHistoryReader` and `RuntimeSharedModelController` for process-level services
 - `RuntimeHostSessionAssembly` and `RuntimeHostSessionBackend` for explicit port-only composition-root capability delivery
 - `RuntimeSession` and `RuntimeSessionCoreAssembly` for Kernel-backed session execution and host capabilities
+- `RuntimeTurnRetryCoordinator`, `ConfigurableRuntimeTurnRetryPolicy` and `withRuntimeHostSessionRetry` for
+  product-neutral retry state, backoff, cancellation and host event ordering
+- `RuntimeContextUsageTracker` and `ConsecutiveFailureCircuitBreaker` for reusable Context state and failure protection;
+  products still own document projection, token estimation and compaction algorithms
 - `RuntimeSessionProjection` for synchronous Conversation Document and host state projection
 - `RuntimeModelRuntime` and `RuntimeModel` for shared Controller/View/State/Turn model state
 - `@vetta/runtime-core/conversation` for the tree-shaped history read model, reader port and host history projection
@@ -101,7 +108,7 @@ composition is Node-oriented and is not part of this portable boundary.
 - shared runtime error helpers
 - `@vetta/runtime-core/kernel` for the new `AgentSession`, `TurnPipeline`,
   `RuntimeCapabilityDefinition`, `FeatureCompiler`, `RuntimeCapabilityComposition`,
-  `AtomicRuntimeSnapshotProvider`, `AgentCoreTurnEngine` and Port contracts
+  `AtomicRuntimeSnapshotProvider`, `AgentCoreTurnEngine`, `createDefaultRuntimeCapabilityDefinition()` and Port contracts
 
 ## Multi-Agent Definition Example
 
@@ -114,20 +121,19 @@ composition is Node-oriented and is not part of this portable boundary.
 ```ts
 import { RuntimeHost } from "@vetta/runtime-core";
 import { defineRuntimeAgent } from "@vetta/runtime-core/agents";
+import { createDefaultRuntimeCapabilityDefinition } from "@vetta/runtime-core/kernel";
 
 const reviewer = defineRuntimeAgent({
   id: "reviewer",
   createInstance: ({ observationPublisher }) => ({
     prepareSession: ({ observationPublisher: sessionObservations }) => ({
-      capabilities: {
+      capabilities: createDefaultRuntimeCapabilityDefinition({
         instructions: [{ id: "reviewer.base", content: "Review the change.", priority: 0 }],
         features: [reviewTools, reviewMcp],
         contextStrategy,
         toolPolicy,
-        tokenBudget: 32_000,
-        reservedOutputTokens: 4_000,
         observationPublisher: sessionObservations,
-      },
+      }),
       modelBindingProvider,
       sessionExtensions: [reviewStateExtension],
     }),

@@ -14,6 +14,7 @@ import type {
 	ConversationScenario,
 	RuntimeHostSessionAssembly,
 	RuntimeHostSessionBackend,
+	RuntimeObservationPublisher,
 	RuntimeSessionCreateRequest,
 } from "@vetta/runtime-core";
 import { RetryableCleanup, RetryableCloseController } from "@vetta/runtime-core";
@@ -52,6 +53,11 @@ export type DesktopCodingAgentRuntimeCompositionDefaults = Omit<
 
 export interface DesktopRuntimeBackendPoolOptions {
 	readonly compositionDefaults: DesktopCodingAgentRuntimeCompositionDefaults;
+	/**
+	 * RuntimeHost-scoped publisher used by product observations and retry diagnostics.
+	 * When provided, it is the sole upstream and overrides a default observationHub parent while preserving local Hub behavior.
+	 */
+	readonly observationPublisher?: RuntimeObservationPublisher;
 	readonly createHookAdapterFactories?: (
 		scope: DesktopRuntimeHookScope,
 	) => NonNullable<CodingAgentRuntimeCompositionOptions["additionalHookAdapterFactories"]>;
@@ -219,8 +225,10 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 			cwd: scope.cwd,
 			agentDir: scope.agentDir,
 		});
+		const observationOptions = resolveCompositionObservationOptions(this.options);
 		const composition = await this.createComposition({
 			...this.options.compositionDefaults,
+			...observationOptions,
 			modelInputImageProcessor:
 				this.options.compositionDefaults.modelInputImageProcessor ?? nodeModelInputImageProcessor,
 			ocrMaxConcurrent:
@@ -264,6 +272,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 				scenario: scope.scenario,
 				enableSubagents: scope.enableSubagents,
 				serverUrl: scope.serverUrl,
+				observationPublisher: this.options.observationPublisher,
 			}),
 		};
 	}
@@ -288,6 +297,21 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		this.mcpSources.set(key, created);
 		return created;
 	}
+}
+
+function resolveCompositionObservationOptions(
+	options: DesktopRuntimeBackendPoolOptions,
+): Pick<CodingAgentRuntimeCompositionOptions, "observationHub" | "observationPublisher"> {
+	const observationPublisher = options.observationPublisher ?? options.compositionDefaults.observationPublisher;
+	const observationHub = options.compositionDefaults.observationHub;
+	if (!options.observationPublisher || !observationHub?.parent) {
+		return {
+			...(observationPublisher ? { observationPublisher } : {}),
+			...(observationHub ? { observationHub } : {}),
+		};
+	}
+	const { parent: _overriddenParent, ...localHubOptions } = observationHub;
+	return { observationPublisher: options.observationPublisher, observationHub: localHubOptions };
 }
 
 function resolveRuntimeScope(request: RuntimeSessionCreateRequest): DesktopRuntimeScope {

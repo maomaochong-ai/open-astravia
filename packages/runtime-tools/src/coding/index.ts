@@ -32,6 +32,10 @@ export {
 	type CodingToolsFeatureOptions,
 	createCodingToolsFeature,
 } from "./coding-tools-feature.js";
+export {
+	GenerationalCodingToolCatalog,
+	type GenerationalCodingToolCatalogOptions,
+} from "./generational-coding-tool-catalog.js";
 export * from "./host/index.js";
 export {
 	CODING_IMAGE_CONFIGURATION,

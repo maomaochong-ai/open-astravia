@@ -8,6 +8,9 @@
 
 ## 决策
 
+`SessionExtensionComposition` 是初始化、贡献、Endpoint、初始 Observation 与释放的唯一所有者。需要暴露给 RuntimeHost 时，
+统一使用 `createRuntimeSessionExtensionHost()` 投影事件 source，不在产品包重复 Endpoint 转发 Adapter。
+
 在 `@vetta/runtime-core/session-extensions` 定义平台与产品无关的 Session Extension 合同：
 
 - `SessionExtensionDefinition` 声明稳定 ID、依赖、冲突和实例工厂；Composition 按依赖拓扑确定性初始化。

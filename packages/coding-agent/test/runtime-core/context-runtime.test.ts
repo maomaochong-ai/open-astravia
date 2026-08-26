@@ -698,7 +698,7 @@ describe("DefaultCodingAgentContextRuntime", () => {
 			timestamp: 1,
 		};
 
-		await runtime.observe(event);
+		await runtime.observe(event, new AbortController().signal);
 
 		expect(runtime.readUsage(1_000)).toEqual({ tokens: 250, contextWindow: 1_000, percent: 25 });
 	});

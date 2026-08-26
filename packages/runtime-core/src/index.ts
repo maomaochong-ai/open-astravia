@@ -86,8 +86,17 @@ export type {
 	RuntimeFailureDetails,
 	RuntimeFailureOrigin,
 } from "./failure-contract.js";
-export { runtimeFailureFromAIErrorDetails, runtimeFailureFromError } from "./failure-contract.js";
+export { readRuntimeFailure, runtimeFailureFromAIErrorDetails, runtimeFailureFromError } from "./failure-contract.js";
+export {
+	ConsecutiveFailureCircuitBreaker,
+	type ConsecutiveFailureCircuitBreakerOptions,
+	type ConsecutiveFailureCircuitBreakerSnapshot,
+	type RuntimeContextUsage,
+	RuntimeContextUsageTracker,
+	type RuntimeContextUsageTrackerOptions,
+} from "./kernel/index.js";
 export * from "./observation/index.js";
+export * from "./retry/index.js";
 export type {
 	RuntimeExecutionObservationEvent,
 	RuntimeMessageEnvelope,
@@ -149,6 +158,7 @@ export type {
 	RuntimeHostSessionBackendRoute,
 	RuntimeHostSessionBackendRouteDecision,
 	RuntimeHostSessionPortName,
+	RuntimeHostSessionRetryOptions,
 	RuntimeModelCatalog,
 	RuntimeModelCredentialResolver,
 	RuntimeModelOptions,
@@ -188,6 +198,7 @@ export type {
 	RuntimeSessionExecutionObservation,
 	RuntimeSessionExecutionObservationStream,
 	RuntimeSessionExtensionHost,
+	RuntimeSessionExtensionSource,
 	RuntimeSessionFileHistoryReader,
 	RuntimeSessionHistoryController,
 	RuntimeSessionHistoryReader,
@@ -227,6 +238,8 @@ export {
 	ComposedRuntimeFactory,
 	CompositeRuntimeSessionCatalog,
 	CompositeRuntimeSessionFileHistoryReader,
+	createRuntimeSessionExtensionHost,
+	DeferredRuntimeRetryEventStream,
 	InitializationRollbackScope,
 	InMemoryRuntimeSessionMarkerIndex,
 	InMemoryRuntimeSessionValueIndex,
@@ -250,6 +263,7 @@ export {
 	RuntimeSessionProjection,
 	RuntimeSessionTransitionCleanup,
 	waitForRuntimeSessionIdle,
+	withRuntimeHostSessionRetry,
 } from "./runtime-host/index.js";
 export * from "./session-extensions/index.js";
 export type {

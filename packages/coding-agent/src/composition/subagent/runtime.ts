@@ -60,6 +60,7 @@ export interface CodingAgentSubagentRuntimeOptions {
 	readonly formatInitialMessage?: (snapshot: SubagentSnapshot, message: string) => string;
 	readonly validateRecoveredChild?: (snapshot: SubagentSnapshot) => Promise<string | undefined>;
 	readonly onRecoveryIssue?: (message: string) => void;
+	readonly onError?: (error: unknown, operation: string) => void;
 }
 
 /**
@@ -84,6 +85,7 @@ export class CodingAgentSubagentRuntime implements CodingAgentSubagentWorkRuntim
 			maxConcurrent: options.maxConcurrent,
 			lifecycle: options.lifecycle,
 			formatInitialMessage: options.formatInitialMessage,
+			onError: options.onError,
 			onNotify: options.onNotify,
 			onUpdate: (agents) => {
 				this.persistence.recordSnapshots(agents);

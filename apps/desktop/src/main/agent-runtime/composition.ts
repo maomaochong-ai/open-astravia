@@ -1,7 +1,10 @@
 import { join } from "node:path";
 import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
 import {
+	CODING_AGENT_COMPACTION_PREFIRE_OBSERVATION,
+	CODING_AGENT_LIFECYCLE_ISSUE_OBSERVATION,
 	CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION,
+	CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION,
 	createCodingAgentMemoryRolloverRuntime,
 	publishCodingAgentExecutionRuntimeDefinition,
 } from "@vetta/coding-agent/composition";
@@ -18,10 +21,12 @@ import {
 	CompositeRuntimeSessionFileHistoryReader,
 	RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
 	RUNTIME_HOST_LIFECYCLE_OBSERVATION,
+	RUNTIME_TURN_RETRY_LIFECYCLE_OBSERVATION,
 	type RuntimeAgentRuntime,
 	RuntimeHost,
 	type RuntimeHostSessionBackendRouteDecision,
 	RuntimeObservationHub,
+	type RuntimeObservationPublisher,
 } from "@vetta/runtime-core";
 import {
 	createDesktopHistoricalSessionFormat,
@@ -62,11 +67,13 @@ import { createDesktopPluginHookAdapterFactory } from "../plugins/coding-agent-h
 import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "../sandbox/windows-binary-resolver.js";
+import { createCodingAgentObservationLogPort } from "./coding-agent-observation-log-port.js";
 import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./host-services.js";
 import { createDesktopMcpSupervisor } from "./mcp-supervisor.js";
 import { getDesktopProviderObservationRuntime } from "./provider-observation.js";
 import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
 import { createRuntimeLifecycleLogPort } from "./runtime-lifecycle-log-port.js";
+import { createRuntimeRetryLogPort } from "./runtime-retry-log-port.js";
 import { createSessionInitializationLogPort } from "./session-initialization-log-port.js";
 
 const log = getAppLogger("runtime");
@@ -82,6 +89,18 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	observationHub.attach(createRuntimeLifecycleLogPort(log), {
 		id: "desktop.runtime-lifecycle-log",
 		domains: [RUNTIME_AGENT_LIFECYCLE_OBSERVATION.domain, RUNTIME_HOST_LIFECYCLE_OBSERVATION.domain],
+	});
+	observationHub.attach(createRuntimeRetryLogPort(log), {
+		id: "desktop.runtime-retry-log",
+		domains: [RUNTIME_TURN_RETRY_LIFECYCLE_OBSERVATION.domain],
+	});
+	observationHub.attach(createCodingAgentObservationLogPort(log), {
+		id: "desktop.coding-agent-observation-log",
+		domains: [
+			CODING_AGENT_COMPACTION_PREFIRE_OBSERVATION.domain,
+			CODING_AGENT_LIFECYCLE_ISSUE_OBSERVATION.domain,
+			CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION.domain,
+		],
 	});
 	const platformServices = createDesktopRuntimeHostPlatformServices();
 	const modelRuntime = getOrCreateSharedModelRuntime();
@@ -105,8 +124,12 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		conversationCatalog,
 		(sessionPath) => !isSessionPathInDirectory(sessionPath, DEFAULT_IM_CONVERSATION_SESSION_DIR),
 	);
-	const createRuntimeBackendPool = (agentRuntime: RuntimeAgentRuntime) =>
+	const createRuntimeBackendPool = (
+		agentRuntime: RuntimeAgentRuntime,
+		observationPublisher: RuntimeObservationPublisher,
+	) =>
 		new DesktopRuntimeBackendPool({
+			observationPublisher,
 			compositionDefaults: {
 				agentRuntime: { runtime: agentRuntime },
 				modelRegistry: modelRuntime,
@@ -129,7 +152,6 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 					});
 				},
 				observationHub: {
-					parent: observationHub,
 					onIssue: (issue) => log.warn("[runtime-observation] coding agent hub issue", issue),
 				},
 				...(providerObservationRuntime ? { streamFn: providerObservationRuntime.streamFn } : {}),
@@ -182,9 +204,9 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		sandboxHostPath,
 		serverUrl: DEFAULT_SERVER_URL,
 		observationPort: observationHub,
-		createSessionBackend: ({ agents }) => {
+		createSessionBackend: ({ agents, observationPublisher }) => {
 			publishCodingAgentExecutionRuntimeDefinition(agents);
-			const runtimeBackendPool = createRuntimeBackendPool(agents);
+			const runtimeBackendPool = createRuntimeBackendPool(agents, observationPublisher);
 			void runtimeBackendPool.prewarmMcp({ cwd: DEFAULT_CONVERSATION_CWD }).catch((error: unknown) => {
 				log.warn("[agent-runtime] default conversation MCP prewarm failed", error);
 			});
