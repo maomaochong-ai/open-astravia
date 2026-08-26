@@ -161,7 +161,7 @@ workspace 包声明解析。因此，上游源码修改但 `dist/*.d.ts` 尚未�
 
 ## CI
 
-`.github/workflows/quality.yml` 负责通用 TypeScript 质量门禁：冻结依赖安装、`bun run check`、质量脚本测试、Runtime 合同检查，并在 Ubuntu 与 Windows 上顺序运行受影响 workspace 及其可测下游。单元测试 Job 会显式安装真实 `ripgrep`，用于验证 Runtime Node 的 `grep` / `glob` 进程合同，不依赖 GitHub Runner 镜像碰巧预装该工具。完整 Git 历史用于计算 PR base；根配置、锁文件或质量脚本变化会在两个平台运行全部 workspace 测试。
+`.github/workflows/quality.yml` 负责通用 TypeScript 质量门禁：冻结依赖安装、`bun run check`、质量脚本测试、Runtime 合同检查，并在 Ubuntu、macOS 与 Windows 上顺序运行受影响 workspace 及其可测下游。单元测试 Job 会显式安装真实 `ripgrep`，用于验证 Runtime Node 的 `grep` / `glob` 进程合同，不依赖 GitHub Runner 镜像碰巧预装该工具。完整 Git 历史用于计算 PR base；根配置、锁文件或质量脚本变化会在三个平台运行全部 workspace 测试。
 
 非 Bun workspace 由独立的 path-filtered workflow 覆盖：`.github/workflows/im-gateway.yml` 对 Go Gateway 执行 tidy、vet、build、test、接口纪律和 golangci-lint；`.github/workflows/mobile.yml` 对 Kotlin Mobile 执行 Android host tests 和 debug APK 构建。它们只在分支 push 或 PR 中对应目录或 workflow 自身变化时运行，不响应 tag push，也不把 Go/Kotlin 生命周期伪装成 JavaScript workspace 任务。
 
@@ -191,7 +191,7 @@ Windows、macOS、Linux runner 上真实安装基线包，驱动现有 updater �
 应用日志和升级状态文件。它使用独立的 `desktop-test` Environment，不会触碰 stable。当前 GitHub macOS runner 只验收
 其实际架构；macOS arm64 需要额外的自持 runner 矩阵。
 
-单元测试按包顺序执行，不使用根 workspace 的无界并发扇出；这会牺牲少量总耗时，但能避免多个 Vitest 进程同时争用 CPU、临时目录和子进程而产生假超时。包内测试若消费自身生成物，由该包的 `test` 脚本先生成（例如 `vetta-ui-design` 的独立 history runner），不把叶子包完整制品构建混入通用依赖预构建。CLI 的 Windows 进程型测试进一步按文件串行，避免多个 Node、Bun、MCP 与 shell 子进程争用 Runner 资源。平台相关行为至少由 Ubuntu 与 Windows 两个门禁覆盖。
+单元测试按包顺序执行，不使用根 workspace 的无界并发扇出；这会牺牲少量总耗时，但能避免多个 Vitest 进程同时争用 CPU、临时目录和子进程而产生假超时。包内测试若消费自身生成物，由该包的 `test` 脚本先生成（例如 `vetta-ui-design` 的独立 history runner），不把叶子包完整制品构建混入通用依赖预构建。CLI 的 Windows 进程型测试进一步按文件串行，避免多个 Node、Bun、MCP 与 shell 子进程争用 Runner 资源。平台相关行为至少由 Ubuntu、macOS 与 Windows 三个平台门禁覆盖。
 
 ## 与 OpenClaw 的对应关系（有意不做的）
 

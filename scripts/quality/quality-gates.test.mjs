@@ -278,10 +278,11 @@ describe("CI unit test coverage", () => {
 	const mobileWorkflow = readFileSync(join(repoRoot, ".github/workflows/mobile.yml"), "utf8");
 	const rootManifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 
-	it("runs affected workspace tests on Linux and Windows with complete Git history", () => {
-		expect(workflow).toContain("os: [ubuntu-latest, windows-latest]");
+	it("runs affected workspace tests on Linux, macOS, and Windows with complete Git history", () => {
+		expect(workflow).toContain("os: [ubuntu-latest, macos-latest, windows-latest]");
 		expect(workflow).toContain("fetch-depth: 0");
 		expect(workflow).toContain("sudo apt-get update && sudo apt-get install --yes ripgrep");
+		expect(workflow).toContain("brew install ripgrep");
 		expect(workflow).toContain("choco install ripgrep --yes --no-progress");
 		expect(workflow).toContain("bun run test:changed --base");
 	});
