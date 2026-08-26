@@ -20,10 +20,12 @@ composition is Node-oriented and is not part of this portable boundary.
 - state snapshots and session history listing
 - isolated Session state machine, Typed Turn Pipeline and Feature Compiler under `./kernel`
 - process-level peer Agent Definition registry with immutable revisions, leases and dynamic Source synchronization under `./agents`
+- one `RuntimeHost` lifecycle root that owns Conversation Sessions, factory-created Backends, the Agent control plane and a directly injected root Observation Port
 - product-neutral Runtime Configuration Center under `./configuration`, including Definition revisions/leases,
   Source-owned dynamic Layer generations, ordered resolution and immutable snapshots
 - peer Agent Instance/Session routing with isolated capability compilation, Session Extensions and explicit next-Turn rollout
 - type-safe, failure-isolated observation ports, hierarchical Hub routing and scoped Agent/Session/Turn identity under `./observation`
+- privacy-safe `runtime.host.lifecycle` observations for Session disposal and owned-resource shutdown failures
 - acquire/release Runtime Snapshot lifecycle with atomic Feature-topology switching
 - per-model-call prompt and tool materialization through Model Call Contribution Providers
 - `AgentCoreTurnEngine` adapter for the `@vetta/agent-core` model and tool loop
@@ -66,7 +68,7 @@ composition is Node-oriented and is not part of this portable boundary.
 ## Main Exports
 
 - `RuntimeHost`
-- `@vetta/runtime-core/agents` for `RuntimeAgentDefinition`, `RuntimeAgentRegistry`, `RuntimeAgentHost`, Instance/Session routing, revision leases and Source synchronization
+- `RuntimeHost.agents` for the built-in `RuntimeAgentRuntime`, Definition Registry, Instance/Session routing, revision leases and Source synchronization
 - `@vetta/runtime-core/configuration` for configuration Definition/Source revisions, ordered Host layers, validation codecs and immutable resolved snapshots
 - `@vetta/runtime-core/observation` for domain-owned tokens, scoped publishers, lossless Publisher-to-Port forwarding,
   hierarchical/dynamic Hub routing, safe Session projection and arbitrary telemetry adapters
@@ -108,12 +110,13 @@ composition is Node-oriented and is not part of this portable boundary.
 [《自定义 Agent 指南》](./docs/custom-agents.md)。
 
 ```ts
-import { defineRuntimeAgent, RuntimeAgentHost } from "@vetta/runtime-core/agents";
+import { RuntimeHost } from "@vetta/runtime-core";
+import { defineRuntimeAgent } from "@vetta/runtime-core/agents";
 
 const reviewer = defineRuntimeAgent({
   id: "reviewer",
   createInstance: ({ observationPublisher }) => ({
-    createSession: ({ observationPublisher: sessionObservations }) => ({
+    prepareSession: ({ observationPublisher: sessionObservations }) => ({
       capabilities: {
         instructions: [{ id: "reviewer.base", content: "Review the change.", priority: 0 }],
         features: [reviewTools, reviewMcp],
@@ -129,8 +132,8 @@ const reviewer = defineRuntimeAgent({
   }),
 });
 
-const host = new RuntimeAgentHost({ observationPort });
-host.registry.upsert({ source: { id: "code", revision: "2026-08-25.1" }, definition: reviewer });
+const host = new RuntimeHost({ observationPort });
+host.agents.registry.upsert({ source: { id: "code", revision: "2026-08-25.1" }, definition: reviewer });
 ```
 
 后续 `upsert` 生成新 revision：新 Instance 获取新定义，已经运行的 Instance/Session 保持旧 revision；只有显式

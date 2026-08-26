@@ -3,7 +3,7 @@ import type {
 	ConversationScenario,
 	RuntimeAgentDefinition,
 	RuntimeAgentDefinitionSourceRef,
-	RuntimeAgentHost,
+	RuntimeAgentRuntime,
 	RuntimeObservationHubIssue,
 	RuntimeObservationPort,
 	RuntimeObservationPublisher,
@@ -212,7 +212,7 @@ export interface CodingAgentRuntimeContextOptions {
 
 export interface CodingAgentRuntimeObservabilityOptions {
 	/**
-	 * Runtime Agent Host 注入的兼容 scoped Publisher。Composition 会通过无损 Port Adapter 将它作为自有子 Hub
+	 * Agent 控制面注入的兼容 scoped Publisher。Composition 会通过无损 Port Adapter 将它作为自有子 Hub
 	 * 的上游；不能与 observationHub.parent 同时提供。
 	 */
 	readonly observationPublisher?: RuntimeObservationPublisher;
@@ -240,15 +240,16 @@ export interface CodingAgentObservationHubOptions {
 }
 
 export interface CodingAgentRuntimeAgentOptions {
-	/** 应用级共享多主 Agent Host；未提供时 Composition 创建并拥有一个开箱即用的 Host。 */
-	readonly host?: RuntimeAgentHost;
+	/** RuntimeHost 下挂的共享多主 Agent 控制面；未提供时 Composition 创建并拥有一个独立控制面。 */
+	readonly runtime?: RuntimeAgentRuntime;
 	/** 要从共享 Registry 获取的平级主 Agent；默认 `coding-agent`。 */
 	readonly agentId?: string;
 	readonly instanceId?: string;
+	/** 传给 execution Definition transform 的应用级 Instance 配置；Definition 负责校验。 */
 	readonly instanceConfiguration?: unknown;
-	/** 仅用于自有 Host 的 Coding Agent execution-compatible Definition。 */
+	/** 仅用于自有 Agent 控制面的 Coding Agent execution-compatible Definition。 */
 	readonly definition?: RuntimeAgentDefinition;
-	/** 自有 Host 发布 Definition 时使用的来源身份。 */
+	/** 自有 Agent 控制面发布 Definition 时使用的来源身份。 */
 	readonly source?: RuntimeAgentDefinitionSourceRef;
 }
 

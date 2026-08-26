@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
-	RUNTIME_AGENT_HOST_ERROR_CODES,
+	RUNTIME_AGENT_ERROR_CODES,
 	RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
 	type RuntimeAgentDefinition,
-	RuntimeAgentHost,
 	RuntimeAgentRegistry,
+	RuntimeAgentRuntime,
 } from "../../src/agents/index.js";
 import {
 	type AgentFeatureDefinition,
@@ -15,13 +15,13 @@ import {
 import type { RuntimeObservationRecord } from "../../src/observation/index.js";
 import type { SessionExtensionDefinition } from "../../src/session-extensions/index.js";
 
-describe("RuntimeAgentHost", () => {
+describe("Runtime Agent control plane", () => {
 	it("routes multiple peer Agents, Instances and isolated Sessions", async () => {
 		const lifecycle: string[] = [];
 		const registry = registryWithIds();
 		registry.upsert(candidate("code", "1", agentDefinition("writer", "write-v1", lifecycle)));
 		registry.upsert(candidate("code", "1", agentDefinition("reviewer", "review-v1", lifecycle)));
-		const host = new RuntimeAgentHost({ registry });
+		const host = new RuntimeAgentRuntime({ registry });
 		const writer = await host.createInstance({ agentId: "writer", instanceId: "writer-instance" });
 		const reviewer = await host.createInstance({ agentId: "reviewer", instanceId: "reviewer-instance" });
 		const writerSession = await host.createSession(writer.id, { sessionId: "writer-session" });
@@ -51,7 +51,7 @@ describe("RuntimeAgentHost", () => {
 		const lifecycle: string[] = [];
 		const registry = registryWithIds();
 		registry.upsert(candidate("code", "1", agentDefinition("agent", "v1", lifecycle)));
-		const host = new RuntimeAgentHost({ registry });
+		const host = new RuntimeAgentRuntime({ registry });
 		const oldInstance = await host.createInstance({
 			agentId: "agent",
 			instanceId: "instance-old",
@@ -118,13 +118,13 @@ describe("RuntimeAgentHost", () => {
 		const lifecycle: string[] = [];
 		const registry = registryWithIds();
 		registry.upsert(candidate("code", "1", agentDefinition("agent", "v1", lifecycle, [extension("state-a")])));
-		const host = new RuntimeAgentHost({ registry });
+		const host = new RuntimeAgentRuntime({ registry });
 		const instance = await host.createInstance({ agentId: "agent", instanceId: "instance" });
 		const session = await host.createSession(instance.id, { sessionId: "session" });
 		registry.upsert(candidate("code", "2", agentDefinition("agent", "v2", lifecycle, [extension("state-b")])));
 
 		await expect(session.rolloutToLatest()).rejects.toMatchObject({
-			code: RUNTIME_AGENT_HOST_ERROR_CODES.ROLLOUT_EXTENSION_TOPOLOGY,
+			code: RUNTIME_AGENT_ERROR_CODES.ROLLOUT_EXTENSION_TOPOLOGY,
 		});
 		const lease = await session.acquire(turnContext(session.id, "turn-after-failure"));
 		expect(lease.snapshot.instructions[0]?.content).toBe("v1");
@@ -134,11 +134,43 @@ describe("RuntimeAgentHost", () => {
 		await registry.close();
 	});
 
+	it("rejects rollout plans that would replace activated product Session resources", async () => {
+		const registry = registryWithIds();
+		registry.upsert(candidate("code", "1", agentDefinition("agent", "v1", [])));
+		const host = new RuntimeAgentRuntime({ registry });
+		const instance = await host.createInstance({ agentId: "agent", instanceId: "instance" });
+		const session = await host.createSession(instance.id, { sessionId: "session" });
+		const activate = vi.fn(() => {
+			throw new Error("must not activate");
+		});
+		const dispose = vi.fn(async () => {});
+		registry.upsert(
+			candidate("code", "2", {
+				id: "agent",
+				createInstance: () => ({
+					prepareSession: () => ({
+						definition: { capabilities: capabilities("v2") },
+						activate,
+						dispose,
+					}),
+				}),
+			}),
+		);
+
+		await expect(session.rolloutToLatest()).rejects.toThrow("cannot replace activated product Session resources");
+		expect(activate).not.toHaveBeenCalled();
+		expect(dispose).toHaveBeenCalledOnce();
+		expect(session.revisionId).toBe("revision-1");
+
+		await host.close();
+		await registry.close();
+	});
+
 	it("atomically rebinds a continued Session identity without changing its revision or active lease", async () => {
 		const registry = registryWithIds();
 		registry.upsert(candidate("code", "1", agentDefinition("agent", "v1", [])));
 		const observations: RuntimeObservationRecord[] = [];
-		const host = new RuntimeAgentHost({
+		const host = new RuntimeAgentRuntime({
 			registry,
 			observationPort: {
 				record: (record) => {
@@ -181,7 +213,7 @@ describe("RuntimeAgentHost", () => {
 					payload: expect.objectContaining({
 						operation: "session.rebind",
 						phase: "failed",
-						failure: expect.objectContaining({ category: "error", errorName: "RuntimeAgentHostError" }),
+						failure: expect.objectContaining({ category: "error", errorName: "RuntimeAgentError" }),
 					}),
 				}),
 			]),
@@ -196,7 +228,7 @@ describe("RuntimeAgentHost", () => {
 		const lifecycle: string[] = [];
 		const registry = registryWithIds();
 		registry.upsert(candidate("code", "1", failingAgentDefinition(lifecycle)));
-		const host = new RuntimeAgentHost({ registry });
+		const host = new RuntimeAgentRuntime({ registry });
 		const instance = await host.createInstance({ agentId: "broken", instanceId: "instance" });
 
 		await expect(host.createSession(instance.id, { sessionId: "broken-session" })).rejects.toThrow(
@@ -204,6 +236,38 @@ describe("RuntimeAgentHost", () => {
 		);
 		expect(host.getSession("broken-session")).toBeUndefined();
 		expect(lifecycle).toEqual(["extension:create", "feature:prepare", "extension:dispose", "session:dispose"]);
+		await host.close();
+		await registry.close();
+	});
+
+	it("keeps Session Plan activation inside the Agent initialization transaction", async () => {
+		const lifecycle: string[] = [];
+		const registry = registryWithIds();
+		registry.upsert(
+			candidate("code", "1", {
+				id: "activation-failure",
+				createInstance: () => ({
+					prepareSession: () => ({
+						definition: { capabilities: capabilities("activation") },
+						activate: async () => {
+							lifecycle.push("plan:activate");
+							throw new Error("activation failed");
+						},
+						onFailure: () => lifecycle.push("plan:failed"),
+						dispose: () => {
+							lifecycle.push("plan:dispose");
+						},
+					}),
+				}),
+			}),
+		);
+		const host = new RuntimeAgentRuntime({ registry });
+		const instance = await host.createInstance({ agentId: "activation-failure", instanceId: "instance" });
+
+		await expect(host.createSession(instance.id, { sessionId: "session" })).rejects.toThrow("activation failed");
+		expect(host.getSession("session")).toBeUndefined();
+		expect(lifecycle).toEqual(["plan:activate", "plan:failed", "plan:dispose"]);
+
 		await host.close();
 		await registry.close();
 	});
@@ -229,7 +293,7 @@ function agentDefinition(
 		createInstance: (context) => {
 			lifecycle.push(`instance:${version}:create:${String(context.configuration !== undefined)}`);
 			return {
-				createSession: (sessionContext) => {
+				prepareSession: (sessionContext) => {
 					lifecycle.push(`session:${version}:create:${String(sessionContext.configuration !== undefined)}`);
 					return {
 						capabilities: capabilities(version),
@@ -262,7 +326,7 @@ function failingAgentDefinition(lifecycle: string[]): RuntimeAgentDefinition {
 	return {
 		id: "broken",
 		createInstance: () => ({
-			createSession: () => ({
+			prepareSession: () => ({
 				capabilities: capabilities("broken", [failingFeature]),
 				sessionExtensions: [
 					{

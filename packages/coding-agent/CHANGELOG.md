@@ -3,8 +3,11 @@
 ### Changed
 
 - 生产 `CodingAgentRuntimeComposition` 现已真正通过多主 Agent 基座创建 Definition、Instance 与 Session；能力定义只由
-  `RuntimeAgentSession` 编译一次。默认 Composition 自建 Host，应用可注入共享 Host；子代理复用 Host 但拥有独立
-  Instance，Conversation continuation 同步重绑 Agent Session identity。
+  `RuntimeAgentSession` 编译一次。独立 Composition 自建模块化 Agent 控制面，应用使用唯一
+  `RuntimeHost.agents`；子代理复用控制面但拥有独立 Instance，Conversation continuation 同步重绑 Agent Session
+  identity。移除一次性 Session assembly request，production Definition 在 Instance 创建时直接获得 Session Plan 工厂。
+- **破坏性变更**：`agentRuntime.host` 改为 `agentRuntime.runtime`，`CodingAgentRuntimeHostSessionBackend` 改名为
+  `CodingAgentSessionBackend`，以避免把产品 Backend Port 误认为第二个 Host。
 - 每个 Coding Agent Runtime Composition 现在固有并拥有一个产品子 `RuntimeObservationHub`：支持本地动态 Adapter 与
   健康 snapshot，也可通过父级 Port 或兼容 scoped Publisher 汇入应用 Hub；子代理 Hub 继续挂在产品 Hub 下，释放
   Composition 不关闭父级或 Adapter 外部资源。普通 Logger、Audit Sink 与原生 Trace Span 的边界保持不变。

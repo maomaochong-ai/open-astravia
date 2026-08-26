@@ -1,13 +1,8 @@
 import type { RuntimeHost } from "@vetta/runtime-core";
 import { type DesktopRuntimeHealth, DesktopRuntimeLifecycle } from "./lifecycle.js";
 
-export interface DesktopRuntimeBackendPoolHandle {
-	dispose(): Promise<void>;
-}
-
 export interface DesktopRuntimeComposition {
 	readonly runtime: RuntimeHost;
-	readonly runtimeBackendPool: DesktopRuntimeBackendPoolHandle;
 }
 
 export type DesktopRuntimeCompositionFactory = () => DesktopRuntimeComposition;
@@ -15,7 +10,6 @@ export type DesktopRuntimeCompositionFactory = () => DesktopRuntimeComposition;
 /** Owns the single Desktop process Runtime and its ordered shutdown transaction. */
 export class DesktopRuntimeController {
 	private runtime: RuntimeHost | null = null;
-	private runtimeBackendPool: DesktopRuntimeBackendPoolHandle | null = null;
 	private shutdownPromise: Promise<void> | null = null;
 	private readonly lifecycle = new DesktopRuntimeLifecycle();
 
@@ -36,7 +30,6 @@ export class DesktopRuntimeController {
 		try {
 			const composition = this.createComposition();
 			this.runtime = composition.runtime;
-			this.runtimeBackendPool = composition.runtimeBackendPool;
 			this.lifecycle.markRunning();
 			return composition.runtime;
 		} catch (error) {
@@ -59,26 +52,17 @@ export class DesktopRuntimeController {
 		if (this.shutdownPromise) return await this.shutdownPromise;
 
 		const runtime = this.runtime;
-		const runtimeBackendPool = this.runtimeBackendPool;
 		this.runtime = null;
-		this.runtimeBackendPool = null;
-		this.shutdownPromise = this.disposeOwnedResources(runtime, runtimeBackendPool);
+		this.shutdownPromise = this.disposeOwnedResources(runtime);
 		return await this.shutdownPromise;
 	}
 
-	private async disposeOwnedResources(
-		runtime: RuntimeHost | null,
-		runtimeBackendPool: DesktopRuntimeBackendPoolHandle | null,
-	): Promise<void> {
+	private async disposeOwnedResources(runtime: RuntimeHost | null): Promise<void> {
 		try {
 			try {
-				await runtime?.disposeAllSessions();
+				await runtime?.close();
 			} finally {
-				try {
-					await runtimeBackendPool?.dispose();
-				} finally {
-					this.lifecycle.markStopped();
-				}
+				this.lifecycle.markStopped();
 			}
 		} catch (error) {
 			this.lifecycle.recordFailure({

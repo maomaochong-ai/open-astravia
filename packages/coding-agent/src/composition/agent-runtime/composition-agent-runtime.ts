@@ -2,21 +2,19 @@ import {
 	RetryableCleanup,
 	type RuntimeAgentDefinition,
 	type RuntimeAgentDefinitionSourceRef,
-	RuntimeAgentHost,
 	type RuntimeAgentInstance,
 	type RuntimeAgentPublishResult,
-	type RuntimeAgentSessionPreparationContext,
+	RuntimeAgentRuntime,
 	type RuntimeObservationPublisher,
 	type RuntimeResources,
 } from "@vetta/runtime-core";
 import type { CodingAgentRuntimeAgentOptions } from "../contracts/index.js";
 import { DEFAULT_CODING_AGENT_RUNTIME_ID } from "../runtime-agent-definition.js";
-import type { CodingAgentCapabilitySessionBinding } from "../session-lifecycle/resource-lifecycle.js";
 import { createCodingAgentExecutionRuntimeDefinition } from "./execution-definition.js";
-import {
-	type CodingAgentPreparedRuntimeAgentSession,
-	CodingAgentRuntimeAgentSessionAssemblyRequest,
-} from "./session-assembly-request.js";
+import type {
+	CodingAgentExecutionRuntimeInstanceConfiguration,
+	CodingAgentExecutionSessionRequest,
+} from "./execution-instance-configuration.js";
 
 export const CODING_AGENT_BUILTIN_SOURCE: RuntimeAgentDefinitionSourceRef = Object.freeze({
 	id: "coding-agent.builtin",
@@ -27,51 +25,84 @@ export interface CodingAgentCompositionAgentRuntime {
 	readonly agentId: string;
 	readonly instanceId: string;
 	readonly revisionId: string;
-	childConfiguration(): CodingAgentRuntimeAgentOptions;
-	createSession(
-		sessionId: string,
-		prepare: (context: RuntimeAgentSessionPreparationContext) => Promise<CodingAgentPreparedRuntimeAgentSession>,
-	): Promise<RuntimeResources>;
+	createSession(request: CodingAgentExecutionSessionRequest): Promise<RuntimeResources>;
 	close(): Promise<void>;
 }
 
-export async function createCodingAgentCompositionAgentRuntime(options: {
+export interface CodingAgentCompositionAgentRuntimeScope {
+	readonly agentId: string;
+	childConfiguration(): CodingAgentRuntimeAgentOptions;
+	createInstance(
+		prepareSession: CodingAgentExecutionRuntimeInstanceConfiguration["prepareSession"],
+	): Promise<CodingAgentCompositionAgentRuntime>;
+	close(): Promise<void>;
+}
+
+export function createCodingAgentCompositionAgentRuntimeScope(options: {
 	readonly configuration?: CodingAgentRuntimeAgentOptions;
 	readonly observationPublisher: RuntimeObservationPublisher;
-}): Promise<CodingAgentCompositionAgentRuntime> {
+}): CodingAgentCompositionAgentRuntimeScope {
 	const configured = options.configuration;
-	if (configured?.host && (configured.definition || configured.source)) {
-		throw new Error("Injected Runtime Agent Host owns Definition publication; definition/source cannot be provided");
+	if (configured?.runtime && (configured.definition || configured.source)) {
+		throw new Error(
+			"Injected Runtime Agent control plane owns Definition publication; definition/source cannot be provided",
+		);
 	}
 	const agentId = configured?.agentId ?? configured?.definition?.id ?? DEFAULT_CODING_AGENT_RUNTIME_ID;
 	if (configured?.definition && configured.definition.id !== agentId) {
 		throw new Error("Coding Agent Runtime definition id must match agentRuntime.agentId");
 	}
-	const ownsHost = configured?.host === undefined;
-	const host = configured?.host ?? new RuntimeAgentHost({ observationPublisher: options.observationPublisher });
-	if (ownsHost) {
-		publishDefinition(host, configured?.definition ?? createCodingAgentExecutionRuntimeDefinition({ id: agentId }), {
-			...(configured?.source ?? CODING_AGENT_BUILTIN_SOURCE),
-		});
+	const ownsRuntime = configured?.runtime === undefined;
+	const runtime =
+		configured?.runtime ?? new RuntimeAgentRuntime({ observationPublisher: options.observationPublisher });
+	if (ownsRuntime) {
+		publishDefinition(
+			runtime,
+			configured?.definition ?? createCodingAgentExecutionRuntimeDefinition({ id: agentId }),
+			{
+				...(configured?.source ?? CODING_AGENT_BUILTIN_SOURCE),
+			},
+		);
 	}
 
-	let instance: RuntimeAgentInstance;
-	try {
-		instance = await host.createInstance({
-			agentId,
-			...(configured?.instanceId ? { instanceId: configured.instanceId } : {}),
-			configuration: configured?.instanceConfiguration,
-		});
-	} catch (error) {
-		if (ownsHost) return rollbackCodingAgentRuntime(error, () => host.close(), "Coding Agent Host rollback failed");
-		throw error;
-	}
-
-	return new DefaultCodingAgentCompositionAgentRuntime(host, instance, ownsHost);
+	let instanceCreated = false;
+	let activeAgentRuntime: CodingAgentCompositionAgentRuntime | undefined;
+	let closePromise: Promise<void> | undefined;
+	return {
+		agentId,
+		childConfiguration: () => Object.freeze({ runtime, agentId }),
+		async createInstance(prepareSession) {
+			if (instanceCreated) throw new Error("Coding Agent Composition Agent Instance is already created");
+			instanceCreated = true;
+			let instance: RuntimeAgentInstance;
+			try {
+				instance = await runtime.createInstance({
+					agentId,
+					...(configured?.instanceId ? { instanceId: configured.instanceId } : {}),
+					configuration: {
+						applicationConfiguration: configured?.instanceConfiguration,
+						prepareSession,
+					} satisfies CodingAgentExecutionRuntimeInstanceConfiguration,
+				});
+			} catch (error) {
+				if (ownsRuntime) {
+					return rollbackCodingAgentRuntime(error, () => runtime.close(), "Coding Agent runtime rollback failed");
+				}
+				throw error;
+			}
+			activeAgentRuntime = new DefaultCodingAgentCompositionAgentRuntime(runtime, instance, ownsRuntime);
+			return activeAgentRuntime;
+		},
+		close() {
+			if (closePromise) return closePromise;
+			closePromise = activeAgentRuntime?.close() ?? (ownsRuntime ? runtime.close() : Promise.resolve());
+			return closePromise;
+		},
+	};
 }
 
 export function publishCodingAgentExecutionRuntimeDefinition(
-	host: RuntimeAgentHost,
+	runtime: RuntimeAgentRuntime,
 	options: {
 		readonly definition?: RuntimeAgentDefinition;
 		readonly source?: RuntimeAgentDefinitionSourceRef;
@@ -81,7 +112,7 @@ export function publishCodingAgentExecutionRuntimeDefinition(
 	const agentId = options.agentId ?? options.definition?.id ?? DEFAULT_CODING_AGENT_RUNTIME_ID;
 	const definition = options.definition ?? createCodingAgentExecutionRuntimeDefinition({ id: agentId });
 	if (definition.id !== agentId) throw new Error("Coding Agent Runtime definition id does not match agentId");
-	return publishDefinition(host, definition, options.source ?? CODING_AGENT_BUILTIN_SOURCE);
+	return publishDefinition(runtime, definition, options.source ?? CODING_AGENT_BUILTIN_SOURCE);
 }
 
 class DefaultCodingAgentCompositionAgentRuntime implements CodingAgentCompositionAgentRuntime {
@@ -91,54 +122,21 @@ class DefaultCodingAgentCompositionAgentRuntime implements CodingAgentCompositio
 	private closePromise?: Promise<void>;
 
 	constructor(
-		private readonly host: RuntimeAgentHost,
+		private readonly runtime: RuntimeAgentRuntime,
 		private readonly instance: RuntimeAgentInstance,
-		private readonly ownsHost: boolean,
+		private readonly ownsRuntime: boolean,
 	) {
 		this.agentId = instance.agentId;
 		this.instanceId = instance.id;
 		this.revisionId = instance.revisionId;
 	}
 
-	async createSession(
-		sessionId: string,
-		prepare: (context: RuntimeAgentSessionPreparationContext) => Promise<CodingAgentPreparedRuntimeAgentSession>,
-	): Promise<RuntimeResources> {
-		const request = new CodingAgentRuntimeAgentSessionAssemblyRequest(prepare);
-		let prepared: CodingAgentPreparedRuntimeAgentSession | undefined;
-		let binding: CodingAgentCapabilitySessionBinding | undefined;
-		try {
-			const session = await this.instance.createSession({ sessionId, configuration: request });
-			prepared = request.consume();
-			const cleanup = new RetryableCleanup();
-			cleanup.add({ id: "runtime-agent-session", phase: 0, cleanup: () => session.close() });
-			cleanup.add({ id: "coding-agent-session-resources", phase: 1, cleanup: () => prepared?.dispose() });
-			binding = {
-				snapshotProvider: session,
-				acquirePreviewSnapshot: () => session.acquire(),
-				rebindSession: async (nextSessionId) => {
-					this.host.rebindSession(session.id, nextSessionId);
-				},
-				dispose: () => cleanup.run("Failed to dispose Coding Agent Runtime Agent session"),
-			};
-			return await prepared.activate(binding);
-		} catch (error) {
-			let rollback: () => Promise<void>;
-			if (binding) {
-				const activeBinding = binding;
-				rollback = () => activeBinding.dispose();
-			} else if (prepared) {
-				const preparedSession = prepared;
-				rollback = () => preparedSession.dispose();
-			} else {
-				rollback = () => request.rollback();
-			}
-			return rollbackCodingAgentRuntime(error, rollback, "Coding Agent Session assembly rollback failed");
-		}
-	}
-
-	childConfiguration(): CodingAgentRuntimeAgentOptions {
-		return Object.freeze({ host: this.host, agentId: this.agentId });
+	async createSession(request: CodingAgentExecutionSessionRequest): Promise<RuntimeResources> {
+		const session = await this.instance.createSession({
+			sessionId: request.options.sessionId,
+			configuration: request,
+		});
+		return session.requireRuntimeResources();
 	}
 
 	close(): Promise<void> {
@@ -150,17 +148,19 @@ class DefaultCodingAgentCompositionAgentRuntime implements CodingAgentCompositio
 	private async closeResources(): Promise<void> {
 		const cleanup = new RetryableCleanup();
 		cleanup.add({ id: "runtime-agent-instance", phase: 0, cleanup: () => this.instance.close() });
-		if (this.ownsHost) cleanup.add({ id: "runtime-agent-host", phase: 1, cleanup: () => this.host.close() });
+		if (this.ownsRuntime) {
+			cleanup.add({ id: "runtime-agent-control-plane", phase: 1, cleanup: () => this.runtime.close() });
+		}
 		await cleanup.run("Failed to close Coding Agent Runtime Agent resources");
 	}
 }
 
 function publishDefinition(
-	host: RuntimeAgentHost,
+	runtime: RuntimeAgentRuntime,
 	definition: RuntimeAgentDefinition,
 	source: RuntimeAgentDefinitionSourceRef,
 ): RuntimeAgentPublishResult {
-	return host.registry.upsert({ source, definition });
+	return runtime.registry.upsert({ source, definition });
 }
 
 async function rollbackCodingAgentRuntime(

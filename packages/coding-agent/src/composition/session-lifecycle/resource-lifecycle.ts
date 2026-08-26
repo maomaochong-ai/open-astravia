@@ -2,6 +2,7 @@ import type { EcosystemHookRuntime, SessionEndCause, SessionStartSource } from "
 import {
 	type ConversationScenario,
 	RetryableCleanup,
+	type RuntimeAgentSessionActivationContext,
 	type RuntimeResourceContext,
 	type RuntimeResources,
 	type RuntimeSessionAskUserQuestionCapability,
@@ -111,12 +112,7 @@ export interface CodingAgentSessionResourceLifecycle {
 	rollbackBindings(): void;
 }
 
-export interface CodingAgentCapabilitySessionBinding {
-	readonly snapshotProvider: RuntimeResources["snapshotProvider"];
-	acquirePreviewSnapshot(): ReturnType<RuntimeResources["snapshotProvider"]["acquire"]>;
-	rebindSession(sessionId: string): Promise<void>;
-	dispose(): Promise<void>;
-}
+export type CodingAgentCapabilitySessionBinding = RuntimeAgentSessionActivationContext;
 
 export interface CodingAgentPreparedSessionResourceLifecycle {
 	activate(binding: CodingAgentCapabilitySessionBinding): RuntimeResources;

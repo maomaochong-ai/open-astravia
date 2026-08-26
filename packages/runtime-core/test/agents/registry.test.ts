@@ -3,6 +3,8 @@ import {
 	RUNTIME_AGENT_REGISTRY_ERROR_CODES,
 	type RuntimeAgentDefinition,
 	RuntimeAgentRegistry,
+	type RuntimeAgentSessionDefinition,
+	type RuntimeAgentSessionPreparation,
 } from "../../src/agents/index.js";
 import { PassthroughContextStrategy, type RuntimeCapabilityDefinition } from "../../src/kernel/index.js";
 import { createRuntimeObservationPublisher } from "../../src/observation/index.js";
@@ -44,7 +46,7 @@ describe("RuntimeAgentRegistry", () => {
 			observationPublisher,
 		});
 
-		const writerSession = await writerInstance.createSession({
+		const writerSession = await writerInstance.prepareSession({
 			agentId: "writer",
 			revisionId: writer.revision.id,
 			instanceId: "writer-1",
@@ -52,7 +54,7 @@ describe("RuntimeAgentRegistry", () => {
 			signal: new AbortController().signal,
 			observationPublisher,
 		});
-		const reviewerSession = await reviewerInstance.createSession({
+		const reviewerSession = await reviewerInstance.prepareSession({
 			agentId: "reviewer",
 			revisionId: reviewer.revision.id,
 			instanceId: "reviewer-1",
@@ -61,8 +63,8 @@ describe("RuntimeAgentRegistry", () => {
 			observationPublisher,
 		});
 
-		expect(writerSession.capabilities.instructions[0]?.content).toBe("write");
-		expect(reviewerSession.capabilities.instructions[0]?.content).toBe("review");
+		expect(sessionDefinition(writerSession).capabilities.instructions[0]?.content).toBe("write");
+		expect(sessionDefinition(reviewerSession).capabilities.instructions[0]?.content).toBe("review");
 		await writer.release();
 		await reviewer.release();
 		await registry.close();
@@ -80,26 +82,22 @@ describe("RuntimeAgentRegistry", () => {
 		expect(oldLease.revision.id).toBe("revision-1");
 		expect(newLease.revision.id).toBe("revision-2");
 		expect(disposed).toEqual([]);
-		expect(
-			(
-				await (
-					await oldLease.revision.definition.createInstance({
-						agentId: "agent",
-						revisionId: oldLease.revision.id,
-						instanceId: "old",
-						signal: new AbortController().signal,
-						observationPublisher,
-					})
-				).createSession({
-					agentId: "agent",
-					revisionId: oldLease.revision.id,
-					instanceId: "old",
-					sessionId: "old-session",
-					signal: new AbortController().signal,
-					observationPublisher,
-				})
-			).capabilities.instructions[0]?.content,
-		).toBe("v1");
+		const oldInstance = await oldLease.revision.definition.createInstance({
+			agentId: "agent",
+			revisionId: oldLease.revision.id,
+			instanceId: "old",
+			signal: new AbortController().signal,
+			observationPublisher,
+		});
+		const oldSession = await oldInstance.prepareSession({
+			agentId: "agent",
+			revisionId: oldLease.revision.id,
+			instanceId: "old",
+			sessionId: "old-session",
+			signal: new AbortController().signal,
+			observationPublisher,
+		});
+		expect(sessionDefinition(oldSession).capabilities.instructions[0]?.content).toBe("v1");
 
 		await oldLease.release();
 		expect(disposed).toEqual(["v1"]);
@@ -205,7 +203,7 @@ function candidate(sourceId: string, sourceRevision: string, value: RuntimeAgent
 function definition(id: string, instruction: string, disposed: string[], disposeError?: Error): RuntimeAgentDefinition {
 	return {
 		id,
-		createInstance: () => ({ createSession: () => ({ capabilities: capabilities(instruction) }) }),
+		createInstance: () => ({ prepareSession: () => ({ capabilities: capabilities(instruction) }) }),
 		dispose: async () => {
 			disposed.push(instruction);
 			if (disposeError) throw disposeError;
@@ -222,4 +220,8 @@ function capabilities(instruction: string): RuntimeCapabilityDefinition {
 		tokenBudget: 8_000,
 		reservedOutputTokens: 1_000,
 	};
+}
+
+function sessionDefinition(preparation: RuntimeAgentSessionPreparation): RuntimeAgentSessionDefinition {
+	return "definition" in preparation ? preparation.definition : preparation;
 }

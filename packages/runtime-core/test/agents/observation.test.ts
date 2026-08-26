@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
 	type RuntimeAgentDefinition,
-	RuntimeAgentHost,
+	RuntimeAgentRuntime,
 } from "../../src/agents/index.js";
 import { PassthroughContextStrategy } from "../../src/kernel/index.js";
 import { createRuntimeObservationPublisher, type RuntimeObservationRecord } from "../../src/observation/index.js";
@@ -16,7 +16,7 @@ describe("Runtime Agent observation", () => {
 			createInstance(context) {
 				factoryScopes.push(context.observationPublisher);
 				return {
-					createSession(sessionContext) {
+					prepareSession(sessionContext) {
 						factoryScopes.push(sessionContext.observationPublisher);
 						return {
 							capabilities: {
@@ -32,7 +32,7 @@ describe("Runtime Agent observation", () => {
 				};
 			},
 		};
-		const host = new RuntimeAgentHost({
+		const host = new RuntimeAgentRuntime({
 			observationPort: {
 				record: (record) => {
 					records.push(record);
@@ -82,13 +82,13 @@ describe("Runtime Agent observation", () => {
 				},
 			},
 		});
-		const host = new RuntimeAgentHost({ observationPublisher: parent });
+		const host = new RuntimeAgentRuntime({ observationPublisher: parent });
 		host.registry.upsert({
 			source: { id: "code", revision: "1" },
 			definition: {
 				id: "custom-agent",
 				createInstance: () => ({
-					createSession: () => ({
+					prepareSession: () => ({
 						capabilities: {
 							instructions: [],
 							features: [],
@@ -116,7 +116,7 @@ describe("Runtime Agent observation", () => {
 	it("rejects ambiguous Port and Publisher ownership", () => {
 		expect(
 			() =>
-				new RuntimeAgentHost({
+				new RuntimeAgentRuntime({
 					observationPort: { record() {} },
 					observationPublisher: createRuntimeObservationPublisher(),
 				}),

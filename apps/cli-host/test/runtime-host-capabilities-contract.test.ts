@@ -2,10 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
-import {
-	type CodingAgentRuntimeComposition,
-	CodingAgentRuntimeHostSessionBackend,
-} from "@vetta/coding-agent/composition";
+import { type CodingAgentRuntimeComposition, CodingAgentSessionBackend } from "@vetta/coding-agent/composition";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import {
 	type AgentPluginContinuationInvocation,
@@ -64,7 +61,7 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 				return new RecordedAssistantStream(response);
 			},
 		});
-		const backend = new CodingAgentRuntimeHostSessionBackend({
+		const backend = new CodingAgentSessionBackend({
 			composition,
 			conversationDir,
 			cwd,
@@ -171,7 +168,7 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 				return new RecordedAssistantStream(response);
 			},
 		});
-		const backend = new CodingAgentRuntimeHostSessionBackend({
+		const backend = new CodingAgentSessionBackend({
 			composition,
 			conversationDir,
 			cwd,
@@ -222,7 +219,7 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 			initialThinkingLevel: "off",
 			createPluginRuntime: () => ({ readAgentPlugins: () => undefined }),
 		});
-		const backend = new CodingAgentRuntimeHostSessionBackend({
+		const backend = new CodingAgentSessionBackend({
 			composition,
 			conversationDir,
 			cwd,

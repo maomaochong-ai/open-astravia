@@ -2,18 +2,13 @@ import { createRuntimeId } from "../id-generator.js";
 import { FeatureCompiler, RandomIdGenerator } from "../kernel/index.js";
 import {
 	createRuntimeObservationPublisher,
+	type RuntimeObservationPort,
 	type RuntimeObservationPublisher,
 	runtimeObservationFailure,
 } from "../observation/index.js";
 import type { RuntimeAgentInstanceDefinition } from "./contracts.js";
 import { normalizeRuntimeAgentInstanceDefinition } from "./definition-validation.js";
-import { RUNTIME_AGENT_HOST_ERROR_CODES, RuntimeAgentHostError } from "./errors.js";
-import type {
-	RuntimeAgentHostOptions,
-	RuntimeAgentHostSnapshot,
-	RuntimeAgentInstanceCreateOptions,
-	RuntimeAgentSessionCreateOptions,
-} from "./host-contracts.js";
+import { RUNTIME_AGENT_ERROR_CODES, RuntimeAgentError } from "./errors.js";
 import { RuntimeAgentInstance } from "./instance.js";
 import {
 	cleanupRuntimeAgentResources,
@@ -23,27 +18,37 @@ import {
 } from "./lifecycle.js";
 import { RUNTIME_AGENT_LIFECYCLE_OBSERVATION } from "./observations.js";
 import { RuntimeAgentRegistry } from "./registry.js";
+import type {
+	RuntimeAgentInstanceCreateOptions,
+	RuntimeAgentRuntimeOptions,
+	RuntimeAgentRuntimeSnapshot,
+	RuntimeAgentSessionCreateOptions,
+} from "./runtime-contracts.js";
 import type { RuntimeAgentSession } from "./session.js";
 
-export class RuntimeAgentHost {
+export class RuntimeAgentRuntime {
 	readonly registry: RuntimeAgentRegistry;
 	private readonly ownsRegistry: boolean;
 	private readonly createId: (scope: "instance" | "session") => string;
 	private readonly createFeatureCompiler: () => FeatureCompiler;
 	private readonly observations: RuntimeObservationPublisher;
 	private readonly ownsObservationPublisher: boolean;
+	private readonly ownedObservationPort: RuntimeObservationPort | undefined;
 	private readonly instances = new Map<string, RuntimeAgentInstance>();
 	private readonly sessions = new Map<string, RuntimeAgentSession>();
 	private closed = false;
 	private closePromise?: Promise<void>;
 
-	constructor(options: RuntimeAgentHostOptions = {}) {
+	constructor(options: RuntimeAgentRuntimeOptions = {}) {
 		if (options.observationPort && options.observationPublisher) {
-			throw new Error("Runtime Agent Host accepts either observationPort or observationPublisher, not both");
+			throw new Error(
+				"Runtime Agent control plane accepts either observationPort or observationPublisher, not both",
+			);
 		}
 		this.observations =
 			options.observationPublisher ?? createRuntimeObservationPublisher({ port: options.observationPort });
 		this.ownsObservationPublisher = options.observationPublisher === undefined;
+		this.ownedObservationPort = options.observationPublisher === undefined ? options.observationPort : undefined;
 		this.registry = options.registry ?? new RuntimeAgentRegistry({ observationPublisher: this.observations });
 		this.ownsRegistry = options.registry === undefined;
 		this.createId = options.createId ?? ((scope) => `${scope}-${createRuntimeId()}`);
@@ -93,6 +98,9 @@ export class RuntimeAgentHost {
 					this.sessions.set(session.id, session);
 				},
 				onSessionClosed: (session) => this.sessions.delete(session.id),
+				onSessionRebind: (session, nextSessionId) => {
+					this.rebindSession(session.id, nextSessionId);
+				},
 				onClosed: (closedInstance) => this.instances.delete(closedInstance.id),
 			});
 			this.instances.set(instanceId, instance);
@@ -140,8 +148,8 @@ export class RuntimeAgentHost {
 	requireSession(sessionId: string): RuntimeAgentSession {
 		const session = this.sessions.get(sessionId);
 		if (!session) {
-			throw new RuntimeAgentHostError(
-				RUNTIME_AGENT_HOST_ERROR_CODES.SESSION_NOT_FOUND,
+			throw new RuntimeAgentError(
+				RUNTIME_AGENT_ERROR_CODES.SESSION_NOT_FOUND,
 				`Runtime Agent Session is not registered: ${sessionId}`,
 			);
 		}
@@ -149,7 +157,7 @@ export class RuntimeAgentHost {
 	}
 
 	/**
-	 * 原子更新 Runtime Agent Host 与 Instance 的 Session 索引。
+	 * 原子更新 Runtime Agent 控制面与 Instance 的 Session 索引。
 	 * 用于持久化会话 continuation 改变 canonical session id；能力 revision 与在途 lease 不变。
 	 */
 	rebindSession(sessionId: string, nextSessionId: string): boolean {
@@ -159,8 +167,8 @@ export class RuntimeAgentHost {
 			this.assertOpen();
 			session = this.requireSession(sessionId);
 			if (!nextSessionId || nextSessionId.trim() !== nextSessionId) {
-				throw new RuntimeAgentHostError(
-					RUNTIME_AGENT_HOST_ERROR_CODES.INVALID_INSTANCE,
+				throw new RuntimeAgentError(
+					RUNTIME_AGENT_ERROR_CODES.INVALID_INSTANCE,
 					"Runtime Agent Session id must be a non-empty trimmed string",
 				);
 			}
@@ -168,8 +176,8 @@ export class RuntimeAgentHost {
 			const instance = this.instances.get(session.instanceId);
 			if (!instance) throw runtimeAgentInstanceNotFoundError(session.instanceId);
 			if (instance.getSession(sessionId) !== session) {
-				throw new RuntimeAgentHostError(
-					RUNTIME_AGENT_HOST_ERROR_CODES.SESSION_NOT_FOUND,
+				throw new RuntimeAgentError(
+					RUNTIME_AGENT_ERROR_CODES.SESSION_NOT_FOUND,
 					`Runtime Agent Session is not registered on Instance ${instance.id}: ${sessionId}`,
 				);
 			}
@@ -213,7 +221,7 @@ export class RuntimeAgentHost {
 		return true;
 	}
 
-	snapshot(): RuntimeAgentHostSnapshot {
+	snapshot(): RuntimeAgentRuntimeSnapshot {
 		return Object.freeze({
 			closed: this.closed,
 			registry: this.registry.snapshot(),
@@ -234,16 +242,17 @@ export class RuntimeAgentHost {
 				...instances.map((instance) => () => instance.close()),
 				...(this.ownsRegistry ? [() => this.registry.close()] : []),
 				...(this.ownsObservationPublisher ? [() => this.observations.flush()] : []),
+				...(this.ownedObservationPort?.close ? [() => this.ownedObservationPort?.close?.()] : []),
 			],
 			undefined,
-			"Failed to close Runtime Agent Host",
+			"Failed to close Runtime Agent control plane",
 		);
 		return this.closePromise;
 	}
 
 	private assertOpen(): void {
 		if (this.closed) {
-			throw new RuntimeAgentHostError(RUNTIME_AGENT_HOST_ERROR_CODES.CLOSED, "Runtime Agent Host is closed");
+			throw new RuntimeAgentError(RUNTIME_AGENT_ERROR_CODES.CLOSED, "Runtime Agent control plane is closed");
 		}
 	}
 }

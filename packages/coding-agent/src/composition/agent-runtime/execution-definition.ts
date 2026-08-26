@@ -5,7 +5,10 @@ import {
 	type RuntimeAgentSessionPreparationContext,
 } from "@vetta/runtime-core";
 import { DEFAULT_CODING_AGENT_RUNTIME_ID } from "../runtime-agent-definition.js";
-import { requireCodingAgentRuntimeSessionAssemblyRequest } from "./session-assembly-request.js";
+import {
+	requireCodingAgentExecutionRuntimeInstanceConfiguration,
+	requireCodingAgentExecutionSessionRequest,
+} from "./execution-instance-configuration.js";
 
 export interface CodingAgentExecutionRuntimeDefinitionOptions {
 	readonly id?: string;
@@ -16,6 +19,7 @@ export interface CodingAgentExecutionRuntimeDefinitionOptions {
 	transformSessionDefinition?(
 		context: RuntimeAgentSessionPreparationContext,
 		definition: RuntimeAgentSessionDefinition,
+		instanceConfiguration: unknown,
 	): Promise<RuntimeAgentSessionDefinition> | RuntimeAgentSessionDefinition;
 }
 
@@ -25,12 +29,21 @@ export function createCodingAgentExecutionRuntimeDefinition(
 ): RuntimeAgentDefinition {
 	return defineRuntimeAgent({
 		id: options.id ?? DEFAULT_CODING_AGENT_RUNTIME_ID,
-		createInstance: () => ({
-			async createSession(context) {
-				const request = requireCodingAgentRuntimeSessionAssemblyRequest(context.configuration);
-				const definition = await request.prepare(context);
-				return (await options.transformSessionDefinition?.(context, definition)) ?? definition;
-			},
-		}),
+		createInstance: (instanceContext) => {
+			const configuration = requireCodingAgentExecutionRuntimeInstanceConfiguration(instanceContext.configuration);
+			return {
+				async prepareSession(context) {
+					const request = requireCodingAgentExecutionSessionRequest(context.configuration);
+					const plan = await configuration.prepareSession(context, request);
+					const definition =
+						(await options.transformSessionDefinition?.(
+							context,
+							plan.definition,
+							configuration.applicationConfiguration,
+						)) ?? plan.definition;
+					return { ...plan, definition };
+				},
+			};
+		},
 	});
 }

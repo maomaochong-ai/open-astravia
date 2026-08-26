@@ -15,8 +15,10 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 - `RuntimeObservationPublisher` 新增已有安全 record 的无损 `forward()`，并提供标准 Publisher-to-Port Adapter；子 Hub
   可继承已 scope 的父级 Publisher，保留原 timestamp，同时继续阻止子层覆盖 Agent/revision/instance/session identity。
 - 新增可独立、可嵌套的 `RuntimeObservationHub`：支持动态 Adapter、domain/level/predicate 路由、父级汇聚、
-  容量保护、失败隔离、安全 Hub issue、交付健康 snapshot 与幂等 close；`RuntimeAgentHost` 可注入父级 scoped
+  容量保护、失败隔离、安全 Hub issue、交付健康 snapshot 与幂等 close；`RuntimeAgentRuntime` 可注入父级 scoped
   Publisher 且不取得其 flush 生命周期。
+- 新增 `runtime.host.lifecycle` 安全观测，覆盖 Conversation Session 释放与 Host 自有 Backend/Agent 控制面关闭失败；
+  `RuntimeObservationPort` 增加可选 `close()`，仅由直接声明所有权的组合根调用。
 - 新增 `runtime.session.event` 安全桥接，把既有 Session 业务事件投影为结构、计数、耗时、usage 与稳定失败字段，
   不向统一 Adapter 暴露消息、Thinking、Tool 参数/结果、扩展 payload 或错误正文。
 - `InstructionBlock` 新增可选 `cacheability`，Runtime 默认按生命周期生成 Prompt Cache Layout：Snapshot/Feature
@@ -36,16 +38,21 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
   `RuntimeAgentRevision`、幂等 lease、原子多 Agent Registry、retire/remove、Source 全量替换与 newest-wins
   同步器。文件、代码、Plugin、数据库和远端控制面可通过同一 Source Port 发布，失败保留 last-known-good，
   普通更新不影响已有 revision lease。
-- 新增 `RuntimeAgentHost`、`RuntimeAgentInstance` 与 `RuntimeAgentSession`：多个平级 Agent 可创建独立
+- 新增 `RuntimeAgentRuntime`、`RuntimeAgentInstance` 与 `RuntimeAgentSession`：多个平级 Agent 可创建独立
   Instance/Session 并按 Session identity 路由；Definition 更新默认只影响新 Instance，显式 Session rollout
   将能力和模型绑定从下一 Turn 原子切换，当前 Turn 保持旧 generation，Session Extension 拓扑禁止热换。
-- `RuntimeAgentHost` 新增原子 Session identity rebind：Host、Instance 与 Session 索引同步更新，revision 和在途 lease
+- `RuntimeAgentRuntime` 新增原子 Session identity rebind：控制面、Instance 与 Session 索引同步更新，revision 和在途 lease
   保持不变，并发布 `runtime.agent/lifecycle` 安全观测，供 Conversation continuation 使用。
 - `RuntimeSessionIdentity`、`RuntimeSessionIdentityLifecycle` 与 continuation 合同新增可选 `sessionDirectory`
   宿主位置事实；Kernel 在会话续接时透明更新该事实，旧存储未提供时保留原值，不解析平台路径或改变既有
   `sessionPath` 语义。
 
 ### Changed
+
+- **破坏性变更**：`RuntimeHost` 现在默认拥有并公开 `host.agents` 多主 Agent 控制面；新增 Backend factory、统一
+  Observation 与幂等 `close()` 生命周期。移除第二个顶层 `RuntimeAgentHost` 公共概念，改为可模块化嵌入的
+  `RuntimeAgentRuntime`；Definition Instance 工厂改用 `prepareSession()` 返回可激活/回滚的
+  `RuntimeAgentSessionPlan`。由 factory 创建的 Backend 与直接注入的根 Observation Port 均由 Host 关闭。
 
 - Kernel 的 Snapshot 编译输入由带产品含义的 `AgentProfile` 改为中性的
   `RuntimeCapabilityDefinition`，编译器合同同步改为 `RuntimeCapabilityCompiler`；Feature 贡献上下文不再接收

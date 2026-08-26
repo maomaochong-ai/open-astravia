@@ -19,7 +19,7 @@ export class RuntimeAgentRegistryError extends Error {
 	}
 }
 
-export const RUNTIME_AGENT_HOST_ERROR_CODES = {
+export const RUNTIME_AGENT_ERROR_CODES = {
 	CLOSED: "RUNTIME_AGENT_HOST_CLOSED",
 	DUPLICATE_ID: "RUNTIME_AGENT_DUPLICATE_ID",
 	INSTANCE_NOT_FOUND: "RUNTIME_AGENT_INSTANCE_NOT_FOUND",
@@ -28,15 +28,14 @@ export const RUNTIME_AGENT_HOST_ERROR_CODES = {
 	SESSION_NOT_FOUND: "RUNTIME_AGENT_SESSION_NOT_FOUND",
 } as const;
 
-export type RuntimeAgentHostErrorCode =
-	(typeof RUNTIME_AGENT_HOST_ERROR_CODES)[keyof typeof RUNTIME_AGENT_HOST_ERROR_CODES];
+export type RuntimeAgentErrorCode = (typeof RUNTIME_AGENT_ERROR_CODES)[keyof typeof RUNTIME_AGENT_ERROR_CODES];
 
-export class RuntimeAgentHostError extends Error {
-	readonly code: RuntimeAgentHostErrorCode;
+export class RuntimeAgentError extends Error {
+	readonly code: RuntimeAgentErrorCode;
 
-	constructor(code: RuntimeAgentHostErrorCode, message: string) {
+	constructor(code: RuntimeAgentErrorCode, message: string) {
 		super(message);
-		this.name = "RuntimeAgentHostError";
+		this.name = "RuntimeAgentError";
 		this.code = code;
 	}
 }

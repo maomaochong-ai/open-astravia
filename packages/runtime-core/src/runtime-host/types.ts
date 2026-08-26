@@ -1,3 +1,4 @@
+import type { RuntimeAgentRuntime, RuntimeAgentRuntimeOptions } from "../agents/index.js";
 import type {
 	AgentPluginRuntimeConfig,
 	RuntimeSandboxGrantDecision,
@@ -9,6 +10,7 @@ import type {
 	SessionEvent,
 	SessionExecutionMode,
 } from "../contracts.js";
+import type { RuntimeObservationPort, RuntimeObservationPublisher } from "../observation/index.js";
 import type { RuntimeHostSessionBackend } from "./session-backend.js";
 import type {
 	RuntimeSessionBackgroundWorkController,
@@ -119,12 +121,30 @@ export interface InFlightBuffer {
  */
 export type RunningChangedReason = "agent_end" | "aborted" | "error";
 
+export interface RuntimeHostCompositionContext {
+	/** 唯一 RuntimeHost 拥有的多主 Agent 控制面。 */
+	readonly agents: RuntimeAgentRuntime;
+	/** Host 与下挂 Agent/产品 Composition 共用的根观测发布器。 */
+	readonly observationPublisher: RuntimeObservationPublisher;
+}
+
 export interface RuntimeHostOptions {
 	/**
 	 * 会话组合后端。生产宿主应在 Composition Root 显式注入；未注入时只有
 	 * 不涉及创建会话的目录/历史操作可用。
 	 */
 	sessionBackend?: RuntimeHostSessionBackend;
+	/**
+	 * 需要使用 Host 内置 Agent 控制面的 Backend 应通过 factory 创建。
+	 * 与 sessionBackend 互斥；factory 返回的 Backend 生命周期归 RuntimeHost 所有。
+	 */
+	createSessionBackend?: (context: RuntimeHostCompositionContext) => RuntimeHostSessionBackend;
+	/** Agent 控制面的 Registry、ID 与 Compiler 配置；观测统一由 RuntimeHost 注入。 */
+	agentRuntimeOptions?: Omit<RuntimeAgentRuntimeOptions, "observationPort" | "observationPublisher">;
+	/** 根观测端口。直接注入时生命周期归 Host；共享端口应改为注入 observationPublisher。 */
+	observationPort?: RuntimeObservationPort;
+	/** 嵌入既有观测树时注入根 Publisher；与 observationPort 互斥。 */
+	observationPublisher?: RuntimeObservationPublisher;
 	/** 离线会话列表、重命名和文件删除。 */
 	sessionCatalog?: RuntimeSessionCatalog;
 	/** 不获取写锁的同步会话文件读取器。 */

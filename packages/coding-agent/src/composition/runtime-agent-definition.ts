@@ -29,12 +29,12 @@ export type CodingAgentRuntimeSessionContext<TConfiguration> = Omit<
 
 export interface CodingAgentRuntimeInstanceAssembly<TSessionConfiguration> {
 	/**
-	 * 只解析产品 Prompt 预设。Tool、MCP、模型和 Extension 必须由 createSession() 的能力装配显式提供。
+	 * 只解析产品 Prompt 预设。Tool、MCP、模型和 Extension 必须由 prepareSession() 的能力装配显式提供。
 	 */
 	resolvePromptProfile?(
 		context: CodingAgentRuntimeSessionContext<TSessionConfiguration>,
 	): Promise<CodingAgentPromptProfile | undefined> | CodingAgentPromptProfile | undefined;
-	createSession(
+	prepareSession(
 		context: CodingAgentRuntimeSessionContext<TSessionConfiguration>,
 	): Promise<RuntimeAgentSessionDefinition> | RuntimeAgentSessionDefinition;
 	dispose?(): Promise<void> | void;
@@ -70,13 +70,13 @@ export function createCodingAgentRuntimeDefinition<TInstanceConfiguration, TSess
 				configuration: options.parseInstanceConfiguration(context.configuration),
 			});
 			return {
-				async createSession(sessionContext) {
+				async prepareSession(sessionContext) {
 					const codingContext: CodingAgentRuntimeSessionContext<TSessionConfiguration> = {
 						...sessionContext,
 						configuration: options.parseSessionConfiguration(sessionContext.configuration),
 					};
 					const profile = await assembly.resolvePromptProfile?.(codingContext);
-					const definition = await assembly.createSession(codingContext);
+					const definition = await assembly.prepareSession(codingContext);
 					const dispose = definition.dispose?.bind(definition);
 					return {
 						...definition,

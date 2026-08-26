@@ -22,7 +22,8 @@ export {
 
 import {
 	type CodingAgentCompositionAgentRuntime,
-	createCodingAgentCompositionAgentRuntime,
+	type CodingAgentCompositionAgentRuntimeScope,
+	createCodingAgentCompositionAgentRuntimeScope,
 } from "./agent-runtime/composition-agent-runtime.js";
 import { createCodingAgentChildCompositionFactory } from "./subagent/child-composition-policy.js";
 
@@ -76,15 +77,20 @@ async function createCodingAgentRuntimeCompositionInternal(
 		publisher: options.observationPublisher,
 		hub: options.observationHub,
 	});
-	let agentRuntime: CodingAgentCompositionAgentRuntime | undefined;
+	let agentRuntimeScope: CodingAgentCompositionAgentRuntimeScope | undefined;
 	try {
-		agentRuntime = await createCodingAgentCompositionAgentRuntime({
+		agentRuntimeScope = createCodingAgentCompositionAgentRuntimeScope({
 			configuration: options.agentRuntime,
 			observationPublisher: observationRuntime.publisher,
 		});
-		return await assembleCodingAgentRuntimeComposition(options, inheritedMcpView, observationRuntime, agentRuntime);
+		return await assembleCodingAgentRuntimeComposition(
+			options,
+			inheritedMcpView,
+			observationRuntime,
+			agentRuntimeScope,
+		);
 	} catch (error) {
-		const cleanupResults = await Promise.allSettled([agentRuntime?.close(), observationRuntime.hub.close()]);
+		const cleanupResults = await Promise.allSettled([agentRuntimeScope?.close(), observationRuntime.hub.close()]);
 		const cleanupErrors = cleanupResults.flatMap((result) => (result.status === "rejected" ? [result.reason] : []));
 		if (cleanupErrors.length > 0) {
 			throw new AggregateError([error, ...cleanupErrors], "Coding Agent Composition assembly and rollback failed");
@@ -97,7 +103,7 @@ async function assembleCodingAgentRuntimeComposition(
 	options: CodingAgentRuntimeCompositionOptions,
 	inheritedMcpView: McpRuntimeToolView,
 	observationRuntime: CodingAgentObservationRuntime,
-	agentRuntime: CodingAgentCompositionAgentRuntime,
+	agentRuntimeScope: CodingAgentCompositionAgentRuntimeScope,
 ): Promise<CodingAgentRuntimeComposition> {
 	const observationPublisher = observationRuntime.publisher;
 	const cwd = options.cwd ?? ".";
@@ -166,7 +172,7 @@ async function assembleCodingAgentRuntimeComposition(
 	const createChildComposition = createCodingAgentChildCompositionFactory({
 		parentOptions: {
 			...optionsWithoutPublisher,
-			agentRuntime: agentRuntime.childConfiguration(),
+			agentRuntime: agentRuntimeScope.childConfiguration(),
 			observationHub: createChildCodingAgentObservationOptions(options.observationHub, observationRuntime.hub),
 		},
 		createComposition: createCodingAgentRuntimeCompositionInternal,
@@ -180,7 +186,6 @@ async function assembleCodingAgentRuntimeComposition(
 		}
 	};
 	const sessionInitialization = createCodingAgentSessionInitializationTransaction({
-		agentRuntime,
 		profile: sessionInitializationProfile,
 		cwd,
 		scenario,
@@ -209,13 +214,17 @@ async function assembleCodingAgentRuntimeComposition(
 		assessChildSessionPath,
 		imageSettingsSnapshots,
 	});
+	const agentRuntime: CodingAgentCompositionAgentRuntime = await agentRuntimeScope.createInstance(
+		(agentSessionContext, request) =>
+			sessionInitialization.prepare(request.options, request.resourceContext, agentSessionContext),
+	);
 	const runtimeFactory = new ComposedRuntimeFactory<CodingAgentRuntimeSessionOptions>({
 		streamFn: options.streamFn,
 		tracer: options.tracer,
 		tracing: options.tracing,
 		observationPublisher,
 		createResources: (sessionOptions, resourceContext) =>
-			sessionInitialization.initialize(sessionOptions, resourceContext),
+			agentRuntime.createSession({ options: sessionOptions, resourceContext }),
 	});
 	const backend = new KernelRuntimeSessionBackend({ runtimeFactory });
 	const compositionShutdown = createCodingAgentCompositionShutdown({

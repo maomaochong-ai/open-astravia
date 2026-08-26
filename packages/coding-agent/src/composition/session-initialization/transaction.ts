@@ -2,9 +2,10 @@ import type { Message } from "@vetta/ai";
 import {
 	type ConversationScenario,
 	InitializationRollbackScope,
+	type RuntimeAgentSessionPlan,
+	type RuntimeAgentSessionPreparationContext,
 	type RuntimeObservationPublisher,
 	type RuntimeResourceContext,
-	type RuntimeResources,
 } from "@vetta/runtime-core";
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
@@ -15,8 +16,6 @@ import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/e
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { CodingAgentContextRuntime } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
-import type { CodingAgentCompositionAgentRuntime } from "../agent-runtime/composition-agent-runtime.js";
-import type { CodingAgentPreparedRuntimeAgentSession } from "../agent-runtime/session-assembly-request.js";
 import type { CodingAgentConversationSessionPathAssessment } from "../contracts/conversation-persistence.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
@@ -53,7 +52,6 @@ export interface CodingAgentSessionInitializationRegistry {
 }
 
 export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBinding> {
-	readonly agentRuntime: CodingAgentCompositionAgentRuntime;
 	readonly profile: CodingAgentSessionInitializationProfile;
 	readonly cwd: string;
 	readonly scenario: ConversationScenario;
@@ -87,10 +85,11 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 }
 
 export interface CodingAgentSessionInitializationTransaction {
-	initialize(
+	prepare(
 		sessionOptions: CodingAgentRuntimeSessionOptions,
 		resourceContext: RuntimeResourceContext,
-	): Promise<RuntimeResources>;
+		agentSessionContext: RuntimeAgentSessionPreparationContext,
+	): Promise<RuntimeAgentSessionPlan>;
 }
 
 /** 创建单个 Session 的完整对象图，并在提交前统一持有初始化失败回滚责任。 */
@@ -98,10 +97,8 @@ export function createCodingAgentSessionInitializationTransaction<TOwnershipBind
 	options: CodingAgentSessionInitializationTransactionOptions<TOwnershipBinding>,
 ): CodingAgentSessionInitializationTransaction {
 	return {
-		initialize: (sessionOptions, resourceContext) =>
-			options.agentRuntime.createSession(sessionOptions.sessionId, (agentSessionContext) =>
-				initializeSession(options, sessionOptions, resourceContext, agentSessionContext.observationPublisher),
-			),
+		prepare: (sessionOptions, resourceContext, agentSessionContext) =>
+			initializeSession(options, sessionOptions, resourceContext, agentSessionContext.observationPublisher),
 	};
 }
 
@@ -110,7 +107,7 @@ async function initializeSession<TOwnershipBinding>(
 	sessionOptions: CodingAgentRuntimeSessionOptions,
 	resourceContext: RuntimeResourceContext,
 	agentSessionObservations: RuntimeObservationPublisher,
-): Promise<CodingAgentPreparedRuntimeAgentSession> {
+): Promise<RuntimeAgentSessionPlan> {
 	const profile = options.profile;
 	let activeSessionId = sessionOptions.sessionId;
 	const timeline = createCodingAgentSessionInitializationTimeline({
@@ -388,7 +385,7 @@ async function initializeSession<TOwnershipBinding>(
 					throw error;
 				}
 			},
-			fail: () => timeline.finish("failed"),
+			onFailure: () => timeline.finish("failed"),
 			dispose: () =>
 				activated
 					? preparedResources.dispose()

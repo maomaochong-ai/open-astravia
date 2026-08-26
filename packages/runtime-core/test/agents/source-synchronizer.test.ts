@@ -149,7 +149,7 @@ function definition(id: string, instruction: string): RuntimeAgentDefinition {
 	return {
 		id,
 		createInstance: () => ({
-			createSession: () => ({
+			prepareSession: () => ({
 				capabilities: {
 					instructions: [{ id: "base", content: instruction, priority: 0 }],
 					features: [],

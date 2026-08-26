@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
-import { CodingAgentRuntimeHostSessionBackend } from "@vetta/coding-agent/composition";
+import { CodingAgentSessionBackend } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { RuntimeHost } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
@@ -11,7 +11,7 @@ import {
 	createUnsandboxedTestSessionExecutionEnvironment,
 } from "./fixtures/runtime-composition.js";
 
-describe("CodingAgentRuntimeHostSessionBackend", () => {
+describe("CodingAgentSessionBackend", () => {
 	const directories: string[] = [];
 	const disposers: Array<() => Promise<void>> = [];
 
@@ -35,7 +35,7 @@ describe("CodingAgentRuntimeHostSessionBackend", () => {
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
 		});
-		const backend = new CodingAgentRuntimeHostSessionBackend({
+		const backend = new CodingAgentSessionBackend({
 			composition,
 			conversationDir,
 			cwd,
@@ -106,7 +106,7 @@ describe("CodingAgentRuntimeHostSessionBackend", () => {
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
 		});
-		const backend = new CodingAgentRuntimeHostSessionBackend({
+		const backend = new CodingAgentSessionBackend({
 			composition,
 			conversationDir,
 			cwd,
@@ -155,7 +155,7 @@ describe("CodingAgentRuntimeHostSessionBackend", () => {
 			initialThinkingLevel: "off",
 			streamFn: () => new RecordedAssistantStream(responses[callCount++] ?? assistantMessage("stop")),
 		});
-		const backend = new CodingAgentRuntimeHostSessionBackend({
+		const backend = new CodingAgentSessionBackend({
 			composition,
 			conversationDir,
 			cwd,

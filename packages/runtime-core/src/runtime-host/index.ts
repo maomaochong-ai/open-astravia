@@ -60,6 +60,11 @@ export {
 } from "./kernel-runtime-session-backend.js";
 export { mapKernelEventToSessionEvents } from "./kernel-session-events.js";
 export {
+	RUNTIME_HOST_LIFECYCLE_OBSERVATION,
+	type RuntimeHostLifecycleObservation,
+	type RuntimeHostLifecycleOperation,
+} from "./observations.js";
+export {
 	RuntimeOwnershipBinding,
 	type RuntimeOwnershipLease,
 	type RuntimeOwnershipManager,
@@ -178,4 +183,4 @@ export {
 	type RuntimeRetiredSessionCleanupOptions,
 	RuntimeSessionTransitionCleanup,
 } from "./session-transition-cleanup.js";
-export type { RunningChangedReason, RuntimeHostOptions } from "./types.js";
+export type { RunningChangedReason, RuntimeHostCompositionContext, RuntimeHostOptions } from "./types.js";

@@ -1,5 +1,10 @@
-import type { RuntimeCapabilityDefinition, RuntimeTurnModelBindingProvider } from "../kernel/contracts.js";
+import type {
+	RuntimeCapabilityDefinition,
+	RuntimeSnapshotProvider,
+	RuntimeTurnModelBindingProvider,
+} from "../kernel/contracts.js";
 import type { RuntimeObservationPublisher } from "../observation/contracts.js";
+import type { RuntimeResources } from "../runtime-host/composed-runtime-factory.js";
 import type { SessionExtensionDefinition } from "../session-extensions/contracts.js";
 
 /** 创建单个 Agent Instance 时由基座提供的稳定身份与宿主输入。 */
@@ -39,11 +44,39 @@ export interface RuntimeAgentSessionDefinition {
 	dispose?(): Promise<void> | void;
 }
 
-/** 一个 Agent Instance 的资源图；每个 Session 必须创建独立的 Session Definition。 */
+/**
+ * Runtime Core 完成能力编译后交给产品 Session Plan 的唯一运行时绑定。
+ *
+ * Plan 不创建第二套 Snapshot Provider，也不直接修改 Host 索引。continuation 与关闭通过此绑定回到
+ * 同一个 Agent Session owner。
+ */
+export interface RuntimeAgentSessionActivationContext {
+	readonly snapshotProvider: RuntimeSnapshotProvider;
+	acquirePreviewSnapshot(): ReturnType<RuntimeSnapshotProvider["acquire"]>;
+	rebindSession(sessionId: string): Promise<void>;
+	dispose(): Promise<void>;
+}
+
+/**
+ * Agent Definition 已准备、但尚未提交的 Session 资源图。
+ *
+ * 简单 Agent 可以只提供 definition；复杂 Agent 通过 activate 将同一个 Snapshot Provider 接入完整
+ * RuntimeResources。dispose 同时覆盖未激活回滚和正常 Session 关闭，必须幂等或可重试。
+ */
+export interface RuntimeAgentSessionPlan {
+	readonly definition: RuntimeAgentSessionDefinition;
+	activate?(context: RuntimeAgentSessionActivationContext): Promise<RuntimeResources> | RuntimeResources;
+	onFailure?(): void;
+	dispose?(): Promise<void> | void;
+}
+
+export type RuntimeAgentSessionPreparation = RuntimeAgentSessionDefinition | RuntimeAgentSessionPlan;
+
+/** 一个 Agent Instance 的资源图；每个 Session 必须准备独立、未提交的 Session Plan。 */
 export interface RuntimeAgentInstanceDefinition {
-	createSession(
+	prepareSession(
 		context: RuntimeAgentSessionPreparationContext,
-	): Promise<RuntimeAgentSessionDefinition> | RuntimeAgentSessionDefinition;
+	): Promise<RuntimeAgentSessionPreparation> | RuntimeAgentSessionPreparation;
 	dispose?(): Promise<void> | void;
 }
 

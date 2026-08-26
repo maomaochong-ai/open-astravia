@@ -16,9 +16,9 @@ import {
 	CatalogRoutedRuntimeSessionAccessResolver,
 	CompositeRuntimeSessionCatalog,
 	CompositeRuntimeSessionFileHistoryReader,
-	RetryableCleanup,
 	RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
-	RuntimeAgentHost,
+	RUNTIME_HOST_LIFECYCLE_OBSERVATION,
+	type RuntimeAgentRuntime,
 	RuntimeHost,
 	type RuntimeHostSessionBackendRouteDecision,
 	RuntimeObservationHub,
@@ -66,7 +66,7 @@ import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./host-servi
 import { createDesktopMcpSupervisor } from "./mcp-supervisor.js";
 import { getDesktopProviderObservationRuntime } from "./provider-observation.js";
 import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
-import { createRuntimeAgentLifecycleLogPort } from "./runtime-agent-lifecycle-log-port.js";
+import { createRuntimeLifecycleLogPort } from "./runtime-lifecycle-log-port.js";
 import { createSessionInitializationLogPort } from "./session-initialization-log-port.js";
 
 const log = getAppLogger("runtime");
@@ -79,12 +79,10 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		id: "desktop.session-initialization-log",
 		domains: [CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION.domain],
 	});
-	observationHub.attach(createRuntimeAgentLifecycleLogPort(log), {
-		id: "desktop.runtime-agent-lifecycle-log",
-		domains: [RUNTIME_AGENT_LIFECYCLE_OBSERVATION.domain],
+	observationHub.attach(createRuntimeLifecycleLogPort(log), {
+		id: "desktop.runtime-lifecycle-log",
+		domains: [RUNTIME_AGENT_LIFECYCLE_OBSERVATION.domain, RUNTIME_HOST_LIFECYCLE_OBSERVATION.domain],
 	});
-	const runtimeAgentHost = new RuntimeAgentHost({ observationPort: observationHub });
-	publishCodingAgentExecutionRuntimeDefinition(runtimeAgentHost);
 	const platformServices = createDesktopRuntimeHostPlatformServices();
 	const modelRuntime = getOrCreateSharedModelRuntime();
 	const providerObservationRuntime = getDesktopProviderObservationRuntime();
@@ -107,148 +105,148 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		conversationCatalog,
 		(sessionPath) => !isSessionPathInDirectory(sessionPath, DEFAULT_IM_CONVERSATION_SESSION_DIR),
 	);
-	const runtimeBackendPool = new DesktopRuntimeBackendPool({
-		compositionDefaults: {
-			agentRuntime: { host: runtimeAgentHost },
-			modelRegistry: modelRuntime,
-			createPromptRuntimeSources: createDesktopPromptRuntimeSources,
-			// 工作模式注册表归 desktop 所有（ADR-0071 修订）：coding-agent 只保留 core.mode
-			// 槽位，正文由这里按会话固化的 agentMode 解析注入。
-			resolveModePrompt: getModePrompt,
-			knowledgeRuntime:
-				process.env.VETTA_KNOWLEDGE_DISABLED === "1" ? undefined : createNodeKnowledgeRuntime(getKnowledgeRoot()),
-			createMemoryRolloverRuntime: (options) => {
-				const memoryFile = options.memoryFile ?? join(options.cwd, "MEMORY.md");
-				return createCodingAgentMemoryRolloverRuntime({
-					cwd: options.cwd,
-					memoryFile,
-					memoryCharLimit: options.memoryCharLimit,
-					memoryStorage: new NodeTextFileStorage(memoryFile),
-					journalStorage: new NodeTextFileStorage(join(options.cwd, "JOURNAL.md")),
-				});
+	const createRuntimeBackendPool = (agentRuntime: RuntimeAgentRuntime) =>
+		new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				agentRuntime: { runtime: agentRuntime },
+				modelRegistry: modelRuntime,
+				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
+				// 工作模式注册表归 desktop 所有（ADR-0071 修订）：coding-agent 只保留 core.mode
+				// 槽位，正文由这里按会话固化的 agentMode 解析注入。
+				resolveModePrompt: getModePrompt,
+				knowledgeRuntime:
+					process.env.VETTA_KNOWLEDGE_DISABLED === "1"
+						? undefined
+						: createNodeKnowledgeRuntime(getKnowledgeRoot()),
+				createMemoryRolloverRuntime: (options) => {
+					const memoryFile = options.memoryFile ?? join(options.cwd, "MEMORY.md");
+					return createCodingAgentMemoryRolloverRuntime({
+						cwd: options.cwd,
+						memoryFile,
+						memoryCharLimit: options.memoryCharLimit,
+						memoryStorage: new NodeTextFileStorage(memoryFile),
+						journalStorage: new NodeTextFileStorage(join(options.cwd, "JOURNAL.md")),
+					});
+				},
+				observationHub: {
+					parent: observationHub,
+					onIssue: (issue) => log.warn("[runtime-observation] coding agent hub issue", issue),
+				},
+				...(providerObservationRuntime ? { streamFn: providerObservationRuntime.streamFn } : {}),
+				createPluginMcpRuntime: ({ cwd, agentDir }) => {
+					const resolvedAgentDir = agentDir ?? getAgentDir();
+					const resultArtifacts = createDesktopResultArtifactRuntime(resolvedAgentDir);
+					return createCodingAgentPluginMcpRuntime({
+						supervisor: createDesktopMcpSupervisor({
+							projectRoot: cwd,
+							agentDir: resolvedAgentDir,
+							debug: readDesktopMcpDebug(cwd, resolvedAgentDir),
+							dynamicOnly: true,
+						}),
+						debug: readDesktopMcpDebug(cwd, resolvedAgentDir),
+						resultPolicy: resultArtifacts.mcpToolResultPolicy,
+					});
+				},
 			},
-			observationHub: {
-				parent: observationHub,
-				onIssue: (issue) => log.warn("[runtime-observation] coding agent hub issue", issue),
-			},
-			...(providerObservationRuntime ? { streamFn: providerObservationRuntime.streamFn } : {}),
-			createPluginMcpRuntime: ({ cwd, agentDir }) => {
+			createHookAdapterFactories: ({ scenario }) => [
+				createDesktopPluginHookAdapterFactory({
+					scenario,
+					canInvoke: (pluginId) => pluginAgentContributionService.canInvokeHook(pluginId),
+				}),
+			],
+			createCodingToolResultPolicy: ({ agentDir }) =>
+				createDesktopResultArtifactRuntime(agentDir ?? getAgentDir()).codingToolResultPolicy,
+			createMcpRuntimeSource: async ({ cwd, agentDir }) => {
 				const resolvedAgentDir = agentDir ?? getAgentDir();
 				const resultArtifacts = createDesktopResultArtifactRuntime(resolvedAgentDir);
-				return createCodingAgentPluginMcpRuntime({
+				return await createCodingAgentMcpRuntimeToolSource({
 					supervisor: createDesktopMcpSupervisor({
 						projectRoot: cwd,
 						agentDir: resolvedAgentDir,
 						debug: readDesktopMcpDebug(cwd, resolvedAgentDir),
-						dynamicOnly: true,
 					}),
-					debug: readDesktopMcpDebug(cwd, resolvedAgentDir),
 					resultPolicy: resultArtifacts.mcpToolResultPolicy,
 				});
 			},
-		},
-		createHookAdapterFactories: ({ scenario }) => [
-			createDesktopPluginHookAdapterFactory({
-				scenario,
-				canInvoke: (pluginId) => pluginAgentContributionService.canInvokeHook(pluginId),
+			resolveMcpRuntimeScope: ({ cwd, agentDir }) => ({
+				cwd: resolveSessionListCwd(cwd),
+				agentDir,
 			}),
-		],
-		createCodingToolResultPolicy: ({ agentDir }) =>
-			createDesktopResultArtifactRuntime(agentDir ?? getAgentDir()).codingToolResultPolicy,
-		createMcpRuntimeSource: async ({ cwd, agentDir }) => {
-			const resolvedAgentDir = agentDir ?? getAgentDir();
-			const resultArtifacts = createDesktopResultArtifactRuntime(resolvedAgentDir);
-			return await createCodingAgentMcpRuntimeToolSource({
-				supervisor: createDesktopMcpSupervisor({
-					projectRoot: cwd,
-					agentDir: resolvedAgentDir,
-					debug: readDesktopMcpDebug(cwd, resolvedAgentDir),
-				}),
-				resultPolicy: resultArtifacts.mcpToolResultPolicy,
+		});
+	const runtime = new RuntimeHost({
+		...platformServices,
+		additionalSkillPaths,
+		getDefaultExecutionMode,
+		linuxBubblewrapPath,
+		macosSandboxExecPath,
+		sandboxHostPath,
+		serverUrl: DEFAULT_SERVER_URL,
+		observationPort: observationHub,
+		createSessionBackend: ({ agents }) => {
+			publishCodingAgentExecutionRuntimeDefinition(agents);
+			const runtimeBackendPool = createRuntimeBackendPool(agents);
+			void runtimeBackendPool.prewarmMcp({ cwd: DEFAULT_CONVERSATION_CWD }).catch((error: unknown) => {
+				log.warn("[agent-runtime] default conversation MCP prewarm failed", error);
+			});
+			const historicalSessionImportBackend = new DesktopHistoricalSessionImportBackend(runtimeBackendPool);
+			return new CatalogRoutedRuntimeHostSessionBackend({
+				defaultBackend: runtimeBackendPool,
+				defaultRouteId: "runtime",
+				routes: [
+					{
+						id: "historical-session-import",
+						catalog: historicalFormat.sessionCatalog,
+						backend: historicalSessionImportBackend,
+					},
+					{ id: "runtime", catalog: desktopRuntimeCatalog, backend: runtimeBackendPool },
+				],
+				onRoute: logSessionRoute,
+				dispose: () => runtimeBackendPool.dispose(),
 			});
 		},
-		resolveMcpRuntimeScope: ({ cwd, agentDir }) => ({
-			cwd: resolveSessionListCwd(cwd),
-			agentDir,
-		}),
-	});
-	const cleanup = new RetryableCleanup();
-	cleanup.add({ id: "runtime-backend-pool", phase: 0, cleanup: () => runtimeBackendPool.dispose() });
-	cleanup.add({ id: "runtime-agent-host", phase: 1, cleanup: () => runtimeAgentHost.close() });
-	cleanup.add({ id: "runtime-observation-hub", phase: 2, cleanup: () => observationHub.close() });
-	void runtimeBackendPool.prewarmMcp({ cwd: DEFAULT_CONVERSATION_CWD }).catch((error: unknown) => {
-		log.warn("[agent-runtime] default conversation MCP prewarm failed", error);
-	});
-	const historicalSessionImportBackend = new DesktopHistoricalSessionImportBackend(runtimeBackendPool);
-	const sessionBackend = new CatalogRoutedRuntimeHostSessionBackend({
-		defaultBackend: runtimeBackendPool,
-		defaultRouteId: "runtime",
-		routes: [
+		sessionCatalog: new CompositeRuntimeSessionCatalog(
+			[historicalFormat.sessionCatalog, conversationCatalog],
+			platformServices.pathServices.normalize,
+		),
+		sessionFileHistoryReader: new CompositeRuntimeSessionFileHistoryReader([
+			historicalFormat.sessionFileHistoryReader,
+			new FileConversationRuntimeSessionFileHistoryReader(),
+		]),
+		sessionAccessResolver: new CatalogRoutedRuntimeSessionAccessResolver([
 			{
-				id: "historical-session-import",
 				catalog: historicalFormat.sessionCatalog,
-				backend: historicalSessionImportBackend,
+				access: {
+					readHistory: true,
+					interactiveResume: true,
+					rename: true,
+					delete: true,
+				},
 			},
-			{ id: "runtime", catalog: desktopRuntimeCatalog, backend: runtimeBackendPool },
-		],
-		onRoute: logSessionRoute,
+			{
+				catalog: imConversationCatalog,
+				access: {
+					readHistory: true,
+					interactiveResume: false,
+					rename: true,
+					delete: true,
+				},
+			},
+			{
+				catalog: desktopRuntimeCatalog,
+				access: {
+					readHistory: true,
+					interactiveResume: true,
+					rename: true,
+					delete: true,
+				},
+			},
+		]),
+		sharedModelController: createCodingAgentSharedModelController(modelRuntime),
+		sessionErrorObserver: (event) => logRuntimeSessionError(event, log),
+		sessionCompactionObserver: createRuntimeSessionCompactionLogger(log),
+		userQuestionHandler,
 	});
-	return {
-		runtimeBackendPool: {
-			dispose: () => cleanup.run("Failed to close Desktop Runtime composition"),
-		},
-		runtime: new RuntimeHost({
-			...platformServices,
-			additionalSkillPaths,
-			getDefaultExecutionMode,
-			linuxBubblewrapPath,
-			macosSandboxExecPath,
-			sandboxHostPath,
-			serverUrl: DEFAULT_SERVER_URL,
-			sessionBackend,
-			sessionCatalog: new CompositeRuntimeSessionCatalog(
-				[historicalFormat.sessionCatalog, conversationCatalog],
-				platformServices.pathServices.normalize,
-			),
-			sessionFileHistoryReader: new CompositeRuntimeSessionFileHistoryReader([
-				historicalFormat.sessionFileHistoryReader,
-				new FileConversationRuntimeSessionFileHistoryReader(),
-			]),
-			sessionAccessResolver: new CatalogRoutedRuntimeSessionAccessResolver([
-				{
-					catalog: historicalFormat.sessionCatalog,
-					access: {
-						readHistory: true,
-						interactiveResume: true,
-						rename: true,
-						delete: true,
-					},
-				},
-				{
-					catalog: imConversationCatalog,
-					access: {
-						readHistory: true,
-						interactiveResume: false,
-						rename: true,
-						delete: true,
-					},
-				},
-				{
-					catalog: desktopRuntimeCatalog,
-					access: {
-						readHistory: true,
-						interactiveResume: true,
-						rename: true,
-						delete: true,
-					},
-				},
-			]),
-			sharedModelController: createCodingAgentSharedModelController(modelRuntime),
-			sessionErrorObserver: (event) => logRuntimeSessionError(event, log),
-			sessionCompactionObserver: createRuntimeSessionCompactionLogger(log),
-			userQuestionHandler,
-		}),
-	};
+	return { runtime };
 }
 
 function logSessionRoute(decision: RuntimeHostSessionBackendRouteDecision): void {

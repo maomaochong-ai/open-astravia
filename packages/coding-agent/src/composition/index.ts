@@ -1,4 +1,4 @@
-export { CodingAgentRuntimeHostSessionBackend } from "../host/runtime-host/session-backend.js";
+export { CodingAgentSessionBackend } from "../host/runtime-host/session-backend.js";
 export {
 	type CodingAgentSessionSetup,
 	createCodingAgentSessionSetupSeedInitializer,

@@ -1,5 +1,6 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Message } from "@vetta/ai";
+import { RuntimeAgentRuntime } from "../agents/index.js";
 import type {
 	AgentPluginContinuationInvoker,
 	AgentPluginRuntimeConfig,
@@ -30,7 +31,14 @@ import type {
 import { isSessionError, runtimeError } from "../errors.js";
 import { createRuntimeId } from "../id-generator.js";
 import { isTurnPersistenceError } from "../kernel/errors.js";
+import type { RuntimeObservationPort } from "../observation/index.js";
+import {
+	createRuntimeObservationPublisher,
+	type RuntimeObservationPublisher,
+	runtimeObservationFailure,
+} from "../observation/index.js";
 import type { SessionExtensionEndpointToken } from "../session-extensions/contracts.js";
+import { RUNTIME_HOST_LIFECYCLE_OBSERVATION } from "./observations.js";
 import { generateAutoTitle, generateNextPromptSuggestions } from "./peripheral-tasks.js";
 import { debugPluginAgent, summarizeAgentPlugins } from "./plugin-debug.js";
 import type { RuntimeHostSessionBackend, RuntimeSessionCreateRequest } from "./session-backend.js";
@@ -68,6 +76,7 @@ const IDLE_AGENT_PLUGIN_APPLY_DELAY_MS = 300;
  * 历史解析 / 事件映射 / 周边 LLM 任务已拆到同目录独立模块。
  */
 export class RuntimeHost implements SessionFacade {
+	readonly agents: RuntimeAgentRuntime;
 	private sessions = new Map<string, SessionHandle>();
 	private currentTurnStartedAt = new Map<string, number>();
 	private inFlightBuffers = new Map<string, InFlightBuffer>();
@@ -103,6 +112,12 @@ export class RuntimeHost implements SessionFacade {
 	private readonly macosSandboxExecPath: string | undefined;
 	private readonly serverUrl: string | undefined;
 	private readonly sessionBackend: RuntimeHostSessionBackend | undefined;
+	private readonly ownsSessionBackend: boolean;
+	private readonly observations: RuntimeObservationPublisher;
+	private readonly ownsObservationPublisher: boolean;
+	private readonly ownedObservationPort: RuntimeObservationPort | undefined;
+	private closed = false;
+	private closePromise?: Promise<void>;
 	private readonly sessionCatalog: RuntimeSessionCatalog | undefined;
 	private readonly sessionFileHistoryReader: RuntimeSessionFileHistoryReader | undefined;
 	private readonly sessionAccessResolver: RuntimeSessionAccessResolver | undefined;
@@ -131,6 +146,20 @@ export class RuntimeHost implements SessionFacade {
 	private pluginTurnHandlerLeaseProvider: AgentPluginTurnHandlerLeaseProvider | undefined;
 
 	constructor(options: RuntimeHostOptions = {}) {
+		if (options.sessionBackend && options.createSessionBackend) {
+			throw new Error("RuntimeHost accepts either sessionBackend or createSessionBackend, not both");
+		}
+		if (options.observationPort && options.observationPublisher) {
+			throw new Error("RuntimeHost accepts either observationPort or observationPublisher, not both");
+		}
+		this.observations =
+			options.observationPublisher ?? createRuntimeObservationPublisher({ port: options.observationPort });
+		this.ownsObservationPublisher = options.observationPublisher === undefined;
+		this.ownedObservationPort = options.observationPublisher === undefined ? options.observationPort : undefined;
+		this.agents = new RuntimeAgentRuntime({
+			...options.agentRuntimeOptions,
+			observationPublisher: this.observations,
+		});
 		this.getDefaultExecutionMode = options.getDefaultExecutionMode ?? (() => "sandbox");
 		this.additionalSkillPaths = [...(options.additionalSkillPaths ?? [])];
 		this.sandboxHostPath = options.sandboxHostPath;
@@ -146,7 +175,10 @@ export class RuntimeHost implements SessionFacade {
 		this.sandboxGrantStore = options.sandboxGrantStore;
 		this.sessionErrorObserver = options.sessionErrorObserver;
 		this.sessionCompactionObserver = options.sessionCompactionObserver;
-		this.sessionBackend = options.sessionBackend;
+		this.sessionBackend =
+			options.sessionBackend ??
+			options.createSessionBackend?.({ agents: this.agents, observationPublisher: this.observations });
+		this.ownsSessionBackend = options.createSessionBackend !== undefined;
 		this.userConfirmationHandler = options.userConfirmationHandler;
 		this.userQuestionHandler = options.userQuestionHandler;
 		this.userSandboxGrantHandler = options.userSandboxGrantHandler;
@@ -348,6 +380,7 @@ export class RuntimeHost implements SessionFacade {
 	}
 
 	async createSession(config: SessionConfig = {}): Promise<{ sessionId: string }> {
+		this.assertOpen();
 		// Dedupe by sessionPath: a SessionManager.open() takes an exclusive file
 		// lock, and the lock module treats same-pid re-acquisition as a real
 		// conflict. So if the renderer reopens a session this RuntimeHost is
@@ -1195,13 +1228,24 @@ export class RuntimeHost implements SessionFacade {
 	 * being torn down — otherwise SessionManager locks survive until process exit.
 	 */
 	async disposeAllSessions(): Promise<void> {
+		const failures: unknown[] = [];
 		for (const [sessionId, handle] of this.sessions) {
 			try {
 				if (handle.idleAgentPluginTimer) clearTimeout(handle.idleAgentPluginTimer);
 				this.detachSessionEventStreams(sessionId);
 				await handle.lifecycle.dispose();
 			} catch (err) {
-				console.error(`[RuntimeHost.disposeAllSessions] failed to dispose ${sessionId}:`, err);
+				failures.push(err);
+				this.observations.record(
+					RUNTIME_HOST_LIFECYCLE_OBSERVATION,
+					{
+						operation: "session.dispose",
+						phase: "failed",
+						component: "sessions",
+						failure: runtimeObservationFailure(err),
+					},
+					{ sessionId },
+				);
 			}
 			this.sandboxGrantStore?.clear(sessionId);
 		}
@@ -1221,6 +1265,73 @@ export class RuntimeHost implements SessionFacade {
 				}
 			}
 		}
+		if (failures.length > 0) {
+			throw new AggregateError(failures, "Failed to dispose all RuntimeHost Sessions");
+		}
+	}
+
+	/** 关闭唯一 Host 拥有的 Session、Backend、Agent 控制面和根观测发布器。 */
+	close(): Promise<void> {
+		if (this.closePromise) return this.closePromise;
+		this.closed = true;
+		this.closePromise = this.closeOwnedResources();
+		return this.closePromise;
+	}
+
+	private async closeOwnedResources(): Promise<void> {
+		this.observations.record(RUNTIME_HOST_LIFECYCLE_OBSERVATION, {
+			operation: "host.close",
+			phase: "started",
+		});
+		const failures: unknown[] = [];
+		const ownedRuntimeTasks: Array<{
+			readonly component: "sessions" | "session-backend" | "agent-runtime";
+			readonly dispose: () => Promise<void> | undefined;
+		}> = [
+			{ component: "sessions", dispose: () => this.disposeAllSessions() },
+			...(this.ownsSessionBackend && this.sessionBackend?.dispose
+				? [{ component: "session-backend" as const, dispose: () => this.sessionBackend?.dispose?.() }]
+				: []),
+			{ component: "agent-runtime", dispose: () => this.agents.close() },
+		];
+		for (const task of ownedRuntimeTasks) {
+			try {
+				await task.dispose();
+			} catch (error) {
+				failures.push(error);
+				this.observations.record(RUNTIME_HOST_LIFECYCLE_OBSERVATION, {
+					operation: "host.close",
+					phase: "failed",
+					component: task.component,
+					failure: runtimeObservationFailure(error),
+				});
+			}
+		}
+		if (failures.length === 0) {
+			this.observations.record(RUNTIME_HOST_LIFECYCLE_OBSERVATION, {
+				operation: "host.close",
+				phase: "completed",
+			});
+		}
+		if (this.ownsObservationPublisher) {
+			try {
+				await this.observations.flush();
+			} catch (error) {
+				failures.push(error);
+			}
+		}
+		if (this.ownedObservationPort?.close) {
+			try {
+				await this.ownedObservationPort.close();
+			} catch (error) {
+				failures.push(error);
+			}
+		}
+		if (failures.length > 0) throw new AggregateError(failures, "Failed to close RuntimeHost resources");
+	}
+
+	private assertOpen(): void {
+		if (this.closed) throw runtimeError("INTERNAL_ERROR", "RuntimeHost is closed", false, "runtime");
 	}
 
 	private requireSession(sessionId: string): SessionHandle {

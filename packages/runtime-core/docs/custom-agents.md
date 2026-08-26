@@ -21,9 +21,9 @@ RuntimeAgentRegistry
 | Session | 会话 Tool/MCP 状态、Session Extension | Session 关闭后 |
 | Turn Snapshot | 本 Turn 的 Prompt、Tool handler、模型绑定 | Turn lease 释放后 |
 
-`RuntimeAgentHost` 是多 Agent 控制面和 `RuntimeSnapshotProvider` 宿主，不直接提供 `prompt()` 聊天接口。
-应用仍需把 `RuntimeAgentSession` 交给 Kernel Turn Engine、自己的执行器，或像 Coding Agent 一样在产品层包装成完整
-Session facade。这样基础注册表不会绑定某一种业务会话协议。
+`RuntimeHost` 是唯一生命周期根；它通过 `host.agents` 提供多 Agent 控制面。`RuntimeAgentRuntime` 是其中可独立测试、
+可单独接入 Observation 的模块，不是第二个 Host。只使用 `host.agents` 创建的 `RuntimeAgentSession` 不直接提供
+`prompt()`；完整产品还需通过 `RuntimeHostSessionBackend` 接入 Conversation、Kernel Turn Engine 与产品 Session facade。
 
 ## 最小可用流程
 
@@ -32,9 +32,9 @@ Session facade。这样基础注册表不会绑定某一种业务会话协议。
 ```ts
 import {
   defineRuntimeAgent,
-  RuntimeAgentHost,
   type RuntimeAgentDefinition,
 } from "@vetta/runtime-core/agents";
+import { RuntimeHost } from "@vetta/runtime-core";
 import {
   PassthroughContextStrategy,
   resolveModelCallFrame,
@@ -49,7 +49,7 @@ function createReviewerAgent(
 
     createInstance() {
       return {
-        createSession() {
+        prepareSession() {
           return {
             capabilities: {
               instructions: [
@@ -73,15 +73,15 @@ function createReviewerAgent(
   });
 }
 
-const host = new RuntimeAgentHost();
+const host = new RuntimeHost();
 const reviewer = createReviewerAgent(modelBindingProvider);
 
-host.registry.upsert({
+host.agents.registry.upsert({
   source: { id: "code", revision: "reviewer-1" },
   definition: reviewer,
 });
 
-const instance = await host.createInstance({
+const instance = await host.agents.createInstance({
   agentId: "reviewer",
   instanceId: "reviewer-instance-1",
 });
@@ -123,17 +123,17 @@ try {
 模型绑定：
 
 ```ts
-host.registry.upsert({
+host.agents.registry.upsert({
   source: { id: "code", revision: "writer-1" },
   definition: createWriterAgent(writerModelBindingProvider),
 });
-host.registry.upsert({
+host.agents.registry.upsert({
   source: { id: "code", revision: "reviewer-1" },
   definition: createReviewerAgent(reviewerModelBindingProvider),
 });
 
-const writerInstance = await host.createInstance({ agentId: "writer" });
-const reviewerInstance = await host.createInstance({ agentId: "reviewer" });
+const writerInstance = await host.agents.createInstance({ agentId: "writer" });
+const reviewerInstance = await host.agents.createInstance({ agentId: "reviewer" });
 
 const writerSession = await writerInstance.createSession();
 const reviewerSession = await reviewerInstance.createSession();
@@ -167,7 +167,7 @@ const reviewer = defineRuntimeAgent({
     const tenantClient = createTenantClient(instanceConfig.tenantId);
 
     return {
-      createSession({ configuration, observationPublisher, signal: sessionSignal }) {
+      prepareSession({ configuration, observationPublisher, signal: sessionSignal }) {
         sessionSignal.throwIfAborted();
         const sessionConfig = parseReviewerSessionConfig(configuration);
 
@@ -197,7 +197,7 @@ const reviewer = defineRuntimeAgent({
   },
 });
 
-const instance = await host.createInstance({
+const instance = await host.agents.createInstance({
   agentId: "reviewer",
   configuration: {
     tenantId: "tenant-a",
@@ -388,7 +388,7 @@ const source: RuntimeAgentDefinitionSource = {
 
 const synchronizer = new RuntimeAgentDefinitionSynchronizer({
   source,
-  registry: host.registry,
+  registry: host.agents.registry,
 });
 
 await synchronizer.start();
@@ -405,7 +405,7 @@ Source Snapshot 是全量而不是增量：新快照中删除某个 Agent，会�
 ### 代码动态新增或更新
 
 ```ts
-host.registry.upsert({
+host.agents.registry.upsert({
   source: { id: "code", revision: "reviewer-2" },
   definition: createReviewerAgentV2(modelBindingProvider),
 });
@@ -434,8 +434,8 @@ Turn 不受影响，下一次 acquire 才看到新 Prompt、Tool、模型绑定�
 ### 停用与删除
 
 ```ts
-host.registry.retire("reviewer"); // 禁止新 acquire，但保留目录项和已有 lease
-host.registry.remove("reviewer"); // 删除目录项，已有 lease 仍可安全结束
+host.agents.registry.retire("reviewer"); // 禁止新 acquire，但保留目录项和已有 lease
+host.agents.registry.remove("reviewer"); // 删除目录项，已有 lease 仍可安全结束
 ```
 
 普通更新、retire 和 remove 都不是紧急撤权。若安全事件要求让在途 Tool 或 credential 立即失效，必须使用 Tool/credential
@@ -511,7 +511,7 @@ Instruction、Feature、Policy 或 Extension。
 最简单的宿主仍可直接向 Host 注入一个抽象 Port。JSONL、OTLP、Langfuse、Metrics 或 UI 面板都是 Port 的具体实现：
 
 ```ts
-import { RuntimeAgentHost } from "@vetta/runtime-core/agents";
+import { RuntimeHost } from "@vetta/runtime-core";
 import type { RuntimeObservationPort } from "@vetta/runtime-core/observation";
 
 const observationPort: RuntimeObservationPort = {
@@ -525,15 +525,20 @@ const observationPort: RuntimeObservationPort = {
     });
   },
   flush: () => safeTelemetry.flush(),
+  close: () => safeTelemetry.close(),
 };
 
-const host = new RuntimeAgentHost({ observationPort });
+const host = new RuntimeHost({ observationPort });
 ```
+
+直接传入的 `observationPort` 归 Host 所有，`host.close()` 会在发布并 flush 最终的
+`runtime.host.lifecycle` 记录后调用 Port 的可选 `close()`。复用应用级 Hub 时不要把共享 Port 直接传给多个 Host；应注入
+应用 Hub 创建的 `observationPublisher`，此时 Host 只使用 Publisher，不关闭上层 Hub。
 
 需要模块独立观测、动态 Adapter 或多层汇聚时，使用开箱即用的 `RuntimeObservationHub`：
 
 ```ts
-import { RuntimeAgentHost } from "@vetta/runtime-core/agents";
+import { RuntimeAgentRuntime } from "@vetta/runtime-core/agents";
 import { RuntimeObservationHub } from "@vetta/runtime-core/observation";
 
 const agentHub = new RuntimeObservationHub({ maxPendingRecords: 1_000 });
@@ -542,7 +547,7 @@ const localRoute = agentHub.attach(localMemoryPort, {
   domains: ["review.index"],
 });
 
-const host = new RuntimeAgentHost({
+const agentRuntime = new RuntimeAgentRuntime({
   observationPublisher: agentHub.publisher({ traceId: requestTraceId }),
 });
 
@@ -552,7 +557,7 @@ const applicationRoute = agentHub.attach(applicationHub, { id: "application" });
 // 只停止未来投递；已经发布的记录不会重放，Adapter 的外部资源仍由其创建者释放。
 applicationRoute.detach();
 localRoute.detach();
-await host.close();
+await agentRuntime.close();
 await agentHub.close();
 ```
 
@@ -564,7 +569,7 @@ await agentHub.close();
 如果模块拿到的是已经绑定 Agent/revision/instance identity 的 Publisher，而不是裸 Port，应使用
 `createRuntimeObservationPublisherPort(scopedPublisher)` 作为子 Hub 的 parent。它通过 Publisher 的 `forward()` 合并
 父级 identity，同时保留子记录的 token、payload 与 timestamp。不要用普通 `publisher.record()` 手工重发已有 record，
-否则会生成新的 timestamp。Publisher 应由 `createRuntimeObservationPublisher()` 或 Runtime Agent Host 创建；自定义实现
+否则会生成新的 timestamp。Publisher 应由 `createRuntimeObservationPublisher()` 或 RuntimeHost 创建；自定义实现
 必须同时实现 `forward()` 的无损记录转发语义。
 
 Definition、Instance 和 Session 工厂收到的 `observationPublisher` 已绑定正确的
@@ -583,6 +588,10 @@ observationPublisher.record(REVIEW_INDEX_OBSERVATION, {
   itemCount: resultCount,
 });
 ```
+
+基座内置的 `runtime.agent.lifecycle` 覆盖 Definition revision、Instance、Agent Session、rollout 和 identity rebind；
+`runtime.host.lifecycle` 覆盖 Conversation Session 释放与 Host 拥有资源的关闭结果。具体日志、Trace、Metrics 和 UI
+如何展示这些记录仍由 Adapter 决定。关闭失败只携带 `component`、`errorName/errorCode` 等安全字段，不携带原始错误正文。
 
 Observation 是失败隔离的只读出口，不得用于授权、修改 Prompt、重试或阻止 Tool 执行。这些行为分别进入
 Tool Policy、Composer、显式重试策略或领域 Interceptor。自定义 payload 的设计者负责确保不包含 Prompt、用户内容、
@@ -613,8 +622,9 @@ Observation context 中的 Session/Turn/Tool/Trace identity 关联，但不应�
 
 Coding Agent 是基于同一基座的复杂产品 Agent，不是 Runtime Core 的特殊模式。产品包通过
 `createCodingAgentExecutionRuntimeDefinition()` 为生产 Composition 创建普通 `RuntimeAgentDefinition`。每个
-`createCodingAgentRuntimeComposition()` 默认拥有私有 Host；Desktop 等应用也可通过
-`publishCodingAgentExecutionRuntimeDefinition()` 向共享 Host 发布，再把 Host 注入多个 Composition。产品边界负责：
+`createCodingAgentRuntimeComposition()` 独立使用时拥有私有 Agent 控制面；Desktop 则由唯一 `RuntimeHost` 创建
+`host.agents`，通过 `publishCodingAgentExecutionRuntimeDefinition()` 发布 Definition，再把同一控制面注入多个
+Composition。产品边界负责：
 
 - Coding Prompt 与产品 Profile 的解析；
 - Coding Tool Catalog 与权限策略；
@@ -624,7 +634,7 @@ Coding Agent 是基于同一基座的复杂产品 Agent，不是 Runtime Core �
 
 产品装配只交付未编译的通用 Session Definition，`RuntimeAgentSession` 是能力编译和 Snapshot Provider 的唯一事实源。
 `createCodingAgentRuntimeDefinition()` 仍用于调用者自行提供完整 Instance/Session assembler 的较低层场景，不是默认生产
-Composition 的桥接函数。实现细节与可运行接线见
+Composition 的 Definition。实现细节与可运行接线见
 [《Coding Agent 与多主 Agent 基座》](../../coding-agent/docs/runtime-agent-base.md)。
 
 因此其它产品可以采用相同模式：在自己的包中提供 `createXxxRuntimeDefinition()`，只把最终通用能力交给 Runtime，
@@ -636,7 +646,7 @@ Composition 的桥接函数。实现细节与可运行接线见
 | --- | --- |
 | 简单问答/分类 Agent | 静态 Instruction + 模型绑定；不需要 Composer |
 | 不同租户拥有不同 Tool | Instance configuration + Tool Feature + Tool Policy |
-| 每个会话使用不同语言/Prompt | Session configuration，在 `createSession()` 内解析 |
+| 每个会话使用不同语言/Prompt | Session configuration，在 Definition 的 `prepareSession()` 内解析 |
 | 动态知识检索 | Model Call Contribution Provider；动态 Instruction 默认 volatile |
 | 多个 MCP server | 宿主创建 MCP Source，Session Feature 投影成 Tool；数量多时渐进披露 |
 | 文件或远端动态配置 | Definition Source + Synchronizer + last-known-good |
@@ -651,12 +661,12 @@ Composition 的桥接函数。实现细节与可运行接线见
 - 配置文件只保存数据和受控引用，不保存函数、密钥、模型对象或连接实例。
 - 所有外部配置、Plugin、Skill 和 MCP 输入都在首次进入领域边界时校验。
 - Definition/Instance/Session 各自只释放自己拥有的资源；不要让多个层级重复关闭同一连接。
-- `dispose()`、Host close 和 revision lease release 应按幂等方式使用；Host 会负责逆序回滚和聚合释放错误。
+- `dispose()`、`RuntimeHost.close()` 和 revision lease release 应按幂等方式使用；Host 会负责逆序回滚和聚合释放错误。
 - 动态更新默认不影响旧 Instance、旧 Session 和在途 Turn；需要迁移时显式 rollout。
 - rollout 不能改变 Session Extension ID 拓扑；结构变化创建新 Session。
 - 缓存优化不能改变 Prompt 顺序。无法证明跨 Turn 不变的内容默认 volatile。
 - Observation 不是通用 middleware；任何会改变行为的扩展必须进入明确的领域合同。
-- `RuntimeAgentHost` 不等于完整聊天 Session API；产品执行层仍需负责 Conversation、Turn Engine 和用户协议。
+- `RuntimeHost` 是唯一宿主；`host.agents` 是其可模块化的 Agent 控制面，不是第二个聊天 Session API。
 
 长期架构约束见：
 
@@ -664,3 +674,4 @@ Composition 的桥接函数。实现细节与可运行接线见
 - [ADR-0080：Runtime 统一可观测端口](../../../docs/adr/0080-runtime-observation-port.md)
 - [ADR-0081：Runtime 默认 Prompt 缓存布局](../../../docs/adr/0081-runtime-default-prompt-cache-layout.md)
 - [ADR-0082：分层 Runtime Observation Hub](../../../docs/adr/0082-hierarchical-runtime-observation-hub.md)
+- [ADR-0084：RuntimeHost 是 Agent 与 Conversation 的唯一宿主](../../../docs/adr/0084-runtime-host-owns-agent-control-plane.md)

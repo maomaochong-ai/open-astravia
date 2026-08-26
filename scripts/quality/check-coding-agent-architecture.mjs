@@ -93,6 +93,7 @@ export function collectCodingAgentArchitectureState({ files, packageJson }) {
 
 export function findCodingAgentArchitectureViolations(state) {
 	const violations = [];
+	checkRetiredRuntimeAgentHostConcepts(state, violations);
 	checkPlatformPersistenceCompositionRoots(state, violations);
 	checkCodingAgentCompositionPersistenceBoundary(state, violations);
 	checkToolEnvironmentBoundary(state, violations);
@@ -212,6 +213,21 @@ export function findCodingAgentArchitectureViolations(state) {
 	}
 
 	return violations;
+}
+
+function checkRetiredRuntimeAgentHostConcepts(state, violations) {
+	const retiredNames = [
+		"RuntimeAgentHost",
+		"CodingAgentRuntimeAgentSessionAssemblyRequest",
+		"CodingAgentRuntimeHostSessionBackend",
+	];
+	for (const file of state.files) {
+		for (const retiredName of retiredNames) {
+			if (file.text.includes(retiredName)) {
+				violations.push(`${file.path} references retired multi-Host concept ${retiredName}`);
+			}
+		}
+	}
 }
 
 function checkPortableProductDomainBoundary(state, violations) {

@@ -1,4 +1,4 @@
-import { RUNTIME_AGENT_HOST_ERROR_CODES, RuntimeAgentHostError } from "./errors.js";
+import { RUNTIME_AGENT_ERROR_CODES, RuntimeAgentError } from "./errors.js";
 
 export async function cleanupRuntimeAgentResources(
 	tasks: readonly (() => Promise<void> | void | undefined)[],
@@ -18,16 +18,16 @@ export async function cleanupRuntimeAgentResources(
 	if (errors.length > 1) throw new AggregateError(errors, message);
 }
 
-export function runtimeAgentDuplicateIdError(kind: "Instance" | "Session", id: string): RuntimeAgentHostError {
-	return new RuntimeAgentHostError(
-		RUNTIME_AGENT_HOST_ERROR_CODES.DUPLICATE_ID,
+export function runtimeAgentDuplicateIdError(kind: "Instance" | "Session", id: string): RuntimeAgentError {
+	return new RuntimeAgentError(
+		RUNTIME_AGENT_ERROR_CODES.DUPLICATE_ID,
 		`Runtime Agent ${kind} id is already registered: ${id}`,
 	);
 }
 
-export function runtimeAgentInstanceNotFoundError(instanceId: string): RuntimeAgentHostError {
-	return new RuntimeAgentHostError(
-		RUNTIME_AGENT_HOST_ERROR_CODES.INSTANCE_NOT_FOUND,
+export function runtimeAgentInstanceNotFoundError(instanceId: string): RuntimeAgentError {
+	return new RuntimeAgentError(
+		RUNTIME_AGENT_ERROR_CODES.INSTANCE_NOT_FOUND,
 		`Runtime Agent Instance is not registered: ${instanceId}`,
 	);
 }

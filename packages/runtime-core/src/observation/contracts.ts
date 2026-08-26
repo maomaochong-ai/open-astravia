@@ -32,6 +32,8 @@ export interface RuntimeObservationRecord<Payload = unknown> {
 export interface RuntimeObservationPort {
 	record(observation: RuntimeObservationRecord): Promise<void> | void;
 	flush?(): Promise<void>;
+	/** 仅由直接声明拥有该 Port 的组合根调用；父级/路由 Adapter 不转移所有权。 */
+	close?(): Promise<void>;
 }
 
 /** 已绑定安全 identity scope 的领域发布器；实现失败不得传播到主流程。 */

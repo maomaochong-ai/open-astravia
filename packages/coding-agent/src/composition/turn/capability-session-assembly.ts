@@ -134,7 +134,7 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 }
 
 export interface CodingAgentTurnCapabilitySessionAssembly {
-	/** 由 RuntimeAgentHost 唯一编译的产品能力定义；本装配不再拥有第二套 Snapshot generation。 */
+	/** 由 RuntimeAgentRuntime 唯一编译的产品能力定义；本装配不再拥有第二套 Snapshot generation。 */
 	readonly capabilityDefinition: RuntimeCapabilityDefinition;
 	readonly promptAdapter: CodingAgentPromptRequestAdapter;
 	readAvailableTools(): ReadonlyMap<string, RuntimeToolDefinition>;

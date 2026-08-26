@@ -4,18 +4,18 @@ import { SessionExtensionComposition } from "../session-extensions/index.js";
 import type {
 	RuntimeAgentInstanceDefinition,
 	RuntimeAgentRevisionLease,
-	RuntimeAgentSessionDefinition,
+	RuntimeAgentSessionPlan,
 } from "./contracts.js";
 import {
-	normalizeRuntimeAgentSessionDefinition,
+	normalizeRuntimeAgentSessionPlan,
 	withRuntimeAgentExtensionFeatures,
 	withRuntimeAgentObservationPublisher,
 } from "./definition-validation.js";
-import { RUNTIME_AGENT_HOST_ERROR_CODES, RuntimeAgentHostError } from "./errors.js";
-import type { RuntimeAgentInstanceSnapshot, RuntimeAgentSessionCreateOptions } from "./host-contracts.js";
+import { RUNTIME_AGENT_ERROR_CODES, RuntimeAgentError } from "./errors.js";
 import { cleanupRuntimeAgentResources, compareRuntimeAgentId, runtimeAgentDuplicateIdError } from "./lifecycle.js";
 import { RUNTIME_AGENT_LIFECYCLE_OBSERVATION } from "./observations.js";
 import type { RuntimeAgentRegistry } from "./registry.js";
+import type { RuntimeAgentInstanceSnapshot, RuntimeAgentSessionCreateOptions } from "./runtime-contracts.js";
 import { RuntimeAgentSession } from "./session.js";
 
 export interface RuntimeAgentInstanceOptions {
@@ -30,6 +30,7 @@ export interface RuntimeAgentInstanceOptions {
 	readonly createFeatureCompiler: () => FeatureCompiler;
 	readonly onSessionCreated: (session: RuntimeAgentSession) => void;
 	readonly onSessionClosed: (session: RuntimeAgentSession) => void;
+	readonly onSessionRebind: (session: RuntimeAgentSession, sessionId: string) => Promise<void> | void;
 	readonly onClosed: (instance: RuntimeAgentInstance) => void;
 }
 
@@ -62,12 +63,13 @@ export class RuntimeAgentInstance {
 			operation: "session.create",
 			phase: "started",
 		});
-		let sessionDefinition: RuntimeAgentSessionDefinition | undefined;
+		let sessionPlan: RuntimeAgentSessionPlan | undefined;
 		let extensions: SessionExtensionComposition | undefined;
 		let capabilities: RuntimeCapabilityComposition | undefined;
+		let session: RuntimeAgentSession | undefined;
 		try {
-			sessionDefinition = normalizeRuntimeAgentSessionDefinition(
-				await this.options.definition.createSession({
+			sessionPlan = normalizeRuntimeAgentSessionPlan(
+				await this.options.definition.prepareSession({
 					agentId: this.agentId,
 					revisionId: this.revisionId,
 					instanceId: this.id,
@@ -78,20 +80,20 @@ export class RuntimeAgentInstance {
 				}),
 			);
 			extensions = await SessionExtensionComposition.create({
-				definitions: sessionDefinition.sessionExtensions ?? [],
+				definitions: sessionPlan.definition.sessionExtensions ?? [],
 				signal,
 			});
 			const capabilityDefinition = withRuntimeAgentObservationPublisher(
-				withRuntimeAgentExtensionFeatures(sessionDefinition.capabilities, extensions.features),
+				withRuntimeAgentExtensionFeatures(sessionPlan.definition.capabilities, extensions.features),
 				observations,
 			);
 			capabilities = await RuntimeCapabilityComposition.create({
 				initialDefinition: capabilityDefinition,
 				compiler: this.options.createFeatureCompiler(),
-				modelBindingProvider: sessionDefinition.modelBindingProvider,
+				modelBindingProvider: sessionPlan.definition.modelBindingProvider,
 				signal,
 			});
-			const session = new RuntimeAgentSession({
+			session = new RuntimeAgentSession({
 				id: sessionId,
 				instanceId: this.id,
 				agentId: this.agentId,
@@ -102,12 +104,14 @@ export class RuntimeAgentInstance {
 				observationPublisher: this.options.observationPublisher,
 				capabilities,
 				extensions,
-				sessionDefinition,
+				sessionPlan,
 				onClosed: (closedSession) => {
 					this.sessions.delete(closedSession.id);
 					this.options.onSessionClosed(closedSession);
 				},
 			});
+			const createdSession = session;
+			await createdSession.activate((nextSessionId) => this.options.onSessionRebind(createdSession, nextSessionId));
 			this.options.onSessionCreated(session);
 			this.sessions.set(sessionId, session);
 			observations.record(RUNTIME_AGENT_LIFECYCLE_OBSERVATION, {
@@ -122,7 +126,9 @@ export class RuntimeAgentInstance {
 				failure: runtimeObservationFailure(error, signal),
 			});
 			await cleanupRuntimeAgentResources(
-				[() => capabilities?.close(), () => extensions?.dispose(), () => sessionDefinition?.dispose?.()],
+				session
+					? [() => session?.close()]
+					: [() => capabilities?.close(), () => extensions?.dispose(), () => sessionPlan?.dispose?.()],
 				error,
 				"Runtime Agent Session initialization and rollback failed",
 			);
@@ -138,8 +144,8 @@ export class RuntimeAgentInstance {
 	rebindSession(previousSessionId: string, nextSessionId: string, session: RuntimeAgentSession): void {
 		if (previousSessionId === nextSessionId) return;
 		if (this.sessions.get(previousSessionId) !== session) {
-			throw new RuntimeAgentHostError(
-				RUNTIME_AGENT_HOST_ERROR_CODES.SESSION_NOT_FOUND,
+			throw new RuntimeAgentError(
+				RUNTIME_AGENT_ERROR_CODES.SESSION_NOT_FOUND,
 				`Runtime Agent Session is not registered on Instance ${this.id}: ${previousSessionId}`,
 			);
 		}
@@ -199,10 +205,7 @@ export class RuntimeAgentInstance {
 
 	private assertOpen(): void {
 		if (this.closed) {
-			throw new RuntimeAgentHostError(
-				RUNTIME_AGENT_HOST_ERROR_CODES.CLOSED,
-				`Runtime Agent Instance is closed: ${this.id}`,
-			);
+			throw new RuntimeAgentError(RUNTIME_AGENT_ERROR_CODES.CLOSED, `Runtime Agent Instance is closed: ${this.id}`);
 		}
 	}
 }

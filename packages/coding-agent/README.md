@@ -107,12 +107,12 @@ Host request
 
 ## 多主 Agent 基座接入
 
-生产 `createCodingAgentRuntimeComposition()` 已通过 `RuntimeAgentHost` 创建真正的 Coding Agent
-Definition/Instance/Session：默认模式自建私有 Host，Desktop 等应用组合根可以注入共享 Host，使多个工作区 Composition
+生产 `createCodingAgentRuntimeComposition()` 已通过 `RuntimeHost.agents` 创建真正的 Coding Agent
+Definition/Instance/Session：独立模式自建模块化 Agent 控制面，Desktop 由唯一 RuntimeHost 向多个工作区 Composition
 共享 Registry、各自固定不可变 revision。产品资源先装配成通用 Session Definition，再由 Runtime Agent Session 唯一编译
 Prompt、Tool、MCP 与 Extension；Conversation continuation 会同步重绑基座 Session identity。
 
-完整链路、共享 Host、动态 revision、自定义 Tool/Prompt、观测与生命周期示例见
+完整链路、唯一 Host、动态 revision、自定义 Tool/Prompt、观测与生命周期示例见
 [《Coding Agent 与多主 Agent 基座》](./docs/runtime-agent-base.md)。通用自定义主 Agent 见
 [Runtime Core 自定义 Agent 指南](../runtime-core/docs/custom-agents.md)。
 

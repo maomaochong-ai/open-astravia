@@ -1,4 +1,4 @@
-import { RuntimeAgentHost, type RuntimeAgentSessionDefinition } from "@vetta/runtime-core";
+import { RuntimeAgentRuntime, type RuntimeAgentSessionDefinition } from "@vetta/runtime-core";
 import {
 	type AgentFeatureDefinition,
 	PassthroughContextStrategy,
@@ -13,7 +13,7 @@ import {
 describe("Coding Agent Runtime Definition", () => {
 	it("resolves product Profile to instructions while Tool, MCP and revision isolation use the common base", async () => {
 		const disposed: string[] = [];
-		const host = new RuntimeAgentHost();
+		const host = new RuntimeAgentRuntime();
 		host.registry.upsert({
 			source: { id: "product", revision: "1" },
 			definition: codingDefinition("v1", disposed),
@@ -88,10 +88,10 @@ describe("Coding Agent Runtime Definition", () => {
 			parseSessionConfiguration: requiredString("prompt"),
 			createInstance: () => {
 				createCount += 1;
-				return { createSession: () => sessionDefinition("safe", "tenant", []) };
+				return { prepareSession: () => sessionDefinition("safe", "tenant", []) };
 			},
 		});
-		const host = new RuntimeAgentHost();
+		const host = new RuntimeAgentRuntime();
 		host.registry.upsert({ source: { id: "product", revision: "1" }, definition });
 
 		await expect(host.createInstance({ agentId: definition.id, configuration: { wrong: true } })).rejects.toThrow(
@@ -110,7 +110,7 @@ function codingDefinition(version: string, disposed: string[]) {
 			resolvePromptProfile: ({ configuration: prompt }) => ({
 				instructions: [{ id: "coding.profile", content: prompt, priority: 0 }],
 			}),
-			createSession: () => sessionDefinition(version, tenant, disposed, observationPublisher),
+			prepareSession: () => sessionDefinition(version, tenant, disposed, observationPublisher),
 			dispose: () => {
 				disposed.push(`instance:${version}:dispose`);
 			},

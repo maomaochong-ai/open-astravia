@@ -19,7 +19,7 @@ import type {
 import { createCodingAgentNodeSettingsRuntime } from "../node-state-services.js";
 import { type CodingAgentRuntimeHostRetrySettings, withCodingAgentRuntimeHostRetry } from "./session-retry.js";
 
-export interface CodingAgentRuntimeHostSessionBackendOptions {
+export interface CodingAgentSessionBackendOptions {
 	readonly composition: CodingAgentRuntimeComposition;
 	readonly conversationDir: string;
 	readonly cwd: string;
@@ -35,12 +35,12 @@ export interface CodingAgentRuntimeHostSessionBackendOptions {
  *
  * 组合根固定的参数必须相等；尚未接线的宿主能力必须显式失败，禁止静默丢失。
  */
-export class CodingAgentRuntimeHostSessionBackend implements RuntimeHostSessionBackend {
+export class CodingAgentSessionBackend implements RuntimeHostSessionBackend {
 	private readonly sessions = new Map<string, RuntimeSession>();
 	private readonly assessments = new Map<string, RuntimeHostSessionAssemblyAssessment>();
 	private readonly retrySettings: CodingAgentRuntimeHostRetrySettings;
 
-	constructor(private readonly options: CodingAgentRuntimeHostSessionBackendOptions) {
+	constructor(private readonly options: CodingAgentSessionBackendOptions) {
 		this.retrySettings = options.retrySettings ?? createCodingAgentNodeSettingsRuntime(options.cwd, options.agentDir);
 	}
 

@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
-import { RuntimeAgentHost } from "@vetta/runtime-core";
+import { RuntimeAgentRuntime } from "@vetta/runtime-core";
 import type { RuntimeSnapshotLease } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/model-runtime-adapter.js";
@@ -13,25 +13,25 @@ import {
 } from "../../src/composition/index.js";
 import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-persistence.js";
 
-describe("Coding Agent Runtime Agent production bridge", () => {
+describe("Coding Agent Runtime Agent production composition", () => {
 	const directories: string[] = [];
-	const hosts: RuntimeAgentHost[] = [];
+	const runtimes: RuntimeAgentRuntime[] = [];
 
 	afterEach(async () => {
-		for (const host of hosts.splice(0).reverse()) await host.close().catch(() => undefined);
+		for (const runtime of runtimes.splice(0).reverse()) await runtime.close().catch(() => undefined);
 		for (const directory of directories.splice(0).reverse()) {
 			await rm(directory, { recursive: true, force: true });
 		}
 	});
 
 	it("pins a Composition Instance to its published Definition while new Instances use the next revision", async () => {
-		const host = new RuntimeAgentHost();
-		hosts.push(host);
-		const firstPublication = publishCodingAgentExecutionRuntimeDefinition(host);
-		const first = await createComposition(host, "first");
+		const runtime = new RuntimeAgentRuntime();
+		runtimes.push(runtime);
+		const firstPublication = publishCodingAgentExecutionRuntimeDefinition(runtime);
+		const first = await createComposition(runtime, "first");
 		expect(first.agentRuntime.revisionId).toBe(firstPublication.revision.id);
 
-		const secondPublication = publishCodingAgentExecutionRuntimeDefinition(host, {
+		const secondPublication = publishCodingAgentExecutionRuntimeDefinition(runtime, {
 			source: { ...CODING_AGENT_BUILTIN_SOURCE, revision: "2" },
 			definition: createCodingAgentExecutionRuntimeDefinition({
 				transformSessionDefinition: (_context, definition) => ({
@@ -46,7 +46,7 @@ describe("Coding Agent Runtime Agent production bridge", () => {
 				}),
 			}),
 		});
-		const second = await createComposition(host, "second");
+		const second = await createComposition(runtime, "second");
 		expect(second.agentRuntime.revisionId).toBe(secondPublication.revision.id);
 		expect(first.agentRuntime.revisionId).not.toBe(second.agentRuntime.revisionId);
 
@@ -55,8 +55,8 @@ describe("Coding Agent Runtime Agent production bridge", () => {
 		let firstLease: RuntimeSnapshotLease | undefined;
 		let secondLease: RuntimeSnapshotLease | undefined;
 		try {
-			firstLease = await host.requireSession("first-session").acquire(turn("first-session"));
-			secondLease = await host.requireSession("second-session").acquire(turn("second-session"));
+			firstLease = await runtime.requireSession("first-session").acquire(turn("first-session"));
+			secondLease = await runtime.requireSession("second-session").acquire(turn("second-session"));
 			expect(firstLease.snapshot.instructions.some(({ id }) => id === "test.revision")).toBe(false);
 			expect(secondLease.snapshot.instructions).toContainEqual(
 				expect.objectContaining({ id: "test.revision", content: "coding-agent-revision-2" }),
@@ -70,12 +70,12 @@ describe("Coding Agent Runtime Agent production bridge", () => {
 			await second.dispose();
 		}
 
-		expect(host.getSession("first-session")).toBeUndefined();
-		expect(host.getSession("second-session")).toBeUndefined();
-		expect(host.snapshot()).toMatchObject({ closed: false, instances: [] });
+		expect(runtime.getSession("first-session")).toBeUndefined();
+		expect(runtime.getSession("second-session")).toBeUndefined();
+		expect(runtime.snapshot()).toMatchObject({ closed: false, instances: [] });
 	});
 
-	async function createComposition(host: RuntimeAgentHost, name: string) {
+	async function createComposition(runtime: RuntimeAgentRuntime, name: string) {
 		const conversationDir = await mkdtemp(join(tmpdir(), `coding-agent-runtime-agent-${name}-`));
 		directories.push(conversationDir);
 		return createCodingAgentRuntimeComposition({
@@ -85,7 +85,7 @@ describe("Coding Agent Runtime Agent production bridge", () => {
 			initialThinkingLevel: "off",
 			enableSubagents: false,
 			activation: { mode: "explicit", toolNames: [] },
-			agentRuntime: { host },
+			agentRuntime: { runtime },
 		});
 	}
 });

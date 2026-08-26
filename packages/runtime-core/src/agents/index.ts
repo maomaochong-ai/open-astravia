@@ -16,28 +16,22 @@ export type {
 	RuntimeAgentRegistrySnapshot,
 	RuntimeAgentRevision,
 	RuntimeAgentRevisionLease,
+	RuntimeAgentSessionActivationContext,
 	RuntimeAgentSessionDefinition,
+	RuntimeAgentSessionPlan,
+	RuntimeAgentSessionPreparation,
 	RuntimeAgentSessionPreparationContext,
 	RuntimeAgentSourcePublishResult,
 } from "./contracts.js";
 export { defineRuntimeAgent } from "./contracts.js";
 export {
-	RUNTIME_AGENT_HOST_ERROR_CODES,
+	RUNTIME_AGENT_ERROR_CODES,
 	RUNTIME_AGENT_REGISTRY_ERROR_CODES,
-	RuntimeAgentHostError,
-	type RuntimeAgentHostErrorCode,
+	RuntimeAgentError,
+	type RuntimeAgentErrorCode,
 	RuntimeAgentRegistryError,
 	type RuntimeAgentRegistryErrorCode,
 } from "./errors.js";
-export { RuntimeAgentHost } from "./host.js";
-export type {
-	RuntimeAgentHostOptions,
-	RuntimeAgentHostSnapshot,
-	RuntimeAgentInstanceCreateOptions,
-	RuntimeAgentInstanceSnapshot,
-	RuntimeAgentSessionCreateOptions,
-	RuntimeAgentSessionRolloutResult,
-} from "./host-contracts.js";
 export { RuntimeAgentInstance, type RuntimeAgentInstanceOptions } from "./instance.js";
 export {
 	RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
@@ -45,6 +39,15 @@ export {
 	type RuntimeAgentLifecycleOperation,
 } from "./observations.js";
 export { RuntimeAgentRegistry, type RuntimeAgentRegistryOptions } from "./registry.js";
+export { RuntimeAgentRuntime } from "./runtime.js";
+export type {
+	RuntimeAgentInstanceCreateOptions,
+	RuntimeAgentInstanceSnapshot,
+	RuntimeAgentRuntimeOptions,
+	RuntimeAgentRuntimeSnapshot,
+	RuntimeAgentSessionCreateOptions,
+	RuntimeAgentSessionRolloutResult,
+} from "./runtime-contracts.js";
 export { RuntimeAgentSession, type RuntimeAgentSessionOptions } from "./session.js";
 export {
 	RuntimeAgentDefinitionSynchronizer,

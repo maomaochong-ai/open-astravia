@@ -7,7 +7,6 @@ describe("DesktopRuntimeController", () => {
 		const runtime = runtimeWithDispose(vi.fn(async () => {}));
 		const createComposition = vi.fn(() => ({
 			runtime,
-			runtimeBackendPool: { dispose: vi.fn(async () => {}) },
 		}));
 		const controller = new DesktopRuntimeController(createComposition);
 
@@ -36,40 +35,32 @@ describe("DesktopRuntimeController", () => {
 		});
 	});
 
-	it("disposes sessions before the backend pool and makes shutdown idempotent", async () => {
+	it("closes the single RuntimeHost and makes shutdown idempotent", async () => {
 		const order: string[] = [];
-		const disposeAllSessions = vi.fn(async () => {
-			order.push("sessions");
-		});
-		const disposeBackendPool = vi.fn(async () => {
-			order.push("backend-pool");
+		const close = vi.fn(async () => {
+			order.push("runtime-host");
 		});
 		const controller = new DesktopRuntimeController(() => ({
-			runtime: runtimeWithDispose(disposeAllSessions),
-			runtimeBackendPool: { dispose: disposeBackendPool },
+			runtime: runtimeWithDispose(close),
 		}));
 		controller.get();
 
 		await Promise.all([controller.dispose(), controller.dispose()]);
 
-		expect(order).toEqual(["sessions", "backend-pool"]);
-		expect(disposeAllSessions).toHaveBeenCalledTimes(1);
-		expect(disposeBackendPool).toHaveBeenCalledTimes(1);
+		expect(order).toEqual(["runtime-host"]);
+		expect(close).toHaveBeenCalledTimes(1);
 		expect(controller.peek()).toBeNull();
 		expect(controller.health()).toEqual({ state: "stopped" });
 		expect(() => controller.get()).toThrowError("Desktop RuntimeHost is stopped");
 	});
 
-	it("still disposes the backend pool and records failure when session shutdown fails", async () => {
-		const disposeBackendPool = vi.fn(async () => {});
+	it("records failure when RuntimeHost shutdown fails", async () => {
 		const controller = new DesktopRuntimeController(() => ({
 			runtime: runtimeWithDispose(vi.fn(async () => Promise.reject(new Error("session close failed")))),
-			runtimeBackendPool: { dispose: disposeBackendPool },
 		}));
 		controller.get();
 
 		await expect(controller.dispose()).rejects.toThrowError("session close failed");
-		expect(disposeBackendPool).toHaveBeenCalledTimes(1);
 		expect(controller.health()).toMatchObject({
 			state: "stopped",
 			lastFailure: {
@@ -82,6 +73,6 @@ describe("DesktopRuntimeController", () => {
 	});
 });
 
-function runtimeWithDispose(disposeAllSessions: () => Promise<void>): RuntimeHost {
-	return { disposeAllSessions } as RuntimeHost;
+function runtimeWithDispose(close: () => Promise<void>): RuntimeHost {
+	return { close } as RuntimeHost;
 }

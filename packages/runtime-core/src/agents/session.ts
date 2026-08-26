@@ -5,30 +5,31 @@ import type {
 	RuntimeSnapshotProvider,
 } from "../kernel/index.js";
 import { type RuntimeObservationPublisher, runtimeObservationFailure } from "../observation/index.js";
+import type { RuntimeResources } from "../runtime-host/composed-runtime-factory.js";
 import type { SessionExtensionComposition } from "../session-extensions/index.js";
 import type {
 	RuntimeAgentInstanceDefinition,
 	RuntimeAgentRevisionLease,
-	RuntimeAgentSessionDefinition,
+	RuntimeAgentSessionPlan,
 } from "./contracts.js";
 import {
 	assertSameRuntimeAgentExtensionTopology,
 	normalizeRuntimeAgentInstanceDefinition,
-	normalizeRuntimeAgentSessionDefinition,
+	normalizeRuntimeAgentSessionPlan,
 	runtimeAgentExtensionIds,
 	withRuntimeAgentExtensionFeatures,
 	withRuntimeAgentObservationPublisher,
 } from "./definition-validation.js";
-import { RUNTIME_AGENT_HOST_ERROR_CODES, RuntimeAgentHostError } from "./errors.js";
-import type { RuntimeAgentSessionRolloutResult } from "./host-contracts.js";
+import { RUNTIME_AGENT_ERROR_CODES, RuntimeAgentError } from "./errors.js";
 import { cleanupRuntimeAgentResources } from "./lifecycle.js";
 import { RUNTIME_AGENT_LIFECYCLE_OBSERVATION } from "./observations.js";
 import type { RuntimeAgentRegistry } from "./registry.js";
+import type { RuntimeAgentSessionRolloutResult } from "./runtime-contracts.js";
 
 interface RetainedSessionRollout {
 	readonly revisionLease: RuntimeAgentRevisionLease;
 	readonly instanceDefinition: RuntimeAgentInstanceDefinition;
-	readonly sessionDefinition: RuntimeAgentSessionDefinition;
+	readonly sessionPlan: RuntimeAgentSessionPlan;
 }
 
 export interface RuntimeAgentSessionOptions {
@@ -42,7 +43,7 @@ export interface RuntimeAgentSessionOptions {
 	readonly observationPublisher: RuntimeObservationPublisher;
 	readonly capabilities: RuntimeCapabilityComposition;
 	readonly extensions: SessionExtensionComposition;
-	readonly sessionDefinition: RuntimeAgentSessionDefinition;
+	readonly sessionPlan: RuntimeAgentSessionPlan;
 	readonly onClosed: (session: RuntimeAgentSession) => void;
 }
 
@@ -51,12 +52,13 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 	readonly agentId: string;
 	readonly extensions: SessionExtensionComposition;
 	private readonly capabilities: RuntimeCapabilityComposition;
-	private readonly initialSessionDefinition: RuntimeAgentSessionDefinition;
+	private readonly initialSessionPlan: RuntimeAgentSessionPlan;
 	private readonly initialExtensionIds: readonly string[];
 	private readonly retainedRollouts: RetainedSessionRollout[] = [];
 	private rolloutTail: Promise<void> = Promise.resolve();
 	private effectiveRevision: string;
 	private sessionId: string;
+	private runtimeResources?: RuntimeResources;
 	private closed = false;
 	private closePromise?: Promise<void>;
 
@@ -67,8 +69,8 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 		this.effectiveRevision = options.revisionId;
 		this.capabilities = options.capabilities;
 		this.extensions = options.extensions;
-		this.initialSessionDefinition = options.sessionDefinition;
-		this.initialExtensionIds = runtimeAgentExtensionIds(options.sessionDefinition);
+		this.initialSessionPlan = options.sessionPlan;
+		this.initialExtensionIds = runtimeAgentExtensionIds(options.sessionPlan.definition);
 	}
 
 	get id(): string {
@@ -82,6 +84,42 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 	acquire(context?: RuntimeSnapshotAcquireContext): Promise<RuntimeSnapshotLease> {
 		this.assertOpen();
 		return this.capabilities.acquire(context);
+	}
+
+	async activate(rebindSession: (sessionId: string) => Promise<void> | void): Promise<RuntimeResources | undefined> {
+		this.assertOpen();
+		if (!this.initialSessionPlan.activate) return undefined;
+		if (this.runtimeResources) {
+			throw new RuntimeAgentError(
+				RUNTIME_AGENT_ERROR_CODES.INVALID_INSTANCE,
+				`Runtime Agent Session is already activated: ${this.id}`,
+			);
+		}
+		try {
+			const resources = await this.initialSessionPlan.activate({
+				snapshotProvider: this,
+				acquirePreviewSnapshot: () => this.acquire(),
+				rebindSession: async (sessionId) => {
+					await rebindSession(sessionId);
+				},
+				dispose: () => this.close(),
+			});
+			this.runtimeResources = resources;
+			return resources;
+		} catch (error) {
+			this.initialSessionPlan.onFailure?.();
+			throw error;
+		}
+	}
+
+	requireRuntimeResources(): RuntimeResources {
+		if (!this.runtimeResources) {
+			throw new RuntimeAgentError(
+				RUNTIME_AGENT_ERROR_CODES.INVALID_INSTANCE,
+				`Runtime Agent Session does not provide Runtime resources: ${this.id}`,
+			);
+		}
+		return this.runtimeResources;
 	}
 
 	rolloutToLatest(signal: AbortSignal = new AbortController().signal): Promise<RuntimeAgentSessionRolloutResult> {
@@ -109,12 +147,12 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 		return this.closePromise;
 	}
 
-	/** 仅由 RuntimeAgentHost 在持久化 Session continuation 提交身份时调用。 */
+	/** 仅由 RuntimeAgentRuntime 在持久化 Session continuation 提交身份时调用。 */
 	rebindId(sessionId: string): void {
 		this.assertOpen();
 		if (!sessionId || sessionId.trim() !== sessionId) {
-			throw new RuntimeAgentHostError(
-				RUNTIME_AGENT_HOST_ERROR_CODES.INVALID_INSTANCE,
+			throw new RuntimeAgentError(
+				RUNTIME_AGENT_ERROR_CODES.INVALID_INSTANCE,
 				"Runtime Agent Session id must be a non-empty trimmed string",
 			);
 		}
@@ -145,7 +183,7 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 		});
 
 		let instanceDefinition: RuntimeAgentInstanceDefinition | undefined;
-		let sessionDefinition: RuntimeAgentSessionDefinition | undefined;
+		let sessionPlan: RuntimeAgentSessionPlan | undefined;
 		try {
 			instanceDefinition = normalizeRuntimeAgentInstanceDefinition(
 				await revisionLease.revision.definition.createInstance({
@@ -157,8 +195,8 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 					configuration: this.options.instanceConfiguration,
 				}),
 			);
-			sessionDefinition = normalizeRuntimeAgentSessionDefinition(
-				await instanceDefinition.createSession({
+			sessionPlan = normalizeRuntimeAgentSessionPlan(
+				await instanceDefinition.prepareSession({
 					agentId: this.agentId,
 					revisionId: revisionLease.revision.id,
 					instanceId: this.instanceId,
@@ -168,27 +206,33 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 					configuration: this.options.sessionConfiguration,
 				}),
 			);
+			if (sessionPlan.activate) {
+				throw new RuntimeAgentError(
+					RUNTIME_AGENT_ERROR_CODES.INVALID_INSTANCE,
+					"Runtime Agent rollout cannot replace activated product Session resources; create a new Instance instead",
+				);
+			}
 			assertSameRuntimeAgentExtensionTopology(
 				this.id,
 				this.initialExtensionIds,
-				runtimeAgentExtensionIds(sessionDefinition),
+				runtimeAgentExtensionIds(sessionPlan.definition),
 			);
 			const definition = withRuntimeAgentObservationPublisher(
-				withRuntimeAgentExtensionFeatures(sessionDefinition.capabilities, this.extensions.features),
+				withRuntimeAgentExtensionFeatures(sessionPlan.definition.capabilities, this.extensions.features),
 				observations,
 			);
 			const reconfigured = await this.capabilities.reconfigureBinding(
-				{ definition, modelBindingProvider: sessionDefinition.modelBindingProvider },
+				{ definition, modelBindingProvider: sessionPlan.definition.modelBindingProvider },
 				signal,
 			);
 			if (reconfigured.status === "superseded") {
-				throw new RuntimeAgentHostError(
-					RUNTIME_AGENT_HOST_ERROR_CODES.INVALID_INSTANCE,
+				throw new RuntimeAgentError(
+					RUNTIME_AGENT_ERROR_CODES.INVALID_INSTANCE,
 					`Serialized Runtime Agent Session rollout was superseded: ${this.id}`,
 				);
 			}
 			this.effectiveRevision = revisionLease.revision.id;
-			this.retainedRollouts.push({ revisionLease, instanceDefinition, sessionDefinition });
+			this.retainedRollouts.push({ revisionLease, instanceDefinition, sessionPlan });
 			observations.record(RUNTIME_AGENT_LIFECYCLE_OBSERVATION, {
 				operation: "session.rollout",
 				phase: "completed",
@@ -205,11 +249,7 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 				failure: runtimeObservationFailure(error, signal),
 			});
 			await cleanupRuntimeAgentResources(
-				[
-					() => sessionDefinition?.dispose?.(),
-					() => instanceDefinition?.dispose?.(),
-					() => revisionLease.release(),
-				],
+				[() => sessionPlan?.dispose?.(), () => instanceDefinition?.dispose?.(), () => revisionLease.release()],
 				error,
 				"Runtime Agent Session rollout and rollback failed",
 			);
@@ -228,7 +268,7 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 			.slice()
 			.reverse()
 			.flatMap((rollout) => [
-				() => rollout.sessionDefinition.dispose?.(),
+				() => rollout.sessionPlan.dispose?.(),
 				() => rollout.instanceDefinition.dispose?.(),
 				() => rollout.revisionLease.release(),
 			]);
@@ -238,7 +278,7 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 					() => this.capabilities.close(),
 					() => this.extensions.dispose(),
 					...rolloutTasks,
-					() => this.initialSessionDefinition.dispose?.(),
+					() => this.initialSessionPlan.dispose?.(),
 				],
 				undefined,
 				"Failed to close Runtime Agent Session",
@@ -261,10 +301,7 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 
 	private assertOpen(): void {
 		if (this.closed) {
-			throw new RuntimeAgentHostError(
-				RUNTIME_AGENT_HOST_ERROR_CODES.CLOSED,
-				`Runtime Agent Session is closed: ${this.id}`,
-			);
+			throw new RuntimeAgentError(RUNTIME_AGENT_ERROR_CODES.CLOSED, `Runtime Agent Session is closed: ${this.id}`);
 		}
 	}
 }

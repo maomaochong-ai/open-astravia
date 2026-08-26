@@ -5,7 +5,7 @@ import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
 import {
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
-	CodingAgentRuntimeHostSessionBackend,
+	CodingAgentSessionBackend,
 	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import { detectWorkspaceFacts, probeWorkspaceSignals } from "@vetta/coding-agent/model-context";
@@ -88,7 +88,7 @@ interface DesktopRuntimeScope extends DesktopMcpRuntimeScope {
 
 interface DesktopRuntimeBackendEntry {
 	readonly composition: CodingAgentRuntimeComposition;
-	readonly backend: CodingAgentRuntimeHostSessionBackend;
+	readonly backend: CodingAgentSessionBackend;
 }
 
 /**
@@ -243,7 +243,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		});
 		return {
 			composition,
-			backend: new CodingAgentRuntimeHostSessionBackend({
+			backend: new CodingAgentSessionBackend({
 				composition,
 				conversationDir: scope.conversationDir,
 				cwd: scope.cwd,

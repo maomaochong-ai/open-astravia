@@ -139,6 +139,8 @@ export function assessRuntimeHostSessionAssembly(
 /** RuntimeHost 的组合根合同：一次创建同时交付外围句柄与基础能力 Port。 */
 export interface RuntimeHostSessionBackend {
 	createAssembly(request: RuntimeSessionCreateRequest): Promise<RuntimeHostSessionAssembly>;
+	/** 仅在 Backend 由 RuntimeHost 的 factory 创建并拥有时由 Host 调用。 */
+	dispose?(): Promise<void>;
 }
 
 export interface RuntimeHostSessionBackendRoute {
@@ -162,6 +164,8 @@ export interface CatalogRoutedRuntimeHostSessionBackendOptions {
 	readonly routes: readonly RuntimeHostSessionBackendRoute[];
 	/** 成功选出后端后、创建 Assembly 前触发；不承载日志或遥测实现。 */
 	readonly onRoute?: (decision: RuntimeHostSessionBackendRouteDecision) => void;
+	/** 组合根显式声明的关闭事务；路由器不会猜测各 Route Backend 的共享所有权。 */
+	readonly dispose?: () => Promise<void>;
 }
 
 /**
@@ -175,6 +179,7 @@ export class CatalogRoutedRuntimeHostSessionBackend implements RuntimeHostSessio
 	private readonly defaultRouteId: string | undefined;
 	private readonly routes: readonly RuntimeHostSessionBackendRoute[];
 	private readonly onRoute: ((decision: RuntimeHostSessionBackendRouteDecision) => void) | undefined;
+	private readonly disposeBackend: (() => Promise<void>) | undefined;
 
 	constructor(options: CatalogRoutedRuntimeHostSessionBackendOptions) {
 		if (options.routes.length === 0) {
@@ -184,6 +189,7 @@ export class CatalogRoutedRuntimeHostSessionBackend implements RuntimeHostSessio
 		this.defaultRouteId = options.defaultRouteId;
 		this.routes = options.routes;
 		this.onRoute = options.onRoute;
+		this.disposeBackend = options.dispose;
 	}
 
 	async createAssembly(request: RuntimeSessionCreateRequest): Promise<RuntimeHostSessionAssembly> {
@@ -200,5 +206,9 @@ export class CatalogRoutedRuntimeHostSessionBackend implements RuntimeHostSessio
 			}
 		}
 		throw new Error(`No RuntimeHost session backend owns ${sessionPath}`);
+	}
+
+	dispose(): Promise<void> {
+		return this.disposeBackend?.() ?? Promise.resolve();
 	}
 }

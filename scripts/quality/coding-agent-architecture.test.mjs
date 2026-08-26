@@ -55,6 +55,19 @@ describe("Coding Agent architecture gate", () => {
 	});
 
 	it.each([
+		"RuntimeAgentHost",
+		"CodingAgentRuntimeAgentSessionAssemblyRequest",
+		"CodingAgentRuntimeHostSessionBackend",
+	])("rejects retired multi-Host concept %s", (retiredName) => {
+		const path = `${SOURCE_ROOT}/composition/runtime.ts`;
+		const state = createState([{ path, text: `export const retired = "${retiredName}";` }]);
+
+		expect(findCodingAgentArchitectureViolations(state)).toContain(
+			`${path} references retired multi-Host concept ${retiredName}`,
+		);
+	});
+
+	it.each([
 		[
 			"contract to implementation",
 			`${SOURCE_ROOT}/composition/contracts/sample.ts`,

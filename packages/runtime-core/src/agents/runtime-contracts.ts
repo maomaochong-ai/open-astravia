@@ -3,11 +3,12 @@ import type { RuntimeObservationPort, RuntimeObservationPublisher } from "../obs
 import type { RuntimeAgentRegistrySnapshot } from "./contracts.js";
 import type { RuntimeAgentRegistry } from "./registry.js";
 
-export interface RuntimeAgentHostOptions {
+/** Runtime Agent 控制面的独立装配选项；嵌入 RuntimeHost 时由 Host 注入共享 Observation Publisher。 */
+export interface RuntimeAgentRuntimeOptions {
 	readonly registry?: RuntimeAgentRegistry;
 	readonly createId?: (scope: "instance" | "session") => string;
 	readonly createFeatureCompiler?: () => FeatureCompiler;
-	/** 顶层 Host 可直接提供 Port；嵌入已有观测树时应提供已经 scope 的父级 Publisher。 */
+	/** 独立模块可直接提供 Port；嵌入 RuntimeHost 观测树时应提供已经 scope 的父级 Publisher。 */
 	readonly observationPort?: RuntimeObservationPort;
 	readonly observationPublisher?: RuntimeObservationPublisher;
 }
@@ -36,7 +37,7 @@ export interface RuntimeAgentInstanceSnapshot {
 	readonly sessionIds: readonly string[];
 }
 
-export interface RuntimeAgentHostSnapshot {
+export interface RuntimeAgentRuntimeSnapshot {
 	readonly closed: boolean;
 	readonly registry: RuntimeAgentRegistrySnapshot;
 	readonly instances: readonly RuntimeAgentInstanceSnapshot[];

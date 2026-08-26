@@ -1,23 +1,27 @@
 import type { RuntimeObservationPublisher } from "../observation/index.js";
 import type { SessionExtensionComposition } from "../session-extensions/index.js";
-import type { RuntimeAgentInstanceDefinition, RuntimeAgentSessionDefinition } from "./contracts.js";
-import { RUNTIME_AGENT_HOST_ERROR_CODES, RuntimeAgentHostError } from "./errors.js";
+import type {
+	RuntimeAgentInstanceDefinition,
+	RuntimeAgentSessionDefinition,
+	RuntimeAgentSessionPlan,
+} from "./contracts.js";
+import { RUNTIME_AGENT_ERROR_CODES, RuntimeAgentError } from "./errors.js";
 import { compareRuntimeAgentId } from "./lifecycle.js";
 
 export function normalizeRuntimeAgentInstanceDefinition(value: unknown): RuntimeAgentInstanceDefinition {
-	if (!value || typeof value !== "object" || !("createSession" in value)) {
-		throw invalidInstanceError("Runtime Agent Instance definition must define createSession()");
+	if (!value || typeof value !== "object" || !("prepareSession" in value)) {
+		throw invalidInstanceError("Runtime Agent Instance definition must define prepareSession()");
 	}
 	const candidate = value as Partial<RuntimeAgentInstanceDefinition>;
-	if (typeof candidate.createSession !== "function") {
-		throw invalidInstanceError("Runtime Agent Instance createSession must be a function");
+	if (typeof candidate.prepareSession !== "function") {
+		throw invalidInstanceError("Runtime Agent Instance prepareSession must be a function");
 	}
 	if (candidate.dispose !== undefined && typeof candidate.dispose !== "function") {
 		throw invalidInstanceError("Runtime Agent Instance dispose must be a function");
 	}
-	const createSession = candidate.createSession.bind(value);
+	const prepareSession = candidate.prepareSession.bind(value);
 	const dispose = candidate.dispose?.bind(value);
-	return Object.freeze({ createSession, ...(dispose ? { dispose } : {}) });
+	return Object.freeze({ prepareSession, ...(dispose ? { dispose } : {}) });
 }
 
 export function normalizeRuntimeAgentSessionDefinition(value: unknown): RuntimeAgentSessionDefinition {
@@ -42,6 +46,33 @@ export function normalizeRuntimeAgentSessionDefinition(value: unknown): RuntimeA
 		sessionExtensions: candidate.sessionExtensions ? Object.freeze([...candidate.sessionExtensions]) : undefined,
 		...(dispose ? { dispose } : {}),
 	});
+}
+
+export function normalizeRuntimeAgentSessionPlan(value: unknown): RuntimeAgentSessionPlan {
+	if (value && typeof value === "object" && "definition" in value) {
+		const candidate = value as Partial<RuntimeAgentSessionPlan>;
+		if (candidate.activate !== undefined && typeof candidate.activate !== "function") {
+			throw invalidInstanceError("Runtime Agent Session Plan activate must be a function");
+		}
+		if (candidate.onFailure !== undefined && typeof candidate.onFailure !== "function") {
+			throw invalidInstanceError("Runtime Agent Session Plan onFailure must be a function");
+		}
+		if (candidate.dispose !== undefined && typeof candidate.dispose !== "function") {
+			throw invalidInstanceError("Runtime Agent Session Plan dispose must be a function");
+		}
+		const activate = candidate.activate?.bind(value);
+		const onFailure = candidate.onFailure?.bind(value);
+		const dispose = candidate.dispose?.bind(value);
+		return Object.freeze({
+			definition: normalizeRuntimeAgentSessionDefinition(candidate.definition),
+			...(activate ? { activate } : {}),
+			...(onFailure ? { onFailure } : {}),
+			...(dispose ? { dispose } : {}),
+		});
+	}
+	const definition = normalizeRuntimeAgentSessionDefinition(value);
+	const dispose = definition.dispose ? () => definition.dispose?.() : undefined;
+	return Object.freeze({ definition, ...(dispose ? { dispose } : {}) });
 }
 
 export function withRuntimeAgentExtensionFeatures(
@@ -71,8 +102,8 @@ export function assertSameRuntimeAgentExtensionTopology(
 	next: readonly string[],
 ): void {
 	if (current.length === next.length && current.every((id, index) => id === next[index])) return;
-	throw new RuntimeAgentHostError(
-		RUNTIME_AGENT_HOST_ERROR_CODES.ROLLOUT_EXTENSION_TOPOLOGY,
+	throw new RuntimeAgentError(
+		RUNTIME_AGENT_ERROR_CODES.ROLLOUT_EXTENSION_TOPOLOGY,
 		`Runtime Agent Session rollout cannot change Session Extension topology: ${sessionId}`,
 	);
 }
@@ -97,6 +128,6 @@ function assertCapabilityDefinition(
 	}
 }
 
-function invalidInstanceError(message: string): RuntimeAgentHostError {
-	return new RuntimeAgentHostError(RUNTIME_AGENT_HOST_ERROR_CODES.INVALID_INSTANCE, message);
+function invalidInstanceError(message: string): RuntimeAgentError {
+	return new RuntimeAgentError(RUNTIME_AGENT_ERROR_CODES.INVALID_INSTANCE, message);
 }
