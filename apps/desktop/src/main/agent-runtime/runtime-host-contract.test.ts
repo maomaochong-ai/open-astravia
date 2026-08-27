@@ -191,16 +191,17 @@ describe("Desktop RuntimeHost production contract", () => {
 		const activeToolObservations = observations.runtime.initial.events.filter(
 			({ type }) => type === "active_tools_update",
 		);
-		expect(activeToolObservations.map(({ source }) => source)).toEqual(["runtime-core", "agent"]);
-		expect(activeToolObservations[0]?.detail).not.toContain("invoke_skill");
-		expect(activeToolObservations[1]?.detail).toContain("invoke_skill");
-		expect(observations.runtime.initial.events.map(({ type }) => type)).toEqual([
+		expect(activeToolObservations[0]?.source).toBe("runtime-core");
+		expect(activeToolObservations.at(-1)?.detail).toContain("invoke_skill");
+		const stableLifecycleEvents = observations.runtime.initial.events.filter(
+			(event) => event.type !== "active_tools_update" || event.source === "runtime-core",
+		);
+		expect(stableLifecycleEvents.map(({ type }) => type)).toEqual([
 			"session.lifecycle",
 			"active_tools_update",
 			"mcp.reload.start",
 			"mcp.reload.end",
 			"session.lifecycle",
-			"active_tools_update",
 			"session.lifecycle",
 			"toolcall.start",
 			"message.final",

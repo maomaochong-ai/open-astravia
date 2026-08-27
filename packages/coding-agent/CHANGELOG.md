@@ -78,6 +78,8 @@
 
 ### Fixed
 
+- SDK、独立嵌入、Knowledge Processing 与 Subagent Child 的 RuntimeHost 装配继续保持迁移前的
+  `full-access` 默认执行模式；调用方显式传入 `executionMode` 时仍以其选择为准，Runtime Core 的安全默认值保持不变。
 - Memory rollover 经 RuntimeHost 执行时会把公开 Session view 与 Turn 结果切换到续接后的 canonical Session ID；旧 ID
   在句柄存活期间仍可解析到同一会话，换卷后的历史读取、再次 flush 与释放不再停留在源会话身份。
 - Sandbox execution tool replacement 现在继承 Coding Agent 产品 `modelOrder`，切换执行模式不再改变 Tool/MCP/Plugin

@@ -131,6 +131,8 @@ export async function createCodingAgentSdkSession(
 			sessionBackend: composition.runtimeHostBackend,
 			sessionCatalog,
 			observationPublisher,
+			// SDK 迁移到 RuntimeHost 前默认直接执行工具；宿主仍可通过 session.executionMode 显式选择沙箱。
+			getDefaultExecutionMode: () => "full-access",
 		});
 		rollback.defer({ id: "runtime-host", rollback: () => runtimeHost.close() });
 		const sessionOptions = { ...options.session, sessionId: storage.sessionId };

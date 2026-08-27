@@ -66,6 +66,8 @@ export async function createIsolatedCodingAgentRuntimeHostSession(
 	const runtimeHost = new RuntimeHost({
 		sessionBackend: composition.runtimeHostBackend,
 		observationPublisher: composition.observations.publisher(),
+		// 独立嵌入入口迁移到 RuntimeHost 前默认直接执行工具；保持该兼容合同。
+		getDefaultExecutionMode: () => "full-access",
 	});
 	try {
 		const created = await runtimeHost.createSession(

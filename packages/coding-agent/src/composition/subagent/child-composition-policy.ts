@@ -34,6 +34,8 @@ export function createCodingAgentChildCompositionFactory(
 		const runtimeHost = new RuntimeHost({
 			sessionBackend: childComposition.runtimeHostBackend,
 			observationPublisher: childComposition.observations.publisher(),
+			// 子 Composition 迁移前继承父级直连工具模式；沙箱策略仍由显式 Session 配置覆盖。
+			getDefaultExecutionMode: () => "full-access",
 		});
 		const createSession = async (
 			childOptions: Parameters<CodingAgentSubagentChildComposition["createSession"]>[0],

@@ -73,6 +73,8 @@ export function createKnowledgeProcessingSessionFactory(
 			const runtimeHost = new RuntimeHost({
 				sessionBackend: composition.runtimeHostBackend,
 				observationPublisher: composition.observations.publisher(),
+				// 知识处理入口迁移到 RuntimeHost 前默认直接执行工具；保持该兼容合同。
+				getDefaultExecutionMode: () => "full-access",
 			});
 			let runtimeSession: RuntimeHostSession;
 			try {

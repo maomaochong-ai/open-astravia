@@ -82,7 +82,11 @@ describe("Runtime composition contract", () => {
 			{ model: MODEL, apiKey: "test-key", tools: ["read"] },
 			{ model: MODEL, apiKey: "test-key", tools: ["read"] },
 		]);
-		expect(session.readState()).toMatchObject({ contextPercent: 0.025, contextWindow: 8_000 });
+		expect(session.readState()).toMatchObject({
+			contextPercent: 0.025,
+			contextWindow: 8_000,
+			executionMode: "full-access",
+		});
 		await session.dispose();
 
 		const resumed = await composition.resumeSession({ sessionId: "session-1", includeAgentSkills: false });

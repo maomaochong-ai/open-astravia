@@ -49,7 +49,10 @@ describe("Coding Agent SDK session integration", () => {
 			streamFn: () => new RecordedAssistantStream(assistantMessage("Coding Agent SDK response")),
 		});
 		compositions.push(composition);
-		const runtimeHost = new RuntimeHost({ sessionBackend: composition.runtimeHostBackend });
+		const runtimeHost = new RuntimeHost({
+			sessionBackend: composition.runtimeHostBackend,
+			getDefaultExecutionMode: () => "full-access",
+		});
 		runtimeHosts.push(runtimeHost);
 		const runtimeOptions = {
 			sessionId: "sdk-integration",
