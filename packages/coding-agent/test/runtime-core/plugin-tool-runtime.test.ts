@@ -212,6 +212,39 @@ describe("CodingAgentPluginToolRuntime", () => {
 		]);
 	});
 
+	it("keeps sibling metadata model-visible when a plugin result also has content", async () => {
+		const config: AgentPluginRuntimeConfig = {
+			toolContributions: [pluginTool("browser", "snapshot", { scope_use: ["cli"] })],
+		};
+		const orchestrator = createOrchestrator(() => config);
+		const value = {
+			sessionId: "browser-session-1",
+			revision: 2,
+			content: "interactive snapshot",
+			truncated: false,
+		};
+		const runtime = new CodingAgentPluginToolRuntime({
+			readAgentPlugins: () => config,
+			invokeTool: async () => ({ value, effects: [] }),
+			runOrchestrator: orchestrator,
+			resolveActivation: () => ({ mode: "scope", scenario: "cli" }),
+		});
+		const context = compositionContext("turn-snapshot", new Map());
+		const surface = runtime.compose(context, new Map());
+		await composeOrchestrator(orchestrator, { ...context, frame: surface.frame }, surface.availableTools);
+
+		const result = await surface.frame.tools.get("snapshot")?.execute(toolRequest("turn-snapshot"));
+
+		expect(result).toEqual({
+			content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
+			details: {
+				pluginId: "browser",
+				toolId: "snapshot-id",
+				result: value,
+			},
+		});
+	});
+
 	it("rejects a removed contribution, invalid handler result and timed-out invocation", async () => {
 		let config: AgentPluginRuntimeConfig | undefined = {
 			toolContributions: [pluginTool("plugin-a", "volatile", { scope_use: ["cli"] })],

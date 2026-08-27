@@ -296,8 +296,9 @@ function formatPluginToolResult(result: unknown): string {
 	if (typeof result === "string") return result;
 	if (typeof result === "object" && result !== null) {
 		const record = result as Record<string, unknown>;
-		if (typeof record.text === "string") return record.text;
-		if (typeof record.content === "string") return record.content;
+		const keys = Object.keys(record);
+		if (keys.length === 1 && typeof record.text === "string") return record.text;
+		if (keys.length === 1 && typeof record.content === "string") return record.content;
 	}
 	return JSON.stringify(result, null, 2);
 }

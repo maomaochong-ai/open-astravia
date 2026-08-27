@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Fixed
+
+- 修复插件工具返回含 `content` / `text` 及其它结构化字段的对象时，模型上下文只保留文本字段、静默丢弃同级元数据的问题；
+  仅含单个文本字段的兼容简写保持不变，含兄弟字段的结果现在完整序列化给模型。
+
 ### Changed
 
 - 公共 `CodingAgentHost` 的合同文档明确为 SDK 的隔离产品 Session 所有权组，而不是第二套多主 Agent Host；每个成员
