@@ -1,4 +1,5 @@
 import type { IpcRenderer, IpcRendererEvent, WebUtils } from "electron";
+import { PERSIST_IMAGE_FILES_CHANNEL } from "../../shared/image-cache.js";
 import { PROJECTS_CHANNELS } from "../../shared/projects-ipc.js";
 import type { DesktopApi } from "../api.js";
 import type { DesktopThemeChangeRequest } from "../api-types/theme.js";
@@ -45,6 +46,21 @@ export function createSystemApi(
 				ipc.invoke("vetta:dialog:save-data", defaultFileName, content, encoding, options),
 			saveCopy: (sourcePath, options) => ipc.invoke("vetta:dialog:save-copy", sourcePath, options),
 			persistImages: (sessionId, images) => ipc.invoke("vetta:dialog:persist-images", sessionId, images),
+			persistImageFiles: async (sessionId, files) => {
+				const images = await Promise.all(
+					files.map(async (file) => {
+						const path = webUtils.getPathForFile(file);
+						return {
+							id: crypto.randomUUID(),
+							mimeType: file.type || "image/png",
+							source: path
+								? ({ kind: "file-path", path } as const)
+								: ({ kind: "bytes", data: await file.arrayBuffer() } as const),
+						};
+					}),
+				);
+				return ipc.invoke(PERSIST_IMAGE_FILES_CHANNEL, sessionId, images);
+			},
 		},
 		theme: {
 			set: (mode) => ipc.invoke("vetta:theme:set", mode),
@@ -233,7 +249,7 @@ export function createSystemApi(
 		clipboard: {
 			writeImage: (dataUrl) => ipc.invoke("vetta:clipboard:write-image", dataUrl),
 			writeUserMessage: (request) => ipc.invoke("vetta:clipboard:write-user-message", request),
-			readUserMessage: () => ipc.invoke("vetta:clipboard:read-user-message"),
+			pasteUserMessage: (sessionId) => ipc.invoke("vetta:clipboard:paste-user-message", sessionId),
 		},
 		window: {
 			minimize: () => ipc.invoke("vetta:window:minimize"),

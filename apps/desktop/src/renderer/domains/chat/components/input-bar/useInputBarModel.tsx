@@ -27,7 +27,7 @@ import {
 	messageQueueBySessionAtom,
 	messageQueuePausedBySessionAtom,
 } from "@shared/store/message-queue-atoms";
-import { recordInputFilesAdded } from "@shared/lib/app-monitor-events";
+import { recordInputFilesAdded, recordInputImagesAdded } from "@shared/lib/app-monitor-events";
 import { perfSendBegin, perfSendMark } from "@shared/lib/perf-send";
 import { isImagePath } from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
@@ -49,7 +49,6 @@ import {
 	removeSelection,
 } from "./editor/inputEditorHandle";
 import { insertClipboardMessage } from "./editor/clipboard-message";
-import { readVettaMessageClipboardImages } from "./editor/plugins/clipboard-images";
 import { persistBase64Images, persistImageFiles } from "./editor/persistImages";
 import {
 	inputBlankAtom,
@@ -88,11 +87,6 @@ function clampContextMenuPosition(clientX: number, clientY: number): { x: number
 }
 
 async function clipboardHasText(): Promise<boolean> {
-	try {
-		if (await window.vetta.clipboard.readUserMessage()) return true;
-	} catch {
-		// Fall through to the browser text check for older or unavailable hosts.
-	}
 	try {
 		const text = await navigator.clipboard.readText();
 		return text.length > 0;
@@ -491,19 +485,17 @@ export function useInputBarModel({
 		if (!hasSession) return;
 		void (async () => {
 			try {
-				const richMessage = await window.vetta.clipboard.readUserMessage();
+				const richMessage = await window.vetta.clipboard.pasteUserMessage(
+					activeSession?.runtimeId ?? "draft",
+				);
 				if (richMessage) {
-					const images = readVettaMessageClipboardImages(richMessage.html, richMessage.text);
-					if (images) {
-						const paths = await persistImageFiles(
-							images.files,
-							activeSession?.runtimeId ?? null,
-							"paste",
-						);
-						insertClipboardMessage(richMessage.text, paths);
-						focusInputEditor();
-						return;
-					}
+					recordInputImagesAdded("paste", richMessage.images);
+					insertClipboardMessage(
+						richMessage.text,
+						richMessage.images.map((image) => image.path),
+					);
+					focusInputEditor();
+					return;
 				}
 			} catch (error) {
 				console.warn("[useInputBarModel] rich clipboard read failed", error);

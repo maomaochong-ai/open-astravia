@@ -1,5 +1,5 @@
 import type { RuntimeStatus, RuntimesStatus, RuntimeType } from "../../main/runtimes/types.js";
-import type { UserMessageClipboardReadResult, UserMessageClipboardWriteRequest } from "../../shared/clipboard.js";
+import type { UserMessageClipboardPasteResult, UserMessageClipboardWriteRequest } from "../../shared/clipboard.js";
 
 export interface DesktopShellApi {
 	showInFolder(fullPath: string): Promise<void>;
@@ -15,8 +15,8 @@ export interface DesktopClipboardApi {
 	writeImage(dataUrl: string): Promise<void>;
 	/** Atomically writes plain text, rich HTML, and the first native image. */
 	writeUserMessage(request: UserMessageClipboardWriteRequest): Promise<void>;
-	/** Returns content only when the clipboard contains a Vetta-authored rich message. */
-	readUserMessage(): Promise<UserMessageClipboardReadResult | null>;
+	/** Persists a Vetta-authored rich message directly from the native clipboard. */
+	pasteUserMessage(sessionId: string): Promise<UserMessageClipboardPasteResult | null>;
 }
 
 export interface DesktopWindowApi {

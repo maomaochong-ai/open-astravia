@@ -1,5 +1,6 @@
 import { waitForPluginHostFirstReady } from "@domains/plugins/runtime/plugin-events";
 import { useProjectActions } from "@domains/project/hooks/useProjects";
+import type { PersistedImageResult } from "@preload/api";
 import { i18n } from "@shared/i18n";
 import {
 	BUILTIN_KNOWLEDGE_RETRIEVAL_ACTION_ID,
@@ -179,12 +180,14 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			// 把附图落盘到会话图片缓存，改用 @路径 引用而非把 base64 塞进上下文：
 			// 视觉模型经 Read 工具即可看到图，不支持视觉的模型也能用工具对图做 OCR/改图等。
 			let imagePaths: string[] = [];
+			let persistedImages: PersistedImageResult[] = [];
 			if (images) {
 				try {
-					imagePaths = await window.vetta.dialog.persistImages(
+					persistedImages = await window.vetta.dialog.persistImages(
 						session.runtimeId,
 						images.map((img) => ({ id: img.id, data: img.data, mimeType: img.mimeType })),
 					);
+					imagePaths = persistedImages.map((image) => image.path);
 				} catch (err) {
 					console.error("[useSessionManager.sendMessage] persistImages failed:", err);
 				}
@@ -223,7 +226,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			}
 			recordInputContextUsed({
 				files: hasOverride ? [] : mentionedFiles,
-				images: images ?? [],
+				images: hasOverride ? [] : persistedImages,
 				...(promptRef ? { promptRef } : {}),
 			});
 			// 行内 skill 是软引用，不进 promptRef，但调用次数仍要计入 app-monitor

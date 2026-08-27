@@ -31,9 +31,15 @@ describe("readClipboardImages", () => {
 			}),
 		);
 
-		expect(result.messageText).toBe("message text");
-		expect(result.files).toHaveLength(2);
-		expect(result.files.map((file) => file.name)).toEqual(["copied-image-1.png", "copied-image-2.png"]);
+		expect(result).toEqual({
+			kind: "vetta-message",
+			messageText: "message text",
+			images: [
+				{ data: "AQID", mimeType: "image/png", name: "copied-image-1.png" },
+				{ data: "BAUG", mimeType: "image/png", name: "copied-image-2.png" },
+			],
+		});
+		expect(duplicatedNativeFile.size).toBe(1);
 	});
 
 	it("keeps ordinary image-file paste behavior", () => {
@@ -50,6 +56,22 @@ describe("readClipboardImages", () => {
 			}),
 		);
 
-		expect(result).toEqual({ files: [file] });
+		expect(result).toEqual({ kind: "files", files: [file] });
+	});
+
+	it("keeps Vetta image payloads encoded instead of allocating decoded Files", () => {
+		const atobSpy = vi.spyOn(globalThis, "atob");
+		const payload = "A".repeat(1_000_000);
+
+		const result = readClipboardImages(
+			clipboardData({
+				html: `<div data-vetta-user-message="1"><img data-vetta-clipboard-image="" src="data:image/png;base64,${payload}" alt=""></div>`,
+				text: "large image",
+			}),
+		);
+
+		expect(result.kind).toBe("vetta-message");
+		if (result.kind === "vetta-message") expect(result.images[0]?.data).toBe(payload);
+		expect(atobSpy).not.toHaveBeenCalled();
 	});
 });

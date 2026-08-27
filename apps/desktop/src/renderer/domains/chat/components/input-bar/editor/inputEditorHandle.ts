@@ -51,6 +51,8 @@ export interface InsertTokenOptions {
 	replaceTrigger?: boolean;
 }
 
+export type InputInsertionPart = { kind: "text"; text: string } | { kind: "image"; path: string };
+
 function insert(nodes: () => LexicalNode[], options?: InsertTokenOptions): void {
 	current?.update(() => {
 		if (options?.replaceTrigger) $removeTriggerBeforeCaret();
@@ -88,6 +90,25 @@ export function insertFileToken(path: string, isDirectory = false, options?: Ins
 
 export function insertImageToken(path: string, options?: InsertTokenOptions): void {
 	insert(() => [$createImageTokenNode(path)], options);
+}
+
+/**
+ * 在一次 Lexical transaction 中插入一组文本和图片。批量粘贴不能逐项调用
+ * insertImageToken / insertPlainText，否则每张图都会各自触发投影 atom、React
+ * render 和 DOM commit。
+ */
+export function insertInputParts(parts: readonly InputInsertionPart[]): void {
+	if (parts.length === 0) return;
+	current?.update(() => {
+		for (const part of parts) {
+			if (part.kind === "image") {
+				$insertTokenNodes([$createImageTokenNode(part.path)]);
+				continue;
+			}
+			const selection = $getSelection();
+			if ($isRangeSelection(selection)) selection.insertText(part.text);
+		}
+	});
 }
 
 /** 从文本流里移除某张图片的 token（上方缩略图行的 × 按钮）。 */

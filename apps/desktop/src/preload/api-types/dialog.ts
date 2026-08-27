@@ -1,15 +1,9 @@
+import type { PersistedImageResult, PersistImageInput } from "../../shared/image-cache.js";
+
 export interface SelectedImageFile {
 	data: string;
 	mimeType: string;
 	name: string;
-}
-
-export interface PersistImageInput {
-	/** Stable id used as the on-disk file name */
-	id: string;
-	/** Base64-encoded image data (no data URI prefix) */
-	data: string;
-	mimeType: string;
 }
 
 export interface DialogSaveCopyOptions {
@@ -69,8 +63,15 @@ export interface DesktopDialogApi {
 	 */
 	saveCopy(sourcePath: string, options?: DialogSaveCopyOptions): Promise<string | null>;
 	/**
-	 * 把附加图片落盘到 ~/.vetta/image-cache/<sessionId>/，返回绝对路径。
+	 * 把附加图片落盘到 ~/.vetta/image-cache/<sessionId>/，返回路径与压缩文件元数据。
 	 * 用于以 @路径 方式引用图片，避免把 base64 直接塞进上下文。
 	 */
-	persistImages(sessionId: string, images: PersistImageInput[]): Promise<string[]>;
+	persistImages(sessionId: string, images: PersistImageInput[]): Promise<PersistedImageResult[]>;
+	/**
+	 * 把浏览器 File 直接落盘。真实文件由 Main 读取，虚拟剪贴板文件以二进制传输，
+	 * 避免在 Renderer 中生成 base64 字符串。
+	 */
+	persistImageFiles(sessionId: string, files: File[]): Promise<PersistedImageResult[]>;
 }
+
+export type { PersistedImageResult, PersistImageInput } from "../../shared/image-cache.js";

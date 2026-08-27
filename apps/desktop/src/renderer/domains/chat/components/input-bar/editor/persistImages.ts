@@ -10,23 +10,6 @@ function nextId(): string {
 	return `img-${++counter}-${Date.now()}`;
 }
 
-function readAsBase64(file: File): Promise<{ data: string; mimeType: string; name: string }> {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => {
-			const result = reader.result as string;
-			const commaIdx = result.indexOf(",");
-			resolve({
-				data: result.slice(commaIdx + 1),
-				mimeType: file.type || "image/png",
-				name: file.name || "Pasted image",
-			});
-		};
-		reader.onerror = () => reject(reader.error);
-		reader.readAsDataURL(file);
-	});
-}
-
 export interface Base64Image {
 	data: string;
 	mimeType: string;
@@ -45,19 +28,19 @@ export async function persistBase64Images(
 ): Promise<string[]> {
 	if (images.length === 0) return [];
 	try {
-		const paths = await window.vetta.dialog.persistImages(
+		const persisted = await window.vetta.dialog.persistImages(
 			sessionId || DRAFT_BUCKET,
 			images.map((image) => ({ id: nextId(), data: image.data, mimeType: image.mimeType })),
 		);
-		recordInputImagesAdded(source, [...images]);
-		return paths;
+		recordInputImagesAdded(source, persisted);
+		return persisted.map((image) => image.path);
 	} catch (error) {
 		console.error("[input-editor] persist images failed:", error);
 		return [];
 	}
 }
 
-/** 剪贴板 / 拖拽来的 File 先读成 base64 再落盘。 */
+/** 剪贴板 / 拖拽来的 File 由 preload 以真实路径或二进制字节直接落盘。 */
 export async function persistImageFiles(
 	files: readonly File[],
 	sessionId: string | null,
@@ -65,10 +48,11 @@ export async function persistImageFiles(
 ): Promise<string[]> {
 	if (files.length === 0) return [];
 	try {
-		const images = await Promise.all(files.map(readAsBase64));
-		return await persistBase64Images(images, sessionId, source);
+		const persisted = await window.vetta.dialog.persistImageFiles(sessionId || DRAFT_BUCKET, [...files]);
+		recordInputImagesAdded(source, persisted);
+		return persisted.map((image) => image.path);
 	} catch (error) {
-		console.error("[input-editor] read images failed:", error);
+		console.error("[input-editor] persist image files failed:", error);
 		return [];
 	}
 }

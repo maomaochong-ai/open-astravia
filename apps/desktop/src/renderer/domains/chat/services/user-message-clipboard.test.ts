@@ -11,27 +11,21 @@ describe("copyUserMessageToClipboard", () => {
 		});
 	});
 
-	it("loads persisted image URLs and forwards data URLs to the native clipboard", async () => {
+	it("forwards persisted image paths without reading or encoding them in the renderer", async () => {
 		const writeUserMessage = vi.fn(async () => undefined);
 		Object.defineProperty(window, "vetta", {
 			configurable: true,
 			value: { clipboard: { writeUserMessage } },
 		});
-		vi.stubGlobal(
-			"fetch",
-			vi.fn(async () => ({
-				ok: true,
-				status: 200,
-				blob: async () => new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" }),
-			})),
-		);
+		const fetchSpy = vi.spyOn(globalThis, "fetch");
 
-		await copyUserMessageToClipboard("hello", ["vetta-file://attachment.png"]);
+		await copyUserMessageToClipboard("hello", ["vetta-file://local/C:/attachments/attachment.png"]);
 
 		expect(writeUserMessage).toHaveBeenCalledWith({
 			text: "hello",
-			images: ["data:image/png;base64,AQID"],
+			images: [{ kind: "file-path", path: "C:/attachments/attachment.png" }],
 		});
+		expect(fetchSpy).not.toHaveBeenCalled();
 		expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
 	});
 });

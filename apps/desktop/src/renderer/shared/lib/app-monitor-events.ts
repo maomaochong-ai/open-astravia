@@ -16,17 +16,9 @@ interface FileAttachmentInput {
 	sizeBytes?: number;
 }
 
-interface ImageAttachmentInput {
-	data?: string;
-	file?: File;
-	mimeType?: string;
-	name?: string;
-	sizeBytes?: number;
-}
-
 interface InputContextUsageInput {
 	files?: FileAttachmentInput[];
-	images?: ImageAttachmentInput[];
+	images?: AppMonitorInputImageAttachment[];
 	promptRef?: AppMonitorInputPromptRefUsage;
 }
 
@@ -40,18 +32,12 @@ export function recordInputFilesAdded(source: AppMonitorInputAttachmentSource, f
 	});
 }
 
-export function recordInputImagesAdded(source: AppMonitorInputAttachmentSource, images: ImageAttachmentInput[]): void {
+export function recordInputImagesAdded(
+	source: AppMonitorInputAttachmentSource,
+	images: readonly AppMonitorInputImageAttachment[],
+): void {
 	if (images.length === 0) return;
-	void collectImageAttachments(images)
-		.then((sanitized) => {
-			if (sanitized.length === 0) return;
-			recordEvent({
-				type: "input.attachments.added",
-				source,
-				images: sanitized,
-			});
-		})
-		.catch(() => undefined);
+	recordEvent({ type: "input.attachments.added", source, images: images.map(toImageAttachment) });
 }
 
 export function recordInputActionToggled(
@@ -77,19 +63,14 @@ export function recordInputActionsUsed(actions: AppMonitorInputActionUsage[]): v
 
 export function recordInputContextUsed(input: InputContextUsageInput): void {
 	const files = input.files?.map(toFileAttachment).filter((file) => file !== null) ?? [];
-	const hasImages = (input.images?.length ?? 0) > 0;
-	if (files.length === 0 && !hasImages && !input.promptRef) return;
-	void collectImageAttachments(input.images ?? [])
-		.then((images) => {
-			if (files.length === 0 && images.length === 0 && !input.promptRef) return;
-			recordEvent({
-				type: "input.context.used",
-				files,
-				images,
-				...(input.promptRef ? { promptRef: input.promptRef } : {}),
-			});
-		})
-		.catch(() => undefined);
+	const images = input.images?.map(toImageAttachment) ?? [];
+	if (files.length === 0 && images.length === 0 && !input.promptRef) return;
+	recordEvent({
+		type: "input.context.used",
+		files,
+		images,
+		...(input.promptRef ? { promptRef: input.promptRef } : {}),
+	});
 }
 
 function recordEvent(event: Parameters<typeof window.vetta.appMonitor.recordEvent>[0]): void {
@@ -111,58 +92,15 @@ function toFileAttachment(file: FileAttachmentInput): AppMonitorInputFileAttachm
 	};
 }
 
-async function collectImageAttachments(images: ImageAttachmentInput[]): Promise<AppMonitorInputImageAttachment[]> {
-	const result: AppMonitorInputImageAttachment[] = [];
-	for (const image of images) {
-		const sizeBytes = normalizeOptionalCount(image.sizeBytes ?? image.file?.size ?? sizeBytesFromBase64(image.data));
-		const dimensions = await readImageDimensions(image).catch(() => undefined);
-		result.push({
-			format: getImageFormat(image),
-			...(sizeBytes === undefined ? {} : { sizeBytes }),
-			...(dimensions?.width ? { width: dimensions.width } : {}),
-			...(dimensions?.height ? { height: dimensions.height } : {}),
-		});
-	}
-	return result;
-}
-
-function readImageDimensions(image: ImageAttachmentInput): Promise<{ width: number; height: number }> {
-	return new Promise((resolve, reject) => {
-		const img = new Image();
-		let objectUrl: string | undefined;
-		img.onload = () => {
-			if (objectUrl) URL.revokeObjectURL(objectUrl);
-			resolve({ width: img.naturalWidth, height: img.naturalHeight });
-		};
-		img.onerror = () => {
-			if (objectUrl) URL.revokeObjectURL(objectUrl);
-			reject(new Error("image dimension read failed"));
-		};
-		if (image.file) {
-			objectUrl = URL.createObjectURL(image.file);
-			img.src = objectUrl;
-			return;
-		}
-		if (image.data) {
-			img.src = `data:${image.mimeType || "image/png"};base64,${image.data}`;
-			return;
-		}
-		reject(new Error("image source missing"));
-	});
-}
-
-function getImageFormat(image: ImageAttachmentInput): string {
-	const mimeFormat = image.mimeType?.split("/")[1]?.toLowerCase();
-	if (mimeFormat) return normalizeFormat(mimeFormat);
-	const fileMimeFormat = image.file?.type.split("/")[1]?.toLowerCase();
-	if (fileMimeFormat) return normalizeFormat(fileMimeFormat);
-	return getExtension(image.name || image.file?.name || "") || "unknown";
-}
-
-function normalizeFormat(format: string): string {
-	if (format === "jpeg") return "jpg";
-	if (format === "svg+xml") return "svg";
-	return format || "unknown";
+function toImageAttachment(image: AppMonitorInputImageAttachment): AppMonitorInputImageAttachment {
+	return {
+		format: image.format,
+		...(normalizeOptionalCount(image.sizeBytes) === undefined
+			? {}
+			: { sizeBytes: normalizeOptionalCount(image.sizeBytes) }),
+		...(normalizeOptionalCount(image.width) === undefined ? {} : { width: normalizeOptionalCount(image.width) }),
+		...(normalizeOptionalCount(image.height) === undefined ? {} : { height: normalizeOptionalCount(image.height) }),
+	};
 }
 
 function getExtension(pathOrName: string): string {
@@ -178,10 +116,4 @@ function getExtension(pathOrName: string): string {
 function normalizeOptionalCount(value: number | undefined): number | undefined {
 	if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return undefined;
 	return Math.floor(value);
-}
-
-function sizeBytesFromBase64(data: string | undefined): number | undefined {
-	if (!data) return undefined;
-	const padding = data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0;
-	return Math.floor((data.length * 3) / 4) - padding;
 }
