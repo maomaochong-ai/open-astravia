@@ -1,5 +1,5 @@
 import { clipboard, ipcMain, nativeImage } from "electron";
-import type { UserMessageClipboardWriteRequest } from "@/shared/clipboard.js";
+import type { UserMessageClipboardWriteRequest } from "../../shared/clipboard.js";
 import { readUserMessageClipboard, writeUserMessageClipboard } from "../clipboard/user-message-clipboard.js";
 
 function isUserMessageClipboardWriteRequest(value: unknown): value is UserMessageClipboardWriteRequest {

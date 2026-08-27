@@ -6,7 +6,7 @@ import {
 	USER_MESSAGE_CLIPBOARD_VERSION,
 	type UserMessageClipboardReadResult,
 	type UserMessageClipboardWriteRequest,
-} from "@/shared/clipboard.js";
+} from "../../shared/clipboard.js";
 
 interface NativeImageFactory {
 	createFromDataURL(dataUrl: string): NativeImage;
