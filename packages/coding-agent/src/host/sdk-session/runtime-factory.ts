@@ -1,15 +1,19 @@
-import { InitializationRollbackScope, RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
+import {
+	InitializationRollbackScope,
+	RetryableCleanup,
+	RuntimeActiveSessionHost,
+	type RuntimeActiveSessionTransitionLifecycle,
+	RuntimeHost,
+	type RuntimeHostSession,
+	type RuntimePreparedSessionBinding,
+} from "@vetta/runtime-core";
 import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeSessionOptions,
 } from "../../composition/contracts/index.js";
 import { createCodingAgentRuntimeComposition } from "../../composition/runtime-composition.js";
-import {
-	CodingAgentActiveSessionHost,
-	type CodingAgentPreparedSessionBinding,
-	type CodingAgentSessionTransitionLifecycle,
-} from "../../composition/session-host/active-session-transition-host.js";
+import { createCodingAgentRuntimeHostSessionConfig } from "../../composition/runtime-host-session-config.js";
 import type { CodingAgentSessionStorageTarget } from "../../public-api/sdk/sdk-create-contract.js";
 import type { CodingAgentSession } from "../../public-api/sdk/sdk-session-contract.js";
 import { CodingAgentSdkActiveSessionAdapter } from "./active-session-adapter.js";
@@ -46,7 +50,7 @@ export interface CodingAgentSdkSessionFactoryOptions {
 	/** 将产品设置、模型范围和重试控制接入可切换的 Session 能力宿主。 */
 	readonly createCapabilityHost?: CodingAgentSdkSessionCapabilityHostFactory;
 	/** Extension 等产品绑定参与活动 Session 切换事务的生命周期。 */
-	readonly transitionLifecycle?: CodingAgentSessionTransitionLifecycle;
+	readonly transitionLifecycle?: RuntimeActiveSessionTransitionLifecycle<RuntimeHostSession>;
 	/** 为 SDK 补充树导航、Bash 和 Legacy setup 等活动会话能力。 */
 	readonly createActiveCapabilityHost?: CodingAgentSdkActiveSessionCapabilityHostFactory;
 	/** 完整清理成功后通知外层 Host 释放 Session 所有权。 */
@@ -59,7 +63,7 @@ export interface CodingAgentSdkOwnedResource {
 }
 
 export interface CodingAgentSdkSessionInitializationContext {
-	readonly session: RuntimeSession;
+	readonly session: RuntimeHostSession;
 	readonly composition: CodingAgentRuntimeComposition;
 	readonly source: "initial" | "transition";
 }
@@ -69,11 +73,11 @@ export type CodingAgentSdkSessionInitializer = (
 ) => Promise<CodingAgentSdkOwnedResource | undefined>;
 
 export type CodingAgentSdkSessionCapabilityHostFactory = (
-	context: CodingAgentSdkSessionInitializationContext & { readonly readSession: () => RuntimeSession },
+	context: CodingAgentSdkSessionInitializationContext & { readonly readSession: () => RuntimeHostSession },
 ) => CodingAgentSdkSessionCapabilityPort;
 
 export interface CodingAgentSdkActiveSessionCapabilityHostContext {
-	readonly sessionHost: CodingAgentActiveSessionHost;
+	readonly sessionHost: RuntimeActiveSessionHost<CodingAgentRuntimeSessionOptions, RuntimeHostSession>;
 	readonly composition: CodingAgentRuntimeComposition;
 }
 
@@ -117,11 +121,32 @@ export async function createCodingAgentSdkSession(
 	rollback.defer({ id: "runtime-composition", rollback: () => composition.dispose() });
 
 	try {
+		const sessionCatalog = options.identityRuntime.createSessionCatalog({
+			storage,
+			cwd: options.session?.cwd,
+			artifactCleaner: options.sessionArtifactCleaner,
+		});
+		const observationPublisher = composition.observations.publisher();
+		const runtimeHost = new RuntimeHost({
+			sessionBackend: composition.runtimeHostBackend,
+			sessionCatalog,
+			observationPublisher,
+		});
+		rollback.defer({ id: "runtime-host", rollback: () => runtimeHost.close() });
 		const sessionOptions = { ...options.session, sessionId: storage.sessionId };
-		const runtimeSession = await composition.sessions[storage.operation](sessionOptions);
+		const initialCreated = await runtimeHost.createSession(
+			toRuntimeHostSessionConfig(
+				composition,
+				sessionOptions,
+				storage.operation === "resume"
+					? options.identityRuntime.resolveSessionPath(storage.conversationDir ?? "", storage.sessionId)
+					: undefined,
+			),
+		);
+		const runtimeSession = runtimeHost.getSessionView(initialCreated.sessionId);
 		const dismissRuntimeSessionRollback = rollback.defer({
 			id: "runtime-session",
-			rollback: () => runtimeSession.dispose(),
+			rollback: () => runtimeHost.disposeSession(runtimeSession.sessionId),
 		});
 		let activeResource = await options.initializeSession?.({
 			session: runtimeSession,
@@ -133,23 +158,37 @@ export async function createCodingAgentSdkSession(
 		}
 		const conversationDir = storage.conversationDir ?? "memory://conversation";
 		let activeCapabilities: CodingAgentSdkActiveSessionCapabilityPort | undefined;
-		const sessionHost = new CodingAgentActiveSessionHost({
+		const sessionHost = new RuntimeActiveSessionHost<CodingAgentRuntimeSessionOptions, RuntimeHostSession>({
 			runtime: {
-				...composition,
+				sessions: {
+					create: async (nextOptions) => {
+						const created = await runtimeHost.createSession(toRuntimeHostSessionConfig(composition, nextOptions));
+						return runtimeHost.getSessionView(created.sessionId);
+					},
+					resume: async (nextOptions) => {
+						const sessionPath = options.identityRuntime.resolveSessionPath(
+							conversationDir,
+							nextOptions.sessionId,
+						);
+						const created = await runtimeHost.createSession(
+							toRuntimeHostSessionConfig(composition, nextOptions, sessionPath),
+						);
+						return runtimeHost.getSessionView(created.sessionId);
+					},
+				},
+				sessionHooks: composition.sessionHooks,
 				quiesceSessionBackgroundCommands: async (sessionId) => {
 					await activeCapabilities?.quiesceIdentity();
 					await composition.quiesceSessionBackgroundCommands(sessionId);
 				},
+				preserveSessionExecutionContext: (sourceSessionId, targetSessionId) =>
+					composition.preserveSessionExecutionContext(sourceSessionId, targetSessionId),
 			},
 			initialSession: runtimeSession,
 			sessionOptions: options.session ?? {},
 			conversationDir,
 			defaultCwd: options.identityRuntime.resolveDefaultCwd(options.session?.cwd ?? options.composition.cwd),
-			sessionCatalog: options.identityRuntime.createSessionCatalog({
-				storage,
-				cwd: options.session?.cwd,
-				artifactCleaner: options.sessionArtifactCleaner,
-			}),
+			sessionCatalog,
 			createSessionId: () => options.identityRuntime.createSessionId(),
 			resolveSessionId: (path) => options.identityRuntime.resolveSessionId(conversationDir, path),
 			resolveSessionPath: (sessionId) => options.identityRuntime.resolveSessionPath(conversationDir, sessionId),
@@ -161,6 +200,7 @@ export async function createCodingAgentSdkSession(
 					activeResource = resource;
 				},
 			),
+			observationPublisher,
 		});
 		dismissRuntimeSessionRollback();
 		rollback.defer({ id: "active-session-host", rollback: () => sessionHost.dispose() });
@@ -176,6 +216,7 @@ export async function createCodingAgentSdkSession(
 			new CodingAgentSdkActiveSessionCapabilityHost({ sessionHost });
 		const cleanup = createActiveSessionCleanup(
 			sessionHost,
+			runtimeHost,
 			composition,
 			activeCapabilities,
 			capabilityHost,
@@ -194,7 +235,8 @@ export async function createCodingAgentSdkSession(
 }
 
 function createActiveSessionCleanup(
-	sessionHost: CodingAgentActiveSessionHost,
+	sessionHost: RuntimeActiveSessionHost<CodingAgentRuntimeSessionOptions, RuntimeHostSession>,
+	runtimeHost: RuntimeHost,
 	composition: CodingAgentRuntimeComposition,
 	activeCapabilities: CodingAgentSdkActiveSessionCapabilityPort,
 	capabilityHost: CodingAgentSdkSessionCapabilityPort,
@@ -210,9 +252,10 @@ function createActiveSessionCleanup(
 		phase: 2,
 		cleanup: () => readActiveResource()?.dispose(),
 	});
-	cleanup.add({ id: "runtime-composition", phase: 3, cleanup: () => composition.dispose() });
+	cleanup.add({ id: "runtime-host", phase: 3, cleanup: () => runtimeHost.close() });
+	cleanup.add({ id: "runtime-composition", phase: 4, cleanup: () => composition.dispose() });
 	for (const resource of ownedResources) {
-		cleanup.add({ id: resource.id, phase: 4, cleanup: () => resource.dispose() });
+		cleanup.add({ id: resource.id, phase: 5, cleanup: () => resource.dispose() });
 	}
 	return cleanup;
 }
@@ -222,14 +265,14 @@ function createResourceAwareTransitionLifecycle(
 	options: CodingAgentSdkSessionFactoryOptions,
 	readActiveResource: () => CodingAgentSdkOwnedResource | undefined,
 	setActiveResource: (resource: CodingAgentSdkOwnedResource | undefined) => void,
-): CodingAgentSessionTransitionLifecycle | undefined {
+): RuntimeActiveSessionTransitionLifecycle<RuntimeHostSession> | undefined {
 	if (!options.initializeSession && !options.transitionLifecycle) return undefined;
 	return {
 		before: (transition) => options.transitionLifecycle?.before?.(transition) ?? Promise.resolve(undefined),
 		prepare: async (transition) => {
 			const previousResource = readActiveResource();
 			let nextResource: CodingAgentSdkOwnedResource | undefined;
-			let externalPrepared: CodingAgentPreparedSessionBinding | undefined;
+			let externalPrepared: RuntimePreparedSessionBinding | undefined;
 			try {
 				nextResource = await options.initializeSession?.({
 					session: transition.next,
@@ -259,4 +302,14 @@ function createResourceAwareTransitionLifecycle(
 		},
 		after: (transition) => options.transitionLifecycle?.after?.(transition) ?? Promise.resolve(),
 	};
+}
+
+function toRuntimeHostSessionConfig(
+	composition: CodingAgentRuntimeComposition,
+	options: CodingAgentRuntimeSessionOptions,
+	sessionPath?: string,
+) {
+	return createCodingAgentRuntimeHostSessionConfig(composition.agentRuntime, options, {
+		...(sessionPath ? { sessionPath } : {}),
+	});
 }

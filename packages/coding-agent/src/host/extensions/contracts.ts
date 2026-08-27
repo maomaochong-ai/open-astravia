@@ -1,4 +1,8 @@
-import type { RuntimeSession } from "@vetta/runtime-core";
+import type {
+	RuntimeActiveSessionTransition,
+	RuntimeHostSession,
+	RuntimePreparedSessionBinding,
+} from "@vetta/runtime-core";
 import type {
 	ExtensionCommandContextActions,
 	ExtensionError,
@@ -9,9 +13,7 @@ import type {
 } from "../../extensions/index.js";
 import type {
 	CodingAgentNewSessionOptions,
-	CodingAgentPreparedSessionBinding,
 	CodingAgentSessionSeedInitializer,
-	CodingAgentSessionTransition,
 } from "../session-transition/contracts.js";
 
 export interface CodingAgentExtensionTreeNavigationOptions {
@@ -63,7 +65,7 @@ export interface CodingAgentExtensionEventHost {
 }
 
 export type CodingAgentExtensionEventHostFactory = (
-	session: RuntimeSession,
+	session: RuntimeHostSession,
 	options?: { readonly replaceExisting?: boolean },
 ) => CodingAgentExtensionEventHost;
 
@@ -75,13 +77,15 @@ export interface CodingAgentExtensionSessionHost {
 	throwIfExtensionCommand(text: string): void;
 	initialize(input: CodingAgentExtensionInitialization): Promise<void>;
 	before(
-		transition: CodingAgentSessionTransition,
+		transition: RuntimeActiveSessionTransition<RuntimeHostSession>,
 	): Promise<{ readonly cancelled: boolean; readonly skipConversationRestore?: boolean } | undefined>;
 	prepare(
-		transition: CodingAgentSessionTransition & { readonly next: RuntimeSession },
-	): Promise<CodingAgentPreparedSessionBinding>;
-	after(transition: CodingAgentSessionTransition & { readonly next: RuntimeSession }): Promise<void>;
-	reload(session: RuntimeSession, operation: () => Promise<void>): Promise<void>;
+		transition: RuntimeActiveSessionTransition<RuntimeHostSession> & { readonly next: RuntimeHostSession },
+	): Promise<RuntimePreparedSessionBinding>;
+	after(
+		transition: RuntimeActiveSessionTransition<RuntimeHostSession> & { readonly next: RuntimeHostSession },
+	): Promise<void>;
+	reload(session: RuntimeHostSession, operation: () => Promise<void>): Promise<void>;
 	shutdown(): Promise<void>;
 	dispose(): Promise<void>;
 }

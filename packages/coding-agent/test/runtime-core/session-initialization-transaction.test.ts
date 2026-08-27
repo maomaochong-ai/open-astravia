@@ -76,7 +76,7 @@ describe("Coding Agent Session Initialization Transaction", () => {
 		);
 
 		try {
-			const session = await composition.backend.create({ sessionId: "observed-session" });
+			const session = await composition.createSession({ sessionId: "observed-session" });
 			await parent.flush();
 			const parentInitialization = parentRecords.filter(
 				({ token }) => token === CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION,
@@ -117,8 +117,8 @@ describe("Coding Agent Session Initialization Transaction", () => {
 		});
 
 		try {
-			const first = await composition.backend.create({ sessionId: "first", cwd: "C:/first-workspace" });
-			const second = await composition.backend.create({ sessionId: "second", cwd: "C:/second-workspace" });
+			const first = await composition.createSession({ sessionId: "first", cwd: "C:/first-workspace" });
+			const second = await composition.createSession({ sessionId: "second", cwd: "C:/second-workspace" });
 			expect(createSpecializedToolRegistrations).toHaveBeenNthCalledWith(
 				1,
 				expect.objectContaining({
@@ -224,7 +224,7 @@ describe("Coding Agent Session Initialization Transaction", () => {
 		});
 
 		try {
-			await expect(composition.backend.create({ sessionId: "session", memoryMode: true })).rejects.toThrow(
+			await expect(composition.createSession({ sessionId: "session", memoryMode: true })).rejects.toThrow(
 				"initial prompt preview failed",
 			);
 			expect(rollbackOrder).toEqual(["session-extension", "todo", "memory", "plugin-mcp", "ownership"]);
@@ -234,7 +234,7 @@ describe("Coding Agent Session Initialization Transaction", () => {
 			expect(todoRuntimes[0]?.dispose).toHaveBeenCalledOnce();
 
 			rollbackOrder.length = 0;
-			const session = await composition.backend.create({ sessionId: "session", memoryMode: true });
+			const session = await composition.createSession({ sessionId: "session", memoryMode: true });
 			expect(activeOwnerships).toBe(1);
 			await session.dispose();
 			expect(activeOwnerships).toBe(0);
@@ -266,7 +266,7 @@ describe("Coding Agent Session Initialization Transaction", () => {
 		});
 
 		try {
-			await expect(composition.backend.create({ sessionId: "session" })).rejects.toThrow(
+			await expect(composition.createSession({ sessionId: "session" })).rejects.toThrow(
 				"plugin MCP reconfiguration failed",
 			);
 			expect(rollbackOrder).toEqual(["plugin-mcp"]);

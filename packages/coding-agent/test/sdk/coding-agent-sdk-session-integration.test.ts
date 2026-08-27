@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Api, AssistantMessage, AssistantMessageEvent, Model } from "@vetta/ai";
 import { EventStream } from "@vetta/ai";
+import { RuntimeHost } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/model-runtime-adapter.js";
 import type { CodingAgentRuntimeComposition } from "../../src/composition/contracts/index.js";
@@ -22,10 +23,12 @@ import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-pe
 describe("Coding Agent SDK session integration", () => {
 	const temporaryDirectories: string[] = [];
 	const compositions: CodingAgentRuntimeComposition[] = [];
+	const runtimeHosts: RuntimeHost[] = [];
 	const sdkSessions: CodingAgentFixedSession[] = [];
 
 	afterEach(async () => {
 		await Promise.all(sdkSessions.splice(0).map((session) => session.close()));
+		await Promise.all(runtimeHosts.splice(0).map((host) => host.close()));
 		await Promise.all(compositions.splice(0).map((composition) => composition.dispose()));
 		await Promise.all(
 			temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })),
@@ -46,10 +49,20 @@ describe("Coding Agent SDK session integration", () => {
 			streamFn: () => new RecordedAssistantStream(assistantMessage("Coding Agent SDK response")),
 		});
 		compositions.push(composition);
-		const runtimeSession = await composition.backend.create({
+		const runtimeHost = new RuntimeHost({ sessionBackend: composition.runtimeHostBackend });
+		runtimeHosts.push(runtimeHost);
+		const runtimeOptions = {
 			sessionId: "sdk-integration",
 			includeAgentSkills: false,
+		};
+		const created = await runtimeHost.createSession({
+			agent: {
+				id: composition.agentRuntime.agentId,
+				sessionConfiguration: runtimeOptions,
+			},
+			sessionId: runtimeOptions.sessionId,
 		});
+		const runtimeSession = runtimeHost.getSessionView(created.sessionId);
 		const capabilities = new CodingAgentSdkSessionCapabilityHost({ readSession: () => runtimeSession });
 		const session = new CodingAgentSdkSessionAdapter(bindCodingAgentSdkSessionRuntime(runtimeSession, capabilities));
 		const eventTypes: string[] = [];

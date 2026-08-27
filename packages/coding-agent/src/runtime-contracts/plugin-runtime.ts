@@ -15,6 +15,8 @@ import type { McpRuntimeToolSnapshot, McpRuntimeToolView } from "@vetta/runtime-
 
 export interface CodingAgentPluginRuntimeSource {
 	readonly readAgentPlugins: () => AgentPluginRuntimeConfig | undefined;
+	/** 配置源发布新版本；已开始的 Turn 仍由 admission lease 保持旧快照。 */
+	readonly subscribe?: (listener: () => void) => () => void;
 	readonly invokeSystemPrompt?: AgentPluginSystemPromptInvoker;
 	readonly invokeContinuation?: AgentPluginContinuationInvoker;
 	readonly invokeTool?: AgentPluginToolInvoker;

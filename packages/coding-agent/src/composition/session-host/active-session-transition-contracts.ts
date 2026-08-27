@@ -1,4 +1,8 @@
-import type { RuntimeActiveSessionHostOptions, RuntimeActiveSessionRuntimePort } from "@vetta/runtime-core";
+import type {
+	RuntimeActiveSession,
+	RuntimeActiveSessionHostOptions,
+	RuntimeActiveSessionRuntimePort,
+} from "@vetta/runtime-core";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 
 export type {
@@ -9,6 +13,8 @@ export type {
 	CodingAgentSessionTransitionLifecycle,
 } from "../../host/session-transition/contracts.js";
 
-export type CodingAgentSessionTransitionRuntimePort = RuntimeActiveSessionRuntimePort<CodingAgentRuntimeSessionOptions>;
+export type CodingAgentSessionTransitionRuntimePort<TSession extends RuntimeActiveSession = RuntimeActiveSession> =
+	RuntimeActiveSessionRuntimePort<CodingAgentRuntimeSessionOptions, TSession>;
 
-export type CodingAgentActiveSessionHostOptions = RuntimeActiveSessionHostOptions<CodingAgentRuntimeSessionOptions>;
+export type CodingAgentActiveSessionHostOptions<TSession extends RuntimeActiveSession = RuntimeActiveSession> =
+	RuntimeActiveSessionHostOptions<CodingAgentRuntimeSessionOptions, TSession>;

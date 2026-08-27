@@ -48,10 +48,10 @@ describe("Runtime ownership cleanup contract", () => {
 		});
 
 		try {
-			await expect(composition.backend.create({ sessionId: "session-1" })).rejects.toBe(initializationError);
+			await expect(composition.createSession({ sessionId: "session-1" })).rejects.toBe(initializationError);
 			expect(activeOwnerships).toBe(0);
 
-			const session = await composition.backend.create({ sessionId: "session-1" });
+			const session = await composition.createSession({ sessionId: "session-1" });
 			expect(activeOwnerships).toBe(1);
 			await session.dispose();
 			expect(activeOwnerships).toBe(0);
@@ -92,8 +92,9 @@ describe("Runtime ownership cleanup contract", () => {
 		});
 
 		try {
-			const session = await composition.backend.create({ sessionId: "session-1" });
-			await expect(session.dispose()).rejects.toThrow("transient ownership release failure");
+			const session = await composition.createSession({ sessionId: "session-1" });
+			await expect(session.dispose()).rejects.toThrow("Failed to close RuntimeHost resources");
+			await expect(session.dispose()).resolves.toBeUndefined();
 			await expect(composition.dispose()).resolves.toBeUndefined();
 			expect(releaseAttempts).toBe(2);
 		} finally {

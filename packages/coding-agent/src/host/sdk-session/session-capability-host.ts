@@ -1,11 +1,14 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
-import type {
-	AgentPluginRuntimeConfig,
-	PromptRequest,
-	RuntimeSession,
-	RuntimeSessionInputQueueMode,
-} from "@vetta/runtime-core";
+import type { AgentPluginRuntimeConfig, PromptRequest, RuntimeSessionInputQueueMode } from "@vetta/runtime-core";
+import {
+	CODING_AGENT_BACKGROUND_TASK_KILL,
+	CODING_AGENT_BACKGROUND_TASKS_CLEAR_FINISHED,
+	CODING_AGENT_BACKGROUND_TASKS_READ,
+	CODING_AGENT_SUBAGENT_INTERRUPT,
+	CODING_AGENT_SUBAGENTS_CLEAR_FINISHED,
+	CODING_AGENT_SUBAGENTS_READ,
+} from "../../execution/background/background-work-session-extension-contract.js";
 import type { CodingAgentTurnRetryController } from "../../execution/turn/contracts.js";
 import { readCodingAgentTurnFailure } from "../../execution/turn/turn-executor.js";
 import { createCodingAgentTurnRetryController } from "../../execution/turn/turn-retry-controller.js";
@@ -13,6 +16,7 @@ import {
 	CODING_AGENT_TODO_CLEAR,
 	CODING_AGENT_TODO_READ,
 } from "../../features/todo/todo-session-extension-contract.js";
+import { CODING_AGENT_PLUGIN_CONFIGURATION_APPLY } from "../../plugins/runtime/plugin-configuration-session-extension-contract.js";
 import type { CodingAgentRetryEvent } from "../../public-api/sdk/sdk-event-contract.js";
 import type {
 	CodingAgentMemoryConfiguration,
@@ -46,7 +50,7 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 		this.scopedModels = [...(options.scopedModels ?? [])];
 		this.agentMode = options.initialAgentMode;
 		this.modelCapabilities = new CodingAgentSessionModelCapabilities({
-			readCore: () => this.readCore(),
+			readSession: () => this.options.readSession(),
 			readAvailableModels: () => this.readAvailableModelSource(),
 			readScopedModels: () => this.scopedModels,
 			settings: options.settings,
@@ -91,18 +95,15 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 	}
 
 	readActiveToolNames(): readonly string[] {
-		return this.readCore().toolController?.readActiveToolNames() ?? [];
+		return this.options.readSession().readActiveToolNames();
 	}
 
 	readAllTools(): readonly CodingAgentToolInfo[] {
-		const tools = this.readCore().toolController?.readAvailableTools();
-		return tools ? toSdkToolInfo(tools) : [];
+		return toSdkToolInfo(this.options.readSession().readAvailableTools());
 	}
 
 	setActiveToolNames(toolNames: readonly string[]): void {
-		const controller = this.readCore().toolController;
-		if (!controller) throw new Error("Session tool capability is unavailable");
-		controller.setActiveToolNames(toolNames);
+		this.options.readSession().setActiveToolNames(toolNames);
 	}
 
 	reconfigureCustomTools(customTools: readonly CodingAgentSessionToolDefinition[] | undefined): void {
@@ -117,24 +118,24 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 	}
 
 	setAgentMode(mode: string | undefined): void {
-		this.readConfigurationController().setAgentMode(mode);
+		this.options.readSession().setAgentMode(mode);
 		this.agentMode = mode;
 	}
 
 	readIsCompacting(): boolean {
-		return this.readContextController().readState().isCompacting;
+		return this.options.readSession().readCompactionState().isCompacting;
 	}
 
 	readSteeringMode(): RuntimeSessionInputQueueMode {
-		return this.readCore().queueController.readSteeringMode();
+		return this.options.readSession().readQueueModes().steering;
 	}
 
 	readFollowUpMode(): RuntimeSessionInputQueueMode {
-		return this.readCore().queueController.readFollowUpMode();
+		return this.options.readSession().readQueueModes().followUp;
 	}
 
 	readSessionName(): string | undefined {
-		return this.readCore().metadataController.readName();
+		return this.options.readSession().readName();
 	}
 
 	readScopedModels(): readonly CodingAgentScopedModel[] {
@@ -146,19 +147,19 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 	}
 
 	clearQueue(): { readonly steering: readonly string[]; readonly followUp: readonly string[] } {
-		return this.readCore().queueController.clear();
+		return this.options.readSession().clearQueue();
 	}
 
 	readPendingMessageCount(): number {
-		return this.readCore().queueController.readPendingMessageCount();
+		return this.options.readSession().readPendingMessageCount();
 	}
 
 	readSteeringMessages(): readonly string[] {
-		return this.readCore().queueController.readSteeringMessages();
+		return this.options.readSession().readQueuedMessages().steering;
 	}
 
 	readFollowUpMessages(): readonly string[] {
-		return this.readCore().queueController.readFollowUpMessages();
+		return this.options.readSession().readQueuedMessages().followUp;
 	}
 
 	async selectModel(provider: string, modelId: string): Promise<Model<Api> | undefined> {
@@ -190,37 +191,37 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 	}
 
 	setSteeringMode(mode: RuntimeSessionInputQueueMode): void {
-		this.readConfigurationController().setSteeringMode(mode);
+		this.options.readSession().setSteeringMode(mode);
 		this.options.settings?.setSteeringMode(mode);
 	}
 
 	setFollowUpMode(mode: RuntimeSessionInputQueueMode): void {
-		this.readConfigurationController().setFollowUpMode(mode);
+		this.options.readSession().setFollowUpMode(mode);
 		this.options.settings?.setFollowUpMode(mode);
 	}
 
 	async compact(customInstructions?: string, signal?: AbortSignal) {
-		const controller = this.readContextController();
+		const session = this.options.readSession();
 		signal?.throwIfAborted();
-		const abort = () => controller.abortCompaction();
+		const abort = () => session.abortCompaction();
 		signal?.addEventListener("abort", abort, { once: true });
 		try {
-			return await controller.compact(customInstructions ? { customInstructions } : undefined);
+			return await session.compact(customInstructions);
 		} finally {
 			signal?.removeEventListener("abort", abort);
 		}
 	}
 
 	abortCompaction(): void {
-		this.readContextController().abortCompaction();
+		this.options.readSession().abortCompaction();
 	}
 
 	setAutoCompactionEnabled(enabled: boolean): void {
-		this.readContextController().setAutoCompactionEnabled(enabled);
+		this.options.readSession().setAutoCompactionEnabled(enabled);
 	}
 
 	readAutoCompactionEnabled(): boolean {
-		return this.readContextController().readState().autoCompactionEnabled;
+		return this.options.readSession().readCompactionState().autoCompactionEnabled;
 	}
 
 	abortRetry(): void {
@@ -244,37 +245,49 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 	}
 
 	setSessionName(name: string): Promise<void> {
-		return this.readCore().metadataController.setName(name);
+		return this.options.readSession().setName(name);
 	}
 
 	readSessionStats() {
-		const core = this.readCore();
+		const session = this.options.readSession();
 		return computeSdkSessionStats(
-			projectCodingAgentMessages(core.conversationView.readDocument()),
-			core.lifecycle.sessionPath,
-			core.lifecycle.sessionId,
+			projectCodingAgentMessages(session.readDocument()),
+			session.sessionPath,
+			session.sessionId,
 		);
 	}
 
 	readContextUsage() {
-		return this.readCore().contextUsageView.readContextUsage();
+		return this.options.readSession().readContextUsage();
 	}
 
 	readLastAssistantText(): string | undefined {
-		const messages = projectCodingAgentMessages(this.readCore().conversationView.readDocument());
+		const messages = projectCodingAgentMessages(this.options.readSession().readDocument());
 		return readLastAssistantText(messages);
 	}
 
 	readSubagents() {
-		return this.readBackgroundWorkController()?.readSubagents() ?? [];
+		const session = this.options.readSession();
+		return session.hasExtension(CODING_AGENT_SUBAGENTS_READ)
+			? session.invokeExtensionSync(CODING_AGENT_SUBAGENTS_READ, undefined).map((subagent) => ({
+					...subagent,
+					usage: { ...subagent.usage },
+				}))
+			: [];
 	}
 
 	interruptSubagent(target: string) {
-		return this.readBackgroundWorkController()?.interruptSubagent(target);
+		const session = this.options.readSession();
+		return session.hasExtension(CODING_AGENT_SUBAGENT_INTERRUPT)
+			? session.invokeExtensionSync(CODING_AGENT_SUBAGENT_INTERRUPT, { target })
+			: undefined;
 	}
 
 	clearFinishedSubagents(): number {
-		return this.readBackgroundWorkController()?.clearFinishedSubagents?.() ?? 0;
+		const session = this.options.readSession();
+		return session.hasExtension(CODING_AGENT_SUBAGENTS_CLEAR_FINISHED)
+			? session.invokeExtensionSync(CODING_AGENT_SUBAGENTS_CLEAR_FINISHED, undefined)
+			: 0;
 	}
 
 	async readAvailableModels(): Promise<readonly Model<Api>[]> {
@@ -301,39 +314,47 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 
 	async reconfigureAgentPlugins(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<void> {
 		await this.options.reconfigureAgentPlugins?.(agentPlugins);
-		await this.readConfigurationController().reconfigureAgentPlugins(agentPlugins);
+		const session = this.options.readSession();
+		if (!session.hasExtension(CODING_AGENT_PLUGIN_CONFIGURATION_APPLY)) {
+			throw new Error("Session Plugin configuration capability is unavailable");
+		}
+		await session.invokeExtension(CODING_AGENT_PLUGIN_CONFIGURATION_APPLY, { agentPlugins });
 	}
 
 	readBackgroundTasks() {
-		return (
-			this.readBackgroundWorkController()
-				?.readTasks()
-				.map((task) => ({ ...task })) ?? []
-		);
+		const session = this.options.readSession();
+		return session.hasExtension(CODING_AGENT_BACKGROUND_TASKS_READ)
+			? session.invokeExtensionSync(CODING_AGENT_BACKGROUND_TASKS_READ, undefined).map((task) => ({ ...task }))
+			: [];
 	}
 
 	killBackgroundTask(taskId: string): boolean {
-		return this.readBackgroundWorkController()?.killTask(taskId) ?? false;
+		const session = this.options.readSession();
+		return session.hasExtension(CODING_AGENT_BACKGROUND_TASK_KILL)
+			? session.invokeExtensionSync(CODING_AGENT_BACKGROUND_TASK_KILL, { taskId })
+			: false;
 	}
 
 	clearFinishedBackgroundTasks(): number {
-		const controller = this.readBackgroundWorkController();
-		if (!controller?.clearFinishedTasks) {
+		const session = this.options.readSession();
+		if (!session.hasExtension(CODING_AGENT_BACKGROUND_TASKS_CLEAR_FINISHED)) {
 			throw new Error("Session background task cleanup capability is unavailable");
 		}
-		return controller.clearFinishedTasks();
+		return session.invokeExtensionSync(CODING_AGENT_BACKGROUND_TASKS_CLEAR_FINISHED, undefined);
 	}
 
 	readTodos() {
-		const host = this.readCore().extensionHost;
-		return host?.hasEndpoint(CODING_AGENT_TODO_READ)
-			? host.invokeSync(CODING_AGENT_TODO_READ, undefined).map((item) => ({ ...item }))
+		const session = this.options.readSession();
+		return session.hasExtension(CODING_AGENT_TODO_READ)
+			? session.invokeExtensionSync(CODING_AGENT_TODO_READ, undefined).map((item) => ({ ...item }))
 			: [];
 	}
 
 	clearTodos(): boolean {
-		const host = this.readCore().extensionHost;
-		return host?.hasEndpoint(CODING_AGENT_TODO_CLEAR) ? host.invokeSync(CODING_AGENT_TODO_CLEAR, undefined) : false;
+		const session = this.options.readSession();
+		return session.hasExtension(CODING_AGENT_TODO_CLEAR)
+			? session.invokeExtensionSync(CODING_AGENT_TODO_CLEAR, undefined)
+			: false;
 	}
 
 	readMemoryConfiguration(): CodingAgentMemoryConfiguration {
@@ -363,27 +384,7 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 		return this.options.hasExtensionHandlers?.(eventType) ?? false;
 	}
 
-	private readCore(): ReturnType<RuntimeSession["createCoreAssembly"]> {
-		return this.options.readSession().createCoreAssembly();
-	}
-
-	private readConfigurationController() {
-		const controller = this.options.readSession().createRuntimeHostAssemblyCandidate().configurationController;
-		if (!controller) throw new Error("Session configuration capability is unavailable");
-		return controller;
-	}
-
-	private readContextController() {
-		const controller = this.readCore().contextController;
-		if (!controller) throw new Error("Session context capability is unavailable");
-		return controller;
-	}
-
-	private readBackgroundWorkController() {
-		return this.options.readSession().createRuntimeHostAssemblyCandidate().backgroundWorkController;
-	}
-
 	private readAvailableModelSource(): Promise<readonly Model<Api>[]> {
-		return this.options.readAvailableModels?.() ?? Promise.resolve(this.readCore().modelView.readAvailableModels());
+		return this.options.readAvailableModels?.() ?? Promise.resolve(this.options.readSession().readAvailableModels());
 	}
 }

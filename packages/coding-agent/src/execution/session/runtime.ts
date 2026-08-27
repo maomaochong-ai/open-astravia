@@ -221,7 +221,9 @@ export class CodingAgentSessionExecutionRuntime {
 				linuxBubblewrapPath: update.linuxBubblewrapPath,
 				macosSandboxExecPath: update.macosSandboxExecPath,
 				getSessionId: this.options.readSessionId,
-			}),
+			}).map((registration) =>
+				inheritModelOrder(registration, this.options.resolveToolEntry?.(registration.tool.name)),
+			),
 			...taskRegistrations,
 		];
 	}

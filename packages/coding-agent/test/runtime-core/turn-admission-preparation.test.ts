@@ -5,6 +5,8 @@ import {
 	type CodingAgentSessionRuntimeResourcesOptions,
 	createCodingAgentSessionRuntimeResources,
 } from "../../src/composition/session-lifecycle/runtime-resources.js";
+import { createCodingAgentBackgroundWorkSessionExtension } from "../../src/execution/background/background-work-session-extension.js";
+import { createCodingAgentPluginConfigurationSessionExtension } from "../../src/plugins/runtime/plugin-configuration-session-extension.js";
 
 describe("Coding Agent Turn admission preparation", () => {
 	it("keeps the Agent Session as the only Snapshot Provider instead of wrapping MCP refresh", async () => {
@@ -21,7 +23,7 @@ describe("Coding Agent Turn admission preparation", () => {
 		const refreshSessionMcp = vi.fn(async () => {
 			order.push("publish");
 		});
-		const sessionExtensions = await SessionExtensionComposition.create({ definitions: [] });
+		const sessionExtensions = await createRequiredSessionExtensions();
 		const resources = createCodingAgentSessionRuntimeResources({
 			session: {
 				initialSessionId: "session",
@@ -34,6 +36,8 @@ describe("Coding Agent Turn admission preparation", () => {
 			},
 			capabilitySnapshotProvider,
 			sessionExtensions,
+			executionRuntime: { backgroundService: {} },
+			pluginConfigurationRuntime: {},
 			refreshSessionMcp,
 			activation: { mode: "explicit", toolNames: [] },
 		} as unknown as CodingAgentSessionRuntimeResourcesOptions);
@@ -55,7 +59,7 @@ describe("Coding Agent Turn admission preparation", () => {
 	it("does not refresh mutable MCP state before the immutable Turn admission point", async () => {
 		const refreshSessionMcp = vi.fn(async () => undefined);
 		const createRequest = vi.fn((request: { text: string }) => ({ payload: request, displayText: request.text }));
-		const sessionExtensions = await SessionExtensionComposition.create({ definitions: [] });
+		const sessionExtensions = await createRequiredSessionExtensions();
 		const resources = createCodingAgentSessionRuntimeResources({
 			session: {
 				initialSessionId: "session",
@@ -68,6 +72,8 @@ describe("Coding Agent Turn admission preparation", () => {
 			},
 			capabilitySnapshotProvider: { acquire: vi.fn() },
 			sessionExtensions,
+			executionRuntime: { backgroundService: {} },
+			pluginConfigurationRuntime: {},
 			refreshSessionMcp,
 			activation: { mode: "explicit", toolNames: [] },
 		} as unknown as CodingAgentSessionRuntimeResourcesOptions);
@@ -78,3 +84,12 @@ describe("Coding Agent Turn admission preparation", () => {
 		expect(createRequest).toHaveBeenCalledOnce();
 	});
 });
+
+function createRequiredSessionExtensions(): Promise<SessionExtensionComposition> {
+	return SessionExtensionComposition.create({
+		definitions: [
+			createCodingAgentBackgroundWorkSessionExtension(),
+			createCodingAgentPluginConfigurationSessionExtension(),
+		],
+	});
+}

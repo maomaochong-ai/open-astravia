@@ -212,6 +212,7 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
+		globalSetup: "./test/support/agent-rpc-global-setup.ts",
 		// CLI contract tests launch nested Node, Bun, MCP and shell processes. Keep
 		// Windows files serial so one runner cannot starve or cross-talk with another;
 		// other platforms retain bounded parallel collection.

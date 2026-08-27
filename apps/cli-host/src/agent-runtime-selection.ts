@@ -3,6 +3,7 @@ import { getAgentDir } from "@vetta/coding-agent/config";
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import type { CodingAgentAuthRuntime } from "@vetta/coding-agent/host-services";
 import { RPC_FAILURE_CODES, stringifyRpcStartupFailure } from "@vetta/coding-agent/rpc";
+import { isSessionError, RUNTIME_ERROR_CODES } from "@vetta/runtime-core";
 import { ConversationOwnershipConflictError } from "@vetta/runtime-storage/conversation";
 import { classifyAgentCliIntent } from "./agent-cli-intent.js";
 import { createCliCodingAgentBootstrap } from "./coding-agent-bootstrap.js";
@@ -126,7 +127,8 @@ export async function runAgentRuntimeCli(
 			process.exitCode = 2;
 			return;
 		}
-		if (!(error instanceof ConversationOwnershipConflictError)) throw error;
+		const lockConflict = readSessionLockConflict(error);
+		if (!lockConflict) throw error;
 		process.stdout.write(
 			stringifyRpcStartupFailure({
 				type: "response",
@@ -135,13 +137,13 @@ export async function runAgentRuntimeCli(
 				errorCode: RPC_FAILURE_CODES.SESSION_LOCKED,
 				phase: "startup",
 				recoverability: "user_action",
-				error: error.message,
-				...(error.holder
+				error: lockConflict.message,
+				...(lockConflict.holder
 					? {
 							lockHolder: {
-								pid: error.holder.pid,
-								hostname: error.holder.hostname,
-								openedAt: error.holder.acquiredAt,
+								pid: lockConflict.holder.pid,
+								hostname: lockConflict.holder.hostname,
+								openedAt: lockConflict.holder.openedAt,
 							},
 						}
 					: {}),
@@ -149,6 +151,33 @@ export async function runAgentRuntimeCli(
 		);
 		process.exitCode = 2;
 	}
+}
+
+function readSessionLockConflict(error: unknown):
+	| {
+			readonly message: string;
+			readonly holder?: { readonly pid: number; readonly hostname: string; readonly openedAt: string };
+	  }
+	| undefined {
+	if (error instanceof ConversationOwnershipConflictError) {
+		return {
+			message: error.message,
+			...(error.holder
+				? {
+						holder: {
+							pid: error.holder.pid,
+							hostname: error.holder.hostname,
+							openedAt: error.holder.acquiredAt,
+						},
+					}
+				: {}),
+		};
+	}
+	if (!isSessionError(error) || error.code !== RUNTIME_ERROR_CODES.SESSION_LOCKED) return undefined;
+	return {
+		message: error.message,
+		...(error.details?.lockHolder ? { holder: error.details.lockHolder } : {}),
+	};
 }
 
 function writeSessionCompatibilityFailure(error: SessionCompatibilityError): void {

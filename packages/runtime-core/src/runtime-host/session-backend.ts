@@ -1,20 +1,18 @@
 import type {
-	AgentPluginContinuationInvoker,
-	AgentPluginRuntimeConfig,
-	AgentPluginSystemPromptInvoker,
-	AgentPluginToolInvoker,
-	AgentPluginTurnHandlerLeaseProvider,
 	RuntimeQuestionItem,
 	RuntimeUserQuestionResult,
 	SessionConfig,
 	SessionExecutionMode,
 } from "../contracts.js";
 import type {
-	RuntimeSessionBackgroundWorkController,
 	RuntimeSessionConfigurationController,
 	RuntimeSessionContextController,
+	RuntimeSessionContextDeliveryController,
+	RuntimeSessionContextUsageView,
+	RuntimeSessionConversationView,
 	RuntimeSessionCorePorts,
 	RuntimeSessionExecutionController,
+	RuntimeSessionExecutionObservationStream,
 	RuntimeSessionExtensionHost,
 	RuntimeSessionHistoryController,
 	RuntimeSessionHistoryReader,
@@ -24,6 +22,7 @@ import type {
 	RuntimeSessionModelController,
 	RuntimeSessionModelView,
 	RuntimeSessionQueueController,
+	RuntimeSessionToolController,
 	RuntimeSessionWorkspaceView,
 } from "./session-ports.js";
 import type { RuntimeSessionCatalog } from "./session-services.js";
@@ -36,6 +35,7 @@ export interface RuntimeSessionAskUserQuestionCapability {
 /** RuntimeHost 到 Session Backend 的实现无关创建请求。 */
 export interface RuntimeSessionCreateRequest {
 	readonly agent?: SessionConfig["agent"];
+	readonly sessionId?: SessionConfig["sessionId"];
 	readonly cwd?: SessionConfig["cwd"];
 	readonly agentDir?: SessionConfig["agentDir"];
 	readonly sessionPath?: SessionConfig["sessionPath"];
@@ -50,11 +50,6 @@ export interface RuntimeSessionCreateRequest {
 	readonly enableBackgroundTasks?: SessionConfig["enableBackgroundTasks"];
 	readonly enableSubagents: boolean;
 	readonly includeAgentSkills?: SessionConfig["includeAgentSkills"];
-	readonly agentPlugins?: AgentPluginRuntimeConfig;
-	readonly invokePluginTool?: AgentPluginToolInvoker;
-	readonly invokePluginContinuation?: AgentPluginContinuationInvoker;
-	readonly invokePluginSystemPrompt?: AgentPluginSystemPromptInvoker;
-	readonly pluginTurnHandlerLeaseProvider?: AgentPluginTurnHandlerLeaseProvider;
 	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
 	readonly serverUrl?: string;
 	readonly sandboxHostPath?: string;
@@ -77,7 +72,6 @@ export interface RuntimeHostSessionAssembly {
 	readonly hostInteraction: RuntimeSessionHostInteraction;
 	readonly executionController: RuntimeSessionExecutionController;
 	readonly workspaceView: RuntimeSessionWorkspaceView;
-	readonly backgroundWorkController: RuntimeSessionBackgroundWorkController;
 	readonly extensionHost?: RuntimeSessionExtensionHost;
 	readonly configurationController: RuntimeSessionConfigurationController;
 	readonly modelController: RuntimeSessionModelController;
@@ -85,6 +79,11 @@ export interface RuntimeHostSessionAssembly {
 	readonly corePorts: RuntimeSessionCorePorts;
 	/** 可选的 Session 上下文控制面；缺失时宿主不暴露手动压缩能力。 */
 	readonly contextController?: RuntimeSessionContextController;
+	readonly contextDeliveryController?: RuntimeSessionContextDeliveryController;
+	readonly contextUsageView?: RuntimeSessionContextUsageView;
+	readonly conversationView?: RuntimeSessionConversationView;
+	readonly executionObservationStream?: RuntimeSessionExecutionObservationStream;
+	readonly toolController?: RuntimeSessionToolController;
 	/** 可选能力（ADR-0060）：缺失时 RuntimeHost 相应功能静默降级，不做 no-op 伪造。 */
 	readonly queueController?: RuntimeSessionQueueController;
 	readonly metadataController?: RuntimeSessionMetadataController;
@@ -97,7 +96,6 @@ export const RUNTIME_HOST_SESSION_PORT_NAMES = [
 	"hostInteraction",
 	"executionController",
 	"workspaceView",
-	"backgroundWorkController",
 	"configurationController",
 	"modelController",
 	"modelView",

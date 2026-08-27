@@ -2,8 +2,6 @@ import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Api, Message, Model } from "@vetta/ai";
 import type { ContextCompositionReport } from "../context-composition/contracts.js";
 import type {
-	AgentPluginRuntimeConfig,
-	BackgroundTaskInfo,
 	HistoryEntry,
 	PromptRequest,
 	RuntimeSandboxGrantDecision,
@@ -47,6 +45,7 @@ export interface RuntimeTurnPrompt {
 export interface RuntimeSessionTurnControl {
 	prompt(request: RuntimeTurnPrompt): Promise<RuntimeTurnPromptOutcome | undefined>;
 	continue(): Promise<void>;
+	retry(): Promise<void>;
 	abort(): Promise<void>;
 }
 
@@ -231,19 +230,6 @@ export interface RuntimeSubagentSnapshot extends SubagentInfo {
 	readonly usage: RuntimeSubagentUsageSnapshot;
 }
 
-/** 后台 bash 与 subagent 的统一宿主控制面；对应现有后台工作面板。 */
-export interface RuntimeSessionBackgroundWorkController {
-	clearFinished(): number;
-	/** 仅清理终态后台命令；与子代理清理分离，供窄 SDK 能力使用。 */
-	clearFinishedTasks?(): number;
-	/** 仅清理终态子代理；与后台命令清理分离，供兼容宿主精确调用。 */
-	clearFinishedSubagents?(): number;
-	killTask(taskId: string): boolean;
-	readTasks(): readonly BackgroundTaskInfo[];
-	readSubagents(): readonly RuntimeSubagentSnapshot[];
-	interruptSubagent(target: string): RuntimeSubagentSnapshot | undefined;
-}
-
 /** 产品扩展对 Runtime Session 宿主暴露的通用控制面与迟订阅初始观察。 */
 export interface RuntimeSessionExtensionHost extends SessionExtensionEndpointHost {
 	readInitialObservations(): readonly RuntimeSessionObservationEvent[];
@@ -255,7 +241,6 @@ export type RuntimeSessionInputQueueMode = NonNullable<SettingsPatch["steeringMo
 export interface RuntimeSessionConfigurationController {
 	setSteeringMode(mode: RuntimeSessionInputQueueMode): void;
 	setFollowUpMode(mode: RuntimeSessionInputQueueMode): void;
-	reconfigureAgentPlugins(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<void>;
 	setAgentMode(mode: string | undefined): void;
 }
 

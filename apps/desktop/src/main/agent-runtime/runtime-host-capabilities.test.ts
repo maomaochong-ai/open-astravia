@@ -36,12 +36,55 @@ describe("Desktop RuntimeHost capabilities", () => {
 			assistantText("plugins disabled"),
 		];
 		let responseIndex = 0;
+		const toolInvocations: AgentPluginToolInvocation[] = [];
+		const systemPromptInvocations: AgentPluginSystemPromptInvocation[] = [];
+		const continuationInvocations: AgentPluginContinuationInvocation[] = [];
+		let currentPluginConfiguration: ReturnType<CodingAgentPluginRuntimeSource["readAgentPlugins"]> =
+			pluginConfiguration();
+		const pluginListeners = new Set<() => void>();
+		const pluginRuntime: CodingAgentPluginRuntimeSource = {
+			readAgentPlugins: () => currentPluginConfiguration,
+			subscribe: (listener) => {
+				pluginListeners.add(listener);
+				return () => pluginListeners.delete(listener);
+			},
+			invokeTool: async (invocation) => {
+				toolInvocations.push(invocation);
+				return { value: { text: "artifact created" }, effects: [] };
+			},
+			invokeSystemPrompt: async (invocation) => {
+				systemPromptInvocations.push(invocation);
+				return [
+					{
+						type: "addBlock",
+						block: {
+							id: "plugin.desktop-runtime-host",
+							type: "plugin",
+							source: { kind: "plugin" },
+							content: "Desktop RuntimeHost plugin instruction",
+							priority: 700,
+							enabled: true,
+						},
+					},
+				];
+			},
+			invokeContinuation: async (invocation) => {
+				continuationInvocations.push(invocation);
+				return continuationInvocations.length === 1
+					? {
+							value: { text: "desktop runtime continuation", idempotencyKey: "desktop-runtime-once" },
+							effects: [],
+						}
+					: { value: null, effects: [] };
+			},
+		};
 		const pool = new DesktopRuntimeBackendPool({
 			compositionDefaults: {
 				activation: { mode: "explicit", toolNames: ["plugin_artifact"] },
 				modelRegistry: modelRegistry(),
 				initialModel: MODEL,
 				initialThinkingLevel: "off",
+				createPluginRuntime: () => pluginRuntime,
 				resolveSystemPromptOptions: () => ({ customPrompt: "Base prompt", scenario: "batch" }),
 				streamFn: (_model, context) => {
 					modelCalls.push({
@@ -58,38 +101,6 @@ describe("Desktop RuntimeHost capabilities", () => {
 			sessionBackend: pool,
 			getDefaultExecutionMode: () => "full-access",
 		});
-		const toolInvocations: AgentPluginToolInvocation[] = [];
-		const systemPromptInvocations: AgentPluginSystemPromptInvocation[] = [];
-		const continuationInvocations: AgentPluginContinuationInvocation[] = [];
-		runtime.setPluginToolInvoker(async (invocation) => {
-			toolInvocations.push(invocation);
-			return { value: { text: "artifact created" }, effects: [] };
-		});
-		runtime.setPluginSystemPromptInvoker(async (invocation) => {
-			systemPromptInvocations.push(invocation);
-			return [
-				{
-					type: "addBlock",
-					block: {
-						id: "plugin.desktop-runtime-host",
-						type: "plugin",
-						source: { kind: "plugin" },
-						content: "Desktop RuntimeHost plugin instruction",
-						priority: 700,
-						enabled: true,
-					},
-				},
-			];
-		});
-		runtime.setPluginContinuationInvoker(async (invocation) => {
-			continuationInvocations.push(invocation);
-			return continuationInvocations.length === 1
-				? {
-						value: { text: "desktop runtime continuation", idempotencyKey: "desktop-runtime-once" },
-						effects: [],
-					}
-				: { value: null, effects: [] };
-		});
 		registerDisposal(runtime, pool);
 
 		const created = await runtime.createSession({
@@ -97,8 +108,6 @@ describe("Desktop RuntimeHost capabilities", () => {
 			sessionDir,
 			scenario: "batch",
 			executionMode: "full-access",
-			enableAgentPlugins: true,
-			agentPlugins: pluginConfiguration(),
 		});
 		await runtime.prompt(created.sessionId, { text: "create artifact" });
 
@@ -110,7 +119,8 @@ describe("Desktop RuntimeHost capabilities", () => {
 		expect(modelCalls[0]?.tools).toContain("plugin_artifact");
 		expect(modelCalls[0]?.prompt).toContain("Desktop RuntimeHost plugin instruction");
 
-		runtime.reconfigureAgentPlugins(undefined);
+		currentPluginConfiguration = undefined;
+		for (const listener of pluginListeners) listener();
 		await runtime.prompt(created.sessionId, { text: "continue without plugins" });
 
 		expect(modelCalls[3]?.tools).not.toContain("plugin_artifact");

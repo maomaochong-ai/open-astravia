@@ -50,8 +50,8 @@ describe("Coding Agent Runtime Agent production composition", () => {
 		expect(second.agentRuntime.revisionId).toBe(secondPublication.revision.id);
 		expect(first.agentRuntime.revisionId).not.toBe(second.agentRuntime.revisionId);
 
-		const firstSession = await first.backend.create({ sessionId: "first-session" });
-		const secondSession = await second.backend.create({ sessionId: "second-session" });
+		const firstSession = await first.createSession({ sessionId: "first-session" });
+		const secondSession = await second.createSession({ sessionId: "second-session" });
 		let firstLease: RuntimeSnapshotLease | undefined;
 		let secondLease: RuntimeSnapshotLease | undefined;
 		try {

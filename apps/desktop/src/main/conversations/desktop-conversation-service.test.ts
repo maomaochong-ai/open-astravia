@@ -81,7 +81,8 @@ describe("DesktopConversationService session access", () => {
 				return unsubscribe;
 			}),
 			prompt: vi.fn(() => promptResult.promise),
-			autoTitleSession: vi.fn(() => autoTitleResult.promise),
+			invokeSessionExtension: vi.fn(() => autoTitleResult.promise),
+			renameSessionById: vi.fn(async () => {}),
 		} as unknown as RuntimeHost;
 		const changedEvents: Array<{ cwd: string; sessionPath: string }> = [];
 		const stopListening = onConversationListChanged((event) => changedEvents.push(event));
@@ -93,10 +94,14 @@ describe("DesktopConversationService session access", () => {
 				{ text: "Explain the retry policy" },
 				"C:/workspace",
 			);
-			expect(runtime.autoTitleSession).not.toHaveBeenCalled();
+			expect(runtime.invokeSessionExtension).not.toHaveBeenCalled();
 
 			sessionEventHandler?.({ type: "session.lifecycle", phase: "agent_start" });
-			expect(runtime.autoTitleSession).toHaveBeenCalledWith("session-1", "Explain the retry policy", "");
+			expect(runtime.invokeSessionExtension).toHaveBeenCalledWith(
+				"session-1",
+				expect.objectContaining({ extensionId: "coding-agent.session-assistance" }),
+				{ userText: "Explain the retry policy", assistantText: "" },
+			);
 
 			autoTitleResult.resolve("Retry policy");
 			await vi.waitFor(() => {
@@ -120,7 +125,7 @@ describe("DesktopConversationService session access", () => {
 			getSessionPath: vi.fn(() => "C:/sessions/session-1.conversation.jsonl"),
 			subscribe: vi.fn(),
 			prompt: vi.fn(async () => ({ status: "completed" as const })),
-			autoTitleSession: vi.fn(),
+			invokeSessionExtension: vi.fn(),
 		} as unknown as RuntimeHost;
 		const service = new DesktopConversationService(runtime);
 
@@ -128,7 +133,7 @@ describe("DesktopConversationService session access", () => {
 			service.promptInteractiveSession("session-1", { text: "Second question" }, "C:/workspace"),
 		).resolves.toEqual({ status: "completed" });
 		expect(runtime.subscribe).not.toHaveBeenCalled();
-		expect(runtime.autoTitleSession).not.toHaveBeenCalled();
+		expect(runtime.invokeSessionExtension).not.toHaveBeenCalled();
 	});
 
 	it("adds host capabilities to listed sessions", async () => {

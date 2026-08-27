@@ -1,13 +1,18 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface, type Interface } from "node:readline";
 import { fileURLToPath } from "node:url";
+import { inject } from "vitest";
+import type { AgentRpcExecutable } from "./agent-rpc-executable.js";
 
-export interface AgentRpcExecutable {
-	readonly path: string;
-	dispose(): Promise<void>;
+export type { AgentRpcExecutable } from "./agent-rpc-executable.js";
+
+declare module "vitest" {
+	export interface ProvidedContext {
+		readonly agentRpcExecutablePath: string;
+	}
 }
 
 export interface AgentRpcFixture {
@@ -49,9 +54,7 @@ interface FrameWaiter {
 	readonly timeout: ReturnType<typeof setTimeout>;
 }
 
-const sourceEntryPath = fileURLToPath(new URL("../../src/agent-rpc-cli.ts", import.meta.url));
 const repositoryRoot = fileURLToPath(new URL("../../../..", import.meta.url));
-const testBundleRoot = join(repositoryRoot, "node_modules", ".cache");
 const DEFAULT_PROCESS_READY_TIMEOUT_MS = 15_000;
 const PASSTHROUGH_ENV_KEYS = [
 	"ComSpec",
@@ -67,25 +70,11 @@ const PASSTHROUGH_ENV_KEYS = [
 	"WINDIR",
 ] as const;
 
-export async function buildAgentRpcExecutable(): Promise<AgentRpcExecutable> {
-	await mkdir(testBundleRoot, { recursive: true });
-	const directory = await mkdtemp(join(testBundleRoot, "vetta-agent-rpc-"));
-	const path = join(directory, "agent-rpc.mjs");
-	try {
-		await runCommand(
-			"bun",
-			["build", sourceEntryPath, "--target", "bun", "--external", "@mariozechner/jiti", "--outfile", path],
-			repositoryRoot,
-		);
-		await copyFile(join(repositoryRoot, "packages", "coding-agent", "package.json"), join(directory, "package.json"));
-		return {
-			path,
-			dispose: () => rm(directory, { force: true, recursive: true }),
-		};
-	} catch (error) {
-		await rm(directory, { force: true, recursive: true });
-		throw error;
-	}
+export async function acquireAgentRpcExecutable(): Promise<AgentRpcExecutable> {
+	return {
+		path: inject("agentRpcExecutablePath"),
+		dispose: async () => {},
+	};
 }
 
 export async function createAgentRpcFixture(options: CreateAgentRpcFixtureOptions = {}): Promise<AgentRpcFixture> {
@@ -373,20 +362,4 @@ function processDiagnostics(processHandle: AgentRpcProcess): string {
 
 function delay(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function runCommand(command: string, args: readonly string[], cwd: string): Promise<void> {
-	await new Promise<void>((resolve, reject) => {
-		const child = spawn(command, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
-		let stderr = "";
-		child.stderr.setEncoding("utf8");
-		child.stderr.on("data", (chunk: string) => {
-			stderr += chunk;
-		});
-		child.once("error", reject);
-		child.once("exit", (code, signal) => {
-			if (code === 0) resolve();
-			else reject(new Error(`Command failed with code ${code}, signal ${signal}\n${stderr}`));
-		});
-	});
 }

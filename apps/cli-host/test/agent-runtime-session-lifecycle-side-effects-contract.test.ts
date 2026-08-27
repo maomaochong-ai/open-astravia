@@ -5,7 +5,7 @@ import {
 	type AgentRpcExecutable,
 	type AgentRpcFixture,
 	type AgentRpcProcess,
-	buildAgentRpcExecutable,
+	acquireAgentRpcExecutable,
 	createAgentRpcFixture,
 	type RpcFrame,
 	readSessionFile,
@@ -17,11 +17,11 @@ import { startOpenAiResponsesTestServer, textResponseEvents } from "./support/op
 let executable: AgentRpcExecutable;
 
 beforeAll(async () => {
-	executable = await buildAgentRpcExecutable();
-}, 60_000);
+	executable = await acquireAgentRpcExecutable();
+});
 
 afterAll(async () => {
-	await executable.dispose();
+	await executable?.dispose();
 });
 
 describe("real RPC CLI replacement lifecycle side effects contract", () => {

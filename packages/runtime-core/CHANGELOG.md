@@ -6,6 +6,13 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- `RuntimeObservationHubView` 现在可创建不取得 Hub 生命周期所有权的 scoped Publisher；新增
+  `runtime.active-session.lifecycle` 安全观测，覆盖活动 Session 事件/执行观察监听器失败、已提交切换的旧 Session
+  清理失败与错误报告器失败。RuntimeHost 的 workspace 准备、队列 sidecar、Session observer 和外部订阅者失败也统一
+  进入 `runtime.host.lifecycle`，不再暴露路径、事件正文或原始错误文本。
+- 新增 `RuntimeHost.agentBackends` 与 `installAgent()` 动态主 Agent admission：Definition 与异构 Session Backend 可在
+  运行时事务安装；Backend replace/retire/remove 立即关闭新会话入口，已有 Session 持有旧 generation lease，最后一个
+  lease 成功释放后才回收。注册、路由、lease 与 dispose 通过内容安全的 `runtime.host.agent-backend` Observation 输出。
 - 新增标准 `createRuntimeSessionExtensionHost()`，统一把 Session Extension Endpoint 与迟订阅初始 Observation 投影到
   RuntimeHost 合同；产品组合不再重复编写 Endpoint 转发和 event source 映射。
 - 新增 `RuntimeContextUsageTracker` 与可注入时钟的 `ConsecutiveFailureCircuitBreaker`。自定义 Agent 可复用 document、
@@ -19,6 +26,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
   `agent` 选择平级主 Agent，并统一复用/隔离 Instance、固定 definition revision、装配 Kernel Session 与重试释放；
   Agent 生命周期和池复用/退休均进入同一安全 Observation。原生会话可选持久化稳定 `agentId`，活动状态与 Catalog
   可读取它，而 revision/Instance 代际不进入持久化格式。
+
 - 新增通用可重试清理控制器，Agent Session、Instance、Runtime、Registry、Host Backend 与平台池在关闭失败后保留
   未完成资源的所有权；再次关闭只重试失败项，不重复释放已完成项。
 - 新增 `@vetta/runtime-core/configuration` 产品无关配置基座：Configuration Definition/Source revision、幂等
@@ -64,6 +72,12 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Changed
 
+- `RuntimeHost` 现在跟随持久化 continuation 更新公开 Session identity，同时保留旧 identity 作为同一活动句柄的别名；
+  `RuntimeHostSession.sessionId`、状态读取、订阅与释放始终解析到当前 canonical identity。换卷不会隐式继承旧会话的
+  Sandbox grant，并发布内容安全的 `runtime.host.lifecycle/session.rebind` 观测。
+- **破坏性变更**：`RuntimeHost` 不再拥有 Coding Agent 的自动标题、下一问建议、后台任务、Subagent 与 Plugin
+  动态配置语义，也不再从 `SessionConfig` 接收 Plugin 产品配置。产品控制统一通过类型化 Session Extension Endpoint
+  路由；Runtime Core 只保留 Session/Turn、通用配置控制、状态投影与 Endpoint Host。
 - **破坏性变更**：`RuntimeHost` 现在默认拥有并公开 `host.agents` 多主 Agent 控制面；新增 Backend factory、统一
   Observation 与幂等 `close()` 生命周期。移除第二个顶层 `RuntimeAgentHost` 公共概念，改为可模块化嵌入的
   `RuntimeAgentRuntime`；Definition Instance 工厂改用 `prepareSession()` 返回可激活/回滚的
@@ -90,6 +104,13 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 - 移除 Runtime Core 的 `TodoItem`、`TodoUpdateEvent` 与 `todo_update` Session 事件；产品观察改用通用 `session.extension` 信封。信封只声明 `extensionId/event/payload`，具体 payload 类型与跨宿主运行时校验由产品协议拥有。
 
 ### Fixed
+
+- 标准 `SESSION_LOCKED` failure 现在可携带经过边界校验的 `lockHolder`（仅 pid、hostname、openedAt），使 Host
+  Adapter 在 Storage 错误完成 Runtime 映射后仍能保留既有冲突诊断协议，而不会暴露 ownership token 或锁路径。
+- `RuntimeHost.disposeAllSessions()` 不再在部分 Session 释放失败时清空全部索引；失败 Session 与 Backend lease 会保留供
+  后续重试。`close()` 现在等待已 admission 的在途创建，并从失败的资源阶段继续，不再永久缓存第一次失败 Promise。
+- `RuntimeHost.createSession()` 现在会在去重与 Backend 请求前统一归一化 `sessionPath`；全空白路径不再先按新建
+  判断、随后被 Backend 误当成恢复请求。
 
 - Turn engine 对排队输入随附的 context 记录不再发 `message` 事件：它们已由 `appendQueuedContext` 以
   `context.appended` 落盘，此前会以 user `message.appended` 双份持久化（ADR-0060）。

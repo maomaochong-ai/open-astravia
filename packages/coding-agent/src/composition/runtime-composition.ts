@@ -14,6 +14,7 @@ import type {
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeSessionOptions,
 } from "./contracts/index.js";
+import { requireCodingAgentRuntimeSessionOptions } from "./contracts/index.js";
 
 export {
 	CODING_AGENT_BUILTIN_SOURCE,
@@ -23,6 +24,13 @@ export {
 	type CodingAgentExecutionRuntimeDefinitionOptions,
 	createCodingAgentExecutionRuntimeDefinition,
 } from "./agent-runtime/execution-definition.js";
+export {
+	type CodingAgentRuntimeHostSessionOverrides,
+	createCodingAgentRuntimeHostSessionConfig,
+	createCodingAgentRuntimeSessionAgentSelection,
+	createIsolatedCodingAgentRuntimeHostSession,
+	type IsolatedCodingAgentRuntimeHostSessionOptions,
+} from "./runtime-host-session-config.js";
 
 import {
 	type CodingAgentCompositionAgentRuntimeScope,
@@ -41,6 +49,7 @@ export type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeExtensionControls,
+	CodingAgentRuntimeHostRetrySettings,
 	CodingAgentRuntimeSessionControls,
 	CodingAgentRuntimeSessionHookLifecycle,
 	CodingAgentRuntimeSessionOptions,
@@ -52,6 +61,7 @@ import {
 	createChildCodingAgentObservationOptions,
 	createCodingAgentObservationRuntime,
 } from "./observability/observation-runtime.js";
+import { mapCodingAgentRuntimeSessionCreationError, withCodingAgentRuntimeHostRetry } from "./runtime-host-retry.js";
 import { createCodingAgentSessionInitializationProfile } from "./session-initialization/profile.js";
 import { createCodingAgentSessionInitializationTransaction } from "./session-initialization/transaction.js";
 import { createCodingAgentCompositionShutdown } from "./session-lifecycle/composition-shutdown.js";
@@ -234,24 +244,18 @@ async function assembleCodingAgentRuntimeComposition(
 			tracer: options.tracer,
 			tracing: options.tracing,
 		},
+		decorateAssembly: options.runtimeHostRetrySettings
+			? ({ session, assembly }) =>
+					withCodingAgentRuntimeHostRetry(
+						session,
+						assembly,
+						options.runtimeHostRetrySettings!,
+						observationPublisher,
+					)
+			: undefined,
+		mapCreationError: mapCodingAgentRuntimeSessionCreationError,
 	});
 	const preparedAgent = await runtimeAgentBackend.prepareInstance(agentSelection);
-	const createRuntimeSessionRequest = (
-		sessionOptions: CodingAgentRuntimeSessionOptions,
-		resume: boolean,
-	): RuntimeSessionCreateRequest => ({
-		agent: { ...preparedAgent.selection!, sessionConfiguration: sessionOptions },
-		...(resume ? { sessionPath: sessionOptions.sessionId } : {}),
-		executionMode: sessionOptions.executionMode ?? "full-access",
-		enableSubagents: sessionInitializationProfile.enableSubagents === true,
-		getSessionId: () => sessionOptions.sessionId,
-	});
-	const backend = {
-		create: (sessionOptions: CodingAgentRuntimeSessionOptions) =>
-			runtimeAgentBackend.createRuntimeSession(createRuntimeSessionRequest(sessionOptions, false)),
-		resume: (sessionOptions: CodingAgentRuntimeSessionOptions) =>
-			runtimeAgentBackend.createRuntimeSession(createRuntimeSessionRequest(sessionOptions, true)),
-	};
 	const runtimeHostBackend = {
 		createAssembly: (request: RuntimeSessionCreateRequest) => {
 			if (request.agent && request.agent.id !== preparedAgent.identity.agentId) {
@@ -295,8 +299,6 @@ async function assembleCodingAgentRuntimeComposition(
 		extensionToolRuntime,
 	});
 	return {
-		sessions: backend,
-		backend,
 		runtimeHostBackend,
 		tools,
 		agentRuntime: {
@@ -317,9 +319,26 @@ async function assembleCodingAgentRuntimeComposition(
 const EMPTY_MCP_TOOL_VIEW: McpRuntimeToolView = Object.freeze({ tools: Object.freeze([]) });
 
 function readCodingAgentSessionOptions(request: RuntimeSessionCreateRequest): CodingAgentRuntimeSessionOptions {
-	const value = request.agent?.sessionConfiguration;
-	if (!value || typeof value !== "object" || !("sessionId" in value) || typeof value.sessionId !== "string") {
-		throw new Error("Coding Agent Runtime request must include validated Session options");
+	const options = requireCodingAgentRuntimeSessionOptions(request.agent?.sessionConfiguration);
+	if (request.sessionId !== undefined && request.sessionId !== options.sessionId) {
+		throw new Error(
+			`Coding Agent Runtime Session identity mismatch: expected ${options.sessionId}, received ${request.sessionId}`,
+		);
 	}
-	return value as CodingAgentRuntimeSessionOptions;
+	return {
+		...options,
+		cwd: request.cwd ?? options.cwd,
+		model: request.model ?? options.model,
+		thinkingLevel: request.thinkingLevel ?? options.thinkingLevel,
+		agentMode: request.agentMode ?? options.agentMode,
+		executionMode: request.executionMode,
+		env: request.env ?? options.env,
+		enableBackgroundTasks: request.enableBackgroundTasks ?? options.enableBackgroundTasks,
+		includeAgentSkills: request.includeAgentSkills ?? options.includeAgentSkills,
+		askUserQuestion: request.askUserQuestion ?? options.askUserQuestion,
+		sandboxHostPath: request.sandboxHostPath ?? options.sandboxHostPath,
+		linuxBubblewrapPath: request.linuxBubblewrapPath ?? options.linuxBubblewrapPath,
+		macosSandboxExecPath: request.macosSandboxExecPath ?? options.macosSandboxExecPath,
+		systemPromptAddon: request.appendSystemPrompt ?? options.systemPromptAddon,
+	};
 }

@@ -79,15 +79,9 @@ function createSessionHarness() {
 			eventListener = listener;
 			return releaseEvents;
 		},
-		createCoreAssembly() {
-			return {
-				executionObservationStream: {
-					subscribe(listener: typeof observationListener) {
-						observationListener = listener;
-						return releaseObservations;
-					},
-				},
-			};
+		subscribeExecutionObservations(listener: typeof observationListener) {
+			observationListener = listener;
+			return releaseObservations;
 		},
 	} as unknown as RuntimeSession;
 	return {

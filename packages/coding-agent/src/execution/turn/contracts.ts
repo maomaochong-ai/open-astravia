@@ -1,9 +1,9 @@
 import type { ImageContent } from "@vetta/ai";
 import type {
+	RuntimeActiveSession,
 	RuntimeFailure,
 	RuntimeObservationContext,
 	RuntimeObservationPublisher,
-	RuntimeSession,
 	RuntimeTurnRetryController,
 	RuntimeTurnRetryEvent,
 	RuntimeTurnRetrySettings,
@@ -26,7 +26,7 @@ export type CodingAgentTurnFailure = RuntimeFailure;
 export type CodingAgentTurnRetryController = RuntimeTurnRetryController;
 
 export interface CodingAgentTurnSessionHost {
-	startActiveSessionOperation<T>(operation: (session: RuntimeSession) => Promise<T>): Promise<T>;
+	startActiveSessionOperation<T>(operation: (session: RuntimeActiveSession) => Promise<T>): Promise<T>;
 }
 
 export interface CodingAgentTurnCommandHost {

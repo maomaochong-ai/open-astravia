@@ -10,6 +10,8 @@ export type {
 	CodingAgentResourceContributions,
 	CodingAgentSessionCreateErrorCode,
 	CodingAgentSessionDiagnostic,
+	CodingAgentSessionObservationOptions,
+	CodingAgentSessionObservationRoute,
 	CodingAgentSessionStorageTarget,
 	CreateCodingAgentSessionOptions,
 	CreateCodingAgentSessionResult,

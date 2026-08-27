@@ -2,9 +2,9 @@ import type { Message } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
 import {
 	type ConversationScenario,
+	type RuntimeActiveSession,
 	type RuntimeObservationPublisher,
 	type RuntimeResourceContext,
-	type RuntimeSession,
 	runtimeObservationFailure,
 	type SessionConfig,
 } from "@vetta/runtime-core";
@@ -62,8 +62,8 @@ export interface CodingAgentSubagentChildCompositionRequest {
 }
 
 export interface CodingAgentSubagentChildComposition {
-	createSession(options: CodingAgentSubagentChildSessionOptions): Promise<RuntimeSession>;
-	resumeSession(options: CodingAgentSubagentChildSessionOptions): Promise<RuntimeSession>;
+	createSession(options: CodingAgentSubagentChildSessionOptions): Promise<RuntimeActiveSession>;
+	resumeSession(options: CodingAgentSubagentChildSessionOptions): Promise<RuntimeActiveSession>;
 	appendSessionContext(sessionId: string, records: readonly SessionContextRecord[]): void;
 	deliverSessionContext(sessionId: string, records: readonly SessionContextRecord[]): Promise<void>;
 	dispose(): Promise<void>;
@@ -295,7 +295,7 @@ async function openChild(
 			operation === "create"
 				? await childComposition.createSession(childOptions)
 				: await childComposition.resumeSession(childOptions);
-		const childSessionFile = childSession.createCoreAssembly().lifecycle.sessionPath;
+		const childSessionFile = childSession.sessionPath;
 		return createCodingAgentSubagentChildHandle({
 			session: childSession,
 			sessionFile: childSessionFile,

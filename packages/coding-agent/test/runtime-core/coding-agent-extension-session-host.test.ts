@@ -1,4 +1,4 @@
-import type { RuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeHostSession } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import type {
 	CodingAgentRuntimeExtensionEventHost,
@@ -49,7 +49,7 @@ describe("CodingAgentExtensionSessionHost initialization rollback", () => {
 
 		let caught: unknown;
 		try {
-			await host.reload({} as RuntimeSession, async () => undefined);
+			await host.reload({} as RuntimeHostSession, async () => undefined);
 		} catch (error) {
 			caught = error;
 		}

@@ -1,6 +1,6 @@
 import { providerAuthenticationError } from "@vetta/ai";
-import type { RuntimeSession } from "@vetta/runtime-core";
-import { createCodingAgentExtensionSessionView } from "../../adapters/extensions/runtime-session-view-adapter.js";
+import type { RuntimeHostSession } from "@vetta/runtime-core";
+import { createCodingAgentExtensionSessionViewFromSource } from "../../adapters/extensions/runtime-session-view-adapter.js";
 import { collectEntriesForBranchSummary, generateBranchSummary } from "../../compaction/index.js";
 import type { SessionBeforeTreeResult, TreePreparation } from "../../extensions/index.js";
 import type { CodingAgentExtensionRunnerPort } from "../../runtime-contracts/index.js";
@@ -15,7 +15,7 @@ export interface CodingAgentBranchNavigationOptions {
 }
 
 export interface CodingAgentBranchNavigationHostOptions {
-	readonly withActiveSession: <T>(operation: (session: RuntimeSession) => Promise<T>) => Promise<T>;
+	readonly withActiveSession: <T>(operation: (session: RuntimeHostSession) => Promise<T>) => Promise<T>;
 	readonly readRunner: () => CodingAgentExtensionRunnerPort;
 	readonly settingsManager: Pick<SettingsRuntime, "getBranchSummarySettings">;
 	readonly generateSummary?: typeof generateBranchSummary;
@@ -46,16 +46,15 @@ export class CodingAgentBranchNavigationHost {
 	}
 
 	private async navigate(
-		session: RuntimeSession,
+		session: RuntimeHostSession,
 		targetId: string,
 		options: CodingAgentBranchNavigationOptions,
 	): Promise<{ editorText?: string; cancelled: boolean; aborted?: boolean; summaryEntry?: BranchSummaryEntry }> {
-		const assembly = session.createCoreAssembly();
-		const sessionManager = createCodingAgentExtensionSessionView(assembly);
+		const sessionManager = createCodingAgentExtensionSessionViewFromSource(session);
 		const oldLeafId = sessionManager.getLeafId();
 		if (targetId === oldLeafId) return { cancelled: false };
 
-		const model = assembly.modelView.readCurrentModel();
+		const model = session.readCurrentModel();
 		if (options.summarize && !model) throw new Error("No model available for summarization");
 		const targetEntry = sessionManager.getEntry(targetId);
 		if (!targetEntry) throw new Error(`Entry ${targetId} not found`);
@@ -104,7 +103,7 @@ export class CodingAgentBranchNavigationHost {
 			let summaryText: string | undefined;
 			let summaryDetails: unknown;
 			if (options.summarize && entriesToSummarize.length > 0 && !extensionSummary) {
-				const apiKey = await assembly.modelView.resolveApiKey(model!);
+				const apiKey = await session.resolveModelApiKey(model!);
 				if (!apiKey) {
 					throw providerAuthenticationError(
 						model!,
@@ -145,25 +144,20 @@ export class CodingAgentBranchNavigationHost {
 
 			let summaryEntry: BranchSummaryEntry | undefined;
 			if (summaryText) {
-				const appended = await assembly.historyController.appendBranchSummary(
-					newLeafId,
-					summaryText,
-					summaryDetails,
-					fromExtension,
-				);
-				summaryEntry = createCodingAgentExtensionSessionView(session.createCoreAssembly()).getEntry(
+				const appended = await session.appendBranchSummary(newLeafId, summaryText, summaryDetails, fromExtension);
+				summaryEntry = createCodingAgentExtensionSessionViewFromSource(session).getEntry(
 					appended.entryId,
 				) as BranchSummaryEntry;
-				if (label) await assembly.metadataController.setLabel(appended.entryId, label);
+				if (label) await session.setLabel(appended.entryId, label);
 			} else {
-				await assembly.historyController.navigateForEdit(targetId);
-				if (label) await assembly.metadataController.setLabel(targetId, label);
+				await session.navigateForEdit(targetId);
+				if (label) await session.setLabel(targetId, label);
 			}
 			this.options.clearExecutionContext?.(session.sessionId);
 
 			await runner.emit({
 				type: "session_tree",
-				newLeafId: createCodingAgentExtensionSessionView(session.createCoreAssembly()).getLeafId(),
+				newLeafId: createCodingAgentExtensionSessionViewFromSource(session).getLeafId(),
 				oldLeafId,
 				summaryEntry,
 				fromExtension: summaryText ? fromExtension : undefined,

@@ -162,19 +162,11 @@ function assembly(
 			reconfigure: async () => {},
 		},
 		workspaceView: { readWorkingDirectory: () => undefined },
-		backgroundWorkController: {
-			clearFinished: () => 0,
-			killTask: () => false,
-			readTasks: () => [],
-			readSubagents: () => [],
-			interruptSubagent: () => undefined,
-		},
 		extensionHost,
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},
 			setAgentMode,
-			reconfigureAgentPlugins: async () => {},
 		},
 		modelController: {
 			selectModel: async () => {},
@@ -191,6 +183,7 @@ function assembly(
 			turnControl: {
 				prompt: async () => undefined,
 				continue: async () => {},
+				retry: async () => {},
 				abort: async () => {},
 			},
 			eventStream: { subscribe: () => () => {} },

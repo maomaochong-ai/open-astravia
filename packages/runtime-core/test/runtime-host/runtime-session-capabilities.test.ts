@@ -14,7 +14,6 @@ const RUNTIME_CAPABILITY_MATRIX = {
 	hostInteraction: "missing",
 	executionController: "missing",
 	workspaceView: "implemented",
-	backgroundWorkController: "missing",
 	configurationController: "missing",
 	modelController: "implemented",
 	modelView: "implemented",
@@ -37,6 +36,6 @@ describe("RuntimeHost capability matrix", () => {
 			"modelView",
 			"corePorts",
 		]);
-		expect(Object.values(RUNTIME_CAPABILITY_MATRIX).filter((status) => status === "missing")).toHaveLength(4);
+		expect(Object.values(RUNTIME_CAPABILITY_MATRIX).filter((status) => status === "missing")).toHaveLength(3);
 	});
 });

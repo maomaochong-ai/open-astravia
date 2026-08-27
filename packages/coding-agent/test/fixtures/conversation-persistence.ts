@@ -1,10 +1,14 @@
+import type { RuntimeHostSession } from "@vetta/runtime-core";
 import { nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
 import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";
 import type {
 	CodingAgentConversationPersistenceFactory,
+	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
+	CodingAgentRuntimeSessionOptions,
 } from "../../src/composition/contracts/index.js";
 import { createCodingAgentRuntimeComposition as createRuntimeComposition } from "../../src/composition/runtime-composition.js";
+import { createIsolatedCodingAgentRuntimeHostSession } from "../../src/composition/runtime-host-session-config.js";
 import { createCodingAgentNodeSessionExecutionEnvironment } from "../../src/host/tool-environment/node/node-session-execution-environment.js";
 import { createCodingAgentNodeToolEnvironment } from "../../src/host/tool-environment/node/node-tool-environment.js";
 import { detectWorkspaceFacts, probeWorkspaceSignals } from "../../src/model-context/workspace-facts.js";
@@ -24,7 +28,14 @@ type TestCompositionOptions = Omit<
 		>
 	>;
 
-export function createCodingAgentRuntimeComposition(options: TestCompositionOptions) {
+export type TestCodingAgentRuntimeComposition = CodingAgentRuntimeComposition & {
+	createSession(options: CodingAgentRuntimeSessionOptions): Promise<RuntimeHostSession>;
+	resumeSession(options: CodingAgentRuntimeSessionOptions): Promise<RuntimeHostSession>;
+};
+
+export function createCodingAgentRuntimeComposition(
+	options: TestCompositionOptions,
+): Promise<TestCodingAgentRuntimeComposition> {
 	return createRuntimeComposition({
 		...options,
 		workspaceFacts:
@@ -38,5 +49,17 @@ export function createCodingAgentRuntimeComposition(options: TestCompositionOpti
 		createToolEnvironment: options.createToolEnvironment ?? createCodingAgentNodeToolEnvironment,
 		createSessionExecutionEnvironment:
 			options.createSessionExecutionEnvironment ?? createCodingAgentNodeSessionExecutionEnvironment,
-	});
+	}).then((composition) =>
+		Object.assign(composition, {
+			createSession: (sessionOptions: CodingAgentRuntimeSessionOptions) =>
+				createIsolatedCodingAgentRuntimeHostSession(composition, sessionOptions, {
+					scenario: composition.scenario,
+				}),
+			resumeSession: (sessionOptions: CodingAgentRuntimeSessionOptions) =>
+				createIsolatedCodingAgentRuntimeHostSession(composition, sessionOptions, {
+					resume: true,
+					scenario: composition.scenario,
+				}),
+		}),
+	) as Promise<TestCodingAgentRuntimeComposition>;
 }

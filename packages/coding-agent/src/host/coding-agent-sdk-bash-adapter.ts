@@ -1,5 +1,4 @@
-import type { RuntimeSession, SessionEvent } from "@vetta/runtime-core";
-import type { CodingAgentActiveSessionHost } from "../composition/session-host/active-session-transition-host.js";
+import type { RuntimeHostSession, SessionEvent } from "@vetta/runtime-core";
 import { type BashExecutionMessage, bashExecutionToText } from "../model-context/index.js";
 import { CODING_AGENT_EXTENDED_MESSAGE_CONTEXT_TYPE } from "../sessions/index.js";
 import type { HostBashExecutor, HostBashResult } from "./command-execution/index.js";
@@ -24,7 +23,10 @@ export class CodingAgentSdkBashAdapter implements CodingAgentSdkBashPort {
 
 	constructor(private readonly options: CodingAgentSdkBashAdapterOptions) {}
 
-	bindEvents(host: Pick<CodingAgentActiveSessionHost, "readSession" | "subscribe">): void {
+	bindEvents(host: {
+		readSession(): RuntimeHostSession;
+		subscribe(handler: (event: SessionEvent) => void): () => void;
+	}): void {
 		if (this.unsubscribeEvents) throw new Error("SDK Bash events are already bound");
 		this.unsubscribeEvents = host.subscribe((event) => {
 			void this.observe(event, () => host.readSession()).catch((error: unknown) => {
@@ -34,7 +36,7 @@ export class CodingAgentSdkBashAdapter implements CodingAgentSdkBashPort {
 	}
 
 	async execute(
-		session: RuntimeSession,
+		session: RuntimeHostSession,
 		command: string,
 		onChunk?: (chunk: string) => void,
 		options?: Parameters<CodingAgentSdkBashPort["execute"]>[3],
@@ -43,7 +45,7 @@ export class CodingAgentSdkBashAdapter implements CodingAgentSdkBashPort {
 		const controller = new AbortController();
 		const prefix = this.options.readShellCommandPrefix();
 		const resolvedCommand = prefix ? `${prefix}\n${command}` : command;
-		const cwd = session.createCoreAssembly().workspaceView.readWorkingDirectory() ?? process.cwd();
+		const cwd = session.readWorkingDirectory() ?? process.cwd();
 		const operation = options?.operations
 			? this.options.executor.executeWithOperations(resolvedCommand, cwd, options.operations, {
 					onChunk,
@@ -68,7 +70,7 @@ export class CodingAgentSdkBashAdapter implements CodingAgentSdkBashPort {
 	}
 
 	record(
-		session: RuntimeSession,
+		session: RuntimeHostSession,
 		command: string,
 		result: HostBashResult,
 		options?: { readonly excludeFromContext?: boolean },
@@ -88,7 +90,7 @@ export class CodingAgentSdkBashAdapter implements CodingAgentSdkBashPort {
 		return (this.pending.get(sessionId)?.length ?? 0) > 0;
 	}
 
-	async quiesce(session: RuntimeSession): Promise<void> {
+	async quiesce(session: RuntimeHostSession): Promise<void> {
 		if (this.active?.sessionId === session.sessionId) {
 			this.active.controller.abort();
 			await Promise.allSettled([this.active.operation]);
@@ -96,7 +98,7 @@ export class CodingAgentSdkBashAdapter implements CodingAgentSdkBashPort {
 		await this.flush(session);
 	}
 
-	async observe(event: SessionEvent, readSession: () => RuntimeSession): Promise<void> {
+	async observe(event: SessionEvent, readSession: () => RuntimeHostSession): Promise<void> {
 		if (event.type !== "session.lifecycle" || event.phase !== "agent_end") return;
 		const session = readSession();
 		if (session.sessionId !== event.sessionId) return;
@@ -112,7 +114,7 @@ export class CodingAgentSdkBashAdapter implements CodingAgentSdkBashPort {
 		this.pending.clear();
 	}
 
-	private async flush(session: RuntimeSession): Promise<void> {
+	private async flush(session: RuntimeHostSession): Promise<void> {
 		const messages = this.pending.get(session.sessionId);
 		if (!messages || messages.length === 0) return;
 		for (const message of messages) await deliverBashMessage(session, message);
@@ -134,8 +136,8 @@ function toBashMessage(command: string, result: HostBashResult, excludeFromConte
 	};
 }
 
-async function deliverBashMessage(session: RuntimeSession, message: BashExecutionMessage): Promise<void> {
-	await session.createCoreAssembly().contextDeliveryController.deliver(
+async function deliverBashMessage(session: RuntimeHostSession, message: BashExecutionMessage): Promise<void> {
+	await session.deliverContext(
 		[
 			{
 				type: CODING_AGENT_EXTENDED_MESSAGE_CONTEXT_TYPE,

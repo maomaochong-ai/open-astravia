@@ -1,5 +1,5 @@
 import type { Api, Model } from "@vetta/ai";
-import type { RuntimeSession, RuntimeSessionContextDeliveryController } from "@vetta/runtime-core";
+import type { RuntimeHostSession, RuntimeSessionContextDeliveryController } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentExtensionActionHost } from "../../src/host/extensions/action-host.js";
@@ -49,28 +49,17 @@ describe("CodingAgentExtensionActionHost", () => {
 		const session = {
 			readState: () => state,
 			prompt,
-			createCoreAssembly: () => ({
-				contextDeliveryController: { deliver: delivery },
-				metadataController: {
-					appendEntry,
-					readName: () => "Persisted",
-					setName,
-					setLabel,
-				},
-				toolController: {
-					readActiveToolNames: () => ["read"],
-					readAvailableTools: () => new Map([[tool.name, tool]]),
-					setActiveToolNames,
-				},
-				modelView: {
-					resolveApiKey: async () => "key",
-				},
-				modelController: {
-					selectModel,
-					setThinkingLevel,
-				},
-			}),
-		} as unknown as RuntimeSession;
+			deliverContext: delivery,
+			appendMetadataEntry: appendEntry,
+			readName: () => "Persisted",
+			setName,
+			setLabel,
+			readAvailableTools: () => new Map([[tool.name, tool]]),
+			setActiveToolNames,
+			resolveModelApiKey: async () => "key",
+			selectModel,
+			setThinkingLevel,
+		} as unknown as RuntimeHostSession;
 		const host = new CodingAgentExtensionActionHost({
 			session,
 			resourceLoader: {
@@ -146,27 +135,12 @@ describe("CodingAgentExtensionActionHost", () => {
 				isStreaming: false,
 				activeToolNames: [],
 			}),
-			createCoreAssembly: () => ({
-				contextDeliveryController: { deliver: vi.fn(async () => {}) },
-				metadataController: {
-					appendEntry: vi.fn(async () => {}),
-					readName: () => undefined,
-					setName: vi.fn(async () => {}),
-					setLabel: vi.fn(async () => {}),
-				},
-				toolController: {
-					readAvailableTools: () => new Map(),
-					setActiveToolNames: vi.fn(),
-				},
-				modelView: { resolveApiKey: async () => "key" },
-				modelController: {
-					selectModel: async () => {
-						selectedModel = nextModel;
-					},
-					setThinkingLevel: vi.fn(),
-				},
-			}),
-		} as unknown as RuntimeSession;
+			resolveModelApiKey: async () => "key",
+			selectModel: async () => {
+				selectedModel = nextModel;
+			},
+			readAvailableTools: () => new Map(),
+		} as unknown as RuntimeHostSession;
 		const host = new CodingAgentExtensionActionHost({
 			session,
 			resourceLoader: {

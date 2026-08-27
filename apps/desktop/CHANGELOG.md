@@ -21,6 +21,13 @@
 
 ### Changed
 
+- Runtime 生命周期日志 Adapter 现在也接收 `runtime.active-session.lifecycle`，统一记录活动 Session 监听器与切换清理的
+  内容安全失败字段；不会写入 Session 路径、事件正文、Prompt 或原始错误文本。
+- Desktop Runtime lifecycle 日志 Adapter 现在接收动态主 Agent Backend admission 的统一 Observation；安装、替换、停用与
+  失败记录只包含 Agent/Definition/Backend revision、Source、lease 计数和分类错误，不记录配置、Prompt、路径或错误正文。
+- Desktop Plugin Runtime 改为独立的 Coding Agent 配置 Source，由各 Session 订阅并在产品 Turn 边界应用；主进程不再把
+  Plugin invoker、配置和额外 Skill 写入通用 RuntimeHost。自动标题、下一问、后台任务与 Subagent 命令统一调用 Coding
+  Agent Session Extension；配置和会话辅助的安全 Observation 汇入现有应用 Hub 与结构化日志。
 - Desktop 根 Runtime Observation Hub 现在汇聚 Coding Context Prefire 与 Subagent issue 诊断并投影为安全结构化日志；
   只记录 Session identity、阶段/操作、token 计数和失败 name/code，不记录摘要、任务、路径、对话、凭证或错误正文。
 - Coding SessionEnd Hook 失败也进入同一根 Hub 的安全 lifecycle 日志，不再输出可能包含原始异常正文的直接 console 日志。

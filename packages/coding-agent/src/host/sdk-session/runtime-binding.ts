@@ -1,20 +1,19 @@
-import type { RuntimeSession } from "@vetta/runtime-core";
-import type { CodingAgentActiveSessionHost } from "../../composition/session-host/active-session-transition-host.js";
+import type { RuntimeActiveSessionHost, RuntimeHostSession } from "@vetta/runtime-core";
+import type { CodingAgentRuntimeSessionOptions } from "../../composition/contracts/index.js";
 import type { CodingAgentSdkSessionCapabilityPort, CodingAgentSdkSessionRuntimePort } from "./runtime-contracts.js";
 
-/** 唯一允许感知 RuntimeSession 具体表面的 SDK 组合边界。 */
+/** RuntimeHost Session view 到稳定 SDK Runtime Port 的绑定。 */
 export function bindCodingAgentSdkSessionRuntime(
-	session: RuntimeSession,
+	session: RuntimeHostSession,
 	capabilities: CodingAgentSdkSessionCapabilityPort,
 ): CodingAgentSdkSessionRuntimePort {
-	const assembly = session.createCoreAssembly();
 	return {
 		capabilities,
 		get sessionId() {
-			return assembly.lifecycle.sessionId;
+			return session.sessionId;
 		},
 		get sessionPath() {
-			return assembly.lifecycle.sessionPath;
+			return session.sessionPath;
 		},
 		prompt: (request) => capabilities.prompt(request),
 		abort: (reason) => session.abort(reason),
@@ -26,7 +25,7 @@ export function bindCodingAgentSdkSessionRuntime(
 			await capabilities.selectModel(modelKey.slice(0, separator), modelKey.slice(separator + 1));
 		},
 		setThinkingLevel: (level) => capabilities.setThinkingLevel(level),
-		subscribeExecutionObservation: (handler) => assembly.executionObservationStream.subscribe(handler),
+		subscribeExecutionObservation: (handler) => session.subscribeExecutionObservations(handler),
 		dispose: () => session.dispose(),
 	};
 }
@@ -34,20 +33,19 @@ export function bindCodingAgentSdkSessionRuntime(
 /** 活动会话宿主到稳定 SDK Runtime Port 的绑定；所有读取都解析当前 Session。 */
 export function bindCodingAgentSdkActiveSessionRuntime(
 	host: Pick<
-		CodingAgentActiveSessionHost,
+		RuntimeActiveSessionHost<CodingAgentRuntimeSessionOptions, RuntimeHostSession>,
 		"readSession" | "startActiveSessionOperation" | "subscribeExecutionObservations"
 	>,
 	capabilities: CodingAgentSdkSessionCapabilityPort,
 	dispose: () => Promise<void>,
 ): CodingAgentSdkSessionRuntimePort {
-	const readAssembly = () => host.readSession().createCoreAssembly();
 	return {
 		capabilities,
 		get sessionId() {
 			return host.readSession().sessionId;
 		},
 		get sessionPath() {
-			return readAssembly().lifecycle.sessionPath;
+			return host.readSession().sessionPath;
 		},
 		prompt: (request) => host.startActiveSessionOperation(() => capabilities.prompt(request)),
 		abort: (reason) => host.readSession().abort(reason),

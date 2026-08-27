@@ -10,6 +10,8 @@ import {
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
 import { createDefaultCodingAgentContextRuntime } from "../../compaction/runtime/index.js";
 import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
+import { CodingAgentSessionAssistanceRuntime } from "../../features/session-assistance/session-assistance-runtime.js";
+import { CODING_AGENT_SESSION_ASSISTANCE_RUNTIME_OWNER } from "../../features/session-assistance/session-assistance-session-extension.js";
 import { type CodingAgentMemoryController, CodingAgentSessionMemoryController } from "../../memory/index.js";
 import type { CodingAgentContextRuntime } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationSessionPathAssessment } from "../contracts/conversation-persistence.js";
@@ -69,6 +71,12 @@ export function createCodingAgentSessionContextAssembly(
 		catalog: options.modelAdapter,
 		credentials: options.modelAdapter,
 	});
+	peripherals.sessionExtensions.services.require(CODING_AGENT_SESSION_ASSISTANCE_RUNTIME_OWNER).attach(
+		new CodingAgentSessionAssistanceRuntime({
+			models: modelRuntime,
+			observationPublisher: options.observationPublisher,
+		}),
+	);
 	const memoryController = peripherals.memoryRuntime
 		? new CodingAgentSessionMemoryController({
 				runtime: peripherals.memoryRuntime,

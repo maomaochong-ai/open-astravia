@@ -1,6 +1,10 @@
-import type { RuntimeAgentRuntime, RuntimeAgentRuntimeOptions } from "../agents/index.js";
 import type {
-	AgentPluginRuntimeConfig,
+	RuntimeAgentDefinition,
+	RuntimeAgentDefinitionSourceRef,
+	RuntimeAgentRuntime,
+	RuntimeAgentRuntimeOptions,
+} from "../agents/index.js";
+import type {
 	RuntimeSandboxGrantDecision,
 	RuntimeSandboxGrantRequest,
 	RuntimeUserConfirmationRequest,
@@ -11,13 +15,17 @@ import type {
 	SessionExecutionMode,
 } from "../contracts.js";
 import type { RuntimeObservationPort, RuntimeObservationPublisher } from "../observation/index.js";
+import type { RuntimeHostAgentBackendRetirement, RuntimeHostAgentBackendRevision } from "./agent-backend-admission.js";
 import type { RuntimeHostSessionBackend } from "./session-backend.js";
 import type {
-	RuntimeSessionBackgroundWorkController,
 	RuntimeSessionConfigurationController,
 	RuntimeSessionContextController,
+	RuntimeSessionContextDeliveryController,
+	RuntimeSessionContextUsageView,
+	RuntimeSessionConversationView,
 	RuntimeSessionEventStream,
 	RuntimeSessionExecutionController,
+	RuntimeSessionExecutionObservationStream,
 	RuntimeSessionExtensionHost,
 	RuntimeSessionHistoryController,
 	RuntimeSessionHistoryReader,
@@ -28,6 +36,7 @@ import type {
 	RuntimeSessionModelView,
 	RuntimeSessionQueueController,
 	RuntimeSessionStateReader,
+	RuntimeSessionToolController,
 	RuntimeSessionTurnControl,
 	RuntimeSessionWorkspaceView,
 } from "./session-ports.js";
@@ -48,10 +57,14 @@ export interface SessionHandle {
 	hostInteraction: RuntimeSessionHostInteraction;
 	executionController: RuntimeSessionExecutionController;
 	workspaceView: RuntimeSessionWorkspaceView;
-	backgroundWorkController: RuntimeSessionBackgroundWorkController;
 	extensionHost: RuntimeSessionExtensionHost | undefined;
 	configurationController: RuntimeSessionConfigurationController;
 	contextController: RuntimeSessionContextController | undefined;
+	contextDeliveryController: RuntimeSessionContextDeliveryController | undefined;
+	contextUsageView: RuntimeSessionContextUsageView | undefined;
+	conversationView: RuntimeSessionConversationView | undefined;
+	executionObservationStream: RuntimeSessionExecutionObservationStream | undefined;
+	toolController: RuntimeSessionToolController | undefined;
 	modelController: RuntimeSessionModelController;
 	modelView: RuntimeSessionModelView;
 	turnControl: RuntimeSessionTurnControl;
@@ -65,10 +78,7 @@ export interface SessionHandle {
 	pendingConfiguration: {
 		executionMode: SessionExecutionMode | undefined;
 		hasExecutionMode: boolean;
-		agentPlugins: AgentPluginRuntimeConfig | undefined;
-		hasAgentPlugins: boolean;
 	};
-	agentPluginsEnabled: boolean;
 	/** 本会话解析后的对话场景（缺省回落 DEFAULT_SCENARIO），getState 回传给 renderer。 */
 	scenario: NonNullable<SessionConfig["scenario"]>;
 	/**
@@ -76,18 +86,6 @@ export interface SessionHandle {
 	 * renderer，供其按本会话而非全局默认值渲染。undefined = 未指定（CLI/headless 缺省）。
 	 */
 	agentMode: string | undefined;
-	/**
-	 * 空闲期提前 apply 挂起插件配置的合并定时器。插件 activate 会逐个工具打
-	 * reconfigure，这里做防抖，避免一次激活重建 N 次 runtime。
-	 */
-	idleAgentPluginTimer: ReturnType<typeof setTimeout> | undefined;
-	/**
-	 * 正在进行中的 apply。prompt 侧先 await 它，避免空闲期定时 apply 与一次新 prompt
-	 * 撞在一起、让本回合跑在重建到一半的工具集上。
-	 */
-	agentPluginApplyInFlight: Promise<void> | undefined;
-	/** 上次广播出去的激活工具集（join 后的字符串），用于去重 active_tools_update。 */
-	lastBroadcastActiveToolNames: string | undefined;
 }
 
 /**
@@ -126,6 +124,31 @@ export interface RuntimeHostCompositionContext {
 	readonly agents: RuntimeAgentRuntime;
 	/** Host 与下挂 Agent/产品 Composition 共用的根观测发布器。 */
 	readonly observationPublisher: RuntimeObservationPublisher;
+}
+
+export interface RuntimeHostAgentInstallationOptions {
+	readonly source: RuntimeAgentDefinitionSourceRef;
+	readonly definition: RuntimeAgentDefinition;
+	/** Backend 可同步或异步建立；建立完成前 Definition 不会进入发现面。 */
+	readonly createBackend: (
+		context: RuntimeHostCompositionContext,
+	) => RuntimeHostSessionBackend | Promise<RuntimeHostSessionBackend>;
+	readonly catalog?: RuntimeSessionCatalog;
+	/** 默认 true；共享 Backend 应显式设为 false 并由外部组合根关闭。 */
+	readonly ownsBackend?: boolean;
+}
+
+export interface RuntimeHostAgentInstallationRetirement {
+	readonly definitionRemoved: boolean;
+	readonly backendRetirement?: RuntimeHostAgentBackendRetirement;
+}
+
+export interface RuntimeHostAgentInstallation {
+	readonly agentId: string;
+	readonly definitionRevisionId: string;
+	readonly backendRevision: RuntimeHostAgentBackendRevision;
+	/** 只退休本安装仍拥有的 current revisions；被后续更新替换时不会误删新版本。 */
+	retire(): RuntimeHostAgentInstallationRetirement;
 }
 
 export interface RuntimeHostOptions {
@@ -169,7 +192,6 @@ export interface RuntimeHostOptions {
 		event: Extract<SessionEvent, { readonly type: "compaction.start" | "compaction.end" }>,
 	) => void;
 	getDefaultExecutionMode?: () => SessionExecutionMode | Promise<SessionExecutionMode>;
-	additionalSkillPaths?: string[];
 	sandboxHostPath?: string;
 	linuxBubblewrapPath?: string;
 	macosSandboxExecPath?: string;

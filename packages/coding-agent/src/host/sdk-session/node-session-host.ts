@@ -268,6 +268,7 @@ async function createCodingAgentSdkSessionComposition(
 			subagentMaxConcurrent: options.subagentMaxConcurrent,
 			mcpSource: managedMcpSource?.source,
 			tracer,
+			observationHub: options.observationHub,
 			tracing: {
 				captureContent: true,
 				detail: "standard",

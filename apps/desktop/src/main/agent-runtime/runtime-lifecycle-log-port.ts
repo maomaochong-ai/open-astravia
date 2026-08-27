@@ -1,7 +1,11 @@
 import {
+	RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION,
 	RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
+	RUNTIME_HOST_AGENT_BACKEND_OBSERVATION,
 	RUNTIME_HOST_LIFECYCLE_OBSERVATION,
+	type RuntimeActiveSessionHostObservation,
 	type RuntimeAgentLifecycleObservation,
+	type RuntimeHostAgentBackendObservation,
 	type RuntimeHostLifecycleObservation,
 	type RuntimeObservationPort,
 	type RuntimeObservationRecord,
@@ -18,6 +22,14 @@ const LOGGED_CONTROL_PLANE_OPERATIONS = new Set<RuntimeAgentLifecycleObservation
 	"revision.remove",
 	"instance.pool.retire",
 	"session.rebind",
+]);
+
+const LOGGED_AGENT_BACKEND_OPERATIONS = new Set<RuntimeHostAgentBackendObservation["operation"]>([
+	"register",
+	"replace",
+	"retire",
+	"remove",
+	"install",
 ]);
 
 /**
@@ -38,6 +50,20 @@ export function createRuntimeLifecycleLogPort(logger: RuntimeLifecycleLogger): R
 				}
 				return;
 			}
+			if (isRuntimeHostAgentBackendObservation(record)) {
+				if (record.payload.phase === "failed") {
+					logger.warn("runtime host agent backend failure", toAgentBackendLogFields(record));
+					return;
+				}
+				if (record.payload.phase === "completed" && LOGGED_AGENT_BACKEND_OPERATIONS.has(record.payload.operation)) {
+					logger.info("runtime host agent backend", toAgentBackendLogFields(record));
+				}
+				return;
+			}
+			if (isRuntimeActiveSessionHostObservation(record)) {
+				logger.warn("runtime active session lifecycle failure", toActiveSessionLogFields(record));
+				return;
+			}
 			if (!isRuntimeHostLifecycleObservation(record)) return;
 			if (record.payload.phase === "failed") {
 				logger.warn("runtime host lifecycle failure", toHostLogFields(record));
@@ -48,6 +74,18 @@ export function createRuntimeLifecycleLogPort(logger: RuntimeLifecycleLogger): R
 			}
 		},
 	};
+}
+
+function isRuntimeActiveSessionHostObservation(
+	record: RuntimeObservationRecord,
+): record is RuntimeObservationRecord<RuntimeActiveSessionHostObservation> {
+	return record.token.id === RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION.id;
+}
+
+function isRuntimeHostAgentBackendObservation(
+	record: RuntimeObservationRecord,
+): record is RuntimeObservationRecord<RuntimeHostAgentBackendObservation> {
+	return record.token.id === RUNTIME_HOST_AGENT_BACKEND_OBSERVATION.id;
 }
 
 function isRuntimeAgentLifecycleObservation(
@@ -93,6 +131,46 @@ function toHostLogFields(record: RuntimeObservationRecord<RuntimeHostLifecycleOb
 		phase: payload.phase,
 		...(payload.component ? { component: payload.component } : {}),
 		...(context.sessionId ? { sessionId: context.sessionId } : {}),
+		...(payload.failure
+			? {
+					failureCategory: payload.failure.category,
+					errorName: payload.failure.errorName,
+					...(payload.failure.errorCode ? { errorCode: payload.failure.errorCode } : {}),
+				}
+			: {}),
+	};
+}
+
+function toActiveSessionLogFields(
+	record: RuntimeObservationRecord<RuntimeActiveSessionHostObservation>,
+): Record<string, unknown> {
+	const { context, payload } = record;
+	return {
+		operation: payload.operation,
+		phase: payload.phase,
+		component: payload.component,
+		...(payload.transitionKind ? { transitionKind: payload.transitionKind } : {}),
+		...(context.sessionId ? { sessionId: context.sessionId } : {}),
+		failureCategory: payload.failure.category,
+		errorName: payload.failure.errorName,
+		...(payload.failure.errorCode ? { errorCode: payload.failure.errorCode } : {}),
+	};
+}
+
+function toAgentBackendLogFields(
+	record: RuntimeObservationRecord<RuntimeHostAgentBackendObservation>,
+): Record<string, unknown> {
+	const { context, payload } = record;
+	return {
+		operation: payload.operation,
+		phase: payload.phase,
+		...(context.agentId ? { agentId: context.agentId } : {}),
+		...(context.revisionId ? { definitionRevisionId: context.revisionId } : {}),
+		...(payload.backendRevisionId ? { backendRevisionId: payload.backendRevisionId } : {}),
+		...(payload.sourceId ? { sourceId: payload.sourceId } : {}),
+		...(payload.sourceRevision ? { sourceRevision: payload.sourceRevision } : {}),
+		...(payload.routeSource ? { routeSource: payload.routeSource } : {}),
+		...(payload.activeLeaseCount !== undefined ? { activeLeaseCount: payload.activeLeaseCount } : {}),
 		...(payload.failure
 			? {
 					failureCategory: payload.failure.category,

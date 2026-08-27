@@ -5,11 +5,11 @@ import {
 	projectCodingAgentRuntimeMessages,
 } from "@vetta/coding-agent/runtime";
 import { readCodingAgentTodoObservation } from "@vetta/coding-agent/session-extensions";
-import type { RuntimeSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
+import type { RuntimeHostSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
 
 interface PrintSessionHost {
 	readonly turnExecutor: Pick<CodingAgentTurnExecutor, "prompt">;
-	readSession(): RuntimeSession;
+	readSession(): RuntimeHostSession;
 	initializeExtensions(input: { readonly onError: (error: PrintExtensionError) => void }): Promise<void>;
 	subscribe(listener: (event: SessionEvent) => void): () => void;
 	subscribeExecutionObservations(
@@ -77,7 +77,7 @@ export class CliPrintSessionAdapter implements PrintSessionCapabilities {
 	}
 
 	private readDocument() {
-		return this.options.sessionHost.readSession().createCoreAssembly().conversationView.readDocument();
+		return this.options.sessionHost.readSession().readDocument();
 	}
 }
 

@@ -16,6 +16,7 @@ export type {
 	CodingAgentRuntimeConversationOptions,
 	CodingAgentRuntimeEnvironmentOptions,
 	CodingAgentRuntimeExtensionOptions,
+	CodingAgentRuntimeHostOptions,
 	CodingAgentRuntimeModelOptions,
 	CodingAgentRuntimeObservabilityOptions,
 	CodingAgentRuntimePluginOptions,
@@ -27,12 +28,16 @@ export type {
 	CodingAgentRuntimeAgentIdentity,
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeExtensionControls,
-	CodingAgentRuntimeSessionBackend,
 	CodingAgentRuntimeSessionControls,
 	CodingAgentRuntimeSessionHookLifecycle,
 	CodingAgentRuntimeToolAccess,
 } from "./runtime-composition-result.js";
-export type { CodingAgentInitialTodoLockSource, CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
+export type { CodingAgentRuntimeHostRetrySettings } from "./runtime-host.js";
+export {
+	type CodingAgentInitialTodoLockSource,
+	type CodingAgentRuntimeSessionOptions,
+	requireCodingAgentRuntimeSessionOptions,
+} from "./runtime-session-options.js";
 export type {
 	CodingAgentSandboxEnvironment,
 	CodingAgentSandboxHostOptions,

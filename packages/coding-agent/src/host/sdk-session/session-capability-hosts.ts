@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import type { RuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeHostSession } from "@vetta/runtime-core";
 import { createConversationSeedDraft } from "@vetta/runtime-node/conversation";
 import {
 	type CodingAgentHtmlExportRuntime,
@@ -159,15 +159,14 @@ export function createCodingAgentSdkActiveSessionCapabilityHostFactory(
 }
 
 async function exportCodingAgentSdkSessionToHtml(
-	session: RuntimeSession,
+	session: RuntimeHostSession,
 	htmlExporter: CodingAgentHtmlExportRuntime,
 	themeName: string | undefined,
 	runner: ReturnType<CodingAgentSdkExtensionTransitionAdapter["readRunnerOrUndefined"]>,
 	systemPrompt: string,
 	outputPath?: string,
 ): Promise<string> {
-	const core = session.createCoreAssembly();
-	const sessionFile = core.lifecycle.sessionPath;
+	const sessionFile = session.sessionPath;
 	if (!sessionFile) throw new Error("Cannot export in-memory session to HTML");
 	let toolRenderer: ToolHtmlRenderer | undefined;
 	if (runner) {
@@ -176,18 +175,16 @@ async function exportCodingAgentSdkSessionToHtml(
 			theme,
 		});
 	}
-	const availableTools = core.toolController?.readAvailableTools();
-	return htmlExporter.exportConversation(core.conversationView.readDocument(), sessionFile, {
+	const availableTools = session.readAvailableTools();
+	return htmlExporter.exportConversation(session.readDocument(), sessionFile, {
 		outputPath,
 		themeName,
 		toolRenderer,
 		systemPrompt,
-		tools: availableTools
-			? [...availableTools.values()].map((tool) => ({
-					name: tool.name,
-					description: tool.description,
-					parameters: tool.inputSchema,
-				}))
-			: undefined,
+		tools: [...availableTools.values()].map((tool) => ({
+			name: tool.name,
+			description: tool.description,
+			parameters: tool.inputSchema,
+		})),
 	});
 }

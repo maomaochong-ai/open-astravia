@@ -2,6 +2,16 @@
 
 ### Changed
 
+- 公共 `CodingAgentHost` 的合同文档明确为 SDK 的隔离产品 Session 所有权组，而不是第二套多主 Agent Host；每个成员
+  继续允许独立 cwd、Storage、Tool/MCP/Extension Source 与模型资源。SDK Session 现在把 Composition 子 Hub 的
+  Publisher 同时注入内部 RuntimeHost 与活动 Session 切换器，使 Runtime、Agent 和 Coding 产品失败进入同一观测树；
+  `CreateCodingAgentSessionOptions.observationHub` 可直接注册本地 Adapter 或接入上层应用 Hub。
+- 自动标题、下一问建议、后台任务、Subagent 与 Plugin 动态配置已收敛为 Coding Agent 自有 Session Extension；
+  RuntimeHost、Desktop、CLI 与 SDK 只通过公开类型化 Token 调用产品控制面。Plugin 更新由 Session-local runtime
+  在空闲防抖或下一 Turn admission 原子应用，失败保留待重试 revision，在途 Turn 继续使用已绑定 generation。
+- 模型调用完成 Tool/MCP/Extension 组合后会发布该调用实际使用的 `active_tools_update`，避免依据尚未 admission 的
+  Plugin 配置提前推测 UI 工具状态。标题与下一问模型任务新增安全 Observation，只记录阶段、模型身份、耗时、数量和
+  脱敏失败字段，不记录 Prompt、候选内容或错误正文。
 - Session Extension 暴露给 RuntimeHost 时改用 Runtime Core 标准 Adapter，删除 Coding 本地重复的 Endpoint/初始 Observation
   转发。SessionEnd Hook 旁路失败不再直接写 `console`，改为安全 lifecycle Observation；Pi compatibility 继续作为
   Coding 反腐层，未具备原子注册和 generation-owned teardown 的能力保持 fail-closed。
@@ -13,15 +23,16 @@
   Prefire 后台结果不再直接写 `console`，改为不含摘要、消息、凭证和错误正文的类型化 Observation。
 - 自动重试状态机、退避、取消和 RuntimeHost 失败事件顺序迁入 Runtime Core；Coding Agent 现只保留设置、历史失败兼容
   与 SDK/RPC 事件适配，原公共类型、工厂和事件语义保持兼容。基础 Tool capability 也改用显式 Runtime 默认能力工厂。
-- Coding Agent Composition 的公开创建入口收敛为 `sessions`，产品 Session 直接通过 Runtime Core 标准 Agent Backend
-  装配；移除产品层重复的 Runtime/assessment 资源所有权与 Session 索引，MCP freshness 作为标准 Snapshot acquire
-  前置钩子执行。旧 `backend` 属性仅保留为弃用别名，CLI/SDK/Desktop 生产接线均已迁移。
+- **破坏性变更**：Coding Agent Composition 的公开创建入口收敛为唯一 `runtimeHostBackend`，删除并行的
+  `sessions` / `backend` 和 `CodingAgentSessionBackend`。Desktop、CLI、SDK、Knowledge Processing 与默认 Subagent
+  Child 均经 RuntimeHost 创建 Agent Session；单会话嵌入可使用 `createIsolatedCodingAgentRuntimeHostSession()`。
+  产品自动重试和 ownership error mapping 改由标准 Agent Assembly decorator / mapper 承载。
 - 生产 `CodingAgentRuntimeComposition` 现已真正通过多主 Agent 基座创建 Definition、Instance 与 Session；能力定义只由
   `RuntimeAgentSession` 编译一次。独立 Composition 自建模块化 Agent 控制面，应用使用唯一
   `RuntimeHost.agents`；子代理复用控制面但拥有独立 Instance，Conversation continuation 同步重绑 Agent Session
   identity。移除一次性 Session assembly request，production Definition 在 Instance 创建时直接获得 Session Plan 工厂。
-- **破坏性变更**：`agentRuntime.host` 改为 `agentRuntime.runtime`，`CodingAgentRuntimeHostSessionBackend` 改名为
-  `CodingAgentSessionBackend`，以避免把产品 Backend Port 误认为第二个 Host。
+- **破坏性变更**：`agentRuntime.host` 改为 `agentRuntime.runtime`；历史
+  `CodingAgentRuntimeHostSessionBackend` / `CodingAgentSessionBackend` 已由唯一 `runtimeHostBackend` 取代。
 - 每个 Coding Agent Runtime Composition 现在固有并拥有一个产品子 `RuntimeObservationHub`：支持本地动态 Adapter 与
   健康 snapshot，也可通过父级 Port 或兼容 scoped Publisher 汇入应用 Hub；子代理 Hub 继续挂在产品 Hub 下，释放
   Composition 不关闭父级或 Adapter 外部资源。普通 Logger、Audit Sink 与原生 Trace Span 的边界保持不变。
@@ -67,6 +78,13 @@
 
 ### Fixed
 
+- Memory rollover 经 RuntimeHost 执行时会把公开 Session view 与 Turn 结果切换到续接后的 canonical Session ID；旧 ID
+  在句柄存活期间仍可解析到同一会话，换卷后的历史读取、再次 flush 与释放不再停留在源会话身份。
+- Sandbox execution tool replacement 现在继承 Coding Agent 产品 `modelOrder`，切换执行模式不再改变 Tool/MCP/Plugin
+  模型调用帧顺序及其上下文缓存前缀。CLI RuntimeHost 装配也继续保持历史 `full-access` 默认值，除非调用方显式选择
+  其他模式。
+- Conversation ownership conflict 映射为标准 `SESSION_LOCKED` 时保留经过安全投影的 holder 诊断，使 CLI RPC
+  继续输出既有 startup failure JSONL 帧；ownership token 与锁路径不会跨越 Runtime failure 边界。
 - 不再依据模型目录是否显式标记 `image` 输入能力而静默删除用户图片；模型元数据缺失或误标时仍把图片交给 Provider，
   真正不支持图片的模型由 Provider 返回可见错误。用户显式 `blockImages` 和图片处理失败降级语义保持不变。
 - Desktop 文件链接提示词改用带尖括号目标的标准 CommonMark 形式，确保模型输出的绝对路径在包含空格、Unicode 或括号时仍可渲染为可点击预览。

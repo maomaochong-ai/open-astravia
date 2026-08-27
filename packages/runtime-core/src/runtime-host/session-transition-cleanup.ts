@@ -1,5 +1,5 @@
 import type { RuntimeActiveSessionEventRelay } from "./active-session-event-relay.js";
-import type { RuntimeSession } from "./kernel-runtime-session-backend.js";
+import type { RuntimeActiveSession } from "./active-session-host-contracts.js";
 import { RetryableCleanup } from "./retryable-cleanup.js";
 
 export interface RuntimePreparedSessionBinding {
@@ -9,7 +9,7 @@ export interface RuntimePreparedSessionBinding {
 }
 
 export interface RuntimeRetiredSessionCleanupOptions {
-	readonly previous: RuntimeSession;
+	readonly previous: RuntimeActiveSession;
 	readonly prepared?: RuntimePreparedSessionBinding;
 	readonly reportError: (error: AggregateError) => void;
 }
@@ -17,7 +17,7 @@ export interface RuntimeRetiredSessionCleanupOptions {
 export interface RuntimeActiveSessionCleanupOptions {
 	readonly waitForTransitions: () => Promise<void>;
 	readonly events: RuntimeActiveSessionEventRelay;
-	readonly readActiveSession: () => RuntimeSession;
+	readonly readActiveSession: () => RuntimeActiveSession;
 }
 
 /** Owns retryable cleanup after an active Session transition has committed. */

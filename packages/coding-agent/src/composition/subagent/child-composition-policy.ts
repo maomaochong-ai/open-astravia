@@ -1,3 +1,4 @@
+import { RetryableCleanup, RuntimeHost } from "@vetta/runtime-core";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
 import type { CodingAgentPromptResourceSource } from "../../runtime-contracts/index.js";
 import type {
@@ -5,6 +6,7 @@ import type {
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentSubagentSkillPolicy,
 } from "../contracts/index.js";
+import { createCodingAgentRuntimeHostSessionConfig } from "../runtime-host-session-config.js";
 import type {
 	CodingAgentSubagentChildComposition,
 	CodingAgentSubagentChildCompositionRequest,
@@ -29,14 +31,40 @@ export function createCodingAgentChildCompositionFactory(
 			createChildCompositionOptions(options.parentOptions, request),
 			request.inheritedMcpView,
 		);
+		const runtimeHost = new RuntimeHost({
+			sessionBackend: childComposition.runtimeHostBackend,
+			observationPublisher: childComposition.observations.publisher(),
+		});
+		const createSession = async (
+			childOptions: Parameters<CodingAgentSubagentChildComposition["createSession"]>[0],
+			resume: boolean,
+		) => {
+			const created = await runtimeHost.createSession(
+				createCodingAgentRuntimeHostSessionConfig(childComposition.agentRuntime, childOptions, {
+					scenario: childComposition.scenario,
+					...(resume ? { sessionPath: childOptions.sessionId } : {}),
+				}),
+			);
+			return runtimeHost.getSessionView(created.sessionId);
+		};
 		return {
-			createSession: (childOptions) => childComposition.sessions.create(childOptions),
-			resumeSession: (childOptions) => childComposition.sessions.resume(childOptions),
+			createSession: (childOptions) => createSession(childOptions, false),
+			resumeSession: (childOptions) => createSession(childOptions, true),
 			appendSessionContext: (sessionId, records) => childComposition.appendSessionContext(sessionId, records),
 			deliverSessionContext: (sessionId, records) => childComposition.deliverSessionContext(sessionId, records),
-			dispose: () => childComposition.dispose(),
+			dispose: () => disposeChildComposition(runtimeHost, childComposition),
 		};
 	};
+}
+
+async function disposeChildComposition(
+	runtimeHost: RuntimeHost,
+	composition: CodingAgentRuntimeComposition,
+): Promise<void> {
+	const cleanup = new RetryableCleanup();
+	cleanup.add({ id: "runtime-host", phase: 0, cleanup: () => runtimeHost.close() });
+	cleanup.add({ id: "composition", phase: 1, cleanup: () => composition.dispose() });
+	await cleanup.run("Coding Agent child composition disposal failed");
 }
 
 function createChildCompositionOptions(
@@ -47,6 +75,7 @@ function createChildCompositionOptions(
 		mcpSource: _mcpSource,
 		createPluginMcpRuntime: _createPluginMcpRuntime,
 		extensionTools: _extensionTools,
+		runtimeHostRetrySettings: _runtimeHostRetrySettings,
 		...inheritedOptions
 	} = parent;
 	const promptResourceSource = parent.promptResourceSource

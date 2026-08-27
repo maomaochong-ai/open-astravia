@@ -26,6 +26,7 @@ import type {
 } from "../kernel/contracts.js";
 import { sessionBusyError, sessionClosedError } from "../kernel/errors.js";
 import type { SessionInputQueueEntry, SessionInputQueueSnapshot } from "../kernel/session-input-queue.js";
+import type { SessionExtensionEndpointToken } from "../session-extensions/contracts.js";
 import { ConversationDocumentMutationCoordinator } from "./conversation-document-mutation-coordinator.js";
 import { mapKernelEventToSessionEvents } from "./kernel-session-events.js";
 import { RetryableCleanup } from "./retryable-cleanup.js";
@@ -42,7 +43,6 @@ import type {
 	RuntimeSessionBackend,
 } from "./session-backend.js";
 import type {
-	RuntimeSessionBackgroundWorkController,
 	RuntimeSessionConfigurationController,
 	RuntimeSessionContextController,
 	RuntimeSessionContextDeliveryController,
@@ -81,7 +81,6 @@ export interface KernelRuntimeAssembly {
 	readonly contextDeliveryController?: RuntimeSessionContextDeliveryController;
 	readonly hostInteraction?: RuntimeSessionHostInteraction;
 	readonly executionController?: RuntimeSessionExecutionController;
-	readonly backgroundWorkController?: RuntimeSessionBackgroundWorkController;
 	readonly configurationController?: RuntimeSessionConfigurationController;
 	readonly toolController?: RuntimeSessionToolController;
 	/** 由组合根释放 Session 之外的独占资源；共享 Repository 不应在这里关闭。 */
@@ -138,7 +137,6 @@ export class RuntimeSession {
 	private readonly contextDeliveryController: RuntimeSessionContextDeliveryController;
 	private readonly hostInteraction: RuntimeSessionHostInteraction | undefined;
 	private readonly executionController: RuntimeSessionExecutionController | undefined;
-	private readonly backgroundWorkController: RuntimeSessionBackgroundWorkController | undefined;
 	private readonly configurationController: RuntimeSessionConfigurationController | undefined;
 	private readonly toolController: RuntimeSessionToolController | undefined;
 	private readonly disposeRuntime: (() => Promise<void>) | undefined;
@@ -172,7 +170,6 @@ export class RuntimeSession {
 			assembly.contextDeliveryController ?? createContextDeliveryController(assembly.session);
 		this.hostInteraction = assembly.hostInteraction;
 		this.executionController = assembly.executionController;
-		this.backgroundWorkController = assembly.backgroundWorkController;
 		this.configurationController = assembly.configurationController;
 		this.toolController = assembly.toolController;
 		const dispose = assembly.dispose;
@@ -200,6 +197,28 @@ export class RuntimeSession {
 
 	get sessionId(): string {
 		return this.session.id;
+	}
+
+	hasExtension<Input, Output>(token: SessionExtensionEndpointToken<Input, Output>): boolean {
+		return this.extensionHost?.hasEndpoint(token) === true;
+	}
+
+	invokeExtension<Input, Output>(
+		token: SessionExtensionEndpointToken<Input, Output>,
+		input: Input,
+		signal?: AbortSignal,
+	): Promise<Output> {
+		if (!this.extensionHost) throw new Error(`Runtime Session extension endpoint is unavailable: ${token.id}`);
+		return this.extensionHost.invoke(token, input, signal);
+	}
+
+	invokeExtensionSync<Input, Output>(token: SessionExtensionEndpointToken<Input, Output>, input: Input): Output {
+		if (!this.extensionHost) throw new Error(`Runtime Session extension endpoint is unavailable: ${token.id}`);
+		return this.extensionHost.invokeSync(token, input);
+	}
+
+	get sessionPath(): string | undefined {
+		return this.eventSink.readIdentity().sessionPath;
 	}
 
 	async prompt(request: PromptRequest): Promise<RuntimePromptResult> {
@@ -256,6 +275,13 @@ export class RuntimeSession {
 	subscribe(handler: (event: SessionEvent) => void): () => void {
 		this.assertOpen();
 		return this.eventSink.subscribe(handler);
+	}
+
+	subscribeExecutionObservations(
+		handler: (observation: RuntimeSessionExecutionObservation) => Promise<void> | void,
+	): () => void {
+		this.assertOpen();
+		return this.eventSink.subscribeExecutionObservation(handler);
 	}
 
 	async getState(): Promise<RuntimeSessionStatus> {
@@ -535,6 +561,9 @@ export class RuntimeSession {
 					continue: async () => {
 						await this.continue();
 					},
+					retry: async () => {
+						await this.retry();
+					},
 					abort: () => this.abort(),
 				},
 				eventStream: {
@@ -565,7 +594,6 @@ export class RuntimeSession {
 			...coreAssembly,
 			hostInteraction: this.hostInteraction,
 			executionController: this.executionController,
-			backgroundWorkController: this.backgroundWorkController,
 			configurationController: this.configurationController,
 		};
 	}

@@ -93,4 +93,31 @@ describe("Runtime errors", () => {
 			}),
 		).toBeUndefined();
 	});
+
+	it("preserves validated Session lock-holder diagnostics", () => {
+		expect(
+			readRuntimeFailure({
+				code: "SESSION_LOCKED",
+				message: "locked",
+				retryable: false,
+				origin: "runtime",
+				details: {
+					lockHolder: { pid: 42, hostname: "worker", openedAt: "2026-08-27T00:00:00.000Z" },
+				},
+			}),
+		).toMatchObject({
+			details: {
+				lockHolder: { pid: 42, hostname: "worker", openedAt: "2026-08-27T00:00:00.000Z" },
+			},
+		});
+		expect(
+			readRuntimeFailure({
+				code: "SESSION_LOCKED",
+				message: "locked",
+				retryable: false,
+				origin: "runtime",
+				details: { lockHolder: { pid: "42", hostname: "worker", openedAt: "today" } },
+			}),
+		).toBeUndefined();
+	});
 });

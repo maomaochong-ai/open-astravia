@@ -1,12 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+	createRuntimeObservationPublisher,
+	RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION,
+	type RuntimeActiveSession,
 	type RuntimeActiveSessionCreateOptions,
 	RuntimeActiveSessionHost,
-	type RuntimeSession,
+	type RuntimeActiveSessionHostObservation,
+	type RuntimeObservationRecord,
 	type RuntimeSessionExecutionObservation,
 	type SessionEvent,
 } from "../../src/index.js";
-import type { KernelRuntimeSessionBackend } from "../../src/runtime-host/kernel-runtime-session-backend.js";
 
 describe("RuntimeActiveSessionHost", () => {
 	it("commits a new active Session and owns retired and final cleanup", async () => {
@@ -15,9 +18,9 @@ describe("RuntimeActiveSessionHost", () => {
 		const create = vi.fn(async () => next.session);
 		const resume = vi.fn(async () => next.session);
 		const hookOrder: string[] = [];
-		const host = new RuntimeActiveSessionHost({
+		const host = new RuntimeActiveSessionHost<RuntimeActiveSessionCreateOptions, RuntimeActiveSession>({
 			runtime: {
-				sessions: { create, resume } as unknown as KernelRuntimeSessionBackend<RuntimeActiveSessionCreateOptions>,
+				sessions: { create, resume },
 				sessionHooks: {
 					end: async (sessionId, cause) => {
 						hookOrder.push(`end:${sessionId}:${cause}`);
@@ -71,6 +74,72 @@ describe("RuntimeActiveSessionHost", () => {
 		await host.dispose();
 		expect(next.dispose).toHaveBeenCalledOnce();
 	});
+
+	it("routes listener and committed transition cleanup failures through the shared Observation publisher", async () => {
+		const initial = createSession("initial");
+		const next = createSession("next");
+		initial.dispose.mockRejectedValueOnce(new Error("private cleanup failure")).mockResolvedValueOnce(undefined);
+		const records: RuntimeObservationRecord[] = [];
+		const host = new RuntimeActiveSessionHost({
+			runtime: {
+				sessions: { create: async () => next.session, resume: async () => next.session },
+				sessionHooks: { end: async () => {}, start: () => {}, discard: () => {} },
+				quiesceSessionBackgroundCommands: async () => {},
+				preserveSessionExecutionContext: async () => {},
+			},
+			initialSession: initial.session,
+			sessionOptions: {},
+			conversationDir: "virtual://conversations",
+			defaultCwd: "virtual://workspace",
+			sessionCatalog: {
+				ownsSession: async () => false,
+				listProjects: async () => [],
+				listSessions: async () => [],
+				renameSession: async () => {},
+				deleteSessionArtifacts: async () => {},
+			},
+			createSessionId: () => "next",
+			resolveSessionId: (path) => path.slice("virtual://session/".length),
+			resolveSessionPath: (sessionId) => `virtual://session/${sessionId}`,
+			observationPublisher: createRuntimeObservationPublisher({
+				port: {
+					record: (record) => {
+						records.push(record);
+					},
+				},
+			}),
+		});
+		host.subscribe(() => {
+			throw new Error("private listener failure");
+		});
+
+		initial.emit({
+			type: "session.lifecycle",
+			phase: "agent_start",
+			schemaVersion: 1,
+			sessionId: "initial",
+			eventId: "event-1",
+			timestamp: 1,
+			source: "runtime-core",
+		});
+		await expect(host.newSession()).resolves.toEqual({ cancelled: false });
+
+		const failures = records
+			.filter((record) => record.token === RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION)
+			.map((record) => record.payload as RuntimeActiveSessionHostObservation);
+		expect(failures).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ operation: "listener.notify", component: "event-listener" }),
+				expect.objectContaining({
+					operation: "transition.cleanup",
+					component: "retired-session",
+					transitionKind: "new",
+				}),
+			]),
+		);
+		expect(JSON.stringify(failures)).not.toContain("private");
+		await host.dispose();
+	});
 });
 
 function createSession(sessionId: string) {
@@ -80,22 +149,39 @@ function createSession(sessionId: string) {
 	const sessionPath = `virtual://session/${sessionId}`;
 	const session = {
 		sessionId,
-		readState: () => ({ isStreaming: false }),
+		sessionPath,
+		readState: () => ({
+			thinkingLevel: "medium",
+			isStreaming: false,
+			messageCount: 0,
+			contextPercent: null,
+			contextWindow: 0,
+			activeToolNames: [],
+		}),
+		readMessages: () => [],
+		prompt: async () => undefined,
+		continue: async () => undefined,
+		retry: async () => undefined,
+		abort: async () => undefined,
 		subscribe: (listener: (event: SessionEvent) => void) => {
 			eventListeners.add(listener);
 			return () => eventListeners.delete(listener);
 		},
-		createCoreAssembly: () => ({
-			lifecycle: { sessionId, sessionPath, dispose },
-			historyController: { navigateForEdit: async () => ({ text: "", cancelled: false }) },
-			executionObservationStream: {
-				subscribe: (listener: (observation: RuntimeSessionExecutionObservation) => Promise<void> | void) => {
-					observationListeners.add(listener);
-					return () => observationListeners.delete(listener);
-				},
-			},
-		}),
+		subscribeExecutionObservations: (
+			listener: (observation: RuntimeSessionExecutionObservation) => Promise<void> | void,
+		) => {
+			observationListeners.add(listener);
+			return () => observationListeners.delete(listener);
+		},
+		navigateForEdit: async () => ({ text: "", cancelled: false }),
+		forkSession: async () => ({ path: sessionPath, text: "" }),
 		dispose,
-	} as unknown as RuntimeSession;
-	return { session, dispose };
+	} satisfies RuntimeActiveSession;
+	return {
+		session,
+		dispose,
+		emit(event: SessionEvent) {
+			for (const listener of eventListeners) listener(event);
+		},
+	};
 }

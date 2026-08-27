@@ -29,8 +29,9 @@ export async function createRpcRuntimeCapabilities(
 	try {
 		const bash = new CodingAgentRpcBashCapability({
 			executor: createHostBashExecutor(),
-			readContextDeliveryController: () =>
-				assembly.sessionHost.readSession().createCoreAssembly().contextDeliveryController,
+			readContextDeliveryController: () => ({
+				deliver: (records, mode) => assembly.sessionHost.readSession().deliverContext(records, mode),
+			}),
 			readShellCommandPrefix: () => bootstrap.settingsManager.getShellCommandPrefix(),
 		});
 		const adapter =

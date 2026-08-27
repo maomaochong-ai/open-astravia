@@ -6,7 +6,7 @@ import type {
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import type { CodingAgentHistoricalSessionMigrationIncompatible } from "@vetta/coding-agent/historical-sessions";
 import type { RpcSessionCapabilities } from "@vetta/coding-agent/rpc";
-import type { RuntimeSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
+import type { RuntimeHostSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
 import type { FileConversationOwnershipManagerOptions } from "@vetta/runtime-node/conversation";
 import type { CreateCliCodingAgentBootstrapOptions } from "../../coding-agent-bootstrap.js";
 import type { CliPrintSessionAdapter } from "../../print-session-adapter.js";
@@ -28,7 +28,7 @@ export interface RpcRuntimeHostSessionIncompatible {
 export interface RpcRuntimeHostReady {
 	readonly kind: "rpc";
 	readonly bootstrap: CodingAgentBootstrap;
-	readonly session: RuntimeSession;
+	readonly session: RuntimeHostSession;
 	readonly runtime: CodingAgentRuntimeComposition;
 	readonly capabilities: RpcSessionCapabilities;
 }
@@ -41,7 +41,7 @@ export type RpcRuntimeHostPreparation =
 export interface PrintRuntimeHostReady {
 	readonly kind: "print";
 	readonly bootstrap: CodingAgentBootstrap;
-	readonly session: RuntimeSession;
+	readonly session: RuntimeHostSession;
 	readonly runtime: CodingAgentRuntimeComposition;
 	readonly printSession: CliPrintSessionAdapter;
 }

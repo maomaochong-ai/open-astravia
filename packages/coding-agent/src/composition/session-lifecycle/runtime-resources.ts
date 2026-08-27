@@ -9,6 +9,7 @@ import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel"
 import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
+import { CODING_AGENT_BACKGROUND_WORK_RUNTIME_OWNER } from "../../execution/background/background-work-session-extension.js";
 import { CodingAgentBackgroundWorkController } from "../../execution/background/work-controller.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
@@ -18,11 +19,9 @@ import {
 } from "../../features/ask-user-question/index.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
-import type {
-	CodingAgentContextRuntime,
-	CodingAgentPluginMcpRuntime,
-	CodingAgentRuntimeToolRegistration,
-} from "../../runtime-contracts/index.js";
+import type { CodingAgentPluginConfigurationRuntime } from "../../plugins/runtime/plugin-configuration-runtime.js";
+import { CODING_AGENT_PLUGIN_CONFIGURATION_RUNTIME_OWNER } from "../../plugins/runtime/plugin-configuration-session-extension.js";
+import type { CodingAgentContextRuntime, CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";
@@ -58,7 +57,7 @@ export interface CodingAgentSessionRuntimeResourcesOptions {
 	readonly subagentRuntime?: CodingAgentSubagentRuntime;
 	readonly executionRuntime: CodingAgentSessionExecutionRuntime;
 	readonly configurationState: CodingAgentSessionConfigurationState;
-	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
+	readonly pluginConfigurationRuntime: CodingAgentPluginConfigurationRuntime;
 	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
 	readonly codingTools: CodingToolsRuntimeComposition;
 	readonly specializedToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
@@ -79,7 +78,16 @@ export function createCodingAgentSessionRuntimeResources(
 	options: CodingAgentSessionRuntimeResourcesOptions,
 ): RuntimeResources {
 	const stateActivation = createStateActivation(options);
-	const pluginMcpRuntime = options.pluginMcpRuntime;
+	const backgroundWorkController = new CodingAgentBackgroundWorkController(
+		options.executionRuntime.backgroundService,
+		options.subagentRuntime,
+	);
+	options.sessionExtensions.services
+		.require(CODING_AGENT_BACKGROUND_WORK_RUNTIME_OWNER)
+		.attach(backgroundWorkController);
+	options.sessionExtensions.services
+		.require(CODING_AGENT_PLUGIN_CONFIGURATION_RUNTIME_OWNER)
+		.attach(options.pluginConfigurationRuntime);
 	const extensionHost = createRuntimeSessionExtensionHost({
 		endpoints: options.sessionExtensions,
 		readInitialObservations: () => options.sessionExtensions.readInitialObservations(),
@@ -116,20 +124,14 @@ export function createCodingAgentSessionRuntimeResources(
 			readAvailableTools: () => options.turnCapabilityAssembly.readAvailableTools(),
 			setActiveToolNames: (toolNames) => options.configurationState.setActiveToolNamesOverride(toolNames),
 		},
-		createSessionPeripherals: (session) => ({
-			hostInteraction: options.executionRuntime.hostInteraction,
-			executionController: options.executionRuntime.createExecutionController(session),
-			backgroundWorkController: new CodingAgentBackgroundWorkController(
-				options.executionRuntime.backgroundService,
-				options.subagentRuntime,
-			),
-			configurationController: options.configurationState.createController(session, {
-				reconfigureAgentPlugins: async (agentPlugins) => {
-					await pluginMcpRuntime?.reconfigure(agentPlugins);
-					await options.turnCapabilityAssembly.reconfigureAgentPluginSkills(agentPlugins);
-				},
-			}),
-		}),
+		createSessionPeripherals: (session) => {
+			options.pluginConfigurationRuntime.bindSession(session);
+			return {
+				hostInteraction: options.executionRuntime.hostInteraction,
+				executionController: options.executionRuntime.createExecutionController(session),
+				configurationController: options.configurationState.createController(session),
+			};
+		},
 		contextRuntime: options.contextRuntime,
 		identity: {
 			cwd: options.session.cwd,

@@ -92,7 +92,7 @@ describe("Plugin Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "plugin-session",
 			cwd: "C:\\workspace",
 		});
@@ -107,7 +107,12 @@ describe("Plugin Runtime composition contract", () => {
 		expect(modelCalls[1]?.messages).toEqual(["inspect", "first response", "plugin continuation"]);
 		expect(modelCalls[1]?.tools).toEqual(["read", "current_time"]);
 		expect(session.readState().activeToolNames).toEqual(["read", "current_time"]);
-		expect((await session.getMessages()).map(({ role }) => role)).toEqual(["user", "assistant", "user", "assistant"]);
+		expect((await session.readMessages()).map(({ role }) => role)).toEqual([
+			"user",
+			"assistant",
+			"user",
+			"assistant",
+		]);
 		await session.dispose();
 	});
 });

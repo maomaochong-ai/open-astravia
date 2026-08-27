@@ -6,7 +6,7 @@ import {
 	type AgentRpcExecutable,
 	type AgentRpcFixture,
 	type AgentRpcProcess,
-	buildAgentRpcExecutable,
+	acquireAgentRpcExecutable,
 	createAgentRpcFixture,
 	readSessionFile,
 	startAgentRpc,
@@ -16,11 +16,11 @@ import { startOpenAiResponsesTestServer, textResponseEvents } from "./support/op
 let executable: AgentRpcExecutable;
 
 beforeAll(async () => {
-	executable = await buildAgentRpcExecutable();
+	executable = await acquireAgentRpcExecutable();
 });
 
 afterAll(async () => {
-	await executable.dispose();
+	await executable?.dispose();
 });
 
 describe("Agent Runtime active-turn session transition contract", () => {

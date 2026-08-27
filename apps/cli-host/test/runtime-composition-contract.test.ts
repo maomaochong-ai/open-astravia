@@ -4,8 +4,7 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import type { CodingAgentKnowledgeRuntime, CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import { CODING_AGENT_TODO_READ } from "@vetta/coding-agent/session-extensions";
-import { assessRuntimeHostSessionAssembly } from "@vetta/runtime-core";
+import { CODING_AGENT_SUBAGENTS_READ, CODING_AGENT_TODO_READ } from "@vetta/coding-agent/session-extensions";
 import {
 	createMcpServerRuntimeToolSource,
 	type McpClientHandle,
@@ -71,9 +70,9 @@ describe("Runtime composition contract", () => {
 		});
 		compositions.push(composition);
 
-		const session = await composition.backend.create({ sessionId: "session-1", includeAgentSkills: false });
+		const session = await composition.createSession({ sessionId: "session-1", includeAgentSkills: false });
 		await session.prompt({ text: "Read message.txt" });
-		const firstMessages = await session.getMessages();
+		const firstMessages = await session.readMessages();
 
 		expect(firstMessages.map(({ role }) => role)).toEqual(["user", "assistant", "toolResult", "assistant"]);
 		expect(firstMessages.find(({ role }) => role === "toolResult")).toMatchObject({
@@ -86,9 +85,9 @@ describe("Runtime composition contract", () => {
 		expect(session.readState()).toMatchObject({ contextPercent: 0.025, contextWindow: 8_000 });
 		await session.dispose();
 
-		const resumed = await composition.backend.resume({ sessionId: "session-1", includeAgentSkills: false });
+		const resumed = await composition.resumeSession({ sessionId: "session-1", includeAgentSkills: false });
 		expect(resumed.readState()).toMatchObject({ contextPercent: 0.025, contextWindow: 8_000 });
-		expect((await resumed.getMessages()).map(({ role }) => role)).toEqual([
+		expect((await resumed.readMessages()).map(({ role }) => role)).toEqual([
 			"user",
 			"assistant",
 			"toolResult",
@@ -96,12 +95,12 @@ describe("Runtime composition contract", () => {
 		]);
 		await resumed.dispose();
 
-		const retrySession = await composition.backend.resume({
+		const retrySession = await composition.resumeSession({
 			sessionId: "retry-session",
 			includeAgentSkills: false,
 		});
 		await retrySession.continue();
-		const retriedMessages = await retrySession.getMessages();
+		const retriedMessages = await retrySession.readMessages();
 		expect(retriedMessages.map(({ role }) => role)).toEqual(["user", "assistant"]);
 		expect(retriedMessages.at(-1)).toMatchObject({
 			content: [{ type: "text", text: "Continued without another user message." }],
@@ -136,14 +135,9 @@ describe("Runtime composition contract", () => {
 			streamFn: () => new RecordedAssistantStream(assistantMessage([{ type: "text", text: "answer".repeat(20) }])),
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({ sessionId: "manual-compaction" });
+		const session = await composition.createSession({ sessionId: "manual-compaction" });
 		await session.prompt({ text: "request".repeat(40) });
-		const contextController = session.createCoreAssembly().contextController;
-		if (!contextController) throw new Error("Context controller was not assembled");
-
-		const result = await contextController.compact({
-			customInstructions: "preserve architecture decisions",
-		});
+		const result = await session.compact("preserve architecture decisions");
 
 		expect(result).toMatchObject({
 			summary: "manual composition summary",
@@ -175,7 +169,7 @@ describe("Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "dynamic-tools",
 			includeAgentSkills: false,
 		});
@@ -203,7 +197,7 @@ describe("Runtime composition contract", () => {
 		await session.dispose();
 	});
 
-	it("assembles real host, execution, background work, todo and configuration ports", async () => {
+	it("exposes the composed capabilities through the RuntimeHost-scoped Session view", async () => {
 		const conversations = await createTemporaryDirectory("runtime-session-ports-");
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
@@ -212,34 +206,18 @@ describe("Runtime composition contract", () => {
 			initialThinkingLevel: "off",
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "session-ports",
 			agentMode: "work",
 		});
-		const assessment = assessRuntimeHostSessionAssembly(session.createRuntimeHostAssemblyCandidate());
-
-		expect(assessment.ready).toBe(true);
-		if (!assessment.ready) throw new Error("Expected complete RuntimeHost assembly");
-		expect(assessment.assembly.backgroundWorkController.readSubagents()).toEqual([]);
-		const assembly = session.createRuntimeHostAssemblyCandidate();
-		await assembly.hostInteraction?.bind({
-			confirm: async () => true,
-			requestSandboxGrant: async () => "allow_once",
-		});
-		expect(assembly.executionController?.isBusy()).toBe(false);
-		await assembly.executionController?.reconfigure({
-			mode: "full-access",
-			sessionId: "session-ports",
-		});
-		assembly.configurationController?.setSteeringMode("all");
-		assembly.configurationController?.setFollowUpMode("all");
-		assembly.configurationController?.setAgentMode("plan");
-		await assembly.configurationController?.reconfigureAgentPlugins(undefined);
-		expect(await session.getState()).toMatchObject({
-			steeringMode: "all",
-			followUpMode: "all",
-		});
-		expect(assembly.extensionHost?.invokeSync(CODING_AGENT_TODO_READ, undefined)).toEqual([]);
+		expect(session.hasExtension(CODING_AGENT_SUBAGENTS_READ)).toBe(true);
+		expect(session.invokeExtensionSync(CODING_AGENT_SUBAGENTS_READ, undefined)).toEqual([]);
+		expect(session.readState().isStreaming).toBe(false);
+		session.setSteeringMode("all");
+		session.setFollowUpMode("all");
+		session.setAgentMode("plan");
+		expect(session.readState()).toMatchObject({ agentMode: "plan" });
+		expect(session.invokeExtensionSync(CODING_AGENT_TODO_READ, undefined)).toEqual([]);
 		await session.dispose();
 	});
 
@@ -258,7 +236,7 @@ describe("Runtime composition contract", () => {
 			},
 		});
 		compositions.push(enabled);
-		const enabledSession = await enabled.backend.create({ sessionId: "knowledge-enabled" });
+		const enabledSession = await enabled.createSession({ sessionId: "knowledge-enabled" });
 
 		await enabledSession.prompt({ text: "normal" });
 		await enabledSession.prompt({ text: "search knowledge", metadata: { knowledgeMode: true } });
@@ -279,7 +257,7 @@ describe("Runtime composition contract", () => {
 			},
 		});
 		compositions.push(disabled);
-		const disabledSession = await disabled.backend.create({ sessionId: "knowledge-disabled" });
+		const disabledSession = await disabled.createSession({ sessionId: "knowledge-disabled" });
 
 		await disabledSession.prompt({
 			text: "search unavailable knowledge",
@@ -311,8 +289,8 @@ describe("Runtime composition contract", () => {
 		});
 		compositions.push(composition);
 
-		const first = await composition.backend.create({ sessionId: "first-session" });
-		const second = await composition.backend.create({ sessionId: "second-session" });
+		const first = await composition.createSession({ sessionId: "first-session" });
+		const second = await composition.createSession({ sessionId: "second-session" });
 
 		expect(createPromptResourceResolver.mock.calls.map(([options]) => options.sessionId)).toEqual([
 			"first-session",
@@ -344,8 +322,8 @@ describe("Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const first = await composition.backend.create({ sessionId: "real-prompt-first", cwd: firstWorkspace });
-		const second = await composition.backend.create({ sessionId: "real-prompt-second", cwd: secondWorkspace });
+		const first = await composition.createSession({ sessionId: "real-prompt-first", cwd: firstWorkspace });
+		const second = await composition.createSession({ sessionId: "real-prompt-second", cwd: secondWorkspace });
 
 		await first.prompt({ text: "first" });
 		await second.prompt({ text: "second" });
@@ -422,7 +400,7 @@ describe("Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "system-prompt-session",
 			cwd: "C:\\session-workspace",
 		});
@@ -495,7 +473,7 @@ describe("Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({ sessionId: "mcp-session" });
+		const session = await composition.createSession({ sessionId: "mcp-session" });
 		expect(session.readState().activeToolNames).toContain("mcp_search_lookup");
 		const initialBinding = composition.tools.registry.resolve("mcp_search_lookup")?.binding;
 		const assemblyRefreshCount = reloadIfChanged.mock.calls.length;
@@ -574,8 +552,8 @@ describe("Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const first = await composition.backend.create({ sessionId: "deferred-first" });
-		const second = await composition.backend.create({ sessionId: "deferred-second" });
+		const first = await composition.createSession({ sessionId: "deferred-first" });
+		const second = await composition.createSession({ sessionId: "deferred-second" });
 
 		await first.prompt({ text: "activate topic 15" });
 		expect(modelCalls[0]?.systemPrompt).toContain("MCP (Model Context Protocol) tools:");
@@ -600,7 +578,7 @@ describe("Runtime composition contract", () => {
 		expect(modelCalls[4]?.tools.map(({ name }) => name)).toEqual(["mcp_search_tool_15", "tool_search"]);
 		await first.dispose();
 
-		const resumed = await composition.backend.resume({ sessionId: "deferred-first" });
+		const resumed = await composition.resumeSession({ sessionId: "deferred-first" });
 		await resumed.prompt({ text: "resume without ephemeral activation" });
 		expect(modelCalls[5]?.tools.map(({ name }) => name)).toEqual(["tool_search"]);
 		await resumed.dispose();
@@ -653,7 +631,7 @@ describe("Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({ sessionId: "subagent-file-mcp" });
+		const session = await composition.createSession({ sessionId: "subagent-file-mcp" });
 
 		await session.prompt({ text: "delegate MCP inspection" });
 		await vi.waitFor(() => expect(childMcpTools).toHaveLength(1));
@@ -686,7 +664,7 @@ describe("Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "explicit-mcp",
 			includeAgentSkills: false,
 		});
@@ -724,7 +702,7 @@ describe("Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({ sessionId: "composed-mcp" });
+		const session = await composition.createSession({ sessionId: "composed-mcp" });
 
 		await session.prompt({ text: "discover tools" });
 		expect(calls[0]?.systemPrompt).toContain("Composed Coding Agent prompt");
@@ -762,7 +740,7 @@ describe("Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({ sessionId: "prompt-context" });
+		const session = await composition.createSession({ sessionId: "prompt-context" });
 
 		await session.prompt({
 			text: "inspect",
@@ -781,7 +759,7 @@ describe("Runtime composition contract", () => {
 			"<skill>review</skill>",
 			"inspect",
 		]);
-		expect((await session.getMessages()).map(({ role }) => role)).toEqual(["user", "assistant"]);
+		expect((await session.readMessages()).map(({ role }) => role)).toEqual(["user", "assistant"]);
 		expect(session.readHistory()).toMatchObject([
 			{ type: "settings_assist_marker" },
 			{ type: "prompt_attachments_marker" },
@@ -791,7 +769,7 @@ describe("Runtime composition contract", () => {
 		]);
 		await session.dispose();
 
-		const resumed = await composition.backend.resume({ sessionId: "prompt-context" });
+		const resumed = await composition.resumeSession({ sessionId: "prompt-context" });
 		await resumed.prompt({ text: "again" });
 		expect(modelInputs[1]).toEqual([
 			"plugin instruction",

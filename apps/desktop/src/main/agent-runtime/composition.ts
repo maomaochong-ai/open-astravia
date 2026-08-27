@@ -3,6 +3,8 @@ import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
 import {
 	CODING_AGENT_COMPACTION_PREFIRE_OBSERVATION,
 	CODING_AGENT_LIFECYCLE_ISSUE_OBSERVATION,
+	CODING_AGENT_PLUGIN_CONFIGURATION_OBSERVATION,
+	CODING_AGENT_SESSION_ASSISTANCE_OBSERVATION,
 	CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION,
 	CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION,
 	createCodingAgentMemoryRolloverRuntime,
@@ -47,7 +49,6 @@ import {
 } from "@vetta/runtime-node/conversation";
 import { createNodeKnowledgeRuntime, NodeTextFileStorage } from "@vetta/runtime-node/host";
 import { getModePrompt } from "../agent-modes/index.js";
-import { getBuiltinSkillPaths } from "../builtin-skills.js";
 import {
 	DEFAULT_CONVERSATION_CWD,
 	DEFAULT_CONVERSATION_SESSION_DIR,
@@ -65,6 +66,7 @@ import { getKnowledgeRoot } from "../knowledge/knowledge-layout.js";
 import { getAppLogger } from "../logger.js";
 import { createDesktopPluginHookAdapterFactory } from "../plugins/coding-agent-hook-adapter.js";
 import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
+import { getDesktopCodingAgentPluginRuntimeSource } from "../plugins/plugin-runtime-service.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "../sandbox/windows-binary-resolver.js";
 import { createCodingAgentObservationLogPort } from "./coding-agent-observation-log-port.js";
@@ -99,6 +101,8 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		domains: [
 			CODING_AGENT_COMPACTION_PREFIRE_OBSERVATION.domain,
 			CODING_AGENT_LIFECYCLE_ISSUE_OBSERVATION.domain,
+			CODING_AGENT_PLUGIN_CONFIGURATION_OBSERVATION.domain,
+			CODING_AGENT_SESSION_ASSISTANCE_OBSERVATION.domain,
 			CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION.domain,
 		],
 	});
@@ -110,7 +114,6 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	const linuxBubblewrapPath = getAvailableLinuxBubblewrapPath();
 	const macosSandboxExecPath = getAvailableMacosSandboxExecPath();
 	const userQuestionHandler = getDesktopUserQuestionBroker().handle;
-	const additionalSkillPaths = getBuiltinSkillPaths();
 	const historicalFormat = createDesktopHistoricalSessionFormat();
 	const defaultResultArtifacts = createDesktopResultArtifactRuntime(getAgentDir());
 	const conversationCatalog = new DesktopRuntimeSessionCatalog({
@@ -134,6 +137,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				agentRuntime: { runtime: agentRuntime },
 				modelRegistry: modelRuntime,
 				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
+				createPluginRuntime: () => getDesktopCodingAgentPluginRuntimeSource(),
 				// 工作模式注册表归 desktop 所有（ADR-0071 修订）：coding-agent 只保留 core.mode
 				// 槽位，正文由这里按会话固化的 agentMode 解析注入。
 				resolveModePrompt: getModePrompt,
@@ -197,7 +201,6 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		});
 	const runtime = new RuntimeHost({
 		...platformServices,
-		additionalSkillPaths,
 		getDefaultExecutionMode,
 		linuxBubblewrapPath,
 		macosSandboxExecPath,

@@ -16,9 +16,12 @@ import {
 } from "@vetta/coding-agent/composition";
 import { type EcosystemHookEvent, emptyHookDispatchOutcome, type HookDispatchOutcome } from "@vetta/coding-agent/hooks";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import type { RuntimeSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
+import type { RuntimeHostSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
-import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
+import {
+	createCodingAgentRuntimeComposition,
+	type TestCodingAgentRuntimeComposition,
+} from "./fixtures/runtime-composition.js";
 
 const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
 
@@ -86,7 +89,7 @@ describe("Session-local Ecosystem Hook Runtime contract", { timeout: INTEGRATION
 			sessionId: "hook-session",
 			cwd: "C:\\workspace",
 		};
-		const session = await composition.backend.create(createOptions);
+		const session = await composition.createSession(createOptions);
 
 		await session.prompt({ text: "first prompt" });
 		expect(messageTexts(modelCalls[0])).toEqual(
@@ -101,7 +104,7 @@ describe("Session-local Ecosystem Hook Runtime contract", { timeout: INTEGRATION
 		);
 		await session.dispose();
 
-		const resumed = await composition.backend.resume(createOptions);
+		const resumed = await composition.resumeSession(createOptions);
 		await resumed.prompt({ text: "resumed prompt" });
 		expect(messageTexts(modelCalls[3])).toEqual(
 			expect.arrayContaining([
@@ -146,8 +149,8 @@ describe("Session-local Ecosystem Hook Runtime contract", { timeout: INTEGRATION
 		const hookEvents: EcosystemHookEvent[] = [];
 		const composition = await createLifecycleComposition(conversationDir, hookEvents);
 		compositions.push(composition);
-		const source = await composition.backend.create({ sessionId: "lifecycle-source", cwd: conversationDir });
-		const sourcePath = source.createCoreAssembly().lifecycle.sessionPath;
+		const source = await composition.createSession({ sessionId: "lifecycle-source", cwd: conversationDir });
+		const sourcePath = source.sessionPath;
 		if (!sourcePath) throw new Error("Lifecycle source is not persisted");
 		const sessionIds = ["lifecycle-new"];
 		const host = createActiveSessionHost(composition, source, conversationDir, () => {
@@ -163,8 +166,7 @@ describe("Session-local Ecosystem Hook Runtime contract", { timeout: INTEGRATION
 		await host.readSession().prompt({ text: "resumed prompt" });
 		const forkEntry = host
 			.readSession()
-			.createCoreAssembly()
-			.historyReader.readHistory()
+			.readHistory()
 			.find((entry) => entry.type === "message" && entry.message.role === "user");
 		if (!forkEntry || forkEntry.type !== "message" || !forkEntry.entryId) {
 			throw new Error("Missing user entry for lifecycle fork");
@@ -191,7 +193,7 @@ describe("Session-local Ecosystem Hook Runtime contract", { timeout: INTEGRATION
 		const hookEvents: EcosystemHookEvent[] = [];
 		const composition = await createLifecycleComposition(conversationDir, hookEvents);
 		compositions.push(composition);
-		const source = await composition.backend.create({ sessionId: "rollback-source", cwd: conversationDir });
+		const source = await composition.createSession({ sessionId: "rollback-source", cwd: conversationDir });
 		const targetId = "rollback-target";
 		const targetPath = sessionPath(conversationDir, targetId);
 		const host = createActiveSessionHost(composition, source, conversationDir, () => targetId, {
@@ -218,7 +220,7 @@ describe("Session-local Ecosystem Hook Runtime contract", { timeout: INTEGRATION
 async function createLifecycleComposition(
 	conversationDir: string,
 	hookEvents: EcosystemHookEvent[],
-): Promise<CodingAgentRuntimeComposition> {
+): Promise<TestCodingAgentRuntimeComposition> {
 	return createCodingAgentRuntimeComposition({
 		conversationDir,
 		modelRegistry: modelRegistry(),
@@ -241,14 +243,23 @@ async function createLifecycleComposition(
 }
 
 function createActiveSessionHost(
-	runtime: CodingAgentRuntimeComposition,
-	initialSession: RuntimeSession,
+	runtime: TestCodingAgentRuntimeComposition,
+	initialSession: RuntimeHostSession,
 	conversationDir: string,
 	createSessionId: () => string,
-	lifecycle: CodingAgentSessionTransitionLifecycle | undefined = undefined,
-): CodingAgentActiveSessionHost {
+	lifecycle: CodingAgentSessionTransitionLifecycle<RuntimeHostSession> | undefined = undefined,
+): CodingAgentActiveSessionHost<RuntimeHostSession> {
 	return new CodingAgentActiveSessionHost({
-		runtime,
+		runtime: {
+			sessions: {
+				create: (options) => runtime.createSession(options),
+				resume: (options) => runtime.resumeSession(options),
+			},
+			sessionHooks: runtime.sessionHooks,
+			quiesceSessionBackgroundCommands: (sessionId) => runtime.quiesceSessionBackgroundCommands(sessionId),
+			preserveSessionExecutionContext: (sourceSessionId, targetSessionId) =>
+				runtime.preserveSessionExecutionContext(sourceSessionId, targetSessionId),
+		},
 		initialSession,
 		sessionOptions: { cwd: conversationDir },
 		conversationDir,

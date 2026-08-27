@@ -5,7 +5,7 @@ import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStrea
 import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { CODING_AGENT_TODO_CLEAR, CODING_AGENT_TODO_READ } from "@vetta/coding-agent/session-extensions";
-import type { RuntimeSession, RuntimeSessionExtensionHost } from "@vetta/runtime-core";
+import type { RuntimeHostSession } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 
@@ -79,16 +79,16 @@ describe("Todo Runtime composition contract", () => {
 		});
 		compositions.push(composition);
 
-		const session = await composition.backend.create({ sessionId: "todo-session" });
+		const session = await composition.createSession({ sessionId: "todo-session" });
 		const result = await session.prompt({ text: "implement" });
 
 		if (result.status === "failed") {
-			throw new Error(`${result.error.code}: ${result.error.message}`);
+			throw new Error(`${result.error?.code ?? "TURN_FAILED"}: ${result.error?.message ?? "Turn failed"}`);
 		}
 		expect(result).toMatchObject({ status: "completed" });
 		expect(toolLists).toEqual([["todo"], ["todo"], ["todo"]]);
 		expect(readTodos(session)).toEqual([{ id: 1, content: "Implement the slice", status: "done" }]);
-		expect((await session.getMessages()).map(({ role }) => role)).toEqual([
+		expect((await session.readMessages()).map(({ role }) => role)).toEqual([
 			"user",
 			"assistant",
 			"toolResult",
@@ -98,12 +98,12 @@ describe("Todo Runtime composition contract", () => {
 		]);
 		await session.dispose();
 
-		const resumed = await composition.backend.resume({ sessionId: "todo-session" });
+		const resumed = await composition.resumeSession({ sessionId: "todo-session" });
 		expect(readTodos(resumed)).toEqual([{ id: 1, content: "Implement the slice", status: "done" }]);
 		expect(clearTodos(resumed)).toBe(true);
 		await resumed.dispose();
 
-		const cleared = await composition.backend.resume({ sessionId: "todo-session" });
+		const cleared = await composition.resumeSession({ sessionId: "todo-session" });
 		expect(readTodos(cleared)).toEqual([]);
 		await cleared.dispose();
 	});
@@ -121,7 +121,7 @@ describe("Todo Runtime composition contract", () => {
 		});
 		compositions.push(composition);
 
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "prefilled-todo-session",
 			initialTodos: ["first", "second"],
 			initialTodoLockSource: "scene",
@@ -133,7 +133,7 @@ describe("Todo Runtime composition contract", () => {
 		expect(clearTodos(session)).toBe(false);
 		await session.dispose();
 
-		const resumed = await composition.backend.resume({ sessionId: "prefilled-todo-session" });
+		const resumed = await composition.resumeSession({ sessionId: "prefilled-todo-session" });
 		expect(readTodos(resumed)).toEqual([
 			{ id: 1, content: "first", status: "pending" },
 			{ id: 2, content: "second", status: "pending" },
@@ -143,18 +143,12 @@ describe("Todo Runtime composition contract", () => {
 	});
 });
 
-function requireExtensionHost(session: RuntimeSession): RuntimeSessionExtensionHost {
-	const host = session.createCoreAssembly().extensionHost;
-	if (!host) throw new Error("Session extension host was not composed");
-	return host;
+function readTodos(session: RuntimeHostSession) {
+	return session.invokeExtensionSync(CODING_AGENT_TODO_READ, undefined);
 }
 
-function readTodos(session: RuntimeSession) {
-	return requireExtensionHost(session).invokeSync(CODING_AGENT_TODO_READ, undefined);
-}
-
-function clearTodos(session: RuntimeSession): boolean {
-	return requireExtensionHost(session).invokeSync(CODING_AGENT_TODO_CLEAR, undefined);
+function clearTodos(session: RuntimeHostSession): boolean {
+	return session.invokeExtensionSync(CODING_AGENT_TODO_CLEAR, undefined);
 }
 
 class RecordedAssistantStream extends EventStream<AssistantMessageEvent, AssistantMessage> {

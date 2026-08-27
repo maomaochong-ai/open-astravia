@@ -1,6 +1,8 @@
 import type { SessionEvent } from "../contracts.js";
+import { runtimeObservationFailure } from "../observation/index.js";
 import { RuntimeActiveSessionEventRelay } from "./active-session-event-relay.js";
 import type {
+	RuntimeActiveSession,
 	RuntimeActiveSessionCreateOptions,
 	RuntimeActiveSessionEndCause,
 	RuntimeActiveSessionHostOptions,
@@ -10,31 +12,45 @@ import type {
 	RuntimeNewSessionOptions,
 	RuntimeSessionSeedInitializer,
 } from "./active-session-host-contracts.js";
-import type { RuntimeSession } from "./kernel-runtime-session-backend.js";
+import { RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION } from "./observations.js";
 import type { RuntimeSessionExecutionObservation } from "./session-ports.js";
 import { type RuntimePreparedSessionBinding, RuntimeSessionTransitionCleanup } from "./session-transition-cleanup.js";
 
 /** Owns the active Session identity and serializes new, resume and fork transactions. */
 export class RuntimeActiveSessionHost<
 	TSessionOptions extends RuntimeActiveSessionCreateOptions = RuntimeActiveSessionCreateOptions,
+	TSession extends RuntimeActiveSession = RuntimeActiveSession,
 > {
-	private activeSession: RuntimeSession;
+	private activeSession: TSession;
 	private readonly events: RuntimeActiveSessionEventRelay;
 	private readonly cleanup = new RuntimeSessionTransitionCleanup();
 	private transitionTail: Promise<void> = Promise.resolve();
 	private disposed = false;
 
-	constructor(private readonly options: RuntimeActiveSessionHostOptions<TSessionOptions>) {
+	constructor(private readonly options: RuntimeActiveSessionHostOptions<TSessionOptions, TSession>) {
 		this.activeSession = options.initialSession;
 		this.events = new RuntimeActiveSessionEventRelay(options.initialSession, {
 			reportListenerError: (kind, error) => {
+				if (this.options.observationPublisher) {
+					this.options.observationPublisher.record(
+						RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION,
+						{
+							operation: "listener.notify",
+							phase: "failed",
+							component: kind === "event" ? "event-listener" : "execution-observation-listener",
+							failure: runtimeObservationFailure(error),
+						},
+						{ sessionId: this.activeSession.sessionId },
+					);
+					return;
+				}
 				const label = kind === "event" ? "Event" : "Execution observation";
 				console.warn(`[${this.logLabel}] ${label} listener failed`, error);
 			},
 		});
 	}
 
-	readSession(): RuntimeSession {
+	readSession(): TSession {
 		this.assertOpen();
 		return this.activeSession;
 	}
@@ -55,7 +71,7 @@ export class RuntimeActiveSessionHost<
 		return this.runExclusive(() => waitForRuntimeSessionIdle(this.activeSession));
 	}
 
-	startActiveSessionOperation<T>(operation: (session: RuntimeSession) => Promise<T>): Promise<T> {
+	startActiveSessionOperation<T>(operation: (session: TSession) => Promise<T>): Promise<T> {
 		let started: Promise<T> | undefined;
 		return this.runExclusive(async () => {
 			started = operation(this.activeSession);
@@ -65,7 +81,7 @@ export class RuntimeActiveSessionHost<
 		});
 	}
 
-	runActiveSessionMutation<T>(operation: (session: RuntimeSession) => Promise<T>): Promise<T> {
+	runActiveSessionMutation<T>(operation: (session: TSession) => Promise<T>): Promise<T> {
 		return this.runExclusive(async () => {
 			await waitForRuntimeSessionIdle(this.activeSession);
 			return operation(this.activeSession);
@@ -88,7 +104,7 @@ export class RuntimeActiveSessionHost<
 							this.createBackendOptions(sessionId, { parentSessionPath: options?.parentSession }),
 						);
 				this.options.runtime.sessionHooks.start(next.sessionId, "clear");
-				const targetSessionPath = next.createCoreAssembly().lifecycle.sessionPath;
+				const targetSessionPath = next.sessionPath;
 				await this.commitTransition({ ...transition, next, targetSessionPath }, { deleteTargetOnRollback: true });
 				return { cancelled: false };
 			});
@@ -98,7 +114,7 @@ export class RuntimeActiveSessionHost<
 	switchSession(sessionPath: string): Promise<{ cancelled: boolean }> {
 		return this.runExclusive(async () => {
 			const previous = this.activeSession;
-			const previousPath = previous.createCoreAssembly().lifecycle.sessionPath;
+			const previousPath = previous.sessionPath;
 			if (previousPath === sessionPath) return { cancelled: false };
 			const transition = this.describe("resume", previous, { targetSessionPath: sessionPath });
 			if ((await this.prepareTransition(transition)).cancelled) return { cancelled: true };
@@ -132,7 +148,7 @@ export class RuntimeActiveSessionHost<
 					await this.deleteCreatedTarget(fork.path);
 					throw new Error(`Fork path is invalid: ${fork.path}`);
 				}
-				let next: RuntimeSession | undefined;
+				let next: TSession | undefined;
 				try {
 					next = await this.options.runtime.sessions.resume(
 						this.createBackendOptions(sessionId, {
@@ -141,7 +157,7 @@ export class RuntimeActiveSessionHost<
 						}),
 					);
 					this.options.runtime.sessionHooks.start(next.sessionId, "clear");
-					await next.createCoreAssembly().historyController.navigateForEdit(entryId);
+					await next.navigateForEdit(entryId);
 					if (decision.skipConversationRestore) {
 						await this.options.runtime.preserveSessionExecutionContext(previous.sessionId, sessionId);
 					}
@@ -176,25 +192,25 @@ export class RuntimeActiveSessionHost<
 
 	private describe(
 		kind: RuntimeActiveSessionTransitionKind,
-		previous: RuntimeSession,
-		extra: Partial<Pick<RuntimeActiveSessionTransition, "targetSessionPath" | "entryId">> = {},
-	): RuntimeActiveSessionTransition {
+		previous: TSession,
+		extra: Partial<Pick<RuntimeActiveSessionTransition<TSession>, "targetSessionPath" | "entryId">> = {},
+	): RuntimeActiveSessionTransition<TSession> {
 		return {
 			kind,
 			previous,
-			previousSessionPath: previous.createCoreAssembly().lifecycle.sessionPath,
+			previousSessionPath: previous.sessionPath,
 			...extra,
 		};
 	}
 
 	private async prepareTransition(
-		transition: RuntimeActiveSessionTransition,
+		transition: RuntimeActiveSessionTransition<TSession>,
 	): Promise<RuntimeActiveSessionTransitionDecision> {
 		return (await this.options.lifecycle?.before?.(transition)) ?? { cancelled: false };
 	}
 
 	private async commitTransition(
-		transition: RuntimeActiveSessionTransition & { readonly next: RuntimeSession },
+		transition: RuntimeActiveSessionTransition<TSession> & { readonly next: TSession },
 		options: { readonly deleteTargetOnRollback?: boolean } = {},
 	): Promise<void> {
 		const previous = transition.previous;
@@ -227,15 +243,39 @@ export class RuntimeActiveSessionHost<
 
 	private reportTransitionCleanupError(
 		error: AggregateError,
-		transition: RuntimeActiveSessionTransition & { readonly next: RuntimeSession },
+		transition: RuntimeActiveSessionTransition<TSession> & { readonly next: TSession },
 	): void {
+		this.options.observationPublisher?.record(
+			RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION,
+			{
+				operation: "transition.cleanup",
+				phase: "failed",
+				component: "retired-session",
+				transitionKind: transition.kind,
+				failure: runtimeObservationFailure(error),
+			},
+			{ sessionId: transition.next.sessionId },
+		);
 		try {
 			if (this.options.onTransitionCleanupError) {
 				this.options.onTransitionCleanupError(error, transition);
 				return;
 			}
+			if (this.options.observationPublisher) return;
 			console.warn(`[${this.logLabel}] Committed session transition cleanup failed`, error);
 		} catch (reportError) {
+			this.options.observationPublisher?.record(
+				RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION,
+				{
+					operation: "reporter.notify",
+					phase: "failed",
+					component: "cleanup-reporter",
+					transitionKind: transition.kind,
+					failure: runtimeObservationFailure(reportError),
+				},
+				{ sessionId: transition.next.sessionId },
+			);
+			if (this.options.observationPublisher) return;
 			console.warn(
 				`[${this.logLabel}] Failed to report committed session transition cleanup`,
 				new AggregateError([error, reportError]),
@@ -244,7 +284,7 @@ export class RuntimeActiveSessionHost<
 	}
 
 	private async withEndedSourceHooks<T>(
-		previous: RuntimeSession,
+		previous: TSession,
 		cause: RuntimeActiveSessionEndCause,
 		operation: () => Promise<T>,
 	): Promise<T> {
@@ -259,13 +299,16 @@ export class RuntimeActiveSessionHost<
 		}
 	}
 
-	private replaceActiveSession(session: RuntimeSession): void {
+	private replaceActiveSession(session: TSession): void {
 		this.events.replaceSession(session, () => {
 			this.activeSession = session;
 		});
 	}
 
-	private async interruptActiveTurn(session: RuntimeSession, reason: RuntimeActiveSessionEndCause): Promise<void> {
+	private async interruptActiveTurn(
+		session: RuntimeActiveSession,
+		reason: RuntimeActiveSessionEndCause,
+	): Promise<void> {
 		if (!session.readState().isStreaming) return;
 		this.events.setEventsSuppressed(true);
 		try {
@@ -280,7 +323,7 @@ export class RuntimeActiveSessionHost<
 		sessionId: string,
 		parentSession: string | undefined,
 		initializer: RuntimeSessionSeedInitializer,
-	): Promise<RuntimeSession> {
+	): Promise<TSession> {
 		try {
 			await initializer.initializeSeed({
 				cwd: this.options.sessionOptions.cwd ?? this.options.defaultCwd,
@@ -333,7 +376,7 @@ export class RuntimeActiveSessionHost<
 	}
 }
 
-export async function waitForRuntimeSessionIdle(session: RuntimeSession): Promise<void> {
+export async function waitForRuntimeSessionIdle(session: RuntimeActiveSession): Promise<void> {
 	await new Promise<void>((resolve) => {
 		let unsubscribe: (() => void) | undefined;
 		let settled = false;

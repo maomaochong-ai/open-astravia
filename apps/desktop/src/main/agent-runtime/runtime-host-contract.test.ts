@@ -188,12 +188,19 @@ describe("Desktop RuntimeHost production contract", () => {
 			resumedProviderSawPriorToolResult: true,
 			resumedProviderSawPriorAssistant: true,
 		});
+		const activeToolObservations = observations.runtime.initial.events.filter(
+			({ type }) => type === "active_tools_update",
+		);
+		expect(activeToolObservations.map(({ source }) => source)).toEqual(["runtime-core", "agent"]);
+		expect(activeToolObservations[0]?.detail).not.toContain("invoke_skill");
+		expect(activeToolObservations[1]?.detail).toContain("invoke_skill");
 		expect(observations.runtime.initial.events.map(({ type }) => type)).toEqual([
 			"session.lifecycle",
 			"active_tools_update",
 			"mcp.reload.start",
 			"mcp.reload.end",
 			"session.lifecycle",
+			"active_tools_update",
 			"session.lifecycle",
 			"toolcall.start",
 			"message.final",
@@ -574,6 +581,8 @@ function observeEvent(event: SessionEvent, cwd: string): RuntimeEventObservation
 	switch (event.type) {
 		case "session.lifecycle":
 			return { ...base, detail: event.phase };
+		case "active_tools_update":
+			return { ...base, detail: event.activeToolNames };
 		case "message.delta":
 		case "thinking.delta":
 			return { ...base, detail: event.delta };

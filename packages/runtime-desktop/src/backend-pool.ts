@@ -5,10 +5,11 @@ import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
 import {
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
-	CodingAgentSessionBackend,
 	createCodingAgentRuntimeComposition,
+	createCodingAgentRuntimeSessionAgentSelection,
 	DEFAULT_CODING_AGENT_RUNTIME_ID,
 } from "@vetta/coding-agent/composition";
+import { createCodingAgentNodeSettingsRuntime } from "@vetta/coding-agent/host-services";
 import { detectWorkspaceFacts, probeWorkspaceSignals } from "@vetta/coding-agent/model-context";
 import type {
 	ConversationScenario,
@@ -20,7 +21,7 @@ import type {
 import { RetryableCleanup, RetryableCloseController } from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
-import { createFileConversationPersistence } from "@vetta/runtime-node/conversation";
+import { createFileConversationPersistence, resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
 import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
 import {
 	createDesktopCodingAgentSessionExecutionEnvironment,
@@ -38,6 +39,7 @@ type CompositionFixedOption =
 	| "initialModel"
 	| "initialThinkingLevel"
 	| "scenario"
+	| "runtimeHostRetrySettings"
 	| "workspaceFacts";
 
 export type DesktopCodingAgentRuntimeCompositionDefaults = Omit<
@@ -94,7 +96,6 @@ interface DesktopRuntimeScope extends DesktopMcpRuntimeScope {
 
 interface DesktopRuntimeBackendEntry {
 	readonly composition: CodingAgentRuntimeComposition;
-	readonly backend: CodingAgentSessionBackend;
 }
 
 /**
@@ -143,7 +144,9 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		const scope = resolveRuntimeScope(request);
 		const entry = await this.getOrCreateEntry(scope, request);
 		if (this.disposed) throw new Error("Desktop Runtime backend pool is disposed");
-		return entry.backend.createAssembly(request);
+		return entry.composition.runtimeHostBackend.createAssembly(
+			toCodingAgentRuntimeSessionRequest(entry.composition, scope, request),
+		);
 	}
 
 	readScopeCount(): number {
@@ -261,20 +264,9 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 			subagentPathPort: { dirname, join },
 			initialModel,
 			initialThinkingLevel,
+			runtimeHostRetrySettings: createCodingAgentNodeSettingsRuntime(scope.cwd, scope.agentDir),
 		});
-		return {
-			composition,
-			backend: new CodingAgentSessionBackend({
-				composition,
-				conversationDir: scope.conversationDir,
-				cwd: scope.cwd,
-				agentDir: scope.agentDir,
-				scenario: scope.scenario,
-				enableSubagents: scope.enableSubagents,
-				serverUrl: scope.serverUrl,
-				observationPublisher: this.options.observationPublisher,
-			}),
-		};
+		return { composition };
 	}
 
 	private getOrCreateMcpRuntimeSource(
@@ -297,6 +289,40 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		this.mcpSources.set(key, created);
 		return created;
 	}
+}
+
+function toCodingAgentRuntimeSessionRequest(
+	composition: CodingAgentRuntimeComposition,
+	scope: DesktopRuntimeScope,
+	request: RuntimeSessionCreateRequest,
+): RuntimeSessionCreateRequest {
+	const sessionPath = request.sessionPath?.trim();
+	const sessionId = sessionPath
+		? resolveSessionIdFromPath(scope.conversationDir, sessionPath)
+		: request.sessionId?.trim() || randomUUID();
+	if (!sessionId) {
+		throw new Error(`Session path is invalid: ${request.sessionPath}`);
+	}
+	const sessionOptions = {
+		sessionId,
+		cwd: request.cwd ?? scope.cwd,
+		model: request.model,
+		thinkingLevel: request.thinkingLevel,
+		agentMode: request.agentMode,
+		executionMode: request.executionMode,
+		env: request.env,
+		enableBackgroundTasks: request.enableBackgroundTasks,
+		includeAgentSkills: request.includeAgentSkills,
+		askUserQuestion: request.askUserQuestion,
+		sandboxHostPath: request.sandboxHostPath,
+		linuxBubblewrapPath: request.linuxBubblewrapPath,
+		macosSandboxExecPath: request.macosSandboxExecPath,
+		systemPromptAddon: request.appendSystemPrompt,
+	};
+	return {
+		...request,
+		agent: createCodingAgentRuntimeSessionAgentSelection(composition.agentRuntime, sessionOptions),
+	};
 }
 
 function resolveCompositionObservationOptions(

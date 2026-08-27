@@ -12,6 +12,7 @@ import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
 import { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
+import { CodingAgentPluginConfigurationRuntime } from "../../plugins/runtime/plugin-configuration-runtime.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
 import type { CodingAgentConversationSessionPathAssessment } from "../contracts/conversation-persistence.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
@@ -24,7 +25,10 @@ import type {
 } from "../subagent/session-assembly.js";
 import type { CodingAgentMcpSessionCoordinator } from "../tool-surface/mcp-session-coordinator.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
-import { createCodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";
+import {
+	type CodingAgentTurnCapabilitySessionAssembly,
+	createCodingAgentTurnCapabilitySessionAssembly,
+} from "../turn/capability-session-assembly.js";
 import type { CodingAgentImageSettingsSnapshotRouter } from "../turn/image-settings-snapshot-router.js";
 import { createCodingAgentSessionContextAssembly } from "./context-assembly.js";
 import { createCodingAgentSessionInitializationTimeline } from "./initialization-timeline.js";
@@ -189,6 +193,19 @@ async function initializeSession<TOwnershipBinding>(
 			todoRuntime,
 		} = peripherals;
 		const { contextRuntime, hookRuntime, memoryController, modelRuntime, subagentRuntime } = context;
+		let attachedTurnCapabilityAssembly: CodingAgentTurnCapabilitySessionAssembly | undefined;
+		const pluginConfigurationRuntime = new CodingAgentPluginConfigurationRuntime({
+			configurationState,
+			source: pluginRuntime,
+			observationPublisher: agentSessionObservations,
+			apply: async (agentPlugins) => {
+				await pluginMcpRuntime?.reconfigure(agentPlugins);
+				if (!attachedTurnCapabilityAssembly) {
+					throw new Error("Coding Agent Plugin configuration runtime is not attached to Turn capabilities");
+				}
+				await attachedTurnCapabilityAssembly.reconfigureAgentPluginSkills(agentPlugins);
+			},
+		});
 		const resourceLifecycleAssembly = createCodingAgentSessionResourceLifecycle({
 			session: {
 				initialSessionId: sessionOptions.sessionId,
@@ -226,6 +243,7 @@ async function initializeSession<TOwnershipBinding>(
 			subagentRuntime,
 			executionRuntime,
 			configurationState,
+			pluginConfigurationRuntime,
 			pluginMcpRuntime,
 			mcpController,
 			codingTools: options.codingTools,
@@ -242,6 +260,7 @@ async function initializeSession<TOwnershipBinding>(
 			rollback: () => resourceLifecycleAssembly.disposeHookSession(),
 		});
 		const createPromptRuntimeSources = profile.createPromptRuntimeSources;
+		let lastReportedActiveToolNames: string | undefined;
 		const turnCapabilityAssembly = await timeline.measure("turn-capabilities", () =>
 			createCodingAgentTurnCapabilitySessionAssembly({
 				session: {
@@ -313,8 +332,19 @@ async function initializeSession<TOwnershipBinding>(
 				askUserQuestion: sessionOptions.askUserQuestion,
 				initializationTimeline: timeline,
 				imageSettingsSnapshots: options.imageSettingsSnapshots,
+				reportActiveToolNames: async (activeToolNames) => {
+					const fingerprint = [...activeToolNames].sort().join("\0");
+					if (fingerprint === lastReportedActiveToolNames) return;
+					lastReportedActiveToolNames = fingerprint;
+					await resourceContext.reportObservation({
+						type: "active_tools_update",
+						source: "agent",
+						activeToolNames: [...activeToolNames],
+					});
+				},
 			}),
 		);
+		attachedTurnCapabilityAssembly = turnCapabilityAssembly;
 		rollback.defer({
 			id: "capability-composition",
 			rollback: () => turnCapabilityAssembly.dispose(),
@@ -331,6 +361,7 @@ async function initializeSession<TOwnershipBinding>(
 				modelBindingProvider: modelRuntime,
 			},
 			beforeSnapshotAcquire: async (context) => {
+				await pluginConfigurationRuntime.synchronize("turn-apply");
 				await options.mcpCoordinator.refreshSession(activeSessionId, context?.reason === "turn");
 			},
 			async activate(binding) {

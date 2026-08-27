@@ -3,17 +3,17 @@ import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type {
-	RuntimeSession,
+	RuntimeActiveSession,
 	RuntimeSessionCatalog,
 	RuntimeSessionExecutionObservation,
 	SessionEvent,
 } from "@vetta/runtime-core";
 import { createConversationSeedDraft } from "@vetta/runtime-node/conversation";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CodingAgentRuntimeComposition } from "../../src/composition/runtime-composition.js";
 import {
 	CodingAgentActiveSessionHost,
 	type CodingAgentPreparedSessionBinding,
+	type CodingAgentSessionTransitionRuntimePort,
 } from "../../src/composition/session-host/active-session-transition-host.js";
 import { createCodingAgentSessionSetupSeedInitializer } from "../../src/sessions/setup/session-setup-seed-initializer.js";
 
@@ -428,8 +428,8 @@ async function createFixture(
 	const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-active-session-host-"));
 	temporaryDirectories.push(conversationDir);
 	const initial = createSession("initial", sessionPath(conversationDir, "initial"));
-	const create = vi.fn<(options: { sessionId: string }) => Promise<RuntimeSession>>();
-	const resume = vi.fn<(options: { sessionId: string }) => Promise<RuntimeSession>>();
+	const create = vi.fn<(options: { sessionId: string }) => Promise<RuntimeActiveSession>>();
+	const resume = vi.fn<(options: { sessionId: string }) => Promise<RuntimeActiveSession>>();
 	const preserveSessionExecutionContext = vi.fn(async (sourceSessionId: string, targetSessionId: string) => {
 		lifecycleOrder.push(`preserve:${sourceSessionId}:${targetSessionId}`);
 	});
@@ -448,7 +448,7 @@ async function createFixture(
 			start: sessionHookStart,
 			discard: sessionHookDiscard,
 		},
-	} as unknown as CodingAgentRuntimeComposition;
+	} as CodingAgentSessionTransitionRuntimePort<RuntimeActiveSession>;
 	const catalog: RuntimeSessionCatalog = {
 		ownsSession: async (path) => {
 			try {
@@ -544,20 +544,17 @@ function createSession(id: string, path: string) {
 		for (const listener of listeners) listener(sessionEvent("aborted", id, "aborted"));
 	});
 	const session = {
-		get sessionId() {
-			return id;
-		},
-		readState: () => ({ isStreaming: streaming }),
-		createCoreAssembly: () => ({
-			historyController: { navigateForEdit },
-			lifecycle: { sessionId: id, sessionPath: path, dispose },
-			executionObservationStream: {
-				subscribe: (handler: (observation: RuntimeSessionExecutionObservation) => Promise<void> | void) => {
-					observationListeners.add(handler);
-					return () => observationListeners.delete(handler);
-				},
-			},
+		sessionId: id,
+		sessionPath: path,
+		readState: () => ({
+			thinkingLevel: "medium" as const,
+			isStreaming: streaming,
+			messageCount: 0,
+			contextPercent: null,
+			contextWindow: 0,
+			activeToolNames: [],
 		}),
+		readMessages: () => [],
 		subscribe: (handler: (event: SessionEvent) => void) => {
 			listeners.add(handler);
 			if (finishOnSubscribe) {
@@ -567,11 +564,20 @@ function createSession(id: string, path: string) {
 			}
 			return () => listeners.delete(handler);
 		},
+		subscribeExecutionObservations: (
+			handler: (observation: RuntimeSessionExecutionObservation) => Promise<void> | void,
+		) => {
+			observationListeners.add(handler);
+			return () => observationListeners.delete(handler);
+		},
 		abort,
 		prompt,
+		continue: async () => {},
+		retry: async () => {},
 		forkSession,
+		navigateForEdit,
 		dispose,
-	} as unknown as RuntimeSession;
+	} satisfies RuntimeActiveSession;
 	return {
 		session,
 		path,

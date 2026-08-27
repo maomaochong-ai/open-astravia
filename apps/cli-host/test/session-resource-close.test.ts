@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
 	type AgentRpcExecutable,
-	buildAgentRpcExecutable,
+	acquireAgentRpcExecutable,
 	createAgentRpcFixture,
 	readSessionFile,
 	startAgentRpc,
@@ -18,11 +18,11 @@ import {
 let executable: AgentRpcExecutable;
 
 beforeAll(async () => {
-	executable = await buildAgentRpcExecutable();
+	executable = await acquireAgentRpcExecutable();
 });
 
 afterAll(async () => {
-	await executable.dispose();
+	await executable?.dispose();
 });
 
 describe("Runtime Session resource close", () => {

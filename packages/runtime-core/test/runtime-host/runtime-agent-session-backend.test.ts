@@ -196,17 +196,9 @@ function createResources(
 		stateSource: { read: () => ({ contextPercent: 0, contextWindow: 8_000, activeToolNames: [] }) },
 		hostInteraction: { bind: async () => {} },
 		executionController: { isBusy: () => false, reconfigure: async () => {} },
-		backgroundWorkController: {
-			clearFinished: () => 0,
-			killTask: () => false,
-			readTasks: () => [],
-			readSubagents: () => [],
-			interruptSubagent: () => undefined,
-		},
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},
-			reconfigureAgentPlugins: async () => {},
 			setAgentMode: () => {},
 		},
 		dispose,

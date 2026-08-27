@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
-import type { RuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeHostSession } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	CodingAgentSdkResourceSourceAdapter,
@@ -166,7 +166,7 @@ describe("Coding Agent SDK dynamic resources", () => {
 		const beforePrompt = vi.fn(async () => {});
 		const prompt = vi.fn(async () => ({ status: "completed" as const }));
 		const host = new CodingAgentSdkSessionCapabilityHost({
-			readSession: () => ({ prompt }) as unknown as RuntimeSession,
+			readSession: () => ({ prompt }) as unknown as RuntimeHostSession,
 			beforePrompt,
 		});
 

@@ -2,9 +2,6 @@ import { VETTA_CLI_GUIDANCE } from "@vetta/coding-agent/cli-guidance";
 import type { ConversationScenario } from "@vetta/coding-agent/profile";
 import type { SessionConfig } from "@vetta/runtime-core";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
-import { getAppLogger } from "../logger.js";
-import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
-import { summarizeAgentPluginRuntimeConfig } from "../plugins/plugin-runtime-config-builder.js";
 import { type DesktopAgentMode, LEGACY_SESSION_AGENT_MODE, readSessionAgentMode } from "./session-agent-mode-store.js";
 import {
 	ensureConversationSubCwd,
@@ -12,8 +9,6 @@ import {
 	readSessionCwdFromHeader,
 	resolveSessionDirForCwd,
 } from "./session-paths.js";
-
-const pluginLog = getAppLogger("plugin");
 
 export type DesktopConversationSource = "interactive" | "debug";
 export type DesktopSessionKind = "conversation" | "other";
@@ -69,14 +64,6 @@ export async function resolveDesktopSessionConfig(
 				: VETTA_CLI_GUIDANCE
 			: config?.appendSystemPrompt;
 	const agentMode = await resolveSessionAgentMode(config?.sessionPath, desktopConfig.defaultAgentMode ?? "work");
-	const agentPlugins = pluginAgentContributionService.buildRuntimeConfig();
-	pluginLog.debug("session create plugin snapshot", {
-		kind,
-		source,
-		isConversation,
-		...summarizeAgentPluginRuntimeConfig(agentPlugins),
-	});
-
 	return {
 		config: {
 			...(config ?? {}),
@@ -88,8 +75,6 @@ export async function resolveDesktopSessionConfig(
 			askUserQuestion,
 			enableBackgroundTasks,
 			includeAgentSkills,
-			enableAgentPlugins: true,
-			agentPlugins,
 		},
 		cwd: effectiveCwd,
 		scenario,

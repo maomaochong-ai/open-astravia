@@ -1,11 +1,12 @@
 import type { Api, Model } from "@vetta/ai";
-import type { SessionEvent } from "@vetta/runtime-core";
+import { RuntimeHost, type RuntimeHostSession, type SessionEvent } from "@vetta/runtime-core";
 import type { CodingAgentKnowledgeRuntime, CodingAgentKnowledgeWriteOperations } from "../features/knowledge/index.js";
 import type { CodingAgentRuntimeModelSource } from "../runtime-contracts/index.js";
 import type {
 	CodingAgentConversationPersistenceFactory,
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
+	CodingAgentRuntimeSessionOptions,
 	CodingAgentSessionExecutionEnvironmentFactory,
 	CodingAgentToolEnvironmentFactory,
 } from "./contracts/index.js";
@@ -17,6 +18,7 @@ import type {
 	KnowledgeProcessingUsage,
 } from "./knowledge-processing-contract.js";
 import { createCodingAgentRuntimeComposition } from "./runtime-composition.js";
+import { createCodingAgentRuntimeHostSessionConfig } from "./runtime-host-session-config.js";
 
 export interface KnowledgeProcessingSessionFactoryOptions {
 	readonly getModelRegistry: () => CodingAgentRuntimeModelSource;
@@ -68,9 +70,13 @@ export function createKnowledgeProcessingSessionFactory(
 				knowledgeRuntime: options.knowledgeRuntime,
 				enableSubagents: false,
 			});
-			let runtimeSession: Awaited<ReturnType<CodingAgentRuntimeComposition["backend"]["create"]>>;
+			const runtimeHost = new RuntimeHost({
+				sessionBackend: composition.runtimeHostBackend,
+				observationPublisher: composition.observations.publisher(),
+			});
+			let runtimeSession: RuntimeHostSession;
 			try {
-				runtimeSession = await composition.sessions.create({
+				const sessionOptions: CodingAgentRuntimeSessionOptions = {
 					sessionId: createSessionId(),
 					cwd: request.cwd,
 					model: initialModel,
@@ -83,19 +89,27 @@ export function createKnowledgeProcessingSessionFactory(
 						request.writer,
 						options.knowledgeRuntime.write.resolveAbsolutePath,
 					),
-				});
+				};
+				const created = await runtimeHost.createSession(
+					createCodingAgentRuntimeHostSessionConfig(composition.agentRuntime, sessionOptions, {
+						scenario: composition.scenario,
+					}),
+				);
+				runtimeSession = runtimeHost.getSessionView(created.sessionId);
 			} catch (error) {
+				await runtimeHost.close();
 				await composition.dispose();
 				throw error;
 			}
 
-			return createKnowledgeProcessingSession(runtimeSession, composition, request, modelRuntime);
+			return createKnowledgeProcessingSession(runtimeSession, runtimeHost, composition, request, modelRuntime);
 		},
 	};
 }
 
 function createKnowledgeProcessingSession(
-	runtimeSession: Awaited<ReturnType<CodingAgentRuntimeComposition["backend"]["create"]>>,
+	runtimeSession: RuntimeHostSession,
+	runtimeHost: RuntimeHost,
 	composition: CodingAgentRuntimeComposition,
 	request: KnowledgeProcessingSessionRequest,
 	modelRuntime: CodingAgentRuntimeModelSource,
@@ -117,7 +131,7 @@ function createKnowledgeProcessingSession(
 				reasoning: modelKey ? request.reasoningLevel : undefined,
 			});
 			if (result.status === "failed") {
-				throw new Error(result.error.message);
+				throw new Error(result.error?.message ?? "Knowledge Processing turn failed");
 			}
 		},
 		abort: () => runtimeSession.abort(),
@@ -127,18 +141,18 @@ function createKnowledgeProcessingSession(
 				if (usage) listener(usage);
 			}),
 		dispose() {
-			disposePromise ??= disposeRuntimeSession(runtimeSession, composition);
+			disposePromise ??= disposeRuntimeSession(runtimeHost, composition);
 			return disposePromise;
 		},
 	};
 }
 
 async function disposeRuntimeSession(
-	runtimeSession: Awaited<ReturnType<CodingAgentRuntimeComposition["backend"]["create"]>>,
+	runtimeHost: RuntimeHost,
 	composition: CodingAgentRuntimeComposition,
 ): Promise<void> {
 	try {
-		await runtimeSession.dispose();
+		await runtimeHost.close();
 	} finally {
 		await composition.dispose();
 	}

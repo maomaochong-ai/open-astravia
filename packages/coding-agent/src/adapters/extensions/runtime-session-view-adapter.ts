@@ -21,15 +21,31 @@ import {
  * ConversationDocument，因此续接、分支切换和元数据更新会即时可见。
  */
 export function createCodingAgentExtensionSessionView(assembly: RuntimeSessionCoreAssembly): ReadonlySessionManager {
-	const readDocument = (): ConversationDocument => assembly.conversationView.readDocument();
-	const readEntries = (): SessionEntry[] => readDocument().entries.map(toSessionEntry);
-	const readCwd = (): string => assembly.workspaceView.readWorkingDirectory() ?? readDocument().identity.cwd ?? "";
+	return createSessionView(toSessionViewSource(assembly));
+}
 
+export interface CodingAgentExtensionSessionViewSource {
+	readonly sessionPath: string | undefined;
+	readonly sessionDirectory?: string;
+	readDocument(): ConversationDocument;
+	readWorkingDirectory(): string | undefined;
+}
+
+export function createCodingAgentExtensionSessionViewFromSource(
+	source: CodingAgentExtensionSessionViewSource,
+): ReadonlySessionManager {
+	return createSessionView(source);
+}
+
+function createSessionView(source: CodingAgentExtensionSessionViewSource): ReadonlySessionManager {
+	const readDocument = (): ConversationDocument => source.readDocument();
+	const readEntries = (): SessionEntry[] => readDocument().entries.map(toSessionEntry);
+	const readCwd = (): string => source.readWorkingDirectory() ?? readDocument().identity.cwd ?? "";
 	return {
 		getCwd: readCwd,
-		getSessionDir: () => assembly.lifecycle.sessionDirectory ?? readCwd(),
+		getSessionDir: () => source.sessionDirectory ?? readCwd(),
 		getSessionId: () => readDocument().identity.sessionId,
-		getSessionFile: () => assembly.lifecycle.sessionPath,
+		getSessionFile: () => source.sessionPath,
 		getLeafId: () => readDocument().activeLeafId,
 		getLeafEntry: () => {
 			const document = readDocument();
@@ -55,6 +71,15 @@ export function createCodingAgentExtensionSessionView(assembly: RuntimeSessionCo
 			return projectCodingAgentSessionTree(entries, readCodingAgentSessionLabels(entries));
 		},
 		getSessionName: () => readDocument().name,
+	};
+}
+
+function toSessionViewSource(assembly: RuntimeSessionCoreAssembly): CodingAgentExtensionSessionViewSource {
+	return {
+		sessionPath: assembly.lifecycle.sessionPath,
+		sessionDirectory: assembly.lifecycle.sessionDirectory,
+		readDocument: () => assembly.conversationView.readDocument(),
+		readWorkingDirectory: () => assembly.workspaceView.readWorkingDirectory(),
 	};
 }
 

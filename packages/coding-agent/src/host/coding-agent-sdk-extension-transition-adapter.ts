@@ -1,25 +1,26 @@
-import { InitializationRollbackScope, type RuntimeSession } from "@vetta/runtime-core";
+import {
+	InitializationRollbackScope,
+	type RuntimeActiveSessionTransition,
+	type RuntimeActiveSessionTransitionLifecycle,
+	type RuntimeHostSession,
+	type RuntimePreparedSessionBinding,
+} from "@vetta/runtime-core";
 import type { CodingAgentRuntimeComposition } from "../composition/contracts/index.js";
 import type { CodingAgentExtensionEventHost, CodingAgentExtensionInitialization } from "./extensions/contracts.js";
 import type {
 	CodingAgentSdkOwnedResource,
 	CodingAgentSdkSessionInitializationContext,
 } from "./sdk-session/runtime-factory.js";
-import type {
-	CodingAgentPreparedSessionBinding,
-	CodingAgentSessionTransition,
-	CodingAgentSessionTransitionLifecycle,
-} from "./session-transition/contracts.js";
 
 type ExtensionEventHostFactory = (
-	session: RuntimeSession,
+	session: RuntimeHostSession,
 	composition: CodingAgentRuntimeComposition,
 	options?: { readonly replaceExisting?: boolean },
 ) => CodingAgentExtensionEventHost;
 
 /** 把 Session 级 Extension Event Host 纳入 SDK 活动会话的 prepare/commit/rollback 事务。 */
 export class CodingAgentSdkExtensionTransitionAdapter {
-	readonly lifecycle: CodingAgentSessionTransitionLifecycle;
+	readonly lifecycle: RuntimeActiveSessionTransitionLifecycle<RuntimeHostSession>;
 	private current: CodingAgentExtensionEventHost | undefined;
 	private readonly hosts = new Map<string, CodingAgentExtensionEventHost>();
 
@@ -79,7 +80,7 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 	}
 
 	async reload(
-		session: RuntimeSession,
+		session: RuntimeHostSession,
 		composition: CodingAgentRuntimeComposition,
 		operation: () => Promise<void>,
 	): Promise<void> {
@@ -121,7 +122,7 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 		await previous.dispose({ emitSessionShutdown: false });
 	}
 
-	private async before(transition: CodingAgentSessionTransition) {
+	private async before(transition: RuntimeActiveSessionTransition<RuntimeHostSession>) {
 		const runner = this.readRunner();
 		if (transition.kind === "fork") {
 			if (!transition.entryId || !runner.hasHandlers("session_before_fork")) return undefined;
@@ -141,8 +142,8 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 	}
 
 	private async prepare(
-		transition: CodingAgentSessionTransition & { readonly next: RuntimeSession },
-	): Promise<CodingAgentPreparedSessionBinding> {
+		transition: RuntimeActiveSessionTransition<RuntimeHostSession> & { readonly next: RuntimeHostSession },
+	): Promise<RuntimePreparedSessionBinding> {
 		const previous = this.current;
 		const next = this.hosts.get(transition.next.sessionId);
 		if (!previous || !next) throw new Error("SDK Extension transition binding is unavailable");
@@ -158,7 +159,9 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 		};
 	}
 
-	private async after(transition: CodingAgentSessionTransition & { readonly next: RuntimeSession }): Promise<void> {
+	private async after(
+		transition: RuntimeActiveSessionTransition<RuntimeHostSession> & { readonly next: RuntimeHostSession },
+	): Promise<void> {
 		if (transition.kind === "fork") {
 			await this.readRunner().emit({
 				type: "session_fork",

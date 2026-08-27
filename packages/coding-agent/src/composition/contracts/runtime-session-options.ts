@@ -56,3 +56,101 @@ export interface CodingAgentRuntimeSessionOptions {
 	/** 仅由产品宿主为单个 Session 注入的中立 Runtime Tool 注册。 */
 	readonly sessionRuntimeTools?: readonly CodingAgentRuntimeToolRegistration[];
 }
+
+/** Coding Agent Definition 边界的 Session payload 校验。 */
+export function requireCodingAgentRuntimeSessionOptions(value: unknown): CodingAgentRuntimeSessionOptions {
+	if (!isRecord(value)) {
+		throw new Error("Coding Agent Runtime Session requires an object configuration");
+	}
+	const sessionId = requireNonEmptyString(value.sessionId, "sessionId");
+	assertOptionalStringFields(value, [
+		"cwd",
+		"thinkingLevel",
+		"agentMode",
+		"executionMode",
+		"sandboxHostPath",
+		"linuxBubblewrapPath",
+		"macosSandboxExecPath",
+		"parentSessionPath",
+		"parentEntryId",
+		"memoryFile",
+		"systemPromptAddon",
+		"initialTodoLockSource",
+	]);
+	assertOptionalBooleanFields(value, ["enableBackgroundTasks", "includeAgentSkills", "memoryMode"]);
+	assertOptionalNumberFields(value, ["memoryCharLimit"]);
+	assertOptionalArrayFields(value, ["forkContextMessages", "initialTodos", "sessionTools", "sessionRuntimeTools"]);
+	assertOptionalFunctionFields(value, ["invokePluginTool", "invokePluginContinuation", "invokePluginSystemPrompt"]);
+	assertOptionalRecordFields(value, [
+		"model",
+		"agentPlugins",
+		"pluginTurnHandlerLeaseProvider",
+		"askUserQuestion",
+		"knowledgePageWriter",
+	]);
+	if (value.env !== undefined) {
+		if (!isRecord(value.env) || Object.values(value.env).some((item) => typeof item !== "string")) {
+			throw new Error("Coding Agent Runtime Session field env must contain only string values");
+		}
+	}
+	return { ...value, sessionId } as unknown as CodingAgentRuntimeSessionOptions;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function requireNonEmptyString(value: unknown, field: string): string {
+	if (typeof value !== "string" || value.trim() !== value || value.length === 0) {
+		throw new Error(`Coding Agent Runtime Session field ${field} must be a non-empty trimmed string`);
+	}
+	return value;
+}
+
+function assertOptionalStringFields(value: Record<string, unknown>, fields: readonly string[]): void {
+	for (const field of fields) {
+		if (value[field] !== undefined && typeof value[field] !== "string") {
+			throw new Error(`Coding Agent Runtime Session field ${field} must be a string`);
+		}
+	}
+}
+
+function assertOptionalBooleanFields(value: Record<string, unknown>, fields: readonly string[]): void {
+	for (const field of fields) {
+		if (value[field] !== undefined && typeof value[field] !== "boolean") {
+			throw new Error(`Coding Agent Runtime Session field ${field} must be a boolean`);
+		}
+	}
+}
+
+function assertOptionalNumberFields(value: Record<string, unknown>, fields: readonly string[]): void {
+	for (const field of fields) {
+		if (value[field] !== undefined && typeof value[field] !== "number") {
+			throw new Error(`Coding Agent Runtime Session field ${field} must be a number`);
+		}
+	}
+}
+
+function assertOptionalArrayFields(value: Record<string, unknown>, fields: readonly string[]): void {
+	for (const field of fields) {
+		if (value[field] !== undefined && !Array.isArray(value[field])) {
+			throw new Error(`Coding Agent Runtime Session field ${field} must be an array`);
+		}
+	}
+}
+
+function assertOptionalFunctionFields(value: Record<string, unknown>, fields: readonly string[]): void {
+	for (const field of fields) {
+		if (value[field] !== undefined && typeof value[field] !== "function") {
+			throw new Error(`Coding Agent Runtime Session field ${field} must be a function`);
+		}
+	}
+}
+
+function assertOptionalRecordFields(value: Record<string, unknown>, fields: readonly string[]): void {
+	for (const field of fields) {
+		if (value[field] !== undefined && !isRecord(value[field])) {
+			throw new Error(`Coding Agent Runtime Session field ${field} must be an object`);
+		}
+	}
+}

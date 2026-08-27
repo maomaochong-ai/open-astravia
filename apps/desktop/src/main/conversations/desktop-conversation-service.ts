@@ -1,5 +1,6 @@
 import { stat } from "node:fs/promises";
 import { extname, isAbsolute, resolve } from "node:path";
+import { CODING_AGENT_SESSION_TITLE_GENERATE } from "@vetta/coding-agent/session-extensions";
 import {
 	isSessionError,
 	type PromptRequest,
@@ -333,9 +334,13 @@ export class DesktopConversationService {
 				unsubscribe?.();
 				unsubscribe = undefined;
 				void this.runtime
-					.autoTitleSession(session.sessionId, prompt.text, "")
-					.then((name) => {
+					.invokeSessionExtension(session.sessionId, CODING_AGENT_SESSION_TITLE_GENERATE, {
+						userText: prompt.text,
+						assistantText: "",
+					})
+					.then(async (name) => {
 						if (!name || !session.sessionPath || !session.listCwd) return;
+						await this.runtime.renameSessionById(session.sessionId, name);
 						emitConversationListChanged({
 							cwd: session.listCwd,
 							sessionPath: session.sessionPath,

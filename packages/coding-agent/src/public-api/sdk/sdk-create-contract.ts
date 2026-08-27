@@ -8,6 +8,9 @@ import type {
 	AgentPluginToolInvoker,
 	AgentPluginTurnHandlerLeaseProvider,
 	ConversationScenario,
+	RuntimeObservationHubIssue,
+	RuntimeObservationPort,
+	RuntimeObservationRouteOptions,
 } from "@vetta/runtime-core";
 import type { RuntimeTracer } from "@vetta/runtime-telemetry";
 import type {
@@ -93,6 +96,21 @@ export interface CodingAgentQuestionCapability {
 	ask(request: CodingAgentQuestionRequest, signal?: AbortSignal): Promise<CodingAgentQuestionResult>;
 }
 
+export interface CodingAgentSessionObservationRoute {
+	readonly port: RuntimeObservationPort;
+	readonly route: RuntimeObservationRouteOptions;
+}
+
+/**
+ * SDK Session 自有观测 Hub 的接线。父级和 Route Adapter 均由调用方持有，Session close 只 flush 自有 Hub。
+ */
+export interface CodingAgentSessionObservationOptions {
+	readonly parent?: RuntimeObservationPort;
+	readonly routes?: readonly CodingAgentSessionObservationRoute[];
+	readonly maxPendingRecords?: number;
+	readonly onIssue?: (issue: RuntimeObservationHubIssue) => void;
+}
+
 /**
  * 新公共 SDK 的值对象和窄能力参数。
  *
@@ -134,6 +152,8 @@ export interface CreateCodingAgentSessionOptions {
 	readonly enableMcp?: boolean;
 	readonly serverUrl?: string;
 	readonly tracer?: RuntimeTracer;
+	/** 把 Agent、RuntimeHost、Tool、MCP、Prompt 与活动 Session 生命周期事件汇入同一个模块化 Hub。 */
+	readonly observationHub?: CodingAgentSessionObservationOptions;
 	readonly tracingTraceName?: string;
 	readonly tracingMetadata?: Readonly<Record<string, unknown>>;
 	readonly agentPlugins?: AgentPluginRuntimeConfig;

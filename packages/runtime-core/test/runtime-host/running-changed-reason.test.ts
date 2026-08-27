@@ -1,10 +1,13 @@
 import type { Message } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import {
+	RUNTIME_HOST_LIFECYCLE_OBSERVATION,
 	type RunningChangedReason,
 	RuntimeHost,
+	type RuntimeHostLifecycleObservation,
 	type RuntimeHostSessionAssembly,
 	type RuntimeHostSessionBackend,
+	type RuntimeObservationRecord,
 	type SessionEvent,
 } from "../../src/index.js";
 
@@ -132,11 +135,149 @@ describe("RuntimeHost running-changed reason", () => {
 			{ type: "compaction.end", success: true, tokensBefore: 91_000 },
 		]);
 	});
+
+	it("对每个订阅者抑制重复工具快照，同时保留真实工具变化", async () => {
+		let streamListener: ((event: SessionEvent) => void) | undefined;
+		let activeToolNames = ["read"];
+		const host = new RuntimeHost({
+			sessionBackend: {
+				createAssembly: async () =>
+					assembly(
+						"tools-session",
+						(handler) => {
+							streamListener = handler;
+						},
+						() => activeToolNames,
+					),
+			},
+		});
+		await host.createSession({});
+		const events: SessionEvent[] = [];
+		host.subscribe("tools-session", (event) => events.push(event));
+
+		streamListener?.({
+			...base(),
+			sessionId: "tools-session",
+			type: "active_tools_update",
+			activeToolNames: ["read"],
+		} as SessionEvent);
+		activeToolNames = ["read", "bash"];
+		streamListener?.({
+			...base(),
+			sessionId: "tools-session",
+			type: "active_tools_update",
+			activeToolNames,
+		} as SessionEvent);
+
+		expect(events.flatMap((event) => (event.type === "active_tools_update" ? [event.activeToolNames] : []))).toEqual([
+			["read"],
+			["read", "bash"],
+		]);
+		await host.close();
+	});
+
+	it("通过统一 Observation 隔离 Session 维护、Observer 与外部监听器失败", async () => {
+		const streamListeners = new Set<(event: SessionEvent) => void>();
+		const records: RuntimeObservationRecord[] = [];
+		let resolveQueueObservation: (() => void) | undefined;
+		const queueObservation = new Promise<void>((resolve) => {
+			resolveQueueObservation = resolve;
+		});
+		const baseAssembly = assembly("observed-session", (handler) => streamListeners.add(handler));
+		const backend: RuntimeHostSessionBackend = {
+			createAssembly: async () => ({
+				...baseAssembly,
+				workspaceView: { readWorkingDirectory: () => "/private/workspace" },
+			}),
+		};
+		const host = new RuntimeHost({
+			sessionBackend: backend,
+			pathServices: {
+				normalize: (path) => path,
+				ensureDirectory: async () => {
+					throw new Error("secret workspace failure");
+				},
+			},
+			queueSidecarStore: {
+				read: async () => undefined,
+				write: async () => {
+					throw new Error("secret queue failure");
+				},
+				remove: async () => {},
+			},
+			sessionErrorObserver: () => {
+				throw new Error("secret error observer failure");
+			},
+			sessionCompactionObserver: () => {
+				throw new Error("secret compaction observer failure");
+			},
+			observationPort: {
+				record: (record) => {
+					records.push(record);
+					const payload = record.payload as RuntimeHostLifecycleObservation;
+					if (record.token === RUNTIME_HOST_LIFECYCLE_OBSERVATION && payload.component === "queue-sidecar") {
+						resolveQueueObservation?.();
+					}
+				},
+			},
+		});
+		await host.createSession({});
+		expect(() =>
+			host.subscribe("observed-session", () => {
+				throw new Error("secret listener failure");
+			}),
+		).not.toThrow();
+		let delivered = 0;
+		host.subscribe("observed-session", () => {
+			delivered += 1;
+		});
+
+		for (const listener of streamListeners) {
+			listener(errorEvent());
+			listener({
+				...base(),
+				sessionId: "observed-session",
+				type: "compaction.start",
+				reason: "threshold",
+				contextTokens: 90,
+				contextWindow: 100,
+				thresholdTokens: 80,
+			} as SessionEvent);
+			listener({
+				...base(),
+				sessionId: "observed-session",
+				type: "queue.changed",
+				paused: false,
+				entries: [{ id: "queued", behavior: "followUp", displayText: "private prompt" }],
+				snapshot: { private: true },
+			} as SessionEvent);
+		}
+		await host.prompt("observed-session", { text: "private prompt" });
+		await queueObservation;
+
+		expect(delivered).toBeGreaterThan(2);
+		const failures = records
+			.filter((record) => record.token === RUNTIME_HOST_LIFECYCLE_OBSERVATION)
+			.map((record) => record.payload as RuntimeHostLifecycleObservation);
+		expect(failures).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ operation: "session.prepare", component: "session-workspace" }),
+				expect.objectContaining({ operation: "session.persist", component: "queue-sidecar" }),
+				expect.objectContaining({ operation: "listener.notify", component: "session-event-listener" }),
+				expect.objectContaining({ operation: "observer.notify", component: "session-error-observer" }),
+				expect.objectContaining({ operation: "observer.notify", component: "session-compaction-observer" }),
+			]),
+		);
+		expect(JSON.stringify(failures)).not.toContain("secret");
+		expect(JSON.stringify(failures)).not.toContain("private prompt");
+		await host.close();
+	});
 });
 
 function assembly(
 	sessionId: string,
 	onSubscribe: (handler: (event: SessionEvent) => void) => void,
+	readActiveToolNames: () => readonly string[] = () => [],
 ): RuntimeHostSessionAssembly {
 	return {
 		lifecycle: { sessionId, sessionPath: `/tmp/${sessionId}.jsonl`, dispose: async () => {} },
@@ -153,18 +294,10 @@ function assembly(
 		hostInteraction: { bind: async () => {} },
 		executionController: { isBusy: () => false, reconfigure: async () => {} },
 		workspaceView: { readWorkingDirectory: () => undefined },
-		backgroundWorkController: {
-			clearFinished: () => 0,
-			killTask: () => false,
-			readTasks: () => [],
-			readSubagents: () => [],
-			interruptSubagent: () => undefined,
-		},
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},
 			setAgentMode: () => {},
-			reconfigureAgentPlugins: async () => {},
 		},
 		modelController: {
 			selectModel: async () => {},
@@ -178,7 +311,12 @@ function assembly(
 			resolveApiKey: async () => undefined,
 		},
 		corePorts: {
-			turnControl: { prompt: async () => undefined, continue: async () => {}, abort: async () => {} },
+			turnControl: {
+				prompt: async () => undefined,
+				continue: async () => {},
+				retry: async () => {},
+				abort: async () => {},
+			},
 			eventStream: {
 				subscribe: (handler) => {
 					onSubscribe(handler);
@@ -188,7 +326,7 @@ function assembly(
 			stateReader: {
 				readState: () => ({
 					thinkingLevel: "off",
-					activeToolNames: [],
+					activeToolNames: [...readActiveToolNames()],
 					isStreaming: false,
 					messageCount: 0,
 					contextPercent: 0,

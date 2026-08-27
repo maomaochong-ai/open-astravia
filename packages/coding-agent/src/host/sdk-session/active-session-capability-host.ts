@@ -1,8 +1,8 @@
 import type { ImageContent, TextContent } from "@vetta/ai";
-import type { RuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeActiveSessionHost, RuntimeHostSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
-import { createCodingAgentExtensionSessionView } from "../../adapters/extensions/runtime-session-view-adapter.js";
-import type { CodingAgentActiveSessionHost } from "../../composition/session-host/active-session-transition-host.js";
+import { createCodingAgentExtensionSessionViewFromSource } from "../../adapters/extensions/runtime-session-view-adapter.js";
+import type { CodingAgentRuntimeSessionOptions } from "../../composition/contracts/index.js";
 import type {
 	CodingAgentBashOperations,
 	CodingAgentBashResult,
@@ -14,13 +14,13 @@ import type { CodingAgentSdkActiveSessionCapabilityPort } from "./runtime-contra
 
 export interface CodingAgentSdkBashPort {
 	execute(
-		session: RuntimeSession,
+		session: RuntimeHostSession,
 		command: string,
 		onChunk?: (chunk: string) => void,
 		options?: { readonly excludeFromContext?: boolean; readonly operations?: CodingAgentBashOperations },
 	): Promise<CodingAgentBashResult>;
 	record(
-		session: RuntimeSession,
+		session: RuntimeHostSession,
 		command: string,
 		result: CodingAgentBashResult,
 		options?: { readonly excludeFromContext?: boolean },
@@ -28,7 +28,7 @@ export interface CodingAgentSdkBashPort {
 	abort(): void;
 	readonly isRunning: boolean;
 	hasPending(sessionId: string): boolean;
-	quiesce(session: RuntimeSession): Promise<void>;
+	quiesce(session: RuntimeHostSession): Promise<void>;
 	dispose(): Promise<void>;
 }
 
@@ -39,7 +39,7 @@ export interface CodingAgentSdkTreeNavigationPort {
 
 export interface CodingAgentSdkActiveSessionCapabilityHostOptions {
 	readonly sessionHost: Pick<
-		CodingAgentActiveSessionHost,
+		RuntimeActiveSessionHost<CodingAgentRuntimeSessionOptions, RuntimeHostSession>,
 		| "fork"
 		| "newSession"
 		| "readSession"
@@ -49,7 +49,9 @@ export interface CodingAgentSdkActiveSessionCapabilityHostOptions {
 	>;
 	readonly createSessionSetupInitializer?: (
 		setup: NonNullable<CodingAgentNewSessionOptions["setup"]>,
-	) => NonNullable<Parameters<CodingAgentActiveSessionHost["newSession"]>[0]>["seedInitializer"];
+	) => NonNullable<
+		Parameters<RuntimeActiveSessionHost<CodingAgentRuntimeSessionOptions, RuntimeHostSession>["newSession"]>[0]
+	>["seedInitializer"];
 	readonly treeNavigation?: CodingAgentSdkTreeNavigationPort;
 	readonly bash?: CodingAgentSdkBashPort;
 }
@@ -59,7 +61,7 @@ export class CodingAgentSdkActiveSessionCapabilityHost implements CodingAgentSdk
 	constructor(private readonly options: CodingAgentSdkActiveSessionCapabilityHostOptions) {}
 
 	getSessionBranch() {
-		return createCodingAgentExtensionSessionView(this.readSession().createCoreAssembly()).getBranch();
+		return createCodingAgentExtensionSessionViewFromSource(this.readSession()).getBranch();
 	}
 
 	sendCustomMessage<T = unknown>(
@@ -81,7 +83,7 @@ export class CodingAgentSdkActiveSessionCapabilityHost implements CodingAgentSdk
 				metadata: message.details,
 				timestamp: Date.now(),
 			};
-			await session.createCoreAssembly().contextDeliveryController.deliver([record], mode);
+			await session.deliverContext([record], mode);
 		});
 	}
 
@@ -169,9 +171,7 @@ export class CodingAgentSdkActiveSessionCapabilityHost implements CodingAgentSdk
 	}
 
 	switchBranch(targetId: string): Promise<{ leafId: string }> {
-		return this.options.sessionHost.runActiveSessionMutation((session) =>
-			session.createCoreAssembly().historyController.switchBranch(targetId),
-		);
+		return this.options.sessionHost.runActiveSessionMutation((session) => session.switchBranch(targetId));
 	}
 
 	appendBranchSummary(
@@ -181,30 +181,24 @@ export class CodingAgentSdkActiveSessionCapabilityHost implements CodingAgentSdk
 		fromHook?: boolean,
 	): Promise<{ entryId: string }> {
 		return this.options.sessionHost.runActiveSessionMutation((session) =>
-			session.createCoreAssembly().historyController.appendBranchSummary(parentId, summary, details, fromHook),
+			session.appendBranchSummary(parentId, summary, details, fromHook),
 		);
 	}
 
 	deleteMessage(entryId: string): Promise<{ leafId: string | null }> {
-		return this.options.sessionHost.runActiveSessionMutation((session) =>
-			session.createCoreAssembly().historyController.deleteMessage(entryId),
-		);
+		return this.options.sessionHost.runActiveSessionMutation((session) => session.deleteMessage(entryId));
 	}
 
 	replaceLastUserMessage(entryId: string): Promise<{ leafId: string | null }> {
-		return this.options.sessionHost.runActiveSessionMutation((session) =>
-			session.createCoreAssembly().historyController.replaceLastUserMessage(entryId),
-		);
+		return this.options.sessionHost.runActiveSessionMutation((session) => session.replaceLastUserMessage(entryId));
 	}
 
 	exportForkToNewFile(entryId: string): Promise<{ path: string; text: string }> {
-		return this.options.sessionHost.runActiveSessionMutation((session) =>
-			session.createCoreAssembly().historyController.forkSession(entryId),
-		);
+		return this.options.sessionHost.runActiveSessionMutation((session) => session.forkSession(entryId));
 	}
 
 	getUserMessagesForForking(): readonly { entryId: string; text: string }[] {
-		return createCodingAgentExtensionSessionView(this.readSession().createCoreAssembly())
+		return createCodingAgentExtensionSessionViewFromSource(this.readSession())
 			.getEntries()
 			.flatMap((entry) => {
 				if (entry.type !== "message" || entry.message.role !== "user") return [];
@@ -222,7 +216,7 @@ export class CodingAgentSdkActiveSessionCapabilityHost implements CodingAgentSdk
 		return this.options.bash?.dispose() ?? Promise.resolve();
 	}
 
-	private readSession(): RuntimeSession {
+	private readSession(): RuntimeHostSession {
 		return this.options.sessionHost.readSession();
 	}
 
@@ -233,7 +227,7 @@ export class CodingAgentSdkActiveSessionCapabilityHost implements CodingAgentSdk
 }
 
 function resolveCustomMessageDeliveryMode(
-	session: RuntimeSession,
+	session: RuntimeHostSession,
 	options: { readonly triggerTurn?: boolean; readonly deliverAs?: "steer" | "followUp" | "nextTurn" } | undefined,
 ) {
 	if (options?.deliverAs === "nextTurn") return "nextTurn" as const;

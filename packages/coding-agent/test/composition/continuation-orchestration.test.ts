@@ -106,7 +106,7 @@ describe("Coding Agent continuation orchestration", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "continuation-session",
 			cwd: "C:\\workspace",
 		});
@@ -117,7 +117,7 @@ describe("Coding Agent continuation orchestration", () => {
 		await session.prompt({ text: "start" });
 
 		expect(modelCalls).toHaveLength(4);
-		const userTexts = (await session.getMessages())
+		const userTexts = (await session.readMessages())
 			.filter((message): message is Extract<Message, { role: "user" }> => message.role === "user")
 			.map(messageText);
 		expect(userTexts).toHaveLength(4);
@@ -128,7 +128,7 @@ describe("Coding Agent continuation orchestration", () => {
 		expect(userTexts[3]).toBe("stop hook continuation");
 		expect(pluginInvocations).toEqual(["plugin-a:continue", "plugin-a:continue", "plugin-a:continue"]);
 		expect(stopInvocations).toEqual(["plugin response", "hook response"]);
-		expect((await session.getMessages()).map(({ role }) => role)).toEqual([
+		expect((await session.readMessages()).map(({ role }) => role)).toEqual([
 			"user",
 			"assistant",
 			"user",

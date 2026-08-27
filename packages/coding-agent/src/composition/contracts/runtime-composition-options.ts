@@ -36,6 +36,7 @@ import type {
 } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationPersistenceFactory } from "./conversation-persistence.js";
 import type { CodingAgentMemoryRuntimeFactoryOptions } from "./memory-runtime.js";
+import type { CodingAgentRuntimeHostRetrySettings } from "./runtime-host.js";
 import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
 import type { CodingAgentSessionExecutionEnvironmentFactory } from "./session-execution-environment.js";
 import type {
@@ -224,6 +225,11 @@ export interface CodingAgentRuntimeObservabilityOptions {
 	readonly tracing?: AgentCoreTurnEngineOptions["tracing"];
 }
 
+export interface CodingAgentRuntimeHostOptions {
+	/** 可选的 Coding Agent 自动重试设置；由通用 Assembly decorator 承载状态机。 */
+	readonly runtimeHostRetrySettings?: CodingAgentRuntimeHostRetrySettings;
+}
+
 export interface CodingAgentObservationRoute {
 	readonly port: RuntimeObservationPort;
 	readonly route: RuntimeObservationRouteOptions;
@@ -269,4 +275,5 @@ export interface CodingAgentRuntimeCompositionOptions
 		CodingAgentRuntimeExtensionOptions,
 		CodingAgentRuntimeContextOptions,
 		CodingAgentRuntimeObservabilityOptions,
+		CodingAgentRuntimeHostOptions,
 		CodingAgentRuntimeAgentBindingOptions {}

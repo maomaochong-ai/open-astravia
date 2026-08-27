@@ -1,5 +1,5 @@
 import type { Api, Model } from "@vetta/ai";
-import type { AgentPluginRuntimeConfig, RuntimeSession, RuntimeSessionInputQueueMode } from "@vetta/runtime-core";
+import type { AgentPluginRuntimeConfig, RuntimeHostSession, RuntimeSessionInputQueueMode } from "@vetta/runtime-core";
 import type { CodingAgentTurnRetryController, CodingAgentTurnRetrySettings } from "../../execution/turn/contracts.js";
 import type {
 	CodingAgentMemoryConfiguration,
@@ -20,7 +20,7 @@ export interface CodingAgentSdkSessionCapabilitySettings {
 }
 
 export interface CodingAgentSdkSessionCapabilityHostOptions {
-	readonly readSession: () => RuntimeSession;
+	readonly readSession: () => RuntimeHostSession;
 	readonly readAvailableModels?: () => Promise<readonly Model<Api>[]>;
 	readonly scopedModels?: readonly CodingAgentScopedModel[];
 	readonly initialAgentMode?: string;

@@ -7,11 +7,13 @@ Tool、MCP、模型绑定、扩展与观测作用域。
 ## 先理解四层生命周期
 
 ```text
-RuntimeAgentRegistry
-└── RuntimeAgentDefinition revision      进程级、不可变、可动态替换
-    └── RuntimeAgentInstance             Agent 实例级资源，例如租户连接或共享目录
-        └── RuntimeAgentSession          会话级资源，例如 Prompt、Tool、MCP 状态和模型选择
-            └── RuntimeSnapshot lease    单个 Turn 使用的不可变能力代际
+RuntimeHost
+├── agentBackends                        新会话 admission 与 Backend generation lease
+└── agents.registry
+    └── RuntimeAgentDefinition revision  进程级、不可变、可动态替换
+        └── RuntimeAgentInstance         Agent 实例级资源，例如租户连接或共享目录
+            └── RuntimeAgentSession      会话级资源，例如 Prompt、Tool、MCP 状态和模型选择
+                └── RuntimeSnapshot      单个 Turn 使用的不可变能力代际
 ```
 
 | 层级 | 适合拥有的内容 | 释放时机 |
@@ -21,7 +23,8 @@ RuntimeAgentRegistry
 | Session | 会话 Tool/MCP 状态、Session Extension | Session 关闭后 |
 | Turn Snapshot | 本 Turn 的 Prompt、Tool handler、模型绑定 | Turn lease 释放后 |
 
-`RuntimeHost` 是唯一生命周期根；它通过 `host.agents` 提供多 Agent 控制面。`RuntimeAgentRuntime` 是其中可独立测试、
+`RuntimeHost` 是唯一生命周期根；它通过 `host.agents` 提供 Definition/Instance 控制面，通过 `host.agentBackends` 提供
+当前 Host 的新会话 admission。`RuntimeAgentRuntime` 是其中可独立测试、
 可单独接入 Observation 的模块，不是第二个 Host。只使用 `host.agents` 创建的 `RuntimeAgentSession` 不直接提供
 `prompt()`；完整产品还需通过 `RuntimeHostSessionBackend` 接入 Conversation、Kernel Turn Engine 与产品 Session facade。
 
@@ -255,6 +258,46 @@ Definition 的 Session Plan 中直接 `activate()` 这些资源，此时不需�
 `host.createSession({ sessionPath, agent: { id: history.agentId } })`；历史文件没有 `agentId` 时，由应用选择自己的兼容
 默认 Agent。持久化的只有稳定 Agent identity，不包含 `definitionRevisionId` 或 `instanceId`：后两者属于进程内执行代际，
 恢复时应按当前发布策略重新解析。
+
+### 在已有 Host 中动态安装另一种主 Agent
+
+当 Host 已经有 Coding Agent 之类的默认 Backend，而新 Agent 需要自己的配置解析、平台资源或持久化格式时，使用
+`installAgent()` 一次安装 Definition 与 Backend，避免出现“Definition 已可发现，但 Host 还不能创建它的会话”的半状态：
+
+```ts
+const installation = await host.installAgent({
+  source: { id: "plugins", revision: "reviewer-1" },
+  definition: createReviewerAgent(modelBindingProvider),
+
+  createBackend({ agents, observationPublisher }) {
+    return new RuntimeAgentSessionAssemblyBackend({
+      runtime: agents,
+      observationPublisher,
+      identity: reviewerConversationIdentityResolver,
+      fallbackResources: reviewerRuntimeResourceFactory,
+    });
+  },
+
+  // 只有恢复请求没有显式 agent.id 时才使用 Catalog 认领持久化格式。
+  catalog: reviewerSessionCatalog,
+});
+
+const { sessionId } = await host.createSession({
+  agent: {
+    id: "reviewer",
+    instanceKey: "tenant-a",
+    instanceConfigurationRevision: "tenant-a-3",
+    instanceConfiguration: { tenantId: "tenant-a" },
+    sessionConfiguration: { language: "zh-CN", strict: true },
+  },
+});
+```
+
+`createBackend()` 可以异步准备资源；准备成功前 Definition 不会发布。任一发布步骤失败时 Host 会回滚已取得的资源。
+安装创建的 Backend 默认归 Host 所有；多个 Agent 共享同一个 Backend 时必须传 `ownsBackend: false`，由外部组合根关闭。
+
+同一种通用 Backend 能执行全部 Definition 时，不需要为每个 Agent 注册 route：把它作为 RuntimeHost 默认 Backend，动态
+Source 只发布 Definition 即可。只有不同 Agent 确实需要异构 Backend 时才使用 `agentBackends`，不要为形式制造一层路由。
 
 ## 自定义 Instance 与 Session 配置
 
@@ -532,6 +575,22 @@ host.agents.registry.upsert({
 - 已经 acquire 的 Turn Snapshot 永远不会被替换；
 - 旧 revision 在最后一个 lease 释放前不会 dispose。
 
+这里更新的是 Agent 的 Prompt/Tool/MCP/Extension 等 Definition 内容，不会机械重建 Backend。若平台装配本身也要换代，
+显式发布一个 Backend generation：
+
+```ts
+const replacement = host.agentBackends.upsert({
+  agentId: "reviewer",
+  source: { id: "plugins", revision: "reviewer-backend-2" },
+  backend: createReviewerBackendV2(),
+  catalog: reviewerSessionCatalog,
+  ownsBackend: true,
+});
+```
+
+替换后，新会话使用新 Backend；已经创建的会话持有旧 generation lease，直到其 `lifecycle.dispose()` 成功才回收旧
+Backend。Backend dispose 失败会保留 generation，`replacement.retirement?.dispose()` 或 `host.close()` 可再次重试。
+
 ### 让已有 Session 从下一 Turn 更新
 
 ```ts
@@ -551,6 +610,16 @@ Turn 不受影响，下一次 acquire 才看到新 Prompt、Tool、模型绑定�
 host.agents.registry.retire("reviewer"); // 禁止新 acquire，但保留目录项和已有 lease
 host.agents.registry.remove("reviewer"); // 删除目录项，已有 lease 仍可安全结束
 ```
+
+如果该 Agent 通过 `installAgent()` 接入完整 Host，应一起关闭 admission：
+
+```ts
+const retirement = installation.retire(); // 幂等；不会误删后来替换的新 revision
+await retirement.backendRetirement?.dispose(); // 可选：等待已有 Session 结束并回收 Backend
+```
+
+仅删除 Definition 而保留 Backend route，会让新请求先命中 Backend、再因 Definition 缺失失败；仅删除 Backend 则会让
+Definition 仍可被低层控制面发现、但不能在该 Host 创建完整会话。`installAgent()` 用一个句柄避免这种双控制面的误用。
 
 普通更新、retire 和 remove 都不是紧急撤权。若安全事件要求让在途 Tool 或 credential 立即失效，必须使用 Tool/credential
 自己的 hard-revocation 合同，不能依赖普通 revision retirement。
@@ -649,6 +718,11 @@ const host = new RuntimeHost({ observationPort });
 `runtime.host.lifecycle` 记录后调用 Port 的可选 `close()`。复用应用级 Hub 时不要把共享 Port 直接传给多个 Host；应注入
 应用 Hub 创建的 `observationPublisher`，此时 Host 只使用 Publisher，不关闭上层 Hub。
 
+动态 admission 使用 `runtime.host.agent-backend` Token 发布 register/replace/retire/remove、route lease、Backend dispose
+和 install 事务。payload 只包含 Agent/Definition/Backend revision、Source、路由来源、lease 计数和分类失败，不包含
+配置值、Session 路径、Prompt、Tool/MCP 参数或原始错误正文。模块自己的 Hub 可以单独采集；嵌入应用 Hub 后，同一 record
+会保留原 identity 和 timestamp 向上汇聚，因此日志、Metrics、Trace event 和未来 UI 可使用同一个 Adapter 边界。
+
 需要模块独立观测、动态 Adapter 或多层汇聚时，使用开箱即用的 `RuntimeObservationHub`：
 
 ```ts
@@ -704,7 +778,9 @@ observationPublisher.record(REVIEW_INDEX_OBSERVATION, {
 ```
 
 基座内置的 `runtime.agent.lifecycle` 覆盖 Definition revision、Instance、Agent Session、rollout 和 identity rebind；
-`runtime.host.lifecycle` 覆盖 Conversation Session 释放与 Host 拥有资源的关闭结果。具体日志、Trace、Metrics 和 UI
+`runtime.host.lifecycle` 覆盖 Conversation Session identity rebind、释放与 Host 拥有资源的关闭结果。持久化 continuation
+改变 canonical Session ID 后，同一个 `RuntimeHostSession` 会立即读取新 ID，旧 ID 在句柄存活期间仍是同一会话的别名；
+旧会话的 Sandbox grant 不会隐式跨越换卷边界。具体日志、Trace、Metrics 和 UI
 如何展示这些记录仍由 Adapter 决定。关闭失败只携带 `component`、`errorName/errorCode` 等安全字段，不携带原始错误正文。
 
 Observation 是失败隔离的只读出口，不得用于授权、修改 Prompt、重试或阻止 Tool 执行。这些行为分别进入

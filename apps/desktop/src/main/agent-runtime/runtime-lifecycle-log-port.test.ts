@@ -1,8 +1,12 @@
 import {
 	defineRuntimeObservation,
+	RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION,
 	RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
+	RUNTIME_HOST_AGENT_BACKEND_OBSERVATION,
 	RUNTIME_HOST_LIFECYCLE_OBSERVATION,
+	type RuntimeActiveSessionHostObservation,
 	type RuntimeAgentLifecycleObservation,
+	type RuntimeHostAgentBackendObservation,
 	type RuntimeHostLifecycleObservation,
 	type RuntimeObservationRecord,
 } from "@vetta/runtime-core";
@@ -132,6 +136,85 @@ describe("runtime lifecycle log port", () => {
 		expect(JSON.stringify(logger.warn.mock.calls)).not.toContain("message");
 	});
 
+	it("logs dynamic main Agent admission without exposing configuration or error text", () => {
+		const logger = { info: vi.fn(), warn: vi.fn() };
+		const port = createRuntimeLifecycleLogPort(logger);
+
+		port.record(
+			agentBackendObservationRecord(
+				{
+					operation: "install",
+					phase: "completed",
+					backendRevisionId: "backend-1",
+					sourceId: "plugin",
+					sourceRevision: "2",
+				},
+				{ agentId: "reviewer", revisionId: "definition-1" },
+			),
+		);
+		port.record(
+			agentBackendObservationRecord(
+				{
+					operation: "backend.dispose",
+					phase: "failed",
+					backendRevisionId: "backend-1",
+					failure: { category: "error", errorName: "CleanupError", errorCode: "E_CLEANUP" },
+				},
+				{ agentId: "reviewer" },
+			),
+		);
+
+		expect(logger.info).toHaveBeenCalledWith("runtime host agent backend", {
+			operation: "install",
+			phase: "completed",
+			agentId: "reviewer",
+			definitionRevisionId: "definition-1",
+			backendRevisionId: "backend-1",
+			sourceId: "plugin",
+			sourceRevision: "2",
+		});
+		expect(logger.warn).toHaveBeenCalledWith("runtime host agent backend failure", {
+			operation: "backend.dispose",
+			phase: "failed",
+			agentId: "reviewer",
+			backendRevisionId: "backend-1",
+			failureCategory: "error",
+			errorName: "CleanupError",
+			errorCode: "E_CLEANUP",
+		});
+		expect(JSON.stringify([...logger.info.mock.calls, ...logger.warn.mock.calls])).not.toContain("message");
+	});
+
+	it("logs active Session transition failures through the same privacy-safe lifecycle adapter", () => {
+		const logger = { info: vi.fn(), warn: vi.fn() };
+		const port = createRuntimeLifecycleLogPort(logger);
+
+		port.record(
+			activeSessionObservationRecord(
+				{
+					operation: "transition.cleanup",
+					phase: "failed",
+					component: "retired-session",
+					transitionKind: "resume",
+					failure: { category: "error", errorName: "CleanupError", errorCode: "E_CLEANUP" },
+				},
+				{ sessionId: "session-2" },
+			),
+		);
+
+		expect(logger.warn).toHaveBeenCalledWith("runtime active session lifecycle failure", {
+			operation: "transition.cleanup",
+			phase: "failed",
+			component: "retired-session",
+			transitionKind: "resume",
+			sessionId: "session-2",
+			failureCategory: "error",
+			errorName: "CleanupError",
+			errorCode: "E_CLEANUP",
+		});
+		expect(JSON.stringify(logger.warn.mock.calls)).not.toContain("message");
+	});
+
 	it("ignores noisy successful data-plane events and unrelated observations", () => {
 		const logger = { info: vi.fn(), warn: vi.fn() };
 		const port = createRuntimeLifecycleLogPort(logger);
@@ -156,4 +239,18 @@ function hostObservationRecord(
 	context: RuntimeObservationRecord["context"],
 ): RuntimeObservationRecord<RuntimeHostLifecycleObservation> {
 	return { token: RUNTIME_HOST_LIFECYCLE_OBSERVATION, context, timestamp: 1, payload };
+}
+
+function agentBackendObservationRecord(
+	payload: RuntimeHostAgentBackendObservation,
+	context: RuntimeObservationRecord["context"],
+): RuntimeObservationRecord<RuntimeHostAgentBackendObservation> {
+	return { token: RUNTIME_HOST_AGENT_BACKEND_OBSERVATION, context, timestamp: 1, payload };
+}
+
+function activeSessionObservationRecord(
+	payload: RuntimeActiveSessionHostObservation,
+	context: RuntimeObservationRecord["context"],
+): RuntimeObservationRecord<RuntimeActiveSessionHostObservation> {
+	return { token: RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION, context, timestamp: 1, payload };
 }

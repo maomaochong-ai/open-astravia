@@ -1,10 +1,6 @@
 import type { AgentPluginRuntimeConfig, RuntimeSessionConfigurationController } from "@vetta/runtime-core";
 import type { AgentSession } from "@vetta/runtime-core/kernel";
 
-export interface CodingAgentPluginReconfiguration {
-	reconfigureAgentPlugins(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<void>;
-}
-
 export interface CodingAgentSessionConfigurationRevision {
 	readonly revision: number;
 	readonly agentMode: string | undefined;
@@ -22,7 +18,7 @@ export class CodingAgentSessionConfigurationState {
 
 	constructor(
 		initialAgentMode: string | undefined,
-		private readonly readBaseAgentPlugins: () => AgentPluginRuntimeConfig | undefined,
+		private readonly readBasePlugins: () => AgentPluginRuntimeConfig | undefined,
 	) {
 		this.agentMode = initialAgentMode;
 	}
@@ -32,7 +28,26 @@ export class CodingAgentSessionConfigurationState {
 	}
 
 	readAgentPlugins(): AgentPluginRuntimeConfig | undefined {
-		return this.hasPluginOverride ? this.pluginOverride : this.readBaseAgentPlugins();
+		return this.hasPluginOverride ? this.pluginOverride : this.readBasePlugins();
+	}
+
+	readBaseAgentPlugins(): AgentPluginRuntimeConfig | undefined {
+		return this.readBasePlugins();
+	}
+
+	hasAgentPluginOverride(): boolean {
+		return this.hasPluginOverride;
+	}
+
+	setAgentPluginOverride(agentPlugins: AgentPluginRuntimeConfig | undefined): void {
+		this.pluginOverride = agentPlugins;
+		this.hasPluginOverride = true;
+		this.revision += 1;
+	}
+
+	publishBaseAgentPluginRevision(): void {
+		if (this.hasPluginOverride) return;
+		this.revision += 1;
 	}
 
 	readActiveToolNamesOverride(): readonly string[] | undefined {
@@ -57,19 +72,10 @@ export class CodingAgentSessionConfigurationState {
 		this.revision += 1;
 	}
 
-	createController(
-		session: AgentSession,
-		pluginReconfiguration?: CodingAgentPluginReconfiguration,
-	): RuntimeSessionConfigurationController {
+	createController(session: AgentSession): RuntimeSessionConfigurationController {
 		return {
 			setSteeringMode: (mode) => session.setSteeringMode(mode),
 			setFollowUpMode: (mode) => session.setFollowUpMode(mode),
-			reconfigureAgentPlugins: async (agentPlugins) => {
-				await pluginReconfiguration?.reconfigureAgentPlugins(agentPlugins);
-				this.pluginOverride = agentPlugins;
-				this.hasPluginOverride = true;
-				this.revision += 1;
-			},
 			// 只剩 SDK 宿主（sdk-session）这一条调用路径：Desktop 的工作模式在会话创建时
 			// 固化、会话内不可变，Runtime Host 已不再向活跃会话推送模式。
 			setAgentMode: (mode) => {

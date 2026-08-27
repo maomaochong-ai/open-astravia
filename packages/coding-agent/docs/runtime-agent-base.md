@@ -62,6 +62,10 @@ await composition.dispose();
 示例中的 `codingAgentPlatformOptions` 代表现有的模型、Conversation persistence、Tool environment 等必填平台端口，
 不是仓库导出的对象。
 
+这里的“独立控制面”只表示 Composition 自己拥有 `RuntimeAgentRuntime`；真正创建 Conversation Session 时，SDK、CLI
+或测试仍会在外层建立一个 RuntimeHost。Composition 本身只是产品 Backend 与 Agent Instance 的装配结果，不是第二个
+Session Host。
+
 ### 应用使用唯一 RuntimeHost
 
 一个进程需要承载多个工作区或多个平级主 Agent 时，由应用组合根创建唯一 `RuntimeHost`。Backend factory 在 Host
@@ -93,6 +97,26 @@ await host.close(); // 统一关闭 Session、Backend Pool、Agent 控制面和�
 `createApplicationCodingAgentBackendPool()` 代表应用自己的 `RuntimeHostSessionBackend` 工厂，不是 Coding Agent 导出的隐藏 API。
 注入 `runtime` 后，Registry 的发布权属于 RuntimeHost，所以不能同时传 `agentRuntime.definition` 或
 `agentRuntime.source`。Desktop 采用这一方式：各工作区 Composition 拥有独立 Instance，但共享同一 Registry。
+
+## 名称相似但职责不同的对象
+
+当前代码中有几类历史上都带 `Host` 的对象，但它们不能合并为一个万能管理器：
+
+| 对象 | 唯一职责 | 是否是多主 Agent 根 |
+| --- | --- | --- |
+| `RuntimeHost` | Agent Backend 准入、Conversation Session 索引、公共控制面与统一关闭 | 是 |
+| `RuntimeActiveSessionHost` | 在一个产品 Session facade 内串行化 new/resume/fork，并原子切换当前 identity | 否 |
+| 公共 `CodingAgentHost` | SDK 便利所有权组，批量持有和关闭多个配置彼此隔离的 Coding Agent Session | 否 |
+| `DesktopRuntimeBackendPool` | 按 workspace/scope 复用 Coding Agent Composition，并实现 RuntimeHost Backend Port | 否 |
+| `CatalogRoutedRuntimeHostSessionBackend` | 按持久化格式归属选择 legacy/greenfield Backend，禁止错误格式回退 | 否 |
+
+公共 `CodingAgentHost` 保留名称是为了 SDK 兼容。它的每个成员允许使用不同 cwd、Storage、Tool、MCP、Extension Source
+和模型资源，因此每个成员内部拥有隔离的 Composition + RuntimeHost；它不提供 Agent Registry，也不能用来安装不同
+`agentId`。需要在一个进程中动态创建、替换或退役多个平级主 Agent 时，应使用 `RuntimeHost.installAgent()`。
+
+Desktop 的三层选择也不是重复路由：`RuntimeHost.agentBackends` 按 Agent/revision 路由，Catalog Router 按磁盘格式路由，
+Backend Pool 按 workspace Composition scope 路由。三个 key、生命周期和失败语义均不同；合并后会让 Agent 更新、格式兼容
+和工作区资源所有权互相耦合。
 
 ## 自定义 Coding Agent revision
 
@@ -168,6 +192,12 @@ Session 摘要先进入自己的产品子 Hub，再无损汇聚到应用 Hub。�
 
 模块仍可在没有应用 Hub 时给自己的子 Hub 注册 Adapter 独立观测。统一的是安全信封、identity、路由和故障隔离，不是把
 日志、原生 Span、审计与业务事件合成一种语义。
+
+SDK Session 现在从 Composition 子 Hub 取得非所有权 Publisher，同时注入其内部 RuntimeHost 与
+RuntimeActiveSessionHost。因此 workspace 准备、队列 sidecar、Session observer/listener、Session 切换清理，以及
+Agent/Tool/MCP/Prompt 等产品事件都进入同一观测树；关闭 RuntimeHost 不会提前关闭 Composition Hub。没有注入上层 Hub
+时仍可在 `composition.observations` 本地挂 Adapter 单独观测。高层 `createCodingAgentSession()` 可通过
+`observationHub.parent/routes` 完成同样接线，不需要深度导入 Composition 实现。
 
 Desktop 当前只把关键控制面 Observation 投影为日志：
 

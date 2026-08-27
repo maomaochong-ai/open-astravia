@@ -46,10 +46,11 @@ describe("RuntimeHost Agent runtime ownership", () => {
 		await expect(host.createSession()).rejects.toThrow("RuntimeHost is closed");
 	});
 
-	it("reports owned resource cleanup failures, continues cleanup, and rejects close", async () => {
+	it("reports owned resource cleanup failures and retries from the failed ownership phase", async () => {
 		const records: RuntimeObservationRecord[] = [];
 		const closeObservationPort = vi.fn(async () => {});
 		const backendFailure = Object.assign(new Error("private backend details"), { code: "E_BACKEND_CLOSE" });
+		const disposeBackend = vi.fn().mockRejectedValueOnce(backendFailure).mockResolvedValueOnce(undefined);
 		const host = new RuntimeHost({
 			observationPort: {
 				record: (record) => {
@@ -61,16 +62,14 @@ describe("RuntimeHost Agent runtime ownership", () => {
 				createAssembly: vi.fn(async () => {
 					throw new Error("not used");
 				}),
-				dispose: vi.fn(async () => {
-					throw backendFailure;
-				}),
+				dispose: disposeBackend,
 			}),
 		});
 
 		await expect(host.close()).rejects.toThrow("Failed to close RuntimeHost resources");
 
-		expect(host.agents.snapshot().closed).toBe(true);
-		expect(closeObservationPort).toHaveBeenCalledOnce();
+		expect(host.agents.snapshot().closed).toBe(false);
+		expect(closeObservationPort).not.toHaveBeenCalled();
 		expect(
 			records
 				.filter((record) => record.token.id === RUNTIME_HOST_LIFECYCLE_OBSERVATION.id)
@@ -85,6 +84,11 @@ describe("RuntimeHost Agent runtime ownership", () => {
 			},
 		]);
 		expect(JSON.stringify(records)).not.toContain("private backend details");
+
+		await host.close();
+		expect(disposeBackend).toHaveBeenCalledTimes(2);
+		expect(host.agents.snapshot().closed).toBe(true);
+		expect(closeObservationPort).toHaveBeenCalledOnce();
 	});
 
 	it("rejects ambiguous backend and observation ownership", () => {

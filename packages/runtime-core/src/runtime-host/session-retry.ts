@@ -69,6 +69,9 @@ export function withRuntimeHostSessionRetry(
 				continue: async () => {
 					await run(() => session.continue());
 				},
+				retry: async () => {
+					await run(() => session.retry());
+				},
 				abort: async () => {
 					retry.abortRetry();
 					await session.abort();

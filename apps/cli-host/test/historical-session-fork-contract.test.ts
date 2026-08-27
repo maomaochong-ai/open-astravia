@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
 	type AgentRpcExecutable,
-	buildAgentRpcExecutable,
+	acquireAgentRpcExecutable,
 	createAgentRpcFixture,
 	readSessionFile,
 	startAgentRpc,
@@ -17,11 +17,11 @@ describe("Historical session fork contract", () => {
 	let executable: AgentRpcExecutable;
 
 	beforeAll(async () => {
-		executable = await buildAgentRpcExecutable();
-	}, 30_000);
+		executable = await acquireAgentRpcExecutable();
+	});
 
 	afterAll(async () => {
-		await executable.dispose();
+		await executable?.dispose();
 	});
 
 	it("forks mixed Import Seed and Event history with CLI re-edit semantics and resumes it after restart", async () => {

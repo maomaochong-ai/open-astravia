@@ -1,5 +1,5 @@
 import type { Api, Model } from "@vetta/ai";
-import type { ConversationDocument, RuntimeSession, RuntimeSessionCoreAssembly } from "@vetta/runtime-core";
+import type { ConversationDocument, RuntimeHostSession } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import type { ExtensionRunner } from "../../../src/extensions/index.js";
 import { CodingAgentBranchNavigationHost } from "../../../src/host/session-history/branch-navigation-host.js";
@@ -137,24 +137,17 @@ function createFixture(options: { readonly extensionSummary?: string } = {}) {
 			],
 		};
 	});
-	const assembly = {
-		lifecycle: { sessionId: "session-1", sessionPath: "session.jsonl", dispose: async () => {} },
-		conversationView: { readDocument: () => document },
-		workspaceView: { readWorkingDirectory: () => "C:/workspace" },
-		modelView: {
-			readCurrentModel: () => model,
-			resolveApiKey: async () => "test-key",
-		},
-		historyController: {
-			appendBranchSummary,
-			navigateForEdit: vi.fn(async () => ({ text: "target branch", cancelled: false })),
-		},
-		metadataController: { setLabel },
-	} as unknown as RuntimeSessionCoreAssembly;
 	const session = {
 		sessionId: "session-1",
-		createCoreAssembly: () => assembly,
-	} as unknown as RuntimeSession;
+		sessionPath: "session.jsonl",
+		readDocument: () => document,
+		readWorkingDirectory: () => "C:/workspace",
+		readCurrentModel: () => model,
+		resolveModelApiKey: async () => "test-key",
+		appendBranchSummary,
+		navigateForEdit: vi.fn(async () => ({ text: "target branch", cancelled: false })),
+		setLabel,
+	} as unknown as RuntimeHostSession;
 	const emit = vi.fn(async (event: { readonly type: string }) => {
 		if (event.type === "session_before_tree" && options.extensionSummary) {
 			return { summary: { summary: options.extensionSummary } };
@@ -165,7 +158,7 @@ function createFixture(options: { readonly extensionSummary?: string } = {}) {
 		hasHandlers: (event: string) => event === "session_before_tree" && options.extensionSummary !== undefined,
 		emit,
 	} as unknown as ExtensionRunner;
-	const withActiveSession = async <T>(operation: (activeSession: RuntimeSession) => Promise<T>): Promise<T> =>
+	const withActiveSession = async <T>(operation: (activeSession: RuntimeHostSession) => Promise<T>): Promise<T> =>
 		operation(session);
 
 	return { appendBranchSummary, clearExecutionContext, emit, runner, setLabel, withActiveSession };

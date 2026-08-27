@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
 import {
-	CodingAgentActiveSessionHost,
 	type CodingAgentMemoryRuntimeFactoryOptions,
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
@@ -10,6 +9,7 @@ import {
 	createCodingAgentCodingToolResultPolicy,
 	createCodingAgentMemoryRolloverRuntime,
 	createCodingAgentRuntimeComposition,
+	createCodingAgentRuntimeHostSessionConfig,
 	createCodingAgentSessionSetupSeedInitializer,
 } from "@vetta/coding-agent/composition";
 import { getKnowledgeDir, getVettaHomePath } from "@vetta/coding-agent/config";
@@ -29,7 +29,13 @@ import {
 	createCodingAgentRuntimeResourceReloadHost,
 } from "@vetta/coding-agent/runtime";
 import { buildDefaultHookConfigLayers } from "@vetta/ecosystem-adapter";
-import { InitializationRollbackScope, type RuntimeSession, type RuntimeSessionCatalog } from "@vetta/runtime-core";
+import {
+	InitializationRollbackScope,
+	RuntimeActiveSessionHost,
+	RuntimeHost,
+	type RuntimeHostSession,
+	type RuntimeSessionCatalog,
+} from "@vetta/runtime-core";
 import { createMcpToolResultPolicy } from "@vetta/runtime-mcp";
 import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
 import {
@@ -82,6 +88,7 @@ function createCliMemoryRolloverRuntime(options: CodingAgentMemoryRuntimeFactory
 
 export interface CliSessionAssembly {
 	readonly runtime: CodingAgentRuntimeComposition;
+	readonly runtimeHost: RuntimeHost;
 	readonly sessionHost: CliCodingAgentProcessSessionHost;
 	readonly extensionSessionHost: CodingAgentRuntimeExtensionSessionHost;
 	dispose(): Promise<void>;
@@ -122,10 +129,11 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 	let runtime: CodingAgentRuntimeComposition | undefined;
 	let extensionSessionHost: CodingAgentRuntimeExtensionSessionHost | undefined;
 	let dismissRuntimeRollback: (() => void) | undefined;
-	let dismissSessionRollback: (() => void) | undefined;
+	let dismissRuntimeHostRollback: (() => void) | undefined;
 	let dismissExtensionRollback: (() => void) | undefined;
 	let dismissActiveSessionRollback: (() => void) | undefined;
 	try {
+		const scenario = options.backend === "im" ? "im-claw" : (parsed.scenario ?? "cli");
 		runtime = await createCodingAgentRuntimeComposition({
 			conversationDir: options.conversationDir,
 			createConversationPersistence: () => createFileConversationPersistence(options.conversationDir),
@@ -149,7 +157,7 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 				cwd: bootstrap.cwd,
 				vettaHome: getVettaHomePath(),
 			}),
-			scenario: options.backend === "im" ? "im-claw" : (parsed.scenario ?? "cli"),
+			scenario,
 			activation:
 				parsed.noTools || parsed.tools
 					? { mode: "explicit", toolNames: parsed.tools ?? [] }
@@ -196,17 +204,24 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 			memoryMode: parsed.memoryMode || parsed.memoryFile !== undefined,
 			memoryFile: parsed.memoryFile,
 		};
-		const session = options.sessionPath
-			? await runtime.sessions.resume(sessionOptions)
-			: await runtime.sessions.create(sessionOptions);
-		const dismissSession = rollback.defer({
-			id: "runtime-session",
-			rollback: () => session.dispose(),
+		const runtimeHost = new RuntimeHost({
+			sessionBackend: runtime.runtimeHostBackend,
+			sessionCatalog: options.sessionCatalog,
+			observationPublisher: runtime.observations.publisher(),
+			// CLI 的历史默认是直接工具执行；Desktop 才从用户设置解析默认 execution mode。
+			getDefaultExecutionMode: () => "full-access",
 		});
-		dismissSessionRollback = dismissSession;
+		dismissRuntimeHostRollback = rollback.defer({
+			id: "runtime-host",
+			rollback: () => runtimeHost.close(),
+		});
+		const initial = await runtimeHost.createSession(
+			toRuntimeHostSessionConfig(runtime, sessionOptions, scenario, options.sessionPath),
+		);
+		const session = runtimeHost.getSessionView(initial.sessionId);
 		runtime.sessionHooks.start(session.sessionId, "resume");
 		const createExtensionEventHost = (
-			targetSession: RuntimeSession,
+			targetSession: RuntimeHostSession,
 			bindingOptions?: { readonly replaceExisting?: boolean },
 		) => {
 			const extensionsResult = bootstrap.resourceLoader.getExtensions();
@@ -233,8 +248,28 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 			id: "extension-session-host",
 			rollback: () => acquiredExtensionSessionHost.dispose(),
 		});
-		const activeSessionHost = new CodingAgentActiveSessionHost({
-			runtime,
+		const activeSessionHost = new RuntimeActiveSessionHost<CodingAgentRuntimeSessionOptions, RuntimeHostSession>({
+			runtime: {
+				sessions: {
+					create: async (nextOptions) => {
+						const created = await runtimeHost.createSession(
+							toRuntimeHostSessionConfig(runtime!, nextOptions, scenario),
+						);
+						return runtimeHost.getSessionView(created.sessionId);
+					},
+					resume: async (nextOptions) => {
+						const sessionPath = resolveConversationFilePath(options.conversationDir, nextOptions.sessionId);
+						const created = await runtimeHost.createSession(
+							toRuntimeHostSessionConfig(runtime!, nextOptions, scenario, sessionPath),
+						);
+						return runtimeHost.getSessionView(created.sessionId);
+					},
+				},
+				sessionHooks: runtime.sessionHooks,
+				quiesceSessionBackgroundCommands: (sessionId) => runtime!.quiesceSessionBackgroundCommands(sessionId),
+				preserveSessionExecutionContext: (sourceSessionId, targetSessionId) =>
+					runtime!.preserveSessionExecutionContext(sourceSessionId, targetSessionId),
+			},
 			initialSession: session,
 			sessionOptions,
 			conversationDir: options.conversationDir,
@@ -249,7 +284,6 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 				after: (transition) => extensionSessionHost!.after(transition),
 			},
 		});
-		dismissSessionRollback();
 		dismissActiveSessionRollback = rollback.defer({
 			id: "active-session-host",
 			rollback: () => activeSessionHost.dispose(),
@@ -294,6 +328,7 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 		extensionSessionHost.bindCommandContext(extensionCommandActions);
 		const sessionHost = new CliCodingAgentProcessSessionHost({
 			runtime,
+			runtimeHost,
 			activeSessionHost,
 			extensionSessionHost,
 			mcpSource: managedMcpSource,
@@ -301,12 +336,14 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 			setRetryEnabled: (enabled) => bootstrap.settingsManager.setRetryEnabled(enabled),
 		});
 		dismissActiveSessionRollback();
+		dismissRuntimeHostRollback();
 		dismissRuntimeRollback();
 		dismissMcpRollback();
 		dismissExtensionRollback();
 		rollback.commit();
 		return {
 			runtime,
+			runtimeHost,
 			sessionHost,
 			extensionSessionHost,
 			dispose: () => sessionHost.dispose(),
@@ -314,6 +351,18 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 	} catch (error) {
 		return rollback.rollback(error, CLI_RUNTIME_HOST_STARTUP_FAILURE);
 	}
+}
+
+function toRuntimeHostSessionConfig(
+	runtime: CodingAgentRuntimeComposition,
+	options: CodingAgentRuntimeSessionOptions,
+	scenario: CodingAgentRuntimeComposition["scenario"],
+	sessionPath?: string,
+) {
+	return createCodingAgentRuntimeHostSessionConfig(runtime.agentRuntime, options, {
+		...(sessionPath ? { sessionPath } : {}),
+		scenario,
+	});
 }
 
 function resolvePositiveInteger(value: string | undefined): number | undefined {

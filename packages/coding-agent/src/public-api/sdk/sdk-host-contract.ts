@@ -15,7 +15,10 @@ export interface CreateCodingAgentHostOptions {
 	readonly sessionDefaults?: CodingAgentHostSessionDefaults;
 }
 
-/** 拥有其创建的活动 Session，但不暴露具体产品管理器。 */
+/**
+ * SDK 便利所有权组：拥有其创建的隔离 Coding Agent Session，但不暴露具体产品管理器。
+ * 它不负责注册或路由不同主 Agent；多主 Agent 应直接使用 runtime-core RuntimeHost。
+ */
 export interface CodingAgentHost {
 	createSession(options?: CreateCodingAgentSessionOptions): Promise<CreateCodingAgentSessionResult>;
 	close(): Promise<void>;

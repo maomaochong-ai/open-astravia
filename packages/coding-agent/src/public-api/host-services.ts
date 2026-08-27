@@ -14,6 +14,7 @@ import { type CodingAgentHtmlExportRuntime, createCodingAgentHtmlExportRuntime }
 import { createCodingAgentHostFromSessionFactory } from "../host/coding-agent-host.js";
 import { createHostBashExecutor } from "../host/command-execution/index.js";
 import { createCodingAgentNodeExtensionFactoryLoader } from "../host/extensions/node-extension-factory-loader.js";
+import { createCodingAgentNodeSettingsRuntime } from "../host/node-state-services.js";
 import { createCodingAgentSessionFromPublicOptions } from "../host/sdk-session/index.js";
 import { createCodingAgentNodeSessionExecutionEnvironment } from "../host/tool-environment/node/node-session-execution-environment.js";
 import { createCodingAgentNodeToolEnvironment } from "../host/tool-environment/node/node-tool-environment.js";
@@ -43,6 +44,7 @@ export {
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentModelRuntime,
 	createCodingAgentNodeExtensionFactoryLoader,
+	createCodingAgentNodeSettingsRuntime,
 	createCodingAgentNodeToolEnvironment,
 	createCodingAgentNodeSessionExecutionEnvironment,
 	createCodingAgentPluginMcpRuntime,
@@ -79,7 +81,8 @@ export interface CreateCodingAgentHostWithServicesOptions {
 }
 
 /**
- * 将现有宿主状态服务适配到稳定 Host；传入的服务由调用方持有，关闭 Host 不会销毁这些共享对象。
+ * 将现有宿主状态服务适配到 SDK 产品 Session 所有权组；传入的服务由调用方持有，关闭 Host
+ * 不会销毁这些共享对象。该 API 不替代承载平级主 Agent 的 runtime-core RuntimeHost。
  */
 export function createCodingAgentHostWithServices(
 	options: CreateCodingAgentHostWithServicesOptions = {},

@@ -6,7 +6,7 @@ import {
 	type AgentRpcExecutable,
 	type AgentRpcFixture,
 	type AgentRpcProcess,
-	buildAgentRpcExecutable,
+	acquireAgentRpcExecutable,
 	createAgentRpcFixture,
 	type RpcFrame,
 	readSessionFile,
@@ -26,11 +26,11 @@ const COMMAND_ADMISSION_HOST_OPTIONS = {
 let executable: AgentRpcExecutable;
 
 beforeAll(async () => {
-	executable = await buildAgentRpcExecutable();
+	executable = await acquireAgentRpcExecutable();
 });
 
 afterAll(async () => {
-	await executable.dispose();
+	await executable?.dispose();
 });
 
 describe("Agent Runtime RPC command admission contract", () => {

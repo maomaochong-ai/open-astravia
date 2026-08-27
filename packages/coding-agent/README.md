@@ -35,6 +35,10 @@ Runtime Kernel 和协议，不应选择 `runtime-node` 默认实现；`runtime-c
 公开 SDK 的零配置兼容根，以及供应用复用的 Host 适配器；它们不属于产品策略，也不能被新的产品能力依赖。
 CLI、Desktop 和 Runtime Node 的最终组合根负责选择 MCP Supervisor、文件、进程、资源和配置实现。
 
+公开 `CodingAgentHost` 是 SDK 兼容的“隔离产品 Session 所有权组”，不是另一套多主 Agent Host。真正的 Agent
+Registry、Backend admission 和 Conversation Session 生命周期根只有 `runtime-core` 的 `RuntimeHost`；名称相似对象的
+完整边界见[《Coding Agent 与多主 Agent 基座》](./docs/runtime-agent-base.md#名称相似但职责不同的对象)。
+
 ## 本包拥有
 
 - 默认 Profile、Prompt、Mode 与 Feature 集合

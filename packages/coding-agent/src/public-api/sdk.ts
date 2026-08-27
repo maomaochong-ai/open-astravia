@@ -10,7 +10,7 @@ import type {
 	CreateCodingAgentSessionResult,
 } from "./sdk/index.js";
 
-/** 创建拥有多个稳定 Session 生命周期的默认产品 Host。 */
+/** 创建拥有多个隔离 Coding Agent Session 的 SDK 产品所有权组；它不是多主 Agent RuntimeHost。 */
 export function createCodingAgentHost(options: CreateCodingAgentHostOptions = {}): CodingAgentHost {
 	return createCodingAgentHostFromSessionFactory(options, (sessionOptions, lifecycle) =>
 		createCodingAgentSessionFromPublicOptions(sessionOptions, { onSessionClosed: lifecycle.onClosed }),
@@ -70,6 +70,8 @@ export type {
 	CodingAgentSessionEvent,
 	CodingAgentSessionEventListener,
 	CodingAgentSessionFeatureEvent,
+	CodingAgentSessionObservationOptions,
+	CodingAgentSessionObservationRoute,
 	CodingAgentSessionSetup,
 	CodingAgentSessionStats,
 	CodingAgentSessionStorageTarget,

@@ -2,6 +2,13 @@ import { type AIErrorDetails, getAIErrorDetails, isAIError } from "@vetta/ai";
 
 export type RuntimeFailureOrigin = "runtime" | "provider" | "tool" | "mcp";
 
+/** Safe process-owner fields for a generic Session ownership conflict. */
+export interface RuntimeFailureLockHolder {
+	readonly pid: number;
+	readonly hostname: string;
+	readonly openedAt: string;
+}
+
 /** Safe diagnostic fields shared by persisted Turn failures and host events. */
 export interface RuntimeFailureDetails {
 	readonly statusCode?: number;
@@ -14,6 +21,7 @@ export interface RuntimeFailureDetails {
 	readonly responseHeaders?: Readonly<Record<string, string>>;
 	readonly responseBodyPreview?: string;
 	readonly retryAfterMs?: number;
+	readonly lockHolder?: RuntimeFailureLockHolder;
 }
 
 /** Current in-process failure contract. */
@@ -153,7 +161,8 @@ function readRuntimeFailureDetails(value: unknown): RuntimeFailureDetails | unde
 		(candidate.url !== undefined && typeof candidate.url !== "string") ||
 		(candidate.responseHeaders !== undefined && !isStringRecord(candidate.responseHeaders)) ||
 		(candidate.responseBodyPreview !== undefined && typeof candidate.responseBodyPreview !== "string") ||
-		(candidate.retryAfterMs !== undefined && typeof candidate.retryAfterMs !== "number")
+		(candidate.retryAfterMs !== undefined && typeof candidate.retryAfterMs !== "number") ||
+		(candidate.lockHolder !== undefined && !isRuntimeFailureLockHolder(candidate.lockHolder))
 	) {
 		return undefined;
 	}
@@ -172,7 +181,18 @@ function readRuntimeFailureDetails(value: unknown): RuntimeFailureDetails | unde
 			? {}
 			: { responseBodyPreview: candidate.responseBodyPreview as string }),
 		...(candidate.retryAfterMs === undefined ? {} : { retryAfterMs: candidate.retryAfterMs as number }),
+		...(candidate.lockHolder === undefined ? {} : { lockHolder: candidate.lockHolder as RuntimeFailureLockHolder }),
 	};
+}
+
+function isRuntimeFailureLockHolder(value: unknown): value is RuntimeFailureLockHolder {
+	if (!value || typeof value !== "object") return false;
+	const candidate = value as Record<string, unknown>;
+	return (
+		typeof candidate.pid === "number" &&
+		typeof candidate.hostname === "string" &&
+		typeof candidate.openedAt === "string"
+	);
 }
 
 function isRuntimeFailureOrigin(value: unknown): value is RuntimeFailureOrigin {

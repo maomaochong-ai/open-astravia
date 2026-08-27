@@ -586,12 +586,7 @@ describe("KernelRuntimeSessionBackend", () => {
 
 		expect(assessment).toEqual({
 			ready: false,
-			missingPorts: [
-				"hostInteraction",
-				"executionController",
-				"backgroundWorkController",
-				"configurationController",
-			],
+			missingPorts: ["hostInteraction", "executionController", "configurationController"],
 		});
 	});
 
@@ -604,17 +599,9 @@ describe("KernelRuntimeSessionBackend", () => {
 				isBusy: () => false,
 				reconfigure: vi.fn(),
 			},
-			backgroundWorkController: {
-				clearFinished: () => 0,
-				killTask: () => false,
-				readTasks: () => [],
-				readSubagents: () => [],
-				interruptSubagent: () => undefined,
-			},
 			configurationController: {
 				setSteeringMode,
 				setFollowUpMode: vi.fn(),
-				reconfigureAgentPlugins: vi.fn(async () => {}),
 				setAgentMode: vi.fn(),
 			},
 		} satisfies Partial<KernelRuntimeAssembly>;

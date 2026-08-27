@@ -41,7 +41,7 @@ describe("Coding Agent Todo observation", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "todo-observation-session",
 			cwd: "C:\\workspace",
 		});

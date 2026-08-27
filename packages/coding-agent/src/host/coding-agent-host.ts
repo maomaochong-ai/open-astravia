@@ -18,10 +18,16 @@ export function createCodingAgentHostFromSessionFactory(
 	options: CreateCodingAgentHostOptions,
 	createSession: CodingAgentHostSessionFactory,
 ): CodingAgentHost {
-	return new DefaultCodingAgentHost(options, createSession);
+	return new CodingAgentProductSessionOwner(options, createSession);
 }
 
-class DefaultCodingAgentHost implements CodingAgentHost {
+/**
+ * 公共 SDK 的产品资源所有权组，不是多主 Agent 控制面。
+ *
+ * 每个成员 Session 可以拥有不同 cwd、Tool/MCP/Extension Source、存储与模型资源，因而内部是隔离的
+ * Coding Agent Composition + RuntimeHost。真正承载多个平级主 Agent 的进程级根始终是 runtime-core RuntimeHost。
+ */
+class CodingAgentProductSessionOwner implements CodingAgentHost {
 	private readonly sessions = new Set<CreateCodingAgentSessionResult["session"]>();
 	private readonly pendingCreations = new Set<Promise<CreateCodingAgentSessionResult>>();
 	private closePromise: Promise<void> | undefined;

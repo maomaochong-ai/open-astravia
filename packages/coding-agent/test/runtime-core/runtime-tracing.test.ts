@@ -50,7 +50,7 @@ describe("Greenfield Runtime tracing", () => {
 
 		try {
 			for (const sessionId of ["root-session", "child-session"]) {
-				const session = await composition.backend.create({ sessionId });
+				const session = await composition.createSession({ sessionId });
 				await expect(session.prompt({ text: "hello" })).resolves.toMatchObject({ status: "completed" });
 				await session.dispose();
 			}

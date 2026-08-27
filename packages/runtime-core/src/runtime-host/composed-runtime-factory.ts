@@ -39,7 +39,6 @@ import type { RuntimeModelRuntime } from "./runtime-model.js";
 import { KernelRuntimeSessionContextController } from "./runtime-session-context-controller.js";
 import type { RuntimeSessionIdentity, RuntimeStateSource } from "./runtime-session-projection.js";
 import type {
-	RuntimeSessionBackgroundWorkController,
 	RuntimeSessionConfigurationController,
 	RuntimeSessionExecutionController,
 	RuntimeSessionExtensionHost,
@@ -50,10 +49,7 @@ import type {
 export type RuntimeAssemblyOperation = "create" | "resume";
 
 export type RuntimeSessionPeripherals = Partial<
-	Pick<
-		KernelRuntimeAssembly,
-		"hostInteraction" | "executionController" | "backgroundWorkController" | "configurationController"
-	>
+	Pick<KernelRuntimeAssembly, "hostInteraction" | "executionController" | "configurationController">
 >;
 
 export interface RuntimeResourceContext {
@@ -82,7 +78,6 @@ export interface RuntimeResources {
 	readonly extensionHost?: RuntimeSessionExtensionHost;
 	readonly hostInteraction?: RuntimeSessionHostInteraction;
 	readonly executionController?: RuntimeSessionExecutionController;
-	readonly backgroundWorkController?: RuntimeSessionBackgroundWorkController;
 	readonly configurationController?: RuntimeSessionConfigurationController;
 	readonly toolController?: RuntimeSessionToolController;
 	/**
@@ -281,8 +276,6 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 				extensionHost: resources.extensionHost,
 				hostInteraction: sessionPeripherals?.hostInteraction ?? resources.hostInteraction,
 				executionController: sessionPeripherals?.executionController ?? resources.executionController,
-				backgroundWorkController:
-					sessionPeripherals?.backgroundWorkController ?? resources.backgroundWorkController,
 				configurationController: sessionPeripherals?.configurationController ?? resources.configurationController,
 				contextController,
 				contextDeliveryController: {

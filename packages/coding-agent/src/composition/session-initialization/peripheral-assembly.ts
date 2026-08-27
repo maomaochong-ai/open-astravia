@@ -9,8 +9,10 @@ import type {
 import { SessionExtensionComposition, sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
+import { createCodingAgentBackgroundWorkSessionExtension } from "../../execution/background/background-work-session-extension.js";
 import { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import { createCodingAgentAskUserQuestionFeature } from "../../features/ask-user-question/index.js";
+import { createCodingAgentSessionAssistanceExtension } from "../../features/session-assistance/session-assistance-session-extension.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import {
 	CODING_AGENT_TODO_RUNTIME,
@@ -19,6 +21,7 @@ import {
 import { CODING_AGENT_TODO_OBSERVATION } from "../../features/todo/todo-session-extension-contract.js";
 import { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import { type CodingAgentMemoryRolloverRuntime, createCodingAgentMemoryRuntimeFeature } from "../../memory/index.js";
+import { createCodingAgentPluginConfigurationSessionExtension } from "../../plugins/runtime/plugin-configuration-session-extension.js";
 import type {
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
@@ -208,6 +211,9 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	const additionalExtensions = await profile.createSessionExtensionDefinitions?.(sessionOptions);
 	const sessionExtensions = await SessionExtensionComposition.create({
 		definitions: [
+			createCodingAgentBackgroundWorkSessionExtension(),
+			createCodingAgentPluginConfigurationSessionExtension(),
+			createCodingAgentSessionAssistanceExtension(),
 			createCodingAgentTodoSessionExtension({
 				activation: options.activation,
 				createRuntime: createTodoRuntime ? () => createTodoRuntime(sessionOptions) : undefined,

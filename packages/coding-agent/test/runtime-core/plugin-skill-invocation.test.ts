@@ -6,6 +6,7 @@ import type { AgentPluginRuntimeConfig } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CodingAgentRuntimeComposition } from "../../src/composition/index.js";
+import { CODING_AGENT_PLUGIN_CONFIGURATION_APPLY } from "../../src/plugins/runtime/plugin-configuration-session-extension-contract.js";
 import type { CodingAgentRuntimeModelSource } from "../../src/public-api/host-services.js";
 import { SettingsRuntime } from "../../src/settings/index.js";
 import { createCodingAgentRuntimeComposition } from "../fixtures/conversation-persistence.js";
@@ -54,21 +55,21 @@ describe("plugin Skill invocation", () => {
 			promptSettingsSource: settings,
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "plugin-skill-session",
 			cwd: workspace,
 			includeAgentSkills: false,
 			agentPlugins: pluginSkills("remotion-renderer", remotionSkill),
 		});
-		const core = session.createCoreAssembly();
-		const invokeSkill = core.toolController?.readAvailableTools().get("invoke_skill");
+		const invokeSkill = session.readAvailableTools().get("invoke_skill");
 		if (!invokeSkill) throw new Error("Expected invoke_skill tool");
 
 		expect(await invoke(invokeSkill, "remotion-video")).toContain("Use the Remotion workflow.");
 		expect(await invoke(invokeSkill, "base-skill")).toContain("Use the base workflow.");
 
-		const hostAssembly = session.createRuntimeHostAssemblyCandidate();
-		await hostAssembly.configurationController?.reconfigureAgentPlugins(pluginSkills("chart-renderer", chartSkill));
+		await session.invokeExtension(CODING_AGENT_PLUGIN_CONFIGURATION_APPLY, {
+			agentPlugins: pluginSkills("chart-renderer", chartSkill),
+		});
 
 		expect(await invoke(invokeSkill, "remotion-video")).toContain('Skill "remotion-video" not found');
 		expect(await invoke(invokeSkill, "chart-video")).toContain("Use the chart workflow.");

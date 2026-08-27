@@ -226,18 +226,10 @@ function assembly(
 			reconfigure: options.reconfigure,
 		},
 		workspaceView: { readWorkingDirectory: () => options.cwd },
-		backgroundWorkController: {
-			clearFinished: () => 0,
-			killTask: () => false,
-			readTasks: () => [],
-			readSubagents: () => [],
-			interruptSubagent: () => undefined,
-		},
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},
 			setAgentMode: () => {},
-			reconfigureAgentPlugins: async () => {},
 		},
 		queueController: options.queueController,
 		modelController: {
@@ -255,6 +247,7 @@ function assembly(
 			turnControl: {
 				prompt: async () => undefined,
 				continue: options.continueTurn ?? (async () => {}),
+				retry: async () => {},
 				abort: async () => {},
 			},
 			eventStream: {

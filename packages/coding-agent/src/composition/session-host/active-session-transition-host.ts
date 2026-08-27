@@ -1,4 +1,4 @@
-import { RuntimeActiveSessionHost } from "@vetta/runtime-core";
+import { type RuntimeActiveSession, RuntimeActiveSessionHost } from "@vetta/runtime-core";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentActiveSessionHostOptions } from "./active-session-transition-contracts.js";
 
@@ -18,8 +18,10 @@ export type {
 } from "./active-session-transition-contracts.js";
 
 /** Coding Agent compatibility name for the Runtime-owned active Session transaction host. */
-export class CodingAgentActiveSessionHost extends RuntimeActiveSessionHost<CodingAgentRuntimeSessionOptions> {
-	constructor(options: CodingAgentActiveSessionHostOptions) {
+export class CodingAgentActiveSessionHost<
+	TSession extends RuntimeActiveSession = RuntimeActiveSession,
+> extends RuntimeActiveSessionHost<CodingAgentRuntimeSessionOptions, TSession> {
+	constructor(options: CodingAgentActiveSessionHostOptions<TSession>) {
 		super({ ...options, logLabel: "CodingAgentActiveSessionHost" });
 	}
 }

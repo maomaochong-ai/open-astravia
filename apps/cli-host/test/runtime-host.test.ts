@@ -3,8 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
 import type { RpcSessionInitialization } from "@vetta/coding-agent/rpc";
-import type { RuntimeSessionCatalog } from "@vetta/runtime-core";
-import { CONVERSATION_STORAGE_ERROR_CODES } from "@vetta/runtime-storage/conversation";
+import { RUNTIME_ERROR_CODES, type RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCliCodingAgentBootstrap } from "../src/coding-agent-bootstrap.js";
 import { createCliRuntimeSessionCatalog } from "../src/rpc/cli-session-format-compatibility.js";
@@ -66,7 +65,7 @@ describe("IM Runtime Host", () => {
 		expect(fresh.kind).toBe("rpc");
 		if (fresh.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(fresh);
-		const sessionPath = fresh.session.createCoreAssembly().lifecycle.sessionPath;
+		const sessionPath = fresh.session.sessionPath;
 		if (!sessionPath) throw new Error("Expected persisted Greenfield session path");
 		const ownerPath = `${sessionPath}.owner.lock`;
 		await expect(stat(ownerPath)).resolves.toBeDefined();
@@ -78,7 +77,7 @@ describe("IM Runtime Host", () => {
 				conversationDir: fixture.conversationDir,
 				sessionCatalog: fixture.sessionCatalog,
 			}),
-		).rejects.toMatchObject({ code: CONVERSATION_STORAGE_ERROR_CODES.OWNERSHIP_CONFLICT });
+		).rejects.toMatchObject({ code: RUNTIME_ERROR_CODES.SESSION_LOCKED });
 
 		await fresh.capabilities.dispose();
 		preparedHosts.splice(preparedHosts.indexOf(fresh), 1);
@@ -111,14 +110,14 @@ describe("IM Runtime Host", () => {
 		const sessionCapability = result.capabilities.session;
 		if (!sessionCapability) throw new Error("Expected Greenfield session capability");
 
-		const initialPath = result.session.createCoreAssembly().lifecycle.sessionPath;
+		const initialPath = result.session.sessionPath;
 		if (!initialPath) throw new Error("Expected initial session path");
 		const initialOwnerPath = `${initialPath}.owner.lock`;
 		await expect(stat(initialOwnerPath)).resolves.toBeDefined();
 
 		await expect(sessionCapability.newSession(initialPath)).resolves.toBe(true);
 		expect(result.session.sessionId).toBe("transition-next");
-		const nextPath = result.session.createCoreAssembly().lifecycle.sessionPath;
+		const nextPath = result.session.sessionPath;
 		if (!nextPath) throw new Error("Expected next session path");
 		const nextOwnerPath = `${nextPath}.owner.lock`;
 		await expect(stat(initialOwnerPath)).rejects.toMatchObject({ code: "ENOENT" });
@@ -257,7 +256,7 @@ describe("IM Runtime Host", () => {
 		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 
-		expect(result.session.createCoreAssembly().corePorts.stateReader.readState()).toMatchObject({
+		expect(result.session.readState()).toMatchObject({
 			activeToolNames: expect.arrayContaining(["extension_echo"]),
 		});
 	});
@@ -406,12 +405,8 @@ describe("IM Runtime Host", () => {
 		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 		await initialize(result);
-		const assembly = result.session.createCoreAssembly();
-		await assembly.metadataController.appendEntry("compaction-seed", { value: "seed" });
-		const contextController = assembly.contextController;
-		if (!contextController) throw new Error("Expected Greenfield context controller");
-
-		await expect(contextController.compact()).rejects.toThrow("Compaction cancelled");
+		await result.session.appendMetadataEntry("compaction-seed", { value: "seed" });
+		await expect(result.session.compact()).rejects.toThrow("Compaction cancelled");
 		expect(lifecycle.__vettaGreenfieldExtensionLifecycle).toEqual(["before-compact"]);
 	});
 
@@ -550,7 +545,7 @@ describe("IM Runtime Host", () => {
 			status: "handled",
 			sessionId: "extension-event-session",
 		});
-		await expect(result.session.getMessages()).resolves.toEqual([]);
+		expect(result.session.readMessages()).toEqual([]);
 	});
 
 	it("emits supported session lifecycle events exactly once through the real Runtime Host", async () => {

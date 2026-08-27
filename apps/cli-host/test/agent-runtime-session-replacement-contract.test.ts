@@ -6,7 +6,7 @@ import {
 	type AgentRpcExecutable,
 	type AgentRpcFixture,
 	type AgentRpcProcess,
-	buildAgentRpcExecutable,
+	acquireAgentRpcExecutable,
 	createAgentRpcFixture,
 	readSessionFile,
 	startAgentRpc,
@@ -21,11 +21,11 @@ import {
 let executable: AgentRpcExecutable;
 
 beforeAll(async () => {
-	executable = await buildAgentRpcExecutable();
+	executable = await acquireAgentRpcExecutable();
 });
 
 afterAll(async () => {
-	await executable.dispose();
+	await executable?.dispose();
 });
 
 describe("Agent Runtime session replacement resource contract", () => {

@@ -1,5 +1,5 @@
 import type { SessionEvent } from "../contracts.js";
-import type { RuntimeSession } from "./kernel-runtime-session-backend.js";
+import type { RuntimeActiveSession } from "./active-session-host-contracts.js";
 import type { RuntimeSessionExecutionObservation } from "./session-ports.js";
 
 export type RuntimeActiveSessionListenerKind = "event" | "execution-observation";
@@ -19,7 +19,7 @@ export class RuntimeActiveSessionEventRelay {
 	private suppressEvents = false;
 
 	constructor(
-		session: RuntimeSession,
+		session: RuntimeActiveSession,
 		private readonly options: RuntimeActiveSessionEventRelayOptions = {},
 	) {
 		this.bind(session);
@@ -37,7 +37,7 @@ export class RuntimeActiveSessionEventRelay {
 		return () => this.observationListeners.delete(listener);
 	}
 
-	replaceSession(session: RuntimeSession, replaceActiveSession: () => void): void {
+	replaceSession(session: RuntimeActiveSession, replaceActiveSession: () => void): void {
 		this.releaseEvents();
 		this.releaseObservations();
 		replaceActiveSession();
@@ -67,7 +67,7 @@ export class RuntimeActiveSessionEventRelay {
 		this.observationListeners.clear();
 	}
 
-	private bind(session: RuntimeSession): void {
+	private bind(session: RuntimeActiveSession): void {
 		this.eventUnsubscribe = session.subscribe((event) => {
 			if (this.suppressEvents) return;
 			for (const listener of this.listeners) {
@@ -78,17 +78,15 @@ export class RuntimeActiveSessionEventRelay {
 				}
 			}
 		});
-		this.observationUnsubscribe = session
-			.createCoreAssembly()
-			.executionObservationStream.subscribe(async (observation) => {
-				for (const listener of this.observationListeners) {
-					try {
-						await listener(observation);
-					} catch (error) {
-						this.reportListenerError("execution-observation", error);
-					}
+		this.observationUnsubscribe = session.subscribeExecutionObservations(async (observation) => {
+			for (const listener of this.observationListeners) {
+				try {
+					await listener(observation);
+				} catch (error) {
+					this.reportListenerError("execution-observation", error);
 				}
-			});
+			}
+		});
 	}
 
 	private reportListenerError(kind: RuntimeActiveSessionListenerKind, error: unknown): void {

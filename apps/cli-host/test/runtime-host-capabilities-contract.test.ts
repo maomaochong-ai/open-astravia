@@ -2,7 +2,10 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
-import { type CodingAgentRuntimeComposition, CodingAgentSessionBackend } from "@vetta/coding-agent/composition";
+import {
+	type CodingAgentRuntimeComposition,
+	createCodingAgentRuntimeHostSessionConfig,
+} from "@vetta/coding-agent/composition";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import {
 	type AgentPluginContinuationInvocation,
@@ -40,6 +43,48 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 			assistantText("plugins disabled"),
 		];
 		let responseIndex = 0;
+		const toolInvocations: AgentPluginToolInvocation[] = [];
+		const systemPromptInvocations: AgentPluginSystemPromptInvocation[] = [];
+		const continuationInvocations: AgentPluginContinuationInvocation[] = [];
+		let currentPluginConfiguration: ReturnType<CodingAgentPluginRuntimeSource["readAgentPlugins"]> =
+			pluginConfiguration();
+		const pluginListeners = new Set<() => void>();
+		const pluginRuntime: CodingAgentPluginRuntimeSource = {
+			readAgentPlugins: () => currentPluginConfiguration,
+			subscribe: (listener) => {
+				pluginListeners.add(listener);
+				return () => pluginListeners.delete(listener);
+			},
+			invokeTool: async (invocation) => {
+				toolInvocations.push(invocation);
+				return { value: { text: "artifact created" }, effects: [] };
+			},
+			invokeSystemPrompt: async (invocation) => {
+				systemPromptInvocations.push(invocation);
+				return [
+					{
+						type: "addBlock",
+						block: {
+							id: "plugin.runtime-host",
+							type: "plugin",
+							source: { kind: "plugin" },
+							content: "RuntimeHost plugin instruction",
+							priority: 700,
+							enabled: true,
+						},
+					},
+				];
+			},
+			invokeContinuation: async (invocation) => {
+				continuationInvocations.push(invocation);
+				return continuationInvocations.length === 1
+					? {
+							value: { text: "runtime host continuation", idempotencyKey: "runtime-host-once" },
+							effects: [],
+						}
+					: { value: null, effects: [] };
+			},
+		};
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,
@@ -50,6 +95,7 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
+			createPluginRuntime: () => pluginRuntime,
 			resolveSystemPromptOptions: () => ({ customPrompt: "Base prompt", scenario: "batch" }),
 			streamFn: (_model, context) => {
 				modelCalls.push({
@@ -61,54 +107,19 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 				return new RecordedAssistantStream(response);
 			},
 		});
-		const backend = new CodingAgentSessionBackend({
-			composition,
-			conversationDir,
-			cwd,
-			scenario: "batch",
-			enableSubagents: false,
-		});
-		const runtime = new RuntimeHost({ sessionBackend: backend });
-		const toolInvocations: AgentPluginToolInvocation[] = [];
-		const systemPromptInvocations: AgentPluginSystemPromptInvocation[] = [];
-		const continuationInvocations: AgentPluginContinuationInvocation[] = [];
-		runtime.setPluginToolInvoker(async (invocation) => {
-			toolInvocations.push(invocation);
-			return { value: { text: "artifact created" }, effects: [] };
-		});
-		runtime.setPluginSystemPromptInvoker(async (invocation) => {
-			systemPromptInvocations.push(invocation);
-			return [
-				{
-					type: "addBlock",
-					block: {
-						id: "plugin.runtime-host",
-						type: "plugin",
-						source: { kind: "plugin" },
-						content: "RuntimeHost plugin instruction",
-						priority: 700,
-						enabled: true,
-					},
-				},
-			];
-		});
-		runtime.setPluginContinuationInvoker(async (invocation) => {
-			continuationInvocations.push(invocation);
-			return continuationInvocations.length === 1
-				? {
-						value: { text: "runtime host continuation", idempotencyKey: "runtime-host-once" },
-						effects: [],
-					}
-				: { value: null, effects: [] };
-		});
+		const runtime = new RuntimeHost({ sessionBackend: composition.runtimeHostBackend });
 		registerDisposal(runtime, composition);
 
-		const created = await runtime.createSession({
-			cwd,
-			sessionDir: conversationDir,
-			scenario: "batch",
-			enableAgentPlugins: true,
-			agentPlugins: pluginConfiguration(),
+		const created = await runtime.createSession(
+			createCodingAgentRuntimeHostSessionConfig(
+				composition.agentRuntime,
+				{ sessionId: "plugin-runtime-host", cwd },
+				{ sessionDir: conversationDir, scenario: "batch" },
+			),
+		);
+		const activeToolSnapshots: string[][] = [];
+		const unsubscribe = runtime.subscribe(created.sessionId, (event) => {
+			if (event.type === "active_tools_update") activeToolSnapshots.push([...event.activeToolNames]);
 		});
 		await runtime.prompt(created.sessionId, { text: "create artifact" });
 
@@ -119,13 +130,16 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 		expect(modelCalls[0]?.tools).toContain("plugin_artifact");
 		expect(modelCalls[0]?.prompt).toContain("RuntimeHost plugin instruction");
 
-		runtime.reconfigureAgentPlugins(undefined);
+		currentPluginConfiguration = undefined;
+		for (const listener of pluginListeners) listener();
 		await runtime.prompt(created.sessionId, { text: "continue without plugins" });
 
 		expect(modelCalls).toHaveLength(4);
 		expect(modelCalls[3]?.tools).not.toContain("plugin_artifact");
 		expect(modelCalls[3]?.prompt).not.toContain("RuntimeHost plugin instruction");
 		expect(systemPromptInvocations).toHaveLength(1);
+		expect(activeToolSnapshots.at(-1)).not.toContain("plugin_artifact");
+		unsubscribe();
 	});
 
 	it("toggles ask_user_question per model call without rebuilding the session", async () => {
@@ -168,14 +182,7 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 				return new RecordedAssistantStream(response);
 			},
 		});
-		const backend = new CodingAgentSessionBackend({
-			composition,
-			conversationDir,
-			cwd,
-			scenario: "conversation",
-			enableSubagents: true,
-		});
-		const runtime = new RuntimeHost({ sessionBackend: backend });
+		const runtime = new RuntimeHost({ sessionBackend: composition.runtimeHostBackend });
 		const questionHandler = vi.fn(async () => ({
 			cancelled: false,
 			answers: [{ question: "Which implementation should be used?", answers: ["A"] }],
@@ -183,12 +190,17 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 		runtime.setUserQuestionHandler(questionHandler);
 		registerDisposal(runtime, composition);
 
-		const created = await runtime.createSession({
-			cwd,
-			sessionDir: conversationDir,
-			scenario: "conversation",
-			askUserQuestion: true,
-		});
+		const created = await runtime.createSession(
+			createCodingAgentRuntimeHostSessionConfig(
+				composition.agentRuntime,
+				{ sessionId: "question-runtime-host", cwd },
+				{
+					sessionDir: conversationDir,
+					scenario: "conversation",
+					askUserQuestion: true,
+				},
+			),
+		);
 		await runtime.prompt(created.sessionId, { text: "ask me" });
 
 		expect(questionHandler).toHaveBeenCalledOnce();
@@ -204,39 +216,6 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 		expect(runtime.getMessages(created.sessionId).find(({ role }) => role === "toolResult")).toMatchObject({
 			content: [{ type: "text", text: expect.stringContaining('"Which implementation should be used?"="A"') }],
 		});
-	});
-
-	it("rejects ambiguous plugin sources instead of silently overriding one", async () => {
-		const cwd = await temporaryDirectory("runtime-host-plugin-conflict-workspace-");
-		const conversationDir = await temporaryDirectory("runtime-host-plugin-conflict-conversations-");
-		const composition = await createCodingAgentRuntimeComposition({
-			conversationDir,
-			cwd,
-			scenario: "batch",
-			enableSubagents: false,
-			modelRegistry: modelRegistry(),
-			initialModel: MODEL,
-			initialThinkingLevel: "off",
-			createPluginRuntime: () => ({ readAgentPlugins: () => undefined }),
-		});
-		const backend = new CodingAgentSessionBackend({
-			composition,
-			conversationDir,
-			cwd,
-			scenario: "batch",
-			enableSubagents: false,
-		});
-		const runtime = new RuntimeHost({ sessionBackend: backend });
-		runtime.setPluginToolInvoker(async () => ({ value: undefined, effects: [] }));
-		registerDisposal(runtime, composition);
-
-		await expect(
-			runtime.createSession({
-				cwd,
-				sessionDir: conversationDir,
-				scenario: "batch",
-			}),
-		).rejects.toThrow("plugin capabilities conflict with createPluginRuntime");
 	});
 
 	function registerDisposal(runtime: RuntimeHost, composition: CodingAgentRuntimeComposition): void {

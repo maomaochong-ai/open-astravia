@@ -1,4 +1,4 @@
-import type { RuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeHostSession } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentSdkBashAdapter } from "../../src/host/coding-agent-sdk-bash-adapter.js";
 import { createHostBashExecutor } from "../../src/host/command-execution/index.js";
@@ -84,10 +84,8 @@ function createSession(streaming: boolean) {
 	const session = {
 		sessionId: "session-1",
 		readState: () => ({ isStreaming: streaming }),
-		createCoreAssembly: () => ({
-			workspaceView: { readWorkingDirectory: () => "C:/workspace" },
-			contextDeliveryController: { deliver },
-		}),
-	} as unknown as RuntimeSession;
+		readWorkingDirectory: () => "C:/workspace",
+		deliverContext: deliver,
+	} as unknown as RuntimeHostSession;
 	return { deliver, session };
 }

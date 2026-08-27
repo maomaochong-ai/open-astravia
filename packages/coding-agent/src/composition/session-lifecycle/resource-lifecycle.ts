@@ -19,6 +19,7 @@ import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/ext
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import type { CodingAgentMemoryController, CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
+import type { CodingAgentPluginConfigurationRuntime } from "../../plugins/runtime/plugin-configuration-runtime.js";
 import type {
 	CodingAgentContextRuntime,
 	CodingAgentPluginMcpRuntime,
@@ -83,6 +84,7 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 	readonly subagentRuntime?: CodingAgentSubagentRuntime;
 	readonly executionRuntime: CodingAgentSessionExecutionRuntime;
 	readonly configurationState: CodingAgentSessionConfigurationState;
+	readonly pluginConfigurationRuntime: CodingAgentPluginConfigurationRuntime;
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
 	readonly mcpController?: McpDeferredToolController;
 	readonly codingTools: CodingToolsRuntimeComposition;
@@ -208,7 +210,7 @@ function createResources(
 		subagentRuntime: options.subagentRuntime,
 		executionRuntime: options.executionRuntime,
 		configurationState: options.configurationState,
-		pluginMcpRuntime: options.pluginMcpRuntime,
+		pluginConfigurationRuntime: options.pluginConfigurationRuntime,
 		extensionToolRuntime: options.extensionToolRuntime,
 		codingTools: options.codingTools,
 		specializedToolRegistrations: options.specializedToolRegistrations,

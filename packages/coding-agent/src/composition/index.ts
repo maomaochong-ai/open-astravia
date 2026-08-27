@@ -1,4 +1,3 @@
-export { CodingAgentSessionBackend } from "../host/runtime-host/session-backend.js";
 export {
 	type CodingAgentSessionSetup,
 	createCodingAgentSessionSetupSeedInitializer,
@@ -16,6 +15,10 @@ export {
 	CODING_AGENT_LIFECYCLE_ISSUE_OBSERVATION,
 	type CodingAgentLifecycleIssueObservation,
 } from "./contracts/lifecycle-observability.js";
+export {
+	CODING_AGENT_PLUGIN_CONFIGURATION_OBSERVATION,
+	type CodingAgentPluginConfigurationObservation,
+} from "./contracts/plugin-configuration-observability.js";
 export type {
 	CodingAgentKnowledgePage,
 	CodingAgentKnowledgeQueryOperations,
@@ -23,6 +26,10 @@ export type {
 	CodingAgentKnowledgeWriteOperations,
 	CodingAgentMemoryRuntimeFactoryOptions,
 } from "./contracts/runtime-composition-options.js";
+export {
+	CODING_AGENT_SESSION_ASSISTANCE_OBSERVATION,
+	type CodingAgentSessionAssistanceObservation,
+} from "./contracts/session-assistance-observability.js";
 export type {
 	CodingAgentSandboxEnvironment,
 	CodingAgentSandboxHostOptions,
@@ -81,9 +88,15 @@ export {
 	type CodingAgentRuntimeAgentOptions,
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
+	type CodingAgentRuntimeHostRetrySettings,
+	type CodingAgentRuntimeHostSessionOverrides,
 	type CodingAgentRuntimeSessionOptions,
 	createCodingAgentExecutionRuntimeDefinition,
 	createCodingAgentRuntimeComposition,
+	createCodingAgentRuntimeHostSessionConfig,
+	createCodingAgentRuntimeSessionAgentSelection,
+	createIsolatedCodingAgentRuntimeHostSession,
+	type IsolatedCodingAgentRuntimeHostSessionOptions,
 	publishCodingAgentExecutionRuntimeDefinition,
 } from "./runtime-composition.js";
 export {

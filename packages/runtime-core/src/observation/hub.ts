@@ -69,6 +69,8 @@ export interface RuntimeObservationHubSnapshot {
 
 /** Hub 的非所有权控制面；允许宿主动态接入 Adapter 与读取健康度，但不能关闭模块拥有的 Hub。 */
 export interface RuntimeObservationHubView {
+	/** 创建不拥有 Hub 生命周期的模块 Publisher；记录继续由 Hub 统一路由和隔离。 */
+	publisher(context?: RuntimeObservationContext): RuntimeObservationPublisher;
 	attach(port: RuntimeObservationPort, options: RuntimeObservationRouteOptions): RuntimeObservationRouteRegistration;
 	snapshot(): RuntimeObservationHubSnapshot;
 }

@@ -6,7 +6,7 @@ import {
 	type AgentRpcExecutable,
 	type AgentRpcFixture,
 	type AgentRpcProcess,
-	buildAgentRpcExecutable,
+	acquireAgentRpcExecutable,
 	type CreateAgentRpcFixtureOptions,
 	createAgentRpcFixture,
 	type RpcFrame,
@@ -39,11 +39,11 @@ const rolloverTriggeredFixtures = new Set<string>();
 let executable: AgentRpcExecutable;
 
 beforeAll(async () => {
-	executable = await buildAgentRpcExecutable();
+	executable = await acquireAgentRpcExecutable();
 });
 
 afterAll(async () => {
-	await executable.dispose();
+	await executable?.dispose();
 });
 
 describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {

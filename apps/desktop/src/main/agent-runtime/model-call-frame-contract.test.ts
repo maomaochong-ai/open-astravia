@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
 import { ENV_AGENT_DIR, getAgentDir } from "@vetta/coding-agent/config";
 import {
+	type CodingAgentPluginRuntimeSource,
 	type CodingAgentRuntimeModelSource,
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentPluginMcpRuntime,
@@ -80,23 +81,10 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 			const model = { ...MODEL, baseUrl: server.baseUrl };
 			const agentStateDir = await temporaryDirectory(`desktop-frame-${backend}-dynamic-agent-`);
 			const sessionDir = await temporaryDirectory(`desktop-frame-${backend}-dynamic-sessions-`);
-			const fixture = createRuntimeFixture(backend, agentStateDir, model);
+			const pluginRuntime = createMutablePluginRuntimeSource(pluginConfiguration());
+			const fixture = createRuntimeFixture(backend, agentStateDir, model, pluginRuntime.source);
 			fixtures.push(fixture);
 			fixture.runtime.setUserQuestionHandler(async () => ({ cancelled: true, answers: [] }));
-			fixture.runtime.setPluginToolInvoker(async () => ({ value: { text: "unused" }, effects: [] }));
-			fixture.runtime.setPluginSystemPromptInvoker(async () => [
-				{
-					type: "addBlock",
-					block: {
-						id: "plugin.model-call-frame",
-						type: "plugin",
-						source: { kind: "plugin" },
-						content: "Model-call frame plugin instruction",
-						priority: 700,
-						enabled: true,
-					},
-				},
-			]);
 
 			const created = await fixture.runtime.createSession({
 				cwd,
@@ -110,14 +98,12 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 				enableBackgroundTasks: true,
 				includeAgentSkills: false,
 				askUserQuestion: true,
-				enableAgentPlugins: true,
-				agentPlugins: pluginConfiguration(),
 				appendSystemPrompt: "Model-call frame host instruction",
 			});
 			await fixture.runtime.prompt(created.sessionId, { text: "Inspect the active capabilities" });
 			const firstFrame = observeRequest(server, 0);
 
-			fixture.runtime.reconfigureAgentPlugins(undefined);
+			pluginRuntime.publish(undefined);
 			fixture.runtime.setUserQuestionHandler(undefined);
 			await fixture.runtime.prompt(created.sessionId, {
 				text: "Inspect the capabilities after reconfiguration",
@@ -440,7 +426,12 @@ function pluginConfiguration(): AgentPluginRuntimeConfig {
 	};
 }
 
-function createRuntimeFixture(_backend: RuntimeBackend, _agentStateDir: string, model: Model<Api>): RuntimeFixture {
+function createRuntimeFixture(
+	_backend: RuntimeBackend,
+	_agentStateDir: string,
+	model: Model<Api>,
+	pluginRuntime?: CodingAgentPluginRuntimeSource,
+): RuntimeFixture {
 	const pool = new DesktopRuntimeBackendPool({
 		compositionDefaults: {
 			modelRegistry: modelRegistry(model),
@@ -448,6 +439,7 @@ function createRuntimeFixture(_backend: RuntimeBackend, _agentStateDir: string, 
 			initialThinkingLevel: "off",
 			createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 			resolveModePrompt: getModePrompt,
+			createPluginRuntime: pluginRuntime ? () => pluginRuntime : undefined,
 			createPluginMcpRuntime: ({ cwd, agentDir }) =>
 				createCodingAgentPluginMcpRuntime({
 					supervisor: createDesktopMcpSupervisor({
@@ -481,6 +473,42 @@ function createRuntimeFixture(_backend: RuntimeBackend, _agentStateDir: string, 
 			} finally {
 				await pool.dispose();
 			}
+		},
+	};
+}
+
+function createMutablePluginRuntimeSource(initial: AgentPluginRuntimeConfig | undefined): {
+	readonly source: CodingAgentPluginRuntimeSource;
+	publish(config: AgentPluginRuntimeConfig | undefined): void;
+} {
+	let current = initial;
+	const listeners = new Set<() => void>();
+	const source: CodingAgentPluginRuntimeSource = {
+		readAgentPlugins: () => current,
+		invokeTool: async () => ({ value: { text: "unused" }, effects: [] }),
+		invokeSystemPrompt: async () => [
+			{
+				type: "addBlock",
+				block: {
+					id: "plugin.model-call-frame",
+					type: "plugin",
+					source: { kind: "plugin" },
+					content: "Model-call frame plugin instruction",
+					priority: 700,
+					enabled: true,
+				},
+			},
+		],
+		subscribe: (listener) => {
+			listeners.add(listener);
+			return () => listeners.delete(listener);
+		},
+	};
+	return {
+		source,
+		publish(config) {
+			current = config;
+			for (const listener of listeners) listener();
 		},
 	};
 }

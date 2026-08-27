@@ -131,6 +131,7 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
 	readonly initializationTimeline?: CodingAgentSessionInitializationTimeline;
 	readonly imageSettingsSnapshots: CodingAgentImageSettingsSnapshotRouter;
+	readonly reportActiveToolNames?: (activeToolNames: readonly string[]) => Promise<void> | void;
 }
 
 export interface CodingAgentTurnCapabilitySessionAssembly {
@@ -397,6 +398,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			const memory = options.memoryRuntime?.renderPromptMemory();
 			return (context) => enhanceSystemPromptOptions(resolver, context, agentPlugins, memory);
 		},
+		reportActiveToolNames: options.reportActiveToolNames,
 	});
 	const promptAdapter = new CodingAgentPromptRequestAdapter({
 		resolvePromptResource:

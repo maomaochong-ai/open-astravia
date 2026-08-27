@@ -1,5 +1,5 @@
 import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
-import type { CodingAgentActiveSessionHost, CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
+import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import {
 	type CodingAgentTurnRetryEvent,
@@ -20,7 +20,7 @@ import {
 	createCodingAgentSessionCapabilityHost,
 	readCodingAgentTurnFailure,
 } from "@vetta/coding-agent/runtime";
-import { type HistoryEntry, RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
+import { type HistoryEntry, RetryableCleanup, type RuntimeHostSession, type SessionEvent } from "@vetta/runtime-core";
 import { type CodingToolRegistration, createNodeFileInspectionOperations } from "@vetta/runtime-node/coding";
 import { createCliCodingAgentHtmlExportRuntime } from "../html-export-runtime.js";
 import { RpcSessionEventAdapter } from "./rpc-session-event-adapter.js";
@@ -34,10 +34,15 @@ interface ActiveTurnCommand {
 
 export interface CliRpcSessionAdapterOptions {
 	readonly profile: RpcSessionProfile;
-	readonly sessionHost: Pick<
-		CodingAgentActiveSessionHost,
-		"dispose" | "fork" | "newSession" | "readSession" | "startActiveSessionOperation" | "subscribe" | "switchSession"
-	>;
+	readonly sessionHost: {
+		dispose(): Promise<void>;
+		fork(entryId: string): Promise<{ readonly text: string; readonly cancelled: boolean }>;
+		newSession(options?: { readonly parentSession?: string }): Promise<{ readonly cancelled: boolean }>;
+		readSession(): RuntimeHostSession;
+		startActiveSessionOperation<T>(operation: (session: RuntimeHostSession) => Promise<T>): Promise<T>;
+		subscribe(listener: (event: SessionEvent) => void): () => void;
+		switchSession(sessionPath: string): Promise<{ readonly cancelled: boolean }>;
+	};
 	readonly runtime: CodingAgentRuntimeComposition;
 	readonly resourceLoader: RpcResourceLoader;
 	readonly htmlExporter?: CodingAgentHtmlExportRuntime;
@@ -110,8 +115,7 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 		this.turnExecutor = options.turnExecutor;
 		this.retry = options.retryController;
 		this.bash = options.bash;
-		this.readAvailableModels =
-			options.readAvailableModels ?? (async () => this.readCore().modelView.readAvailableModels());
+		this.readAvailableModels = options.readAvailableModels ?? (async () => this.readSession().readAvailableModels());
 		this.sessionCapabilities = createCodingAgentSessionCapabilityHost({
 			readSession: () => this.readSession(),
 			readAvailableModels: this.readAvailableModels,
@@ -200,7 +204,7 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 		} satisfies NonNullable<RpcSessionCapabilities["turn"]>;
 		this.state = {
 			readState: () => this.readRpcState(),
-			readMessages: () => readCodingAgentRpcAgentMessages(this.readCore().conversationView.readDocument()),
+			readMessages: () => readCodingAgentRpcAgentMessages(this.readSession().readDocument()),
 		} satisfies NonNullable<RpcSessionCapabilities["state"]>;
 		this.model = {
 			selectModel: (provider, modelId) => this.sessionCapabilities.selectModel(provider, modelId),
@@ -233,12 +237,12 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 			setName: (name) => this.sessionCapabilities.setSessionName(name),
 			readStats: () => this.sessionCapabilities.readSessionStats(),
 			exportHtml: (outputPath) => {
-				const core = this.readCore();
-				if (!core.lifecycle.sessionPath) throw new Error("Cannot export an in-memory Runtime session");
+				const session = this.readSession();
+				if (!session.sessionPath) throw new Error("Cannot export an in-memory Runtime session");
 				return exportCodingAgentRpcConversation(
 					this.htmlExporter,
-					core.conversationView.readDocument(),
-					core.lifecycle.sessionPath,
+					session.readDocument(),
+					session.sessionPath,
 					outputPath,
 				);
 			},
@@ -304,34 +308,27 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 
 	private async readRpcState(): Promise<RpcSessionState> {
 		const session = this.readSession();
-		const core = session.createCoreAssembly();
-		const [sessionState, state] = await Promise.all([
-			session.getState(),
-			Promise.resolve(core.corePorts.stateReader.readState()),
-		]);
-		const context = core.contextController?.readState();
+		const state = session.readState();
+		const context = session.readCompactionState();
+		const queueModes = session.readQueueModes();
 		return {
 			model: state.model,
 			thinkingLevel: state.thinkingLevel,
 			isStreaming: state.isStreaming,
 			isCompacting: context?.isCompacting ?? false,
-			steeringMode: sessionState.steeringMode,
-			followUpMode: sessionState.followUpMode,
-			sessionFile: core.lifecycle.sessionPath,
-			sessionId: sessionState.sessionId,
-			sessionName: core.metadataController?.readName(),
-			autoCompactionEnabled: context?.autoCompactionEnabled ?? false,
-			messageCount: sessionState.messageCount,
-			pendingMessageCount: sessionState.pendingMessageCount,
+			steeringMode: queueModes.steering,
+			followUpMode: queueModes.followUp,
+			sessionFile: session.sessionPath,
+			sessionId: session.sessionId,
+			sessionName: session.readName(),
+			autoCompactionEnabled: context.autoCompactionEnabled,
+			messageCount: state.messageCount,
+			pendingMessageCount: session.readPendingMessageCount(),
 		};
 	}
 
-	private readSession(): RuntimeSession {
+	private readSession(): RuntimeHostSession {
 		return this.sessionHost.readSession();
-	}
-
-	private readCore(): ReturnType<RuntimeSession["createCoreAssembly"]> {
-		return this.readSession().createCoreAssembly();
 	}
 
 	private async runTurnCommand(command: () => Promise<unknown>): Promise<void> {
@@ -391,7 +388,7 @@ function normalizeLocation(source: string): "user" | "project" | "path" | undefi
 	return source === "user" || source === "project" || source === "path" ? source : undefined;
 }
 
-function readForkMessages(session: RuntimeSession): readonly { entryId: string; text: string }[] {
+function readForkMessages(session: RuntimeHostSession): readonly { entryId: string; text: string }[] {
 	return session
 		.readHistory()
 		.filter(

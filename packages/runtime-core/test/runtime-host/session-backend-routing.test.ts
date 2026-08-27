@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
 	CatalogRoutedRuntimeHostSessionBackend,
+	RuntimeHost,
 	type RuntimeHostSessionAssembly,
 	type RuntimeHostSessionBackend,
 	type RuntimeSessionCatalog,
@@ -8,6 +9,37 @@ import {
 } from "../../src/index.js";
 
 describe("CatalogRoutedRuntimeHostSessionBackend", () => {
+	it("exposes a session-scoped view without creating a second lifecycle owner", async () => {
+		const dispose = vi.fn(async () => {});
+		const retry = vi.fn(async () => {});
+		const sessionBackend: RuntimeHostSessionBackend = {
+			createAssembly: async () => ({
+				...assembly("session-view"),
+				lifecycle: { sessionId: "session-view", sessionPath: "C:/sessions/view.jsonl", dispose },
+				corePorts: {
+					...assembly("session-view").corePorts,
+					turnControl: {
+						...assembly("session-view").corePorts.turnControl,
+						retry,
+					},
+				},
+			}),
+		};
+		const runtime = new RuntimeHost({ sessionBackend });
+		const { sessionId } = await runtime.createSession();
+		const session = runtime.getSessionView(sessionId);
+
+		expect(session.sessionId).toBe("session-view");
+		expect(session.sessionPath).toBe("C:/sessions/view.jsonl");
+		expect(session.readState().isStreaming).toBe(false);
+		await session.retry();
+		expect(retry).toHaveBeenCalledOnce();
+
+		await session.dispose();
+		expect(dispose).toHaveBeenCalledOnce();
+		expect(() => session.readState()).toThrow("Session not found");
+	});
+
 	it("uses the explicit default backend only for new sessions", async () => {
 		const defaultBackend = backend("default");
 		const legacyBackend = backend("legacy");
@@ -122,18 +154,10 @@ function assembly(sessionId: string): RuntimeHostSessionAssembly {
 		hostInteraction: { bind: async () => {} },
 		executionController: { isBusy: () => false, reconfigure: async () => {} },
 		workspaceView: { readWorkingDirectory: () => undefined },
-		backgroundWorkController: {
-			clearFinished: () => 0,
-			killTask: () => false,
-			readTasks: () => [],
-			readSubagents: () => [],
-			interruptSubagent: () => undefined,
-		},
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},
 			setAgentMode: () => {},
-			reconfigureAgentPlugins: async () => {},
 		},
 		modelController: {
 			selectModel: async () => {},
@@ -147,7 +171,12 @@ function assembly(sessionId: string): RuntimeHostSessionAssembly {
 			resolveApiKey: async () => undefined,
 		},
 		corePorts: {
-			turnControl: { prompt: async () => undefined, continue: async () => {}, abort: async () => {} },
+			turnControl: {
+				prompt: async () => undefined,
+				continue: async () => {},
+				retry: async () => {},
+				abort: async () => {},
+			},
 			eventStream: { subscribe: () => () => {} },
 			stateReader: {
 				readState: () => ({

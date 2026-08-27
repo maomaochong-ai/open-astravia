@@ -11,7 +11,8 @@ import {
 } from "@vetta/ai";
 import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import { assessRuntimeHostSessionAssembly } from "@vetta/runtime-core";
+import { CODING_AGENT_SUBAGENTS_READ } from "@vetta/coding-agent/session-extensions";
+import type { RuntimeActiveSession } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 
@@ -80,34 +81,24 @@ describe("Subagent Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({ sessionId: "root-session" });
+		const session = await composition.createSession({ sessionId: "root-session" });
 
 		await session.prompt({ text: "Delegate repository inspection." });
 		await waitUntil(
 			() => {
-				const assessment = assessRuntimeHostSessionAssembly(session.createRuntimeHostAssemblyCandidate());
-				return (
-					assessment.ready &&
-					assessment.assembly.backgroundWorkController.readSubagents()[0]?.status === "completed" &&
-					rootCall >= 3
-				);
+				return readSubagents(session)[0]?.status === "completed" && rootCall >= 3;
 			},
 			() => {
-				const assessment = assessRuntimeHostSessionAssembly(session.createRuntimeHostAssemblyCandidate());
 				return JSON.stringify({
 					rootCall,
 					childCalls: childToolSurfaces.length,
 					rootInputs,
-					assessment,
-					subagents: assessment.ready ? assessment.assembly.backgroundWorkController.readSubagents() : [],
+					subagents: readSubagents(session),
 				});
 			},
 		);
 
-		const assessment = assessRuntimeHostSessionAssembly(session.createRuntimeHostAssemblyCandidate());
-		expect(assessment.ready).toBe(true);
-		if (!assessment.ready) throw new Error("Expected complete Runtime Host assembly");
-		const subagent = assessment.assembly.backgroundWorkController.readSubagents()[0];
+		const subagent = readSubagents(session)[0];
 		expect(subagent).toMatchObject({
 			taskName: "inspect_repo",
 			status: "completed",
@@ -187,19 +178,16 @@ describe("Subagent Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({ sessionId: "workflow-root" });
+		const session = await composition.createSession({ sessionId: "workflow-root" });
 
 		await session.prompt({ text: "Implement this feature in parallel." });
 		await waitUntil(
 			() => rootCall >= 3 && childInputs.length >= 1,
 			() => {
-				const assessment = assessRuntimeHostSessionAssembly(session.createRuntimeHostAssemblyCandidate());
 				return JSON.stringify({
 					rootCall,
 					childInputs,
-					subagents: assessment.ready
-						? assessment.assembly.backgroundWorkController.readSubagents()
-						: assessment.missingPorts,
+					subagents: readSubagents(session),
 				});
 			},
 		);
@@ -211,9 +199,7 @@ describe("Subagent Runtime composition contract", () => {
 		expect(childToolSurfaces[0]).not.toEqual(
 			expect.arrayContaining(["spawn_agent", "dispatch_workflows", "wait_agent"]),
 		);
-		const assessment = assessRuntimeHostSessionAssembly(session.createRuntimeHostAssemblyCandidate());
-		if (!assessment.ready) throw new Error("Expected complete Runtime Host assembly");
-		expect(assessment.assembly.backgroundWorkController.readSubagents()[0]).toMatchObject({
+		expect(readSubagents(session)[0]).toMatchObject({
 			taskName: "implement_scope",
 			agentType: "workflow",
 			status: "completed",
@@ -263,19 +249,12 @@ describe("Subagent Runtime composition contract", () => {
 			},
 		});
 		compositions.push(initialComposition);
-		const initialSession = await initialComposition.backend.create({ sessionId: "recovery-root" });
+		const initialSession = await initialComposition.createSession({ sessionId: "recovery-root" });
 		await initialSession.prompt({ text: "Create a child that can be recovered." });
 		await waitUntil(() => {
-			const assessment = assessRuntimeHostSessionAssembly(initialSession.createRuntimeHostAssemblyCandidate());
-			return (
-				assessment.ready &&
-				assessment.assembly.backgroundWorkController.readSubagents()[0]?.status === "completed" &&
-				initialRootCall >= 3
-			);
+			return readSubagents(initialSession)[0]?.status === "completed" && initialRootCall >= 3;
 		});
-		const initialAssessment = assessRuntimeHostSessionAssembly(initialSession.createRuntimeHostAssemblyCandidate());
-		if (!initialAssessment.ready) throw new Error("Expected complete Runtime Host assembly");
-		const initialChild = initialAssessment.assembly.backgroundWorkController.readSubagents()[0];
+		const initialChild = readSubagents(initialSession)[0];
 		if (!initialChild?.sessionFile) throw new Error("Expected a persisted child transcript");
 		await initialSession.dispose();
 		await initialComposition.dispose();
@@ -339,10 +318,8 @@ describe("Subagent Runtime composition contract", () => {
 			},
 		});
 		compositions.push(resumedComposition);
-		const resumedSession = await resumedComposition.backend.resume({ sessionId: "recovery-root" });
-		const recoveredAssessment = assessRuntimeHostSessionAssembly(resumedSession.createRuntimeHostAssemblyCandidate());
-		if (!recoveredAssessment.ready) throw new Error("Expected complete recovered RuntimeHost assembly");
-		expect(recoveredAssessment.assembly.backgroundWorkController.readSubagents()).toEqual([
+		const resumedSession = await resumedComposition.resumeSession({ sessionId: "recovery-root" });
+		expect(readSubagents(resumedSession)).toEqual([
 			expect.objectContaining({
 				id: initialChild.id,
 				taskName: "recover_child",
@@ -354,11 +331,9 @@ describe("Subagent Runtime composition contract", () => {
 
 		await resumedSession.prompt({ text: "Use the recovered child." });
 		await waitUntil(() => {
-			const assessment = assessRuntimeHostSessionAssembly(resumedSession.createRuntimeHostAssemblyCandidate());
 			return (
-				assessment.ready &&
-				assessment.assembly.backgroundWorkController.readSubagents()[0]?.status === "completed" &&
-				assessment.assembly.backgroundWorkController.readSubagents()[0]?.generation === 2 &&
+				readSubagents(resumedSession)[0]?.status === "completed" &&
+				readSubagents(resumedSession)[0]?.generation === 2 &&
 				resumedChildSessions.length === 1
 			);
 		});
@@ -388,10 +363,8 @@ describe("Subagent Runtime composition contract", () => {
 			streamFn: () => new RecordedAssistantStream(assistantMessage([{ type: "text", text: "unexpected call" }])),
 		});
 		compositions.push(missingComposition);
-		const missingSession = await missingComposition.backend.resume({ sessionId: "recovery-root" });
-		const missingAssessment = assessRuntimeHostSessionAssembly(missingSession.createRuntimeHostAssemblyCandidate());
-		if (!missingAssessment.ready) throw new Error("Expected complete RuntimeHost assembly");
-		expect(missingAssessment.assembly.backgroundWorkController.readSubagents()).toEqual([
+		const missingSession = await missingComposition.resumeSession({ sessionId: "recovery-root" });
+		expect(readSubagents(missingSession)).toEqual([
 			expect.objectContaining({
 				id: initialChild.id,
 				status: "failed",
@@ -476,6 +449,11 @@ async function waitUntil(predicate: () => boolean, describe?: () => string): Pro
 		await new Promise((resolve) => setTimeout(resolve, 10));
 	}
 	throw new Error(`Condition was not reached${describe ? `: ${describe()}` : ""}`);
+}
+
+function readSubagents(session: RuntimeActiveSession) {
+	if (session.hasExtension?.(CODING_AGENT_SUBAGENTS_READ) !== true) return [];
+	return session.invokeExtensionSync?.(CODING_AGENT_SUBAGENTS_READ, undefined) ?? [];
 }
 
 const MODEL: Model<Api> = {

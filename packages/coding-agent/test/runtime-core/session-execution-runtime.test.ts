@@ -51,6 +51,28 @@ describe("CodingAgentSessionExecutionRuntime", () => {
 		expect(fixture.environmentDisposeCalls).toBe(1);
 	});
 
+	it("preserves the product model order when sandbox replaces execution tools", async () => {
+		const fixture = createRuntimeFixture("session-sandbox-order", (toolName) =>
+			createSourceToolEntry(toolName, "active", "1", toolName === "read" ? 100 : undefined),
+		);
+		const controller = fixture.runtime.createExecutionController({ state: "idle" } as unknown as AgentSession);
+
+		try {
+			await controller.reconfigure({
+				mode: "sandbox",
+				sessionId: "session-sandbox-order",
+			});
+
+			const readRegistration = fixture.runtime.readRegistrations().find(({ tool }) => tool.name === "read");
+			expect(readRegistration).toMatchObject({
+				modelOrder: 100,
+				tool: { modelOrder: 100 },
+			});
+		} finally {
+			await fixture.runtime.dispose();
+		}
+	});
+
 	it("applies shared registry removal to future frames without revoking an advertised Turn tool", async () => {
 		const states = new Map<string, CodingToolCatalogEntry["state"]>();
 		let bashRevision = "1";
@@ -217,6 +239,7 @@ function createSourceToolEntry(
 	toolName: string,
 	state: CodingToolCatalogEntry["state"],
 	revision: string,
+	modelOrder?: number,
 ): CodingToolCatalogEntry {
 	return {
 		binding: {
@@ -225,10 +248,12 @@ function createSourceToolEntry(
 			revision,
 		},
 		registration: {
+			...(modelOrder !== undefined ? { modelOrder } : {}),
 			tool: {
 				name: toolName,
 				label: toolName,
 				description: toolName,
+				...(modelOrder !== undefined ? { modelOrder } : {}),
 				inputSchema: { type: "object" },
 				execute: async () => ({ content: [] }),
 			},

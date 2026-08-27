@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import { createCodingAgentPluginMcpRuntime } from "@vetta/coding-agent/host-services";
+import { CODING_AGENT_PLUGIN_CONFIGURATION_APPLY } from "@vetta/coding-agent/session-extensions";
 import type { AgentPluginRuntimeConfig } from "@vetta/runtime-core";
 import type {
 	McpClientHandle,
@@ -48,12 +49,12 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 			},
 		});
 		compositions.push(composition);
-		const first = await composition.backend.create({
+		const first = await composition.createSession({
 			sessionId: "first",
 			agentMode: "coding",
 			agentPlugins: pluginConfiguration("alpha"),
 		});
-		const second = await composition.backend.create({
+		const second = await composition.createSession({
 			sessionId: "second",
 			agentMode: "work",
 			agentPlugins: pluginConfiguration("beta"),
@@ -63,9 +64,9 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 		await second.prompt({ text: "second" });
 		expect(modelMcpTools).toEqual([["mcp_plugin-alpha-docs_lookup"], ["mcp_plugin-beta-docs_lookup"]]);
 
-		await first
-			.createRuntimeHostAssemblyCandidate()
-			.configurationController?.reconfigureAgentPlugins(pluginConfiguration("gamma"));
+		await first.invokeExtension(CODING_AGENT_PLUGIN_CONFIGURATION_APPLY, {
+			agentPlugins: pluginConfiguration("gamma"),
+		});
 		await first.prompt({ text: "first replaced" });
 		await second.prompt({ text: "second unchanged" });
 
@@ -101,7 +102,7 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "deferred",
 			agentPlugins: pluginConfiguration("many"),
 		});
@@ -109,7 +110,9 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 		await session.prompt({ text: "discover" });
 		expect(modelMcpTools[0]).toEqual(["tool_search"]);
 
-		await session.createRuntimeHostAssemblyCandidate().configurationController?.reconfigureAgentPlugins(undefined);
+		await session.invokeExtension(CODING_AGENT_PLUGIN_CONFIGURATION_APPLY, {
+			agentPlugins: undefined,
+		});
 		await session.prompt({ text: "removed" });
 		expect(modelMcpTools[1]).toEqual([]);
 		await session.dispose();
@@ -160,7 +163,7 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "plugin-mcp-subagent",
 			agentMode: "work",
 			agentPlugins: pluginConfiguration("child"),

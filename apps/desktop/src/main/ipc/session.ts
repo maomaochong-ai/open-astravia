@@ -4,7 +4,16 @@ import { mkdir, readdir, rm } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
 import { DEFAULT_PERSONA_ID, PERSONAS } from "@vetta/coding-agent/profile";
-import { CODING_AGENT_TODO_CLEAR } from "@vetta/coding-agent/session-extensions";
+import {
+	CODING_AGENT_BACKGROUND_TASK_KILL,
+	CODING_AGENT_BACKGROUND_TASKS_CLEAR_FINISHED,
+	CODING_AGENT_BACKGROUND_TASKS_READ,
+	CODING_AGENT_NEXT_PROMPT_SUGGESTIONS,
+	CODING_AGENT_SESSION_TITLE_GENERATE,
+	CODING_AGENT_SUBAGENT_INTERRUPT,
+	CODING_AGENT_SUBAGENTS_READ,
+	CODING_AGENT_TODO_CLEAR,
+} from "@vetta/coding-agent/session-extensions";
 import type {
 	AgentPluginContinuationInvocation,
 	AgentPluginContinuationResult,
@@ -41,6 +50,7 @@ import { sendPetCommandToWindow } from "../pet-window.js";
 import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invocation.js";
 import { getPluginSettings, listPlugins, pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { summarizeAgentPluginRuntimeConfig } from "../plugins/plugin-runtime-config-builder.js";
+import { getDesktopCodingAgentPluginRuntimeSource } from "../plugins/plugin-runtime-service.js";
 import {
 	filterSystemPromptInvocationForPlugin,
 	tryNormalizeDynamicSystemPromptOperations,
@@ -269,6 +279,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	};
 
 	const runtime = getSharedRuntime();
+	const pluginRuntimeSource = getDesktopCodingAgentPluginRuntimeSource();
 	const conversationService = getDesktopConversationService();
 	const questionBroker = getDesktopUserQuestionBroker();
 	const unsubscribeConversationListChanged = onConversationListChanged((event) => {
@@ -443,11 +454,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		});
 	});
 
-	runtime.setPluginTurnHandlerLeaseProvider({
-		bindForTurn: (agentPlugins) => pluginAgentContributionService.bindAgentHandlersForTurn(agentPlugins),
-	});
-
-	runtime.setPluginToolInvoker((request: AgentPluginToolInvocation, signal?: AbortSignal) => {
+	pluginRuntimeSource.setToolInvoker((request: AgentPluginToolInvocation, signal?: AbortSignal) => {
 		if (webContents.isDestroyed()) {
 			return Promise.reject(new Error("Plugin host renderer is unavailable"));
 		}
@@ -559,7 +566,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		});
 	});
 
-	runtime.setPluginContinuationInvoker((request: AgentPluginContinuationInvocation, signal?: AbortSignal) => {
+	pluginRuntimeSource.setContinuationInvoker((request: AgentPluginContinuationInvocation, signal?: AbortSignal) => {
 		if (webContents.isDestroyed()) return Promise.resolve({ value: null, effects: [] });
 		const rejection = pluginAgentContributionService.readHandlerInvocationRejection(
 			"continuation",
@@ -636,7 +643,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		});
 	});
 
-	runtime.setPluginSystemPromptInvoker((request: AgentPluginSystemPromptInvocation, signal?: AbortSignal) => {
+	pluginRuntimeSource.setSystemPromptInvoker((request: AgentPluginSystemPromptInvocation, signal?: AbortSignal) => {
 		if (webContents.isDestroyed()) {
 			pluginLog.warn("[plugin-system-prompt] invocation skipped: renderer destroyed", {
 				pluginId: request.pluginId,
@@ -1001,7 +1008,12 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				throw new Error("Invalid auto-title payload");
 			}
 			if (userText.trim().length === 0 && assistantText.trim().length === 0) return null;
-			return runtime.autoTitleSession(sessionId, userText, assistantText);
+			const title = await runtime.invokeSessionExtension(sessionId, CODING_AGENT_SESSION_TITLE_GENERATE, {
+				userText,
+				assistantText,
+			});
+			if (title) await runtime.renameSessionById(sessionId, title);
+			return title;
 		},
 	);
 
@@ -1010,7 +1022,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		async (_event, sessionId: unknown, conversation: unknown): Promise<string[]> => {
 			assertNonEmptyString(sessionId, "sessionId");
 			if (typeof conversation !== "string" || conversation.trim().length === 0) return [];
-			return runtime.nextPromptSuggestions(sessionId, conversation);
+			return [
+				...(await runtime.invokeSessionExtension(sessionId, CODING_AGENT_NEXT_PROMPT_SUGGESTIONS, {
+					conversation,
+				})),
+			];
 		},
 	);
 
@@ -1215,19 +1231,19 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.BACKGROUND_TASKS_CLEAR_FINISHED, (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
-		return runtime.clearFinishedBackgroundTasks(sessionId);
+		return runtime.invokeSessionExtension(sessionId, CODING_AGENT_BACKGROUND_TASKS_CLEAR_FINISHED, undefined);
 	});
 
 	ipcMain.handle(CHANNELS.BACKGROUND_TASKS_KILL, (_event, sessionId: unknown, taskId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
 		assertNonEmptyString(taskId, "taskId");
-		return runtime.killBackgroundTask(sessionId, taskId);
+		return runtime.invokeSessionExtension(sessionId, CODING_AGENT_BACKGROUND_TASK_KILL, { taskId });
 	});
 
-	ipcMain.handle(CHANNELS.SUBAGENT_INTERRUPT, (_event, sessionId: unknown, target: unknown) => {
+	ipcMain.handle(CHANNELS.SUBAGENT_INTERRUPT, async (_event, sessionId: unknown, target: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
 		assertNonEmptyString(target, "target");
-		const snap = runtime.interruptSubagent(sessionId, target);
+		const snap = await runtime.invokeSessionExtension(sessionId, CODING_AGENT_SUBAGENT_INTERRUPT, { target });
 		return snap != null;
 	});
 
@@ -1279,7 +1295,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		// 回放后台任务快照：注册表在主进程内存中跨 renderer 重载存活，但
 		// background_tasks_update 只在状态变化时推送——renderer 刷新后 atom
 		// 清空，若不回放，无输出的运行中任务（如 sleep）要等到结束才再现。
-		const backgroundTasks = runtime.listBackgroundTasks(sessionId);
+		const backgroundTasks = await runtime.invokeSessionExtension(
+			sessionId,
+			CODING_AGENT_BACKGROUND_TASKS_READ,
+			undefined,
+		);
 		if (backgroundTasks.length > 0 && !webContents.isDestroyed()) {
 			webContents.send(CHANNELS.EVENT, subscriptionId, {
 				schemaVersion: 1,
@@ -1310,7 +1330,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			}
 		}
 
-		const subagents = runtime.listSubagents(sessionId);
+		const subagents = await runtime.invokeSessionExtension(sessionId, CODING_AGENT_SUBAGENTS_READ, undefined);
 		if (subagents.length > 0 && !webContents.isDestroyed()) {
 			webContents.send(CHANNELS.EVENT, subscriptionId, {
 				schemaVersion: 1,
@@ -1480,11 +1500,10 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		unregisterInteractiveQuestionHandler();
 		unregisterQuestionResolved();
 		runtime.setUserSandboxGrantHandler(undefined);
-		runtime.setPluginToolInvoker(undefined);
+		pluginRuntimeSource.setToolInvoker(undefined);
 		setDesktopPluginHookInvoker(undefined);
-		runtime.setPluginContinuationInvoker(undefined);
-		runtime.setPluginSystemPromptInvoker(undefined);
-		runtime.setPluginTurnHandlerLeaseProvider(undefined);
+		pluginRuntimeSource.setContinuationInvoker(undefined);
+		pluginRuntimeSource.setSystemPromptInvoker(undefined);
 		// 不在此处 disposeAllSessions：共享 runtime 的 session 可能正被
 		// scheduler/batch-tasks 在后台使用。全进程 session 释放由 main.ts
 		// 的 before-quit 负责（见 disposeSharedRuntime）。

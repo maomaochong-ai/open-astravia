@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
-import { CodingAgentSessionBackend } from "@vetta/coding-agent/composition";
+import { createCodingAgentRuntimeHostSessionConfig } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { RuntimeHost } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
@@ -11,7 +11,7 @@ import {
 	createUnsandboxedTestSessionExecutionEnvironment,
 } from "./fixtures/runtime-composition.js";
 
-describe("CodingAgentSessionBackend", () => {
+describe("Coding Agent RuntimeHost backend", () => {
 	const directories: string[] = [];
 	const disposers: Array<() => Promise<void>> = [];
 
@@ -35,30 +35,28 @@ describe("CodingAgentSessionBackend", () => {
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
 		});
-		const backend = new CodingAgentSessionBackend({
-			composition,
-			conversationDir,
-			cwd,
-			scenario: "batch",
-			enableSubagents: false,
-		});
-		const runtime = new RuntimeHost({ sessionBackend: backend });
+		const runtime = new RuntimeHost({ sessionBackend: composition.runtimeHostBackend });
 		disposers.push(async () => {
 			await runtime.disposeAllSessions();
 			await composition.dispose();
 		});
 
-		const created = await runtime.createSession({
+		const sessionOptions = {
+			sessionId: "runtime-host-session",
 			cwd,
-			sessionDir: conversationDir,
-			scenario: "batch",
 			model: SECOND_MODEL,
-			thinkingLevel: "medium",
-			executionMode: "full-access",
+			thinkingLevel: "medium" as const,
+			executionMode: "full-access" as const,
 			enableBackgroundTasks: false,
 			includeAgentSkills: false,
-			appendSystemPrompt: "runtime-host-addon",
-		});
+			systemPromptAddon: "runtime-host-addon",
+		};
+		const created = await runtime.createSession(
+			createCodingAgentRuntimeHostSessionConfig(composition.agentRuntime, sessionOptions, {
+				sessionDir: conversationDir,
+				scenario: "batch",
+			}),
+		);
 		expect(runtime.getState(created.sessionId)).toMatchObject({
 			model: SECOND_MODEL,
 			thinkingLevel: "medium",
@@ -71,25 +69,26 @@ describe("CodingAgentSessionBackend", () => {
 		await runtime.disposeSession(created.sessionId);
 		expect(() => runtime.getState(created.sessionId)).toThrow("Session not found");
 
-		const resumed = await runtime.createSession({
-			cwd,
-			sessionDir: conversationDir,
-			sessionPath,
-			scenario: "batch",
-			executionMode: "full-access",
-		});
+		const resumed = await runtime.createSession(
+			createCodingAgentRuntimeHostSessionConfig(composition.agentRuntime, sessionOptions, {
+				sessionDir: conversationDir,
+				sessionPath,
+				scenario: "batch",
+			}),
+		);
 		expect(resumed.sessionId).toBe(created.sessionId);
 
-		const whitespacePath = await runtime.createSession({
-			cwd,
-			sessionDir: conversationDir,
-			sessionPath: "   ",
-			scenario: "batch",
-		});
+		const whitespacePath = await runtime.createSession(
+			createCodingAgentRuntimeHostSessionConfig(
+				composition.agentRuntime,
+				{ ...sessionOptions, sessionId: "whitespace-path-session" },
+				{ sessionDir: conversationDir, sessionPath: "   ", scenario: "batch" },
+			),
+		);
 		expect(whitespacePath.sessionId).not.toBe(created.sessionId);
 	});
 
-	it("fails closed for composition and serverUrl mismatches", async () => {
+	it("fails closed for an unknown Agent or malformed private Session payload", async () => {
 		const cwd = await temporaryDirectory("greenfield-host-gate-workspace-");
 		const conversationDir = await temporaryDirectory("greenfield-host-gate-conversations-");
 		const composition = await createCodingAgentRuntimeComposition({
@@ -102,18 +101,7 @@ describe("CodingAgentSessionBackend", () => {
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
 		});
-		const backend = new CodingAgentSessionBackend({
-			composition,
-			conversationDir,
-			cwd,
-			scenario: "batch",
-			enableSubagents: false,
-			serverUrl: "https://expected.test",
-		});
-		const runtime = new RuntimeHost({
-			sessionBackend: backend,
-			serverUrl: "https://received.test",
-		});
+		const runtime = new RuntimeHost({ sessionBackend: composition.runtimeHostBackend });
 		disposers.push(async () => {
 			await runtime.disposeAllSessions();
 			await composition.dispose();
@@ -121,18 +109,17 @@ describe("CodingAgentSessionBackend", () => {
 
 		await expect(
 			runtime.createSession({
-				cwd: join(cwd, "other"),
-				sessionDir: conversationDir,
-				scenario: "batch",
+				agent: { id: "reviewer", sessionConfiguration: { sessionId: "unknown-agent" } },
 			}),
-		).rejects.toThrow("cwd mismatch");
+		).rejects.toThrow("cannot execute Agent reviewer");
 		await expect(
 			runtime.createSession({
-				cwd,
-				sessionDir: conversationDir,
-				scenario: "batch",
+				agent: {
+					id: composition.agentRuntime.agentId,
+					sessionConfiguration: { sessionId: " malformed " },
+				},
 			}),
-		).rejects.toThrow("serverUrl");
+		).rejects.toThrow("sessionId must be a non-empty trimmed string");
 	});
 
 	it("retries transient model failures and suppresses recovered error events", async () => {
@@ -150,24 +137,23 @@ describe("CodingAgentSessionBackend", () => {
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
 			streamFn: () => new RecordedAssistantStream(responses[callCount++] ?? assistantMessage("stop")),
-		});
-		const backend = new CodingAgentSessionBackend({
-			composition,
-			conversationDir,
-			cwd,
-			scenario: "batch",
-			enableSubagents: false,
-			retrySettings: {
+			runtimeHostRetrySettings: {
 				getRetrySettings: () => ({ enabled: true, maxRetries: 1, baseDelayMs: 0, maxDelayMs: 0 }),
 				setRetryEnabled() {},
 			},
 		});
-		const runtime = new RuntimeHost({ sessionBackend: backend });
+		const runtime = new RuntimeHost({ sessionBackend: composition.runtimeHostBackend });
 		disposers.push(async () => {
 			await runtime.disposeAllSessions();
 			await composition.dispose();
 		});
-		const { sessionId } = await runtime.createSession({ cwd, sessionDir: conversationDir, scenario: "batch" });
+		const { sessionId } = await runtime.createSession(
+			createCodingAgentRuntimeHostSessionConfig(
+				composition.agentRuntime,
+				{ sessionId: "retry-session", cwd },
+				{ sessionDir: conversationDir, scenario: "batch" },
+			),
+		);
 		const eventTypes: string[] = [];
 		const unsubscribe = runtime.subscribe(sessionId, (event) => eventTypes.push(event.type));
 

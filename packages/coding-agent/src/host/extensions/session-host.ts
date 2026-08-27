@@ -1,9 +1,11 @@
-import { InitializationRollbackScope, RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
+import {
+	InitializationRollbackScope,
+	RetryableCleanup,
+	type RuntimeActiveSessionTransition,
+	type RuntimeHostSession,
+	type RuntimePreparedSessionBinding,
+} from "@vetta/runtime-core";
 import type { ExtensionCommandContextActions } from "../../extensions/index.js";
-import type {
-	CodingAgentPreparedSessionBinding,
-	CodingAgentSessionTransition,
-} from "../session-transition/contracts.js";
 import { createCodingAgentExtensionCommandHost } from "./command-host.js";
 import type {
 	CodingAgentExtensionCommandHost,
@@ -63,7 +65,7 @@ class DefaultCodingAgentExtensionSessionHost implements CodingAgentExtensionSess
 	}
 
 	async before(
-		transition: CodingAgentSessionTransition,
+		transition: RuntimeActiveSessionTransition<RuntimeHostSession>,
 	): Promise<{ readonly cancelled: boolean; readonly skipConversationRestore?: boolean } | undefined> {
 		const runner = this.current.events.runner;
 		if (transition.kind === "fork") {
@@ -84,8 +86,8 @@ class DefaultCodingAgentExtensionSessionHost implements CodingAgentExtensionSess
 	}
 
 	async prepare(
-		transition: CodingAgentSessionTransition & { readonly next: RuntimeSession },
-	): Promise<CodingAgentPreparedSessionBinding> {
+		transition: RuntimeActiveSessionTransition<RuntimeHostSession> & { readonly next: RuntimeHostSession },
+	): Promise<RuntimePreparedSessionBinding> {
 		const previous = this.current;
 		const events = this.createHost(transition.next);
 		const next: CodingAgentExtensionSessionBinding = {
@@ -104,7 +106,7 @@ class DefaultCodingAgentExtensionSessionHost implements CodingAgentExtensionSess
 			if (this.initialization) {
 				await events.initialize(this.initialization, { emitSessionStart: false });
 			}
-			const prepared: CodingAgentPreparedSessionBinding = {
+			const prepared: RuntimePreparedSessionBinding = {
 				commit: async () => {
 					this.current = next;
 				},
@@ -122,7 +124,9 @@ class DefaultCodingAgentExtensionSessionHost implements CodingAgentExtensionSess
 		}
 	}
 
-	async after(transition: CodingAgentSessionTransition & { readonly next: RuntimeSession }): Promise<void> {
+	async after(
+		transition: RuntimeActiveSessionTransition<RuntimeHostSession> & { readonly next: RuntimeHostSession },
+	): Promise<void> {
 		if (transition.kind === "fork") {
 			await this.current.events.runner.emit({
 				type: "session_fork",
@@ -137,7 +141,7 @@ class DefaultCodingAgentExtensionSessionHost implements CodingAgentExtensionSess
 		});
 	}
 
-	async reload(session: RuntimeSession, operation: () => Promise<void>): Promise<void> {
+	async reload(session: RuntimeHostSession, operation: () => Promise<void>): Promise<void> {
 		const previous = this.current;
 		const rollback = new InitializationRollbackScope();
 		let next: CodingAgentExtensionSessionBinding | undefined;

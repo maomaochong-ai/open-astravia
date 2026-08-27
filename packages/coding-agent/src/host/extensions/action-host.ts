@@ -1,5 +1,5 @@
 import { type ImageContent, modelsAreEqual, Type } from "@vetta/ai";
-import type { RuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeHostSession } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition, SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type {
 	ExtensionActions,
@@ -16,7 +16,7 @@ import type { SessionResourceRuntime } from "../../resources/index.js";
 import { CODING_AGENT_EXTENSION_INPUT_SOURCE_METADATA_KEY } from "../../runtime-contracts/extension-runtime.js";
 
 export interface CodingAgentExtensionActionHostOptions {
-	readonly session: RuntimeSession;
+	readonly session: RuntimeHostSession;
 	readonly resourceLoader: Pick<SessionResourceRuntime, "getPrompts" | "getSkills">;
 	readonly onModelSelect?: (event: ModelSelectEvent) => Promise<void>;
 	readonly onError?: (error: ExtensionError) => void;
@@ -32,15 +32,12 @@ export class CodingAgentExtensionActionHost {
 	private disposed = false;
 
 	constructor(private readonly options: CodingAgentExtensionActionHostOptions) {
-		const assembly = options.session.createCoreAssembly();
-		const toolController = assembly.toolController;
-		if (!toolController) throw new Error("Extension actions require a Runtime tool controller");
 		const now = options.now ?? Date.now;
 		const setModel: SetModelHandler = async (model) => {
 			await this.mutationTail;
-			if (!(await assembly.modelView.resolveApiKey(model))) return false;
+			if (!(await options.session.resolveModelApiKey(model))) return false;
 			const previousModel = options.session.readState().model;
-			await assembly.modelController.selectModel(`${model.provider}/${model.id}`, "always");
+			await options.session.selectModel(`${model.provider}/${model.id}`, "always");
 			const selectedModel = options.session.readState().model ?? model;
 			if (!modelsAreEqual(previousModel, selectedModel)) {
 				await options.onModelSelect?.({
@@ -74,7 +71,7 @@ export class CodingAgentExtensionActionHost {
 							: deliveryOptions?.triggerTurn
 								? "triggerTurn"
 								: "record";
-				this.track(assembly.contextDeliveryController.deliver([record], mode), "send_message");
+				this.track(options.session.deliverContext([record], mode), "send_message");
 			},
 			sendUserMessage: (content, deliveryOptions) => {
 				const normalized = normalizeUserContent(content);
@@ -91,23 +88,23 @@ export class CodingAgentExtensionActionHost {
 				);
 			},
 			appendEntry: (customType, data) => {
-				this.enqueueMutation(() => assembly.metadataController.appendEntry(customType, data), "append_entry");
+				this.enqueueMutation(() => options.session.appendMetadataEntry(customType, data), "append_entry");
 			},
 			setSessionName: (name) => {
 				this.sessionNameOverride = name;
-				this.enqueueMutation(() => assembly.metadataController.setName(name), "set_session_name");
+				this.enqueueMutation(() => options.session.setName(name), "set_session_name");
 			},
-			getSessionName: () => this.sessionNameOverride ?? assembly.metadataController.readName(),
+			getSessionName: () => this.sessionNameOverride ?? options.session.readName(),
 			setLabel: (entryId, label) => {
-				this.enqueueMutation(() => assembly.metadataController.setLabel(entryId, label), "set_label");
+				this.enqueueMutation(() => options.session.setLabel(entryId, label), "set_label");
 			},
 			getActiveTools: () => [...options.session.readState().activeToolNames],
-			getAllTools: () => toToolInfo(toolController.readAvailableTools()),
-			setActiveTools: (toolNames) => toolController.setActiveToolNames(toolNames),
+			getAllTools: () => toToolInfo(options.session.readAvailableTools()),
+			setActiveTools: (toolNames) => options.session.setActiveToolNames(toolNames),
 			getCommands: () => readResourceCommands(options.resourceLoader),
 			setModel,
 			getThinkingLevel: () => options.session.readState().thinkingLevel,
-			setThinkingLevel: (level) => assembly.modelController.setThinkingLevel(level),
+			setThinkingLevel: (level) => options.session.setThinkingLevel(level),
 		};
 	}
 

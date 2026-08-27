@@ -95,7 +95,7 @@ describe("Greenfield CLI memory runtime", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "memory-session",
 			cwd: workspace,
 			memoryMode: true,
@@ -142,7 +142,7 @@ describe("Greenfield CLI memory runtime", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({ sessionId: "plain-session", cwd: workspace });
+		const session = await composition.createSession({ sessionId: "plain-session", cwd: workspace });
 
 		await session.prompt({ text: "Do not enable memory" });
 
@@ -178,7 +178,7 @@ describe("Greenfield CLI memory runtime", () => {
 			streamFn: () => new RecordedAssistantStream(assistantMessage([{ type: "text", text: "Short response." }])),
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "memory-flush-session",
 			cwd: workspace,
 			memoryMode: true,
@@ -245,7 +245,7 @@ describe("Greenfield CLI memory runtime", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "memory-rollover-source",
 			cwd: workspace,
 			memoryMode: true,

@@ -226,10 +226,11 @@ export class RuntimeAgentRegistry {
 	}
 
 	/** 从发现面移除 Agent；已有 revision lease 继续有效直至释放。 */
-	remove(agentId: string): boolean {
+	remove(agentId: string, expectedRevisionId?: string): boolean {
 		this.assertOpen();
 		const entry = this.entries.get(agentId);
 		if (!entry) return false;
+		if (expectedRevisionId !== undefined && entry.current?.revision.id !== expectedRevisionId) return false;
 		this.entries.delete(agentId);
 		if (entry.current) this.retireGeneration(entry.current);
 		this.observations?.record(

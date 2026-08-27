@@ -1,9 +1,13 @@
 import {
 	CODING_AGENT_COMPACTION_PREFIRE_OBSERVATION,
 	CODING_AGENT_LIFECYCLE_ISSUE_OBSERVATION,
+	CODING_AGENT_PLUGIN_CONFIGURATION_OBSERVATION,
+	CODING_AGENT_SESSION_ASSISTANCE_OBSERVATION,
 	CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION,
 	type CodingAgentCompactionPrefireObservation,
 	type CodingAgentLifecycleIssueObservation,
+	type CodingAgentPluginConfigurationObservation,
+	type CodingAgentSessionAssistanceObservation,
 	type CodingAgentSubagentIssueObservation,
 } from "@vetta/coding-agent/composition";
 import type { RuntimeObservationPort, RuntimeObservationRecord } from "@vetta/runtime-core";
@@ -38,6 +42,44 @@ export function createCodingAgentObservationLogPort(logger: CodingAgentObservati
 				});
 				return;
 			}
+			if (isSessionAssistanceObservation(record)) {
+				const fields = {
+					operation: record.payload.operation,
+					phase: record.payload.phase,
+					...(record.context.sessionId ? { sessionId: record.context.sessionId } : {}),
+					...(record.payload.modelProvider ? { modelProvider: record.payload.modelProvider } : {}),
+					...(record.payload.modelId ? { modelId: record.payload.modelId } : {}),
+					...(record.payload.attempt === undefined ? {} : { attempt: record.payload.attempt }),
+					...(record.payload.durationMs === undefined ? {} : { durationMs: record.payload.durationMs }),
+					...(record.payload.resultCount === undefined ? {} : { resultCount: record.payload.resultCount }),
+					...(record.payload.failure?.errorName ? { errorName: record.payload.failure.errorName } : {}),
+					...(record.payload.failure?.errorCode ? { errorCode: record.payload.failure.errorCode } : {}),
+				};
+				if (
+					record.payload.phase === "candidate-empty" ||
+					record.payload.phase === "candidate-failed" ||
+					record.payload.phase === "exhausted"
+				) {
+					logger.warn("coding session assistance issue", fields);
+				} else {
+					logger.info("coding session assistance", fields);
+				}
+				return;
+			}
+			if (isPluginConfigurationObservation(record)) {
+				const fields = {
+					phase: record.payload.phase,
+					source: record.payload.source,
+					boundary: record.payload.boundary,
+					...(record.context.sessionId ? { sessionId: record.context.sessionId } : {}),
+					...(record.payload.durationMs === undefined ? {} : { durationMs: record.payload.durationMs }),
+					...(record.payload.failure?.errorName ? { errorName: record.payload.failure.errorName } : {}),
+					...(record.payload.failure?.errorCode ? { errorCode: record.payload.failure.errorCode } : {}),
+				};
+				if (record.payload.phase === "failed") logger.warn("coding plugin configuration failed", fields);
+				else logger.info("coding plugin configuration", fields);
+				return;
+			}
 			if (!isCompactionPrefireObservation(record)) return;
 			const fields = {
 				phase: record.payload.phase,
@@ -52,6 +94,18 @@ export function createCodingAgentObservationLogPort(logger: CodingAgentObservati
 			else logger.info("coding context compaction prefire", fields);
 		},
 	};
+}
+
+function isSessionAssistanceObservation(
+	record: RuntimeObservationRecord,
+): record is RuntimeObservationRecord<CodingAgentSessionAssistanceObservation> {
+	return record.token.id === CODING_AGENT_SESSION_ASSISTANCE_OBSERVATION.id;
+}
+
+function isPluginConfigurationObservation(
+	record: RuntimeObservationRecord,
+): record is RuntimeObservationRecord<CodingAgentPluginConfigurationObservation> {
+	return record.token.id === CODING_AGENT_PLUGIN_CONFIGURATION_OBSERVATION.id;
 }
 
 function isLifecycleIssueObservation(

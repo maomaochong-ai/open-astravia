@@ -66,10 +66,14 @@ try {
 | API | 使用场景 |
 | --- | --- |
 | `createCodingAgentSession()` | 单个明确生命周期的活动会话 |
-| `createCodingAgentHost()` | 同一宿主中管理多个稳定 Session 生命周期 |
+| `createCodingAgentHost()` | 批量持有和关闭多个配置彼此隔离的 Coding Agent Session |
 | `createCodingAgentSessionCatalog()` | 离线列出、查询和管理会话元数据 |
 
 Catalog 与活动 Session 分离，不应为了展示会话列表而打开所有会话。
+
+这里的 `CodingAgentHost` 是 SDK 便利所有权组，不是多主 Agent Registry。每个成员可以有独立 cwd、Storage、Tool、MCP、
+Extension Source 和模型资源；若要在一个进程内动态安装、替换或退役不同 `agentId`，应使用
+`@vetta/runtime-core` 的 `RuntimeHost.installAgent()`。
 
 ## 可选产品能力
 
@@ -81,6 +85,8 @@ Session 还提供模型和思考档位、工具开关、上下文压缩、自动
 - `customTools`：类型化自定义工具。
 - `askUserQuestion`：把模型提问交给宿主 UI。
 - `enableBackgroundTasks`、`enableSubagents`、`enableMcp`：显式启用对应能力。
+- `observationHub`：把 Agent、RuntimeHost、Tool、MCP、Prompt 与活动 Session 生命周期事件接到本地 Adapter
+  或上层应用 Hub；Adapter 由调用方持有。
 - `env`：传入受控环境变量，而不是修改进程全局状态。
 
 ## 错误与关闭

@@ -21,12 +21,14 @@ composition is Node-oriented and is not part of this portable boundary.
 - isolated Session state machine, Typed Turn Pipeline and Feature Compiler under `./kernel`
 - process-level peer Agent Definition registry with immutable revisions, leases and dynamic Source synchronization under `./agents`
 - one `RuntimeHost` lifecycle root that owns Conversation Sessions, factory-created Backends, the Agent control plane and a directly injected root Observation Port
+- dynamic main-Agent Backend admission with immutable generations: Backend replacement/removal blocks only new Sessions while existing Sessions retain their generation lease
 - product-neutral Runtime Configuration Center under `./configuration`, including Definition revisions/leases,
   Source-owned dynamic Layer generations, ordered resolution and immutable snapshots
 - peer Agent Instance/Session routing with isolated capability compilation, Session Extensions and explicit next-Turn rollout
 - standard Session Extension-to-RuntimeHost adapter for typed endpoints and late-subscriber initial observations
 - type-safe, failure-isolated observation ports, hierarchical Hub routing and scoped Agent/Session/Turn identity under `./observation`
-- privacy-safe `runtime.host.lifecycle` observations for Session disposal and owned-resource shutdown failures
+- privacy-safe `runtime.host.lifecycle` / `runtime.active-session.lifecycle` observations for Session maintenance,
+  listener isolation, transition cleanup and owned-resource shutdown failures
 - acquire/release Runtime Snapshot lifecycle with atomic Feature-topology switching
 - per-model-call prompt and tool materialization through Model Call Contribution Providers
 - `AgentCoreTurnEngine` adapter for the `@vetta/agent-core` model and tool loop
@@ -72,6 +74,7 @@ composition is Node-oriented and is not part of this portable boundary.
 
 - `RuntimeHost`
 - `RuntimeHost.agents` for the built-in `RuntimeAgentRuntime`, Definition Registry, Instance/Session routing, revision leases and Source synchronization
+- `RuntimeHost.agentBackends` and `RuntimeHost.installAgent()` for transactional dynamic admission of heterogeneous main-Agent Backends
 - `@vetta/runtime-core/configuration` for configuration Definition/Source revisions, ordered Host layers, validation codecs and immutable resolved snapshots
 - `@vetta/runtime-core/observation` for domain-owned tokens, scoped publishers, lossless Publisher-to-Port forwarding,
   hierarchical/dynamic Hub routing, safe Session projection and arbitrary telemetry adapters
@@ -149,6 +152,11 @@ host.agents.registry.upsert({ source: { id: "code", revision: "2026-08-25.1" }, 
 连接，宿主应先完成 Schema 校验和组件引用解析，再通过 `RuntimeAgentDefinitionSource` 发布完整定义；Runtime
 Core 不读取文件或动态加载模块。
 
+向已经运行的 Host 增加需要独立 Backend 的主 Agent 时，使用 `host.installAgent({ source, definition,
+createBackend, catalog })`。Definition 与 Backend 在同一安装事务中发布；新 Backend generation 只供后续 Session 使用，
+已有 Session 持有旧 generation lease，直到成功关闭后才回收。若多个 Agent 共用同一个通用 Backend，则继续只动态发布
+Definition，不必为每个 Agent 创建 route。
+
 完整 Host 会话通过 `RuntimeAgentSessionAssemblyBackend` 选择 Agent，原生 Conversation 可选持久化稳定
 `agentId` 供 Catalog 恢复路由；revision 与 Instance identity 不进入持久化格式。
 
@@ -182,5 +190,7 @@ Core 不读取文件或动态加载模块。
 | 日志、Trace、Metrics、JSONL 或 UI 诊断 | 只读 `RuntimeObservationHub` + `RuntimeObservationPort` Adapter |
 
 基座不提供可任意修改共享上下文的通用 `next()` middleware。只读 Observer 必须失败隔离；会改变执行结果的逻辑
-必须进入显式 Policy、Interceptor、Feature 或 Extension 合同。`Profile`、Persona 和 Mode 属于具体产品，产品在
+必须进入显式 Policy、Interceptor、Feature 或 Extension 合同。模块可从非所有权
+`RuntimeObservationHubView.publisher()` 取得 scoped Publisher，把自己创建的 RuntimeHost、活动 Session 切换器或其它
+子模块汇入同一个 Hub；关闭子模块不能关闭 Hub。`Profile`、Persona 和 Mode 属于具体产品，产品在
 创建 Definition 前把它们解析为普通 Instruction/Feature，不能向 Runtime Agent 合同下传。

@@ -8,15 +8,11 @@ describe("Coding Agent Subagent child handle", () => {
 		const listeners = new Set<(event: SessionEvent) => void>();
 		const session = {
 			sessionId: "child-1",
-			createCoreAssembly: () => ({
-				extensionHost: {
-					hasEndpoint: () => true,
-					invokeSync: () => [
-						{ id: 1, content: "inspect", status: "done" },
-						{ id: 2, content: "change", status: "pending" },
-					],
-				},
-			}),
+			hasExtension: () => true,
+			invokeExtensionSync: () => [
+				{ id: 1, content: "inspect", status: "done" },
+				{ id: 2, content: "change", status: "pending" },
+			],
 			subscribe: (listener: (event: SessionEvent) => void) => {
 				listeners.add(listener);
 				return () => listeners.delete(listener);

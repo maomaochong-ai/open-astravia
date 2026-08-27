@@ -1,6 +1,36 @@
-import type { RuntimeSession } from "./kernel-runtime-session-backend.js";
+import type { Message } from "@vetta/ai";
+import type { PromptRequest, SessionEvent } from "../contracts.js";
+import type { RuntimeObservationPublisher } from "../observation/index.js";
+import type { SessionExtensionEndpointToken } from "../session-extensions/contracts.js";
+import type { RuntimeSessionExecutionObservation, RuntimeSessionState } from "./session-ports.js";
 import type { RuntimeSessionCatalog } from "./session-services.js";
 import type { RuntimePreparedSessionBinding } from "./session-transition-cleanup.js";
+
+/** Active identity transaction 所需的最小 Session 面；不暴露 Kernel assembly。 */
+export interface RuntimeActiveSession {
+	readonly sessionId: string;
+	readonly sessionPath: string | undefined;
+	prompt(request: PromptRequest): Promise<unknown>;
+	continue(): Promise<unknown>;
+	retry(): Promise<unknown>;
+	abort(reason?: string): Promise<void>;
+	readState(): RuntimeSessionState;
+	readMessages(): readonly Message[];
+	subscribe(handler: (event: SessionEvent) => void): () => void;
+	subscribeExecutionObservations(
+		handler: (observation: RuntimeSessionExecutionObservation) => Promise<void> | void,
+	): () => void;
+	hasExtension?<Input, Output>(token: SessionExtensionEndpointToken<Input, Output>): boolean;
+	invokeExtension?<Input, Output>(
+		token: SessionExtensionEndpointToken<Input, Output>,
+		input: Input,
+		signal?: AbortSignal,
+	): Promise<Output>;
+	invokeExtensionSync?<Input, Output>(token: SessionExtensionEndpointToken<Input, Output>, input: Input): Output;
+	navigateForEdit(entryId: string): Promise<{ text: string; cancelled: boolean }>;
+	forkSession(entryId: string): Promise<{ path: string; text: string }>;
+	dispose(): Promise<void>;
+}
 
 export interface RuntimeActiveSessionCreateOptions {
 	readonly sessionId: string;
@@ -27,10 +57,10 @@ export interface RuntimeNewSessionOptions {
 
 export type RuntimeActiveSessionTransitionKind = "new" | "resume" | "fork";
 
-export interface RuntimeActiveSessionTransition {
+export interface RuntimeActiveSessionTransition<TSession extends RuntimeActiveSession = RuntimeActiveSession> {
 	readonly kind: RuntimeActiveSessionTransitionKind;
-	readonly previous: RuntimeSession;
-	readonly next?: RuntimeSession;
+	readonly previous: TSession;
+	readonly next?: TSession;
 	readonly previousSessionPath: string | undefined;
 	readonly targetSessionPath?: string;
 	readonly entryId?: string;
@@ -41,12 +71,14 @@ export interface RuntimeActiveSessionTransitionDecision {
 	readonly skipConversationRestore?: boolean;
 }
 
-export interface RuntimeActiveSessionTransitionLifecycle {
-	before?(transition: RuntimeActiveSessionTransition): Promise<RuntimeActiveSessionTransitionDecision | undefined>;
+export interface RuntimeActiveSessionTransitionLifecycle<TSession extends RuntimeActiveSession = RuntimeActiveSession> {
+	before?(
+		transition: RuntimeActiveSessionTransition<TSession>,
+	): Promise<RuntimeActiveSessionTransitionDecision | undefined>;
 	prepare?(
-		transition: RuntimeActiveSessionTransition & { readonly next: RuntimeSession },
+		transition: RuntimeActiveSessionTransition<TSession> & { readonly next: TSession },
 	): Promise<RuntimePreparedSessionBinding | undefined>;
-	after?(transition: RuntimeActiveSessionTransition & { readonly next: RuntimeSession }): Promise<void>;
+	after?(transition: RuntimeActiveSessionTransition<TSession> & { readonly next: TSession }): Promise<void>;
 }
 
 export type RuntimeActiveSessionEndCause = "new_session" | "switch_session" | "fork_session";
@@ -60,10 +92,11 @@ export interface RuntimeActiveSessionHookLifecycle {
 
 export interface RuntimeActiveSessionRuntimePort<
 	TSessionOptions extends RuntimeActiveSessionCreateOptions = RuntimeActiveSessionCreateOptions,
+	TSession extends RuntimeActiveSession = RuntimeActiveSession,
 > {
 	readonly sessions: {
-		create(options: TSessionOptions): Promise<RuntimeSession>;
-		resume(options: TSessionOptions): Promise<RuntimeSession>;
+		create(options: TSessionOptions): Promise<TSession>;
+		resume(options: TSessionOptions): Promise<TSession>;
 	};
 	readonly sessionHooks: RuntimeActiveSessionHookLifecycle;
 	quiesceSessionBackgroundCommands(sessionId: string): Promise<void>;
@@ -72,9 +105,10 @@ export interface RuntimeActiveSessionRuntimePort<
 
 export interface RuntimeActiveSessionHostOptions<
 	TSessionOptions extends RuntimeActiveSessionCreateOptions = RuntimeActiveSessionCreateOptions,
+	TSession extends RuntimeActiveSession = RuntimeActiveSession,
 > {
-	readonly runtime: RuntimeActiveSessionRuntimePort<TSessionOptions>;
-	readonly initialSession: RuntimeSession;
+	readonly runtime: RuntimeActiveSessionRuntimePort<TSessionOptions, TSession>;
+	readonly initialSession: TSession;
 	readonly sessionOptions: Omit<TSessionOptions, "sessionId" | "parentSessionPath" | "parentEntryId">;
 	readonly conversationDir: string;
 	readonly defaultCwd: string;
@@ -82,10 +116,12 @@ export interface RuntimeActiveSessionHostOptions<
 	readonly createSessionId: () => string;
 	readonly resolveSessionId: (sessionPath: string) => string | undefined;
 	readonly resolveSessionPath: (sessionId: string) => string;
-	readonly lifecycle?: RuntimeActiveSessionTransitionLifecycle;
+	readonly lifecycle?: RuntimeActiveSessionTransitionLifecycle<TSession>;
+	/** 把监听器与已提交切换的清理失败汇入上层 Observation；Publisher 生命周期仍由调用方持有。 */
+	readonly observationPublisher?: RuntimeObservationPublisher;
 	readonly logLabel?: string;
 	readonly onTransitionCleanupError?: (
 		error: AggregateError,
-		transition: RuntimeActiveSessionTransition & { readonly next: RuntimeSession },
+		transition: RuntimeActiveSessionTransition<TSession> & { readonly next: TSession },
 	) => void;
 }

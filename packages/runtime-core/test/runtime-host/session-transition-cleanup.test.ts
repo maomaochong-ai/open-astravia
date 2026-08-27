@@ -61,14 +61,8 @@ function createDisposableSession() {
 		subscribe() {
 			return releaseEvents;
 		},
-		createCoreAssembly() {
-			return {
-				executionObservationStream: {
-					subscribe() {
-						return releaseObservations;
-					},
-				},
-			};
+		subscribeExecutionObservations() {
+			return releaseObservations;
 		},
 	} as unknown as RuntimeSession;
 	return { session, dispose, releaseEvents, releaseObservations };

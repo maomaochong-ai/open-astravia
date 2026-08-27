@@ -57,6 +57,7 @@ export interface CodingAgentModelCallFrameComposerOptions {
 		context: RuntimeSnapshotAcquireContext,
 	) => (context: ModelCallFrameCompositionContext) => CodingToolActivation;
 	readonly onPromptDiagnostics?: (diagnostics: SystemPromptDiagnostics) => void;
+	readonly reportActiveToolNames?: (activeToolNames: readonly string[]) => Promise<void> | void;
 	readonly releaseTurnBinding?: () => Promise<void> | void;
 }
 
@@ -216,6 +217,11 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 		this.options.extensionEvents?.recordSystemPrompt(systemPrompt);
 		const orderedTools = orderModelTools(selectedTools);
 		const tools = this.options.wrapTools?.(orderedTools, prepared.effectiveContext) ?? orderedTools;
+		try {
+			await this.options.reportActiveToolNames?.([...tools.keys()]);
+		} catch {
+			// Session observation delivery is non-critical and cannot change the admitted model-call frame.
+		}
 		return {
 			instructions: [
 				{

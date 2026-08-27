@@ -1,5 +1,5 @@
 import type { AssistantMessage, Message } from "@vetta/ai";
-import type { RuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeActiveSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { SubagentChildHandle, SubagentTodoProgress, SubagentUsageSnapshot } from "@vetta/runtime-subagents";
 import {
@@ -8,7 +8,7 @@ import {
 } from "../../features/todo/todo-session-extension-contract.js";
 
 export interface CodingAgentSubagentChildHandleOptions {
-	readonly session: RuntimeSession;
+	readonly session: RuntimeActiveSession;
 	readonly sessionFile?: string;
 	appendContext(records: readonly SessionContextRecord[]): void;
 	deliverContext(records: readonly SessionContextRecord[]): Promise<void>;
@@ -19,7 +19,7 @@ export interface CodingAgentSubagentChildHandleOptions {
 export function createCodingAgentSubagentChildHandle(
 	options: CodingAgentSubagentChildHandleOptions,
 ): SubagentChildHandle {
-	const extensionHost = options.session.createCoreAssembly().extensionHost;
+	const hasTodoRead = options.session.hasExtension?.(CODING_AGENT_TODO_READ) === true;
 	let disposed = false;
 	return {
 		sessionId: options.session.sessionId,
@@ -58,18 +58,16 @@ export function createCodingAgentSubagentChildHandle(
 				}
 			}),
 		setTodos: () => {},
-		getTodoProgress:
-			extensionHost?.hasEndpoint(CODING_AGENT_TODO_READ) === true
-				? () => readTodoProgress(extensionHost.invokeSync(CODING_AGENT_TODO_READ, undefined))
-				: undefined,
-		subscribeTodos:
-			extensionHost?.hasEndpoint(CODING_AGENT_TODO_READ) === true
-				? (listener) =>
-						options.session.subscribe((event) => {
-							const items = readCodingAgentTodoObservation(event);
-							if (items) listener(readTodoProgress(items));
-						})
-				: undefined,
+		getTodoProgress: hasTodoRead
+			? () => readTodoProgress(options.session.invokeExtensionSync?.(CODING_AGENT_TODO_READ, undefined) ?? [])
+			: undefined,
+		subscribeTodos: hasTodoRead
+			? (listener) =>
+					options.session.subscribe((event) => {
+						const items = readCodingAgentTodoObservation(event);
+						if (items) listener(readTodoProgress(items));
+					})
+			: undefined,
 	};
 }
 
@@ -82,7 +80,7 @@ function contextRecord(type: string, text: string): SessionContextRecord {
 	};
 }
 
-async function waitForIdle(session: RuntimeSession): Promise<void> {
+async function waitForIdle(session: RuntimeActiveSession): Promise<void> {
 	if (!session.readState().isStreaming) return;
 	await new Promise<void>((resolve) => {
 		const unsubscribe = session.subscribe((event) => {

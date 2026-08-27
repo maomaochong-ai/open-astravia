@@ -7,7 +7,6 @@
  * - kernel-session-events.ts      KernelEvent → SessionEvent 映射
  * - history.ts           会话历史 / 分支 / turn timing 解析
  * - peripheral-tasks.ts  自动标题、输入预测（轻量 LLM + 失败轮转）
- * - plugin-debug.ts      插件调试日志
  * - types.ts             共享类型
  */
 
@@ -21,6 +20,7 @@ export {
 	waitForRuntimeSessionIdle,
 } from "./active-session-host.js";
 export type {
+	RuntimeActiveSession,
 	RuntimeActiveSessionCreateOptions,
 	RuntimeActiveSessionEndCause,
 	RuntimeActiveSessionHookLifecycle,
@@ -35,6 +35,19 @@ export type {
 	RuntimeSessionSeedInitializer,
 	RuntimeSessionSeedTarget,
 } from "./active-session-host-contracts.js";
+export {
+	RUNTIME_HOST_AGENT_BACKEND_ERROR_CODES,
+	type RuntimeHostAgentBackendCandidate,
+	type RuntimeHostAgentBackendEntrySnapshot,
+	RuntimeHostAgentBackendError,
+	type RuntimeHostAgentBackendErrorCode,
+	type RuntimeHostAgentBackendPublishResult,
+	RuntimeHostAgentBackendRegistry,
+	type RuntimeHostAgentBackendRegistryOptions,
+	type RuntimeHostAgentBackendRegistrySnapshot,
+	type RuntimeHostAgentBackendRetirement,
+	type RuntimeHostAgentBackendRevision,
+} from "./agent-backend-admission.js";
 export {
 	ComposedRuntimeFactory,
 	type ComposedRuntimeFactoryOptions,
@@ -60,7 +73,13 @@ export {
 } from "./kernel-runtime-session-backend.js";
 export { mapKernelEventToSessionEvents } from "./kernel-session-events.js";
 export {
+	RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION,
+	RUNTIME_HOST_AGENT_BACKEND_OBSERVATION,
 	RUNTIME_HOST_LIFECYCLE_OBSERVATION,
+	type RuntimeActiveSessionHostObservation,
+	type RuntimeActiveSessionHostOperation,
+	type RuntimeHostAgentBackendObservation,
+	type RuntimeHostAgentBackendOperation,
 	type RuntimeHostLifecycleObservation,
 	type RuntimeHostLifecycleOperation,
 } from "./observations.js";
@@ -99,6 +118,7 @@ export type {
 	RuntimeDocumentParticipantContext,
 } from "./runtime-document-participant.js";
 export { RuntimeHost } from "./runtime-host.js";
+export { RuntimeHostSession } from "./runtime-host-session.js";
 export {
 	RuntimeModel,
 	type RuntimeModelCatalog,
@@ -146,7 +166,6 @@ export type {
 	RuntimeContextCompactionState,
 	RuntimeExecutionModeUpdate,
 	RuntimeModelSelectionStrategy,
-	RuntimeSessionBackgroundWorkController,
 	RuntimeSessionConfigurationController,
 	RuntimeSessionContextController,
 	RuntimeSessionContextDeliveryController,
@@ -215,4 +234,11 @@ export {
 	type RuntimeRetiredSessionCleanupOptions,
 	RuntimeSessionTransitionCleanup,
 } from "./session-transition-cleanup.js";
-export type { RunningChangedReason, RuntimeHostCompositionContext, RuntimeHostOptions } from "./types.js";
+export type {
+	RunningChangedReason,
+	RuntimeHostAgentInstallation,
+	RuntimeHostAgentInstallationOptions,
+	RuntimeHostAgentInstallationRetirement,
+	RuntimeHostCompositionContext,
+	RuntimeHostOptions,
+} from "./types.js";

@@ -1,7 +1,7 @@
 import { basename, dirname } from "node:path";
-import { RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
+import { RetryableCleanup, type RuntimeHostSession } from "@vetta/runtime-core";
 import { CodingAgentExtensionObservationAdapter } from "../../adapters/extensions/extension-observation-adapter.js";
-import { createCodingAgentExtensionSessionView } from "../../adapters/extensions/runtime-session-view-adapter.js";
+import { createCodingAgentExtensionSessionViewFromSource } from "../../adapters/extensions/runtime-session-view-adapter.js";
 import type { Extension, ExtensionError, ExtensionExecutionHost, ExtensionRuntime } from "../../extensions/index.js";
 import { ExtensionRunner } from "../../extensions/index.js";
 import type { CodingAgentModelRuntime } from "../../models/index.js";
@@ -14,7 +14,7 @@ export interface CodingAgentExtensionEventHostOptions {
 	readonly extensions: readonly Extension[];
 	readonly runtime: ExtensionRuntime;
 	readonly cwd: string;
-	readonly session: RuntimeSession;
+	readonly session: RuntimeHostSession;
 	readonly modelRegistry: CodingAgentModelRuntime;
 	readonly resourceLoader: Pick<SessionResourceRuntime, "extendResources" | "getPrompts" | "getSkills">;
 	readonly bindEvents: (
@@ -39,10 +39,6 @@ class DefaultCodingAgentExtensionEventHost implements CodingAgentExtensionEventH
 	private cleanupPrepared = false;
 
 	constructor(private readonly options: CodingAgentExtensionEventHostOptions) {
-		const assembly = options.session.createCoreAssembly();
-		const contextController = assembly.contextController;
-		if (!contextController) throw new Error("Extension events require a Runtime context controller");
-
 		this.actionHost = new CodingAgentExtensionActionHost({
 			session: options.session,
 			resourceLoader: options.resourceLoader,
@@ -53,14 +49,14 @@ class DefaultCodingAgentExtensionEventHost implements CodingAgentExtensionEventH
 			[...options.extensions],
 			options.runtime,
 			options.cwd,
-			createCodingAgentExtensionSessionView(assembly),
+			createCodingAgentExtensionSessionViewFromSource(options.session),
 			options.modelRegistry,
 		);
 		this.eventBinding = options.bindEvents(this.runner);
 		const observationAdapter = new CodingAgentExtensionObservationAdapter(async (event) => {
 			await this.runner.emit(event);
 		});
-		this.removeExecutionObservationListener = assembly.executionObservationStream.subscribe(async (observation) => {
+		this.removeExecutionObservationListener = options.session.subscribeExecutionObservations(async (observation) => {
 			if (this.eventBinding.ownsTurn && !this.eventBinding.ownsTurn(observation.turnId)) return;
 			try {
 				await observationAdapter.observe(observation);
@@ -78,11 +74,11 @@ class DefaultCodingAgentExtensionEventHost implements CodingAgentExtensionEventH
 						this.reportRuntimeError("abort", error);
 					});
 				},
-				hasPendingMessages: () => assembly.queueView.readPendingMessageCount() > 0,
+				hasPendingMessages: () => options.session.readPendingMessageCount() > 0,
 				shutdown: () => this.shutdownHandler(),
-				getContextUsage: () => assembly.contextUsageView.readContextUsage(),
+				getContextUsage: () => options.session.readContextUsage(),
 				compact: (compactOptions) => {
-					void contextController.compact({ customInstructions: compactOptions?.customInstructions }).then(
+					void options.session.compact(compactOptions?.customInstructions).then(
 						(result) => compactOptions?.onComplete?.(result),
 						(error: unknown) =>
 							compactOptions?.onError?.(error instanceof Error ? error : new Error(String(error))),

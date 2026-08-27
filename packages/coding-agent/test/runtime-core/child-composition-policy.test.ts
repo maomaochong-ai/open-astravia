@@ -1,12 +1,15 @@
 import type { Api, Model } from "@vetta/ai";
-import type { RuntimeSession } from "@vetta/runtime-core";
+import {
+	type RuntimeHostSessionAssembly,
+	RuntimeObservationHub,
+	type RuntimeSessionCreateRequest,
+} from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
 import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
-	CodingAgentRuntimeSessionOptions,
 } from "../../src/composition/contracts/index.js";
 import {
 	type CodingAgentChildRuntimeCompositionFactory,
@@ -112,14 +115,30 @@ describe("Coding Agent Child Composition policy", () => {
 		const childSessionOptions = sessionOptions("child-create");
 		const resumedSessionOptions = sessionOptions("child-resume");
 		const records: SessionContextRecord[] = [{ type: "test", content: "context", modelVisible: true }];
-		expect(await child.createSession(childSessionOptions)).toBe(fixture.createdSession);
-		expect(await child.resumeSession(resumedSessionOptions)).toBe(fixture.resumedSession);
+		expect(await child.createSession(childSessionOptions)).toMatchObject({ sessionId: "child-create" });
+		expect(await child.resumeSession(resumedSessionOptions)).toMatchObject({ sessionId: "child-resume" });
 		child.appendSessionContext("child-create", records);
 		await child.deliverSessionContext("child-create", records);
 		await child.dispose();
 
-		expect(fixture.createSession).toHaveBeenCalledWith(childSessionOptions);
-		expect(fixture.resumeSession).toHaveBeenCalledWith(resumedSessionOptions);
+		expect(fixture.createAssembly).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				sessionId: "child-create",
+				sessionPath: undefined,
+				scenario: "project",
+				agent: expect.objectContaining({ sessionConfiguration: childSessionOptions }),
+			}),
+		);
+		expect(fixture.createAssembly).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				sessionId: "child-resume",
+				sessionPath: "child-resume",
+				scenario: "project",
+				agent: expect.objectContaining({ sessionConfiguration: resumedSessionOptions }),
+			}),
+		);
 		expect(fixture.appendSessionContext).toHaveBeenCalledWith("child-create", records);
 		expect(fixture.deliverSessionContext).toHaveBeenCalledWith("child-create", records);
 		expect(fixture.dispose).toHaveBeenCalledOnce();
@@ -178,28 +197,85 @@ describe("Coding Agent Child Composition policy", () => {
 });
 
 function compositionFixture() {
-	const createdSession = { sessionId: "child-create" } as RuntimeSession;
-	const resumedSession = { sessionId: "child-resume" } as RuntimeSession;
-	const createSession = vi.fn(async (_options: CodingAgentRuntimeSessionOptions) => createdSession);
-	const resumeSession = vi.fn(async (_options: CodingAgentRuntimeSessionOptions) => resumedSession);
+	const createAssembly = vi.fn(async (request: RuntimeSessionCreateRequest) =>
+		createRuntimeHostSessionAssembly(request.sessionId ?? "child"),
+	);
 	const appendSessionContext = vi.fn((_sessionId: string, _records: readonly SessionContextRecord[]) => {});
 	const deliverSessionContext = vi.fn(async (_sessionId: string, _records: readonly SessionContextRecord[]) => {});
 	const dispose = vi.fn(async () => {});
 	return {
-		createdSession,
-		resumedSession,
-		createSession,
-		resumeSession,
+		createAssembly,
 		appendSessionContext,
 		deliverSessionContext,
 		dispose,
 		composition: {
-			sessions: { create: createSession, resume: resumeSession },
-			backend: { create: createSession, resume: resumeSession },
+			runtimeHostBackend: { createAssembly },
+			agentRuntime: {
+				agentId: "coding-agent",
+				instanceId: "coding-agent-instance",
+				revisionId: "coding-agent-revision",
+			},
+			observations: new RuntimeObservationHub(),
+			scenario: "project",
 			appendSessionContext,
 			deliverSessionContext,
 			dispose,
 		} as unknown as CodingAgentRuntimeComposition,
+	};
+}
+
+function createRuntimeHostSessionAssembly(sessionId: string): RuntimeHostSessionAssembly {
+	return {
+		lifecycle: { sessionId, sessionPath: undefined, dispose: async () => {} },
+		historyReader: { readHistory: () => [] },
+		historyController: {
+			navigateForEdit: async () => ({ text: "", cancelled: false }),
+			switchBranch: async () => ({ leafId: "" }),
+			appendBranchSummary: async () => ({ entryId: "" }),
+			deleteMessage: async () => ({ leafId: null }),
+			replaceLastUserMessage: async () => ({ leafId: null }),
+			forkSession: async () => ({ path: "", text: "" }),
+			setName: async () => {},
+		},
+		hostInteraction: { bind: async () => {} },
+		executionController: { isBusy: () => false, reconfigure: async () => {} },
+		workspaceView: { readWorkingDirectory: () => undefined },
+		configurationController: {
+			setSteeringMode: () => {},
+			setFollowUpMode: () => {},
+			setAgentMode: () => {},
+		},
+		modelController: {
+			selectModel: async () => {},
+			setThinkingLevel: () => {},
+			refreshAuth: async () => {},
+		},
+		modelView: {
+			readCurrentModel: () => undefined,
+			refreshAvailableModels: () => {},
+			readAvailableModels: () => [],
+			resolveApiKey: async () => undefined,
+		},
+		corePorts: {
+			turnControl: {
+				prompt: async () => undefined,
+				continue: async () => {},
+				retry: async () => {},
+				abort: async () => {},
+			},
+			eventStream: { subscribe: () => () => {} },
+			stateReader: {
+				readState: () => ({
+					thinkingLevel: "off",
+					activeToolNames: [],
+					isStreaming: false,
+					messageCount: 0,
+					contextPercent: 0,
+					contextWindow: 0,
+				}),
+				readMessages: () => [],
+			},
+		},
 	};
 }
 

@@ -1,4 +1,4 @@
-import type { CodingAgentActiveSessionHost, CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
+import type { CodingAgentRuntimeComposition, CodingAgentRuntimeSessionOptions } from "@vetta/coding-agent/composition";
 import {
 	type CodingAgentRuntimeExtensionInitialization,
 	type CodingAgentRuntimeExtensionSessionHost,
@@ -11,7 +11,9 @@ import {
 } from "@vetta/coding-agent/runtime";
 import {
 	RetryableCleanup,
-	type RuntimeSession,
+	type RuntimeActiveSessionHost,
+	type RuntimeHost,
+	type RuntimeHostSession,
 	type RuntimeSessionExecutionObservation,
 	type SessionEvent,
 } from "@vetta/runtime-core";
@@ -19,7 +21,8 @@ import type { ManagedMcpRuntimeToolSource } from "@vetta/runtime-mcp";
 
 export interface CliCodingAgentProcessSessionHostOptions {
 	readonly runtime: CodingAgentRuntimeComposition;
-	readonly activeSessionHost: CodingAgentActiveSessionHost;
+	readonly runtimeHost: RuntimeHost;
+	readonly activeSessionHost: RuntimeActiveSessionHost<CodingAgentRuntimeSessionOptions, RuntimeHostSession>;
 	readonly extensionSessionHost: CodingAgentRuntimeExtensionSessionHost;
 	readonly mcpSource: ManagedMcpRuntimeToolSource;
 	readonly readRetrySettings: () => CodingAgentTurnRetrySettings;
@@ -59,15 +62,16 @@ export class CliCodingAgentProcessSessionHost {
 			phase: 1,
 			cleanup: () => options.activeSessionHost.dispose(),
 		});
-		this.cleanup.add({ id: "runtime", phase: 2, cleanup: () => options.runtime.dispose() });
-		this.cleanup.add({ id: "mcp-source", phase: 3, cleanup: () => options.mcpSource.dispose() });
+		this.cleanup.add({ id: "runtime-host", phase: 2, cleanup: () => options.runtimeHost.close() });
+		this.cleanup.add({ id: "runtime", phase: 3, cleanup: () => options.runtime.dispose() });
+		this.cleanup.add({ id: "mcp-source", phase: 4, cleanup: () => options.mcpSource.dispose() });
 	}
 
-	readSession(): RuntimeSession {
+	readSession(): RuntimeHostSession {
 		return this.options.activeSessionHost.readSession();
 	}
 
-	startActiveSessionOperation<T>(operation: (session: RuntimeSession) => Promise<T>): Promise<T> {
+	startActiveSessionOperation<T>(operation: (session: RuntimeHostSession) => Promise<T>): Promise<T> {
 		return this.options.activeSessionHost.startActiveSessionOperation(operation);
 	}
 
@@ -94,15 +98,15 @@ export class CliCodingAgentProcessSessionHost {
 		return this.options.extensionSessionHost.shutdown();
 	}
 
-	newSession(...args: Parameters<CodingAgentActiveSessionHost["newSession"]>) {
+	newSession(...args: Parameters<CliCodingAgentProcessSessionHostOptions["activeSessionHost"]["newSession"]>) {
 		return this.options.activeSessionHost.newSession(...args);
 	}
 
-	switchSession(...args: Parameters<CodingAgentActiveSessionHost["switchSession"]>) {
+	switchSession(...args: Parameters<CliCodingAgentProcessSessionHostOptions["activeSessionHost"]["switchSession"]>) {
 		return this.options.activeSessionHost.switchSession(...args);
 	}
 
-	fork(...args: Parameters<CodingAgentActiveSessionHost["fork"]>) {
+	fork(...args: Parameters<CliCodingAgentProcessSessionHostOptions["activeSessionHost"]["fork"]>) {
 		return this.options.activeSessionHost.fork(...args);
 	}
 

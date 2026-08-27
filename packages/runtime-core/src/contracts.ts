@@ -2,7 +2,7 @@ import type { ThinkingLevel, ToolPhase } from "@vetta/agent-core";
 import type { CacheUsageReporting, Message, Model } from "@vetta/ai";
 import type { ContextCompositionReport } from "./context-composition/contracts.js";
 import type { RuntimeFailure, RuntimeFailureDetails, RuntimeFailureOrigin } from "./failure-contract.js";
-import type { SessionExtensionObservation } from "./session-extensions/contracts.js";
+import type { SessionExtensionEndpointToken, SessionExtensionObservation } from "./session-extensions/contracts.js";
 
 /** 对话场景 slug；RuntimeHost 与 Coding Profile 共享的稳定隔离轴。 */
 export type ConversationScenario =
@@ -766,6 +766,8 @@ export interface RuntimeSessionAgentSelection {
 export interface SessionConfig {
 	/** 选择本次会话使用的平级主 Agent；缺省兼容策略由最终宿主决定。 */
 	agent?: RuntimeSessionAgentSelection;
+	/** 新建会话的稳定身份；恢复既有会话时由 sessionPath 解析并校验。 */
+	sessionId?: string;
 	cwd?: string;
 	agentDir?: string;
 	sessionPath?: string;
@@ -807,10 +809,6 @@ export interface SessionConfig {
 	 * desktop「适配通用 Agent Skill」开关关闭时置 false。
 	 */
 	includeAgentSkills?: boolean;
-	/** Whether this session should receive Desktop plugin agent contributions on live plugin changes. */
-	enableAgentPlugins?: boolean;
-	/** Runtime plugin contributions applied while building agent prompts/resources. */
-	agentPlugins?: AgentPluginRuntimeConfig;
 }
 
 export interface PromptRequest {
@@ -936,11 +934,6 @@ export interface SessionFacade {
 			| ((request: RuntimeSandboxGrantRequest, signal?: AbortSignal) => Promise<RuntimeSandboxGrantDecision>)
 			| undefined,
 	): void;
-	setPluginToolInvoker(handler: AgentPluginToolInvoker | undefined): void;
-	setPluginContinuationInvoker(handler: AgentPluginContinuationInvoker | undefined): void;
-	setPluginSystemPromptInvoker(handler: AgentPluginSystemPromptInvoker | undefined): void;
-	setPluginTurnHandlerLeaseProvider(provider: AgentPluginTurnHandlerLeaseProvider | undefined): void;
-	reconfigureAgentPlugins(agentPlugins: AgentPluginRuntimeConfig | undefined): void;
 	listSandboxGrants(sessionId: string): RuntimeSandboxGrantInfo[];
 	revokeSandboxGrant(sessionId: string, grantId: string): boolean;
 	revokeAllSandboxGrants(sessionId: string): number;
@@ -950,6 +943,12 @@ export interface SessionFacade {
 	prompt(sessionId: string, request: PromptRequest): Promise<RuntimeTurnPromptOutcome>;
 	continue(sessionId: string): Promise<void>;
 	abort(sessionId: string): Promise<void>;
+	invokeSessionExtension<Input, Output>(
+		sessionId: string,
+		token: SessionExtensionEndpointToken<Input, Output>,
+		input: Input,
+		signal?: AbortSignal,
+	): Promise<Output>;
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): () => void;
 	updateSettings(sessionId: string, partialSettings: SettingsPatch): Promise<void>;
 	/** Update thinking level for ALL open sessions at once. */
@@ -988,7 +987,6 @@ export interface SessionFacade {
 	renameSession(sessionPath: string, name: string): Promise<void>;
 	getSessionPath(sessionId: string): string | undefined;
 	renameSessionById(sessionId: string, name: string): Promise<void>;
-	autoTitleSession(sessionId: string, userText: string, assistantText: string): Promise<string | null>;
 	disposeSession(sessionId: string): Promise<void>;
 	disposeAllSessions(): Promise<void>;
 }

@@ -130,7 +130,7 @@ describe("Plugin Tool Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const session = await composition.backend.create({
+		const session = await composition.createSession({
 			sessionId: "plugin-tool-session",
 			cwd: "C:\\workspace",
 		});
@@ -157,7 +157,7 @@ describe("Plugin Tool Runtime composition contract", () => {
 			{ eventName: "PostToolUse", toolName: "plugin_artifact" },
 		]);
 
-		const messages = await session.getMessages();
+		const messages = await session.readMessages();
 		const toolResult = messages.find((message) => message.role === "toolResult");
 		expect(toolResult).toMatchObject({
 			role: "toolResult",

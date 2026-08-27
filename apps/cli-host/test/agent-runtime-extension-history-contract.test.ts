@@ -5,7 +5,7 @@ import {
 	type AgentRpcExecutable,
 	type AgentRpcFixture,
 	type AgentRpcProcess,
-	buildAgentRpcExecutable,
+	acquireAgentRpcExecutable,
 	createAgentRpcFixture,
 	readSessionFile,
 	readSessionId,
@@ -30,17 +30,17 @@ const FORK_TAIL = "EXTENSION_FORK_TAIL";
 const FORK_AFTER = "EXTENSION_FORK_AFTER";
 const FORK_RESTART = "EXTENSION_FORK_RESTART";
 
-let executable: AgentRpcExecutable;
+let executable: AgentRpcExecutable | undefined;
 const activeProcesses = new Set<AgentRpcProcess>();
 const activeFixtures = new Set<AgentRpcFixture>();
 const activeServers = new Set<OpenAiResponsesTestServer>();
 
 beforeAll(async () => {
-	executable = await buildAgentRpcExecutable();
-}, 60_000);
+	executable = await acquireAgentRpcExecutable();
+});
 
 afterAll(async () => {
-	await executable.dispose();
+	await executable?.dispose();
 });
 
 afterEach(async () => {
@@ -51,6 +51,13 @@ afterEach(async () => {
 	activeFixtures.clear();
 	activeServers.clear();
 });
+
+function getExecutable(): AgentRpcExecutable {
+	if (!executable) {
+		throw new Error("Agent RPC test executable was not initialized");
+	}
+	return executable;
+}
 
 describe("real RPC CLI Extension history command contract", () => {
 	it("preserves tree cancellation, Extension summary, label, events and restart context", async () => {
@@ -133,7 +140,7 @@ async function runTreeScenario() {
 	const sessionFile = readSessionFile(afterSummary);
 	await closeProcess(scenario.process);
 	scenario.process = startTrackedProcess(
-		startAgentRpc(executable, scenario.fixture, {
+		startAgentRpc(getExecutable(), scenario.fixture, {
 			extraArgs: ["--extension", scenario.extensionPath, "--session", sessionFile],
 		}),
 	);
@@ -185,7 +192,7 @@ async function runForkScenario() {
 	const forkFile = readSessionFile(afterFork);
 	await closeProcess(scenario.process);
 	scenario.process = startTrackedProcess(
-		startAgentRpc(executable, scenario.fixture, {
+		startAgentRpc(getExecutable(), scenario.fixture, {
 			extraArgs: ["--extension", scenario.extensionPath, "--session", forkFile],
 		}),
 	);
@@ -233,7 +240,7 @@ async function createScenario(): Promise<Scenario> {
 	activeFixtures.add(fixture);
 	const { commandCompletionPath, extensionPath, observationPath } = await writeHistoryExtension(fixture);
 	const process = startTrackedProcess(
-		startAgentRpc(executable, fixture, { extraArgs: ["--extension", extensionPath] }),
+		startAgentRpc(getExecutable(), fixture, { extraArgs: ["--extension", extensionPath] }),
 	);
 	return { commandCompletionPath, extensionPath, fixture, observationPath, process, server };
 }

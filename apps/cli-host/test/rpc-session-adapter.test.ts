@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { RpcSessionInitialization, RpcSessionState } from "@vetta/coding-agent/rpc";
-import type { RuntimeSession, RuntimeSessionCoreAssembly, SessionEvent } from "@vetta/runtime-core";
+import type { RuntimeHostSession, SessionEvent } from "@vetta/runtime-core";
 import type { CodingToolRegistration } from "@vetta/runtime-node/coding";
 import { resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
 import { describe, expect, test, vi } from "vitest";
@@ -334,51 +334,33 @@ function createAdapterFixture(
 	const newSession = vi.fn(async () => ({ cancelled: false }));
 	const switchSession = vi.fn(async () => ({ cancelled: false }));
 	const fork = vi.fn(async () => ({ text: "fork prompt", cancelled: false }));
-	const core = {
-		lifecycle: {
-			get sessionId() {
-				return sessionId;
-			},
-			get sessionPath() {
-				return sessionPath;
-			},
-			dispose: disposeSession,
-		},
-		corePorts: {
-			stateReader: {
-				readState: () => ({
-					thinkingLevel: "medium",
-					isStreaming: false,
-					messageCount: 1,
-					contextPercent: 10,
-					contextWindow: 100,
-					activeToolNames: [],
-				}),
-				readMessages: () => [],
-			},
-		},
-		contextController: {
-			readState: () => ({ isCompacting: true, autoCompactionEnabled: true }),
-			compact: vi.fn(),
-			abortCompaction: vi.fn(),
-			setAutoCompactionEnabled: vi.fn(),
-		},
-	} as unknown as RuntimeSessionCoreAssembly;
 	const session = {
 		get sessionId() {
 			return sessionId;
 		},
-		createCoreAssembly: () => core,
+		get sessionPath() {
+			return sessionPath;
+		},
 		prompt: (request: unknown) => prompt(sessionId, request),
 		abort: vi.fn(async () => {}),
-		getState: vi.fn(async () => ({
-			sessionId,
-			state: "idle",
-			pendingMessageCount: 2,
-			steeringMode: "all",
-			followUpMode: "one-at-a-time",
+		readState: () => ({
+			thinkingLevel: "medium",
+			isStreaming: false,
 			messageCount: 1,
-		})),
+			contextPercent: 10,
+			contextWindow: 100,
+			activeToolNames: [],
+		}),
+		readCompactionState: () => ({ isCompacting: true, autoCompactionEnabled: true }),
+		readQueueModes: () => ({ steering: "all", followUp: "one-at-a-time" }),
+		readPendingMessageCount: () => 2,
+		readName: () => undefined,
+		readDocument: () => ({
+			identity: { sessionId, createdAt: 0 },
+			entries: [],
+			activeLeafId: null,
+		}),
+		readAvailableModels: () => [],
 		subscribe: vi.fn((handler: (event: SessionEvent) => void) => {
 			listener = handler;
 			return () => {
@@ -386,7 +368,7 @@ function createAdapterFixture(
 			};
 		}),
 		dispose: disposeSession,
-	} as unknown as RuntimeSession;
+	} as unknown as RuntimeHostSession;
 	const runtime = {
 		scenario,
 		tools: { registry: { register, unregister } },
@@ -395,7 +377,7 @@ function createAdapterFixture(
 	} as unknown as CodingAgentRuntimeComposition;
 	const sessionHost = {
 		readSession: () => session,
-		startActiveSessionOperation: <T>(operation: (active: RuntimeSession) => Promise<T>) => operation(session),
+		startActiveSessionOperation: <T>(operation: (active: RuntimeHostSession) => Promise<T>) => operation(session),
 		subscribe: (handler: (event: SessionEvent) => void) => session.subscribe(handler),
 		newSession,
 		switchSession,

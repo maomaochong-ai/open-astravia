@@ -5,7 +5,7 @@ import { CodingAgentBackgroundWorkController } from "../../src/execution/backgro
 import { CodingAgentSessionConfigurationState } from "../../src/host/session-configuration/configuration-state.js";
 
 describe("Coding Agent session configuration and background work", () => {
-	it("publishes immutable agent and plugin configuration revisions while binding queue modes", async () => {
+	it("publishes immutable agent configuration revisions while binding queue modes", () => {
 		const setSteeringMode = vi.fn();
 		const setFollowUpMode = vi.fn();
 		const state = new CodingAgentSessionConfigurationState("work", () => ({
@@ -19,16 +19,15 @@ describe("Coding Agent session configuration and background work", () => {
 		controller.setSteeringMode("all");
 		controller.setFollowUpMode("one-at-a-time");
 		controller.setAgentMode("plan");
-		await controller.reconfigureAgentPlugins(undefined);
 
 		expect(setSteeringMode).toHaveBeenCalledWith("all");
 		expect(setFollowUpMode).toHaveBeenCalledWith("one-at-a-time");
 		expect(state.readAgentMode()).toBe("plan");
-		expect(state.readAgentPlugins()).toBeUndefined();
-		expect(state.captureRevision().revision).toBe(2);
+		expect(state.readAgentPlugins()).toEqual({ toolContributions: [] });
+		expect(state.captureRevision().revision).toBe(1);
 	});
 
-	it("keeps an admitted revision isolated from later configuration publications", async () => {
+	it("keeps an admitted revision isolated from later configuration publications", () => {
 		const state = new CodingAgentSessionConfigurationState("work", () => ({
 			toolContributions: [
 				{ pluginId: "plugin", id: "v1", name: "tool", description: "v1", parameters: {}, handlerId: "v1" },
@@ -38,7 +37,7 @@ describe("Coding Agent session configuration and background work", () => {
 		const admitted = state.captureRevision();
 
 		controller.setAgentMode("plan");
-		await controller.reconfigureAgentPlugins({
+		state.setAgentPluginOverride({
 			toolContributions: [
 				{ pluginId: "plugin", id: "v2", name: "tool", description: "v2", parameters: {}, handlerId: "v2" },
 			],
@@ -51,23 +50,6 @@ describe("Coding Agent session configuration and background work", () => {
 		expect(Object.isFrozen(admitted.agentPlugins?.toolContributions?.[0])).toBe(true);
 		expect(next).toMatchObject({ revision: 3, agentMode: "plan", activeToolNamesOverride: ["tool"] });
 		expect(next.agentPlugins?.toolContributions?.[0]?.id).toBe("v2");
-	});
-
-	it("commits plugin configuration only after the session-local MCP reconfiguration succeeds", async () => {
-		const base = { toolContributions: [] };
-		const next = { mcpServerContributions: [] };
-		const reconfigureAgentPlugins = vi
-			.fn()
-			.mockRejectedValueOnce(new Error("MCP reconfiguration failed"))
-			.mockResolvedValueOnce(undefined);
-		const state = new CodingAgentSessionConfigurationState("work", () => base);
-		const controller = state.createController({} as unknown as AgentSession, { reconfigureAgentPlugins });
-
-		await expect(controller.reconfigureAgentPlugins(next)).rejects.toThrow("MCP reconfiguration failed");
-		expect(state.readAgentPlugins()).toBe(base);
-
-		await expect(controller.reconfigureAgentPlugins(next)).resolves.toBeUndefined();
-		expect(state.readAgentPlugins()).toBe(next);
 	});
 
 	it("projects real background task service commands without sharing mutable snapshots", () => {
