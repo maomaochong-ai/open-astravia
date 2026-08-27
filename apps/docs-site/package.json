@@ -11,6 +11,7 @@
 		"test": "bun ../../scripts/quality/run-vitest.mjs --run"
 	},
 	"dependencies": {
+		"@vercel/analytics": "^2.0.1",
 		"fumadocs-core": "16.14.1",
 		"fumadocs-mdx": "15.2.2",
 		"fumadocs-ui": "16.14.1",
