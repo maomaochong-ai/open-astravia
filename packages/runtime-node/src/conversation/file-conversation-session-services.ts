@@ -8,6 +8,7 @@ import type {
 	RuntimeSessionFileHistoryReader,
 	SessionHistoryInfo,
 } from "@vetta/runtime-core";
+import type { ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
 import { projectConversationDocumentHistory } from "@vetta/runtime-core/conversation";
 import {
 	type ConversationOwnershipManager,
@@ -186,6 +187,10 @@ async function readSessionHistoryInfo(sessionPath: string, fallbackCwd: string):
 	});
 	const firstMessage = messageTexts.find(({ role }) => role === "user")?.text ?? "(no messages)";
 	const lastMessagePreview = messageTexts.at(-1)?.text.slice(0, LAST_MESSAGE_PREVIEW_LENGTH);
+	// File mtime is a storage implementation detail: importing/resuming an existing
+	// conversation may rewrite or recover the JSONL without any new user activity.
+	// Sidebar ordering follows the latest persisted conversation message instead.
+	const modifiedAt = readLastMessageActivityTime(document.entries) ?? (await stat(sessionPath)).mtimeMs;
 	return {
 		id: header.sessionId,
 		path: resolve(sessionPath),
@@ -193,11 +198,24 @@ async function readSessionHistoryInfo(sessionPath: string, fallbackCwd: string):
 		cwd: document.identity.cwd ?? fallbackCwd,
 		name: document.name,
 		firstMessage,
-		modifiedAt: (await stat(sessionPath)).mtimeMs,
+		modifiedAt,
 		lastMessagePreview,
 		parentSessionPath: document.identity.parentSessionPath,
 		parentEntryId: document.identity.parentEntryId,
 	};
+}
+
+function readLastMessageActivityTime(entries: readonly ConversationDocumentEntry[]): number | undefined {
+	let lastActivityTime: number | undefined;
+	for (const entry of entries) {
+		if (entry.type !== "message" || typeof entry.message !== "object" || entry.message === null) continue;
+		const role = Reflect.get(entry.message, "role");
+		if (role !== "user" && role !== "assistant") continue;
+		const timestamp = new Date(entry.timestamp).getTime();
+		if (!Number.isFinite(timestamp) || timestamp <= 0) continue;
+		lastActivityTime = Math.max(lastActivityTime ?? 0, timestamp);
+	}
+	return lastActivityTime;
 }
 
 function extractMessageText(content: unknown): string | undefined {

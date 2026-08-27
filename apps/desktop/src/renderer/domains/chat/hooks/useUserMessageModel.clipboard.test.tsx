@@ -44,7 +44,7 @@ describe("useUserMessageModel clipboard", () => {
 
 		expect(writeUserMessage).toHaveBeenCalledWith({
 			text: "describe this image",
-			images: ["data:image/png;base64,AQID"],
+			images: [{ kind: "data-url", dataUrl: "data:image/png;base64,AQID" }],
 		});
 		expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
 	});

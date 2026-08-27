@@ -66,6 +66,9 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Fixed
 
+- 原生文件会话目录的 `modifiedAt` 改为最后一条用户或助手消息的时间；恢复、导入或修复 JSONL
+  造成的文件 mtime 更新不再把没有新消息的旧会话误排到列表顶部。无消息或消息时间不可用时仍回退文件 mtime。
+
 - Windows 上 MCP stdio 启动原生 `.exe` / `.com` 时不再统一经过 `cmd.exe`；包含空格的可执行文件路径与参数
   现在保持 argv 边界，批处理与 PATH shim 仍沿用 shell 解析。
 
