@@ -51,6 +51,7 @@ export interface OpenAiResponsesTestServer {
 	readonly requests: readonly ProviderRequestRecord[];
 	waitForHeldRequestStarted(timeoutMs?: number): Promise<void>;
 	waitForHeldRequestClosed(timeoutMs?: number): Promise<void>;
+	disconnectHeldRequest(): void;
 	dispose(): Promise<void>;
 }
 
@@ -59,7 +60,7 @@ export async function startOpenAiResponsesTestServer(
 ): Promise<OpenAiResponsesTestServer> {
 	const requests: ProviderRequestRecord[] = [];
 	let heldRequestClosed: Promise<void> | undefined;
-	let resolveHeldRequestClosed: (() => void) | undefined;
+	let heldResponse: ServerResponse | undefined;
 	let resolveHeldRequestStarted: (() => void) | undefined;
 	const heldRequestStarted = new Promise<void>((resolve) => {
 		resolveHeldRequestStarted = resolve;
@@ -94,10 +95,15 @@ export async function startOpenAiResponsesTestServer(
 				response.end("data: [DONE]\n\n");
 				return;
 			}
+			let resolveClosed: (() => void) | undefined;
 			heldRequestClosed = new Promise<void>((resolve) => {
-				resolveHeldRequestClosed = resolve;
+				resolveClosed = resolve;
 			});
-			response.once("close", () => resolveHeldRequestClosed?.());
+			heldResponse = response;
+			response.once("close", () => {
+				if (heldResponse === response) heldResponse = undefined;
+				resolveClosed?.();
+			});
 			resolveHeldRequestStarted?.();
 		} catch (error) {
 			if (!response.headersSent) response.writeHead(500, { "content-type": "text/plain" });
@@ -122,6 +128,11 @@ export async function startOpenAiResponsesTestServer(
 			const pending = heldRequestClosed;
 			if (!pending) throw new Error("No held Provider request is active");
 			await withTimeout(pending, timeoutMs, "Timed out waiting for held Provider request to close");
+		},
+		disconnectHeldRequest() {
+			const response = heldResponse;
+			if (!response) throw new Error("No held Provider request is active");
+			response.destroy();
 		},
 		async dispose() {
 			server.closeAllConnections?.();

@@ -114,9 +114,8 @@ async function runStreamDisconnectRecovery(): Promise<StreamRecoveryObservation>
 	const server = await startOpenAiResponsesTestServer((_request, index) => {
 		if (index === 0) {
 			return {
-				kind: "disconnect",
+				kind: "hold",
 				events: textResponseEvents("partial-before-disconnect").slice(0, 3),
-				delayMs: 20,
 			};
 		}
 		return { kind: "events", events: textResponseEvents("stream-disconnect-recovered") };
@@ -128,6 +127,18 @@ async function runStreamDisconnectRecovery(): Promise<StreamRecoveryObservation>
 
 		const failureMark = process.mark();
 		await process.request("prompt-stream-disconnect", "prompt", { message: "Trigger stream disconnect" });
+		await process.waitFor((frame) => {
+			if (frame.type !== "message_update") return false;
+			const event = frame.assistantMessageEvent;
+			return (
+				typeof event === "object" &&
+				event !== null &&
+				Reflect.get(event, "type") === "text_delta" &&
+				Reflect.get(event, "delta") === "partial-before-disconnect"
+			);
+		}, failureMark);
+		server.disconnectHeldRequest();
+		await server.waitForHeldRequestClosed();
 		await process.waitFor((frame) => frame.type === "agent_end", failureMark);
 		const failedState = await process.request("state-after-stream-disconnect", "get_state");
 		const failureTerminalKinds = readTerminalKinds(process, failureMark);

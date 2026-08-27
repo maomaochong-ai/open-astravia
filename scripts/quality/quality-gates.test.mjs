@@ -287,12 +287,14 @@ describe("CI unit test coverage", () => {
 		expect(workflow).toContain("bun run test:changed --base");
 	});
 
-	it("cancels stale runs, fails the platform matrix fast, and reuses exact-lockfile dependencies", () => {
+	it("cancels stale runs, fails the platform matrix fast, and reuses only the exact-lockfile Bun cache", () => {
 		expect(workflow).toContain("cancel-in-progress: true");
 		expect(workflow).toContain("fail-fast: true");
-		expect(workflow.match(/uses: actions\/cache@v4/g)).toHaveLength(2);
-		expect(workflow).toContain("node_modules");
+		expect(workflow.match(/uses: actions\/checkout@v7/g)).toHaveLength(2);
+		expect(workflow.match(/uses: actions\/cache@v6/g)).toHaveLength(2);
+		expect(workflow).not.toContain("node_modules");
 		expect(workflow).toContain("~/.bun/install/cache");
+		expect(workflow).toContain("quality-bun-v2-");
 		expect(workflow).toContain("hashFiles('bun.lock', 'package.json')");
 	});
 

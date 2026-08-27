@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -27,12 +27,10 @@ jobs:
           bun-version-file: package.json
 
       - name: Restore Bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
-          path: |
-            node_modules
-            ~/.bun/install/cache
-          key: quality-bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'package.json') }}
+          path: ~/.bun/install/cache
+          key: quality-bun-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'package.json') }}
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -59,7 +57,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -81,12 +79,10 @@ jobs:
         run: if (-not (Get-Command rg -ErrorAction SilentlyContinue)) { choco install ripgrep --yes --no-progress }
 
       - name: Restore Bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
-          path: |
-            node_modules
-            ~/.bun/install/cache
-          key: quality-bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'package.json') }}
+          path: ~/.bun/install/cache
+          key: quality-bun-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'package.json') }}
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
