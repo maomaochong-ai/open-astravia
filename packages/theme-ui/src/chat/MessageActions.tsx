@@ -53,9 +53,11 @@ export interface CopyButtonLabels {
 
 export function CopyButton({
 	getText,
+	onCopy,
 	labels,
 }: {
 	getText: () => string;
+	onCopy?: () => void | Promise<void>;
 	labels: CopyButtonLabels;
 }): JSX.Element {
 	const [copied, setCopied] = useState(false);
@@ -70,8 +72,9 @@ export function CopyButton({
 
 	const onClick = useCallback(() => {
 		const text = getText();
-		if (!text) return;
-		void navigator.clipboard.writeText(text).then(
+		if (!text && !onCopy) return;
+		const copy = onCopy ? Promise.resolve().then(onCopy) : navigator.clipboard.writeText(text);
+		void copy.then(
 			() => {
 				setCopied(true);
 				if (timerRef.current !== null) window.clearTimeout(timerRef.current);
@@ -84,7 +87,7 @@ export function CopyButton({
 				console.warn("[MessageActions] copy failed", error);
 			},
 		);
-	}, [getText]);
+	}, [getText, onCopy]);
 
 	const label = copied ? labels.copied : labels.copy;
 	return (

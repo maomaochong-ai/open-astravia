@@ -324,7 +324,7 @@ export function UserMessageView({
 										<span className="icon-[solar--branching-paths-up-linear] h-3.5 w-3.5" />
 									</button>
 								)}
-								{copyText ? copyButton : null}
+								{copyText || hasImages || hasAppshot ? copyButton : null}
 							</div>
 						)}
 						{/* Row 2: branch switcher then time */}

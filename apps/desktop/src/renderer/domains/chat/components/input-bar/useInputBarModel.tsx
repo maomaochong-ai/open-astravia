@@ -48,7 +48,9 @@ import {
 	removeImageToken,
 	removeSelection,
 } from "./editor/inputEditorHandle";
-import { persistBase64Images } from "./editor/persistImages";
+import { insertClipboardMessage } from "./editor/clipboard-message";
+import { readVettaMessageClipboardImages } from "./editor/plugins/clipboard-images";
+import { persistBase64Images, persistImageFiles } from "./editor/persistImages";
 import {
 	inputBlankAtom,
 	inputImagePathsAtom,
@@ -86,6 +88,11 @@ function clampContextMenuPosition(clientX: number, clientY: number): { x: number
 }
 
 async function clipboardHasText(): Promise<boolean> {
+	try {
+		if (await window.vetta.clipboard.readUserMessage()) return true;
+	} catch {
+		// Fall through to the browser text check for older or unavailable hosts.
+	}
 	try {
 		const text = await navigator.clipboard.readText();
 		return text.length > 0;
@@ -483,6 +490,24 @@ export function useInputBarModel({
 		closeContextMenu();
 		if (!hasSession) return;
 		void (async () => {
+			try {
+				const richMessage = await window.vetta.clipboard.readUserMessage();
+				if (richMessage) {
+					const images = readVettaMessageClipboardImages(richMessage.html, richMessage.text);
+					if (images) {
+						const paths = await persistImageFiles(
+							images.files,
+							activeSession?.runtimeId ?? null,
+							"paste",
+						);
+						insertClipboardMessage(richMessage.text, paths);
+						focusInputEditor();
+						return;
+					}
+				}
+			} catch (error) {
+				console.warn("[useInputBarModel] rich clipboard read failed", error);
+			}
 			let clip = "";
 			try {
 				clip = await navigator.clipboard.readText();
@@ -494,7 +519,7 @@ export function useInputBarModel({
 			insertPlainText(clip);
 			focusInputEditor();
 		})();
-	}, [closeContextMenu, hasSession]);
+	}, [activeSession?.runtimeId, closeContextMenu, hasSession]);
 
 	const removePromptAttachment = useCallback(() => {
 		setPromptAttachment(null);

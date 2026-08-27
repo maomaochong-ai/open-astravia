@@ -3,20 +3,14 @@ import { activeSessionAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { COMMAND_PRIORITY_CRITICAL, PASTE_COMMAND } from "lexical";
 import { useEffect } from "react";
+import { insertClipboardMessage } from "../clipboard-message";
 import { insertImageToken } from "../inputEditorHandle";
 import { persistImageFiles } from "../persistImages";
-
-function clipboardImages(event: ClipboardEvent): File[] {
-	const items = Array.from(event.clipboardData?.items ?? []);
-	return items
-		.filter((item) => item.kind === "file" && item.type.startsWith("image/"))
-		.map((item) => item.getAsFile())
-		.filter((file): file is File => file !== null);
-}
+import { readClipboardImages } from "./clipboard-images";
 
 /**
- * 粘贴图片 → 立即落盘 → 插入行内缩略图 token。
- * 只在剪贴板里确实有图片时接管，纯文本粘贴仍走 Lexical 默认实现。
+ * 粘贴图片 → 立即落盘 → 插入行内缩略图 token。Vetta 富消息剪贴板还会
+ * 恢复正文并用新落盘路径替换旧图片 token；纯文本仍走 Lexical 默认实现。
  */
 export function PasteImagePlugin(): null {
 	const [editor] = useLexicalComposerContext();
@@ -26,12 +20,13 @@ export function PasteImagePlugin(): null {
 		return editor.registerCommand(
 			PASTE_COMMAND,
 			(event) => {
-				if (!(event instanceof ClipboardEvent)) return false;
-				const files = clipboardImages(event);
+				if (!("clipboardData" in event) || !event.clipboardData) return false;
+				const { files, messageText } = readClipboardImages(event.clipboardData);
 				if (files.length === 0) return false;
 				event.preventDefault();
 				void persistImageFiles(files, activeSession?.runtimeId ?? null, "paste").then((paths) => {
-					for (const path of paths) insertImageToken(path);
+					if (messageText !== undefined) insertClipboardMessage(messageText, paths);
+					else for (const path of paths) insertImageToken(path);
 				});
 				return true;
 			},

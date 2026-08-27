@@ -34,6 +34,7 @@ import {
 	isUserImageFile,
 	parseUserPrefixes,
 } from "../services/chat-service";
+import { copyUserMessageToClipboard } from "../services/user-message-clipboard";
 import { getSessionRuntimeWhenReady } from "../services/session-runtime-readiness";
 import {
 	cancelStagedPendingSessionSend,
@@ -275,6 +276,13 @@ export function useUserMessageModel({
 		return [...fromBase64, ...fromPaths];
 	}, [imageFiles, message.images]);
 	const hasImages = imageItems.length > 0;
+	const copyImageSources = useMemo(
+		() => [
+			...imageItems.map(getPreviewImageSrc).filter((source) => source.length > 0),
+			...(appshotData?.imagePath ? [toVettaFileUrl(appshotData.imagePath)] : []),
+		],
+		[appshotData?.imagePath, imageItems],
+	);
 	const hasSkillBadge = false;
 	const settingsAssistTabId = message.settingsAssistTabId?.trim() ?? "";
 	const hasSettingsAssistBadge = settingsAssistTabId.length > 0;
@@ -412,6 +420,10 @@ export function useUserMessageModel({
 	}, [message.entryId, runWithInterruptConfirm]);
 
 	const closeContextMenu = useCallback(() => setContextMenuPosition(null), []);
+	const copyMessage = useCallback(
+		() => copyUserMessageToClipboard(copyText, copyImageSources),
+		[copyImageSources, copyText],
+	);
 
 	const handleOpenContextMenu = useCallback((event: MouseEvent<HTMLDivElement>) => {
 		event.preventDefault();
@@ -434,11 +446,11 @@ export function useUserMessageModel({
 
 	const handleMenuCopy = useCallback(() => {
 		closeContextMenu();
-		if (!copyText) return;
-		void navigator.clipboard.writeText(copyText).catch((error) => {
+		if (!copyText && copyImageSources.length === 0) return;
+		void copyMessage().catch((error) => {
 			console.warn("[useUserMessageModel] copy failed", error);
 		});
-	}, [closeContextMenu, copyText]);
+	}, [closeContextMenu, copyImageSources.length, copyMessage, copyText]);
 
 	const performDelete = useCallback(
 		async (suppressForOneMinute: boolean): Promise<void> => {
@@ -577,7 +589,7 @@ export function useUserMessageModel({
 		copyText,
 		contextMenu: contextMenuPosition
 			? {
-					canCopy: Boolean(copyText),
+					canCopy: Boolean(copyText || copyImageSources.length > 0),
 					canDelete,
 					canEdit,
 					labels: {
@@ -619,7 +631,7 @@ export function useUserMessageModel({
 			/>
 		),
 		relativeTime: null,
-		copyButton: <CopyButton getText={() => copyText} />,
+		copyButton: <CopyButton getText={() => copyText} onCopy={copyMessage} />,
 		onContextMenu: handleOpenContextMenu,
 		onEdit: handleEdit,
 		onFork: handleFork,

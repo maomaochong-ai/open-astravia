@@ -1,4 +1,5 @@
 import type { RuntimeStatus, RuntimesStatus, RuntimeType } from "../../main/runtimes/types.js";
+import type { UserMessageClipboardReadResult, UserMessageClipboardWriteRequest } from "../../shared/clipboard.js";
 
 export interface DesktopShellApi {
 	showInFolder(fullPath: string): Promise<void>;
@@ -8,10 +9,14 @@ export interface DesktopShellApi {
 
 export interface DesktopClipboardApi {
 	/**
-	 * 把图片写入系统剪贴板。文本请直接用渲染进程的 navigator.clipboard.writeText；
-	 * 图片走原生剪贴板，因为 ClipboardItem 的平台支持并不一致。
+	 * 把单张图片写入系统剪贴板。普通文本直接用 renderer 的 navigator.clipboard.writeText；
+	 * 图片及图文富消息走原生剪贴板，因为 ClipboardItem 的平台支持并不一致。
 	 */
 	writeImage(dataUrl: string): Promise<void>;
+	/** Atomically writes plain text, rich HTML, and the first native image. */
+	writeUserMessage(request: UserMessageClipboardWriteRequest): Promise<void>;
+	/** Returns content only when the clipboard contains a Vetta-authored rich message. */
+	readUserMessage(): Promise<UserMessageClipboardReadResult | null>;
 }
 
 export interface DesktopWindowApi {

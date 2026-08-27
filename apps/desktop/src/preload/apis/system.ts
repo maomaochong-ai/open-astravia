@@ -232,6 +232,8 @@ export function createSystemApi(
 		},
 		clipboard: {
 			writeImage: (dataUrl) => ipc.invoke("vetta:clipboard:write-image", dataUrl),
+			writeUserMessage: (request) => ipc.invoke("vetta:clipboard:write-user-message", request),
+			readUserMessage: () => ipc.invoke("vetta:clipboard:read-user-message"),
 		},
 		window: {
 			minimize: () => ipc.invoke("vetta:window:minimize"),
