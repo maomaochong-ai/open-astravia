@@ -7,13 +7,13 @@ Vetta 以本地工作区为中心，但“本地运行”不表示所有内容�
 
 ## 数据流概览
 
-<div className="docs-data-flow" aria-label="Vetta 数据流边界">
+<DataFlow aria-label="Vetta 数据流边界">
   <div><strong>本地工作区</strong><span>项目文件、会话、知识资料、配置</span></div>
   <b>→</b>
   <div><strong>上下文组装</strong><span>任务、引用、工具结果、能力指令</span></div>
   <b>→</b>
   <div><strong>所选模型服务</strong><span>发送本次调用需要的上下文</span></div>
-</div>
+</DataFlow>
 
 工具可以在本地继续读取或修改文件；MCP、插件和 Webhook 还可能产生独立的外部请求。
 

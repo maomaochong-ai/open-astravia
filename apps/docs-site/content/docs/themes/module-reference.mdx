@@ -29,9 +29,9 @@ export default theme;
 
 同一区域的生效顺序是：
 
-<div className="docs-lifecycle" aria-label="主题能力优先级">
+<Lifecycle aria-label="主题能力优先级">
   <span>Region override</span><b>→</b><span>Component override</span><b>→</b><span>Appearance config</span><b>→</b><span>Default UI</span>
-</div>
+</Lifecycle>
 
 只需要改背景、边框和颜色时停在 appearance；只替换一个按钮或列表项时使用 component；只有需要重新组合整个区域时才使用 region。
 

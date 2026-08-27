@@ -5,20 +5,20 @@ description: 用工作区、任务、执行、结果和复用五个概念建立�
 
 Vetta 不是只返回一段答案的聊天框。它把 Agent 放进一个明确的本地工作区，让模型在可检查的权限和工具边界内读取资料、修改文件、执行命令，并把过程和结果保留在会话中。
 
-<figure className="docs-media-frame docs-media-frame--wide">
+<MediaFrame>
   <img src="/images/product/workspace.webp" alt="Vetta 主工作区，左侧管理项目和会话，中间承载任务输入与结果" width="2354" height="1613" />
   <figcaption>一个工作区同时容纳项目上下文、会话历史、Agent 执行和输出文件。</figcaption>
-</figure>
+</MediaFrame>
 
 ## 五个核心对象
 
-<div className="docs-concept-map" aria-label="Vetta 核心对象关系">
+<ConceptMap aria-label="Vetta 核心对象关系">
   <div><span>01</span><strong>工作区</strong><small>一组本地资料与允许操作的边界</small></div>
   <div><span>02</span><strong>任务</strong><small>目标、上下文、约束和验收条件</small></div>
   <div><span>03</span><strong>会话</strong><small>一次连续工作的消息、工具和状态记录</small></div>
   <div><span>04</span><strong>执行</strong><small>模型推理、工具调用、权限确认和后台工作</small></div>
   <div><span>05</span><strong>结果</strong><small>回复、文件、产物、测试和未解决风险</small></div>
-</div>
+</ConceptMap>
 
 工作区可以包含多个会话；每个会话在同一项目背景下处理一个连续目标。任务执行成功后，可以把稳定方法沉淀为技能、场景或知识，也可以交给批量任务和自动化再次运行。
 

@@ -18,14 +18,14 @@ description: 选择任务的文件边界，管理连续对话，并用项目指�
 
 ## 项目与会话的关系
 
-<div className="docs-relationship" aria-label="项目与会话关系">
-  <div className="docs-relationship__root"><strong>项目 / 工作区</strong><span>目录、AGENTS.md、文件与产物</span></div>
-  <div className="docs-relationship__children">
+<Relationship aria-label="项目与会话关系">
+  <RelationshipRoot><strong>项目 / 工作区</strong><span>目录、AGENTS.md、文件与产物</span></RelationshipRoot>
+  <RelationshipChildren>
     <div><strong>会话 A</strong><span>修复登录问题</span></div>
     <div><strong>会话 B</strong><span>补充部署说明</span></div>
     <div><strong>会话 C</strong><span>从 B 分叉验证另一方案</span></div>
-  </div>
-</div>
+  </RelationshipChildren>
+</Relationship>
 
 - 一个项目可以有多个会话，它们共享项目目录，但各自保留对话和执行历史。
 - 新目标通常新建会话；继续同一目标时恢复原会话。

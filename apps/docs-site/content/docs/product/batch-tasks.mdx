@@ -5,10 +5,10 @@ description: 用一套任务配置并发处理多个独立目录，集中观察�
 
 批量任务把一个已经跑通的方法应用到多个目录。它不是把一个复杂任务自动拆成多个步骤，而是为每个目标目录创建独立子任务和会话，再按并发上限执行。
 
-<figure className="docs-media-frame docs-media-frame--wide">
+<MediaFrame>
   <img src="/images/product/batch-tasks.webp" alt="Vetta 批量任务看板，显示运行中和等待中的多个目录任务" width="1536" height="1152" />
   <figcaption>一份配置扇出为多个独立任务；看板负责全局状态，会话保留单次执行细节。</figcaption>
-</figure>
+</MediaFrame>
 
 ## 先判断是否适合批量
 
@@ -85,16 +85,16 @@ C:\work\docs-site
 
 ## 理解队列和状态
 
-<div className="docs-batch-flow" aria-label="批量任务队列和并发状态">
+<BatchFlow aria-label="批量任务队列和并发状态">
   <div><span>共享配置</span><strong>Prompt · 模型 · 并发 2 · 产物规则</strong></div>
-  <div className="docs-batch-flow__tasks">
-    <span className="is-done">目录 A<br /><small>完成</small></span>
-    <span className="is-running">目录 B<br /><small>运行中</small></span>
-    <span className="is-running">目录 C<br /><small>运行中</small></span>
-    <span className="is-waiting">目录 D<br /><small>等待中</small></span>
-    <span className="is-failed">目录 E<br /><small>失败</small></span>
-  </div>
-</div>
+  <BatchTasks>
+    <span className="border-t-[#3f9f70]">目录 A<br /><small>完成</small></span>
+    <span className="border-t-vetta-coral">目录 B<br /><small>运行中</small></span>
+    <span className="border-t-vetta-coral">目录 C<br /><small>运行中</small></span>
+    <span className="border-t-[#c59a37]">目录 D<br /><small>等待中</small></span>
+    <span className="border-t-[#c95454]">目录 E<br /><small>失败</small></span>
+  </BatchTasks>
+</BatchFlow>
 
 - **开始**：按并发数把未执行或可恢复的任务加入队列。
 - **停止**：中断运行中任务，并清空除已完成外的会话、产物和状态后重置；确认框会说明具体影响。
