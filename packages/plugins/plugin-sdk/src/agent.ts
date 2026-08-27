@@ -144,8 +144,11 @@ export interface PluginAgentActions {
 		setBlockEnabled(blockId: string, enabled: boolean): void;
 	};
 	tools: {
+		/** Emit a Turn-local tool effect. It applies after this handler succeeds. */
 		setEnabled(toolName: string, enabled: boolean): void;
+		/** Enable an already registered tool for subsequent model calls in this Turn. */
 		enable(toolName: string): void;
+		/** Disable an already registered tool for subsequent model calls in this Turn. */
 		disable(toolName: string): void;
 	};
 	continuation: {
@@ -380,7 +383,11 @@ export interface PluginCodingAgentHookRegistration<
 
 export interface PluginAgentApi {
 	registerTool<TInput = unknown>(registration: PluginAgentToolRegistration<TInput>): Disposable;
-	/** Register a provider evaluated before every Agent run. */
+	/**
+	 * Register a provider evaluated once at the beginning of each Agent Turn.
+	 * Its effects are replayed across later model calls in that Turn; changing plugin
+	 * state does not re-run the provider before the next Turn.
+	 */
 	registerSystemPromptProvider(registration: PluginSystemPromptProviderRegistration): Disposable;
 	/**
 	 * Register a policy consulted when the agent reaches a natural stopping point.

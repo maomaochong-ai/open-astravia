@@ -215,7 +215,59 @@ hook.dispose();
 
 ## 注册动态系统提示词 Provider
 
-`ctx.agent.registerSystemPromptProvider()` 注册一个 TypeScript handler，在每次 **Agent run 开始、`before_agent_start` 扩展执行前**求值。它适合按插件设置、模型、会话场景、当前消息或工具状态动态生成和修改提示词。注册需要 `agent.systemPrompt.write`；修改非本插件 block 还需要 `agent.systemPrompt.fullControl`；返回 `setToolEnabled` 或调用 `actions.tools.*` 还需要 `agent.tools.control`；请求续跑还需要 `agent.continuation.register`。
+`ctx.agent.registerSystemPromptProvider()` 注册一个 TypeScript handler，在每个 **Agent Turn 开始、`before_agent_start` 扩展执行前**求值。它适合按插件设置、模型、会话场景、当前消息或工具状态动态生成和修改提示词。注册需要 `agent.systemPrompt.write`；修改非本插件 block 还需要 `agent.systemPrompt.fullControl`；返回 `setToolEnabled` 或调用 `actions.tools.*` 还需要 `agent.tools.control`；请求续跑还需要 `agent.continuation.register`。
+
+### Turn 与 effect 的生效边界
+
+Turn 是宿主为一次任务推进建立的执行边界，其中可以包含多次模型调用和工具调用。动态
+Provider 与 handler effect 遵循以下时序合同：
+
+- System Prompt Provider 在一个 Turn 内只执行一次，不会在该 Turn 的每次模型调用前重新执行；
+  它产生的 Prompt/Tool effects 会在同一 Turn 的后续模型调用中重放。
+- 工具 handler 调用 `actions.*` 产生的 effects，在 handler **成功返回后**提交，从当前 Turn
+  的下一次模型调用开始生效；handler 抛错、超时或返回非法结果时不提交这些 effects。
+- 同一 Turn 内对同一个 Prompt block 或工具连续操作时按提交顺序应用，后提交的操作覆盖先前状态。
+  因此工具 handler 可以用 `actions.tools.enable()` 覆盖 Turn 开始时 Provider 写入的 disable。
+- 这些 effects 是 Turn-local 状态，不会作为全局配置持久化。下一个 Turn 会从新接纳的运行时快照
+  开始，并重新执行 Provider。
+- 修改插件自己的内存缓存、文件或设置不会让 Provider 在当前 Turn 重新求值。如果一个工具改变了
+  Provider 的判定条件，并要求 Agent 在同一 Turn 继续使用受控工具，该工具必须同时通过
+  `actions.tools.*` 写入当前 Turn；仅更新判定条件只能影响下一个 Turn。
+
+下面是通用的“初始化前隐藏后续工具、初始化成功后同轮放行”模式：
+
+```ts
+const DOMAIN_TOOLS = ["domain_inspect", "domain_publish"] as const;
+
+ctx.agent.registerSystemPromptProvider({
+  id: "domain-tool-gate",
+  async handler({ session }) {
+    const ready = await hasDomainState(session.cwd);
+    return DOMAIN_TOOLS.map((toolName) => ({
+      type: "setToolEnabled" as const,
+      toolName,
+      enabled: ready,
+    }));
+  },
+});
+
+ctx.agent.registerTool({
+  id: "domain-initialize",
+  name: "domain_initialize",
+  description: "Initialize the domain state required by the follow-up tools.",
+  parameters: { type: "object", additionalProperties: false },
+  scope_use: ["project", "conversation"],
+  side_effect: "heavy",
+  async handler({ session, actions }) {
+    await initializeDomainState(session.cwd);
+    for (const toolName of DOMAIN_TOOLS) actions.tools.enable(toolName);
+    return { ok: true };
+  },
+});
+```
+
+如果省略 handler 中的 `actions.tools.enable()`，即使初始化已经改变了 Provider 下一次读取的状态，
+当前 Turn 也不会重新执行 Provider；这些后续工具要到下一个 Turn 才会出现。
 
 ```ts
 ctx.agent.registerSystemPromptProvider({
