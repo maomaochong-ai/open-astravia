@@ -25,6 +25,7 @@ import { findVetdFiles } from "./vetd/discover";
 import { inspectIssues } from "./vetd/inspect";
 import { layoutIssues } from "./vetd/layout-probe";
 import { PRODUCT_SIZE_SUMMARY, PRODUCT_TYPES, resolveDefaultFrameSize } from "./vetd/product-size";
+import { DESIGN_ONLY_TOOLS } from "./vetd/tool-gate";
 import {
 	composeVerificationSheet,
 	designSourceFingerprints,
@@ -148,7 +149,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		scope_use: SCOPE_USE,
 		// 在用户工作区落一整棵 .vetd 工程目录。
 		side_effect: "heavy",
-		handler: async ({ host, session, trigger }) => {
+		handler: async ({ host, session, trigger, actions }) => {
 			// 硬闸而不是默认值：品类是这一步唯一需要判断的东西，而它在这一刻最清楚。
 			// 从前这里没有参数，兜底就写死成桌面 1440x900，于是「用户要移动 App」在整条
 			// 链路上无处可存——五个 frame 漏声明尺寸，整份设计静默落成桌面尺寸。
@@ -160,8 +161,11 @@ export function registerDesignTools(ctx: PluginContext): void {
 				};
 			}
 			const result = await scaffoldDesign(host.fs, session.cwd, trigger.input.name ?? "design", defaultFrameSize);
-			// 这一刻起工作区里有设计了：闸门下一次模型调用就要放行其余设计工具。
+			// Provider 在一个 Turn 内只执行一次：仅更新 presence 只能让下一 Turn 开闸。
+			// 工具 handler 的 effect 会在当前 Turn 后续模型调用上重放，因此创建成功后
+			// 还要显式覆盖本轮开头写入的 disable，避免 agent 只剩 vetd_create 可用。
 			setDesignPresence(session.cwd, true);
+			for (const toolName of DESIGN_ONLY_TOOLS) actions.tools.enable(toolName);
 			setPendingDesignPath(result.vetdPath, session.cwd);
 			console.debug(
 				`[vetta-ui-design:activity-tab-debug] vetd_create requesting canvas ${JSON.stringify({
