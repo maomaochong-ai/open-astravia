@@ -129,6 +129,7 @@ export class BrowserAutomationService {
 					"Browser profile is already active with different session settings",
 				);
 			}
+			await this.reclaimPersistedProfileSessions(input.namespace, profile, source, input.headed ?? true);
 		}
 		const sessionId = `vetta-${randomUUID()}`;
 		const resources = await this.profiles.prepareSession({
@@ -161,6 +162,46 @@ export class BrowserAutomationService {
 			headed: record.session.headed,
 		});
 		return record.session;
+	}
+
+	private async reclaimPersistedProfileSessions(
+		namespace: string,
+		profile: Extract<BrowserSession["profile"], { type: "persistent" }>,
+		source: BrowserSession["source"],
+		headed: boolean,
+	): Promise<void> {
+		const persisted = await this.profiles.listPersistentProfileSessions?.({ namespace, profileId: profile.id });
+		for (const resources of persisted ?? []) {
+			try {
+				await this.engine.close({
+					id: resources.sessionId,
+					source,
+					profile,
+					headed,
+					configPath: resources.configPath,
+				});
+			} catch (error) {
+				this.logger.warn("browser persisted session reclaim failed", {
+					namespace,
+					sessionRef: browserResourceRef(resources.sessionId),
+					profileRef: browserResourceRef(profile.id),
+					errorCode: errorCode(error),
+				});
+				throw new BrowserAutomationError(
+					"engine_failed",
+					"Browser profile has a previous session that could not be closed",
+					{
+						cause: error,
+					},
+				);
+			}
+			await this.profiles.releaseSession(resources);
+			this.logger.info("browser persisted session reclaimed", {
+				namespace,
+				sessionRef: browserResourceRef(resources.sessionId),
+				profileRef: browserResourceRef(profile.id),
+			});
+		}
 	}
 
 	getSession(input: BrowserSessionInput): BrowserSession {

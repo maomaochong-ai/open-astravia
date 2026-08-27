@@ -1,9 +1,16 @@
 import { createHash } from "node:crypto";
-import { access, cp, mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import type { Dirent } from "node:fs";
+import { access, cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import type { BrowserSessionProfile, BrowserSource } from "@vetta/capability-sdk";
-import type { BrowserAutomationLogger, BrowserSessionResources } from "./contracts.js";
+import type {
+	BrowserAutomationLogger,
+	BrowserSessionResources,
+	PersistedBrowserSessionResources,
+} from "./contracts.js";
+
+const HOST_SESSION_ID_PATTERN = /^vetta-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function namespaceKey(namespace: string): string {
 	return createHash("sha256").update(namespace).digest("hex").slice(0, 24);
@@ -79,6 +86,43 @@ export class BrowserProfileRegistry {
 		await rm(resources.sessionDirectory, { recursive: true, force: true });
 	}
 
+	async listPersistentProfileSessions(input: {
+		namespace: string;
+		profileId: string;
+	}): Promise<readonly PersistedBrowserSessionResources[]> {
+		const namespaceDirectory = join(this.baseDirectory, namespaceKey(input.namespace));
+		const sessionsDirectory = join(namespaceDirectory, "sessions");
+		const profilePath = join(namespaceDirectory, "profiles", input.profileId);
+		let entries: Dirent<string>[];
+		try {
+			entries = await readdir(sessionsDirectory, { withFileTypes: true, encoding: "utf8" });
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+			throw error;
+		}
+		const sessions: PersistedBrowserSessionResources[] = [];
+		for (const entry of entries) {
+			if (!entry.isDirectory() || !HOST_SESSION_ID_PATTERN.test(entry.name)) continue;
+			const sessionDirectory = join(sessionsDirectory, entry.name);
+			const configPath = join(sessionDirectory, "config.json");
+			try {
+				const parsed: unknown = JSON.parse(await readFile(configPath, "utf8"));
+				if (!isRecord(parsed) || typeof parsed.profile !== "string") continue;
+				if (!sameFilePath(parsed.profile, profilePath)) continue;
+				sessions.push({
+					sessionId: entry.name,
+					configPath,
+					profilePath,
+					sessionDirectory,
+					persistentProfile: true,
+				});
+			} catch {
+				// Ignore incomplete directories from a process that stopped while preparing a session.
+			}
+		}
+		return sessions;
+	}
+
 	private async migrateLegacyBrowserProfile(target: string): Promise<void> {
 		const source = this.legacyBrowserPluginProfile;
 		if (!source) return;
@@ -100,6 +144,18 @@ export class BrowserProfileRegistry {
 		});
 		return this.legacyMigration;
 	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function sameFilePath(left: string, right: string): boolean {
+	const normalizedLeft = resolve(left);
+	const normalizedRight = resolve(right);
+	return process.platform === "win32"
+		? normalizedLeft.toLowerCase() === normalizedRight.toLowerCase()
+		: normalizedLeft === normalizedRight;
 }
 
 async function pathExists(path: string): Promise<boolean> {

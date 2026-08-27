@@ -64,4 +64,30 @@ describe("BrowserProfileRegistry legacy migration", () => {
 		});
 		expect(await readFile(join(first.profilePath!, "state"), "utf8")).toBe("current");
 	});
+
+	it("lists only host sessions that reference the requested persistent profile", async () => {
+		const root = await mkdtemp(join(tmpdir(), "vetta-browser-profile-test-"));
+		directories.push(root);
+		const registry = new BrowserProfileRegistry({ baseDirectory: root });
+		const matchingId = "vetta-11111111-1111-4111-8111-111111111111";
+		const otherId = "vetta-22222222-2222-4222-8222-222222222222";
+		await registry.prepareSession({
+			namespace: "browser",
+			sessionId: matchingId,
+			source: "managed",
+			profile: { type: "persistent", id: "brand-a" },
+			headed: true,
+		});
+		await registry.prepareSession({
+			namespace: "browser",
+			sessionId: otherId,
+			source: "managed",
+			profile: { type: "persistent", id: "brand-b" },
+			headed: true,
+		});
+
+		const sessions = await registry.listPersistentProfileSessions({ namespace: "browser", profileId: "brand-a" });
+
+		expect(sessions.map(({ sessionId }) => sessionId)).toEqual([matchingId]);
+	});
 });

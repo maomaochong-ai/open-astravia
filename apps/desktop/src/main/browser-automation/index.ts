@@ -32,3 +32,9 @@ export function getBrowserAutomationService(): BrowserAutomationService {
 	});
 	return sharedService;
 }
+
+export async function shutdownBrowserAutomationService(): Promise<void> {
+	const service = sharedService;
+	sharedService = undefined;
+	await service?.closeAll();
+}

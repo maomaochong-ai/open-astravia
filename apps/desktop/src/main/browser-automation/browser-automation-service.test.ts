@@ -161,6 +161,36 @@ describe("BrowserAutomationService", () => {
 		).rejects.toMatchObject({ code: "invalid_request" });
 	});
 
+	it("reclaims a persisted session before reopening its profile after a host restart", async () => {
+		const profiles = new BrowserProfileRegistry({ baseDirectory: temporaryDirectory });
+		const staleSessionId = "vetta-11111111-1111-4111-8111-111111111111";
+		await profiles.prepareSession({
+			namespace: "publisher",
+			sessionId: staleSessionId,
+			source: "managed",
+			profile: { type: "persistent", id: "brand-a" },
+			headed: true,
+		});
+		const restartedService = new BrowserAutomationService({
+			engine,
+			runtime: readyRuntime(),
+			profiles,
+			logger,
+		});
+
+		await restartedService.createSession({
+			namespace: "publisher",
+			profile: { type: "persistent", id: "brand-a" },
+			allowedHosts: ["example.com"],
+		});
+
+		expect(engine.calls).toEqual(["close"]);
+		expect(logger.info).toHaveBeenCalledWith(
+			"browser persisted session reclaimed",
+			expect.objectContaining({ namespace: "publisher" }),
+		);
+	});
+
 	it("serializes concurrent creation of the same persistent profile", async () => {
 		let prepareCalls = 0;
 		let releaseFirst: () => void = () => undefined;

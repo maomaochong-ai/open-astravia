@@ -20,6 +20,10 @@ export interface BrowserSessionResources {
 	persistentProfile: boolean;
 }
 
+export interface PersistedBrowserSessionResources extends BrowserSessionResources {
+	sessionId: string;
+}
+
 export interface BrowserEngineSession {
 	id: string;
 	source: BrowserSource;
@@ -64,6 +68,10 @@ export interface BrowserProfilePort {
 		profile: BrowserSessionProfile;
 		headed: boolean;
 	}): Promise<BrowserSessionResources>;
+	listPersistentProfileSessions?(input: {
+		namespace: string;
+		profileId: string;
+	}): Promise<readonly PersistedBrowserSessionResources[]>;
 	releaseSession(resources: BrowserSessionResources): Promise<void>;
 }
 

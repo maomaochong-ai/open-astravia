@@ -1,4 +1,5 @@
 import type { ChildProcess } from "node:child_process";
+import { setImmediate } from "node:timers";
 import { createPluginCommandEnvironment } from "../plugins/command-environment.js";
 import { spawnCrossPlatformCommand } from "../plugins/command-launcher.js";
 
@@ -34,6 +35,8 @@ function appendBounded(current: string, chunk: string, limit: number): { value: 
 }
 
 export class HostBrowserProcessRunner implements BrowserProcessRunner {
+	constructor(private readonly spawnProcess: typeof spawnCrossPlatformCommand = spawnCrossPlatformCommand) {}
+
 	run(file: string, args: readonly string[], options: BrowserProcessRunOptions): Promise<BrowserProcessResult> {
 		const startedAt = Date.now();
 		const limit = options.maxOutputChars ?? 1_000_000;
@@ -44,7 +47,7 @@ export class HostBrowserProcessRunner implements BrowserProcessRunner {
 			}
 			let child: ChildProcess;
 			try {
-				child = spawnCrossPlatformCommand(file, args, {
+				child = this.spawnProcess(file, args, {
 					env: createPluginCommandEnvironment(),
 					stdio: ["ignore", "pipe", "pipe"],
 					windowsHide: true,
@@ -59,13 +62,12 @@ export class HostBrowserProcessRunner implements BrowserProcessRunner {
 			let timedOut = false;
 			let aborted = false;
 			let settled = false;
-			const timeout = setTimeout(() => {
-				timedOut = true;
-				child.kill();
-			}, options.timeoutMs);
+			let timeout: ReturnType<typeof setTimeout>;
 			const cleanup = (): void => {
 				clearTimeout(timeout);
 				options.signal?.removeEventListener("abort", onAbort);
+				child.stdout?.destroy();
+				child.stderr?.destroy();
 			};
 			const rejectOnce = (error: unknown): void => {
 				if (settled) return;
@@ -73,6 +75,17 @@ export class HostBrowserProcessRunner implements BrowserProcessRunner {
 				cleanup();
 				reject(error);
 			};
+			const resolveOnce = (code: number | null): void => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				resolve({ exitCode: code ?? 1, stdout, stderr, durationMs: Date.now() - startedAt, truncated });
+			};
+			timeout = setTimeout(() => {
+				timedOut = true;
+				child.kill();
+				rejectOnce(new Error(`Browser process timed out after ${options.timeoutMs}ms`));
+			}, options.timeoutMs);
 			const onAbort = (): void => {
 				aborted = true;
 				child.kill();
@@ -94,19 +107,25 @@ export class HostBrowserProcessRunner implements BrowserProcessRunner {
 			child.once("error", (error) => {
 				rejectOnce(error);
 			});
+			child.once("exit", (code) => {
+				if (aborted || timedOut) return;
+				// agent-browser starts a daemon on first use. That daemon may inherit the
+				// command's pipes, so Node's `close` event can remain pending even after
+				// the actual CLI process exits. Give queued output one event-loop turn,
+				// then settle from `exit`; `close` remains the fast path for normal CLIs.
+				setImmediate(() => resolveOnce(code));
+			});
 			child.once("close", (code) => {
 				if (settled) return;
-				settled = true;
-				cleanup();
 				if (aborted) {
-					reject(new BrowserProcessAbortedError());
+					rejectOnce(new BrowserProcessAbortedError());
 					return;
 				}
 				if (timedOut) {
-					reject(new Error(`Browser process timed out after ${options.timeoutMs}ms`));
+					rejectOnce(new Error(`Browser process timed out after ${options.timeoutMs}ms`));
 					return;
 				}
-				resolve({ exitCode: code ?? 1, stdout, stderr, durationMs: Date.now() - startedAt, truncated });
+				resolveOnce(code);
 			});
 		});
 	}

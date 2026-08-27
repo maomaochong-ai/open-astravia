@@ -19,6 +19,7 @@ import { installApplicationMenu } from "./app-menu.js";
 import { initializeAppMonitor, shutdownAppMonitor } from "./app-monitor/app-monitor-service.js";
 import { shutdownBatchTaskExecutor } from "./batch-tasks/batch-task-executor.js";
 import { initializeDesktopBatchTaskService } from "./batch-tasks/batch-task-service.js";
+import { shutdownBrowserAutomationService } from "./browser-automation/index.js";
 import { parseActionCliCommand, runActionCliCommand } from "./cli/action-command.js";
 import { parseAgentRpcCommand, runAgentRpcCommand } from "./cli/agent-rpc-command.js";
 import { parseHelpCliCommand, runHelpCliCommand } from "./cli/help-command.js";
@@ -895,6 +896,7 @@ setQuitCleanup(async () => {
 	const consumerShutdownResults = await Promise.allSettled([
 		shutdownScheduler(),
 		shutdownBatchTaskExecutor(),
+		shutdownBrowserAutomationService(),
 		knowledgeShutdown,
 		uiohookShutdown,
 	]);
