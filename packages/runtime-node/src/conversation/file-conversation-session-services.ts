@@ -8,7 +8,6 @@ import type {
 	RuntimeSessionFileHistoryReader,
 	SessionHistoryInfo,
 } from "@vetta/runtime-core";
-import type { ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
 import { projectConversationDocumentHistory } from "@vetta/runtime-core/conversation";
 import {
 	type ConversationOwnershipManager,
@@ -178,19 +177,27 @@ async function readSessionHistoryInfo(sessionPath: string, fallbackCwd: string):
 	}
 	const document = documentFromFile(header.sessionId, parseConversationFile(text, header.sessionId));
 	const history = projectConversationDocumentHistory(document);
-	const messageTexts = history.flatMap((entry) => {
+	const conversationMessages = history.flatMap((entry) => {
 		if (entry.type !== "message" || (entry.message.role !== "user" && entry.message.role !== "assistant")) {
 			return [];
 		}
-		const text = extractMessageText(entry.message.content);
-		return text ? [{ role: entry.message.role, text }] : [];
+		return [entry.message];
+	});
+	const messageTexts = conversationMessages.flatMap((message) => {
+		const text = extractMessageText(message.content);
+		return text ? [{ role: message.role, text }] : [];
 	});
 	const firstMessage = messageTexts.find(({ role }) => role === "user")?.text ?? "(no messages)";
 	const lastMessagePreview = messageTexts.at(-1)?.text.slice(0, LAST_MESSAGE_PREVIEW_LENGTH);
 	// File mtime is a storage implementation detail: importing/resuming an existing
 	// conversation may rewrite or recover the JSONL without any new user activity.
-	// Sidebar ordering follows the latest persisted conversation message instead.
-	const modifiedAt = readLastMessageActivityTime(document.entries) ?? (await stat(sessionPath)).mtimeMs;
+	// Use the already validated history projection so previews, branches and activity
+	// time share one source of truth instead of inspecting opaque document entries here.
+	const lastMessageActivityAt = conversationMessages.reduce<number | undefined>((latest, message) => {
+		if (!Number.isFinite(message.timestamp) || message.timestamp <= 0) return latest;
+		return Math.max(latest ?? 0, message.timestamp);
+	}, undefined);
+	const modifiedAt = lastMessageActivityAt ?? (await stat(sessionPath)).mtimeMs;
 	return {
 		id: header.sessionId,
 		path: resolve(sessionPath),
@@ -203,19 +210,6 @@ async function readSessionHistoryInfo(sessionPath: string, fallbackCwd: string):
 		parentSessionPath: document.identity.parentSessionPath,
 		parentEntryId: document.identity.parentEntryId,
 	};
-}
-
-function readLastMessageActivityTime(entries: readonly ConversationDocumentEntry[]): number | undefined {
-	let lastActivityTime: number | undefined;
-	for (const entry of entries) {
-		if (entry.type !== "message" || typeof entry.message !== "object" || entry.message === null) continue;
-		const role = Reflect.get(entry.message, "role");
-		if (role !== "user" && role !== "assistant") continue;
-		const timestamp = new Date(entry.timestamp).getTime();
-		if (!Number.isFinite(timestamp) || timestamp <= 0) continue;
-		lastActivityTime = Math.max(lastActivityTime ?? 0, timestamp);
-	}
-	return lastActivityTime;
 }
 
 function extractMessageText(content: unknown): string | undefined {

@@ -54,6 +54,22 @@ describe("Greenfield runtime session services", () => {
 		]);
 	});
 
+	it("falls back to file modification time when a session has no conversation messages", async () => {
+		const rootDir = await createTemporaryRoot();
+		const cwd = join(rootDir, "workspace");
+		const repository = new FileConversationRepository({ rootDir });
+		await repository.create({ sessionId: "empty", createdAt: 10, cwd });
+		const sessionPath = repository.resolveConversationPath("empty");
+		await repository.close();
+		const touchedAt = new Date("2026-08-27T12:00:00.000Z");
+		await utimes(sessionPath, touchedAt, touchedAt);
+
+		const catalog = new FileConversationRuntimeSessionCatalog();
+		const [session] = await catalog.listSessions(cwd, rootDir);
+
+		expect(session?.modifiedAt).toBe(touchedAt.getTime());
+	});
+
 	it("lists, reads, renames and deletes conversation artifacts without exposing storage details", async () => {
 		const rootDir = await createTemporaryRoot();
 		const cwd = join(rootDir, "workspace");
