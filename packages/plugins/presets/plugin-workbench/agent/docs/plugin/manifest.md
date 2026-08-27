@@ -36,8 +36,9 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
     "expose": "./plugin"
   },
   "styles": ["dist/style.css"],
-  "permissions": ["ui.slot.global", "agent.session.read", "agent.command.run"],
+  "permissions": ["ui.slot.global", "agent.session.read", "agent.command.run", "browser.read"],
   "commands": ["git"],
+  "browser": { "allowedHosts": ["studio.example.com"] },
   "defaultLocale": "zh",
   "description": "一句话说明这个插件做什么",
   "author": "你的名字",
@@ -70,6 +71,7 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 | `styles` | ❌ | string[] | 要注入的 CSS 文件路径（相对插件根）。 |
 | `permissions` | ❌ | string[] | 声明需要的权限，见 [permissions.md](./permissions.md)。未声明即不可用。 |
 | `commands` | ❌ | string[] | 允许 `ctx.command.run` 的**可执行文件名**（如 `["git","node"]`），见 [commands](#commands)。 |
+| `browser` | 使用 `browser.*` 权限时必填 | `{ allowedHosts: string[] }` | 浏览器顶层导航的最大 host 授权；session 只能收窄，见 [browser.md](./browser.md)。 |
 | `description` | ❌ | string | 简介。可用 `%key%`。 |
 | `author` | ❌ | string | 作者。 |
 | `icon` | ❌ | string | 能力页/插件列表展示的图标，也是[工作区视图](./ui-slots.md#工作区视图-registerworkspaceview)与活动 Tab 未声明图标时的回落。三态：省略（按类型落默认图）、Iconify 名（如 `solar:widget-add-bold`）、`http(s)://` 外链，或包内相对路径（如 `assets/icon.png`）。 |

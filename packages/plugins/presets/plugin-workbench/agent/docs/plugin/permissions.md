@@ -60,6 +60,11 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `fs.read` | `readDir` / `readFile` / `stat` / `listFilesRecursive` | [conversation-and-agent](./conversation-and-agent.md#文件-api) |
 | `fs.write` | `writeFile` / `rename` / `delete` / `move` / `createDirectory` | 同上 |
 | `network.fetch` | `ctx.network.request` | [conversation-and-agent](./conversation-and-agent.md#网络-api) |
+| `browser.read` | 创建/查询/关闭 session，导航、快照、文本与截图 | [browser](./browser.md) |
+| `browser.interact` | `ctx.browser.act`；必须同时声明 `browser.read` | [browser](./browser.md) |
+| `browser.profile.persist` | 创建宿主管理的持久 profile | [browser](./browser.md#多账号-profile) |
+| `browser.attach` | 附着用户自行开启调试的 Chrome；仅 official | [browser](./browser.md) |
+| `browser.runtime.manage` | 安装/修复浏览器运行时；仅 official | [browser](./browser.md) |
 | `storage.read` | `ctx.storage.readJson/list/readFile/readBlob/getBlobRef` | [conversation-and-agent](./conversation-and-agent.md#插件私有存储-api) |
 | `storage.write` | `ctx.storage.writeJson/writeFile/putBlob` | 同上 |
 | `media.generate` | `ctx.media.listProviders/createJob/getJob/cancelJob` | [media](./media.md) |
