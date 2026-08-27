@@ -1,0 +1,7 @@
+{
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"framework": "nextjs",
+	"installCommand": "cd ../.. && bun install --filter=@vetta/docs-site --frozen-lockfile",
+	"buildCommand": "bun run build",
+	"ignoreCommand": "cd ../.. && npx turbo-ignore @vetta/docs-site --fallback=HEAD^1"
+}

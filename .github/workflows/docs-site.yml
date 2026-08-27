@@ -1,0 +1,66 @@
+# Docs site: verify on path changes. Vercel Git deploys the site.
+#
+# - PR / push touching apps/docs-site: typecheck, test, and `next build`
+# - Push to `dev` with docs-site changes: Vercel production
+#   (https://vetta-docs.vercel.app). Unrelated monorepo commits are skipped
+#   by apps/docs-site/vercel.json ignoreCommand (turbo-ignore).
+# - Other branches and PRs: Vercel preview deployments, same ignore rule.
+#
+# This workflow does not call `vercel deploy`. Keep it that way so Git
+# integration and Actions do not publish the same commit twice.
+
+name: docs-site
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - "apps/docs-site/**"
+      - "bun.lock"
+      - ".github/workflows/docs-site.yml"
+  pull_request:
+    paths:
+      - "apps/docs-site/**"
+      - "bun.lock"
+      - ".github/workflows/docs-site.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check + test + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Restore Bun dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.bun/install/cache
+          key: quality-bun-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'package.json') }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run --cwd apps/docs-site check
+
+      - name: Test
+        run: bun run --cwd apps/docs-site test
+
+      - name: Build
+        run: bun run --cwd apps/docs-site build

@@ -47,6 +47,14 @@ Fumadocs 搜索索引由站点内容生成，因此需要通过构建后的站�
 
 ## 部署
 
-将部署项目的根目录设为 `apps/docs-site`，构建命令使用 `bun run build`，启动命令使用
-`bun run preview`。默认站点地址为 `https://docs.openvetta.com`；其他环境可通过
-`DOCS_SITE_URL` 覆盖，用于生成 canonical URL。
+公开站点由 Vercel Git 集成自动发布，不必再跑 `vercel deploy`。
+
+- 项目：`vetta-docs`，Root Directory 为 `apps/docs-site`
+- 生产分支：`dev` → https://vetta-docs.vercel.app
+- PR 与其他分支：Preview 部署
+- 仅当 `apps/docs-site`（及其 workspace 依赖）有变更时才构建，见 `vercel.json` 的 `ignoreCommand`
+
+GitHub Actions [`.github/workflows/docs-site.yml`](../../.github/workflows/docs-site.yml) 在同样的路径变更上跑 typecheck、测试和 `next build`，不重复执行 `vercel deploy`。
+
+默认 canonical 为 `https://docs.openvetta.com`；其他环境可通过 `DOCS_SITE_URL` 覆盖。
+
