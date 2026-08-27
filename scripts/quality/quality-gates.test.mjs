@@ -281,10 +281,19 @@ describe("CI unit test coverage", () => {
 	it("runs affected workspace tests on Linux, macOS, and Windows with complete Git history", () => {
 		expect(workflow).toContain("os: [ubuntu-latest, macos-latest, windows-latest]");
 		expect(workflow).toContain("fetch-depth: 0");
-		expect(workflow).toContain("sudo apt-get update && sudo apt-get install --yes ripgrep");
-		expect(workflow).toContain("brew install ripgrep");
-		expect(workflow).toContain("choco install ripgrep --yes --no-progress");
+		expect(workflow).toContain("command -v rg >/dev/null || { sudo apt-get update");
+		expect(workflow).toContain("command -v rg >/dev/null || brew install ripgrep");
+		expect(workflow).toContain("Get-Command rg -ErrorAction SilentlyContinue");
 		expect(workflow).toContain("bun run test:changed --base");
+	});
+
+	it("cancels stale runs, fails the platform matrix fast, and reuses exact-lockfile dependencies", () => {
+		expect(workflow).toContain("cancel-in-progress: true");
+		expect(workflow).toContain("fail-fast: true");
+		expect(workflow.match(/uses: actions\/cache@v4/g)).toHaveLength(2);
+		expect(workflow).toContain("node_modules");
+		expect(workflow).toContain("~/.bun/install/cache");
+		expect(workflow).toContain("hashFiles('bun.lock', 'package.json')");
 	});
 
 	it("keeps the local full-test entry point sequential and discovery-based", () => {

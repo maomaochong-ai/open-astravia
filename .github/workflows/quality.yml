@@ -6,6 +6,10 @@ on:
       - dev
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check-and-test:
     name: check + quality tests
@@ -21,6 +25,14 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
+
+      - name: Restore Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.bun/install/cache
+          key: quality-bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'package.json') }}
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -42,7 +54,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
@@ -58,15 +70,23 @@ jobs:
 
       - name: Install ripgrep on Linux
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install --yes ripgrep
+        run: command -v rg >/dev/null || { sudo apt-get update && sudo apt-get install --yes ripgrep; }
 
       - name: Install ripgrep on macOS
         if: runner.os == 'macOS'
-        run: brew install ripgrep
+        run: command -v rg >/dev/null || brew install ripgrep
 
       - name: Install ripgrep on Windows
         if: runner.os == 'Windows'
-        run: choco install ripgrep --yes --no-progress
+        run: if (-not (Get-Command rg -ErrorAction SilentlyContinue)) { choco install ripgrep --yes --no-progress }
+
+      - name: Restore Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.bun/install/cache
+          key: quality-bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'package.json') }}
 
       - name: Install dependencies
         run: bun install --frozen-lockfile

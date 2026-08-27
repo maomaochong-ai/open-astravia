@@ -161,7 +161,7 @@ workspace 包声明解析。因此，上游源码修改但 `dist/*.d.ts` 尚未�
 
 ## CI
 
-`.github/workflows/quality.yml` 负责通用 TypeScript 质量门禁：冻结依赖安装、`bun run check`、质量脚本测试、Runtime 合同检查，并在 Ubuntu、macOS 与 Windows 上顺序运行受影响 workspace 及其可测下游。单元测试 Job 会显式安装真实 `ripgrep`，用于验证 Runtime Node 的 `grep` / `glob` 进程合同，不依赖 GitHub Runner 镜像碰巧预装该工具。完整 Git 历史用于计算 PR base；根配置、锁文件或质量脚本变化会在三个平台运行全部 workspace 测试。
+`.github/workflows/quality.yml` 负责通用 TypeScript 质量门禁：冻结依赖安装、`bun run check`、质量脚本测试、Runtime 合同检查，并在 Ubuntu、macOS 与 Windows 上顺序运行受影响 workspace 及其可测下游。各平台按操作系统、架构和锁文件复用 Bun 下载缓存与根 `node_modules`，命中后仍执行冻结安装校验。单元测试 Job 会确保真实 `ripgrep` 可用，仅在 Runner 未预装时才安装，用于验证 Runtime Node 的 `grep` / `glob` 进程合同。完整 Git 历史用于计算 PR base；根配置、锁文件或质量脚本变化会在三个平台运行全部 workspace 测试。同一 PR 或分支的新提交会取消旧运行，任一平台失败后也会停止仍在排队或执行的同矩阵任务；成功运行仍完整覆盖三个平台。
 
 非 Bun workspace 由独立的 path-filtered workflow 覆盖：`.github/workflows/im-gateway.yml` 对 Go Gateway 执行 tidy、vet、build、test、接口纪律和 golangci-lint；`.github/workflows/mobile.yml` 对 Kotlin Mobile 执行 Android host tests 和 debug APK 构建。它们只在分支 push 或 PR 中对应目录或 workflow 自身变化时运行，不响应 tag push，也不把 Go/Kotlin 生命周期伪装成 JavaScript workspace 任务。
 
