@@ -23,6 +23,7 @@
 	},
 	"dependencies": {
 		"@sinclair/typebox": "^0.34.41",
+		"@vetta/ai": "workspace:*",
 		"@vetta/runtime-core": "workspace:*"
 	},
 	"devDependencies": {

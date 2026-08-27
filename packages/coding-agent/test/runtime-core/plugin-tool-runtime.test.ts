@@ -13,7 +13,7 @@ import type {
 } from "../../src/model-context/index.js";
 import { buildSystemPromptDraft, renderSystemPromptDraft } from "../../src/model-context/index.js";
 import { CodingAgentPluginRunOrchestrator } from "../../src/plugins/runtime/run-orchestrator.js";
-import { CodingAgentPluginToolRuntime, withMdIntroParameter } from "../../src/plugins/runtime/tool-runtime.js";
+import { CodingAgentPluginToolRuntime } from "../../src/plugins/runtime/tool-runtime.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../src/tool-policy/model-tool-order.js";
 
 describe("CodingAgentPluginToolRuntime", () => {
@@ -147,7 +147,19 @@ describe("CodingAgentPluginToolRuntime", () => {
 		const effectiveContext = { ...baseContext, frame: surface.frame };
 		await composeOrchestrator(orchestrator, effectiveContext, surface.availableTools);
 		const artifact = surface.frame.tools.get("artifact");
-		expect(artifact?.inputSchema).toEqual(withMdIntroParameter(contribution.parameters));
+		expect(artifact?.inputSchema).toMatchObject({
+			type: "object",
+			properties: {
+				title: { type: "string" },
+				md_intro: { type: "string", maxLength: 600 },
+			},
+			required: ["title"],
+		});
+		expect(contribution.parameters).toEqual({
+			type: "object",
+			properties: { title: { type: "string" } },
+			required: ["title"],
+		});
 		const messages = [userMessage("inspect"), assistantToolCall("artifact")];
 
 		const result = await artifact?.execute({

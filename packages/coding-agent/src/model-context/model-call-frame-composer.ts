@@ -12,11 +12,12 @@ import type {
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
-import type { CodingToolActivation } from "@vetta/runtime-tools";
+import type { CodingToolActivation, RuntimeToolProjectionPipeline } from "@vetta/runtime-tools";
 import type {
 	CodingAgentPluginMcpToolComposer,
 	CodingAgentSystemPromptOptionsResolver,
 } from "../runtime-contracts/index.js";
+import { createCodingAgentToolProjectionPipeline } from "../tool-policy/tool-projection-policy.js";
 import { compileSystemPromptDraft, type SystemPromptDiagnostics, type SystemPromptDraft } from "./prompt-document.js";
 import { type BuildSystemPromptOptions, buildSystemPromptDraft } from "./system-prompt-policy.js";
 
@@ -45,6 +46,8 @@ export interface CodingAgentModelCallFrameComposerOptions {
 	readonly pluginHandlerLeaseProvider?: AgentPluginTurnHandlerLeaseProvider;
 	/** 系统提示词额外公布、但不加入可执行 Tool Frame 的既有宿主工具名称。 */
 	readonly systemPromptAdvertisedToolNames?: readonly string[];
+	/** Product-owned projection of the final Tool surface; captured once per Turn. */
+	readonly toolProjectionPipeline?: RuntimeToolProjectionPipeline;
 	readonly wrapTools?: CodingAgentModelCallToolWrapper;
 	readonly bindToolWrapper?: (context: RuntimeSnapshotAcquireContext) => {
 		readonly wrapTools: CodingAgentModelCallToolWrapper;
@@ -124,70 +127,95 @@ export type CodingAgentModelCallToolWrapper = (
  * Skill、Mode 与 Persona 等产品语义继续由既有结构化 Prompt 编译器解释。
  */
 export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer {
-	constructor(private readonly options: CodingAgentModelCallFrameComposerOptions) {}
+	private readonly options: CodingAgentModelCallFrameComposerOptions;
+
+	constructor(options: CodingAgentModelCallFrameComposerOptions) {
+		this.options = {
+			...options,
+			toolProjectionPipeline: options.toolProjectionPipeline ?? createCodingAgentToolProjectionPipeline(),
+		};
+	}
 
 	async bindForTurn(context: RuntimeSnapshotAcquireContext): Promise<ModelCallFrameComposer> {
 		context.signal.throwIfAborted();
-		const agentPlugins = this.options.readAgentPlugins?.();
-		const pluginHandlerLeaseResult = this.options.pluginHandlerLeaseProvider?.bindForTurn(agentPlugins, {
-			sessionId: context.sessionId,
-			turnId: context.operationId,
-			signal: context.signal,
-		});
-		const availableTools = this.options.readAvailableTools ? new Map(this.options.readAvailableTools()) : undefined;
-		const activeToolNamesOverride = this.options.readActiveToolNamesOverride?.();
-		const mcpPromptState = this.options.readMcpPromptState?.();
-		const agentMode = this.options.readAgentMode?.();
-		// 冻结可见集的候选名必须并入 MCP 受管工具（含 Session Plugin MCP）：它们不在
-		// readAvailableTools 里（compose 阶段才由 pluginMcpRuntime 并入 frame），只按
-		// availableTools 过滤会把全部 plugin MCP 工具冻结成不可见。
-		const boundMcpToolVisibility = this.options.bindMcpToolVisibility?.() ?? this.options.isMcpToolVisible;
-		const mcpToolCandidates = availableTools
-			? new Set([...availableTools.keys(), ...(mcpPromptState?.tools.map(({ name }) => name) ?? [])])
-			: undefined;
-		const pluginMcpRuntime = this.options.pluginMcpRuntime?.bindForTurn?.(context) ?? this.options.pluginMcpRuntime;
-		const extensionToolRuntime =
-			this.options.extensionToolRuntime?.bindForTurn?.(context) ?? this.options.extensionToolRuntime;
-		const boundToolWrapper = this.options.bindToolWrapper?.(context);
-		const pluginRunOrchestrator =
-			this.options.pluginRunOrchestrator?.bindForTurn?.(context) ?? this.options.pluginRunOrchestrator;
-		const pluginToolRuntime =
-			this.options.pluginToolRuntime?.bindForTurn?.(context) ?? this.options.pluginToolRuntime;
-		const resolveExtensionToolActivation =
-			this.options.bindExtensionToolActivation?.(context) ?? this.options.resolveExtensionToolActivation;
-		const resolveSystemPromptOptions =
-			(await this.options.bindSystemPromptOptions?.(context)) ?? this.options.resolveSystemPromptOptions;
+		let toolProjectionPipeline: RuntimeToolProjectionPipeline | undefined;
+		let pluginMcpRuntime: CodingAgentPluginMcpToolComposer | undefined;
+		let extensionToolRuntime: CodingAgentModelCallExtensionToolPort | undefined;
+		let boundToolWrapper:
+			| { readonly wrapTools: CodingAgentModelCallToolWrapper; release(): Promise<void> | void }
+			| undefined;
 		let pluginHandlerLease: AgentPluginTurnHandlerLease | undefined;
 		try {
+			toolProjectionPipeline = await this.options.toolProjectionPipeline?.bindForTurn(context);
+			const agentPlugins = this.options.readAgentPlugins?.();
+			const pluginHandlerLeaseResult = this.options.pluginHandlerLeaseProvider?.bindForTurn(agentPlugins, {
+				sessionId: context.sessionId,
+				turnId: context.operationId,
+				signal: context.signal,
+			});
+			const availableTools = this.options.readAvailableTools
+				? new Map(this.options.readAvailableTools())
+				: undefined;
+			const activeToolNamesOverride = this.options.readActiveToolNamesOverride?.();
+			const mcpPromptState = this.options.readMcpPromptState?.();
+			const agentMode = this.options.readAgentMode?.();
+			// 冻结可见集的候选名必须并入 MCP 受管工具（含 Session Plugin MCP）：它们不在
+			// readAvailableTools 里（compose 阶段才由 pluginMcpRuntime 并入 frame），只按
+			// availableTools 过滤会把全部 plugin MCP 工具冻结成不可见。
+			const boundMcpToolVisibility = this.options.bindMcpToolVisibility?.() ?? this.options.isMcpToolVisible;
+			const mcpToolCandidates = availableTools
+				? new Set([...availableTools.keys(), ...(mcpPromptState?.tools.map(({ name }) => name) ?? [])])
+				: undefined;
+			pluginMcpRuntime = this.options.pluginMcpRuntime?.bindForTurn?.(context) ?? this.options.pluginMcpRuntime;
+			extensionToolRuntime =
+				this.options.extensionToolRuntime?.bindForTurn?.(context) ?? this.options.extensionToolRuntime;
+			boundToolWrapper = this.options.bindToolWrapper?.(context);
+			const pluginRunOrchestrator =
+				this.options.pluginRunOrchestrator?.bindForTurn?.(context) ?? this.options.pluginRunOrchestrator;
+			const pluginToolRuntime =
+				this.options.pluginToolRuntime?.bindForTurn?.(context) ?? this.options.pluginToolRuntime;
+			const resolveExtensionToolActivation =
+				this.options.bindExtensionToolActivation?.(context) ?? this.options.resolveExtensionToolActivation;
+			const resolveSystemPromptOptions =
+				(await this.options.bindSystemPromptOptions?.(context)) ?? this.options.resolveSystemPromptOptions;
 			pluginHandlerLease = await pluginHandlerLeaseResult;
 			context.signal.throwIfAborted();
+			return new CodingAgentModelCallFrameComposer({
+				...this.options,
+				pluginRunOrchestrator,
+				pluginToolRuntime,
+				pluginMcpRuntime,
+				extensionToolRuntime,
+				resolveExtensionToolActivation,
+				resolveSystemPromptOptions,
+				readAvailableTools: availableTools ? () => availableTools : undefined,
+				readActiveToolNamesOverride: () => activeToolNamesOverride,
+				readMcpPromptState: mcpPromptState ? () => mcpPromptState : undefined,
+				readAgentMode: () => agentMode,
+				isMcpToolVisible: mcpToolCandidates
+					? (toolName) => mcpToolCandidates.has(toolName) && (boundMcpToolVisibility?.(toolName) ?? true)
+					: boundMcpToolVisibility,
+				wrapTools: boundToolWrapper?.wrapTools ?? this.options.wrapTools,
+				toolProjectionPipeline,
+				releaseTurnBinding: () =>
+					releaseTurnBindings(
+						pluginMcpRuntime,
+						pluginHandlerLease,
+						extensionToolRuntime,
+						boundToolWrapper,
+						toolProjectionPipeline,
+					),
+			});
 		} catch (error) {
 			await Promise.allSettled([
 				pluginMcpRuntime?.releaseTurnBinding?.(),
+				pluginHandlerLease?.release(),
 				extensionToolRuntime?.releaseTurnBinding?.(),
 				boundToolWrapper?.release(),
+				toolProjectionPipeline?.releaseTurnBinding(),
 			]);
 			throw error;
 		}
-		return new CodingAgentModelCallFrameComposer({
-			...this.options,
-			pluginRunOrchestrator,
-			pluginToolRuntime,
-			pluginMcpRuntime,
-			extensionToolRuntime,
-			resolveExtensionToolActivation,
-			resolveSystemPromptOptions,
-			readAvailableTools: availableTools ? () => availableTools : undefined,
-			readActiveToolNamesOverride: () => activeToolNamesOverride,
-			readMcpPromptState: mcpPromptState ? () => mcpPromptState : undefined,
-			readAgentMode: () => agentMode,
-			isMcpToolVisible: mcpToolCandidates
-				? (toolName) => mcpToolCandidates.has(toolName) && (boundMcpToolVisibility?.(toolName) ?? true)
-				: boundMcpToolVisibility,
-			wrapTools: boundToolWrapper?.wrapTools ?? this.options.wrapTools,
-			releaseTurnBinding: () =>
-				releaseTurnBindings(pluginMcpRuntime, pluginHandlerLease, extensionToolRuntime, boundToolWrapper),
-		});
 	}
 
 	releaseTurnBinding(): Promise<void> | void {
@@ -216,7 +244,9 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 		const systemPrompt = compiledPrompt.content;
 		this.options.extensionEvents?.recordSystemPrompt(systemPrompt);
 		const orderedTools = orderModelTools(selectedTools);
-		const tools = this.options.wrapTools?.(orderedTools, prepared.effectiveContext) ?? orderedTools;
+		const projectedTools =
+			this.options.toolProjectionPipeline?.projectTools(orderedTools, prepared.effectiveContext) ?? orderedTools;
+		const tools = this.options.wrapTools?.(projectedTools, prepared.effectiveContext) ?? projectedTools;
 		try {
 			await this.options.reportActiveToolNames?.([...tools.keys()]);
 		} catch {
@@ -367,12 +397,14 @@ async function releaseTurnBindings(
 	boundToolWrapper:
 		| { readonly wrapTools: CodingAgentModelCallToolWrapper; release(): Promise<void> | void }
 		| undefined,
+	toolProjectionPipeline: RuntimeToolProjectionPipeline | undefined,
 ): Promise<void> {
 	const results = await Promise.allSettled([
 		pluginMcpRuntime?.releaseTurnBinding?.(),
 		pluginHandlerLease?.release(),
 		extensionToolRuntime?.releaseTurnBinding?.(),
 		boundToolWrapper?.release(),
+		toolProjectionPipeline?.releaseTurnBinding(),
 	]);
 	const errors = results
 		.filter((result): result is PromiseRejectedResult => result.status === "rejected")

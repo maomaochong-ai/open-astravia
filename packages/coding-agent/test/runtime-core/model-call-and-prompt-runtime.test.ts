@@ -1,4 +1,5 @@
 import type { Api, Model } from "@vetta/ai";
+import { RuntimeToolProjectionPipeline, type RuntimeToolProjector } from "@vetta/runtime-tools";
 import { describe, expect, it, vi } from "vitest";
 import {
 	CodingAgentRuntimeModelAdapter,
@@ -15,6 +16,55 @@ import {
 import { preparePrompt } from "./prompt-adapter-test-fixture.js";
 
 describe("Coding Agent model call and prompt runtime", () => {
+	it("projects the complete final Tool surface and maps model-only input before execution", async () => {
+		let executedInput: Readonly<Record<string, unknown>> | undefined;
+		const baseTool = {
+			name: "dynamic_tool",
+			label: "Dynamic Tool",
+			description: "Base description",
+			inputSchema: {
+				type: "object",
+				properties: { value: { type: "string" } },
+				required: ["value"],
+				additionalProperties: false,
+			},
+			async execute(request: { readonly input: Readonly<Record<string, unknown>> }) {
+				executedInput = request.input;
+				return { content: [] };
+			},
+		};
+		const composer = new CodingAgentModelCallFrameComposer({
+			resolveSystemPromptOptions: () => ({ customPrompt: "test", cwd: "C:/workspace" }),
+		});
+
+		const frame = await composer.compose({
+			sessionId: "session-1",
+			turnId: "turn-1",
+			signal: new AbortController().signal,
+			messages: [],
+			frame: { instructions: [], tools: new Map([[baseTool.name, baseTool]]) },
+		});
+		const projected = frame.tools.get(baseTool.name);
+		if (!projected?.validateInput) throw new Error("Projected Tool is missing input validation");
+		const input = projected.validateInput({ value: "ok", description: "Explain the action" });
+		await projected.execute({
+			sessionId: "session-1",
+			turnId: "turn-1",
+			toolCallId: "call-1",
+			input,
+			signal: new AbortController().signal,
+		});
+
+		expect(projected.inputSchema).toMatchObject({
+			properties: {
+				value: { type: "string" },
+				description: { type: "string", maxLength: 100 },
+			},
+		});
+		expect(executedInput).toEqual({ value: "ok" });
+		expect((baseTool.inputSchema.properties as Record<string, unknown>).description).toBeUndefined();
+	});
+
 	it("holds the Desktop Plugin handler lease for the complete Turn composer binding", async () => {
 		const release = vi.fn();
 		const config = {
@@ -50,6 +100,74 @@ describe("Coding Agent model call and prompt runtime", () => {
 		});
 		await bound.releaseTurnBinding?.();
 		expect(release).toHaveBeenCalledOnce();
+	});
+
+	it("holds dynamic Tool projector bindings for the complete Turn", async () => {
+		const releaseTurnBinding = vi.fn();
+		const bindForTurn = vi.fn(
+			(): RuntimeToolProjector => ({
+				id: "dynamic-projector",
+				order: 100,
+				project: () => ({ patch: { description: "captured" } }),
+				releaseTurnBinding,
+			}),
+		);
+		const composer = new CodingAgentModelCallFrameComposer({
+			resolveSystemPromptOptions: async () => ({ cwd: "C:/workspace", scenario: "cli" }),
+			toolProjectionPipeline: new RuntimeToolProjectionPipeline([
+				{
+					id: "dynamic-projector",
+					order: 100,
+					bindForTurn,
+					project: () => ({ patch: { description: "live" } }),
+				},
+			]),
+		});
+
+		const bound = await composer.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
+		await bound.releaseTurnBinding?.();
+		await bound.releaseTurnBinding?.();
+
+		expect(bindForTurn).toHaveBeenCalledOnce();
+		expect(releaseTurnBinding).toHaveBeenCalledOnce();
+	});
+
+	it("releases a bound Tool projector when later Turn initialization fails", async () => {
+		const releaseTurnBinding = vi.fn();
+		const composer = new CodingAgentModelCallFrameComposer({
+			resolveSystemPromptOptions: async () => ({ cwd: "C:/workspace", scenario: "cli" }),
+			bindSystemPromptOptions: () => {
+				throw new Error("prompt binding failed");
+			},
+			toolProjectionPipeline: new RuntimeToolProjectionPipeline([
+				{
+					id: "dynamic-projector",
+					order: 100,
+					bindForTurn: () => ({
+						id: "dynamic-projector",
+						order: 100,
+						project: () => undefined,
+						releaseTurnBinding,
+					}),
+					project: () => undefined,
+				},
+			]),
+		});
+
+		await expect(
+			composer.bindForTurn({
+				sessionId: "session-1",
+				operationId: "turn-1",
+				reason: "turn",
+				signal: new AbortController().signal,
+			}),
+		).rejects.toThrow("prompt binding failed");
+		expect(releaseTurnBinding).toHaveBeenCalledOnce();
 	});
 
 	it("exposes a deferred MCP tool activated between model calls in the same Turn", async () => {

@@ -7,6 +7,7 @@ import type {
 	RuntimeToolResult,
 } from "@vetta/runtime-core/kernel";
 import { RuntimeToolExecutionError } from "@vetta/runtime-core/kernel";
+import { createModelOnlyToolInputPropertyProjector, RuntimeToolProjectionPipeline } from "@vetta/runtime-tools";
 import type {
 	AgentPluginRuntimeConfig,
 	AgentPluginToolContribution,
@@ -122,16 +123,16 @@ export class CodingAgentPluginToolRuntime {
 		contribution: AgentPluginToolContribution,
 		context: ModelCallFrameCompositionContext,
 	): RuntimeToolDefinition {
-		return {
+		const tool: RuntimeToolDefinition = {
 			name: contribution.name,
 			label: contribution.label ?? contribution.name,
 			description: contribution.description,
 			modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.plugin,
-			inputSchema: contribution.rendersCard
-				? (withMdIntroParameter(contribution.parameters) as Readonly<Record<string, unknown>>)
-				: contribution.parameters,
+			inputSchema: contribution.parameters,
 			execute: (request) => this.executeContribution(contribution, context, request),
 		};
+		if (!contribution.rendersCard) return tool;
+		return PLUGIN_CARD_TOOL_PROJECTION.projectTool(tool, context);
 	}
 
 	private async executeContribution(
@@ -264,17 +265,16 @@ const MD_INTRO_PROPERTY = {
 	maxLength: 600,
 };
 
-export function withMdIntroParameter(parameters: unknown): unknown {
-	if (typeof parameters !== "object" || parameters === null || Array.isArray(parameters)) return parameters;
-	const schema = parameters as Record<string, unknown>;
-	const properties = schema.properties;
-	if (typeof properties !== "object" || properties === null) return parameters;
-	if (MD_INTRO_PARAM in properties) return parameters;
-	return {
-		...schema,
-		properties: { ...properties, [MD_INTRO_PARAM]: MD_INTRO_PROPERTY },
-	};
-}
+const PLUGIN_CARD_TOOL_PROJECTION = new RuntimeToolProjectionPipeline([
+	createModelOnlyToolInputPropertyProjector({
+		id: "coding-agent.plugin-card-intro",
+		order: 100,
+		propertyName: MD_INTRO_PARAM,
+		propertySchema: MD_INTRO_PROPERTY,
+		onConflict: "preserve",
+		onUnsupportedSchema: "preserve",
+	}),
+]);
 
 export function stripMdIntroParameter(params: unknown): unknown {
 	if (typeof params !== "object" || params === null || Array.isArray(params)) return params;

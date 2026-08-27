@@ -37,8 +37,8 @@ export interface AgentPluginToolContribution {
 	context?: { conversation?: "summary" | "messages" };
 	/**
 	 * 该工具带有宿主自渲染卡片（插件注册了 tool-call slot），其结果是用户当作答案来读的
-	 * 产物。宿主据此为它追加一个可选的 `md_intro` 参数：模型填的这段 markdown 会渲染在
-	 * 卡片正上方，作为产物的一句话说明。插件无需感知，宿主自动检测并注入。见 ADR-0047。
+	 * 产物。宿主据此通过 Tool Projection 为模型侧追加一个可选的 `md_intro` 参数：模型填的
+	 * 这段 markdown 会渲染在卡片正上方，作为产物的一句话说明。插件无需感知。见 ADR-0047。
 	 */
 	rendersCard?: boolean;
 }

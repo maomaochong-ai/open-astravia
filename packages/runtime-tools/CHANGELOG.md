@@ -6,6 +6,8 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Added
 
+- 新增有序、不可变且支持 Turn-bound 动态状态的 `RuntimeToolProjectionPipeline`，允许产品在最终模型 Tool
+  表面统一调整描述、Schema、顺序和上下文元数据；模型侧 Schema 变化必须显式映射回原执行合同。
 - 新增 `GenerationalCodingToolCatalog`，统一整组 Tool 定义切换、Turn lease、旧代执行与退休；在旧代仍被租赁时拒绝复用
   binding identity，避免旧 Turn 静默执行新 handler。
 - Coding Tool 可选声明通用 Runtime Configuration 关联，并通过 Turn-bound Decorator 兼容原生、Legacy

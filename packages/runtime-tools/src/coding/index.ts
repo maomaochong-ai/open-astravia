@@ -53,7 +53,7 @@ export {
 	type CodingToolConfigurationIssueObservation,
 	type CodingToolConfigurationObservation,
 } from "./observations.js";
-export { ToolCallDescriptionSchema } from "./tool-call-description.js";
+export { TOOL_CALL_DESCRIPTION_TEXT, ToolCallDescriptionSchema } from "./tool-call-description.js";
 export {
 	CODING_TOOL_CONFIGURATION_ERROR_CODES,
 	type CodingToolConfigurationAdapterOptions,
@@ -64,6 +64,15 @@ export {
 	type RuntimeToolConfigurationSnapshotSource,
 	withCodingToolConfiguration,
 } from "./tool-configuration.js";
+export {
+	createModelOnlyToolInputPropertyProjector,
+	type ModelOnlyToolInputPropertyProjectorOptions,
+	type RuntimeToolModelSurfacePatch,
+	type RuntimeToolProjectionInputMapper,
+	RuntimeToolProjectionPipeline,
+	type RuntimeToolProjectionResult,
+	type RuntimeToolProjector,
+} from "./tool-projection.js";
 export {
 	CODING_TOOL_SCOPES,
 	type CodingToolActivation,

@@ -54,6 +54,9 @@
 
 ### Added
 
+- Coding Agent 在最终 Tool 组合边界统一应用产品 Tool Projection：所有兼容的对象输入 Schema 默认获得可选的
+  `description` 调用说明，显式 Tool 自有同名字段优先；模型专用字段在原 Tool 校验和执行前自动剥离。Plugin
+  卡片的 `md_intro` 也复用同一投影/反向映射机制，不再维护独立 Schema 改写路径。
 - 新增 `createCodingAgentExecutionRuntimeDefinition()`、`publishCodingAgentExecutionRuntimeDefinition()` 与
   `agentRuntime` Composition 配置/identity 返回值，支持应用级共享 Registry、运行时发布新 revision，以及新 Instance
   生效而已运行 Instance/Session 不受影响的 revision pinning。
