@@ -3,16 +3,24 @@ title: 运行第一个完整任务
 description: 在真实工作区中创建会话、提供上下文、检查执行过程，并用实际文件和验证结果完成验收。
 ---
 
+<Takeaways>
+  <li>一次可检查的小型文档任务</li>
+  <li>把目标、范围和验收写进同一条消息</li>
+  <li>用文件和工具记录验收，而不是只读回复</li>
+</Takeaways>
+
 本页用一个小型文档任务走完 Vetta 的标准闭环：选择工作区、提交可执行目标、处理权限请求、检查产物并继续修正。第一次不要选择大规模迁移或不可逆操作。
 
 ## 本次任务的结果
 
 假设项目中已有 `README.md` 和 `package.json`，让 Vetta 补充一份准确的本地开发说明。完成后应看到：
 
-- 项目目录中新增或更新 `docs/local-development.md`。
-- 文档中的安装、检查和测试命令来自当前项目事实，而不是模型猜测。
-- Agent 实际运行至少一个无副作用的检查命令，并在最终回复中报告结果。
-- 除目标文档外没有意外修改。
+<Checklist title="验收这张任务单">
+  <li>项目目录中新增或更新 `docs/local-development.md`。</li>
+  <li>文档中的安装、检查和测试命令来自当前项目事实，而不是模型猜测。</li>
+  <li>Agent 实际运行至少一个无副作用的检查命令，并在最终回复中报告结果。</li>
+  <li>除目标文档外没有意外修改。</li>
+</Checklist>
 
 ## 创建工作区和会话
 
@@ -38,6 +46,8 @@ description: 在真实工作区中创建会话、提供上下文、检查执行�
 
 把目标、范围、约束和验证写在同一条消息中：
 
+<Plate no="01" title="可验收任务">
+
 ```text
 阅读 @README.md 和 @package.json，为这个项目补充 docs/local-development.md。
 
@@ -49,16 +59,18 @@ description: 在真实工作区中创建会话、提供上下文、检查执行�
 5. 如果信息不足，先说明缺口，不要猜测。
 ```
 
+</Plate>
+
 这类任务足够小，便于检查 Agent 是否正确理解文件、遵守范围并执行验证。
 
 ## 执行时看什么
 
-| 信号 | 正常表现 | 需要介入 |
-| --- | --- | --- |
-| 待办 | 读取事实、起草、检查、验证逐步推进 | 长时间停在同一步或目标发生漂移 |
-| 工具调用 | 读取指定文件，写入目标文档，运行检查 | 访问无关目录或准备执行高影响命令 |
-| 权限请求 | 动作与当前任务直接相关 | 路径、命令或网络目的地无法解释 |
-| 后台任务 | 检查命令运行后正常结束 | 持续运行、失败或与任务无关 |
+<Signals>
+  <Signal name="待办" ok="读取事实、起草、检查、验证逐步推进" bad="长时间停在同一步或目标发生漂移" />
+  <Signal name="工具调用" ok="读取指定文件，写入目标文档，运行检查" bad="访问无关目录或准备执行高影响命令" />
+  <Signal name="权限请求" ok="动作与当前任务直接相关" bad="路径、命令或网络目的地无法解释" />
+  <Signal name="后台任务" ok="检查命令运行后正常结束" bad="持续运行、失败或与任务无关" />
+</Signals>
 
 权限请求提供 **允许本次**、**本会话不再询问** 和 **拒绝**。第一次使用优先逐次允许；不确定时拒绝并在消息中补充边界。
 
@@ -93,18 +105,24 @@ description: 在真实工作区中创建会话、提供上下文、检查执行�
 
 保持在原会话中，引用具体问题并缩小修正范围：
 
+<Plate no="02" title="缩小修正范围">
+
 ```text
 开发命令准确，但测试章节把全量测试写成默认步骤。
 只修改 docs/local-development.md：把默认流程改成定向测试，并保留全量测试作为发布前选项。
 修改后重新核对 package.json，不需要运行源码测试。
 ```
 
-同一目标的修正继续使用原会话；要比较另一种完整方案时使用分叉；开始无关目标时新建会话。
+</Plate>
 
-## 下一步
+<Beats>
+  <li>同一目标的修正继续使用原会话。</li>
+  <li>要比较另一种完整方案时使用分叉。</li>
+  <li>开始无关目标时新建会话。</li>
+</Beats>
 
-<Cards>
-  <Card title="理解核心工作流" href="/core/overview/" description="建立工作区、会话、执行和结果的完整心智。" />
-  <Card title="上下文、工具与权限" href="/core/context-tools-and-permissions/" description="更精确地提供材料并控制动作边界。" />
-  <Card title="进度、结果与恢复" href="/core/progress-results-and-recovery/" description="检查长任务、后台工作和失败恢复。" />
-</Cards>
+<Continue>
+  <ContinueLink href="/core/overview/" title="理解核心工作流" description="建立工作区、会话、执行和结果的完整心智。" />
+  <ContinueLink href="/core/context-tools-and-permissions/" title="上下文、工具与权限" description="更精确地提供材料并控制动作边界。" />
+  <ContinueLink href="/core/progress-results-and-recovery/" title="进度、结果与恢复" description="检查长任务、后台工作和失败恢复。" />
+</Continue>

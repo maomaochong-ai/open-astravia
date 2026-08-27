@@ -66,17 +66,22 @@ export default async function Page({ params }: PageProps) {
 					footer: <TocActions path={page.url} />,
 				}}
 			>
-				<header className="mt-3.5 border-b border-fd-border pb-[1.8rem] md:pb-[2.1rem]">
-					<DocsKicker>{sectionLabel}</DocsKicker>
-					<DocsTitle className="m-0 max-w-none font-display text-[2.2rem] font-semibold leading-[1.18] tracking-[-0.02em] text-pretty md:max-w-[16ch] md:text-[3.15rem]">
-						{page.data.title}
-					</DocsTitle>
-					<DocsDescription className="mt-[1.05rem] max-w-[38rem] text-base leading-[1.75] text-fd-muted-foreground md:text-[1.06rem]">
-						{page.data.description}
-					</DocsDescription>
-					<PageToolbar dateModified={dateModified} />
+				<header className="mt-2">
+					<div className="flex items-center justify-between gap-4">
+						<DocsKicker className="mb-0">{sectionLabel}</DocsKicker>
+						<PageToolbar dateModified={dateModified} />
+					</div>
+					<div className="mt-7 grid items-end gap-5 border-b border-fd-border pb-8 md:mt-9 md:grid-cols-[minmax(0,1.2fr)_minmax(12rem,0.8fr)] md:gap-10 md:pb-10">
+						<DocsTitle className="m-0 max-w-[18ch] font-display text-[2.35rem] font-semibold leading-[1.14] tracking-[-0.03em] text-pretty md:text-[3.35rem]">
+							{page.data.title}
+						</DocsTitle>
+						<DocsDescription className="m-0 max-w-[26rem] text-[0.95rem] leading-[1.7] text-fd-muted-foreground md:justify-self-end md:text-[1.02rem]">
+							{page.data.description}
+						</DocsDescription>
+					</div>
+					<span className="-mb-px block h-0.5 w-14 bg-vetta-coral" aria-hidden="true" />
 				</header>
-				<DocsBody className="docs-article-body max-w-[48rem] pt-5">
+				<DocsBody className="docs-article-body max-w-[54rem] pt-8">
 					<MDX components={getMDXComponents()} />
 				</DocsBody>
 			</DocsPage>

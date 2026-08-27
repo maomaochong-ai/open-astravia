@@ -25,7 +25,7 @@ export function ConceptMap({ className, children, ...props }: ComponentProps<"di
 	return (
 		<div
 			className={cn(
-				"my-6 grid grid-cols-1 border-t border-s border-fd-border md:grid-cols-2 lg:grid-cols-5 [&>div]:grid [&>div]:min-h-[10.5rem] [&>div]:content-start [&>div]:border-e [&>div]:border-b [&>div]:border-fd-border [&>div]:p-4 [&_span]:font-mono [&_span]:text-[0.64rem] [&_span]:tracking-[0.08em] [&_span]:text-vetta-coral [&_strong]:mt-6 [&_strong]:font-display [&_strong]:text-[0.92rem] [&_strong]:font-semibold [&_small]:mt-2 [&_small]:text-[0.7rem] [&_small]:leading-[1.55] [&_small]:text-fd-muted-foreground",
+				"relative my-6 grid grid-cols-1 border-t border-s border-fd-border before:absolute before:-top-px before:left-0 before:h-0.5 before:w-full before:bg-vetta-coral md:grid-cols-2 lg:grid-cols-5 lg:before:w-1/5 [&>div]:grid [&>div]:min-h-[11.5rem] [&>div]:content-start [&>div]:border-e [&>div]:border-b [&>div]:border-fd-border [&>div]:p-5 [&>div:first-child]:bg-vetta-coral/[0.07] [&_span]:font-mono [&_span]:text-[0.64rem] [&_span]:tracking-[0.08em] [&_span]:text-vetta-coral [&_strong]:mt-8 [&_strong]:font-display [&_strong]:text-[1.02rem] [&_strong]:font-semibold [&_small]:mt-2.5 [&_small]:text-[0.72rem] [&_small]:leading-[1.55] [&_small]:text-fd-muted-foreground",
 				className,
 			)}
 			{...props}
@@ -39,7 +39,7 @@ export function EvidenceGrid({ className, children, ...props }: ComponentProps<"
 	return (
 		<div
 			className={cn(
-				"my-6 grid grid-cols-1 border-t border-s border-fd-border md:grid-cols-2 lg:grid-cols-4 [&>div]:grid [&>div]:border-e [&>div]:border-b [&>div]:border-fd-border [&>div]:p-4 [&_span]:font-mono [&_span]:text-[0.64rem] [&_span]:tracking-[0.08em] [&_span]:text-vetta-coral [&_strong]:mt-6 [&_strong]:font-display [&_strong]:text-[0.92rem] [&_strong]:font-semibold [&_p]:mt-2 [&_p]:text-[0.72rem] [&_p]:text-fd-muted-foreground",
+				"relative my-6 grid grid-cols-1 border-t border-s border-fd-border before:absolute before:-top-px before:left-0 before:h-0.5 before:w-full before:bg-vetta-coral md:grid-cols-2 lg:grid-cols-4 lg:before:w-1/4 [&>div]:grid [&>div]:min-h-[10.5rem] [&>div]:border-e [&>div]:border-b [&>div]:border-fd-border [&>div]:p-5 [&>div:first-child]:bg-vetta-coral/[0.07] [&_span]:font-mono [&_span]:text-[0.64rem] [&_span]:tracking-[0.08em] [&_span]:text-vetta-coral [&_strong]:mt-8 [&_strong]:font-display [&_strong]:text-[1.02rem] [&_strong]:font-semibold [&_p]:mt-2.5 [&_p]:text-[0.74rem] [&_p]:leading-[1.55] [&_p]:text-fd-muted-foreground",
 				className,
 			)}
 			{...props}

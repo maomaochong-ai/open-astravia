@@ -3,6 +3,12 @@ title: 插件开发概览
 description: 理解 Vetta 插件的运行方式、能力出口和信任边界。
 ---
 
+<Takeaways>
+  <li>插件跑在桌面渲染进程里，不是沙箱 iframe</li>
+  <li>权限要经过声明、安装授权和运行时校验</li>
+  <li>先确认它真的需要做成插件</li>
+</Takeaways>
+
 Vetta 插件用于扩展桌面客户端的界面、文件浏览器、对话和 Agent 能力。插件通过 `@vetta-org/plugin-sdk` 获取宿主提供的策展能力出口。
 
 <MediaFrame>
@@ -12,10 +18,12 @@ Vetta 插件用于扩展桌面客户端的界面、文件浏览器、对话和 A
 
 ## 运行模型
 
-- 插件使用 React、TypeScript 和 Vite 开发。
-- 生产产物通过 Module Federation 加载。
-- React、React DOM 和插件 SDK 由宿主以共享单例提供。
-- 插件在桌面渲染进程内运行，不是 iframe 或 Worker 沙箱。
+<Beats>
+  <li>插件使用 React、TypeScript 和 Vite 开发。</li>
+  <li>生产产物通过 Module Federation 加载。</li>
+  <li>React、React DOM 和插件 SDK 由宿主以共享单例提供。</li>
+  <li>插件在桌面渲染进程内运行，不是 iframe 或 Worker 沙箱。</li>
+</Beats>
 
 ## 信任与权限
 
@@ -43,21 +51,19 @@ Vetta 插件用于扩展桌面客户端的界面、文件浏览器、对话和 A
 
 并非所有扩展都需要做成插件：
 
-<Cards>
-  <Card title="技能" description="给 Agent 增加一组指令与工作流时优先使用技能。" />
-  <Card title="MCP" href="/product/mcp/" description="只连接外部工具或数据源时优先使用 MCP。" />
-  <Card title="插件" href="/plugins/getting-started/" description="需要桌面 UI、宿主 API 或完整生命周期时再创建插件。" />
-  <Card title="主题" href="/themes/overview/" description="需要一致的外观、组件替换或主题页面时使用主题系统。" />
-</Cards>
+<Entries>
+  <Entry kicker="SKILL" title="技能">给 Agent 增加一组指令与工作流时优先使用技能。</Entry>
+  <Entry href="/product/mcp/" kicker="MCP" title="连接器">只连接外部工具或数据源时优先使用 MCP。</Entry>
+  <Entry href="/plugins/getting-started/" kicker="PLUGIN" title="插件">需要桌面 UI、宿主 API 或完整生命周期时再创建插件。</Entry>
+  <Entry href="/themes/overview/" kicker="THEME" title="主题">需要一致的外观、组件替换或主题页面时使用主题系统。</Entry>
+</Entries>
 
 ## 可扩展范围
 
 插件可以注册界面插槽、页面、文件预览、消息卡片、Agent 工具和 App Action，也可以在获得授权后访问文件、网络、私有存储、自动化任务及用户配置的 AI 模型。
 
-## 继续阅读
-
-<Cards>
-  <Card title="创建第一个插件" href="/plugins/getting-started/" description="从最小项目结构到构建、安装与开发调试。" />
-  <Card title="清单与权限" href="/plugins/manifest-and-permissions/" description="声明身份、入口、样式、权限和发布检查。" />
-  <Card title="扩展点" href="/plugins/extension-points/" description="按产品目标选择 UI、文件、消息、Agent 或 App Action。" />
-</Cards>
+<Continue>
+  <ContinueLink href="/plugins/getting-started/" title="创建第一个插件" description="从最小项目结构到构建、安装与开发调试。" />
+  <ContinueLink href="/plugins/manifest-and-permissions/" title="清单与权限" description="声明身份、入口、样式、权限和发布检查。" />
+  <ContinueLink href="/plugins/extension-points/" title="扩展点" description="按产品目标选择 UI、文件、消息、Agent 或 App Action。" />
+</Continue>

@@ -3,6 +3,12 @@ title: 理解 Vetta 的工作方式
 description: 用工作区、任务、执行、结果和复用五个概念建立完整的产品心智。
 ---
 
+<Takeaways>
+  <li>Vetta 是带边界的本地工作台，不是聊天框</li>
+  <li>五项对象构成一次完整工作</li>
+  <li>验收看文件和执行记录，不看自信的总结</li>
+</Takeaways>
+
 Vetta 不是只返回一段答案的聊天框。它把 Agent 放进一个明确的本地工作区，让模型在可检查的权限和工具边界内读取资料、修改文件、执行命令，并把过程和结果保留在会话中。
 
 <MediaFrame>
@@ -20,7 +26,9 @@ Vetta 不是只返回一段答案的聊天框。它把 Agent 放进一个明确�
   <div><span>05</span><strong>结果</strong><small>回复、文件、产物、测试和未解决风险</small></div>
 </ConceptMap>
 
-工作区可以包含多个会话；每个会话在同一项目背景下处理一个连续目标。任务执行成功后，可以把稳定方法沉淀为技能、场景或知识，也可以交给批量任务和自动化再次运行。
+<Spread index="LOOP" title="一次工作如何闭合">
+  工作区可以包含多个会话；每个会话在同一项目背景下处理一个连续目标。任务执行成功后，可以把稳定方法沉淀为技能、场景或知识，也可以交给批量任务和自动化再次运行。
+</Spread>
 
 ## 一项工作的标准闭环
 
@@ -49,22 +57,20 @@ Vetta 不是只返回一段答案的聊天框。它把 Agent 放进一个明确�
 
 ## Vetta 与普通对话的区别
 
-| 维度 | 普通模型对话 | Vetta 工作流 |
-| --- | --- | --- |
-| 上下文 | 主要依赖粘贴内容 | 项目目录、引用文件、图片、知识和能力共同组成 |
-| 动作 | 生成文字建议 | 可调用本机工具、修改文件和执行确定性动作 |
-| 权限 | 通常不可见 | 沙盒、完全访问和逐次确认显式呈现 |
-| 过程 | 主要看回复 | 可检查待办、工具调用、后台任务和请求历史 |
-| 复用 | 再次复制提示词 | 可沉淀为技能、知识、批量任务和自动化 |
+<Compare leftTitle="普通模型对话" rightTitle="Vetta 工作流">
+  <CompareRow label="上下文" left="主要依赖粘贴内容" right="项目目录、引用文件、图片、知识和能力共同组成" />
+  <CompareRow label="动作" left="生成文字建议" right="可调用本机工具、修改文件和执行确定性动作" />
+  <CompareRow label="权限" left="通常不可见" right="沙盒、完全访问和逐次确认显式呈现" />
+  <CompareRow label="过程" left="主要看回复" right="可检查待办、工具调用、后台任务和请求历史" />
+  <CompareRow label="复用" left="再次复制提示词" right="可沉淀为技能、知识、批量任务和自动化" />
+</Compare>
 
 <Callout type="info" title="模型能力不等于任务完成">
   模型给出自信的总结不代表文件已经修改、命令已经成功或产物已经生成。以工作区中的实际文件和执行记录作为验收依据。
 </Callout>
 
-## 继续阅读
-
-<Cards>
-  <Card title="项目、工作区与会话" href="/core/workspaces-and-sessions/" description="选择正确边界，理解历史、分叉与项目指令。" />
-  <Card title="上下文、工具与权限" href="/core/context-tools-and-permissions/" description="控制 Agent 看见的内容和允许执行的动作。" />
-  <Card title="进度、结果与恢复" href="/core/progress-results-and-recovery/" description="检查过程、验证结果，并从失败中继续。" />
-</Cards>
+<Continue>
+  <ContinueLink href="/core/workspaces-and-sessions/" title="项目、工作区与会话" description="选择正确边界，理解历史、分叉与项目指令。" />
+  <ContinueLink href="/core/context-tools-and-permissions/" title="上下文、工具与权限" description="控制 Agent 看见的内容和允许执行的动作。" />
+  <ContinueLink href="/core/progress-results-and-recovery/" title="进度、结果与恢复" description="检查过程、验证结果，并从失败中继续。" />
+</Continue>
