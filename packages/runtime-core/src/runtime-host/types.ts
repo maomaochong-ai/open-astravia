@@ -50,7 +50,8 @@ import type {
 	RuntimeSharedModelController,
 } from "./session-services.js";
 
-export interface SessionHandle {
+/** RuntimeHost 为一个活动 Session 持有的完整 Port 装配与宿主 overlay。 */
+export interface RuntimeHostSessionRecord {
 	lifecycle: RuntimeSessionIdentityLifecycle;
 	historyReader: RuntimeSessionHistoryReader;
 	historyController: RuntimeSessionHistoryController;

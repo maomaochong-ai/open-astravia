@@ -1,13 +1,9 @@
 /**
  * RuntimeHost 模块入口。
  *
- * 目录职责：
- * - runtime-host.ts      会话生命周期与编排（SessionFacade）
- * - session-events.ts    旧事件 → Session Observation → SessionEvent 映射
- * - kernel-session-events.ts      KernelEvent → SessionEvent 映射
- * - history.ts           会话历史 / 分支 / turn timing 解析
- * - peripheral-tasks.ts  自动标题、输入预测（轻量 LLM + 失败轮转）
- * - types.ts             共享类型
+ * `runtime-host.ts` 只保留公共组合根与 SessionFacade 兼容面。内部 owner 按职责拆为：
+ * Agent 安装、Session 生命周期/目录/事件/在线操作、离线 Catalog、宿主交互、队列持久化与关闭协调。
+ * Kernel、历史和事件投影仍通过本入口暴露稳定公共合同，内部协调器不导出。
  */
 
 export {

@@ -72,6 +72,9 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Changed
 
+- `RuntimeHost` 内部按状态所有权拆分为 Agent 安装、Session 生命周期/目录/事件/在线操作、离线 Catalog、Host 交互、
+  Queue sidecar 和关闭协调器；公共 `SessionFacade`、创建/回滚顺序、事件回放、identity alias、Observation 与重试关闭语义
+  保持不变。产品/平台兼容字段集中到 Session request factory，不再散落在生命周期实现中。
 - `RuntimeHost` 现在跟随持久化 continuation 更新公开 Session identity，同时保留旧 identity 作为同一活动句柄的别名；
   `RuntimeHostSession.sessionId`、状态读取、订阅与释放始终解析到当前 canonical identity。换卷不会隐式继承旧会话的
   Sandbox grant，并发布内容安全的 `runtime.host.lifecycle/session.rebind` 观测。

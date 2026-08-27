@@ -63,6 +63,21 @@ composition is Node-oriented and is not part of this portable boundary.
 - business-specific APIs or permissions
 - filesystem, operating-system path policy, AsyncLocalStorage or other Node.js platform implementations
 
+## RuntimeHost Internal Ownership
+
+`RuntimeHost` is the only public composition root and compatibility facade. Its internal collaborators are deliberately
+not exported as alternative hosts:
+
+- Agent installation owns the cross-registry Definition/Backend transaction.
+- Session lifecycle owns create, initialization rollback, disposal and pending-creation admission.
+- Session directory owns stable keys, canonical/retired identity aliases and active path lookup.
+- Session event relay owns replay buffers, subscriptions, running projection and observer isolation.
+- Session operations own online commands over typed Session ports; the catalog facade owns offline reads and mutations.
+- Host interactions, queue sidecar persistence and ordered retryable shutdown each have one state owner.
+
+The root class wires these owners and forwards the existing `SessionFacade` contract. Product and platform compatibility
+fields are quarantined in the Session request factory instead of being spread across lifecycle code.
+
 ## Who Depends On It
 
 - [packages/runtime-node](../runtime-node)

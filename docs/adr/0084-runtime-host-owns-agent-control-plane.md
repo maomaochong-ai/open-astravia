@@ -78,3 +78,6 @@ Snapshot 编译与 Kernel Session 注册也不属于同一失败回滚事务。`
 - RuntimeHost 关闭 admission 后等待在途 Session 创建，Session 释放失败保留索引和 Backend lease；再次 `close()` 从失败
   阶段重试，不能先清空所有权再报告错误。动态 admission 生命周期通过 `runtime.host.agent-backend` 安全 Observation 汇入
   同一个 Host Publisher，具体日志、Metrics、Trace event 或 UI 仍由上层 Adapter 决定。
+- `RuntimeHost` 的唯一 owner 不等于单体实现：公共类只作为组合根和兼容 Facade。Agent 安装、Session 生命周期、活动
+  Session 目录、事件 Relay、在线操作、离线 Catalog、Host 交互、Queue sidecar 和关闭计划各自拥有其状态；这些内部组件
+  不作为替代 Host 导出，避免重新形成并行生命周期根。
