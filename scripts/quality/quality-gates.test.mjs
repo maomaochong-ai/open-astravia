@@ -10,6 +10,7 @@ import {
 	typesExportToSourceRel,
 } from "./check-source-path-maps.mjs";
 import { findStandaloneCliBuildViolations } from "./check-standalone-cli-build.mjs";
+import { findTurboConfigurationProblems, readTurboConfiguration } from "./check-turbo-config.mjs";
 import { findVitestRunnerViolations } from "./check-vitest-runner.mjs";
 import {
 	buildableTestDependencies,
@@ -1247,27 +1248,87 @@ describe("Turborepo build orchestration", () => {
 
 	it("derives build order from the workspace graph and caches declared artifacts", () => {
 		expect(turboConfig.tasks.build.dependsOn).toEqual(["^build"]);
+		expect(turboConfig.globalDependencies).toEqual(expect.arrayContaining(["tsconfig.base.json", ".env", ".env.*"]));
+		expect(turboConfig.envMode).toBe("strict");
+		expect(turboConfig.tasks.build.inputs).toEqual(
+			expect.arrayContaining(["$TURBO_DEFAULT$", "!test/**", "!tests/**", "!README*", "!CHANGELOG*"]),
+		);
 		expect(turboConfig.tasks.build.outputs).toEqual(
 			expect.arrayContaining(["dist/**", "release/**", ".next/**", "!.next/cache/**"]),
 		);
-		expect(turboConfig.globalEnv).toContain("VETTA_*");
+		expect(turboConfig.tasks.build.env).toEqual(
+			expect.arrayContaining(["NODE_ENV", "VETTA_PLUGIN_DEV_WATCH", "VETTA_PLUGIN_DOCS_SRC", "VETD_SRC"]),
+		);
+		const docsBuild = turboConfig.tasks["@vetta/docs-site#build"];
+		expect(docsBuild.env).toEqual(["DOCS_SITE_URL", "NODE_ENV"]);
+		expect(docsBuild.dependsOn).toContain("^build");
+		expect(docsBuild.outputs).toContain(".next/**");
+		const pluginWorkbenchBuild = turboConfig.tasks["@vetta/plugin-plugin-workbench#build"];
+		expect(pluginWorkbenchBuild.inputs).toContain("$TURBO_ROOT$/docs/plugin/**");
+		expect(pluginWorkbenchBuild.dependsOn).toContain("^build");
+		expect(pluginWorkbenchBuild.outputs).toContain("release/**");
+		expect(pluginWorkbenchBuild.env).toEqual(expect.arrayContaining(turboConfig.tasks.build.env));
 	});
 
 	it("keeps Desktop build and remote cache outside the initial cache boundary", () => {
 		expect(turboConfig.tasks["@vetta/desktop#build"]).toMatchObject({
 			cache: false,
-			dependsOn: ["^build"],
 		});
-		expect(turboConfig.remoteCache).toEqual({ enabled: false });
+		expect(turboConfig.tasks["@vetta/desktop#build"].dependsOn).toEqual(
+			expect.arrayContaining(["^build", "@vetta-org/plugin-vite#build"]),
+		);
+		expect(turboConfig.tasks["@vetta/desktop#build"].env).toEqual(
+			expect.arrayContaining(["NODE_ENV", "VETTA_*", "VETD_*"]),
+		);
+		expect(turboConfig.remoteCache).toEqual({ enabled: false, signature: true });
 	});
 
 	it("routes root builds through Turbo while preserving preset orchestration", () => {
 		expect(rootManifest.devDependencies.turbo).toMatch(/^\d+\.\d+\.\d+$/);
 		expect(rootManifest.scripts.build).toContain("turbo run build");
+		expect(rootManifest.scripts.build).toContain("--filter=@vetta-org/plugin-vite");
+		expect(rootManifest.scripts.build).toContain("build:preset:prebuilt");
 		expect(rootManifest.scripts["build:desktop"]).toContain("--filter=@vetta/desktop");
 		expect(rootManifest.scripts["build:cli"]).toContain("--filter=@vetta/cli-host");
+		expect(rootManifest.scripts["build:cli"]).toContain("--filter=@vetta-org/plugin-vite");
+		expect(rootManifest.scripts["build:cli"]).toContain("build:preset:prebuilt");
+		expect(rootManifest.scripts["build:docs"]).toContain("turbo run build");
 		expect(rootManifest.scripts["build:preset"]).toBe("bun run --cwd apps/desktop build:presets");
+		expect(rootManifest.scripts["build:preset:prebuilt"]).toBe("bun run --cwd apps/desktop build:presets:prebuilt");
+		expect(Object.values(rootManifest.scripts).join("\n")).not.toContain("--env-mode=loose");
 		expect(Object.values(rootManifest.scripts).join("\n")).not.toContain("scripts/build.sh");
+	});
+
+	it("routes Vercel affected detection through the pinned Turbo CLI", () => {
+		const vercelConfig = JSON.parse(readFileSync(join(repoRoot, "apps/docs-site/vercel.json"), "utf8"));
+		const docsWorkflow = readFileSync(join(repoRoot, ".github/workflows/docs-site.yml"), "utf8");
+		expect(vercelConfig.buildCommand).toContain("build:docs");
+		expect(vercelConfig.ignoreCommand).toContain("bunx turbo query affected");
+		expect(vercelConfig.ignoreCommand).not.toContain("turbo-ignore");
+		expect(docsWorkflow).toContain('"package.json"');
+		expect(docsWorkflow).toContain('"turbo.json"');
+		expect(docsWorkflow).toContain("bun run build:docs");
+	});
+
+	it("enforces cache safety as an always-on repository contract", () => {
+		expect(findTurboConfigurationProblems(readTurboConfiguration())).toEqual([]);
+		const configuration = readTurboConfiguration();
+		configuration.turboConfig = {
+			...configuration.turboConfig,
+			globalDependencies: [".env", ".env.*"],
+		};
+		expect(findTurboConfigurationProblems(configuration)).toContain(
+			"turbo globalDependencies 缺少 tsconfig.base.json",
+		);
+	});
+
+	it("records Turbo summaries for test dependency builds and uploads them from CI", () => {
+		const testPackageScript = readFileSync(join(repoRoot, "scripts/quality/test-pkg.mjs"), "utf8");
+		const qualityWorkflow = readFileSync(join(repoRoot, ".github/workflows/quality.yml"), "utf8");
+		expect(testPackageScript).toContain('"--summarize"');
+		expect(qualityWorkflow).toContain("Upload Turbo run summaries");
+		expect(qualityWorkflow).toContain(".turbo/runs/*.json");
+		expect(qualityWorkflow).toContain("retention-days: 7");
 	});
 
 	it("removes superseded hand-written task graphs", () => {

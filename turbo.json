@@ -1,21 +1,45 @@
 {
 	"$schema": "https://turborepo.dev/schema.json",
-	"globalDependencies": [".env", ".env.*"],
-	"globalEnv": ["VETTA_*"],
+	"envMode": "strict",
+	"globalDependencies": ["tsconfig.base.json", ".env", ".env.*"],
 	"remoteCache": {
-		"enabled": false
+		"enabled": false,
+		"signature": true
 	},
 	"tasks": {
 		"build": {
 			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$", "!test/**", "!tests/**", "!README*", "!CHANGELOG*"],
+			"env": ["NODE_ENV", "VETTA_PLUGIN_DEV_WATCH", "VETTA_PLUGIN_DOCS_SRC", "VETD_SRC"],
 			"outputs": ["dist/**", "release/**", ".next/**", "!.next/cache/**"]
 		},
 		"@vetta/desktop#build": {
+			"dependsOn": ["^build", "@vetta-org/plugin-vite#build"],
+			"cache": false,
+			"env": ["NODE_ENV", "VETTA_*", "VETD_*"]
+		},
+		"@vetta/docs-site#build": {
 			"dependsOn": ["^build"],
-			"cache": false
+			"inputs": ["$TURBO_DEFAULT$", "!test/**", "!tests/**", "!README*", "!CHANGELOG*"],
+			"env": ["DOCS_SITE_URL", "NODE_ENV"],
+			"outputs": ["dist/**", "release/**", ".next/**", "!.next/cache/**"]
+		},
+		"@vetta/plugin-plugin-workbench#build": {
+			"dependsOn": ["^build"],
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				"!test/**",
+				"!tests/**",
+				"!README*",
+				"!CHANGELOG*",
+				"$TURBO_ROOT$/docs/plugin/**"
+			],
+			"env": ["NODE_ENV", "VETTA_PLUGIN_DEV_WATCH", "VETTA_PLUGIN_DOCS_SRC", "VETD_SRC"],
+			"outputs": ["dist/**", "release/**", ".next/**", "!.next/cache/**"]
 		},
 		"dev": {
 			"cache": false,
+			"env": ["VETTA_*", "VETD_*", "DOCS_SITE_URL", "NODE_ENV"],
 			"persistent": true
 		}
 	}

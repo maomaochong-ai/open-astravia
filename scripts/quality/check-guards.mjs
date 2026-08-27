@@ -22,6 +22,7 @@ const steps = [
 	["scripts/quality/check-skill-frontmatter.mjs"],
 	["scripts/quality/check-vitest-runner.mjs"],
 	["scripts/quality/check-source-path-maps.mjs"],
+	["scripts/quality/check-turbo-config.mjs"],
 ];
 
 function runStep(args) {

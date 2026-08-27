@@ -2,6 +2,6 @@
 	"$schema": "https://openapi.vercel.sh/vercel.json",
 	"framework": "nextjs",
 	"installCommand": "cd ../.. && bun install --filter=@vetta/docs-site --frozen-lockfile",
-	"buildCommand": "bun run build",
-	"ignoreCommand": "cd ../.. && npx turbo-ignore @vetta/docs-site --fallback=HEAD^1"
+	"buildCommand": "bun run --cwd ../.. build:docs",
+	"ignoreCommand": "cd ../.. && bunx turbo query affected --packages @vetta/docs-site --base HEAD^1 --head HEAD --exit-code"
 }

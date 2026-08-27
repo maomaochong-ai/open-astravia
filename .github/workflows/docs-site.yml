@@ -3,7 +3,7 @@
 # - PR / push touching apps/docs-site: typecheck, test, and `next build`
 # - Push to `dev` with docs-site changes: Vercel production
 #   (https://vetta-docs.vercel.app). Unrelated monorepo commits are skipped
-#   by apps/docs-site/vercel.json ignoreCommand (turbo-ignore).
+#   by apps/docs-site/vercel.json ignoreCommand (turbo query affected).
 # - Other branches and PRs: Vercel preview deployments, same ignore rule.
 #
 # This workflow does not call `vercel deploy`. Keep it that way so Git
@@ -18,11 +18,15 @@ on:
     paths:
       - "apps/docs-site/**"
       - "bun.lock"
+      - "package.json"
+      - "turbo.json"
       - ".github/workflows/docs-site.yml"
   pull_request:
     paths:
       - "apps/docs-site/**"
       - "bun.lock"
+      - "package.json"
+      - "turbo.json"
       - ".github/workflows/docs-site.yml"
   workflow_dispatch:
 
@@ -63,4 +67,4 @@ jobs:
         run: bun run --cwd apps/docs-site test
 
       - name: Build
-        run: bun run --cwd apps/docs-site build
+        run: bun run build:docs

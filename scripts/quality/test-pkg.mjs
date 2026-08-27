@@ -44,7 +44,7 @@ if (buildDependencies.length > 0) {
 		"turbo",
 		"run",
 		"build",
-		"--env-mode=loose",
+		"--summarize",
 		...buildDependencies.map((packageName) => `--filter=${packageName}`),
 	]);
 	if (buildCode !== 0) process.exit(buildCode);

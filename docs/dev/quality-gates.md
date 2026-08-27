@@ -34,6 +34,7 @@ scripts/quality/
                                Coding Agent 当前架构依赖与公开面
   run-vitest.mjs               用 Node 启动 Vitest（Windows 上禁止 Bun 拉起 worker）
   check-vitest-runner.mjs      package.json 测试脚本必须走 run-vitest.mjs
+  check-turbo-config.mjs       Turbo 输入、环境、入口与 Remote Cache 安全合同
   check-source-path-maps.mjs   根 tsconfig path map 必须显式覆盖 workspace 包的 types 子路径导出
   test-pkg.mjs                 按包名跑 vitest
   test-changed.mjs             按 git 变更和依赖图选包
@@ -132,12 +133,16 @@ Greenfield/Legacy 名称墓碑、固定文件数量、行数阈值及实施日�
 
 缓存边界如下：
 
-- 普通包声明 `dist/**`、插件 `release/**` 和 Next `.next/**` 为输出；输入、lockfile、内部依赖任务哈希和 `VETTA_*` 构建变量共同决定本地缓存键。
+- 普通包声明 `dist/**`、插件 `release/**` 和 Next `.next/**` 为输出；lockfile、内部依赖任务哈希、根 `tsconfig.base.json`、根 `.env*` 与显式构建变量共同决定本地缓存键。包根 `test/**`、`tests/**`、README 和 CHANGELOG 不影响 build；`src/**` 内或被生成/打包脚本读取的资源仍参与哈希。
 - Desktop 完整 `build` 包含平台模型、生成、插件 staging 和多入口 bundle，初始阶段明确 `cache: false`。
-- Remote Cache 默认关闭；启用前必须先验证跨平台制品、环境变量、日志脱敏和缓存完整性，并更新 ADR-0079。
-- `--env-mode=loose` 暂时保持历史脚本可见环境不变；影响输出的 `VETTA_*` 仍进入哈希。收紧为 strict 前应先完成所有构建变量清单。
+- Remote Cache 默认关闭且预先要求 HMAC 制品签名；启用前必须按 [Remote Cache 启用清单](./turborepo-remote-cache-rollout.md) 验证跨平台制品、环境变量、日志脱敏和缓存完整性，配置 `TURBO_REMOTE_CACHE_SIGNATURE_KEY`，并更新 ADR-0079。
+- Turbo 使用 strict environment mode。普通 build 只声明 `NODE_ENV`、`VETTA_PLUGIN_DEV_WATCH`、`VETTA_PLUGIN_DOCS_SRC` 和 `VETD_SRC`；Docs build 额外按自身合同声明 `DOCS_SITE_URL`，Desktop build 独立声明 `VETTA_*`/`VETD_*`，dev task 保留这些通配变量。新增影响构建的变量必须进入范围最小的 task `env`；只需运行时可见且不影响输出的秘密变量应审查后进入 `passThroughEnv`。
 
-Desktop 开发前置构建使用 `@vetta/desktop` 的依赖闭包，并额外包含 dev preset 需要的 `@vetta-org/plugin-vite`。开发入口读取本地 Turbo 缓存；正式打包入口带 `--force`，继续无条件执行 workspace 构建并写入新缓存。Preset 的租户选择、zip 校验与 staging 仍由 `build-presets.mjs` 负责。
+plugin-workbench 的 `prebuild` 会同步根 `docs/plugin/**`，该目录通过 `$TURBO_ROOT$` 作为其显式输入；其它包不会因插件文档变化而失效。
+
+Desktop build task 显式依赖 `@vetta-org/plugin-vite`。开发前置构建读取本地 Turbo 缓存；正式打包入口带 `--force`，继续无条件执行 workspace 构建并写入新缓存。Preset 的租户选择、zip 校验与 staging 仍由 `build-presets.mjs` 负责，但正式 Desktop build 复用 Turbo 已构建的 plugin tooling；独立 `build:preset` 才自行准备 tooling。
+
+根 build、Desktop 前置 build 和测试依赖 build 均使用 `--summarize`。本地 summary 位于 `.turbo/runs/`（已忽略），CI 的三平台单测 job 将其作为保留 7 天的诊断制品上传；summary 用于观察任务耗时、哈希和命中状态，不作为构建成功的第二事实源。
 
 新增或修改 workspace 依赖后必须执行正常的 `bun install`；`bun install --lockfile-only` 只更新锁文件，不创建包级 workspace 链接。可用 `bunx turbo run build --dry=json --filter=<package>` 检查任务闭包和依赖原因。
 

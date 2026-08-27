@@ -89,3 +89,12 @@ jobs:
 
       - name: Test affected workspaces
         run: bun run test:changed --base "${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
+
+      - name: Upload Turbo run summaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: turbo-run-summaries-${{ matrix.os }}
+          path: .turbo/runs/*.json
+          if-no-files-found: ignore
+          retention-days: 7
