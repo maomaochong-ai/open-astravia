@@ -192,7 +192,7 @@ describe("Desktop RuntimeHost production contract", () => {
 			({ type }) => type === "active_tools_update",
 		);
 		expect(activeToolObservations[0]?.source).toBe("runtime-core");
-		expect(activeToolObservations.at(-1)?.detail).toContain("invoke_skill");
+		expect(activeToolObservations[0]?.detail).toContain("read");
 		const stableLifecycleEvents = observations.runtime.initial.events.filter(
 			(event) => event.type !== "active_tools_update" || event.source === "runtime-core",
 		);
