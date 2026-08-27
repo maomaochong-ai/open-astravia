@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import { cn } from "@/lib/cn";
 import { displaySerif } from "@/lib/fonts";
 import { buildRootMetadata } from "@/lib/seo/metadata";
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 		>
 			<body className="flex min-h-screen flex-col bg-fd-background text-fd-foreground">
 				<RootProvider i18n={{ locale: site.locale, translations }}>{children}</RootProvider>
+				<Analytics />
 			</body>
 		</html>
 	);
