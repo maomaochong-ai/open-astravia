@@ -13,6 +13,7 @@ export type { PluginPermission } from "./permissions.js";
 export type { Disposable } from "./disposable.js";
 export type {
 	PluginAgentManifest,
+	PluginBrowserManifest,
 	PluginManifest,
 	PluginManifestInput,
 	PluginManifestResourceReference,
@@ -219,6 +220,22 @@ export type {
 	PluginCommandSpawnHandle,
 	PluginCommandApi,
 } from "./command.js";
+export type {
+	PluginBrowserAction,
+	PluginBrowserActionResult,
+	PluginBrowserApi,
+	PluginBrowserPageState,
+	PluginBrowserProfile,
+	PluginBrowserRuntimePhase,
+	PluginBrowserRuntimeStatus,
+	PluginBrowserScreenshot,
+	PluginBrowserSession,
+	PluginBrowserSessionOptions,
+	PluginBrowserSessionStatus,
+	PluginBrowserSnapshot,
+	PluginBrowserSource,
+	PluginBrowserTextContent,
+} from "./browser.js";
 export type {
 	PluginCaptureApi,
 	PluginOffscreenCaptureOptions,

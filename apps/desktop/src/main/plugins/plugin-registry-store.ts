@@ -19,6 +19,7 @@ export class PluginRegistryStore {
 			for (const plugin of Object.values(registry)) {
 				plugin.runtime ??= "esm";
 				plugin.allowedNetworkHosts ??= [];
+				plugin.allowedBrowserHosts ??= [];
 				plugin.styleUrls ??= [];
 				plugin.activeVersion ??= plugin.version;
 				plugin.defaultLocale ??= "zh";

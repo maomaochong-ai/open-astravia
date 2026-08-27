@@ -74,6 +74,77 @@ export function registerPluginCapabilitiesIpc(): () => void {
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.CLOSE_SESSION, (_event, sessionId: unknown) =>
 		adapter.closeSession(requireString(sessionId, "sessionId")),
 	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.BROWSER_RUNTIME_STATUS, (_event, sessionId: unknown) =>
+		adapter.getBrowserRuntimeStatus(requireString(sessionId, "sessionId")),
+	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.BROWSER_RUNTIME_INSTALL, (_event, sessionId: unknown, step: unknown) =>
+		adapter.installBrowserRuntime(requireString(sessionId, "sessionId"), step),
+	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.BROWSER_SESSION_CREATE, (_event, sessionId: unknown, options: unknown) =>
+		adapter.createBrowserSession(requireString(sessionId, "sessionId"), options),
+	);
+	ipcMain.handle(
+		PLUGIN_CAPABILITY_CHANNELS.BROWSER_SESSION_GET,
+		(_event, sessionId: unknown, browserSessionId: unknown) =>
+			adapter.getBrowserSession(
+				requireString(sessionId, "sessionId"),
+				requireString(browserSessionId, "browserSessionId"),
+			),
+	);
+	ipcMain.handle(
+		PLUGIN_CAPABILITY_CHANNELS.BROWSER_SESSION_CLOSE,
+		(_event, sessionId: unknown, browserSessionId: unknown) =>
+			adapter.closeBrowserSession(
+				requireString(sessionId, "sessionId"),
+				requireString(browserSessionId, "browserSessionId"),
+			),
+	);
+	ipcMain.handle(
+		PLUGIN_CAPABILITY_CHANNELS.BROWSER_NAVIGATE,
+		(_event, sessionId: unknown, browserSessionId: unknown, url: unknown) =>
+			adapter.navigateBrowser(
+				requireString(sessionId, "sessionId"),
+				requireString(browserSessionId, "browserSessionId"),
+				requireString(url, "url"),
+			),
+	);
+	ipcMain.handle(
+		PLUGIN_CAPABILITY_CHANNELS.BROWSER_SNAPSHOT,
+		(_event, sessionId: unknown, browserSessionId: unknown, options: unknown) =>
+			adapter.snapshotBrowser(
+				requireString(sessionId, "sessionId"),
+				requireString(browserSessionId, "browserSessionId"),
+				options,
+			),
+	);
+	ipcMain.handle(
+		PLUGIN_CAPABILITY_CHANNELS.BROWSER_READ_TEXT,
+		(_event, sessionId: unknown, browserSessionId: unknown, options: unknown) =>
+			adapter.readBrowserText(
+				requireString(sessionId, "sessionId"),
+				requireString(browserSessionId, "browserSessionId"),
+				options,
+			),
+	);
+	ipcMain.handle(
+		PLUGIN_CAPABILITY_CHANNELS.BROWSER_SCREENSHOT,
+		(_event, sessionId: unknown, browserSessionId: unknown, options: unknown) =>
+			adapter.screenshotBrowser(
+				requireString(sessionId, "sessionId"),
+				requireString(browserSessionId, "browserSessionId"),
+				options,
+			),
+	);
+	ipcMain.handle(
+		PLUGIN_CAPABILITY_CHANNELS.BROWSER_ACT,
+		(_event, sessionId: unknown, browserSessionId: unknown, action: unknown, options: unknown) =>
+			adapter.actBrowser(
+				requireString(sessionId, "sessionId"),
+				requireString(browserSessionId, "browserSessionId"),
+				action,
+				options,
+			),
+	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.AI_MODEL_LIST, (_event, sessionId: unknown) =>
 		adapter.listAiModels(requireString(sessionId, "sessionId")),
 	);

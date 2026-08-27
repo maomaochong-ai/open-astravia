@@ -7,6 +7,16 @@
 | --- | --- | --- | ---: |
 | `cap.foundation.vetta.artifact.persist` | foundation | command | 1 |
 | `cap.foundation.vetta.artifact.release` | foundation | command | 1 |
+| `cap.foundation.vetta.browser.runtime-status` | foundation | query | 1 |
+| `cap.foundation.vetta.browser.runtime-install` | foundation | command | 1 |
+| `cap.foundation.vetta.browser.session-create` | foundation | command | 1 |
+| `cap.foundation.vetta.browser.session-get` | foundation | query | 1 |
+| `cap.foundation.vetta.browser.session-close` | foundation | command | 1 |
+| `cap.foundation.vetta.browser.navigate` | foundation | command | 1 |
+| `cap.foundation.vetta.browser.snapshot` | foundation | query | 1 |
+| `cap.foundation.vetta.browser.read-text` | foundation | query | 1 |
+| `cap.foundation.vetta.browser.screenshot` | foundation | query | 1 |
+| `cap.foundation.vetta.browser.act` | foundation | command | 1 |
 | `cap.foundation.vetta.fs.read-directory` | foundation | query | 1 |
 | `cap.foundation.vetta.fs.read-file` | foundation | query | 1 |
 | `cap.foundation.vetta.fs.read-binary-file` | foundation | query | 1 |

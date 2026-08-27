@@ -366,6 +366,7 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	plugin.moduleFederation = manifest.moduleFederation;
 	plugin.agent = manifest.agent;
 	plugin.allowedNetworkHosts = manifest.network?.allowedHosts ?? [];
+	plugin.allowedBrowserHosts = manifest.browser?.allowedHosts ?? [];
 	plugin.styleUrls = (manifest.styles ?? []).map(
 		(style) => `${toInstalledPluginUrl(plugin.id, plugin.activeVersion, style)}&reload=${reloadToken}`,
 	);

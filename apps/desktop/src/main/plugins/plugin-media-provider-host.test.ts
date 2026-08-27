@@ -19,6 +19,7 @@ function plugin(permissions: InstalledPlugin["permissions"] = ["media.provider.r
 		permissions,
 		grantedPermissions: permissions,
 		allowedNetworkHosts: [],
+		allowedBrowserHosts: [],
 		declaredCommands: [],
 		grantedCommandNames: [],
 		defaultLocale: "zh",

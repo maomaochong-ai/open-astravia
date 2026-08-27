@@ -14,6 +14,7 @@ import {
 } from "@vetta/capability-sdk";
 import { persistArtifact } from "../artifacts/artifact-persistence.js";
 import type { ArtifactStore } from "../artifacts/artifact-store.js";
+import type { BrowserAutomationService } from "../browser-automation/index.js";
 import { gatewayUnavailableResponse, getCloudBridge } from "../cloud-bridge.js";
 import {
 	assertFilesystemRealPathWithinProject,
@@ -48,6 +49,7 @@ import {
 	removeThemeStorageValue,
 	setThemeStorageValue,
 } from "../themes/theme-data-store.js";
+import { registerDesktopBrowserProvider } from "./browser-provider.js";
 import { themeIdFromStorageCapabilityNamespace } from "./integrations/theme-capability-adapter.js";
 import { registerDesktopJobProvider } from "./job-provider.js";
 
@@ -88,7 +90,9 @@ export function registerDesktopFoundationProviders(
 	registry: CapabilityRegistry,
 	artifacts: ArtifactStore,
 	jobs: JobManager,
+	browser: BrowserAutomationService,
 ): Disposable {
+	const browserRegistration = registerDesktopBrowserProvider(registry, browser);
 	const artifactRegistration = registry.registerOwner(FOUNDATION_ARTIFACT_PROVIDER_OWNER, [
 		bindCapability(FOUNDATION_ARTIFACT_CAPABILITIES.PERSIST, {
 			execute: async (input, context) => {
@@ -290,6 +294,8 @@ export function registerDesktopFoundationProviders(
 	]);
 	return {
 		dispose: () => {
+			browserRegistration.dispose();
+			void browser.closeAll();
 			networkStorageRegistration.dispose();
 			filesystemRegistration.dispose();
 			storageRegistration.dispose();

@@ -67,6 +67,15 @@ import type {
 import type {
 	PluginAgentManifest,
 	PluginArtifactDestination,
+	PluginBrowserAction,
+	PluginBrowserActionResult,
+	PluginBrowserPageState,
+	PluginBrowserRuntimeStatus,
+	PluginBrowserScreenshot,
+	PluginBrowserSession,
+	PluginBrowserSessionOptions,
+	PluginBrowserSnapshot,
+	PluginBrowserTextContent,
 	PluginCodingAgentHookEvent,
 	PluginCodingAgentHookEventName,
 	PluginMediaCapability,
@@ -145,6 +154,8 @@ export interface InstalledPlugin {
 	grantedPermissions: PluginPermission[];
 	/** Normalized host/IP patterns declared in plugin.json `network.allowedHosts`. */
 	allowedNetworkHosts: string[];
+	/** Normalized navigation host patterns declared in plugin.json `browser.allowedHosts`. */
+	allowedBrowserHosts: string[];
 	/** Executable names declared in plugin.json `commands`. */
 	declaredCommands: string[];
 	/** Subset of declaredCommands the user currently allows (toggleable per command). */
@@ -595,6 +606,36 @@ export interface DesktopPluginSystemApi {
 	reload(sessionId: string, id: string): Promise<InstalledPlugin>;
 }
 
+export interface DesktopPluginCapabilityBrowserApi {
+	runtimeStatus(sessionId: string): Promise<PluginBrowserRuntimeStatus>;
+	runtimeInstall(sessionId: string, step: "runtime" | "browser"): Promise<PluginBrowserRuntimeStatus>;
+	createSession(sessionId: string, options?: PluginBrowserSessionOptions): Promise<PluginBrowserSession>;
+	getSession(sessionId: string, browserSessionId: string): Promise<PluginBrowserSession>;
+	closeSession(sessionId: string, browserSessionId: string): Promise<void>;
+	navigate(sessionId: string, browserSessionId: string, url: string): Promise<PluginBrowserPageState>;
+	snapshot(
+		sessionId: string,
+		browserSessionId: string,
+		options?: { interactiveOnly?: boolean },
+	): Promise<PluginBrowserSnapshot>;
+	readText(
+		sessionId: string,
+		browserSessionId: string,
+		options?: { maxChars?: number },
+	): Promise<PluginBrowserTextContent>;
+	screenshot(
+		sessionId: string,
+		browserSessionId: string,
+		options?: { fullPage?: boolean },
+	): Promise<PluginBrowserScreenshot>;
+	act(
+		sessionId: string,
+		browserSessionId: string,
+		action: PluginBrowserAction,
+		options?: { snapshotRevision?: number },
+	): Promise<PluginBrowserActionResult>;
+}
+
 /** @internal Host bridge used to implement the public plugin-sdk facade. */
 export interface DesktopPluginInternalCapabilitiesApi {
 	openSession(pluginId: string): Promise<string>;
@@ -603,6 +644,7 @@ export interface DesktopPluginInternalCapabilitiesApi {
 	ai: DesktopPluginCapabilityAiApi;
 	artifacts: DesktopPluginCapabilityArtifactsApi;
 	batchTasks: DesktopPluginCapabilityBatchTasksApi;
+	browser: DesktopPluginCapabilityBrowserApi;
 	filesystem: DesktopPluginCapabilityFilesystemApi;
 	generalSettings: DesktopPluginCapabilityGeneralSettingsApi;
 	im: DesktopPluginCapabilityImApi;

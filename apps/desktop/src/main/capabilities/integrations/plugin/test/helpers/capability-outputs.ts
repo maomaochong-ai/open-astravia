@@ -19,6 +19,7 @@ import {
 	DOMAIN_UPDATER_CAPABILITIES,
 	DOMAIN_WEBHOOK_CAPABILITIES,
 	FOUNDATION_ARTIFACT_CAPABILITIES,
+	FOUNDATION_BROWSER_CAPABILITIES,
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
 	FOUNDATION_JOB_CAPABILITIES,
 	FOUNDATION_NETWORK_CAPABILITIES,
@@ -26,6 +27,46 @@ import {
 } from "@vetta/capability-sdk";
 
 function foundationOutput(capabilityId: CapabilityId): unknown {
+	if (capabilityId === FOUNDATION_BROWSER_CAPABILITIES.RUNTIME_STATUS.id) {
+		return { phase: "ready", version: "0.34.0" };
+	}
+	if (capabilityId === FOUNDATION_BROWSER_CAPABILITIES.RUNTIME_INSTALL.id) {
+		return { phase: "ready", version: "0.34.0" };
+	}
+	if (
+		capabilityId === FOUNDATION_BROWSER_CAPABILITIES.SESSION_CREATE.id ||
+		capabilityId === FOUNDATION_BROWSER_CAPABILITIES.SESSION_GET.id
+	) {
+		return {
+			id: "browser-session",
+			source: "managed",
+			profile: { type: "ephemeral" },
+			headed: true,
+			status: "ready",
+			createdAt: 1,
+		};
+	}
+	if (capabilityId === FOUNDATION_BROWSER_CAPABILITIES.NAVIGATE.id) {
+		return { sessionId: "browser-session", revision: 1, url: "https://example.com/" };
+	}
+	if (capabilityId === FOUNDATION_BROWSER_CAPABILITIES.SNAPSHOT.id) {
+		return { sessionId: "browser-session", revision: 2, url: "https://example.com/", content: "@e1" };
+	}
+	if (capabilityId === FOUNDATION_BROWSER_CAPABILITIES.READ_TEXT.id) {
+		return {
+			sessionId: "browser-session",
+			url: "https://example.com/",
+			text: "content",
+			truncated: false,
+		};
+	}
+	if (capabilityId === FOUNDATION_BROWSER_CAPABILITIES.SCREENSHOT.id) {
+		return { sessionId: "browser-session", revision: 2, dataUrl: "data:image/png;base64,AA==" };
+	}
+	if (capabilityId === FOUNDATION_BROWSER_CAPABILITIES.ACT.id) {
+		return { sessionId: "browser-session", revision: 3, url: "https://example.com/" };
+	}
+	if (capabilityId === FOUNDATION_BROWSER_CAPABILITIES.SESSION_CLOSE.id) return undefined;
 	if (capabilityId === FOUNDATION_ARTIFACT_CAPABILITIES.PERSIST.id) {
 		return {
 			type: "storage-blob",

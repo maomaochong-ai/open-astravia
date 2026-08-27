@@ -58,6 +58,7 @@ function createInstalledPlugin(id: string, source: "archive" | "remote"): Instal
 		permissions: ["ui.slot.global"],
 		grantedPermissions: ["ui.slot.global"],
 		allowedNetworkHosts: [],
+		allowedBrowserHosts: [],
 		declaredCommands: [],
 		grantedCommandNames: [],
 		defaultLocale: "zh",

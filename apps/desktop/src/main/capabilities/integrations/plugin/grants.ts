@@ -21,6 +21,7 @@ import {
 	DOMAIN_UPDATER_CAPABILITIES,
 	DOMAIN_WEBHOOK_CAPABILITIES,
 	FOUNDATION_ARTIFACT_CAPABILITIES,
+	FOUNDATION_BROWSER_CAPABILITIES,
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
 	FOUNDATION_GATEWAY_CAPABILITIES,
 	FOUNDATION_JOB_CAPABILITIES,
@@ -69,6 +70,48 @@ export function buildPluginCapabilityGrants(
 		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.NETWORK_FETCH)
 			? [
 					createCapabilityGrant(FOUNDATION_NETWORK_CAPABILITIES.REQUEST, {
+						constraints: storageConstraints,
+					}),
+				]
+			: []),
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_READ)
+			? [
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.RUNTIME_STATUS, {
+						constraints: storageConstraints,
+					}),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.SESSION_CREATE, {
+						constraints: storageConstraints,
+					}),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.SESSION_GET, {
+						constraints: storageConstraints,
+					}),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.SESSION_CLOSE, {
+						constraints: storageConstraints,
+					}),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.NAVIGATE, {
+						constraints: storageConstraints,
+					}),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.SNAPSHOT, {
+						constraints: storageConstraints,
+					}),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.READ_TEXT, {
+						constraints: storageConstraints,
+					}),
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.SCREENSHOT, {
+						constraints: storageConstraints,
+					}),
+				]
+			: []),
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_INTERACT)
+			? [
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.ACT, {
+						constraints: storageConstraints,
+					}),
+				]
+			: []),
+		...(official && permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_RUNTIME_MANAGE)
+			? [
+					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.RUNTIME_INSTALL, {
 						constraints: storageConstraints,
 					}),
 				]

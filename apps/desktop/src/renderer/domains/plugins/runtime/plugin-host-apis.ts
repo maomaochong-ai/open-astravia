@@ -4,6 +4,7 @@ import { showToast } from "@shared/store/toast-atoms";
 import type {
 	Disposable,
 	PluginArtifactsApi,
+	PluginBrowserApi,
 	PluginCaptureApi,
 	PluginCommandApi,
 	PluginCommandSpawnExit,
@@ -153,6 +154,59 @@ export function createNetworkApi(plugin: InstalledPlugin, capabilitySessionId: s
 		request: (request) => {
 			createPermissionApi(plugin).require("network.fetch");
 			return window.vetta.plugins.networkRequest(capabilitySessionId, request);
+		},
+	};
+}
+
+export function createBrowserApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginBrowserApi {
+	const permissions = createPermissionApi(plugin);
+	const browser = window.vetta.plugins.internalCapabilities.browser;
+	return {
+		runtime: {
+			status: () => {
+				permissions.require("browser.read");
+				return browser.runtimeStatus(capabilitySessionId);
+			},
+			install: (step) => {
+				permissions.require("browser.runtime.manage");
+				return browser.runtimeInstall(capabilitySessionId, step);
+			},
+		},
+		sessions: {
+			create: (options) => {
+				permissions.require("browser.read");
+				if (options?.profile?.type === "persistent") permissions.require("browser.profile.persist");
+				if (options?.source === "attach") permissions.require("browser.attach");
+				return browser.createSession(capabilitySessionId, options);
+			},
+			get: (sessionId) => {
+				permissions.require("browser.read");
+				return browser.getSession(capabilitySessionId, sessionId);
+			},
+			close: (sessionId) => {
+				permissions.require("browser.read");
+				return browser.closeSession(capabilitySessionId, sessionId);
+			},
+		},
+		navigate: (sessionId, url) => {
+			permissions.require("browser.read");
+			return browser.navigate(capabilitySessionId, sessionId, url);
+		},
+		snapshot: (sessionId, options) => {
+			permissions.require("browser.read");
+			return browser.snapshot(capabilitySessionId, sessionId, options);
+		},
+		readText: (sessionId, options) => {
+			permissions.require("browser.read");
+			return browser.readText(capabilitySessionId, sessionId, options);
+		},
+		screenshot: (sessionId, options) => {
+			permissions.require("browser.read");
+			return browser.screenshot(capabilitySessionId, sessionId, options);
+		},
+		act: (sessionId, action, options) => {
+			permissions.require("browser.interact");
+			return browser.act(capabilitySessionId, sessionId, action, options);
 		},
 	};
 }

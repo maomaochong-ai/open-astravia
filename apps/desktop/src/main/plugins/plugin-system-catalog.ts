@@ -155,6 +155,7 @@ export class SystemPluginCatalog {
 			permissions: manifest.permissions ?? [],
 			grantedPermissions: manifest.permissions ?? [],
 			allowedNetworkHosts: manifest.network?.allowedHosts ?? [],
+			allowedBrowserHosts: manifest.browser?.allowedHosts ?? [],
 			declaredCommands,
 			grantedCommandNames: declaredCommands.filter((name) => !disabledCommands.includes(name)),
 			settingsSchema: manifest.contributes?.settings,

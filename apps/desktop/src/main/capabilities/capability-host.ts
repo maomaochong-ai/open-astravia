@@ -1,5 +1,6 @@
 import { type CapabilityAccessAuditEvent, CapabilityAccessController, CapabilityHub } from "@vetta/capability-runtime";
 import { ArtifactStore } from "../artifacts/artifact-store.js";
+import { getBrowserAutomationService } from "../browser-automation/index.js";
 import { JobManager } from "../jobs/job-manager.js";
 import { getAppLogger } from "../logger.js";
 import { listPlugins } from "../plugins/plugin-catalog.js";
@@ -34,7 +35,8 @@ function createDesktopCapabilityHost(): DesktopCapabilityHost {
 	const hub = new CapabilityHub();
 	const artifacts = new ArtifactStore();
 	const jobs = new JobManager();
-	const foundationRegistration = registerDesktopFoundationProviders(hub.foundation, artifacts, jobs);
+	const browser = getBrowserAutomationService();
+	const foundationRegistration = registerDesktopFoundationProviders(hub.foundation, artifacts, jobs, browser);
 	const domainRegistration = registerDesktopDomainProviders(hub.domain, artifacts, jobs);
 	const access = new CapabilityAccessController(hub, { audit: auditCapabilityAccess });
 	const pluginAdapter = new PluginCapabilityAdapter(access, {
@@ -43,9 +45,22 @@ function createDesktopCapabilityHost(): DesktopCapabilityHost {
 			if (!plugin || !plugin.enabled) return [];
 			return plugin.permissions.filter((permission) => plugin.grantedPermissions.includes(permission));
 		},
+		resolveBrowserAllowedHosts: (pluginId) => {
+			const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
+			return plugin?.enabled === true ? plugin.allowedBrowserHosts : [];
+		},
 		isOfficialPlugin: (pluginId) => {
 			const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
 			return plugin?.enabled === true && plugin.trustLevel === "official";
+		},
+		onBrowserSessionsReleased: (pluginId, browserSessionIds) => {
+			void browser.closeReleasedSessions(pluginId, browserSessionIds).catch((error: unknown) => {
+				log.warn("browser session cleanup after plugin release failed", {
+					pluginId,
+					sessionCount: browserSessionIds.length,
+					errorKind: error instanceof Error ? error.name : "unknown",
+				});
+			});
 		},
 		// Jobs and temporary artifacts are owned by the stable plugin id, not by a
 		// renderer capability session. They must survive renderer reloads so the

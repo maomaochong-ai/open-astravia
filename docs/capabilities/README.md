@@ -726,3 +726,9 @@ window.vetta.capabilities.invoke({
 ```
 
 该结构保证能力实现可复用、通用授权不猜测业务关系，同时允许 Plugin、Theme、Action 及未来系统保留独立的权限语义和扩展方式。
+
+## 13. Browser Foundation Capability
+
+浏览器自动化按 `ADR-0088` 落在 Foundation 层：Capability SDK 提供十个 `cap.foundation.vetta.browser.*` Token，Desktop Provider 组合运行时、引擎、profile/session registry 与导航策略。Plugin Adapter 将 `browser.*` 权限展开为精确 Grant，注入插件 namespace 与 manifest host 上限，再由公开 `ctx.browser` facade 暴露。
+
+该能力的资源所有权在宿主：插件只能使用逻辑 profile/session ID，不接触目录、Cookie、token 或引擎 argv；调用取消会传播到浏览器子进程。Browser Use 系统插件只是一个消费者，其他 ESM / Module Federation 插件可独立使用同一合同，QuickJS 不在支持范围内。

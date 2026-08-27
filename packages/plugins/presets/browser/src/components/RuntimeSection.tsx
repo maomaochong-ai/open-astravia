@@ -13,14 +13,17 @@ function statusKey(status: RuntimeStatus): string {
 	switch (status.phase) {
 		case "checking":
 			return "console.status.checking";
-		case "installing":
+		case "installing-runtime":
+		case "installing-browser":
 			return "console.status.installing";
 		case "ready":
 			return "console.status.ready";
-		case "failed":
+		case "error":
 			return "console.status.failed";
 		case "outdated":
 			return "console.status.outdated";
+		case "browser-missing":
+			return "console.status.browserMissing";
 		default:
 			return "console.status.missing";
 	}
@@ -28,9 +31,9 @@ function statusKey(status: RuntimeStatus): string {
 
 function dotStyle(status: RuntimeStatus): { background: string } {
 	if (status.phase === "ready") return { background: "#22c55e" };
-	if (status.phase === "failed") return { background: "var(--destructive, #ef4444)" };
+	if (status.phase === "error") return { background: "var(--destructive, #ef4444)" };
 	if (status.phase === "outdated") return { background: "#f59e0b" };
-	if (status.phase === "installing" || status.phase === "checking") return { background: "#f59e0b" };
+	if (status.phase.startsWith("installing-") || status.phase === "checking") return { background: "#f59e0b" };
 	return { background: "var(--muted-foreground)" };
 }
 
@@ -48,12 +51,12 @@ export function RuntimeSection({
 	onRecheck,
 }: RuntimeSectionProps): JSX.Element {
 	const { t } = useTranslation();
-	const busy = status.phase === "installing" || status.phase === "checking";
-	const showBrowserStep = status.phase === "ready" && status.chromeDetected === false;
-	const pulsing = status.phase === "installing" || status.phase === "checking";
+	const busy = status.phase.startsWith("installing-") || status.phase === "checking";
+	const showBrowserStep = status.phase === "browser-missing";
+	const pulsing = status.phase.startsWith("installing-") || status.phase === "checking";
 
 	const hint = ((): string | null => {
-		if (status.phase === "missing" || status.phase === "failed") return t("console.installHint");
+		if (status.phase === "missing" || status.phase === "error") return t("console.installHint");
 		if (status.phase === "outdated") {
 			return t("console.outdatedHint", {
 				found: status.version ?? "?",
@@ -61,11 +64,7 @@ export function RuntimeSection({
 			});
 		}
 		if (showBrowserStep) return t("console.chromeMissing");
-		if (status.phase === "ready") {
-			return status.chromeDetected === true
-				? `${t("console.readyHint")} ${t("console.chromeFound")}`
-				: t("console.readyHint");
-		}
+		if (status.phase === "ready") return t("console.readyHint");
 		return null;
 	})();
 
@@ -90,7 +89,7 @@ export function RuntimeSection({
 								{t("console.install")}
 							</button>
 						) : null}
-						{status.phase === "failed" ? (
+						{status.phase === "error" ? (
 							<button type="button" className="browser-button" onClick={onInstallRuntime} disabled={busy}>
 								{t("console.retry")}
 							</button>
@@ -113,9 +112,9 @@ export function RuntimeSection({
 
 				{hint ? <p className="text-xs leading-relaxed text-muted-foreground">{hint}</p> : null}
 				{status.message ? <p className="text-xs" style={{ color: "var(--destructive, #ef4444)" }}>{status.message}</p> : null}
-				{status.phase === "installing" || status.phase === "failed" ? (
+				{status.phase.startsWith("installing-") || status.phase === "error" ? (
 					<pre className="browser-output" aria-label={t("console.status.installing")}>
-						{status.output}
+						{status.recentOutput}
 					</pre>
 				) : null}
 			</div>

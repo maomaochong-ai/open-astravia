@@ -18,6 +18,7 @@ function plugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlugin {
 		permissions: [],
 		grantedPermissions: [],
 		allowedNetworkHosts: [],
+		allowedBrowserHosts: [],
 		declaredCommands: [],
 		grantedCommandNames: [],
 		defaultLocale: "zh",

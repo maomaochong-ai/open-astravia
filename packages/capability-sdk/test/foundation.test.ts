@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { CAPABILITY_ERROR_CODES, CAPABILITY_PREFIXES } from "../src/contracts.js";
 import {
+	FOUNDATION_BROWSER_CAPABILITIES,
+	FOUNDATION_BROWSER_CAPABILITY_CATALOG,
 	FOUNDATION_CAPABILITY_CATALOG,
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
 	FOUNDATION_FILESYSTEM_CAPABILITY_CATALOG,
@@ -88,17 +90,56 @@ describe("network and namespaced storage foundation capabilities", () => {
 	});
 
 	it("publishes schemas for every foundation capability", () => {
+		expect(FOUNDATION_BROWSER_CAPABILITY_CATALOG).toHaveLength(10);
 		expect(FOUNDATION_FILESYSTEM_CAPABILITY_CATALOG).toHaveLength(10);
 		expect(FOUNDATION_STORAGE_CAPABILITY_CATALOG).toHaveLength(13);
 		expect(FOUNDATION_NETWORK_CAPABILITY_CATALOG).toHaveLength(1);
 		expect(FOUNDATION_GATEWAY_CAPABILITY_CATALOG).toHaveLength(1);
-		expect(FOUNDATION_CAPABILITY_CATALOG).toHaveLength(29);
+		expect(FOUNDATION_CAPABILITY_CATALOG).toHaveLength(39);
 		expect(() => JSON.stringify(FOUNDATION_CAPABILITY_CATALOG)).not.toThrow();
 		expect(
 			FOUNDATION_CAPABILITY_CATALOG.every(({ inputSchema, outputSchema }) => {
 				return inputSchema !== undefined && outputSchema !== undefined;
 			}),
 		).toBe(true);
+	});
+
+	it("validates structured browser sessions and actions without exposing engine arguments", () => {
+		expect(
+			FOUNDATION_BROWSER_CAPABILITIES.SESSION_CREATE.parseInput({
+				namespace: "plugin:publisher",
+				profile: { type: "persistent", id: "social-accounts" },
+				headed: true,
+				allowedHosts: ["*.example.com"],
+				engineArgs: ["--eval"],
+			}),
+		).toEqual({
+			namespace: "plugin:publisher",
+			profile: { type: "persistent", id: "social-accounts" },
+			headed: true,
+			allowedHosts: ["*.example.com"],
+		});
+		expect(
+			FOUNDATION_BROWSER_CAPABILITIES.ACT.parseInput({
+				namespace: "plugin:publisher",
+				sessionId: "session-1",
+				snapshotRevision: 3,
+				action: { type: "fill", target: "@e2", value: "content" },
+			}),
+		).toMatchObject({ action: { type: "fill", target: "@e2", value: "content" } });
+		expect(() =>
+			FOUNDATION_BROWSER_CAPABILITIES.SESSION_GET.parseInput({
+				namespace: "../other-plugin",
+				sessionId: "session-1",
+			}),
+		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }));
+		expect(() =>
+			FOUNDATION_BROWSER_CAPABILITIES.ACT.parseInput({
+				namespace: "plugin:publisher",
+				sessionId: "session-1",
+				action: { type: "eval", value: "document.cookie" },
+			}),
+		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }));
 	});
 
 	it("preserves dynamic JSON keys while cleaning contract object fields", () => {

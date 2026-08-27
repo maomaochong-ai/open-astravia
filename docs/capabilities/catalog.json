@@ -161,6 +161,973 @@
       "version": 1
     },
     {
+      "id": "cap.foundation.vetta.browser.runtime-status",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "namespace"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^(?!.*\\.\\.)[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$",
+            "type": "string"
+          }
+        }
+      },
+      "kind": "query",
+      "layer": "foundation",
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "phase"
+        ],
+        "properties": {
+          "phase": {
+            "anyOf": [
+              {
+                "const": "checking",
+                "type": "string"
+              },
+              {
+                "const": "missing",
+                "type": "string"
+              },
+              {
+                "const": "outdated",
+                "type": "string"
+              },
+              {
+                "const": "browser-missing",
+                "type": "string"
+              },
+              {
+                "const": "ready",
+                "type": "string"
+              },
+              {
+                "const": "installing-runtime",
+                "type": "string"
+              },
+              {
+                "const": "installing-browser",
+                "type": "string"
+              },
+              {
+                "const": "error",
+                "type": "string"
+              }
+            ]
+          },
+          "version": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "recentOutput": {
+            "type": "string"
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.foundation.vetta.browser.runtime-install",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "namespace",
+          "step"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^(?!.*\\.\\.)[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "const": "runtime",
+                "type": "string"
+              },
+              {
+                "const": "browser",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "foundation",
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "phase"
+        ],
+        "properties": {
+          "phase": {
+            "anyOf": [
+              {
+                "const": "checking",
+                "type": "string"
+              },
+              {
+                "const": "missing",
+                "type": "string"
+              },
+              {
+                "const": "outdated",
+                "type": "string"
+              },
+              {
+                "const": "browser-missing",
+                "type": "string"
+              },
+              {
+                "const": "ready",
+                "type": "string"
+              },
+              {
+                "const": "installing-runtime",
+                "type": "string"
+              },
+              {
+                "const": "installing-browser",
+                "type": "string"
+              },
+              {
+                "const": "error",
+                "type": "string"
+              }
+            ]
+          },
+          "version": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "recentOutput": {
+            "type": "string"
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.foundation.vetta.browser.session-create",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "namespace",
+          "allowedHosts"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^(?!.*\\.\\.)[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "const": "managed",
+                "type": "string"
+              },
+              {
+                "const": "attach",
+                "type": "string"
+              }
+            ]
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "ephemeral",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "id"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "persistent",
+                    "type": "string"
+                  },
+                  "id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "headed": {
+            "type": "boolean"
+          },
+          "allowedHosts": {
+            "minItems": 1,
+            "maxItems": 128,
+            "type": "array",
+            "items": {
+              "minLength": 1,
+              "maxLength": 253,
+              "pattern": "\\S",
+              "type": "string"
+            }
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "foundation",
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "profile",
+          "headed",
+          "status",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "const": "managed",
+                "type": "string"
+              },
+              {
+                "const": "attach",
+                "type": "string"
+              }
+            ]
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "ephemeral",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "id"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "persistent",
+                    "type": "string"
+                  },
+                  "id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "headed": {
+            "type": "boolean"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "starting",
+                "type": "string"
+              },
+              {
+                "const": "ready",
+                "type": "string"
+              },
+              {
+                "const": "closed",
+                "type": "string"
+              },
+              {
+                "const": "error",
+                "type": "string"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "number"
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.foundation.vetta.browser.session-get",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "namespace",
+          "sessionId"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^(?!.*\\.\\.)[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "sessionId": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          }
+        }
+      },
+      "kind": "query",
+      "layer": "foundation",
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "profile",
+          "headed",
+          "status",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "const": "managed",
+                "type": "string"
+              },
+              {
+                "const": "attach",
+                "type": "string"
+              }
+            ]
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "ephemeral",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "id"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "persistent",
+                    "type": "string"
+                  },
+                  "id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "headed": {
+            "type": "boolean"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "starting",
+                "type": "string"
+              },
+              {
+                "const": "ready",
+                "type": "string"
+              },
+              {
+                "const": "closed",
+                "type": "string"
+              },
+              {
+                "const": "error",
+                "type": "string"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "number"
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.foundation.vetta.browser.session-close",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "namespace",
+          "sessionId"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^(?!.*\\.\\.)[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "sessionId": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "foundation",
+      "outputSchema": false,
+      "version": 1
+    },
+    {
+      "id": "cap.foundation.vetta.browser.navigate",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "namespace",
+          "sessionId",
+          "url"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^(?!.*\\.\\.)[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "sessionId": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          },
+          "url": {
+            "minLength": 1,
+            "maxLength": 8192,
+            "type": "string"
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "foundation",
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "sessionId",
+          "revision",
+          "url"
+        ],
+        "properties": {
+          "sessionId": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.foundation.vetta.browser.snapshot",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "namespace",
+          "sessionId"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^(?!.*\\.\\.)[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "sessionId": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          },
+          "interactiveOnly": {
+            "type": "boolean"
+          }
+        }
+      },
+      "kind": "query",
+      "layer": "foundation",
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "sessionId",
+          "revision",
+          "url",
+          "content"
+        ],
+        "properties": {
+          "sessionId": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.foundation.vetta.browser.read-text",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "namespace",
+          "sessionId"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^(?!.*\\.\\.)[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "sessionId": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxChars": {
+            "minimum": 1,
+            "maximum": 1000000,
+            "type": "integer"
+          }
+        }
+      },
+      "kind": "query",
+      "layer": "foundation",
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "sessionId",
+          "url",
+          "text",
+          "truncated"
+        ],
+        "properties": {
+          "sessionId": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.foundation.vetta.browser.screenshot",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "namespace",
+          "sessionId"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^(?!.*\\.\\.)[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "sessionId": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          },
+          "fullPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "kind": "query",
+      "layer": "foundation",
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "sessionId",
+          "revision",
+          "dataUrl"
+        ],
+        "properties": {
+          "sessionId": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "dataUrl": {
+            "pattern": "^data:image/(png|jpeg);base64,",
+            "type": "string"
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.foundation.vetta.browser.act",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "namespace",
+          "sessionId",
+          "action"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^(?!.*\\.\\.)[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "sessionId": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          },
+          "snapshotRevision": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "target"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "click",
+                    "type": "string"
+                  },
+                  "target": {
+                    "minLength": 1,
+                    "maxLength": 512,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "target",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "fill",
+                    "type": "string"
+                  },
+                  "target": {
+                    "minLength": 1,
+                    "maxLength": 512,
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "target",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "type",
+                    "type": "string"
+                  },
+                  "target": {
+                    "minLength": 1,
+                    "maxLength": 512,
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "target",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "select",
+                    "type": "string"
+                  },
+                  "target": {
+                    "minLength": 1,
+                    "maxLength": 512,
+                    "type": "string"
+                  },
+                  "value": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "target",
+                  "checked"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "check",
+                    "type": "string"
+                  },
+                  "target": {
+                    "minLength": 1,
+                    "maxLength": 512,
+                    "type": "string"
+                  },
+                  "checked": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "key"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "press",
+                    "type": "string"
+                  },
+                  "key": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "direction"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "scroll",
+                    "type": "string"
+                  },
+                  "direction": {
+                    "anyOf": [
+                      {
+                        "const": "up",
+                        "type": "string"
+                      },
+                      {
+                        "const": "down",
+                        "type": "string"
+                      },
+                      {
+                        "const": "left",
+                        "type": "string"
+                      },
+                      {
+                        "const": "right",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "amount": {
+                    "minimum": 1,
+                    "maximum": 100000,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "wait",
+                    "type": "string"
+                  },
+                  "milliseconds": {
+                    "minimum": 0,
+                    "maximum": 120000,
+                    "type": "integer"
+                  },
+                  "target": {
+                    "minLength": 1,
+                    "maxLength": 512,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "back",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "reload",
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "foundation",
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "sessionId",
+          "revision",
+          "url"
+        ],
+        "properties": {
+          "sessionId": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "output": {
+            "type": "string"
+          }
+        }
+      },
+      "version": 1
+    },
+    {
       "id": "cap.foundation.vetta.fs.read-directory",
       "inputSchema": {
         "type": "object",

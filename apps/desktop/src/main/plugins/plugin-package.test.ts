@@ -25,6 +25,7 @@ function previousPlugin(): InstalledPlugin {
 		permissions: ["agent.skills.control"],
 		grantedPermissions: ["agent.skills.control"],
 		allowedNetworkHosts: [],
+		allowedBrowserHosts: [],
 		declaredCommands: [],
 		grantedCommandNames: [],
 		defaultLocale: "zh",

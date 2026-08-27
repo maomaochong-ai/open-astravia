@@ -39,6 +39,27 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 			internalCapabilities: {
 				openSession: (pluginId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.OPEN_SESSION, pluginId),
 				closeSession: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.CLOSE_SESSION, sessionId),
+				browser: {
+					runtimeStatus: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.BROWSER_RUNTIME_STATUS, sessionId),
+					runtimeInstall: (sessionId, step) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.BROWSER_RUNTIME_INSTALL, sessionId, step),
+					createSession: (sessionId, options) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.BROWSER_SESSION_CREATE, sessionId, options),
+					getSession: (sessionId, browserSessionId) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.BROWSER_SESSION_GET, sessionId, browserSessionId),
+					closeSession: (sessionId, browserSessionId) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.BROWSER_SESSION_CLOSE, sessionId, browserSessionId),
+					navigate: (sessionId, browserSessionId, url) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.BROWSER_NAVIGATE, sessionId, browserSessionId, url),
+					snapshot: (sessionId, browserSessionId, options) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.BROWSER_SNAPSHOT, sessionId, browserSessionId, options),
+					readText: (sessionId, browserSessionId, options) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.BROWSER_READ_TEXT, sessionId, browserSessionId, options),
+					screenshot: (sessionId, browserSessionId, options) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.BROWSER_SCREENSHOT, sessionId, browserSessionId, options),
+					act: (sessionId, browserSessionId, action, options) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.BROWSER_ACT, sessionId, browserSessionId, action, options),
+				},
 				artifacts: {
 					persist: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.ARTIFACT_PERSIST, sessionId, input),
 					release: (sessionId, artifactId) =>

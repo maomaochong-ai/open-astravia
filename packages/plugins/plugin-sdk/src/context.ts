@@ -2,6 +2,7 @@ import type { PluginAgentApi } from "./agent.js";
 import type { PluginAiApi } from "./ai.js";
 import type { PluginAppActionsApi } from "./app-actions.js";
 import type { PluginArtifactsApi } from "./artifacts.js";
+import type { PluginBrowserApi } from "./browser.js";
 import type { PluginCaptureApi } from "./capture.js";
 import type { PluginCommandApi } from "./command.js";
 import type { PluginConversationApi } from "./conversation.js";
@@ -56,6 +57,8 @@ export interface PluginContext {
 	artifacts: PluginArtifactsApi;
 	/** 主进程离屏窗口截图（`capture.offscreen` 权限）。旧宿主上为 `undefined`，使用前判空。 */
 	capture?: PluginCaptureApi;
+	/** 宿主管理的浏览器自动化能力。未授权或旧宿主上为 `undefined`。 */
+	browser?: PluginBrowserApi;
 	network: PluginNetworkApi;
 	/**
 	 * Vetta 服务端网关调用（ADR-0056）。**仅内置 official 插件可用**，

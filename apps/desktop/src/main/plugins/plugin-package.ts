@@ -110,6 +110,7 @@ export function createInstalledPluginFromManifest(input: {
 		permissions,
 		grantedPermissions,
 		allowedNetworkHosts: manifest.network?.allowedHosts ?? [],
+		allowedBrowserHosts: manifest.browser?.allowedHosts ?? [],
 		declaredCommands,
 		grantedCommandNames,
 		settingsSchema: manifest.contributes?.settings,

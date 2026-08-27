@@ -1,14 +1,8 @@
-import type { PluginCommandApi, PluginCommandSpawnHandle } from "@vetta-org/plugin-sdk";
-import { detectSystemChrome } from "./parse";
+import type { PluginBrowserApi, PluginBrowserRuntimeStatus } from "@vetta-org/plugin-sdk";
 
 /**
- * 运行时（agent-browser 二进制 + 浏览器）的就绪检测与安装编排。
- *
- * 两条硬约束决定了这里的形状：
- * - `command.run` 被宿主 clamp 在 120s，而 `npm i -g agent-browser` 要装 ~90MB、
- *   `agent-browser install` 要下几百 MB，两者都必然超时，所以安装只能走 `command.spawn`。
- * - `spawn` 句柄没有流式 stdout，只有 `status().recentOutput`（约 64KB 环形尾部）与
- *   `onExit`，所以进度只能靠轮询快照，而不是订阅增量。
+ * 面板状态控制器。安装、版本校验和进程生命周期都归宿主 Foundation Capability；
+ * 插件只把结构化状态转成可订阅的 UI 状态，不再拥有命令执行权限。
  */
 
 /** 锁定版本：运行时是外部原生依赖，浮动版本会让「昨天还能用」变成随机故障。 */
@@ -42,44 +36,25 @@ export function isAgentBrowserCompatible(version: string | null, minimum = MINIM
 	return true;
 }
 
-export type RuntimePhase = "checking" | "missing" | "outdated" | "installing" | "ready" | "failed";
 export type InstallStep = "runtime" | "browser";
 
-export interface RuntimeStatus {
-	phase: RuntimePhase;
-	/** installing / failed 时指明是哪一步。 */
+export interface RuntimeStatus extends PluginBrowserRuntimeStatus {
 	step?: InstallStep;
-	/** ready / outdated 时 agent-browser 自报的版本号。 */
-	version?: string;
-	/**
-	 * 本机是否已有系统 Chrome。null = 判不出来（上游文案变了或没跑过安装），
-	 * 此时面板把「下载浏览器」交给用户决定，而不是替他拉几百 MB。
-	 */
-	chromeDetected: boolean | null;
-	/** 安装进程的输出尾部，用于展示进度与失败原因。 */
-	output: string;
-	/** failed 时面向用户的一句话原因。 */
-	message?: string;
 }
 
 export interface RuntimeControllerPorts {
-	command: PluginCommandApi;
-	/** 轮询间隔的等待函数；测试注入假时钟。 */
-	wait: (ms: number) => Promise<void>;
+	browser: PluginBrowserApi;
 }
-
-const POLL_INTERVAL_MS = 700;
-const VERSION_TIMEOUT_MS = 20_000;
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
 export class BrowserRuntimeController {
-	private status: RuntimeStatus = { phase: "checking", chromeDetected: null, output: "" };
+	private status: RuntimeStatus = { phase: "checking" };
 	private readonly listeners = new Set<(status: RuntimeStatus) => void>();
-	private running: PluginCommandSpawnHandle | null = null;
 	private disposed = false;
+	private installing = false;
 
 	constructor(private readonly ports: RuntimeControllerPorts) {}
 
@@ -99,107 +74,43 @@ export class BrowserRuntimeController {
 		for (const listener of this.listeners) listener(this.status);
 	}
 
-	/**
-	 * 就绪检测。`command.run` 在可执行文件不存在时是 **reject**（spawn 失败），
-	 * 非零退出才 resolve —— 两条路都当成「未安装」，但只有后者留得下诊断输出。
-	 */
 	async refresh(): Promise<RuntimeStatus> {
-		this.emit({ phase: "checking", message: undefined });
+		if (this.installing) return this.status;
+		this.emit({ phase: "checking", message: undefined, recentOutput: undefined, step: undefined });
 		try {
-			const result = await this.ports.command.run("agent-browser", ["--version"], {
-				timeoutMs: VERSION_TIMEOUT_MS,
-			});
-			if (result.exitCode === 0) {
-				const version = parseAgentBrowserVersion(result.stdout);
-				this.emit(
-					isAgentBrowserCompatible(version)
-						? { phase: "ready", version: version ?? undefined, step: undefined, message: undefined }
-						: { phase: "outdated", version: version ?? undefined, step: undefined, message: undefined },
-				);
-			} else {
-				this.emit({ phase: "missing", step: undefined, output: result.stderr || result.stdout });
-			}
-		} catch {
-			this.emit({ phase: "missing", step: undefined });
+			this.emit({ ...(await this.ports.browser.runtime.status()), step: undefined });
+		} catch (error) {
+			this.emit({ phase: "error", message: errorMessage(error), step: undefined });
 		}
 		return this.status;
 	}
 
 	/** 安装运行时本体。完成后顺带从输出里判断本机有没有系统 Chrome。 */
 	async installRuntime(): Promise<RuntimeStatus> {
-		const output = await this.runInstallStep("runtime", "npm", [
-			"i",
-			"-g",
-			`agent-browser@${AGENT_BROWSER_VERSION}`,
-			// 上游 engines 要求 node>=24，而宿主托管的是 node 22。JS 入口只是个原生二进制的
-			// 启动器，在 22 上跑得动；显式关掉严格检查，免得用户 npmrc 里开了 engine-strict 就装不上。
-			"--engine-strict=false",
-		]);
-		if (output === null) return this.status;
-		this.emit({ chromeDetected: detectSystemChrome(output) });
-		return this.refresh();
+		return this.install("runtime");
 	}
 
 	/** 下载 Chrome for Testing。系统已有 Chrome 时不需要跑，由面板决定是否调用。 */
 	async installBrowser(): Promise<RuntimeStatus> {
-		const output = await this.runInstallStep("browser", "agent-browser", ["install"]);
-		if (output === null) return this.status;
-		return this.refresh();
+		return this.install("browser");
 	}
 
-	/** 返回成功时的完整输出；失败时返回 null 并已把状态置为 failed。 */
-	private async runInstallStep(step: InstallStep, file: string, args: string[]): Promise<string | null> {
-		if (this.running !== null) return null;
-		this.emit({ phase: "installing", step, output: "", message: undefined });
-		let handle: PluginCommandSpawnHandle;
+	private async install(step: InstallStep): Promise<RuntimeStatus> {
+		if (this.installing) return this.status;
+		this.installing = true;
+		this.emit({ phase: step === "runtime" ? "installing-runtime" : "installing-browser", step, message: undefined });
 		try {
-			handle = await this.ports.command.spawn(file, args);
+			this.emit({ ...(await this.ports.browser.runtime.install(step)), step });
 		} catch (error) {
-			this.emit({ phase: "failed", step, message: errorMessage(error) });
-			return null;
-		}
-		this.running = handle;
-		try {
-			const status = await this.pollUntilExit(handle);
-			if (status.exit && status.exit.exitCode !== 0) {
-				this.emit({
-					phase: "failed",
-					step,
-					output: status.recentOutput,
-					message: `${file} ${args[0] ?? ""} 退出码 ${status.exit.exitCode ?? "signal"}`,
-				});
-				return null;
-			}
-			return status.recentOutput;
-		} catch (error) {
-			this.emit({ phase: "failed", step, message: errorMessage(error) });
-			return null;
+			this.emit({ phase: "error", step, message: errorMessage(error) });
 		} finally {
-			this.running = null;
+			this.installing = false;
 		}
+		return this.status;
 	}
 
-	private async pollUntilExit(
-		handle: PluginCommandSpawnHandle,
-	): Promise<Awaited<ReturnType<PluginCommandSpawnHandle["status"]>>> {
-		for (;;) {
-			const status = await handle.status();
-			this.emit({ output: status.recentOutput });
-			if (!status.running) return status;
-			if (this.disposed) {
-				await handle.stop();
-				return status;
-			}
-			await this.ports.wait(POLL_INTERVAL_MS);
-		}
-	}
-
-	/** 卸载：正在跑的安装进程要停掉，否则插件重载后会留下孤儿下载。 */
 	async dispose(): Promise<void> {
 		this.disposed = true;
 		this.listeners.clear();
-		const handle = this.running;
-		this.running = null;
-		if (handle) await handle.stop().catch(() => undefined);
 	}
 }

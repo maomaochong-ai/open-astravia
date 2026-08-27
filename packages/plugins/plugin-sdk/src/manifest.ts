@@ -9,6 +9,7 @@ import {
 	PluginMcpServerConfigSchema,
 	PluginVersionSchema,
 	type PluginAgentManifest,
+	type PluginBrowserManifest,
 	type PluginManifest,
 	type PluginManifestInput,
 	type PluginMcpServerConfig,
@@ -19,6 +20,7 @@ import { PLUGIN_PERMISSIONS, type PluginPermission } from "./permissions.js";
 
 export {
 	PluginAgentManifestSchema,
+	PluginBrowserManifestSchema,
 	PluginCommandNameSchema,
 	PluginCommandNamesSchema,
 	PluginIdSchema,
@@ -34,6 +36,7 @@ export {
 } from "./manifest-schema.js";
 export type {
 	PluginAgentManifest,
+	PluginBrowserManifest,
 	PluginManifest,
 	PluginManifestInput,
 	PluginMcpServerConfig,
@@ -132,17 +135,17 @@ function normalizePermissions(permissions: PluginPermission[] | undefined): Plug
 	return Array.from(new Set(permissions ?? []));
 }
 
-function normalizeNetworkHost(value: string): string {
+function normalizeAllowedHost(value: string, fieldName: "network" | "browser"): string {
 	const raw = trimString(value).toLowerCase();
 	if (raw === "*") return raw;
 	const wildcard = raw.startsWith("*.");
 	const candidate = wildcard ? raw.slice(2) : raw;
 	if (!candidate || candidate.includes("*") || /[\\/?#@]/.test(candidate)) {
-		throw new Error(`Invalid plugin network.allowedHosts entry: ${value}`);
+		throw new Error(`Invalid plugin ${fieldName}.allowedHosts entry: ${value}`);
 	}
 	const unwrapped = candidate.startsWith("[") && candidate.endsWith("]") ? candidate.slice(1, -1) : candidate;
 	if (wildcard && unwrapped.includes(":")) {
-		throw new Error(`Invalid plugin network.allowedHosts entry: ${value}`);
+		throw new Error(`Invalid plugin ${fieldName}.allowedHosts entry: ${value}`);
 	}
 	try {
 		const parsed = new URL(`http://${unwrapped.includes(":") ? `[${unwrapped}]` : unwrapped}`);
@@ -150,13 +153,18 @@ function normalizeNetworkHost(value: string): string {
 		if (!hostname || parsed.port || parsed.username || parsed.password) throw new Error("invalid host");
 		return wildcard ? `*.${hostname}` : hostname;
 	} catch {
-		throw new Error(`Invalid plugin network.allowedHosts entry: ${value}`);
+		throw new Error(`Invalid plugin ${fieldName}.allowedHosts entry: ${value}`);
 	}
 }
 
 function normalizeNetworkManifest(network: PluginNetworkManifest | undefined): PluginNetworkManifest | undefined {
 	if (!network) return undefined;
-	return { allowedHosts: Array.from(new Set(network.allowedHosts.map(normalizeNetworkHost))) };
+	return { allowedHosts: Array.from(new Set(network.allowedHosts.map((host) => normalizeAllowedHost(host, "network")))) };
+}
+
+function normalizeBrowserManifest(browser: PluginBrowserManifest | undefined): PluginBrowserManifest | undefined {
+	if (!browser) return undefined;
+	return { allowedHosts: Array.from(new Set(browser.allowedHosts.map((host) => normalizeAllowedHost(host, "browser")))) };
 }
 
 function normalizeModuleFederation(
@@ -317,8 +325,16 @@ export function parsePluginManifest(raw: unknown): PluginManifest {
 	const icon = raw.icon === undefined ? undefined : trimString(raw.icon);
 	const permissions = normalizePermissions(raw.permissions);
 	const network = normalizeNetworkManifest(raw.network);
+	const browser = normalizeBrowserManifest(raw.browser);
 	if (permissions.includes("network.fetch") && !network) {
 		throw new Error("Plugin network.allowedHosts is required with network.fetch");
+	}
+	const browserPermissions = permissions.filter((permission) => permission.startsWith("browser."));
+	if (browserPermissions.length > 0 && !browser) {
+		throw new Error("Plugin browser.allowedHosts is required with browser permissions");
+	}
+	if (permissions.includes("browser.interact") && !permissions.includes("browser.read")) {
+		throw new Error("Plugin browser.interact requires browser.read");
 	}
 	return {
 		id: raw.id,
@@ -333,6 +349,7 @@ export function parsePluginManifest(raw: unknown): PluginManifest {
 		styles: normalizeStringArray(raw.styles).map((style) => validatePluginRelativePath(style, "styles")),
 		permissions,
 		network,
+		browser,
 		commands: commands.length > 0 ? commands : undefined,
 		contributes: raw.contributes
 			? (() => {

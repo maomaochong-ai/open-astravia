@@ -30,7 +30,7 @@ import type { RuntimeStatus } from "../src/runtime/runtime-controller";
 
 /** 只实现面板真正调用的那几个方法，避免把整个 controller 拖进 DOM 测试。 */
 class FakeRuntime {
-	private status: RuntimeStatus = { phase: "missing", chromeDetected: null, output: "" };
+	private status: RuntimeStatus = { phase: "missing" };
 	private readonly listeners = new Set<(status: RuntimeStatus) => void>();
 	installRuntimeCalls = 0;
 	installBrowserCalls = 0;
@@ -153,7 +153,7 @@ describe("运行时状态", () => {
 	it("安装中展示输出并禁用按钮，避免连点起第二个下载", () => {
 		const { host, runtime, cleanup } = renderConsole();
 		act(() => {
-			runtime.set({ phase: "installing", step: "runtime", output: "downloading 42%" });
+			runtime.set({ phase: "installing-runtime", step: "runtime", recentOutput: "downloading 42%" });
 		});
 		expect(host.textContent).toContain("downloading 42%");
 		expect(buttonWithText(host, "console.recheck")?.disabled).toBe(true);
@@ -164,7 +164,7 @@ describe("运行时状态", () => {
 	it("失败时显示原因与重试", () => {
 		const { host, runtime, cleanup } = renderConsole();
 		act(() => {
-			runtime.set({ phase: "failed", step: "runtime", message: "npm 退出码 1", output: "npm ERR! network" });
+			runtime.set({ phase: "error", step: "runtime", message: "npm 退出码 1", recentOutput: "npm ERR! network" });
 		});
 		expect(host.textContent).toContain("npm 退出码 1");
 		expect(host.textContent).toContain("npm ERR! network");
@@ -192,9 +192,8 @@ describe("运行时状态", () => {
 	it("就绪且本机已有 Chrome 时不再提示第二步下载", () => {
 		const { host, runtime, cleanup } = renderConsole();
 		act(() => {
-			runtime.set({ phase: "ready", version: "0.34.0", chromeDetected: true });
+			runtime.set({ phase: "ready", version: "0.34.0" });
 		});
-		expect(host.textContent).toContain("console.chromeFound");
 		expect(host.textContent).toContain("console.readyHint");
 		expect(buttonWithText(host, "console.install")).toBeUndefined();
 		cleanup();
@@ -203,7 +202,7 @@ describe("运行时状态", () => {
 	it("就绪但没有 Chrome 时才出现下载浏览器这一步", () => {
 		const { host, runtime, cleanup } = renderConsole();
 		act(() => {
-			runtime.set({ phase: "ready", chromeDetected: false });
+			runtime.set({ phase: "browser-missing" });
 		});
 		expect(host.textContent).toContain("console.chromeMissing");
 		act(() => {
@@ -213,14 +212,6 @@ describe("运行时状态", () => {
 		cleanup();
 	});
 
-	it("Chrome 状态判不出来时不擅自替用户下载", () => {
-		const { host, runtime, cleanup } = renderConsole();
-		act(() => {
-			runtime.set({ phase: "ready", chromeDetected: null });
-		});
-		expect(buttonWithText(host, "console.install")).toBeUndefined();
-		cleanup();
-	});
 });
 
 describe("使用说明", () => {

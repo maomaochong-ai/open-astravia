@@ -15,6 +15,7 @@ function installedPlugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlu
 		permissions: [],
 		grantedPermissions: [],
 		allowedNetworkHosts: [],
+		allowedBrowserHosts: [],
 		declaredCommands: [],
 		grantedCommandNames: [],
 		defaultLocale: "zh",

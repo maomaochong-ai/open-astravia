@@ -14,6 +14,7 @@
 | [mcp.md](./mcp.md) | **MCP 三源聚合**、插件内聚 MCP（`agent.mcpServers`）、命名、生命周期、打包 |
 | [permissions.md](./permissions.md) | 权限完整清单、门控点、声明/授权流程 |
 | [ai.md](./ai.md) | 调用用户已配置的文本模型，模型列表、完成请求与凭据边界 |
+| [browser.md](./browser.md) | 宿主管理的浏览器 session、持久 profile、多账号隔离、域名范围与类型化动作 |
 | [file-explorer.md](./file-explorer.md) | 文件列表右键菜单、工具栏、装饰、定位、刷新与事件 |
 | [ui-slots.md](./ui-slots.md) | **notify 全局 Toast** / 文件预览（**含大文件 getUrl 规范**）/ 全局浮层 / **工作区视图（整页）** / 活动 Tab / 输入栏动作 / **Turn 卡** / **Tool-call 槽** |
 | [message-cards.md](./message-cards.md) | 消息卡片：`details.cards`、`registerCardRenderer`、`pendingFor`、跨轮去重 |
@@ -49,6 +50,7 @@
 | 离屏窗口截图（真实渲染管线） | `ctx.capture.offscreen` | `capture.offscreen` | [conversation-and-agent](./conversation-and-agent.md#离屏截图-captureoffscreen) |
 | 读写文件 | `ctx.fs.*` | `fs.read` / `fs.write` | [conversation-and-agent](./conversation-and-agent.md#文件-api) |
 | 宿主代理网络请求 | `ctx.network.request` | `network.fetch` | [conversation-and-agent](./conversation-and-agent.md#网络-api) |
+| 宿主管理的浏览器自动化 | `ctx.browser.*` | `browser.*` | [browser](./browser.md) |
 | 插件私有持久化 | `ctx.storage.*` | `storage.read` / `storage.write` | [conversation-and-agent](./conversation-and-agent.md#插件私有存储-api) |
 | 调用用户 AI 模型（单轮/多轮+插件内部工具） | `ctx.ai.listModels/complete/chat` | `ai.models.list` / `ai.complete` | [ai](./ai.md) |
 | 读自身设置 | `ctx.settings.*` | 无 | [conversation-and-agent](./conversation-and-agent.md#设置-api) |

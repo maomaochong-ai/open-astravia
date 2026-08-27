@@ -17,6 +17,7 @@ function plugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlugin {
 		permissions: ["agent.tools.register", "agent.toolHandler.execute"],
 		grantedPermissions: ["agent.tools.register", "agent.toolHandler.execute"],
 		allowedNetworkHosts: [],
+		allowedBrowserHosts: [],
 		declaredCommands: [],
 		grantedCommandNames: [],
 		defaultLocale: "zh",

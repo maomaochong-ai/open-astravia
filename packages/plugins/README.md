@@ -74,3 +74,11 @@ npx @vetta-org/plugin-cli add @example/vetta-plugin-demo
 
 CLI 使用 `npm pack --ignore-scripts` 获取包，校验 npm 元数据后仅提取声明的 zip；
 Desktop 会再次校验摘要、插件 id 与版本，然后沿用现有授权、启用和重载流程。
+
+## 通用浏览器扩展
+
+ESM / Module Federation 插件可通过 `ctx.browser` 使用宿主管理的浏览器自动化，不需要依赖 Browser 系统插件或执行 CLI。清单必须声明所需的 `browser.*` 权限以及最大 `browser.allowedHosts`；session 可以进一步收窄域名范围，不能扩大清单授权。
+
+宿主按插件 namespace 隔离 session 与持久 profile。插件只使用逻辑 `profile.id`，不会得到目录、Cookie 或 token。公共 v1 支持运行时状态/安装、会话创建/关闭、导航、快照、文本、截图和类型化动作；不提供任意 JavaScript、argv、上传、下载或认证数据导出。attach 与 runtime manage 只对 official 插件开放，QuickJS 不支持该能力。
+
+完整设计与安全边界见 [ADR-0088](../../docs/adr/0088-browser-automation-as-a-foundation-capability.md)。

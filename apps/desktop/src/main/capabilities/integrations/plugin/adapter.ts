@@ -19,6 +19,7 @@ import { type PluginSkillMethods, pluginSkillMethods } from "./domain/skill.js";
 import { type PluginUpdaterMethods, pluginUpdaterMethods } from "./domain/updater.js";
 import { type PluginWebhookMethods, pluginWebhookMethods } from "./domain/webhook.js";
 import { type PluginArtifactMethods, pluginArtifactMethods } from "./foundation/artifacts.js";
+import { type PluginBrowserMethods, pluginBrowserMethods } from "./foundation/browser.js";
 import { type PluginFilesystemMethods, pluginFilesystemMethods } from "./foundation/filesystem.js";
 import { type PluginGatewayMethods, pluginGatewayMethods } from "./foundation/gateway.js";
 import { type PluginJobMethods, pluginJobMethods } from "./foundation/jobs.js";
@@ -35,6 +36,7 @@ import {
 
 export interface PluginCapabilityAdapter
 	extends PluginArtifactMethods,
+		PluginBrowserMethods,
 		PluginFilesystemMethods,
 		PluginJobMethods,
 		PluginNetworkMethods,
@@ -88,7 +90,7 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 			},
 			grants,
 		});
-		this.sessions.set(sessionId, { access, ownerId, pluginId });
+		this.sessions.set(sessionId, { access, ownerId, pluginId, browserSessionIds: new Set() });
 		const pluginSessionIds = this.sessionIdsByPlugin.get(pluginId) ?? new Set<string>();
 		pluginSessionIds.add(sessionId);
 		this.sessionIdsByPlugin.set(pluginId, pluginSessionIds);
@@ -98,12 +100,18 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 	closeSession(sessionId: string): void {
 		const session = this.sessions.get(sessionId);
 		if (!session) return;
+		const browserSessionIds = [...session.browserSessionIds];
 		session.access.revoke();
 		this.sessions.delete(sessionId);
 		const pluginSessionIds = this.sessionIdsByPlugin.get(session.pluginId);
 		pluginSessionIds?.delete(sessionId);
-		if (pluginSessionIds?.size === 0) this.sessionIdsByPlugin.delete(session.pluginId);
-		this.options.onSessionClosed?.(session.pluginId);
+		if (pluginSessionIds?.size === 0) {
+			this.sessionIdsByPlugin.delete(session.pluginId);
+			this.options.onSessionClosed?.(session.pluginId);
+		}
+		if (browserSessionIds.length > 0) {
+			this.options.onBrowserSessionsReleased?.(session.pluginId, browserSessionIds);
+		}
 	}
 
 	dispose(): void {
@@ -120,6 +128,32 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 
 	client(sessionId: string, requirement: PluginCapabilityRequirement): CapabilityAccessHandle["client"] {
 		return this.session(sessionId, requirement).access.client;
+	}
+
+	browserAllowedHosts(pluginId: string): readonly string[] {
+		return this.options.resolveBrowserAllowedHosts?.(pluginId) ?? [];
+	}
+
+	claimBrowserSession(sessionId: string, browserSessionId: string): void {
+		const owner = this.session(sessionId, {});
+		for (const candidateId of this.sessionIdsByPlugin.get(owner.pluginId) ?? []) {
+			this.sessions.get(candidateId)?.browserSessionIds.delete(browserSessionId);
+		}
+		owner.browserSessionIds.add(browserSessionId);
+	}
+
+	assertBrowserSessionOwned(sessionId: string, browserSessionId: string): void {
+		const session = this.session(sessionId, {});
+		if (!session.browserSessionIds.has(browserSessionId)) {
+			throw new CapabilityError(
+				CAPABILITY_ERROR_CODES.ACCESS_DENIED,
+				"Browser session is not owned by this activation",
+			);
+		}
+	}
+
+	releaseBrowserSession(sessionId: string, browserSessionId: string): void {
+		this.session(sessionId, {}).browserSessionIds.delete(browserSessionId);
 	}
 
 	session(sessionId: string, requirement: PluginCapabilityRequirement): PluginCapabilitySession {
@@ -146,6 +180,7 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 Object.assign(
 	PluginCapabilityAdapter.prototype,
 	pluginArtifactMethods,
+	pluginBrowserMethods,
 	pluginFilesystemMethods,
 	pluginJobMethods,
 	pluginNetworkMethods,

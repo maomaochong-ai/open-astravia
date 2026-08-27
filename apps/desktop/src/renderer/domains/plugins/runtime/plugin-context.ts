@@ -7,6 +7,7 @@ import { createPluginAiApi } from "./plugin-ai";
 import { createPluginFileExplorerApi } from "./plugin-file-explorer-context";
 import {
 	createArtifactsApi,
+	createBrowserApi,
 	createCaptureApi,
 	createCommandApi,
 	createConversationApi,
@@ -89,6 +90,7 @@ export function createPluginContext({
 		jobs: createJobsApi(plugin, capabilitySessionId),
 		artifacts: createArtifactsApi(plugin, capabilitySessionId),
 		capture: createCaptureApi(plugin, disposers),
+		browser: permissions.has("browser.read") ? createBrowserApi(plugin, capabilitySessionId) : undefined,
 		agent: agentContributions.api,
 		appActions: createPluginAppActionsApi({
 			plugin,

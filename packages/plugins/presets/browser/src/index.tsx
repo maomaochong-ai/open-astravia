@@ -1,16 +1,16 @@
 import { definePlugin } from "@vetta-org/plugin-sdk";
 import type { JSX } from "react";
+import { BrowserSessionBroker } from "./agent/browser-session-broker";
+import { registerBrowserTool } from "./agent/browser-tool";
 import { BrowserConsole, type BrowserConsolePorts } from "./components/BrowserConsole";
-import { syncSettingsSnapshot } from "./config/store";
 import { BrowserRuntimeController } from "./runtime/runtime-controller";
 import "./style.css";
 
 /**
  * 浏览器操作：把 vercel-labs/agent-browser 内聚成一个系统插件。
  *
- * 能力面走 Skill + CLI（`agent.skillPaths` → `agent/skills/browser-use`），模型经由 bash 调用
- * 插件自带的 shim；域名白名单、危险动作与浏览器来源都由 shim 在自己的 argv 上判定。
- * 本文件只负责两件宿主侧的事：把设置物化成 shim 能读到的策略快照、注册工作区视图。
+ * Skill 负责低上下文的使用指导，结构化工具负责调用宿主浏览器能力。插件不执行外部命令，
+ * profile、进程、策略和审计统一由 Desktop 主进程拥有。
  */
 
 const VIEW_ID = "console";
@@ -20,20 +20,21 @@ const VIEW_ID = "console";
  * 句柄与订阅集合，不显式释放会在热重载后叠加。
  */
 let controller: BrowserRuntimeController | null = null;
-let disposeSettingsSync: (() => void) | null = null;
+let broker: BrowserSessionBroker | null = null;
 
 export default definePlugin({
 	activate(ctx) {
-		disposeSettingsSync?.();
 		void controller?.dispose();
+		void broker?.closeAll();
+		if (!ctx.browser) throw new Error("Browser capability is unavailable");
 
 		const runtime = new BrowserRuntimeController({
-			command: ctx.command,
-			wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+			browser: ctx.browser,
 		});
 		controller = runtime;
-
-		disposeSettingsSync = syncSettingsSnapshot(ctx);
+		const sessions = new BrowserSessionBroker(ctx.browser);
+		broker = sessions;
+		registerBrowserTool(ctx, sessions);
 
 		const ports: BrowserConsolePorts = {
 			runtime,
@@ -59,10 +60,10 @@ export default definePlugin({
 		// 预热：用户点开侧边栏时应该直接看到「已就绪」或「去安装」，而不是先闪一个检测中。
 		void runtime.refresh();
 	},
-	deactivate() {
-		disposeSettingsSync?.();
-		disposeSettingsSync = null;
-		void controller?.dispose();
+	async deactivate() {
+		await broker?.closeAll();
+		broker = null;
+		await controller?.dispose();
 		controller = null;
 	},
 });

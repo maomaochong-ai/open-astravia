@@ -18,6 +18,7 @@ function plugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlugin {
 		permissions: ["ui.slot.global", "agent.command.run"],
 		grantedPermissions: ["ui.slot.global", "agent.command.run"],
 		allowedNetworkHosts: [],
+		allowedBrowserHosts: [],
 		declaredCommands: ["demo.run"],
 		grantedCommandNames: ["demo.run"],
 		defaultLocale: "zh",

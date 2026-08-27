@@ -118,6 +118,7 @@ function installedPlugin(overrides?: Partial<InstalledPlugin>): InstalledPlugin 
 		rootPath: "",
 		...overrides,
 		allowedNetworkHosts: overrides?.allowedNetworkHosts ?? [],
+		allowedBrowserHosts: overrides?.allowedBrowserHosts ?? [],
 	};
 }
 

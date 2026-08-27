@@ -15,13 +15,18 @@
 	"permissions": [
 		"ui.slot.workspace-view",
 		"agent.skills.control",
-		"agent.command.run",
-		"agent.command.spawn",
-		"storage.read",
-		"storage.write",
+		"agent.tools.register",
+		"agent.toolHandler.execute",
+		"browser.read",
+		"browser.interact",
+		"browser.profile.persist",
+		"browser.attach",
+		"browser.runtime.manage",
 		"shell.openExternal"
 	],
-	"commands": ["npm", "agent-browser"],
+	"browser": {
+		"allowedHosts": ["*"]
+	},
 	"agent": {
 		"skillPaths": ["agent/skills/browser-use"]
 	},
@@ -49,27 +54,6 @@
 				"default": "",
 				"title": "%settings.allowedDomains.title%",
 				"description": "%settings.allowedDomains.description%"
-			},
-			{
-				"key": "denyEval",
-				"type": "boolean",
-				"default": true,
-				"title": "%settings.denyEval.title%",
-				"description": "%settings.denyEval.description%"
-			},
-			{
-				"key": "denyUpload",
-				"type": "boolean",
-				"default": true,
-				"title": "%settings.denyUpload.title%",
-				"description": "%settings.denyUpload.description%"
-			},
-			{
-				"key": "denyDownload",
-				"type": "boolean",
-				"default": false,
-				"title": "%settings.denyDownload.title%",
-				"description": "%settings.denyDownload.description%"
 			},
 			{
 				"key": "maxOutput",

@@ -47,9 +47,9 @@ describe("capability catalog", () => {
 	it("publishes complete layer catalogs with unique ids", () => {
 		const catalog = [...FOUNDATION_CAPABILITY_CATALOG, ...DOMAIN_CAPABILITY_CATALOG];
 
-		expect(FOUNDATION_CAPABILITY_CATALOG).toHaveLength(29);
+		expect(FOUNDATION_CAPABILITY_CATALOG).toHaveLength(39);
 		expect(DOMAIN_CAPABILITY_CATALOG).toHaveLength(104);
-		expect(new Set(catalog.map(({ id }) => id)).size).toBe(133);
+		expect(new Set(catalog.map(({ id }) => id)).size).toBe(143);
 		expect(() => JSON.stringify(catalog)).not.toThrow();
 	});
 });

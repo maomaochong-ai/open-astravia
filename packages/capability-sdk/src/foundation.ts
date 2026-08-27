@@ -1,5 +1,6 @@
 import { createCapabilityCatalog } from "./catalog.js";
 import { FOUNDATION_ARTIFACT_CAPABILITIES } from "./foundation/artifact.js";
+import { FOUNDATION_BROWSER_CAPABILITIES } from "./foundation/browser.js";
 import { FOUNDATION_FILESYSTEM_CAPABILITIES } from "./foundation/filesystem.js";
 import { FOUNDATION_GATEWAY_CAPABILITIES } from "./foundation/gateway.js";
 import { FOUNDATION_JOB_CAPABILITIES } from "./foundation/job.js";
@@ -16,6 +17,31 @@ export {
 	FOUNDATION_ARTIFACT_CAPABILITY_CATALOG,
 	type PersistedArtifact,
 } from "./foundation/artifact.js";
+export {
+	type BrowserActInput,
+	type BrowserAction,
+	type BrowserActionResult,
+	type BrowserNavigateInput,
+	type BrowserPageState,
+	type BrowserReadTextInput,
+	type BrowserRuntimeInstallInput,
+	type BrowserRuntimePhase,
+	type BrowserRuntimeStatus,
+	type BrowserRuntimeStatusInput,
+	type BrowserScreenshot,
+	type BrowserScreenshotInput,
+	type BrowserSession,
+	type BrowserSessionCreateInput,
+	type BrowserSessionInput,
+	type BrowserSessionProfile,
+	type BrowserSessionStatus,
+	type BrowserSnapshot,
+	type BrowserSnapshotInput,
+	type BrowserSource,
+	type BrowserTextContent,
+	FOUNDATION_BROWSER_CAPABILITIES,
+	FOUNDATION_BROWSER_CAPABILITY_CATALOG,
+} from "./foundation/browser.js";
 export {
 	type FilesystemEntry,
 	type FilesystemFileRef,
@@ -78,6 +104,7 @@ export {
 
 export const FOUNDATION_CAPABILITY_CATALOG = createCapabilityCatalog([
 	...Object.values(FOUNDATION_ARTIFACT_CAPABILITIES),
+	...Object.values(FOUNDATION_BROWSER_CAPABILITIES),
 	...Object.values(FOUNDATION_FILESYSTEM_CAPABILITIES),
 	...Object.values(FOUNDATION_JOB_CAPABILITIES),
 	...Object.values(FOUNDATION_STORAGE_CAPABILITIES),

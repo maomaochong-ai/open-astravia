@@ -20,6 +20,7 @@ function plugin(): InstalledPlugin {
 		permissions: [],
 		grantedPermissions: [],
 		allowedNetworkHosts: [],
+		allowedBrowserHosts: [],
 		declaredCommands: [],
 		grantedCommandNames: [],
 		defaultLocale: "en",

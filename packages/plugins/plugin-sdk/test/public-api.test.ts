@@ -9,6 +9,8 @@ import { PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES, PLUGIN_PERMISSIONS } from "../src
 describe("plugin-sdk public API", () => {
 	it("exports the runtime permission catalog from the package root", () => {
 		expect(PLUGIN_PERMISSIONS).toContain("network.fetch");
+		expect(PLUGIN_PERMISSIONS).toContain("browser.read");
+		expect(PLUGIN_PERMISSIONS).toContain("browser.interact");
 		expect(PLUGIN_PERMISSIONS).toContain("shell.openExternal");
 	});
 

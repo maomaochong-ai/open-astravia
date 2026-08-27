@@ -15,6 +15,7 @@ function createInstalledPlugin(id = "target"): InstalledPlugin {
 		permissions: ["network.fetch"],
 		grantedPermissions: ["network.fetch"],
 		allowedNetworkHosts: ["example.com"],
+		allowedBrowserHosts: [],
 		declaredCommands: [],
 		grantedCommandNames: [],
 		defaultLocale: "zh",
