@@ -4,6 +4,7 @@ import {
 	type CodingAgentSessionExecutionEnvironmentFactory,
 	type CodingAgentToolEnvironmentFactory,
 	createCodingAgentEditPathPolicy,
+	createCodingAgentSessionCommandEnvironment,
 	createCodingAgentWritePathPolicy,
 } from "@vetta/coding-agent/composition";
 import { CONFIG_DIR_NAME, getKnowledgeDir, getSceneDir, getUserSkillsDir } from "@vetta/coding-agent/config";
@@ -52,7 +53,7 @@ export function createCliCodingAgentSessionExecutionEnvironmentFactory(
 			cwd: context.cwd,
 			resolveShell: host.resolveShell,
 			environment: host.environment,
-			sessionEnvironment: context.env,
+			sessionEnvironment: createCodingAgentSessionCommandEnvironment(context.sessionId, context.env),
 			protectedDirectories: host.protectedCommandDirectories,
 		});
 		return {

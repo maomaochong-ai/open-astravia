@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { createWriteStream, type WriteStream } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setImmediate } from "node:timers";
 import stripAnsi from "strip-ansi";
 import { sanitizeBinaryOutput } from "../shared/text-decoding.js";
 import { truncateTail } from "../shared/truncation.js";
@@ -88,29 +89,51 @@ function executeLocal(
 			stdio: ["ignore", "pipe", "pipe"],
 		});
 		const output = new NodeBashOutputCollector(executionOptions, options.temporaryDirectory);
+		let settled = false;
+		const cleanup = () => {
+			executionOptions?.signal?.removeEventListener("abort", onAbort);
+			child.stdout?.destroy();
+			child.stderr?.destroy();
+		};
+		const resolveOnce = (exitCode: number | undefined, cancelled: boolean) => {
+			if (settled) return;
+			settled = true;
+			cleanup();
+			resolve(output.finish(exitCode, cancelled));
+		};
+		const rejectOnce = (error: Error) => {
+			if (settled) return;
+			settled = true;
+			cleanup();
+			output.close();
+			reject(error);
+		};
 		const stop = () => {
 			if (child.pid) killNodeProcessTree(child.pid);
 			else child.kill();
 		};
-		const onAbort = () => stop();
+		const onAbort = () => {
+			stop();
+			resolveOnce(undefined, true);
+		};
 
 		if (executionOptions?.signal?.aborted) {
-			stop();
-			output.close();
-			resolve(output.finish(undefined, true));
+			onAbort();
 			return;
 		}
 		executionOptions?.signal?.addEventListener("abort", onAbort, { once: true });
 		child.stdout?.on("data", (data: Buffer) => output.accept(data));
 		child.stderr?.on("data", (data: Buffer) => output.accept(data));
-		child.once("error", (error) => {
-			executionOptions?.signal?.removeEventListener("abort", onAbort);
-			output.close();
-			reject(error);
+		child.once("error", rejectOnce);
+		child.once("exit", (code) => {
+			if (executionOptions?.signal?.aborted) return;
+			// A daemon may inherit these pipes after its command shell exits. Give
+			// queued output one event-loop turn, then settle without waiting for the
+			// descendant to close pipes that no longer belong to this command.
+			setImmediate(() => resolveOnce(code ?? undefined, code === null));
 		});
 		child.once("close", (code) => {
-			executionOptions?.signal?.removeEventListener("abort", onAbort);
-			resolve(output.finish(code ?? undefined, code === null || executionOptions?.signal?.aborted === true));
+			resolveOnce(code ?? undefined, code === null || executionOptions?.signal?.aborted === true);
 		});
 	});
 }

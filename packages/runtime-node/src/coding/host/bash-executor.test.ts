@@ -18,6 +18,18 @@ describe("Node Bash host", () => {
 		expect(result).toMatchObject({ exitCode: 7, cancelled: false, truncated: false });
 	});
 
+	it("settles when a daemon keeps inherited output pipes open after the shell exits", async () => {
+		const executor = createNodeHostBashExecutor({
+			resolveShell: () => ({ executable: process.execPath, args: ["-e"] }),
+		});
+		const startedAt = Date.now();
+
+		const result = await executor.execute(createDaemonCommand());
+
+		expect(result).toMatchObject({ exitCode: 0, cancelled: false });
+		expect(Date.now() - startedAt).toBeLessThan(2_500);
+	});
+
 	it("keeps the pre-aborted result contract", async () => {
 		const controller = new AbortController();
 		controller.abort();
@@ -52,3 +64,12 @@ describe("Node Bash host", () => {
 		expect(operations.exec).toHaveBeenCalledOnce();
 	});
 });
+
+function createDaemonCommand(): string {
+	const daemonScript = "setTimeout(() => process.exit(0), 5000)";
+	return [
+		"const { spawn } = require('node:child_process')",
+		`const child = spawn(process.execPath, ['-e', ${JSON.stringify(daemonScript)}], { detached: true, stdio: ['ignore', 'inherit', 'inherit'] })`,
+		"child.unref()",
+	].join(";");
+}

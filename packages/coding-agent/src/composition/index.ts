@@ -100,6 +100,10 @@ export {
 	publishCodingAgentExecutionRuntimeDefinition,
 } from "./runtime-composition.js";
 export {
+	CODING_AGENT_SESSION_ID_ENV,
+	createCodingAgentSessionCommandEnvironment,
+} from "./session-command-environment.js";
+export {
 	CodingAgentActiveSessionHost,
 	type CodingAgentSessionTransition,
 	type CodingAgentSessionTransitionLifecycle,

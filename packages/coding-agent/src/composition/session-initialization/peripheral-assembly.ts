@@ -150,6 +150,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	}
 
 	const executionEnvironment = await profile.createSessionExecutionEnvironment({
+		sessionId: options.readSessionId(),
 		cwd: options.sessionCwd,
 		agentDir: profile.agentDir,
 		scenario: options.scenario,

@@ -15,12 +15,7 @@
 	"permissions": [
 		"ui.slot.workspace-view",
 		"agent.skills.control",
-		"agent.tools.register",
-		"agent.toolHandler.execute",
 		"browser.read",
-		"browser.interact",
-		"browser.profile.persist",
-		"browser.attach",
 		"browser.runtime.manage",
 		"shell.openExternal"
 	],
@@ -29,40 +24,6 @@
 	},
 	"agent": {
 		"skillPaths": ["agent/skills/browser-use"]
-	},
-	"contributes": {
-		"settings": [
-			{
-				"key": "browserSource",
-				"type": "enum",
-				"enum": ["managed", "attach"],
-				"default": "managed",
-				"title": "%settings.browserSource.title%",
-				"description": "%settings.browserSource.description%"
-			},
-			{
-				"key": "headed",
-				"type": "boolean",
-				"default": true,
-				"title": "%settings.headed.title%",
-				"description": "%settings.headed.description%",
-				"visibleWhen": { "key": "browserSource", "in": ["managed"] }
-			},
-			{
-				"key": "allowedDomains",
-				"type": "string",
-				"default": "",
-				"title": "%settings.allowedDomains.title%",
-				"description": "%settings.allowedDomains.description%"
-			},
-			{
-				"key": "maxOutput",
-				"type": "number",
-				"default": 20000,
-				"title": "%settings.maxOutput.title%",
-				"description": "%settings.maxOutput.description%"
-			}
-		]
 	},
 	"description": "%plugin.description%",
 	"author": "Vetta"

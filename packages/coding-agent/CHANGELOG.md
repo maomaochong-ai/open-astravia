@@ -59,6 +59,9 @@
 
 ### Added
 
+- Coding Agent Session 命令环境新增宿主确认的 `VETTA_AGENT_SESSION_ID`；CLI 型能力可跨多次短命令复用
+  自己的外部 Session，而同一工作区中的多个 Agent 不再需要从 cwd 推导并共享身份。调用方自定义 env 不能覆盖该值。
+
 - Coding Agent 在最终 Tool 组合边界统一应用产品 Tool Projection：所有兼容的对象输入 Schema 默认获得可选的
   `description` 调用说明，显式 Tool 自有同名字段优先；模型专用字段在原 Tool 校验和执行前自动剥离。Plugin
   卡片的 `md_intro` 也复用同一投影/反向映射机制，不再维护独立 Schema 改写路径。

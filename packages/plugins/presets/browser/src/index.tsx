@@ -1,16 +1,14 @@
 import { definePlugin } from "@vetta-org/plugin-sdk";
 import type { JSX } from "react";
-import { BrowserSessionBroker } from "./agent/browser-session-broker";
-import { registerBrowserTool } from "./agent/browser-tool";
 import { BrowserConsole, type BrowserConsolePorts } from "./components/BrowserConsole";
 import { BrowserRuntimeController } from "./runtime/runtime-controller";
 import "./style.css";
 
 /**
- * 浏览器操作：把 vercel-labs/agent-browser 内聚成一个系统插件。
+ * 浏览器操作：安装 vercel-labs/agent-browser，并向 Agent 提供按需 CLI Skill。
  *
- * Skill 负责低上下文的使用指导，结构化工具负责调用宿主浏览器能力。插件不执行外部命令，
- * profile、进程、策略和审计统一由 Desktop 主进程拥有。
+ * Agent 直接调用 upstream CLI，使用自己的 session；插件代码仍可通过 ctx.browser API 使用
+ * 宿主浏览器能力，两条调用面不共享活跃 session。
  */
 
 const VIEW_ID = "console";
@@ -20,21 +18,16 @@ const VIEW_ID = "console";
  * 句柄与订阅集合，不显式释放会在热重载后叠加。
  */
 let controller: BrowserRuntimeController | null = null;
-let broker: BrowserSessionBroker | null = null;
 
 export default definePlugin({
 	activate(ctx) {
 		void controller?.dispose();
-		void broker?.closeAll();
 		if (!ctx.browser) throw new Error("Browser capability is unavailable");
 
 		const runtime = new BrowserRuntimeController({
 			browser: ctx.browser,
 		});
 		controller = runtime;
-		const sessions = new BrowserSessionBroker(ctx.browser);
-		broker = sessions;
-		registerBrowserTool(ctx, sessions);
 
 		const ports: BrowserConsolePorts = {
 			runtime,
@@ -61,8 +54,6 @@ export default definePlugin({
 		void runtime.refresh();
 	},
 	async deactivate() {
-		await broker?.closeAll();
-		broker = null;
 		await controller?.dispose();
 		controller = null;
 	},

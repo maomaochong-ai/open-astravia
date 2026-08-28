@@ -100,21 +100,21 @@ export function PromptsSection(): JSX.Element {
 	);
 }
 
-const SAFETY_KEYS = [
-	"guide.safety.untrusted",
-	"guide.safety.noEval",
-	"guide.safety.noUpload",
-	"guide.safety.allowlist",
+const CLI_KEYS = [
+	"guide.cli.direct",
+	"guide.cli.independent",
+	"guide.cli.accounts",
+	"guide.cli.upstream",
 ] as const;
 
-export function SafetySection(): JSX.Element {
+export function CliSection(): JSX.Element {
 	const { t } = useTranslation();
 	return (
 		<section className="flex flex-col gap-2.5">
-			<span className="browser-section-label">{t("guide.safety.label")}</span>
+			<span className="browser-section-label">{t("guide.cli.label")}</span>
 			<div className="browser-card flex flex-col gap-2.5 p-4">
 				<ul className="flex flex-col gap-2">
-					{SAFETY_KEYS.map((key) => (
+					{CLI_KEYS.map((key) => (
 						<li key={key} className="flex items-start gap-2.5 text-xs leading-relaxed">
 							<span
 								className="browser-dot mt-1.5"
@@ -125,7 +125,7 @@ export function SafetySection(): JSX.Element {
 						</li>
 					))}
 				</ul>
-				<p className="text-xs text-muted-foreground">{t("guide.safety.settingsHint")}</p>
+				<p className="text-xs text-muted-foreground">{t("guide.cli.hint")}</p>
 			</div>
 		</section>
 	);

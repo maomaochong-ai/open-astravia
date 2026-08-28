@@ -171,6 +171,7 @@ function createRuntimeFixture(
 	let asyncDeliveries = 0;
 	let environmentDisposeCalls = 0;
 	const environment = createCodingAgentNodeSessionExecutionEnvironment({
+		sessionId: "session-execution-runtime-test",
 		cwd: process.cwd(),
 		scenario: "cli",
 	});

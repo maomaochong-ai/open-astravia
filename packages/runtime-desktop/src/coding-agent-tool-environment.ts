@@ -4,6 +4,7 @@ import {
 	type CodingAgentSessionExecutionEnvironmentFactory,
 	type CodingAgentToolEnvironmentFactory,
 	createCodingAgentEditPathPolicy,
+	createCodingAgentSessionCommandEnvironment,
 	createCodingAgentWritePathPolicy,
 } from "@vetta/coding-agent/composition";
 import {
@@ -49,7 +50,7 @@ export const createDesktopCodingAgentSessionExecutionEnvironment: CodingAgentSes
 		cwd: context.cwd,
 		resolveShell: host.resolveShell,
 		environment: host.environment,
-		sessionEnvironment: context.env,
+		sessionEnvironment: createCodingAgentSessionCommandEnvironment(context.sessionId, context.env),
 		protectedDirectories: host.protectedCommandDirectories,
 	});
 	return {

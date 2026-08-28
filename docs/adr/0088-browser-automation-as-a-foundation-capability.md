@@ -2,6 +2,9 @@
 status: accepted
 ---
 
+> Agent 操作面已由 ADR-0090 改为独立 `agent-browser` CLI Session；本文关于 Plugin API、Foundation
+> Capability 与宿主资源所有权的决策继续有效。
+
 # 浏览器自动化由宿主 Foundation Capability 拥有
 
 ## 背景

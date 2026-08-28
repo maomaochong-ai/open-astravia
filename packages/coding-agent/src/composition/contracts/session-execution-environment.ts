@@ -46,6 +46,7 @@ export interface CodingAgentSandboxEnvironment {
 }
 
 export interface CodingAgentSessionExecutionEnvironmentContext {
+	readonly sessionId: string;
 	readonly cwd: string;
 	readonly agentDir?: string;
 	readonly scenario: ConversationScenario;

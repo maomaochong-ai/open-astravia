@@ -66,6 +66,9 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Fixed
 
+- Node 前台及后台 `bash`/`shell` 在命令进程已经退出、但 daemon 后代仍持有继承的 stdout/stderr 管道时，
+  不再永久等待 `close` 事件；宿主会在刷新已排队输出后按进程 `exit` 及时结算，超时和取消也会立即返回。
+
 - 原生文件会话目录的 `modifiedAt` 改为最后一条用户或助手消息的时间；恢复、导入或修复 JSONL
   造成的文件 mtime 更新不再把没有新消息的旧会话误排到列表顶部。无消息或消息时间不可用时仍回退文件 mtime。
 

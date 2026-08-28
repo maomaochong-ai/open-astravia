@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { createWriteStream, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setImmediate } from "node:timers";
 import type { ForegroundCommandOperations } from "@vetta/runtime-tools";
 import type {
 	BackgroundCommandHost,
@@ -67,34 +68,59 @@ function createForegroundOperations(
 					windowsHide: true,
 				});
 				let timedOut = false;
+				let settled = false;
 				let timeoutHandle: NodeJS.Timeout | undefined;
+				const cleanup = () => {
+					if (timeoutHandle) clearTimeout(timeoutHandle);
+					signal?.removeEventListener("abort", onAbort);
+					child.stdout?.destroy();
+					child.stderr?.destroy();
+				};
+				const resolveOnce = (exitCode: number | null) => {
+					if (settled) return;
+					settled = true;
+					cleanup();
+					resolveExecution({ exitCode });
+				};
+				const rejectOnce = (error: Error) => {
+					if (settled) return;
+					settled = true;
+					cleanup();
+					rejectExecution(error);
+				};
 				const stop = () => {
 					if (child.pid) killNodeProcessTree(child.pid);
 					else child.kill();
 				};
-				const onAbort = () => stop();
+				const onAbort = () => {
+					stop();
+					rejectOnce(new Error("aborted"));
+				};
 
 				if (timeout !== undefined && timeout > 0) {
 					timeoutHandle = setTimeout(() => {
 						timedOut = true;
 						stop();
+						rejectOnce(new Error(`timeout:${timeout}`));
 					}, timeout * 1_000);
 				}
 				child.stdout?.on("data", onData);
 				child.stderr?.on("data", onData);
-				child.once("error", (error) => {
-					if (timeoutHandle) clearTimeout(timeoutHandle);
-					signal?.removeEventListener("abort", onAbort);
-					rejectExecution(error);
-				});
+				child.once("error", rejectOnce);
 				if (signal?.aborted) onAbort();
 				else signal?.addEventListener("abort", onAbort, { once: true });
+				child.once("exit", (exitCode) => {
+					if (signal?.aborted || timedOut) return;
+					// Daemonizing commands can leave descendants holding the inherited
+					// output pipes after the command shell itself exits. Flush queued data
+					// for one turn, then settle from `exit` instead of waiting forever for
+					// `close`; `close` remains the fast path for ordinary commands.
+					setImmediate(() => resolveOnce(exitCode));
+				});
 				child.once("close", (exitCode) => {
-					if (timeoutHandle) clearTimeout(timeoutHandle);
-					signal?.removeEventListener("abort", onAbort);
-					if (signal?.aborted) rejectExecution(new Error("aborted"));
-					else if (timedOut) rejectExecution(new Error(`timeout:${timeout}`));
-					else resolveExecution({ exitCode });
+					if (signal?.aborted) rejectOnce(new Error("aborted"));
+					else if (timedOut) rejectOnce(new Error(`timeout:${timeout}`));
+					else resolveOnce(exitCode);
 				});
 			});
 		},
@@ -120,10 +146,28 @@ function createBackgroundProcessOperations(
 				const text = (options.normalizeOutput?.(decoded) ?? decoded).replaceAll("\r", "");
 				if (text) request.onOutput(text);
 			};
+			let settled = false;
+			const cleanup = (): void => {
+				child.stdout?.destroy();
+				child.stderr?.destroy();
+			};
+			const settleExit = (exitCode: number | null): void => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				request.onExit(exitCode ?? undefined);
+			};
+			const settleError = (error: Error): void => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				request.onError(error);
+			};
 			child.stdout?.on("data", onData);
 			child.stderr?.on("data", onData);
-			child.once("close", (exitCode) => request.onExit(exitCode ?? undefined));
-			child.once("error", request.onError);
+			child.once("exit", (exitCode) => setImmediate(() => settleExit(exitCode)));
+			child.once("close", settleExit);
+			child.once("error", settleError);
 			return {
 				stop() {
 					if (child.pid) killNodeProcessTree(child.pid);

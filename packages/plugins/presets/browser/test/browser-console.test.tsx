@@ -211,19 +211,18 @@ describe("运行时状态", () => {
 		expect(runtime.installBrowserCalls).toBe(1);
 		cleanup();
 	});
-
 });
 
 describe("使用说明", () => {
-	it("四条能力说明与安全默认值都在页面上", () => {
+	it("四条能力说明与独立 CLI Session 说明都在页面上", () => {
 		const { host, cleanup } = renderConsole();
 		for (const key of [
 			"guide.cap.navigate.title",
 			"guide.cap.interact.title",
 			"guide.cap.signin.title",
 			"guide.cap.isolation.title",
-			"guide.safety.untrusted",
-			"guide.safety.noEval",
+			"guide.cli.direct",
+			"guide.cli.independent",
 			"guide.vs.body",
 			"guide.newSession",
 		]) {

@@ -1,7 +1,7 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type JSX, useEffect, useState } from "react";
 import type { BrowserRuntimeController, RuntimeStatus } from "../runtime/runtime-controller";
-import { CapabilitiesSection, ComparisonSection, PromptsSection, SafetySection } from "./GuideSections";
+import { CapabilitiesSection, CliSection, ComparisonSection, PromptsSection } from "./GuideSections";
 import { RuntimeSection } from "./RuntimeSection";
 
 /** 上游项目：命令面、浏览器控制与安全开关都来自这里，页面上必须把出处写清楚。 */
@@ -74,7 +74,7 @@ export function BrowserConsole({ ports }: { ports: BrowserConsolePorts }): JSX.E
 				<CapabilitiesSection />
 				<PromptsSection />
 				<ComparisonSection />
-				<SafetySection />
+				<CliSection />
 
 				<footer className="flex flex-col gap-2 border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">
 					<p>{t("guide.newSession")}</p>

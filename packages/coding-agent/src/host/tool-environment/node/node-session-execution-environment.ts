@@ -6,6 +6,7 @@ import type {
 	CodingAgentSessionExecutionEnvironment,
 	CodingAgentSessionExecutionEnvironmentContext,
 } from "../../../composition/contracts/session-execution-environment.js";
+import { createCodingAgentSessionCommandEnvironment } from "../../../composition/session-command-environment.js";
 import { createCodingAgentEditPathPolicy } from "../../../tool-policy/path/edit-path-policy.js";
 import { createCodingAgentWritePathPolicy } from "../../../tool-policy/path/write-path-policy.js";
 import { getDefaultShellCommandPrefix, getShellConfig, getShellEnv } from "../../command-execution/shell-runtime.js";
@@ -24,7 +25,7 @@ export function createCodingAgentNodeSessionExecutionEnvironment(
 		cwd: context.cwd,
 		resolveShell,
 		environment: getShellEnv,
-		sessionEnvironment: context.env,
+		sessionEnvironment: createCodingAgentSessionCommandEnvironment(context.sessionId, context.env),
 		protectedDirectories: pathPolicy.protectedCommandDirectories,
 	});
 	return {
