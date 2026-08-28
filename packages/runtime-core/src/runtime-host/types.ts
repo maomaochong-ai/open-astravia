@@ -4,16 +4,7 @@ import type {
 	RuntimeAgentRuntime,
 	RuntimeAgentRuntimeOptions,
 } from "../agents/index.js";
-import type {
-	RuntimeSandboxGrantDecision,
-	RuntimeSandboxGrantRequest,
-	RuntimeUserConfirmationRequest,
-	RuntimeUserQuestionRequest,
-	RuntimeUserQuestionResult,
-	SessionConfig,
-	SessionEvent,
-	SessionExecutionMode,
-} from "../contracts.js";
+import type { SessionConfig, SessionEvent, SessionExecutionMode } from "../contracts.js";
 import type { RuntimeObservationPort, RuntimeObservationPublisher } from "../observation/index.js";
 import type { RuntimeHostAgentBackendRetirement, RuntimeHostAgentBackendRevision } from "./agent-backend-admission.js";
 import type { RuntimeHostSessionBackend } from "./session-backend.js";
@@ -29,7 +20,6 @@ import type {
 	RuntimeSessionExtensionHost,
 	RuntimeSessionHistoryController,
 	RuntimeSessionHistoryReader,
-	RuntimeSessionHostInteraction,
 	RuntimeSessionIdentityLifecycle,
 	RuntimeSessionMetadataController,
 	RuntimeSessionModelController,
@@ -55,7 +45,6 @@ export interface RuntimeHostSessionRecord {
 	lifecycle: RuntimeSessionIdentityLifecycle;
 	historyReader: RuntimeSessionHistoryReader;
 	historyController: RuntimeSessionHistoryController;
-	hostInteraction: RuntimeSessionHostInteraction;
 	executionController: RuntimeSessionExecutionController;
 	workspaceView: RuntimeSessionWorkspaceView;
 	extensionHost: RuntimeSessionExtensionHost | undefined;
@@ -196,15 +185,6 @@ export interface RuntimeHostOptions {
 	sandboxHostPath?: string;
 	linuxBubblewrapPath?: string;
 	macosSandboxExecPath?: string;
-	userConfirmationHandler?: (request: RuntimeUserConfirmationRequest, signal?: AbortSignal) => Promise<boolean>;
-	userQuestionHandler?: (
-		request: RuntimeUserQuestionRequest,
-		signal?: AbortSignal,
-	) => Promise<RuntimeUserQuestionResult>;
-	userSandboxGrantHandler?: (
-		request: RuntimeSandboxGrantRequest,
-		signal?: AbortSignal,
-	) => Promise<RuntimeSandboxGrantDecision>;
 	/**
 	 * Vetta 远端服务 URL。宿主进程显式注入后，下挂的 createAgentSession 不会再
 	 * 回退到 coding-agent 内置的 LAN 默认值，避免主进程内 desktop-app 路径

@@ -1,4 +1,3 @@
-import type { RuntimeSessionAskUserQuestionCapability, RuntimeUserQuestionRequest } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import { DynamicContributionCatalog } from "../../src/interception/contribution-catalog.js";
@@ -9,187 +8,145 @@ import {
 import { wrapRuntimeToolsWithInterceptionPipeline } from "../../src/interception/tool/pipeline.js";
 import {
 	createHeavyToolConfirmationInterceptor,
-	DEFAULT_HEAVY_TOOL_CONFIRMATION_TEXTS,
-	type HeavyToolConfirmationFallback,
 	HeavyToolConfirmationLedger,
+	type HeavyToolConsentPort,
 } from "../../src/tool-policy/heavy-tool-confirmation.js";
+import type { CodingAgentToolConsentDecision } from "../../src/tool-policy/tool-consent-contract.js";
 import { createCodingAgentToolSideEffectResolver } from "../../src/tool-policy/tool-side-effect.js";
 
 describe("heavy tool confirmation gate", () => {
-	it("asks for confirmation before the first heavy tool call in a session", async () => {
+	it("requests consent before the first heavy tool call in a session", async () => {
 		const harness = createHarness();
-
 		const result = await harness.run("vetd_create");
 
-		expect(harness.asked).toHaveLength(1);
-		expect(harness.asked[0]?.questions[0]?.question).toContain("vetd_create");
+		expect(harness.requests).toEqual([{ sessionId: "session", toolName: "vetd_create" }]);
 		expect(harness.executed).toEqual(["vetd_create"]);
 		expect(result.content[0]).toEqual({ type: "text", text: "ok" });
 	});
 
-	it("skips confirmation for later calls in the same session and re-asks in another session", async () => {
+	it("reuses consent in one session and requests it again in another session", async () => {
 		const harness = createHarness();
-
 		await harness.run("vetd_create");
 		await harness.run("vetd_create");
 		await harness.run("vetd_create", { sessionId: "other-session" });
 
-		expect(harness.asked).toHaveLength(2);
+		expect(harness.requests).toEqual([
+			{ sessionId: "session", toolName: "vetd_create" },
+			{ sessionId: "other-session", toolName: "vetd_create" },
+		]);
 		expect(harness.executed).toEqual(["vetd_create", "vetd_create", "vetd_create"]);
 	});
 
-	it("asks only once when the same heavy tool is called concurrently", async () => {
+	it("shares one consent request between concurrent calls", async () => {
 		let release: (() => void) | undefined;
 		const harness = createHarness({
-			answer: async () => {
+			decide: async () => {
 				await new Promise<void>((resolve) => {
 					release = resolve;
 				});
-				return DEFAULT_HEAVY_TOOL_CONFIRMATION_TEXTS.allowLabel;
+				return "allow_session";
 			},
 		});
 
 		const calls = [harness.run("vetd_create"), harness.run("vetd_create")];
-		await vi_waitFor(() => release !== undefined);
+		await waitFor(() => release !== undefined);
 		release?.();
 		await Promise.all(calls);
 
-		expect(harness.asked).toHaveLength(1);
+		expect(harness.requests).toHaveLength(1);
 		expect(harness.executed).toEqual(["vetd_create", "vetd_create"]);
 	});
 
-	it("fails the call without side effects when the user declines", async () => {
-		const harness = createHarness({ answer: async () => DEFAULT_HEAVY_TOOL_CONFIRMATION_TEXTS.denyLabel });
-
-		await expect(harness.run("vetd_create")).rejects.toThrow(/User declined to run "vetd_create"/);
-
-		expect(harness.executed).toEqual([]);
-	});
-
-	it("treats a cancelled question as a decline", async () => {
-		const harness = createHarness({ cancelled: true });
-
-		await expect(harness.run("vetd_create")).rejects.toThrow(/did not run and no side effect was produced/);
-
-		expect(harness.executed).toEqual([]);
-	});
-
-	it("treats free-text answers as a decline and re-asks on the next call", async () => {
-		const harness = createHarness({ answer: async () => "先看看再说" });
-
+	it("fails closed and requests consent again after a denial", async () => {
+		const harness = createHarness({ decide: async () => "deny" });
 		await expect(harness.run("vetd_create")).rejects.toThrow(/User declined to run "vetd_create"/);
 		await expect(harness.run("vetd_create")).rejects.toThrow(/User declined to run "vetd_create"/);
 
-		expect(harness.asked).toHaveLength(2);
+		expect(harness.requests).toHaveLength(2);
 		expect(harness.executed).toEqual([]);
 	});
 
-	it("fails the call when the confirmation channel itself errors", async () => {
+	it("fails closed without leaking a consent provider error", async () => {
 		const harness = createHarness({
-			answer: async () => {
-				throw new Error("renderer gone");
+			decide: async () => {
+				throw new Error("renderer gone with sensitive detail");
 			},
 		});
 
-		await expect(harness.run("vetd_create")).rejects.toThrow(/renderer gone/);
+		const call = harness.run("vetd_create");
+		await expect(call).rejects.toThrow(/Could not obtain consent/);
+		await expect(call).rejects.not.toThrow(/sensitive detail/);
+		expect(harness.executed).toEqual([]);
+	});
 
+	it("propagates cancellation without executing the tool", async () => {
+		const controller = new AbortController();
+		const abortReason = new Error("cancelled by test");
+		const harness = createHarness({
+			decide: async () => {
+				controller.abort(abortReason);
+				throw abortReason;
+			},
+		});
+
+		await expect(harness.run("vetd_create", { signal: controller.signal })).rejects.toBe(abortReason);
 		expect(harness.executed).toEqual([]);
 	});
 
 	it("leaves light tools untouched", async () => {
 		const harness = createHarness();
-
 		await harness.run("read");
 		await harness.run("read");
 
-		expect(harness.asked).toEqual([]);
+		expect(harness.requests).toEqual([]);
 		expect(harness.executed).toEqual(["read", "read"]);
 	});
 
-	it("blocks the first call then allows a retry when no host:ask capability exists", async () => {
-		const harness = createHarness({ withoutCapability: true });
+	it("blocks every heavy call while the consent function is unavailable", async () => {
+		const harness = createHarness({ available: false });
+		await expect(harness.run("vetd_create")).rejects.toThrow(/no tool-consent function/);
+		await expect(harness.run("vetd_create")).rejects.toThrow(/no tool-consent function/);
 
-		await expect(harness.run("vetd_create")).rejects.toThrow(/no interactive confirmation channel/);
-		expect(harness.executed).toEqual([]);
-
-		await harness.run("vetd_create");
-
-		expect(harness.executed).toEqual(["vetd_create"]);
-		expect(harness.asked).toEqual([]);
-	});
-
-	it("blocks the first call when the host:ask capability is present but disabled", async () => {
-		const harness = createHarness({ enabled: false });
-
-		await expect(harness.run("vetd_create")).rejects.toThrow(/no interactive confirmation channel/);
-
-		expect(harness.asked).toEqual([]);
-		expect(harness.executed).toEqual([]);
-	});
-
-	it("keeps failing under the block fallback", async () => {
-		const harness = createHarness({ withoutCapability: true, fallback: "block" });
-
-		await expect(harness.run("vetd_create")).rejects.toThrow(/Proceed without it/);
-		await expect(harness.run("vetd_create")).rejects.toThrow(/Proceed without it/);
-
+		expect(harness.requests).toEqual([]);
 		expect(harness.executed).toEqual([]);
 	});
 
 	it("honours an explicit light declaration over the default heavy name list", async () => {
 		const harness = createHarness({ declarations: [{ name: "vetd_create", side_effect: "light" }] });
-
 		await harness.run("vetd_create");
 
-		expect(harness.asked).toEqual([]);
+		expect(harness.requests).toEqual([]);
 		expect(harness.executed).toEqual(["vetd_create"]);
 	});
 
-	it("confirms a tool declared heavy by a plugin contribution", async () => {
+	it("protects a tool declared heavy by a plugin contribution", async () => {
 		const harness = createHarness({ declarations: [{ name: "read", side_effect: "HEAVY" }] });
-
 		await harness.run("read");
 
-		expect(harness.asked).toHaveLength(1);
+		expect(harness.requests).toHaveLength(1);
 		expect(harness.executed).toEqual(["read"]);
 	});
 });
 
 interface HarnessOptions {
-	/** 模拟宿主完全没有 host:ask 能力。 */
-	readonly withoutCapability?: boolean;
-	readonly enabled?: boolean;
-	readonly cancelled?: boolean;
-	readonly answer?: () => Promise<string>;
-	readonly fallback?: HeavyToolConfirmationFallback;
+	readonly available?: boolean;
+	readonly decide?: () => Promise<CodingAgentToolConsentDecision>;
 	readonly declarations?: readonly { name: string; side_effect?: unknown }[];
 }
 
 function createHarness(options: HarnessOptions = {}) {
-	const asked: Array<Pick<RuntimeUserQuestionRequest, "questions">> = [];
+	const requests: Array<{ readonly sessionId: string; readonly toolName: string }> = [];
 	const executed: string[] = [];
-	const capability: RuntimeSessionAskUserQuestionCapability | undefined = options.withoutCapability
-		? undefined
-		: {
-				isEnabled: () => options.enabled ?? true,
-				ask: async (request) => {
-					asked.push(request);
-					if (options.cancelled) return { cancelled: true, answers: [] };
-					const answer = await (options.answer?.() ??
-						Promise.resolve(DEFAULT_HEAVY_TOOL_CONFIRMATION_TEXTS.allowLabel));
-					return {
-						cancelled: false,
-						answers: request.questions.map((question) => ({
-							question: question.question,
-							answers: [answer],
-						})),
-					};
-				},
-			};
+	const consent: HeavyToolConsentPort = {
+		isAvailable: () => options.available ?? true,
+		request: async (request) => {
+			requests.push(request);
+			return options.decide?.() ?? "allow_session";
+		},
+	};
 	const interceptor: CodingAgentToolInterceptor = createHeavyToolConfirmationInterceptor({
 		ledger: new HeavyToolConfirmationLedger(),
-		capability,
-		fallback: options.fallback,
+		consent,
 		resolveSideEffect: createCodingAgentToolSideEffectResolver({
 			readDeclarations: () => options.declarations ?? [],
 		}),
@@ -211,15 +168,15 @@ function createHarness(options: HarnessOptions = {}) {
 	);
 
 	return {
-		asked,
+		requests,
 		executed,
-		run: (toolName: string, overrides: { sessionId?: string } = {}) =>
+		run: (toolName: string, overrides: { readonly sessionId?: string; readonly signal?: AbortSignal } = {}) =>
 			tools.get(toolName)!.execute({
 				sessionId: overrides.sessionId ?? "session",
 				turnId: "turn",
-				toolCallId: `call-${executed.length}`,
+				toolCallId: `call-${requests.length}`,
 				input: {},
-				signal: new AbortController().signal,
+				signal: overrides.signal ?? new AbortController().signal,
 			}),
 	};
 }
@@ -237,7 +194,7 @@ function createTool(name: string, executed: string[]): RuntimeToolDefinition {
 	};
 }
 
-async function vi_waitFor(predicate: () => boolean): Promise<void> {
+async function waitFor(predicate: () => boolean): Promise<void> {
 	for (let attempt = 0; attempt < 100; attempt += 1) {
 		if (predicate()) return;
 		await new Promise((resolve) => setTimeout(resolve, 1));

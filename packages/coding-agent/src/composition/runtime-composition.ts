@@ -335,7 +335,6 @@ function readCodingAgentSessionOptions(request: RuntimeSessionCreateRequest): Co
 		env: request.env ?? options.env,
 		enableBackgroundTasks: request.enableBackgroundTasks ?? options.enableBackgroundTasks,
 		includeAgentSkills: request.includeAgentSkills ?? options.includeAgentSkills,
-		askUserQuestion: request.askUserQuestion ?? options.askUserQuestion,
 		sandboxHostPath: request.sandboxHostPath ?? options.sandboxHostPath,
 		linuxBubblewrapPath: request.linuxBubblewrapPath ?? options.linuxBubblewrapPath,
 		macosSandboxExecPath: request.macosSandboxExecPath ?? options.macosSandboxExecPath,

@@ -1,5 +1,9 @@
 import { cpus, platform, release, totalmem } from "node:os";
-import type { RuntimeUserQuestionRequest, RuntimeUserQuestionResult, SessionEvent } from "@vetta/runtime-core";
+import type {
+	CodingAgentQuestionFunctionRequest,
+	CodingAgentQuestionResult,
+} from "@vetta/coding-agent/function-extensions";
+import type { SessionEvent } from "@vetta/runtime-core";
 import type {
 	DesktopConversationService,
 	DesktopConversationSession,
@@ -27,7 +31,7 @@ export interface DesktopConversationRemoteOperationsOptions {
 export class DesktopConversationRemoteOperations implements DesktopRemoteOperations {
 	private readonly sessions = new Map<string, ManagedSession>();
 	private readonly activeTurns = new Map<string, AbortController>();
-	private readonly questionResolvers = new Map<string, (result: RuntimeUserQuestionResult) => void>();
+	private readonly questionResolvers = new Map<string, (result: CodingAgentQuestionResult) => void>();
 	private readonly turnTimeoutMs: number | null;
 
 	constructor(
@@ -89,7 +93,7 @@ export class DesktopConversationRemoteOperations implements DesktopRemoteOperati
 		});
 		const unregisterQuestion = getDesktopUserQuestionBroker().registerRemoteHandler(sessionId, async (request) => {
 			queue.push({ type: "input", payload: questionPayload(request) });
-			return await new Promise<RuntimeUserQuestionResult>((resolve) => {
+			return await new Promise<CodingAgentQuestionResult>((resolve) => {
 				this.questionResolvers.set(request.requestId, resolve);
 			});
 		});
@@ -132,7 +136,7 @@ export class DesktopConversationRemoteOperations implements DesktopRemoteOperati
 		this.activeTurns.get(sessionId)?.abort();
 	}
 
-	async respond(sessionId: string, requestId: string, result: RuntimeUserQuestionResult): Promise<void> {
+	async respond(sessionId: string, requestId: string, result: CodingAgentQuestionResult): Promise<void> {
 		if (!this.sessions.has(sessionId)) throw new Error("Desktop session must be opened before responding");
 		const resolve = this.questionResolvers.get(requestId);
 		if (!resolve) throw new Error("Question request is no longer pending");
@@ -294,7 +298,7 @@ function mapRuntimeEvent(event: SessionEvent, observedText = ""): DesktopRemoteP
 	}
 }
 
-function questionPayload(request: RuntimeUserQuestionRequest): Record<string, unknown> {
+function questionPayload(request: CodingAgentQuestionFunctionRequest): Record<string, unknown> {
 	return { kind: "question", requestId: request.requestId, questions: request.questions };
 }
 

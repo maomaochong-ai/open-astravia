@@ -1,10 +1,5 @@
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type {
-	AgentPluginRuntimeConfig,
-	ConversationScenario,
-	RuntimeModel,
-	RuntimeSessionAskUserQuestionCapability,
-} from "@vetta/runtime-core";
+import type { ConversationScenario, RuntimeModel } from "@vetta/runtime-core";
 import type {
 	AgentFeatureDefinition,
 	ContinuationPolicyContext,
@@ -34,6 +29,7 @@ import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { ModelInputImageProcessor } from "../../model-context/image-normalization.js";
 import { CodingAgentModelCallFrameComposer } from "../../model-context/model-call-frame-composer.js";
 import { CodingAgentModelCallMessageFinalizer } from "../../model-context/model-call-message-finalizer.js";
+import type { AgentPluginRuntimeConfig } from "../../model-context/plugin-runtime.js";
 import { CodingAgentPromptRuntime } from "../../model-context/prompt-runtime.js";
 import type { CodingAgentModePromptResolver } from "../../model-context/system-prompt-sources.js";
 import { CodingAgentPluginRunOrchestrator } from "../../plugins/runtime/run-orchestrator.js";
@@ -53,10 +49,8 @@ import type {
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentSystemPromptOptionsResolver,
 } from "../../runtime-contracts/index.js";
-import {
-	createHeavyToolConfirmationInterceptor,
-	HeavyToolConfirmationLedger,
-} from "../../tool-policy/heavy-tool-confirmation.js";
+import { createHeavyToolConfirmationInterceptor } from "../../tool-policy/heavy-tool-confirmation.js";
+import type { CodingAgentHeavyToolPolicyRuntime } from "../../tool-policy/heavy-tool-policy-session-extension.js";
 import { createCodingAgentToolSideEffectResolver } from "../../tool-policy/tool-side-effect.js";
 import type { CodingAgentSessionInitializationTimeline } from "../session-initialization/initialization-timeline.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
@@ -127,8 +121,7 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly mcpController?: McpDeferredToolController;
 	readonly extensionEvents: CodingAgentExtensionRunBridge;
 	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
-	/** 宿主提问能力，heavy 工具首调确认闸的后端；缺省时确认闸走降级路径。 */
-	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
+	readonly heavyToolPolicyRuntime: CodingAgentHeavyToolPolicyRuntime;
 	readonly initializationTimeline?: CodingAgentSessionInitializationTimeline;
 	readonly imageSettingsSnapshots: CodingAgentImageSettingsSnapshotRouter;
 	readonly reportActiveToolNames?: (activeToolNames: readonly string[]) => Promise<void> | void;
@@ -262,18 +255,13 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		: undefined;
 	// 「会话内已确认」是执行状态而非逻辑合同（见 docs/agent/turn/08-binding-boundaries.md 1.2），
 	// 因此台账与确认闸都实时读写，Turn 绑定不复制它。
-	const heavyToolConfirmationLedger = new HeavyToolConfirmationLedger();
 	const heavyToolConfirmationInterceptor = createHeavyToolConfirmationInterceptor({
-		ledger: heavyToolConfirmationLedger,
-		capability: options.askUserQuestion,
+		ledger: options.heavyToolPolicyRuntime.ledger,
+		consent: options.heavyToolPolicyRuntime.consent,
 		resolveSideEffect: createCodingAgentToolSideEffectResolver({
 			readDeclarations: () => [
-				// 核心工具在 runtime-tools 注册处的定义级声明（如 im_send_attachment 判 heavy）。
-				// registry 内容随 Execution Mode 等动态变化，按需 snapshot 而不是快照一次。
-				...options.codingTools.registry.snapshot().registrations.map((registration) => ({
-					name: registration.tool.name,
-					sideEffect: registration.sideEffect,
-				})),
+				// 基础 Tool Catalog 只暴露执行合同；产品策略由 Coding Agent 单独持有。
+				...options.codingTools.readToolPolicyDeclarations(),
 				...options.specializedToolRegistrations.map((registration) => ({
 					name: registration.tool.name,
 					sideEffect: registration.sideEffect,

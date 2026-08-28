@@ -14,6 +14,7 @@ export type CodingAgentSessionInitializationProfile = Pick<
 	| "createSessionExecutionEnvironment"
 	| "createPromptResourceResolver"
 	| "createSessionExtensionDefinitions"
+	| "sessionExtensionFunctions"
 	| "createSubagentChildFactory"
 	| "createSubagentId"
 	| "createSystemPromptOptionsResolver"
@@ -61,6 +62,7 @@ export function createCodingAgentSessionInitializationProfile(
 		createSessionExecutionEnvironment: options.createSessionExecutionEnvironment,
 		createPromptResourceResolver: options.createPromptResourceResolver,
 		createSessionExtensionDefinitions: options.createSessionExtensionDefinitions,
+		sessionExtensionFunctions: options.sessionExtensionFunctions,
 		createSubagentChildFactory: options.createSubagentChildFactory,
 		createSubagentId: options.createSubagentId,
 		createSystemPromptOptionsResolver: options.createSystemPromptOptionsResolver,

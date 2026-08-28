@@ -1,7 +1,6 @@
 import type { AgentMessage, ThinkingLevel } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
 import type {
-	AgentPluginRuntimeConfig,
 	BackgroundTaskInfo,
 	PromptRequest,
 	RuntimeContextCompactionResult,
@@ -11,6 +10,7 @@ import type {
 	RuntimeSessionState,
 } from "@vetta/runtime-core";
 import type { TodoItem } from "../../features/todo/contracts.js";
+import type { AgentPluginRuntimeConfig } from "../../model-context/plugin-runtime.js";
 import type { CodingAgentRetryEvent } from "../../public-api/sdk/sdk-event-contract.js";
 import type {
 	CodingAgentActiveSessionCapabilities,

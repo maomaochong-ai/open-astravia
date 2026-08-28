@@ -63,17 +63,17 @@ export type KnowledgeToolUiDetails =
 
 /** ask_user_question：单个选项。 */
 export interface QuestionOption {
-	label: string;
-	description: string;
-	badges?: string[];
+	readonly label: string;
+	readonly description: string;
+	readonly badges?: readonly string[];
 }
 
 /** ask_user_question：单个问题（问题组成员）。 */
 export interface QuestionItem {
-	question: string;
-	header: string;
-	options: QuestionOption[];
-	multiSelect?: boolean;
+	readonly question: string;
+	readonly header: string;
+	readonly options: readonly QuestionOption[];
+	readonly multiSelect?: boolean;
 }
 
 /** ask_user_question：一次提问的用户作答（每题选中的标签 / 自由文本）。 */
@@ -90,9 +90,9 @@ export interface AskUserQuestionResolution {
 
 /** 一次待答的 ask_user_question 请求，绑定到发起它的 session。 */
 export interface PendingQuestion {
-	requestId: string;
-	sessionId: string;
-	questions: QuestionItem[];
+	readonly requestId: string;
+	readonly sessionId: string;
+	readonly questions: readonly QuestionItem[];
 }
 
 export interface ToolCallBlock {

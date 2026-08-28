@@ -5,13 +5,8 @@ import type {
 	HistoryEntry,
 	ProjectInfo,
 	PromptRequest,
-	RuntimeSandboxGrantDecision,
 	RuntimeSandboxGrantInfo,
-	RuntimeSandboxGrantRequest,
 	RuntimeTurnPromptOutcome,
-	RuntimeUserConfirmationRequest,
-	RuntimeUserQuestionRequest,
-	RuntimeUserQuestionResult,
 	SessionConfig,
 	SessionEvent,
 	SessionExecutionMode,
@@ -38,7 +33,6 @@ import {
 import { RuntimeHostAgentInstaller } from "./runtime-host-agent-installer.js";
 import { RuntimeHostCatalogFacade } from "./runtime-host-catalog-facade.js";
 import { RuntimeHostCloseCoordinator } from "./runtime-host-close-coordinator.js";
-import { RuntimeHostInteractions } from "./runtime-host-interactions.js";
 import { RuntimeHostQueueSidecar } from "./runtime-host-queue-sidecar.js";
 import { RuntimeHostSession } from "./runtime-host-session.js";
 import { RuntimeHostSessionDirectory } from "./runtime-host-session-directory.js";
@@ -95,7 +89,6 @@ export class RuntimeHost implements SessionFacade {
 	private readonly pathServices: RuntimeHostPathServices | undefined;
 	private readonly queueSidecar: RuntimeHostQueueSidecar;
 	private readonly sandboxGrantStore: RuntimeSandboxGrantStore | undefined;
-	private readonly interactions: RuntimeHostInteractions;
 
 	constructor(options: RuntimeHostOptions = {}) {
 		if (options.sessionBackend && options.createSessionBackend) {
@@ -141,15 +134,7 @@ export class RuntimeHost implements SessionFacade {
 				this.recordLifecycleFailure("session.prepare", "session-workspace", error, sessionId),
 		});
 		this.sandboxGrantStore = options.sandboxGrantStore;
-		this.interactions = new RuntimeHostInteractions({
-			sandboxGrantStore: this.sandboxGrantStore,
-			readCanonicalSessionId: (sessionId) => this.sessionDirectory.readCanonicalSessionId(sessionId),
-			userConfirmationHandler: options.userConfirmationHandler,
-			userQuestionHandler: options.userQuestionHandler,
-			userSandboxGrantHandler: options.userSandboxGrantHandler,
-		});
 		this.sessionRequestFactory = new RuntimeHostSessionRequestFactory({
-			interactions: this.interactions,
 			serverUrl: options.serverUrl,
 			sandboxHostPath: options.sandboxHostPath,
 			linuxBubblewrapPath: options.linuxBubblewrapPath,
@@ -178,7 +163,6 @@ export class RuntimeHost implements SessionFacade {
 			getDefaultExecutionMode: options.getDefaultExecutionMode ?? (() => "sandbox"),
 			createRequest: (config, executionMode, sessionIdRef) =>
 				this.sessionRequestFactory.create(config, executionMode, sessionIdRef),
-			createHostInteractionContext: (sessionIdRef) => this.interactions.createContext(sessionIdRef),
 			assertHostOpen: () => this.assertOpen(),
 			sharedModelController: this.sharedModelController,
 			sandboxGrantStore: this.sandboxGrantStore,
@@ -214,28 +198,6 @@ export class RuntimeHost implements SessionFacade {
 		});
 	}
 
-	setUserConfirmationHandler(
-		handler: ((request: RuntimeUserConfirmationRequest, signal?: AbortSignal) => Promise<boolean>) | undefined,
-	): void {
-		this.interactions.setUserConfirmationHandler(handler);
-	}
-
-	setUserQuestionHandler(
-		handler:
-			| ((request: RuntimeUserQuestionRequest, signal?: AbortSignal) => Promise<RuntimeUserQuestionResult>)
-			| undefined,
-	): void {
-		this.interactions.setUserQuestionHandler(handler);
-	}
-
-	setUserSandboxGrantHandler(
-		handler:
-			| ((request: RuntimeSandboxGrantRequest, signal?: AbortSignal) => Promise<RuntimeSandboxGrantDecision>)
-			| undefined,
-	): void {
-		this.interactions.setUserSandboxGrantHandler(handler);
-	}
-
 	/**
 	 * 原子安装一个新的平级主 Agent Definition 与 Host Backend。
 	 * Backend 可异步准备，但在准备完成前不会发布 Definition，避免半安装状态进入发现面。
@@ -245,15 +207,15 @@ export class RuntimeHost implements SessionFacade {
 	}
 
 	listSandboxGrants(sessionId: string): RuntimeSandboxGrantInfo[] {
-		return this.interactions.listSandboxGrants(sessionId);
+		return [...(this.sandboxGrantStore?.list(this.sessionDirectory.readCanonicalSessionId(sessionId)) ?? [])];
 	}
 
 	revokeSandboxGrant(sessionId: string, grantId: string): boolean {
-		return this.interactions.revokeSandboxGrant(sessionId, grantId);
+		return this.sandboxGrantStore?.revoke(this.sessionDirectory.readCanonicalSessionId(sessionId), grantId) ?? false;
 	}
 
 	revokeAllSandboxGrants(sessionId: string): number {
-		return this.interactions.revokeAllSandboxGrants(sessionId);
+		return this.sandboxGrantStore?.revokeAll(this.sessionDirectory.readCanonicalSessionId(sessionId)) ?? 0;
 	}
 
 	/**

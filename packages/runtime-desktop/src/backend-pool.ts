@@ -313,7 +313,6 @@ function toCodingAgentRuntimeSessionRequest(
 		env: request.env,
 		enableBackgroundTasks: request.enableBackgroundTasks,
 		includeAgentSkills: request.includeAgentSkills,
-		askUserQuestion: request.askUserQuestion,
 		sandboxHostPath: request.sandboxHostPath,
 		linuxBubblewrapPath: request.linuxBubblewrapPath,
 		macosSandboxExecPath: request.macosSandboxExecPath,

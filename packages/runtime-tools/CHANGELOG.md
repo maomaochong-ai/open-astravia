@@ -4,6 +4,10 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Runtime Tool 输入投影失败现在保留字段路径和具体 Schema 约束，同时不会在模型可见错误中回显完整工具参数。
+
 ### Added
 
 - 新增有序、不可变且支持 Turn-bound 动态状态的 `RuntimeToolProjectionPipeline`，允许产品在最终模型 Tool
@@ -26,6 +30,8 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Changed
 
+- `CodingToolRegistration` 不再携带产品 `sideEffect` 策略；Runtime Tool Catalog 仅持有执行、激活与配置合同，
+  Heavy/Light 声明及确认策略由 Coding Agent 在独立产品注册与策略源中拥有。
 - `createAsyncExecutionGate()` 的实现和测试由 Node 平台层迁入本包；FIFO、并发上限归一化和失败释放额度语义保持不变。
 
 - Coding Tools Feature 的 Turn-bound activation/filter 现在同时接收 admission 原始请求；需要在 Prompt
@@ -40,14 +46,14 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 - 新增平台中立的 `ToolCallDescriptionSchema`，作为 Coding Tool 可选调用说明字段的协议事实源；
   产品 Tool 与 Node Tool 共享同一 Schema，不再从平台实现目录复制或深度导入。
 - **平台命令 Host Port 收口**：`CommandProcessPort`、`DesktopCommandPort`、`ForegroundCommandOperations` 与 `BackgroundCommandService` 由协议包统一定义；Node 包只提供进程、文件和生命周期实现，并保留兼容导出。
-- **注册级副作用声明 `CodingToolRegistration.sideEffect`**：核心工具可在定义处声明 `"light" | "heavy"`（缺省 light），产品宿主的 heavy 首调确认闸消费该声明。`im_send_attachment` 声明 heavy（外发不可撤回且无自带确认）；bash/shell（边界归 Execution Mode）、subagent 三件套（会话内计费、可回收）与 `kb_write_page`（写宿主知识库非工作区）显式声明 light 并就近注释豁免理由。
 - **Turn-bound Tool Catalog lease 与显式 hard revoke**：Turn admission 捕获不可变 Catalog 与具体
   implementation binding；普通 disable/unregister/reload 只影响后续 Turn，旧 binding 保留到最后一个
   Turn lease 释放。`revoke` 强制要求 reason 与 audit id，并可取消在途执行。
 - **原生 Subagent 控制 Tool**：新增 `spawn_agent`、`dispatch_workflows`、`wait_agent`、`list_agents`、`interrupt_agent`、`send_message` 与 `followup_task` 的 TypeBox Schema、TS 描述和 Registration；工具协议与用户可见行为保持不变，执行只依赖 `runtime-subagents` 的协调端口。
 - **原生 Knowledge 写页 Tool**：新增 `kb_write_page` 的 TypeBox Schema、TS 描述、Registration 与知识写入窄 Operations Port；工具名称、scope、输入、输出和移动提示保持不变。
 - **原生 IM 附件 Tool**：新增 `im_send_attachment` 的 TypeBox Schema、TS 描述、Registration 与宿主发送/文件访问窄 Port；工具名称、scope、输入、输出及错误语义保持不变。
-- **原生能力 Tool 合同**：新增 `ask_user_question`、`invoke_skill`、`memory`、`todo`、`tool_search` 与知识标签查询 Tool；TypeBox Schema、TS 描述、Registration 和执行协议由 `runtime-tools` 持有，宿主状态与查询通过窄 Operations Port 注入。
+- **通用能力 Tool 合同**：新增 `memory`、`tool_search` 与知识标签查询等可复用 Tool 协议；产品 Tool
+  的名称、Schema、描述和 Registration 由 Coding Agent Feature 持有，环境能力通过窄 Port 注入。
 - **中立宿主执行原语**：新增可注入的 FIFO 异步执行 Gate 与既有路径解析导出，供产品组合根实现并发限制和 `@file` 路径兼容，不依赖 `coding-agent` 旧实现。
 - **可等待的后台命令关闭合同**：`BackgroundCommandService` 新增 `shutdown()`，停止全部运行任务并等待宿主进程退出回调；同步 `dispose()` 兼容入口、任务状态、通知和停止原因保持不变。
 - **Greenfield Coding Tools Feature**：新增 `@vetta/runtime-tools/coding`、`createCodingToolsFeature` 和 TypeBox 驱动的 `current_time` Runtime Tool。

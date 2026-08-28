@@ -61,7 +61,6 @@ import {
 } from "../config/desktop-config-store.js";
 import { DEFAULT_SERVER_URL } from "../constants.js";
 import { resolveSessionListCwd } from "../conversations/session-paths.js";
-import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { getKnowledgeRoot } from "../knowledge/knowledge-layout.js";
 import { getAppLogger } from "../logger.js";
 import { createDesktopPluginHookAdapterFactory } from "../plugins/coding-agent-hook-adapter.js";
@@ -70,6 +69,7 @@ import { getDesktopCodingAgentPluginRuntimeSource } from "../plugins/plugin-runt
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "../sandbox/windows-binary-resolver.js";
 import { createCodingAgentObservationLogPort } from "./coding-agent-observation-log-port.js";
+import { createDesktopCodingAgentFunctionSource } from "./function-extension-source.js";
 import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./host-services.js";
 import { createDesktopMcpSupervisor } from "./mcp-supervisor.js";
 import { getDesktopProviderObservationRuntime } from "./provider-observation.js";
@@ -113,7 +113,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	const sandboxHostPath = resolveWindowsSandboxHostBinary()?.path;
 	const linuxBubblewrapPath = getAvailableLinuxBubblewrapPath();
 	const macosSandboxExecPath = getAvailableMacosSandboxExecPath();
-	const userQuestionHandler = getDesktopUserQuestionBroker().handle;
+	const sessionExtensionFunctions = createDesktopCodingAgentFunctionSource();
 	const historicalFormat = createDesktopHistoricalSessionFormat();
 	const defaultResultArtifacts = createDesktopResultArtifactRuntime(getAgentDir());
 	const conversationCatalog = new DesktopRuntimeSessionCatalog({
@@ -141,6 +141,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				// 工作模式注册表归 desktop 所有（ADR-0071 修订）：coding-agent 只保留 core.mode
 				// 槽位，正文由这里按会话固化的 agentMode 解析注入。
 				resolveModePrompt: getModePrompt,
+				sessionExtensionFunctions,
 				knowledgeRuntime:
 					process.env.VETTA_KNOWLEDGE_DISABLED === "1"
 						? undefined
@@ -269,7 +270,6 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		sharedModelController: createCodingAgentSharedModelController(modelRuntime),
 		sessionErrorObserver: (event) => logRuntimeSessionError(event, log),
 		sessionCompactionObserver: createRuntimeSessionCompactionLogger(log),
-		userQuestionHandler,
 	});
 	return { runtime };
 }

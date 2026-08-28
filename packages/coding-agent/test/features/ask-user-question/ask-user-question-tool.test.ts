@@ -60,6 +60,7 @@ describe("Coding Agent ask_user_question tool", () => {
 		});
 		expect(ask).toHaveBeenCalledWith(
 			{
+				sessionId: "session",
 				questions: [
 					{
 						question: "Choose?",

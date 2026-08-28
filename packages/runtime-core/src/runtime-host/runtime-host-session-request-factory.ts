@@ -1,11 +1,9 @@
 import type { SessionConfig, SessionExecutionMode } from "../contracts.js";
-import type { RuntimeHostInteractions } from "./runtime-host-interactions.js";
 import type { RuntimeSessionCreateRequest } from "./session-backend.js";
 
 const DEFAULT_RUNTIME_SCENARIO: NonNullable<SessionConfig["scenario"]> = "cli";
 
 export interface RuntimeHostSessionRequestFactoryOptions {
-	readonly interactions: RuntimeHostInteractions;
 	readonly serverUrl?: string;
 	readonly sandboxHostPath?: string;
 	readonly linuxBubblewrapPath?: string;
@@ -41,10 +39,6 @@ export class RuntimeHostSessionRequestFactory {
 			enableBackgroundTasks: config.enableBackgroundTasks,
 			enableSubagents: shouldEnableSubagents(config.scenario),
 			includeAgentSkills: config.includeAgentSkills,
-			askUserQuestion: this.options.interactions.createAskUserQuestionCapability(
-				config.askUserQuestion === true,
-				sessionIdRef,
-			),
 			serverUrl: this.options.serverUrl,
 			sandboxHostPath: this.options.sandboxHostPath,
 			linuxBubblewrapPath: this.options.linuxBubblewrapPath,

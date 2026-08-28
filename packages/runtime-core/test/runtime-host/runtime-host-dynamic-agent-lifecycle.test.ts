@@ -195,7 +195,6 @@ function assembly(sessionId: string, dispose: () => Promise<void> = async () => 
 			forkSession: async () => ({ path: "", text: "" }),
 			setName: async () => {},
 		},
-		hostInteraction: { bind: async () => {} },
 		executionController: { isBusy: () => false, reconfigure: async () => {} },
 		workspaceView: { readWorkingDirectory: () => undefined },
 		configurationController: {

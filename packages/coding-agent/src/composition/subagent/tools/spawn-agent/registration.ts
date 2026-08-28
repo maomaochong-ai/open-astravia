@@ -1,4 +1,5 @@
-import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools/coding";
+import type { CodingToolScope } from "@vetta/runtime-tools/coding";
+import type { CodingAgentRuntimeToolRegistration } from "../../../../runtime-contracts/index.js";
 import { createSpawnAgentTool, type SpawnAgentToolInput, type SpawnAgentToolOptions } from "./spawn-agent-tool.js";
 
 export const SPAWN_AGENT_TOOL_SCOPES = ["conversation", "project", "cli"] as const satisfies readonly CodingToolScope[];
@@ -10,7 +11,7 @@ export interface SpawnAgentToolRegistrationOptions extends SpawnAgentToolOptions
 
 export function createSpawnAgentToolRegistration(
 	options: SpawnAgentToolRegistrationOptions,
-): CodingToolRegistration<SpawnAgentToolInput> {
+): CodingAgentRuntimeToolRegistration<SpawnAgentToolInput> {
 	return {
 		tool: { ...createSpawnAgentTool(options), modelOrder: options.modelOrder },
 		scopeUse: SPAWN_AGENT_TOOL_SCOPES,

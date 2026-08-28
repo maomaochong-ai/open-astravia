@@ -1,4 +1,4 @@
-import type { AgentPluginRuntimeConfig, AgentPluginTurnHandlerLease } from "@vetta/runtime-core";
+import type { AgentPluginRuntimeConfig, AgentPluginTurnHandlerLease } from "@vetta/coding-agent/plugin-runtime";
 
 export type DesktopPluginAgentHandlerKind = "tool" | "continuation" | "system-prompt";
 

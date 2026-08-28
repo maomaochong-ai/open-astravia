@@ -1,12 +1,7 @@
 import { type Static, Type } from "@sinclair/typebox";
-import type {
-	RuntimeQuestionItem,
-	RuntimeSessionAskUserQuestionCapability,
-	RuntimeUserQuestionAnswer,
-	RuntimeUserQuestionResult,
-} from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
+import type { CodingAgentQuestionAnswer, CodingAgentQuestionItem, CodingAgentQuestionResult } from "../contracts.js";
 import { ASK_USER_QUESTION_TOOL_DESCRIPTION } from "./description.js";
 
 export const CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME = "ask_user_question";
@@ -64,12 +59,17 @@ export const AskUserQuestionToolInputSchema = Type.Object({
 export type AskUserQuestionToolInput = Static<typeof AskUserQuestionToolInputSchema>;
 export type AskUserQuestionOption = AskUserQuestionToolInput["questions"][number]["options"][number];
 export type AskUserQuestionItem = AskUserQuestionToolInput["questions"][number];
-export type AskUserQuestionRequest = { readonly questions: RuntimeQuestionItem[] };
-export type AskUserQuestionAnswer = RuntimeUserQuestionAnswer;
-export type AskUserQuestionResult = RuntimeUserQuestionResult;
-export type AskUserQuestionFn = RuntimeSessionAskUserQuestionCapability["ask"];
-export type AskUserQuestionCapability = RuntimeSessionAskUserQuestionCapability;
-export type AskUserQuestionToolDetails = RuntimeUserQuestionResult;
+export type AskUserQuestionRequest = {
+	readonly sessionId: string;
+	readonly questions: readonly CodingAgentQuestionItem[];
+};
+export type AskUserQuestionAnswer = CodingAgentQuestionAnswer;
+export type AskUserQuestionResult = CodingAgentQuestionResult;
+export type AskUserQuestionFn = (
+	request: AskUserQuestionRequest,
+	signal?: AbortSignal,
+) => Promise<CodingAgentQuestionResult>;
+export type AskUserQuestionToolDetails = CodingAgentQuestionResult;
 
 export interface AskUserQuestionToolOptions {
 	readonly ask: AskUserQuestionFn;
@@ -83,9 +83,10 @@ export function createAskUserQuestionTool(
 		label: "Ask User",
 		description: ASK_USER_QUESTION_TOOL_DESCRIPTION,
 		inputSchema: AskUserQuestionToolInputSchema,
-		async execute({ input, signal }) {
+		async execute({ input, sessionId, signal }) {
 			const result = await options.ask(
 				{
+					sessionId,
 					questions: input.questions.map((question) => ({
 						question: question.question,
 						header: question.header,
@@ -97,7 +98,10 @@ export function createAskUserQuestionTool(
 			);
 			return {
 				content: [{ type: "text", text: formatResultText(result) }],
-				details: { cancelled: result.cancelled, answers: result.answers } satisfies AskUserQuestionToolDetails,
+				details: {
+					cancelled: result.cancelled,
+					answers: result.answers.map((answer) => ({ question: answer.question, answers: [...answer.answers] })),
+				} satisfies AskUserQuestionToolDetails,
 			};
 		},
 	};

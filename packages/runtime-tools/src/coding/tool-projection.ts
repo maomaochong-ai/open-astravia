@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { validateToolArguments } from "@vetta/ai";
+import { formatToolArgumentValidationIssues, ToolArgumentsValidationError, validateToolArguments } from "@vetta/ai";
 import type {
 	ModelCallFrameCompositionContext,
 	RuntimeSnapshotAcquireContext,
@@ -232,7 +232,11 @@ function validateAndDecodeInput(
 		);
 		return assertObjectInput(validated, toolName, projectorId);
 	} catch (error) {
-		throw new Error(`Runtime Tool ${toolName} input rejected by projection ${projectorId}`, { cause: error });
+		const issueSummary =
+			error instanceof ToolArgumentsValidationError ? `: ${formatToolArgumentValidationIssues(error.issues)}` : "";
+		throw new Error(`Runtime Tool ${toolName} input rejected by projection ${projectorId}${issueSummary}`, {
+			cause: error,
+		});
 	}
 }
 

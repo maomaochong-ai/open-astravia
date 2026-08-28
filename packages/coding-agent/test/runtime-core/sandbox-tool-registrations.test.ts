@@ -1,11 +1,10 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { RuntimeSessionHostInteractionContext } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type {
 	SandboxPermissionDecision,
-	SandboxPermissionPrompt,
+	SandboxPermissionRequest,
 	SandboxShellGrant,
 } from "@vetta/runtime-core/sandbox";
 import {
@@ -16,6 +15,7 @@ import {
 } from "@vetta/runtime-node/coding";
 import { clearSessionGrants, getSandboxShellGrant, type NodeSandboxPlatform } from "@vetta/runtime-node/sandbox";
 import { afterEach, describe, expect, it } from "vitest";
+import type { CodingAgentSandboxAuthorizationPort } from "../../src/execution/sandbox/authorization-contract.js";
 import { createCodingAgentSandboxToolRegistrations } from "../../src/execution/sandbox/tool-registrations.js";
 
 const SESSION_IDS = ["sandbox-read-session", "sandbox-deny-session", "sandbox-shell-session"] as const;
@@ -55,12 +55,12 @@ describe("Coding Agent sandbox tool registrations", () => {
 		}
 	});
 
-	it("routes outside-workspace read grants directly through the Runtime host and caches session grants", async () => {
+	it("routes outside-workspace read grants through the product authorization port and caches session grants", async () => {
 		const cwd = await mkdtemp(join(tmpdir(), "vetta-sandbox-workspace-"));
 		const outsideRoot = await mkdtemp(join(tmpdir(), "vetta-sandbox-outside-"));
 		const outsidePath = join(outsideRoot, "outside.txt");
 		await writeFile(outsidePath, "outside content", "utf8");
-		const prompts: SandboxPermissionPrompt[] = [];
+		const prompts: RecordedAuthorizationRequest[] = [];
 		try {
 			const registrations = createRegistrations({
 				cwd,
@@ -118,7 +118,7 @@ describe("Coding Agent sandbox tool registrations", () => {
 			"\\",
 			"/",
 		);
-		const prompts: SandboxPermissionPrompt[] = [];
+		const prompts: RecordedAuthorizationRequest[] = [];
 		let activeGrant: SandboxShellGrant | undefined;
 		let capturedTimeout: number | undefined;
 		let capturedSignal: AbortSignal | undefined;
@@ -174,7 +174,7 @@ interface CreateRegistrationsOptions {
 	readonly platform: NodeSandboxPlatform;
 	readonly decision: SandboxPermissionDecision;
 	readonly sessionId?: string;
-	readonly prompts?: SandboxPermissionPrompt[];
+	readonly prompts?: RecordedAuthorizationRequest[];
 	readonly commandOperations?: ForegroundCommandOperations;
 }
 
@@ -185,16 +185,16 @@ function createRegistrations(options: CreateRegistrationsOptions): readonly Codi
 			return { exitCode: 0 };
 		},
 	};
-	const hostInteraction: RuntimeSessionHostInteractionContext = {
-		confirm: async () => options.decision !== "deny",
-		requestSandboxGrant: async (request) => {
-			options.prompts?.push(request);
+	const authorization: CodingAgentSandboxAuthorizationPort = {
+		isAvailable: () => true,
+		request: async (sessionId, request, sensitive) => {
+			options.prompts?.push({ ...request, sessionId, sensitive });
 			return options.decision;
 		},
 	};
 	return createCodingAgentSandboxToolRegistrations({
 		cwd: options.cwd,
-		hostInteraction,
+		authorization,
 		getSessionId: () => options.sessionId,
 		environment: {
 			createToolSet: () =>
@@ -207,6 +207,11 @@ function createRegistrations(options: CreateRegistrationsOptions): readonly Codi
 				}),
 		},
 	});
+}
+
+interface RecordedAuthorizationRequest extends SandboxPermissionRequest {
+	readonly sessionId: string;
+	readonly sensitive: boolean;
 }
 
 function requireTool(registrations: readonly CodingToolRegistration[], toolName: string): RuntimeToolDefinition {

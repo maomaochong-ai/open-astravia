@@ -1,9 +1,12 @@
-import type { RuntimeUserQuestionRequest, RuntimeUserQuestionResult } from "@vetta/runtime-core";
+import type {
+	CodingAgentQuestionFunctionRequest,
+	CodingAgentQuestionResult,
+} from "@vetta/coding-agent/function-extensions";
 
-type UserQuestionHandler = (
-	request: RuntimeUserQuestionRequest,
+export type UserQuestionHandler = (
+	request: CodingAgentQuestionFunctionRequest,
 	signal?: AbortSignal,
-) => Promise<RuntimeUserQuestionResult>;
+) => Promise<CodingAgentQuestionResult>;
 
 export interface UserQuestionResolvedEvent {
 	requestId: string;
@@ -12,13 +15,13 @@ export interface UserQuestionResolvedEvent {
 
 type UserQuestionResolvedListener = (event: UserQuestionResolvedEvent) => void;
 
-const CANCELLED_QUESTION: RuntimeUserQuestionResult = { cancelled: true, answers: [] };
+const CANCELLED_QUESTION: CodingAgentQuestionResult = { cancelled: true, answers: [] };
 
 export class DesktopUserQuestionBroker {
 	private interactiveHandler: UserQuestionHandler | undefined;
 	private readonly debugHandlers = new Map<string, UserQuestionHandler>();
 	private readonly remoteHandlers = new Map<string, UserQuestionHandler>();
-	private readonly pendingQuestions = new Map<string, RuntimeUserQuestionRequest>();
+	private readonly pendingQuestions = new Map<string, CodingAgentQuestionFunctionRequest>();
 	private readonly resolvedListeners = new Set<UserQuestionResolvedListener>();
 
 	readonly handle: UserQuestionHandler = async (request, signal) => {
@@ -51,7 +54,11 @@ export class DesktopUserQuestionBroker {
 		}
 	};
 
-	listPendingQuestions(): RuntimeUserQuestionRequest[] {
+	isAvailable(): boolean {
+		return this.interactiveHandler !== undefined || this.debugHandlers.size > 0 || this.remoteHandlers.size > 0;
+	}
+
+	listPendingQuestions(): CodingAgentQuestionFunctionRequest[] {
 		return [...this.pendingQuestions.values()];
 	}
 

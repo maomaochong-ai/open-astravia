@@ -2,13 +2,13 @@ import type { AgentMessage, ThinkingLevel } from "@vetta/agent-core";
 import type { Api, ImageContent, Model, TextContent } from "@vetta/ai";
 import type { TodoItem } from "@vetta/coding-agent/session-extensions";
 import type {
-	AgentPluginRuntimeConfig,
 	BackgroundTaskInfo,
 	RuntimeContextCompactionResult,
 	RuntimeSessionContextUsage,
 	RuntimeSessionInputQueueMode,
 	RuntimeSessionState,
 } from "@vetta/runtime-core";
+import type { AgentPluginRuntimeConfig } from "../../model-context/plugin-runtime-contract.js";
 import type { CodingAgentSessionEventListener } from "./sdk-event-contract.js";
 import type { CodingAgentPromptOptions } from "./sdk-prompt-contract.js";
 import type { CodingAgentSkillContribution } from "./sdk-resource-source-contract.js";

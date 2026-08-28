@@ -2,7 +2,7 @@ import type {
 	AgentPluginContinuationContribution,
 	AgentPluginSystemPromptProviderContribution,
 	AgentPluginToolContribution,
-} from "@vetta/runtime-core";
+} from "@vetta/coding-agent/plugin-runtime";
 import type { DesktopPluginHookRegistration, DesktopPluginHookRegistry } from "./coding-agent-hook-registry.js";
 
 export type RegisteredAgentTool = Omit<AgentPluginToolContribution, "pluginId"> & { activationId?: string };

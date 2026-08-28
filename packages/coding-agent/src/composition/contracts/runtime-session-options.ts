@@ -1,15 +1,14 @@
 import type { Message } from "@vetta/ai";
+import type { SessionConfig, SessionExecutionMode } from "@vetta/runtime-core";
+import type { SessionExtensionFunctionSource } from "@vetta/runtime-core/session-extensions";
+import type { CodingAgentKnowledgeWriteOperations } from "../../features/knowledge/contracts.js";
 import type {
 	AgentPluginContinuationInvoker,
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
 	AgentPluginTurnHandlerLeaseProvider,
-	RuntimeSessionAskUserQuestionCapability,
-	SessionConfig,
-	SessionExecutionMode,
-} from "@vetta/runtime-core";
-import type { CodingAgentKnowledgeWriteOperations } from "../../features/knowledge/contracts.js";
+} from "../../model-context/plugin-runtime.js";
 import type {
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentSessionToolRegistration,
@@ -32,7 +31,8 @@ export interface CodingAgentRuntimeSessionOptions {
 	readonly invokePluginContinuation?: AgentPluginContinuationInvoker;
 	readonly invokePluginSystemPrompt?: AgentPluginSystemPromptInvoker;
 	readonly pluginTurnHandlerLeaseProvider?: AgentPluginTurnHandlerLeaseProvider;
-	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
+	/** Session 私有的 typed function 来源；优先于 Composition 默认来源。 */
+	readonly sessionExtensionFunctions?: SessionExtensionFunctionSource;
 	readonly sandboxHostPath?: string;
 	readonly linuxBubblewrapPath?: string;
 	readonly macosSandboxExecPath?: string;
@@ -85,7 +85,7 @@ export function requireCodingAgentRuntimeSessionOptions(value: unknown): CodingA
 		"model",
 		"agentPlugins",
 		"pluginTurnHandlerLeaseProvider",
-		"askUserQuestion",
+		"sessionExtensionFunctions",
 		"knowledgePageWriter",
 	]);
 	if (value.env !== undefined) {

@@ -56,6 +56,18 @@ export default defineConfig({
 				),
 			},
 			{
+				find: "@vetta/coding-agent/function-extensions",
+				replacement: fileURLToPath(
+					new URL("../../packages/coding-agent/src/public-api/function-extensions.ts", import.meta.url),
+				),
+			},
+			{
+				find: "@vetta/coding-agent/plugin-runtime",
+				replacement: fileURLToPath(
+					new URL("../../packages/coding-agent/src/public-api/plugin-runtime.ts", import.meta.url),
+				),
+			},
+			{
 				find: "@vetta/coding-agent/bootstrap",
 				replacement: fileURLToPath(new URL("../../packages/coding-agent/src/public-api/bootstrap.ts", import.meta.url)),
 			},

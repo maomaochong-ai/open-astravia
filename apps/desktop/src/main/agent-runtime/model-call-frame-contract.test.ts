@@ -9,8 +9,9 @@ import {
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentPluginMcpRuntime,
 } from "@vetta/coding-agent/host-services";
+import type { AgentPluginRuntimeConfig } from "@vetta/coding-agent/plugin-runtime";
 import { ALL_SCENARIOS } from "@vetta/coding-agent/profile";
-import { type AgentPluginRuntimeConfig, type ConversationScenario, RuntimeHost } from "@vetta/runtime-core";
+import { type ConversationScenario, RuntimeHost } from "@vetta/runtime-core";
 import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -21,10 +22,14 @@ import {
 	toolCallResponseEvents,
 } from "../../../../cli-host/test/support/openai-responses-test-server.js";
 import { getModePrompt } from "../agent-modes/index.js";
+import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
+import { createDesktopCodingAgentFunctionSource } from "./function-extension-source.js";
 import { createDesktopMcpSupervisor } from "./mcp-supervisor.js";
 import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
 
 type RuntimeBackend = "runtime";
+
+const TEST_FUNCTION_LOGGER = { warn: () => {} };
 
 interface RuntimeFixture {
 	readonly runtime: RuntimeHost;
@@ -38,6 +43,7 @@ interface ModelCallObservation {
 describe("Desktop RuntimeHost model-call frame contract", () => {
 	const directories: string[] = [];
 	const fixtures: RuntimeFixture[] = [];
+	const questionHandlerDisposals: Array<() => void> = [];
 	const servers: OpenAiResponsesTestServer[] = [];
 	const originalAgentDir = process.env[ENV_AGENT_DIR];
 	let isolatedGlobalAgentDir: string;
@@ -49,6 +55,7 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 
 	afterEach(async () => {
 		for (const fixture of fixtures.splice(0).reverse()) await fixture.dispose();
+		for (const dispose of questionHandlerDisposals.splice(0).reverse()) dispose();
 		for (const server of servers.splice(0).reverse()) await server.dispose();
 		for (const directory of directories.splice(0).reverse()) {
 			await rm(directory, { recursive: true, force: true });
@@ -84,7 +91,11 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 			const pluginRuntime = createMutablePluginRuntimeSource(pluginConfiguration());
 			const fixture = createRuntimeFixture(backend, agentStateDir, model, pluginRuntime.source);
 			fixtures.push(fixture);
-			fixture.runtime.setUserQuestionHandler(async () => ({ cancelled: true, answers: [] }));
+			const unregisterQuestion = getDesktopUserQuestionBroker().setInteractiveHandler(async () => ({
+				cancelled: true,
+				answers: [],
+			}));
+			questionHandlerDisposals.push(unregisterQuestion);
 
 			const created = await fixture.runtime.createSession({
 				cwd,
@@ -97,14 +108,13 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 				executionMode: "full-access",
 				enableBackgroundTasks: true,
 				includeAgentSkills: false,
-				askUserQuestion: true,
 				appendSystemPrompt: "Model-call frame host instruction",
 			});
 			await fixture.runtime.prompt(created.sessionId, { text: "Inspect the active capabilities" });
 			const firstFrame = observeRequest(server, 0);
 
 			pluginRuntime.publish(undefined);
-			fixture.runtime.setUserQuestionHandler(undefined);
+			unregisterQuestion();
 			await fixture.runtime.prompt(created.sessionId, {
 				text: "Inspect the capabilities after reconfiguration",
 				metadata: { knowledgeMode: true },
@@ -437,6 +447,7 @@ function createRuntimeFixture(
 			modelRegistry: modelRegistry(model),
 			initialModel: model,
 			initialThinkingLevel: "off",
+			sessionExtensionFunctions: createDesktopCodingAgentFunctionSource({ logger: TEST_FUNCTION_LOGGER }),
 			createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 			resolveModePrompt: getModePrompt,
 			createPluginRuntime: pluginRuntime ? () => pluginRuntime : undefined,

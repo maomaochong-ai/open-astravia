@@ -6,13 +6,15 @@ import {
 	type CodingAgentRuntimeComposition,
 	createCodingAgentRuntimeHostSessionConfig,
 } from "@vetta/coding-agent/composition";
+import { CODING_AGENT_ASK_USER_QUESTION_FUNCTION } from "@vetta/coding-agent/function-extensions";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import {
-	type AgentPluginContinuationInvocation,
-	type AgentPluginSystemPromptInvocation,
-	type AgentPluginToolInvocation,
-	RuntimeHost,
-} from "@vetta/runtime-core";
+import type {
+	AgentPluginContinuationInvocation,
+	AgentPluginSystemPromptInvocation,
+	AgentPluginToolInvocation,
+} from "@vetta/coding-agent/plugin-runtime";
+import { RuntimeHost } from "@vetta/runtime-core";
+import { SessionExtensionFunctionRegistry } from "@vetta/runtime-core/session-extensions";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	createCodingAgentRuntimeComposition,
@@ -164,6 +166,8 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 			assistantText("question tool disabled"),
 		];
 		let responseIndex = 0;
+		const functions = new SessionExtensionFunctionRegistry();
+		disposers.push(async () => functions.close());
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,
@@ -174,6 +178,7 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
+			sessionExtensionFunctions: functions,
 			resolveSystemPromptOptions: () => ({ customPrompt: "Base prompt", scenario: "conversation" }),
 			streamFn: (_model, context) => {
 				toolSurfaces.push((context.tools ?? []).map(({ name }) => name));
@@ -187,7 +192,7 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 			cancelled: false,
 			answers: [{ question: "Which implementation should be used?", answers: ["A"] }],
 		}));
-		runtime.setUserQuestionHandler(questionHandler);
+		const unregisterQuestion = functions.register(CODING_AGENT_ASK_USER_QUESTION_FUNCTION, questionHandler);
 		registerDisposal(runtime, composition);
 
 		const created = await runtime.createSession(
@@ -197,7 +202,6 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 				{
 					sessionDir: conversationDir,
 					scenario: "conversation",
-					askUserQuestion: true,
 				},
 			),
 		);
@@ -208,7 +212,7 @@ describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEO
 		expect(toolSurfaces[1]).toContain("ask_user_question");
 		expect(runtime.getState(created.sessionId).activeToolNames).toContain("ask_user_question");
 
-		runtime.setUserQuestionHandler(undefined);
+		unregisterQuestion();
 		await runtime.prompt(created.sessionId, { text: "continue" });
 
 		expect(toolSurfaces[2]).not.toContain("ask_user_question");

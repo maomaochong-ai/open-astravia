@@ -7,6 +7,15 @@ type IpcListener = Parameters<IpcRenderer["on"]>[1];
 const webUtils = { getPathForFile: vi.fn() } as unknown as WebUtils;
 
 describe("createPluginsApi settings events", () => {
+	it("reports renderer contribution host readiness through the dedicated IPC channel", async () => {
+		const harness = createIpcHarness();
+		const plugins = createPluginsApi(harness.ipc, webUtils).plugins;
+
+		await plugins.reportAgentContributionHostReady();
+
+		expect(harness.invoke).toHaveBeenCalledWith("vetta:plugins:agent-contribution-host-ready");
+	});
+
 	it("passes capability sessions to identity-sensitive plugin IPC", async () => {
 		const harness = createIpcHarness();
 		const plugins = createPluginsApi(harness.ipc, webUtils).plugins;

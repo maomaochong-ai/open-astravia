@@ -32,8 +32,6 @@ const CHANNELS = {
 	DELETE_MESSAGE: "vetta:session:delete-message",
 	REPLACE_LAST_USER_MESSAGE: "vetta:session:replace-last-user-message",
 	FORK_SESSION: "vetta:session:fork-session",
-	CONFIRM_REQUEST: "vetta:session:confirm-request",
-	CONFIRM_RESPONSE: "vetta:session:confirm-response",
 	QUESTION_REQUEST: "vetta:session:question-request",
 	QUESTION_LIST_PENDING: "vetta:session:question-list-pending",
 	QUESTION_RESOLVED: "vetta:session:question-resolved",
@@ -89,8 +87,6 @@ export function createSessionApi(ipc: IpcRenderer): Pick<DesktopApi, "session"> 
 			clearTodos: (sessionId) => ipc.invoke(CHANNELS.CLEAR_TODOS, sessionId),
 			subscribe: (sessionId, handler) =>
 				subscribeById(ipc, CHANNELS.SUBSCRIBE, CHANNELS.EVENT, CHANNELS.UNSUBSCRIBE, handler, [sessionId]),
-			onConfirmationRequest: (handler) => onIpcEvent(ipc, CHANNELS.CONFIRM_REQUEST, handler),
-			respondToConfirmation: (requestId, confirmed) => ipc.invoke(CHANNELS.CONFIRM_RESPONSE, requestId, confirmed),
 			onQuestionRequest: (handler) => onIpcEvent(ipc, CHANNELS.QUESTION_REQUEST, handler),
 			listPendingQuestions: () => ipc.invoke(CHANNELS.QUESTION_LIST_PENDING),
 			onQuestionResolved: (handler) => onIpcEvent(ipc, CHANNELS.QUESTION_RESOLVED, handler),

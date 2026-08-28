@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import type { PromptRequest, RuntimeUserQuestionRequest, RuntimeUserQuestionResult } from "@vetta/runtime-core";
+import type {
+	CodingAgentQuestionFunctionRequest,
+	CodingAgentQuestionResult,
+} from "@vetta/coding-agent/function-extensions";
+import type { PromptRequest } from "@vetta/runtime-core";
 import {
 	DesktopConversationError,
 	type DesktopConversationService,
@@ -14,8 +18,8 @@ const TERMINAL_OPERATION_RETENTION_MS = 30 * 60 * 1_000;
 type OperationStatus = "running" | "input_required" | "completed" | "failed" | "aborted";
 
 interface PendingQuestion {
-	request: RuntimeUserQuestionRequest;
-	finish: (result: RuntimeUserQuestionResult) => void;
+	request: CodingAgentQuestionFunctionRequest;
+	finish: (result: CodingAgentQuestionResult) => void;
 }
 
 interface ConversationOperation {
@@ -178,15 +182,15 @@ export class DebugConversationOperationCoordinator {
 
 	private handleQuestion(
 		operation: ConversationOperation,
-		request: RuntimeUserQuestionRequest,
+		request: CodingAgentQuestionFunctionRequest,
 		signal?: AbortSignal,
-	): Promise<RuntimeUserQuestionResult> {
+	): Promise<CodingAgentQuestionResult> {
 		if (signal?.aborted || isTerminal(operation.status)) {
 			return Promise.resolve({ cancelled: true, answers: [] });
 		}
-		return new Promise<RuntimeUserQuestionResult>((resolve) => {
+		return new Promise<CodingAgentQuestionResult>((resolve) => {
 			let finished = false;
-			const finish = (result: RuntimeUserQuestionResult): void => {
+			const finish = (result: CodingAgentQuestionResult): void => {
 				if (finished) return;
 				finished = true;
 				if (signal) signal.removeEventListener("abort", onAbort);
@@ -204,9 +208,9 @@ export class DebugConversationOperationCoordinator {
 	}
 
 	private validateAnswer(
-		request: RuntimeUserQuestionRequest,
+		request: CodingAgentQuestionFunctionRequest,
 		input: ConversationAnswerInput,
-	): RuntimeUserQuestionResult {
+	): CodingAgentQuestionResult {
 		if (input.cancelled === true) return { cancelled: true, answers: [] };
 		const answers = input.answers ?? [];
 		const expectedQuestions = new Set(request.questions.map((question) => question.question));

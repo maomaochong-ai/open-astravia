@@ -305,7 +305,12 @@ describe("CodingAgentPluginToolRuntime", () => {
 		const timeoutOrchestrator = createOrchestrator(() => timeoutConfig);
 		const timeoutRuntime = new CodingAgentPluginToolRuntime({
 			readAgentPlugins: () => timeoutConfig,
-			invokeTool: () => new Promise(() => undefined),
+			invokeTool: (_request, signal) =>
+				new Promise((_resolve, reject) => {
+					signal?.addEventListener("abort", () => reject(new Error("Plugin tool invocation was aborted")), {
+						once: true,
+					});
+				}),
 			runOrchestrator: timeoutOrchestrator,
 			resolveActivation: () => ({ mode: "scope", scenario: "cli" }),
 		});

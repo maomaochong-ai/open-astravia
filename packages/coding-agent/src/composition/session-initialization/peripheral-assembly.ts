@@ -10,8 +10,16 @@ import { SessionExtensionComposition, sessionExtensionObservation } from "@vetta
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools";
 import { createCodingAgentBackgroundWorkSessionExtension } from "../../execution/background/background-work-session-extension.js";
+import {
+	CODING_AGENT_SANDBOX_AUTHORIZATION_RUNTIME,
+	createCodingAgentSandboxAuthorizationSessionExtension,
+} from "../../execution/sandbox/authorization-session-extension.js";
 import { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
-import { createCodingAgentAskUserQuestionFeature } from "../../features/ask-user-question/index.js";
+import {
+	CODING_AGENT_ASK_USER_QUESTION_RUNTIME,
+	type CodingAgentAskUserQuestionExtensionRuntime,
+	createCodingAgentAskUserQuestionSessionExtension,
+} from "../../features/ask-user-question/index.js";
 import { createCodingAgentSessionAssistanceExtension } from "../../features/session-assistance/session-assistance-session-extension.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import {
@@ -27,6 +35,11 @@ import type {
 	CodingAgentPluginRuntimeSource,
 	CodingAgentRuntimeToolRegistration,
 } from "../../runtime-contracts/index.js";
+import {
+	CODING_AGENT_HEAVY_TOOL_POLICY_RUNTIME,
+	type CodingAgentHeavyToolPolicyRuntime,
+	createCodingAgentHeavyToolPolicySessionExtension,
+} from "../../tool-policy/heavy-tool-policy-session-extension.js";
 import { getCodingAgentOcrExecutionGate } from "../../tool-policy/ocr-execution-gate.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
@@ -70,6 +83,8 @@ export interface CodingAgentSessionPeripheralAssembly {
 	readonly todoRuntime: CodingAgentTodoRuntime;
 	readonly todoRegistration: CodingAgentRuntimeToolRegistration;
 	readonly todoEnabled: boolean;
+	readonly askUserQuestionRuntime: CodingAgentAskUserQuestionExtensionRuntime;
+	readonly heavyToolPolicyRuntime: CodingAgentHeavyToolPolicyRuntime;
 	readonly sessionExtensions: SessionExtensionComposition;
 	readonly baseCapabilities: RuntimeCapabilityDefinition;
 }
@@ -148,6 +163,43 @@ export async function createCodingAgentSessionPeripheralAssembly(
 			},
 		});
 	}
+	const createTodoRuntime = profile.createTodoRuntime;
+	const additionalExtensions = await profile.createSessionExtensionDefinitions?.(sessionOptions);
+	const sessionExtensions = await SessionExtensionComposition.create({
+		functions: sessionOptions.sessionExtensionFunctions ?? profile.sessionExtensionFunctions,
+		definitions: [
+			createCodingAgentAskUserQuestionSessionExtension({ scenario: options.scenario }),
+			createCodingAgentHeavyToolPolicySessionExtension(),
+			createCodingAgentSandboxAuthorizationSessionExtension(),
+			createCodingAgentBackgroundWorkSessionExtension(),
+			createCodingAgentPluginConfigurationSessionExtension(),
+			createCodingAgentSessionAssistanceExtension(),
+			createCodingAgentTodoSessionExtension({
+				activation: options.activation,
+				createRuntime: createTodoRuntime ? () => createTodoRuntime(sessionOptions) : undefined,
+				initialItems: sessionOptions.initialTodos,
+				initialLockSource: sessionOptions.initialTodoLockSource,
+				reportUpdate: (items) =>
+					options.resourceContext.reportObservation({
+						...sessionExtensionObservation(CODING_AGENT_TODO_OBSERVATION, items),
+						source: "tool",
+					}),
+			}),
+			...(profile.enableSubagents === true ? [createCodingAgentSubagentSessionExtension()] : []),
+			...(additionalExtensions ?? []),
+		],
+	});
+	options.deferRollback({
+		id: "session-extensions",
+		rollback: () => sessionExtensions.dispose(),
+	});
+	const todoExtension = sessionExtensions.services.require(CODING_AGENT_TODO_RUNTIME);
+	const todoRuntime = todoExtension.runtime;
+	const todoRegistration = todoExtension.toolRegistration;
+	const todoEnabled = todoExtension.toolEnabled;
+	const askUserQuestionRuntime = sessionExtensions.services.require(CODING_AGENT_ASK_USER_QUESTION_RUNTIME);
+	const heavyToolPolicyRuntime = sessionExtensions.services.require(CODING_AGENT_HEAVY_TOOL_POLICY_RUNTIME);
+	const sandboxAuthorization = sessionExtensions.services.require(CODING_AGENT_SANDBOX_AUTHORIZATION_RUNTIME);
 
 	const executionEnvironment = await profile.createSessionExecutionEnvironment({
 		cwd: options.sessionCwd,
@@ -170,6 +222,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 			readSessionId: options.readSessionId,
 			resolveToolEntry: (toolName) => options.codingTools.registry.resolve(toolName),
 			resourceContext: options.resourceContext,
+			sandboxAuthorization,
 		});
 	} catch (error) {
 		await executionEnvironment.dispose();
@@ -207,42 +260,6 @@ export async function createCodingAgentSessionPeripheralAssembly(
 			rollback: () => memoryRuntime.dispose(),
 		});
 	}
-	const createTodoRuntime = profile.createTodoRuntime;
-	const additionalExtensions = await profile.createSessionExtensionDefinitions?.(sessionOptions);
-	const sessionExtensions = await SessionExtensionComposition.create({
-		definitions: [
-			createCodingAgentBackgroundWorkSessionExtension(),
-			createCodingAgentPluginConfigurationSessionExtension(),
-			createCodingAgentSessionAssistanceExtension(),
-			createCodingAgentTodoSessionExtension({
-				activation: options.activation,
-				createRuntime: createTodoRuntime ? () => createTodoRuntime(sessionOptions) : undefined,
-				initialItems: sessionOptions.initialTodos,
-				initialLockSource: sessionOptions.initialTodoLockSource,
-				reportUpdate: (items) =>
-					options.resourceContext.reportObservation({
-						...sessionExtensionObservation(CODING_AGENT_TODO_OBSERVATION, items),
-						source: "tool",
-					}),
-			}),
-			...(profile.enableSubagents === true ? [createCodingAgentSubagentSessionExtension()] : []),
-			...(additionalExtensions ?? []),
-		],
-	});
-	options.deferRollback({
-		id: "session-extensions",
-		rollback: () => sessionExtensions.dispose(),
-	});
-	const todoExtension = sessionExtensions.services.require(CODING_AGENT_TODO_RUNTIME);
-	const todoRuntime = todoExtension.runtime;
-	const todoRegistration = todoExtension.toolRegistration;
-	const todoEnabled = todoExtension.toolEnabled;
-	const askUserQuestionFeature = sessionOptions.askUserQuestion
-		? createCodingAgentAskUserQuestionFeature({
-				capability: sessionOptions.askUserQuestion,
-				scenario: options.scenario,
-			})
-		: undefined;
 	const features = [
 		...options.codingTools.capabilities.features,
 		executionRuntime.feature,
@@ -251,7 +268,6 @@ export async function createCodingAgentSessionPeripheralAssembly(
 			: []),
 		...sessionExtensions.features,
 		...(memoryRuntime ? [createCodingAgentMemoryRuntimeFeature(memoryRuntime.toolRegistration)] : []),
-		...(askUserQuestionFeature ? [askUserQuestionFeature] : []),
 		...(mcpController ? [mcpController.createFeature({ includePromptInstruction: false })] : []),
 	];
 	const baseCapabilities: RuntimeCapabilityDefinition = {
@@ -262,6 +278,8 @@ export async function createCodingAgentSessionPeripheralAssembly(
 
 	return {
 		configurationState,
+		askUserQuestionRuntime,
+		heavyToolPolicyRuntime,
 		specializedToolRegistrations,
 		specializedToolFeature,
 		pluginRuntime,

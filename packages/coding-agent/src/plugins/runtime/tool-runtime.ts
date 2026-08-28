@@ -319,8 +319,9 @@ async function invokeWithTimeout<T>(
 	try {
 		const timeoutPromise = new Promise<never>((_resolve, reject) => {
 			timeout = setTimeout(() => {
-				controller.abort();
-				reject(new Error(`Plugin tool timed out after ${timeoutMs}ms`));
+				const timeoutError = new Error(`Plugin tool timed out after ${timeoutMs}ms`);
+				reject(timeoutError);
+				controller.abort(timeoutError);
 			}, timeoutMs);
 		});
 		return await Promise.race([invoke(controller.signal), timeoutPromise]);

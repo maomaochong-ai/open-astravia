@@ -1,4 +1,5 @@
-import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools/coding";
+import type { CodingToolScope } from "@vetta/runtime-tools/coding";
+import type { CodingAgentRuntimeToolRegistration } from "../../../../runtime-contracts/index.js";
 import {
 	createFollowupTaskTool,
 	type FollowupTaskToolInput,
@@ -18,7 +19,7 @@ export interface FollowupTaskToolRegistrationOptions extends FollowupTaskToolOpt
 
 export function createFollowupTaskToolRegistration(
 	options: FollowupTaskToolRegistrationOptions,
-): CodingToolRegistration<FollowupTaskToolInput> {
+): CodingAgentRuntimeToolRegistration<FollowupTaskToolInput> {
 	return {
 		tool: { ...createFollowupTaskTool(options), modelOrder: options.modelOrder },
 		scopeUse: FOLLOWUP_TASK_TOOL_SCOPES,

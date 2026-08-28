@@ -1,21 +1,21 @@
 /** Local question shapes (avoid importing @shared/store so inventory is not dataHeavy). */
 export interface QuestionOption {
-	label: string;
-	description: string;
-	badges?: string[];
+	readonly label: string;
+	readonly description: string;
+	readonly badges?: readonly string[];
 }
 
 export interface QuestionItem {
-	question: string;
-	header: string;
-	options: QuestionOption[];
-	multiSelect?: boolean;
+	readonly question: string;
+	readonly header: string;
+	readonly options: readonly QuestionOption[];
+	readonly multiSelect?: boolean;
 }
 
 export interface PendingQuestionModel {
-	requestId: string;
-	sessionId: string;
-	questions: QuestionItem[];
+	readonly requestId: string;
+	readonly sessionId: string;
+	readonly questions: readonly QuestionItem[];
 }
 
 export interface QuestionPanelClassNames {

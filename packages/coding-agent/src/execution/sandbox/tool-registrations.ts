@@ -1,11 +1,11 @@
-import type { RuntimeSessionHostInteractionContext } from "@vetta/runtime-core";
 import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import type { CodingAgentSandboxEnvironment } from "../../composition/contracts/session-execution-environment.js";
+import type { CodingAgentSandboxAuthorizationPort } from "./authorization-contract.js";
 import { createSandboxToolRegistrations } from "./tool-utils.js";
 
 export interface CodingAgentSandboxToolsOptions {
 	readonly cwd: string;
-	readonly hostInteraction: RuntimeSessionHostInteractionContext;
+	readonly authorization: CodingAgentSandboxAuthorizationPort;
 	readonly windowsSandboxHostPath?: string;
 	readonly linuxBubblewrapPath?: string;
 	readonly macosSandboxExecPath?: string;
@@ -25,7 +25,7 @@ export function createCodingAgentSandboxToolRegistrations(
 	if (!toolSet) return [];
 	return createSandboxToolRegistrations({
 		cwd: options.cwd,
-		hostInteraction: options.hostInteraction,
+		authorization: options.authorization,
 		getSessionId: options.getSessionId,
 		toolSet,
 	});

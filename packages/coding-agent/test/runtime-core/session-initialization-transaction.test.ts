@@ -227,7 +227,7 @@ describe("Coding Agent Session Initialization Transaction", () => {
 			await expect(composition.createSession({ sessionId: "session", memoryMode: true })).rejects.toThrow(
 				"initial prompt preview failed",
 			);
-			expect(rollbackOrder).toEqual(["session-extension", "todo", "memory", "plugin-mcp", "ownership"]);
+			expect(rollbackOrder).toEqual(["memory", "session-extension", "todo", "plugin-mcp", "ownership"]);
 			expect(activeOwnerships).toBe(0);
 			expect(pluginRuntimes).toHaveLength(1);
 			expect(memoryRuntimes[0]?.dispose).toHaveBeenCalledOnce();

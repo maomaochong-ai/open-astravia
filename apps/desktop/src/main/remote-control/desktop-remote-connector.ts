@@ -1,6 +1,6 @@
 import { AI_ERROR_CODES, isAIError } from "@vetta/ai";
+import type { CodingAgentQuestionResult } from "@vetta/coding-agent/function-extensions";
 import type { RemoteConnection, RemoteError, RemoteRequest } from "@vetta/remote-control";
-import type { RuntimeUserQuestionResult } from "@vetta/runtime-core";
 
 export interface DesktopRemoteSessionSummary {
 	readonly id: string;
@@ -20,7 +20,7 @@ export interface DesktopRemoteOperations {
 	openSession(sessionId: string): Promise<{ sessionId: string }>;
 	prompt(sessionId: string, text: string): AsyncIterable<DesktopRemotePromptEvent>;
 	abort(sessionId: string): Promise<void>;
-	respond?(sessionId: string, requestId: string, result: RuntimeUserQuestionResult): Promise<void>;
+	respond?(sessionId: string, requestId: string, result: CodingAgentQuestionResult): Promise<void>;
 	resume(sessionId: string, lastEventSequence: number): Promise<void>;
 	diagnostics(): Promise<Record<string, unknown>>;
 }
@@ -122,7 +122,7 @@ function readQuestionRequestId(request: RemoteRequest): string {
 	return request.payload.requestId;
 }
 
-function readQuestionResult(request: RemoteRequest): RuntimeUserQuestionResult {
+function readQuestionResult(request: RemoteRequest): CodingAgentQuestionResult {
 	if (
 		!isRecord(request.payload) ||
 		typeof request.payload.cancelled !== "boolean" ||

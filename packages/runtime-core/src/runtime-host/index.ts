@@ -141,7 +141,6 @@ export type {
 	RuntimeHostSessionBackendRoute,
 	RuntimeHostSessionBackendRouteDecision,
 	RuntimeHostSessionPortName,
-	RuntimeSessionAskUserQuestionCapability,
 	RuntimeSessionBackend,
 	RuntimeSessionCreateRequest,
 } from "./session-backend.js";
@@ -155,7 +154,6 @@ export {
 	createRuntimeSessionExtensionHost,
 	type RuntimeSessionExtensionSource,
 } from "./session-extension-host.js";
-export { RuntimeSessionHostInteractionBroker } from "./session-host-interaction-broker.js";
 export type {
 	RuntimeContextCompactionRequest,
 	RuntimeContextCompactionResult,
@@ -177,8 +175,6 @@ export type {
 	RuntimeSessionExtensionHost,
 	RuntimeSessionHistoryController,
 	RuntimeSessionHistoryReader,
-	RuntimeSessionHostInteraction,
-	RuntimeSessionHostInteractionContext,
 	RuntimeSessionIdentityLifecycle,
 	RuntimeSessionInputQueueMode,
 	RuntimeSessionMetadataController,

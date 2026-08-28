@@ -4,15 +4,19 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import type { CodingAgentRuntimeCompositionOptions } from "@vetta/coding-agent/composition";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import {
-	type AgentPluginContinuationInvocation,
-	type AgentPluginSystemPromptInvocation,
-	type AgentPluginToolInvocation,
-	RuntimeHost,
-} from "@vetta/runtime-core";
+import type {
+	AgentPluginContinuationInvocation,
+	AgentPluginSystemPromptInvocation,
+	AgentPluginToolInvocation,
+} from "@vetta/coding-agent/plugin-runtime";
+import { RuntimeHost } from "@vetta/runtime-core";
 import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
+import { createDesktopCodingAgentFunctionSource } from "./function-extension-source.js";
 import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
+
+const TEST_FUNCTION_LOGGER = { warn: vi.fn() };
 
 describe("Desktop RuntimeHost capabilities", () => {
 	const directories: string[] = [];
@@ -150,6 +154,13 @@ describe("Desktop RuntimeHost capabilities", () => {
 			assistantText("question tool disabled"),
 		];
 		let responseIndex = 0;
+		const questionBroker = getDesktopUserQuestionBroker();
+		const questionHandler = vi.fn(async () => ({
+			cancelled: false,
+			answers: [{ question: "Which implementation should be used?", answers: ["A"] }],
+		}));
+		const unregisterQuestion = questionBroker.setInteractiveHandler(questionHandler);
+		disposers.push(async () => unregisterQuestion());
 		const pool = new DesktopRuntimeBackendPool({
 			compositionDefaults: {
 				activation: { mode: "explicit", toolNames: [] },
@@ -157,6 +168,7 @@ describe("Desktop RuntimeHost capabilities", () => {
 				initialModel: MODEL,
 				initialThinkingLevel: "off",
 				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
+				sessionExtensionFunctions: createDesktopCodingAgentFunctionSource({ logger: TEST_FUNCTION_LOGGER }),
 				streamFn: (_model, context) => {
 					toolSurfaces.push((context.tools ?? []).map(({ name }) => name));
 					const response = responses[responseIndex++];
@@ -169,11 +181,6 @@ describe("Desktop RuntimeHost capabilities", () => {
 			sessionBackend: pool,
 			getDefaultExecutionMode: () => "full-access",
 		});
-		const questionHandler = vi.fn(async () => ({
-			cancelled: false,
-			answers: [{ question: "Which implementation should be used?", answers: ["A"] }],
-		}));
-		runtime.setUserQuestionHandler(questionHandler);
 		registerDisposal(runtime, pool);
 
 		const created = await runtime.createSession({
@@ -182,7 +189,6 @@ describe("Desktop RuntimeHost capabilities", () => {
 			scenario: "conversation",
 			executionMode: "full-access",
 			includeAgentSkills: false,
-			askUserQuestion: true,
 		});
 		await runtime.prompt(created.sessionId, { text: "ask me" });
 
@@ -190,7 +196,7 @@ describe("Desktop RuntimeHost capabilities", () => {
 		expect(toolSurfaces[0]).toContain("ask_user_question");
 		expect(runtime.getState(created.sessionId).activeToolNames).toContain("ask_user_question");
 
-		runtime.setUserQuestionHandler(undefined);
+		unregisterQuestion();
 		await runtime.prompt(created.sessionId, { text: "continue" });
 
 		expect(toolSurfaces[2]).not.toContain("ask_user_question");

@@ -67,4 +67,27 @@ describe("Runtime Coding Agent independence guard", () => {
 			"packages/runtime-knowledge/src/processing/prompt.ts:1: Runtime source hardcodes product token todo(action=",
 		]);
 	});
+
+	it("rejects plugin, interaction, and product side-effect contracts in Runtime sources", () => {
+		expect(
+			findRuntimeCodingAgentIndependenceViolations({
+				manifests: [],
+				files: [
+					{
+						path: "packages/runtime-core/src/contracts.ts",
+						text: "export interface AgentPluginTool {}\nexport interface HostInteraction {}",
+					},
+					{
+						path: "packages/runtime-tools/src/tool.ts",
+						text: 'const sideEffect = "heavy";\nconst handler = askUserQuestion;',
+					},
+				],
+			}),
+		).toEqual([
+			"packages/runtime-core/src/contracts.ts:1: Runtime source hardcodes product token AgentPlugin",
+			"packages/runtime-core/src/contracts.ts:2: Runtime source hardcodes product token HostInteraction",
+			"packages/runtime-tools/src/tool.ts:1: Runtime source hardcodes product token sideEffect",
+			"packages/runtime-tools/src/tool.ts:2: Runtime source hardcodes product token askUserQuestion",
+		]);
+	});
 });

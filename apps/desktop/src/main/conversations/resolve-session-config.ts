@@ -54,7 +54,6 @@ export async function resolveDesktopSessionConfig(
 	const isConversation = kind === "conversation";
 	const scenario: ConversationScenario = config?.scenario ?? (isConversation ? "conversation" : "project");
 	const desktopConfig = await readDesktopConfig();
-	const askUserQuestion = scenario === "conversation" || scenario === "project";
 	const enableBackgroundTasks = source === "interactive" && scenario !== "batch";
 	const includeAgentSkills = desktopConfig.experimental?.agentSkills !== false;
 	const appendSystemPrompt =
@@ -72,7 +71,6 @@ export async function resolveDesktopSessionConfig(
 			scenario,
 			agentMode,
 			appendSystemPrompt,
-			askUserQuestion,
 			enableBackgroundTasks,
 			includeAgentSkills,
 		},

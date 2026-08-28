@@ -4,8 +4,8 @@ import { DEFAULT_TOOL_SIDE_EFFECT, normalizeToolSideEffect, type ToolSideEffect 
  * 未显式声明 `side_effect` 时按工具名兜底判定为 heavy 的清单。
  *
  * 判定标准与 profiles/contracts.ts 的 ToolSideEffect 一致：在用户工作区创建目录/文件树、
- * 产生外部计费、发起不可撤销的外部动作。声明优先于清单：核心工具在 runtime-tools 注册处
- * 声明 `sideEffect`（如 im_send_attachment），插件工具在注册时声明 `side_effect`。
+ * 产生外部计费、发起不可撤销的外部动作。声明优先于清单：Coding Agent 产品工具在自身
+ * 注册处声明 `sideEffect`（如 im_send_attachment），插件工具在注册时声明 `side_effect`。
  * 此清单只兜仍未声明的存量插件工具，新 heavy 工具应在定义处声明而不是加进这里。
  */
 export const DEFAULT_HEAVY_TOOL_NAMES: readonly string[] = [

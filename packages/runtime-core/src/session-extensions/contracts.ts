@@ -5,6 +5,8 @@ import type { RuntimeDocumentParticipant } from "../runtime-host/runtime-documen
 declare const serviceType: unique symbol;
 declare const endpointInputType: unique symbol;
 declare const endpointOutputType: unique symbol;
+declare const functionInputType: unique symbol;
+declare const functionOutputType: unique symbol;
 declare const signalType: unique symbol;
 declare const observationType: unique symbol;
 
@@ -19,6 +21,19 @@ export interface SessionExtensionEndpointToken<Input, Output> {
 	readonly extensionId: string;
 	readonly [endpointInputType]?: Input;
 	readonly [endpointOutputType]?: Output;
+}
+
+/** 外围 Composition Root 向 Session Extension 提供的 typed function 标识。 */
+export interface SessionExtensionFunctionToken<Input, Output> {
+	readonly id: string;
+	readonly extensionId: string;
+	readonly [functionInputType]?: Input;
+	readonly [functionOutputType]?: Output;
+}
+
+export interface SessionExtensionFunctionDependency {
+	readonly token: SessionExtensionFunctionToken<unknown, unknown>;
+	readonly availability: "required" | "optional";
 }
 
 export interface SessionExtensionSignalToken<Payload> {
@@ -50,6 +65,25 @@ export function defineSessionExtensionEndpoint<Input, Output>(
 	name: string,
 ): SessionExtensionEndpointToken<Input, Output> {
 	return Object.freeze({ id: qualifiedId(extensionId, name), extensionId: requireId(extensionId, "extension") });
+}
+
+export function defineSessionExtensionFunction<Input, Output>(
+	extensionId: string,
+	name: string,
+): SessionExtensionFunctionToken<Input, Output> {
+	return Object.freeze({ id: qualifiedId(extensionId, name), extensionId: requireId(extensionId, "extension") });
+}
+
+export function requireSessionExtensionFunction<Input, Output>(
+	token: SessionExtensionFunctionToken<Input, Output>,
+): SessionExtensionFunctionDependency {
+	return { token, availability: "required" };
+}
+
+export function optionalSessionExtensionFunction<Input, Output>(
+	token: SessionExtensionFunctionToken<Input, Output>,
+): SessionExtensionFunctionDependency {
+	return { token, availability: "optional" };
 }
 
 export function defineSessionExtensionSignal<Payload>(
@@ -87,6 +121,16 @@ export interface SessionExtensionServiceResolver {
 	require<T>(token: SessionExtensionServiceToken<T>): T;
 }
 
+/** Session Extension 只读的函数调用面；注册权只属于外围 Composition Root。 */
+export interface SessionExtensionFunctionSource {
+	has<Input, Output>(token: SessionExtensionFunctionToken<Input, Output>): boolean;
+	invoke<Input, Output>(
+		token: SessionExtensionFunctionToken<Input, Output>,
+		input: Input,
+		signal?: AbortSignal,
+	): Promise<Output>;
+}
+
 export interface SessionExtensionSignalPublisher {
 	publish<Payload>(token: SessionExtensionSignalToken<Payload>, payload: Payload): void;
 }
@@ -111,6 +155,7 @@ export interface SessionExtensionContext {
 	readonly clock: Clock;
 	readonly createId: () => string;
 	readonly services: SessionExtensionServiceResolver;
+	readonly functions: SessionExtensionFunctionSource;
 	readonly signals: SessionExtensionSignalPublisher;
 }
 
@@ -154,6 +199,7 @@ export interface SessionExtensionInstance {
 export interface SessionExtensionDefinition {
 	readonly id: string;
 	readonly dependencies?: readonly string[];
+	readonly functionDependencies?: readonly SessionExtensionFunctionDependency[];
 	readonly conflicts?: readonly string[];
 	create(context: SessionExtensionContext): Promise<SessionExtensionInstance> | SessionExtensionInstance;
 }

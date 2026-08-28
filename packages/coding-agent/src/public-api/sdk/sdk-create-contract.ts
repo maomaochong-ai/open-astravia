@@ -2,17 +2,26 @@ import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
 import type { EcosystemHookAdapterFactory } from "@vetta/ecosystem-adapter";
 import type {
-	AgentPluginContinuationInvoker,
-	AgentPluginRuntimeConfig,
-	AgentPluginSystemPromptInvoker,
-	AgentPluginToolInvoker,
-	AgentPluginTurnHandlerLeaseProvider,
 	ConversationScenario,
 	RuntimeObservationHubIssue,
 	RuntimeObservationPort,
 	RuntimeObservationRouteOptions,
 } from "@vetta/runtime-core";
 import type { RuntimeTracer } from "@vetta/runtime-telemetry";
+import type {
+	CodingAgentQuestionAnswer,
+	CodingAgentQuestionItem,
+	CodingAgentQuestionOption,
+	CodingAgentQuestionRequest,
+	CodingAgentQuestionResult,
+} from "../../features/ask-user-question/contracts.js";
+import type {
+	AgentPluginContinuationInvoker,
+	AgentPluginRuntimeConfig,
+	AgentPluginSystemPromptInvoker,
+	AgentPluginToolInvoker,
+	AgentPluginTurnHandlerLeaseProvider,
+} from "../../model-context/plugin-runtime-contract.js";
 import type {
 	CodingAgentExtensionSource,
 	CodingAgentSkillContribution,
@@ -35,32 +44,13 @@ export type CodingAgentSessionStorageTarget =
 			readonly sessionPath: string;
 	  };
 
-export interface CodingAgentQuestionOption {
-	readonly label: string;
-	readonly description: string;
-	readonly badges?: readonly string[];
-}
-
-export interface CodingAgentQuestionItem {
-	readonly question: string;
-	readonly header: string;
-	readonly options: readonly CodingAgentQuestionOption[];
-	readonly multiSelect?: boolean;
-}
-
-export interface CodingAgentQuestionRequest {
-	readonly questions: readonly CodingAgentQuestionItem[];
-}
-
-export interface CodingAgentQuestionAnswer {
-	readonly question: string;
-	readonly answers: readonly string[];
-}
-
-export interface CodingAgentQuestionResult {
-	readonly cancelled: boolean;
-	readonly answers: readonly CodingAgentQuestionAnswer[];
-}
+export type {
+	CodingAgentQuestionAnswer,
+	CodingAgentQuestionItem,
+	CodingAgentQuestionOption,
+	CodingAgentQuestionRequest,
+	CodingAgentQuestionResult,
+};
 
 export interface CodingAgentContextFileContribution {
 	readonly path: string;

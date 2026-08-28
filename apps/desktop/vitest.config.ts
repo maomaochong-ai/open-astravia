@@ -54,6 +54,14 @@ export default defineConfig({
 				replacement: resolve(__dirname, "../../packages/coding-agent/src/public-api/session-extensions.ts"),
 			},
 			{
+				find: "@vetta/coding-agent/function-extensions",
+				replacement: resolve(__dirname, "../../packages/coding-agent/src/public-api/function-extensions.ts"),
+			},
+			{
+				find: "@vetta/coding-agent/plugin-runtime",
+				replacement: resolve(__dirname, "../../packages/coding-agent/src/public-api/plugin-runtime.ts"),
+			},
+			{
 				find: "@vetta/coding-agent/bootstrap",
 				replacement: resolve(__dirname, "../../packages/coding-agent/src/public-api/bootstrap.ts"),
 			},

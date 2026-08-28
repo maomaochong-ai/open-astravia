@@ -3,6 +3,7 @@ import type { AgentSession, ModelCallContributionContext, SessionContextRecord }
 import { createNodeSandboxCodingToolEnvironment, type ForegroundCommandOperations } from "@vetta/runtime-node/coding";
 import type { CodingToolCatalogEntry } from "@vetta/runtime-tools";
 import { describe, expect, it } from "vitest";
+import type { CodingAgentSandboxAuthorizationPort } from "../../src/execution/sandbox/authorization-contract.js";
 import { CodingAgentSessionExecutionRuntime } from "../../src/execution/session/runtime.js";
 import { createCodingAgentNodeSessionExecutionEnvironment } from "../../src/host/tool-environment/node/node-session-execution-environment.js";
 
@@ -182,6 +183,7 @@ function createRuntimeFixture(
 	};
 	const runtime = new CodingAgentSessionExecutionRuntime({
 		cwd: process.cwd(),
+		sandboxAuthorization: DENY_SANDBOX_AUTHORIZATION,
 		environment: {
 			...environment,
 			sandbox: {
@@ -234,6 +236,11 @@ function createRuntimeFixture(
 		},
 	};
 }
+
+const DENY_SANDBOX_AUTHORIZATION: CodingAgentSandboxAuthorizationPort = {
+	isAvailable: () => false,
+	request: async () => "deny",
+};
 
 function createSourceToolEntry(
 	toolName: string,

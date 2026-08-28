@@ -118,6 +118,33 @@ describe("Runtime Tool projection pipeline", () => {
 		expect((base.inputSchema.properties as Record<string, unknown>).description).toBeUndefined();
 	});
 
+	it("reports projected validation issues without echoing Tool arguments", () => {
+		const pipeline = new RuntimeToolProjectionPipeline([
+			createModelOnlyToolInputPropertyProjector({
+				id: "call-description",
+				order: 100,
+				propertyName: "description",
+				propertySchema: { type: "string", maxLength: 10 },
+			}),
+		]);
+		const projected = pipeline.projectTools(new Map([["read", tool("read")]]), frameContext()).get("read");
+		const validateInput = projected?.validateInput;
+		if (!validateInput) throw new Error("Projected Tool is missing input validation");
+
+		try {
+			validateInput({ description: "far too long", privateContent: "do not expose" });
+			expect.unreachable("expected validation failure");
+		} catch (error) {
+			expect(error).toBeInstanceOf(Error);
+			if (!(error instanceof Error)) return;
+			expect(error.message).toBe(
+				"Runtime Tool read input rejected by projection call-description: description: must NOT have more than 10 characters",
+			);
+			expect(error.message).not.toContain("do not expose");
+			expect(error.message).not.toContain("Received arguments");
+		}
+	});
+
 	it("preserves an explicitly declared property as the Tool-owned override", () => {
 		const base: RuntimeToolDefinition = {
 			...tool("publish"),

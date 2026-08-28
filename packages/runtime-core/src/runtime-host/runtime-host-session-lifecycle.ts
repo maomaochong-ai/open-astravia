@@ -5,7 +5,6 @@ import type { RuntimeHostSessionDirectory } from "./runtime-host-session-directo
 import type { RuntimeHostSessionEventRelay } from "./runtime-host-session-event-relay.js";
 import type { RuntimeHostSessionOperations } from "./runtime-host-session-operations.js";
 import type { RuntimeSessionCreateRequest } from "./session-backend.js";
-import type { RuntimeSessionHostInteractionContext } from "./session-ports.js";
 import type { RuntimeSandboxGrantStore, RuntimeSharedModelController } from "./session-services.js";
 import type { RuntimeHostSessionRecord } from "./types.js";
 
@@ -23,7 +22,6 @@ export interface RuntimeHostSessionLifecycleOptions {
 		executionMode: SessionExecutionMode,
 		sessionIdRef: { current?: string },
 	) => RuntimeSessionCreateRequest;
-	readonly createHostInteractionContext: (sessionIdRef: { current?: string }) => RuntimeSessionHostInteractionContext;
 	readonly assertHostOpen: () => void;
 	readonly sharedModelController?: RuntimeSharedModelController;
 	readonly sandboxGrantStore?: RuntimeSandboxGrantStore;
@@ -98,9 +96,6 @@ export class RuntimeHostSessionLifecycle {
 				if (config.executionMode !== undefined && config.executionMode !== existing.handle.executionMode) {
 					await this.options.operations.setExecutionMode(existing.sessionId, config.executionMode);
 				}
-				await existing.handle.hostInteraction.bind(
-					this.options.createHostInteractionContext({ current: existing.sessionId }),
-				);
 				return { sessionId: existing.sessionId };
 			}
 		}
@@ -113,7 +108,6 @@ export class RuntimeHostSessionLifecycle {
 			lifecycle: assembly.lifecycle,
 			historyReader: assembly.historyReader,
 			historyController: assembly.historyController,
-			hostInteraction: assembly.hostInteraction,
 			executionController: assembly.executionController,
 			workspaceView: assembly.workspaceView,
 			extensionHost: assembly.extensionHost,
@@ -152,7 +146,6 @@ export class RuntimeHostSessionLifecycle {
 
 		this.options.directory.register(sessionId, handle);
 		try {
-			await handle.hostInteraction.bind(this.options.createHostInteractionContext(sessionIdRef));
 			this.options.events.attach(sessionId, handle, handle.eventStream);
 			if (handle.queueController && sessionPath) {
 				await this.options.queueSidecar.restore(handle.queueController, handle.lifecycle.sessionPath);

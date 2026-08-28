@@ -248,49 +248,6 @@ export function useRootLayoutModel(): RootLayoutModel {
 		};
 	}, [currentPath, defaultConversationCwd, navigate]);
 
-	const confirmationQueueRef = useRef<
-		Parameters<Parameters<typeof window.vetta.session.onConfirmationRequest>[0]>[0][]
-	>([]);
-	const confirmationActiveRef = useRef(false);
-
-	useEffect(() => {
-		const showRequest = (
-			request: Parameters<Parameters<typeof window.vetta.session.onConfirmationRequest>[0]>[0],
-		) => {
-			confirmationActiveRef.current = true;
-			const showNext = () => {
-				const nextRequest = confirmationQueueRef.current.shift();
-				if (nextRequest) {
-					showRequest(nextRequest);
-				} else {
-					confirmationActiveRef.current = false;
-				}
-			};
-			setSandboxPermissionDrawer({
-				requestId: request.requestId,
-				title: request.title,
-				message: request.message,
-				onConfirm: () => {
-					void window.vetta.session.respondToConfirmation(request.requestId, true);
-					setSandboxPermissionDrawer(null);
-					showNext();
-				},
-				onCancel: () => {
-					void window.vetta.session.respondToConfirmation(request.requestId, false);
-					setSandboxPermissionDrawer(null);
-					showNext();
-				},
-			});
-		};
-		return window.vetta.session.onConfirmationRequest((request) => {
-			if (confirmationActiveRef.current) {
-				confirmationQueueRef.current.push(request);
-				return;
-			}
-			showRequest(request);
-		});
-	}, [setSandboxPermissionDrawer]);
-
 	// ask_user_question：主进程持有待答真相源。Renderer 先订阅增量事件，再读取快照，
 	// 让用户或 Debug Agent 回答、重载以及晚打开窗口都收敛到同一面板状态。
 	const setPendingQuestions = useSetAtom(pendingQuestionsAtom);
@@ -374,7 +331,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 			});
 		};
 		return window.vetta.session.onSandboxGrantRequest((request) => {
-			if (grantActiveRef.current || confirmationActiveRef.current) {
+			if (grantActiveRef.current) {
 				grantQueueRef.current.push(request);
 				return;
 			}

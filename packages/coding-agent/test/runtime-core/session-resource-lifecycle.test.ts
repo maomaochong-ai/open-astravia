@@ -21,6 +21,7 @@ import type { CodingAgentTurnCapabilitySessionAssembly } from "../../src/composi
 import { createCodingAgentBackgroundWorkSessionExtension } from "../../src/execution/background/background-work-session-extension.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/execution/session/runtime.js";
 import type { CodingAgentExtensionRunBridge } from "../../src/extensions/runtime/extension-run-bridge.js";
+import type { CodingAgentAskUserQuestionExtensionRuntime } from "../../src/features/ask-user-question/ask-user-question-session-extension.js";
 import type { CodingAgentTodoRuntime } from "../../src/features/todo/contracts.js";
 import type { CodingAgentSessionConfigurationState } from "../../src/host/session-configuration/configuration-state.js";
 import type { CodingAgentMemoryController, CodingAgentMemoryRolloverRuntime } from "../../src/memory/index.js";
@@ -66,6 +67,9 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 		const configurationState = {} as CodingAgentSessionConfigurationState;
 		const resourceContext = {} as RuntimeResourceContext;
 		const extensionEvents = {} as CodingAgentExtensionRunBridge;
+		const askUserQuestionRuntime = {
+			isEnabled: () => false,
+		} satisfies CodingAgentAskUserQuestionExtensionRuntime;
 		const memoryController = {} as CodingAgentMemoryController;
 		const memoryRuntime = {
 			dispose: vi.fn(),
@@ -165,7 +169,7 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 			activation: { mode: "explicit", toolNames: [] },
 			knowledgeAvailable: true,
 			backgroundTasksAvailable: true,
-			scenario: "cli",
+			askUserQuestionRuntime,
 			observationPublisher,
 		});
 		const prepared = lifecycle.prepareTurnCapabilityAssembly(turnCapabilityAssembly);

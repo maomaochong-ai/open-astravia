@@ -1,7 +1,7 @@
-import type { AgentPluginRuntimeConfig } from "@vetta/runtime-core";
 import { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CodingAgentSessionConfigurationState } from "../../src/host/session-configuration/configuration-state.js";
+import type { AgentPluginRuntimeConfig } from "../../src/model-context/plugin-runtime.js";
 import { CodingAgentPluginConfigurationRuntime } from "../../src/plugins/runtime/plugin-configuration-runtime.js";
 import {
 	CODING_AGENT_PLUGIN_CONFIGURATION_RUNTIME_OWNER,

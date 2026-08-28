@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import { createCodingAgentPluginMcpRuntime } from "@vetta/coding-agent/host-services";
+import type { AgentPluginRuntimeConfig } from "@vetta/coding-agent/plugin-runtime";
 import { CODING_AGENT_PLUGIN_CONFIGURATION_APPLY } from "@vetta/coding-agent/session-extensions";
-import type { AgentPluginRuntimeConfig } from "@vetta/runtime-core";
 import type {
 	McpClientHandle,
 	McpResourceReadResult,

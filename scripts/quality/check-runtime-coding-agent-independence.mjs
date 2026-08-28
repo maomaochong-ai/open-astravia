@@ -29,6 +29,16 @@ const FORBIDDEN_PRODUCT_SOURCE_TOKENS = Object.freeze([
 	"SubagentTodo",
 	"todo(action=",
 	"todoProgress",
+	"AgentPlugin",
+	"sideEffect",
+	"side_effect",
+	"askUserQuestion",
+	"RuntimeUserQuestion",
+	"RuntimeUserConfirmation",
+	"RuntimeQuestion",
+	"RuntimeConfirmation",
+	"RuntimeInteraction",
+	"HostInteraction",
 ]);
 
 export function findRuntimeCodingAgentIndependenceViolations(input) {

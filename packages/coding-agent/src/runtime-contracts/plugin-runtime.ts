@@ -1,17 +1,17 @@
 import type {
-	AgentPluginContinuationInvoker,
-	AgentPluginRuntimeConfig,
-	AgentPluginSystemPromptInvoker,
-	AgentPluginToolInvoker,
-	AgentPluginTurnHandlerLeaseProvider,
-} from "@vetta/runtime-core";
-import type {
 	ModelCallFrame,
 	ModelCallFrameCompositionContext,
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSnapshot, McpRuntimeToolView } from "@vetta/runtime-mcp";
+import type {
+	AgentPluginContinuationInvoker,
+	AgentPluginRuntimeConfig,
+	AgentPluginSystemPromptInvoker,
+	AgentPluginToolInvoker,
+	AgentPluginTurnHandlerLeaseProvider,
+} from "../model-context/plugin-runtime.js";
 
 export interface CodingAgentPluginRuntimeSource {
 	readonly readAgentPlugins: () => AgentPluginRuntimeConfig | undefined;
