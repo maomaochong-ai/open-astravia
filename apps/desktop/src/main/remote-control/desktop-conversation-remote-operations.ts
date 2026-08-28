@@ -3,6 +3,12 @@ import type {
 	CodingAgentQuestionFunctionRequest,
 	CodingAgentQuestionResult,
 } from "@vetta/coding-agent/function-extensions";
+import {
+	isCodingAgentMcpReloadStarted,
+	readCodingAgentBackgroundTasksObservation,
+	readCodingAgentMcpReloadFinished,
+	readCodingAgentSubagentsObservation,
+} from "@vetta/coding-agent/session-extensions";
 import type { SessionEvent } from "@vetta/runtime-core";
 import type {
 	DesktopConversationService,
@@ -188,6 +194,14 @@ class AsyncPromptQueue implements AsyncIterable<DesktopRemotePromptEvent> {
 }
 
 function mapRuntimeEvent(event: SessionEvent, observedText = ""): DesktopRemotePromptEvent | undefined {
+	if (event.type === "session.extension") {
+		if (isCodingAgentMcpReloadStarted(event)) return { type: "state", payload: { state: "preparing" } };
+		if (readCodingAgentMcpReloadFinished(event)) return { type: "state", payload: { state: "running" } };
+		const tasks = readCodingAgentBackgroundTasksObservation(event);
+		if (tasks) return { type: "state", payload: { state: tasks.length > 0 ? "background" : "running" } };
+		const agents = readCodingAgentSubagentsObservation(event);
+		if (agents) return { type: "state", payload: { state: agents.length > 0 ? "background" : "running" } };
+	}
 	switch (event.type) {
 		case "message.delta":
 			return { type: "delta", text: event.delta };
@@ -267,12 +281,6 @@ function mapRuntimeEvent(event: SessionEvent, observedText = ""): DesktopRemoteP
 			return { type: "state", payload: { state: "compacting" } };
 		case "compaction.end":
 			return { type: "state", payload: { state: "running" } };
-		case "mcp.status":
-			return { type: "state", payload: { state: "preparing" } };
-		case "mcp.reload.start":
-			return { type: "state", payload: { state: "preparing" } };
-		case "mcp.reload.end":
-			return { type: "state", payload: { state: "running" } };
 		case "usage.update":
 			return {
 				type: "state",
@@ -284,10 +292,6 @@ function mapRuntimeEvent(event: SessionEvent, observedText = ""): DesktopRemoteP
 					contextPercent: event.contextPercent,
 				},
 			};
-		case "background_tasks_update":
-			return { type: "state", payload: { state: event.tasks.length > 0 ? "background" : "running" } };
-		case "subagents_update":
-			return { type: "state", payload: { state: event.agents.length > 0 ? "background" : "running" } };
 		case "session.lifecycle":
 			if (event.phase === "agent_start" || event.phase === "turn_start")
 				return { type: "state", payload: { state: "running" } };

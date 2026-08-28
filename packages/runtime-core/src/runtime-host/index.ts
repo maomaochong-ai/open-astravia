@@ -189,8 +189,6 @@ export type {
 	RuntimeSessionToolController,
 	RuntimeSessionTurnControl,
 	RuntimeSessionWorkspaceView,
-	RuntimeSubagentSnapshot,
-	RuntimeSubagentUsageSnapshot,
 	RuntimeTurnPrompt,
 } from "./session-ports.js";
 export {

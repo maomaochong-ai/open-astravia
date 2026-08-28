@@ -89,4 +89,27 @@ describe("conversation error history projection", () => {
 			},
 		]);
 	});
+
+	it("normalizes historical extension-owned failure origins", () => {
+		let document = createEmptyConversationDocument({ sessionId: "session-1", createdAt: 0 });
+		document = applyStoredEventToConversationDocument(
+			document,
+			{
+				type: "turn.failed",
+				sessionId: "session-1",
+				turnId: "turn-1",
+				error: {
+					code: "EXTENSION_FAILED",
+					message: "extension failed",
+					origin: "legacy-extension" as never,
+				},
+				timestamp: 1,
+			},
+			1,
+		);
+
+		expect(projectConversationDocumentHistory(document)).toEqual([
+			expect.objectContaining({ type: "error", origin: "extension" }),
+		]);
+	});
 });

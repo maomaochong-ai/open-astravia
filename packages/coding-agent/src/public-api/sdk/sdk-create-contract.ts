@@ -1,33 +1,33 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
-import type {
-	CodingAgentQuestionAnswer,
-	CodingAgentQuestionItem,
-	CodingAgentQuestionOption,
-	CodingAgentQuestionRequest,
-	CodingAgentQuestionResult,
-} from "@vetta/coding-agent/function-extensions";
-import type {
-	AgentPluginContinuationInvoker,
-	AgentPluginRuntimeConfig,
-	AgentPluginSystemPromptInvoker,
-	AgentPluginToolInvoker,
-	AgentPluginTurnHandlerLeaseProvider,
-} from "@vetta/coding-agent/plugin-runtime";
 import type { EcosystemHookAdapterFactory } from "@vetta/ecosystem-adapter";
 import type {
-	ConversationScenario,
 	RuntimeObservationHubIssue,
 	RuntimeObservationPort,
 	RuntimeObservationRouteOptions,
 } from "@vetta/runtime-core";
 import type { RuntimeTracer } from "@vetta/runtime-telemetry";
 import type {
+	AgentPluginContinuationInvoker,
+	AgentPluginRuntimeConfig,
+	AgentPluginSystemPromptInvoker,
+	AgentPluginToolInvoker,
+	AgentPluginTurnHandlerLeaseProvider,
+} from "./sdk-plugin-contract.js";
+import type {
+	CodingAgentQuestionAnswer,
+	CodingAgentQuestionItem,
+	CodingAgentQuestionOption,
+	CodingAgentQuestionRequest,
+	CodingAgentQuestionResult,
+} from "./sdk-question-contract.js";
+import type {
 	CodingAgentExtensionSource,
 	CodingAgentSkillContribution,
 	CodingAgentSkillPolicy,
 	CodingAgentSkillSource,
 } from "./sdk-resource-source-contract.js";
+import type { ConversationScenario } from "./sdk-scenario-contract.js";
 import type { CodingAgentSession } from "./sdk-session-contract.js";
 import type { CodingAgentSessionToolDefinition } from "./sdk-tool-contract.js";
 

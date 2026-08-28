@@ -33,7 +33,7 @@ describe("context composition model-call lifecycle", () => {
 		expect(reports[0]?.sections).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ id: "instruction:core", source: { owner: "core", id: "core" } }),
-				expect.objectContaining({ id: "instruction:skill", source: { owner: "skill", id: "review" } }),
+				expect.objectContaining({ id: "instruction:skill", source: { owner: "extension", id: "review" } }),
 				expect.objectContaining({ id: "tool:lookup", kind: "tool_schema" }),
 				expect.objectContaining({
 					id: "runtime:workspace",
@@ -114,7 +114,7 @@ function frame(): ModelCallFrame {
 			{
 				id: "instruction:skill",
 				kind: "instruction",
-				source: { owner: "skill", id: "review" },
+				source: { owner: "extension", id: "review" },
 				content: "skill instructions",
 			},
 			{

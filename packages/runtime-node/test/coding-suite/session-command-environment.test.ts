@@ -20,7 +20,9 @@ describe("Node host Session command environment", () => {
 				OVERRIDE: "session",
 				SESSION_ONLY: "session",
 			});
-			expect(first.registrations.map(({ tool }) => tool.name)).toEqual(["bash", "shell"]);
+			expect(first.registrations.map(({ tool }) => tool.name)).toEqual([
+				process.platform === "win32" ? "shell" : "bash",
+			]);
 			expect(first.backgroundService).not.toBe(second.backgroundService);
 			expect(first.backgroundService.list()).toEqual([]);
 			expect(second.backgroundService.list()).toEqual([]);

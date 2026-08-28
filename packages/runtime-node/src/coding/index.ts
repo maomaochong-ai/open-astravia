@@ -23,7 +23,6 @@ export {
 } from "./coding-tool-result-policy.js";
 export {
 	CODING_TOOLS_FEATURE_ID,
-	type CodingToolActivationResolver,
 	type CodingToolCatalogRefresher,
 	type CodingToolRegistrationFilter,
 	type CodingToolsFeatureOptions,
@@ -75,7 +74,6 @@ export type {
 	ReadBackgroundCommandOutputOptions,
 	SpawnBackgroundCommandOptions,
 } from "./shared/background-command-service.js";
-export { buildBackgroundCommandNotification } from "./shared/background-command-service.js";
 export {
 	type CommandToolExecutor,
 	type CommandToolExecutorRequest,
@@ -114,19 +112,8 @@ export {
 	truncateLine,
 	truncateTail,
 } from "./shared/truncation.js";
+export type { CodingToolRegistration } from "./tool-registration.js";
 export {
-	CODING_TOOL_SCOPES,
-	type CodingToolActivation,
-	type CodingToolCategory,
-	type CodingToolRegistration,
-	type CodingToolScope,
-	DEFAULT_CODING_TOOL_SCOPE,
-	selectCodingToolRegistrations,
-	selectCodingTools,
-	selectCodingToolsForScope,
-} from "./tool-registration.js";
-export {
-	BASH_TOOL_CATEGORY,
 	BASH_TOOL_DESCRIPTION,
 	type BashToolInput,
 	BashToolInputSchema,
@@ -134,14 +121,11 @@ export {
 	type BashToolRegistrationOptions,
 	createBashTool,
 	createBashToolRegistration,
-	getBashToolScopes,
 } from "./tools/bash/index.js";
 export {
 	createDocToPdfTool,
 	createDocToPdfToolRegistration,
-	DOC_TO_PDF_TOOL_CATEGORY,
 	DOC_TO_PDF_TOOL_DESCRIPTION,
-	DOC_TO_PDF_TOOL_SCOPES,
 	type DocToPdfDetectedBackend,
 	type DocToPdfOfficeBackend,
 	type DocToPdfOperations,
@@ -154,9 +138,7 @@ export {
 	AnchorEditInputSchema,
 	createEditTool,
 	createEditToolRegistration,
-	EDIT_TOOL_CATEGORY,
 	EDIT_TOOL_DESCRIPTION,
-	EDIT_TOOL_SCOPES,
 	type EditOperations,
 	type EditPathPolicy,
 	type EditToolDetails,
@@ -167,9 +149,7 @@ export {
 export {
 	createExtractTextFromImageTool,
 	createExtractTextFromImageToolRegistration,
-	EXTRACT_TEXT_FROM_IMAGE_TOOL_CATEGORY,
 	EXTRACT_TEXT_FROM_IMAGE_TOOL_DESCRIPTION,
-	EXTRACT_TEXT_FROM_IMAGE_TOOL_SCOPES,
 	type ExtractTextFromImageToolInput,
 	ExtractTextFromImageToolInputSchema,
 	type ExtractTextFromImageToolOptions,
@@ -177,9 +157,7 @@ export {
 export {
 	createExtractTextFromPdfTool,
 	createExtractTextFromPdfToolRegistration,
-	EXTRACT_TEXT_FROM_PDF_TOOL_CATEGORY,
 	EXTRACT_TEXT_FROM_PDF_TOOL_DESCRIPTION,
-	EXTRACT_TEXT_FROM_PDF_TOOL_SCOPES,
 	type ExtractTextFromPdfToolInput,
 	ExtractTextFromPdfToolInputSchema,
 	type ExtractTextFromPdfToolOptions,
@@ -187,9 +165,7 @@ export {
 export {
 	createFindTool,
 	createFindToolRegistration,
-	FIND_TOOL_CATEGORY,
 	FIND_TOOL_DESCRIPTION,
-	FIND_TOOL_SCOPES,
 	type FindOperations,
 	type FindToolDetails,
 	type FindToolInput,
@@ -199,9 +175,7 @@ export {
 export {
 	createGlobTool,
 	createGlobToolRegistration,
-	GLOB_TOOL_CATEGORY,
 	GLOB_TOOL_DESCRIPTION,
-	GLOB_TOOL_SCOPES,
 	type GlobOperations,
 	type GlobToolDetails,
 	type GlobToolInput,
@@ -211,9 +185,7 @@ export {
 export {
 	createGrepTool,
 	createGrepToolRegistration,
-	GREP_TOOL_CATEGORY,
 	GREP_TOOL_DESCRIPTION,
-	GREP_TOOL_SCOPES,
 	type GrepOperations,
 	type GrepToolDetails,
 	type GrepToolInput,
@@ -223,9 +195,7 @@ export {
 export {
 	createHtmlToPdfTool,
 	createHtmlToPdfToolRegistration,
-	HTML_TO_PDF_TOOL_CATEGORY,
 	HTML_TO_PDF_TOOL_DESCRIPTION,
-	HTML_TO_PDF_TOOL_SCOPES,
 	type HtmlToPdfToolInput,
 	HtmlToPdfToolInputSchema,
 	type HtmlToPdfToolOptions,
@@ -233,9 +203,7 @@ export {
 export {
 	createLsTool,
 	createLsToolRegistration,
-	LS_TOOL_CATEGORY,
 	LS_TOOL_DESCRIPTION,
-	LS_TOOL_SCOPES,
 	type LsOperations,
 	type LsStat,
 	type LsToolDetails,
@@ -257,9 +225,7 @@ export {
 	installPhotonWasmPath,
 	isImageResizeFailure,
 	loadPhoton,
-	READ_TOOL_CATEGORY,
 	READ_TOOL_DESCRIPTION,
-	READ_TOOL_SCOPES,
 	type ReadImageProcessor,
 	type ReadOperations,
 	type ReadToolDetails,
@@ -273,9 +239,7 @@ export {
 export {
 	createRenderPdfPageTool,
 	createRenderPdfPageToolRegistration,
-	RENDER_PDF_PAGE_TOOL_CATEGORY,
 	RENDER_PDF_PAGE_TOOL_DESCRIPTION,
-	RENDER_PDF_PAGE_TOOL_SCOPES,
 	RenderPdfPageProcessAbortedError,
 	type RenderPdfPageProcessPort,
 	type RenderPdfPageProcessResult,
@@ -286,8 +250,6 @@ export {
 export {
 	createShellTool,
 	createShellToolRegistration,
-	getShellToolScopes,
-	SHELL_TOOL_CATEGORY,
 	SHELL_TOOL_DESCRIPTION,
 	type ShellToolInput,
 	ShellToolInputSchema,
@@ -297,9 +259,7 @@ export {
 export {
 	createTreeTool,
 	createTreeToolRegistration,
-	TREE_TOOL_CATEGORY,
 	TREE_TOOL_DESCRIPTION,
-	TREE_TOOL_SCOPES,
 	type TreeOperations,
 	type TreeToolDetails,
 	type TreeToolInput,
@@ -309,9 +269,7 @@ export {
 export {
 	createWriteTool,
 	createWriteToolRegistration,
-	WRITE_TOOL_CATEGORY,
 	WRITE_TOOL_DESCRIPTION,
-	WRITE_TOOL_SCOPES,
 	type WriteOperations,
 	type WritePathPolicy,
 	type WriteToolInput,

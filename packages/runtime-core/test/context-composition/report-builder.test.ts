@@ -30,7 +30,7 @@ describe("context composition report", () => {
 					instructionSection({
 						id: "instruction:skill-a",
 						category: "skill",
-						source: { owner: "skill", id: "skill-a" },
+						source: { owner: "extension", id: "skill-a" },
 						content: "1234",
 					}),
 				],
@@ -65,7 +65,7 @@ describe("context composition report", () => {
 				model,
 				sections: [
 					instructionSection({ id: "one", source: { owner: "core", id: "one" }, content: "one" }),
-					instructionSection({ id: "two", source: { owner: "skill", id: "two" }, content: "two" }),
+					instructionSection({ id: "two", source: { owner: "extension", id: "two" }, content: "two" }),
 				],
 			},
 			estimator,
@@ -98,13 +98,13 @@ describe("context composition report", () => {
 			name: "search",
 			description: "secret tool description",
 			inputSchema: { required: ["query"], properties: { query: { type: "string" } }, type: "object" },
-			source: { owner: "mcp", id: "server/search" },
+			source: { owner: "extension", id: "server/search" },
 		});
 		const second = toolSchemaSection({
 			name: "search",
 			description: "secret tool description",
 			inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
-			source: { owner: "mcp", id: "server/search" },
+			source: { owner: "extension", id: "server/search" },
 		});
 		expect(first.content).toBe(second.content);
 

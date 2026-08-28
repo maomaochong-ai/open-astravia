@@ -29,6 +29,7 @@ import type {
 } from "../../public-api/sdk/sdk-session-contract.js";
 import type { CodingAgentSessionToolDefinition } from "../../public-api/sdk/sdk-tool-contract.js";
 import { projectCodingAgentMessages } from "../../sessions/projection/conversation-context-projector.js";
+import { CODING_AGENT_SESSION_AGENT_MODE_SET } from "../session-configuration/session-profile-state-extension-contract.js";
 import type { CodingAgentSdkSessionCapabilityPort } from "./runtime-contracts.js";
 import type { CodingAgentSdkSessionCapabilityHostOptions } from "./session-capability-options.js";
 import { computeSdkSessionStats, readLastAssistantText, toSdkToolInfo } from "./session-capability-projections.js";
@@ -119,7 +120,11 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 	}
 
 	setAgentMode(mode: string | undefined): void {
-		this.options.readSession().setAgentMode(mode);
+		const session = this.options.readSession();
+		if (!session.hasExtension(CODING_AGENT_SESSION_AGENT_MODE_SET)) {
+			throw new Error("Session Agent Mode capability is unavailable");
+		}
+		session.invokeExtensionSync(CODING_AGENT_SESSION_AGENT_MODE_SET, { agentMode: mode });
 		this.agentMode = mode;
 	}
 

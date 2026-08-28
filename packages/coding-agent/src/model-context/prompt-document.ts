@@ -1,35 +1,19 @@
 /** Structured system-prompt document and deterministic mutation/rendering operations. */
 
 import type { PromptCacheSystemPromptBlockSpan } from "@vetta/ai";
+import type {
+	SystemPromptBlock,
+	SystemPromptBlockType,
+	SystemPromptOperation,
+} from "../public-api/sdk/sdk-system-prompt-contract.js";
 
-export type SystemPromptBlockType =
-	| "subconscious"
-	| "base"
-	| "tools"
-	| "mcp"
-	| "guidelines"
-	| "append"
-	| "context"
-	| "memory"
-	| "skills"
-	| "mode"
-	| "personalization"
-	| "footer"
-	| "plugin";
-
-export interface SystemPromptBlock {
-	id: string;
-	type: SystemPromptBlockType;
-	source: {
-		kind: "core" | "plugin";
-		pluginId?: string;
-	};
-	content: string;
-	priority: number;
-	enabled: boolean;
-	/** Core blocks infer this from priority; plugin blocks default to volatile. */
-	cacheability?: "stable" | "volatile";
-}
+export type {
+	SystemPromptBlock,
+	SystemPromptBlockPatch,
+	SystemPromptBlockType,
+	SystemPromptContribution,
+	SystemPromptOperation,
+} from "../public-api/sdk/sdk-system-prompt-contract.js";
 
 export interface SystemPromptDraft {
 	blocks: SystemPromptBlock[];
@@ -77,20 +61,6 @@ export interface CompiledSystemPrompt {
 	/** Ordered block spans for privacy-safe cache change diagnostics. */
 	readonly promptCacheBlocks: readonly PromptCacheSystemPromptBlockSpan[];
 	readonly diagnostics: SystemPromptDiagnostics;
-}
-
-export type SystemPromptBlockPatch = Partial<Omit<SystemPromptBlock, "id" | "source">>;
-
-export type SystemPromptOperation =
-	| { type: "addBlock"; block: SystemPromptBlock }
-	| { type: "replaceBlock"; blockId: string; block: SystemPromptBlock }
-	| { type: "updateBlock"; blockId: string; patch: SystemPromptBlockPatch }
-	| { type: "removeBlock"; blockId: string }
-	| { type: "setBlockEnabled"; blockId: string; enabled: boolean };
-
-export interface SystemPromptContribution {
-	pluginId: string;
-	operations: SystemPromptOperation[];
 }
 
 export function coreBlock(

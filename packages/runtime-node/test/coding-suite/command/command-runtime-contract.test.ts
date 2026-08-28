@@ -10,8 +10,6 @@ import {
 	createForegroundCommandToolExecutor,
 	createShellToolRegistration,
 	type ForegroundCommandOperations,
-	getBashToolScopes,
-	getShellToolScopes,
 } from "../../../src/coding/index.js";
 import { createTestForegroundCommandHost } from "../../support/local-command-host.js";
 
@@ -48,7 +46,7 @@ function createRuntimeRegistration(name: CommandName, cwd: string, toolOptions: 
 }
 
 describe.each(["bash", "shell"] as const)("runtime %s command adapter", (toolName) => {
-	it("keeps the public definition, scope, output, details, and updates", async () => {
+	it("keeps the public definition, output, details, and updates", async () => {
 		const cwd = "C:/workspace";
 		const calls: Array<{ readonly command: string; readonly cwd: string; readonly marker?: string }> = [];
 		const toolOptions: CommandFixtureOptions = {
@@ -74,9 +72,7 @@ describe.each(["bash", "shell"] as const)("runtime %s command adapter", (toolNam
 			label: toolName,
 			inputSchema: CommandToolInputSchema,
 		});
-		expect(runtime.tool.description).toContain("Foreground vs background");
-		expect(runtime.scopeUse).toEqual(toolName === "bash" ? getBashToolScopes() : getShellToolScopes());
-		expect(runtime.category).toBe("core");
+		expect(runtime.tool.description).toContain("managed background execution");
 
 		const input = { command: "echo command", timeout: 7 };
 		const runtimeUpdates: unknown[] = [];
@@ -96,7 +92,7 @@ describe.each(["bash", "shell"] as const)("runtime %s command adapter", (toolNam
 		]);
 	});
 
-	it("preserves protected skill directory warnings", async () => {
+	it("preserves generic protected directory warnings", async () => {
 		const cwd = mkdtempSync(join(tmpdir(), "runtime-command-protected-"));
 		const protectedDirectory = join(cwd, ".vetta", "skills");
 		const protectedFile = join(protectedDirectory, "changed.txt");
@@ -121,7 +117,7 @@ describe.each(["bash", "shell"] as const)("runtime %s command adapter", (toolNam
 				signal: new AbortController().signal,
 			});
 			expect(runtimeResult.content[0]).toMatchObject({
-				text: expect.stringContaining("WARNING: The following files inside skill/scene directories"),
+				text: expect.stringContaining("WARNING: The following files inside protected read-only directories"),
 			});
 		} finally {
 			rmSync(cwd, { recursive: true, force: true });
@@ -223,13 +219,6 @@ describe.each(["bash", "shell"] as const)("runtime %s command adapter", (toolNam
 });
 
 describe("runtime command registration", () => {
-	it("keeps bash and shell platform scopes mutually exclusive", () => {
-		expect(getBashToolScopes("win32")).toEqual([]);
-		expect(getShellToolScopes("win32")).not.toEqual([]);
-		expect(getBashToolScopes("linux")).not.toEqual([]);
-		expect(getShellToolScopes("linux")).toEqual([]);
-	});
-
 	it("forwards Runtime execution context through the command Port", async () => {
 		const calls: Parameters<CommandToolExecutor["execute"]>[0][] = [];
 		const executor: CommandToolExecutor = {
@@ -238,7 +227,7 @@ describe("runtime command registration", () => {
 				return { content: [{ type: "text", text: "forwarded" }] };
 			},
 		};
-		const registration = createBashToolRegistration("C:/workspace", { executor, platform: "linux" });
+		const registration = createBashToolRegistration("C:/workspace", { executor });
 		const signal = new AbortController().signal;
 		const result = await registration.tool.execute({
 			sessionId: "session-1",

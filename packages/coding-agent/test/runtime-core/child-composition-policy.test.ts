@@ -126,8 +126,9 @@ describe("Coding Agent Child Composition policy", () => {
 			expect.objectContaining({
 				sessionId: "child-create",
 				sessionPath: undefined,
-				scenario: "project",
-				agent: expect.objectContaining({ sessionConfiguration: childSessionOptions }),
+				agent: expect.objectContaining({
+					sessionConfiguration: expect.objectContaining({ ...childSessionOptions, scenario: "project" }),
+				}),
 			}),
 		);
 		expect(fixture.createAssembly).toHaveBeenNthCalledWith(
@@ -135,8 +136,9 @@ describe("Coding Agent Child Composition policy", () => {
 			expect.objectContaining({
 				sessionId: "child-resume",
 				sessionPath: "child-resume",
-				scenario: "project",
-				agent: expect.objectContaining({ sessionConfiguration: resumedSessionOptions }),
+				agent: expect.objectContaining({
+					sessionConfiguration: expect.objectContaining({ ...resumedSessionOptions, scenario: "project" }),
+				}),
 			}),
 		);
 		expect(fixture.appendSessionContext).toHaveBeenCalledWith("child-create", records);
@@ -242,7 +244,6 @@ function createRuntimeHostSessionAssembly(sessionId: string): RuntimeHostSession
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},
-			setAgentMode: () => {},
 		},
 		modelController: {
 			selectModel: async () => {},

@@ -5,6 +5,9 @@ import {
 	projectCodingAgentRuntimeMessages,
 } from "@vetta/coding-agent/runtime";
 import {
+	isCodingAgentMcpReloadStarted,
+	readCodingAgentBackgroundTasksObservation,
+	readCodingAgentMcpReloadFinished,
 	readCodingAgentSubagentsObservation,
 	readCodingAgentTodoObservation,
 } from "@vetta/coding-agent/session-extensions";
@@ -101,23 +104,22 @@ export function mapSupplementalSessionEvent(event: SessionEvent): unknown | unde
 				...(event.errorMessage ? { errorMessage: event.errorMessage } : {}),
 			};
 		case "session.extension": {
+			if (isCodingAgentMcpReloadStarted(event)) return { type: "mcp_reload_start" };
+			const mcpReload = readCodingAgentMcpReloadFinished(event);
+			if (mcpReload) {
+				return {
+					type: "mcp_reload_end",
+					changed: mcpReload.changed,
+					...(mcpReload.errorMessage ? { errorMessage: mcpReload.errorMessage } : {}),
+				};
+			}
+			const tasks = readCodingAgentBackgroundTasksObservation(event);
+			if (tasks) return { type: "background_tasks_update", tasks };
 			const agents = readCodingAgentSubagentsObservation(event);
 			if (agents) return { type: "subagents_update", agents };
 			const items = readCodingAgentTodoObservation(event);
 			return items ? { type: "todo_update", items } : undefined;
 		}
-		case "background_tasks_update":
-			return { type: "background_tasks_update", tasks: event.tasks };
-		case "subagents_update":
-			return { type: "subagents_update", agents: event.agents };
-		case "mcp.reload.start":
-			return { type: "mcp_reload_start" };
-		case "mcp.reload.end":
-			return {
-				type: "mcp_reload_end",
-				changed: event.changed,
-				...(event.errorMessage ? { errorMessage: event.errorMessage } : {}),
-			};
 		default:
 			return undefined;
 	}

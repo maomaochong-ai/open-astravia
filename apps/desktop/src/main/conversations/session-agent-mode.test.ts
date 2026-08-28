@@ -1,6 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { parseCodingAgentRuntimeSessionConfiguration } from "@vetta/coding-agent/composition";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /** 可变的 desktop-config 桩：模拟用户在新会话页改「默认工作模式」。 */
@@ -71,7 +72,9 @@ describe("会话级工作模式固化", () => {
 
 		const resumed = await resolveDesktopSessionConfig({ cwd: root, sessionPath }, "conversation", "interactive");
 		expect(resumed.agentMode).toBe("work");
-		expect(resumed.config.agentMode).toBe("work");
+		expect(parseCodingAgentRuntimeSessionConfiguration(resumed.config.agent?.sessionConfiguration).agentMode).toBe(
+			"work",
+		);
 
 		const fresh = await resolveDesktopSessionConfig({ cwd: root }, "conversation", "interactive");
 		expect(fresh.agentMode).toBe("coding");

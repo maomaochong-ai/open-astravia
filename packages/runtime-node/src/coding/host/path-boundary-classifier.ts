@@ -1,25 +1,24 @@
 import { resolve, sep } from "node:path";
 
 export interface NodePathBoundaryClassifierOptions {
-	readonly protectedDirectories: readonly string[];
-	readonly knowledgeWikiDirectory: string;
+	readonly readOnlyDirectories: readonly string[];
+	readonly managedDirectory: string;
 }
 
 export interface NodePathBoundaryClassifier {
-	readonly isProtectedSkillOrScenePath: (absolutePath: string) => boolean;
-	readonly isKnowledgeWikiPath: (absolutePath: string) => boolean;
+	readonly isReadOnlyPath: (absolutePath: string) => boolean;
+	readonly isManagedPath: (absolutePath: string) => boolean;
 }
 
 /** Classifies absolute paths with the current platform's normalization and separator rules. */
 export function createNodePathBoundaryClassifier(
 	options: NodePathBoundaryClassifierOptions,
 ): NodePathBoundaryClassifier {
-	const protectedDirectories = options.protectedDirectories.map(resolveDirectoryBoundary);
-	const knowledgeWikiDirectory = resolveDirectoryBoundary(options.knowledgeWikiDirectory);
+	const readOnlyDirectories = options.readOnlyDirectories.map(resolveDirectoryBoundary);
+	const managedDirectory = resolveDirectoryBoundary(options.managedDirectory);
 	return {
-		isProtectedSkillOrScenePath: (absolutePath) =>
-			protectedDirectories.some((directory) => isPathInside(absolutePath, directory)),
-		isKnowledgeWikiPath: (absolutePath) => isPathInside(absolutePath, knowledgeWikiDirectory),
+		isReadOnlyPath: (absolutePath) => readOnlyDirectories.some((directory) => isPathInside(absolutePath, directory)),
+		isManagedPath: (absolutePath) => isPathInside(absolutePath, managedDirectory),
 	};
 }
 

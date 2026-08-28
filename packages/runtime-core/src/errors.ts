@@ -20,7 +20,7 @@ export function isSessionError(value: unknown): value is SessionError {
 		(candidate.origin === "runtime" ||
 			candidate.origin === "provider" ||
 			candidate.origin === "tool" ||
-			candidate.origin === "mcp")
+			candidate.origin === "extension")
 	);
 }
 

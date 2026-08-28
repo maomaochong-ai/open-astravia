@@ -6,7 +6,7 @@ describe("desktop session access policy", () => {
 		expect(
 			resolveDesktopSessionOpenTarget({
 				readHistory: true,
-				interactiveResume: true,
+				resume: true,
 				rename: true,
 				delete: true,
 			}),
@@ -17,7 +17,7 @@ describe("desktop session access policy", () => {
 		expect(
 			resolveDesktopSessionOpenTarget({
 				readHistory: true,
-				interactiveResume: false,
+				resume: false,
 				rename: true,
 				delete: true,
 			}),
@@ -25,7 +25,7 @@ describe("desktop session access policy", () => {
 		expect(
 			resolveDesktopSessionOpenTarget({
 				readHistory: false,
-				interactiveResume: false,
+				resume: false,
 				rename: false,
 				delete: false,
 			}),

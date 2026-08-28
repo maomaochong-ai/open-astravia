@@ -8,7 +8,6 @@ import type {
 	SandboxShellGrant,
 } from "@vetta/runtime-core/sandbox";
 import {
-	CODING_TOOL_SCOPES,
 	type CodingToolRegistration,
 	createNodeSandboxCodingToolEnvironment,
 	type ForegroundCommandOperations,
@@ -17,6 +16,8 @@ import { clearSessionGrants, getSandboxShellGrant, type NodeSandboxPlatform } fr
 import { afterEach, describe, expect, it } from "vitest";
 import type { CodingAgentSandboxAuthorizationPort } from "../../src/execution/sandbox/authorization-contract.js";
 import { createCodingAgentSandboxToolRegistrations } from "../../src/execution/sandbox/tool-registrations.js";
+import { ALL_SCENARIOS } from "../../src/profiles/index.js";
+import { declareCodingAgentPlatformTools } from "../../src/tool-policy/platform-tool-declarations.js";
 
 const SESSION_IDS = ["sandbox-read-session", "sandbox-deny-session", "sandbox-shell-session"] as const;
 
@@ -33,18 +34,19 @@ describe("Coding Agent sandbox tool registrations", () => {
 		const cwd = await mkdtemp(join(tmpdir(), "vetta-sandbox-tools-"));
 		try {
 			const registrations = createRegistrations({ cwd, platform, decision: "deny" });
+			const declarations = declareCodingAgentPlatformTools(registrations);
 
 			expect(
-				registrations.map((registration) => ({
+				declarations.map((registration) => ({
 					name: registration.tool.name,
 					category: registration.category,
 					scopeUse: registration.scopeUse,
 				})),
 			).toEqual([
-				{ name: "read", category: "core", scopeUse: CODING_TOOL_SCOPES },
-				{ name: "write", category: "core", scopeUse: CODING_TOOL_SCOPES },
-				{ name: "edit", category: "core", scopeUse: CODING_TOOL_SCOPES },
-				{ name: commandToolName, category: "core", scopeUse: CODING_TOOL_SCOPES },
+				{ name: "read", category: "core", scopeUse: ALL_SCENARIOS },
+				{ name: "write", category: "core", scopeUse: ALL_SCENARIOS },
+				{ name: "edit", category: "core", scopeUse: ALL_SCENARIOS },
+				{ name: commandToolName, category: "core", scopeUse: ALL_SCENARIOS },
 			]);
 			for (const registration of registrations) {
 				expect(registration.tool.inputSchema).toMatchObject({ type: "object" });

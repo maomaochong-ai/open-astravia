@@ -4,16 +4,14 @@ import {
 	type CompiledRuntimeSnapshot,
 	createDefaultRuntimeCapabilityDefinition,
 	FeatureCompiler,
+	type ModelCallContributionContext,
 	RandomIdGenerator,
 	type RuntimeCapabilityDefinition,
 } from "@vetta/runtime-core/kernel";
 import {
 	type BackgroundCommandService,
-	type CodingToolActivation,
-	type CodingToolActivationResolver,
 	type CodingToolCatalogRefresher,
 	type CodingToolRegistration,
-	type CodingToolRegistrationFilter,
 	type CodingToolRegistry,
 	type CodingToolResultPolicy,
 	createCodingToolsFeature,
@@ -25,18 +23,28 @@ import {
 	createTaskStopToolRegistration,
 } from "../../features/background-tasks/index.js";
 import { createCurrentTimeToolRegistration } from "../../features/current-time/index.js";
-import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import {
+	type CodingAgentRuntimeToolRegistration,
+	type CodingAgentToolActivation,
+	selectCodingAgentToolRegistrations,
+} from "../../runtime-contracts/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
+import { declareCodingAgentPlatformTools } from "../../tool-policy/platform-tool-declarations.js";
 import type { ToolSideEffectDeclaration } from "../../tool-policy/tool-side-effect.js";
 import type { CodingAgentSpecializedToolRegistrationContext, CodingAgentToolEnvironment } from "../contracts/index.js";
 
 export interface CodingToolsRuntimeCompositionOptions {
 	readonly cwd: string;
 	readonly environment: CodingAgentToolEnvironment;
-	readonly activation?: CodingToolActivation;
-	readonly resolveActivation?: CodingToolActivationResolver;
+	readonly activation?: CodingAgentToolActivation;
+	readonly resolveActivation?: (
+		context: ModelCallContributionContext,
+	) => Promise<CodingAgentToolActivation> | CodingAgentToolActivation;
 	readonly refreshCatalog?: CodingToolCatalogRefresher;
-	readonly filterRegistration?: CodingToolRegistrationFilter;
+	readonly filterRegistration?: (
+		registration: CodingAgentRuntimeToolRegistration,
+		context: ModelCallContributionContext,
+	) => Promise<boolean> | boolean;
 	readonly additionalRegistrations?: readonly CodingAgentRuntimeToolRegistration[];
 	readonly resultPolicy?: CodingToolResultPolicy;
 	readonly tokenBudget?: number;
@@ -51,6 +59,9 @@ export interface CodingToolsRuntimeComposition {
 		context: CodingAgentSpecializedToolRegistrationContext,
 	) => readonly CodingToolRegistration[] | Promise<readonly CodingToolRegistration[]>;
 	readonly registry: CodingToolRegistry;
+	readonly registerTool: (registration: CodingAgentRuntimeToolRegistration) => void;
+	readonly unregisterTool: (toolName: string) => boolean;
+	readonly readToolDeclaration: (toolName: string) => CodingAgentRuntimeToolRegistration | undefined;
 	/** Coding Agent 自有工具的产品策略声明；通用 Runtime Tool Catalog 不承载这些元数据。 */
 	readonly readToolPolicyDeclarations: () => readonly ToolSideEffectDeclaration[];
 	readonly feature: AgentFeatureDefinition;
@@ -77,13 +88,19 @@ export function createCodingToolsRuntimeComposition(
 	const codingAgentRegistrations = [...builtInRegistrations, ...(options.additionalRegistrations ?? [])].map(
 		withCodingAgentModelOrder,
 	);
+	const platformRegistrations = declareCodingAgentPlatformTools(
+		options.environment.registrations.filter(({ tool }) => !CODING_AGENT_OWNED_BASE_TOOL_NAMES.has(tool.name)),
+	).map(withCodingAgentModelOrder);
+	const declarationsByName = new Map<string, CodingAgentRuntimeToolRegistration>(
+		[...platformRegistrations, ...codingAgentRegistrations].map((registration) => [
+			registration.tool.name,
+			registration,
+		]),
+	);
 	const registry = new InMemoryCodingToolRegistry(
 		[
-			...options.environment.registrations
-				.filter(({ tool }) => !CODING_AGENT_OWNED_BASE_TOOL_NAMES.has(tool.name))
-				.map(withCodingAgentModelOrder)
-				.map(toRuntimeToolRegistration),
-			...codingAgentRegistrations.map(toRuntimeToolRegistration),
+			...platformRegistrations.map((registration) => toRuntimeToolRegistration(registration)),
+			...codingAgentRegistrations.map((registration) => toRuntimeToolRegistration(registration)),
 		],
 		{
 			resultPolicy: options.resultPolicy ?? PRESERVE_CODING_TOOL_RESULT_POLICY,
@@ -92,14 +109,27 @@ export function createCodingToolsRuntimeComposition(
 	);
 	const feature = createCodingToolsFeature({
 		catalog: registry,
-		resolveActivation: options.resolveActivation,
+		selectRegistrations: async (registrations, context) => {
+			const activation = options.resolveActivation
+				? await options.resolveActivation(context)
+				: (options.activation ??
+					(backgroundService
+						? { mode: "scope", scope: "cli", capabilities: new Set(["bg-tasks"]) }
+						: { mode: "scope", scope: "cli" }));
+			const selectedNames = new Set(
+				selectCodingAgentToolRegistrations([...declarationsByName.values()], activation).map(
+					({ tool }) => tool.name,
+				),
+			);
+			return registrations.filter(({ tool }) => selectedNames.has(tool.name));
+		},
 		refreshCatalog: options.refreshCatalog,
-		filterRegistration: options.filterRegistration,
-		activation:
-			options.activation ??
-			(backgroundService
-				? { mode: "scope", scope: "cli", capabilities: new Set(["bg-tasks"]) }
-				: { mode: "scope", scope: "cli" }),
+		filterRegistration: options.filterRegistration
+			? (registration, context) => {
+					const declaration = declarationsByName.get(registration.tool.name);
+					return declaration ? options.filterRegistration!(declaration, context) : false;
+				}
+			: undefined,
 	});
 	const capabilities: RuntimeCapabilityDefinition = createDefaultRuntimeCapabilityDefinition({
 		features: [feature],
@@ -120,8 +150,26 @@ export function createCodingToolsRuntimeComposition(
 		backgroundService,
 		createSpecializedToolRegistrations: options.environment.createSpecializedToolRegistrations,
 		registry,
+		registerTool: (registration) => {
+			if (declarationsByName.has(registration.tool.name)) {
+				throw new Error(`Duplicate Coding Agent tool declaration: ${registration.tool.name}`);
+			}
+			declarationsByName.set(registration.tool.name, registration);
+			try {
+				registry.register(toRuntimeToolRegistration(registration));
+			} catch (error) {
+				declarationsByName.delete(registration.tool.name);
+				throw error;
+			}
+		},
+		unregisterTool: (toolName) => {
+			const removed = registry.unregister(toolName);
+			if (removed) declarationsByName.delete(toolName);
+			return removed;
+		},
+		readToolDeclaration: (toolName) => declarationsByName.get(toolName),
 		readToolPolicyDeclarations: () =>
-			codingAgentRegistrations.map((registration) => ({
+			[...declarationsByName.values()].map((registration) => ({
 				name: registration.tool.name,
 				sideEffect: registration.sideEffect,
 			})),
@@ -151,12 +199,12 @@ const CODING_AGENT_BASE_TOOL_ORDER: Readonly<Record<string, number>> = {
 
 const CODING_AGENT_OWNED_BASE_TOOL_NAMES = new Set<string>(["current_time", "task_output", "task_stop"]);
 
-function withCodingAgentModelOrder<T extends CodingToolRegistration>(registration: T): T {
+function withCodingAgentModelOrder<T extends CodingAgentRuntimeToolRegistration>(registration: T): T {
 	const modelOrder = CODING_AGENT_BASE_TOOL_ORDER[registration.tool.name];
 	return modelOrder === undefined ? registration : withModelOrder(registration, modelOrder);
 }
 
-function withModelOrder<T extends CodingToolRegistration>(registration: T, modelOrder: number): T {
+function withModelOrder<T extends CodingAgentRuntimeToolRegistration>(registration: T, modelOrder: number): T {
 	return {
 		...registration,
 		modelOrder,
@@ -166,6 +214,16 @@ function withModelOrder<T extends CodingToolRegistration>(registration: T, model
 
 /** 产品策略字段在进入通用 Runtime Tool Catalog 前必须被剥离。 */
 function toRuntimeToolRegistration(registration: CodingAgentRuntimeToolRegistration): CodingToolRegistration {
-	const { sideEffect: _sideEffect, ...runtimeRegistration } = registration;
-	return runtimeRegistration;
+	const {
+		sideEffect: _sideEffect,
+		scopeUse: _scopeUse,
+		requires: _requires,
+		category: _category,
+		availabilityPolicy: _availabilityPolicy,
+		resultProjection,
+		...runtimeRegistration
+	} = registration;
+	return resultProjection === "preserve"
+		? { ...runtimeRegistration, resultPolicy: PRESERVE_CODING_TOOL_RESULT_POLICY }
+		: runtimeRegistration;
 }

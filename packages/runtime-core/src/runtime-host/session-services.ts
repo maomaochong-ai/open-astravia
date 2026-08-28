@@ -45,7 +45,7 @@ export interface RuntimeSessionFileHistoryReader {
 /** 宿主针对一个既有会话实际暴露的能力；不包含存储格式或 Backend 名称。 */
 export interface RuntimeSessionAccess {
 	readonly readHistory: boolean;
-	readonly interactiveResume: boolean;
+	readonly resume: boolean;
 	readonly rename: boolean;
 	readonly delete: boolean;
 }
@@ -59,7 +59,7 @@ export interface RuntimeSessionAccessRoute {
 	readonly access: RuntimeSessionAccess;
 }
 
-/** 由 Composition Root 把文件归属映射为宿主能力，Catalog 本身不决定交互策略。 */
+/** 由 Composition Root 把文件归属映射为宿主能力，Catalog 本身不决定调用策略。 */
 export class CatalogRoutedRuntimeSessionAccessResolver implements RuntimeSessionAccessResolver {
 	constructor(private readonly routes: readonly RuntimeSessionAccessRoute[]) {
 		if (routes.length === 0) {

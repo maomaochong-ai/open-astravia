@@ -3,13 +3,9 @@ export * from "./configuration/index.js";
 export * from "./context-composition/index.js";
 export type {
 	AssistantTurnTiming,
-	BackgroundTaskInfo,
-	BackgroundTasksUpdateEvent,
-	ConversationScenario,
 	ErrorEvent,
 	HistoryEntry,
 	HistoryMessageBranch,
-	McpStatusEvent,
 	MessageDeltaEvent,
 	MessageFinalEvent,
 	ProjectInfo,
@@ -205,8 +201,6 @@ export type {
 	RuntimeSessionWorkspaceView,
 	RuntimeSharedModelController,
 	RuntimeStateSource,
-	RuntimeSubagentSnapshot,
-	RuntimeSubagentUsageSnapshot,
 	RuntimeTurnPrompt,
 } from "./runtime-host/index.js";
 export {

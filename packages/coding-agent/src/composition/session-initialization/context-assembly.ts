@@ -1,7 +1,6 @@
 import type { Message } from "@vetta/ai";
 import { createEcosystemHookRuntime, type EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
 import {
-	type ConversationScenario,
 	type InitializationRollbackTask,
 	RuntimeModel,
 	type RuntimeObservationPublisher,
@@ -13,6 +12,7 @@ import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/ext
 import { CodingAgentSessionAssistanceRuntime } from "../../features/session-assistance/session-assistance-runtime.js";
 import { CODING_AGENT_SESSION_ASSISTANCE_RUNTIME_OWNER } from "../../features/session-assistance/session-assistance-session-extension.js";
 import { type CodingAgentMemoryController, CodingAgentSessionMemoryController } from "../../memory/index.js";
+import type { ConversationScenario } from "../../profiles/index.js";
 import type { CodingAgentContextRuntime } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationSessionPathAssessment } from "../contracts/conversation-persistence.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";

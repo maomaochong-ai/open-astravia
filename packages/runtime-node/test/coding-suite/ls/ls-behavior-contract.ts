@@ -44,14 +44,12 @@ export function defineLsBehaviorContract(subjectName: string, createSubject: Cre
 			rmSync(testDirectory, { recursive: true, force: true });
 		});
 
-		it("preserves the model-visible definition and inactive registration baseline", () => {
+		it("preserves the model-visible definition", () => {
 			const subject = createSubject(testDirectory);
 
 			expect(subject.definition).toMatchObject({
 				name: "ls",
 				label: "ls",
-				scopeUse: [],
-				category: "core",
 				schema: {
 					type: "object",
 					properties: {

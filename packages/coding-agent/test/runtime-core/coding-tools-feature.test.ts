@@ -19,19 +19,12 @@ import {
 	createGrepToolRegistration,
 	createLsToolRegistration,
 	createReadToolRegistration,
-	LS_TOOL_CATEGORY,
-	LS_TOOL_SCOPES,
-	READ_TOOL_CATEGORY,
-	READ_TOOL_SCOPES,
 } from "@vetta/runtime-node/coding";
 import {
-	CODING_TOOL_SCOPES,
-	type CodingToolActivation,
 	type CodingToolCatalog,
+	type CodingToolRegistration,
 	createCodingToolsFeature,
 	InMemoryCodingToolRegistry,
-	selectCodingToolRegistrations,
-	selectCodingToolsForScope,
 } from "@vetta/runtime-tools";
 import { describe, expect, it } from "vitest";
 import { TASK_OUTPUT_TOOL_REQUIRES, TASK_OUTPUT_TOOL_SCOPES } from "../../src/features/background-tasks/index.js";
@@ -41,6 +34,13 @@ import {
 	createCurrentTimeTool,
 	createCurrentTimeToolRegistration,
 } from "../../src/features/current-time/index.js";
+import { ALL_SCENARIOS } from "../../src/profiles/index.js";
+import {
+	type CodingAgentRuntimeToolRegistration,
+	type CodingAgentToolActivation,
+	selectCodingAgentToolRegistrations,
+} from "../../src/runtime-contracts/index.js";
+import { declareCodingAgentPlatformTool } from "../../src/tool-policy/platform-tool-declarations.js";
 
 class SnapshotIdGenerator implements IdGenerator {
 	next(scope: "snapshot" | "turn"): string {
@@ -131,14 +131,21 @@ function createDefaultRegistry(now: () => Date, cwd = process.cwd()): InMemoryCo
 
 function capabilities(
 	catalog: CodingToolCatalog,
-	activation: CodingToolActivation = { mode: "scope", scope: "project" },
+	activation: CodingAgentToolActivation = { mode: "scope", scope: "project" },
 ): RuntimeCapabilityDefinition {
 	return {
 		instructions: [],
 		features: [
 			createCodingToolsFeature({
 				catalog,
-				activation,
+				selectRegistrations: (registrations) => {
+					const selectedNames = new Set(
+						selectCodingAgentToolRegistrations(registrations.map(declareTestRegistration), activation).map(
+							({ tool }) => tool.name,
+						),
+					);
+					return registrations.filter(({ tool }) => selectedNames.has(tool.name));
+				},
 			}),
 		],
 		contextStrategy: new PassthroughContextStrategy(),
@@ -159,12 +166,39 @@ async function compileSnapshot(now: () => Date, cwd = process.cwd()) {
 
 async function compileCatalogSnapshot(
 	catalog: CodingToolCatalog,
-	activation: CodingToolActivation = { mode: "scope", scope: "project" },
+	activation: CodingAgentToolActivation = { mode: "scope", scope: "project" },
 ) {
 	const compiler = new FeatureCompiler({
 		idGenerator: new SnapshotIdGenerator(),
 	});
 	return compiler.compile(capabilities(catalog, activation), new AbortController().signal);
+}
+
+function declareTestRegistration(registration: CodingToolRegistration): CodingAgentRuntimeToolRegistration {
+	if (registration.tool.name === "current_time") {
+		return {
+			...registration,
+			scopeUse: CURRENT_TIME_TOOL_SCOPES,
+			category: CURRENT_TIME_TOOL_CATEGORY,
+		};
+	}
+	if (registration.tool.name === "background_only") {
+		return {
+			...registration,
+			scopeUse: CURRENT_TIME_TOOL_SCOPES,
+			requires: ["bg-tasks"],
+			category: "core",
+		};
+	}
+	if (registration.tool.name === "task_output") {
+		return {
+			...registration,
+			scopeUse: TASK_OUTPUT_TOOL_SCOPES,
+			requires: TASK_OUTPUT_TOOL_REQUIRES,
+			category: "core",
+		};
+	}
+	return declareCodingAgentPlatformTool(registration);
 }
 
 async function collectEngineEvents(
@@ -213,6 +247,8 @@ describe("greenfield coding tools feature", () => {
 		const registration = createCurrentTimeToolRegistration();
 		const readRegistration = createReadToolRegistration(process.cwd());
 		const lsRegistration = createLsToolRegistration(process.cwd());
+		const readDeclaration = declareCodingAgentPlatformTool(readRegistration);
+		const lsDeclaration = declareCodingAgentPlatformTool(lsRegistration);
 		const projectOnlyRegistration = {
 			...registration,
 			scopeUse: ["project"] as const,
@@ -220,17 +256,26 @@ describe("greenfield coding tools feature", () => {
 
 		expect(registration.category).toBe(CURRENT_TIME_TOOL_CATEGORY);
 		expect(registration.scopeUse).toEqual(CURRENT_TIME_TOOL_SCOPES);
-		expect(selectCodingToolsForScope([registration], "project").map(({ name }) => name)).toEqual(["current_time"]);
-		expect(selectCodingToolsForScope([projectOnlyRegistration], "conversation")).toEqual([]);
+		expect(
+			selectCodingAgentToolRegistrations([registration], { mode: "scope", scope: "project" }).map(
+				({ tool }) => tool.name,
+			),
+		).toEqual(["current_time"]);
+		expect(
+			selectCodingAgentToolRegistrations([projectOnlyRegistration], {
+				mode: "scope",
+				scope: "conversation",
+			}),
+		).toEqual([]);
 		expect(registration.tool).not.toHaveProperty("scopeUse");
 		expect(registration.tool).not.toHaveProperty("category");
-		expect(readRegistration.category).toBe(READ_TOOL_CATEGORY);
-		expect(readRegistration.scopeUse).toEqual(READ_TOOL_SCOPES);
+		expect(readDeclaration.category).toBe("core");
+		expect(readDeclaration.scopeUse).toEqual(ALL_SCENARIOS);
 		expect(readRegistration.tool).not.toHaveProperty("scopeUse");
 		expect(readRegistration.tool).not.toHaveProperty("category");
-		expect(lsRegistration.category).toBe(LS_TOOL_CATEGORY);
-		expect(lsRegistration.scopeUse).toEqual(LS_TOOL_SCOPES);
-		expect(selectCodingToolsForScope([lsRegistration], "project")).toEqual([]);
+		expect(lsDeclaration.category).toBe("core");
+		expect(lsDeclaration.scopeUse).toEqual([]);
+		expect(selectCodingAgentToolRegistrations([lsDeclaration], { mode: "scope", scope: "project" })).toEqual([]);
 		expect(lsRegistration.tool).not.toHaveProperty("scopeUse");
 		expect(lsRegistration.tool).not.toHaveProperty("category");
 	});
@@ -275,16 +320,18 @@ describe("greenfield coding tools feature", () => {
 			requires: ["bg-tasks"] as const,
 		};
 
-		expect(selectCodingToolsForScope([requiredRegistration], "project")).toEqual([]);
+		expect(selectCodingAgentToolRegistrations([requiredRegistration], { mode: "scope", scope: "project" })).toEqual(
+			[],
+		);
 		expect(
-			selectCodingToolRegistrations([requiredRegistration], {
+			selectCodingAgentToolRegistrations([requiredRegistration], {
 				mode: "scope",
 				scope: "project",
 				additionallyEnabledToolNames: ["background_only"],
 			}).map(({ tool }) => tool.name),
 		).toEqual(["background_only"]);
 		expect(
-			selectCodingToolRegistrations([requiredRegistration], {
+			selectCodingAgentToolRegistrations([requiredRegistration], {
 				mode: "explicit",
 				toolNames: ["background_only"],
 			}).map(({ tool }) => tool.name),
@@ -303,15 +350,15 @@ describe("greenfield coding tools feature", () => {
 			requires: TASK_OUTPUT_TOOL_REQUIRES,
 		};
 
-		for (const scenario of CODING_TOOL_SCOPES) {
+		for (const scenario of ALL_SCENARIOS) {
 			expect(
-				selectCodingToolRegistrations([runtimeRegistration], {
+				selectCodingAgentToolRegistrations([runtimeRegistration], {
 					mode: "scope",
 					scope: scenario,
 				}).map(({ tool }) => tool.name),
 			).toEqual([]);
 			expect(
-				selectCodingToolRegistrations([runtimeRegistration], {
+				selectCodingAgentToolRegistrations([runtimeRegistration], {
 					mode: "scope",
 					scope: scenario,
 					capabilities: new Set(["bg-tasks"]),
@@ -470,17 +517,18 @@ describe("greenfield coding tools feature", () => {
 				}),
 				createReadToolRegistration(directory),
 			]);
-			const compiled = await compileCatalogSnapshot(registry);
+			const compiled = await compileCatalogSnapshot(registry, {
+				mode: "scope",
+				scope: "project",
+				additionallyEnabledToolNames: ["ls"],
+			});
 
 			expect(compiled.snapshot.modelCallProviders?.[0]?.bindForTurn).toBeTypeOf("function");
 			const firstTurn = await acquireTurnSnapshot(compiled.snapshot, "turn-1");
 			expect(firstTurn.snapshot).not.toBe(compiled.snapshot);
 			expect(await resolveTools(firstTurn.snapshot)).toEqual(["current_time", "read"]);
 			expect(registry.unregister("read")).toBe(true);
-			registry.register({
-				...createLsToolRegistration(directory),
-				scopeUse: ["project"],
-			});
+			registry.register(createLsToolRegistration(directory));
 
 			expect(await resolveTools(firstTurn.snapshot)).toEqual(["current_time", "read"]);
 			await firstTurn.release();

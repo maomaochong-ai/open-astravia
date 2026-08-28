@@ -85,7 +85,7 @@ describe("official.sessions.list 的可用性透传", () => {
 				cwd: "/work",
 				firstMessage: "hi",
 				modifiedAt: 5,
-				access: { readHistory: true, interactiveResume: true, rename: true, delete: false },
+				access: { readHistory: true, resume: true, rename: true, delete: false },
 			},
 		]);
 		const [session] = await createOfficialSessionsApi(SESSION).list("/work");

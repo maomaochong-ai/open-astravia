@@ -1,4 +1,7 @@
 import {
+	CODING_AGENT_BACKGROUND_TASKS_OBSERVATION,
+	CODING_AGENT_MCP_RELOAD_FINISHED,
+	CODING_AGENT_MCP_RELOAD_STARTED,
 	CODING_AGENT_SUBAGENTS_OBSERVATION,
 	CODING_AGENT_TODO_OBSERVATION,
 	type CodingAgentSubagentSnapshot,
@@ -53,6 +56,32 @@ describe("CLI print session extension event adapter", () => {
 		expect(mapSupplementalSessionEvent(extensionEvent(CODING_AGENT_SUBAGENTS_OBSERVATION, agents))).toEqual({
 			type: "subagents_update",
 			agents,
+		});
+	});
+
+	it("maps background task and MCP observations to the stable print events", () => {
+		const tasks = [
+			{
+				id: "task-1",
+				command: "echo done",
+				cwd: "/workspace",
+				status: "running" as const,
+				outputFile: "/tmp/task-1.log",
+				exitCode: undefined,
+				startedAt: 1,
+				tail: "",
+			},
+		];
+		expect(mapSupplementalSessionEvent(extensionEvent(CODING_AGENT_BACKGROUND_TASKS_OBSERVATION, tasks))).toEqual({
+			type: "background_tasks_update",
+			tasks,
+		});
+		expect(mapSupplementalSessionEvent(extensionEvent(CODING_AGENT_MCP_RELOAD_STARTED, {}))).toEqual({
+			type: "mcp_reload_start",
+		});
+		expect(mapSupplementalSessionEvent(extensionEvent(CODING_AGENT_MCP_RELOAD_FINISHED, { changed: true }))).toEqual({
+			type: "mcp_reload_end",
+			changed: true,
 		});
 	});
 });

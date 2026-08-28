@@ -1,5 +1,5 @@
 import type { Message } from "@vetta/ai";
-import type { ConversationScenario, SessionConfig } from "@vetta/runtime-core";
+import type { SessionConfig } from "@vetta/runtime-core";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
 import type {
 	SubagentChildHandle,
@@ -7,8 +7,8 @@ import type {
 	SubagentSpawnRequest,
 	SubagentTypeDefinition,
 } from "@vetta/runtime-subagents";
-import type { CodingToolActivation } from "@vetta/runtime-tools";
-import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import type { ConversationScenario } from "../../profiles/index.js";
+import type { CodingAgentRuntimeToolRegistration, CodingAgentToolActivation } from "../../runtime-contracts/index.js";
 
 export interface CodingAgentSubagentProfile {
 	/** Tool inheritance defaults to the parent's activation when omitted. */
@@ -26,7 +26,7 @@ export interface CodingAgentSubagentProfile {
 	readonly systemPromptAddon: string;
 	readonly createRuntimeTools?: (cwd: string) => readonly CodingAgentRuntimeToolRegistration[];
 	/** @deprecated Use toolPolicy. Kept while custom registries migrate. */
-	readonly activation?: CodingToolActivation;
+	readonly activation?: CodingAgentToolActivation;
 	/** @deprecated Use mcpPolicy. Kept while custom registries migrate. */
 	readonly inheritParentMcp?: boolean;
 	/** @deprecated Use contextPolicy. Kept while custom registries migrate. */
@@ -39,7 +39,7 @@ export interface CodingAgentSubagentProfile {
 
 export type CodingAgentSubagentToolPolicy =
 	| { readonly mode: "inherit" }
-	| { readonly mode: "activation"; readonly activation: CodingToolActivation };
+	| { readonly mode: "activation"; readonly activation: CodingAgentToolActivation };
 
 export type CodingAgentSubagentMcpPolicy =
 	| { readonly mode: "inherit"; readonly denyNamePrefixes?: readonly string[] }
@@ -81,7 +81,7 @@ export interface CodingAgentSubagentChildFactoryContext {
 	readonly readModel: () => NonNullable<SessionConfig["model"]>;
 	readonly readThinkingLevel: () => NonNullable<SessionConfig["thinkingLevel"]>;
 	readonly readInheritedMcpView: () => Promise<McpRuntimeToolView>;
-	readonly readParentToolActivation: () => CodingToolActivation | undefined;
+	readonly readParentToolActivation: () => CodingAgentToolActivation | undefined;
 	readonly workspacePort?: CodingAgentSubagentWorkspacePort;
 }
 

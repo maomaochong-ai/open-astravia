@@ -1,5 +1,5 @@
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import type { CodingToolResultArtifactStore } from "@vetta/runtime-tools";
+import type { RuntimeToolResultArtifactStore } from "@vetta/runtime-tools";
 import { describe, expect, it, vi } from "vitest";
 import { createCodingAgentCodingToolResultPolicy } from "../src/tool-results/result-policy.js";
 
@@ -8,18 +8,15 @@ const context = {
 	turnId: "turn-1",
 	toolCallId: "call-1",
 	toolName: "read",
-	category: "core" as const,
 };
 
 describe("coding agent coding tool result policy", () => {
-	it("preserves small and external results", async () => {
+	it("preserves small results", async () => {
 		const store = artifactStore();
 		const policy = createCodingAgentCodingToolResultPolicy({ artifactStore: store, maxInlineResultBytes: 8 });
 		const small = textResult("small");
-		const external = textResult("large external result");
 
 		expect(await policy.project(small, context)).toBe(small);
-		expect(await policy.project(external, { ...context, category: "external" })).toBe(external);
 		expect(store.write).not.toHaveBeenCalled();
 	});
 
@@ -81,7 +78,7 @@ describe("coding agent coding tool result policy", () => {
 	});
 
 	it("keeps the only result copy when artifact storage fails", async () => {
-		const store: CodingToolResultArtifactStore = {
+		const store: RuntimeToolResultArtifactStore = {
 			write: vi.fn(async () => {
 				throw new Error("disk unavailable");
 			}),
@@ -93,7 +90,7 @@ describe("coding agent coding tool result policy", () => {
 	});
 });
 
-function artifactStore(): CodingToolResultArtifactStore & { readonly write: ReturnType<typeof vi.fn> } {
+function artifactStore(): RuntimeToolResultArtifactStore & { readonly write: ReturnType<typeof vi.fn> } {
 	return { write: vi.fn(async () => ({ reference: "artifact.json" })) };
 }
 

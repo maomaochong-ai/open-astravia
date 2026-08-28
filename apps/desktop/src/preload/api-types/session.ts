@@ -5,6 +5,7 @@ import type {
 	CodingAgentSandboxAuthorizationDecision,
 	CodingAgentSandboxAuthorizationFunctionRequest,
 } from "@vetta/coding-agent/function-extensions";
+import type { ConversationScenario } from "@vetta/coding-agent/profile";
 import type {
 	HistoryEntry,
 	ProjectInfo,
@@ -26,6 +27,20 @@ import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
  * preload 层不复刻注册表，故放宽为 string，主进程写入前校验。
  */
 export type AgentMode = string;
+
+/** Desktop 在 Runtime 基础状态上组合的 Coding Agent 产品状态。 */
+export interface DesktopSessionStateSnapshot extends SessionStateSnapshot {
+	readonly scenario: ConversationScenario;
+	readonly agentMode?: AgentMode;
+}
+
+export interface DesktopCodingAgentSessionConfig extends SessionConfig {
+	readonly scenario?: ConversationScenario;
+	readonly agentMode?: AgentMode;
+	readonly appendSystemPrompt?: string;
+	readonly enableBackgroundTasks?: boolean;
+	readonly includeAgentSkills?: boolean;
+}
 
 /** 工作模式选项（由主进程模式注册表下发，不含提示词正文）。 */
 export interface AgentModeOption {
@@ -67,7 +82,7 @@ export interface DesktopUserQuestionResolvedEvent {
 
 export interface DesktopSessionApi {
 	create(
-		config: SessionConfig | undefined,
+		config: DesktopCodingAgentSessionConfig | undefined,
 		kind: DesktopSessionKind,
 		traceContext?: DesktopSessionTraceContext,
 	): Promise<{ sessionId: string; sessionPath: string; cwd?: string }>;
@@ -137,7 +152,7 @@ export interface DesktopSessionApi {
 	getAgentModes(): Promise<AgentModeOption[]>;
 	getPersonalization(): Promise<PersonalizationConfig>;
 	setPersonalization(input: PersonalizationConfig): Promise<void>;
-	getState(sessionId: string): Promise<SessionStateSnapshot>;
+	getState(sessionId: string): Promise<DesktopSessionStateSnapshot>;
 	getMessages(sessionId: string): Promise<Message[]>;
 	getFullHistory(sessionId: string): Promise<HistoryEntry[]>;
 	/** Prepare re-edit: set leaf to parent of user entry; returns text. Call before prompt. */

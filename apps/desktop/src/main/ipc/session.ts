@@ -20,14 +20,18 @@ import { DEFAULT_PERSONA_ID, PERSONAS } from "@vetta/coding-agent/profile";
 import {
 	CODING_AGENT_BACKGROUND_TASK_KILL,
 	CODING_AGENT_BACKGROUND_TASKS_CLEAR_FINISHED,
+	CODING_AGENT_BACKGROUND_TASKS_OBSERVATION,
 	CODING_AGENT_BACKGROUND_TASKS_READ,
 	CODING_AGENT_NEXT_PROMPT_SUGGESTIONS,
+	CODING_AGENT_SESSION_PROFILE_STATE_READ,
 	CODING_AGENT_SESSION_TITLE_GENERATE,
 	CODING_AGENT_SUBAGENT_INTERRUPT,
+	CODING_AGENT_SUBAGENTS_OBSERVATION,
 	CODING_AGENT_SUBAGENTS_READ,
 	CODING_AGENT_TODO_CLEAR,
 } from "@vetta/coding-agent/session-extensions";
-import type { SessionConfig, SessionEvent, SessionExecutionMode, SettingsPatch } from "@vetta/runtime-core";
+import type { SessionEvent, SessionExecutionMode, SettingsPatch } from "@vetta/runtime-core";
+import { sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import { BrowserWindow, ipcMain, type WebContents } from "electron";
 import { PLUGIN_CONTRIBUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { DEFAULT_AGENT_MODE, isAgentMode, MODE_PROMPTS } from "../agent-modes/index.js";
@@ -36,6 +40,7 @@ import { onConversationListChanged } from "../conversations/conversation-list-ev
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
 import { purgeProjectSessions } from "../conversations/project-session-purge.js";
 import { parsePromptRequest } from "../conversations/prompt-request-schema.js";
+import type { DesktopCodingAgentSessionConfig } from "../conversations/resolve-session-config.js";
 import { getDesktopSandboxAuthorizationBroker } from "../conversations/sandbox-authorization-broker.js";
 import { isConversationSubCwd, readSessionCwdFromHeader } from "../conversations/session-paths.js";
 import { listRuntimeSessionProjects, listSessionHistory } from "../conversations/session-query-service.js";
@@ -756,7 +761,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(
 		CHANNELS.CREATE,
-		async (_event, config: SessionConfig | undefined, kind: unknown, rawTraceContext: unknown) => {
+		async (_event, config: DesktopCodingAgentSessionConfig | undefined, kind: unknown, rawTraceContext: unknown) => {
 			assertSessionKind(kind);
 			assertExecutionMode(config?.executionMode);
 			const traceContext = parseSessionTraceContext(rawTraceContext);
@@ -939,7 +944,17 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.GET_STATE, async (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
-		return runtime.getState(sessionId);
+		const state = runtime.getState(sessionId);
+		const productState = runtime.invokeSessionExtensionSync(
+			sessionId,
+			CODING_AGENT_SESSION_PROFILE_STATE_READ,
+			undefined,
+		);
+		return {
+			...state,
+			scenario: productState.scenario,
+			...(productState.agentMode !== undefined ? { agentMode: productState.agentMode } : {}),
+		};
 	});
 
 	ipcMain.handle(CHANNELS.GET_MESSAGES, async (_event, sessionId: unknown) => {
@@ -1300,7 +1315,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		subscriptionMap.set(subscriptionId, unsubscribe);
 
 		// 回放后台任务快照：注册表在主进程内存中跨 renderer 重载存活，但
-		// background_tasks_update 只在状态变化时推送——renderer 刷新后 atom
+		// 后台任务扩展观察只在状态变化时推送——renderer 刷新后 atom
 		// 清空，若不回放，无输出的运行中任务（如 sleep）要等到结束才再现。
 		const backgroundTasks = await runtime.invokeSessionExtension(
 			sessionId,
@@ -1313,9 +1328,8 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				sessionId,
 				eventId: randomUUID(),
 				timestamp: Date.now(),
-				source: "runtime-core",
-				type: "background_tasks_update",
-				tasks: backgroundTasks,
+				source: "extension",
+				...sessionExtensionObservation(CODING_AGENT_BACKGROUND_TASKS_OBSERVATION, backgroundTasks),
 			});
 		}
 
@@ -1344,9 +1358,8 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				sessionId,
 				eventId: randomUUID(),
 				timestamp: Date.now(),
-				source: "runtime-core",
-				type: "subagents_update",
-				agents: subagents,
+				source: "extension",
+				...sessionExtensionObservation(CODING_AGENT_SUBAGENTS_OBSERVATION, subagents),
 			});
 		}
 

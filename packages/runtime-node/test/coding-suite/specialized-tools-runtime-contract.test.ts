@@ -26,7 +26,7 @@ afterEach(async () => {
 });
 
 describe("runtime specialized tool contracts", () => {
-	it("keeps specialized registrations in work mode with their legacy scopes and categories", () => {
+	it("keeps specialized runtime registrations independent of scenario policy", () => {
 		const cwd = process.cwd();
 		const desktop = successfulDesktop("C:output.json");
 		const registrations = [
@@ -48,18 +48,6 @@ describe("runtime specialized tool contracts", () => {
 			"extract_text_from_img",
 			"render_pdf_page",
 		]);
-		for (const registration of registrations) {
-			expect(registration.category).toBe("doc");
-			expect(registration.scopeUse).toEqual([
-				"im-claw",
-				"conversation",
-				"project",
-				"batch",
-				"automation",
-				"kb-processing",
-				"cli",
-			]);
-		}
 	});
 
 	it("resolves document conversion paths from the session cwd and preserves phases and output", async () => {

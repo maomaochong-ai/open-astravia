@@ -1,5 +1,5 @@
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
-import type { CodingToolActivation } from "@vetta/runtime-tools";
+import type { CodingAgentToolActivation } from "../runtime-contracts/index.js";
 
 export interface CodingAgentToolAvailability {
 	readonly backgroundTasksAvailable: boolean;
@@ -8,11 +8,11 @@ export interface CodingAgentToolAvailability {
 
 /** 解析单次模型调用实际使用的工具激活状态，不持有 Registry 或 Session 状态。 */
 export function resolveCodingAgentToolActivation(
-	base: CodingToolActivation,
+	base: CodingAgentToolActivation,
 	context: ModelCallContributionContext,
 	availability: CodingAgentToolAvailability,
 	activeToolNamesOverride?: readonly string[],
-): CodingToolActivation {
+): CodingAgentToolActivation {
 	if (activeToolNamesOverride) return { mode: "explicit", toolNames: [...activeToolNamesOverride] };
 	if (base.mode === "explicit") return base;
 	const capabilities = new Set(base.capabilities);
@@ -24,7 +24,7 @@ export function resolveCodingAgentToolActivation(
 }
 
 export function isCodingAgentKnowledgeToolEnabled(
-	base: CodingToolActivation,
+	base: CodingAgentToolActivation,
 	context: ModelCallContributionContext,
 	knowledgeAvailable: boolean,
 ): boolean {

@@ -1,6 +1,6 @@
-import type { ConversationScenario } from "@vetta/runtime-core";
 import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
 import type { AsyncExecutionGate, BackgroundCommandService, CodingToolRegistration } from "@vetta/runtime-tools";
+import type { ConversationScenario } from "../../profiles/index.js";
 
 export interface CodingAgentToolEnvironmentContext {
 	readonly cwd: string;

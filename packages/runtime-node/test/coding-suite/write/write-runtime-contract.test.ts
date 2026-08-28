@@ -5,10 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
 	createWriteTool,
 	createWriteToolRegistration,
-	selectCodingToolsForScope,
-	WRITE_TOOL_CATEGORY,
 	WRITE_TOOL_DESCRIPTION,
-	WRITE_TOOL_SCOPES,
 	type WriteOperations,
 	type WritePathPolicy,
 	WriteToolInputSchema,
@@ -56,7 +53,7 @@ function recordingOperations(calls: string[]): WriteOperations {
 }
 
 describe("runtime write tool", () => {
-	it("keeps the public definition, registration metadata, and full default scope", () => {
+	it("keeps the public runtime definition", () => {
 		const runtime = createWriteToolRegistration(process.cwd(), { pathPolicy: permissivePathPolicy });
 		expect(runtime.tool).toMatchObject({
 			name: "write",
@@ -64,11 +61,6 @@ describe("runtime write tool", () => {
 			description: WRITE_TOOL_DESCRIPTION,
 			inputSchema: WriteToolInputSchema,
 		});
-		expect(runtime.scopeUse).toEqual(WRITE_TOOL_SCOPES);
-		expect(runtime.category).toBe(WRITE_TOOL_CATEGORY);
-		for (const scope of WRITE_TOOL_SCOPES) {
-			expect(selectCodingToolsForScope([runtime], scope)).toEqual([runtime.tool]);
-		}
 	});
 
 	it("preserves local parent creation, verbatim UTF-8 content, result text, and undefined details", async () => {

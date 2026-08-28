@@ -7,6 +7,7 @@ import { selectConversationDocumentModelMessages } from "@vetta/runtime-core/con
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/model-runtime-adapter.js";
 import { CodingAgentExtensionToolRuntime } from "../extensions/runtime/extension-tool-runtime.js";
+import { DEFAULT_SCENARIO } from "../profiles/index.js";
 import { CodingAgentConversationContextOverlay } from "../sessions/projection/conversation-context-overlay.js";
 import { CodingAgentConversationContextProjector } from "../sessions/projection/conversation-context-projector.js";
 import type {
@@ -24,10 +25,12 @@ export {
 	type CodingAgentExecutionRuntimeDefinitionOptions,
 	createCodingAgentExecutionRuntimeDefinition,
 } from "./agent-runtime/execution-definition.js";
+export { parseCodingAgentRuntimeSessionConfiguration } from "./contracts/index.js";
 export {
 	type CodingAgentRuntimeHostSessionOverrides,
 	createCodingAgentRuntimeHostSessionConfig,
 	createCodingAgentRuntimeSessionAgentSelection,
+	createCodingAgentRuntimeSessionSelection,
 	createIsolatedCodingAgentRuntimeHostSession,
 	type IsolatedCodingAgentRuntimeHostSessionOptions,
 } from "./runtime-host-session-config.js";
@@ -38,6 +41,7 @@ import {
 } from "./agent-runtime/composition-agent-runtime.js";
 import { createCodingAgentChildCompositionFactory } from "./subagent/child-composition-policy.js";
 
+export type { CodingAgentRuntimeToolRegistration } from "../runtime-contracts/index.js";
 export type {
 	CodingAgentInitialTodoLockSource,
 	CodingAgentObservationHubOptions,
@@ -50,6 +54,7 @@ export type {
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeExtensionControls,
 	CodingAgentRuntimeHostRetrySettings,
+	CodingAgentRuntimeSessionConfiguration,
 	CodingAgentRuntimeSessionControls,
 	CodingAgentRuntimeSessionHookLifecycle,
 	CodingAgentRuntimeSessionOptions,
@@ -263,6 +268,12 @@ async function assembleCodingAgentRuntimeComposition(
 					`Coding Agent Composition cannot execute Agent ${request.agent.id}; expected ${preparedAgent.identity.agentId}`,
 				);
 			}
+			const sessionOptions = readCodingAgentSessionOptions(request);
+			if ((sessionOptions.scenario ?? DEFAULT_SCENARIO) !== scenario) {
+				throw new Error(
+					`Coding Agent Composition scenario mismatch: expected ${scenario}, received ${sessionOptions.scenario ?? DEFAULT_SCENARIO}`,
+				);
+			}
 			return runtimeAgentBackend.createAssembly({
 				...request,
 				agent: {
@@ -330,14 +341,10 @@ function readCodingAgentSessionOptions(request: RuntimeSessionCreateRequest): Co
 		cwd: request.cwd ?? options.cwd,
 		model: request.model ?? options.model,
 		thinkingLevel: request.thinkingLevel ?? options.thinkingLevel,
-		agentMode: request.agentMode ?? options.agentMode,
 		executionMode: request.executionMode,
 		env: request.env ?? options.env,
-		enableBackgroundTasks: request.enableBackgroundTasks ?? options.enableBackgroundTasks,
-		includeAgentSkills: request.includeAgentSkills ?? options.includeAgentSkills,
 		sandboxHostPath: request.sandboxHostPath ?? options.sandboxHostPath,
 		linuxBubblewrapPath: request.linuxBubblewrapPath ?? options.linuxBubblewrapPath,
 		macosSandboxExecPath: request.macosSandboxExecPath ?? options.macosSandboxExecPath,
-		systemPromptAddon: request.appendSystemPrompt ?? options.systemPromptAddon,
 	};
 }

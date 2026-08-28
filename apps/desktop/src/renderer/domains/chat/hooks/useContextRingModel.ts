@@ -27,9 +27,6 @@ export function useContextRingModel(includeDetails = true): ContextRingModel | n
 						unknown: t("contextRing.details.unknown"),
 						owner: {
 							core: t("contextRing.details.owner.core"),
-							skill: t("contextRing.details.owner.skill"),
-							plugin: t("contextRing.details.owner.plugin"),
-							mcp: t("contextRing.details.owner.mcp"),
 							extension: t("contextRing.details.owner.extension"),
 							runtime: t("contextRing.details.owner.runtime"),
 							user: t("contextRing.details.owner.user"),

@@ -228,7 +228,6 @@ function assembly(
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},
-			setAgentMode: () => {},
 		},
 		queueController: options.queueController,
 		modelController: {

@@ -80,6 +80,7 @@ export function createKnowledgeProcessingSessionFactory(
 			try {
 				const sessionOptions: CodingAgentRuntimeSessionOptions = {
 					sessionId: createSessionId(),
+					scenario: composition.scenario,
 					cwd: request.cwd,
 					model: initialModel,
 					env: request.env,
@@ -93,9 +94,7 @@ export function createKnowledgeProcessingSessionFactory(
 					),
 				};
 				const created = await runtimeHost.createSession(
-					createCodingAgentRuntimeHostSessionConfig(composition.agentRuntime, sessionOptions, {
-						scenario: composition.scenario,
-					}),
+					createCodingAgentRuntimeHostSessionConfig(composition.agentRuntime, sessionOptions),
 				);
 				runtimeSession = runtimeHost.getSessionView(created.sessionId);
 			} catch (error) {

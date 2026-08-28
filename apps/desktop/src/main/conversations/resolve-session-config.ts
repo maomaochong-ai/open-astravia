@@ -1,4 +1,5 @@
 import { VETTA_CLI_GUIDANCE } from "@vetta/coding-agent/cli-guidance";
+import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
 import type { ConversationScenario } from "@vetta/coding-agent/profile";
 import type { SessionConfig } from "@vetta/runtime-core";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
@@ -12,6 +13,15 @@ import {
 
 export type DesktopConversationSource = "interactive" | "debug";
 export type DesktopSessionKind = "conversation" | "other";
+
+/** Desktop 的 Coding Agent 产品输入；产品字段不会进入 Runtime Core 的 SessionConfig。 */
+export interface DesktopCodingAgentSessionConfig extends SessionConfig {
+	readonly scenario?: ConversationScenario;
+	readonly agentMode?: DesktopAgentMode;
+	readonly appendSystemPrompt?: string;
+	readonly enableBackgroundTasks?: boolean;
+	readonly includeAgentSkills?: boolean;
+}
 
 export interface ResolvedDesktopSessionConfig {
 	config: SessionConfig;
@@ -37,7 +47,7 @@ async function resolveSessionAgentMode(
 }
 
 export async function resolveDesktopSessionConfig(
-	config: SessionConfig | undefined,
+	config: DesktopCodingAgentSessionConfig | undefined,
 	kind: DesktopSessionKind,
 	source: DesktopConversationSource,
 ): Promise<ResolvedDesktopSessionConfig> {
@@ -63,16 +73,30 @@ export async function resolveDesktopSessionConfig(
 				: VETTA_CLI_GUIDANCE
 			: config?.appendSystemPrompt;
 	const agentMode = await resolveSessionAgentMode(config?.sessionPath, desktopConfig.defaultAgentMode ?? "work");
+	const {
+		scenario: _scenario,
+		agentMode: _agentMode,
+		appendSystemPrompt: _appendSystemPrompt,
+		enableBackgroundTasks: _enableBackgroundTasks,
+		includeAgentSkills: _includeAgentSkills,
+		...runtimeConfig
+	} = config ?? {};
 	return {
 		config: {
-			...(config ?? {}),
+			...runtimeConfig,
+			agent: createCodingAgentRuntimeSessionSelection(
+				{
+					sessionId: config?.sessionId,
+					scenario,
+					agentMode,
+					systemPromptAddon: appendSystemPrompt,
+					enableBackgroundTasks,
+					includeAgentSkills,
+				},
+				config?.agent,
+			),
 			cwd: effectiveCwd,
 			sessionDir: injectedSessionDir ?? config?.sessionDir,
-			scenario,
-			agentMode,
-			appendSystemPrompt,
-			enableBackgroundTasks,
-			includeAgentSkills,
 		},
 		cwd: effectiveCwd,
 		scenario,

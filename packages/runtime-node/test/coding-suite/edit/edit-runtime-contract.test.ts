@@ -5,14 +5,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
 	createEditTool,
 	createEditToolRegistration,
-	EDIT_TOOL_CATEGORY,
 	EDIT_TOOL_DESCRIPTION,
-	EDIT_TOOL_SCOPES,
 	type EditOperations,
 	type EditPathPolicy,
 	type EditToolInput,
 	EditToolInputSchema,
-	selectCodingToolsForScope,
 } from "../../../src/coding/index.js";
 import { anchorLineHash } from "../../../src/coding/shared/anchors.js";
 import { createTestEditPathPolicy } from "../../support/path-policy.js";
@@ -74,7 +71,7 @@ async function compareExactEdit(options: {
 }
 
 describe("runtime edit tool", () => {
-	it("keeps the public definition, registration metadata, and full default scope", () => {
+	it("keeps the public runtime definition", () => {
 		const runtime = createEditToolRegistration(process.cwd(), { pathPolicy: permissivePathPolicy });
 		expect(runtime.tool).toMatchObject({
 			name: "edit",
@@ -82,11 +79,6 @@ describe("runtime edit tool", () => {
 			description: EDIT_TOOL_DESCRIPTION,
 			inputSchema: EditToolInputSchema,
 		});
-		expect(runtime.scopeUse).toEqual(EDIT_TOOL_SCOPES);
-		expect(runtime.category).toBe(EDIT_TOOL_CATEGORY);
-		for (const scope of EDIT_TOOL_SCOPES) {
-			expect(selectCodingToolsForScope([runtime], scope)).toEqual([runtime.tool]);
-		}
 	});
 
 	it.each([

@@ -91,7 +91,6 @@ function createRequest(sourcePath: string, sessionDir: string): RuntimeSessionCr
 		sessionPath: sourcePath,
 		sessionDir,
 		executionMode: "full-access",
-		enableSubagents: false,
 		getSessionId: () => undefined,
 	};
 }

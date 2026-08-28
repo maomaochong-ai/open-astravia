@@ -198,7 +198,6 @@ function createResources(
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},
-			setAgentMode: () => {},
 		},
 		dispose,
 	};

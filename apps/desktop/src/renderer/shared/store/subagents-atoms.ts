@@ -44,7 +44,7 @@ export const selectedWorkflowIdAtom = atom<string | null>(null);
 
 /**
  * Subagent children for the root session.
- * Driven by subagents_update full snapshots, keyed by sessionId.
+ * Driven by Coding Agent extension snapshots, keyed by sessionId.
  */
 export const subagentsBySessionAtom = atom<Map<string, SubagentTask[]>>(new Map());
 

@@ -11,7 +11,6 @@ import {
 } from "@vetta/runtime-core";
 import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
@@ -23,6 +22,7 @@ import type {
 	CodingAgentContextRuntime,
 	CodingAgentPluginMcpRuntime,
 	CodingAgentRuntimeToolRegistration,
+	CodingAgentToolActivation,
 } from "../../runtime-contracts/index.js";
 import { CODING_AGENT_LIFECYCLE_ISSUE_OBSERVATION } from "../../runtime-contracts/lifecycle-observability.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
@@ -88,7 +88,7 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 	readonly mcpController?: McpDeferredToolController;
 	readonly codingTools: CodingToolsRuntimeComposition;
 	readonly specializedToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
-	readonly activation: CodingToolActivation;
+	readonly activation: CodingAgentToolActivation;
 	readonly knowledgeAvailable: boolean;
 	readonly backgroundTasksAvailable: boolean;
 	readonly askUserQuestionRuntime: CodingAgentAskUserQuestionExtensionRuntime;

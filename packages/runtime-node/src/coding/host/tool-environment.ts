@@ -5,6 +5,7 @@ import type { BackgroundCommandService } from "../shared/background-command-serv
 import type { CommandToolExecutor } from "../shared/command-tool.js";
 import { sanitizeBinaryOutput } from "../shared/text-decoding.js";
 import type { EditPathPolicy } from "../tools/edit/index.js";
+import type { ReadToolOptions } from "../tools/read/index.js";
 import type { WritePathPolicy } from "../tools/write/index.js";
 import {
 	createNodeBackgroundCommandHost,
@@ -29,6 +30,7 @@ export interface NodeHostCodingToolEnvironmentOptions {
 	readonly resolveExecutable?: ResolveCodingToolExecutable;
 	readonly normalizeBackgroundOutput?: (value: string) => string;
 	readonly configurationSource?: RuntimeConfigurationSnapshotSource;
+	readonly readOptions?: Pick<ReadToolOptions, "binaryContentHint" | "preserveFullText">;
 }
 
 /**
@@ -59,5 +61,6 @@ export function createNodeHostCodingToolEnvironment(
 		editPathPolicy: options.editPathPolicy,
 		writePathPolicy: options.writePathPolicy,
 		configurationSource: options.configurationSource,
+		readOptions: options.readOptions,
 	});
 }

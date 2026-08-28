@@ -1,7 +1,6 @@
 import type { Message } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
 import {
-	type ConversationScenario,
 	type RuntimeActiveSession,
 	type RuntimeObservationPublisher,
 	type RuntimeResourceContext,
@@ -19,8 +18,8 @@ import type {
 	SubagentTypeDefinition,
 	SubagentTypeRegistryLike,
 } from "@vetta/runtime-subagents";
-import type { CodingToolActivation } from "@vetta/runtime-tools";
-import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import type { ConversationScenario } from "../../profiles/index.js";
+import type { CodingAgentRuntimeToolRegistration, CodingAgentToolActivation } from "../../runtime-contracts/index.js";
 import { CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION } from "../../runtime-contracts/subagent-observability.js";
 import type {
 	CodingAgentConversationSessionPathAssessment,
@@ -59,7 +58,7 @@ export interface CodingAgentSubagentChildCompositionRequest {
 	readonly cwd: string;
 	readonly initialModel: NonNullable<SessionConfig["model"]>;
 	readonly initialThinkingLevel: NonNullable<SessionConfig["thinkingLevel"]>;
-	readonly activation: CodingToolActivation;
+	readonly activation: CodingAgentToolActivation;
 	readonly inheritedMcpView: McpRuntimeToolView;
 	readonly skillPolicy: NonNullable<CodingAgentSubagentProfile["skillPolicy"]>;
 }
@@ -85,7 +84,7 @@ export interface CodingAgentSubagentSessionAssemblyOptions {
 	readonly readModel: () => NonNullable<SessionConfig["model"]>;
 	readonly readThinkingLevel: () => NonNullable<SessionConfig["thinkingLevel"]>;
 	readonly readInheritedMcpView: () => Promise<McpRuntimeToolView>;
-	readonly readParentToolActivation?: () => CodingToolActivation | undefined;
+	readonly readParentToolActivation?: () => CodingAgentToolActivation | undefined;
 	readonly workspacePort?: CodingAgentSubagentWorkspacePort;
 	readonly typeRegistry?: SubagentTypeRegistryLike<CodingAgentSubagentProfile>;
 	readonly createChildFactory?: (context: CodingAgentSubagentChildFactoryContext) => CodingAgentSubagentChildFactory;
@@ -349,7 +348,10 @@ async function acquireWorkspaceLease(
 	return await port.acquire({ parentCwd, childId, taskName, policy });
 }
 
-function withAdditionalTools(activation: CodingToolActivation, toolNames: readonly string[]): CodingToolActivation {
+function withAdditionalTools(
+	activation: CodingAgentToolActivation,
+	toolNames: readonly string[],
+): CodingAgentToolActivation {
 	if (toolNames.length === 0) return activation;
 	if (activation.mode === "explicit") {
 		return { mode: "explicit", toolNames: [...new Set([...activation.toolNames, ...toolNames])] };
@@ -420,9 +422,9 @@ function createSubagentLifecycle(options: CodingAgentSubagentSessionAssemblyOpti
 }
 
 function withInheritedMcpTools(
-	activation: CodingToolActivation,
+	activation: CodingAgentToolActivation,
 	inheritedView: McpRuntimeToolView,
-): CodingToolActivation {
+): CodingAgentToolActivation {
 	if (activation.mode === "scope" || inheritedView.tools.length === 0) return activation;
 	return {
 		mode: "explicit",

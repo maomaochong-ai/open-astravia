@@ -1,15 +1,17 @@
 import type { RuntimeSessionAgentSelection, SessionConfig } from "@vetta/runtime-core";
 import { RuntimeHost, RuntimeHostSession } from "@vetta/runtime-core";
+import type { ConversationScenario } from "../profiles/index.js";
 import type {
 	CodingAgentRuntimeAgentIdentity,
 	CodingAgentRuntimeComposition,
+	CodingAgentRuntimeSessionConfiguration,
 	CodingAgentRuntimeSessionOptions,
 } from "./contracts/index.js";
+import { DEFAULT_CODING_AGENT_RUNTIME_ID } from "./runtime-agent-definition.js";
 
-export type CodingAgentRuntimeHostSessionOverrides = Pick<
-	SessionConfig,
-	"agentDir" | "scenario" | "sessionDir" | "sessionPath"
->;
+export type CodingAgentRuntimeHostSessionOverrides = Pick<SessionConfig, "agentDir" | "sessionDir" | "sessionPath"> & {
+	readonly scenario?: ConversationScenario;
+};
 
 /**
  * 把 Coding Agent 私有 Session 配置绑定到通用 Runtime Agent selection。
@@ -17,12 +19,24 @@ export type CodingAgentRuntimeHostSessionOverrides = Pick<
  */
 export function createCodingAgentRuntimeSessionAgentSelection(
 	agent: CodingAgentRuntimeAgentIdentity,
-	options: CodingAgentRuntimeSessionOptions,
+	options: CodingAgentRuntimeSessionConfiguration,
 ): RuntimeSessionAgentSelection {
 	return {
 		id: agent.agentId,
 		definitionRevisionId: agent.revisionId,
 		instanceId: agent.instanceId,
+		sessionConfiguration: options,
+	};
+}
+
+/** 产品宿主在 Composition identity 尚未创建时使用的稳定 Agent selection。 */
+export function createCodingAgentRuntimeSessionSelection(
+	options: CodingAgentRuntimeSessionConfiguration,
+	agent: RuntimeSessionAgentSelection | undefined = undefined,
+): RuntimeSessionAgentSelection {
+	return {
+		...agent,
+		id: agent?.id ?? DEFAULT_CODING_AGENT_RUNTIME_ID,
 		sessionConfiguration: options,
 	};
 }
@@ -33,19 +47,19 @@ export function createCodingAgentRuntimeHostSessionConfig(
 	options: CodingAgentRuntimeSessionOptions,
 	overrides: CodingAgentRuntimeHostSessionOverrides = {},
 ): SessionConfig {
+	const { scenario, ...runtimeOverrides } = overrides;
 	return {
-		...overrides,
-		agent: createCodingAgentRuntimeSessionAgentSelection(agent, options),
+		...runtimeOverrides,
+		agent: createCodingAgentRuntimeSessionAgentSelection(agent, {
+			...options,
+			scenario: scenario ?? options.scenario,
+		}),
 		sessionId: options.sessionId,
 		cwd: options.cwd,
 		model: options.model,
 		thinkingLevel: options.thinkingLevel,
-		agentMode: options.agentMode,
 		executionMode: options.executionMode,
-		appendSystemPrompt: options.systemPromptAddon,
 		env: options.env ? { ...options.env } : undefined,
-		enableBackgroundTasks: options.enableBackgroundTasks,
-		includeAgentSkills: options.includeAgentSkills,
 	};
 }
 

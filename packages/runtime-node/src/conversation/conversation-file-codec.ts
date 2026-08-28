@@ -25,16 +25,16 @@ import {
 	getStoredSessionEventValidationIssue,
 	isConversationContinuationSeedRecord,
 	isConversationDocumentOperationRecord,
-	isConversationEventRecord,
 	isConversationFileHeader,
 	isConversationImportSeedRecord,
 	isConversationSeedRecord,
 	isStoredSessionEvent,
-	type ReadConversationEventRecord,
+	type NormalizedReadConversationEventRecord,
 	type ReadConversationFileHeader,
+	readConversationEventRecord,
 } from "@vetta/runtime-storage/conversation";
 
-type ConversationBodyRecord = ReadConversationEventRecord | ConversationDocumentOperationRecord;
+type ConversationBodyRecord = NormalizedReadConversationEventRecord | ConversationDocumentOperationRecord;
 
 export interface ParsedConversationFile {
 	readonly header: ReadConversationFileHeader;
@@ -42,7 +42,7 @@ export interface ParsedConversationFile {
 	readonly continuationSeed?: ConversationContinuationSeedRecord;
 	readonly importSeed?: ConversationImportSeedRecord;
 	readonly records: readonly ConversationBodyRecord[];
-	readonly eventRecords: readonly ReadConversationEventRecord[];
+	readonly eventRecords: readonly NormalizedReadConversationEventRecord[];
 }
 
 export function parseConversationFile(text: string, sessionId: string): ParsedConversationFile {
@@ -52,7 +52,7 @@ export function parseConversationFile(text: string, sessionId: string): ParsedCo
 		throw corruptConversation(sessionId, "missing or mismatched header");
 	}
 
-	const eventRecords: ReadConversationEventRecord[] = [];
+	const eventRecords: NormalizedReadConversationEventRecord[] = [];
 	const conversationRecords: ConversationBodyRecord[] = [];
 	const documentEntryIds = new Set<string>();
 	let seed: ConversationSeedRecord | undefined;
@@ -134,45 +134,46 @@ export function parseConversationFile(text: string, sessionId: string): ParsedCo
 			conversationRecords.push(record);
 			continue;
 		}
-		if (!isConversationEventRecord(record)) {
+		const eventRecord = readConversationEventRecord(record);
+		if (!eventRecord) {
 			throw corruptConversation(sessionId, `invalid conversation record at line ${index + 2}`);
 		}
-		if (record.schemaVersion !== header.schemaVersion) {
+		if (eventRecord.schemaVersion !== header.schemaVersion) {
 			throw corruptConversation(sessionId, `event schema version does not match header at line ${index + 2}`);
 		}
-		if (record.sequence !== expectedEventSequence) {
+		if (eventRecord.sequence !== expectedEventSequence) {
 			throw corruptConversation(
 				sessionId,
-				`event sequence ${record.sequence} does not match expected ${expectedEventSequence}`,
+				`event sequence ${eventRecord.sequence} does not match expected ${expectedEventSequence}`,
 			);
 		}
 		expectedEventSequence += 1;
-		validateConversationEvent(sessionId, record.event);
-		if (record.schemaVersion === CONVERSATION_SCHEMA_VERSION) {
-			const persistence = conversationDocumentEntryPersistence(record.event);
-			if ((record.documentEntry !== null) !== (persistence === "reference")) {
+		validateConversationEvent(sessionId, eventRecord.event);
+		if (eventRecord.schemaVersion === CONVERSATION_SCHEMA_VERSION) {
+			const persistence = conversationDocumentEntryPersistence(eventRecord.event);
+			if ((eventRecord.documentEntry !== null) !== (persistence === "reference")) {
 				throw corruptConversation(sessionId, `event has inconsistent document entry at line ${index + 2}`);
 			}
-			if (record.documentEntry) {
-				if (documentEntryIds.has(record.documentEntry.id)) {
+			if (eventRecord.documentEntry) {
+				if (documentEntryIds.has(eventRecord.documentEntry.id)) {
 					throw corruptConversation(sessionId, `duplicate document entry at line ${index + 2}`);
 				}
-				if (record.documentEntry.parentId && !documentEntryIds.has(record.documentEntry.parentId)) {
+				if (eventRecord.documentEntry.parentId && !documentEntryIds.has(eventRecord.documentEntry.parentId)) {
 					throw corruptConversation(sessionId, `unknown document parent at line ${index + 2}`);
 				}
-				documentEntryIds.add(record.documentEntry.id);
+				documentEntryIds.add(eventRecord.documentEntry.id);
 			}
 			// 隐式节点的 id 不落盘，但同样会成为后续事件的父节点，必须一并登记。
 			if (persistence === "implicit") {
-				const implicitId = nativeConversationEntryId(record.sequence);
+				const implicitId = nativeConversationEntryId(eventRecord.sequence);
 				if (documentEntryIds.has(implicitId)) {
 					throw corruptConversation(sessionId, `duplicate document entry at line ${index + 2}`);
 				}
 				documentEntryIds.add(implicitId);
 			}
 		}
-		eventRecords.push(record);
-		conversationRecords.push(record);
+		eventRecords.push(eventRecord);
+		conversationRecords.push(eventRecord);
 	}
 	const initialSeed = seed ?? continuationSeed ?? importSeed;
 	if (initialSeed) {
@@ -226,7 +227,7 @@ export function serializeConversationLine(
 	value:
 		| ConversationFileHeader
 		| ConversationEventRecord
-		| ReadConversationEventRecord
+		| NormalizedReadConversationEventRecord
 		| ConversationContinuationSeedRecord
 		| ConversationImportSeedRecord
 		| ConversationSeedRecord

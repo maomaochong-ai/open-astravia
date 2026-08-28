@@ -4,6 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
+import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { RuntimeHost } from "@vetta/runtime-core";
 import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
@@ -27,6 +28,14 @@ const MODEL_A: Model<Api> = {
 	maxTokens: 1_000,
 };
 const MODEL_B: Model<Api> = { ...MODEL_A, id: "model-b-user-picked", name: "Model B" };
+
+function conversationSelection() {
+	return createCodingAgentRuntimeSessionSelection({
+		scenario: "conversation",
+		enableBackgroundTasks: false,
+		includeAgentSkills: false,
+	});
+}
 
 describe("Desktop session model restore", () => {
 	const directories: string[] = [];
@@ -57,10 +66,8 @@ describe("Desktop session model restore", () => {
 			const created = await first.runtime.createSession({
 				cwd,
 				sessionDir,
-				scenario: "conversation",
+				agent: conversationSelection(),
 				executionMode: "full-access",
-				enableBackgroundTasks: false,
-				includeAgentSkills: false,
 			});
 			const sessionPath = first.runtime.getSessionPath(created.sessionId);
 			if (!sessionPath) throw new Error("session was not persisted");
@@ -80,10 +87,8 @@ describe("Desktop session model restore", () => {
 				cwd,
 				sessionDir,
 				sessionPath,
-				scenario: "conversation",
+				agent: conversationSelection(),
 				executionMode: "full-access",
-				enableBackgroundTasks: false,
-				includeAgentSkills: false,
 			});
 			// 期望：恢复成该会话上次用的 Model B。实际：列表第一个 Model A。
 			expect(restarted.runtime.getState(resumed.sessionId).model?.id).toBe(modelB.id);
@@ -107,10 +112,8 @@ describe("Desktop session model restore", () => {
 			const created = await first.runtime.createSession({
 				cwd,
 				sessionDir,
-				scenario: "conversation",
+				agent: conversationSelection(),
 				executionMode: "full-access",
-				enableBackgroundTasks: false,
-				includeAgentSkills: false,
 			});
 			const sessionPath = first.runtime.getSessionPath(created.sessionId);
 			if (!sessionPath) throw new Error("session was not persisted");
@@ -124,10 +127,8 @@ describe("Desktop session model restore", () => {
 				cwd,
 				sessionDir,
 				sessionPath,
-				scenario: "conversation",
+				agent: conversationSelection(),
 				executionMode: "full-access",
-				enableBackgroundTasks: false,
-				includeAgentSkills: false,
 			});
 			expect(restarted.runtime.getState(resumed.sessionId).model?.id).toBe(modelA.id);
 		} finally {

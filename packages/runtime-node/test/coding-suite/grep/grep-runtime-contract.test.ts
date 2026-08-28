@@ -5,11 +5,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
 	createGrepTool,
 	createGrepToolRegistration,
-	GREP_TOOL_CATEGORY,
 	GREP_TOOL_DESCRIPTION,
-	GREP_TOOL_SCOPES,
 	GrepToolInputSchema,
-	selectCodingToolsForScope,
 } from "../../../src/coding/index.js";
 import { anchorLineHash } from "../../../src/coding/shared/anchors.js";
 
@@ -22,7 +19,7 @@ describe("runtime grep tool", () => {
 		}
 	});
 
-	it("keeps the public definition and registration metadata", () => {
+	it("keeps the public runtime definition", () => {
 		const runtime = createGrepToolRegistration(process.cwd(), { rgPath: "rg" });
 		expect(runtime.tool).toMatchObject({
 			name: "grep",
@@ -30,9 +27,6 @@ describe("runtime grep tool", () => {
 			description: GREP_TOOL_DESCRIPTION,
 			inputSchema: GrepToolInputSchema,
 		});
-		expect(runtime.scopeUse).toEqual(GREP_TOOL_SCOPES);
-		expect(runtime.category).toBe(GREP_TOOL_CATEGORY);
-		expect(selectCodingToolsForScope([runtime], "project").map(({ name }) => name)).toEqual(["grep"]);
 	});
 
 	it("uses an injected host resolver without downloading or discovering tools itself", async () => {

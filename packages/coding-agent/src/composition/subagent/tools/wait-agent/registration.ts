@@ -1,7 +1,12 @@
-import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools/coding";
+import type { ConversationScenario } from "../../../../profiles/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../../../runtime-contracts/index.js";
 import { createWaitAgentTool, type WaitAgentToolInput, type WaitAgentToolOptions } from "./wait-agent-tool.js";
 
-export const WAIT_AGENT_TOOL_SCOPES = ["conversation", "project", "cli"] as const satisfies readonly CodingToolScope[];
+export const WAIT_AGENT_TOOL_SCOPES = [
+	"conversation",
+	"project",
+	"cli",
+] as const satisfies readonly ConversationScenario[];
 export const WAIT_AGENT_TOOL_CATEGORY = "agent-control" as const;
 
 export interface WaitAgentToolRegistrationOptions extends WaitAgentToolOptions {
@@ -10,7 +15,7 @@ export interface WaitAgentToolRegistrationOptions extends WaitAgentToolOptions {
 
 export function createWaitAgentToolRegistration(
 	options: WaitAgentToolRegistrationOptions,
-): CodingToolRegistration<WaitAgentToolInput> {
+): CodingAgentRuntimeToolRegistration<WaitAgentToolInput> {
 	return {
 		tool: { ...createWaitAgentTool(options), modelOrder: options.modelOrder },
 		scopeUse: WAIT_AGENT_TOOL_SCOPES,

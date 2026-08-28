@@ -31,14 +31,8 @@ export interface RuntimeSessionCreateRequest {
 	readonly sessionDir?: SessionConfig["sessionDir"];
 	readonly model?: SessionConfig["model"];
 	readonly thinkingLevel?: SessionConfig["thinkingLevel"];
-	readonly scenario?: SessionConfig["scenario"];
-	readonly agentMode?: SessionConfig["agentMode"];
 	readonly executionMode: SessionExecutionMode;
-	readonly appendSystemPrompt?: SessionConfig["appendSystemPrompt"];
 	readonly env?: SessionConfig["env"];
-	readonly enableBackgroundTasks?: SessionConfig["enableBackgroundTasks"];
-	readonly enableSubagents: boolean;
-	readonly includeAgentSkills?: SessionConfig["includeAgentSkills"];
 	readonly serverUrl?: string;
 	readonly sandboxHostPath?: string;
 	readonly linuxBubblewrapPath?: string;

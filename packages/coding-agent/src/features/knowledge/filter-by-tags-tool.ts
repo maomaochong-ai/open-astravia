@@ -1,10 +1,8 @@
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import {
-	type CodingToolRegistration,
-	type CodingToolScope,
-	ToolCallDescriptionSchema,
-} from "@vetta/runtime-tools/coding";
+import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
+import type { ConversationScenario } from "../../profiles/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import type { CodingAgentKnowledgePage, CodingAgentKnowledgeQueryOperations } from "./contracts.js";
 
 export const CODING_AGENT_KNOWLEDGE_FILTER_BY_TAGS_TOOL_DESCRIPTION = `Filter knowledge base wiki pages by their tags, using set algebra.
@@ -45,7 +43,7 @@ export const CODING_AGENT_KNOWLEDGE_FILTER_BY_TAGS_TOOL_SCOPES = [
 	"automation",
 	"kb-processing",
 	"cli",
-] as const satisfies readonly CodingToolScope[];
+] as const satisfies readonly ConversationScenario[];
 export const CODING_AGENT_KNOWLEDGE_FILTER_BY_TAGS_TOOL_REQUIRES = ["knowledge"] as const;
 export const CODING_AGENT_KNOWLEDGE_FILTER_BY_TAGS_TOOL_CATEGORY = "kb-read";
 
@@ -86,7 +84,7 @@ function createCodingAgentKnowledgeFilterByTagsTool(
 
 export function createCodingAgentKnowledgeFilterByTagsToolRegistration(
 	options: CodingAgentKnowledgeFilterByTagsToolOptions,
-): CodingToolRegistration<CodingAgentKnowledgeFilterByTagsToolInput> {
+): CodingAgentRuntimeToolRegistration<CodingAgentKnowledgeFilterByTagsToolInput> {
 	const tool = createCodingAgentKnowledgeFilterByTagsTool(options);
 	return {
 		tool: { ...tool, modelOrder: options.modelOrder },
@@ -94,5 +92,6 @@ export function createCodingAgentKnowledgeFilterByTagsToolRegistration(
 		requires: CODING_AGENT_KNOWLEDGE_FILTER_BY_TAGS_TOOL_REQUIRES,
 		modelOrder: options.modelOrder,
 		category: CODING_AGENT_KNOWLEDGE_FILTER_BY_TAGS_TOOL_CATEGORY,
+		availabilityPolicy: "knowledge-runtime",
 	};
 }

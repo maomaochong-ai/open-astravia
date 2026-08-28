@@ -1,5 +1,4 @@
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import { describe, expect, it, vi } from "vitest";
 import {
 	ASK_USER_QUESTION_TOOL_CATEGORY,
@@ -9,6 +8,7 @@ import {
 	AskUserQuestionToolInputSchema,
 	createAskUserQuestionToolRegistration,
 } from "../../../src/features/ask-user-question/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../../src/runtime-contracts/index.js";
 
 const signal = new AbortController().signal;
 const input = {
@@ -95,7 +95,7 @@ describe("Coding Agent ask_user_question tool", () => {
 });
 
 function expectRegistration<TInput extends object>(
-	registration: CodingToolRegistration<TInput>,
+	registration: CodingAgentRuntimeToolRegistration<TInput>,
 	expected: {
 		readonly name: string;
 		readonly label: string;

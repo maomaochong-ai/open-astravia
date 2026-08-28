@@ -20,13 +20,24 @@ export function createCodingAgentNodePathPolicy(cwd: string): CodingAgentNodePat
 	];
 	return {
 		protectedCommandDirectories,
-		boundaries: createNodePathBoundaryClassifier({
-			protectedDirectories: [
-				...protectedCommandDirectories,
-				resolve(homedir(), ".agents", "skills"),
-				resolve(cwd, ".agents", "skills"),
-			],
-			knowledgeWikiDirectory: join(getKnowledgeDir(), "wiki"),
-		}),
+		boundaries: adaptNodePathBoundaries(
+			createNodePathBoundaryClassifier({
+				readOnlyDirectories: [
+					...protectedCommandDirectories,
+					resolve(homedir(), ".agents", "skills"),
+					resolve(cwd, ".agents", "skills"),
+				],
+				managedDirectory: join(getKnowledgeDir(), "wiki"),
+			}),
+		),
+	};
+}
+
+function adaptNodePathBoundaries(
+	classifier: ReturnType<typeof createNodePathBoundaryClassifier>,
+): CodingAgentPathPolicyBoundaries {
+	return {
+		isProtectedSkillOrScenePath: classifier.isReadOnlyPath,
+		isKnowledgeWikiPath: classifier.isManagedPath,
 	};
 }

@@ -91,13 +91,17 @@ export {
 	type CodingAgentRuntimeCompositionOptions,
 	type CodingAgentRuntimeHostRetrySettings,
 	type CodingAgentRuntimeHostSessionOverrides,
+	type CodingAgentRuntimeSessionConfiguration,
 	type CodingAgentRuntimeSessionOptions,
+	type CodingAgentRuntimeToolRegistration,
 	createCodingAgentExecutionRuntimeDefinition,
 	createCodingAgentRuntimeComposition,
 	createCodingAgentRuntimeHostSessionConfig,
 	createCodingAgentRuntimeSessionAgentSelection,
+	createCodingAgentRuntimeSessionSelection,
 	createIsolatedCodingAgentRuntimeHostSession,
 	type IsolatedCodingAgentRuntimeHostSessionOptions,
+	parseCodingAgentRuntimeSessionConfiguration,
 	publishCodingAgentExecutionRuntimeDefinition,
 } from "./runtime-composition.js";
 export {

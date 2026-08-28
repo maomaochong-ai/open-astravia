@@ -231,12 +231,6 @@ export class RuntimeHostSessionOperations {
 		}
 	}
 
-	setSessionAgentMode(sessionId: string, mode: string | undefined): void {
-		const handle = this.requireSession(sessionId);
-		handle.configurationController.setAgentMode(mode);
-		handle.agentMode = mode;
-	}
-
 	setSessionThinkingLevel(sessionId: string, level: ThinkingLevel): void {
 		this.requireSession(sessionId).modelController.setThinkingLevel(level);
 	}
@@ -271,8 +265,6 @@ export class RuntimeHostSessionOperations {
 			contextWindow: state.contextWindow,
 			...(state.contextComposition ? { contextComposition: state.contextComposition } : {}),
 			activeToolNames: [...state.activeToolNames],
-			scenario: handle.scenario,
-			...(handle.agentMode !== undefined ? { agentMode: handle.agentMode } : {}),
 			parentSessionPath: state.parentSessionPath,
 			parentEntryId: state.parentEntryId,
 		};

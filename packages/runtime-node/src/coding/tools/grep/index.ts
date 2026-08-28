@@ -7,8 +7,4 @@ export {
 	GrepToolInputSchema,
 	type GrepToolOptions,
 } from "./grep-tool.js";
-export {
-	createGrepToolRegistration,
-	GREP_TOOL_CATEGORY,
-	GREP_TOOL_SCOPES,
-} from "./registration.js";
+export { createGrepToolRegistration } from "./registration.js";

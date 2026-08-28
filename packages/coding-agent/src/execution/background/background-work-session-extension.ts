@@ -1,7 +1,12 @@
-import { defineSessionExtensionService, type SessionExtensionDefinition } from "@vetta/runtime-core/session-extensions";
+import {
+	defineSessionExtensionService,
+	type SessionExtensionDefinition,
+	sessionExtensionObservation,
+} from "@vetta/runtime-core/session-extensions";
 import {
 	CODING_AGENT_BACKGROUND_TASK_KILL,
 	CODING_AGENT_BACKGROUND_TASKS_CLEAR_FINISHED,
+	CODING_AGENT_BACKGROUND_TASKS_OBSERVATION,
 	CODING_AGENT_BACKGROUND_TASKS_READ,
 	CODING_AGENT_BACKGROUND_WORK_EXTENSION_ID,
 	CODING_AGENT_SUBAGENT_INTERRUPT,
@@ -41,6 +46,18 @@ export function createCodingAgentBackgroundWorkSessionExtension(): SessionExtens
 			return {
 				contributions: [
 					{ kind: "service", token: CODING_AGENT_BACKGROUND_WORK_RUNTIME_OWNER, value: owner },
+					{
+						kind: "initial-observation-source",
+						source: {
+							id: `${CODING_AGENT_BACKGROUND_WORK_EXTENSION_ID}.initial-state`,
+							read: () => {
+								const tasks = runtime?.readTasks() ?? [];
+								return tasks.length > 0
+									? [sessionExtensionObservation(CODING_AGENT_BACKGROUND_TASKS_OBSERVATION, tasks)]
+									: [];
+							},
+						},
+					},
 					{
 						kind: "endpoint",
 						token: CODING_AGENT_BACKGROUND_TASKS_READ,

@@ -1,12 +1,12 @@
 import type { AgentFeatureDefinition } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistration } from "@vetta/runtime-tools";
+import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import type { CodingAgentTodoRuntime } from "./contracts.js";
 import { createTodoToolRegistration, type TodoToolInput } from "./tool/index.js";
 
 export function createCodingAgentTodoRuntimeToolRegistration(
 	runtime: CodingAgentTodoRuntime,
-): CodingToolRegistration<TodoToolInput> {
+): CodingAgentRuntimeToolRegistration<TodoToolInput> {
 	const registration = createTodoToolRegistration({
 		getTodoStore: () => runtime,
 		modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.todo,
@@ -25,7 +25,7 @@ export function createCodingAgentTodoRuntimeToolRegistration(
 }
 
 export function createCodingAgentTodoRuntimeFeature(
-	registration: CodingToolRegistration<TodoToolInput>,
+	registration: CodingAgentRuntimeToolRegistration<TodoToolInput>,
 ): AgentFeatureDefinition {
 	return {
 		id: "coding-agent.todo",

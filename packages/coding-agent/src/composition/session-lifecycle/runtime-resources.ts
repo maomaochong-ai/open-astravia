@@ -4,7 +4,6 @@ import { createRuntimeSessionExtensionHost } from "@vetta/runtime-core";
 import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel";
 import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
 import { CODING_AGENT_BACKGROUND_WORK_RUNTIME_OWNER } from "../../execution/background/background-work-session-extension.js";
 import { CodingAgentBackgroundWorkController } from "../../execution/background/work-controller.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
@@ -17,7 +16,12 @@ import type { CodingAgentSessionConfigurationState } from "../../host/session-co
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { CodingAgentPluginConfigurationRuntime } from "../../plugins/runtime/plugin-configuration-runtime.js";
 import { CODING_AGENT_PLUGIN_CONFIGURATION_RUNTIME_OWNER } from "../../plugins/runtime/plugin-configuration-session-extension.js";
-import type { CodingAgentContextRuntime, CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import {
+	type CodingAgentContextRuntime,
+	type CodingAgentRuntimeToolRegistration,
+	type CodingAgentToolActivation,
+	selectCodingAgentToolRegistrations,
+} from "../../runtime-contracts/index.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";
@@ -61,7 +65,7 @@ export interface CodingAgentSessionRuntimeResourcesOptions {
 	readonly todoEnabled: boolean;
 	readonly memoryRuntime?: CodingAgentMemoryRolloverRuntime;
 	readonly mcpController?: McpDeferredToolController;
-	readonly activation: CodingToolActivation;
+	readonly activation: CodingAgentToolActivation;
 	readonly knowledgeAvailable: boolean;
 	readonly backgroundTasksAvailable: boolean;
 	readonly askUserQuestionRuntime: CodingAgentAskUserQuestionExtensionRuntime;
@@ -141,7 +145,10 @@ export function createCodingAgentSessionRuntimeResources(
 	};
 }
 
-function readSessionState(options: CodingAgentSessionRuntimeResourcesOptions, stateActivation: CodingToolActivation) {
+function readSessionState(
+	options: CodingAgentSessionRuntimeResourcesOptions,
+	stateActivation: CodingAgentToolActivation,
+) {
 	const baseToolNames =
 		options.turnCapabilityAssembly.readPluginActiveToolNames() ??
 		readActiveToolNames(
@@ -156,7 +163,7 @@ function readSessionState(options: CodingAgentSessionRuntimeResourcesOptions, st
 		...baseToolNames.filter(
 			(toolName) => !options.executionRuntime.ownsTool(toolName) || executionTools.has(toolName),
 		),
-		...selectCodingToolRegistrations(options.specializedToolRegistrations, stateActivation).map(
+		...selectCodingAgentToolRegistrations(options.specializedToolRegistrations, stateActivation).map(
 			({ tool }) => tool.name,
 		),
 		...(options.todoEnabled ? [options.todoToolRegistration.tool.name] : []),
@@ -181,15 +188,19 @@ function readSessionState(options: CodingAgentSessionRuntimeResourcesOptions, st
 
 function readActiveToolNames(
 	tools: CodingToolsRuntimeComposition,
-	activation: CodingToolActivation,
+	activation: CodingAgentToolActivation,
 	knowledgeAvailable: boolean,
-	baseActivation: CodingToolActivation,
+	baseActivation: CodingAgentToolActivation,
 	mcpController: McpDeferredToolController | undefined,
 ): string[] {
-	const selected = selectCodingToolRegistrations(
-		tools.registry.snapshot().registrations.filter(({ category, tool }) => {
+	const declarations = tools.registry
+		.snapshot()
+		.registrations.map(({ tool }) => tools.readToolDeclaration(tool.name))
+		.filter((registration): registration is CodingAgentRuntimeToolRegistration => registration !== undefined);
+	const selected = selectCodingAgentToolRegistrations(
+		declarations.filter(({ availabilityPolicy, tool }) => {
 			if (
-				category === "kb-read" &&
+				availabilityPolicy === "knowledge-runtime" &&
 				!(knowledgeAvailable && baseActivation.mode === "scope" && baseActivation.scope === "kb-processing")
 			) {
 				return false;
@@ -202,7 +213,7 @@ function readActiveToolNames(
 	return [...selected, "tool_search"];
 }
 
-function createStateActivation(options: CodingAgentSessionRuntimeResourcesOptions): CodingToolActivation {
+function createStateActivation(options: CodingAgentSessionRuntimeResourcesOptions): CodingAgentToolActivation {
 	if (options.activation.mode !== "scope") return options.activation;
 	return {
 		...options.activation,

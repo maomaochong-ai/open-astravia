@@ -208,7 +208,6 @@ function request(agent?: RuntimeSessionCreateRequest["agent"], sessionPath?: str
 		agent,
 		sessionPath,
 		executionMode: "full-access",
-		enableSubagents: false,
 		getSessionId: () => undefined,
 	};
 }
@@ -231,7 +230,6 @@ function assembly(sessionId: string): RuntimeHostSessionAssembly {
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},
-			setAgentMode: () => {},
 		},
 		modelController: {
 			selectModel: async () => {},

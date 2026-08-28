@@ -1,8 +1,6 @@
 import type { SessionConfig, SessionExecutionMode } from "../contracts.js";
 import type { RuntimeSessionCreateRequest } from "./session-backend.js";
 
-const DEFAULT_RUNTIME_SCENARIO: NonNullable<SessionConfig["scenario"]> = "cli";
-
 export interface RuntimeHostSessionRequestFactoryOptions {
 	readonly serverUrl?: string;
 	readonly sandboxHostPath?: string;
@@ -31,14 +29,8 @@ export class RuntimeHostSessionRequestFactory {
 			sessionDir: config.sessionDir,
 			model: config.model,
 			thinkingLevel: config.thinkingLevel,
-			scenario: config.scenario,
-			agentMode: config.agentMode,
 			executionMode,
-			appendSystemPrompt: config.appendSystemPrompt,
 			env: config.env,
-			enableBackgroundTasks: config.enableBackgroundTasks,
-			enableSubagents: shouldEnableSubagents(config.scenario),
-			includeAgentSkills: config.includeAgentSkills,
 			serverUrl: this.options.serverUrl,
 			sandboxHostPath: this.options.sandboxHostPath,
 			linuxBubblewrapPath: this.options.linuxBubblewrapPath,
@@ -46,10 +38,4 @@ export class RuntimeHostSessionRequestFactory {
 			getSessionId: () => sessionIdRef.current,
 		};
 	}
-}
-
-/** Compatibility gate retained from the original RuntimeHost contract. */
-function shouldEnableSubagents(scenario: SessionConfig["scenario"]): boolean {
-	const resolvedScenario = scenario ?? DEFAULT_RUNTIME_SCENARIO;
-	return resolvedScenario === "conversation" || resolvedScenario === "project" || resolvedScenario === "cli";
 }

@@ -15,8 +15,7 @@ describe("Node coding tool environment", () => {
 		expect(environment.registrations.map(({ tool }) => tool.name)).toEqual([
 			"read",
 			"edit",
-			"bash",
-			"shell",
+			process.platform === "win32" ? "shell" : "bash",
 			"ls",
 			"glob",
 			"grep",
@@ -34,6 +33,25 @@ describe("Node coding tool environment", () => {
 				.map(({ tool }) => tool.name),
 		).toEqual(["doc_to_pdf", "html_to_pdf", "extract_text_from_pdf", "extract_text_from_img", "render_pdf_page"]);
 		expect(() => environment.dispose()).not.toThrow();
+	});
+
+	it.each([
+		["win32", "shell"],
+		["linux", "bash"],
+	] as const)("selects the supported command implementation for %s", (platform, commandToolName) => {
+		const environment = createNodeCodingToolEnvironment({
+			cwd: "C:/workspace",
+			platform,
+			commandExecutor: successfulCommandExecutor,
+			executableResolver: { resolve: async () => undefined },
+			editPathPolicy: allowAllPaths,
+			writePathPolicy: allowAllPaths,
+		});
+
+		expect(
+			environment.registrations.map(({ tool }) => tool.name).filter((name) => name === "bash" || name === "shell"),
+		).toEqual([commandToolName]);
+		environment.dispose();
 	});
 
 	it("requires an explicit command execution port", () => {

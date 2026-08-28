@@ -2,7 +2,10 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Api, Message, Model } from "@vetta/ai";
+import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
+import type { ConversationScenario } from "@vetta/coding-agent/profile";
+import { CODING_AGENT_SESSION_PROFILE_STATE_READ } from "@vetta/coding-agent/session-extensions";
 import { type HistoryEntry, RuntimeHost, type SessionEvent } from "@vetta/runtime-core";
 import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
 import { afterEach, describe, expect, it } from "vitest";
@@ -16,6 +19,14 @@ import { createDesktopPromptRuntimeSources } from "./resource-runtime.js";
 interface RuntimeFixture {
 	readonly runtime: RuntimeHost;
 	readonly dispose: () => Promise<void>;
+}
+
+function codingAgentSelection(scenario: ConversationScenario, enableBackgroundTasks: boolean) {
+	return createCodingAgentRuntimeSessionSelection({
+		scenario,
+		enableBackgroundTasks,
+		includeAgentSkills: false,
+	});
 }
 
 describe("Desktop RuntimeHost production contract", () => {
@@ -42,10 +53,8 @@ describe("Desktop RuntimeHost production contract", () => {
 				sessionDir,
 				model: MODEL,
 				thinkingLevel: "medium",
-				scenario: "batch",
+				agent: codingAgentSelection("batch", false),
 				executionMode: "full-access",
-				enableBackgroundTasks: false,
-				includeAgentSkills: false,
 			});
 			const sessionPath = fixture.runtime.getSessionPath(created.sessionId);
 			if (!sessionPath) throw new Error(`${backend} did not expose a session path`);
@@ -55,7 +64,6 @@ describe("Desktop RuntimeHost production contract", () => {
 				model: MODEL,
 				thinkingLevel: "medium",
 				executionMode: "full-access",
-				scenario: "batch",
 				isStreaming: false,
 				messageCount: 0,
 			});
@@ -76,10 +84,8 @@ describe("Desktop RuntimeHost production contract", () => {
 				sessionDir,
 				sessionPath,
 				model: MODEL,
-				scenario: "batch",
+				agent: codingAgentSelection("batch", false),
 				executionMode: "full-access",
-				enableBackgroundTasks: false,
-				includeAgentSkills: false,
 			});
 			expect(fixture.runtime.getSessionPath(resumed.sessionId)).toBe(sessionPath);
 			expect(fixture.runtime.getFullHistory(resumed.sessionId)).toEqual([]);
@@ -115,10 +121,8 @@ describe("Desktop RuntimeHost production contract", () => {
 					cwd,
 					sessionDir,
 					model,
-					scenario: "batch",
+					agent: codingAgentSelection("batch", false),
 					executionMode: "full-access",
-					enableBackgroundTasks: false,
-					includeAgentSkills: false,
 				});
 				const events: SessionEvent[] = [];
 				const unsubscribe = fixture.runtime.subscribe(created.sessionId, (event) => events.push(event));
@@ -141,10 +145,8 @@ describe("Desktop RuntimeHost production contract", () => {
 					sessionDir,
 					sessionPath,
 					model,
-					scenario: "batch",
+					agent: codingAgentSelection("batch", false),
 					executionMode: "full-access",
-					enableBackgroundTasks: false,
-					includeAgentSkills: false,
 				});
 				const restoredMessages = restartedFixture.runtime.getMessages(resumed.sessionId);
 				const resumedEvents: SessionEvent[] = [];
@@ -199,8 +201,8 @@ describe("Desktop RuntimeHost production contract", () => {
 		expect(stableLifecycleEvents.map(({ type }) => type)).toEqual([
 			"session.lifecycle",
 			"active_tools_update",
-			"mcp.reload.start",
-			"mcp.reload.end",
+			"session.extension",
+			"session.extension",
 			"session.lifecycle",
 			"session.lifecycle",
 			"toolcall.start",
@@ -247,10 +249,8 @@ describe("Desktop RuntimeHost production contract", () => {
 					cwd,
 					sessionDir,
 					model,
-					scenario: "conversation",
+					agent: codingAgentSelection("conversation", false),
 					executionMode: "full-access",
-					enableBackgroundTasks: false,
-					includeAgentSkills: false,
 				});
 				const parentPath = fixture.runtime.getSessionPath(created.sessionId);
 				if (!parentPath) throw new Error(`${backend} did not persist the history session`);
@@ -333,20 +333,16 @@ describe("Desktop RuntimeHost production contract", () => {
 					sessionDir,
 					sessionPath: parentPath,
 					model,
-					scenario: "conversation",
+					agent: codingAgentSelection("conversation", false),
 					executionMode: "full-access",
-					enableBackgroundTasks: false,
-					includeAgentSkills: false,
 				});
 				const resumedChild = await restartedFixture.runtime.createSession({
 					cwd,
 					sessionDir,
 					sessionPath: forked.result.path,
 					model,
-					scenario: "conversation",
+					agent: codingAgentSelection("conversation", false),
 					executionMode: "full-access",
-					enableBackgroundTasks: false,
-					includeAgentSkills: false,
 				});
 				const parentRestored = observeHistory(restartedFixture.runtime.getFullHistory(resumedParent.sessionId));
 				const childRestored = observeHistory(restartedFixture.runtime.getFullHistory(resumedChild.sessionId));
@@ -448,21 +444,40 @@ describe("Desktop RuntimeHost production contract", () => {
 						cwd,
 						sessionDir,
 						model: MODEL,
-						scenario,
+						agent: codingAgentSelection(scenario, scenario === "conversation"),
 						executionMode: "full-access",
-						enableBackgroundTasks: scenario === "conversation",
-						includeAgentSkills: false,
 					}),
 				);
 			}
 
 			expect(new Set(sessions.map(({ sessionId }) => sessionId)).size).toBe(3);
 			expect(new Set(sessions.map(({ sessionId }) => fixture.runtime.getSessionPath(sessionId))).size).toBe(3);
-			expect(sessions.map(({ sessionId }) => fixture.runtime.getState(sessionId).scenario)).toEqual(scenarios);
+			expect(
+				sessions.map(
+					({ sessionId }) =>
+						fixture.runtime.invokeSessionExtensionSync(
+							sessionId,
+							CODING_AGENT_SESSION_PROFILE_STATE_READ,
+							undefined,
+						).scenario,
+				),
+			).toEqual(scenarios);
 
 			await fixture.runtime.disposeSession(sessions[1]!.sessionId);
-			expect(fixture.runtime.getState(sessions[0]!.sessionId).scenario).toBe("conversation");
-			expect(fixture.runtime.getState(sessions[2]!.sessionId).scenario).toBe("batch");
+			expect(
+				fixture.runtime.invokeSessionExtensionSync(
+					sessions[0]!.sessionId,
+					CODING_AGENT_SESSION_PROFILE_STATE_READ,
+					undefined,
+				).scenario,
+			).toBe("conversation");
+			expect(
+				fixture.runtime.invokeSessionExtensionSync(
+					sessions[2]!.sessionId,
+					CODING_AGENT_SESSION_PROFILE_STATE_READ,
+					undefined,
+				).scenario,
+			).toBe("batch");
 		}, 30_000);
 	}
 

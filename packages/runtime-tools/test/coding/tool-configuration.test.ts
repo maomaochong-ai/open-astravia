@@ -256,8 +256,6 @@ function baseRegistration(name: string): CodingToolRegistration {
 			inputSchema: { type: "object" },
 			execute: async () => ({ content: [{ type: "text", text: name }] }),
 		},
-		scopeUse: ["project"],
-		category: "core",
 	};
 }
 

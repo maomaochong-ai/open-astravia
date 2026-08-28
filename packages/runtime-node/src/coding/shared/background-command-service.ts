@@ -1,10 +1,9 @@
-export {
-	type BackgroundCommandEvent,
-	type BackgroundCommandService,
-	type BackgroundCommandSnapshot,
-	type BackgroundCommandStatus,
-	type BackgroundCommandStopReason,
-	buildBackgroundCommandNotification,
-	type ReadBackgroundCommandOutputOptions,
-	type SpawnBackgroundCommandOptions,
+export type {
+	BackgroundCommandEvent,
+	BackgroundCommandService,
+	BackgroundCommandSnapshot,
+	BackgroundCommandStatus,
+	BackgroundCommandStopReason,
+	ReadBackgroundCommandOutputOptions,
+	SpawnBackgroundCommandOptions,
 } from "@vetta/runtime-tools";

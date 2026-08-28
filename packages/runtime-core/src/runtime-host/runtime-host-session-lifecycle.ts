@@ -8,8 +8,6 @@ import type { RuntimeSessionCreateRequest } from "./session-backend.js";
 import type { RuntimeSandboxGrantStore, RuntimeSharedModelController } from "./session-services.js";
 import type { RuntimeHostSessionRecord } from "./types.js";
 
-const DEFAULT_RUNTIME_SCENARIO: NonNullable<SessionConfig["scenario"]> = "cli";
-
 export interface RuntimeHostSessionLifecycleOptions {
 	readonly directory: RuntimeHostSessionDirectory;
 	readonly events: RuntimeHostSessionEventRelay;
@@ -125,8 +123,6 @@ export class RuntimeHostSessionLifecycle {
 			metadataController: assembly.metadataController,
 			executionMode,
 			pendingConfiguration: { executionMode: undefined, hasExecutionMode: false },
-			scenario: config.scenario ?? DEFAULT_RUNTIME_SCENARIO,
-			agentMode: config.agentMode,
 		};
 		const sessionId = handle.lifecycle.sessionId;
 		sessionIdRef.current = sessionId;

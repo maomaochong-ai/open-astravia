@@ -1,6 +1,5 @@
 import type { Message } from "@vetta/ai";
 import {
-	type ConversationScenario,
 	InitializationRollbackScope,
 	type RuntimeAgentSessionPlan,
 	type RuntimeAgentSessionPreparationContext,
@@ -8,11 +7,12 @@ import {
 	type RuntimeResourceContext,
 } from "@vetta/runtime-core";
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
-import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
 import { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import { CodingAgentPluginConfigurationRuntime } from "../../plugins/runtime/plugin-configuration-runtime.js";
+import type { ConversationScenario } from "../../profiles/index.js";
+import type { CodingAgentToolActivation } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
 import type { CodingAgentConversationSessionPathAssessment } from "../contracts/conversation-persistence.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
@@ -43,7 +43,7 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 	readonly profile: CodingAgentSessionInitializationProfile;
 	readonly cwd: string;
 	readonly scenario: ConversationScenario;
-	readonly activation: CodingToolActivation;
+	readonly activation: CodingAgentToolActivation;
 	readonly knowledgeAvailable: boolean;
 	readonly backgroundTasksAvailable: boolean;
 	readonly codingTools: CodingToolsRuntimeComposition;
@@ -60,7 +60,7 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 	readonly resolveActivation: (
 		context: ModelCallContributionContext,
 		activeToolNamesOverride?: readonly string[],
-	) => CodingToolActivation;
+	) => CodingAgentToolActivation;
 	readonly createChildComposition: (
 		request: CodingAgentSubagentChildCompositionRequest,
 	) => Promise<CodingAgentSubagentChildComposition>;

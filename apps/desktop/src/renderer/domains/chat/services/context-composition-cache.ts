@@ -4,7 +4,7 @@ const STORAGE_KEY = "vetta-context-composition-cache-v1";
 const MAX_ENTRIES = 10;
 
 const SECTION_KINDS = new Set(["instruction", "tool_schema", "history", "runtime_context", "user_input"]);
-const SOURCE_OWNERS = new Set(["core", "skill", "plugin", "mcp", "extension", "runtime", "user", "unknown"]);
+const SOURCE_OWNERS = new Set(["core", "extension", "runtime", "user", "unknown"]);
 const ESTIMATE_METHODS = new Set(["provider_tokenizer", "model_tokenizer", "heuristic", "unknown"]);
 const COVERAGE_VALUES = new Set(["complete", "partial", "none"]);
 

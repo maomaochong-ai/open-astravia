@@ -42,6 +42,7 @@
 			"@vetta/coding-agent/function-extensions": [
 				"../../packages/coding-agent/src/public-api/function-extensions.ts"
 			],
+			"@vetta/coding-agent/host": ["../../packages/coding-agent/src/host/tool-environment/node/index.ts"],
 			"@vetta/coding-agent/host-services": ["../../packages/coding-agent/src/public-api/host-services.ts"],
 			"@vetta/coding-agent/historical-sessions": [
 				"../../packages/coding-agent/src/public-api/historical-sessions.ts"

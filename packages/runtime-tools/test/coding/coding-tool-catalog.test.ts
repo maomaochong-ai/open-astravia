@@ -5,11 +5,10 @@ import {
 	CODING_TOOL_AVAILABILITY_ERROR_CODES,
 	CODING_TOOL_CATALOG_OBSERVATION,
 	type CodingToolRegistration,
-	type CodingToolScope,
 	GenerationalCodingToolCatalog,
 	guardCodingToolRegistration,
 	InMemoryCodingToolRegistry,
-	selectCodingTools,
+	PRESERVE_CODING_TOOL_RESULT_POLICY,
 } from "../../src/coding/index.js";
 
 describe("coding tool registry", () => {
@@ -25,7 +24,7 @@ describe("coding tool registry", () => {
 			}),
 		});
 
-		registry.register(registration("observed", ["project"]));
+		registry.register(registration("observed"));
 		registry.deactivate("observed");
 		registry.activate("observed");
 		registry.revoke("observed", { reason: "secret-reason", auditId: "secret-audit" });
@@ -42,10 +41,7 @@ describe("coding tool registry", () => {
 	});
 
 	it("creates a deterministic frozen membership snapshot", () => {
-		const registry = new InMemoryCodingToolRegistry([
-			registration("zeta", ["project"]),
-			registration("alpha", ["cli"]),
-		]);
+		const registry = new InMemoryCodingToolRegistry([registration("zeta"), registration("alpha")]);
 
 		const snapshot = registry.snapshot();
 
@@ -56,16 +52,15 @@ describe("coding tool registry", () => {
 		expect(Object.isFrozen(snapshot.registrations)).toBe(true);
 		expect(Object.isFrozen(snapshot.registrations[0])).toBe(true);
 		expect(Object.isFrozen(snapshot.registrations[0]?.tool)).toBe(true);
-		expect(Object.isFrozen(snapshot.registrations[0]?.scopeUse)).toBe(true);
 		expect(Object.isFrozen(snapshot.entries)).toBe(true);
 		expect(Object.isFrozen(snapshot.entries[0]?.binding)).toBe(true);
 	});
 
 	it("registers and unregisters without mutating older snapshots", () => {
-		const registry = new InMemoryCodingToolRegistry([registration("alpha", ["project"])]);
+		const registry = new InMemoryCodingToolRegistry([registration("alpha")]);
 		const first = registry.snapshot();
 
-		registry.register(registration("beta", ["project"]));
+		registry.register(registration("beta"));
 		const second = registry.snapshot();
 		expect(second.version).toBe(1);
 		expect(second.registrations.map(({ tool }) => tool.name)).toEqual(["alpha", "beta"]);
@@ -82,35 +77,22 @@ describe("coding tool registry", () => {
 	});
 
 	it("rejects duplicate tool names in initial and dynamic registrations", () => {
-		expect(
-			() =>
-				new InMemoryCodingToolRegistry([
-					registration("duplicate", ["project"]),
-					registration("duplicate", ["cli"]),
-				]),
-		).toThrow("Duplicate coding tool registration: duplicate");
+		expect(() => new InMemoryCodingToolRegistry([registration("duplicate"), registration("duplicate")])).toThrow(
+			"Duplicate coding tool registration: duplicate",
+		);
 
-		const registry = new InMemoryCodingToolRegistry([registration("duplicate", ["project"])]);
-		expect(() => registry.register(registration("duplicate", ["cli"]))).toThrow(
+		const registry = new InMemoryCodingToolRegistry([registration("duplicate")]);
+		expect(() => registry.register(registration("duplicate"))).toThrow(
 			"Duplicate coding tool registration: duplicate",
 		);
 		expect(registry.snapshot().version).toBe(0);
-	});
-
-	it("copies registration scope metadata at the registry boundary", () => {
-		const mutableScopes: CodingToolScope[] = ["project"];
-		const registry = new InMemoryCodingToolRegistry([registration("alpha", mutableScopes)]);
-
-		mutableScopes.push("cli");
-
-		expect(registry.snapshot().registrations[0]?.scopeUse).toEqual(["project"]);
 	});
 
 	it("preserves and freezes optional configuration metadata", () => {
 		const configurationIds = ["tool.output"];
 		const registry = new InMemoryCodingToolRegistry([
 			{
-				...registration("configured", ["project"]),
+				...registration("configured"),
 				configuration: {
 					configurationIds,
 					requiredConfigurationIds: configurationIds,
@@ -134,8 +116,6 @@ describe("coding tool registry", () => {
 		const registry = new InMemoryCodingToolRegistry([
 			{
 				tool: new ClassBackedTool("class-tool"),
-				scopeUse: ["project"],
-				category: "core",
 			},
 		]);
 		const tool = registry.snapshot().registrations[0]?.tool;
@@ -152,16 +132,40 @@ describe("coding tool registry", () => {
 		expect(result.content).toEqual([{ type: "text", text: "class-tool" }]);
 	});
 
+	it("lets a registration override the catalog result projection policy", async () => {
+		const registry = new InMemoryCodingToolRegistry(
+			[
+				registration("projected"),
+				{ ...registration("preserved"), resultPolicy: PRESERVE_CODING_TOOL_RESULT_POLICY },
+			],
+			{
+				resultPolicy: {
+					project: async () => ({ content: [{ type: "text", text: "projected-result" }] }),
+				},
+			},
+		);
+		const projected = registry.resolve("projected");
+		const preserved = registry.resolve("preserved");
+		if (!projected || !preserved) throw new Error("Missing result policy test registration");
+
+		expect((await execute(guardCodingToolRegistration(registry, projected))).content).toEqual([
+			{ type: "text", text: "projected-result" },
+		]);
+		expect((await execute(guardCodingToolRegistration(registry, preserved))).content).toEqual([
+			{ type: "text", text: "preserved" },
+		]);
+	});
+
 	it("keeps an advertised implementation stable after replacement", async () => {
 		let replacementExecutions = 0;
-		const registry = new InMemoryCodingToolRegistry([registration("replaceable", ["project"])]);
+		const registry = new InMemoryCodingToolRegistry([registration("replaceable")]);
 		const lease = registry.acquireSnapshot();
 		const advertised = lease.snapshot.entries[0];
 		if (!advertised) throw new Error("Missing advertised registration");
 		const guarded = guardCodingToolRegistration(registry, advertised);
 
 		expect(registry.unregister("replaceable")).toBe(true);
-		const replacement = registration("replaceable", ["project"]);
+		const replacement = registration("replaceable");
 		registry.register({
 			...replacement,
 			tool: {
@@ -184,7 +188,7 @@ describe("coding tool registry", () => {
 
 	it("acquires and releases external implementation leases with the catalog generation", async () => {
 		let releases = 0;
-		const base = registration("leased", ["project"]);
+		const base = registration("leased");
 		const registry = new InMemoryCodingToolRegistry([
 			{
 				...base,
@@ -219,7 +223,7 @@ describe("coding tool registry", () => {
 	});
 
 	it("uses stable binding values instead of catalog entry object identity", async () => {
-		const registry = new InMemoryCodingToolRegistry([registration("stable", ["project"])], {
+		const registry = new InMemoryCodingToolRegistry([registration("stable")], {
 			sourceId: "test-catalog",
 		});
 		const entry = registry.resolve("stable");
@@ -245,7 +249,7 @@ describe("coding tool registry", () => {
 	});
 
 	it("deactivates future acquisitions without invalidating an advertised binding", async () => {
-		const registry = new InMemoryCodingToolRegistry([registration("toggle", ["project"])]);
+		const registry = new InMemoryCodingToolRegistry([registration("toggle")]);
 		const advertised = registry.resolve("toggle");
 		if (!advertised) throw new Error("Missing toggle entry");
 		const guarded = guardCodingToolRegistration(registry, advertised);
@@ -266,9 +270,9 @@ describe("coding tool registry", () => {
 		});
 		const registry = new InMemoryCodingToolRegistry([
 			{
-				...registration("revocable", ["project"]),
+				...registration("revocable"),
 				tool: {
-					...registration("revocable", ["project"]).tool,
+					...registration("revocable").tool,
 					async execute(request) {
 						markStarted?.();
 						await new Promise<void>((_resolve, reject) => {
@@ -311,7 +315,7 @@ describe("coding tool registry", () => {
 		const finished = new Promise<void>((resolve) => {
 			finish = resolve;
 		});
-		const baseRegistration = registration("ignores-cancellation", ["project"]);
+		const baseRegistration = registration("ignores-cancellation");
 		const registry = new InMemoryCodingToolRegistry([
 			{
 				...baseRegistration,
@@ -359,9 +363,9 @@ describe("coding tool registry", () => {
 			});
 			const registry = new InMemoryCodingToolRegistry([
 				{
-					...registration(operation, ["project"]),
+					...registration(operation),
 					tool: {
-						...registration(operation, ["project"]).tool,
+						...registration(operation).tool,
 						async execute(request) {
 							markStarted?.();
 							await finished;
@@ -410,7 +414,7 @@ describe("generational coding tool catalog", () => {
 	});
 
 	it("rejects binding identity reuse while the old generation is leased", () => {
-		const first = new InMemoryCodingToolRegistry([registration("mode-tool", ["cli"])], {
+		const first = new InMemoryCodingToolRegistry([registration("mode-tool")], {
 			sourceId: "same-source",
 		});
 		const catalog = new GenerationalCodingToolCatalog(first);
@@ -418,7 +422,7 @@ describe("generational coding tool catalog", () => {
 
 		expect(() =>
 			catalog.publish(
-				new InMemoryCodingToolRegistry([registration("mode-tool", ["cli"])], {
+				new InMemoryCodingToolRegistry([registration("mode-tool")], {
 					sourceId: "same-source",
 				}),
 			),
@@ -427,71 +431,7 @@ describe("generational coding tool catalog", () => {
 	});
 });
 
-describe("coding tool activation", () => {
-	const registrations = [
-		registration("default-project", ["project"]),
-		registration("default-cli", ["cli"]),
-		registration("deferred", []),
-	];
-
-	it("selects scope defaults and additionally enabled tools", () => {
-		expect(
-			selectCodingTools(registrations, {
-				mode: "scope",
-				scope: "project",
-				additionallyEnabledToolNames: ["deferred", "missing"],
-			}).map(({ name }) => name),
-		).toEqual(["default-project", "deferred"]);
-	});
-
-	it("supports an explicit replacement set and ignores unknown names", () => {
-		expect(
-			selectCodingTools(registrations, {
-				mode: "explicit",
-				toolNames: ["deferred", "missing"],
-			}).map(({ name }) => name),
-		).toEqual(["deferred"]);
-	});
-
-	it("uses cli as the default scope without activating empty-scope tools", () => {
-		expect(
-			selectCodingTools(registrations, {
-				mode: "scope",
-			}).map(({ name }) => name),
-		).toEqual(["default-cli"]);
-	});
-
-	it("selects tools independent of any agent mode notion (ADR-0071)", () => {
-		// 工作模式不是激活轴：选择只看 scopeUse ∩ requires，任何模式下清单一致。
-		expect(
-			selectCodingTools([...registrations, registration("extra", ["cli"])], {
-				mode: "scope",
-				scope: "cli",
-			}).map(({ name }) => name),
-		).toEqual(["default-cli", "extra"]);
-	});
-
-	it("keeps scope_use and requires fail-closed", () => {
-		const guarded = { ...registration("guarded", ["cli"]), requires: ["kb"] };
-		expect(selectCodingTools([guarded], { mode: "scope", scope: "cli" }).map(({ name }) => name)).toEqual([]);
-		expect(
-			selectCodingTools([guarded], {
-				mode: "scope",
-				scope: "cli",
-				capabilities: new Set(["kb"]),
-			}).map(({ name }) => name),
-		).toEqual(["guarded"]);
-		expect(
-			selectCodingTools([guarded], {
-				mode: "scope",
-				scope: "project",
-				capabilities: new Set(["kb"]),
-			}).map(({ name }) => name),
-		).toEqual([]);
-	});
-});
-
-function registration(name: string, scopeUse: readonly CodingToolScope[]): CodingToolRegistration {
+function registration(name: string): CodingToolRegistration {
 	const tool: RuntimeToolDefinition = {
 		name,
 		label: name,
@@ -505,13 +445,11 @@ function registration(name: string, scopeUse: readonly CodingToolScope[]): Codin
 	};
 	return {
 		tool,
-		scopeUse,
-		category: "core",
 	};
 }
 
 function registrationWithOutput(name: string, output: string): CodingToolRegistration {
-	const base = registration(name, ["cli"]);
+	const base = registration(name);
 	return {
 		...base,
 		tool: {

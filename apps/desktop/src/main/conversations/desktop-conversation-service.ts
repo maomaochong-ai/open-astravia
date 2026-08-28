@@ -10,7 +10,6 @@ import {
 	type RuntimeHost,
 	type RuntimeTurnPromptOutcome,
 	runtimeFailureFromAIErrorDetails,
-	type SessionConfig,
 	type SessionEvent,
 } from "@vetta/runtime-core";
 import { sanitizeRuntimeErrorMessage } from "@vetta/runtime-desktop";
@@ -22,6 +21,7 @@ import { getSharedRuntime } from "../runtime.js";
 import { assertSandboxAvailableForMode } from "../sandbox/capability.js";
 import { emitConversationListChanged } from "./conversation-list-events.js";
 import {
+	type DesktopCodingAgentSessionConfig,
 	type DesktopConversationSource,
 	type DesktopSessionKind,
 	resolveDesktopSessionConfig,
@@ -130,7 +130,7 @@ export class DesktopConversationService {
 	}
 
 	async createSession(
-		config: SessionConfig | undefined,
+		config: DesktopCodingAgentSessionConfig | undefined,
 		kind: DesktopSessionKind,
 		source: DesktopConversationSource,
 		traceContext?: DesktopConversationCreateTraceContext,
@@ -214,7 +214,7 @@ export class DesktopConversationService {
 				sessionPath: absolutePath,
 			});
 		}
-		if (!access.interactiveResume) {
+		if (!access.resume) {
 			throw new DesktopConversationError("SESSION_READ_ONLY", "Session only supports read-only history access.", {
 				sessionPath: absolutePath,
 			});

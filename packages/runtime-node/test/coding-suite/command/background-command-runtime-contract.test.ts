@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
 	type BackgroundCommandService,
 	type BackgroundCommandSnapshot,
-	buildBackgroundCommandNotification,
 	createBackgroundCommandService,
 	createBackgroundCommandToolExecutor,
 	createBashToolRegistration,
@@ -90,7 +89,6 @@ describe.each(["bash", "shell"] as const)("runtime %s background command", (tool
 		await waitForCompletion(runtime.backgroundService, "b1");
 		expect(notifications).toHaveLength(1);
 		expect(notifications[0]).toMatchObject({ id: "b1", status: "completed", exitCode: 0, tail: "background-ok" });
-		expect(buildBackgroundCommandNotification(notifications[0])).toContain("<status>completed</status>");
 	});
 
 	it("returns quick output inline and auto-promotes a long command", async () => {
@@ -130,35 +128,5 @@ describe.each(["bash", "shell"] as const)("runtime %s background command", (tool
 		);
 		expect(result.details).toMatchObject({ truncation: { truncated: true, truncatedBy: "lines" } });
 		expect(result.content[0]).toMatchObject({ text: expect.stringContaining("line-2001") });
-	});
-});
-
-describe("runtime background task tools", () => {
-	it("formats terminal notifications without an implementation oracle", () => {
-		const completed: BackgroundCommandSnapshot = {
-			id: "b1",
-			command: "echo done",
-			cwd: "C:/workspace",
-			status: "completed",
-			outputFile: "C:/tmp/task.log",
-			exitCode: 0,
-			startedAt: 1,
-			endedAt: 2,
-			toolCallId: "tool-call-1",
-			tail: "done",
-		};
-		expect(buildBackgroundCommandNotification(completed)).toBe(
-			[
-				"<task-notification>",
-				"<task-id>b1</task-id>",
-				"<tool-use-id>tool-call-1</tool-use-id>",
-				"<status>completed</status>",
-				"<output-file>C:/tmp/task.log</output-file>",
-				'<summary>Background command "echo done" completed (exit code 0)</summary>',
-				"</task-notification>",
-				"",
-				"Use the task_output tool to read the command output if needed.",
-			].join("\n"),
-		);
 	});
 });

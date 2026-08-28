@@ -1,6 +1,6 @@
 export type ContextSectionKind = "instruction" | "tool_schema" | "history" | "runtime_context" | "user_input";
 
-export type ContextSourceOwner = "core" | "skill" | "plugin" | "mcp" | "extension" | "runtime" | "user" | "unknown";
+export type ContextSourceOwner = "core" | "extension" | "runtime" | "user" | "unknown";
 
 export type TokenEstimateMethod = "provider_tokenizer" | "model_tokenizer" | "heuristic" | "unknown";
 

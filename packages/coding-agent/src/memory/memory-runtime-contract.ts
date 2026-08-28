@@ -5,8 +5,8 @@ import type {
 	ConversationContinuationDirective,
 	TurnObserver,
 } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import type { CompactionPreparation, CompactionSettings } from "../compaction/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../runtime-contracts/index.js";
 import type { MemoryTextStorage } from "./memory-storage.js";
 
 export interface CodingAgentMemoryPromptState {
@@ -51,7 +51,7 @@ export interface CodingAgentMemoryRolloverOrchestratorOptions {
 }
 
 export interface CodingAgentMemoryRolloverRuntime extends CodingAgentMemoryCompactionPolicy, TurnObserver {
-	readonly toolRegistration: CodingToolRegistration;
+	readonly toolRegistration: CodingAgentRuntimeToolRegistration;
 	readPromptMemory(): CodingAgentMemoryPromptState;
 	renderPromptMemory(): string;
 	flushMessages(input: CodingAgentMemoryFlushInput): Promise<number>;

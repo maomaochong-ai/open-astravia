@@ -5,11 +5,10 @@ import type {
 	SessionExecutionMode,
 } from "@vetta/runtime-core";
 import type { AgentFeatureDefinition, AgentSession, CapabilityBinding } from "@vetta/runtime-core/kernel";
+import { sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import {
 	type BackgroundCommandService,
-	buildBackgroundCommandNotification,
 	CODING_TOOL_AVAILABILITY_ERROR_CODES,
-	type CodingToolActivation,
 	type CodingToolAvailabilityErrorCode,
 	type CodingToolCatalogEntry,
 	type CodingToolRegistration,
@@ -23,6 +22,14 @@ import {
 	createTaskOutputToolRegistration,
 	createTaskStopToolRegistration,
 } from "../../features/background-tasks/index.js";
+import {
+	type CodingAgentRuntimeToolRegistration,
+	type CodingAgentToolActivation,
+	selectCodingAgentToolRegistrations,
+} from "../../runtime-contracts/index.js";
+import { declareCodingAgentPlatformTools } from "../../tool-policy/platform-tool-declarations.js";
+import { CODING_AGENT_BACKGROUND_TASKS_OBSERVATION } from "../background/background-work-session-extension-contract.js";
+import { buildCodingAgentBackgroundCommandNotification } from "../background/notification.js";
 import type { CodingAgentSandboxAuthorizationPort } from "../sandbox/authorization-contract.js";
 import { createCodingAgentSandboxToolRegistrations } from "../sandbox/tool-registrations.js";
 
@@ -30,7 +37,7 @@ const SESSION_EXECUTION_FEATURE_ID = "coding-session-execution-tools";
 
 export interface CodingAgentSessionExecutionRuntimeOptions {
 	readonly cwd: string;
-	readonly activation: CodingToolActivation;
+	readonly activation: CodingAgentToolActivation;
 	readonly environment: CodingAgentSessionExecutionEnvironment;
 	readonly enableBackgroundTasks?: boolean;
 	readonly initialMode?: SessionExecutionMode;
@@ -50,7 +57,7 @@ export class CodingAgentSessionExecutionRuntime {
 	private readonly catalog: GenerationalCodingToolCatalog;
 	private disposeTaskEvents: (() => void) | undefined;
 	private disposeTaskNotifications: (() => void) | undefined;
-	private readonly fullAccessRegistrations: readonly CodingToolRegistration[];
+	private readonly fullAccessRegistrations: readonly CodingAgentRuntimeToolRegistration[];
 	private readonly sourceBindings = new Map<string, CapabilityBinding | undefined>();
 	private mode: SessionExecutionMode;
 	private nextCatalogGeneration = 0;
@@ -59,7 +66,9 @@ export class CodingAgentSessionExecutionRuntime {
 		this.mode = options.initialMode ?? "full-access";
 		this.backgroundService = options.environment.backgroundService;
 		this.fullAccessRegistrations = [
-			...options.environment.registrations.filter(({ tool }) => !BACKGROUND_TASK_TOOL_NAMES.has(tool.name)),
+			...declareCodingAgentPlatformTools(
+				options.environment.registrations.filter(({ tool }) => !BACKGROUND_TASK_TOOL_NAMES.has(tool.name)),
+			),
 			createTaskOutputToolRegistration({ backgroundService: this.backgroundService }),
 			createTaskStopToolRegistration({ backgroundService: this.backgroundService }),
 		].map((registration) => inheritModelOrder(registration, options.resolveToolEntry?.(registration.tool.name)));
@@ -81,7 +90,15 @@ export class CodingAgentSessionExecutionRuntime {
 		this.feature = createCodingToolsFeature({
 			id: SESSION_EXECUTION_FEATURE_ID,
 			catalog: this.catalog,
-			activation: withBackgroundTaskCapability(options.activation, options.enableBackgroundTasks !== false),
+			selectRegistrations: (registrations) => {
+				const selectedNames = new Set(
+					selectCodingAgentToolRegistrations(
+						this.fullAccessRegistrations,
+						withBackgroundTaskCapability(options.activation, options.enableBackgroundTasks !== false),
+					).map(({ tool }) => tool.name),
+				);
+				return registrations.filter(({ tool }) => selectedNames.has(tool.name));
+			},
 			filterRegistration: (registration) =>
 				this.isEnabled(registration.tool.name) &&
 				this.resolveAvailabilityErrorCode(registration.tool.name) === undefined,
@@ -115,8 +132,7 @@ export class CodingAgentSessionExecutionRuntime {
 		this.disposeTaskEvents = this.backgroundService.subscribe(() => {
 			void this.options.resourceContext
 				.reportObservation({
-					type: "background_tasks_update",
-					tasks: this.backgroundService.list(),
+					...sessionExtensionObservation(CODING_AGENT_BACKGROUND_TASKS_OBSERVATION, this.backgroundService.list()),
 					source: "tool",
 				})
 				.catch((error: unknown) => {
@@ -128,7 +144,7 @@ export class CodingAgentSessionExecutionRuntime {
 				.deliverAsyncContext([
 					{
 						type: "task-notification",
-						content: [{ type: "text", text: buildBackgroundCommandNotification(task) }],
+						content: [{ type: "text", text: buildCodingAgentBackgroundCommandNotification(task) }],
 						modelVisible: true,
 						display: true,
 					},
@@ -205,32 +221,36 @@ export class CodingAgentSessionExecutionRuntime {
 
 	private buildModeRegistrations(
 		mode: SessionExecutionMode,
-		fullAccessRegistrations: readonly CodingToolRegistration[],
+		fullAccessRegistrations: readonly CodingAgentRuntimeToolRegistration[],
 		update: RuntimeExecutionModeUpdate,
-	): readonly CodingToolRegistration[] {
+	): readonly CodingAgentRuntimeToolRegistration[] {
 		const taskRegistrations = fullAccessRegistrations.filter(
 			({ tool }) => tool.name === "task_output" || tool.name === "task_stop",
 		);
 		if (mode === "full-access") return fullAccessRegistrations;
 		return [
-			...createCodingAgentSandboxToolRegistrations({
-				cwd: this.options.cwd,
-				authorization: this.options.sandboxAuthorization,
-				environment: this.options.environment.sandbox,
-				windowsSandboxHostPath: update.sandboxHostPath,
-				linuxBubblewrapPath: update.linuxBubblewrapPath,
-				macosSandboxExecPath: update.macosSandboxExecPath,
-				getSessionId: this.options.readSessionId,
-			}).map((registration) =>
+			...declareCodingAgentPlatformTools(
+				createCodingAgentSandboxToolRegistrations({
+					cwd: this.options.cwd,
+					authorization: this.options.sandboxAuthorization,
+					environment: this.options.environment.sandbox,
+					windowsSandboxHostPath: update.sandboxHostPath,
+					linuxBubblewrapPath: update.linuxBubblewrapPath,
+					macosSandboxExecPath: update.macosSandboxExecPath,
+					getSessionId: this.options.readSessionId,
+				}),
+			).map((registration) =>
 				inheritModelOrder(registration, this.options.resolveToolEntry?.(registration.tool.name)),
 			),
 			...taskRegistrations,
 		];
 	}
 
-	private createModeRegistry(registrations: readonly CodingToolRegistration[]): InMemoryCodingToolRegistry {
+	private createModeRegistry(
+		registrations: readonly CodingAgentRuntimeToolRegistration[],
+	): InMemoryCodingToolRegistry {
 		this.nextCatalogGeneration += 1;
-		return new InMemoryCodingToolRegistry(registrations, {
+		return new InMemoryCodingToolRegistry(registrations.map(toRuntimeExecutionRegistration), {
 			sourceId: `coding-session-execution-tools:${this.nextCatalogGeneration}`,
 		});
 	}
@@ -240,16 +260,33 @@ const SESSION_EXECUTION_TOOL_NAMES = ["bash", "shell", "read", "write", "edit", 
 const BACKGROUND_TASK_TOOL_NAMES = new Set<string>(["task_output", "task_stop"]);
 
 function inheritModelOrder(
-	registration: CodingToolRegistration,
+	registration: CodingAgentRuntimeToolRegistration,
 	source: CodingToolCatalogEntry | undefined,
-): CodingToolRegistration {
+): CodingAgentRuntimeToolRegistration {
 	const modelOrder = source?.registration.modelOrder;
-	return modelOrder === undefined
-		? registration
-		: { ...registration, modelOrder, tool: { ...registration.tool, modelOrder } };
+	const resultPolicy = source?.registration.resultPolicy;
+	return {
+		...registration,
+		...(modelOrder === undefined ? {} : { modelOrder, tool: { ...registration.tool, modelOrder } }),
+		...(resultPolicy ? { resultPolicy } : {}),
+	};
 }
 
-function withBackgroundTaskCapability(activation: CodingToolActivation, enabled: boolean): CodingToolActivation {
+function toRuntimeExecutionRegistration(registration: CodingAgentRuntimeToolRegistration): CodingToolRegistration {
+	const {
+		scopeUse: _scopeUse,
+		requires: _requires,
+		category: _category,
+		sideEffect: _sideEffect,
+		...runtimeRegistration
+	} = registration;
+	return runtimeRegistration;
+}
+
+function withBackgroundTaskCapability(
+	activation: CodingAgentToolActivation,
+	enabled: boolean,
+): CodingAgentToolActivation {
 	if (!enabled || activation.mode === "explicit") return activation;
 	return {
 		...activation,

@@ -1,4 +1,3 @@
-import { CODING_TOOL_SCOPES, selectCodingToolsForScope } from "@vetta/runtime-tools";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	CURRENT_TIME_TOOL_CATEGORY,
@@ -6,6 +5,8 @@ import {
 	CurrentTimeToolInputSchema,
 	createCurrentTimeToolRegistration,
 } from "../../../src/features/current-time/index.js";
+import { ALL_SCENARIOS } from "../../../src/profiles/index.js";
+import { selectCodingAgentToolRegistrations } from "../../../src/runtime-contracts/index.js";
 
 afterEach(() => {
 	vi.useRealTimers();
@@ -22,8 +23,12 @@ describe("current_time runtime contract", () => {
 		expect(registration.tool.description).toContain("YYYY-MM-DD HH:mm:ss");
 		expect(registration.scopeUse).toEqual(CURRENT_TIME_TOOL_SCOPES);
 		expect(registration.category).toBe(CURRENT_TIME_TOOL_CATEGORY);
-		for (const scenario of CODING_TOOL_SCOPES) {
-			expect(selectCodingToolsForScope([registration], scenario)).toEqual([registration.tool]);
+		for (const scenario of ALL_SCENARIOS) {
+			expect(
+				selectCodingAgentToolRegistrations([registration], { mode: "scope", scope: scenario }).map(
+					({ tool }) => tool,
+				),
+			).toEqual([registration.tool]);
 		}
 	});
 

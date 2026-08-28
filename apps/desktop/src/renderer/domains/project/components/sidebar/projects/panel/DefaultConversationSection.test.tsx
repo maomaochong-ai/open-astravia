@@ -40,7 +40,7 @@ const CLAW_SESSION: SessionInfo = {
 	cwd: IM_CWD,
 	firstMessage: "微信来的消息",
 	modifiedAt: 1,
-	access: { readHistory: true, interactiveResume: false, rename: true, delete: true },
+	access: { readHistory: true, resume: false, rename: true, delete: true },
 };
 
 function renderSection(sessionsCwd: string, filter: "conversation" | "claw"): void {

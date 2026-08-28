@@ -1,5 +1,5 @@
 import type { Message } from "@vetta/ai";
-import type { ConversationScenario, InitializationRollbackTask, RuntimeResourceContext } from "@vetta/runtime-core";
+import type { InitializationRollbackTask, RuntimeResourceContext } from "@vetta/runtime-core";
 import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
 import type {
 	AgentFeatureDefinition,
@@ -8,7 +8,6 @@ import type {
 } from "@vetta/runtime-core/kernel";
 import { SessionExtensionComposition, sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import type { CodingToolActivation } from "@vetta/runtime-tools";
 import { createCodingAgentBackgroundWorkSessionExtension } from "../../execution/background/background-work-session-extension.js";
 import {
 	CODING_AGENT_SANDBOX_AUTHORIZATION_RUNTIME,
@@ -28,12 +27,15 @@ import {
 } from "../../features/todo/todo-session-extension.js";
 import { CODING_AGENT_TODO_OBSERVATION } from "../../features/todo/todo-session-extension-contract.js";
 import { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
+import { createCodingAgentSessionProfileStateExtension } from "../../host/session-configuration/session-profile-state-extension.js";
 import { type CodingAgentMemoryRolloverRuntime, createCodingAgentMemoryRuntimeFeature } from "../../memory/index.js";
 import { createCodingAgentPluginConfigurationSessionExtension } from "../../plugins/runtime/plugin-configuration-session-extension.js";
+import type { ConversationScenario } from "../../profiles/index.js";
 import type {
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
 	CodingAgentRuntimeToolRegistration,
+	CodingAgentToolActivation,
 } from "../../runtime-contracts/index.js";
 import {
 	CODING_AGENT_HEAVY_TOOL_POLICY_RUNTIME,
@@ -57,7 +59,7 @@ export interface CodingAgentSessionPeripheralAssemblyOptions {
 	readonly sessionOptions: CodingAgentRuntimeSessionOptions;
 	readonly sessionCwd: string;
 	readonly scenario: ConversationScenario;
-	readonly activation: CodingToolActivation;
+	readonly activation: CodingAgentToolActivation;
 	readonly codingTools: CodingToolsRuntimeComposition;
 	readonly indexes: CodingAgentSessionResourceIndexes;
 	readonly mcpCoordinator: CodingAgentMcpSessionCoordinator;
@@ -67,7 +69,7 @@ export interface CodingAgentSessionPeripheralAssemblyOptions {
 	readonly resolveActivation: (
 		context: ModelCallContributionContext,
 		activeToolNamesOverride?: readonly string[],
-	) => CodingToolActivation;
+	) => CodingAgentToolActivation;
 	readonly deferRollback: (task: InitializationRollbackTask) => void;
 }
 
@@ -168,6 +170,10 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	const sessionExtensions = await SessionExtensionComposition.create({
 		functions: sessionOptions.sessionExtensionFunctions ?? profile.sessionExtensionFunctions,
 		definitions: [
+			createCodingAgentSessionProfileStateExtension({
+				scenario: options.scenario,
+				configurationState,
+			}),
 			createCodingAgentAskUserQuestionSessionExtension({ scenario: options.scenario }),
 			createCodingAgentHeavyToolPolicySessionExtension(),
 			createCodingAgentSandboxAuthorizationSessionExtension(),

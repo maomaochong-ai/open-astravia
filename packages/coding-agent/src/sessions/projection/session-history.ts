@@ -263,19 +263,10 @@ export function entriesToHistory(branch: CodingSessionEntry[], options?: Entries
 				entries.push({ type: "prompt_attachments_marker", attachments, timestamp: entry.timestamp });
 			}
 		} else if (entry.type === "custom_message" && entry.customType === "settings_assist_instruction") {
-			// Model-only settings-assist preamble; surface a marker so the next user
-			// bubble can show a page-specific badge after history reload.
-			const details = entry.details;
-			const tabId =
-				details &&
-				typeof details === "object" &&
-				!Array.isArray(details) &&
-				typeof (details as { tabId?: unknown }).tabId === "string"
-					? (details as { tabId: string }).tabId.trim() || undefined
-					: undefined;
 			entries.push({
-				type: "settings_assist_marker",
-				tabId,
+				type: "custom_marker",
+				customType: entry.customType,
+				...(entry.details === undefined ? {} : { details: entry.details }),
 				timestamp: entry.timestamp,
 			});
 		} else if (

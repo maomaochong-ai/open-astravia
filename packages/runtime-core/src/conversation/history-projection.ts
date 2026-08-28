@@ -206,7 +206,10 @@ function appendTurnFailedHistory(history: HistoryEntry[], entry: ConversationDoc
 }
 
 function parseFailureOrigin(value: unknown): RuntimeFailureOrigin | undefined {
-	return value === "runtime" || value === "provider" || value === "tool" || value === "mcp" ? value : undefined;
+	if (value === "runtime" || value === "provider" || value === "tool" || value === "extension") return value;
+	// Historical/product-owned origins are normalized at the persistence boundary
+	// instead of becoming permanent Runtime vocabulary.
+	return typeof value === "string" && value.trim().length > 0 ? "extension" : undefined;
 }
 
 function parseFailureDetails(value: unknown): RuntimeFailureDetails | undefined {
@@ -251,28 +254,22 @@ function appendCustomMessageHistory(history: HistoryEntry[], entry: Conversation
 		if (attachments) history.push({ type: "prompt_attachments_marker", attachments, timestamp: entry.timestamp });
 		return;
 	}
-	if (entry.customType === "settings_assist_instruction") {
-		const tabId =
-			isRecord(entry.details) && typeof entry.details.tabId === "string" ? entry.details.tabId.trim() : "";
-		history.push({ type: "settings_assist_marker", tabId: tabId || undefined, timestamp: entry.timestamp });
-		return;
-	}
-	if (entry.customType === "skill_expansion" || entry.customType === "scene_expansion") {
-		const promptRef = parsePromptResourceRef(entry);
-		if (promptRef) history.push({ type: "prompt_ref_marker", promptRef, timestamp: entry.timestamp });
-	}
+	history.push({
+		type: "custom_marker",
+		customType: entry.customType,
+		...(entry.details === undefined ? {} : { details: entry.details }),
+		timestamp: entry.timestamp,
+	});
 }
 
 function parsePromptResourceRef(entry: ConversationDocumentCustomMessageEntry): PromptResourceRef | undefined {
 	if (isRecord(entry.details) && isRecord(entry.details.promptRef)) {
 		const { kind, name } = entry.details.promptRef;
-		if ((kind === "skill" || kind === "scene") && typeof name === "string" && name.trim()) {
-			return { kind, name: name.trim() };
+		if (typeof kind === "string" && kind.trim() && typeof name === "string" && name.trim()) {
+			return { kind: kind.trim(), name: name.trim() };
 		}
 	}
-	const kind = entry.customType === "scene_expansion" ? "scene" : "skill";
-	const match = typeof entry.content === "string" ? entry.content.match(new RegExp(`^<${kind} name="([^"]+)"`)) : null;
-	return match?.[1] ? { kind, name: match[1] } : undefined;
+	return undefined;
 }
 
 function parsePromptAttachments(value: unknown): PromptAttachmentRef[] | undefined {

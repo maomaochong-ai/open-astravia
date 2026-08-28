@@ -4,7 +4,12 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import type { CodingAgentKnowledgeRuntime, CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import { CODING_AGENT_SUBAGENTS_READ, CODING_AGENT_TODO_READ } from "@vetta/coding-agent/session-extensions";
+import {
+	CODING_AGENT_SESSION_AGENT_MODE_SET,
+	CODING_AGENT_SESSION_PROFILE_STATE_READ,
+	CODING_AGENT_SUBAGENTS_READ,
+	CODING_AGENT_TODO_READ,
+} from "@vetta/coding-agent/session-extensions";
 import {
 	createMcpServerRuntimeToolSource,
 	type McpClientHandle,
@@ -157,6 +162,7 @@ describe("Runtime composition contract", () => {
 
 	it("reflects registry changes on the next model call without rebuilding the session", async () => {
 		const conversations = await createTemporaryDirectory("runtime-dynamic-tools-");
+		const commandToolName = process.platform === "win32" ? "shell" : "bash";
 		const toolLists: string[][] = [];
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
@@ -164,10 +170,12 @@ describe("Runtime composition contract", () => {
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
 			enableSubagents: false,
-			activation: { mode: "explicit", toolNames: ["read", "bash"] },
+			activation: { mode: "explicit", toolNames: ["read", commandToolName] },
 			streamFn: (_model, context) => {
 				toolLists.push(
-					(context.tools ?? []).map(({ name }) => name).filter((name) => name === "read" || name === "bash"),
+					(context.tools ?? [])
+						.map(({ name }) => name)
+						.filter((name) => name === "read" || name === commandToolName),
 				);
 				return new RecordedAssistantStream(assistantMessage([{ type: "text", text: "done" }]));
 			},
@@ -180,13 +188,13 @@ describe("Runtime composition contract", () => {
 
 		await session.prompt({ text: "first" });
 		expect(composition.tools.registry.deactivate("read")).toBe(true);
-		expect(composition.tools.registry.deactivate("bash")).toBe(true);
+		expect(composition.tools.registry.deactivate(commandToolName)).toBe(true);
 		await session.prompt({ text: "second" });
-		expect(composition.tools.registry.unregister("bash")).toBe(true);
-		composition.tools.registry.register({
+		expect(composition.tools.unregisterTool(commandToolName)).toBe(true);
+		composition.tools.registerTool({
 			tool: {
-				name: "bash",
-				label: "Replacement Bash",
+				name: commandToolName,
+				label: "Replacement Command",
 				description: "Replacement command tool",
 				inputSchema: { type: "object" },
 				execute: async () => ({ content: [{ type: "text", text: "replacement" }] }),
@@ -196,8 +204,8 @@ describe("Runtime composition contract", () => {
 		});
 		await session.prompt({ text: "third" });
 
-		expect(toolLists).toEqual([["read", "bash"], [], ["bash"]]);
-		expect(session.readState().activeToolNames).toEqual(["bash"]);
+		expect(toolLists).toEqual([["read", commandToolName], [], [commandToolName]]);
+		expect(session.readState().activeToolNames).toEqual([commandToolName]);
 		await session.dispose();
 	});
 
@@ -219,8 +227,10 @@ describe("Runtime composition contract", () => {
 		expect(session.readState().isStreaming).toBe(false);
 		session.setSteeringMode("all");
 		session.setFollowUpMode("all");
-		session.setAgentMode("plan");
-		expect(session.readState()).toMatchObject({ agentMode: "plan" });
+		session.invokeExtensionSync(CODING_AGENT_SESSION_AGENT_MODE_SET, { agentMode: "plan" });
+		expect(session.invokeExtensionSync(CODING_AGENT_SESSION_PROFILE_STATE_READ, undefined)).toMatchObject({
+			agentMode: "plan",
+		});
 		expect(session.invokeExtensionSync(CODING_AGENT_TODO_READ, undefined)).toEqual([]);
 		await session.dispose();
 	});
@@ -440,6 +450,16 @@ describe("Runtime composition contract", () => {
 		expect(calls[1]?.systemPrompt).toContain("Persona version 2");
 		expect(calls[1]?.messages).toEqual(["first", "done", "second"]);
 		const registeredRead = composition.tools.registry.resolve("read")?.registration.tool;
+		const boundTools = composition.tools.registry.acquireSnapshot({
+			sessionId: "system-prompt-session",
+			operationId: "description-contract",
+			reason: "preview",
+			signal: new AbortController().signal,
+		});
+		expect(
+			boundTools.snapshot.entries.find(({ registration }) => registration.tool.name === "read")?.registration.tool,
+		).toMatchObject({ description: registeredRead?.description });
+		await boundTools.release();
 		expect(calls[0]?.tools).toEqual([
 			{
 				name: "read",
@@ -765,9 +785,14 @@ describe("Runtime composition contract", () => {
 		]);
 		expect((await session.readMessages()).map(({ role }) => role)).toEqual(["user", "assistant"]);
 		expect(session.readHistory()).toMatchObject([
-			{ type: "settings_assist_marker" },
+			{ type: "custom_marker", customType: "plugin_prompt_instruction" },
+			{ type: "custom_marker", customType: "settings_assist_instruction" },
 			{ type: "prompt_attachments_marker" },
-			{ type: "prompt_ref_marker" },
+			{
+				type: "custom_marker",
+				customType: "skill_expansion",
+				details: { promptRef: { kind: "skill", name: "review" } },
+			},
 			{ type: "message", message: { role: "user" } },
 			{ type: "message", message: { role: "assistant" } },
 		]);

@@ -1,5 +1,6 @@
-import type { RuntimeResourceContext } from "@vetta/runtime-core";
+import type { RuntimeResourceContext, RuntimeSessionObservationEvent } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import { sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import type {
 	McpRuntimeToolBinding,
 	McpRuntimeToolRegistry,
@@ -9,6 +10,10 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentCompositionResourceRegistry } from "../../src/composition/session-lifecycle/resource-registry.js";
 import { createCodingAgentMcpSessionCoordinator } from "../../src/composition/tool-surface/mcp-session-coordinator.js";
+import {
+	CODING_AGENT_MCP_RELOAD_FINISHED,
+	CODING_AGENT_MCP_RELOAD_STARTED,
+} from "../../src/composition/tool-surface/mcp-session-extension-contract.js";
 import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
 
 describe("Coding Agent MCP Session Coordinator", () => {
@@ -74,17 +79,9 @@ describe("Coding Agent MCP Session Coordinator", () => {
 			registry: new RecordingRegistry(),
 			indexes: resources.indexes,
 		});
-		const observations: Array<{
-			readonly type: string;
-			readonly changed?: boolean;
-			readonly errorMessage?: string;
-		}> = [];
+		const observations: RuntimeSessionObservationEvent[] = [];
 		resources.indexes.resourceContexts.set("session", {
-			reportObservation: async (event: {
-				readonly type: string;
-				readonly changed?: boolean;
-				readonly errorMessage?: string;
-			}) => {
+			reportObservation: async (event: RuntimeSessionObservationEvent) => {
 				observations.push(event);
 			},
 		} as unknown as RuntimeResourceContext);
@@ -99,26 +96,30 @@ describe("Coding Agent MCP Session Coordinator", () => {
 		await coordinator.refreshSession("session", true);
 		expect(controller.readPromptState().tools).toEqual([{ name: "mcp_beta", description: "beta" }]);
 		expect(observations).toEqual([
-			{ type: "mcp.reload.start", source: "agent" },
-			{ type: "mcp.reload.end", changed: true, source: "agent" },
+			{ ...sessionExtensionObservation(CODING_AGENT_MCP_RELOAD_STARTED, {}), source: "extension" },
+			{
+				...sessionExtensionObservation(CODING_AGENT_MCP_RELOAD_FINISHED, { changed: true }),
+				source: "extension",
+			},
 		]);
 		expect(source.refresh).toHaveBeenCalledTimes(2);
 
 		refreshFailure = new Error("refresh failed");
 		await expect(coordinator.refreshSession("session", true)).rejects.toBe(refreshFailure);
 		expect(observations.slice(2)).toEqual([
-			{ type: "mcp.reload.start", source: "agent" },
+			{ ...sessionExtensionObservation(CODING_AGENT_MCP_RELOAD_STARTED, {}), source: "extension" },
 			{
-				type: "mcp.reload.end",
-				changed: false,
-				errorMessage: "refresh failed",
-				failure: {
-					code: "MCP_RELOAD_FAILED",
-					message: "refresh failed",
-					retryable: false,
-					origin: "mcp",
-				},
-				source: "agent",
+				...sessionExtensionObservation(CODING_AGENT_MCP_RELOAD_FINISHED, {
+					changed: false,
+					errorMessage: "refresh failed",
+					failure: {
+						code: "MCP_RELOAD_FAILED",
+						message: "refresh failed",
+						retryable: false,
+						origin: "extension",
+					},
+				}),
+				source: "extension",
 			},
 		]);
 	});

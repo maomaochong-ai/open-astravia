@@ -7,10 +7,11 @@ import type {
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
-import type { CodingToolActivation, RuntimeToolProjectionPipeline } from "@vetta/runtime-tools";
+import type { RuntimeToolProjectionPipeline } from "@vetta/runtime-tools";
 import type {
 	CodingAgentPluginMcpToolComposer,
 	CodingAgentSystemPromptOptionsResolver,
+	CodingAgentToolActivation,
 } from "../runtime-contracts/index.js";
 import { createCodingAgentToolProjectionPipeline } from "../tool-policy/tool-projection-policy.js";
 import type {
@@ -55,10 +56,10 @@ export interface CodingAgentModelCallFrameComposerOptions {
 	};
 	readonly extensionEvents?: CodingAgentModelCallExtensionEvents;
 	readonly extensionToolRuntime?: CodingAgentModelCallExtensionToolPort;
-	readonly resolveExtensionToolActivation?: (context: ModelCallFrameCompositionContext) => CodingToolActivation;
+	readonly resolveExtensionToolActivation?: (context: ModelCallFrameCompositionContext) => CodingAgentToolActivation;
 	readonly bindExtensionToolActivation?: (
 		context: RuntimeSnapshotAcquireContext,
-	) => (context: ModelCallFrameCompositionContext) => CodingToolActivation;
+	) => (context: ModelCallFrameCompositionContext) => CodingAgentToolActivation;
 	readonly onPromptDiagnostics?: (diagnostics: SystemPromptDiagnostics) => void;
 	readonly reportActiveToolNames?: (activeToolNames: readonly string[]) => Promise<void> | void;
 	readonly releaseTurnBinding?: () => Promise<void> | void;
@@ -87,7 +88,7 @@ export interface CodingAgentModelCallExtensionToolPort {
 	compose(
 		context: ModelCallFrameCompositionContext,
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
-		activation: CodingToolActivation,
+		activation: CodingAgentToolActivation,
 	): CodingAgentModelCallToolSurface;
 	contributePrompt?(
 		draft: SystemPromptDraft,
@@ -426,13 +427,9 @@ function composeContextSections(
 				category: block.type,
 				source: {
 					owner:
-						block.type === "skills"
-							? "skill"
-							: block.type === "mcp"
-								? "mcp"
-								: block.source.kind === "plugin"
-									? "plugin"
-									: "core",
+						block.type === "skills" || block.type === "mcp" || block.source.kind === "plugin"
+							? "extension"
+							: "core",
 					id: block.source.pluginId ?? block.id,
 				},
 				content: block.content,

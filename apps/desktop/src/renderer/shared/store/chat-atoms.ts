@@ -161,7 +161,7 @@ export interface ErrorBlock {
 
 export interface ChatErrorDetails {
 	code?: string;
-	origin?: "runtime" | "provider" | "tool" | "mcp";
+	origin?: "runtime" | "provider" | "tool" | "extension";
 	retryable?: boolean;
 	statusCode?: number;
 	provider?: string;
@@ -218,7 +218,7 @@ export interface ChatMessage {
 	mentionedFiles?: MentionedFile[];
 	/**
 	 * 来自设置页「让 AI 协助配置」的 tab id（如 mcp / models），气泡展示「MCP配置协助」等标签。
-	 * 乐观发送与历史回放（settings_assist_marker）都会设置。
+	 * 乐观发送与历史回放中的 Coding Agent 自定义标记都会设置。
 	 */
 	settingsAssistTabId?: string;
 	/** Structured Skill / Scene selection associated with this user turn. */
@@ -472,7 +472,7 @@ export interface RetryProgress {
 export const retryProgressAtom = atom<RetryProgress | null>(null);
 
 /** 当前 session 是否正在懒重载 MCP 配置（用户发 prompt 后 ~1-3s）。
- * 仅由 mcp.reload.start/end 驱动；UI 用一条非阻塞的小提示告知用户。 */
+ * 仅由 Coding Agent MCP 扩展观察驱动；UI 用一条非阻塞的小提示告知用户。 */
 export const isReloadingMcpAtom = atom<boolean>(false);
 
 /**

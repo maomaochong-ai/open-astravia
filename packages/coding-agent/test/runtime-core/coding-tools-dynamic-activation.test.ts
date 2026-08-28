@@ -2,6 +2,10 @@ import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import { createCodingToolsFeature, InMemoryCodingToolRegistry } from "@vetta/runtime-tools";
 import { describe, expect, it, vi } from "vitest";
 import { createCurrentTimeToolRegistration } from "../../src/features/current-time/index.js";
+import {
+	type CodingAgentRuntimeToolRegistration,
+	selectCodingAgentToolRegistrations,
+} from "../../src/runtime-contracts/index.js";
 
 describe("coding tools dynamic activation", () => {
 	it("resolves activation from each model-call input without rebuilding the feature", async () => {
@@ -21,7 +25,13 @@ describe("coding tools dynamic activation", () => {
 		}));
 		const definition = createCodingToolsFeature({
 			catalog: registry,
-			resolveActivation,
+			selectRegistrations: async (registrations, context) => {
+				const activation = resolveActivation(context);
+				const selectedNames = new Set(
+					selectCodingAgentToolRegistrations([regular, knowledgeOnly], activation).map(({ tool }) => tool.name),
+				);
+				return registrations.filter(({ tool }) => selectedNames.has(tool.name));
+			},
 		});
 		const signal = new AbortController().signal;
 		const feature = await definition.prepare({ signal });
@@ -59,9 +69,8 @@ describe("coding tools dynamic activation", () => {
 		const registry = new InMemoryCodingToolRegistry([knowledgeTool]);
 		const definition = createCodingToolsFeature({
 			catalog: registry,
-			activation: { mode: "explicit", toolNames: ["knowledge_only"] },
 			filterRegistration: (registration, context) =>
-				registration.category !== "kb-read" ||
+				registration.tool.name !== "knowledge_only" ||
 				context.input?.context?.some(({ type }) => type === "knowledge_mode_instruction") === true,
 		});
 		const signal = new AbortController().signal;
@@ -97,13 +106,19 @@ describe("coding tools dynamic activation", () => {
 		const capabilities = new Set(["enabled"]);
 		let filterEnabled = true;
 		const registry = new InMemoryCodingToolRegistry([regular, workOnly]);
+		const declarations: readonly CodingAgentRuntimeToolRegistration[] = [regular, workOnly];
 		const definition = createCodingToolsFeature({
 			catalog: registry,
-			resolveActivation: () => ({
-				mode: "scope",
-				scope: "cli",
-				capabilities,
-			}),
+			selectRegistrations: (registrations) => {
+				const selectedNames = new Set(
+					selectCodingAgentToolRegistrations(declarations, {
+						mode: "scope",
+						scope: "cli",
+						capabilities,
+					}).map(({ tool }) => tool.name),
+				);
+				return registrations.filter(({ tool }) => selectedNames.has(tool.name));
+			},
 			filterRegistration: ({ tool }) => tool.name !== "work_only" || filterEnabled,
 		});
 		const signal = new AbortController().signal;

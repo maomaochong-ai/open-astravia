@@ -1,5 +1,5 @@
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type { ConversationScenario, RuntimeModel } from "@vetta/runtime-core";
+import type { RuntimeModel } from "@vetta/runtime-core";
 import type {
 	AgentFeatureDefinition,
 	ContinuationPolicyContext,
@@ -10,7 +10,7 @@ import type {
 } from "@vetta/runtime-core/kernel";
 import type { SessionExtensionContinuationSource } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools";
+import { guardCodingToolRegistration } from "@vetta/runtime-tools";
 import { createEcosystemToolInterceptor } from "../../adapters/ecosystem/tool-interceptor-adapter.js";
 import { CodingAgentPromptRequestAdapter } from "../../adapters/runtime-core/prompt-request-adapter.js";
 import { CodingAgentLegacyImageSettingsRuntime } from "../../adapters/settings/legacy-image-settings-adapter.js";
@@ -37,6 +37,7 @@ import {
 	type CodingAgentPluginToolActivation,
 	CodingAgentPluginToolRuntime,
 } from "../../plugins/runtime/tool-runtime.js";
+import type { ConversationScenario } from "../../profiles/index.js";
 import { createCodingAgentPromptResourceResolver } from "../../resources/prompt-resource-resolver.js";
 import { createCodingAgentInvokeSkillFeature } from "../../resources/skills/invoke-skill-feature.js";
 import type {
@@ -48,6 +49,7 @@ import type {
 	CodingAgentPromptSettingsSource,
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentSystemPromptOptionsResolver,
+	CodingAgentToolActivation,
 } from "../../runtime-contracts/index.js";
 import { createHeavyToolConfirmationInterceptor } from "../../tool-policy/heavy-tool-confirmation.js";
 import type { CodingAgentHeavyToolPolicyRuntime } from "../../tool-policy/heavy-tool-policy-session-extension.js";
@@ -70,12 +72,12 @@ export interface CodingAgentTurnCapabilitySessionIdentity {
 }
 
 export interface CodingAgentTurnCapabilityActivationPort {
-	readonly resolve: (context: ModelCallContributionContext) => CodingToolActivation;
+	readonly resolve: (context: ModelCallContributionContext) => CodingAgentToolActivation;
 	readonly readAgentMode: () => string | undefined;
 	readonly readAgentPlugins: () => AgentPluginRuntimeConfig | undefined;
 	readonly readActiveToolNamesOverride: () => readonly string[] | undefined;
 	readonly bindForTurn?: () => {
-		readonly resolve: (context: ModelCallContributionContext) => CodingToolActivation;
+		readonly resolve: (context: ModelCallContributionContext) => CodingAgentToolActivation;
 		readonly agentMode: string | undefined;
 		readonly agentPlugins: AgentPluginRuntimeConfig | undefined;
 		readonly activeToolNamesOverride: readonly string[] | undefined;
@@ -506,7 +508,7 @@ function readPluginSkillPaths(agentPlugins: AgentPluginRuntimeConfig | undefined
 	return agentPlugins?.skillPathContributions?.flatMap((contribution) => contribution.paths) ?? [];
 }
 
-function toPluginToolActivation(activation: CodingToolActivation): CodingAgentPluginToolActivation {
+function toPluginToolActivation(activation: CodingAgentToolActivation): CodingAgentPluginToolActivation {
 	if (activation.mode === "explicit") return activation;
 	return {
 		mode: "scope",

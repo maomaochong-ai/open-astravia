@@ -1,15 +1,15 @@
 import type { AgentMessage, ThinkingLevel } from "@vetta/agent-core";
 import type { Api, ImageContent, Model, TextContent } from "@vetta/ai";
-import type { AgentPluginRuntimeConfig } from "@vetta/coding-agent/plugin-runtime";
 import type { TodoItem } from "@vetta/coding-agent/session-extensions";
 import type {
-	BackgroundTaskInfo,
 	RuntimeContextCompactionResult,
 	RuntimeSessionContextUsage,
 	RuntimeSessionInputQueueMode,
 	RuntimeSessionState,
 } from "@vetta/runtime-core";
+import type { BackgroundCommandSnapshot } from "@vetta/runtime-tools";
 import type { CodingAgentSessionEventListener } from "./sdk-event-contract.js";
+import type { AgentPluginRuntimeConfig } from "./sdk-plugin-contract.js";
 import type { CodingAgentPromptOptions } from "./sdk-prompt-contract.js";
 import type { CodingAgentSkillContribution } from "./sdk-resource-source-contract.js";
 import type { CodingAgentSessionToolDefinition } from "./sdk-tool-contract.js";
@@ -135,7 +135,7 @@ export interface CodingAgentSessionCapabilities {
 	getSkills(): readonly CodingAgentSkillInfo[];
 	getPromptTemplates(): readonly CodingAgentPromptTemplate[];
 	reconfigureAgentPlugins(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<void>;
-	listBackgroundTasks(): readonly BackgroundTaskInfo[];
+	listBackgroundTasks(): readonly BackgroundCommandSnapshot[];
 	killBackgroundTask(taskId: string): boolean;
 	clearFinishedBackgroundTasks(): number;
 	getTodos(): readonly TodoItem[];

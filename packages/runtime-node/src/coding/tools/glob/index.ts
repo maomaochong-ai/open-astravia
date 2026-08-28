@@ -7,8 +7,4 @@ export {
 	GlobToolInputSchema,
 	type GlobToolOptions,
 } from "./glob-tool.js";
-export {
-	createGlobToolRegistration,
-	GLOB_TOOL_CATEGORY,
-	GLOB_TOOL_SCOPES,
-} from "./registration.js";
+export { createGlobToolRegistration } from "./registration.js";

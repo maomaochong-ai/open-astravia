@@ -120,11 +120,11 @@ describe("runtime host process services", () => {
 		const accessResolver = new CatalogRoutedRuntimeSessionAccessResolver([
 			{
 				catalog: legacyCatalog,
-				access: { readHistory: true, interactiveResume: true, rename: true, delete: true },
+				access: { readHistory: true, resume: true, rename: true, delete: true },
 			},
 			{
 				catalog: greenfieldCatalog,
-				access: { readHistory: true, interactiveResume: false, rename: false, delete: true },
+				access: { readHistory: true, resume: false, rename: false, delete: true },
 			},
 		]);
 		const host = new RuntimeHost({ sessionCatalog: catalog, sessionAccessResolver: accessResolver });
@@ -141,7 +141,7 @@ describe("runtime host process services", () => {
 		expect(legacyRename).not.toHaveBeenCalled();
 		expect(await host.resolveSessionAccess("C:/sessions/greenfield.conversation.jsonl")).toEqual({
 			readHistory: true,
-			interactiveResume: false,
+			resume: false,
 			rename: false,
 			delete: true,
 		});
@@ -156,11 +156,13 @@ describe("runtime host process services", () => {
 			{ canRead: (path) => path.endsWith("legacy.jsonl"), read: () => ({ history: [] }) },
 			{
 				canRead: (path) => path.endsWith("greenfield.conversation.jsonl"),
-				read: () => ({ history: [{ type: "settings_assist_marker", timestamp: "greenfield" }] }),
+				read: () => ({
+					history: [{ type: "custom_marker", customType: "settings_assist_instruction", timestamp: "greenfield" }],
+				}),
 			},
 		]);
 		expect(reader.read("C:/sessions/greenfield.conversation.jsonl").history).toEqual([
-			{ type: "settings_assist_marker", timestamp: "greenfield" },
+			{ type: "custom_marker", customType: "settings_assist_instruction", timestamp: "greenfield" },
 		]);
 	});
 

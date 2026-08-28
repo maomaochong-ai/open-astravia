@@ -1,4 +1,5 @@
-import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools";
+import type { ConversationScenario } from "../../../profiles/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../../runtime-contracts/index.js";
 import { createTodoTool, type TodoToolInput, type TodoToolOptions } from "./todo-tool.js";
 
 export const TODO_TOOL_SCOPES = [
@@ -9,7 +10,7 @@ export const TODO_TOOL_SCOPES = [
 	"automation",
 	"kb-processing",
 	"cli",
-] as const satisfies readonly CodingToolScope[];
+] as const satisfies readonly ConversationScenario[];
 export const TODO_TOOL_CATEGORY = "agent-control" as const;
 
 export interface TodoToolRegistrationOptions extends TodoToolOptions {
@@ -18,7 +19,7 @@ export interface TodoToolRegistrationOptions extends TodoToolOptions {
 
 export function createTodoToolRegistration(
 	options: TodoToolRegistrationOptions,
-): CodingToolRegistration<TodoToolInput> {
+): CodingAgentRuntimeToolRegistration<TodoToolInput> {
 	const tool = createTodoTool(options);
 	return {
 		tool: { ...tool, modelOrder: options.modelOrder },

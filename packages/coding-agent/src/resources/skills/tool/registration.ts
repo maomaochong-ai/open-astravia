@@ -1,4 +1,5 @@
-import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools";
+import type { ConversationScenario } from "../../../profiles/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../../runtime-contracts/index.js";
 import { createInvokeSkillTool, type InvokeSkillToolInput, type InvokeSkillToolOptions } from "./invoke-skill-tool.js";
 
 export const INVOKE_SKILL_TOOL_SCOPES = [
@@ -9,7 +10,7 @@ export const INVOKE_SKILL_TOOL_SCOPES = [
 	"automation",
 	"kb-processing",
 	"cli",
-] as const satisfies readonly CodingToolScope[];
+] as const satisfies readonly ConversationScenario[];
 export const INVOKE_SKILL_TOOL_CATEGORY = "agent-control" as const;
 
 export interface InvokeSkillToolRegistrationOptions extends InvokeSkillToolOptions {
@@ -18,7 +19,7 @@ export interface InvokeSkillToolRegistrationOptions extends InvokeSkillToolOptio
 
 export function createInvokeSkillToolRegistration(
 	options: InvokeSkillToolRegistrationOptions,
-): CodingToolRegistration<InvokeSkillToolInput> {
+): CodingAgentRuntimeToolRegistration<InvokeSkillToolInput> {
 	const tool = createInvokeSkillTool(options);
 	return {
 		tool: { ...tool, modelOrder: options.modelOrder },

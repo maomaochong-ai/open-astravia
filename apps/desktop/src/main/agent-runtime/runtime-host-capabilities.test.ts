@@ -2,7 +2,10 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
-import type { CodingAgentRuntimeCompositionOptions } from "@vetta/coding-agent/composition";
+import {
+	type CodingAgentRuntimeCompositionOptions,
+	createCodingAgentRuntimeSessionSelection,
+} from "@vetta/coding-agent/composition";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import type {
 	AgentPluginContinuationInvocation,
@@ -110,7 +113,7 @@ describe("Desktop RuntimeHost capabilities", () => {
 		const created = await runtime.createSession({
 			cwd,
 			sessionDir,
-			scenario: "batch",
+			agent: createCodingAgentRuntimeSessionSelection({ scenario: "batch" }),
 			executionMode: "full-access",
 		});
 		await runtime.prompt(created.sessionId, { text: "create artifact" });
@@ -186,9 +189,11 @@ describe("Desktop RuntimeHost capabilities", () => {
 		const created = await runtime.createSession({
 			cwd,
 			sessionDir,
-			scenario: "conversation",
+			agent: createCodingAgentRuntimeSessionSelection({
+				scenario: "conversation",
+				includeAgentSkills: false,
+			}),
 			executionMode: "full-access",
-			includeAgentSkills: false,
 		});
 		await runtime.prompt(created.sessionId, { text: "ask me" });
 

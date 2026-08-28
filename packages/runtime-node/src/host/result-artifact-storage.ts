@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { McpToolResultArtifactStore, McpToolResultArtifactWriteRequest } from "@vetta/runtime-mcp";
-import type { CodingToolResultArtifactStore, CodingToolResultArtifactWriteRequest } from "@vetta/runtime-tools";
+import type { RuntimeToolResultArtifactStore, RuntimeToolResultArtifactWriteRequest } from "@vetta/runtime-tools";
 
 interface ResultArtifactWriteRequest {
 	readonly sessionId: string;
@@ -44,10 +44,10 @@ abstract class NodeFileResultArtifactStore<Request extends ResultArtifactWriteRe
 }
 
 export class NodeCodingToolResultArtifactStore
-	extends NodeFileResultArtifactStore<CodingToolResultArtifactWriteRequest>
-	implements CodingToolResultArtifactStore
+	extends NodeFileResultArtifactStore<RuntimeToolResultArtifactWriteRequest>
+	implements RuntimeToolResultArtifactStore
 {
-	write(request: CodingToolResultArtifactWriteRequest): Promise<{ reference: string }> {
+	write(request: RuntimeToolResultArtifactWriteRequest): Promise<{ reference: string }> {
 		return this.writeArtifact(request, [request.toolName]);
 	}
 }

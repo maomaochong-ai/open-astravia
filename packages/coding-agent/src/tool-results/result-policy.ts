@@ -1,9 +1,9 @@
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import type {
-	CodingToolResultArtifact,
-	CodingToolResultArtifactStore,
 	CodingToolResultContext,
 	CodingToolResultPolicy,
+	RuntimeToolResultArtifact,
+	RuntimeToolResultArtifactStore,
 } from "@vetta/runtime-tools";
 
 export const DEFAULT_CODING_AGENT_MAX_INLINE_TOOL_RESULT_BYTES = 50 * 1024;
@@ -11,7 +11,7 @@ const utf8Encoder = new TextEncoder();
 const utf8Decoder = new TextDecoder();
 
 export interface CodingAgentCodingToolResultPolicyOptions {
-	readonly artifactStore: CodingToolResultArtifactStore;
+	readonly artifactStore: RuntimeToolResultArtifactStore;
 	readonly maxInlineResultBytes?: number;
 }
 
@@ -24,7 +24,6 @@ export function createCodingAgentCodingToolResultPolicy(
 	);
 	return {
 		async project(result, context) {
-			if (context.category === "external") return result;
 			return projectLargeResult(result, context, options.artifactStore, maxInlineResultBytes);
 		},
 	};
@@ -33,7 +32,7 @@ export function createCodingAgentCodingToolResultPolicy(
 async function projectLargeResult(
 	result: RuntimeToolResult,
 	context: CodingToolResultContext,
-	artifactStore: CodingToolResultArtifactStore,
+	artifactStore: RuntimeToolResultArtifactStore,
 	maxInlineResultBytes: number,
 ): Promise<RuntimeToolResult> {
 	const text = result.content
@@ -54,7 +53,7 @@ async function projectLargeResult(
 	}
 	const resultBytes = utf8ByteLength(serializedResult);
 
-	let artifact: CodingToolResultArtifact;
+	let artifact: RuntimeToolResultArtifact;
 	try {
 		artifact = await artifactStore.write({
 			...context,

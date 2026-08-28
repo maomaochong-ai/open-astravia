@@ -26,7 +26,5 @@ export {
 } from "./read-tool.js";
 export {
 	createReadToolRegistration,
-	READ_TOOL_CATEGORY,
-	READ_TOOL_SCOPES,
 	type ReadToolRegistrationOptions,
 } from "./registration.js";

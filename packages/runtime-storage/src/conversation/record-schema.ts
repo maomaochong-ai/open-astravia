@@ -186,8 +186,10 @@ const RuntimeFailureOriginSchema = Type.Union([
 	Type.Literal("runtime"),
 	Type.Literal("provider"),
 	Type.Literal("tool"),
-	Type.Literal("mcp"),
+	Type.Literal("extension"),
 ]);
+
+const ReadRuntimeFailureOriginSchema = Type.Union([RuntimeFailureOriginSchema, Type.Literal("mcp")]);
 
 const RuntimeFailureDetailsSchema = Type.Object(FailureDiagnosticProperties, { additionalProperties: false });
 
@@ -208,6 +210,28 @@ const RecordedRuntimeFailureSchema = Type.Object(
 		message: Type.String(),
 		retryable: Type.Optional(Type.Boolean()),
 		origin: Type.Optional(RuntimeFailureOriginSchema),
+		details: Type.Optional(RuntimeFailureDetailsSchema),
+	},
+	{ additionalProperties: false },
+);
+
+const ReadRuntimeFailureSchema = Type.Object(
+	{
+		code: Type.String(),
+		message: Type.String(),
+		retryable: Type.Boolean(),
+		origin: ReadRuntimeFailureOriginSchema,
+		details: Type.Optional(RuntimeFailureDetailsSchema),
+	},
+	{ additionalProperties: false },
+);
+
+const ReadRecordedRuntimeFailureSchema = Type.Object(
+	{
+		code: Type.String(),
+		message: Type.String(),
+		retryable: Type.Optional(Type.Boolean()),
+		origin: Type.Optional(ReadRuntimeFailureOriginSchema),
 		details: Type.Optional(RuntimeFailureDetailsSchema),
 	},
 	{ additionalProperties: false },
@@ -327,6 +351,19 @@ const MessageAppendedEventSchema = Type.Object(
 	{ additionalProperties: false },
 );
 
+const ReadMessageAppendedEventSchema = Type.Object(
+	{
+		type: Type.Literal("message.appended"),
+		sessionId: Type.String(),
+		turnId: Type.String(),
+		message: ConversationMessageSchema,
+		failure: Type.Optional(ReadRuntimeFailureSchema),
+		origin: Type.Optional(RuntimeMessageOriginSchema),
+		timestamp: Type.Number(),
+	},
+	{ additionalProperties: false },
+);
+
 const SessionContextRecordSchema = Type.Object(
 	{
 		type: Type.String(),
@@ -405,6 +442,17 @@ const TurnFailedEventSchema = Type.Object(
 	{ additionalProperties: false },
 );
 
+const ReadTurnFailedEventSchema = Type.Object(
+	{
+		type: Type.Literal("turn.failed"),
+		sessionId: Type.String(),
+		turnId: Type.String(),
+		error: ReadRecordedRuntimeFailureSchema,
+		timestamp: Type.Number(),
+	},
+	{ additionalProperties: false },
+);
+
 const TurnTransferredEventSchema = Type.Object(
 	{
 		type: Type.Literal("turn.transferred"),
@@ -427,6 +475,19 @@ export const StoredSessionEventSchema = Type.Union([
 	TurnCompletedEventSchema,
 	TurnCancelledEventSchema,
 	TurnFailedEventSchema,
+	TurnTransferredEventSchema,
+]);
+
+const ReadStoredSessionEventSchema = Type.Union([
+	TurnStartedEventSchema,
+	TurnContinuedEventSchema,
+	ReadMessageAppendedEventSchema,
+	ContextAppendedEventSchema,
+	ContextRecordedEventSchema,
+	ContextCompactedEventSchema,
+	TurnCompletedEventSchema,
+	TurnCancelledEventSchema,
+	ReadTurnFailedEventSchema,
 	TurnTransferredEventSchema,
 ]);
 
@@ -509,7 +570,7 @@ const ConversationEventRecordSchemaV1 = Type.Object(
 		recordType: Type.Literal("conversation.event"),
 		schemaVersion: Type.Literal(LEGACY_CONVERSATION_SCHEMA_VERSION),
 		sequence: Type.Integer({ minimum: 1 }),
-		event: StoredSessionEventSchema,
+		event: ReadStoredSessionEventSchema,
 	},
 	{ additionalProperties: false },
 );
@@ -534,9 +595,20 @@ export const CurrentConversationEventRecordSchema = Type.Object(
 	{ additionalProperties: false },
 );
 
+const ReadCurrentConversationEventRecordSchema = Type.Object(
+	{
+		recordType: Type.Literal("conversation.event"),
+		schemaVersion: Type.Literal(CONVERSATION_SCHEMA_VERSION),
+		sequence: Type.Integer({ minimum: 1 }),
+		event: ReadStoredSessionEventSchema,
+		documentEntry: Type.Union([ConversationDocumentEntryReferenceSchema, Type.Null()]),
+	},
+	{ additionalProperties: false },
+);
+
 export const ConversationEventRecordSchema = Type.Union([
 	ConversationEventRecordSchemaV1,
-	CurrentConversationEventRecordSchema,
+	ReadCurrentConversationEventRecordSchema,
 ]);
 
 export const ConversationDocumentCommandSchema = Type.Union([
@@ -807,6 +879,13 @@ export type ConversationFileHeader = Static<typeof CurrentConversationFileHeader
 export type ReadConversationFileHeader = Static<typeof ConversationFileHeaderSchema>;
 export type ConversationEventRecord = Static<typeof CurrentConversationEventRecordSchema>;
 export type ReadConversationEventRecord = Static<typeof ConversationEventRecordSchema>;
+export type NormalizedReadConversationEventRecord =
+	| (Omit<Extract<ReadConversationEventRecord, { schemaVersion: 1 }>, "event"> & {
+			readonly event: StoredSessionEvent;
+	  })
+	| (Omit<Extract<ReadConversationEventRecord, { schemaVersion: 2 }>, "event"> & {
+			readonly event: StoredSessionEvent;
+	  });
 export type ConversationDocumentOperationRecord = Static<typeof ConversationDocumentOperationRecordSchema>;
 export type ConversationSeedRecord = Static<typeof ConversationSeedRecordSchema>;
 export type ConversationContinuationSeedRecord = Static<typeof ConversationContinuationSeedRecordSchema>;
@@ -819,6 +898,12 @@ export function isConversationFileHeader(value: unknown): value is ReadConversat
 
 export function isConversationEventRecord(value: unknown): value is ReadConversationEventRecord {
 	return Value.Check(ConversationEventRecordSchema, value);
+}
+
+/** Reads both current and historical records, normalizing extension-owned failure origins. */
+export function readConversationEventRecord(value: unknown): NormalizedReadConversationEventRecord | undefined {
+	if (!isConversationEventRecord(value)) return undefined;
+	return { ...value, event: normalizeReadStoredSessionEvent(value.event) } as NormalizedReadConversationEventRecord;
 }
 
 export function isConversationDocumentOperationRecord(value: unknown): value is ConversationDocumentOperationRecord {
@@ -849,4 +934,33 @@ export function isConversationSnapshot(value: unknown): value is Static<typeof C
 
 export function isStoredSessionEvent(value: unknown): value is Static<typeof StoredSessionEventSchema> {
 	return Value.Check(StoredSessionEventSchema, value);
+}
+
+function normalizeReadStoredSessionEvent(event: Static<typeof ReadStoredSessionEventSchema>): StoredSessionEvent {
+	if (event.type === "message.appended") {
+		const { failure, ...messageEvent } = event;
+		return {
+			...messageEvent,
+			...(failure
+				? {
+						failure: {
+							...failure,
+							origin: failure.origin === "mcp" ? "extension" : failure.origin,
+						},
+					}
+				: {}),
+		};
+	}
+	if (event.type === "turn.failed") {
+		const { error, ...failedEvent } = event;
+		const { origin, ...failure } = error;
+		return {
+			...failedEvent,
+			error: {
+				...failure,
+				...(origin ? { origin: origin === "mcp" ? "extension" : origin } : {}),
+			},
+		};
+	}
+	return event;
 }

@@ -1,7 +1,7 @@
 /** Coding Agent system prompt policy and model-call prompt assembly. */
 
-import type { ConversationScenario } from "@vetta/runtime-core";
 import { renderMcpToolsPromptSection } from "@vetta/runtime-mcp";
+import type { ConversationScenario } from "../profiles/index.js";
 import type { AgentPluginRuntimeConfig } from "./plugin-runtime.js";
 import {
 	applySystemPromptOperations,

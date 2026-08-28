@@ -6,15 +6,16 @@ import type {
 	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
-import { CODING_TOOL_SCOPES, type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
 import { type ContributionLease, DynamicContributionCatalog } from "../../interception/contribution-catalog.js";
 import { applySystemPromptOperations, type SystemPromptDraft } from "../../model-context/index.js";
-import { resolveToolCategory } from "../../profiles/index.js";
+import { ALL_SCENARIOS, resolveToolCategory } from "../../profiles/index.js";
 import type {
 	CodingAgentExtensionRunnerPort,
 	CodingAgentExtensionToolSource,
 	CodingAgentRuntimeToolRegistration,
+	CodingAgentToolActivation,
 } from "../../runtime-contracts/index.js";
+import { selectCodingAgentToolRegistrations } from "../../runtime-contracts/index.js";
 import type { RegisteredTool } from "../index.js";
 import { ExtensionRunnerGenerationOwner } from "./extension-runner-generations.js";
 
@@ -105,8 +106,10 @@ export class CodingAgentExtensionToolRuntime {
 		return new Map(this.readRegistrations(sessionId).map(({ tool }) => [tool.name, tool]));
 	}
 
-	readActiveToolNames(activation: CodingToolActivation, sessionId?: string): readonly string[] {
-		return selectCodingToolRegistrations(this.readRegistrations(sessionId), activation).map(({ tool }) => tool.name);
+	readActiveToolNames(activation: CodingAgentToolActivation, sessionId?: string): readonly string[] {
+		return selectCodingAgentToolRegistrations(this.readRegistrations(sessionId), activation).map(
+			({ tool }) => tool.name,
+		);
 	}
 
 	bindForTurn(context: RuntimeSnapshotAcquireContext) {
@@ -124,7 +127,7 @@ export class CodingAgentExtensionToolRuntime {
 			compose: (
 				compositionContext: ModelCallFrameCompositionContext,
 				baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
-				activation: CodingToolActivation,
+				activation: CodingAgentToolActivation,
 			) =>
 				this.composeRegistrations(
 					registrations,
@@ -144,7 +147,7 @@ export class CodingAgentExtensionToolRuntime {
 	compose(
 		context: ModelCallFrameCompositionContext,
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
-		activation: CodingToolActivation,
+		activation: CodingAgentToolActivation,
 	): CodingAgentExtensionToolSurface {
 		const registrations = this.readRegistrations(context.sessionId);
 		const registrationsByName = this.readRegistrationsByName(context.sessionId);
@@ -156,11 +159,13 @@ export class CodingAgentExtensionToolRuntime {
 		registrationsByName: ReadonlyMap<string, AdaptedExtensionToolRegistration>,
 		context: ModelCallFrameCompositionContext,
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
-		activation: CodingToolActivation,
+		activation: CodingAgentToolActivation,
 	): CodingAgentExtensionToolSurface {
 		const availableTools = new Map(baseAvailableTools);
 		const activeTools = new Map<string, RuntimeToolDefinition>();
-		const selected = new Set(selectCodingToolRegistrations(registrations, activation).map(({ tool }) => tool.name));
+		const selected = new Set(
+			selectCodingAgentToolRegistrations(registrations, activation).map(({ tool }) => tool.name),
+		);
 
 		for (const { tool } of registrations) {
 			availableTools.set(tool.name, tool);
@@ -302,6 +307,7 @@ export class CodingAgentExtensionToolRuntime {
 		const { definition } = registeredTool;
 		const normalizeInput = definition.normalizeInput;
 		const validateInput = definition.validateInput;
+		const category = resolveToolCategory(definition.category);
 		return {
 			extensionPath: registeredTool.extensionPath,
 			definition,
@@ -334,9 +340,10 @@ export class CodingAgentExtensionToolRuntime {
 					);
 				},
 			},
-			scopeUse: definition.scope_use ?? CODING_TOOL_SCOPES,
+			scopeUse: definition.scope_use ?? ALL_SCENARIOS,
 			requires: definition.requires,
-			category: resolveToolCategory(definition.category),
+			category,
+			resultProjection: "preserve",
 		};
 	}
 }

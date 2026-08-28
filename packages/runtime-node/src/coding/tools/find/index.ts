@@ -7,8 +7,4 @@ export {
 	FindToolInputSchema,
 	type FindToolOptions,
 } from "./find-tool.js";
-export {
-	createFindToolRegistration,
-	FIND_TOOL_CATEGORY,
-	FIND_TOOL_SCOPES,
-} from "./registration.js";
+export { createFindToolRegistration } from "./registration.js";

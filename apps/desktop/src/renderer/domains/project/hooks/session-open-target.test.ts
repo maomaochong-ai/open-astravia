@@ -16,14 +16,14 @@ function session(path: string, access?: SessionInfo["access"]): SessionInfo {
 /** im-gateway 持有的 Claw 会话：可读历史，不可交互恢复。 */
 const CLAW_ACCESS: SessionInfo["access"] = {
 	readHistory: true,
-	interactiveResume: false,
+	resume: false,
 	rename: true,
 	delete: true,
 };
 
 const DESKTOP_ACCESS: SessionInfo["access"] = {
 	readHistory: true,
-	interactiveResume: true,
+	resume: true,
 	rename: true,
 	delete: true,
 };
@@ -40,9 +40,7 @@ describe("resolveSessionOpenTarget", () => {
 	});
 
 	it("access 全 false 时不可用", () => {
-		const sessions = [
-			session("/x/a.jsonl", { readHistory: false, interactiveResume: false, rename: false, delete: false }),
-		];
+		const sessions = [session("/x/a.jsonl", { readHistory: false, resume: false, rename: false, delete: false })];
 		expect(resolveSessionOpenTarget(sessions, "/x/a.jsonl")).toBe("unavailable");
 	});
 

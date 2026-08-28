@@ -22,10 +22,10 @@ export function appendProtectedDirectoryWarning(text: string, paths: readonly st
 	if (paths.length === 0) return text;
 	const fileList = paths.map((path) => `  - ${path}`).join("\n");
 	return (
-		`${text}\n\n⚠ WARNING: The following files inside skill/scene directories were created or modified by this command:\n` +
+		`${text}\n\n⚠ WARNING: The following files inside protected read-only directories were created or modified by this command:\n` +
 		`${fileList}\n` +
-		"Skill/scene directories are READ-ONLY. Move these output files to the user's working directory (cwd) immediately " +
-		"and delete the copies from the skill/scene directory."
+		"These directories are READ-ONLY. Move the output files to the working directory immediately " +
+		"and delete the copies from the protected directory."
 	);
 }
 

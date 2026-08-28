@@ -36,7 +36,7 @@ export function toChatErrorDetails(
 		error?.origin === "runtime" ||
 		error?.origin === "provider" ||
 		error?.origin === "tool" ||
-		error?.origin === "mcp"
+		error?.origin === "extension"
 	) {
 		result.origin = error.origin;
 	}
@@ -510,10 +510,16 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 			continue;
 		}
 
-		if (entry.type === "settings_assist_marker") {
-			pendingSettingsAssistTabId = entry.tabId?.trim() || "unknown";
+		if (entry.type === "custom_marker" && entry.customType === "settings_assist_instruction") {
+			const details = entry.details;
+			const tabId =
+				details && typeof details === "object" && !Array.isArray(details) && "tabId" in details
+					? details.tabId
+					: undefined;
+			pendingSettingsAssistTabId = typeof tabId === "string" ? tabId.trim() || "unknown" : "unknown";
 			continue;
 		}
+		if (entry.type === "custom_marker") continue;
 
 		if (entry.type === "prompt_ref_marker") {
 			pendingPromptRef = entry.promptRef;

@@ -52,6 +52,12 @@ const CONTEXT_MENU_VIEWPORT_GAP = 8;
 
 let deleteConfirmationSuppressedUntil = 0;
 
+function matchesPromptRef(segment: InputSegment, ref: { readonly kind: string; readonly name: string }): boolean {
+	return (
+		(segment.kind === "skill" || segment.kind === "scene") && segment.kind === ref.kind && segment.name === ref.name
+	);
+}
+
 const SETTINGS_ASSIST_TAB_IDS = [
 	"mcp",
 	"models",
@@ -143,7 +149,7 @@ function fillInputFromUserText(
 	if (
 		ref &&
 		(ref.kind === "skill" || ref.kind === "scene") &&
-		!restored.some((segment) => segment.kind === ref.kind && segment.name === ref.name)
+		!restored.some((segment) => matchesPromptRef(segment, ref))
 	) {
 		restored.unshift({ kind: ref.kind, name: ref.name });
 	}
@@ -212,7 +218,7 @@ export function useUserMessageModel({
 	);
 	if (
 		(promptRef?.kind === "skill" || promptRef?.kind === "scene") &&
-		!bodySegments.some((segment) => segment.kind === promptRef.kind && segment.name === promptRef.name)
+		!bodySegments.some((segment) => matchesPromptRef(segment, promptRef))
 	) {
 		// promptRef 不重复进入正文；显示时统一补成行内 token。
 		bodySegments.unshift({ kind: promptRef.kind, name: promptRef.name });

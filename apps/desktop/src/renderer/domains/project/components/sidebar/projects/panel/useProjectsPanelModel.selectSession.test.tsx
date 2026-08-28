@@ -38,7 +38,7 @@ function makeSession(path: string, cwd: string): SessionInfo {
 		cwd,
 		firstMessage: "hi",
 		modifiedAt: 1,
-		access: { readHistory: true, interactiveResume: true, rename: true, delete: true },
+		access: { readHistory: true, resume: true, rename: true, delete: true },
 	} as SessionInfo;
 }
 
@@ -96,7 +96,7 @@ describe("useProjectsPanelModel.selectSession", () => {
 		const readOnly = makeSession("s2", cwd);
 		(readOnly as { access: SessionInfo["access"] }).access = {
 			readHistory: true,
-			interactiveResume: false,
+			resume: false,
 			rename: false,
 			delete: false,
 		};

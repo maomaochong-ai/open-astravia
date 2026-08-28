@@ -296,7 +296,6 @@ function assembly(
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},
-			setAgentMode: () => {},
 		},
 		modelController: {
 			selectModel: async () => {},

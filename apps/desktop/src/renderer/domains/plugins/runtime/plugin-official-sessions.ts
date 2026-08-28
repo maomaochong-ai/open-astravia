@@ -30,7 +30,7 @@ export function createOfficialSessionsApi(capabilitySessionId: string): PluginOf
 	 */
 	const normalizeAccess = (access: RuntimeSessionAccess | undefined): PluginOfficialSessionAccess => ({
 		readHistory: access?.readHistory === true,
-		interactiveResume: access?.interactiveResume === true,
+		interactiveResume: access?.resume === true,
 		rename: access?.rename === true,
 		delete: access?.delete === true,
 	});

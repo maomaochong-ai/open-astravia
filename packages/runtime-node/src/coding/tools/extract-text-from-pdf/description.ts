@@ -28,5 +28,5 @@ When to use
 
 When NOT to use
   - You need a VISUAL judgment on the page — presence/absence of seals (盖章/印章/公章), signatures, handwriting, logos, layout, watermarks, figures, color. Use \`render_pdf_page\` to produce a PNG, then \`read\` that PNG. Do NOT call this tool hoping the text output will reveal a stamp — it will not.
-  - You want to manipulate the PDF itself (merge/split/rotate/watermark/fill form). Invoke a currently available skill that explicitly supports that operation; use its exact advertised name.
+  - You want to manipulate the PDF itself (merge/split/rotate/watermark/fill form). Use a capability that explicitly supports that operation.
   - You need layout fidelity (PP-Structure / table extraction is out of scope here).`;

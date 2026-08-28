@@ -5,14 +5,20 @@ import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
 import {
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
+	type CodingAgentRuntimeSessionOptions,
 	createCodingAgentRuntimeComposition,
 	createCodingAgentRuntimeSessionAgentSelection,
 	DEFAULT_CODING_AGENT_RUNTIME_ID,
+	parseCodingAgentRuntimeSessionConfiguration,
 } from "@vetta/coding-agent/composition";
 import { createCodingAgentNodeSettingsRuntime } from "@vetta/coding-agent/host-services";
 import { detectWorkspaceFacts, probeWorkspaceSignals } from "@vetta/coding-agent/model-context";
+import {
+	type ConversationScenario,
+	DEFAULT_SCENARIO,
+	shouldEnableCodingAgentSubagents,
+} from "@vetta/coding-agent/profile";
 import type {
-	ConversationScenario,
 	RuntimeHostSessionAssembly,
 	RuntimeHostSessionBackend,
 	RuntimeObservationPublisher,
@@ -303,20 +309,18 @@ function toCodingAgentRuntimeSessionRequest(
 	if (!sessionId) {
 		throw new Error(`Session path is invalid: ${request.sessionPath}`);
 	}
-	const sessionOptions = {
+	const configuredOptions = readCodingAgentRequestConfiguration(request);
+	const sessionOptions: CodingAgentRuntimeSessionOptions = {
+		...configuredOptions,
 		sessionId,
 		cwd: request.cwd ?? scope.cwd,
 		model: request.model,
 		thinkingLevel: request.thinkingLevel,
-		agentMode: request.agentMode,
 		executionMode: request.executionMode,
 		env: request.env,
-		enableBackgroundTasks: request.enableBackgroundTasks,
-		includeAgentSkills: request.includeAgentSkills,
 		sandboxHostPath: request.sandboxHostPath,
 		linuxBubblewrapPath: request.linuxBubblewrapPath,
 		macosSandboxExecPath: request.macosSandboxExecPath,
-		systemPromptAddon: request.appendSystemPrompt,
 	};
 	return {
 		...request,
@@ -340,6 +344,7 @@ function resolveCompositionObservationOptions(
 }
 
 function resolveRuntimeScope(request: RuntimeSessionCreateRequest): DesktopRuntimeScope {
+	const sessionOptions = readCodingAgentRequestConfiguration(request);
 	const cwd = resolve(request.cwd ?? process.cwd());
 	const sessionPath = request.sessionPath?.trim();
 	// 缺省落点是 agent 目录下按 cwd 编码分片的全局目录，**不是** `<cwd>/.vetta/sessions`：
@@ -352,10 +357,18 @@ function resolveRuntimeScope(request: RuntimeSessionCreateRequest): DesktopRunti
 		cwd,
 		conversationDir,
 		agentDir: request.agentDir ? resolve(request.agentDir) : undefined,
-		scenario: request.scenario ?? "cli",
-		enableSubagents: request.enableSubagents,
+		scenario: sessionOptions.scenario ?? DEFAULT_SCENARIO,
+		enableSubagents: shouldEnableCodingAgentSubagents(sessionOptions.scenario ?? DEFAULT_SCENARIO),
 		serverUrl: request.serverUrl,
 	};
+}
+
+function readCodingAgentRequestConfiguration(
+	request: RuntimeSessionCreateRequest,
+): Omit<CodingAgentRuntimeSessionOptions, "sessionId"> & { readonly sessionId?: string } {
+	const configuration = request.agent?.sessionConfiguration;
+	if (configuration === undefined) return {};
+	return parseCodingAgentRuntimeSessionConfiguration(configuration);
 }
 
 function resolveInitialModel(

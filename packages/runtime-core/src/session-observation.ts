@@ -1,6 +1,6 @@
 import type { ToolPhase } from "@vetta/agent-core";
 import type { CacheUsageReporting, Message } from "@vetta/ai";
-import type { BackgroundTaskInfo, RuntimeEventSource, SessionError, SubagentInfo } from "./contracts.js";
+import type { RuntimeEventSource, SessionError } from "./contracts.js";
 import type { RuntimeFailure } from "./failure-contract.js";
 import type { SessionExtensionObservation } from "./session-extensions/contracts.js";
 
@@ -69,18 +69,6 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 				readonly phases: readonly ToolPhase[];
 		  }
 		| {
-				readonly type: "mcp.status";
-				readonly status: "connected" | "degraded" | "disconnected";
-				readonly details?: string;
-		  }
-		| { readonly type: "mcp.reload.start" }
-		| {
-				readonly type: "mcp.reload.end";
-				readonly changed: boolean;
-				readonly errorMessage?: string;
-				readonly failure?: RuntimeFailure;
-		  }
-		| {
 				readonly type: "usage.update";
 				readonly input: number;
 				readonly output: number;
@@ -99,8 +87,6 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 		  }
 		| { readonly type: "error"; readonly error: SessionError; readonly turnId?: string }
 		| SessionExtensionObservation
-		| { readonly type: "background_tasks_update"; readonly tasks: readonly BackgroundTaskInfo[] }
-		| { readonly type: "subagents_update"; readonly agents: readonly SubagentInfo[] }
 		| {
 				readonly type: "retry.start";
 				readonly attempt: number;

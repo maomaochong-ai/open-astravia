@@ -17,18 +17,18 @@ export {
 	type InMemoryCodingToolRegistryOptions,
 } from "./coding-tool-catalog.js";
 export {
-	type CodingToolResultArtifact,
-	type CodingToolResultArtifactStore,
-	type CodingToolResultArtifactWriteRequest,
 	type CodingToolResultContext,
 	type CodingToolResultPolicy,
 	PRESERVE_CODING_TOOL_RESULT_POLICY,
+	type RuntimeToolResultArtifact,
+	type RuntimeToolResultArtifactStore,
+	type RuntimeToolResultArtifactWriteRequest,
 } from "./coding-tool-result-policy.js";
 export {
 	CODING_TOOLS_FEATURE_ID,
-	type CodingToolActivationResolver,
 	type CodingToolCatalogRefresher,
 	type CodingToolRegistrationFilter,
+	type CodingToolRegistrationSelector,
 	type CodingToolsFeatureOptions,
 	createCodingToolsFeature,
 } from "./coding-tools-feature.js";
@@ -73,16 +73,8 @@ export {
 	type RuntimeToolProjectionResult,
 	type RuntimeToolProjector,
 } from "./tool-projection.js";
-export {
-	CODING_TOOL_SCOPES,
-	type CodingToolActivation,
-	type CodingToolCategory,
-	type CodingToolConfigurationAssociation,
-	type CodingToolConfigurationSupport,
-	type CodingToolRegistration,
-	type CodingToolScope,
-	DEFAULT_CODING_TOOL_SCOPE,
-	selectCodingToolRegistrations,
-	selectCodingTools,
-	selectCodingToolsForScope,
+export type {
+	CodingToolConfigurationAssociation,
+	CodingToolConfigurationSupport,
+	CodingToolRegistration,
 } from "./tool-registration.js";

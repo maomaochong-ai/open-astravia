@@ -1,7 +1,7 @@
 import type { AssistantMessage } from "@vetta/ai";
 import type { ContextCompactionRecord, StoredSessionEvent } from "@vetta/runtime-core/kernel";
-import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import { renderMemoryForPrompt } from "../model-context/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../runtime-contracts/index.js";
 import { AiMemoryFactExtractor } from "./ai-memory-fact-extractor.js";
 import { DEFAULT_MEMORY_CHAR_LIMIT } from "./memory-document.js";
 import { MemoryFlushService } from "./memory-flush-service.js";
@@ -18,7 +18,7 @@ import { createMemoryToolRegistration } from "./memory-tool-registration.js";
 
 export class CodingAgentMemoryRolloverOrchestrator implements CodingAgentMemoryRolloverRuntime {
 	readonly id = "coding-agent.memory-rollover";
-	readonly toolRegistration: CodingToolRegistration;
+	readonly toolRegistration: CodingAgentRuntimeToolRegistration;
 	private readonly memoryFile: string;
 	private readonly cwd: string;
 	private readonly memoryCharLimit: number;

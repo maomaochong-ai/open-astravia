@@ -1,6 +1,6 @@
 import { constants } from "node:fs";
 import { access as fsAccess, readFile as fsReadFile } from "node:fs/promises";
-import { basename, extname } from "node:path";
+import { extname } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import {
 	type RuntimeToolDefinition,
@@ -70,6 +70,8 @@ export interface ReadToolOptions {
 	readonly operations?: ReadOperations;
 	readonly imageProcessor?: ReadImageProcessor;
 	readonly imageResizeOptions?: ImageResizeOptions;
+	readonly preserveFullText?: (absolutePath: string) => boolean;
+	readonly binaryContentHint?: (extension: string) => string | undefined;
 }
 
 const defaultReadOperations: ReadOperations = {
@@ -115,22 +117,13 @@ const KNOWN_BINARY_EXTENSIONS = new Set([
 	".zip",
 ]);
 
-const EXTENSION_TO_SKILL: Readonly<Record<string, string>> = {
-	".doc": "docx",
-	".odt": "docx",
-	".xls": "xlsx",
-	".ods": "xlsx",
-	".csv": "xlsx",
-	".tsv": "xlsx",
-	".ppt": "pptx",
-	".odp": "pptx",
-};
-
 export function createReadTool(cwd: string, options: ReadToolOptions = {}): RuntimeToolDefinition<ReadToolInput> {
 	const autoResizeImages = options.autoResizeImages ?? true;
 	const operations = options.operations ?? defaultReadOperations;
 	const imageProcessor = options.imageProcessor ?? defaultImageProcessor;
 	const imageResizeOptions = options.imageResizeOptions;
+	const preserveFullText = options.preserveFullText;
+	const binaryContentHint = options.binaryContentHint;
 
 	return {
 		name: "read",
@@ -176,7 +169,15 @@ export function createReadTool(cwd: string, options: ReadToolOptions = {}): Runt
 								imageResizeOptions,
 							);
 						} else {
-							result = await readText(absolutePath, path, offset, limit, operations);
+							result = await readText(
+								absolutePath,
+								path,
+								offset,
+								limit,
+								operations,
+								preserveFullText,
+								binaryContentHint,
+							);
 						}
 
 						if (aborted) {
@@ -269,6 +270,8 @@ async function readText(
 	offset: number | undefined,
 	limit: number | undefined,
 	operations: ReadOperations,
+	preserveFullText: ReadToolOptions["preserveFullText"],
+	binaryContentHint: ReadToolOptions["binaryContentHint"],
 ): Promise<RuntimeToolResult> {
 	const buffer = await operations.readFile(absolutePath);
 	const extension = extname(absolutePath).toLowerCase();
@@ -278,7 +281,7 @@ async function readText(
 			content: [
 				{
 					type: "text",
-					text: `Binary file detected (${extensionLabel}, ${formatSize(buffer.length)}). Raw bytes are not shown to avoid context pollution.\n${getBinaryExtractionHint(extension)}`,
+					text: `Binary file detected (${extensionLabel}, ${formatSize(buffer.length)}). Raw bytes are not shown to avoid context pollution.${formatBinaryContentHint(binaryContentHint?.(extension))}`,
 				},
 			],
 			details: undefined,
@@ -318,9 +321,9 @@ async function readText(
 		return `\n\n[${remaining} more lines in file. Use offset=${nextOffset} to continue.]`;
 	};
 
-	// Skill instructions must never be silently halved: a truncated SKILL.md still reads
-	// as a complete instruction set to the model, so it follows the surviving half.
-	if (isSkillMarkdownPath(absolutePath)) {
+	// The caller may mark domain-owned documents as atomic so partial content is never
+	// mistaken for a complete document.
+	if (preserveFullText?.(absolutePath) === true) {
 		return {
 			content: [{ type: "text", text: anchorContent(selectedContent) + remainingNote() }],
 			details: { totalLines } satisfies ReadToolDetails,
@@ -354,37 +357,6 @@ async function readText(
 		content: [{ type: "text", text: outputText }],
 		details,
 	};
-}
-
-const SKILL_MARKDOWN_FILENAME = "SKILL.md";
-const SKILL_DIRECTORY_SEGMENT = "skills";
-
-/**
- * Matches `SKILL.md` anywhere, plus any Markdown file under a path segment named exactly
- * `skills`, so docs a skill references are covered too. `.`/`..` are folded lexically;
- * symlinks are not resolved. Near-misses such as `skills-preset` do not match.
- */
-function isSkillMarkdownPath(absolutePath: string): boolean {
-	if (basename(absolutePath) === SKILL_MARKDOWN_FILENAME) {
-		return true;
-	}
-	if (extname(absolutePath).toLowerCase() !== ".md") {
-		return false;
-	}
-	return foldPathSegments(absolutePath).includes(SKILL_DIRECTORY_SEGMENT);
-}
-
-function foldPathSegments(absolutePath: string): string[] {
-	const segments: string[] = [];
-	for (const segment of absolutePath.split(/[/\\]+/)) {
-		if (segment === "" || segment === ".") continue;
-		if (segment === "..") {
-			segments.pop();
-			continue;
-		}
-		segments.push(segment);
-	}
-	return segments;
 }
 
 /**
@@ -451,10 +423,7 @@ function isLikelyBinaryContent(buffer: Buffer): boolean {
 	return nonPrintable / buffer.length > 0.3;
 }
 
-function getBinaryExtractionHint(extension: string): string {
-	const skillName = EXTENSION_TO_SKILL[extension] ?? extension.slice(1);
-	if (skillName) {
-		return `Load the "${skillName}" skill for instructions on how to handle this file.`;
-	}
-	return "No matching skill found. Try converting this file with bash before reading.";
+function formatBinaryContentHint(hint: string | undefined): string {
+	const normalized = hint?.trim();
+	return normalized ? `\n${normalized}` : "";
 }

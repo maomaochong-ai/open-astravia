@@ -1,16 +1,17 @@
 import type { AgentFeatureDefinition, ModelCallContributionContext } from "@vetta/runtime-core/kernel";
-import {
-	type CodingToolActivation,
-	type CodingToolRegistration,
-	selectCodingToolRegistrations,
-} from "@vetta/runtime-tools";
+import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import {
 	type CodingAgentKnowledgeWriteOperations,
 	createCodingAgentKnowledgeWritePageToolRegistration,
 } from "../../features/knowledge/index.js";
 import { createProgressToolRegistration } from "../../features/progress/index.js";
-import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import {
+	type CodingAgentRuntimeToolRegistration,
+	type CodingAgentToolActivation,
+	selectCodingAgentToolRegistrations,
+} from "../../runtime-contracts/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
+import { declareCodingAgentPlatformTool } from "../../tool-policy/platform-tool-declarations.js";
 
 export interface CodingAgentSpecializedToolOptions {
 	readonly platformRegistrations?: readonly CodingToolRegistration[];
@@ -21,7 +22,7 @@ export interface CodingAgentSpecializedToolFeatureOptions {
 	readonly registrations: readonly CodingAgentRuntimeToolRegistration[];
 	readonly resolveActivation: (
 		context: ModelCallContributionContext,
-	) => Promise<CodingToolActivation> | CodingToolActivation;
+	) => Promise<CodingAgentToolActivation> | CodingAgentToolActivation;
 }
 
 /** 组装宿主专用 Tool 与 Coding Agent 的进度、知识写入产品 Tool。 */
@@ -29,7 +30,9 @@ export function createCodingAgentSpecializedToolRegistrations(
 	options: CodingAgentSpecializedToolOptions,
 ): readonly CodingAgentRuntimeToolRegistration[] {
 	return [
-		...(options.platformRegistrations ?? []).map(withCodingAgentSpecializedToolOrder),
+		...(options.platformRegistrations ?? [])
+			.map(declareCodingAgentPlatformTool)
+			.map(withCodingAgentSpecializedToolOrder),
 		createProgressToolRegistration({
 			modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.progress,
 		}),
@@ -52,7 +55,9 @@ const SPECIALIZED_TOOL_MODEL_ORDER: Readonly<Record<string, number>> = {
 	render_pdf_page: CODING_AGENT_MODEL_TOOL_ORDER.renderPdfPage,
 };
 
-function withCodingAgentSpecializedToolOrder(registration: CodingToolRegistration): CodingAgentRuntimeToolRegistration {
+function withCodingAgentSpecializedToolOrder(
+	registration: CodingAgentRuntimeToolRegistration,
+): CodingAgentRuntimeToolRegistration {
 	const modelOrder = SPECIALIZED_TOOL_MODEL_ORDER[registration.tool.name];
 	if (modelOrder === undefined) return registration;
 	return {
@@ -80,7 +85,7 @@ export function createCodingAgentSpecializedToolFeature(
 									callContext.signal.throwIfAborted();
 									const activation = await options.resolveActivation(callContext);
 									return {
-										tools: selectCodingToolRegistrations(options.registrations, activation).map(
+										tools: selectCodingAgentToolRegistrations(options.registrations, activation).map(
 											({ tool }) => tool,
 										),
 									};

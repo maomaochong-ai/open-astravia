@@ -1,4 +1,4 @@
-import type { CodingToolScope } from "@vetta/runtime-tools/coding";
+import type { ConversationScenario } from "../../../profiles/index.js";
 import type { CodingAgentRuntimeToolRegistration } from "../../../runtime-contracts/index.js";
 import {
 	createImSendAttachmentTool,
@@ -6,7 +6,7 @@ import {
 	type ImSendAttachmentToolOptions,
 } from "./im-send-attachment-tool.js";
 
-export const IM_SEND_ATTACHMENT_TOOL_SCOPES = ["im-claw"] as const satisfies readonly CodingToolScope[];
+export const IM_SEND_ATTACHMENT_TOOL_SCOPES = ["im-claw"] as const satisfies readonly ConversationScenario[];
 export const IM_SEND_ATTACHMENT_TOOL_CATEGORY = "im" as const;
 
 export interface ImSendAttachmentToolRegistrationOptions extends ImSendAttachmentToolOptions {

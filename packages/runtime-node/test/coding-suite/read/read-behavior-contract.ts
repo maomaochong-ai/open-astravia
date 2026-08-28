@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { isAbsolute, join, resolve } from "node:path";
+import { basename, extname, isAbsolute, join, resolve } from "node:path";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ToolCompatibilityDefinition } from "../compatibility/tool-compatibility-contract.js";
@@ -24,6 +24,8 @@ export interface ReadBehaviorOperations {
 export interface ReadBehaviorSubjectOptions {
 	readonly autoResizeImages?: boolean;
 	readonly operations?: ReadBehaviorOperations;
+	readonly preserveFullText?: (absolutePath: string) => boolean;
+	readonly binaryContentHint?: (extension: string) => string | undefined;
 }
 
 export interface ReadBehaviorSubject {
@@ -32,6 +34,13 @@ export interface ReadBehaviorSubject {
 }
 
 export type CreateReadBehaviorSubject = (cwd: string, options?: ReadBehaviorSubjectOptions) => ReadBehaviorSubject;
+
+function isInstructionMarkdown(path: string): boolean {
+	return (
+		basename(path) === "SKILL.md" ||
+		(extname(path).toLowerCase() === ".md" && path.split(/[/\\]+/).includes("skills"))
+	);
+}
 
 export function defineReadBehaviorContract(subjectName: string, createSubject: CreateReadBehaviorSubject): void {
 	describe(`${subjectName} read behavior contract`, () => {
@@ -45,14 +54,12 @@ export function defineReadBehaviorContract(subjectName: string, createSubject: C
 			rmSync(testDirectory, { recursive: true, force: true });
 		});
 
-		it("preserves the model-visible definition and registration baseline", () => {
+		it("preserves the model-visible definition", () => {
 			const subject = createSubject(testDirectory);
 
 			expect(subject.definition).toMatchObject({
 				name: "read",
 				label: "read",
-				scopeUse: ["im-claw", "conversation", "project", "batch", "automation", "kb-processing", "cli"],
-				category: "core",
 				schema: {
 					type: "object",
 					required: ["path"],
@@ -77,9 +84,9 @@ export function defineReadBehaviorContract(subjectName: string, createSubject: C
 				},
 			});
 			expect(subject.definition.schema).not.toHaveProperty("additionalProperties");
-			expect(subject.definition.description).toContain("line:hash→content");
-			expect(subject.definition.description).toContain("extract_text_from_pdf");
-			expect(subject.definition.description).toContain("2000 lines or 50KB");
+			expect(subject.definition.description).toContain("stable edit anchors");
+			expect(subject.definition.description).toContain("offset and limit");
+			expect(subject.definition.description).not.toContain("SKILL.md");
 		});
 
 		it("reads UTF-8 text with edit-compatible line anchors", async () => {
@@ -288,14 +295,16 @@ export function defineReadBehaviorContract(subjectName: string, createSubject: C
 			expect(result.content.some((item) => item.type === "image")).toBe(false);
 		});
 
-		it("returns the legacy skill hint instead of raw binary document bytes", async () => {
+		it("uses an injected hint instead of exposing raw binary document bytes", async () => {
 			const path = join(testDirectory, "spec.docx");
 			writeFileSync(path, Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00, 0x00, 0x00, 0x00]));
 
-			const result = await createSubject(testDirectory).execute({ path });
+			const result = await createSubject(testDirectory, {
+				binaryContentHint: () => 'Load the "docx" extension for instructions on how to handle this file.',
+			}).execute({ path });
 
 			expect(textOutput(result)).toBe(
-				'Binary file detected (.docx, 8B). Raw bytes are not shown to avoid context pollution.\nLoad the "docx" skill for instructions on how to handle this file.',
+				'Binary file detected (.docx, 8B). Raw bytes are not shown to avoid context pollution.\nLoad the "docx" extension for instructions on how to handle this file.',
 			);
 			expect(result.details).toBeUndefined();
 		});
@@ -307,18 +316,18 @@ export function defineReadBehaviorContract(subjectName: string, createSubject: C
 			const result = await createSubject(testDirectory).execute({ path });
 
 			expect(textOutput(result)).toBe(
-				"Binary file detected ((no extension), 4B). Raw bytes are not shown to avoid context pollution.\nNo matching skill found. Try converting this file with bash before reading.",
+				"Binary file detected ((no extension), 4B). Raw bytes are not shown to avoid context pollution.",
 			);
 		});
 
-		it("never auto-truncates SKILL.md or Markdown under a skills directory", async () => {
+		it("honours an injected full-text preservation policy", async () => {
 			const oversized = Array.from({ length: 2500 }, (_, index) => `step ${index + 1}`).join("\n");
 			const skillDirectory = join(testDirectory, "skills", "deploy");
 			mkdirSync(skillDirectory, { recursive: true });
 			writeFileSync(join(skillDirectory, "SKILL.md"), oversized);
 			writeFileSync(join(skillDirectory, "reference.md"), oversized);
 			writeFileSync(join(testDirectory, "SKILL.md"), oversized);
-			const subject = createSubject(testDirectory);
+			const subject = createSubject(testDirectory, { preserveFullText: isInstructionMarkdown });
 
 			for (const path of ["skills/deploy/SKILL.md", "skills/deploy/reference.md", "SKILL.md"]) {
 				const result = await subject.execute({ path });
@@ -334,18 +343,22 @@ export function defineReadBehaviorContract(subjectName: string, createSubject: C
 			mkdirSync(nearMiss, { recursive: true });
 			writeFileSync(join(nearMiss, "guide.md"), oversized);
 			writeFileSync(join(testDirectory, "guide.md"), oversized);
-			const subject = createSubject(testDirectory);
+			const subject = createSubject(testDirectory, { preserveFullText: isInstructionMarkdown });
 
 			for (const path of ["skills-preset/guide.md", "guide.md"]) {
 				expect(textOutput(await subject.execute({ path }))).toContain("Use offset=2001 to continue.");
 			}
 		});
 
-		it("honours an explicit range inside a skill file without auto-truncating the rest", async () => {
+		it("honours an explicit range inside a preserved file without auto-truncating the rest", async () => {
 			const oversized = Array.from({ length: 2500 }, (_, index) => `step ${index + 1}`).join("\n");
 			writeFileSync(join(testDirectory, "SKILL.md"), oversized);
 
-			const result = await createSubject(testDirectory).execute({ path: "SKILL.md", offset: 10, limit: 2 });
+			const result = await createSubject(testDirectory, { preserveFullText: isInstructionMarkdown }).execute({
+				path: "SKILL.md",
+				offset: 10,
+				limit: 2,
+			});
 
 			expect(textOutput(result)).toMatch(/^10:[0-9a-z]{4}→step 10\n11:[0-9a-z]{4}→step 11/);
 			expect(textOutput(result)).toContain("[2489 more lines in file. Use offset=12 to continue.]");

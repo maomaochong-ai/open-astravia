@@ -200,7 +200,6 @@ function assembly(sessionId: string, dispose: () => Promise<void> = async () => 
 		configurationController: {
 			setSteeringMode: () => {},
 			setFollowUpMode: () => {},
-			setAgentMode: () => {},
 		},
 		modelController: {
 			selectModel: async () => {},

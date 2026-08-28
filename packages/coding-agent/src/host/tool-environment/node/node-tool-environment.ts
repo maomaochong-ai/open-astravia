@@ -10,6 +10,7 @@ import type {
 } from "../../../composition/contracts/index.js";
 import { createCodingAgentEditPathPolicy } from "../../../tool-policy/path/edit-path-policy.js";
 import { createCodingAgentWritePathPolicy } from "../../../tool-policy/path/write-path-policy.js";
+import { CODING_AGENT_READ_TOOL_OPTIONS } from "../../../tool-policy/read-tool-policy.js";
 import { getDefaultShellCommandPrefix, getShellConfig, getShellEnv } from "../../command-execution/shell-runtime.js";
 import { getBinDir } from "../../node-config.js";
 import { createCodingAgentNodePathPolicy } from "./node-path-policy.js";
@@ -41,5 +42,6 @@ export function createCodingAgentNodeToolEnvironment(
 		editPathPolicy: createCodingAgentEditPathPolicy(pathPolicy.boundaries),
 		writePathPolicy: createCodingAgentWritePathPolicy(pathPolicy.boundaries),
 		configurationSource: context.configurationSource,
+		readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
 	});
 }

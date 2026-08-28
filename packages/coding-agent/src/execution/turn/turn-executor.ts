@@ -60,7 +60,9 @@ export function readCodingAgentTurnFailure(value: unknown): CodingAgentTurnFailu
 		const structured = readRuntimeFailure({
 			...(error as object),
 			origin:
-				origin === "runtime" || origin === "provider" || origin === "tool" || origin === "mcp" ? origin : "runtime",
+				origin === "runtime" || origin === "provider" || origin === "tool" || origin === "extension"
+					? origin
+					: "runtime",
 		});
 		if (structured) return structured;
 		return {

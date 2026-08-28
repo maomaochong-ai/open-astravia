@@ -1,5 +1,5 @@
-import type { ConversationScenario } from "@vetta/runtime-core";
-import type { CodingToolActivation } from "@vetta/runtime-tools";
+import type { ConversationScenario } from "../../profiles/index.js";
+import type { CodingAgentToolActivation } from "../../runtime-contracts/index.js";
 import type {
 	CodingAgentSubagentContextPolicy,
 	CodingAgentSubagentMcpPolicy,
@@ -10,7 +10,7 @@ import type {
 } from "../contracts/index.js";
 
 export interface ResolvedCodingAgentSubagentProfile {
-	readonly activation: CodingToolActivation;
+	readonly activation: CodingAgentToolActivation;
 	readonly mcpPolicy: CodingAgentSubagentMcpPolicy;
 	readonly skillPolicy: CodingAgentSubagentSkillPolicy;
 	readonly contextPolicy: CodingAgentSubagentContextPolicy;
@@ -22,7 +22,7 @@ export interface ResolvedCodingAgentSubagentProfile {
 export function resolveCodingAgentSubagentProfile(
 	profile: CodingAgentSubagentProfile,
 	scenario: ConversationScenario,
-	parentActivation?: CodingToolActivation,
+	parentActivation?: CodingAgentToolActivation,
 ): ResolvedCodingAgentSubagentProfile {
 	const activation = resolveActivation(profile, scenario, parentActivation);
 	const inheritedPrefixes = profile.denyToolNamePrefixes;
@@ -45,15 +45,18 @@ export function resolveCodingAgentSubagentProfile(
 function resolveActivation(
 	profile: CodingAgentSubagentProfile,
 	scenario: ConversationScenario,
-	parentActivation?: CodingToolActivation,
-): CodingToolActivation {
+	parentActivation?: CodingAgentToolActivation,
+): CodingAgentToolActivation {
 	if (profile.toolPolicy?.mode === "activation") return withScenario(profile.toolPolicy.activation, scenario);
 	if (profile.toolPolicy?.mode === "inherit") return withScenario(parentActivation ?? { mode: "scope" }, scenario);
 	if (profile.activation) return withScenario(profile.activation, scenario);
 	return withScenario(parentActivation ?? { mode: "scope" }, scenario);
 }
 
-function withScenario(activation: CodingToolActivation, scenario: ConversationScenario): CodingToolActivation {
+function withScenario(
+	activation: CodingAgentToolActivation,
+	scenario: ConversationScenario,
+): CodingAgentToolActivation {
 	return activation.mode === "scope" && activation.scope === undefined
 		? { ...activation, scope: scenario }
 		: activation;

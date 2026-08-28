@@ -310,6 +310,7 @@ async function createCodingAgentSdkSessionComposition(
 		},
 		session: {
 			cwd,
+			scenario: options.scenario,
 			model: initial.model,
 			thinkingLevel: initial.thinkingLevel,
 			agentMode: options.agentMode,

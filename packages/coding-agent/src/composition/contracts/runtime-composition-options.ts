@@ -1,6 +1,5 @@
 import type { EcosystemHookAdapterFactory, HookConfigLayer } from "@vetta/ecosystem-adapter";
 import type {
-	ConversationScenario,
 	RuntimeAgentDefinition,
 	RuntimeAgentDefinitionSourceRef,
 	RuntimeAgentRuntime,
@@ -18,12 +17,13 @@ import type {
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
 import type { SubagentTypeRegistryLike } from "@vetta/runtime-subagents";
-import type { CodingToolActivation, CodingToolResultPolicy } from "@vetta/runtime-tools";
+import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
 import type { CodingAgentKnowledgeRuntime } from "../../features/knowledge/contracts.js";
 import type { CodingAgentTodoRuntime } from "../../features/todo/contracts.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { ModelInputImageProcessor } from "../../model-context/image-normalization.js";
 import type { CodingAgentModePromptResolver } from "../../model-context/system-prompt-sources.js";
+import type { ConversationScenario } from "../../profiles/index.js";
 import type {
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentCompactionRuntimeOptions,
@@ -36,6 +36,7 @@ import type {
 	CodingAgentPromptSettingsSource,
 	CodingAgentRuntimeModelSource,
 	CodingAgentSystemPromptOptionsResolver,
+	CodingAgentToolActivation,
 } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationPersistenceFactory } from "./conversation-persistence.js";
 import type { CodingAgentMemoryRuntimeFactoryOptions } from "./memory-runtime.js";
@@ -89,7 +90,7 @@ export interface CodingAgentRuntimeToolOptions {
 	readonly createSessionExecutionEnvironment: CodingAgentSessionExecutionEnvironmentFactory;
 	/** 大结果如何投影由宿主显式选择；缺省保留完整结果且不产生环境副作用。 */
 	readonly codingToolResultPolicy?: CodingToolResultPolicy;
-	readonly activation?: CodingToolActivation;
+	readonly activation?: CodingAgentToolActivation;
 	/** Knowledge 的查询与写入实现由最终宿主选择；缺省时不注册 Knowledge Tool。 */
 	readonly knowledgeRuntime?: CodingAgentKnowledgeRuntime;
 	/** 仅用于保留宿主既有系统提示词合同；不会把名称对应的工具加入可执行 Tool Frame。 */

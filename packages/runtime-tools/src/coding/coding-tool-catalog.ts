@@ -223,12 +223,11 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 			async (signal) => {
 				const tool = implementation ?? advertised.registration.tool;
 				const result = await tool.execute({ ...request, signal });
-				return this.resultPolicy.project(result, {
+				return (advertised.registration.resultPolicy ?? this.resultPolicy).project(result, {
 					sessionId: request.sessionId,
 					turnId: request.turnId,
 					toolCallId: request.toolCallId,
 					toolName: advertised.registration.tool.name,
-					category: advertised.registration.category,
 				});
 			},
 			() => this.availabilityError(CODING_TOOL_AVAILABILITY_ERROR_CODES.REVOKED, binding),
@@ -302,10 +301,8 @@ function freezeEntry(entry: CodingToolCatalogEntry): CodingToolCatalogEntry {
 function freezeRegistration(registration: CodingToolRegistration): CodingToolRegistration {
 	return Object.freeze({
 		tool: freezeToolDefinition(registration.tool),
-		scopeUse: Object.freeze([...registration.scopeUse]),
-		requires: registration.requires ? Object.freeze([...registration.requires]) : undefined,
 		modelOrder: registration.modelOrder,
-		category: registration.category,
+		resultPolicy: registration.resultPolicy,
 		configuration: registration.configuration
 			? Object.freeze({
 					configurationIds: Object.freeze([...registration.configuration.configurationIds]),

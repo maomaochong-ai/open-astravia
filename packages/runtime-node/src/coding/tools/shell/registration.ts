@@ -1,25 +1,7 @@
-import type { CodingToolRegistration, CodingToolScope } from "../../tool-registration.js";
+import type { CodingToolRegistration } from "../../tool-registration.js";
 import { createShellTool, type ShellToolInput, type ShellToolOptions } from "./shell-tool.js";
 
-const ALL_SHELL_SCOPES = [
-	"im-claw",
-	"conversation",
-	"project",
-	"batch",
-	"automation",
-	"kb-processing",
-	"cli",
-] as const satisfies readonly CodingToolScope[];
-
-export const SHELL_TOOL_CATEGORY = "core" as const;
-
-export function getShellToolScopes(platform: NodeJS.Platform = process.platform): readonly CodingToolScope[] {
-	return platform === "win32" ? ALL_SHELL_SCOPES : [];
-}
-
-export interface ShellToolRegistrationOptions extends ShellToolOptions {
-	readonly platform?: NodeJS.Platform;
-}
+export type ShellToolRegistrationOptions = ShellToolOptions;
 
 export function createShellToolRegistration(
 	cwd: string,
@@ -27,7 +9,5 @@ export function createShellToolRegistration(
 ): CodingToolRegistration<ShellToolInput> {
 	return {
 		tool: createShellTool(cwd, options),
-		scopeUse: getShellToolScopes(options.platform),
-		category: SHELL_TOOL_CATEGORY,
 	};
 }

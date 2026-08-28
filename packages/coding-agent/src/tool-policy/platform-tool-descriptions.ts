@@ -1,0 +1,15 @@
+export const CODING_AGENT_READ_TOOL_DESCRIPTION =
+	"Read the contents of a text file or supported image (jpg, png, gif, webp). Images are sent as attachments. Text output is truncated to 2000 lines or 50KB; use offset/limit and continue until complete when the full file is needed. `SKILL.md` and Markdown files under a `skills/` directory are never auto-truncated.\n\nText output lines carry an anchor prefix `line:hash→content` (e.g. `42:h7x2→const x = 1;`). The WHOLE `42:h7x2` part is an ANCHOR for the `edit` tool's anchor mode (line number included — never pass the hash alone) — it is metadata, NOT file content. Strip the prefix when quoting file content to the user.\n\nUse this tool, not shell commands such as cat, head, tail, less, more, or sed, to read supported files. You MUST read a file before editing it with `edit`; never guess its contents.\n\nWhen NOT to use this tool:\n- Binary office documents (.docx, .doc, .xlsx, .xls, .pptx, .ppt, .odt, .ods, .odp): invoke an available skill whose advertised capability matches the file format. Use the exact skill name shown in the current available-skills list; do not invent a skill name.\n- PDF text: use `extract_text_from_pdf`; it handles both clean text layers and scanned pages.\n- PDF visual judgment (seals/stamps/盖章, signatures, handwriting, layout, logos, figures): use `render_pdf_page`, then read the returned PNG with this tool.\n- PDF manipulation (merge, split, rotate, watermark, or form filling): invoke a currently available skill that explicitly supports that operation.\n- Searching file contents: use `grep`.\n- Finding files by path pattern: use `glob`.\n- Listing directory contents: use `dir_tree`.";
+
+export function createCodingAgentCommandToolDescription(toolName: "bash" | "shell"): string {
+	const platformNote = toolName === "shell" ? "\n\nOn Windows, this tool uses PowerShell by default." : "";
+	return `Execute a ${toolName} command in the current working directory. Returns stdout and stderr. Output is truncated to the last 2000 lines or 50KB; full truncated output is saved to a temporary file.
+
+Default to foreground commands. Set \`run_in_background: true\` for servers, watchers, containers, tunnels, REPLs, or any process that runs until killed. Do not use shell backgrounding such as \`&\`, \`nohup\`, or manual disown. Use \`task_output\` and \`task_stop\` for background work.
+
+Use dedicated tools for file reads, edits, writes, path search, content search, directory listing, PDF extraction, image OCR, and skill invocation. Use ${toolName} for scripts, package managers, git, compilers, interpreters, pipelines, and operations without a dedicated tool.
+
+Skill and scene directories are read-only. Write generated output to the working directory, never into a skill or scene directory.
+
+Git safety: never run destructive git commands, force-push, discard working-tree changes, skip hooks, stage all files, or amend commits unless the user explicitly requests the operation. Stage specific paths only.${platformNote}`;
+}

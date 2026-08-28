@@ -1,4 +1,5 @@
-import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools/coding";
+import type { ConversationScenario } from "../../../../profiles/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../../../runtime-contracts/index.js";
 import {
 	createInterruptAgentTool,
 	type InterruptAgentToolInput,
@@ -9,7 +10,7 @@ export const INTERRUPT_AGENT_TOOL_SCOPES = [
 	"conversation",
 	"project",
 	"cli",
-] as const satisfies readonly CodingToolScope[];
+] as const satisfies readonly ConversationScenario[];
 export const INTERRUPT_AGENT_TOOL_CATEGORY = "agent-control" as const;
 
 export interface InterruptAgentToolRegistrationOptions extends InterruptAgentToolOptions {
@@ -18,7 +19,7 @@ export interface InterruptAgentToolRegistrationOptions extends InterruptAgentToo
 
 export function createInterruptAgentToolRegistration(
 	options: InterruptAgentToolRegistrationOptions,
-): CodingToolRegistration<InterruptAgentToolInput> {
+): CodingAgentRuntimeToolRegistration<InterruptAgentToolInput> {
 	return {
 		tool: { ...createInterruptAgentTool(options), modelOrder: options.modelOrder },
 		scopeUse: INTERRUPT_AGENT_TOOL_SCOPES,

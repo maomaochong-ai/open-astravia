@@ -104,16 +104,6 @@ export function projectRuntimeSessionObservation(
 				durationMs: event.durationMs,
 				phaseCount: event.phases.length,
 			};
-		case "mcp.status":
-			return { ...base, status: event.status };
-		case "mcp.reload.start":
-			return base;
-		case "mcp.reload.end":
-			return {
-				...base,
-				changed: event.changed,
-				...(event.failure ? { failure: projectFailure(event.failure) } : {}),
-			};
 		case "usage.update":
 			return {
 				...base,
@@ -137,10 +127,6 @@ export function projectRuntimeSessionObservation(
 			return { ...base, failure: projectFailure(event.error) };
 		case "session.extension":
 			return { ...base, extensionId: event.extensionId, extensionEvent: event.event };
-		case "background_tasks_update":
-			return { ...base, count: event.tasks.length, countsByStatus: countStatuses(event.tasks) };
-		case "subagents_update":
-			return { ...base, count: event.agents.length, countsByStatus: countStatuses(event.agents) };
 		case "retry.start":
 			return {
 				...base,
@@ -181,12 +167,6 @@ export function projectRuntimeSessionObservation(
 
 function projectFailure(failure: RuntimeFailure): RuntimeSessionObservationSafeFailure {
 	return Object.freeze({ code: failure.code, origin: failure.origin, retryable: failure.retryable });
-}
-
-function countStatuses(items: readonly { readonly status: string }[]): Readonly<Record<string, number>> {
-	const counts: Record<string, number> = {};
-	for (const { status } of items) counts[status] = (counts[status] ?? 0) + 1;
-	return Object.freeze(counts);
 }
 
 function readTurnId(event: RuntimeSessionObservationEvent): string | undefined {

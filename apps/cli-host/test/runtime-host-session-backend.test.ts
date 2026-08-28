@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import { createCodingAgentRuntimeHostSessionConfig } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
+import { CODING_AGENT_SESSION_PROFILE_STATE_READ } from "@vetta/coding-agent/session-extensions";
 import { RuntimeHost } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -61,8 +62,11 @@ describe("Coding Agent RuntimeHost backend", () => {
 			model: SECOND_MODEL,
 			thinkingLevel: "medium",
 			executionMode: "full-access",
-			scenario: "batch",
 		});
+		expect(
+			runtime.invokeSessionExtensionSync(created.sessionId, CODING_AGENT_SESSION_PROFILE_STATE_READ, undefined)
+				.scenario,
+		).toBe("batch");
 		expect(runtime.getState(created.sessionId).activeToolNames).not.toContain("task_output");
 		const sessionPath = runtime.getSessionPath(created.sessionId);
 		expect(sessionPath).toBeDefined();

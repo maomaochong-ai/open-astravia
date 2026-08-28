@@ -33,7 +33,13 @@ describe("createRuntimeSessionExtensionHost", () => {
 		await expect(host.invoke(endpoint, 4)).resolves.toBe(8);
 		expect(host.invokeSync(endpoint, 5)).toBe(10);
 		expect(host.readInitialObservations()).toEqual([
-			{ type: "session.extension", extensionId: "example", event: "state", payload: { value: 3 }, source: "agent" },
+			{
+				type: "session.extension",
+				extensionId: "example",
+				event: "state",
+				payload: { value: 3 },
+				source: "extension",
+			},
 		]);
 	});
 });

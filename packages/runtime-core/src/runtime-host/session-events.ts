@@ -93,18 +93,6 @@ export function mapRuntimeSessionObservationEvent(
 				durationMs: event.durationMs,
 				phases: [...event.phases],
 			};
-		case "mcp.status":
-			return { ...base, type: event.type, status: event.status, details: event.details };
-		case "mcp.reload.start":
-			return { ...base, type: event.type };
-		case "mcp.reload.end":
-			return {
-				...base,
-				type: event.type,
-				changed: event.changed,
-				errorMessage: event.errorMessage,
-				...(event.failure ? { failure: event.failure } : {}),
-			};
 		case "usage.update":
 			return {
 				...base,
@@ -130,10 +118,6 @@ export function mapRuntimeSessionObservationEvent(
 				event: event.event,
 				payload: event.payload,
 			};
-		case "background_tasks_update":
-			return { ...base, type: event.type, tasks: [...event.tasks] };
-		case "subagents_update":
-			return { ...base, type: event.type, agents: [...event.agents] };
 		case "retry.start":
 			return {
 				...base,

@@ -1,8 +1,8 @@
-import type { ConversationScenario, RuntimeObservationPublisher, RuntimeSessionValueIndex } from "@vetta/runtime-core";
+import type { RuntimeObservationPublisher, RuntimeSessionValueIndex } from "@vetta/runtime-core";
 import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
-import { CODING_TOOL_SCOPES, type CodingToolActivation, type CodingToolResultPolicy } from "@vetta/runtime-tools";
+import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
 import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import {
 	type CodingAgentKnowledgeRuntime,
@@ -10,6 +10,8 @@ import {
 	createCodingAgentKnowledgeListTagsToolRegistration,
 } from "../../features/knowledge/index.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
+import { ALL_SCENARIOS, type ConversationScenario } from "../../profiles/index.js";
+import type { CodingAgentToolActivation } from "../../runtime-contracts/index.js";
 import {
 	isCodingAgentKnowledgeToolEnabled,
 	resolveCodingAgentToolActivation,
@@ -35,7 +37,7 @@ export interface CodingAgentRuntimeToolSurfaceOptions {
 	readonly cwd: string;
 	readonly agentDir?: string;
 	readonly scenario: ConversationScenario;
-	readonly activation?: CodingToolActivation;
+	readonly activation?: CodingAgentToolActivation;
 	readonly knowledgeRuntime?: CodingAgentKnowledgeRuntime;
 	readonly inheritedMcpView: McpRuntimeToolView;
 	readonly mcpSource?: McpRuntimeToolSource;
@@ -51,27 +53,28 @@ export interface CodingAgentRuntimeToolSurfaceOptions {
 export interface CodingAgentRuntimeToolSurface {
 	readonly tools: CodingToolsRuntimeComposition;
 	readonly mcpCoordinator: CodingAgentMcpSessionCoordinator;
-	readonly activation: CodingToolActivation;
+	readonly activation: CodingAgentToolActivation;
 	readonly knowledgeAvailable: boolean;
 	readonly backgroundTasksAvailable: boolean;
 	resolveActivation(
 		context: ModelCallContributionContext,
 		activeToolNamesOverride?: readonly string[],
-	): CodingToolActivation;
+	): CodingAgentToolActivation;
 }
 
 /** 组合 Runtime 级 Coding Tools、Knowledge Tool 与共享 MCP Tool Surface。 */
 export async function createCodingAgentRuntimeToolSurface(
 	options: CodingAgentRuntimeToolSurfaceOptions,
 ): Promise<CodingAgentRuntimeToolSurface> {
-	const activation = options.activation ?? ({ mode: "scope", scope: options.scenario } satisfies CodingToolActivation);
+	const activation =
+		options.activation ?? ({ mode: "scope", scope: options.scenario } satisfies CodingAgentToolActivation);
 	const knowledgeAvailable = options.knowledgeRuntime !== undefined;
 	let backgroundTasksAvailable = false;
 	let mcpCoordinator: CodingAgentMcpSessionCoordinator;
 	const resolveActivation = (
 		context: ModelCallContributionContext,
 		activeToolNamesOverride?: readonly string[],
-	): CodingToolActivation =>
+	): CodingAgentToolActivation =>
 		resolveCodingAgentToolActivation(
 			activation,
 			context,
@@ -96,7 +99,7 @@ export async function createCodingAgentRuntimeToolSurface(
 			const executionRuntime = options.indexes.executionRuntimes.get(context.sessionId);
 			if (executionRuntime?.ownsTool(registration.tool.name)) return false;
 			if (
-				registration.category === "kb-read" &&
+				registration.availabilityPolicy === "knowledge-runtime" &&
 				!isCodingAgentKnowledgeToolEnabled(activation, context, knowledgeAvailable)
 			) {
 				return false;
@@ -119,8 +122,9 @@ export async function createCodingAgentRuntimeToolSurface(
 				: []),
 			...options.inheritedMcpView.tools.map(({ tool }) => ({
 				tool,
-				scopeUse: CODING_TOOL_SCOPES,
+				scopeUse: ALL_SCENARIOS,
 				category: "external" as const,
+				resultProjection: "preserve" as const,
 			})),
 		],
 		tokenBudget: options.tokenBudget,
@@ -135,12 +139,13 @@ export async function createCodingAgentRuntimeToolSurface(
 			indexes: options.indexes,
 			registry: {
 				register: (tool) =>
-					tools.registry.register({
+					tools.registerTool({
 						tool,
-						scopeUse: CODING_TOOL_SCOPES,
+						scopeUse: ALL_SCENARIOS,
 						category: "external",
+						resultProjection: "preserve",
 					}),
-				unregister: (toolName) => tools.registry.unregister(toolName),
+				unregister: (toolName) => tools.unregisterTool(toolName),
 			},
 			observationPublisher: options.observationPublisher,
 		});

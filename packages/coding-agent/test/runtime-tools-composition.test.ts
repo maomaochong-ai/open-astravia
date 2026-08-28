@@ -108,6 +108,59 @@ describe("Coding Tools Runtime Composition Root", () => {
 		composition.dispose();
 	});
 
+	it("updates product policy declarations with dynamically registered tools", () => {
+		const composition = createCodingToolsRuntimeComposition({
+			cwd: "C:/workspace",
+			environment: { registrations: [], dispose() {} },
+		});
+
+		composition.registerTool({
+			...registration(tool("host_attachment")),
+			sideEffect: "heavy",
+		});
+		expect(composition.readToolPolicyDeclarations()).toContainEqual({
+			name: "host_attachment",
+			sideEffect: "heavy",
+		});
+
+		expect(composition.unregisterTool("host_attachment")).toBe(true);
+		expect(composition.readToolPolicyDeclarations()).not.toContainEqual({
+			name: "host_attachment",
+			sideEffect: "heavy",
+		});
+		composition.dispose();
+	});
+
+	it("uses an explicit result projection declaration instead of tool category", async () => {
+		const project = vi.fn(async () => ({ content: [{ type: "text" as const, text: "projected" }] }));
+		const composition = createCodingToolsRuntimeComposition({
+			cwd: "C:/workspace",
+			environment: { registrations: [], dispose() {} },
+			additionalRegistrations: [
+				{
+					...registration(tool("external_result")),
+					category: "core",
+					resultProjection: "preserve",
+				},
+			],
+			resultPolicy: { project },
+		});
+		const entry = composition.registry.resolve("external_result");
+		if (!entry) throw new Error("expected explicit result projection registration");
+
+		const result = await composition.registry.execute(entry.binding, {
+			sessionId: "session-1",
+			turnId: "turn-1",
+			toolCallId: "call-1",
+			input: {},
+			signal: new AbortController().signal,
+		});
+
+		expect(result.content).toEqual([{ type: "text", text: "external_result" }]);
+		expect(project).not.toHaveBeenCalled();
+		composition.dispose();
+	});
+
 	it("registers and compiles the default CLI coding tools without downloading", async () => {
 		const calls: Array<{ readonly tool: "fd" | "rg"; readonly silent: boolean | undefined }> = [];
 		const composition = createCodingToolsRuntimeComposition({

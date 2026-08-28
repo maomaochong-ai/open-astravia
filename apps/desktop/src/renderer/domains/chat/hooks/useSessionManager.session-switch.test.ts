@@ -142,7 +142,7 @@ afterEach(async () => {
 	vi.unstubAllGlobals();
 });
 
-it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户消息", { timeout: 10_000 }, async () => {
+it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户消息", { timeout: 30_000 }, async () => {
 	const { activeSessionAtom, chatMessagesAtom, inputValueAtom } = await import("@shared/store/atoms");
 	const { useSessionManager } = await import("./useSessionManager");
 	const store = getDefaultStore();

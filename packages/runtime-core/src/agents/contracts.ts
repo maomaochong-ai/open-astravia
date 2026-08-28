@@ -35,7 +35,7 @@ export interface RuntimeAgentSessionPreparationContext {
 /**
  * 一个 Agent Session 的完整通用装配结果。
  *
- * Tool、MCP 与 Prompt 均通过 capabilities 中的 Feature/Provider/Instruction 表达；
+ * Tool、外部能力与 Prompt 均通过 capabilities 中的 Feature/Provider/Instruction 表达；
  * Runtime Core 不认识这些能力的产品来源。
  */
 export interface RuntimeAgentSessionDefinition {
@@ -150,7 +150,7 @@ export interface RuntimeAgentSourcePublishResult {
 /**
  * 宿主实现的完整配置来源。
  *
- * 文件、Plugin、数据库与远端控制面在进入此端口前完成 I/O、解析、Schema 校验和组件引用解析。
+ * 文件、扩展、数据库与远端控制面在进入此端口前完成 I/O、解析、Schema 校验和组件引用解析。
  */
 export interface RuntimeAgentDefinitionSource {
 	readonly id: string;

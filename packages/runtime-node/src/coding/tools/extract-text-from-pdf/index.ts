@@ -5,8 +5,4 @@ export {
 	ExtractTextFromPdfToolInputSchema,
 	type ExtractTextFromPdfToolOptions,
 } from "./extract-text-from-pdf-tool.js";
-export {
-	createExtractTextFromPdfToolRegistration,
-	EXTRACT_TEXT_FROM_PDF_TOOL_CATEGORY,
-	EXTRACT_TEXT_FROM_PDF_TOOL_SCOPES,
-} from "./registration.js";
+export { createExtractTextFromPdfToolRegistration } from "./registration.js";

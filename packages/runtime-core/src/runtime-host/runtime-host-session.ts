@@ -168,10 +168,6 @@ export class RuntimeHostSession implements RuntimeActiveSession {
 		this.host.setSessionActiveToolNames(this.sessionId, toolNames);
 	}
 
-	setAgentMode(mode: string | undefined): void {
-		this.host.setSessionAgentMode(this.sessionId, mode);
-	}
-
 	setThinkingLevel(level: ThinkingLevel): void {
 		this.host.setSessionThinkingLevel(this.sessionId, level);
 	}

@@ -1,11 +1,13 @@
 import type { SessionEndCause, SessionStartSource } from "@vetta/ecosystem-adapter";
-import type { ConversationScenario, RuntimeHostSessionBackend, RuntimeObservationHubView } from "@vetta/runtime-core";
+import type { RuntimeHostSessionBackend, RuntimeObservationHubView } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { CodingToolRegistry } from "@vetta/runtime-tools";
+import type { ConversationScenario } from "../../profiles/index.js";
 import type {
 	CodingAgentExtensionEventBinding,
 	CodingAgentExtensionRunnerPort,
 	CodingAgentExtensionToolSource,
+	CodingAgentRuntimeToolRegistration,
 	CodingAgentSessionToolRegistration,
 } from "../../runtime-contracts/index.js";
 
@@ -39,6 +41,8 @@ export interface CodingAgentRuntimeExtensionControls {
 
 export interface CodingAgentRuntimeToolAccess {
 	readonly registry: CodingToolRegistry;
+	registerTool(registration: CodingAgentRuntimeToolRegistration): void;
+	unregisterTool(toolName: string): boolean;
 }
 
 export interface CodingAgentRuntimeAgentIdentity {

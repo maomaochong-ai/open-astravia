@@ -1,6 +1,6 @@
 import { type AIErrorDetails, getAIErrorDetails, isAIError } from "@vetta/ai";
 
-export type RuntimeFailureOrigin = "runtime" | "provider" | "tool" | "mcp";
+export type RuntimeFailureOrigin = "runtime" | "provider" | "tool" | "extension";
 
 /** Safe process-owner fields for a generic Session ownership conflict. */
 export interface RuntimeFailureLockHolder {
@@ -196,7 +196,7 @@ function isRuntimeFailureLockHolder(value: unknown): value is RuntimeFailureLock
 }
 
 function isRuntimeFailureOrigin(value: unknown): value is RuntimeFailureOrigin {
-	return value === "runtime" || value === "provider" || value === "tool" || value === "mcp";
+	return value === "runtime" || value === "provider" || value === "tool" || value === "extension";
 }
 
 function isRuntimeFailurePhase(value: unknown): value is NonNullable<RuntimeFailureDetails["phase"]> {

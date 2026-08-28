@@ -524,7 +524,7 @@ describe("Coding Agent model call and prompt runtime", () => {
 					expect.objectContaining({
 						id: "instruction:plugin.extra",
 						kind: "instruction",
-						source: { owner: "plugin", id: "plugin-a" },
+						source: { owner: "extension", id: "plugin-a" },
 					}),
 					expect.objectContaining({
 						id: "tool:read",

@@ -43,4 +43,9 @@ export type {
 	CodingAgentWorkflowDispatcherPort,
 	CodingAgentWorkflowDispatchRequest,
 } from "./subagent-runtime.js";
-export type { CodingAgentRuntimeToolRegistration } from "./tool-runtime.js";
+export {
+	type CodingAgentRuntimeToolRegistration,
+	type CodingAgentToolActivation,
+	selectCodingAgentToolRegistrations,
+	selectCodingAgentTools,
+} from "./tool-runtime.js";

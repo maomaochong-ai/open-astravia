@@ -10,7 +10,7 @@ export interface RuntimeSessionExtensionSource {
 /** Adapts generic Session Extension contributions to the RuntimeHost event-source contract. */
 export function createRuntimeSessionExtensionHost(
 	source: RuntimeSessionExtensionSource,
-	eventSource: RuntimeEventSource = "agent",
+	eventSource: RuntimeEventSource = "extension",
 ): RuntimeSessionExtensionHost {
 	return {
 		hasEndpoint: (token) => source.endpoints.hasEndpoint(token),

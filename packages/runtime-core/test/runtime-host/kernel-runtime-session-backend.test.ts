@@ -600,7 +600,6 @@ describe("KernelRuntimeSessionBackend", () => {
 			configurationController: {
 				setSteeringMode,
 				setFollowUpMode: vi.fn(),
-				setAgentMode: vi.fn(),
 			},
 		} satisfies Partial<KernelRuntimeAssembly>;
 		const { backend } = createBackend(

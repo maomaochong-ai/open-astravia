@@ -12,4 +12,4 @@ When to use \`grep\` vs other tools:
 - Use \`grep\` to search for text/patterns INSIDE files (function names, variable references, error messages, etc.)
 - Use \`glob\` to find files BY PATH or name pattern (e.g., "**/*.ts", "package*.json")
 - Use \`dir_tree\` to get a high-level overview of directory structure
-- For complex multi-round searches that may need several attempts, consider delegating to a subagent`;
+- For complex multi-round searches, run focused searches and refine the pattern between calls`;

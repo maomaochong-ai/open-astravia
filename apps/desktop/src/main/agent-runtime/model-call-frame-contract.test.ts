@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
+import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
 import { ENV_AGENT_DIR, getAgentDir } from "@vetta/coding-agent/config";
 import {
 	type CodingAgentPluginRuntimeSource,
@@ -10,8 +11,8 @@ import {
 	createCodingAgentPluginMcpRuntime,
 } from "@vetta/coding-agent/host-services";
 import type { AgentPluginRuntimeConfig } from "@vetta/coding-agent/plugin-runtime";
-import { ALL_SCENARIOS } from "@vetta/coding-agent/profile";
-import { type ConversationScenario, RuntimeHost } from "@vetta/runtime-core";
+import { ALL_SCENARIOS, type ConversationScenario } from "@vetta/coding-agent/profile";
+import { RuntimeHost } from "@vetta/runtime-core";
 import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -103,12 +104,14 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 				sessionDir,
 				model,
 				thinkingLevel: "off",
-				scenario: "conversation",
-				agentMode: "work",
+				agent: createCodingAgentRuntimeSessionSelection({
+					scenario: "conversation",
+					agentMode: "work",
+					enableBackgroundTasks: true,
+					includeAgentSkills: false,
+					systemPromptAddon: "Model-call frame host instruction",
+				}),
 				executionMode: "full-access",
-				enableBackgroundTasks: true,
-				includeAgentSkills: false,
-				appendSystemPrompt: "Model-call frame host instruction",
 			});
 			await fixture.runtime.prompt(created.sessionId, { text: "Inspect the active capabilities" });
 			const firstFrame = observeRequest(server, 0);
@@ -159,10 +162,12 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 				sessionDir,
 				model,
 				thinkingLevel: "off",
-				scenario: "conversation",
+				agent: createCodingAgentRuntimeSessionSelection({
+					scenario: "conversation",
+					enableBackgroundTasks: false,
+					includeAgentSkills: false,
+				}),
 				executionMode: "full-access",
-				enableBackgroundTasks: false,
-				includeAgentSkills: false,
 			});
 
 			await fixture.runtime.prompt(created.sessionId, { text: "Observe skills before creation" });
@@ -225,10 +230,12 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 			sessionDir: await temporaryDirectory("desktop-frame-first-sessions-"),
 			model,
 			thinkingLevel: "off",
-			scenario: "conversation",
-			agentMode: "work",
+			agent: createCodingAgentRuntimeSessionSelection({
+				scenario: "conversation",
+				agentMode: "work",
+				includeAgentSkills: false,
+			}),
 			executionMode: "full-access",
-			includeAgentSkills: false,
 		});
 		const second = await fixture.runtime.createSession({
 			cwd: secondCwd,
@@ -236,10 +243,12 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 			sessionDir: await temporaryDirectory("desktop-frame-second-sessions-"),
 			model,
 			thinkingLevel: "off",
-			scenario: "conversation",
-			agentMode: "work",
+			agent: createCodingAgentRuntimeSessionSelection({
+				scenario: "conversation",
+				agentMode: "work",
+				includeAgentSkills: false,
+			}),
 			executionMode: "full-access",
-			includeAgentSkills: false,
 		});
 
 		await fixture.runtime.prompt(first.sessionId, { text: "Render the relative PDF in the first workspace" });
@@ -270,10 +279,12 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 			sessionDir: await temporaryDirectory("desktop-frame-mode-prompt-sessions-"),
 			model,
 			thinkingLevel: "off",
-			scenario: "conversation",
-			agentMode: "coding",
+			agent: createCodingAgentRuntimeSessionSelection({
+				scenario: "conversation",
+				agentMode: "coding",
+				includeAgentSkills: false,
+			}),
 			executionMode: "full-access",
-			includeAgentSkills: false,
 		});
 		await fixture.runtime.prompt(created.sessionId, { text: "State the active mode" });
 
@@ -300,10 +311,12 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 				sessionDir,
 				model,
 				thinkingLevel: "off",
-				scenario,
+				agent: createCodingAgentRuntimeSessionSelection({
+					scenario,
+					enableBackgroundTasks: false,
+					includeAgentSkills: false,
+				}),
 				executionMode: "full-access",
-				enableBackgroundTasks: false,
-				includeAgentSkills: false,
 			});
 
 			await fixture.runtime.prompt(created.sessionId, { text: `Observe the ${scenario} model-call frame` });

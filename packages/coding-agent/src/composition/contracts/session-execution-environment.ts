@@ -1,4 +1,3 @@
-import type { ConversationScenario } from "@vetta/runtime-core";
 import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/configuration";
 import type {
 	SandboxPermissionRequest,
@@ -6,6 +5,7 @@ import type {
 	SandboxShellGrant,
 } from "@vetta/runtime-core/sandbox";
 import type { BackgroundCommandService, CodingToolRegistration } from "@vetta/runtime-tools";
+import type { ConversationScenario } from "../../profiles/index.js";
 
 export interface CodingAgentSandboxWorkspacePathAccess {
 	readonly allowed: boolean;

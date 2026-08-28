@@ -2,22 +2,9 @@ import type { RuntimeConfigurationSnapshotSource } from "@vetta/runtime-core/con
 import {
 	CODING_IMAGE_CONFIGURATION,
 	type CodingToolRegistration,
-	type CodingToolScope,
 	withCodingToolConfiguration,
 } from "@vetta/runtime-tools";
 import { createReadTool, type ReadToolInput, type ReadToolOptions } from "./read-tool.js";
-
-export const READ_TOOL_SCOPES = [
-	"im-claw",
-	"conversation",
-	"project",
-	"batch",
-	"automation",
-	"kb-processing",
-	"cli",
-] as const satisfies readonly CodingToolScope[];
-
-export const READ_TOOL_CATEGORY = "core" as const;
 
 export interface ReadToolRegistrationOptions extends ReadToolOptions {
 	readonly configurationSource?: RuntimeConfigurationSnapshotSource;
@@ -30,8 +17,6 @@ export function createReadToolRegistration(
 	const { configurationSource, ...toolOptions } = options;
 	const registration: CodingToolRegistration<ReadToolInput> = {
 		tool: createReadTool(cwd, toolOptions),
-		scopeUse: READ_TOOL_SCOPES,
-		category: READ_TOOL_CATEGORY,
 	};
 	if (!configurationSource) return registration;
 	return withCodingToolConfiguration(registration, {

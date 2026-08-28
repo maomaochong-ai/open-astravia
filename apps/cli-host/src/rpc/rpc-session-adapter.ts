@@ -1,5 +1,8 @@
 import type { CodingAgentBootstrap } from "@vetta/coding-agent/bootstrap";
-import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
+import type {
+	CodingAgentRuntimeComposition,
+	CodingAgentRuntimeToolRegistration,
+} from "@vetta/coding-agent/composition";
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import {
 	type CodingAgentTurnRetryEvent,
@@ -21,7 +24,7 @@ import {
 	readCodingAgentTurnFailure,
 } from "@vetta/coding-agent/runtime";
 import { type HistoryEntry, RetryableCleanup, type RuntimeHostSession, type SessionEvent } from "@vetta/runtime-core";
-import { type CodingToolRegistration, createNodeFileInspectionOperations } from "@vetta/runtime-node/coding";
+import { createNodeFileInspectionOperations } from "@vetta/runtime-node/coding";
 import { createCliCodingAgentHtmlExportRuntime } from "../html-export-runtime.js";
 import { RpcSessionEventAdapter } from "./rpc-session-event-adapter.js";
 
@@ -57,7 +60,7 @@ export interface CliRpcSessionAdapterOptions {
 	>;
 	readonly createHostToolRegistration?: (
 		hostBridge: NonNullable<RpcSessionInitialization["hostBridge"]>,
-	) => CodingToolRegistration;
+	) => CodingAgentRuntimeToolRegistration;
 	readonly disposeFailureMessage?: string;
 }
 
@@ -263,8 +266,8 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 		this.initialized = true;
 		if (!input.hostBridge) return;
 		const registration = this.createHostToolRegistration(input.hostBridge);
-		this.runtime.tools.registry.register(registration);
-		this.unregisterHostTool = () => this.runtime.tools.registry.unregister(registration.tool.name);
+		this.runtime.tools.registerTool(registration);
+		this.unregisterHostTool = () => this.runtime.tools.unregisterTool(registration.tool.name);
 	}
 
 	subscribe(listener: (event: unknown) => void): () => void {

@@ -1,6 +1,7 @@
-import type { ConversationScenario } from "@vetta/runtime-core";
+import type { ConversationScenario } from "../public-api/sdk/sdk-scenario-contract.js";
 
-export type { ConversationScenario } from "@vetta/runtime-core";
+/** Coding Agent 产品场景；用于产品能力激活与宿主展示，不属于通用 Runtime。 */
+export type { ConversationScenario } from "../public-api/sdk/sdk-scenario-contract.js";
 
 export const ALL_SCENARIOS: readonly ConversationScenario[] = [
 	"im-claw",
@@ -13,6 +14,15 @@ export const ALL_SCENARIOS: readonly ConversationScenario[] = [
 ];
 
 export const DEFAULT_SCENARIO: ConversationScenario = "cli";
+
+export function isConversationScenario(value: unknown): value is ConversationScenario {
+	return typeof value === "string" && ALL_SCENARIOS.includes(value as ConversationScenario);
+}
+
+/** Root Coding Agent 是否启用委派能力的产品策略。 */
+export function shouldEnableCodingAgentSubagents(scenario: ConversationScenario): boolean {
+	return scenario === "conversation" || scenario === "project" || scenario === "cli";
+}
 
 export type ToolCapability = "knowledge" | "bg-tasks" | "host:ask";
 

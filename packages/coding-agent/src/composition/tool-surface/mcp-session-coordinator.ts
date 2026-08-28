@@ -5,6 +5,7 @@ import {
 	type RuntimeSessionValueIndex,
 	runtimeFailureFromError,
 } from "@vetta/runtime-core";
+import { sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import {
 	createMcpDeferredToolController,
 	createMcpRuntimeToolSynchronizer,
@@ -14,8 +15,8 @@ import {
 	type McpRuntimeToolSource,
 	type McpRuntimeToolView,
 } from "@vetta/runtime-mcp";
-import type { CodingToolActivation } from "@vetta/runtime-tools";
-import type { CodingAgentPluginMcpRuntime } from "../../runtime-contracts/index.js";
+import type { CodingAgentPluginMcpRuntime, CodingAgentToolActivation } from "../../runtime-contracts/index.js";
+import { CODING_AGENT_MCP_RELOAD_FINISHED, CODING_AGENT_MCP_RELOAD_STARTED } from "./mcp-session-extension-contract.js";
 
 export interface CodingAgentMcpSessionIndexes {
 	readonly pluginMcpRuntimes: RuntimeSessionValueIndex<CodingAgentPluginMcpRuntime>;
@@ -33,7 +34,7 @@ export interface CodingAgentMcpSessionCoordinatorOptions {
 
 export interface CodingAgentMcpSessionControllerOptions {
 	readonly sessionId: string;
-	readonly activation: CodingToolActivation;
+	readonly activation: CodingAgentToolActivation;
 	readonly pluginRuntime?: CodingAgentPluginMcpRuntime;
 }
 
@@ -71,7 +72,10 @@ export async function createCodingAgentMcpSessionCoordinator(
 		const before = mergeMcpSnapshots(synchronizer?.snapshot(), pluginRuntime?.snapshot());
 		let startReported = false;
 		if (firstPromptRefresh && resourceContext) {
-			await resourceContext.reportObservation({ type: "mcp.reload.start", source: "agent" });
+			await resourceContext.reportObservation({
+				...sessionExtensionObservation(CODING_AGENT_MCP_RELOAD_STARTED, {}),
+				source: "extension",
+			});
 			startReported = true;
 		}
 		try {
@@ -82,23 +86,33 @@ export async function createCodingAgentMcpSessionCoordinator(
 			const changed = snapshot?.revision !== before?.revision;
 			if (reportPromptBoundary && (firstPromptRefresh || changed) && resourceContext) {
 				if (!startReported) {
-					await resourceContext.reportObservation({ type: "mcp.reload.start", source: "agent" });
+					await resourceContext.reportObservation({
+						...sessionExtensionObservation(CODING_AGENT_MCP_RELOAD_STARTED, {}),
+						source: "extension",
+					});
 				}
-				await resourceContext.reportObservation({ type: "mcp.reload.end", changed, source: "agent" });
+				await resourceContext.reportObservation({
+					...sessionExtensionObservation(CODING_AGENT_MCP_RELOAD_FINISHED, { changed }),
+					source: "extension",
+				});
 			}
 			if (reportPromptBoundary) options.indexes.mcpRefreshObservedSessions.add(sessionId);
 			return snapshot;
 		} catch (error) {
 			if (reportPromptBoundary && resourceContext) {
 				if (!startReported) {
-					await resourceContext.reportObservation({ type: "mcp.reload.start", source: "agent" });
+					await resourceContext.reportObservation({
+						...sessionExtensionObservation(CODING_AGENT_MCP_RELOAD_STARTED, {}),
+						source: "extension",
+					});
 				}
 				await resourceContext.reportObservation({
-					type: "mcp.reload.end",
-					changed: false,
-					errorMessage: error instanceof Error ? error.message : String(error),
-					failure: runtimeFailureFromError(error, { origin: "mcp", code: "MCP_RELOAD_FAILED" }),
-					source: "agent",
+					...sessionExtensionObservation(CODING_AGENT_MCP_RELOAD_FINISHED, {
+						changed: false,
+						errorMessage: error instanceof Error ? error.message : String(error),
+						failure: runtimeFailureFromError(error, { origin: "extension", code: "MCP_RELOAD_FAILED" }),
+					}),
+					source: "extension",
 				});
 			}
 			throw error;

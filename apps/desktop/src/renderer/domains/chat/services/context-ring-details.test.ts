@@ -183,7 +183,7 @@ function report(): ContextCompositionReport {
 		providerReportedInputTokens: 120,
 		sections: [
 			section("instruction:base", "instruction", "core", "base", 20),
-			section("instruction:review", "instruction", "skill", "review", 20),
+			section("instruction:review", "instruction", "extension", "review", 20),
 			section("tool:read", "tool_schema", "runtime", "read", 20),
 			section("message:0", "history", "unknown", "history:0", 10),
 			section("message:1", "history", "unknown", "history:1", 20),

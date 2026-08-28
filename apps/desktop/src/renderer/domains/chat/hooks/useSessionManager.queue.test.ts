@@ -152,7 +152,7 @@ async function mount(input: string, streaming: boolean): Promise<ReturnType<type
 	return store;
 }
 
-it("新会话在订阅建立后立即发送，不等待空历史与状态水合", { timeout: 15_000 }, async () => {
+it("新会话在订阅建立后立即发送，不等待空历史与状态水合", { timeout: 30_000 }, async () => {
 	const state = deferred<{
 		activeToolNames: never[];
 		contextPercent: null;

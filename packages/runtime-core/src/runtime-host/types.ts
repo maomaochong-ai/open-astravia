@@ -4,7 +4,7 @@ import type {
 	RuntimeAgentRuntime,
 	RuntimeAgentRuntimeOptions,
 } from "../agents/index.js";
-import type { SessionConfig, SessionEvent, SessionExecutionMode } from "../contracts.js";
+import type { SessionEvent, SessionExecutionMode } from "../contracts.js";
 import type { RuntimeObservationPort, RuntimeObservationPublisher } from "../observation/index.js";
 import type { RuntimeHostAgentBackendRetirement, RuntimeHostAgentBackendRevision } from "./agent-backend-admission.js";
 import type { RuntimeHostSessionBackend } from "./session-backend.js";
@@ -69,13 +69,6 @@ export interface RuntimeHostSessionRecord {
 		executionMode: SessionExecutionMode | undefined;
 		hasExecutionMode: boolean;
 	};
-	/** 本会话解析后的对话场景（缺省回落 DEFAULT_SCENARIO），getState 回传给 renderer。 */
-	scenario: NonNullable<SessionConfig["scenario"]>;
-	/**
-	 * 本会话创建时固化的工作模式（见 ADR-0046 修订）。会话内不可变，getState 回传给
-	 * renderer，供其按本会话而非全局默认值渲染。undefined = 未指定（CLI/headless 缺省）。
-	 */
-	agentMode: string | undefined;
 }
 
 /**

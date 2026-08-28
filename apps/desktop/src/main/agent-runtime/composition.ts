@@ -243,7 +243,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				catalog: historicalFormat.sessionCatalog,
 				access: {
 					readHistory: true,
-					interactiveResume: true,
+					resume: true,
 					rename: true,
 					delete: true,
 				},
@@ -252,7 +252,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				catalog: imConversationCatalog,
 				access: {
 					readHistory: true,
-					interactiveResume: false,
+					resume: false,
 					rename: true,
 					delete: true,
 				},
@@ -261,7 +261,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				catalog: desktopRuntimeCatalog,
 				access: {
 					readHistory: true,
-					interactiveResume: true,
+					resume: true,
 					rename: true,
 					delete: true,
 				},

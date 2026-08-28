@@ -9,6 +9,7 @@ import type {
 	AgentPluginToolInvoker,
 	AgentPluginTurnHandlerLeaseProvider,
 } from "../../model-context/plugin-runtime.js";
+import { type ConversationScenario, isConversationScenario } from "../../profiles/index.js";
 import type {
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentSessionToolRegistration,
@@ -18,6 +19,7 @@ export type CodingAgentInitialTodoLockSource = "scene";
 
 export interface CodingAgentRuntimeSessionOptions {
 	readonly sessionId: string;
+	readonly scenario?: ConversationScenario;
 	readonly cwd?: string;
 	readonly model?: NonNullable<SessionConfig["model"]>;
 	readonly thinkingLevel?: NonNullable<SessionConfig["thinkingLevel"]>;
@@ -57,14 +59,27 @@ export interface CodingAgentRuntimeSessionOptions {
 	readonly sessionRuntimeTools?: readonly CodingAgentRuntimeToolRegistration[];
 }
 
+/** RuntimeHost 创建前可用的 Coding Agent 产品配置；Session id 可由后端按路径解析。 */
+export type CodingAgentRuntimeSessionConfiguration = Omit<CodingAgentRuntimeSessionOptions, "sessionId"> & {
+	readonly sessionId?: string;
+};
+
 /** Coding Agent Definition 边界的 Session payload 校验。 */
 export function requireCodingAgentRuntimeSessionOptions(value: unknown): CodingAgentRuntimeSessionOptions {
+	const configuration = parseCodingAgentRuntimeSessionConfiguration(value);
+	const sessionId = requireNonEmptyString(configuration.sessionId, "sessionId");
+	return { ...configuration, sessionId };
+}
+
+/** 平台组合在 Runtime 解析持久化身份前校验产品配置。 */
+export function parseCodingAgentRuntimeSessionConfiguration(value: unknown): CodingAgentRuntimeSessionConfiguration {
 	if (!isRecord(value)) {
 		throw new Error("Coding Agent Runtime Session requires an object configuration");
 	}
-	const sessionId = requireNonEmptyString(value.sessionId, "sessionId");
+	if (value.sessionId !== undefined) requireNonEmptyString(value.sessionId, "sessionId");
 	assertOptionalStringFields(value, [
 		"cwd",
+		"scenario",
 		"thinkingLevel",
 		"agentMode",
 		"executionMode",
@@ -77,6 +92,9 @@ export function requireCodingAgentRuntimeSessionOptions(value: unknown): CodingA
 		"systemPromptAddon",
 		"initialTodoLockSource",
 	]);
+	if (value.scenario !== undefined && !isConversationScenario(value.scenario)) {
+		throw new Error("Coding Agent Runtime Session field scenario is invalid");
+	}
 	assertOptionalBooleanFields(value, ["enableBackgroundTasks", "includeAgentSkills", "memoryMode"]);
 	assertOptionalNumberFields(value, ["memoryCharLimit"]);
 	assertOptionalArrayFields(value, ["forkContextMessages", "initialTodos", "sessionTools", "sessionRuntimeTools"]);
@@ -93,7 +111,7 @@ export function requireCodingAgentRuntimeSessionOptions(value: unknown): CodingA
 			throw new Error("Coding Agent Runtime Session field env must contain only string values");
 		}
 	}
-	return { ...value, sessionId } as unknown as CodingAgentRuntimeSessionOptions;
+	return { ...value } as CodingAgentRuntimeSessionConfiguration;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

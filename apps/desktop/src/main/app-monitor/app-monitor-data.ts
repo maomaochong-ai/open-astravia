@@ -126,7 +126,7 @@ export interface AppMonitorData {
 		runtime: number;
 		provider: number;
 		tool: number;
-		mcp: number;
+		extension: number;
 	};
 	engagement: {
 		currentDay: string;
@@ -599,7 +599,7 @@ export function createDefaultAppMonitorData(now = Date.now()): AppMonitorData {
 			runtime: 0,
 			provider: 0,
 			tool: 0,
-			mcp: 0,
+			extension: 0,
 		},
 		engagement: {
 			currentDay,
@@ -799,7 +799,7 @@ export function normalizeAppMonitorData(value: unknown): AppMonitorData {
 			runtime: normalizeCount(errors.runtime),
 			provider: normalizeCount(errors.provider),
 			tool: normalizeCount(errors.tool),
-			mcp: normalizeCount(errors.mcp),
+			extension: normalizeCount(errors.extension) + normalizeCount(errors.mcp),
 		},
 		engagement: {
 			currentDay: normalizeDayKey(engagement.currentDay) || defaults.engagement.currentDay,

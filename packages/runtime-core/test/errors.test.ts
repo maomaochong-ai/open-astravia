@@ -56,14 +56,14 @@ describe("Runtime errors", () => {
 	it("uses an explicit safe projection for non-AI boundary errors", () => {
 		expect(
 			runtimeFailureFromError(new Error("MCP reload failed"), {
-				origin: "mcp",
+				origin: "extension",
 				code: "MCP_RELOAD_FAILED",
 			}),
 		).toEqual({
 			code: "MCP_RELOAD_FAILED",
 			message: "MCP reload failed",
 			retryable: false,
-			origin: "mcp",
+			origin: "extension",
 		});
 	});
 

@@ -140,7 +140,7 @@ describe("CodingAgentExtensionToolRuntime", () => {
 			expect.arrayContaining([
 				expect.objectContaining({
 					id: "instruction:extension.tool.extension_echo.summary",
-					source: { owner: "plugin", id: "extension-a" },
+					source: { owner: "extension", id: "extension-a" },
 				}),
 			]),
 		);

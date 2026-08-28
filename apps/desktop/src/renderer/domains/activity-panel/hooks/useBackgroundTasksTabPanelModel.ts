@@ -178,7 +178,7 @@ export function useBackgroundTasksTabPanelModel(): BackgroundTasksTabPanelModel 
 	const handleClearFinished = useCallback(() => {
 		if (!sessionId) return;
 		// Host clears both bash finished tasks and terminal subagents, then emits
-		// background_tasks_update + subagents_update (or empty snapshots).
+		// Background-task + Subagent extension observations (or empty snapshots).
 		void window.vetta.session.clearFinishedBackgroundTasks(sessionId);
 	}, [sessionId]);
 

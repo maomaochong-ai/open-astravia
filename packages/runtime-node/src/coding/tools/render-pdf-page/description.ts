@@ -11,7 +11,7 @@ When to use (visual judgments OCR cannot make)
 
 When NOT to use
   - You only need textual content of the page — use \`extract_text_from_pdf\` (faster, structured).
-  - You want to manipulate the PDF itself (merge / split / rotate / watermark / fill form) — use \`invoke_skill(name="pdf")\`.
+  - You want to manipulate the PDF itself (merge / split / rotate / watermark / fill form) — use a dedicated PDF capability.
   - Source is already an image file (.png/.jpg/...) — use \`read\` directly.
 
 Input

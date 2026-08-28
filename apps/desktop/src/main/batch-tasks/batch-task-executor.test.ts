@@ -115,16 +115,21 @@ describe("batch RuntimeHost consumer", () => {
 		expect(createSession).toHaveBeenCalledWith({
 			cwd: task.cwd,
 			sessionDir: join(project.id, ".vetta", "sessions"),
-			scenario: "batch",
-			agentMode: "work",
-			appendSystemPrompt: expect.stringContaining("## 批量任务上下文"),
+			agent: {
+				id: "coding-agent",
+				sessionConfiguration: {
+					scenario: "batch",
+					agentMode: "work",
+					systemPromptAddon: expect.stringContaining("## 批量任务上下文"),
+					enableBackgroundTasks: false,
+				},
+			},
 			executionMode: "full-access",
 			env: {
 				TMPDIR: join(task.cwd, ".tmp"),
 				TEMP: join(task.cwd, ".tmp"),
 				TMP: join(task.cwd, ".tmp"),
 			},
-			enableBackgroundTasks: false,
 		});
 		expect(prompt).toHaveBeenCalledWith("batch-session", {
 			text: project.prompt,

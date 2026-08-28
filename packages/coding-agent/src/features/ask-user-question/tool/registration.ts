@@ -1,11 +1,15 @@
-import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools";
+import type { ConversationScenario } from "../../../profiles/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../../runtime-contracts/index.js";
 import {
 	type AskUserQuestionToolInput,
 	type AskUserQuestionToolOptions,
 	createAskUserQuestionTool,
 } from "./ask-user-question-tool.js";
 
-export const ASK_USER_QUESTION_TOOL_SCOPES = ["conversation", "project"] as const satisfies readonly CodingToolScope[];
+export const ASK_USER_QUESTION_TOOL_SCOPES = [
+	"conversation",
+	"project",
+] as const satisfies readonly ConversationScenario[];
 export const ASK_USER_QUESTION_TOOL_REQUIRES = ["host:ask"] as const;
 export const ASK_USER_QUESTION_TOOL_CATEGORY = "agent-control" as const;
 
@@ -15,7 +19,7 @@ export interface AskUserQuestionToolRegistrationOptions extends AskUserQuestionT
 
 export function createAskUserQuestionToolRegistration(
 	options: AskUserQuestionToolRegistrationOptions,
-): CodingToolRegistration<AskUserQuestionToolInput> {
+): CodingAgentRuntimeToolRegistration<AskUserQuestionToolInput> {
 	const tool = createAskUserQuestionTool(options);
 	return {
 		tool: { ...tool, modelOrder: options.modelOrder },

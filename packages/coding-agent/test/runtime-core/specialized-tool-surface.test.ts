@@ -2,18 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Type } from "@sinclair/typebox";
-import {
-	DOC_TO_PDF_TOOL_CATEGORY,
-	DOC_TO_PDF_TOOL_SCOPES,
-	EXTRACT_TEXT_FROM_IMAGE_TOOL_CATEGORY,
-	EXTRACT_TEXT_FROM_IMAGE_TOOL_SCOPES,
-	EXTRACT_TEXT_FROM_PDF_TOOL_CATEGORY,
-	EXTRACT_TEXT_FROM_PDF_TOOL_SCOPES,
-	HTML_TO_PDF_TOOL_CATEGORY,
-	HTML_TO_PDF_TOOL_SCOPES,
-	RENDER_PDF_PAGE_TOOL_CATEGORY,
-	RENDER_PDF_PAGE_TOOL_SCOPES,
-} from "@vetta/runtime-node/coding";
+import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCodingAgentSpecializedToolRegistrations } from "../../src/composition/tool-surface/specialized-tools.js";
 import {
@@ -23,6 +12,7 @@ import {
 	type CodingAgentKnowledgeWriteOperations,
 } from "../../src/features/knowledge/index.js";
 import { PROGRESS_TOOL_CATEGORY, PROGRESS_TOOL_SCOPES } from "../../src/features/progress/index.js";
+import { ALL_SCENARIOS } from "../../src/profiles/index.js";
 import type { Skill } from "../../src/resources/skills/index.js";
 import { createCodingAgentInvokeSkillFeature } from "../../src/resources/skills/invoke-skill-feature.js";
 import type {
@@ -43,32 +33,20 @@ describe("Coding Agent specialized tool surface", () => {
 		const knowledgeOperations = createKnowledgeOperations();
 		const registrations = createCodingAgentSpecializedToolRegistrations({
 			platformRegistrations: [
-				platformRegistration("doc_to_pdf", DOC_TO_PDF_TOOL_SCOPES, DOC_TO_PDF_TOOL_CATEGORY),
-				platformRegistration("html_to_pdf", HTML_TO_PDF_TOOL_SCOPES, HTML_TO_PDF_TOOL_CATEGORY),
-				platformRegistration(
-					"extract_text_from_pdf",
-					EXTRACT_TEXT_FROM_PDF_TOOL_SCOPES,
-					EXTRACT_TEXT_FROM_PDF_TOOL_CATEGORY,
-				),
-				platformRegistration(
-					"extract_text_from_img",
-					EXTRACT_TEXT_FROM_IMAGE_TOOL_SCOPES,
-					EXTRACT_TEXT_FROM_IMAGE_TOOL_CATEGORY,
-				),
-				platformRegistration("render_pdf_page", RENDER_PDF_PAGE_TOOL_SCOPES, RENDER_PDF_PAGE_TOOL_CATEGORY),
+				platformRegistration("doc_to_pdf"),
+				platformRegistration("html_to_pdf"),
+				platformRegistration("extract_text_from_pdf"),
+				platformRegistration("extract_text_from_img"),
+				platformRegistration("render_pdf_page"),
 			],
 			knowledgePageWriter: knowledgeOperations,
 		});
 		expect(registrations.map(runtimeActivationDefinition)).toEqual([
-			toolContract("doc_to_pdf", DOC_TO_PDF_TOOL_SCOPES, DOC_TO_PDF_TOOL_CATEGORY),
-			toolContract("html_to_pdf", HTML_TO_PDF_TOOL_SCOPES, HTML_TO_PDF_TOOL_CATEGORY),
-			toolContract("extract_text_from_pdf", EXTRACT_TEXT_FROM_PDF_TOOL_SCOPES, EXTRACT_TEXT_FROM_PDF_TOOL_CATEGORY),
-			toolContract(
-				"extract_text_from_img",
-				EXTRACT_TEXT_FROM_IMAGE_TOOL_SCOPES,
-				EXTRACT_TEXT_FROM_IMAGE_TOOL_CATEGORY,
-			),
-			toolContract("render_pdf_page", RENDER_PDF_PAGE_TOOL_SCOPES, RENDER_PDF_PAGE_TOOL_CATEGORY),
+			toolContract("doc_to_pdf", ALL_SCENARIOS, "doc"),
+			toolContract("html_to_pdf", ALL_SCENARIOS, "doc"),
+			toolContract("extract_text_from_pdf", ALL_SCENARIOS, "doc"),
+			toolContract("extract_text_from_img", ALL_SCENARIOS, "doc"),
+			toolContract("render_pdf_page", ALL_SCENARIOS, "doc"),
 			toolContract("progress", PROGRESS_TOOL_SCOPES, PROGRESS_TOOL_CATEGORY),
 			toolContract(
 				"kb_write_page",
@@ -161,11 +139,7 @@ function createKnowledgeOperations(): CodingAgentKnowledgeWriteOperations {
 	};
 }
 
-function platformRegistration(
-	name: string,
-	scopeUse: CodingAgentRuntimeToolRegistration["scopeUse"],
-	category: CodingAgentRuntimeToolRegistration["category"],
-): CodingAgentRuntimeToolRegistration {
+function platformRegistration(name: string): CodingToolRegistration {
 	return {
 		tool: {
 			name,
@@ -174,8 +148,6 @@ function platformRegistration(
 			inputSchema: Type.Object({}),
 			execute: async () => ({ content: [{ type: "text", text: "ok" }] }),
 		},
-		scopeUse,
-		category,
 	};
 }
 

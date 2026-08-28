@@ -388,10 +388,6 @@ export class RuntimeHost implements SessionFacade {
 		await this.sessionOperations.updateSettings(sessionId, partialSettings);
 	}
 
-	setSessionAgentMode(sessionId: string, mode: string | undefined): void {
-		this.sessionOperations.setSessionAgentMode(sessionId, mode);
-	}
-
 	setSessionThinkingLevel(sessionId: string, level: ThinkingLevel): void {
 		this.sessionOperations.setSessionThinkingLevel(sessionId, level);
 	}
@@ -539,7 +535,7 @@ export class RuntimeHost implements SessionFacade {
 	/**
 	 * Read a session .jsonl directly from disk and translate to HistoryEntry[].
 	 * Does NOT acquire the session-file lock — used by the desktop sidebar's
-	 * read-only viewer for IM sessions where the sidecar may be actively
+	 * read-only viewer for sessions whose sidecar may be actively
 	 * writing to the same file.
 	 */
 	readSessionHistoryFromFile(path: string): { history: HistoryEntry[] } {

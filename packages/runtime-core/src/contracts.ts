@@ -4,18 +4,9 @@ import type { ContextCompositionReport } from "./context-composition/contracts.j
 import type { RuntimeFailure, RuntimeFailureDetails, RuntimeFailureOrigin } from "./failure-contract.js";
 import type { SessionExtensionEndpointToken, SessionExtensionObservation } from "./session-extensions/contracts.js";
 
-/** 对话场景 slug；RuntimeHost 与 Coding Profile 共享的稳定隔离轴。 */
-export type ConversationScenario =
-	| "im-claw"
-	| "conversation"
-	| "project"
-	| "batch"
-	| "automation"
-	| "kb-processing"
-	| "cli";
-
 export interface PromptResourceRef {
-	kind: "skill" | "scene";
+	/** Extension-owned resource discriminator. Runtime keeps it opaque. */
+	kind: string;
 	name: string;
 }
 
@@ -24,7 +15,7 @@ export interface PromptAttachmentRef {
 	path: string;
 }
 
-export type RuntimeEventSource = "runtime-core" | "agent" | "tool" | "mcp";
+export type RuntimeEventSource = "runtime-core" | "agent" | "tool" | "extension";
 
 export interface SessionEventBase {
 	schemaVersion: 1;
@@ -132,30 +123,6 @@ export interface ToolEndEvent extends SessionEventBase {
 	phases: ToolPhase[];
 }
 
-export interface McpStatusEvent extends SessionEventBase {
-	type: "mcp.status";
-	status: "connected" | "degraded" | "disconnected";
-	details?: string;
-}
-
-/**
- * MCP 懒重载启动：用户提交 prompt 时检测到 mcp.json 变化，开始 diff-reload。
- * UI 可据此显示一个轻提示，不应阻塞用户。
- */
-export interface McpReloadStartEvent extends SessionEventBase {
-	type: "mcp.reload.start";
-}
-
-/**
- * MCP 懒重载结束。changed=false 表示真正的工具集合没变（少见，比如 stop/start
- * 后服务器输出相同 tools），UI 一般什么都不用显示；errorMessage 仅在异常时存在。
- */
-export interface McpReloadEndEvent extends SessionEventBase {
-	type: "mcp.reload.end";
-	changed: boolean;
-	errorMessage?: string;
-}
-
 export interface UsageUpdateEvent extends SessionEventBase {
 	type: "usage.update";
 	input: number;
@@ -216,60 +183,6 @@ export interface RetryEndEvent extends SessionEventBase {
 
 export interface SessionExtensionEvent extends SessionEventBase, SessionExtensionObservation {}
 
-/** 后台 bash 任务（run_in_background）的可序列化状态，随事件全量推送。 */
-export interface BackgroundTaskInfo {
-	id: string;
-	command: string;
-	cwd: string;
-	status: "running" | "completed" | "failed" | "killed";
-	outputFile: string;
-	exitCode: number | undefined;
-	startedAt: number;
-	endedAt?: number;
-	toolCallId?: string;
-	/** 输出尾部（约 2KB），用于 UI 实时滚动显示。 */
-	tail: string;
-	/** status 为 killed 时，记录终止来源（user / agent / dispose）。 */
-	endedBy?: "user" | "agent" | "dispose";
-}
-
-export interface BackgroundTasksUpdateEvent extends SessionEventBase {
-	type: "background_tasks_update";
-	tasks: BackgroundTaskInfo[];
-}
-
-/** Subagent child snapshot (full list on each update; mirrors background_tasks_update). */
-export interface SubagentInfo {
-	id: string;
-	taskName: string;
-	path: string;
-	agentType: string;
-	status: "queued" | "pending" | "running" | "completed" | "failed" | "interrupted";
-	task: string;
-	parentSessionId: string;
-	sessionFile?: string;
-	startedAt: number;
-	endedAt?: number;
-	finalText?: string;
-	errorMessage?: string;
-	generation: number;
-	/** Human-readable one-line summary for UI display. */
-	title?: string;
-	/** Aggregate child usage when the producing host supports it. Optional for replay compatibility. */
-	usage?: {
-		input: number;
-		output: number;
-		cacheRead: number;
-		cacheWrite: number;
-		costTotal: number;
-	};
-}
-
-export interface SubagentsUpdateEvent extends SessionEventBase {
-	type: "subagents_update";
-	agents: SubagentInfo[];
-}
-
 /**
  * 会话激活工具集发生变化（插件在会话创建之后才注册/注销工具时触发）。
  * renderer 据此刷新输入栏 badge 的 `requiresActiveTool` 闸门——否则打开会话那一刻
@@ -319,14 +232,9 @@ export type SessionEvent =
 	| ToolUpdateEvent
 	| ToolPhaseEvent
 	| ToolEndEvent
-	| McpStatusEvent
-	| McpReloadStartEvent
-	| McpReloadEndEvent
 	| UsageUpdateEvent
 	| ErrorEvent
 	| SessionExtensionEvent
-	| BackgroundTasksUpdateEvent
-	| SubagentsUpdateEvent
 	| ActiveToolsUpdateEvent
 	| CompactionStartEvent
 	| CompactionEndEvent
@@ -380,18 +288,6 @@ export interface SessionStateSnapshot {
 	contextComposition?: ContextCompositionReport;
 	/** 当前激活（模型可见）的工具名集合。renderer 据此让输入栏 badge 跟随工具 scope。 */
 	activeToolNames: string[];
-	/**
-	 * 本会话的对话场景。renderer 据此让会话页插槽（活动面板插件标签卡 / 输入栏插件 toggle）
-	 * 按对话类型显隐——与工具 scope_use 同一套场景轴。缺省（未显式传入）时为
-	 * coding-agent 的 DEFAULT_SCENARIO（"cli"）。
-	 */
-	scenario: ConversationScenario;
-	/**
-	 * 本会话的工作模式，创建时固化、会话内不可变（见 ADR-0046 修订）。renderer 据此按
-	 * 本会话而非全局默认值渲染；改新会话默认模式不影响已打开的会话。
-	 * undefined = 未指定（CLI/headless 缺省，不做任何模式偏向）。
-	 */
-	agentMode?: string;
 	/** Parent session jsonl path when this session was forked. */
 	parentSessionPath?: string;
 	/** User entry id in the parent session this fork was created from. */
@@ -452,39 +348,15 @@ export interface SessionConfig {
 	thinkingLevel?: ThinkingLevel;
 	executionMode?: SessionExecutionMode;
 	/**
-	 * 对话场景：决定按 scope_use 激活哪些工具（隔离的唯一轴）。不传则用 coding-agent 的
-	 * DEFAULT_SCENARIO("cli")。desktop 各入口（普通对话/项目/批量/自动化）显式传入。
-	 */
-	scenario?: ConversationScenario;
-	/**
-	 * 工作模式（agent_mode 轴）。会话创建时固化、会话内不可变；只作为任务解释的先验注入
-	 * mode 系统提示词，不影响任何工具/Skill/MCP/插件的可用性与顺序（ADR-0071）。
-	 * desktop 从 desktop-config 的 defaultAgentMode 读入，缺省 = 不做任何模式偏向。
-	 */
-	agentMode?: string;
-	/** 追加到 system prompt 末尾的文本，不会被上下文压缩 */
-	appendSystemPrompt?: string;
-	/**
 	 * 注入到 bash/shell 工具子进程的环境变量覆盖层（如 TMPDIR/TEMP/TMP）。
 	 * 仅对该 session 内的命令执行生效；不传则行为等同旧版。
 	 */
 	env?: Record<string, string>;
-	/**
-	 * 是否启用后台 bash 任务（run_in_background）。默认 true。
-	 * 按 session 生命周期编排执行的宿主场景（如批量任务）应置 false，
-	 * 避免 agent 提前结束而进程仍在跑、完成通知凭空唤醒新 turn 干扰队列判定。
-	 */
-	enableBackgroundTasks?: boolean;
-	/**
-	 * 是否发现通用 Agent Skill 目录（`~/.agents/skills`、`<cwd>/.agents/skills`）。默认 true。
-	 * desktop「适配通用 Agent Skill」开关关闭时置 false。
-	 */
-	includeAgentSkills?: boolean;
 }
 
 export interface PromptRequest {
 	text: string;
-	/** Structured Skill / Scene selection. Kept separate from user-visible prompt text. */
+	/** Structured extension resource selection. Kept separate from prompt text. */
 	promptRef?: PromptResourceRef;
 	/** Absolute filesystem references attached to this turn. Read by the agent on demand. */
 	attachments?: PromptAttachmentRef[];
@@ -501,11 +373,6 @@ export interface PromptRequest {
 	/**
 	 * Per-turn metadata bag carried alongside the prompt. Not sent to the model
 	 * as content; consumed host-side / by the input pipeline. Opaque pass-through.
-	 * Known keys (coding-agent):
-	 * - `{ pluginInstructions: string[] }` — hidden per-turn instructions
-	 *   contributed by active plugins.
-	 * - `{ knowledgeMode: true }` — hard isolation: exposes kb-read tools + hidden
-	 *   knowledge-prefer instruction; without it those tools are stripped per turn.
 	 */
 	metadata?: Record<string, unknown>;
 }
@@ -571,13 +438,9 @@ export type HistoryEntry =
 			message: string;
 			timestamp: string;
 	  }
-	/**
-	 * Marker that the next user message was sent via Settings AI assist
-	 * (model-only instruction custom message precedes it). UI-only; not LLM content.
-	 * tabId identifies the settings page for the badge label (e.g. "mcp" →「MCP配置协助」).
-	 */
-	| { type: "settings_assist_marker"; tabId?: string; timestamp: string }
-	/** Marker that the next user message was sent with a structured Skill / Scene reference. */
+	/** Opaque marker projected from a custom conversation record for host-side interpretation. */
+	| { type: "custom_marker"; customType: string; details?: unknown; timestamp: string }
+	/** Marker that the next user message carried a structured extension resource reference. */
 	| { type: "prompt_ref_marker"; promptRef: PromptResourceRef; timestamp: string }
 	/** Marker that the next user message was sent with structured filesystem attachments. */
 	| { type: "prompt_attachments_marker"; attachments: PromptAttachmentRef[]; timestamp: string }
@@ -618,9 +481,8 @@ export interface SessionFacade {
 	/**
 	 * Read a session .jsonl directly from disk and translate to
 	 * HistoryEntry[] without acquiring the session-file lock. Used by the
-	 * desktop sidebar's read-only viewer for sessions written by other
-	 * processes (e.g. IM gateway). The caller infers whether the session
-	 * is IM-owned from the path (it lives under the IM conversation cwd).
+	 * desktop sidebar's read-only viewer for sessions written by another
+	 * process or storage owner.
 	 */
 	readSessionHistoryFromFile(path: string): { history: HistoryEntry[] };
 	/**

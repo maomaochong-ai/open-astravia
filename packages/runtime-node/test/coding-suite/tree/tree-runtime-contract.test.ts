@@ -2,10 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	createTreeTool,
 	createTreeToolRegistration,
-	selectCodingToolsForScope,
-	TREE_TOOL_CATEGORY,
 	TREE_TOOL_DESCRIPTION,
-	TREE_TOOL_SCOPES,
 	type TreeOperations,
 	TreeToolInputSchema,
 } from "../../../src/coding/index.js";
@@ -68,7 +65,7 @@ function runtimeRequest(input: {
 }
 
 describe("runtime tree tool", () => {
-	it("keeps the public definition, registration metadata, and full default scope", () => {
+	it("keeps the public runtime definition", () => {
 		const runtime = createTreeToolRegistration(process.cwd(), { operations: createOperations().runtime });
 		expect(runtime.tool).toMatchObject({
 			name: "dir_tree",
@@ -76,11 +73,6 @@ describe("runtime tree tool", () => {
 			description: TREE_TOOL_DESCRIPTION,
 			inputSchema: TreeToolInputSchema,
 		});
-		expect(runtime.scopeUse).toEqual(TREE_TOOL_SCOPES);
-		expect(runtime.category).toBe(TREE_TOOL_CATEGORY);
-		for (const scope of TREE_TOOL_SCOPES) {
-			expect(selectCodingToolsForScope([runtime], scope)).toEqual([runtime.tool]);
-		}
 	});
 
 	it("preserves hierarchy, sorting, child counts, node tags, and fd arguments", async () => {

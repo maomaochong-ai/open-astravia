@@ -1,9 +1,13 @@
+import { readCodingAgentBackgroundTasksObservation } from "@vetta/coding-agent/session-extensions";
 import type { SessionEvent } from "@vetta/runtime-core";
+import type { BackgroundCommandSnapshot } from "@vetta/runtime-tools";
 import { getPetActionsByGroup, type PetActionGroupId, type PetActionId } from "../../shared/pet-actions.js";
 import type { PetBubbleNotice } from "../../shared/pet-ipc.js";
 
 type SessionLifecyclePhase = Extract<SessionEvent, { type: "session.lifecycle" }>["phase"];
-type BackgroundTasksEvent = Extract<SessionEvent, { type: "background_tasks_update" }>;
+interface BackgroundTasksEvent {
+	readonly tasks: readonly BackgroundCommandSnapshot[];
+}
 
 interface PetActionIntent {
 	readonly groupId: PetActionGroupId;
@@ -182,10 +186,10 @@ const sessionPetActionRules: readonly SessionPetActionRule[] = [
 	},
 	{
 		name: "background-tasks",
-		resolve: (event) =>
-			event.type === "background_tasks_update"
-				? (BACKGROUND_TASK_INTENTS.find((rule) => rule.matches(event))?.intent ?? null)
-				: null,
+		resolve: (event) => {
+			const tasks = readCodingAgentBackgroundTasksObservation(event);
+			return tasks ? (BACKGROUND_TASK_INTENTS.find((rule) => rule.matches({ tasks }))?.intent ?? null) : null;
+		},
 	},
 	{
 		name: "tool-description",

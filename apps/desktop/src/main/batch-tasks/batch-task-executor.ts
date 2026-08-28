@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { AssistantMessage, Message, StopReason } from "@vetta/ai";
+import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
 import type { RuntimeHost, SessionExecutionMode } from "@vetta/runtime-core";
 import { monitorRuntimeSession, recordBatchRunStarted } from "../app-monitor/app-monitor-service.js";
 import { resolveExecutionMode } from "../execution-mode.js";
@@ -481,21 +482,23 @@ async function runTaskInner(
 			const result = await runtime.createSession({
 				cwd: task.cwd,
 				sessionDir,
-				scenario: "batch",
-				// 显式固化为 work：批量任务是 work 产品线的会话形态，不传则执行时没有
-				// mode 提示词、事后打开会话时 UI 又按 work 回退渲染，执行与展示割裂。
-				agentMode: "work",
-				appendSystemPrompt: taskSystemPrompt,
+				agent: createCodingAgentRuntimeSessionSelection({
+					scenario: "batch",
+					// 显式固化为 work：批量任务是 work 产品线的会话形态，不传则执行时没有
+					// mode 提示词、事后打开会话时 UI 又按 work 回退渲染，执行与展示割裂。
+					agentMode: "work",
+					systemPromptAddon: taskSystemPrompt,
+					// 批量任务按 session 结束判定子任务完成并调度并发队列：后台任务会让
+					// agent 提前 agent_end 而进程仍在跑，完成通知又会凭空唤醒新 turn，
+					// 干扰队列对「任务完成」的判定，故禁用。
+					enableBackgroundTasks: false,
+				}),
 				executionMode: mode,
 				env: {
 					TMPDIR: taskTmpDir,
 					TEMP: taskTmpDir,
 					TMP: taskTmpDir,
 				},
-				// 批量任务按 session 结束判定子任务完成并调度并发队列：后台任务会让
-				// agent 提前 agent_end 而进程仍在跑，完成通知又会凭空唤醒新 turn，
-				// 干扰队列对「任务完成」的判定，故禁用。
-				enableBackgroundTasks: false,
 			});
 			sessionId = result.sessionId;
 			sessionPath = runtime.getSessionPath(sessionId);

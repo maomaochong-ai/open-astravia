@@ -1,8 +1,10 @@
 import { join } from "node:path";
-import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
+import type {
+	CodingAgentRuntimeComposition,
+	CodingAgentRuntimeToolRegistration,
+} from "@vetta/coding-agent/composition";
 import type { RpcSessionInitialization, RpcSessionState } from "@vetta/coding-agent/rpc";
 import type { RuntimeHostSession, SessionEvent } from "@vetta/runtime-core";
-import type { CodingToolRegistration } from "@vetta/runtime-node/coding";
 import { resolveSessionIdFromPath } from "@vetta/runtime-node/conversation";
 import { describe, expect, test, vi } from "vitest";
 import { type CreateImRpcSessionAdapterOptions, createImRpcSessionAdapter } from "../src/rpc/rpc-session-adapter.js";
@@ -324,7 +326,7 @@ function createAdapterFixture(
 	let sessionPath = "session-1.conversation.jsonl";
 	let listener: ((event: SessionEvent) => void) | undefined;
 	const flushMemory = vi.fn(async () => 4);
-	const register = vi.fn<(registration: CodingToolRegistration) => void>();
+	const register = vi.fn<(registration: CodingAgentRuntimeToolRegistration) => void>();
 	const unregister = vi.fn(() => true);
 	const disposeSession = vi.fn(async () => {});
 	const disposeRuntime = vi.fn(async () => {});
@@ -371,7 +373,7 @@ function createAdapterFixture(
 	} as unknown as RuntimeHostSession;
 	const runtime = {
 		scenario,
-		tools: { registry: { register, unregister } },
+		tools: { registerTool: register, unregisterTool: unregister },
 		flushMemory,
 		dispose: disposeRuntime,
 	} as unknown as CodingAgentRuntimeComposition;
@@ -388,7 +390,7 @@ function createAdapterFixture(
 		tool: { name: "im_send_attachment" },
 		scopeUse: ["im-claw"],
 		category: "im",
-	} as unknown as CodingToolRegistration;
+	} as unknown as CodingAgentRuntimeToolRegistration;
 	const resourceLoader = {
 		getPrompts: () => ({
 			prompts: [

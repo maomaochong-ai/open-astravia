@@ -59,7 +59,7 @@ const GROUP_ORDER: readonly ContextRingDetailGroupKind[] = [
 	"runtime",
 ];
 
-const CAPABILITY_OWNERS = new Set<ContextSourceOwner>(["skill", "plugin", "mcp", "extension"]);
+const CAPABILITY_OWNERS = new Set<ContextSourceOwner>(["extension"]);
 
 export function buildContextRingDetails(
 	report: ContextCompositionReport | undefined,

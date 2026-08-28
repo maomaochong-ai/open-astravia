@@ -51,6 +51,7 @@ import {
 	createNodeResultArtifactStorage,
 	NodeTextFileStorage,
 } from "@vetta/runtime-node/host";
+import { createCliImHostFunctionSource } from "./cli-session-function-source.js";
 import {
 	createCliCodingAgentSessionExecutionEnvironmentFactory,
 	createCliCodingAgentToolEnvironmentFactory,
@@ -121,6 +122,10 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 		resultPolicy: mcpToolResultPolicy,
 	});
 	const rollback = new InitializationRollbackScope();
+	const sessionFunctions = options.backend === "im" ? createCliImHostFunctionSource() : undefined;
+	if (sessionFunctions) {
+		rollback.defer({ id: "session-extension-functions", rollback: () => sessionFunctions.dispose() });
+	}
 	const dismissMcpRollback = rollback.defer({
 		id: "managed-mcp-source",
 		rollback: () => managedMcpSource.dispose(),
@@ -178,6 +183,7 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 			resolveCompactionSettings: () => bootstrap.settingsManager.getCompactionSettings(),
 			createCompactionExtensionRuntime: () =>
 				createCodingAgentCompactionExtensionRuntime(() => extensionSessionHost?.readRunner()),
+			sessionExtensionFunctions: sessionFunctions?.source,
 			createPluginRuntime: options.createPluginRuntime,
 			extensionTools: bootstrap.extensionsResult.extensions,
 			createPluginMcpRuntime: ({ cwd, agentDir }) =>
@@ -346,7 +352,13 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 			runtimeHost,
 			sessionHost,
 			extensionSessionHost,
-			dispose: () => sessionHost.dispose(),
+			dispose: async () => {
+				try {
+					await sessionHost.dispose();
+				} finally {
+					sessionFunctions?.dispose();
+				}
+			},
 		};
 	} catch (error) {
 		return rollback.rollback(error, CLI_RUNTIME_HOST_STARTUP_FAILURE);
@@ -359,10 +371,13 @@ function toRuntimeHostSessionConfig(
 	scenario: CodingAgentRuntimeComposition["scenario"],
 	sessionPath?: string,
 ) {
-	return createCodingAgentRuntimeHostSessionConfig(runtime.agentRuntime, options, {
-		...(sessionPath ? { sessionPath } : {}),
-		scenario,
-	});
+	return createCodingAgentRuntimeHostSessionConfig(
+		runtime.agentRuntime,
+		{ ...options, scenario },
+		{
+			...(sessionPath ? { sessionPath } : {}),
+		},
+	);
 }
 
 function resolvePositiveInteger(value: string | undefined): number | undefined {

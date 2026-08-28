@@ -1,10 +1,8 @@
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import {
-	type CodingToolRegistration,
-	type CodingToolScope,
-	ToolCallDescriptionSchema,
-} from "@vetta/runtime-tools/coding";
+import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
+import type { ConversationScenario } from "../../profiles/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import type { CodingAgentKnowledgeQueryOperations } from "./contracts.js";
 
 export const CODING_AGENT_KNOWLEDGE_LIST_TAGS_TOOL_DESCRIPTION = `List every tag that exists in the knowledge base, each with the number of wiki pages carrying it (orphaned pages excluded), sorted by page count.
@@ -33,7 +31,7 @@ export const CODING_AGENT_KNOWLEDGE_LIST_TAGS_TOOL_SCOPES = [
 	"automation",
 	"kb-processing",
 	"cli",
-] as const satisfies readonly CodingToolScope[];
+] as const satisfies readonly ConversationScenario[];
 export const CODING_AGENT_KNOWLEDGE_LIST_TAGS_TOOL_REQUIRES = ["knowledge"] as const;
 export const CODING_AGENT_KNOWLEDGE_LIST_TAGS_TOOL_CATEGORY = "kb-read";
 
@@ -59,7 +57,7 @@ function createCodingAgentKnowledgeListTagsTool(
 
 export function createCodingAgentKnowledgeListTagsToolRegistration(
 	options: CodingAgentKnowledgeListTagsToolOptions,
-): CodingToolRegistration<CodingAgentKnowledgeListTagsToolInput> {
+): CodingAgentRuntimeToolRegistration<CodingAgentKnowledgeListTagsToolInput> {
 	const tool = createCodingAgentKnowledgeListTagsTool(options);
 	return {
 		tool: { ...tool, modelOrder: options.modelOrder },
@@ -67,5 +65,6 @@ export function createCodingAgentKnowledgeListTagsToolRegistration(
 		requires: CODING_AGENT_KNOWLEDGE_LIST_TAGS_TOOL_REQUIRES,
 		modelOrder: options.modelOrder,
 		category: CODING_AGENT_KNOWLEDGE_LIST_TAGS_TOOL_CATEGORY,
+		availabilityPolicy: "knowledge-runtime",
 	};
 }

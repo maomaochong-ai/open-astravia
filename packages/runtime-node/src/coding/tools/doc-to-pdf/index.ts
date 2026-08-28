@@ -8,8 +8,4 @@ export {
 	DocToPdfToolInputSchema,
 	type DocToPdfToolOptions,
 } from "./doc-to-pdf-tool.js";
-export {
-	createDocToPdfToolRegistration,
-	DOC_TO_PDF_TOOL_CATEGORY,
-	DOC_TO_PDF_TOOL_SCOPES,
-} from "./registration.js";
+export { createDocToPdfToolRegistration } from "./registration.js";

@@ -1,11 +1,12 @@
-import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools/coding";
+import type { ConversationScenario } from "../../../../profiles/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../../../runtime-contracts/index.js";
 import { createSendMessageTool, type SendMessageToolInput, type SendMessageToolOptions } from "./send-message-tool.js";
 
 export const SEND_MESSAGE_TOOL_SCOPES = [
 	"conversation",
 	"project",
 	"cli",
-] as const satisfies readonly CodingToolScope[];
+] as const satisfies readonly ConversationScenario[];
 export const SEND_MESSAGE_TOOL_CATEGORY = "agent-control" as const;
 
 export interface SendMessageToolRegistrationOptions extends SendMessageToolOptions {
@@ -14,7 +15,7 @@ export interface SendMessageToolRegistrationOptions extends SendMessageToolOptio
 
 export function createSendMessageToolRegistration(
 	options: SendMessageToolRegistrationOptions,
-): CodingToolRegistration<SendMessageToolInput> {
+): CodingAgentRuntimeToolRegistration<SendMessageToolInput> {
 	return {
 		tool: { ...createSendMessageTool(options), modelOrder: options.modelOrder },
 		scopeUse: SEND_MESSAGE_TOOL_SCOPES,

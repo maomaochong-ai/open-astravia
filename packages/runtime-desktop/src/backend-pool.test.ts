@@ -7,10 +7,13 @@ import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
 import {
 	type CodingAgentRuntimeCompositionOptions,
 	createCodingAgentRuntimeComposition,
+	createCodingAgentRuntimeSessionSelection,
 } from "@vetta/coding-agent/composition";
 import type { EcosystemHookAdapterFactory } from "@vetta/coding-agent/hooks";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import { RuntimeHost, RuntimeObservationHub } from "@vetta/runtime-core";
+import type { ConversationScenario } from "@vetta/coding-agent/profile";
+import { CODING_AGENT_SESSION_PROFILE_STATE_READ } from "@vetta/coding-agent/session-extensions";
+import { RuntimeHost as BaseRuntimeHost, RuntimeObservationHub, type SessionConfig } from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import { createInMemoryConversationPersistence } from "@vetta/runtime-node/conversation";
 import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
@@ -20,6 +23,41 @@ import { DesktopRuntimeSessionCatalog } from "./session-catalog.js";
 
 /** `getAgentDir()` 的环境变量开关；缺省会话落点由它决定，测试不得写进真实 `~/.vetta/agent`。 */
 const AGENT_DIR_ENV = "VETTA_CODING_AGENT_DIR";
+
+interface CodingAgentTestSessionConfig extends SessionConfig {
+	readonly scenario?: ConversationScenario;
+	readonly agentMode?: string;
+	readonly appendSystemPrompt?: string;
+	readonly enableBackgroundTasks?: boolean;
+	readonly includeAgentSkills?: boolean;
+}
+
+class RuntimeHost extends BaseRuntimeHost {
+	override createSession(config: CodingAgentTestSessionConfig = {}) {
+		const {
+			scenario = "cli",
+			agentMode,
+			appendSystemPrompt,
+			enableBackgroundTasks,
+			includeAgentSkills,
+			...runtimeConfig
+		} = config;
+		return super.createSession({
+			...runtimeConfig,
+			agent: createCodingAgentRuntimeSessionSelection(
+				{
+					sessionId: config.sessionId,
+					scenario,
+					agentMode,
+					systemPromptAddon: appendSystemPrompt,
+					enableBackgroundTasks,
+					includeAgentSkills,
+				},
+				config.agent,
+			),
+		});
+	}
+}
 
 function resolveTestSystemPromptOptions() {
 	return { customPrompt: "Test system prompt", scenario: "batch" as const };
@@ -82,8 +120,14 @@ describe("DesktopRuntimeBackendPool", () => {
 		expect(runtime.getState(first.sessionId).sessionId).toBe(first.sessionId);
 		expect(runtime.getState(sameScope.sessionId).sessionId).toBe(sameScope.sessionId);
 		expect(runtime.getState(second.sessionId).sessionId).toBe(second.sessionId);
-		expect(runtime.getState(first.sessionId).scenario).toBe("batch");
-		expect(runtime.getState(second.sessionId).scenario).toBe("automation");
+		expect(
+			runtime.invokeSessionExtensionSync(first.sessionId, CODING_AGENT_SESSION_PROFILE_STATE_READ, undefined)
+				.scenario,
+		).toBe("batch");
+		expect(
+			runtime.invokeSessionExtensionSync(second.sessionId, CODING_AGENT_SESSION_PROFILE_STATE_READ, undefined)
+				.scenario,
+		).toBe("automation");
 	});
 
 	it("uses the RuntimeHost publisher as the sole Coding Agent observation upstream", async () => {

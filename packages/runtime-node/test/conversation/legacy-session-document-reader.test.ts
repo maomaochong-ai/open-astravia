@@ -46,9 +46,19 @@ describe("LegacySessionDocumentReader", () => {
 		]);
 		const legacyDocument = parseCodingAgentLegacySessionDocument(`${content}{bad json\n`);
 		const allEntries = [...legacyDocument.entries];
-		const expected = entriesToHistory(branchFromFileEntries([legacyDocument.header, ...allEntries]), {
+		const productHistory = entriesToHistory(branchFromFileEntries([legacyDocument.header, ...allEntries]), {
 			allEntries,
 		});
+		const expected = productHistory.map((entry) =>
+			entry.type === "prompt_ref_marker"
+				? {
+						type: "custom_marker" as const,
+						customType: "skill_expansion",
+						details: { promptRef: entry.promptRef },
+						timestamp: entry.timestamp,
+					}
+				: entry,
+		);
 
 		const document = parseLegacySessionDocument(`${content}{bad json\n`);
 

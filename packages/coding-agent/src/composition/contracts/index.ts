@@ -35,7 +35,9 @@ export type {
 export type { CodingAgentRuntimeHostRetrySettings } from "./runtime-host.js";
 export {
 	type CodingAgentInitialTodoLockSource,
+	type CodingAgentRuntimeSessionConfiguration,
 	type CodingAgentRuntimeSessionOptions,
+	parseCodingAgentRuntimeSessionConfiguration,
 	requireCodingAgentRuntimeSessionOptions,
 } from "./runtime-session-options.js";
 export type {

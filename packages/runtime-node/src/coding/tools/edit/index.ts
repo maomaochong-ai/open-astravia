@@ -6,11 +6,7 @@ export type {
 	EditToolOptions,
 } from "./edit-contracts.js";
 export { createEditTool } from "./edit-tool.js";
-export {
-	createEditToolRegistration,
-	EDIT_TOOL_CATEGORY,
-	EDIT_TOOL_SCOPES,
-} from "./registration.js";
+export { createEditToolRegistration } from "./registration.js";
 export {
 	type AnchorEditInput,
 	AnchorEditInputSchema,

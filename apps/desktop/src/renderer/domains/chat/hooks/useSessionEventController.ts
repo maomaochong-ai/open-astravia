@@ -13,7 +13,6 @@ import {
 	promptPredictingAtom,
 	promptSuggestionsAtom,
 	retryProgressAtom,
-	type SubagentTask,
 	subagentsBySessionAtom,
 	todoItemsBySessionAtom,
 } from "@shared/store/atoms";
@@ -26,6 +25,9 @@ import {
 	setQueuePausedAtom,
 } from "@shared/store/message-queue-atoms";
 import {
+	isCodingAgentMcpReloadStarted,
+	readCodingAgentBackgroundTasksObservation,
+	readCodingAgentMcpReloadFinished,
 	readCodingAgentSubagentsObservation,
 	readCodingAgentTodoObservation,
 } from "@vetta/coding-agent/session-extensions";
@@ -439,52 +441,6 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				return;
 			}
 
-			// ── MCP lazy reload (on prompt) ──
-			if (event.type === "mcp.reload.start") {
-				setIsReloadingMcp(true);
-				return;
-			}
-			if (event.type === "mcp.reload.end") {
-				setIsReloadingMcp(false);
-				return;
-			}
-
-			// ── Background tasks update (run_in_background) ──
-			if (event.type === "background_tasks_update") {
-				const sid = activeSessionRef.current?.runtimeId;
-				if (sid) {
-					const tasks = ((event as { tasks?: unknown[] }).tasks ?? []) as BackgroundTask[];
-					setBackgroundTasks((prev) => {
-						const next = new Map(prev);
-						if (tasks.length > 0) {
-							next.set(sid, tasks);
-						} else {
-							next.delete(sid);
-						}
-						return next;
-					});
-				}
-				return;
-			}
-
-			// ── Subagents update (explorer children, etc.) ──
-			if (event.type === "subagents_update") {
-				const sid = activeSessionRef.current?.runtimeId;
-				if (sid) {
-					const agents = ((event as { agents?: unknown[] }).agents ?? []) as SubagentTask[];
-					setSubagents((prev) => {
-						const next = new Map(prev);
-						if (agents.length > 0) {
-							next.set(sid, agents);
-						} else {
-							next.delete(sid);
-						}
-						return next;
-					});
-				}
-				return;
-			}
-
 			// ── 激活工具集变化（插件在会话创建之后才注册工具）──
 			// openSession 时拿到的 getState 快照可能早于插件 activate，不刷新的话
 			// 输入栏 badge 的 requiresActiveTool 闸门会一直按旧集合隐藏。
@@ -497,6 +453,27 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 
 			// ── Coding Agent product extension updates ──
 			if (event.type === "session.extension") {
+				if (isCodingAgentMcpReloadStarted(event)) {
+					setIsReloadingMcp(true);
+					return;
+				}
+				if (readCodingAgentMcpReloadFinished(event)) {
+					setIsReloadingMcp(false);
+					return;
+				}
+				const backgroundTasks = readCodingAgentBackgroundTasksObservation(event);
+				if (backgroundTasks) {
+					const sid = activeSessionRef.current?.runtimeId;
+					if (sid) {
+						setBackgroundTasks((prev) => {
+							const next = new Map(prev);
+							if (backgroundTasks.length > 0) next.set(sid, [...backgroundTasks] as BackgroundTask[]);
+							else next.delete(sid);
+							return next;
+						});
+					}
+					return;
+				}
 				const subagents = readCodingAgentSubagentsObservation(event);
 				if (subagents) {
 					const sid = activeSessionRef.current?.runtimeId;

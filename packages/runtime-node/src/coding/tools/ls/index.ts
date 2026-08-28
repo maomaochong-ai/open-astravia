@@ -8,8 +8,4 @@ export {
 	LsToolInputSchema,
 	type LsToolOptions,
 } from "./ls-tool.js";
-export {
-	createLsToolRegistration,
-	LS_TOOL_CATEGORY,
-	LS_TOOL_SCOPES,
-} from "./registration.js";
+export { createLsToolRegistration } from "./registration.js";

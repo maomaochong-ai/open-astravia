@@ -16,13 +16,14 @@ import { createFindToolRegistration } from "./tools/find/index.js";
 import { createGlobToolRegistration } from "./tools/glob/index.js";
 import { createGrepToolRegistration } from "./tools/grep/index.js";
 import { createLsToolRegistration } from "./tools/ls/index.js";
-import { createReadToolRegistration } from "./tools/read/index.js";
+import { createReadToolRegistration, type ReadToolOptions } from "./tools/read/index.js";
 import { createShellToolRegistration } from "./tools/shell/index.js";
 import { createTreeToolRegistration } from "./tools/tree/index.js";
 import { createWriteToolRegistration, type WritePathPolicy } from "./tools/write/index.js";
 
 export interface NodeCodingToolEnvironmentOptions {
 	readonly cwd: string;
+	readonly platform?: NodeJS.Platform;
 	readonly foregroundCommand?: ForegroundCommandExecutorOptions;
 	readonly backgroundCommandHost?: BackgroundCommandHost;
 	readonly backgroundService?: BackgroundCommandService;
@@ -31,10 +32,12 @@ export interface NodeCodingToolEnvironmentOptions {
 	readonly editPathPolicy: EditPathPolicy;
 	readonly writePathPolicy: WritePathPolicy;
 	readonly configurationSource?: RuntimeConfigurationSnapshotSource;
+	readonly readOptions?: Pick<ReadToolOptions, "binaryContentHint" | "preserveFullText">;
 }
 
 export interface NodeCommandToolEnvironmentOptions {
 	readonly cwd: string;
+	readonly platform?: NodeJS.Platform;
 	readonly foregroundCommand?: ForegroundCommandExecutorOptions;
 	readonly backgroundCommandHost?: BackgroundCommandHost;
 	readonly backgroundService?: BackgroundCommandService;
@@ -85,8 +88,9 @@ export function createNodeCommandToolEnvironment(
 
 	return {
 		registrations: [
-			createBashToolRegistration(options.cwd, { executor: commandExecutor }),
-			createShellToolRegistration(options.cwd, { executor: commandExecutor }),
+			(options.platform ?? process.platform) === "win32"
+				? createShellToolRegistration(options.cwd, { executor: commandExecutor })
+				: createBashToolRegistration(options.cwd, { executor: commandExecutor }),
 		],
 		backgroundService,
 		dispose: () => backgroundService?.dispose(),
@@ -99,7 +103,10 @@ export function createNodeCodingToolEnvironment(options: NodeCodingToolEnvironme
 
 	return {
 		registrations: [
-			createReadToolRegistration(options.cwd, { configurationSource: options.configurationSource }),
+			createReadToolRegistration(options.cwd, {
+				...options.readOptions,
+				configurationSource: options.configurationSource,
+			}),
 			createEditToolRegistration(options.cwd, { pathPolicy: options.editPathPolicy }),
 			...commandEnvironment.registrations,
 			createLsToolRegistration(options.cwd),

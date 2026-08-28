@@ -1,7 +1,6 @@
 import type { AgentMessage, ThinkingLevel } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
 import type {
-	BackgroundTaskInfo,
 	PromptRequest,
 	RuntimeContextCompactionResult,
 	RuntimeSessionContextUsage,
@@ -9,6 +8,7 @@ import type {
 	RuntimeSessionInputQueueMode,
 	RuntimeSessionState,
 } from "@vetta/runtime-core";
+import type { BackgroundCommandSnapshot } from "@vetta/runtime-tools";
 import type { TodoItem } from "../../features/todo/contracts.js";
 import type { AgentPluginRuntimeConfig } from "../../model-context/plugin-runtime.js";
 import type { CodingAgentRetryEvent } from "../../public-api/sdk/sdk-event-contract.js";
@@ -75,7 +75,7 @@ export interface CodingAgentSdkSessionCapabilityPort {
 	readSkills(): readonly CodingAgentSkillInfo[];
 	readPromptTemplates(): readonly CodingAgentPromptTemplate[];
 	reconfigureAgentPlugins(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<void>;
-	readBackgroundTasks(): readonly BackgroundTaskInfo[];
+	readBackgroundTasks(): readonly BackgroundCommandSnapshot[];
 	killBackgroundTask(taskId: string): boolean;
 	clearFinishedBackgroundTasks(): number;
 	readTodos(): readonly TodoItem[];

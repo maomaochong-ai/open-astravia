@@ -3,12 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
 	createFindTool,
 	createFindToolRegistration,
-	FIND_TOOL_CATEGORY,
 	FIND_TOOL_DESCRIPTION,
-	FIND_TOOL_SCOPES,
 	FindToolInputSchema,
-	selectCodingToolRegistrations,
-	selectCodingToolsForScope,
 } from "../../../src/coding/index.js";
 
 const files = ["visible.txt", ".secret/hidden.txt", "src/index.ts"];
@@ -29,7 +25,7 @@ function operations() {
 }
 
 describe("runtime find tool", () => {
-	it("keeps the public definition and empty default scope", () => {
+	it("keeps the public runtime definition", () => {
 		const runtime = createFindToolRegistration(process.cwd(), { operations: operations() });
 		expect(runtime.tool).toMatchObject({
 			name: "find",
@@ -37,9 +33,6 @@ describe("runtime find tool", () => {
 			description: FIND_TOOL_DESCRIPTION,
 			inputSchema: FindToolInputSchema,
 		});
-		expect(runtime.scopeUse).toEqual(FIND_TOOL_SCOPES);
-		expect(runtime.category).toBe(FIND_TOOL_CATEGORY);
-		expect(selectCodingToolsForScope([runtime], "project")).toEqual([]);
 	});
 
 	it("uses an injected host resolver without downloading or discovering tools itself", async () => {
@@ -109,16 +102,5 @@ describe("runtime find tool", () => {
 				text: files.join("\n"),
 			},
 		]);
-	});
-
-	it("can be explicitly activated without changing default scope exposure", () => {
-		const registration = createFindToolRegistration(process.cwd(), { operations: operations() });
-		expect(selectCodingToolsForScope([registration], "project")).toEqual([]);
-		expect(
-			selectCodingToolRegistrations([registration], {
-				mode: "explicit",
-				toolNames: ["find"],
-			}),
-		).toEqual([registration]);
 	});
 });

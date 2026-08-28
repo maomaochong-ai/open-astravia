@@ -3,6 +3,4 @@ export interface ToolCompatibilityDefinition {
 	readonly label: string;
 	readonly description: string;
 	readonly schema: Readonly<Record<string, unknown>>;
-	readonly scopeUse: readonly string[];
-	readonly category: string;
 }

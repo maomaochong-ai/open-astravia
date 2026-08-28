@@ -42,10 +42,16 @@ export function createCodingAgentChildCompositionFactory(
 			resume: boolean,
 		) => {
 			const created = await runtimeHost.createSession(
-				createCodingAgentRuntimeHostSessionConfig(childComposition.agentRuntime, childOptions, {
-					scenario: childComposition.scenario,
-					...(resume ? { sessionPath: childOptions.sessionId } : {}),
-				}),
+				createCodingAgentRuntimeHostSessionConfig(
+					childComposition.agentRuntime,
+					{
+						...childOptions,
+						scenario: childComposition.scenario,
+					},
+					{
+						...(resume ? { sessionPath: childOptions.sessionId } : {}),
+					},
+				),
 			);
 			return runtimeHost.getSessionView(created.sessionId);
 		};

@@ -1,30 +1,24 @@
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import type { CodingToolCategory } from "./tool-registration.js";
 
 export interface CodingToolResultContext {
 	readonly sessionId: string;
 	readonly turnId: string;
 	readonly toolCallId: string;
 	readonly toolName: string;
-	readonly category: CodingToolCategory;
 }
 
-export interface CodingToolResultArtifactWriteRequest {
-	readonly sessionId: string;
-	readonly turnId: string;
-	readonly toolCallId: string;
-	readonly toolName: string;
+export interface RuntimeToolResultArtifactWriteRequest extends CodingToolResultContext {
 	readonly mediaType: "application/json";
 	readonly data: string;
 	readonly byteLength: number;
 }
 
-export interface CodingToolResultArtifact {
+export interface RuntimeToolResultArtifact {
 	readonly reference: string;
 }
 
-export interface CodingToolResultArtifactStore {
-	write(request: CodingToolResultArtifactWriteRequest): Promise<CodingToolResultArtifact>;
+export interface RuntimeToolResultArtifactStore {
+	write(request: RuntimeToolResultArtifactWriteRequest): Promise<RuntimeToolResultArtifact>;
 }
 
 export interface CodingToolResultPolicy {

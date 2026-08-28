@@ -23,15 +23,14 @@ describe("coding tool description routing", () => {
 	});
 
 	it("routes every PDF text request to extraction and visual judgment to rendering", () => {
-		expect(READ_TOOL_DESCRIPTION).toContain("PDF text: use `extract_text_from_pdf`");
-		expect(READ_TOOL_DESCRIPTION).toContain("PDF visual judgment");
 		expect(EXTRACT_TEXT_FROM_PDF_TOOL_DESCRIPTION).toContain("textual content from any PDF");
 		expect(EXTRACT_TEXT_FROM_PDF_TOOL_DESCRIPTION).not.toContain("`read` plus a PDF-text-extracting tool");
 	});
 
-	it("does not invent fixed skill names for binary document routing", () => {
-		expect(READ_TOOL_DESCRIPTION).toContain("exact skill name shown in the current available-skills list");
-		expect(READ_TOOL_DESCRIPTION).not.toContain('invoke_skill(name="docx")');
-		expect(READ_TOOL_DESCRIPTION).not.toContain('invoke_skill(name="xlsx")');
+	it("keeps the platform read description product-neutral", () => {
+		expect(READ_TOOL_DESCRIPTION).toContain("stable edit anchors");
+		expect(READ_TOOL_DESCRIPTION).toContain("offset and limit");
+		expect(READ_TOOL_DESCRIPTION).not.toContain("SKILL.md");
+		expect(READ_TOOL_DESCRIPTION).not.toContain("invoke_skill");
 	});
 });

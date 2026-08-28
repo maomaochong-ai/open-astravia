@@ -136,8 +136,8 @@ describe("background command lifecycle", () => {
 	it("records stop reasons, maps process failures, and disposes running tasks", async () => {
 		const { processOperations, service } = createControlledService();
 		const stopped = service.spawn({ command: "stopped", cwd: "C:/workspace", env: {} });
-		expect(service.stop(stopped.id, "user")).toBe(true);
-		expect(service.get(stopped.id)).toMatchObject({ status: "killed", endedBy: "user" });
+		expect(service.stop(stopped.id, "caller")).toBe(true);
+		expect(service.get(stopped.id)).toMatchObject({ status: "killed", endedBy: "caller" });
 		expect(service.stop(stopped.id, "agent")).toBe(false);
 
 		const failed = service.spawn({ command: "failed", cwd: "C:/workspace", env: {} });

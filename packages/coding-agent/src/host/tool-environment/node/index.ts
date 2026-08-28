@@ -13,6 +13,12 @@ export {
 	type CodingAgentWritePathPolicy as RuntimeWritePathPolicy,
 	createCodingAgentWritePathPolicy,
 } from "../../../tool-policy/path/write-path-policy.js";
+export {
+	CODING_AGENT_READ_TOOL_OPTIONS,
+	type CodingAgentReadToolOptions,
+	codingAgentBinaryContentHint,
+	isCodingAgentInstructionMarkdown,
+} from "../../../tool-policy/read-tool-policy.js";
 export { createCodingAgentNodeSessionExecutionEnvironment } from "./node-session-execution-environment.js";
 export {
 	type CodingAgentNodeToolEnvironmentOptions,

@@ -5,8 +5,11 @@ import {
 	type SessionExtensionDefinition,
 	sessionExtensionObservation,
 } from "@vetta/runtime-core/session-extensions";
-import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools";
-import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import {
+	type CodingAgentRuntimeToolRegistration,
+	type CodingAgentToolActivation,
+	selectCodingAgentToolRegistrations,
+} from "../../runtime-contracts/index.js";
 import type { CodingAgentTodoRuntime, TodoItem, TodoLockSource } from "./contracts.js";
 import { CodingAgentTodoContinuationSource } from "./todo-continuation-source.js";
 import { CodingAgentTodoRuntime as DefaultCodingAgentTodoRuntime } from "./todo-runtime.js";
@@ -38,7 +41,7 @@ export const CODING_AGENT_TODO_CHANGED = defineSessionExtensionSignal<readonly T
 );
 
 export interface CodingAgentTodoSessionExtensionOptions {
-	readonly activation: CodingToolActivation;
+	readonly activation: CodingAgentToolActivation;
 	readonly createRuntime?: () => CodingAgentTodoRuntime;
 	readonly initialItems?: readonly string[];
 	readonly initialLockSource?: TodoLockSource;
@@ -61,7 +64,7 @@ export function createCodingAgentTodoSessionExtension(
 			let unsubscribe: (() => void) | undefined;
 			try {
 				const toolRegistration = createCodingAgentTodoRuntimeToolRegistration(runtime);
-				const toolEnabled = selectCodingToolRegistrations([toolRegistration], options.activation).length > 0;
+				const toolEnabled = selectCodingAgentToolRegistrations([toolRegistration], options.activation).length > 0;
 				unsubscribe = runtime.subscribe((items) => {
 					const snapshot = items.map((item) => ({ ...item }));
 					context.signals.publish(CODING_AGENT_TODO_CHANGED, snapshot);

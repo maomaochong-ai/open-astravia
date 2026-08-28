@@ -17,8 +17,7 @@ describe("Node host coding tool environment", () => {
 		expect(environment.registrations.map(({ tool }) => tool.name)).toEqual([
 			"read",
 			"edit",
-			"bash",
-			"shell",
+			process.platform === "win32" ? "shell" : "bash",
 			"ls",
 			"glob",
 			"grep",

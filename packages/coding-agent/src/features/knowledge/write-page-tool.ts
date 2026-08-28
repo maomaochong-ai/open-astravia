@@ -1,7 +1,8 @@
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { WritePageResult } from "@vetta/runtime-knowledge";
-import { type CodingToolScope, ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
+import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
+import type { ConversationScenario } from "../../profiles/index.js";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import type { CodingAgentKnowledgeWriteOperations } from "./contracts.js";
 
@@ -69,7 +70,7 @@ export interface CodingAgentKnowledgeWritePageToolOptions {
 
 export const CODING_AGENT_KNOWLEDGE_WRITE_PAGE_TOOL_SCOPES = [
 	"kb-processing",
-] as const satisfies readonly CodingToolScope[];
+] as const satisfies readonly ConversationScenario[];
 export const CODING_AGENT_KNOWLEDGE_WRITE_PAGE_TOOL_REQUIRES = ["knowledge"] as const;
 export const CODING_AGENT_KNOWLEDGE_WRITE_PAGE_TOOL_CATEGORY = "kb-write";
 

@@ -14,6 +14,7 @@ import {
 	getSceneDir,
 	getUserSkillsDir,
 } from "@vetta/coding-agent/config";
+import { CODING_AGENT_READ_TOOL_OPTIONS } from "@vetta/coding-agent/host";
 import { SettingsRuntime } from "@vetta/coding-agent/settings";
 import {
 	createNodeHostCodingToolEnvironment,
@@ -38,6 +39,7 @@ export const createDesktopCodingAgentToolEnvironment: CodingAgentToolEnvironment
 		editPathPolicy: host.editPathPolicy,
 		writePathPolicy: host.writePathPolicy,
 		configurationSource: context.configurationSource,
+		readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
 	});
 };
 
@@ -67,6 +69,7 @@ export const createDesktopCodingAgentSessionExecutionEnvironment: CodingAgentSes
 					editPathPolicy: host.editPathPolicy,
 					writePathPolicy: host.writePathPolicy,
 					configurationSource: context.configurationSource,
+					readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
 				}),
 		},
 		dispose: () => command.dispose(),
@@ -89,14 +92,18 @@ function createDesktopNodeToolHost(cwd: string, configuredAgentDir?: string) {
 		resolve(getSceneDir()),
 		resolve(cwd, CONFIG_DIR_NAME, "skills"),
 	];
-	const boundaries = createNodePathBoundaryClassifier({
-		protectedDirectories: [
+	const pathClassifier = createNodePathBoundaryClassifier({
+		readOnlyDirectories: [
 			...protectedCommandDirectories,
 			resolve(homedir(), ".agents", "skills"),
 			resolve(cwd, ".agents", "skills"),
 		],
-		knowledgeWikiDirectory: join(getKnowledgeDir(), "wiki"),
+		managedDirectory: join(getKnowledgeDir(), "wiki"),
 	});
+	const boundaries = {
+		isProtectedSkillOrScenePath: pathClassifier.isReadOnlyPath,
+		isKnowledgeWikiPath: pathClassifier.isManagedPath,
+	};
 	const resolveShell = () => {
 		const shell = resolveNodeShell({ customShellPath: settings.getShellPath(), settingsPath });
 		return { ...shell, commandPrefix: getNodeShellCommandPrefix(shell.executable) };

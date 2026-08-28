@@ -24,8 +24,6 @@ function createRuntimeSubject(cwd: string, options?: ReadBehaviorSubjectOptions)
 			label: registration.tool.label,
 			description: registration.tool.description,
 			schema: registration.tool.inputSchema,
-			scopeUse: registration.scopeUse,
-			category: registration.category,
 		},
 		execute(input, signal = new AbortController().signal) {
 			return registration.tool.execute({

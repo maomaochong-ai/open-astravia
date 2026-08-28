@@ -616,6 +616,62 @@ function checkRuntimePromptContractIdentity(posixPath, text, findings) {
 	}
 }
 
+function checkRuntimeProductSemanticBoundary(posixPath, text, findings) {
+	const isRuntimeProductBoundary =
+		posixPath.startsWith("packages/runtime-core/src/") ||
+		posixPath.startsWith("packages/runtime-tools/src/coding/") ||
+		posixPath.startsWith("packages/runtime-node/src/coding/");
+	if (!isRuntimeProductBoundary) return;
+
+	const forbiddenSymbols = new Set([
+		"AskUserQuestion",
+		"BackgroundTaskInfo",
+		"CodingToolCategory",
+		"ConversationScenario",
+		"McpReloadEndEvent",
+		"McpReloadStartEvent",
+		"McpStatusEvent",
+		"RuntimeSubagentSnapshot",
+		"RuntimeSubagentUsageSnapshot",
+		"SubagentInfo",
+		"agentMode",
+		"enableSubagents",
+		"interactiveResume",
+	]);
+	const forbiddenLiterals = new Set([
+		"background_tasks_update",
+		"mcp.reload.end",
+		"mcp.reload.start",
+		"mcp.status",
+		"scene_expansion",
+		"settings_assist_marker",
+		"skill_expansion",
+		"subagents_update",
+	]);
+	const forbiddenProductText = [/\bSKILL\.md\b/i, /\binvoke_skill\b/i, /\bknowledge wiki\b/i];
+	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
+	const found = new Set();
+	const visit = (node) => {
+		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
+			found.add(node.text);
+		}
+		if (ts.isStringLiteralLike(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+			if (forbiddenLiterals.has(node.text)) found.add(node.text);
+			for (const pattern of forbiddenProductText) {
+				if (pattern.test(node.text)) found.add(node.text);
+			}
+		}
+		ts.forEachChild(node, visit);
+	};
+	visit(sourceFile);
+
+	for (const semantic of found) {
+		findings.push(
+			`${posixPath}: Runtime must expose generic extension/platform contracts instead of product semantic (${semantic})`,
+		);
+	}
+}
+
 function checkCodingAgentSessionResourceLifecycleBoundary(posixPath, text, findings) {
 	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
 
@@ -1376,6 +1432,7 @@ export function findPackageBoundaryViolations(posixPath, text, options = {}) {
 	checkCodingAgentToolPolicyOwnershipBoundary(posixPath, text, findings);
 	checkCodingAgentDomainAdapterBoundary(posixPath, specifiers, findings);
 	checkRuntimePromptContractIdentity(posixPath, text, findings);
+	checkRuntimeProductSemanticBoundary(posixPath, text, findings);
 	checkCodingAgentChildCompositionPolicyBoundary(posixPath, text, findings);
 	checkGreenfieldRuntimeHostControlSurfaceBoundary(posixPath, text, findings);
 	checkCodingAgentSessionHostOwnershipBoundary(posixPath, text, findings);

@@ -235,7 +235,7 @@ describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT
 					catalog: sessionCatalog,
 					access: {
 						readHistory: true,
-						interactiveResume: true,
+						resume: true,
 						rename: true,
 						delete: true,
 					},

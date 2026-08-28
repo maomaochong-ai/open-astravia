@@ -4,7 +4,7 @@ import { createNodeSandboxHost, type NodeSandboxHost, type NodeSandboxHostOption
 import { createForegroundCommandToolExecutor } from "../shared/foreground-command-executor.js";
 import { createBashToolRegistration } from "../tools/bash/index.js";
 import { createEditToolRegistration, type EditPathPolicy } from "../tools/edit/index.js";
-import { createReadToolRegistration } from "../tools/read/index.js";
+import { createReadToolRegistration, type ReadToolOptions } from "../tools/read/index.js";
 import { createShellToolRegistration } from "../tools/shell/index.js";
 import { createWriteToolRegistration, type WritePathPolicy } from "../tools/write/index.js";
 
@@ -15,6 +15,7 @@ export interface NodeSandboxCodingToolEnvironmentOptions extends NodeSandboxHost
 	readonly editPathPolicy: EditPathPolicy;
 	readonly writePathPolicy: WritePathPolicy;
 	readonly configurationSource?: RuntimeConfigurationSnapshotSource;
+	readonly readOptions?: Pick<ReadToolOptions, "binaryContentHint" | "preserveFullText">;
 }
 
 export interface NodeSandboxCodingToolEnvironment {
@@ -38,11 +39,14 @@ export function createNodeSandboxCodingToolEnvironment(
 	});
 	const command =
 		hostServices.platform === "win32"
-			? createShellToolRegistration(options.cwd, { executor, platform: hostServices.platform })
-			: createBashToolRegistration(options.cwd, { executor, platform: hostServices.platform });
+			? createShellToolRegistration(options.cwd, { executor })
+			: createBashToolRegistration(options.cwd, { executor });
 
 	return {
-		read: createReadToolRegistration(options.cwd, { configurationSource: options.configurationSource }),
+		read: createReadToolRegistration(options.cwd, {
+			...options.readOptions,
+			configurationSource: options.configurationSource,
+		}),
 		write: createWriteToolRegistration(options.cwd, { pathPolicy: options.writePathPolicy }),
 		edit: createEditToolRegistration(options.cwd, { pathPolicy: options.editPathPolicy }),
 		command,

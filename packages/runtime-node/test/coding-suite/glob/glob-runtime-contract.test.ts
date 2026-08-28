@@ -5,11 +5,8 @@ import { describe, expect, it } from "vitest";
 import {
 	createGlobTool,
 	createGlobToolRegistration,
-	GLOB_TOOL_CATEGORY,
 	GLOB_TOOL_DESCRIPTION,
-	GLOB_TOOL_SCOPES,
 	GlobToolInputSchema,
-	selectCodingToolsForScope,
 } from "../../../src/coding/index.js";
 
 // A drive-letter path is not absolute on posix, so the tool resolves it against the process
@@ -49,7 +46,7 @@ function execute(runtime: ReturnType<typeof createGlobTool>, input: unknown, sig
 }
 
 describe("runtime glob tool", () => {
-	it("keeps the public definition and scenario exposure", () => {
+	it("keeps the public runtime definition", () => {
 		const runtime = createGlobToolRegistration(process.cwd(), { operations: operations() });
 		expect(runtime.tool).toMatchObject({
 			name: "glob",
@@ -57,9 +54,6 @@ describe("runtime glob tool", () => {
 			description: GLOB_TOOL_DESCRIPTION,
 			inputSchema: GlobToolInputSchema,
 		});
-		expect(runtime.scopeUse).toEqual(GLOB_TOOL_SCOPES);
-		expect(runtime.category).toBe(GLOB_TOOL_CATEGORY);
-		expect(selectCodingToolsForScope([runtime], "project").map(({ name }) => name)).toEqual(["glob"]);
 	});
 
 	it("preserves deduplication, relative paths, and result details", async () => {

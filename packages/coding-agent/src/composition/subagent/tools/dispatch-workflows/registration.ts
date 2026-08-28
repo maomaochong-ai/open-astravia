@@ -1,4 +1,4 @@
-import type { CodingToolScope } from "@vetta/runtime-tools/coding";
+import type { ConversationScenario } from "../../../../profiles/index.js";
 import type { CodingAgentRuntimeToolRegistration } from "../../../../runtime-contracts/index.js";
 import {
 	createDispatchWorkflowsTool,
@@ -10,7 +10,7 @@ export const DISPATCH_WORKFLOWS_TOOL_SCOPES = [
 	"conversation",
 	"project",
 	"cli",
-] as const satisfies readonly CodingToolScope[];
+] as const satisfies readonly ConversationScenario[];
 export const DISPATCH_WORKFLOWS_TOOL_CATEGORY = "agent-control" as const;
 
 export interface DispatchWorkflowsToolRegistrationOptions extends DispatchWorkflowsToolOptions {

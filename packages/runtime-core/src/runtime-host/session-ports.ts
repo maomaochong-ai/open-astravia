@@ -9,7 +9,6 @@ import type {
 	SessionExecutionMode,
 	SessionStateSnapshot,
 	SettingsPatch,
-	SubagentInfo,
 } from "../contracts.js";
 import type { ConversationDocument } from "../conversation/document.js";
 import type { RuntimeToolDefinition, SessionContextRecord } from "../kernel/contracts.js";
@@ -202,19 +201,6 @@ export interface RuntimeSessionContextUsageView {
 	readContextUsage(): RuntimeSessionContextUsage | undefined;
 }
 
-export interface RuntimeSubagentUsageSnapshot {
-	readonly input: number;
-	readonly output: number;
-	readonly cacheRead: number;
-	readonly cacheWrite: number;
-	readonly costTotal: number;
-}
-
-/** 宿主控制面中的完整子代理快照；usage 在直接读取时始终存在。 */
-export interface RuntimeSubagentSnapshot extends SubagentInfo {
-	readonly usage: RuntimeSubagentUsageSnapshot;
-}
-
 /** 产品扩展对 Runtime Session 宿主暴露的通用控制面与迟订阅初始观察。 */
 export interface RuntimeSessionExtensionHost extends SessionExtensionEndpointHost {
 	readInitialObservations(): readonly RuntimeSessionObservationEvent[];
@@ -226,7 +212,6 @@ export type RuntimeSessionInputQueueMode = NonNullable<SettingsPatch["steeringMo
 export interface RuntimeSessionConfigurationController {
 	setSteeringMode(mode: RuntimeSessionInputQueueMode): void;
 	setFollowUpMode(mode: RuntimeSessionInputQueueMode): void;
-	setAgentMode(mode: string | undefined): void;
 }
 
 export interface RuntimeContextCompactionRequest {

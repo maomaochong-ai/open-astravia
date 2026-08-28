@@ -150,7 +150,7 @@ describe("DesktopConversationService session access", () => {
 		]);
 		const resolveSessionAccess = vi.fn(async () => ({
 			readHistory: true,
-			interactiveResume: false,
+			resume: false,
 			rename: true,
 			delete: true,
 		}));
@@ -162,7 +162,7 @@ describe("DesktopConversationService session access", () => {
 				id: "session-1",
 				access: {
 					readHistory: true,
-					interactiveResume: false,
+					resume: false,
 					rename: true,
 					delete: true,
 				},
@@ -178,7 +178,7 @@ describe("DesktopConversationService session access", () => {
 		const runtime = {
 			resolveSessionAccess: vi.fn(async () => ({
 				readHistory: true,
-				interactiveResume: false,
+				resume: false,
 				rename: true,
 				delete: true,
 			})),

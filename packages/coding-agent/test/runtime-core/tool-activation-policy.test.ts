@@ -1,6 +1,6 @@
 import type { ModelCallContributionContext, SessionContextRecord } from "@vetta/runtime-core/kernel";
-import type { CodingToolActivation } from "@vetta/runtime-node/coding";
 import { describe, expect, it } from "vitest";
+import type { CodingAgentToolActivation } from "../../src/runtime-contracts/index.js";
 import {
 	isCodingAgentKnowledgeToolEnabled,
 	resolveCodingAgentToolActivation,
@@ -21,7 +21,7 @@ describe("Coding Agent Tool Activation Policy", () => {
 	});
 
 	it("preserves an explicit composition activation when there is no turn override", () => {
-		const activation: CodingToolActivation = { mode: "explicit", toolNames: ["read"] };
+		const activation: CodingAgentToolActivation = { mode: "explicit", toolNames: ["read"] };
 
 		expect(resolveCodingAgentToolActivation(activation, context(), availability())).toBe(activation);
 	});

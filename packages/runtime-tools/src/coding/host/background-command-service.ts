@@ -1,5 +1,5 @@
 export type BackgroundCommandStatus = "running" | "completed" | "failed" | "killed";
-export type BackgroundCommandStopReason = "user" | "agent" | "dispose";
+export type BackgroundCommandStopReason = "caller" | "agent" | "dispose";
 
 export interface BackgroundCommandSnapshot {
 	readonly id: string;
@@ -49,33 +49,4 @@ export interface BackgroundCommandService {
 	stop(taskId: string, reason?: BackgroundCommandStopReason): boolean;
 	dispose(): void;
 	shutdown(): Promise<void>;
-}
-
-export function buildBackgroundCommandNotification(task: BackgroundCommandSnapshot): string {
-	const statusText =
-		task.status === "completed"
-			? `completed (exit code ${task.exitCode ?? 0})`
-			: task.status === "killed"
-				? task.endedBy === "user"
-					? "was terminated by the user from the UI"
-					: "was killed"
-				: `failed (exit code ${task.exitCode ?? "unknown"})`;
-	const summary = `Background command "${task.command}" ${statusText}`;
-	const userStopNote =
-		task.status === "killed" && task.endedBy === "user"
-			? "The user manually stopped this background task. Do not restart it unless the user asks."
-			: undefined;
-	return [
-		"<task-notification>",
-		`<task-id>${task.id}</task-id>`,
-		...(task.toolCallId ? [`<tool-use-id>${task.toolCallId}</tool-use-id>`] : []),
-		`<status>${task.status}</status>`,
-		...(task.endedBy ? [`<ended-by>${task.endedBy}</ended-by>`] : []),
-		`<output-file>${task.outputFile}</output-file>`,
-		`<summary>${summary}</summary>`,
-		"</task-notification>",
-		"",
-		...(userStopNote ? [userStopNote, ""] : []),
-		"Use the task_output tool to read the command output if needed.",
-	].join("\n");
 }

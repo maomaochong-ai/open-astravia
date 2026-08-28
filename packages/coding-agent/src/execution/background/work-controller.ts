@@ -1,5 +1,4 @@
-import type { BackgroundTaskInfo } from "@vetta/runtime-core";
-import type { BackgroundCommandService } from "@vetta/runtime-tools";
+import type { BackgroundCommandService, BackgroundCommandSnapshot } from "@vetta/runtime-tools";
 import type { CodingAgentSubagentSnapshot } from "../../runtime-contracts/index.js";
 
 export interface CodingAgentSubagentWorkRuntime {
@@ -13,7 +12,7 @@ export interface CodingAgentBackgroundWorkRuntime {
 	clearFinishedTasks(): number;
 	clearFinishedSubagents(): number;
 	killTask(taskId: string): boolean;
-	readTasks(): readonly BackgroundTaskInfo[];
+	readTasks(): readonly BackgroundCommandSnapshot[];
 	readSubagents(): readonly CodingAgentSubagentSnapshot[];
 	interruptSubagent(target: string): CodingAgentSubagentSnapshot | undefined;
 }
@@ -38,10 +37,10 @@ export class CodingAgentBackgroundWorkController implements CodingAgentBackgroun
 	}
 
 	killTask(taskId: string): boolean {
-		return this.backgroundService.stop(taskId, "user");
+		return this.backgroundService.stop(taskId, "caller");
 	}
 
-	readTasks(): readonly BackgroundTaskInfo[] {
+	readTasks(): readonly BackgroundCommandSnapshot[] {
 		return this.backgroundService.list().map((task) => ({ ...task }));
 	}
 

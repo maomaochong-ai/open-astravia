@@ -1,25 +1,7 @@
-import type { CodingToolRegistration, CodingToolScope } from "../../tool-registration.js";
+import type { CodingToolRegistration } from "../../tool-registration.js";
 import { type BashToolInput, type BashToolOptions, createBashTool } from "./bash-tool.js";
 
-const ALL_BASH_SCOPES = [
-	"im-claw",
-	"conversation",
-	"project",
-	"batch",
-	"automation",
-	"kb-processing",
-	"cli",
-] as const satisfies readonly CodingToolScope[];
-
-export const BASH_TOOL_CATEGORY = "core" as const;
-
-export function getBashToolScopes(platform: NodeJS.Platform = process.platform): readonly CodingToolScope[] {
-	return platform === "win32" ? [] : ALL_BASH_SCOPES;
-}
-
-export interface BashToolRegistrationOptions extends BashToolOptions {
-	readonly platform?: NodeJS.Platform;
-}
+export type BashToolRegistrationOptions = BashToolOptions;
 
 export function createBashToolRegistration(
 	cwd: string,
@@ -27,7 +9,5 @@ export function createBashToolRegistration(
 ): CodingToolRegistration<BashToolInput> {
 	return {
 		tool: createBashTool(cwd, options),
-		scopeUse: getBashToolScopes(options.platform),
-		category: BASH_TOOL_CATEGORY,
 	};
 }
