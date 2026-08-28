@@ -2,7 +2,7 @@
 
 面向第三方开发者的 Vetta 桌面端插件**对接与开发**完整手册。读完本目录你应当能从零写出、打包、安装、调试一个插件，并用上所有可用扩展点。
 
-> 插件运行在 Vetta 桌面 App（Electron）的 renderer 进程内。它们是**可信、一方/策展**的扩展（经审核上架），共享宿主的 React 单例——**没有沙箱**。所有能力都通过 `@vetta-org/plugin-sdk` 的「策展能力出口 + 权限门控」暴露（见 [信任模型](#信任模型)）。
+> 插件运行在 Vetta 桌面 App（Electron）的 renderer 进程内，与宿主共享 JavaScript realm——**没有安全沙箱**。只安装并启用你信任的插件。`@vetta-org/plugin-sdk` 权限用于声明与门控宿主 API，不承诺隔离恶意代码（见 [信任模型](#信任模型)）。
 
 ## 文档导航
 
@@ -65,10 +65,10 @@
 
 ## 信任模型
 
-- 插件是**一方 / 策展**的（官方或合作方编写、经审核上架），**不是**任意第三方不可信代码。
+- 插件按用户明确选择的**可信代码**处理，可以来自官方、市场或本地安装；宿主不把未知第三方代码自动提升为可信。
 - 插件跑在 renderer 进程内，经 Module Federation 与宿主**共享同一份 React / React DOM / `@vetta-org/plugin-sdk` 单例**；可选再共享 **`@vetta/ui`** 设计系统 primitives（见 [styling-and-pitfalls](./styling-and-pitfalls.md#可选vettaui-宿主-primitives)）。
-- 因此 SDK 是「**策展过的能力出口 + 权限门控**」——可同步、可直接传 React 组件实例、可读宿主状态，**刻意不做** iframe/worker 沙箱与异步消息桥。
-- 每项能力由 `plugin.json` 声明权限、宿主单独授权、运行时校验；缺权限会抛 `Plugin permission denied: <permission>` 或 warn+noop（见 [permissions.md](./permissions.md)）。
+- SDK 提供宿主能力出口与权限门控，可同步传递 React 组件并读取宿主公开状态，**刻意不做** iframe/worker 沙箱与异步消息桥。
+- 每项公开能力由 `plugin.json` 声明权限、宿主单独授权、运行时校验；缺权限会抛 `Plugin permission denied: <permission>` 或 warn+noop（见 [permissions.md](./permissions.md)）。这套机制服务于知情同意、治理和误用防护，不阻止同 realm 插件绕过 SDK 使用浏览器原生能力。
 
 ## 5 分钟速览
 

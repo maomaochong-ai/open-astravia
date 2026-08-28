@@ -7,7 +7,6 @@ import type { InstalledPlugin } from "@preload/api";
 import type { PluginDefinition } from "@vetta-org/plugin-sdk";
 import { extractPluginReloadToken, normalizePluginModule } from "./plugin-module-contract";
 import { createPluginRuntimeShared } from "./plugin-shared-modules";
-import { createQuickJsPluginDefinition } from "./quickjs-plugin-runtime";
 
 let moduleFederationHost: ModuleFederation | undefined;
 const registeredRemotes = new Map<string, { alias: string; entry: string }>();
@@ -80,7 +79,6 @@ async function assertPluginEntryFetchable(plugin: InstalledPlugin): Promise<void
 }
 
 async function loadPluginModule(plugin: InstalledPlugin): Promise<unknown> {
-	if (plugin.runtime === "quickjs") return { default: createQuickJsPluginDefinition(plugin) };
 	if (plugin.runtime !== "module-federation") {
 		return import(/* @vite-ignore */ plugin.entryUrl);
 	}

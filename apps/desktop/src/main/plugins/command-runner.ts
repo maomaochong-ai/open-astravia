@@ -68,9 +68,6 @@ export async function runPluginCommand(
 	const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
 	if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 	if (!plugin.enabled) throw new Error(`Plugin disabled: ${pluginId}`);
-	if (plugin.trustLevel !== "official") {
-		throw new Error(`Plugin command execution is restricted to official plugins: ${pluginId}`);
-	}
 	if (!hasGrantedPermission(plugin, "agent.command.run")) {
 		throw new Error("Plugin permission denied: agent.command.run");
 	}

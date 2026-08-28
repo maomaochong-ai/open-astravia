@@ -189,7 +189,7 @@ export const PluginManifestSchema = Type.Object(
 		pluginApiVersion: NonWhitespaceStringSchema,
 		entry: NonWhitespaceStringSchema,
 		runtime: Type.Optional(
-			Type.Union([Type.Literal("esm"), Type.Literal("module-federation"), Type.Literal("quickjs")]),
+			Type.Union([Type.Literal("esm"), Type.Literal("module-federation")]),
 		),
 		moduleFederation: Type.Optional(PluginModuleFederationManifestSchema),
 		agent: Type.Optional(PluginAgentManifestSchema),

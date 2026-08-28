@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isPluginNetworkHostAllowed, requestForPlugin } from "./plugin-network-service.js";
 
-const officialPolicy = {
-	id: "official-plugin",
-	trustLevel: "official" as const,
+const unrestrictedPolicy = {
+	id: "unrestricted-plugin",
 	allowedNetworkHosts: ["*"],
 };
 
@@ -15,7 +14,6 @@ describe("plugin network host policy", () => {
 	it("allows declared private IPs and localhost", () => {
 		const policy = {
 			id: "local-plugin",
-			trustLevel: "local" as const,
 			allowedNetworkHosts: ["localhost", "192.168.50.50", "::1"],
 		};
 
@@ -25,20 +23,13 @@ describe("plugin network host policy", () => {
 		expect(isPluginNetworkHostAllowed(policy, "127.0.0.1")).toBe(false);
 	});
 
-	it("limits unrestricted wildcard access to official plugins", () => {
-		expect(isPluginNetworkHostAllowed(officialPolicy, "anything.example")).toBe(true);
-		expect(
-			isPluginNetworkHostAllowed(
-				{ ...officialPolicy, id: "community-plugin", trustLevel: "community" },
-				"anything.example",
-			),
-		).toBe(false);
+	it("honors an explicit unrestricted wildcard", () => {
+		expect(isPluginNetworkHostAllowed(unrestrictedPolicy, "anything.example")).toBe(true);
 	});
 
 	it("matches wildcard subdomains without matching the root domain", () => {
 		const policy = {
 			id: "community-plugin",
-			trustLevel: "community" as const,
 			allowedNetworkHosts: ["*.cdn.example.com"],
 		};
 
@@ -53,7 +44,7 @@ describe("plugin network host policy", () => {
 
 		await expect(
 			requestForPlugin(
-				{ id: "local-plugin", trustLevel: "local", allowedNetworkHosts: ["example.com"] },
+				{ id: "local-plugin", allowedNetworkHosts: ["example.com"] },
 				{ url: "http://127.0.0.1:8188", responseType: "text" },
 			),
 		).rejects.toThrow("Plugin network host is not declared: 127.0.0.1");
@@ -71,7 +62,7 @@ describe("plugin network host policy", () => {
 
 		await expect(
 			requestForPlugin(
-				{ id: "local-plugin", trustLevel: "local", allowedNetworkHosts: ["example.com"] },
+				{ id: "local-plugin", allowedNetworkHosts: ["example.com"] },
 				{ url: "https://example.com/start", responseType: "text" },
 			),
 		).rejects.toThrow("Plugin network host is not declared: 127.0.0.1");

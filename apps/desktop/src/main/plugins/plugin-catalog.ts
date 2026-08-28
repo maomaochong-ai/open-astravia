@@ -35,7 +35,11 @@ import {
 	toInstalledPluginUrl,
 	validatePluginPackageResources,
 } from "./plugin-package.js";
-import { effectivePluginCommands, effectivePluginPermissions } from "./plugin-permission-policy.js";
+import {
+	effectivePluginCommands,
+	effectivePluginPermissions,
+	grantDeclaredPluginCommands,
+} from "./plugin-permission-policy.js";
 import { PluginRegistryStore, SystemPluginPreferenceStore } from "./plugin-registry-store.js";
 import { PluginSettingsStore } from "./plugin-settings-store.js";
 import { SystemPluginCatalog } from "./plugin-system-catalog.js";
@@ -289,7 +293,7 @@ export function grantPluginPermissions(id: string, permissions: PluginPermission
 	const registry = pluginRegistry.read();
 	const plugin = registry[id];
 	if (!plugin) throw new Error(`Plugin not found: ${id}`);
-	const allowed = new Set(effectivePluginPermissions(plugin.permissions, plugin.trustLevel));
+	const allowed = new Set(effectivePluginPermissions(plugin.permissions));
 	plugin.grantedPermissions = Array.from(
 		new Set([...plugin.grantedPermissions, ...permissions.filter((p) => allowed.has(p))]),
 	);
@@ -321,7 +325,19 @@ export function revokePluginPermissions(id: string, permissions: PluginPermissio
 export function grantPluginCommands(id: string, names: string[]): InstalledPlugin {
 	validatePluginId(id);
 	if (isSystemPluginId(id)) return pluginSystemCatalog.grantCommands(id, names);
-	throw new Error(`Plugin command execution is restricted to official plugins: ${id}`);
+	const requested = parseCommands(names);
+	const registry = pluginRegistry.read();
+	const plugin = registry[id];
+	if (!plugin) throw new Error(`Plugin not found: ${id}`);
+	plugin.grantedCommandNames = grantDeclaredPluginCommands(
+		plugin.grantedCommandNames,
+		requested,
+		plugin.declaredCommands,
+	);
+	plugin.updatedAt = new Date().toISOString();
+	pluginRegistry.write(registry);
+	broadcastPluginsChanged();
+	return plugin;
 }
 
 /** Disable declared command names. Inverse of {@link grantPluginCommands}. */
@@ -336,6 +352,7 @@ export function revokePluginCommands(id: string, names: string[]): InstalledPlug
 	plugin.grantedCommandNames = plugin.grantedCommandNames.filter((name) => !revoked.has(name));
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
+	broadcastPluginsChanged();
 	return plugin;
 }
 
@@ -377,11 +394,11 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	);
 	// 重载到新版本时同步命令声明，并把用户授权裁剪到新声明集合内（避免授权指向已移除的命令、
 	// 或新增命令因 declaredCommands 陈旧而永远无法授权）。
-	plugin.permissions = effectivePluginPermissions(manifest.permissions ?? [], plugin.trustLevel);
-	plugin.grantedPermissions = effectivePluginPermissions(plugin.grantedPermissions, plugin.trustLevel).filter(
-		(permission) => plugin.permissions.includes(permission),
+	plugin.permissions = effectivePluginPermissions(manifest.permissions ?? []);
+	plugin.grantedPermissions = effectivePluginPermissions(plugin.grantedPermissions).filter((permission) =>
+		plugin.permissions.includes(permission),
 	);
-	plugin.declaredCommands = effectivePluginCommands(manifest.commands ?? [], plugin.trustLevel);
+	plugin.declaredCommands = effectivePluginCommands(manifest.commands ?? []);
 	plugin.grantedCommandNames = (plugin.grantedCommandNames ?? []).filter((name) =>
 		plugin.declaredCommands.includes(name),
 	);

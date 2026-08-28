@@ -158,15 +158,13 @@ export class PluginDevLinkService {
 			};
 		}
 		const manifest = link.manifest;
-		const permissions = effectivePluginPermissions(manifest.permissions ?? [], plugin.trustLevel);
-		const declaredCommands = effectivePluginCommands(manifest.commands ?? [], plugin.trustLevel);
+		const permissions = effectivePluginPermissions(manifest.permissions ?? []);
+		const declaredCommands = effectivePluginCommands(manifest.commands ?? []);
 		const grantedPermissions = effectivePluginPermissions(
 			Array.from(new Set([...plugin.grantedPermissions, ...permissions])),
-			plugin.trustLevel,
 		);
 		const grantedCommandNames = effectivePluginCommands(
 			Array.from(new Set([...(plugin.grantedCommandNames ?? []), ...declaredCommands])),
-			plugin.trustLevel,
 		);
 		return {
 			...plugin,
@@ -224,7 +222,7 @@ export class PluginDevLinkService {
 			throw new Error(`Unsupported plugin API version: ${manifest.pluginApiVersion}`);
 		}
 		const now = new Date().toISOString();
-		const permissions = effectivePluginPermissions(manifest.permissions ?? [], "local");
+		const permissions = effectivePluginPermissions(manifest.permissions ?? []);
 		return {
 			id: manifest.id,
 			name: manifest.name,

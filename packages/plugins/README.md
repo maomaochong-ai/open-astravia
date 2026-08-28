@@ -79,6 +79,8 @@ Desktop 会再次校验摘要、插件 id 与版本，然后沿用现有授权�
 
 ESM / Module Federation 插件可通过 `ctx.browser` 使用宿主管理的浏览器自动化，不需要依赖 Browser 系统插件或执行 CLI。清单必须声明所需的 `browser.*` 权限以及最大 `browser.allowedHosts`；session 可以进一步收窄域名范围，不能扩大清单授权。
 
-宿主按插件 namespace 隔离 session 与持久 profile。插件只使用逻辑 `profile.id`，不会得到目录、Cookie 或 token。公共 v1 支持运行时状态/安装、会话创建/关闭、导航、快照、文本、截图和类型化动作；不提供任意 JavaScript、argv、上传、下载或认证数据导出。attach 与 runtime manage 只对 official 插件开放，QuickJS 不支持该能力。
+宿主按插件 namespace 隔离 session 与持久 profile。插件只使用逻辑 `profile.id`，不会得到目录、Cookie 或 token。公共 v1 支持运行时状态/安装、会话创建/关闭、导航、快照、文本、截图和类型化动作；不提供任意 JavaScript、argv、上传、下载或认证数据导出。attach 与 runtime manage 需要清单声明和用户授权。
+
+插件代码与宿主共享 renderer realm，不存在安全沙箱。权限、命令和 host 清单用于说明插件意图并门控宿主 API；它们不能把恶意插件变成安全插件。只安装和启用可信来源的代码。
 
 完整设计与安全边界见 [ADR-0088](../../docs/adr/0088-browser-automation-as-a-foundation-capability.md)。

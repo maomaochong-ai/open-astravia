@@ -34,7 +34,7 @@ Host Tool Policy / Permission
 
 Host Tool Policy 不属于 Hook；任何 Hook 都不能扩大宿主权限。Ecosystem profile/command 协议继续由 `ecosystem-adapter` 持有，Extension 语义和统一拦截装配由 `coding-agent` 持有，Desktop 只负责插件权限、贡献存储和 IPC handler bridge，`runtime-core` 只暴露产品无关的宿主调用合同。
 
-Desktop Plugin API 首期只开放 `tool.before`、`tool.after`、`tool.error`。System Prompt 和 Continuation 保留 Provider/Policy API，不伪装成 Hook。动态 handler 只对 ESM / Module Federation 插件开放；ADR-0061 的 QuickJS 首版仍禁止 Agent 动态处理器。
+Desktop Plugin API 首期只开放 `tool.before`、`tool.after`、`tool.error`。System Prompt 和 Continuation 保留 Provider/Policy API，不伪装成 Hook。受支持的插件运行时使用同一套动态 handler 合同。
 
 ## 生命周期与失败语义
 

@@ -17,9 +17,7 @@
 }
 ```
 
-只要声明任一 `browser.*` 权限，就必须提供非空 `browser.allowedHosts`。`*` 表示显式允许任意顶层导航；应尽量声明具体站点。`browser.interact` 依赖 `browser.read`。`browser.attach` 和 `browser.runtime.manage` 仅 official 插件可用。
-
-QuickJS 不支持 `ctx.browser`。
+只要声明任一 `browser.*` 权限，就必须提供非空 `browser.allowedHosts`。`*` 表示显式允许任意顶层导航；应尽量声明具体站点。`browser.interact` 依赖 `browser.read`。`browser.attach` 和 `browser.runtime.manage` 也必须分别显式声明并由用户授权。
 
 ## 多账号 profile
 

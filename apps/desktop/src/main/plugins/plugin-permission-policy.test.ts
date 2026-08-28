@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { effectivePluginPermissions } from "./plugin-permission-policy.js";
+import {
+	effectivePluginCommands,
+	effectivePluginPermissions,
+	grantDeclaredPluginCommands,
+} from "./plugin-permission-policy.js";
 
 describe("effectivePluginPermissions", () => {
-	it("keeps general browser permissions but strips official-only attach and runtime management", () => {
+	it("preserves declared permissions for every plugin trust level", () => {
 		const permissions = [
 			"browser.read",
 			"browser.interact",
@@ -10,11 +14,14 @@ describe("effectivePluginPermissions", () => {
 			"browser.attach",
 			"browser.runtime.manage",
 		] as const;
-		expect(effectivePluginPermissions(permissions, "community")).toEqual([
-			"browser.read",
-			"browser.interact",
-			"browser.profile.persist",
-		]);
-		expect(effectivePluginPermissions(permissions, "official")).toEqual(permissions);
+		expect(effectivePluginPermissions(permissions)).toEqual(permissions);
+	});
+
+	it("preserves declared commands for user plugins", () => {
+		expect(effectivePluginCommands(["demo.run", "demo.run"])).toEqual(["demo.run"]);
+	});
+
+	it("grants only requested command names that the plugin declared", () => {
+		expect(grantDeclaredPluginCommands(["git"], ["node", "powershell"], ["git", "node"])).toEqual(["git", "node"]);
 	});
 });

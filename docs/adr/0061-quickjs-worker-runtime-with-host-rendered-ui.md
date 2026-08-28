@@ -2,7 +2,8 @@
 
 ## 状态
 
-Accepted
+Superseded by [ADR-0091](./0091-trusted-renderer-plugins-and-governance-permissions.md)。对应实现已直接删除，
+不保留运行时兼容层；本文仅记录历史设计。
 
 ## 背景
 

@@ -109,7 +109,7 @@ export function buildPluginCapabilityGrants(
 					}),
 				]
 			: []),
-		...(official && permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_RUNTIME_MANAGE)
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_RUNTIME_MANAGE)
 			? [
 					createCapabilityGrant(FOUNDATION_BROWSER_CAPABILITIES.RUNTIME_INSTALL, {
 						constraints: storageConstraints,

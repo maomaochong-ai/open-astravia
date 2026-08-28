@@ -41,7 +41,7 @@ function previousPlugin(): InstalledPlugin {
 }
 
 describe("createInstalledPluginFromManifest", () => {
-	it("removes official-only command capabilities from remote packages", () => {
+	it("preserves explicitly granted command capabilities for remote packages", () => {
 		const installed = createInstalledPluginFromManifest({
 			manifest,
 			options: { source: "remote", grantedPermissions: ["agent.skills.control", "agent.command.run"] },
@@ -52,9 +52,9 @@ describe("createInstalledPluginFromManifest", () => {
 
 		expect(installed).toMatchObject({
 			trustLevel: "community",
-			permissions: ["agent.skills.control"],
-			grantedPermissions: ["agent.skills.control"],
-			declaredCommands: [],
+			permissions: ["agent.skills.control", "agent.command.run"],
+			grantedPermissions: ["agent.skills.control", "agent.command.run"],
+			declaredCommands: ["demo.run"],
 		});
 	});
 

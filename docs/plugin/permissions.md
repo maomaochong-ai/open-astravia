@@ -1,6 +1,8 @@
 # 权限
 
-插件必须在 `plugin.json` 的 `permissions` 数组里声明它要用的权限。宿主在插件管理页**单独授权**，并在运行时校验。
+插件必须在 `plugin.json` 的 `permissions` 数组里声明它要用的宿主 API。宿主在插件管理页**单独授权**，并在运行时校验。
+
+> 权限是能力声明、用户知情同意和宿主 API 门控规范，**不是安全沙箱**。插件与宿主共享 renderer realm；请只安装和启用可信插件。
 
 ## 声明 → 授权 → 校验
 
@@ -63,8 +65,8 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `browser.read` | 创建/查询/关闭 session，导航、快照、文本与截图 | [browser](./browser.md) |
 | `browser.interact` | `ctx.browser.act`；必须同时声明 `browser.read` | [browser](./browser.md) |
 | `browser.profile.persist` | 创建宿主管理的持久 profile | [browser](./browser.md#多账号-profile) |
-| `browser.attach` | 附着用户自行开启调试的 Chrome；仅 official | [browser](./browser.md) |
-| `browser.runtime.manage` | 安装/修复浏览器运行时；仅 official | [browser](./browser.md) |
+| `browser.attach` | 附着用户自行开启调试的 Chrome | [browser](./browser.md) |
+| `browser.runtime.manage` | 安装/修复浏览器运行时 | [browser](./browser.md) |
 | `storage.read` | `ctx.storage.readJson/list/readFile/readBlob/getBlobRef` | [conversation-and-agent](./conversation-and-agent.md#插件私有存储-api) |
 | `storage.write` | `ctx.storage.writeJson/writeFile/putBlob` | 同上 |
 | `media.generate` | `ctx.media.listProviders/createJob/getJob/cancelJob` | [media](./media.md) |
@@ -87,4 +89,4 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 使用 `@vetta-org/plugin-vite` 构建或执行 `vetta-plugin pack` 时，构建器会检查最终 JavaScript
 产物和 `plugin.json` 的能力声明；发现 `registerSystemPromptProvider`、`setToolEnabled`、
 `registerTool`、`registerHook` 等能力缺少对应权限时会直接终止构建。运行时权限校验仍然保留，
-用于验证用户是否实际授权并防御动态或非标准产物。
+用于验证用户是否实际授权并约束通过宿主公开 API 发起的调用。

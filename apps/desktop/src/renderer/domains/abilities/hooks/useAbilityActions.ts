@@ -25,8 +25,11 @@ export interface AbilityActions {
 	uninstall: (item: AbilityItem) => void;
 	toggle: (item: AbilityItem) => void;
 	setPluginPermission: (item: PluginAbility, permission: PluginPermission, granted: boolean) => void;
-	/** 装完那次的启用 + 权限一起落盘：草稿在弹窗里攒着，点确认才走到这里。 */
-	applyPluginSetup: (item: PluginAbility, next: { enabled: boolean; grantedPermissions: PluginPermission[] }) => void;
+	/** 装完那次的启用、权限与命令授权一起落盘：草稿在弹窗里攒着，点确认才走到这里。 */
+	applyPluginSetup: (
+		item: PluginAbility,
+		next: { enabled: boolean; grantedPermissions: PluginPermission[]; grantedCommands: string[] },
+	) => void;
 	setPluginCommand: (item: PluginAbility, command: string, granted: boolean) => void;
 	reloadPlugin: (item: PluginAbility) => void;
 	uninstallMembers: (members: AbilityItem[]) => void;
@@ -262,7 +265,10 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	);
 
 	const applyPluginSetup = useCallback(
-		(item: PluginAbility, next: { enabled: boolean; grantedPermissions: PluginPermission[] }) => {
+		(
+			item: PluginAbility,
+			next: { enabled: boolean; grantedPermissions: PluginPermission[]; grantedCommands: string[] },
+		) => {
 			run(`${item.id}:setup`, async () => {
 				const grant = next.grantedPermissions.filter((permission) => !item.grantedPermissions.includes(permission));
 				const revoke = item.grantedPermissions.filter(
@@ -270,6 +276,10 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				);
 				if (grant.length > 0) await window.vetta.plugins.grantPermissions(item.slug, grant);
 				if (revoke.length > 0) await window.vetta.plugins.revokePermissions(item.slug, revoke);
+				const grantCommands = next.grantedCommands.filter((command) => !item.grantedCommands.includes(command));
+				const revokeCommands = item.grantedCommands.filter((command) => !next.grantedCommands.includes(command));
+				if (grantCommands.length > 0) await window.vetta.plugins.grantCommands(item.slug, grantCommands);
+				if (revokeCommands.length > 0) await window.vetta.plugins.revokeCommands(item.slug, revokeCommands);
 				// 授权先于启用：反过来的话插件会以缺权限的状态先 activate 一次并抛错。
 				if (next.enabled !== item.enabled) await window.vetta.plugins.setEnabled(item.slug, next.enabled);
 				notifyPluginsChanged();

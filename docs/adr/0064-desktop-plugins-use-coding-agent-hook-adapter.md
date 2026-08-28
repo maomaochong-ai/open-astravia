@@ -47,7 +47,7 @@ EcosystemHookRuntime（每 Session 唯一）
 - 每次调用同时复核插件启用状态、模式与 `agent.hooks.register` / `agent.hookHandler.execute` 权限。
 - handler 异常、超时、缺失或非法输出 fail-open，并记录 `handlerType: "callback"` 的失败 run；
   只有通过事件专属校验的显式结果才能 block、stop、修改工具输入、决定权限或请求 Stop 续跑。
-- `transcriptPath` 等宿主内部字段不进入 Plugin SDK 事件。QuickJS 继续不开放动态 Agent handler。
+- `transcriptPath` 等宿主内部字段不进入 Plugin SDK 事件。所有受支持的插件运行时使用同一动态 Agent handler 合同。
 
 ## 后果
 

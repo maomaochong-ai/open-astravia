@@ -2,7 +2,8 @@
 
 ## 状态
 
-Accepted（2026-08-07）
+Superseded in part by [ADR-0091](./0091-trusted-renderer-plugins-and-governance-permissions.md)。host 声明与主进程复核继续有效；
+`*` 和公开命令能力不再按 official 来源限制。下文保留原始决策作为历史记录。
 
 ## 背景
 

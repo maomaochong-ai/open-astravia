@@ -7,7 +7,7 @@ const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
 const MAX_REDIRECTS = 5;
 
-type PluginNetworkPolicy = Pick<InstalledPlugin, "allowedNetworkHosts" | "id" | "trustLevel">;
+type PluginNetworkPolicy = Pick<InstalledPlugin, "allowedNetworkHosts" | "id">;
 
 function parseUrl(value: string): URL {
 	const url = new URL(value);
@@ -27,7 +27,7 @@ function normalizeHostname(value: string): string {
 export function isPluginNetworkHostAllowed(policy: PluginNetworkPolicy, hostname: string): boolean {
 	const normalized = normalizeHostname(hostname);
 	return policy.allowedNetworkHosts.some((entry) => {
-		if (entry === "*") return policy.trustLevel === "official";
+		if (entry === "*") return true;
 		if (!entry.startsWith("*.")) return normalized === entry;
 		const suffix = entry.slice(1);
 		return normalized.endsWith(suffix) && normalized.length > suffix.length;

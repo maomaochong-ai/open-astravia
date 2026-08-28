@@ -35,14 +35,17 @@ function plugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlugin {
 }
 
 describe("PluginRegistryStore", () => {
-	it("normalizes user-editable trust and command permissions on read", () => {
+	it("normalizes user-editable trust without discarding declared capabilities", () => {
 		withDirectory((directory) => {
 			const path = join(directory, "plugins-manifest.json");
 			writeFileSync(path, JSON.stringify({ demo: plugin() }));
 			const stored = new PluginRegistryStore(path, join(directory, "plugins")).read().demo;
 
-			expect(stored).toMatchObject({ trustLevel: "community", permissions: ["ui.slot.global"] });
-			expect(stored.declaredCommands).toEqual([]);
+			expect(stored).toMatchObject({
+				trustLevel: "community",
+				permissions: ["ui.slot.global", "agent.command.run"],
+			});
+			expect(stored.declaredCommands).toEqual(["demo.run"]);
 			expect(stored.rootPath).toBe(join(directory, "plugins", "demo", "versions", "1.0.0"));
 		});
 	});

@@ -80,7 +80,6 @@ export const pluginBrowserMethods = {
 		step: unknown,
 	): Promise<BrowserRuntimeStatus> {
 		const session = this.session(sessionId, {
-			official: true,
 			permission: PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_RUNTIME_MANAGE,
 		});
 		const input = FOUNDATION_BROWSER_CAPABILITIES.RUNTIME_INSTALL.parseInput({
@@ -107,7 +106,7 @@ export const pluginBrowserMethods = {
 			this.session(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_PROFILE_PERSIST });
 		}
 		if (input.source === "attach") {
-			this.session(sessionId, { official: true, permission: PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_ATTACH });
+			this.session(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_ATTACH });
 		}
 		return session.access.client.invoke(FOUNDATION_BROWSER_CAPABILITIES.SESSION_CREATE, input).then((created) => {
 			this.claimBrowserSession(sessionId, created.id);

@@ -83,7 +83,7 @@ export function createInstalledPluginFromManifest(input: {
 		(manifest.styles ?? []).map((style) => toInstalledPluginUrl(manifest.id, activeVersion, style));
 	const trustLevel: InstalledPlugin["trustLevel"] =
 		options?.source === "remote" || options?.source === "npm" ? "community" : "local";
-	const permissions = effectivePluginPermissions(manifest.permissions ?? [], trustLevel);
+	const permissions = effectivePluginPermissions(manifest.permissions ?? []);
 	const grantedPermissions = Array.from(
 		new Set(
 			(options?.grantedPermissions ?? previous?.grantedPermissions ?? []).filter((permission) =>
@@ -94,8 +94,8 @@ export function createInstalledPluginFromManifest(input: {
 	const iconUrl = previous
 		? previous.iconUrl
 		: resolvePluginIcon(manifest.icon, (path) => toInstalledPluginUrl(manifest.id, activeVersion, path));
-	const declaredCommands = effectivePluginCommands(manifest.commands ?? [], trustLevel);
-	const grantedCommandNames = effectivePluginCommands(previous?.grantedCommandNames ?? [], trustLevel);
+	const declaredCommands = effectivePluginCommands(manifest.commands ?? []);
+	const grantedCommandNames = effectivePluginCommands(previous?.grantedCommandNames ?? []);
 	return {
 		id: manifest.id,
 		name: manifest.name,

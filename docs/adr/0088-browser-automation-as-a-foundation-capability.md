@@ -17,10 +17,10 @@ ADR-0079 为首个 Browser 系统插件选择了 Skill + CLI shim：插件自己
 
 1. Desktop 宿主提供 `cap.foundation.vetta.browser.*`。Capability SDK 定义结构化会话、导航、快照、读取、截图、动作与运行时合同；具体引擎通过宿主内部 `BrowserEngine` 端口适配，首个实现继续使用锁定版本的 `agent-browser`。
 2. Plugin SDK 提供 `ctx.browser` facade。插件不能传 namespace、物理 profile 路径或任意引擎 argv。插件身份由 Capability Adapter 注入，会话/profile 在宿主 registry 中按 namespace 隔离。
-3. 权限拆分为 read、interact、persistent profile、attach 与 runtime manage。请求浏览器权限的 manifest 必须声明 `browser.allowedHosts`；session 只能请求该授权的子集。宿主在显式导航前执行策略，并在目标不透明的动作完成后复核实际 URL，越界时关闭 session。attach 和 runtime manage 仅 official 插件可用。
+3. 权限拆分为 read、interact、persistent profile、attach 与 runtime manage。请求浏览器权限的 manifest 必须声明 `browser.allowedHosts`；session 只能请求该授权的子集。宿主在显式导航前执行策略，并在目标不透明的动作完成后复核实际 URL，越界时关闭 session。attach 和 runtime manage 在插件明确声明且用户授权后可用。
 4. 快照携带 revision，动作可声明其依据的 revision；宿主拒绝过期引用。公共 v1 不提供 JavaScript eval、任意命令执行、Cookie/token 导出或物理路径访问。
 5. Browser 系统插件降为宿主能力的产品适配器：保留设置、安装引导和 Agent Skill/工具体验，但不再拥有跨插件运行时。迁移期间只保留一次性数据兼容，不长期并行维护 shim 与 Capability 两条执行路径。
-6. QuickJS 不进入本能力的支持范围。
+6. 所有受支持的插件运行时共享同一 `ctx.browser` 合同。
 
 本决策替代 ADR-0079 中“插件 shim 拥有危险动作门禁”和“workspace 哈希拥有 session”的长期架构结论；ADR-0079 仍作为旧实现的背景与迁移依据。
 

@@ -35,6 +35,7 @@
 
 ### Changed
 
+- 插件运行时收敛为 ESM / Module Federation：删除 Worker/WASM、声明式 UI 与第二套 RPC 激活路径。插件权限改为治理型宿主 API 声明，local/community 插件经用户授权后也可执行清单命令、使用网络通配符及浏览器 attach/runtime manage；安装页明确提示插件与宿主共享 renderer、权限不是安全沙箱。宿主私有 `official` / `gateway` 合同仍保持来源限制（ADR-0091）。
 - Runtime 生命周期日志 Adapter 现在也接收 `runtime.active-session.lifecycle`，统一记录活动 Session 监听器与切换清理的
   内容安全失败字段；不会写入 Session 路径、事件正文、Prompt 或原始错误文本。
 - Desktop Runtime lifecycle 日志 Adapter 现在接收动态主 Agent Backend admission 的统一 Observation；安装、替换、停用与

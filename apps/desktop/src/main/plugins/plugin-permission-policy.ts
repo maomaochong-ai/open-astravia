@@ -1,24 +1,18 @@
-import type { InstalledPlugin, PluginPermission } from "../../preload/api-types/plugins.js";
+import type { PluginPermission } from "../../preload/api-types/plugins.js";
 
-const OFFICIAL_ONLY_PERMISSIONS = new Set<PluginPermission>([
-	"agent.command.run",
-	"agent.command.spawn",
-	"browser.attach",
-	"browser.runtime.manage",
-]);
-
-export function effectivePluginPermissions(
-	permissions: readonly PluginPermission[],
-	trustLevel: InstalledPlugin["trustLevel"],
-): PluginPermission[] {
-	return trustLevel === "official"
-		? [...permissions]
-		: permissions.filter((permission) => !OFFICIAL_ONLY_PERMISSIONS.has(permission));
+export function effectivePluginPermissions(permissions: readonly PluginPermission[]): PluginPermission[] {
+	return [...new Set(permissions)];
 }
 
-export function effectivePluginCommands(
-	commands: readonly string[],
-	trustLevel: InstalledPlugin["trustLevel"],
+export function effectivePluginCommands(commands: readonly string[]): string[] {
+	return [...new Set(commands)];
+}
+
+export function grantDeclaredPluginCommands(
+	current: readonly string[],
+	requested: readonly string[],
+	declared: readonly string[],
 ): string[] {
-	return trustLevel === "official" ? [...commands] : [];
+	const allowed = new Set(declared);
+	return [...new Set([...current, ...requested.filter((name) => allowed.has(name))])];
 }

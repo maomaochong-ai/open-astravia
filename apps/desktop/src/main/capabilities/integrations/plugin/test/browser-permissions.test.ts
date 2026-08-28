@@ -72,25 +72,17 @@ describe("PluginCapabilityAdapter browser permissions", () => {
 		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.ACCESS_DENIED }));
 	});
 
-	it("keeps attach and runtime management official-only", async () => {
+	it("allows attach and runtime management when explicitly granted", async () => {
 		const permissions = [
 			PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_READ,
 			PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_ATTACH,
 			PLUGIN_CAPABILITY_PERMISSIONS.BROWSER_RUNTIME_MANAGE,
 		];
 		const community = createAdapter({ permissions });
-		expect(() => community.adapter.createBrowserSession(community.sessionId, { source: "attach" })).toThrowError(
-			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.ACCESS_DENIED }),
-		);
-		expect(() => community.adapter.installBrowserRuntime(community.sessionId, "runtime")).toThrowError(
-			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.ACCESS_DENIED }),
-		);
-
-		const official = createAdapter({ permissions, official: true });
 		await expect(
-			official.adapter.createBrowserSession(official.sessionId, { source: "attach" }),
+			community.adapter.createBrowserSession(community.sessionId, { source: "attach" }),
 		).resolves.toHaveProperty("id", "browser-session");
-		await expect(official.adapter.installBrowserRuntime(official.sessionId, "runtime")).resolves.toMatchObject({
+		await expect(community.adapter.installBrowserRuntime(community.sessionId, "runtime")).resolves.toMatchObject({
 			phase: "ready",
 		});
 	});

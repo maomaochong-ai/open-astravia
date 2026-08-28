@@ -91,7 +91,7 @@ export const PLUGIN_PERMISSION_GROUPS: readonly PluginPermissionGroup[] = [
 	"intelligence",
 ];
 
-/** 宿主维护的权限边界说明。插件只能申请权限，不能改写这里的解释与风险等级。 */
+/** 宿主维护的 API 权限说明。插件只能申请权限，不能改写这里的解释与风险等级。 */
 export const PLUGIN_PERMISSION_PRESENTATIONS = {
 	"ui.slot.global": {
 		descriptionKey: "permission.description.uiSlotGlobal",

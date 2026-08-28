@@ -10,25 +10,25 @@ afterEach(async () => {
 	await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
 
-describe("createVettaPluginPackage QuickJS runtime", () => {
+describe("createVettaPluginPackage ESM runtime", () => {
 	it("packages the script entry without treating it as a federation manifest", async () => {
-		const rootDir = await mkdtemp(join(fileURLToPath(new URL(".", import.meta.url)), "tmp-pack-quickjs-"));
+		const rootDir = await mkdtemp(join(fileURLToPath(new URL(".", import.meta.url)), "tmp-pack-esm-"));
 		temporaryDirectories.push(rootDir);
 		await mkdir(join(rootDir, "dist"), { recursive: true });
 		await mkdir(join(rootDir, "locales"), { recursive: true });
 		await writeFile(
 			join(rootDir, "plugin.json"),
 			JSON.stringify({
-				id: "quickjs-pack-test",
-				name: "QuickJS pack test",
+				id: "esm-pack-test",
+				name: "ESM pack test",
 				version: "0.1.0",
 				pluginApiVersion: "^1.0.0",
-				runtime: "quickjs",
+				runtime: "esm",
 				entry: "dist/plugin.js",
 				permissions: [],
 			}),
 		);
-		await writeFile(join(rootDir, "dist", "plugin.js"), "vetta.activate(() => {});\n");
+		await writeFile(join(rootDir, "dist", "plugin.js"), "export function activate() {}\n");
 		await writeFile(join(rootDir, "locales", "en.json"), JSON.stringify({ title: "Test" }));
 
 		const result = await createVettaPluginPackage({ rootDir });
@@ -38,7 +38,7 @@ describe("createVettaPluginPackage QuickJS runtime", () => {
 			"locales/en.json",
 			"plugin.json",
 		]);
-		expect(result.outputPath).toBe(join(rootDir, "release", "quickjs-pack-test-0.1.0.zip"));
+		expect(result.outputPath).toBe(join(rootDir, "release", "esm-pack-test-0.1.0.zip"));
 	});
 
 	it("writes a stable npm archive after validating package and plugin identity", async () => {
@@ -52,12 +52,12 @@ describe("createVettaPluginPackage QuickJS runtime", () => {
 				name: "npm pack test",
 				version: "0.2.0",
 				pluginApiVersion: "^1.0.0",
-				runtime: "quickjs",
+				runtime: "esm",
 				entry: "dist/plugin.js",
 				permissions: [],
 			}),
 		);
-		await writeFile(join(rootDir, "dist", "plugin.js"), "vetta.activate(() => {});\n");
+		await writeFile(join(rootDir, "dist", "plugin.js"), "export function activate() {}\n");
 		await writeFile(
 			join(rootDir, "package.json"),
 			JSON.stringify({
@@ -89,12 +89,12 @@ describe("createVettaPluginPackage QuickJS runtime", () => {
 				name: "identity test",
 				version: "1.0.0",
 				pluginApiVersion: "^1.0.0",
-				runtime: "quickjs",
+				runtime: "esm",
 				entry: "dist/plugin.js",
 				permissions: [],
 			}),
 		);
-		await writeFile(join(rootDir, "dist", "plugin.js"), "vetta.activate(() => {});\n");
+		await writeFile(join(rootDir, "dist", "plugin.js"), "export function activate() {}\n");
 		await writeFile(
 			join(rootDir, "package.json"),
 			JSON.stringify({
@@ -125,14 +125,14 @@ describe("createVettaPluginPackage QuickJS runtime", () => {
 				name: "permission test",
 				version: "1.0.0",
 				pluginApiVersion: "^1.0.0",
-				runtime: "quickjs",
+				runtime: "esm",
 				entry: "dist/plugin.js",
 				permissions: ["agent.systemPrompt.write"],
 			}),
 		);
 		await writeFile(
 			join(rootDir, "dist", "plugin.js"),
-			'vetta.activate((ctx) => ctx.agent.registerSystemPromptProvider({ handler: () => [{ type: "setToolEnabled", toolName: "write", enabled: false }] }));\n',
+			'export function activate(ctx) { ctx.agent.registerSystemPromptProvider({ handler: () => [{ type: "setToolEnabled", toolName: "write", enabled: false }] }); }\n',
 		);
 
 		await expect(createVettaPluginPackage({ rootDir })).rejects.toThrow('requires "agent.tools.control"');

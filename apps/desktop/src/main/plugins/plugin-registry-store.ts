@@ -29,10 +29,10 @@ export class PluginRegistryStore {
 				// The user-editable registry is not a trust root.
 				plugin.trustLevel = plugin.source === "remote" || plugin.source === "npm" ? "community" : "local";
 				if (plugin.source !== "npm") plugin.distribution = undefined;
-				plugin.permissions = effectivePluginPermissions(plugin.permissions ?? [], plugin.trustLevel);
-				plugin.grantedPermissions = effectivePluginPermissions(plugin.grantedPermissions ?? [], plugin.trustLevel);
-				plugin.declaredCommands = effectivePluginCommands(plugin.declaredCommands ?? [], plugin.trustLevel);
-				plugin.grantedCommandNames = effectivePluginCommands(plugin.grantedCommandNames ?? [], plugin.trustLevel);
+				plugin.permissions = effectivePluginPermissions(plugin.permissions ?? []);
+				plugin.grantedPermissions = effectivePluginPermissions(plugin.grantedPermissions ?? []);
+				plugin.declaredCommands = effectivePluginCommands(plugin.declaredCommands ?? []);
+				plugin.grantedCommandNames = effectivePluginCommands(plugin.grantedCommandNames ?? []);
 				plugin.rootPath = join(this.pluginsBaseDir, plugin.id, "versions", plugin.activeVersion);
 			}
 			return registry;

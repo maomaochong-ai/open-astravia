@@ -6,7 +6,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
-- 新增宿主管理的 `ctx.browser` facade 与 `browser.read` / `browser.interact` / `browser.profile.persist` / `browser.attach` / `browser.runtime.manage` 权限。插件通过结构化 session、profile、导航、快照、读取、截图和动作 API 复用登录态浏览器；manifest 必须声明最大 `browser.allowedHosts`，每个 session 只能进一步收窄。公共合同不暴露路径、Cookie、token、任意 argv 或 JavaScript；QuickJS 不支持该 facade（ADR-0088）。
+- 新增宿主管理的 `ctx.browser` facade 与 `browser.read` / `browser.interact` / `browser.profile.persist` / `browser.attach` / `browser.runtime.manage` 权限。插件通过结构化 session、profile、导航、快照、读取、截图和动作 API 复用登录态浏览器；manifest 必须声明最大 `browser.allowedHosts`，每个 session 只能进一步收窄。公共合同不暴露路径、Cookie、token、任意 argv 或 JavaScript（ADR-0088）。
 - `ctx.agent.registerTool()` 新增可选 `configuration.settingKeys`：动态 Tool 可把自己与插件
   `contributes.settings` 的全部或部分字段关联到宿主统一配置目录。未声明配置的 Tool 行为不变；宿主会拒绝未知或重复
   setting key，并以 Adapter 而非原生 Tool 配置的方式呈现。
@@ -22,8 +22,9 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Breaking Changes
 
+- 删除 `runtime: "quickjs"` 及其声明式 UI 公共类型；插件运行时只保留 `esm` 与 `module-federation`，不提供兼容层（ADR-0091）。
 - **`agent_mode` 声明整体废弃（ADR-0071，行为变化）**：`plugin.json#agent_mode`、`registerTool({ agent_mode })`、`registerHook({ agent_mode })`、MCP 内联 map 的 `agent_mode` 与 `SKILL.md` frontmatter 的 `agent_mode` 不再有任何运行时语义——上一版它们还影响清单排序，本版确认排序对模型工具选择无可观察影响后归零。字段全部容忍传入（既有插件不需要改 manifest、不会校验失败），宿主直接忽略。要引导模型少用某个工具，把使用条件写进该工具 description 的反向触发段（Do NOT / Only for）。`AgentMode` 类型放宽为 `string`：合法模式 id 由宿主的模式注册表定义（未来可扩展），插件不应硬编码 `"work" | "coding"` 枚举，未知 id 一律按通用处理；`ctx.getAgentMode()` / `onAgentModeChanged()` 语义不变（仍是「新会话默认模式」，只适合展示层定制）。
-- `network.fetch` 现在必须同时声明 `plugin.json` 的 `network.allowedHosts`；宿主按域名/IP校验首跳与重定向。私网 IP、localhost 可正常声明，`*` 仅对 official 插件生效。
+- `network.fetch` 现在必须同时声明 `plugin.json` 的 `network.allowedHosts`；宿主按域名/IP校验首跳与重定向。私网 IP、localhost 与显式 `*` 对所有来源使用相同规则。
 - Replaced the media protocol v2 task surface with generic operation, job, and artifact APIs: consumers now call `ctx.media.submit()` with a typed `generate | compose | transcode` request, control host-owned work through `ctx.jobs`, and persist or release temporary output through `ctx.artifacts`. Provider registration now uses `submit()`, operation-specific capability declarations, opaque `inputs`, and `uploadInput()`. The old `createJob/getJob/cancelJob/saveArtifact/releaseArtifact` methods were removed without a compatibility layer (ADR-0059).
 
 ### Changed
@@ -56,7 +57,6 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 - 媒体 Provider 生成能力新增 `modeCapabilities` 与输入 `role`：Provider 可按模式声明首帧、尾帧、图片/视频/音频参考的类型和数量，以及比例、音频策略；媒体协议升级到 v4。
 - `ctx.agent.registerHook()`：ESM / Module Federation 插件可动态注册 Coding Agent 的 12 类原生 Hook 事件，并以 `Disposable` 注销。事件与返回值是判别联合；`PreToolUse`、`PermissionRequest`、`Stop` / `SubagentStop` 提供事件专属结果。新增 `agent.hooks.register` 与 `agent.hookHandler.execute` 双权限；`scope_use` 必填且 fail-closed，支持 `agent_mode` / `toolNames` 过滤、超时与 Main 边界校验（ADR-0064）。
 - `PluginActivityTabContribution.keepAliveWhenAvailable`：插件可让有状态 Activity Tab 在切换后继续挂载；`useActivityTab()` 新增 `active`，插件可在标签卡激活时调用既有的 `setActivityPanelWidth()` 等命令式能力。
-- 新增 `runtime: "quickjs"` 清单值与宿主声明式 UI 类型：第三方逻辑可在 QuickJS-WASM Worker 中执行，通过可序列化的布局、文本、表单和动作节点贡献 Activity Tab；QuickJS 清单禁止自带 CSS 与 Module Federation metadata（ADR-0061）。
 - `PluginStorageApi.putBlobFromFile()`：插件可把用户选择或拖入的真实文件直接交给宿主复制到私有 Blob；preload 负责从 `File` 提取路径，文件字节不进入插件 renderer、不进行 Base64 编码，仍受 `storage.write` 权限约束。
 - `PluginPromptAttachment.context` 结构化、版本化 JSON 上下文与 `lifecycle: "sticky"`：插件可把用户当前选择等应用状态作为可校验对象附到输入栏，宿主发送时冻结快照；`definePluginPromptContext()` 提供 JSON 安全与大小校验，旧的 metadata/instructions 一次性附件保持兼容。
 - `ctx.ai` 宿主管理的文本推理能力：插件通过 `ai.models.list` 获取可用文本模型，通过 `ai.complete` 调用用户已配置的模型。模型解析、凭据注入与请求执行均留在 Desktop 主进程，插件不会接触 API Key；首版契约提供单轮 `systemPrompt + prompt` 完成、推理级别、温度、最大输出和 token 用量。
