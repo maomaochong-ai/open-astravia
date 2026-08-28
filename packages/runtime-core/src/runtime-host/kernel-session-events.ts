@@ -1,7 +1,8 @@
 import type { Message, TextContent } from "@vetta/ai";
 import type { SessionEvent } from "../contracts.js";
 import { runtimeError } from "../errors.js";
-import { type RuntimeFailure, runtimeFailureFromAIErrorDetails } from "../failure-contract.js";
+import type { RuntimeFailure } from "../failure-contract.js";
+import { runtimeFailureFromAIErrorDetails } from "../failure-projection.js";
 import type { KernelEvent } from "../kernel/contracts.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import { baseSessionEvent, mapRuntimeSessionObservationEvent } from "./session-events.js";

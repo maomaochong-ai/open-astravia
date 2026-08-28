@@ -1,4 +1,5 @@
-import { type RuntimeFailure, runtimeFailureFromError } from "../failure-contract.js";
+import type { RuntimeFailure } from "../failure-contract.js";
+import { runtimeFailureFromError } from "../failure-projection.js";
 import type { RuntimeObservationContext, RuntimeObservationPublisher } from "../observation/index.js";
 import type {
 	RuntimeRetryDelay,

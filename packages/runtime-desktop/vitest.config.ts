@@ -74,6 +74,10 @@ export default defineConfig({
 				),
 			},
 			{
+				find: "@vetta/runtime-core/failures",
+				replacement: fileURLToPath(new URL("../runtime-core/src/failures.ts", import.meta.url)),
+			},
+			{
 				find: "@vetta/runtime-knowledge",
 				replacement: fileURLToPath(new URL("../runtime-knowledge/src/index.ts", import.meta.url)),
 			},

@@ -59,6 +59,7 @@
 			"@vetta/cli-host": ["../cli-host/src/index.ts"],
 			"@vetta/cli-host/*": ["../cli-host/src/*"],
 			"@vetta/runtime-core": ["../../packages/runtime-core/src/index.ts"],
+			"@vetta/runtime-core/failures": ["../../packages/runtime-core/src/failures.ts"],
 			"@vetta/runtime-core/session-extensions": ["../../packages/runtime-core/src/session-extensions/index.ts"],
 			"@vetta/runtime-core/*": ["../../packages/runtime-core/src/*"],
 			"@vetta/runtime-desktop": ["../../packages/runtime-desktop/src/index.ts"],

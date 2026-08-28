@@ -1,6 +1,7 @@
 import type { Message, StopReason } from "@vetta/ai";
 import type { ConversationDocument, ConversationDocumentReader } from "../conversation/document.js";
-import { type RuntimeFailure, runtimeFailureFromAIErrorDetails } from "../failure-contract.js";
+import type { RuntimeFailure } from "../failure-contract.js";
+import { runtimeFailureFromAIErrorDetails } from "../failure-projection.js";
 import type { RuntimeExecutionObservationEvent, RuntimeMessageEnvelope } from "../runtime-execution-observation.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import { ContextCompactionCommitter } from "./context-compaction-committer.js";

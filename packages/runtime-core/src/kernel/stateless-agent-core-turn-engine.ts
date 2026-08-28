@@ -22,7 +22,8 @@ import {
 	Type,
 	validateToolArguments,
 } from "@vetta/ai";
-import { type RuntimeFailure, runtimeFailureFromAIErrorDetails } from "../failure-contract.js";
+import type { RuntimeFailure } from "../failure-contract.js";
+import { runtimeFailureFromAIErrorDetails } from "../failure-projection.js";
 import type { RuntimeMessageEnvelope } from "../runtime-execution-observation.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import type { AgentCoreTurnEngineOptions } from "./agent-core-turn-engine-options.js";

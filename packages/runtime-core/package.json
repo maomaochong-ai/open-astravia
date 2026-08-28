@@ -25,6 +25,10 @@
 			"types": "./dist/conversation/index.d.ts",
 			"import": "./dist/conversation/index.js"
 		},
+		"./failures": {
+			"types": "./dist/failures.d.ts",
+			"import": "./dist/failures.js"
+		},
 		"./configuration": {
 			"types": "./dist/configuration/index.d.ts",
 			"import": "./dist/configuration/index.js"

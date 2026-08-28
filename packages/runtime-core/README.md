@@ -119,6 +119,7 @@ fields are quarantined in the Session request factory instead of being spread ac
 - `RuntimeSessionProjection` for synchronous Conversation Document and host state projection
 - `RuntimeModelRuntime` and `RuntimeModel` for shared Controller/View/State/Turn model state
 - `@vetta/runtime-core/conversation` for the tree-shaped history read model, reader port and host history projection
+- `@vetta/runtime-core/failures` for the browser-safe structured failure contract and untrusted-boundary reader
 - `resumeAgentSession` and `ConversationRecoveryPolicy` for recovery without model or tool replay
 - `RuntimeSessionObservationEvent` and Kernel-to-`SessionEvent` adapters, including provider/model cache observability on `usage.update`
 - generation and agent tracing projections for prompt-cache hit rate, write rate, and observation coverage

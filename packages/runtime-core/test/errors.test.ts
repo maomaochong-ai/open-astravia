@@ -1,7 +1,8 @@
 import { AI_ERROR_CODES, AIError } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import { isSessionError, runtimeError } from "../src/errors.js";
-import { readRuntimeFailure, runtimeFailureFromError } from "../src/failure-contract.js";
+import { runtimeFailureFromError } from "../src/failure-projection.js";
+import { readRuntimeFailure } from "../src/failures.js";
 
 describe("Runtime errors", () => {
 	it("recognizes structured session failures independently of message text", () => {

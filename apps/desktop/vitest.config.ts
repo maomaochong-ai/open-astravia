@@ -117,6 +117,10 @@ export default defineConfig({
 				replacement: resolve(__dirname, "../../packages/runtime-core/src/conversation/index.ts"),
 			},
 			{
+				find: "@vetta/runtime-core/failures",
+				replacement: resolve(__dirname, "../../packages/runtime-core/src/failures.ts"),
+			},
+			{
 				find: "@vetta/runtime-core/sandbox",
 				replacement: resolve(__dirname, "../../packages/runtime-core/src/sandbox/index.ts"),
 			},

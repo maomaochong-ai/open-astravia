@@ -48,7 +48,8 @@ export type {
 	RuntimeFailureLockHolder,
 	RuntimeFailureOrigin,
 } from "./failure-contract.js";
-export { readRuntimeFailure, runtimeFailureFromAIErrorDetails, runtimeFailureFromError } from "./failure-contract.js";
+export { readRuntimeFailure } from "./failure-contract.js";
+export { runtimeFailureFromAIErrorDetails, runtimeFailureFromError } from "./failure-projection.js";
 export {
 	ConsecutiveFailureCircuitBreaker,
 	type ConsecutiveFailureCircuitBreakerOptions,

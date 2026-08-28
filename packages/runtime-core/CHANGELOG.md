@@ -12,6 +12,8 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- 新增不加载 Provider 实现的 `@vetta/runtime-core/failures` 公共入口，供 Renderer 等浏览器宿主读取并校验结构化失败；
+  AI Error 投影仍由 Runtime 根入口提供。
 - 新增 Session-scoped typed function registry/source：Runtime 只负责 Token、依赖解析、动态注册、在途调用捕获、
   取消与关闭，不解释函数是否用于提问、授权、UI 或其它产品行为。
 - `RuntimeObservationHubView` 现在可创建不取得 Hub 生命周期所有权的 scoped Publisher；新增
