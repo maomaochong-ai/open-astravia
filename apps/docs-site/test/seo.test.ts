@@ -139,6 +139,11 @@ describe("structured data", () => {
 			{ name: site.title, path: "/" },
 			{ name: "快速开始", path: "/getting-started/" },
 		]);
+		expect(breadcrumbItemsFromSlugs(["examples", "review-and-fix-code"], "示例：审查并修复代码缺陷")).toEqual([
+			{ name: site.title, path: "/" },
+			{ name: "实战示例", path: "/examples/" },
+			{ name: "示例：审查并修复代码缺陷", path: "/examples/review-and-fix-code/" },
+		]);
 	});
 
 	it("keeps the homepage as WebPage and always starts breadcrumbs at the docs root", () => {

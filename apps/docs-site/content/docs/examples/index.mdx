@@ -1,0 +1,49 @@
+---
+title: 实战示例
+description: 从可复制的完整任务开始，学习如何给出上下文、约束、产物、验收条件和恢复路径。
+---
+
+<Takeaways>
+  <li>选择与目标最接近的示例</li>
+  <li>先替换路径和输入，不急着删掉约束</li>
+  <li>用真实产物与检查结果验收，而不是只看最终回复</li>
+</Takeaways>
+
+这里不是提示词合集。每个示例都是一条可以复现的工作流：先准备明确的起始状态，再提交完整任务，观察执行证据，最后检查文件、测试或历史记录。示例中的路径和名称只是占位，请替换为自己的内容。
+
+## 选择一个目标
+
+<Entries>
+  <Entry href="/examples/review-and-fix-code/" kicker="01 / CODE" title="审查并修复一个代码缺陷">
+    适合已有仓库中的局部 Bug：先复现，限制修改范围，再用定向测试和差异验收。
+  </Entry>
+  <Entry href="/examples/document-to-brief/" kicker="02 / DOCUMENTS" title="把多份材料整理成决策简报">
+    适合需求、会议记录和调研资料：标注来源、冲突与待确认项，生成固定文件。
+  </Entry>
+  <Entry href="/examples/batch-project-audit/" kicker="03 / BATCH" title="批量审计多个独立项目">
+    适合同一规则作用于多个目录：先用一个目录试跑，再设置并发和产物校验。
+  </Entry>
+  <Entry href="/examples/scheduled-project-report/" kicker="04 / SCHEDULE" title="按计划生成项目报告">
+    适合已经人工跑通的重复任务：固定输入输出，立即执行验证，再开启计划。
+  </Entry>
+</Entries>
+
+## 一份可靠任务的共同结构
+
+<Checklist title="复制示例后先检查">
+  <li>起始目录、输入文件和外部依赖真实存在。</li>
+  <li>任务写清允许读取、允许修改和禁止触碰的范围。</li>
+  <li>产物有固定路径、格式或测试命令，不只要求“给出答案”。</li>
+  <li>遇到不确定信息时要求停止、标注或请求确认，而不是猜测。</li>
+  <li>失败后可以缩小范围继续，不必重新开始整个任务。</li>
+</Checklist>
+
+<Callout title="先用低风险副本练习" type="info">
+  第一次尝试文件修改、批量或自动化时，优先使用可恢复的测试目录，并从「沙盒受限」和最小权限开始。
+</Callout>
+
+<Continue>
+  <ContinueLink href="/getting-started/first-task/" title="第一次运行任务" description="还不熟悉工作区、执行过程和验收时，从这里开始。" />
+  <ContinueLink href="/core/context-tools-and-permissions/" title="上下文、工具与权限" description="理解 Agent 能看到什么，以及动作何时需要确认。" />
+  <ContinueLink href="/core/progress-results-and-recovery/" title="进度、结果与恢复" description="检查长任务、后台工作和失败恢复。" />
+</Continue>

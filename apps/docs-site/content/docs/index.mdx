@@ -49,10 +49,10 @@ full: true
       <HomeIndexLink href="/core/context-tools-and-permissions/" title="上下文、工具与权限" description="知道 Agent 看到了什么、能做什么" />
     </HomeIndexGroup>
     <HomeIndexGroup index="02" title="扩大工作规模">
+	  <HomeIndexLink href="/examples/" title="从实战示例开始" description="复制一份完整任务，再按目标修改" />
       <HomeIndexLink href="/product/abilities/" title="安装能力" description="技能、场景、MCP、插件与套装" />
       <HomeIndexLink href="/product/knowledge-base/" title="复用长期知识" description="导入、加工并检索资料" />
       <HomeIndexLink href="/product/batch-tasks/" title="批量处理目录" description="一次配置，独立执行多个目标" />
-      <HomeIndexLink href="/product/automation/" title="按计划持续执行" description="把已跑通的任务交给调度器" />
     </HomeIndexGroup>
     <HomeIndexGroup index="03" title="开发与集成">
       <HomeIndexLink href="/plugins/getting-started/" title="创建插件" description="扩展界面、工具和工作区" />
@@ -73,7 +73,17 @@ full: true
   </HomeOutcomes>
 </HomeSection>
 
-<HomeFooter kicker="04 / FOR HUMANS AND AGENTS">
+<HomeSection>
+  <HomeSectionHeading kicker="04 / WORKED EXAMPLES" title="从一份可复制的任务开始" description="每个示例都给出起始状态、完整输入、预期产物、验收方式和修正路径。" />
+  <HomeOutcomes>
+    <div><span>代码</span><h3>审查并修复一个缺陷</h3><p>先建立基线，再做最小修改，用测试和差异证明结果。</p><a href="/examples/review-and-fix-code/">运行代码修复示例 →</a></div>
+    <div><span>资料</span><h3>把多份材料整理成简报</h3><p>限定来源、标注不确定项，并生成可复核的 Markdown 产物。</p><a href="/examples/document-to-brief/">生成决策简报 →</a></div>
+    <div><span>批量</span><h3>审计多个独立项目</h3><p>先试跑一个目录，再用产物规则与抽样检查验收整个批次。</p><a href="/examples/batch-project-audit/">运行批量审计 →</a></div>
+    <div><span>持续</span><h3>按计划生成项目报告</h3><p>把已验证的普通任务交给本地调度器，并保留可检查历史。</p><a href="/examples/scheduled-project-report/">创建定期报告 →</a></div>
+  </HomeOutcomes>
+</HomeSection>
+
+<HomeFooter kicker="05 / FOR HUMANS AND AGENTS">
   <h2>同一份事实源，<br />也为 Agent 准备。</h2>
   <p>通过 <a href="/llms.txt">llms.txt</a>、<a href="/llms-full.txt">完整上下文</a>或任意页面的 Markdown 版本读取。</p>
 </HomeFooter>

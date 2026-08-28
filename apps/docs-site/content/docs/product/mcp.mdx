@@ -84,6 +84,26 @@ MCP 让 Agent 调用外部工具与数据源。在桌面端，MCP 通过侧栏 *
 - 连接失败时检查：命令是否可执行、工作目录、环境变量、HTTP URL、认证状态、启动超时。
 - 可对已添加项 **编辑配置**、**连接账户 / 断开账户**（OAuth）、**停用** 或 **移除**。
 
+第一次验证连接时先使用只读工具，并让 Agent 报告它实际看到的工具名和结果：
+
+<Plate no="01" title="MCP 最小验证">
+
+```text
+先列出当前会话中来自 [连接器名称] 的可用工具，不执行任何写操作。
+选择一个只读工具做最小调用，并报告工具名、关键参数和结果摘要。
+如果没有发现工具、需要额外授权或只有写入工具，请停止并说明当前连接状态。
+```
+
+</Plate>
+
+连接成功不等于每个工具都应自动批准。确认工具行为、参数范围和数据边界后，再考虑对稳定的只读调用启用自动批准。
+
 <Callout title="安全" type="warn">
   不要把令牌写入会提交到仓库的项目文件。优先在应用表单中填写；需要共享配置时使用环境变量或本机密钥管理，并脱敏后再排错。
 </Callout>
+
+<Continue>
+  <ContinueLink href="/product/abilities/" title="管理能力" description="查看发现、我的、启用状态和其它能力类型。" />
+  <ContinueLink href="/core/context-tools-and-permissions/" title="工具与权限" description="理解工具调用、确认请求和完全访问的边界。" />
+  <ContinueLink href="/troubleshooting/" title="连接器不可用" description="按连接状态、进程、网络与认证逐层排查。" />
+</Continue>

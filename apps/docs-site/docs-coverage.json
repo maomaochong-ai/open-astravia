@@ -21,6 +21,18 @@
 			]
 		},
 		{
+			"id": "workflow-examples",
+			"source": "apps/desktop/src/renderer/domains/chat, batch-tasks, knowledge-base and scheduler",
+			"status": "complete",
+			"pages": [
+				"/examples/",
+				"/examples/review-and-fix-code/",
+				"/examples/document-to-brief/",
+				"/examples/batch-project-audit/",
+				"/examples/scheduled-project-report/"
+			]
+		},
+		{
 			"id": "project-files",
 			"source": "apps/desktop/src/renderer/domains/project and domains/file-explorer",
 			"status": "complete",
