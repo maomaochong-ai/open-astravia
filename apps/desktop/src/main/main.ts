@@ -72,6 +72,7 @@ import {
 	stopDesktopRemoteDesktopHost,
 } from "./remote-control/desktop-remote-desktop-host.js";
 import { DesktopRemotePairingService } from "./remote-control/desktop-remote-pairing-service.js";
+import { startRendererAfterSessionPreparation } from "./renderer-startup.js";
 import { beginSharedRuntimeShutdown, disposeSharedRuntime, getSharedRuntime } from "./runtime.js";
 import { getRuntimeManager } from "./runtimes/manager.js";
 import { initializeSandboxCapability } from "./sandbox/capability.js";
@@ -426,12 +427,22 @@ if (!gotSingleLock) {
 		// 静态文件协议 handler（ADR-0027）
 		registerFileProtocolHandler();
 
-		// 直接加载真实 renderer，但先保持窗口隐藏。renderer 恢复持久化主题并绘制
-		// theme-ui 启动骨架后通知主进程，再显示窗口，避免独立启动页与最终主题脱节。
+		// 开发模式每次启动先清空 HTTP 缓存。插件资源的 remoteEntry.js 文件名固定，
+		// Chromium 可能跨重启复用旧 chunk；但 clearCache() 会中断已经开始的网络请求，
+		// 因此必须在创建窗口、加载 Vite renderer 之前完成。打包版使用版本化资源，不清缓存。
+		// 协议响应的 no-store 继续作为插件开发资源的第二层保证。
 		const rendererBootStartedAt = Date.now();
-		const mainWindow = createWindow();
-		attachMainWindowLifecycle(mainWindow);
-		void loadMainWindow(mainWindow);
+		const mainWindow = await startRendererAfterSessionPreparation({
+			resetDevelopmentCache: app.isPackaged ? undefined : () => session.defaultSession.clearCache(),
+			startRenderer: () => {
+				// 直接加载真实 renderer，但先保持窗口隐藏。renderer 恢复持久化主题并绘制
+				// theme-ui 启动骨架后通知主进程，再显示窗口，避免独立启动页与最终主题脱节。
+				const win = createWindow();
+				attachMainWindowLifecycle(win);
+				void loadMainWindow(win);
+				return win;
+			},
+		});
 		const remoteControlUrl = process.env.VETTA_REMOTE_CONTROL_URL;
 		const remotePairingToken = process.env.VETTA_REMOTE_PAIRING_TOKEN;
 		const remoteDesktopTarget =
@@ -467,13 +478,6 @@ if (!gotSingleLock) {
 			});
 		});
 
-		// 开发模式：每次启动清空 HTTP 缓存。插件资源走 vetta-plugin://，remoteEntry.js
-		// 是固定文件名，Chromium 会启发式缓存它——重编译后旧缓存仍 pin 着旧 chunk，
-		// 重启也不清（持久化在 userData）。dev 下清缓存代价是重新拉一次本地资源，可忽略；
-		// 打包版不清（versioned 资源该缓存）。配合协议响应的 no-store 双保险。
-		if (!app.isPackaged) {
-			await session.defaultSession.clearCache();
-		}
 		// 提前发现系统插件（ADR-0024）：填充 id 集合供协议解析，staging 不完整时早告警。
 		discoverSystemPlugins();
 

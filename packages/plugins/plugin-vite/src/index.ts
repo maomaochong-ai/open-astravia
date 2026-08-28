@@ -8,6 +8,7 @@ import {
 	isVettaPluginDevServer,
 	VETTA_PLUGIN_DEV_ENTRY_ID,
 } from "./dev-vite-plugins.js";
+import { createPluginBuildWarningFilter } from "./build-warning-filter.js";
 import { createHostThemeBridgePlugin } from "./host-theme.js";
 import { type CreateVettaPluginPackageOptions, createVettaPluginPackage } from "./pack.js";
 import { assertPluginPermissionContract } from "./permission-contract.js";
@@ -213,6 +214,7 @@ export function vettaPluginFederation(options: VettaPluginFederationOptions): Pl
 	const entry = options.entry ?? "./src/index.tsx";
 	const devServer = isVettaPluginDevServer();
 	const plugins: PluginOption[] = [
+		createPluginBuildWarningFilter(),
 		createHostThemeBridgePlugin(),
 		...(devServer ? createVettaPluginDevPlugins(entry) : []),
 		createBuildDefaultsPlugin(entry),

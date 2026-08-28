@@ -11,6 +11,8 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ### Fixed
 
+- Suppressed Rollup's harmless `MODULE_LEVEL_DIRECTIVE` warnings for `"use client"` inside bundled third-party
+  browser modules; plugin-source directives, `"use server"`, and all other Rollup warnings remain visible.
 - Made the host `@vetta/theme-ui/plugin-ui` share explicitly opt-in through `hostThemeUi`, so plugins that do not use host-built Theme UI components no longer emit missing-dependency warnings or inherit an unnecessary build-time dependency.
 - Raised production `assetsInlineLimit` so small plugin assets (for example package `icon.png`) stay data-URL inlined; absolute `/…` asset URLs resolve against the host origin and can pick up desktop `public/icon.png` by mistake.
 - Kept CSS resource-module requests such as `?raw`, `?url`, and `?inline` out of the development PostCSS scoping pipeline, while preserving scoping for normal, direct, and HMR stylesheet requests.

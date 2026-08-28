@@ -12,6 +12,11 @@
 
 ### Fixed
 
+- 修复 `bun run dev` 构建插件时，为 `framer-motion`、`@xyflow/react` 等浏览器依赖重复打印无害的
+  `"use client"` Rollup 警告；插件构建器现在只过滤第三方依赖的该指令，插件源码、`"use server"` 及其它
+  Rollup 警告仍会保留。
+- 修复 `bun run dev` 启动时在 Renderer 已开始加载 Vite 模块后清理 Electron HTTP 缓存，导致首屏 TS/CSS 请求被中断并报
+  `net::ERR_NETWORK_CHANGED`、窗口空白的问题；开发态缓存现在会在创建和加载窗口前完成清理，打包版缓存策略不变。
 - 修复开发态 Renderer 整页热刷新时，已注册的 Plugin Agent Tool 仍会被主进程发往尚未恢复监听器的新页面、请求静默丢失并等满工具超时的问题；主进程现在在导航开始时立即终止在途工具调用，加载期间快速返回可重试错误，并在插件宿主完成加载后通过显式握手恢复分发。工具自身的取消、注册 generation 与插件定向 HMR 行为保持不变。
 - 修复 Browser Use 首次启动 `agent-browser` daemon 时因继承输出管道导致调用永久等待，以及 Desktop 异常退出后旧 daemon
   继续占用持久 profile、下次启动 Chrome 静默退出的问题；宿主现在按 CLI 进程退出及时结算命令，超时/取消立即完成，
