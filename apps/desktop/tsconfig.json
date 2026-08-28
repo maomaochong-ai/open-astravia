@@ -39,12 +39,16 @@
 			"@vetta/coding-agent/session-extensions": ["../../packages/coding-agent/src/public-api/session-extensions.ts"],
 			"@vetta/coding-agent/config": ["../../packages/coding-agent/src/config.ts"],
 			"@vetta/coding-agent/extensions": ["../../packages/coding-agent/src/public-api/extensions.ts"],
+			"@vetta/coding-agent/function-extensions": [
+				"../../packages/coding-agent/src/public-api/function-extensions.ts"
+			],
 			"@vetta/coding-agent/host-services": ["../../packages/coding-agent/src/public-api/host-services.ts"],
 			"@vetta/coding-agent/historical-sessions": [
 				"../../packages/coding-agent/src/public-api/historical-sessions.ts"
 			],
 			"@vetta/coding-agent/hooks": ["../../packages/coding-agent/src/public-api/hooks.ts"],
 			"@vetta/coding-agent/profile": ["../../packages/coding-agent/src/public-api/profile.ts"],
+			"@vetta/coding-agent/plugin-runtime": ["../../packages/coding-agent/src/public-api/plugin-runtime.ts"],
 			"@vetta/coding-agent/cli-guidance": ["../../packages/coding-agent/src/public-api/cli-guidance.ts"],
 			"@vetta/coding-agent/resources": ["../../packages/coding-agent/src/public-api/resources.ts"],
 			"@vetta/coding-agent/rpc": ["../../packages/coding-agent/src/public-api/rpc.ts"],

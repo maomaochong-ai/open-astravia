@@ -6,6 +6,7 @@ import { batchPaths, createQuickCheckPlan, isBiomeGlobalTrigger } from "./check-
 import { findSkillFrontmatterProblems } from "./check-skill-frontmatter.mjs";
 import {
 	collectTypeScriptExportEntries,
+	findImportedSourcePathMapViolations,
 	findSourcePathMapViolations,
 	typesExportToSourceRel,
 } from "./check-source-path-maps.mjs";
@@ -173,6 +174,45 @@ describe("source path maps", () => {
 				paths: { "@vetta/runtime-mcp/auth": ["./packages/runtime-mcp/src/auth/index.ts"] },
 				packages,
 				fileExists: () => true,
+			}),
+		).toEqual([]);
+	});
+
+	it("detects when an app wildcard alias misses an imported public export source", () => {
+		const packages = [
+			{
+				dir: "packages/coding-agent",
+				manifest: {
+					name: "@vetta/coding-agent",
+					exports: {
+						"./plugin-runtime": {
+							types: "./dist/public-api/plugin-runtime.d.ts",
+							import: "./dist/public-api/plugin-runtime.js",
+						},
+					},
+				},
+			},
+		];
+		const importedSpecifiers = ["@vetta/coding-agent/plugin-runtime"];
+
+		expect(
+			findImportedSourcePathMapViolations({
+				paths: { "@vetta/coding-agent/*": ["../../packages/coding-agent/src/*"] },
+				importedSpecifiers,
+				packages,
+				configDir: "apps/desktop",
+			}),
+		).toEqual([
+			"@vetta/coding-agent/plugin-runtime: apps/desktop/tsconfig.json maps to ../../packages/coding-agent/src/plugin-runtime, expected ../../packages/coding-agent/src/public-api/plugin-runtime.ts",
+		]);
+		expect(
+			findImportedSourcePathMapViolations({
+				paths: {
+					"@vetta/coding-agent/plugin-runtime": ["../../packages/coding-agent/src/public-api/plugin-runtime.ts"],
+				},
+				importedSpecifiers,
+				packages,
+				configDir: "apps/desktop",
 			}),
 		).toEqual([]);
 	});

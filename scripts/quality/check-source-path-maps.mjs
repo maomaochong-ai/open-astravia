@@ -6,7 +6,7 @@
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { repoRoot } from "./lib.mjs";
 
@@ -61,6 +61,57 @@ export function findSourcePathMapViolations({ paths, packages, fileExists = exis
 	return violations;
 }
 
+function resolvePathMapTarget(paths, specifier) {
+	const exact = paths[specifier];
+	if (exact) return Array.isArray(exact) ? exact[0] : exact;
+
+	for (const [pattern, value] of Object.entries(paths)) {
+		const wildcard = pattern.indexOf("*");
+		if (wildcard < 0) continue;
+		const prefix = pattern.slice(0, wildcard);
+		const suffix = pattern.slice(wildcard + 1);
+		if (!specifier.startsWith(prefix) || !specifier.endsWith(suffix)) continue;
+		const captured = specifier.slice(prefix.length, specifier.length - suffix.length);
+		const target = Array.isArray(value) ? value[0] : value;
+		return typeof target === "string" ? target.replace("*", captured) : undefined;
+	}
+	return undefined;
+}
+
+function pathMapTargetResolvesToSource(mappedTarget, expectedTarget) {
+	if (!mappedTarget) return false;
+	const candidates = new Set([
+		expectedTarget,
+		expectedTarget.endsWith(".ts") ? expectedTarget.slice(0, -3) : expectedTarget,
+		expectedTarget.endsWith("/index.ts") ? expectedTarget.slice(0, -"/index.ts".length) : expectedTarget,
+	]);
+	return candidates.has(mappedTarget);
+}
+
+export function findImportedSourcePathMapViolations({ paths, importedSpecifiers, packages, configDir }) {
+	const exportsBySpecifier = new Map();
+	for (const workspacePackage of packages) {
+		for (const entry of collectTypeScriptExportEntries(workspacePackage.manifest)) {
+			exportsBySpecifier.set(entry.specifier, { ...entry, packageDir: workspacePackage.dir });
+		}
+	}
+
+	const violations = [];
+	for (const specifier of [...new Set(importedSpecifiers)].sort()) {
+		const entry = exportsBySpecifier.get(specifier);
+		if (!entry) continue;
+		const relativeTarget = relative(configDir, join(entry.packageDir, entry.sourceRel)).replaceAll("\\", "/");
+		const expectedTarget = relativeTarget.startsWith(".") ? relativeTarget : `./${relativeTarget}`;
+		const mappedTarget = resolvePathMapTarget(paths, specifier)?.replaceAll("\\", "/");
+		if (!pathMapTargetResolvesToSource(mappedTarget, expectedTarget)) {
+			violations.push(
+				`${specifier}: ${configDir}/tsconfig.json maps to ${mappedTarget ?? "(missing)"}, expected ${expectedTarget}`,
+			);
+		}
+	}
+	return violations;
+}
+
 function readJson(filePath) {
 	return JSON.parse(readFileSync(filePath, "utf8"));
 }
@@ -92,13 +143,43 @@ function collectWorkspacePackages(rootPath) {
 	return packages;
 }
 
+function collectModuleSpecifiers(directory) {
+	const specifiers = [];
+	const visit = (current) => {
+		for (const entry of readdirSync(current, { withFileTypes: true })) {
+			if (["node_modules", "dist", "release", "e2e"].includes(entry.name)) continue;
+			const absolute = join(current, entry.name);
+			if (entry.isDirectory()) {
+				visit(absolute);
+				continue;
+			}
+			if (!/\.(?:ts|tsx|mts|cts)$/.test(entry.name)) continue;
+			const source = readFileSync(absolute, "utf8");
+			const importPattern = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s*)["']([^"']+)["']/g;
+			for (const match of source.matchAll(importPattern)) specifiers.push(match[1]);
+		}
+	};
+	visit(directory);
+	return specifiers;
+}
+
 export function checkSourcePathMaps(rootPath = repoRoot) {
 	const tsconfig = readJson(join(rootPath, "tsconfig.json"));
-	return findSourcePathMapViolations({
+	const packages = collectWorkspacePackages(rootPath);
+	const rootViolations = findSourcePathMapViolations({
 		paths: tsconfig.compilerOptions?.paths ?? {},
-		packages: collectWorkspacePackages(rootPath),
+		packages,
 		fileExists: (relativePath) => existsSync(join(rootPath, relativePath)),
 	});
+	const desktopDir = "apps/desktop";
+	const desktopTsconfig = readJson(join(rootPath, desktopDir, "tsconfig.json"));
+	const desktopViolations = findImportedSourcePathMapViolations({
+		paths: desktopTsconfig.compilerOptions?.paths ?? {},
+		importedSpecifiers: collectModuleSpecifiers(join(rootPath, desktopDir)),
+		packages,
+		configDir: desktopDir,
+	});
+	return [...rootViolations, ...desktopViolations];
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

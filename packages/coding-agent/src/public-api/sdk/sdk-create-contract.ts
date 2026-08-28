@@ -1,5 +1,19 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
+import type {
+	CodingAgentQuestionAnswer,
+	CodingAgentQuestionItem,
+	CodingAgentQuestionOption,
+	CodingAgentQuestionRequest,
+	CodingAgentQuestionResult,
+} from "@vetta/coding-agent/function-extensions";
+import type {
+	AgentPluginContinuationInvoker,
+	AgentPluginRuntimeConfig,
+	AgentPluginSystemPromptInvoker,
+	AgentPluginToolInvoker,
+	AgentPluginTurnHandlerLeaseProvider,
+} from "@vetta/coding-agent/plugin-runtime";
 import type { EcosystemHookAdapterFactory } from "@vetta/ecosystem-adapter";
 import type {
 	ConversationScenario,
@@ -8,20 +22,6 @@ import type {
 	RuntimeObservationRouteOptions,
 } from "@vetta/runtime-core";
 import type { RuntimeTracer } from "@vetta/runtime-telemetry";
-import type {
-	CodingAgentQuestionAnswer,
-	CodingAgentQuestionItem,
-	CodingAgentQuestionOption,
-	CodingAgentQuestionRequest,
-	CodingAgentQuestionResult,
-} from "../../features/ask-user-question/contracts.js";
-import type {
-	AgentPluginContinuationInvoker,
-	AgentPluginRuntimeConfig,
-	AgentPluginSystemPromptInvoker,
-	AgentPluginToolInvoker,
-	AgentPluginTurnHandlerLeaseProvider,
-} from "../../model-context/plugin-runtime-contract.js";
 import type {
 	CodingAgentExtensionSource,
 	CodingAgentSkillContribution,
