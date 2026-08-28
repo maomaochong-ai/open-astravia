@@ -3,7 +3,6 @@
 	"name": "%plugin.name%",
 	"version": "0.3.3",
 	"pluginApiVersion": "^1.0.0",
-	"runtime": "module-federation",
 	"entry": "dist/mf-manifest.json",
 	"moduleFederation": {
 		"remoteName": "mobile_ui_preview",

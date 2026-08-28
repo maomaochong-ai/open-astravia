@@ -377,7 +377,6 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	const manifest = parseManifest(JSON.parse(readFileSync(manifestFile, "utf-8")));
 	plugin.defaultLocale = manifest.defaultLocale ?? "zh";
 	plugin.locales = readPluginLocales(versionDir, pluginLog);
-	plugin.runtime = manifest.runtime ?? "esm";
 	const reloadToken = Date.now().toString();
 	plugin.entryUrl = `${toInstalledPluginUrl(plugin.id, plugin.activeVersion, manifest.entry)}&reload=${reloadToken}`;
 	plugin.moduleFederation = manifest.moduleFederation;

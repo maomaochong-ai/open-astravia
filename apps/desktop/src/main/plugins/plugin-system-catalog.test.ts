@@ -25,7 +25,8 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
 		name: "System Demo",
 		version: "1.0.0",
 		pluginApiVersion: "^1.0.0",
-		entry: "dist/index.js",
+		entry: "dist/mf-manifest.json",
+		moduleFederation: { remoteName: "system_demo", expose: "./plugin" },
 		commands: ["demo.run"],
 		...overrides,
 	};

@@ -138,8 +138,8 @@ export const getProviderIcon = themeUi.getProviderIcon;
 `);
 	}
 	if (moduleName === "ui" || moduleName === "vetta-ui") {
-		// Legacy ESM / explicit vetta-host:// imports. MF plugins normally resolve
-		// @vetta/ui via share scope; keep export list in sync with packages/ui/src/index.ts.
+		// Federation chunks can reach @vetta/ui through the host shim as well as the
+		// share scope; keep this export list in sync with packages/ui/src/index.ts.
 		return moduleResponse(`
 const ui = globalThis.__VETTA_PLUGIN_HOST__.vettaUi;
 export const Button = ui.Button;

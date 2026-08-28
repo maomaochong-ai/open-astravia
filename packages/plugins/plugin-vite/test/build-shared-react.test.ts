@@ -102,7 +102,6 @@ async function createCommonJsReactFixture(): Promise<string> {
 				name: "Shared React fixture",
 				version: "0.1.0",
 				pluginApiVersion: "^1.0.0",
-				runtime: "module-federation",
 				entry: "dist/mf-manifest.json",
 				moduleFederation: { remoteName: "shared_react_fixture", expose: "./plugin" },
 				permissions: [],

@@ -3,7 +3,6 @@
 	"name": "%plugin.name%",
 	"version": "0.1.8",
 	"pluginApiVersion": "^1.0.0",
-	"runtime": "module-federation",
 	"entry": "dist/mf-manifest.json",
 	"moduleFederation": {
 		"remoteName": "cowart_vetta",

@@ -91,7 +91,6 @@ export default definePlugin({
   "name": "我的插件",
   "version": "0.1.0",
   "pluginApiVersion": "^1.0.0",
-  "runtime": "module-federation",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": { "remoteName": "my_plugin", "expose": "./plugin" },
   "styles": ["dist/style.css"],

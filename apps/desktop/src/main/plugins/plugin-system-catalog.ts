@@ -147,7 +147,6 @@ export class SystemPluginCatalog {
 			version: manifest.version,
 			activeVersion: manifest.version,
 			pluginApiVersion: manifest.pluginApiVersion,
-			runtime: manifest.runtime ?? "esm",
 			entryUrl: this.toResourceUrl(manifest.id, manifest.entry, manifest.version),
 			moduleFederation: manifest.moduleFederation,
 			agent: manifest.agent,

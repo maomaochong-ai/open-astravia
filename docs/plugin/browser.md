@@ -1,6 +1,6 @@
 # 浏览器自动化 API
 
-`ctx.browser` 让 ESM / Module Federation 插件使用 Desktop 宿主管理的真实浏览器。适合媒体账号管理、需要登录的后台、表单和交互式网页工作流。插件不需要依赖 Browser Use 系统插件，也不应自行执行浏览器 CLI。
+`ctx.browser` 让插件使用 Desktop 宿主管理的真实浏览器。适合媒体账号管理、需要登录的后台、表单和交互式网页工作流。插件不需要依赖 Browser Use 系统插件，也不应自行执行浏览器 CLI。
 
 ## 清单
 

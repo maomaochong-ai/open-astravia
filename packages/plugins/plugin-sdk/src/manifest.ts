@@ -170,7 +170,6 @@ function normalizeBrowserManifest(browser: PluginBrowserManifest | undefined): P
 function normalizeModuleFederation(
 	moduleFederation: PluginManifestInput["moduleFederation"],
 ): PluginManifest["moduleFederation"] {
-	if (!moduleFederation) throw new Error("Missing plugin moduleFederation");
 	return {
 		remoteName: trimString(moduleFederation.remoteName),
 		expose: trimString(moduleFederation.expose),
@@ -313,8 +312,12 @@ export function isPluginPackagedIconPath(icon: string): boolean {
 }
 
 export function parsePluginManifest(raw: unknown): PluginManifest {
+	if (typeof raw === "object" && raw !== null && "runtime" in raw) {
+		throw new Error(
+			'Invalid plugin manifest.runtime: runtime selection is unsupported; plugins use Module Federation.',
+		);
+	}
 	assertSchema(PluginManifestSchema, raw, "manifest");
-	const runtime = raw.runtime ?? "esm";
 	const commands = parsePluginCommandNames(raw.commands);
 	const icon = raw.icon === undefined ? undefined : trimString(raw.icon);
 	const permissions = normalizePermissions(raw.permissions);
@@ -336,9 +339,7 @@ export function parsePluginManifest(raw: unknown): PluginManifest {
 		version: raw.version,
 		pluginApiVersion: trimString(raw.pluginApiVersion),
 		entry: validatePluginRelativePath(trimString(raw.entry), "entry"),
-		runtime,
-		moduleFederation:
-			runtime === "module-federation" ? normalizeModuleFederation(raw.moduleFederation) : undefined,
+		moduleFederation: normalizeModuleFederation(raw.moduleFederation),
 		agent: normalizeAgentManifest(raw.agent),
 		styles: normalizeStringArray(raw.styles).map((style) => validatePluginRelativePath(style, "styles")),
 		permissions,

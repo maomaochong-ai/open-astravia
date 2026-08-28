@@ -16,7 +16,6 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 	debugPluginAgent("load start", {
 		pluginId: plugin.id,
 		version: plugin.activeVersion,
-		runtime: plugin.runtime,
 		source: plugin.source,
 		activationId,
 	});

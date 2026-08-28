@@ -164,7 +164,7 @@ ctx.agent.registerTool({
 `ctx.agent.registerHook()` 动态注册 Coding Agent 原生生命周期 Hook。插件与内置 Codex/Claude
 adapter 进入同一个 Session Hook Runtime，使用相同的事件时机、结果聚合和 Stop 安全语义；Desktop
 不会另建一套工具 Hook。需要同时授权 `agent.hooks.register` 和 `agent.hookHandler.execute`；当前只对
-ESM / Module Federation 插件使用同一套动态 Agent handler 合同。
+所有插件使用同一套动态 Agent handler 合同。
 
 ```ts
 const hook = ctx.agent.registerHook({

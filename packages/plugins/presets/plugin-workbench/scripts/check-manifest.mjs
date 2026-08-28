@@ -70,7 +70,7 @@ async function main() {
 	if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(validated.version)) {
 		warnings.push("version is valid for the host, but semantic versioning is recommended for publishing");
 	}
-	if (validated.runtime === "module-federation" && raw.entry !== "dist/mf-manifest.json") {
+	if (raw.entry !== "dist/mf-manifest.json") {
 		warnings.push('entry is usually "dist/mf-manifest.json"');
 	}
 	if (!Array.isArray(raw.permissions)) warnings.push("permissions should be an array");

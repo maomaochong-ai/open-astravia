@@ -5,7 +5,6 @@
 	"icon": "icon.png",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^1.0.0",
-	"runtime": "module-federation",
 	"entry": "dist/mf-manifest.json",
 	"moduleFederation": {
 		"remoteName": "vetta_ui_design",

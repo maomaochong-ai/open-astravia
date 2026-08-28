@@ -9,7 +9,7 @@ function createInstalledPlugin(id = "target"): InstalledPlugin {
 		version: "1.0.0",
 		activeVersion: "1.0.0",
 		pluginApiVersion: "1",
-		runtime: "esm",
+		moduleFederation: { remoteName: "official_plugins_test", expose: "./plugin" },
 		entryUrl: "file:///target/index.js",
 		styleUrls: [],
 		permissions: ["network.fetch"],

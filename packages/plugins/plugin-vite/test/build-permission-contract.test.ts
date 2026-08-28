@@ -66,7 +66,6 @@ async function createFixture(permissions: readonly PluginPermission[]): Promise<
 				name: "Permission contract fixture",
 				version: "0.1.0",
 				pluginApiVersion: "^1.0.0",
-				runtime: "module-federation",
 				entry: "dist/mf-manifest.json",
 				moduleFederation: { remoteName: "permission_contract_fixture", expose: "./plugin" },
 				permissions,

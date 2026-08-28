@@ -4,6 +4,11 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Plugin packaging now accepts only the Module Federation contract: `plugin.json#runtime` was removed,
+  `moduleFederation` is required, and archive collection always follows the federation manifest and remote entry.
+
 ### Fixed
 
 - Made the host `@vetta/theme-ui/plugin-ui` share explicitly opt-in through `hostThemeUi`, so plugins that do not use host-built Theme UI components no longer emit missing-dependency warnings or inherit an unnecessary build-time dependency.

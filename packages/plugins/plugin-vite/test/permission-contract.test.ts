@@ -11,7 +11,6 @@ function manifest(permissions: readonly PluginPermission[] = [], agent?: PluginM
 		name: "Permission contract test",
 		version: "0.1.0",
 		pluginApiVersion: "^1.0.0",
-		runtime: "module-federation",
 		entry: "dist/mf-manifest.json",
 		moduleFederation: { remoteName: "permission_contract_test", expose: "./plugin" },
 		permissions: [...permissions],

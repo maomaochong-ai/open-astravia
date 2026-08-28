@@ -50,7 +50,6 @@ describe("plugin development resource watcher", () => {
 				name: "Watcher test",
 				version: "0.1.0",
 				pluginApiVersion: "^1.0.0",
-				runtime: "module-federation",
 				entry: "dist/mf-manifest.json",
 				moduleFederation: { remoteName: "watcher_test", expose: "./plugin" },
 				permissions: [],

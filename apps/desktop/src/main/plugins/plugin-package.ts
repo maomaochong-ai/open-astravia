@@ -102,7 +102,6 @@ export function createInstalledPluginFromManifest(input: {
 		version: manifest.version,
 		activeVersion,
 		pluginApiVersion: manifest.pluginApiVersion,
-		runtime: previous?.runtime ?? manifest.runtime ?? "esm",
 		entryUrl,
 		moduleFederation: previous?.moduleFederation ?? manifest.moduleFederation,
 		agent: previous?.agent ?? manifest.agent,

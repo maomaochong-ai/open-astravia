@@ -58,7 +58,6 @@ async function validateManifest(rootDir: string): Promise<void> {
 			id: manifest.id,
 			version: manifest.version,
 			pluginApiVersion: manifest.pluginApiVersion,
-			runtime: manifest.runtime,
 		})}\n`,
 	);
 }

@@ -43,7 +43,7 @@ const plugin = {
 	id: "demo",
 	name: "Demo",
 	activeVersion: "1.0.0",
-	runtime: "esm",
+	moduleFederation: { remoteName: "loader_test", expose: "./plugin" },
 	source: "archive",
 	styleUrls: [],
 	defaultLocale: "zh",

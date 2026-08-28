@@ -17,7 +17,6 @@ export class PluginRegistryStore {
 		try {
 			const registry = JSON.parse(readFileSync(this.path, "utf-8")) as PluginRegistry;
 			for (const plugin of Object.values(registry)) {
-				plugin.runtime ??= "esm";
 				plugin.allowedNetworkHosts ??= [];
 				plugin.allowedBrowserHosts ??= [];
 				plugin.styleUrls ??= [];

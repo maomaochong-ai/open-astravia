@@ -7,7 +7,8 @@ const manifest: PluginManifest = {
 	name: "Demo",
 	version: "2.0.0",
 	pluginApiVersion: "^1.0.0",
-	entry: "dist/index.js",
+	entry: "dist/mf-manifest.json",
+	moduleFederation: { remoteName: "demo", expose: "./plugin" },
 	permissions: ["agent.skills.control", "agent.command.run"],
 	commands: ["demo.run"],
 };
@@ -19,8 +20,8 @@ function previousPlugin(): InstalledPlugin {
 		version: "1.0.0",
 		activeVersion: "1.0.0",
 		pluginApiVersion: "^1.0.0",
-		runtime: "esm",
-		entryUrl: "vetta-plugin://demo/versions/1.0.0/dist/index.js?v=1.0.0",
+		moduleFederation: { remoteName: "package_test", expose: "./plugin" },
+		entryUrl: "vetta-plugin://demo/versions/1.0.0/dist/mf-manifest.json?v=1.0.0",
 		styleUrls: [],
 		permissions: ["agent.skills.control"],
 		grantedPermissions: ["agent.skills.control"],
@@ -71,7 +72,7 @@ describe("createInstalledPluginFromManifest", () => {
 			version: "2.0.0",
 			activeVersion: "1.0.0",
 			pendingVersion: "2.0.0",
-			entryUrl: "vetta-plugin://demo/versions/1.0.0/dist/index.js?v=1.0.0",
+			entryUrl: "vetta-plugin://demo/versions/1.0.0/dist/mf-manifest.json?v=1.0.0",
 		});
 	});
 });

@@ -29,7 +29,6 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
   "name": "我的插件",
   "version": "0.1.0",
   "pluginApiVersion": "^1.0.0",
-  "runtime": "module-federation",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
     "remoteName": "my_plugin",
@@ -65,9 +64,8 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 | `name` | ✅ | string | 展示名。可用 `%key%`（见 [i18n](#i18n)）。 |
 | `version` | ✅ | string | 语义化版本。**bump 它可强制宿主重新拉取**绕过缓存（见 [styling-and-pitfalls.md](./styling-and-pitfalls.md)）。 |
 | `pluginApiVersion` | ✅ | string | 兼容的 SDK API 版本范围（如 `^1.0.0`）。 |
-| `runtime` | ✅ | `"module-federation"` \| `"esm"` | 加载模式，见 [运行时](#运行时runtime)。 |
-| `entry` | ✅ | string | 入口路径。MF 模式指向 `dist/mf-manifest.json`。 |
-| `moduleFederation` | MF 必填 | `{ remoteName, expose }` | `remoteName` 与 vite 配置 `name` 一致；`expose` 与 vite `expose` 一致（默认 `./plugin`）。 |
+| `entry` | ✅ | string | Module Federation 清单路径，通常为 `dist/mf-manifest.json`。 |
+| `moduleFederation` | ✅ | `{ remoteName, expose }` | `remoteName` 与 vite 配置 `name` 一致；`expose` 与 vite `expose` 一致（默认 `./plugin`）。 |
 | `styles` | ❌ | string[] | 要注入的 CSS 文件路径（相对插件根）。 |
 | `permissions` | ❌ | string[] | 声明需要的权限，见 [permissions.md](./permissions.md)。未声明即不可用。 |
 | `commands` | ❌ | string[] | 允许 `ctx.command.run` 的**可执行文件名**（如 `["git","node"]`），见 [commands](#commands)。 |
@@ -82,10 +80,13 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 | `contributionMode` | ❌ | object | 贡献硬隔离，见 [contributionMode](#contributionmode)。 |
 | `agent_mode` | ❌ | string \| string[] | **已废弃**（ADR-0071）：无任何运行时语义，容忍存在但被忽略，见 [agent_mode](#agent_mode已废弃)。 |
 
-## 运行时（runtime）
+## Module Federation 加载合同
 
-- **`module-federation`（推荐）**：宿主用 `@module-federation/enhanced/runtime` 动态注册你的 remote 并加载 `expose`。`entry` 指向 `dist/mf-manifest.json`。React / React DOM / `@vetta-org/plugin-sdk` 由宿主作为共享单例提供。
-- **`esm`（兼容保留）**：旧加载模式，把 `react`、`react/jsx-runtime`、`react/jsx-dev-runtime`、`@vetta-org/plugin-sdk` 映射到 `vetta-host://` 模块。新插件用 MF。
+插件只有一种加载方式：宿主用 `@module-federation/enhanced/runtime` 动态注册 remote 并加载 `expose`。
+`entry` 指向 Federation 生成的 `dist/mf-manifest.json`，`moduleFederation` 必须声明与 Vite 配置一致的
+`remoteName` 和 `expose`。React / React DOM / `@vetta-org/plugin-sdk` 由宿主作为共享单例提供。
+
+清单不提供加载模式选择字段；声明 `runtime` 会被校验器拒绝，避免清单看似选择了一条宿主并不存在的加载路径。
 
 ## 安装目录与版本机制
 

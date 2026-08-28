@@ -5,7 +5,6 @@
 	"version": "0.1.6",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^1.0.0",
-	"runtime": "module-federation",
 	"entry": "dist/mf-manifest.json",
 	"moduleFederation": {
 		"remoteName": "plugin_workbench",

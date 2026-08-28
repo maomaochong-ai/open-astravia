@@ -37,7 +37,7 @@ function getLatestPluginDevModule(pluginId: string): unknown {
 	return (globalThis as typeof globalThis & PluginDevModuleGlobal).__VETTA_PLUGIN_DEV_MODULES__?.get(pluginId);
 }
 
-/** Propagates the manifest reload token to the ESM remote entry URL. */
+/** Propagates the manifest reload token to the federation remote entry URL. */
 function createReloadBustPlugin(): ModuleFederationRuntimePlugin {
 	return {
 		name: "vetta-reload-bust",
@@ -68,8 +68,7 @@ async function assertPluginEntryFetchable(plugin: InstalledPlugin): Promise<void
 		const response = await fetch(plugin.entryUrl, { cache: "no-store" });
 		if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
 		const contentType = response.headers.get("content-type") ?? "";
-		const expectedContentType = plugin.runtime === "module-federation" ? "json" : "javascript";
-		if (!contentType.includes(expectedContentType)) {
+		if (!contentType.includes("json")) {
 			throw new Error(`Unexpected content type: ${contentType || "unknown"}`);
 		}
 	} catch (error) {
@@ -79,11 +78,7 @@ async function assertPluginEntryFetchable(plugin: InstalledPlugin): Promise<void
 }
 
 async function loadPluginModule(plugin: InstalledPlugin): Promise<unknown> {
-	if (plugin.runtime !== "module-federation") {
-		return import(/* @vite-ignore */ plugin.entryUrl);
-	}
 	const moduleFederation = plugin.moduleFederation;
-	if (!moduleFederation) throw new Error("Module Federation plugin is missing moduleFederation metadata");
 	await ensurePluginDevRuntime(plugin);
 	const host = getModuleFederationHost();
 	const remote = { name: moduleFederation.remoteName, alias: plugin.id, entry: plugin.entryUrl };
