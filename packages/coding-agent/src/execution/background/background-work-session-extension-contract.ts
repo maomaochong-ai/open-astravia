@@ -1,6 +1,6 @@
 import { defineSessionExtensionEndpoint } from "@vetta/runtime-core/session-extensions";
-import type { SubagentSnapshot } from "@vetta/runtime-subagents";
 import type { BackgroundCommandSnapshot } from "@vetta/runtime-tools";
+import type { CodingAgentSubagentSnapshot } from "../../runtime-contracts/index.js";
 
 export const CODING_AGENT_BACKGROUND_WORK_EXTENSION_ID = "coding-agent.background-work";
 
@@ -19,7 +19,7 @@ export const CODING_AGENT_BACKGROUND_TASK_KILL = defineSessionExtensionEndpoint<
 	"tasks.kill",
 );
 
-export const CODING_AGENT_SUBAGENTS_READ = defineSessionExtensionEndpoint<void, readonly SubagentSnapshot[]>(
+export const CODING_AGENT_SUBAGENTS_READ = defineSessionExtensionEndpoint<void, readonly CodingAgentSubagentSnapshot[]>(
 	CODING_AGENT_BACKGROUND_WORK_EXTENSION_ID,
 	"subagents.read",
 );
@@ -31,5 +31,5 @@ export const CODING_AGENT_SUBAGENTS_CLEAR_FINISHED = defineSessionExtensionEndpo
 
 export const CODING_AGENT_SUBAGENT_INTERRUPT = defineSessionExtensionEndpoint<
 	{ readonly target: string },
-	SubagentSnapshot | undefined
+	CodingAgentSubagentSnapshot | undefined
 >(CODING_AGENT_BACKGROUND_WORK_EXTENSION_ID, "subagents.interrupt");

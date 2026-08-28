@@ -179,8 +179,10 @@ async function initializeSession<TOwnershipBinding>(
 		);
 		const {
 			baseCapabilities,
+			askUserQuestionRuntime,
 			configurationState,
 			executionRuntime,
+			heavyToolPolicyRuntime,
 			mcpController,
 			memoryRuntime,
 			pluginMcpRuntime,
@@ -251,8 +253,7 @@ async function initializeSession<TOwnershipBinding>(
 			activation: options.activation,
 			knowledgeAvailable: options.knowledgeAvailable,
 			backgroundTasksAvailable: options.backgroundTasksAvailable,
-			askUserQuestion: sessionOptions.askUserQuestion,
-			scenario: options.scenario,
+			askUserQuestionRuntime,
 			observationPublisher: agentSessionObservations,
 		});
 		rollback.defer({
@@ -329,7 +330,7 @@ async function initializeSession<TOwnershipBinding>(
 				mcpController,
 				extensionEvents,
 				extensionToolRuntime: options.extensionToolRuntime,
-				askUserQuestion: sessionOptions.askUserQuestion,
+				heavyToolPolicyRuntime,
 				initializationTimeline: timeline,
 				imageSettingsSnapshots: options.imageSettingsSnapshots,
 				reportActiveToolNames: async (activeToolNames) => {

@@ -1,11 +1,7 @@
 import type { AgentEvent } from "@vetta/agent-core";
 import type { TodoItem } from "@vetta/coding-agent/session-extensions";
-import type {
-	BackgroundTaskInfo,
-	RuntimeContextCompactionResult,
-	RuntimeFailure,
-	RuntimeSubagentSnapshot,
-} from "@vetta/runtime-core";
+import type { BackgroundTaskInfo, RuntimeContextCompactionResult, RuntimeFailure } from "@vetta/runtime-core";
+import type { CodingAgentSubagentSnapshot } from "./subagent-contract.js";
 
 export type CodingAgentRetryEvent =
 	| {
@@ -37,7 +33,7 @@ export type CodingAgentSessionFeatureEvent =
 	| CodingAgentRetryEvent
 	| { readonly type: "todo_update"; readonly items: ReadonlyArray<TodoItem> }
 	| { readonly type: "background_tasks_update"; readonly tasks: ReadonlyArray<BackgroundTaskInfo> }
-	| { readonly type: "subagents_update"; readonly agents: ReadonlyArray<RuntimeSubagentSnapshot> }
+	| { readonly type: "subagents_update"; readonly agents: ReadonlyArray<CodingAgentSubagentSnapshot> }
 	| { readonly type: "mcp_reload_start" }
 	| {
 			readonly type: "mcp_reload_end";

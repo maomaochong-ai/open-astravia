@@ -41,14 +41,52 @@ describe("Coding Agent Tool projection policy", () => {
 		expect(projectedLegacy.validateInput({ path: "a.md", description: "Read it" })).toEqual({ path: "a.md" });
 		expect(projectedCustom).toBe(custom);
 	});
+
+	it.each([
+		{
+			label: "an overlong call description",
+			input: { path: "report.md", content: "private body", description: "x".repeat(101) },
+			expectedIssue: "description: must NOT have more than 100 characters",
+		},
+		{
+			label: "a missing domain field",
+			input: { path: "report.md", description: "Write the report", privateContent: "private body" },
+			expectedIssue: "content: must have required property 'content'",
+		},
+	])("returns a safe field-level error for $label", ({ input, expectedIssue }) => {
+		const base = tool(
+			{
+				path: { type: "string" },
+				content: { type: "string" },
+			},
+			["path", "content"],
+		);
+		const projected = createCodingAgentToolProjectionPipeline()
+			.projectTools(new Map([[base.name, base]]), frameContext())
+			.get(base.name);
+		const validateInput = projected?.validateInput;
+		if (!validateInput) throw new Error("Projected Tool is missing input validation");
+
+		expect(() => validateInput(input)).toThrow(
+			`Runtime Tool sample input rejected by projection coding-agent.call-description: ${expectedIssue}`,
+		);
+		try {
+			validateInput(input);
+		} catch (error) {
+			expect(error).toBeInstanceOf(Error);
+			if (!(error instanceof Error)) return;
+			expect(error.message).not.toContain("private body");
+			expect(error.message).not.toContain("Received arguments");
+		}
+	});
 });
 
-function tool(properties: Readonly<Record<string, unknown>>): RuntimeToolDefinition {
+function tool(properties: Readonly<Record<string, unknown>>, required?: readonly string[]): RuntimeToolDefinition {
 	return {
 		name: "sample",
 		label: "Sample",
 		description: "Sample Tool",
-		inputSchema: { type: "object", properties },
+		inputSchema: { type: "object", properties, ...(required ? { required } : {}) },
 		execute: async () => ({ content: [] }),
 	};
 }

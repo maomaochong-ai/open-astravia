@@ -58,19 +58,13 @@ describe("SubagentCoordinator public API", () => {
 		expect(fixture.coordinator.get("second")).toMatchObject({ status: "failed" });
 	});
 
-	it("mirrors todo progress and title into workflow snapshots", async () => {
+	it("keeps product-neutral titles in workflow snapshots", async () => {
 		const fixture = createFixture();
-		const [reserved] = fixture.coordinator.spawnMany([
-			{ ...request("planned", "workflow"), title: "Refactor API", todos: ["inspect", "change"] },
-		]);
+		const [reserved] = fixture.coordinator.spawnMany([{ ...request("planned", "workflow"), title: "Refactor API" }]);
 
-		expect(reserved).toMatchObject({ title: "Refactor API", todoProgress: { done: 0, total: 2 } });
+		expect(reserved).toMatchObject({ title: "Refactor API" });
 		await waitUntil(() => fixture.children.length === 1);
-		fixture.children[0]?.updateTodoProgress({ done: 1, total: 2 });
-		expect(fixture.coordinator.get("planned")).toMatchObject({
-			title: "Refactor API",
-			todoProgress: { done: 1, total: 2 },
-		});
+		expect(fixture.coordinator.get("planned")).toMatchObject({ title: "Refactor API" });
 	});
 
 	it("clears only terminal children and frees their task names", async () => {

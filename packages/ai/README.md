@@ -383,6 +383,8 @@ for await (const event of s) {
 
 When using `agentLoop`, tool arguments are automatically validated against your TypeBox schemas before execution. If validation fails, the error is returned to the model as a tool result, allowing it to retry.
 
+Validation failures are instances of `ToolArgumentsValidationError`. Its `issues` field contains structured schema paths and constraints without argument values; use `formatToolArgumentValidationIssues(error.issues)` when forwarding a safe summary across a UI or logging boundary. The existing `message` remains a detailed diagnostic that includes the received arguments for direct callers.
+
 When implementing your own tool execution loop with `stream()` or `complete()`, use `validateToolCall` to validate arguments before passing them to your tools:
 
 ```typescript

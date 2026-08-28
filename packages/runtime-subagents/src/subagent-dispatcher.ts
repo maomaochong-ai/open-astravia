@@ -199,7 +199,6 @@ export class SubagentDispatcher<TProfile> {
 			title: request.title?.trim() || undefined,
 			deliveryMode: request.deliveryMode ?? "terminal",
 			batchId: request.batchId,
-			todoProgress: request.todos ? { done: 0, total: request.todos.length } : undefined,
 		};
 		const run = this.createRun(snapshot, request);
 		this.pool.add(run);

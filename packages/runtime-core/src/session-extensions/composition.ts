@@ -15,6 +15,8 @@ import type {
 	SessionExtensionEndpointContribution,
 	SessionExtensionEndpointHost,
 	SessionExtensionEndpointToken,
+	SessionExtensionFunctionDependency,
+	SessionExtensionFunctionSource,
 	SessionExtensionInitialObservationSource,
 	SessionExtensionInstance,
 	SessionExtensionObservation,
@@ -25,6 +27,7 @@ import { SessionExtensionSignalBus } from "./signal-bus.js";
 
 export interface SessionExtensionCompositionOptions {
 	readonly definitions: readonly SessionExtensionDefinition[];
+	readonly functions?: SessionExtensionFunctionSource;
 	readonly signal?: AbortSignal;
 	readonly clock?: SessionExtensionContext["clock"];
 	readonly createId?: () => string;
@@ -71,6 +74,7 @@ export class SessionExtensionComposition implements SessionExtensionEndpointHost
 		const clock = options.clock ?? new SystemClock();
 		const createId = options.createId ?? createRuntimeId;
 		const signalBus = new SessionExtensionSignalBus();
+		const functions = options.functions ?? EMPTY_FUNCTION_SOURCE;
 		const serviceValues = new Map<string, unknown>();
 		const services = createServiceResolver(serviceValues);
 		const prepared: PreparedExtension[] = [];
@@ -85,11 +89,14 @@ export class SessionExtensionComposition implements SessionExtensionEndpointHost
 			for (const definition of definitions) {
 				signal.throwIfAborted();
 				const allowedDependencies = new Set(definition.dependencies ?? []);
+				const functionDependencies = indexFunctionDependencies(definition);
+				assertRequiredFunctionsAvailable(definition.id, functionDependencies, functions);
 				const instance = await definition.create({
 					signal,
 					clock,
 					createId,
 					services: createRestrictedServiceResolver(definition.id, allowedDependencies, serviceValues),
+					functions: createRestrictedFunctionSource(definition.id, functionDependencies, functions),
 					signals: {
 						publish: (token, payload) => {
 							if (token.extensionId !== definition.id) {
@@ -215,6 +222,13 @@ export class SessionExtensionComposition implements SessionExtensionEndpointHost
 	}
 }
 
+const EMPTY_FUNCTION_SOURCE: SessionExtensionFunctionSource = {
+	has: () => false,
+	invoke: async (token) => {
+		throw new Error(`Session extension function is not registered: ${token.id}`);
+	},
+};
+
 class SessionExtensionContinuationPolicy implements ContinuationPolicy {
 	constructor(private readonly sources: readonly SessionExtensionContinuationSource[]) {}
 
@@ -258,6 +272,53 @@ function createRestrictedServiceResolver(
 		require: <T>(token: SessionExtensionServiceToken<T>) => {
 			assertAllowed(token);
 			return resolver.require(token);
+		},
+	};
+}
+
+function indexFunctionDependencies(
+	definition: SessionExtensionDefinition,
+): ReadonlyMap<string, SessionExtensionFunctionDependency> {
+	const dependencies = new Map<string, SessionExtensionFunctionDependency>();
+	for (const dependency of definition.functionDependencies ?? []) {
+		if (dependencies.has(dependency.token.id)) {
+			throw new Error(`Duplicate session extension function dependency id: ${dependency.token.id}`);
+		}
+		dependencies.set(dependency.token.id, dependency);
+	}
+	return dependencies;
+}
+
+function assertRequiredFunctionsAvailable(
+	extensionId: string,
+	dependencies: ReadonlyMap<string, SessionExtensionFunctionDependency>,
+	functions: SessionExtensionFunctionSource,
+): void {
+	for (const dependency of dependencies.values()) {
+		if (dependency.availability === "required" && !functions.has(dependency.token)) {
+			throw new Error(`Session extension ${extensionId} requires missing function ${dependency.token.id}`);
+		}
+	}
+}
+
+function createRestrictedFunctionSource(
+	extensionId: string,
+	dependencies: ReadonlyMap<string, SessionExtensionFunctionDependency>,
+	functions: SessionExtensionFunctionSource,
+): SessionExtensionFunctionSource {
+	const assertAllowed = (tokenId: string): void => {
+		if (!dependencies.has(tokenId)) {
+			throw new Error(`Session extension ${extensionId} must declare function dependency on ${tokenId}`);
+		}
+	};
+	return {
+		has: (token) => {
+			assertAllowed(token.id);
+			return functions.has(token);
+		},
+		invoke: (token, input, signal) => {
+			assertAllowed(token.id);
+			return functions.invoke(token, input, signal);
 		},
 	};
 }

@@ -22,6 +22,10 @@
 			"@vetta/coding-agent/config": ["./packages/coding-agent/src/config.ts"],
 			"@vetta/coding-agent/extensions": ["./packages/coding-agent/src/public-api/extensions.ts"],
 			"@vetta/coding-agent/extensions/pi-compat": ["./packages/coding-agent/src/extensions/pi-compat/index.ts"],
+			"@vetta/coding-agent/function-extensions": [
+				"./packages/coding-agent/src/public-api/function-extensions.ts"
+			],
+			"@vetta/coding-agent/plugin-runtime": ["./packages/coding-agent/src/public-api/plugin-runtime.ts"],
 			"@vetta/coding-agent/cli-guidance": ["./packages/coding-agent/src/public-api/cli-guidance.ts"],
 			"@vetta/coding-agent/export-html": ["./packages/coding-agent/src/public-api/export-html.ts"],
 			"@vetta/coding-agent/compat/runtime-storage": [

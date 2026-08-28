@@ -1,16 +1,17 @@
 import type { Message } from "@vetta/ai";
 import type {
+	CodingAgentQuestionFunctionRequest,
+	CodingAgentQuestionResult,
+	CodingAgentSandboxAuthorizationDecision,
+	CodingAgentSandboxAuthorizationFunctionRequest,
+} from "@vetta/coding-agent/function-extensions";
+import type {
 	HistoryEntry,
 	ProjectInfo,
 	PromptRequest,
-	RuntimeSandboxGrantDecision,
 	RuntimeSandboxGrantInfo,
-	RuntimeSandboxGrantRequest,
 	RuntimeSessionQueueStateView,
 	RuntimeTurnPromptOutcome,
-	RuntimeUserConfirmationRequest,
-	RuntimeUserQuestionRequest,
-	RuntimeUserQuestionResult,
 	SessionConfig,
 	SessionEvent,
 	SessionExecutionMode,
@@ -57,7 +58,7 @@ export interface DesktopSessionTraceContext {
 	interactionId: string;
 }
 
-export type DesktopUserQuestionRequest = RuntimeUserQuestionRequest;
+export type DesktopUserQuestionRequest = CodingAgentQuestionFunctionRequest;
 
 export interface DesktopUserQuestionResolvedEvent {
 	requestId: string;
@@ -99,18 +100,16 @@ export interface DesktopSessionApi {
 	/** 清空 session 的 todo 列表（被 scene 等 lock 时返回 false）。 */
 	clearTodos(sessionId: string): Promise<boolean>;
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): Promise<() => void>;
-	onConfirmationRequest(handler: (request: RuntimeUserConfirmationRequest) => void): () => void;
-	respondToConfirmation(requestId: string, confirmed: boolean): Promise<void>;
 	/** ask_user_question：监听主进程发来的提问请求（携 sessionId + questions）。 */
-	onQuestionRequest(handler: (request: RuntimeUserQuestionRequest) => void): () => void;
+	onQuestionRequest(handler: (request: CodingAgentQuestionFunctionRequest) => void): () => void;
 	/** 当前仍等待回答的问题快照，供 Renderer 初始化或重载后恢复真实状态。 */
-	listPendingQuestions(): Promise<RuntimeUserQuestionRequest[]>;
+	listPendingQuestions(): Promise<CodingAgentQuestionFunctionRequest[]>;
 	/** 问题由用户、Agent、取消或中断解决后统一通知 Renderer 清理面板。 */
 	onQuestionResolved(handler: (event: DesktopUserQuestionResolvedEvent) => void): () => void;
 	/** 回传用户对某次提问的答案 / 取消。 */
-	respondToQuestion(requestId: string, result: RuntimeUserQuestionResult): Promise<void>;
-	onSandboxGrantRequest(handler: (request: RuntimeSandboxGrantRequest) => void): () => void;
-	respondToSandboxGrant(requestId: string, decision: RuntimeSandboxGrantDecision): Promise<void>;
+	respondToQuestion(requestId: string, result: CodingAgentQuestionResult): Promise<void>;
+	onSandboxGrantRequest(handler: (request: CodingAgentSandboxAuthorizationFunctionRequest) => void): () => void;
+	respondToSandboxGrant(requestId: string, decision: CodingAgentSandboxAuthorizationDecision): Promise<void>;
 	listSandboxGrants(sessionId: string): Promise<RuntimeSandboxGrantInfo[]>;
 	revokeSandboxGrant(sessionId: string, grantId: string): Promise<boolean>;
 	revokeAllSandboxGrants(sessionId: string): Promise<number>;

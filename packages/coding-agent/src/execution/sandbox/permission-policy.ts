@@ -1,8 +1,13 @@
-import type {
-	SandboxPermissionContext,
-	SandboxPermissionDecision,
-	SandboxPermissionRequest,
-} from "@vetta/runtime-core/sandbox";
+import type { SandboxPermissionDecision, SandboxPermissionRequest } from "@vetta/runtime-core/sandbox";
+import type { EcosystemPermissionHookRequest, EcosystemPermissionHookResult } from "../../extensions/ui-contracts.js";
+import type { CodingAgentSandboxAuthorizationPort } from "./authorization-contract.js";
+
+export interface CodingAgentSandboxPermissionContext {
+	readonly authorization: CodingAgentSandboxAuthorizationPort;
+	requestEcosystemPermission?(
+		request: EcosystemPermissionHookRequest,
+	): Promise<EcosystemPermissionHookResult | undefined>;
+}
 
 export function isSensitiveSandboxRequest(
 	request: SandboxPermissionRequest,
@@ -13,9 +18,11 @@ export function isSensitiveSandboxRequest(
 }
 
 export async function confirmSandboxPermission(
-	context: SandboxPermissionContext,
+	context: CodingAgentSandboxPermissionContext,
+	sessionId: string,
 	request: SandboxPermissionRequest,
 	isDeniedPath: (targetPath: string) => boolean,
+	signal: AbortSignal,
 ): Promise<SandboxPermissionDecision> {
 	if (typeof context.requestEcosystemPermission === "function") {
 		try {
@@ -30,58 +37,15 @@ export async function confirmSandboxPermission(
 					reason: request.reason,
 				},
 				runIdSuffix: `${request.capability}:${request.resolvedTarget}`,
+				signal,
 			});
-			if (hookDecision?.decision === "deny") {
-				console.info("[ecosystem-hooks] PermissionRequest denied sandbox grant", {
-					tool: request.toolName,
-					capability: request.capability,
-					message: hookDecision.message,
-				});
-				return "deny";
-			}
-			if (hookDecision?.decision === "allow") {
-				console.info("[ecosystem-hooks] PermissionRequest allowed sandbox grant", {
-					tool: request.toolName,
-					capability: request.capability,
-				});
-				return "allow_once";
-			}
-		} catch (error) {
-			console.warn("[ecosystem-hooks] PermissionRequest hook failed; falling through to UI", error);
+			if (hookDecision?.decision === "deny") return "deny";
+			if (hookDecision?.decision === "allow") return "allow_once";
+		} catch {
+			// Hook failure falls through to the host authorization function, which remains fail-closed.
 		}
 	}
 
-	if (!context.hasUI) return "deny";
 	const sensitive = isSensitiveSandboxRequest(request, isDeniedPath);
-	const title = "沙箱权限请求";
-	const lines = [
-		`工具：${request.toolName}`,
-		`权限：${request.capability}`,
-		`目标：${request.target}`,
-		`解析路径：${request.resolvedTarget}`,
-		request.grantRoot ? `本次授权目录：${request.grantRoot}` : undefined,
-		request.command ? `命令：${request.command}` : undefined,
-		"",
-		sensitive
-			? "该路径为敏感路径，仅支持本次允许（不可缓存到本会话）。"
-			: '"允许本次"仅对当前工具调用生效；"本会话不再询问"会缓存到本会话内同 grantRoot 的后续请求。',
-	].filter((line): line is string => typeof line === "string");
-
-	if (typeof context.ui.requestSandboxGrant === "function") {
-		const decision = await context.ui.requestSandboxGrant({
-			title,
-			message: lines.join("\n"),
-			toolName: request.toolName,
-			capability: request.capability,
-			target: request.target,
-			resolvedTarget: request.resolvedTarget,
-			grantRoot: request.grantRoot,
-			command: request.command,
-			sensitive,
-		});
-		if (decision === "allow_session" && sensitive) return "allow_once";
-		return decision ?? "deny";
-	}
-
-	return (await context.ui.confirm(title, lines.join("\n"))) ? "allow_once" : "deny";
+	return context.authorization.request(sessionId, request, sensitive, signal);
 }

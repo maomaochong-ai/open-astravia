@@ -120,7 +120,6 @@ export {
 	type CodingToolCategory,
 	type CodingToolRegistration,
 	type CodingToolScope,
-	type CodingToolSideEffect,
 	DEFAULT_CODING_TOOL_SCOPE,
 	selectCodingToolRegistrations,
 	selectCodingTools,

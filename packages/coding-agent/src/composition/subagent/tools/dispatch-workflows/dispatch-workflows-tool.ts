@@ -1,7 +1,7 @@
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { SubagentCoordinatorPort } from "@vetta/runtime-subagents";
 import { ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
+import type { CodingAgentWorkflowDispatcherPort } from "../../../../runtime-contracts/index.js";
 import { resolveSubagentTaskMessage, SubagentTaskContractSchema } from "../../task-contract.js";
 import { DISPATCH_WORKFLOWS_TOOL_DESCRIPTION } from "./description.js";
 
@@ -40,7 +40,7 @@ export const DispatchWorkflowsToolInputSchema = Type.Object({
 export type DispatchWorkflowsToolInput = Static<typeof DispatchWorkflowsToolInputSchema>;
 
 export interface DispatchWorkflowsToolOptions {
-	readonly getCoordinator: () => SubagentCoordinatorPort | undefined;
+	readonly getWorkflowDispatcher: () => CodingAgentWorkflowDispatcherPort | undefined;
 	readonly workflowTypeId: string;
 }
 
@@ -54,10 +54,10 @@ export function createDispatchWorkflowsTool(
 		description: DISPATCH_WORKFLOWS_TOOL_DESCRIPTION,
 		inputSchema: DispatchWorkflowsToolInputSchema,
 		async execute({ input }) {
-			const coordinator = requireCoordinator(options);
+			const dispatcher = requireWorkflowDispatcher(options);
 			batchSequence += 1;
 			const batchId = `workflow-batch-${batchSequence}`;
-			const snapshots = coordinator.spawnMany(
+			const snapshots = dispatcher.dispatchWorkflows(
 				input.workflows.map((workflow) => ({
 					taskName: workflow.task_name,
 					title: workflow.title,
@@ -86,8 +86,8 @@ export function createDispatchWorkflowsTool(
 	};
 }
 
-function requireCoordinator(options: DispatchWorkflowsToolOptions): SubagentCoordinatorPort {
-	const coordinator = options.getCoordinator();
-	if (!coordinator) throw new Error("Subagents are not enabled for this session.");
-	return coordinator;
+function requireWorkflowDispatcher(options: DispatchWorkflowsToolOptions): CodingAgentWorkflowDispatcherPort {
+	const dispatcher = options.getWorkflowDispatcher();
+	if (!dispatcher) throw new Error("Subagents are not enabled for this session.");
+	return dispatcher;
 }

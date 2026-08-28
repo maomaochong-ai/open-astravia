@@ -1,5 +1,5 @@
-import type { AgentPluginRuntimeConfig } from "@vetta/runtime-core";
 import { defineSessionExtensionEndpoint } from "@vetta/runtime-core/session-extensions";
+import type { AgentPluginRuntimeConfig } from "../../model-context/plugin-runtime.js";
 
 export const CODING_AGENT_PLUGIN_CONFIGURATION_EXTENSION_ID = "coding-agent.plugin-configuration";
 

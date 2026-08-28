@@ -2,11 +2,15 @@ import type { UserMessage } from "@vetta/ai";
 import { describe, expect, it, vi } from "vitest";
 import {
 	defineSessionExtensionEndpoint,
+	defineSessionExtensionFunction,
 	defineSessionExtensionObservation,
 	defineSessionExtensionService,
 	defineSessionExtensionSignal,
+	optionalSessionExtensionFunction,
+	requireSessionExtensionFunction,
 	SessionExtensionComposition,
 	type SessionExtensionDefinition,
+	SessionExtensionFunctionRegistry,
 	sessionExtensionObservation,
 } from "../../src/index.js";
 
@@ -15,6 +19,7 @@ const READ_VALUE = defineSessionExtensionEndpoint<void, number>("dependent", "re
 const READ_VALUE_ASYNC = defineSessionExtensionEndpoint<void, number>("dependent", "read-value-async");
 const CHANGED = defineSessionExtensionSignal<number>("base", "changed");
 const OBSERVED = defineSessionExtensionObservation<{ readonly value: number }>("base", "observed");
+const EXTERNAL_VALUE = defineSessionExtensionFunction<void, number>("dependent", "external-value");
 
 describe("SessionExtensionComposition", () => {
 	it("creates typed product-neutral observation envelopes", () => {
@@ -99,6 +104,57 @@ describe("SessionExtensionComposition", () => {
 		await expect(SessionExtensionComposition.create({ definitions: [baseExtension([]), invalid] })).rejects.toThrow(
 			"must declare dependency on base",
 		);
+	});
+
+	it("enforces declared function dependencies", async () => {
+		const functions = new SessionExtensionFunctionRegistry();
+		functions.register(EXTERNAL_VALUE, () => 42);
+		const invalid: SessionExtensionDefinition = {
+			id: "invalid",
+			create(context) {
+				context.functions.has(EXTERNAL_VALUE);
+				return { contributions: [], dispose() {} };
+			},
+		};
+
+		await expect(SessionExtensionComposition.create({ definitions: [invalid], functions })).rejects.toThrow(
+			"must declare function dependency",
+		);
+	});
+
+	it("fails before initialization when a required function is missing", async () => {
+		const create = vi.fn(() => ({ contributions: [], dispose() {} }));
+		const extension: SessionExtensionDefinition = {
+			id: "dependent",
+			functionDependencies: [requireSessionExtensionFunction(EXTERNAL_VALUE)],
+			create,
+		};
+
+		await expect(SessionExtensionComposition.create({ definitions: [extension] })).rejects.toThrow(
+			"requires missing function dependent.external-value",
+		);
+		expect(create).not.toHaveBeenCalled();
+	});
+
+	it("allows optional functions to appear after extension initialization", async () => {
+		const functions = new SessionExtensionFunctionRegistry();
+		let readExternalValue: (() => Promise<number>) | undefined;
+		const extension: SessionExtensionDefinition = {
+			id: "dependent",
+			functionDependencies: [optionalSessionExtensionFunction(EXTERNAL_VALUE)],
+			create(context) {
+				readExternalValue = () => context.functions.invoke(EXTERNAL_VALUE, undefined);
+				return { contributions: [], dispose() {} };
+			},
+		};
+		const composition = await SessionExtensionComposition.create({ definitions: [extension], functions });
+		expect(functions.has(EXTERNAL_VALUE)).toBe(false);
+
+		const unregister = functions.register(EXTERNAL_VALUE, () => 42);
+		await expect(readExternalValue?.()).resolves.toBe(42);
+		unregister();
+		await expect(readExternalValue?.()).rejects.toThrow("not registered");
+		await composition.dispose();
 	});
 
 	it("rejects duplicate initial observation source ids", async () => {

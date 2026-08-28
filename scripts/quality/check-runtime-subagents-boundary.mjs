@@ -20,6 +20,11 @@ const FORBIDDEN_SOURCE_TOKENS = Object.freeze([
 	"dispatch_workflows",
 	"followup_task",
 	"spawn_agent",
+	"SubagentTodo",
+	"todoProgress",
+	"setTodos",
+	"getTodoProgress",
+	"subscribeTodos",
 	"typeDocs",
 	"wait_agent",
 ]);

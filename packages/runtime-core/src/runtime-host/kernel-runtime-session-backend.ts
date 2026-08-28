@@ -52,7 +52,6 @@ import type {
 	RuntimeSessionExecutionObservation,
 	RuntimeSessionExecutionObservationStream,
 	RuntimeSessionExtensionHost,
-	RuntimeSessionHostInteraction,
 	RuntimeSessionMetadataController,
 	RuntimeSessionQueueController,
 	RuntimeSessionQueueView,
@@ -79,7 +78,6 @@ export interface KernelRuntimeAssembly {
 	readonly extensionHost?: RuntimeSessionExtensionHost;
 	readonly contextController?: RuntimeSessionContextController;
 	readonly contextDeliveryController?: RuntimeSessionContextDeliveryController;
-	readonly hostInteraction?: RuntimeSessionHostInteraction;
 	readonly executionController?: RuntimeSessionExecutionController;
 	readonly configurationController?: RuntimeSessionConfigurationController;
 	readonly toolController?: RuntimeSessionToolController;
@@ -135,7 +133,6 @@ export class RuntimeSession {
 	private readonly extensionHost: RuntimeSessionExtensionHost | undefined;
 	private readonly contextController: RuntimeSessionContextController | undefined;
 	private readonly contextDeliveryController: RuntimeSessionContextDeliveryController;
-	private readonly hostInteraction: RuntimeSessionHostInteraction | undefined;
 	private readonly executionController: RuntimeSessionExecutionController | undefined;
 	private readonly configurationController: RuntimeSessionConfigurationController | undefined;
 	private readonly toolController: RuntimeSessionToolController | undefined;
@@ -168,7 +165,6 @@ export class RuntimeSession {
 		this.contextController = assembly.contextController;
 		this.contextDeliveryController =
 			assembly.contextDeliveryController ?? createContextDeliveryController(assembly.session);
-		this.hostInteraction = assembly.hostInteraction;
 		this.executionController = assembly.executionController;
 		this.configurationController = assembly.configurationController;
 		this.toolController = assembly.toolController;
@@ -592,7 +588,6 @@ export class RuntimeSession {
 		const coreAssembly = this.createCoreAssembly();
 		return {
 			...coreAssembly,
-			hostInteraction: this.hostInteraction,
 			executionController: this.executionController,
 			configurationController: this.configurationController,
 		};

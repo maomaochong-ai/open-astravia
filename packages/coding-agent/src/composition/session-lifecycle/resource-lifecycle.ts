@@ -1,12 +1,10 @@
 import type { EcosystemHookRuntime, SessionEndCause, SessionStartSource } from "@vetta/ecosystem-adapter";
 import {
-	type ConversationScenario,
 	RetryableCleanup,
 	type RuntimeAgentSessionActivationContext,
 	type RuntimeObservationPublisher,
 	type RuntimeResourceContext,
 	type RuntimeResources,
-	type RuntimeSessionAskUserQuestionCapability,
 	type RuntimeSessionMarkerIndex,
 	type RuntimeSessionValueIndex,
 	runtimeObservationFailure,
@@ -17,6 +15,7 @@ import type { CodingToolActivation } from "@vetta/runtime-tools";
 import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
+import type { CodingAgentAskUserQuestionExtensionRuntime } from "../../features/ask-user-question/index.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import type { CodingAgentMemoryController, CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { CodingAgentPluginConfigurationRuntime } from "../../plugins/runtime/plugin-configuration-runtime.js";
@@ -92,8 +91,7 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 	readonly activation: CodingToolActivation;
 	readonly knowledgeAvailable: boolean;
 	readonly backgroundTasksAvailable: boolean;
-	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
-	readonly scenario: ConversationScenario;
+	readonly askUserQuestionRuntime: CodingAgentAskUserQuestionExtensionRuntime;
 	readonly observationPublisher?: RuntimeObservationPublisher;
 }
 
@@ -221,8 +219,7 @@ function createResources(
 		activation: options.activation,
 		knowledgeAvailable: options.knowledgeAvailable,
 		backgroundTasksAvailable: options.backgroundTasksAvailable,
-		askUserQuestion: options.askUserQuestion,
-		scenario: options.scenario,
+		askUserQuestionRuntime: options.askUserQuestionRuntime,
 		onConversationContinued: async (result) => {
 			const previousSessionId = options.session.readSessionId();
 			options.conversationContextOverlay.clear(previousSessionId);

@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { buildDefaultHookConfigLayers } from "@vetta/ecosystem-adapter";
+import {
+	SessionExtensionFunctionRegistry,
+	type SessionExtensionFunctionSource,
+} from "@vetta/runtime-core/session-extensions";
 import { createMcpToolResultPolicy, EMPTY_MCP_CONFIG_SOURCE, type McpServerSupervisor } from "@vetta/runtime-mcp";
 import { nodeModelInputImageProcessor, nodeWorkspaceFactsFileSource } from "@vetta/runtime-node/coding";
 import {
@@ -18,6 +22,7 @@ import { createCodingAgentCompactionExtensionRuntime } from "../../adapters/exte
 import { createCodingAgentAuthRuntime } from "../../auth/index.js";
 import { createCodingAgentMemoryRolloverRuntime } from "../../composition/memory-runtime.js";
 import { createCodingAgentHtmlExportRuntime } from "../../export-html/index.js";
+import { CODING_AGENT_ASK_USER_QUESTION_FUNCTION } from "../../features/ask-user-question/contracts.js";
 import { CONFIG_DIR_NAME, DEFAULT_SERVER_URL, ENV_SERVER_URL } from "../../identity.js";
 import { createCodingAgentMcpRuntimeToolSource } from "../../mcp/runtime/tool-source.js";
 import { detectWorkspaceFacts, probeWorkspaceSignals } from "../../model-context/workspace-facts.js";
@@ -25,6 +30,7 @@ import { createCodingAgentModelRuntime } from "../../models/index.js";
 import { createCodingAgentPluginMcpRuntime } from "../../plugins/runtime/mcp-runtime.js";
 import type { CodingAgentSessionStorageTarget, CreateCodingAgentSessionOptions } from "../../public-api/sdk/index.js";
 import { parseCodingAgentLegacySessionDocument } from "../../sessions/legacy/document.js";
+import { CODING_AGENT_TOOL_CONSENT_FUNCTION } from "../../tool-policy/tool-consent-contract.js";
 import { createCodingAgentCodingToolResultPolicy } from "../../tool-results/result-policy.js";
 import { CodingAgentSdkExtensionTransitionAdapter } from "../coding-agent-sdk-extension-transition-adapter.js";
 import { CodingAgentSdkResourceSourceAdapter } from "../coding-agent-sdk-resource-source-adapter.js";
@@ -195,9 +201,11 @@ async function createCodingAgentSdkSessionComposition(
 				resultPolicy: mcpToolResultPolicy,
 			})
 		: undefined;
+	const sessionFunctions = createSdkSessionFunctionSource(options);
 	const ownedResources: CodingAgentSdkOwnedResource[] = [
 		...(resourceSourceAdapter ? [resourceSourceAdapter] : []),
 		...(managedMcpSource ? [{ id: "sdk-mcp-source", dispose: () => managedMcpSource.dispose() }] : []),
+		...(sessionFunctions ? [{ id: "sdk-session-functions", dispose: () => sessionFunctions.dispose() }] : []),
 	];
 	const extensionTransitions = new CodingAgentSdkExtensionTransitionAdapter((session, composition, bindingOptions) => {
 		const currentExtensions = resourceLoader.getExtensions();
@@ -309,21 +317,6 @@ async function createCodingAgentSdkSessionComposition(
 			memoryMode: options.memoryMode,
 			memoryFile: options.memoryFile,
 			memoryCharLimit: options.memoryCharLimit,
-			askUserQuestion: options.askUserQuestion
-				? {
-						isEnabled: () => options.askUserQuestion?.isEnabled() ?? false,
-						ask: async (request, signal) => {
-							const result = await options.askUserQuestion!.ask(request, signal);
-							return {
-								cancelled: result.cancelled,
-								answers: result.answers.map((answer) => ({
-									question: answer.question,
-									answers: [...answer.answers],
-								})),
-							};
-						},
-					}
-				: undefined,
 			enableBackgroundTasks: options.enableBackgroundTasks,
 			includeAgentSkills: options.includeAgentSkills,
 			agentPlugins: options.agentPlugins,
@@ -332,6 +325,7 @@ async function createCodingAgentSdkSessionComposition(
 			invokePluginSystemPrompt: options.invokePluginSystemPrompt,
 			pluginTurnHandlerLeaseProvider: options.pluginTurnHandlerLeaseProvider,
 			sessionTools,
+			sessionExtensionFunctions: sessionFunctions?.source,
 		},
 		initializeSession: extensionTransitions.initializeSession,
 		transitionLifecycle: extensionTransitions.lifecycle,
@@ -344,6 +338,92 @@ async function createCodingAgentSdkSessionComposition(
 		session: created.session,
 		extensionsResult,
 		...(initial.modelFallbackMessage ? { modelFallbackMessage: initial.modelFallbackMessage } : {}),
+	};
+}
+
+interface SdkSessionFunctionSource {
+	readonly source: SessionExtensionFunctionSource;
+	dispose(): void;
+}
+
+const SDK_HEAVY_TOOL_CONSENT_TEXT = {
+	question: (toolName: string) => `允许在本会话中运行「${toolName}」吗？`,
+	header: "工具确认",
+	allowLabel: "允许",
+	allowDescription: "本会话内该工具不再重复确认。",
+	denyLabel: "取消",
+	denyDescription: "本次调用直接失败，不产生任何副作用。",
+} as const;
+
+/** 把公共 SDK 的产品能力绑定到 Session Extension functions，不让兼容合同进入 Runtime。 */
+function createSdkSessionFunctionSource(
+	options: CreateCodingAgentSessionOptions,
+): SdkSessionFunctionSource | undefined {
+	const capability = options.askUserQuestion;
+	if (!capability) return undefined;
+
+	const registry = new SessionExtensionFunctionRegistry();
+	registry.register(CODING_AGENT_ASK_USER_QUESTION_FUNCTION, async ({ questions }, signal) => {
+		const result = await capability.ask(
+			{
+				questions: questions.map((question) => ({
+					question: question.question,
+					header: question.header,
+					multiSelect: question.multiSelect,
+					options: question.options.map((option) => ({ ...option })),
+				})),
+			},
+			signal,
+		);
+		return cloneQuestionResult(result);
+	});
+	registry.register(CODING_AGENT_TOOL_CONSENT_FUNCTION, async ({ toolName }, signal) => {
+		const result = await capability.ask(
+			{
+				questions: [
+					{
+						question: SDK_HEAVY_TOOL_CONSENT_TEXT.question(toolName),
+						header: SDK_HEAVY_TOOL_CONSENT_TEXT.header,
+						multiSelect: false,
+						options: [
+							{
+								label: SDK_HEAVY_TOOL_CONSENT_TEXT.allowLabel,
+								description: SDK_HEAVY_TOOL_CONSENT_TEXT.allowDescription,
+							},
+							{
+								label: SDK_HEAVY_TOOL_CONSENT_TEXT.denyLabel,
+								description: SDK_HEAVY_TOOL_CONSENT_TEXT.denyDescription,
+							},
+						],
+					},
+				],
+			},
+			signal,
+		);
+		return !result.cancelled &&
+			result.answers.some((answer) => answer.answers.includes(SDK_HEAVY_TOOL_CONSENT_TEXT.allowLabel))
+			? "allow_session"
+			: "deny";
+	});
+
+	return {
+		source: {
+			has: (token) => capability.isEnabled() && registry.has(token),
+			invoke: (token, input, signal) => registry.invoke(token, input, signal),
+		},
+		dispose: () => registry.close(),
+	};
+}
+
+function cloneQuestionResult(
+	result: Awaited<ReturnType<NonNullable<CreateCodingAgentSessionOptions["askUserQuestion"]>["ask"]>>,
+) {
+	return {
+		cancelled: result.cancelled,
+		answers: result.answers.map((answer) => ({
+			question: answer.question,
+			answers: [...answer.answers],
+		})),
 	};
 }
 

@@ -1,9 +1,4 @@
-import type {
-	AgentPluginRuntimeConfig,
-	AgentPluginTurnHandlerLease,
-	AgentPluginTurnHandlerLeaseProvider,
-	ContextCompositionSectionInput,
-} from "@vetta/runtime-core";
+import type { ContextCompositionSectionInput } from "@vetta/runtime-core";
 import type {
 	InstructionBlock,
 	ModelCallFrame,
@@ -18,6 +13,11 @@ import type {
 	CodingAgentSystemPromptOptionsResolver,
 } from "../runtime-contracts/index.js";
 import { createCodingAgentToolProjectionPipeline } from "../tool-policy/tool-projection-policy.js";
+import type {
+	AgentPluginRuntimeConfig,
+	AgentPluginTurnHandlerLease,
+	AgentPluginTurnHandlerLeaseProvider,
+} from "./plugin-runtime.js";
 import { compileSystemPromptDraft, type SystemPromptDiagnostics, type SystemPromptDraft } from "./prompt-document.js";
 import { type BuildSystemPromptOptions, buildSystemPromptDraft } from "./system-prompt-policy.js";
 

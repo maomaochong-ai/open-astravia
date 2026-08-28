@@ -12,40 +12,6 @@ export interface SandboxPermissionRequest {
 	command?: string;
 }
 
-export interface SandboxPermissionContext {
-	hasUI: boolean;
-	ui: {
-		confirm(title: string, message: string): Promise<boolean>;
-		requestSandboxGrant?(request: SandboxPermissionPrompt): Promise<SandboxPermissionDecision>;
-	};
-	requestEcosystemPermission?(
-		request: SandboxEcosystemPermissionRequest,
-	): Promise<SandboxEcosystemPermissionResult | undefined>;
-}
-
-export interface SandboxPermissionPrompt {
-	title: string;
-	message: string;
-	toolName: string;
-	capability: SandboxPermissionCapability;
-	target: string;
-	resolvedTarget: string;
-	grantRoot?: string;
-	command?: string;
-	sensitive: boolean;
-}
-
-export interface SandboxEcosystemPermissionRequest {
-	toolName: string;
-	toolInput: unknown;
-	runIdSuffix: string;
-}
-
-export interface SandboxEcosystemPermissionResult {
-	decision?: "allow" | "deny";
-	message?: string;
-}
-
 export interface SandboxShellGrant {
 	allowReadRoots: string[];
 	allowWriteRoots: string[];

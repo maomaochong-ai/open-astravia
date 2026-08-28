@@ -1,7 +1,6 @@
 export {
 	ASK_USER_QUESTION_HEADER_MAX,
 	type AskUserQuestionAnswer,
-	type AskUserQuestionCapability,
 	type AskUserQuestionFn,
 	type AskUserQuestionItem,
 	type AskUserQuestionOption,

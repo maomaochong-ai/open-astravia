@@ -1,4 +1,5 @@
-import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools/coding";
+import type { CodingToolScope } from "@vetta/runtime-tools/coding";
+import type { CodingAgentRuntimeToolRegistration } from "../../../runtime-contracts/index.js";
 import {
 	createImSendAttachmentTool,
 	type ImSendAttachmentToolInput,
@@ -14,7 +15,7 @@ export interface ImSendAttachmentToolRegistrationOptions extends ImSendAttachmen
 
 export function createImSendAttachmentToolRegistration(
 	options: ImSendAttachmentToolRegistrationOptions,
-): CodingToolRegistration<ImSendAttachmentToolInput> {
+): CodingAgentRuntimeToolRegistration<ImSendAttachmentToolInput> {
 	const tool = createImSendAttachmentTool(options);
 	return {
 		tool: { ...tool, modelOrder: options.modelOrder },

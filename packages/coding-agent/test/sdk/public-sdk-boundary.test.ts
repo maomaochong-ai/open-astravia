@@ -44,6 +44,7 @@ describe("public Coding Agent SDK boundary", () => {
 			"sdk-session-catalog-contract.ts",
 			"sdk-session-contract.ts",
 			"sdk-tool-contract.ts",
+			"subagent-contract.ts",
 		]);
 		for (const file of publicFiles) {
 			const source = readFileSync(file, "utf8");

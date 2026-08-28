@@ -1,4 +1,4 @@
-import type { SubagentChildEvent, SubagentChildHandle, SubagentTodoProgress } from "../../src/index.js";
+import type { SubagentChildEvent, SubagentChildHandle } from "../../src/index.js";
 import { waitUntil } from "./wait.js";
 
 export class TestChild implements SubagentChildHandle {
@@ -6,10 +6,8 @@ export class TestChild implements SubagentChildHandle {
 	readonly prompts: string[] = [];
 	disposeCalls = 0;
 	private readonly listeners = new Set<(event: SubagentChildEvent) => void>();
-	private readonly todoListeners = new Set<(progress: SubagentTodoProgress) => void>();
 	private streaming = false;
 	private finalText: string | undefined;
-	private todoProgress: SubagentTodoProgress = { done: 0, total: 0 };
 	private resolvePrompt: (() => void) | undefined;
 
 	constructor(readonly sessionId: string) {
@@ -53,7 +51,6 @@ export class TestChild implements SubagentChildHandle {
 		this.disposeCalls += 1;
 		this.abort();
 		this.listeners.clear();
-		this.todoListeners.clear();
 	}
 
 	subscribe(listener: (event: SubagentChildEvent) => void): () => void {
@@ -67,24 +64,6 @@ export class TestChild implements SubagentChildHandle {
 		this.emit({ type: "agent_end" });
 		this.resolvePrompt?.();
 		this.resolvePrompt = undefined;
-	}
-
-	setTodos(contents: readonly string[]): void {
-		this.updateTodoProgress({ done: 0, total: contents.length });
-	}
-
-	getTodoProgress(): SubagentTodoProgress {
-		return { ...this.todoProgress };
-	}
-
-	subscribeTodos(listener: (progress: SubagentTodoProgress) => void): () => void {
-		this.todoListeners.add(listener);
-		return () => this.todoListeners.delete(listener);
-	}
-
-	updateTodoProgress(progress: SubagentTodoProgress): void {
-		this.todoProgress = { ...progress };
-		for (const listener of this.todoListeners) listener({ ...progress });
 	}
 
 	private emit(event: SubagentChildEvent): void {

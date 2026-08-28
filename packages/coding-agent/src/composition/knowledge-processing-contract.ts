@@ -1,6 +1,8 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
 import type { WritePageRequest, WritePageResult } from "@vetta/runtime-knowledge";
 
+export { CODING_AGENT_KNOWLEDGE_PROCESSING_GUIDE } from "../features/knowledge/processing-guide.js";
+
 export interface KnowledgeProcessingUsage {
 	readonly inputTokens: number;
 	readonly outputTokens: number;

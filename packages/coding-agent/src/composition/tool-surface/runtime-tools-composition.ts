@@ -25,7 +25,9 @@ import {
 	createTaskStopToolRegistration,
 } from "../../features/background-tasks/index.js";
 import { createCurrentTimeToolRegistration } from "../../features/current-time/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
+import type { ToolSideEffectDeclaration } from "../../tool-policy/tool-side-effect.js";
 import type { CodingAgentSpecializedToolRegistrationContext, CodingAgentToolEnvironment } from "../contracts/index.js";
 
 export interface CodingToolsRuntimeCompositionOptions {
@@ -35,7 +37,7 @@ export interface CodingToolsRuntimeCompositionOptions {
 	readonly resolveActivation?: CodingToolActivationResolver;
 	readonly refreshCatalog?: CodingToolCatalogRefresher;
 	readonly filterRegistration?: CodingToolRegistrationFilter;
-	readonly additionalRegistrations?: readonly CodingToolRegistration[];
+	readonly additionalRegistrations?: readonly CodingAgentRuntimeToolRegistration[];
 	readonly resultPolicy?: CodingToolResultPolicy;
 	readonly tokenBudget?: number;
 	readonly reservedOutputTokens?: number;
@@ -49,6 +51,8 @@ export interface CodingToolsRuntimeComposition {
 		context: CodingAgentSpecializedToolRegistrationContext,
 	) => readonly CodingToolRegistration[] | Promise<readonly CodingToolRegistration[]>;
 	readonly registry: CodingToolRegistry;
+	/** Coding Agent 自有工具的产品策略声明；通用 Runtime Tool Catalog 不承载这些元数据。 */
+	readonly readToolPolicyDeclarations: () => readonly ToolSideEffectDeclaration[];
 	readonly feature: AgentFeatureDefinition;
 	readonly capabilities: RuntimeCapabilityDefinition;
 	readonly compiler: FeatureCompiler;
@@ -61,7 +65,7 @@ export function createCodingToolsRuntimeComposition(
 ): CodingToolsRuntimeComposition {
 	const cwd = options.cwd;
 	const backgroundService = options.environment.backgroundService;
-	const builtInRegistrations: CodingToolRegistration[] = [
+	const builtInRegistrations: CodingAgentRuntimeToolRegistration[] = [
 		createCurrentTimeToolRegistration(),
 		...(backgroundService
 			? [
@@ -70,12 +74,17 @@ export function createCodingToolsRuntimeComposition(
 				]
 			: []),
 	];
+	const codingAgentRegistrations = [...builtInRegistrations, ...(options.additionalRegistrations ?? [])].map(
+		withCodingAgentModelOrder,
+	);
 	const registry = new InMemoryCodingToolRegistry(
 		[
-			...options.environment.registrations.filter(({ tool }) => !CODING_AGENT_OWNED_BASE_TOOL_NAMES.has(tool.name)),
-			...builtInRegistrations,
-			...(options.additionalRegistrations ?? []),
-		].map(withCodingAgentModelOrder),
+			...options.environment.registrations
+				.filter(({ tool }) => !CODING_AGENT_OWNED_BASE_TOOL_NAMES.has(tool.name))
+				.map(withCodingAgentModelOrder)
+				.map(toRuntimeToolRegistration),
+			...codingAgentRegistrations.map(toRuntimeToolRegistration),
+		],
 		{
 			resultPolicy: options.resultPolicy ?? PRESERVE_CODING_TOOL_RESULT_POLICY,
 			observationPublisher: options.observationPublisher,
@@ -111,6 +120,11 @@ export function createCodingToolsRuntimeComposition(
 		backgroundService,
 		createSpecializedToolRegistrations: options.environment.createSpecializedToolRegistrations,
 		registry,
+		readToolPolicyDeclarations: () =>
+			codingAgentRegistrations.map((registration) => ({
+				name: registration.tool.name,
+				sideEffect: registration.sideEffect,
+			})),
 		feature,
 		capabilities,
 		compiler,
@@ -137,15 +151,21 @@ const CODING_AGENT_BASE_TOOL_ORDER: Readonly<Record<string, number>> = {
 
 const CODING_AGENT_OWNED_BASE_TOOL_NAMES = new Set<string>(["current_time", "task_output", "task_stop"]);
 
-function withCodingAgentModelOrder(registration: CodingToolRegistration): CodingToolRegistration {
+function withCodingAgentModelOrder<T extends CodingToolRegistration>(registration: T): T {
 	const modelOrder = CODING_AGENT_BASE_TOOL_ORDER[registration.tool.name];
 	return modelOrder === undefined ? registration : withModelOrder(registration, modelOrder);
 }
 
-function withModelOrder(registration: CodingToolRegistration, modelOrder: number): CodingToolRegistration {
+function withModelOrder<T extends CodingToolRegistration>(registration: T, modelOrder: number): T {
 	return {
 		...registration,
 		modelOrder,
 		tool: { ...registration.tool, modelOrder },
-	};
+	} as T;
+}
+
+/** 产品策略字段在进入通用 Runtime Tool Catalog 前必须被剥离。 */
+function toRuntimeToolRegistration(registration: CodingAgentRuntimeToolRegistration): CodingToolRegistration {
+	const { sideEffect: _sideEffect, ...runtimeRegistration } = registration;
+	return runtimeRegistration;
 }

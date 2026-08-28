@@ -1,7 +1,8 @@
-import { type AgentPluginRuntimeConfig, runtimeObservationFailure } from "@vetta/runtime-core";
+import { runtimeObservationFailure } from "@vetta/runtime-core";
 import type { AgentSession } from "@vetta/runtime-core/kernel";
 import type { RuntimeObservationPublisher } from "@vetta/runtime-core/observation";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
+import type { AgentPluginRuntimeConfig } from "../../model-context/plugin-runtime.js";
 import { CODING_AGENT_PLUGIN_CONFIGURATION_OBSERVATION } from "../../runtime-contracts/plugin-configuration-observability.js";
 import type { CodingAgentPluginRuntimeSource } from "../../runtime-contracts/plugin-runtime.js";
 

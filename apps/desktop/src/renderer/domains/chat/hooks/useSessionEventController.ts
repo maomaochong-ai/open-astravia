@@ -25,7 +25,10 @@ import {
 	setQueueForSessionAtom,
 	setQueuePausedAtom,
 } from "@shared/store/message-queue-atoms";
-import { readCodingAgentTodoObservation } from "@vetta/coding-agent/session-extensions";
+import {
+	readCodingAgentSubagentsObservation,
+	readCodingAgentTodoObservation,
+} from "@vetta/coding-agent/session-extensions";
 import type { SessionEvent } from "@vetta/runtime-core";
 import { getDefaultStore, useSetAtom } from "jotai";
 import { type MutableRefObject, useCallback, useEffect, useRef } from "react";
@@ -492,8 +495,24 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				return;
 			}
 
-			// ── Coding Agent Todo extension update ──
+			// ── Coding Agent product extension updates ──
 			if (event.type === "session.extension") {
+				const subagents = readCodingAgentSubagentsObservation(event);
+				if (subagents) {
+					const sid = activeSessionRef.current?.runtimeId;
+					if (sid) {
+						setSubagents((prev) => {
+							const next = new Map(prev);
+							if (subagents.length > 0) {
+								next.set(sid, [...subagents]);
+							} else {
+								next.delete(sid);
+							}
+							return next;
+						});
+					}
+					return;
+				}
 				const items = readCodingAgentTodoObservation(event);
 				if (!items) return;
 				const sid = activeSessionRef.current?.runtimeId;

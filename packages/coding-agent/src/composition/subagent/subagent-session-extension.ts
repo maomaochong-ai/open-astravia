@@ -1,9 +1,15 @@
 import type { RuntimeDocumentParticipant } from "@vetta/runtime-core";
 import type { AgentFeatureDefinition } from "@vetta/runtime-core/kernel";
-import { defineSessionExtensionService, type SessionExtensionDefinition } from "@vetta/runtime-core/session-extensions";
+import {
+	defineSessionExtensionService,
+	type SessionExtensionDefinition,
+	sessionExtensionObservation,
+} from "@vetta/runtime-core/session-extensions";
 import type { CodingAgentSubagentRuntime } from "./runtime.js";
-
-export const CODING_AGENT_SUBAGENT_EXTENSION_ID = "coding-agent.subagents";
+import {
+	CODING_AGENT_SUBAGENT_EXTENSION_ID,
+	CODING_AGENT_SUBAGENTS_OBSERVATION,
+} from "./subagent-session-extension-contract.js";
 
 export interface CodingAgentSubagentRuntimeOwner {
 	attach(runtime: CodingAgentSubagentRuntime): void;
@@ -45,6 +51,18 @@ export function createCodingAgentSubagentSessionExtension(): SessionExtensionDef
 					{ kind: "service", token: CODING_AGENT_SUBAGENT_RUNTIME_OWNER, value: owner },
 					{ kind: "agent-feature", feature },
 					{ kind: "document-participant", participant },
+					{
+						kind: "initial-observation-source",
+						source: {
+							id: `${CODING_AGENT_SUBAGENT_EXTENSION_ID}.initial-state`,
+							read: () => {
+								const snapshots = runtime?.list() ?? [];
+								return snapshots.length > 0
+									? [sessionExtensionObservation(CODING_AGENT_SUBAGENTS_OBSERVATION, snapshots)]
+									: [];
+							},
+						},
+					},
 				],
 				async dispose() {
 					const owned = runtime;

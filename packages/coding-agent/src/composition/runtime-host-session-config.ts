@@ -8,7 +8,7 @@ import type {
 
 export type CodingAgentRuntimeHostSessionOverrides = Pick<
 	SessionConfig,
-	"agentDir" | "askUserQuestion" | "scenario" | "sessionDir" | "sessionPath"
+	"agentDir" | "scenario" | "sessionDir" | "sessionPath"
 >;
 
 /**

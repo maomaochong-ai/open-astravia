@@ -1,10 +1,11 @@
-import type { BackgroundTaskInfo, RuntimeSubagentSnapshot } from "@vetta/runtime-core";
+import type { BackgroundTaskInfo } from "@vetta/runtime-core";
 import type { BackgroundCommandService } from "@vetta/runtime-tools";
+import type { CodingAgentSubagentSnapshot } from "../../runtime-contracts/index.js";
 
 export interface CodingAgentSubagentWorkRuntime {
 	clearFinished(): number;
-	list(): readonly RuntimeSubagentSnapshot[];
-	interrupt(target: string): RuntimeSubagentSnapshot | undefined;
+	list(): readonly CodingAgentSubagentSnapshot[];
+	interrupt(target: string): CodingAgentSubagentSnapshot | undefined;
 }
 
 export interface CodingAgentBackgroundWorkRuntime {
@@ -13,8 +14,8 @@ export interface CodingAgentBackgroundWorkRuntime {
 	clearFinishedSubagents(): number;
 	killTask(taskId: string): boolean;
 	readTasks(): readonly BackgroundTaskInfo[];
-	readSubagents(): readonly RuntimeSubagentSnapshot[];
-	interruptSubagent(target: string): RuntimeSubagentSnapshot | undefined;
+	readSubagents(): readonly CodingAgentSubagentSnapshot[];
+	interruptSubagent(target: string): CodingAgentSubagentSnapshot | undefined;
 }
 
 /** Runtime BackgroundCommandService 到宿主工作面板合同的无状态投影。 */
@@ -44,11 +45,11 @@ export class CodingAgentBackgroundWorkController implements CodingAgentBackgroun
 		return this.backgroundService.list().map((task) => ({ ...task }));
 	}
 
-	readSubagents(): readonly RuntimeSubagentSnapshot[] {
+	readSubagents(): readonly CodingAgentSubagentSnapshot[] {
 		return this.subagents?.list().map((subagent) => ({ ...subagent, usage: { ...subagent.usage } })) ?? [];
 	}
 
-	interruptSubagent(target: string): RuntimeSubagentSnapshot | undefined {
+	interruptSubagent(target: string): CodingAgentSubagentSnapshot | undefined {
 		return this.subagents?.interrupt(target);
 	}
 }

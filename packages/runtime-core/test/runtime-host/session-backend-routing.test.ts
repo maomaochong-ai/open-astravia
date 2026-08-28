@@ -151,7 +151,6 @@ function assembly(sessionId: string): RuntimeHostSessionAssembly {
 			forkSession: async () => ({ path: "", text: "" }),
 			setName: async () => {},
 		},
-		hostInteraction: { bind: async () => {} },
 		executionController: { isBusy: () => false, reconfigure: async () => {} },
 		workspaceView: { readWorkingDirectory: () => undefined },
 		configurationController: {

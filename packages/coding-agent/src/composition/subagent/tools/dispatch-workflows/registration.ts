@@ -1,4 +1,5 @@
-import type { CodingToolRegistration, CodingToolScope } from "@vetta/runtime-tools/coding";
+import type { CodingToolScope } from "@vetta/runtime-tools/coding";
+import type { CodingAgentRuntimeToolRegistration } from "../../../../runtime-contracts/index.js";
 import {
 	createDispatchWorkflowsTool,
 	type DispatchWorkflowsToolInput,
@@ -18,7 +19,7 @@ export interface DispatchWorkflowsToolRegistrationOptions extends DispatchWorkfl
 
 export function createDispatchWorkflowsToolRegistration(
 	options: DispatchWorkflowsToolRegistrationOptions,
-): CodingToolRegistration<DispatchWorkflowsToolInput> {
+): CodingAgentRuntimeToolRegistration<DispatchWorkflowsToolInput> {
 	return {
 		tool: { ...createDispatchWorkflowsTool(options), modelOrder: options.modelOrder },
 		scopeUse: DISPATCH_WORKFLOWS_TOOL_SCOPES,

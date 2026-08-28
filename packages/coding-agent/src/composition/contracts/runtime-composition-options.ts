@@ -11,7 +11,10 @@ import type {
 	SessionConfig,
 } from "@vetta/runtime-core";
 import type { AgentCoreTurnEngineOptions } from "@vetta/runtime-core/kernel";
-import type { SessionExtensionDefinition } from "@vetta/runtime-core/session-extensions";
+import type {
+	SessionExtensionDefinition,
+	SessionExtensionFunctionSource,
+} from "@vetta/runtime-core/session-extensions";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
 import type { SubagentTypeRegistryLike } from "@vetta/runtime-subagents";
@@ -194,6 +197,8 @@ export interface CodingAgentRuntimeContextOptions {
 	readonly createSessionExtensionDefinitions?: (
 		sessionOptions: CodingAgentRuntimeSessionOptions,
 	) => readonly SessionExtensionDefinition[] | Promise<readonly SessionExtensionDefinition[]>;
+	/** 外围 Composition Root 向产品 Session Extension 提供的通用 typed functions。 */
+	readonly sessionExtensionFunctions?: SessionExtensionFunctionSource;
 	/** 为每个 Session 创建唯一 Todo Runtime；Tool、Continuation、Scene 与 Controller 共享它。 */
 	readonly createTodoRuntime?: (sessionOptions: CodingAgentRuntimeSessionOptions) => CodingAgentTodoRuntime;
 	/** 运行中读取压缩设置；未提供时使用 Coding Agent 既有默认值。 */

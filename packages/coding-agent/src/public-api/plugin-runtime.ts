@@ -1,0 +1,32 @@
+/** Stable Coding Agent Plugin runtime contracts for platform composition roots. */
+export type {
+	AgentPluginContinuationContribution,
+	AgentPluginContinuationInvocation,
+	AgentPluginContinuationInvoker,
+	AgentPluginContinuationResult,
+	AgentPluginHandlerResult,
+	AgentPluginMcpServerConfig,
+	AgentPluginRuntimeConfig,
+	AgentPluginRuntimeEffect,
+	AgentPluginStateContribution,
+	AgentPluginSystemPromptInvocation,
+	AgentPluginSystemPromptInvoker,
+	AgentPluginSystemPromptMessage,
+	AgentPluginSystemPromptProviderContribution,
+	AgentPluginToolContribution,
+	AgentPluginToolInvocation,
+	AgentPluginToolInvoker,
+	AgentPluginTurnHandlerLease,
+	AgentPluginTurnHandlerLeaseProvider,
+	JsonSchema,
+	McpServerContribution,
+	SkillPathContribution,
+	ToolPolicyContribution,
+} from "../model-context/plugin-runtime-contract.js";
+export type {
+	SystemPromptBlock,
+	SystemPromptBlockPatch,
+	SystemPromptBlockType,
+	SystemPromptContribution,
+	SystemPromptOperation,
+} from "../model-context/prompt-document.js";

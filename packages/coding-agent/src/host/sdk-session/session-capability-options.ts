@@ -1,6 +1,7 @@
 import type { Api, Model } from "@vetta/ai";
-import type { AgentPluginRuntimeConfig, RuntimeHostSession, RuntimeSessionInputQueueMode } from "@vetta/runtime-core";
+import type { RuntimeHostSession, RuntimeSessionInputQueueMode } from "@vetta/runtime-core";
 import type { CodingAgentTurnRetryController, CodingAgentTurnRetrySettings } from "../../execution/turn/contracts.js";
+import type { AgentPluginRuntimeConfig } from "../../model-context/plugin-runtime.js";
 import type {
 	CodingAgentMemoryConfiguration,
 	CodingAgentPromptTemplate,

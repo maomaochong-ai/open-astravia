@@ -42,14 +42,13 @@ import type {
 	RuntimeSessionConfigurationController,
 	RuntimeSessionExecutionController,
 	RuntimeSessionExtensionHost,
-	RuntimeSessionHostInteraction,
 	RuntimeSessionToolController,
 } from "./session-ports.js";
 
 export type RuntimeAssemblyOperation = "create" | "resume";
 
 export type RuntimeSessionPeripherals = Partial<
-	Pick<KernelRuntimeAssembly, "hostInteraction" | "executionController" | "configurationController">
+	Pick<KernelRuntimeAssembly, "executionController" | "configurationController">
 >;
 
 export interface RuntimeResourceContext {
@@ -76,7 +75,6 @@ export interface RuntimeResources {
 	readonly stateSource: RuntimeStateSource;
 	readonly documentParticipants?: readonly RuntimeDocumentParticipant[];
 	readonly extensionHost?: RuntimeSessionExtensionHost;
-	readonly hostInteraction?: RuntimeSessionHostInteraction;
 	readonly executionController?: RuntimeSessionExecutionController;
 	readonly configurationController?: RuntimeSessionConfigurationController;
 	readonly toolController?: RuntimeSessionToolController;
@@ -274,7 +272,6 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 				stateSource: resources.stateSource,
 				documentParticipants: resources.documentParticipants,
 				extensionHost: resources.extensionHost,
-				hostInteraction: sessionPeripherals?.hostInteraction ?? resources.hostInteraction,
 				executionController: sessionPeripherals?.executionController ?? resources.executionController,
 				configurationController: sessionPeripherals?.configurationController ?? resources.configurationController,
 				contextController,

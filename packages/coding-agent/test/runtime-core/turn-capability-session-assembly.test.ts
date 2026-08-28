@@ -21,7 +21,8 @@ import type { CodingAgentSessionExecutionRuntime } from "../../src/execution/ses
 import { CodingAgentExtensionRunBridge } from "../../src/extensions/runtime/extension-run-bridge.js";
 import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import type { CodingAgentContextRuntime } from "../../src/runtime-contracts/index.js";
-import { DEFAULT_HEAVY_TOOL_CONFIRMATION_TEXTS } from "../../src/tool-policy/heavy-tool-confirmation.js";
+import { HeavyToolConfirmationLedger } from "../../src/tool-policy/heavy-tool-confirmation.js";
+import type { CodingAgentHeavyToolPolicyRuntime } from "../../src/tool-policy/heavy-tool-policy-session-extension.js";
 import { createFileSettingsRuntime } from "../fixtures/file-settings-runtime.js";
 import { createTestSessionResourceRuntime } from "../fixtures/node-resource-runtime.js";
 import { preparePrompt } from "./prompt-adapter-test-fixture.js";
@@ -89,6 +90,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime: {} as unknown as EcosystemHookRuntime,
 			extensionEvents,
+			heavyToolPolicyRuntime: createHeavyToolPolicyRuntime(),
 			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
 		});
 		disposals.push(() => assembly.dispose());
@@ -186,6 +188,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime,
 			extensionEvents: new CodingAgentExtensionRunBridge(),
+			heavyToolPolicyRuntime: createHeavyToolPolicyRuntime(),
 			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
 		});
 		disposals.push(() => assembly.dispose());
@@ -268,6 +271,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime: createPassthroughHookRuntime(),
 			extensionEvents,
+			heavyToolPolicyRuntime: createHeavyToolPolicyRuntime(),
 			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
 		});
 		disposals.push(() => assembly.dispose());
@@ -327,19 +331,10 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			hookRuntime: createPassthroughHookRuntime(),
 			extensionEvents: new CodingAgentExtensionRunBridge(),
 			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
-			askUserQuestion: {
-				isEnabled: () => true,
-				ask: async (request) => {
-					asked.push(request.questions[0]!.question);
-					return {
-						cancelled: false,
-						answers: request.questions.map((question) => ({
-							question: question.question,
-							answers: [DEFAULT_HEAVY_TOOL_CONFIRMATION_TEXTS.allowLabel],
-						})),
-					};
-				},
-			},
+			heavyToolPolicyRuntime: createHeavyToolPolicyRuntime((request) => {
+				asked.push(request.toolName);
+				return "allow_session";
+			}),
 		});
 		disposals.push(() => assembly.dispose());
 		const capabilities = await compileAssemblyCapabilities(assembly);
@@ -369,6 +364,19 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		expect(executed).toEqual([heavyTool.name, heavyTool.name]);
 	});
 });
+
+function createHeavyToolPolicyRuntime(
+	request: (request: { readonly sessionId: string; readonly toolName: string }) => "allow_session" | "deny" = () =>
+		"deny",
+): CodingAgentHeavyToolPolicyRuntime {
+	return {
+		ledger: new HeavyToolConfirmationLedger(),
+		consent: {
+			isAvailable: () => true,
+			request: async (consentRequest) => request(consentRequest),
+		},
+	};
+}
 
 function compileAssemblyCapabilities(
 	assembly: Awaited<ReturnType<typeof createCodingAgentTurnCapabilitySessionAssembly>>,

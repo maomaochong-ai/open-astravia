@@ -2,11 +2,19 @@
 
 ### Fixed
 
+- 修复 Plugin Tool 到达超时时，内部 `AbortSignal` 的同步拒绝抢先覆盖超时错误、最终误报为
+  `Plugin tool invocation was aborted` 的问题；超时现在稳定保留 `Plugin tool timed out after …ms`，外部取消语义不变。
+- Tool 调用因 `coding-agent.call-description` 投影校验失败时，现在返回具体字段和约束，不再只显示无法定位原因的
+  projection ID；`write.content` 等完整调用参数不会进入该模型可见错误。
 - 修复插件工具返回含 `content` / `text` 及其它结构化字段的对象时，模型上下文只保留文本字段、静默丢弃同级元数据的问题；
   仅含单个文本字段的兼容简写保持不变，含兄弟字段的结果现在完整序列化给模型。
 
 ### Changed
 
+- Subagent Todo 改为 Coding Agent 自有的 Session Extension 投影：Workflow 调度端口、Child 初始化与实时 observation、
+  恢复持久化和宿主事件校验均停留在产品层；通用 Runtime 只处理产品无关的子代理生命周期快照。
+- Knowledge Processing 的模型工作指南迁入 Coding Agent Knowledge Feature，`runtime-knowledge` 只保留差异、路径与
+  批次任务数据构造，不再硬编码 `todo` 工具协议。
 - 公共 `CodingAgentHost` 的合同文档明确为 SDK 的隔离产品 Session 所有权组，而不是第二套多主 Agent Host；每个成员
   继续允许独立 cwd、Storage、Tool/MCP/Extension Source 与模型资源。SDK Session 现在把 Composition 子 Hub 的
   Publisher 同时注入内部 RuntimeHost 与活动 Session 切换器，使 Runtime、Agent 和 Coding 产品失败进入同一观测树；
@@ -336,13 +344,17 @@
 
 ### Changed
 
+- Plugin 配置、贡献、调用与 Turn handler lease 合同统一归 Coding Agent，并通过新的
+  `@vetta/coding-agent/plugin-runtime` 公共入口供 Desktop、CLI 与 SDK 组合根使用；Runtime Core 不再暴露产品协议。
+- Heavy/Light 策略改由 `CodingAgentRuntimeToolRegistration` 与独立策略声明源拥有；进入通用 Runtime Tool Catalog
+  前会剥离 `sideEffect`。Plugin `side_effect`、显式 light 豁免、兜底清单、确认台账与 IM 外发判 heavy 的行为保持不变。
 - **Invoke Skill 归入 Skill 领域**：`invoke_skill` 的模型名称、Schema、描述、输出、Scope、Category 和注册逻辑从
   `runtime-node` 迁入 `resources/skills/tool`。现有 Turn 级 Skill 快照、Hook 激活、缺失/读取失败结果和模型顺序保持不变；
   Skill Hook 的内部内容 revision 同时改用平台中立的确定性文本指纹，`runtime-node` 不再持有无平台依赖的 Skill 产品语义。
 
 - **Ask User Question 归入产品 Feature**：`ask_user_question` 的模型可见名称、Schema、描述、输出文案、
-  动态可用性和注册顺序统一位于 `features/ask-user-question`；该 Feature 直接消费 `runtime-core` 的通用宿主提问
-  Capability，不再依赖 `runtime-node` 的产品 Tool 定义。名称、Schema、取消语义和用户回答输出保持不变。
+  动态可用性和注册顺序统一位于 `features/ask-user-question`；该 Feature 通过 Runtime 的产品无关 typed function
+  机制声明自己的提问合同，Runtime 不再拥有“用户提问”概念。名称、Schema、取消语义和用户回答输出保持不变。
 
 - **SDK Session identity Host 解耦**：低层 SDK Session Factory 不再自行选择 UUID、cwd、Conversation Catalog、文件路径或
   Node Persistence；这些能力通过 `CodingAgentSdkSessionIdentityRuntime` 注入。现有零参数 SDK 入口继续由 Node 兼容 Host
@@ -361,7 +373,9 @@
 - 系统提示词编译器现在为每个启用块生成与最终渲染文本一致的位置和稳定性元数据，供 Runtime 在不保留块正文的前提下定位缓存失效来源。
 - **Todo 接入统一 Session Extension 生命周期、端点与观察协议**：Todo 的 Runtime、Tool Feature、Conversation Document 持久化参与、自然停止续跑、观察广播和释放由单一 `coding-agent.todo` 扩展拥有；Composition Root 改为消费 typed contributions，并以通用 Session Extension 集合替代 Todo 专属资源登记。新增 `@vetta/coding-agent/session-extensions` 公共协议入口，集中导出 Todo read/clear/observation token、`TodoItem` 和宿主边界 Schema 解析；Desktop、CLI、SDK 与 Subagent 不再依赖 Runtime Core 的 Todo 类型或事件。既有 Todo Tool、快照、锁定、CLI/SDK `todo_update` 与用户可见 clear/read 行为不变。
 - **heavy 首调确认弹窗文案简化**：提问正文收敛为「允许在本会话中运行「{tool}」吗？」，去掉普通用户读不懂的副作用说明从句（工作区创建文件/计费/不可撤销）。
-- **heavy 首调确认闸接入核心工具的定义级声明**：resolver 的声明来源新增 coding tool registry snapshot（`runtime-tools` 注册对象的 `sideEffect` 字段），核心工具自此可在定义处自我声明——`im_send_attachment` 因此判 heavy（外发不可撤回，此前既不在兜底清单也无声明通道，是无人值守 im-claw 场景的漏网项）。`DEFAULT_HEAVY_TOOL_NAMES` 进一步收窄为「仍未声明的存量插件工具」兜底，新 heavy 工具应在定义处声明而不是加进清单。
+- **heavy 首调确认闸接入产品工具的定义级声明**：resolver 从 Coding Agent 独立策略源读取 `sideEffect`，
+  通用 Runtime Tool Catalog 不持有该字段。`im_send_attachment` 仍判 heavy，显式 light 豁免与
+  `DEFAULT_HEAVY_TOOL_NAMES` 存量插件兜底保持不变。
 - **mode 提示词支持共享 partial 与 narration 能力位（ADR-0071 外部审计跟进）**：`modes/partials/*.md` 存各模式共享的提示词段（正文以 `{{> name}}` 引用、构建期展开），work / coding 双份漂移的 deliverables/md_intro/observations 段收敛为单一事实源；frontmatter 新增必填 `narration`（staged = 会话流按 progress 阶段折叠 / inline = 工具行内联），渲染层据注册表查表而不再硬编码 mode id。`generate-modes.mjs` 同时新增工具名卫生校验（正文里拼写错误的工具引用当场构建失败），并修正 work.md 里错误的工具名 `AskUserQuestion` → `ask_user_question`。
 - **插件工具的 `side_effect` 声明通道打通**：SDK `registerTool({ side_effect })` 经 renderer → IPC → 贡献注册表透传至 heavy 首调确认闸的 resolver，插件自此可以（也应该）自行声明重副作用；`DEFAULT_HEAVY_TOOL_NAMES` 明确降级为「声明通道接通前就存在的核心工具」兜底清单，刻意豁免项（vetd_history/vetd_restore/bash 等）补全就近理由。
 - **`agent_mode` 从 fail-closed 过滤降级为排序偏好**：工作模式不再排除任何工具、Skill 或插件 MCP 工具。声明了 `agent_mode` 的条目在非匹配模式下**仍然激活、仍然可调用**，只是被稳定地排到清单末尾（同权重内保持原有顺序，不影响 system prompt 前缀缓存）。
@@ -440,7 +454,10 @@
 - **Model Context 包内领域重写**：模型消息合同、LLM 投影、结构化 Prompt 文档、Plugin 运行时贡献和系统 Prompt 组合从旧 `core/messages.ts`、`core/system-prompt.ts` 拆入 `src/model-context`；Desktop 通过显式 `cli-guidance` 子路径消费 CLI 指引。Prompt 文案、Tool/MCP/Skill/Plugin 组合、消息过滤、摘要和 Bash 投影行为保持不变。
 - **Knowledge Runtime 独立化**：知识领域模型、文件存储、查询、写页和加工编排迁出 Coding Agent；`kb_write_page` 的 TypeBox Schema、描述、注册与执行协议迁入 `runtime-tools`，Coding Agent 只在组合层解析默认目录并注入窄 Operations Port。磁盘格式、默认目录、Tool 合同、并发写入和 Desktop 加工行为保持不变。
 - **IM Host Tool 原生化与旧示例退役**：RPC/CLI 直接注册 `runtime-tools` 的 `im_send_attachment`，Legacy RPC 仅在显式兼容适配器内转换协议；删除只展示旧包根 Tool API 或旧 Extension Tool 接线的示例，用户可见 IM 附件行为保持不变。
-- **Greenfield 能力 Tool 与 Catalog 原生化**：`ask_user_question`、`invoke_skill`、`memory`、`todo`、`tool_search` 与知识标签查询改由 `runtime-tools` 独立持有 TypeBox Schema、TS 描述、Registration 和执行协议，状态与查询通过窄 Port 注入；删除无调用方的旧 Bash/Shell Executor，CLI 与稳定 SDK 的内置工具激活名称不再读取 `core/tools`。工具名称、描述、Schema、scope、输出、错误、状态时序和动态 Catalog 行为保持不变。
+- **Greenfield 能力 Tool 与 Catalog 原生化**：通用 Catalog、激活和执行协议由 `runtime-tools` 持有；
+  `ask_user_question`、`todo`、`invoke_skill` 等产品 Tool 的 TypeBox Schema、描述与 Registration 留在对应
+  Coding Agent Feature，状态和环境能力通过窄 Port/typed function 注入。CLI 与稳定 SDK 的工具名称、输出、
+  错误、状态时序和动态 Catalog 行为保持不变。
 - **无状态 Tool Host 边界原生化**：产品工具组合改用独立命令进程 Host、文档转 PDF Operations、共享 OCR 执行 Gate 和宿主路径政策；CLI `@file` 路径解析改用 Runtime 中立原语，不再调用旧 Tool/Utils 实现。Office/WPS 探测、命令输出、取消、超时、并发、保护目录和文件输入行为保持不变。
 - **Sandbox 工具执行边界原生化**：三平台 Sandbox 只保留 OS 隔离命令操作，`read`、`write`、`edit`、`bash`/`shell` 直接组装 `runtime-tools` 的原生 Tool Registration 与前台执行器；工作区和命令写权限直接调用 Runtime Host Interaction Port，不再构造旧 `AgentTool`、`ToolDefinition` 或伪造 `ExtensionContext`。工具名称、schema、scope、权限缓存、取消、超时、错误和输出语义保持不变。
 - **稳定 SDK 公共合同与旧产品 Core 解耦**：Prompt、Session 事件和自定义工具改为 `public-api/sdk` 内的独立结构合同，生成声明不再引用 `core/session/types`；自定义工具继续保留 TypeBox 参数校验、取消信号、进度更新、常用 UI/压缩/权限上下文和渲染回调，由 Host Adapter 转换为现有 Extension Tool。公共边界守卫现在拒绝 SDK 合同回接 `coding-agent/src` 内部实现，包根兼容 API 与运行时行为保持不变。

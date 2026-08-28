@@ -19,6 +19,7 @@ import {
 	type CodingAgentSubagentChildFactory,
 	createCodingAgentSubagentSessionAssembly,
 } from "../../src/composition/subagent/session-assembly.js";
+import { CODING_AGENT_SUBAGENTS_OBSERVATION } from "../../src/composition/subagent/subagent-session-extension-contract.js";
 import { CODING_AGENT_SUBAGENT_ISSUE_OBSERVATION } from "../../src/runtime-contracts/subagent-observability.js";
 
 describe("Coding Agent Subagent session assembly", () => {
@@ -134,7 +135,14 @@ describe("Coding Agent Subagent session assembly", () => {
 		]);
 		expect(promptInputs[0]).toContain("hook context");
 		expect(observations).toEqual(
-			expect.arrayContaining([expect.objectContaining({ type: "subagents_update", source: "tool" })]),
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: "session.extension",
+					extensionId: CODING_AGENT_SUBAGENTS_OBSERVATION.extensionId,
+					event: CODING_AGENT_SUBAGENTS_OBSERVATION.event,
+					source: "tool",
+				}),
+			]),
 		);
 		await vi.waitFor(() => {
 			expect(contexts).toEqual(expect.arrayContaining([expect.objectContaining({ type: "subagent-notification" })]));

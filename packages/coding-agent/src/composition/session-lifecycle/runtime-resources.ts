@@ -1,9 +1,5 @@
 import type { Api, Model } from "@vetta/ai";
-import type {
-	ConversationScenario,
-	RuntimeResources,
-	RuntimeSessionAskUserQuestionCapability,
-} from "@vetta/runtime-core";
+import type { RuntimeResources } from "@vetta/runtime-core";
 import { createRuntimeSessionExtensionHost } from "@vetta/runtime-core";
 import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel";
 import type { SessionExtensionComposition } from "@vetta/runtime-core/session-extensions";
@@ -15,7 +11,7 @@ import type { CodingAgentSessionExecutionRuntime } from "../../execution/session
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import {
 	CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME,
-	isCodingAgentAskUserQuestionEnabled,
+	type CodingAgentAskUserQuestionExtensionRuntime,
 } from "../../features/ask-user-question/index.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
@@ -68,8 +64,7 @@ export interface CodingAgentSessionRuntimeResourcesOptions {
 	readonly activation: CodingToolActivation;
 	readonly knowledgeAvailable: boolean;
 	readonly backgroundTasksAvailable: boolean;
-	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
-	readonly scenario: ConversationScenario;
+	readonly askUserQuestionRuntime: CodingAgentAskUserQuestionExtensionRuntime;
 	readonly onConversationContinued: (result: ConversationContinuationResult) => Promise<void>;
 }
 
@@ -127,7 +122,6 @@ export function createCodingAgentSessionRuntimeResources(
 		createSessionPeripherals: (session) => {
 			options.pluginConfigurationRuntime.bindSession(session);
 			return {
-				hostInteraction: options.executionRuntime.hostInteraction,
 				executionController: options.executionRuntime.createExecutionController(session),
 				configurationController: options.configurationState.createController(session),
 			};
@@ -168,10 +162,7 @@ function readSessionState(options: CodingAgentSessionRuntimeResourcesOptions, st
 		...(options.todoEnabled ? [options.todoToolRegistration.tool.name] : []),
 		...(options.memoryRuntime ? [options.memoryRuntime.toolRegistration.tool.name] : []),
 		...(options.subagentRuntime ? options.subagentRuntime.readTools().map(({ name }) => name) : []),
-		...(options.askUserQuestion &&
-		isCodingAgentAskUserQuestionEnabled({ capability: options.askUserQuestion, scenario: options.scenario })
-			? [CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME]
-			: []),
+		...(options.askUserQuestionRuntime.isEnabled() ? [CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME] : []),
 		...(options.extensionToolRuntime?.readActiveToolNames(stateActivation, options.session.readSessionId()) ?? []),
 	];
 	const contextWindow = options.modelRuntime.readCurrentModel().contextWindow;

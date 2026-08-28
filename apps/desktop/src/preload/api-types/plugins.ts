@@ -741,6 +741,8 @@ export interface DesktopPluginsApi {
 	registerModeGate(pluginId: string): Promise<void>;
 	/** Enable/disable a mode-gated plugin's agent contributions (ADR-0041). */
 	setContributionMode(pluginId: string, active: boolean): Promise<void>;
+	/** Report that the current renderer document has installed and loaded the plugin contribution host. */
+	reportAgentContributionHostReady(): Promise<void>;
 	beginAgentContributionsLoad(pluginId: string, activationId: string): Promise<void>;
 	commitAgentContributionsLoad(pluginId: string, activationId: string): Promise<void>;
 	registerAgentTool(pluginId: string, registration: PluginAgentToolRegistration): Promise<void>;

@@ -1,9 +1,4 @@
-import type {
-	RuntimeQuestionItem,
-	RuntimeUserQuestionResult,
-	SessionConfig,
-	SessionExecutionMode,
-} from "../contracts.js";
+import type { SessionConfig, SessionExecutionMode } from "../contracts.js";
 import type {
 	RuntimeSessionConfigurationController,
 	RuntimeSessionContextController,
@@ -16,7 +11,6 @@ import type {
 	RuntimeSessionExtensionHost,
 	RuntimeSessionHistoryController,
 	RuntimeSessionHistoryReader,
-	RuntimeSessionHostInteraction,
 	RuntimeSessionIdentityLifecycle,
 	RuntimeSessionMetadataController,
 	RuntimeSessionModelController,
@@ -26,11 +20,6 @@ import type {
 	RuntimeSessionWorkspaceView,
 } from "./session-ports.js";
 import type { RuntimeSessionCatalog } from "./session-services.js";
-
-export interface RuntimeSessionAskUserQuestionCapability {
-	isEnabled(): boolean;
-	ask(request: { questions: RuntimeQuestionItem[] }, signal?: AbortSignal): Promise<RuntimeUserQuestionResult>;
-}
 
 /** RuntimeHost 到 Session Backend 的实现无关创建请求。 */
 export interface RuntimeSessionCreateRequest {
@@ -50,7 +39,6 @@ export interface RuntimeSessionCreateRequest {
 	readonly enableBackgroundTasks?: SessionConfig["enableBackgroundTasks"];
 	readonly enableSubagents: boolean;
 	readonly includeAgentSkills?: SessionConfig["includeAgentSkills"];
-	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
 	readonly serverUrl?: string;
 	readonly sandboxHostPath?: string;
 	readonly linuxBubblewrapPath?: string;
@@ -69,7 +57,6 @@ export interface RuntimeHostSessionAssembly {
 	readonly lifecycle: RuntimeSessionIdentityLifecycle;
 	readonly historyReader: RuntimeSessionHistoryReader;
 	readonly historyController: RuntimeSessionHistoryController;
-	readonly hostInteraction: RuntimeSessionHostInteraction;
 	readonly executionController: RuntimeSessionExecutionController;
 	readonly workspaceView: RuntimeSessionWorkspaceView;
 	readonly extensionHost?: RuntimeSessionExtensionHost;
@@ -93,7 +80,6 @@ export const RUNTIME_HOST_SESSION_PORT_NAMES = [
 	"lifecycle",
 	"historyReader",
 	"historyController",
-	"hostInteraction",
 	"executionController",
 	"workspaceView",
 	"configurationController",

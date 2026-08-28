@@ -8,6 +8,36 @@ const addFormats = (addFormatsModule as any).default || addFormatsModule;
 
 import type { Tool, ToolCall } from "../types.js";
 
+export interface ToolArgumentValidationIssue {
+	readonly path: string;
+	readonly message: string;
+}
+
+/** Structured Tool input failure; the message retains the historical detailed diagnostics for direct callers. */
+export class ToolArgumentsValidationError extends Error {
+	readonly toolName: string;
+	readonly issues: readonly ToolArgumentValidationIssue[];
+
+	constructor(
+		toolName: string,
+		issues: readonly ToolArgumentValidationIssue[],
+		receivedArguments: Readonly<Record<string, unknown>>,
+	) {
+		super(
+			`Validation failed for tool "${toolName}":\n${issues.map(formatToolArgumentValidationIssueLine).join("\n")}\n\n` +
+				`Received arguments:\n${JSON.stringify(receivedArguments, null, 2)}`,
+		);
+		this.name = "ToolArgumentsValidationError";
+		this.toolName = toolName;
+		this.issues = Object.freeze(issues.map((issue) => Object.freeze({ ...issue })));
+	}
+}
+
+/** Formats only schema paths and constraints, without echoing Tool arguments. */
+export function formatToolArgumentValidationIssues(issues: readonly ToolArgumentValidationIssue[]): string {
+	return issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ");
+}
+
 // Detect if we're in a browser extension environment with strict CSP
 // Chrome extensions with Manifest V3 don't allow eval/Function constructor
 const isBrowserExtension = typeof globalThis !== "undefined" && (globalThis as any).chrome?.runtime?.id !== undefined;
@@ -72,20 +102,28 @@ export function validateToolArguments(tool: Tool, toolCall: ToolCall): any {
 	}
 
 	// Format validation errors nicely
-	const errors =
-		validate.errors
-			?.filter((err: ErrorObject) => err.keyword !== "if")
-			.map((err: ErrorObject) => {
-				const path = err.instancePath ? err.instancePath.substring(1) : err.params.missingProperty || "root";
-				const unexpectedProperty =
-					err.keyword === "additionalProperties" ? err.params.additionalProperty : undefined;
-				return `  - ${path}: ${err.message}${unexpectedProperty ? ` '${unexpectedProperty}'` : ""}`;
-			})
-			.join("\n") || "Unknown validation error";
+	const reportedIssues = validate.errors
+		?.filter((error: ErrorObject) => error.keyword !== "if")
+		.map(toToolArgumentValidationIssue);
+	const issues =
+		reportedIssues && reportedIssues.length > 0
+			? reportedIssues
+			: [{ path: "root", message: "Unknown validation error" }];
 
-	const errorMessage = `Validation failed for tool "${toolCall.name}":\n${errors}\n\nReceived arguments:\n${JSON.stringify(toolCall.arguments, null, 2)}`;
+	throw new ToolArgumentsValidationError(toolCall.name, issues, toolCall.arguments);
+}
 
-	throw new Error(errorMessage);
+function toToolArgumentValidationIssue(error: ErrorObject): ToolArgumentValidationIssue {
+	const path = error.instancePath ? error.instancePath.substring(1) : error.params.missingProperty || "root";
+	const unexpectedProperty = error.keyword === "additionalProperties" ? error.params.additionalProperty : undefined;
+	return {
+		path,
+		message: `${error.message}${unexpectedProperty ? ` '${unexpectedProperty}'` : ""}`,
+	};
+}
+
+function formatToolArgumentValidationIssueLine(issue: ToolArgumentValidationIssue): string {
+	return `  - ${issue.path}: ${issue.message}`;
 }
 
 function withInferredDiscriminators(schema: unknown): unknown {

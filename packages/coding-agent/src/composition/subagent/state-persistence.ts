@@ -4,8 +4,9 @@ import type {
 	RuntimeDocumentParticipantContext,
 } from "@vetta/runtime-core";
 import type { StoredSessionEvent } from "@vetta/runtime-core/kernel";
-import type { SubagentDeliveryMarker, SubagentRecoveryState, SubagentSnapshot } from "@vetta/runtime-subagents";
+import type { SubagentDeliveryMarker } from "@vetta/runtime-subagents";
 import { z } from "zod";
+import type { CodingAgentSubagentSnapshot } from "../../runtime-contracts/index.js";
 import { createLocalSubagentId } from "./local-id.js";
 
 export const CODING_AGENT_SUBAGENT_STATE_CUSTOM_TYPE = "subagent_state_v1";
@@ -75,8 +76,13 @@ const SubagentStateEventSchema = z.discriminatedUnion("event", [
 
 type SubagentStateEvent = z.infer<typeof SubagentStateEventSchema>;
 
+export interface CodingAgentSubagentRecoveryState {
+	readonly agents: readonly CodingAgentSubagentSnapshot[];
+	readonly delivered: readonly SubagentDeliveryMarker[];
+}
+
 export interface CodingAgentSubagentStatePersistenceOptions {
-	readonly restore: (state: SubagentRecoveryState) => void | Promise<void>;
+	readonly restore: (state: CodingAgentSubagentRecoveryState) => void | Promise<void>;
 	readonly onRecoveryIssue?: (message: string) => void;
 	readonly createEntryId?: () => string;
 	readonly now?: () => number;
@@ -90,7 +96,7 @@ export interface CodingAgentSubagentStatePersistenceOptions {
 export class CodingAgentSubagentStatePersistence implements RuntimeDocumentParticipant {
 	private readonly createEntryId: () => string;
 	private readonly now: () => number;
-	private readonly knownAgents = new Map<string, SubagentSnapshot>();
+	private readonly knownAgents = new Map<string, CodingAgentSubagentSnapshot>();
 	private readonly delivered = new Map<string, SubagentDeliveryMarker>();
 	private context: RuntimeDocumentParticipantContext | undefined;
 	private persistenceTail: Promise<void> = Promise.resolve();
@@ -150,7 +156,7 @@ export class CodingAgentSubagentStatePersistence implements RuntimeDocumentParti
 		}
 	}
 
-	recordSnapshots(agents: readonly SubagentSnapshot[]): void {
+	recordSnapshots(agents: readonly CodingAgentSubagentSnapshot[]): void {
 		if (this.disposed) return;
 		const next = new Map(agents.map((snapshot) => [snapshot.id, cloneSnapshot(snapshot)]));
 		for (const [id, snapshot] of next) {
@@ -189,8 +195,8 @@ export class CodingAgentSubagentStatePersistence implements RuntimeDocumentParti
 		this.context = undefined;
 	}
 
-	private readRecoveryState(document: ConversationDocument): SubagentRecoveryState {
-		const agents = new Map<string, SubagentSnapshot>();
+	private readRecoveryState(document: ConversationDocument): CodingAgentSubagentRecoveryState {
+		const agents = new Map<string, CodingAgentSubagentSnapshot>();
 		const delivered = new Map<string, SubagentDeliveryMarker>();
 		for (const entry of document.entries) {
 			if (entry.type !== "custom" || entry.customType !== CODING_AGENT_SUBAGENT_STATE_CUSTOM_TYPE) continue;
@@ -240,7 +246,7 @@ function deliveryKey(marker: SubagentDeliveryMarker): string {
 	return `${marker.id}#${marker.generation}`;
 }
 
-function cloneSnapshot(snapshot: SubagentSnapshot): SubagentSnapshot {
+function cloneSnapshot(snapshot: CodingAgentSubagentSnapshot): CodingAgentSubagentSnapshot {
 	return {
 		...snapshot,
 		usage: { ...snapshot.usage },
@@ -248,6 +254,6 @@ function cloneSnapshot(snapshot: SubagentSnapshot): SubagentSnapshot {
 	};
 }
 
-function snapshotsEqual(left: SubagentSnapshot, right: SubagentSnapshot): boolean {
+function snapshotsEqual(left: CodingAgentSubagentSnapshot, right: CodingAgentSubagentSnapshot): boolean {
 	return JSON.stringify(left) === JSON.stringify(right);
 }

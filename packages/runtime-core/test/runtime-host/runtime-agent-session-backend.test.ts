@@ -194,7 +194,6 @@ function createResources(
 		modelRuntime,
 		identity: { cwd: "C:/workspace" },
 		stateSource: { read: () => ({ contextPercent: 0, contextWindow: 8_000, activeToolNames: [] }) },
-		hostInteraction: { bind: async () => {} },
 		executionController: { isBusy: () => false, reconfigure: async () => {} },
 		configurationController: {
 			setSteeringMode: () => {},

@@ -220,7 +220,6 @@ function assembly(
 			forkSession: async () => ({ path: "", text: "" }),
 			setName: async () => {},
 		},
-		hostInteraction: { bind: async () => {} },
 		executionController: {
 			isBusy: options.isBusy,
 			reconfigure: options.reconfigure,

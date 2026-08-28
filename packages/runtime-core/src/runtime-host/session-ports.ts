@@ -4,8 +4,6 @@ import type { ContextCompositionReport } from "../context-composition/contracts.
 import type {
 	HistoryEntry,
 	PromptRequest,
-	RuntimeSandboxGrantDecision,
-	RuntimeSandboxGrantRequest,
 	RuntimeTurnPromptOutcome,
 	SessionEvent,
 	SessionExecutionMode,
@@ -129,19 +127,6 @@ export interface RuntimeSessionModelView {
 	refreshAvailableModels(): void;
 	readAvailableModels(): readonly Model<Api>[];
 	resolveApiKey(model: Model<Api>): Promise<string | undefined>;
-}
-
-/** 单次宿主绑定提供的交互能力；不泄漏 coding-agent 的完整 UI 协议。 */
-export interface RuntimeSessionHostInteractionContext {
-	confirm(title: string, message: string, signal?: AbortSignal): Promise<boolean>;
-	requestSandboxGrant(
-		request: Omit<RuntimeSandboxGrantRequest, "requestId" | "sessionId">,
-	): Promise<RuntimeSandboxGrantDecision>;
-}
-
-/** 将当前宿主交互能力绑定到会话；同路径复用时允许重新绑定。 */
-export interface RuntimeSessionHostInteraction {
-	bind(context: RuntimeSessionHostInteractionContext): Promise<void>;
 }
 
 /** 执行模式更新所需的宿主环境；不暴露旧 customTools 实现类型。 */

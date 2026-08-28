@@ -1,4 +1,4 @@
-import type { AgentPluginRuntimeConfig } from "@vetta/runtime-core";
+import type { AgentPluginRuntimeConfig } from "@vetta/coding-agent/plugin-runtime";
 import {
 	type AgentPluginRuntimeFingerprints,
 	fingerprintAgentPluginRuntimeConfig,

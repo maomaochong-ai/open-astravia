@@ -1,13 +1,17 @@
-import type { RuntimeSessionHostInteractionContext } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { SandboxPermissionContext, SandboxPermissionRequest } from "@vetta/runtime-core/sandbox";
+import type { SandboxPermissionRequest } from "@vetta/runtime-core/sandbox";
 import type { CodingToolRegistration } from "@vetta/runtime-tools";
 import type { CodingAgentSandboxToolSet } from "../../composition/contracts/session-execution-environment.js";
-import { confirmSandboxPermission, isSensitiveSandboxRequest } from "./permission-policy.js";
+import type { CodingAgentSandboxAuthorizationPort } from "./authorization-contract.js";
+import {
+	type CodingAgentSandboxPermissionContext,
+	confirmSandboxPermission,
+	isSensitiveSandboxRequest,
+} from "./permission-policy.js";
 
 export interface SandboxRuntimeToolOptions {
 	readonly cwd: string;
-	readonly hostInteraction: RuntimeSessionHostInteractionContext;
+	readonly authorization: CodingAgentSandboxAuthorizationPort;
 	readonly toolSet: CodingAgentSandboxToolSet;
 	/** Resolves the current session id at execute-time. Required for session-scoped grant cache. */
 	readonly getSessionId?: () => string | undefined;
@@ -42,16 +46,9 @@ function extractCommandFromParams(params: unknown): string | undefined {
 }
 
 function createPermissionContext(
-	hostInteraction: RuntimeSessionHostInteractionContext,
-	signal: AbortSignal,
-): SandboxPermissionContext {
-	return {
-		hasUI: true,
-		ui: {
-			confirm: (title, message) => hostInteraction.confirm(title, message, signal),
-			requestSandboxGrant: (request) => hostInteraction.requestSandboxGrant(request),
-		},
-	};
+	authorization: CodingAgentSandboxAuthorizationPort,
+): CodingAgentSandboxPermissionContext {
+	return { authorization };
 }
 
 export function wrapWorkspaceGuard<TInput extends object>(
@@ -61,6 +58,7 @@ export function wrapWorkspaceGuard<TInput extends object>(
 	return {
 		...tool,
 		async execute(request) {
+			const sessionId = options.getSessionId?.() ?? request.sessionId;
 			const requestedPath = extractPathFromParams(request.input);
 			if (requestedPath) {
 				const access = await options.toolSet.hostServices.resolveWorkspacePathAccess(requestedPath, options.cwd);
@@ -77,15 +75,16 @@ export function wrapWorkspaceGuard<TInput extends object>(
 						grantRoot: access.targetBoundary,
 						reason: `${tool.name} target is outside the workspace sandbox`,
 					};
-					const sessionId = options.getSessionId?.();
 					const cached = sessionId
 						? options.toolSet.hostServices.findSessionGrant(sessionId, permissionRequest)
 						: undefined;
 					if (!cached) {
 						const decision = await confirmSandboxPermission(
-							createPermissionContext(options.hostInteraction, request.signal),
+							createPermissionContext(options.authorization),
+							sessionId,
 							permissionRequest,
 							options.toolSet.hostServices.isDeniedPath,
+							request.signal,
 						);
 						if (decision === "deny") {
 							const currentAccess = await options.toolSet.hostServices.resolveWorkspacePathAccess(
@@ -124,7 +123,7 @@ export function wrapShellPermissionGuard<TInput extends object>(
 			const permissionRequests = command
 				? options.toolSet.hostServices.collectShellWritePermissionRequests(command, options.cwd)
 				: [];
-			const sessionId = options.getSessionId?.();
+			const sessionId = options.getSessionId?.() ?? request.sessionId;
 			const allowWriteRoots: string[] = [];
 			for (const permissionRequest of permissionRequests) {
 				const cached = sessionId
@@ -135,9 +134,11 @@ export function wrapShellPermissionGuard<TInput extends object>(
 					continue;
 				}
 				const decision = await confirmSandboxPermission(
-					createPermissionContext(options.hostInteraction, request.signal),
+					createPermissionContext(options.authorization),
+					sessionId,
 					permissionRequest,
 					options.toolSet.hostServices.isDeniedPath,
+					request.signal,
 				);
 				if (decision === "deny") {
 					throw new Error(

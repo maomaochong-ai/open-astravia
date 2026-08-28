@@ -1,11 +1,8 @@
 import { type Static, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { WritePageResult } from "@vetta/runtime-knowledge";
-import {
-	type CodingToolRegistration,
-	type CodingToolScope,
-	ToolCallDescriptionSchema,
-} from "@vetta/runtime-tools/coding";
+import { type CodingToolScope, ToolCallDescriptionSchema } from "@vetta/runtime-tools/coding";
+import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import type { CodingAgentKnowledgeWriteOperations } from "./contracts.js";
 
 export const CODING_AGENT_KNOWLEDGE_WRITE_PAGE_TOOL_DESCRIPTION = `Write (create or update) a single wiki page in the LLM knowledge base at ~/.vetta/knowledges/.
@@ -105,7 +102,7 @@ export function createCodingAgentKnowledgeWritePageTool(
 
 export function createCodingAgentKnowledgeWritePageToolRegistration(
 	options: CodingAgentKnowledgeWritePageToolOptions,
-): CodingToolRegistration<CodingAgentKnowledgeWritePageToolInput> {
+): CodingAgentRuntimeToolRegistration<CodingAgentKnowledgeWritePageToolInput> {
 	const tool = createCodingAgentKnowledgeWritePageTool(options);
 	return {
 		tool: { ...tool, modelOrder: options.modelOrder },

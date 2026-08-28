@@ -8,7 +8,6 @@ export function cloneSnapshot(snapshot: SubagentSnapshot): SubagentSnapshot {
 	return {
 		...snapshot,
 		usage: { ...snapshot.usage },
-		todoProgress: snapshot.todoProgress ? { ...snapshot.todoProgress } : undefined,
 	};
 }
 

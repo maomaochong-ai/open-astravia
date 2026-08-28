@@ -7,7 +7,7 @@
 Vetta 的子代理采用以下边界：
 
 1. `@vetta/runtime-subagents` 只拥有产品无关的状态机、并发池、FIFO、恢复、wait 和 generation 精确一次交付。
-2. `@vetta/coding-agent` 通过 `coding-agent.subagents` Session Extension 拥有定义、能力/上下文/技能/工作区策略、结构化委派合同、父子报告、持久化和控制工具。
+2. `@vetta/coding-agent` 通过 `coding-agent.subagents` Session Extension 拥有定义、能力/上下文/技能/工作区策略、结构化委派合同、父子报告、Todo 投影、持久化和控制工具。
 3. 子代理是独立 Runtime Session 和独立 JSONL transcript，默认单层；child 不再获得创建 child 的工具。
 4. Desktop 只消费稳定快照：状态、Todo、usage/cost、objective、分类错误和 transcript，不拥有调度规则。
 5. 子代理是高启动与 token 成本能力。只有一个极复杂请求包含多个彼此无关、互不重叠且各自足够复杂的工作流时，才应批量派生；简单、模糊或顺序任务由 root 直接完成。
@@ -47,7 +47,9 @@ Child 额外得到 `report_to_parent`，可发送 `progress`、`blocked` 或 `va
 
 - Session Extension 贡献 Agent Feature 和 Document Participant，并唯一负责释放 Subagent Runtime。
 - `subagent_state_v1` 继续兼容读取；运行中或排队任务在恢复时按既有规则归一化，不误报完成。
-- Todo 通过 child Session Extension observation 实时同步，不再只读取创建时快照。
+- Todo 由 Coding Agent 产品投影按稳定 `taskName` 关联 Workflow 请求与 Child Session；通过 child Session Extension
+  observation 实时同步，再由 `coding-agent.subagents` 类型化 observation 暴露给宿主。`runtime-subagents` 不认识
+  Todo 初始化、读取、订阅或进度字段。
 - `subagents_update` 携带可选 usage 以兼容旧事件；直接 Runtime 快照中的 usage 仍为必填。
 - Desktop 对原始错误先分类、裁剪，再使用 `destructive` 主题语义呈现。
 

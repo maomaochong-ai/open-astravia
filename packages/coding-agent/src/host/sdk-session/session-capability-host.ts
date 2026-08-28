@@ -1,6 +1,6 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
-import type { AgentPluginRuntimeConfig, PromptRequest, RuntimeSessionInputQueueMode } from "@vetta/runtime-core";
+import type { PromptRequest, RuntimeSessionInputQueueMode } from "@vetta/runtime-core";
 import {
 	CODING_AGENT_BACKGROUND_TASK_KILL,
 	CODING_AGENT_BACKGROUND_TASKS_CLEAR_FINISHED,
@@ -16,6 +16,7 @@ import {
 	CODING_AGENT_TODO_CLEAR,
 	CODING_AGENT_TODO_READ,
 } from "../../features/todo/todo-session-extension-contract.js";
+import type { AgentPluginRuntimeConfig } from "../../model-context/plugin-runtime.js";
 import { CODING_AGENT_PLUGIN_CONFIGURATION_APPLY } from "../../plugins/runtime/plugin-configuration-session-extension-contract.js";
 import type { CodingAgentRetryEvent } from "../../public-api/sdk/sdk-event-contract.js";
 import type {

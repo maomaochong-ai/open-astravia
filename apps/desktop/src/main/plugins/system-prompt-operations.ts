@@ -1,4 +1,4 @@
-import type { AgentPluginRuntimeEffect, AgentPluginSystemPromptInvocation } from "@vetta/runtime-core";
+import type { AgentPluginRuntimeEffect, AgentPluginSystemPromptInvocation } from "@vetta/coding-agent/plugin-runtime";
 import type {
 	InstalledPlugin,
 	PluginDynamicSystemPromptOperation,

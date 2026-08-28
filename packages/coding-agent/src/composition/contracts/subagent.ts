@@ -87,7 +87,7 @@ export interface CodingAgentSubagentChildFactoryContext {
 
 export interface CodingAgentSubagentChildFactory {
 	create(
-		request: SubagentSpawnRequest,
+		request: CodingAgentSubagentChildRequest,
 		type: SubagentTypeDefinition<CodingAgentSubagentProfile>,
 		forkContext: readonly Message[] | undefined,
 		signal?: AbortSignal,
@@ -97,5 +97,15 @@ export interface CodingAgentSubagentChildFactory {
 		type: SubagentTypeDefinition<CodingAgentSubagentProfile>,
 		forkContext: readonly Message[] | undefined,
 		signal?: AbortSignal,
+		onTodoItemsChanged?: CodingAgentSubagentTodoItemsListener,
 	): Promise<SubagentChildHandle>;
+}
+
+export type CodingAgentSubagentTodoItemsListener = (items: readonly { readonly status: string }[]) => void;
+
+/** 产品 Child Factory 输入；通用调度请求不携带 Todo 等 Session Extension 配置。 */
+export interface CodingAgentSubagentChildRequest extends SubagentSpawnRequest {
+	readonly initialTodos?: readonly string[];
+	/** 自定义 Child Factory 用它把产品 Todo Extension 的状态变化回传给组合层。 */
+	readonly onTodoItemsChanged?: CodingAgentSubagentTodoItemsListener;
 }

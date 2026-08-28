@@ -3,6 +3,19 @@ import { type Dirent, type FSWatcher, watch } from "node:fs";
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
+import type {
+	CodingAgentQuestionFunctionRequest,
+	CodingAgentQuestionResult,
+	CodingAgentSandboxAuthorizationDecision,
+	CodingAgentSandboxAuthorizationFunctionRequest,
+} from "@vetta/coding-agent/function-extensions";
+import type {
+	AgentPluginContinuationInvocation,
+	AgentPluginContinuationResult,
+	AgentPluginHandlerResult,
+	AgentPluginSystemPromptInvocation,
+	AgentPluginToolInvocation,
+} from "@vetta/coding-agent/plugin-runtime";
 import { DEFAULT_PERSONA_ID, PERSONAS } from "@vetta/coding-agent/profile";
 import {
 	CODING_AGENT_BACKGROUND_TASK_KILL,
@@ -14,22 +27,7 @@ import {
 	CODING_AGENT_SUBAGENTS_READ,
 	CODING_AGENT_TODO_CLEAR,
 } from "@vetta/coding-agent/session-extensions";
-import type {
-	AgentPluginContinuationInvocation,
-	AgentPluginContinuationResult,
-	AgentPluginHandlerResult,
-	AgentPluginSystemPromptInvocation,
-	AgentPluginToolInvocation,
-	RuntimeSandboxGrantDecision,
-	RuntimeSandboxGrantRequest,
-	RuntimeUserConfirmationRequest,
-	RuntimeUserQuestionRequest,
-	RuntimeUserQuestionResult,
-	SessionConfig,
-	SessionEvent,
-	SessionExecutionMode,
-	SettingsPatch,
-} from "@vetta/runtime-core";
+import type { SessionConfig, SessionEvent, SessionExecutionMode, SettingsPatch } from "@vetta/runtime-core";
 import { BrowserWindow, ipcMain, type WebContents } from "electron";
 import { PLUGIN_CONTRIBUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { DEFAULT_AGENT_MODE, isAgentMode, MODE_PROMPTS } from "../agent-modes/index.js";
@@ -38,6 +36,7 @@ import { onConversationListChanged } from "../conversations/conversation-list-ev
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
 import { purgeProjectSessions } from "../conversations/project-session-purge.js";
 import { parsePromptRequest } from "../conversations/prompt-request-schema.js";
+import { getDesktopSandboxAuthorizationBroker } from "../conversations/sandbox-authorization-broker.js";
 import { isConversationSubCwd, readSessionCwdFromHeader } from "../conversations/session-paths.js";
 import { listRuntimeSessionProjects, listSessionHistory } from "../conversations/session-query-service.js";
 import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
@@ -51,6 +50,7 @@ import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invoca
 import { getPluginSettings, listPlugins, pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { summarizeAgentPluginRuntimeConfig } from "../plugins/plugin-runtime-config-builder.js";
 import { getDesktopCodingAgentPluginRuntimeSource } from "../plugins/plugin-runtime-service.js";
+import { PluginToolRendererHostLifecycle } from "../plugins/plugin-tool-renderer-host-lifecycle.js";
 import {
 	filterSystemPromptInvocationForPlugin,
 	tryNormalizeDynamicSystemPromptOperations,
@@ -172,8 +172,6 @@ const CHANNELS = {
 	GET_PERSONALIZATION: "vetta:session:get-personalization",
 	SET_PERSONALIZATION: "vetta:session:set-personalization",
 	EVENT: "vetta:session:event",
-	CONFIRM_REQUEST: "vetta:session:confirm-request",
-	CONFIRM_RESPONSE: "vetta:session:confirm-response",
 	QUESTION_REQUEST: "vetta:session:question-request",
 	QUESTION_LIST_PENDING: "vetta:session:question-list-pending",
 	QUESTION_RESOLVED: "vetta:session:question-resolved",
@@ -203,6 +201,7 @@ const CHANNELS = {
 	VIEWER_EVENT: "vetta:session:viewer-event",
 	PLUGIN_TOOL_REQUEST: PLUGIN_CONTRIBUTION_CHANNELS.TOOL_REQUEST,
 	PLUGIN_TOOL_RESPONSE: PLUGIN_CONTRIBUTION_CHANNELS.TOOL_RESPONSE,
+	PLUGIN_HOST_READY: PLUGIN_CONTRIBUTION_CHANNELS.HOST_READY,
 	PLUGIN_HOOK_REQUEST: PLUGIN_CONTRIBUTION_CHANNELS.HOOK_REQUEST,
 	PLUGIN_HOOK_RESPONSE: PLUGIN_CONTRIBUTION_CHANNELS.HOOK_RESPONSE,
 	PLUGIN_CONTINUATION_REQUEST: PLUGIN_CONTRIBUTION_CHANNELS.CONTINUATION_REQUEST,
@@ -258,8 +257,8 @@ function assertSessionKind(value: unknown): asserts value is "conversation" | "o
 	}
 }
 
-/** Sanitize the renderer's ask_user_question reply into a RuntimeUserQuestionResult. */
-function normalizeQuestionResult(value: unknown): RuntimeUserQuestionResult {
+/** Sanitize the renderer's ask_user_question reply into the Coding Agent product result. */
+function normalizeQuestionResult(value: unknown): CodingAgentQuestionResult {
 	if (typeof value !== "object" || value === null) return { cancelled: true, answers: [] };
 	const v = value as Record<string, unknown>;
 	if (v.cancelled === true || !Array.isArray(v.answers)) return { cancelled: true, answers: [] };
@@ -282,14 +281,15 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const pluginRuntimeSource = getDesktopCodingAgentPluginRuntimeSource();
 	const conversationService = getDesktopConversationService();
 	const questionBroker = getDesktopUserQuestionBroker();
+	const sandboxAuthorizationBroker = getDesktopSandboxAuthorizationBroker();
 	const unsubscribeConversationListChanged = onConversationListChanged((event) => {
 		broadcastToAllWindows(CHANNELS.SESSIONS_CHANGED, event);
 	});
 	const subscriptionMap = new Map<string, () => void>();
-	const confirmationMap = new Map<string, (confirmed: boolean) => void>();
-	const questionMap = new Map<string, (result: RuntimeUserQuestionResult) => void>();
-	const sandboxGrantMap = new Map<string, (decision: RuntimeSandboxGrantDecision) => void>();
+	const questionMap = new Map<string, (result: CodingAgentQuestionResult) => void>();
+	const sandboxGrantMap = new Map<string, (decision: CodingAgentSandboxAuthorizationDecision) => void>();
 	const pluginToolMap = new Map<string, (result: unknown) => void>();
+	const pluginToolRendererHost = new PluginToolRendererHostLifecycle();
 	const pluginHookMap = new Map<string, (result: unknown) => void>();
 	const pluginContinuationMap = new Map<string, (result: unknown) => void>();
 	const pluginSystemPromptMap = new Map<string, (result: unknown) => void>();
@@ -368,37 +368,18 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		}
 	};
 
-	runtime.setUserConfirmationHandler((request: RuntimeUserConfirmationRequest, signal?: AbortSignal) => {
-		if (webContents.isDestroyed()) return Promise.resolve(false);
-		return new Promise<boolean>((resolve) => {
-			const finish = (confirmed: boolean): void => {
-				confirmationMap.delete(request.requestId);
-				if (signal) signal.removeEventListener("abort", onAbort);
-				resolve(confirmed);
-			};
-			const onAbort = (): void => finish(false);
-			if (signal?.aborted) {
-				resolve(false);
-				return;
-			}
-			if (signal) signal.addEventListener("abort", onAbort, { once: true });
-			confirmationMap.set(request.requestId, finish);
-			webContents.send(CHANNELS.CONFIRM_REQUEST, request);
-		});
-	});
-
-	const CANCELLED_QUESTION: RuntimeUserQuestionResult = { cancelled: true, answers: [] };
+	const CANCELLED_QUESTION: CodingAgentQuestionResult = { cancelled: true, answers: [] };
 
 	// ask_user_question 后端：把请求送到渲染端「问答面板」，阻塞等用户提交/取消。
 	// 镜像 confirm 的 requestId map 模式；abort（中断/窗口销毁）一律视为取消。
 	const questionHandler = (
-		request: RuntimeUserQuestionRequest,
+		request: CodingAgentQuestionFunctionRequest,
 		signal?: AbortSignal,
-	): Promise<RuntimeUserQuestionResult> => {
+	): Promise<CodingAgentQuestionResult> => {
 		if (webContents.isDestroyed()) return Promise.resolve(CANCELLED_QUESTION);
-		return new Promise<RuntimeUserQuestionResult>((resolve) => {
+		return new Promise<CodingAgentQuestionResult>((resolve) => {
 			const sessionPath = runtime.getSessionPath(request.sessionId);
-			const finish = (result: RuntimeUserQuestionResult): void => {
+			const finish = (result: CodingAgentQuestionResult): void => {
 				questionMap.delete(request.requestId);
 				if (signal) signal.removeEventListener("abort", onAbort);
 				// 问答结束（提交/取消/中断）后清掉「待答」标记并广播。
@@ -435,10 +416,13 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		}
 	});
 
-	runtime.setUserSandboxGrantHandler((request: RuntimeSandboxGrantRequest, signal?: AbortSignal) => {
-		if (webContents.isDestroyed()) return Promise.resolve<RuntimeSandboxGrantDecision>("deny");
-		return new Promise<RuntimeSandboxGrantDecision>((resolve) => {
-			const finish = (decision: RuntimeSandboxGrantDecision): void => {
+	const sandboxAuthorizationHandler = (
+		request: CodingAgentSandboxAuthorizationFunctionRequest,
+		signal?: AbortSignal,
+	): Promise<CodingAgentSandboxAuthorizationDecision> => {
+		if (webContents.isDestroyed()) return Promise.resolve("deny");
+		return new Promise<CodingAgentSandboxAuthorizationDecision>((resolve) => {
+			const finish = (decision: CodingAgentSandboxAuthorizationDecision): void => {
 				sandboxGrantMap.delete(request.requestId);
 				if (signal) signal.removeEventListener("abort", onAbort);
 				resolve(decision);
@@ -452,6 +436,13 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			sandboxGrantMap.set(request.requestId, finish);
 			webContents.send(CHANNELS.SANDBOX_GRANT_REQUEST, request);
 		});
+	};
+	const unregisterSandboxAuthorizationHandler =
+		sandboxAuthorizationBroker.setInteractiveHandler(sandboxAuthorizationHandler);
+
+	ipcMain.handle(CHANNELS.PLUGIN_HOST_READY, (event) => {
+		if (event.sender !== webContents) return;
+		pluginToolRendererHost.markReady();
 	});
 
 	pluginRuntimeSource.setToolInvoker((request: AgentPluginToolInvocation, signal?: AbortSignal) => {
@@ -467,9 +458,19 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		if (rejection) return Promise.reject(new Error(rejection));
 		return new Promise<AgentPluginHandlerResult<unknown>>((resolve, reject) => {
 			const requestId = randomUUID();
-			const finish = (result: unknown): void => {
+			let releaseRendererLease: (() => void) | undefined;
+			const cleanup = (): void => {
 				pluginToolMap.delete(requestId);
+				releaseRendererLease?.();
+				releaseRendererLease = undefined;
 				if (signal) signal.removeEventListener("abort", onAbort);
+			};
+			const rejectInvocation = (error: Error): void => {
+				cleanup();
+				reject(error);
+			};
+			const finish = (result: unknown): void => {
+				cleanup();
 				if (typeof result === "object" && result !== null && "error" in result) {
 					reject(new Error(String((result as { error?: unknown }).error ?? "Plugin tool failed")));
 					return;
@@ -503,20 +504,33 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				});
 			};
 			const onAbort = (): void => {
-				pluginToolMap.delete(requestId);
-				reject(new Error("Plugin tool invocation was aborted"));
+				rejectInvocation(
+					signal?.reason instanceof Error ? signal.reason : new Error("Plugin tool invocation was aborted"),
+				);
 			};
 			if (signal?.aborted) {
-				reject(new Error("Plugin tool invocation was aborted"));
+				rejectInvocation(
+					signal.reason instanceof Error ? signal.reason : new Error("Plugin tool invocation was aborted"),
+				);
 				return;
 			}
+			const rendererLease = pluginToolRendererHost.acquire(rejectInvocation);
+			if (!rendererLease.ok) {
+				rejectInvocation(rendererLease.error);
+				return;
+			}
+			releaseRendererLease = rendererLease.release;
 			if (signal) signal.addEventListener("abort", onAbort, { once: true });
 			pluginToolMap.set(requestId, finish);
-			webContents.send(CHANNELS.PLUGIN_TOOL_REQUEST, {
-				...request,
-				requestId,
-				settings: getPluginSettings(request.pluginId),
-			});
+			try {
+				webContents.send(CHANNELS.PLUGIN_TOOL_REQUEST, {
+					...request,
+					requestId,
+					settings: getPluginSettings(request.pluginId),
+				});
+			} catch (error) {
+				rejectInvocation(error instanceof Error ? error : new Error(String(error)));
+			}
 		});
 	});
 
@@ -1155,13 +1169,6 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		}
 	});
 
-	ipcMain.handle(CHANNELS.CONFIRM_RESPONSE, (_event, requestId: unknown, confirmed: unknown) => {
-		assertNonEmptyString(requestId, "requestId");
-		const resolve = confirmationMap.get(requestId);
-		if (!resolve) return;
-		resolve(confirmed === true);
-	});
-
 	ipcMain.handle(CHANNELS.QUESTION_LIST_PENDING, () => questionBroker.listPendingQuestions());
 
 	ipcMain.handle(CHANNELS.QUESTION_RESPONSE, (_event, requestId: unknown, result: unknown) => {
@@ -1175,7 +1182,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		assertNonEmptyString(requestId, "requestId");
 		const resolve = sandboxGrantMap.get(requestId);
 		if (!resolve) return;
-		const value: RuntimeSandboxGrantDecision =
+		const value: CodingAgentSandboxAuthorizationDecision =
 			decision === "allow_once" || decision === "allow_session" ? decision : "deny";
 		resolve(value);
 	});
@@ -1360,16 +1367,19 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	// 调用——它们的回调还挂在 runtime 上、继续接收 agent 事件、继续往 dead
 	// frame 上 send（哪怕有 isDestroyed 守卫，事件流仍在 runtime 端继续）。
 	// 这里集中清理一次：渲染端恢复后会重新 SUBSCRIBE，生成新的 subscriptionId。
+	const onDidStartNavigation = (details: { isMainFrame: boolean; isSameDocument: boolean }): void => {
+		if (!details.isMainFrame || details.isSameDocument) return;
+		pluginToolRendererHost.markLoading();
+	};
+	webContents.on("did-start-navigation", onDidStartNavigation);
+
 	const onRenderGone = (): void => {
 		sessionLog.warn(`render-process-gone; clearing ${subscriptionMap.size} subscription(s)`);
+		pluginToolRendererHost.markUnavailable();
 		for (const unsubscribe of subscriptionMap.values()) {
 			unsubscribe();
 		}
 		subscriptionMap.clear();
-		for (const resolve of confirmationMap.values()) {
-			resolve(false);
-		}
-		confirmationMap.clear();
 		for (const resolve of questionMap.values()) {
 			resolve(CANCELLED_QUESTION);
 		}
@@ -1454,7 +1464,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	return () => {
 		unsubscribeConversationListChanged();
+		webContents.removeListener("did-start-navigation", onDidStartNavigation);
 		webContents.removeListener("render-process-gone", onRenderGone);
+		pluginToolRendererHost.dispose();
 		for (const sub of viewerSubs.values()) {
 			try {
 				sub.watcher.close();
@@ -1472,10 +1484,6 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			unsubscribe();
 		}
 		subscriptionMap.clear();
-		for (const resolve of confirmationMap.values()) {
-			resolve(false);
-		}
-		confirmationMap.clear();
 		for (const resolve of questionMap.values()) {
 			resolve(CANCELLED_QUESTION);
 		}
@@ -1496,10 +1504,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			resolve({ value: null });
 		}
 		pluginContinuationMap.clear();
-		runtime.setUserConfirmationHandler(undefined);
 		unregisterInteractiveQuestionHandler();
 		unregisterQuestionResolved();
-		runtime.setUserSandboxGrantHandler(undefined);
+		unregisterSandboxAuthorizationHandler();
 		pluginRuntimeSource.setToolInvoker(undefined);
 		setDesktopPluginHookInvoker(undefined);
 		pluginRuntimeSource.setContinuationInvoker(undefined);

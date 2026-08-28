@@ -9,6 +9,7 @@ import {
 	type SessionConfig,
 } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
+import { sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
 import type {
 	SubagentChildHandle,
@@ -34,7 +35,9 @@ import { createLocalSubagentId } from "./local-id.js";
 import { buildSubagentNotification } from "./notification.js";
 import { resolveCodingAgentSubagentProfile } from "./profile-policy.js";
 import { createSubagentReportToParentToolRegistration, formatSubagentReport } from "./report-to-parent-tool.js";
+import type { CodingAgentSubagentChildTodoBinding } from "./runtime.js";
 import { CodingAgentSubagentRuntime } from "./runtime.js";
+import { CODING_AGENT_SUBAGENTS_OBSERVATION } from "./subagent-session-extension-contract.js";
 
 export type {
 	CodingAgentSubagentChildFactory,
@@ -130,13 +133,24 @@ export function createCodingAgentSubagentSessionAssembly(
 		typeRegistry: options.typeRegistry,
 		readParentMessages: options.readParentMessages,
 		createChild: childFactory
-			? (request, type, forkContext, signal) => childFactory.create(request, type, forkContext, signal)
-			: (request, type, forkContext) => openChild("create", request, type, forkContext, options),
+			? (request, type, forkContext, todo, signal) =>
+					childFactory.create(
+						{
+							...request,
+							initialTodos: todo.initialItems,
+							onTodoItemsChanged: todo.onItemsChanged,
+						},
+						type,
+						forkContext,
+						signal,
+					)
+			: (request, type, forkContext, todo) => openChild("create", request, type, forkContext, todo, options),
 		reopenChild: childFactory
 			? reopenChild
-				? (snapshot, type, forkContext, signal) => reopenChild(snapshot, type, forkContext, signal)
+				? (snapshot, type, forkContext, todo, signal) =>
+						reopenChild(snapshot, type, forkContext, signal, todo.onItemsChanged)
 				: undefined
-			: (snapshot, type, forkContext) => openChild("resume", snapshot, type, forkContext, options),
+			: (snapshot, type, forkContext, todo) => openChild("resume", snapshot, type, forkContext, todo, options),
 		validateRecoveredChild: (snapshot) =>
 			validateRecoveredSubagentTranscript(
 				snapshot,
@@ -169,8 +183,7 @@ export function createCodingAgentSubagentSessionAssembly(
 		onUpdate: (agents) => {
 			void options.resourceContext
 				.reportObservation({
-					type: "subagents_update",
-					agents: agents.map(toSubagentInfo),
+					...sessionExtensionObservation(CODING_AGENT_SUBAGENTS_OBSERVATION, agents),
 					source: "tool",
 				})
 				.catch((error: unknown) => {
@@ -206,6 +219,7 @@ async function openChild(
 	requestOrSnapshot: SubagentSpawnRequest | SubagentSnapshot,
 	type: SubagentTypeDefinition<CodingAgentSubagentProfile>,
 	forkContext: readonly Message[] | undefined,
+	todo: CodingAgentSubagentChildTodoBinding,
 	options: CodingAgentSubagentSessionAssemblyOptions,
 ): Promise<SubagentChildHandle> {
 	const resolvedProfile = resolveCodingAgentSubagentProfile(
@@ -286,9 +300,7 @@ async function openChild(
 			systemPromptAddon: type.profile.systemPromptAddon,
 			forkContextMessages: operation === "create" ? forkContext : undefined,
 			initialTodos:
-				operation === "create" && resolvedProfile.todoPolicy.mode === "enabled"
-					? (requestOrSnapshot as SubagentSpawnRequest).todos
-					: undefined,
+				operation === "create" && resolvedProfile.todoPolicy.mode === "enabled" ? todo.initialItems : undefined,
 			sessionRuntimeTools,
 		};
 		const childSession =
@@ -301,6 +313,8 @@ async function openChild(
 			sessionFile: childSessionFile,
 			appendContext: (records) => childComposition.appendSessionContext(childSession.sessionId, records),
 			deliverContext: (records) => childComposition.deliverSessionContext(childSession.sessionId, records),
+			onTodoItemsChanged:
+				resolvedProfile.todoPolicy.mode === "enabled" ? (items) => todo.onItemsChanged(items) : undefined,
 			disposeComposition: async () => {
 				try {
 					await childComposition.dispose();
@@ -413,14 +427,6 @@ function withInheritedMcpTools(
 	return {
 		mode: "explicit",
 		toolNames: [...new Set([...activation.toolNames, ...inheritedView.tools.map(({ tool }) => tool.name)])],
-	};
-}
-
-function toSubagentInfo(snapshot: SubagentSnapshot): SubagentSnapshot {
-	return {
-		...snapshot,
-		usage: { ...snapshot.usage },
-		todoProgress: snapshot.todoProgress ? { ...snapshot.todoProgress } : undefined,
 	};
 }
 

@@ -1,9 +1,8 @@
-import {
-	type RuntimeExecutionModeUpdate,
-	type RuntimeResourceContext,
-	type RuntimeSessionExecutionController,
-	RuntimeSessionHostInteractionBroker,
-	type SessionExecutionMode,
+import type {
+	RuntimeExecutionModeUpdate,
+	RuntimeResourceContext,
+	RuntimeSessionExecutionController,
+	SessionExecutionMode,
 } from "@vetta/runtime-core";
 import type { AgentFeatureDefinition, AgentSession, CapabilityBinding } from "@vetta/runtime-core/kernel";
 import {
@@ -24,6 +23,7 @@ import {
 	createTaskOutputToolRegistration,
 	createTaskStopToolRegistration,
 } from "../../features/background-tasks/index.js";
+import type { CodingAgentSandboxAuthorizationPort } from "../sandbox/authorization-contract.js";
 import { createCodingAgentSandboxToolRegistrations } from "../sandbox/tool-registrations.js";
 
 const SESSION_EXECUTION_FEATURE_ID = "coding-session-execution-tools";
@@ -40,12 +40,12 @@ export interface CodingAgentSessionExecutionRuntimeOptions {
 	readonly readSessionId: () => string;
 	readonly resolveToolEntry?: (toolName: string) => CodingToolCatalogEntry | undefined;
 	readonly resourceContext: RuntimeResourceContext;
+	readonly sandboxAuthorization: CodingAgentSandboxAuthorizationPort;
 }
 
-/** Session-local 的命令、后台任务、sandbox 与宿主交互组合。 */
+/** Session-local 的命令、后台任务与 sandbox 执行组合。 */
 export class CodingAgentSessionExecutionRuntime {
 	readonly backgroundService: BackgroundCommandService;
-	readonly hostInteraction = new RuntimeSessionHostInteractionBroker();
 	readonly feature: AgentFeatureDefinition;
 	private readonly catalog: GenerationalCodingToolCatalog;
 	private disposeTaskEvents: (() => void) | undefined;
@@ -215,7 +215,7 @@ export class CodingAgentSessionExecutionRuntime {
 		return [
 			...createCodingAgentSandboxToolRegistrations({
 				cwd: this.options.cwd,
-				hostInteraction: this.hostInteraction,
+				authorization: this.options.sandboxAuthorization,
 				environment: this.options.environment.sandbox,
 				windowsSandboxHostPath: update.sandboxHostPath,
 				linuxBubblewrapPath: update.linuxBubblewrapPath,

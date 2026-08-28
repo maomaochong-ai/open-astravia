@@ -140,8 +140,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 				.catch((error: Error) => {
 					console.error("Failed to initialize plugins", error);
 					return previousPlugins;
-				})
-				.finally(markPluginHostReady);
+				});
 
 			if (unmountedRef.current) {
 				await Promise.all(
@@ -154,6 +153,13 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			// last-known-good 保留的旧实例。旧 activation 的清理因 id 不匹配不会误删新 Action。
 			loadedPluginsRef.current = loadedPlugins;
 			setPlugins(loadedPlugins);
+			try {
+				await window.vetta.plugins.reportAgentContributionHostReady();
+			} catch (error) {
+				console.error("Failed to report plugin contribution host readiness", error);
+			} finally {
+				markPluginHostReady();
+			}
 			setHostLoading(false);
 			await Promise.all(
 				previousPlugins.filter((plugin) => !loadedPlugins.includes(plugin)).map((plugin) => plugin.dispose()),

@@ -41,6 +41,14 @@
 			"types": "./dist/extensions/pi-compat/index.d.ts",
 			"import": "./dist/extensions/pi-compat/index.js"
 		},
+		"./function-extensions": {
+			"types": "./dist/public-api/function-extensions.d.ts",
+			"import": "./dist/public-api/function-extensions.js"
+		},
+		"./plugin-runtime": {
+			"types": "./dist/public-api/plugin-runtime.d.ts",
+			"import": "./dist/public-api/plugin-runtime.js"
+		},
 		"./export-html": {
 			"types": "./dist/public-api/export-html.d.ts",
 			"import": "./dist/public-api/export-html.js"

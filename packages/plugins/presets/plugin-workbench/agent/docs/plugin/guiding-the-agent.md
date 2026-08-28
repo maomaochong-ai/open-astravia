@@ -103,15 +103,15 @@ description 只在选择时读一次，**返回值在选择之后每次都被完
 
 #### 什么是 Heavy 机制
 
-Heavy 是执行层的**可回收兜底闸**：声明了 `side_effect: "heavy"` 的工具，宿主会在**会话内首次
-调用前**经 `ask_user_question` 向用户确认（同一会话内确认一次即可，不逐次打扰）；用户拒绝则
+Heavy 是执行层的**可回收兜底闸**：声明了 `side_effect: "heavy"` 的工具，Coding Agent 会在**会话内首次
+调用前**经宿主提供的产品 consent 扩展向用户确认（同一会话内确认一次即可，不逐次打扰）；用户拒绝则
 调用不发生、**零副作用**。它存在的原因是整个重心偏移体系刻意做成了全软——模式不排除任何
 工具、路线仲裁靠提示词——软引导必然存在误判概率，Heavy 闸保证误判**可回收**：它不要求模型
 判断正确，只要求判断错了能被用户一键拦下。所以这不是对你的工具的惩罚，恰恰是你的工具不被
 任何硬闸挡在门外的前提。
 
 判定链路（`tool-policy/tool-side-effect.ts`）：**工具/插件自己的显式声明 > 宿主兜底清单
-`DEFAULT_HEAVY_TOOL_NAMES` > 缺省 light**。核心工具在 runtime-tools 注册处声明 `sideEffect`，
+`DEFAULT_HEAVY_TOOL_NAMES` > 缺省 light**。Coding Agent 产品工具在自身策略注册处声明 `sideEffect`，
 插件工具注册时声明 `side_effect`；兜底清单只兜仍未声明的存量插件工具，不是完备分类——
 新工具靠你自己声明。缺省即 light：显然轻的工具不用填表，只在判 heavy 或「像 heavy 但刻意
 豁免」时显式声明（豁免须就近注释理由）。

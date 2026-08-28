@@ -63,6 +63,7 @@ describe("Coding Agent session initialization profile", () => {
 			"resolveModePrompt",
 			"resolvePromptResource",
 			"resolveSystemPromptOptions",
+			"sessionExtensionFunctions",
 			"subagentMaxConcurrent",
 			"subagentPathPort",
 			"subagentTypeRegistry",

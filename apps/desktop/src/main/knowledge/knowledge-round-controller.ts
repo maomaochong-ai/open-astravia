@@ -5,6 +5,7 @@ import type {
 	KnowledgeProcessingSessionFactory,
 	KnowledgeProcessingUsage,
 } from "@vetta/coding-agent/composition";
+import { CODING_AGENT_KNOWLEDGE_PROCESSING_GUIDE } from "@vetta/coding-agent/composition";
 import * as knowledge from "@vetta/runtime-knowledge";
 import { createAsyncExecutionGate } from "@vetta/runtime-tools";
 
@@ -293,7 +294,7 @@ export class KnowledgeRoundController {
 			reasoningLevel,
 			todoItems,
 			writer: writeSession,
-			appendSystemPrompt: knowledge.KB_PROCESSING_GUIDE,
+			appendSystemPrompt: CODING_AGENT_KNOWLEDGE_PROCESSING_GUIDE,
 			env: { TMPDIR: tmpDirectory, TEMP: tmpDirectory, TMP: tmpDirectory },
 		});
 		round.sessions.add(session);

@@ -5,7 +5,7 @@ import type {
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
 	AgentPluginTurnHandlerLeaseProvider,
-} from "@vetta/runtime-core";
+} from "@vetta/coding-agent/plugin-runtime";
 
 export interface DesktopCodingAgentPluginRuntimeSourceOptions {
 	readonly build: () => AgentPluginRuntimeConfig | undefined;

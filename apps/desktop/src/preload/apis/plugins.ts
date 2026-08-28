@@ -344,6 +344,7 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 			registerModeGate: (pluginId) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.REGISTER_MODE_GATE, pluginId),
 			setContributionMode: (pluginId, active) =>
 				ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.SET_CONTRIBUTION_MODE, pluginId, active),
+			reportAgentContributionHostReady: () => ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.HOST_READY),
 			beginAgentContributionsLoad: (pluginId, activationId) =>
 				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.BEGIN_LOAD, pluginId, activationId),
 			commitAgentContributionsLoad: (pluginId, activationId) =>

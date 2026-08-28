@@ -88,6 +88,26 @@ describe("Coding Tools Runtime Composition Root", () => {
 		composition.dispose();
 	});
 
+	it("keeps product side-effect policy outside the Runtime Tool Catalog", () => {
+		const composition = createCodingToolsRuntimeComposition({
+			cwd: "C:/workspace",
+			environment: { registrations: [], dispose() {} },
+			additionalRegistrations: [
+				{
+					...registration(tool("external_write")),
+					sideEffect: "heavy",
+				},
+			],
+		});
+
+		expect(composition.readToolPolicyDeclarations()).toContainEqual({
+			name: "external_write",
+			sideEffect: "heavy",
+		});
+		expect(composition.registry.resolve("external_write")?.registration).not.toHaveProperty("sideEffect");
+		composition.dispose();
+	});
+
 	it("registers and compiles the default CLI coding tools without downloading", async () => {
 		const calls: Array<{ readonly tool: "fd" | "rg"; readonly silent: boolean | undefined }> = [];
 		const composition = createCodingToolsRuntimeComposition({

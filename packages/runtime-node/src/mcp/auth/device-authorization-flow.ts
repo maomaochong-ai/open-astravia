@@ -46,7 +46,7 @@ const systemScheduler: McpDeviceAuthorizationScheduler = {
 	wait: (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
 };
 
-/** RFC 8628 device authorization use case with injected host interaction and persistence. */
+/** RFC 8628 device authorization use case with injected presentation, URL-opening and persistence adapters. */
 export async function runMcpDeviceAuthorizationFlow(
 	options: McpDeviceAuthorizationFlowOptions,
 ): Promise<McpDeviceAuthorizationFlowResult> {

@@ -20,7 +20,7 @@ describe("Runtime Subagents boundary guard", () => {
 		).toEqual([]);
 	});
 
-	it("rejects workspace backedges and tool-facing protocol", () => {
+	it("rejects workspace backedges, tool-facing protocol, and product Todo state", () => {
 		expect(
 			findRuntimeSubagentsBoundaryViolations({
 				manifest: {
@@ -30,7 +30,7 @@ describe("Runtime Subagents boundary guard", () => {
 				files: [
 					{
 						path: "packages/runtime-subagents/src/notifications.ts",
-						text: "export const hint = 'use followup_task';",
+						text: "export const hint = 'use followup_task';\nexport const todoProgress = { done: 0, total: 1 };",
 					},
 					...ownerFiles(),
 				],
@@ -38,6 +38,7 @@ describe("Runtime Subagents boundary guard", () => {
 		).toEqual([
 			"packages/runtime-subagents/package.json: dependencies must not declare workspace dependency @vetta/runtime-tools",
 			"packages/runtime-subagents/src/notifications.ts:1: forbidden subagent kernel token followup_task",
+			"packages/runtime-subagents/src/notifications.ts:2: forbidden subagent kernel token todoProgress",
 		]);
 	});
 

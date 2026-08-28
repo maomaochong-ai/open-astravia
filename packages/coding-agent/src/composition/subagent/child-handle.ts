@@ -1,7 +1,7 @@
 import type { AssistantMessage, Message } from "@vetta/ai";
 import type { RuntimeActiveSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
-import type { SubagentChildHandle, SubagentTodoProgress, SubagentUsageSnapshot } from "@vetta/runtime-subagents";
+import type { SubagentChildHandle, SubagentUsageSnapshot } from "@vetta/runtime-subagents";
 import {
 	CODING_AGENT_TODO_READ,
 	readCodingAgentTodoObservation,
@@ -13,6 +13,7 @@ export interface CodingAgentSubagentChildHandleOptions {
 	appendContext(records: readonly SessionContextRecord[]): void;
 	deliverContext(records: readonly SessionContextRecord[]): Promise<void>;
 	disposeComposition(): Promise<void>;
+	onTodoItemsChanged?(items: readonly { readonly status: string }[]): void;
 }
 
 /** 将 Coding Agent Session 收窄为通用协调器所需的 Child Handle。 */
@@ -20,6 +21,16 @@ export function createCodingAgentSubagentChildHandle(
 	options: CodingAgentSubagentChildHandleOptions,
 ): SubagentChildHandle {
 	const hasTodoRead = options.session.hasExtension?.(CODING_AGENT_TODO_READ) === true;
+	const unsubscribeTodo =
+		hasTodoRead && options.onTodoItemsChanged
+			? options.session.subscribe((event) => {
+					const items = readCodingAgentTodoObservation(event);
+					if (items) options.onTodoItemsChanged?.(items);
+				})
+			: undefined;
+	if (hasTodoRead && options.onTodoItemsChanged) {
+		options.onTodoItemsChanged(options.session.invokeExtensionSync?.(CODING_AGENT_TODO_READ, undefined) ?? []);
+	}
 	let disposed = false;
 	return {
 		sessionId: options.session.sessionId,
@@ -43,6 +54,7 @@ export function createCodingAgentSubagentChildHandle(
 		dispose: async () => {
 			if (disposed) return;
 			disposed = true;
+			unsubscribeTodo?.();
 			try {
 				await options.session.dispose();
 			} finally {
@@ -57,17 +69,6 @@ export function createCodingAgentSubagentChildHandle(
 					listener({ type: "agent_end" });
 				}
 			}),
-		setTodos: () => {},
-		getTodoProgress: hasTodoRead
-			? () => readTodoProgress(options.session.invokeExtensionSync?.(CODING_AGENT_TODO_READ, undefined) ?? [])
-			: undefined,
-		subscribeTodos: hasTodoRead
-			? (listener) =>
-					options.session.subscribe((event) => {
-						const items = readCodingAgentTodoObservation(event);
-						if (items) listener(readTodoProgress(items));
-					})
-			: undefined,
 	};
 }
 
@@ -119,11 +120,4 @@ function aggregateUsage(messages: readonly Message[]): SubagentUsageSnapshot {
 		usage.costTotal += assistant.usage.cost.total;
 	}
 	return usage;
-}
-
-export function readTodoProgress(items: readonly { readonly status: string }[]): SubagentTodoProgress {
-	return {
-		done: items.filter(({ status }) => status === "done").length,
-		total: items.length,
-	};
 }

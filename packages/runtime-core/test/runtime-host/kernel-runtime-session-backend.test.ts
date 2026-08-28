@@ -586,15 +586,13 @@ describe("KernelRuntimeSessionBackend", () => {
 
 		expect(assessment).toEqual({
 			ready: false,
-			missingPorts: ["hostInteraction", "executionController", "configurationController"],
+			missingPorts: ["executionController", "configurationController"],
 		});
 	});
 
 	it("passes the complete RuntimeHost assembly contract when composition supplies every peripheral port", async () => {
-		const bind = vi.fn(async () => {});
 		const setSteeringMode = vi.fn();
 		const peripherals = {
-			hostInteraction: { bind },
 			executionController: {
 				isBusy: () => false,
 				reconfigure: vi.fn(),
@@ -618,13 +616,8 @@ describe("KernelRuntimeSessionBackend", () => {
 
 		expect(assessment.ready).toBe(true);
 		if (!assessment.ready) throw new Error("Expected a complete RuntimeHost session assembly");
-		await assessment.assembly.hostInteraction.bind({
-			confirm: async () => true,
-			requestSandboxGrant: async () => "allow_once",
-		});
 		assessment.assembly.configurationController.setSteeringMode("all");
 		await assessment.assembly.corePorts.turnControl.prompt({ text: "hello" });
-		expect(bind).toHaveBeenCalledOnce();
 		expect(setSteeringMode).toHaveBeenCalledWith("all");
 		expect(assessment.assembly.historyReader.readHistory()).toHaveLength(2);
 		expect(assessment.assembly.workspaceView.readWorkingDirectory()).toBe("workspace/session-1");

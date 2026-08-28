@@ -4,8 +4,16 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- 通用 `SubagentInfo` 不再声明 Coding Agent Todo 进度；产品快照通过对应 Session Extension 合同扩展。
+- **破坏性变更**：Runtime Core 不再声明 Question、Confirmation、Host Interaction 或 Plugin 产品协议；
+  Plugin 合同迁至 `@vetta/coding-agent/plugin-runtime`，用户交互由产品扩展与最终宿主组合。
+
 ### Added
 
+- 新增 Session-scoped typed function registry/source：Runtime 只负责 Token、依赖解析、动态注册、在途调用捕获、
+  取消与关闭，不解释函数是否用于提问、授权、UI 或其它产品行为。
 - `RuntimeObservationHubView` 现在可创建不取得 Hub 生命周期所有权的 scoped Publisher；新增
   `runtime.active-session.lifecycle` 安全观测，覆盖活动 Session 事件/执行观察监听器失败、已提交切换的旧 Session
   清理失败与错误报告器失败。RuntimeHost 的 workspace 准备、队列 sidecar、Session observer 和外部订阅者失败也统一
@@ -72,7 +80,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Changed
 
-- `RuntimeHost` 内部按状态所有权拆分为 Agent 安装、Session 生命周期/目录/事件/在线操作、离线 Catalog、Host 交互、
+- `RuntimeHost` 内部按状态所有权拆分为 Agent 安装、Session 生命周期/目录/事件/在线操作、离线 Catalog、扩展端点、
   Queue sidecar 和关闭协调器；公共 `SessionFacade`、创建/回滚顺序、事件回放、identity alias、Observation 与重试关闭语义
   保持不变。产品/平台兼容字段集中到 Session request factory，不再散落在生命周期实现中。
 - `RuntimeHost` 现在跟随持久化 continuation 更新公开 Session identity，同时保留旧 identity 作为同一活动句柄的别名；

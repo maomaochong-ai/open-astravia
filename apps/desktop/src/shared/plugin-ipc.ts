@@ -39,6 +39,7 @@ export const PLUGIN_EXECUTION_CHANNELS = {
 } as const;
 
 export const PLUGIN_CONTRIBUTION_CHANNELS = {
+	HOST_READY: "vetta:plugins:agent-contribution-host-ready",
 	BEGIN_LOAD: "vetta:plugins:agent-contributions-begin-load",
 	COMMIT_LOAD: "vetta:plugins:agent-contributions-commit-load",
 	TOOL_REGISTER: "vetta:plugins:agent-tool-register",

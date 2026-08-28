@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { AgentPluginRuntimeConfig } from "@vetta/runtime-core";
+import type { AgentPluginRuntimeConfig } from "@vetta/coding-agent/plugin-runtime";
 
 export interface AgentPluginRuntimeFingerprints {
 	/** Every runtime-relevant field, including handler and activation identity. */

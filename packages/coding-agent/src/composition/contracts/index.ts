@@ -51,10 +51,12 @@ export type {
 export type {
 	CodingAgentSubagentChildFactory,
 	CodingAgentSubagentChildFactoryContext,
+	CodingAgentSubagentChildRequest,
 	CodingAgentSubagentContextPolicy,
 	CodingAgentSubagentMcpPolicy,
 	CodingAgentSubagentProfile,
 	CodingAgentSubagentSkillPolicy,
+	CodingAgentSubagentTodoItemsListener,
 	CodingAgentSubagentTodoPolicy,
 	CodingAgentSubagentToolPolicy,
 	CodingAgentSubagentWorkspaceLease,
