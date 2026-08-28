@@ -1339,12 +1339,14 @@ describe("Turborepo build orchestration", () => {
 		expect(Object.values(rootManifest.scripts).join("\n")).not.toContain("scripts/build.sh");
 	});
 
-	it("routes Vercel affected detection through the pinned Turbo CLI", () => {
+	it("keeps Vercel docs builds independent from excluded Git history", () => {
 		const vercelConfig = JSON.parse(readFileSync(join(repoRoot, "apps/docs-site/vercel.json"), "utf8"));
+		const vercelIgnore = readFileSync(join(repoRoot, ".vercelignore"), "utf8");
 		const docsWorkflow = readFileSync(join(repoRoot, ".github/workflows/docs-site.yml"), "utf8");
 		expect(vercelConfig.buildCommand).toContain("build:docs");
-		expect(vercelConfig.ignoreCommand).toContain("bunx turbo query affected");
-		expect(vercelConfig.ignoreCommand).not.toContain("turbo-ignore");
+		expect(vercelConfig.ignoreCommand).toBeUndefined();
+		expect(vercelIgnore).toContain("\n/docs\n");
+		expect(vercelIgnore).not.toMatch(/\ndocs\r?\n/u);
 		expect(docsWorkflow).toContain('"package.json"');
 		expect(docsWorkflow).toContain('"turbo.json"');
 		expect(docsWorkflow).toContain("bun run build:docs");

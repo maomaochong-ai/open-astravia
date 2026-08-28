@@ -5,589 +5,157 @@
 <h1 align="center">Open Vetta</h1>
 
 <p align="center">
-  一个为真实工作而生的开源 AI Agent——本地运行、开放扩展，始终由你掌控。
+  面向真实工作的开源桌面 AI Agent——本地优先、可扩展，由你掌控。
 </p>
 
 <p align="center">
-  <a href="https://www.openvetta.com"><img src="https://img.shields.io/badge/website-openvetta.com-0b7285" alt="Website"></a>
-  <img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License">
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" alt="Platform">
-  <img src="https://img.shields.io/badge/runtime-Bun%201.3%2B-black" alt="Bun">
+  <a href="https://www.openvetta.com"><img src="https://img.shields.io/badge/官网-openvetta.com-0b7285" alt="官网"></a>
+  <a href="https://docs.openvetta.com"><img src="https://img.shields.io/badge/文档-docs.openvetta.com-f06449" alt="文档"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/许可-Apache--2.0-blue" alt="Apache-2.0 许可"></a>
+  <img src="https://img.shields.io/badge/平台-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" alt="macOS、Windows 与 Linux">
   <a href="https://coderabbit.ai"><img src="https://img.shields.io/coderabbit/prs/github/openvetta/open-vetta?utm_source=oss&utm_medium=github&utm_campaign=openvetta%2Fopen-vetta&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Pull Request Reviews"></a>
 </p>
 
 <p align="center">
   <a href="README.md">English</a> ·
   <b>简体中文</b> ·
-  <a href="https://www.openvetta.com">官网</a> ·
   <a href="https://www.openvetta.com/download">下载</a> ·
-  <a href="https://docs.openvetta.com">文档</a> ·
-  <a href="https://github.com/openvetta/open-vetta/discussions">Discussions</a> ·
+  <a href="https://docs.openvetta.com/getting-started/">快速开始</a> ·
+  <a href="https://github.com/openvetta/open-vetta/discussions">社区讨论</a> ·
   <a href="CONTRIBUTING.zh-CN.md">参与贡献</a>
 </p>
 
 ---
 
-## 这是什么
+Open Vetta 把模型、项目文件、本机工具和可复用能力放进同一个桌面工作区。它适用于编码、文档、数据、研究、创意生产和可重复工作流，同时让工作继续发生在你选择的环境中。
 
-面向实际工作的本地优先 AI 智能体。
-Open Vetta 是一款开源桌面 AI 代理，适用于编码、文档处理、数据管理、工作流搭建及创意类任务。你可通过 BYOK、MCP、技能及插件接入自有模型与工具，全程数据由你自主掌控。
-
-它面向工作与编程场景，帮助个人与团队构建可定制、可扩展、可掌控的 AI Agent。无论是处理文档、
-分析数据、编写代码、搭建工作流，还是连接自己的模型、工具与知识，Open Vetta 都希望成为一个
-真正参与工作、持续交付结果的智能伙伴。
-
-Open Vetta 运行在你指定的环境中。你可以连接自己的模型、工具与数据，也可以通过桌面应用、CLI
-与 SDK 使用或扩展它的 Agent 内核。
-
-我们选择开源，因为 AI 的工作方式不应由少数人单独定义。开发者、创作者和真实用户都可以贡献代码、
-开发技能、接入新的模型与工具，并围绕自己的工作方式塑造 Agent。
-
-### 你的数据，由你掌控
-
-**默认构建不依赖任何 Vetta 运营的服务端**：无需登录，没有账号、订阅计费或远程管理后台。你使用
-自己的 API Key，请求直接发送给所选的模型服务商，密钥只保存在本机 keychain 中；所有网络请求都由
-你的配置明确触发（见[网络行为](#网络行为)）。
-
-这就是 `lite` 构建——克隆下来直接构建得到的就是它。另有一种需显式开启的构建
-（`VETTA_CLOUD_ENABLED=true`）会接入 Vetta Serv，提供账号、订阅与托管能力市场，我们的官方安装包
-就是这样产出的。两种形态的完整差异与全部环境变量见
-[构建模式与环境变量](docs/desktop/build-modes.md)（[English](docs/desktop/build-modes.en.md)）。
+它不只是聊天界面：Vetta 能理解工作区、在可见的权限边界内调用工具、交付真实文件，并保留可供检查的执行过程。
 
 <p align="center">
-  <img src="docs/assets/screenshot.png" alt="Open Vetta 桌面应用界面">
+  <img src="docs/assets/screenshot.png" alt="Open Vetta 桌面工作区">
 </p>
 
-### 快速开始
+## 为什么选择 Open Vetta
 
-- **直接使用：** [下载](https://www.openvetta.com/download) · 产品指南见 [docs.openvetta.com](https://docs.openvetta.com)
-- **改代码：** [`QUICKSTART.zh-CN.md`](QUICKSTART.zh-CN.md) — `bun install`，然后 `cd apps/desktop && bun run dev`
-- **提问或展示：** [GitHub Discussions](https://github.com/openvetta/open-vetta/discussions)
+| | 对你意味着什么 |
+|---|---|
+| **本地优先的工作区** | 项目、会话、文件与执行过程留在你选择的环境中。 |
+| **自带模型** | 通过 BYOK 连接受支持的 Provider、OpenAI 兼容端点或本地推理服务。 |
+| **真实工具与产物** | 在同一条任务流中处理代码、文档、表格、媒体、命令和生成文件。 |
+| **过程可检查** | 工具调用、计划、权限、进度、结果和恢复路径都有记录。 |
+| **方法可复用** | 使用技能、MCP、插件、主题、知识库、批量任务和自动化持续积累能力。 |
+| **开放的客户端栈** | 桌面端、CLI、SDK、插件系统、主题、移动端与 IM 网关都在本仓库开发。 |
 
----
+## 从这里开始
 
-## 桌面应用能力
+| 我想要…… | 从这里开始 |
+|---|---|
+| 使用桌面应用 | [下载 macOS、Windows 或 Linux 客户端](https://www.openvetta.com/download)，然后完成[安装与首次设置](https://docs.openvetta.com/getting-started/)。 |
+| 跑通一个真实任务 | 跟随[第一个任务教程](https://docs.openvetta.com/getting-started/first-task/)。 |
+| 理解产品能力 | 阅读[使用指南](https://docs.openvetta.com/product/overview/)和[安全与数据边界](https://docs.openvetta.com/reference/security-and-data/)。 |
+| 开发扩展 | 在[技能、MCP、插件、主题、SDK、RPC 与 CLI](https://docs.openvetta.com/developers/overview/)之间选择正确入口。 |
+| 参与代码开发 | 阅读 [`QUICKSTART.zh-CN.md`](QUICKSTART.zh-CN.md) 与 [`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md)。 |
 
-下面是能力索引，只说有什么、怎么用；详细教程见[官网](https://www.openvetta.com)。
+### 从源码运行
 
-### 对话与工作区
-
-| 能力 | 说明 |
-|------|------|
-| 对话 | 主界面。消息流、Artifact 渲染、工具调用可视化、自动跟随与回到底部。 |
-| 项目与会话 | 侧边栏按项目组织会话，项目分普通、批量、定时三类，各自有独立的执行形态。 |
-| 文件浏览与预览 | 内置本地文件树；PDF、Office 文档、表格、图片音视频直接在应用内预览，扫描版 PDF 可离线 OCR 取文字。 |
-| 活动面板 | 右侧可拖拽面板，实时展示工具调用、请求历史、批量任务进度与调试信息。 |
-| 执行隔离 | 会话可选择执行隔离级别，限制 Agent 能读写的目录、是否允许联网，退出时回收残留进程。三个平台都有对应的系统级隔离支持。 |
-
-### 自动化
-
-| 能力 | 说明 |
-|------|------|
-| 批量任务 | 一个 Prompt × 多个目标目录，按设定并发度并行执行，支持暂停、重试单项与全部重跑。 |
-| 定时调度 | 用 Cron 表达式设定时间，到点自动跑任务，应用留在托盘即可，不必守着。 |
-| Webhook 通知 | 任务完成或异常时推送到飞书、钉钉机器人，凭据本地加密存储。 |
-| IM 旁路 | 在设置里填好凭据后，可以从手机上的 IM 直接给本机 Agent 派活、收结果，人不在电脑前也能推进任务。目前支持飞书，处于早期阶段。 |
-
-### 扩展生态
-
-| 能力 | 说明 |
-|------|------|
-| 能力市场 | 浏览并安装 Skill、MCP Server、插件与能力包。市场来源就是普通的 GitHub 仓库，你可以添加任意多个，也可以一个都不加——没有中心服务器。 |
-| Skills | 把一套做事方法固化成可复用的技能，内置一批开箱可用的预设，也可从市场安装。 |
-| MCP | 完整支持 MCP Server，接入后工具自动对 Agent 可见。 |
-| 插件 | 应用的大部分工作区形态都由插件提供，可按需启用、卸载。详见[插件系统](#插件系统)。 |
-| 主题 | 整套界面外观可替换，支持安装第三方主题。 |
-
-### 本地数据
-
-| 能力 | 说明 |
-|------|------|
-| 知识库 | 把本地文档收进知识库，应用在后台整理成可检索的资料，供 Agent 随时引用。全程不出本机。 |
-
-### 桌面原生集成
-
-| 能力 | 说明 |
-|------|------|
-| 快捷面板 | 一个全局快捷键随时唤起输入面板，不用切窗口就能发起任务。 |
-| Appshot（macOS） | 一个手势抓取当前窗口，连同界面上的文字内容一起作为上下文交给 Agent，不用截图再描述一遍。 |
-| 桌宠 | 桌面吉祥物随会话状态做出反应，可隐藏。 |
-| 运行时管理 | 需要 Node 或 Python 时应用自动准备，不污染系统环境，也不要求你预装。 |
-| 首启向导 | 引导完成模型配置、权限授予与运行时准备。 |
-| 系统集成 | 托盘常驻、快捷键可自定义、原生通知、自动更新。 |
-| 双语界面 | 中文与 English 完整覆盖，随时切换。 |
-
----
-
-## 插件系统
-
-插件不是边角料的点缀——设计画布、内容创作、Git、图表、各类文件预览，
-这些工作区形态本身就是插件写出来的。同一套扩展点对第三方完全开放。
-
-一个插件是一个 React 包，在 `activate(ctx)` 里注册贡献，或在 `plugin.json` 里声明式贡献。
-它可以扩展界面，也可以扩展 Agent 的能力边界。
-
-### 设计取向
-
-**插件是 Vetta 的组成部分，不是挂在旁边的外挂。**
-大多数 Agent 工具的插件止步于「加几个工具、几条命令、几个 MCP Server」——
-能力是外接的，产品本身还是那个产品。Vetta 的插件可以往 Agent 里注入系统提示词、技能、
-工具与 MCP Server，声明自己适用的工作模式，接管新会话的引导入口，还能决定一轮结束后是否自动续跑。
-装上一组插件，你得到的不是「多了几个按钮的 Vetta」，而是按你的活法重组过的那个 Vetta。
-
-**界面和会话是双向的。**
-插件不只是给模型加能力，也能反过来驾驶对话：在画布上选中一个元素、在文件树上点一个菜单，
-就能带着精确上下文发起一轮任务。这条从界面回到会话的通道，是纯 CLI 形态的扩展机制给不出的。
-
-**预装能力和第三方插件走同一套 API。**
-仓库里那些预装插件用的就是本文档列出的公开扩展点，没有私有后门。
-系统插件与普通插件的差别只在分发方式——随应用发布、权限自动授予、不可卸载——
-而不在能力上限。你能写出来的，和我们写出来的，是同一类东西。
-
-**Vetta 自己会写插件。**
-插件工作台把这份开发手册连同检查清单打包成技能交给 Agent，
-配上专用的工作模式提示词，并把这套贡献硬隔离在工作台模式内，不污染日常会话。
-于是从「我想要一个能干 X 的面板」到装进本机，全程可以在对话里完成——
-Vetta 开发插件时读的，就是你现在要读的这份手册。
-
-### 扩展点
-
-**界面**
-
-| 扩展点 | 能做什么 |
-|--------|----------|
-| 活动面板 Tab | 在右侧活动面板里开一个自己的工作区，插件最常用的落脚点 |
-| 全局浮层 | 挂载覆盖整个应用的浮层 UI |
-| 文件预览 | 接管某类文件的预览渲染，大文件走流式取址 |
-| 文件列表扩展 | 给文件树加右键菜单、工具栏按钮、状态装饰，并可定位与刷新 |
-| 消息卡片 | 为 Agent 产出的结构化数据注册自定义卡片渲染器，支持跨轮去重 |
-| 工具调用渲染 | 替换某个工具调用在消息流里的行内呈现 |
-| Turn 卡 | 在本轮对话上方挂一张常驻卡片 |
-| 输入栏动作 | 往输入栏加一个开关式动作 |
-| 全局通知 | 发 Toast 与错误提示，无需权限 |
-| 快捷键作用域 | 接入宿主的快捷键作用域栈，不与全局快捷键打架 |
-
-**对话与 Agent**
-
-| 扩展点 | 能做什么 |
-|--------|----------|
-| 读对话 | 订阅会话状态与事件流 |
-| 驾驶对话 | 代用户发起 prompt、插入文本、中断当前执行 |
-| 注册 Agent 工具 | 把插件能力做成工具交给模型调用 |
-| 注册 App Action | 贡献带 JSON Schema、走审批与取消流程的应用级动作 |
-| 打包 Skill | 随插件分发技能，安装即生效 |
-| 内聚 MCP Server | 插件自带 MCP Server，与用户配置的 MCP 一同聚合 |
-| 动态系统提示词 | 按上下文向本轮注入 system prompt |
-| 自动续跑策略 | 决定一轮结束后是否自动继续 |
-| 新会话引导词 | 在空会话里给出引导入口 |
-| 工作模式门控 | 声明插件适用的工作模式，并在运行时感知切换 |
-
-**系统能力**
-
-| 扩展点 | 能做什么 |
-|--------|----------|
-| 文件读写 | 读写工作区文件 |
-| 命令执行 | 跑一次性命令，或拉起长驻进程（如自己的 dev server） |
-| 网络请求 | 经宿主代理发请求，绕开渲染进程的跨域限制 |
-| 私有存储 | 插件独占的持久化空间 |
-| 设置 | 声明并读取自己的设置项，宿主统一渲染设置界面 |
-| 插件 i18n | 随包分发语言包，跟随应用语言切换 |
-
-### 权限模型
-
-每项能力都要在 `plugin.json` 里显式声明权限，由宿主单独授权，运行时再校验一次；
-未声明即拒绝。插件与宿主共享同一份 React 运行时，因此定位是**经审核的一方/策展扩展**，
-而非任意不可信代码的沙箱容器——这个取舍与相应边界在 [permissions.md](docs/plugin/permissions.md) 里写明。
-
-### 上手
-
-```tsx
-import { definePlugin } from "@vetta-org/plugin-sdk";
-
-export default definePlugin({
-  activate(ctx) {
-    ctx.ui.registerActivityTab({ id: "my-tab", label: "我的面板", component: MyPanel });
-  },
-});
-```
-
-```json
-{
-  "id": "my-plugin",
-  "name": "我的插件",
-  "version": "0.1.0",
-  "pluginApiVersion": "^1.0.0",
-  "permissions": ["ui.slot.activity-tab"]
-}
-```
-
-不想手写脚手架，就用[插件工作台](packages/plugins/presets/plugin-workbench)——
-在对话里描述你要的面板，让 Vetta 建、让它构建、一键装进本机。
-
-### 开发手册
-
-| 文档 | 内容 |
-|------|------|
-| [getting-started.md](docs/plugin/getting-started.md) | 环境、脚手架、构建、安装与调试闭环 |
-| [manifest.md](docs/plugin/manifest.md) | `plugin.json` 全字段、工作模式白名单、i18n、设置、Agent 侧贡献 |
-| [permissions.md](docs/plugin/permissions.md) | 权限完整清单、门控点、声明与授权流程 |
-| [ui-slots.md](docs/plugin/ui-slots.md) | 全局浮层、活动 Tab、文件预览、输入栏动作、Turn 卡、工具槽、快捷键 |
-| [message-cards.md](docs/plugin/message-cards.md) | 消息卡片渲染器与跨轮去重 |
-| [file-explorer.md](docs/plugin/file-explorer.md) | 文件列表右键菜单、工具栏、装饰、定位与事件 |
-| [conversation-and-agent.md](docs/plugin/conversation-and-agent.md) | 对话读写、注册工具、命令、fs、network、storage、settings、i18n |
-| [app-actions.md](docs/plugin/app-actions.md) | App Action 的 Schema、审批、生命周期与独立发布 |
-| [mcp.md](docs/plugin/mcp.md) | MCP 三源聚合与插件内聚 MCP |
-| [system-plugins.md](docs/plugin/system-plugins.md) | 系统插件（presets）与租户打包 |
-| [styling-and-pitfalls.md](docs/plugin/styling-and-pitfalls.md) | 样式约定、常见陷阱、缓存与版本号 |
-
-完整索引见 [docs/plugin/README.md](docs/plugin/README.md)，
-SDK 与构建工具位于 [packages/plugins](packages/plugins)。
-
-### 内置插件
-
-| 插件 | 说明 |
-|------|------|
-| [vetta-ui-design](packages/plugins/presets/vetta-ui-design) | 无限画布 UI 设计工作区，详见下节 |
-| [content-creation](packages/plugins/presets/content-creation) | 节点画布、素材生产与多轨编排工作区 |
-| [plugin-workbench](packages/plugins/presets/plugin-workbench) | 用对话做插件：从新建到装进本机全程在应用里完成 |
-| [git](packages/plugins/presets/git) | 活动面板内的 Git 变更状态树与文件 diff |
-| [image-gen](packages/plugins/presets/image-gen) | 图像生成 |
-| [chart-renderer](packages/plugins/presets/chart-renderer) | 让 Agent 生成的数据直接在对话里画成图表 |
-| [office-viewer](packages/plugins/presets/office-viewer) · [media-viewer](packages/plugins/presets/media-viewer) · [svg-viewer](packages/plugins/presets/svg-viewer) | 离线预览 PDF/DOCX/PPTX/表格、图片音视频、SVG |
-| [vetta-actions](packages/plugins/presets/vetta-actions) | 一组官方内置动作，供 Agent 直接调用 |
-
-`packages/plugins/externals` 下另有几个插件（Cowart 无限画布、移动设备 UI 预览等）**不随应用打包**，
-只作为源码示例存在，可作为写自己插件时的参考。
-
-### Vetta UI Design
-
-在无限画布上做 UI 设计稿。画框不是静态图层，而是真实可运行、可交互的界面，
-改完即所见即所得。
-
-- 在活动面板打开「设计」标签新建设计文档，或直接在对话里让 Vetta 帮你创建。
-- 选中一个画框、多个画框，或画框内的某个具体元素，点「让 Vetta 调整」说出你想要的改动，
-  画布实时更新——不需要解释"我说的是哪个按钮"。
-- 整份设计共享一套色彩系统，改一次全部画框同步换肤。
-- 画框可导出渲染图，圆角、外边框、投影、背景与输出倍率都可调，也能直接复制到剪贴板。
-- 整份设计可打包成只读分享包，对方在应用内即可查看，无需任何环境准备。
-
-首次使用时应用会自动准备设计运行环境，无需预装 Node 或手动配置。
-
-<p align="center">
-  <img src="docs/assets/ui-design-canvas.png" alt="左侧对话，右侧无限画布上正在生成的设计稿">
-</p>
-
-<p align="center">
-  <sub>一句话让 Vetta 建出页面：左边是对话与产物，右边是画布，选中任何画框或元素都能继续追加要求</sub>
-</p>
-
-<p align="center">
-  <img src="docs/assets/ui-design-export.png" alt="导出的渲染图：三个手机画框排布在品牌色背景上">
-</p>
-
-<p align="center">
-  <sub>选中画框导出渲染图，背景、圆角、投影与标识都可调，直接用于交付或分享</sub>
-</p>
-
----
-
-## 安装
-
-克隆后如何跑起来、数据目录、以及实际会用到的检查命令见 [`QUICKSTART.zh-CN.md`](QUICKSTART.zh-CN.md)。
-
-### 下载安装包
-
-macOS、Windows、Linux 安装包由我们的 CDN 分发：
-
-**→ [www.openvetta.com/download](https://www.openvetta.com/download)**
-
-我们不用 GitHub Releases 分发安装包，本仓库只承载源码，官方构建产物发往 CDN。你的 fork
-不必如此：`.github/workflows/desktop-release.yml` 构建三平台后**默认就发布到 GitHub Releases**，
-把仓库变量 `VETTA_RELEASE_TARGET` 设为 `r2` 才会改发 Cloudflare R2——那是我们的用法。
-
-### 从源码构建
-
-需要 **Bun 1.3+** 与 **Node 20+**。
+需要 **Bun 1.3+** 与 **Node.js 20+**。
 
 ```bash
-bun install                # 安装全部工作区依赖
-bun run build              # 构建核心库
-bun run build:desktop      # 构建桌面应用
-bun run build:cli          # 构建 CLI 应用
-bun run build:docs         # 构建文档站
-```
-
-### 两种构建模式
-
-上面得到的是 **lite** 构建——这是默认形态，零配置。
-
-| | **lite**（serv-less，默认） | **完全体**（Vetta Serv） |
-|---|---|---|
-| 开关 | 什么都不用设 | `VETTA_CLOUD_ENABLED=true` |
-| 账号登录 / OAuth | 不进产物 | ✅ |
-| 订阅 / 积分 / 配额 | 不进产物 | ✅ |
-| 能力市场 | 你指定的 GitHub 仓库 | 由 Vetta Serv 提供 |
-| 远程模型目录下发 | ❌ | ✅ |
-| `VETTA_SERVER_URL` | 不需要 | 必填 |
-
-两种模式都有本地会话、编码 Agent、插件、主题、自带 Key 的模型、IM 旁路与知识库。这个开关在
-**构建期**生效并被常量折叠——lite 构建里根本不含云服务代码，发包后也无法在运行期重新打开。
-
-**→ [构建模式与环境变量](docs/desktop/build-modes.md)**（[English](docs/desktop/build-modes.en.md)）
-—— 完整对照、全部环境变量、机密约定与 CI 配置。
-
-### 开发桌面应用
-
-注意：**仓库根目录**的 `bun run dev` 是核心库（`ai`、`agent`、`coding-agent`）的 watch 编译，
-并不会启动应用。桌面应用要在它自己的工作区里启动：
-
-```bash
+git clone https://github.com/openvetta/open-vetta.git
+cd open-vetta
+git switch dev
+bun install
 cd apps/desktop
-bun run dev            # 渲染层（Vite）+ 主题 dev server + Electron，一条命令全起
+bun run dev
 ```
 
-三个变体的区别只在**运行时用哪个数据目录**：
+开发应用默认使用 `~/.vetta-dev`，不会改动正式安装版位于 `~/.vetta` 的数据。仓库根目录的 `bun run dev` 只监听核心库，不会启动 Electron。完整环境准备与检查命令见 [`QUICKSTART.zh-CN.md`](QUICKSTART.zh-CN.md)。
 
-| 命令 | 数据根 | 什么时候用 |
-|------|--------|-----------|
-| `bun run dev` | `~/.vetta-dev` | 默认。沙箱环境，不动你的真实会话、技能与插件 |
-| `bun run dev:isolated` | `~/.vetta-dev` | 与 `dev` 完全等价，只是把默认值显式写出来 |
-| `bun run dev:home` | `~/.vetta` | 想让开发版直接读写你的**真实**数据，和正式安装版一样 |
+## 可以用它做什么
 
-数据根是 `~/$VETTA_CONFIG_DIR`；开发启动器把这个变量默认成 `.vetta-dev`，而正式安装版用
-`.vetta`。Electron 自己的 `userData` 跟着走，落在 `<数据根>/electron-user-data`——所以即使
-`dev:home` 也不会和正式安装版共用窗口状态。
+- **在项目和会话中工作。** 把任务历史、文件、上下文、产物和执行详情放在一起。
+- **使用本机与外部工具。** 运行命令、检查文件、连接 MCP 服务，并显式批准敏感操作。
+- **处理专业产物。** 预览和处理源码、PDF、Office 文件、表格、图片、音视频、SVG 与生成式 UI。
+- **放大已经跑通的任务。** 用批量任务处理多个目录，或把稳定流程交给自动化定时执行。
+- **复用组织知识。** 建立本地知识库，安装可复用的技能和场景。
+- **离开电脑也能继续。** 使用受支持的 IM 桥接、Webhook、通知、快捷输入和桌面原生集成。
 
-### 构建生产版本
+公开文档持续维护当前任务指南与截图：[浏览全部产品能力](https://docs.openvetta.com/product/overview/)。
 
-以下命令在 `apps/desktop` 下执行。`pack` 只产出解包目录（快，适合冒烟验证），`dist:*` 才出真正的安装包。
+## 扩展模型
 
-```bash
-bun run pack                 # 当前平台的解包构建
-bun run dist:mac             # .dmg / .zip       （dist:mac:arm64、dist:mac:x64）
-bun run dist:win             # Inno 安装包        （dist:win:inno、:portable、:zip）
-bun run dist:linux           # AppImage/deb/rpm  （dist:linux:appimage、:deb、:rpm、:tar.gz）
-```
+Vetta 提供不同重量的扩展入口，简单流程不必被做成完整插件：
 
-构建配置来自 `.env.<mode>`，用 `VETTA_BUILD_ENV` 选择：
+| 扩展 | 适合做什么 | 指南 |
+|---|---|---|
+| **技能** | 让 Agent 遵循可重复的领域方法或工作流。 | [能力管理](https://docs.openvetta.com/product/abilities/) |
+| **MCP** | 通过标准协议连接外部工具与数据。 | [MCP 连接器](https://docs.openvetta.com/product/mcp/) |
+| **插件** | 扩展桌面 UI、文件、消息、工具与宿主动作。 | [插件开发](https://docs.openvetta.com/plugins/overview/) |
+| **主题** | 替换视觉系统并提供主题专属页面。 | [主题开发](https://docs.openvetta.com/themes/overview/) |
+| **SDK / RPC / CLI** | 在其他应用或进程中嵌入、驱动 Agent。 | [开发与集成路径](https://docs.openvetta.com/developers/overview/) |
 
-```bash
-VETTA_BUILD_ENV=production bun run dist:mac   # 读 apps/desktop/.env.production
-bun run dist:win:test                         # 等价于 VETTA_BUILD_ENV=test
-```
+插件通过 `plugin.json` 声明能力；高权限操作由宿主授权，并在运行时再次检查。插件运行在桌面渲染进程中，应被视为经过策展的代码，而不是任意代码沙箱。分发插件前请阅读[插件信任与权限模型](https://docs.openvetta.com/plugins/manifest-and-permissions/)。
 
-任何 `.env.*` 都不纳入版本控制——复制 `apps/desktop/.env.example` 按需填写。要产出**完全体**，
-`VETTA_CLOUD_ENABLED=true` 与 `VETTA_SERVER_URL` 就写在那里，详见
-[构建模式与环境变量](docs/desktop/build-modes.md)。
+## 数据与构建模式
 
-IM 旁路网关（Go）：
+源码检出默认生成 **lite** 构建，不依赖 Vetta 运营的后端：不要求账号、订阅、远程管理或托管市场。模型请求直达你配置的端点，凭据保存在本地凭据存储中。
 
-```bash
-cd apps/im-gateway && make build
-```
+官方安装包可能启用可选的 Vetta Serv 集成，用于账号、订阅和托管市场。该能力在构建期选择，不会在 lite 构建中被静默打开。
 
----
+本地优先不等于完全没有网络流量。模型 Provider、MCP、插件、Webhook、IM、更新源和可选遥测分别形成自己的数据边界。使用前请阅读：
 
-## 架构
+- [安全与数据边界](https://docs.openvetta.com/reference/security-and-data/)
+- [配置与数据路径](https://docs.openvetta.com/reference/configuration-paths/)
+- [构建模式与环境变量](docs/desktop/build-modes.md)
+- [安全策略](SECURITY.md)
 
-Monorepo 分四层，依赖方向单向向下：**应用 → runtime-\* → coding-agent / agent / ai**。
-核心库不感知宿主，因此同一套内核既能跑在 Electron 里，也能跑在终端里。
+## 仓库结构
 
-### 应用层
+本仓库是 Bun/TypeScript Monorepo，同时包含 Kotlin 与 Go 应用。依赖从应用指向可复用包，`packages/*` 不反向依赖 `apps/*`。
 
-| 包 | 角色 | 技术栈 |
-|----|------|--------|
-| [desktop](apps/desktop) | Electron 桌面宿主，承载上文全部能力 | Electron · React · Vite · Jotai · TanStack Router · shadcn/ui · Tailwind v4 |
-| [coding-agent](packages/coding-agent) | 编码智能体内核，支持交互 / print-JSON / RPC / SDK 四种运行模式 | TypeScript |
-| [cli-host](apps/cli-host) | 基于 coding-agent 的纯 CLI 封装 | TypeScript |
-| [im-gateway](apps/im-gateway) | IM 平台旁路 sidecar，NDJSON IPC 与桌面主进程通信 | Go |
-| [mobile](apps/mobile) | Android 客户端 | Kotlin Multiplatform |
-| [docs-site](apps/docs-site) | 官方文档站，欢迎社区共建 | Next.js |
-
-### 核心库
-
-| 包 | 职责 | 不包含 |
-|----|------|--------|
-| [ai](packages/ai) | 多 Provider LLM API、模型注册表、Provider Adapter、Token 与成本核算 | Agent Loop、UI、会话持久化 |
-| [agent](packages/agent) | 有状态 Agent Loop、工具调用、事件流 | 终端/桌面 UI、业务规则 |
-| [ui](packages/ui) · [theme-ui](packages/theme-ui) · [theme-sdk](packages/theme-sdk) | 可复用 UI 原语、主题视图层与主题 SDK | 宿主生命周期 |
-
-### 运行时层
-
-被宿主应用复用的一组适配包：[runtime-core](packages/runtime-core)（`RuntimeHost` 与 Session Facade）、
-[runtime-tools](packages/runtime-tools)（内置工具重导出）、[runtime-storage](packages/runtime-storage)（会话与设置存储）、
-[runtime-mcp](packages/runtime-mcp)（MCP Manager 绑定）、[runtime-telemetry](packages/runtime-telemetry)（本地日志抽象，仅落盘）。
-
-### 目录速览
-
-```
-open-vetta/
-├── apps/
-│   ├── desktop · cli-host                          # Electron 宿主与 CLI
-│   ├── im-gateway                                  # IM 旁路（Go）
-│   ├── mobile                                      # Android（Kotlin Multiplatform）
-│   └── docs-site                                   # 文档站（Next.js）
-├── packages/
-│   ├── ai · agent · coding-agent                   # 核心库
-│   ├── runtime-core · runtime-tools · runtime-mcp · runtime-storage · runtime-telemetry
-│   ├── ui · theme-ui · theme-sdk · markdown        # UI 与主题
-│   ├── plugins · themes · skill-presets            # 扩展生态
-│   └── capability-sdk · capability-runtime         # 能力与权限层
-├── docs/                                           # 架构文档与 ADR
-├── scripts/                                        # 构建、发布与质量守卫
-├── AGENTS.md                                       # 开发与 AI 协作规范
-└── CONTEXT.md                                      # 领域术语表
-```
-
----
-
-## 模型配置（BYOK）
-
-客户端内置一份预设服务商目录（Claude、OpenAI、DeepSeek、Z.ai (GLM)、Kimi、Gemini、Grok、Qwen），
-**只含 `baseUrl` 与 API 类型，不含任何 Key**。填入自己的 Key 之后：
-
-- 立即向该服务商的 `/models` 拉取你账号实际可用的模型，之后每 12 小时后台同步一次；
-- 价格与能力元数据由 [models.dev](https://models.dev) 公共目录补齐，随包带快照兜底；
-- 请求直发服务商原站，本应用不代理、不转发、不计费。
-
-也可以自定义任意 OpenAI 兼容端点，包括 Ollama / vLLM / LM Studio 等本地推理服务。
-设计背景见 [ADR-0050](docs/adr/0050-preset-providers-move-client-side-with-dynamic-model-lists.md)。
-
----
-
-## 能力市场
-
-能力（Skill / MCP Server / Plugin / Bundle）来自 **GitHub 仓库归档**：客户端下载仓库压缩包，
-读取其中的 `.vetta/marketplace.json`，搜索与筛选全部在本地快照上完成。
-你可以添加任意多个市场来源，也可以完全不加。
-
-清单格式见 [docs/open-marketplace.md](docs/open-marketplace.md)，
-统一模型见 [ADR-0049](docs/adr/0049-abilities-unify-storage-and-presentation-not-installation.md)。
-
-以上是 `lite` 构建的行为。完全体的能力市场由 Vetta Serv 提供，不会再内置 GitHub 来源——避免同一个
-能力经由两个渠道到达、版本口径互相打架；在完全体里你仍可手动添加 GitHub 来源。
-
-MCP 配置示例：
-
-```jsonc
-// ~/.vetta/agent/mcp.json
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/directory"]
-    }
-  }
-}
-```
-
-交互模式下用 `/mcp` 查看状态。详见 [packages/coding-agent/docs/MCP.md](packages/coding-agent/docs/MCP.md)。
-
----
-
-## 网络行为
-
-本应用只在以下情况发起网络请求，且全部由你的配置决定：
-
-| 用途 | 目标 | 可否关闭 |
-|------|------|----------|
-| LLM 推理 | 你配置的服务商原站 | 不配 Key 即不发生 |
-| 模型元数据 | `models.dev` 公共目录 | 失败回退随包快照 |
-| 能力市场 | 你添加的 GitHub 仓库 | 不加来源即不发生 |
-| 便携运行时下载 | Node / Python 官方发行源（国内镜像优先） | 用系统已装运行时即可跳过 |
-| 自动更新 | 你配置的 `VETTA_UPDATE_URL` 或 GitHub Releases | 不配即不检查 |
-| MCP / 插件 / IM / Webhook | 由你安装的扩展与填写的凭据决定 | 不装即不发生 |
-| 错误与产品分析 | Sentry / PostHog，仅当构建时配置了 DSN 或 project key | 未配置时不进产物 |
-
-**遥测是构建期可选项。** Sentry 与 PostHog 集成在未提供 DSN / project key 时是空实现——构建时
-不配置就完全不上报任何东西，源码构建默认如此。我们的官方安装包构建时配置了它们；如果你介意这一点，
-请自行从源码构建。
-
----
-
-## 社区
-
-项目在持续维护。提问、想法、「后面还做不做」请走
-[Discussions](https://github.com/openvetta/open-vetta/discussions)，不要开空白 Issue。
-
-| 渠道 | 用来做什么 |
+| 范围 | 职责 |
 |---|---|
-| [Discussions](https://github.com/openvetta/open-vetta/discussions) | 问答、想法、作品展示、公告 |
-| [Issues](https://github.com/openvetta/open-vetta/issues/new/choose) | 可复现的缺陷和已经说清的功能请求 |
-| [Security advisories](https://github.com/openvetta/open-vetta/security/advisories/new) | 私下报告漏洞，不要开公开 Issue |
-| [docs.openvetta.com](https://docs.openvetta.com) | 产品与插件文档 |
+| [`apps/desktop`](apps/desktop) | Electron 桌面宿主与渲染层 |
+| [`apps/cli-host`](apps/cli-host) | Coding Agent 的 CLI 宿主 |
+| [`apps/docs-site`](apps/docs-site) | 发布到 `docs.openvetta.com` 的 Next.js 文档站 |
+| [`apps/mobile`](apps/mobile) | Kotlin Multiplatform Android 客户端 |
+| [`apps/im-gateway`](apps/im-gateway) | Go 编写的 IM 旁路网关 |
+| [`packages/ai`](packages/ai) · [`packages/agent`](packages/agent) | Provider 抽象与 Agent Loop |
+| [`packages/coding-agent`](packages/coding-agent) · `packages/runtime-*` | 产品组合、运行时合同、工具、存储、MCP 与宿主适配 |
+| [`packages/plugins`](packages/plugins) · [`packages/themes`](packages/themes) | 扩展 SDK、内置扩展与主题 |
 
-## 参与开发
+架构细节与公共集成合同见[开发者架构文档](https://docs.openvetta.com/developers/architecture/)和 [`docs/adr/`](docs/adr/)。
 
-最有杠杆的贡献通常是一个目录。选一行，PR 发到 **`dev`**。
+## 开发与贡献
 
-| 想交什么 | 从这里开始 |
-|---|---|
-| 插件 | [`docs/plugin/getting-started.md`](docs/plugin/getting-started.md) |
-| Skill 或市场能力 | [`docs/open-marketplace.md`](docs/open-marketplace.md) |
-| 主题 | [主题指南](https://docs.openvetta.com/themes/getting-started/) |
-| 文档或翻译 | [`apps/docs-site/content/docs/`](apps/docs-site/content/docs/) |
-| 修 bug 或改产品 | [`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md) |
+统一使用 Bun 和仓库脚本；不要在这个 Monorepo 中运行裸 `bun test`。
 
 ```bash
-bun run check:quick        # 对改动文件跑 Biome + 架构守卫
-bun run check              # lint + 类型 + 守卫（开 PR 前必跑）
-bun run test:pkg ai        # 单包；test:pkg --list 查看包名
-bun run test:changed       # 只跑本次 diff 触及的包
+bun run check:quick              # 检查改动文件与架构边界
+bun run check                    # 完整 lint、类型和架构守卫
+bun run test:pkg <package-name>  # 定向包测试
+bun run test:changed             # 运行当前 diff 影响的测试
 ```
 
-环境、PR 门槛和不会合并的改动见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)
-（[English](CONTRIBUTING.md)）。Agent 与包边界规则见 [AGENTS.md](AGENTS.md)。
-质量门禁见 [docs/dev/quality-gates.md](docs/dev/quality-gates.md)。
+Pull Request 发往 **`dev`** 分支。贡献地图、测试要求与评审门槛见 [`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md)，架构和 Agent 协作规则见 [`AGENTS.md`](AGENTS.md)。
 
-### 版本与发布
+问题和早期想法请发到 [GitHub Discussions](https://github.com/openvetta/open-vetta/discussions)。安全漏洞请通过 [GitHub Security Advisories](https://github.com/openvetta/open-vetta/security/advisories/new) 私下报告。
 
-所有包共用同一版本号（lockstep），版本源以 `@vetta/coding-agent` 为准，不做 major 发版：
+## 文档导航
 
-```bash
-bun run release:patch    # Bug 修复与新增功能
-bun run release:minor    # API Breaking
-```
+- [用户与产品指南](https://docs.openvetta.com/product/overview/)
+- [插件开发](https://docs.openvetta.com/plugins/overview/)
+- [主题开发](https://docs.openvetta.com/themes/overview/)
+- [SDK、RPC、CLI 与架构](https://docs.openvetta.com/developers/overview/)
+- [故障排查](https://docs.openvetta.com/troubleshooting/)
+- [`QUICKSTART.zh-CN.md`](QUICKSTART.zh-CN.md)：仓库环境准备
+- [`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md)：参与贡献
+- [`docs/adr/`](docs/adr/)：架构决策记录
 
-每个包独立维护 `packages/*/CHANGELOG.md`，新条目写入 `## [Unreleased]`，已发布版本段不再改动。
+文档站同时提供 [`llms.txt`](https://docs.openvetta.com/llms.txt)、[`llms-full.txt`](https://docs.openvetta.com/llms-full.txt)，以及每个页面的 Markdown 版本，方便 Agent 获取内容。
 
-### 文档
+## 致谢与许可
 
-- [QUICKSTART.zh-CN.md](QUICKSTART.zh-CN.md) — 克隆、跑桌面应用、跑文档站
-- [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md) — 贡献地图与 PR 门槛
-- [SECURITY.md](SECURITY.md) — 私下报告漏洞
-- [docs.openvetta.com](https://docs.openvetta.com) — 公开产品与插件文档
-- [docs/plugin/README.md](docs/plugin/README.md) — 插件开发手册（11 篇）
-- [docs/adr/](docs/adr) — 架构决策记录
-- [docs/capabilities/README.md](docs/capabilities/README.md) — 基础/领域能力与权限层
-- [docs/open-marketplace.md](docs/open-marketplace.md) — 开放能力市场清单格式
-- [docs/desktop/build-modes.md](docs/desktop/build-modes.md) — 构建模式与全部环境变量
-- [docs/adr/README.md](docs/adr/README.md) — ADR 编号规则，含刻意保留的编号空洞
-- [docs/desktop/README.md](docs/desktop/README.md) — 桌面打包与自动更新链路
-- [CONTEXT.md](CONTEXT.md) — 领域术语表（写代码前先查既有命名）
+Open Vetta 建立在广泛的开源生态之上，包括 pi、Codex CLI、MCP、Electron、React、Bun、models.dev，以及 [`NOTICE`](NOTICE) 中列出的项目。完整第三方清单与原始版权声明以该文件为准。
 
----
-
-## 致谢与引用
-
-这个项目站在不少人的工作之上。以下是直接构成本仓库代码或分发物的部分：
-
-| 项目 | 用在哪里 | 许可 |
-|------|----------|------|
-| [pi](https://github.com/badlogic/pi-mono) · Mario Zechner | `ai` / `agent` / `coding-agent` / `ecosystem-adapter` 四个包在其基础上重写与迭代，Agent Loop、Provider 抽象与扩展机制的骨架来自这里 | MIT |
-| [Codex CLI](https://github.com/openai/codex) · OpenAI | 执行沙箱的整体方案借鉴其设计；Windows 平台直接使用其沙箱宿主二进制 | Apache-2.0 |
-| [bubblewrap](https://github.com/containers/bubblewrap) | Linux 平台的沙箱后端，随安装包分发 | LGPL-2.0+ |
-| [PP-OCRv5](https://github.com/PaddlePaddle/PaddleOCR) · PaddlePaddle | 离线 PDF OCR 的检测与识别模型 | Apache-2.0 |
-| [python-build-standalone](https://github.com/astral-sh/python-build-standalone) · Astral | 便携 Python 运行时的发行源 | 见原仓库 |
-| [Node.js](https://nodejs.org) | 便携 Node 运行时的发行源 | MIT |
-| [Cowart](https://github.com/zhongerxin/Cowart) | `plugins/externals/cowart-vetta` 由其改编。该插件位于 `externals/`，**不随应用打包**，仅作为源码示例存在 | 见原仓库 |
-
-同样受益于 [Model Context Protocol](https://modelcontextprotocol.io) 规范、
-[models.dev](https://models.dev) 的公共模型目录，以及 Electron、React、Vite、Tailwind CSS、
-shadcn/ui、Jotai、TanStack Router、Biome、Bun 等一众基础设施。
-
-完整的第三方组件清单与原始版权声明见 [NOTICE](NOTICE)。
-
-## 许可
-
-[Apache-2.0](LICENSE)。
+本项目采用 [Apache-2.0](LICENSE) 许可。

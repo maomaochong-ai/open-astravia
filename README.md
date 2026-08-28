@@ -5,625 +5,157 @@
 <h1 align="center">Open Vetta</h1>
 
 <p align="center">
-  An open-source AI agent built for real work — local, extensible, and under your control.
+  An open-source desktop AI agent for real work — local-first, extensible, and under your control.
 </p>
 
 <p align="center">
   <a href="https://www.openvetta.com"><img src="https://img.shields.io/badge/website-openvetta.com-0b7285" alt="Website"></a>
-  <img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License">
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" alt="Platform">
-  <img src="https://img.shields.io/badge/runtime-Bun%201.3%2B-black" alt="Bun">
+  <a href="https://docs.openvetta.com"><img src="https://img.shields.io/badge/docs-docs.openvetta.com-f06449" alt="Documentation"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0 license"></a>
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" alt="macOS, Windows, and Linux">
   <a href="https://coderabbit.ai"><img src="https://img.shields.io/coderabbit/prs/github/openvetta/open-vetta?utm_source=oss&utm_medium=github&utm_campaign=openvetta%2Fopen-vetta&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Pull Request Reviews"></a>
 </p>
 
 <p align="center">
   <b>English</b> ·
   <a href="README.zh-CN.md">简体中文</a> ·
-  <a href="https://www.openvetta.com">Website</a> ·
   <a href="https://www.openvetta.com/download">Download</a> ·
-  <a href="https://docs.openvetta.com">Docs</a> ·
+  <a href="https://docs.openvetta.com/getting-started/">Get started</a> ·
   <a href="https://github.com/openvetta/open-vetta/discussions">Discussions</a> ·
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
 ---
 
-## What This Is
+Open Vetta brings models, project files, local tools, and reusable capabilities into one desktop workspace. Use it for coding, documents, data, research, creative work, and repeatable workflows without giving up control of the environment where the work happens.
 
-Your local-first AI agent for real work.
-Open Vetta is an open-source desktop AI agent for coding, documents, data, workflows, and creative tasks. Bring your own models and tools through BYOK, MCP, skills, and plugins — with your data kept under your control.
-
-Designed for professional and coding workflows, it helps individuals and teams build AI agents
-that are customizable, extensible, and under their control. Whether you are working with
-documents, analyzing data, writing code, building workflows, or connecting your own models,
-tools, and knowledge, Open Vetta is designed to participate in real work and deliver results.
-
-Open Vetta runs in the environment you choose. Connect your own models, tools, and data, and use
-or extend its agent core through the desktop app, CLI, and SDK.
-
-We chose open source because the future of AI-powered work should not be defined by only a few.
-Developers, creators, and real users can contribute code, develop skills, integrate new models
-and tools, and shape an agent around the way they actually work.
-
-### Your Data, Under Your Control
-
-**The default build depends on no Vetta-operated backend**: no login, no account, no subscription
-billing, no remote admin console. You bring your own API keys; requests go directly to the model
-provider you choose, and keys stay in your local keychain. Every outbound request is explicitly
-triggered by your own configuration (see [Network Behavior](#network-behavior)).
-
-That is the `lite` build, and it is what you get by cloning and building. A second, opt-in build
-(`VETTA_CLOUD_ENABLED=true`) links the app to a Vetta Serv instance for accounts, subscriptions
-and a hosted marketplace — that is how our official installers are produced. Both shapes and
-every environment variable are documented in
-[Build Modes](docs/desktop/build-modes.en.md) ([中文](docs/desktop/build-modes.md)).
+It is more than a chat interface: Vetta can inspect a workspace, use tools with visible permission boundaries, produce real files, and keep the execution trail available for review.
 
 <p align="center">
-  <img src="docs/assets/screenshot.png" alt="Open Vetta desktop app">
+  <img src="docs/assets/screenshot.png" alt="Open Vetta desktop workspace">
 </p>
 
-### Quick start
+## Why Open Vetta
 
-- **Use it:** [Download](https://www.openvetta.com/download) · product guides on [docs.openvetta.com](https://docs.openvetta.com)
-- **Hack on it:** [`QUICKSTART.md`](QUICKSTART.md) — `bun install`, then `cd apps/desktop && bun run dev`
-- **Ask or show work:** [GitHub Discussions](https://github.com/openvetta/open-vetta/discussions)
+| | What it means |
+|---|---|
+| **Local-first workspace** | Projects, sessions, files, and execution live in the environment you choose. |
+| **Bring your own models** | Connect supported providers, OpenAI-compatible endpoints, or local inference through BYOK. |
+| **Real tools and artifacts** | Work with code, documents, spreadsheets, media, commands, and generated files in one task flow. |
+| **Reviewable execution** | Tool calls, plans, permissions, progress, results, and recovery paths remain visible. |
+| **Reusable workflows** | Extend the agent with skills, MCP servers, plugins, themes, knowledge, batch tasks, and automation. |
+| **Open client stack** | The desktop app, CLI, SDK, plugin system, themes, mobile client, and IM gateway are developed in this repository. |
 
----
+## Start here
 
-## Desktop Features
+| I want to… | Start with |
+|---|---|
+| Use the desktop app | [Download for macOS, Windows, or Linux](https://www.openvetta.com/download), then follow [installation and first setup](https://docs.openvetta.com/getting-started/). |
+| Complete a real task | Follow the [first-task walkthrough](https://docs.openvetta.com/getting-started/first-task/). |
+| Understand the product | Read the [product guide](https://docs.openvetta.com/product/overview/) and [security and data boundaries](https://docs.openvetta.com/reference/security-and-data/). |
+| Build an extension | Choose between [skills, MCP, plugins, themes, SDK, RPC, and CLI](https://docs.openvetta.com/developers/overview/). |
+| Contribute code | Read [`QUICKSTART.md`](QUICKSTART.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md). |
 
-An index of what's there and how to use it. Full guides live on the [website](https://www.openvetta.com).
+### Run from source
 
-### Conversation & Workspace
-
-| Feature | What it does |
-|---------|--------------|
-| Chat | The main surface: message stream, artifact rendering, visible tool calls, auto-follow and jump-to-bottom. |
-| Projects & sessions | Sessions organized by project in the sidebar. Projects come in three kinds — regular, batch, and scheduled — each with its own execution shape. |
-| File browser & preview | Built-in local file tree. PDFs, Office documents, spreadsheets, images, audio and video preview in-app; scanned PDFs can be OCR'd offline. |
-| Activity panel | A resizable side panel showing tool calls, request history, batch progress and debug output in real time. |
-| Execution isolation | Pick an isolation level per session to constrain which directories the agent can touch and whether it may reach the network, with stray processes reaped on exit. Backed by system-level isolation on all three platforms. |
-
-### Automation
-
-| Feature | What it does |
-|---------|--------------|
-| Batch tasks | One prompt across many target directories, run in parallel at a concurrency you set, with pause, per-item retry, and full rerun. |
-| Scheduling | Set a cron expression and tasks fire on time. Leave the app in the tray; you don't have to sit there. |
-| Webhook notifications | Push completions and failures to Feishu or DingTalk bots. Credentials are stored encrypted, locally. |
-| IM bridge | Once credentials are set, hand work to the agent on your machine from IM on your phone and get results back — useful when you're away from the desk. Feishu today; early stage. |
-
-### Extensions
-
-| Feature | What it does |
-|---------|--------------|
-| Marketplace | Browse and install skills, MCP servers, plugins and bundles. A marketplace source is just a GitHub repository — add as many as you like, or none at all. There is no central server. |
-| Skills | Turn a way of working into something reusable. A set ships built in; more can be installed from a marketplace. |
-| MCP | Full MCP server support. Once connected, the tools are automatically visible to the agent. |
-| Plugins | Most of the app's workspace surfaces are plugins, and can be enabled or removed as you like. See [Plugin System](#plugin-system). |
-| Themes | The entire look of the app is replaceable, including third-party themes. |
-
-### Local Data
-
-| Feature | What it does |
-|---------|--------------|
-| Knowledge base | Put local documents into a knowledge base; the app organizes them in the background into something searchable that the agent can draw on. Nothing leaves your machine. |
-
-### Native Desktop Integration
-
-| Feature | What it does |
-|---------|--------------|
-| Quick panel | A global hotkey brings up an input panel from anywhere, so you can start a task without switching windows. |
-| Appshot (macOS) | One gesture captures the frontmost window along with the text on screen and hands both to the agent — no screenshotting and then describing it again. |
-| Desktop pet | A desktop mascot that reacts to session state. Can be hidden. |
-| Runtime management | When Node or Python is needed, the app provisions it — without polluting your system environment or requiring you to install anything first. |
-| Setup wizard | Walks you through model configuration, permissions, and runtime preparation on first launch. |
-| System integration | Tray residency, customizable shortcuts, native notifications, automatic updates. |
-| Bilingual UI | Full English and Chinese coverage, switchable at any time. |
-
----
-
-## Plugin System
-
-Plugins aren't decoration around the edges. The design canvas, the content workspace, Git,
-charts, the various file previewers — those surfaces are plugins. The same extension points
-are fully open to third parties.
-
-A plugin is a React package that registers contributions in `activate(ctx)`, or declares them
-in `plugin.json`. It can extend the interface, and it can extend what the agent is capable of.
-
-### Design Stance
-
-**A plugin is part of Vetta, not a bolt-on beside it.**
-Plugins in most agent tools stop at "add a few tools, a few commands, a few MCP servers" —
-the capability is attached from outside and the product is still the same product.
-A Vetta plugin can inject system prompts, skills, tools and MCP servers into the agent,
-declare which work modes it applies to, take over the entry point of a new session, and decide
-whether a turn continues automatically. Install a set of plugins and you don't get "Vetta with
-extra buttons" — you get Vetta rearranged around how you actually work.
-
-**The interface and the conversation run both ways.**
-A plugin doesn't only give the model new abilities; it can drive the conversation back.
-Select an element on the canvas, click an item in the file tree, and a turn starts carrying
-exactly that context. That return path — from interface back into the session — isn't something
-a CLI-shaped extension mechanism can offer.
-
-**Bundled features and third-party plugins use the same API.**
-The preinstalled plugins in this repository are built on the public extension points documented
-here. There are no private backdoors. System plugins differ from ordinary ones only in how they
-ship — bundled with the app, permissions granted automatically, not removable — never in what
-they're allowed to do. What you can build is the same kind of thing we build.
-
-**Vetta writes plugins.**
-The plugin workbench packages this developer handbook and a checklist into a skill, hands it
-to the agent with a dedicated work-mode prompt, and hard-isolates those contributions inside
-workbench mode so they never leak into everyday sessions. So going from "I want a panel that
-does X" to having it installed can happen entirely in conversation — and the handbook Vetta
-reads while building it is the one you're about to read.
-
-### Extension Points
-
-**Interface**
-
-| Extension point | What you can do |
-|-----------------|-----------------|
-| Activity tab | Open your own workspace in the activity panel — the most common landing spot for a plugin |
-| Global overlay | Mount overlay UI across the whole app |
-| File preview | Take over rendering for a file type, with streamed URLs for large files |
-| File explorer | Add context menus, toolbar buttons and status decorations to the file tree; reveal and refresh |
-| Message cards | Register custom card renderers for structured agent output, with cross-turn deduplication |
-| Tool call rendering | Replace how a given tool call appears inline in the message stream |
-| Turn card | Pin a persistent card above the current turn |
-| Input action | Add a toggle-style action to the composer |
-| Notifications | Raise toasts and error notices — no permission required |
-| Shortcut scopes | Plug into the host's shortcut scope stack without fighting global bindings |
-
-**Conversation & agent**
-
-| Extension point | What you can do |
-|-----------------|-----------------|
-| Read the conversation | Subscribe to session state and the event stream |
-| Drive the conversation | Send prompts, insert text, abort the current run on the user's behalf |
-| Register agent tools | Expose plugin capability as a tool the model can call |
-| Register app actions | Contribute app-level actions with a JSON Schema, approval flow and cancellation |
-| Ship skills | Distribute skills with the plugin; they take effect on install |
-| Bundled MCP servers | Ship an MCP server inside the plugin, aggregated alongside the user's own |
-| Dynamic system prompts | Inject a system prompt into the turn based on context |
-| Continuation strategy | Decide whether a turn continues automatically once it ends |
-| Guiding words | Offer entry points in an empty session |
-| Work-mode gating | Declare which work modes the plugin applies to, and react when the mode changes |
-
-**System capabilities**
-
-| Extension point | What you can do |
-|-----------------|-----------------|
-| Filesystem | Read and write workspace files |
-| Commands | Run one-off commands, or spawn long-lived processes such as your own dev server |
-| Network | Make requests through the host, sidestepping renderer CORS constraints |
-| Private storage | Persistent storage scoped to the plugin |
-| Settings | Declare and read your own settings; the host renders the settings UI |
-| Plugin i18n | Ship locale catalogs that follow the app's language |
-
-### Permission Model
-
-Every capability must be declared explicitly in `plugin.json`, granted individually by the host,
-and checked again at runtime; anything undeclared is denied. Plugins share a single React runtime
-with the host, which means they are positioned as **reviewed first-party / curated extensions**
-rather than a sandbox for arbitrary untrusted code. That tradeoff and its boundaries are spelled
-out in [permissions.md](docs/plugin/permissions.md).
-
-### Getting Started
-
-```tsx
-import { definePlugin } from "@vetta-org/plugin-sdk";
-
-export default definePlugin({
-  activate(ctx) {
-    ctx.ui.registerActivityTab({ id: "my-tab", label: "My Panel", component: MyPanel });
-  },
-});
-```
-
-```json
-{
-  "id": "my-plugin",
-  "name": "My Plugin",
-  "version": "0.1.0",
-  "pluginApiVersion": "^1.0.0",
-  "permissions": ["ui.slot.activity-tab"]
-}
-```
-
-Rather not hand-write scaffolding? Use the
-[plugin workbench](packages/plugins/presets/plugin-workbench) — describe the panel you want
-in conversation, let Vetta create it, build it, and install it locally.
-
-### Developer Handbook
-
-| Document | Contents |
-|----------|----------|
-| [getting-started.md](docs/plugin/getting-started.md) | Environment, scaffolding, building, installing, debug loop |
-| [manifest.md](docs/plugin/manifest.md) | Every `plugin.json` field, work-mode allowlist, i18n, settings, agent-side contributions |
-| [permissions.md](docs/plugin/permissions.md) | Full permission list, gating points, declaration and grant flow |
-| [ui-slots.md](docs/plugin/ui-slots.md) | Global overlays, activity tabs, file preview, input actions, turn cards, tool slots, shortcuts |
-| [message-cards.md](docs/plugin/message-cards.md) | Card renderers and cross-turn deduplication |
-| [file-explorer.md](docs/plugin/file-explorer.md) | Context menus, toolbars, decorations, reveal and events |
-| [conversation-and-agent.md](docs/plugin/conversation-and-agent.md) | Conversation read/write, tool registration, commands, fs, network, storage, settings, i18n |
-| [app-actions.md](docs/plugin/app-actions.md) | App action schemas, approval, lifecycle, independent releases |
-| [mcp.md](docs/plugin/mcp.md) | Three-source MCP aggregation and plugin-bundled MCP |
-| [system-plugins.md](docs/plugin/system-plugins.md) | System plugins (presets) and tenant packaging |
-| [styling-and-pitfalls.md](docs/plugin/styling-and-pitfalls.md) | Styling conventions, common pitfalls, caching and versioning |
-
-Full index at [docs/plugin/README.md](docs/plugin/README.md);
-the SDK and build tooling live in [packages/plugins](packages/plugins).
-
-### Bundled Plugins
-
-| Plugin | Description |
-|--------|-------------|
-| [vetta-ui-design](packages/plugins/presets/vetta-ui-design) | Infinite-canvas UI design workspace — see below |
-| [content-creation](packages/plugins/presets/content-creation) | Node canvas, asset production and multi-track composition |
-| [plugin-workbench](packages/plugins/presets/plugin-workbench) | Build plugins by conversation, from creation to installation, all in-app |
-| [git](packages/plugins/presets/git) | Git status tree and file diffs in the activity panel |
-| [image-gen](packages/plugins/presets/image-gen) | Image generation |
-| [chart-renderer](packages/plugins/presets/chart-renderer) | Render agent-produced data as charts inline in the conversation |
-| [office-viewer](packages/plugins/presets/office-viewer) · [media-viewer](packages/plugins/presets/media-viewer) · [svg-viewer](packages/plugins/presets/svg-viewer) | Offline preview for PDF/DOCX/PPTX/spreadsheets, images and media, and SVG |
-| [vetta-actions](packages/plugins/presets/vetta-actions) | A set of official built-in actions the agent can call directly |
-
-A few more plugins under `packages/plugins/externals` (Cowart infinite canvas, mobile device UI
-preview, and others) are **not bundled with the app** — they exist as source examples and
-reference material for writing your own.
-
-### Vetta UI Design
-
-Design UI on an infinite canvas. A frame isn't a static layer — it's a real, running,
-interactive interface, and what you see is what it is.
-
-- Create a design document from the "Design" tab in the activity panel, or just ask Vetta
-  to make one in conversation.
-- Select a frame, several frames, or one specific element inside a frame, hit "ask Vetta"
-  and say what you want changed. The canvas updates live — no explaining which button you meant.
-- One shared color system across the whole document; change it once and every frame follows.
-- Export frames as rendered images with adjustable corner radius, border, shadow, background
-  and output scale, or copy straight to the clipboard.
-- Package an entire design as a read-only share bundle that opens in-app on the other end,
-  with nothing to set up.
-
-The design runtime is provisioned automatically on first use — no need to install Node or
-configure anything.
-
-<p align="center">
-  <img src="docs/assets/ui-design-canvas.png" alt="Conversation on the left, a design taking shape on the infinite canvas on the right">
-</p>
-
-<p align="center">
-  <sub>Ask once and Vetta builds the page: conversation and outputs on the left, canvas on the right — select any frame or element to keep refining</sub>
-</p>
-
-<p align="center">
-  <img src="docs/assets/ui-design-export.png" alt="Exported render: three mobile frames laid out on a brand-colour background">
-</p>
-
-<p align="center">
-  <sub>Select frames and export a render — background, corner radius, shadow and branding are all adjustable, ready to hand off or share</sub>
-</p>
-
----
-
-## Installation
-
-Clone-and-run steps, data directories, and the checks you will actually use are in [`QUICKSTART.md`](QUICKSTART.md).
-
-### Download
-
-Installers for macOS, Windows and Linux are distributed from our CDN:
-
-**→ [www.openvetta.com/download](https://www.openvetta.com/download)**
-
-We do not publish installers to GitHub Releases — this repository hosts the source, and our
-official builds go to the CDN. Your fork does not have to: `.github/workflows/desktop-release.yml`
-builds all three platforms and **publishes to GitHub Releases by default**; setting the repository
-variable `VETTA_RELEASE_TARGET=r2` is what redirects it to Cloudflare R2, which is what we do.
-
-### Build from Source
-
-Requires **Bun 1.3+** and **Node 20+**.
+Requires **Bun 1.3+** and **Node.js 20+**.
 
 ```bash
-bun install                # install all workspace dependencies
-bun run build              # build the core libraries
-bun run build:desktop      # build the desktop app
-bun run build:cli          # build the CLI app
-bun run build:docs         # build the documentation site
-```
-
-### Two Build Modes
-
-Everything above produces a **lite** build — that is the default and needs no configuration.
-
-| | **lite** (serv-less, default) | **full** (Vetta Serv) |
-|---|---|---|
-| Flag | nothing to set | `VETTA_CLOUD_ENABLED=true` |
-| Account login / OAuth | not in the bundle | ✅ |
-| Subscription / credits / quota | not in the bundle | ✅ |
-| Marketplace | a GitHub repository you choose | served by Vetta Serv |
-| Remote model catalog | ❌ | ✅ |
-| `VETTA_SERVER_URL` | not needed | required |
-
-Both modes give you local sessions, the coding agent, plugins, themes, BYOK models, the IM
-gateway and the knowledge base. The flag is applied **at build time** and folded away as a
-constant — a lite build does not contain the cloud code at all, and cannot be switched back on
-at runtime.
-
-**→ [Build Modes and Environment Variables](docs/desktop/build-modes.en.md)** ([中文](docs/desktop/build-modes.md))
-— the full comparison, every environment variable, secrets handling and CI setup.
-
-### Developing the Desktop App
-
-Note that `bun run dev` **at the repository root** starts watch-mode compilation of the core
-libraries (`ai`, `agent`, `coding-agent`) — it does not launch the app. The desktop app is
-started from its own workspace:
-
-```bash
+git clone https://github.com/openvetta/open-vetta.git
+cd open-vetta
+git switch dev
+bun install
 cd apps/desktop
-bun run dev            # renderer (Vite) + theme dev server + Electron, all in one
+bun run dev
 ```
 
-Three variants differ only in **which data directory the running app uses**:
+The development app uses `~/.vetta-dev` by default, keeping installed-app data in `~/.vetta` untouched. Root-level `bun run dev` watches core libraries; it does not launch Electron. See [`QUICKSTART.md`](QUICKSTART.md) for the complete setup and validation commands.
 
-| Command | Data root | Use it when |
-|---------|-----------|-------------|
-| `bun run dev` | `~/.vetta-dev` | Default. A sandbox — your real sessions, skills and plugins are untouched |
-| `bun run dev:isolated` | `~/.vetta-dev` | Identical to `dev`, just spelled out explicitly |
-| `bun run dev:home` | `~/.vetta` | You want the dev build to read and write your **real** data, as the installed app does |
+## What you can do
 
-The data root is `~/$VETTA_CONFIG_DIR`; the dev launcher defaults that variable to `.vetta-dev`,
-while the installed app uses `.vetta`. Electron's own `userData` follows along, at
-`<data root>/electron-user-data`, so `dev:home` still keeps window state separate from the
-installed app.
+- **Work in projects and sessions.** Keep task history, files, context, artifacts, and execution details together.
+- **Use local and external tools.** Run commands, inspect files, connect MCP services, and approve sensitive operations explicitly.
+- **Handle professional artifacts.** Preview and work with source code, PDF, Office files, spreadsheets, images, audio, video, SVG, and generated UI.
+- **Scale a proven task.** Run the same workflow across directories with batch tasks, or schedule it as an automation.
+- **Reuse organizational knowledge.** Build local knowledge bases and install reusable skills or scenarios.
+- **Keep working away from the desk.** Use supported IM bridges, webhooks, notifications, quick entry, and native desktop integrations.
 
-### Production Builds
+The public documentation has the current task guides and screenshots: [browse all product capabilities](https://docs.openvetta.com/product/overview/).
 
-Run these from `apps/desktop`. `pack` stops at an unpacked directory (fast, good for smoke
-tests); `dist:*` produces real installers.
+## Extension model
 
-```bash
-bun run pack                 # unpacked build for the current platform
-bun run dist:mac             # .dmg / .zip      (dist:mac:arm64, dist:mac:x64)
-bun run dist:win             # Inno installer   (dist:win:inno, :portable, :zip)
-bun run dist:linux           # AppImage/deb/rpm (dist:linux:appimage, :deb, :rpm, :tar.gz)
-```
+Vetta exposes several extension levels so a simple workflow does not need to become a full plugin:
 
-Build configuration comes from `.env.<mode>`, selected with `VETTA_BUILD_ENV`:
+| Extension | Use it for | Guide |
+|---|---|---|
+| **Skill** | Teach the agent a repeatable method or domain workflow. | [Abilities](https://docs.openvetta.com/product/abilities/) |
+| **MCP** | Connect external tools and data over a standard protocol. | [MCP connectors](https://docs.openvetta.com/product/mcp/) |
+| **Plugin** | Extend the desktop UI, files, messages, tools, and host actions. | [Plugin development](https://docs.openvetta.com/plugins/overview/) |
+| **Theme** | Replace the visual system and provide theme-specific pages. | [Theme development](https://docs.openvetta.com/themes/overview/) |
+| **SDK / RPC / CLI** | Embed or drive the agent from another application or process. | [Developer paths](https://docs.openvetta.com/developers/overview/) |
 
-```bash
-VETTA_BUILD_ENV=production bun run dist:mac   # reads apps/desktop/.env.production
-bun run dist:win:test                         # shorthand for VETTA_BUILD_ENV=test
-```
+Plugins declare capabilities in `plugin.json`; privileged operations are authorized by the host and checked again at runtime. Plugins run inside the desktop renderer and should be treated as curated code, not as an arbitrary-code sandbox. Read the [plugin trust and permission model](https://docs.openvetta.com/plugins/manifest-and-permissions/) before distributing one.
 
-No `.env.*` file is tracked in git — copy `apps/desktop/.env.example` and fill in what you need.
-To produce a **full** build, that file is where `VETTA_CLOUD_ENABLED=true` and `VETTA_SERVER_URL`
-go; see [Build Modes](docs/desktop/build-modes.en.md).
+## Data and build modes
 
-The IM bridge gateway (Go):
+A source checkout produces the **lite** build by default. It has no dependency on a Vetta-operated backend: no account, subscription, remote administration, or hosted marketplace is required. Model requests go to the endpoint you configure, and credentials remain in local credential storage.
 
-```bash
-cd apps/im-gateway && make build
-```
+Official installers may enable the optional Vetta Serv integration for accounts, subscriptions, and a hosted marketplace. That integration is selected at build time; it is not silently enabled in a lite build.
 
----
+Local-first does not mean zero network traffic. Model providers, MCP servers, plugins, webhooks, IM integrations, update sources, and optional telemetry can each create their own data boundary. Review:
 
-## Architecture
+- [Security and data boundaries](https://docs.openvetta.com/reference/security-and-data/)
+- [Configuration paths](https://docs.openvetta.com/reference/configuration-paths/)
+- [Build modes and environment variables](docs/desktop/build-modes.en.md)
+- [Security policy](SECURITY.md)
 
-The monorepo has four layers, with dependencies pointing one way:
-**apps → runtime-\* → coding-agent / agent / ai**. The core libraries know nothing about
-their host, which is why the same core runs inside Electron and in a terminal alike.
+## Repository map
 
-### Apps
+This is a Bun/TypeScript monorepo with additional Kotlin and Go applications. Dependencies point from applications toward reusable packages; `packages/*` never depend on `apps/*`.
 
-| Package | Role | Stack |
-|---------|------|-------|
-| [desktop](apps/desktop) | Electron desktop host, home to everything above | Electron · React · Vite · Jotai · TanStack Router · shadcn/ui · Tailwind v4 |
-| [coding-agent](packages/coding-agent) | Coding agent core, with interactive / print-JSON / RPC / SDK modes | TypeScript |
-| [cli-host](apps/cli-host) | A pure CLI wrapper around coding-agent | TypeScript |
-| [im-gateway](apps/im-gateway) | IM bridge sidecar, talking to the desktop main process over NDJSON IPC | Go |
-| [mobile](apps/mobile) | Android client | Kotlin Multiplatform |
-| [docs-site](apps/docs-site) | The documentation site — community contributions welcome | Next.js |
-
-### Core Libraries
-
-| Package | Owns | Does not own |
-|---------|------|--------------|
-| [ai](packages/ai) | Multi-provider LLM API, model registry, provider adapters, token and cost accounting | Agent loop, UI, session persistence |
-| [agent](packages/agent) | Stateful agent loop, tool calls, event stream | Terminal/desktop UI, business rules |
-| [ui](packages/ui) · [theme-ui](packages/theme-ui) · [theme-sdk](packages/theme-sdk) | Reusable UI primitives, theme view layer and theme SDK | Host lifecycle |
-
-### Runtime Layer
-
-Adapter packages shared by host apps: [runtime-core](packages/runtime-core) (`RuntimeHost` and
-the session facade), [runtime-tools](packages/runtime-tools) (built-in tool re-exports),
-[runtime-storage](packages/runtime-storage) (session and settings storage),
-[runtime-mcp](packages/runtime-mcp) (MCP manager bindings), and
-[runtime-telemetry](packages/runtime-telemetry) (local logging abstraction — disk only).
-
-### Layout
-
-```
-open-vetta/
-├── apps/
-│   ├── desktop · cli-host                          # Electron host and CLI
-│   ├── im-gateway                                  # IM bridge (Go)
-│   ├── mobile                                      # Android (Kotlin Multiplatform)
-│   └── docs-site                                   # documentation site (Next.js)
-├── packages/
-│   ├── ai · agent · coding-agent                   # core libraries
-│   ├── runtime-core · runtime-tools · runtime-mcp · runtime-storage · runtime-telemetry
-│   ├── ui · theme-ui · theme-sdk · markdown        # UI and theming
-│   ├── plugins · themes · skill-presets            # extension ecosystem
-│   └── capability-sdk · capability-runtime         # capability and permission layer
-├── docs/                                           # architecture docs and ADRs
-├── scripts/                                        # build, release and quality guards
-├── AGENTS.md                                       # development and AI collaboration rules
-└── CONTEXT.md                                      # domain glossary
-```
-
----
-
-## Model Configuration (BYOK)
-
-The client ships a preset provider catalog (Claude, OpenAI, DeepSeek, Z.ai (GLM), Kimi, Gemini,
-Grok, Qwen) containing **only `baseUrl` and API type — no keys**. Once you add your own key:
-
-- it immediately queries that provider's `/models` for what your account can actually use,
-  then re-syncs in the background every 12 hours;
-- pricing and capability metadata are filled in from the public [models.dev](https://models.dev)
-  catalog, with a bundled snapshot as fallback;
-- requests go straight to the provider. This app does not proxy, relay, or bill.
-
-Any OpenAI-compatible endpoint works too, including local inference via Ollama, vLLM or LM Studio.
-Background in [ADR-0050](docs/adr/0050-preset-providers-move-client-side-with-dynamic-model-lists.md).
-
----
-
-## Marketplace
-
-Capabilities — skills, MCP servers, plugins and bundles — come from **GitHub repository archives**:
-the client downloads the repo tarball, reads `.vetta/marketplace.json` inside it, and does all
-searching and filtering against the local snapshot. Add as many sources as you like, or none.
-
-Manifest format in [docs/open-marketplace.md](docs/open-marketplace.md); the unified model is
-described in [ADR-0049](docs/adr/0049-abilities-unify-storage-and-presentation-not-installation.md).
-
-The above is how a `lite` build works. A full build serves its marketplace from Vetta Serv and
-does not bundle a GitHub source, so that the same ability never arrives through two channels with
-disagreeing versions — you can still add GitHub sources by hand there.
-
-MCP configuration example:
-
-```jsonc
-// ~/.vetta/agent/mcp.json
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/directory"]
-    }
-  }
-}
-```
-
-Use `/mcp` in interactive mode to check status. Details in
-[packages/coding-agent/docs/MCP.md](packages/coding-agent/docs/MCP.md).
-
----
-
-## Network Behavior
-
-The app makes network requests only in the following cases, all of them driven by your configuration:
-
-| Purpose | Destination | Can it be turned off |
-|---------|-------------|----------------------|
-| LLM inference | The provider you configured | Doesn't happen without a key |
-| Model metadata | The public `models.dev` catalog | Falls back to the bundled snapshot |
-| Marketplace | GitHub repositories you added | Doesn't happen without a source |
-| Portable runtime download | Official Node / Python distributions (regional mirrors preferred) | Skipped if a system runtime is available |
-| Automatic updates | `VETTA_UPDATE_URL` or GitHub Releases, as you configure | Not checked if unconfigured |
-| MCP / plugins / IM / webhooks | Determined by the extensions you install and the credentials you enter | Doesn't happen if not installed |
-| Error and product analytics | Sentry / PostHog, only if a DSN or project key was set at build time | Absent from the binary when unconfigured |
-
-**Telemetry is opt-in at build time.** The Sentry and PostHog integrations are no-ops unless a
-DSN / project key is supplied when building — a build with none configured reports nothing at all,
-which is what you get from a source build. Our official installers are built with them
-configured; if that matters to you, build from source.
-
----
-
-## Community
-
-The project is maintained. Questions, ideas, and “is this still developed?” belong in
-[Discussions](https://github.com/openvetta/open-vetta/discussions), not a blank issue.
-
-| Channel | Use it for |
+| Area | Responsibility |
 |---|---|
-| [Discussions](https://github.com/openvetta/open-vetta/discussions) | Q&A, ideas, show and tell, announcements |
-| [Issues](https://github.com/openvetta/open-vetta/issues/new/choose) | Reproducible bugs and concrete feature requests |
-| [Security advisories](https://github.com/openvetta/open-vetta/security/advisories/new) | Private vulnerability reports — never a public issue |
-| [docs.openvetta.com](https://docs.openvetta.com) | Product and plugin documentation |
+| [`apps/desktop`](apps/desktop) | Electron desktop host and renderer |
+| [`apps/cli-host`](apps/cli-host) | CLI host for the coding agent |
+| [`apps/docs-site`](apps/docs-site) | Next.js documentation site published at `docs.openvetta.com` |
+| [`apps/mobile`](apps/mobile) | Kotlin Multiplatform Android client |
+| [`apps/im-gateway`](apps/im-gateway) | Go IM sidecar gateway |
+| [`packages/ai`](packages/ai) · [`packages/agent`](packages/agent) | Provider abstraction and the agent loop |
+| [`packages/coding-agent`](packages/coding-agent) · `packages/runtime-*` | Product composition, runtime contracts, tools, storage, MCP, and host adapters |
+| [`packages/plugins`](packages/plugins) · [`packages/themes`](packages/themes) | Extension SDKs, presets, and themes |
 
-## Contributing
+Architecture details and public integration contracts live in the [developer documentation](https://docs.openvetta.com/developers/architecture/) and [`docs/adr/`](docs/adr/).
 
-The highest-leverage contributions are usually one folder. Pick a row and open a PR against **`dev`**.
+## Develop and contribute
 
-| Want to ship… | Start here |
-|---|---|
-| A plugin | [`docs/plugin/getting-started.md`](docs/plugin/getting-started.md) |
-| A skill or marketplace ability | [`docs/open-marketplace.md`](docs/open-marketplace.md) |
-| A theme | [Theme guide](https://docs.openvetta.com/themes/getting-started/) |
-| Docs or translation | [`apps/docs-site/content/docs/`](apps/docs-site/content/docs/) |
-| A bug fix or product change | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+Use Bun and the repository scripts; do not run bare `bun test` in this monorepo.
 
 ```bash
-bun run check:quick        # Biome + architecture guards on changed files
-bun run check              # lint + types + guards (required before a PR)
-bun run test:pkg ai        # one package; test:pkg --list shows names
-bun run test:changed       # only packages touched by your diff
+bun run check:quick              # changed-file lint and architecture guards
+bun run check                    # full lint, types, and architecture guards
+bun run test:pkg <package-name>  # focused package tests
+bun run test:changed             # tests affected by the current diff
 ```
 
-Setup, the PR bar, and what we will not merge: [CONTRIBUTING.md](CONTRIBUTING.md)
-([中文](CONTRIBUTING.zh-CN.md)). Agent and package-boundary rules: [AGENTS.md](AGENTS.md).
-Quality gates: [docs/dev/quality-gates.md](docs/dev/quality-gates.md).
+Pull requests target the **`dev`** branch. The contribution map, test expectations, and review bar are in [`CONTRIBUTING.md`](CONTRIBUTING.md). Architecture and Agent collaboration rules are in [`AGENTS.md`](AGENTS.md).
 
-### Versioning and Releases
+Questions and early ideas belong in [GitHub Discussions](https://github.com/openvetta/open-vetta/discussions). Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/openvetta/open-vetta/security/advisories/new).
 
-All packages share one version (lockstep), sourced from `@vetta/coding-agent`. There are no
-major releases:
+## Documentation
 
-```bash
-bun run release:patch    # fixes and new features
-bun run release:minor    # API breaking changes
-```
+- [User and product guides](https://docs.openvetta.com/product/overview/)
+- [Plugin development](https://docs.openvetta.com/plugins/overview/)
+- [Theme development](https://docs.openvetta.com/themes/overview/)
+- [SDK, RPC, CLI, and architecture](https://docs.openvetta.com/developers/overview/)
+- [Troubleshooting](https://docs.openvetta.com/troubleshooting/)
+- [`QUICKSTART.md`](QUICKSTART.md) for repository setup
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) for contributions
+- [`docs/adr/`](docs/adr/) for architecture decisions
 
-Each package keeps its own `CHANGELOG.md` (under `apps/*` or `packages/*`). New entries go under `## [Unreleased]`;
-released sections are never edited.
+The documentation site also publishes [`llms.txt`](https://docs.openvetta.com/llms.txt), [`llms-full.txt`](https://docs.openvetta.com/llms-full.txt), and a Markdown representation of each page for Agent consumption.
 
-### Documentation
+## Credits and license
 
-- [QUICKSTART.md](QUICKSTART.md) — clone, run the desktop app, run the docs site
-- [CONTRIBUTING.md](CONTRIBUTING.md) — contribution map and PR bar
-- [SECURITY.md](SECURITY.md) — private vulnerability reporting
-- [docs.openvetta.com](https://docs.openvetta.com) — public product and plugin docs
-- [docs/plugin/README.md](docs/plugin/README.md) — plugin developer handbook (11 documents)
-- [docs/adr/](docs/adr) — architecture decision records
-- [docs/capabilities/README.md](docs/capabilities/README.md) — foundation/domain capabilities and the permission layer
-- [docs/open-marketplace.md](docs/open-marketplace.md) — open marketplace manifest format
-- [docs/desktop/README.md](docs/desktop/README.md) — desktop packaging and the auto-update path
-- [docs/desktop/build-modes.en.md](docs/desktop/build-modes.en.md) — build modes and every environment variable
-- [docs/adr/README.md](docs/adr/README.md) — how ADR numbering works, including the deliberate gaps
-- [CONTEXT.md](CONTEXT.md) — domain glossary (check existing naming before writing code)
+Open Vetta builds on work from the wider open-source ecosystem, including pi, Codex CLI, MCP, Electron, React, Bun, models.dev, and the projects listed in [`NOTICE`](NOTICE). The complete third-party inventory and original notices live there.
 
----
-
-## Credits
-
-This project stands on a good deal of other people's work. The following go directly into the
-code or the distributed artifacts:
-
-| Project | Where it's used | License |
-|---------|-----------------|---------|
-| [pi](https://github.com/badlogic/pi-mono) · Mario Zechner | `ai` / `agent` / `coding-agent` / `ecosystem-adapter` were rewritten and iterated on top of it; the agent loop, provider abstraction and extension mechanism trace back here | MIT |
-| [Codex CLI](https://github.com/openai/codex) · OpenAI | The execution sandbox design draws on theirs; on Windows we ship their sandbox host binary directly | Apache-2.0 |
-| [bubblewrap](https://github.com/containers/bubblewrap) | The Linux sandbox backend, distributed with the installer | LGPL-2.0+ |
-| [PP-OCRv5](https://github.com/PaddlePaddle/PaddleOCR) · PaddlePaddle | Detection and recognition models for offline PDF OCR | Apache-2.0 |
-| [python-build-standalone](https://github.com/astral-sh/python-build-standalone) · Astral | Distribution source for the portable Python runtime | See upstream |
-| [Node.js](https://nodejs.org) | Distribution source for the portable Node runtime | MIT |
-| [Cowart](https://github.com/zhongerxin/Cowart) | `plugins/externals/cowart-vetta` is adapted from it. That plugin lives in `externals/` and is **not bundled with the app** — it exists as a source example only | See upstream |
-
-We're likewise indebted to the [Model Context Protocol](https://modelcontextprotocol.io)
-specification, the public model catalog at [models.dev](https://models.dev), and to Electron,
-React, Vite, Tailwind CSS, shadcn/ui, Jotai, TanStack Router, Biome and Bun.
-
-The complete third-party inventory and original copyright notices are in [NOTICE](NOTICE).
-
-## License
-
-[Apache-2.0](LICENSE).
+Licensed under [Apache-2.0](LICENSE).

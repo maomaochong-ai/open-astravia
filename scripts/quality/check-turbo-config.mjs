@@ -25,6 +25,7 @@ export function findTurboConfigurationProblems({
 	workspacePackages,
 	desktopManifest,
 	vercelConfig,
+	vercelIgnore,
 }) {
 	const problems = [];
 	const build = turboConfig.tasks?.build ?? {};
@@ -122,11 +123,18 @@ export function findTurboConfigurationProblems({
 	if (!vercelConfig.buildCommand?.includes("build:docs")) {
 		problems.push("Vercel docs build 必须复用 root#build:docs");
 	}
-	if (!vercelConfig.ignoreCommand?.includes("bunx turbo query affected")) {
-		problems.push("Vercel docs ignoreCommand 必须使用固定版本 Turbo 的 query affected");
+	if (vercelConfig.ignoreCommand !== undefined) {
+		problems.push("Vercel docs 不得配置依赖已排除 Git 历史的 ignoreCommand");
 	}
-	if (vercelConfig.ignoreCommand?.includes("turbo-ignore")) {
-		problems.push("Vercel docs 不得继续使用已弃用的 turbo-ignore");
+	const vercelIgnoreRules = vercelIgnore
+		.split(/\r?\n/u)
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0 && !line.startsWith("#"));
+	if (vercelIgnoreRules.includes("docs")) {
+		problems.push(".vercelignore 不得用未锚定的 docs 排除文档站内容源");
+	}
+	if (!vercelIgnoreRules.includes("/docs")) {
+		problems.push(".vercelignore 必须用 /docs 仅排除仓库根内部文档");
 	}
 
 	return problems;
@@ -139,6 +147,7 @@ export function readTurboConfiguration(root = repoRoot) {
 		workspacePackages: WORKSPACE_PACKAGES,
 		desktopManifest: JSON.parse(readFileSync(join(root, "apps/desktop/package.json"), "utf8")),
 		vercelConfig: JSON.parse(readFileSync(join(root, "apps/docs-site/vercel.json"), "utf8")),
+		vercelIgnore: readFileSync(join(root, ".vercelignore"), "utf8"),
 	};
 }
 
