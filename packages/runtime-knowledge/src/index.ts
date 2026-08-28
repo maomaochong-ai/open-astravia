@@ -43,7 +43,7 @@ export {
 	rebuildAllCaches,
 	reconcileRoundFailures,
 } from "./processing/ingest-round.js";
-export { buildProcessingPrompt, KB_PROCESSING_GUIDE } from "./processing/processing-prompt.js";
+export { buildProcessingPrompt } from "./processing/processing-prompt.js";
 export { type FilteredPage, listAvailableTags, queryByTags, type TagCount } from "./query/knowledge-query.js";
 export {
 	deleteWikiPage,

@@ -1,4 +1,5 @@
 import type { SubagentCoordinatorPort } from "@vetta/runtime-subagents";
+import type { CodingAgentWorkflowDispatcherPort } from "../../runtime-contracts/index.js";
 import {
 	CODING_AGENT_MODEL_TOOL_ORDER,
 	CODING_AGENT_SUBAGENT_MODEL_TOOL_ORDER_STEP,
@@ -16,13 +17,14 @@ import {
 /** 组装 Coding Agent 工具顺序；协议归 @vetta/runtime-tools，Node 实现归 @vetta/runtime-node。 */
 export function createCodingAgentSubagentRuntimeToolRegistrations(
 	getCoordinator: () => SubagentCoordinatorPort | undefined,
+	getWorkflowDispatcher: () => CodingAgentWorkflowDispatcherPort | undefined,
 	workflowTypeId = "workflow",
 ) {
 	const order = (index: number) =>
 		CODING_AGENT_MODEL_TOOL_ORDER.subagentStart + index * CODING_AGENT_SUBAGENT_MODEL_TOOL_ORDER_STEP;
 	return [
 		createSpawnAgentToolRegistration({ getCoordinator, modelOrder: order(0) }),
-		createDispatchWorkflowsToolRegistration({ getCoordinator, workflowTypeId, modelOrder: order(1) }),
+		createDispatchWorkflowsToolRegistration({ getWorkflowDispatcher, workflowTypeId, modelOrder: order(1) }),
 		createWaitAgentToolRegistration({ getCoordinator, workflowTypeId, modelOrder: order(2) }),
 		createListAgentsToolRegistration({ getCoordinator, modelOrder: order(3) }),
 		createInterruptAgentToolRegistration({ getCoordinator, modelOrder: order(4) }),

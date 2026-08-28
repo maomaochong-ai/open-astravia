@@ -37,4 +37,10 @@ export type {
 	CodingAgentPromptSettingsSource,
 	CodingAgentSystemPromptOptionsResolver,
 } from "./prompt-runtime.js";
+export type {
+	CodingAgentSubagentSnapshot,
+	CodingAgentSubagentTodoProgress,
+	CodingAgentWorkflowDispatcherPort,
+	CodingAgentWorkflowDispatchRequest,
+} from "./subagent-runtime.js";
 export type { CodingAgentRuntimeToolRegistration } from "./tool-runtime.js";

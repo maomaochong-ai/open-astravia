@@ -522,8 +522,6 @@ export interface SubagentInfo {
 	finalText?: string;
 	errorMessage?: string;
 	generation: number;
-	/** Workflow children mirror their todo progress (display only). */
-	todoProgress?: { done: number; total: number };
 	/** Human-readable one-line summary for UI display. */
 	title?: string;
 	/** Aggregate child usage when the producing host supports it. Optional for replay compatibility. */

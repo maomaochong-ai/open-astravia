@@ -4,7 +4,10 @@ import {
 	createCodingAgentRuntimeExtensionObservationAdapter,
 	projectCodingAgentRuntimeMessages,
 } from "@vetta/coding-agent/runtime";
-import { readCodingAgentTodoObservation } from "@vetta/coding-agent/session-extensions";
+import {
+	readCodingAgentSubagentsObservation,
+	readCodingAgentTodoObservation,
+} from "@vetta/coding-agent/session-extensions";
 import type { RuntimeHostSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
 
 interface PrintSessionHost {
@@ -98,6 +101,8 @@ export function mapSupplementalSessionEvent(event: SessionEvent): unknown | unde
 				...(event.errorMessage ? { errorMessage: event.errorMessage } : {}),
 			};
 		case "session.extension": {
+			const agents = readCodingAgentSubagentsObservation(event);
+			if (agents) return { type: "subagents_update", agents };
 			const items = readCodingAgentTodoObservation(event);
 			return items ? { type: "todo_update", items } : undefined;
 		}

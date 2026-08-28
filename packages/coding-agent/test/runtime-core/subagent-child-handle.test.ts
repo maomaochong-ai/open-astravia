@@ -23,16 +23,19 @@ describe("Coding Agent Subagent child handle", () => {
 			abort: async () => {},
 			dispose: async () => {},
 		} as unknown as RuntimeSession;
+		const onTodoItemsChanged = vi.fn();
 		const handle = createCodingAgentSubagentChildHandle({
 			session,
 			appendContext: () => {},
 			deliverContext: async () => {},
 			disposeComposition: async () => {},
+			onTodoItemsChanged,
 		});
 
-		expect(handle.getTodoProgress?.()).toEqual({ done: 1, total: 2 });
-		const progress = vi.fn();
-		const unsubscribe = handle.subscribeTodos?.(progress);
+		expect(onTodoItemsChanged).toHaveBeenCalledWith([
+			{ id: 1, content: "inspect", status: "done" },
+			{ id: 2, content: "change", status: "pending" },
+		]);
 		for (const listener of listeners) {
 			listener({
 				type: "session.extension",
@@ -50,8 +53,11 @@ describe("Coding Agent Subagent child handle", () => {
 			});
 		}
 
-		expect(progress).toHaveBeenCalledWith({ done: 2, total: 2 });
-		unsubscribe?.();
+		expect(onTodoItemsChanged).toHaveBeenLastCalledWith([
+			{ id: 1, content: "inspect", status: "done" },
+			{ id: 2, content: "change", status: "done" },
+		]);
+		void handle.dispose();
 		expect(listeners).toHaveLength(0);
 	});
 });

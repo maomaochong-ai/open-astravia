@@ -1,4 +1,8 @@
 export {
+	CODING_AGENT_SUBAGENTS_OBSERVATION,
+	readCodingAgentSubagentsObservation,
+} from "../composition/subagent/subagent-session-extension-contract.js";
+export {
 	CODING_AGENT_BACKGROUND_TASK_KILL,
 	CODING_AGENT_BACKGROUND_TASKS_CLEAR_FINISHED,
 	CODING_AGENT_BACKGROUND_TASKS_READ,
@@ -22,3 +26,7 @@ export {
 	CODING_AGENT_PLUGIN_CONFIGURATION_APPLY,
 	CODING_AGENT_PLUGIN_CONFIGURATION_REFRESH,
 } from "../plugins/runtime/plugin-configuration-session-extension-contract.js";
+export type {
+	CodingAgentSubagentSnapshot,
+	CodingAgentSubagentTodoProgress,
+} from "./sdk/subagent-contract.js";

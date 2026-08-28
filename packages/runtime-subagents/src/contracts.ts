@@ -2,11 +2,6 @@ export type SubagentTypeId = string;
 
 export type SubagentStatus = "queued" | "pending" | "running" | "completed" | "failed" | "interrupted";
 
-export interface SubagentTodoProgress {
-	readonly done: number;
-	readonly total: number;
-}
-
 export interface SubagentUsageSnapshot {
 	readonly input: number;
 	readonly output: number;
@@ -30,7 +25,6 @@ export interface SubagentSnapshot {
 	readonly errorMessage?: string;
 	readonly usage: SubagentUsageSnapshot;
 	readonly generation: number;
-	readonly todoProgress?: SubagentTodoProgress;
 	readonly title?: string;
 	/** Automatic parent notification policy for this generation. */
 	readonly deliveryMode?: "terminal" | "batch";
@@ -42,7 +36,6 @@ export interface SubagentSpawnRequest {
 	readonly taskName: string;
 	readonly message: string;
 	readonly agentType: SubagentTypeId;
-	readonly todos?: readonly string[];
 	readonly title?: string;
 	readonly deliveryMode?: "terminal" | "batch";
 	readonly batchId?: string;
@@ -78,9 +71,6 @@ export interface SubagentChildHandle {
 	readUsage?(): SubagentUsageSnapshot;
 	dispose(): void | Promise<void>;
 	subscribe(listener: (event: SubagentChildEvent) => void): () => void;
-	setTodos?(contents: readonly string[]): void;
-	getTodoProgress?(): SubagentTodoProgress;
-	subscribeTodos?(listener: (progress: SubagentTodoProgress) => void): () => void;
 }
 
 export interface SubagentChildFactory<TProfile = unknown> {

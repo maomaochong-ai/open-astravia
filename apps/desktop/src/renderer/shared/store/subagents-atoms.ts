@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 
-/** Mirrors runtime-core SubagentInfo / coding-agent SubagentSnapshot. */
+/** Mirrors the validated Coding Agent subagent Session Extension snapshot. */
 export interface SubagentTask {
 	id: string;
 	taskName: string;

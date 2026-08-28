@@ -18,11 +18,15 @@ import {
 	renderSubagentTaskContract,
 	WORKFLOW_NO_WAIT_TEXT,
 } from "../../src/composition/subagent/tools/index.js";
+import type {
+	CodingAgentSubagentSnapshot,
+	CodingAgentWorkflowDispatchRequest,
+} from "../../src/runtime-contracts/index.js";
 
 describe("subagent control runtime tools", () => {
 	it("preserves the seven tool names, scopes, categories, schemas and stable order", () => {
 		const fixture = createCoordinatorFixture();
-		const registrations = createRegistrations(fixture.port);
+		const registrations = createRegistrations(fixture.port, fixture.dispatchWorkflows);
 
 		expect(registrations.map(({ tool }) => tool.name)).toEqual([
 			"spawn_agent",
@@ -68,7 +72,7 @@ describe("subagent control runtime tools", () => {
 
 	it("spawns and dispatches through the coordinator port without changing results", async () => {
 		const fixture = createCoordinatorFixture();
-		const [spawn, dispatch] = createRegistrations(fixture.port);
+		const [spawn, dispatch] = createRegistrations(fixture.port, fixture.dispatchWorkflows);
 		const task = detailedTask("Inspect the runtime contracts.");
 
 		const spawnResult = await execute(spawn.tool, {
@@ -105,7 +109,7 @@ describe("subagent control runtime tools", () => {
 				},
 			],
 		});
-		expect(fixture.spawnMany).toHaveBeenCalledWith([
+		expect(fixture.dispatchWorkflows).toHaveBeenCalledWith([
 			{
 				taskName: "refactor_api",
 				title: "Refactor API",
@@ -130,7 +134,7 @@ describe("subagent control runtime tools", () => {
 
 	it("lists, interrupts, messages and follows up through the coordinator port", async () => {
 		const fixture = createCoordinatorFixture();
-		const registrations = createRegistrations(fixture.port);
+		const registrations = createRegistrations(fixture.port, fixture.dispatchWorkflows);
 		fixture.listed = [snapshot("inspect", "explorer", "running")];
 
 		const listResult = await execute(registrations[3].tool, {});
@@ -166,7 +170,7 @@ describe("subagent control runtime tools", () => {
 
 	it("caps workflow-only waits and preserves terminal result formatting", async () => {
 		const fixture = createCoordinatorFixture();
-		const wait = createRegistrations(fixture.port)[2];
+		const wait = createRegistrations(fixture.port, fixture.dispatchWorkflows)[2];
 		fixture.listed = [snapshot("flow", "workflow", "running")];
 		fixture.waitResult = { timedOut: true, agents: [] };
 
@@ -193,11 +197,20 @@ describe("subagent control runtime tools", () => {
 	});
 });
 
-function createRegistrations(port: SubagentCoordinatorPort) {
+function createRegistrations(
+	port: SubagentCoordinatorPort,
+	dispatchWorkflows: (
+		requests: readonly CodingAgentWorkflowDispatchRequest[],
+	) => readonly CodingAgentSubagentSnapshot[],
+) {
 	const getCoordinator = () => port;
 	return [
 		createSpawnAgentToolRegistration({ getCoordinator, modelOrder: 2500 }),
-		createDispatchWorkflowsToolRegistration({ getCoordinator, workflowTypeId: "workflow", modelOrder: 2600 }),
+		createDispatchWorkflowsToolRegistration({
+			getWorkflowDispatcher: () => ({ dispatchWorkflows }),
+			workflowTypeId: "workflow",
+			modelOrder: 2600,
+		}),
 		createWaitAgentToolRegistration({ getCoordinator, workflowTypeId: "workflow", modelOrder: 2700 }),
 		createListAgentsToolRegistration({ getCoordinator, modelOrder: 2800 }),
 		createInterruptAgentToolRegistration({ getCoordinator, modelOrder: 2900 }),
@@ -211,10 +224,13 @@ function createCoordinatorFixture() {
 		snapshot(request.taskName, request.agentType, "running"),
 	);
 	const spawnMany = vi.fn((requests: readonly SubagentSpawnRequest[]) =>
+		requests.map((request) => ({ ...snapshot(request.taskName, request.agentType, "queued"), id: "workflow-1" })),
+	);
+	const dispatchWorkflows = vi.fn((requests: readonly CodingAgentWorkflowDispatchRequest[]) =>
 		requests.map((request) => ({
 			...snapshot(request.taskName, request.agentType, "queued"),
 			id: "workflow-1",
-			todoProgress: request.todos ? { done: 0, total: request.todos.length } : undefined,
+			todoProgress: { done: 0, total: request.todos.length },
 		})),
 	);
 	const interrupt = vi.fn((target: string) => ({ ...snapshot(target, "explorer", "interrupted") }));
@@ -226,6 +242,7 @@ function createCoordinatorFixture() {
 		waitResult: SubagentWaitResult;
 		readonly spawn: typeof spawn;
 		readonly spawnMany: typeof spawnMany;
+		readonly dispatchWorkflows: typeof dispatchWorkflows;
 		readonly interrupt: typeof interrupt;
 		readonly sendMessage: typeof sendMessage;
 		readonly followUp: typeof followUp;
@@ -236,6 +253,7 @@ function createCoordinatorFixture() {
 		waitResult: { timedOut: false, agents: [] },
 		spawn,
 		spawnMany,
+		dispatchWorkflows,
 		interrupt,
 		sendMessage,
 		followUp,

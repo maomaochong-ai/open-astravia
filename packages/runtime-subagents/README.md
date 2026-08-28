@@ -16,6 +16,7 @@
 - 不加载模型、Tool、MCP、Skill、知识库或上下文；
 - 不持久化 Conversation；
 - 不定义 `explorer`、`workflow` 等产品 Profile；
+- 不认识 Todo 等产品 Session Extension 的初始化、订阅或投影字段；
 - 不生成包含具体工具名的模型可见提示文本。
 
 上述能力由产品组合层和对应 Runtime 包实现。`runtime-subagents` 通过

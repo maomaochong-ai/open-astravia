@@ -7,6 +7,10 @@
 
 ### Changed
 
+- Subagent Todo 改为 Coding Agent 自有的 Session Extension 投影：Workflow 调度端口、Child 初始化与实时 observation、
+  恢复持久化和宿主事件校验均停留在产品层；通用 Runtime 只处理产品无关的子代理生命周期快照。
+- Knowledge Processing 的模型工作指南迁入 Coding Agent Knowledge Feature，`runtime-knowledge` 只保留差异、路径与
+  批次任务数据构造，不再硬编码 `todo` 工具协议。
 - 公共 `CodingAgentHost` 的合同文档明确为 SDK 的隔离产品 Session 所有权组，而不是第二套多主 Agent Host；每个成员
   继续允许独立 cwd、Storage、Tool/MCP/Extension Source 与模型资源。SDK Session 现在把 Composition 子 Hub 的
   Publisher 同时注入内部 RuntimeHost 与活动 Session 切换器，使 Runtime、Agent 和 Coding 产品失败进入同一观测树；

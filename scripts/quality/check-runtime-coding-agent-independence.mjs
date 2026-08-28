@@ -24,6 +24,12 @@ const DEPENDENCY_SECTIONS = Object.freeze([
 	"optionalDependencies",
 	"peerDependencies",
 ]);
+const FORBIDDEN_PRODUCT_SOURCE_TOKENS = Object.freeze([
+	"KB_PROCESSING_GUIDE",
+	"SubagentTodo",
+	"todo(action=",
+	"todoProgress",
+]);
 
 export function findRuntimeCodingAgentIndependenceViolations(input) {
 	const violations = [];
@@ -35,8 +41,14 @@ export function findRuntimeCodingAgentIndependenceViolations(input) {
 	}
 	for (const file of input.files) {
 		for (const [index, line] of file.text.split(/\r?\n/u).entries()) {
-			if (!line.includes("@vetta/coding-agent")) continue;
-			violations.push(`${file.path}:${index + 1}: Runtime package file depends on @vetta/coding-agent`);
+			if (line.includes("@vetta/coding-agent")) {
+				violations.push(`${file.path}:${index + 1}: Runtime package file depends on @vetta/coding-agent`);
+			}
+			if (!file.path.replaceAll("\\", "/").includes("/src/")) continue;
+			for (const token of FORBIDDEN_PRODUCT_SOURCE_TOKENS) {
+				if (!line.includes(token)) continue;
+				violations.push(`${file.path}:${index + 1}: Runtime source hardcodes product token ${token}`);
+			}
 		}
 	}
 	return violations;

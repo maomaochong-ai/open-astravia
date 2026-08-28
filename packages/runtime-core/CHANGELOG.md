@@ -4,6 +4,10 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- 通用 `SubagentInfo` 不再声明 Coding Agent Todo 进度；产品快照通过对应 Session Extension 合同扩展。
+
 ### Added
 
 - `RuntimeObservationHubView` 现在可创建不取得 Hub 生命周期所有权的 scoped Publisher；新增

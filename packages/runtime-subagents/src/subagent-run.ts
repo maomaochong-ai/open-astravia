@@ -31,7 +31,6 @@ export class SubagentRun<TProfile> {
 	private readonly snapshot;
 	private handle?: SubagentChildHandle;
 	private unsubscribe?: () => void;
-	private todoUnsubscribe?: () => void;
 	private queuedRequest?: SubagentSpawnRequest;
 	private startLifecycleCompleted: boolean;
 	private stopContinuationCount = 0;
@@ -114,8 +113,6 @@ export class SubagentRun<TProfile> {
 			await this.disposeForeignHandle(handle, "dispose child with conflicting identity");
 			throw error;
 		}
-		handle.setTodos?.(request.todos ?? []);
-
 		const lifecycle = await this.options.lifecycle?.beforeStart?.({
 			id: this.snapshot.id,
 			agentType: this.snapshot.agentType,
@@ -247,13 +244,6 @@ export class SubagentRun<TProfile> {
 			}
 			if (event.type === "agent_end") void this.onChildAgentEnd(this.executionEpoch);
 		});
-		if (handle.getTodoProgress) {
-			this.snapshot.todoProgress = handle.getTodoProgress();
-			this.todoUnsubscribe = handle.subscribeTodos?.((progress) => {
-				this.snapshot.todoProgress = { ...progress };
-				this.options.hooks.onChanged();
-			});
-		}
 	}
 
 	private async runPrompt(epoch: number, message: string): Promise<void> {
@@ -352,9 +342,7 @@ export class SubagentRun<TProfile> {
 
 	private detachSubscriptions(): void {
 		this.unsubscribe?.();
-		this.todoUnsubscribe?.();
 		this.unsubscribe = undefined;
-		this.todoUnsubscribe = undefined;
 	}
 
 	private async disposeForeignHandle(handle: SubagentChildHandle, operation: string): Promise<void> {

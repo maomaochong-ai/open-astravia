@@ -9,7 +9,6 @@ import type {
 	RuntimeSessionExecutionObservation,
 	RuntimeSessionInputQueueMode,
 	RuntimeSessionState,
-	RuntimeSubagentSnapshot,
 } from "@vetta/runtime-core";
 import type { TodoItem } from "../../features/todo/contracts.js";
 import type { CodingAgentRetryEvent } from "../../public-api/sdk/sdk-event-contract.js";
@@ -24,6 +23,7 @@ import type {
 	CodingAgentToolInfo,
 } from "../../public-api/sdk/sdk-session-contract.js";
 import type { CodingAgentSessionToolDefinition } from "../../public-api/sdk/sdk-tool-contract.js";
+import type { CodingAgentSubagentSnapshot } from "../../runtime-contracts/index.js";
 
 /** 固定会话适配器依赖的内部能力端口。 */
 export interface CodingAgentSdkSessionCapabilityPort {
@@ -67,8 +67,8 @@ export interface CodingAgentSdkSessionCapabilityPort {
 	readSessionStats(): CodingAgentSessionStats;
 	readContextUsage(): RuntimeSessionContextUsage | undefined;
 	readLastAssistantText(): string | undefined;
-	readSubagents(): readonly RuntimeSubagentSnapshot[];
-	interruptSubagent(target: string): RuntimeSubagentSnapshot | undefined;
+	readSubagents(): readonly CodingAgentSubagentSnapshot[];
+	interruptSubagent(target: string): CodingAgentSubagentSnapshot | undefined;
 	clearFinishedSubagents(): number;
 	readAvailableModels(): Promise<readonly Model<Api>[]>;
 	readSystemPrompt(): string;

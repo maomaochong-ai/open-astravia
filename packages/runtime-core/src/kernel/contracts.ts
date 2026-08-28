@@ -442,7 +442,7 @@ export interface ContinuationMessage {
 /**
  * 单份运行时能力配置独占的自然停止续跑策略。
  *
- * Kernel 不解释 Todo、Plugin 或 Hook 等产品语义；策略只返回需要进入普通
+ * Kernel 不解释具体产品扩展语义；策略只返回需要进入普通
  * follow-up 队列的用户消息。
  */
 export interface ContinuationPolicy {

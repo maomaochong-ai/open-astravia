@@ -83,6 +83,8 @@ export type {
 	CodingAgentSkillSelector,
 	CodingAgentSkillSource,
 	CodingAgentSkillSourceSnapshot,
+	CodingAgentSubagentSnapshot,
+	CodingAgentSubagentTodoProgress,
 	CodingAgentToolCompactionOptions,
 	CodingAgentToolExecutionContext,
 	CodingAgentToolInfo,

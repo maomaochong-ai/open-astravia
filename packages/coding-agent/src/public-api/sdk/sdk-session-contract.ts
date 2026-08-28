@@ -8,12 +8,12 @@ import type {
 	RuntimeSessionContextUsage,
 	RuntimeSessionInputQueueMode,
 	RuntimeSessionState,
-	RuntimeSubagentSnapshot,
 } from "@vetta/runtime-core";
 import type { CodingAgentSessionEventListener } from "./sdk-event-contract.js";
 import type { CodingAgentPromptOptions } from "./sdk-prompt-contract.js";
 import type { CodingAgentSkillContribution } from "./sdk-resource-source-contract.js";
 import type { CodingAgentSessionToolDefinition } from "./sdk-tool-contract.js";
+import type { CodingAgentSubagentSnapshot } from "./subagent-contract.js";
 
 export interface CodingAgentScopedModel {
 	readonly model: Model<Api>;
@@ -127,8 +127,8 @@ export interface CodingAgentSessionCapabilities {
 	getSessionStats(): CodingAgentSessionStats;
 	getContextUsage(): RuntimeSessionContextUsage | undefined;
 	getLastAssistantText(): string | undefined;
-	listSubagents(): readonly RuntimeSubagentSnapshot[];
-	interruptSubagent(target: string): RuntimeSubagentSnapshot | undefined;
+	listSubagents(): readonly CodingAgentSubagentSnapshot[];
+	interruptSubagent(target: string): CodingAgentSubagentSnapshot | undefined;
 	clearFinishedSubagents(): number;
 	listAvailableModels(): Promise<readonly Model<Api>[]>;
 	getSystemPrompt(): string;

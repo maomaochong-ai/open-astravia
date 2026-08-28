@@ -81,3 +81,7 @@ export type {
 	CodingAgentToolUiContext,
 	CodingAgentToolUiDialogOptions,
 } from "./sdk-tool-contract.js";
+export type {
+	CodingAgentSubagentSnapshot,
+	CodingAgentSubagentTodoProgress,
+} from "./subagent-contract.js";

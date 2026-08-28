@@ -3,23 +3,26 @@ import type {
 	RuntimeCustomEntryInput,
 	RuntimeDocumentParticipantContext,
 } from "@vetta/runtime-core";
-import type { SubagentRecoveryState, SubagentSnapshot } from "@vetta/runtime-subagents";
+import type { SubagentStatus } from "@vetta/runtime-subagents";
 import { describe, expect, it, vi } from "vitest";
 import {
 	CODING_AGENT_SUBAGENT_STATE_CUSTOM_TYPE,
+	type CodingAgentSubagentRecoveryState,
 	CodingAgentSubagentStatePersistence,
 } from "../../src/composition/subagent/state-persistence.js";
+import type { CodingAgentSubagentSnapshot } from "../../src/runtime-contracts/index.js";
 
 describe("CodingAgentSubagentStatePersistence", () => {
 	it("folds versioned state events across the parent document and rejects invalid payloads locally", async () => {
-		const restore = vi.fn<(state: SubagentRecoveryState) => void>();
+		const restore = vi.fn<(state: CodingAgentSubagentRecoveryState) => void>();
 		const onRecoveryIssue = vi.fn();
 		const runtime = new CodingAgentSubagentStatePersistence({ restore, onRecoveryIssue });
 		const context = recordingContext();
-		const initial: SubagentSnapshot = {
+		const initial: CodingAgentSubagentSnapshot = {
 			...snapshot("child-1", "completed"),
 			deliveryMode: "batch",
 			batchId: "workflow-batch-2",
+			todoProgress: { done: 2, total: 2 },
 		};
 		const document = conversationDocument([
 			customEntry("state-1", {
@@ -180,7 +183,7 @@ function customEntry(id: string, data: unknown): ConversationDocument["entries"]
 	};
 }
 
-function snapshot(id: string, status: SubagentSnapshot["status"]): SubagentSnapshot {
+function snapshot(id: string, status: SubagentStatus): CodingAgentSubagentSnapshot {
 	return {
 		id,
 		taskName: "inspect_repo",

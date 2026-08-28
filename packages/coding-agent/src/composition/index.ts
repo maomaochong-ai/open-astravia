@@ -62,6 +62,7 @@ export type {
 	KnowledgeProcessingSessionRequest,
 	KnowledgeProcessingUsage,
 } from "./knowledge-processing-contract.js";
+export { CODING_AGENT_KNOWLEDGE_PROCESSING_GUIDE } from "./knowledge-processing-contract.js";
 export { createKnowledgeProcessingSessionFactory } from "./knowledge-processing-session.js";
 export {
 	type CodingAgentMemoryRuntimeHostOptions,

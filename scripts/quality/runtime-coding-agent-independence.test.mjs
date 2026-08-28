@@ -47,4 +47,24 @@ describe("Runtime Coding Agent independence guard", () => {
 			"packages/runtime-tools/vitest.config.ts:1: Runtime package file depends on @vetta/coding-agent",
 		]);
 	});
+
+	it("rejects Coding Agent product semantics in Runtime production sources", () => {
+		expect(
+			findRuntimeCodingAgentIndependenceViolations({
+				manifests: [],
+				files: [
+					{
+						path: "packages/runtime-knowledge/src/processing/prompt.ts",
+						text: 'export const guide = `todo(action="list")`;',
+					},
+					{
+						path: "packages/runtime-subagents/test/compatibility.test.ts",
+						text: "expect(snapshot.todoProgress).toBeDefined();",
+					},
+				],
+			}),
+		).toEqual([
+			"packages/runtime-knowledge/src/processing/prompt.ts:1: Runtime source hardcodes product token todo(action=",
+		]);
+	});
 });
