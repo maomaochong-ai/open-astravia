@@ -35,11 +35,12 @@ export function selectConversationDocumentBranch(document: ConversationDocument)
 export function projectConversationDocumentHistory(document: ConversationDocument): HistoryEntry[] {
 	const branch = selectConversationDocumentBranch(document);
 	const byId = new Map(document.entries.map((entry) => [entry.id, entry]));
-	const allUserEntries = document.entries.filter(isUserMessageEntry);
+	const allUserEntries = document.entries.filter(isVisibleUserMessageEntry);
 	const history: HistoryEntry[] = [];
 
 	for (const entry of branch) {
 		if (entry.type === "message") {
+			if (entry.origin?.kind === "continuation") continue;
 			if (!isHistoryMessage(entry.message)) continue;
 			const historyEntry: HistoryEntry = {
 				type: "message",
@@ -98,10 +99,15 @@ function isHistoryMessage(value: unknown): value is Message {
 	return value.role === "user" || value.role === "assistant" || value.role === "toolResult";
 }
 
-function isUserMessageEntry(
+function isVisibleUserMessageEntry(
 	entry: ConversationDocumentEntry,
 ): entry is ConversationDocumentEntry & { readonly type: "message"; readonly message: Message & { role: "user" } } {
-	return entry.type === "message" && isRecord(entry.message) && entry.message.role === "user";
+	return (
+		entry.type === "message" &&
+		entry.origin?.kind !== "continuation" &&
+		isRecord(entry.message) &&
+		entry.message.role === "user"
+	);
 }
 
 function isTransparentTreeEntry(entry: ConversationDocumentEntry): boolean {

@@ -2,6 +2,7 @@ import type { Api, Message, Model, UserMessage } from "@vetta/ai";
 import type { ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentContinuationOrchestrator } from "../../src/composition/turn/continuation-orchestrator.js";
+import { CodingAgentLengthContinuationSource } from "../../src/composition/turn/length-continuation-source.js";
 import { CodingAgentStopHookContinuationSource } from "../../src/extensions/runtime/stop-hook-continuation-source.js";
 import type { TodoItem } from "../../src/features/todo/index.js";
 import { CodingAgentTodoContinuationSource } from "../../src/features/todo/todo-continuation-source.js";
@@ -87,6 +88,38 @@ describe("CodingAgentTodoContinuationSource", () => {
 	});
 });
 
+describe("CodingAgentLengthContinuationSource", () => {
+	it("continues a length-truncated turn and stops after the configured limit", async () => {
+		const source = new CodingAgentLengthContinuationSource({ now: () => 77, maxAttempts: 2 });
+		const context = continuationContext("turn-1", [assistantMessage("partial", "length")]);
+
+		const first = await source.collect(context);
+		expect(messageText(first[0])).toContain("Continue the response from where you stopped");
+		expect(first[0]?.timestamp).toBe(77);
+		expect(await source.collect(context)).toEqual(first);
+		await expect(source.collect(context)).rejects.toThrow(
+			"Model response remained truncated after 2 automatic continuation attempts",
+		);
+
+		expect(await source.collect(continuationContext("turn-2", [assistantMessage("partial", "length")]))).toEqual(
+			first,
+		);
+	});
+
+	it("does not continue a normal stop or an aborted turn", async () => {
+		const source = new CodingAgentLengthContinuationSource();
+		expect(await source.collect(continuationContext("turn-1", [assistantMessage("done")]))).toEqual([]);
+
+		const controller = new AbortController();
+		controller.abort();
+		expect(
+			await source.collect(
+				continuationContext("turn-2", [assistantMessage("partial", "length")], controller.signal),
+			),
+		).toEqual([]);
+	});
+});
+
 describe("CodingAgentStopHookContinuationSource", () => {
 	it("passes the latest assistant text and preserves all returned fragments", async () => {
 		const invocations: Array<{ readonly text: string | null; readonly signal: AbortSignal }> = [];
@@ -140,7 +173,10 @@ function userMessage(text: string, timestamp = 1): UserMessage {
 	return { role: "user", content: [{ type: "text", text }], timestamp };
 }
 
-function assistantMessage(text: string): Extract<Message, { role: "assistant" }> {
+function assistantMessage(
+	text: string,
+	stopReason: Extract<Message, { role: "assistant" }>["stopReason"] = "stop",
+): Extract<Message, { role: "assistant" }> {
 	return {
 		role: "assistant",
 		content: [{ type: "text", text }],
@@ -155,7 +191,7 @@ function assistantMessage(text: string): Extract<Message, { role: "assistant" }>
 			totalTokens: 2,
 			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 		},
-		stopReason: "stop",
+		stopReason,
 		timestamp: 2,
 	};
 }

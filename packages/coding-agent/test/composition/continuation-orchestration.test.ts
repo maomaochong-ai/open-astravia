@@ -140,6 +140,40 @@ describe("Coding Agent continuation orchestration", () => {
 		]);
 		await session.dispose();
 	});
+
+	it("automatically resumes a response that ended because of the model length limit", async () => {
+		const conversationDir = await mkdtemp(join(tmpdir(), "length-continuation-"));
+		temporaryDirectories.push(conversationDir);
+		const modelCalls: Array<readonly Message[]> = [];
+		const responses = [assistantMessage("", "length"), assistantMessage("completed response")];
+		let responseIndex = 0;
+		const composition = await createCodingAgentRuntimeComposition({
+			conversationDir,
+			modelRegistry: modelRegistry(),
+			initialModel: MODEL,
+			initialThinkingLevel: "off",
+			activation: { mode: "explicit", toolNames: [] },
+			streamFn: (_model, context) => {
+				modelCalls.push([...context.messages]);
+				const response = responses[responseIndex];
+				responseIndex += 1;
+				if (!response) throw new Error("Missing recorded response");
+				return new RecordedAssistantStream(response);
+			},
+		});
+		compositions.push(composition);
+		const session = await composition.createSession({ sessionId: "length-session", cwd: "C:\\workspace" });
+
+		await session.prompt({ text: "start" });
+
+		expect(modelCalls).toHaveLength(2);
+		expect(messageText(modelCalls[1]?.at(-1) as Extract<Message, { role: "user" }>)).toContain(
+			"Continue the response from where you stopped",
+		);
+		expect((await session.readMessages()).filter((message) => message.role === "assistant")).toHaveLength(2);
+		expect((await session.readMessages()).at(-1)).toMatchObject({ role: "assistant", stopReason: "stop" });
+		await session.dispose();
+	});
 });
 
 async function stopHookOutcome(
@@ -182,7 +216,7 @@ function modelRegistry(): CodingAgentRuntimeModelSource {
 	};
 }
 
-function assistantMessage(text: string): AssistantMessage {
+function assistantMessage(text: string, stopReason: AssistantMessage["stopReason"] = "stop"): AssistantMessage {
 	return {
 		role: "assistant",
 		content: [{ type: "text", text }],
@@ -197,7 +231,7 @@ function assistantMessage(text: string): AssistantMessage {
 			totalTokens: 2,
 			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 		},
-		stopReason: "stop",
+		stopReason,
 		timestamp: 2,
 	};
 }

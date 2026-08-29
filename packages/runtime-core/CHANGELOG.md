@@ -4,6 +4,10 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- 内部 continuation 消息继续保留在模型上下文与会话树中，但不再被面向用户的历史投影误标为真人输入。
+
 ### Changed
 
 - 通用 `SubagentInfo` 不再声明 Coding Agent Todo 进度；产品快照通过对应 Session Extension 合同扩展。

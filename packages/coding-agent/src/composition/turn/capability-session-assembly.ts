@@ -60,6 +60,7 @@ import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tool
 import { CodingAgentContinuationOrchestrator } from "./continuation-orchestrator.js";
 import { createEcosystemHookTurnObserver } from "./ecosystem-hook-turn-observer.js";
 import type { CodingAgentImageSettingsSnapshotRouter } from "./image-settings-snapshot-router.js";
+import { CodingAgentLengthContinuationSource } from "./length-continuation-source.js";
 
 export interface CodingAgentTurnCapabilitySessionIdentity {
 	readonly initialSessionId: string;
@@ -181,8 +182,10 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 				})
 			: undefined;
 	const stopHookContinuationSource = new CodingAgentStopHookContinuationSource({ hookRuntime: options.hookRuntime });
+	const lengthContinuationSource = new CodingAgentLengthContinuationSource();
 	const continuationOrchestrator = new CodingAgentContinuationOrchestrator({
 		sources: [
+			lengthContinuationSource,
 			...options.continuationSources,
 			...(pluginRunOrchestrator
 				? [

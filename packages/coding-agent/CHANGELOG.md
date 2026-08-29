@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- 修复模型输出达到长度上限时被误判为正常完成、界面没有可见回复且不会自动重试的问题；Coding Agent 现在会在同一 Turn 内有限次数地请求模型从截断位置继续回答，次数耗尽后进入明确的错误链路。
 - 修复 Plugin Tool 到达超时时，内部 `AbortSignal` 的同步拒绝抢先覆盖超时错误、最终误报为
   `Plugin tool invocation was aborted` 的问题；超时现在稳定保留 `Plugin tool timed out after …ms`，外部取消语义不变。
 - Tool 调用因 `coding-agent.call-description` 投影校验失败时，现在返回具体字段和约束，不再只显示无法定位原因的
