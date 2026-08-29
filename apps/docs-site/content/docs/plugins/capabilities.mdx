@@ -1,0 +1,55 @@
+---
+title: 插件能力参考
+description: 查找插件的界面、对话、文件、浏览器、Agent、存储和 App Action 扩展能力。
+---
+
+插件 API 由 `@vetta-org/plugin-sdk` 提供，构建由 `@vetta-org/plugin-vite` 提供。插件代码运行在 Desktop renderer 进程的共享 JavaScript realm 内；权限声明用于知情同意和宿主 API 门控，不是 iframe、Worker 或恶意代码沙箱。
+
+## 能力地图
+
+| 目标 | 常用入口 | 需要注意 |
+| --- | --- | --- |
+| 增加全局或工作区 UI | `ctx.ui.registerGlobalSlot`、`registerWorkspaceView` | 注册返回的清理句柄要在停用时释放 |
+| 扩展文件浏览器或预览 | `ctx.fileExplorer`、`ctx.ui.registerFilePreview` | 解析失败要返回可理解的错误状态 |
+| 渲染消息、Turn 或 Tool | `ctx.ui.registerCardRenderer`、`registerTurnCard`、`registerToolCallSlot` | 处理跨轮去重和 pending 状态 |
+| 驾驶当前对话 | `ctx.conversation.sendPrompt`、`insertText`、`abort` | 需要 `agent.session.write` 权限 |
+| 注册 Agent 工具或 Hook | `ctx.agent.registerTool`、`registerHook` | 输入使用结构化 schema，执行错误要稳定返回 |
+| 执行宿主命令 | `ctx.command.run`、`ctx.command.spawn` | 清单必须声明 commands，避免把密钥放入参数 |
+| 调用外部网络 | `ctx.network.request` | 清单声明最小 `network.allowedHosts` |
+| 使用浏览器自动化 | `ctx.browser` | 使用逻辑 profile；不获得 Cookie、Token 或任意 JS 执行权 |
+| 保存插件私有数据 | `ctx.storage` | 按插件隔离；不要写入项目或宿主私有目录 |
+| 调用用户已配置模型 | `ctx.ai.listModels`、`complete`、`chat` | 使用用户配置的凭证，不自行保存 Key |
+| 注册可发现动作 | `ctx.appActions.register` | 高影响文件和网络操作仍需确认 |
+| 提供 Skill 或 MCP | `plugin.json` 的 agent 贡献字段 | 安装、启用和重载都要重新验证来源与权限 |
+| 提供多语言文案 | `ctx.i18n` 与包内 locales | 文案 key 和 `defaultLocale` 要与清单一致 |
+
+## 选择 API 的原则
+
+- 只增加 Agent 方法时，优先 Skill 或插件的 Agent 贡献，不要先创建复杂 UI。
+- 只连接外部服务时，优先独立 MCP；插件内聚 MCP 适合与插件生命周期强绑定的服务。
+- 只需要颜色、表面和组件替换时，使用主题系统。
+- 需要完整页面、文件预览、消息卡片或宿主动作时，才使用插件。
+
+## 权限与生命周期
+
+一个完整的插件能力需要同时通过三层：
+
+1. `plugin.json` 声明意图和最小权限。
+2. 安装时由用户确认外置插件的权限。
+3. 宿主在运行时再次校验，并在插件重载或停用时清理注册项。
+
+系统内置插件与外置插件的授权策略不同：系统插件通常随应用发布，外置插件仍应按不可信代码审查。详见[清单与权限](/plugins/manifest-and-permissions/)。
+
+## 发布前验收
+
+<Checklist title="至少验证这些情况">
+  <li>全新安装时清单字段、入口、样式和构建产物路径一致。</li>
+  <li>权限提示只包含完成任务所需的权限。</li>
+  <li>停用、重载和再次启用不会重复注册 UI、工具或事件监听。</li>
+  <li>无权限、外部网络失败、文件解析失败和模型失败都能显示可恢复的错误。</li>
+  <li>发布 ZIP 与开发链接都经过验证；开发链接成功不能代替 ZIP 安装测试。</li>
+</Checklist>
+
+<Callout title="插件不是安全沙箱" type="warn">
+  共享 renderer realm 意味着插件来源本身就是安全边界。只安装可信来源，审查构建产物和更新内容，并授予最小权限。
+</Callout>

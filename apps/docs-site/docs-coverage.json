@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"statusValues": ["complete", "partial", "internal-only", "not-applicable"],
+	"statusValues": ["complete", "partial", "beta", "developer-preview", "internal-only", "not-applicable"],
 	"areas": [
 		{
 			"id": "onboarding-auth",
@@ -77,8 +77,10 @@
 		{
 			"id": "claw-im",
 			"source": "apps/desktop/src/main/im-host",
-			"status": "complete",
-			"pages": ["/product/claw/", "/product/im/"]
+			"status": "partial",
+			"platforms": ["windows", "macos", "linux"],
+			"pages": ["/product/claw/", "/product/im/"],
+			"note": "八种渠道已登记；渠道成熟度、第三方平台条件和本机权限需要分别说明。"
 		},
 		{
 			"id": "notifications-webhook",
@@ -95,14 +97,40 @@
 		{
 			"id": "coding-agent-public-api",
 			"source": "packages/coding-agent/package.json#exports",
-			"status": "complete",
-			"pages": ["/developers/overview/", "/developers/sdk/", "/developers/rpc/", "/developers/cli-and-settings/"]
+			"status": "partial",
+			"pages": ["/developers/overview/", "/developers/sdk/", "/developers/sdk-reference/", "/developers/rpc/", "/developers/cli-and-settings/"]
 		},
 		{
 			"id": "themes",
 			"source": "packages/themes",
 			"status": "complete",
 			"pages": ["/themes/overview/", "/themes/getting-started/", "/themes/module-reference/"]
+		},
+		{
+			"id": "settings",
+			"source": "apps/desktop/src/renderer/domains/settings/registry.ts",
+			"status": "partial",
+			"pages": ["/product/settings/", "/product/models/", "/product/application-environment/", "/product/knowledge-base/", "/product/im/", "/product/webhook/"]
+		},
+		{
+			"id": "remote-control",
+			"source": ["apps/desktop/src/main/remote-control", "packages/remote-control", "packages/remote-desktop"],
+			"status": "developer-preview",
+			"platforms": ["windows", "android"],
+			"pages": ["/product/remote-control/", "/reference/compatibility/"]
+		},
+		{
+			"id": "mobile-client",
+			"source": "apps/mobile",
+			"status": "developer-preview",
+			"platforms": ["android"],
+			"pages": ["/product/remote-control/", "/reference/compatibility/"]
+		},
+		{
+			"id": "plugin-capabilities",
+			"source": ["packages/plugins/plugin-sdk", "packages/plugins/plugin-vite", "docs/plugin"],
+			"status": "partial",
+			"pages": ["/plugins/overview/", "/plugins/getting-started/", "/plugins/manifest-and-permissions/", "/plugins/extension-points/", "/plugins/capabilities/"]
 		},
 		{
 			"id": "internal-operations",

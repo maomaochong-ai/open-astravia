@@ -1,0 +1,74 @@
+---
+title: Coding Agent API 参考
+description: 按公开导出路径查找 Session、Host、配置、扩展、资源和运行时 API，并遵守生命周期与兼容边界。
+---
+
+本页是 `@vetta/coding-agent` 的导出地图。具体类型、参数和返回值以安装版本的声明文件为准；示例应只从 `package.json#exports` 中列出的入口导入，不要深度导入 `src/**`。
+
+## 导出路径
+
+| 入口 | 用途 |
+| --- | --- |
+| `@vetta/coding-agent` | 默认产品组合入口 |
+| `@vetta/coding-agent/sdk` | 创建和管理进程内 Session |
+| `@vetta/coding-agent/rpc` | NDJSON RPC 帧、命令和事件合同 |
+| `@vetta/coding-agent/settings` | 全局/项目设置和 Schema |
+| `@vetta/coding-agent/resources` | Skill、Extension、Prompt 等资源来源 |
+| `@vetta/coding-agent/extensions` | Extension 来源与生命周期 |
+| `@vetta/coding-agent/session-extensions` | Session 级扩展能力 |
+| `@vetta/coding-agent/hooks` | Host/Agent 生命周期 Hook |
+| `@vetta/coding-agent/host-services` | 宿主提供的模型、文件和运行时服务 |
+| `@vetta/coding-agent/historical-sessions` | 离线读取和管理历史会话 |
+| `@vetta/coding-agent/bootstrap` | 从启动参数和环境创建宿主配置 |
+| `@vetta/coding-agent/function-extensions` | 函数式扩展来源 |
+| `@vetta/coding-agent/plugin-runtime` | 插件运行时桥接 |
+| `@vetta/coding-agent/export-html` | 会话 HTML 导出 |
+| `@vetta/coding-agent/profile` | Host profile 选择 |
+| `@vetta/coding-agent/cli-guidance` | CLI 入口提示与参数指导 |
+| `@vetta/coding-agent/runtime` | 运行时组合和生命周期接口 |
+| `@vetta/coding-agent/model-context` | 模型上下文和消息输入合同 |
+
+## Session 生命周期
+
+推荐顺序是：
+
+```text
+create → inspect diagnostics → subscribe → prompt / steer / followUp
+      → abort or complete → unsubscribe → close
+```
+
+- 创建阶段处理 `diagnostics`，不要静默吞掉资源或扩展加载失败。
+- `subscribe()` 返回的取消函数必须在宿主销毁时调用。
+- `abort()` 只中止当前执行，不替代 `close()`。
+- 文件存储 Session 必须明确创建、恢复或内存语义；多个活动 Session 不得写同一会话文件。
+- 宿主应保留 Agent、turn、message、tool、compaction、retry 和终止事件的语义。
+
+完整的最小示例见 [使用 Coding Agent SDK](/developers/sdk/)。
+
+## 集成边界
+
+| 需求 | 推荐入口 | 不应做的事 |
+| --- | --- | --- |
+| TypeScript 进程内运行 Agent | `sdk` | 解析 CLI stdout 或复制 Session 状态机 |
+| 语言无关或隔离进程 | `rpc` | 把诊断日志混入 stdout |
+| 离线展示历史 | `historical-sessions` | 为展示列表打开所有活动 Session |
+| 提供模型/文件等宿主能力 | `host-services` / `runtime` | 从 Desktop 私有实现目录导入 |
+| 注入 Skill、Prompt 或 Extension | `resources` / `extensions` | 直接修改内置资源目录 |
+| 使用插件贡献能力 | `plugin-runtime` | 绕过 manifest 和权限校验 |
+
+## 兼容策略
+
+1. 在 `package.json` 中固定兼容的 `@vetta/coding-agent` 版本范围。
+2. 启动时记录版本和 diagnostics，遇到未知能力时提供降级或清晰错误。
+3. RPC 宿主按响应和事件分别路由，并处理无 `id` 的事件。
+4. 取消、重试、压缩、工具失败和进程退出都要映射到上层状态。
+5. 只有公开导出、类型定义和文档明确承诺的字段才可作为集成合同。
+
+<Callout title="声明文件是 API 事实源" type="warn">
+  本页帮助选择入口，不替代版本化 API 声明。升级依赖后重新检查导出路径、事件联合类型和错误码，并运行宿主自己的合同测试。
+</Callout>
+
+<Continue>
+  <ContinueLink href="/developers/rpc/" title="接入 RPC 模式" description="查看 NDJSON 帧、响应、事件、取消和 Host Bridge。" />
+  <ContinueLink href="/developers/cli-and-settings/" title="CLI 与设置" description="从脚本启动任务并处理配置覆盖。" />
+</Continue>

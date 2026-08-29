@@ -10,8 +10,10 @@
 		"automation",
 		"claw",
 		"im",
+		"remote-control",
 		"webhook",
 		"application-environment",
-		"desktop-pet"
+		"desktop-pet",
+		"settings"
 	]
 }
