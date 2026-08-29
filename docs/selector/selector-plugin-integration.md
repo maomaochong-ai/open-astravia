@@ -191,13 +191,13 @@ packages/plugins/externals/web-element-picker/
 | `network.fetch` | Sharingan 跨域资产/样式/字体抓取 | 可选（二期未用） |
 | `fs.read` / `fs.write` | 截图/报告保存到项目目录 | 可选 |
 
-### 5.7 manifest（现状 v0.2.0）
+### 5.7 manifest（现状 v0.2.2）
 
 ```json
 {
   "id": "web-element-picker",
   "name": "%plugin.name%",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "pluginApiVersion": "^1.0.0",
   "runtime": "module-federation",
   "entry": "dist/mf-manifest.json",

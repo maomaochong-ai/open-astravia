@@ -679,39 +679,37 @@ export function WebElementPickerPanel(): JSX.Element {
 				</button>
 				<button
 					type="button"
+					title={selecting ? t("panel.stopSelecting") : t("panel.start")}
 					disabled={failed}
 					onClick={toggleSelecting}
-					className={`flex h-7 shrink-0 items-center gap-1 rounded-md px-2.5 text-[12px] font-medium transition-colors ${
+					className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
 						selecting
 							? "bg-destructive/90 text-destructive-foreground hover:bg-destructive"
 							: "bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40"
 					}`}
 				>
-					<span className={`h-3.5 w-3.5 ${selecting ? "icon-[mdi--stop] text-[10px]" : "icon-[mdi--crosshairs-gps]"}`} />
-					{selecting ? t("panel.stopSelecting") : t("panel.start")}
+					<span className={`h-4 w-4 ${selecting ? "icon-[mdi--stop]" : "icon-[mdi--crosshairs-gps]"}`} />
 				</button>
 				<button
 					type="button"
 					title={t("panel.sendToAiHint")}
 					disabled={count === 0 || sending}
 					onClick={sendToAi}
-					className="flex h-7 shrink-0 items-center gap-1 rounded-md bg-accent px-2.5 text-[12px] font-medium text-foreground transition-colors hover:bg-accent/70 disabled:opacity-40"
+					className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-foreground transition-colors hover:bg-accent/70 disabled:opacity-40"
 				>
-					<span className="h-3.5 w-3.5 icon-[mdi--send]" />
-					{sending ? t("panel.sendingToAi") : t("panel.sendToAi")}
+					<span className={`h-4 w-4 ${sending ? "animate-spin icon-[mdi--loading]" : "icon-[mdi--send]"}`} />
 				</button>
 				<button
 					type="button"
 					title={t("panel.sharinganHint")}
 					onClick={toggleSharingan}
-					className={`flex h-7 shrink-0 items-center gap-1 rounded-md px-2.5 text-[12px] font-medium transition-colors ${
+					className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
 						sharingan
 							? "bg-primary text-primary-foreground hover:opacity-90"
 							: "bg-accent text-foreground hover:bg-accent/70"
 					}`}
 				>
-					<span className={`h-3.5 w-3.5 ${sharingan ? "icon-[mdi--eye]" : "icon-[mdi--eye-off-outline]"}`} />
-					{t("panel.sharingan")}
+					<span className={`h-4 w-4 ${sharingan ? "icon-[mdi--eye]" : "icon-[mdi--eye-off-outline]"}`} />
 				</button>
 				<button
 					type="button"

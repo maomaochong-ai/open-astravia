@@ -1,6 +1,6 @@
 # web-element-picker 插件：方案与使用流程
 
-> 状态：v0.2.0 桌面插件已实现并通过全量验证（二期：输入栏入口 / webview 交互修复 / 二次打开加固 / 稳定性 / 设置迁移 / 桥 adapter）；**三期浏览器扩展（v0.3.0）已实现并通过 Playwright 端到端验证 8/8**（MV3 扩展 + ECDSA 授权码 + popup 控制面，见 §12）；商店上架与收款渠道为运营事项。本文档基于实际代码撰写，与实现保持一致。
+> 状态：v0.2.2 桌面插件已实现并通过全量验证（二期：输入栏入口 / webview 交互修复 / 二次打开加固 / 稳定性 / 设置迁移 / 桥 adapter）；**三期浏览器扩展（v0.3.0）已实现并通过 Playwright 端到端验证 8/8**（MV3 扩展 + ECDSA 授权码 + popup 控制面，见 §12）；商店上架与收款渠道为运营事项。本文档基于实际代码撰写，与实现保持一致。
 
 ## 1. 概述
 
@@ -259,16 +259,16 @@ bun run build          # = build:kernel（iife 内核）→ vite build（MF 远�
 bun run check          # tsc --noEmit 类型检查
 ```
 
-`@astravia-org/plugin-vite` 在 `vite build` 后自动产出安装包 `release/web-element-picker-0.2.0.zip`，内容为 `plugin.json` + `dist/`（mf-manifest.json、remoteEntry.js、style.css、assets/*）+ `locales/*.json` + `scripts/build-kernel.mjs`。
+`@astravia-org/plugin-vite` 在 `vite build` 后自动产出安装包 `release/web-element-picker-0.2.2.zip`，内容为 `plugin.json` + `dist/`（mf-manifest.json、remoteEntry.js、style.css、assets/*）+ `locales/*.json` + `scripts/build-kernel.mjs`。
 
 ## 10. 安装与使用流程
 
 ### 10.1 安装
 
 1. 打开 Astravia Desktop → **设置 → 插件**
-2. 安装 [web-element-picker-0.2.0.zip](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/packages/plugins/externals/web-element-picker/release/web-element-picker-0.2.0.zip)（或 `plugins.manage` 的 `install-from-path` Action）
+2. 安装 [web-element-picker-0.2.2.zip](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/packages/plugins/externals/web-element-picker/release/web-element-picker-0.2.2.zip)（或 `plugins.manage` 的 `install-from-path` Action）
 3. 授权弹窗中勾选：`ui.slot.activity-tab`、`ui.slot.input-action`、`agent.session.read`、`agent.session.write`、`settings.read`、`settings.write`、`storage.read`、`storage.write`、`shell.openExternal`
-4. 启用插件。安装后文件位于 `~/.astravia/plugins/web-element-picker/versions/0.2.0/`
+4. 启用插件。安装后文件位于 `~/.astravia/plugins/web-element-picker/versions/0.2.2/`
 
 ### 10.2 使用流程
 
@@ -296,7 +296,7 @@ bun run check          # tsc --noEmit 类型检查
 2. **先打开一个已存在的会话**再看 Tab 栏（无会话时 Tab 一律不显示，属 fail-closed 设计）
 3. 确认当前场景在 `scope_use`（conversation/project/cli）内；IM 会话等场景不显示
 4. 开发者工具 console 检查 `remoteEntry` / `web-element-picker` 相关报错
-5. 检查 `~/.astravia/plugins/web-element-picker/versions/0.2.0/` 文件是否完整
+5. 检查 `~/.astravia/plugins/web-element-picker/versions/0.2.2/` 文件是否完整
 
 ## 11. 验证结果
 
@@ -316,7 +316,7 @@ bun run check          # tsc --noEmit 类型检查
 - 「/」技能面板不出现插件名（未声明 skill，属平台语义，非缺陷；输入栏入口走 `registerInputAction` action 按钮）
 - 内核快捷键仅在 webview 页面内生效（设计如此，不污染宿主键位）
 
-### 二期已完成（v0.2.0，2026-08-29）
+### 二期已完成（v0.2.2，2026-08-29）
 
 1. 输入栏入口：`registerInputAction("element-picker")` + `plugin-context.ts` intent 通道（`start-select` / `stop-select` 直达）
 2. 稳定性：webview 二次打开渲染加固（单次事件绑定 + `reconcileLoad`）、`render-process-gone` 崩溃恢复、`mount-failed` 提示；webview 交互修复（`allowpopups` + 宿主 popup 重定向同窗加载——页面内 `location.href` 拦截实测 Electron 34 非确定性失败，已废弃）；CHANGELOG 已建
