@@ -80,6 +80,7 @@ export async function executeToolCalls(
 					messages: [...messages],
 				},
 			);
+			isError = result.isError === true;
 		} catch (error) {
 			result = {
 				content: [{ type: "text", text: error instanceof Error ? error.message : String(error) }],

@@ -85,6 +85,7 @@ describe("McpServerRuntimeToolSource", () => {
 			}),
 		).resolves.toEqual({
 			content: [{ type: "text", text: "Error calling MCP tool 'lookup': remote failed" }],
+			isError: true,
 			details: {
 				content: [{ type: "text", text: "remote failed" }],
 				isError: true,
@@ -119,6 +120,7 @@ describe("McpServerRuntimeToolSource", () => {
 
 		expect(result).toEqual({
 			content: [{ type: "text", text: "Error calling MCP tool 'lookup': retired transport failed" }],
+			isError: true,
 			details: {
 				content: [{ type: "text", text: "retired transport failed" }],
 				isError: true,

@@ -527,7 +527,11 @@ class AgentEventProjector {
 		}
 		if (event.type === "tool_execution_finish") {
 			this.toolResults.push(event.result);
-			const result: RuntimeToolResult = { content: event.result.content, details: event.result.details };
+			const result: RuntimeToolResult = {
+				content: event.result.content,
+				details: event.result.details,
+				isError: event.result.isError,
+			};
 			const envelope = toRuntimeMessageEnvelope(event.result, this.identities);
 			this.runMessages.push(envelope);
 			return [
@@ -734,10 +738,15 @@ function toAgentTool(
 					input,
 					messages: toRuntimeMessages(context.messages, identities),
 					signal: context.signal,
-					onUpdate: (update) => context.onUpdate({ content: update.content, details: update.details }),
+					onUpdate: (update) =>
+						context.onUpdate({ content: update.content, details: update.details, isError: update.isError }),
 					reportPhase: context.reportPhase,
 				});
-				return { content: [...result.content], details: result.details };
+				return {
+					content: [...result.content],
+					details: result.details,
+					...(result.isError === undefined ? {} : { isError: result.isError }),
+				};
 			} catch (error) {
 				if (error instanceof RuntimeToolExecutionError) {
 					throw new AgentToolExecutionError(error.message, error.details, { cause: error });

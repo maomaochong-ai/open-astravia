@@ -145,6 +145,42 @@ describe("runAgentTurn", () => {
 		});
 	});
 
+	it("preserves protocol-level tool errors returned without throwing", async () => {
+		const schema = Type.Object({ value: Type.String() });
+		const tool: RuntimeToolDefinition<typeof schema> = {
+			name: "typed",
+			description: "Typed tool",
+			inputSchema: schema,
+			async execute() {
+				return {
+					content: [{ type: "text", text: "remote tool rejected the request" }],
+					details: { code: "REMOTE_TOOL_ERROR" },
+					isError: true,
+				};
+			},
+		};
+		const contexts: Message[][] = [];
+		const run = runAgentTurn({
+			...request([]),
+			resolveTools: async () => [tool],
+			resolveModelCall: scriptedResolver(
+				[
+					successResponse(assistant([toolCall("remote-error-1", "typed", { value: "x" })], "toolUse")),
+					successResponse(assistant([{ type: "text", text: "handled" }])),
+				],
+				(context) => contexts.push([...context.messages]),
+			),
+		});
+
+		await expect(run.result).resolves.toMatchObject({ status: "completed", toolCalls: 1 });
+		expect(contexts[1]?.at(-1)).toMatchObject({
+			role: "toolResult",
+			isError: true,
+			content: [{ type: "text", text: "remote tool rejected the request" }],
+			details: { code: "REMOTE_TOOL_ERROR" },
+		});
+	});
+
 	it("lets a host validate and decode a non-TypeBox schema dialect", async () => {
 		const schema = Type.Object({ value: Type.Number() });
 		const executions: number[] = [];

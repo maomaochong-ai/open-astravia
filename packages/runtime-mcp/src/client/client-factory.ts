@@ -14,6 +14,8 @@ export interface RuntimeMcpClientFactoryOptions {
 	readonly debug?: boolean;
 	readonly timeout?: number;
 	readonly httpAuthProviderFactory?: McpHttpAuthProviderFactory;
+	/** Host-owned diagnostic sink; implementations must not include secrets or payloads. */
+	readonly onDiagnostic?: (message: string) => void;
 }
 
 export type RuntimeMcpClientFactory = (

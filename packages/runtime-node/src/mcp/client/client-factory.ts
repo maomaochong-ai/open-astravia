@@ -12,7 +12,14 @@ export const createMcpClient: RuntimeMcpClientFactory = (name, config, options) 
 			debug: options?.debug,
 			timeout: options?.timeout,
 			authProviderFactory: options?.httpAuthProviderFactory,
+			onDiagnostic: options?.onDiagnostic,
 		});
 	}
-	return new StdioMcpClient({ name, config, debug: options?.debug, timeout: options?.timeout });
+	return new StdioMcpClient({
+		name,
+		config,
+		debug: options?.debug,
+		timeout: options?.timeout,
+		onDiagnostic: options?.onDiagnostic,
+	});
 };

@@ -103,6 +103,28 @@ describe("MCP Runtime Tool result policy", () => {
 		expect(JSON.parse(store.requests[0]?.data ?? "")).toEqual(result);
 	});
 
+	it("projects current MCP content blocks without dropping embedded image resources", async () => {
+		const result: McpToolCallResult = {
+			content: [
+				{ type: "audio", data: "audio-data", mimeType: "audio/mpeg" },
+				{ type: "resource_link", uri: "https://example.test/report", name: "report", description: "Report" },
+				{
+					type: "resource",
+					resource: { uri: "https://example.test/image", blob: "image-data", mimeType: "image/png" },
+				},
+			],
+		};
+
+		await expect(execute(result, new RecordingArtifactStore(), 10_000)).resolves.toEqual({
+			content: [
+				{ type: "text", text: "Audio content: audio/mpeg" },
+				{ type: "text", text: "Resource link: report (https://example.test/report)\nReport" },
+				{ type: "image", data: "image-data", mimeType: "image/png" },
+			],
+			details: result,
+		});
+	});
+
 	it("falls back to the complete result when artifact storage fails", async () => {
 		const result: McpToolCallResult = { content: [{ type: "text", text: "x".repeat(200) }] };
 		const store = new RecordingArtifactStore(true);
@@ -122,6 +144,21 @@ describe("MCP Runtime Tool result policy", () => {
 		await expect(tool.execute(EXECUTION_REQUEST)).resolves.toEqual({
 			content: [{ type: "text", text: "Error calling MCP tool 'lookup': remote failed" }],
 			details: { content: [{ type: "text", text: "remote failed" }], isError: true },
+			isError: true,
+		});
+	});
+
+	it("propagates MCP isError and preserves structured content", async () => {
+		const result: McpToolCallResult = {
+			content: [{ type: "text", text: "remote validation failed" }],
+			structuredContent: { code: "INVALID_INPUT", retryable: false },
+			isError: true,
+		};
+
+		await expect(execute(result, new RecordingArtifactStore(), 10_000)).resolves.toEqual({
+			content: [{ type: "text", text: "remote validation failed" }],
+			details: result,
+			isError: true,
 		});
 	});
 

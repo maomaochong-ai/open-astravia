@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { McpServerSupervisor, type RuntimeMcpClientFactory } from "@vetta/runtime-mcp";
+import { MCP_LATEST_PROTOCOL_VERSION, McpServerSupervisor, type RuntimeMcpClientFactory } from "@vetta/runtime-mcp";
 import type { McpConfigSource } from "@vetta/runtime-mcp/config";
 import {
 	buildBuiltinMcpServers,
@@ -10,7 +10,7 @@ import {
 import { createMcpClient } from "./client/index.js";
 import { FileMcpConfigSource } from "./config/index.js";
 
-const MCP_PROTOCOL_VERSION = "2024-11-05";
+const MCP_PROTOCOL_VERSION = MCP_LATEST_PROTOCOL_VERSION;
 const PLACEHOLDER_REDIRECT_URI = "http://127.0.0.1/callback";
 
 export interface NodeMcpSupervisorOptions {

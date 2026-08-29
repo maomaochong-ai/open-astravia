@@ -1,6 +1,7 @@
 import { CONFIG_DIR_NAME, VERSION } from "@vetta/coding-agent/config";
 import { EMPTY_MCP_CONFIG_SOURCE, type McpServerSupervisor } from "@vetta/runtime-mcp";
 import { createNodeMcpSupervisor } from "@vetta/runtime-node/mcp";
+import { getAppLogger } from "../logger.js";
 
 export interface DesktopMcpSupervisorOptions {
 	readonly projectRoot: string;
@@ -11,6 +12,18 @@ export interface DesktopMcpSupervisorOptions {
 
 /** Selects the Node MCP implementation at the Desktop Composition Root. */
 export function createDesktopMcpSupervisor(options: DesktopMcpSupervisorOptions): McpServerSupervisor {
+	let log: ReturnType<typeof getAppLogger> | undefined;
+	const writeDiagnostic = (message: string): void => {
+		try {
+			log ??= getAppLogger("mcp");
+		} catch {
+			// Test hosts and lightweight sidecars may not configure Electron logging.
+			return;
+		}
+		const isFailure = /failed|error|exit|timeout|invalid|unauthorized/i.test(message);
+		if (isFailure) log.warn(message);
+		else if (options.debug) log.debug(message);
+	};
 	return createNodeMcpSupervisor({
 		projectRoot: options.projectRoot,
 		agentDir: options.agentDir,
@@ -20,8 +33,6 @@ export function createDesktopMcpSupervisor(options: DesktopMcpSupervisorOptions)
 		enabled: true,
 		configSource: options.dynamicOnly ? EMPTY_MCP_CONFIG_SOURCE : undefined,
 		includeBuiltinServers: !options.dynamicOnly,
-		onDiagnostic: (message) => {
-			if (options.debug) console.error(`[MCPManager] ${message}`);
-		},
+		onDiagnostic: writeDiagnostic,
 	}).supervisor;
 }

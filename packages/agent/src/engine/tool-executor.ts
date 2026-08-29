@@ -117,7 +117,7 @@ async function executeValidatedTool(
 			toolName: call.name,
 			content: [...executed.content],
 			details: executed.details,
-			isError: false,
+			isError: executed.isError === true,
 			timestamp: Date.now(),
 		};
 	} catch (error) {

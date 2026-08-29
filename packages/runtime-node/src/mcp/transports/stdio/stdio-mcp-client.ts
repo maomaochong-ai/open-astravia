@@ -15,6 +15,7 @@ import type {
 	McpToolCallResult,
 	McpToolsListResult,
 } from "../../protocol/index.js";
+import { isMcpInitializeResult, isMcpResourceReadResult, isMcpToolCallResult } from "../../protocol/index.js";
 import { StdioMcpProcess } from "./stdio-process.js";
 
 const DEFAULT_TIMEOUT_MS = 30000;
@@ -24,6 +25,7 @@ export interface StdioMcpClientOptions {
 	readonly name: string;
 	readonly debug?: boolean;
 	readonly timeout?: number;
+	readonly onDiagnostic?: (message: string) => void;
 }
 
 /** MCP JSON-RPC client over the Node stdio process adapter. */
@@ -32,6 +34,7 @@ export class StdioMcpClient implements McpClientHandle {
 	private readonly name: string;
 	private readonly debug: boolean;
 	private readonly timeout: number;
+	private readonly onDiagnostic?: (message: string) => void;
 	private nextId = 1;
 	private readonly pendingRequests = new Map<number | string, PendingRequest>();
 	private initialized = false;
@@ -40,6 +43,7 @@ export class StdioMcpClient implements McpClientHandle {
 		this.name = options.name;
 		this.debug = options.debug || options.config.debug || false;
 		this.timeout = options.timeout || DEFAULT_TIMEOUT_MS;
+		this.onDiagnostic = options.onDiagnostic;
 		this.process = new StdioMcpProcess({ config: options.config, name: options.name, debug: this.debug });
 		this.process.on("message", (message) => this.handleMessage(message));
 		this.process.on("error", (error) => this.handleProcessError(error));
@@ -48,9 +52,15 @@ export class StdioMcpClient implements McpClientHandle {
 
 	async initialize(params: McpInitializeParams): Promise<McpInitializeResult> {
 		await this.process.start();
-		const result = await this.request<McpInitializeResult>("initialize", params);
+		const result = assertResult(
+			"initialize",
+			await this.request<unknown>("initialize", params),
+			isMcpInitializeResult,
+			(message) => this.log(message),
+		);
 		this.notify("notifications/initialized", {});
 		this.initialized = true;
+		this.log(`initialized with protocol ${result.protocolVersion}`);
 		return result;
 	}
 
@@ -62,7 +72,12 @@ export class StdioMcpClient implements McpClientHandle {
 	async callTool(name: string, args?: McpJsonObject): Promise<McpToolCallResult> {
 		this.ensureInitialized();
 		const params: McpToolCallParams = { name, arguments: args };
-		return this.request<McpToolCallResult>("tools/call", params);
+		return assertResult(
+			"tools/call",
+			await this.request<unknown>("tools/call", params),
+			isMcpToolCallResult,
+			(message) => this.log(message),
+		);
 	}
 
 	async listResources(cursor?: string): Promise<McpResourcesListResult> {
@@ -73,7 +88,12 @@ export class StdioMcpClient implements McpClientHandle {
 	async readResource(uri: string): Promise<McpResourceReadResult> {
 		this.ensureInitialized();
 		const params: McpResourceReadParams = { uri };
-		return this.request<McpResourceReadResult>("resources/read", params);
+		return assertResult(
+			"resources/read",
+			await this.request<unknown>("resources/read", params),
+			isMcpResourceReadResult,
+			(message) => this.log(message),
+		);
 	}
 
 	async listPrompts(cursor?: string): Promise<McpPromptsListResult> {
@@ -105,9 +125,10 @@ export class StdioMcpClient implements McpClientHandle {
 		return new Promise<T>((resolve, reject) => {
 			const timeout = setTimeout(() => {
 				this.pendingRequests.delete(id);
+				this.log(`request timeout method=${method}`);
 				reject(new Error(`Request timeout: ${method}`));
 			}, this.timeout);
-			this.pendingRequests.set(id, { resolve: (value) => resolve(value as T), reject, timeout });
+			this.pendingRequests.set(id, { resolve: (value) => resolve(value as T), reject, timeout, method });
 			try {
 				this.process.send(request);
 			} catch (error) {
@@ -124,13 +145,17 @@ export class StdioMcpClient implements McpClientHandle {
 	}
 
 	private handleMessage(message: unknown): void {
+		if (message === null || typeof message !== "object" || Array.isArray(message)) {
+			this.log("Unknown JSON-RPC message shape");
+			return;
+		}
 		const incoming = message as Record<string, unknown>;
 		if ("result" in incoming || "error" in incoming) {
 			this.handleResponse(incoming as unknown as JsonRpcResponse);
 		} else if ("method" in incoming && !("id" in incoming)) {
 			this.log(`Received notification: ${String(incoming.method)}`);
 		} else {
-			this.log(`Unknown message type: ${JSON.stringify(incoming)}`);
+			this.log("Unknown JSON-RPC message shape");
 		}
 	}
 
@@ -143,6 +168,7 @@ export class StdioMcpClient implements McpClientHandle {
 		this.pendingRequests.delete(response.id);
 		clearTimeout(pending.timeout);
 		if ("error" in response) {
+			this.log(`request failed method=${pending.method} code=${response.error.code}`);
 			pending.reject(
 				Object.assign(new Error(response.error.message), { code: response.error.code, data: response.error.data }),
 			);
@@ -175,7 +201,9 @@ export class StdioMcpClient implements McpClientHandle {
 	}
 
 	private log(message: string): void {
-		if (this.debug) console.error(`[MCPClient:${this.name}] ${message}`);
+		const formatted = `[MCPClient:${this.name}] ${message}`;
+		if (this.onDiagnostic) this.onDiagnostic(formatted);
+		else if (this.debug) console.error(formatted);
 	}
 }
 
@@ -183,4 +211,17 @@ interface PendingRequest {
 	resolve: (value: unknown) => void;
 	reject: (error: Error) => void;
 	timeout: NodeJS.Timeout;
+	method: string;
+}
+
+function assertResult<T>(
+	method: string,
+	value: unknown,
+	guard: (value: unknown) => value is T,
+	onInvalid?: (message: string) => void,
+): T {
+	if (guard(value)) return value;
+	const message = `Invalid MCP ${method} result`;
+	onInvalid?.(message);
+	throw new Error(message);
 }

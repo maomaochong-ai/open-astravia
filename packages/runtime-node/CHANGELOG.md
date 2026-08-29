@@ -4,6 +4,16 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- MCP stdio/HTTP Client 增加安全诊断回调，记录连接、协议版本、超时、JSON-RPC 错误、无效结果、工具调用失败和进程退出，
+  不记录参数、凭据或二进制 payload。
+- HTTP MCP Client 暴露 Streamable HTTP 实际协商的 MCP protocol version。
+
+### Changed
+
+- Node MCP supervisor 默认协议版本升级为 MCP 2025-11-25；协议包同时保留已支持版本列表供兼容策略使用。
+
 ### Breaking Changes
 
 - `glob` Tool 只返回文件路径，不再返回目录。后端从 node `glob` 换成 ripgrep（`rg --files`），因此结果

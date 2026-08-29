@@ -16,6 +16,7 @@ export interface McpHttpSdkSessionOptions {
 
 export interface McpHttpSdkSession {
 	connect(): Promise<void>;
+	getProtocolVersion?(): string | undefined;
 	getServerVersion(): { name: string; version: string } | undefined;
 	getServerCapabilities(): McpCapabilities | undefined;
 	listTools(cursor?: string): Promise<unknown>;
@@ -56,6 +57,10 @@ class DefaultMcpHttpSdkSession implements McpHttpSdkSession {
 
 	getServerVersion(): { name: string; version: string } | undefined {
 		return this.client.getServerVersion();
+	}
+
+	getProtocolVersion(): string | undefined {
+		return this.transport.protocolVersion;
 	}
 
 	getServerCapabilities(): McpCapabilities | undefined {

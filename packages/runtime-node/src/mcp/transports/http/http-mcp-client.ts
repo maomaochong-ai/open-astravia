@@ -29,6 +29,7 @@ export interface HttpMcpClientOptions {
 	readonly timeout?: number;
 	readonly authProviderFactory?: McpHttpAuthProviderFactory;
 	readonly sdkSessionFactory?: McpHttpSdkSessionFactory;
+	readonly onDiagnostic?: (message: string) => void;
 }
 
 /** Official MCP SDK adapter for Streamable HTTP, independent of product credential paths. */
@@ -39,6 +40,7 @@ export class HttpMcpClient implements McpClientHandle {
 	private readonly timeout: number;
 	private readonly authProviderFactory: McpHttpAuthProviderFactory | undefined;
 	private readonly sdkSessionFactory: McpHttpSdkSessionFactory;
+	private readonly onDiagnostic?: (message: string) => void;
 	private session: McpHttpSdkSession | null = null;
 	private authProvider: OAuthClientProvider | undefined;
 	private initialized = false;
@@ -50,6 +52,7 @@ export class HttpMcpClient implements McpClientHandle {
 		this.timeout = options.timeout || options.config.startupTimeout || DEFAULT_TIMEOUT_MS;
 		this.authProviderFactory = options.authProviderFactory;
 		this.sdkSessionFactory = options.sdkSessionFactory ?? createMcpHttpSdkSession;
+		this.onDiagnostic = options.onDiagnostic;
 	}
 
 	async initialize(params: McpInitializeParams): Promise<McpInitializeResult> {
@@ -80,9 +83,10 @@ export class HttpMcpClient implements McpClientHandle {
 		this.initialized = true;
 		const serverVersion = this.session.getServerVersion();
 		const serverCapabilities = this.session.getServerCapabilities();
-		this.log(`Connected to ${this.config.url}`);
+		const protocolVersion = this.session.getProtocolVersion?.() ?? params.protocolVersion;
+		this.log(`connected protocol=${protocolVersion}`);
 		return {
-			protocolVersion: params.protocolVersion,
+			protocolVersion,
 			serverInfo: {
 				name: serverVersion?.name ?? this.name,
 				version: serverVersion?.version ?? "unknown",
@@ -100,6 +104,7 @@ export class HttpMcpClient implements McpClientHandle {
 		try {
 			return (await this.requireSession().callTool(name, args)) as McpToolCallResult;
 		} catch (error) {
+			this.log(`tool call failed tool=${name} error=${getErrorMessage(error)}`);
 			if (isMcpSdkUnauthorizedError(error)) {
 				this.initialized = false;
 				throw new McpAuthRequiredError(this.name, this.config.url, getErrorMessage(error));
@@ -155,7 +160,9 @@ export class HttpMcpClient implements McpClientHandle {
 	}
 
 	private log(message: string): void {
-		if (this.debug) console.error(`[MCPClient:${this.name}] ${message}`);
+		const formatted = `[MCPClient:${this.name}] ${message}`;
+		if (this.onDiagnostic) this.onDiagnostic(formatted);
+		else if (this.debug) console.error(formatted);
 	}
 }
 

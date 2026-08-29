@@ -70,7 +70,7 @@ export function createMcpToolResultPolicy(options: McpToolResultPolicyOptions): 
 			const content = convertMcpContent(result.content);
 			const serializedResult = JSON.stringify(result);
 			const resultBytes = utf8ByteLength(serializedResult);
-			if (resultBytes <= maxInlineResultBytes) return { content, details: result };
+			if (resultBytes <= maxInlineResultBytes) return projectResult(content, result, result);
 
 			let artifact: McpToolResultArtifact;
 			try {
@@ -82,7 +82,7 @@ export function createMcpToolResultPolicy(options: McpToolResultPolicyOptions): 
 				});
 			} catch {
 				// Never discard the only copy of a tool result when auxiliary storage fails.
-				return { content, details: result };
+				return projectResult(content, result, result);
 			}
 
 			const text = content
@@ -112,13 +112,25 @@ export function createMcpToolResultPolicy(options: McpToolResultPolicyOptions): 
 				},
 				summary: summarizeContent(result.content, textBytes),
 			};
-			return { content: [{ type: "text", text: projectedText }, ...images], details };
+			return projectResult([{ type: "text", text: projectedText }, ...images], details, result);
 		},
 	};
 }
 
 export function preserveMcpToolResult(result: McpToolCallResult): RuntimeToolResult {
-	return { content: convertMcpContent(result.content), details: result };
+	return projectResult(convertMcpContent(result.content), result, result);
+}
+
+function projectResult(
+	content: RuntimeToolResult["content"],
+	details: unknown,
+	result: Pick<McpToolCallResult, "isError">,
+): RuntimeToolResult {
+	return {
+		content,
+		details,
+		...(result.isError === undefined ? {} : { isError: result.isError }),
+	};
 }
 
 function convertMcpContent(mcpContent: readonly McpContent[]): RuntimeToolResult["content"] {
@@ -128,12 +140,20 @@ function convertMcpContent(mcpContent: readonly McpContent[]): RuntimeToolResult
 			content.push({ type: "text", text: item.text });
 		} else if (item.type === "image") {
 			content.push({ type: "image", data: item.data, mimeType: item.mimeType });
+		} else if (item.type === "audio") {
+			content.push({ type: "text", text: `Audio content: ${item.mimeType}` });
+		} else if (item.type === "resource_link") {
+			const description = item.description ? `\n${item.description}` : "";
+			content.push({ type: "text", text: `Resource link: ${item.name} (${item.uri})${description}` });
 		} else if (item.type === "resource") {
 			const resource = item.resource;
 			let text = `Resource: ${resource.uri}`;
-			if (resource.text) {
+			if ("text" in resource) {
 				text += `\n${resource.text}`;
-			} else if (resource.blob) {
+			} else if (resource.mimeType?.startsWith("image/") && resource.blob) {
+				content.push({ type: "image", data: resource.blob, mimeType: resource.mimeType });
+				continue;
+			} else if ("blob" in resource) {
 				text += `\n[Binary data: ${resource.mimeType || "unknown"}]`;
 			}
 			content.push({ type: "text", text });

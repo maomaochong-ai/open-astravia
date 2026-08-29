@@ -295,7 +295,10 @@ export class McpServerSupervisor {
 		if (publish) this.servers.set(name, server);
 
 		try {
-			const client = this.clientFactory(name, config, { debug: this.debug || config.debug });
+			const client = this.clientFactory(name, config, {
+				debug: this.debug || config.debug,
+				onDiagnostic: (message) => this.log(message),
+			});
 			server.client = client;
 			server.startedAt = Date.now();
 			const result = await client.initialize({

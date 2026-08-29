@@ -266,6 +266,8 @@ export interface AgentToolResult<T> {
 	content: (TextContent | ImageContent)[];
 	// Details to be displayed in a UI or logged
 	details: T;
+	// Protocol-level tool error returned without throwing.
+	isError?: boolean;
 }
 
 // Callback for streaming tool execution updates

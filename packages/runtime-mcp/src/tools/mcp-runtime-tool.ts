@@ -76,6 +76,7 @@ export async function executeMcpToolCall(
 				content: [{ type: "text", text: errorMessage }],
 				isError: true,
 			},
+			isError: true,
 		};
 	}
 }

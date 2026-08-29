@@ -2,6 +2,18 @@
 
 export type McpJsonObject = Record<string, unknown>;
 
+export const MCP_LATEST_PROTOCOL_VERSION = "2025-11-25";
+export const MCP_SUPPORTED_PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"] as const;
+
+/** MCP metadata is intentionally opaque to the platform-neutral layer. */
+export type McpMeta = Record<string, unknown>;
+
+export interface McpAnnotations {
+	readonly audience?: readonly ("user" | "assistant")[];
+	readonly priority?: number;
+	readonly lastModified?: string;
+}
+
 export interface McpServerCommonConfig {
 	disabled?: boolean;
 	autoApprove?: string[];
@@ -107,6 +119,7 @@ export interface McpInitializeResult {
 
 export interface McpTool {
 	name: string;
+	title?: string;
 	description?: string;
 	inputSchema: {
 		type: "object";
@@ -114,6 +127,9 @@ export interface McpTool {
 		required?: string[];
 		[key: string]: unknown;
 	};
+	outputSchema?: Record<string, unknown>;
+	annotations?: McpAnnotations;
+	_meta?: McpMeta;
 }
 
 export interface McpToolsListResult {
@@ -128,14 +144,19 @@ export interface McpToolCallParams {
 
 export interface McpToolCallResult {
 	content: McpContent[];
+	structuredContent?: McpJsonObject;
 	isError?: boolean;
+	_meta?: McpMeta;
 }
 
 export interface McpResource {
 	uri: string;
 	name: string;
+	title?: string;
 	description?: string;
 	mimeType?: string;
+	annotations?: McpAnnotations;
+	_meta?: McpMeta;
 }
 
 export interface McpResourcesListResult {
@@ -148,26 +169,74 @@ export interface McpResourceReadParams {
 }
 
 export interface McpResourceReadResult {
-	contents: McpContent[];
+	contents: McpResourceContents[];
 }
 
 export interface McpTextContent {
 	type: "text";
 	text: string;
+	annotations?: McpAnnotations;
+	_meta?: McpMeta;
 }
 
 export interface McpImageContent {
 	type: "image";
 	data: string;
 	mimeType: string;
+	annotations?: McpAnnotations;
+	_meta?: McpMeta;
 }
 
-export interface McpResourceContent {
+export interface McpAudioContent {
+	type: "audio";
+	data: string;
+	mimeType: string;
+	annotations?: McpAnnotations;
+	_meta?: McpMeta;
+}
+
+export interface McpTextResourceContents {
+	uri: string;
+	mimeType?: string;
+	text: string;
+}
+
+export interface McpBlobResourceContents {
+	uri: string;
+	mimeType?: string;
+	blob: string;
+}
+
+export type McpResourceContents = McpTextResourceContents | McpBlobResourceContents;
+
+export interface McpResourceLinkContent {
+	type: "resource_link";
+	uri: string;
+	name: string;
+	title?: string;
+	description?: string;
+	mimeType?: string;
+	annotations?: McpAnnotations;
+	_meta?: McpMeta;
+}
+
+/** EmbeddedResource is a ToolResult content block, not a resources/read result. */
+export interface McpEmbeddedResourceContent {
 	type: "resource";
-	resource: { uri: string; text?: string; blob?: string; mimeType?: string };
+	resource: McpResourceContents;
+	annotations?: McpAnnotations;
+	_meta?: McpMeta;
 }
 
-export type McpContent = McpTextContent | McpImageContent | McpResourceContent;
+/** Backwards-compatible name retained for existing MCP tool integrations. */
+export type McpResourceContent = McpEmbeddedResourceContent;
+
+export type McpContent =
+	| McpTextContent
+	| McpImageContent
+	| McpAudioContent
+	| McpResourceLinkContent
+	| McpEmbeddedResourceContent;
 
 export interface McpPrompt {
 	name: string;

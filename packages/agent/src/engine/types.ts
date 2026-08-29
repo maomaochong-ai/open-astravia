@@ -91,6 +91,8 @@ export interface RuntimeToolExecutionContext<TDetails = unknown> {
 export interface RuntimeToolResult<TDetails = unknown> {
 	readonly content: readonly (TextContent | ImageContent)[];
 	readonly details: TDetails;
+	/** Protocol-level error result returned without throwing. */
+	readonly isError?: boolean;
 }
 
 export interface RuntimeToolDefinition<TSchemaDef extends TSchema = TSchema, TDetails = unknown> {

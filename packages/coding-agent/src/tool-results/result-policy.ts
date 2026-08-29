@@ -75,6 +75,7 @@ async function projectLargeResult(
 			),
 		],
 		details: result.details,
+		...(result.isError === undefined ? {} : { isError: result.isError }),
 	};
 }
 

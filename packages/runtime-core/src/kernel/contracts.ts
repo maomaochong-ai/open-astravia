@@ -144,6 +144,8 @@ export interface RuntimeToolExecutionRequest<TInput extends object = Readonly<Re
 export interface RuntimeToolResult {
 	readonly content: readonly (TextContent | ImageContent)[];
 	readonly details?: unknown;
+	/** A tool can complete normally while reporting a protocol-level error result. */
+	readonly isError?: boolean;
 }
 
 export interface ToolPolicyRequest {
