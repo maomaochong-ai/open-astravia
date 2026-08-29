@@ -25,8 +25,8 @@ function ChatBubbles({
 		<div className={cn("flex flex-col justify-center", compact ? "gap-1.5" : "gap-2")}>
 			<div
 				className={cn(
-					"ml-auto line-clamp-3 rounded-2xl rounded-br-md bg-background/85 text-foreground shadow-sm ring-1 ring-border/60 backdrop-blur-sm",
-					compact ? "max-w-full px-2.5 py-1.5 text-[11px] leading-snug" : "max-w-[92%] px-3 py-2 text-[11.5px] leading-snug",
+					"ml-auto line-clamp-3 rounded-xl rounded-br-md border border-border/60 bg-background/85 text-foreground backdrop-blur-sm",
+					compact ? "max-w-full px-2.5 py-1.5 text-[11px] leading-snug" : "max-w-[92%] px-3 py-2 text-[12px] leading-snug",
 				)}
 			>
 				{userPrompt}
@@ -35,8 +35,8 @@ function ChatBubbles({
 				<BotAvatar className="mt-1 shrink-0" />
 				<div
 					className={cn(
-						"min-w-0 flex-1 line-clamp-3 rounded-2xl rounded-tl-md bg-primary/12 text-foreground shadow-sm ring-1 ring-primary/25 backdrop-blur-sm",
-						compact ? "px-2.5 py-1.5 text-[11px] leading-snug" : "px-3 py-2 text-[11.5px] leading-snug",
+						"min-w-0 flex-1 line-clamp-3 rounded-xl rounded-tl-md border border-primary/25 bg-primary/10 text-foreground backdrop-blur-sm",
+						compact ? "px-2.5 py-1.5 text-[11px] leading-snug" : "px-3 py-2 text-[12px] leading-snug",
 					)}
 				>
 					{assistantReply}
@@ -86,7 +86,7 @@ export function ShowcaseChatThread({ userPrompt, assistantReply, brandName, bran
 		<section aria-label="ability-showcase-chat-thread">
 			<ShowcaseStage>
 				<div className="p-3">
-					<div className="mx-auto flex h-44 max-w-[22rem] flex-col overflow-hidden rounded-xl bg-background/90 shadow-[0_20px_44px_-20px_rgb(0_0_0/0.55)] ring-1 ring-border/70">
+					<div className="mx-auto flex h-44 max-w-[22rem] flex-col overflow-hidden rounded-xl border border-border/60 bg-card/90">
 						<div className="flex items-center gap-2 border-b border-border/50 px-3 py-2">
 							{brandIconUrl ? (
 								<img src={brandIconUrl} alt="" className="h-6 w-6 rounded-md object-cover" />
@@ -121,7 +121,7 @@ export function ShowcaseCanvasHero({ userPrompt, assistantReply, canvas, brandNa
 						<CanvasByMotif motif={canvas} title={brandName} />
 					</div>
 					<div className="flex items-center gap-3">
-						<p className="min-w-0 flex-1 truncate text-[11.5px] text-foreground/90">{assistantReply}</p>
+						<p className="min-w-0 flex-1 truncate text-[12px] text-foreground/90">{assistantReply}</p>
 						<div className="max-w-[42%] shrink-0 truncate rounded-full bg-background/80 px-2.5 py-1 text-[10px] text-muted-foreground ring-1 ring-border/50">
 							{userPrompt}
 						</div>
@@ -141,7 +141,7 @@ export function ShowcasePromptResult({ userPrompt, assistantReply, canvas, brand
 					data-showcase-layout="split"
 					className="grid h-44 grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-stretch gap-3 overflow-hidden p-3"
 				>
-					<div className="flex min-w-0 flex-col justify-center rounded-xl bg-background/80 p-3 shadow-sm ring-1 ring-border/60">
+					<div className="flex min-w-0 flex-col justify-center rounded-xl border border-border/50 bg-card/80 p-3">
 						<div className="h-1.5 w-8 rounded-full bg-foreground/15" />
 						<p className="mt-2 line-clamp-4 text-[12px] leading-snug text-foreground">{userPrompt}</p>
 					</div>
@@ -163,7 +163,7 @@ export function ShowcaseSpotlight({ userPrompt, assistantReply, brandName, brand
 		<section aria-label="ability-showcase-spotlight">
 			<ShowcaseStage>
 				<div className="flex h-44 items-center justify-center overflow-hidden p-3">
-					<div className="w-full max-w-[22rem] overflow-hidden rounded-xl bg-background/92 shadow-[0_24px_48px_-24px_rgb(0_0_0/0.6)] ring-1 ring-border/70">
+					<div className="w-full max-w-[22rem] overflow-hidden rounded-xl border border-border/60 bg-card/90">
 						<div className="flex items-center gap-2 border-b border-border/50 px-3 py-2.5">
 							<span className="h-2 w-2 rounded-full ring-1 ring-border/70" />
 							<div className="min-w-0 flex-1 truncate text-[12px] text-foreground">{userPrompt}</div>
@@ -172,7 +172,7 @@ export function ShowcaseSpotlight({ userPrompt, assistantReply, brandName, brand
 						<div className="flex flex-col gap-1 p-1.5">
 							<div className="flex items-center gap-2 rounded-lg bg-primary/12 px-2.5 py-2 ring-1 ring-primary/20">
 								<span className="h-4 w-4 rounded-md bg-primary/35" />
-								<div className="min-w-0 flex-1 truncate text-[11.5px] text-foreground">{assistantReply}</div>
+								<div className="min-w-0 flex-1 truncate text-[12px] text-foreground">{assistantReply}</div>
 							</div>
 							<div className="flex items-center gap-2 rounded-lg px-2.5 py-2">
 								<span className="h-4 w-4 rounded-md bg-foreground/8" />
@@ -207,10 +207,10 @@ export function ShowcaseWorkbench({ userPrompt, assistantReply, canvas, brandNam
 					</div>
 					<CanvasByMotif motif={canvas} title={brandName} />
 					<div className="flex min-w-0 flex-col justify-center gap-2 overflow-hidden">
-						<div className="line-clamp-3 rounded-xl bg-background/85 px-2.5 py-2 text-[10.5px] leading-snug text-muted-foreground ring-1 ring-border/55">
+						<div className="line-clamp-3 rounded-xl border border-border/50 bg-card/80 px-2.5 py-2 text-[11px] leading-snug text-muted-foreground">
 							{userPrompt}
 						</div>
-						<div className="line-clamp-3 rounded-xl bg-primary/12 px-2.5 py-2 text-[10.5px] leading-snug text-foreground ring-1 ring-primary/20">
+						<div className="line-clamp-3 rounded-xl border border-primary/25 bg-primary/10 px-2.5 py-2 text-[11px] leading-snug text-foreground">
 							{assistantReply}
 						</div>
 					</div>

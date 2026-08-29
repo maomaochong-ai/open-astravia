@@ -1,6 +1,8 @@
 import type { AbilityMetaEntry, AbilityMetaKey } from "@shared/lib/api";
+import { cn } from "@vetta/ui";
 import { useTranslation } from "react-i18next";
 import type { AbilitiesModel, AbilityItem } from "../../types";
+import { DETAIL_CARD, DETAIL_KICKER } from "./ability-detail-surface";
 import { AbilitySourceMetaRow, AbilitySourceRelations } from "./AbilitySourceMeta";
 
 /** 预置键 → i18n label key。未知键当作自定义条目处理（服务端已白名单校验，这里只是渲染兜底）。 */
@@ -29,22 +31,19 @@ export function AbilityMetaList({
 
 	return (
 		<section>
-			<div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
-				{t("meta.title")}
-			</div>
-			<dl className="flex flex-col gap-1.5 text-[11px]">
+			<div className={cn("mb-2", DETAIL_KICKER)}>{t("meta.title")}</div>
+			<dl className={cn(DETAIL_CARD, "flex flex-col divide-y divide-border/50 px-3.5 text-[12px]")}>
 				{entries.map((entry, index) => (
 					<div
-						// 同一个预置键不会重复出现，但自定义条目可能重名，故带上索引
 						key={`${entry.key ?? entry.label ?? ""}-${index}`}
-						className="flex items-start gap-3"
+						className="flex items-start gap-3 py-2.5"
 					>
-						<dt className="w-20 shrink-0 text-muted-foreground/50">
+						<dt className="w-20 shrink-0 text-[11px] text-muted-foreground/60">
 							{entry.key && entry.key in META_LABEL_KEYS
 								? t(META_LABEL_KEYS[entry.key])
 								: (entry.label ?? "")}
 						</dt>
-						<dd className="min-w-0 flex-1 break-words text-muted-foreground">
+						<dd className="min-w-0 flex-1 break-words text-foreground/80">
 							<MetaValue value={entry.value} />
 						</dd>
 					</div>

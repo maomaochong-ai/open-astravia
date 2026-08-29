@@ -77,7 +77,7 @@ function ContributionGroup({
 		<div>
 			<div className="mb-1.5 text-[11px] uppercase tracking-wide text-muted-foreground/60">{label}</div>
 			{/* 一张卡片装下整组，条目之间只用分隔线 */}
-			<div className="overflow-hidden rounded-lg border border-border bg-background/50">
+			<div className="overflow-hidden rounded-xl border border-border/50 bg-card/40">
 				{visible.map((entry) => (
 					<div
 						key={entry.key}

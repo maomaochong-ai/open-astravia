@@ -59,7 +59,7 @@ function AppWindow({
 	return (
 		<div
 			className={cn(
-				"flex h-full min-h-0 flex-col overflow-hidden rounded-xl bg-background/90 shadow-[0_20px_44px_-20px_rgb(0_0_0/0.6)] ring-1 ring-border/70 backdrop-blur-sm",
+				"flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm",
 				className,
 			)}
 		>
@@ -89,12 +89,12 @@ function DesignCanvas({ title }: { title?: string }): JSX.Element {
 				aria-hidden
 			/>
 			<div className="relative m-auto w-[78%]">
-				<div className="relative rounded-lg bg-background p-2 shadow-[0_16px_32px_-24px_rgb(0_0_0/0.55)] ring-1 ring-border/70">
+				<div className="relative rounded-lg border border-border/60 bg-background p-2">
 					<div className="absolute -left-1 -top-1 h-1.5 w-1.5 rounded-[1px] bg-primary" />
 					<div className="absolute -right-1 -top-1 h-1.5 w-1.5 rounded-[1px] bg-primary" />
 					<div className="absolute -bottom-1 -left-1 h-1.5 w-1.5 rounded-[1px] bg-primary" />
 					<div className="absolute -bottom-1 -right-1 h-1.5 w-1.5 rounded-[1px] bg-primary" />
-					<div className="mb-1.5 h-3.5 w-fit rounded-full bg-foreground/8 px-2 text-[8px] leading-[14px] text-muted-foreground">
+					<div className="mb-1.5 h-3.5 w-fit rounded-full bg-foreground/10 px-2 text-[10px] leading-[14px] text-muted-foreground">
 						{title || "Frame"}
 					</div>
 					<div className="relative h-12 overflow-hidden rounded-md bg-gradient-to-br from-primary/70 via-primary/25 to-transparent">
@@ -113,10 +113,10 @@ function DesignCanvas({ title }: { title?: string }): JSX.Element {
 
 function CodeCanvas({ title }: { title?: string }): JSX.Element {
 	const lines = [
-		{ w: "w-[58%]", c: "bg-violet-400/50" },
+		{ w: "w-[58%]", c: "bg-primary/50" },
 		{ w: "w-[84%]", c: "bg-foreground/14" },
-		{ w: "w-[46%]", c: "bg-sky-400/50" },
-		{ w: "w-[72%]", c: "bg-primary/45" },
+		{ w: "w-[46%]", c: "bg-primary/25" },
+		{ w: "w-[72%]", c: "bg-primary/40" },
 		{ w: "w-[63%]", c: "bg-foreground/12" },
 		{ w: "w-[38%]", c: "bg-foreground/10" },
 	];
@@ -124,16 +124,16 @@ function CodeCanvas({ title }: { title?: string }): JSX.Element {
 		<AppWindow
 			header={
 				<div className="ml-1.5 flex min-w-0 items-center gap-1">
-					<div className="rounded-t-md bg-background px-2 py-0.5 text-[9px] text-foreground ring-1 ring-border/50">
+					<div className="rounded-t-md bg-background px-2 py-0.5 text-[10px] text-foreground ring-1 ring-border/50">
 						{title || "main.ts"}
 					</div>
-					<div className="rounded-t-md px-2 py-0.5 text-[9px] text-muted-foreground/70">lib.ts</div>
+					<div className="rounded-t-md px-2 py-0.5 text-[10px] text-muted-foreground/70">lib.ts</div>
 				</div>
 			}
 			bodyClassName="flex min-h-0 flex-col"
 		>
 			<div className="flex min-h-0 flex-1 gap-2 px-2 py-2">
-				<div className="flex w-3 shrink-0 flex-col gap-[5px] pt-px text-right font-mono text-[8px] leading-none text-muted-foreground/50">
+				<div className="flex w-3 shrink-0 flex-col gap-[5px] pt-px text-right font-mono text-[10px] leading-none text-muted-foreground/50">
 					{lines.map((_, index) => (
 						<span key={`line-${index + 1}`}>{index + 1}</span>
 					))}
@@ -159,9 +159,9 @@ function CodeCanvas({ title }: { title?: string }): JSX.Element {
 function DocsCanvas({ title }: { title?: string }): JSX.Element {
 	return (
 		<div className="flex h-full min-h-0 items-center justify-center overflow-hidden rounded-xl bg-muted/40 ring-1 ring-border/60">
-			<div className="mx-3 w-full rounded-md bg-background px-3 py-2.5 shadow-[0_18px_28px_-24px_rgb(0_0_0/0.5)] ring-1 ring-border/50">
+			<div className="mx-3 w-full rounded-lg border border-border/50 bg-background px-3 py-2.5">
 				<div className="h-2.5 w-1/2 rounded-full bg-foreground/35" />
-				{title ? <div className="mt-1 truncate text-[9px] text-muted-foreground">{title}</div> : null}
+				{title ? <div className="mt-1 truncate text-[10px] text-muted-foreground">{title}</div> : null}
 				<div className="mt-2 space-y-1.5">
 					<div className="h-1.5 w-full rounded-full bg-foreground/12" />
 					<div className="h-1.5 w-[92%] rounded-full bg-foreground/10" />
@@ -201,7 +201,7 @@ function GenericCanvas(): JSX.Element {
 					</div>
 					<div className="rounded-lg bg-foreground/[0.04] p-2 ring-1 ring-border/40">
 						<div className="h-1.5 w-10 rounded-full bg-foreground/20" />
-						<div className="mt-1.5 h-2.5 w-9 rounded-full bg-sky-400/50" />
+						<div className="mt-1.5 h-2.5 w-9 rounded-full bg-primary/30" />
 					</div>
 				</div>
 				<div className="relative min-h-[58px] flex-1 overflow-hidden rounded-lg bg-foreground/[0.04] ring-1 ring-border/40">
@@ -233,17 +233,17 @@ function GenericCanvas(): JSX.Element {
 
 function BrowserCanvas({ title }: { title?: string }): JSX.Element {
 	return (
-		<div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl bg-background/90 shadow-[0_20px_44px_-20px_rgb(0_0_0/0.6)] ring-1 ring-border/70">
+		<div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card/80">
 			<div className="flex items-end gap-1 border-b border-border/50 bg-foreground/[0.04] px-2 pt-1.5">
 				<TrafficLights />
 				<div className="ml-1 flex min-w-0 flex-1 items-end gap-0.5">
-					<div className="rounded-t-md bg-background px-2.5 py-1 text-[9px] text-foreground ring-1 ring-border/50">
+					<div className="rounded-t-md bg-background px-2.5 py-1 text-[10px] text-foreground ring-1 ring-border/50">
 						{title || "Tab"}
 					</div>
-					<div className="rounded-t-md px-2 py-1 text-[9px] text-muted-foreground/60">
+					<div className="rounded-t-md px-2 py-1 text-[10px] text-muted-foreground/60">
 						<span className="inline-block h-1 w-6 rounded-full bg-foreground/15" />
 					</div>
-					<span className="mb-1 ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-sm text-[9px] text-muted-foreground/50 ring-1 ring-border/40">
+					<span className="mb-1 ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-sm text-[10px] text-muted-foreground/50 ring-1 ring-border/40">
 						+
 					</span>
 				</div>
@@ -278,28 +278,28 @@ function BrowserCanvas({ title }: { title?: string }): JSX.Element {
 
 function TerminalCanvas(): JSX.Element {
 	return (
-		<div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl bg-zinc-950 shadow-[0_20px_44px_-20px_rgb(0_0_0/0.7)] ring-1 ring-white/10">
-			<div className="flex items-center gap-1.5 border-b border-white/10 px-2.5 py-1.5">
-				<span className="h-1.5 w-1.5 rounded-full bg-white/35" />
-				<span className="h-1.5 w-1.5 rounded-full bg-white/22" />
-				<span className="h-1.5 w-1.5 rounded-full bg-white/14" />
-				<div className="ml-1.5 h-1.5 w-12 rounded-full bg-white/12" />
+		<div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card">
+			<div className="flex items-center gap-1.5 border-b border-border/50 px-2.5 py-1.5">
+				<span className="h-1.5 w-1.5 rounded-full bg-foreground/25" />
+				<span className="h-1.5 w-1.5 rounded-full bg-foreground/18" />
+				<span className="h-1.5 w-1.5 rounded-full bg-foreground/12" />
+				<div className="ml-1.5 h-1.5 w-12 rounded-full bg-foreground/10" />
 			</div>
 			<div className="flex flex-1 flex-col gap-1.5 px-3 py-2.5 font-mono">
 				<div className="flex items-center gap-1.5">
-					<span className="text-[10px] text-emerald-400/90">$</span>
-					<div className="h-1.5 w-2/5 rounded-full bg-white/35" />
-					<span className="h-3 w-px bg-emerald-300/80" />
+					<span className="text-[10px] text-emerald-400">$</span>
+					<div className="h-1.5 w-2/5 rounded-full bg-foreground/30" />
+					<span className="h-3 w-px bg-emerald-400/80" />
 				</div>
-				<div className="h-1.5 w-3/4 rounded-full bg-white/18" />
-				<div className="h-1.5 w-1/2 rounded-full bg-white/12" />
+				<div className="h-1.5 w-3/4 rounded-full bg-foreground/18" />
+				<div className="h-1.5 w-1/2 rounded-full bg-foreground/12" />
 				<div className="mt-1 flex items-center gap-1.5">
-					<span className="h-2 w-2 rounded-full bg-emerald-400/80" />
-					<div className="h-1.5 w-2/5 rounded-full bg-emerald-300/50" />
+					<span className="h-2 w-2 rounded-full bg-emerald-400" />
+					<div className="h-1.5 w-2/5 rounded-full bg-emerald-500/15" />
 				</div>
 				<div className="mt-auto flex items-center gap-1.5">
-					<span className="text-[10px] text-emerald-400/90">$</span>
-					<span className="h-3 w-px bg-emerald-300/80" />
+					<span className="text-[10px] text-emerald-400">$</span>
+					<span className="h-3 w-px bg-emerald-400/80" />
 				</div>
 			</div>
 		</div>
@@ -310,7 +310,7 @@ function BoardCanvas(): JSX.Element {
 	const columns = [
 		{ header: "bg-foreground/20", cards: ["h-8", "h-6"] },
 		{ header: "bg-primary/55", cards: ["h-10", "h-7", "h-6"] },
-		{ header: "bg-emerald-400/55", cards: ["h-7"] },
+		{ header: "bg-emerald-500/15", cards: ["h-7"] },
 	];
 	return (
 		<div className="grid h-full min-h-0 grid-cols-3 gap-1.5 overflow-hidden rounded-xl bg-foreground/[0.03] p-2 ring-1 ring-border/60">

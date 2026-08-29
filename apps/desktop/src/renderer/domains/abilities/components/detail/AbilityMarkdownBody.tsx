@@ -1,7 +1,9 @@
 import { MarkdownPreviewView } from "@vetta/theme-ui/activity";
 import { resolvedThemeAtom } from "@shared/store/atoms";
+import { cn } from "@vetta/ui";
 import { useAtomValue } from "jotai";
 import { useCallback } from "react";
+import { DETAIL_CARD } from "./ability-detail-surface";
 
 /** 详情正文：`raw.detail.content` 的 markdown（ADR-0049 用 markdown 换运营编辑成本）。 */
 export function AbilityMarkdownBody({ content }: { content: string }): JSX.Element | null {
@@ -12,9 +14,8 @@ export function AbilityMarkdownBody({ content }: { content: string }): JSX.Eleme
 
 	if (!content.trim()) return null;
 
-	// MarkdownPreviewView 自带 p-4，详情页正文不需要内边距
 	return (
-		<section className="text-[13px] leading-relaxed [&_.markdown-body]:p-0">
+		<section className={cn(DETAIL_CARD, "px-3.5 py-3 text-[13px] leading-relaxed [&_.markdown-body]:p-0")}>
 			<MarkdownPreviewView content={content} theme={theme} onOpenExternal={onOpenExternal} />
 		</section>
 	);

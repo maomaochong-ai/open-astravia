@@ -17,8 +17,8 @@ export function AbilitySourceMetaRow({ item }: { item: AbilityItem }): JSX.Eleme
 	const source = resolveAbilitySourcePresentation(item.catalogSource);
 
 	return (
-		<div className="flex items-start gap-3">
-			<dt className="w-20 shrink-0 text-muted-foreground/50">{t("detail.source.title")}</dt>
+		<div className="flex items-start gap-3 py-2.5">
+			<dt className="w-20 shrink-0 text-[11px] text-muted-foreground/60">{t("detail.source.title")}</dt>
 			<dd className="min-w-0 flex-1 text-muted-foreground">
 				<span className="block text-foreground/80">{"name" in source ? source.name : t(source.nameKey)}</span>
 				{source.repository ? (

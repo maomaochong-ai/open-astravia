@@ -38,6 +38,34 @@ describe("AbilityDetailBlocks", () => {
 		expect(screen.getByText("Focused")).toBeTruthy();
 	});
 
+	it("renders feature, step and callout host blocks with their copy", () => {
+		render(
+			<AbilityDetailBlocks
+				abilityType="plugin"
+				blocks={[
+					{
+						type: "feature-grid",
+						title: "Capabilities",
+						items: [{ title: "Read pages", description: "Use snapshots instead of raw HTML." }],
+					},
+					{
+						type: "steps",
+						title: "Get started",
+						items: [{ title: "Install", description: "Add the plugin first." }],
+					},
+					{ type: "callout", tone: "warning", title: "Permissions", content: "Only grant what the task needs." },
+				]}
+			/>,
+		);
+
+		expect(screen.getByRole("heading", { name: "Capabilities" })).toBeTruthy();
+		expect(screen.getByText("Read pages")).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Get started" })).toBeTruthy();
+		expect(screen.getByText("Install")).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Permissions" })).toBeTruthy();
+		expect(screen.getByText("Only grant what the task needs.")).toBeTruthy();
+	});
+
 	it("skips unknown blocks instead of crashing the detail page", () => {
 		render(
 			<AbilityDetailBlocks

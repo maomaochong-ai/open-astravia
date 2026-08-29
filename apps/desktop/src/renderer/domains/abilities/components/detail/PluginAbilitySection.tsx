@@ -29,20 +29,20 @@ export function PluginAbilitySection({
 		<section className="flex flex-col gap-5">
 			{plugin ? (
 				<div className="grid grid-cols-2 gap-2 text-[12px]">
-					<div className="rounded-lg bg-muted px-3 py-2">
-						<div className="text-muted-foreground/60">{t("plugin.currentVersion")}</div>
-						<div className="mt-0.5 font-medium tabular-nums text-foreground">{plugin.activeVersion}</div>
+					<div className="rounded-xl border border-border/50 bg-card/40 px-3.5 py-3">
+						<div className="text-[11px] text-muted-foreground/60">{t("plugin.currentVersion")}</div>
+						<div className="mt-1 font-medium tabular-nums text-foreground">{plugin.activeVersion}</div>
 					</div>
-					<div className="rounded-lg bg-muted px-3 py-2">
-						<div className="text-muted-foreground/60">{t("plugin.source.label")}</div>
-						<div className="mt-0.5 font-medium text-foreground">{t(pluginSourceLabelKey(plugin.source))}</div>
+					<div className="rounded-xl border border-border/50 bg-card/40 px-3.5 py-3">
+						<div className="text-[11px] text-muted-foreground/60">{t("plugin.source.label")}</div>
+						<div className="mt-1 font-medium text-foreground">{t(pluginSourceLabelKey(plugin.source))}</div>
 					</div>
 				</div>
 			) : null}
 
 			{item.pendingVersion ? (
-				<div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
-					<div className="text-[12px] text-amber-500">
+				<div className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/15 px-3.5 py-3">
+					<div className="text-[12px] text-amber-400">
 						{t("plugin.reloadable", { version: item.pendingVersion })}
 					</div>
 					<Button variant="outline" size="sm" disabled={item.busy} onClick={() => model.reloadPlugin(item)}>
