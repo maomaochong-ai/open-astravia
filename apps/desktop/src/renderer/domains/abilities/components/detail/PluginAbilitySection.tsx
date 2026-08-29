@@ -28,12 +28,12 @@ export function PluginAbilitySection({
 	return (
 		<section className="flex flex-col gap-5">
 			{plugin ? (
-				<div className="grid grid-cols-2 gap-2 text-[12px]">
-					<div className="rounded-xl border border-border/50 bg-card/40 px-3.5 py-3">
+				<div className="flex flex-wrap gap-x-8 gap-y-2 text-[12px]">
+					<div>
 						<div className="text-[11px] text-muted-foreground/60">{t("plugin.currentVersion")}</div>
 						<div className="mt-1 font-medium tabular-nums text-foreground">{plugin.activeVersion}</div>
 					</div>
-					<div className="rounded-xl border border-border/50 bg-card/40 px-3.5 py-3">
+					<div>
 						<div className="text-[11px] text-muted-foreground/60">{t("plugin.source.label")}</div>
 						<div className="mt-1 font-medium text-foreground">{t(pluginSourceLabelKey(plugin.source))}</div>
 					</div>
@@ -41,7 +41,7 @@ export function PluginAbilitySection({
 			) : null}
 
 			{item.pendingVersion ? (
-				<div className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/15 px-3.5 py-3">
+				<div className="flex items-center justify-between gap-3 border-l border-amber-500/40 py-1 pl-3">
 					<div className="text-[12px] text-amber-400">
 						{t("plugin.reloadable", { version: item.pendingVersion })}
 					</div>

@@ -5,7 +5,7 @@ import type { AbilityShowcaseCanvas } from "@shared/lib/api";
 /** 渐变舞台：primary 光晕 + 细网格，四角自然淡出。 */
 export function ShowcaseStage({ children }: { children: ReactNode }): JSX.Element {
 	return (
-		<div className="relative overflow-hidden rounded-2xl ring-1 ring-border/60">
+		<div className="relative overflow-hidden">
 			<div className="absolute inset-0 bg-gradient-to-br from-primary/12 via-background to-background" aria-hidden />
 			<div
 				className="absolute -left-16 -top-24 h-56 w-56 rounded-full blur-3xl"

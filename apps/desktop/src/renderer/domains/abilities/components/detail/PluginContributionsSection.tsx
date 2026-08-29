@@ -77,11 +77,11 @@ function ContributionGroup({
 		<div>
 			<div className="mb-1.5 text-[11px] uppercase tracking-wide text-muted-foreground/60">{label}</div>
 			{/* 一张卡片装下整组，条目之间只用分隔线 */}
-			<div className="overflow-hidden rounded-xl border border-border/50 bg-card/40">
-				{visible.map((entry) => (
+			<div>
+				{visible.map((entry, index) => (
 					<div
 						key={entry.key}
-						className="flex items-center gap-2.5 border-b border-border/60 px-2.5 py-2 last:border-b-0"
+						className={cn("flex items-center gap-2.5 py-2", index > 0 && "border-t border-border/40")}
 					>
 						{/* 与能力广场卡片同一套图标样式：bundle 详情里会引用真实的 skill / mcp */}
 						<AbilityIcon icon={entry.icon} type={type} className="h-8 w-8" iconClassName="h-4 w-4" />

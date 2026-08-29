@@ -123,6 +123,16 @@
 			"localVersion": "Local version",
 			"downloads": "Downloads",
 			"license": "License"
+		},
+		"story": {
+			"vs": "vs",
+			"compareBoth": "Compare",
+			"stepProgress": "{{current}} / {{total}}",
+			"stepPrevious": "Back",
+			"stepNext": "Next",
+			"replayScene": "Play conversation",
+			"previewImage": "View image",
+			"closePreview": "Close"
 		}
 	},
 	"plugin": {

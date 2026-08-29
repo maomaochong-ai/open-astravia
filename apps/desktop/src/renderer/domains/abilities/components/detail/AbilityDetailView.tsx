@@ -143,7 +143,7 @@ export function AbilityDetailView({
 	})();
 
 	const detailPage = (
-		<div className="flex w-full flex-col gap-7">
+		<div className="flex w-full flex-col gap-8">
 			<AbilityDetailEnter index={0}>
 				<AbilityDetailHeader
 					item={item}

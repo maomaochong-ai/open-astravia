@@ -7,6 +7,9 @@ import type { AbilityShowcase } from "@shared/lib/api";
 vi.mock("@vetta/theme-ui/shared", () => ({
 	BotAvatar: () => <span data-testid="bot-avatar" />,
 }));
+vi.mock("react-i18next", () => ({
+	useTranslation: () => ({ t: (key: string) => key }),
+}));
 
 import { AbilityShowcaseList } from "./AbilityShowcaseList";
 

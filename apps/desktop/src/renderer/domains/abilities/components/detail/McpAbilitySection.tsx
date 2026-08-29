@@ -30,7 +30,7 @@ export function McpAbilitySection({
 						{secrets.map((secret) => (
 							<li
 								key={secret.envKey}
-								className="flex items-center gap-2 rounded-xl border border-border/50 bg-card/40 px-3 py-2.5 text-[12px] text-foreground"
+								className="flex items-center gap-2 py-2 text-[12px] text-foreground"
 							>
 								<span className="icon-[solar--key-minimalistic-square-linear] h-3.5 w-3.5 text-muted-foreground" />
 								<code className="font-mono">{secret.envKey}</code>
@@ -41,7 +41,7 @@ export function McpAbilitySection({
 			) : null}
 
 			{item.usesOAuth ? (
-				<div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-card/40 px-3.5 py-3">
+				<div className="flex items-center justify-between gap-3 py-2">
 					<div className="min-w-0">
 						<div className="text-[12px] font-medium text-foreground">{t("mcp.oauth")}</div>
 						<div className="text-[11px] text-muted-foreground">

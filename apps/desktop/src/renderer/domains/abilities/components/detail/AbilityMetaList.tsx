@@ -2,7 +2,7 @@ import type { AbilityMetaEntry, AbilityMetaKey } from "@shared/lib/api";
 import { cn } from "@vetta/ui";
 import { useTranslation } from "react-i18next";
 import type { AbilitiesModel, AbilityItem } from "../../types";
-import { DETAIL_CARD, DETAIL_KICKER } from "./ability-detail-surface";
+import { DETAIL_KICKER, DETAIL_RULE } from "./ability-detail-surface";
 import { AbilitySourceMetaRow, AbilitySourceRelations } from "./AbilitySourceMeta";
 
 /** 预置键 → i18n label key。未知键当作自定义条目处理（服务端已白名单校验，这里只是渲染兜底）。 */
@@ -32,11 +32,11 @@ export function AbilityMetaList({
 	return (
 		<section>
 			<div className={cn("mb-2", DETAIL_KICKER)}>{t("meta.title")}</div>
-			<dl className={cn(DETAIL_CARD, "flex flex-col divide-y divide-border/50 px-3.5 text-[12px]")}>
+			<dl className="flex flex-col text-[12px]">
 				{entries.map((entry, index) => (
 					<div
 						key={`${entry.key ?? entry.label ?? ""}-${index}`}
-						className="flex items-start gap-3 py-2.5"
+						className={cn("flex items-start gap-3 py-2", index > 0 && DETAIL_RULE)}
 					>
 						<dt className="w-20 shrink-0 text-[11px] text-muted-foreground/60">
 							{entry.key && entry.key in META_LABEL_KEYS
@@ -48,7 +48,9 @@ export function AbilityMetaList({
 						</dd>
 					</div>
 				))}
-				<AbilitySourceMetaRow item={item} />
+				<div className={cn("py-2", entries.length > 0 && DETAIL_RULE)}>
+					<AbilitySourceMetaRow item={item} />
+				</div>
 			</dl>
 			<AbilitySourceRelations item={item} model={model} />
 		</section>

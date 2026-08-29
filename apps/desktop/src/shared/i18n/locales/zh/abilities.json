@@ -123,6 +123,16 @@
 			"localVersion": "本地版本",
 			"downloads": "下载量",
 			"license": "许可"
+		},
+		"story": {
+			"vs": "对照",
+			"compareBoth": "对照",
+			"stepProgress": "{{current}} / {{total}}",
+			"stepPrevious": "上一步",
+			"stepNext": "下一步",
+			"replayScene": "演示对话",
+			"previewImage": "查看大图",
+			"closePreview": "关闭"
 		}
 	},
 	"plugin": {

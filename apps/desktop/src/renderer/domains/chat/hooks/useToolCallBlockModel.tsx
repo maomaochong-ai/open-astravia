@@ -88,6 +88,7 @@ export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, 
 	const mcp = parseMcpTool(block.toolName);
 	const icon = toolIcon(block.toolName);
 	const shellCommand = getShellCommand(block);
+	const showImagePreview = block.imagePreview !== undefined && (block.toolName === "read" || mcp !== null);
 
 	const activeRuntimeId = useAtomValue(activeRuntimeIdAtom);
 	const backgroundTasksMap = useAtomValue(backgroundTasksBySessionAtom);
@@ -179,7 +180,7 @@ export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, 
 					)}
 				</div>
 			)}
-			{block.toolName === "read" && block.imagePreview ? (
+			{showImagePreview && block.imagePreview ? (
 				<ReadImageView image={block.imagePreview} />
 			) : block.toolName === "write" ? (
 				<>

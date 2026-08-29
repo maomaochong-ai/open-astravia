@@ -42,8 +42,8 @@ export function BundleMembersSection({
 									})
 								}
 								className={cn(
-									"flex w-full items-center gap-3 rounded-xl border border-border/50 bg-card/40 px-3 py-2.5 text-left transition-colors duration-200",
-									navigable ? "hover:border-primary/40 hover:bg-card/60" : "cursor-default opacity-70",
+									"flex w-full items-center gap-3 py-2.5 text-left transition-colors duration-200",
+									navigable ? "hover:text-foreground" : "cursor-default opacity-70",
 								)}
 							>
 								<AbilityIcon

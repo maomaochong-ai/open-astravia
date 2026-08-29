@@ -36,16 +36,12 @@ export function AbilityDetailHeader({
 	const status = resolveAbilityStatus(item);
 	const primary = resolveAbilityPrimaryAction(item, status);
 	const secondaries = resolveAbilitySecondaryActions(item, status);
+	const hasActions = primary !== "none" || Boolean(primaryAside) || secondaries.length > 0;
 
 	return (
-		<div className="border-b border-border/50 pb-6">
+		<div className="flex flex-col gap-4">
 			<div className="flex items-start gap-4">
-				<AbilityIcon
-					icon={item.icon}
-					type={item.type}
-					className="h-14 w-14 rounded-2xl border-primary/20 bg-primary/10"
-					iconClassName="h-7 w-7"
-				/>
+				<AbilityIcon icon={item.icon} type={item.type} className="h-14 w-14 rounded-2xl" iconClassName="h-7 w-7" />
 				<div className="min-w-0 flex-1">
 					<div className="flex flex-wrap items-center gap-2">
 						<h1 className="truncate text-[20px] font-semibold leading-snug tracking-tight text-foreground">{title}</h1>
@@ -64,48 +60,65 @@ export function AbilityDetailHeader({
 						<AbilityStatusBadges item={item} />
 					</div>
 
-					<dl className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground/70">
+					<dl className="mt-1.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground/70">
 						{item.author ? (
 							<span>
-								<dt className="inline">{t("detail.meta.author")}</dt>
-								<dd className="ml-1 inline text-foreground/80">{item.author}</dd>
+								<dt className="sr-only">{t("detail.meta.author")}</dt>
+								<dd className="inline text-foreground/80">{item.author}</dd>
+							</span>
+						) : null}
+						{item.author && item.version ? (
+							<span aria-hidden className="text-muted-foreground/30">
+								·
 							</span>
 						) : null}
 						{item.version ? (
 							<span>
-								<dt className="inline">{t("detail.meta.version")}</dt>
-								<dd className="ml-1 inline tabular-nums text-foreground/80">{item.version}</dd>
+								<dt className="sr-only">{t("detail.meta.version")}</dt>
+								<dd className="inline tabular-nums text-foreground/80">{item.version}</dd>
 							</span>
 						) : null}
 						{item.localVersion && item.localVersion !== item.version ? (
-							<span>
-								<dt className="inline">{t("detail.meta.localVersion")}</dt>
-								<dd className="ml-1 inline tabular-nums text-foreground/80">{item.localVersion}</dd>
-							</span>
+							<>
+								<span aria-hidden className="text-muted-foreground/30">
+									·
+								</span>
+								<span>
+									<dt className="sr-only">{t("detail.meta.localVersion")}</dt>
+									<dd className="inline tabular-nums text-foreground/80">{item.localVersion}</dd>
+								</span>
+							</>
 						) : null}
 						{item.downloadCount > 0 ? (
-							<span>
-								<dt className="inline">{t("detail.meta.downloads")}</dt>
-								<dd className="ml-1 inline tabular-nums text-foreground/80">{item.downloadCount}</dd>
-							</span>
+							<>
+								<span aria-hidden className="text-muted-foreground/30">
+									·
+								</span>
+								<span>
+									<dt className="sr-only">{t("detail.meta.downloads")}</dt>
+									<dd className="inline tabular-nums text-foreground/80">{item.downloadCount}</dd>
+								</span>
+							</>
 						) : null}
 						{item.license ? (
-							<span>
-								<dt className="inline">{t("detail.meta.license")}</dt>
-								<dd className="ml-1 inline text-foreground/80">{item.license}</dd>
-							</span>
+							<>
+								<span aria-hidden className="text-muted-foreground/30">
+									·
+								</span>
+								<span>
+									<dt className="sr-only">{t("detail.meta.license")}</dt>
+									<dd className="inline text-foreground/80">{item.license}</dd>
+								</span>
+							</>
 						) : null}
 					</dl>
 				</div>
 			</div>
 
-			{/* 描述与标签落在图标下方，与图标左对齐 */}
-			{description ? (
-				<p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">{description}</p>
-			) : null}
+			{description ? <p className="text-[14px] leading-relaxed text-muted-foreground">{description}</p> : null}
 
 			{item.tags.length > 0 ? (
-				<div className="mt-3 flex flex-wrap gap-1.5">
+				<div className="flex flex-wrap gap-1.5">
 					{item.tags.map((tag) => (
 						<span
 							key={tag}
@@ -117,8 +130,8 @@ export function AbilityDetailHeader({
 				</div>
 			) : null}
 
-			{primary !== "none" || primaryAside || secondaries.length > 0 ? (
-				<div className="mt-5 flex flex-wrap items-center gap-2">
+			{hasActions ? (
+				<div className="flex flex-wrap items-center gap-2">
 					{primary !== "none" ? (
 						<Button
 							variant="primary"
