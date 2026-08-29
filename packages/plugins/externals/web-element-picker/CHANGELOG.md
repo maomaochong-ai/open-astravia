@@ -25,6 +25,15 @@
 - 扩展 popup 点「开始选择」无反馈：background 返回的失败原因（`no-inject` / `no-tab`）此前被丢弃，现显示明确错误提示（含中英文案），引导在普通网页上使用或刷新重试。
 - 扩展 popup 截图结果文案错位：截图成功/失败时误显示「已复制到剪贴板」「授权码无效或已过期」，现分别显示「截图已保存到下载目录」「截图保存失败，请重试」（新增中英文案）。
 
+### Changed
+
+- 内置面板工具栏精简：地址栏右侧「开始选择 / 发送给 AI / 写轮眼模式」按钮改为纯图标（悬停提示保留，选中/开启态以颜色与图标区分），与「打开外部 / 设置」按钮风格统一。
+- 扩展 popup 控制面 UI 重设计：品牌头部（渐变 Logo + 版本徽章）、状态卡（激活徽章 + 订单/有效期）、渐变主按钮、iOS 风格开关、快捷键提示卡，浅色/深色模式自适应。
+
+### Fixed
+
+- 扩展 popup「写轮眼模式」开关无法切换：background 收到 `wep-settings` 后只转发给 content script，未把设置写回 session storage，popup 每 600ms 轮询 `get-state` 时读到 `settings: null` 把开关重置回旧值；现由 background 合并写入 session storage 作为回流来源，并保留 content script 的 sync 持久化（浏览器重启后 `get-state` 回退读取 sync）。
+
 ## [0.1.0]
 
 ### Added

@@ -137,7 +137,7 @@ void (async () => {
 	$<HTMLAnchorElement>("buy-link").href = t("licenseBuyUrl");
 	$("sharingan-label").textContent = t("sharinganLabel");
 	$("sharingan-hint").textContent = t("sharinganHint");
-	$("copy-hint").textContent = t("copyHint");
+	$("copy-hint-text").textContent = t("copyHint");
 	$("footer").textContent = chrome.runtime.getManifest().name;
 
 	bind();
