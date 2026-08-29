@@ -96,7 +96,7 @@
 	"engines": {
 		"node": ">=20.0.0"
 	},
-	"version": "0.55.3",
+	"version": "0.55.31",
 	"dependencies": {
 		"@mariozechner/jiti": "^2.6.5",
 		"@radix-ui/react-popover": "^1.1.15",

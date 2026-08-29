@@ -22,4 +22,4 @@ astravia 桌面端通过 `packages/desktop-app/scripts/fetch-dbx-mcp.mjs` 下载
 3. 在 fork 仓库手动触发 workflow 或由 push 自动触发，构建并发布 Release。
 4. 若资产命名/版本变化，同步更新 `fetch-dbx-mcp.mjs` 中的 pin 与 sha256。
 
-关联文档：[docs/dbx-main-integration-tasks.md](../../docs/dbx-main-integration-tasks.md)
+关联文档：[docs/database/dbx-main-integration-tasks.md](../../docs/database/dbx-main-integration-tasks.md)

@@ -1,0 +1,11 @@
+dist/
+release/
+node_modules/
+.kernel-build/
+# 授权码私钥（勿提交，需离线备份）
+extension/.secrets/
+# Playwright 持久化 profile（e2e 临时目录）
+extension/.e2e-profile/
+release/
+node_modules/
+.kernel-build/

@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_extName__",
+  "description": "__MSG_extDescription__",
+  "version": "0.3.0",
+  "default_locale": "zh_CN",
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "action": {
+    "default_title": "__MSG_extName__",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "32": "assets/icon32.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    }
+  },
+  "permissions": ["storage", "activeTab", "clipboardWrite", "downloads"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["kernel-inject.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
