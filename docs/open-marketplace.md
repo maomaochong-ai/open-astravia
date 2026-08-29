@@ -177,7 +177,7 @@ abilities/mcp/context7/
       ]
     },
     { "type": "image", "src": "assets/preview.webp", "alt": "Context7 preview" },
-    { "type": "markdown", "content": "## Usage\nSelect the MCP and finish its setup." },
+    { "type": "markdown", "path": "README.md" },
     {
       "type": "links",
       "items": [{ "label": "Documentation", "href": "https://context7.com/docs" }]
@@ -185,6 +185,9 @@ abilities/mcp/context7/
   ]
 }
 ```
+
+`markdown` 区块可使用内联 `content`，也可用 `path` 引用能力目录内的 Markdown 文件；二者必须且只能提供一个。
+这允许在 `showcase`、`feature-grid` 等结构化区块之间插入长篇 Markdown，而不必把整篇正文转义成单行 JSON 字符串。
 
 安装、权限、MCP 参数和 Bundle 成员选择仍由客户端固定区域渲染，详情文件不能覆盖这些安全相关交互。
 

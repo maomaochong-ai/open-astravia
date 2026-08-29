@@ -2,6 +2,8 @@
 
 ### Added
 
+- 能力详情 showcase 新增宿主模板 `canvas-hero`、`prompt-result`、`spotlight`、`workbench`，以及 canvas 场景 `browser`、`terminal`、`board`。构图由 Desktop 绘制，插件仍只能声明模板名、场景名和文案，不能注入 CSS 或 HTML。
+- 能力详情的结构化 `markdown` 区块支持通过 `path` 引用能力包内 Markdown 文件，并在主进程加载时解析为原有正文合同；长说明不再需要转义成 JSON 单行字符串。引用继续受包根路径与 512 KiB 文件上限约束，Browser Use 系统插件同步补齐双语 showcase、功能网格和使用说明详情。
 - 设置中的「插件设置」升级为统一「工具配置」目录：由 Runtime Core Definition/Layer 聚合内建图片处理与插件设置，
   统一渲染可编辑 Schema、配置消费者及其 `native` / `adapter` 支持方式。敏感插件字段在进入 IPC 前删除；配置写入继续由
   Agent Settings 与 Plugin Settings 各自的持久化 Adapter 负责。没有配置的 Tool 不显示空条目。
@@ -40,6 +42,7 @@
 
 ### Changed
 
+- 能力详情既有 `chat-over-canvas` / `chat-thread` 改为以产品窗口为主角：不同 `canvas` 使用可辨认窗体外形（画板、编辑器、文档、浏览器、终端、看板、仪表盘），对话不再占掉大部分头图；`brand_name` / `brand_icon_url` 会画进标题或页签。
 - 插件加载收敛为唯一的 Module Federation 合同：删除 `plugin.json#runtime`、直载分支及相关默认值，`moduleFederation` 改为必填；此前已删除 Worker/WASM、声明式 UI 与第二套 RPC 激活路径。插件权限改为治理型宿主 API 声明，local/community 插件经用户授权后也可执行清单命令、使用网络通配符及浏览器 attach/runtime manage；安装页明确提示插件与宿主共享 renderer、权限不是安全沙箱。宿主私有 `official` / `gateway` 合同仍保持来源限制（ADR-0091）。
 - Runtime 生命周期日志 Adapter 现在也接收 `runtime.active-session.lifecycle`，统一记录活动 Session 监听器与切换清理的
   内容安全失败字段；不会写入 Session 路径、事件正文、Prompt 或原始错误文本。

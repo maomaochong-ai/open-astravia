@@ -36,6 +36,41 @@ const referencedDetailSchema = detailSourceSchema.extend({
 	i18n: z.record(z.string(), localizedDetailSourceSchema).optional(),
 });
 
+const markdownFileBlockSchema = z.object({
+	type: z.literal("markdown"),
+	path: z.string().min(1),
+});
+
+/**
+ * ability.json 的结构化详情允许 Markdown 区块引用包内文件；市场 API 与 Renderer
+ * 仍只接收已经解析好的 content，避免把本地路径提升为运行时协议。
+ */
+const presentationDetailBlockSchema = z
+	.unknown()
+	.superRefine((value, context) => {
+		if (value == null || typeof value !== "object" || Array.isArray(value)) return;
+		const block = value as Record<string, unknown>;
+		if (block.type !== "markdown") return;
+		const hasContent = typeof block.content === "string";
+		const hasPath = typeof block.path === "string";
+		if (hasContent === hasPath) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Markdown detail block must provide exactly one of content or path",
+			});
+		}
+	})
+	.pipe(z.union([marketplaceDetailBlockSchema, markdownFileBlockSchema]));
+
+const inlineDetailLocaleSchema = marketplaceDetailSchema
+	.omit({ license: true, author: true, icon: true, tags: true, i18n: true })
+	.extend({ blocks: z.array(presentationDetailBlockSchema).optional() });
+
+const inlineDetailSchema = marketplaceDetailSchema.omit({ i18n: true }).extend({
+	blocks: z.array(presentationDetailBlockSchema).optional(),
+	i18n: z.record(z.string(), inlineDetailLocaleSchema).optional(),
+});
+
 const abilityPresentationSchema = z
 	.object({
 		schemaVersion: z.literal(1),
@@ -43,18 +78,21 @@ const abilityPresentationSchema = z
 		slug: z.string().min(1),
 		version: z.string().min(1),
 		icon: z.string().min(1).optional(),
-		detail: z.union([referencedDetailSchema, marketplaceDetailSchema]).optional(),
+		detail: z.union([referencedDetailSchema, inlineDetailSchema]).optional(),
 	})
 	.passthrough();
 
 const blocksDocumentSchema = z
 	.object({
 		schemaVersion: z.literal(1),
-		blocks: z.array(marketplaceDetailBlockSchema),
+		blocks: z.array(presentationDetailBlockSchema),
 	})
 	.passthrough();
 
 type DetailSource = z.infer<typeof detailSourceSchema>;
+type PresentationDetailBlock = z.infer<typeof presentationDetailBlockSchema>;
+type InlineDetailLocale = z.infer<typeof inlineDetailLocaleSchema>;
+type InlineDetail = z.infer<typeof inlineDetailSchema>;
 type PresentationAssetUrlResolver = (absolutePath: string, relativePath: string) => string;
 
 export interface AbilityPresentationIdentity {
@@ -125,7 +163,7 @@ function resolveImageReference(
 }
 
 function resolveBlockAssets(
-	blocks: OpenMarketplaceDetailBlock[],
+	blocks: PresentationDetailBlock[],
 	sourceDir: string,
 	resolveAssetUrl: PresentationAssetUrlResolver,
 ): OpenMarketplaceDetailBlock[] {
@@ -162,6 +200,12 @@ function resolveBlockAssets(
 				}
 			}
 		}
+		if (block.type === "markdown" && "path" in block) {
+			return {
+				type: "markdown",
+				content: readTextFile(sourceDir, block.path, MAX_DETAIL_BYTES),
+			};
+		}
 		return block;
 	});
 }
@@ -180,14 +224,36 @@ function resolveShowcaseAssets(
 }
 
 function resolveInlineDetailLocale(
-	detail: OpenMarketplaceDetailLocale,
+	detail: InlineDetailLocale,
 	sourceDir: string,
 	resolveAssetUrl: PresentationAssetUrlResolver,
 ): OpenMarketplaceDetailLocale {
+	const { blocks, showcases, ...base } = detail;
 	return {
-		...detail,
-		blocks: detail.blocks ? resolveBlockAssets(detail.blocks, sourceDir, resolveAssetUrl) : undefined,
-		showcases: resolveShowcaseAssets(detail.showcases, sourceDir, resolveAssetUrl),
+		...base,
+		blocks: blocks ? resolveBlockAssets(blocks, sourceDir, resolveAssetUrl) : undefined,
+		showcases: resolveShowcaseAssets(showcases, sourceDir, resolveAssetUrl),
+	};
+}
+
+function resolveInlineDetail(
+	detail: InlineDetail,
+	sourceDir: string,
+	resolveAssetUrl: PresentationAssetUrlResolver,
+): OpenMarketplaceDetail {
+	const { i18n, blocks, showcases, ...base } = detail;
+	return {
+		...base,
+		blocks: blocks ? resolveBlockAssets(blocks, sourceDir, resolveAssetUrl) : undefined,
+		showcases: resolveShowcaseAssets(showcases, sourceDir, resolveAssetUrl),
+		i18n: i18n
+			? Object.fromEntries(
+					Object.entries(i18n).map(([locale, localized]) => [
+						locale,
+						resolveInlineDetailLocale(localized, sourceDir, resolveAssetUrl),
+					]),
+				)
+			: undefined,
 	};
 }
 
@@ -214,7 +280,7 @@ function loadDetailSource(
 }
 
 function isReferencedDetail(
-	detail: z.infer<typeof referencedDetailSchema> | z.infer<typeof marketplaceDetailSchema>,
+	detail: z.infer<typeof referencedDetailSchema> | z.infer<typeof inlineDetailSchema>,
 ): detail is z.infer<typeof referencedDetailSchema> {
 	return "format" in detail && "path" in detail;
 }
@@ -264,19 +330,7 @@ export function loadAbilityPackagePresentation(
 				);
 			}
 		} else {
-			const { i18n, ...base } = descriptor.detail;
-			detail = {
-				...base,
-				...resolveInlineDetailLocale(base, sourceDir, resolveAssetUrl),
-				i18n: i18n
-					? Object.fromEntries(
-							Object.entries(i18n).map(([locale, localized]) => [
-								locale,
-								resolveInlineDetailLocale(localized, sourceDir, resolveAssetUrl),
-							]),
-						)
-					: undefined,
-			};
+			detail = resolveInlineDetail(descriptor.detail, sourceDir, resolveAssetUrl);
 		}
 	}
 

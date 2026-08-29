@@ -139,4 +139,89 @@ describe("parseMarketplaceManifest", () => {
 		};
 		expect(() => parseMarketplaceManifest(nested)).toThrow();
 	});
+
+	it("accepts host showcase templates and canvas motifs", () => {
+		const manifest = validManifest();
+		const abilities = manifest.abilities as Array<Record<string, unknown>>;
+		abilities[0] = {
+			...abilities[0],
+			detail: {
+				blocks: [
+					{
+						type: "showcase",
+						showcase: {
+							template: "workbench",
+							canvas: "browser",
+							user_prompt: "Open the orders page",
+							assistant_reply: "I will wait for you to sign in first.",
+						},
+					},
+					{
+						type: "showcase",
+						showcase: {
+							template: "prompt-result",
+							canvas: "terminal",
+							user_prompt: "Summarize git status",
+							assistant_reply: "Working tree is clean.",
+						},
+					},
+					{
+						type: "showcase",
+						showcase: {
+							template: "spotlight",
+							user_prompt: "Switch the default model",
+							assistant_reply: "Confirm this setting change.",
+						},
+					},
+				],
+			},
+		};
+
+		const parsed = parseMarketplaceManifest(manifest);
+		const blocks = parsed.abilities[0]?.detail.blocks;
+		expect(blocks?.map((block) => block.type === "showcase" && block.showcase.template)).toEqual([
+			"workbench",
+			"prompt-result",
+			"spotlight",
+		]);
+	});
+
+	it("rejects unknown showcase templates and canvas motifs", () => {
+		const unknownTemplate = validManifest();
+		(unknownTemplate.abilities as Array<Record<string, unknown>>)[0] = {
+			...(unknownTemplate.abilities as Array<Record<string, unknown>>)[0],
+			detail: {
+				blocks: [
+					{
+						type: "showcase",
+						showcase: {
+							template: "custom-css",
+							user_prompt: "x",
+							assistant_reply: "y",
+						},
+					},
+				],
+			},
+		};
+		expect(() => parseMarketplaceManifest(unknownTemplate)).toThrow();
+
+		const unknownCanvas = validManifest();
+		(unknownCanvas.abilities as Array<Record<string, unknown>>)[0] = {
+			...(unknownCanvas.abilities as Array<Record<string, unknown>>)[0],
+			detail: {
+				blocks: [
+					{
+						type: "showcase",
+						showcase: {
+							template: "canvas-hero",
+							canvas: "custom",
+							user_prompt: "x",
+							assistant_reply: "y",
+						},
+					},
+				],
+			},
+		};
+		expect(() => parseMarketplaceManifest(unknownCanvas)).toThrow();
+	});
 });

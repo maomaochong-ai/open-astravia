@@ -1,5 +1,5 @@
 import type { AbilityShowcase } from "@shared/lib/api";
-import { ShowcaseChatOverCanvas, ShowcaseChatThread } from "./templates/ShowcaseChatOverCanvas";
+import { renderAbilityShowcase } from "./templates/showcase-templates";
 
 /**
  * `raw.detail.showcases`：结构化头图，由宿主呈现模板渲染（CSS 构图，非真实截图）。
@@ -10,29 +10,7 @@ export function AbilityShowcaseList({ showcases }: { showcases: AbilityShowcase[
 
 	return (
 		<div className="flex flex-col gap-4">
-			{showcases.map((showcase, index) => {
-				const key = `${showcase.template}-${index}`;
-				if (showcase.template === "chat-over-canvas") {
-					return (
-						<ShowcaseChatOverCanvas
-							key={key}
-							userPrompt={showcase.user_prompt}
-							assistantReply={showcase.assistant_reply}
-							canvas={showcase.canvas ?? "generic"}
-						/>
-					);
-				}
-				if (showcase.template === "chat-thread") {
-					return (
-						<ShowcaseChatThread
-							key={key}
-							userPrompt={showcase.user_prompt}
-							assistantReply={showcase.assistant_reply}
-						/>
-					);
-				}
-				return null;
-			})}
+			{showcases.map((showcase, index) => renderAbilityShowcase(showcase, index))}
 		</div>
 	);
 }

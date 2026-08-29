@@ -15,6 +15,9 @@
 ```text
 my-plugin/
   plugin.json          # 清单（见 manifest.md）
+  ability.json         # 可选：能力详情页（见 ability-details.md）
+  presentation/        # 可选：详情页 Markdown 与图片
+    README.md
   package.json
   tsconfig.json
   vite.config.ts       # Module Federation + Tailwind
@@ -151,12 +154,15 @@ bunx vite build      # 产出 dist/（mf-manifest.json + remoteEntry.js + style.
 
 发布需要一个 **zip**：根目录放 `plugin.json`，其下 `dist/`。两种方式：
 
-- **自动**：`vettaPluginFederation({ ..., package: true })`，`vite build` 后自动产出 `release/<id>-<version>.zip`（打包 `plugin.json` + `dist/` + 清单声明的 `styles` / `agent.promptPaths` / `agent.skillPaths`）。
+- **自动**：`vettaPluginFederation({ ..., package: true })`，`vite build` 后自动产出 `release/<id>-<version>.zip`（打包 `plugin.json` + `dist/` + 清单声明的 `styles` / `agent.promptPaths` / `agent.skillPaths`；存在 `ability.json` 时也打包它和 `presentation/`）。
 - **手动**：自行把 `plugin.json` 与 `dist/` 一起 zip：
 
   ```text
   my-plugin.zip
     plugin.json
+    ability.json                 # 可选
+    presentation/               # 使用 ability.json 时可选
+      README.md
     dist/
       mf-manifest.json
       remoteEntry.js
@@ -164,6 +170,7 @@ bunx vite build      # 产出 dist/（mf-manifest.json + remoteEntry.js + style.
   ```
 
 > 归档根目录必须有 `plugin.json`，或只含**一个**顶层文件夹、`plugin.json` 在其中。
+> 能力详情是可选的；需要 showcase、功能网格、图片或长篇 Markdown 时见 [ability-details.md](./ability-details.md)。
 
 ## 7. 安装
 

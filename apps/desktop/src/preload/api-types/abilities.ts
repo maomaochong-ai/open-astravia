@@ -51,10 +51,10 @@ export interface OpenMarketplaceMetaEntry {
 }
 
 export interface OpenMarketplaceShowcase {
-	template: "chat-over-canvas" | "chat-thread";
+	template: "chat-over-canvas" | "chat-thread" | "canvas-hero" | "prompt-result" | "spotlight" | "workbench";
 	user_prompt: string;
 	assistant_reply: string;
-	canvas?: "design" | "code" | "docs" | "generic";
+	canvas?: "design" | "code" | "docs" | "generic" | "browser" | "terminal" | "board";
 	brand_icon_url?: string;
 	brand_name?: string;
 }

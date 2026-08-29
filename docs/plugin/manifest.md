@@ -2,6 +2,9 @@
 
 `plugin.json` 是插件的唯一清单，位于 zip 归档根（或唯一顶层文件夹内）。
 
+它描述插件的运行时合同。能力页的可选长详情使用独立的 `ability.json`，见
+[能力详情页](./ability-details.md)；不要把 showcase、长 Markdown 或展示图片塞进 `plugin.json`。
+
 ## 契约与校验
 
 清单结构的唯一实现位于 `@vetta-org/plugin-sdk/manifest`：

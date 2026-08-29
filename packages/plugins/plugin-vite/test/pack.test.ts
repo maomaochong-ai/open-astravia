@@ -58,6 +58,32 @@ describe("createVettaPluginPackage", () => {
 		expect(result.outputPath).toBe(join(rootDir, "release", "pack-test-0.1.0.zip"));
 	});
 
+	it("packages ability details and presentation files", async () => {
+		const rootDir = await createFederationFixture({ id: "ability-detail-test", version: "0.1.0" });
+		await mkdir(join(rootDir, "presentation"), { recursive: true });
+		await writeFile(join(rootDir, "presentation", "README.md"), "# Ability detail\n");
+		await writeFile(
+			join(rootDir, "ability.json"),
+			JSON.stringify({
+				schemaVersion: 1,
+				type: "plugin",
+				slug: "ability-detail-test",
+				version: "0.1.0",
+				detail: { blocks: [{ type: "markdown", path: "presentation/README.md" }] },
+			}),
+		);
+
+		const result = await createVettaPluginPackage({ rootDir });
+
+		expect(result.files.map((file) => file.archivePath)).toEqual([
+			"ability.json",
+			"dist/mf-manifest.json",
+			"dist/remoteEntry.js",
+			"plugin.json",
+			"presentation/README.md",
+		]);
+	});
+
 	it("writes a stable npm archive after validating package and plugin identity", async () => {
 		const rootDir = await createFederationFixture({ id: "npm-pack-test", version: "0.2.0" });
 		await writeFile(

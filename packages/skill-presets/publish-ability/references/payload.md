@@ -69,23 +69,29 @@ solar:lightbulb-bolt-bold
 Each entry needs `template`, `user_prompt`, and `assistant_reply`. These are the detail page's
 hero panels — the host draws them, you supply the text.
 
-`template`:
+`template` picks the **layout**. Plugins cannot inject CSS; the host draws every template.
 
-- `chat-over-canvas` — a mock product window beside the conversation. Also pass `canvas`.
-- `chat-thread` — conversation only. `canvas` is rejected here.
+- `canvas-hero` — large product window plus a caption. The prompt becomes a chip.
+- `prompt-result` — prompt card on the left, resulting window on the right.
+- `spotlight` — centered command palette with the prompt as the query.
+- `workbench` — activity rail + product window + assistant notes.
+- `chat-over-canvas` — product window first, conversation as a footnote.
+- `chat-thread` — a full messenger window (header, thread, input).
 
-`canvas` picks **which mock window is drawn**. It is not a screenshot and you cannot supply one:
-each value is a fixed CSS composition, sized small (roughly a third of the panel) next to the
-chat bubbles. Pick whichever resembles what the ability produces:
+`canvas` picks **which mock window is drawn** for templates that show a product surface.
+It is not a screenshot. Each value has a distinct window chrome:
 
 | Value | Drawn as |
 | --- | --- |
-| `design` | Hero block, swatch row, control bar — design-tool look |
-| `code` | Gutter plus syntax-coloured code lines with one highlighted row |
-| `docs` | Heading, paragraph lines, and a callout card |
-| `generic` | Area chart plus two stat tiles — dashboard look |
+| `design` | Dotted pasteboard with a selected frame |
+| `code` | Editor tabs, line numbers, status bar |
+| `docs` | Paper page with a checklist |
+| `browser` | Tabs, address bar, page rows |
+| `terminal` | Dark terminal with a prompt |
+| `board` | Three kanban columns |
+| `generic` | Dashboard with stats and a trend chart |
 
-Optional: `brand_icon_url` (must be `http(s)://`), `brand_name`.
+Optional: `brand_icon_url` (must be `http(s)://` or a packaged image), `brand_name`.
 
 Write prompts that show a real use of the ability, not placeholders.
 

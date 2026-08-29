@@ -16,10 +16,10 @@ export const marketplaceMetaEntrySchema = z
 
 const showcaseSchema = z
 	.object({
-		template: z.enum(["chat-over-canvas", "chat-thread"]),
+		template: z.enum(["chat-over-canvas", "chat-thread", "canvas-hero", "prompt-result", "spotlight", "workbench"]),
 		user_prompt: z.string(),
 		assistant_reply: z.string(),
-		canvas: z.enum(["design", "code", "docs", "generic"]).optional(),
+		canvas: z.enum(["design", "code", "docs", "generic", "browser", "terminal", "board"]).optional(),
 		brand_icon_url: z.string().optional(),
 		brand_name: z.string().optional(),
 	})

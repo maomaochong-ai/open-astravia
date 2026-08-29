@@ -344,14 +344,20 @@ export interface AbilityContributedSkill {
 	description?: string;
 }
 
-export type AbilityShowcaseTemplate = "chat-over-canvas" | "chat-thread";
-export type AbilityShowcaseCanvas = "design" | "code" | "docs" | "generic";
+export type AbilityShowcaseTemplate =
+	| "chat-over-canvas"
+	| "chat-thread"
+	| "canvas-hero"
+	| "prompt-result"
+	| "spotlight"
+	| "workbench";
+export type AbilityShowcaseCanvas = "design" | "code" | "docs" | "generic" | "browser" | "terminal" | "board";
 
 export interface AbilityShowcase {
 	template: AbilityShowcaseTemplate;
 	user_prompt: string;
 	assistant_reply: string;
-	/** 仅 chat-over-canvas 有意义。 */
+	/** 需要产品窗口的模板使用；spotlight / chat-thread 可省略。 */
 	canvas?: AbilityShowcaseCanvas;
 	brand_icon_url?: string;
 	brand_name?: string;

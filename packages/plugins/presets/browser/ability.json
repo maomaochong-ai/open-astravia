@@ -1,0 +1,96 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "browser",
+	"version": "0.1.0",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "workbench",
+					"canvas": "browser",
+					"brand_name": "Orders",
+					"user_prompt": "打开后台订单页，我登录后帮我整理本月数据，但先不要提交任何修改。",
+					"assistant_reply": "我会打开真实浏览器，等你完成登录，再用页面快照读取订单并整理结果；涉及提交前会停下来让你确认。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "让 Agent 真正操作网页",
+				"items": [
+					{
+						"title": "读取真实页面",
+						"description": "导航到网页并通过无障碍树快照定位内容，比传整页 HTML 更节省上下文。",
+						"icon": "solar:browser-linear"
+					},
+					{
+						"title": "点击与填写",
+						"description": "支持点击、输入、选择、滚动和等待页面元素，可完成多步骤网页任务。",
+						"icon": "solar:cursor-square-linear"
+					},
+					{
+						"title": "登录态复用",
+						"description": "登录和二次验证由你在可见窗口完成，后续任务可按 profile 安全复用状态。",
+						"icon": "solar:shield-user-linear"
+					},
+					{
+						"title": "任务与账号隔离",
+						"description": "不同 Agent 任务使用独立 session，同一任务的多个账号也可分别保存状态。",
+						"icon": "solar:layers-minimalistic-linear"
+					}
+				]
+			},
+			{
+				"type": "markdown",
+				"path": "presentation/README.md"
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "workbench",
+							"canvas": "browser",
+							"brand_name": "Orders",
+							"user_prompt": "Open the admin orders page. After I sign in, summarize this month's data, but don't submit any changes.",
+							"assistant_reply": "I'll open a real browser, wait for you to sign in, then read the orders through page snapshots and organize the results. I'll stop for confirmation before anything is submitted."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "Let the agent operate the real web",
+						"items": [
+							{
+								"title": "Read real pages",
+								"description": "Navigate and locate content through accessibility-tree snapshots with less context than full HTML.",
+								"icon": "solar:browser-linear"
+							},
+							{
+								"title": "Click and fill",
+								"description": "Click, type, select, scroll and wait for elements across multi-step web tasks.",
+								"icon": "solar:cursor-square-linear"
+							},
+							{
+								"title": "Reuse sign-in state",
+								"description": "Handle sign-in and 2FA in a visible window, then safely reuse state through profiles.",
+								"icon": "solar:shield-user-linear"
+							},
+							{
+								"title": "Task and account isolation",
+								"description": "Agent tasks use separate sessions, and multiple accounts within one task can keep separate state.",
+								"icon": "solar:layers-minimalistic-linear"
+							}
+						]
+					},
+					{
+						"type": "markdown",
+						"path": "presentation/README.en.md"
+					}
+				]
+			}
+		}
+	}
+}

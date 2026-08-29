@@ -41,6 +41,7 @@ describe("loadOpenMarketplacePresentation", () => {
 	it("loads rich blocks, localized markdown and local image assets", async () => {
 		const { root, ability } = await createFixture();
 		await writeFile(join(root, "assets", "icon.svg"), '<svg xmlns="http://www.w3.org/2000/svg"/>', "utf-8");
+		await writeFile(join(root, "README.md"), "## Usage\n\nRead from a packaged file.", "utf-8");
 		await writeFile(join(root, "README.zh-CN.md"), "# 中文详情", "utf-8");
 		await writeFile(
 			join(root, "detail.json"),
@@ -67,7 +68,7 @@ describe("loadOpenMarketplacePresentation", () => {
 					},
 					{ type: "image", src: "assets/icon.svg", alt: "Demo" },
 					{ type: "callout", tone: "warning", title: "Permission", content: "Use least privilege." },
-					{ type: "markdown", content: "## Usage\n\nAsk a concrete question." },
+					{ type: "markdown", path: "README.md" },
 					{ type: "links", items: [{ label: "Docs", href: "https://example.com/docs" }] },
 				],
 			}),
@@ -109,6 +110,10 @@ describe("loadOpenMarketplacePresentation", () => {
 			title: "Permission",
 			content: "Use least privilege.",
 		});
+		expect(presentation?.detail.blocks?.[5]).toEqual({
+			type: "markdown",
+			content: "## Usage\n\nRead from a packaged file.",
+		});
 		expect(presentation?.detail.i18n?.["zh-CN"]?.content).toBe("# 中文详情");
 		expect(presentation?.detail.meta).toEqual([{ key: "docs", value: "https://example.com/docs" }]);
 	});
@@ -130,6 +135,32 @@ describe("loadOpenMarketplacePresentation", () => {
 		);
 
 		expect(loadOpenMarketplacePresentation(root, ability, "2026.07.8")?.detail.content).toBe("Fallback detail");
+	});
+
+	it("loads inline and localized markdown block references", async () => {
+		const { root, ability } = await createFixture();
+		await writeFile(join(root, "README.en.md"), "English detail", "utf-8");
+		await writeFile(
+			join(root, "ability.json"),
+			JSON.stringify({
+				schemaVersion: 1,
+				type: "mcp",
+				slug: "demo-mcp",
+				version: "1.0.0",
+				detail: {
+					blocks: [{ type: "markdown", content: "Default detail" }],
+					i18n: {
+						en: { blocks: [{ type: "markdown", path: "README.en.md" }] },
+					},
+				},
+			}),
+			"utf-8",
+		);
+
+		const detail = loadOpenMarketplacePresentation(root, ability, "2026.07.8")?.detail;
+
+		expect(detail?.blocks).toEqual([{ type: "markdown", content: "Default detail" }]);
+		expect(detail?.i18n?.en?.blocks).toEqual([{ type: "markdown", content: "English detail" }]);
 	});
 
 	it("rejects mismatched identity and escaping asset paths", async () => {
@@ -156,6 +187,42 @@ describe("loadOpenMarketplacePresentation", () => {
 			"utf-8",
 		);
 		expect(() => loadOpenMarketplacePresentation(pathFixture.root, pathFixture.ability, "2026.07.8")).toThrow(
+			"escapes ability source",
+		);
+	});
+
+	it("rejects ambiguous and escaping markdown block references", async () => {
+		const ambiguousFixture = await createFixture();
+		await writeFile(
+			join(ambiguousFixture.root, "ability.json"),
+			JSON.stringify({
+				schemaVersion: 1,
+				type: "mcp",
+				slug: "demo-mcp",
+				version: "1.0.0",
+				detail: {
+					blocks: [{ type: "markdown", content: "Inline", path: "README.md" }],
+				},
+			}),
+			"utf-8",
+		);
+		expect(() =>
+			loadOpenMarketplacePresentation(ambiguousFixture.root, ambiguousFixture.ability, "2026.07.8"),
+		).toThrow("exactly one of content or path");
+
+		const escapingFixture = await createFixture();
+		await writeFile(
+			join(escapingFixture.root, "ability.json"),
+			JSON.stringify({
+				schemaVersion: 1,
+				type: "mcp",
+				slug: "demo-mcp",
+				version: "1.0.0",
+				detail: { blocks: [{ type: "markdown", path: "../README.md" }] },
+			}),
+			"utf-8",
+		);
+		expect(() => loadOpenMarketplacePresentation(escapingFixture.root, escapingFixture.ability, "2026.07.8")).toThrow(
 			"escapes ability source",
 		);
 	});
