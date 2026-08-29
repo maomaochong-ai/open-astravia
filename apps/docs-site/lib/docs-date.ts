@@ -1,3 +1,5 @@
+import { localeConfig, type DocsLanguage } from "./i18n";
+
 const formatterOptions: Intl.DateTimeFormatOptions = {
 	year: "numeric",
 	month: "long",
@@ -5,11 +7,11 @@ const formatterOptions: Intl.DateTimeFormatOptions = {
 	timeZone: "Asia/Shanghai",
 };
 
-export function formatDocsDate(iso?: string, locale: "zh" | "en" = "zh"): string | undefined {
+export function formatDocsDate(iso?: string, locale: DocsLanguage = "zh"): string | undefined {
 	if (!iso) return undefined;
 
 	const parsed = new Date(iso);
 	if (Number.isNaN(parsed.getTime())) return undefined;
 
-	return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "zh-CN", formatterOptions).format(parsed);
+	return new Intl.DateTimeFormat(localeConfig[locale].intlLocale, formatterOptions).format(parsed);
 }

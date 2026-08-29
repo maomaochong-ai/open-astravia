@@ -7,7 +7,7 @@ import { TocActions } from "@/components/toc-actions";
 import { getGitLastModified } from "@/lib/seo/last-modified";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { breadcrumbItemsFromSlugs, buildPageJsonLd } from "@/lib/seo/schema";
-import { englishPageDescriptions, englishPageTitles, isDocsLanguage, type DocsLanguage } from "@/lib/i18n";
+import { getDocsMessages, isDocsLanguage, type DocsLanguage } from "@/lib/i18n";
 import { getSectionLabel } from "@/lib/site";
 import { source } from "@/lib/source";
 import {
@@ -37,11 +37,11 @@ export default async function Page({ params }: PageProps) {
 
 	const MDX = page.data.body;
 	const isHome = page.slugs.length === 0;
-	const pageKey = page.slugs.join("/") || "index";
-	const pageTitle = language === "en" ? (englishPageTitles[pageKey] ?? page.data.title) : page.data.title;
-	const pageDescription = language === "en" ? (englishPageDescriptions[pageKey] ?? page.data.description) : page.data.description;
+	const pageTitle = page.data.title;
+	const pageDescription = page.data.description;
 	const dateModified = page.absolutePath ? getGitLastModified(page.absolutePath) : undefined;
-	const hasEnglishContent = page.absolutePath?.replaceAll("\\", "/").includes("/content/docs/en/") ?? false;
+	const isFallbackContent = page.locale !== language;
+	const text = getDocsMessages(language);
 	const jsonLd = buildPageJsonLd({
 		title: pageTitle,
 		description: pageDescription,
@@ -95,9 +95,9 @@ export default async function Page({ params }: PageProps) {
 					<span className="-mb-px block h-0.5 w-14 bg-vetta-coral" aria-hidden="true" />
 				</header>
 				<DocsBody className="docs-article-body max-w-[54rem] pt-8">
-					{language === "en" && !hasEnglishContent ? (
-						<DocsCallout type="info" title="English translation in progress">
-							This page is currently shown in Chinese while its English translation is being prepared.
+					{isFallbackContent ? (
+						<DocsCallout type="info" title={text.translationInProgressTitle}>
+							{text.translationInProgressBody}
 						</DocsCallout>
 					) : null}
 					<MDX components={getMDXComponents(language)} />
@@ -119,8 +119,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 	if (!page) notFound();
 
 	return buildPageMetadata({
-		title: language === "en" ? (englishPageTitles[page.slugs.join("/") || "index"] ?? page.data.title) : page.data.title,
-		description: language === "en" ? (englishPageDescriptions[page.slugs.join("/") || "index"] ?? page.data.description) : page.data.description,
+		title: page.data.title,
+		description: page.data.description,
 		path: page.url,
 		locale: language,
 		isHome: page.slugs.length === 0,

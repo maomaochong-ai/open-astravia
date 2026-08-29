@@ -1,6 +1,6 @@
 import { DocsKicker } from "@/components/kicker";
 import { cn } from "@/lib/cn";
-import type { DocsLanguage } from "@/lib/i18n";
+import { getDocsMessages, type DocsLanguage } from "@/lib/i18n";
 import type { ReactNode } from "react";
 
 const gutter = "px-5 md:px-8 lg:px-14";
@@ -72,10 +72,12 @@ export function HomeSecondary({ href, children }: { href: string; children: Reac
 }
 
 export function HomeProof({ children, language = "zh" }: { children: ReactNode; language?: DocsLanguage }) {
+	const text = getDocsMessages(language);
+
 	return (
 		<ul
 			className="mt-12 grid list-none gap-0 border-t border-fd-border p-0 [&>li]:grid [&>li]:grid-cols-[7.5rem_minmax(0,1fr)] [&>li]:gap-4 [&>li]:border-b [&>li]:border-fd-border [&>li]:py-[0.8rem] [&_strong]:text-[0.76rem] [&_strong]:font-semibold [&_span]:text-[0.74rem] [&_span]:text-fd-muted-foreground"
-			aria-label={language === "en" ? "Vetta core benefits" : "Vetta 核心特征"}
+			aria-label={text.homeProofAria}
 		>
 			{children}
 		</ul>

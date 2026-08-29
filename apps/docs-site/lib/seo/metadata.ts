@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { DocsLanguage } from "../i18n";
+import { localeConfig, type DocsLanguage } from "../i18n";
 import { getLocalizedSite, getSiteOrigin, site, toAbsoluteUrl, toCanonicalPath, toMarkdownPath } from "../site";
 
 export interface PageMetadataInput {
@@ -73,7 +73,7 @@ export function buildPageMetadata(input: PageMetadataInput): Metadata {
 	const path = toCanonicalPath(input.path);
 	const title = input.isHome
 		? { absolute: localized.title }
-		: language === "en"
+		: localeConfig[language].articleTitleFormat === "qualified"
 			? { absolute: `${input.title} | ${localized.title}` }
 			: input.title;
 	const displayTitle = input.isHome ? localized.title : input.title;
@@ -90,7 +90,7 @@ export function buildPageMetadata(input: PageMetadataInput): Metadata {
 		},
 		openGraph: {
 			type: input.isHome ? "website" : "article",
-			locale: localized.openGraphLocale,
+			locale: localeConfig[language].openGraphLocale,
 			siteName: localized.title,
 			url: path,
 			title: displayTitle,

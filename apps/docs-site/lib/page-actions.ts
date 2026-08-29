@@ -1,3 +1,5 @@
+import { getDocsMessages, type DocsLanguage } from "./i18n";
+
 export interface PageActionLink {
 	id: "markdown" | "scira" | "chatgpt" | "claude" | "cursor";
 	href: string;
@@ -5,7 +7,7 @@ export interface PageActionLink {
 	external: boolean;
 }
 
-export type PageActionLanguage = "zh" | "en";
+export type PageActionLanguage = DocsLanguage;
 
 export function buildAskPrompt(pageUrl: string): string {
 	return `Read ${pageUrl}, I want to ask questions about it.`;
@@ -18,12 +20,13 @@ export function buildPageActionLinks(input: {
 }): PageActionLink[] {
 	const prompt = buildAskPrompt(input.pageUrl);
 	const language = input.language ?? "zh";
+	const text = getDocsMessages(language);
 
 	return [
 		{
 			id: "markdown",
 			href: input.markdownUrl,
-			label: language === "en" ? "View Markdown" : "查看 Markdown",
+			label: text.viewMarkdown,
 			external: false,
 		},
 		{

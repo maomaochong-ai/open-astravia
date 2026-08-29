@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { docsI18n, englishPageDescriptions, englishPageTitles, getRequestLanguage, uiTranslations } from "../lib/i18n";
+import { docsI18n, getDocsMessages, getI18nProvider, getRequestLanguage, localeConfig, messages } from "../lib/i18n";
 import { config as proxyConfig } from "../proxy";
 
 const appRoot = resolve(import.meta.dirname, "..");
@@ -12,22 +12,32 @@ function readDocsFile(path: string): string {
 	return readFileSync(resolve(docsRoot, path), "utf8");
 }
 
-function listDefaultLanguagePageKeys(directory = docsRoot, prefix = ""): string[] {
-	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-		if (entry.name === "en") return [];
-		const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
-		if (entry.isDirectory()) return listDefaultLanguagePageKeys(resolve(directory, entry.name), relativePath);
-		if (!/\.(?:mdx?|md)$/u.test(entry.name)) return [];
-		return [relativePath.replace(/\.(?:mdx?|md)$/u, "")];
-	});
-}
-
 function listContentFiles(directory = docsRoot): string[] {
 	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
 		const path = resolve(directory, entry.name);
 		if (entry.isDirectory()) return listContentFiles(path);
 		return /\.(?:mdx?|md)$/u.test(entry.name) ? [path] : [];
 	});
+}
+
+function listLocalePages(language: (typeof docsI18n.languages)[number]): string[] {
+	const directory = language === docsI18n.defaultLanguage ? docsRoot : resolve(docsRoot, language);
+
+	function walk(current: string, prefix = ""): string[] {
+		return readdirSync(current, { withFileTypes: true }).flatMap((entry) => {
+			if (
+				language === docsI18n.defaultLanguage &&
+				docsI18n.languages.includes(entry.name as (typeof docsI18n.languages)[number])
+			)
+				return [];
+			const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+			if (entry.isDirectory()) return walk(resolve(current, entry.name), relativePath);
+			if (!/\.(?:mdx?|md)$/u.test(entry.name)) return [];
+			return [relativePath.replace(/\.(?:mdx?|md)$/u, "")];
+		});
+	}
+
+	return walk(directory);
 }
 
 describe("documentation content model", () => {
@@ -39,9 +49,40 @@ describe("documentation content model", () => {
 			parser: "dir",
 			fallbackLanguage: "zh",
 		});
-		expect(uiTranslations.zh["Choose a language"]).toBe("选择语言");
-		expect(uiTranslations.en["Choose a language"]).toBe("Choose a language");
+		expect(getI18nProvider("zh").locale).toBe("zh");
+		expect(getI18nProvider("en").locale).toBe("en");
+		expect(localeConfig.en.htmlLang).toBe("en-US");
 		expect(proxyConfig.matcher[0]).toContain("images");
+	});
+
+	it("keeps application copy in a complete, data-driven locale dictionary", () => {
+		const keys = Object.keys(messages.zh).sort();
+
+		for (const language of docsI18n.languages) {
+			expect(Object.keys(getDocsMessages(language)).sort(), language).toEqual(keys);
+		}
+	});
+
+	it("does not reintroduce language-specific English branches", () => {
+		const files = [
+			"components/brand-mark.tsx",
+			"components/home.tsx",
+			"components/page-toolbar.tsx",
+			"components/reading.tsx",
+			"components/studio-banner.tsx",
+			"components/toc-actions.tsx",
+			"lib/docs-date.ts",
+			"lib/layout.shared.tsx",
+			"lib/page-actions.ts",
+			"lib/seo/metadata.ts",
+			"app/llms.txt/route.ts",
+			"app/[lang]/(docs)/[[...slug]]/page.tsx",
+		];
+
+		for (const file of files) {
+			const contents = readFileSync(resolve(appRoot, file), "utf8");
+			expect(contents, file).not.toMatch(/(?:language|locale)\s*===\s*["']en["']/u);
+		}
 	});
 
 	it("keeps English homepage typography free of forced line breaks", () => {
@@ -119,10 +160,12 @@ describe("documentation content model", () => {
 		}
 	});
 
-	it("keeps every sidebar title and description available in English", () => {
-		for (const key of listDefaultLanguagePageKeys()) {
-			expect(englishPageTitles[key], key).toBeDefined();
-			expect(englishPageDescriptions[key], key).toBeDefined();
+	it("keeps every supported locale in the official directory parser layout", () => {
+		for (const language of docsI18n.languages) {
+			const root = language === docsI18n.defaultLanguage ? docsRoot : resolve(docsRoot, language);
+			expect(existsSync(root), language).toBe(true);
+			expect(existsSync(resolve(root, "meta.json")), `${language}/meta.json`).toBe(true);
+			expect(listLocalePages(language), language).toContain("index");
 		}
 	});
 

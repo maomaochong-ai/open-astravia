@@ -1,8 +1,9 @@
 import { buildPageActionLinks } from "@/lib/page-actions";
-import type { DocsLanguage } from "@/lib/i18n";
+import { getDocsMessages, type DocsLanguage } from "@/lib/i18n";
 import { toAbsoluteUrl, toMarkdownPath } from "@/lib/site";
 
 export function TocActions({ path, language = "zh" }: { path: string; language?: DocsLanguage }) {
+	const text = getDocsMessages(language);
 	const links = buildPageActionLinks({
 		pageUrl: toAbsoluteUrl(path),
 		markdownUrl: toMarkdownPath(path),
@@ -10,9 +11,9 @@ export function TocActions({ path, language = "zh" }: { path: string; language?:
 	});
 
 	return (
-		<nav className="mt-5 border-t border-fd-border pt-4" aria-label={language === "en" ? "Open this page" : "打开本页"}>
+		<nav className="mt-5 border-t border-fd-border pt-4" aria-label={text.openThisPage}>
 			<p className="m-0 mb-2 font-mono text-[0.64rem] font-medium tracking-[0.14em] text-vetta-coral uppercase">
-				{language === "en" ? "OPEN" : "OPEN / 打开"}
+				{text.open}
 			</p>
 			<ul className="m-0 grid list-none gap-0 p-0">
 				{links.map((link) => (

@@ -1,12 +1,12 @@
 "use client";
 
-import { getI18nProvider, type DocsLanguage } from "@/lib/i18n";
+import { getI18nProvider, localeConfig, type DocsLanguage } from "@/lib/i18n";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import { useEffect, type ReactNode } from "react";
 
 export function DocsProvider({ language, children }: { language: DocsLanguage; children: ReactNode }) {
 	useEffect(() => {
-		document.documentElement.lang = language === "en" ? "en-US" : "zh-CN";
+		document.documentElement.lang = localeConfig[language].htmlLang;
 	}, [language]);
 
 	return (

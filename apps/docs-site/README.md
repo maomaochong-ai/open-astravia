@@ -51,6 +51,14 @@ Fumadocs 搜索索引由站点内容生成，因此需要通过构建后的站�
 - 两种语言的站内链接都使用无语言前缀的绝对路径，例如 `/product/models/`。
 - 同一 URL 会按语言返回不同内容，因此 canonical 和 sitemap 保持语言中立，不生成虚假的 `/en`、`/zh` hreflang 地址。
 
+多语言实现分为三层，新增语言时不要在组件中添加 `language === ...` 分支：
+
+- Fumadocs 自带的搜索、目录、分页和侧边栏文案在 `lib/i18n.ts` 通过 `defineI18n().translations().extend(uiTranslations())` 注册。
+- Vetta 自定义 UI 文案集中在同一文件的 `messages` 字典中，并通过 `satisfies Record<DocsLanguage, DocsMessages>` 检查每种语言是否补齐。
+- 页面标题、描述和侧边栏名称必须来自对应语言目录的 MDX 与 `meta.json`；不再维护独立的英文标题映射。
+
+新增语言的顺序是：先在 `lib/i18n.ts` 注册语言和 locale 元数据，再补齐 `messages`、页面 MDX、`meta.json` 和内容检查，最后才将该语言加入公开支持列表。页面翻译完成后将 `fallbackLanguage` 改为 `null`，避免不同语言内容混杂。
+
 ## SEO 与发现入口
 
 站点在构建时生成面向搜索引擎和社交平台的元数据，不单独维护页面副本：

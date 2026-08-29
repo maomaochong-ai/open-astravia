@@ -1,3 +1,5 @@
+import { getDocsMessages, localeConfig, type DocsLanguage } from "./i18n";
+
 export const DEFAULT_DOCS_SITE_URL = "https://docs.openvetta.com";
 
 export const site = {
@@ -5,8 +7,8 @@ export const site = {
 	title: "Vetta 文档",
 	description:
 		"Vetta 把模型、本地文件和本机工具放进同一个桌面 Agent 工作台。本站提供快速开始、实战示例，以及权限、批量、自动化、插件、主题与 SDK 指南。",
-	locale: "zh-CN",
-	openGraphLocale: "zh_CN",
+	locale: localeConfig.zh.intlLocale,
+	openGraphLocale: localeConfig.zh.openGraphLocale,
 	marketingUrl: "https://www.openvetta.com",
 	downloadUrl: "https://www.openvetta.com/download",
 	githubUrl: "https://github.com/openvetta/open-vetta",
@@ -21,19 +23,19 @@ export const localizedSite = {
 		title: "Vetta 文档",
 		description:
 			"Vetta 把模型、本地文件和本机工具放进同一个桌面 Agent 工作台。本站提供快速开始、实战示例，以及权限、批量、自动化、插件、主题与 SDK 指南。",
-		openGraphLocale: "zh_CN",
-		locale: "zh-CN",
+		openGraphLocale: localeConfig.zh.openGraphLocale,
+		locale: localeConfig.zh.intlLocale,
 	},
 	en: {
 		title: "Vetta Documentation",
 		description:
 			"Vetta brings models, local files, and machine tools into one desktop Agent workspace. Learn how to get started, build workflows, configure permissions, extend Vetta, and use the SDK.",
-		openGraphLocale: "en_US",
-		locale: "en-US",
+		openGraphLocale: localeConfig.en.openGraphLocale,
+		locale: localeConfig.en.intlLocale,
 	},
-} as const;
+} satisfies Record<DocsLanguage, { title: string; description: string; openGraphLocale: string; locale: string }>;
 
-export type SiteLanguage = keyof typeof localizedSite;
+export type SiteLanguage = DocsLanguage;
 
 export const sectionLabels: Record<string, string> = {
 	"getting-started": "01 / 开始使用",
@@ -107,11 +109,11 @@ export function getLocalizedSite(language: SiteLanguage = "zh") {
 }
 
 export function getSectionLabel(section: string | undefined, language: SiteLanguage = "zh"): string {
-	return localizedSections[language].labels[section ?? ""] ?? "VETTA / DOCUMENTATION";
+	return localizedSections[language].labels[section ?? ""] ?? `VETTA / ${getDocsMessages(language).documentation}`;
 }
 
 export function getSectionTitle(section: string | undefined, language: SiteLanguage = "zh"): string {
-	return localizedSections[language].titles[section ?? ""] ?? section ?? "Documentation";
+	return localizedSections[language].titles[section ?? ""] ?? section ?? getDocsMessages(language).documentation;
 }
 
 export function getSectionLandingPath(section: string | undefined): string {
