@@ -1,7 +1,7 @@
 # Astravia 数据库工具界面承载方案（三层分工 + 活动面板触发式）
 
 > 状态：方案已定案（用户确认 2026-08-15）；B2.6-R/U/V1 已实施，**B2.6-V V2 连接树升级已实施完成（2026-08-16，sticky 搜索区 + 节点右键菜单 + 分组管理 + i18n/埋点/单测，`bun run check` 全绿，见 §七阶段 4）**；**B2.6-V V3 查询面板升级已实施完成（2026-08-16，CodeMirror SQL 高亮 + Ctrl+Enter 执行 + 查询历史，并修复 V2 搜索「未展开连接的表搜不到」问题，`bun run check` 全绿，见 §七阶段 4）**；**B2.6-V V4 结果网格升级已实施完成（2026-08-16，工具栏导出 CSV/JSON + 复制 + 加载更多 + 列排序 + 长单元格详情，`bun run check` 全绿，见 §七阶段 4）**；**B2.9 双向联动增强已实施完成（2026-08-16，W1 查询同步通道 + W2 开场白重设计 + W3 触发补全，`bun run check` 全绿，见 §七阶段 5）**；**2026-08-15 晚新增用户反馈 4 点（工作台问数入口 / 连接详情卡片化 / 添加连接表单高度遮挡 / 打开工作台跨路由无反应），改进定案见 §七阶段 6（B2.6-W W1–W4 已实施完成）**；**2026-08-16 新增用户反馈 4/5/7（关键信息行卡片化 / AI 感知级别评估与「开关关闭后对话仍可访问」根因 / 设置面板与工作台 AI 感知开关与 AI 协助配置的功能定位与权限转向方案），定案见 §七阶段 7（B2.10-W1 值区圆角容器 + W2 AI 访问开关 + W3 AI 协助功能定位已实施完成，2026-08-16，`bun run check` 全绿；W4 感知级别细化与 B3.1 环境标记待排期）**
-> 关联文档：`docs/dbx-main-integration-evaluation.md`、`docs/dbx-main-integration-tasks.md`（B2.9 / B2.6-W）、`rebrand/品牌落地蓝图.md`（§十三/§十四/§十五）、`docs/plugin/ui-slots.md`、ADR-0026 / ADR-0031 / ADR-0049
+> 关联文档：`docs/database/dbx-main-integration-evaluation.md`、`docs/database/dbx-main-integration-tasks.md`（B2.9 / B2.6-W）、`rebrand/品牌落地蓝图.md`（§十三/§十四/§十五）、`docs/plugin/ui-slots.md`、ADR-0026 / ADR-0031 / ADR-0049
 
 ---
 

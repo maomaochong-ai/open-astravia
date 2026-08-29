@@ -1,0 +1,103 @@
+{
+  "extName": {
+    "message": "Astravia 网页元素选择器",
+    "description": "扩展名称"
+  },
+  "extDescription": {
+    "message": "在任意网页点选元素，生成结构化上下文（CSS 选择器、XPath、React 组件链），复制或发送给 Astravia 对话。",
+    "description": "扩展描述"
+  },
+  "popupTitle": {
+    "message": "网页元素选择器",
+    "description": "弹出面板标题"
+  },
+  "startSelecting": {
+    "message": "开始选择",
+    "description": "开始选择按钮"
+  },
+  "stopSelecting": {
+    "message": "停止选择",
+    "description": "停止选择按钮"
+  },
+  "sharinganLabel": {
+    "message": "写轮眼模式",
+    "description": "写轮眼开关标签"
+  },
+  "sharinganHint": {
+    "message": "高保真复刻报告：生成页面上下文、DOM、生效样式与状态。",
+    "description": "写轮眼开关说明"
+  },
+  "copyHint": {
+    "message": "快捷键：⌘C / Ctrl+C 复制上下文，⌘M / Ctrl+M 复制 Markdown",
+    "description": "快捷键提示"
+  },
+  "licenseTitle": {
+    "message": "激活授权码",
+    "description": "激活区域标题"
+  },
+  "licensePlaceholder": {
+    "message": "粘贴授权码（WEP-…）",
+    "description": "授权码输入占位"
+  },
+  "licenseActivate": {
+    "message": "激活",
+    "description": "激活按钮"
+  },
+  "licenseInvalid": {
+    "message": "授权码无效或已过期",
+    "description": "授权码无效提示"
+  },
+  "licenseActivated": {
+    "message": "已激活",
+    "description": "激活状态标签"
+  },
+  "licenseBuy": {
+    "message": "购买授权码（爱发电）",
+    "description": "购买链接"
+  },
+  "licenseBuyUrl": {
+    "message": "https://afdian.com",
+    "description": "购买链接地址，上架前替换为实际爱发电主页",
+    "placeholders": {}
+  },
+  "orderLabel": {
+    "message": "订单",
+    "description": "订单号标签"
+  },
+  "expireLabel": {
+    "message": "有效期至",
+    "description": "有效期标签"
+  },
+  "notLicensed": {
+    "message": "未激活：全部能力需授权码买断",
+    "description": "未激活提示"
+  },
+  "copiedToClipboard": {
+    "message": "已复制到剪贴板",
+    "description": "复制成功提示"
+  },
+  "sendToAiHint": {
+    "message": "已复制交接文本，粘贴到 Astravia 对话即可发送给 AI",
+    "description": "发送给 AI 提示"
+  },
+  "screenshotSaved": {
+    "message": "截图已保存到下载目录",
+    "description": "截图保存成功提示"
+  },
+  "screenshotFailed": {
+    "message": "截图保存失败，请重试",
+    "description": "截图保存失败提示"
+  },
+  "errorNoInject": {
+    "message": "当前页面无法注入（chrome:// 等内置页不支持）。请打开普通网页；若页面在安装扩展前已打开，请刷新后重试",
+    "description": "开始选择失败：页面无法注入"
+  },
+  "errorNoTab": {
+    "message": "未找到活动标签页，请先打开一个网页",
+    "description": "开始选择失败：无活动标签页"
+  },
+  "errorUnknown": {
+    "message": "操作失败，请重试",
+    "description": "操作失败通用提示"
+  }
+}

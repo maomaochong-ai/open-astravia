@@ -1,0 +1,40 @@
+{
+  "id": "web-element-picker",
+  "name": "%plugin.name%",
+  "version": "0.2.2",
+  "pluginApiVersion": "^1.0.0",
+  "runtime": "module-federation",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "web_element_picker",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.activity-tab",
+    "ui.slot.input-action",
+    "agent.session.read",
+    "agent.session.write",
+    "storage.read",
+    "storage.write",
+    "settings.read",
+    "settings.write",
+    "shell.openExternal"
+  ],
+  "contributes": {
+    "settings": [
+      {
+        "key": "sharingan",
+        "type": "boolean",
+        "title": "%settings.sharingan.title%",
+        "description": "%settings.sharingan.description%",
+        "default": false
+      }
+    ]
+  },
+  "defaultLocale": "zh",
+  "description": "%plugin.description%",
+  "author": "Astravia"
+}

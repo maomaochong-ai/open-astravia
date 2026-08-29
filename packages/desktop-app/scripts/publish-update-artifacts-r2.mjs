@@ -257,7 +257,7 @@ export async function main() {
 	validatePublishTarget({ prefix, updateUrl, releaseVersion, packageVersion });
 	const client = new S3Client({
 		region: "auto",
-		endpoint: `https://${accountId}.s3.example.invalid`,
+		endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
 		credentials: { accessKeyId, secretAccessKey },
 	});
 

@@ -8,10 +8,10 @@
 //   - darwin-arm64 / darwin-x64: official npm platform package
 //     `@dbx-app/mcp-darwin-<arch>` (temporary source; switch to the fork
 //     Release once the fork CI publishes macOS assets, see
-//     docs/dbx-main-integration-tasks.md B2.2 后续 macOS 矩阵).
+//     docs/database/dbx-main-integration-tasks.md B2.2 后续 macOS 矩阵).
 //
 // Idempotent: skips when the target already exists and its SHA-256 matches the
-// pinned digest. Version is locked on purpose (see docs/dbx-main-integration-tasks.md);
+// pinned digest. Version is locked on purpose (see docs/database/dbx-main-integration-tasks.md);
 // upgrade = pull fork upstream -> review -> CI build -> update VERSION +
 // EXPECTED_SHA256, then re-run.
 //

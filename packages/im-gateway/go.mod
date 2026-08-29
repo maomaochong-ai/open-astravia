@@ -1,4 +1,4 @@
-﻿module ASTRAVIA-im-gateway
+module astravia-im-gateway
 
 go 1.25.3
 

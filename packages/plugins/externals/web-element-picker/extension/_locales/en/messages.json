@@ -1,0 +1,103 @@
+{
+  "extName": {
+    "message": "Astravia Web Element Picker",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Pick elements on any web page and generate structured context (CSS selector, XPath, React component chain) to copy or send to Astravia.",
+    "description": "Extension description"
+  },
+  "popupTitle": {
+    "message": "Web Element Picker",
+    "description": "Popup panel title"
+  },
+  "startSelecting": {
+    "message": "Start Selecting",
+    "description": "Start selecting button"
+  },
+  "stopSelecting": {
+    "message": "Stop Selecting",
+    "description": "Stop selecting button"
+  },
+  "sharinganLabel": {
+    "message": "Sharingan Mode",
+    "description": "Sharingan toggle label"
+  },
+  "sharinganHint": {
+    "message": "High-fidelity reproduction report: page context, DOM, computed styles and state.",
+    "description": "Sharingan toggle hint"
+  },
+  "copyHint": {
+    "message": "Shortcuts: ⌘C / Ctrl+C copy context, ⌘M / Ctrl+M copy Markdown",
+    "description": "Shortcut hint"
+  },
+  "licenseTitle": {
+    "message": "Activate License",
+    "description": "Activation section title"
+  },
+  "licensePlaceholder": {
+    "message": "Paste license key (WEP-…)",
+    "description": "License input placeholder"
+  },
+  "licenseActivate": {
+    "message": "Activate",
+    "description": "Activate button"
+  },
+  "licenseInvalid": {
+    "message": "Invalid or expired license key",
+    "description": "Invalid license message"
+  },
+  "licenseActivated": {
+    "message": "Activated",
+    "description": "Activated status label"
+  },
+  "licenseBuy": {
+    "message": "Buy a license (Afdian)",
+    "description": "Buy link"
+  },
+  "licenseBuyUrl": {
+    "message": "https://afdian.com",
+    "description": "Buy link URL, replace with the real Afdian homepage before store submission",
+    "placeholders": {}
+  },
+  "orderLabel": {
+    "message": "Order",
+    "description": "Order label"
+  },
+  "expireLabel": {
+    "message": "Expires",
+    "description": "Expiry label"
+  },
+  "notLicensed": {
+    "message": "Not activated: all features require a license",
+    "description": "Not licensed message"
+  },
+  "copiedToClipboard": {
+    "message": "Copied to clipboard",
+    "description": "Copy success message"
+  },
+  "sendToAiHint": {
+    "message": "Handoff text copied — paste it into an Astravia conversation to send to AI",
+    "description": "Send to AI hint"
+  },
+  "screenshotSaved": {
+    "message": "Screenshot saved to Downloads",
+    "description": "Screenshot saved notice"
+  },
+  "screenshotFailed": {
+    "message": "Screenshot failed, please retry",
+    "description": "Screenshot failed notice"
+  },
+  "errorNoInject": {
+    "message": "Cannot inject into this page (built-in pages like chrome:// are not supported). Open a regular webpage, or reload the page if it was opened before the extension was installed",
+    "description": "Start failed: page cannot be injected"
+  },
+  "errorNoTab": {
+    "message": "No active tab found. Open a webpage first",
+    "description": "Start failed: no active tab"
+  },
+  "errorUnknown": {
+    "message": "Operation failed, please retry",
+    "description": "Generic operation failure"
+  }
+}
