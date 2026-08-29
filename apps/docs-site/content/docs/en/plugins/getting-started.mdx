@@ -1,0 +1,115 @@
+---
+title: Create your first plugin
+description: Create, build, and install a minimal Vetta desktop plugin.
+---
+
+## Prerequisites
+
+- Bun, TypeScript, and Vite.
+- React 19.
+- Vetta Desktop for installing and debugging the plugin.
+
+Install the current public packages:
+
+```bash
+bun add @vetta-org/plugin-sdk@^0.1.1
+bun add -d @vetta-org/plugin-vite@^0.0.5 vite@^7 react@^19
+```
+
+## Project structure
+
+<Files>
+  <Folder name="my-plugin" defaultOpen>
+    <File name="plugin.json" />
+    <File name="package.json" />
+    <File name="tsconfig.json" />
+    <File name="vite.config.ts" />
+    <Folder name="src" defaultOpen>
+      <File name="index.tsx" />
+      <File name="style.css" />
+    </Folder>
+  </Folder>
+</Files>
+
+## Configure the build
+
+Use `@vetta-org/plugin-vite` to configure Module Federation:
+
+```ts
+import tailwindcss from "@tailwindcss/vite";
+import { vettaPluginFederation } from "@vetta-org/plugin-vite";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+	plugins: [
+		tailwindcss(),
+		vettaPluginFederation({
+			name: "my_plugin",
+			entry: "./src/index.tsx",
+			expose: "./plugin",
+		}),
+	],
+	esbuild: { jsx: "automatic", jsxImportSource: "react" },
+});
+```
+
+## Create the entry point
+
+```tsx
+import { definePlugin } from "@vetta-org/plugin-sdk";
+
+function MyPanel() {
+	return <div className="p-3 text-sm text-foreground">Plugin loaded</div>;
+}
+
+export default definePlugin({
+	activate(ctx) {
+		ctx.ui.registerGlobalSlot({ id: "root", component: MyPanel });
+	},
+});
+```
+
+<Callout title="Do not create JSX at module scope" type="warn">
+  Module Federation's shared React dependency is available after bootstrap. Put JSX inside a component or on the execution path after `activate()` runs.
+</Callout>
+
+## Build and load
+
+Choose the path for development debugging or release installation:
+
+<Tabs items={["Development", "Release installation"]}>
+  <Tab value="Development">
+    Run `bunx vetta-plugin dev` to start the plugin development server, then load it through a Vetta development link. This is useful for quickly checking UI and tool registration, but run the production build and ZIP installation flow before release.
+  </Tab>
+  <Tab value="Release installation">
+    <Steps>
+      <Step>
+        ### Production build
+
+        Run `bunx vite build` to generate `dist/mf-manifest.json`, `remoteEntry.js`, and the stylesheet.
+      </Step>
+      <Step>
+        ### Archive the package
+
+        The archive root must contain `plugin.json` and `dist/`.
+      </Step>
+      <Step>
+        ### Install and enable
+
+        In the **Capabilities** page, open **Add capability → Import plugin archive** and select the ZIP. Enable it and grant permissions in the **Enable and permissions** dialog.
+      </Step>
+      <Step>
+        ### Verify loading
+
+        Open the registered UI or invoke its tool and confirm that the host actually loaded the release artifact.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Next steps
+
+<Cards>
+  <Card title="Manifest and permissions" href="/plugins/manifest-and-permissions/" description="Align plugin.json fields, permissions, and release checks." />
+  <Card title="Extension points" href="/plugins/extension-points/" description="Choose UI, file, message, Agent, or App Action extension points." />
+</Cards>

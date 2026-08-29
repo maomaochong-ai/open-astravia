@@ -1,0 +1,101 @@
+---
+title: "Example: generate a scheduled project report"
+description: Turn a manually verified project summary into a local scheduled task and validate it with an immediate run, history, and a real artifact.
+---
+
+<Takeaways>
+  <li>Automate only tasks that already work manually</li>
+  <li>The prompt must not depend on memory from a previous session</li>
+  <li>Check execution history and the actual file together</li>
+</Takeaways>
+
+This example creates a status report from explicit project sources every day. It does not depend on a resident cloud process: Vetta must be running at the scheduled time and the computer must not be asleep or shut down.
+
+## Starting state
+
+The target project already has a stable `tasks/` directory or equivalent and permits writes under `reports/`. Run the task once in a normal project session before scheduling it, and confirm that its inputs and output are correct.
+
+<Checklist title="Before handing it to the scheduler">
+  <li>The same prompt has succeeded at least once in a normal session.</li>
+  <li>Input paths exist on every run and do not depend on temporary attachments.</li>
+  <li>The report path will not overwrite a manually maintained file.</li>
+  <li>The task does not need an interactive approval for a high-risk action.</li>
+  <li>The selected model and required capabilities are available unattended.</li>
+</Checklist>
+
+## Prepare the unattended task
+
+<Plate no="01" title="Daily project summary">
+
+```text
+Read task records under tasks/ in the current project and the most recently updated CHANGELOG.md when it exists.
+Create reports/daily-status.md and do not modify other files.
+
+The report must include:
+- Generation time and the sources actually read;
+- Completed, in-progress, and blocked items;
+- Missing or conflicting information;
+- Three priorities for the next workday.
+
+Summarize only project files; do not add outside facts. If nothing changed, still create the report and state “No new records were found in this run.”
+Reread reports/daily-status.md when finished and confirm that all sections exist. If the input directory is missing or unreadable, fail clearly and do not create a false success report.
+```
+
+</Plate>
+
+## Create and verify immediately
+
+<Steps>
+  <Step>
+    ### Create the automation
+
+    In the **Automations** sidebar, create a task with the worktree, model, and execution mode that already passed the dry run.
+  </Step>
+  <Step>
+    ### Set the schedule
+
+    Choose the required interval and verify the displayed next run time and system time zone.
+  </Step>
+  <Step>
+    ### Run it immediately
+
+    Use **Run now** after saving. Do not wait for the scheduled time to discover a path, credential, or permission problem.
+  </Step>
+  <Step>
+    ### Check both kinds of evidence
+
+    Open the execution record in history and inspect `reports/daily-status.md` in the project directory.
+  </Step>
+</Steps>
+
+## Expected result
+
+- The automation has an openable execution record.
+- The project contains `reports/daily-status.md` with a generation time and actual sources.
+- The next run time is correct and the automation is enabled.
+
+## Acceptance checklist
+
+<Checklist title="Before enabling the schedule">
+  <li>Run now succeeded and produced a report file, not only a final reply.</li>
+  <li>Report facts trace back to `tasks/` or `CHANGELOG.md`.</li>
+  <li>Missing input creates a clear failure instead of reusing an old report.</li>
+  <li>The schedule, time zone, enabled state, and worktree are correct.</li>
+  <li>You understand that Vetta cannot run on schedule while it is closed or the device is asleep.</li>
+</Checklist>
+
+## Recovery
+
+Pause the automation first so a bad configuration does not continue running. Correct the path, model, permission, or prompt based on the concrete history entry, then use **Run now** again. A missed time is not automatically replayed after re-enabling; run it manually when needed.
+
+```text
+The report has this problem: [missing source / wrong path / incomplete content].
+Fix only reports/daily-status.md, reread the specified sources, and do not modify other files.
+If the sources remain unavailable, fail clearly instead of reusing the old report.
+```
+
+<Continue>
+  <ContinueLink href="/product/automation/" title="Automation in detail" description="Learn about schedule types, states, pausing, editing, and common failures." />
+  <ContinueLink href="/examples/document-to-brief/" title="Improve the report structure" description="Constrain sources, mark uncertainty, and review the output." />
+  <ContinueLink href="/troubleshooting/" title="An automation did not run" description="Diagnose application state, models, paths, and permissions by symptom." />
+</Continue>

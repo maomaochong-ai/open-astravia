@@ -1,0 +1,93 @@
+---
+title: "Example: review and fix a code issue"
+description: Establish a reproduction baseline, limit the change, and finish with tests and a reviewable diff.
+---
+
+<Takeaways>
+  <li>Reproduce the issue before allowing edits</li>
+  <li>Write the behavior that must remain unchanged</li>
+  <li>Accept the fix with tests, type checks, and the final diff</li>
+</Takeaways>
+
+This example is for a focused bug in an existing repository. The goal is not to ask the Agent to “look at the code”, but to deliver a change with a proven result, clear scope, and an easy rollback path.
+
+## Starting state
+
+Prepare a recoverable test repository and confirm:
+
+<Checklist title="Before submitting the task">
+  <li>The project can be installed and run according to its README; the failure is not caused by missing dependencies.</li>
+  <li>The issue has an observable symptom, reproduction steps, or a failing test.</li>
+  <li>Existing worktree changes are saved and you know which changes must not be overwritten.</li>
+  <li>The Vetta session is bound to the repository root and starts with restricted sandboxing.</li>
+</Checklist>
+
+## Submit the complete task
+
+Replace the bracketed text with real information. If you do not know the test command, ask the Agent to find it in the project scripts first.
+
+<Plate no="01" title="Code repair task">
+
+```text
+Fix this issue in [page or module]: [actual symptom].
+
+Reproduction:
+1. [First step]
+2. [Second step]
+3. The current result is [wrong result]; the expected result is [correct result].
+
+Requirements:
+- Read the applicable project instructions, README, relevant source, and tests first;
+- Run the smallest reproduction or related test and record the pre-change baseline;
+- Find the root cause before editing; do not bypass validation or overwrite existing worktree changes;
+- Limit changes to [allowed directory or module];
+- Add or update a regression test that fails under the old behavior;
+- Run the relevant tests and the project's existing quick checks;
+- Finish by reporting the cause, main changes, commands and results, and remaining unverified risks.
+
+If the reproduction is insufficient, a public contract must change, or an irreversible action is required, stop and explain why first.
+```
+
+</Plate>
+
+## Inspect execution evidence
+
+<Signals>
+  <Signal title="Baseline">A reproduction result or failing test appears before broad editing begins.</Signal>
+  <Signal title="Scope">Reading and changes stay in the relevant modules without rewriting unrelated files.</Signal>
+  <Signal title="Protection">The task pauses on permissions, conflicts, or an unclear contract.</Signal>
+  <Signal title="Closure">The same reproduction runs again after the change and risk-matched checks are added.</Signal>
+</Signals>
+
+## Expected result
+
+- A root-cause fix rather than a hidden failure or a changed error message.
+- A regression test that prevents the same issue from returning.
+- Actual test, type-check, or lint results.
+- A short handoff that names unrun high-cost verification.
+
+## Acceptance checklist
+
+<Checklist title="Before accepting the fix">
+  <li>The original reproduction now passes without deleting a feature or weakening validation.</li>
+  <li>The new test covers observable behavior rather than an internal call count.</li>
+  <li>The final diff contains no secrets, generated junk, or unrelated formatting.</li>
+  <li>Existing worktree changes remain intact.</li>
+  <li>The Agent does not claim that checks it did not run have passed.</li>
+</Checklist>
+
+## Recovery
+
+Do not resubmit the entire task. Point to the exact evidence and let the Agent narrow the correction in the existing session:
+
+```text
+This fix is not yet acceptable: [failed test or concrete diff].
+Keep the changes that are already correct and address only [file/behavior]. Do not expand into [excluded scope].
+First explain how this failure relates to the root cause, then edit and rerun only the relevant checks. Finish by listing the new diff and results.
+```
+
+<Continue>
+  <ContinueLink href="/core/context-tools-and-permissions/" title="Control context and permissions" description="Constrain the evidence and actions the Agent can use." />
+  <ContinueLink href="/core/progress-results-and-recovery/" title="Inspect results and recover" description="Use tool records, file diffs, and tests to decide whether work is complete." />
+  <ContinueLink href="/examples/batch-project-audit/" title="Expand to multiple projects" description="Stabilize the single-project rule before using batch tasks." />
+</Continue>

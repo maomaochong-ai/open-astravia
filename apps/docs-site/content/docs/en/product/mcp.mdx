@@ -1,0 +1,49 @@
+---
+title: Configure MCP connectors
+description: Connect external tools and data through MCP while keeping commands, hosts, credentials, and approvals bounded.
+---
+
+MCP connects Vetta to external tools and data sources through a declared server. It is useful when the same structured capability should be available across sessions, but it also creates an external process or network boundary that must be reviewed.
+
+## Choose a transport
+
+| Transport | Use when | Check |
+| --- | --- | --- |
+| STDIO | The server is a local executable or script | Command, arguments, environment, and executable `PATH` |
+| HTTP | The server is a reachable remote endpoint | URL, authentication, TLS, and organization network policy |
+
+Add a connector from **Capabilities → Add capability → Add MCP manually**, or install one from a trusted capability source.
+
+## Configure the smallest useful server
+
+Keep the command, URL, and environment explicit. Credential references should point to protected configuration or environment variables; never paste a token into a task, project file, or committed MCP configuration.
+
+After saving, verify that the server starts and that the expected tools are listed. A healthy connection with no tools usually means the server configuration or exposed tool set is wrong.
+
+## Approvals and permissions
+
+MCP tool availability does not mean that every action is safe to run automatically. Review whether a tool reads sensitive data, writes files, calls an external service, or creates an irreversible change. Prefer read-only tools for the first validation and require confirmation for high-risk actions.
+
+<Callout title="External tools are untrusted boundaries" type="warn">
+  Review the server source, command, URL, credentials, and declared tools before enabling it. Grant only the permissions required for the task.
+</Callout>
+
+## Minimal verification task
+
+```text
+Use the configured MCP server only to list its available tools, then call one read-only tool with a harmless input.
+Report the server name, the tool name, the input, and the returned result. Do not write files, send messages, or call a mutating tool.
+If the server is unavailable or exposes no tools, report the original error and stop.
+```
+
+Run this from a short session before including the connector in a larger workflow. Refresh capabilities after changing the MCP configuration.
+
+## Troubleshooting
+
+1. Check **Capabilities → My capabilities** and confirm that the connector is enabled.
+2. Inspect `~/.vetta/agent/mcp.json` for the command or URL, without exposing credentials.
+3. For STDIO, confirm the command is executable from the configured environment.
+4. For HTTP, confirm the URL is reachable from the current network and the authentication has not expired.
+5. Reload MCP capabilities or start a new session after configuration changes.
+
+MCP request data may include tool arguments, retrieved values, and OAuth or token metadata. See [Security and data boundaries](/reference/security-and-data/) before connecting sensitive services.

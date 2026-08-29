@@ -1,0 +1,93 @@
+---
+title: Create an automation
+description: Give a manually verified task to the local scheduler and run it once, daily, or at an interval while checking execution history.
+---
+
+Automation is for stable, repeatable tasks that do not need to be re-explained every time. Scheduling happens in the desktop client: a fully exited Vetta, a sleeping computer, or a shut-down computer cannot run the schedule.
+
+## Verify manually first
+
+Do not send an unverified broad prompt to unattended execution. Run it once in an ordinary session and confirm:
+
+- Inputs exist and paths are stable on every run.
+- The output location is explicit and cannot overwrite unrelated files.
+- Success and failure are visible in actual results.
+- Required models, MCP, skills, and permissions are available unattended.
+- No high-risk step requires a person to choose something at runtime.
+
+## Example: daily project summary
+
+```text
+Read documents and task records that changed today in the current project and create reports/daily-status.md.
+
+Include completed, in-progress, blocked, and next-day recommendations.
+Read only project files and do not modify other content. If nothing changed, still create the file and write “No records for today.”
+When finished, confirm the output file exists and list the data sources used.
+```
+
+Run this task in the target project first, inspect `reports/daily-status.md`, and only then create the automation.
+
+## Create the task
+
+Open **Automations** in the sidebar. The page includes templates such as morning briefings, work summaries, and weekly reviews; edit their data sources and output requirements before using them.
+
+| Field | Description |
+| --- | --- |
+| Task name | The name shown on cards and in execution history |
+| Prompt | A complete task that can be understood without session memory |
+| Worktree | A conversation or existing project directory |
+| Model | The model used for each run |
+| Schedule | One time, daily, or every N hours / days |
+| Sandbox | Follow default, full access, or sandboxed |
+| Enabled | Whether saving permits the scheduler to trigger it |
+
+<Steps>
+  <Step>
+    ### Fix inputs and outputs
+
+    State the input sources, target path, allowed changes, and failure conditions. Do not rely on “what we discussed last time”.
+  </Step>
+  <Step>
+    ### Choose the schedule
+
+    Check the next execution time shown in the UI. Schedules use the operating system time zone; recheck after a time-zone or daylight-saving change.
+  </Step>
+  <Step>
+    ### Run immediately after saving
+
+    Use **Run now** on the first run. Do not wait for the next scheduled point to discover a model, directory, or permission problem.
+  </Step>
+  <Step>
+    ### Accept history and the real artifact
+
+    Open the execution record and inspect the actual file or external result in the target directory.
+  </Step>
+</Steps>
+
+## State and recovery
+
+Task details include execution history with success, failure, running, and aborted states. Common actions are:
+
+- **Pause** keeps the configuration but blocks future triggers.
+- **Enable** resumes future runs and does not replay missed times.
+- **Run now** starts an additional validation or catch-up run without changing the schedule.
+- **Edit** changes the task, directory, model, or schedule; run it immediately again after editing.
+- **Delete** removes the task configuration; the UI confirmation explains how related history and sessions are handled.
+
+The activity panel also shows project-level automation summaries, today's executions, enabled tasks, and recent records.
+
+## Common failures
+
+| Symptom | Check |
+| --- | --- |
+| Nothing runs at the scheduled time | Vetta is running, the device is awake, the task is enabled, and the time zone has not changed |
+| Model call fails | The model and credentials still work and no quota or rate limit was reached |
+| A file cannot be found | The project did not move and the relative path in the prompt still resolves |
+| Stuck on permission confirmation | The task does not require an interactive high-risk action |
+| Success but no artifact | The prompt requires a real artifact and verification instead of relying only on the final reply |
+
+<Callout type="info" title="Automation is not a resident cloud service">
+  Scheduling currently depends on a running Vetta desktop client. Do not treat desktop automation as an equivalent to a cross-device resident service or server-side SLA.
+</Callout>
+
+For a complete recipe, see [Generate a scheduled project report](/examples/scheduled-project-report/). To run one prompt across several directories, use [Batch tasks](/product/batch-tasks/).

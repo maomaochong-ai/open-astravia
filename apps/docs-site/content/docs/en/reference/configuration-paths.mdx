@@ -1,0 +1,45 @@
+---
+title: Configuration and data paths
+description: Locate model, settings, MCP, capability, session, and project configuration while preserving ownership boundaries.
+---
+
+In the tables below, `~` means the current system user's home directory. The desktop UI is the preferred configuration entry point; direct file edits are for development, diagnosis, and controlled migration.
+
+## Global paths
+
+| Path | Contents |
+| --- | --- |
+| `~/.vetta/agent/settings.json` | Global Coding Agent settings |
+| `~/.vetta/agent/models.json` | Custom providers and model overrides |
+| `~/.vetta/agent/auth.json` | Login, OAuth, or manually configured credentials |
+| `~/.vetta/agent/mcp.json` | MCP server configuration |
+| `~/.vetta/agent/sessions/` | Session files organized by safe cwd |
+| `~/.vetta/abilities.json` | Installed capability index |
+| `~/.vetta/skills/` | User-level skills |
+| `~/.vetta/scene/` | User-level scenes |
+| `~/.vetta/plugins/` | User-level plugins |
+
+Set `VETTA_CODING_AGENT_DIR` to override the Agent directory. The host, sidecar, and migration tools must use the same value or sessions and configuration will split across directories.
+
+## Project paths
+
+| Path | Contents |
+| --- | --- |
+| `<cwd>/AGENTS.md` | Long-lived project instructions automatically loaded by project sessions |
+| `<cwd>/.vetta/settings.json` | Project overrides for global Agent settings |
+| `<cwd>/.vetta/skills/` | Project-level skills |
+| `<cwd>/.vetta/extensions/` | Project-level Coding Agent extensions |
+
+Relative paths in project settings resolve from the directory containing `.vetta/settings.json`. Project configuration takes precedence over global configuration.
+
+## Editing and migration rules
+
+1. Prefer the Vetta settings page so runtime validation and related state stay synchronized.
+2. Close active sessions before manual edits to avoid racing with a writer.
+3. Never let two processes write the same session file.
+4. Preserve directory structure and file names during migration; do not copy only one session body.
+5. Before deleting anything, distinguish original sources, processed results, session history, and artifacts because their retention semantics differ.
+
+<Callout type="info" title="Paths are implementation facts, not cross-version contracts">
+  Automation should prefer the public SDK, RPC, or exported capability. Do not depend on an internal directory unless this documentation explicitly promises it.
+</Callout>

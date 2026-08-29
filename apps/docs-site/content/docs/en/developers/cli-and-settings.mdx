@@ -1,0 +1,72 @@
+---
+title: CLI and settings
+description: Run scripted tasks in text or JSON mode and understand how global, project, and resource paths are resolved.
+---
+
+The CLI is useful for one-off terminal tasks, JSON event output, and RPC startup. Desktop users normally do not need to maintain these files by hand; hosts and automation should use the public parameters and schemas.
+
+## Run one task
+
+```bash
+# Default text output
+vetta "Summarize the project structure in the current directory"
+
+# Structured JSON event stream
+vetta --mode json "Check the scripts in package.json"
+
+# Choose a model and thinking level
+vetta --model openai/gpt-4o:high "Analyze this failure"
+
+# Resume the most recent session
+vetta --continue "Continue the previous task"
+```
+
+| Option | Description |
+| --- | --- |
+| `--mode text|json|rpc` | Output or protocol mode |
+| `--provider <name>` | Select a provider |
+| `--model <provider/id[:thinking]>` | Select a model and optional thinking level |
+| `--continue` | Resume the most recent session in the current session directory |
+| `--session <path>` | Open a specific session file |
+| `--session-dir <dir>` | Set the session storage and lookup directory |
+| `--no-session` | Do not persist this session |
+
+`--resume` is no longer supported. Use `--continue` or `--session` instead.
+
+## Settings precedence
+
+| Scope | Path |
+| --- | --- |
+| Global | `~/.vetta/agent/settings.json` |
+| Project | `<cwd>/.vetta/settings.json` |
+
+Project settings override global settings. Relative paths are resolved from the directory containing their configuration file; absolute paths and `~` are also supported.
+
+Common settings include the default model, thinking level, message queue, context compaction, automatic retry, resource paths, MCP, image processing, personalization, and shell. The schema exported by `@vetta/coding-agent/settings` is the source of truth for all fields.
+
+## Windows shell
+
+On Windows, the CLI looks for Git Bash or `bash` on `PATH` by default. You can configure it explicitly:
+
+```json
+{
+  "shellPath": "C:\\Program Files\\Git\\bin\\bash.exe",
+  "shellCommandPrefix": "shopt -s expand_aliases"
+}
+```
+
+Do not put an API key in `shellCommandPrefix` or in commands that may be logged. Prefer credential configuration or a controlled environment variable.
+
+## Install resource packages
+
+The CLI can install resources containing extensions, skills, and prompts from npm, Git, or a local source:
+
+```bash
+vetta install npm:@scope/package@1.2.3
+vetta install git:github.com/example/repo@v1
+vetta list
+vetta update
+vetta remove npm:@scope/package
+```
+
+Resource packages can execute code. Review their source, version, and permissions before installing them into a long-lived configuration.

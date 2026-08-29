@@ -1,0 +1,51 @@
+---
+title: Use Vetta Claw
+description: Enable Claw, bind an IM channel, and continue using an assistant session between a messaging app and the desktop.
+---
+
+Vetta Claw is an IM sidecar that runs with the desktop client: external messages enter a local Agent while code and tools continue to execute locally. Open **Settings → Claw**.
+
+Claw session data is stored in the im-gateway directory, such as `~/.vetta/im-gateway/conversation`, physically separate from the desktop **Conversations** project. The sidebar can filter **Claw** records.
+
+## Get started
+
+<Steps>
+  <Step>
+    ### Enable Claw
+
+    Open **Settings → Claw** and turn on the main switch. The active channel must already be configured, such as Feishu App credentials or a bound WeChat account; otherwise Vetta cannot enable Claw.
+  </Step>
+  <Step>
+    ### Choose the conversation model
+
+    Choose a **Conversation model** on the same page, optionally set a thinking level, and select **Test connection**.
+  </Step>
+  <Step>
+    ### Configure a messaging channel
+
+    Configure a usable IM channel and set it as the **Active channel**. See [IM channels](/product/im/).
+  </Step>
+  <Step>
+    ### Keep the desktop running
+
+    The state should be running. Fully quitting Vetta stops the sidecar and prevents new messages from arriving. Use the status area for process details, **View logs**, and **Restart**.
+  </Step>
+</Steps>
+
+## Session commands
+
+Send these commands in a bound IM direct message; the current `im-gateway` command set is authoritative:
+
+| Command | Purpose |
+| --- | --- |
+| `/help` | Show available commands |
+| `/new` | Start a new session in the current conversation and clear context; facts that can be retained are written to long-term memory when possible |
+| `/whoami` | Show diagnostics for the current user, session directory, and connection pool |
+
+Project-switching commands such as the old `/projects` and `/use` are removed. IM works in the Claw session directory and does not switch desktop projects inside a channel.
+
+## Boundaries
+
+- Return to the desktop for complex changes, sensitive permissions, or strict acceptance so you can confirm the worktree, execution mode, and tools.
+- Claw organizes session memory, but it is not the only source of truth. Keep important constraints in project docs, the knowledge base, or an explicit task.
+- Only one transport channel is active at a time. Availability depends on the third-party account, platform permissions, local environment, and network.

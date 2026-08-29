@@ -47,7 +47,7 @@ Fumadocs 搜索索引由站点内容生成，因此需要通过构建后的站�
 
 - `content/docs/` 根目录是默认中文事实源。
 - `content/docs/en/` 按相同相对路径提供英文页面和导航元数据。
-- 英文缺页暂时回退到中文，新增高访问或公共合同页面时应同步补充英文版本。
+- 每个已注册语言必须提供与默认语言相同的页面集合；缺失翻译会在测试和构建前检查中失败。
 - 两种语言的站内链接都使用无语言前缀的绝对路径，例如 `/product/models/`。
 - 同一 URL 会按语言返回不同内容，因此 canonical 和 sitemap 保持语言中立，不生成虚假的 `/en`、`/zh` hreflang 地址。
 
@@ -57,7 +57,7 @@ Fumadocs 搜索索引由站点内容生成，因此需要通过构建后的站�
 - Vetta 自定义 UI 文案集中在同一文件的 `messages` 字典中，并通过 `satisfies Record<DocsLanguage, DocsMessages>` 检查每种语言是否补齐。
 - 页面标题、描述和侧边栏名称必须来自对应语言目录的 MDX 与 `meta.json`；不再维护独立的英文标题映射。
 
-新增语言的顺序是：先在 `lib/i18n.ts` 注册语言和 locale 元数据，再补齐 `messages`、页面 MDX、`meta.json` 和内容检查，最后才将该语言加入公开支持列表。页面翻译完成后将 `fallbackLanguage` 改为 `null`，避免不同语言内容混杂。
+新增语言的顺序是：先准备完整的语言目录，再在 `lib/i18n.ts` 注册语言和 locale 元数据，补齐 `messages`、页面 MDX、`meta.json` 和内容检查，最后才将该语言加入公开支持列表。生产环境使用 `fallbackLanguage: null`，缺页直接暴露为不可用，不会混入其他语言内容。
 
 ## SEO 与发现入口
 

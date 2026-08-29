@@ -1,0 +1,113 @@
+---
+title: Troubleshooting
+description: Locate failures by layer, then diagnose login, models, files, knowledge, MCP, plugins, batch tasks, and automation.
+---
+
+<Takeaways>
+  <li>Preserve the failure state instead of clicking retry repeatedly</li>
+  <li>Narrow the scope from account and model to workspace, capability, and task</li>
+  <li>Check UI state, execution history, and real artifacts together</li>
+</Takeaways>
+
+Record the time, entry point, and last successful step first. For a report, use **Settings → General → Export diagnostics**; never attach full keys, cookies, OAuth credentials, or private project content.
+
+## Five-minute triage
+
+<Checklist title="Start here">
+  <li>Confirm Vetta, the network, and the target external service are available.</li>
+  <li>Create a short session, explicitly choose a model, and send one minimal message.</li>
+  <li>Confirm that the session worktree exists and the current user can access it.</li>
+  <li>Temporarily remove unnecessary MCP, skills, attachments, and long context.</li>
+  <li>Open the failed task's session or history and record the original error and time.</li>
+</Checklist>
+
+| Symptom | Likely layer | First check |
+| --- | --- | --- |
+| No session can answer | Login, model, or network | Select a verified model in a new session |
+| Only one project fails | Worktree, project instructions, or permissions | Path exists and sandbox permits the action |
+| One external tool fails | MCP process, URL, or authorization | Connector state under **Capabilities → My capabilities** |
+| Success but no file | Acceptance rule or path | Tool record and target directory, not only the final reply |
+| Scheduled run did not happen | Automation state or local environment | Vetta running, device awake, task enabled |
+| Several subtasks fail together | Shared prompt, rate limit, or directory shape | Set concurrency to 1 and open one representative session |
+
+## Diagnose by symptom
+
+<Accordions type="single">
+  <Accordion id="login-failed" title="Login failed or the authorization link expired">
+    **Check first**: Verify the system clock, network access to the authentication service, and that the browser returns to the app after authorization.
+
+    **Recover**: Use **Reauthorize** or **Open link again** in the login dialog. For an enterprise account, record the time and organization and contact its administrator; do not attach browser cookies.
+  </Accordion>
+  <Accordion id="model-failed" title="The model cannot be called">
+    **Check first**:
+
+    1. The session or task explicitly selects a usable model or has a valid default.
+    2. **Settings → Model configuration** has the correct API key, base URL, model ID, and API type.
+    3. The network and proxy reach the upstream and the account has not hit quota or rate limits.
+    4. Knowledge-base processing has passed **Test connection** in its settings.
+
+    **Verify**: Create an empty session and send a short message. If that works while the original task fails, inspect context length, tools, and task-specific models.
+
+    <Callout title="Do not expose keys" type="warn">
+      Never put a full access key in logs or issue reports. The default model configuration is `~/.vetta/agent/models.json`.
+    </Callout>
+  </Accordion>
+  <Accordion id="file-access" title="A project file cannot be read or written">
+    **Check first**: The session uses the correct worktree, the path still exists, the current user has access, and another process has not locked the file.
+
+    **Recover**: Narrow the task to the worktree in restricted sandbox mode. Use **Full access** only when broader access is necessary, and recheck the allowed paths. Do not hide a wrong path by escalating permissions.
+  </Accordion>
+  <Accordion id="knowledge" title="The knowledge base will not process or retrieve">
+    **Check first**: The knowledge-base switch is on, a processing model is selected, the connection test passed, and **Processing history** shows the files.
+
+    **Recover**: Use **Retry failed files**. Clearing the knowledge base removes processed results but keeps originals and triggers processing again; confirm quota and time cost first. For an answer problem, ask a question that depends on one completed source and inspect its citation.
+  </Accordion>
+  <Accordion id="mcp" title="An MCP tool is unavailable">
+    **Check first**: The MCP connector is added and enabled under **Capabilities → My capabilities**, and credentials or OAuth are complete. Inspect the command or URL in `~/.vetta/agent/mcp.json`; STDIO commands must be executable and HTTP URLs must be reachable from the current network.
+
+    **Verify**: Use the [MCP minimal verification task](/product/mcp/#minimal-verification-task) to list tools and call one read-only tool. If the connection is healthy but no tools appear, inspect server exposure and refresh the session capabilities.
+  </Accordion>
+  <Accordion id="plugin-load" title="A plugin failed to load">
+    **Check first**: The ZIP root contains `plugin.json` and the build artifact such as `dist/mf-manifest.json`; `remoteName`, `expose`, and `entry` match the Vite configuration.
+
+    **Recover**: Rebuild and import the archive again, then enable and authorize it in the **Enable and permissions** dialog. Built-in plugin permissions are automatic; external plugins should request only the permissions required for the task.
+  </Accordion>
+  <Accordion id="claw" title="Claw or IM has no reply">
+    **Check first**: The Claw switch is on, the active channel is correct, the conversation model is usable, and Vetta remains running.
+
+    **Recover**: Send `/help` to verify the command channel, then use **View logs** and **Restart** as needed. If commands work but ordinary messages fail, inspect the model and channel binding next.
+  </Accordion>
+  <Accordion id="batch-stop" title="Batch state is wrong or an item cannot be removed">
+    **Check first**: Open one failed subtask and decide whether the cause is the shared prompt, directory shape, rate limit, or timeout. Stop a running batch before deleting it.
+
+    **Recover**: Retry one failed item first. For repeated failures, set concurrency to 1 and validate a representative directory. Stopping resets unfinished sessions, artifacts, and state; the confirmation dialog defines what happens to completed items.
+  </Accordion>
+  <Accordion id="automation" title="An automation did not run or has no artifact">
+    **Check first**: Vetta is running, the device is awake, the task is enabled, the time zone and next run are correct, and the worktree has not moved.
+
+    **Recover**: Pause the schedule and use **Run now** to expose model, path, and permission errors. Check execution history and the real output file together. Re-enable only after validation; missed times are not replayed automatically.
+  </Accordion>
+  <Accordion id="runtime" title="Node.js or Python is unavailable in an Agent task">
+    **Check first**: Vetta's bundled environment is separate from the system terminal environment.
+
+    **Recover**: Open **Settings → Application environment**, get or reinstall Node.js / Python, then verify the versions in a **Vetta session**. Do not infer bundled availability from the system terminal version.
+  </Accordion>
+</Accordions>
+
+## Report a reproducible issue
+
+If the minimal case still fails, open a [GitHub Issue](https://github.com/openvetta/open-vetta/issues) with:
+
+- Vetta version, operating system, and installation source.
+- Minimal reproduction steps, expected result, and actual result.
+- Time of occurrence and whether it is consistent or intermittent.
+- Redacted original error, relevant execution history, and diagnostics.
+- A minimal project without private data when genuinely necessary.
+
+Do not publicly disclose exploit details or credentials. Read [Security and data boundaries](/reference/security-and-data/) for the reporting boundary.
+
+<Continue>
+  <ContinueLink href="/product/models/" title="Configure a model" description="Check provider, model ID, default selection, and connection verification." />
+  <ContinueLink href="/core/progress-results-and-recovery/" title="Inspect execution and results" description="Use tools, todos, background tasks, and real artifacts to locate failures." />
+  <ContinueLink href="/reference/security-and-data/" title="Security and data boundaries" description="Understand credentials, files, external services, and safe reporting." />
+</Continue>

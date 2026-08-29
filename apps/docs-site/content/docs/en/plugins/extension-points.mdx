@@ -1,0 +1,51 @@
+---
+title: Choose an extension point
+description: Select UI, file, message, Agent, or App Action extension points according to the product goal.
+---
+
+Choose the extension point closest to the user's task, then register it from `activate(ctx)`. A plugin can combine several extension points, but each one should have a clear purpose and independent permissions.
+
+## UI and pages
+
+<Cards>
+  <Card title="Global or local slots" description="Add an action or status indicator at a host-provided location." />
+  <Card title="Pages and navigation" description="Provide a feature that needs a complete workspace surface." />
+  <Card title="Settings" description="Let users configure behavior instead of hard-coding mutable values." />
+</Cards>
+
+Use the host's shared React runtime and design tokens. When a registration function returns a cleanup handle, release it during deactivation so reloads do not register the same UI twice.
+
+## Files and messages
+
+<Cards>
+  <Card title="File preview" description="Render a viewer for a specific extension or content type." />
+  <Card title="Message card" description="Present a plugin or tool result as actionable session content." />
+  <Card title="Composer action" description="Add an entry point for a clear, frequent command." />
+</Cards>
+
+Keep parsing separate from UI rendering. A parse failure should become an understandable error state rather than crashing the whole session view.
+
+## Agent capabilities
+
+<Cards>
+  <Card title="Tool registration" description="Provide an action with a fixed input and output contract." />
+  <Card title="System prompts and skills" description="Add domain rules and repeatable workflows." />
+  <Card title="Tool policy and continuation" description="Control tool availability or how a task proceeds." />
+</Cards>
+
+Use the structured schemas provided by the SDK for tool input and map external I/O failures to stable results. When a capability needs host files, network access, or a model, declare the smallest required permission in the manifest first.
+
+## App Action
+
+App Actions expose discoverable commands through the host action system. They are useful for navigation, opening a panel, or executing a deterministic operation.
+
+<Callout title="Do not bypass confirmation" type="warn">
+  Do not use an App Action to bypass user confirmation for high-risk file or network operations.
+</Callout>
+
+## Related documentation
+
+<Cards>
+  <Card title="Create your first plugin" href="/plugins/getting-started/" description="The complete loading, build, and installation flow." />
+  <Card title="Manifest and permissions" href="/plugins/manifest-and-permissions/" description="Permission declarations and release checks." />
+</Cards>

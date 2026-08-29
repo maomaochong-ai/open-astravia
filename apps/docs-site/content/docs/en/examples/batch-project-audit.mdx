@@ -1,0 +1,99 @@
+---
+title: "Example: audit multiple projects in batch"
+description: Apply the same read-only checks to independent directories while controlling batch quality with a dry run, artifact checks, and sampling.
+---
+
+<Takeaways>
+  <li>Every target directory must be independently actionable</li>
+  <li>Start with one representative directory and concurrency 1</li>
+  <li>A file check proves existence, not content quality</li>
+</Takeaways>
+
+This example checks whether several projects have clear development entry points. It creates reports without changing project configuration and is a good first batch task.
+
+## Starting state
+
+Prepare 2–5 independent project directories with representative structures. Do not choose targets that share intermediate results or must be processed in order.
+
+<Checklist title="Before creating a batch">
+  <li>Each directory can be audited independently by the same task.</li>
+  <li>No other task is currently writing to the directories.</li>
+  <li>A lower-risk representative directory is ready for the dry run.</li>
+  <li>`vetta-project-audit.md` will not overwrite an existing report.</li>
+</Checklist>
+
+## Configure the shared task
+
+In **More → Batch tasks**, create a project. Add one directory first, set concurrency to `1`, and set artifact verification to `vetta-project-audit.md`.
+
+<Plate no="01" title="Shared audit task">
+
+```text
+Audit the local development entry points of the current project. Create only vetta-project-audit.md and do not modify other files.
+
+Read the README, project manifests, workspace configuration, and existing scripts. In the report, describe:
+1. The project type and primary runtime;
+2. Installation, development, test, check, and build commands;
+3. The file that provides each command;
+4. Missing, conflicting, or obviously stale instructions;
+5. The shortest verification path for a new contributor;
+6. Items that cannot be confirmed statically and require manual execution.
+
+Do not install dependencies, run commands that may have external side effects, or guess scripts that do not exist.
+When finished, confirm vetta-project-audit.md exists and reread it to check all six sections.
+```
+
+</Plate>
+
+## Run a dry run, then expand
+
+<Steps>
+  <Step>
+    ### Check the representative directory
+
+    Start one task and inspect its session. Confirm the reading scope, report structure, and sources of truth.
+  </Step>
+  <Step>
+    ### Correct the shared task
+
+    If project-type differences make a requirement inapplicable, express the condition clearly instead of adding a hidden exception for one directory.
+  </Step>
+  <Step>
+    ### Add the remaining directories
+
+    After the dry run passes, add the remaining targets. Keep concurrency low until you understand model rate limits and local load.
+  </Step>
+</Steps>
+
+## Expected result
+
+Each directory contains one `vetta-project-audit.md`. The report structure is consistent while commands, facts, and pending items come from the individual project. The batch view shows independent task and session state.
+
+## Acceptance checklist
+
+<Checklist title="Before accepting the batch">
+  <li>The task count matches the target directory count and contains no duplicate paths.</li>
+  <li>Every completed item passes artifact verification; failed items are opened for diagnosis.</li>
+  <li>One ordinary project and one structurally different project were sampled.</li>
+  <li>Every command in the reports can be found in the corresponding configuration or README.</li>
+  <li>No source, manifest, or lock file was modified.</li>
+</Checklist>
+
+## Recovery
+
+When one directory fails, open its session and inspect the reason. Correct the shared prompt and retry failed items; do not stop and reset the whole batch. If many directories fail for the same requirement, reduce concurrency and return to one representative directory.
+
+```text
+Fix only [specific problem] in the current audit report. Keep the task read-only and do not modify project files.
+Check [README or configuration file] first, then update vetta-project-audit.md and recheck all six required sections.
+```
+
+<Callout type="warn" title="Stopping clears unfinished work">
+  Stopping a batch task is different from pausing it and may reset unfinished sessions, artifacts, and state. Read the confirmation dialog before acting.
+</Callout>
+
+<Continue>
+  <ContinueLink href="/product/batch-tasks/" title="Batch tasks in detail" description="Understand concurrency, timeouts, sandboxing, state, and artifact rules." />
+  <ContinueLink href="/product/webhook/" title="Configure completion notifications" description="Use a webhook for progress, while accepting only real artifacts as evidence." />
+  <ContinueLink href="/examples/review-and-fix-code/" title="Start with one project" description="Validate the complete method in an ordinary session before writing changes." />
+</Continue>

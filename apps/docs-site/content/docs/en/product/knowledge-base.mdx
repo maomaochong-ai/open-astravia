@@ -1,0 +1,50 @@
+---
+title: Use the knowledge base
+description: Import, process, and retrieve durable source material with clear boundaries and traceable results.
+---
+
+The knowledge base is for source material that should be reused across sessions. It separates original files, processed knowledge, and retrieved context so a response can be traced back to the material that supports it.
+
+## When to use it
+
+Use the knowledge base for stable requirements, product notes, internal guides, and other material that will be queried repeatedly. For a one-off question, providing a small set of project files directly is usually clearer and cheaper.
+
+## Import material
+
+<Steps>
+  <Step>
+    ### Select a bounded source
+
+    Import a named directory or a deliberately selected set of files. Exclude secrets, personal data, and files that the configured provider is not allowed to receive.
+  </Step>
+  <Step>
+    ### Review the import list
+
+    Confirm the file count, extensions, and processing model before starting. Scanned documents need OCR or an explicit exclusion.
+  </Step>
+  <Step>
+    ### Process and inspect records
+
+    Start processing, then open **Processing history** to inspect successful and failed files. Keep the originals as the source of truth.
+  </Step>
+</Steps>
+
+## Retrieval boundaries
+
+The Agent receives retrieved excerpts, not an implicit license to invent missing facts. Ask it to cite the source file or heading and to mark a point as pending confirmation when the material does not establish it.
+
+<Checklist title="Before trusting a knowledge answer">
+  <li>The relevant files were imported and processing completed.</li>
+  <li>The response cites source material that actually exists.</li>
+  <li>Facts, inferences, and missing information are separated.</li>
+  <li>The processing model and provider are appropriate for the data.</li>
+  <li>The response is not using a stale result after the source changed.</li>
+</Checklist>
+
+## Retry and remove
+
+- Use **Retry failed files** for isolated processing failures.
+- Clearing the knowledge base removes processed results while keeping original files, and processing must run again afterward.
+- Removing an original file changes what can be retrieved; confirm the deletion scope before accepting it.
+
+Knowledge processing can send source content to the configured model endpoint. Review [Security and data boundaries](/reference/security-and-data/) before importing sensitive material.

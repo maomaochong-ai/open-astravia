@@ -1,0 +1,82 @@
+---
+title: Integrate with RPC mode
+description: Drive an isolated Agent process over stdin/stdout NDJSON while preserving responses, events, cancellation, and the Host Bridge.
+---
+
+RPC mode is intended for language-independent integrations, sidecars, and hosts that need process isolation. Each line is one complete JSON frame; stdout is reserved for the protocol and diagnostics belong on stderr.
+
+For integration inside the same TypeScript process, prefer the [SDK](/developers/sdk/) so you do not have to manage a child process or parse stdout.
+
+## Start the process
+
+```bash
+vetta-agent-rpc --mode rpc \
+  --session-dir /path/to/conversations \
+  --provider openai \
+  --model openai/gpt-4o
+```
+
+- The process `cwd` is the working directory; RPC has no command for changing it at runtime.
+- One process has one active session.
+- `--continue` resumes the latest session in the directory; `--session <path>` opens a specific session.
+- `--no-session` creates a temporary session without persistence.
+- A session file must not have multiple writers.
+
+## Frame model
+
+| Direction | Shape |
+| --- | --- |
+| Host → Agent | `{ "id"?, "type", ... }` |
+| Successful response | `{ "id"?, "type": "response", "command", "success": true, "data"? }` |
+| Failed response | `{ "id"?, "type": "response", "command", "success": false, "error", ... }` |
+| Agent → Host | agent, turn, message, tool, compaction, retry, and other events |
+
+Use `id` to associate asynchronous responses with requests. Events are not responses and must be routed separately.
+
+```json
+{"id":"req-1","type":"prompt","message":"Summarize the current project"}
+{"id":"req-1","type":"response","command":"prompt","success":true}
+{"type":"agent_start"}
+{"type":"message_update","assistantMessageEvent":{"type":"text_delta","delta":"Project"}}
+{"type":"agent_end"}
+```
+
+The exported types from `@vetta/coding-agent/rpc` are the source of truth for event fields.
+
+## Command groups
+
+| Goal | Commands |
+| --- | --- |
+| Input | `prompt`, `steer`, `follow_up`, `abort`, `new_session` |
+| State | `get_state`, `get_session_stats`, `get_messages`, `get_commands` |
+| Model | `set_model`, `cycle_model`, `get_available_models` |
+| Thinking | `set_thinking_level`, `cycle_thinking_level` |
+| Queue | `set_steering_mode`, `set_follow_up_mode` |
+| Context | `compact`, `set_auto_compaction` |
+| Retry | `set_auto_retry`, `abort_retry` |
+| Shell | `bash`, `abort_bash` |
+| Session | `switch_session`, `fork`, `set_session_name`, `export_html`, and others |
+
+## Semantics the host must preserve
+
+1. Parse one frame per line; never treat stdout as human-readable logs.
+2. Handle request responses and events without a request ID at the same time.
+3. Stream response text from `message_update.assistantMessageEvent` instead of waiting only for the final response.
+4. Project abort, automatic retry, compaction, tool failures, and Agent termination into host state.
+5. When the process exits, fail unfinished requests consistently and retain stderr diagnostics.
+6. Wait for a session-switch response before writing more data to the old session.
+
+## Extension UI and Host Bridge
+
+When an extension needs confirmation or a selection, the Agent emits `extension_ui_request` and the host replies with `extension_ui_response`. Hosts without UI should cancel explicitly rather than wait forever.
+
+`--enable-host-bridge` adds reverse host calls, such as sending an attachment from an IM integration:
+
+- Agent → host: `host_request`
+- Host → Agent: `host_response`
+
+Enable the Host Bridge only when the corresponding methods and permission checks are implemented.
+
+<Callout type="warn" title="Never mix stdout with logs">
+  Startup banners, debug logs, and third-party output on stdout will corrupt the NDJSON protocol. Diagnostics from the host and extensions must use stderr or structured events.
+</Callout>

@@ -1,0 +1,64 @@
+---
+title: Create a theme
+description: Build, preview, and validate a Vetta theme module with a small, public contract.
+---
+
+## Prerequisites
+
+- A Vetta monorepo checkout with Bun installed.
+- Familiarity with TypeScript, React, and the public Theme SDK.
+- A desktop host for validating the real renderer, focus behavior, and lifecycle.
+
+## Theme package shape
+
+<Files>
+  <Folder name="my-theme" defaultOpen>
+    <File name="theme.json" />
+    <File name="package.json" />
+    <File name="vite.config.ts" />
+    <Folder name="src" defaultOpen>
+      <File name="index.tsx" />
+      <File name="theme.css" />
+    </Folder>
+  </Folder>
+</Files>
+
+`theme.json` declares the stable identity and entry point. The module should use public Theme SDK contracts instead of importing `desktop/src/**`, `@domains/*`, or `@shared/*`.
+
+## Choose a module
+
+Start with the smallest module that meets the goal:
+
+| Goal | Module |
+| --- | --- |
+| Colors, typography, and surfaces | `appearance` |
+| A public host component replacement | `components` |
+| A navigable theme page | `pages` |
+| Content in a public host region | `regions` |
+| Subscriptions or headless theme behavior | `runtime` |
+
+Keep real project state, IPC, routing, permissions, and host adapters in Desktop. A theme should receive public contracts instead of recreating those systems.
+
+## Build and preview
+
+Use the repository's theme package scripts to build the Module Federation entry, then load the theme in a development Desktop instance. Validate both enabled and disabled states; a theme must clean up registrations, subscriptions, and runtime work when deactivated.
+
+<Checklist title="First validation">
+  <li>The theme identity and entry match the package output.</li>
+  <li>Default UI behavior is unchanged when the theme is disabled.</li>
+  <li>Dark mode, window sizes, and page changes do not clip or cover content.</li>
+  <li>Component overrides preserve keyboard, focus, and aria behavior.</li>
+  <li>All registrations and subscriptions are removed on deactivation.</li>
+  <li>User-visible copy uses the existing i18n contract.</li>
+</Checklist>
+
+<Callout title="Stay inside the public boundary" type="warn">
+  If a theme needs a capability that is not public, add a narrow contract to the Theme SDK first. Do not deep-import a host implementation to make a prototype work.
+</Callout>
+
+## Next steps
+
+<Cards>
+  <Card title="Theme module reference" href="/themes/module-reference/" description="Read the public module, token, and lifecycle contracts." />
+  <Card title="Plugin extension points" href="/plugins/extension-points/" description="Use a plugin when the feature needs tools, files, messages, or Agent capabilities." />
+</Cards>

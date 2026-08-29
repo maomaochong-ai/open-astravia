@@ -12,9 +12,9 @@ export const docsI18n = defineI18n({
 	defaultLanguage: "zh",
 	hideLocale: "always",
 	parser: "dir",
-	// Keep the default-language fallback during the translation rollout. The
-	// completeness test makes the remaining fallback pages visible to CI.
-	fallbackLanguage: "zh",
+	// Every registered language must ship a complete content tree. Missing
+	// translations should fail visibly instead of mixing languages at runtime.
+	fallbackLanguage: null,
 });
 
 export type DocsLanguage = (typeof docsI18n.languages)[number];
@@ -72,8 +72,6 @@ export interface DocsMessages {
 	downloadDescription: string;
 	githubDescription: string;
 	markdownDescription: string;
-	translationInProgressTitle: string;
-	translationInProgressBody: string;
 }
 
 /** Application-owned copy. Fumadocs-owned copy is registered below. */
@@ -102,8 +100,6 @@ export const messages = {
 		downloadDescription: "Windows / macOS / Linux 安装包",
 		githubDescription: "开源仓库",
 		markdownDescription: "任意文档页可追加 `.md` 获取纯 Markdown，例如 `/product/models.md`",
-		translationInProgressTitle: "此语言版本正在准备中",
-		translationInProgressBody: "当前页面暂时显示默认语言内容。完整翻译发布后会自动切换。",
 	},
 	en: {
 		documentation: "Documentation",
@@ -129,8 +125,6 @@ export const messages = {
 		downloadDescription: "Windows / macOS / Linux installers",
 		githubDescription: "Open-source repository",
 		markdownDescription: "Append `.md` to any docs page to get Markdown, for example `/product/models.md`",
-		translationInProgressTitle: "This language version is in progress",
-		translationInProgressBody: "This page is temporarily shown in the default language and will switch when the translation is published.",
 	},
 } satisfies Record<DocsLanguage, DocsMessages>;
 

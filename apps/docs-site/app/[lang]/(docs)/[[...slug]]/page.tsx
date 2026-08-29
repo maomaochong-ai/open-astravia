@@ -1,13 +1,12 @@
 import { JsonLd } from "@/components/json-ld";
 import { DocsKicker } from "@/components/kicker";
-import { DocsCallout } from "@/components/reading";
 import { getMDXComponents } from "@/components/mdx";
 import { PageToolbar } from "@/components/page-toolbar";
 import { TocActions } from "@/components/toc-actions";
 import { getGitLastModified } from "@/lib/seo/last-modified";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { breadcrumbItemsFromSlugs, buildPageJsonLd } from "@/lib/seo/schema";
-import { getDocsMessages, isDocsLanguage, type DocsLanguage } from "@/lib/i18n";
+import { isDocsLanguage, type DocsLanguage } from "@/lib/i18n";
 import { getSectionLabel } from "@/lib/site";
 import { source } from "@/lib/source";
 import {
@@ -40,8 +39,6 @@ export default async function Page({ params }: PageProps) {
 	const pageTitle = page.data.title;
 	const pageDescription = page.data.description;
 	const dateModified = page.absolutePath ? getGitLastModified(page.absolutePath) : undefined;
-	const isFallbackContent = page.locale !== language;
-	const text = getDocsMessages(language);
 	const jsonLd = buildPageJsonLd({
 		title: pageTitle,
 		description: pageDescription,
@@ -95,11 +92,6 @@ export default async function Page({ params }: PageProps) {
 					<span className="-mb-px block h-0.5 w-14 bg-vetta-coral" aria-hidden="true" />
 				</header>
 				<DocsBody className="docs-article-body max-w-[54rem] pt-8">
-					{isFallbackContent ? (
-						<DocsCallout type="info" title={text.translationInProgressTitle}>
-							{text.translationInProgressBody}
-						</DocsCallout>
-					) : null}
 					<MDX components={getMDXComponents(language)} />
 				</DocsBody>
 			</DocsPage>

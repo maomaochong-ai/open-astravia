@@ -1,0 +1,41 @@
+---
+title: Manage the application environment
+description: Inspect and repair the bundled Node.js, Python, and package mirror configuration used by Vetta.
+---
+
+Open **Settings → Application environment**. These runtimes are supplied with Vetta for Agent tools and related command processes. They do not modify the system terminal, shell configuration, or the machine-wide Node.js/Python installation.
+
+## Runtimes
+
+The **Runtimes** section shows:
+
+| Runtime | UI-described purpose |
+| --- | --- |
+| Node.js | Run JavaScript / TypeScript tools and npm packages |
+| Python | Run Python scripts and pip packages |
+
+The state can be ready, unavailable, or downloading. When a code tool is first used or an upgrade leaves a runtime unavailable, use **Get**, **Get again**, or **Reinstall** to repair the runtime paired with the current application version.
+
+Verify from a **Vetta session**:
+
+```bash
+node --version
+python --version
+```
+
+Both commands should return a version. A different version in the system terminal does not mean Vetta's bundled environment failed.
+
+## Package mirrors
+
+| Item | Description |
+| --- | --- |
+| npm registry | The mirror injected when npm packages are installed |
+| pip index | The mirror injected when Python packages are installed |
+
+When another source is required, configure it explicitly in the project or command and follow the organization's network policy.
+
+## Limitations
+
+- The bundled environment does not contain a complete native build toolchain. Native dependencies that require C/C++ or a platform SDK may fail; use a prepared system development environment or a prebuilt package.
+- **Get again** repairs only the runtime paired with the current Vetta version. It does not upgrade to a version the application does not support yet.
+- Some platforms may report that a runtime is unsupported.

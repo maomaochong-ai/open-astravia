@@ -1,0 +1,38 @@
+---
+title: Theme system overview
+description: Use theme modules to customize Vetta's appearance, components, pages, regions, and runtime effects.
+---
+
+Theme modules can replace more than colors: they can provide host components, register pages, fill public regions, and mount theme runtime logic. Use a theme when you need a coherent experience; for colors, dark mode, or sidebar styling, use **Settings → Appearance** instead.
+
+<MediaFrame>
+  <img src="/images/product/theme-xianxia.webp" alt="Vetta built-in xianxia theme changing the background, sidebar, composer, and surface decoration" width="1920" height="1280" />
+  <figcaption>A theme can change the visual language of the workspace while the host still owns projects, sessions, and Agent state.</figcaption>
+</MediaFrame>
+
+## What a theme can provide
+
+<Cards>
+  <Card title="appearance" description="Color tokens and surface appearance." />
+  <Card title="components" description="Replace host component slots that are public to themes." />
+  <Card title="pages" description="Add theme pages with navigation entries." />
+  <Card title="regions" description="Fill public host regions." />
+  <Card title="runtime" description="Mount headless logic for the lifetime of an active theme." />
+</Cards>
+
+Themes load through Module Federation. React, the Theme SDK, and host UI packages are shared singletons. Theme code runs in the desktop renderer and must be treated as trusted code.
+
+## Current distribution boundary
+
+<Callout title="Curated distribution" type="info">
+  The current theme system targets built-in or curated theme development. It does not provide a general remote installation or marketplace process for arbitrary third-party themes. Integrate and build themes in the Vetta monorepo and validate them with the desktop application; do not promise users that any external theme archive can be installed directly.
+</Callout>
+
+The appearance page may be controlled by a feature flag, and only themes bundled with the application can be selected.
+
+## Next steps
+
+<Cards>
+  <Card title="Create a theme module" href="/themes/getting-started/" description="Define theme.json, export a ThemeModule, and validate it in Desktop." />
+  <Card title="Theme module reference" href="/themes/module-reference/" description="Choose appearance, component, region, page, runtime, and storage modules." />
+</Cards>

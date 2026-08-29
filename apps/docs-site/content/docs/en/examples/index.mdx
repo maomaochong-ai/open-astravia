@@ -1,0 +1,49 @@
+---
+title: "Examples"
+description: Copy complete task patterns with a clear starting state, acceptance evidence, and recovery path.
+---
+
+<Takeaways>
+  <li>Start with a bounded, verifiable task</li>
+  <li>Inspect evidence instead of trusting the final reply</li>
+  <li>Recover by narrowing the scope, not by restarting blindly</li>
+</Takeaways>
+
+These examples show how to turn a vague request into a complete Agent task. Each one defines the input boundary, expected artifact, acceptance evidence, and recovery path. Paths and names are examples; replace them with values from your own project.
+
+## Choose a target
+
+<Entries>
+  <Entry href="/examples/review-and-fix-code/" kicker="01 / CODE" title="Review and fix a code issue">
+    A focused repository bug: reproduce it, limit the change, then verify it with tests and a diff.
+  </Entry>
+  <Entry href="/examples/document-to-brief/" kicker="02 / DOCUMENTS" title="Turn documents into a decision brief">
+    A set of requirements, meeting notes, or research files with traceable sources and open questions.
+  </Entry>
+  <Entry href="/examples/batch-project-audit/" kicker="03 / BATCH" title="Audit multiple independent projects">
+    One read-only rule applied to several directories, starting with a representative dry run.
+  </Entry>
+  <Entry href="/examples/scheduled-project-report/" kicker="04 / SCHEDULE" title="Generate a scheduled project report">
+    A task that already works manually and can be given stable inputs, outputs, and execution history.
+  </Entry>
+</Entries>
+
+## The shared shape of a reliable task
+
+<Checklist title="Before copying an example">
+  <li>The starting directory, input files, and external dependencies actually exist.</li>
+  <li>The task states what may be read, what may be changed, and what must not be touched.</li>
+  <li>The artifact has a fixed path, format, or test command; it does not only ask for an answer.</li>
+  <li>Uncertainty must be marked, stopped, or escalated instead of guessed.</li>
+  <li>A failed run can be narrowed and resumed without restarting the entire task.</li>
+</Checklist>
+
+<Callout title="Practice in a recoverable copy first" type="info">
+  When trying file changes, batch work, or automation for the first time, use a recoverable test directory and start with restricted sandboxing and the smallest permission set.
+</Callout>
+
+<Continue>
+  <ContinueLink href="/getting-started/first-task/" title="Run your first task" description="Start here if workspaces, execution, and acceptance are new to you." />
+  <ContinueLink href="/core/context-tools-and-permissions/" title="Control context and permissions" description="Understand what the Agent can see and when an action needs approval." />
+  <ContinueLink href="/core/progress-results-and-recovery/" title="Inspect results and recover" description="Check long-running work, background tasks, and failed execution." />
+</Continue>

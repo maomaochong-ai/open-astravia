@@ -1,0 +1,41 @@
+---
+title: Configure message notifications
+description: Send task and automation notifications to external endpoints while protecting URLs, payloads, and credentials.
+---
+
+Webhooks notify an external endpoint when a task, batch project, or automation reaches a configured state. They are a notification channel, not proof that an artifact or business result is correct.
+
+## Configure an endpoint
+
+Open the relevant notification settings and provide:
+
+| Field | Guidance |
+| --- | --- |
+| Endpoint URL | Use an HTTPS URL controlled by the intended recipient |
+| Event scope | Select only task, subtask, or automation events that are useful |
+| Secret or signature | Configure the receiver's verification method without putting credentials in a prompt |
+| Enabled state | Test the endpoint before enabling unattended notifications |
+
+Keep notification scope narrow. A payload may contain task names, status, error summaries, paths, or attachment metadata depending on the event.
+
+## Validate delivery
+
+Use a low-risk task and trigger a notification deliberately. Check both the Vetta execution history and the receiver's raw event. Confirm that retries do not create an unacceptable duplicate effect.
+
+<Checklist title="Before enabling notifications">
+  <li>The endpoint belongs to the intended organization or service.</li>
+  <li>The receiver validates the signature or shared secret.</li>
+  <li>Payloads do not expose keys, cookies, private project content, or unnecessary paths.</li>
+  <li>Receiver failures are visible and do not make a successful task look like a failed artifact.</li>
+  <li>Notifications supplement, rather than replace, checking the actual output.</li>
+</Checklist>
+
+## Recovery
+
+If delivery fails, verify the URL, TLS certificate, network access, authentication, and receiver logs. Pause noisy or repeatedly failing notifications while diagnosing them. Do not retry blindly when the receiver performs a side effect; first confirm whether the original event was accepted.
+
+For batch and scheduled workflows, see [Batch tasks](/product/batch-tasks/) and [Automation](/product/automation/).
+
+<Callout title="Treat webhook data as external disclosure" type="warn">
+  A webhook sends information outside the local workspace. Review the endpoint, payload, retention policy, and sharing scope before enabling it for sensitive projects.
+</Callout>

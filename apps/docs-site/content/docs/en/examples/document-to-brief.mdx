@@ -1,0 +1,85 @@
+---
+title: "Example: turn documents into a decision brief"
+description: Extract facts from selected documents, mark conflicts and uncertainty, and produce a reviewable Markdown brief.
+---
+
+<Takeaways>
+  <li>Limit sources to a named directory or knowledge base</li>
+  <li>Separate facts, inferences, and missing information</li>
+  <li>Use a fixed output structure for easy review</li>
+</Takeaways>
+
+This example turns meeting notes, requirements, and research material into a short decision input. It can read files in the current project or use the [knowledge base](/product/knowledge-base/) when the material needs to be reused over time.
+
+## Starting state
+
+Prepare a structure like this; the file names may differ:
+
+```text
+research/
+  requirements.md
+  meeting-notes.md
+  alternatives.md
+output/
+```
+
+Open several source files first and confirm that they are readable and contain no information that should not be sent to the model. Run OCR for scans or exclude files whose text cannot be extracted, and record that limitation.
+
+## Submit the complete task
+
+<Plate no="01" title="Document synthesis task">
+
+```text
+Read only the material under research/ and create output/decision-brief.md. Do not modify source files.
+
+The brief must include:
+1. The decision topic and a one-sentence conclusion;
+2. Confirmed facts, each with its source file;
+3. Available options and their benefits, costs, and risks;
+4. Conflicts or differences in wording between materials;
+5. Questions that cannot be confirmed from the current material;
+6. Next steps, separating what the material directly supports from what is inferred.
+
+Constraints:
+- Do not use information outside research/ to fill in facts;
+- Write “needs confirmation” instead of guessing;
+- Use relative file paths for citations and add a heading when useful;
+- Stay under 1200 words and use clear Markdown headings and tables;
+- Reread the output when finished, confirm that all six sections exist, and list sources that were used or could not be read.
+```
+
+</Plate>
+
+## Expected result
+
+`output/decision-brief.md` should be independently readable. A reader should know where the conclusion came from, which points need confirmation, and what evidence supports each next step without opening every source file.
+
+## Acceptance checklist
+
+<Checklist title="Review the brief">
+  <li>The output exists and source files were not modified.</li>
+  <li>Each important fact maps to a source file that actually exists.</li>
+  <li>Unsupported claims are marked as inferences or pending confirmation.</li>
+  <li>Conflicts were not silently merged into a false certainty.</li>
+  <li>The conclusion, options, risks, and next steps fit the requested structure and length.</li>
+</Checklist>
+
+Spot-check at least three important facts by opening the source file and checking its meaning and context, not only its path.
+
+## Recovery
+
+If the facts are correct but the structure is scattered, keep the extracted evidence and ask only for a rewrite:
+
+```text
+Keep the facts and sources that have already been checked. Do not expand the research scope.
+Rewrite output/decision-brief.md to fix [specific structural problem], then check the sources and “needs confirmation” markers again.
+Do not modify research/.
+```
+
+If attribution is wrong, make a table of “brief statement → current source → correct source or no source” before editing. Do not let the Agent hide an evidence problem by polishing the wording.
+
+<Continue>
+  <ContinueLink href="/product/knowledge-base/" title="Reuse source material" description="Import, process, and retrieve the same knowledge in later sessions." />
+  <ContinueLink href="/core/context-tools-and-permissions/" title="Provide precise context" description="Use project files, citations, and permission boundaries to control sources." />
+  <ContinueLink href="/examples/scheduled-project-report/" title="Generate recurring reports" description="Run the workflow once before fixing its inputs and outputs." />
+</Continue>

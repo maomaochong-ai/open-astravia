@@ -1,0 +1,34 @@
+---
+title: Use the Vetta Vivi desktop pet
+description: Show the desktop pet from Settings and adjust its pinning and speech-bubble style.
+---
+
+Vetta Vivi is an independent transparent desktop window for status feedback and seasonal speech bubbles. It is not another Agent session; confirm important tasks in the main window.
+
+Open **Settings → Vetta Vivi**.
+
+## Display and window
+
+| Setting | Description |
+| --- | --- |
+| Show desktop pet | Hides the pet window when disabled and keeps it hidden on the next launch |
+| Keep on top | Floats above other windows when enabled; other windows can cover it when disabled |
+
+Hold the pet to drag it. When the pointer is over the pet image, scroll to adjust the current animation size; different animations may remember their own size. Transparent areas outside the image try to pass mouse events through so they do not block work.
+
+## Speech-bubble styles
+
+Choose an appearance under **Speech-bubble style**. It applies immediately to the pet window. Built-in styles include ordinary bubbles and seasonal styles for Lunar New Year, the Dragon Boat Festival, the Mid-Autumn Festival, Christmas, and others shown by the client.
+
+## Development debugging
+
+**Debug borders** show the window boundary, video region boundary, and size information. Enable them only for development diagnosis.
+
+The current settings page exposes Show desktop pet, Keep on top, Speech-bubble style, and Debug borders. Other internal fields, such as decorative asset lists, may not be visible in the UI; use the actual client behavior as the source of truth.
+
+## Common issues
+
+- **The pet covers work**: disable **Keep on top** or drag it to the edge of the screen.
+- **The pet is too large or small**: put the pointer over the image and scroll.
+- **It disappears after enabling**: toggle visibility again, check another monitor or an off-screen position, and confirm the Vetta main process is still running.
+- **The bubble does not update**: select another style, then restart the pet from the settings page if necessary.

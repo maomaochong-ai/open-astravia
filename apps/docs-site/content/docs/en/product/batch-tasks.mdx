@@ -1,0 +1,144 @@
+---
+title: Run batch tasks
+description: Process independent directories with one task configuration, observe state centrally, verify artifacts, and retry only failed items.
+---
+
+<Takeaways>
+  <li>Every directory must be independently acceptable</li>
+  <li>Validate one directory before increasing concurrency</li>
+  <li>Artifact rules are stronger evidence than a model reply</li>
+</Takeaways>
+
+Batch tasks apply a method that already works to several directories. They do not automatically split one complex workflow into dependent steps. Instead, Vetta creates an independent subtask and session for each target, then runs them under a concurrency limit.
+
+<MediaFrame>
+  <img src="/images/product/batch-tasks.webp" alt="Vetta batch task board showing multiple directory tasks running and waiting" width="1536" height="1152" />
+  <figcaption>One configuration fans out into independent tasks; the board shows global state while each session keeps execution detail.</figcaption>
+</MediaFrame>
+
+## Decide whether batch is appropriate
+
+<Fork>
+  <ForkYes title="Use batch tasks">
+    <li>Apply the same checks to multiple repositories</li>
+    <li>Generate the same kind of artifact for several directories</li>
+    <li>Migrate similar configuration in bulk</li>
+    <li>Organize several sets of material independently</li>
+  </ForkYes>
+  <ForkNo title="Use another approach">
+    <li>Subtasks have strict ordering dependencies</li>
+    <li>Every directory must share live intermediate state</li>
+    <li>There is only one target and it needs frequent interactive decisions</li>
+    <li>The task cannot be accepted independently in one directory</li>
+  </ForkNo>
+</Fork>
+
+The key invariant is that any subtask can run alone and still produce a result whose success or failure is judgeable.
+
+## Example: check release readiness for several projects
+
+<Plate no="01" title="Target directories">
+
+```text
+C:\work\api-service
+C:\work\desktop-client
+C:\work\admin-console
+C:\work\docs-site
+```
+
+</Plate>
+
+<Plate no="02" title="Shared prompt">
+
+```text
+Check whether the current project has an executable release-readiness process.
+
+Requirements:
+1. Read package.json, README, and existing release configuration;
+2. Create only release-readiness.md; do not modify source or configuration;
+3. Report the actual state of build, test, version, and release entry points;
+4. Mark uncertain items as “needs manual confirmation” instead of guessing;
+5. Confirm that release-readiness.md exists when finished.
+```
+
+</Plate>
+
+Set artifact verification to `release-readiness.md`. A normal model reply without the file will not be treated as a completed subtask.
+
+## Create a batch project
+
+Open **More → Batch tasks**, select **New project**, and configure:
+
+<Panel>
+  <PanelGroup title="Task definition">
+    <PanelItem title="Project name">The name shown in lists and notifications</PanelItem>
+    <PanelItem title="Prompt">The same task for every directory; `/` can invoke a skill or scene</PanelItem>
+    <PanelItem title="Model">The model used by all subtasks</PanelItem>
+    <PanelItem title="Folder list">One directory per line or selection; each creates a subtask</PanelItem>
+  </PanelGroup>
+  <PanelGroup title="Execution constraints">
+    <PanelItem title="Concurrency">The maximum number of running subtasks</PanelItem>
+    <PanelItem title="Timeout">The hard timeout for one run; resuming after a pause starts timing again</PanelItem>
+    <PanelItem title="Sandbox state">Follow default, full access, or sandboxed</PanelItem>
+    <PanelItem title="Artifact verification">File names or globs that must all match at the target directory root</PanelItem>
+    <PanelItem title="Notifications">Notify the configured webhook when a subtask or the whole project completes</PanelItem>
+  </PanelGroup>
+</Panel>
+
+## Validate one directory first
+
+<Steps>
+  <Step>
+    ### Add one representative directory
+
+    Choose the most common, lower-risk target and set concurrency to 1.
+  </Step>
+  <Step>
+    ### Run and open the session
+
+    Check that the Agent reads the right files, respects the change boundary, and creates the expected output.
+  </Step>
+  <Step>
+    ### Adjust the prompt and artifact rules
+
+    Remove ambiguous requirements and false completion signals before adding more directories or increasing concurrency.
+  </Step>
+</Steps>
+
+## Understand queue and state
+
+<BatchFlow aria-label="Batch task queue and concurrency state">
+  <div><span>Shared configuration</span><strong>Prompt · model · concurrency 2 · artifact rule</strong></div>
+  <BatchTasks>
+    <span className="border-t-[#3f9f70]">Directory A<br /><small>Complete</small></span>
+    <span className="border-t-vetta-coral">Directory B<br /><small>Running</small></span>
+    <span className="border-t-vetta-coral">Directory C<br /><small>Running</small></span>
+    <span className="border-t-[#c59a37]">Directory D<br /><small>Waiting</small></span>
+    <span className="border-t-[#c95454]">Directory E<br /><small>Failed</small></span>
+  </BatchTasks>
+</BatchFlow>
+
+<Beats>
+  <li>**Start**: enqueue pending or recoverable tasks up to the concurrency limit.</li>
+  <li>**Stop**: interrupt running tasks and reset sessions, artifacts, and state except completed items; the confirmation dialog explains the impact.</li>
+  <li>**Reset failed**: clean up only failed tasks and enqueue them again.</li>
+  <li>Each task supports run, continue, retry, rerun, delete, and jump to session.</li>
+</Beats>
+
+Use **Execution progress** in the activity panel for the global view. Open an individual session for tools, messages, and the concrete failure.
+
+## Accept the batch
+
+<Checklist title="Before declaring the batch complete">
+  <li>The total equals the expected directory count with no missing or duplicate path.</li>
+  <li>Every completed item satisfies artifact rules, not only a successful reply.</li>
+  <li>At least one ordinary and one boundary directory were sampled in the filesystem.</li>
+  <li>Failed items were diagnosed and retried locally in their sessions.</li>
+  <li>The webhook was treated as a notification, not final acceptance evidence.</li>
+</Checklist>
+
+<Callout type="warn" title="Stop is not pause">
+  Stop resets unfinished task sessions, artifacts, and state and cannot be undone. To reduce load temporarily, process one task or wait for the current task to finish.
+</Callout>
+
+For a runnable recipe, see [Audit multiple projects](/examples/batch-project-audit/). For time-based execution, use [Automation](/product/automation/). If steps must share intermediate state, use an ordinary session in stages.

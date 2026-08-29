@@ -1,0 +1,30 @@
+---
+title: Architecture and package boundaries
+description: Understand the dependency direction between Vetta applications, runtime packages, and core Agent packages.
+---
+
+Vetta uses a monorepo for the desktop application, hosts, and core TypeScript packages. The dependency direction is:
+
+```text
+applications → runtime-* → coding-agent → agent → ai
+```
+
+## Core packages
+
+<Cards>
+  <Card title="@vetta/ai" description="Model provider protocols, message conversion, streaming events, and the model registry." />
+  <Card title="@vetta/agent-core" description="The stateful Agent Loop, tool calls, and event stream." />
+  <Card title="@vetta/coding-agent" description="Sessions, context, tool orchestration, and SDK/RPC product capabilities." />
+</Cards>
+
+## Runtime packages
+
+The runtime layer organizes Coding Agent capabilities into reusable session, storage, tool, MCP, and telemetry interfaces for desktop hosts. Runtime packages must not depend on a particular desktop UI.
+
+## Application layer
+
+The desktop application owns the Electron lifecycle, native capabilities, IPC, and user interface. Business APIs own accounts, organizations, model provider configuration, and other server-side rules.
+
+<Callout type="info" title="Boundary constraint">
+  Core libraries must not depend on the desktop application or administration console. When adding a capability, first decide whether its contract belongs to the core, runtime, or host layer; do not move UI lifecycle concerns into a lower-level package.
+</Callout>

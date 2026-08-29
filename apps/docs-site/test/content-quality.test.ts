@@ -20,6 +20,15 @@ function listContentFiles(directory = docsRoot): string[] {
 	});
 }
 
+function listMetaFiles(directory = docsRoot, prefix = ""): string[] {
+	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+		if (entry.isDirectory() && entry.name === "en" && directory === docsRoot) return [];
+		const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+		if (entry.isDirectory()) return listMetaFiles(resolve(directory, entry.name), relativePath);
+		return entry.name === "meta.json" ? [relativePath] : [];
+	});
+}
+
 function listLocalePages(language: (typeof docsI18n.languages)[number]): string[] {
 	const directory = language === docsI18n.defaultLanguage ? docsRoot : resolve(docsRoot, language);
 
@@ -47,7 +56,7 @@ describe("documentation content model", () => {
 			defaultLanguage: "zh",
 			hideLocale: "always",
 			parser: "dir",
-			fallbackLanguage: "zh",
+			fallbackLanguage: null,
 		});
 		expect(getI18nProvider("zh").locale).toBe("zh");
 		expect(getI18nProvider("en").locale).toBe("en");
@@ -161,11 +170,33 @@ describe("documentation content model", () => {
 	});
 
 	it("keeps every supported locale in the official directory parser layout", () => {
+		const defaultPages = listLocalePages(docsI18n.defaultLanguage);
+
 		for (const language of docsI18n.languages) {
 			const root = language === docsI18n.defaultLanguage ? docsRoot : resolve(docsRoot, language);
 			expect(existsSync(root), language).toBe(true);
 			expect(existsSync(resolve(root, "meta.json")), `${language}/meta.json`).toBe(true);
-			expect(listLocalePages(language), language).toContain("index");
+			expect(listLocalePages(language), language).toEqual(defaultPages);
+		}
+	});
+
+	it("keeps English content translated and URL-neutral", () => {
+		for (const path of listContentFiles(resolve(docsRoot, "en"))) {
+			const contents = readFileSync(path, "utf8");
+			expect(contents, path).not.toMatch(/[\p{Script=Han}]/u);
+			expect(contents, path).not.toMatch(/(?:href|src)=?["']\/(?:en|zh)\//u);
+			expect(contents, path).not.toMatch(/\]\(\/(?:en|zh)\//u);
+		}
+	});
+
+	it("keeps the English sidebar order aligned with the default locale", () => {
+		for (const relativePath of listMetaFiles()) {
+			const defaultMeta = JSON.parse(readDocsFile(relativePath)) as { pages?: string[] };
+			const englishPath = resolve(docsRoot, "en", relativePath);
+
+			expect(existsSync(englishPath), `en/${relativePath}`).toBe(true);
+			const englishMeta = JSON.parse(readFileSync(englishPath, "utf8")) as { pages?: string[] };
+			expect(englishMeta.pages, `en/${relativePath}`).toEqual(defaultMeta.pages);
 		}
 	});
 

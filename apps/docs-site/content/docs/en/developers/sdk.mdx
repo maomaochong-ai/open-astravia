@@ -1,0 +1,97 @@
+---
+title: Use the Coding Agent SDK
+description: Create Agent sessions inside a TypeScript process, subscribe to events, send tasks, and close resources correctly.
+---
+
+`@vetta/coding-agent/sdk` is the in-process integration entry point. It provides typed Sessions, Hosts, and offline session catalogs without requiring the CLI or stdout parsing.
+
+## Create a minimal session
+
+```typescript
+import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
+
+const { session, diagnostics, modelFallbackMessage } =
+  await createCodingAgentSession({
+    cwd: process.cwd(),
+    storage: { kind: "memory" },
+  });
+
+for (const diagnostic of diagnostics) {
+  console.error(diagnostic.code, diagnostic.message);
+}
+
+if (modelFallbackMessage) console.warn(modelFallbackMessage);
+
+const unsubscribe = session.subscribe((event) => {
+  if (event.type === "message_update") {
+    // Consume typed session events in your own UI or logger.
+  }
+});
+
+try {
+  await session.prompt("Inspect the current directory and summarize the project");
+  console.log(session.getLastAssistantText());
+} finally {
+  unsubscribe();
+  await session.close();
+}
+```
+
+If no usable model is available through parameters, configuration, or a host service, creation throws a `CodingAgentSessionCreateError` with a stable error code.
+
+## Choose storage intent
+
+| `storage.kind` | Semantics | Required parameters |
+| --- | --- | --- |
+| `memory` | Do not persist the session | None |
+| `file-create` | Create a new session file | `conversationDir` |
+| `file-resume` | Resume a specific session | `conversationDir`, `sessionPath` |
+
+Declare storage intent when creating the session. Do not let multiple active Sessions write the same session file.
+
+## Core lifecycle
+
+<Lifecycle aria-label="SDK Session lifecycle">
+  <span>create</span><b>→</b><span>subscribe</span><b>→</b><span>prompt / steer / followUp</span><b>→</b><span>abort or complete</span><b>→</b><span>close</span>
+</Lifecycle>
+
+- `prompt()` starts a normal user turn.
+- `steer()` adds guidance during the current execution.
+- `followUp()` queues a message for the next turn.
+- `abort()` stops the current execution, but you must still call `close()` to release resources.
+- `subscribe()` returns an unsubscribe function that the host must call during teardown.
+
+## Session, Host, and Catalog
+
+| API | Use case |
+| --- | --- |
+| `createCodingAgentSession()` | One active session with an explicit lifecycle |
+| `createCodingAgentHost()` | Own and close multiple isolated Coding Agent Sessions |
+| `createCodingAgentSessionCatalog()` | List, query, and manage session metadata offline |
+
+Catalogs are separate from active Sessions. Do not open every session just to display a session list.
+
+`CodingAgentHost` is an SDK ownership group, not a multi-agent registry. Each member can have its own cwd, Storage, Tool, MCP, Extension Source, and model resources. To dynamically install, replace, or retire different `agentId` values in one process, use `RuntimeHost.installAgent()` from `@vetta/runtime-core`.
+
+## Optional product capabilities
+
+Sessions also expose model and thinking controls, tool toggles, context compaction, automatic retry, session naming, background tasks, subagents, todos, MCP reload, resource reload, and HTML export. Use them as needed; do not copy the same state machine into the host.
+
+Creation options can include:
+
+- `resources`, `skillSources`, `extensionSources`: static or dynamic capability sources.
+- `customTools`: typed custom tools.
+- `askUserQuestion`: route model questions to the host UI.
+- `enableBackgroundTasks`, `enableSubagents`, `enableMcp`: explicitly enable each capability.
+- `observationHub`: connect Agent, RuntimeHost, Tool, MCP, Prompt, and Session lifecycle events to a local Adapter or application hub; the caller owns the Adapter.
+- `env`: pass controlled environment variables without mutating process-wide state.
+
+## Errors and shutdown
+
+1. Read `diagnostics` during creation and do not silently discard extension-load failures.
+2. Preserve Agent, turn, message, tool, compaction, and retry termination events for users.
+3. On host cancellation, call `abort()` first and then wait for or close the session.
+4. Put `close()` in `finally` or in the host lifecycle hook.
+5. Import only the public package contract; do not reach into implementation directories.
+
+The declarations exported by `@vetta/coding-agent/sdk` are the source of truth for the complete API.

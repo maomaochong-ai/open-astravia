@@ -1,0 +1,49 @@
+---
+title: Theme module reference
+description: Reference the public theme modules, tokens, lifecycle rules, and ownership boundaries.
+---
+
+A theme exports a `ThemeModule` composed of focused public modules. Keep each module declarative where possible and make its lifecycle explicit.
+
+## Module responsibilities
+
+| Module | Responsibility |
+| --- | --- |
+| `appearance` | Define color, typography, spacing, and surface tokens |
+| `components` | Override public host component slots |
+| `pages` | Register a page and its navigation entry |
+| `regions` | Render into a public host region |
+| `runtime` | Run headless theme behavior while the theme is active |
+| `storage` | Persist theme-owned preferences within the public storage contract |
+
+## Ownership boundary
+
+| Owner | Owns |
+| --- | --- |
+| Theme SDK | Stable theme contracts, tokens, lifecycle, and public primitives |
+| Theme package | Theme components, assets, styles, pages, and runtime |
+| `desktop` | Business state, IPC, routing, host adapters, and default connected containers |
+
+Themes must not import `@shared/*`, `@domains/*`, or `desktop/src/**`. When a stable capability is missing, propose the narrowest addition to the Theme SDK rather than depending on a private implementation.
+
+## Lifecycle requirements
+
+1. Register UI, pages, regions, and listeners during activation.
+2. Keep returned cleanup functions and call them during deactivation.
+3. Stop timers, subscriptions, and runtime work when the theme is disabled.
+4. Do not retain references to a host object after deactivation.
+5. Keep user-visible text in the host's i18n resources.
+
+## Acceptance checklist
+
+1. Default UI behavior is unchanged without the theme.
+2. Dark mode, window sizes, and route changes remain usable.
+3. Component overrides preserve keyboard, focus, and aria behavior.
+4. Regions do not duplicate host data fetching or permission logic.
+5. Runtime and subscriptions are completely cleaned up when disabled.
+6. Public package exports are used instead of internal paths.
+7. Validate the real host with the repository's approved UI verification flow when that workflow is authorized.
+
+<Callout type="info" title="Current distribution boundary">
+  Themes are currently intended for built-in or curated distribution. Remote theme markets, general ZIP installation, and automatic storage cleanup on uninstall are not public capabilities yet.
+</Callout>

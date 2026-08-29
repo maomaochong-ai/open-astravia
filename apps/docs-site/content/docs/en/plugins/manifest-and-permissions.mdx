@@ -1,0 +1,97 @@
+---
+title: Manifest and permissions
+description: Declare plugin identity, entry points, styles, permissions, and Agent contributions.
+---
+
+`plugin.json` lives at the root of the plugin archive. The host validates identity, compatibility, and permissions from this file before loading code, so it must match the build artifact.
+
+```json
+{
+  "id": "my-plugin",
+  "name": "My Plugin",
+  "version": "0.1.0",
+  "pluginApiVersion": "^1.0.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "my_plugin",
+    "expose": "./plugin"
+  },
+  "styles": ["dist/style.css"],
+  "permissions": ["ui.slot.global"]
+}
+```
+
+## Key fields
+
+<TypeTable
+  type={{
+    id: {
+      description: "The stable plugin identifier. Keep it unchanged after release.",
+      type: "string",
+      required: true,
+    },
+    name: {
+      description: "The name displayed to users.",
+      type: "string",
+      required: true,
+    },
+    version: {
+      description: "The plugin version. Update the manifest and release archive together.",
+      type: "string",
+      required: true,
+    },
+    entry: {
+      description: "The Module Federation manifest path, normally dist/mf-manifest.json.",
+      type: "string",
+      required: true,
+    },
+    "moduleFederation.remoteName": {
+      description: "A valid, unique Module Federation remote name matching the Vite configuration.",
+      type: "string",
+      required: true,
+    },
+    "moduleFederation.expose": {
+      description: "The exposed entry matching the expose value in the Vite configuration.",
+      type: "string",
+      required: true,
+    },
+    styles: {
+      description: "Stylesheets that the host must inject.",
+      type: "string[]",
+    },
+    permissions: {
+      description: "The permissions the plugin actually uses. Declaration is not authorization.",
+      type: "string[]",
+    },
+  }}
+/>
+
+## Least privilege
+
+Declare only permissions the plugin really uses. Common groups include UI slots, Agent prompts and tools, filesystem, network, storage, models, navigation, and automation.
+
+<Callout title="Declaration is not authorization" type="info">
+  Declaring a permission does not grant it. Installation approval and runtime checks still apply.
+</Callout>
+
+Start development with the smallest manifest. If a host API reports a permission error, confirm that the behavior is necessary, add only the required permission, and repeat the installation approval flow. Do not copy another plugin's complete permission list for convenience.
+
+## Release checks
+
+<Steps>
+  <Step>
+    ### Check the archive structure
+
+    Extract the final ZIP and confirm that its root contains `plugin.json` and `dist/`, and that every referenced entry and stylesheet exists.
+  </Step>
+  <Step>
+    ### Verify permission prompts
+
+    Use a clean installation to confirm that the permission prompt matches the manifest.
+  </Step>
+  <Step>
+    ### Trigger each capability
+
+    Invoke every plugin capability one by one. A successful development link does not replace release archive verification.
+  </Step>
+</Steps>
