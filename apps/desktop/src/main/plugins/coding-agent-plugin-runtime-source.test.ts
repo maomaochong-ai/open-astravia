@@ -53,6 +53,23 @@ describe("DesktopCodingAgentPluginRuntimeSource", () => {
 			),
 		).rejects.toThrow("Desktop Plugin tool host is unavailable");
 	});
+
+	it("refreshes built-in Skill paths when a new preset appears after startup", () => {
+		let paths = ["C:/vetta/builtin-skills/create-skill"];
+		const source = new DesktopCodingAgentPluginRuntimeSource({
+			build: () => configuration("initial"),
+			additionalSkillPaths: paths,
+			readAdditionalSkillPaths: () => paths,
+			handlerLeaseProvider: { bindForTurn: () => ({ release() {} }) },
+		});
+		const listener = vi.fn();
+		source.subscribe(listener);
+		expect(source.readAgentPlugins()?.skillPathContributions?.at(-1)?.paths).toEqual(paths);
+
+		paths = ["C:/vetta/builtin-skills/create-skill", "C:/vetta/builtin-skills/vetta-blog"];
+		expect(source.readAgentPlugins()?.skillPathContributions?.at(-1)?.paths).toEqual(paths);
+		expect(listener).toHaveBeenCalledOnce();
+	});
 });
 
 function configuration(pluginId: string): AgentPluginRuntimeConfig {

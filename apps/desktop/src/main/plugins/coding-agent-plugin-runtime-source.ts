@@ -10,12 +10,16 @@ import type {
 export interface DesktopCodingAgentPluginRuntimeSourceOptions {
 	readonly build: () => AgentPluginRuntimeConfig | undefined;
 	readonly additionalSkillPaths: readonly string[];
+	/** Optional live source for built-in paths that can change while Desktop stays open. */
+	readonly readAdditionalSkillPaths?: () => readonly string[];
 	readonly handlerLeaseProvider: AgentPluginTurnHandlerLeaseProvider;
 }
 
 /** Desktop Plugin host 到 Coding Agent 产品 Plugin Runtime 的唯一动态 Source。 */
 export class DesktopCodingAgentPluginRuntimeSource implements CodingAgentPluginRuntimeSource {
 	private current: AgentPluginRuntimeConfig | undefined;
+	private base: AgentPluginRuntimeConfig | undefined;
+	private additionalSkillPathsSnapshot: readonly string[] = [];
 	private initialized = false;
 	private toolInvoker: AgentPluginToolInvoker | undefined;
 	private continuationInvoker: AgentPluginContinuationInvoker | undefined;
@@ -30,8 +34,17 @@ export class DesktopCodingAgentPluginRuntimeSource implements CodingAgentPluginR
 
 	readonly readAgentPlugins = (): AgentPluginRuntimeConfig | undefined => {
 		if (!this.initialized) {
-			this.current = this.withAdditionalSkills(this.options.build());
+			this.base = this.options.build();
+			this.additionalSkillPathsSnapshot = this.readAdditionalSkillPaths();
+			this.current = this.withAdditionalSkills(this.base, this.additionalSkillPathsSnapshot);
 			this.initialized = true;
+		} else {
+			const nextPaths = this.readAdditionalSkillPaths();
+			if (!samePaths(nextPaths, this.additionalSkillPathsSnapshot)) {
+				this.additionalSkillPathsSnapshot = nextPaths;
+				this.current = this.withAdditionalSkills(this.base, nextPaths);
+				for (const listener of this.listeners) listener();
+			}
 		}
 		return this.current;
 	};
@@ -56,7 +69,9 @@ export class DesktopCodingAgentPluginRuntimeSource implements CodingAgentPluginR
 	};
 
 	publish(agentPlugins: AgentPluginRuntimeConfig | undefined): void {
-		this.current = this.withAdditionalSkills(agentPlugins);
+		this.base = agentPlugins;
+		this.additionalSkillPathsSnapshot = this.readAdditionalSkillPaths();
+		this.current = this.withAdditionalSkills(this.base, this.additionalSkillPathsSnapshot);
 		this.initialized = true;
 		for (const listener of this.listeners) listener();
 	}
@@ -73,19 +88,28 @@ export class DesktopCodingAgentPluginRuntimeSource implements CodingAgentPluginR
 		this.systemPromptInvoker = invoker;
 	}
 
+	private readAdditionalSkillPaths(): readonly string[] {
+		return this.options.readAdditionalSkillPaths?.() ?? this.options.additionalSkillPaths;
+	}
+
 	private withAdditionalSkills(
 		agentPlugins: AgentPluginRuntimeConfig | undefined,
+		additionalSkillPaths: readonly string[],
 	): AgentPluginRuntimeConfig | undefined {
-		if (this.options.additionalSkillPaths.length === 0) return agentPlugins;
+		if (additionalSkillPaths.length === 0) return agentPlugins;
 		return {
 			...(agentPlugins ?? {}),
 			skillPathContributions: [
 				...(agentPlugins?.skillPathContributions ?? []),
 				{
 					pluginId: "desktop:builtin-skills",
-					paths: [...this.options.additionalSkillPaths],
+					paths: [...additionalSkillPaths],
 				},
 			],
 		};
 	}
+}
+
+function samePaths(left: readonly string[], right: readonly string[]): boolean {
+	return left.length === right.length && left.every((path, index) => path === right[index]);
 }

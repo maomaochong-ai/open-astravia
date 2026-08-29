@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vetta Blog"
+  short_description: "为 Vetta 产出有证据、有实测、有取舍的产品与技术博客"
+  default_prompt: "使用 $vetta-blog 为 Vetta 研究、撰写或审查一篇博客：先建立事实与证据台账，再完成正文和图片审查。"

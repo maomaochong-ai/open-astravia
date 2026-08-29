@@ -17,5 +17,14 @@
     "type": "skill",
     "alias": "发布能力",
     "description": "把 skill、scene、MCP、插件或能力套装提交到 Vetta 能力市场，讲清必填字段、多语言与审核流程。"
+  },
+  "vetta-blog": {
+    "name": "vetta-blog",
+    "version": "1.0.0",
+    "source": "builtin",
+    "enabled": true,
+    "type": "skill",
+    "alias": "Vetta 博客",
+    "description": "为 Open Vetta 研究、撰写、审查和持续改进有证据的产品与技术博客，包含真实实测、竞品取舍、图片审查与发布门禁。"
   }
 }

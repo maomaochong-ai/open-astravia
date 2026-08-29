@@ -77,6 +77,10 @@
 		"publish-ability": {
 			"name": "Publish Ability",
 			"description": "Submit a skill, scene, MCP server, plugin, or ability bundle to the Vetta marketplace, covering required fields, localization, and the review flow."
+		},
+		"vetta-blog": {
+			"name": "Vetta Blog",
+			"description": "Research, test, write, and review evidence-backed Vetta product and technical blogs."
 		}
 	}
 }

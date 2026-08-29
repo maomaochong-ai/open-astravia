@@ -14,6 +14,7 @@ const pluginLog = getAppLogger("plugin");
 const runtimeSource = new DesktopCodingAgentPluginRuntimeSource({
 	build: () => pluginAgentContributionService.buildRuntimeConfig(),
 	additionalSkillPaths: getBuiltinSkillPaths(),
+	readAdditionalSkillPaths: getBuiltinSkillPaths,
 	handlerLeaseProvider: {
 		bindForTurn: (agentPlugins) => pluginAgentContributionService.bindAgentHandlersForTurn(agentPlugins),
 	},

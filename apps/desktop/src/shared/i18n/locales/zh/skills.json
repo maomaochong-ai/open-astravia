@@ -77,6 +77,10 @@
 		"publish-ability": {
 			"name": "发布能力",
 			"description": "把 skill、scene、MCP、插件或能力套装提交到 Vetta 能力市场，讲清必填字段、多语言与审核流程。"
+		},
+		"vetta-blog": {
+			"name": "Vetta 博客",
+			"description": "研究、实测、撰写和审查有证据的 Vetta 产品与技术博客。"
 		}
 	}
 }

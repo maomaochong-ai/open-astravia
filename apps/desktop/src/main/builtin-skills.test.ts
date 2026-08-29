@@ -38,6 +38,13 @@ const MANIFEST = {
 		requiresCloud: true,
 		type: "skill",
 	},
+	"vetta-blog": {
+		name: "vetta-blog",
+		version: "1.0.0",
+		source: "builtin",
+		enabled: true,
+		type: "skill",
+	},
 };
 
 describe("readBuiltinSkillsManifest", () => {
@@ -47,11 +54,11 @@ describe("readBuiltinSkillsManifest", () => {
 	});
 
 	it("完全体构建返回全部内置技能", () => {
-		expect(Object.keys(readBuiltinSkillsManifest())).toEqual(["create-skill", "publish-ability"]);
+		expect(Object.keys(readBuiltinSkillsManifest())).toEqual(["create-skill", "publish-ability", "vetta-blog"]);
 	});
 
 	it("lite 构建过滤 requiresCloud 技能（publish-ability 等发布类技能不出现）", () => {
 		flags.cloud = false;
-		expect(Object.keys(readBuiltinSkillsManifest())).toEqual(["create-skill"]);
+		expect(Object.keys(readBuiltinSkillsManifest())).toEqual(["create-skill", "vetta-blog"]);
 	});
 });
