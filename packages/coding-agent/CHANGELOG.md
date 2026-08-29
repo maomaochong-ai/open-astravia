@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- 修复本地与远程模型列表缺少 `maxTokens` 时被统一写成 16384、导致长推理在真实模型上提前触发长度截断的问题；未知上限现在保持未知，由 AI Provider 按模型元数据、调用覆盖或协议要求解析。
 - 修复模型输出达到长度上限时被误判为正常完成、界面没有可见回复且不会自动重试的问题；Coding Agent 现在会在同一 Turn 内有限次数地请求模型从截断位置继续回答，次数耗尽后进入明确的错误链路。
 - 修复 Plugin Tool 到达超时时，内部 `AbortSignal` 的同步拒绝抢先覆盖超时错误、最终误报为
   `Plugin tool invocation was aborted` 的问题；超时现在稳定保留 `Plugin tool timed out after …ms`，外部取消语义不变。

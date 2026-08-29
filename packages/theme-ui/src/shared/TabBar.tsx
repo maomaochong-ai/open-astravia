@@ -144,19 +144,8 @@ function ActiveTabIndicator({
 
 	const geometry = tabWidth > 0 ? createConnectedTabOutlineGeometry(tabWidth) : null;
 
-	return (
-		<motion.span
-			ref={indicatorRef}
-			layoutId={`tabbar-active-${layoutId}`}
-			aria-hidden
-			className="pointer-events-none absolute inset-x-0 top-0 -bottom-px rounded-t-lg bg-muted"
-			data-active-tab-indicator
-			transition={
-				suppressLayoutAnimation
-					? { duration: 0 }
-					: { type: "spring", stiffness: 480, damping: 36, mass: 0.8 }
-			}
-		>
+	const content = (
+		<>
 			{geometry && (
 				<svg
 					viewBox={`0 0 ${geometry.width} ${geometry.height}`}
@@ -181,6 +170,30 @@ function ActiveTabIndicator({
 					/>
 				</svg>
 			)}
+		</>
+	);
+	const indicatorProps = {
+		"aria-hidden": true,
+		className: "pointer-events-none absolute inset-x-0 top-0 -bottom-px rounded-t-lg bg-muted",
+		"data-active-tab-indicator": true,
+	};
+
+	if (suppressLayoutAnimation) {
+		return (
+			<span ref={indicatorRef} {...indicatorProps}>
+				{content}
+			</span>
+		);
+	}
+
+	return (
+		<motion.span
+			ref={indicatorRef}
+			layoutId={`tabbar-active-${layoutId}`}
+			transition={{ type: "spring", stiffness: 480, damping: 36, mass: 0.8 }}
+			{...indicatorProps}
+		>
+			{content}
 		</motion.span>
 	);
 }

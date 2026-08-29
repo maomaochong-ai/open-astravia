@@ -785,6 +785,8 @@ const response = await stream(ollamaModel, context, {
 });
 ```
 
+`maxTokens` is optional and represents a known maximum output-token count. When it is omitted, providers whose protocols allow an optional output limit do not invent a fixed value; the model service decides from the selected model's capabilities. Callers can still override the value through `stream()`. The Anthropic Messages protocol requires `max_tokens`, so an unknown model uses a conservative 4096-token output budget and reports a warning in the call metadata.
+
 ### OpenAI Compatibility Settings
 
 The `openai-completions` API is implemented by many providers with minor differences. By default, the library auto-detects compatibility settings based on `baseUrl` for known providers (Cerebras, xAI, Mistral, Chutes, etc.). For custom proxies or unknown endpoints, you can override these settings via the `compat` field. For `openai-responses` models, the compat field only supports Responses-specific flags.

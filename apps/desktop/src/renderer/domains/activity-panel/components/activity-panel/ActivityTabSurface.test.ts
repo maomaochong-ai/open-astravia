@@ -28,6 +28,7 @@ function actions(): ActivityPanelActions {
 		onOverflowChange: vi.fn(),
 		onRemoveTab: vi.fn(),
 		onReorderTabs: vi.fn(),
+		onResizeStart: vi.fn(),
 		onResize: vi.fn(),
 		onResizeEnd: vi.fn(),
 		onRestoreTab: vi.fn(),

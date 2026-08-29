@@ -68,6 +68,26 @@ describe("Anthropic native adapter", () => {
 		expect(JSON.parse(transport.requests[0]?.body ?? "{}")).toMatchObject({ model: anthropicModel.id, stream: true });
 	});
 
+	it("reports the required fallback when an unknown model has no output limit", async () => {
+		const transport = createProviderTestTransport([anthropicSse(anthropicSuccessfulRecords())]);
+		const response = await anthropicAdapter.stream({
+			model: { ...anthropicModel, id: "future-model", maxTokens: undefined },
+			context,
+			options: { apiKey: "test", fetch: transport.fetch },
+		});
+
+		await collectNative(response);
+		expect(JSON.parse(transport.requests[0]?.body ?? "{}")).toMatchObject({ max_tokens: 4_096 });
+		expect(await response.metadata).toMatchObject({
+			warnings: [
+				{
+					code: "unknown-model-output-limit",
+					provider: "anthropic",
+				},
+			],
+		});
+	});
+
 	it("maps HTTP status failures on the native rejection channel", async () => {
 		const rateLimitResponse = () =>
 			errorResponse(429, { type: "error", error: { type: "rate_limit_error", message: "slow down" } });

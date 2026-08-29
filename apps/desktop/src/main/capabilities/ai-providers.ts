@@ -130,7 +130,9 @@ function toSimpleStreamOptions(
 		apiKey,
 		signal,
 		...(input.temperature === undefined ? {} : { temperature: input.temperature }),
-		...(input.maxTokens === undefined ? {} : { maxTokens: Math.min(input.maxTokens, model.maxTokens) }),
+		...(input.maxTokens === undefined
+			? {}
+			: { maxTokens: model.maxTokens === undefined ? input.maxTokens : Math.min(input.maxTokens, model.maxTokens) }),
 		...(input.reasoning === undefined || !model.reasoning ? {} : { reasoning: input.reasoning }),
 	};
 }
@@ -208,7 +210,7 @@ export function registerDesktopAiProviders(registry: CapabilityRegistry): Dispos
 						reasoning: model.reasoning,
 						input: [...model.input],
 						contextWindow: model.contextWindow,
-						maxTokens: model.maxTokens,
+						...(model.maxTokens === undefined ? {} : { maxTokens: model.maxTokens }),
 					})),
 				};
 			},

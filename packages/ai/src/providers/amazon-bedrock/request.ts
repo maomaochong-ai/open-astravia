@@ -15,11 +15,15 @@ export function buildBedrockCommandInput(
 	options: BedrockOptions,
 ): ConverseStreamCommandInput {
 	const cacheRetention = resolveCacheRetention(options.cacheRetention);
+	const inferenceConfig = {
+		...(options.maxTokens === undefined ? {} : { maxTokens: options.maxTokens }),
+		...(options.temperature === undefined ? {} : { temperature: options.temperature }),
+	};
 	return {
 		modelId: model.id,
 		messages: convertBedrockMessages(context, model, cacheRetention),
 		system: buildSystemPrompt(context, model, cacheRetention),
-		inferenceConfig: { maxTokens: options.maxTokens, temperature: options.temperature },
+		...(Object.keys(inferenceConfig).length === 0 ? {} : { inferenceConfig }),
 		toolConfig: convertToolConfig(context.tools, options.toolChoice),
 		additionalModelRequestFields: buildAdditionalModelRequestFields(model, options),
 	};

@@ -38,10 +38,17 @@ export const streamSimpleGoogleGeminiCli: StreamFunction<"google-gemini-cli", Si
 	}
 	const defaultBudgets: ThinkingBudgets = { minimal: 1024, low: 2048, medium: 8192, high: 16384 };
 	const budgets = { ...defaultBudgets, ...options.thinkingBudgets };
-	const minimumOutputTokens = 1024;
 	let thinkingBudget = budgets[effort]!;
-	const maxTokens = Math.min((base.maxTokens || 0) + thinkingBudget, model.maxTokens);
-	if (maxTokens <= thinkingBudget) thinkingBudget = Math.max(0, maxTokens - minimumOutputTokens);
+	const requestedMaxTokens = base.maxTokens === undefined ? undefined : base.maxTokens + thinkingBudget;
+	const maxTokens =
+		requestedMaxTokens === undefined
+			? undefined
+			: model.maxTokens === undefined
+				? requestedMaxTokens
+				: Math.min(requestedMaxTokens, model.maxTokens);
+	if (maxTokens !== undefined && maxTokens <= thinkingBudget) {
+		thinkingBudget = Math.max(0, maxTokens - 1024);
+	}
 	return streamGoogleGeminiCli(model, context, {
 		...base,
 		maxTokens,

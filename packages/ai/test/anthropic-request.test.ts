@@ -21,6 +21,18 @@ const model: Model<"anthropic-messages"> = {
 };
 
 describe("Anthropic request parameters", () => {
+	it("uses the configured model output limit instead of dividing it", () => {
+		const params = buildAnthropicParams(model, context, false);
+
+		expect(params.max_tokens).toBe(64_000);
+	});
+
+	it("uses a conservative protocol fallback for an unknown model", () => {
+		const params = buildAnthropicParams({ ...model, id: "future-model", maxTokens: undefined }, context, false);
+
+		expect(params.max_tokens).toBe(4_096);
+	});
+
 	it("applies long cache retention only to the official endpoint", () => {
 		const official = buildAnthropicParams(model, context, false, { cacheRetention: "long" });
 		const proxied = buildAnthropicParams({ ...model, baseUrl: "https://proxy.example.com/v1" }, context, false, {

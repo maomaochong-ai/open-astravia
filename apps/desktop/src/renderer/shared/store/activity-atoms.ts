@@ -92,6 +92,22 @@ const initialWidthMode = readPersistedWidthMode();
 /** Internal primitive stores; public API is {@link activityPanelWidthAtom} / {@link activityPanelWidthModeAtom}. */
 const activityPanelWidthModeBaseAtom = atom<ActivityPanelWidthMode>(initialWidthMode);
 const activityPanelWidthBaseAtom = atom(resolveActivityPanelWidth(initialWidthMode, window.innerWidth));
+const activityPanelPreviewAvailableBaseAtom = atom(
+	resolveActivityPanelWidth(initialWidthMode, window.innerWidth) >= ACTIVITY_PANEL_PREVIEW_MIN_WIDTH,
+);
+
+/**
+ * 文件区是否有足够宽度展示内嵌预览。消费者只订阅这个离散状态，避免面板逐像素变化时
+ * 重渲染文件树和预览内容。拖拽外壳会在实时宽度跨过阈值时同步它。
+ */
+export const activityPanelPreviewAvailableAtom = atom((get) => get(activityPanelPreviewAvailableBaseAtom));
+
+export const syncActivityPanelPreviewAvailabilityAtom = atom(null, (get, set, width: number) => {
+	const available = width >= ACTIVITY_PANEL_PREVIEW_MIN_WIDTH;
+	if (available !== get(activityPanelPreviewAvailableBaseAtom)) {
+		set(activityPanelPreviewAvailableBaseAtom, available);
+	}
+});
 
 /** 当前宽度意图，只读。判断面板是否处于「跟随窗口拉满」用它。 */
 export const activityPanelWidthModeAtom = atom((get) => get(activityPanelWidthModeBaseAtom));
@@ -101,6 +117,7 @@ function applyWidthMode(get: Getter, set: Setter, mode: ActivityPanelWidthMode, 
 	if (!sameWidthMode(get(activityPanelWidthModeBaseAtom), mode)) set(activityPanelWidthModeBaseAtom, mode);
 	const next = resolveActivityPanelWidth(mode, window.innerWidth);
 	if (next !== get(activityPanelWidthBaseAtom)) set(activityPanelWidthBaseAtom, next);
+	set(syncActivityPanelPreviewAvailabilityAtom, next);
 	if (persist) persistWidthMode(mode);
 }
 
@@ -156,6 +173,7 @@ export const setActivityPanelWidthAtom = atom(null, (get, set, width: number | "
 export const syncActivityPanelWidthToWindowAtom = atom(null, (get, set, windowWidth: number) => {
 	const next = resolveActivityPanelWidth(get(activityPanelWidthModeBaseAtom), windowWidth);
 	if (next !== get(activityPanelWidthBaseAtom)) set(activityPanelWidthBaseAtom, next);
+	set(syncActivityPanelPreviewAvailabilityAtom, next);
 });
 
 /** Tab 拖拽期间延迟插件宽度请求，结束时只应用最后一次请求。 */

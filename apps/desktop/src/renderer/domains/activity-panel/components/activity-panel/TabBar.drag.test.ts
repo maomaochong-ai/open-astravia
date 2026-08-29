@@ -91,6 +91,32 @@ describe("TabBar pointer drag", () => {
 		document.querySelector<HTMLElement>("[data-tab-drag-overlay]")?.remove();
 	});
 
+	it("uses a static active indicator while layout animation is suppressed", () => {
+		act(() => {
+			root.render(
+				createElement(TabBar, {
+					items: [{ key: "a", label: "A" }],
+					value: "a",
+					onChange: vi.fn(),
+					suppressLayoutAnimation: true,
+				}),
+			);
+		});
+		expect(container.querySelector("[data-active-tab-indicator]")).not.toBeNull();
+
+		act(() => {
+			root.render(
+				createElement(TabBar, {
+					items: [{ key: "a", label: "A" }],
+					value: "a",
+					onChange: vi.fn(),
+					suppressLayoutAnimation: false,
+				}),
+			);
+		});
+		expect(container.querySelector("[data-active-tab-indicator]")).toBeNull();
+	});
+
 	it("keeps a click below the drag threshold", () => {
 		const onChange = vi.fn();
 		const onDragStart = vi.fn();

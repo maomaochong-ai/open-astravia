@@ -186,7 +186,7 @@ function preparationInput(
 		historyMessages,
 		messages: historyMessages,
 		tokenBudget: MODEL.contextWindow,
-		reservedOutputTokens: MODEL.maxTokens,
+		reservedOutputTokens: MODEL.maxTokens ?? 0,
 		modelBinding: { model: MODEL },
 		document,
 		reportObservation: async () => {},

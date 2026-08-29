@@ -5,6 +5,7 @@ import { type AnthropicCacheControl, getCacheControl } from "./cache.js";
 import { convertMessages } from "./messages.js";
 import type { AnthropicOptions } from "./options.js";
 import { supportsAdaptiveThinking } from "./options.js";
+import { resolveAnthropicOutputTokenLimit } from "./output-token-limit.js";
 import { convertTools } from "./tools.js";
 
 export function buildAnthropicParams(
@@ -14,10 +15,11 @@ export function buildAnthropicParams(
 	options?: AnthropicOptions,
 ): MessageCreateParamsStreaming {
 	const { cacheControl } = getCacheControl(model.baseUrl, options?.cacheRetention);
+	const outputTokenLimit = resolveAnthropicOutputTokenLimit(model, options?.maxTokens);
 	const params: MessageCreateParamsStreaming = {
 		model: model.id,
 		messages: convertMessages(context.messages, model, isOAuthToken, cacheControl),
-		max_tokens: options?.maxTokens || (model.maxTokens / 3) | 0,
+		max_tokens: outputTokenLimit.maxTokens,
 		stream: true,
 	};
 

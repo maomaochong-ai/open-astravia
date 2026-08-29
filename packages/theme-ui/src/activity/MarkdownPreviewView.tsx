@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type JSX, type MouseEvent } from "react";
+import { memo, useEffect, useMemo, useState, type JSX, type MouseEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -69,6 +69,7 @@ function Frontmatter({ entries }: { entries: FrontmatterEntry[] }): JSX.Element 
 }
 
 const EXTERNAL_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
+const MARKDOWN_REMARK_PLUGINS = [remarkGfm];
 
 function isExternalLink(href: string | undefined): href is string {
 	if (!href) return false;
@@ -116,7 +117,11 @@ function MarkdownCodeBlock({
 	);
 }
 
-export function MarkdownPreviewView({ content, theme, onOpenExternal }: MarkdownPreviewViewProps): JSX.Element {
+export const MarkdownPreviewView = memo(function MarkdownPreviewView({
+	content,
+	theme,
+	onOpenExternal,
+}: MarkdownPreviewViewProps): JSX.Element {
 	const parsed = parseFrontmatter(content);
 	const body = parsed?.body ?? content;
 
@@ -198,9 +203,9 @@ export function MarkdownPreviewView({ content, theme, onOpenExternal }: Markdown
 	return (
 		<div className="markdown-body break-words p-4">
 			{parsed && parsed.entries.length > 0 && <Frontmatter entries={parsed.entries} />}
-			<ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+			<ReactMarkdown remarkPlugins={MARKDOWN_REMARK_PLUGINS} components={components}>
 				{body}
 			</ReactMarkdown>
 		</div>
 	);
-}
+});

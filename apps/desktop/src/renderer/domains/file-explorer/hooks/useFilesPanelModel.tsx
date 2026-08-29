@@ -14,8 +14,7 @@ import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
 import { isWindows } from "@shared/lib/platform";
 import { isSubPath, pathBasename, pathDirname } from "@shared/lib/utils";
 import {
-	activityPanelWidthAtom,
-	ACTIVITY_PANEL_PREVIEW_MIN_WIDTH,
+	activityPanelPreviewAvailableAtom,
 	confirmDialogAtom,
 	defaultConversationCwdAtom,
 	defaultImConversationCwdAtom,
@@ -88,7 +87,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 	const setGlobalPreview = useSetAtom(filePreviewAtom);
 	const narrow = useNarrowScreen();
 	const previewCtx = useAtomValue(inlineFilePreviewContextReadonlyAtom);
-	const panelWidth = useAtomValue(activityPanelWidthAtom);
+	const previewAvailable = useAtomValue(activityPanelPreviewAvailableAtom);
 	const [deleteTargets, setDeleteTargets] = useState<FsEntry[] | null>(null);
 	const [errorToast, setErrorToast] = useState<string | null>(null);
 	const [transferPlan, setTransferPlan] = useState<FileTransferPlan | null>(null);
@@ -297,12 +296,12 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 
 	useEffect(() => {
 		if (narrow || previewCtx != null || !rootDir) return;
-		if (panelWidth < ACTIVITY_PANEL_PREVIEW_MIN_WIDTH) return;
+		if (!previewAvailable) return;
 		const files = (cache.get(rootDir) ?? []).filter((e) => !e.isDirectory);
 		if (files.length === 0) return;
 		const items: FilePreviewItem[] = files.map((e) => ({ name: e.name, path: e.path, size: e.size }));
 		setPreview({ items, index: 0 });
-	}, [narrow, previewCtx, rootDir, panelWidth, cache, setPreview]);
+	}, [narrow, previewCtx, rootDir, previewAvailable, cache, setPreview]);
 
 	useEffect(() => {
 		function handleMove(e: Event) {

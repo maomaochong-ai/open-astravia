@@ -19,7 +19,7 @@ import {
 	type ModelCallRequest,
 	type ModelStreamResponse,
 } from "../../runtime/language-model-adapter.js";
-import { createModelCallMetadataFromMessage } from "../../runtime/model-call-result.js";
+import { createModelCallMetadata, type ModelWarning } from "../../runtime/model-call-result.js";
 import type { Model, SimpleStreamOptions } from "../../types.js";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "../github-copilot-headers.js";
 import { adjustMaxTokensForThinking, buildBaseOptions } from "../simple-options.js";
@@ -27,6 +27,7 @@ import { createAnthropicClient } from "./client.js";
 import { AnthropicEventReducer } from "./events.js";
 import type { AnthropicOptions } from "./options.js";
 import { mapThinkingLevelToEffort, supportsAdaptiveThinking } from "./options.js";
+import { resolveAnthropicOutputTokenLimit } from "./output-token-limit.js";
 import { buildAnthropicParams } from "./request.js";
 import { anthropicStreamEventSchema } from "./response-schema.js";
 
@@ -42,45 +43,74 @@ export const anthropicAdapter: LanguageModelAdapter<"anthropic-messages", Anthro
 	async streamSimple(request: ModelCallRequest<"anthropic-messages", SimpleStreamOptions>) {
 		const { model, context, options } = request;
 		const apiKey = requireProviderCredential(model, options?.apiKey || getEnvApiKey(model.provider));
-		const base = buildBaseOptions(model, options, apiKey);
+		const outputTokenLimit = resolveAnthropicOutputTokenLimit(model, options?.maxTokens);
+		const base = { ...buildBaseOptions(model, options, apiKey), maxTokens: outputTokenLimit.maxTokens };
 		if (!options?.reasoning)
-			return createAnthropicModelStream({ model, context, options: { ...base, thinkingEnabled: false } });
+			return createAnthropicModelStream(
+				{ model, context, options: { ...base, thinkingEnabled: false } },
+				outputTokenLimit.warnings,
+			);
 		if (supportsAdaptiveThinking(model.id)) {
-			return createAnthropicModelStream({
-				model,
-				context,
-				options: { ...base, thinkingEnabled: true, effort: mapThinkingLevelToEffort(options.reasoning, model.id) },
-			});
+			return createAnthropicModelStream(
+				{
+					model,
+					context,
+					options: {
+						...base,
+						thinkingEnabled: true,
+						effort: mapThinkingLevelToEffort(options.reasoning, model.id),
+					},
+				},
+				outputTokenLimit.warnings,
+			);
 		}
 		const adjusted = adjustMaxTokensForThinking(
-			base.maxTokens || 0,
+			base.maxTokens,
 			model.maxTokens,
 			options.reasoning,
 			options.thinkingBudgets,
 		);
-		return createAnthropicModelStream({
-			model,
-			context,
-			options: {
-				...base,
-				maxTokens: adjusted.maxTokens,
-				thinkingEnabled: true,
-				thinkingBudgetTokens: adjusted.thinkingBudget,
+		return createAnthropicModelStream(
+			{
+				model,
+				context,
+				options: {
+					...base,
+					maxTokens: adjusted.maxTokens,
+					thinkingEnabled: true,
+					thinkingBudgetTokens: adjusted.thinkingBudget,
+				},
 			},
-		});
+			outputTokenLimit.warnings,
+		);
 	},
 	async stream(request) {
-		return createAnthropicModelStream(request);
+		const outputTokenLimit = resolveAnthropicOutputTokenLimit(request.model, request.options?.maxTokens);
+		return createAnthropicModelStream(
+			{
+				...request,
+				options: { ...request.options, maxTokens: outputTokenLimit.maxTokens },
+			},
+			outputTokenLimit.warnings,
+		);
 	},
 };
 
 function createAnthropicModelStream(
 	request: ModelCallRequest<"anthropic-messages", AnthropicOptions>,
+	warnings: readonly ModelWarning[] = [],
 ): ModelStreamResponse {
 	const stream = new LanguageModelStream();
 	void produceAnthropicStream(request, stream);
 	const result = stream.result();
-	return { events: stream, result, metadata: result.then(createModelCallMetadataFromMessage, () => ({})) };
+	return {
+		events: stream,
+		result,
+		metadata: result.then(
+			(message) => createModelCallMetadata({ unified: message.stopReason }, message.usage, { warnings }),
+			() => ({}),
+		),
+	};
 }
 
 async function produceAnthropicStream(

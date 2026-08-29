@@ -26,6 +26,8 @@
 
 常用 `api`：`openai-completions`、`openai-responses`、`anthropic-messages`、`google-generative-ai` 等（以 `@vetta/ai` 为准）。模型可写 `id`、`name`、`reasoning`、`input`、`contextWindow`、`maxTokens`、`cost` 等。
 
+`maxTokens` 是可选的“最大输出 token 数”。Provider 或模型目录能提供可靠值时应保留该值；无法确认时请省略，不要填一个通用猜测值。Vetta 会优先使用单次调用显式值，其次使用模型元数据；两者都缺失时，可选该字段的 Provider 会省略请求上限并交由模型服务决定。Anthropic Messages 因协议强制要求 `max_tokens`，未知模型会使用 4096 的保守输出预算并产生 warning。
+
 加载逻辑：`src/models/configuration/`。
 
 ## 凭证

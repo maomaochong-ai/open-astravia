@@ -20,6 +20,26 @@ describe("ai domain capabilities", () => {
 		expect(parsed).toEqual({ messages: [{ role: "user", content: "hi" }] });
 	});
 
+	it("accepts model entries whose output limit is unknown", () => {
+		const result = DOMAIN_AI_CAPABILITIES.LIST_MODELS.parseOutput({
+			defaultModel: "custom/test-model",
+			models: [
+				{
+					modelKey: "custom/test-model",
+					provider: "custom",
+					id: "test-model",
+					name: "Test model",
+					api: "openai-completions",
+					reasoning: false,
+					input: ["text"],
+					contextWindow: 128_000,
+				},
+			],
+		});
+
+		expect(result.models[0]).not.toHaveProperty("maxTokens");
+	});
+
 	it("accepts a full multi-turn chat request with tools and tool results", () => {
 		const parsed = DOMAIN_AI_CAPABILITIES.CHAT.parseInput({
 			modelKey: "openai/gpt-5",
@@ -48,11 +68,12 @@ describe("ai domain capabilities", () => {
 				},
 			],
 			temperature: 0.7,
-			maxTokens: 2048,
+			maxTokens: 131_072,
 			reasoning: "low",
 		});
 		expect(parsed.messages).toHaveLength(4);
 		expect(parsed.tools?.[0]?.parameters).toHaveProperty("type", "object");
+		expect(parsed.maxTokens).toBe(131_072);
 	});
 
 	it("rejects malformed chat requests with stable error codes", () => {

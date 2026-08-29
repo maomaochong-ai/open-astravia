@@ -72,7 +72,7 @@ export async function listModels(
 		provider: m.provider,
 		model: m.id,
 		context: formatTokenCount(m.contextWindow),
-		maxOut: formatTokenCount(m.maxTokens),
+		maxOut: m.maxTokens === undefined ? "auto" : formatTokenCount(m.maxTokens),
 		thinking: m.reasoning ? "yes" : "no",
 		images: m.input.includes("image") ? "yes" : "no",
 	}));

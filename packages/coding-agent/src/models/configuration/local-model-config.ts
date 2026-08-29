@@ -117,7 +117,7 @@ function parseModels(
 				input: definition.input ?? ["text"],
 				cost: definition.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 				contextWindow: definition.contextWindow ?? 128_000,
-				maxTokens: definition.maxTokens ?? 16_384,
+				...(definition.maxTokens === undefined ? {} : { maxTokens: definition.maxTokens }),
 				headers,
 				compat: mergeCompat(provider.compat, definition.compat),
 			});

@@ -1,6 +1,6 @@
 import type { FilePreviewContext } from "@vetta/theme-ui/file-preview";
 import { FilePreviewView as ThemeFilePreviewView } from "@vetta/theme-ui/file-preview";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useFilePreviewKeyboardScope } from "../hooks/useFilePreviewKeyboardScope";
 import { downloadItem } from "../preview-utils";
@@ -34,6 +34,29 @@ export function FilePreviewView({
 	const { t } = useTranslation("chat");
 	const item = ctx.items[ctx.index] ?? null;
 	const canNavigate = ctx.items.length > 1;
+	const labels = useMemo(
+		() => ({
+			showTree: t("fileEditor.showTree"),
+			hideTree: t("fileEditor.hideTree"),
+			prev: t("fileEditor.previous"),
+			next: t("fileEditor.next"),
+			download: t("fileEditor.downloadShort"),
+			refresh: t("fileEditor.refresh"),
+			close: t("fileEditor.close"),
+		}),
+		[t],
+	);
+	const onDownload = useCallback((previewItem: Parameters<typeof downloadItem>[0]) => {
+		void downloadItem(previewItem);
+	}, []);
+	const renderBody = useCallback(
+		(previewItem: Parameters<typeof downloadItem>[0], refreshNonce: number) => (
+			<PreviewErrorBoundary resetKey={previewItem}>
+				<PreviewBody item={previewItem} refreshNonce={refreshNonce} editable />
+			</PreviewErrorBoundary>
+		),
+		[],
+	);
 
 	useFilePreviewKeyboardScope({
 		active: enableKeyboard,
@@ -48,15 +71,7 @@ export function FilePreviewView({
 	return (
 		<ThemeFilePreviewView
 			ctx={ctx}
-			labels={{
-				showTree: t("fileEditor.showTree"),
-				hideTree: t("fileEditor.hideTree"),
-				prev: t("fileEditor.previous"),
-				next: t("fileEditor.next"),
-				download: t("fileEditor.downloadShort"),
-				refresh: t("fileEditor.refresh"),
-				close: t("fileEditor.close"),
-			}}
+			labels={labels}
 			onPrev={onPrev}
 			onNext={onNext}
 			onClose={onClose}
@@ -64,12 +79,8 @@ export function FilePreviewView({
 			canNext={canNext}
 			onToggleSidebar={onToggleSidebar}
 			sidebarCollapsed={sidebarCollapsed}
-			onDownload={(previewItem) => void downloadItem(previewItem)}
-			renderBody={(previewItem, refreshNonce) => (
-				<PreviewErrorBoundary resetKey={previewItem}>
-					<PreviewBody item={previewItem} refreshNonce={refreshNonce} editable />
-				</PreviewErrorBoundary>
-			)}
+			onDownload={onDownload}
+			renderBody={renderBody}
 		/>
 	);
 }

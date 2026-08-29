@@ -190,7 +190,8 @@ export interface Model<TApi extends Api> {
 		cacheWrite: number; // $/million tokens
 	};
 	contextWindow: number;
-	maxTokens: number;
+	/** Known maximum output tokens. Omitted when the provider or catalog does not report a reliable limit. */
+	maxTokens?: number;
 	/** Explicit capabilities. Older model records may omit this and use conservative defaults. */
 	capabilities?: ModelCapabilities;
 	headers?: Record<string, string>;

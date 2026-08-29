@@ -13,12 +13,12 @@ import {
 	activityPanelWidthModeAtom,
 	activityTabOrderAtom,
 	attachedPluginTabsAtom,
+	type FloatingActivityTabPlacement,
 	hiddenActivityTabsAtom,
-	persistActivityPanelWidthAtom,
 	resolveActivityPanelWidth,
-	setTransientActivityPanelWidthAtom,
 	sidebarCollapsedAtom,
 	sidebarWidthAtom,
+	syncActivityPanelPreviewAvailabilityAtom,
 	syncActivityPanelWidthToWindowAtom,
 } from "@shared/store/atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -31,6 +31,7 @@ import { useActivityTabResidency } from "./useActivityTabResidency";
 import { useFloatingActivityTabs } from "./useFloatingActivityTabs";
 
 const NON_HIDEABLE_TABS = new Set<string>(["file", "knowledge-history"]);
+const EMPTY_FLOATING_TABS: readonly FloatingActivityTabPlacement[] = [];
 
 function toTabBarItem(tab: ResolvedActivityTab): TabBarItem<ActivityTabKey> {
 	return {
@@ -60,8 +61,7 @@ export function useActivityPanelModel({
 	const [attachedPluginTabsMap, setAttachedPluginTabsMap] = useAtom(attachedPluginTabsAtom);
 	const [width, setWidth] = useAtom(activityPanelWidthAtom);
 	const [isResizing, setIsResizing] = useAtom(activityPanelResizingAtom);
-	const setTransientWidth = useSetAtom(setTransientActivityPanelWidthAtom);
-	const persistWidth = useSetAtom(persistActivityPanelWidthAtom);
+	const syncPreviewAvailability = useSetAtom(syncActivityPanelPreviewAvailabilityAtom);
 	const syncWidthToWindow = useSetAtom(syncActivityPanelWidthToWindowAtom);
 	const widthMode = useAtomValue(activityPanelWidthModeAtom);
 	const [overflowKeys, setOverflowKeys] = useState<ActivityTabKey[]>([]);
@@ -72,6 +72,7 @@ export function useActivityPanelModel({
 	const [sidebarCollapsed, setSidebarCollapsed] = useAtom(sidebarCollapsedAtom);
 	const widthCollapsedSidebarRef = useRef<boolean | null>(null);
 	const prevSidebarCollapsedRef = useRef(sidebarCollapsed);
+	const liveWidthRef = useRef(width);
 	const { profile } = useProjectProfile(cwd);
 	const mainTabListRef = useRef<HTMLDivElement | null>(null);
 	const panelRef = useRef<HTMLDivElement | null>(null);
@@ -162,19 +163,46 @@ export function useActivityPanelModel({
 		[tabItems, floatingKeys],
 	);
 
-	const onResize = useCallback(
-		(delta: number) => {
-			setIsResizing(true);
-			setTransientWidth((currentWidth) =>
-				Math.min(maxWidth, Math.max(ACTIVITY_PANEL_MIN_WIDTH, currentWidth + delta)),
+	const reconcileSidebarForWidth = useCallback(
+		(liveWidth: number): void => {
+			const openLimit = Math.max(
+				ACTIVITY_PANEL_MIN_WIDTH,
+				windowWidth - sidebarWidth - ACTIVITY_PANEL_MIN_CHAT_AREA,
 			);
+			const shouldCollapse = isOpen && liveWidth > openLimit;
+			if (shouldCollapse) {
+				if (widthCollapsedSidebarRef.current === null) {
+					widthCollapsedSidebarRef.current = sidebarCollapsed;
+					setSidebarCollapsed(true);
+				}
+			} else if (widthCollapsedSidebarRef.current !== null) {
+				const restore = widthCollapsedSidebarRef.current;
+				widthCollapsedSidebarRef.current = null;
+				setSidebarCollapsed(restore);
+			}
 		},
-		[maxWidth, setIsResizing, setTransientWidth],
+		[isOpen, setSidebarCollapsed, sidebarCollapsed, sidebarWidth, windowWidth],
 	);
-	const onResizeEnd = useCallback(() => {
-		setIsResizing(false);
-		persistWidth();
-	}, [persistWidth, setIsResizing]);
+	const onResizeStart = useCallback(() => {
+		liveWidthRef.current = width;
+		setIsResizing(true);
+	}, [setIsResizing, width]);
+	const onResize = useCallback(
+		(liveWidth: number) => {
+			liveWidthRef.current = liveWidth;
+			syncPreviewAvailability(liveWidth);
+			reconcileSidebarForWidth(liveWidth);
+		},
+		[reconcileSidebarForWidth, syncPreviewAvailability],
+	);
+	const onResizeEnd = useCallback(
+		(finalWidth: number) => {
+			liveWidthRef.current = finalWidth;
+			setWidth(finalWidth);
+			setIsResizing(false);
+		},
+		[setIsResizing, setWidth],
+	);
 	const onClose = useCallback(() => setOpen(false), [setOpen]);
 	useEffect(() => () => setIsResizing(false), [setIsResizing]);
 
@@ -200,7 +228,8 @@ export function useActivityPanelModel({
 			return;
 		}
 
-		const shouldCollapse = isOpen && effectiveWidth > openLimit;
+		const sidebarDecisionWidth = isResizing ? liveWidthRef.current : effectiveWidth;
+		const shouldCollapse = isOpen && sidebarDecisionWidth > openLimit;
 		if (shouldCollapse) {
 			if (widthCollapsedSidebarRef.current === null) {
 				widthCollapsedSidebarRef.current = sidebarCollapsed;
@@ -211,7 +240,7 @@ export function useActivityPanelModel({
 			widthCollapsedSidebarRef.current = null;
 			setSidebarCollapsed(restore);
 		}
-	}, [effectiveWidth, windowWidth, sidebarWidth, isOpen, sidebarCollapsed, setSidebarCollapsed, setWidth]);
+	}, [effectiveWidth, windowWidth, sidebarWidth, isOpen, isResizing, sidebarCollapsed, setSidebarCollapsed, setWidth]);
 
 	const activeTab = useMemo<ActivityTabKey>(() => {
 		if (knowledgeHistory && dockedTabItems.some((item) => item.key === "knowledge-history")) {
@@ -380,8 +409,8 @@ export function useActivityPanelModel({
 		!knowledgeHistory &&
 		(restorableTabs.length > 0 || overflowTabs.length > 0 || availablePluginTabs.length > 0);
 
-	return {
-		actions: {
+	const actions = useMemo<ActivityPanelActions>(
+		() => ({
 			onAttachPluginTab,
 			onClose,
 			onFloatingResize: floating.actions.onFloatingResize,
@@ -393,6 +422,7 @@ export function useActivityPanelModel({
 			onOverflowChange: setOverflowKeys,
 			onRemoveTab,
 			onReorderTabs,
+			onResizeStart,
 			onResize,
 			onResizeEnd,
 			onRestoreTab,
@@ -400,18 +430,44 @@ export function useActivityPanelModel({
 			onTabDragEnd: floating.actions.onDockedTabDragEnd,
 			onTabDragMove: floating.actions.onDockedTabDragMove,
 			onTabDragStart,
-		},
+		}),
+		[
+			onAttachPluginTab,
+			onClose,
+			floating.actions.onDockedTabDragEnd,
+			floating.actions.onDockedTabDragMove,
+			floating.actions.onFloatingResize,
+			floating.actions.onFloatingResizeEnd,
+			floating.actions.onFloatingTabDragEnd,
+			floating.actions.onFloatingTabDragMove,
+			floating.actions.onFloatingTabDragStart,
+			floating.actions.onFloatingTabFocus,
+			onRemoveTab,
+			onReorderTabs,
+			onResizeStart,
+			onResize,
+			onResizeEnd,
+			onRestoreTab,
+			onTabChange,
+			onTabDragStart,
+		],
+	);
+
+	return {
+		actions,
 		model: {
 			activeTab,
 			availablePluginTabs,
 			bottomSheet: narrow && isOpen,
 			cwd,
 			dockPreviewBounds: narrow ? null : floating.model.dockPreviewBounds,
-			floatingTabs: narrow ? [] : floating.model.floatingTabs,
+			floatingTabs: narrow ? EMPTY_FLOATING_TABS : floating.model.floatingTabs,
 			isOpen,
 			isResizing,
 			knowledgeHistory,
+			maxWidth,
 			mainTabListRef,
+			minWidth: ACTIVITY_PANEL_MIN_WIDTH,
 			mountedTabs,
 			narrowSheet: narrow,
 			overflowTabs,

@@ -111,3 +111,48 @@ it("用户手动展开侧边栏时，过宽的面板仍被压到 openLimit 并�
 	expect(widths.at(-1)).toBe(1600 - 220 - 384);
 	expect(store.get(activityPanelWidthModeAtom)).toEqual({ kind: "fixed", px: 1600 - 220 - 384 });
 });
+
+it("面板拖动期间只同步离散阈值，结束时才提交并持久化最终宽度", async () => {
+	const {
+		activityPanelOpenAtom,
+		activityPanelPreviewAvailableAtom,
+		activityPanelResizingAtom,
+		activityPanelWidthAtom,
+	} = await import("@shared/store/atoms");
+	const { useActivityPanelModel } = await import("./useActivityPanelModel");
+
+	const store = createStore();
+	store.set(activityPanelOpenAtom, true);
+	let latest: ReturnType<typeof useActivityPanelModel> | null = null;
+
+	function Probe() {
+		latest = useActivityPanelModel({ cwd: null, definitions: [], metaById: new Map() });
+		return null;
+	}
+
+	act(() => {
+		root = createRoot(container as HTMLDivElement);
+		root.render(createElement(Provider, { store }, createElement(Probe)));
+	});
+
+	const initialWidth = store.get(activityPanelWidthAtom);
+	act(() => latest?.actions.onResizeStart());
+	expect(store.get(activityPanelResizingAtom)).toBe(true);
+
+	act(() => {
+		latest?.actions.onResize(480);
+		latest?.actions.onResize(519);
+	});
+	expect(store.get(activityPanelWidthAtom)).toBe(initialWidth);
+	expect(store.get(activityPanelPreviewAvailableAtom)).toBe(false);
+	expect(localStorage.getItem("vetta-activity-panel-width")).toBeNull();
+
+	act(() => latest?.actions.onResize(540));
+	expect(store.get(activityPanelWidthAtom)).toBe(initialWidth);
+	expect(store.get(activityPanelPreviewAvailableAtom)).toBe(true);
+
+	act(() => latest?.actions.onResizeEnd(540));
+	expect(store.get(activityPanelWidthAtom)).toBe(540);
+	expect(store.get(activityPanelResizingAtom)).toBe(false);
+	expect(localStorage.getItem("vetta-activity-panel-width")).toBe("540");
+});

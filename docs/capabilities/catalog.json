@@ -2825,8 +2825,7 @@
                 "api",
                 "reasoning",
                 "input",
-                "contextWindow",
-                "maxTokens"
+                "contextWindow"
               ],
               "properties": {
                 "modelKey": {
@@ -2904,7 +2903,6 @@
           },
           "maxTokens": {
             "minimum": 1,
-            "maximum": 65536,
             "type": "integer"
           },
           "reasoning": {
@@ -3133,7 +3131,6 @@
           },
           "maxTokens": {
             "minimum": 1,
-            "maximum": 65536,
             "type": "integer"
           },
           "reasoning": {

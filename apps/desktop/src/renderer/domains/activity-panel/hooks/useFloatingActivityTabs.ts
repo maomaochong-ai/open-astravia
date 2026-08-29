@@ -23,6 +23,7 @@ import {
 } from "../services/floating-activity-tab";
 
 const GLOBAL_ACTIVITY_SCOPE = "__global_activity_panel__";
+const EMPTY_FLOATING_TABS: FloatingActivityTabPlacement[] = [];
 
 interface FloatingTabDragSession {
 	detached: boolean;
@@ -104,7 +105,7 @@ export function useFloatingActivityTabs({
 	const projectKey = scopeKey ?? GLOBAL_ACTIVITY_SCOPE;
 	const [tabsByProject, setTabsByProject] = useAtom(floatingActivityTabsByProjectAtom);
 	const setTabDragging = useSetAtom(setActivityPanelTabDraggingAtom);
-	const floatingTabs = tabsByProject.get(projectKey) ?? [];
+	const floatingTabs = tabsByProject.get(projectKey) ?? EMPTY_FLOATING_TABS;
 	const floatingTabsRef = useRef(floatingTabs);
 	floatingTabsRef.current = floatingTabs;
 	const dragSessionRef = useRef<FloatingTabDragSession | null>(null);

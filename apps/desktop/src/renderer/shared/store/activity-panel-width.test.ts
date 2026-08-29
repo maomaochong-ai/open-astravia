@@ -105,6 +105,28 @@ describe("活动面板宽度意图", () => {
 		store.set(atoms.persistActivityPanelWidthAtom);
 		expect(localStorage.getItem(atoms.ACTIVITY_PANEL_WIDTH_STORAGE_KEY)).toBe("540");
 	});
+
+	it("预览可用状态只在跨过宽度阈值时通知内容消费者", async () => {
+		const atoms = await loadAtoms();
+		const store = createStore();
+		const changes: boolean[] = [];
+		const unsubscribe = store.sub(atoms.activityPanelPreviewAvailableAtom, () => {
+			changes.push(store.get(atoms.activityPanelPreviewAvailableAtom));
+		});
+
+		store.set(atoms.syncActivityPanelPreviewAvailabilityAtom, 400);
+		store.set(atoms.syncActivityPanelPreviewAvailabilityAtom, 519);
+		expect(changes).toEqual([]);
+
+		store.set(atoms.syncActivityPanelPreviewAvailabilityAtom, 520);
+		store.set(atoms.syncActivityPanelPreviewAvailabilityAtom, 700);
+		store.set(atoms.syncActivityPanelPreviewAvailabilityAtom, 521);
+		expect(changes).toEqual([true]);
+
+		store.set(atoms.syncActivityPanelPreviewAvailabilityAtom, 519);
+		expect(changes).toEqual([true, false]);
+		unsubscribe();
+	});
 });
 
 describe("tab 拖拽期间的宽度请求", () => {

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import type { ComponentType, JSX, ReactNode } from "react";
+import { type ComponentType, type JSX, type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import { ResizeHandle } from "../layout/ResizeHandle";
 import type { ActivityPanelFrameProps } from "./ActivityPanelFrame";
 
@@ -8,14 +8,18 @@ export interface ActivityPanelViewProps {
 	readonly isOpen: boolean;
 	readonly isResizing: boolean;
 	readonly width: number;
+	readonly minWidth: number;
+	readonly maxWidth: number;
 	readonly narrowSheet: boolean;
 	readonly bottomSheet: boolean;
 	readonly tabBar: ReactNode;
 	readonly tabPicker?: ReactNode;
 	readonly panelContent: ReactNode;
 	readonly onClose: () => void;
-	readonly onResize: (delta: number) => void;
-	readonly onResizeEnd?: () => void;
+	readonly onResizeStart: () => void;
+	/** Reports the absolute live width while the local shell follows the pointer. */
+	readonly onResize: (width: number) => void;
+	readonly onResizeEnd: (width: number) => void;
 }
 
 export function ActivityPanelView({
@@ -23,36 +27,76 @@ export function ActivityPanelView({
 	isOpen,
 	isResizing,
 	width,
+	minWidth,
+	maxWidth,
 	narrowSheet,
 	bottomSheet,
 	tabBar,
 	tabPicker,
 	panelContent,
 	onClose,
+	onResizeStart,
 	onResize,
 	onResizeEnd,
 }: ActivityPanelViewProps): JSX.Element {
-	const panelBody = (
-		<>
-			{(tabBar || tabPicker) && (
-				<div className="group/activity-tabs relative z-20 flex shrink-0 items-end pt-1">
-					{tabBar}
-					{tabPicker}
-				</div>
-			)}
-			<Frame>
-				<div className="flex min-h-0 flex-1 flex-col">{panelContent}</div>
-			</Frame>
-		</>
+	const liveWidthRef = useRef(width);
+	const [liveWidth, setLiveWidth] = useState(width);
+	const [locallyResizing, setLocallyResizing] = useState(false);
+	const resizeBoundsRef = useRef({ minWidth, maxWidth });
+	resizeBoundsRef.current = { minWidth, maxWidth };
+
+	const startResize = useCallback((): void => {
+		liveWidthRef.current = width;
+		setLiveWidth(width);
+		setLocallyResizing(true);
+		onResizeStart();
+	}, [onResizeStart, width]);
+	const resize = useCallback(
+		(delta: number): void => {
+			const bounds = resizeBoundsRef.current;
+			const nextWidth = Math.min(
+				bounds.maxWidth,
+				Math.max(bounds.minWidth, liveWidthRef.current + delta),
+			);
+			if (nextWidth === liveWidthRef.current) return;
+			liveWidthRef.current = nextWidth;
+			setLiveWidth(nextWidth);
+			onResize(nextWidth);
+		},
+		[onResize],
 	);
+	const endResize = useCallback((): void => {
+		const finalWidth = liveWidthRef.current;
+		onResizeEnd(finalWidth);
+		setLocallyResizing(false);
+	}, [onResizeEnd]);
+
+	const panelBody = useMemo(
+		() => (
+			<>
+				{(tabBar || tabPicker) && (
+					<div className="group/activity-tabs relative z-20 flex shrink-0 items-end pt-1">
+						{tabBar}
+						{tabPicker}
+					</div>
+				)}
+				<Frame>
+					<div className="flex min-h-0 flex-1 flex-col">{panelContent}</div>
+				</Frame>
+			</>
+		),
+		[Frame, panelContent, tabBar, tabPicker],
+	);
+	const displayedWidth = locallyResizing ? liveWidth : width;
+	const resizing = locallyResizing || isResizing;
 
 	return (
 		<>
 			{!narrowSheet && (
 				<aside
 					style={{
-						width: isOpen ? width : 0,
-						transition: isResizing ? "none" : "width 0.2s ease-in-out",
+						width: isOpen ? displayedWidth : 0,
+						transition: resizing ? "none" : "width 0.2s ease-in-out",
 					}}
 					className="relative flex h-full min-h-0 shrink-0 flex-col overflow-visible"
 				>
@@ -63,11 +107,18 @@ export function ActivityPanelView({
 								? "flex h-full min-h-0 flex-col opacity-100 transition-opacity duration-150"
 								: "pointer-events-none flex h-full min-h-0 flex-col opacity-0 transition-opacity duration-150"
 						}
-						style={{ width }}
+						style={{ width: displayedWidth }}
 					>
 						{panelBody}
 					</div>
-					{isOpen && <ResizeHandle side="left" onResize={onResize} onResizeEnd={onResizeEnd} />}
+					{isOpen && (
+						<ResizeHandle
+							side="left"
+							onResizeStart={startResize}
+							onResize={resize}
+							onResizeEnd={endResize}
+						/>
+					)}
 				</aside>
 			)}
 			<AnimatePresence>

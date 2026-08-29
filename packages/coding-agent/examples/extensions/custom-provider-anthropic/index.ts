@@ -393,7 +393,7 @@ function streamCustomAnthropic(
 			const params: MessageCreateParamsStreaming = {
 				model: model.id,
 				messages: convertMessages(context.messages, isOAuth, context.tools),
-				max_tokens: options?.maxTokens || Math.floor(model.maxTokens / 3),
+				max_tokens: options?.maxTokens ?? model.maxTokens ?? 4_096,
 				stream: true,
 			};
 

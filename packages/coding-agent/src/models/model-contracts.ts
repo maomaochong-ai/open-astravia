@@ -51,7 +51,7 @@ export interface CodingAgentProviderModel {
 	readonly input: readonly ("text" | "image")[];
 	readonly cost: Model<Api>["cost"];
 	readonly contextWindow: number;
-	readonly maxTokens: number;
+	readonly maxTokens?: number;
 	readonly headers?: Readonly<Record<string, string>>;
 	readonly compat?: Model<Api>["compat"];
 }

@@ -14,7 +14,7 @@ export interface ModelCapabilities {
 
 export interface ModelLimits {
 	readonly contextWindow: number;
-	readonly maxTokens: number;
+	readonly maxTokens?: number;
 }
 
 export function modelAcceptsImage(capabilities: ModelCapabilities): boolean {

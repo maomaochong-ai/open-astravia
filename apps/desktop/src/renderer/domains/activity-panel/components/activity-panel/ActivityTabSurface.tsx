@@ -2,7 +2,7 @@ import { TabBar } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import type { FloatingActivityTabPlacement } from "@shared/store/atoms";
 import { FloatingActivityTabView } from "@vetta/theme-ui/activity";
-import { type ComponentType, type JSX, useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { type ComponentType, type JSX, memo, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ActivityTabActivationContextProvider } from "../../registry/activation-context";
 import type { ResolvedActivityTab } from "../../registry/types";
@@ -19,7 +19,7 @@ export interface ActivityTabSurfaceProps {
 	tab: ResolvedActivityTab;
 }
 
-export function ActivityTabSurface({
+export const ActivityTabSurface = memo(function ActivityTabSurface({
 	actions,
 	dockedOutlet,
 	Frame,
@@ -113,4 +113,4 @@ export function ActivityTabSurface({
 				: null}
 		</>
 	);
-}
+});

@@ -41,6 +41,7 @@
 
 ### Fixed
 
+- 修复模型最大输出 token 数被全局硬限制为 32K、缺失元数据又被伪造为固定值的问题；`Model.maxTokens` 现在允许未知，普通 Provider 会省略请求上限并交由实际模型服务决定，Anthropic 因协议强制要求该字段而使用带 warning 的 4096 保守预算。
 - `read` 等工具返回的图片不再因模型目录缺少 `image` 输入能力标记而在 Provider 适配前被静默剥离；工具结果图片现在始终按各 Provider 的多模态协议发送，避免实际支持视觉的自定义或新模型无法看到图片。
 - OpenAI Responses 兼容网关省略 `output_index` 时，交错的消息与工具事件改按稳定 `item_id` 关联；不再把合法流误报为 `Output item type changed while streaming`，真实类型错配仍保持协议失败。
 - `http-proxy` 的 `import("undici")` 现在自己收口失败：加载不到 undici 时打印一条明确告警，而不是逃逸成

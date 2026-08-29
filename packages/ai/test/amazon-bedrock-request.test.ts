@@ -84,4 +84,10 @@ describe("Amazon Bedrock request parameters", () => {
 			anthropic_beta: ["interleaved-thinking-2025-05-14"],
 		});
 	});
+
+	it("omits inferenceConfig when the output limit and temperature are unknown", () => {
+		const input = buildBedrockCommandInput({ ...model, maxTokens: undefined }, context, {});
+
+		expect(input.inferenceConfig).toBeUndefined();
+	});
 });

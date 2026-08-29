@@ -55,8 +55,8 @@ export interface ProviderModelConfig {
 	cost: { input: number; output: number; cacheRead: number; cacheWrite: number };
 	/** Maximum context window size in tokens. */
 	contextWindow: number;
-	/** Maximum output tokens. */
-	maxTokens: number;
+	/** Known maximum output tokens. Omit when the endpoint does not report a reliable limit. */
+	maxTokens?: number;
 	/** Custom headers for this model. */
 	headers?: Record<string, string>;
 	/** OpenAI compatibility settings. */

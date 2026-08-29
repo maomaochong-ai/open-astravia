@@ -75,6 +75,7 @@ describe("remote model runtime", () => {
 			input: ["text"],
 			headers: { "X-Route": "stable" },
 		});
+		expect(model?.maxTokens).toBeUndefined();
 		expect(model && runtime.isRemote(model)).toBe(true);
 		expect(model && (await runtime.getApiKey(model))).toBe("first-token");
 		token = "second-token";

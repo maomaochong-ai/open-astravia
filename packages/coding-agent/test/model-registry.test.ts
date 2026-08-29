@@ -229,6 +229,19 @@ describe("CodingAgentModelRuntime", () => {
 	});
 
 	describe("custom models merge behavior", () => {
+		test("keeps an unreported output limit unknown", () => {
+			writeRawModelsJson({
+				"custom-provider": {
+					baseUrl: "https://custom.example.com/v1",
+					api: "openai-completions",
+					models: [{ id: "future-model" }],
+				},
+			});
+
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
+			expect(registry.find("custom-provider", "future-model")?.maxTokens).toBeUndefined();
+		});
+
 		test("custom provider with same name as built-in merges with built-in models", () => {
 			writeModelsJson({
 				anthropic: providerConfig("https://my-proxy.example.com/v1", [{ id: "claude-custom" }]),

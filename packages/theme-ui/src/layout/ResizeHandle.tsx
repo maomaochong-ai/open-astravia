@@ -2,16 +2,18 @@ import { useCallback, useRef, type JSX, type PointerEvent as ReactPointerEvent }
 
 export interface ResizeHandleProps {
 	side: "left" | "right";
+	onResizeStart?: () => void;
 	onResize: (delta: number) => void;
 	onResizeEnd?: () => void;
 }
 
-export function ResizeHandle({ side, onResize, onResizeEnd }: ResizeHandleProps): JSX.Element {
+export function ResizeHandle({ side, onResizeStart, onResize, onResizeEnd }: ResizeHandleProps): JSX.Element {
 	const startXRef = useRef(0);
 
 	const onPointerDown = useCallback(
 		(e: ReactPointerEvent) => {
 			e.preventDefault();
+			onResizeStart?.();
 			startXRef.current = e.clientX;
 			let pendingDelta = 0;
 			let animationFrame: number | null = null;
@@ -55,7 +57,7 @@ export function ResizeHandle({ side, onResize, onResizeEnd }: ResizeHandleProps)
 			document.addEventListener("pointerup", onPointerUp);
 			document.body.style.userSelect = "none";
 		},
-		[side, onResize, onResizeEnd],
+		[side, onResizeStart, onResize, onResizeEnd],
 	);
 
 	const edge = side === "right" ? "right-0" : "left-0";
@@ -70,6 +72,7 @@ export function ResizeHandle({ side, onResize, onResizeEnd }: ResizeHandleProps)
 
 	return (
 		<div
+			data-resize-handle={side}
 			onPointerDown={onPointerDown}
 			className={`group absolute top-0 bottom-0 z-30 w-[8px] cursor-col-resize ${edge}`}
 		>

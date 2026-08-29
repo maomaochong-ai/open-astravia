@@ -1,7 +1,6 @@
 import { usePreviewNav } from "@domains/file-preview/components/FilePreviewView";
 import {
-	ACTIVITY_PANEL_PREVIEW_MIN_WIDTH,
-	activityPanelWidthAtom,
+	activityPanelPreviewAvailableAtom,
 	closeInlineFilePreviewAtom,
 	type FilePreviewContext,
 	inlineFilePreviewAtom,
@@ -35,7 +34,7 @@ export function useFileTabContentModel(): FileTabContentModel {
 	const [previewCtx, setPreviewCtx] = useAtom(inlineFilePreviewContextReadonlyAtom);
 	const setPreview = useSetAtom(inlineFilePreviewAtom);
 	const closePreview = useSetAtom(closeInlineFilePreviewAtom);
-	const width = useAtomValue(activityPanelWidthAtom);
+	const previewAvailable = useAtomValue(activityPanelPreviewAvailableAtom);
 	const { goPrev, goNext } = usePreviewNav((updater) => {
 		if (typeof updater === "function") {
 			setPreviewCtx(updater(previewCtx));
@@ -43,8 +42,9 @@ export function useFileTabContentModel(): FileTabContentModel {
 			setPreview(updater);
 		}
 	});
+	const onClosePreview = useCallback(() => closePreview(), [closePreview]);
 
-	const showPreview = previewCtx !== null && width >= ACTIVITY_PANEL_PREVIEW_MIN_WIDTH;
+	const showPreview = previewCtx !== null && previewAvailable;
 	const [previewMounted, setPreviewMounted] = useState(false);
 	useEffect(() => {
 		if (!showPreview) {
@@ -81,6 +81,6 @@ export function useFileTabContentModel(): FileTabContentModel {
 		toggleTree,
 		goPrev,
 		goNext,
-		closePreview: () => closePreview(),
+		closePreview: onClosePreview,
 	};
 }

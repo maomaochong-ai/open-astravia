@@ -102,12 +102,15 @@ export function ActivityPanelView({
 				isOpen={model.isOpen}
 				isResizing={model.isResizing}
 				width={model.width}
+				minWidth={model.minWidth}
+				maxWidth={model.maxWidth}
 				narrowSheet={model.narrowSheet}
 				bottomSheet={model.bottomSheet}
 				tabBar={tabBar}
 				tabPicker={tabPicker}
 				panelContent={panelContent}
 				onClose={actions.onClose}
+				onResizeStart={actions.onResizeStart}
 				onResize={actions.onResize}
 				onResizeEnd={actions.onResizeEnd}
 			/>

@@ -23,7 +23,9 @@ export interface ActivityPanelModel {
 	isOpen: boolean;
 	isResizing: boolean;
 	knowledgeHistory: boolean;
+	maxWidth: number;
 	mainTabListRef: RefObject<HTMLDivElement | null>;
+	minWidth: number;
 	/** 当前需挂载的 tab：激活项、浮动项及显式 keepAlive 项。 */
 	mountedTabs: ResolvedActivityTab[];
 	narrowSheet: boolean;
@@ -47,8 +49,9 @@ export interface ActivityPanelActions {
 	onOverflowChange: (keys: ActivityTabKey[]) => void;
 	onRemoveTab: (key: ActivityTabKey) => void;
 	onReorderTabs: (keys: ActivityTabKey[]) => void;
-	onResize: (delta: number) => void;
-	onResizeEnd: () => void;
+	onResizeStart: () => void;
+	onResize: (width: number) => void;
+	onResizeEnd: (width: number) => void;
 	onRestoreTab: (key: string) => void;
 	onTabChange: (key: ActivityTabKey) => void;
 	onTabDragEnd: (event: TabBarDragEvent<ActivityTabKey>) => boolean | undefined;

@@ -7,7 +7,7 @@ export interface PluginAiModel {
 	reasoning: boolean;
 	input: Array<"text" | "image">;
 	contextWindow: number;
-	maxTokens: number;
+	maxTokens?: number;
 }
 
 export interface PluginAiModelListResult {
