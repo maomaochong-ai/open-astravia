@@ -2,7 +2,7 @@ import { llms } from "fumadocs-core/source";
 import { source } from "./source";
 
 export async function getLLMText(page: (typeof source)["$inferPage"]): Promise<string> {
-	if (page.url === "/") return llms(source).index();
+	if (page.url === "/") return llms(source).index(page.locale);
 
 	const processed = await page.data.getText("processed");
 	const description = page.data.description ? `\n> ${page.data.description}\n` : "";

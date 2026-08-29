@@ -1,4 +1,5 @@
-import { getSiteOrigin, sectionLandingPaths, sectionTitles, site, toAbsoluteUrl, toCanonicalPath } from "../site";
+import type { DocsLanguage } from "../i18n";
+import { getLocalizedSite, getSectionLandingPath, getSectionTitle, getSiteOrigin, site, toAbsoluteUrl, toCanonicalPath } from "../site";
 
 export interface JsonLdNode {
 	"@type": string | string[];
@@ -23,6 +24,7 @@ export interface PageSchemaInput {
 	isHome: boolean;
 	breadcrumbs: BreadcrumbInput[];
 	dateModified?: string;
+	locale?: DocsLanguage;
 }
 
 const DEPRECATED_SCHEMA_TYPES = new Set(["HowTo", "FAQPage", "SpecialAnnouncement", "ClaimReview"]);
@@ -67,13 +69,14 @@ export function buildSoftwareApplicationNode(origin = getSiteOrigin()): JsonLdNo
 	};
 }
 
-export function buildWebsiteNode(origin = getSiteOrigin()): JsonLdNode {
+export function buildWebsiteNode(origin = getSiteOrigin(), language: DocsLanguage = "zh"): JsonLdNode {
+	const localized = getLocalizedSite(language);
 	return {
 		"@type": "WebSite",
 		"@id": websiteId(origin),
-		name: site.title,
+		name: localized.title,
 		url: `${origin}/`,
-		inLanguage: site.locale,
+		inLanguage: localized.locale,
 		publisher: { "@id": organizationId(origin) },
 		about: { "@id": softwareId() },
 	};
@@ -92,6 +95,7 @@ export function buildBreadcrumbList(items: BreadcrumbInput[], origin = getSiteOr
 }
 
 export function buildWebPageNode(input: PageSchemaInput, origin = getSiteOrigin()): JsonLdNode {
+	const localized = getLocalizedSite(input.locale ?? "zh");
 	const url = toAbsoluteUrl(input.path, origin);
 	const node: JsonLdNode = {
 		"@type": input.isHome ? "WebPage" : ["WebPage", "TechArticle"],
@@ -100,7 +104,7 @@ export function buildWebPageNode(input: PageSchemaInput, origin = getSiteOrigin(
 		name: input.isHome ? site.title : input.title,
 		headline: input.isHome ? site.title : input.title,
 		description: input.description ?? site.description,
-		inLanguage: site.locale,
+		inLanguage: localized.locale,
 		isPartOf: { "@id": websiteId(origin) },
 		about: { "@id": softwareId() },
 		publisher: { "@id": organizationId(origin) },
@@ -121,7 +125,7 @@ export function buildPageJsonLd(input: PageSchemaInput, origin = getSiteOrigin()
 		"@graph": [
 			buildOrganizationNode(origin),
 			buildSoftwareApplicationNode(origin),
-			buildWebsiteNode(origin),
+			buildWebsiteNode(origin, input.locale ?? "zh"),
 			buildWebPageNode(input, origin),
 			buildBreadcrumbList(input.breadcrumbs, origin),
 		],
@@ -136,13 +140,13 @@ export function hasDeprecatedSchemaType(graph: JsonLdGraph): boolean {
 	return collectSchemaTypes(graph).some((type) => DEPRECATED_SCHEMA_TYPES.has(type));
 }
 
-export function breadcrumbItemsFromSlugs(slugs: string[], title: string): BreadcrumbInput[] {
-	const items: BreadcrumbInput[] = [{ name: site.title, path: "/" }];
+export function breadcrumbItemsFromSlugs(slugs: string[], title: string, language: DocsLanguage = "zh"): BreadcrumbInput[] {
+	const items: BreadcrumbInput[] = [{ name: getLocalizedSite(language).title, path: "/" }];
 	const section = slugs[0];
 	if (!section) return items;
 
-	const sectionPath = sectionLandingPaths[section] ?? `/${section}/`;
-	const sectionName = sectionTitles[section] ?? section;
+	const sectionPath = getSectionLandingPath(section);
+	const sectionName = getSectionTitle(section, language);
 	const pagePath = toCanonicalPath(`/${slugs.join("/")}/`);
 
 	if (pagePath !== sectionPath) {

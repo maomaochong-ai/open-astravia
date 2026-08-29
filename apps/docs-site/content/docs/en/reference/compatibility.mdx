@@ -1,0 +1,19 @@
+---
+title: Platform and capability compatibility
+description: Check the support boundary for Desktop, mobile, build modes, and preview features.
+---
+
+| Capability | Windows | macOS | Linux | Android |
+| --- | --- | --- | --- | --- |
+| Desktop workspace and Agent | Supported | Supported | Supported | — |
+| Models, MCP, knowledge, batch, automation | Supported | Supported | Supported | — |
+| Desktop IM gateway | Build-dependent | Build-dependent | Build-dependent | — |
+| Application snapshots | — | Supported | — | — |
+| Desktop remote pairing | Developer preview | — | — | — |
+| Mobile remote Desktop view | — | — | — | Developer preview |
+
+The open-source and commercial builds may expose different login, organization, marketplace, model, or remote capabilities. The installed settings page and the download page are the final source of truth.
+
+Status labels mean: **Stable** is intended for normal use, **Beta** may change with platform or provider conditions, **Developer preview** is for development and validation, and **Internal-only** is outside the public contract.
+
+When reporting a compatibility issue, include the Vetta version, build source, OS version, CPU architecture, network conditions, and the last successful step. Never upload credentials, pairing data, webhook URLs, or an unredacted project directory.

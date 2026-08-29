@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { getSiteOrigin, site, toAbsoluteUrl, toCanonicalPath, toMarkdownPath } from "../site";
+import type { DocsLanguage } from "../i18n";
+import { getLocalizedSite, getSiteOrigin, site, toAbsoluteUrl, toCanonicalPath, toMarkdownPath } from "../site";
 
 export interface PageMetadataInput {
 	title: string;
 	description?: string;
 	path: string;
 	isHome: boolean;
+	locale?: DocsLanguage;
 }
 
 function socialImages(origin = getSiteOrigin()) {
@@ -66,10 +68,16 @@ export function buildRootMetadata(origin = getSiteOrigin()): Metadata {
 }
 
 export function buildPageMetadata(input: PageMetadataInput): Metadata {
+	const language = input.locale ?? "zh";
+	const localized = getLocalizedSite(language);
 	const path = toCanonicalPath(input.path);
-	const title = input.isHome ? { absolute: site.title } : input.title;
-	const displayTitle = input.isHome ? site.title : input.title;
-	const description = input.description ?? site.description;
+	const title = input.isHome
+		? { absolute: localized.title }
+		: language === "en"
+			? { absolute: `${input.title} | ${localized.title}` }
+			: input.title;
+	const displayTitle = input.isHome ? localized.title : input.title;
+	const description = input.description ?? localized.description;
 	const markdownPath = input.isHome ? undefined : toMarkdownPath(path);
 	const origin = getSiteOrigin();
 
@@ -82,8 +90,8 @@ export function buildPageMetadata(input: PageMetadataInput): Metadata {
 		},
 		openGraph: {
 			type: input.isHome ? "website" : "article",
-			locale: site.openGraphLocale,
-			siteName: site.title,
+			locale: localized.openGraphLocale,
+			siteName: localized.title,
 			url: path,
 			title: displayTitle,
 			description,

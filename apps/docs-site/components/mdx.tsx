@@ -36,12 +36,13 @@ import {
 	HomeTitle,
 } from "@/components/home";
 import { DocsKicker } from "@/components/kicker";
+import type { DocsLanguage } from "@/lib/i18n";
 import {
 	Beats,
 	Checklist,
-	Compare,
-	CompareRow,
-	Continue,
+	Compare as ReadingCompare,
+	CompareRow as ReadingCompareRow,
+	Continue as ReadingContinue,
 	ContinueLink,
 	DocsCallout,
 	DocsCard,
@@ -58,10 +59,10 @@ import {
 	PanelGroup,
 	PanelItem,
 	Plate,
-	Signal,
-	Signals,
+	Signal as ReadingSignal,
+	Signals as ReadingSignals,
 	Spread,
-	Takeaways,
+	Takeaways as ReadingTakeaways,
 } from "@/components/reading";
 import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
 import { File, Files, Folder } from "fumadocs-ui/components/files";
@@ -72,7 +73,7 @@ import { TypeTable } from "fumadocs-ui/components/type-table";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { MDXComponents } from "mdx/types";
 
-export function getMDXComponents(components?: MDXComponents) {
+export function getMDXComponents(language: DocsLanguage = "zh", components?: MDXComponents) {
 	return {
 		...defaultMdxComponents,
 		Steps,
@@ -90,7 +91,7 @@ export function getMDXComponents(components?: MDXComponents) {
 		Card: DocsCard,
 		Cards: DocsCards,
 		DocsKicker,
-		Takeaways,
+		Takeaways: (props) => <ReadingTakeaways {...props} language={language} />,
 		Kit,
 		KitItem,
 		Spread,
@@ -101,16 +102,16 @@ export function getMDXComponents(components?: MDXComponents) {
 		ForkNo,
 		ForkPane,
 		Plate,
-		Signals,
-		Signal,
-		Compare,
-		CompareRow,
+		Signals: (props) => <ReadingSignals {...props} language={language} />,
+		Signal: (props) => <ReadingSignal {...props} language={language} />,
+		Compare: (props) => <ReadingCompare {...props} language={language} />,
+		CompareRow: (props) => <ReadingCompareRow {...props} language={language} />,
 		Beats,
 		Checklist,
 		Panel,
 		PanelGroup,
 		PanelItem,
-		Continue,
+		Continue: (props) => <ReadingContinue {...props} language={language} />,
 		ContinueLink,
 		HomeHero,
 		HomeHeroCopy,
@@ -120,7 +121,7 @@ export function getMDXComponents(components?: MDXComponents) {
 		HomeActions,
 		HomePrimary,
 		HomeSecondary,
-		HomeProof,
+		HomeProof: (props) => <HomeProof {...props} language={language} />,
 		HomeProduct,
 		HomeProductBar,
 		HomeProductImage,
@@ -149,7 +150,7 @@ export function getMDXComponents(components?: MDXComponents) {
 	} satisfies MDXComponents;
 }
 
-export const useMDXComponents = getMDXComponents;
+export const useMDXComponents = (components?: MDXComponents) => getMDXComponents("zh", components);
 
 declare global {
 	type MDXProvidedComponents = ReturnType<typeof getMDXComponents>;

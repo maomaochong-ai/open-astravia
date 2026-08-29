@@ -84,6 +84,28 @@ describe("metadata", () => {
 			images: [`${DEFAULT_DOCS_SITE_URL}/opengraph-image/`],
 		});
 	});
+
+	it("localizes metadata while keeping the public URL language-neutral", () => {
+		const metadata = buildPageMetadata({
+			title: "Configure models",
+			description: "Add and verify a model provider.",
+			path: "/product/models",
+			locale: "en",
+			isHome: false,
+		});
+
+		expect(metadata.alternates).toEqual({
+			canonical: "/product/models/",
+			types: { "text/markdown": "/product/models.md" },
+		});
+		expect(metadata.title).toEqual({ absolute: "Configure models | Vetta Documentation" });
+		expect(metadata.alternates).not.toHaveProperty("languages");
+		expect(metadata.openGraph).toMatchObject({
+			locale: "en_US",
+			siteName: "Vetta Documentation",
+			url: "/product/models/",
+		});
+	});
 });
 
 describe("structured data", () => {

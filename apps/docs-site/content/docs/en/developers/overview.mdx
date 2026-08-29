@@ -1,0 +1,17 @@
+---
+title: Choose a development path
+description: Select the narrowest stable entry point for plugins, themes, SDK, RPC, or CLI integration.
+---
+
+| Need | Recommended entry |
+| --- | --- |
+| Add instructions and a repeatable workflow | Skill |
+| Connect an external tool or data source | MCP |
+| Extend Vetta UI, files, messages, or host actions | Plugin |
+| Embed an Agent in a TypeScript process | SDK |
+| Drive an isolated or language-independent process | RPC |
+| Run one task from a script | CLI |
+
+Use only public package exports. Do not import from `@vetta/coding-agent/src/**` or another package's private source directory.
+
+Read [SDK API reference](/developers/sdk-reference/) for entry points, lifecycle rules, and compatibility guidance.

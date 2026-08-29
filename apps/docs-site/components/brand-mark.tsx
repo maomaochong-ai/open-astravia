@@ -1,4 +1,6 @@
-export function BrandMark() {
+import type { DocsLanguage } from "@/lib/i18n";
+
+export function BrandMark({ language = "zh" }: { language?: DocsLanguage }) {
 	return (
 		<span className="inline-flex min-w-0 items-center gap-[0.7rem] tracking-normal">
 			<span
@@ -17,7 +19,7 @@ export function BrandMark() {
 			<span className="grid leading-[1.05]">
 				<strong className="font-display text-[1.02rem] font-semibold">Vetta</strong>
 				<small className="mt-[0.18rem] hidden font-mono text-[0.58rem] font-medium tracking-[0.12em] text-fd-muted-foreground uppercase md:block">
-					Documentation
+					{language === "en" ? "Documentation" : "文档"}
 				</small>
 			</span>
 		</span>

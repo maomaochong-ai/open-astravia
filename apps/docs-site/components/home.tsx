@@ -1,5 +1,6 @@
 import { DocsKicker } from "@/components/kicker";
 import { cn } from "@/lib/cn";
+import type { DocsLanguage } from "@/lib/i18n";
 import type { ReactNode } from "react";
 
 const gutter = "px-5 md:px-8 lg:px-14";
@@ -8,7 +9,7 @@ export function HomeHero({ children }: { children: ReactNode }) {
 	return (
 		<header
 			className={cn(
-				"mx-auto grid min-h-[78dvh] w-full max-w-[78rem] grid-cols-1 items-center gap-12 border-b border-fd-border bg-[size:3rem_3rem] py-16 md:grid-cols-[minmax(20rem,0.8fr)_minmax(26rem,1.2fr)] md:gap-10 md:bg-[size:4.5rem_4.5rem] md:py-[5.5rem_4.5rem] lg:grid-cols-[minmax(22rem,0.78fr)_minmax(30rem,1.22fr)] lg:gap-16",
+				"mx-auto grid min-h-[78dvh] w-full max-w-[78rem] grid-cols-1 items-center gap-12 border-b border-fd-border bg-[size:3rem_3rem] py-16 md:grid-cols-[minmax(20rem,0.8fr)_minmax(26rem,1.2fr)] md:gap-10 md:bg-[size:4.5rem_4.5rem] md:py-[5.5rem_4.5rem] lg:grid-cols-[minmax(27rem,0.9fr)_minmax(30rem,1.1fr)] lg:gap-16",
 				gutter,
 				"bg-[image:linear-gradient(to_right,color-mix(in_srgb,var(--color-fd-border)_55%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_srgb,var(--color-fd-border)_55%,transparent)_1px,transparent_1px)] bg-[position:center_top] max-md:min-h-auto",
 			)}
@@ -24,7 +25,7 @@ export function HomeHeroCopy({ children }: { children: ReactNode }) {
 
 export function HomeTitle({ children }: { children: ReactNode }) {
 	return (
-		<h1 className="m-0 font-display text-[2.55rem] font-semibold leading-[1.16] tracking-[-0.02em] text-pretty md:text-[3.15rem] lg:text-[3.65rem]">
+		<h1 className="m-0 max-w-[34rem] font-display text-[2.55rem] font-semibold leading-[1.16] tracking-[-0.02em] text-pretty md:text-[3.15rem] lg:text-[3.25rem] 2xl:text-[3.65rem]">
 			{children}
 		</h1>
 	);
@@ -32,7 +33,7 @@ export function HomeTitle({ children }: { children: ReactNode }) {
 
 export function HomeEmphasis({ children }: { children: ReactNode }) {
 	return (
-		<span className="whitespace-nowrap bg-[linear-gradient(transparent_64%,color-mix(in_srgb,var(--color-vetta-coral)_48%,transparent)_64%,color-mix(in_srgb,var(--color-vetta-coral)_48%,transparent)_88%,transparent_88%)]">
+		<span className="bg-[linear-gradient(transparent_64%,color-mix(in_srgb,var(--color-vetta-coral)_48%,transparent)_64%,color-mix(in_srgb,var(--color-vetta-coral)_48%,transparent)_88%,transparent_88%)]">
 			{children}
 		</span>
 	);
@@ -51,7 +52,7 @@ export function HomeActions({ children }: { children: ReactNode }) {
 export function HomePrimary({ href, children }: { href: string; children: ReactNode }) {
 	return (
 		<a
-			className="inline-flex min-h-11 items-center gap-4 rounded-full bg-vetta-ink px-[1.05rem] text-[0.9rem] font-semibold text-vetta-paper no-underline dark:bg-vetta-binding-fg dark:text-vetta-binding [&_span]:transition-transform [&_span]:duration-150 hover:[&_span]:translate-x-[0.2rem]"
+			className="inline-flex min-h-11 items-center gap-4 rounded-full bg-vetta-ink px-[1.05rem] text-[0.9rem] font-semibold whitespace-nowrap text-vetta-paper no-underline dark:bg-vetta-binding-fg dark:text-vetta-binding [&_span]:transition-transform [&_span]:duration-150 hover:[&_span]:translate-x-[0.2rem]"
 			href={href}
 		>
 			{children}
@@ -62,7 +63,7 @@ export function HomePrimary({ href, children }: { href: string; children: ReactN
 export function HomeSecondary({ href, children }: { href: string; children: ReactNode }) {
 	return (
 		<a
-			className="inline-flex items-center gap-4 border-b border-current py-[0.55rem] text-[0.9rem] font-semibold text-fd-foreground no-underline"
+			className="inline-flex items-center gap-4 border-b border-current py-[0.55rem] text-[0.9rem] font-semibold whitespace-nowrap text-fd-foreground no-underline"
 			href={href}
 		>
 			{children}
@@ -70,11 +71,11 @@ export function HomeSecondary({ href, children }: { href: string; children: Reac
 	);
 }
 
-export function HomeProof({ children }: { children: ReactNode }) {
+export function HomeProof({ children, language = "zh" }: { children: ReactNode; language?: DocsLanguage }) {
 	return (
 		<ul
 			className="mt-12 grid list-none gap-0 border-t border-fd-border p-0 [&>li]:grid [&>li]:grid-cols-[7.5rem_minmax(0,1fr)] [&>li]:gap-4 [&>li]:border-b [&>li]:border-fd-border [&>li]:py-[0.8rem] [&_strong]:text-[0.76rem] [&_strong]:font-semibold [&_span]:text-[0.74rem] [&_span]:text-fd-muted-foreground"
-			aria-label="Vetta 核心特征"
+			aria-label={language === "en" ? "Vetta core benefits" : "Vetta 核心特征"}
 		>
 			{children}
 		</ul>

@@ -1,0 +1,37 @@
+---
+title: Run your first complete task
+description: Create a session in a real workspace, provide context, inspect execution, and verify the result with files and checks.
+---
+
+<Takeaways>
+  <li>A small, inspectable documentation task</li>
+  <li>One message containing the goal, scope, constraints, and acceptance criteria</li>
+  <li>Verification based on files and execution records—not only the final answer</li>
+</Takeaways>
+
+Assume a project contains `README.md` and `package.json`. Ask Vetta to create `docs/local-development.md` with accurate setup instructions. Start with a reversible task rather than a large migration.
+
+## Create the workspace and session
+
+1. Select **Open project** and choose the local directory.
+2. Create a **New session** and confirm the model. Prefer **Restricted sandbox** for the first run.
+3. Use `@` to reference `README.md` and `package.json` so the Agent reads the intended facts.
+
+## Submit an acceptance-ready task
+
+```text
+Read @README.md and @package.json, then create docs/local-development.md.
+
+Requirements:
+1. Document environment requirements, installation, startup, quick checks, and targeted tests.
+2. Derive commands from the repository scripts; do not invent commands.
+3. Modify only the target document, not package.json or source code.
+4. Run one read-only quick check and report the command and result.
+5. If information is missing, identify the gap instead of guessing.
+```
+
+## Inspect and verify
+
+Watch the todo list, tool calls, permission requests, and background tasks. Before accepting the result, confirm that the target file exists, commands came from the repository, and no unrelated files changed.
+
+For the next step, read [core workflows](/core/overview/) and [context, tools, and permissions](/core/context-tools-and-permissions/).

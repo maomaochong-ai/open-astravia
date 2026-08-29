@@ -1,0 +1,20 @@
+---
+title: Coding Agent API reference
+description: Find public exports for sessions, hosts, configuration, resources, extensions, and runtime services.
+---
+
+Import only from paths declared in `package.json#exports`. Common entry points include `@vetta/coding-agent`, `/sdk`, `/rpc`, `/settings`, `/resources`, `/extensions`, `/hooks`, `/host-services`, `/historical-sessions`, `/bootstrap`, `/runtime`, and `/model-context`.
+
+## Session lifecycle
+
+```text
+create → inspect diagnostics → subscribe → prompt / steer / followUp
+      → abort or complete → unsubscribe → close
+```
+
+- Handle diagnostics instead of silently discarding resource or extension failures.
+- Dispose subscription callbacks with the host lifecycle.
+- `abort()` stops the current execution; it does not replace `close()`.
+- Preserve Agent, turn, message, tool, compaction, retry, cancellation, and termination semantics.
+
+The installed declaration files are the API source of truth. Pin a compatible package range, record diagnostics and versions, and add contract tests for cancellation, retries, unknown events, and process exit.

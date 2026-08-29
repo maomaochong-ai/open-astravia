@@ -1,0 +1,4 @@
+{
+	"title": "User guide",
+	"pages": ["overview", "models", "abilities", "mcp", "knowledge-base", "batch-tasks", "automation", "claw", "im", "remote-control", "webhook", "application-environment", "desktop-pet", "settings"]
+}

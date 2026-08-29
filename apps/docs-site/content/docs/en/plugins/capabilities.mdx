@@ -1,0 +1,19 @@
+---
+title: Plugin capability reference
+description: Find the UI, conversation, file, browser, Agent, storage, and App Action APIs available to plugins.
+---
+
+| Goal | Typical entry point | Boundary to respect |
+| --- | --- | --- |
+| Add workspace UI | `ctx.ui.registerGlobalSlot`, `registerWorkspaceView` | Dispose registration handles on deactivate |
+| Extend files and previews | `ctx.fileExplorer`, `ctx.ui.registerFilePreview` | Return a recoverable parse error |
+| Render messages and tools | `ctx.ui.registerCardRenderer`, `registerTurnCard` | Handle pending state and cross-turn deduplication |
+| Drive the current conversation | `ctx.conversation.sendPrompt`, `insertText`, `abort` | Requires the appropriate Agent session permission |
+| Register tools and hooks | `ctx.agent.registerTool`, `registerHook` | Use structured schemas and stable errors |
+| Call commands or networks | `ctx.command`, `ctx.network.request` | Declare the smallest command and host permissions |
+| Store private data | `ctx.storage` | Keep data isolated from projects and host internals |
+| Use configured models | `ctx.ai.listModels`, `complete`, `chat` | Never persist the user's credentials |
+| Register discoverable actions | `ctx.appActions.register` | High-impact operations still need confirmation |
+| Add localized copy | `ctx.i18n` and package locales | Keep keys and `defaultLocale` aligned |
+
+The full capability must pass manifest declaration, installation approval, and runtime checks. See [manifest and permissions](/plugins/manifest-and-permissions/) before publishing.

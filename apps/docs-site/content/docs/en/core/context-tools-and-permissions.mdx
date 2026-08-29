@@ -1,0 +1,22 @@
+---
+title: Context, tools, and permissions
+description: Control what the Agent can read, which tools it can call, and which actions require explicit approval.
+---
+
+## Context is a budget
+
+Use `@` references for the files that establish facts. Add only the relevant directory, images, skills, or knowledge sources. Long, unrelated context makes it harder to tell which evidence the Agent used.
+
+## Tools are actions
+
+Tools can read files, write files, run commands, access configured MCP services, or start background work. Before approving a tool call, check its target path, command, external destination, and whether the action is reversible.
+
+## Permission modes
+
+- **Restricted sandbox**: the default starting point for tasks with a narrow workspace boundary.
+- **Full access**: use only when the task genuinely needs wider file or system access and the scope is understood.
+- **Per-action approval**: inspect each request and allow only the action that matches the task.
+
+Never use elevated access to hide an incorrect path or an unclear task. Narrow the task first, then expand the boundary only when necessary.
+
+Read [security and data boundaries](/reference/security-and-data/) before configuring credentials or external services.

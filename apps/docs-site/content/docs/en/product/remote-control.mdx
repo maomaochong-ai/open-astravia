@@ -1,0 +1,16 @@
+---
+title: Remote control
+description: Understand the current Desktop pairing boundary, host requirements, and safe recovery path for remote sessions.
+---
+
+Remote control is a developer preview. The current public path is Desktop host pairing on supported Windows builds; mobile viewing and control are still platform- and build-dependent.
+
+## Pairing flow
+
+1. Open the remote-control entry from the supported Desktop settings.
+2. Create a short-lived pairing request and verify the displayed device and expiry.
+3. Approve the request on the intended device only.
+4. Confirm the paired host, workspace, and current session before sending a task.
+5. Revoke stale pairings and regenerate a request when the device or operator changes.
+
+Never share a pairing QR code or token in a ticket, chat, screenshot, or public issue. Remote control inherits the host's workspace and permission boundaries; pairing is not an authorization to access every project.

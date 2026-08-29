@@ -16,6 +16,25 @@ export const site = {
 	operatingSystem: "Windows, macOS, Linux",
 } as const;
 
+export const localizedSite = {
+	zh: {
+		title: "Vetta 文档",
+		description:
+			"Vetta 把模型、本地文件和本机工具放进同一个桌面 Agent 工作台。本站提供快速开始、实战示例，以及权限、批量、自动化、插件、主题与 SDK 指南。",
+		openGraphLocale: "zh_CN",
+		locale: "zh-CN",
+	},
+	en: {
+		title: "Vetta Documentation",
+		description:
+			"Vetta brings models, local files, and machine tools into one desktop Agent workspace. Learn how to get started, build workflows, configure permissions, extend Vetta, and use the SDK.",
+		openGraphLocale: "en_US",
+		locale: "en-US",
+	},
+} as const;
+
+export type SiteLanguage = keyof typeof localizedSite;
+
 export const sectionLabels: Record<string, string> = {
 	"getting-started": "01 / 开始使用",
 	core: "02 / 核心工作流",
@@ -51,6 +70,53 @@ export const sectionLandingPaths: Record<string, string> = {
 	reference: "/reference/security-and-data/",
 	troubleshooting: "/troubleshooting/",
 };
+
+const localizedSections: Record<SiteLanguage, {
+	labels: Record<string, string>;
+	titles: Record<string, string>;
+}> = {
+	zh: { labels: sectionLabels, titles: sectionTitles },
+	en: {
+		labels: {
+			"getting-started": "01 / GETTING STARTED",
+			core: "02 / CORE WORKFLOWS",
+			product: "03 / USER GUIDE",
+			examples: "04 / EXAMPLES",
+			plugins: "05 / PLUGIN DEVELOPMENT",
+			themes: "06 / THEME DEVELOPMENT",
+			developers: "07 / DEVELOPERS",
+			reference: "08 / REFERENCE",
+			troubleshooting: "09 / SUPPORT",
+		},
+		titles: {
+			"getting-started": "Getting started",
+			core: "Core workflows",
+			product: "User guide",
+			examples: "Examples",
+			plugins: "Plugin development",
+			themes: "Theme development",
+			developers: "Developers",
+			reference: "Reference",
+			troubleshooting: "Support",
+		},
+	},
+};
+
+export function getLocalizedSite(language: SiteLanguage = "zh") {
+	return localizedSite[language];
+}
+
+export function getSectionLabel(section: string | undefined, language: SiteLanguage = "zh"): string {
+	return localizedSections[language].labels[section ?? ""] ?? "VETTA / DOCUMENTATION";
+}
+
+export function getSectionTitle(section: string | undefined, language: SiteLanguage = "zh"): string {
+	return localizedSections[language].titles[section ?? ""] ?? section ?? "Documentation";
+}
+
+export function getSectionLandingPath(section: string | undefined): string {
+	return sectionLandingPaths[section ?? ""] ?? `/${section ?? ""}/`;
+}
 
 export function getSiteOrigin(envUrl = process.env.DOCS_SITE_URL): string {
 	const raw = envUrl?.trim() || DEFAULT_DOCS_SITE_URL;

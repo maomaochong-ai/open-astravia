@@ -1,0 +1,20 @@
+---
+title: IM channels and Claw
+description: Configure supported messaging channels as a controlled entry point for Vetta tasks and Agent replies.
+---
+
+Vetta's IM gateway currently exposes Feishu, WeChat, Telegram, Slack, Discord, Signal, WhatsApp, and iMessage selectors. Availability depends on the gateway build, platform, credentials, and provider policy; the running settings page is the final source of truth.
+
+## Setup pattern
+
+1. Open **Settings → Claw** and enable the service.
+2. Choose one channel and complete its bot, webhook, or account authorization.
+3. Bind the channel to a model and a workspace policy.
+4. Send `/help`, then a minimal read-only task.
+5. Check logs, execution history, and the actual artifact before expanding access.
+
+## Safety boundaries
+
+Do not paste API keys, OAuth cookies, pairing QR codes, or private project contents into messages. Treat inbound messages as untrusted task input. Keep the gateway running only when you need it, restrict the workspace and capabilities, and restart the channel after changing credentials.
+
+If a channel receives no reply, first verify that Vetta is running, Claw is enabled, the selected model works, and `/help` reaches the command handler. Then inspect the channel logs and upstream authorization.

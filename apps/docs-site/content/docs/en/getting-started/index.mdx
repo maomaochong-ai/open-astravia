@@ -1,0 +1,46 @@
+---
+title: Quick start
+description: Install Vetta, complete the first-run flow, configure a model, and prepare a workspace for a verifiable task.
+---
+
+<Takeaways>
+  <li>A signed-in desktop workspace</li>
+  <li>At least one working default model</li>
+  <li>A local project that can be opened and used for a session</li>
+</Takeaways>
+
+After this page, Vetta should be signed in, connected to a model, and ready to create a local project. The one-time setup normally takes only a few minutes.
+
+## Before you start
+
+| Requirement | What to prepare |
+| --- | --- |
+| Computer | Windows, macOS, or Linux; use the [download page](https://openvetta.com/download) as the source of truth for available builds |
+| Account | The desktop app completes authorization in your browser |
+| Model service | An organization-provided model or a provider configured under **Settings → Model configuration** |
+
+## Install and launch
+
+1. Download the installer for the current operating system and CPU architecture from the [Vetta download page](https://openvetta.com/download).
+2. Launch Vetta and complete the first-run guide. Choose the UI language and appearance, grant macOS permissions when requested, and finish browser authorization if needed.
+3. Confirm that the account area shows a signed-in state. If the link expired, use **Re-authorize** in the login dialog.
+
+## Configure a model
+
+Open **Settings → Model configuration**. Choose a preset provider, enter its API key, pull the model list, and set one model as the default. For a custom provider, configure its API type, Base URL, model ID, and key explicitly.
+
+<Callout title="Keep keys private" type="warn">
+  Enter API keys only in the credential configuration UI. Do not put keys in prompts, project files, logs, or issue reports. Local model configuration is stored under `~/.vetta/agent/models.json`.
+</Callout>
+
+## Ready-to-use checklist
+
+<Checklist title="Before the first task">
+  <li>The account area shows a signed-in state.</li>
+  <li>At least one model is configured and selected as the default.</li>
+  <li>A new session can select the model without a credential or connection error.</li>
+  <li>The correct project directory is open.</li>
+  <li>You understand whether the session uses restricted sandbox or full access.</li>
+</Checklist>
+
+If a model test fails, fix the provider configuration before retrying a task. Continue with [your first task](/getting-started/first-task/) or [model configuration](/product/models/).

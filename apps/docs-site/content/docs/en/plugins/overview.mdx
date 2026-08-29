@@ -1,0 +1,17 @@
+---
+title: Plugin development overview
+description: Understand the plugin runtime, capability surface, and trust boundary before building an extension.
+---
+
+Vetta plugins extend the desktop UI, file browser, conversations, and Agent capabilities through `@vetta-org/plugin-sdk`. They are built with React, TypeScript, and Vite, then loaded as Module Federation artifacts.
+
+## Runtime and trust
+
+- Plugins run in the Desktop renderer's shared JavaScript realm, not an iframe or Worker sandbox.
+- A permission must be declared in `plugin.json`, approved during installation, and checked by the host at runtime.
+- Registration APIs return cleanup handles; dispose them during deactivate and reload.
+- Install only trusted sources and request the smallest capability set.
+
+Choose a [skill](/product/abilities/) for instructions and workflows, [MCP](/product/mcp/) for an external tool or data service, and a plugin only when you need the Desktop host, UI, or full lifecycle.
+
+Continue with [plugin setup](/plugins/getting-started/) and the [capability reference](/plugins/capabilities/).

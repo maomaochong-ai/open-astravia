@@ -4,7 +4,7 @@ import { source } from "@/lib/source";
 import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-	const pages = source.getPages().map((page) => ({
+	const pages = source.getPages("zh").map((page) => ({
 		path: page.url,
 		lastModified: page.absolutePath ? getGitLastModified(page.absolutePath) : undefined,
 	}));

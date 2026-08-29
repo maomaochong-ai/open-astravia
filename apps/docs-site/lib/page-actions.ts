@@ -5,18 +5,25 @@ export interface PageActionLink {
 	external: boolean;
 }
 
+export type PageActionLanguage = "zh" | "en";
+
 export function buildAskPrompt(pageUrl: string): string {
 	return `Read ${pageUrl}, I want to ask questions about it.`;
 }
 
-export function buildPageActionLinks(input: { pageUrl: string; markdownUrl: string }): PageActionLink[] {
+export function buildPageActionLinks(input: {
+	pageUrl: string;
+	markdownUrl: string;
+	language?: PageActionLanguage;
+}): PageActionLink[] {
 	const prompt = buildAskPrompt(input.pageUrl);
+	const language = input.language ?? "zh";
 
 	return [
 		{
 			id: "markdown",
 			href: input.markdownUrl,
-			label: "查看 Markdown",
+			label: language === "en" ? "View Markdown" : "查看 Markdown",
 			external: false,
 		},
 		{

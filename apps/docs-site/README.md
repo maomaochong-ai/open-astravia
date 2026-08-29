@@ -41,6 +41,16 @@ Fumadocs 搜索索引由站点内容生成，因此需要通过构建后的站�
 
 不要把所有背景、操作和字段堆进同一入口页。快速开始负责让用户第一次成功，指南解释能力，示例展示完整任务，参考提供精确合同；它们通过链接协作。
 
+## 中英文内容
+
+站点使用 Fumadocs 原生 i18n 和 `hideLocale: "always"`：公开 URL 不包含 `/zh` 或 `/en`，服务端按 `FD_LOCALE` Cookie 和浏览器 `Accept-Language` 自动选择语言。语言切换器只更新 Cookie 并刷新当前路径，不创建带语言前缀的公开链接。
+
+- `content/docs/` 根目录是默认中文事实源。
+- `content/docs/en/` 按相同相对路径提供英文页面和导航元数据。
+- 英文缺页暂时回退到中文，新增高访问或公共合同页面时应同步补充英文版本。
+- 两种语言的站内链接都使用无语言前缀的绝对路径，例如 `/product/models/`。
+- 同一 URL 会按语言返回不同内容，因此 canonical 和 sitemap 保持语言中立，不生成虚假的 `/en`、`/zh` hreflang 地址。
+
 ## SEO 与发现入口
 
 站点在构建时生成面向搜索引擎和社交平台的元数据，不单独维护页面副本：
@@ -55,6 +65,8 @@ Fumadocs 搜索索引由站点内容生成，因此需要通过构建后的站�
 - `/llms.txt`：文档索引，适合 Agent 发现页面。
 - `/llms-full.txt`：合并后的完整文档，适合一次性获取上下文。
 - `/*.md`：对应文档页的纯 Markdown，例如 `/product/models.md`。
+
+`llms.txt` 和 `llms-full.txt` 可使用 `?lang=en` 请求英文索引；页面 Markdown 会沿用当前自动识别的语言。
 
 这些内容由 `content/docs/` 构建生成，不单独维护副本。
 

@@ -1,0 +1,28 @@
+---
+title: How Vetta workflows work
+description: Build a reliable mental model for workspaces, tasks, sessions, execution, permissions, and results.
+---
+
+Vetta is a desktop Agent workspace, not only a chat box. A useful task flows through five objects:
+
+| Object | Meaning |
+| --- | --- |
+| Workspace | Local files and the boundary of allowed operations |
+| Task | Goal, context, constraints, and acceptance criteria |
+| Session | The continuous record of messages, tools, and state |
+| Execution | Model reasoning, tool calls, permission checks, and background work |
+| Result | Replies, files, artifacts, tests, and unresolved risks |
+
+## The standard loop
+
+1. Choose the correct project or workspace boundary.
+2. Describe a small, executable goal and how success will be checked.
+3. Watch the Agent's plan, tools, permissions, and background jobs.
+4. Verify actual files, artifacts, tests, and execution history.
+5. Reuse a stable method as a skill, capability, batch task, or automation.
+
+<Callout type="info" title="A confident answer is not proof">
+  A model summary does not prove that a file changed, a command passed, or an artifact was created. Use the workspace and execution records as the acceptance evidence.
+</Callout>
+
+Continue with [workspaces and sessions](/core/workspaces-and-sessions/) or [context, tools, and permissions](/core/context-tools-and-permissions/).

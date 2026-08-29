@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import type { DocsLanguage } from "@/lib/i18n";
 import { fieldNoteIsAlert, fieldNoteLabel, type FieldNoteTone } from "@/lib/reading";
 import type { ComponentProps, ReactNode } from "react";
 
@@ -10,13 +11,13 @@ function StudioKicker({ children, className }: { children: ReactNode; className?
 	);
 }
 
-export function Takeaways({ children }: { children: ReactNode }) {
+export function Takeaways({ children, language = "zh" }: { children: ReactNode; language?: DocsLanguage }) {
 	return (
 		<section
 			className="not-prose mb-10 grid gap-4 border-b border-fd-border pb-8 md:grid-cols-[7.5rem_minmax(0,1fr)] md:items-start"
-			aria-label="读完带走"
+			aria-label={language === "en" ? "Key takeaways" : "读完带走"}
 		>
-			<StudioKicker className="pt-1">READ / 带走</StudioKicker>
+			<StudioKicker className="pt-1">{language === "en" ? "READ / TAKEAWAYS" : "READ / 带走"}</StudioKicker>
 			<ol className="docs-takeaways m-0 grid list-none grid-cols-1 gap-0 p-0 sm:grid-cols-3">
 				{children}
 			</ol>
@@ -148,32 +149,32 @@ export function Plate({ no, title, children }: { no: string; title: string; chil
 	);
 }
 
-export function Signals({ children }: { children: ReactNode }) {
+export function Signals({ children, language = "zh" }: { children: ReactNode; language?: DocsLanguage }) {
 	return (
 		<div className="not-prose my-8 border-t border-fd-border">
 			<div className="grid grid-cols-[minmax(0,0.8fr)_1.1fr_1.1fr] border-b-2 border-vetta-ink bg-fd-card/70 px-0 font-mono text-[0.64rem] tracking-[0.1em] text-fd-muted-foreground uppercase max-md:hidden dark:border-vetta-ink">
-				<span className="px-4 py-2.5">信号</span>
-				<span className="border-s border-fd-border px-4 py-2.5">正常</span>
-				<span className="border-s border-fd-border px-4 py-2.5">需要介入</span>
+				<span className="px-4 py-2.5">{language === "en" ? "Signal" : "信号"}</span>
+				<span className="border-s border-fd-border px-4 py-2.5">{language === "en" ? "Healthy" : "正常"}</span>
+				<span className="border-s border-fd-border px-4 py-2.5">{language === "en" ? "Needs attention" : "需要介入"}</span>
 			</div>
 			{children}
 		</div>
 	);
 }
 
-export function Signal({ name, ok, bad }: { name: string; ok: string; bad: string }) {
+export function Signal({ name, ok, bad, language = "zh" }: { name: string; ok: string; bad: string; language?: DocsLanguage }) {
 	return (
 		<div className="grid grid-cols-1 border-b border-fd-border md:grid-cols-[minmax(0,0.8fr)_1.1fr_1.1fr]">
 			<strong className="px-4 py-3.5 font-display text-[0.95rem] font-semibold">{name}</strong>
 			<span className="px-4 py-3.5 text-[0.8rem] leading-[1.55] text-fd-muted-foreground md:border-s md:border-fd-border">
 				<span className="mb-1 block font-mono text-[0.6rem] tracking-[0.1em] text-vetta-coral uppercase md:hidden">
-					正常
+					{language === "en" ? "Healthy" : "正常"}
 				</span>
 				{ok}
 			</span>
 			<span className="bg-vetta-coral/[0.05] px-4 py-3.5 text-[0.8rem] leading-[1.55] md:border-s md:border-fd-border">
 				<span className="mb-1 block font-mono text-[0.6rem] tracking-[0.1em] text-vetta-coral uppercase md:hidden">
-					需要介入
+					{language === "en" ? "Needs attention" : "需要介入"}
 				</span>
 				{bad}
 			</span>
@@ -185,10 +186,12 @@ export function Compare({
 	leftTitle,
 	rightTitle,
 	children,
+	language = "zh",
 }: {
 	leftTitle: string;
 	rightTitle: string;
 	children: ReactNode;
+	language?: DocsLanguage;
 }) {
 	return (
 		<div className="not-prose my-8 border-t border-fd-border">
@@ -204,7 +207,7 @@ export function Compare({
 	);
 }
 
-export function CompareRow({ label, left, right }: { label: string; left: string; right: string }) {
+export function CompareRow({ label, left, right, language = "zh" }: { label: string; left: string; right: string; language?: DocsLanguage }) {
 	return (
 		<div className="grid grid-cols-1 border-b border-fd-border md:grid-cols-[7.2rem_1fr_1fr]">
 			<span className="px-4 py-3 font-mono text-[0.64rem] tracking-[0.08em] text-vetta-coral md:px-0 md:py-3.5">
@@ -212,7 +215,7 @@ export function CompareRow({ label, left, right }: { label: string; left: string
 			</span>
 			<span className="px-4 py-2.5 text-[0.82rem] leading-[1.55] text-fd-muted-foreground md:py-3.5">
 				<span className="mb-1 block font-mono text-[0.6rem] tracking-[0.08em] text-fd-muted-foreground uppercase md:hidden">
-					普通对话
+					{language === "en" ? "Regular chat" : "普通对话"}
 				</span>
 				{left}
 			</span>
@@ -271,10 +274,10 @@ export function PanelItem({ title, children }: { title: string; children: ReactN
 	);
 }
 
-export function Continue({ children }: { children: ReactNode }) {
+export function Continue({ children, language = "zh" }: { children: ReactNode; language?: DocsLanguage }) {
 	return (
-		<nav className="not-prose mt-14 border-t border-fd-border pt-8" aria-label="下一页">
-			<StudioKicker className="mb-5">NEXT / 下一页</StudioKicker>
+		<nav className="not-prose mt-14 border-t border-fd-border pt-8" aria-label={language === "en" ? "Next steps" : "下一页"}>
+			<StudioKicker className="mb-5">{language === "en" ? "NEXT / CONTINUE" : "NEXT / 下一页"}</StudioKicker>
 			<div className="grid grid-cols-1 border-t border-s border-fd-border sm:grid-cols-2 lg:grid-cols-3">{children}</div>
 		</nav>
 	);

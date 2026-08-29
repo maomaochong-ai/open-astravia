@@ -1,0 +1,5 @@
+{
+	"title": "Vetta Documentation",
+	"description": "Guides and reference for Vetta users, teams, and extension developers.",
+	"pages": ["index", "getting-started", "core", "product", "examples", "plugins", "themes", "developers", "reference", "troubleshooting"]
+}

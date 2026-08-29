@@ -1,0 +1,16 @@
+---
+title: Progress, results, and recovery
+description: Inspect long-running work, verify real artifacts, and recover from partial or failed execution.
+---
+
+## Inspect progress
+
+Use the todo list, interim updates, tool history, background task state, and permission requests to locate the last successful step. Do not repeatedly retry while the failure cause is unknown.
+
+## Verify results
+
+Check the actual files and diffs, run the relevant read-only or targeted checks, and compare the output with the acceptance criteria. A final response is a report; it is not a substitute for inspecting the artifact.
+
+## Recover deliberately
+
+For a partial result, keep the useful artifact and state the remaining gap in a follow-up task. For repeated failures, reduce the model, tools, attachments, concurrency, or directory scope until a minimal reproduction is stable. Stop before deleting or overwriting valuable work.

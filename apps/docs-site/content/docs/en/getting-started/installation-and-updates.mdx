@@ -1,0 +1,29 @@
+---
+title: Installation, updates, and migration
+description: Choose the correct build, preserve local data, and diagnose upgrades or device changes without losing the recovery path.
+---
+
+## Choose the installation source
+
+Use the official [download page](https://openvetta.com/download) for released installers. The open-source repository is the source for development builds; do not mix a development data directory with a production profile unless the build explicitly documents that compatibility.
+
+Before upgrading, record the current Vetta version, operating system, architecture, and the location of any local projects you need to keep.
+
+## Update safely
+
+1. Finish or stop active tasks and wait for background work to reach a known state.
+2. Export diagnostics if you are investigating an issue.
+3. Install the new version over the existing application when the installer supports in-place updates.
+4. Reopen Vetta and verify sign-in, model configuration, one existing project, and one small read-only task.
+
+## Move to a new device
+
+Projects and credentials have different recovery requirements. Copy project files through your normal secure backup process. Re-authenticate on the new device and configure credentials again instead of copying browser cookies or OAuth state.
+
+<Callout title="Do not copy secrets blindly" type="warn">
+  Never upload or share API keys, OAuth cookies, pairing QR codes, webhook URLs, or an unredacted diagnostic bundle. Check the [security and data boundaries](/reference/security-and-data/) before collecting logs.
+</Callout>
+
+## If an update breaks a workflow
+
+Capture the version and the last successful step, reproduce the issue with the smallest project and model, and inspect the execution history. If a downgrade is necessary, preserve the new diagnostic evidence first and verify that local session data remains readable by the older build.

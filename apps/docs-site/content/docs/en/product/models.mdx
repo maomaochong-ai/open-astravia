@@ -1,0 +1,15 @@
+---
+title: Configure models
+description: Add a preset or custom provider, verify its connection, and choose a default model for sessions and tasks.
+---
+
+Open **Settings → Model configuration**. Select a preset provider, enter the API key, pull the available models, and set one as the default. For a custom provider, specify its API type, Base URL, model ID, and credential explicitly.
+
+## Verification checklist
+
+- Use a short test request before starting a large task.
+- Confirm the selected model supports the context and tool behavior you need.
+- Keep the API key out of prompts, project files, logs, and issue reports.
+- Record the provider and model ID when reporting a reproducible failure.
+
+The local configuration file is `~/.vetta/agent/models.json`. Treat it as sensitive and use the UI for changes whenever possible.
