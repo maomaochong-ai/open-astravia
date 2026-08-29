@@ -5,22 +5,31 @@
 <style>
   :root {
     color-scheme: light dark;
-    --bg: #f7f7f8;
+    --bg: #f4f4f6;
     --card: #ffffff;
+    --card-2: #f7f7f9;
     --text: #1d1d1f;
-    --muted: #6e6e73;
+    --muted: #86868b;
     --accent: #0a84ff;
+    --accent-2: #5e5ce6;
     --danger: #ff3b30;
-    --ok: #34c759;
-    --border: #e5e5ea;
+    --ok: #30d158;
+    --border: rgba(0, 0, 0, 0.07);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 28px rgba(0, 0, 0, 0.07);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #1c1c1e;
-      --card: #2c2c2e;
+      --bg: #17171a;
+      --card: #232327;
+      --card-2: #2c2c31;
       --text: #f5f5f7;
-      --muted: #98989d;
-      --border: #3a3a3c;
+      --muted: #9a9aa0;
+      --accent: #0a84ff;
+      --accent-2: #5e5ce6;
+      --danger: #ff453a;
+      --ok: #32d74b;
+      --border: rgba(255, 255, 255, 0.09);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.38);
     }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -29,91 +38,185 @@
     font: 13px/1.5 -apple-system, "PingFang SC", "Segoe UI", system-ui, sans-serif;
     background: var(--bg);
     color: var(--text);
-    padding: 12px;
+    padding: 14px;
   }
-  .header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
-  .header h1 { font-size: 15px; font-weight: 700; }
-  .header .version { color: var(--muted); font-size: 11px; }
+
+  /* ─── 头部：品牌 + 版本 ─── */
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .brand-logo {
+    flex: none; width: 32px; height: 32px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(10, 132, 255, 0.3);
+  }
+  .brand-logo svg { width: 18px; height: 18px; }
+  .brand-text { min-width: 0; }
+  .header h1 { font-size: 14px; font-weight: 700; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .version-chip {
+    flex: none; font-size: 11px; font-weight: 600; color: var(--muted);
+    background: var(--card); border: 1px solid var(--border);
+    padding: 2px 9px; border-radius: 999px;
+  }
+
+  /* ─── 卡片容器 ─── */
   .card {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 10px;
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: var(--shadow);
   }
+  .card + .card { margin-top: 10px; }
+
+  .card-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
   .muted { color: var(--muted); }
-  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
-  .btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    border: none; border-radius: 8px; padding: 8px 14px;
-    font: inherit; font-weight: 600; cursor: pointer;
-    background: var(--accent); color: #fff; width: 100%;
-  }
-  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-  .btn.stop { background: var(--danger); }
-  input[type="text"] {
-    width: 100%; padding: 8px 10px; border-radius: 8px;
-    border: 1px solid var(--border); background: var(--bg); color: var(--text);
-    font: inherit; margin: 6px 0;
-  }
-  .link { color: var(--accent); text-decoration: none; font-weight: 600; }
-  .error { color: var(--danger); font-size: 12px; margin-top: 6px; }
-  .notice { color: var(--ok); font-size: 12px; margin-top: 6px; }
+
+  /* ─── 激活状态行 ─── */
+  .status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
   .status-chip {
-    display: inline-block; padding: 2px 8px; border-radius: 999px;
-    background: rgba(52, 199, 89, 0.15); color: var(--ok); font-size: 11px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 999px;
+    background: rgba(48, 209, 88, 0.14); color: var(--ok);
+    font-size: 11px; font-weight: 700;
   }
-  .switch { position: relative; width: 36px; height: 20px; flex: none; }
-  .switch input { opacity: 0; width: 0; height: 0; }
+  .status-chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .status-meta { font-size: 11px; color: var(--muted); }
+
+  /* ─── 主按钮 ─── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border: none; border-radius: 10px; padding: 10px 14px;
+    font: inherit; font-weight: 600; cursor: pointer; width: 100%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    transition: filter 0.15s ease, transform 0.05s ease;
+  }
+  .btn:hover { filter: brightness(1.07); }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn.stop { background: linear-gradient(135deg, var(--danger), #ff6b5e); }
+  .btn svg { width: 15px; height: 15px; }
+
+  .count-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    margin-top: 9px; padding: 3px 10px; border-radius: 999px;
+    background: rgba(10, 132, 255, 0.12); color: var(--accent);
+    font-size: 11px; font-weight: 700;
+  }
+
+  /* ─── 设置行（写轮眼开关） ─── */
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-top: 12px; padding: 10px 12px;
+    background: var(--card-2); border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .setting-text { min-width: 0; }
+  .setting-label { font-size: 12.5px; font-weight: 600; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.45; }
+  .copy-hint {
+    display: flex; align-items: flex-start; gap: 6px;
+    margin-top: 12px; padding: 9px 11px;
+    background: var(--card-2); border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 11px; color: var(--muted); line-height: 1.5;
+  }
+  .copy-hint svg { flex: none; width: 13px; height: 13px; margin-top: 1px; color: var(--accent); }
+
+  /* ─── 开关（iOS 风格） ─── */
+  .switch { position: relative; width: 40px; height: 24px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
   .switch .track {
     position: absolute; inset: 0; border-radius: 999px;
-    background: var(--border); transition: background 0.15s;
+    background: rgba(120, 120, 128, 0.32);
+    transition: background 0.2s ease;
   }
   .switch .track::after {
-    content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
-    border-radius: 50%; background: #fff; transition: transform 0.15s;
+    content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+    border-radius: 50%; background: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
   .switch input:checked + .track::after { transform: translateX(16px); }
-  .hint { font-size: 11px; color: var(--muted); margin-top: 8px; }
-  .footer { color: var(--muted); font-size: 11px; text-align: center; margin-top: 4px; }
+
+  /* ─── 授权激活表单 ─── */
+  input[type="text"] {
+    width: 100%; padding: 9px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--card-2); color: var(--text);
+    font: inherit; margin: 10px 0 8px;
+    outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18); }
+  .buy-row { display: flex; justify-content: center; margin-top: 10px; }
+  .link { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .link:hover { text-decoration: underline; }
+
+  .error { color: var(--danger); font-size: 12px; margin-top: 8px; }
+  .notice { color: var(--ok); font-size: 12px; margin-top: 8px; }
+
+  .footer { color: var(--muted); font-size: 11px; text-align: center; margin-top: 12px; }
 </style>
 </head>
 <body>
+
 <div class="header">
-  <h1 id="title">Astravia</h1>
-  <span class="version" id="version"></span>
+  <div class="brand">
+    <div class="brand-logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    </div>
+    <div class="brand-text">
+      <h1 id="title">Astravia</h1>
+    </div>
+  </div>
+  <span class="version-chip" id="version"></span>
 </div>
 
+<!-- 未激活：授权码激活 -->
 <div id="license-view" class="card" hidden>
-  <div class="row"><strong id="license-title"></strong></div>
+  <div class="card-title" id="license-title"></div>
   <div class="muted" id="not-licensed"></div>
   <input type="text" id="license-input" autocomplete="off" spellcheck="false" />
   <button class="btn" id="activate-btn"></button>
   <div id="license-error" class="error" hidden></div>
-  <div class="row" style="justify-content:center; margin-top:8px">
+  <div class="buy-row">
     <a class="link" id="buy-link" href="#" target="_blank"></a>
   </div>
 </div>
 
+<!-- 已激活：控制面板 -->
 <div id="control-view" class="card" hidden>
-  <div class="row">
-    <span id="license-badge"></span>
-    <span class="muted" id="license-meta"></span>
+  <div class="status-row">
+    <span class="status-chip" id="license-badge"></span>
+    <span class="status-meta" id="license-meta"></span>
   </div>
+
   <button class="btn" id="toggle-btn"></button>
-  <div class="row" style="margin-top:10px">
-    <div>
-      <div id="sharingan-label"></div>
+  <div id="count-label" class="count-chip" hidden></div>
+
+  <div class="setting-row">
+    <div class="setting-text">
+      <div class="setting-label" id="sharingan-label"></div>
       <div class="hint" id="sharingan-hint"></div>
     </div>
     <label class="switch"><input type="checkbox" id="sharingan-input" /><span class="track"></span></label>
   </div>
-  <div class="hint" id="copy-hint"></div>
+
+  <div class="copy-hint" id="copy-hint">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 6v12a3 3 0 1 1-6 0V6a3 3 0 1 1 6 0Z" />
+      <path d="M9 12h6" />
+    </svg>
+    <span id="copy-hint-text"></span>
+  </div>
+
   <div id="action-error" class="error" hidden></div>
   <div id="notice" class="notice" hidden></div>
-  <div id="notice" class="notice" hidden></div>
-  <div class="hint" id="count-label" hidden></div>
 </div>
 
 <div class="footer" id="footer"></div>

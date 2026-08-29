@@ -119,11 +119,17 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
 		}
 		case "wep-settings": {
 			void (async () => {
+				const settings = m.settings ?? {};
+				// 设置合并写回 session storage：popup 轮询 get-state 以此为唯一回流来源，
+				// 不写的话开关会被下一轮 render 重置回旧值（写轮眼模式无法切换）。
+				const current = await chrome.storage.session.get("wepSettings");
+				const merged = { ...(current.wepSettings ?? {}), ...settings };
+				await chrome.storage.session.set({ wepSettings: merged });
 				const tab = await activeTab();
 				if (tab?.id) {
 					await sendToTab(tab.id, {
 						type: "wep-settings",
-						settings: m.settings ?? {},
+						settings,
 					});
 				}
 				return respond({ ok: true });
@@ -139,6 +145,9 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
 					"wepNotice",
 					"wepSettings",
 				]);
+				// session 在浏览器重启后清空：回退到 content script 持久化的 sync 设置。
+				const sync = await chrome.storage.sync.get("wepSettings");
+				const settings = session.wepSettings ?? sync.wepSettings ?? null;
 				return respond({
 					licensed: licensed.ok,
 					order: licensed.order,
@@ -146,7 +155,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
 					active: Boolean(session.wepActive),
 					count: (session.wepCount as number) ?? 0,
 					notice: session.wepNotice ?? null,
-					settings: session.wepSettings ?? null,
+					settings,
 				});
 			})();
 			return true;

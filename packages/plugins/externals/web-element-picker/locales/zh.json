@@ -15,8 +15,6 @@
 	"panel.noSession": "无活跃会话，网页选择器不可用",
 	"panel.start": "开始选择",
 	"panel.stopSelecting": "停止选择",
-	"panel.sendToAi": "发送给 AI",
-	"panel.sendingToAi": "发送中…",
 	"panel.sendToAiHint": "把当前选中元素的上下文发送到当前对话",
 	"panel.selectingHint": "已进入选择模式：单击选择，Shift+单击多选，拖拽框选，Esc 清除",
 	"panel.copyHint": "已复制元素上下文",

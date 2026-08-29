@@ -15,8 +15,6 @@
 	"panel.noSession": "No active conversation, element picker unavailable",
 	"panel.start": "Start picking",
 	"panel.stopSelecting": "Stop picking",
-	"panel.sendToAi": "Send to AI",
-	"panel.sendingToAi": "Sending…",
 	"panel.sendToAiHint": "Send the selected elements' context to the current conversation",
 	"panel.selectingHint": "Picking mode: click to select, Shift+click to add, drag to marquee, Esc to clear",
 	"panel.copyHint": "Element context copied",
