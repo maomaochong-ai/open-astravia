@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f7f8;
+    --card: #ffffff;
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --accent: #0a84ff;
+    --danger: #ff3b30;
+    --ok: #34c759;
+    --border: #e5e5ea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --card: #2c2c2e;
+      --text: #f5f5f7;
+      --muted: #98989d;
+      --border: #3a3a3c;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 320px;
+    font: 13px/1.5 -apple-system, "PingFang SC", "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 12px;
+  }
+  .header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+  .header h1 { font-size: 15px; font-weight: 700; }
+  .header .version { color: var(--muted); font-size: 11px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .muted { color: var(--muted); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    border: none; border-radius: 8px; padding: 8px 14px;
+    font: inherit; font-weight: 600; cursor: pointer;
+    background: var(--accent); color: #fff; width: 100%;
+  }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn.stop { background: var(--danger); }
+  input[type="text"] {
+    width: 100%; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    font: inherit; margin: 6px 0;
+  }
+  .link { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .error { color: var(--danger); font-size: 12px; margin-top: 6px; }
+  .notice { color: var(--ok); font-size: 12px; margin-top: 6px; }
+  .status-chip {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    background: rgba(52, 199, 89, 0.15); color: var(--ok); font-size: 11px; font-weight: 600;
+  }
+  .switch { position: relative; width: 36px; height: 20px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .track {
+    position: absolute; inset: 0; border-radius: 999px;
+    background: var(--border); transition: background 0.15s;
+  }
+  .switch .track::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+    border-radius: 50%; background: #fff; transition: transform 0.15s;
+  }
+  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track::after { transform: translateX(16px); }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  .footer { color: var(--muted); font-size: 11px; text-align: center; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1 id="title">Astravia</h1>
+  <span class="version" id="version"></span>
+</div>
+
+<div id="license-view" class="card" hidden>
+  <div class="row"><strong id="license-title"></strong></div>
+  <div class="muted" id="not-licensed"></div>
+  <input type="text" id="license-input" autocomplete="off" spellcheck="false" />
+  <button class="btn" id="activate-btn"></button>
+  <div id="license-error" class="error" hidden></div>
+  <div class="row" style="justify-content:center; margin-top:8px">
+    <a class="link" id="buy-link" href="#" target="_blank"></a>
+  </div>
+</div>
+
+<div id="control-view" class="card" hidden>
+  <div class="row">
+    <span id="license-badge"></span>
+    <span class="muted" id="license-meta"></span>
+  </div>
+  <button class="btn" id="toggle-btn"></button>
+  <div class="row" style="margin-top:10px">
+    <div>
+      <div id="sharingan-label"></div>
+      <div class="hint" id="sharingan-hint"></div>
+    </div>
+    <label class="switch"><input type="checkbox" id="sharingan-input" /><span class="track"></span></label>
+  </div>
+  <div class="hint" id="copy-hint"></div>
+  <div id="action-error" class="error" hidden></div>
+  <div id="notice" class="notice" hidden></div>
+  <div id="notice" class="notice" hidden></div>
+  <div class="hint" id="count-label" hidden></div>
+</div>
+
+<div class="footer" id="footer"></div>
+<script src="popup.js"></script>
+</body>
+</html>

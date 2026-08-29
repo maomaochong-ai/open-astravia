@@ -234,9 +234,22 @@ export class OpenMarketplaceService {
 
 	async list(): Promise<OpenMarketplaceSnapshot> {
 		const cached = await this.readCachedSnapshot();
-		if (!cached) return this.refresh();
+		if (cached) {
+			this.scheduleBackgroundUpdate();
+			return cached;
+		}
+		// 无本地快照（首次打开 / 缓存失效）：立即返回空快照并把首次同步放后台，
+		// 不让能力页阻塞在下载超时上（DOWNLOAD_TIMEOUT_MS=15s，GitHub 不可达时更久）。
+		// 后台同步完成后经 onBackgroundUpdate 推送，能力页自动出现市场内容。
 		this.scheduleBackgroundUpdate();
-		return cached;
+		return {
+			sourceId: this.sourceId,
+			abilities: [],
+			marketplaceVersion: null,
+			repository: this.repository,
+			syncedAt: null,
+			stale: true,
+		};
 	}
 
 	async listCached(): Promise<OpenMarketplaceSnapshot> {
