@@ -49,6 +49,11 @@ describe("loadOpenMarketplacePresentation", () => {
 				schemaVersion: 1,
 				blocks: [
 					{
+						type: "hero",
+						title: "Demo MCP",
+						image: "assets/icon.svg",
+					},
+					{
 						type: "feature-grid",
 						items: [{ title: "Fast", description: "Local first", icon: "assets/icon.svg" }],
 					},
@@ -67,6 +72,20 @@ describe("loadOpenMarketplacePresentation", () => {
 						},
 					},
 					{ type: "image", src: "assets/icon.svg", alt: "Demo" },
+					{
+						type: "gallery",
+						title: "Screens",
+						items: [{ src: "assets/icon.svg", alt: "Preview" }],
+					},
+					{
+						type: "stats",
+						items: [{ value: "3", label: "Steps" }],
+					},
+					{
+						type: "comparison",
+						left: { title: "Before", items: ["Manual"] },
+						right: { title: "After", items: ["Automated"] },
+					},
 					{ type: "callout", tone: "warning", title: "Permission", content: "Use least privilege." },
 					{ type: "markdown", path: "README.md" },
 					{ type: "links", items: [{ label: "Docs", href: "https://example.com/docs" }] },
@@ -95,22 +114,36 @@ describe("loadOpenMarketplacePresentation", () => {
 		const presentation = loadOpenMarketplacePresentation(root, ability, "2026.07.8");
 
 		expect(presentation?.icon).toMatch(/^vetta-file:\/\/local\/.+\?v=2026\.07\.8$/);
-		expect(presentation?.detail.blocks).toHaveLength(7);
+		expect(presentation?.detail.blocks).toHaveLength(11);
 		expect(presentation?.detail.blocks?.[0]).toMatchObject({
+			type: "hero",
+			image: expect.stringContaining("vetta-file://local/"),
+		});
+		expect(presentation?.detail.blocks?.[1]).toMatchObject({
 			type: "feature-grid",
 			items: [{ icon: expect.stringContaining("vetta-file://local/") }],
 		});
-		expect(presentation?.detail.blocks?.[2]).toMatchObject({
+		expect(presentation?.detail.blocks?.[3]).toMatchObject({
 			type: "showcase",
 			showcase: { template: "chat-over-canvas", canvas: "code" },
 		});
-		expect(presentation?.detail.blocks?.[4]).toEqual({
+		expect(presentation?.detail.blocks?.[8]).toEqual({
 			type: "callout",
 			tone: "warning",
 			title: "Permission",
 			content: "Use least privilege.",
 		});
-		expect(presentation?.detail.blocks?.[5]).toEqual({
+		expect(presentation?.detail.blocks?.[5]).toMatchObject({
+			type: "gallery",
+			items: [{ src: expect.stringContaining("vetta-file://local/") }],
+		});
+		expect(presentation?.detail.blocks?.[6]).toEqual({ type: "stats", items: [{ value: "3", label: "Steps" }] });
+		expect(presentation?.detail.blocks?.[7]).toEqual({
+			type: "comparison",
+			left: { title: "Before", items: ["Manual"], tone: "neutral" },
+			right: { title: "After", items: ["Automated"], tone: "accent" },
+		});
+		expect(presentation?.detail.blocks?.[9]).toEqual({
 			type: "markdown",
 			content: "## Usage\n\nRead from a packaged file.",
 		});

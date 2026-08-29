@@ -168,6 +168,12 @@ function resolveBlockAssets(
 	resolveAssetUrl: PresentationAssetUrlResolver,
 ): OpenMarketplaceDetailBlock[] {
 	return blocks.map((block) => {
+		if (block.type === "hero" && block.image) {
+			return {
+				...block,
+				image: resolveImageReference(sourceDir, block.image, resolveAssetUrl, false),
+			};
+		}
 		if (block.type === "feature-grid") {
 			return {
 				...block,
@@ -190,6 +196,15 @@ function resolveBlockAssets(
 			return {
 				...block,
 				src: resolveImageReference(sourceDir, block.src, resolveAssetUrl, false),
+			};
+		}
+		if (block.type === "gallery") {
+			return {
+				...block,
+				items: block.items.map((item) => ({
+					...item,
+					src: resolveImageReference(sourceDir, item.src, resolveAssetUrl, false),
+				})),
 			};
 		}
 		if (block.type === "links") {

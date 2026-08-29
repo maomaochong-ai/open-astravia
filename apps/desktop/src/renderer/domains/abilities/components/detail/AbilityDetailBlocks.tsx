@@ -3,6 +3,7 @@ import { Button, cn } from "@vetta/ui";
 import { AbilityIcon } from "../AbilityIcon";
 import { AbilityMarkdownBody } from "./AbilityMarkdownBody";
 import { AbilityShowcaseList } from "./AbilityShowcaseList";
+import { AbilityDetailComparison, AbilityDetailGallery, AbilityDetailHero, AbilityDetailStats } from "./AbilityRichDetailBlocks";
 
 const CALLOUT_TONE_CLASS = {
 	info: "border-border/60 bg-muted/45",
@@ -21,7 +22,8 @@ function AbilityDetailBlockView({
 }: {
 	block: AbilityDetailBlock;
 	abilityType: AbilityType;
-}): JSX.Element {
+}): JSX.Element | null {
+	if (block.type === "hero") return <AbilityDetailHero block={block} />;
 	if (block.type === "feature-grid") {
 		return (
 			<section className="flex flex-col gap-3">
@@ -84,6 +86,10 @@ function AbilityDetailBlockView({
 		);
 	}
 
+	if (block.type === "gallery") return <AbilityDetailGallery block={block} />;
+	if (block.type === "stats") return <AbilityDetailStats block={block} />;
+	if (block.type === "comparison") return <AbilityDetailComparison block={block} />;
+
 	if (block.type === "callout") {
 		return (
 			<aside className={cn("rounded-xl border px-4 py-3", CALLOUT_TONE_CLASS[block.tone])}>
@@ -99,7 +105,7 @@ function AbilityDetailBlockView({
 		return <AbilityMarkdownBody content={block.content} />;
 	}
 
-	return (
+	if (block.type === "links") return (
 		<section className="flex flex-col gap-3">
 			<BlockTitle>{block.title}</BlockTitle>
 			<div className="flex flex-wrap gap-2">
@@ -112,6 +118,8 @@ function AbilityDetailBlockView({
 			</div>
 		</section>
 	);
+
+	return null;
 }
 
 /** 仓库声明数据、宿主决定组件：不接收 className、HTML、脚本或自定义操作。 */

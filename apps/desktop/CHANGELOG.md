@@ -4,6 +4,7 @@
 
 - 能力详情 showcase 新增宿主模板 `canvas-hero`、`prompt-result`、`spotlight`、`workbench`，以及 canvas 场景 `browser`、`terminal`、`board`。构图由 Desktop 绘制，插件仍只能声明模板名、场景名和文案，不能注入 CSS 或 HTML。
 - 能力详情的结构化 `markdown` 区块支持通过 `path` 引用能力包内 Markdown 文件，并在主进程加载时解析为原有正文合同；长说明不再需要转义成 JSON 单行字符串。引用继续受包根路径与 512 KiB 文件上限约束，Browser Use 系统插件同步补齐双语 showcase、功能网格和使用说明详情。
+- 能力详情新增 `hero`、`gallery`、`stats`、`comparison` 四种声明式区块：插件可以声明品牌头图、截图网格、指标卡和两列对比，Desktop 负责响应式布局、主题 Token 和安全资源解析；Browser Use 示例已使用 Hero、指标卡和对比区块，详情页不再只能依赖同一种 showcase 外观。
 - 设置中的「插件设置」升级为统一「工具配置」目录：由 Runtime Core Definition/Layer 聚合内建图片处理与插件设置，
   统一渲染可编辑 Schema、配置消费者及其 `native` / `adapter` 支持方式。敏感插件字段在进入 IPC 前删除；配置写入继续由
   Agent Settings 与 Plugin Settings 各自的持久化 Adapter 负责。没有配置的 Tool 不显示空条目。

@@ -27,6 +27,16 @@ const showcaseSchema = z
 
 export const marketplaceDetailBlockSchema = z.discriminatedUnion("type", [
 	z.object({
+		type: z.literal("hero"),
+		eyebrow: z.string().optional(),
+		title: z.string().min(1),
+		description: z.string().optional(),
+		image: z.string().min(1).optional(),
+		image_alt: z.string().optional(),
+		layout: z.enum(["split", "stacked"]).default("split"),
+		badges: z.array(z.string().min(1)).max(8).optional(),
+	}),
+	z.object({
 		type: z.literal("feature-grid"),
 		title: z.string().optional(),
 		items: z
@@ -50,6 +60,48 @@ export const marketplaceDetailBlockSchema = z.discriminatedUnion("type", [
 		src: z.string().min(1),
 		alt: z.string().optional(),
 		caption: z.string().optional(),
+	}),
+	z.object({
+		type: z.literal("gallery"),
+		title: z.string().optional(),
+		items: z
+			.array(
+				z.object({
+					src: z.string().min(1),
+					alt: z.string().optional(),
+					caption: z.string().optional(),
+				}),
+			)
+			.min(1)
+			.max(8),
+	}),
+	z.object({
+		type: z.literal("stats"),
+		title: z.string().optional(),
+		items: z
+			.array(
+				z.object({
+					value: z.string().min(1),
+					label: z.string().min(1),
+					description: z.string().optional(),
+				}),
+			)
+			.min(1)
+			.max(6),
+	}),
+	z.object({
+		type: z.literal("comparison"),
+		title: z.string().optional(),
+		left: z.object({
+			title: z.string().min(1),
+			items: z.array(z.string().min(1)).min(1).max(8),
+			tone: z.enum(["neutral", "accent"]).default("neutral"),
+		}),
+		right: z.object({
+			title: z.string().min(1),
+			items: z.array(z.string().min(1)).min(1).max(8),
+			tone: z.enum(["neutral", "accent"]).default("accent"),
+		}),
 	}),
 	z.object({
 		type: z.literal("callout"),

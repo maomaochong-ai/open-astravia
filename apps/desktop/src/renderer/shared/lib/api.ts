@@ -379,12 +379,43 @@ export interface AbilityLinkItem {
 	href: string;
 }
 
+export interface AbilityGalleryItem {
+	src: string;
+	alt?: string;
+	caption?: string;
+}
+
+export interface AbilityStatItem {
+	value: string;
+	label: string;
+	description?: string;
+}
+
+export interface AbilityComparisonColumn {
+	title: string;
+	items: string[];
+	tone?: "neutral" | "accent";
+}
+
 /** 仓库只能声明宿主支持的区块，不能注入 HTML、脚本、样式或任意操作。 */
 export type AbilityDetailBlock =
+	| {
+			type: "hero";
+			eyebrow?: string;
+			title: string;
+			description?: string;
+			image?: string;
+			image_alt?: string;
+			layout?: "split" | "stacked";
+			badges?: string[];
+	  }
 	| { type: "feature-grid"; title?: string; items: AbilityFeatureItem[] }
 	| { type: "steps"; title?: string; items: AbilityStepItem[] }
 	| { type: "showcase"; showcase: AbilityShowcase }
 	| { type: "image"; src: string; alt?: string; caption?: string }
+	| { type: "gallery"; title?: string; items: AbilityGalleryItem[] }
+	| { type: "stats"; title?: string; items: AbilityStatItem[] }
+	| { type: "comparison"; title?: string; left: AbilityComparisonColumn; right: AbilityComparisonColumn }
 	| { type: "callout"; tone: "info" | "success" | "warning"; title?: string; content: string }
 	| { type: "markdown"; content: string }
 	| { type: "links"; title?: string; items: AbilityLinkItem[] };

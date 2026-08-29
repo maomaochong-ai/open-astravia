@@ -162,12 +162,19 @@ abilities/mcp/context7/
 - `i18n[locale]` 可以覆盖格式和文件路径；未命中语言时使用顶层详情。
 - 所有相对路径都必须留在当前能力目录内。客户端限制描述文件、详情文件和图片大小，并拒绝非图片资源。
 
-结构化详情由客户端白名单组件渲染，不执行仓库提供的 HTML、JavaScript、CSS、iframe 或自定义操作。当前区块包括 `feature-grid`、`steps`、`showcase`、`image`、`callout`、`markdown` 和 `links`：
+结构化详情由客户端白名单组件渲染，不执行仓库提供的 HTML、JavaScript、CSS、iframe 或自定义操作。当前区块包括 `hero`、`feature-grid`、`steps`、`showcase`、`image`、`gallery`、`stats`、`comparison`、`callout`、`markdown` 和 `links`：
 
 ```json
 {
   "schemaVersion": 1,
   "blocks": [
+    {
+      "type": "hero",
+      "title": "让 Agent 在真实浏览器里工作",
+      "description": "品牌头图、徽章和图片由能力包声明，布局由 Desktop 统一渲染。",
+      "image": "assets/logo.svg",
+      "badges": ["可见窗口", "提交前确认"]
+    },
     {
       "type": "feature-grid",
       "title": "Capabilities",

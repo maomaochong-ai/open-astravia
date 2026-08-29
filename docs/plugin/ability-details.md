@@ -118,6 +118,91 @@ Markdown 区块可以二选一：
 ## 区块参考
 
 区块按数组顺序渲染。宿主只接受下列白名单类型，不执行包内 HTML、JavaScript、CSS、iframe 或自定义操作。
+如果需要兼容尚未支持新区块的旧版客户端，请在整页 `format: "blocks"` 声明中提供 `fallback` Markdown；旧版校验失败时会回退到该文件。
+
+### hero
+
+品牌头图，适合详情页开头。它只描述文案、徽章和一张包内/HTTPS 图片，背景、排版和响应式布局由宿主统一提供。
+
+```json
+{
+  "type": "hero",
+  "eyebrow": "REAL BROWSER AUTOMATION",
+  "title": "让 Agent 在你看得见的浏览器里工作",
+  "description": "复用登录态，完成多步骤网页任务；提交前始终确认。",
+  "image": "presentation/logo.svg",
+  "image_alt": "Browser 插件标志",
+  "layout": "split",
+  "badges": ["可见窗口", "会话隔离"]
+}
+```
+
+`layout` 可选 `split`（文案与图片左右分栏，默认值）或 `stacked`（窄屏和品牌宣言常用的上下布局）。`image` 可省略。
+
+### stats
+
+用少量数字或短词概括适用范围、规模和关键约束。宿主使用自适应网格，不需要填写列数。
+
+```json
+{
+  "type": "stats",
+  "title": "适合哪些任务",
+  "items": [
+    { "value": "真实", "label": "页面环境", "description": "不是静态 HTML" },
+    { "value": "多步", "label": "任务流程" },
+    { "value": "可控", "label": "关键动作", "description": "提交前人工确认" }
+  ]
+}
+```
+
+最多 6 项。`value` 和 `label` 必填，`description` 可省略。
+
+### gallery
+
+展示多张界面截图或流程图。图片可以是插件包内的 `presentation/**` 文件，也可以是 HTTPS 地址；不接受 HTML、iframe 或脚本。
+
+```json
+{
+  "type": "gallery",
+  "title": "工作流预览",
+  "items": [
+    {
+      "src": "presentation/step-1.webp",
+      "alt": "打开网站并等待登录",
+      "caption": "1. 在可见窗口中完成登录"
+    },
+    {
+      "src": "presentation/step-2.webp",
+      "alt": "读取页面快照",
+      "caption": "2. Agent 根据页面结构定位内容"
+    }
+  ]
+}
+```
+
+图片按自适应网格排列，最多 8 张；`alt` 和 `caption` 可省略，但建议为截图提供有意义的 `alt`。
+
+### comparison
+
+并排解释两种方式、适用边界或“之前 / 之后”。每一列都是声明式文本列表，可通过 `tone` 选择中性或强调样式。
+
+```json
+{
+  "type": "comparison",
+  "title": "从查资料到完成任务",
+  "left": {
+    "title": "只做网页搜索",
+    "items": ["返回搜索结果", "遇到登录态就中断"]
+  },
+  "right": {
+    "title": "使用 Browser",
+    "tone": "accent",
+    "items": ["打开真实网站", "提交前交还人工确认"]
+  }
+}
+```
+
+`tone` 可选 `neutral` 或 `accent`；默认左列为 `neutral`、右列为 `accent`。每列最多 8 条。
 
 ### feature-grid
 
@@ -337,4 +422,3 @@ HTTP(S) 外链按钮。
 - 图片路径大小写与归档中的真实文件一致；
 - `bunx vite build` 生成的 zip 包含 `ability.json` 和 `presentation/**`；
 - 安装后在「能力 → 我的」打开插件详情，核对宿主自动生成的权限和贡献项是否符合预期。
-

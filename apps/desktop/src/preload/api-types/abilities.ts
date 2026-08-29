@@ -75,11 +75,47 @@ export interface OpenMarketplaceLinkItem {
 	href: string;
 }
 
+export interface OpenMarketplaceGalleryItem {
+	src: string;
+	alt?: string;
+	caption?: string;
+}
+
+export interface OpenMarketplaceStatItem {
+	value: string;
+	label: string;
+	description?: string;
+}
+
+export interface OpenMarketplaceComparisonColumn {
+	title: string;
+	items: string[];
+	tone?: "neutral" | "accent";
+}
+
 export type OpenMarketplaceDetailBlock =
+	| {
+			type: "hero";
+			eyebrow?: string;
+			title: string;
+			description?: string;
+			image?: string;
+			image_alt?: string;
+			layout?: "split" | "stacked";
+			badges?: string[];
+	  }
 	| { type: "feature-grid"; title?: string; items: OpenMarketplaceFeatureItem[] }
 	| { type: "steps"; title?: string; items: OpenMarketplaceStepItem[] }
 	| { type: "showcase"; showcase: OpenMarketplaceShowcase }
 	| { type: "image"; src: string; alt?: string; caption?: string }
+	| { type: "gallery"; title?: string; items: OpenMarketplaceGalleryItem[] }
+	| { type: "stats"; title?: string; items: OpenMarketplaceStatItem[] }
+	| {
+			type: "comparison";
+			title?: string;
+			left: OpenMarketplaceComparisonColumn;
+			right: OpenMarketplaceComparisonColumn;
+	  }
 	| { type: "callout"; tone: "info" | "success" | "warning"; title?: string; content: string }
 	| { type: "markdown"; content: string }
 	| { type: "links"; title?: string; items: OpenMarketplaceLinkItem[] };

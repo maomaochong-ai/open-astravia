@@ -6,13 +6,34 @@
 	"detail": {
 		"blocks": [
 			{
-				"type": "showcase",
-				"showcase": {
-					"template": "workbench",
-					"canvas": "browser",
-					"brand_name": "Orders",
-					"user_prompt": "打开后台订单页，我登录后帮我整理本月数据，但先不要提交任何修改。",
-					"assistant_reply": "我会打开真实浏览器，等你完成登录，再用页面快照读取订单并整理结果；涉及提交前会停下来让你确认。"
+				"type": "hero",
+				"eyebrow": "真实浏览器自动化",
+				"title": "让 Agent 在你看得见的浏览器里工作",
+				"description": "复用你的登录态，读取真实页面并完成多步骤操作；涉及提交、发送或删除时始终停下来确认。",
+				"image": "icon.png",
+				"image_alt": "Browser 插件图标",
+				"badges": ["可见窗口", "会话隔离", "提交前确认"]
+			},
+			{
+				"type": "stats",
+				"title": "适合哪些网页任务",
+				"items": [
+					{ "value": "真实", "label": "页面环境", "description": "不是静态 HTML 或模拟器" },
+					{ "value": "多步", "label": "任务流程", "description": "导航、填写、等待与校验" },
+					{ "value": "可控", "label": "关键动作", "description": "提交前保留人工确认" }
+				]
+			},
+			{
+				"type": "comparison",
+				"title": "从“查资料”到“完成任务”",
+				"left": {
+					"title": "只做网页搜索",
+					"items": ["只能返回搜索结果", "遇到登录态和复杂表单就会中断", "无法复用当前页面上下文"]
+				},
+				"right": {
+					"title": "使用 Browser",
+					"tone": "accent",
+					"items": ["打开你正在使用的真实网站", "读取页面结构并执行多步操作", "高风险动作交还给你确认"]
 				}
 			},
 			{
@@ -50,13 +71,34 @@
 			"en": {
 				"blocks": [
 					{
-						"type": "showcase",
-						"showcase": {
-							"template": "workbench",
-							"canvas": "browser",
-							"brand_name": "Orders",
-							"user_prompt": "Open the admin orders page. After I sign in, summarize this month's data, but don't submit any changes.",
-							"assistant_reply": "I'll open a real browser, wait for you to sign in, then read the orders through page snapshots and organize the results. I'll stop for confirmation before anything is submitted."
+						"type": "hero",
+						"eyebrow": "REAL BROWSER AUTOMATION",
+						"title": "Let the agent work in a browser you can see",
+						"description": "Reuse your sign-in state, read real pages and complete multi-step tasks. The agent always pauses before submitting, sending or deleting.",
+						"image": "icon.png",
+						"image_alt": "Browser plugin icon",
+						"badges": ["Visible window", "Isolated sessions", "Confirm before submit"]
+					},
+					{
+						"type": "stats",
+						"title": "What it is built for",
+						"items": [
+							{ "value": "Real", "label": "Page environment", "description": "Not static HTML or a simulator" },
+							{ "value": "Multi-step", "label": "Task flows", "description": "Navigate, fill, wait and verify" },
+							{ "value": "Controlled", "label": "Critical actions", "description": "Keep human confirmation before submit" }
+						]
+					},
+					{
+						"type": "comparison",
+						"title": "From finding information to completing work",
+						"left": {
+							"title": "Web search only",
+							"items": ["Returns search results only", "Stops at sign-in and complex forms", "Cannot reuse the current page context"]
+						},
+						"right": {
+							"title": "With Browser",
+							"tone": "accent",
+							"items": ["Open the real site you use", "Read structure and execute multi-step actions", "Hand high-risk actions back for confirmation"]
 						}
 					},
 					{
