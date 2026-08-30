@@ -42,7 +42,7 @@
 - `plugin.json` 增加 `contributionMode.hardIsolation: true`；
 - 提供 input action 打开/关闭内容创作模式；
 - 未打开时 tools、skills、system prompt 和 Activity Tab 都不进入会话；
-- ~~`agent_mode: ["work"]` 继续作为上层硬界。~~（已失效：agent_mode 随 ADR-0071 废弃，误调防线改由 heavy 首调确认与 run 自带确认承担。）
+- ~~`agent_mode: ["work"]` 继续作为上层硬界。~~（已失效：agent_mode 随 ADR-0071 废弃，工具选择由描述引导，run 自带确认保留；工具首调确认已移除。）
 
 这直接解决无关 Work 对话被污染的问题。
 
@@ -96,7 +96,7 @@ type EditRequest =
 ### L2：稳定工具面与按需 Skill
 
 插件贡献启用期间，`inspect`、`assets`、`edit`、`run` 保持固定的模型工具集合与注册顺序。工具的
-name、description 和判别式 Schema 负责选择语义；heavy 首调确认与 run 全局确认继续承担执行安全边界。
+name、description 和判别式 Schema 负责选择语义；执行仍受插件权限、输入校验与 run 全局确认约束，不再增加工具首调确认。
 
 插件通过 `agent.systemPrompt.promptPaths` 固定贡献一段简洁的工作流路由提示，并申请最小的
 `agent.systemPrompt.write` 权限；它只区分复杂、规范、可审查的内容生产与简单、一次性、要求立即出结果的

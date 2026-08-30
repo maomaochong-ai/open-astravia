@@ -45,7 +45,7 @@ Todo、Memory/Knowledge/Skill/Plugin/IM 的产品策略、上下文和 Compactio
 
 ### 产品 Tool 与平台 Tool
 
-Tool 的模型合同按语义而不是执行环境归属：名称、描述、Schema、Scope、Category、`sideEffect`、结果文本和
+Tool 的模型合同按语义而不是执行环境归属：名称、描述、Schema、Scope、Category、结果文本和
 产品激活规则属于 `coding-agent` Feature；文件、路径、进程、Shell 和 Desktop 命令实现属于平台 Runtime。
 产品 Tool 需要环境能力时，通过 `runtime-*` 协议 Port 注入，不能为了复用 Node 实现而把整个 Tool 下沉到
 `runtime-node`。

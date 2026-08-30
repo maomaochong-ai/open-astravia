@@ -1,11 +1,6 @@
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { CodingToolRegistration } from "@vetta/runtime-tools";
-import {
-	type ConversationScenario,
-	DEFAULT_SCENARIO,
-	type ToolCategory,
-	type ToolSideEffect,
-} from "../profiles/index.js";
+import { type ConversationScenario, DEFAULT_SCENARIO, type ToolCategory } from "../profiles/index.js";
 
 /** Coding Agent 在通用 Runtime Tool 注册之上拥有的产品策略元数据。 */
 export interface CodingAgentRuntimeToolRegistration<TInput extends object = Readonly<Record<string, unknown>>>
@@ -18,8 +13,6 @@ export interface CodingAgentRuntimeToolRegistration<TInput extends object = Read
 	readonly availabilityPolicy?: "knowledge-runtime";
 	/** 结果投影行为是独立策略，不由展示分类隐式推导。 */
 	readonly resultProjection?: "preserve";
-	/** 副作用等级（宿主侧元数据，不进 LLM schema）。缺省 = light。 */
-	readonly sideEffect?: ToolSideEffect;
 }
 
 export type CodingAgentToolActivation =

@@ -182,7 +182,6 @@ async function initializeSession<TOwnershipBinding>(
 			askUserQuestionRuntime,
 			configurationState,
 			executionRuntime,
-			heavyToolPolicyRuntime,
 			mcpController,
 			memoryRuntime,
 			pluginMcpRuntime,
@@ -330,7 +329,6 @@ async function initializeSession<TOwnershipBinding>(
 				mcpController,
 				extensionEvents,
 				extensionToolRuntime: options.extensionToolRuntime,
-				heavyToolPolicyRuntime,
 				initializationTimeline: timeline,
 				imageSettingsSnapshots: options.imageSettingsSnapshots,
 				reportActiveToolNames: async (activeToolNames) => {

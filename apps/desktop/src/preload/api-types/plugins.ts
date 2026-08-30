@@ -223,8 +223,6 @@ export interface PluginAgentToolRegistration {
 	scope_use?: readonly string[];
 	/** 需要的会话能力 slug。 */
 	requires?: string[];
-	/** 副作用等级（"light" | "heavy"，缺省 = light）。heavy 工具会话内首次调用前需用户确认。 */
-	side_effect?: string;
 	/** 与本插件 contributes.settings 的可选 Adapter 关联；缺省表示工具不提供配置。 */
 	configuration?: { settingKeys?: readonly string[] };
 	context?: { conversation?: "summary" | "messages" };

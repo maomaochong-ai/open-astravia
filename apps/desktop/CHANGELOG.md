@@ -68,6 +68,7 @@
 
 ### Changed
 
+- 移除工具副作用分级、统一首调确认弹窗及插件注册警告，删除 renderer/preload/IPC 中的 `side_effect` 传输；普通提问、沙盒授权、插件权限和工具自带业务确认保持不变。
 - 能力详情页改为「全可见 + 按含义分形」：能力清单短条目自动并排；步骤是带序号连线的流程轨；对照是未选列表对选中面板，不按行 zip；指标是色块度量行，不拉成通栏 KPI；Hero 是带侧线的封面承诺，并忽略插件 Logo。章节用字号和淡线分层，不再点选才展开。
 - 能力详情既有 `chat-over-canvas` / `chat-thread` 改为以产品窗口为主角：不同 `canvas` 使用可辨认窗体外形（画板、编辑器、文档、浏览器、终端、看板、仪表盘），对话不再占掉大部分头图；`brand_name` / `brand_icon_url` 会画进标题或页签。
 - 插件加载收敛为唯一的 Module Federation 合同：删除 `plugin.json#runtime`、直载分支及相关默认值，`moduleFederation` 改为必填；此前已删除 Worker/WASM、声明式 UI 与第二套 RPC 激活路径。插件权限改为治理型宿主 API 声明，local/community 插件经用户授权后也可执行清单命令、使用网络通配符及浏览器 attach/runtime manage；安装页明确提示插件与宿主共享 renderer、权限不是安全沙箱。宿主私有 `official` / `gateway` 合同仍保持来源限制（ADR-0091）。

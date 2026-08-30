@@ -30,7 +30,6 @@ import { createCodingAgentModelRuntime } from "../../models/index.js";
 import { createCodingAgentPluginMcpRuntime } from "../../plugins/runtime/mcp-runtime.js";
 import type { CodingAgentSessionStorageTarget, CreateCodingAgentSessionOptions } from "../../public-api/sdk/index.js";
 import { parseCodingAgentLegacySessionDocument } from "../../sessions/legacy/document.js";
-import { CODING_AGENT_TOOL_CONSENT_FUNCTION } from "../../tool-policy/tool-consent-contract.js";
 import { createCodingAgentCodingToolResultPolicy } from "../../tool-results/result-policy.js";
 import { CodingAgentSdkExtensionTransitionAdapter } from "../coding-agent-sdk-extension-transition-adapter.js";
 import { CodingAgentSdkResourceSourceAdapter } from "../coding-agent-sdk-resource-source-adapter.js";
@@ -347,15 +346,6 @@ interface SdkSessionFunctionSource {
 	dispose(): void;
 }
 
-const SDK_HEAVY_TOOL_CONSENT_TEXT = {
-	question: (toolName: string) => `允许在本会话中运行「${toolName}」吗？`,
-	header: "工具确认",
-	allowLabel: "允许",
-	allowDescription: "本会话内该工具不再重复确认。",
-	denyLabel: "取消",
-	denyDescription: "本次调用直接失败，不产生任何副作用。",
-} as const;
-
 /** 把公共 SDK 的产品能力绑定到 Session Extension functions，不让兼容合同进入 Runtime。 */
 function createSdkSessionFunctionSource(
 	options: CreateCodingAgentSessionOptions,
@@ -377,34 +367,6 @@ function createSdkSessionFunctionSource(
 			signal,
 		);
 		return cloneQuestionResult(result);
-	});
-	registry.register(CODING_AGENT_TOOL_CONSENT_FUNCTION, async ({ toolName }, signal) => {
-		const result = await capability.ask(
-			{
-				questions: [
-					{
-						question: SDK_HEAVY_TOOL_CONSENT_TEXT.question(toolName),
-						header: SDK_HEAVY_TOOL_CONSENT_TEXT.header,
-						multiSelect: false,
-						options: [
-							{
-								label: SDK_HEAVY_TOOL_CONSENT_TEXT.allowLabel,
-								description: SDK_HEAVY_TOOL_CONSENT_TEXT.allowDescription,
-							},
-							{
-								label: SDK_HEAVY_TOOL_CONSENT_TEXT.denyLabel,
-								description: SDK_HEAVY_TOOL_CONSENT_TEXT.denyDescription,
-							},
-						],
-					},
-				],
-			},
-			signal,
-		);
-		return !result.cancelled &&
-			result.answers.some((answer) => answer.answers.includes(SDK_HEAVY_TOOL_CONSENT_TEXT.allowLabel))
-			? "allow_session"
-			: "deny";
 	});
 
 	return {

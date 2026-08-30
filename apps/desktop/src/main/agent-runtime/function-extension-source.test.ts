@@ -1,7 +1,6 @@
 import {
 	CODING_AGENT_ASK_USER_QUESTION_FUNCTION,
 	CODING_AGENT_SANDBOX_AUTHORIZATION_FUNCTION,
-	CODING_AGENT_TOOL_CONSENT_FUNCTION,
 	type CodingAgentQuestionFunctionRequest,
 } from "@vetta/coding-agent/function-extensions";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -18,10 +17,9 @@ describe("Desktop Coding Agent function source", () => {
 		for (const dispose of disposals.splice(0).reverse()) dispose();
 	});
 
-	it("binds Ask and Heavy consent to the rebindable question broker", async () => {
+	it("binds explicit questions to the rebindable question broker", async () => {
 		const source = createDesktopCodingAgentFunctionSource({ logger: TEST_LOGGER });
 		expect(source.has(CODING_AGENT_ASK_USER_QUESTION_FUNCTION)).toBe(false);
-		expect(source.has(CODING_AGENT_TOOL_CONSENT_FUNCTION)).toBe(false);
 
 		const handler = vi.fn(async (request: CodingAgentQuestionFunctionRequest) => ({
 			cancelled: false,
@@ -29,7 +27,6 @@ describe("Desktop Coding Agent function source", () => {
 		}));
 		disposals.push(getDesktopUserQuestionBroker().setInteractiveHandler(handler));
 		expect(source.has(CODING_AGENT_ASK_USER_QUESTION_FUNCTION)).toBe(true);
-		expect(source.has(CODING_AGENT_TOOL_CONSENT_FUNCTION)).toBe(true);
 		const signal = new AbortController().signal;
 
 		await expect(
@@ -46,23 +43,10 @@ describe("Desktop Coding Agent function source", () => {
 			cancelled: false,
 			answers: [{ question: "Choose?", answers: ["允许"] }],
 		});
-		await expect(
-			source.invoke(
-				CODING_AGENT_TOOL_CONSENT_FUNCTION,
-				{
-					requestId: "consent-1",
-					sessionId: "session-1",
-					toolName: "publish",
-					reason: "heavy-side-effect",
-				},
-				signal,
-			),
-		).resolves.toBe("allow_session");
-		expect(handler).toHaveBeenLastCalledWith(
+		expect(handler).toHaveBeenCalledWith(
 			expect.objectContaining({
-				requestId: "consent-1",
-				sessionId: "session-1",
-				questions: [expect.objectContaining({ question: "允许在本会话中运行「publish」吗？" })],
+				requestId: "question-1",
+				questions: [{ question: "Choose?", header: "Choice", options: [] }],
 			}),
 			signal,
 		);

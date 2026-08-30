@@ -12,7 +12,6 @@ import { registerDesignTools } from "../src/tools";
 interface Registration {
 	name: string;
 	description?: string;
-	side_effect?: "light" | "heavy";
 	parameters?: {
 		properties?: Record<string, unknown>;
 		required?: string[];
@@ -20,7 +19,6 @@ interface Registration {
 }
 
 const descriptions = new Map<string, string>();
-const sideEffects = new Map<string, string | undefined>();
 const parameters = new Map<string, Registration["parameters"]>();
 
 beforeAll(() => {
@@ -28,7 +26,6 @@ beforeAll(() => {
 		agent: {
 			registerTool: (registration: Registration) => {
 				descriptions.set(registration.name, registration.description ?? "");
-				sideEffects.set(registration.name, registration.side_effect);
 				parameters.set(registration.name, registration.parameters);
 				return { dispose: () => {} };
 			},
@@ -79,14 +76,5 @@ describe("重工具描述", () => {
 		});
 		expect(screenshot?.required).toBeUndefined();
 		expect(descriptions.get("vetd_screenshot")).toMatch(/contact-sheet path to Read once/);
-	});
-
-	it("在工作区建目录树的工具在注册处声明 heavy，其余不声明（缺省 light）", () => {
-		expect(sideEffects.get("vetd_create")).toBe("heavy");
-		expect(sideEffects.get("vetd_install")).toBe("heavy");
-		// screenshot/status/notes 只读或只改会话内状态；restore 可自愈（恢复前自动落一版历史）。
-		expect(sideEffects.get("vetd_screenshot")).toBeUndefined();
-		expect(sideEffects.get("vetd_status")).toBeUndefined();
-		expect(sideEffects.get("vetd_notes")).toBeUndefined();
 	});
 });

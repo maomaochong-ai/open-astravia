@@ -176,14 +176,11 @@ describe("content creation tool registration", () => {
 		}
 	});
 
-	it("edit 在注册处声明 heavy，其余工具缺省 light", () => {
-		// edit 往用户工作区写内容工程文件树；run 自带全局确认对话框、assets 落插件托管存储、
-		// inspect 只读，均不该再进首调确认闸。
-		expect(tool(CONTENT_EDIT_TOOL_NAME).side_effect).toBe("heavy");
-		expect(tool(CONTENT_RUN_TOOL_NAME).side_effect).toBeUndefined();
-		expect(tool(CONTENT_ASSETS_TOOL_NAME).side_effect).toBeUndefined();
-		expect(tool(CONTENT_INSPECT_TOOL_NAME).side_effect).toBeUndefined();
-	});
+	it.each([CONTENT_EDIT_TOOL_NAME, CONTENT_RUN_TOOL_NAME, CONTENT_ASSETS_TOOL_NAME, CONTENT_INSPECT_TOOL_NAME])(
+		"%s 不声明工具副作用分级", (name) => {
+			expect(tool(name)).not.toHaveProperty("side_effect");
+		},
+	);
 
 	it("validates and imports local media without returning file bytes", async () => {
 		const input = validateRegisteredTool(CONTENT_ASSETS_TOOL_NAME, {

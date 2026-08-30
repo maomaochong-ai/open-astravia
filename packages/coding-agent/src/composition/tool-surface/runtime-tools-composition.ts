@@ -30,7 +30,6 @@ import {
 } from "../../runtime-contracts/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import { declareCodingAgentPlatformTools } from "../../tool-policy/platform-tool-declarations.js";
-import type { ToolSideEffectDeclaration } from "../../tool-policy/tool-side-effect.js";
 import type { CodingAgentSpecializedToolRegistrationContext, CodingAgentToolEnvironment } from "../contracts/index.js";
 
 export interface CodingToolsRuntimeCompositionOptions {
@@ -62,8 +61,6 @@ export interface CodingToolsRuntimeComposition {
 	readonly registerTool: (registration: CodingAgentRuntimeToolRegistration) => void;
 	readonly unregisterTool: (toolName: string) => boolean;
 	readonly readToolDeclaration: (toolName: string) => CodingAgentRuntimeToolRegistration | undefined;
-	/** Coding Agent 自有工具的产品策略声明；通用 Runtime Tool Catalog 不承载这些元数据。 */
-	readonly readToolPolicyDeclarations: () => readonly ToolSideEffectDeclaration[];
 	readonly feature: AgentFeatureDefinition;
 	readonly capabilities: RuntimeCapabilityDefinition;
 	readonly compiler: FeatureCompiler;
@@ -168,11 +165,6 @@ export function createCodingToolsRuntimeComposition(
 			return removed;
 		},
 		readToolDeclaration: (toolName) => declarationsByName.get(toolName),
-		readToolPolicyDeclarations: () =>
-			[...declarationsByName.values()].map((registration) => ({
-				name: registration.tool.name,
-				sideEffect: registration.sideEffect,
-			})),
 		feature,
 		capabilities,
 		compiler,
@@ -215,7 +207,6 @@ function withModelOrder<T extends CodingAgentRuntimeToolRegistration>(registrati
 /** 产品策略字段在进入通用 Runtime Tool Catalog 前必须被剥离。 */
 function toRuntimeToolRegistration(registration: CodingAgentRuntimeToolRegistration): CodingToolRegistration {
 	const {
-		sideEffect: _sideEffect,
 		scopeUse: _scopeUse,
 		requires: _requires,
 		category: _category,

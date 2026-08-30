@@ -140,6 +140,7 @@
 
 ### Breaking Changes
 
+- 完整移除工具副作用分级与会话首调确认：删除 `sideEffect` / `side_effect`、工具名兜底、确认台账与 consent 扩展合同，Desktop/SDK/CLI/IM 不再安装专用适配。原受拦截工具无需确认宿主即可执行；沙盒、插件权限、Hook 与业务确认不变，不保留兼容层（ADR-0071 2026-08-30 修订）。
 - **MCP Supervisor 改为 Host 注入**：Coding Agent 的 MCP Tool Source 与 Plugin MCP Runtime 不再创建或选择
   `runtime-node` Supervisor，改为接收由 CLI、Desktop 或 SDK Host 创建的 `McpServerSupervisor` 并负责其会话内初始化和释放。
   Node 文件配置、OAuth 和 transport 的所有权集中在 `runtime-node`，MCP 产品装饰、动态同步和结果策略保持不变。
@@ -171,7 +172,7 @@
   `BackgroundCommandService`；产品组合会忽略 Host 中同名的旧注册并使用内置定义，避免迁移期重复注册。
   Node、CLI、Desktop 与 SDK 的可见工具集合、顺序和后台任务行为保持不变。
 
-- `im_send_attachment` 的模型合同、外发结果和 heavy 副作用声明迁入 Coding Agent IM Feature，并要求显式注入
+- `im_send_attachment` 的模型合同、外发结果迁入 Coding Agent IM Feature，并要求显式注入
   `ImSendAttachmentFileOperations`。CLI RPC Host 使用 `runtime-node` 的本地文件检查实现；路径校验、发送行为和错误文本
   保持不变。
 
@@ -355,8 +356,6 @@
 
 - Plugin 配置、贡献、调用与 Turn handler lease 合同统一归 Coding Agent，并通过新的
   `@vetta/coding-agent/plugin-runtime` 公共入口供 Desktop、CLI 与 SDK 组合根使用；Runtime Core 不再暴露产品协议。
-- Heavy/Light 策略改由 `CodingAgentRuntimeToolRegistration` 与独立策略声明源拥有；进入通用 Runtime Tool Catalog
-  前会剥离 `sideEffect`。Plugin `side_effect`、显式 light 豁免、兜底清单、确认台账与 IM 外发判 heavy 的行为保持不变。
 - **Invoke Skill 归入 Skill 领域**：`invoke_skill` 的模型名称、Schema、描述、输出、Scope、Category 和注册逻辑从
   `runtime-node` 迁入 `resources/skills/tool`。现有 Turn 级 Skill 快照、Hook 激活、缺失/读取失败结果和模型顺序保持不变；
   Skill Hook 的内部内容 revision 同时改用平台中立的确定性文本指纹，`runtime-node` 不再持有无平台依赖的 Skill 产品语义。
@@ -381,12 +380,7 @@
   返回文本、锁定顺序和宿主观察协议保持不变。
 - 系统提示词编译器现在为每个启用块生成与最终渲染文本一致的位置和稳定性元数据，供 Runtime 在不保留块正文的前提下定位缓存失效来源。
 - **Todo 接入统一 Session Extension 生命周期、端点与观察协议**：Todo 的 Runtime、Tool Feature、Conversation Document 持久化参与、自然停止续跑、观察广播和释放由单一 `coding-agent.todo` 扩展拥有；Composition Root 改为消费 typed contributions，并以通用 Session Extension 集合替代 Todo 专属资源登记。新增 `@vetta/coding-agent/session-extensions` 公共协议入口，集中导出 Todo read/clear/observation token、`TodoItem` 和宿主边界 Schema 解析；Desktop、CLI、SDK 与 Subagent 不再依赖 Runtime Core 的 Todo 类型或事件。既有 Todo Tool、快照、锁定、CLI/SDK `todo_update` 与用户可见 clear/read 行为不变。
-- **heavy 首调确认弹窗文案简化**：提问正文收敛为「允许在本会话中运行「{tool}」吗？」，去掉普通用户读不懂的副作用说明从句（工作区创建文件/计费/不可撤销）。
-- **heavy 首调确认闸接入产品工具的定义级声明**：resolver 从 Coding Agent 独立策略源读取 `sideEffect`，
-  通用 Runtime Tool Catalog 不持有该字段。`im_send_attachment` 仍判 heavy，显式 light 豁免与
-  `DEFAULT_HEAVY_TOOL_NAMES` 存量插件兜底保持不变。
 - **mode 提示词支持共享 partial 与 narration 能力位（ADR-0071 外部审计跟进）**：`modes/partials/*.md` 存各模式共享的提示词段（正文以 `{{> name}}` 引用、构建期展开），work / coding 双份漂移的 deliverables/md_intro/observations 段收敛为单一事实源；frontmatter 新增必填 `narration`（staged = 会话流按 progress 阶段折叠 / inline = 工具行内联），渲染层据注册表查表而不再硬编码 mode id。`generate-modes.mjs` 同时新增工具名卫生校验（正文里拼写错误的工具引用当场构建失败），并修正 work.md 里错误的工具名 `AskUserQuestion` → `ask_user_question`。
-- **插件工具的 `side_effect` 声明通道打通**：SDK `registerTool({ side_effect })` 经 renderer → IPC → 贡献注册表透传至 heavy 首调确认闸的 resolver，插件自此可以（也应该）自行声明重副作用；`DEFAULT_HEAVY_TOOL_NAMES` 明确降级为「声明通道接通前就存在的核心工具」兜底清单，刻意豁免项（vetd_history/vetd_restore/bash 等）补全就近理由。
 - **`agent_mode` 从 fail-closed 过滤降级为排序偏好**：工作模式不再排除任何工具、Skill 或插件 MCP 工具。声明了 `agent_mode` 的条目在非匹配模式下**仍然激活、仍然可调用**，只是被稳定地排到清单末尾（同权重内保持原有顺序，不影响 system prompt 前缀缓存）。
   - **动机**：硬闸让用户在「工作」模式下遇到编程类需求时工具整组消失，模型只能干说不能干活；模式的正确定位是引导而不是权限。
   - **行为变化**：`resolveActiveToolNames`、system prompt 的 Skill 清单、`invoke_skill` 可调用集合、插件 MCP 工具的 Model Call Frame 都不再按模式排除条目。`matchesAgentMode` 保留但语义改为「是否为本模式主推」，新增 `agentModePreferenceRank` 与 `sortByAgentModePreference`。
@@ -395,7 +389,6 @@
 ### Added
 
 - **工作区性质事实进系统提示词**：会话创建时探测 `cwd`（`.git`、`package.json` 及其依赖、`go.mod` / `Cargo.toml` / `pyproject.toml` 等标记文件），把「当前工作区是一个已有的 X 代码仓库、在其中沿用既有技术栈实现、不要另起独立工程」写入 `core.context` 块（排在项目指令文件之前）。事实比规则更强：模型收到「写一个前台页面」时手上直接有消歧依据，不必先 ls。探测结果在会话内固化、不逐轮重算（否则造成前缀缓存抖动），探测失败静默降级为不注入，绝不阻断会话创建。没有 `AGENTS.md` 的工作区同样会得到该段落。
-- **工具副作用分级与 heavy 工具首调确认闸**：工具元数据新增 `sideEffect: "light" | "heavy"`（宿主侧注册用 `sideEffect`，插件贡献与 manifest 用 `side_effect`，均不进 LLM schema）。被判定为 heavy 的工具（在工作区创建目录/文件树、产生外部计费、发起不可撤销外部动作）在会话内首次调用前先经 `ask_user_question` 向用户确认：确认后本会话免确认，拒绝则该次调用失败且不产生副作用，light 工具不受影响。未声明时按内置兜底清单（`vetd_create`、`vetd_install`、`generate_image`、`edit_image`、`render_remotion_video`、`content_creation_edit`）判定；`content_creation_run`（自带全局确认对话框，再加一层就是双重确认）、`content_creation_assets`（落插件托管存储而非用户工作区）与只读的 `content_creation_inspect` 刻意不在清单内，源码就近记有理由。「会话内已确认」是执行状态而非逻辑合同，按 `docs/agent/turn/08-binding-boundaries.md` 1.2 保持实时读取，不进 Turn binding。
 - **Turn 级外部状态隔离**（ADR-0069）：Prompt、AGENTS、Skill 内容、Personalization、Agent Mode、Tool、
   Plugin Tool/Provider、Plugin MCP 与 Extension Tool 在 Turn admission 捕获不可变版本；MCP 先发布目录再
   原子捕获，普通热更新只影响下一 Turn。Session 配置新增不可变 revision snapshot，模型绑定与 Runtime

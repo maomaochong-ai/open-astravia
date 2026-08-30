@@ -37,11 +37,6 @@ import type {
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentToolActivation,
 } from "../../runtime-contracts/index.js";
-import {
-	CODING_AGENT_HEAVY_TOOL_POLICY_RUNTIME,
-	type CodingAgentHeavyToolPolicyRuntime,
-	createCodingAgentHeavyToolPolicySessionExtension,
-} from "../../tool-policy/heavy-tool-policy-session-extension.js";
 import { getCodingAgentOcrExecutionGate } from "../../tool-policy/ocr-execution-gate.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
@@ -86,7 +81,6 @@ export interface CodingAgentSessionPeripheralAssembly {
 	readonly todoRegistration: CodingAgentRuntimeToolRegistration;
 	readonly todoEnabled: boolean;
 	readonly askUserQuestionRuntime: CodingAgentAskUserQuestionExtensionRuntime;
-	readonly heavyToolPolicyRuntime: CodingAgentHeavyToolPolicyRuntime;
 	readonly sessionExtensions: SessionExtensionComposition;
 	readonly baseCapabilities: RuntimeCapabilityDefinition;
 }
@@ -175,7 +169,6 @@ export async function createCodingAgentSessionPeripheralAssembly(
 				configurationState,
 			}),
 			createCodingAgentAskUserQuestionSessionExtension({ scenario: options.scenario }),
-			createCodingAgentHeavyToolPolicySessionExtension(),
 			createCodingAgentSandboxAuthorizationSessionExtension(),
 			createCodingAgentBackgroundWorkSessionExtension(),
 			createCodingAgentPluginConfigurationSessionExtension(),
@@ -204,7 +197,6 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	const todoRegistration = todoExtension.toolRegistration;
 	const todoEnabled = todoExtension.toolEnabled;
 	const askUserQuestionRuntime = sessionExtensions.services.require(CODING_AGENT_ASK_USER_QUESTION_RUNTIME);
-	const heavyToolPolicyRuntime = sessionExtensions.services.require(CODING_AGENT_HEAVY_TOOL_POLICY_RUNTIME);
 	const sandboxAuthorization = sessionExtensions.services.require(CODING_AGENT_SANDBOX_AUTHORIZATION_RUNTIME);
 
 	const executionEnvironment = await profile.createSessionExecutionEnvironment({
@@ -286,7 +278,6 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	return {
 		configurationState,
 		askUserQuestionRuntime,
-		heavyToolPolicyRuntime,
 		specializedToolRegistrations,
 		specializedToolFeature,
 		pluginRuntime,

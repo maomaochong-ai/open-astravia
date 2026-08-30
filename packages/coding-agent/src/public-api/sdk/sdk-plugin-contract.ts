@@ -33,11 +33,6 @@ export interface AgentPluginToolContribution {
 	scope_use?: string[];
 	/** 需要的会话能力 slug（如 "knowledge"）。 */
 	requires?: string[];
-	/**
-	 * 副作用等级（"light" | "heavy"，缺省 = light）。宿主侧元数据，不进 LLM schema。
-	 * heavy 工具在会话内首次调用前需要用户确认，见 tool-policy/heavy-tool-confirmation.ts。
-	 */
-	side_effect?: string;
 	/** 与 `plugin.<pluginId>.settings` 的宿主适配关联；缺省表示没有配置合同。 */
 	configuration?: { settingKeys?: string[]; support: "adapter" };
 	context?: { conversation?: "summary" | "messages" };

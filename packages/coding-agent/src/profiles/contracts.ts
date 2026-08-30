@@ -44,31 +44,3 @@ export interface ToolActivationMetadata {
 	/** 必需的 Session capability（fail-closed）：任一缺失即不激活。 */
 	readonly requires?: readonly string[];
 }
-
-/**
- * 工具副作用等级（宿主侧元数据，不进 LLM schema）。
- *
- * - `light`：只读、可撤销或只影响会话内状态。
- * - `heavy`：在用户工作区创建目录/文件树、产生外部计费、发起不可撤销的外部动作。
- *   heavy 工具在会话内首次调用前需要用户确认，见 tool-policy/heavy-tool-confirmation.ts。
- *
- * 判定优先级：工具/插件自己的显式声明 > DEFAULT_HEAVY_TOOL_NAMES 兜底清单 > light。
- * Coding Agent 工具在产品注册处声明 `sideEffect`，插件工具注册时声明 `side_effect`，
- * 兜底清单只兜仍未声明的存量插件工具。按标准像 heavy 但刻意豁免的工具，在定义处显式
- * 声明 `"light"` 并就近注释理由（自带确认、可自愈、边界由其它机制承担）。命令执行
- * （bash/shell）的边界由 Execution Mode 承担，不归本闸。
- */
-export type ToolSideEffect = "light" | "heavy";
-
-export const DEFAULT_TOOL_SIDE_EFFECT: ToolSideEffect = "light";
-
-export function isToolSideEffect(value: unknown): value is ToolSideEffect {
-	return value === "light" || value === "heavy";
-}
-
-/** 归一化来自 manifest / 插件贡献等外部边界的 side_effect 声明；无效值返回 undefined（= 未声明）。 */
-export function normalizeToolSideEffect(value: unknown): ToolSideEffect | undefined {
-	if (typeof value !== "string") return undefined;
-	const normalized = value.trim().toLowerCase();
-	return isToolSideEffect(normalized) ? normalized : undefined;
-}

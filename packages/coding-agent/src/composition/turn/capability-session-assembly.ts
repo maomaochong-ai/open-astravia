@@ -51,9 +51,6 @@ import type {
 	CodingAgentSystemPromptOptionsResolver,
 	CodingAgentToolActivation,
 } from "../../runtime-contracts/index.js";
-import { createHeavyToolConfirmationInterceptor } from "../../tool-policy/heavy-tool-confirmation.js";
-import type { CodingAgentHeavyToolPolicyRuntime } from "../../tool-policy/heavy-tool-policy-session-extension.js";
-import { createCodingAgentToolSideEffectResolver } from "../../tool-policy/tool-side-effect.js";
 import type { CodingAgentSessionInitializationTimeline } from "../session-initialization/initialization-timeline.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
@@ -124,7 +121,6 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly mcpController?: McpDeferredToolController;
 	readonly extensionEvents: CodingAgentExtensionRunBridge;
 	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
-	readonly heavyToolPolicyRuntime: CodingAgentHeavyToolPolicyRuntime;
 	readonly initializationTimeline?: CodingAgentSessionInitializationTimeline;
 	readonly imageSettingsSnapshots: CodingAgentImageSettingsSnapshotRouter;
 	readonly reportActiveToolNames?: (activeToolNames: readonly string[]) => Promise<void> | void;
@@ -258,23 +254,6 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 				hookRuntime: options.hookRuntime,
 			})
 		: undefined;
-	// 「会话内已确认」是执行状态而非逻辑合同（见 docs/agent/turn/08-binding-boundaries.md 1.2），
-	// 因此台账与确认闸都实时读写，Turn 绑定不复制它。
-	const heavyToolConfirmationInterceptor = createHeavyToolConfirmationInterceptor({
-		ledger: options.heavyToolPolicyRuntime.ledger,
-		consent: options.heavyToolPolicyRuntime.consent,
-		resolveSideEffect: createCodingAgentToolSideEffectResolver({
-			readDeclarations: () => [
-				// 基础 Tool Catalog 只暴露执行合同；产品策略由 Coding Agent 单独持有。
-				...options.codingTools.readToolPolicyDeclarations(),
-				...options.specializedToolRegistrations.map((registration) => ({
-					name: registration.tool.name,
-					sideEffect: registration.sideEffect,
-				})),
-				...(options.activation.readAgentPlugins()?.toolContributions ?? []),
-			],
-		}),
-	});
 	const toolInterceptionCatalog = new DynamicContributionCatalog<CodingAgentToolInterceptor>();
 	toolInterceptionCatalog.register({
 		sourceId: "ecosystem",
@@ -282,13 +261,6 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		revision: "session",
 		order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.ecosystem,
 		value: createEcosystemToolInterceptor(options.hookRuntime),
-	});
-	toolInterceptionCatalog.register({
-		sourceId: "tool-policy",
-		localId: "heavy-tool-confirmation",
-		revision: "session",
-		order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.sideEffectConfirmation,
-		value: heavyToolConfirmationInterceptor,
 	});
 	if (options.extensionEvents) {
 		toolInterceptionCatalog.register({
@@ -358,13 +330,6 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 				revision: "turn",
 				order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.extension,
 				value: boundExtensionEvents.createToolInterceptor(),
-			});
-			catalog.register({
-				sourceId: "tool-policy",
-				localId: "heavy-tool-confirmation",
-				revision: "turn",
-				order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.sideEffectConfirmation,
-				value: heavyToolConfirmationInterceptor,
 			});
 			return {
 				wrapTools: (tools, frameContext) => {

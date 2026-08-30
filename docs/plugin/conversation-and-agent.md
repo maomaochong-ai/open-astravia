@@ -257,7 +257,6 @@ ctx.agent.registerTool({
   description: "Initialize the domain state required by the follow-up tools.",
   parameters: { type: "object", additionalProperties: false },
   scope_use: ["project", "conversation"],
-  side_effect: "heavy",
   async handler({ session, actions }) {
     await initializeDomainState(session.cwd);
     for (const toolName of DOMAIN_TOOLS) actions.tools.enable(toolName);

@@ -273,13 +273,7 @@ function inheritModelOrder(
 }
 
 function toRuntimeExecutionRegistration(registration: CodingAgentRuntimeToolRegistration): CodingToolRegistration {
-	const {
-		scopeUse: _scopeUse,
-		requires: _requires,
-		category: _category,
-		sideEffect: _sideEffect,
-		...runtimeRegistration
-	} = registration;
+	const { scopeUse: _scopeUse, requires: _requires, category: _category, ...runtimeRegistration } = registration;
 	return runtimeRegistration;
 }
 

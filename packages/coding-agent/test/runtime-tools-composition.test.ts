@@ -88,27 +88,7 @@ describe("Coding Tools Runtime Composition Root", () => {
 		composition.dispose();
 	});
 
-	it("keeps product side-effect policy outside the Runtime Tool Catalog", () => {
-		const composition = createCodingToolsRuntimeComposition({
-			cwd: "C:/workspace",
-			environment: { registrations: [], dispose() {} },
-			additionalRegistrations: [
-				{
-					...registration(tool("external_write")),
-					sideEffect: "heavy",
-				},
-			],
-		});
-
-		expect(composition.readToolPolicyDeclarations()).toContainEqual({
-			name: "external_write",
-			sideEffect: "heavy",
-		});
-		expect(composition.registry.resolve("external_write")?.registration).not.toHaveProperty("sideEffect");
-		composition.dispose();
-	});
-
-	it("updates product policy declarations with dynamically registered tools", () => {
+	it("updates activation declarations with dynamically registered tools", () => {
 		const composition = createCodingToolsRuntimeComposition({
 			cwd: "C:/workspace",
 			environment: { registrations: [], dispose() {} },
@@ -116,18 +96,14 @@ describe("Coding Tools Runtime Composition Root", () => {
 
 		composition.registerTool({
 			...registration(tool("host_attachment")),
-			sideEffect: "heavy",
+			category: "external",
 		});
-		expect(composition.readToolPolicyDeclarations()).toContainEqual({
-			name: "host_attachment",
-			sideEffect: "heavy",
-		});
+		expect(composition.readToolDeclaration("host_attachment")?.category).toBe("external");
+		expect(composition.registry.resolve("host_attachment")).toBeDefined();
 
 		expect(composition.unregisterTool("host_attachment")).toBe(true);
-		expect(composition.readToolPolicyDeclarations()).not.toContainEqual({
-			name: "host_attachment",
-			sideEffect: "heavy",
-		});
+		expect(composition.readToolDeclaration("host_attachment")).toBeUndefined();
+		expect(composition.registry.resolve("host_attachment")).toBeUndefined();
 		composition.dispose();
 	});
 

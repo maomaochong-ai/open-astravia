@@ -14,9 +14,3 @@ export {
 	type CodingAgentQuestionRequest,
 	type CodingAgentQuestionResult,
 } from "../features/ask-user-question/contracts.js";
-export {
-	CODING_AGENT_HEAVY_TOOL_POLICY_EXTENSION_ID,
-	CODING_AGENT_TOOL_CONSENT_FUNCTION,
-	type CodingAgentToolConsentDecision,
-	type CodingAgentToolConsentRequest,
-} from "../tool-policy/tool-consent-contract.js";

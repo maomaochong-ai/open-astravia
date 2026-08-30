@@ -81,7 +81,7 @@ mode 的生命周期同步收紧：**会话创建时固化，会话内不可变*
 `defaultAgentMode`（新会话默认值），调整入口只保留新会话页一处（侧边栏 badge 与设置 popover 入口移除）。
 Runtime Host 不再有任何模式推送通道。
 
-误调防护改由四层软约束承担，全部落在提示词与确认交互上，不动能力集合：
+误调引导由以下三层提示词约束承担，不动能力集合（原工具首调确认已于 2026-08-30 移除，见 ADR-0071 修订）：
 
 1. **工具描述反向触发**：重量级工具（`vetta-ui-design` / `image-gen` / `content-creation` /
    `remotion-renderer`）在 description 里显式写出「什么情况下不要用我」。
@@ -90,10 +90,6 @@ Runtime Host 不再有任何模式推送通道。
    事实比规则更强，且不必等模型先 `ls`。
 3. **mode 路径声明**：`apps/desktop/src/main/agent-modes/modes/work.md` 与 `coding.md`（事实源，经
    `bun run generate:agent-modes` 生成 `modes-data.ts`）直接写明本模式下的推荐工作路径。
-4. **heavy 工具首调确认闸**：`packages/coding-agent/src/tool-policy/tool-side-effect.ts` 与
-   `heavy-tool-confirmation.ts` 把工具分 `light` / `heavy`，heavy 工具在会话内首次调用前经
-   `ask_user_question` 向用户确认。这一层拦的是「不可撤销 / 有计费 / 造目录树」的动作，与模式正交，
-   即使用户模式选错也仍然生效。
 
 ## Considered options
 

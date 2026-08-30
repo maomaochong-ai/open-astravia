@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Api, Model } from "@vetta/ai";
 import { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
 import type { RuntimeModel } from "@vetta/runtime-core";
 import {
@@ -21,8 +22,6 @@ import type { CodingAgentSessionExecutionRuntime } from "../../src/execution/ses
 import { CodingAgentExtensionRunBridge } from "../../src/extensions/runtime/extension-run-bridge.js";
 import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import type { CodingAgentContextRuntime } from "../../src/runtime-contracts/index.js";
-import { HeavyToolConfirmationLedger } from "../../src/tool-policy/heavy-tool-confirmation.js";
-import type { CodingAgentHeavyToolPolicyRuntime } from "../../src/tool-policy/heavy-tool-policy-session-extension.js";
 import { createFileSettingsRuntime } from "../fixtures/file-settings-runtime.js";
 import { createTestSessionResourceRuntime } from "../fixtures/node-resource-runtime.js";
 import { preparePrompt } from "./prompt-adapter-test-fixture.js";
@@ -90,7 +89,6 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime: {} as unknown as EcosystemHookRuntime,
 			extensionEvents,
-			heavyToolPolicyRuntime: createHeavyToolPolicyRuntime(),
 			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
 		});
 		disposals.push(() => assembly.dispose());
@@ -188,7 +186,6 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime,
 			extensionEvents: new CodingAgentExtensionRunBridge(),
-			heavyToolPolicyRuntime: createHeavyToolPolicyRuntime(),
 			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
 		});
 		disposals.push(() => assembly.dispose());
@@ -271,7 +268,6 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime: createPassthroughHookRuntime(),
 			extensionEvents,
-			heavyToolPolicyRuntime: createHeavyToolPolicyRuntime(),
 			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
 		});
 		disposals.push(() => assembly.dispose());
@@ -285,7 +281,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		expect(refreshSkills).not.toHaveBeenCalled();
 	});
 
-	it("gates a heavy specialized tool behind one confirmation per session", async () => {
+	it.each(["specialized", "plugin"] as const)("executes %s tools without a consent provider", async (source) => {
 		const codingTools = createCodingToolsRuntimeComposition({
 			cwd: "C:\\workspace",
 			environment: emptyToolEnvironment(),
@@ -295,8 +291,22 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		const todoRuntime = new CodingAgentTodoRuntime();
 		disposals.push(() => todoRuntime.dispose());
 		const executed: string[] = [];
-		const asked: string[] = [];
-		const heavyTool = createTool("vetd_create", executed);
+		const specializedTool = createTool("vetd_create", executed);
+		const pluginToolName = "generate_image";
+		const toolName = source === "specialized" ? specializedTool.name : pluginToolName;
+		const agentPlugins = {
+			toolContributions: [
+				{
+					pluginId: "image-test",
+					id: pluginToolName,
+					name: pluginToolName,
+					description: "Test image generation",
+					parameters: { type: "object" },
+					handlerId: "image-handler",
+					scope_use: ["cli"],
+				},
+			],
+		};
 		const executionRuntime = {
 			feature: createFeature("execution", []),
 			ownsTool: () => false,
@@ -310,9 +320,9 @@ describe("Coding Agent Turn Capability session assembly", () => {
 				scenario: "cli",
 			},
 			activation: {
-				resolve: () => ({ mode: "explicit", toolNames: [heavyTool.name] }),
+				resolve: () => ({ mode: "explicit", toolNames: [toolName] }),
 				readAgentMode: () => undefined,
-				readAgentPlugins: () => undefined,
+				readAgentPlugins: () => agentPlugins,
 				readActiveToolNamesOverride: () => undefined,
 			},
 			prompt: {
@@ -321,8 +331,15 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			baseCapabilities: codingTools.capabilities,
 			codingTools,
 			executionRuntime,
-			specializedToolFeature: createFeature("specialized", [heavyTool]),
-			specializedToolRegistrations: [{ tool: heavyTool, scopeUse: ["cli"], category: "core", sideEffect: "heavy" }],
+			specializedToolFeature: createFeature("specialized", [specializedTool]),
+			specializedToolRegistrations: [{ tool: specializedTool, scopeUse: ["cli"], category: "core" }],
+			pluginRuntime: {
+				readAgentPlugins: () => agentPlugins,
+				invokeTool: async () => {
+					executed.push(pluginToolName);
+					return { value: pluginToolName, effects: [] };
+				},
+			},
 			continuationSources: [],
 			todoRuntime,
 			contextRuntime: createContextRuntime(),
@@ -331,16 +348,17 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			hookRuntime: createPassthroughHookRuntime(),
 			extensionEvents: new CodingAgentExtensionRunBridge(),
 			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
-			heavyToolPolicyRuntime: createHeavyToolPolicyRuntime((request) => {
-				asked.push(request.toolName);
-				return "allow_session";
-			}),
 		});
 		disposals.push(() => assembly.dispose());
 		const capabilities = await compileAssemblyCapabilities(assembly);
 		disposals.push(() => capabilities.close());
 
-		const lease = await capabilities.acquire();
+		const lease = await capabilities.acquire({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
 		try {
 			const composer = lease.snapshot.modelCallFrameComposer!;
 			const frame = await composer.compose({
@@ -348,35 +366,20 @@ describe("Coding Agent Turn Capability session assembly", () => {
 				turnId: "turn-1",
 				signal: new AbortController().signal,
 				messages: [],
-				modelBinding: undefined,
-				frame: { instructions: [], tools: new Map([[heavyTool.name, heavyTool]]) },
+				modelBinding: { model: TEST_MODEL },
+				frame: { instructions: [], tools: new Map([[specializedTool.name, specializedTool]]) },
 			} as unknown as Parameters<typeof composer.compose>[0]);
-			const gated = frame.tools.get(heavyTool.name)!;
+			const tool = frame.tools.get(toolName)!;
 
-			await gated.execute(toolRequest("call-1"));
-			await gated.execute(toolRequest("call-2"));
+			await tool.execute(toolRequest("call-1"));
+			await tool.execute(toolRequest("call-2"));
 		} finally {
 			await lease.release();
 		}
 
-		expect(asked).toHaveLength(1);
-		expect(asked[0]).toContain(heavyTool.name);
-		expect(executed).toEqual([heavyTool.name, heavyTool.name]);
+		expect(executed).toEqual([toolName, toolName]);
 	});
 });
-
-function createHeavyToolPolicyRuntime(
-	request: (request: { readonly sessionId: string; readonly toolName: string }) => "allow_session" | "deny" = () =>
-		"deny",
-): CodingAgentHeavyToolPolicyRuntime {
-	return {
-		ledger: new HeavyToolConfirmationLedger(),
-		consent: {
-			isAvailable: () => true,
-			request: async (consentRequest) => request(consentRequest),
-		},
-	};
-}
 
 function compileAssemblyCapabilities(
 	assembly: Awaited<ReturnType<typeof createCodingAgentTurnCapabilitySessionAssembly>>,
@@ -401,11 +404,11 @@ function emptyToolEnvironment() {
 	return { registrations: [], dispose() {} };
 }
 
-/** 放行一切的 Ecosystem Hook 桩，用来把确认闸暴露成唯一的拦截来源。 */
 function createPassthroughHookRuntime(): EcosystemHookRuntime {
 	return {
 		runPreToolUse: async () => ({ shouldStop: false, shouldBlock: false, additionalContexts: [] }),
 		runPostToolUse: async () => ({ shouldStop: false, shouldBlock: false, additionalContexts: [] }),
+		runPostToolUseFailure: async () => ({ shouldStop: false, shouldBlock: false, additionalContexts: [] }),
 		recordAdditionalContexts: async () => {},
 	} as unknown as EcosystemHookRuntime;
 }
@@ -462,3 +465,16 @@ function createContextRuntime(): CodingAgentContextRuntime {
 		async observe() {},
 	} as unknown as CodingAgentContextRuntime;
 }
+
+const TEST_MODEL: Model<Api> = {
+	id: "model",
+	name: "Test model",
+	api: "openai-responses",
+	provider: "test",
+	baseUrl: "https://example.test",
+	reasoning: false,
+	input: ["text"],
+	cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+	contextWindow: 8000,
+	maxTokens: 1000,
+};

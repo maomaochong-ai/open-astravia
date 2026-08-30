@@ -13,6 +13,17 @@ function registration(configuration?: unknown): Record<string, unknown> {
 }
 
 describe("plugin agent tool configuration parser", () => {
+	it("only forwards current tool metadata", () => {
+		const parsed = asAgentToolRegistration({
+			...registration(),
+			scope_use: ["cli"],
+			requires: ["knowledge"],
+			side_effect: "heavy",
+		});
+		expect(parsed).toMatchObject({ name: "demo_tool", scope_use: ["cli"], requires: ["knowledge"] });
+		expect(parsed).not.toHaveProperty("side_effect");
+	});
+
 	it("keeps configuration optional for tools without settings", () => {
 		expect(asAgentToolRegistration(registration()).configuration).toBeUndefined();
 	});

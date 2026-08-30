@@ -47,8 +47,6 @@ export function registerContentEditTool(ctx: PluginContext, agent: ContentCreati
 			additionalProperties: false,
 		},
 		scope_use: CONTENT_TOOL_SCOPE_USE,
-		// 往用户工作区写一棵内容工程文件树。
-		side_effect: "heavy",
 		handler: async ({ session, trigger }) => {
 			try {
 				const cwd = resolveContentProjectCwd(trigger.input, session.cwd);

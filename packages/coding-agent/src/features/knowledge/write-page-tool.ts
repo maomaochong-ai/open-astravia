@@ -111,6 +111,5 @@ export function createCodingAgentKnowledgeWritePageToolRegistration(
 		requires: CODING_AGENT_KNOWLEDGE_WRITE_PAGE_TOOL_REQUIRES,
 		modelOrder: options.modelOrder,
 		category: CODING_AGENT_KNOWLEDGE_WRITE_PAGE_TOOL_CATEGORY,
-		sideEffect: "light",
 	};
 }

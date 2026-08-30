@@ -43,7 +43,7 @@ Registry、Backend admission 和 Conversation Session 生命周期根只有 `run
 
 - 默认 Profile、Prompt、Mode 与 Feature 集合
 - Todo、Memory、Knowledge、Skill、Plugin、Extension、IM 和 Compaction 规则
-- 工具激活、模型可见顺序、副作用、结果投影和上下文策略
+- 工具激活、模型可见顺序、结果投影和上下文策略
 - Runtime 事件到 Coding Agent API 的语义映射
 - Coding Agent 历史格式的显式读取和迁移边界
 - 不绑定平台实现的稳定 API 合同
