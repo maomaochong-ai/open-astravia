@@ -2,7 +2,9 @@
 
 All notable changes to `@astravia/desktop-app` are documented in this file.
 
-## [Unreleased] — 内测版（未公证）
+## [Unreleased]
+
+## [0.55.32] - 2026-08-30
 ### Fixed
 - **网页元素选择器地址栏回车不跳转（打包版）**：插件面板 `<webview src="about:blank">` 的初始页在打包版 Electron 34 中 `dom-ready` 不触发，而地址栏导航被 `readyRef` 就绪门控挂起（仅把 URL 存进 pending），导致按 Enter 后既不跳转也不报错；dev 环境碰巧正常。修复：`navigate()` 去掉 `dom-ready` 门控直接 `loadURL`（与目标 URL 相同时跳过），guest 未 attach 时同步抛错再转入挂起路径，由 `dom-ready`/`did-finish-load` 的 `reconcileLoad` 兜底补发；挂载时恢复上次地址、地址栏提交两条路径一并生效。
 - **能力面板市场加载慢（内置插件长时间不出现）**：`OpenMarketplaceService.list()` 在无本地缓存时同步网络下载（`DOWNLOAD_TIMEOUT_MS=15s`，GitHub 在部分网络下超时更久），阻塞能力页渲染。改为无缓存时立即返回空快照并把首次同步放入后台，完成后经 `onBackgroundUpdate` 推送，能力页不再被网络拖住；有缓存时维持既有「读缓存 + 后台更新」路径。
