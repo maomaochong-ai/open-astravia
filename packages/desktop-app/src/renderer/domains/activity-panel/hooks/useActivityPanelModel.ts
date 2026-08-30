@@ -6,6 +6,7 @@ import {
 	ACTIVITY_PANEL_MIN_CHAT_AREA,
 	ACTIVITY_PANEL_MIN_WIDTH,
 	activityPanelDatabaseWidth,
+	activityPanelFullscreenAtom,
 	activityPanelMaxWidth,
 	activityPanelOpenAtom,
 	activityPanelResizingAtom,
@@ -56,6 +57,7 @@ export function useActivityPanelModel({
 	const [attachedPluginTabsMap, setAttachedPluginTabsMap] = useAtom(attachedPluginTabsAtom);
 	const [width, setWidth] = useAtom(activityPanelWidthAtom);
 	const [isResizing, setIsResizing] = useAtom(activityPanelResizingAtom);
+	const [fullscreen, setFullscreen] = useAtom(activityPanelFullscreenAtom);
 	const setTransientWidth = useSetAtom(setTransientActivityPanelWidthAtom);
 	const persistWidth = useSetAtom(persistActivityPanelWidthAtom);
 	const [overflowKeys, setOverflowKeys] = useState<ActivityTabKey[]>([]);
@@ -130,6 +132,10 @@ export function useActivityPanelModel({
 		persistWidth();
 	}, [persistWidth, setIsResizing]);
 	const onClose = useCallback(() => setOpen(false), [setOpen]);
+	// 面板关闭时退出全屏，避免下次打开仍是全屏覆盖。
+	useEffect(() => {
+		if (!isOpen) setFullscreen(false);
+	}, [isOpen, setFullscreen]);
 	useEffect(() => () => setIsResizing(false), [setIsResizing]);
 
 	useEffect(() => {
@@ -322,6 +328,7 @@ export function useActivityPanelModel({
 			availablePluginTabs,
 			bottomSheet: narrow && isOpen,
 			cwd,
+			fullscreen,
 			isOpen,
 			isResizing,
 			keepAliveTabs,

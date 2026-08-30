@@ -1,6 +1,6 @@
 # Astravia 模型渠道商业化方案（更新版）
 
-**版本**: 1.2  
+**版本**: 1.3  
 **日期**: 2026年8月  
 **目标**: 为Astravia云端商业化提供低成本国外模型渠道，支持用户自定义大模型（BYOK）和自有渠道模型采购，用户直接为使用的模型买单。满足用户除了当前自定义模型外，还能通过我方渠道使用国外模型。
 
@@ -35,7 +35,7 @@ Astravia需要构建一套灵活的模型渠道体系：
      ```js
      const client = new OpenAI({
        apiKey: "remonker_your_key",
-       baseURL: "https://models.astravia.com/v1",   // 白标后你的域名
+        baseURL: "https://models.astravia.dev/v1",   // 白标后你的域名
      });
      ```
   6. 即可使用所有模型。
@@ -141,28 +141,69 @@ Astravia需要构建一套灵活的模型渠道体系：
 |---|---|---|---|---|
 | BYOK（用户自带 Key） | 用户自己 | 官方渠道 | 模型厂商 | 用户自己的 |
 | 普通聚合 Key | 你的 | api.remonker.io | Remonker → 你 | 你（后台是 Remonker） |
-| **白标（需申请）** | 你的 | models.astravia.com（你的域名） | 你（可加价） | **完全你的** |
+| **白标（需申请）** | 你的 | models.astravia.dev（你的域名） | 你（可加价） | **完全你的** |
 
 本质是**聚合转售（reseller）**：不用自己对接几十家厂商，利润来自差价或管理费。注意白标不等于免费——你的成本仍是 Remonker 的价格。
 
 ### 6.2 域名准备
 
-**官网域名 ≠ 白标 API 域名**。`www.astravia.com` 跑网站，白标接口要用独立的 API 子域名（如 `models.astravia.com`），原因是：
+**官网域名 ≠ 白标 API 域名**。`www.astravia.dev` 跑网站，白标接口要用独立的 API 子域名（如 `models.astravia.dev`），原因是：
 
 - API 流量与网站流量分离，互不干扰；
 - Remonker 需要“接管”该子域名的流量（CNAME 指向其网关）；
 - 便于独立签发 SSL 证书与独立计费统计。
 
-**关键：子域名免费。** 在 Cloudflare 拥有根域名 `astravia.com` 后，创建子域名只是添加一条 DNS 记录，**不需要单独花钱注册**，也不产生任何费用。
+**关键：子域名免费。** 在 Cloudflare 拥有根域名 `astravia.dev` 后，创建子域名只是添加一条 DNS 记录，**不需要单独花钱注册**，也不产生任何费用。
 
 流程（按顺序）：
 
 1. 申请时，按 Remonker 邮件要求添加一条 **TXT 验证记录**（形如 `remonker-verify=xxxx`），证明域名归你所有——这是审核的核心；
-2. 审核通过后，添加 **CNAME 记录**：`models.astravia.com` → Remonker 提供的网关地址（具体内容以邮件为准）；
+2. 审核通过后，添加 **CNAME 记录**：`models.astravia.dev` → Remonker 提供的网关地址（具体内容以邮件为准）；
 3. **SSL 证书一般由 Remonker 自动签发**（Let's Encrypt 类），无需自购；
 4. DNS 记录请等商务邮件回复后再按指示添加，不要提前乱加。
 
-前置条件：确认你的 Cloudflare 账户对 `astravia.com` 有完整 DNS 管理权限（能手动添加 TXT/CNAME 记录）。
+前置条件：确认你的 Cloudflare 账户对 `astravia.dev` 有完整 DNS 管理权限（能手动添加 TXT/CNAME 记录）。
+
+#### 6.2.1 Cloudflare 添加 DNS 记录的具体操作
+
+入口：登录 https://dash.cloudflare.com → 点选 `astravia.dev` → 左侧 **DNS** → **记录** → 右上角 **＋添加记录**。
+
+| 字段 | 填什么 | 说明 |
+|---|---|---|
+| 类型 | CNAME / TXT | 验证阶段填 TXT，审核通过后填 CNAME |
+| 名称 | `models`（CNAME）或按邮件填（TXT） | **名称栏会自动拼接**：填 `models` 即生成 `models.astravia.dev`，弹窗顶部会显示拼接结果 |
+| 目标（CNAME） | Remonker 邮件给的网关地址（完整粘贴，如 `gateway.remonker.io`） | **目标栏不会拼接**，填什么就是什么；不能填自己的域名（`astravia.dev` / `astravia.com` 都不行） |
+| 内容（TXT） | 邮件给的验证串（如 `remonker-verify=xxxx`） | 粘贴即可 |
+| 代理状态 | 白标 CNAME 选 **仅 DNS（灰云）**；测试阶段可临时用已代理（橙云） | 灰云=流量直连目标，橙云=经过 Cloudflare 代理 |
+| TTL | 自动 | 不动 |
+
+**添加后子域名即生效**：CNAME 记录保存的瞬间，`models.astravia.dev` 这个子域名就真实存在了。但“存在”不等于“有服务”——它指向的目标上必须真有 API 服务在跑，才能访问通（见 6.2.4）。
+
+#### 6.2.2 目标（Target）栏的两个关键认知
+
+1. **目标必须填 Remonker 的服务器地址，不能填自己的域名。** 自己的域名（根域名、www、其他子域名）指向的都是自己的网站/Worker，上面没有模型 API 服务，填了必然访问失败。
+2. **DNS 只能“指路”，不能“造服务”。** 一条 CNAME 记录不会凭空生成 API——目标服务器上必须有服务在监听、且为你的子域名准备好了（白标审核通过并由 Remonker 激活后才会准备好）。
+
+#### 6.2.3 拿到网关前的连通性测试（可选）
+
+白标审核通过前想先验证“链路能不能通”，两种方式任选：
+
+- **方式一（测到 Remonker）**：CNAME 目标**临时**填 `api.remonker.io`（保持已代理橙云），访问 `https://models.astravia.dev/`。返回**任何 HTTP 状态码**（404/403/401 都算）＝链路通了（404 是正常的，根路径本来就没接口）；返回 **522** 才是不通。测完改回或删除该记录。
+- **方式二（测子域名本身）**：左侧 **Workers 路由** → 添加路由 `models.astravia.dev/*` → 绑定你的 Worker（如 `icy-dream-a8f3`），访问返回 200 即子域名链路完全打通。
+
+注意：以上只是连通性验证，不代表白标可用；正式 API 仍需白标审核通过后，把目标换成 Remonker 官方网关。
+
+#### 6.2.4 访问失败（522）排查
+
+**522 = Cloudflare 连不上目标服务器**，浏览器请求已到 Cloudflare 边缘，但边缘找不到任何源来响应。常见原因与排查：
+
+| 现象 | 原因 | 处理 |
+|---|---|---|
+| models.astravia.dev 返回 522，根域名正常 | CNAME 目标填了自己的域名（如 `astravia.dev`），而该域名是 Worker/网站，没有 `models` 的 Worker 路由或源服务器 | 删掉记录；等拿到网关地址后填 Remonker 网关 |
+| 目标正确但 522 | 目标服务器未启用该子域名（白标未激活） | 联系 Remonker 确认激活状态 |
+| 测试 api.remonker.io 返回 404 | ✅ 正常，链路是通的 | 无需处理 |
+
+对照判断法：`https://astravia.dev/` 返回 200 而 `https://models.astravia.dev/` 返回 522，说明差的是“终点服务”，不是 DNS 解析——解析已生效（可用 `dig models.astravia.dev` 验证，能返回 Cloudflare IP 即解析成功）。
 
 ### 6.3 商务侧准备
 
@@ -199,21 +240,21 @@ Astravia需要构建一套灵活的模型渠道体系：
 
 ### 6.5 接入步骤（白标落地后）
 
-1. 拿到白标 Base URL（`https://models.astravia.com/v1`）和白标 Key；
+1. 拿到白标 Base URL（`https://models.astravia.dev/v1`）和白标 Key；
 2. 配置进 Astravia 后端，作为“渠道模型”选项上线（保持 OpenAI SDK 兼容）；
 3. 内部测试延迟/价格，对比 Remonker / Opper / Neokens 三家（见第 3 节矩阵），再定用户定价（管理费或加价）；
 4. **正式上线前不要把普通 Key 发给客户**——普通 Key 绑定你的账号余额，客户一用就烧你的钱；对外只发白标 Key。
 
 ## 7. Remonker 白标申请邮件模板（英文）
 
-**主题**：White Label API Partnership Inquiry — Astravia (models.astravia.com)
+**主题**：White Label API Partnership Inquiry — Astravia (models.astravia.dev)
 
 ```
 Subject: White Label API Partnership Inquiry — Astravia
 
 Dear Remonker Business Team,
 
-I'm reaching out on behalf of Astravia (https://www.astravia.com), an AI
+I'm reaching out on behalf of Astravia (https://www.astravia.dev), an AI
 platform that provides model services to our users. We are interested in
 setting up a White Label API partnership with Remonker to resell models
 through our own domain.
@@ -221,11 +262,11 @@ through our own domain.
 About us:
 - Company / Product: Astravia — cloud AI platform serving [N] users,
   offering custom models plus aggregated third-party models to end users
-- Website: https://www.astravia.com
+- Website: https://www.astravia.dev
 
 White label details:
-- Proposed API domain: models.astravia.com (we own the root domain
-  astravia.com on Cloudflare and can add the required DNS records
+- Proposed API domain: models.astravia.dev (we own the root domain
+  astravia.dev on Cloudflare and can add the required DNS records
   immediately)
 - Use case: Resell aggregated models (OpenAI, Anthropic, Google, DeepSeek,
   Llama, etc.) to our end users under our own brand; users pay us and we
@@ -255,10 +296,10 @@ Best regards,
 [Your Name]
 [Your Title]
 Astravia
-[your-email@astravia.com]
+[your-email@astravia.dev]
 ```
 
-发送前替换占位符：`[N]`（用户数）、`[X]`（预期月用量）、`[6/12]`（增长周期）、`[China]`（公司所在地）、`[Your Name]` / `[Your Title]` / `[your-email@astravia.com]`。
+发送前替换占位符：`[N]`（用户数）、`[X]`（预期月用量）、`[6/12]`（增长周期）、`[China]`（公司所在地）、`[Your Name]` / `[Your Title]` / `[your-email@astravia.dev]`。
 
 **联系方式**: 建议与各提供商商务团队沟通代理合作。Astravia内部可对接销售/商务团队获取最新报价。
 

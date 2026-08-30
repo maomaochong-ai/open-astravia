@@ -1,7 +1,24 @@
 import { useTranslation, type PluginContext } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type JSX, type KeyboardEvent } from "react";
 import kernelCode from "./kernel/kernel-bundle.generated.ts";
+import {
+	IconAlert,
+	IconBack,
+	IconClose,
+	IconCog,
+	IconCrosshair,
+	IconEye,
+	IconEyeOff,
+	IconForward,
+	IconOpenInNew,
+	IconRefresh,
+	IconSend,
+	IconSpinner,
+	IconStop,
+	IconWeb,
+} from "./icons";
 import { consumePickerIntent, getPluginCtx, onPickerIntent } from "./plugin-context";
+
 
 /** 复用内置浏览器的持久分区，登录态共享。 */
 const BROWSER_PARTITION = "persist:astravia-browser";
@@ -622,7 +639,7 @@ export function WebElementPickerPanel(): JSX.Element {
 					onClick={() => webviewRef.current?.goBack()}
 					className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent disabled:opacity-40"
 				>
-					<span className="icon-[mdi--arrow-left] h-4 w-4" />
+						<IconBack className="h-4 w-4" />
 				</button>
 				<button
 					type="button"
@@ -631,7 +648,7 @@ export function WebElementPickerPanel(): JSX.Element {
 					onClick={() => webviewRef.current?.goForward()}
 					className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent disabled:opacity-40"
 				>
-					<span className="icon-[mdi--arrow-right] h-4 w-4" />
+						<IconForward className="h-4 w-4" />
 				</button>
 				{loading ? (
 					<button
@@ -640,7 +657,7 @@ export function WebElementPickerPanel(): JSX.Element {
 						onClick={() => webviewRef.current?.stop()}
 						className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent"
 					>
-						<span className="icon-[mdi--close] h-4 w-4" />
+						<IconClose className="h-4 w-4" />
 					</button>
 				) : (
 					<button
@@ -649,7 +666,7 @@ export function WebElementPickerPanel(): JSX.Element {
 						onClick={() => webviewRef.current?.reload()}
 						className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent"
 					>
-						<span className="icon-[mdi--refresh] h-4 w-4" />
+						<IconRefresh className="h-4 w-4" />
 					</button>
 				)}
 				<form onSubmit={onAddressSubmit} className="min-w-0 flex-1">
@@ -675,41 +692,37 @@ export function WebElementPickerPanel(): JSX.Element {
 					}}
 					className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent disabled:opacity-40"
 				>
-					<span className="icon-[mdi--open-in-new] h-4 w-4" />
+					<IconOpenInNew className="h-4 w-4" />
 				</button>
 				<button
 					type="button"
 					title={selecting ? t("panel.stopSelecting") : t("panel.start")}
 					disabled={failed}
 					onClick={toggleSelecting}
-					className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
-						selecting
-							? "bg-destructive/90 text-destructive-foreground hover:bg-destructive"
-							: "bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40"
+					className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors disabled:opacity-40 ${
+						selecting ? "text-destructive hover:bg-destructive/10" : "text-primary hover:bg-accent"
 					}`}
 				>
-					<span className={`h-4 w-4 ${selecting ? "icon-[mdi--stop]" : "icon-[mdi--crosshairs-gps]"}`} />
+					{selecting ? <IconStop className="h-4 w-4" /> : <IconCrosshair className="h-4 w-4" />}
 				</button>
 				<button
 					type="button"
 					title={t("panel.sendToAiHint")}
 					disabled={count === 0 || sending}
 					onClick={sendToAi}
-					className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-foreground transition-colors hover:bg-accent/70 disabled:opacity-40"
+					className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent disabled:opacity-40"
 				>
-					<span className={`h-4 w-4 ${sending ? "animate-spin icon-[mdi--loading]" : "icon-[mdi--send]"}`} />
+					{sending ? <IconSpinner className="h-4 w-4 animate-spin" /> : <IconSend className="h-4 w-4" />}
 				</button>
 				<button
 					type="button"
 					title={t("panel.sharinganHint")}
 					onClick={toggleSharingan}
 					className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
-						sharingan
-							? "bg-primary text-primary-foreground hover:opacity-90"
-							: "bg-accent text-foreground hover:bg-accent/70"
+						sharingan ? "text-primary hover:bg-accent" : "text-muted-foreground hover:bg-accent"
 					}`}
 				>
-					<span className={`h-4 w-4 ${sharingan ? "icon-[mdi--eye]" : "icon-[mdi--eye-off-outline]"}`} />
+					{sharingan ? <IconEye className="h-4 w-4" /> : <IconEyeOff className="h-4 w-4" />}
 				</button>
 				<button
 					type="button"
@@ -717,7 +730,7 @@ export function WebElementPickerPanel(): JSX.Element {
 					onClick={() => setSettingsOpen(true)}
 					className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent"
 				>
-					<span className="h-4 w-4 icon-[mdi--cog-outline]" />
+					<IconCog className="h-4 w-4" />
 				</button>
 			</div>
 
@@ -739,19 +752,19 @@ export function WebElementPickerPanel(): JSX.Element {
 				/>
 				{!currentUrl && !failed && (
 					<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted p-6 text-center">
-						<span className="h-8 w-8 text-muted-foreground/30 icon-[mdi--web]" />
+						<IconWeb className="h-8 w-8 text-muted-foreground/30" />
 						<span className="text-[12px] text-muted-foreground/60">{t("panel.empty")}</span>
 					</div>
 				)}
 				{loading && (
 					<div className="pointer-events-none absolute right-2 top-2 flex items-center gap-1.5 rounded-md bg-background/80 px-2 py-1 text-[11px] text-muted-foreground shadow-sm">
-						<span className="h-3.5 w-3.5 animate-spin icon-[mdi--loading]" />
+						<IconSpinner className="h-3.5 w-3.5 animate-spin" />
 						{t("panel.loading")}
 					</div>
 				)}
 				{failed && (
 					<div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted p-6 text-center">
-						<span className="h-8 w-8 text-muted-foreground/40 icon-[mdi--alert-circle-outline]" />
+						<IconAlert className="h-8 w-8 text-muted-foreground/40" />
 						<span className="text-[12px] text-muted-foreground/70">{t("panel.failed")}</span>
 						<button
 							type="button"
@@ -792,7 +805,7 @@ export function WebElementPickerPanel(): JSX.Element {
 								onClick={() => setSettingsOpen(false)}
 								className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 							>
-								<span className="h-3.5 w-3.5 icon-[mdi--close]" />
+								<IconClose className="h-3.5 w-3.5" />
 							</button>
 						</div>
 						<div className="mt-3 flex items-center justify-between gap-2 rounded-md bg-muted/60 px-3 py-2">
