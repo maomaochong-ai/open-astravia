@@ -18,7 +18,7 @@ Atomically modify the content-creation workflow with a revision-bound batch of t
 
 Use this tool for workflow metadata, nodes, connections, prompts, generation configuration, and deletions. Use content_creation_assets first for user-supplied local media and content_creation_run for generation control. Before authoring image or video work, invoke the matching content-creation skill and follow its method-specific references. Never edit the project JSON directly.
 
-The first call in a session asks the user to confirm because this tool writes to the workspace. It returns the new revision and readiness analysis. An invalid operation rejects the entire batch without partial changes.
+The batch applies directly and returns the new revision and readiness analysis. An invalid operation rejects the entire batch without partial changes.
 `.trim();
 
 interface EditInput extends ContentProjectInput {

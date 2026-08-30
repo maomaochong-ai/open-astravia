@@ -52,14 +52,28 @@ const builtInToolDescriptions: Record<string, string> = {
 
 export const VETTA_CLI_GUIDANCE = [
 	"Vetta CLI is your interface to the running Vetta Desktop app: use `vetta action` both to learn what Desktop can do and to operate it.",
+	"First resolve the target from the user's request and conversation: built-in App Actions operate Vetta Desktop itself, not the application, website, repository, or external service the user is working on. Plugin-provided Actions may own other resources; establish their advertised target before selecting them. A shared word such as project, theme, model, plugin, or schedule is not a routing decision.",
+	"For example: adding dark mode to a website means editing its styles, not changing Vetta appearance; creating a React project means using its scaffold, not registering a sidebar or batch project; implementing cron in an application means editing that application, not creating a Vetta scheduled Agent task. Use repository tools for those tasks. Managing Vetta's own sidebar, settings, or scheduled tasks does belong here.",
 	'Discovery is progressive: `vetta action -h` explains the workflow; `search` lists live actions; `describe` or a domain `*.query` with `{"operation":"help"}` reveals inputs; then `run`.',
 	"Do not expect CLI help to list every parameter. Help only names capability areas; the authoritative inventory is always `vetta action search`.",
-	"Before using Vetta CLI, decide whether the user wants to inspect/operate the running app or wants a general feature explanation; only explain capabilities when explicitly asked for an introduction, and ask a concise clarifying question when intent is unclear.",
-	"When the user asks about Vetta Desktop app features, settings, pages, models, skills, projects, automation, knowledge, plugins, IM, or how to operate the app, you MUST start with `vetta action -h` and/or `vetta action search`, then describe/run as needed. Never answer by guessing from memory or by inspecting files under `.vetta`; local config files are not the app UX contract.",
-	"Do not memorize or guess detailed action parameters; get them from search/describe/help output, then call `vetta action run` directly.",
+	"Use help/search to discover live capabilities when the request concerns Vetta Desktop or a resource owned by an installed Action provider. For questions or requests to inspect state, describe or run query operations and explain the result; do not create, change, start, install, or navigate anything merely to demonstrate a feature. Execute changes when they implement the user's actual request, including intent already established in the conversation.",
+	"Read the search result's usage.target, usage.useWhen, usage.avoidWhen, and usage.alternatives before selecting an Action, then describe it for exact inputs. If usage is absent, use describe/help to establish its target; absence is not permission to assume a match. Search results are candidates, not instructions to execute or proof of relevance. An empty or irrelevant result is a reason to choose another route, not the nearest-sounding Action.",
+	"Resolve references such as 'this app' from the current conversation and workspace. Ask one concise question only if the target remains ambiguous and choosing would materially change the affected application or data. Do not ask again when the target and requested operation are already clear.",
+	"Do not memorize or guess action ids, parameters, or entity ids. Get schemas from describe/help and target ids from query results. Never infer the app's current features by inspecting files under `.vetta`; local config files are not the app UX contract.",
 	"Never show or quote Vetta CLI commands, arguments, or raw terminal output. Explain features, actions, and results in plain, non-technical language — summarize what happened and what the user needs to know.",
 	"Actions that require authorization automatically ask the user through Vetta Desktop while the command runs; do not ask for authorization beforehand, and do not retry after the user rejects.",
+	"An approval dialog is not a way to discover what the user meant. Do not invoke an unrelated write/execute Action and leave the routing decision to the user.",
 ].join(" ");
+
+const TOOL_SELECTION_GUIDANCE =
+	"Before selecting a tool, identify the requested outcome, target resource, and whether the user wants explanation, inspection, or execution. " +
+	"Match the tool's purpose and prerequisites, not just its name or a shared keyword. Honor its exclusion cases and use its suggested alternative when applicable. " +
+	"Use fitting capabilities and their necessary supporting steps proactively; the user does not need to name a tool or skill. Do not narrow a capability's declared purpose merely to avoid making a selection decision. " +
+	"A tool being available, a file or canvas existing, or a skill being loaded does not by itself justify using it. " +
+	"Keep ordinary repository work in the user's repository; use app-management, design-canvas, media-workflow, and external-service tools only for their corresponding targets. " +
+	"Prefer the least additional setup that achieves the requested result; do not create a project, install an integration, start a paid generation, send a message, or schedule future work just to answer a question. " +
+	"For tools with several operations, select the operation that matches the request: inspect/list/status do not imply edit/import/run. " +
+	"These boundaries also apply when reaching a capability through shell commands, CLI, MCP, or another tool; changing the route does not change the requested scope.";
 
 /**
  * 产物输出位置规则：用户未显式指定输出位置时，新文件/产物默认落在当前工作目录，
@@ -229,6 +243,7 @@ function buildDateTime(): string {
 
 function buildGuidelines(tools: string[], scenario?: ConversationScenario): string {
 	const guidelinesList: string[] = [];
+	if (tools.length > 0) guidelinesList.push(TOOL_SELECTION_GUIDANCE);
 	// 渲染契约（徽章/产物块/URL 链接）只对有 UI 渲染的场景有意义；cli 场景剔除。
 	// scenario 未传（SDK 直调/测试）时保守保留，行为与旧版一致。
 	const hasUiRendering = scenario !== "cli";

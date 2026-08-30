@@ -1,5 +1,6 @@
 import type { PluginAppActionExample, PluginContext, PluginJsonSchema } from "@vetta-org/plugin-sdk";
 import { throwInvalidInput } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type ImQueryInput =
 	| { operation: "help" }
@@ -87,7 +88,8 @@ const manageExamples: PluginAppActionExample<ImManageInput>[] = [
 ];
 
 export function registerImActions(ctx: PluginContext): void {
-	ctx.appActions.register<ImQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "im");
+	register<ImQueryInput>({
 		id: "im.query",
 		publicId: "im.query",
 		title: "查询 IM/Claw 状态",
@@ -112,7 +114,7 @@ export function registerImActions(ctx: PluginContext): void {
 			return { logs: await ctx.official.im.getLogs(input.limit ?? 50) };
 		},
 	});
-	ctx.appActions.register<ImManageInput>({
+	register<ImManageInput>({
 		id: "im.manage",
 		publicId: "im.manage",
 		title: "管理 IM/Claw",

@@ -1,5 +1,6 @@
 import type { PluginAppActionExample, PluginContext, PluginJsonSchema } from "@vetta-org/plugin-sdk";
 import { throwEntityNotFound } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type DownloadsQueryInput = { operation: "help" } | { operation: "list" };
 type DownloadsManageInput = { operation: "cancel"; id: string };
@@ -26,7 +27,8 @@ const manageExamples: PluginAppActionExample<DownloadsManageInput>[] = [
 ];
 
 export function registerDownloadsActions(ctx: PluginContext): void {
-	ctx.appActions.register<DownloadsQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "downloads");
+	register<DownloadsQueryInput>({
 		id: "downloads.query",
 		publicId: "downloads.query",
 		title: "查询下载任务",
@@ -49,7 +51,7 @@ export function registerDownloadsActions(ctx: PluginContext): void {
 			return { items: await ctx.official.downloads.list() };
 		},
 	});
-	ctx.appActions.register<DownloadsManageInput>({
+	register<DownloadsManageInput>({
 		id: "downloads.manage",
 		publicId: "downloads.manage",
 		title: "管理下载任务",

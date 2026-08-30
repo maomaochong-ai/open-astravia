@@ -1,5 +1,6 @@
 import type { PluginAppActionExample, PluginContext, PluginJsonSchema } from "@vetta-org/plugin-sdk";
 import { throwEntityNotFound, throwInvalidInput } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 /**
  * 公共 id 仍为 skills.*（兼容既有 CLI/Agent 调用）。
@@ -78,7 +79,8 @@ const manageExamples: PluginAppActionExample<SkillsManageInput>[] = [
 ];
 
 export function registerSkillsActions(ctx: PluginContext): void {
-	ctx.appActions.register<SkillsQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "skills");
+	register<SkillsQueryInput>({
 		id: "skills.query",
 		publicId: "skills.query",
 		title: "查询能力",
@@ -104,7 +106,7 @@ export function registerSkillsActions(ctx: PluginContext): void {
 			return ctx.official.skills.list(input.cwd);
 		},
 	});
-	ctx.appActions.register<SkillsManageInput>({
+	register<SkillsManageInput>({
 		id: "skills.manage",
 		publicId: "skills.manage",
 		title: "管理能力",

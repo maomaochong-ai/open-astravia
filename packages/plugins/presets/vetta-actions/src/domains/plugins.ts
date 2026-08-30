@@ -5,6 +5,7 @@ import {
 	type PluginJsonSchema,
 } from "@vetta-org/plugin-sdk";
 import { throwEntityNotFound } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type PluginsQueryInput =
 	| { operation: "help" }
@@ -136,7 +137,8 @@ const manageExamples: PluginAppActionExample<PluginsManageInput>[] = [
 ];
 
 export function registerPluginsActions(ctx: PluginContext): void {
-	ctx.appActions.register<PluginsQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "plugins");
+	register<PluginsQueryInput>({
 		id: "plugins.query",
 		publicId: "plugins.query",
 		title: "查询插件",
@@ -160,7 +162,7 @@ export function registerPluginsActions(ctx: PluginContext): void {
 			return { plugin: await ctx.official.plugins.get(input.id) };
 		},
 	});
-	ctx.appActions.register<PluginsManageInput>({
+	register<PluginsManageInput>({
 		id: "plugins.manage",
 		publicId: "plugins.manage",
 		title: "管理插件",

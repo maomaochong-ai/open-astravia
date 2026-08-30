@@ -20,6 +20,7 @@
 
 ### Changed
 
+- 工具选择指引明确区分目标资源与查询/解释/执行意图；Skill 索引与 `invoke_skill` 共用适用条件，移除仅因主题匹配就强制加载的措辞。Vetta CLI 先确认操作的是 Vetta 本身，再检索并核对 Action 使用说明，不以审批弹窗代替意图判断。
 - Subagent Todo 改为 Coding Agent 自有的 Session Extension 投影：Workflow 调度端口、Child 初始化与实时 observation、
   恢复持久化和宿主事件校验均停留在产品层；通用 Runtime 只处理产品无关的子代理生命周期快照。
 - Knowledge Processing 的模型工作指南迁入 Coding Agent Knowledge Feature，`runtime-knowledge` 只保留差异、路径与

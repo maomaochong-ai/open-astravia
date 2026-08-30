@@ -1,5 +1,6 @@
 import type { PluginAppActionExample, PluginContext, PluginJsonSchema } from "@vetta-org/plugin-sdk";
 import { throwInvalidInput } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type NavigationQueryInput = { type: "help" };
 type NavigationOpenInput = {
@@ -42,7 +43,8 @@ const openExamples: PluginAppActionExample<NavigationOpenInput>[] = [
 ];
 
 export function registerNavigationActions(ctx: PluginContext): void {
-	ctx.appActions.register<NavigationQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "navigation");
+	register<NavigationQueryInput>({
 		id: "navigation.query",
 		publicId: "navigation.query",
 		title: "查询可导航页面",
@@ -56,7 +58,7 @@ export function registerNavigationActions(ctx: PluginContext): void {
 		handler: async () => ctx.official.navigation.help(),
 	});
 
-	ctx.appActions.register<NavigationOpenInput>({
+	register<NavigationOpenInput>({
 		id: "navigation.open",
 		publicId: "navigation.open",
 		title: "打开应用页面",

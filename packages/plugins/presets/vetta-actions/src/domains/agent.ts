@@ -4,6 +4,7 @@ import type {
 	PluginJsonSchema,
 	PluginOfficialExperimentalSettings,
 } from "@vetta-org/plugin-sdk";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type AgentQueryInput = { operation: "help" } | { operation: "get" };
 type AgentManageInput = {
@@ -49,7 +50,8 @@ const manageExamples: PluginAppActionExample<AgentManageInput>[] = [
 ];
 
 export function registerAgentActions(ctx: PluginContext): void {
-	ctx.appActions.register<AgentQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "agent");
+	register<AgentQueryInput>({
 		id: "agent.query",
 		publicId: "agent.query",
 		title: "查询 Agent 配置",
@@ -74,7 +76,7 @@ export function registerAgentActions(ctx: PluginContext): void {
 			return { experimental: await ctx.official.agent.getExperimental() };
 		},
 	});
-	ctx.appActions.register<AgentManageInput>({
+	register<AgentManageInput>({
 		id: "agent.manage",
 		publicId: "agent.manage",
 		title: "修改 Agent 配置",

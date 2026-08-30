@@ -9,6 +9,7 @@ Sandbox 与 Desktop 命令实现由平台 Runtime 持有。历史上的组合边
 
 ## 文档索引
 
+- [工具选择边界与回归样例](../tool-routing-evaluation.md) — Tool、Skill、App Action 的实际说明入口、成对误用场景和模型评估范围。
 - [Coding Agent 与多主 Agent 基座](../../../packages/coding-agent/docs/runtime-agent-base.md) — 当前生产链路、共享 Host、动态 revision、观测汇聚与生命周期使用说明。
 - [架构现状与问题评估](./01-architecture-assessment.md) — 当前运行链路、量化证据、问题优先级、目标边界与渐进式重构建议。
 - [内核与能力边界分析](./02-core-boundary-analysis.md) — 从模型原语出发，定义 Agent、Session、Capability、Adapter、Infrastructure 与 Profile 的边界。

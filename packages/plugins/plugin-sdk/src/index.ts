@@ -133,6 +133,7 @@ export type {
 	PluginAppActionApprovalPresentation,
 	PluginAppActionApproval,
 	PluginAppActionRegistration,
+	PluginAppActionUsage,
 	PluginAppActionsApi,
 } from "./app-actions.js";
 export { PluginAppActionError } from "./app-actions.js";

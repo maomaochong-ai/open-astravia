@@ -5,6 +5,7 @@ import type {
 	PluginOfficialProviderUpsertData,
 } from "@vetta-org/plugin-sdk";
 import { throwEntityNotFound, throwInvalidInput } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type ModelsQueryInput =
 	| { operation: "help" }
@@ -89,7 +90,8 @@ const manageExamples: PluginAppActionExample<ModelsManageInput>[] = [
 ];
 
 export function registerModelsActions(ctx: PluginContext): void {
-	ctx.appActions.register<ModelsQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "models");
+	register<ModelsQueryInput>({
 		id: "models.query",
 		publicId: "models.query",
 		title: "查询模型配置",
@@ -117,7 +119,7 @@ export function registerModelsActions(ctx: PluginContext): void {
 			return ctx.official.models.get(input.provider);
 		},
 	});
-	ctx.appActions.register<ModelsManageInput>({
+	register<ModelsManageInput>({
 		id: "models.manage",
 		publicId: "models.manage",
 		title: "管理模型配置",

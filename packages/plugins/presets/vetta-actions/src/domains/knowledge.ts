@@ -1,5 +1,6 @@
 import type { PluginAppActionExample, PluginContext, PluginJsonSchema } from "@vetta-org/plugin-sdk";
 import { throwEntityNotFound } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type KnowledgeQueryInput =
 	| { operation: "help" }
@@ -138,7 +139,8 @@ const manageExamples: PluginAppActionExample<KnowledgeManageInput>[] = [
 ];
 
 export function registerKnowledgeActions(ctx: PluginContext): void {
-	ctx.appActions.register<KnowledgeQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "knowledge");
+	register<KnowledgeQueryInput>({
 		id: "knowledge.query",
 		publicId: "knowledge.query",
 		title: "查询知识库",
@@ -168,7 +170,7 @@ export function registerKnowledgeActions(ctx: PluginContext): void {
 			return { processing: await ctx.official.knowledge.isProcessing() };
 		},
 	});
-	ctx.appActions.register<KnowledgeManageInput>({
+	register<KnowledgeManageInput>({
 		id: "knowledge.manage",
 		publicId: "knowledge.manage",
 		title: "管理知识库",

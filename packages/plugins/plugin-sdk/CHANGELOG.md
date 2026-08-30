@@ -6,6 +6,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- `PluginAppActionRegistration.usage` 与 `PluginAppActionUsage`：可声明 `target`、`useWhen`、`avoidWhen`、`alternatives`，经宿主结构校验后随 search / describe 返回；仅指导模型选择，不改变权限与审批。
 - 新增宿主管理的 `ctx.browser` facade 与 `browser.read` / `browser.interact` / `browser.profile.persist` / `browser.attach` / `browser.runtime.manage` 权限。插件通过结构化 session、profile、导航、快照、读取、截图和动作 API 复用登录态浏览器；manifest 必须声明最大 `browser.allowedHosts`，每个 session 只能进一步收窄。公共合同不暴露路径、Cookie、token、任意 argv 或 JavaScript（ADR-0088）。
 - `ctx.agent.registerTool()` 新增可选 `configuration.settingKeys`：动态 Tool 可把自己与插件
   `contributes.settings` 的全部或部分字段关联到宿主统一配置目录。未声明配置的 Tool 行为不变；宿主会拒绝未知或重复

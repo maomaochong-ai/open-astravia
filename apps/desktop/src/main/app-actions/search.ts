@@ -1,4 +1,4 @@
-import type { ActionDefinition, ActionSearchResult } from "./types.js";
+import type { ActionDefinition, ActionSearchResult, JsonValue } from "./types.js";
 
 /** 同义簇：查询命中任一词时，可匹配簇内其它词所在的文档。 */
 const SYNONYM_CLUSTERS: readonly (readonly string[])[] = [
@@ -214,8 +214,36 @@ function collectText(parts: Array<string | undefined | null | readonly string[]>
 	return normalize(chunks.join("\n"));
 }
 
+function schemaOperationNames(schema: JsonValue | undefined): string[] {
+	const pending = [schema];
+	const names = new Set<string>();
+	while (pending.length > 0) {
+		const node = pending.pop();
+		if (!node || typeof node !== "object" || Array.isArray(node)) continue;
+		const properties = node.properties;
+		if (properties && typeof properties === "object" && !Array.isArray(properties)) {
+			for (const key of ["operation", "type"]) {
+				const discriminator = properties[key];
+				if (!discriminator || typeof discriminator !== "object" || Array.isArray(discriminator)) continue;
+				if (typeof discriminator.const === "string") names.add(discriminator.const);
+				if (Array.isArray(discriminator.enum)) {
+					for (const value of discriminator.enum) if (typeof value === "string") names.add(value);
+				}
+			}
+		}
+		for (const key of ["oneOf", "anyOf", "allOf"]) {
+			const variants = node[key];
+			if (Array.isArray(variants)) pending.push(...variants);
+		}
+	}
+	return [...names];
+}
+
 function buildSearchDocument(action: ActionDefinition): SearchDocument {
-	const operationNames = action.inputSchema.operations?.map((operation) => operation.name) ?? [];
+	const operationNames = [
+		...(action.inputSchema.operations?.map((operation) => operation.name) ?? []),
+		...schemaOperationNames(action.inputSchema.jsonSchema),
+	];
 	const operationDescriptions = action.inputSchema.operations?.map((operation) => operation.description) ?? [];
 	const parameterText =
 		action.inputSchema.operations?.flatMap((operation) =>
@@ -231,7 +259,9 @@ function buildSearchDocument(action: ActionDefinition): SearchDocument {
 	const domainKeywords = DOMAIN_KEYWORDS[action.domain] ?? [];
 
 	const primary = collectText([action.id, action.domain, action.title, ...action.id.split(/[.\-_]/u)]);
-	const secondary = collectText([action.summary, action.permission, action.keywords, domainKeywords, operationNames]);
+	// Permission ids describe registration plumbing; indexing their shared "plugin" prefix matches every action.
+	// Usage is returned to the model separately: exclusions and alternatives must not attract positive matches.
+	const secondary = collectText([action.summary, action.keywords, domainKeywords, operationNames]);
 	const tertiary = collectText([
 		action.inputSchema.description,
 		operationDescriptions,
@@ -248,6 +278,7 @@ function buildSearchDocument(action: ActionDefinition): SearchDocument {
 			domain: action.domain,
 			title: action.title,
 			summary: action.summary,
+			...(action.usage ? { usage: action.usage } : {}),
 			availability: action.availability,
 		},
 		primary,

@@ -249,7 +249,7 @@ describe("skills", () => {
 			const xmlStart = result.indexOf("<available_skills>");
 			const introText = result.substring(0, xmlStart);
 
-			expect(introText).toContain("MUST call the invoke_skill tool");
+			expect(introText).toContain("When an available skill fits the actual task, invoke it before using its method");
 			expect(introText).toContain("Always use the invoke_skill tool");
 		});
 

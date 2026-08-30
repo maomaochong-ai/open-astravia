@@ -1,4 +1,8 @@
-import { PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES, type PluginCodingAgentHookEventName } from "@vetta-org/plugin-sdk";
+import {
+	PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES,
+	type PluginAppActionUsage,
+	type PluginCodingAgentHookEventName,
+} from "@vetta-org/plugin-sdk";
 import type {
 	PluginAppActionApproval,
 	PluginAppActionRegistration,
@@ -223,6 +227,17 @@ export function asAppActionApproval(value: unknown): PluginAppActionApproval | u
 	};
 }
 
+function asAppActionUsage(value: unknown): PluginAppActionUsage | undefined {
+	if (value === undefined) return undefined;
+	const input = asRecord(value, "app action usage");
+	return {
+		target: asRequiredString(input.target, "app action usage target"),
+		useWhen: asRequiredString(input.useWhen, "app action usage useWhen"),
+		avoidWhen: asRequiredString(input.avoidWhen, "app action usage avoidWhen"),
+		alternatives: asRequiredString(input.alternatives, "app action usage alternatives"),
+	};
+}
+
 export function asAppActionRegistration(value: unknown): PluginAppActionRegistration {
 	const input = asRecord(value, "app action registration");
 	const id = asPluginId(input.id);
@@ -250,6 +265,7 @@ export function asAppActionRegistration(value: unknown): PluginAppActionRegistra
 		title,
 		summary,
 		description: asOptionalString(input.description),
+		usage: asAppActionUsage(input.usage),
 		keywords: asOptionalStringArray(input.keywords),
 		effect: input.effect,
 		approval: asAppActionApproval(input.approval),

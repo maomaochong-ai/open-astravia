@@ -6,6 +6,7 @@ import type {
 	PluginOfficialBatchProjectUpdateData,
 } from "@vetta-org/plugin-sdk";
 import { throwEntityNotFound } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type QueryInput =
 	| { operation: "help" }
@@ -200,7 +201,8 @@ const executionExamples: PluginAppActionExample<ExecutionInput>[] = [
 ];
 
 export function registerBatchTasksActions(ctx: PluginContext): void {
-	ctx.appActions.register<QueryInput>({
+	const register = createVettaActionRegistrar(ctx, "batch-tasks");
+	register<QueryInput>({
 		id: "batch-tasks.query",
 		publicId: "batch-tasks.query",
 		title: "查询批量任务",
@@ -228,7 +230,7 @@ export function registerBatchTasksActions(ctx: PluginContext): void {
 		},
 	});
 
-	ctx.appActions.register<ProjectInput>({
+	register<ProjectInput>({
 		id: "batch-tasks.project",
 		publicId: "batch-tasks.project",
 		title: "管理批量项目",
@@ -277,7 +279,7 @@ export function registerBatchTasksActions(ctx: PluginContext): void {
 		},
 	});
 
-	ctx.appActions.register<TaskInput>({
+	register<TaskInput>({
 		id: "batch-tasks.task",
 		publicId: "batch-tasks.task",
 		title: "操作批量子任务",
@@ -345,7 +347,7 @@ export function registerBatchTasksActions(ctx: PluginContext): void {
 		},
 	});
 
-	ctx.appActions.register<ExecutionInput>({
+	register<ExecutionInput>({
 		id: "batch-tasks.execution",
 		publicId: "batch-tasks.execution",
 		title: "控制批量项目执行",

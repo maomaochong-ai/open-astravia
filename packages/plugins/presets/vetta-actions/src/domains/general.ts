@@ -3,6 +3,7 @@ import type {
 	PluginContext,
 	PluginJsonSchema,
 } from "@vetta-org/plugin-sdk";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type GeneralQueryInput = { operation: "help" } | { operation: "get" };
 type GeneralManageInput =
@@ -51,7 +52,8 @@ const manageExamples: PluginAppActionExample<GeneralManageInput>[] = [
 ];
 
 export function registerGeneralActions(ctx: PluginContext): void {
-	ctx.appActions.register<GeneralQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "general");
+	register<GeneralQueryInput>({
 		id: "general.query",
 		publicId: "general.query",
 		title: "查询通用设置",
@@ -76,7 +78,7 @@ export function registerGeneralActions(ctx: PluginContext): void {
 			return ctx.official.general.getSettings();
 		},
 	});
-	ctx.appActions.register<GeneralManageInput>({
+	register<GeneralManageInput>({
 		id: "general.manage",
 		publicId: "general.manage",
 		title: "修改通用设置",

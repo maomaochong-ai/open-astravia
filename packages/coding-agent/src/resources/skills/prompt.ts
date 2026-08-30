@@ -1,14 +1,21 @@
-import type { Skill } from "./contracts.js";
+import { SKILL_SELECTION_GUIDANCE } from "./usage-guidance.js";
+
+/** Minimal skill data required by the model-visible index. */
+export interface ModelVisibleSkill {
+	readonly name: string;
+	readonly description: string;
+	readonly type: "skill" | "scene";
+	readonly disableModelInvocation: boolean;
+}
 
 /** Format model-visible skills using the Agent Skills XML convention. */
-export function formatSkillsForPrompt(skills: readonly Skill[]): string {
+export function formatSkillsForPrompt(skills: readonly ModelVisibleSkill[]): string {
 	const visibleSkills = skills.filter((skill) => !skill.disableModelInvocation && skill.type !== "scene");
 	if (visibleSkills.length === 0) return "";
 	const lines = [
 		"\n\n# Skills",
 		"",
-		"When the user's request matches a skill below, you MUST call the invoke_skill tool with the skill's name BEFORE attempting to handle the task yourself.",
-		"This is a BLOCKING REQUIREMENT. Do NOT try to accomplish the task manually when a matching skill exists.",
+		SKILL_SELECTION_GUIDANCE,
 		"NEVER use bash commands like find, locate, or mdfind to search for skill files. Always use the invoke_skill tool.",
 		"",
 		"<available_skills>",

@@ -34,7 +34,7 @@ interface SentMessage {
 	readonly payload: unknown;
 }
 
-function createRegisteredAction(): {
+function createRegisteredAction(usage?: PluginAppActionRegistration["usage"]): {
 	readonly catalog: AppActionCatalog;
 	readonly sent: SentMessage[];
 	readonly service: PluginActionService;
@@ -51,6 +51,7 @@ function createRegisteredAction(): {
 		id: "read",
 		title: "Read",
 		summary: "Read data",
+		usage,
 		effect: "read",
 		inputSchema: { type: "object", additionalProperties: false },
 		examples: [],
@@ -74,6 +75,20 @@ function requirePayload(message: SentMessage | undefined): Record<string, unknow
 describe("PluginActionService provider identity", () => {
 	beforeEach(() => {
 		pluginState.enabled = true;
+	});
+
+	it("preserves routing metadata through registration, search and describe without invoking the handler", () => {
+		const usage = {
+			target: "Notes in this plugin",
+			useWhen: "Read notes from this plugin",
+			avoidWhen: "Do not use for repository files",
+			alternatives: "Use file tools for repository files",
+		};
+		const { catalog, sent } = createRegisteredAction(usage);
+		expect(catalog.describe("plugin.action-provider.read").usage).toEqual(usage);
+		expect(catalog.search({ query: "Read" })[0]?.usage).toEqual(usage);
+		expect(catalog.search({ query: "repository" })).toEqual([]);
+		expect(sent).toEqual([]);
 	});
 
 	it("does not forward action caller identity to the plugin provider", async () => {

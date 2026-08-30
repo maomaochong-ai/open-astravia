@@ -5,6 +5,7 @@ import type {
 	PluginOfficialMcpUpsertData,
 } from "@vetta-org/plugin-sdk";
 import { throwEntityNotFound } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type McpQueryInput =
 	| { operation: "help" }
@@ -113,7 +114,8 @@ const manageExamples: PluginAppActionExample<McpManageInput>[] = [
 ];
 
 export function registerMcpActions(ctx: PluginContext): void {
-	ctx.appActions.register<McpQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "mcp");
+	register<McpQueryInput>({
 		id: "mcp.query",
 		publicId: "mcp.query",
 		title: "查询 MCP 服务器",
@@ -138,7 +140,7 @@ export function registerMcpActions(ctx: PluginContext): void {
 			return ctx.official.mcp.get(input.name);
 		},
 	});
-	ctx.appActions.register<McpManageInput>({
+	register<McpManageInput>({
 		id: "mcp.manage",
 		publicId: "mcp.manage",
 		title: "管理 MCP 服务器",

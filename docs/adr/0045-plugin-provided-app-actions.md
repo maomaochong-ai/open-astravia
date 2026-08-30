@@ -25,6 +25,7 @@ Desktop 的 App Action 曾由 `apps/desktop/src/main/app-actions` 静态注册�
 11. 插件 Action 可声明 `assertReady`，宿主会在审批前和审批输入被编辑后调用；失败通过结构化 `PluginAppActionError` 返回稳定错误码与详情，不展示审批。该阶段与 `handler` 使用同一取消、超时、权限和 activation 生命周期。
 12. `vetta-actions` 是 required 系统插件：宿主不允许停用或卸载；公共 Action provider 未就绪时 Catalog 返回结构化 `ACTION_RUNTIME_NOT_READY`，不把空目录当作成功结果。
 13. manifest 的 `pluginApiVersion` 在安装发现阶段由宿主校验。宿主在同一主版本内向后兼容，插件不能要求高于宿主的 API 版本；`vetta-actions` 从 `^1.1.0` 起依赖本 ADR 的完整宿主能力。
+14. Action 可通过 `usage` 声明作用对象、适用场景、排除场景与替代路径。宿主校验其结构，并在 search / describe 中原样传递；官方 Action 全部提供。该说明用于模型选择，不参与执行授权。检索排除内部权限标识和 usage 文本，避免公共权限前缀或负面示例产生无关命中；实际操作名仍由 Schema 参与索引。
 
 ## 原因
 

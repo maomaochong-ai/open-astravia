@@ -5,6 +5,7 @@ import {
 	type PluginJsonSchema,
 } from "@vetta-org/plugin-sdk";
 import { throwEntityNotFound } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type ThemeQueryInput = { type: "help" } | { type: "get" };
 
@@ -65,7 +66,8 @@ const manageExamples: PluginAppActionExample<ThemeManageInput>[] = [
 ];
 
 export function registerAppearanceActions(ctx: PluginContext): void {
-	ctx.appActions.register<ThemeQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "appearance");
+	register<ThemeQueryInput>({
 		id: "appearance.query",
 		publicId: "appearance.query",
 		title: "查询外观",
@@ -82,7 +84,7 @@ export function registerAppearanceActions(ctx: PluginContext): void {
 		},
 	});
 
-	ctx.appActions.register<ThemeManageInput>({
+	register<ThemeManageInput>({
 		id: "appearance.theme",
 		publicId: "appearance.theme",
 		title: "设置外观",

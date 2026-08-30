@@ -66,6 +66,7 @@ import type {
 } from "@vetta/capability-sdk";
 import type {
 	PluginAgentManifest,
+	PluginAppActionUsage,
 	PluginArtifactDestination,
 	PluginBrowserAction,
 	PluginBrowserActionResult,
@@ -258,6 +259,7 @@ export interface PluginAppActionRegistration {
 	title: string;
 	summary: string;
 	description?: string;
+	usage?: PluginAppActionUsage;
 	keywords?: string[];
 	effect: PluginAppActionEffect;
 	approval?: PluginAppActionApproval;

@@ -335,6 +335,7 @@ export class PluginActionService {
 				: `plugin.${pluginId}`,
 			title: registration.title,
 			summary: registration.summary,
+			usage: registration.usage,
 			availability: "gui-renderer",
 			permission: `plugin.${pluginId}.app-action.${registration.effect}`,
 			keywords: registration.keywords,

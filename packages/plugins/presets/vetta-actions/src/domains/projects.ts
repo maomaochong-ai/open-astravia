@@ -1,5 +1,6 @@
 import type { PluginAppActionExample, PluginContext, PluginJsonSchema } from "@vetta-org/plugin-sdk";
 import { throwEntityNotFound } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type ProjectsQueryInput =
 	| { operation: "help" }
@@ -106,7 +107,8 @@ function samePath(a: string, b: string): boolean {
 }
 
 export function registerProjectsActions(ctx: PluginContext): void {
-	ctx.appActions.register<ProjectsQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "projects");
+	register<ProjectsQueryInput>({
 		id: "projects.query",
 		publicId: "projects.query",
 		title: "查询项目与会话",
@@ -137,7 +139,7 @@ export function registerProjectsActions(ctx: PluginContext): void {
 			};
 		},
 	});
-	ctx.appActions.register<ProjectsManageInput>({
+	register<ProjectsManageInput>({
 		id: "projects.manage",
 		publicId: "projects.manage",
 		title: "管理侧边栏项目",

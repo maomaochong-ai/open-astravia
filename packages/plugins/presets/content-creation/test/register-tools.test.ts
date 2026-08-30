@@ -131,6 +131,8 @@ describe("content creation tool registration", () => {
 	});
 
 	it("exposes concise routing contracts at the tool level", () => {
+		expect(tool(CONTENT_EDIT_TOOL_NAME).description).not.toMatch(/first call.*confirm/i);
+		expect(tool(CONTENT_EDIT_TOOL_NAME).description).toContain("batch applies directly");
 		expect(tool(CONTENT_INSPECT_TOOL_NAME).description).toMatch(/without modifying.*current revision/s);
 		expect(tool(CONTENT_ASSETS_TOOL_NAME).description).toMatch(/Do not use.*normal file tools/s);
 		expect(tool(CONTENT_EDIT_TOOL_NAME).description).toMatch(/inspect.*view="project".*invalid operation/s);

@@ -7,6 +7,7 @@ import type {
 	PluginOfficialWebhookUpdateInput,
 } from "@vetta-org/plugin-sdk";
 import { throwEntityNotFound } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type WebhookQueryInput =
 	| { operation: "help" }
@@ -121,7 +122,8 @@ const approvalPresentations = [
 ];
 
 export function registerWebhookActions(ctx: PluginContext): void {
-	ctx.appActions.register<WebhookQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "webhook");
+	register<WebhookQueryInput>({
 		id: "webhook.query",
 		publicId: "webhook.query",
 		title: "查询消息推送",
@@ -147,7 +149,7 @@ export function registerWebhookActions(ctx: PluginContext): void {
 				: { endpoints: await ctx.official.webhook.list() };
 		},
 	});
-	ctx.appActions.register<WebhookManageInput>({
+	register<WebhookManageInput>({
 		id: "webhook.manage",
 		publicId: "webhook.manage",
 		title: "管理消息推送",

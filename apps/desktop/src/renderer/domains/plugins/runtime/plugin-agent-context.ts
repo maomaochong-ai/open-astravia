@@ -386,6 +386,7 @@ export function createPluginAppActionsApi({
 					title: registration.title.trim(),
 					summary: registration.summary.trim(),
 					description: registration.description?.trim() || undefined,
+					usage: registration.usage,
 					keywords: registration.keywords,
 					effect: registration.effect,
 					approval: registration.approval,

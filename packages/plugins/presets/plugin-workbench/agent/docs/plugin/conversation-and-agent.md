@@ -83,12 +83,16 @@ await ctx.conversation.sendPrompt("处理画布上新贴的备注");
 
 `ctx.agent.registerTool` 让插件用 JS 注册一个 **agent 可见的工具**：coding-agent 只看到工具 shell（schema + 描述），实际执行经 IPC 回到你的 renderer handler。需要 `agent.tools.register`（注册）+ `agent.toolHandler.execute`（执行）。返回 `Disposable`。
 
+工具描述应准确说明自身功能、作用对象和真实前提；确有容易混淆的不同资源时，可补充区分说明。多操作工具还应区分查询与修改，例如查询状态不代表要求导入或运行。Skill 的 frontmatter 保持完整的功能描述，不应为了防误调用而缩窄专业能力、要求用户显式点名或已有项目。是否选用由模型结合用户目标和上下文判断；选用后应正常执行完成任务所需的专业流程，但加载 Skill 本身不构成执行无关动作的授权。
+
+工具描述通过模型的工具定义传递，不再在系统提示词中重复列出；通用选择原则由 Coding Agent 提供。App Action 的发现说明另见 [app-actions.md](./app-actions.md#模型选择边界)，不能用工具使用说明替代宿主权限校验。
+
 ```ts
 interface PluginAgentToolRegistration<TInput = unknown> {
   id: string;                 // 插件内唯一
   name?: string;              // LLM 可见工具名（默认取 id）
   label?: string;             // 宿主 UI 展示名（Work 工具头等）。可用 %catalogKey%；不发给模型
-  description: string;        // 进系统提示词的 Available tools，写清楚何时用
+  description: string;        // 发给模型的工具描述：准确说明功能、作用对象和真实前提
   parameters: object;         // JSON Schema（可用 TypeBox 产出）
   scope_use?: string[];       // 允许出现的对话场景（见下）。fail-closed：缺省/空 = 任何场景都不出现
   requires?: string[];        // 需要的会话能力（如 "knowledge"），一般插件无需设置

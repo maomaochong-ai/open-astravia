@@ -3,6 +3,14 @@ import type { Disposable } from "./disposable.js";
 
 export type PluginAppActionEffect = "read" | "write" | "execute";
 
+/** Model-facing routing guidance, not authorization or an execution policy. */
+export interface PluginAppActionUsage {
+	target: string;
+	useWhen: string;
+	avoidWhen: string;
+	alternatives: string;
+}
+
 export interface PluginAppActionExample<TInput = unknown> {
 	description: string;
 	input: TInput;
@@ -65,6 +73,8 @@ export interface PluginAppActionRegistration<TInput = unknown> {
 	title: string;
 	summary: string;
 	description?: string;
+	/** Returned by search and describe; exclusions are never positive search terms. */
+	usage?: PluginAppActionUsage;
 	keywords?: string[];
 	effect: PluginAppActionEffect;
 	/** 官方插件可引用宿主已有审批界面；不能关闭 effect 对应的审批。 */

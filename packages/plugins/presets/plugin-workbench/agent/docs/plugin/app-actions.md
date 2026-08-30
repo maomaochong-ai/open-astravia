@@ -28,6 +28,12 @@ export default definePlugin({
       id: "notes.list",
       title: "List notes",
       summary: "List notes from this plugin",
+      usage: {
+        target: "Notes stored by this plugin",
+        useWhen: "The user wants to inspect this plugin's notes.",
+        avoidWhen: "Reading repository files or creating notes.",
+        alternatives: "Use file tools for repository files; use the note editor to create notes.",
+      },
       effect: "read",
       inputSchema: {
         type: "object",
@@ -51,6 +57,16 @@ export default definePlugin({
 可信官方插件还可声明 `publicId`，例如 `publicId: "general.query"`。若该 id 已被其它实现占用，后到的注册会被忽略并记日志（先注册为准）。普通插件使用 `publicId` 会被拒绝。门控依据宿主生成的 `trustLevel: "official"`，而不是插件 id 或安装来源；当前随包系统插件会获得该级别，远端和本地插件不会。
 
 官方插件需要读写宿主数据时使用 `ctx.official`。该 API 在 SDK 中可见，但普通插件调用会被宿主拒绝；宿主按领域提供窄 API，并通过 `pluginApiVersion` 做主版本兼容检查。`vetta-actions` 当前要求 `^1.1.0`，旧主版本或高于宿主能力的版本不会激活。
+
+## 模型选择边界
+
+`usage` 是可选的模型可见说明；建议每个 Action 声明。提供时，`target`、`useWhen`、`avoidWhen`、`alternatives` 必须都是非空字符串，宿主在 IPC 边界校验并去除首尾空白。`search` 与 `describe` 均返回这四项，因此模型在选择候选时即可知道作用对象、适用场景、排除场景与替代路径，而不只看到参数 Schema。
+
+官方 `vetta-actions` 的所有 Action 都声明使用边界。需要区分 Vetta 自身的项目、主题、插件和定时任务，与用户正在开发的软件：例如开发网页深色模式应编辑项目样式，不应修改 Vetta 主题。查询能力或解释功能也不等于要求创建、修改或执行。已有对话中明确的目标与操作意图可以继续使用，不应反复确认。
+
+检索使用能力名称、关键词、摘要、描述与操作名，不使用内部权限标识，也不索引 `usage`，避免“不要用于安装插件”等排除说明反而成为命中理由。Schema 联合分支中的 `operation` / `type` 常量及枚举仍可用于查找操作。搜索结果只是候选；调用方应核对使用说明，再通过 `describe` 获取参数，不能把命中当作执行指令。缺少 `usage` 时，需从详细说明确认目标，不能推定适用。
+
+这组字段不是授权、可信身份或执行门禁，不能关闭校验、扩大插件权限或替代审批。不要为了判断用户意图先调用写入 Action，把选择错误交给用户在审批框中处理。
 
 ## effect 与审批
 

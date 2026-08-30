@@ -13,15 +13,14 @@
 ③ 执行层   副作用发生前可不可以拦——execution mode 沙盒、插件权限、工具自身的业务校验
 ```
 
-三个反直觉但已被验证的事实，决定了你该把力气花在哪：
+设计时应遵循以下约束：
 
-1. **选择层没有"注册偏好"这回事。** 模型按 description 语义匹配选工具，不按清单位置；`agent_mode`
+1. **不能依靠注册顺序控制工具选择。** 模型会结合请求、上下文与 description 选择工具；`agent_mode`
    字段已整体废弃（解析容忍、语义为零），声明它不会让你的工具在任何模式下更靠前或更靠后。
 2. **模式不隐藏也不降权任何能力。** 你的扩展在 Work / Coding（以及未来的任何模式）下完整可用、
-   顺序一致。想让某个模式"更常用你"，唯一的路径是让解释层把任务解释成你能接的形状。
-3. **description 的每个 token 每轮都计费。** 工具 description 常驻 system prompt 前缀；写进去的
-   规则模型每轮都读、你每轮都付费。规则正文属于 skill（按需加载），description 只放"什么时候
-   用我 / 什么时候别用我"。
+   顺序一致。引导应帮助模型识别真实适用的任务，而不是把不相关请求解释成自己的使用场景。
+3. **description 占用模型上下文。** 工具 description 随工具定义提供，不在系统提示词中重复列出；缓存和计费取决于 Provider。
+   完整方法与流程属于 skill（按需加载）；description 保留准确的功能摘要、适用任务与必要前提，避免重复长篇教程。
 
 ## 四个工具引导面
 
@@ -35,12 +34,12 @@
 
 ### 2. description 正向触发段：用用户的语言描述任务
 
-模型是在拿**用户的原话**匹配你的 description。所以触发条件要写成用户会说的任务措辞，
-而不是实现视角的功能罗列：
+触发条件应说明用户想要的结果和被操作的资源，并考虑前文已建立的目标。使用用户会说的任务措辞，
+不要只匹配原话里的主题词，也不要只罗列实现功能：
 
 ```text
-✅ Use when the user asks for a UI design, mockup, screen, deck, or poster,
-   or attaches a design frame from the canvas.
+✅ Use for a standalone design mockup or edits to an existing design canvas.
+   For working UI code in a repository, use that project's framework instead.
 ❌ Provides vetd document scaffolding and frame management capabilities.
 ```
 
@@ -48,7 +47,7 @@
 description——「Take it from the user's request in whatever language they wrote it」。
 这把一次容易做错的隐式判断变成了 schema 强制的显式判断。
 
-### 3. description 反向触发段：唯一能让模型「少用你」的地方
+### 3. description 反向触发段：在选择前说明边界
 
 这是被最多人忽视、却是重心偏移最关键的一半。想收窄使用场景，**不要**指望模式、排序或任何
 声明式字段——把「什么时候不该用我 + 该用什么替代」直接写进 description。仓库里的范本：
@@ -85,8 +84,8 @@ with the ordinary file tools instead.
 
 ### 4. 工具返回值：被低估的最强引导面
 
-description 只在选择时读一次，**返回值在选择之后每次都被完整阅读**——它是你在会话中途
-持续引导模型的唯一通道。范本是 `vetd_status`：
+description 与返回值承担不同职责：前者帮助选择，后者提供执行后状态和恢复依据。返回值仍可能被截断或压缩，
+不能假定模型每次都完整阅读。范本是 `vetd_status`：
 
 - 返回里带 `sharedShell`（已有的公共外壳与组件清单）+ 一句 note："This design already has
   shared UI — reuse it instead of writing a second copy."。这解决了"模型一屏一屏写、写到第三屏
@@ -109,12 +108,20 @@ description 只在选择时读一次，**返回值在选择之后每次都被完
 Skill 走渐进披露：清单里只有 name + description（每轮都在 prompt 里），正文按 `invoke_skill`
 加载（只在被选中时付费）。所以：
 
-- **description 是检索入口**，写法同工具的正向触发段——用户任务措辞 + 触发场景枚举
-  （参考 vetta-ui-design 的 SKILL.md：把 "UI design, mockup, screen, deck, or poster" 全列出来）。
+- **description 是功能与选择入口**，完整描述 Skill 自身能完成的任务和专业方法。
+  不要为了防误调用删减功能、把创意与审查能力限定为已有工作流，或要求用户显式点名 Skill。任务匹配应由选择层结合用户目标与上下文完成。
 - **规则、流程、约束全部放正文。** 任何"你想让模型每次用你的工具前都知道"的长内容，都属于
   skill 正文而不是工具 description；用工具 description 的一句话把模型引到 skill
   （"invoke the vetta-ui-design skill for the rules before writing any of them"）。
 - frontmatter 的 `agent_mode` 已废弃，写了会被忽略。
+- 选用相关 Skill 后，正常执行完成用户目标所需的步骤；加载方法本身不代表授权执行与目标无关的动作。
+
+## App Action 的发现说明
+
+App Action 还应声明 `usage.target`、`useWhen`、`avoidWhen`、`alternatives`，随 search / describe 返回。
+例如 Vetta 主题设置与网站深色模式、Vetta 定时 Agent 与业务 cron、插件安装与插件源码开发，需要明确区分。
+检索候选不是执行指令；查询/解释不等于修改，不要先调用写入 Action 再把意图判断交给审批框。
+usage 不参与权限决策，也不进入正向检索文本。合同见 [app-actions.md](./app-actions.md#模型选择边界)。
 
 ## 系统插件 / 宿主侧作者的额外杠杆
 
@@ -125,9 +132,9 @@ Skill 走渐进披露：清单里只有 name + description（每轮都在 prompt
    与"仓库内写代码 / 文档交付"并列的新路线，需要在相关模式的路线段用**类别措辞**声明它的
    默认位次与准入条件（参考 coding.md 的 "Default route for UI work" 段）。纪律：永不出现具体
    工具名或插件名——宿主描述任务类别，插件用 description 自归类。
-2. **工作区事实探测**（`packages/coding-agent/src/model-context/workspace-facts.ts`）：事实比规则
-   强。如果"cwd 里存在某标记 ⇒ 用户在做某类工作"对你的能力成立（如 `.vetd` 之于设计），
-   把探测加进 facts 比在提示词里写十条规则都有效。注意它在会话创建时探测一次并固化。
+2. **工作区事实探测**（`packages/coding-agent/src/model-context/workspace-facts.ts`）：为模型提供实际存在的项目形态与资源。
+   文件或画布的存在只能辅助识别上下文，不能单凭标记就推断用户希望编辑它，更不能据此创建或运行新任务。
+   注意它在会话创建时探测一次并固化。
 
 ## 第三方插件作者的边界
 
@@ -147,7 +154,7 @@ Skill 走渐进披露：清单里只有 name + description（每轮都在 prompt
 | 写 `agent_mode` 期待模式偏好 | 字段语义为零，纯装饰 | 反向触发段自归类 |
 | 把使用规则塞进 description | 每轮计费、稀释触发信号 | 规则进 skill 正文，description 引流 |
 | 用 `toolPolicy.deny` 表达"不推荐" | deny 是硬闸，模型连看都看不到 | 反向触发段 + 替代路径 |
-| 依赖清单位置/注册顺序 | 位置对语义匹配无影响 | 无——放弃这个念头 |
+| 依赖清单位置/注册顺序 | 无法稳定表达适用条件 | 明确目标与排除场景 |
 | handler 里读 `getAgentMode()` 分支行为 | 读的是默认值不是会话值，必然出错 | 行为分支由输入参数或工作区状态驱动 |
 | 返回裸数据/裸错误 | 浪费每轮必读的引导面 | 返回值带"下一步该做什么" |
 
@@ -156,6 +163,8 @@ Skill 走渐进披露：清单里只有 name + description（每轮都在 prompt
 - [ ] 工具名是动词化的具体名，带产品前缀避免碰撞
 - [ ] description 有正向触发段（用户任务措辞）
 - [ ] 有真实误调场景的，写了反向触发段 + 替代路径
+- [ ] Skill frontmatter 完整保留自身功能，不以收窄能力替代选择判断；App Action 的 search / describe 能看到 usage
+- [ ] 成对验证相似措辞下不同目标的选择，以及查询不会自动变成修改；合同测试不冒充模型效果评估
 - [ ] 长规则在 skill 正文，description 不超过一段
 - [ ] 返回值在引导下一步，错误返回可执行
 - [ ] 描述写明实际副作用，已有业务确认与权限校验仍然有效

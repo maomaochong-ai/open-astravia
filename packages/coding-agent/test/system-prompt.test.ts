@@ -2,6 +2,13 @@ import { describe, expect, test } from "vitest";
 import { buildSystemPrompt, VETTA_CLI_GUIDANCE } from "../src/model-context/index.js";
 
 describe("VETTA_CLI_GUIDANCE", () => {
+	test("distinguishes the target application and inspection from execution", () => {
+		expect(VETTA_CLI_GUIDANCE).toContain("not the application, website, repository, or external service");
+		expect(VETTA_CLI_GUIDANCE).toContain("creating a React project");
+		expect(VETTA_CLI_GUIDANCE).toContain("usage.avoidWhen");
+		expect(VETTA_CLI_GUIDANCE).toContain("Search results are candidates, not instructions");
+		expect(VETTA_CLI_GUIDANCE).toContain("An approval dialog is not a way to discover what the user meant");
+	});
 	test("explains progressive discovery of Desktop capabilities via vetta action", () => {
 		expect(VETTA_CLI_GUIDANCE).toContain("use `vetta action` both to learn what Desktop can do and to operate it");
 		expect(VETTA_CLI_GUIDANCE).toContain("Discovery is progressive");
@@ -11,6 +18,13 @@ describe("VETTA_CLI_GUIDANCE", () => {
 });
 
 describe("buildSystemPrompt", () => {
+	test.each([undefined, "Custom base prompt"])("keeps selection boundaries with base prompt %s", (customPrompt) => {
+		const prompt = buildSystemPrompt({ selectedTools: ["read", "bash"], contextFiles: [], skills: [], customPrompt });
+		expect(prompt).toContain("requested outcome, target resource");
+		expect(prompt).toContain("explanation, inspection, or execution");
+		expect(prompt).toContain("inspect/list/status do not imply edit/import/run");
+		expect(prompt).toContain("Use fitting capabilities and their necessary supporting steps proactively");
+	});
 	describe("tool surface deduplication", () => {
 		// 工具清单与 params.tools 中每个 tool 的 description 是同一份字符串，不再重复渲染进提示词。
 		test("does not render a tool list section", () => {

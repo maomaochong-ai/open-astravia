@@ -1,5 +1,6 @@
 import type { PluginAppActionExample, PluginContext, PluginJsonSchema } from "@vetta-org/plugin-sdk";
 import { throwEntityNotFound } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type ShortcutsQueryInput = { operation: "help" } | { operation: "get" };
 type ShortcutsManageInput =
@@ -77,7 +78,8 @@ const manageExamples: PluginAppActionExample<ShortcutsManageInput>[] = [
 ];
 
 export function registerShortcutsActions(ctx: PluginContext): void {
-	ctx.appActions.register<ShortcutsQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "shortcuts");
+	register<ShortcutsQueryInput>({
 		id: "shortcuts.query",
 		publicId: "shortcuts.query",
 		title: "查询快捷键设置",
@@ -121,7 +123,7 @@ export function registerShortcutsActions(ctx: PluginContext): void {
 			return ctx.official.shortcuts.get();
 		},
 	});
-	ctx.appActions.register<ShortcutsManageInput>({
+	register<ShortcutsManageInput>({
 		id: "shortcuts.manage",
 		publicId: "shortcuts.manage",
 		title: "修改快捷键设置",

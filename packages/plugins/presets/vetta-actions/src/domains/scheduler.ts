@@ -6,6 +6,7 @@ import type {
 	PluginOfficialSchedulerTaskUpdateData,
 } from "@vetta-org/plugin-sdk";
 import { throwEntityNotFound } from "../action-errors";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type QueryInput =
 	| { operation: "help" }
@@ -165,7 +166,8 @@ const executionExamples: PluginAppActionExample<ExecutionInput>[] = [
 ];
 
 export function registerSchedulerActions(ctx: PluginContext): void {
-	ctx.appActions.register<QueryInput>({
+	const register = createVettaActionRegistrar(ctx, "scheduler");
+	register<QueryInput>({
 		id: "scheduler.query",
 		publicId: "scheduler.query",
 		title: "查询定时任务",
@@ -193,7 +195,7 @@ export function registerSchedulerActions(ctx: PluginContext): void {
 		},
 	});
 
-	ctx.appActions.register<TaskInput>({
+	register<TaskInput>({
 		id: "scheduler.task",
 		publicId: "scheduler.task",
 		title: "管理定时任务",
@@ -250,7 +252,7 @@ export function registerSchedulerActions(ctx: PluginContext): void {
 		},
 	});
 
-	ctx.appActions.register<ExecutionInput>({
+	register<ExecutionInput>({
 		id: "scheduler.execution",
 		publicId: "scheduler.execution",
 		title: "控制定时任务执行",

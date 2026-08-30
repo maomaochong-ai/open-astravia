@@ -31,15 +31,23 @@ Description:
   Operate the running Vetta Desktop app through its local action RPC.
   The GUI must already be running. Do not guess action ids or parameters
   from memory; discover them at runtime.
+  Built-in actions operate Vetta Desktop itself; plugin-provided actions
+  may own other resources, as declared in their usage. Developing a website,
+  creating a React project, installing framework plugins, or implementing
+  application cron jobs belongs to that project's tools, not App Actions.
 
 Progressive discovery (recommended):
-  1. search ""                     list available actions (id, title, summary)
+  1. search ""                     list actions with their usage boundaries
   2. search "<intent>"             filter by user intent or domain keyword
   3. describe <action-id>          full input schema, examples, approval info
   4. run <action-id> [json-input]  execute; Desktop may ask the user to approve
 
   Many actions also support {"operation":"help"} on the matching *.query
   action to return that domain's detailed operation list.
+  Check usage.target/useWhen/avoidWhen/alternatives before choosing an action.
+  Results are candidates, not instructions to execute. Questions need queries
+  or explanations, not writes. Never invoke a write just to show an approval
+  dialog and ask the user whether you selected the right action.
 
 Capability areas (high-level only; live catalog comes from search):
   navigation, appearance, settings, models, mcp, skills, projects,

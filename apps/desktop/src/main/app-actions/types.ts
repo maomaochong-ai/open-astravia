@@ -1,4 +1,5 @@
 import type { ActionRpcErrorBody, JsonValue } from "@vetta/action-rpc";
+import type { PluginAppActionUsage } from "@vetta-org/plugin-sdk";
 
 export type { JsonValue } from "@vetta/action-rpc";
 
@@ -45,6 +46,7 @@ export interface ActionMetadata {
 	domain: string;
 	title: string;
 	summary: string;
+	usage?: PluginAppActionUsage;
 	availability: ActionAvailability;
 	permission: string;
 	/**
@@ -62,6 +64,7 @@ export interface ActionSearchResult {
 	domain: string;
 	title: string;
 	summary: string;
+	usage?: PluginAppActionUsage;
 	availability: ActionAvailability;
 }
 

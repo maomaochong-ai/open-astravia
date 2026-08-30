@@ -1,4 +1,5 @@
 import type { PluginAppActionExample, PluginContext, PluginJsonSchema } from "@vetta-org/plugin-sdk";
+import { createVettaActionRegistrar } from "../action-usage";
 
 type UpdaterQueryInput =
 	| { operation: "help" }
@@ -31,7 +32,8 @@ const manageExamples: PluginAppActionExample<UpdaterManageInput>[] = [
 ];
 
 export function registerUpdaterActions(ctx: PluginContext): void {
-	ctx.appActions.register<UpdaterQueryInput>({
+	const register = createVettaActionRegistrar(ctx, "updater");
+	register<UpdaterQueryInput>({
 		id: "updater.query",
 		publicId: "updater.query",
 		title: "查询应用更新",
@@ -57,7 +59,7 @@ export function registerUpdaterActions(ctx: PluginContext): void {
 			return ctx.official.updater.getState();
 		},
 	});
-	ctx.appActions.register<UpdaterManageInput>({
+	register<UpdaterManageInput>({
 		id: "updater.manage",
 		publicId: "updater.manage",
 		title: "管理应用更新",

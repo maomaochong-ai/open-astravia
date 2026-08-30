@@ -243,6 +243,7 @@ export class AppActionCatalog {
 			domain: action.domain,
 			title: action.title,
 			summary: action.summary,
+			usage: action.usage,
 			availability: action.availability,
 			permission: action.permission,
 			keywords: action.keywords,
