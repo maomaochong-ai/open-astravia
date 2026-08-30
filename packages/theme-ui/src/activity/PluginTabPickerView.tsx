@@ -87,7 +87,13 @@ export function PluginTabPickerView({
 							{overflowTabs.length}
 						</span>
 					)}
-					<span className={hasAvailable ? "icon-[mdi--plus] h-4 w-4" : "icon-[mdi--chevron-down] h-4 w-4"} />
+					<span
+						className={
+							hasAvailable
+								? "icon-[mdi--plus-circle-outline] h-4 w-4"
+								: "icon-[mdi--chevron-down] h-4 w-4"
+						}
+					/>
 				</button>
 			</PopoverTrigger>
 			<PopoverContent align="end" sideOffset={6} className="w-60 gap-0 p-1.5">

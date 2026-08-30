@@ -88,6 +88,7 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 - **「AI 访问数据库」开关存量会话即时生效（P7 Bug 3 ③）**：开关切换后无需新建会话——`InputPipeline.prompt` 的 `maybeReloadMcpForPrompt` 按 mcp.json 合并签名（mtime+sha1，global+project）检测变更并 diff 重载，`disabled` 变 false 的 server 在发送下一条消息时重新初始化进工具集（防回归单测 `mcp-manager-reload.test.ts` 2 例）。开关描述文案（zh/en）同步为「切换后立即对新会话生效；已在进行的对话会在发送下一条消息时自动生效」。
 
 - **活动面板全屏态下按钮被 macOS 红绿灯遮挡（macOS）**：活动面板全屏（覆盖整个窗口）时 tab 菜单行顶到窗口左上角，`hiddenInset` 标题栏的原生红绿灯（x=16, y=20）正好盖住行首的「+」、全屏切换等按钮。修复：theme-ui `ActivityPanelView` 全屏态在 tab 行左侧预留 78px 红绿灯槽位（与 `SidebarTopBar`/`PageHeaderFrame` 同宽），槽位同时设为窗口拖拽区（此前全屏态顶部整条都无法拖拽窗口）。
+- **活动面板 tab 菜单行「+」按钮恢复小圆圈样式**：有可添加 tab 时，tab 菜单行最右侧的「+」从裸加号字形（`mdi--plus`）改为圆环加号（`mdi--plus-circle-outline`），与其他入口的视觉语言一致。
 
 ### Changed
 
