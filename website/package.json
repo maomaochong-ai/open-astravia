@@ -1,7 +1,7 @@
 {
 	"name": "@astravia/website",
 	"private": true,
-	"version": "0.55.3",
+	"version": "0.55.32",
 	"type": "module",
 	"description": "星轨 Astravia 官网 — 本地优先的开源 AI 桌面助手",
 	"scripts": {
