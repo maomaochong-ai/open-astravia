@@ -6,12 +6,14 @@ import type {
 	ChatMessage,
 	ContentBlock,
 	KnowledgeToolUiDetails,
+	ToolAudioPreview,
 	ToolCallBlock,
 	ToolCallUiDetails,
 	ToolImagePreview,
 } from "@shared/store/atoms";
 import type { Usage } from "@vetta/ai";
 import type { HistoryEntry, PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
+import { readMcpAppAttachment, selectMcpMediaCandidates } from "@vetta/runtime-mcp";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { classifyChatError } from "./classifyChatError";
 
@@ -171,18 +173,22 @@ function base64SizeBytes(data: string): number {
 }
 
 export function extractToolImagePreview(result: unknown, details: unknown): ToolImagePreview | undefined {
+	return extractToolImagePreviews(result, details)[0];
+}
+
+export function extractToolImagePreviews(result: unknown, details: unknown): ToolImagePreview[] {
 	const resultRecord = asRecord(result);
 	const content = Array.isArray(resultRecord?.content) ? resultRecord.content : Array.isArray(result) ? result : [];
-	const image = content.find((part): part is { type: "image"; data: string; mimeType: string } => {
-		const record = asRecord(part);
-		return record?.type === "image" && typeof record.data === "string" && typeof record.mimeType === "string";
-	});
-	if (!image) return undefined;
+	const images = selectMcpMediaCandidates(
+		content.filter((part): part is { type: "image"; data: string; mimeType: string } => {
+			const record = asRecord(part);
+			return record?.type === "image" && typeof record.data === "string" && typeof record.mimeType === "string";
+		}),
+	);
 
 	const detailsRecord = asRecord(details) ?? asRecord(resultRecord?.details);
 	const imageDetails = asRecord(detailsRecord?.image);
-
-	return {
+	return images.map((image) => ({
 		data: image.data,
 		mimeType: image.mimeType,
 		originalPath: typeof imageDetails?.originalPath === "string" ? imageDetails.originalPath : undefined,
@@ -194,7 +200,31 @@ export function extractToolImagePreview(result: unknown, details: unknown): Tool
 		processedWidth: asFiniteNumber(imageDetails?.processedWidth),
 		processedHeight: asFiniteNumber(imageDetails?.processedHeight),
 		wasResized: typeof imageDetails?.wasResized === "boolean" ? imageDetails.wasResized : undefined,
-	};
+	}));
+}
+
+export function extractToolAudioPreviews(result: unknown, details: unknown): ToolAudioPreview[] {
+	const resultRecord = asRecord(result);
+	const detailsRecord = asRecord(details) ?? asRecord(resultRecord?.details);
+	const sources = [
+		Array.isArray(resultRecord?.content) ? resultRecord.content : [],
+		Array.isArray(detailsRecord?.content) ? detailsRecord.content : [],
+		Array.isArray(detailsRecord?.media) ? detailsRecord.media : [],
+	].flat();
+	const candidates = sources.flatMap((part) => {
+		const record = asRecord(part);
+		return record?.type === "audio" && typeof record.data === "string" && typeof record.mimeType === "string"
+			? [{ data: record.data, mimeType: record.mimeType }]
+			: [];
+	});
+	return selectMcpMediaCandidates(candidates.map((candidate) => ({ ...candidate, type: "audio" as const }))).map(
+		({ data, mimeType }) => ({ data, mimeType }),
+	);
+}
+
+export function extractToolMcpApp(result: unknown, details: unknown) {
+	const resultRecord = asRecord(result);
+	return readMcpAppAttachment(details ?? resultRecord?.details);
 }
 
 export function extractToolUiDetails(result: unknown, details: unknown): ToolCallUiDetails | undefined {
@@ -456,7 +486,10 @@ export function historyToChat(
 			const block = toolCallIndex.get(String(m.toolCallId));
 			if (block) {
 				block.result = extractText(m.content);
-				block.imagePreview = extractToolImagePreview(m.content, m.details);
+				block.imagePreviews = extractToolImagePreviews(m.content, m.details);
+				block.imagePreview = block.imagePreviews[0];
+				block.audioPreviews = extractToolAudioPreviews(m.content, m.details);
+				block.mcpApp = extractToolMcpApp(m.content, m.details);
 				block.uiDetails = extractToolUiDetails(m.content, m.details);
 				block.cards = extractToolCards(m.content, m.details);
 				block.isError = m.isError === true;
@@ -671,7 +704,10 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 			const block = toolCallIndex.get(String(m.toolCallId));
 			if (block) {
 				block.result = extractText(m.content);
-				block.imagePreview = extractToolImagePreview(m.content, m.details);
+				block.imagePreviews = extractToolImagePreviews(m.content, m.details);
+				block.imagePreview = block.imagePreviews[0];
+				block.audioPreviews = extractToolAudioPreviews(m.content, m.details);
+				block.mcpApp = extractToolMcpApp(m.content, m.details);
 				block.uiDetails = extractToolUiDetails(m.content, m.details);
 				block.cards = extractToolCards(m.content, m.details);
 				block.isError = m.isError === true;
@@ -1046,7 +1082,10 @@ export function handleToolEnd(
 	timing?: { startedAt: number; durationMs: number; phases: Array<{ label: string; atMs: number }> },
 ): ChatMessage[] {
 	const resultText = extractResultText(result);
-	const imagePreview = extractToolImagePreview(result, undefined);
+	const imagePreviews = extractToolImagePreviews(result, undefined);
+	const imagePreview = imagePreviews[0];
+	const audioPreviews = extractToolAudioPreviews(result, undefined);
+	const mcpApp = extractToolMcpApp(result, undefined);
 	const uiDetails = extractToolUiDetails(result, undefined);
 	const cards = extractToolCards(result, undefined);
 
@@ -1066,6 +1105,9 @@ export function handleToolEnd(
 			status: isError ? "error" : "success",
 			result: resultText,
 			imagePreview,
+			imagePreviews,
+			audioPreviews,
+			mcpApp,
 			uiDetails,
 			cards,
 			isError,

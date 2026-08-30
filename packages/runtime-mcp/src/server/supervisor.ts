@@ -1,11 +1,13 @@
 import { isMcpAuthRequiredError, type McpClientHandle, type RuntimeMcpClientFactory } from "../client/index.js";
 import type { McpConfigSource } from "../config/index.js";
 import type {
+	McpClientCapabilities,
 	McpClientInfo,
 	McpConfig,
 	McpResource,
 	McpServerConfig,
 	McpServerInfo,
+	McpServerInteractionHandlers,
 	McpServerStatus,
 	McpTool,
 } from "../protocol/index.js";
@@ -44,6 +46,9 @@ export interface McpServerSupervisorOptions {
 	readonly enabled?: boolean;
 	readonly debug?: boolean;
 	readonly onDiagnostic?: (message: string) => void;
+	readonly interactionHandlers?: McpServerInteractionHandlers;
+	/** Additional product capabilities such as negotiated MCP extensions. */
+	readonly clientCapabilities?: McpClientCapabilities;
 	readonly authRequiredErrorMatcher?: (error: unknown) => boolean;
 	/** Product-owned defaults. File config may override the same name. */
 	readonly builtinServers?: Readonly<Record<string, McpServerConfig>>;
@@ -62,6 +67,8 @@ export class McpServerSupervisor {
 	private readonly clientInfo: McpClientInfo;
 	private readonly debug: boolean;
 	private readonly onDiagnostic?: (message: string) => void;
+	private readonly interactionHandlers?: McpServerInteractionHandlers;
+	private readonly clientCapabilities?: McpClientCapabilities;
 	private readonly authRequiredErrorMatcher: (error: unknown) => boolean;
 	private enabled: boolean;
 	private readonly builtinServers = new Map<string, McpServerConfig>();
@@ -80,6 +87,8 @@ export class McpServerSupervisor {
 		this.enabled = options.enabled ?? true;
 		this.debug = options.debug ?? false;
 		this.onDiagnostic = options.onDiagnostic;
+		this.interactionHandlers = options.interactionHandlers;
+		this.clientCapabilities = options.clientCapabilities;
 		this.authRequiredErrorMatcher = options.authRequiredErrorMatcher ?? isMcpAuthRequiredError;
 		for (const [name, config] of Object.entries(options.builtinServers ?? {})) {
 			if (name && !name.includes("_")) this.builtinServers.set(name, config);
@@ -298,13 +307,14 @@ export class McpServerSupervisor {
 			const client = this.clientFactory(name, config, {
 				debug: this.debug || config.debug,
 				onDiagnostic: (message) => this.log(message),
+				interactionHandlers: this.interactionHandlers,
 			});
 			server.client = client;
 			server.startedAt = Date.now();
 			const result = await client.initialize({
 				protocolVersion: this.protocolVersion,
 				clientInfo: this.clientInfo,
-				capabilities: {},
+				capabilities: buildClientCapabilities(this.interactionHandlers, this.clientCapabilities),
 			});
 			server.serverInfo = result.serverInfo;
 			server.pid = client.getPid();
@@ -527,6 +537,18 @@ function mapsEqualConfig(
 
 function configsEqual(left: McpServerConfig, right: McpServerConfig): boolean {
 	return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function buildClientCapabilities(
+	handlers?: McpServerInteractionHandlers,
+	additional: McpClientCapabilities = {},
+): McpClientCapabilities {
+	return {
+		...additional,
+		...(handlers?.roots ? { roots: {} } : {}),
+		...(handlers?.sampling ? { sampling: {} } : {}),
+		...(handlers?.elicitation ? { elicitation: { form: {}, url: {} } } : {}),
+	};
 }
 
 function getErrorMessage(error: unknown): string {

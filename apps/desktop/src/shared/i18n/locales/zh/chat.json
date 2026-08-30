@@ -23,6 +23,11 @@
 			"clearFinished": "清除已结束 ({{count}})",
 			"stop": "终止"
 		},
+		"mcpTasks": {
+			"statusWorking": "处理中",
+			"statusInputRequired": "等待输入",
+			"statusCancelled": "已取消"
+		},
 		"subagents": {
 			"usage": "{{tokens}} tokens · {{cost}}",
 			"errorPermission": "权限受限",
@@ -205,6 +210,18 @@
 	"askUserQuestion": {
 		"cancelledMessage": "用户已取消，未作答",
 		"defaultQuestionLabel": "问题 {{number}}"
+	},
+	"mcpElicitation": {
+		"title": "MCP 请求信息",
+		"source": "来自 {{server}}",
+		"urlNotice": "只有在你确认后，Vetta 才会在系统浏览器中打开这个地址。",
+		"decline": "拒绝",
+		"openAndContinue": "打开并继续",
+		"submit": "提交",
+		"required": "（必填）",
+		"enabled": "已启用",
+		"disabled": "未启用",
+		"selectPlaceholder": "请选择"
 	},
 	"atPanel": {
 		"emptyDirectory": "空目录",
@@ -801,7 +818,8 @@
 	"toolCall": {
 		"error": "Error",
 		"meta": "meta",
-		"metaLabel": "本地元数据，仅 UI 展示，不发送给大模型"
+		"metaLabel": "本地元数据，仅 UI 展示，不发送给大模型",
+		"audioPreview": "MCP 音频结果"
 	},
 	"toolFormat": {
 		"unknown": "未知"
@@ -847,6 +865,11 @@
 			"listTags": "知识库·标签列表",
 			"writePage": "知识库·写页"
 		}
+	},
+	"mcpApp": {
+		"externalAccess": "此 MCP 应用声明访问 {{count}} 个外部域名",
+		"permissionsDenied": "此 MCP 应用请求了设备权限；Vetta 当前未授予这些权限",
+		"title": "MCP 应用"
 	},
 	"usageBar": {
 		"durationLabel": "耗时 {{duration}}",

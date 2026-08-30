@@ -15,6 +15,7 @@ import { Component, type ErrorInfo, type ReactNode, useId, useMemo, useState } f
 import { useTranslation } from "react-i18next";
 import { PluginI18nBoundary } from "../../plugins/runtime/plugin-i18n";
 import { MarkdownContent } from "../components/blocks/TextBlock";
+import { McpAppSurface } from "../components/mcp-app/McpAppSurface";
 import { AskUserQuestionView } from "../components/blocks/tool-views/AskUserQuestionView";
 import { BashTerminalCard } from "../components/blocks/tool-views/BashTerminalCard";
 import { EditDiffView } from "../components/blocks/tool-views/EditDiffView";
@@ -88,7 +89,9 @@ export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, 
 	const mcp = parseMcpTool(block.toolName);
 	const icon = toolIcon(block.toolName);
 	const shellCommand = getShellCommand(block);
-	const showImagePreview = block.imagePreview !== undefined && (block.toolName === "read" || mcp !== null);
+	const imagePreviews = block.imagePreviews ?? (block.imagePreview ? [block.imagePreview] : []);
+	const showImagePreview = imagePreviews.length > 0 && (block.toolName === "read" || mcp !== null);
+	const audioPreviews = block.audioPreviews ?? [];
 
 	const activeRuntimeId = useAtomValue(activeRuntimeIdAtom);
 	const backgroundTasksMap = useAtomValue(backgroundTasksBySessionAtom);
@@ -159,6 +162,7 @@ export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, 
 		/>
 	) : (
 		<>
+			{block.mcpApp && !exportMode ? <McpAppSurface attachment={block.mcpApp} input={block.args} /> : null}
 			{hasMeta && block.startedAt !== undefined && (
 				<div
 					className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground/50"
@@ -180,8 +184,12 @@ export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, 
 					)}
 				</div>
 			)}
-			{showImagePreview && block.imagePreview ? (
-				<ReadImageView image={block.imagePreview} />
+			{showImagePreview ? (
+				<div className="grid gap-2 sm:grid-cols-2">
+					{imagePreviews.map((image, index) => (
+						<ReadImageView key={`${image.mimeType}-${index}`} image={image} />
+					))}
+				</div>
 			) : block.toolName === "write" ? (
 				<>
 					<WriteContentView block={block} />
@@ -213,6 +221,19 @@ export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, 
 					{block.result}
 				</pre>
 			) : null}
+			{audioPreviews.length > 0 && (
+				<div className="mt-2 grid gap-2">
+					{audioPreviews.map((audio, index) => (
+						<audio
+							key={`${audio.mimeType}-${index}`}
+							controls
+							preload="metadata"
+							aria-label={t("toolCall.audioPreview")}
+							src={`data:${audio.mimeType};base64,${audio.data}`}
+						/>
+					))}
+				</div>
+			)}
 			{block.isError && (
 				<div className="mt-1 text-[11px] font-medium text-destructive/70">{t("toolCall.error")}</div>
 			)}

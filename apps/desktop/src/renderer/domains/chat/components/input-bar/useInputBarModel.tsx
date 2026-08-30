@@ -14,6 +14,7 @@ import {
 	inputValueAtom,
 	isStreamingAtom,
 	pendingMessageEditAtom,
+	pendingMcpElicitationsAtom,
 	pendingQuestionsAtom,
 	promptSuggestionsAtom,
 	promptAttachmentAtom,
@@ -122,6 +123,10 @@ export function useInputBarModel({
 	const activeSession = useAtomValue(activeSessionAtom);
 	const pendingQuestions = useAtomValue(pendingQuestionsAtom);
 	const pendingQuestion = activeSession?.runtimeId ? pendingQuestions[activeSession.runtimeId] : undefined;
+	const pendingMcpElicitations = useAtomValue(pendingMcpElicitationsAtom);
+	const pendingMcpElicitation = activeSession?.runtimeId
+		? pendingMcpElicitations[activeSession.runtimeId]
+		: undefined;
 	const promptSuggestions = useAtomValue(promptSuggestionsAtom);
 	const firstSuggestion = activeSession?.runtimeId ? promptSuggestions[activeSession.runtimeId]?.[0] : undefined;
 	const [promptAttachment, setPromptAttachment] = useAtom(promptAttachmentAtom);
@@ -608,6 +613,7 @@ export function useInputBarModel({
 		isStreaming,
 		sendPending,
 		pendingQuestion,
+		pendingMcpElicitation,
 		firstSuggestion,
 		imageAttachments,
 		activeActions,

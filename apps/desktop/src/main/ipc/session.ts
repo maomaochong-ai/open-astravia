@@ -32,12 +32,16 @@ import {
 } from "@vetta/coding-agent/session-extensions";
 import type { SessionEvent, SessionExecutionMode, SettingsPatch } from "@vetta/runtime-core";
 import { sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
+import { isMcpJsonValue, type McpJsonObject } from "@vetta/runtime-mcp";
 import { BrowserWindow, ipcMain, type WebContents } from "electron";
+import type { DesktopMcpAppResourceRead, DesktopMcpAppToolCall } from "../../shared/mcp-app.js";
+import type { DesktopMcpElicitationResponse, DesktopMcpElicitationValue } from "../../shared/mcp-interaction.js";
 import { PLUGIN_CONTRIBUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { DEFAULT_AGENT_MODE, isAgentMode, MODE_PROMPTS } from "../agent-modes/index.js";
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
+import { getDesktopMcpElicitationBroker } from "../conversations/mcp-elicitation-broker.js";
 import { purgeProjectSessions } from "../conversations/project-session-purge.js";
 import { parsePromptRequest } from "../conversations/prompt-request-schema.js";
 import type { DesktopCodingAgentSessionConfig } from "../conversations/resolve-session-config.js";
@@ -47,6 +51,8 @@ import { listRuntimeSessionProjects, listSessionHistory } from "../conversations
 import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { type DebugRequestData, writeDebugRequest } from "../debug-writer.js";
 import { getAppLogger } from "../logger.js";
+import { getDesktopMcpAppRegistry } from "../mcp/mcp-app-runtime.js";
+import { getDesktopMcpTaskCoordinator, getDesktopMcpTaskRegistry } from "../mcp/mcp-task-runtime.js";
 import { notify } from "../notifications/index.js";
 import { createPetBubbleCommand } from "../pet/pet-bubble-command.js";
 import { mapSessionEventToPetPresentation } from "../pet/session-event-action-policy.js";
@@ -181,6 +187,18 @@ const CHANNELS = {
 	QUESTION_LIST_PENDING: "vetta:session:question-list-pending",
 	QUESTION_RESOLVED: "vetta:session:question-resolved",
 	QUESTION_RESPONSE: "vetta:session:question-response",
+	MCP_ELICITATION_REQUEST: "vetta:session:mcp-elicitation-request",
+	MCP_ELICITATION_LIST_PENDING: "vetta:session:mcp-elicitation-list-pending",
+	MCP_ELICITATION_RESOLVED: "vetta:session:mcp-elicitation-resolved",
+	MCP_ELICITATION_RESPONSE: "vetta:session:mcp-elicitation-response",
+	MCP_TASKS_CHANGED: "vetta:session:mcp-tasks-changed",
+	MCP_TASKS_LIST: "vetta:session:mcp-tasks-list",
+	MCP_TASKS_CANCEL: "vetta:session:mcp-tasks-cancel",
+	MCP_TASKS_CLEAR_FINISHED: "vetta:session:mcp-tasks-clear-finished",
+	MCP_APP_SURFACE_GET: "vetta:session:mcp-app-surface-get",
+	MCP_APP_CALL_TOOL: "vetta:session:mcp-app-call-tool",
+	MCP_APP_READ_RESOURCE: "vetta:session:mcp-app-read-resource",
+	MCP_APP_RELEASE: "vetta:session:mcp-app-release",
 	SANDBOX_GRANT_REQUEST: "vetta:session:sandbox-grant-request",
 	SANDBOX_GRANT_RESPONSE: "vetta:session:sandbox-grant-response",
 	SANDBOX_GRANTS_LIST: "vetta:session:sandbox-grants-list",
@@ -276,6 +294,68 @@ function normalizeQuestionResult(value: unknown): CodingAgentQuestionResult {
 	return { cancelled: false, answers };
 }
 
+function normalizeMcpElicitationResponse(value: unknown): DesktopMcpElicitationResponse {
+	if (!value || typeof value !== "object") return { action: "cancel" };
+	const record = value as Record<string, unknown>;
+	if (record.action !== "accept" && record.action !== "decline" && record.action !== "cancel") {
+		return { action: "cancel" };
+	}
+	if (record.action !== "accept") return { action: record.action };
+	if (!record.content || typeof record.content !== "object" || Array.isArray(record.content)) {
+		return { action: "accept" };
+	}
+	const content: Record<string, DesktopMcpElicitationValue> = {};
+	for (const [key, field] of Object.entries(record.content)) {
+		if (
+			typeof field === "string" ||
+			typeof field === "number" ||
+			typeof field === "boolean" ||
+			(Array.isArray(field) && field.every((item) => typeof item === "string"))
+		) {
+			content[key] = field as DesktopMcpElicitationValue;
+		}
+	}
+	return { action: "accept", content };
+}
+
+function normalizeMcpAppToolCall(value: unknown): DesktopMcpAppToolCall & { readonly arguments?: McpJsonObject } {
+	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid MCP App tool call");
+	const record = value as Record<string, unknown>;
+	assertNonEmptyString(record.surfaceId, "MCP App surface id");
+	assertNonEmptyString(record.name, "MCP App tool name");
+	if (record.surfaceId.length > 128 || record.name.length > 256)
+		throw new Error("MCP App tool call identifiers are too long");
+	if (record.arguments !== undefined && (!isMcpJsonValue(record.arguments) || Array.isArray(record.arguments))) {
+		throw new Error("Invalid MCP App tool arguments");
+	}
+	if (
+		record.arguments !== undefined &&
+		new TextEncoder().encode(JSON.stringify(record.arguments)).byteLength > 256_000
+	) {
+		throw new Error("MCP App tool arguments exceed the host limit");
+	}
+	return {
+		surfaceId: record.surfaceId,
+		name: record.name,
+		...(record.arguments === undefined ? {} : { arguments: record.arguments as McpJsonObject }),
+	};
+}
+
+function normalizeMcpAppResourceRead(value: unknown): DesktopMcpAppResourceRead {
+	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid MCP App resource read");
+	const record = value as Record<string, unknown>;
+	assertNonEmptyString(record.surfaceId, "MCP App surface id");
+	assertNonEmptyString(record.uri, "MCP App resource URI");
+	if (record.surfaceId.length > 128 || record.uri.length > 2048)
+		throw new Error("MCP App resource request is too long");
+	if (!record.uri.startsWith("ui://")) throw new Error("MCP App resource URI must use ui://");
+	return { surfaceId: record.surfaceId, uri: record.uri };
+}
+
+function assertMcpAppSender(sender: WebContents, expected: WebContents): void {
+	if (sender !== expected || sender.isDestroyed()) throw new Error("Untrusted MCP App IPC sender");
+}
+
 export function registerSessionIpc(webContents: WebContents): () => void {
 	const resolveDefaultExecutionMode = async (): Promise<SessionExecutionMode> => {
 		const config = await readDesktopConfig();
@@ -286,12 +366,17 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const pluginRuntimeSource = getDesktopCodingAgentPluginRuntimeSource();
 	const conversationService = getDesktopConversationService();
 	const questionBroker = getDesktopUserQuestionBroker();
+	const mcpElicitationBroker = getDesktopMcpElicitationBroker();
+	const mcpTaskRegistry = getDesktopMcpTaskRegistry();
+	const mcpTaskCoordinator = getDesktopMcpTaskCoordinator();
+	const mcpAppRegistry = getDesktopMcpAppRegistry();
 	const sandboxAuthorizationBroker = getDesktopSandboxAuthorizationBroker();
 	const unsubscribeConversationListChanged = onConversationListChanged((event) => {
 		broadcastToAllWindows(CHANNELS.SESSIONS_CHANGED, event);
 	});
 	const subscriptionMap = new Map<string, () => void>();
 	const questionMap = new Map<string, (result: CodingAgentQuestionResult) => void>();
+	const mcpElicitationMap = new Map<string, (result: DesktopMcpElicitationResponse) => void>();
 	const sandboxGrantMap = new Map<string, (decision: CodingAgentSandboxAuthorizationDecision) => void>();
 	const pluginToolMap = new Map<string, (result: unknown) => void>();
 	const pluginToolRendererHost = new PluginToolRendererHostLifecycle();
@@ -419,6 +504,31 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		} catch {
 			// Renderer may be between render-process-gone and reload; snapshot sync will recover.
 		}
+	});
+
+	const unregisterMcpElicitationHandler = mcpElicitationBroker.setInteractiveHandler((request, signal) => {
+		if (webContents.isDestroyed()) return Promise.resolve({ action: "cancel" });
+		return new Promise<DesktopMcpElicitationResponse>((resolve) => {
+			const finish = (result: DesktopMcpElicitationResponse): void => {
+				mcpElicitationMap.delete(request.requestId);
+				signal?.removeEventListener("abort", onAbort);
+				resolve(result);
+			};
+			const onAbort = (): void => finish({ action: "cancel" });
+			if (signal?.aborted) {
+				resolve({ action: "cancel" });
+				return;
+			}
+			signal?.addEventListener("abort", onAbort, { once: true });
+			mcpElicitationMap.set(request.requestId, finish);
+			webContents.send(CHANNELS.MCP_ELICITATION_REQUEST, request);
+		});
+	});
+	const unregisterMcpElicitationResolved = mcpElicitationBroker.onResolved((event) => {
+		if (!webContents.isDestroyed()) webContents.send(CHANNELS.MCP_ELICITATION_RESOLVED, event);
+	});
+	const unregisterMcpTasksChanged = mcpTaskRegistry.onChanged((event) => {
+		if (!webContents.isDestroyed()) webContents.send(CHANNELS.MCP_TASKS_CHANGED, event);
 	});
 
 	const sandboxAuthorizationHandler = (
@@ -1185,12 +1295,51 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	});
 
 	ipcMain.handle(CHANNELS.QUESTION_LIST_PENDING, () => questionBroker.listPendingQuestions());
+	ipcMain.handle(CHANNELS.MCP_ELICITATION_LIST_PENDING, () => mcpElicitationBroker.listPending());
 
 	ipcMain.handle(CHANNELS.QUESTION_RESPONSE, (_event, requestId: unknown, result: unknown) => {
 		assertNonEmptyString(requestId, "requestId");
 		const resolve = questionMap.get(requestId);
 		if (!resolve) return;
 		resolve(normalizeQuestionResult(result));
+	});
+
+	ipcMain.handle(CHANNELS.MCP_ELICITATION_RESPONSE, (_event, requestId: unknown, result: unknown) => {
+		assertNonEmptyString(requestId, "requestId");
+		mcpElicitationMap.get(requestId)?.(normalizeMcpElicitationResponse(result));
+	});
+	ipcMain.handle(CHANNELS.MCP_TASKS_LIST, (_event, sessionId: unknown) => {
+		if (sessionId === undefined) return mcpTaskRegistry.listPublic();
+		assertNonEmptyString(sessionId, "sessionId");
+		return mcpTaskRegistry.listPublic(sessionId);
+	});
+	ipcMain.handle(CHANNELS.MCP_TASKS_CANCEL, (_event, id: unknown) => {
+		assertNonEmptyString(id, "MCP task id");
+		return mcpTaskCoordinator.cancel(id);
+	});
+	ipcMain.handle(CHANNELS.MCP_TASKS_CLEAR_FINISHED, (_event, sessionId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		return mcpTaskRegistry.clearTerminal(sessionId);
+	});
+	ipcMain.handle(CHANNELS.MCP_APP_SURFACE_GET, (event, id: unknown) => {
+		assertMcpAppSender(event.sender, webContents);
+		assertNonEmptyString(id, "MCP App surface id");
+		return mcpAppRegistry.getSurface(id);
+	});
+	ipcMain.handle(CHANNELS.MCP_APP_CALL_TOOL, async (event, input: unknown) => {
+		assertMcpAppSender(event.sender, webContents);
+		const request = normalizeMcpAppToolCall(input);
+		return await mcpAppRegistry.callTool(request.surfaceId, request.name, request.arguments);
+	});
+	ipcMain.handle(CHANNELS.MCP_APP_READ_RESOURCE, async (event, input: unknown) => {
+		assertMcpAppSender(event.sender, webContents);
+		const request = normalizeMcpAppResourceRead(input);
+		return await mcpAppRegistry.readResource(request.surfaceId, request.uri);
+	});
+	ipcMain.handle(CHANNELS.MCP_APP_RELEASE, (event, id: unknown) => {
+		assertMcpAppSender(event.sender, webContents);
+		assertNonEmptyString(id, "MCP App surface id");
+		return mcpAppRegistry.release(id);
 	});
 
 	ipcMain.handle(CHANNELS.SANDBOX_GRANT_RESPONSE, (_event, requestId: unknown, decision: unknown) => {
@@ -1397,6 +1546,8 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			resolve(CANCELLED_QUESTION);
 		}
 		questionMap.clear();
+		for (const resolve of mcpElicitationMap.values()) resolve({ action: "cancel" });
+		mcpElicitationMap.clear();
 		for (const resolve of sandboxGrantMap.values()) {
 			resolve("deny");
 		}
@@ -1501,6 +1652,8 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			resolve(CANCELLED_QUESTION);
 		}
 		questionMap.clear();
+		for (const resolve of mcpElicitationMap.values()) resolve({ action: "cancel" });
+		mcpElicitationMap.clear();
 		for (const resolve of sandboxGrantMap.values()) {
 			resolve("deny");
 		}
@@ -1519,6 +1672,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		pluginContinuationMap.clear();
 		unregisterInteractiveQuestionHandler();
 		unregisterQuestionResolved();
+		unregisterMcpElicitationHandler();
+		unregisterMcpElicitationResolved();
+		unregisterMcpTasksChanged();
 		unregisterSandboxAuthorizationHandler();
 		pluginRuntimeSource.setToolInvoker(undefined);
 		setDesktopPluginHookInvoker(undefined);

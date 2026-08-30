@@ -5,6 +5,7 @@ import type { InputBarContextMenuViewProps } from "@vetta/theme-ui/chat";
 import type { ComponentProps, MouseEvent } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import type { SelectedFile } from "../AtPanel";
+import type { McpElicitationPanel } from "../McpElicitationPanel";
 import type { QuestionPanel } from "../QuestionPanel";
 import type { ActiveActionCapsule } from "./ActiveActionCapsules";
 import type { TriggerMatch } from "./editor/tokens/trigger";
@@ -105,6 +106,7 @@ export interface InputBarModel {
 	/** 宿主传入的发送前准备态，原样透给发送按钮。 */
 	sendPending?: { readonly label: string };
 	pendingQuestion: ComponentProps<typeof QuestionPanel>["pending"] | undefined;
+	pendingMcpElicitation: ComponentProps<typeof McpElicitationPanel>["request"] | undefined;
 	firstSuggestion?: string;
 	/** 输入卡片上方的图片缩略图行；label 与文本流里的「图 N」胶囊同源。 */
 	imageAttachments: ReadonlyArray<{ path: string; name: string; url: string; label: string }>;

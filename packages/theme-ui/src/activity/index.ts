@@ -15,6 +15,8 @@ export type {
 	BackgroundTasksTabPanelViewProps,
 	BackgroundTaskViewItem,
 	BackgroundWorkViewItem,
+	McpTaskWorkStatus,
+	McpTaskWorkViewItem,
 	SubagentWorkStatus,
 	SubagentWorkViewItem,
 } from "./BackgroundTasksTabPanelView";

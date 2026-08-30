@@ -6,6 +6,9 @@ All notable changes to `@vetta/runtime-node` are documented in this file.
 
 ### Added
 
+- Node MCP 组合暂以 `2025-11-25` 作为兼容默认版本，同时公开 `2026-07-28` Modern 协议合同，避免在现代
+  Transport 尚未启用前误把旧 Session Client 宣称为 Modern Client。
+
 - MCP stdio/HTTP Client 增加安全诊断回调，记录连接、协议版本、超时、JSON-RPC 错误、无效结果、工具调用失败和进程退出，
   不记录参数、凭据或二进制 payload。
 - HTTP MCP Client 暴露 Streamable HTTP 实际协商的 MCP protocol version。

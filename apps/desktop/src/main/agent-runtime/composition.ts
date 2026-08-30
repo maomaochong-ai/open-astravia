@@ -63,6 +63,8 @@ import { DEFAULT_SERVER_URL } from "../constants.js";
 import { resolveSessionListCwd } from "../conversations/session-paths.js";
 import { getKnowledgeRoot } from "../knowledge/knowledge-layout.js";
 import { getAppLogger } from "../logger.js";
+import { getDesktopMcpAppRegistry } from "../mcp/mcp-app-runtime.js";
+import { getDesktopMcpTaskCoordinator } from "../mcp/mcp-task-runtime.js";
 import { createDesktopPluginHookAdapterFactory } from "../plugins/coding-agent-hook-adapter.js";
 import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { getDesktopCodingAgentPluginRuntimeSource } from "../plugins/plugin-runtime-service.js";
@@ -108,6 +110,8 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	});
 	const platformServices = createDesktopRuntimeHostPlatformServices();
 	const modelRuntime = getOrCreateSharedModelRuntime();
+	const mcpTaskCoordinator = getDesktopMcpTaskCoordinator();
+	const mcpAppHost = getDesktopMcpAppRegistry();
 	const providerObservationRuntime = getDesktopProviderObservationRuntime();
 	const getDefaultExecutionMode = async () => (await readDesktopConfig()).defaultExecutionMode;
 	const sandboxHostPath = resolveWindowsSandboxHostBinary()?.path;
@@ -172,6 +176,8 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 						}),
 						debug: readDesktopMcpDebug(cwd, resolvedAgentDir),
 						resultPolicy: resultArtifacts.mcpToolResultPolicy,
+						taskCoordinator: mcpTaskCoordinator,
+						appHost: mcpAppHost,
 					});
 				},
 			},
@@ -193,6 +199,8 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 						debug: readDesktopMcpDebug(cwd, resolvedAgentDir),
 					}),
 					resultPolicy: resultArtifacts.mcpToolResultPolicy,
+					taskCoordinator: mcpTaskCoordinator,
+					appHost: mcpAppHost,
 				});
 			},
 			resolveMcpRuntimeScope: ({ cwd, agentDir }) => ({

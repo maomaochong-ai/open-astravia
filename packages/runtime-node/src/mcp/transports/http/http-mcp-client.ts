@@ -1,18 +1,33 @@
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import type { McpHttpAuthProviderFactory } from "@vetta/runtime-mcp/client";
-import { McpAuthRequiredError } from "../../client/client-errors.js";
+import { isMcpAuthRequiredError, McpAuthRequiredError } from "../../client/client-errors.js";
 import type { McpClientHandle } from "../../client/client-handle.js";
 import type {
+	McpCancelTaskParams,
+	McpCancelTaskResult,
+	McpGetTaskParams,
+	McpGetTaskResult,
 	McpHttpServerConfig,
 	McpInitializeParams,
 	McpInitializeResult,
 	McpJsonObject,
+	McpPromptGetParams,
+	McpPromptGetResult,
 	McpPromptsListResult,
+	McpRequestOptions,
 	McpResourceReadResult,
 	McpResourcesListResult,
+	McpServerInteractionHandlers,
+	McpSubscriptionFilter,
+	McpSubscriptionHandler,
+	McpSubscriptionsListenResult,
+	McpTaskWaitOptions,
 	McpToolCallResult,
 	McpToolsListResult,
+	McpUpdateTaskParams,
+	McpUpdateTaskResult,
 } from "../../protocol/index.js";
+import { ModernStatelessMcpClient } from "./modern-stateless-mcp-client.js";
 import {
 	createMcpHttpSdkSession,
 	isMcpSdkUnauthorizedError,
@@ -29,6 +44,10 @@ export interface HttpMcpClientOptions {
 	readonly timeout?: number;
 	readonly authProviderFactory?: McpHttpAuthProviderFactory;
 	readonly sdkSessionFactory?: McpHttpSdkSessionFactory;
+	/** Injected only by transport contract tests; production uses the platform fetch. */
+	readonly modernFetch?: (input: string | URL, init?: RequestInit) => Promise<Response>;
+	readonly interactionHandlers?: McpServerInteractionHandlers;
+	readonly maxInteractionRounds?: number;
 	readonly onDiagnostic?: (message: string) => void;
 }
 
@@ -40,8 +59,12 @@ export class HttpMcpClient implements McpClientHandle {
 	private readonly timeout: number;
 	private readonly authProviderFactory: McpHttpAuthProviderFactory | undefined;
 	private readonly sdkSessionFactory: McpHttpSdkSessionFactory;
+	private readonly modernFetch?: HttpMcpClientOptions["modernFetch"];
+	private readonly interactionHandlers?: McpServerInteractionHandlers;
+	private readonly maxInteractionRounds: number;
 	private readonly onDiagnostic?: (message: string) => void;
 	private session: McpHttpSdkSession | null = null;
+	private modernClient: ModernStatelessMcpClient | null = null;
 	private authProvider: OAuthClientProvider | undefined;
 	private initialized = false;
 
@@ -52,6 +75,9 @@ export class HttpMcpClient implements McpClientHandle {
 		this.timeout = options.timeout || options.config.startupTimeout || DEFAULT_TIMEOUT_MS;
 		this.authProviderFactory = options.authProviderFactory;
 		this.sdkSessionFactory = options.sdkSessionFactory ?? createMcpHttpSdkSession;
+		this.modernFetch = options.modernFetch;
+		this.interactionHandlers = options.interactionHandlers;
+		this.maxInteractionRounds = Math.max(1, options.maxInteractionRounds ?? 3);
 		this.onDiagnostic = options.onDiagnostic;
 	}
 
@@ -61,6 +87,33 @@ export class HttpMcpClient implements McpClientHandle {
 			serverUrl: this.config.url,
 			config: this.config,
 		});
+		if (this.config.protocolMode === "modern" || this.config.protocolMode === "auto") {
+			this.modernClient = new ModernStatelessMcpClient({
+				config: this.config,
+				name: this.name,
+				clientInfo: params.clientInfo,
+				debug: this.debug,
+				timeout: this.timeout,
+				authProvider: this.authProvider,
+				onDiagnostic: this.onDiagnostic,
+				fetch: this.modernFetch,
+				interactionHandlers: this.interactionHandlers,
+				maxInteractionRounds: this.maxInteractionRounds,
+			});
+			try {
+				const result = await this.modernClient.initialize(params);
+				this.initialized = true;
+				return result;
+			} catch (error) {
+				await this.modernClient.close();
+				this.modernClient = null;
+				if (isMcpSdkUnauthorizedError(error) || isMcpAuthRequiredError(error)) {
+					throw new McpAuthRequiredError(this.name, this.config.url, getErrorMessage(error));
+				}
+				if (this.config.protocolMode === "modern") throw error;
+				this.log("modern discovery unavailable; fallback=legacy");
+			}
+		}
 		this.session = this.sdkSessionFactory({
 			url: new URL(this.config.url),
 			requestInit: this.config.headers ? { headers: this.config.headers } : undefined,
@@ -69,6 +122,8 @@ export class HttpMcpClient implements McpClientHandle {
 			clientInfo: params.clientInfo,
 			capabilities: params.capabilities,
 			timeout: this.timeout,
+			serverName: this.name,
+			interactionHandlers: this.interactionHandlers,
 		});
 		try {
 			await this.session.connect();
@@ -96,12 +151,14 @@ export class HttpMcpClient implements McpClientHandle {
 		};
 	}
 
-	async listTools(cursor?: string): Promise<McpToolsListResult> {
+	async listTools(cursor?: string, options?: McpRequestOptions): Promise<McpToolsListResult> {
+		if (this.modernClient) return this.modernClient.listTools(cursor, options);
 		return (await this.requireSession().listTools(cursor)) as McpToolsListResult;
 	}
 
-	async callTool(name: string, args?: McpJsonObject): Promise<McpToolCallResult> {
+	async callTool(name: string, args?: McpJsonObject, options?: McpRequestOptions): Promise<McpToolCallResult> {
 		try {
+			if (this.modernClient) return await this.modernClient.callTool(name, args, options);
 			return (await this.requireSession().callTool(name, args)) as McpToolCallResult;
 		} catch (error) {
 			this.log(`tool call failed tool=${name} error=${getErrorMessage(error)}`);
@@ -113,19 +170,60 @@ export class HttpMcpClient implements McpClientHandle {
 		}
 	}
 
-	async listResources(cursor?: string): Promise<McpResourcesListResult> {
+	async listResources(cursor?: string, options?: McpRequestOptions): Promise<McpResourcesListResult> {
+		if (this.modernClient) return this.modernClient.listResources(cursor, options);
 		return (await this.requireSession().listResources(cursor)) as McpResourcesListResult;
 	}
 
-	async readResource(uri: string): Promise<McpResourceReadResult> {
+	async readResource(uri: string, options?: McpRequestOptions): Promise<McpResourceReadResult> {
+		if (this.modernClient) return this.modernClient.readResource(uri, options);
 		return (await this.requireSession().readResource(uri)) as McpResourceReadResult;
 	}
 
-	async listPrompts(cursor?: string): Promise<McpPromptsListResult> {
+	async listPrompts(cursor?: string, options?: McpRequestOptions): Promise<McpPromptsListResult> {
+		if (this.modernClient) return this.modernClient.listPrompts(cursor, options);
 		return (await this.requireSession().listPrompts(cursor)) as McpPromptsListResult;
 	}
 
+	async getPrompt(params: McpPromptGetParams, options?: McpRequestOptions): Promise<McpPromptGetResult> {
+		if (this.modernClient) return this.modernClient.getPrompt(params, options);
+		return (await this.requireSession().getPrompt(params.name, params.arguments)) as McpPromptGetResult;
+	}
+
+	async getTask(params: McpGetTaskParams, options?: McpRequestOptions): Promise<McpGetTaskResult> {
+		if (!this.modernClient) throw new Error("MCP Tasks require protocolMode=modern");
+		return this.modernClient.getTask(params, options);
+	}
+
+	async updateTask(params: McpUpdateTaskParams, options?: McpRequestOptions): Promise<McpUpdateTaskResult> {
+		if (!this.modernClient) throw new Error("MCP Tasks require protocolMode=modern");
+		return this.modernClient.updateTask(params, options);
+	}
+
+	async cancelTask(params: McpCancelTaskParams, options?: McpRequestOptions): Promise<McpCancelTaskResult> {
+		if (!this.modernClient) throw new Error("MCP Tasks require protocolMode=modern");
+		return this.modernClient.cancelTask(params, options);
+	}
+
+	async waitForTask(params: McpGetTaskParams, options?: McpTaskWaitOptions): Promise<McpGetTaskResult> {
+		if (!this.modernClient) throw new Error("MCP Tasks require protocolMode=modern");
+		return this.modernClient.waitForTask(params, options);
+	}
+
+	async listenSubscriptions(
+		filter: McpSubscriptionFilter,
+		onNotification: McpSubscriptionHandler,
+		options?: McpRequestOptions,
+	): Promise<McpSubscriptionsListenResult> {
+		if (!this.modernClient) throw new Error("MCP subscriptions require the 2026-07-28 protocol");
+		return this.modernClient.listenSubscriptions(filter, onNotification, options);
+	}
+
 	async close(): Promise<void> {
+		if (this.modernClient) {
+			await this.modernClient.close();
+			this.modernClient = null;
+		}
 		await this.cleanupConnection();
 		this.initialized = false;
 	}
@@ -135,6 +233,7 @@ export class HttpMcpClient implements McpClientHandle {
 	}
 
 	getPid(): number | undefined {
+		if (this.modernClient) return this.modernClient.getPid();
 		return undefined;
 	}
 

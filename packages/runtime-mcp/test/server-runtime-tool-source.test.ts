@@ -93,6 +93,28 @@ describe("McpServerRuntimeToolSource", () => {
 		});
 	});
 
+	it("does not publish app-only MCP Apps tools to the model surface", async () => {
+		const client = new FakeClient();
+		const base = binding(client, 1);
+		const appOnly: McpServerBinding = {
+			...base,
+			view: {
+				...base.view,
+				tools: [
+					...base.view.tools,
+					{
+						name: "refresh_dashboard",
+						inputSchema: { type: "object" },
+						_meta: { ui: { visibility: ["app"] } },
+					},
+				],
+			},
+		};
+
+		const view = await createMcpServerRuntimeToolSource(new MutableServerRuntimePort([appOnly])).refresh();
+		expect(view.tools.map(({ tool }) => tool.name)).toEqual(["mcp_search_lookup"]);
+	});
+
 	it("propagates a leased generation failure instead of falling through to a replacement", async () => {
 		const retiredClient = new FakeClient(new Error("retired transport failed"));
 		const replacementClient = new FakeClient();

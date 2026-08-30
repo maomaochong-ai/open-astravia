@@ -1,5 +1,7 @@
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
+import type { McpAppExecutionHost } from "../src/apps/index.js";
+import { McpTaskCreatedError } from "../src/client/index.js";
 import type {
 	IMcpClient,
 	McpInitializeResult,
@@ -103,14 +105,29 @@ describe("MCP Runtime Tool result policy", () => {
 		expect(JSON.parse(store.requests[0]?.data ?? "")).toEqual(result);
 	});
 
+	it("retains only bounded safe audio for Desktop playback after raw-result offload", async () => {
+		const result: McpToolCallResult = {
+			content: [
+				{ type: "audio", data: "YXVkaW8=", mimeType: "audio/mpeg" },
+				{ type: "audio", data: "PHN2Zz4=", mimeType: "image/svg+xml" },
+			],
+		};
+
+		const projected = await execute(result, new RecordingArtifactStore(), 32);
+		const details = projected.details as McpToolResultOffloadDetails;
+
+		expect(details.media).toEqual([{ type: "audio", data: "YXVkaW8=", mimeType: "audio/mpeg" }]);
+		expect(projected.content).toEqual([{ type: "text", text: expect.stringContaining("Full result:") }]);
+	});
+
 	it("projects current MCP content blocks without dropping embedded image resources", async () => {
 		const result: McpToolCallResult = {
 			content: [
-				{ type: "audio", data: "audio-data", mimeType: "audio/mpeg" },
+				{ type: "audio", data: "YXVkaW8=", mimeType: "audio/mpeg" },
 				{ type: "resource_link", uri: "https://example.test/report", name: "report", description: "Report" },
 				{
 					type: "resource",
-					resource: { uri: "https://example.test/image", blob: "image-data", mimeType: "image/png" },
+					resource: { uri: "https://example.test/image", blob: "aW1hZ2U=", mimeType: "image/png" },
 				},
 			],
 		};
@@ -119,7 +136,7 @@ describe("MCP Runtime Tool result policy", () => {
 			content: [
 				{ type: "text", text: "Audio content: audio/mpeg" },
 				{ type: "text", text: "Resource link: report (https://example.test/report)\nReport" },
-				{ type: "image", data: "image-data", mimeType: "image/png" },
+				{ type: "image", data: "aW1hZ2U=", mimeType: "image/png" },
 			],
 			details: result,
 		});
@@ -171,6 +188,39 @@ describe("MCP Runtime Tool result policy", () => {
 		});
 	});
 
+	it("turns a created MCP Task back into the original ToolResult contract", async () => {
+		const created = {
+			resultType: "task" as const,
+			taskId: "task-1",
+			status: "working" as const,
+			createdAt: "2026-08-30T00:00:00.000Z",
+			lastUpdatedAt: "2026-08-30T00:00:00.000Z",
+			ttlMs: null,
+		};
+		const client: IMcpClient = {
+			...createClient({ content: [] }),
+			callTool: async () => {
+				throw new McpTaskCreatedError("tools/call", created);
+			},
+			waitForTask: async (_params, options) => {
+				const result = {
+					...created,
+					resultType: "complete" as const,
+					status: "completed" as const,
+					lastUpdatedAt: "2026-08-30T00:00:01.000Z",
+					result: { resultType: "complete", content: [{ type: "text" as const, text: "task done" }] },
+				};
+				await options?.onStatus?.(result);
+				return result;
+			},
+		};
+		const tool = createMcpRuntimeTool(TOOL, client, "search");
+
+		await expect(tool.execute(EXECUTION_REQUEST)).resolves.toMatchObject({
+			content: [{ type: "text", text: "task done" }],
+		});
+	});
+
 	it("marks descriptionless MCP tools as low-confidence instead of implying a capability", () => {
 		const tool = createMcpRuntimeTool(
 			{ name: "mystery", description: "   ", inputSchema: { type: "object" as const } },
@@ -204,6 +254,41 @@ describe("MCP Runtime Tool result policy", () => {
 					}),
 				},
 			],
+		});
+	});
+
+	it("attaches only an opaque MCP App descriptor after the ordinary Tool result succeeds", async () => {
+		const result: McpToolCallResult = { content: [{ type: "text", text: "app result" }] };
+		const appHost: McpAppExecutionHost = {
+			attach: async (request) => ({
+				id: `surface-${request.context.toolCallId}`,
+				resourceUri: "ui://dashboard",
+				mimeType: "text/html;profile=mcp-app",
+			}),
+		};
+		const appTool = createMcpRuntimeTool(
+			{ ...TOOL, _meta: { ui: { resourceUri: "ui://dashboard" } } },
+			createClient(result),
+			"search",
+			{
+				resultPolicy: createMcpToolResultPolicy({ artifactStore: new RecordingArtifactStore() }),
+				appHost,
+				acquireAppClient: () => ({ client: createClient(result), release: () => undefined }),
+				serverTools: [TOOL],
+			},
+		);
+
+		await expect(appTool.execute(EXECUTION_REQUEST)).resolves.toMatchObject({
+			details: {
+				content: [{ type: "text", text: "app result" }],
+				_meta: {
+					"io.vetta/mcpApp": {
+						id: "surface-call",
+						resourceUri: "ui://dashboard",
+						mimeType: "text/html;profile=mcp-app",
+					},
+				},
+			},
 		});
 	});
 });

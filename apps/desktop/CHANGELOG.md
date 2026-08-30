@@ -2,6 +2,14 @@
 
 ### Added
 
+- Desktop 新增 MCP Apps 安全宿主：从 Main 获取 `ui://` 资源，Renderer 使用双层 sandbox iframe 与限制性 CSP，
+  Bridge 只暴露已实现能力；App Tool 调用需同时满足 app visibility 与现有 `autoApprove`，导航和设备权限默认拒绝。
+- MCP Server 可通过 Elicitation form/URL 向用户请求受限输入；Desktop 主进程负责 Schema 复验、URL allowlist、
+  取消与重载恢复。Roots 只暴露当前项目根，Sampling 未注入审批策略时不声明。
+- MCP `2026-07-28` Tasks 现在会原子保存最小状态、重启后随 Server 恢复轮询，并在活动面板中展示、取消和清理；
+  远端 taskId、inputRequests 和结果正文不会进入 Renderer 状态或诊断日志。
+- MCP 工具结果现在展示全部图片块（gallery），并为音频块提供原生播放控件。
+
 - 能力详情 showcase 新增宿主模板 `canvas-hero`、`prompt-result`、`spotlight`、`workbench`，以及 canvas 场景 `browser`、`terminal`、`board`。构图由 Desktop 绘制，插件仍只能声明模板名、场景名和文案，不能注入 CSS 或 HTML。
 - 能力详情的结构化 `markdown` 区块支持通过 `path` 引用能力包内 Markdown 文件，并在主进程加载时解析为原有正文合同；长说明不再需要转义成 JSON 单行字符串。引用继续受包根路径与 512 KiB 文件上限约束，Browser Use 系统插件同步补齐双语 showcase、功能网格和使用说明详情。
 - 能力详情新增 `hero`、`gallery`、`stats`、`comparison` 四种声明式区块：插件可以声明品牌头图、截图网格、指标卡和两列对比，Desktop 负责响应式布局、主题 Token 和安全资源解析；Browser Use 示例已使用 Hero、指标卡和对比区块，详情页不再只能依赖同一种 showcase 外观。

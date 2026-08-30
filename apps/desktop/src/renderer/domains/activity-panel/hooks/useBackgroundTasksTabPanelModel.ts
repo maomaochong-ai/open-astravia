@@ -1,12 +1,15 @@
+import type { DesktopMcpTask } from "@preload/api";
 import { subagentErrorPresentation, subagentObjective, subagentUsageLabel } from "@shared/lib/subagent-presentation";
 import {
 	activeSessionAtom,
 	type BackgroundTask,
 	backgroundTasksBySessionAtom,
 	getBackgroundTasksForSession,
+	getMcpTasksForSession,
 	getSubagentsForSession,
 	isSubagentActive,
 	isWorkflowTask,
+	mcpTasksBySessionAtom,
 	type SubagentTask,
 	subagentsBySessionAtom,
 } from "@shared/store/atoms";
@@ -87,6 +90,44 @@ function subagentStatusMeta(
 	}
 }
 
+function mcpTaskStatusMeta(
+	status: DesktopMcpTask["status"],
+	t: TFunction<"chat">,
+): { icon: string; label: string; className: string } {
+	switch (status) {
+		case "working":
+			return {
+				icon: "icon-[solar--refresh-linear] animate-spin",
+				label: t("activityPanel.mcpTasks.statusWorking"),
+				className: "text-emerald-400",
+			};
+		case "input_required":
+			return {
+				icon: "icon-[solar--question-circle-linear]",
+				label: t("activityPanel.mcpTasks.statusInputRequired"),
+				className: "text-amber-400",
+			};
+		case "completed":
+			return {
+				icon: "icon-[solar--check-circle-linear]",
+				label: t("activityPanel.backgroundTasks.statusCompleted"),
+				className: "text-emerald-400",
+			};
+		case "failed":
+			return {
+				icon: "icon-[solar--danger-circle-linear]",
+				label: t("activityPanel.backgroundTasks.statusFailed"),
+				className: "text-destructive",
+			};
+		case "cancelled":
+			return {
+				icon: "icon-[solar--stop-circle-linear]",
+				label: t("activityPanel.mcpTasks.statusCancelled"),
+				className: "text-muted-foreground",
+			};
+	}
+}
+
 function formatDuration(startedAt: number, endedAt: number | undefined, now: number, t: TFunction<"chat">): string {
 	const ms = Math.max(0, (endedAt ?? now) - startedAt);
 	const sec = Math.floor(ms / 1000);
@@ -139,19 +180,42 @@ function toSubagentItem(agent: SubagentTask, now: number, t: TFunction<"chat">):
 	};
 }
 
+function toMcpTaskItem(task: DesktopMcpTask, now: number, t: TFunction<"chat">): BackgroundWorkViewItem {
+	const meta = mcpTaskStatusMeta(task.status, t);
+	return {
+		kind: "mcp",
+		id: task.id,
+		serverName: task.serverName,
+		toolName: task.toolName,
+		status: task.status,
+		statusMessage: task.statusMessage,
+		statusIcon: meta.icon,
+		statusLabel: meta.label,
+		statusClassName: meta.className,
+		durationLabel: formatDuration(Date.parse(task.createdAt), terminalTimestamp(task), now, t),
+	};
+}
+
+function terminalTimestamp(task: DesktopMcpTask): number | undefined {
+	return task.status === "completed" || task.status === "failed" || task.status === "cancelled"
+		? Date.parse(task.lastUpdatedAt)
+		: undefined;
+}
+
 export interface BackgroundTasksTabPanelModel {
 	items: BackgroundWorkViewItem[];
 	emptyLabel: string;
 	clearFinishedLabel: string | null;
 	onClearFinished: () => void;
 	stopLabel: string;
-	onStop: (id: string, kind: "bash" | "subagent") => void;
+	onStop: (id: string, kind: "bash" | "subagent" | "mcp") => void;
 }
 
 export function useBackgroundTasksTabPanelModel(): BackgroundTasksTabPanelModel {
 	const { t } = useTranslation("chat");
 	const tasksMap = useAtomValue(backgroundTasksBySessionAtom);
 	const subagentsMap = useAtomValue(subagentsBySessionAtom);
+	const mcpTasksMap = useAtomValue(mcpTasksBySessionAtom);
 	const activeSession = useAtomValue(activeSessionAtom);
 	const sessionId = activeSession?.runtimeId ?? null;
 
@@ -161,9 +225,12 @@ export function useBackgroundTasksTabPanelModel(): BackgroundTasksTabPanelModel 
 		() => getSubagentsForSession(subagentsMap, sessionId).filter((a) => !isWorkflowTask(a)),
 		[subagentsMap, sessionId],
 	);
+	const mcpTasks = useMemo(() => getMcpTasksForSession(mcpTasksMap, sessionId), [mcpTasksMap, sessionId]);
 
 	const hasRunning =
-		bashTasks.some((task) => task.status === "running") || subagents.some((a) => isSubagentActive(a.status));
+		bashTasks.some((task) => task.status === "running") ||
+		subagents.some((a) => isSubagentActive(a.status)) ||
+		mcpTasks.some((task) => task.status === "working" || task.status === "input_required");
 	const [now, setNow] = useState(() => Date.now());
 	useEffect(() => {
 		if (!hasRunning) return;
@@ -174,21 +241,28 @@ export function useBackgroundTasksTabPanelModel(): BackgroundTasksTabPanelModel 
 	const finishedBashCount = bashTasks.filter((task) => task.status !== "running").length;
 	const finishedSubagentCount = subagents.filter((a) => !isSubagentActive(a.status)).length;
 	const finishedCount = finishedBashCount + finishedSubagentCount;
+	const finishedMcpCount = mcpTasks.filter(
+		(task) => task.status === "completed" || task.status === "failed" || task.status === "cancelled",
+	).length;
+	const allFinishedCount = finishedCount + finishedMcpCount;
 
 	const handleClearFinished = useCallback(() => {
 		if (!sessionId) return;
 		// Host clears both bash finished tasks and terminal subagents, then emits
 		// Background-task + Subagent extension observations (or empty snapshots).
 		void window.vetta.session.clearFinishedBackgroundTasks(sessionId);
+		void window.vetta.session.clearFinishedMcpTasks(sessionId);
 	}, [sessionId]);
 
 	const handleStop = useCallback(
-		(id: string, kind: "bash" | "subagent") => {
+		(id: string, kind: "bash" | "subagent" | "mcp") => {
 			if (!sessionId) return;
 			if (kind === "bash") {
 				void window.vetta.session.killBackgroundTask(sessionId, id);
-			} else {
+			} else if (kind === "subagent") {
 				void window.vetta.session.interruptSubagent?.(sessionId, id);
+			} else {
+				void window.vetta.session.cancelMcpTask(id);
 			}
 		},
 		[sessionId],
@@ -203,14 +277,18 @@ export function useBackgroundTasksTabPanelModel(): BackgroundTasksTabPanelModel 
 			sortAt: agent.startedAt,
 			item: toSubagentItem(agent, now, t),
 		}));
-		return [...bashItems, ...subItems].sort((a, b) => b.sortAt - a.sortAt).map((row) => row.item);
-	}, [bashTasks, subagents, now, t]);
+		const mcpItems = mcpTasks.map((task) => ({
+			sortAt: Date.parse(task.createdAt),
+			item: toMcpTaskItem(task, now, t),
+		}));
+		return [...bashItems, ...subItems, ...mcpItems].sort((a, b) => b.sortAt - a.sortAt).map((row) => row.item);
+	}, [bashTasks, subagents, mcpTasks, now, t]);
 
 	return {
 		items,
 		emptyLabel: t("activityPanel.backgroundTasks.empty"),
 		clearFinishedLabel:
-			finishedCount > 0 ? t("activityPanel.backgroundTasks.clearFinished", { count: finishedCount }) : null,
+			allFinishedCount > 0 ? t("activityPanel.backgroundTasks.clearFinished", { count: allFinishedCount }) : null,
 		onClearFinished: handleClearFinished,
 		stopLabel: t("activityPanel.backgroundTasks.stop"),
 		onStop: handleStop,

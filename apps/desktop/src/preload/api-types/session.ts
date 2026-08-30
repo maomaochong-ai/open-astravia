@@ -19,7 +19,30 @@ import type {
 	SessionStateSnapshot,
 	SettingsPatch,
 } from "@vetta/runtime-core";
+import type { DesktopMcpAppResourceRead, DesktopMcpAppSurface, DesktopMcpAppToolCall } from "../../shared/mcp-app.js";
+import type {
+	DesktopMcpElicitationRequest,
+	DesktopMcpElicitationResolvedEvent,
+	DesktopMcpElicitationResponse,
+} from "../../shared/mcp-interaction.js";
+import type { DesktopMcpTask, DesktopMcpTasksChangedEvent } from "../../shared/mcp-task.js";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
+
+export type {
+	DesktopMcpAppAttachment,
+	DesktopMcpAppResourceRead,
+	DesktopMcpAppSurface,
+	DesktopMcpAppToolCall,
+} from "../../shared/mcp-app.js";
+export type {
+	DesktopMcpElicitationField,
+	DesktopMcpElicitationOption,
+	DesktopMcpElicitationRequest,
+	DesktopMcpElicitationResolvedEvent,
+	DesktopMcpElicitationResponse,
+	DesktopMcpElicitationValue,
+} from "../../shared/mcp-interaction.js";
+export type { DesktopMcpTask, DesktopMcpTaskStatus, DesktopMcpTasksChangedEvent } from "../../shared/mcp-task.js";
 
 /**
  * 工作模式 id（agent_mode 轴）。会话创建时固化，会话内不可变。
@@ -123,6 +146,18 @@ export interface DesktopSessionApi {
 	onQuestionResolved(handler: (event: DesktopUserQuestionResolvedEvent) => void): () => void;
 	/** 回传用户对某次提问的答案 / 取消。 */
 	respondToQuestion(requestId: string, result: CodingAgentQuestionResult): Promise<void>;
+	onMcpElicitationRequest(handler: (request: DesktopMcpElicitationRequest) => void): () => void;
+	listPendingMcpElicitations(): Promise<DesktopMcpElicitationRequest[]>;
+	onMcpElicitationResolved(handler: (event: DesktopMcpElicitationResolvedEvent) => void): () => void;
+	respondToMcpElicitation(requestId: string, result: DesktopMcpElicitationResponse): Promise<void>;
+	onMcpTasksChanged(handler: (event: DesktopMcpTasksChangedEvent) => void): () => void;
+	listMcpTasks(sessionId?: string): Promise<DesktopMcpTask[]>;
+	cancelMcpTask(id: string): Promise<boolean>;
+	clearFinishedMcpTasks(sessionId: string): Promise<number>;
+	getMcpAppSurface(id: string): Promise<DesktopMcpAppSurface | undefined>;
+	callMcpAppTool(request: DesktopMcpAppToolCall): Promise<unknown>;
+	readMcpAppResource(request: DesktopMcpAppResourceRead): Promise<unknown>;
+	releaseMcpAppSurface(id: string): Promise<boolean>;
 	onSandboxGrantRequest(handler: (request: CodingAgentSandboxAuthorizationFunctionRequest) => void): () => void;
 	respondToSandboxGrant(requestId: string, decision: CodingAgentSandboxAuthorizationDecision): Promise<void>;
 	listSandboxGrants(sessionId: string): Promise<RuntimeSandboxGrantInfo[]>;

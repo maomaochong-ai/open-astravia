@@ -1,6 +1,9 @@
 import { type TLiteralValue, type TSchema, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import type { IMcpClient, McpJsonObject, McpTool } from "../protocol/index.js";
+import { attachMcpAppDescriptor, type McpAppClientLease, type McpAppExecutionHost } from "../apps/index.js";
+import { isMcpTaskCreatedError } from "../client/index.js";
+import { type IMcpClient, type McpJsonObject, type McpTool, readMcpAppToolMeta } from "../protocol/index.js";
+import { McpTaskExecutionCoordinator } from "../tasks/index.js";
 import {
 	type McpToolResultContext,
 	type McpToolResultPolicy,
@@ -64,11 +67,52 @@ export async function executeMcpToolCall(
 	input: Readonly<Record<string, unknown>>,
 	options?: McpToolCallExecutionOptions,
 ): Promise<RuntimeToolResult> {
+	const context = options?.context ?? directExecutionContext(mcpTool.name);
+	const baseResultPolicy = options?.resultPolicy ?? PRESERVE_MCP_TOOL_RESULT_POLICY;
+	const appHost = options?.appHost;
+	const resultPolicy: McpToolResultPolicy = appHost
+		? {
+				project: async (result, resultContext) => {
+					const projected = await baseResultPolicy.project(result, resultContext);
+					const resourceUri = readMcpAppToolMeta(mcpTool._meta)?.resourceUri;
+					if (!resourceUri || !options.acquireAppClient) return projected;
+					try {
+						const attachment = await appHost.attach({
+							client,
+							acquireClient: options.acquireAppClient,
+							serverName: context.serverName,
+							serverTools: options.serverTools ?? [mcpTool],
+							autoApproveTools: options.autoApproveTools ?? [],
+							tool: mcpTool,
+							input,
+							result,
+							context: resultContext,
+						});
+						return attachment ? attachMcpAppDescriptor(projected, attachment) : projected;
+					} catch {
+						// Apps are an optional presentation extension; a bad UI resource must not fail the Tool.
+						return projected;
+					}
+				},
+			}
+		: baseResultPolicy;
 	try {
-		const result = await client.callTool(mcpTool.name, input as McpJsonObject);
-		const resultPolicy = options?.resultPolicy ?? PRESERVE_MCP_TOOL_RESULT_POLICY;
-		return resultPolicy.project(result, options?.context ?? directExecutionContext(mcpTool.name));
+		const result = await client.callTool(mcpTool.name, input as McpJsonObject, {
+			signal: options?.signal,
+			sessionId: context.sessionId,
+			turnId: context.turnId,
+			toolCallId: context.toolCallId,
+		});
+		return resultPolicy.project(result, context);
 	} catch (error) {
+		if (isMcpTaskCreatedError(error)) {
+			return (options?.taskCoordinator ?? DEFAULT_MCP_TASK_COORDINATOR).completeToolTask(client, error.result, {
+				context,
+				resultPolicy,
+				signal: options?.signal,
+				onUpdate: options?.onUpdate,
+			});
+		}
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		return {
 			content: [{ type: "text", text: `Error calling MCP tool '${mcpTool.name}': ${errorMessage}` }],
@@ -84,10 +128,22 @@ export async function executeMcpToolCall(
 export interface McpToolCallExecutionOptions {
 	readonly context: McpToolResultContext;
 	readonly resultPolicy: McpToolResultPolicy;
+	readonly signal?: AbortSignal;
+	readonly taskCoordinator?: McpTaskExecutionCoordinator;
+	readonly onUpdate?: (result: RuntimeToolResult) => void;
+	readonly appHost?: McpAppExecutionHost;
+	readonly acquireAppClient?: () => McpAppClientLease;
+	readonly serverTools?: readonly McpTool[];
+	readonly autoApproveTools?: readonly string[];
 }
 
 export interface McpRuntimeToolOptions {
 	readonly resultPolicy: McpToolResultPolicy;
+	readonly taskCoordinator?: McpTaskExecutionCoordinator;
+	readonly appHost?: McpAppExecutionHost;
+	readonly acquireAppClient?: () => McpAppClientLease;
+	readonly serverTools?: readonly McpTool[];
+	readonly autoApproveTools?: readonly string[];
 }
 
 export function createMcpRuntimeTool(
@@ -113,6 +169,13 @@ export function createMcpRuntimeTool(
 					serverName,
 					toolName: mcpTool.name,
 				},
+				signal: request.signal,
+				taskCoordinator: options.taskCoordinator,
+				onUpdate: request.onUpdate,
+				appHost: options.appHost,
+				acquireAppClient: options.acquireAppClient,
+				serverTools: options.serverTools,
+				autoApproveTools: options.autoApproveTools,
 			}),
 	};
 }
@@ -120,6 +183,8 @@ export function createMcpRuntimeTool(
 const DEFAULT_MCP_RUNTIME_TOOL_OPTIONS: McpRuntimeToolOptions = Object.freeze({
 	resultPolicy: PRESERVE_MCP_TOOL_RESULT_POLICY,
 });
+
+const DEFAULT_MCP_TASK_COORDINATOR = new McpTaskExecutionCoordinator();
 
 function directExecutionContext(toolName: string): McpToolResultContext {
 	return {

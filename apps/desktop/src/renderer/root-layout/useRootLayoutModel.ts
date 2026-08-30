@@ -1,4 +1,11 @@
-import type { DesktopUserQuestionRequest, DesktopUserQuestionResolvedEvent } from "@preload/api";
+import type {
+	DesktopMcpElicitationRequest,
+	DesktopMcpElicitationResolvedEvent,
+	DesktopMcpTask,
+	DesktopMcpTasksChangedEvent,
+	DesktopUserQuestionRequest,
+	DesktopUserQuestionResolvedEvent,
+} from "@preload/api";
 import { useMatches, useNavigate } from "@tanstack/react-router";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -21,7 +28,10 @@ import {
 	defaultConversationCwdAtom,
 	fileEditorHasUnsavedChangesAtom,
 	focusInputRequestAtom,
+	groupMcpTasksBySession,
 	lastActiveSessionAtom,
+	mcpTasksBySessionAtom,
+	pendingMcpElicitationsAtom,
 	pendingQuestionsAtom,
 	pendingSessionCreationAtom,
 	pendingSessionOpenAtom,
@@ -291,6 +301,69 @@ export function useRootLayoutModel(): RootLayoutModel {
 			unsubscribeResolved();
 		};
 	}, [setPendingQuestions]);
+
+	const setPendingMcpElicitations = useSetAtom(pendingMcpElicitationsAtom);
+	useEffect(() => {
+		let active = true;
+		const live = new Map<string, DesktopMcpElicitationRequest>();
+		const resolved = new Set<string>();
+		const unsubscribeRequest = window.vetta.session.onMcpElicitationRequest((request) => {
+			live.set(request.requestId, request);
+			setPendingMcpElicitations((previous) => ({ ...previous, [request.sessionId]: request }));
+		});
+		const unsubscribeResolved = window.vetta.session.onMcpElicitationResolved(
+			(event: DesktopMcpElicitationResolvedEvent) => {
+				resolved.add(event.requestId);
+				live.delete(event.requestId);
+				setPendingMcpElicitations((previous) => {
+					if (previous[event.sessionId]?.requestId !== event.requestId) return previous;
+					const next = { ...previous };
+					delete next[event.sessionId];
+					return next;
+				});
+			},
+		);
+		void window.vetta.session
+			.listPendingMcpElicitations()
+			.then((snapshot) => {
+				if (!active) return;
+				const byId = new Map(snapshot.map((request) => [request.requestId, request]));
+				for (const [requestId, request] of live) byId.set(requestId, request);
+				for (const requestId of resolved) byId.delete(requestId);
+				const next: Record<string, DesktopMcpElicitationRequest> = {};
+				for (const request of byId.values()) next[request.sessionId] = request;
+				setPendingMcpElicitations(next);
+			})
+			.catch((error: unknown) => console.warn("[RootLayout] sync pending MCP elicitations failed", error));
+		return () => {
+			active = false;
+			unsubscribeRequest();
+			unsubscribeResolved();
+		};
+	}, [setPendingMcpElicitations]);
+
+	const setMcpTasks = useSetAtom(mcpTasksBySessionAtom);
+	useEffect(() => {
+		let active = true;
+		let latest: readonly DesktopMcpTask[] | undefined;
+		const apply = (tasks: readonly DesktopMcpTask[]): void => {
+			latest = tasks;
+			setMcpTasks(groupMcpTasksBySession(tasks));
+		};
+		const unsubscribe = window.vetta.session.onMcpTasksChanged((event: DesktopMcpTasksChangedEvent) => {
+			if (active) apply(event.tasks);
+		});
+		void window.vetta.session
+			.listMcpTasks()
+			.then((snapshot) => {
+				if (active && latest === undefined) apply(snapshot);
+			})
+			.catch((error: unknown) => console.warn("[RootLayout] sync MCP tasks failed", error));
+		return () => {
+			active = false;
+			unsubscribe();
+		};
+	}, [setMcpTasks]);
 
 	const grantQueueRef = useRef<Parameters<Parameters<typeof window.vetta.session.onSandboxGrantRequest>[0]>[0][]>([]);
 	const grantActiveRef = useRef(false);

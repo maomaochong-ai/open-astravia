@@ -23,6 +23,11 @@
 			"clearFinished": "Clear finished ({{count}})",
 			"stop": "Stop"
 		},
+		"mcpTasks": {
+			"statusWorking": "Working",
+			"statusInputRequired": "Waiting for input",
+			"statusCancelled": "Cancelled"
+		},
 		"subagents": {
 			"usage": "{{tokens}} tokens · {{cost}}",
 			"errorPermission": "Permission blocked",
@@ -205,6 +210,18 @@
 	"askUserQuestion": {
 		"cancelledMessage": "Cancelled by user, not answered",
 		"defaultQuestionLabel": "Question {{number}}"
+	},
+	"mcpElicitation": {
+		"title": "MCP information request",
+		"source": "From {{server}}",
+		"urlNotice": "Vetta opens this address in your system browser only after you confirm.",
+		"decline": "Decline",
+		"openAndContinue": "Open and continue",
+		"submit": "Submit",
+		"required": "(required)",
+		"enabled": "Enabled",
+		"disabled": "Disabled",
+		"selectPlaceholder": "Select an option"
 	},
 	"atPanel": {
 		"emptyDirectory": "Empty directory",
@@ -801,7 +818,8 @@
 	"toolCall": {
 		"error": "Error",
 		"meta": "meta",
-		"metaLabel": "Local metadata, UI only, not sent to the model"
+		"metaLabel": "Local metadata, UI only, not sent to the model",
+		"audioPreview": "MCP audio result"
 	},
 	"toolFormat": {
 		"unknown": "Unknown"
@@ -847,6 +865,11 @@
 			"listTags": "Knowledge · List tags",
 			"writePage": "Knowledge · Write page"
 		}
+	},
+	"mcpApp": {
+		"externalAccess": "This MCP App declares access to {{count}} external domain(s)",
+		"permissionsDenied": "This MCP App requested device permissions; Vetta has not granted them",
+		"title": "MCP App"
 	},
 	"usageBar": {
 		"durationLabel": "Took {{duration}}",

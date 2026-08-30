@@ -13,6 +13,7 @@ export const createMcpClient: RuntimeMcpClientFactory = (name, config, options) 
 			timeout: options?.timeout,
 			authProviderFactory: options?.httpAuthProviderFactory,
 			onDiagnostic: options?.onDiagnostic,
+			interactionHandlers: options?.interactionHandlers,
 		});
 	}
 	return new StdioMcpClient({
@@ -21,5 +22,6 @@ export const createMcpClient: RuntimeMcpClientFactory = (name, config, options) 
 		debug: options?.debug,
 		timeout: options?.timeout,
 		onDiagnostic: options?.onDiagnostic,
+		interactionHandlers: options?.interactionHandlers,
 	});
 };

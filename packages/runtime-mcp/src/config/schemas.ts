@@ -15,6 +15,7 @@ const McpServerCommonConfigProperties = {
 	debug: Type.Optional(Type.Boolean()),
 	displayName: Type.Optional(Type.Unknown()),
 	description: Type.Optional(Type.Unknown()),
+	protocolMode: Type.Optional(Type.Union([Type.Literal("legacy"), Type.Literal("modern"), Type.Literal("auto")])),
 };
 
 export const McpStdioServerConfigSchema = Type.Object(
@@ -107,6 +108,15 @@ function validateServerConfig(name: string, value: unknown): void {
 	}
 	if (value.debug !== undefined && !Value.Check(Type.Boolean(), value.debug)) {
 		throw new Error(`Invalid server config for '${name}': 'debug' must be a boolean`);
+	}
+	if (
+		value.protocolMode !== undefined &&
+		!Value.Check(
+			Type.Union([Type.Literal("legacy"), Type.Literal("modern"), Type.Literal("auto")]),
+			value.protocolMode,
+		)
+	) {
+		throw new Error(`Invalid server config for '${name}': 'protocolMode' must be "legacy", "modern" or "auto"`);
 	}
 }
 

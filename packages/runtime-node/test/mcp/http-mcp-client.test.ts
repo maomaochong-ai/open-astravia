@@ -68,6 +68,9 @@ describe("HTTP MCP client", () => {
 		await expect(client.listResources("resources-cursor")).resolves.toEqual({ resources: [] });
 		await expect(client.readResource("fixture://resource")).resolves.toEqual({ contents: [] });
 		await expect(client.listPrompts("prompts-cursor")).resolves.toEqual({ prompts: [] });
+		await expect(client.getPrompt({ name: "review", arguments: { language: "ts" } })).resolves.toEqual({
+			messages: [],
+		});
 		expect(session.calls).toEqual([
 			["connect"],
 			["listTools", "tools-cursor"],
@@ -75,6 +78,7 @@ describe("HTTP MCP client", () => {
 			["listResources", "resources-cursor"],
 			["readResource", "fixture://resource"],
 			["listPrompts", "prompts-cursor"],
+			["getPrompt", "review", { language: "ts" }],
 		]);
 	});
 
@@ -166,6 +170,11 @@ class FakeSdkSession implements McpHttpSdkSession {
 	async listPrompts(cursor?: string): Promise<unknown> {
 		this.calls.push(["listPrompts", cursor]);
 		return { prompts: [] };
+	}
+
+	async getPrompt(name: string, args?: Record<string, string>): Promise<unknown> {
+		this.calls.push(["getPrompt", name, args]);
+		return { messages: [] };
 	}
 
 	async close(): Promise<void> {

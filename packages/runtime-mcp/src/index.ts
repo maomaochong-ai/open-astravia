@@ -1,3 +1,4 @@
+export * from "./apps/index.js";
 export * from "./auth/index.js";
 export * from "./client/index.js";
 export * from "./config/index.js";
@@ -41,4 +42,5 @@ export {
 	type McpRuntimeToolView,
 } from "./runtime-tool-synchronizer.js";
 export * from "./server/index.js";
+export * from "./tasks/index.js";
 export * from "./tools/index.js";

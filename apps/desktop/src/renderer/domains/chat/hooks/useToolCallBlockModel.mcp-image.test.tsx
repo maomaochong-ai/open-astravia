@@ -45,4 +45,16 @@ describe("useToolCallBlockModel MCP images", () => {
 			"data:image/png;base64,aW1hZ2U=",
 		);
 	});
+
+	it("renders every image block in a gallery", () => {
+		const value = block("mcp_demo_screenshot");
+		value.imagePreviews = [
+			{ data: "aW1hZ2Ux", mimeType: "image/png" },
+			{ data: "aW1hZ2Uy", mimeType: "image/jpeg" },
+		];
+		const { result } = renderHook(() => useToolCallBlockModel(value), { wrapper: Wrapper });
+		render(<>{result.current.body}</>);
+
+		expect(screen.getAllByRole("img", { name: "MCP result" })).toHaveLength(2);
+	});
 });

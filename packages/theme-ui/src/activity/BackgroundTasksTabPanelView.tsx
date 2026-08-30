@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 export type BackgroundTaskStatus = "running" | "completed" | "failed" | "killed";
 
 export type SubagentWorkStatus = "queued" | "pending" | "running" | "completed" | "failed" | "interrupted";
+export type McpTaskWorkStatus = "working" | "input_required" | "completed" | "failed" | "cancelled";
 
 /** Bash background task row (run_in_background). */
 export interface BackgroundTaskViewItem {
@@ -40,7 +41,21 @@ export interface SubagentWorkViewItem {
 	durationLabel: string;
 }
 
-export type BackgroundWorkViewItem = BackgroundTaskViewItem | SubagentWorkViewItem;
+/** MCP 2026 Tasks extension row. It is not a local process or subagent. */
+export interface McpTaskWorkViewItem {
+	kind: "mcp";
+	id: string;
+	serverName: string;
+	toolName: string;
+	status: McpTaskWorkStatus;
+	statusMessage?: string;
+	statusIcon: string;
+	statusLabel: string;
+	statusClassName: string;
+	durationLabel: string;
+}
+
+export type BackgroundWorkViewItem = BackgroundTaskViewItem | SubagentWorkViewItem | McpTaskWorkViewItem;
 
 export interface BackgroundTasksTabPanelViewProps {
 	items: readonly BackgroundWorkViewItem[];
@@ -51,7 +66,7 @@ export interface BackgroundTasksTabPanelViewProps {
 	/** Label for the per-task stop button (running tasks only). */
 	stopLabel: string;
 	/** Bash: task id; Subagent: child id / path. */
-	onStop: (id: string, kind: "bash" | "subagent") => void;
+	onStop: (id: string, kind: "bash" | "subagent" | "mcp") => void;
 }
 
 function BashTaskCard({
@@ -193,6 +208,55 @@ function SubagentCard({
 	);
 }
 
+function McpTaskCard({
+	item,
+	stopLabel,
+	onStop,
+}: {
+	item: McpTaskWorkViewItem;
+	stopLabel: string;
+	onStop: (id: string) => void;
+}): JSX.Element {
+	const active = item.status === "working" || item.status === "input_required";
+	return (
+		<div className="min-w-0 overflow-hidden rounded-xl bg-muted/30 px-3 py-2.5 transition-colors duration-200 hover:bg-muted/50">
+			<div className="flex min-w-0 items-center gap-1.5">
+				<span className={`${item.statusIcon} h-3.5 w-3.5 shrink-0 ${item.statusClassName}`} />
+				<span className="shrink-0 rounded bg-primary/10 px-1 py-0.5 text-[10px] font-medium text-primary">
+					MCP
+				</span>
+				<span className="min-w-0 flex-1 truncate text-[11px] text-foreground" title={`${item.serverName}: ${item.toolName}`}>
+					{item.serverName}: {item.toolName}
+				</span>
+				<span className={`shrink-0 whitespace-nowrap text-[11px] font-medium ${item.statusClassName}`}>
+					{item.statusLabel}
+				</span>
+				<span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground/70">
+					{item.durationLabel}
+				</span>
+				{active && (
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon-xs"
+						onClick={() => onStop(item.id)}
+						title={stopLabel}
+						aria-label={stopLabel}
+						className="h-6 w-6 shrink-0 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+					>
+						<span className="icon-[solar--stop-circle-linear] h-3.5 w-3.5" />
+					</Button>
+				)}
+			</div>
+			{item.statusMessage && (
+				<div className="mt-1.5 line-clamp-3 break-words text-[11px] leading-relaxed text-muted-foreground">
+					{item.statusMessage}
+				</div>
+			)}
+		</div>
+	);
+}
+
 export function BackgroundTasksTabPanelView({
 	items,
 	emptyLabel,
@@ -234,6 +298,13 @@ export function BackgroundTasksTabPanelView({
 							item={item}
 							stopLabel={stopLabel}
 							onStop={(id) => onStop(id, "subagent")}
+						/>
+					) : item.kind === "mcp" ? (
+						<McpTaskCard
+							key={`mcp:${item.id}`}
+							item={item}
+							stopLabel={stopLabel}
+							onStop={(id) => onStop(id, "mcp")}
 						/>
 					) : (
 						<BashTaskCard

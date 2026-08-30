@@ -1,5 +1,6 @@
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import type { McpContent, McpToolCallResult } from "../protocol/index.js";
+import type { McpAudioContent, McpContent, McpToolCallResult } from "../protocol/index.js";
+import { createMcpMediaAdmission } from "./mcp-media-policy.js";
 
 export const DEFAULT_MCP_MAX_INLINE_RESULT_BYTES = 20_000;
 const utf8Encoder = new TextEncoder();
@@ -46,6 +47,8 @@ export interface McpToolResultOffloadDetails {
 		readonly imageCount: number;
 		readonly resourceCount: number;
 	};
+	/** Bounded audio retained solely for Desktop playback when the raw result is offloaded. */
+	readonly media?: readonly McpAudioContent[];
 }
 
 export interface McpToolResultPolicy {
@@ -67,7 +70,8 @@ export function createMcpToolResultPolicy(options: McpToolResultPolicyOptions): 
 	const maxInlineResultBytes = positiveInteger(options.maxInlineResultBytes, DEFAULT_MCP_MAX_INLINE_RESULT_BYTES);
 	return {
 		async project(result, context) {
-			const content = convertMcpContent(result.content);
+			const converted = convertMcpContent(result.content);
+			const content = converted.content;
 			const serializedResult = JSON.stringify(result);
 			const resultBytes = utf8ByteLength(serializedResult);
 			if (resultBytes <= maxInlineResultBytes) return projectResult(content, result, result);
@@ -111,6 +115,7 @@ export function createMcpToolResultPolicy(options: McpToolResultPolicyOptions): 
 					byteLength: resultBytes,
 				},
 				summary: summarizeContent(result.content, textBytes),
+				...(converted.audio.length === 0 ? {} : { media: converted.audio }),
 			};
 			return projectResult([{ type: "text", text: projectedText }, ...images], details, result);
 		},
@@ -118,7 +123,7 @@ export function createMcpToolResultPolicy(options: McpToolResultPolicyOptions): 
 }
 
 export function preserveMcpToolResult(result: McpToolCallResult): RuntimeToolResult {
-	return projectResult(convertMcpContent(result.content), result, result);
+	return projectResult(convertMcpContent(result.content).content, result, result);
 }
 
 function projectResult(
@@ -133,15 +138,24 @@ function projectResult(
 	};
 }
 
-function convertMcpContent(mcpContent: readonly McpContent[]): RuntimeToolResult["content"] {
+function convertMcpContent(mcpContent: readonly McpContent[]): {
+	readonly content: RuntimeToolResult["content"];
+	readonly audio: readonly McpAudioContent[];
+} {
 	const content: Array<RuntimeToolResult["content"][number]> = [];
+	const audio: McpAudioContent[] = [];
+	const mediaAdmission = createMcpMediaAdmission();
 	for (const item of mcpContent) {
 		if (item.type === "text") {
 			content.push({ type: "text", text: item.text });
 		} else if (item.type === "image") {
-			content.push({ type: "image", data: item.data, mimeType: item.mimeType });
+			if (mediaAdmission.accept(item)) content.push({ type: "image", data: item.data, mimeType: item.mimeType });
+			else content.push(omittedMediaNotice("image"));
 		} else if (item.type === "audio") {
-			content.push({ type: "text", text: `Audio content: ${item.mimeType}` });
+			if (mediaAdmission.accept(item)) {
+				audio.push(item);
+				content.push({ type: "text", text: `Audio content: ${item.mimeType}` });
+			} else content.push(omittedMediaNotice("audio"));
 		} else if (item.type === "resource_link") {
 			const description = item.description ? `\n${item.description}` : "";
 			content.push({ type: "text", text: `Resource link: ${item.name} (${item.uri})${description}` });
@@ -151,7 +165,9 @@ function convertMcpContent(mcpContent: readonly McpContent[]): RuntimeToolResult
 			if ("text" in resource) {
 				text += `\n${resource.text}`;
 			} else if (resource.mimeType?.startsWith("image/") && resource.blob) {
-				content.push({ type: "image", data: resource.blob, mimeType: resource.mimeType });
+				const candidate = { type: "image" as const, data: resource.blob, mimeType: resource.mimeType };
+				if (mediaAdmission.accept(candidate)) content.push(candidate);
+				else content.push(omittedMediaNotice("image"));
 				continue;
 			} else if ("blob" in resource) {
 				text += `\n[Binary data: ${resource.mimeType || "unknown"}]`;
@@ -159,7 +175,11 @@ function convertMcpContent(mcpContent: readonly McpContent[]): RuntimeToolResult
 			content.push({ type: "text", text });
 		}
 	}
-	return content;
+	return { content, audio };
+}
+
+function omittedMediaNotice(type: "image" | "audio"): { type: "text"; text: string } {
+	return { type: "text", text: `[MCP ${type} omitted: invalid encoding, unsafe MIME type, or host size limit]` };
 }
 
 function renderOffloadNotice(reference: string, byteLength: number, textTruncated: boolean): string {

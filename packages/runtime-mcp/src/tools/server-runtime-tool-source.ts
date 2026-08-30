@@ -1,6 +1,9 @@
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { McpAppExecutionHost } from "../apps/index.js";
+import { isMcpAppToolVisibleToModel } from "../protocol/index.js";
 import type { McpRuntimeToolBinding, McpRuntimeToolSource, McpRuntimeToolView } from "../runtime-tool-synchronizer.js";
 import type { McpServerBinding } from "../server/index.js";
+import type { McpTaskExecutionCoordinator } from "../tasks/index.js";
 import { createMcpRuntimeTool } from "./mcp-runtime-tool.js";
 import { type McpToolResultPolicy, PRESERVE_MCP_TOOL_RESULT_POLICY } from "./mcp-tool-result-policy.js";
 
@@ -22,6 +25,8 @@ export type McpRuntimeToolDecorator = (
 export interface McpServerRuntimeToolSourceOptions {
 	readonly decorateTool?: McpRuntimeToolDecorator;
 	readonly resultPolicy?: McpToolResultPolicy;
+	readonly taskCoordinator?: McpTaskExecutionCoordinator;
+	readonly appHost?: McpAppExecutionHost;
 }
 
 /** Publishes ready Supervisor bindings directly as Runtime tools, without an AgentTool round-trip. */
@@ -33,14 +38,24 @@ export class McpServerRuntimeToolSource implements McpRuntimeToolSource {
 
 	async refresh(): Promise<McpRuntimeToolView> {
 		await this.servers.reloadIfChanged();
+		const bindings = this.servers.getReadyServerBindings();
+		await this.options.taskCoordinator?.recover(bindings);
 		const resultPolicy = this.options.resultPolicy ?? PRESERVE_MCP_TOOL_RESULT_POLICY;
 		const tools: McpRuntimeToolBinding[] = [];
-		for (const binding of this.servers.getReadyServerBindings()) {
+		for (const binding of bindings) {
 			const client = binding.client;
 			if (!client) continue;
 			for (const mcpTool of binding.view.tools) {
+				if (!isMcpAppToolVisibleToModel(mcpTool)) continue;
 				const createTool = (boundClient: typeof client): RuntimeToolDefinition => {
-					const baseTool = createMcpRuntimeTool(mcpTool, boundClient, binding.view.name, { resultPolicy });
+					const baseTool = createMcpRuntimeTool(mcpTool, boundClient, binding.view.name, {
+						resultPolicy,
+						taskCoordinator: this.options.taskCoordinator,
+						appHost: this.options.appHost,
+						acquireAppClient: () => binding.acquireLease(),
+						serverTools: binding.view.tools,
+						autoApproveTools: binding.view.config.autoApprove ?? [],
+					});
 					return this.options.decorateTool
 						? this.options.decorateTool(baseTool, {
 								serverName: binding.view.name,

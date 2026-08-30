@@ -1,5 +1,5 @@
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
-import type { McpHttpServerConfig, McpServerConfig } from "../protocol/index.js";
+import type { McpHttpServerConfig, McpServerConfig, McpServerInteractionHandlers } from "../protocol/index.js";
 import type { McpClientHandle } from "./client-handle.js";
 
 export interface McpHttpAuthProviderContext {
@@ -14,6 +14,7 @@ export interface RuntimeMcpClientFactoryOptions {
 	readonly debug?: boolean;
 	readonly timeout?: number;
 	readonly httpAuthProviderFactory?: McpHttpAuthProviderFactory;
+	readonly interactionHandlers?: McpServerInteractionHandlers;
 	/** Host-owned diagnostic sink; implementations must not include secrets or payloads. */
 	readonly onDiagnostic?: (message: string) => void;
 }

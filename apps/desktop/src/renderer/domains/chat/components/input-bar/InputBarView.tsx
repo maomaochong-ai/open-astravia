@@ -10,6 +10,7 @@ import { CommandPanel } from "../command-panel/CommandPanel";
 import { AtPanel } from "../AtPanel";
 import { ActionButtonBar } from "../ActionButtonBar";
 import { QuestionPanel } from "../QuestionPanel";
+import { McpElicitationPanel } from "../McpElicitationPanel";
 import { AppshotCard } from "../AppshotCard";
 import { useSessionDropZoneModel } from "../../hooks/useSessionDropZoneModel";
 import { InputBarBackground } from "./InputBarBackground";
@@ -25,6 +26,7 @@ import type { InputBarViewProps } from "./types";
 const SOFT = { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] as const };
 
 export function InputBarView({ model, className, classNames }: InputBarViewProps): JSX.Element {
+	const hasPendingInteraction = Boolean(model.pendingMcpElicitation || model.pendingQuestion);
 	const surface = useThemeSurface("chat.inputBar");
 	const ThemedInputBarBackground = useThemeComponent(
 		"chat.inputBarBackground",
@@ -57,7 +59,18 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 	return (
 		<div className={["relative px-2 pb-3 pt-1 sm:px-4 sm:pb-4", className, classNames?.root].filter(Boolean).join(" ")}>
 			<AnimatePresence>
-				{model.pendingQuestion && (
+				{model.pendingMcpElicitation ? (
+					<motion.div
+						key="mcp-elicitation"
+						initial={{ opacity: 0, y: 12 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: 12 }}
+						transition={SOFT}
+						className="absolute inset-x-0 bottom-0 z-20"
+					>
+						<McpElicitationPanel request={model.pendingMcpElicitation} />
+					</motion.div>
+				) : model.pendingQuestion ? (
 					<motion.div
 						key="ask-user-question"
 						initial={{ opacity: 0, y: 12 }}
@@ -68,19 +81,19 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					>
 						<QuestionPanel pending={model.pendingQuestion} />
 					</motion.div>
-				)}
+				) : null}
 			</AnimatePresence>
 
 			<div
 				className={[
 					// @container：工具栏/动作条按输入区宽度折叠文案（非视口），避免窄栏换行
 					"relative mx-auto w-full max-w-2xl @container transition-opacity duration-150",
-					model.pendingQuestion ? "pointer-events-none opacity-0" : "",
+					hasPendingInteraction ? "pointer-events-none opacity-0" : "",
 					classNames?.stack,
 				]
 					.filter(Boolean)
 					.join(" ")}
-				aria-hidden={model.pendingQuestion ? true : undefined}
+				aria-hidden={hasPendingInteraction ? true : undefined}
 			>
 				<PerfSendProfiler id="ib:AtPanel">
 					<AtPanel

@@ -1,4 +1,5 @@
 import type { ChatErrorKind } from "@domains/chat/services/classifyChatError";
+import type { DesktopMcpAppAttachment, DesktopMcpElicitationRequest } from "@preload/api";
 import type { Usage } from "@vetta/ai";
 import type { ContextCompositionReport, PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
@@ -38,6 +39,11 @@ export interface ToolImagePreview {
 	processedWidth?: number;
 	processedHeight?: number;
 	wasResized?: boolean;
+}
+
+export interface ToolAudioPreview {
+	data: string;
+	mimeType: string;
 }
 
 export interface ToolCallUiDetails {
@@ -104,6 +110,11 @@ export interface ToolCallBlock {
 	status: "pending" | "success" | "error";
 	result?: string;
 	imagePreview?: ToolImagePreview;
+	/** All MCP image blocks, retained for a gallery while imagePreview stays backwards compatible. */
+	imagePreviews?: ToolImagePreview[];
+	audioPreviews?: ToolAudioPreview[];
+	/** Opaque handle to a Main-owned untrusted MCP App surface. */
+	mcpApp?: DesktopMcpAppAttachment;
 	uiDetails?: ToolCallUiDetails;
 	/**
 	 * Settled card descriptors this tool produced (from the result's out-of-band
@@ -481,6 +492,7 @@ export const isReloadingMcpAtom = atom<boolean>(false);
  * 切回恢复（该 session 的 agent 仍阻塞等回答）。提交/取消后由面板删除对应项。
  */
 export const pendingQuestionsAtom = atom<Record<string, PendingQuestion>>({});
+export const pendingMcpElicitationsAtom = atom<Record<string, DesktopMcpElicitationRequest>>({});
 
 /**
  * 输入预测建议，按发起会话的 runtimeId 索引（仿 pendingQuestionsAtom 的 Record 形态）。

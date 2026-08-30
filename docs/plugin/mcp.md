@@ -127,10 +127,16 @@
 
 ## 非目标（当前）
 
-- MCP Apps / `ui://widget` 宿主
 - 设置页展示/编辑插件 MCP
 - 安装插件时自动 `npm install` MCP 依赖
 - per-server 用户开关 UI（清单 `disabled` 仍生效）
+
+## MCP Apps
+
+插件贡献的 MCP Server 与用户配置 Server 使用同一个 Desktop MCP Apps 宿主。Server 可在 Tool `_meta.ui.resourceUri`
+中引用 `ui://` 资源，并返回 `text/html;profile=mcp-app`；Desktop 会使用双层 sandbox iframe、CSP 和 App Bridge
+承载它。App 调用其它 Tool 时仍同时受 `_meta.ui.visibility` 与清单 `autoApprove` 约束，插件权限不会让不可信
+App 继承可信 Renderer 能力或 MCP 凭据。
 
 ## 参考实现
 

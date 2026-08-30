@@ -78,6 +78,7 @@ describe("MCP HTTP SDK session adapter", () => {
 	it("maps transport, client and method inputs to the official SDK", async () => {
 		const authProvider = {} as OAuthClientProvider;
 		const session = createMcpHttpSdkSession({
+			serverName: "remote",
 			url: new URL("https://example.test/mcp"),
 			requestInit: { headers: { Authorization: "Bearer test" } },
 			authProvider,

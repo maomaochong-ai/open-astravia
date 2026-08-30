@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### Added
+
+- 文件配置与 Plugin 动态 MCP Server 可注入同一个 MCP Apps Host；App ToolResult 使用不透明 surface attachment，
+  App-only Tool 从模型目录剥离，App 发起的异步 Tool 继续复用共享 Task Coordinator。
+- MCP Runtime Source 支持注入共享 Task Coordinator，使文件配置与 Plugin 动态 MCP Server 使用同一套 Task
+  轮询、取消和恢复所有权，Task 不进入 Coding Agent 自身后台 bash/subagent 状态机。
+
 ### Fixed
 
 - 修复本地与远程模型列表缺少 `maxTokens` 时被统一写成 16384、导致长推理在真实模型上提前触发长度截断的问题；未知上限现在保持未知，由 AI Provider 按模型元数据、调用覆盖或协议要求解析。

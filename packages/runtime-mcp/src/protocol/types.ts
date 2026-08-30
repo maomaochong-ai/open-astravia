@@ -1,17 +1,38 @@
 /** Transport-neutral MCP protocol and configuration contracts. */
 
-export type McpJsonObject = Record<string, unknown>;
-
-export const MCP_LATEST_PROTOCOL_VERSION = "2025-11-25";
-export const MCP_SUPPORTED_PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"] as const;
-
-/** MCP metadata is intentionally opaque to the platform-neutral layer. */
-export type McpMeta = Record<string, unknown>;
+import type { McpCacheScope } from "./cache.js";
+import type { McpJsonObject, McpJsonValue, McpMeta } from "./json.js";
+import type { McpSubscriptionFilter, McpSubscriptionHandler, McpSubscriptionsListenResult } from "./subscriptions.js";
+import type {
+	McpCancelTaskParams,
+	McpCancelTaskResult,
+	McpGetTaskParams,
+	McpGetTaskResult,
+	McpTaskWaitOptions,
+	McpUpdateTaskParams,
+	McpUpdateTaskResult,
+} from "./tasks.js";
+import type { McpProtocolMode } from "./versions.js";
 
 export interface McpAnnotations {
 	readonly audience?: readonly ("user" | "assistant")[];
 	readonly priority?: number;
 	readonly lastModified?: string;
+}
+
+export interface McpIcon {
+	readonly src: string;
+	readonly mimeType?: string;
+	readonly sizes?: string[];
+	readonly theme?: "light" | "dark";
+}
+
+export interface McpToolAnnotations {
+	readonly title?: string;
+	readonly readOnlyHint?: boolean;
+	readonly destructiveHint?: boolean;
+	readonly idempotentHint?: boolean;
+	readonly openWorldHint?: boolean;
 }
 
 export interface McpServerCommonConfig {
@@ -21,6 +42,8 @@ export interface McpServerCommonConfig {
 	debug?: boolean;
 	displayName?: string;
 	description?: string;
+	/** Selects the wire protocol strategy; legacy remains the compatibility default. */
+	protocolMode?: McpProtocolMode;
 }
 
 export interface McpStdioServerConfig extends McpServerCommonConfig {
@@ -85,20 +108,31 @@ export type JsonRpcResponse = JsonRpcSuccessResponse | JsonRpcErrorResponse;
 export type JsonRpcMessage = JsonRpcRequest | JsonRpcResponse | JsonRpcNotification;
 
 export interface McpCapabilities {
+	experimental?: Record<string, McpJsonObject>;
 	tools?: { listChanged?: boolean };
 	resources?: { subscribe?: boolean; listChanged?: boolean };
 	prompts?: { listChanged?: boolean };
+	completions?: McpJsonObject;
 	logging?: { levels?: string[] };
+	extensions?: Record<string, McpJsonObject>;
 }
 
 export interface McpClientInfo {
 	name: string;
 	version: string;
+	title?: string;
+	description?: string;
+	websiteUrl?: string;
+	icons?: McpIcon[];
 }
 
 export interface McpServerInfo {
 	name: string;
 	version: string;
+	title?: string;
+	description?: string;
+	websiteUrl?: string;
+	icons?: McpIcon[];
 	capabilities?: McpCapabilities;
 }
 
@@ -108,6 +142,8 @@ export interface McpInitializeParams {
 	capabilities?: {
 		roots?: { listChanged?: boolean };
 		sampling?: object;
+		elicitation?: { form?: McpJsonObject; url?: McpJsonObject };
+		extensions?: Record<string, McpJsonObject>;
 	};
 }
 
@@ -121,6 +157,7 @@ export interface McpTool {
 	name: string;
 	title?: string;
 	description?: string;
+	icons?: McpIcon[];
 	inputSchema: {
 		type: "object";
 		properties?: Record<string, unknown>;
@@ -128,13 +165,17 @@ export interface McpTool {
 		[key: string]: unknown;
 	};
 	outputSchema?: Record<string, unknown>;
-	annotations?: McpAnnotations;
+	annotations?: McpToolAnnotations;
 	_meta?: McpMeta;
 }
 
 export interface McpToolsListResult {
 	tools: McpTool[];
 	nextCursor?: string;
+	resultType?: string;
+	ttlMs?: number;
+	cacheScope?: McpCacheScope;
+	_meta?: McpMeta;
 }
 
 export interface McpToolCallParams {
@@ -142,10 +183,20 @@ export interface McpToolCallParams {
 	arguments?: McpJsonObject;
 }
 
+/** Per-call host options. These fields are not serialized unless a transport explicitly maps them. */
+export interface McpRequestOptions {
+	readonly signal?: AbortSignal;
+	readonly forceRefresh?: boolean;
+	readonly sessionId?: string;
+	readonly turnId?: string;
+	readonly toolCallId?: string;
+}
+
 export interface McpToolCallResult {
 	content: McpContent[];
-	structuredContent?: McpJsonObject;
+	structuredContent?: McpJsonValue;
 	isError?: boolean;
+	resultType?: string;
 	_meta?: McpMeta;
 }
 
@@ -155,6 +206,8 @@ export interface McpResource {
 	title?: string;
 	description?: string;
 	mimeType?: string;
+	size?: number;
+	icons?: McpIcon[];
 	annotations?: McpAnnotations;
 	_meta?: McpMeta;
 }
@@ -162,6 +215,10 @@ export interface McpResource {
 export interface McpResourcesListResult {
 	resources: McpResource[];
 	nextCursor?: string;
+	resultType?: string;
+	ttlMs?: number;
+	cacheScope?: McpCacheScope;
+	_meta?: McpMeta;
 }
 
 export interface McpResourceReadParams {
@@ -170,6 +227,10 @@ export interface McpResourceReadParams {
 
 export interface McpResourceReadResult {
 	contents: McpResourceContents[];
+	resultType?: string;
+	ttlMs?: number;
+	cacheScope?: McpCacheScope;
+	_meta?: McpMeta;
 }
 
 export interface McpTextContent {
@@ -198,12 +259,14 @@ export interface McpAudioContent {
 export interface McpTextResourceContents {
 	uri: string;
 	mimeType?: string;
+	_meta?: McpMeta;
 	text: string;
 }
 
 export interface McpBlobResourceContents {
 	uri: string;
 	mimeType?: string;
+	_meta?: McpMeta;
 	blob: string;
 }
 
@@ -240,26 +303,63 @@ export type McpContent =
 
 export interface McpPrompt {
 	name: string;
+	title?: string;
 	description?: string;
-	arguments?: {
-		type: "object";
-		properties?: Record<string, unknown>;
-		required?: string[];
-	};
+	arguments?: McpPromptArgument[];
+	icons?: McpIcon[];
+	_meta?: McpMeta;
+}
+
+export interface McpPromptArgument {
+	name: string;
+	title?: string;
+	description?: string;
+	required?: boolean;
 }
 
 export interface McpPromptsListResult {
 	prompts: McpPrompt[];
 	nextCursor?: string;
+	resultType?: string;
+	ttlMs?: number;
+	cacheScope?: McpCacheScope;
+	_meta?: McpMeta;
+}
+
+export interface McpPromptGetParams {
+	readonly name: string;
+	readonly arguments?: Record<string, string>;
+}
+
+export interface McpPromptMessage {
+	readonly role: "user" | "assistant";
+	readonly content: McpContent;
+}
+
+export interface McpPromptGetResult {
+	readonly description?: string;
+	readonly messages: McpPromptMessage[];
+	readonly resultType?: string;
+	readonly _meta?: McpMeta;
 }
 
 export interface IMcpClient {
 	initialize(params: McpInitializeParams): Promise<McpInitializeResult>;
-	listTools(cursor?: string): Promise<McpToolsListResult>;
-	callTool(name: string, args?: McpJsonObject): Promise<McpToolCallResult>;
-	listResources(cursor?: string): Promise<McpResourcesListResult>;
-	readResource(uri: string): Promise<McpResourceReadResult>;
-	listPrompts(cursor?: string): Promise<McpPromptsListResult>;
+	listTools(cursor?: string, options?: McpRequestOptions): Promise<McpToolsListResult>;
+	callTool(name: string, args?: McpJsonObject, options?: McpRequestOptions): Promise<McpToolCallResult>;
+	listResources(cursor?: string, options?: McpRequestOptions): Promise<McpResourcesListResult>;
+	readResource(uri: string, options?: McpRequestOptions): Promise<McpResourceReadResult>;
+	listPrompts(cursor?: string, options?: McpRequestOptions): Promise<McpPromptsListResult>;
+	getPrompt?(params: McpPromptGetParams, options?: McpRequestOptions): Promise<McpPromptGetResult>;
+	getTask?(params: McpGetTaskParams, options?: McpRequestOptions): Promise<McpGetTaskResult>;
+	updateTask?(params: McpUpdateTaskParams, options?: McpRequestOptions): Promise<McpUpdateTaskResult>;
+	cancelTask?(params: McpCancelTaskParams, options?: McpRequestOptions): Promise<McpCancelTaskResult>;
+	waitForTask?(params: McpGetTaskParams, options?: McpTaskWaitOptions): Promise<McpGetTaskResult>;
+	listenSubscriptions?(
+		filter: McpSubscriptionFilter,
+		onNotification: McpSubscriptionHandler,
+		options?: McpRequestOptions,
+	): Promise<McpSubscriptionsListenResult>;
 	close(): Promise<void>;
 }
 

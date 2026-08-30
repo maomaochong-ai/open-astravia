@@ -77,6 +77,38 @@ describe("Subagent activity views", () => {
 		expect(html).toContain("icon-[solar--stop-circle-linear]");
 	});
 
+	it("renders and cancels an active MCP protocol Task without presenting it as bash work", () => {
+		const onStop = vi.fn();
+		render(
+			<BackgroundTasksTabPanelView
+				items={[
+					{
+						kind: "mcp",
+						id: "mcp-record-1",
+						serverName: "notion",
+						toolName: "export",
+						status: "input_required",
+						statusMessage: "Waiting for approval",
+						statusIcon: "icon-[solar--question-circle-linear]",
+						statusLabel: "Waiting for input",
+						statusClassName: "text-amber-400",
+						durationLabel: "12s",
+					},
+				]}
+				emptyLabel="No tasks"
+				clearFinishedLabel={null}
+				onClearFinished={vi.fn()}
+				stopLabel="Stop"
+				onStop={onStop}
+			/>,
+		);
+
+		expect(screen.getByText(/notion: export/u)).toBeDefined();
+		expect(screen.getByText("Waiting for approval")).toBeDefined();
+		fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+		expect(onStop).toHaveBeenCalledWith("mcp-record-1", "mcp");
+	});
+
 	it("wires workflow selection and stop actions to the host", () => {
 		const onSelect = vi.fn();
 		const onStop = vi.fn();

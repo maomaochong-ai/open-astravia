@@ -7,10 +7,12 @@ import type {
 import {
 	createMcpDynamicServerRuntimeToolSource,
 	createMcpRuntimeToolSynchronizer,
+	type McpAppExecutionHost,
 	type McpRuntimeToolSnapshot,
 	type McpRuntimeToolView,
 	type McpServerConfig,
 	type McpServerSupervisor,
+	type McpTaskExecutionCoordinator,
 	type McpToolResultPolicy,
 	PRESERVE_MCP_TOOL_RESULT_POLICY,
 } from "@vetta/runtime-mcp";
@@ -26,6 +28,8 @@ export interface CodingAgentPluginMcpRuntimeOptions {
 	readonly supervisor: McpServerSupervisor;
 	readonly debug?: boolean;
 	readonly resultPolicy?: McpToolResultPolicy;
+	readonly taskCoordinator?: McpTaskExecutionCoordinator;
+	readonly appHost?: McpAppExecutionHost;
 }
 
 export interface CodingAgentPluginMcpToolSurface {
@@ -181,6 +185,8 @@ export async function createCodingAgentPluginMcpRuntime(
 	const source = createMcpDynamicServerRuntimeToolSource(options.supervisor, {
 		decorateTool: decorateCodingAgentMcpRuntimeTool,
 		resultPolicy: options.resultPolicy ?? PRESERVE_MCP_TOOL_RESULT_POLICY,
+		taskCoordinator: options.taskCoordinator,
+		appHost: options.appHost,
 	});
 	return new CodingAgentPluginMcpRuntime(options.supervisor, source, options.debug ?? false);
 }

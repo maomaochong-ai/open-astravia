@@ -1,5 +1,11 @@
 import { join } from "node:path";
-import { MCP_LATEST_PROTOCOL_VERSION, McpServerSupervisor, type RuntimeMcpClientFactory } from "@vetta/runtime-mcp";
+import {
+	MCP_DEFAULT_PROTOCOL_VERSION,
+	type McpClientCapabilities,
+	type McpServerInteractionHandlers,
+	McpServerSupervisor,
+	type RuntimeMcpClientFactory,
+} from "@vetta/runtime-mcp";
 import type { McpConfigSource } from "@vetta/runtime-mcp/config";
 import {
 	buildBuiltinMcpServers,
@@ -10,7 +16,7 @@ import {
 import { createMcpClient } from "./client/index.js";
 import { FileMcpConfigSource } from "./config/index.js";
 
-const MCP_PROTOCOL_VERSION = MCP_LATEST_PROTOCOL_VERSION;
+const MCP_PROTOCOL_VERSION = MCP_DEFAULT_PROTOCOL_VERSION;
 const PLACEHOLDER_REDIRECT_URI = "http://127.0.0.1/callback";
 
 export interface NodeMcpSupervisorOptions {
@@ -26,6 +32,8 @@ export interface NodeMcpSupervisorOptions {
 	readonly clientFactory?: RuntimeMcpClientFactory;
 	readonly includeBuiltinServers?: boolean;
 	readonly onDiagnostic?: (message: string) => void;
+	readonly interactionHandlers?: McpServerInteractionHandlers;
+	readonly clientCapabilities?: McpClientCapabilities;
 }
 
 export interface NodeMcpSupervisorComposition {
@@ -74,6 +82,8 @@ export function createNodeMcpSupervisor(options: NodeMcpSupervisorOptions): Node
 		enabled: options.enabled,
 		debug: options.debug,
 		onDiagnostic: options.onDiagnostic,
+		interactionHandlers: options.interactionHandlers,
+		clientCapabilities: options.clientCapabilities,
 	});
 	return { supervisor, configSource };
 }
