@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extName__",
   "description": "__MSG_extDescription__",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "default_locale": "zh_CN",
   "icons": {
     "16": "assets/icon16.png",
@@ -21,10 +21,9 @@
     }
   },
   "permissions": ["storage", "activeTab", "clipboardWrite", "downloads"],
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  },
+	"background": {
+		"service_worker": "background.js"
+	},
   "content_scripts": [
     {
       "matches": ["<all_urls>"],

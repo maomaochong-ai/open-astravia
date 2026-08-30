@@ -5,6 +5,9 @@ import type { DbQueryResult } from "../../../preload/api-types/database";
 export const activityPanelOpenAtom = atom<boolean>(false);
 export const activityPanelResizingAtom = atom<boolean>(false);
 
+/** 活动面板 tab 全屏状态：true 时面板覆盖整个窗口（隐藏侧边栏与对话区），再次点击还原。 */
+export const activityPanelFullscreenAtom = atom<boolean>(false);
+
 /** 活动面板默认宽度，也是关闭内嵌预览时回拉的兜底值。 */
 export const ACTIVITY_PANEL_DEFAULT_WIDTH = 360;
 

@@ -46,10 +46,10 @@ await build({
 	minify,
 	naming: { entry: "content.js" },
 });
-// background 需要 ESM（manifest "type": "module"）
+// background：产物自包含（无 import/export），用 iife 经典脚本，兼容 Firefox 等不支持 module service worker 的浏览器
 await build({
 	entrypoints: [resolve(root, "src", "background.ts")],
-	format: "esm",
+	format: "iife",
 	target: "browser",
 	outdir,
 	minify,
@@ -80,7 +80,7 @@ cpSync(resolve(root, "_locales"), resolve(outdir, "_locales"), { recursive: true
 const version = JSON.parse(readFileSync(resolve(root, "manifest.json"), "utf8")).version;
 const releaseDir = resolve(root, "release");
 mkdirSync(releaseDir, { recursive: true });
-const zipPath = resolve(releaseDir, `web-element-picker-${version}.zip`);
+const zipPath = resolve(releaseDir, `web-element-picker-extension-${version}.zip`);
 rmSync(zipPath, { force: true });
 execFileSync("zip", ["-rq", zipPath, "."], { cwd: outdir });
 console.log(`[build-extension] ${zipPath} (${(await import("node:fs")).statSync(zipPath).size} bytes)`);

@@ -8,7 +8,10 @@ export default defineConfig({
 		astraviaPluginFederation({
 			name: "web_element_picker",
 			entry: "./src/index.tsx",
-			package: true,
+			package: {
+				enabled: true,
+				fileName: "web-element-picker-builtin-${version}.zip",
+			},
 		}),
 	],
 	esbuild: {

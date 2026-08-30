@@ -6,7 +6,7 @@
 
 - 三期浏览器扩展形态（`extension/`，MV3）：授权码买断体系 + popup 控制面 + 内核注入。新增：
   - `license.ts`：一级离线授权码（ECDSA P-256/SHA-256 验签，base32 编码，`WEP-<payload>.<signature>`），浏览器/Node 通用 WebCrypto；`license-keygen.mjs` / `license-sign.mjs` 生成密钥对与签发；
-  - `manifest.json`（v0.3.0）+ content script（document_start 注入内核）+ 主世界桥 `inject-main.js`（拼接内核成 `kernel-inject.js`）+ background service worker（事件汇总 / 授权门控 / 截图下载 / 命令转发，无接收端安全吞错）+ popup 控制面（激活表单 / 开始停止 / 写轮眼开关 / 状态轮询）；
+  - `manifest.json`（v0.3.1）+ content script（document_start 注入内核）+ 主世界桥 `inject-main.js`（拼接内核成 `kernel-inject.js`）+ background service worker（事件汇总 / 授权门控 / 截图下载 / 命令转发，无接收端安全吞错）+ popup 控制面（激活表单 / 开始停止 / 写轮眼开关 / 状态轮询）；
   - `build-extension.mjs` 一键构建 + zip 商店包；`e2e.mjs` Playwright 端到端验证（注入 / 授权门控 / 激活 / 挂载 / 事件回流 / 设置 / 停止 / 导航恢复，8/8 通过）；
   - 权限最小集（storage / activeTab / clipboardWrite / downloads），无远程代码，符合商店「全部本地处理」声明；
   - 「发送给 AI」跨端采用方案 A 剪贴板交接（content script 兜底写剪贴板 + 门控校验）。
@@ -29,10 +29,12 @@
 
 - 内置面板工具栏精简：地址栏右侧「开始选择 / 发送给 AI / 写轮眼模式」按钮改为纯图标（悬停提示保留，选中/开启态以颜色与图标区分），与「打开外部 / 设置」按钮风格统一。
 - 扩展 popup 控制面 UI 重设计：品牌头部（渐变 Logo + 版本徽章）、状态卡（激活徽章 + 订单/有效期）、渐变主按钮、iOS 风格开关、快捷键提示卡，浅色/深色模式自适应。
+- 内置面板图标自绘 SVG：弃用 iconify 魔法类（`icon-[mdi--…]`，构建 CSS 中缺失导致图标全部渲染为空白），改为内联 SVG 线性图标组件（24 网格 / 1.5px 线宽 / `currentColor` 着色，随按钮主题色）；地址栏工具栏「开始选择 / 发送给 AI / 写轮眼模式」按钮去掉背景填充（原 `bg-primary` / `bg-accent`），改为图标着色 + hover 浅底色，与导航按钮风格统一；停止图标由实心方块改线框，避免切换后看不出图标。
 
 ### Fixed
 
 - 扩展 popup「写轮眼模式」开关无法切换：background 收到 `wep-settings` 后只转发给 content script，未把设置写回 session storage，popup 每 600ms 轮询 `get-state` 时读到 `settings: null` 把开关重置回旧值；现由 background 合并写入 session storage 作为回流来源，并保留 content script 的 sync 持久化（浏览器重启后 `get-state` 回退读取 sync）。
+- 扩展在外部浏览器（如 Firefox）无法加载：manifest 声明 `"type": "module"` 的 module service worker 兼容性差（Firefox 不支持），而产物 `background.js` 实为自包含 bundle（无顶层 import/export），改为 iife 经典脚本并移除 `"type": "module"`，各浏览器均可直接加载。
 
 ## [0.1.0]
 

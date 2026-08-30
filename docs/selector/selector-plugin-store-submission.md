@@ -1,6 +1,6 @@
 # web-element-picker 扩展商店上架清单（照做式）
 
-> 前置：三期扩展已实现并验证（MV3 v0.3.0，E2E 8/8），见 [selector-plugin-integration.md §12](selector-plugin-integration.md)。
+> 前置：三期扩展已实现并验证（MV3 v0.3.1，E2E 8/8），见 [selector-plugin-integration.md §12](selector-plugin-integration.md)。
 > 商业化定案：扩展**整体买断收费**（全部能力需授权码）；**Edge Add-ons 优先 → Chrome Web Store**；爱发电渠道售卖。
 > 本文是照做式清单：注册账号 → 备齐物料 → 隐私政策 → 收款发码 → 正式密钥 → 提交审核。
 
@@ -10,8 +10,8 @@
 
 | 项 | 说明 | 状态 |
 |---|---|---|
-| 商店发布包 | `packages/plugins/externals/web-element-picker/extension/release/web-element-picker-0.3.0.zip` | ✅ 已有 |
-| R2 公开直链 | `https://dl.astravia.dev/plugins/web-element-picker-0.3.0.zip`（桶 `astravia-downloads` → `plugins/`，自定义域名 `dl.astravia.dev`） | ✅ 已上传并实测 200（2026-08-29） |
+| 商店发布包 | `packages/plugins/externals/web-element-picker/extension/release/web-element-picker-extension-0.3.1.zip` | ✅ 已有 |
+| R2 公开直链 | `https://dl.astravia.dev/plugins/web-element-picker-extension-0.3.1.zip`（桶 `astravia-downloads` → `plugins/`，自定义域名 `dl.astravia.dev`） | ✅ 已上传并实测 200（2026-08-30） |
 | 扩展图标 | `extension/assets/icon16/32/48/128.png` | ✅ 已有 |
 | 正式签名私钥 | `.secrets/license-private.jwk.json`（当前为测试密钥，上架前须切换，见第 6 节） | ⚠️ 需切换 |
 | 隐私政策 URL | 商店必填，见第 4 节 | ❌ 需准备 |
@@ -144,13 +144,13 @@ cd packages/plugins/externals/web-element-picker && bun extension/scripts/store-
 ## 7. 提交与审核
 
 ### 7.1 Edge Add-ons（优先）
-1. Partner Center → 创建新扩展 → 上传 `web-element-picker-0.3.0.zip`。
+1. Partner Center → 创建新扩展 → 上传 `web-element-picker-extension-0.3.1.zip`。
 2. 填写名称 / 描述 / 图标 / 截图 / 类别 / 隐私政策 URL / 支持邮箱。
 3. 填写权限说明（§3.6 表格）。
 4. 提交审核（通常数天）。
 
 ### 7.2 Chrome Web Store
-1. 开发者控制台 → 新建条目 → 上传 `web-element-picker-0.3.0.zip`。
+1. 开发者控制台 → 新建条目 → 上传 `web-element-picker-extension-0.3.1.zip`。
 2. 填写商店信息（§3 全部物料）+ 隐私权部分（隐私政策 URL、权限说明、数据使用声明：不收集）。
 3. 提交审核（通常数天到两周）。
 
