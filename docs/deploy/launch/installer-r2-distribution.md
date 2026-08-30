@@ -10,9 +10,8 @@
 
 | 版本来源 | 值（2026-08-30 现状） | 说明 |
 |---|---|---|
-| 官网 `website/index.html` 下载区 | `v0.55.32` | 硬编码文案 + 三个文件名 |
-| 桌面包 `packages/desktop-app/package.json` `version` | `0.55.32` | electron-builder 产物版本取自这里；**0.55.32 为当前已发布版本**（桶内 `app/v0.55.32/`），上一版为 0.55.31 开发版、线上 0.55.3 |
- | 发版版本源（AGENTS.md） | `@astravia/coding-agent` | 锁步发版，见 [desktop-releases.md](../desktop-releases.md) |
+| 官网 `website/index.html` 下载区 | `v0.55.33` | 硬编码文案 + 三个文件名 |
+ | 桌面包 `packages/desktop-app/package.json` `version` | `0.55.33` | electron-builder 产物版本取自这里；**0.55.33 为当前已发布版本**（桶内 `app/v0.55.33/`），上一版 0.55.32（桶内 `app/v0.55.32/`） |
 
 - **打包产物名 = `astravia-<实际版本>-mac.dmg` 等**，由 electron-builder 从 desktop-app 的 `package.json` 版本生成；版本号不一致时，产物名、官网文件名、R2 目录会互相打架。
 - 下文统一用 `<VER>` 占位版本号；**执行时以实际发布的版本为准**，三处必须一致：

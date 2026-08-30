@@ -4,8 +4,15 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 
 ## [Unreleased]
 
+## [0.55.33] - 2026-08-30
+
 ### Changed
 - **dbx-mcp 迁移至新 fork（maomaochong-ai/dbx，2026-08-30）**：fork 由 `sikongyue/dbx` 迁移至 [maomaochong-ai/dbx](https://github.com/maomaochong-ai/dbx)（ssh `github-maomaochong-ai`），多平台矩阵 workflow `.github/workflows/dbx-mcp-astravia.yml` 重新部署（commit 7b8016e），CI 构建 run 33299542730 成功发布 Release `dbx-mcp-astravia-v0.4.61`（win32-x64 + darwin-arm64 + darwin-x64 三平台资产）；`scripts/fetch-dbx-mcp.mjs` 更新三平台 sha256（win `25484f9b…` / darwin-arm64 `7ef5d8cd…` / darwin-x64 `b48f619a…`），**darwin 由官方 npm 过渡源切换为 fork 直链**。
+
+### Fixed
+
+- **活动面板全屏态下按钮被 macOS 红绿灯遮挡（macOS）**：活动面板全屏（覆盖整个窗口）时 tab 菜单行顶到窗口左上角，`hiddenInset` 标题栏的原生红绿灯（x=16, y=20）正好盖住行首的「+」、全屏切换等按钮。修复：theme-ui `ActivityPanelView` 全屏态在 tab 行左侧预留 78px 红绿灯槽位（与 `SidebarTopBar`/`PageHeaderFrame` 同宽），槽位同时设为窗口拖拽区（此前全屏态顶部整条都无法拖拽窗口）。
+- **活动面板 tab 菜单行「+」按钮恢复小圆圈样式**：有可添加 tab 时，tab 菜单行最右侧的「+」从裸加号字形（`mdi--plus`）改为圆环加号（`mdi--plus-circle-outline`），与其他入口的视觉语言一致。
 
 ## [0.55.32] - 2026-08-30
 ### Fixed
@@ -86,9 +93,6 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 - **HTML 预览不再跟随应用主题**：取消按 App 深浅切换 iframe 底色与文档 `color-scheme`（避免未写背景的页面被强制成深色画布）；预览外观由 HTML 自身 CSS 决定，壳层固定浅色兜底。
 - **「让 AI 分析此表」历史回放丢失表目标（P7 B2.7 缺环修复）**：`databaseTable` 此前只随乐观写入的内存 marker 存在，会话落盘再回放时 connection/table 丢失（coding-agent 注入 `settings_assist_instruction` 的 details 只带 `tabId`）。现在 coding-agent 把 `databaseTable` 一并写入 details，runtime-core `entriesToHistory` 提取为 `settings_assist_marker.databaseTable`，回放恢复「在界面打开」目标完整。
 - **「AI 访问数据库」开关存量会话即时生效（P7 Bug 3 ③）**：开关切换后无需新建会话——`InputPipeline.prompt` 的 `maybeReloadMcpForPrompt` 按 mcp.json 合并签名（mtime+sha1，global+project）检测变更并 diff 重载，`disabled` 变 false 的 server 在发送下一条消息时重新初始化进工具集（防回归单测 `mcp-manager-reload.test.ts` 2 例）。开关描述文案（zh/en）同步为「切换后立即对新会话生效；已在进行的对话会在发送下一条消息时自动生效」。
-
-- **活动面板全屏态下按钮被 macOS 红绿灯遮挡（macOS）**：活动面板全屏（覆盖整个窗口）时 tab 菜单行顶到窗口左上角，`hiddenInset` 标题栏的原生红绿灯（x=16, y=20）正好盖住行首的「+」、全屏切换等按钮。修复：theme-ui `ActivityPanelView` 全屏态在 tab 行左侧预留 78px 红绿灯槽位（与 `SidebarTopBar`/`PageHeaderFrame` 同宽），槽位同时设为窗口拖拽区（此前全屏态顶部整条都无法拖拽窗口）。
-- **活动面板 tab 菜单行「+」按钮恢复小圆圈样式**：有可添加 tab 时，tab 菜单行最右侧的「+」从裸加号字形（`mdi--plus`）改为圆环加号（`mdi--plus-circle-outline`），与其他入口的视觉语言一致。
 
 ### Changed
 
