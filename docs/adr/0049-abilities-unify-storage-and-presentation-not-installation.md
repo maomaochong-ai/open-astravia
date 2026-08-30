@@ -34,7 +34,9 @@ ADR-0019 定「管理字段以 DB 为唯一真相源，包内 metadata 仅作导
 
 `type = bundle` 恒无产物，成员以 `(type, slug)` 引用已上架行；仅 mcp 允许私有内联（它本就无产物）。**不允许内联带产物的成员**，否则 bundle 要长出自己的打包格式、校验与解包逻辑——而那正是 plugin 内聚（ADR-0040）已经做过的事。**不允许 bundle 嵌套 bundle**，成员集合恒为一层。
 
-bundle 与 plugin 内聚的判据：bundle 是**松散**组合，成员对用户可见、可单独安装卸载启停；plugin 内聚是**紧耦合**，成员对用户不可见、随插件生死。要发「不单独上架的 skill/MCP」，答案是打进 plugin。
+bundle 与 plugin 内聚的判据：bundle 是**松散**组合，成员对用户可见、可单独安装卸载启停；plugin 内聚是**紧耦合**，成员对用户不可见、随插件生死。最初要求未独立上架成员打进 plugin；GitHub 开放市场后续通过
+[ADR-0094](./0094-package-referenced-bundle-members.md) 解除该限制：成员可引用现有包而不独立上架，
+不引入内联制品、嵌套 bundle 或新的物理安装轨道。云市场合同不变。
 
 bundle **不进[[能力安装台账]]**，`installed` / `enabled` / `needsUpdate` 全部由成员派生。没有独立状态就没有漂移，成员清单变更也自然表现为「可更新」。
 

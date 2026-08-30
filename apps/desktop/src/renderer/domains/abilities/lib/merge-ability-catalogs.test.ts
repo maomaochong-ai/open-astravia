@@ -5,6 +5,7 @@ import {
 	buildMarketAbilityId,
 	getMarketCatalogSource,
 	getOpenCatalogOrigin,
+	isMarketAbilityListed,
 	mergeAbilityCatalogs,
 } from "./merge-ability-catalogs";
 
@@ -80,6 +81,18 @@ function snapshot(sourceId: string, abilities: OpenMarketplaceAbility[]): OpenMa
 }
 
 describe("mergeAbilityCatalogs", () => {
+	it("retains bundle-only members for installation without listing them in discovery", () => {
+		const merged = mergeAbilityCatalogs(
+			[serverAbility("cloud")],
+			[snapshot("official", [openAbility("legacy"), { ...openAbility("member"), listed: false }])],
+		);
+		expect(merged.map(isMarketAbilityListed)).toEqual([true, true, false]);
+		expect(merged.map(buildMarketAbilityId)).toEqual([
+			"server:server:skill:cloud",
+			"github:official:skill:legacy",
+			"github:official:skill:member",
+		]);
+	});
 	it("preserves GitHub category translations alongside cloud translations", () => {
 		const github = { ...openAbility("document"), category: "Documents", categoryI18n: { zh: "文档" } };
 		const cloud = { ...serverAbility("cloud-document"), category: "Documents", category_i18n: { en: "Documents" } };

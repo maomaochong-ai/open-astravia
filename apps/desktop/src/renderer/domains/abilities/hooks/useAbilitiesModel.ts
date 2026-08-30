@@ -6,7 +6,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
 import { useMcpSettingsModel } from "../../settings/components/useMcpSettingsModel";
-import { queryAbilityCatalog } from "../lib/ability-catalog-query";
+import { isAbilityListedInDiscover, queryAbilityCatalog } from "../lib/ability-catalog-query";
 import { localizeMarketAbility } from "../lib/ability-presentation";
 import {
 	buildBundleAbilities,
@@ -97,7 +97,9 @@ export function useAbilitiesModel(): AbilitiesModel {
 
 	const bannerIcons = useMemo<AbilityBannerIcon[]>(
 		() =>
-			allItems.filter((item) => item.fromMarket).map((item) => ({ id: item.id, type: item.type, icon: item.icon })),
+			allItems
+				.filter((item) => item.fromMarket && isAbilityListedInDiscover(item))
+				.map((item) => ({ id: item.id, type: item.type, icon: item.icon })),
 		[allItems],
 	);
 

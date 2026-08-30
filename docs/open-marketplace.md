@@ -41,7 +41,7 @@ Desktop 从 GitHub 下载完整仓库归档，并在本地读取 `.vetta/marketp
 
 版本字段职责不同：
 
-- `schemaVersion`：JSON 结构版本。当前只支持 `1`。
+- `schemaVersion`：JSON 结构版本。支持 `1` 与 `2`；包路径 bundle 成员需要 `2`。
 - `marketplaceVersion`：仓库内容发布版本；同一版本的归档内容不得变化。
 - `minAppVersion`：必填，能够读取该内容的最低 Desktop SemVer 版本。
 - `abilities[].version`：单个能力的产物版本。
@@ -192,7 +192,11 @@ Desktop 先下载、校验、解包并验证可执行文件，再解析占位符
 }
 ```
 
-Bundle 没有独立安装产物，只声明同一 Manifest 中的成员。成员支持 `skill`、`scene`、`mcp` 和 `plugin`，不允许嵌套 Bundle。安装和卸载时均由用户在确认弹窗中选择成员，不强制一次处理全部成员。Bundle 可以提供可选的 `source.path`，但该目录只能承载下述展示文件。
+### Bundle 与独立上架
+
+Bundle 没有独立安装产物，只组合本来源的成员。成员支持 `skill`、`scene`、`mcp` 和 `plugin`，不允许嵌套 Bundle。安装和卸载时均由用户在确认弹窗中选择成员，不强制一次处理全部成员。Bundle 自身可以提供可选的 `source.path`，但该目录只能承载下述展示文件。
+
+格式 `1` / `2` 都支持以 `(type, slug)` 引用同一 manifest 顶层已注册的能力：
 
 ```json
 {
@@ -210,9 +214,60 @@ Bundle 没有独立安装产物，只声明同一 Manifest 中的成员。成员
 }
 ```
 
+格式 `2` 还允许成员提供 `source.path`，指向**市场根目录下**的能力包；这样无需在顶层重复注册：
+
+```json
+{
+  "type": "bundle",
+  "slug": "research",
+  "name": "Research",
+  "version": "1.0.0",
+  "config": {
+    "members": [
+      { "type": "skill", "slug": "research-guide", "source": { "path": "abilities/skills/research-guide" } },
+      { "type": "mcp", "slug": "research-search", "source": { "path": "abilities/mcp/research-search" } }
+    ]
+  }
+}
+```
+
+未独立注册的成员必须在包内 `ability.json` 声明目录元信息。例：
+
+```json
+{
+  "schemaVersion": 1,
+  "type": "skill",
+  "slug": "research-guide",
+  "name": "Research Guide",
+  "description": "Choose queries and cite sources.",
+  "version": "1.0.0",
+  "configVersion": 1,
+  "category": "Research",
+  "categoryI18n": { "zh": "调研", "en": "Research" },
+  "detail": {
+    "format": "markdown",
+    "path": "README.md",
+    "i18n": { "zh": { "name": "检索指南", "description": "选择查询并标注来源。", "path": "README.zh.md" } }
+  }
+}
+```
+
+- 顶层 `abilities[]` 决定独立上架。未列出的成员不进入「发现」、搜索结果和顶部图标区，但仍出现在
+  bundle 详情、安装选择弹窗及安装后的「我的」中，可更新、启停和卸载。磁盘上未被任何条目引用的包不会自动加载。
+- 成员 `type` / `slug` 必须与包一致，`version` 必须与 `SKILL.md` / `mcp.json` / `plugin.json` 一致。
+  名称必填；其他目录字段沿用独立条目的规则。包元信息不能含 `source` 或 `config`，安装配置仍只来自对应类型的包文件。
+- 多个 bundle 可以引用同一个成员；同一 slug 不得指向不同类型或不同路径。成员也在顶层注册时，以顶层目录字段为准，
+  路径必须一致，仍只保留一个目录身份；图标和详情沿用原有包展示合并规则。无路径的引用仍必须指向顶层条目。
+- 上架/取消独立上架不改变 `sourceId + type + slug`，不迁移安装台账或重置禁用状态、凭据、权限；
+  只有展示方式变化时不必改能力的 `version` / `configVersion`，但必须更新 `marketplaceVersion`。
+- 格式 v2 需包含本功能的 Desktop 构建（首个目标版本 `0.5.49`）；已运行的旧构建不会通过刷新自动获得解析能力。
+  旧客户端拒绝 v2 整个来源并沿用可用的旧缓存。先更新客户端再切换源格式；需要兼容旧客户端的仓库应继续用 v1。
+
+参见 [ADR-0094](adr/0094-package-referenced-bundle-members.md)。市场 schemaVersion 与包内的 schemaVersion 独立演进。
+
 ## 能力自带图标与详情
 
-`marketplace.json` 负责列表检索所需的轻量元信息；图标、长详情和展示图片可以与能力包放在同一 `source.path` 下：
+独立上架条目的轻量元信息由 `marketplace.json` 提供，bundle-only 成员由包内 `ability.json` 提供；图标、长详情和展示图片可以与能力包放在同一 `source.path` 下：
 
 ```text
 abilities/mcp/context7/
@@ -225,7 +280,7 @@ abilities/mcp/context7/
     └── preview.webp
 ```
 
-`ability.json` 是展示入口，身份字段必须与 `marketplace.json` 中的能力完全一致：
+`ability.json` 是展示入口，身份字段必须与对应的目录能力完全一致；bundle-only 成员还需提供上节所述目录字段：
 
 ```json
 {

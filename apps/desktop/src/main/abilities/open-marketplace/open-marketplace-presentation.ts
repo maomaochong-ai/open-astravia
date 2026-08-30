@@ -6,8 +6,9 @@ import type {
 	OpenMarketplaceDetailBlock,
 	OpenMarketplaceDetailLocale,
 } from "../../../preload/api-types/abilities.js";
+import type { MarketplaceAbilityManifest, MarketplaceBundleMember } from "./marketplace-schema.js";
 import {
-	type MarketplaceAbilityManifest,
+	marketplaceAbilitySchema,
 	marketplaceDetailBlockSchema,
 	marketplaceDetailSchema,
 	marketplaceMetaEntrySchema,
@@ -25,6 +26,9 @@ const detailSourceSchema = z
 		path: z.string().min(1),
 		fallback: z.string().min(1).optional(),
 		meta: z.array(marketplaceMetaEntrySchema).optional(),
+		name: z.string().optional(),
+		description: z.string().optional(),
+		tags: z.array(z.string()).optional(),
 	})
 	.passthrough();
 
@@ -277,21 +281,41 @@ function loadDetailSource(
 	source: DetailSource,
 	resolveAssetUrl: PresentationAssetUrlResolver,
 ): OpenMarketplaceDetailLocale {
+	const labels = { name: source.name, description: source.description, tags: source.tags };
 	try {
 		if (source.format === "markdown") {
-			return { content: readTextFile(sourceDir, source.path, MAX_DETAIL_BYTES), meta: source.meta };
+			return { ...labels, content: readTextFile(sourceDir, source.path, MAX_DETAIL_BYTES), meta: source.meta };
 		}
 		const document = blocksDocumentSchema.parse(
 			JSON.parse(readTextFile(sourceDir, source.path, MAX_DETAIL_BYTES)) as unknown,
 		);
 		return {
+			...labels,
 			blocks: resolveBlockAssets(document.blocks, sourceDir, resolveAssetUrl),
 			meta: source.meta,
 		};
 	} catch (error) {
 		if (!source.fallback) throw error;
-		return { content: readTextFile(sourceDir, source.fallback, MAX_DETAIL_BYTES), meta: source.meta };
+		return { ...labels, content: readTextFile(sourceDir, source.fallback, MAX_DETAIL_BYTES), meta: source.meta };
 	}
+}
+
+/** Unlisted members keep their catalog metadata next to the installable package. */
+export function readMarketplaceMemberMetadata(
+	sourceDir: string,
+	member: MarketplaceBundleMember,
+): MarketplaceAbilityManifest {
+	const descriptor = abilityPresentationSchema.parse(
+		JSON.parse(readTextFile(sourceDir, ABILITY_PRESENTATION_FILE, MAX_DESCRIPTOR_BYTES)) as unknown,
+	);
+	if (descriptor.type !== member.type || descriptor.slug !== member.slug) {
+		throw new Error(`Bundle member identity does not match package: ${member.type}:${member.slug}`);
+	}
+	if ("config" in descriptor || "source" in descriptor) {
+		throw new Error("Member installation configuration must stay in its package manifest");
+	}
+	// Referenced details are resolved separately, with the same path/size limits as listed abilities.
+	return marketplaceAbilitySchema.parse({ ...descriptor, detail: {}, source: member.source });
 }
 
 function isReferencedDetail(

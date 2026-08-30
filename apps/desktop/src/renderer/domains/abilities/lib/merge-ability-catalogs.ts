@@ -3,6 +3,7 @@ import type { MarketAbility } from "@shared/lib/api";
 import type { AbilityCatalogSource } from "../types";
 
 export type OpenCatalogMarketAbility = MarketAbility & {
+	listed?: boolean;
 	origin: GitHubMarketplaceOrigin;
 	configVersion: number;
 	catalogSource: Extract<AbilityCatalogSource, { kind: "github" }>;
@@ -17,6 +18,7 @@ function toMarketAbility(
 	snapshot: OpenMarketplaceSourceSnapshot,
 ): OpenCatalogMarketAbility {
 	return {
+		listed: ability.listed,
 		slug: ability.slug,
 		type: ability.type,
 		name: ability.name,
@@ -81,4 +83,9 @@ export function mergeAbilityCatalogs(
 export function getOpenCatalogOrigin(ability: MarketAbility): GitHubMarketplaceOrigin | undefined {
 	const candidate = ability as MarketAbility & { origin?: GitHubMarketplaceOrigin };
 	return candidate.origin?.kind === "github-marketplace" ? candidate.origin : undefined;
+}
+
+/** Catalog membership enables installation; independent listing only controls discovery. */
+export function isMarketAbilityListed(ability: MarketAbility): boolean {
+	return (ability as Partial<OpenCatalogMarketAbility>).listed !== false;
 }

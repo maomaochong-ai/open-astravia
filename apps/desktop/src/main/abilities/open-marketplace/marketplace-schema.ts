@@ -187,6 +187,7 @@ const mcpAbilitySchema = abilityBaseSchema.extend({
 const bundleMemberSchema = z.object({
 	type: z.enum(["skill", "scene", "mcp", "plugin"]),
 	slug: z.string().regex(SLUG_PATTERN),
+	source: sourceSchema.optional(),
 });
 const bundleAbilitySchema = abilityBaseSchema.extend({
 	type: z.literal("bundle"),
@@ -204,7 +205,7 @@ export const marketplaceAbilitySchema = z.discriminatedUnion("type", [
 
 export const marketplaceManifestSchema = z
 	.object({
-		schemaVersion: z.literal(1),
+		schemaVersion: z.union([z.literal(1), z.literal(2)]),
 		name: z.string().regex(SLUG_PATTERN),
 		displayName: z.string().min(1).optional(),
 		marketplaceVersion: z.string().regex(VERSION_PATTERN),
@@ -216,10 +217,11 @@ export const marketplaceManifestSchema = z
 
 export type MarketplaceManifest = z.infer<typeof marketplaceManifestSchema>;
 export type MarketplaceAbilityManifest = z.infer<typeof marketplaceAbilitySchema>;
+export type MarketplaceBundleMember = z.infer<typeof bundleMemberSchema>;
 
 export function normalizeMarketplaceSourcePath(value: string): string {
 	const slashPath = value.replace(/\\/g, "/");
-	if (slashPath.startsWith("/") || /^[a-zA-Z]:\//.test(slashPath)) {
+	if (slashPath.includes("\0") || slashPath.startsWith("/") || /^[a-zA-Z]:/.test(slashPath)) {
 		throw new Error(`Ability source path must be relative: ${value}`);
 	}
 	const normalized = posix.normalize(slashPath).replace(/^\.\//, "").replace(/\/$/, "");
@@ -259,11 +261,15 @@ export function parseMarketplaceManifest(input: unknown): MarketplaceManifest {
 		if (ability.type !== "bundle") continue;
 		const memberIds = new Set<string>();
 		for (const member of ability.config.members) {
+			if (member.source) {
+				if (manifest.schemaVersion !== 2) throw new Error("Package bundle members require schemaVersion 2");
+				member.source.path = normalizeMarketplaceSourcePath(member.source.path);
+			}
 			const memberId = `${member.type}:${member.slug}`;
 			if (memberIds.has(memberId)) throw new Error(`Duplicate bundle member: ${memberId}`);
 			memberIds.add(memberId);
 			const target = bySlug.get(member.slug);
-			if (!target || target.type !== member.type) {
+			if ((!target && !member.source) || (target && target.type !== member.type)) {
 				throw new Error(`Bundle member not found in marketplace: ${memberId}`);
 			}
 		}

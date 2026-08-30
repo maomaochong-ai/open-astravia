@@ -175,6 +175,8 @@ export interface OpenMarketplaceAbilityConfig {
 }
 
 export interface OpenMarketplaceAbility {
+	/** Derived from top-level marketplace registration; absent on older snapshots means listed. */
+	listed?: boolean;
 	slug: string;
 	type: "skill" | "scene" | "mcp" | "plugin" | "bundle";
 	name: string;

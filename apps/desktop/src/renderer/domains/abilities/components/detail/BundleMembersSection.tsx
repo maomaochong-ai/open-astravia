@@ -7,7 +7,7 @@ import { AbilityIcon } from "../AbilityIcon";
 
 /**
  * bundle 专属区块：成员列表。
- * 成员以 (type, slug) 引用已上架行，可逐个跳转到自己的详情页；
+ * 成员以 (type, slug) 引用目录中的能力，不要求独立上架，可逐个跳转到自己的详情页；
  * 仅 mcp 允许私有内联，内联成员没有独立详情页。
  */
 export function BundleMembersSection({

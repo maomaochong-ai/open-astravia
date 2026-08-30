@@ -10,13 +10,9 @@ import type {
 } from "../../../preload/api-types/abilities.js";
 import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
 import { getApplicationCacheService } from "../../cache/application-cache-service.js";
+import { loadMarketplaceCatalog } from "./marketplace-catalog.js";
 import { isAppVersionCompatible, isValidAppVersion } from "./marketplace-compatibility.js";
-import { mergeMarketplaceDetail } from "./marketplace-detail.js";
-import { type MarketplaceManifest, marketplaceDetailSchema, parseMarketplaceManifest } from "./marketplace-schema.js";
-import { validateOpenMarketplaceMcp } from "./open-marketplace-mcp.js";
-import { validateOpenMarketplacePlugin } from "./open-marketplace-plugin.js";
-import { loadOpenMarketplacePresentation } from "./open-marketplace-presentation.js";
-import { validateSkillPackage } from "./skill-package.js";
+import { type MarketplaceManifest, parseMarketplaceManifest } from "./marketplace-schema.js";
 
 export const DEFAULT_MARKETPLACE_SOURCE_ID = "vetta-official";
 const STATE_SCHEMA_VERSION = 1;
@@ -126,6 +122,7 @@ function toOpenMarketplaceAbility(
 	sourceId: string,
 	manifest: MarketplaceManifest,
 	ability: MarketplaceManifest["abilities"][number],
+	listed: boolean,
 ): OpenMarketplaceAbility {
 	const origin: GitHubMarketplaceOrigin = {
 		kind: "github-marketplace",
@@ -147,7 +144,8 @@ function toOpenMarketplaceAbility(
 						);
 						if (!target) throw new Error(`Bundle member not found: ${member.type}:${member.slug}`);
 						return {
-							...member,
+							type: member.type,
+							slug: member.slug,
 							exists: true,
 							name: target.name,
 							icon: target.icon,
@@ -157,6 +155,7 @@ function toOpenMarketplaceAbility(
 				}
 			: ability.config;
 	return {
+		listed,
 		slug: ability.slug,
 		type: ability.type,
 		name: ability.name,
@@ -343,6 +342,7 @@ export class OpenMarketplaceService {
 		state: OpenMarketplaceState;
 		snapshotRoot: string;
 		manifest: MarketplaceManifest;
+		listedSlugs: ReadonlySet<string>;
 	} | null> {
 		const state = await this.readState();
 		if (!state || !this.matchesCurrentSource(state)) return null;
@@ -352,8 +352,13 @@ export class OpenMarketplaceService {
 			const manifest = parseMarketplaceManifest(raw);
 			if (manifest.marketplaceVersion !== state.marketplaceVersion) return null;
 			this.assertManifestCompatible(manifest);
-			this.validateAbilityPackages(snapshotRoot, manifest);
-			return { state, snapshotRoot, manifest };
+			const catalog = loadMarketplaceCatalog(snapshotRoot, manifest);
+			return {
+				state,
+				snapshotRoot,
+				manifest: { ...manifest, abilities: catalog.abilities },
+				listedSlugs: catalog.listedSlugs,
+			};
 		} catch {
 			return null;
 		}
@@ -367,32 +372,6 @@ export class OpenMarketplaceService {
 		}
 	}
 
-	private validateAbilityPackages(marketplaceRoot: string, manifest: MarketplaceManifest): void {
-		for (const ability of manifest.abilities) {
-			const source = ability.source;
-			if (!source) continue;
-			const sourceDir = resolve(marketplaceRoot, source.path);
-			if (!isContained(marketplaceRoot, sourceDir)) {
-				throw new Error(`Unsafe ability source: ${source.path}`);
-			}
-			if (ability.type === "mcp") {
-				ability.config = validateOpenMarketplaceMcp(sourceDir, ability);
-			} else if (ability.type === "plugin") {
-				ability.config = validateOpenMarketplacePlugin(sourceDir, ability);
-			} else if (ability.type !== "bundle") {
-				validateSkillPackage(sourceDir, ability);
-			}
-			const presentation = loadOpenMarketplacePresentation(sourceDir, ability, manifest.marketplaceVersion);
-			if (presentation) {
-				ability.icon = presentation.icon ?? ability.icon;
-				ability.detail = marketplaceDetailSchema.parse({
-					...mergeMarketplaceDetail(ability.detail, presentation.detail),
-					icon: presentation.icon ?? ability.detail.icon,
-				});
-			}
-		}
-	}
-
 	private async readCachedSnapshot(): Promise<OpenMarketplaceSnapshot | null> {
 		const active = await this.readActiveMarketplace();
 		if (!active) return null;
@@ -400,7 +379,7 @@ export class OpenMarketplaceService {
 		return {
 			sourceId: this.sourceId,
 			abilities: active.manifest.abilities.map((ability) =>
-				toOpenMarketplaceAbility(this.sourceId, active.manifest, ability),
+				toOpenMarketplaceAbility(this.sourceId, active.manifest, ability, active.listedSlugs.has(ability.slug)),
 			),
 			marketplaceVersion: active.manifest.marketplaceVersion,
 			repository: active.manifest.repository,
@@ -546,7 +525,7 @@ export class OpenMarketplaceService {
 			);
 			const manifest = parseMarketplaceManifest(manifestRaw);
 			this.assertManifestCompatible(manifest);
-			this.validateAbilityPackages(marketplaceRoot, manifest);
+			loadMarketplaceCatalog(marketplaceRoot, manifest);
 
 			const previousState = await this.readState();
 			const sameSourceState = previousState && this.matchesCurrentSource(previousState) ? previousState : null;

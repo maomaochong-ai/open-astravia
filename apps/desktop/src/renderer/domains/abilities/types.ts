@@ -74,7 +74,7 @@ export interface AbilityBase {
 	isCustom: boolean;
 	/** 随 App 分发的内置能力（skill-presets、系统插件）。 */
 	isBuiltin: boolean;
-	/** 是否有对应的市场行。 */
+	/** 是否有对应的市场目录定义，含未独立上架的 bundle 成员。 */
 	fromMarket: boolean;
 	/** 仅 GitHub 开源市场能力携带；服务端市场与本地能力为空。 */
 	origin?: GitHubMarketplaceOrigin;

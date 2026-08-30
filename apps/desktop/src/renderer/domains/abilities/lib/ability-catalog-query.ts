@@ -1,4 +1,5 @@
 import type { AbilityItem, AbilityScope } from "../types";
+import { isMarketAbilityListed } from "./merge-ability-catalogs";
 
 export interface AbilityCatalogQuery {
 	scope: AbilityScope;
@@ -35,8 +36,11 @@ function sourceId(item: AbilityItem): string {
  * 过滤会让它们两个 scope 都看不见。buildMcpAbilities 只为 listedInDiscover 的预设建
  * builtin 条目，未放行的预设不会漏出。
  */
-function visibleInDiscover(item: AbilityItem): boolean {
-	return item.fromMarket || (item.type === "mcp" && item.catalogSource.kind === "builtin");
+export function isAbilityListedInDiscover(item: AbilityItem): boolean {
+	return (
+		(item.fromMarket && (!item.market || isMarketAbilityListed(item.market))) ||
+		(item.type === "mcp" && item.catalogSource.kind === "builtin")
+	);
 }
 
 export function queryAbilityCatalog(items: AbilityItem[], query: AbilityCatalogQuery): AbilityCatalogPage {
@@ -46,7 +50,7 @@ export function queryAbilityCatalog(items: AbilityItem[], query: AbilityCatalogQ
 	const page = Number.isInteger(query.page) && query.page > 0 ? query.page : 1;
 	const pageSize = Number.isInteger(query.pageSize) && query.pageSize > 0 ? query.pageSize : 60;
 	const filtered = items
-		.filter((item) => (query.scope === "discover" ? visibleInDiscover(item) : item.installed))
+		.filter((item) => (query.scope === "discover" ? isAbilityListedInDiscover(item) : item.installed))
 		.filter((item) => !keyword || item.searchTerms.some((term) => term.toLowerCase().includes(keyword)))
 		.filter((item) => !query.category || item.category === query.category)
 		.filter((item) => !types || types.has(item.type))

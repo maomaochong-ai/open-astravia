@@ -22,6 +22,54 @@ function validManifest(): Record<string, unknown> {
 }
 
 describe("parseMarketplaceManifest", () => {
+	it.each(["../escape", "/absolute", "C:relative", "C:/absolute", "\\\\server\\share", "bad\0path", "."])(
+		"rejects unsafe member paths: %s",
+		(path) => {
+			const bundle = {
+				type: "bundle",
+				slug: "research",
+				name: "Research",
+				version: "1.0.0",
+				config: { members: [{ type: "skill", slug: "guide", source: { path } }] },
+			};
+			expect(() =>
+				parseMarketplaceManifest({ ...validManifest(), schemaVersion: 2, abilities: [bundle] }),
+			).toThrow();
+		},
+	);
+	it("does not resolve bare references from another bundle's unlisted packages", () => {
+		const bundle = {
+			type: "bundle",
+			slug: "research",
+			name: "Research",
+			version: "1.0.0",
+			config: { members: [{ type: "skill", slug: "guide", source: { path: "abilities/guide" } }] },
+		};
+		const bare = { ...bundle, slug: "bare", config: { members: [{ type: "skill", slug: "guide" }] } };
+		for (const abilities of [
+			[bundle, bare],
+			[bare, bundle],
+		]) {
+			expect(() => parseMarketplaceManifest({ ...validManifest(), schemaVersion: 2, abilities })).toThrow(
+				"Bundle member not found",
+			);
+		}
+	});
+	it("accepts explicit package members only with the version 2 manifest contract", () => {
+		const bundle = {
+			type: "bundle",
+			slug: "research",
+			name: "Research",
+			version: "1.0.0",
+			config: { members: [{ type: "skill", slug: "guide", source: { path: "abilities\\guide" } }] },
+		};
+		const raw = { ...validManifest(), schemaVersion: 2, abilities: [bundle] };
+		const parsed = parseMarketplaceManifest(raw);
+		expect(parsed.abilities[0]).toMatchObject({ config: { members: [{ source: { path: "abilities/guide" } }] } });
+		expect(() => parseMarketplaceManifest({ ...raw, schemaVersion: 1 })).toThrow("schemaVersion 2");
+		bundle.config.members[0].source.path = "../outside";
+		expect(() => parseMarketplaceManifest(raw)).toThrow("escapes marketplace root");
+	});
 	it("preserves optional category translations without changing category identity", () => {
 		const manifest = validManifest();
 		const abilities = manifest.abilities as Array<Record<string, unknown>>;
