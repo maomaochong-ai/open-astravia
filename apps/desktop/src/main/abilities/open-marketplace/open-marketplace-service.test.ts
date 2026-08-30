@@ -180,6 +180,30 @@ afterEach(async () => {
 });
 
 describe("OpenMarketplaceService", () => {
+	it("prepares an MCP from the active validated snapshot", async () => {
+		const rootDir = await temporaryRoot();
+		const prepareMcpAbility = vi.fn(async (_snapshotRoot: string, _ability: unknown, _sourceId: string) => ({
+			type: "http" as const,
+			url: "https://mcp.example.com",
+		}));
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(pluginBundleArchive()),
+			prepareMcpAbility,
+		});
+		await service.refresh();
+
+		await expect(service.prepareMcp("context7")).resolves.toEqual({
+			type: "http",
+			url: "https://mcp.example.com",
+		});
+		expect(prepareMcpAbility).toHaveBeenCalledOnce();
+		expect(prepareMcpAbility.mock.calls[0]?.[0]).toContain(join("snapshots", "2026.07.3"));
+		expect(prepareMcpAbility.mock.calls[0]?.[1]).toMatchObject({ type: "mcp", slug: "context7" });
+		expect(prepareMcpAbility.mock.calls[0]?.[2]).toBe("vetta-official");
+	});
+
 	it("validates and activates a GitHub repository snapshot", async () => {
 		const rootDir = await temporaryRoot();
 		const service = new OpenMarketplaceService({

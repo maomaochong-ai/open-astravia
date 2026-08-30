@@ -2,7 +2,7 @@
  * 能力操作层：三条安装轨道（skills 目录 / plugins 目录 / mcp.json）的差异只在这里展开。
  * 每个操作统一登记 busy id、刷新数据源，并保留错误反馈。
  */
-import type { PluginPermission } from "@preload/api";
+import type { McpServerConfigData, PluginPermission } from "@preload/api";
 import { i18n } from "@shared/i18n";
 import { abilityToMarketMcpServer, downloadAbility, type MarketAbility } from "@shared/lib/api";
 import { authTokenAtom } from "@shared/store/atoms";
@@ -115,7 +115,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 					display_name: item.title,
 					description: item.description,
 					icon: item.icon,
-					config: item.inlineConfig,
+					config: item.inlineConfig as unknown as McpServerConfigData,
 				});
 				return "installed";
 			}
@@ -130,11 +130,26 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 						runtimeName: item.serverName,
 					}
 				: undefined;
+			const preparedServer =
+				market && item.origin?.kind === "github-marketplace"
+					? await window.vetta.abilities.prepareOpenMcpAbility(item.slug, item.origin.sourceId)
+					: undefined;
 			if (item.preset) {
-				return mcp.onAddBuiltinServer(item.preset, installOptions);
+				return mcp.onAddBuiltinServer(
+					preparedServer ? { ...item.preset, config: preparedServer } : item.preset,
+					installOptions,
+				);
 			}
 			if (market) {
-				await mcp.onAddRemoteServer({ ...abilityToMarketMcpServer(market), name: item.serverName }, installOptions);
+				const server = abilityToMarketMcpServer(market);
+				await mcp.onAddRemoteServer(
+					{
+						...server,
+						name: item.serverName,
+						...(preparedServer ? { config: preparedServer } : {}),
+					},
+					installOptions,
+				);
 				return "installed";
 			}
 			return "skipped";
@@ -162,6 +177,9 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				notifyPluginsChanged();
 			} else if (item.type === "mcp") {
 				await mcp.onDeleteServer(item.serverName);
+				if (item.origin?.kind === "github-marketplace") {
+					await window.vetta.abilities.removeOpenMcpRuntime(item.slug, item.origin.sourceId);
+				}
 			} else if (item.type === "skill" || item.type === "scene") {
 				await window.vetta.skills.uninstall(item.slug, item.type);
 			} else {

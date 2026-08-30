@@ -1,4 +1,4 @@
-import type { RefreshOutcome } from "@preload/api";
+import type { McpServerConfigData, RefreshOutcome } from "@preload/api";
 import { i18n } from "@shared/i18n";
 
 let cachedBaseUrl: string | undefined;
@@ -529,7 +529,7 @@ export async function fetchAbilityInfo(type: AbilityType, slug: string, token?: 
 	return normalizeAbility(item, await resolveMarketIconUrl(item.icon));
 }
 
-/** mcp / bundle 无产物，服务端直接 400——调用前请自行判断 type。 */
+/** mcp / bundle 没有业务服务端归档；GitHub MCP 的受管运行时由 Desktop Ability 安装器处理。 */
 export async function downloadAbility(type: AbilityType, slug: string, token?: string | null): Promise<ArrayBuffer> {
 	const serverUrl = await window.vetta.settings.getServerUrl();
 	const resp = await hostFetch(
@@ -554,7 +554,7 @@ export interface MarketMcpServer {
 	/** 已解析为可直接渲染的图标值。 */
 	icon?: string;
 	/** 直接作为 mcpServers[name] 写入本地 mcp.json 的原样配置。 */
-	config: Record<string, unknown>;
+	config: McpServerConfigData;
 }
 
 export function abilityToMarketMcpServer(ability: MarketAbility): MarketMcpServer {
@@ -564,7 +564,7 @@ export function abilityToMarketMcpServer(ability: MarketAbility): MarketMcpServe
 		display_name: ability.name,
 		description: ability.description,
 		icon: ability.icon || undefined,
-		config: ability.config.mcp ?? {},
+		config: ability.config.mcp as unknown as McpServerConfigData,
 	};
 }
 

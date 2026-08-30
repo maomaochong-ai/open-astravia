@@ -8,6 +8,7 @@ import type {
 	OpenMarketplaceAbility,
 	OpenMarketplaceSnapshot,
 } from "../../../preload/api-types/abilities.js";
+import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
 import { getApplicationCacheService } from "../../cache/application-cache-service.js";
 import { isAppVersionCompatible, isValidAppVersion } from "./marketplace-compatibility.js";
 import { type MarketplaceManifest, marketplaceDetailSchema, parseMarketplaceManifest } from "./marketplace-schema.js";
@@ -32,6 +33,11 @@ type InstallAbility = (
 	ability: MarketplaceManifest["abilities"][number],
 	origin: GitHubMarketplaceOrigin,
 ) => Promise<void>;
+type PrepareMcpAbility = (
+	snapshotRoot: string,
+	ability: Extract<MarketplaceManifest["abilities"][number], { type: "mcp" }>,
+	sourceId: string,
+) => Promise<McpServerConfigData>;
 
 interface OpenMarketplaceState {
 	schemaVersion: typeof STATE_SCHEMA_VERSION;
@@ -57,6 +63,7 @@ export interface OpenMarketplaceServiceOptions {
 	syncIntervalMs?: number;
 	updateCheckIntervalMs?: number;
 	installAbility?: InstallAbility;
+	prepareMcpAbility?: PrepareMcpAbility;
 	onBackgroundUpdate?: (snapshot: OpenMarketplaceSnapshot) => void;
 	createTemporaryDirectory?: () => Promise<string>;
 }
@@ -179,6 +186,7 @@ export class OpenMarketplaceService {
 	private readonly syncIntervalMs: number;
 	private readonly updateCheckIntervalMs: number;
 	private readonly installAbilityOverride?: InstallAbility;
+	private readonly prepareMcpAbilityOverride?: PrepareMcpAbility;
 	private readonly onBackgroundUpdate?: (snapshot: OpenMarketplaceSnapshot) => void;
 	private readonly createTemporaryDirectory: () => Promise<string>;
 	private lastUpdateCheckAt: number | undefined;
@@ -210,6 +218,7 @@ export class OpenMarketplaceService {
 		this.syncIntervalMs = options.syncIntervalMs ?? DEFAULT_SYNC_INTERVAL_MS;
 		this.updateCheckIntervalMs = options.updateCheckIntervalMs ?? DEFAULT_UPDATE_CHECK_INTERVAL_MS;
 		this.installAbilityOverride = options.installAbility;
+		this.prepareMcpAbilityOverride = options.prepareMcpAbility;
 		this.onBackgroundUpdate = options.onBackgroundUpdate;
 		this.createTemporaryDirectory =
 			options.createTemporaryDirectory ??
@@ -286,6 +295,20 @@ export class OpenMarketplaceService {
 			marketplaceVersion: active.manifest.marketplaceVersion,
 			repository: active.manifest.repository,
 		});
+	}
+
+	async prepareMcp(slug: string): Promise<McpServerConfigData> {
+		const active = await this.readActiveMarketplace();
+		if (!active) throw new Error("No validated open marketplace snapshot is available");
+		const ability = active.manifest.abilities.find(
+			(entry): entry is Extract<MarketplaceManifest["abilities"][number], { type: "mcp" }> =>
+				entry.type === "mcp" && entry.slug === slug,
+		);
+		if (!ability) throw new Error(`Open ability not found: mcp:${slug}`);
+		const prepareMcp =
+			this.prepareMcpAbilityOverride ??
+			(await import("./open-marketplace-production.js")).prepareOpenMarketplaceMcpInDesktop;
+		return prepareMcp(active.snapshotRoot, ability, this.sourceId);
 	}
 
 	private get statePath(): string {

@@ -139,6 +139,15 @@ export function registerAbilitiesIpc(): () => void {
 			await openMarketplace.install(type, slug, resolvedSourceId);
 		},
 	);
+	ipcMain.handle("vetta:abilities:prepare-open-mcp-ability", (_event, slug: unknown, sourceId: unknown) => {
+		const resolvedSourceId = sourceId === undefined ? undefined : requireString(sourceId, "sourceId");
+		return openMarketplace.prepareMcp(requireString(slug, "slug"), resolvedSourceId);
+	});
+	ipcMain.handle("vetta:abilities:remove-open-mcp-runtime", (_event, slug: unknown, sourceId: unknown) => {
+		const resolvedSourceId =
+			sourceId === undefined ? DEFAULT_MARKETPLACE_SOURCE_ID : requireString(sourceId, "sourceId");
+		return openMarketplace.removeMcpRuntime(requireString(slug, "slug"), resolvedSourceId);
+	});
 
 	// 市场 MCP 装完后补记台账：mcp.json 由渲染层整份覆写，主进程无从得知市场版本。
 	// 只接受确实已写进 mcp.json 的 server，避免渲染层写出幽灵条目。
@@ -177,5 +186,7 @@ export function registerAbilitiesIpc(): () => void {
 		ipcMain.removeHandler("vetta:abilities:remove-marketplace-source");
 		ipcMain.removeHandler("vetta:abilities:refresh-marketplace-source");
 		ipcMain.removeHandler("vetta:abilities:install-open-ability");
+		ipcMain.removeHandler("vetta:abilities:prepare-open-mcp-ability");
+		ipcMain.removeHandler("vetta:abilities:remove-open-mcp-runtime");
 	};
 }

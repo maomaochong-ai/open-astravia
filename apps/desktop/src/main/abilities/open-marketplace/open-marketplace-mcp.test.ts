@@ -7,6 +7,7 @@ import { validateOpenMarketplaceMcp } from "./open-marketplace-mcp";
 
 const temporaryRoots: string[] = [];
 const DEMO_API_KEY_PLACEHOLDER = `\${DEMO_API_KEY}`;
+const RUNTIME_COMMAND = `\${VETTA_MCP_EXECUTABLE}`;
 
 async function fixture(
 	server: Record<string, unknown>,
@@ -15,6 +16,8 @@ async function fixture(
 		version?: string;
 		parameters?: Array<Record<string, unknown>>;
 		browserAuth?: boolean;
+		schemaVersion?: 1 | 2;
+		runtime?: Record<string, unknown>;
 	},
 ) {
 	const root = await mkdtemp(join(tmpdir(), "vetta-open-mcp-test-"));
@@ -23,12 +26,13 @@ async function fixture(
 	await writeFile(
 		join(root, "mcp.json"),
 		JSON.stringify({
-			schemaVersion: 1,
+			schemaVersion: overrides?.schemaVersion ?? 1,
 			slug: overrides?.slug ?? "demo-mcp",
 			version: overrides?.version ?? "1.0.0",
 			server,
 			parameters: overrides?.parameters,
 			browserAuth: overrides?.browserAuth,
+			runtime: overrides?.runtime,
 		}),
 		"utf-8",
 	);
@@ -120,6 +124,80 @@ describe("validateOpenMarketplaceMcp", () => {
 				valueTemplate: "Bearer {value}",
 			},
 		]);
+	});
+
+	it("accepts a schema v2 managed binary and reports current-platform support", async () => {
+		const platformTag = `${process.platform}-${process.arch}`;
+		const { root, ability } = await fixture(
+			{
+				command: RUNTIME_COMMAND,
+				args: ["--stdio"],
+				env: { XHS_DATA_DIR: String.raw`\${VETTA_MCP_DATA_DIR}` },
+			},
+			{
+				schemaVersion: 2,
+				runtime: {
+					kind: "managed-binary",
+					platforms: {
+						[platformTag]: {
+							url: "https://github.com/example/demo/releases/download/v1/demo.zip",
+							sha256: "a".repeat(64),
+							archive: "zip",
+							executable: process.platform === "win32" ? "demo.exe" : "bin/demo",
+						},
+					},
+				},
+			},
+		);
+
+		expect(validateOpenMarketplaceMcp(root, ability)).toMatchObject({
+			mcp: { command: RUNTIME_COMMAND, args: ["--stdio"] },
+			mcp_runtime: { kind: "managed-binary", supported: true },
+		});
+	});
+
+	it("rejects unsafe managed runtime declarations", async () => {
+		const insecureUrl = await fixture(
+			{ command: RUNTIME_COMMAND },
+			{
+				schemaVersion: 2,
+				runtime: {
+					kind: "managed-binary",
+					platforms: {
+						"win32-x64": {
+							url: "http://example.com/demo.exe",
+							sha256: "a".repeat(64),
+							archive: "file",
+							executable: "demo.exe",
+						},
+					},
+				},
+			},
+		);
+		expect(() => validateOpenMarketplaceMcp(insecureUrl.root, insecureUrl.ability)).toThrow(
+			"runtime URL must use HTTPS",
+		);
+
+		const wrongCommand = await fixture(
+			{ command: "demo" },
+			{
+				schemaVersion: 2,
+				runtime: {
+					kind: "managed-binary",
+					platforms: {
+						"win32-x64": {
+							url: "https://example.com/demo.exe",
+							sha256: "a".repeat(64),
+							archive: "file",
+							executable: "demo.exe",
+						},
+					},
+				},
+			},
+		);
+		expect(() => validateOpenMarketplaceMcp(wrongCommand.root, wrongCommand.ability)).toThrow(
+			"Managed MCP runtime command must be exactly",
+		);
 	});
 
 	it("rejects package identity and server configuration mismatches", async () => {

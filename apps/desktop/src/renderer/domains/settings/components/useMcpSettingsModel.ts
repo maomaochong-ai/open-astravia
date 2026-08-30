@@ -734,8 +734,7 @@ function mergeMarketServer(existing: McpServerConfigData | undefined, next: McpS
 }
 
 function marketToServer(server: MarketMcpServer): McpServerConfigData {
-	const base = (server.config ?? {}) as Record<string, unknown>;
-	const merged: Record<string, unknown> = { ...base };
+	const merged: Record<string, unknown> = { ...(server.config ?? {}) };
 	if (server.display_name) merged.displayName = server.display_name;
 	if (server.description) merged.description = server.description;
 	// 市场侧 icon 已解析为绝对 URL，写入本地供「我的」展示

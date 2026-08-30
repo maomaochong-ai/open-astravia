@@ -8,6 +8,7 @@ import type {
 	OpenMarketplaceSourceSnapshot,
 	UpdateMarketplaceSourceInput,
 } from "../../../preload/api-types/abilities.js";
+import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
 import { getApplicationCacheService } from "../../cache/application-cache-service.js";
 import { MarketplaceSourceStore } from "./marketplace-source-store.js";
 import { DEFAULT_MARKETPLACE_SOURCE_ID, OpenMarketplaceService } from "./open-marketplace-service.js";
@@ -17,6 +18,7 @@ interface MarketplaceWorker {
 	listCached(): Promise<OpenMarketplaceSnapshot>;
 	refresh(): Promise<OpenMarketplaceSnapshot>;
 	install(type: "skill" | "scene" | "plugin", slug: string): Promise<void>;
+	prepareMcp(slug: string): Promise<McpServerConfigData>;
 }
 
 type MarketplaceWorkerFactory = (
@@ -115,6 +117,17 @@ export class OpenMarketplaceManager {
 		const source = this.requireSource(sourceId);
 		if (!source.enabled) throw new Error(`Marketplace source is disabled: ${sourceId}`);
 		await this.workerFor(source).install(type, slug);
+	}
+
+	async prepareMcp(slug: string, sourceId = DEFAULT_MARKETPLACE_SOURCE_ID): Promise<McpServerConfigData> {
+		const source = this.requireSource(sourceId);
+		if (!source.enabled) throw new Error(`Marketplace source is disabled: ${sourceId}`);
+		return this.workerFor(source).prepareMcp(slug);
+	}
+
+	async removeMcpRuntime(slug: string, sourceId = DEFAULT_MARKETPLACE_SOURCE_ID): Promise<void> {
+		const { removeOpenMarketplaceMcpRuntimeInDesktop } = await import("./open-marketplace-production.js");
+		await removeOpenMarketplaceMcpRuntimeInDesktop(sourceId, slug);
 	}
 
 	private async collect(forceRefresh: boolean): Promise<OpenMarketplaceCatalog> {

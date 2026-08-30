@@ -1,6 +1,6 @@
 /**
  * 能力（Ability）统一模型（ADR-0049）。
- * 五种 type 共用一套卡片与详情呈现；物理安装仍分三轨，差异收敛在 actions 层。
+ * 五种 type 共用一套卡片与详情呈现；物理安装仍分三轨，MCP 的可选受管运行时也是其轨道内部实现。
  */
 import type {
 	AddMarketplaceSourceInput,

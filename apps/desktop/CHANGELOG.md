@@ -2,6 +2,9 @@
 
 ### Added
 
+- 开源市场 MCP Ability 新增声明式受管二进制安装：市场可按平台声明 HTTPS 单文件或 ZIP 与固定 SHA-256，Desktop
+  负责安全下载、路径与归档校验、版本化安装和失败回滚，并将运行时/数据/缓存占位符解析为标准 stdio MCP 配置。
+  卸载只清理运行文件，Cookie 与登录态默认保留；市场仍不能执行任意安装脚本。见 ADR-0092。
 - Desktop 新增 MCP Apps 安全宿主：从 Main 获取 `ui://` 资源，Renderer 使用双层 sandbox iframe 与限制性 CSP，
   Bridge 只暴露已实现能力；App Tool 调用需同时满足 app visibility 与现有 `autoApprove`，导航和设备权限默认拒绝。
 - MCP Server 可通过 Elicitation form/URL 向用户请求受限输入；Desktop 主进程负责 Schema 复验、URL allowlist、

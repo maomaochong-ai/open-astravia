@@ -38,7 +38,7 @@ Plugin 的 `source.path` 指向一个可直接安装的插件目录。目录至�
 }
 ```
 
-MCP 没有可执行安装产物，但必须有独立包目录。`marketplace.json` 只通过 `source.path` 指向目录，运行配置放在目录内的 `mcp.json`。客户端同步时读取并校验该文件，再在用户安装时把 `server` 写入 `~/.vetta/agent/mcp.json` 的 `mcpServers[slug]`。索引内联 `config.mcp` 会被拒绝，避免索引与包文件形成两个真相源。
+MCP 必须有独立包目录。`marketplace.json` 只通过 `source.path` 指向目录，运行配置与可选的受管运行时声明放在目录内的 `mcp.json`。客户端同步时读取并校验该文件，再在用户安装时准备运行时并把解析后的 `server` 写入 `~/.vetta/agent/mcp.json` 的 `mcpServers[slug]`。索引内联 `config.mcp` 会被拒绝，避免索引与包文件形成两个真相源。
 
 ```json
 {
@@ -73,6 +73,57 @@ MCP 没有可执行安装产物，但必须有独立包目录。`marketplace.jso
   ]
 }
 ```
+
+### 受管二进制 MCP
+
+自包含二进制使用 `schemaVersion: 2` 与 `runtime.kind: "managed-binary"`。产物必须使用 HTTPS，按平台声明固定
+SHA-256；首期支持直接可执行文件与 ZIP，不执行仓库或产物提供的安装脚本。
+
+```json
+{
+  "schemaVersion": 2,
+  "slug": "xiaohongshu",
+  "version": "1.0.0",
+  "runtime": {
+    "kind": "managed-binary",
+    "platforms": {
+      "win32-x64": {
+        "url": "https://github.com/example/xiaohongshu-mcp/releases/download/v1.0.0/xiaohongshu-mcp.exe",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "archive": "file",
+        "executable": "xiaohongshu-mcp.exe"
+      },
+      "darwin-arm64": {
+        "url": "https://github.com/example/xiaohongshu-mcp/releases/download/v1.0.0/darwin-arm64.zip",
+        "sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+        "archive": "zip",
+        "executable": "xiaohongshu-mcp"
+      }
+    }
+  },
+  "server": {
+    "command": "${VETTA_MCP_EXECUTABLE}",
+    "args": ["--stdio"],
+    "env": {
+      "COOKIES_PATH": "${VETTA_MCP_DATA_DIR}/cookies.json",
+      "BROWSER_CACHE": "${VETTA_MCP_CACHE_DIR}/browser"
+    }
+  }
+}
+```
+
+上例中的仓库地址和 SHA-256 仅用于说明字段形状，发布时必须替换为实际 Release
+产物及其校验值；客户端不会接受非 HTTPS 下载地址。
+
+`server.command` 必须精确等于 `${VETTA_MCP_EXECUTABLE}`。`args`、`env` 与 `cwd` 还可以使用：
+
+- `${VETTA_MCP_RUNTIME_DIR}`：当前版本运行目录；
+- `${VETTA_MCP_DATA_DIR}`：升级和卸载运行文件时保留的用户数据目录；
+- `${VETTA_MCP_CACHE_DIR}`：可再生成缓存目录。
+
+Desktop 先下载、校验、解包并验证可执行文件，再解析占位符。最终写入 `mcp.json` 的仍是标准 stdio MCP 配置。
+更新失败时保留原版本；卸载默认只移除运行文件，不删除登录态。完整决策见
+[ADR-0092](./adr/0092-declarative-managed-runtimes-for-mcp-abilities.md)。
 
 `server` 接受 Desktop 原生 MCP 配置格式：
 
@@ -209,7 +260,7 @@ abilities/mcp/context7/
 
 1. 修改能力内容或 Manifest 后必须生成新的 `marketplaceVersion`。
 2. 每个 Manifest 都必须设置对应的 `minAppVersion`。
-3. 不从 GitHub 仓库执行 JavaScript 或其它迁移脚本。
+3. 不从 GitHub 仓库执行 JavaScript、shell、PowerShell 或其它安装/迁移脚本。
 4. 发布前必须校验 Manifest、能力目录、能力版本和来源路径。
 
 ## 本地缓存身份

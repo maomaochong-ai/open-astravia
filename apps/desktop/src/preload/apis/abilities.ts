@@ -22,6 +22,10 @@ export function createAbilitiesApi(ipc: IpcRenderer): Pick<DesktopApi, "abilitie
 				onIpcVoidEvent(ipc, "vetta:abilities:open-marketplaces-updated", handler),
 			installOpenAbility: (type, slug, sourceId) =>
 				ipc.invoke("vetta:abilities:install-open-ability", type, slug, sourceId),
+			prepareOpenMcpAbility: (slug, sourceId) =>
+				ipc.invoke("vetta:abilities:prepare-open-mcp-ability", slug, sourceId),
+			removeOpenMcpRuntime: (slug, sourceId) =>
+				ipc.invoke("vetta:abilities:remove-open-mcp-runtime", slug, sourceId),
 		},
 	};
 }

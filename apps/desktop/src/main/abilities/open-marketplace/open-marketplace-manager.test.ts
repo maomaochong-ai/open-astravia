@@ -63,6 +63,7 @@ describe("OpenMarketplaceManager", () => {
 				listCached: vi.fn(async () => snapshot(item.id)),
 				refresh: vi.fn(async () => snapshot(item.id)),
 				install: vi.fn(async () => undefined),
+				prepareMcp: vi.fn(async () => ({ type: "http" as const, url: "https://mcp.example.com" })),
 			}),
 		});
 
@@ -80,19 +81,22 @@ describe("OpenMarketplaceManager", () => {
 		const list = vi.fn(async () => snapshot(cached.id));
 		const listCached = vi.fn(async () => snapshot(cached.id));
 		const install = vi.fn(async () => undefined);
+		const prepareMcp = vi.fn(async () => ({ type: "http" as const, url: "https://mcp.example.com" }));
 		const manager = new OpenMarketplaceManager({
 			appVersion: "0.5.11",
 			store,
 			cacheRoot: join(root, "cache"),
-			workerFactory: () => ({ list, listCached, refresh: list, install }),
+			workerFactory: () => ({ list, listCached, refresh: list, install, prepareMcp }),
 		});
 
 		await manager.list();
 		await manager.install("plugin", "demo", cached.id);
+		await manager.prepareMcp("demo-mcp", cached.id);
 
 		expect(list).not.toHaveBeenCalled();
 		expect(listCached).toHaveBeenCalledOnce();
 		expect(install).toHaveBeenCalledWith("plugin", "demo");
+		expect(prepareMcp).toHaveBeenCalledWith("demo-mcp");
 	});
 
 	it("uses a different cache directory after source configuration changes", async () => {
@@ -111,6 +115,7 @@ describe("OpenMarketplaceManager", () => {
 					listCached: vi.fn(async () => snapshot(item.id)),
 					refresh: vi.fn(async () => snapshot(item.id)),
 					install: vi.fn(async () => undefined),
+					prepareMcp: vi.fn(async () => ({ type: "http" as const, url: "https://mcp.example.com" })),
 				};
 			},
 		});
@@ -142,6 +147,7 @@ describe("OpenMarketplaceManager", () => {
 					listCached: vi.fn(async () => snapshot(item.id)),
 					refresh: vi.fn(async () => snapshot(item.id)),
 					install: vi.fn(async () => undefined),
+					prepareMcp: vi.fn(async () => ({ type: "http" as const, url: "https://mcp.example.com" })),
 				};
 			},
 		});

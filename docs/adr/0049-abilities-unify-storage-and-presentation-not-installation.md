@@ -1,6 +1,6 @@
 # 能力（Ability）统一存放与呈现，不统一物理安装
 
-Skill / Scene / MCP Server / Plugin 收敛为单一概念 [[Ability（能力）]]：服务端合为一张 `abilities` 表靠 `type` 判别，desktop 合为一个「能力」页与一套详情页。新增 `type = bundle` 表达[[bundle（能力套装）]]。**统一只发生在「数据存放」与「概念呈现」两层——物理分发与安装刻意保持三轨不变。**
+Skill / Scene / MCP Server / Plugin 收敛为单一概念 [[Ability（能力）]]：服务端合为一张 `abilities` 表靠 `type` 判别，desktop 合为一个「能力」页与一套详情页。新增 `type = bundle` 表达[[bundle（能力套装）]]。**统一只发生在「数据存放」与「概念呈现」两层——物理分发与安装刻意保持三轨不变。** MCP Ability 后续增加的声明式受管运行时仍属于 MCP 安装轨道，不把三种运行时合成一个万能安装器，见 [ADR-0092](./0092-declarative-managed-runtimes-for-mcp-abilities.md)。
 
 ## 背景
 
@@ -14,7 +14,7 @@ desktop 已经先走了半步：`useCapabilitiesModel` 把 skill 与 MCP connect
 
 ### 统一的边界
 
-统一 **存放**（一张表）与 **呈现**（一个列表、一套详情页、一套图标口径、一套分类）；**不统一安装**——skill 装 `~/.vetta/skills/`、scene 装 `~/.vetta/scene/`、plugin 装 `~/.vetta/plugins/`、mcp 写进 `mcp.json` 的一个 key。三条轨道是三种不同的运行时机制，合并它们只会造出一层无收益的抽象。
+统一 **存放**（一张表）与 **呈现**（一个列表、一套详情页、一套图标口径、一套分类）；**不统一安装**——skill 装 `~/.vetta/skills/`、scene 装 `~/.vetta/scene/`、plugin 装 `~/.vetta/plugins/`、mcp 写进 `mcp.json` 的一个 key；声明了受管运行时的 MCP 还会在 `~/.vetta/abilities/mcp/` 保存版本化可执行产物。三条轨道是三种不同的运行时机制，合并它们只会造出一层无收益的抽象。
 
 scene 是这一模式的既有先例：服务端与 skill 同表同归档，仅客户端目录不同——本决策是把这个先例推广到全部四种形态。
 

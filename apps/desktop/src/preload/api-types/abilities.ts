@@ -1,6 +1,9 @@
+import type { McpServerConfigData } from "./mcp.js";
+
 /**
  * 能力安装台账（`~/.vetta/abilities.json`）：desktop 侧「装了哪些能力、什么版本」的单一索引。
- * 它只是索引不是安装位置——产物仍分别落在 skills/ scene/ plugins/ 与 agent/mcp.json（ADR-0049）。
+ * 它只是索引不是安装位置——产物仍分别落在 skills/ scene/ plugins/、agent/mcp.json，
+ * 声明受管运行时的 MCP 另有版本化运行目录（ADR-0049、ADR-0092）。
  * bundle 不进台账：其状态全部由成员派生。
  */
 export type AbilityLedgerType = "skill" | "scene" | "plugin" | "mcp";
@@ -152,6 +155,10 @@ export interface OpenMarketplaceBundleMember {
 export interface OpenMarketplaceAbilityConfig {
 	mcp?: Record<string, unknown>;
 	mcp_browser_auth?: boolean;
+	mcp_runtime?: {
+		kind: "managed-binary";
+		supported: boolean;
+	};
 	mcp_parameters?: Array<{
 		key: string;
 		label: string;
@@ -262,4 +269,8 @@ export interface DesktopAbilitiesApi {
 	onOpenMarketplacesUpdated(handler: () => void): () => void;
 	/** 从当前已校验快照安装 skill / scene / plugin；bundle 由客户端逐成员安装。 */
 	installOpenAbility(type: "skill" | "scene" | "plugin", slug: string, sourceId?: string): Promise<void>;
+	/** 下载并校验开源市场 MCP 的受管运行时，返回可直接写入 mcp.json 的标准 server 配置。 */
+	prepareOpenMcpAbility(slug: string, sourceId?: string): Promise<McpServerConfigData>;
+	/** 删除受管 MCP 的版本化运行文件；data/cache 目录按设计保留。 */
+	removeOpenMcpRuntime(slug: string, sourceId?: string): Promise<void>;
 }
