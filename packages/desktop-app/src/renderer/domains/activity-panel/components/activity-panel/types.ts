@@ -18,6 +18,8 @@ export interface ActivityPanelModel {
 	bottomSheet: boolean;
 	cwd: string | null;
 	isOpen: boolean;
+	/** tab 全屏（覆盖整个窗口）状态；面板关闭时自动复位为 false。 */
+	fullscreen: boolean;
 	isResizing: boolean;
 	/** 需保活但未激活的 tab（CSS 隐藏挂载）。 */
 	keepAliveTabs: ResolvedActivityTab[];

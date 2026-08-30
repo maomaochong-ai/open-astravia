@@ -1,6 +1,6 @@
 # web-element-picker 插件：方案与使用流程
 
-> 状态：v0.2.2 桌面插件已实现并通过全量验证（二期：输入栏入口 / webview 交互修复 / 二次打开加固 / 稳定性 / 设置迁移 / 桥 adapter）；**三期浏览器扩展（v0.3.0）已实现并通过 Playwright 端到端验证 8/8**（MV3 扩展 + ECDSA 授权码 + popup 控制面，见 §12）；商店上架与收款渠道为运营事项。本文档基于实际代码撰写，与实现保持一致。
+> 状态：v0.2.3 桌面插件已实现并通过全量验证（二期：输入栏入口 / webview 交互修复 / 二次打开加固 / 稳定性 / 设置迁移 / 桥 adapter；v0.2.3：图标自绘 SVG + 地址栏工具栏无填充重设计）；**三期浏览器扩展（v0.3.1）已实现并通过 Playwright 端到端验证 8/8**（MV3 扩展 + ECDSA 授权码 + popup 控制面，见 §12；v0.3.1：background 改经典 service worker 兼容 Firefox 等外部浏览器）；商店上架与收款渠道为运营事项。本文档基于实际代码撰写，与实现保持一致。
 
 ## 1. 概述
 
@@ -259,16 +259,16 @@ bun run build          # = build:kernel（iife 内核）→ vite build（MF 远�
 bun run check          # tsc --noEmit 类型检查
 ```
 
-`@astravia-org/plugin-vite` 在 `vite build` 后自动产出安装包 `release/web-element-picker-0.2.2.zip`，内容为 `plugin.json` + `dist/`（mf-manifest.json、remoteEntry.js、style.css、assets/*）+ `locales/*.json` + `scripts/build-kernel.mjs`。
+`@astravia-org/plugin-vite` 在 `vite build` 后自动产出安装包 `release/web-element-picker-builtin-0.2.3.zip`，内容为 `plugin.json` + `dist/`（mf-manifest.json、remoteEntry.js、style.css、assets/*）+ `locales/*.json` + `scripts/build-kernel.mjs`。
 
 ## 10. 安装与使用流程
 
 ### 10.1 安装
 
 1. 打开 Astravia Desktop → **设置 → 插件**
-2. 安装 [web-element-picker-0.2.2.zip](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/packages/plugins/externals/web-element-picker/release/web-element-picker-0.2.2.zip)（或 `plugins.manage` 的 `install-from-path` Action）
+2. 安装 [web-element-picker-builtin-0.2.3.zip](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/packages/plugins/externals/web-element-picker/release/web-element-picker-builtin-0.2.3.zip)（或 `plugins.manage` 的 `install-from-path` Action）
 3. 授权弹窗中勾选：`ui.slot.activity-tab`、`ui.slot.input-action`、`agent.session.read`、`agent.session.write`、`settings.read`、`settings.write`、`storage.read`、`storage.write`、`shell.openExternal`
-4. 启用插件。安装后文件位于 `~/.astravia/plugins/web-element-picker/versions/0.2.2/`
+4. 启用插件。安装后文件位于 `~/.astravia/plugins/web-element-picker/versions/0.2.3/`
 
 ### 10.2 使用流程
 
@@ -296,7 +296,7 @@ bun run check          # tsc --noEmit 类型检查
 2. **先打开一个已存在的会话**再看 Tab 栏（无会话时 Tab 一律不显示，属 fail-closed 设计）
 3. 确认当前场景在 `scope_use`（conversation/project/cli）内；IM 会话等场景不显示
 4. 开发者工具 console 检查 `remoteEntry` / `web-element-picker` 相关报错
-5. 检查 `~/.astravia/plugins/web-element-picker/versions/0.2.2/` 文件是否完整
+5. 检查 `~/.astravia/plugins/web-element-picker/versions/0.2.3/` 文件是否完整
 
 ## 11. 验证结果
 
@@ -328,7 +328,7 @@ bun run check          # tsc --noEmit 类型检查
 **实现状态：扩展实现与端到端验证已交付（8/8 通过）；商店上架与收款渠道为运营事项（见下）。**
 
 **扩展形态用户使用流程**（Chrome/Edge 个人电脑浏览器）：
-1. 从商店或爱发电页面安装 MV3 扩展（构建产物 `extension/release/web-element-picker-0.3.0.zip`）。
+1. 从商店或爱发电页面安装 MV3 扩展（构建产物 `extension/release/web-element-picker-extension-0.3.1.zip`）。
 2. 打开任意网页，点击扩展图标 → popup 弹出授权激活表单（未激活时「开始选择」会被拒绝）。
 3. 输入爱发电购得的买断码激活（ECDSA P-256 离线验签，一码多机，含有效期）。
 4. 激活后 popup 显示控制面：开始/停止选择、写轮眼开关、选择计数。
@@ -336,10 +336,10 @@ bun run check          # tsc --noEmit 类型检查
 6. 「发送给 AI」采用方案 A 剪贴板交接：复制上下文到剪贴板并提示粘贴进 Astravia 对话。
 
 **目录结构**（`extension/`）：
-- `manifest.json`：MV3，v0.3.0；content script（`<all_urls>` document_start）+ background service worker + popup + `_locales` en/zh_CN
+- `manifest.json`：MV3，v0.3.1；content script（`<all_urls>` document_start）+ background service worker + popup + `_locales` en/zh_CN
 - `src/`：`license.ts`（ECDSA 验签）、`background.ts`（事件汇总 / 授权门控 / 截图下载 / 命令转发）、`content.ts`（内核注入中继 / 导航恢复 / 剪贴板兜底）、`inject-main.ts`（主世界桥，与内核拼接成 `kernel-inject.js`）、`popup/`（激活表单 + 控制面）
 - `scripts/`：`license-keygen.mjs` / `license-sign.mjs`（密钥/签码）、`build-extension.mjs`（构建 + zip）、`e2e.mjs`（Playwright 端到端 8 步断言）、`generate-icon.mjs`
-- 产物：`extension/dist/`（可装载目录）、`extension/release/web-element-picker-0.3.0.zip`（商店包）
+- 产物：`extension/dist/`（可装载目录）、`extension/release/web-element-picker-extension-0.3.1.zip`（商店包）
 
 **构建与验证**：
 ```bash

@@ -12,6 +12,10 @@ export interface ActivityPanelViewProps {
 	readonly bottomSheet: boolean;
 	readonly tabBar: ReactNode;
 	readonly tabPicker?: ReactNode;
+	/** 渲染在 tab 菜单行内、「+」按钮左侧的额外操作（如活动面板全屏切换）。 */
+	readonly tabMenuExtra?: ReactNode;
+	/** 活动面板 tab 全屏（覆盖整个窗口）时置 true，隐藏侧边栏与对话区。 */
+	readonly fullscreen?: boolean;
 	readonly panelContent: ReactNode;
 	readonly onClose: () => void;
 	readonly onResize: (delta: number) => void;
@@ -27,6 +31,8 @@ export function ActivityPanelView({
 	bottomSheet,
 	tabBar,
 	tabPicker,
+	tabMenuExtra,
+	fullscreen = false,
 	panelContent,
 	onClose,
 	onResize,
@@ -34,9 +40,10 @@ export function ActivityPanelView({
 }: ActivityPanelViewProps): JSX.Element {
 	const panelBody = (
 		<>
-			{(tabBar || tabPicker) && (
+			{(tabBar || tabPicker || tabMenuExtra) && (
 				<div className="group/activity-tabs relative z-0 flex shrink-0 items-end pt-1">
 					{tabBar}
+					{tabMenuExtra}
 					{tabPicker}
 				</div>
 			)}
@@ -45,6 +52,14 @@ export function ActivityPanelView({
 			</Frame>
 		</>
 	);
+
+	if (fullscreen) {
+		return (
+			<div className="fixed inset-0 z-50 flex min-h-0 flex-col overflow-hidden bg-background">
+				{panelBody}
+			</div>
+		);
+	}
 
 	return (
 		<>

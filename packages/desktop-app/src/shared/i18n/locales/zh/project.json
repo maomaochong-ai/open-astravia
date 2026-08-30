@@ -146,6 +146,10 @@
 		"bannerRestart": "重启更新",
 		"bannerDismiss": "忽略"
 	},
+	"tabFullscreen": {
+		"enter": "全屏显示标签页",
+		"exit": "退出全屏"
+	},
 	"tabPicker": {
 		"moreTabs": "更多标签页",
 		"hiddenPanels": "已隐藏面板",

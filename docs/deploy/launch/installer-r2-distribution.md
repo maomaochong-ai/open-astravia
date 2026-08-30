@@ -8,10 +8,10 @@
 
 ## 0. 版本一致性（先读，避免白打包）
 
-| 版本来源 | 值（2026-08-29 现状） | 说明 |
+| 版本来源 | 值（2026-08-30 现状） | 说明 |
 |---|---|---|
 | 官网 `website/index.html` 下载区 | `v0.55.3` | 硬编码文案 + 三个文件名 |
-| 桌面包 `packages/desktop-app/package.json` `version` | `0.5.32` | electron-builder 产物版本取自这里 |
+| 桌面包 `packages/desktop-app/package.json` `version` | `0.55.31` | electron-builder 产物版本取自这里；**0.55.31 为当前开发版（未发布）**，线上已发布为 0.55.3（桶内 `app/0.55.3/`），下次发版会生成 `app/0.55.31/` |
  | 发版版本源（AGENTS.md） | `@astravia/coding-agent` | 锁步发版，见 [desktop-releases.md](../desktop-releases.md) |
 
 - **打包产物名 = `astravia-<实际版本>-mac.dmg` 等**，由 electron-builder 从 desktop-app 的 `package.json` 版本生成；版本号不一致时，产物名、官网文件名、R2 目录会互相打架。
@@ -62,7 +62,8 @@ ls -la release/
 ```
 astravia-downloads/                 ← R2 桶
 ├── plugins/                        ← 已上线（插件包）
-│   └── web-element-picker-0.3.0.zip
+│   ├── web-element-picker-extension-0.3.1.zip   # 浏览器扩展（MV3 商店包）
+│   └── web-element-picker-builtin-0.2.3.zip     # 桌面应用内置插件包
 └── app/
     └── v<VER>/                     ← 版本目录
         ├── astravia-<VER>-mac.dmg / -mac.zip / .blockmap

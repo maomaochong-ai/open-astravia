@@ -3,6 +3,7 @@ import { TabBar } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import { ActivityPanelView as ThemeActivityPanelView } from "@astravia/theme-ui/activity";
 import { PluginTabPicker } from "../PluginTabPicker";
+import { ActivityPanelFullscreenToggle } from "./ActivityPanelFullscreenToggle";
 import type { ActivityPanelFrameProps } from "./ActivityPanelFrame";
 import type { ActivityPanelActions, ActivityPanelModel } from "./types";
 
@@ -67,6 +68,9 @@ export function ActivityPanelView({
 		],
 	);
 
+	// 标签页菜单行内、「+」左侧的全屏切换按钮（面板未打开时不渲染，避免空行占位）。
+	const tabMenuExtra = model.isOpen ? <ActivityPanelFullscreenToggle /> : null;
+
 	const activeIsKeepAlive = model.activeDefinition?.keepAliveWhenAvailable === true;
 	const ActiveComponent = model.activeDefinition?.component;
 
@@ -100,8 +104,10 @@ export function ActivityPanelView({
 			width={model.width}
 			narrowSheet={model.narrowSheet}
 			bottomSheet={model.bottomSheet}
+			fullscreen={model.isOpen && model.fullscreen}
 			tabBar={tabBar}
 			tabPicker={tabPicker}
+			tabMenuExtra={tabMenuExtra}
 			panelContent={panelContent}
 			onClose={actions.onClose}
 			onResize={actions.onResize}

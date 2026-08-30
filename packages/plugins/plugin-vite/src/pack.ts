@@ -17,6 +17,8 @@ export interface CreateAstraviaPluginPackageOptions {
 	manifestPath?: string;
 	releaseDir?: string;
 	distDir?: string;
+	/** 自定义安装包文件名（不含目录），支持 `${id}` / `${version}` 占位；缺省为 `${id}-${version}.zip`。 */
+	fileName?: string;
 }
 
 interface PluginManifest {
@@ -390,7 +392,12 @@ export async function createAstraviaPluginPackage(
 	const releaseDir = resolve(rootDir, options.releaseDir ?? "release");
 	const distDir = resolve(rootDir, options.distDir ?? "dist");
 	const pluginManifest = parsePluginManifest(parseJsonObject(await readFile(manifestPath), basename(manifestPath)));
-	const outputPath = join(releaseDir, `${pluginManifest.id}-${pluginManifest.version}.zip`);
+	const outputPath = join(
+		releaseDir,
+		(options.fileName ?? `${pluginManifest.id}-${pluginManifest.version}.zip`)
+			.replaceAll("${id}", pluginManifest.id)
+			.replaceAll("${version}", pluginManifest.version),
+	);
 	const files = await collectRuntimeFiles(rootDir, manifestPath, distDir);
 
 	await rm(releaseDir, { recursive: true, force: true });
