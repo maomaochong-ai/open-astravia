@@ -703,6 +703,45 @@ function hoverElement(el: Element | null): void {
 	else state.ui.hover.style.display = "none";
 }
 
+
+// ─── 视口变化刷新（滚动/缩放重算浮层位置）───
+//
+// hover 框与选中框都是 fixed 定位 + 视口坐标（getBoundingClientRect），
+// 页面滚动后元素在视口中的位置已变，若不重算框会停留在旧坐标（“飘逸”）。
+// scroll 不冒泡，但 capture 阶段可捕获 document 及所有后代容器的滚动。
+
+let viewportRaf = 0;
+
+/** 滚动/缩放后重算 hover 框与所有选中框；rAF 节流避免滚动风暴触发频繁 reflow。 */
+function refreshOverlays(): void {
+	if (!state) return;
+	const { ui, selected, hovered } = state;
+	if (hovered && ui.hover.style.display !== "none") positionHover(hovered);
+	for (const el of selected) {
+		const box = ui.selectedBoxes.get(el);
+		if (!box) continue;
+		const rect = el.getBoundingClientRect();
+		if (rect.width === 0 && rect.height === 0) {
+			// 元素滚出视口（display:none 或不可见）：隐藏框，回到视口时再恢复。
+			box.style.display = "none";
+			continue;
+		}
+		box.style.display = "block";
+		box.style.left = `${rect.left}px`;
+		box.style.top = `${rect.top}px`;
+		box.style.width = `${rect.width}px`;
+		box.style.height = `${rect.height}px`;
+	}
+}
+
+function onViewportChange(): void {
+	if (viewportRaf) return;
+	viewportRaf = requestAnimationFrame(() => {
+		viewportRaf = 0;
+		refreshOverlays();
+	});
+}
+
 // ─── 指令 popover ───
 
 function openPopover(target: Element): void {
@@ -1245,6 +1284,8 @@ function mount(options?: { lang?: string; bridge?: WepBridge }): void {
 	add("pointerover", onPointerOver);
 	add("click", onClick, true);
 	add("keydown", onKeyDown, true);
+	add("scroll", onViewportChange, true);
+	window.addEventListener("resize", onViewportChange);
 	try {
 		bindPanel();
 		updatePanel();
@@ -1254,6 +1295,7 @@ function mount(options?: { lang?: string; bridge?: WepBridge }): void {
 		for (const entry of state.listeners) {
 			document.removeEventListener(entry.event, entry.fn as EventListener, entry.capture);
 		}
+		window.removeEventListener("resize", onViewportChange);
 		state.ui.root.remove();
 		state = null;
 		post({ type: "mount-failed" });
@@ -1270,6 +1312,7 @@ function destroy(): void {
 	for (const entry of state.listeners) {
 		document.removeEventListener(entry.event, entry.fn as EventListener, entry.capture);
 	}
+	window.removeEventListener("resize", onViewportChange);
 	state.ui.root.remove();
 	state = null;
 	post({ type: "destroyed" });
@@ -1294,6 +1337,8 @@ function applyLang(lang: string): void {
 	state.ui = next;
 	bindPanel();
 	updatePanel();
+	// 重建后浮层已按新位置定位，立即重算一次（兜底，避免新旧 rect 残留）。
+	refreshOverlays();
 }
 
 function applySettings(settings: Partial<WepSettings>): void {

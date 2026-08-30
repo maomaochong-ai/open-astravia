@@ -6,7 +6,7 @@
 
 - 三期浏览器扩展形态（`extension/`，MV3）：授权码买断体系 + popup 控制面 + 内核注入。新增：
   - `license.ts`：一级离线授权码（ECDSA P-256/SHA-256 验签，base32 编码，`WEP-<payload>.<signature>`），浏览器/Node 通用 WebCrypto；`license-keygen.mjs` / `license-sign.mjs` 生成密钥对与签发；
-  - `manifest.json`（v0.3.1）+ content script（document_start 注入内核）+ 主世界桥 `inject-main.js`（拼接内核成 `kernel-inject.js`）+ background service worker（事件汇总 / 授权门控 / 截图下载 / 命令转发，无接收端安全吞错）+ popup 控制面（激活表单 / 开始停止 / 写轮眼开关 / 状态轮询）；
+  - `manifest.json`（v0.3.2）+ content script（document_start 注入内核）+ 主世界桥 `inject-main.js`（拼接内核成 `kernel-inject.js`）+ background service worker（事件汇总 / 授权门控 / 截图下载 / 命令转发，无接收端安全吞错）+ popup 控制面（激活表单 / 开始停止 / 写轮眼开关 / 状态轮询）；
   - `build-extension.mjs` 一键构建 + zip 商店包；`e2e.mjs` Playwright 端到端验证（注入 / 授权门控 / 激活 / 挂载 / 事件回流 / 设置 / 停止 / 导航恢复，8/8 通过）；
   - 权限最小集（storage / activeTab / clipboardWrite / downloads），无远程代码，符合商店「全部本地处理」声明；
   - 「发送给 AI」跨端采用方案 A 剪贴板交接（content script 兜底写剪贴板 + 门控校验）。
@@ -35,6 +35,7 @@
 
 - 扩展 popup「写轮眼模式」开关无法切换：background 收到 `wep-settings` 后只转发给 content script，未把设置写回 session storage，popup 每 600ms 轮询 `get-state` 时读到 `settings: null` 把开关重置回旧值；现由 background 合并写入 session storage 作为回流来源，并保留 content script 的 sync 持久化（浏览器重启后 `get-state` 回退读取 sync）。
 - 扩展在外部浏览器（如 Firefox）无法加载：manifest 声明 `"type": "module"` 的 module service worker 兼容性差（Firefox 不支持），而产物 `background.js` 实为自包含 bundle（无顶层 import/export），改为 iife 经典脚本并移除 `"type": "module"`，各浏览器均可直接加载。
+- 选中框滚动飘逸（内置与扩展共用内核）：hover 框与选中框均为 fixed 定位 + `getBoundingClientRect` 视口坐标，创建后滚动页面不会重算，框停留在旧坐标；新增 `scroll`（capture，可捕获子容器滚动）与 `resize` 监听，rAF 节流重算所有浮层位置，滚出视口的元素隐藏选中框、回到视口自动恢复。
 
 ## [0.1.0]
 
