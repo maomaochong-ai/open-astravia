@@ -4,6 +4,9 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **dbx-mcp 迁移至新 fork（maomaochong-ai/dbx，2026-08-30）**：fork 由 `sikongyue/dbx` 迁移至 [maomaochong-ai/dbx](https://github.com/maomaochong-ai/dbx)（ssh `github-maomaochong-ai`），多平台矩阵 workflow `.github/workflows/dbx-mcp-astravia.yml` 重新部署（commit 7b8016e），CI 构建 run 33299542730 成功发布 Release `dbx-mcp-astravia-v0.4.61`（win32-x64 + darwin-arm64 + darwin-x64 三平台资产）；`scripts/fetch-dbx-mcp.mjs` 更新三平台 sha256（win `25484f9b…` / darwin-arm64 `7ef5d8cd…` / darwin-x64 `b48f619a…`），**darwin 由官方 npm 过渡源切换为 fork 直链**。
+
 ## [0.55.32] - 2026-08-30
 ### Fixed
 - **网页元素选择器地址栏回车不跳转（打包版）**：插件面板 `<webview src="about:blank">` 的初始页在打包版 Electron 34 中 `dom-ready` 不触发，而地址栏导航被 `readyRef` 就绪门控挂起（仅把 URL 存进 pending），导致按 Enter 后既不跳转也不报错；dev 环境碰巧正常。修复：`navigate()` 去掉 `dom-ready` 门控直接 `loadURL`（与目标 URL 相同时跳过），guest 未 attach 时同步抛错再转入挂起路径，由 `dom-ready`/`did-finish-load` 的 `reconcileLoad` 兜底补发；挂载时恢复上次地址、地址栏提交两条路径一并生效。
@@ -20,7 +23,7 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 
 - **数据库引擎接入（dbx-mcp，P7 第一阶段）**：随包分发 dbx-mcp 原生二进制（`@dbx-app/mcp-win32-x64@0.4.61`，Apache-2.0，上游 [t8y2/dbx](https://github.com/t8y2/dbx)），设置 → 内置 MCP 新增「数据库引擎（dbx）」预设（i18n zh/en），添加后注册为 STDIO MCP server，AI 对话即可连接 70+ 数据库（PostgreSQL / MySQL / SQLite 等）并执行查询。二进制由 `scripts/fetch-dbx-mcp.mjs` 下载（sha256 校验 + 幂等），经 `{{dbxMcpBin}}` 占位符在写入 mcp.json 时展开为绝对路径（`src/main/mcp/dbx-mcp-path.ts`），打包经 extraResources 分发（`scripts/prepare-pack.js`）。经典数据库工具界面与 AI 原生能力属后续阶段（P7 B2/B3）。
 
-- **数据库引擎自有化（dbx-mcp，P7 B2）**：fork 仓库 [sikongyue/dbx](https://github.com/sikongyue/dbx) 新增 Astravia 自有 CI 流水线 `.github/workflows/dbx-mcp-astravia.yml`（pin 上游 ref → Rust 1.97.1 工具链 → `cargo build -p dbx-mcp --release --locked` → 打包 `dbx-mcp-<ver>-astravia-win-x64.exe` + sha256 → 发布 GitHub Release，tag `dbx-mcp-astravia-v0.4.61`）；`scripts/fetch-dbx-mcp.mjs` 下载源由官方 npm 包切换为 fork Release 直链（sha256 校验 + 幂等不变），升级闭环改为「拉 fork 上游 → 评审 → CI 构建 → 更新版本/sha256」。
+- **数据库引擎自有化（dbx-mcp，P7 B2）**：fork 仓库 [maomaochong-ai/dbx](https://github.com/maomaochong-ai/dbx) 新增 Astravia 自有 CI 流水线 `.github/workflows/dbx-mcp-astravia.yml`（pin 上游 ref → Rust 1.97.1 工具链 → `cargo build -p dbx-mcp --release --locked` → 打包 `dbx-mcp-<ver>-astravia-win-x64.exe` + sha256 → 发布 GitHub Release，tag `dbx-mcp-astravia-v0.4.61`）；`scripts/fetch-dbx-mcp.mjs` 下载源由官方 npm 包切换为 fork Release 直链（sha256 校验 + 幂等不变），升级闭环改为「拉 fork 上游 → 评审 → CI 构建 → 更新版本/sha256」。
 
 
 - **dbx-mcp 平台化（macOS 接入，P7）**：修复 macOS 上数据库页 `Error: spawn …dbx-mcp.exe EACCES`——引擎此前仅 Windows x64 产物且路径硬编码 `win32-x64`（`.exe` 在 macOS 上无执行权限）。`scripts/fetch-dbx-mcp.mjs` 按平台下载：win32-x64 走 fork Release 直链，darwin-arm64/darwin-x64 走官方 npm 平台包 `@dbx-app/mcp-darwin-<arch>@0.4.61` 过渡源（sha256 校验 + 幂等 + macOS chmod 0755）；`src/main/mcp/dbx-mcp-path.ts` 按 `process.platform-arch` 解析 `resources/dbx-mcp/<platform>/dbx-mcp[.exe]`（dev 与 packaged 两分支不变）；`scripts/prepare-pack.js` 只打包当前构建平台的子目录。交付 fork CI 多平台矩阵 workflow（[dbx-mcp-astravia.yml](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/deliverables/dbx-mcp/dbx-mcp-astravia.yml)：win + darwin 全平台矩阵 + 汇总发布 job 避免并发写 Release 竞态），darwin 产物发布后切换 fork 直链并更新 sha256。
@@ -51,7 +54,7 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 
 - **插件装完直接弹权限配置**：首次安装的插件权限默认全未授予，安装成功（市场安装 / 开源市场 / 本地 zip 导入）后自动弹出该插件的权限弹窗，省掉用户自己找「权限配置」的一步。插件数据落地后才弹，系统插件与无权限声明的插件不打扰。
 
-- **能力市场来源管理**：能力页「刷新」左侧新增「来源」按钮（GitHub 图标），弹窗内可对 GitHub 市场来源增删改查——添加仓库、改名称/分支、启停、删除。此前添加的外置仓库没有任何入口可以删除。内置的官方来源「Astravia Official」（`https://github.com/sikongyue/astravia-official-marketplace`）默认存在、可启停但不可删除或改配置；未设置 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 时也会自动创建它。「添加能力」下拉里的「添加外置仓库」入口随之删除，统一收敛到「来源」。
+- **能力市场来源管理**：能力页「刷新」左侧新增「来源」按钮（GitHub 图标），弹窗内可对 GitHub 市场来源增删改查——添加仓库、改名称/分支、启停、删除。此前添加的外置仓库没有任何入口可以删除。内置的官方来源「Astravia Official」（`https://github.com/maomaochong-ai/astravia-official-marketplace`）默认存在、可启停但不可删除或改配置；未设置 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 时也会自动创建它。「添加能力」下拉里的「添加外置仓库」入口随之删除，统一收敛到「来源」。
 
 - **数据库页接入「AI 协助配置」**：数据库连接页头部新增与知识库同款的「让 Astravia 帮您配置」入口（复用 SettingsAiAssist），一句话描述目标或点示例（新增连接 / 测试连通 / 删除连接）即在后台开启协助会话，agent 指令自动携带「数据库」页面上下文；协助目录新增 database 条目，i18n zh/en 同步。
 - **数据库面板 UI 规范化**：样式收敛到共享组件——新增 `DatabaseBadge`（胶囊计数/类型徽章唯一样式来源）与 `DatabaseDetail`（mono 代码详情块唯一样式来源），替换侧栏计数、详情类型标签、错误/测试详情等各处重复声明的样式；连接信息/管理分区由卡片改为纯文字分区（去掉卡片底色，减少线条感）；头部连接数徽章与侧栏计数重复展示的问题移除（保留侧栏一处）。测试连接结果不再暴露数据库表信息（成功仅提示「连接成功」，不再显示表数量与详情；失败仍展示错误详情用于排障），i18n zh/en 同步。
@@ -69,7 +72,7 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 - **活动面板标签页全屏切换**：标签页菜单行内、「+」按钮左侧新增全屏切换按钮，点击让当前活动面板 tab 覆盖整个窗口（隐藏侧边栏与对话区），再次点击还原；面板关闭时自动退出全屏。theme-ui `ActivityPanelView` 新增 `fullscreen` / `tabMenuExtra` 插槽（零破坏）。图标参考 iconfont「全屏」设计（圆角方框 + 四角实心三角形，退出态四角指向中心），以行内 SVG 实现。i18n zh/en（`tabFullscreen.enter`/`tabFullscreen.exit`）。
 
 ### Fixed
-- **能力页「能力列表加载失败」**：默认官方市场源指向不存在的 GitHub 组织仓库（`openastravia/astravia-official-marketplace`，404），下载永远失败且无本地缓存兜底，导致「部分能力暂时无法加载」。默认源改为自有化官方市场 [sikongyue/astravia-official-marketplace](https://github.com/sikongyue/astravia-official-marketplace)（manifest 位于 `.astravia/marketplace.json`，fork 仓库已同步完成自有化），未设置 `ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY` 时也能加载官方能力目录。
+- **能力页「能力列表加载失败」**：默认官方市场源指向不存在的 GitHub 组织仓库（`openastravia/astravia-official-marketplace`，404），下载永远失败且无本地缓存兜底，导致「部分能力暂时无法加载」。默认源改为自有化官方市场 [maomaochong-ai/astravia-official-marketplace](https://github.com/maomaochong-ai/astravia-official-marketplace)（manifest 位于 `.astravia/marketplace.json`，fork 仓库已同步完成自有化），未设置 `ASTRAVIA_OPEN_MARKETPLACE_REPOSITORY` 时也能加载官方能力目录。
 - **数据库连接列表出现重复的连接信息**：`databaseService.listConnections()` 把 `dbx_list_connections` 的 Markdown 表格逐行 `map` 成 `DbConnection[]` 后直接返回，未做去重；同一连接被引擎列出多行（或同名连接持有不同 id，如引擎存储残留）时，设置页连接列表与工作台连接树会重复渲染同一个连接。新增纯函数 `dedupeConnections`（导出，便于单测），返回前按 **id 优先、name 兜底** 双键去重，首次出现的行胜出以保留引擎原始顺序；id 为空串时只按 name 判重（避免多条空 id 互相判重），id 与 name 皆空的异常行原样保留，不静默吞掉引擎异常输出。两处列表渲染 key 由可能为空的 `connection.id` 改为 `connection.name`（连接名是引擎的唯一标识，查询/删除/测试均以其为键），避免 key 重复或为空导致的列表错位。新增单测 `dedupe-connections.test.ts`（6 例，不依赖引擎）。
 - **Windows 下 `bun run dev` 启动失败**：`dev` / `dev:verify` 脚本硬编码 `bun ./node_modules/vite/bin/vite.js`，bun 安装时 vite 被提升到仓库根 `node_modules`，desktop-app 内解析不到该路径导致 renderer dev server 起不来。改为 `bunx vite`（自动沿目录向上解析），Windows 与 macOS/Linux 均可用。
 
@@ -83,6 +86,8 @@ All notable changes to `@astravia/desktop-app` are documented in this file.
 - **HTML 预览不再跟随应用主题**：取消按 App 深浅切换 iframe 底色与文档 `color-scheme`（避免未写背景的页面被强制成深色画布）；预览外观由 HTML 自身 CSS 决定，壳层固定浅色兜底。
 - **「让 AI 分析此表」历史回放丢失表目标（P7 B2.7 缺环修复）**：`databaseTable` 此前只随乐观写入的内存 marker 存在，会话落盘再回放时 connection/table 丢失（coding-agent 注入 `settings_assist_instruction` 的 details 只带 `tabId`）。现在 coding-agent 把 `databaseTable` 一并写入 details，runtime-core `entriesToHistory` 提取为 `settings_assist_marker.databaseTable`，回放恢复「在界面打开」目标完整。
 - **「AI 访问数据库」开关存量会话即时生效（P7 Bug 3 ③）**：开关切换后无需新建会话——`InputPipeline.prompt` 的 `maybeReloadMcpForPrompt` 按 mcp.json 合并签名（mtime+sha1，global+project）检测变更并 diff 重载，`disabled` 变 false 的 server 在发送下一条消息时重新初始化进工具集（防回归单测 `mcp-manager-reload.test.ts` 2 例）。开关描述文案（zh/en）同步为「切换后立即对新会话生效；已在进行的对话会在发送下一条消息时自动生效」。
+
+- **活动面板全屏态下按钮被 macOS 红绿灯遮挡（macOS）**：活动面板全屏（覆盖整个窗口）时 tab 菜单行顶到窗口左上角，`hiddenInset` 标题栏的原生红绿灯（x=16, y=20）正好盖住行首的「+」、全屏切换等按钮。修复：theme-ui `ActivityPanelView` 全屏态在 tab 行左侧预留 78px 红绿灯槽位（与 `SidebarTopBar`/`PageHeaderFrame` 同宽），槽位同时设为窗口拖拽区（此前全屏态顶部整条都无法拖拽窗口）。
 
 ### Changed
 
