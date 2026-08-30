@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import AdmZip from "adm-zip";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { GitHubMarketplaceOrigin } from "../../../preload/api-types/abilities";
+import type { GitHubMarketplaceOrigin, OpenMarketplaceDetail } from "../../../preload/api-types/abilities";
 import { OpenMarketplaceService } from "./open-marketplace-service";
 
 const temporaryRoots: string[] = [];
@@ -29,6 +29,9 @@ function archive(options?: {
 	description?: string;
 	minAppVersion?: string;
 	withPresentation?: boolean;
+	detail?: OpenMarketplaceDetail;
+	presentationDetail?: Record<string, unknown>;
+	categoryI18n?: Record<string, string>;
 }): Buffer {
 	const marketplaceVersion = options?.marketplaceVersion ?? "2026.07.1";
 	const packageVersion = options?.packageVersion ?? "1.0.0";
@@ -48,6 +51,9 @@ function archive(options?: {
 				version: "1.0.0",
 				configVersion: 2,
 				license: "MIT",
+				category: "Documents",
+				categoryI18n: options?.categoryI18n,
+				detail: options?.detail,
 				source: { path: "abilities/skills/demo-skill" },
 			},
 		],
@@ -68,6 +74,7 @@ function archive(options?: {
 					slug: "demo-skill",
 					version: packageVersion,
 					icon: "icon.svg",
+					detail: options?.presentationDetail,
 				}),
 			),
 		);
@@ -180,6 +187,94 @@ afterEach(async () => {
 });
 
 describe("OpenMarketplaceService", () => {
+	it("returns category translations from fresh and cached snapshots", async () => {
+		const rootDir = await temporaryRoot();
+		const options = {
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(archive({ categoryI18n: { zh: "文档", en: "Documents" } })),
+		};
+		const fresh = await new OpenMarketplaceService(options).refresh();
+		const cached = await new OpenMarketplaceService(options).listCached();
+		for (const snapshot of [fresh, cached]) {
+			expect(snapshot.abilities[0]).toMatchObject({
+				category: "Documents",
+				categoryI18n: { zh: "文档", en: "Documents" },
+			});
+		}
+	});
+
+	it.each(["inline", "referenced"])(
+		"preserves catalog translations alongside %s package details, including cached reads",
+		async (format) => {
+			const rootDir = await temporaryRoot();
+			const blocks = [{ type: "hero", title: "中文详情" }];
+			const zip = new AdmZip(
+				archive({
+					withPresentation: true,
+					detail: {
+						i18n: {
+							zh: { name: "示例技能", description: "中文简介", meta: [{ label: "来源", value: "目录" }] },
+							ja: { name: "サンプル" },
+						},
+					},
+					presentationDetail:
+						format === "inline"
+							? { content: "English detail", i18n: { zh: { blocks } } }
+							: {
+									format: "markdown",
+									path: "README.md",
+									i18n: { zh: { format: "blocks", path: "detail.zh.json" } },
+								},
+				}),
+			);
+			zip.addFile("vetta-abilities-main/abilities/skills/demo-skill/README.md", Buffer.from("English detail"));
+			zip.addFile(
+				"vetta-abilities-main/abilities/skills/demo-skill/detail.zh.json",
+				Buffer.from(JSON.stringify({ schemaVersion: 1, blocks })),
+			);
+			const options = { appVersion: APP_VERSION, rootDir, fetchArchive: async () => response(zip.toBuffer()) };
+			const service = new OpenMarketplaceService(options);
+			const fresh = await service.refresh();
+			expect(fresh.error).toBeUndefined();
+			const restarted = new OpenMarketplaceService({
+				...options,
+				fetchArchive: async () => {
+					throw new Error("offline");
+				},
+			});
+			for (const snapshot of [fresh, await restarted.listCached(), await restarted.refresh()]) {
+				expect(snapshot.abilities[0]?.detail).toMatchObject({
+					content: "English detail",
+					i18n: {
+						zh: { name: "示例技能", description: "中文简介", meta: [{ label: "来源", value: "目录" }], blocks },
+						ja: { name: "サンプル" },
+					},
+				});
+			}
+		},
+	);
+
+	it("shares concurrent refreshes and permits a subsequent retry", async () => {
+		const rootDir = await temporaryRoot();
+		let release!: (value: Response) => void;
+		const pending = new Promise<Response>((resolve) => {
+			release = resolve;
+		});
+		const fetchArchive = vi
+			.fn()
+			.mockReturnValueOnce(pending)
+			.mockImplementation(async () => response(archive()));
+		const service = new OpenMarketplaceService({ appVersion: APP_VERSION, rootDir, fetchArchive });
+		const first = service.refresh();
+		const second = service.refresh();
+		release(response(archive()));
+		const snapshots = await Promise.all([first, second]);
+		expect(snapshots.every((snapshot) => !snapshot.error)).toBe(true);
+		expect(fetchArchive).toHaveBeenCalledTimes(1);
+		await service.refresh();
+		expect(fetchArchive).toHaveBeenCalledTimes(2);
+	});
 	it("prepares an MCP from the active validated snapshot", async () => {
 		const rootDir = await temporaryRoot();
 		const prepareMcpAbility = vi.fn(async (_snapshotRoot: string, _ability: unknown, _sourceId: string) => ({

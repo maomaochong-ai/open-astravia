@@ -10,13 +10,23 @@ Vetta Desktop 有两种发行形态，由构建期开关 `VETTA_CLOUD_ENABLED` �
 | 账号登录 / OAuth | ❌ 代码不进产物 | ✅ |
 | Vetta Go 模型渠道 | ❌ | ✅ |
 | 订阅 / 积分 / 配额 | ❌ | ✅ |
-| 能力广场来源 | GitHub 仓库（内置） | 官方市场（Vetta Serv） |
+| 能力广场来源 | GitHub 多源（环境配置或用户添加） | 云市场（Vetta Serv）；可选 GitHub 多源 |
 | 远程模型目录下发 | ❌ | ✅ |
 | 内置技能 | 不含 `requiresCloud` 标记的 | 全部 |
 
 **两种模式共有**：本地会话、编码 Agent、插件系统、主题、自带 API Key 的模型、IM 旁路、知识库。
 
-> 能力广场的 GitHub 内置来源**只在开源版生效**。商业版走 Vetta Serv 的官方市场，此时即使设置了 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 也不会内置 GitHub 来源——同一个能力有两个渠道会让版本口径与安装态互相打架。商业版下用户仍可在界面里手动添加 GitHub 来源。
+云市场与 GitHub 来源相互独立：`VETTA_CLOUD_ENABLED` 只控制云服务，不启停 GitHub 来源。
+商业版默认不包含 GitHub 仓库。两种版本均只在显式配置 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 时注册内置来源；
+未设置、空串或纯空白表示不注册，代码不兜底到官方地址。开源发行版若需默认官方源，也通过环境变量配置。
+用户可在「能力 → 市场来源」管理多个 GitHub 仓库，分别启停、自动更新或手动刷新；单源失败不阻断其他来源。
+同名能力保留来源身份，实际安装冲突仍需显式处理，不会静默覆盖。
+
+`VETTA_OPEN_MARKETPLACE_REPOSITORY` 用于声明发行版的内置默认仓库；日常添加来源使用界面，无须重新构建。
+移除环境配置不会删除已经保存的来源，也不会卸载能力；已有来源可在界面停用。
+默认省略 `VETTA_OPEN_MARKETPLACE_ARCHIVE_URL`，让它从仓库与分支推导。
+修改环境文件后须重启开发进程（仅刷新页面无效）；之后仓库内容更新只需点击刷新。
+GitHub 提交不会自动发布到 Vetta Serv 市场。来源与升级语义见 [GitHub 能力市场](../open-marketplace.md)。
 
 > `VETTA_CLOUD_ENABLED` 是**构建期**开关，经常量折叠写死进产物：开源版里 cloud 模块连同它的 chunk 都不会被打包。**发包之后无法由运行环境重新开启**，切换必须重新构建。
 
@@ -24,7 +34,7 @@ Vetta Desktop 有两种发行形态，由构建期开关 `VETTA_CLOUD_ENABLED` �
 
 ## 开源版构建
 
-Windows、macOS、Linux 使用同一个入口；脚本按当前宿主选择平台，并注入开源版的完整默认值：关闭 cloud、使用公开 Marketplace、通过 `openvetta/open-vetta` 的 GitHub Releases 更新。
+Windows、macOS、Linux 使用同一个入口；脚本按当前宿主选择平台，关闭 cloud，并通过 `openvetta/open-vetta` 的 GitHub Releases 更新。GitHub 能力来源仅取环境配置，不由脚本自动补充。
 
 ```bash
 cd apps/desktop
@@ -116,7 +126,7 @@ VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
 | `VETTA_CLOUD_ENABLED` | `false` 产出开源版，`true` 产出商业版；正式打包必须显式填写 |
 | `VETTA_SERVER_URL` | 服务端 API 端点。商业版必填，开源版禁止设置 |
 | `VETTA_SITE_URL` | 站点地址，用于 OAuth 登录跳转。缺省从 `VETTA_SERVER_URL` 推导 |
-| `VETTA_OPEN_MARKETPLACE_REPOSITORY` | 能力广场的内置 GitHub 来源仓库。**开源版必填**，商业版忽略 |
+| `VETTA_OPEN_MARKETPLACE_REPOSITORY` | 两种版本均生效的可选内置 GitHub 源；留空不注册，没有仓库地址默认值 |
 | `VETTA_OPEN_MARKETPLACE_REF` | 分支或标签，缺省 `main` |
 | `VETTA_OPEN_MARKETPLACE_ARCHIVE_URL` | 直接指定归档地址，省略时由仓库与 REF 推导 |
 
@@ -186,6 +196,10 @@ VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
 1. **Actions → desktop-release → Run workflow 表单**（仅 `workflow_dispatch`；选 `default` 或留空表示不覆盖）
 2. **Environment / 仓库 Variables**（job 声明了 `environment: desktop-production` 时，Environment 覆盖同名仓库变量）
 3. 内置默认：`VETTA_RELEASE_TARGET=github` 对应开源版，`r2` 对应商业版
+
+GitHub 能力源在两种版本中均读取 `VETTA_OPEN_MARKETPLACE_REPOSITORY` Variable，手动运行时可由
+`marketplace_repository` 表单覆盖；均未配置就不内置 GitHub 源。想随开源包提供官方仓库时，将 Variable
+设为 `https://github.com/openvetta/vetta-official-marketplace`，不用修改代码。商业版未配置时只有云市场。
 
 **fork 不配任何 Variables 就得到开源版构建。** 官方商业版把这些放到 Settings → Environments → `desktop-production` → Environment variables（密钥走 Environment secrets）：
 

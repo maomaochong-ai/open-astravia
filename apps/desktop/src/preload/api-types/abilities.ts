@@ -185,6 +185,8 @@ export interface OpenMarketplaceAbility {
 	author: string;
 	icon: string;
 	category: string;
+	/** Display labels only; category remains the stable grouping identity. */
+	categoryI18n?: Record<string, string>;
 	tags: string[];
 	config: OpenMarketplaceAbilityConfig;
 	detail: OpenMarketplaceDetail;

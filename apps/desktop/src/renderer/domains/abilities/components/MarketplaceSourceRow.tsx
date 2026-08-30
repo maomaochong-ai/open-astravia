@@ -1,4 +1,4 @@
-import type { MarketplaceSource } from "@preload/api";
+import type { MarketplaceSource, OpenMarketplaceSourceSnapshot } from "@preload/api";
 import { Button, Switch } from "@vetta/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,13 +6,21 @@ import { useTranslation } from "react-i18next";
 /** 单条来源：内置来源只允许开关，自定义来源可编辑分支/名称并删除。 */
 export function MarketplaceSourceRow({
 	source,
+	snapshot,
+	failed,
 	busy,
+	onRefresh,
+	onAutoUpdate,
 	onToggle,
 	onEdit,
 	onRemove,
 }: {
 	source: MarketplaceSource;
+	snapshot?: OpenMarketplaceSourceSnapshot;
+	failed: boolean;
 	busy: boolean;
+	onRefresh: () => void;
+	onAutoUpdate: (enabled: boolean) => void;
 	onToggle: (enabled: boolean) => void;
 	onEdit: () => void;
 	onRemove: () => void;
@@ -35,6 +43,19 @@ export function MarketplaceSourceRow({
 				<p className="truncate text-[11px] text-muted-foreground/60">
 					{source.repository.replace("https://github.com/", "")} · {source.ref}
 				</p>
+				<p role="status" className="text-[11px] text-muted-foreground/70">
+					{!source.enabled
+						? t("abilities:sources.status.disabled")
+						: failed
+							? t(snapshot?.marketplaceVersion ? "abilities:sources.status.cached" : "abilities:sources.status.failed")
+							: snapshot?.marketplaceVersion
+								? t("abilities:sources.status.ready", { version: snapshot.marketplaceVersion })
+								: t("abilities:sources.status.pending")}
+				</p>
+				<label className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground/60">
+					<Switch size="sm" checked={source.autoUpdate} disabled={busy} onCheckedChange={onAutoUpdate} />
+					{t("abilities:sources.actions.autoUpdate")}
+				</label>
 			</div>
 			{confirmingRemove ? (
 				<div className="flex shrink-0 items-center gap-1.5">
@@ -47,6 +68,15 @@ export function MarketplaceSourceRow({
 				</div>
 			) : (
 				<div className="flex shrink-0 items-center gap-2">
+					<Button
+						size="sm"
+						variant="ghost"
+						disabled={busy || !source.enabled}
+						aria-label={t("abilities:sources.actions.refresh", { name: source.name })}
+						onClick={onRefresh}
+					>
+						<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" />
+					</Button>
 					<Switch
 						size="sm"
 						checked={source.enabled}

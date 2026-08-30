@@ -148,6 +148,7 @@ const abilityBaseSchema = z
 		author: z.string().default(""),
 		icon: z.string().default(""),
 		category: z.string().default(""),
+		categoryI18n: z.record(z.string(), z.string()).optional(),
 		tags: z.array(z.string()).default([]),
 		detail: marketplaceDetailSchema.default({}),
 	})

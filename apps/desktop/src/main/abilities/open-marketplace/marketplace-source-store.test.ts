@@ -1,7 +1,7 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MarketplaceSource } from "../../../preload/api-types/abilities";
 import { MarketplaceSourceStore } from "./marketplace-source-store";
 
@@ -10,6 +10,10 @@ const originalRepository = process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY;
 const originalRef = process.env.VETTA_OPEN_MARKETPLACE_REF;
 const originalArchiveUrl = process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL;
 const originalCloudEnabled = process.env.VETTA_CLOUD_ENABLED;
+
+beforeEach(() => {
+	vi.stubEnv("VETTA_BUILD_ENV", "development");
+});
 
 function restoreEnvironment(name: string, value: string | undefined): void {
 	if (value === undefined) delete process.env[name];
@@ -41,6 +45,7 @@ function builtinSource(): MarketplaceSource {
 
 afterEach(async () => {
 	await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+	vi.unstubAllEnvs();
 	restoreEnvironment("VETTA_OPEN_MARKETPLACE_REPOSITORY", originalRepository);
 	restoreEnvironment("VETTA_OPEN_MARKETPLACE_REF", originalRef);
 	restoreEnvironment("VETTA_OPEN_MARKETPLACE_ARCHIVE_URL", originalArchiveUrl);
@@ -48,32 +53,79 @@ afterEach(async () => {
 });
 
 describe("MarketplaceSourceStore", () => {
-	it("does not create a built-in source in full (cloud) builds", async () => {
-		// 完全体走 Vetta Serv 的官方能力市场；再内置一个 GitHub 来源会让同一个能力
-		// 出现两个渠道。即便配了仓库变量也不该内置。
+	it("creates a GitHub source in cloud builds without an extra flag", async () => {
 		process.env.VETTA_CLOUD_ENABLED = "true";
 		process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY = "https://github.com/example/environment-market";
 		delete process.env.VETTA_OPEN_MARKETPLACE_REF;
 		delete process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL;
 
-		expect(new MarketplaceSourceStore({ filePath: await temporaryFile() }).list()).toEqual([]);
+		expect(new MarketplaceSourceStore({ filePath: await temporaryFile() }).list()).toMatchObject([
+			{ repository: "https://github.com/example/environment-market" },
+		]);
 	});
 
-	it("does not create a built-in source without an environment repository", async () => {
-		delete process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY;
-		delete process.env.VETTA_OPEN_MARKETPLACE_REF;
+	it("derives the GitHub archive URL in cloud development", async () => {
+		process.env.VETTA_CLOUD_ENABLED = "true";
+		process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY = "https://github.com/example/environment-market";
+		process.env.VETTA_OPEN_MARKETPLACE_REF = "main";
 		delete process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL;
-		const store = new MarketplaceSourceStore({ filePath: await temporaryFile() });
 
-		expect(store.list()).toEqual([]);
+		expect(new MarketplaceSourceStore({ filePath: await temporaryFile() }).list()).toMatchObject([
+			{
+				id: "vetta-official",
+				repository: "https://github.com/example/environment-market",
+				archiveUrl: "https://github.com/example/environment-market/archive/refs/heads/main.zip",
+			},
+		]);
+	});
 
-		const persistedFile = await temporaryFile();
-		new MarketplaceSourceStore({ filePath: persistedFile, defaultSources: [builtinSource()] }).list();
-		expect(new MarketplaceSourceStore({ filePath: persistedFile }).list()).toEqual([]);
+	it.each(["production", "test", "opensource"])("keeps GitHub sources independent in %s mode", async (mode) => {
+		vi.stubEnv("VETTA_BUILD_ENV", mode);
+		process.env.VETTA_CLOUD_ENABLED = "true";
+		process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY = "example/environment-market";
+
+		expect(new MarketplaceSourceStore({ filePath: await temporaryFile() }).list()).toHaveLength(1);
+	});
+
+	it("upgrades an empty cloud catalog and preserves user switches across editions", async () => {
+		process.env.VETTA_CLOUD_ENABLED = "true";
+		process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY = "example/environment-market";
+		delete process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL;
+		const filePath = await temporaryFile();
+		await writeFile(filePath, JSON.stringify({ version: 1, sources: [] }));
+
+		const enabled = new MarketplaceSourceStore({ filePath });
+		expect(enabled.list()).toHaveLength(1);
+		enabled.update("vetta-official", { enabled: false, autoUpdate: false });
+		process.env.VETTA_CLOUD_ENABLED = "false";
+		expect(new MarketplaceSourceStore({ filePath }).list()).toMatchObject([
+			{ id: "vetta-official", enabled: false, autoUpdate: false },
+		]);
+	});
+
+	it.each(["true", "false"])("does not register an unconfigured repository with cloud=%s", async (cloud) => {
+		vi.stubEnv("VETTA_CLOUD_ENABLED", cloud);
+		for (const repository of [undefined, "", "   "]) {
+			vi.stubEnv("VETTA_OPEN_MARKETPLACE_REPOSITORY", repository);
+			expect(new MarketplaceSourceStore({ filePath: await temporaryFile() }).list()).toEqual([]);
+		}
+	});
+
+	it("preserves persisted sources when the distribution no longer configures a default", async () => {
+		vi.stubEnv("VETTA_OPEN_MARKETPLACE_REPOSITORY", undefined);
+		vi.stubEnv("VETTA_CLOUD_ENABLED", "true");
+		const filePath = await temporaryFile();
+		const previous = new MarketplaceSourceStore({ filePath, defaultSources: [builtinSource()] });
+		previous.update("official", { enabled: false, autoUpdate: false });
+		const custom = previous.add({ repository: "example/community", ref: "stable" });
+		const sources = new MarketplaceSourceStore({ filePath }).list();
+		expect(sources).toHaveLength(2);
+		expect(sources[0]).toMatchObject({ id: "official", enabled: false, autoUpdate: false });
+		expect(sources[1]).toEqual(custom);
 	});
 
 	it("creates the built-in source entirely from environment configuration", async () => {
-		delete process.env.VETTA_CLOUD_ENABLED; // lite 构建才内置 GitHub 来源
+		delete process.env.VETTA_CLOUD_ENABLED;
 		process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY = "https://github.com/example/environment-market";
 		process.env.VETTA_OPEN_MARKETPLACE_REF = "testing/v2";
 		delete process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL;
@@ -98,6 +150,28 @@ describe("MarketplaceSourceStore", () => {
 			version: 1,
 			sources: [{ id: "official" }],
 		});
+	});
+
+	it("preserves a manually added default repository without duplicating or resurrecting it", async () => {
+		const filePath = await temporaryFile();
+		const legacy = new MarketplaceSourceStore({ filePath, defaultSources: [] });
+		const custom = legacy.add({ repository: "EXAMPLE/official", name: "My source", ref: "stable" });
+		const disabled = legacy.update(custom.id, { enabled: false, autoUpdate: false });
+		const upgraded = new MarketplaceSourceStore({ filePath, defaultSources: [builtinSource()] });
+		expect(upgraded.list()).toEqual([disabled]);
+		upgraded.remove(custom.id);
+		expect(new MarketplaceSourceStore({ filePath, defaultSources: [builtinSource()] }).list()).toEqual([]);
+	});
+
+	it("does not retarget a built-in to a repository already registered by the user", async () => {
+		const filePath = await temporaryFile();
+		const first = new MarketplaceSourceStore({ filePath, defaultSources: [builtinSource()] });
+		const custom = first.add({ repository: "example/new-default" });
+		const updatedDefault = { ...builtinSource(), repository: custom.repository, archiveUrl: custom.archiveUrl };
+		const sources = new MarketplaceSourceStore({ filePath, defaultSources: [updatedDefault] }).list();
+		expect(sources).toHaveLength(2);
+		expect(sources.find((item) => item.id === custom.id)).toEqual(custom);
+		expect(sources.find((item) => item.id === "official")).toMatchObject({ repository: builtinSource().repository });
 	});
 
 	it("normalizes, updates and removes a custom GitHub source", async () => {

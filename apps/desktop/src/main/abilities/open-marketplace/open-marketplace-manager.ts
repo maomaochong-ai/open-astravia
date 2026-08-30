@@ -76,9 +76,8 @@ export class OpenMarketplaceManager {
 	}
 
 	updateSource(id: string, input: UpdateMarketplaceSourceInput): MarketplaceSource {
-		const source = this.store.update(id, input);
-		this.workers.delete(id);
-		return source;
+		// workerFor replaces workers only when their cache identity changes, preserving in-flight syncs.
+		return this.store.update(id, input);
 	}
 
 	removeSource(id: string): void {

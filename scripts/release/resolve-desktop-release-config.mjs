@@ -15,7 +15,6 @@ const RELEASE_TARGETS = new Set(["github", "r2"]);
 const CHANNELS = new Set(["default", "stable", "test"]);
 const FLAGS = new Set(["true", "false"]);
 const CHANNEL_SEGMENTS = new Set(["stable", "test", "beta", "prod", "production"]);
-const DEFAULT_OPEN_SOURCE_MARKETPLACE = "https://github.com/openvetta/vetta-official-marketplace";
 const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
 
 /**
@@ -138,14 +137,7 @@ export function resolveDesktopReleaseConfig(request = {}) {
 
 	const serverUrl = cloudEnabled === "true" ? pick("server_url", "VETTA_SERVER_URL") : "";
 	const siteUrl = cloudEnabled === "true" ? pick("site_url", "VETTA_SITE_URL") : "";
-	const marketplaceRepository =
-		cloudEnabled === "false"
-			? pick(
-					"marketplace_repository",
-					"VETTA_OPEN_MARKETPLACE_REPOSITORY",
-					DEFAULT_OPEN_SOURCE_MARKETPLACE,
-				)
-			: "";
+	const marketplaceRepository = pick("marketplace_repository", "VETTA_OPEN_MARKETPLACE_REPOSITORY");
 	const tenant = pick("tenant", "VETTA_TENANT");
 	const notes = acceptInputs ? normalizeToken(inputs.notes).replaceAll(/\s+/g, " ") : "";
 

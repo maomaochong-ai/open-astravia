@@ -6,8 +6,6 @@ import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs"
 export const OPEN_SOURCE_BUILD_DEFAULTS = Object.freeze({
 	VETTA_BUILD_ENV: "opensource",
 	VETTA_CLOUD_ENABLED: "false",
-	VETTA_OPEN_MARKETPLACE_REPOSITORY: "https://github.com/openvetta/vetta-official-marketplace",
-	VETTA_OPEN_MARKETPLACE_REF: "main",
 	VETTA_UPDATE_PROVIDER: "github",
 	VETTA_UPDATE_GITHUB_OWNER: "openvetta",
 	VETTA_UPDATE_GITHUB_REPO: "open-vetta",
@@ -76,12 +74,7 @@ function validateHttpUrl(
 
 function validateMarketplaceRepository(env, errors) {
 	const repository = readValue(env, "VETTA_OPEN_MARKETPLACE_REPOSITORY");
-	if (!repository) {
-		errors.push("VETTA_OPEN_MARKETPLACE_REPOSITORY is required for an open-source build");
-		return;
-	}
-	const shorthand = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.test(repository);
-	if (!shorthand) {
+	if (repository && !/^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.test(repository)) {
 		try {
 			const url = new URL(repository.replace(/\.git$/i, "").replace(/\/$/, ""));
 			const segments = url.pathname.split("/").filter(Boolean);
@@ -268,8 +261,8 @@ export function validateDesktopBuildEnvironment({
 		if (updateConfig && updateConfig.provider !== "github") {
 			errors.push("open-source builds must use VETTA_UPDATE_PROVIDER=github");
 		}
-		validateMarketplaceRepository(env, errors);
 	}
+	validateMarketplaceRepository(env, errors);
 
 	validateTelemetry(env, productionUrls, errors);
 	let macSigning;

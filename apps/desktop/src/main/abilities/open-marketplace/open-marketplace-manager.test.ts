@@ -122,6 +122,13 @@ describe("OpenMarketplaceManager", () => {
 
 		await manager.list();
 		await manager.list();
+		manager.updateSource(catalog.id, { autoUpdate: false, name: "Renamed" });
+		await manager.list();
+		manager.updateSource(catalog.id, { enabled: false });
+		expect((await manager.list()).snapshots).toEqual([]);
+		manager.updateSource(catalog.id, { enabled: true });
+		await manager.refreshSource(catalog.id);
+		expect(cacheRoots).toHaveLength(1);
 		manager.updateSource(catalog.id, { ref: "next" });
 		await manager.list();
 

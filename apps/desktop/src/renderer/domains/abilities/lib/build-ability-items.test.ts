@@ -327,6 +327,38 @@ describe("buildMcpAbilities", () => {
 		expect(item?.setupRequired).toBe(false);
 	});
 
+	it("applies a valueTemplate to an HTTP header secret", () => {
+		const preset = {
+			id: "x-api-mcp",
+			name: "x-api-mcp",
+			displayName: "X API MCP",
+			description: "",
+			config: { type: "http" as const, url: "https://api.x.com/mcp" },
+			secrets: [
+				{
+					envKey: "Authorization",
+					label: "X App-only Bearer Token",
+					required: true,
+					secret: true,
+					valueTemplate: "Bearer {value}",
+				},
+			],
+		};
+
+		expect(
+			buildBuiltinMcpServerConfig(
+				preset,
+				{ displayName: "X API MCP", description: "" },
+				{
+					Authorization: "token",
+				},
+			),
+		).toMatchObject({
+			type: "http",
+			headers: { Authorization: "Bearer token" },
+		});
+	});
+
 	it("keeps a built-in MCP and a same-slug GitHub MCP as separate catalog entries", () => {
 		const ability = {
 			...createBundle([]),

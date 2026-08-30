@@ -25,8 +25,8 @@ function toMarketAbility(
 		version: ability.version,
 		author: ability.author,
 		icon: ability.icon,
-		// 开放市场清单只有一个分类名，没有译名块——分组头对这类条目直接显示原名
 		category: ability.category,
+		category_i18n: ability.categoryI18n,
 		tags: ability.tags,
 		sha256: "",
 		download_count: 0,

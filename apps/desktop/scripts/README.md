@@ -180,7 +180,8 @@ cd apps/desktop && bun run build:main
 所有 `dist:*` / `pack:*` 命令都会先执行 `bun run validate:pack-env`，而且检查发生在清理旧产物、准备原生依赖和编译之前。`prepare-pack.js` 还会复用同一校验器做第二道防线。检查覆盖：
 
 - `VETTA_CLOUD_ENABLED` 必须明确为 `true`（商业版）或 `false`（开源版）；
-- 商业版必须有合法的服务端 URL，并使用 `generic` 更新源；开源版必须使用 GitHub 更新源和 GitHub Marketplace；
+- 商业版必须有合法的服务端 URL，并使用 `generic` 更新源；开源版必须使用 GitHub 更新源；
+- 两种版本均仅在环境变量显式配置仓库时注册内置 GitHub Marketplace，配置必须通过 GitHub URL 校验；
 - Windows、macOS、Linux 目标标签、语音开关、生产插件租户；
 - Sentry / PostHog 的 URL、布尔值、采样率及 Source Map 上传变量组合；
 - macOS 签名、公证与强制验签变量组合。
@@ -193,7 +194,7 @@ bun run dist:opensource
 bun run dist:opensource -- --target dir
 ```
 
-该入口读取 `.env.opensource`，固定关闭 cloud、使用 GitHub provider，并为官方仓库与公开 Marketplace 提供默认值；fork 可在文件或 shell 中覆盖 owner、repo 和 Marketplace 仓库。
+该入口读取 `.env.opensource`，固定关闭 cloud、使用 GitHub provider，并为客户端更新仓库提供默认值；fork 可在文件或 shell 中覆盖更新 owner、repo。能力 Marketplace 仓库仅取显式的 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 配置，留空不内置来源。
 
 正式发布 workflow 会先运行根 `check`、质量脚本测试和 Desktop packaging 测试，全部通过后才启动四个 Windows / macOS 双架构 / Linux 构建任务。每个平台构建后都会启动真实 packaged 应用并运行启动与 updater E2E，再校验 updater metadata、hash、blockmap 和可安装内容；真正发布到 R2 或 GitHub 后，再由 `verify-update-feed.mjs` 通过公开 URL 检查三平台 metadata 与其引用的安装包是否可读。
 

@@ -14,14 +14,17 @@ import {
 
 export function groupAbilities(items: AbilityItem[]): AbilityGroup[] {
 	const byCategory = new Map<string, AbilityItem[]>();
-	// 译名按分类只需一份；同分类的条目带的是同一个块，取先到的即可。
+	// 不同来源可能只提供部分语言：逐语言补齐，冲突时保留先到的非空译名。
 	const i18nByCategory = new Map<string, Record<string, string>>();
 	for (const item of items) {
 		const key = item.isBuiltin ? ABILITY_CATEGORY_VETTA_BUILTIN : item.category || ABILITY_CATEGORY_UNCATEGORIZED;
 		const bucket = byCategory.get(key);
 		if (bucket) bucket.push(item);
 		else byCategory.set(key, [item]);
-		if (item.categoryI18n && !i18nByCategory.has(key)) i18nByCategory.set(key, item.categoryI18n);
+		if (item.categoryI18n) {
+			const labels = Object.fromEntries(Object.entries(item.categoryI18n).filter(([, label]) => label.trim()));
+			i18nByCategory.set(key, { ...labels, ...i18nByCategory.get(key) });
+		}
 	}
 	// 三个合成分组固定位置，其余按规范名排序：分组顺序不随界面语言跳动
 	const connectors = byCategory.get(ABILITY_CATEGORY_CONNECTORS);

@@ -34,6 +34,7 @@ describe("MarketplaceSourcesDialog", () => {
 	const onUpdate = vi.fn(async () => undefined);
 	const onRemove = vi.fn(async () => undefined);
 	const onClose = vi.fn();
+	const onRefresh = vi.fn(async () => undefined);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -47,6 +48,7 @@ describe("MarketplaceSourcesDialog", () => {
 				onUpdate={onUpdate}
 				onRemove={onRemove}
 				onClose={onClose}
+				onRefresh={onRefresh}
 			/>,
 		);
 	}
@@ -55,7 +57,7 @@ describe("MarketplaceSourcesDialog", () => {
 		renderDialog([source({ id: "vetta-official", name: "official", builtin: true })]);
 
 		expect(screen.getByText("abilities:sources.builtinBadge")).toBeTruthy();
-		expect(screen.getByRole("switch")).toBeTruthy();
+		expect(screen.getByRole("switch", { name: "abilities:sources.actions.toggle" })).toBeTruthy();
 		expect(screen.queryByTitle("abilities:sources.actions.edit")).toBeNull();
 		expect(screen.queryByTitle("abilities:sources.actions.remove")).toBeNull();
 	});
@@ -64,9 +66,30 @@ describe("MarketplaceSourcesDialog", () => {
 		const user = userEvent.setup();
 		renderDialog([source({ enabled: true })]);
 
-		await user.click(screen.getByRole("switch"));
+		await user.click(screen.getByRole("switch", { name: "abilities:sources.actions.toggle" }));
 
 		await waitFor(() => expect(onUpdate).toHaveBeenCalledWith("custom-1", { enabled: false }));
+	});
+
+	it("refreshes only the selected source and supports per-source auto update", async () => {
+		const user = userEvent.setup();
+		renderDialog([source({})]);
+		await user.click(screen.getByRole("button", { name: "abilities:sources.actions.refresh" }));
+		await waitFor(() => expect(onRefresh).toHaveBeenCalledWith("custom-1"));
+		await user.click(screen.getByRole("switch", { name: "abilities:sources.actions.autoUpdate" }));
+		await waitFor(() => expect(onUpdate).toHaveBeenCalledWith("custom-1", { autoUpdate: false }));
+	});
+
+	it("shows a sync failure and prevents refreshing disabled sources", () => {
+		const enabled = source({});
+		const disabled = source({ id: "disabled", enabled: false });
+		render(<MarketplaceSourcesDialog sources={[enabled, disabled]}
+			catalog={{ sources: [enabled, disabled], snapshots: [], abilities: [], failedSourceIds: [enabled.id] }}
+			onAdd={onAdd} onUpdate={onUpdate} onRemove={onRemove} onClose={onClose} onRefresh={onRefresh} />);
+		expect(screen.getByText("abilities:sources.status.failed")).toBeTruthy();
+		expect(screen.getByText("abilities:sources.status.disabled")).toBeTruthy();
+		const buttons = screen.getAllByRole<HTMLButtonElement>("button", { name: "abilities:sources.actions.refresh" });
+		expect(buttons.map((button) => button.disabled)).toEqual([false, true]);
 	});
 
 	it("删除来源需要行内二次确认", async () => {

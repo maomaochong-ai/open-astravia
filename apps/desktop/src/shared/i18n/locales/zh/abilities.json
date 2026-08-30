@@ -72,6 +72,8 @@
 		"hint": "稍后刷新，或通过上方「添加能力」导入"
 	},
 	"error": {
+		"sourcesFailed": "以下 GitHub 来源同步失败（如有缓存则继续显示）：{{names}}",
+		"serverFailed": "云能力市场加载失败，其他来源仍可使用",
 		"loadFailed": "能力列表加载失败",
 		"downloadFailed": "下载失败：{{status}}",
 		"installSourceConflict": "同一能力标识已由其它来源安装，不会自动覆盖。请在详情页确认来源。",
@@ -403,7 +405,16 @@
 		},
 		"empty": "还没有配置任何来源",
 		"builtinBadge": "内置",
+		"status": {
+			"disabled": "已停用",
+			"pending": "尚未同步",
+			"ready": "已同步 · {{version}}",
+			"failed": "同步失败，可重试",
+			"cached": "同步失败，正在显示上次缓存"
+		},
 		"actions": {
+			"refresh": "刷新来源 {{name}}",
+			"autoUpdate": "自动更新",
 			"add": "添加来源",
 			"edit": "编辑来源",
 			"remove": "删除来源",

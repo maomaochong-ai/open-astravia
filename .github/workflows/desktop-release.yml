@@ -20,7 +20,7 @@ on:
         type: string
         required: false
       marketplace_repository:
-        description: "Open-source-only built-in GitHub marketplace source."
+        description: "Optional GitHub marketplace source for either edition. Empty keeps Environment / repo value."
         type: string
         required: false
       tenant:

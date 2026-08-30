@@ -61,6 +61,16 @@ export default defineConfig(({ mode }) => {
 	define[`process.env.${SPEECH_INPUT_ENABLED_ENV}`] = JSON.stringify(String(speechInputBuildConfig.enabled));
 	// 未配置时按 false（lite）内联，保证 cloud 判断能被常量折叠掉。
 	define["process.env.VETTA_CLOUD_ENABLED"] = JSON.stringify(cloudEnabled ? "true" : "false");
+	// GitHub 来源只由显式配置注册；固化空值，防止打包后意外继承启动环境的默认源。
+	define["process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY"] = JSON.stringify(
+		env.VETTA_OPEN_MARKETPLACE_REPOSITORY?.trim() || "",
+	);
+	define["process.env.VETTA_OPEN_MARKETPLACE_REF"] = JSON.stringify(
+		env.VETTA_OPEN_MARKETPLACE_REF?.trim() || "main",
+	);
+	define["process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL"] = JSON.stringify(
+		env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL?.trim() || "",
+	);
 
 	return {
 		define,

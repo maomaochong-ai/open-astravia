@@ -7,6 +7,7 @@ import type {
 	GitHubMarketplaceOrigin,
 	InstalledPlugin,
 	MarketplaceSource,
+	OpenMarketplaceCatalog,
 	PluginPermission,
 	UpdateMarketplaceSourceInput,
 } from "@preload/api";
@@ -194,6 +195,8 @@ export interface AbilitiesModel {
 	removeMarketplaceSource: (id: string) => Promise<void>;
 	/** 已配置的 GitHub 市场来源（含内置默认源）。 */
 	marketplaceSources: MarketplaceSource[];
+	marketplaceCatalog: OpenMarketplaceCatalog;
+	refreshMarketplaceSource: (id: string) => Promise<void>;
 	startAddManualMcp: () => void;
 	/** 刚装好、待提示配置权限的插件 slug；为空表示不提示。 */
 	permissionPromptSlug: string | null;

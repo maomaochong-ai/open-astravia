@@ -34,12 +34,33 @@ describe("resolveDesktopReleaseConfig", () => {
 		expect(resolveDesktopReleaseConfig({ eventName: "push", refType: "tag", vars: {} })).toMatchObject({
 			channel: "default",
 			cloudEnabled: "false",
-			marketplaceRepository: "https://github.com/openvetta/vetta-official-marketplace",
+			marketplaceRepository: "",
 			releaseTarget: "github",
 			shouldPublish: true,
 			updateProvider: "github",
 			serverUrl: "",
 		});
+	});
+
+	it.each(["github", "r2"])("uses only explicit marketplace configuration for %s releases", (releaseTarget) => {
+		const vars = {
+			VETTA_RELEASE_TARGET: releaseTarget,
+			VETTA_SERVER_URL: "https://api.example.com/api/v1",
+		};
+		expect(resolveDesktopReleaseConfig({ vars }).marketplaceRepository).toBe("");
+		const configured = { ...vars, VETTA_OPEN_MARKETPLACE_REPOSITORY: "example/catalog" };
+		const fromVars = resolveDesktopReleaseConfig({ vars: configured });
+		expect(fromVars.marketplaceRepository).toBe("example/catalog");
+		expect(toGithubEnv(fromVars)).toContain("VETTA_OPEN_MARKETPLACE_REPOSITORY=example/catalog");
+		expect(resolveDesktopReleaseConfig({
+			vars: configured,
+			inputs: { marketplace_repository: "example/override" },
+		}).marketplaceRepository).toBe("example/override");
+		expect(resolveDesktopReleaseConfig({
+			eventName: "push",
+			vars: configured,
+			inputs: { marketplace_repository: "example/ignored" },
+		}).marketplaceRepository).toBe("example/catalog");
 	});
 
 	it("uses Environment/repo vars on a tag and ignores leftover form inputs", () => {

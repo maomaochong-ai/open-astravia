@@ -72,6 +72,8 @@
 		"hint": "Refresh later, or import one via \"Add ability\" above"
 	},
 	"error": {
+		"sourcesFailed": "GitHub sources failed to sync (cached content remains available): {{names}}",
+		"serverFailed": "Cloud marketplace failed to load; other sources remain available",
 		"loadFailed": "Failed to load abilities",
 		"downloadFailed": "Download failed: {{status}}",
 		"installSourceConflict": "The same ability identifier is installed from another source and will not be overwritten. Check the source on the details page.",
@@ -403,7 +405,16 @@
 		},
 		"empty": "No sources configured yet",
 		"builtinBadge": "Built-in",
+		"status": {
+			"disabled": "Disabled",
+			"pending": "Not synced yet",
+			"ready": "Synced · {{version}}",
+			"failed": "Sync failed; retry available",
+			"cached": "Sync failed; showing cached content"
+		},
 		"actions": {
+			"refresh": "Refresh source {{name}}",
+			"autoUpdate": "Auto update",
 			"add": "Add source",
 			"edit": "Edit source",
 			"remove": "Remove source",

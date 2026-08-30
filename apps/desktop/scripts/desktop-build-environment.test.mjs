@@ -46,6 +46,19 @@ test("accepts an open-source Linux build", () => {
 	assert.deepEqual(config.platformTags, ["linux-x64"]);
 });
 
+test("does not supply a hard-coded marketplace in open-source build environments", () => {
+	assert.equal(createOpenSourceBuildEnvironment({}).VETTA_OPEN_MARKETPLACE_REPOSITORY, undefined);
+	assert.equal(createOpenSourceBuildEnvironment({ VETTA_OPEN_MARKETPLACE_REPOSITORY: "" }).VETTA_OPEN_MARKETPLACE_REPOSITORY, "");
+});
+
+test("validates GitHub source overrides independently of the cloud edition", () => {
+	for (const env of [commercialEnv, openSourceEnv]) {
+		assert.doesNotThrow(() => validateDesktopBuildEnvironment({ env: { ...env, VETTA_OPEN_MARKETPLACE_REPOSITORY: "example/catalog" } }));
+		assert.throws(() => validateDesktopBuildEnvironment({ env: { ...env, VETTA_OPEN_MARKETPLACE_REPOSITORY: "https://invalid.example/catalog" } }), /VETTA_OPEN_MARKETPLACE_REPOSITORY/);
+		assert.doesNotThrow(() => validateDesktopBuildEnvironment({ env: { ...env, VETTA_OPEN_MARKETPLACE_REPOSITORY: "" } }));
+	}
+});
+
 test("rejects an implicit edition and reports all independent problems", () => {
 	assert.throws(
 		() =>

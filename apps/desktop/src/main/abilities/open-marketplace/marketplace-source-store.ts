@@ -7,7 +7,7 @@ import type {
 	MarketplaceSource,
 	UpdateMarketplaceSourceInput,
 } from "../../../preload/api-types/abilities.js";
-import { isCloudBuildEnabled } from "../../../shared/feature-flags.js";
+import { reconcileMarketplaceSources } from "./marketplace-source-policy.js";
 import { DEFAULT_MARKETPLACE_SOURCE_ID } from "./open-marketplace-service.js";
 
 const SOURCE_FILE_VERSION = 1;
@@ -17,6 +17,7 @@ const REF_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
 interface MarketplaceSourceFile {
 	version: typeof SOURCE_FILE_VERSION;
 	sources: MarketplaceSource[];
+	registeredDefaultRepositories: string[];
 }
 
 export interface MarketplaceSourceStoreOptions {
@@ -122,10 +123,6 @@ function parseSource(value: unknown): MarketplaceSource | null {
 }
 
 function createDefaultSources(now: Date): MarketplaceSource[] {
-	// 完全体接的是 Vetta Serv 的官方能力市场，再内置一个 GitHub 来源会让同一个
-	// 能力出现两个渠道，版本口径与安装态互相打架。GitHub 来源只在 lite 构建里内置；
-	// 完全体下用户仍可手动添加（那是非 builtin 来源，不受此处影响）。
-	if (isCloudBuildEnabled()) return [];
 	const configuredRepository = process.env.VETTA_OPEN_MARKETPLACE_REPOSITORY?.trim();
 	if (!configuredRepository) return [];
 	const normalizedRepository = normalizeGitHubRepository(configuredRepository);
@@ -137,7 +134,8 @@ function createDefaultSources(now: Date): MarketplaceSource[] {
 			name: repositoryName(normalizedRepository),
 			type: "github",
 			repository: normalizedRepository,
-			archiveUrl: process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL ?? marketplaceArchiveUrl(normalizedRepository, ref),
+			archiveUrl:
+				process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL?.trim() || marketplaceArchiveUrl(normalizedRepository, ref),
 			ref,
 			enabled: true,
 			builtin: true,
@@ -162,46 +160,14 @@ export class MarketplaceSourceStore {
 
 	list(): MarketplaceSource[] {
 		const file = this.readFile();
-		if (file) {
-			const configuredBuiltins = this.defaultSources.filter((source) => source.builtin);
-			const configuredBuiltinIds = new Set(configuredBuiltins.map((source) => source.id));
-			const sources = file.sources.filter((source) => !source.builtin || configuredBuiltinIds.has(source.id));
-			let changed = sources.length !== file.sources.length;
-			for (const configured of configuredBuiltins) {
-				const index = sources.findIndex((source) => source.id === configured.id);
-				const current = sources[index];
-				if (!current) {
-					sources.push({ ...configured });
-					changed = true;
-					continue;
-				}
-				if (
-					current.name !== configured.name ||
-					current.repository !== configured.repository ||
-					current.archiveUrl !== configured.archiveUrl ||
-					current.ref !== configured.ref ||
-					current.priority !== configured.priority ||
-					!current.builtin
-				) {
-					sources[index] = {
-						...current,
-						name: configured.name,
-						repository: configured.repository,
-						archiveUrl: configured.archiveUrl,
-						ref: configured.ref,
-						builtin: true,
-						priority: configured.priority,
-						updatedAt: this.now().toISOString(),
-					};
-					changed = true;
-				}
-			}
-			if (changed) this.writeFile(sources);
-			return sources.sort((a, b) => a.priority - b.priority);
-		}
-		const sources = this.defaultSources.map((source) => ({ ...source }));
-		this.writeFile(sources);
-		return sources;
+		const result = reconcileMarketplaceSources(
+			file?.sources ?? this.defaultSources.map((source) => ({ ...source })),
+			this.defaultSources,
+			file?.registeredDefaultRepositories ?? [],
+			this.now,
+		);
+		if (!file || result.changed) this.writeFile(result.sources, result.registeredDefaultRepositories);
+		return result.sources;
 	}
 
 	add(input: AddMarketplaceSourceInput): MarketplaceSource {
@@ -273,14 +239,20 @@ export class MarketplaceSourceStore {
 			const file = raw as Record<string, unknown>;
 			if (file.version !== SOURCE_FILE_VERSION || !Array.isArray(file.sources)) return null;
 			const sources = file.sources.map(parseSource).filter((source): source is MarketplaceSource => source !== null);
-			return { version: SOURCE_FILE_VERSION, sources };
+			const registeredDefaultRepositories = Array.isArray(file.registeredDefaultRepositories)
+				? file.registeredDefaultRepositories.filter((value): value is string => typeof value === "string")
+				: [];
+			return { version: SOURCE_FILE_VERSION, sources, registeredDefaultRepositories };
 		} catch {
 			return null;
 		}
 	}
 
-	private writeFile(sources: MarketplaceSource[]): void {
+	private writeFile(
+		sources: MarketplaceSource[],
+		registeredDefaultRepositories = this.readFile()?.registeredDefaultRepositories ?? [],
+	): void {
 		mkdirSync(dirname(this.filePath), { recursive: true });
-		atomicWriteJSON(this.filePath, { version: SOURCE_FILE_VERSION, sources });
+		atomicWriteJSON(this.filePath, { version: SOURCE_FILE_VERSION, sources, registeredDefaultRepositories });
 	}
 }

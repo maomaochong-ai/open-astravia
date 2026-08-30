@@ -197,6 +197,9 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 			{sourcesDialogOpen && (
 				<MarketplaceSourcesDialog
 					sources={model.marketplaceSources}
+					catalog={model.marketplaceCatalog}
+					refreshing={model.refreshing}
+					onRefresh={model.refreshMarketplaceSource}
 					onAdd={async (input) => {
 						await model.addMarketplaceSource(input);
 						model.setScope("discover");

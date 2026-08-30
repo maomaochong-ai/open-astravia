@@ -2,6 +2,29 @@
 
 Desktop 从 GitHub 下载完整仓库归档，并在本地读取 `.vetta/marketplace.json`。GitHub 不承担搜索、筛选或分页；这些操作全部基于客户端已校验的本地快照完成。
 
+## 客户端来源管理
+
+云市场与 GitHub 来源独立启用：开源版只不包含云服务，仍可配置多个 GitHub 仓库；云版可同时浏览两类来源。
+商业版默认不包含 GitHub 仓库。发行方通过 `VETTA_OPEN_MARKETPLACE_REPOSITORY` 声明可选内置来源，
+未设置、空串或纯空白都不注册。开源发行版要随包提供官方源时同样配置这个变量，代码没有仓库地址兜底。
+分支由 `VETTA_OPEN_MARKETPLACE_REF` 指定，省略时为 `main`；归档 URL 可单独配置，否则从仓库与分支推导。
+
+在「能力 → 市场来源」可添加多个仓库，分别设置启用、自动更新和分支，并单独刷新。
+内置来源可启停及设置自动更新，但不能在界面修改坐标或删除；自定义来源支持编辑和删除。
+关闭自动更新后浏览只读缓存，手动刷新仍会拉取远程内容。同步失败会标记对应来源，有可用缓存则继续展示。
+关闭或删除来源只影响目录发现，不卸载已经安装的能力。跨来源同名条目不合并身份，物理安装冲突仍需显式处理。
+
+本地来源配置保持 `version: 1`，新增可选字段 `registeredDefaultRepositories`（规范化仓库 URL 数组）：
+
+- 旧文件缺少该字段时按空数组读取，仅在环境声明仓库时协调该默认源；原有来源和用户启停/自动更新选择保留。
+- 如果用户已手动添加同一仓库，沿用其 ID、名称、分支及开关，不另建内置重复项，避免改变安装来源身份。
+- 记录已协调的默认仓库，使上述自定义来源被删除后不会在下次刷新时自动复活。
+- 这是兼容旧文件的增量字段，不改变市场 manifest 或安装台账格式；旧客户端可能丢弃该字段，因此不保证降级后仍保留“已删除默认别名”的记忆。
+
+更改构建环境需重启开发进程或重新构建发行包；界面配置和仓库内容更新不需要重新构建。
+移除环境中的仓库配置不会删除已保存来源；这也适用于曾由旧版本自动创建的来源，可在界面停用它们。
+参见 [构建模式](desktop/build-modes.md) 与 [ADR-0093](adr/0093-independent-cloud-and-github-marketplaces.md)。
+
 ## Manifest
 
 ```json
@@ -23,6 +46,24 @@ Desktop 从 GitHub 下载完整仓库归档，并在本地读取 `.vetta/marketp
 - `minAppVersion`：必填，能够读取该内容的最低 Desktop SemVer 版本。
 - `abilities[].version`：单个能力的产物版本。
 - `abilities[].configVersion`：仅表示单个能力本地配置的结构版本，不用于选择客户端兼容性。
+
+### 分组多语言
+
+`category` 是稳定的分组标识和默认显示名；可选的 `categoryI18n` 提供分组译名，五种能力类型共用：
+
+```json
+{
+  "category": "Documents",
+  "categoryI18n": { "zh": "文档", "en": "Documents" }
+}
+```
+
+译名只影响展示，不能用翻译结果替换 `category`，否则切换语言会改变分组归属。Desktop 按应用当前语言
+匹配译名（兼容 `zh-CN` / `en-US` 等地区键），未提供或译名为空时显示原分类名。旧清单可省略此字段，
+旧客户端会忽略此可选字段，无需修改 `schemaVersion` 或能力安装版本；内容变更仍须递增 `marketplaceVersion`。
+
+多个来源使用相同 `category` 时仍归为一组，缺少的语言逐项补齐，同一语言保留列表中先出现的非空译名。
+不同分类即使译名相同也不合并。内置的「连接」「Vetta 内置」「未分类」继续使用应用自带的 i18n 文案。
 
 ## Plugin、MCP 与 Bundle
 
@@ -211,6 +252,11 @@ abilities/mcp/context7/
 - `detail.format: "markdown"` 时，`path` 直接指向 Markdown 文件。
 - `detail.format: "blocks"` 时，`path` 指向结构化详情 JSON；解析失败且声明了 `fallback` 时回退到 Markdown。
 - `i18n[locale]` 可以覆盖格式和文件路径；未命中语言时使用顶层详情。
+- 列表名称、简介可写在 `marketplace.json` 的 `detail.i18n[locale]`，正文可单独放在 `ability.json`
+  的同语言引用中。Desktop 按语言、按字段合并二者：包内显式提供的字段优先，未提供的字段保留目录值；
+  数组整体替换、不拼接，空数组和空正文保留其显式覆盖含义。
+- 能力卡片、搜索和详情使用应用语言系统的当前语言，随应用切换即时更新；兼容 `zh` / `zh-CN`、
+  `en` / `en-US` 等语言键。切换不需要重新下载市场或安装能力，旧快照在读取时同样应用合并规则。
 - 所有相对路径都必须留在当前能力目录内。客户端限制描述文件、详情文件和图片大小，并拒绝非图片资源。
 
 结构化详情由客户端白名单组件渲染，不执行仓库提供的 HTML、JavaScript、CSS、iframe 或自定义操作。当前区块包括 `hero`、`feature-grid`、`steps`、`showcase`、`image`、`gallery`、`stats`、`comparison`、`callout`、`markdown` 和 `links`：

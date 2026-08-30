@@ -80,6 +80,16 @@ function snapshot(sourceId: string, abilities: OpenMarketplaceAbility[]): OpenMa
 }
 
 describe("mergeAbilityCatalogs", () => {
+	it("preserves GitHub category translations alongside cloud translations", () => {
+		const github = { ...openAbility("document"), category: "Documents", categoryI18n: { zh: "文档" } };
+		const cloud = { ...serverAbility("cloud-document"), category: "Documents", category_i18n: { en: "Documents" } };
+		const merged = mergeAbilityCatalogs([cloud], [snapshot("official", [github])]);
+		expect(merged.map((entry) => ({ category: entry.category, i18n: entry.category_i18n }))).toEqual([
+			{ category: "Documents", i18n: { en: "Documents" } },
+			{ category: "Documents", i18n: { zh: "文档" } },
+		]);
+	});
+
 	it("adds GitHub abilities with their origin metadata", () => {
 		const merged = mergeAbilityCatalogs([], [snapshot("official", [openAbility("demo")])]);
 

@@ -1,4 +1,9 @@
-import type { AddMarketplaceSourceInput, MarketplaceSource, UpdateMarketplaceSourceInput } from "@preload/api";
+import type {
+	AddMarketplaceSourceInput,
+	MarketplaceSource,
+	OpenMarketplaceCatalog,
+	UpdateMarketplaceSourceInput,
+} from "@preload/api";
 import {
 	Button,
 	Dialog,
@@ -19,15 +24,21 @@ function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
-/** 能力来源的增删改查；内置来源只能启停，不能改配置或删除。 */
+/** 内置来源保留发行方坐标；所有来源均可独立控制同步策略。 */
 export function MarketplaceSourcesDialog({
 	sources,
+	catalog,
+	refreshing = false,
+	onRefresh,
 	onAdd,
 	onUpdate,
 	onRemove,
 	onClose,
 }: {
 	sources: MarketplaceSource[];
+	catalog?: OpenMarketplaceCatalog;
+	refreshing?: boolean;
+	onRefresh: (id: string) => Promise<void>;
 	onAdd: (input: AddMarketplaceSourceInput) => Promise<void>;
 	onUpdate: (id: string, input: UpdateMarketplaceSourceInput) => Promise<void>;
 	onRemove: (id: string) => Promise<void>;
@@ -35,16 +46,17 @@ export function MarketplaceSourcesDialog({
 }): JSX.Element {
 	const { t } = useTranslation(["abilities", "common"]);
 	const [editing, setEditing] = useState<Editing>({ kind: "none" });
-	const [busy, setBusy] = useState(false);
+	const [operationPending, setOperationPending] = useState(false);
+	const busy = operationPending || refreshing;
 	const [error, setError] = useState<string | null>(null);
 
 	const run = (task: Promise<void>, onDone?: () => void): void => {
-		setBusy(true);
+		setOperationPending(true);
 		setError(null);
 		void task
 			.then(() => onDone?.())
 			.catch((reason: unknown) => setError(errorMessage(reason)))
-			.finally(() => setBusy(false));
+			.finally(() => setOperationPending(false));
 	};
 
 	const submitForm = (value: MarketplaceSourceFormValue): void => {
@@ -94,7 +106,11 @@ export function MarketplaceSourcesDialog({
 							<MarketplaceSourceRow
 								key={source.id}
 								source={source}
+								snapshot={catalog?.snapshots.find((snapshot) => snapshot.sourceId === source.id)}
+								failed={catalog?.failedSourceIds.includes(source.id) ?? false}
 								busy={busy}
+								onRefresh={() => run(onRefresh(source.id))}
+								onAutoUpdate={(autoUpdate) => run(onUpdate(source.id, { autoUpdate }))}
 								onToggle={(enabled) => run(onUpdate(source.id, { enabled }))}
 								onEdit={() => setEditing({ kind: "edit", id: source.id })}
 								onRemove={() => run(onRemove(source.id))}

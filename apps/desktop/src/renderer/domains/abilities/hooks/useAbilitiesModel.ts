@@ -174,6 +174,8 @@ export function useAbilitiesModel(): AbilitiesModel {
 		updateMarketplaceSource: data.updateMarketplaceSource,
 		removeMarketplaceSource: data.removeMarketplaceSource,
 		marketplaceSources: data.marketplaceSources,
+		marketplaceCatalog: data.marketplaceCatalog,
+		refreshMarketplaceSource: data.refreshMarketplaceSource,
 		startAddManualMcp: () => mcp.onStartAddServer(),
 		permissionPromptSlug: actions.permissionPromptSlug,
 		dismissPermissionPrompt: actions.dismissPermissionPrompt,

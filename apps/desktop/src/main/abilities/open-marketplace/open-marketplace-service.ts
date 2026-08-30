@@ -11,6 +11,7 @@ import type {
 import type { McpServerConfigData } from "../../../preload/api-types/mcp.js";
 import { getApplicationCacheService } from "../../cache/application-cache-service.js";
 import { isAppVersionCompatible, isValidAppVersion } from "./marketplace-compatibility.js";
+import { mergeMarketplaceDetail } from "./marketplace-detail.js";
 import { type MarketplaceManifest, marketplaceDetailSchema, parseMarketplaceManifest } from "./marketplace-schema.js";
 import { validateOpenMarketplaceMcp } from "./open-marketplace-mcp.js";
 import { validateOpenMarketplacePlugin } from "./open-marketplace-plugin.js";
@@ -166,6 +167,7 @@ function toOpenMarketplaceAbility(
 		author: ability.author,
 		icon: ability.icon,
 		category: ability.category,
+		categoryI18n: ability.categoryI18n,
 		tags: ability.tags,
 		config,
 		detail: { ...ability.detail, meta },
@@ -191,6 +193,7 @@ export class OpenMarketplaceService {
 	private readonly createTemporaryDirectory: () => Promise<string>;
 	private lastUpdateCheckAt: number | undefined;
 	private backgroundUpdate: Promise<void> | undefined;
+	private syncInFlight: Promise<OpenMarketplaceSnapshot> | undefined;
 	/** 进程内快照：避免同会话反复 list 时对每个 ability 包做全量校验。 */
 	private memorySnapshot: OpenMarketplaceSnapshot | undefined;
 
@@ -206,7 +209,7 @@ export class OpenMarketplaceService {
 		this.repository = configuredRepository.trim().replace(/\/$/, "");
 		this.archiveUrl =
 			options.archiveUrl ??
-			(options.repository ? undefined : process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL) ??
+			(options.repository ? undefined : process.env.VETTA_OPEN_MARKETPLACE_ARCHIVE_URL?.trim() || undefined) ??
 			`${this.repository}/archive/refs/heads/${this.sourceRef.split("/").map(encodeURIComponent).join("/")}.zip`;
 		if (!isValidAppVersion(options.appVersion)) {
 			throw new Error(`Invalid desktop app version: ${options.appVersion}`);
@@ -258,7 +261,7 @@ export class OpenMarketplaceService {
 
 	async refresh(): Promise<OpenMarketplaceSnapshot> {
 		try {
-			const snapshot = await this.sync();
+			const snapshot = await this.syncOnce();
 			this.lastUpdateCheckAt = this.now().getTime();
 			this.memorySnapshot = snapshot;
 			return snapshot;
@@ -383,13 +386,8 @@ export class OpenMarketplaceService {
 			if (presentation) {
 				ability.icon = presentation.icon ?? ability.icon;
 				ability.detail = marketplaceDetailSchema.parse({
-					...ability.detail,
-					...presentation.detail,
+					...mergeMarketplaceDetail(ability.detail, presentation.detail),
 					icon: presentation.icon ?? ability.detail.icon,
-					i18n: {
-						...(ability.detail.i18n ?? {}),
-						...(presentation.detail.i18n ?? {}),
-					},
 				});
 			}
 		}
@@ -481,7 +479,7 @@ export class OpenMarketplaceService {
 		if (state && this.matchesCurrentSource(state) && state.marketplaceVersion === remoteManifest.marketplaceVersion) {
 			return;
 		}
-		const snapshot = await this.sync();
+		const snapshot = await this.syncOnce();
 		this.memorySnapshot = snapshot;
 		this.onBackgroundUpdate?.(snapshot);
 	}
@@ -520,6 +518,16 @@ export class OpenMarketplaceService {
 			.filter((dir) => existsSync(join(dir, ".vetta", "marketplace.json")));
 		if (candidates.length !== 1) throw new Error("Archive must contain exactly one .vetta/marketplace.json");
 		return candidates[0];
+	}
+
+	/** Manual and background refreshes share activation; concurrent renames would corrupt the snapshot. */
+	private syncOnce(): Promise<OpenMarketplaceSnapshot> {
+		if (!this.syncInFlight) {
+			this.syncInFlight = this.sync().finally(() => {
+				this.syncInFlight = undefined;
+			});
+		}
+		return this.syncInFlight;
 	}
 
 	private async sync(): Promise<OpenMarketplaceSnapshot> {

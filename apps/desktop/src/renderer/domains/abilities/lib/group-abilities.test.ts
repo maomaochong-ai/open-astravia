@@ -36,6 +36,20 @@ function ability(slug: string, overrides: Partial<SkillAbility> = {}): SkillAbil
 }
 
 describe("groupAbilities", () => {
+	it("combines missing languages across sources without merging translated category identities", () => {
+		const items = [
+			ability("first", { category: "Documents", categoryI18n: { en: "Documents", zh: " " } }),
+			ability("second", { category: "Documents", categoryI18n: { zh: "文档", en: "Other label" } }),
+			ability("third", { category: "Other", categoryI18n: { zh: "文档" } }),
+		];
+		const before = structuredClone(items);
+		const groups = groupAbilities(items);
+		expect(groups.map((group) => group.category)).toEqual(["Documents", "Other"]);
+		expect(groups[0]?.categoryI18n).toEqual({ en: "Documents", zh: "文档" });
+		expect(groups[0]?.items.map((item) => item.slug)).toEqual(["first", "second"]);
+		expect(items).toEqual(before);
+	});
+
 	it("puts builtin abilities in their own group between categorized and uncategorized ones", () => {
 		const groups = groupAbilities([
 			ability("local-skill", { category: "", catalogSource: { kind: "local", id: "local" }, fromMarket: false }),

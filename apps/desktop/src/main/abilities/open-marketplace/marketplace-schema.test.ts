@@ -22,6 +22,27 @@ function validManifest(): Record<string, unknown> {
 }
 
 describe("parseMarketplaceManifest", () => {
+	it("preserves optional category translations without changing category identity", () => {
+		const manifest = validManifest();
+		const abilities = manifest.abilities as Array<Record<string, unknown>>;
+		abilities[0] = { ...abilities[0], category: "Documents", categoryI18n: { zh: "文档", "en-US": "Documents" } };
+		expect(parseMarketplaceManifest(manifest).abilities[0]).toMatchObject({
+			category: "Documents",
+			categoryI18n: { zh: "文档", "en-US": "Documents" },
+		});
+		expect(parseMarketplaceManifest(validManifest()).abilities[0]?.categoryI18n).toBeUndefined();
+	});
+
+	it.each([null, [], "文档", { zh: 42 }, { zh: { name: "文档" } }].map((categoryI18n) => ({ categoryI18n })))(
+		"rejects malformed category translations: $categoryI18n",
+		({ categoryI18n }) => {
+			const manifest = validManifest();
+			const abilities = manifest.abilities as Array<Record<string, unknown>>;
+			abilities[0] = { ...abilities[0], categoryI18n };
+			expect(() => parseMarketplaceManifest(manifest)).toThrow();
+		},
+	);
+
 	it("fills defaults for optional ability fields", () => {
 		const manifest = parseMarketplaceManifest(validManifest());
 
