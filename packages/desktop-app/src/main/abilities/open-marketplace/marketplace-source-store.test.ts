@@ -56,7 +56,7 @@ describe("MarketplaceSourceStore", () => {
 			{
 				id: "astravia-official",
 				name: "Astravia Official",
-				repository: "https://github.com/sikongyue/astravia-official-marketplace",
+				repository: "https://github.com/maomaochong-ai/astravia-official-marketplace",
 				ref: "main",
 				builtin: true,
 			},

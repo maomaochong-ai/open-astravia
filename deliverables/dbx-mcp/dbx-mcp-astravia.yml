@@ -1,6 +1,6 @@
 # dbx-mcp (Astravia build) —— 多平台矩阵版（交付文件）
 #
-# 交付说明：本文件是 fork 仓库 sikongyue/dbx 的
+# 交付说明：本文件是 fork 仓库 maomaochong-ai/dbx 的
 # `.github/workflows/dbx-mcp-astravia.yml` 的完整替换版（覆盖既有 Windows-only 版）。
 # 推送到 fork main 后，workflow_dispatch 手动触发一次即可构建 Windows + macOS 全部
 # 产物并发布到同一 Release（tag dbx-mcp-astravia-v0.4.61）。
@@ -174,5 +174,5 @@ jobs:
             - 平台: Windows x64 / macOS arm64 / macOS x64
             - 产物与 SHA256 见下方 assets。
 
-            构建于 fork 仓库 sikongyue/dbx 的 Astravia CI（.github/workflows/dbx-mcp-astravia.yml，多平台矩阵）。
+            构建于 fork 仓库 maomaochong-ai/dbx 的 Astravia CI（.github/workflows/dbx-mcp-astravia.yml，多平台矩阵）。
           files: dist/*

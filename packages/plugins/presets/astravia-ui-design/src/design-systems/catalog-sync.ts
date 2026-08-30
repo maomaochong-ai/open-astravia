@@ -17,13 +17,13 @@ import { markCatalogFailed, markCatalogLoading, setDesignSystems } from "./regis
 /**
  * 候选源，按顺序尝试，第一个拿到且校验通过的生效。
  *
- * gitee 现在是首选（2026-08 实测）：GitHub 账号 `sikongyue` 被反滥用系统标记，所有
- * 匿名 HTTP 访问（raw、api、网页、jsDelivr 的 gh 代理）一律 404，只有 git 协议和带
- * 认证的请求正常。gitee 镜像在国内可达性好，`/raw/` 会 302 到 `raw.giteeusercontent.com`
- * 的签名直链——没有 jsDelivr 那种 12 小时清不掉的 `@main` 解析缓存，可以随时更新。
+ * gitee 现在是首选（2026-08 实测）：gitee 镜像在国内可达性好，`/raw/` 会 302 到
+ * `raw.giteeusercontent.com` 的签名直链——没有 jsDelivr 那种 12 小时清不掉的 `@main`
+ * 解析缓存，可以随时更新。
  *
- * raw 与 jsDelivr 仍保留在后位：账号申诉解封后自动恢复，无需再改代码。jsDelivr 对
- * `@main` 浮动引用的缓存 purge 不掉（最长晚 12 小时），所以它永远只做最后兜底。
+ * raw 与 jsDelivr 仍保留在后位：GitHub 源已迁移到 `maomaochong-ai`（旧账号
+ * `sikongyue` 被反滥用系统标记，匿名 HTTP 访问一律 404）；jsDelivr 对 `@main`
+ * 浮动引用的缓存 purge 不掉（最长晚 12 小时），所以它永远只做最后兜底。
  *
  * 新增地址建议同时加进 plugin.json 的 `network.allowedHosts`。当前宿主实现按 fetch
  * 默认行为跟随重定向、不做逐跳校验，声明本身不拦截请求；但保留完整声明（含重定向
@@ -32,8 +32,8 @@ import { markCatalogFailed, markCatalogLoading, setDesignSystems } from "./regis
  */
 export const DESIGN_CATALOG_SOURCES: readonly string[] = [
 	"https://gitee.com/sikongyue/astravia-design-system-templates/raw/main/.astravia/design-templates.json",
-	"https://raw.githubusercontent.com/sikongyue/astravia-design-system-templates/main/.astravia/design-templates.json",
-	"https://cdn.jsdelivr.net/gh/sikongyue/astravia-design-system-templates@main/.astravia/design-templates.json",
+	"https://raw.githubusercontent.com/maomaochong-ai/astravia-design-system-templates/main/.astravia/design-templates.json",
+	"https://cdn.jsdelivr.net/gh/maomaochong-ai/astravia-design-system-templates@main/.astravia/design-templates.json",
 ];
 
 /** 上一次成功拉取到的清单原文，存插件私有 storage。 */

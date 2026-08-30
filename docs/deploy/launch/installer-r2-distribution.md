@@ -154,7 +154,7 @@ grep -A2 "arm64.dmg" packages/desktop-app/release/latest-mac.yml
 | 位置 | 现状 | 改为 |
 |---|---|---|
 | 下载区 lead（L303） | `三平台安装包托管在 GitHub Releases` | `三平台安装包托管在 R2 下载站，免注册、免费、开源` |
-| macOS 按钮 href（L314） | `https://github.com/sikongyue/astravia/releases/latest` | `https://dl.astravia.dev/app/v<VER>/astravia-<VER>-mac.dmg` |
+| macOS 按钮 href（L314） | `https://github.com/maomaochong-ai/astravia/releases/latest` | `https://dl.astravia.dev/app/v<VER>/astravia-<VER>-mac.dmg` |
 | Windows 按钮 href（L323） | 同上（releases/latest） | `https://dl.astravia.dev/app/v<VER>/astravia-<VER>-win.exe` |
 | Linux 按钮 href（L332） | 同上（releases/latest） | `https://dl.astravia.dev/app/v<VER>/astravia-<VER>-linux.AppImage` |
 | 下载注释（L338） | `所有安装包在 GitHub Releases 按版本归档` | `所有安装包在 R2 下载站按版本归档（dl.astravia.dev），自动更新由应用内配置决定` |
@@ -163,7 +163,7 @@ grep -A2 "arm64.dmg" packages/desktop-app/release/latest-mac.yml
 同时：
 - 删/改导航与首屏的 `releases/latest` 按钮（L53、L70），保持统一指向下载区或直链
  - 发版时按 [website/README.md](../../../website/README.md)「内容维护」同步 `package.json` version
-- 若希望保留「GitHub 查看源码」入口，**只改下载按钮**，源码按钮（`github.com/sikongyue/astravia`）保留不动
+- 若希望保留「GitHub 查看源码」入口，**只改下载按钮**，源码按钮（`github.com/maomaochong-ai/astravia`）保留不动
 
 ---
 

@@ -269,7 +269,7 @@ describe("refreshDesignCatalog 的回退链", () => {
 });
 
 describe("源顺序", () => {
-	it("gitee 排首位（GitHub 账号被标记期间的主通道），raw 次之，jsDelivr 最后兜底", () => {
+	it("gitee 排首位（国内主通道），raw 次之，jsDelivr 最后兜底", () => {
 		expect(DESIGN_CATALOG_SOURCES[0]).toContain("gitee.com");
 		expect(DESIGN_CATALOG_SOURCES[1]).toContain("raw.githubusercontent.com");
 		expect(DESIGN_CATALOG_SOURCES[2]).toContain("cdn.jsdelivr.net");
@@ -282,10 +282,10 @@ describe("repoRootUrl", () => {
 			"https://gitee.com/sikongyue/astravia-design-system-templates/raw/main/",
 		);
 		expect(repoRootUrl(DESIGN_CATALOG_SOURCES[1])).toBe(
-			"https://raw.githubusercontent.com/sikongyue/astravia-design-system-templates/main/",
+			"https://raw.githubusercontent.com/maomaochong-ai/astravia-design-system-templates/main/",
 		);
 		expect(repoRootUrl(DESIGN_CATALOG_SOURCES[2])).toBe(
-			"https://cdn.jsdelivr.net/gh/sikongyue/astravia-design-system-templates@main/",
+			"https://cdn.jsdelivr.net/gh/maomaochong-ai/astravia-design-system-templates@main/",
 		);
 	});
 

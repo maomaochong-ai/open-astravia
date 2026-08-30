@@ -15,7 +15,7 @@ B1 MVP ──→ B2 自有化 ──→ B3 增强
                    └ 经典界面 MVP+联动
 ```
 
-- **开放项已确认（2026-08-13）**：fork = `github.com/sikongyue/dbx`（上游 `t8y2/dbx`）；dbx 版本 = 最新（MCP 引擎 **0.4.61**）；B1 平台 = 仅 Windows x64；连接初始化 = 先手动配置
+- **开放项已确认（2026-08-13，2026-08-30 更新 fork）**：fork = `github.com/maomaochong-ai/dbx`（上游 `t8y2/dbx`）；dbx 版本 = 最新（MCP 引擎 **0.4.61**）；B1 平台 = 仅 Windows x64；连接初始化 = 先手动配置
 - **工作量估算**（单人，人天）：B1 ≈ 3–5 人天；B2 ≈ 15–22 人天；B3 每项 2–4 周量级
 - **横切约束**：i18n 合规（ADR 0031）、质量门禁（`bun run check:quick` / `bun run check`）、Apache-2.0 合规、凭据安全
 - **里程碑**：B1.4 完成 = 「AI 对话查库」可用；B2.6 完成 = 「经典工具界面」可用；B2.3 完成 = 构建权自有
@@ -28,7 +28,7 @@ B1 MVP ──→ B2 自有化 ──→ B3 增强
 
 ### B1.0 fork dbx 到自有组织存档（0.5 人天）✅ 完成（2026-08-13）
 - [x] 在 GitHub 将 `t8y2/dbx` fork 到 Astravia 自有组织/账户（Apache-2.0 允许再分发，保留 LICENSE/NOTICE）
-- [x] 记录 fork 地址：**`https://github.com/sikongyue/dbx`**（上游 `https://github.com/t8y2/dbx`）
+- [x] 记录 fork 地址：**`https://github.com/maomaochong-ai/dbx`**（上游 `https://github.com/t8y2/dbx`）
 - **验证**：用户已确认 fork 就绪
 
 ### B1.1 获取 dbx-mcp 引擎二进制（0.5–1 人天）✅ 完成（2026-08-13）
@@ -88,7 +88,7 @@ B1 MVP ──→ B2 自有化 ──→ B3 增强
 - [x] 在 fork 仓库（B1.0）新增 CI workflow（仿 [.github/workflows/quality.yml](/E:/open-source-projects/astravia/.github/workflows/quality.yml) 结构）：`cargo build --release` 产出各平台 `dbx-mcp` → 上传 Release artifact
 - [x] 产物附 sha256；版本号带 Astravia 标识（区分官方）
 - **验证**：fork CI 触发一次构建，Release 可下载且可运行（本机跑 `--help`）
-- **执行记录（2026-08-14）**：workflow 文件 `.github/workflows/dbx-mcp-astravia.yml` 已推送至 fork（sikongyue/dbx，commit 7bcc066）；push 事件自动触发构建 run 31727809388 成功；Release `dbx-mcp-astravia-v0.4.61` 发布，产物 `dbx-mcp-0.4.61-astravia-win-x64.exe`（20.3MB）+ 同名 `.sha256`；下载后 sha256 校验通过、MCP 握手 PASS（serverInfo dbx 0.4.61、13 工具）、SQLite 端到端查询 4 行数据正常（与官方产物行为一致）
+- **执行记录（2026-08-14，旧 fork sikongyue/dbx）**：workflow 文件 `.github/workflows/dbx-mcp-astravia.yml` 已推送至 fork（sikongyue/dbx，commit 7bcc066）；push 事件自动触发构建 run 31727809388 成功；Release `dbx-mcp-astravia-v0.4.61` 发布，产物 `dbx-mcp-0.4.61-astravia-win-x64.exe`（20.3MB）+ 同名 `.sha256`；下载后 sha256 校验通过、MCP 握手 PASS（serverInfo dbx 0.4.61、13 工具）、SQLite 端到端查询 4 行数据正常（与官方产物行为一致）
 - **关键坑（已解决）**：① workflow `name` 中含英文逗号（如 `Install NASM + Perl (native deps: aws-lc-sys, vendored OpenSSL/SQLCipher)`）导致 YAML 解析失败（表现为 workflow 名变成文件路径、dispatch 报无触发器、run 无 job）——给 name 加引号修复；② fork push 需 classic token（repo 权限）或 fine-grained token（Contents read/write）；③ git 走系统代理（127.0.0.1:33210）clone 成功但 push 被代理拦，改用 Contents API 推送；④ dbx-mcp 的 stdio 是 **newline-delimited JSON**（非标准 Content-Length 帧），B1 握手脚本与 B2.1 dbx-mcp-client 均已按此实现
 - **产物 sha256**：CI 构建产物 sha256 与官方 npm 包不同属正常（自建构建）；本机已记录 CI 产物 sha256 供 B2.3 切换发布源使用
 
@@ -101,6 +101,9 @@ B1 MVP ──→ B2 自有化 ──→ B3 增强
 - **同步更新**：README（来源描述）、CHANGELOG（Unreleased 新增自有化条目）
 
 - **平台化执行记录（2026-08-22，macOS 接入）**：此前 B1 平台仅 Windows x64（见 B1.1 确认），macOS/Linux 产物未接入（dbx-mcp-path.ts 注释原写明「B2 自建构建后接入」）。用户实测 macOS 数据库页报 `Error: spawn …dbx-mcp.exe EACCES`：引擎只有 win32-x64 产物且路径硬编码，macOS 上 spawn 了 `.exe`（PE 格式 + 无执行权限）。实施：① `scripts/fetch-dbx-mcp.mjs` 平台化——`PLATFORMS` 表按 `process.platform-arch` 选目标：win32-x64 走 fork Release 直链（既有），darwin-arm64/darwin-x64 走官方 npm 平台包 `@dbx-app/mcp-darwin-<arch>@0.4.61` 过渡源（sha256 pin：arm64 `059d87b0…` / x64 `20e39ba3…`，幂等不变，macOS chmod 0755）；② `dbx-mcp-path.ts` 按平台解析 `resources/dbx-mcp/<platform>/dbx-mcp[.exe]`（linux-x64 预留）；③ `prepare-pack.js` dbx-mcp staging 只拷当前构建平台子目录；④ 交付 fork CI 多平台矩阵（`docs/dbx-mcp-astravia.yml`：win32-x64 + darwin-arm64 + darwin-x64 矩阵，各平台只传 artifact、汇总 publish job 单一写入者发布 Release，避免并发 update_release 竞态；macOS runner 无需额外系统依赖，上游 mcp-release.yml 先例）；darwin 产物发布后把 fetch 脚本 darwin 平台 `forkAsset` 置为 `dbx-mcp-<ver>-astravia-darwin-<arch>` 并更新 sha256 即切换自有构建。**验证（2026-08-22，macOS arm64）**：`bun run prepare:dbx-mcp` 下载 darwin-arm64 官方二进制成功（18.3 MB，sha256 匹配，`file` = Mach-O arm64，`-rwxr-xr-x`）；幂等缓存正常；MCP 握手 PASS（serverInfo dbx 0.4.61、13 工具，与 B1.2 Windows 验证一致）。
+
+- **fork 迁移执行记录（2026-08-30，新 fork maomaochong-ai/dbx）**：旧 fork `sikongyue/dbx` 账号不可用，重新 fork 至 `maomaochong-ai/dbx`（SSH 别名 `github-maomaochong-ai`，key `~/.ssh/id_ed25519_maomaochong_ai`）。实施：① 本地 `--filter=tree:0 --sparse` 最小克隆（仓库工作区 33G/5.9 万文件，全量克隆不可行），仅取 `.github/workflows/`；② 部署多平台矩阵 workflow（commit 7b8016e），push 自动触发构建 run 33299542730 成功（约 30 分钟）；③ Release `dbx-mcp-astravia-v0.4.61` 发布三平台资产（win-x64.exe / darwin-arm64 / darwin-x64 + 各 `.sha256`）；④ 新 fork 自建产物 sha256（与旧 fork 产物及官方 npm 包均不同，属预期）：win `25484f9b…`、darwin-arm64 `7ef5d8cd…`、darwin-x64 `b48f619a…`——已同步更新 `fetch-dbx-mcp.mjs` 三平台 pin，**darwin 按计划由官方 npm 过渡源切换为 fork 直链**；⑤ 网络备注：HTTPS 直连 github.com 超时（被墙），SSH 22/443 均可用，资产校验经 api.github.com 完成
+- **本地克隆清理记录（2026-08-30）**：临时稀疏克隆 `/Users/zhugeyue/Desktop/project/bigdate/source-code/dbx`（仅含 `.github/workflows/`，用于部署 workflow）已删除；fork 的日常工作克隆由用户维护于 `/Users/zhugeyue/Desktop/project/bigdate/github-source-code/dbx`
 
 ### B2.4 设置页「数据库」面板（3–5 人天）✅ 完成（2026-08-14，check 全绿；UI 运行验证通过）
 - [x] 连接管理 UI：列表 / 新增 / 删除 / 启用停用（连接经抽象层 database-api → database-service → dbx-mcp `list_connections`/`add_connection`/`remove_connection`）

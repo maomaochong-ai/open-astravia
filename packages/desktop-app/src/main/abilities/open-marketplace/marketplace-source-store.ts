@@ -13,7 +13,7 @@ const SOURCE_FILE_VERSION = 1;
 const SOURCE_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,95}$/;
 const REF_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
 /** 未配置环境变量时的官方内置来源；始终存在且不可删除。 */
-const OFFICIAL_MARKETPLACE_REPOSITORY = "https://github.com/sikongyue/astravia-official-marketplace";
+const OFFICIAL_MARKETPLACE_REPOSITORY = "https://github.com/maomaochong-ai/astravia-official-marketplace";
 const OFFICIAL_MARKETPLACE_NAME = "Astravia Official";
 
 interface MarketplaceSourceFile {

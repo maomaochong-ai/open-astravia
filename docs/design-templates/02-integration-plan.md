@@ -11,7 +11,7 @@
 
 | # | 决策点 | 结论 |
 | --- | --- | --- |
-| D1 | 内容仓库基底 | 新建本地仓库 `/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia-design-system-templates`(已存在,origin 已指向 `https://github.com/sikongyue/astravia-design-system-templates.git`),**以 vetta-design-templates 为基底**,把 brands-design-md 的 69 个品牌改造并入 |
+| D1 | 内容仓库基底 | 新建本地仓库 `/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia-design-system-templates`(已存在,origin 已指向 `https://github.com/maomaochong-ai/astravia-design-system-templates.git`),**以 vetta-design-templates 为基底**,把 brands-design-md 的 69 个品牌改造并入 |
 | D2 | 重叠品牌 | 11 个与 vetta 24 模板 slug 重叠的品牌(airbnb、apple、duolingo、figma、linear、notion、shopify、slack、spotify、stripe、vercel)**以 brands-design-md 版本为准**,覆盖 vetta 原条目 |
 | D3 | 应用侧集成 | **方案 B:全量对齐上游** —— 恢复宿主 workspace-view 插槽基础设施 + 插件侧模板库,与上游形态一致(侧边栏主导航固定「设计体系」入口) |
 
@@ -38,7 +38,7 @@
 │  │ 插件侧(astravia-ui-design 插件)                          │  │
 │  │  · design-systems/(目录拉取/校验/缓存/apply)              │  │  ← 按上游恢复 + 改名
 │  │  · gallery/ + cards/(画廊 UI/详情/开工)                   │  │
-│  │  · catalog URL → sikongyue/astravia-design-system-templates│  │
+│  │  · catalog URL → maomaochong-ai/astravia-design-system-templates │  │
 │  │  · plugin.json 权限补齐 + i18n key 补齐                    │  │
 │  │  · SKILL.md 补 design-resources 协议                      │  │
 │  └──────────────────────────────────────────────────────────┘  │
@@ -121,11 +121,11 @@ brands-design-md 的 `registry.json` 提供 11 个字段,8 个字段新增/需�
 1. 转换脚本产出全部 `templates/<slug>/`。
 2. `node scripts/build-catalog.mjs` 生成 `.vetta/design-templates.json`(catalogVersion 自动递增为 `2026.08.22-1` 格式,无前导零)。
 3. 本地 `node scripts/build-catalog.mjs --check` 通过(等价 CI 门槛)。
-4. 首次提交(`a2ac552`)+ `git push -u origin main` 推送到 `sikongyue/astravia-design-system-templates.git`(注:当前因 GitHub token 缺 `workflow` 权限推送被拒,待用户处理)。
+4. 首次提交(`a2ac552`)+ `git push -u origin main` 推送到 `maomaochong-ai/astravia-design-system-templates.git`(注:当前因 GitHub token 缺 `workflow` 权限推送被拒,待用户处理)。
 5. 后续每次模板改动:改 `templates/` → 重新生成 catalog → 提交两者 → CI 校验。
 2. `node scripts/build-catalog.mjs` 生成 `.vetta/design-templates.json`(catalogVersion 自动递增为 `2026.08.22-01`)。
 3. 本地 `node scripts/build-catalog.mjs --check` 通过(等价 CI 门槛)。
-4. 首次提交 + `git push -u origin main` 推送到 `sikongyue/astravia-design-system-templates.git`。
+4. 首次提交 + `git push -u origin main` 推送到 `maomaochong-ai/astravia-design-system-templates.git`。
 5. 后续每次模板改动:改 `templates/` → 重新生成 catalog → 提交两者 → CI 校验。
 
 ### 3.5 内容仓库验证
@@ -193,8 +193,8 @@ brands-design-md 的 `registry.json` 提供 11 个字段,8 个字段新增/需�
 1. **清单 URL**(design-systems/catalog-sync.ts):
    ```ts
    DESIGN_CATALOG_SOURCES = [
-     "https://raw.githubusercontent.com/sikongyue/astravia-design-system-templates/main/.vetta/design-templates.json",
-     "https://cdn.jsdelivr.net/gh/sikongyue/astravia-design-system-templates@main/.vetta/design-templates.json",
+     "https://raw.githubusercontent.com/maomaochong-ai/astravia-design-system-templates/main/.vetta/design-templates.json",
+     "https://cdn.jsdelivr.net/gh/maomaochong-ai/astravia-design-system-templates@main/.vetta/design-templates.json",
    ]
    ```
 2. **plugin.json 权限补齐**(先决条件):
@@ -232,7 +232,7 @@ brands-design-md 的 `registry.json` 提供 11 个字段,8 个字段新增/需�
 | P1.3 逐品牌转换:theme.css 补 7 token、preview.html → demo.html 合规化、meta.json 生成、tagline.zh 翻译 | 抽样检查 + 全量 `--check` |
 | P1.4 重叠 11 个品牌以 brands 覆盖;5 个带点 slug 改名;Inspired 变体规范 | 无 slug 冲突、order 唯一 |
 | P1.5 `node scripts/build-catalog.mjs` 生成目录 + `--check` 通过 | CI 等价门槛 |
-| P1.6 首提 + push 到 sikongyue/astravia-design-system-templates.git | GitHub 可见,CI 绿 |
+| P1.6 首提 + push 到 maomaochong-ai/astravia-design-system-templates.git | GitHub 可见,CI 绿 |
 | P1.7 用 `parseRemoteCatalog` 同款规则自测清单 | 模拟校验零错误 |
 
 ### 阶段 P2:宿主 workspace-view 插槽恢复

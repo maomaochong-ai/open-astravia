@@ -1,14 +1,11 @@
 // Download the dbx-mcp native binary for Astravia's database integration (P7).
 //
-// Source: platform-dependent.
-//   - win32-x64: Astravia's own build published as a GitHub Release on the fork
-//     (https://github.com/sikongyue/dbx, upstream: https://github.com/t8y2/dbx).
-//     The release asset `dbx-mcp-<version>-astravia-win-x64.exe` is built by
-//     Astravia's own CI (fork `.github/workflows/dbx-mcp-astravia.yml`).
-//   - darwin-arm64 / darwin-x64: official npm platform package
-//     `@dbx-app/mcp-darwin-<arch>` (temporary source; switch to the fork
-//     Release once the fork CI publishes macOS assets, see
-//     docs/database/dbx-main-integration-tasks.md B2.2 后续 macOS 矩阵).
+// Source: platform-dependent. All three platforms use Astravia's own build published
+// as a GitHub Release on the fork (https://github.com/maomaochong-ai/dbx, upstream:
+// https://github.com/t8y2/dbx). Assets `dbx-mcp-<version>-astravia-<platform>` are
+// built by Astravia's own CI (fork `.github/workflows/dbx-mcp-astravia.yml`);
+// darwin switched to the fork direct link in B2.4 (previously official npm
+// platform package `@dbx-app/mcp-darwin-<arch>`).
 //
 // Idempotent: skips when the target already exists and its SHA-256 matches the
 // pinned digest. Version is locked on purpose (see docs/database/dbx-main-integration-tasks.md);
@@ -18,7 +15,7 @@
 // Override via env when needed:
 //   DBX_MCP_VERSION=v0.4.61
 //   DBX_MCP_SHA256=...
-//   DBX_MCP_RELEASE=https://github.com/sikongyue/dbx/releases/download/dbx-mcp-astravia-v0.4.61
+//   DBX_MCP_RELEASE=https://github.com/maomaochong-ai/dbx/releases/download/dbx-mcp-astravia-v0.4.61
 
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -33,24 +30,22 @@ const projectRoot = join(import.meta.dirname, "..");
 const VERSION = process.env.DBX_MCP_VERSION ?? "0.4.61";
 const RELEASE =
 	process.env.DBX_MCP_RELEASE ??
-	`https://github.com/sikongyue/dbx/releases/download/dbx-mcp-astravia-v${VERSION}`;
+	`https://github.com/maomaochong-ai/dbx/releases/download/dbx-mcp-astravia-v${VERSION}`;
 
 /**
  * 平台 → 二进制元信息。
  * - dir：resources/dbx-mcp/<dir>/ 目录名（与 dbx-mcp-path.ts 的解析一致）
  * - binaryName：二进制文件名（win 带 .exe）
- * - sha256：默认 pin（可用 DBX_MCP_SHA256 覆盖）；darwin 来自官方 npm 包 0.4.61
- *   解压后二进制实测（B1.1 先例，tarball 哈希另计）
- * - forkAsset：fork Release 资产名（`dbx-mcp-<ver>-astravia-<platform>`）；fork
- *   尚未发布 darwin 资产前为 null，走 npm-tarball 源
- */
+ * - sha256：默认 pin（可用 DBX_MCP_SHA256 覆盖）；三平台均来自 fork CI 产出的
+ *   .sha256 文件（B2.4 起 macOS 亦切 fork 直链）
+ * - forkAsset：fork Release 资产名（`dbx-mcp-<ver>-astravia-<platform>`），三平台齐备
 const PLATFORMS = {
 	"win32-x64": {
 		dir: "win32-x64",
 		binaryName: "dbx-mcp.exe",
 		sha256:
 			process.env.DBX_MCP_SHA256 ??
-			"78957987da28600bedede19d3d731b756333f8d4f64bd3d553e0407413bd7ca8",
+			"25484f9b5af527dd0af7dde44d9f2a929ad92b2c4cfe654c9460ca7be51950a8",
 		forkAsset: `dbx-mcp-${VERSION}-astravia-win-x64.exe`,
 	},
 	"darwin-arm64": {
@@ -58,16 +53,16 @@ const PLATFORMS = {
 		binaryName: "dbx-mcp",
 		sha256:
 			process.env.DBX_MCP_SHA256 ??
-			"059d87b0fbe8b56d82c6e457e98819f93eb06ada1b7874d3a94743270b844926",
-		forkAsset: null,
+			"7ef5d8cd0affe51caf33ab78263da9e78fb33dfb97264897dba2defd67c3845d",
+		forkAsset: `dbx-mcp-${VERSION}-astravia-darwin-arm64`,
 	},
 	"darwin-x64": {
 		dir: "darwin-x64",
 		binaryName: "dbx-mcp",
 		sha256:
 			process.env.DBX_MCP_SHA256 ??
-			"20e39ba3d63376b98c5d34ca66bbb634ef898abd7183c93bdee06f24269f87e2",
-		forkAsset: null,
+			"b48f619a4b33c35c3cd90a495cd2b9fb45506ee420de590afa830f50866c3f36",
+		forkAsset: `dbx-mcp-${VERSION}-astravia-darwin-x64`,
 	},
 };
 

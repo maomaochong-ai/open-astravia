@@ -349,7 +349,7 @@ Windows 与 Linux 仍走托管 runner（倍率 2 与 1），额度充裕。
 在签名机上注册，标签必须包含 `astravia-mac`：
 
 ```bash
-./config.sh --url https://github.com/sikongyue/astravia --token <token> --labels astravia-mac
+./config.sh --url https://github.com/maomaochong-ai/astravia --token <token> --labels astravia-mac
 ```
 
 签名凭据放 runner 目录的 `.env`（`chmod 600`，不进版本控制）：

@@ -231,7 +231,7 @@ CATALOG_PATH_IN_REPO = ".vetta/design-templates.json"
 ## 8. 关键结论(移植时直接引用)
 
 1. 侧边栏「设计」入口 = activity tab id **`canvas`**;模板库画廊 = workspace view id **`gallery`**,默认钉在主导航。
-2. 清单 URL 的 owner/repo/分支 = **`openvetta/vetta-design-templates`** + **`main`**,路径 `.vetta/design-templates.json`;raw 首选、jsDelivr 兜底。→ astravia 需把 owner/repo 换成 `sikongyue/astravia-design-system-templates`。
+2. 清单 URL 的 owner/repo/分支 = **`openvetta/vetta-design-templates`** + **`main`**,路径 `.vetta/design-templates.json`;raw 首选、jsDelivr 兜底。→ astravia 需把 owner/repo 换成 `maomaochong-ai/astravia-design-system-templates`。
 3. 插件权限是链路先决条件:`network.fetch` + `storage.read/write` + `network.allowedHosts`(两个 CDN host)+ `ui.slot.workspace-view`。
 4. frontmatter 四字段 `system/name/source/license`;`design-resources/<slug>/` 是「从风格开工」产物,不是 apply 产物。
 5. demo.html 必须通过 4 条 sandbox 硬校验(无 script / 无外链 / 无 @import / 无 https 引用),这是内容仓库侧的关键合规约束。
