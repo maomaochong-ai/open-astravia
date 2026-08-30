@@ -27,11 +27,13 @@ const CALLOUT_TONE = {
 function AbilityDetailBlockView({
 	block,
 	abilityType,
+	abilityIcon,
 }: {
 	block: AbilityDetailBlock;
 	abilityType: AbilityType;
+	abilityIcon?: string;
 }): JSX.Element | null {
-	if (block.type === "hero") return <AbilityDetailHero block={block} />;
+	if (block.type === "hero") return <AbilityDetailHero block={block} abilityIcon={abilityIcon} />;
 
 	if (block.type === "feature-grid") {
 		return <FeatureInspector title={block.title} items={block.items} abilityType={abilityType} />;
@@ -102,15 +104,22 @@ function AbilityDetailBlockView({
 export function AbilityDetailBlocks({
 	blocks,
 	abilityType,
+	abilityIcon,
 }: {
 	blocks: AbilityDetailBlock[];
 	abilityType: AbilityType;
+	abilityIcon?: string;
 }): JSX.Element | null {
 	if (blocks.length === 0) return null;
 	return (
 		<div className="flex flex-col gap-8">
 			{blocks.map((block, index) => (
-				<AbilityDetailBlockView key={`${block.type}-${index}`} block={block} abilityType={abilityType} />
+				<AbilityDetailBlockView
+					key={`${block.type}-${index}`}
+					block={block}
+					abilityType={abilityType}
+					abilityIcon={abilityIcon}
+				/>
 			))}
 		</div>
 	);

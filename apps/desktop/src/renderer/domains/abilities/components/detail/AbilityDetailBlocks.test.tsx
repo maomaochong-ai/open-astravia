@@ -22,6 +22,7 @@ vi.mock("@vetta/ui", async () => {
 });
 
 import { AbilityDetailBlocks } from "./AbilityDetailBlocks";
+import { shouldShowHeroStill } from "./AbilityRichDetailBlocks";
 
 afterEach(() => {
 	cleanup();
@@ -53,9 +54,13 @@ describe("AbilityDetailBlocks", () => {
 		expect(screen.getByText("Simple flow")).toBeTruthy();
 		expect(screen.getByRole("img", { name: "Preview image" }).getAttribute("src")).toBe("https://example.com/preview.png");
 		expect(screen.getByText("The workspace")).toBeTruthy();
-		expect(screen.getByRole("columnheader", { name: "Before" })).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Before" })).toBeTruthy();
 		expect(screen.getByText("Focused")).toBeTruthy();
-		expect(container.querySelector('[data-detail-layout="contrast"]')?.tagName).toBe("TABLE");
+		expect(container.querySelector('[data-detail-layout="contrast"]')?.tagName).not.toBe("TABLE");
+		expect(container.querySelector('[data-contrast-pane="left"]')?.getAttribute("data-contrast-tone")).toBe("neutral");
+		expect(container.querySelector('[data-contrast-pane="right"]')?.getAttribute("data-contrast-tone")).toBe("accent");
+		expect(container.querySelector('[data-contrast-tone="accent"]')?.className).toContain("ring-1");
+		expect(container.querySelector('[data-contrast-tone="neutral"]')?.className).not.toContain("ring-1");
 	});
 
 	it("renders feature, step and callout host blocks with their copy", () => {
@@ -141,13 +146,16 @@ describe("AbilityDetailBlocks", () => {
 		const sequence = container.querySelector('[data-detail-layout="sequence"]');
 		expect(sequence?.tagName).toBe("OL");
 		expect(sequence?.className).not.toContain("auto-fill");
-		expect(container.querySelector('[data-detail-layout="contrast"]')?.tagName).toBe("TABLE");
+		expect(container.querySelector('[data-detail-layout="contrast"]')?.tagName).not.toBe("TABLE");
 		expect(container.querySelector('[data-detail-layout="catalog"]')?.className).toContain("auto-fill");
-		expect(screen.getByRole("columnheader", { name: "detail.story.vs" })).toBeTruthy();
+		expect(container.querySelector('[data-detail-layout="claims"]')?.className).not.toContain("auto-fill");
+		expect(container.querySelectorAll('[data-detail-layout="claims"] article').length).toBe(2);
+		expect(container.querySelector("[data-detail-spine]")).toBeNull();
+		expect(screen.queryByText("detail.story.vs")).toBeNull();
 	});
 
-	it("keeps comparison rows paired even when one side is longer", () => {
-		render(
+	it("keeps comparison columns independent when one side is longer", () => {
+		const { container } = render(
 			<AbilityDetailBlocks
 				abilityType="plugin"
 				blocks={[
@@ -155,7 +163,7 @@ describe("AbilityDetailBlocks", () => {
 						type: "comparison",
 						title: "Why it helps",
 						left: { title: "Before", items: ["Manual", "Scattered tabs"] },
-						right: { title: "After", items: ["Focused"], tone: "accent" },
+						right: { title: "After", items: ["Focused"] },
 					},
 				]}
 			/>,
@@ -164,6 +172,7 @@ describe("AbilityDetailBlocks", () => {
 		expect(screen.getByText("Manual")).toBeTruthy();
 		expect(screen.getByText("Scattered tabs")).toBeTruthy();
 		expect(screen.getByText("Focused")).toBeTruthy();
+		expect(container.querySelector('[data-contrast-pane="right"]')?.getAttribute("data-contrast-tone")).toBe("accent");
 	});
 
 	it("keeps every feature description visible in a long list", () => {
@@ -202,5 +211,55 @@ describe("AbilityDetailBlocks", () => {
 
 		expect(screen.getByText("Still visible")).toBeTruthy();
 		expect(screen.queryByText("future-block")).toBeNull();
+	});
+
+	it("does not shout author comparison titles into uppercase", () => {
+		render(
+			<AbilityDetailBlocks
+				abilityType="plugin"
+				blocks={[
+					{
+						type: "comparison",
+						title: "Why it helps",
+						left: { title: "Web search only", items: ["Results only"] },
+						right: { title: "使用 Browser", items: ["Focused"], tone: "accent" },
+					},
+				]}
+			/>,
+		);
+
+		const heading = screen.getByRole("heading", { name: "使用 Browser" });
+		expect(heading.className).not.toContain("uppercase");
+	});
+
+	it("hides a hero logo that duplicates the ability icon, but keeps a scene still", () => {
+		const { rerender } = render(
+			<AbilityDetailBlocks
+				abilityType="plugin"
+				abilityIcon="vetta-plugin://browser/icon.png"
+				blocks={[{ type: "hero", title: "A useful agent", image: "icon.png", image_alt: "Plugin icon" }]}
+			/>,
+		);
+		expect(screen.queryByRole("img")).toBeNull();
+
+		rerender(
+			<AbilityDetailBlocks
+				abilityType="plugin"
+				abilityIcon="vetta-plugin://browser/icon.png"
+				blocks={[{ type: "hero", title: "A useful agent", image: "https://example.com/preview.webp", image_alt: "Workspace" }]}
+			/>,
+		);
+		expect(screen.getByRole("img", { name: "Workspace" }).getAttribute("src")).toBe("https://example.com/preview.webp");
+	});
+});
+
+describe("shouldShowHeroStill", () => {
+	it("rejects plugin logos and the same file as the ability icon", () => {
+		expect(shouldShowHeroStill(undefined)).toBe(false);
+		expect(shouldShowHeroStill("icon.png")).toBe(false);
+		expect(shouldShowHeroStill("logo.svg")).toBe(false);
+		expect(shouldShowHeroStill("vetta-plugin://browser/icon.png", "vetta-plugin://browser/icon.png")).toBe(false);
+		expect(shouldShowHeroStill("https://cdn.example/preview.webp")).toBe(true);
+		expect(shouldShowHeroStill("presentation/screenshot.png", "vetta-plugin://browser/icon.png")).toBe(true);
 	});
 });

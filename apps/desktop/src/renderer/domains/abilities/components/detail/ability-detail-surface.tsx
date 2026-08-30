@@ -6,7 +6,7 @@ export const DETAIL_KICKER = "text-[11px] font-medium uppercase tracking-wide te
 
 export const DETAIL_RULE = "border-t border-border/40";
 
-/** 能力清单 / 指标：短条目横排。步骤、对照、Hero 各走自己的语义布局，不要复用这个网格。 */
+/** 能力清单：短条目横排。步骤、对照、Hero、指标各走自己的语义布局。 */
 export const DETAIL_FLOW = "grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-8 gap-y-5";
 
 /** 章节标题：字 + 一条淡线，分节但不画盒子。 */

@@ -10,8 +10,6 @@
 				"eyebrow": "真实浏览器自动化",
 				"title": "让 Agent 在你看得见的浏览器里工作",
 				"description": "复用你的登录态，读取真实页面并完成多步骤操作；涉及提交、发送或删除时始终停下来确认。",
-				"image": "icon.png",
-				"image_alt": "Browser 插件图标",
 				"badges": ["可见窗口", "会话隔离", "提交前确认"]
 			},
 			{
@@ -75,8 +73,6 @@
 						"eyebrow": "REAL BROWSER AUTOMATION",
 						"title": "Let the agent work in a browser you can see",
 						"description": "Reuse your sign-in state, read real pages and complete multi-step tasks. The agent always pauses before submitting, sending or deleting.",
-						"image": "icon.png",
-						"image_alt": "Browser plugin icon",
 						"badges": ["Visible window", "Isolated sessions", "Confirm before submit"]
 					},
 					{

@@ -161,7 +161,7 @@ export function AbilityDetailView({
 
 			{detail.blocks.length > 0 ? (
 				<AbilityDetailEnter index={1}>
-					<AbilityDetailBlocks blocks={detail.blocks} abilityType={item.type} />
+					<AbilityDetailBlocks blocks={detail.blocks} abilityType={item.type} abilityIcon={item.icon} />
 				</AbilityDetailEnter>
 			) : (
 				<>

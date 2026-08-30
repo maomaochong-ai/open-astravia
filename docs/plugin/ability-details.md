@@ -130,18 +130,18 @@ Markdown 区块可以二选一：
   "eyebrow": "REAL BROWSER AUTOMATION",
   "title": "让 Agent 在你看得见的浏览器里工作",
   "description": "复用登录态，完成多步骤网页任务；提交前始终确认。",
-  "image": "presentation/logo.svg",
-  "image_alt": "Browser 插件标志",
-  "layout": "split",
+  "image": "presentation/preview.webp",
+  "image_alt": "在可见窗口中完成登录",
+  "layout": "stacked",
   "badges": ["可见窗口", "会话隔离"]
 }
 ```
 
-`layout` 可选 `stacked`（默认：主张在上、配图在下）或 `split`（有配图时文案与图片左右分栏）。没有 `image` 时不会留下空栏。配图应是场景静帧，不要再放一遍插件图标。
+`layout` 可选 `stacked`（默认：主张在上、配图在下）或 `split`（有配图时文案与图片左右分栏）。没有 `image` 时不会留下空栏。配图必须是场景静帧；`icon.png` / `logo.svg` 以及与能力图标同一张图会被宿主忽略，避免再画一遍页头 Logo。
 
 ### stats
 
-用少量数字或短词概括适用范围、规模和关键约束。宿主使用自适应网格，不需要填写列数。
+用少量数字或短词概括适用范围、规模和关键约束。宿主把 `value` 放进色块，右边跟标签和说明，排成度量行；不拉成通栏 KPI，也不需要填写列数。
 
 ```json
 {
@@ -184,7 +184,7 @@ Markdown 区块可以二选一：
 
 ### comparison
 
-解释两种方式、适用边界或「之前 / 之后」。两侧文案逐条对照阅读，不是两份互不相干的清单。`tone` 选择中性或强调样式。
+解释两种方式、适用边界或「之前 / 之后」。左右是两份独立论点，宿主不会按行一一对应。`tone` 决定这一列是不是选中面板：中性列是带减号的未选列表，强调列是带勾选和主色描边的选中面板。默认左列 `neutral`、右列 `accent`。
 
 ```json
 {
