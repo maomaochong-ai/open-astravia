@@ -28,4 +28,34 @@ describe("runtime-mcp protocol boundary", () => {
 			),
 		).toEqual([]);
 	});
+
+	it("requires Desktop Renderer runtime values to use the browser-safe entry", () => {
+		expect(
+			findPackageBoundaryViolations(
+				"apps/desktop/src/renderer/chat.ts",
+				'import { selectMcpMediaCandidates } from "@vetta/runtime-mcp";',
+			),
+		).toContainEqual(expect.stringContaining("must import MCP runtime values from @vetta/runtime-mcp/browser"));
+		expect(
+			findPackageBoundaryViolations(
+				"apps/desktop/src/renderer/chat.ts",
+				'import { selectMcpMediaCandidates } from "@vetta/runtime-mcp/browser";',
+			),
+		).toEqual([]);
+	});
+
+	it("allows erased MCP type imports in the Desktop Renderer", () => {
+		expect(
+			findPackageBoundaryViolations(
+				"apps/desktop/src/renderer/chat.ts",
+				'import type { McpToolCallResult } from "@vetta/runtime-mcp";',
+			),
+		).toEqual([]);
+		expect(
+			findPackageBoundaryViolations(
+				"apps/desktop/src/renderer/chat.ts",
+				'import { type McpToolCallResult } from "@vetta/runtime-mcp/protocol";',
+			),
+		).toEqual([]);
+	});
 });

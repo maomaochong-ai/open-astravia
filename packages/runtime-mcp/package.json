@@ -14,6 +14,10 @@
 			"types": "./dist/auth/index.d.ts",
 			"import": "./dist/auth/index.js"
 		},
+		"./browser": {
+			"types": "./dist/browser/index.d.ts",
+			"import": "./dist/browser/index.js"
+		},
 		"./config": {
 			"types": "./dist/config/index.d.ts",
 			"import": "./dist/config/index.js"

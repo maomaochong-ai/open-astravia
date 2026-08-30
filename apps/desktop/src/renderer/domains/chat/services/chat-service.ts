@@ -13,7 +13,7 @@ import type {
 } from "@shared/store/atoms";
 import type { Usage } from "@vetta/ai";
 import type { HistoryEntry, PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
-import { readMcpAppAttachment, selectMcpMediaCandidates } from "@vetta/runtime-mcp";
+import { readMcpAppAttachment, selectMcpMediaCandidates } from "@vetta/runtime-mcp/browser";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { classifyChatError } from "./classifyChatError";
 

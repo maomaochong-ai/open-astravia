@@ -131,6 +131,10 @@ export default defineConfig({
 			{ find: "@vetta/runtime-core", replacement: resolve(__dirname, "../../packages/runtime-core/src/index.ts") },
 			{ find: "@vetta/runtime-desktop", replacement: resolve(__dirname, "../../packages/runtime-desktop/src/index.ts") },
 			{ find: "@vetta/runtime-mcp/auth", replacement: resolve(__dirname, "../../packages/runtime-mcp/src/auth/index.ts") },
+			{
+				find: "@vetta/runtime-mcp/browser",
+				replacement: resolve(__dirname, "../../packages/runtime-mcp/src/browser/index.ts"),
+			},
 			{ find: "@vetta/runtime-mcp/client", replacement: resolve(__dirname, "../../packages/runtime-mcp/src/client/index.ts") },
 			{ find: "@vetta/runtime-mcp/config", replacement: resolve(__dirname, "../../packages/runtime-mcp/src/config/index.ts") },
 			{

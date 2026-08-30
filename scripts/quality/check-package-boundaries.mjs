@@ -155,6 +155,47 @@ export function collectImportSpecifiers(filePath, text) {
 	return specifiers;
 }
 
+function collectRuntimeImportSpecifiers(filePath, text) {
+	const sourceFile = ts.createSourceFile(filePath, text, ts.ScriptTarget.Latest, true, scriptKind(filePath));
+	const specifiers = [];
+	const add = (node) => {
+		if (node && ts.isStringLiteralLike(node)) specifiers.push(node.text);
+	};
+	const hasRuntimeImport = (node) => {
+		const clause = node.importClause;
+		if (!clause) return true;
+		if (clause.isTypeOnly) return false;
+		if (clause.name || !clause.namedBindings || !ts.isNamedImports(clause.namedBindings)) return true;
+		return (
+			clause.namedBindings.elements.length === 0 ||
+			clause.namedBindings.elements.some((element) => !element.isTypeOnly)
+		);
+	};
+	const hasRuntimeExport = (node) => {
+		if (node.isTypeOnly) return false;
+		if (!node.exportClause || !ts.isNamedExports(node.exportClause)) return true;
+		return (
+			node.exportClause.elements.length === 0 || node.exportClause.elements.some((element) => !element.isTypeOnly)
+		);
+	};
+	const visit = (node) => {
+		if (ts.isImportDeclaration(node)) {
+			if (hasRuntimeImport(node)) add(node.moduleSpecifier);
+		} else if (ts.isExportDeclaration(node)) {
+			if (hasRuntimeExport(node)) add(node.moduleSpecifier);
+		} else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
+			if (!node.isTypeOnly) add(node.moduleReference.expression);
+		} else if (ts.isCallExpression(node) && node.arguments.length === 1) {
+			const isDynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
+			const isRequire = ts.isIdentifier(node.expression) && node.expression.text === "require";
+			if (isDynamicImport || isRequire) add(node.arguments[0]);
+		}
+		ts.forEachChild(node, visit);
+	};
+	visit(sourceFile);
+	return specifiers;
+}
+
 function collectCapabilityIdLiterals(filePath, text) {
 	const sourceFile = ts.createSourceFile(filePath, text, ts.ScriptTarget.Latest, true, scriptKind(filePath));
 	const capabilityIds = [];
@@ -228,6 +269,18 @@ function checkDesktopCliSourceImports(posixPath, specifiers, findings) {
 		const normalized = specifier.replaceAll("\\", "/");
 		if (normalized.includes("cli-host/src/")) {
 			findings.push(`${posixPath}: desktop must consume cli-host through a package export (${specifier})`);
+		}
+	}
+}
+
+function checkDesktopRendererMcpImports(posixPath, text, findings) {
+	if (!posixPath.startsWith("apps/desktop/src/renderer/")) return;
+	for (const specifier of collectRuntimeImportSpecifiers(posixPath, text)) {
+		if (specifier === "@vetta/runtime-mcp/browser") continue;
+		if (specifier === "@vetta/runtime-mcp" || specifier.startsWith("@vetta/runtime-mcp/")) {
+			findings.push(
+				`${posixPath}: desktop renderer must import MCP runtime values from @vetta/runtime-mcp/browser (${specifier})`,
+			);
 		}
 	}
 }
@@ -1405,6 +1458,7 @@ export function findPackageBoundaryViolations(posixPath, text, options = {}) {
 	checkTestTreeImports(posixPath, specifiers, findings);
 	checkPluginDesktopDeepImport(posixPath, specifiers, findings);
 	checkDesktopCliSourceImports(posixPath, specifiers, findings);
+	checkDesktopRendererMcpImports(posixPath, text, findings);
 	checkPluginDesktopGlobal(posixPath, text, findings);
 	checkCapabilityLayerImports(posixPath, specifiers, findings);
 	checkPublicSystemSdkImports(posixPath, specifiers, findings);

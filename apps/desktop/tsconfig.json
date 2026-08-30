@@ -65,6 +65,7 @@
 			"@vetta/runtime-desktop": ["../../packages/runtime-desktop/src/index.ts"],
 			"@vetta/runtime-desktop/*": ["../../packages/runtime-desktop/src/*"],
 			"@vetta/runtime-mcp": ["../../packages/runtime-mcp/src/index.ts"],
+			"@vetta/runtime-mcp/browser": ["../../packages/runtime-mcp/src/browser/index.ts"],
 			"@vetta/runtime-mcp/*": ["../../packages/runtime-mcp/src/*"],
 			"@vetta/runtime-knowledge": ["../../packages/runtime-knowledge/src/index.ts"],
 			"@vetta/runtime-knowledge/*": ["../../packages/runtime-knowledge/src/*"],

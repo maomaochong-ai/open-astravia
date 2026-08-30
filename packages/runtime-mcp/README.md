@@ -22,6 +22,10 @@ Vetta 平台无关的 MCP 协议、Port 与 Runtime 状态协调层。
 Node 实现由 `@vetta/runtime-node/mcp` 提供；Desktop 专属交互由 `runtime-desktop` 或
 `desktop` Host 适配器提供。`runtime-mcp/src` 不得导入平台 Runtime 或 `node:*`。
 
+浏览器代码只从 `@vetta/runtime-mcp/browser` 导入运行时值。该入口仅包含 MCP App
+Attachment 解析与媒体准入策略，不会把 Agent、Provider 或 Node transport 带入浏览器 bundle；
+类型导入仍可使用其它公开入口。
+
 依赖方向：
 
 ```text

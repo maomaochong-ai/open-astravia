@@ -34,6 +34,8 @@ All notable changes to `@vetta/runtime-mcp` are documented in this file.
 
 ### Changed
 
+- 新增 `@vetta/runtime-mcp/browser` 纯浏览器入口，Renderer 可复用 MCP App Attachment 解析与媒体准入策略，
+  不再经包根入口把 Agent、Provider 或 Node transport 带入浏览器 bundle。
 - `prompts/list` 的 `McpPrompt.arguments` 修正为冻结 Schema 的 `PromptArgument[]`；Tool annotations、Icon、Resource size
   和 Implementation 展示字段同步补齐官方公共合同。
 - MCP ToolResult 的协议级 `isError` 现在从结果投影传播到 Runtime/Agent ToolResultMessage；结构化结果保留在 details 或 artifact 中。

@@ -110,6 +110,7 @@
 			"@vetta/runtime-knowledge/*": ["./packages/runtime-knowledge/src/*"],
 			"@vetta/runtime-mcp": ["./packages/runtime-mcp/src/index.ts"],
 			"@vetta/runtime-mcp/auth": ["./packages/runtime-mcp/src/auth/index.ts"],
+			"@vetta/runtime-mcp/browser": ["./packages/runtime-mcp/src/browser/index.ts"],
 			"@vetta/runtime-mcp/client": ["./packages/runtime-mcp/src/client/index.ts"],
 			"@vetta/runtime-mcp/config": ["./packages/runtime-mcp/src/config/index.ts"],
 			"@vetta/runtime-mcp/protocol": ["./packages/runtime-mcp/src/protocol/index.ts"],
