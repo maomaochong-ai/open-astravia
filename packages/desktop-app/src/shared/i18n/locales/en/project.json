@@ -146,6 +146,10 @@
 		"bannerRestart": "Restart",
 		"bannerDismiss": "Dismiss"
 	},
+	"tabFullscreen": {
+		"enter": "Fullscreen tab",
+		"exit": "Exit fullscreen"
+	},
 	"tabPicker": {
 		"moreTabs": "More tabs",
 		"hiddenPanels": "Hidden panels",

@@ -1,7 +1,7 @@
 {
   "id": "web-element-picker",
   "name": "%plugin.name%",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "pluginApiVersion": "^1.0.0",
   "runtime": "module-federation",
   "entry": "dist/mf-manifest.json",

@@ -13,6 +13,8 @@ const require = createRequire(import.meta.url);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const extRoot = resolve(scriptDir, "..");
 const extDist = resolve(extRoot, "dist");
+// 可用 WEP_EXT_DIR 覆盖加载目录（如 zip 解压产物），用于验证商店包内容
+const extDir = process.env.WEP_EXT_DIR ? resolve(process.env.WEP_EXT_DIR) : extDist;
 const repoRoot = resolve(extRoot, "../../../../..");
 
 // ── playwright-core 探测 ──
@@ -77,7 +79,7 @@ rmSync(userDataDir, { recursive: true, force: true });
 const context = await chromium.launchPersistentContext(userDataDir, {
 	headless: true,
 	executablePath: chromiumExec,
-	args: [`--disable-extensions-except=${extDist}`, `--load-extension=${extDist}`],
+	args: [`--disable-extensions-except=${extDir}`, `--load-extension=${extDir}`],
 });
 const page = await context.newPage();
 await page.goto(`${baseUrl}/`);

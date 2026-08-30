@@ -191,13 +191,13 @@ packages/plugins/externals/web-element-picker/
 | `network.fetch` | Sharingan 跨域资产/样式/字体抓取 | 可选（二期未用） |
 | `fs.read` / `fs.write` | 截图/报告保存到项目目录 | 可选 |
 
-### 5.7 manifest（现状 v0.2.2）
+### 5.7 manifest（现状 v0.2.3）
 
 ```json
 {
   "id": "web-element-picker",
   "name": "%plugin.name%",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "pluginApiVersion": "^1.0.0",
   "runtime": "module-federation",
   "entry": "dist/mf-manifest.json",
@@ -423,14 +423,14 @@ packages/plugins/externals/web-element-picker/
 
 | 模块 | 文件 | 说明 |
 |---|---|---|
-| manifest | `manifest.json` | MV3，v0.3.0，`_locales` en/zh_CN，`<all_urls>` content script（document_start），web_accessible_resources 放行 `kernel-inject.js` |
+| manifest | `manifest.json` | MV3，v0.3.1，`_locales` en/zh_CN，`<all_urls>` content script（document_start），web_accessible_resources 放行 `kernel-inject.js` |
 | 授权码 | `src/license.ts` | base32 + ECDSA P-256/SHA-256 验签（浏览器/Node 通用 WebCrypto）；`checkLicense` 结构+签名+有效期 |
 | 密钥工具 | `scripts/license-keygen.mjs` / `license-sign.mjs` / `license.test.ts` | 生成密钥对 / 签发授权码 / 单测 |
 | 内核注入 | `src/inject-main.ts` | 主世界桥：`__wepCmd` 下行（mount/destroy/applySettings/applyLang）+ `__wepEvent` 上行 + 就绪 ping/pong；构建时拼接到内核 IIFE 之后成 `kernel-inject.js` |
 | content script | `src/content.ts` | 注入内核、事件中继、命令下行、导航恢复（storage `wepSelecting`）、剪贴板兜底 |
 | background | `src/background.ts` | 事件状态汇总（session）、授权门控（wep-start/截图/发送前验签）、截图下载、命令转发（无接收端安全吞错） |
 | popup | `src/popup/popup.html` + `popup.ts` | 激活表单 + 购买链接 + 开始/停止 + 写轮眼开关 + 状态轮询（600ms） |
-| 构建 | `scripts/build-extension.mjs` | 读内核 bundle → 拼接 inject-main → 打包 content/background/popup → 复制资源 → 打 zip（`extension/release/web-element-picker-0.3.0.zip`） |
+| 构建 | `scripts/build-extension.mjs` | 读内核 bundle → 拼接 inject-main → 打包 content/background/popup → 复制资源 → 打 zip（`extension/release/web-element-picker-extension-0.3.1.zip`） |
 | 端到端 | `scripts/e2e.mjs` | Playwright + chromium-1194 加载真实扩展，8 步断言（见 §12.5 验收） |
 | 图标 | `assets/icon{16,32,48,128}.png` | `scripts/generate-icon.mjs` 生成 |
 
