@@ -172,7 +172,7 @@ wrangler r2 object put astravia-downloads/plugins/astravia-plugin-1.0.0.zip \
 | 注册局层确认 | `curl https://rdap.org/domain/astravia.dev` 看 nameservers | 显示 elisabeth/jaime.ns.cloudflare.com |
 | 根域访问 | 浏览器打开 `https://astravia.dev` | 显示官网（可选配置：重定向到 www 统一域名；不配则两个地址各自独立可访问） |
 
-| 插件直链（已上线） | 浏览器打开 `https://dl.astravia.dev/plugins/web-element-picker-extension-0.3.1.zip`（浏览器扩展）/ `.../web-element-picker-builtin-0.2.3.zip`（内置插件） | 200、`application/zip`（27889 / 154408 字节，2026-08-30 实测通过，`dl` 与 `pub` 域名一致） |
+| 插件直链（已上线） | 浏览器打开 `https://dl.astravia.dev/plugins/web-element-picker-extension-0.3.2.zip`（浏览器扩展）/ `.../web-element-picker-builtin-0.2.4.zip`（内置插件） | 200、`application/zip`（28057 / 155557 字节，2026-08-30 实测通过，`dl` 与 `pub` 域名一致） |
 | 下载直链 | 浏览器打开 `https://dl.astravia.dev/app/v<版本>/astravia-<版本>-mac.dmg` | 200 可下载（路径以实际版本为准，见 [installer-r2-distribution.md](installer-r2-distribution.md)） |
 | 更新元数据 | 浏览器打开 `https://dl.astravia.dev/app/v<版本>/latest.yml` | 返回 YAML，version 与发版版本一致 |
 | 跨网络验证 | 手机流量（非 Wi-Fi）再访问一次 | 正常（排除本机 DNS 缓存假象） |

@@ -62,8 +62,8 @@ ls -la release/
 ```
 astravia-downloads/                 ← R2 桶
 ├── plugins/                        ← 已上线（插件包）
-│   ├── web-element-picker-extension-0.3.1.zip   # 浏览器扩展（MV3 商店包）
-│   └── web-element-picker-builtin-0.2.3.zip     # 桌面应用内置插件包
+│   ├── web-element-picker-extension-0.3.2.zip   # 浏览器扩展（MV3 商店包）
+│   └── web-element-picker-builtin-0.2.4.zip     # 桌面应用内置插件包
 └── app/
     └── v<VER>/                     ← 版本目录
         ├── astravia-<VER>-mac.dmg / -mac.zip / .blockmap
