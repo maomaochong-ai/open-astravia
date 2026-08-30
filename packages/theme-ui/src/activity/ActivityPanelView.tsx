@@ -1,7 +1,11 @@
 import { AnimatePresence, motion } from "motion/react";
 import type { ComponentType, JSX, ReactNode } from "react";
 import { ResizeHandle } from "../layout/ResizeHandle";
+import { isMac } from "../utils/platform";
 import type { ActivityPanelFrameProps } from "./ActivityPanelFrame";
+
+/** macOS 红绿灯预留槽位宽度（px），与 SidebarTopBar / PageHeaderFrame 保持一致。 */
+const TRAFFIC_LIGHT_GUTTER = 78;
 
 export interface ActivityPanelViewProps {
 	readonly Frame: ComponentType<ActivityPanelFrameProps>;
@@ -41,7 +45,15 @@ export function ActivityPanelView({
 	const panelBody = (
 		<>
 			{(tabBar || tabPicker || tabMenuExtra) && (
-				<div className="group/activity-tabs relative z-0 flex shrink-0 items-end pt-1">
+				<div
+					className="group/activity-tabs relative z-0 flex shrink-0 items-end pt-1"
+					style={fullscreen && isMac ? { paddingLeft: TRAFFIC_LIGHT_GUTTER } : undefined}
+				>
+					{/* 活动面板全屏覆盖窗口时 tab 行顶到左上角：左侧预留红绿灯槽位并作为窗口拖拽区，
+					    避免「+」、全屏切换等按钮被 macOS 红绿灯盖住。 */}
+					{fullscreen && isMac && (
+						<div aria-hidden className="drag-region absolute inset-y-0 left-0" style={{ width: TRAFFIC_LIGHT_GUTTER }} />
+					)}
 					{tabBar}
 					{tabMenuExtra}
 					{tabPicker}
