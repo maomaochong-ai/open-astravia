@@ -1,15 +1,4 @@
 {
-	"agentTraces": {
-		"title": "执行诊断", "subtitle": "查看此会话的 Agent、模型、工具与配置执行记录。",
-		"privacy": "仅保存本地安全摘要，不记录消息、提示词、工具参数、结果或错误正文。默认保留 7 天、最多 5000 条。点击刷新查看最新执行。",
-		"turnFilter": "Turn ID（留空显示全部）", "filter": "筛选", "errorsOnly": "仅失败", "refresh": "刷新",
-		"degraded": "诊断存储或适配器异常：{{code}}。Agent 执行不受影响，部分记录可能尚未保存。", "dropped": "容量限制已丢弃 {{count}} 条记录。",
-		"error": "无法读取执行记录，请刷新重试。", "loading": "正在读取执行记录…", "empty": "没有符合条件的执行记录。", "more": "加载更多",
-		"time": "开始时间", "traceId": "Trace ID", "spanId": "Span ID", "duration": "{{count}} 毫秒", "configurationRevision": "配置版本", "tokens": "Token 合计", "metadata": "安全诊断字段",
-		"kind": { "agent": "Agent", "generation": "模型", "tool": "工具", "span": "阶段", "event": "事件" },
-		"state": { "running": "执行中", "completed": "完成", "error": "失败", "interrupted": "已中断" },
-		"identity": { "agentId": "Agent ID", "revisionId": "定义版本", "instanceId": "实例 ID", "sessionId": "会话 ID", "turnId": "Turn ID", "modelCallId": "模型调用 ID", "toolCallId": "工具调用 ID" }
-	},
 	"activityPanel": {
 		"tabs": {
 			"file": "文件",

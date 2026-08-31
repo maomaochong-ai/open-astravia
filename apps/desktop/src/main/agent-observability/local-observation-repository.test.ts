@@ -4,20 +4,20 @@ import { join } from "node:path";
 import type { RuntimeTraceRecord } from "@vetta/runtime-telemetry";
 import { atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { LocalTraceRepository } from "./local-trace-repository.js";
+import { LocalAgentObservationRepository } from "./local-observation-repository.js";
 
-describe("bounded local Trace persistence and query", () => {
+describe("bounded local observability persistence and query", () => {
 	const directories: string[] = [];
-	const repositories: LocalTraceRepository[] = [];
+	const repositories: LocalAgentObservationRepository[] = [];
 	afterEach(async () => {
 		for (const repository of repositories) await repository.flush();
 		for (const directory of directories) await rm(directory, { recursive: true, force: true });
 	});
-	async function fixture(options: Partial<ConstructorParameters<typeof LocalTraceRepository>[0]> = {}) {
+	async function fixture(options: Partial<ConstructorParameters<typeof LocalAgentObservationRepository>[0]> = {}) {
 		const directory = await mkdtemp(join(tmpdir(), "agent-traces-"));
 		directories.push(directory);
 		const path = join(directory, "traces.json");
-		const repository = new LocalTraceRepository({ path, now: () => 100, ...options });
+		const repository = new LocalAgentObservationRepository({ path, now: () => 100, ...options });
 		repositories.push(repository);
 		return { repository, path };
 	}
@@ -34,7 +34,7 @@ describe("bounded local Trace persistence and query", () => {
 		expect((await repository.query({ sessionId: "session", errorsOnly: true })).records.map(({ id }) => id)).toEqual([
 			"b",
 		]);
-		const restored = new LocalTraceRepository({ path, now: () => 100 });
+		const restored = new LocalAgentObservationRepository({ path, now: () => 100 });
 		repositories.push(restored);
 		expect((await restored.query({ sessionId: "session" })).records[0]?.state).toBe("interrupted");
 		expect(JSON.parse(await readFile(path, "utf8")).schemaVersion).toBe(1);
@@ -119,7 +119,7 @@ describe("bounded local Trace persistence and query", () => {
 		expect(Buffer.byteLength(await readFile(path, "utf8"), "utf8")).toBeLessThanOrEqual(600);
 		expect((await repository.query({ sessionId: "session" })).health.dropped).toBeGreaterThan(0);
 	});
-	it("rejects invalid transport queries instead of broadening their scope", async () => {
+	it("rejects invalid diagnostic queries instead of broadening their scope", async () => {
 		const { repository } = await fixture();
 		for (const input of [
 			{},

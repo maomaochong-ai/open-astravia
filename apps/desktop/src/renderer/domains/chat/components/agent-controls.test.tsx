@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 
 describe("conversation controls", () => {
-	it("keeps header actions available without Agent configuration controls", async () => {
+	it("keeps header actions available without Agent configuration or diagnostic controls", async () => {
 		const store = createStore();
 		store.set(activeSessionAtom, { cwd: "/workspace", sessionPath: "/session.json", runtimeId: "session" });
 		const actions = {
@@ -54,7 +54,7 @@ describe("conversation controls", () => {
 			</Provider>,
 		);
 		expect(screen.queryByRole("button", { name: "agentConfiguration.title" })).toBeNull();
-		expect(screen.getByRole("button", { name: "agentTraces.title" })).toBeDefined();
+		expect(screen.queryByRole("button", { name: "agentTraces.title" })).toBeNull();
 		const user = userEvent.setup();
 		await user.click(screen.getByRole("button", { name: "Export" }));
 		await user.click(screen.getByRole("button", { name: "Panel" }));

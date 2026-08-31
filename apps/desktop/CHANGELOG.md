@@ -2,7 +2,7 @@
 
 ### Added
 
-- 会话标题栏新增执行诊断：本地持久化 Agent/模型/工具 Span 与安全事件，可筛选 Turn/失败、查看父子关系、实例/定义/配置版本及用量。默认保留 7 天、5000 条、16 MiB；存储故障显示降级而不影响执行，远端导出沿显式 Langfuse 开关启用且不发送正文。
+- Agent 本地可观测持久化 Agent/模型/工具 Span 与安全事件，保留父子关系、实例/定义/配置版本及用量，供宿主内部查询。默认保留 7 天、5000 条、16 MiB；存储故障通过安全日志与内部健康状态报告，远端导出沿显式 Langfuse 开关启用且不发送正文。
 
 - 底层保留逐会话 Agent 配置：支持模板快照与 Prompt、Skill、Tool、MCP、Plugin、模型和推理等级覆盖，采用版本冲突检测，历史会话保存独立模板快照。
 
@@ -79,7 +79,7 @@
 
 ### Changed
 
-- 移除最近新增的新会话/会话内 Agent 配置 UI、专用 preload/IPC 和模板管理代码；配置能力仅由 Runtime/宿主代码使用。已有会话配置继续恢复；原有模型与工作模式控件不变。
+- 移除对话内 Trace UI 与查询 IPC；诊断统一归入可观测，由 Runtime 组合根创建和关闭，保留 `agent-traces.json` 兼容性。
 
 - 同一工作区中的每个活动会话使用独立 Agent Instance，恢复保留会话历史并创建新的运行身份；工作区 Composition 与
   MCP Source 继续共享。关键 Session 创建/关闭日志包含安全的 Agent、Instance、revision 和 Session 身份，便于定位生命周期问题。

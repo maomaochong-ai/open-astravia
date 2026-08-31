@@ -116,14 +116,21 @@ discover local history; a very large individual file is parsed in the worker, no
 
 ## Development workflow
 
-### Agent configuration
+### Agent configuration and observability
 
 Each conversation owns its Agent instance. Agent configuration remains a host/Runtime capability: callers can supply a
 versioned template snapshot and session overrides, inspect desired/effective revisions, and update them for the next Turn.
-Desktop does not expose an Agent configuration editor or template CRUD in conversation UI, preload or dedicated IPC.
-Existing model and work-mode controls are unchanged. Saved session configuration still restores from its
+Desktop does not expose an Agent configuration editor, template CRUD, or a Trace panel in conversation UI, preload or
+dedicated IPC. Existing model and work-mode controls are unchanged. Saved session configuration still restores from its
 embedded snapshot; legacy `agent-templates.json` is left untouched and is no longer used by Desktop.
 See the [configuration API](../../packages/coding-agent/docs/agent-configuration.md).
+
+`src/main/agent-observability` composes local diagnostic storage and optional remote export under the existing Runtime
+Observation Hub. Trace/span remains the native execution signal within observability; identity, configuration revisions,
+usage and parent linkage are preserved without collecting content. The Runtime composition owns and closes these resources.
+Internal queries remain session-scoped; no global UI query singleton or diagnostic IPC remains. The v1 `agent-traces.json`
+path and retention limits (7 days, 5,000 records, 16 MiB) stay compatible. Degradation is reported through safe structured logs
+and internal query health. Remote export still requires explicit `VETTA_TRACING=langfuse` configuration.
 
 ### Local development
 

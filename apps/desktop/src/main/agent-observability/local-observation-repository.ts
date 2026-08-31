@@ -1,22 +1,22 @@
 import { readFile, stat } from "node:fs/promises";
 import { parseRuntimeTraceRecord, type RuntimeTraceRecord, traceObject } from "@vetta/runtime-telemetry";
 import { atomicWriteJSONAsync } from "@vetta/toolkit/atomic-write";
-import type { AgentTraceHealth, AgentTracePage } from "../../shared/agent-traces.js";
+import type { AgentObservationHealth, AgentObservationPage } from "./contracts.js";
+import { parseAgentObservationQuery } from "./observation-query.js";
 import { correlateAgentTraces } from "./trace-correlation.js";
-import { parseAgentTraceQuery } from "./trace-query.js";
 
-export interface LocalTraceRepositoryOptions {
+export interface LocalAgentObservationRepositoryOptions {
 	readonly path: string;
 	readonly now?: () => number;
 	readonly maxRecords?: number;
 	readonly retentionMs?: number;
 	readonly maxBytes?: number;
 	readonly write?: (path: string, value: unknown) => Promise<void>;
-	readonly onIssue?: (code: NonNullable<AgentTraceHealth["issue"]>) => void;
+	readonly onIssue?: (code: NonNullable<AgentObservationHealth["issue"]>) => void;
 }
 
 /** Single owner of a bounded, atomically checkpointed diagnostic file. No execution awaits disk writes. */
-export class LocalTraceRepository {
+export class LocalAgentObservationRepository {
 	private readonly records = new Map<string, RuntimeTraceRecord>();
 	private readonly now: () => number;
 	private readonly maxRecords: number;
@@ -26,9 +26,9 @@ export class LocalTraceRepository {
 	private loaded = false;
 	private dirty = false;
 	private dropped = 0;
-	private issue: AgentTraceHealth["issue"] = null;
+	private issue: AgentObservationHealth["issue"] = null;
 	private tail: Promise<void> = Promise.resolve();
-	constructor(private readonly options: LocalTraceRepositoryOptions) {
+	constructor(private readonly options: LocalAgentObservationRepositoryOptions) {
 		this.now = options.now ?? Date.now;
 		this.maxRecords = options.maxRecords ?? 5000;
 		this.retentionMs = options.retentionMs ?? 7 * 24 * 60 * 60 * 1000;
@@ -51,7 +51,7 @@ export class LocalTraceRepository {
 			this.timer.unref();
 		}
 	}
-	reportIssue(code: NonNullable<AgentTraceHealth["issue"]>): void {
+	reportIssue(code: NonNullable<AgentObservationHealth["issue"]>): void {
 		const previous = this.issue;
 		this.issue = code;
 		if (code === "TRACE_CAPACITY") this.dropped++;
@@ -71,8 +71,8 @@ export class LocalTraceRepository {
 		this.tail = task.catch(() => this.reportIssue("TRACE_STORAGE_FAILED"));
 		return this.tail;
 	}
-	async query(input: unknown): Promise<AgentTracePage> {
-		const query = parseAgentTraceQuery(input);
+	async query(input: unknown): Promise<AgentObservationPage> {
+		const query = parseAgentObservationQuery(input);
 		await this.flush();
 		this.prune();
 		const records = correlateAgentTraces([...this.records.values()])

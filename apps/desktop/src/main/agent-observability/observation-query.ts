@@ -1,7 +1,7 @@
 import { traceIdentifier, traceObject } from "@vetta/runtime-telemetry";
-import type { AgentTraceQuery } from "../../shared/agent-traces.js";
+import type { AgentObservationQuery } from "./contracts.js";
 
-export function parseAgentTraceQuery(input: unknown): AgentTraceQuery {
+export function parseAgentObservationQuery(input: unknown): AgentObservationQuery {
 	const value = traceObject(input);
 	if (
 		!value ||

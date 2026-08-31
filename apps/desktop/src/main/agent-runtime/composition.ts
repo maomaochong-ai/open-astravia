@@ -46,7 +46,7 @@ import {
 import { FileConversationRuntimeSessionFileHistoryReader } from "@vetta/runtime-node/conversation";
 import { createNodeKnowledgeRuntime, NodeTextFileStorage } from "@vetta/runtime-node/host";
 import { getModePrompt } from "../agent-modes/index.js";
-import { createDesktopAgentTraceRecorder } from "../agent-observability/composition.js";
+import { createDesktopAgentObservability } from "../agent-observability/composition.js";
 import {
 	DEFAULT_CONVERSATION_CWD,
 	DEFAULT_IM_CONVERSATION_SESSION_DIR,
@@ -77,11 +77,11 @@ import { createSessionInitializationLogPort } from "./session-initialization-log
 const log = getAppLogger("runtime");
 
 export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
-	const traceRecorder = createDesktopAgentTraceRecorder();
+	const observability = createDesktopAgentObservability(getAgentDir(), log);
 	const observationHub = new RuntimeObservationHub({
 		onIssue: (issue) => log.warn("[runtime-observation] application hub issue", issue),
 	});
-	observationHub.attach(traceRecorder, { id: "desktop.agent-traces" });
+	observationHub.attach(observability.port, { id: "desktop.agent-observability" });
 	observationHub.attach(createSessionInitializationLogPort(log), {
 		id: "desktop.session-initialization-log",
 		domains: [CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION.domain],
@@ -138,7 +138,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		new DesktopRuntimeBackendPool({
 			observationPublisher,
 			compositionDefaults: {
-				tracer: traceRecorder,
+				tracer: observability.tracer,
 				tracing: { captureContent: false, detail: "standard" },
 				agentRuntime: { runtime: agentRuntime },
 				modelRegistry: modelRuntime,
@@ -223,7 +223,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 			flush: () => observationHub.flush(),
 			close: async () => {
 				await observationHub.close();
-				await traceRecorder.close();
+				await observability.close();
 			},
 		},
 		createSessionBackend: ({ agents, observationPublisher }) => {

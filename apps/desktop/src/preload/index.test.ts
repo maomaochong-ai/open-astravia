@@ -12,12 +12,12 @@ vi.mock("electron", () => ({
 	webUtils: { getPathForFile: vi.fn() },
 }));
 
-it("exposes the Desktop bridge without Agent configuration APIs", async () => {
+it("exposes the Desktop bridge without Agent configuration or diagnostic APIs", async () => {
 	await import("./index.js");
 	const [name, api] = expose.mock.calls[0]!;
 	expect(name).toBe("vetta");
 	expect(api).not.toHaveProperty("agentConfiguration");
-	expect(api.agentTraces.query).toBeTypeOf("function");
+	expect(api).not.toHaveProperty("agentTraces");
 	expect(api.session.create).toBeTypeOf("function");
 	expect(api.session.prompt).toBeTypeOf("function");
 });

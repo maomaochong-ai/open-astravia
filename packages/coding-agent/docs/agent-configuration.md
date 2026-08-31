@@ -48,3 +48,7 @@ await runtime.invokeSessionExtension(session.sessionId, AGENT_CONFIGURATION_UPDA
 ```
 
 这两个 selection 都受同一套 Schema、资源交集和持久化规则约束。需要复用模板时，将 `template: null` 替换为完整模板快照；不必通过 Desktop 创建模板。
+
+## 可观测
+
+配置保存、应用、失败及其 revision 通过 `AGENT_CONFIGURATION_OBSERVATION` 汇入现有 Runtime Observation Hub。应用侧在 Hub 接入所需 Adapter；执行层保留原生 Span，Recorder 将其与安全事件关联，不需要对话内 Trace 面板。相关边界见 [ADR-0097](../../../docs/adr/0097-local-agent-traces.md)。

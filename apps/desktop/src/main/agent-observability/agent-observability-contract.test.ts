@@ -7,13 +7,13 @@ import {
 	publishCodingAgentExecutionRuntimeDefinition,
 } from "@vetta/coding-agent/composition";
 import { AGENT_CONFIGURATION_UPDATE } from "@vetta/coding-agent/session-extensions";
-import { RuntimeHost } from "@vetta/runtime-core";
+import { RuntimeHost, RuntimeObservationHub } from "@vetta/runtime-core";
 import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
-import { RuntimeTraceRecorder } from "@vetta/runtime-telemetry";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { LocalTraceRepository } from "./local-trace-repository.js";
+import { createDesktopAgentObservability } from "./composition.js";
+import { LocalAgentObservationRepository } from "./local-observation-repository.js";
 
-describe("Desktop Agent execution Trace contract", () => {
+describe("Desktop Agent observability contract", () => {
 	afterEach(() => vi.unstubAllEnvs());
 	it("persists native execution and correlates instances, Turns and immutable configuration revisions", async () => {
 		const directory = await mkdtemp(join(tmpdir(), "desktop-agent-trace-contract-"));
@@ -21,16 +21,22 @@ describe("Desktop Agent execution Trace contract", () => {
 		vi.stubEnv("VETTA_HOME", directory);
 		vi.stubEnv("VETTA_CODING_AGENT_DIR", join(directory, "agent"));
 		vi.stubEnv("USERPROFILE", directory);
-		const path = join(directory, "traces.json");
-		const repository = new LocalTraceRepository({ path });
-		const recorder = new RuntimeTraceRecorder({
-			write: (record) => repository.append(record),
-			flush: () => repository.flush(),
-		});
+		vi.stubEnv("VETTA_TRACING", "");
+		const path = join(directory, "agent-traces.json");
+		const observability = createDesktopAgentObservability(directory, { warn: vi.fn() });
+		const hub = new RuntimeObservationHub();
+		hub.attach(observability.port, { id: "desktop.agent-observability" });
 		let call = 0;
 		await writeFile(join(directory, "input.txt"), "private-tool-result");
 		const runtime = new RuntimeHost({
-			observationPort: recorder,
+			observationPort: {
+				record: (record) => hub.record(record),
+				flush: () => hub.flush(),
+				close: async () => {
+					await hub.close();
+					await observability.close();
+				},
+			},
 			getDefaultExecutionMode: () => "full-access",
 			createSessionBackend: ({ agents, observationPublisher }) => {
 				publishCodingAgentExecutionRuntimeDefinition(agents);
@@ -50,7 +56,7 @@ describe("Desktop Agent execution Trace contract", () => {
 							setServerToken() {},
 							loadRemoteModels: async () => undefined,
 						},
-						tracer: recorder,
+						tracer: observability.tracer,
 						streamFn: () => {
 							const tool = call++ === 0;
 							const stream = new AssistantMessageEventStream();
@@ -103,7 +109,7 @@ describe("Desktop Agent execution Trace contract", () => {
 				selection: { template: null, overrides: { appendSystemPrompt: "private-config", tools: ["read"] } },
 			});
 			await runtime.prompt(session.sessionId, { text: "private-user-input" });
-			const first = await repository.query({ sessionId: session.sessionId, limit: 200 });
+			const first = await observability.query({ sessionId: session.sessionId, limit: 200 });
 			const root = first.records.find((record) => record.kind === "agent")!;
 			expect(root).toBeDefined();
 			expect(root.context).toMatchObject({
@@ -124,7 +130,7 @@ describe("Desktop Agent execution Trace contract", () => {
 			});
 			await runtime.prompt(session.sessionId, { text: "private-second-input" });
 			await runtime.close();
-			const restored = new LocalTraceRepository({ path });
+			const restored = new LocalAgentObservationRepository({ path });
 			const roots = (await restored.query({ sessionId: session.sessionId, limit: 200 })).records.filter(
 				(record) => record.kind === "agent",
 			);
@@ -133,8 +139,8 @@ describe("Desktop Agent execution Trace contract", () => {
 			expect(await readFile(path, "utf8")).not.toContain("private-");
 		} finally {
 			await runtime.close();
-			await recorder.close();
-			await repository.flush();
+			await hub.close();
+			await observability.close();
 			await rm(directory, { recursive: true, force: true });
 		}
 	}, 30000);

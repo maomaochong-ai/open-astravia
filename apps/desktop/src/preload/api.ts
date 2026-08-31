@@ -1,4 +1,3 @@
-import type { DesktopAgentTracesApi } from "../shared/agent-traces.js";
 import type { DesktopAbilitiesApi } from "./api-types/abilities.js";
 import type { DesktopActionApprovalApi } from "./api-types/action-approval.js";
 import type { DesktopAppLifecycleApi } from "./api-types/app-lifecycle.js";
@@ -128,7 +127,6 @@ export interface DesktopApi {
 	pet: DesktopPetApi;
 	quickPanel: DesktopQuickPanelApi;
 	runtimeConfiguration: DesktopRuntimeConfigurationApi;
-	agentTraces: DesktopAgentTracesApi;
 	appshot: DesktopAppshotApi;
 }
 
