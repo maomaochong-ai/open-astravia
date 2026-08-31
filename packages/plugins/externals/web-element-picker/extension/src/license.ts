@@ -6,7 +6,7 @@
 // signature：对 payload 文本做 ECDSA P-256/SHA-256 签名（P1363，64 字节）。
 //
 // 安全边界：一级离线码为对称可逆向提取的弱防线，接受“一码多机 + 分享”风险
-// （见 docs/selector/selector-plugin-integration.md §12.4 决策记录）。
+// （见 ../../docs/selector-plugin-integration.md §12.4 决策记录）。
 
 const enc = new TextEncoder();
 

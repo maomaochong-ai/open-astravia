@@ -307,4 +307,4 @@ Astravia
 
 **联系方式**: 建议与各提供商商务团队沟通代理合作。Astravia内部可对接销售/商务团队获取最新报价。
 
-此方案已放置于 `docs/model-channels/astravia-model-channels.md`。
+此方案已放置于 `product/astravia-model-channels.md`。

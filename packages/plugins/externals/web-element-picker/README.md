@@ -350,12 +350,12 @@ bun extension/scripts/e2e.mjs              # Playwright 加载扩展，8/8 断�
 
 **商业化定案（2026-08-29）**：扩展**整体买断收费**（全部能力需授权码）；一级离线签名码（ECDSA P-256，原方案 HMAC 已升级）、一码多机；**爱发电**渠道售卖；**桌面插件形态免费**（不设授权门控）；发布顺序 **Edge Add-ons 优先 → Chrome Web Store**（接受付费墙审核风险；被拒退路：商店版降级免费基础层 + 自托管分发）。
 
-**运营待办（未实现）**：① Edge / Chrome 开发者账号与商店提交；② 爱发电商品创建与发码流程；③ 隐私政策 URL（商店必填）；④ 私钥正式备份与轮换；⑤ 商店被拒时退路执行。照做式执行清单见 [docs/selector/selector-plugin-store-submission.md](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/docs/selector/selector-plugin-store-submission.md)。
+**运营待办（未实现）**：① Edge / Chrome 开发者账号与商店提交；② 爱发电商品创建与发码流程；③ 隐私政策 URL（商店必填）；④ 私钥正式备份与轮换；⑤ 商店被拒时退路执行。照做式执行清单见 [docs/selector-plugin-store-submission.md](docs/selector-plugin-store-submission.md)。
 
-详细方案、桥适配点与决策记录见 [docs/selector/selector-plugin-integration.md §十二](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/docs/selector/selector-plugin-integration.md)。
+详细方案、桥适配点与决策记录见 [docs/selector-plugin-integration.md §十二](docs/selector-plugin-integration.md)。
 ## 13. 相关文档
 
 - Astravia 插件规范：[docs/plugin/README.md](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/docs/plugin/README.md)、[getting-started.md](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/docs/plugin/getting-started.md)、[ui-slots.md](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/docs/plugin/ui-slots.md)
-- 集成评估与三期路线：[docs/selector/selector-plugin-integration.md](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/docs/selector/selector-plugin-integration.md)
+- 集成评估与三期路线：[docs/selector-plugin-integration.md](docs/selector-plugin-integration.md)
 - 内核源码：[src/kernel/kernel.ts](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/packages/plugins/externals/web-element-picker/src/kernel/kernel.ts)
 - 面板源码：[src/WebElementPickerPanel.tsx](/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia/packages/plugins/externals/web-element-picker/src/WebElementPickerPanel.tsx)

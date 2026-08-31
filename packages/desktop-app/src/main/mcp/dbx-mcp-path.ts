@@ -18,7 +18,7 @@ export const DBX_MCP_COMMAND_PLACEHOLDER = "{{dbxMcpBin}}";
  * app.getAppPath() 指向 dist/main，不可靠，见 im-host/binary-resolver.ts 注释）。
  *
  * 平台：win32-x64 / darwin-arm64 / darwin-x64（linux-x64 预留，见
- * docs/database/dbx-main-integration-tasks.md）；macOS 二进制来源为官方 npm 平台包
+ * ../../../../../deliverables/dbx-mcp/dbx-main-integration-tasks.md）；macOS 二进制来源为官方 npm 平台包
  * （fork CI 产出 darwin 资产后切换，见 scripts/fetch-dbx-mcp.mjs）。
  */
 function dbxMcpPlatformDir(): string {
