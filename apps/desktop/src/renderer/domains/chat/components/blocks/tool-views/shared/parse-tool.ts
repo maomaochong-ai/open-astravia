@@ -4,6 +4,26 @@ import { resolvePluginText } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import { shortenPath } from "./format";
 
+/** Collapsed-row icon color: success and error keep a status, pending stays quiet. */
+export function toolCallIconColorClass(status: ToolCallBlock["status"], isError?: boolean): string {
+	if (status === "error" || isError === true) return "text-destructive/70";
+	if (status === "success") return "text-emerald-400";
+	return "text-muted-foreground/50";
+}
+
+/**
+ * Duration to show on the collapsed row. Pending uses the live elapsed ticker;
+ * completed/error use the recorded duration. Missing timing stays hidden.
+ */
+export function toolCallDurationMs(
+	status: ToolCallBlock["status"],
+	durationMs: number | undefined,
+	liveElapsedMs: number | null,
+): number | null {
+	if (status === "pending") return liveElapsedMs;
+	return durationMs ?? null;
+}
+
 /** Parse MCP tool name: mcp_serverName_toolName */
 export function parseMcpTool(name: string): { server: string; tool: string } | null {
 	const match = name.match(/^mcp_([^_]+)_(.+)$/);

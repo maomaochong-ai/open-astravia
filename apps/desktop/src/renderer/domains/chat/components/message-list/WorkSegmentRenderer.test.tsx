@@ -26,7 +26,18 @@ vi.mock("@vetta/theme-ui/chat", () => ({
 			{children}
 		</div>
 	),
-	ProgressGroupRow: ({ text }: { text: string }) => <span>{text}</span>,
+	ProgressGroupRow: ({
+		text,
+		details,
+	}: {
+		text: string;
+		details?: ReactNode;
+	}) => (
+		<div>
+			<span>{text}</span>
+			{details}
+		</div>
+	),
 	LiveThinkingView: ({ text }: { text: string }) => <span data-testid="live-thinking">{text}</span>,
 	SegmentShell: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
@@ -36,7 +47,11 @@ vi.mock("../blocks/TextBlock", () => ({ TextBlockView: () => null }));
 vi.mock("../blocks/ThinkingBlock", () => ({
 	ThinkingBlockView: ({ title }: { title?: string }) => <span data-testid="thinking-title">{title}</span>,
 }));
-vi.mock("../blocks/ToolCallBlock", () => ({ ToolCallBlockView: () => null }));
+vi.mock("../blocks/ToolCallBlock", () => ({
+	ToolCallBlockView: ({ embedded }: { embedded?: boolean }) => (
+		<span data-testid="tool-details" data-embedded={embedded ? "yes" : "no"} />
+	),
+}));
 vi.mock("../blocks/tool-views/shared/parse-tool", () => ({
 	toolLabel: (block: { toolName: string }) => ({ name: `工具 ${block.toolName}`, detail: "" }),
 }));
@@ -140,6 +155,12 @@ describe("WorkSegmentRenderer live activity", () => {
 		renderSegment(stage([tool("read", { currentPhase: "不应覆盖旧阶段" })]), false);
 
 		expect(screen.getByTestId("group-title").textContent).toBe("核对项目");
+	});
+
+	it("阶段行展开时直接出结果体，不再套一层技术头", () => {
+		renderSegment(stage([tool("read", { status: "success" })]), false);
+
+		expect(screen.getByTestId("tool-details").getAttribute("data-embedded")).toBe("yes");
 	});
 
 	it("进行中的 thinking 在原位换成实时卡片", () => {

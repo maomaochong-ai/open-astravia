@@ -62,15 +62,11 @@ export function BashTerminalCard({
 			<div className="flex items-center gap-2 border-b border-muted-foreground/10 bg-muted/20 px-3 py-1.5">
 				<span
 					className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-						isFailed ? "bg-destructive/70" : isPending ? "bg-primary/60" : "bg-emerald-500/60"
+						isFailed ? "bg-destructive/70" : isPending ? "bg-primary/60" : "bg-muted-foreground/40"
 					}`}
 					style={isPending ? { animation: "pulse 1.5s infinite" } : undefined}
 				/>
-				<span
-					className={`min-w-0 flex-1 truncate text-[11px] text-muted-foreground/70 ${isPending ? "tool-call-shimmer-text" : ""}`}
-				>
-					{headerLabel}
-				</span>
+				<span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground/70">{headerLabel}</span>
 				<div className="opacity-0 transition-opacity group-hover/term:opacity-100">{copyButton}</div>
 			</div>
 
@@ -99,7 +95,7 @@ export function BashTerminalCard({
 
 			{isPending ? (
 				<div className="flex items-center gap-1.5 border-t border-muted-foreground/10 px-3 py-1.5 text-[10px] italic text-muted-foreground/55">
-					<span className="icon-[mdi--loading] h-3 w-3 animate-spin" />
+					<span className="icon-[solar--refresh-linear] h-3 w-3 animate-spin" />
 					<span className="tool-call-shimmer-text">{labels.executing}</span>
 				</div>
 			) : startedAt !== undefined ? (

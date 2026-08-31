@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-/** Tick once per second while the tool is still running, so the live badge updates. */
+/** Tick once per second while the tool is still running, so the live duration updates. */
 export function useElapsedWhilePending(startedAt: number | undefined, pending: boolean): number | null {
 	const [now, setNow] = useState(() => Date.now());
 	useEffect(() => {

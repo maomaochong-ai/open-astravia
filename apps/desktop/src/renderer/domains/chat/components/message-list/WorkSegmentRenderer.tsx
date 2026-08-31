@@ -45,7 +45,7 @@ const StageRow = memo(function StageRow({ block, exportMode }: StageRowProps) {
 			exportMode={exportMode}
 			expanded={expanded}
 			onToggle={toggle}
-			details={<ToolCallBlockView block={block} exportMode={exportMode} aliased />}
+			details={<ToolCallBlockView block={block} exportMode={exportMode} aliased embedded />}
 		/>
 	);
 });

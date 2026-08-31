@@ -32,12 +32,12 @@ import {
 	getShellCommand,
 	getStringArg,
 	parseMcpTool,
+	toolCallDurationMs,
+	toolCallIconColorClass,
 	toolIcon,
 	toolLabel,
 } from "../components/blocks/tool-views/shared/parse-tool";
 import { useElapsedWhilePending } from "../components/blocks/tool-views/shared/use-elapsed";
-
-const CONSPICUOUS_DURATION_MS = 1000;
 
 /**
  * 视窗里每一行工具调用都跑一次这个 hook。订阅 activeSessionAtom 整个对象会让
@@ -102,15 +102,10 @@ export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, 
 	}, [shellCommand, backgroundTasksMap, activeRuntimeId, block.toolCallId]);
 
 	const isPending = block.status === "pending";
-	const iconColorClass =
-		block.status === "error" || block.isError === true
-			? "text-destructive/70"
-			: block.status === "success"
-				? "text-emerald-500/70"
-				: "text-muted-foreground/40";
+	const iconColorClass = toolCallIconColorClass(block.status, block.isError);
 	const liveElapsedMs = useElapsedWhilePending(block.startedAt, isPending);
-	const badgeMs = isPending ? liveElapsedMs : (block.durationMs ?? null);
-	const showBadge = badgeMs !== null && badgeMs >= CONSPICUOUS_DURATION_MS;
+	const badgeMs = toolCallDurationMs(block.status, block.durationMs, liveElapsedMs);
+	const showBadge = badgeMs !== null;
 
 	if (pluginRenderer) {
 		const SlotComponent = pluginRenderer.component;

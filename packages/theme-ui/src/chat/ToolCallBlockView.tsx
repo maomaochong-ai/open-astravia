@@ -1,6 +1,10 @@
 import type { JSX, ReactNode } from "react";
 import { CollapsePanel } from "../shared/CollapsePanel";
 
+const ROW_BUTTON =
+	"inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-1 text-left transition-colors";
+const GUTTER = "ml-4 min-w-0 border-l border-border/50 pl-3 pt-1 pb-2";
+
 export interface ToolCallBlockViewProps {
 	canExpand: boolean;
 	expanded: boolean;
@@ -19,11 +23,18 @@ export interface ToolCallBlockViewProps {
 	body: ReactNode;
 	/** When set, replaces the whole default chrome (plugin slot). */
 	pluginSlot?: ReactNode;
+	/**
+	 * Host already rendered a sentence row (Work-mode stage). Skip the
+	 * technical header so expanding a stage row does not repeat name + path.
+	 */
+	embedded?: boolean;
 	onToggle: () => void;
 }
 
 /**
  * Tool call row + expandable result shell. Host injects tool-specific body / plugin slots.
+ * Header hugs the label so the chevron sits on the text's right; max-w-full truncates
+ * a long path instead of overflowing. Expanded body still uses the message column.
  */
 export function ToolCallBlockView({
 	canExpand,
@@ -41,52 +52,50 @@ export function ToolCallBlockView({
 	badgeLabel,
 	body,
 	pluginSlot,
+	embedded = false,
 	onToggle,
 }: ToolCallBlockViewProps): JSX.Element {
 	if (pluginSlot) return <>{pluginSlot}</>;
+	if (embedded) {
+		return <div className="min-w-0 w-full py-0.5">{body}</div>;
+	}
 
 	return (
-		<div className="group min-w-0">
+		<div className="min-w-0 w-full">
 			<button
 				type="button"
 				onClick={() => canExpand && onToggle()}
 				data-export-toggle={canExpand ? panelId : undefined}
 				aria-expanded={expanded}
-				className={`inline-flex max-w-full items-center gap-2 rounded-lg px-2 py-1 text-left transition-colors ${canExpand ? "hover:bg-muted/60 cursor-pointer" : "cursor-default"}`}
+				className={`${ROW_BUTTON} ${canExpand ? "cursor-pointer hover:bg-muted/60" : "cursor-default"}`}
 			>
-				<div className="flex min-w-0 flex-1 items-center gap-1.5 text-[12px]">
+				{isPending ? (
+					<span className="icon-[solar--refresh-linear] h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground/50" />
+				) : (
 					<span className={`${icon} h-3.5 w-3.5 shrink-0 ${iconColorClass}`} />
-					{mcpServer && (
-						<span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground/50">
-							{mcpServer}
-						</span>
-					)}
-					<span className="shrink-0 font-medium text-foreground/70">{name}</span>
-					{detail && (
-						<span className={`min-w-0 truncate text-muted-foreground/40 ${isPending ? "tool-call-shimmer-text" : ""}`}>
-							{detail}
-						</span>
-					)}
-					{isPending && currentPhase && (
-						<span className="tool-call-shimmer-text min-w-0 truncate italic text-muted-foreground/50">
-							— {currentPhase}
-						</span>
-					)}
-				</div>
-
-				{showBadge && badgeLabel && (
-					<span
-						className={`shrink-0 rounded px-1 py-0.5 text-[10px] tabular-nums ${
-							isPending ? "bg-primary/10 text-primary/70" : "bg-muted text-muted-foreground/60"
-						}`}
-					>
-						{badgeLabel}
+				)}
+				{mcpServer && (
+					<span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground/50">
+						{mcpServer}
 					</span>
 				)}
-
+				<span className="shrink-0 text-[12px] font-medium text-foreground/80">{name}</span>
+				{detail && (
+					<span className="min-w-0 truncate text-[12px] text-muted-foreground/70" title={detail}>
+						{detail}
+					</span>
+				)}
+				{isPending && currentPhase && (
+					<span className="tool-call-shimmer-text min-w-0 truncate text-[12px] text-muted-foreground/60">
+						{currentPhase}
+					</span>
+				)}
+				{showBadge && badgeLabel && (
+					<span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/50">{badgeLabel}</span>
+				)}
 				{canExpand && (
 					<span
-						className={`icon-[mdi--chevron-right] h-3 w-3 shrink-0 text-muted-foreground/30 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
+						className={`icon-[solar--alt-arrow-right-linear] h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
 					/>
 				)}
 			</button>
@@ -97,7 +106,7 @@ export function ToolCallBlockView({
 				exportPanel={exportMode}
 				hidden={exportMode && !expanded}
 			>
-				<div className="ml-2 min-w-0 border-l-2 border-muted-foreground/10 pl-4 pt-1 pb-2">{body}</div>
+				<div className={GUTTER}>{body}</div>
 			</CollapsePanel>
 		</div>
 	);

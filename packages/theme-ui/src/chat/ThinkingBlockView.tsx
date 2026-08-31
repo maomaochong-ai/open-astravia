@@ -25,7 +25,7 @@ export function ThinkingBlockView({
 	const panelId = exportMode ? `export-thinking-${generatedId}` : undefined;
 
 	return (
-		<div className="group">
+		<div className="min-w-0 w-full">
 			<button
 				type="button"
 				onClick={() => setExpanded(!expanded)}
@@ -33,17 +33,17 @@ export function ThinkingBlockView({
 				data-export-label-collapsed={labels.title}
 				data-export-label-expanded={labels.title}
 				aria-expanded={expanded}
-				className="inline-flex items-center gap-2 rounded-lg pr-2 py-1 text-left transition-colors hover:bg-muted/60"
+				className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-1 text-left transition-colors hover:bg-muted/60"
 			>
-				<span className="icon-[mdi--lightbulb-outline] h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
-				<span className="text-[12px] text-muted-foreground/50">{labels.title}</span>
+				<span className="icon-[solar--lightbulb-bolt-linear] h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+				<span className="min-w-0 truncate text-[12px] text-muted-foreground/70">{labels.title}</span>
 				{labels.lineCount && (
-					<span className="text-[11px] text-muted-foreground/30">
+					<span className="shrink-0 text-[11px] text-muted-foreground/40">
 						{labels.lineCount(lines.length)}
 					</span>
 				)}
 				<span
-					className={`icon-[mdi--chevron-right] h-3 w-3 shrink-0 text-muted-foreground/30 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
+					className={`icon-[solar--alt-arrow-right-linear] h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
 				/>
 			</button>
 			<CollapsePanel
@@ -52,8 +52,8 @@ export function ThinkingBlockView({
 				exportPanel={exportMode}
 				hidden={exportMode && !expanded}
 			>
-				<div className="ml-2 border-l-2 border-muted-foreground/10 pl-4 pt-1 pb-2">
-					<div className="whitespace-pre-wrap break-words text-[12px] leading-[1.6] text-muted-foreground/60">
+				<div className="ml-4 border-l border-border/50 pl-3 pt-1 pb-2">
+					<div className="whitespace-pre-wrap break-words text-[12px] leading-[1.6] text-muted-foreground/70">
 						{text}
 					</div>
 				</div>

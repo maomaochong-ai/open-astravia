@@ -24,7 +24,7 @@ function BackgroundTaskTail({ task }: { task: BgTask }): JSX.Element {
 	const statusLine =
 		task.status === "running" ? (
 			<>
-				<span className="icon-[mdi--loading] h-3 w-3 animate-spin" />
+				<span className="icon-[solar--refresh-linear] h-3 w-3 animate-spin" />
 				<span className="tool-call-shimmer-text">后台任务 {task.id} 运行中···</span>
 			</>
 		) : (
@@ -32,10 +32,10 @@ function BackgroundTaskTail({ task }: { task: BgTask }): JSX.Element {
 				<span
 					className={
 						task.status === "completed"
-							? "icon-[mdi--check-circle-outline] h-3 w-3 text-emerald-600"
+							? "icon-[solar--check-circle-linear] h-3 w-3 text-muted-foreground/70"
 							: task.status === "killed"
-								? "icon-[mdi--stop-circle-outline] h-3 w-3"
-								: "icon-[mdi--close-circle-outline] h-3 w-3 text-destructive"
+								? "icon-[solar--stop-circle-linear] h-3 w-3"
+								: "icon-[solar--close-circle-linear] h-3 w-3 text-destructive"
 					}
 				/>
 				<span>

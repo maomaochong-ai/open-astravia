@@ -42,35 +42,33 @@ export function ToolCallGroupView({
 	const open = expanded || exportMode || forceExpanded;
 
 	return (
-		<div className="relative w-fit max-w-full overflow-hidden rounded-lg px-1 py-0.5">
-			<div className="inline-block max-w-full align-top">
-				<button
-					type="button"
-					onClick={() => setExpanded(!expanded)}
-					data-export-toggle={panelId}
-					aria-expanded={open}
-					className="inline-flex max-w-full items-center gap-2 rounded-lg pr-2 py-1 text-left transition-colors hover:bg-muted/60"
+		<div className="min-w-0 w-full">
+			<button
+				type="button"
+				onClick={() => setExpanded(!expanded)}
+				data-export-toggle={panelId}
+				aria-expanded={open}
+				className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-1 text-left transition-colors hover:bg-muted/60"
+			>
+				<span className="flex h-3.5 min-w-3.5 shrink-0 items-center justify-center rounded bg-muted px-1 text-[10px] font-medium tabular-nums text-muted-foreground/60">
+					{blockCount}
+				</span>
+				<span
+					className={`min-w-0 truncate text-[12px] text-muted-foreground/70 ${allDone ? "" : "tool-call-shimmer-text"}`}
 				>
-					<span
-						className={`icon-[mdi--chevron-right] h-4 w-4 shrink-0 text-muted-foreground/80 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
-					/>
-					<span className="flex h-5 min-w-5 items-center justify-center rounded bg-muted px-1.5 text-[11px] font-medium text-muted-foreground/60">
-						{blockCount}
-					</span>
-					<span
-						className={`min-w-0 truncate text-[12px] text-muted-foreground/50 ${allDone ? "" : "tool-call-shimmer-text"}`}
-					>
-						{summary}
-					</span>
-				</button>
-			</div>
+					{summary}
+				</span>
+				<span
+					className={`icon-[solar--alt-arrow-right-linear] h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
+				/>
+			</button>
 			<CollapsePanel
 				open={open}
 				id={panelId}
 				exportPanel={exportMode}
 				hidden={exportMode && !expanded && !forceExpanded}
 			>
-				<div className="flex flex-col gap-0.5 pl-2 pr-1 pb-1">{children}</div>
+				<div className="ml-4 flex flex-col gap-0.5 border-l border-border/50 pb-1 pl-3">{children}</div>
 			</CollapsePanel>
 		</div>
 	);
