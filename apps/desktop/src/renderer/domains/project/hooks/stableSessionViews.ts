@@ -15,6 +15,7 @@ interface SessionRowViewLike {
 	renaming: boolean;
 	running: boolean;
 	scheduled: boolean;
+	pinned: boolean;
 	session: unknown;
 }
 
@@ -30,6 +31,7 @@ export function reuseUnchangedSessionViews<T extends SessionRowViewLike>(cache: 
 			cached.renaming === view.renaming &&
 			cached.running === view.running &&
 			cached.scheduled === view.scheduled &&
+			cached.pinned === view.pinned &&
 			cached.session === view.session
 		) {
 			return cached;

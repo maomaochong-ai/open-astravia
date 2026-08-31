@@ -39,6 +39,7 @@ const DefaultSessionRow = memo(function DefaultSessionRow({
 			active={item.active}
 			contextMenuEnabled={contextMenuEnabled}
 			label={item.label}
+			pinned={item.pinned}
 			renaming={item.renaming}
 			running={item.running}
 			scheduled={item.scheduled}

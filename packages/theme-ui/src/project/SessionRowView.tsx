@@ -17,6 +17,7 @@ export interface SessionRowViewProps {
 	onRename: (name: string) => void;
 	onRenameDone: () => void;
 	onSelect: () => void;
+	pinned?: boolean;
 	renaming: boolean;
 	running: boolean;
 	scheduled: boolean;
@@ -37,6 +38,7 @@ export const SessionRowView = memo(function SessionRowView({
 	onRename,
 	onRenameDone,
 	onSelect,
+	pinned = false,
 	renaming,
 	running,
 	scheduled,
@@ -69,6 +71,9 @@ export const SessionRowView = memo(function SessionRowView({
 				/>
 			) : (
 				<>
+					{pinned ? (
+						<span className="icon-[solar--pin-linear] h-3.5 w-3.5 shrink-0 text-primary/80" />
+					) : null}
 					{forked && !running && !scheduled ? (
 						<span
 							className={cn(

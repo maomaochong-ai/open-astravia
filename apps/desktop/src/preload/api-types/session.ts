@@ -27,6 +27,7 @@ import type {
 } from "../../shared/mcp-interaction.js";
 import type { DesktopMcpTask, DesktopMcpTasksChangedEvent } from "../../shared/mcp-task.js";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
+import type { DesktopSessionSearchEvent, DesktopSessionSearchRequest } from "../../shared/session-search.js";
 
 export type {
 	DesktopMcpAppAttachment,
@@ -43,6 +44,12 @@ export type {
 	DesktopMcpElicitationValue,
 } from "../../shared/mcp-interaction.js";
 export type { DesktopMcpTask, DesktopMcpTaskStatus, DesktopMcpTasksChangedEvent } from "../../shared/mcp-task.js";
+export type {
+	DesktopSessionSearchMatch,
+	DesktopSessionSearchRequest,
+	DesktopSessionSearchResult,
+	DesktopSessionSearchSourceKind,
+} from "../../shared/session-search.js";
 
 /**
  * 工作模式 id（agent_mode 轴）。会话创建时固化，会话内不可变。
@@ -111,6 +118,10 @@ export interface DesktopSessionApi {
 	): Promise<{ sessionId: string; sessionPath: string; cwd?: string }>;
 	listProjects(): Promise<ProjectInfo[]>;
 	listSessions(cwd: string): Promise<DesktopSessionHistoryInfo[]>;
+	searchSessions(
+		request: DesktopSessionSearchRequest,
+		onEvent: (event: DesktopSessionSearchEvent) => void,
+	): () => void;
 	onSessionsChanged(
 		handler: (payload: {
 			cwd: string;

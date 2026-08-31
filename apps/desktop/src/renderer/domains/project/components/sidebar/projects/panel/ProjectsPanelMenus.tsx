@@ -16,6 +16,7 @@ export function ProjectsPanelMenus({ model }: ProjectsPanelMenusProps): JSX.Elem
 			sessionMenu={
 				menus.contextMenu ? (
 					<SessionContextMenu
+						allowMutations={menus.contextMenu.allowMutations}
 						x={menus.contextMenu.x}
 						y={menus.contextMenu.y}
 						session={menus.contextMenu.session}

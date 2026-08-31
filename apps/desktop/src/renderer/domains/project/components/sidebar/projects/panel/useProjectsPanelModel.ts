@@ -51,6 +51,7 @@ export function useProjectsPanelModel({
 		removeProject,
 		deleteProjectFromDisk,
 		loadSessions,
+		removePinnedSessions,
 	} = useProjects();
 	const activeSessionPathValue = useAtomValue(activeSessionPathAtom);
 	const pendingSessionPath = useAtomValue(pendingSessionPathAtom);
@@ -349,6 +350,7 @@ export function useProjectsPanelModel({
 				onConfirm: async () => {
 					await window.vetta.session.clearDefaultConversation("conversation");
 					const removedPaths = new Set(allSessions.map((session) => session.path));
+					removePinnedSessions(removedPaths);
 					if (removedPaths.has(activeSessionPathValue) || (activeSessionCwd === cwd && !removedPaths.size)) {
 						setActiveSession(null);
 						void navigate({
@@ -360,7 +362,17 @@ export function useProjectsPanelModel({
 				},
 			});
 		},
-		[setConfirm, sessionsMap, activeSessionPathValue, activeSessionCwd, setActiveSession, navigate, loadSessions, t],
+		[
+			setConfirm,
+			sessionsMap,
+			activeSessionPathValue,
+			activeSessionCwd,
+			setActiveSession,
+			navigate,
+			loadSessions,
+			removePinnedSessions,
+			t,
+		],
 	);
 
 	const clearClaw = useCallback(
@@ -374,6 +386,7 @@ export function useProjectsPanelModel({
 				onConfirm: async () => {
 					await window.vetta.session.clearDefaultConversation("claw");
 					const removedPaths = new Set(imSessions.map((session) => session.path));
+					removePinnedSessions(removedPaths);
 					if (removedPaths.has(activeSessionPathValue)) {
 						setActiveSession(null);
 						void navigate({
@@ -385,7 +398,17 @@ export function useProjectsPanelModel({
 				},
 			});
 		},
-		[setConfirm, sessionsMap, imCwd, activeSessionPathValue, setActiveSession, navigate, loadSessions, t],
+		[
+			setConfirm,
+			sessionsMap,
+			imCwd,
+			activeSessionPathValue,
+			setActiveSession,
+			navigate,
+			loadSessions,
+			removePinnedSessions,
+			t,
+		],
 	);
 
 	const activeProjectCandidates = useMemo(() => {

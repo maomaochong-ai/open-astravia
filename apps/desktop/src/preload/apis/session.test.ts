@@ -58,4 +58,17 @@ describe("createSessionApi trace propagation", () => {
 		});
 		expect(invoke).toHaveBeenNthCalledWith(4, "vetta:session:mcp-app-release", "surface-1");
 	});
+
+	it("forwards session search requests through the dedicated channel", async () => {
+		const invoke = vi.fn(async () => "search-1");
+		const ipc = { invoke, on: vi.fn(), removeListener: vi.fn() } as unknown as IpcRenderer;
+		const session = createSessionApi(ipc).session;
+
+		await session.searchSessions({ query: "release plan", limit: 20 }, vi.fn());
+
+		expect(invoke).toHaveBeenCalledWith("vetta:session:search-sessions", expect.any(String), {
+			query: "release plan",
+			limit: 20,
+		});
+	});
 });

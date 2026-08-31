@@ -70,6 +70,15 @@ export type { SessionRowViewProps } from "./SessionRowView";
 export { SessionRowView } from "./SessionRowView";
 export type { SidebarProjectsSectionViewProps } from "./SidebarProjectsSectionView";
 export { SidebarProjectsSectionView } from "./SidebarProjectsSectionView";
+export type {
+	SidebarSessionSearchViewActiveFilter,
+	SidebarSessionSearchViewFilterOption,
+	SidebarSessionSearchViewItem,
+	SidebarSessionSearchViewLabels,
+	SidebarSessionSearchViewProps,
+	SidebarSessionSearchViewTimeFilter,
+} from "./SidebarSessionSearchView";
+export { SidebarSessionSearchView } from "./SidebarSessionSearchView";
 export type { ProjectSessionRowItem, ProjectTypeIconKey } from "./types";
 export {
 	DEFAULT_VISIBLE_SESSIONS,

@@ -1,5 +1,6 @@
 import type { DefaultConversationFilter, SessionInfo } from "@shared/store/atoms";
 import {
+	pinnedSessionPathsAtom,
 	renamingSessionPathAtom,
 	runningSessionPathsAtom,
 	scheduledSessionPathsAtom,
@@ -10,6 +11,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { relativeTime } from "../components/sidebar/projects/relativeTime";
+import { buildSidebarSessionOrdering } from "../services/sidebar-session-order";
 import { reuseUnchangedSessionViews } from "./stableSessionViews";
 
 const DEFAULT_VISIBLE_DEFAULT_SESSIONS = 5;
@@ -23,6 +25,7 @@ export interface DefaultSessionListItemView {
 	renaming: boolean;
 	running: boolean;
 	scheduled: boolean;
+	pinned: boolean;
 	session: SessionInfo;
 }
 
@@ -46,11 +49,11 @@ export function useDefaultSessionListModel({
 	sessions,
 }: UseDefaultSessionListModelArgs) {
 	const { t, i18n } = useTranslation("project");
-	const sorted = useMemo(() => [...sessions].sort((a, b) => b.modifiedAt - a.modifiedAt), [sessions]);
 	const setContextMenu = useSetAtom(sessionContextMenuAtom);
 	const viewCacheRef = useRef(new Map<string, DefaultSessionListItemView>());
 	const [renamingSessionPath, setRenamingSessionPath] = useAtom(renamingSessionPathAtom);
 	const runningSessionPaths = useAtomValue(runningSessionPathsAtom);
+	const pinnedSessionPaths = useAtomValue(pinnedSessionPathsAtom);
 	const scheduledSessionPaths = useAtomValue(scheduledSessionPathsAtom);
 	const scheduledBasenames = useMemo(() => {
 		const basenames = new Set<string>();
@@ -58,6 +61,10 @@ export function useDefaultSessionListModel({
 		return basenames;
 	}, [scheduledSessionPaths]);
 	const [showAll, setShowAll] = useState(false);
+	const ordering = useMemo(
+		() => buildSidebarSessionOrdering(sessions, pinnedSessionPaths, DEFAULT_VISIBLE_DEFAULT_SESSIONS, showAll),
+		[pinnedSessionPaths, sessions, showAll],
+	);
 	const revealedActiveSessionRef = useRef<string | null>(null);
 	const [prevFilter, setPrevFilter] = useState(filter);
 	if (prevFilter !== filter) {
@@ -71,20 +78,24 @@ export function useDefaultSessionListModel({
 			return;
 		}
 		if (revealedActiveSessionRef.current === activeSessionPath) return;
-		const activeIndex = sorted.findIndex((session) => session.path === activeSessionPath);
+		const activeIndex = ordering.all.findIndex((session) => session.path === activeSessionPath);
 		if (activeIndex < 0) return;
 		revealedActiveSessionRef.current = activeSessionPath;
-		if (activeIndex >= DEFAULT_VISIBLE_DEFAULT_SESSIONS) setShowAll(true);
-	}, [activeSessionPath, sorted]);
+		const collapsed = buildSidebarSessionOrdering(
+			sessions,
+			pinnedSessionPaths,
+			DEFAULT_VISIBLE_DEFAULT_SESSIONS,
+			false,
+		);
+		if (activeIndex >= collapsed.visible.length) setShowAll(true);
+	}, [activeSessionPath, ordering.all, pinnedSessionPaths, sessions]);
 
-	const hasMore = sorted.length > DEFAULT_VISIBLE_DEFAULT_SESSIONS;
-	const hiddenCount = sorted.length - DEFAULT_VISIBLE_DEFAULT_SESSIONS;
 	const isClaw = filter === "claw";
 
 	// t 在 changeLanguage 后可能保持同一引用；读 i18n.language 强制语言切换时重算 timeLabel。
 	const allViews: DefaultSessionListItemView[] = useMemo(() => {
 		void i18n.language;
-		const next = sorted.map((session) => {
+		const next = ordering.all.map((session) => {
 			const isActive = activeSessionPath === session.path;
 			const isRenaming = renamingSessionPath === session.path;
 			const isRunning = runningSessionPaths.has(session.path);
@@ -97,6 +108,7 @@ export function useDefaultSessionListModel({
 				label: sessionDisplayLabel(session),
 				timeLabel: relativeTime(session.modifiedAt, t),
 				active: isActive,
+				pinned: pinnedSessionPaths.has(session.path),
 				renaming: isRenaming,
 				running: isRunning,
 				scheduled: isSchedule,
@@ -110,20 +122,22 @@ export function useDefaultSessionListModel({
 		i18n.language,
 		renamingSessionPath,
 		runningSessionPaths,
+		pinnedSessionPaths,
 		scheduledBasenames,
 		scheduledSessionPaths,
-		sorted,
+		ordering.all,
 		t,
 	]);
 
-	const visibleViews = showAll ? allViews : allViews.slice(0, DEFAULT_VISIBLE_DEFAULT_SESSIONS);
+	const visiblePaths = useMemo(() => new Set(ordering.visible.map(({ path }) => path)), [ordering.visible]);
+	const visibleViews = allViews.filter(({ path }) => visiblePaths.has(path));
 
 	// per-row 回调必须引用稳定，否则行组件的 memo 永远命中不了。
 	const openContextMenu = useCallback(
 		(event: React.MouseEvent, session: SessionInfo) => {
-			setContextMenu({ x: event.clientX, y: event.clientY, session });
+			setContextMenu({ x: event.clientX, y: event.clientY, session, allowMutations: !isClaw });
 		},
-		[setContextMenu],
+		[isClaw, setContextMenu],
 	);
 	const rename = useCallback(
 		(sessionPath: string, name: string) => onRenameSession(cwd, sessionPath, name),
@@ -145,16 +159,16 @@ export function useDefaultSessionListModel({
 			};
 
 	return {
-		contextMenuEnabled: !isClaw,
-		hasMore,
+		contextMenuEnabled: true,
+		hasMore: ordering.hasMore,
 		labels: {
 			collapse: t("sidebar.projects.collapseSessions"),
-			expand: t("sidebar.projects.expandMore", { count: hiddenCount }),
+			expand: t("sidebar.projects.expandMore", { count: ordering.hiddenCount }),
 			...emptyLabels,
 		},
 		sessions: allViews,
 		showAll,
-		totalCount: sorted.length,
+		totalCount: ordering.all.length,
 		visibleSessions: visibleViews,
 		actions: {
 			emptyAction: !isClaw && onNewSession ? onNewSession : undefined,

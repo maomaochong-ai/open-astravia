@@ -18,6 +18,7 @@ export interface DefaultSessionRowViewProps {
 	onRename: (name: string) => void;
 	onRenameDone: () => void;
 	onSelect: () => void;
+	pinned?: boolean;
 	renaming: boolean;
 	running: boolean;
 	scheduled: boolean;
@@ -36,6 +37,7 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 	onRename,
 	onRenameDone,
 	onSelect,
+	pinned = false,
 	renaming,
 	running,
 	scheduled,
@@ -71,6 +73,9 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 				/>
 			) : (
 				<>
+					{pinned ? (
+						<span className="icon-[solar--pin-linear] h-3.5 w-3.5 shrink-0 text-primary/80" />
+					) : null}
 					{running ? (
 						<span
 							className={cn(

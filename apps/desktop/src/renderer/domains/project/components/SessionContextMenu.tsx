@@ -7,6 +7,7 @@ interface SessionContextMenuProps {
 	x: number;
 	y: number;
 	session: SessionInfo;
+	allowMutations: boolean;
 	onClose: () => void;
 	onDelete: (session: SessionInfo) => void;
 }
@@ -15,9 +16,10 @@ export function SessionContextMenu({
 	x,
 	y,
 	session,
+	allowMutations,
 	onClose,
 	onDelete,
 }: SessionContextMenuProps): JSX.Element {
-	const model = useSessionContextMenuModel(session, onClose, onDelete);
+	const model = useSessionContextMenuModel(session, allowMutations, onClose, onDelete);
 	return createPortal(<SessionContextMenuView {...model} x={x} y={y} />, document.body);
 }

@@ -2,27 +2,34 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, type JSX } from "react";
 
 export interface SessionContextMenuViewLabels {
+	pin: string;
 	rename: string;
 	openInFolder: string;
 	delete: string;
 }
 
 export interface SessionContextMenuViewProps {
+	canDelete: boolean;
+	canRename: boolean;
 	labels: SessionContextMenuViewLabels;
 	onClose: () => void;
 	onDelete: () => void;
 	onOpenInFolder: () => void;
 	onRename: () => void;
+	onTogglePin: () => void;
 	x: number;
 	y: number;
 }
 
 export function SessionContextMenuView({
+	canDelete,
+	canRename,
 	labels,
 	onClose,
 	onDelete,
 	onOpenInFolder,
 	onRename,
+	onTogglePin,
 	x,
 	y,
 }: SessionContextMenuViewProps): JSX.Element {
@@ -59,12 +66,22 @@ export function SessionContextMenuView({
 			>
 				<button
 					type="button"
-					onClick={onRename}
+					onClick={onTogglePin}
 					className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
 				>
-					<span className="icon-[solar--pen-2-linear] h-3.5 w-3.5" />
-					{labels.rename}
+					<span className="icon-[solar--pin-linear] h-3.5 w-3.5" />
+					{labels.pin}
 				</button>
+				{canRename ? (
+					<button
+						type="button"
+						onClick={onRename}
+						className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
+					>
+						<span className="icon-[solar--pen-2-linear] h-3.5 w-3.5" />
+						{labels.rename}
+					</button>
+				) : null}
 				<button
 					type="button"
 					onClick={onOpenInFolder}
@@ -73,14 +90,16 @@ export function SessionContextMenuView({
 					<span className="icon-[solar--folder-open-linear] h-3.5 w-3.5" />
 					{labels.openInFolder}
 				</button>
-				<button
-					type="button"
-					onClick={onDelete}
-					className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-destructive transition-colors hover:bg-accent"
-				>
-					<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" />
-					{labels.delete}
-				</button>
+				{canDelete ? (
+					<button
+						type="button"
+						onClick={onDelete}
+						className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-destructive transition-colors hover:bg-accent"
+					>
+						<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" />
+						{labels.delete}
+					</button>
+				) : null}
 			</motion.div>
 		</AnimatePresence>
 	);

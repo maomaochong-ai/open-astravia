@@ -32,6 +32,7 @@ const ProjectSessionRow = memo(function ProjectSessionRow({
 		<SessionRowView
 			active={item.active}
 			label={item.label}
+			pinned={item.pinned}
 			renaming={item.renaming}
 			running={item.running}
 			scheduled={item.scheduled}

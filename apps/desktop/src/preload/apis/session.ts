@@ -1,6 +1,7 @@
 import type { IpcRenderer } from "electron";
 import type { DesktopApi } from "../api.js";
 import { onIpcEvent, subscribeById } from "./helper.js";
+import { subscribeSessionSearch } from "./session-search.js";
 
 const CHANNELS = {
 	CREATE: "vetta:session:create",
@@ -86,6 +87,7 @@ export function createSessionApi(ipc: IpcRenderer): Pick<DesktopApi, "session"> 
 			create: (config, kind, traceContext) => ipc.invoke(CHANNELS.CREATE, config, kind, traceContext),
 			listProjects: () => ipc.invoke(CHANNELS.LIST_PROJECTS),
 			listSessions: (cwd) => ipc.invoke(CHANNELS.LIST_SESSIONS, cwd),
+			searchSessions: (request, onEvent) => subscribeSessionSearch(ipc, request, onEvent),
 			onSessionsChanged: (handler) => onIpcEvent(ipc, CHANNELS.SESSIONS_CHANGED, handler),
 			prompt: (sessionId, request, traceContext) => ipc.invoke(CHANNELS.PROMPT, sessionId, request, traceContext),
 			continue: (sessionId) => ipc.invoke(CHANNELS.CONTINUE, sessionId),

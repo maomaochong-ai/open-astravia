@@ -1,6 +1,7 @@
 import { pathBasename } from "@shared/lib/utils";
 import type { Project, ProjectType, SessionInfo } from "@shared/store/atoms";
 import {
+	pinnedSessionPathsAtom,
 	projectContextMenuAtom,
 	renamingSessionPathAtom,
 	runningSessionPathsAtom,
@@ -13,6 +14,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { relativeTime } from "../components/sidebar/projects/relativeTime";
+import { buildSidebarSessionOrdering } from "../services/sidebar-session-order";
 import { reuseUnchangedSessionViews } from "./stableSessionViews";
 
 export interface ProjectGroupSessionView {
@@ -24,6 +26,7 @@ export interface ProjectGroupSessionView {
 	renaming: boolean;
 	running: boolean;
 	scheduled: boolean;
+	pinned: boolean;
 	session: SessionInfo;
 }
 
@@ -55,7 +58,6 @@ export function useProjectGroupModel({
 	sessions,
 }: UseProjectGroupModelArgs) {
 	const { t, i18n } = useTranslation("project");
-	const sortedSessions = useMemo(() => [...sessions].sort((a, b) => b.modifiedAt - a.modifiedAt), [sessions]);
 	const setContextMenu = useSetAtom(sessionContextMenuAtom);
 	const setProjectContextMenu = useSetAtom(projectContextMenuAtom);
 	const renamingSessionPath = useAtomValue(renamingSessionPathAtom);
@@ -64,6 +66,7 @@ export function useProjectGroupModel({
 	const [showAllSessions, setShowAllSessions] = useState(false);
 	const revealedActiveSessionRef = useRef<string | null>(null);
 	const runningSessionPaths = useAtomValue(runningSessionPathsAtom);
+	const pinnedSessionPaths = useAtomValue(pinnedSessionPathsAtom);
 	const scheduledSessionPaths = useAtomValue(scheduledSessionPathsAtom);
 	const scheduledBasenames = useMemo(() => {
 		const basenames = new Set<string>();
@@ -73,6 +76,10 @@ export function useProjectGroupModel({
 	const projectHasRunning = useMemo(
 		() => sessions.some((session) => runningSessionPaths.has(session.path)),
 		[sessions, runningSessionPaths],
+	);
+	const ordering = useMemo(
+		() => buildSidebarSessionOrdering(sessions, pinnedSessionPaths, DEFAULT_VISIBLE_SESSIONS, showAllSessions),
+		[pinnedSessionPaths, sessions, showAllSessions],
 	);
 
 	useEffect(() => {
@@ -85,15 +92,13 @@ export function useProjectGroupModel({
 			return;
 		}
 		if (revealedActiveSessionRef.current === activeSessionPath) return;
-		const activeIndex = sortedSessions.findIndex((session) => session.path === activeSessionPath);
+		const activeIndex = ordering.all.findIndex((session) => session.path === activeSessionPath);
 		if (activeIndex < 0) return;
 		revealedActiveSessionRef.current = activeSessionPath;
-		if (activeIndex >= DEFAULT_VISIBLE_SESSIONS) setShowAllSessions(true);
-	}, [activeSessionPath, sortedSessions]);
+		const collapsed = buildSidebarSessionOrdering(sessions, pinnedSessionPaths, DEFAULT_VISIBLE_SESSIONS, false);
+		if (activeIndex >= collapsed.visible.length) setShowAllSessions(true);
+	}, [activeSessionPath, ordering.all, pinnedSessionPaths, sessions]);
 
-	const hasMoreSessions = sortedSessions.length > DEFAULT_VISIBLE_SESSIONS;
-	const visibleSessions = showAllSessions ? sortedSessions : sortedSessions.slice(0, DEFAULT_VISIBLE_SESSIONS);
-	const hiddenCount = sortedSessions.length - DEFAULT_VISIBLE_SESSIONS;
 	const displayName = project.name ?? pathBasename(project.cwd);
 	const projectType = project.type;
 	const projectBadge = getProjectBadge(project, projectType, t);
@@ -101,7 +106,7 @@ export function useProjectGroupModel({
 	// t 在 changeLanguage 后可能保持同一引用；读 i18n.language 强制语言切换时重算 timeLabel。
 	const sessionViews: ProjectGroupSessionView[] = useMemo(() => {
 		void i18n.language;
-		const next = visibleSessions.map((session) => {
+		const next = ordering.visible.map((session) => {
 			const isSessionActive = activeSessionPath === session.path;
 			const isRunning = runningSessionPaths.has(session.path);
 			const isSchedule =
@@ -113,6 +118,7 @@ export function useProjectGroupModel({
 				label: sessionDisplayLabel(session),
 				timeLabel: relativeTime(session.modifiedAt, t),
 				active: isSessionActive,
+				pinned: pinnedSessionPaths.has(session.path),
 				renaming: renamingSessionPath === session.path,
 				running: isRunning,
 				scheduled: isSchedule,
@@ -126,10 +132,11 @@ export function useProjectGroupModel({
 		i18n.language,
 		renamingSessionPath,
 		runningSessionPaths,
+		pinnedSessionPaths,
 		scheduledBasenames,
 		scheduledSessionPaths,
 		t,
-		visibleSessions,
+		ordering.visible,
 	]);
 
 	// per-row 回调必须引用稳定，否则行组件的 memo 永远命中不了。
@@ -148,7 +155,7 @@ export function useProjectGroupModel({
 	const openSessionContextMenu = useCallback(
 		(event: React.MouseEvent, session: SessionInfo) => {
 			event.preventDefault();
-			setContextMenu({ x: event.clientX, y: event.clientY, session });
+			setContextMenu({ x: event.clientX, y: event.clientY, session, allowMutations: true });
 		},
 		[setContextMenu],
 	);
@@ -166,9 +173,9 @@ export function useProjectGroupModel({
 	return {
 		displayName,
 		expanded: isExpanded,
-		hasMoreSessions,
+		hasMoreSessions: ordering.hasMore,
 		hasRunning: projectHasRunning,
-		hiddenCount,
+		hiddenCount: ordering.hiddenCount,
 		isActive,
 		newSessionTitle: t("sidebar.nav.newSession"),
 		noSessionsLabel: t("sidebar.projects.noSessions"),
@@ -179,7 +186,7 @@ export function useProjectGroupModel({
 		showAllSessions,
 		showMoreLabels: {
 			collapse: t("sidebar.projects.collapseSessions"),
-			expand: t("sidebar.projects.expandMore", { count: hiddenCount }),
+			expand: t("sidebar.projects.expandMore", { count: ordering.hiddenCount }),
 		},
 		actions: {
 			collapse,

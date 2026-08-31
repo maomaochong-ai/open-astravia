@@ -8,6 +8,7 @@ import {
 	type ProjectType,
 	projectsAtom,
 	projectsInitializedAtom,
+	removePinnedSessionsAtom,
 	type SessionInfo,
 	scheduledRecordsVersionAtom,
 	scheduledSessionPathsAtom,
@@ -96,6 +97,7 @@ export function useProjectActions() {
 	const setScheduledSessionPaths = useSetAtom(scheduledSessionPathsAtom);
 	const setScheduledRecordsVersion = useSetAtom(scheduledRecordsVersionAtom);
 	const setExpandedProjects = useSetAtom(expandedProjectsAtom);
+	const removePinnedSessions = useSetAtom(removePinnedSessionsAtom);
 
 	const loadSessions = useCallback(
 		(cwd: string): Promise<void> => {
@@ -409,6 +411,7 @@ export function useProjectActions() {
 	const deleteSession = useCallback(
 		async (_cwd: string, sessionPath: string) => {
 			await window.vetta.session.delete(sessionPath);
+			removePinnedSessions([sessionPath]);
 			// 定时任务 session：同步删掉「自动化」里的执行记录，否则历史列表会残留。
 			if (store.get(scheduledSessionPathsAtom).has(sessionPath)) {
 				await window.vetta.scheduler.deleteRecordsBySession(sessionPath);
@@ -433,7 +436,7 @@ export function useProjectActions() {
 				return next;
 			});
 		},
-		[setSessionsMap, store, setScheduledSessionPaths, setScheduledRecordsVersion],
+		[removePinnedSessions, setSessionsMap, store, setScheduledSessionPaths, setScheduledRecordsVersion],
 	);
 
 	/**
@@ -522,6 +525,7 @@ export function useProjectActions() {
 		renameSession,
 		applyLocalRename,
 		ensureLocalSession,
+		removePinnedSessions,
 	};
 }
 

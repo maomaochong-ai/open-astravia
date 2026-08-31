@@ -94,6 +94,86 @@ export const expandedProjectsAtom = atom<Set<string>>(new Set<string>());
 export const sessionsMapAtom = atom<Map<string, SessionInfo[]>>(new Map<string, SessionInfo[]>());
 export const sessionLoadingCwdsAtom = atom<Set<string>>(new Set<string>());
 
+const SIDEBAR_SESSION_PINS_STORAGE_KEY = "vetta-sidebar-session-pins";
+const SIDEBAR_SESSION_PINS_SCHEMA_VERSION = 1;
+
+interface StoredSidebarSessionPins {
+	schemaVersion: typeof SIDEBAR_SESSION_PINS_SCHEMA_VERSION;
+	pins: Array<{ path: string; pinnedAt: number }>;
+}
+
+export type PinnedSessionPaths = ReadonlyMap<string, number>;
+
+export function parseSidebarSessionPins(value: unknown): Map<string, number> {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return new Map();
+	const input = value as { schemaVersion?: unknown; pins?: unknown };
+	if (input.schemaVersion !== SIDEBAR_SESSION_PINS_SCHEMA_VERSION || !Array.isArray(input.pins)) {
+		return new Map();
+	}
+	const pins = new Map<string, number>();
+	for (const entry of input.pins) {
+		if (typeof entry !== "object" || entry === null || Array.isArray(entry)) continue;
+		const path = Reflect.get(entry, "path");
+		const pinnedAt = Reflect.get(entry, "pinnedAt");
+		if (typeof path !== "string" || path.trim().length === 0) continue;
+		if (typeof pinnedAt !== "number" || !Number.isFinite(pinnedAt) || pinnedAt <= 0) continue;
+		pins.set(path, pinnedAt);
+	}
+	return pins;
+}
+
+function loadSidebarSessionPins(): Map<string, number> {
+	try {
+		const raw = localStorage.getItem(SIDEBAR_SESSION_PINS_STORAGE_KEY);
+		return raw ? parseSidebarSessionPins(JSON.parse(raw) as unknown) : new Map();
+	} catch {
+		return new Map();
+	}
+}
+
+function persistSidebarSessionPins(pins: PinnedSessionPaths): void {
+	const stored: StoredSidebarSessionPins = {
+		schemaVersion: SIDEBAR_SESSION_PINS_SCHEMA_VERSION,
+		pins: Array.from(pins, ([path, pinnedAt]) => ({ path, pinnedAt })),
+	};
+	try {
+		localStorage.setItem(SIDEBAR_SESSION_PINS_STORAGE_KEY, JSON.stringify(stored));
+	} catch {
+		// 隐私模式或配额不足时保留当前内存态；置顶只是本机 UI 偏好。
+	}
+}
+
+export function updatePinnedSessionPaths(
+	current: PinnedSessionPaths,
+	input: { path: string; pinned: boolean; pinnedAt?: number },
+): Map<string, number> {
+	const next = new Map(current);
+	if (input.pinned) {
+		let latestPin = 0;
+		for (const pinnedAt of current.values()) latestPin = Math.max(latestPin, pinnedAt);
+		next.set(input.path, input.pinnedAt ?? Math.max(Date.now(), latestPin + 1));
+	} else next.delete(input.path);
+	return next;
+}
+
+export const pinnedSessionPathsAtom = atom<Map<string, number>>(loadSidebarSessionPins());
+export const setSessionPinnedAtom = atom(
+	null,
+	(get, set, input: { path: string; pinned: boolean; pinnedAt?: number }) => {
+		const next = updatePinnedSessionPaths(get(pinnedSessionPathsAtom), input);
+		persistSidebarSessionPins(next);
+		set(pinnedSessionPathsAtom, next);
+	},
+);
+export const removePinnedSessionsAtom = atom(null, (get, set, paths: Iterable<string>) => {
+	const next = new Map(get(pinnedSessionPathsAtom));
+	let changed = false;
+	for (const path of paths) changed = next.delete(path) || changed;
+	if (!changed) return;
+	persistSidebarSessionPins(next);
+	set(pinnedSessionPathsAtom, next);
+});
+
 export const SIDEBAR_WIDTH_STORAGE_KEY = "vetta-sidebar-width";
 export const SIDEBAR_WIDTH_DEFAULT = 220;
 /** 与 useSidebarModel.MIN_WIDTH 保持一致 */
@@ -116,6 +196,12 @@ export const sidebarCollapsedAtom = atom<boolean>(false);
 const DEFAULT_WORKSPACE = "~/.vetta/workspace";
 export const workspacePathAtom = atom<string>(localStorage.getItem("vetta-workspace-path") || DEFAULT_WORKSPACE);
 
-export const sessionContextMenuAtom = atom<{ x: number; y: number; session: SessionInfo } | null>(null);
+export const sessionContextMenuAtom = atom<{
+	x: number;
+	y: number;
+	session: SessionInfo;
+	/** Claw 等只读来源仍允许置顶和打开目录，但不暴露重命名/删除。 */
+	allowMutations: boolean;
+} | null>(null);
 export const renamingSessionPathAtom = atom<string | null>(null);
 export const projectContextMenuAtom = atom<{ x: number; y: number; project: Project } | null>(null);

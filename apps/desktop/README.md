@@ -60,6 +60,62 @@ initialize, start, audio, and stop.
 
 ## Development
 
+### Sidebar conversation search
+
+Use the search button in the sidebar's top action row to open the floating panel. It searches titles,
+user messages, and Agent text replies across regular conversations, Claw records, project sessions,
+and registered batch projects. Only text blocks are included: tool calls (including names and arguments),
+tool results, thinking, and non-text attachments are excluded. A reply containing both text and tool calls
+still contributes its text blocks. Type, project, and time filters default to all; archived projects are excluded. Results open
+with the session's existing interactive/read-only access rules. Pinning is a local UI preference and
+keeps conversations at the top of their existing sidebar group.
+
+Each result shows one source label on the right: the project name for project/batch sessions, or the
+conversation type for regular conversations and Claw. The pin button sits immediately to its left in
+the title row, leaving the excerpt the full row width. Pinning never opens the conversation; both
+actions can be reached separately with the keyboard. Long titles and source names are truncated
+visually but remain available in the row's accessible name and hover text.
+
+The filter icon beside the shared `Input` expands the type/project/time controls on demand. Active filters
+remain visible as removable chips with a count on the icon, even while the controls are collapsed.
+Resetting filters keeps the query; removing filters or clearing the query returns focus to the search
+input. Expanding/collapsing controls does not restart the search. Closing the panel restores the
+default unfiltered, collapsed state for its next opening.
+
+Time filters use the catalog's last-message activity time, not the timestamp of the matching message.
+Older or empty records without a usable message time retain the catalog's existing file-time fallback.
+Presets include Today, Last 7 days, Last 30 days, and This month; day counts include today and use the
+local calendar/timezone. Custom dates accept either or both endpoints, including the entire end day.
+Custom endpoints use the shared shadcn-style `DatePicker` (`Popover` + `Calendar`/React DayPicker), not
+native date inputs. Month/year menus use the shared `Select`; the year menu is a bounded sliding window.
+Each endpoint supports Today, clearing and keyboard selection. Dates beyond the other endpoint are disabled;
+Escape closes only the innermost menu/calendar and returns focus to its trigger. Tokens, Solar icons and
+1px inset focus rings follow the desktop design system.
+Incomplete or reversed ranges show an inline explanation and pause searches until corrected.
+Date bounds are validated again in Main and applied in the worker before matching titles or reading bodies.
+
+Search results always sort newest first, regardless of hit type, source, or pin status, and show their
+last-message time. Equal timestamps use a stable path tie-breaker. Sidebar groups retain pin-first ordering.
+Each partial result batch is merged by path, sorted, and capped: newer matches discovered later replace
+older entries. Reaching the cap does not stop metadata discovery or exclude newer body matches.
+
+Titles and excerpts highlight the literal query, ignoring case, compatibility-width differences, and
+repeated whitespace while preserving the original text. Excerpts stay centered on a match, including
+for long titles and queries. Before the first hit, the panel shows a central loading explanation;
+once hits arrive, a visible progress strip stays above the scrollable list so results can be opened
+while the search continues. Empty results and read failures have distinct states.
+
+Search is debounced and cancellable. A lazily started worker reuses the runtime's native and historical
+file readers; no history files are migrated or rewritten, and no search data is sent to a server. Hits
+are displayed as they arrive, with titles checked before message bodies. Each query retains at most 100
+conversations at a time and asks users to narrow the filters when that limit is reached; incremental
+updates can replace older matches. Bodies too old to enter the result window are not parsed. The searchable-text LRU cache
+retains at most 16 million UTF-16 code units (roughly 32 MiB of text), excluding object overhead; metadata
+is capped at 10,000 sessions. The worker is released after one minute idle. First searches still need to
+discover local history; a very large individual file is parsed in the worker, not on the UI/main thread.
+
+## Development workflow
+
 Run `bun dev` from this package after installing the monorepo dependencies. The development startup
 uses the root Turborepo task graph and local cache to build changed workspace prerequisites, stages
 plugin and theme manifests, then starts the renderer, theme server, and Electron process in parallel.

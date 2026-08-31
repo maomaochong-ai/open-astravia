@@ -1,5 +1,4 @@
 import { join } from "node:path";
-import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
 import {
 	CODING_AGENT_COMPACTION_PREFIRE_OBSERVATION,
 	CODING_AGENT_LIFECYCLE_ISSUE_OBSERVATION,
@@ -43,23 +42,16 @@ import {
 	logRuntimeSessionError,
 	PathFilteredRuntimeSessionCatalog,
 } from "@vetta/runtime-desktop";
-import {
-	FileConversationRuntimeSessionFileHistoryReader,
-	type RuntimeConversationSessionRoot,
-} from "@vetta/runtime-node/conversation";
+import { FileConversationRuntimeSessionFileHistoryReader } from "@vetta/runtime-node/conversation";
 import { createNodeKnowledgeRuntime, NodeTextFileStorage } from "@vetta/runtime-node/host";
 import { getModePrompt } from "../agent-modes/index.js";
 import {
 	DEFAULT_CONVERSATION_CWD,
-	DEFAULT_CONVERSATION_SESSION_DIR,
-	DEFAULT_IM_CONVERSATION_CWD,
 	DEFAULT_IM_CONVERSATION_SESSION_DIR,
-	KB_PROCESSING_CWD,
-	KB_PROCESSING_SESSION_DIR,
-	readConfigSync,
 	readDesktopConfig,
 } from "../config/desktop-config-store.js";
 import { DEFAULT_SERVER_URL } from "../constants.js";
+import { resolveDesktopRuntimeSessionRoots } from "../conversations/session-catalog-roots.js";
 import { resolveSessionListCwd } from "../conversations/session-paths.js";
 import { getKnowledgeRoot } from "../knowledge/knowledge-layout.js";
 import { getAppLogger } from "../logger.js";
@@ -294,32 +286,4 @@ function logSessionRoute(decision: RuntimeHostSessionBackendRouteDecision): void
 				? "conversation-v2-catalog"
 				: "unknown-catalog";
 	log.info(`[agent-runtime] session-route route=${decision.routeId ?? "unknown"} reason=${reason}`);
-}
-
-function resolveDesktopRuntimeSessionRoots(): RuntimeConversationSessionRoot[] {
-	const config = readConfigSync();
-	// 每个项目认两个会话目录：
-	// 1. 全局分片目录——新会话的落点（见 backend-pool 的 resolveRuntimeScope）；
-	// 2. `<项目>/.vetta/sessions`——存量兼容。会话曾短暂落在这里，直接摘掉会让用户
-	//    这段时间的历史从列表里消失。catalog 在未指定 sessionDir 时并集同一 cwd 的
-	//    全部 root，所以两处能同时列出来，不需要迁移文件。
-	const projectRoots = [...config.projects, ...config.archivedProjects].flatMap(({ path }) => [
-		{ cwd: path, sessionDir: codingAgentSessionShardPath(path) },
-		{ cwd: path, sessionDir: join(path, ".vetta", "sessions") },
-	]);
-	return [
-		{
-			cwd: DEFAULT_CONVERSATION_CWD,
-			sessionDir: DEFAULT_CONVERSATION_SESSION_DIR,
-		},
-		{
-			cwd: DEFAULT_IM_CONVERSATION_CWD,
-			sessionDir: DEFAULT_IM_CONVERSATION_SESSION_DIR,
-		},
-		{
-			cwd: KB_PROCESSING_CWD,
-			sessionDir: KB_PROCESSING_SESSION_DIR,
-		},
-		...projectRoots,
-	];
 }
