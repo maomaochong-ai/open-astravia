@@ -1,6 +1,10 @@
 import type { Message } from "@vetta/ai";
 import type { SessionConfig, SessionExecutionMode } from "@vetta/runtime-core";
 import type { SessionExtensionFunctionSource } from "@vetta/runtime-core/session-extensions";
+import {
+	type AgentConfigurationSelection,
+	parseAgentConfigurationSelection,
+} from "../../agent-configuration/configuration-schema.js";
 import type { CodingAgentKnowledgeWriteOperations } from "../../features/knowledge/contracts.js";
 import type {
 	AgentPluginContinuationInvoker,
@@ -24,6 +28,7 @@ export interface CodingAgentRuntimeSessionOptions {
 	readonly model?: NonNullable<SessionConfig["model"]>;
 	readonly thinkingLevel?: NonNullable<SessionConfig["thinkingLevel"]>;
 	readonly agentMode?: string;
+	readonly agentConfiguration?: AgentConfigurationSelection;
 	readonly executionMode?: SessionExecutionMode;
 	readonly env?: Readonly<Record<string, string>>;
 	readonly enableBackgroundTasks?: boolean;
@@ -77,6 +82,8 @@ export function parseCodingAgentRuntimeSessionConfiguration(value: unknown): Cod
 		throw new Error("Coding Agent Runtime Session requires an object configuration");
 	}
 	if (value.sessionId !== undefined) requireNonEmptyString(value.sessionId, "sessionId");
+	const agentConfiguration =
+		value.agentConfiguration === undefined ? undefined : parseAgentConfigurationSelection(value.agentConfiguration);
 	assertOptionalStringFields(value, [
 		"cwd",
 		"scenario",
@@ -111,7 +118,7 @@ export function parseCodingAgentRuntimeSessionConfiguration(value: unknown): Cod
 			throw new Error("Coding Agent Runtime Session field env must contain only string values");
 		}
 	}
-	return { ...value } as CodingAgentRuntimeSessionConfiguration;
+	return { ...value, ...(agentConfiguration ? { agentConfiguration } : {}) } as CodingAgentRuntimeSessionConfiguration;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

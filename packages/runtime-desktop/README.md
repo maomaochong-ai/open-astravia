@@ -21,3 +21,7 @@ Desktop 组合通过 `createDesktopRuntimeHostPlatformServices` 显式提供 Nod
 `createDesktopCodingAgentSessionExecutionEnvironment()` 为每个 Session 创建独占的命令、后台任务与 sandbox
 环境；它通过 `runtime-node` 的统一工厂提供具体 sandbox Tool 与 Host Services，Coding Agent 只叠加产品权限策略。
 Session 关闭时由 Coding Agent 生命周期通过该 Port 释放，但具体 Node 资源所有权和构造仍位于平台层。
+
+`DesktopRuntimeBackendPool` 按工作区 scope 复用 Composition，MCP Source 按 MCP scope 共享；这些 key 不再决定
+Agent Instance 身份。每个活动 Conversation Session 都经标准 Backend 创建独立 Instance，关闭只释放自己的实例，
+恢复使用新的运行身份，允许同一工作区内的新旧 Definition revision 共存。

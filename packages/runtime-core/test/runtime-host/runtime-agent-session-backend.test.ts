@@ -1,6 +1,6 @@
 import type { Api, Model } from "@vetta/ai";
 import { describe, expect, it, vi } from "vitest";
-import type { RuntimeAgentDefinition } from "../../src/agents/index.js";
+import { type RuntimeAgentDefinition, RuntimeAgentRuntime } from "../../src/agents/index.js";
 import type { RuntimeSessionAgentSelection } from "../../src/contracts.js";
 import {
 	applyConversationDocumentCommand,
@@ -32,6 +32,70 @@ import {
 } from "../../src/runtime-host/index.js";
 
 describe("RuntimeAgentSessionAssemblyBackend", () => {
+	it.each([false, true])(
+		"waits for admitted initialization and rollback before disposing (failure: %s)",
+		async (fail) => {
+			const runtime = new RuntimeAgentRuntime();
+			const prepared = deferred();
+			const proceed = deferred();
+			const planDispose = vi.fn(async () => {});
+			const base = definition({
+				instanceConfigurations: [],
+				sessionConfigurations: [],
+				snapshotReasons: [],
+				planDispose,
+				directResourceDispose: vi.fn(async () => {}),
+			});
+			runtime.registry.upsert({
+				source: { id: "code", revision: "1" },
+				definition: {
+					...base,
+					createInstance: async (context) => {
+						const instance = await base.createInstance(context);
+						return {
+							...instance,
+							prepareSession: async (sessionContext) => {
+								const preparation = await instance.prepareSession(sessionContext);
+								if (!("definition" in preparation)) throw new Error("Expected a Session Plan");
+								return {
+									...preparation,
+									activate: async (binding) => {
+										prepared.resolve();
+										await proceed.promise;
+										if (fail) throw new Error("activation rejected");
+										return preparation.activate!(binding);
+									},
+								};
+							},
+						};
+					},
+				},
+			});
+			const backend = new RuntimeAgentSessionAssemblyBackend({ runtime });
+			const request = {
+				agent: { id: "reviewer" },
+				executionMode: "full-access" as const,
+				getSessionId: () => undefined,
+			};
+			const creation = backend.createAssembly(request);
+			const outcome = creation.then(
+				() => "created",
+				() => "failed",
+			);
+			await prepared.promise;
+			const closed = backend.dispose();
+			await expect(backend.createAssembly(request)).rejects.toThrow("Backend is closed");
+			expect(planDispose).not.toHaveBeenCalled();
+			proceed.resolve();
+			expect(await outcome).toBe(fail ? "failed" : "created");
+			await closed;
+			await backend.dispose();
+			expect(planDispose).toHaveBeenCalledOnce();
+			expect(runtime.snapshot().instances).toEqual([]);
+			await runtime.close();
+		},
+	);
+
 	it("creates a selected peer Agent through the one RuntimeHost lifecycle", async () => {
 		const instanceConfigurations: unknown[] = [];
 		const sessionConfigurations: unknown[] = [];
@@ -122,6 +186,14 @@ describe("RuntimeAgentSessionAssemblyBackend", () => {
 		expect(sessionDefinitionDispose).toHaveBeenCalledOnce();
 	});
 });
+
+function deferred() {
+	let resolve!: () => void;
+	const promise = new Promise<void>((complete) => {
+		resolve = complete;
+	});
+	return { promise, resolve };
+}
 
 function definition(options: {
 	readonly instanceConfigurations: unknown[];

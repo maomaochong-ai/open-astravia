@@ -6,8 +6,10 @@ import type {
 	ModelCallContributionContext,
 	RuntimeCapabilityDefinition,
 } from "@vetta/runtime-core/kernel";
+import type { RuntimeObservationPublisher } from "@vetta/runtime-core/observation";
 import { SessionExtensionComposition, sessionExtensionObservation } from "@vetta/runtime-core/session-extensions";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
+import { createAgentConfigurationSessionExtension } from "../../agent-configuration/session-configuration-extension.js";
 import { createCodingAgentBackgroundWorkSessionExtension } from "../../execution/background/background-work-session-extension.js";
 import {
 	CODING_AGENT_SANDBOX_AUTHORIZATION_RUNTIME,
@@ -60,6 +62,7 @@ export interface CodingAgentSessionPeripheralAssemblyOptions {
 	readonly mcpCoordinator: CodingAgentMcpSessionCoordinator;
 	readonly resourceContext: RuntimeResourceContext;
 	readonly configurationSource: RuntimeConfigurationSnapshotSource;
+	readonly observationPublisher?: RuntimeObservationPublisher;
 	readonly readSessionId: () => string;
 	readonly resolveActivation: (
 		context: ModelCallContributionContext,
@@ -164,6 +167,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	const sessionExtensions = await SessionExtensionComposition.create({
 		functions: sessionOptions.sessionExtensionFunctions ?? profile.sessionExtensionFunctions,
 		definitions: [
+			createAgentConfigurationSessionExtension(sessionOptions.agentConfiguration, options.observationPublisher),
 			createCodingAgentSessionProfileStateExtension({
 				scenario: options.scenario,
 				configurationState,

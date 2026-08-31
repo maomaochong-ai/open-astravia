@@ -17,7 +17,7 @@ Skill、Plugin、Context、模型绑定和 Session Extension，再交给 `Runtim
 └── RuntimeHost（唯一生命周期根）
     ├── Agent 控制面
     │   └── Registry: coding-agent revision N
-    │       └── RuntimeAgentInstance（每个 Coding Composition 一个，固定 revision N）
+    │       └── RuntimeAgentInstance（每个活动会话一个，创建时固定 revision N）
     │           └── RuntimeAgentSession（每个产品 Session 一个）
     │               └── Runtime Snapshot generation（每个 Turn 获取不可变 lease）
     └── RuntimeHostSessionBackend（平台持久化与产品 Session 端口）
@@ -28,7 +28,8 @@ Skill、Plugin、Context、模型绑定和 Session Extension，再交给 `Runtim
 ```text
 createCodingAgentRuntimeComposition()
   -> 创建/取得 RuntimeHost 内置的 RuntimeAgentRuntime 控制面
-  -> 从 Registry 创建 RuntimeAgentInstance
+  -> 复用工作区基础设施，等待 RuntimeHost 的 Session 创建请求
+  -> 每个请求从 Registry 创建独立 RuntimeAgentInstance
   -> Definition.prepareSession() 直接准备产品 RuntimeAgentSessionPlan
   -> RuntimeAgentSession 编译 Prompt / Tool / MCP Feature / Extension
   -> KernelRuntimeSessionBackend 使用该 Session 的 snapshotProvider 执行 Turn
@@ -43,7 +44,7 @@ Coding Agent 的 MCP freshness、Conversation、Hook 和其它产品外围生命
 ### 默认独立控制面
 
 CLI、SDK 或测试直接调用 Composition 时，不传 `agentRuntime` 即可。Composition 会创建并拥有独立
-`RuntimeAgentRuntime`，发布内置 execution-compatible Definition，创建一个 Instance，并在 `dispose()` 时释放
+`RuntimeAgentRuntime`，发布内置 execution-compatible Definition；每次创建 Session 时再创建 Instance，并在 `dispose()` 时释放
 Session、Instance、控制面和产品 Hub。它是模块化运行方式，不会产生第二个 `RuntimeHost`。
 
 ```ts
@@ -54,7 +55,8 @@ const composition = await createCodingAgentRuntimeComposition({
 });
 
 console.log(composition.agentRuntime);
-// { agentId: "coding-agent", instanceId: "...", revisionId: "..." }
+// { agentId: "coding-agent" }
+// Session 创建后可用 composition.readSessionAgentIdentity(sessionId) 查询完整身份。
 
 await composition.dispose();
 ```
@@ -96,7 +98,8 @@ await host.close(); // 统一关闭 Session、Backend Pool、Agent 控制面和�
 
 `createApplicationCodingAgentBackendPool()` 代表应用自己的 `RuntimeHostSessionBackend` 工厂，不是 Coding Agent 导出的隐藏 API。
 注入 `runtime` 后，Registry 的发布权属于 RuntimeHost，所以不能同时传 `agentRuntime.definition` 或
-`agentRuntime.source`。Desktop 采用这一方式：各工作区 Composition 拥有独立 Instance，但共享同一 Registry。
+`agentRuntime.source`。Desktop 采用这一方式：各工作区 Composition 共享 Registry，每个会话拥有独立 Instance。
+同一工作区的多个会话可继续复用 MCP Source、工具目录和持久化基础设施；关闭一个会话不会关闭共享连接。
 
 ## 名称相似但职责不同的对象
 
@@ -166,13 +169,18 @@ publishCodingAgentExecutionRuntimeDefinition(host, {
 
 ### 更新何时生效
 
-- 发布新 revision 后，新建 Composition/Instance 取得新 revision；
-- 已存在的 Composition/Instance 即使之后再创建 Session，也继续使用它创建时固定的旧 revision；
+- 发布新 revision 后，新建 Session/Instance 取得新 revision，不需要重建 Composition；
+- 已存在的 Session/Instance 继续使用它创建时固定的旧 revision；
 - 已运行的 Session、在途 Turn 和 Snapshot lease 不变；
-- Coding Agent 产品 facade 当前不暴露热 rollout；要切换 revision，应关闭并重建对应 Composition/Instance；
+- Coding Agent 产品 facade 当前不暴露 Definition 热 rollout；要切换 execution Definition，应关闭并恢复对应 Session；
 - Conversation continuation 只原子重绑 Session identity，不改变 revision 或 lease。
 
 这个边界使 Prompt、Tool schema、handler、模型绑定和 Extension 不会在一次运行中跨代混用。
+
+`agentRuntime.instanceId` 已移除，Composition 不再代表单一实例。调用方应从会话查询运行身份，不持久化 instanceId。
+恢复历史保留 Conversation identity，但会分配新的 Instance；普通新建与恢复默认使用当前 Definition revision。
+这不会改变历史格式或重放模型/工具，也不等于进程、文件或权限隔离。详见
+[ADR-0095](../../../docs/adr/0095-conversation-owned-agent-instances.md)。
 
 ## 两个 Definition 工厂不要混用
 

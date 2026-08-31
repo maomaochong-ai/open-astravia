@@ -17,7 +17,8 @@
 	"files": ["dist"],
 	"scripts": {
 		"clean": "rm -rf dist",
-		"build": "tsgo -p tsconfig.build.json"
+		"build": "tsgo -p tsconfig.build.json",
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.2",

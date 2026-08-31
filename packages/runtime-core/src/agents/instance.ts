@@ -18,6 +18,7 @@ import { RUNTIME_AGENT_LIFECYCLE_OBSERVATION } from "./observations.js";
 import type { RuntimeAgentRegistry } from "./registry.js";
 import type { RuntimeAgentInstanceSnapshot, RuntimeAgentSessionCreateOptions } from "./runtime-contracts.js";
 import { RuntimeAgentSession } from "./session.js";
+import { createRuntimeAgentSessionObservationPublisher } from "./session-observations.js";
 
 export interface RuntimeAgentInstanceOptions {
 	readonly id: string;
@@ -60,12 +61,15 @@ export class RuntimeAgentInstance {
 		const sessionId = options.sessionId ?? this.options.createId("session");
 		if (this.sessions.has(sessionId)) throw runtimeAgentDuplicateIdError("Session", sessionId);
 		const signal = options.signal ?? new AbortController().signal;
-		const observations = this.options.observationPublisher.scope({
-			agentId: this.agentId,
-			revisionId: this.revisionId,
-			instanceId: this.id,
-			sessionId,
-		});
+		let session: RuntimeAgentSession | undefined;
+		const observations = createRuntimeAgentSessionObservationPublisher(
+			this.options.observationPublisher.scope({
+				agentId: this.agentId,
+				revisionId: this.revisionId,
+				instanceId: this.id,
+			}),
+			() => session?.id ?? sessionId,
+		);
 		observations.record(RUNTIME_AGENT_LIFECYCLE_OBSERVATION, {
 			operation: "session.create",
 			phase: "started",
@@ -73,7 +77,6 @@ export class RuntimeAgentInstance {
 		let sessionPlan: RuntimeAgentSessionPlan | undefined;
 		let extensions: SessionExtensionComposition | undefined;
 		let capabilities: RuntimeCapabilityComposition | undefined;
-		let session: RuntimeAgentSession | undefined;
 		try {
 			sessionPlan = normalizeRuntimeAgentSessionPlan(
 				await this.options.definition.prepareSession({

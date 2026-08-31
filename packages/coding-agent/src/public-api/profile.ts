@@ -1,4 +1,17 @@
 export {
+	AGENT_CONFIGURATION_DEFINITION,
+	type AgentConfiguration,
+	AgentConfigurationError,
+	type AgentConfigurationPatch,
+	type AgentConfigurationSelection,
+	type AgentConfigurationTemplate,
+	AgentConfigurationTemplateSchema,
+	DEFAULT_AGENT_CONFIGURATION,
+	parseAgentConfiguration,
+	parseAgentConfigurationSelection,
+	parseAgentConfigurationTemplate,
+} from "../agent-configuration/configuration-schema.js";
+export {
 	ALL_SCENARIOS,
 	type ConversationScenario,
 	DEFAULT_PERSONA_ID,

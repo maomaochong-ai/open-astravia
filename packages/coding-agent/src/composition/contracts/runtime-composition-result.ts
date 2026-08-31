@@ -18,6 +18,8 @@ export interface CodingAgentRuntimeSessionHookLifecycle {
 }
 
 export interface CodingAgentRuntimeSessionControls {
+	/** 仅返回本 Composition 持有的活动 Session 身份；关闭后或未知 Session 返回 undefined。 */
+	readSessionAgentIdentity(sessionId: string): CodingAgentRuntimeAgentIdentity | undefined;
 	readonly sessionHooks: CodingAgentRuntimeSessionHookLifecycle;
 	appendSessionContext(sessionId: string, records: readonly SessionContextRecord[]): void;
 	deliverSessionContext(sessionId: string, records: readonly SessionContextRecord[]): Promise<void>;
@@ -45,8 +47,11 @@ export interface CodingAgentRuntimeToolAccess {
 	unregisterTool(toolName: string): boolean;
 }
 
-export interface CodingAgentRuntimeAgentIdentity {
+export interface CodingAgentRuntimeAgentReference {
 	readonly agentId: string;
+}
+
+export interface CodingAgentRuntimeAgentIdentity extends CodingAgentRuntimeAgentReference {
 	readonly instanceId: string;
 	readonly revisionId: string;
 }
@@ -57,8 +62,8 @@ export interface CodingAgentRuntimeComposition
 	/** 唯一 Session 创建入口；平台适配器只补齐 Agent Session 的私有配置。 */
 	readonly runtimeHostBackend: RuntimeHostSessionBackend;
 	readonly tools: CodingAgentRuntimeToolAccess;
-	/** 当前 Composition 在多主 Agent 基座中固定的 Definition revision 与 Instance 身份。 */
-	readonly agentRuntime: CodingAgentRuntimeAgentIdentity;
+	/** 资源组合的 Agent 选择；Instance 和 revision 在每次创建 Session 时绑定。 */
+	readonly agentRuntime: CodingAgentRuntimeAgentReference;
 	/** Composition 自有 Hub 的非所有权控制面；调用方可动态注册 Adapter 和读取健康度。 */
 	readonly observations: RuntimeObservationHubView;
 	readonly scenario: ConversationScenario;

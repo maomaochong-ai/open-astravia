@@ -6,6 +6,21 @@ import { RuntimeObservationHub, type RuntimeObservationRecord } from "../../src/
 import { RuntimeAgentInstancePool } from "../../src/runtime-host/runtime-agent-instance-pool.js";
 
 describe("RuntimeAgentInstancePool", () => {
+	it("isolates unkeyed leases and closes each Instance as soon as its lease is released", async () => {
+		const runtime = new RuntimeAgentRuntime();
+		runtime.registry.upsert({ source: { id: "code", revision: "1" }, definition: definition("agent", "v1") });
+		const pool = new RuntimeAgentInstancePool({ runtime });
+		const [first, second] = await Promise.all([pool.acquire({ id: "agent" }), pool.acquire({ id: "agent" })]);
+		expect(first.instance.id).not.toBe(second.instance.id);
+		await first.release();
+		await first.release();
+		expect(runtime.snapshot().instances.map(({ id }) => id)).toEqual([second.instance.id]);
+		await second.release();
+		expect(runtime.snapshot().instances).toEqual([]);
+		await pool.dispose();
+		await runtime.close();
+	});
+
 	it("reuses one generation and retires it on Definition or configuration revision changes", async () => {
 		const runtime = new RuntimeAgentRuntime();
 		runtime.registry.upsert({ source: { id: "code", revision: "1" }, definition: definition("agent", "v1") });

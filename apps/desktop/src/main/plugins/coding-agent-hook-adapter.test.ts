@@ -115,6 +115,30 @@ describe("Desktop Plugin Coding Agent Hook adapter", () => {
 		stopReleased();
 	});
 
+	it("isolates session membership and freezes configuration selection for each Turn", async () => {
+		desktopPluginHookRegistry.register("plugin-a", {
+			id: "guard",
+			eventName: "PreToolUse",
+			handlerId: "handler-1",
+			scope_use: ["cli"],
+		});
+		setDesktopPluginHookInvoker(async () => ({ action: "continue" }));
+		let enabled = true;
+		const first = await createAdapter(
+			() => {},
+			() => enabled,
+		);
+		const second = await createAdapter(
+			() => {},
+			() => false,
+		);
+		expect((await first.dispatch(preToolEvent())).runs).toHaveLength(1);
+		enabled = false;
+		expect((await first.dispatch(preToolEvent())).runs).toHaveLength(1);
+		expect((await second.dispatch(preToolEvent())).runs).toHaveLength(0);
+		expect((await first.dispatch(preToolEvent("turn-2"))).runs).toHaveLength(0);
+	});
+
 	it("fails open for malformed renderer results and records a failed callback run", async () => {
 		desktopPluginHookRegistry.register("plugin-a", {
 			id: "invalid",

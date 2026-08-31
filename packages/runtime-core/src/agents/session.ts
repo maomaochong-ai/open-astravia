@@ -12,6 +12,7 @@ import type {
 	RuntimeAgentInstanceDefinition,
 	RuntimeAgentRevisionLease,
 	RuntimeAgentSessionPlan,
+	RuntimeAgentSnapshotAdmission,
 } from "./contracts.js";
 import {
 	assertSameRuntimeAgentExtensionTopology,
@@ -26,6 +27,7 @@ import { cleanupRuntimeAgentResources } from "./lifecycle.js";
 import { RUNTIME_AGENT_LIFECYCLE_OBSERVATION } from "./observations.js";
 import type { RuntimeAgentRegistry } from "./registry.js";
 import type { RuntimeAgentSessionRolloutResult } from "./runtime-contracts.js";
+import { createRuntimeAgentSessionObservationPublisher } from "./session-observations.js";
 
 interface RetainedSessionRollout {
 	readonly revisionLease: RuntimeAgentRevisionLease;
@@ -58,6 +60,7 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 	private readonly initialExtensionIds: readonly string[];
 	private readonly retainedRollouts: RetainedSessionRollout[] = [];
 	private rolloutTail: Promise<void> = Promise.resolve();
+	private admissionTail: Promise<void> = Promise.resolve();
 	private effectiveRevision: string;
 	private sessionId: string;
 	private runtimeResources?: RuntimeResources;
@@ -77,7 +80,11 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 		this.activeSessionPlan = options.sessionPlan;
 		this.initialExtensionIds = runtimeAgentExtensionIds(options.sessionPlan.definition);
 		this.closeController = new RetryableCloseController({
-			cleanup: () => this.rolloutTail.then(() => this.disposeResources()),
+			cleanup: async () => {
+				await this.rolloutTail;
+				await this.admissionTail;
+				await this.disposeResources();
+			},
 			onCompleted: () => this.options.onClosed(this),
 		});
 	}
@@ -92,8 +99,42 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 
 	async acquire(context?: RuntimeSnapshotAcquireContext): Promise<RuntimeSnapshotLease> {
 		this.assertOpen();
-		await this.activeSessionPlan.beforeSnapshotAcquire?.(context);
-		return this.capabilities.acquire(context);
+		const operation = this.admissionTail.then(() => this.acquirePreparedSnapshot(context));
+		this.admissionTail = operation.then(
+			() => undefined,
+			() => undefined,
+		);
+		return operation;
+	}
+
+	private async acquirePreparedSnapshot(context?: RuntimeSnapshotAcquireContext): Promise<RuntimeSnapshotLease> {
+		this.assertOpen();
+		context?.signal.throwIfAborted();
+		let admission: RuntimeAgentSnapshotAdmission | undefined;
+		let lease: RuntimeSnapshotLease | undefined;
+		try {
+			admission = (await this.activeSessionPlan.beforeSnapshotAcquire?.(context)) ?? undefined;
+			lease = await this.capabilities.acquire(context);
+			context?.signal.throwIfAborted();
+			this.assertOpen();
+			await admission?.commit();
+			return lease;
+		} catch (error) {
+			const failures: unknown[] = [error];
+			try {
+				await lease?.release();
+			} catch (releaseError) {
+				failures.push(releaseError);
+			}
+			try {
+				await admission?.rollback(error);
+			} catch (rollbackError) {
+				failures.push(rollbackError);
+			}
+			if (failures.length > 1)
+				throw new AggregateError(failures, "Agent snapshot admission and rollback failed", { cause: error });
+			throw error;
+		}
 	}
 
 	async activate(rebindSession: (sessionId: string) => Promise<void> | void): Promise<RuntimeResources | undefined> {
@@ -152,13 +193,14 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 			resolveResult = resolve;
 			rejectResult = reject;
 		});
-		this.rolloutTail = this.rolloutTail.then(async () => {
+		this.rolloutTail = this.admissionTail.then(async () => {
 			try {
 				resolveResult(await this.applyLatestRevision(signal));
 			} catch (error) {
 				rejectResult(error);
 			}
 		});
+		this.admissionTail = this.rolloutTail;
 		return result;
 	}
 
@@ -183,12 +225,14 @@ export class RuntimeAgentSession implements RuntimeSnapshotProvider {
 		this.assertOpen();
 		signal.throwIfAborted();
 		const revisionLease = this.options.registry.acquire(this.agentId);
-		const observations = this.options.observationPublisher.scope({
-			agentId: this.agentId,
-			revisionId: revisionLease.revision.id,
-			instanceId: this.instanceId,
-			sessionId: this.id,
-		});
+		const observations = createRuntimeAgentSessionObservationPublisher(
+			this.options.observationPublisher.scope({
+				agentId: this.agentId,
+				revisionId: revisionLease.revision.id,
+				instanceId: this.instanceId,
+			}),
+			() => this.id,
+		);
 		if (revisionLease.revision.id === this.effectiveRevision) {
 			await revisionLease.release();
 			observations.record(RUNTIME_AGENT_LIFECYCLE_OBSERVATION, {

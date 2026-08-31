@@ -1,7 +1,7 @@
 import type { RuntimeAgentRuntime, RuntimeAgentSession } from "../agents/index.js";
 import { RUNTIME_AGENT_ERROR_CODES, RuntimeAgentError } from "../agents/index.js";
 import { createRuntimeId } from "../id-generator.js";
-import { RetryableCleanup } from "../lifecycle/retryable-cleanup.js";
+import { RetryableCleanup, RetryableCloseController } from "../lifecycle/retryable-cleanup.js";
 import type { RuntimeObservationPublisher } from "../observation/index.js";
 import {
 	ComposedRuntimeFactory,
@@ -92,6 +92,9 @@ export class RuntimeAgentSessionAssemblyBackend implements RuntimeHostSessionBac
 	private readonly instancePool: RuntimeAgentInstancePool;
 	private readonly kernelBackend: KernelRuntimeSessionBackend<RuntimeAgentAssemblyCreateInput>;
 	private readonly identity: RuntimeAgentSessionIdentityResolver;
+	private readonly pendingCreations = new Set<Promise<unknown>>();
+	private readonly closeController: RetryableCloseController;
+	private closed = false;
 
 	constructor(private readonly options: RuntimeAgentSessionAssemblyBackendOptions) {
 		this.instancePool = new RuntimeAgentInstancePool({
@@ -99,6 +102,12 @@ export class RuntimeAgentSessionAssemblyBackend implements RuntimeHostSessionBac
 			observationPublisher: options.observationPublisher,
 		});
 		this.identity = options.identity ?? createDefaultIdentityResolver();
+		this.closeController = new RetryableCloseController({
+			cleanup: async () => {
+				await Promise.allSettled([...this.pendingCreations]);
+				await this.instancePool.dispose();
+			},
+		});
 		this.kernelBackend = new KernelRuntimeSessionBackend({
 			runtimeFactory: new ComposedRuntimeFactory({
 				...options.engine,
@@ -108,8 +117,12 @@ export class RuntimeAgentSessionAssemblyBackend implements RuntimeHostSessionBac
 		});
 	}
 
-	async createAssembly(request: RuntimeSessionCreateRequest): Promise<RuntimeHostSessionAssembly> {
-		const session = await this.createRuntimeSession(request);
+	createAssembly(request: RuntimeSessionCreateRequest): Promise<RuntimeHostSessionAssembly> {
+		return this.trackCreation(() => this.assembleSession(request));
+	}
+
+	private async assembleSession(request: RuntimeSessionCreateRequest): Promise<RuntimeHostSessionAssembly> {
+		const session = await this.initializeRuntimeSession(request);
 		try {
 			const assessment = assessRuntimeHostSessionAssembly(session.createRuntimeHostAssemblyCandidate());
 			if (!assessment.ready) {
@@ -130,7 +143,11 @@ export class RuntimeAgentSessionAssemblyBackend implements RuntimeHostSessionBac
 		}
 	}
 
-	async createRuntimeSession(request: RuntimeSessionCreateRequest): Promise<RuntimeSession> {
+	createRuntimeSession(request: RuntimeSessionCreateRequest): Promise<RuntimeSession> {
+		return this.trackCreation(() => this.initializeRuntimeSession(request));
+	}
+
+	private async initializeRuntimeSession(request: RuntimeSessionCreateRequest): Promise<RuntimeSession> {
 		try {
 			const identity = await this.identity.resolve(request);
 			assertSessionId(identity.sessionId);
@@ -141,7 +158,13 @@ export class RuntimeAgentSessionAssemblyBackend implements RuntimeHostSessionBac
 		}
 	}
 
-	async prepareInstance(
+	prepareInstance(
+		selection: NonNullable<RuntimeSessionCreateRequest["agent"]>,
+	): Promise<RuntimeAgentPreparedInstance> {
+		return this.trackCreation(() => this.initializePreparedInstance(selection));
+	}
+
+	private async initializePreparedInstance(
 		selection: NonNullable<RuntimeSessionCreateRequest["agent"]>,
 	): Promise<RuntimeAgentPreparedInstance> {
 		if (!selection.instanceKey) {
@@ -164,7 +187,29 @@ export class RuntimeAgentSessionAssemblyBackend implements RuntimeHostSessionBac
 	}
 
 	dispose(): Promise<void> {
-		return this.instancePool.dispose();
+		this.closed = true;
+		return this.closeController.run();
+	}
+
+	private trackCreation<T>(create: () => Promise<T>): Promise<T> {
+		if (this.closed) {
+			return Promise.reject(
+				new RuntimeAgentError(RUNTIME_AGENT_ERROR_CODES.CLOSED, "Runtime Agent Backend is closed"),
+			);
+		}
+		// Register before initialization starts: disposal must also wait for Plan activation and rollback.
+		const operation = Promise.resolve().then(create);
+		this.pendingCreations.add(operation);
+		return operation.then(
+			(value) => {
+				this.pendingCreations.delete(operation);
+				return value;
+			},
+			(error: unknown) => {
+				this.pendingCreations.delete(operation);
+				throw error;
+			},
+		);
 	}
 
 	private async createResources(

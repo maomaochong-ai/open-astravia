@@ -16,6 +16,9 @@ export class CodingAgentSessionConfigurationState {
 	private pluginOverride: AgentPluginRuntimeConfig | undefined;
 	private hasPluginOverride = false;
 	private activeToolNamesOverride: readonly string[] | undefined;
+	private selectPlugins: (plugins: AgentPluginRuntimeConfig | undefined) => AgentPluginRuntimeConfig | undefined = (
+		plugins,
+	) => plugins;
 
 	constructor(
 		initialAgentMode: string | undefined,
@@ -35,7 +38,21 @@ export class CodingAgentSessionConfigurationState {
 	}
 
 	readAgentPlugins(): AgentPluginRuntimeConfig | undefined {
+		return this.selectPlugins(this.readRawAgentPlugins());
+	}
+
+	readRawAgentPlugins(): AgentPluginRuntimeConfig | undefined {
 		return this.hasPluginOverride ? this.pluginOverride : this.readBasePlugins();
+	}
+
+	setPluginSelection(
+		select: (plugins: AgentPluginRuntimeConfig | undefined) => AgentPluginRuntimeConfig | undefined,
+	): void {
+		this.selectPlugins = select;
+	}
+
+	selectAgentPlugins(plugins: AgentPluginRuntimeConfig | undefined): AgentPluginRuntimeConfig | undefined {
+		return this.selectPlugins(plugins);
 	}
 
 	readBaseAgentPlugins(): AgentPluginRuntimeConfig | undefined {

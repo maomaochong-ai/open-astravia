@@ -1,5 +1,5 @@
 import type { ConversationDocument, RuntimeMessageEnvelope, RuntimeSessionValueIndex } from "@vetta/runtime-core";
-import type { CodingAgentRuntimeSessionControls } from "../contracts/index.js";
+import type { CodingAgentRuntimeAgentIdentity, CodingAgentRuntimeSessionControls } from "../contracts/index.js";
 import type { CodingAgentSessionHookController, CodingAgentSessionResourceIndexes } from "./resource-lifecycle.js";
 
 type CodingAgentRuntimeSessionControlIndexes = Pick<
@@ -9,6 +9,7 @@ type CodingAgentRuntimeSessionControlIndexes = Pick<
 
 export interface CodingAgentRuntimeSessionControlsOptions {
 	readonly indexes: CodingAgentRuntimeSessionControlIndexes;
+	readonly readAgentIdentity: (sessionId: string) => CodingAgentRuntimeAgentIdentity | undefined;
 	readonly readConversationDocument: (sessionId: string) => Promise<ConversationDocument>;
 	readonly projectConversationContext: (document: ConversationDocument) => readonly RuntimeMessageEnvelope[];
 	readonly projectConversationSeed: (document: ConversationDocument) => readonly RuntimeMessageEnvelope[];
@@ -26,6 +27,17 @@ export function createCodingAgentRuntimeSessionControls(
 	options: CodingAgentRuntimeSessionControlsOptions,
 ): CodingAgentRuntimeSessionControls {
 	return {
+		readSessionAgentIdentity(sessionId) {
+			if (!options.indexes.resourceContexts.get(sessionId)) return undefined;
+			const identity = options.readAgentIdentity(sessionId);
+			return identity
+				? Object.freeze({
+						agentId: identity.agentId,
+						instanceId: identity.instanceId,
+						revisionId: identity.revisionId,
+					})
+				: undefined;
+		},
 		sessionHooks: {
 			async end(sessionId, cause) {
 				await requireSessionHookController(options.indexes.hookSessionControllers, sessionId).end(cause);

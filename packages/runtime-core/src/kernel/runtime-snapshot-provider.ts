@@ -42,6 +42,10 @@ export class AtomicRuntimeSnapshotProvider implements RuntimeSnapshotProvider {
 		const generation = this.current;
 		generation.activeLeases += 1;
 		let snapshot = generation.compiled.snapshot;
+		// Freeze the Session identity before any asynchronous Turn binding or continuation.
+		if (snapshot.observationPublisher) {
+			snapshot = Object.freeze({ ...snapshot, observationPublisher: snapshot.observationPublisher.scope({}) });
+		}
 		let releaseTurnBinding: (() => Promise<void>) | undefined;
 		try {
 			// Start every capture in the same JavaScript job. Each binder reads its

@@ -15,6 +15,7 @@ const runtimeSource = new DesktopCodingAgentPluginRuntimeSource({
 	build: () => pluginAgentContributionService.buildRuntimeConfig(),
 	additionalSkillPaths: getBuiltinSkillPaths(),
 	readAdditionalSkillPaths: getBuiltinSkillPaths,
+	readPluginIds: () => pluginAgentContributionService.readAvailablePluginIds(),
 	handlerLeaseProvider: {
 		bindForTurn: (agentPlugins) => pluginAgentContributionService.bindAgentHandlersForTurn(agentPlugins),
 	},

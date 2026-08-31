@@ -2,7 +2,7 @@ import type { RuntimeSessionAgentSelection, SessionConfig } from "@vetta/runtime
 import { RuntimeHost, RuntimeHostSession } from "@vetta/runtime-core";
 import type { ConversationScenario } from "../profiles/index.js";
 import type {
-	CodingAgentRuntimeAgentIdentity,
+	CodingAgentRuntimeAgentReference,
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeSessionConfiguration,
 	CodingAgentRuntimeSessionOptions,
@@ -18,13 +18,11 @@ export type CodingAgentRuntimeHostSessionOverrides = Pick<SessionConfig, "agentD
  * Runtime Core 只路由并透传 payload，不解释其中任何产品字段。
  */
 export function createCodingAgentRuntimeSessionAgentSelection(
-	agent: CodingAgentRuntimeAgentIdentity,
+	agent: CodingAgentRuntimeAgentReference,
 	options: CodingAgentRuntimeSessionConfiguration,
 ): RuntimeSessionAgentSelection {
 	return {
 		id: agent.agentId,
-		definitionRevisionId: agent.revisionId,
-		instanceId: agent.instanceId,
 		sessionConfiguration: options,
 	};
 }
@@ -43,7 +41,7 @@ export function createCodingAgentRuntimeSessionSelection(
 
 /** Coding Agent 宿主创建 Session 时的唯一通用配置投影。 */
 export function createCodingAgentRuntimeHostSessionConfig(
-	agent: CodingAgentRuntimeAgentIdentity,
+	agent: CodingAgentRuntimeAgentReference,
 	options: CodingAgentRuntimeSessionOptions,
 	overrides: CodingAgentRuntimeHostSessionOverrides = {},
 ): SessionConfig {

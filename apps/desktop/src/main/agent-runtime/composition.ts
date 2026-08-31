@@ -15,6 +15,7 @@ import {
 	createCodingAgentPluginMcpRuntime,
 	createCodingAgentSharedModelController,
 } from "@vetta/coding-agent/host-services";
+import { AGENT_CONFIGURATION_OBSERVATION } from "@vetta/coding-agent/session-extensions";
 import {
 	CatalogRoutedRuntimeHostSessionBackend,
 	CatalogRoutedRuntimeSessionAccessResolver,
@@ -45,6 +46,7 @@ import {
 import { FileConversationRuntimeSessionFileHistoryReader } from "@vetta/runtime-node/conversation";
 import { createNodeKnowledgeRuntime, NodeTextFileStorage } from "@vetta/runtime-node/host";
 import { getModePrompt } from "../agent-modes/index.js";
+import { createDesktopAgentObservability } from "../agent-observability/composition.js";
 import {
 	DEFAULT_CONVERSATION_CWD,
 	DEFAULT_IM_CONVERSATION_SESSION_DIR,
@@ -75,16 +77,22 @@ import { createSessionInitializationLogPort } from "./session-initialization-log
 const log = getAppLogger("runtime");
 
 export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
+	const observability = createDesktopAgentObservability(getAgentDir(), log);
 	const observationHub = new RuntimeObservationHub({
 		onIssue: (issue) => log.warn("[runtime-observation] application hub issue", issue),
 	});
+	observationHub.attach(observability.port, { id: "desktop.agent-observability" });
 	observationHub.attach(createSessionInitializationLogPort(log), {
 		id: "desktop.session-initialization-log",
 		domains: [CODING_AGENT_SESSION_INITIALIZATION_OBSERVATION.domain],
 	});
 	observationHub.attach(createRuntimeLifecycleLogPort(log), {
 		id: "desktop.runtime-lifecycle-log",
-		domains: [RUNTIME_AGENT_LIFECYCLE_OBSERVATION.domain, RUNTIME_HOST_LIFECYCLE_OBSERVATION.domain],
+		domains: [
+			RUNTIME_AGENT_LIFECYCLE_OBSERVATION.domain,
+			RUNTIME_HOST_LIFECYCLE_OBSERVATION.domain,
+			AGENT_CONFIGURATION_OBSERVATION.domain,
+		],
 	});
 	observationHub.attach(createRuntimeRetryLogPort(log), {
 		id: "desktop.runtime-retry-log",
@@ -130,6 +138,8 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		new DesktopRuntimeBackendPool({
 			observationPublisher,
 			compositionDefaults: {
+				tracer: observability.tracer,
+				tracing: { captureContent: false, detail: "standard" },
 				agentRuntime: { runtime: agentRuntime },
 				modelRegistry: modelRuntime,
 				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
@@ -173,10 +183,11 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 					});
 				},
 			},
-			createHookAdapterFactories: ({ scenario }) => [
+			createSessionHookAdapterFactories: ({ scenario }, { isPluginEnabled }) => [
 				createDesktopPluginHookAdapterFactory({
 					scenario,
-					canInvoke: (pluginId) => pluginAgentContributionService.canInvokeHook(pluginId),
+					canInvoke: (pluginId) =>
+						isPluginEnabled(pluginId) && pluginAgentContributionService.canInvokeHook(pluginId),
 				}),
 			],
 			createCodingToolResultPolicy: ({ agentDir }) =>
@@ -207,7 +218,14 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		macosSandboxExecPath,
 		sandboxHostPath,
 		serverUrl: DEFAULT_SERVER_URL,
-		observationPort: observationHub,
+		observationPort: {
+			record: (record) => observationHub.record(record),
+			flush: () => observationHub.flush(),
+			close: async () => {
+				await observationHub.close();
+				await observability.close();
+			},
+		},
 		createSessionBackend: ({ agents, observationPublisher }) => {
 			publishCodingAgentExecutionRuntimeDefinition(agents);
 			const runtimeBackendPool = createRuntimeBackendPool(agents, observationPublisher);

@@ -13,6 +13,7 @@ export interface DesktopCodingAgentPluginRuntimeSourceOptions {
 	/** Optional live source for built-in paths that can change while Desktop stays open. */
 	readonly readAdditionalSkillPaths?: () => readonly string[];
 	readonly handlerLeaseProvider: AgentPluginTurnHandlerLeaseProvider;
+	readonly readPluginIds?: () => readonly string[];
 }
 
 /** Desktop Plugin host 到 Coding Agent 产品 Plugin Runtime 的唯一动态 Source。 */
@@ -48,6 +49,8 @@ export class DesktopCodingAgentPluginRuntimeSource implements CodingAgentPluginR
 		}
 		return this.current;
 	};
+
+	readonly readPluginIds = (): readonly string[] => this.options.readPluginIds?.() ?? [];
 
 	readonly subscribe = (listener: () => void): (() => void) => {
 		this.listeners.add(listener);

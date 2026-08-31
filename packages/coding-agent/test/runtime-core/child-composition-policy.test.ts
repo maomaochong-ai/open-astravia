@@ -214,9 +214,8 @@ function compositionFixture() {
 			runtimeHostBackend: { createAssembly },
 			agentRuntime: {
 				agentId: "coding-agent",
-				instanceId: "coding-agent-instance",
-				revisionId: "coding-agent-revision",
 			},
+			readSessionAgentIdentity: () => undefined,
 			observations: new RuntimeObservationHub(),
 			scenario: "project",
 			appendSessionContext,

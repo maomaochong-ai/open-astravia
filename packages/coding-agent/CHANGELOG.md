@@ -2,6 +2,8 @@
 
 ### Added
 
+- 新增会话 Agent 配置模板快照、覆盖、版本恢复与 SessionExtension API；Prompt、Skill、Tool、MCP、Plugin、模型和推理等级在下一 Turn 原子采用，缺失资源明确失败，限制不能扩大宿主权限。
+
 - 文件配置与 Plugin 动态 MCP Server 可注入同一个 MCP Apps Host；App ToolResult 使用不透明 surface attachment，
   App-only Tool 从模型目录剥离，App 发起的异步 Tool 继续复用共享 Task Coordinator。
 - MCP Runtime Source 支持注入共享 Task Coordinator，使文件配置与 Plugin 动态 MCP Server 使用同一套 Task
@@ -9,6 +11,7 @@
 
 ### Fixed
 
+- Execution Definition 自定义转换失败时释放已经准备的 Session Plan，保留初始化和清理失败，避免遗漏资源回滚。
 - 修复本地与远程模型列表缺少 `maxTokens` 时被统一写成 16384、导致长推理在真实模型上提前触发长度截断的问题；未知上限现在保持未知，由 AI Provider 按模型元数据、调用覆盖或协议要求解析。
 - 修复模型输出达到长度上限时被误判为正常完成、界面没有可见回复且不会自动重试的问题；Coding Agent 现在会在同一 Turn 内有限次数地请求模型从截断位置继续回答，次数耗尽后进入明确的错误链路。
 - 修复 Plugin Tool 到达超时时，内部 `AbortSignal` 的同步拒绝抢先覆盖超时错误、最终误报为
@@ -20,6 +23,9 @@
 
 ### Changed
 
+- **破坏性变更**：每个活动会话现在拥有独立 Agent Instance；同一 Composition 的新会话读取当前 Definition revision，
+  已有会话保持原 revision。Composition 继续复用基础设施，`agentRuntime` 只返回 `agentId`，完整运行身份改由
+  `readSessionAgentIdentity(sessionId)` 查询；移除 Composition 级 `instanceId` 选项。恢复历史创建新实例，Turn generation 不变。
 - 工具选择指引明确区分目标资源与查询/解释/执行意图；Skill 索引与 `invoke_skill` 共用适用条件，移除仅因主题匹配就强制加载的措辞。Vetta CLI 先确认操作的是 Vetta 本身，再检索并核对 Action 使用说明，不以审批弹窗代替意图判断。
 - Subagent Todo 改为 Coding Agent 自有的 Session Extension 投影：Workflow 调度端口、Child 初始化与实时 observation、
   恢复持久化和宿主事件校验均停留在产品层；通用 Runtime 只处理产品无关的子代理生命周期快照。

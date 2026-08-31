@@ -126,6 +126,7 @@ function createFixture() {
 		reloadMcp,
 		controls: createCodingAgentRuntimeSessionControls({
 			indexes,
+			readAgentIdentity: () => undefined,
 			readConversationDocument,
 			projectConversationContext,
 			projectConversationSeed,

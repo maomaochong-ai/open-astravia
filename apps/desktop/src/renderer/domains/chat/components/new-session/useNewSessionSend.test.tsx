@@ -48,6 +48,24 @@ function deferred<T>(): Deferred<T> {
 }
 
 describe("useNewSessionSend", () => {
+	it("leaves Agent configuration to the host when creating a conversation", async () => {
+		const openSession = vi.fn(
+			async (_cwd: string, _path?: string, _mode?: SessionExecutionMode, _options?: OpenSessionOptions) => {},
+		);
+		const { result } = renderHook(() =>
+			useNewSessionSend({
+				cwd: "C:/workspace",
+				executionMode: "sandbox",
+				openSession,
+				sendMessage: async () => undefined,
+			}),
+		);
+		await act(async () => {
+			await result.current.send();
+		});
+		expect(openSession).toHaveBeenCalledOnce();
+		expect(openSession.mock.calls[0]?.[3]).not.toHaveProperty("agentConfiguration");
+	});
 	beforeEach(() => {
 		vi.clearAllMocks();
 		stagedSend.stage.mockReturnValue({

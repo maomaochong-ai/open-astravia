@@ -26,8 +26,6 @@ export interface CodingAgentCompositionAgentRuntimeScope {
 	close(): Promise<void>;
 }
 
-let nextCompositionInstanceKey = 0;
-
 /**
  * 只管理 Coding Agent Definition 的发布边界与 Runtime 所有权。
  * Instance/Session 生命周期统一交给 RuntimeAgentSessionAssemblyBackend，避免产品层再建一套 owner。
@@ -57,7 +55,6 @@ export function createCodingAgentCompositionAgentRuntimeScope(options: {
 		);
 	}
 
-	const instanceKey = configured?.instanceId ?? `coding-agent-composition-${++nextCompositionInstanceKey}`;
 	return Object.freeze({
 		agentId,
 		runtime,
@@ -65,9 +62,6 @@ export function createCodingAgentCompositionAgentRuntimeScope(options: {
 		createSelection: (prepareSession: CodingAgentExecutionRuntimeInstanceConfiguration["prepareSession"]) =>
 			Object.freeze({
 				id: agentId,
-				instanceId: configured?.instanceId,
-				instanceKey,
-				instanceConfigurationRevision: "1",
 				instanceConfiguration: {
 					applicationConfiguration: configured?.instanceConfiguration,
 					prepareSession,

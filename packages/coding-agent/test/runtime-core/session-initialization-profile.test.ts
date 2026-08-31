@@ -14,6 +14,7 @@ describe("Coding Agent session initialization profile", () => {
 			settingsSource: promptSettingsSource,
 		});
 		const createPluginRuntime = () => undefined;
+		const createSessionHookAdapterFactories = () => [];
 		const createContextRuntime = (() => {
 			throw new Error("not called by profile projection");
 		}) as NonNullable<CodingAgentRuntimeCompositionOptions["createContextRuntime"]>;
@@ -23,6 +24,7 @@ describe("Coding Agent session initialization profile", () => {
 			promptSettingsSource,
 			createPromptRuntimeSources,
 			createPluginRuntime,
+			createSessionHookAdapterFactories,
 			createContextRuntime,
 			enableSubagents: false,
 			subagentMaxConcurrent: 4,
@@ -44,6 +46,7 @@ describe("Coding Agent session initialization profile", () => {
 			"createPromptRuntimeSources",
 			"createSessionExecutionEnvironment",
 			"createSessionExtensionDefinitions",
+			"createSessionHookAdapterFactories",
 			"createSubagentChildFactory",
 			"createSubagentId",
 			"createSystemPromptOptionsResolver",
@@ -71,6 +74,7 @@ describe("Coding Agent session initialization profile", () => {
 			"systemPromptAdvertisedToolNames",
 			"workspaceFacts",
 		]);
+		expect(profile.createSessionHookAdapterFactories).toBe(createSessionHookAdapterFactories);
 		expect(profile.promptResourceSource).toBe(promptResourceSource);
 		expect(profile.promptSettingsSource).toBe(promptSettingsSource);
 		expect(profile.createPromptRuntimeSources).toBe(createPromptRuntimeSources);

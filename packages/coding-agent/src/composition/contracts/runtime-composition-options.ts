@@ -186,6 +186,11 @@ export interface CodingAgentRuntimeExtensionOptions {
 	readonly extensionTools?: readonly CodingAgentExtensionToolSource[];
 	/** 追加到每个 Session 内置 Codex/Claude Hook Adapter 之后。 */
 	readonly additionalHookAdapterFactories?: readonly EcosystemHookAdapterFactory[];
+	/** Session-owned membership; adapters still capture it in their existing Turn lease. */
+	readonly createSessionHookAdapterFactories?: (context: {
+		readonly sessionId: string;
+		readonly isPluginEnabled: (pluginId: string) => boolean;
+	}) => readonly EcosystemHookAdapterFactory[];
 	/** 显式 Hook 配置层；未提供时由内置 Adapter 使用各自默认发现规则。 */
 	readonly hookConfigLayers?: readonly HookConfigLayer[];
 	readonly maxStopHookContinuations?: number;
@@ -256,7 +261,6 @@ export interface CodingAgentRuntimeAgentOptions {
 	readonly runtime?: RuntimeAgentRuntime;
 	/** 要从共享 Registry 获取的平级主 Agent；默认 `coding-agent`。 */
 	readonly agentId?: string;
-	readonly instanceId?: string;
 	/** 传给 execution Definition transform 的应用级 Instance 配置；Definition 负责校验。 */
 	readonly instanceConfiguration?: unknown;
 	/** 仅用于自有 Agent 控制面的 Coding Agent execution-compatible Definition。 */
