@@ -1435,6 +1435,8 @@ Can the interface be operated and understood accessibly?
 
 If any answer exposes a mismatch, revise the design.
 
+After implementation, review the result with [`ui-review.md`](./ui-review.md).
+
 ---
 
 # 28. Final Principle
