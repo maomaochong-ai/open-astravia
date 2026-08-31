@@ -8,6 +8,39 @@ import {
 } from "../src/index.js";
 
 describe("MCP deferred tool contract", () => {
+	it("keeps server restrictions and the search catalog fixed for an admitted Turn", async () => {
+		const controller = createMcpDeferredToolController({ sessionId: "session", threshold: 0 });
+		controller.refresh({
+			revision: 1,
+			tools: [
+				{ name: "old", description: "docs", serverName: "one" },
+				{ name: "secret", description: "docs", serverName: "two" },
+			],
+		});
+		controller.setToolFilter(({ serverName }) => serverName === "one");
+		expect(controller.readPromptState().tools.map(({ name }) => name)).toEqual(["old"]);
+		const signal = new AbortController().signal;
+		const feature = await controller.createFeature().prepare({ signal });
+		const provider = (await feature.contribute({ signal })).modelCallProviders![0]!;
+		const bound = await provider.bindForTurn!({ sessionId: "session", operationId: "turn", reason: "turn", signal });
+		const visibility = controller.bindToolVisibility();
+		controller.refresh({ revision: 2, tools: [{ name: "new", description: "docs", serverName: "two" }] });
+		controller.setToolFilter(() => true);
+		const contribution = await bound.contribute({ sessionId: "session", turnId: "turn", signal });
+		const result = await contribution.tools![0]!.execute({
+			sessionId: "session",
+			turnId: "turn",
+			toolCallId: "search",
+			input: { query: "docs" },
+			signal,
+		});
+		expect(result.details).toMatchObject({ activated: [{ name: "old" }], totalDeferred: 1 });
+		expect(JSON.stringify(result)).not.toContain("secret");
+		expect(JSON.stringify(result)).not.toContain('"new"');
+		expect(visibility("old")).toBe(true);
+		expect(visibility("new")).toBe(false);
+		await feature.dispose();
+	});
 	it("scores name matches above description matches and sorts ties by name", () => {
 		const tools = [
 			{ name: "mcp_docs_lookup", description: "Search pages" },

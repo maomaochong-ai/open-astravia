@@ -76,6 +76,13 @@ export class PluginAgentContributionService {
 		);
 	}
 
+	readAvailablePluginIds(): readonly string[] {
+		return this.dependencies
+			.listPlugins()
+			.filter((plugin) => plugin.enabled && this.isContributionModeActive(plugin.id))
+			.map((plugin) => plugin.id);
+	}
+
 	readHookInvocationRejection(pluginId: string, handlerId: string, activationId?: string): string | undefined {
 		return this.dependencies.hooks.readInvocationRejection(pluginId, handlerId, activationId);
 	}

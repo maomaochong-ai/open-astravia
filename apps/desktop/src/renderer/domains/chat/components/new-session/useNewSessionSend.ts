@@ -1,5 +1,7 @@
 import { perfSendBegin, perfSendMark } from "@shared/lib/perf-send";
 import type { OpenSessionOptions, SendMessageOptions, SessionExecutionMode } from "@shared/store/atoms";
+import { newSessionAgentConfigurationAtom } from "@shared/store/atoms";
+import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
 import { restoreStagedNewSessionSend, stageNewSessionSend } from "../../services/staged-new-session-send";
 import type { SendInteractionContext } from "../input-bar/types";
@@ -35,6 +37,7 @@ export function useNewSessionSend(options: NewSessionSendOptions): {
 			const interactionId = context?.interactionId ?? perfSendBegin("new-session-programmatic");
 			perfSendMark("new-session-submit", interactionId);
 			try {
+				const agentConfiguration = structuredClone(getDefaultStore().get(newSessionAgentConfigurationAtom));
 				// 准备阶段也在闸门内：连点两下发送不会创建出两个项目。
 				const targetCwd = prepareCwd ? await prepareCwd() : cwd;
 				if (!targetCwd) return;
@@ -42,6 +45,7 @@ export function useNewSessionSend(options: NewSessionSendOptions): {
 				if (!stagedInput) return;
 				await openSession(targetCwd, undefined, executionMode, {
 					interactionId,
+					agentConfiguration,
 					navigateBeforeCreate: true,
 					preserveMessagesBeforeCreate: true,
 					onCreateError: () => restoreStagedNewSessionSend(stagedInput),

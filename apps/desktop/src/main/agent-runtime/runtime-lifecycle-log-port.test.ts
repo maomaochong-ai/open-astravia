@@ -1,3 +1,4 @@
+import { AGENT_CONFIGURATION_OBSERVATION } from "@vetta/coding-agent/session-extensions";
 import {
 	defineRuntimeObservation,
 	RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION,
@@ -14,6 +15,31 @@ import { describe, expect, it, vi } from "vitest";
 import { createRuntimeLifecycleLogPort } from "./runtime-lifecycle-log-port.js";
 
 describe("runtime lifecycle log port", () => {
+	it("logs configuration versions and failure codes without arbitrary payload content", () => {
+		const logger = { info: vi.fn(), warn: vi.fn() };
+		createRuntimeLifecycleLogPort(logger).record({
+			token: AGENT_CONFIGURATION_OBSERVATION,
+			timestamp: 1,
+			context: { agentId: "agent", instanceId: "instance", sessionId: "session" },
+			payload: {
+				operation: "apply",
+				phase: "failed",
+				revision: 2,
+				code: "AGENT_CONFIGURATION_RESOURCE_UNAVAILABLE",
+				prompt: "private prompt",
+				error: "private token",
+			},
+		});
+		expect(logger.warn).toHaveBeenCalledWith(
+			"agent configuration failure",
+			expect.objectContaining({
+				sessionId: "session",
+				configurationRevision: 2,
+				code: "AGENT_CONFIGURATION_RESOURCE_UNAVAILABLE",
+			}),
+		);
+		expect(JSON.stringify(logger.warn.mock.calls)).not.toContain("private");
+	});
 	it("logs revision, pool retirement and Session rebind as privacy-safe control-plane entries", () => {
 		const logger = { info: vi.fn(), warn: vi.fn() };
 		const port = createRuntimeLifecycleLogPort(logger);
@@ -215,11 +241,33 @@ describe("runtime lifecycle log port", () => {
 		expect(JSON.stringify(logger.warn.mock.calls)).not.toContain("message");
 	});
 
-	it("ignores noisy successful data-plane events and unrelated observations", () => {
+	it("records Session ownership boundaries with Instance and revision identity", () => {
+		const logger = { info: vi.fn(), warn: vi.fn() };
+		const port = createRuntimeLifecycleLogPort(logger);
+		const identity = {
+			agentId: "coding-agent",
+			instanceId: "instance-1",
+			revisionId: "revision-1",
+			sessionId: "session-1",
+		};
+		for (const operation of ["session.create", "session.close"] as const) {
+			port.record(observationRecord({ operation, phase: "completed" }, identity));
+			expect(logger.info).toHaveBeenCalledWith("runtime agent lifecycle", {
+				operation,
+				phase: "completed",
+				...identity,
+			});
+		}
+	});
+
+	it("ignores lease activity, initialization starts and unrelated observations", () => {
 		const logger = { info: vi.fn(), warn: vi.fn() };
 		const port = createRuntimeLifecycleLogPort(logger);
 
-		port.record(observationRecord({ operation: "session.create", phase: "completed" }, { sessionId: "session-1" }));
+		port.record(observationRecord({ operation: "session.create", phase: "started" }, { sessionId: "session-1" }));
+		port.record(
+			observationRecord({ operation: "revision.acquire", phase: "completed" }, { revisionId: "revision-1" }),
+		);
 		port.record({ token: defineRuntimeObservation("other", "event"), context: {}, timestamp: 1, payload: {} });
 
 		expect(logger.info).not.toHaveBeenCalled();

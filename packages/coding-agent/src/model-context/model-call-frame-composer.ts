@@ -8,6 +8,7 @@ import type {
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import type { RuntimeToolProjectionPipeline } from "@vetta/runtime-tools";
+import { filterAgentTools } from "../agent-configuration/resource-selection.js";
 import type {
 	CodingAgentPluginMcpToolComposer,
 	CodingAgentSystemPromptOptionsResolver,
@@ -36,6 +37,8 @@ export interface CodingAgentModelCallFrameComposerOptions {
 	) => Promise<CodingAgentSystemPromptOptionsResolver> | CodingAgentSystemPromptOptionsResolver;
 	readonly readMcpPromptState?: () => CodingAgentMcpPromptState;
 	readonly readAvailableTools?: () => ReadonlyMap<string, RuntimeToolDefinition>;
+	readonly allowsTool?: (name: string) => boolean;
+	readonly bindToolSelection?: () => (name: string) => boolean;
 	readonly readActiveToolNamesOverride?: () => readonly string[] | undefined;
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpToolComposer;
 	readonly readAgentMode?: () => string | undefined;
@@ -138,6 +141,7 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 	}
 
 	async bindForTurn(context: RuntimeSnapshotAcquireContext): Promise<ModelCallFrameComposer> {
+		const allowsTool = this.options.bindToolSelection?.() ?? this.options.allowsTool;
 		context.signal.throwIfAborted();
 		let toolProjectionPipeline: RuntimeToolProjectionPipeline | undefined;
 		let pluginMcpRuntime: CodingAgentPluginMcpToolComposer | undefined;
@@ -183,6 +187,8 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 			context.signal.throwIfAborted();
 			return new CodingAgentModelCallFrameComposer({
 				...this.options,
+				allowsTool,
+				bindToolSelection: undefined,
 				pluginRunOrchestrator,
 				pluginToolRuntime,
 				pluginMcpRuntime,
@@ -233,13 +239,16 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 		const draft = prepared.override
 			? prepared.createDraft(prepared.activeToolNames)
 			: (pluginFrame?.draft ?? prepared.createDraft(prepared.activeToolNames));
-		const selectedTools = prepared.override
-			? new Map(
-					prepared.activeToolNames.flatMap((toolName) =>
-						prepared.availableTools.get(toolName) ? [[toolName, prepared.availableTools.get(toolName)!]] : [],
-					),
-				)
-			: (pluginFrame?.tools ?? prepared.effectiveContext.frame.tools);
+		const selectedTools = filterAgentTools(
+			prepared.override
+				? new Map(
+						prepared.activeToolNames.flatMap((toolName) =>
+							prepared.availableTools.get(toolName) ? [[toolName, prepared.availableTools.get(toolName)!]] : [],
+						),
+					)
+				: (pluginFrame?.tools ?? prepared.effectiveContext.frame.tools),
+			this.options.allowsTool,
+		);
 		const compiledPrompt = compileSystemPromptDraft(draft);
 		this.options.onPromptDiagnostics?.(compiledPrompt.diagnostics);
 		const systemPrompt = compiledPrompt.content;
@@ -310,13 +319,23 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 		const pluginContext: ModelCallFrameCompositionContext = pluginToolSurface
 			? { ...mcpContext, frame: pluginToolSurface.frame }
 			: mcpContext;
-		const availableTools = pluginToolSurface?.availableTools ?? mcpAvailableTools;
-		const effectiveContext = reconcileManagedMcpTools(
+		const availableTools = filterAgentTools(
+			pluginToolSurface?.availableTools ?? mcpAvailableTools,
+			this.options.allowsTool,
+		);
+		const reconciledContext = reconcileManagedMcpTools(
 			pluginContext,
 			availableTools,
 			this.options.readMcpPromptState?.(),
 			this.options.isMcpToolVisible,
 		);
+		const effectiveContext = {
+			...reconciledContext,
+			frame: {
+				...reconciledContext.frame,
+				tools: filterAgentTools(reconciledContext.frame.tools, this.options.allowsTool),
+			},
+		};
 		const override = this.options.readActiveToolNamesOverride?.();
 		const activeToolNames = override
 			? override.filter((toolName) => availableTools.has(toolName))
@@ -329,7 +348,11 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 		const mcpPromptState = this.options.readMcpPromptState?.();
 		const createDraft = (selectedTools: readonly string[]): SystemPromptDraft => {
 			const advertisedTools = [
-				...new Set([...selectedTools, ...(this.options.systemPromptAdvertisedToolNames ?? [])]),
+				...new Set(
+					[...selectedTools, ...(this.options.systemPromptAdvertisedToolNames ?? [])].filter(
+						(name) => this.options.allowsTool?.(name) ?? true,
+					),
+				),
 			];
 			const draft = buildSystemPromptDraft({
 				...promptOptions,

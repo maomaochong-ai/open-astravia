@@ -87,6 +87,7 @@ export {
 	type CodingAgentPromptRuntimeSources,
 	type CodingAgentRuntimeAgentIdentity,
 	type CodingAgentRuntimeAgentOptions,
+	type CodingAgentRuntimeAgentReference,
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
 	type CodingAgentRuntimeHostRetrySettings,

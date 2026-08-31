@@ -17,13 +17,19 @@ import {
 	type McpTool,
 } from "@vetta/runtime-mcp";
 import { FileConversationRepository } from "@vetta/runtime-node/conversation";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCliPromptRuntimeSources } from "../src/coding-agent-resource-runtime.js";
 import { createCodingAgentRuntimeComposition } from "./fixtures/runtime-composition.js";
 
 describe("Runtime composition contract", () => {
 	const temporaryDirectories: string[] = [];
 	const compositions: CodingAgentRuntimeComposition[] = [];
+	beforeEach(async () => {
+		const directory = await createTemporaryDirectory("runtime-test-home-");
+		vi.stubEnv("VETTA_HOME", directory);
+		vi.stubEnv("VETTA_CODING_AGENT_DIR", join(directory, "agent"));
+		vi.stubEnv("USERPROFILE", directory);
+	});
 
 	afterEach(async () => {
 		for (const composition of compositions.splice(0).reverse()) {
@@ -32,6 +38,7 @@ describe("Runtime composition contract", () => {
 		for (const directory of temporaryDirectories.splice(0).reverse()) {
 			await rm(directory, { recursive: true, force: true });
 		}
+		vi.unstubAllEnvs();
 	});
 
 	it("runs prompt, real read tool, persistence, resume and continue through the parallel backend", async () => {
@@ -336,8 +343,16 @@ describe("Runtime composition contract", () => {
 			},
 		});
 		compositions.push(composition);
-		const first = await composition.createSession({ sessionId: "real-prompt-first", cwd: firstWorkspace });
-		const second = await composition.createSession({ sessionId: "real-prompt-second", cwd: secondWorkspace });
+		const first = await composition.createSession({
+			sessionId: "real-prompt-first",
+			cwd: firstWorkspace,
+			includeAgentSkills: false,
+		});
+		const second = await composition.createSession({
+			sessionId: "real-prompt-second",
+			cwd: secondWorkspace,
+			includeAgentSkills: false,
+		});
 
 		await first.prompt({ text: "first" });
 		await second.prompt({ text: "second" });
@@ -815,6 +830,8 @@ describe("Runtime composition contract", () => {
 	async function createTemporaryDirectory(prefix: string): Promise<string> {
 		const directory = await mkdtemp(join(tmpdir(), prefix));
 		temporaryDirectories.push(directory);
+		// Stop ancestor resource discovery at the fixture boundary, including on Windows under the user profile.
+		await writeFile(join(directory, ".git"), "");
 		return directory;
 	}
 });

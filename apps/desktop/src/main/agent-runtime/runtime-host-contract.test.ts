@@ -8,7 +8,7 @@ import type { ConversationScenario } from "@vetta/coding-agent/profile";
 import { CODING_AGENT_SESSION_PROFILE_STATE_READ } from "@vetta/coding-agent/session-extensions";
 import { type HistoryEntry, RuntimeHost, type SessionEvent } from "@vetta/runtime-core";
 import { DesktopRuntimeBackendPool } from "@vetta/runtime-desktop";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	startOpenAiResponsesTestServer,
 	textResponseEvents,
@@ -32,12 +32,19 @@ function codingAgentSelection(scenario: ConversationScenario, enableBackgroundTa
 describe("Desktop RuntimeHost production contract", () => {
 	const directories: string[] = [];
 	const fixtures: RuntimeFixture[] = [];
+	beforeEach(async () => {
+		const directory = await temporaryDirectory("desktop-runtime-home-");
+		vi.stubEnv("VETTA_HOME", directory);
+		vi.stubEnv("VETTA_CODING_AGENT_DIR", join(directory, "agent"));
+		vi.stubEnv("USERPROFILE", directory);
+	});
 
 	afterEach(async () => {
 		for (const fixture of fixtures.splice(0).reverse()) await fixture.dispose();
 		for (const directory of directories.splice(0).reverse()) {
 			await rm(directory, { recursive: true, force: true });
 		}
+		vi.unstubAllEnvs();
 	});
 
 	for (const backend of ["runtime"] as const) {
@@ -483,7 +490,7 @@ describe("Desktop RuntimeHost production contract", () => {
 
 	function createRuntimeFixture(
 		_backend: "runtime",
-		_agentStateDir: string,
+		agentStateDir: string,
 		model: Model<Api> = MODEL,
 	): RuntimeFixture {
 		const pool = new DesktopRuntimeBackendPool({
@@ -491,7 +498,8 @@ describe("Desktop RuntimeHost production contract", () => {
 				modelRegistry: modelRegistry(model),
 				initialModel: model,
 				initialThinkingLevel: "off",
-				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
+				createPromptRuntimeSources: (context) =>
+					createDesktopPromptRuntimeSources({ ...context, agentDir: agentStateDir }),
 			},
 		});
 		const runtime = new RuntimeHost({
@@ -513,6 +521,8 @@ describe("Desktop RuntimeHost production contract", () => {
 	async function temporaryDirectory(prefix: string): Promise<string> {
 		const directory = await mkdtemp(join(tmpdir(), prefix));
 		directories.push(directory);
+		// Stop ancestor resource discovery at the fixture boundary, including on Windows under the user profile.
+		await writeFile(join(directory, ".git"), "");
 		return directory;
 	}
 });

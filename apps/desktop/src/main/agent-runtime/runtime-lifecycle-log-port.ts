@@ -1,4 +1,8 @@
 import {
+	AGENT_CONFIGURATION_OBSERVATION,
+	type AgentConfigurationObservation,
+} from "@vetta/coding-agent/session-extensions";
+import {
 	RUNTIME_ACTIVE_SESSION_HOST_OBSERVATION,
 	RUNTIME_AGENT_LIFECYCLE_OBSERVATION,
 	RUNTIME_HOST_AGENT_BACKEND_OBSERVATION,
@@ -21,6 +25,8 @@ const LOGGED_CONTROL_PLANE_OPERATIONS = new Set<RuntimeAgentLifecycleObservation
 	"revision.retire",
 	"revision.remove",
 	"instance.pool.retire",
+	"session.create",
+	"session.close",
 	"session.rebind",
 ]);
 
@@ -39,6 +45,21 @@ const LOGGED_AGENT_BACKEND_OPERATIONS = new Set<RuntimeHostAgentBackendObservati
 export function createRuntimeLifecycleLogPort(logger: RuntimeLifecycleLogger): RuntimeObservationPort {
 	return {
 		record(record) {
+			if (isAgentConfigurationObservation(record)) {
+				const { context, payload } = record;
+				const fields = {
+					operation: payload.operation,
+					phase: payload.phase,
+					configurationRevision: payload.revision,
+					agentId: context.agentId,
+					instanceId: context.instanceId,
+					sessionId: context.sessionId,
+					...(payload.code ? { code: payload.code } : {}),
+				};
+				if (payload.phase === "failed") logger.warn("agent configuration failure", fields);
+				else if (payload.phase === "completed") logger.info("agent configuration applied", fields);
+				return;
+			}
 			if (isRuntimeAgentLifecycleObservation(record)) {
 				const observation = record.payload;
 				if (observation.phase === "failed") {
@@ -74,6 +95,12 @@ export function createRuntimeLifecycleLogPort(logger: RuntimeLifecycleLogger): R
 			}
 		},
 	};
+}
+
+function isAgentConfigurationObservation(
+	record: RuntimeObservationRecord,
+): record is RuntimeObservationRecord<AgentConfigurationObservation> {
+	return record.token.id === AGENT_CONFIGURATION_OBSERVATION.id;
 }
 
 function isRuntimeActiveSessionHostObservation(

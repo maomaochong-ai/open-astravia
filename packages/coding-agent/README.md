@@ -2,6 +2,8 @@
 
 Vetta Coding Agent 的能力、策略与稳定 API 语义层。
 
+会话独占 Agent Instance，并支持[配置模板、会话覆盖与版本恢复](./docs/agent-configuration.md)。
+
 本包定义 Coding Agent 的 Profile、Prompt、Mode、Todo、Memory、Knowledge、Skill、Plugin、Extension、
 IM、Compaction 与工具策略。平台 Runtime 负责选择环境实现并完成最终装配。
 
@@ -113,8 +115,13 @@ Host request
 
 生产 `createCodingAgentRuntimeComposition()` 已通过 `RuntimeHost.agents` 创建真正的 Coding Agent
 Definition/Instance/Session：独立模式自建模块化 Agent 控制面，Desktop 由唯一 RuntimeHost 向多个工作区 Composition
-共享 Registry、各自固定不可变 revision。产品资源先装配成通用 Session Definition，再由 Runtime Agent Session 唯一编译
+共享 Registry；每个活动会话创建独立 Instance，在创建时固定不可变 revision。Composition 只复用工作区基础设施，
+不再提前创建或固定实例。产品资源先装配成通用 Session Definition，再由 Runtime Agent Session 唯一编译
 Prompt、Tool、MCP 与 Extension；Conversation continuation 会同步重绑基座 Session identity。
+
+`composition.agentRuntime` 只返回 `agentId`；活动会话的 `instanceId` 和 `revisionId` 通过
+`composition.readSessionAgentIdentity(sessionId)` 查询。关闭会话释放自己的 Instance，恢复历史时创建新 Instance；
+同一活动会话的多个 Turn 保持实例身份，动态能力仍在 Turn admission 绑定 generation。
 
 完整链路、唯一 Host、动态 revision、自定义 Tool/Prompt、观测与生命周期示例见
 [《Coding Agent 与多主 Agent 基座》](./docs/runtime-agent-base.md)。通用自定义主 Agent 见

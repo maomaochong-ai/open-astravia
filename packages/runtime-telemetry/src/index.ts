@@ -16,3 +16,14 @@ export {
 	type RuntimeObservationLoggerPortOptions,
 	type RuntimeObservationTracerPortOptions,
 } from "./observation-adapters.js";
+export {
+	parseRuntimeTraceRecord,
+	type RuntimeTraceMetadata,
+	type RuntimeTraceRecord,
+	type RuntimeTraceState,
+	safeTraceContext,
+	safeTraceMetadata,
+	traceIdentifier,
+	traceObject,
+} from "./trace-record.js";
+export { RuntimeTraceRecorder, type RuntimeTraceRecorderOptions } from "./trace-recorder.js";

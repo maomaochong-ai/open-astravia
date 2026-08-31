@@ -5,7 +5,7 @@ import type {
 	CodingAgentSandboxAuthorizationDecision,
 	CodingAgentSandboxAuthorizationFunctionRequest,
 } from "@vetta/coding-agent/function-extensions";
-import type { ConversationScenario } from "@vetta/coding-agent/profile";
+import type { AgentConfigurationSelection, ConversationScenario } from "@vetta/coding-agent/profile";
 import type {
 	HistoryEntry,
 	ProjectInfo,
@@ -65,6 +65,7 @@ export interface DesktopSessionStateSnapshot extends SessionStateSnapshot {
 }
 
 export interface DesktopCodingAgentSessionConfig extends SessionConfig {
+	readonly agentConfiguration?: AgentConfigurationSelection;
 	readonly scenario?: ConversationScenario;
 	readonly agentMode?: AgentMode;
 	readonly appendSystemPrompt?: string;

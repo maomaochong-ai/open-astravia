@@ -26,6 +26,7 @@ export type {
 } from "./runtime-composition-options.js";
 export type {
 	CodingAgentRuntimeAgentIdentity,
+	CodingAgentRuntimeAgentReference,
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeExtensionControls,
 	CodingAgentRuntimeSessionControls,

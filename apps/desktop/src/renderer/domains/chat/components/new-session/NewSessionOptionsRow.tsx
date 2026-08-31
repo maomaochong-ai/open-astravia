@@ -1,4 +1,5 @@
 import { AgentModeIconToggle } from "./AgentModeIconToggle";
+import { AgentConfigurationButton } from "@domains/agent-configuration";
 import { NewSessionProjectSelector } from "./project-selector/NewSessionProjectSelector";
 import type { ProjectOption, ProjectSelection } from "./project-selector/project-selection";
 
@@ -30,6 +31,7 @@ export function NewSessionOptionsRow({
 		// 容器左缘直接压在标题文字的基线上，不需要光学补偿。
 		<div className="mx-auto mb-4 flex w-full max-w-2xl items-center gap-2">
 			<AgentModeIconToggle />
+			<AgentConfigurationButton newSession />
 			<NewSessionProjectSelector
 				selection={selection}
 				options={options}

@@ -14,6 +14,16 @@ import { guardCodingToolRegistration } from "@vetta/runtime-tools";
 import { createEcosystemToolInterceptor } from "../../adapters/ecosystem/tool-interceptor-adapter.js";
 import { CodingAgentPromptRequestAdapter } from "../../adapters/runtime-core/prompt-request-adapter.js";
 import { CodingAgentLegacyImageSettingsRuntime } from "../../adapters/settings/legacy-image-settings-adapter.js";
+import type { AgentConfiguration } from "../../agent-configuration/configuration-schema.js";
+import {
+	allowsAgentResource,
+	createAgentToolSelection,
+	readAgentPluginIds,
+	selectAgentPlugins,
+	selectAgentPromptResourceResolver,
+	selectAgentSkillSource,
+} from "../../agent-configuration/resource-selection.js";
+import type { AgentSessionConfiguration } from "../../agent-configuration/session-configuration.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../execution/session/runtime.js";
 import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
@@ -98,6 +108,8 @@ export interface CodingAgentTurnCapabilityPromptOptions {
 }
 
 export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
+	readonly agentConfiguration: AgentSessionConfiguration;
+	readonly readAllAgentPlugins: () => AgentPluginRuntimeConfig | undefined;
 	readonly session: CodingAgentTurnCapabilitySessionIdentity;
 	readonly activation: CodingAgentTurnCapabilityActivationPort;
 	readonly prompt: CodingAgentTurnCapabilityPromptOptions;
@@ -131,6 +143,7 @@ export interface CodingAgentTurnCapabilitySessionAssembly {
 	readonly capabilityDefinition: RuntimeCapabilityDefinition;
 	readonly promptAdapter: CodingAgentPromptRequestAdapter;
 	readAvailableTools(): ReadonlyMap<string, RuntimeToolDefinition>;
+	refreshConfigurationResources(signal?: AbortSignal): Promise<void>;
 	readPluginActiveToolNames(): readonly string[] | undefined;
 	reconfigureAgentPluginSkills(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<void>;
 	rebindSession(sessionId: string): void;
@@ -199,15 +212,15 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			},
 		],
 	});
-	const promptRuntime = options.initializationTimeline
+	const promptSources = options.initializationTimeline
 		? await options.initializationTimeline.measure("prompt-runtime", () => createPromptRuntime(options))
 		: await createPromptRuntime(options);
+	const { runtime: promptRuntime, resourceSource: promptResourceSource, rawResourceSource } = promptSources;
 	const resolveSystemPromptOptions =
 		options.prompt.systemPromptOptionsResolver ?? promptRuntime?.resolveSystemPromptOptions;
 	if (!resolveSystemPromptOptions) {
 		throw new Error("Coding Agent system prompt resolver was not created");
 	}
-	const promptResourceSource = options.prompt.resourceSource ?? promptRuntime?.readResourceSource();
 	const applyPluginSkills = async (): Promise<void> => {
 		await promptResourceSource?.setRuntimeSkillPaths(readPluginSkillPaths(options.activation.readAgentPlugins()));
 	};
@@ -238,13 +251,18 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		context: Parameters<CodingAgentSystemPromptOptionsResolver>[0],
 		agentPlugins: AgentPluginRuntimeConfig | undefined,
 		memory: string | undefined,
+		configuration: AgentConfiguration,
 	) => {
 		const promptOptions = await resolver(context);
 		return {
 			...promptOptions,
 			cwd: promptOptions.cwd ?? options.session.cwd,
-			agentPlugins: promptOptions.agentPlugins ?? agentPlugins,
-			appendSystemPrompt: joinPromptAddons(promptOptions.appendSystemPrompt, options.session.systemPromptAddon),
+			agentPlugins: selectAgentPlugins(promptOptions.agentPlugins ?? agentPlugins, configuration.plugins),
+			skills: promptOptions.skills?.filter((skill) => allowsAgentResource(configuration.skills, skill.name)),
+			appendSystemPrompt: joinPromptAddons(
+				joinPromptAddons(promptOptions.appendSystemPrompt, options.session.systemPromptAddon),
+				configuration.appendSystemPrompt,
+			),
 			...(memory ? { memory } : {}),
 		};
 	};
@@ -297,7 +315,35 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			...(invokeSkillFeature ? [[invokeSkillFeature.tool.name, invokeSkillFeature.tool] as const] : []),
 			...(options.extensionToolRuntime?.readAvailableTools(options.session.readSessionId()) ?? []),
 		]);
+	options.agentConfiguration.attachCatalog(() => ({
+		skills: [...new Set(rawResourceSource?.getSkills().skills.map(({ name }) => name) ?? [])].sort(),
+		tools: [
+			...new Set([
+				...readAvailableTools().keys(),
+				...(options.mcpController?.readCatalog().map(({ name }) => name) ?? []),
+				...(options.readAllAgentPlugins()?.toolContributions?.map(({ name }) => name) ?? []),
+			]),
+		].sort(),
+		mcpServers: [
+			...new Set(
+				(options.mcpController?.readCatalog() ?? []).flatMap(({ serverName }) => (serverName ? [serverName] : [])),
+			),
+		].sort(),
+		plugins: [
+			...new Set([
+				...readAgentPluginIds(options.readAllAgentPlugins()),
+				...(options.pluginRuntime?.readPluginIds?.() ?? []),
+			]),
+		].sort(),
+		models: options.modelRuntime
+			.readAvailableModels()
+			.map((model) => ({ key: `${model.provider}/${model.id}`, name: model.name })),
+	}));
+	const bindToolSelection = () =>
+		createAgentToolSelection(options.agentConfiguration.readAdmitted(), options.mcpController?.readCatalog() ?? []);
 	const modelCallFrameComposer = new CodingAgentModelCallFrameComposer({
+		allowsTool: (name) => bindToolSelection()(name),
+		bindToolSelection,
 		readMcpPromptState: mcpController ? () => mcpController.readPromptState() : undefined,
 		readAvailableTools,
 		readActiveToolNamesOverride: options.activation.readActiveToolNamesOverride,
@@ -349,24 +395,28 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 				context,
 				options.activation.readAgentPlugins(),
 				options.memoryRuntime?.renderPromptMemory(),
+				options.agentConfiguration.readAdmitted(),
 			),
 		bindSystemPromptOptions: async (context) => {
 			const resolver = (await promptRuntime?.bindForTurn(context.signal)) ?? resolveSystemPromptOptions;
 			const agentPlugins = options.activation.readAgentPlugins();
 			const memory = options.memoryRuntime?.renderPromptMemory();
-			return (context) => enhanceSystemPromptOptions(resolver, context, agentPlugins, memory);
+			const configuration = options.agentConfiguration.readAdmitted();
+			return (context) => enhanceSystemPromptOptions(resolver, context, agentPlugins, memory, configuration);
 		},
 		reportActiveToolNames: options.reportActiveToolNames,
 	});
 	const promptAdapter = new CodingAgentPromptRequestAdapter({
-		resolvePromptResource:
+		resolvePromptResource: selectAgentPromptResourceResolver(
 			options.prompt.promptResourceResolver ??
-			(promptResourceSource
-				? createCodingAgentPromptResourceResolver({
-						resourceLoader: promptResourceSource,
-						todoState: options.todoRuntime,
-					})
-				: undefined),
+				(promptResourceSource
+					? createCodingAgentPromptResourceResolver({
+							resourceLoader: promptResourceSource,
+							todoState: options.todoRuntime,
+						})
+					: undefined),
+			() => options.agentConfiguration.readAdmitted(),
+		),
 		hookRuntime: options.hookRuntime,
 		extensionEvents: options.extensionEvents,
 		onPrepared: () => options.todoRuntime.flush(),
@@ -396,6 +446,10 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 	};
 	return {
 		capabilityDefinition,
+		async refreshConfigurationResources(signal) {
+			await rawResourceSource?.refreshSkillsIfChanged(signal);
+			options.modelRuntime.refreshAvailableModels();
+		},
 		promptAdapter,
 		readAvailableTools,
 		readPluginActiveToolNames: () => pluginRunOrchestrator?.readActiveToolNames(),
@@ -445,21 +499,22 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 	};
 }
 
-async function createPromptRuntime(
-	options: CodingAgentTurnCapabilitySessionAssemblyOptions,
-): Promise<CodingAgentPromptRuntime | undefined> {
-	if (options.prompt.systemPromptOptionsResolver) return undefined;
+async function createPromptRuntime(options: CodingAgentTurnCapabilitySessionAssemblyOptions) {
 	const factorySources =
 		options.prompt.resourceSource && options.prompt.settingsSource
 			? undefined
 			: await options.prompt.runtimeSourceFactory?.({
 					runtimeSkillPaths: readPluginSkillPaths(options.activation.readAgentPlugins()),
 				});
-	const resourceSource = options.prompt.resourceSource ?? factorySources?.resourceSource;
+	const rawResourceSource = options.prompt.resourceSource ?? factorySources?.resourceSource;
+	const resourceSource = rawResourceSource
+		? selectAgentSkillSource(rawResourceSource, () => options.agentConfiguration.readAdmitted())
+		: undefined;
 	const settingsSource = options.prompt.settingsSource ?? factorySources?.settingsSource;
-	if (!resourceSource || !settingsSource) return undefined;
+	if (options.prompt.systemPromptOptionsResolver || !resourceSource || !settingsSource)
+		return { rawResourceSource, resourceSource, runtime: undefined };
 	const memoryRuntime = options.memoryRuntime;
-	return new CodingAgentPromptRuntime({
+	const runtime = new CodingAgentPromptRuntime({
 		cwd: options.session.cwd,
 		resourceLoader: resourceSource,
 		settingsManager: settingsSource,
@@ -470,6 +525,7 @@ async function createPromptRuntime(
 		readAgentPlugins: options.activation.readAgentPlugins,
 		workspaceFacts: options.prompt.workspaceFacts,
 	});
+	return { runtime, rawResourceSource, resourceSource };
 }
 
 function readPluginSkillPaths(agentPlugins: AgentPluginRuntimeConfig | undefined): string[] {

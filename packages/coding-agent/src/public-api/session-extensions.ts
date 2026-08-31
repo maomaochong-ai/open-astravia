@@ -1,4 +1,16 @@
 export {
+	AGENT_CONFIGURATION_OBSERVATION,
+	type AgentConfigurationObservation,
+} from "../agent-configuration/configuration-observability.js";
+export {
+	AGENT_CONFIGURATION_CATALOG,
+	AGENT_CONFIGURATION_READ,
+	AGENT_CONFIGURATION_UPDATE,
+	type AgentConfigurationResourceCatalog,
+	type AgentConfigurationStatus,
+	type AgentConfigurationUpdate,
+} from "../agent-configuration/session-configuration-contract.js";
+export {
 	CODING_AGENT_SUBAGENTS_OBSERVATION,
 	readCodingAgentSubagentsObservation,
 } from "../composition/subagent/subagent-session-extension-contract.js";

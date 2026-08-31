@@ -15,6 +15,7 @@ import {
 	type RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AgentSessionConfiguration } from "../../src/agent-configuration/session-configuration.js";
 import { createCodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
 import { createCodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
 import { CodingAgentImageSettingsSnapshotRouter } from "../../src/composition/turn/image-settings-snapshot-router.js";
@@ -29,9 +30,19 @@ import { preparePrompt } from "./prompt-adapter-test-fixture.js";
 describe("Coding Agent Turn Capability session assembly", () => {
 	const disposals: Array<() => Promise<void> | void> = [];
 	const temporaryDirectories: string[] = [];
+	function createConfiguration() {
+		const configuration = new AgentSessionConfiguration(
+			undefined,
+			() => "configuration",
+			() => 1,
+		);
+		disposals.push(() => configuration.dispose());
+		return configuration;
+	}
 
 	afterEach(async () => {
 		for (const dispose of disposals.splice(0).reverse()) await dispose();
+		vi.unstubAllEnvs();
 		for (const directory of temporaryDirectories.splice(0).reverse()) {
 			rmSync(directory, { recursive: true, force: true });
 		}
@@ -57,6 +68,8 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			readAvailableTools: () => new Map([[executionTool.name, executionTool]]),
 		} as unknown as CodingAgentSessionExecutionRuntime;
 		const assembly = await createCodingAgentTurnCapabilitySessionAssembly({
+			agentConfiguration: createConfiguration(),
+			readAllAgentPlugins: () => undefined,
 			session: {
 				initialSessionId: "session-1",
 				readSessionId: () => "session-1",
@@ -112,7 +125,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 	});
 
 	it("expands a Scene through an explicit host-owned Prompt Runtime", async () => {
-		const root = mkdtempSync(join(tmpdir(), "turn-capability-scene-"));
+		const root = isolatedDirectory("turn-capability-scene-");
 		temporaryDirectories.push(root);
 		const workspace = join(root, "workspace");
 		const agentDir = join(root, "agent");
@@ -155,6 +168,8 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			settingsSource,
 		}));
 		const assembly = await createCodingAgentTurnCapabilitySessionAssembly({
+			agentConfiguration: createConfiguration(),
+			readAllAgentPlugins: () => undefined,
 			session: {
 				initialSessionId: "session-1",
 				readSessionId: () => "session-1",
@@ -206,7 +221,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 	});
 
 	it("previews the initial system prompt from the freshly loaded resource generation", async () => {
-		const root = mkdtempSync(join(tmpdir(), "turn-capability-preview-"));
+		const root = isolatedDirectory("turn-capability-preview-");
 		temporaryDirectories.push(root);
 		const workspace = join(root, "workspace");
 		const agentDir = join(root, "agent");
@@ -235,6 +250,8 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		const refreshSkills = vi.spyOn(resourceSource, "refreshSkillsIfChanged");
 		const extensionEvents = new CodingAgentExtensionRunBridge();
 		const assembly = await createCodingAgentTurnCapabilitySessionAssembly({
+			agentConfiguration: createConfiguration(),
+			readAllAgentPlugins: () => undefined,
 			session: {
 				initialSessionId: "session-preview",
 				readSessionId: () => "session-preview",
@@ -313,6 +330,8 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			readAvailableTools: () => new Map(),
 		} as unknown as CodingAgentSessionExecutionRuntime;
 		const assembly = await createCodingAgentTurnCapabilitySessionAssembly({
+			agentConfiguration: createConfiguration(),
+			readAllAgentPlugins: () => undefined,
 			session: {
 				initialSessionId: "session-1",
 				readSessionId: () => "session-1",
@@ -464,6 +483,15 @@ function createContextRuntime(): CodingAgentContextRuntime {
 		},
 		async observe() {},
 	} as unknown as CodingAgentContextRuntime;
+}
+
+function isolatedDirectory(prefix: string): string {
+	const root = mkdtempSync(join(tmpdir(), prefix));
+	writeFileSync(join(root, ".git"), "");
+	vi.stubEnv("USERPROFILE", root);
+	vi.stubEnv("VETTA_HOME", join(root, "home"));
+	vi.stubEnv("VETTA_CODING_AGENT_DIR", join(root, "agent"));
+	return root;
 }
 
 const TEST_MODEL: Model<Api> = {

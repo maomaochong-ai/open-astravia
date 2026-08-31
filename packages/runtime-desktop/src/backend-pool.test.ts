@@ -8,12 +8,18 @@ import {
 	type CodingAgentRuntimeCompositionOptions,
 	createCodingAgentRuntimeComposition,
 	createCodingAgentRuntimeSessionSelection,
+	publishCodingAgentExecutionRuntimeDefinition,
 } from "@vetta/coding-agent/composition";
 import type { EcosystemHookAdapterFactory } from "@vetta/coding-agent/hooks";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import type { ConversationScenario } from "@vetta/coding-agent/profile";
 import { CODING_AGENT_SESSION_PROFILE_STATE_READ } from "@vetta/coding-agent/session-extensions";
-import { RuntimeHost as BaseRuntimeHost, RuntimeObservationHub, type SessionConfig } from "@vetta/runtime-core";
+import {
+	RuntimeHost as BaseRuntimeHost,
+	RuntimeAgentRuntime,
+	RuntimeObservationHub,
+	type SessionConfig,
+} from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import { createInMemoryConversationPersistence } from "@vetta/runtime-node/conversation";
 import type { CodingToolResultPolicy } from "@vetta/runtime-tools";
@@ -128,6 +134,57 @@ describe("DesktopRuntimeBackendPool", () => {
 			runtime.invokeSessionExtensionSync(second.sessionId, CODING_AGENT_SESSION_PROFILE_STATE_READ, undefined)
 				.scenario,
 		).toBe("automation");
+	});
+
+	it("owns one instance per session while sharing the workspace composition and MCP source", async () => {
+		const cwd = await temporaryDirectory("desktop-session-instances-");
+		const agents = new RuntimeAgentRuntime();
+		publishCodingAgentExecutionRuntimeDefinition(agents);
+		const disposeMcp = vi.fn(async () => undefined);
+		const createMcpRuntimeSource = vi.fn(async () => ({
+			source: { refresh: async () => ({ tools: [] }) },
+			dispose: disposeMcp,
+		}));
+		const pool = new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				agentRuntime: { runtime: agents },
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+				resolveSystemPromptOptions: resolveTestSystemPromptOptions,
+			},
+			createMcpRuntimeSource,
+		});
+		const runtime = new RuntimeHost({ sessionBackend: pool, getDefaultExecutionMode: () => "full-access" });
+		pools.push(pool);
+		runtimes.push(runtime);
+		try {
+			const [first, second] = await Promise.all([
+				runtime.createSession({ cwd, model: MODEL, scenario: "batch" }),
+				runtime.createSession({ cwd, model: MODEL, scenario: "batch" }),
+			]);
+			const firstInstance = agents.getSession(first.sessionId)?.instanceId;
+			const secondInstance = agents.getSession(second.sessionId)?.instanceId;
+			expect(firstInstance).toBeDefined();
+			expect(secondInstance).toBeDefined();
+			expect(firstInstance).not.toBe(secondInstance);
+			expect(pool.readScopeCount()).toBe(1);
+			expect(createMcpRuntimeSource).toHaveBeenCalledOnce();
+
+			await runtime.disposeSession(first.sessionId);
+			expect(agents.getSession(first.sessionId)).toBeUndefined();
+			expect(agents.getSession(second.sessionId)?.instanceId).toBe(secondInstance);
+			expect(disposeMcp).not.toHaveBeenCalled();
+			await runtime.disposeSession(second.sessionId);
+			expect(agents.snapshot().instances).toEqual([]);
+			expect(disposeMcp).not.toHaveBeenCalled();
+			await pool.dispose();
+			expect(disposeMcp).toHaveBeenCalledOnce();
+		} finally {
+			await runtime.disposeAllSessions();
+			await pool.dispose();
+			await agents.close();
+		}
 	});
 
 	it("uses the RuntimeHost publisher as the sole Coding Agent observation upstream", async () => {
@@ -496,6 +553,7 @@ describe("DesktopRuntimeBackendPool", () => {
 		const hostFactory: EcosystemHookAdapterFactory = async () => undefined;
 		const scopedFactory: EcosystemHookAdapterFactory = async () => undefined;
 		const createHookAdapterFactories = vi.fn(() => [scopedFactory]);
+		const createSessionHookAdapterFactories = vi.fn(() => [scopedFactory]);
 		let capturedFactories: readonly EcosystemHookAdapterFactory[] | undefined;
 		const pool = new DesktopRuntimeBackendPool({
 			compositionDefaults: {
@@ -506,6 +564,7 @@ describe("DesktopRuntimeBackendPool", () => {
 				additionalHookAdapterFactories: [hostFactory],
 			},
 			createHookAdapterFactories,
+			createSessionHookAdapterFactories,
 			createComposition: async (options) => {
 				capturedFactories = options.additionalHookAdapterFactories;
 				return await createCodingAgentRuntimeComposition(options);
@@ -524,6 +583,10 @@ describe("DesktopRuntimeBackendPool", () => {
 			expect.objectContaining({ cwd, agentDir: undefined, scenario: "batch" }),
 		);
 		expect(capturedFactories).toEqual([hostFactory, scopedFactory]);
+		expect(createSessionHookAdapterFactories).toHaveBeenCalledWith(
+			expect.objectContaining({ cwd, scenario: "batch" }),
+			expect.objectContaining({ sessionId: expect.any(String), isPluginEnabled: expect.any(Function) }),
+		);
 	});
 
 	it("reuses one MCP source across isolated runtime scopes with the same MCP scope", async () => {

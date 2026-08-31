@@ -21,6 +21,7 @@ export type {
 	RuntimeAgentSessionPlan,
 	RuntimeAgentSessionPreparation,
 	RuntimeAgentSessionPreparationContext,
+	RuntimeAgentSnapshotAdmission,
 	RuntimeAgentSourcePublishResult,
 } from "./contracts.js";
 export { defineRuntimeAgent } from "./contracts.js";

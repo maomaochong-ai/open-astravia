@@ -13,10 +13,80 @@ import {
 	type RuntimeCapabilityDefinition,
 	resolveModelCallFrame,
 } from "../../src/kernel/index.js";
-import type { RuntimeObservationRecord } from "../../src/observation/index.js";
+import {
+	defineRuntimeObservation,
+	type RuntimeObservationPublisher,
+	type RuntimeObservationRecord,
+} from "../../src/observation/index.js";
 import type { SessionExtensionDefinition } from "../../src/session-extensions/index.js";
 
 describe("Runtime Agent control plane", () => {
+	it("rebinds live Session observations while keeping acquired Turn and revision identities immutable", async () => {
+		const registry = registryWithIds();
+		const records: RuntimeObservationRecord[] = [];
+		const publishers = new Map<string, RuntimeObservationPublisher>();
+		const token = defineRuntimeObservation<string>("test.session", "identity");
+		const definition = (version: string): RuntimeAgentDefinition => ({
+			id: "agent",
+			createInstance: () => ({
+				prepareSession: ({ observationPublisher }) => {
+					publishers.set(version, observationPublisher);
+					return { capabilities: capabilities(version) };
+				},
+			}),
+		});
+		registry.upsert(candidate("code", "1", definition("v1")));
+		const host = new RuntimeAgentRuntime({
+			registry,
+			observationPort: {
+				record: (record) => {
+					records.push(record);
+				},
+			},
+		});
+		const instance = await host.createInstance({ agentId: "agent", instanceId: "instance" });
+		const session = await instance.createSession({ sessionId: "old" });
+		const first = await session.acquire(turnContext(session.id, "turn-1"));
+		host.rebindSession("old", "continued");
+		publishers.get("v1")!.record(token, "live-v1");
+		const second = await session.acquire(turnContext(session.id, "turn-2"));
+		registry.upsert(candidate("code", "2", definition("v2")));
+		await session.rolloutToLatest();
+		const third = await session.acquire(turnContext(session.id, "turn-3"));
+		host.rebindSession("continued", "final");
+		publishers.get("v2")!.record(token, "live-v2");
+		first.snapshot.observationPublisher!.record(token, "turn-1", { sessionId: "spoofed" });
+		second.snapshot.observationPublisher!.record(token, "turn-2");
+		third.snapshot.observationPublisher!.record(token, "turn-3");
+		await Promise.all([first.release(), second.release(), third.release()]);
+		await host.close();
+		await registry.close();
+		expect(
+			records.filter((record) => record.token === token).map(({ payload, context }) => ({ payload, context })),
+		).toEqual([
+			{
+				payload: "live-v1",
+				context: { agentId: "agent", instanceId: "instance", revisionId: "revision-1", sessionId: "continued" },
+			},
+			{
+				payload: "live-v2",
+				context: { agentId: "agent", instanceId: "instance", revisionId: "revision-2", sessionId: "final" },
+			},
+			{
+				payload: "turn-1",
+				context: { agentId: "agent", instanceId: "instance", revisionId: "revision-1", sessionId: "old" },
+			},
+			{
+				payload: "turn-2",
+				context: { agentId: "agent", instanceId: "instance", revisionId: "revision-1", sessionId: "continued" },
+			},
+			{
+				payload: "turn-3",
+				context: { agentId: "agent", instanceId: "instance", revisionId: "revision-2", sessionId: "continued" },
+			},
+		]);
+	});
+
 	it("runs the Plan snapshot boundary before the single Agent Session provider acquires a generation", async () => {
 		const events: string[] = [];
 		const registry = registryWithIds();

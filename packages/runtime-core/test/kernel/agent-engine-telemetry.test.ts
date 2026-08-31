@@ -6,6 +6,7 @@ import {
 	type RuntimeSnapshot,
 	type RuntimeToolDefinition,
 } from "../../src/kernel/index.js";
+import { createRuntimeObservationPublisher } from "../../src/observation/index.js";
 
 type RuntimeTracer = NonNullable<AgentCoreTurnEngineOptions["tracer"]>;
 type RuntimeObservation = ReturnType<RuntimeTracer["startObservation"]>;
@@ -14,6 +15,81 @@ type ObservationStart = Parameters<RuntimeTracer["startObservation"]>[1];
 type ObservationOptions = Parameters<RuntimeTracer["startObservation"]>[2];
 
 describe("StatelessAgentCoreTurnEngine telemetry", () => {
+	it.each(["start", "child", "end", "flush", "async-flush"])(
+		"keeps execution successful when tracer %s fails",
+		async (phase) => {
+			const tracer = new RecordingTracer();
+			const start = tracer.startObservation.bind(tracer);
+			tracer.startObservation = (...args) => {
+				if (phase === "start") throw new Error("diagnostic secret");
+				const observation = start(...args);
+				if (phase === "child")
+					observation.startObservation = () => {
+						throw new Error("diagnostic secret");
+					};
+				if (phase === "end")
+					observation.end = () => {
+						throw new Error("diagnostic secret");
+					};
+				return observation;
+			};
+			if (phase === "flush")
+				tracer.flush = () => {
+					throw new Error("diagnostic secret");
+				};
+			if (phase === "async-flush")
+				tracer.flush = async () => {
+					throw new Error("diagnostic secret");
+				};
+			await expect(
+				execute(
+					{ model: model(), tracer, streamFn: sequenceStream([assistant([{ type: "text", text: "ok" }])]) },
+					snapshot(),
+					"input",
+				),
+			).resolves.toBeUndefined();
+		},
+	);
+
+	it("correlates native traces with scoped Agent identity and strips provider error bodies by default", async () => {
+		const tracer = new RecordingTracer();
+		const records: unknown[] = [];
+		const observationPublisher = createRuntimeObservationPublisher({
+			context: { agentId: "agent", instanceId: "instance", revisionId: "revision" },
+			port: {
+				record: (record) => {
+					records.push(record);
+				},
+			},
+		});
+		const message = { ...assistant([], "error"), errorMessage: "private-provider-error" };
+		await expect(
+			execute(
+				{ model: model(), tracer, streamFn: () => errorStream(message) },
+				{ ...snapshot(), observationPublisher },
+				"private-user",
+			),
+		).rejects.toThrow();
+		expect(serializeObservations(tracer.observations)).not.toContain("private-provider-error");
+		expect(records).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					context: {
+						agentId: "agent",
+						instanceId: "instance",
+						revisionId: "revision",
+						sessionId: "session-1",
+						turnId: "turn-1",
+						traceId: "trace-1",
+					},
+				}),
+			]),
+		);
+		expect(tracer.observations[1]?.start?.metadata).toMatchObject({
+			turnId: "turn-1",
+			modelCallId: "turn-1:model-call:1",
+		});
+	});
 	it("closes agent, generation, and tool observations exactly once without capturing content by default", async () => {
 		const tracer = new RecordingTracer();
 		const responses = [
@@ -40,7 +116,8 @@ describe("StatelessAgentCoreTurnEngine telemetry", () => {
 			label: "Echo",
 			description: "Echo a value",
 			inputSchema: { type: "object" },
-			async execute() {
+			async execute(request) {
+				request.reportPhase?.("secret-phase");
 				return { content: [{ type: "text", text: "secret-output" }] };
 			},
 		};
@@ -68,6 +145,7 @@ describe("StatelessAgentCoreTurnEngine telemetry", () => {
 		expect(tracePayload).not.toContain("secret-user");
 		expect(tracePayload).not.toContain("secret-input");
 		expect(tracePayload).not.toContain("secret-output");
+		expect(tracePayload).not.toContain("secret-phase");
 		expect(tracer.observations[0]?.ends[0]).toMatchObject({
 			level: "DEFAULT",
 			usageDetails: { input: 70, output: 2, cacheRead: 120, cacheWrite: 10, totalTokens: 202 },

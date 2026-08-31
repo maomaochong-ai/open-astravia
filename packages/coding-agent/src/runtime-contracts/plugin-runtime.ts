@@ -14,6 +14,8 @@ import type {
 } from "../model-context/plugin-runtime.js";
 
 export interface CodingAgentPluginRuntimeSource {
+	/** Includes hook-only plugins that do not contribute a Prompt or Tool. */
+	readonly readPluginIds?: () => readonly string[];
 	readonly readAgentPlugins: () => AgentPluginRuntimeConfig | undefined;
 	/** 配置源发布新版本；已开始的 Turn 仍由 admission lease 保持旧快照。 */
 	readonly subscribe?: (listener: () => void) => () => void;

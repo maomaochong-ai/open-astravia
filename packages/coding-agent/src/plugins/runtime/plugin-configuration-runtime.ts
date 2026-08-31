@@ -24,6 +24,7 @@ export interface CodingAgentPluginConfigurationRuntimeOptions {
 export class CodingAgentPluginConfigurationRuntime {
 	private session: AgentSession | undefined;
 	private pendingBaseRefresh = false;
+	private pendingSelectionRefresh = false;
 	private pendingOverride: AgentPluginRuntimeConfig | undefined;
 	private hasPendingOverride = false;
 	private idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -50,6 +51,11 @@ export class CodingAgentPluginConfigurationRuntime {
 		this.scheduleIdleApply();
 	}
 
+	refreshSelection(): void {
+		this.assertOpen();
+		this.pendingSelectionRefresh = true;
+	}
+
 	async applyOverride(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<void> {
 		this.assertOpen();
 		this.pendingOverride = agentPlugins;
@@ -63,7 +69,7 @@ export class CodingAgentPluginConfigurationRuntime {
 	async synchronize(phase: "idle-apply" | "turn-apply" = "turn-apply"): Promise<void> {
 		this.assertOpen();
 		if (this.applyInFlight) await this.applyInFlight;
-		if (!this.hasPendingOverride && !this.pendingBaseRefresh) return;
+		if (!this.hasPendingOverride && !this.pendingBaseRefresh && !this.pendingSelectionRefresh) return;
 
 		const hasOverride = this.hasPendingOverride;
 		const source = hasOverride ? "session-override" : "host";
@@ -74,11 +80,12 @@ export class CodingAgentPluginConfigurationRuntime {
 			source,
 			boundary,
 		});
-		const agentPlugins = hasOverride ? this.pendingOverride : this.options.configurationState.readBaseAgentPlugins();
+		const agentPlugins = hasOverride ? this.pendingOverride : this.options.configurationState.readRawAgentPlugins();
+		this.pendingSelectionRefresh = false;
 		this.hasPendingOverride = false;
 		this.pendingOverride = undefined;
 		this.pendingBaseRefresh = false;
-		const apply = this.options.apply(agentPlugins);
+		const apply = this.options.apply(this.options.configurationState.selectAgentPlugins(agentPlugins));
 		this.applyInFlight = apply;
 		try {
 			await apply;
@@ -91,6 +98,7 @@ export class CodingAgentPluginConfigurationRuntime {
 				durationMs: Math.max(0, Date.now() - startedAt),
 			});
 		} catch (error) {
+			this.pendingSelectionRefresh = true;
 			if (hasOverride) {
 				if (!this.hasPendingOverride) {
 					this.pendingOverride = agentPlugins;
@@ -111,7 +119,8 @@ export class CodingAgentPluginConfigurationRuntime {
 			this.applyInFlight = undefined;
 		}
 
-		if (this.hasPendingOverride || this.pendingBaseRefresh) await this.synchronize(phase);
+		if (this.hasPendingOverride || this.pendingBaseRefresh || this.pendingSelectionRefresh)
+			await this.synchronize(phase);
 	}
 
 	dispose(): void {

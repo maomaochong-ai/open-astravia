@@ -7,6 +7,8 @@ import {
 	type RuntimeResourceContext,
 } from "@vetta/runtime-core";
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
+import { allowsAgentResource } from "../../agent-configuration/resource-selection.js";
+import { AGENT_SESSION_CONFIGURATION } from "../../agent-configuration/session-configuration-extension.js";
 import { createDefaultCodingAgentContextRuntime } from "../../compaction/runtime/index.js";
 import type { CodingAgentExtensionRunBridge } from "../../extensions/runtime/extension-run-bridge.js";
 import { CodingAgentSessionAssistanceRuntime } from "../../features/session-assistance/session-assistance-runtime.js";
@@ -104,7 +106,17 @@ export function createCodingAgentSessionContextAssembly(
 			},
 		},
 		initialSessionStartSource: options.resourceContext.operation === "create" ? "startup" : "resume",
-		additionalAdapterFactories: profile.additionalHookAdapterFactories,
+		additionalAdapterFactories: [
+			...(profile.additionalHookAdapterFactories ?? []),
+			...(profile.createSessionHookAdapterFactories?.({
+				sessionId: options.readSessionId(),
+				isPluginEnabled: (pluginId) =>
+					allowsAgentResource(
+						peripherals.sessionExtensions.services.require(AGENT_SESSION_CONFIGURATION).readAdmitted().plugins,
+						pluginId,
+					),
+			}) ?? []),
+		],
 		configLayers: profile.hookConfigLayers,
 		maxStopContinuations: profile.maxStopHookContinuations,
 	});
@@ -151,7 +163,20 @@ export function createCodingAgentSessionContextAssembly(
 		readParentMessages: () => options.readConversationModelMessages(options.readSessionId()),
 		readModel: () => modelRuntime.readCurrentModel(),
 		readThinkingLevel: () => modelRuntime.readThinkingLevel(),
-		readInheritedMcpView: () => options.mcpCoordinator.readInheritedToolView(peripherals.pluginMcpRuntime),
+		readInheritedMcpView: async () => {
+			const configuration = peripherals.sessionExtensions.services
+				.require(AGENT_SESSION_CONFIGURATION)
+				.readAdmitted();
+			const view = await options.mcpCoordinator.readInheritedToolView(peripherals.pluginMcpRuntime);
+			return {
+				tools: view.tools.filter(
+					({ tool, serverName }) =>
+						allowsAgentResource(configuration.tools, tool.name) &&
+						(configuration.mcpServers === null ||
+							(serverName !== undefined && configuration.mcpServers.includes(serverName))),
+				),
+			};
+		},
 		readParentToolActivation: () => profile.activation,
 		workspacePort: profile.subagentWorkspacePort,
 		typeRegistry: profile.subagentTypeRegistry,

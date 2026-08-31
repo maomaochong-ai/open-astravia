@@ -8,6 +8,7 @@ export type {
 	RuntimeObservationRecord,
 	RuntimeObservationToken,
 } from "./contracts.js";
+export { RUNTIME_EXECUTION_TRACE } from "./execution-trace.js";
 export {
 	RUNTIME_OBSERVATION_HUB_ISSUE,
 	RuntimeObservationHub,

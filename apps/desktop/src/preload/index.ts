@@ -3,6 +3,8 @@ import "./telemetry.js";
 import type { DesktopApi } from "./api.js";
 import { createAbilitiesApi } from "./apis/abilities.js";
 import { createActionApprovalApi } from "./apis/action-approval.js";
+import { createAgentConfigurationApi } from "./apis/agent-configuration.js";
+import { createAgentTracesApi } from "./apis/agent-traces.js";
 import { createAppLifecycleApi } from "./apis/app-lifecycle.js";
 import { createAppMonitorApi } from "./apis/app-monitor.js";
 import { createAppshotApi } from "./apis/appshot.js";
@@ -34,6 +36,8 @@ for (const eventName of ["keydown", "mousedown", "mousemove", "touchstart", "whe
 
 const rawApi: Omit<DesktopApi, "hostAccess"> = {
 	...createAbilitiesApi(ipcRenderer),
+	...createAgentConfigurationApi(ipcRenderer),
+	...createAgentTracesApi(ipcRenderer),
 	...createActionApprovalApi(ipcRenderer),
 	...createAppLifecycleApi(ipcRenderer),
 	...createAppMonitorApi(ipcRenderer),

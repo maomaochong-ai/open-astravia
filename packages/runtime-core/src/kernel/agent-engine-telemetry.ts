@@ -9,6 +9,9 @@ import {
 	type Model,
 	type SimpleStreamOptions,
 } from "@vetta/ai";
+import type { RuntimeObservationPublisher } from "../observation/contracts.js";
+import { RUNTIME_EXECUTION_TRACE } from "../observation/execution-trace.js";
+import { runtimeObservationFailure } from "../observation/observation.js";
 import type { AgentCoreTurnEngineOptions } from "./agent-core-turn-engine-options.js";
 
 type RuntimeTracer = NonNullable<AgentCoreTurnEngineOptions["tracer"]>;
@@ -19,6 +22,8 @@ export interface AgentEngineTelemetryOptions {
 	readonly tracer?: AgentCoreTurnEngineOptions["tracer"];
 	readonly tracing?: TracingOptions;
 	readonly sessionId: string;
+	readonly turnId?: string;
+	readonly observations?: RuntimeObservationPublisher;
 	readonly model: Model<Api>;
 	readonly messages: readonly Message[];
 	readonly toolCount: number;
@@ -38,29 +43,41 @@ export class AgentEngineTelemetry {
 	private readonly agentObservation?: RuntimeObservation;
 	private readonly agentTerminal?: TerminalObservation;
 	private settled = false;
+	private modelCallIndex = 0;
 
 	constructor(private readonly options: AgentEngineTelemetryOptions) {
 		this.captureContent = options.tracing?.captureContent === true;
 		this.traceChildren = options.tracing?.detail !== "agent";
-		this.agentObservation = options.tracer?.startObservation(
-			"agent.run",
-			{
-				...traceAttributes(options.tracing, options.sessionId),
-				input: this.captureContent
-					? { messages: options.messages }
-					: { messageCount: options.messages.length, toolCount: options.toolCount },
-				metadata: {
-					...options.tracing?.metadata,
-					sessionId: options.sessionId,
-					model: options.model.id,
-					provider: options.model.provider,
-					api: options.model.api,
-					initialMessageCount: options.messages.length,
-					toolCount: options.toolCount,
+		this.agentObservation = safely(() =>
+			options.tracer?.startObservation(
+				"agent.run",
+				{
+					...traceAttributes(options.tracing, options.sessionId),
+					input: this.captureContent
+						? { messages: options.messages }
+						: { messageCount: options.messages.length, toolCount: options.toolCount },
+					metadata: {
+						...options.tracing?.metadata,
+						sessionId: options.sessionId,
+						turnId: options.turnId,
+						model: options.model.id,
+						provider: options.model.provider,
+						api: options.model.api,
+						initialMessageCount: options.messages.length,
+						toolCount: options.toolCount,
+					},
 				},
-			},
-			{ type: "agent" },
+				{ type: "agent" },
+			),
 		);
+		if (this.agentObservation)
+			safely(() =>
+				options.observations?.record(
+					RUNTIME_EXECUTION_TRACE,
+					{ spanId: this.agentObservation!.id },
+					{ sessionId: options.sessionId, turnId: options.turnId, traceId: this.agentObservation!.traceId },
+				),
+			);
 		this.agentTerminal = this.agentObservation
 			? new TerminalObservation(this.agentObservation, () => undefined)
 			: undefined;
@@ -68,32 +85,41 @@ export class AgentEngineTelemetry {
 
 	startGeneration(context: Context, streamOptions: SimpleStreamOptions | undefined): GenerationTelemetry {
 		if (!this.agentObservation || !this.traceChildren) return NOOP_GENERATION;
-		const observation = this.agentObservation.startObservation(
-			`llm.${this.options.model.provider}.${this.options.model.id}`,
-			{
-				...traceAttributes(this.options.tracing, this.options.sessionId),
-				input: this.captureContent
-					? context
-					: {
-							messageCount: context.messages.length,
-							systemPromptLength: context.systemPrompt?.length ?? 0,
-							tools: context.tools?.map(({ name }) => name) ?? [],
-						},
-				model: this.options.model.id,
-				modelParameters: modelParameters(streamOptions),
-				metadata: {
-					api: this.options.model.api,
-					provider: this.options.model.provider,
-					messageCount: context.messages.length,
-					toolCount: context.tools?.length ?? 0,
+		const modelCallId = this.options.turnId
+			? `${this.options.turnId}:model-call:${++this.modelCallIndex}`
+			: undefined;
+		const observation = safely(() =>
+			this.agentObservation!.startObservation(
+				`llm.${this.options.model.provider}.${this.options.model.id}`,
+				{
+					...traceAttributes(this.options.tracing, this.options.sessionId),
+					input: this.captureContent
+						? context
+						: {
+								messageCount: context.messages.length,
+								systemPromptLength: context.systemPrompt?.length ?? 0,
+								tools: context.tools?.map(({ name }) => name) ?? [],
+							},
+					model: this.options.model.id,
+					modelParameters: modelParameters(streamOptions),
+					metadata: {
+						turnId: this.options.turnId,
+						modelCallId,
+						api: this.options.model.api,
+						provider: this.options.model.provider,
+						messageCount: context.messages.length,
+						toolCount: context.tools?.length ?? 0,
+					},
 				},
-			},
-			{ type: "generation" },
+				{ type: "generation" },
+			),
 		);
+		if (!observation) return NOOP_GENERATION;
 		const terminal = this.track(observation);
 		return {
 			completed: (message) => terminal.end(assistantUpdate(message, this.captureContent)),
-			failed: (error) => terminal.fail(error),
+			failed: (error) =>
+				terminal.end({ level: "ERROR", statusMessage: this.captureContent ? errorMessage(error) : undefined }),
 		};
 	}
 
@@ -110,17 +136,18 @@ export class AgentEngineTelemetry {
 	finish(result: AgentRunResult): void {
 		if (this.settled) return;
 		this.settled = true;
-		this.closeChildren(result.failure?.message);
+		this.closeChildren(this.captureContent ? result.failure?.message : undefined);
 		if (this.agentTerminal) {
 			const { usage, cost, promptCache } = aggregateAssistantTelemetry(this.deliveredMessages);
 			this.agentTerminal.end({
 				output: this.captureContent ? { messages: this.deliveredMessages } : messageSummary(this.deliveredMessages),
 				level: result.status === "completed" ? "DEFAULT" : "ERROR",
-				statusMessage: result.failure?.message,
+				statusMessage: this.captureContent ? result.failure?.message : undefined,
 				usageDetails: usage,
 				costDetails: cost,
 				metadata: {
 					status: result.status,
+					code: result.failure?.code,
 					messageCount: this.deliveredMessages.length,
 					modelCalls: result.modelCalls,
 					toolCalls: result.toolCalls,
@@ -129,33 +156,46 @@ export class AgentEngineTelemetry {
 				},
 			});
 		}
-		void this.options.tracer?.flush?.().catch(() => undefined);
+		this.flush();
 	}
 
 	fail(error: unknown): void {
 		if (this.settled) return;
 		this.settled = true;
-		const message = errorMessage(error);
+		const message = this.captureContent ? errorMessage(error) : undefined;
 		this.closeChildren(message);
-		this.agentTerminal?.end({ level: "ERROR", statusMessage: message });
-		void this.options.tracer?.flush?.().catch(() => undefined);
+		this.agentTerminal?.end({
+			level: "ERROR",
+			statusMessage: message,
+			metadata: { status: "failed", code: runtimeObservationFailure(error).errorCode },
+		});
+		this.flush();
+	}
+
+	private flush(): void {
+		safely(() => {
+			void Promise.resolve(this.options.tracer?.flush?.()).catch(() => undefined);
+		});
 	}
 
 	private startTool(event: Extract<AgentExecutionEvent, { type: "tool_execution_start" }>): void {
 		if (!this.agentObservation || !this.traceChildren) return;
-		const observation = this.agentObservation.startObservation(
-			`tool.${event.call.name}`,
-			{
-				...traceAttributes(this.options.tracing, this.options.sessionId),
-				input: {
-					id: event.call.id,
-					name: event.call.name,
-					arguments: this.captureContent ? event.call.arguments : { keys: Object.keys(event.call.arguments) },
+		const observation = safely(() =>
+			this.agentObservation!.startObservation(
+				`tool.${event.call.name}`,
+				{
+					...traceAttributes(this.options.tracing, this.options.sessionId),
+					input: {
+						id: event.call.id,
+						name: event.call.name,
+						arguments: this.captureContent ? event.call.arguments : { keys: Object.keys(event.call.arguments) },
+					},
+					metadata: { turnId: this.options.turnId, toolCallId: event.call.id, toolName: event.call.name },
 				},
-				metadata: { toolCallId: event.call.id, toolName: event.call.name },
-			},
-			{ type: "tool" },
+				{ type: "tool" },
+			),
 		);
+		if (!observation) return;
 		this.toolObservations.set(event.call.id, this.track(observation));
 	}
 
@@ -168,12 +208,13 @@ export class AgentEngineTelemetry {
 				? { content: event.result.content, details: event.result.details }
 				: { contentTypes: event.result.content.map(({ type }) => type) },
 			level: event.result.isError ? "ERROR" : "DEFAULT",
-			statusMessage: event.result.isError ? textContent(event.result) : undefined,
+			statusMessage: this.captureContent && event.result.isError ? textContent(event.result) : undefined,
 			metadata: {
 				isError: event.result.isError,
+				...(event.result.isError ? { code: "TOOL_RESULT_ERROR" } : {}),
 				durationMs: event.durationMs,
 				phaseCount: event.phases.length,
-				phases: event.phases,
+				phases: this.captureContent ? event.phases : event.phases.map(({ atMs }) => ({ atMs })),
 			},
 		});
 	}
@@ -206,12 +247,8 @@ class TerminalObservation {
 	end(update?: Parameters<RuntimeObservation["end"]>[0]): void {
 		if (this.ended) return;
 		this.ended = true;
-		this.observation.end(update);
+		safely(() => this.observation.end(update));
 		this.onEnd();
-	}
-
-	fail(error: unknown): void {
-		this.end({ level: "ERROR", statusMessage: errorMessage(error) });
 	}
 }
 
@@ -242,7 +279,7 @@ function assistantUpdate(message: AssistantMessage, captureContent: boolean) {
 	return {
 		output: captureContent ? message.content : { contentTypes: message.content.map(({ type }) => type) },
 		level: message.stopReason === "error" ? ("ERROR" as const) : ("DEFAULT" as const),
-		statusMessage: message.errorMessage,
+		statusMessage: captureContent ? message.errorMessage : undefined,
 		usageDetails: {
 			input: message.usage.input,
 			output: message.usage.output,
@@ -259,6 +296,7 @@ function assistantUpdate(message: AssistantMessage, captureContent: boolean) {
 		},
 		metadata: {
 			api: message.api,
+			code: message.failure?.code,
 			provider: message.provider,
 			model: message.model,
 			stopReason: message.stopReason,
@@ -309,4 +347,12 @@ function textContent(message: Extract<Message, { role: "toolResult" }>): string 
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+function safely<T>(operation: () => T): T | undefined {
+	try {
+		return operation();
+	} catch {
+		return undefined;
+	}
 }

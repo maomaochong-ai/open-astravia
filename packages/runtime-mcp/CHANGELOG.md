@@ -10,6 +10,8 @@ All notable changes to `@vetta/runtime-mcp` are documented in this file.
 
 ### Added
 
+- MCP 工具 descriptor 支持明确的 Server 身份；渐进披露支持会话工具过滤，Turn 绑定冻结搜索目录并保留本 Turn 的实时激活状态。
+
 - 新增 MCP Apps 平台无关 Host/Attachment 合同，并按 `2026-01-26` 扩展解析 `_meta.ui`、旧版 resource URI、
   array visibility、`ui://` HTML Resource、CSP 与权限元数据；App-only Tool 不再进入模型工具目录。
 - 新增集中式 MCP 媒体投影策略：验证规范 Base64、安全图片/音频 MIME，并限制单项、总字节和数量；大结果卸载后

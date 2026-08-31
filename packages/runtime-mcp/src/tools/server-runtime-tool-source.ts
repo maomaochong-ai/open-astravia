@@ -78,6 +78,7 @@ export class McpServerRuntimeToolSource implements McpRuntimeToolSource {
 				tools.push(
 					Object.freeze({
 						tool,
+						serverName: binding.view.name,
 						fingerprint: JSON.stringify({
 							server: binding.view.name,
 							status: binding.view.status,

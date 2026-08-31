@@ -71,6 +71,8 @@ export class StatelessAgentCoreTurnEngine implements TurnEnginePort {
 			tracer: this.options.tracer,
 			tracing: this.options.tracing,
 			sessionId: request.sessionId,
+			turnId: request.turnId,
+			observations: request.snapshot.observationPublisher,
 			model,
 			messages,
 			toolCount: (request.initialModelCallFrame?.tools ?? request.snapshot.tools).size,

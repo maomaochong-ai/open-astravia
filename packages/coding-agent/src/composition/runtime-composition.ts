@@ -50,6 +50,7 @@ export type {
 	CodingAgentPromptRuntimeSources,
 	CodingAgentRuntimeAgentIdentity,
 	CodingAgentRuntimeAgentOptions,
+	CodingAgentRuntimeAgentReference,
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeExtensionControls,
@@ -260,12 +261,11 @@ async function assembleCodingAgentRuntimeComposition(
 			: undefined,
 		mapCreationError: mapCodingAgentRuntimeSessionCreationError,
 	});
-	const preparedAgent = await runtimeAgentBackend.prepareInstance(agentSelection);
 	const runtimeHostBackend = {
 		createAssembly: (request: RuntimeSessionCreateRequest) => {
-			if (request.agent && request.agent.id !== preparedAgent.identity.agentId) {
+			if (request.agent && request.agent.id !== agentRuntimeScope.agentId) {
 				throw new Error(
-					`Coding Agent Composition cannot execute Agent ${request.agent.id}; expected ${preparedAgent.identity.agentId}`,
+					`Coding Agent Composition cannot execute Agent ${request.agent.id}; expected ${agentRuntimeScope.agentId}`,
 				);
 			}
 			const sessionOptions = readCodingAgentSessionOptions(request);
@@ -277,7 +277,8 @@ async function assembleCodingAgentRuntimeComposition(
 			return runtimeAgentBackend.createAssembly({
 				...request,
 				agent: {
-					...preparedAgent.selection!,
+					...agentSelection,
+					definitionRevisionId: request.agent?.definitionRevisionId,
 					sessionConfiguration: request.agent?.sessionConfiguration,
 				},
 			});
@@ -297,6 +298,7 @@ async function assembleCodingAgentRuntimeComposition(
 	});
 	const sessionControls = createCodingAgentRuntimeSessionControls({
 		indexes: resourceRegistry.indexes,
+		readAgentIdentity: (sessionId) => agentRuntimeScope.runtime.getSession(sessionId),
 		readConversationDocument: (sessionId) => persistence.documentStore.readDocument(sessionId),
 		projectConversationContext: (document) => conversationContextOverlay.project(document),
 		projectConversationSeed: (document) => baseConversationContextProjector.project(document),
@@ -313,9 +315,7 @@ async function assembleCodingAgentRuntimeComposition(
 		runtimeHostBackend,
 		tools,
 		agentRuntime: {
-			agentId: preparedAgent.identity.agentId,
-			instanceId: preparedAgent.identity.instanceId,
-			revisionId: preparedAgent.identity.revisionId,
+			agentId: agentRuntimeScope.agentId,
 		},
 		observations: observationRuntime.hub,
 		scenario,

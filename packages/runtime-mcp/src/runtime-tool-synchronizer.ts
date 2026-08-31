@@ -4,6 +4,8 @@ import { MCP_RUNTIME_OBSERVATION } from "./observations.js";
 
 export interface McpRuntimeToolBinding {
 	readonly tool: RuntimeToolDefinition;
+	/** Source-owned server identity; absent legacy bindings cannot satisfy an explicit server allow list. */
+	readonly serverName?: string;
 	/** 标识该工具当前实现绑定；相同名称但绑定变化时必须替换 Registry entry。 */
 	readonly fingerprint: string;
 }
@@ -35,6 +37,7 @@ export interface McpRuntimeToolRegistry {
 export interface McpRuntimeToolDescriptor {
 	readonly name: string;
 	readonly description: string;
+	readonly serverName?: string;
 }
 
 export interface McpRuntimeToolSnapshot {
@@ -152,10 +155,11 @@ export class McpRuntimeToolSynchronizer {
 		}
 		this.currentView = Object.freeze({ tools: Object.freeze([...view.tools]) });
 
-		const descriptors = view.tools.map(({ tool }) =>
+		const descriptors = view.tools.map(({ tool, serverName }) =>
 			Object.freeze({
 				name: tool.name,
 				description: tool.description,
+				...(serverName === undefined ? {} : { serverName }),
 			}),
 		);
 		if (!sameDescriptors(this.currentSnapshot.tools, descriptors)) {
@@ -182,6 +186,11 @@ function sameDescriptors(
 ): boolean {
 	return (
 		current.length === next.length &&
-		current.every((tool, index) => tool.name === next[index]?.name && tool.description === next[index]?.description)
+		current.every(
+			(tool, index) =>
+				tool.name === next[index]?.name &&
+				tool.description === next[index]?.description &&
+				tool.serverName === next[index]?.serverName,
+		)
 	);
 }

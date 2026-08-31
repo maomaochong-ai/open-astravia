@@ -2,6 +2,7 @@
 
 export * from "./action-approval-atoms";
 export * from "./activity-atoms";
+export * from "./agent-configuration-atoms";
 export * from "./auth-atoms";
 export * from "./background-tasks-atoms";
 export * from "./batch-tasks-atoms";

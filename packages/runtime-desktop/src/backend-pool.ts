@@ -69,6 +69,10 @@ export interface DesktopRuntimeBackendPoolOptions {
 	readonly createHookAdapterFactories?: (
 		scope: DesktopRuntimeHookScope,
 	) => NonNullable<CodingAgentRuntimeCompositionOptions["additionalHookAdapterFactories"]>;
+	readonly createSessionHookAdapterFactories?: (
+		scope: DesktopRuntimeHookScope,
+		context: Parameters<NonNullable<CodingAgentRuntimeCompositionOptions["createSessionHookAdapterFactories"]>>[0],
+	) => NonNullable<CodingAgentRuntimeCompositionOptions["additionalHookAdapterFactories"]>;
 	readonly createComposition?: (
 		options: CodingAgentRuntimeCompositionOptions,
 	) => Promise<CodingAgentRuntimeComposition>;
@@ -256,6 +260,10 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 			additionalHookAdapterFactories: [
 				...(this.options.compositionDefaults.additionalHookAdapterFactories ?? []),
 				...(this.options.createHookAdapterFactories?.(scope) ?? []),
+			],
+			createSessionHookAdapterFactories: (context) => [
+				...(this.options.compositionDefaults.createSessionHookAdapterFactories?.(context) ?? []),
+				...(this.options.createSessionHookAdapterFactories?.(scope, context) ?? []),
 			],
 			...(managedMcpSource ? { mcpSource: managedMcpSource.source } : {}),
 			conversationDir: scope.conversationDir,

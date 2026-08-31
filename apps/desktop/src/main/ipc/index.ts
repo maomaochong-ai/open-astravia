@@ -4,6 +4,8 @@ import { registerNotificationIpc } from "../notifications/index.js";
 import type { PluginActionService } from "../plugins/plugin-action-service.js";
 import { registerAbilitiesIpc } from "./abilities.js";
 import { registerActionApprovalIpc } from "./action-approval.js";
+import { registerAgentConfigurationIpc } from "./agent-configuration.js";
+import { registerAgentTracesIpc } from "./agent-traces.js";
 import { registerAppMonitorIpc } from "./app-monitor.js";
 import { registerAppshotIpc } from "./appshot.js";
 import { registerClipboardIpc } from "./clipboard.js";
@@ -35,6 +37,8 @@ import { registerUpdaterIpc } from "./updater.js";
 import { registerWebhookIpc } from "./webhook.js";
 
 interface IpcTeardown {
+	teardownAgentConfiguration: () => void;
+	teardownAgentTraces: () => void;
 	teardownAbilities: () => void;
 	teardownActionApproval: () => void;
 	teardownAppMonitor: () => void;
@@ -79,6 +83,8 @@ export function registerAllIpc(
 ): IpcTeardown {
 	return {
 		teardownAbilities: registerAbilitiesIpc(),
+		teardownAgentConfiguration: registerAgentConfigurationIpc(),
+		teardownAgentTraces: registerAgentTracesIpc(),
 		teardownActionApproval: registerActionApprovalIpc(options.actionApprovalBroker),
 		teardownAppMonitor: registerAppMonitorIpc(),
 		teardownSession: registerSessionIpc(webContents),
@@ -114,6 +120,8 @@ export function registerAllIpc(
 }
 
 export function teardownAllIpc(teardown: IpcTeardown): void {
+	teardown.teardownAgentConfiguration();
+	teardown.teardownAgentTraces();
 	teardown.teardownAbilities();
 	teardown.teardownActionApproval();
 	teardown.teardownAppMonitor();

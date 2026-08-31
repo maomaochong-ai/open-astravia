@@ -67,10 +67,18 @@ export interface RuntimeAgentSessionActivationContext {
 export interface RuntimeAgentSessionPlan {
 	readonly definition: RuntimeAgentSessionDefinition;
 	/** 在同一个 Agent Session 捕获不可变能力快照前同步外部动态目录。 */
-	beforeSnapshotAcquire?(context?: RuntimeSnapshotAcquireContext): Promise<void> | void;
+	beforeSnapshotAcquire?(
+		context?: RuntimeSnapshotAcquireContext,
+	): Promise<RuntimeAgentSnapshotAdmission> | Promise<void> | RuntimeAgentSnapshotAdmission | void;
 	activate?(context: RuntimeAgentSessionActivationContext): Promise<RuntimeResources> | RuntimeResources;
 	onFailure?(): void;
 	dispose?(): Promise<void> | void;
+}
+
+/** Optional transaction for product-side preparation; commit runs only after the entire snapshot binds. */
+export interface RuntimeAgentSnapshotAdmission {
+	commit(): Promise<void> | void;
+	rollback(error: unknown): Promise<void> | void;
 }
 
 export type RuntimeAgentSessionPreparation = RuntimeAgentSessionDefinition | RuntimeAgentSessionPlan;

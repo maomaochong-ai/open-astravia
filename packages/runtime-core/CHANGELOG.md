@@ -6,6 +6,9 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- 会话 continuation 后的观测使用新 Session ID；已取得的 Turn 快照保留原身份，定义 rollout 不改变在途 Trace 归属。
+- Runtime Agent Session Backend 关闭会拒绝新创建，并等待已准入的 Session 激活、装配与回滚收敛后释放 Instance Pool，
+  避免异步创建越过关闭边界；并发和失败后的关闭仍可重试。
 - 内部 continuation 消息继续保留在模型上下文与会话树中，但不再被面向用户的历史投影误标为真人输入。
 
 ### Changed
@@ -15,6 +18,10 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
   Plugin 合同迁至 `@vetta/coding-agent/plugin-runtime`，用户交互由产品扩展与最终宿主组合。
 
 ### Added
+
+- 原生执行 Trace 增加 Turn、模型调用标识与安全 scope 关联 Observation；默认排除错误正文和工具阶段正文，Tracer 的同步/异步异常不会改变执行结果。
+
+- Agent Session 新增通用 Snapshot admission commit/rollback，串行协调捕获与 rollout，关闭等待在途捕获；完整快照成功后才提交上层状态。
 
 - 新增不加载 Provider 实现的 `@vetta/runtime-core/failures` 公共入口，供 Renderer 等浏览器宿主读取并校验结构化失败；
   AI Error 投影仍由 Runtime 根入口提供。

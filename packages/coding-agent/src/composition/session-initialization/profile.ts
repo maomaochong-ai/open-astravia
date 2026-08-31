@@ -3,6 +3,7 @@ import type { CodingAgentRuntimeCompositionOptions } from "../contracts/index.js
 export type CodingAgentSessionInitializationProfile = Pick<
 	CodingAgentRuntimeCompositionOptions,
 	| "additionalHookAdapterFactories"
+	| "createSessionHookAdapterFactories"
 	| "activation"
 	| "agentDir"
 	| "createCompactionExtensionRuntime"
@@ -51,6 +52,7 @@ export function createCodingAgentSessionInitializationProfile(
 
 	return {
 		additionalHookAdapterFactories: options.additionalHookAdapterFactories,
+		createSessionHookAdapterFactories: options.createSessionHookAdapterFactories,
 		activation: options.activation,
 		agentDir: options.agentDir,
 		createCompactionExtensionRuntime: options.createCompactionExtensionRuntime,

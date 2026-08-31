@@ -1,5 +1,6 @@
 import {
 	defineRuntimeAgent,
+	RetryableCleanup,
 	type RuntimeAgentDefinition,
 	type RuntimeAgentSessionDefinition,
 	type RuntimeAgentSessionPreparationContext,
@@ -31,17 +32,47 @@ export function createCodingAgentExecutionRuntimeDefinition(
 		id: options.id ?? DEFAULT_CODING_AGENT_RUNTIME_ID,
 		createInstance: (instanceContext) => {
 			const configuration = requireCodingAgentExecutionRuntimeInstanceConfiguration(instanceContext.configuration);
+			const pendingRollbacks = new Set<RetryableCleanup>();
+			const releaseRollback = async (cleanup: RetryableCleanup) => {
+				await cleanup.run("Coding Agent Definition transform rollback failed");
+				pendingRollbacks.delete(cleanup);
+			};
 			return {
+				async dispose() {
+					const results = await Promise.allSettled([...pendingRollbacks].map(releaseRollback));
+					const errors = results.flatMap((result) => (result.status === "rejected" ? [result.reason] : []));
+					if (errors.length > 0) throw new AggregateError(errors, "Coding Agent Plan rollback remains incomplete");
+				},
 				async prepareSession(context) {
 					const request = requireCodingAgentExecutionSessionRequest(context.configuration);
 					const plan = await configuration.prepareSession(context, request);
-					const definition =
-						(await options.transformSessionDefinition?.(
-							context,
-							plan.definition,
-							configuration.applicationConfiguration,
-						)) ?? plan.definition;
-					return { ...plan, definition };
+					try {
+						const definition =
+							(await options.transformSessionDefinition?.(
+								context,
+								plan.definition,
+								configuration.applicationConfiguration,
+							)) ?? plan.definition;
+						return { ...plan, definition };
+					} catch (error) {
+						// Runtime has not received this Plan yet, so the producer still owns rollback.
+						const cleanup = new RetryableCleanup();
+						cleanup.add({ id: "failure-notification", phase: 0, cleanup: () => plan.onFailure?.() });
+						cleanup.add({ id: "plan", phase: 1, cleanup: () => plan.dispose?.() });
+						pendingRollbacks.add(cleanup);
+						try {
+							await releaseRollback(cleanup);
+						} catch (cleanupError) {
+							throw new AggregateError(
+								[error, cleanupError],
+								"Coding Agent Definition transform rollback failed",
+								{
+									cause: error,
+								},
+							);
+						}
+						throw error;
+					}
 				},
 			};
 		},

@@ -1,6 +1,6 @@
 import { VETTA_CLI_GUIDANCE } from "@vetta/coding-agent/cli-guidance";
 import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
-import type { ConversationScenario } from "@vetta/coding-agent/profile";
+import type { AgentConfigurationSelection, ConversationScenario } from "@vetta/coding-agent/profile";
 import type { SessionConfig } from "@vetta/runtime-core";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
 import { type DesktopAgentMode, LEGACY_SESSION_AGENT_MODE, readSessionAgentMode } from "./session-agent-mode-store.js";
@@ -21,6 +21,7 @@ export interface DesktopCodingAgentSessionConfig extends SessionConfig {
 	readonly appendSystemPrompt?: string;
 	readonly enableBackgroundTasks?: boolean;
 	readonly includeAgentSkills?: boolean;
+	readonly agentConfiguration?: AgentConfigurationSelection;
 }
 
 export interface ResolvedDesktopSessionConfig {
@@ -79,6 +80,7 @@ export async function resolveDesktopSessionConfig(
 		appendSystemPrompt: _appendSystemPrompt,
 		enableBackgroundTasks: _enableBackgroundTasks,
 		includeAgentSkills: _includeAgentSkills,
+		agentConfiguration: _agentConfiguration,
 		...runtimeConfig
 	} = config ?? {};
 	return {
@@ -92,6 +94,7 @@ export async function resolveDesktopSessionConfig(
 					systemPromptAddon: appendSystemPrompt,
 					enableBackgroundTasks,
 					includeAgentSkills,
+					agentConfiguration: config?.agentConfiguration,
 				},
 				config?.agent,
 			),

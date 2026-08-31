@@ -1,4 +1,9 @@
-import type { AgentFeatureDefinition, InstructionBlock, ModelCallContribution } from "@vetta/runtime-core/kernel";
+import type {
+	AgentFeatureDefinition,
+	InstructionBlock,
+	ModelCallContribution,
+	ModelCallContributionProvider,
+} from "@vetta/runtime-core/kernel";
 import { createMcpToolSearchRuntimeTool, scoreMcpDeferredTools } from "./deferred-tool-search.js";
 import { renderMcpToolsInstruction } from "./mcp-prompt.js";
 import type { McpRuntimeToolDescriptor, McpRuntimeToolSnapshot } from "./runtime-tool-synchronizer.js";
@@ -28,7 +33,7 @@ export interface McpDeferredPromptState {
  * 已删除工具的激活记录故意保留，以兼容旧运行时中“同名工具重新出现后恢复可见”的行为。
  */
 export class McpDeferredToolController {
-	private readonly activatedToolNames = new Set<string>();
+	private toolFilter: (tool: McpRuntimeToolDescriptor) => boolean = () => true;
 	private readonly deferredEnabled: boolean;
 	private readonly explicitToolNames: ReadonlySet<string> | undefined;
 	private readonly threshold: number;
@@ -37,7 +42,10 @@ export class McpDeferredToolController {
 		tools: Object.freeze([]),
 	});
 
-	constructor(private readonly options: McpDeferredToolControllerOptions) {
+	constructor(
+		private readonly options: McpDeferredToolControllerOptions,
+		private readonly activatedToolNames = new Set<string>(),
+	) {
 		this.deferredEnabled = options.deferredEnabled ?? true;
 		this.explicitToolNames = options.explicitToolNames;
 		this.threshold = options.threshold ?? DEFAULT_MCP_DEFERRED_THRESHOLD;
@@ -47,8 +55,20 @@ export class McpDeferredToolController {
 		this.currentSnapshot = snapshot;
 	}
 
+	readCatalog(): readonly McpRuntimeToolDescriptor[] {
+		return this.currentSnapshot.tools;
+	}
+
+	setToolFilter(filter: (tool: McpRuntimeToolDescriptor) => boolean): void {
+		this.toolFilter = filter;
+	}
+
+	private selectedTools(): readonly McpRuntimeToolDescriptor[] {
+		return this.currentSnapshot.tools.filter(this.toolFilter);
+	}
+
 	isDeferred(): boolean {
-		return this.deferredEnabled && this.currentSnapshot.tools.length > this.threshold;
+		return this.deferredEnabled && this.selectedTools().length > this.threshold;
 	}
 
 	isManagedTool(toolName: string): boolean {
@@ -56,14 +76,14 @@ export class McpDeferredToolController {
 	}
 
 	isToolVisible(toolName: string): boolean {
-		if (!this.isManagedTool(toolName)) return false;
+		if (!this.selectedTools().some(({ name }) => name === toolName)) return false;
 		if (this.isDeferred()) return this.activatedToolNames.has(toolName);
 		return this.explicitToolNames?.has(toolName) ?? true;
 	}
 
 	/** 冻结目录代际，但让本 Session 的 tool_search 激活在当前 Turn 内继续生效。 */
 	bindToolVisibility(): (toolName: string) => boolean {
-		const toolNames = new Set(this.currentSnapshot.tools.map(({ name }) => name));
+		const toolNames = new Set(this.selectedTools().map(({ name }) => name));
 		const deferred = this.isDeferred();
 		const explicitToolNames = this.explicitToolNames;
 		return (toolName) => {
@@ -82,23 +102,29 @@ export class McpDeferredToolController {
 
 	createFeature(options: McpDeferredFeatureOptions = {}): AgentFeatureDefinition {
 		const controller = this;
-		const toolSearch = createMcpToolSearchRuntimeTool((query, maxResults) => this.search(query, maxResults));
+		const createProvider = (owner: McpDeferredToolController): ModelCallContributionProvider => {
+			const toolSearch = createMcpToolSearchRuntimeTool((query, maxResults) => owner.search(query, maxResults));
+			return {
+				id: "mcp-progressive-disclosure",
+				bindForTurn: () => {
+					const bound = new McpDeferredToolController(owner.options, owner.activatedToolNames);
+					bound.refresh({ revision: owner.currentSnapshot.revision, tools: [...owner.selectedTools()] });
+					return createProvider(bound);
+				},
+				contribute: async (context) => {
+					context.signal.throwIfAborted();
+					if (context.sessionId !== owner.options.sessionId) return {};
+					return owner.contribute(toolSearch, options.includePromptInstruction ?? true);
+				},
+			};
+		};
 		return {
 			id: "mcp-progressive-disclosure",
 			async prepare() {
 				return {
 					async contribute() {
 						return {
-							modelCallProviders: [
-								{
-									id: "mcp-progressive-disclosure",
-									contribute: async (context) => {
-										context.signal.throwIfAborted();
-										if (context.sessionId !== controller.options.sessionId) return {};
-										return controller.contribute(toolSearch, options.includePromptInstruction ?? true);
-									},
-								},
-							],
+							modelCallProviders: [createProvider(controller)],
 						};
 					},
 					async dispose() {},
@@ -130,12 +156,12 @@ export class McpDeferredToolController {
 	}
 
 	private instructionTools(): readonly McpRuntimeToolDescriptor[] {
-		if (this.isDeferred() || !this.explicitToolNames) return this.currentSnapshot.tools;
-		return this.currentSnapshot.tools.filter(({ name }) => this.explicitToolNames?.has(name));
+		if (this.isDeferred() || !this.explicitToolNames) return this.selectedTools();
+		return this.selectedTools().filter(({ name }) => this.explicitToolNames?.has(name));
 	}
 
 	private search(query: string, maxResults: number) {
-		const matches = scoreMcpDeferredTools(query, this.currentSnapshot.tools).slice(0, maxResults);
+		const matches = scoreMcpDeferredTools(query, this.selectedTools()).slice(0, maxResults);
 		const activated: McpRuntimeToolDescriptor[] = [];
 		const alreadyActive: string[] = [];
 		for (const match of matches) {
@@ -149,7 +175,7 @@ export class McpDeferredToolController {
 		return {
 			activated,
 			alreadyActive,
-			totalDeferred: this.currentSnapshot.tools.length,
+			totalDeferred: this.selectedTools().length,
 		};
 	}
 }
