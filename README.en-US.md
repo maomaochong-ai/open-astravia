@@ -7,13 +7,28 @@
 
 ---
 
-## What This Is
+## Table of Contents
+
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Feature Overview](#feature-overview)
+- [Plugin System](#plugin-system)
+- [Architecture](#architecture)
+- [Model Configuration](#model-configuration)
+- [Network Behavior](#network-behavior)
+- [Installation](#installation)
+- [Contributing](#contributing)
+- [Join the Community](#join-the-community)
+- [Credits](#credits)
+- [License](#license)
+
+## Features
 
 Astravia is an open-source AI desktop agent: the agent core — coding, documents, automation, creative work — in a desktop product, built around one principle: **you work locally, so your data stays local**.
 
-- No cloud: no login, no account, no subscription. Bring your own model keys (BYOK): requests go straight to the provider you pick, keys live only in your OS keychain.
-- No telemetry: no crash reports, no usage statistics; every outbound request is explicitly triggered by your configuration (see [Network Behavior](#network-behavior)).
-- Data on your machine: sessions, workspaces, the knowledge base and database connections live under `~/.astravia` by default, and don't leave your machine.
+- **No cloud**: no login, no account, no subscription. Bring your own model keys (BYOK): requests go straight to the provider you pick, keys live only in your OS keychain.
+- **No telemetry**: no crash reports, no usage statistics; every outbound request is explicitly triggered by your configuration (see [Network Behavior](#network-behavior)).
+- **Data on your machine**: sessions, workspaces, the knowledge base and database connections live under `~/.astravia` by default, and don't leave your machine.
 
 ## Quick Start
 
@@ -23,7 +38,7 @@ Astravia is an open-source AI desktop agent: the agent core — coding, document
 4. When you need data, add a database connection (pick a file for SQLite; fill in server info for PostgreSQL / MySQL), then query in the "Database" tab — or just ask the AI to run the query.
 5. Hand repetitive work to batch and scheduled tasks, and get notified via Feishu / DingTalk bots when they finish.
 
-## Desktop Features
+## Feature Overview
 
 Every capability is part of the app, on equal footing — nothing requires installing an extra client or leaning on an external service.
 
@@ -58,44 +73,31 @@ Bundled plugins:
 | --- | --- |
 | [astravia-ui-design](packages/plugins/presets/astravia-ui-design) | UI design canvas |
 | [content-creation](packages/plugins/presets/content-creation) | Content creation |
-| [plugin-workbench](packages/plugins/presets/plugin-workbench) | Build plugins by conversation |
+| [plugin-workbench](packages/plugins/presets/plugin-workbench) | Build plugins through conversation |
 | [git](packages/plugins/presets/git) | Git changes |
 | [image-gen](packages/plugins/presets/image-gen) | Image generation |
 | [chart-renderer](packages/plugins/presets/chart-renderer) | Data charting |
 | [office-viewer](packages/plugins/presets/office-viewer) | Document preview |
 | [media-viewer](packages/plugins/presets/media-viewer) | Media preview |
 | [svg-viewer](packages/plugins/presets/svg-viewer) | SVG preview |
-| [astravia-actions](packages/plugins/presets/astravia-actions) | Official actions |
+| [astravia-actions](packages/plugins/presets/astravia-actions) | Official action pack |
 
 A few example plugins under `packages/plugins/externals` are not shipped with the app.
 
-## Installation
-
-Grab macOS, Windows and Linux installers from [Releases](../../releases), built and published by `.github/workflows/desktop-release.yml`. Building from source requires **Bun 1.3+** and **Node 20+**:
-
-```bash
-bun install
-bun run build
-bun run build:desktop     # the desktop app
-bun run build:cli         # optional: CLI wrapper
-```
-
-The IM bridge gateway (Go, optional): `cd packages/im-gateway && make build`.
-
 ## Architecture
 
-A four-layer monorepo with dependencies pointing one way: **apps → runtime-\* → coding-agent / agent / ai**. The core libraries know nothing about their host, which is why the same core runs inside Electron and in a terminal alike.
+Monorepo with four layers and strictly one-way dependencies: **app → runtime-\* → coding-agent / agent / ai**. The core libraries know nothing about the host, so the same kernel runs in the Electron desktop app and in a terminal CLI.
 
 ```
 astravia/
 ├── packages/
-│   ├── ai · agent · coding-agent · ecosystem-adapter   # multi-provider LLM, agent loop, coding agent, ecosystem adapters
-│   ├── runtime-core · runtime-tools · runtime-storage  # adapter layer shared by host apps
-│   │   └── runtime-mcp · runtime-telemetry             # MCP manager binding; telemetry is local-only
-│   ├── desktop-app · cli-app · im-gateway              # Electron host, CLI, IM bridge (Go)
-│   ├── ui · theme-ui · theme-sdk                       # UI primitives and the theme system
-│   ├── plugins · skill-presets · themes                # extension ecosystem presets
-│   └── capability-sdk · capability-runtime             # capability and permission layer
+│   ├── ai · agent · coding-agent · ecosystem-adapter   # multi-provider LLM, agent loop, coding agent, ecosystem adapter
+│   ├── runtime-core · runtime-tools · runtime-storage  # host-shared adaptation layer
+│   │   └── runtime-mcp · runtime-telemetry             # MCP manager bindings; telemetry is disk-only
+│   ├── desktop-app · cli-app · im-gateway              # Electron host, CLI, IM sidecar (Go)
+│   ├── ui · theme-ui · theme-sdk                       # UI primitives and theming
+│   ├── plugins · skill-presets · themes                # ecosystem presets
+│   └── capability-sdk · capability-runtime             # capabilities and permissions
 ├── docs/                                               # architecture docs and ADRs
 └── scripts/                                            # build, release and quality guards
 ```
@@ -126,6 +128,19 @@ Outbound requests happen only in the cases below, and every one of them is drive
 
 No telemetry. No crash reporting. No usage statistics.
 
+## Installation
+
+Download the installer from [Releases](../../releases), built by the `.github/workflows/desktop-release.yml` workflow. Building from source requires **Bun 1.3+** and **Node 20+**:
+
+```bash
+bun install
+bun run build
+bun run build:desktop     # desktop app
+bun run build:cli         # optional: CLI wrapper
+```
+
+IM sidecar (Go, optional): `cd packages/im-gateway && make build`.
+
 ## Contributing
 
 ```bash
@@ -138,13 +153,12 @@ bun run test:changed       # only packages touched by your diff
 
 Conventions: **Bun** is the package manager everywhere; no `any` in TypeScript unless genuinely necessary; all user-facing copy goes through i18n; commit messages are written in Chinese, referencing issues with `fixes #N` / `closes #N`. Full rules in [AGENTS.md](AGENTS.md). Versions follow a lockstep strategy across all packages, with each package maintaining its own `packages/*/CHANGELOG.md`.
 
-## Community
+## Join the Community
 
 <div align="center">
   <img src="docs/assets/community/qq-group.png" width="240" alt="QQ group QR code" />
+  <p>Scan the QR code to join our QQ group: share feedback, ask questions, and get the latest updates.</p>
 </div>
-
-Scan the QR code to join our QQ group: share feedback, ask questions, and get the latest updates.
 
 ## Credits
 

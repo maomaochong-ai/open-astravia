@@ -7,13 +7,28 @@
 
 ---
 
-## 这是什么
+## 目录
+
+- [特性](#特性)
+- [快速上手](#快速上手)
+- [功能总览](#功能总览)
+- [插件系统](#插件系统)
+- [架构](#架构)
+- [模型配置](#模型配置)
+- [网络行为](#网络行为)
+- [安装](#安装)
+- [参与开发](#参与开发)
+- [加入社群](#加入社群)
+- [致谢](#致谢)
+- [许可](#许可)
+
+## 特性
 
 Astravia 是一款开源 AI 桌面代理：Agent 内核（编码、文档、自动化、创意）加上桌面产品形态，围绕一个原则——**你在本机工作，数据就留在本机**。
 
-- 没有云端：无登录、无账号、无订阅。模型密钥（BYOK）由你配置，请求直连服务商，密钥只存本机钥匙串。
-- 没有遥测：不收集崩溃报告与使用统计；任何出站请求都由你的配置明确触发（见[网络行为](#网络行为)）。
-- 数据在本机：会话、工作区、知识库、数据库连接默认都在 `~/.astravia`，不离开你的机器。
+- **没有云端**：无登录、无账号、无订阅。模型密钥（BYOK）由你配置，请求直连服务商，密钥只存本机钥匙串。
+- **没有遥测**：不收集崩溃报告与使用统计；任何出站请求都由你的配置明确触发（见[网络行为](#网络行为)）。
+- **数据在本机**：会话、工作区、知识库、数据库连接默认都在 `~/.astravia`，不离开你的机器。
 
 ## 快速上手
 
@@ -23,7 +38,7 @@ Astravia 是一款开源 AI 桌面代理：Agent 内核（编码、文档、自�
 4. 要查数据时添加数据库连接（SQLite 选个文件，PostgreSQL / MySQL 填连接信息），在「数据库」标签页写 SQL，或直接让 AI 查。
 5. 重复性工作交给批量任务与定时任务，完成时通过飞书 / 钉钉机器人收到通知。
 
-## 桌面应用能力
+## 功能总览
 
 所有能力都是应用的一部分，彼此并列——不需要额外安装客户端，也不依赖外部服务。
 
@@ -69,19 +84,6 @@ export default definePlugin({
 
 `packages/plugins/externals` 下另有几个示例插件不随应用打包。
 
-## 安装
-
-从 [Releases](../../releases) 下载安装包，由 `.github/workflows/desktop-release.yml` 构建发布。从源码构建需要 **Bun 1.3+** 与 **Node 20+**：
-
-```bash
-bun install
-bun run build
-bun run build:desktop     # 桌面应用
-bun run build:cli         # 可选：CLI 封装
-```
-
-IM 旁路网关（Go，可选）：`cd packages/im-gateway && make build`。
-
 ## 架构
 
 Monorepo 分四层，依赖单向向下：**应用 → runtime-\* → coding-agent / agent / ai**。核心库不感知宿主，同一套内核既能跑在 Electron 桌面端，也能跑在终端 CLI。
@@ -126,6 +128,19 @@ astravia/
 
 没有遥测，没有崩溃上报，没有使用统计。
 
+## 安装
+
+从 [Releases](../../releases) 下载安装包，由 `.github/workflows/desktop-release.yml` 构建发布。从源码构建需要 **Bun 1.3+** 与 **Node 20+**：
+
+```bash
+bun install
+bun run build
+bun run build:desktop     # 桌面应用
+bun run build:cli         # 可选：CLI 封装
+```
+
+IM 旁路网关（Go，可选）：`cd packages/im-gateway && make build`。
+
 ## 参与开发
 
 ```bash
@@ -138,13 +153,12 @@ bun run test:changed       # 只跑受改动影响的包
 
 约定：包管理统一用 Bun；TypeScript 禁止无必要 `any`；用户可见文案必须走 i18n；提交信息用中文并关联工单（`fixes #N` / `closes #N`）。完整规范见 [AGENTS.md](AGENTS.md)。版本采用全包一致的 lockstep 策略，每个包独立维护 `packages/*/CHANGELOG.md`。
 
-## 社群
+## 加入社群
 
 <div align="center">
   <img src="docs/assets/community/qq-group.png" width="240" alt="QQ 群二维码" />
+  <p>扫码加入 QQ 群，与开发者和其他用户交流使用经验、反馈问题、获取最新动态。</p>
 </div>
-
-扫码加入 QQ 群，与开发者和其他用户交流使用经验、反馈问题、获取最新动态。
 
 ## 致谢
 
