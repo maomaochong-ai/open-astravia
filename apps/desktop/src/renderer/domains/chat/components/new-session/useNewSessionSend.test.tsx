@@ -2,8 +2,6 @@
 
 import { act, renderHook } from "@testing-library/react";
 import type { OpenSessionOptions, SessionExecutionMode, StagedSendInput } from "@shared/store/atoms";
-import { newSessionAgentConfigurationAtom } from "@shared/store/atoms";
-import { getDefaultStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useNewSessionSend } from "./useNewSessionSend";
 
@@ -50,14 +48,23 @@ function deferred<T>(): Deferred<T> {
 }
 
 describe("useNewSessionSend", () => {
-	it("captures the chosen Agent configuration before the first conversation is created", async () => {
-		const configuration = { template: null, overrides: { appendSystemPrompt: "draft-agent" } };
-		getDefaultStore().set(newSessionAgentConfigurationAtom, configuration);
-		const openSession = vi.fn(async () => {});
-		const { result } = renderHook(() => useNewSessionSend({ cwd: "C:/workspace", executionMode: "sandbox", openSession, sendMessage: async () => undefined }));
-		await act(async () => { await result.current.send(); });
-		expect(openSession).toHaveBeenCalledWith("C:/workspace", undefined, "sandbox", expect.objectContaining({ agentConfiguration: configuration }));
-		getDefaultStore().set(newSessionAgentConfigurationAtom, { template: null, overrides: {} });
+	it("leaves Agent configuration to the host when creating a conversation", async () => {
+		const openSession = vi.fn(
+			async (_cwd: string, _path?: string, _mode?: SessionExecutionMode, _options?: OpenSessionOptions) => {},
+		);
+		const { result } = renderHook(() =>
+			useNewSessionSend({
+				cwd: "C:/workspace",
+				executionMode: "sandbox",
+				openSession,
+				sendMessage: async () => undefined,
+			}),
+		);
+		await act(async () => {
+			await result.current.send();
+		});
+		expect(openSession).toHaveBeenCalledOnce();
+		expect(openSession.mock.calls[0]?.[3]).not.toHaveProperty("agentConfiguration");
 	});
 	beforeEach(() => {
 		vi.clearAllMocks();

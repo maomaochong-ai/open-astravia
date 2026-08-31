@@ -26,4 +26,25 @@ Composition 的 Session Options 接受 `agentConfiguration: { template, override
 
 配置存入 canonical ConversationDocument 的版本化 custom entry，恢复和文档分支遵循同一事实源。模板后续修改、删除不影响已有会话；旧会话无配置记录时继续使用默认值，未知配置版本明确报错。
 
-Desktop 的新会话选项和会话标题栏提供 Agent 配置入口，可编辑覆盖、另存模板、更新模板与删除模板。模板保存在应用 Agent 目录的 `agent-templates.json`，文件使用原子写入和 revision 冲突检测。配置不是凭证容器，也不安装资源；MCP、插件和模型仍需先在宿主中配置。
+配置仅向 Runtime/SDK 与宿主代码开放。Desktop 不提供新会话或会话内的 Agent 配置编辑器，也不暴露专用 preload/IPC；原有模型选择与工作模式控件保持不变。模板由调用方提供完整快照，Desktop 不再读写编辑器使用的 `agent-templates.json`，已有会话的内嵌快照不受影响。配置不是凭证容器，也不安装资源；MCP、插件和模型仍需先在宿主中配置。
+
+宿主已发布 Coding Agent Definition 并创建 `runtime` 后，可通过公开入口为每个会话分别配置：
+
+```ts
+import { createCodingAgentRuntimeSessionSelection } from "@vetta/coding-agent/composition";
+import { AGENT_CONFIGURATION_READ, AGENT_CONFIGURATION_UPDATE } from "@vetta/coding-agent/session-extensions";
+
+const session = await runtime.createSession({
+  cwd,
+  agent: createCodingAgentRuntimeSessionSelection({
+    agentConfiguration: { template: null, overrides: { tools: ["read"] } },
+  }),
+});
+const status = await runtime.invokeSessionExtension(session.sessionId, AGENT_CONFIGURATION_READ, undefined);
+await runtime.invokeSessionExtension(session.sessionId, AGENT_CONFIGURATION_UPDATE, {
+  expectedRevision: status.desired.revision,
+  selection: { template: null, overrides: { tools: [] } },
+});
+```
+
+这两个 selection 都受同一套 Schema、资源交集和持久化规则约束。需要复用模板时，将 `template: null` 替换为完整模板快照；不必通过 Desktop 创建模板。

@@ -116,6 +116,17 @@ discover local history; a very large individual file is parsed in the worker, no
 
 ## Development workflow
 
+### Agent configuration
+
+Each conversation owns its Agent instance. Agent configuration remains a host/Runtime capability: callers can supply a
+versioned template snapshot and session overrides, inspect desired/effective revisions, and update them for the next Turn.
+Desktop does not expose an Agent configuration editor or template CRUD in conversation UI, preload or dedicated IPC.
+Existing model and work-mode controls are unchanged. Saved session configuration still restores from its
+embedded snapshot; legacy `agent-templates.json` is left untouched and is no longer used by Desktop.
+See the [configuration API](../../packages/coding-agent/docs/agent-configuration.md).
+
+### Local development
+
 Run `bun dev` from this package after installing the monorepo dependencies. The development startup
 uses the root Turborepo task graph and local cache to build changed workspace prerequisites, stages
 plugin and theme manifests, then starts the renderer, theme server, and Electron process in parallel.

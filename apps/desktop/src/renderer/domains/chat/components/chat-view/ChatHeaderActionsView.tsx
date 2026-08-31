@@ -1,5 +1,4 @@
 import { ChatHeaderActionsView as ThemeChatHeaderActionsView } from "@vetta/theme-ui/chat";
-import { AgentConfigurationButton } from "@domains/agent-configuration";
 import { AgentTraceButton } from "@domains/agent-observability";
 import { BackgroundTasksBadge } from "../BackgroundTasksBadge";
 import { SandboxGrantsBadge } from "../SandboxGrantsBadge";
@@ -15,7 +14,6 @@ export function ChatHeaderActionsView({ actions, model }: ChatHeaderActionsViewP
 		<ThemeChatHeaderActionsView
 			badges={
 				<>
-					<AgentConfigurationButton />
 					<AgentTraceButton />
 					<BackgroundTasksBadge />
 					<SandboxGrantsBadge />

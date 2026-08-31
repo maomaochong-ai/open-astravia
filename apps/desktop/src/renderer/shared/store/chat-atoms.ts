@@ -1,7 +1,6 @@
 import type { ChatErrorKind } from "@domains/chat/services/classifyChatError";
 import type { DesktopMcpAppAttachment, DesktopMcpElicitationRequest } from "@preload/api";
 import type { Usage } from "@vetta/ai";
-import type { AgentConfigurationSelection } from "@vetta/coding-agent/profile";
 import type { ContextCompositionReport, PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { atom } from "jotai";
@@ -582,7 +581,6 @@ export const actionButtonHandlersAtom = atom<Map<string, () => void>>(new Map())
 
 /** Options for {@link openSessionFnRef} / useSessionManager.openSession. */
 export interface OpenSessionOptions {
-	agentConfiguration?: AgentConfigurationSelection;
 	/**
 	 * When false, create/subscribe the session and set it active, but stay on the
 	 * current route (e.g. Settings AI assist fly-to-sidebar). Default true.
