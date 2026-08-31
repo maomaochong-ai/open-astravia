@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { compile } from "tailwindcss";
 import type { SidebarSessionSearchViewItem, SidebarSessionSearchViewProps } from "@vetta/theme-ui/project";
 import { SidebarSessionSearchView } from "@vetta/theme-ui/project";
 import { describe, expect, it, vi } from "vitest";
@@ -162,6 +163,24 @@ describe("SidebarSessionSearchView", () => {
 		await user.click(screen.getByRole("button", { name: labels.close }));
 		expect(initial.onQueryChange).toHaveBeenCalledWith("");
 		expect(initial.onClose).toHaveBeenCalledOnce();
+	});
+
+	it("suppresses the browser cancel control while keeping one accessible clear button", async () => {
+		const user = userEvent.setup();
+		const initial = props({ query: "abc" });
+		const { rerender } = render(<SidebarSessionSearchView {...initial} />);
+		const input = screen.getByRole("searchbox", { name: labels.placeholder });
+		// jsdom cannot paint Chromium's native control; verify its compiled CSS contract.
+		const cancelClasses = Array.from(input.classList).filter((name) => name.includes("::-webkit-search-cancel-button"));
+		const compiler = await compile("@tailwind utilities;");
+		expect(compiler.build(cancelClasses)).toMatch(/::-webkit-search-cancel-button\s*\{\s*display:\s*none;/);
+		expect(input.getAttribute("type")).toBe("search");
+		expect(screen.getAllByRole("button", { name: labels.clear })).toHaveLength(1);
+		await user.click(screen.getByRole("button", { name: labels.clear }));
+		expect(initial.onQueryChange).toHaveBeenCalledWith("");
+		rerender(<SidebarSessionSearchView {...initial} query="" />);
+		expect(screen.queryByRole("button", { name: labels.clear })).toBeNull();
+		expect(document.activeElement).toBe(input);
 	});
 
 	it("keeps row opening and pinning separate in keyboard order, before the source label", async () => {

@@ -56,7 +56,7 @@ export function SidebarSessionSearchControls(props: SearchControlsProps): JSX.El
 						ref={input}
 						autoFocus={props.autoFocus}
 						aria-label={labels.placeholder}
-						className="h-9 pl-9 pr-9"
+						className="h-9 pl-9 pr-9 [&::-webkit-search-cancel-button]:hidden"
 						onChange={(event) => onQueryChange(event.target.value)}
 						placeholder={labels.placeholder}
 						maxLength={200}
