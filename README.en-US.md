@@ -9,7 +9,7 @@
 
 ## What This Is
 
-Astravia is an open-source AI desktop agent rebuilt from [open-vetta](https://github.com/openvetta/open-vetta): the agent core — coding, documents, automation, creative work — in a desktop product, built around one principle: **you work locally, so your data stays local**.
+Astravia is an open-source AI desktop agent: the agent core — coding, documents, automation, creative work — in a desktop product, built around one principle: **you work locally, so your data stays local**.
 
 - No cloud: no login, no account, no subscription. Bring your own model keys (BYOK): requests go straight to the provider you pick, keys live only in your OS keychain.
 - No telemetry: no crash reports, no usage statistics; every outbound request is explicitly triggered by your configuration (see [Network Behavior](#network-behavior)).
@@ -138,13 +138,20 @@ bun run test:changed       # only packages touched by your diff
 
 Conventions: **Bun** is the package manager everywhere; no `any` in TypeScript unless genuinely necessary; all user-facing copy goes through i18n; commit messages are written in Chinese, referencing issues with `fixes #N` / `closes #N`. Full rules in [AGENTS.md](AGENTS.md). Versions follow a lockstep strategy across all packages, with each package maintaining its own `packages/*/CHANGELOG.md`.
 
+## Community
+
+<div align="center">
+  <img src="docs/assets/community/qq-group.png" width="240" alt="QQ group QR code" />
+</div>
+
+Scan the QR code to join our QQ group: share feedback, ask questions, and get the latest updates.
+
 ## Credits
 
-This project is a rebuild of [open-vetta](https://github.com/openvetta/open-vetta) and is built on the shoulders of several other projects:
+This project is built on the shoulders of several other projects:
 
 | Project | Used for | License |
 | --- | --- | --- |
-| open-vetta | Upstream: agent core, desktop host and plugin system were rebuilt on top of it | Apache-2.0 |
 | pi · Mario Zechner | `ai`, `agent`, `coding-agent` and `ecosystem-adapter` were rewritten and iterated on top of it | MIT |
 | Codex CLI · OpenAI | The execution sandbox design draws on theirs; on Windows we ship their sandbox host binary directly | Apache-2.0 |
 | bubblewrap | The Linux sandbox backend | LGPL-2.0+ |

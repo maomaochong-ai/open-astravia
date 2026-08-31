@@ -9,7 +9,7 @@
 
 ## 这是什么
 
-Astravia 是一款在 [open-vetta](https://github.com/openvetta/open-vetta) 基础上改造的开源 AI 桌面代理：Agent 内核（编码、文档、自动化、创意）加上桌面产品形态，围绕一个原则——**你在本机工作，数据就留在本机**。
+Astravia 是一款开源 AI 桌面代理：Agent 内核（编码、文档、自动化、创意）加上桌面产品形态，围绕一个原则——**你在本机工作，数据就留在本机**。
 
 - 没有云端：无登录、无账号、无订阅。模型密钥（BYOK）由你配置，请求直连服务商，密钥只存本机钥匙串。
 - 没有遥测：不收集崩溃报告与使用统计；任何出站请求都由你的配置明确触发（见[网络行为](#网络行为)）。
@@ -138,13 +138,20 @@ bun run test:changed       # 只跑受改动影响的包
 
 约定：包管理统一用 Bun；TypeScript 禁止无必要 `any`；用户可见文案必须走 i18n；提交信息用中文并关联工单（`fixes #N` / `closes #N`）。完整规范见 [AGENTS.md](AGENTS.md)。版本采用全包一致的 lockstep 策略，每个包独立维护 `packages/*/CHANGELOG.md`。
 
+## 社群
+
+<div align="center">
+  <img src="docs/assets/community/qq-group.png" width="240" alt="QQ 群二维码" />
+</div>
+
+扫码加入 QQ 群，与开发者和其他用户交流使用经验、反馈问题、获取最新动态。
+
 ## 致谢
 
-本项目由 [open-vetta](https://github.com/openvetta/open-vetta) 改造而来，并离不开以下开源项目：
+本项目离不开以下开源项目：
 
 | 项目 | 用途 | 许可 |
 | --- | --- | --- |
-| open-vetta | 上游项目：Agent 内核、桌面宿主与插件体系均在此基础上改造 | Apache-2.0 |
 | pi · Mario Zechner | `ai` / `agent` / `coding-agent` / `ecosystem-adapter` 在其基础上重写与迭代 | MIT |
 | Codex CLI · OpenAI | 执行沙箱方案借鉴其设计；Windows 直接使用其沙箱宿主二进制 | Apache-2.0 |
 | bubblewrap | Linux 平台沙箱后端 | LGPL-2.0+ |
