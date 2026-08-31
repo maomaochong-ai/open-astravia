@@ -18,6 +18,7 @@ export const PLUGIN_PERMISSIONS = [
 	"agent.command.spawn",
 	"capture.offscreen",
 	"browser.read",
+	"browser.open",
 	"browser.interact",
 	"browser.profile.persist",
 	"browser.attach",

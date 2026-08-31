@@ -90,7 +90,7 @@ export function createPluginContext({
 		jobs: createJobsApi(plugin, capabilitySessionId),
 		artifacts: createArtifactsApi(plugin, capabilitySessionId),
 		capture: createCaptureApi(plugin, disposers),
-		browser: permissions.has("browser.read") ? createBrowserApi(plugin, capabilitySessionId) : undefined,
+		browser: createBrowserApi(plugin, capabilitySessionId),
 		agent: agentContributions.api,
 		appActions: createPluginAppActionsApi({
 			plugin,

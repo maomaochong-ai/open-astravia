@@ -63,6 +63,7 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `fs.write` | `writeFile` / `rename` / `delete` / `move` / `createDirectory` | 同上 |
 | `network.fetch` | `ctx.network.request` | [conversation-and-agent](./conversation-and-agent.md#网络-api) |
 | `browser.read` | 创建/查询/关闭 session，导航、快照、文本与截图 | [browser](./browser.md) |
+| `browser.open` | `ctx.browser.open`；仅打开宿主内置 Browser Panel，不读取或操作页面 | [browser](./browser.md) |
 | `browser.interact` | `ctx.browser.act`；必须同时声明 `browser.read` | [browser](./browser.md) |
 | `browser.profile.persist` | 创建宿主管理的持久 profile | [browser](./browser.md#多账号-profile) |
 | `browser.attach` | 附着用户自行开启调试的 Chrome | [browser](./browser.md) |

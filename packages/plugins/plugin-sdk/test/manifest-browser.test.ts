@@ -6,10 +6,30 @@ const baseManifest = {
 	name: "Publisher",
 	version: "1.0.0",
 	pluginApiVersion: "^1",
-	entry: "dist/index.js",
+	entry: "dist/mf-manifest.json",
+	moduleFederation: { remoteName: "publisher", expose: "./plugin" },
 };
 
 describe("plugin browser manifest", () => {
+	it("allows plugins with no browser permissions or host declaration", () => {
+		const manifest = parsePluginManifest(baseManifest);
+		expect(manifest.permissions).toEqual([]);
+		expect(manifest.browser).toBeUndefined();
+	});
+
+	it("allows open-only access and requires an explicit host declaration", () => {
+		expect(() => parsePluginManifest({ ...baseManifest, permissions: ["browser.open"] })).toThrow(
+			"browser.allowedHosts is required",
+		);
+		const manifest = parsePluginManifest({
+			...baseManifest,
+			permissions: ["browser.open"],
+			browser: { allowedHosts: ["example.com"] },
+		});
+		expect(manifest.permissions).toEqual(["browser.open"]);
+		expect(manifest.browser?.allowedHosts).toEqual(["example.com"]);
+	});
+
 	it("requires and normalizes browser host declarations", () => {
 		expect(() =>
 			parsePluginManifest({ ...baseManifest, permissions: ["browser.read"] }),

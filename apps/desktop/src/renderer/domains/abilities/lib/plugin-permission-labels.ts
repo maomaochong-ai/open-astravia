@@ -24,6 +24,7 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"agent.command.spawn": "permission.agentCommandSpawn",
 	"capture.offscreen": "permission.captureOffscreen",
 	"browser.read": "permission.browserRead",
+	"browser.open": "permission.browserOpen",
 	"browser.interact": "permission.browserInteract",
 	"browser.profile.persist": "permission.browserProfilePersist",
 	"browser.attach": "permission.browserAttach",
@@ -328,6 +329,12 @@ export const PLUGIN_PERMISSION_PRESENTATIONS = {
 		descriptionKey: "permission.description.browserRead",
 		group: "execution",
 		risk: "high",
+		visual: "external",
+	},
+	"browser.open": {
+		descriptionKey: "permission.description.browserOpen",
+		group: "execution",
+		risk: "low",
 		visual: "external",
 	},
 	"browser.interact": {

@@ -1,12 +1,27 @@
-# 浏览器自动化 API
+# 浏览器 API
 
-`ctx.browser` 让插件使用 Desktop 宿主管理的真实浏览器。适合媒体账号管理、需要登录的后台、表单和交互式网页工作流。插件不需要依赖 Browser Use 系统插件，也不应自行执行浏览器 CLI。
+`ctx.browser` 提供两类能力：`open()` 只负责把页面展示到 Desktop 内置浏览器；其余 session/snapshot/act API 是宿主管理的浏览器自动化能力。插件不应自行执行浏览器 CLI。
+
+当前宿主始终提供 `ctx.browser`，创建这个 API 对象不会启动浏览器或进行导航。权限在调用具体方法时校验，缺少声明或用户授权时抛出 `Plugin permission denied: <permission>`。不要用 `ctx.browser` 是否存在判断权限；需要提前判断时使用 `ctx.permissions.has(...)`。兼容尚未提供该 API 的旧宿主时，仍需自行检测是否存在。
+
+## 打开内置浏览器
+
+如果插件只需要让用户查看一个页面，声明 `browser.open`，并调用：
+
+```ts
+ctx.browser.open("https://studio.example.com/posts");
+```
+
+`open()` 会打开当前会话的内置 Browser Panel。它只接受 `http` / `https`，并受清单中的 `browser.allowedHosts` 限制；不会返回页面内容，也不会授予点击、填充、脚本执行或 Cookie 访问权限。
+
+没有活动会话时，`open()` 会抛出错误，不会创建新会话。只有 `browser.open` 权限也能使用该方法，不需要 `browser.read` 或安装自动化运行时。
 
 ## 清单
 
 ```json
 {
   "permissions": [
+    "browser.open",
     "browser.read",
     "browser.interact",
     "browser.profile.persist"
@@ -22,7 +37,7 @@
 ## 多账号 profile
 
 ```ts
-const session = await ctx.browser?.sessions.create({
+const session = await ctx.browser.sessions.create({
   source: "managed",
   profile: { type: "persistent", id: "brand-a" },
   headed: true,
@@ -37,8 +52,6 @@ const session = await ctx.browser?.sessions.create({
 ## 操作流程
 
 ```ts
-if (!ctx.browser) throw new Error("Browser capability unavailable");
-
 const session = await ctx.browser.sessions.create({
   profile: { type: "persistent", id: "brand-a" },
   allowedHosts: ["studio.example.com"],

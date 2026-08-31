@@ -1,19 +1,9 @@
+import { isAllowedBrowserHost } from "../../shared/browser-policy";
 import { BrowserAutomationError } from "./contracts.js";
 
 export interface AllowedBrowserUrl {
 	url: string;
 	host: string;
-}
-
-function matchesAllowedHost(host: string, allowedHosts: readonly string[]): boolean {
-	return allowedHosts.some((pattern) => {
-		if (pattern === "*") return true;
-		if (pattern.startsWith("*.")) {
-			const bare = pattern.slice(2);
-			return host === bare || host.endsWith(`.${bare}`);
-		}
-		return host === pattern;
-	});
 }
 
 export function assertAllowedBrowserUrl(rawUrl: string, allowedHosts: readonly string[]): AllowedBrowserUrl {
@@ -30,7 +20,7 @@ export function assertAllowedBrowserUrl(rawUrl: string, allowedHosts: readonly s
 		throw new BrowserAutomationError("policy_denied", "Only HTTP and HTTPS browser navigation is allowed");
 	}
 	const host = parsed.hostname.toLowerCase().replace(/\.$/, "");
-	if (!matchesAllowedHost(host, allowedHosts)) {
+	if (!isAllowedBrowserHost(host, allowedHosts)) {
 		throw new BrowserAutomationError("policy_denied", `Browser navigation to ${host} is not allowed`);
 	}
 	return { url: parsed.toString(), host };

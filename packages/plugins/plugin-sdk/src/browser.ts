@@ -78,6 +78,11 @@ export interface PluginBrowserActionResult extends PluginBrowserPageState {
 }
 
 export interface PluginBrowserApi {
+	/**
+	 * Open a URL in the host's built-in browser panel. This is a display-only
+	 * operation; it does not grant page content access or automation privileges.
+	 */
+	open(url: string): void;
 	runtime: {
 		status(): Promise<PluginBrowserRuntimeStatus>;
 		install(step: "runtime" | "browser"): Promise<PluginBrowserRuntimeStatus>;

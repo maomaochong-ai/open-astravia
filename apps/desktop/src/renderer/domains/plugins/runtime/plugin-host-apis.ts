@@ -1,5 +1,5 @@
 import type { InstalledPlugin } from "@preload/api";
-import { languageAtom } from "@shared/store/atoms";
+import { activeSessionAtom, languageAtom, openUrlInBrowserAtom } from "@shared/store/atoms";
 import { showToast } from "@shared/store/toast-atoms";
 import type {
 	Disposable,
@@ -23,6 +23,7 @@ import type {
 import { resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import { router } from "../../../router";
+import { normalizeBrowserOpenUrl } from "./browser-open-policy";
 import { trackActivationDisposable } from "./plugin-activation-disposables";
 import { pluginHostBridge, registerPluginMediaProviderHandler } from "./plugin-host-bridge";
 import { createPluginPermissionApi as createPermissionApi } from "./plugin-permissions";
@@ -162,6 +163,13 @@ export function createBrowserApi(plugin: InstalledPlugin, capabilitySessionId: s
 	const permissions = createPermissionApi(plugin);
 	const browser = window.vetta.plugins.internalCapabilities.browser;
 	return {
+		open: (url) => {
+			permissions.require("browser.open");
+			const normalizedUrl = normalizeBrowserOpenUrl(url, plugin.allowedBrowserHosts);
+			const store = getDefaultStore();
+			if (!store.get(activeSessionAtom)) throw new Error("Cannot open browser without an active session");
+			store.set(openUrlInBrowserAtom, normalizedUrl);
+		},
 		runtime: {
 			status: () => {
 				permissions.require("browser.read");

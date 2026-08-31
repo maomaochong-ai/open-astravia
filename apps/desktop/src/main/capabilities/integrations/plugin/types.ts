@@ -12,6 +12,7 @@ export const PLUGIN_CAPABILITY_PERMISSIONS = {
 	STORAGE_WRITE: "storage.write",
 	MEDIA_GENERATE: "media.generate",
 	BROWSER_READ: "browser.read",
+	BROWSER_OPEN: "browser.open",
 	BROWSER_INTERACT: "browser.interact",
 	BROWSER_PROFILE_PERSIST: "browser.profile.persist",
 	BROWSER_ATTACH: "browser.attach",

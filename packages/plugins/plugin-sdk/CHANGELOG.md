@@ -6,6 +6,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- `ctx.browser` 现在始终提供统一 facade；`ctx.browser.open()` 可在 Desktop 内置 Browser Panel 中打开受 `browser.allowedHosts` 约束的 HTTP(S) 页面，具体方法仍按权限单独校验。该展示型 API 不授予页面读取或自动化权限。
 - `PluginAppActionRegistration.usage` 与 `PluginAppActionUsage`：可声明 `target`、`useWhen`、`avoidWhen`、`alternatives`，经宿主结构校验后随 search / describe 返回；仅指导模型选择，不改变权限与审批。
 - 新增宿主管理的 `ctx.browser` facade 与 `browser.read` / `browser.interact` / `browser.profile.persist` / `browser.attach` / `browser.runtime.manage` 权限。插件通过结构化 session、profile、导航、快照、读取、截图和动作 API 复用登录态浏览器；manifest 必须声明最大 `browser.allowedHosts`，每个 session 只能进一步收窄。公共合同不暴露路径、Cookie、token、任意 argv 或 JavaScript（ADR-0088）。
 - `ctx.agent.registerTool()` 新增可选 `configuration.settingKeys`：动态 Tool 可把自己与插件

@@ -24,7 +24,7 @@
   Agent Settings 与 Plugin Settings 各自的持久化 Adapter 负责。没有配置的 Tool 不显示空条目。
 - 侧边栏导航项支持**原色图片图标**：`SidebarNavItem` 新增可选 `iconUrl`，设置后导航项以 `<img>` 渲染而不染色，插件可用 `registerWorkspaceView({ iconTint: false })` 让自己的彩色 Logo 保持原样（`svg` / `png` / `webp` 等任意图像资源）。`icon` 仍是必填的 class 字符串并同时下发 mask 版本，因此不认识 `iconUrl` 的主题（含替换了 `sidebar.navItem` 组件的主题）继续渲染单色图标，不受影响。缺省仍为单色，与内置导航项保持一致。
 - 插件工作区视图未声明 `icon` 时回落到插件自己的 `plugin.json` Logo（此前固定落到一个通用 widget 图标）：包内图片由宿主生成 mask class 承载，跟随主题前景色着色，因此自带图形的插件不必再去 Iconify 集合里找近似图标。导航项 `icon` 仍是 class 字符串，主题层（含第三方主题）无需改动。
-- 新增通用浏览器自动化能力与系统插件**浏览器操作（Browser Use）**：插件可经 `ctx.browser` 使用宿主管理、按 namespace 隔离的 session 和持久 profile，manifest 权限与 `browser.allowedHosts` 在主进程逐次校验。Agent 则通过 Skill 直接调用锁定版本的 `agent-browser` CLI，每个 Coding Agent Session 以 `VETTA_AGENT_SESSION_ID` 使用独立 upstream session，不与其它 Agent 任务或 Plugin API 共享活跃页面。插件面板负责运行时安装与诊断；公共 `ctx.browser` v1 继续提供导航、快照、文本读取和类型化动作。见 ADR-0088、ADR-0090。
+- 新增通用浏览器自动化能力与系统插件**浏览器操作（Browser Use）**：插件可经 `ctx.browser` 使用宿主管理、按 namespace 隔离的 session 和持久 profile，manifest 权限与 `browser.allowedHosts` 在主进程逐次校验。Agent 则通过 Skill 直接调用锁定版本的 `agent-browser` CLI，每个 Coding Agent Session 以 `VETTA_AGENT_SESSION_ID` 使用独立 upstream session，不与其它 Agent 任务或 Plugin API 共享活跃页面。插件面板负责运行时安装与诊断；公共 `ctx.browser` v1 继续提供导航、快照、文本读取和类型化动作，并新增仅展示型 `ctx.browser.open()` 将 HTTP(S) 页面打开到 Desktop 内置 Browser Panel。见 ADR-0088、ADR-0090。
 - 插件 AI 能力新增无状态多轮对话 capability `cap.domain.vetta.ai.chat`（`ctx.ai.chat`）：插件自持全量消息转写（user / assistant / toolResult），可携带仅本次请求可见的插件内部工具；模型触发工具调用时按 `stopReason: "toolUse"` 原样返回 `toolCalls`，由插件在自身 loop 内执行。权限沿用 `ai.complete`，宿主不保存任何插件会话状态。
 
 ### Fixed
