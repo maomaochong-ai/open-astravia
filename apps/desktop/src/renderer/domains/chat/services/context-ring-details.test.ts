@@ -15,13 +15,14 @@ describe("context ring details", () => {
 		expect(details).toMatchObject({
 			phase: "completed",
 			model: "openai/gpt-test",
-			tokens: "120",
+			actualTokens: "120",
+			windowLabel: "1.0k",
 		});
 		expect(details?.groups.map(({ id, tokens, share, itemCount }) => ({ id, tokens, share, itemCount }))).toEqual([
-			{ id: "instructions", tokens: "20", share: "20.0%", itemCount: 1 },
-			{ id: "capabilities", tokens: "20", share: "20.0%", itemCount: 1 },
-			{ id: "tools", tokens: "20", share: "20.0%", itemCount: 1 },
-			{ id: "conversation", tokens: "40", share: "40.0%", itemCount: 3 },
+			{ id: "instructions", tokens: "24", share: "20.0%", itemCount: 1 },
+			{ id: "capabilities", tokens: "24", share: "20.0%", itemCount: 1 },
+			{ id: "tools", tokens: "24", share: "20.0%", itemCount: 1 },
+			{ id: "conversation", tokens: "48", share: "40.0%", itemCount: 3 },
 		]);
 	});
 
@@ -33,7 +34,7 @@ describe("context ring details", () => {
 				id: "conversation:history",
 				title: "kind:history",
 				metadata: "",
-				tokens: "30",
+				tokens: "36",
 				share: "30.0%",
 				tokenCount: 30,
 				itemCount: 2,
@@ -43,7 +44,7 @@ describe("context ring details", () => {
 				id: "conversation:user_input",
 				title: "kind:user_input",
 				metadata: "",
-				tokens: "10",
+				tokens: "12",
 				share: "10.0%",
 				tokenCount: 10,
 				itemCount: 1,
@@ -66,53 +67,67 @@ describe("context ring details", () => {
 		const details = buildContextRingDetails(partial, labels);
 		const tools = details?.groups.find(({ id }) => id === "tools");
 
-		expect(details?.tokens).toBe("80");
 		expect(tools).toMatchObject({ tokens: "unknown", share: "unknown", unknownCount: 1 });
-		expect(details?.groups.find(({ id }) => id === "instructions")?.tokens).toBe("20");
+		expect(details?.groups.find(({ id }) => id === "instructions")).toMatchObject({
+			tokens: "20",
+			share: "unknown",
+		});
 	});
 
-	it("measures stacked bar segments against the model context window", () => {
+	it("normalizes a divergent estimated breakdown as composition that totals 100 percent", () => {
+		const divergent: ContextCompositionReport = {
+			...report(),
+			model: { provider: "openai", modelId: "gpt-test", contextWindow: 128_000 },
+			estimate: { tokens: 236_000, knownTokens: 236_000, coverage: "complete" },
+			providerReportedInputTokens: 56_000,
+			sections: [
+				section("instruction:base", "instruction", "core", "base", 5_000),
+				section("instruction:extension", "instruction", "extension", "extension", 5_000),
+				section("tool:read", "tool_schema", "runtime", "read", 28_000),
+				section("message:0", "history", "unknown", "history:0", 198_000),
+			],
+		};
+
+		const details = buildContextRingDetails(divergent, labels);
+
+		expect(details).toMatchObject({ actualTokens: "56k", windowLabel: "128k" });
+		expect(details?.groups.map(({ id, tokens, share }) => ({ id, tokens, share }))).toEqual([
+			{ id: "instructions", tokens: "1.2k", share: "2.1%" },
+			{ id: "capabilities", tokens: "1.2k", share: "2.1%" },
+			{ id: "tools", tokens: "6.6k", share: "11.9%" },
+			{ id: "conversation", tokens: "47k", share: "83.9%" },
+		]);
+	});
+
+	it("normalizes stacked bar segments across the estimated composition", () => {
 		const details = buildContextRingDetails(report(), labels);
 
-		const segments = buildContextRingBarSegments(details?.groups ?? [], details?.windowTokens ?? null, 0);
+		const segments = buildContextRingBarSegments(details?.groups ?? [], 0);
 
-		// 窗口 1000，已用 100，因此各段合计只占条的 10%，其余留白。
-		expect(details?.windowTokens).toBe(1_000);
 		expect(segments).toEqual([
-			{ id: "instructions", percent: 2 },
-			{ id: "capabilities", percent: 2 },
-			{ id: "tools", percent: 2 },
-			{ id: "conversation", percent: 4 },
+			{ id: "instructions", percent: 20 },
+			{ id: "capabilities", percent: 20 },
+			{ id: "tools", percent: 20 },
+			{ id: "conversation", percent: 40 },
 		]);
 	});
 
 	it("keeps a clickable minimum width for near-empty segments", () => {
-		const segments = buildContextRingBarSegments([group("instructions", 500), group("tools", 1)], 1_000, 1.5);
+		const segments = buildContextRingBarSegments([group("instructions", 500), group("tools", 1)], 1.5);
 
-		expect(segments).toEqual([
-			{ id: "instructions", percent: 50 },
-			{ id: "tools", percent: 1.5 },
-		]);
+		expect(segments.reduce((sum, segment) => sum + segment.percent, 0)).toBeCloseTo(100, 5);
+		expect(segments[1]?.percent).toBeGreaterThan(0.1);
 	});
 
 	it("scales segments back to the full bar when minimum widths overflow the window", () => {
-		const segments = buildContextRingBarSegments([group("instructions", 990), group("tools", 1)], 1_000, 5);
+		const segments = buildContextRingBarSegments([group("instructions", 990), group("tools", 1)], 5);
 
 		expect(segments.reduce((sum, segment) => sum + segment.percent, 0)).toBeCloseTo(100, 5);
 		expect(segments[1]?.percent).toBeGreaterThan(0);
 	});
 
-	it("falls back to normalizing across groups when the window is unknown", () => {
-		const segments = buildContextRingBarSegments([group("instructions", 30), group("tools", 10)], null, 0);
-
-		expect(segments).toEqual([
-			{ id: "instructions", percent: 75 },
-			{ id: "tools", percent: 25 },
-		]);
-	});
-
-	it("splits the bar evenly when neither window nor known tokens are available", () => {
-		const segments = buildContextRingBarSegments([group("instructions", 0), group("tools", 0)], null);
+	it("splits the bar evenly when no known tokens are available", () => {
+		const segments = buildContextRingBarSegments([group("instructions", 0), group("tools", 0)]);
 
 		expect(segments).toEqual([
 			{ id: "instructions", percent: 50 },

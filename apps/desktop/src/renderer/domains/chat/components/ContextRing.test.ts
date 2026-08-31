@@ -73,18 +73,23 @@ describe("ContextRing", () => {
 		await unmount();
 	});
 
-	it("sizes stacked bar segments against the context window, leaving the unused capacity blank", async () => {
+	it("renders actual context usage with calibrated group tokens and normalized composition", async () => {
 		contextRingCapture.details = details();
 		const { container, unmount } = render();
 
 		await act(async () => contextRingCapture.onOpenChange?.(true));
 
-		// 窗口 400、已用 40：两段合计只占条的 10%。
+		// 两个分项占估算构成的 25% 与 75%，合计 100%。
 		const widths = [...container.querySelectorAll<HTMLElement>("section [aria-label]")].map(
 			(node) => node.style.width,
 		);
-		expect(widths).toEqual(["2.5%", "7.5%"]);
-		expect(container.textContent).toContain("40 / 400");
+		expect(widths).toEqual(["25%", "75%"]);
+		expect(container.textContent).toContain("8");
+		expect(container.textContent).toContain("24");
+		expect(container.textContent).toContain("contextRing.details.actual");
+		expect(container.textContent).toContain("32 / 400");
+		expect(container.textContent).not.toContain("contextRing.details.estimated");
+		expect(container.textContent).not.toContain("≈");
 
 		await unmount();
 	});
@@ -149,14 +154,13 @@ function details(): ContextRingDetailsModel {
 	return {
 		phase: "completed",
 		model: "openai/gpt-test",
-		tokens: "40",
-		windowTokens: 400,
+		actualTokens: "32",
 		windowLabel: "400",
 		groups: [
 			{
 				id: "tools",
 				title: "group:tools",
-				tokens: "10",
+				tokens: "8",
 				share: "25.0%",
 				tokenCount: 10,
 				itemCount: 1,
@@ -166,7 +170,7 @@ function details(): ContextRingDetailsModel {
 						id: "tool:read",
 						title: "tool:read",
 						metadata: "owner:runtime",
-						tokens: "10",
+						tokens: "8",
 						share: "25.0%",
 						tokenCount: 10,
 						itemCount: 1,
@@ -177,7 +181,7 @@ function details(): ContextRingDetailsModel {
 			{
 				id: "conversation",
 				title: "group:conversation",
-				tokens: "30",
+				tokens: "24",
 				share: "75.0%",
 				tokenCount: 30,
 				itemCount: 1,

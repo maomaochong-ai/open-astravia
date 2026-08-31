@@ -291,6 +291,7 @@
 		},
 		"details": {
 			"title": "Context composition (latest call)",
+			"actual": "Actual input",
 			"section": "Section",
 			"category": "Category",
 			"tokens": "Tokens",

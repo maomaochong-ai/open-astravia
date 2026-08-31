@@ -84,20 +84,18 @@ function OverviewPane({
 	onSelect: (group: ContextRingDetailGroupKind) => void;
 }): JSX.Element {
 	const { t } = useTranslation("chat");
-	const segments = useMemo(
-		() => buildContextRingBarSegments(details.groups, details.windowTokens),
-		[details.groups, details.windowTokens],
-	);
+	const segments = useMemo(() => buildContextRingBarSegments(details.groups), [details.groups]);
 	return (
 		<div className="px-3 py-2.5">
-			<div className="flex items-baseline justify-between gap-2">
-				<PopoverTitle className="truncate text-[12px]">{t("contextRing.details.title")}</PopoverTitle>
-				<span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-					{details.tokens} / {details.windowLabel}
-				</span>
-			</div>
+			<PopoverTitle className="truncate text-[12px]">{t("contextRing.details.title")}</PopoverTitle>
 			<div className="truncate text-[10px] text-muted-foreground" title={details.model}>
 				{details.model}
+			</div>
+			<div className="mt-1.5 flex items-baseline justify-between gap-2 text-[10px]">
+				<span className="text-muted-foreground">{t("contextRing.details.actual")}</span>
+				<span className="tabular-nums text-foreground/80">
+					{details.actualTokens ?? t("contextRing.details.unknown")} / {details.windowLabel}
+				</span>
 			</div>
 			<div className="mt-2 flex h-2 gap-px overflow-hidden rounded-full bg-muted/50">
 				{segments.map((segment) => {

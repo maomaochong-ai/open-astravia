@@ -37,9 +37,7 @@ export interface ContextRingBarSegment {
 export interface ContextRingDetailsModel {
 	readonly phase: ContextCompositionReport["phase"];
 	readonly model: string;
-	readonly tokens: string;
-	/** 模型上下文窗口容量，堆叠条以它作为 100%；未知时为 null。 */
-	readonly windowTokens: number | null;
+	readonly actualTokens: string | null;
 	readonly windowLabel: string;
 	readonly groups: readonly ContextRingDetailGroup[];
 }
@@ -67,6 +65,7 @@ export function buildContextRingDetails(
 ): ContextRingDetailsModel | null {
 	if (!report) return null;
 	const estimatedTotal = report.estimate.tokens;
+	const tokenCalibrationScale = resolveTokenCalibrationScale(report);
 	const sectionsByGroup = new Map<ContextRingDetailGroupKind, ContextSectionUsage[]>();
 	for (const section of report.sections) {
 		const group = classifySection(section);
@@ -75,37 +74,35 @@ export function buildContextRingDetails(
 		sectionsByGroup.set(group, sections);
 	}
 
-	const windowTokens = report.model.contextWindow > 0 ? report.model.contextWindow : null;
 	return {
 		phase: report.phase,
 		model: `${report.model.provider}/${report.model.modelId}`,
-		tokens: formatTokens(report.providerReportedInputTokens ?? report.estimate.tokens ?? report.estimate.knownTokens),
-		windowTokens,
-		windowLabel: windowTokens === null ? labels.unknown : formatTokens(windowTokens),
+		actualTokens:
+			report.providerReportedInputTokens === null || report.providerReportedInputTokens === undefined
+				? null
+				: formatTokens(report.providerReportedInputTokens),
+		windowLabel: report.model.contextWindow > 0 ? formatTokens(report.model.contextWindow) : labels.unknown,
 		groups: GROUP_ORDER.flatMap((group) => {
 			const sections = sectionsByGroup.get(group);
 			if (!sections || sections.length === 0) return [];
-			return [buildGroup(group, sections, estimatedTotal, labels)];
+			return [buildGroup(group, sections, estimatedTotal, tokenCalibrationScale, labels)];
 		}),
 	};
 }
 
 /**
- * 堆叠条的 100% 是模型上下文窗口容量，各环节按占窗口的比例取宽度，
- * 未使用的窗口留白。窗口未知时退化为按已知 token 在各环节间归一化。
+ * 堆叠条只表达最近一次调用的估算构成，各环节按估算总量归一化到 100%。
  * 非空环节保留一个可点击的最小宽度，避免它在条上完全消失；
- * 若因此超出窗口，则整体等比缩回 100%。
+ * 若最小宽度导致总和超出 100%，则整体等比缩回。
  */
 export function buildContextRingBarSegments(
 	groups: readonly ContextRingDetailGroup[],
-	windowTokens: number | null,
 	minPercent = 1.5,
 ): ContextRingBarSegment[] {
 	if (groups.length === 0) return [];
 	const total = groups.reduce((sum, group) => sum + group.tokenCount, 0);
-	const scale = windowTokens && windowTokens > 0 ? windowTokens : total;
 	const segments = groups.map((group) => {
-		const percent = scale > 0 ? (group.tokenCount / scale) * 100 : 100 / groups.length;
+		const percent = total > 0 ? (group.tokenCount / total) * 100 : 100 / groups.length;
 		return { id: group.id, percent: percent > 0 ? Math.max(percent, minPercent) : percent };
 	});
 	const used = segments.reduce((sum, segment) => sum + segment.percent, 0);
@@ -131,28 +128,30 @@ function buildGroup(
 	group: ContextRingDetailGroupKind,
 	sections: readonly ContextSectionUsage[],
 	estimatedTotal: number | null,
+	tokenCalibrationScale: number | undefined,
 	labels: ContextRingDetailLabels,
 ): ContextRingDetailGroup {
 	return {
 		id: group,
 		title: labels.group[group],
-		tokens: formatSectionTokens(sections, labels.unknown),
+		tokens: formatSectionTokens(sections, tokenCalibrationScale, labels.unknown),
 		share: formatSectionShare(sections, estimatedTotal, labels.unknown),
 		tokenCount: sumKnownTokens(sections),
 		itemCount: sections.length,
 		unknownCount: countUnknownSections(sections),
 		sections:
 			group === "conversation"
-				? buildConversationSections(sections, estimatedTotal, labels)
+				? buildConversationSections(sections, estimatedTotal, tokenCalibrationScale, labels)
 				: [...sections]
 						.sort((left, right) => (right.estimatedTokens ?? -1) - (left.estimatedTokens ?? -1))
-						.map((section) => buildDetailSection(section, estimatedTotal, labels)),
+						.map((section) => buildDetailSection(section, estimatedTotal, tokenCalibrationScale, labels)),
 	};
 }
 
 function buildConversationSections(
 	sections: readonly ContextSectionUsage[],
 	estimatedTotal: number | null,
+	tokenCalibrationScale: number | undefined,
 	labels: ContextRingDetailLabels,
 ): ContextRingDetailSection[] {
 	return (["history", "user_input"] as const).flatMap((kind) => {
@@ -163,7 +162,7 @@ function buildConversationSections(
 				id: `conversation:${kind}`,
 				title: labels.kind[kind],
 				metadata: "",
-				tokens: formatSectionTokens(matching, labels.unknown),
+				tokens: formatSectionTokens(matching, tokenCalibrationScale, labels.unknown),
 				share: formatSectionShare(matching, estimatedTotal, labels.unknown),
 				tokenCount: sumKnownTokens(matching),
 				itemCount: matching.length,
@@ -176,6 +175,7 @@ function buildConversationSections(
 function buildDetailSection(
 	section: ContextSectionUsage,
 	estimatedTotal: number | null,
+	tokenCalibrationScale: number | undefined,
 	labels: ContextRingDetailLabels,
 ): ContextRingDetailSection {
 	return {
@@ -184,7 +184,7 @@ function buildDetailSection(
 		metadata: [labels.owner[section.source.owner], labels.kind[section.kind], section.category]
 			.filter((value): value is string => Boolean(value))
 			.join(" / "),
-		tokens: formatSectionTokens([section], labels.unknown),
+		tokens: formatSectionTokens([section], tokenCalibrationScale, labels.unknown),
 		share: formatSectionShare([section], estimatedTotal, labels.unknown),
 		tokenCount: section.estimatedTokens ?? 0,
 		itemCount: 1,
@@ -196,11 +196,33 @@ function sumKnownTokens(sections: readonly ContextSectionUsage[]): number {
 	return sections.reduce((sum, section) => sum + (section.estimatedTokens ?? 0), 0);
 }
 
-function formatSectionTokens(sections: readonly ContextSectionUsage[], unknown: string): string {
+function resolveTokenCalibrationScale(report: ContextCompositionReport): number | undefined {
+	const actual = report.providerReportedInputTokens;
+	const estimated = report.estimate.tokens;
+	if (
+		report.phase !== "completed" ||
+		typeof actual !== "number" ||
+		!Number.isFinite(actual) ||
+		actual < 0 ||
+		typeof estimated !== "number" ||
+		!Number.isFinite(estimated) ||
+		estimated <= 0
+	) {
+		return undefined;
+	}
+	return actual / estimated;
+}
+
+function formatSectionTokens(
+	sections: readonly ContextSectionUsage[],
+	tokenCalibrationScale: number | undefined,
+	unknown: string,
+): string {
 	const knownTokens = sumKnownTokens(sections);
 	const unknownCount = countUnknownSections(sections);
-	if (unknownCount === 0) return formatTokens(knownTokens);
-	return knownTokens > 0 ? `${formatTokens(knownTokens)}+` : unknown;
+	if (knownTokens === 0 && unknownCount > 0) return unknown;
+	const calibratedTokens = knownTokens * (tokenCalibrationScale ?? 1);
+	return `${formatTokens(Math.round(calibratedTokens))}${unknownCount > 0 ? "+" : ""}`;
 }
 
 function formatSectionShare(

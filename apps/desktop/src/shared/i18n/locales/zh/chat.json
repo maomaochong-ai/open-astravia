@@ -291,6 +291,7 @@
 		},
 		"details": {
 			"title": "上下文构成（最近一次调用）",
+			"actual": "实际输入",
 			"section": "区块",
 			"category": "分类",
 			"tokens": "Token",
