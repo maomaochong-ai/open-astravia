@@ -196,7 +196,7 @@ function AgentResult({
 					</span>
 				)}
 			</div>
-			{pending ? (
+			{pending && !text ? (
 				<div className="h-4 w-40 animate-pulse rounded bg-muted/60" />
 			) : (
 				<MarkdownContent text={text || "…"} className="text-[14px] leading-[1.6]" />

@@ -1,677 +1,147 @@
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
-import type { MouseEvent } from "react";
-import type { SkillInfo } from "@preload/api";
-import {
-	activeSessionAtom,
-	activityPanelOpenAtom,
-	activityPanelTabByProjectAtom,
-	appshotAttachmentAtom,
-	attachedImagesAtom,
-	focusInputRequestAtom,
-	getTodoItemsForSession,
-	inputValueAtom,
-	isStreamingAtom,
-	pendingMessageEditAtom,
-	pendingMcpElicitationsAtom,
-	pendingQuestionsAtom,
-	promptSuggestionsAtom,
-	promptAttachmentAtom,
-	sandboxPermissionDrawerAtom,
-	todoItemsBySessionAtom,
-	mentionedFilesAtom,
-} from "@shared/store/atoms";
-import {
-	getQueueForSession,
-	isQueuePausedForSession,
-	messageQueueBySessionAtom,
-	messageQueuePausedBySessionAtom,
-} from "@shared/store/message-queue-atoms";
-import { recordInputFilesAdded, recordInputImagesAdded } from "@shared/lib/app-monitor-events";
-import { perfSendBegin, perfSendMark } from "@shared/lib/perf-send";
-import { isImagePath } from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
-import { filePreviewAtom } from "@shared/store/file-preview-atoms";
 import type { InputBarContextMenuViewProps } from "@vetta/theme-ui/chat";
-import type { SelectedFile } from "../AtPanel";
-import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
-import { PANEL_REVEAL_MS } from "../command-panel/constants";
-import {
-	focusInputEditor,
-	insertConnectorToken,
-	insertFileToken,
-	insertImageToken,
-	insertPlainText,
-	insertSceneToken,
-	insertSkillToken,
-	readSelectionText,
-	removeImageToken,
-	removeSelection,
-} from "./editor/inputEditorHandle";
-import { insertClipboardMessage } from "./editor/clipboard-message";
-import { persistBase64Images, persistImageFiles } from "./editor/persistImages";
-import {
-	inputBlankAtom,
-	inputImagePathsAtom,
-	inputPlaceholderVisibleAtom,
-} from "./editor/tokens/projectionAtoms";
-import type { TriggerMatch } from "./editor/tokens/trigger";
-import { useInputActionBarModel } from "../useInputActionBarModel";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { ActiveActionCapsule } from "./ActiveActionCapsules";
-import type { InputBarModel, InputBarProps, InputBarDrawerItem, InputBarTodoModel } from "./types";
-import { useSpeechInput } from "./useSpeechInput";
+import type { InputBarDrawerItem, InputBarModel, InputBarProps, InputBarTodoModel } from "./types";
+import { useInputBarAttachmentModel } from "./useInputBarAttachmentModel";
+import { useInputBarContextMenuModel } from "./useInputBarContextMenuModel";
+import { useInputBarState } from "./useInputBarState";
+import { useInputBarTriggerModel } from "./useInputBarTriggerModel";
 
-const CONTEXT_MENU_WIDTH = 160;
-const CONTEXT_MENU_HEIGHT = 112;
-const CONTEXT_MENU_VIEWPORT_GAP = 8;
-
-interface InputBarContextMenuState {
-	canCopy: boolean;
-	canCut: boolean;
-	canPaste: boolean;
-	x: number;
-	y: number;
-}
-
-function clampContextMenuPosition(clientX: number, clientY: number): { x: number; y: number } {
-	return {
-		x: Math.max(
-			CONTEXT_MENU_VIEWPORT_GAP,
-			Math.min(clientX, window.innerWidth - CONTEXT_MENU_WIDTH - CONTEXT_MENU_VIEWPORT_GAP),
-		),
-		y: Math.max(
-			CONTEXT_MENU_VIEWPORT_GAP,
-			Math.min(clientY, window.innerHeight - CONTEXT_MENU_HEIGHT - CONTEXT_MENU_VIEWPORT_GAP),
-		),
-	};
-}
-
-async function clipboardHasText(): Promise<boolean> {
-	try {
-		const text = await navigator.clipboard.readText();
-		return text.length > 0;
-	} catch {
-		// Permission denied or unsupported — still offer paste so user can try.
-		return true;
-	}
-}
-
-async function readFileSize(path: string, isDirectory: boolean): Promise<number | undefined> {
-	if (isDirectory) return undefined;
-	const stat = await window.vetta.fs.stat(path).catch(() => null);
-	return stat && stat.size > 0 ? stat.size : undefined;
-}
-
-export function useInputBarModel({
-	onSend,
-	onAbort,
-	onSendQueued,
-	cwdOverride,
-	onExpandedChange,
-	sendPending,
-	header,
-	hasSessionOverride,
-	isStreamingOverride,
-}: InputBarProps): InputBarModel {
+/** 组合输入栏各项职责，避免单一 model 同时承担状态、事件、附件和展示映射。 */
+export function useInputBarModel(props: InputBarProps): InputBarModel {
 	const { t } = useTranslation("chat");
-	/**
-	 * 刻意不订阅 inputValueAtom：它每敲一个字符就换一份新字符串，订阅它等于让
-	 * 整条 InputBar（含两个面板与编辑器）逐字符重渲染。这里只要两个布尔投影，
-	 * 它们在整段打字过程中最多翻转一次。
-	 */
-	const isBlank = useAtomValue(inputBlankAtom);
-	const placeholderVisible = useAtomValue(inputPlaceholderVisibleAtom);
-	const atomIsStreaming = useAtomValue(isStreamingAtom);
-	const isStreaming = isStreamingOverride ?? atomIsStreaming;
-	const activeSession = useAtomValue(activeSessionAtom);
-	const pendingQuestions = useAtomValue(pendingQuestionsAtom);
-	const pendingQuestion = activeSession?.runtimeId ? pendingQuestions[activeSession.runtimeId] : undefined;
-	const pendingMcpElicitations = useAtomValue(pendingMcpElicitationsAtom);
-	const pendingMcpElicitation = activeSession?.runtimeId
-		? pendingMcpElicitations[activeSession.runtimeId]
-		: undefined;
-	const promptSuggestions = useAtomValue(promptSuggestionsAtom);
-	const firstSuggestion = activeSession?.runtimeId ? promptSuggestions[activeSession.runtimeId]?.[0] : undefined;
-	const [promptAttachment, setPromptAttachment] = useAtom(promptAttachmentAtom);
-	const [appshotAttachment, setAppshotAttachment] = useAtom(appshotAttachmentAtom);
-	const [pendingMessageEdit, setPendingMessageEdit] = useAtom(pendingMessageEditAtom);
-	const setInputValue = useSetAtom(inputValueAtom);
-	const setMentionedFiles = useSetAtom(mentionedFilesAtom);
-	const imagePaths = useAtomValue(inputImagePathsAtom);
-	const setFilePreview = useSetAtom(filePreviewAtom);
-	const focusInputRequest = useAtomValue(focusInputRequestAtom);
-	const [isFocused, setIsFocused] = useState(false);
-	const [contextMenuState, setContextMenuState] = useState<InputBarContextMenuState | null>(null);
-	const [trigger, setTrigger] = useState<TriggerMatch | null>(null);
-	const dismissedTriggerRef = useRef<string | null>(null);
-	const todoMap = useAtomValue(todoItemsBySessionAtom);
-	const sandboxPermission = useAtomValue(sandboxPermissionDrawerAtom);
-	const todoItems = useMemo(
-		() => getTodoItemsForSession(todoMap, activeSession?.runtimeId ?? null),
-		[todoMap, activeSession?.runtimeId],
-	);
-	const queueMap = useAtomValue(messageQueueBySessionAtom);
-	const queueItems = useMemo(
-		() => getQueueForSession(queueMap, activeSession?.runtimeId ?? null),
-		[queueMap, activeSession?.runtimeId],
-	);
-	const queuePausedMap = useAtomValue(messageQueuePausedBySessionAtom);
-	const queuePaused = isQueuePausedForSession(queuePausedMap, activeSession?.runtimeId ?? null);
-	const actionBar = useInputActionBarModel();
-	const setActivityPanelOpen = useSetAtom(activityPanelOpenAtom);
-	const setTabByProject = useSetAtom(activityPanelTabByProjectAtom);
-	const [drawerActiveTab, setDrawerActiveTab] = useState<string | null>(null);
-
-	const effectiveCwd = activeSession?.cwd ?? cwdOverride ?? "";
-	const hasSession = hasSessionOverride ?? (Boolean(activeSession) || Boolean(cwdOverride));
-	const speechInput = useSpeechInput(hasSession);
-	// 文件与图片如今都是文本流里的 token，因此文本非空即代表有内容可发。
-	const canSend = hasSession && !isStreaming && (!isBlank || Boolean(appshotAttachment));
-	const isEmpty = isBlank;
-	const showPlaceholder = placeholderVisible;
-	/**
-	 * 输入卡片上方的图片缩略图行。文本流里只放「图 N」胶囊，
-	 * 缩略图集中在上方，编号与胶囊同源（inputImagePathsAtom）。
-	 */
+	const state = useInputBarState(props);
+	const trigger = useInputBarTriggerModel({
+		activeSession: state.activeSession,
+		canSend: state.canSend,
+		firstSuggestion: state.firstSuggestion,
+		focusInputRequest: state.focusInputRequest,
+		hasSession: state.hasSession,
+		isEmpty: state.isEmpty,
+		isStreaming: state.isStreaming,
+		onAbort: props.onAbort,
+		onExpandedChange: props.onExpandedChange,
+		onSend: props.onSend,
+	});
 	const imageAttachments = useMemo(
-		() =>
-			imagePaths.map((path, index) => ({
-				path,
-				name: pathBasename(path),
-				url: toVettaFileUrl(path),
-				label: t("inputBar.capsule.imageBadge", { index: index + 1 }),
-			})),
-		[imagePaths, t],
+		() => state.imagePaths.map((path, index) => ({ path, name: pathBasename(path), url: toVettaFileUrl(path), label: t("inputBar.capsule.imageBadge", { index: index + 1 }) })),
+		[state.imagePaths, t],
 	);
-
-	/**
-	 * 已激活的 action 在工具栏里紧跟执行模式（权限/沙箱）右侧显示。
-	 * 全量开关列表已搬进命令面板，但激活态是跨消息持续的，面板一关就看不见会让
-	 * 用户忘记自己开着知识检索之类的开关。
-	 */
+	const attachments = useInputBarAttachmentModel({
+		activeRuntimeId: state.activeSession?.runtimeId,
+		effectiveCwd: state.effectiveCwd,
+		hasSession: state.hasSession,
+		imageAttachments,
+		setAppshotAttachment: state.setAppshotAttachment,
+		setFilePreview: state.setFilePreview,
+		setInputValue: state.setInputValue,
+		setMentionedFiles: state.setMentionedFiles,
+		setPendingMessageEdit: state.setPendingMessageEdit,
+		setPromptAttachment: state.setPromptAttachment,
+	});
+	const contextMenuModel = useInputBarContextMenuModel({
+		activeRuntimeId: state.activeSession?.runtimeId,
+		hasSession: state.hasSession,
+	});
 	const activeActions = useMemo<ActiveActionCapsule[]>(
 		() => [
-			...(actionBar.knowledge?.active
-				? [
-						{
-							id: "__builtin_knowledge_retrieval__",
-							label: actionBar.knowledge.label,
-							icon: <span className="icon-[mdi--book-search-outline] h-3 w-3" />,
-							onToggle: actionBar.actions.toggleKnowledge,
-						},
-					]
+			...(state.actionBar.knowledge?.active
+				? [{ id: "__builtin_knowledge_retrieval__", label: state.actionBar.knowledge.label, icon: <span className="icon-[mdi--book-search-outline] h-3 w-3" />, onToggle: state.actionBar.actions.toggleKnowledge }]
 				: []),
-			...actionBar.items
-				.filter((item) => item.active)
-				.map((item) => ({
-					id: item.id,
-					label: item.label,
-					icon: item.icon,
-					onToggle: () => actionBar.actions.toggleItem(item.id),
-				})),
+			...state.actionBar.items.filter((item) => item.active).map((item) => ({ id: item.id, label: item.label, icon: item.icon, onToggle: () => state.actionBar.actions.toggleItem(item.id) })),
 		],
-		[actionBar],
+		[state.actionBar],
 	);
-
-	/**
-	 * 仍留在输入卡片顶部的非行内附件：图片、Appshot、重编辑提示。
-	 * 插件上下文不在其中——它画在卡片外面顶部，算进来只会让卡片里展开一块空白。
-	 */
-	const hasCapsules =
-		imageAttachments.length > 0 ||
-		Boolean(appshotAttachment) ||
-		Boolean(pendingMessageEdit);
-
-	const slashOpen = trigger?.kind === "slash" && dismissedTriggerRef.current !== `/${trigger.query}`;
-	const atOpen = trigger?.kind === "at" && dismissedTriggerRef.current !== `@${trigger.query}`;
-	const slashFilter = trigger?.kind === "slash" ? `/${trigger.query}` : "";
-	const atFilter = trigger?.kind === "at" ? `@${trigger.query}` : "";
-
-	useEffect(() => {
-		onExpandedChange?.(slashOpen);
-	}, [onExpandedChange, slashOpen]);
-
-	// 展开态立即生效、收起态等命令区退场动画跑完再撤：卡片圆角与上边框比面板先恢复的话，
-	// 那 190ms 里接缝处会露出两个缺口（两块面本该是一整块）。
-	const [slashVisible, setSlashVisible] = useState(false);
-	useEffect(() => {
-		if (slashOpen) {
-			setSlashVisible(true);
-			return;
-		}
-		const timer = window.setTimeout(() => setSlashVisible(false), PANEL_REVEAL_MS);
-		return () => window.clearTimeout(timer);
-	}, [slashOpen]);
-
-	useEffect(() => {
-		if (sandboxPermission) setDrawerActiveTab("sandbox-permission");
-	}, [sandboxPermission]);
-
-	useEffect(() => {
-		if (hasSession && !isStreaming) focusInputEditor();
-	}, [hasSession, isStreaming]);
-
-	useEffect(() => {
-		if (focusInputRequest > 0) focusInputEditor();
-	}, [focusInputRequest]);
-
-	const handleSend = useCallback(() => {
-		const interactionId = perfSendBegin("send-button");
-		void onSend(undefined, { interactionId });
-		perfSendMark("handler-return", interactionId);
-	}, [onSend]);
-
-	const handleAbort = useCallback(async () => {
-		try {
-			await onAbort();
-		} catch (error) {
-			console.error("[useInputBarModel] abort failed", error);
-			throw error;
-		}
-	}, [onAbort]);
-
-	/** 回车：能发就发，生成中则入队，空输入时用输入预测直发。返回是否已处理。 */
-	const handleEnter = useCallback((): boolean => {
-		if (canSend) {
-			const interactionId = perfSendBegin("enter");
-			void onSend(undefined, { interactionId });
-			perfSendMark("handler-return", interactionId);
-			return true;
-		}
-		if (isStreaming && hasSession && !isEmpty) {
-			void onSend();
-			return true;
-		}
-		if (hasSession && !isStreaming && isEmpty && firstSuggestion) {
-			const interactionId = perfSendBegin("suggestion-enter");
-			void onSend(firstSuggestion, { interactionId });
-			perfSendMark("handler-return", interactionId);
-			return true;
-		}
-		return false;
-	}, [canSend, firstSuggestion, hasSession, isEmpty, isStreaming, onSend]);
-
-	const handleTriggerChange = useCallback((next: TriggerMatch | null) => {
-		setTrigger(next);
-		// 触发词一变（继续打字或离开）就复位「已手动关闭」的记忆。
-		const key = next ? `${next.kind === "slash" ? "/" : "@"}${next.query}` : null;
-		if (dismissedTriggerRef.current !== null && dismissedTriggerRef.current !== key) {
-			dismissedTriggerRef.current = null;
-		}
-	}, []);
-
-	const dismissTrigger = useCallback(() => {
-		if (!trigger) return;
-		dismissedTriggerRef.current = `${trigger.kind === "slash" ? "/" : "@"}${trigger.query}`;
-		setTrigger(null);
-	}, [trigger]);
-
-	const handleSlashSelect = useCallback(
-		(skill: SkillInfo, icon?: string) => {
-			if (skill.type === "scene") {
-				// 展示/编辑统一走行内 token；发送边界再转成唯一 promptRef 硬展开。
-				insertSceneToken(skill.name, skill.alias, icon, { replaceTrigger: true });
-			} else {
-				insertSkillToken(skill.name, skill.alias, icon, { replaceTrigger: true });
-			}
-			setTrigger(null);
-			focusInputEditor();
-		},
-		[],
-	);
-
-	const handleConnectorSelect = useCallback((connector: ConnectorGridItem) => {
-		// 与 skill 同为软引用：只把「用哪个连接器」写进文本，不做工具门控。
-		insertConnectorToken(connector.name, connector.label, connector.iconUrl, { replaceTrigger: true });
-		setTrigger(null);
-		focusInputEditor();
-	}, []);
-
-	const handleAtSelect = useCallback(
-		async (file: SelectedFile) => {
-			if (isImagePath(file.path)) {
-				insertImageToken(file.path, { replaceTrigger: true });
-			} else {
-				insertFileToken(file.path, file.isDirectory, { replaceTrigger: true });
-			}
-			setTrigger(null);
-			const sizeBytes = await readFileSize(file.path, file.isDirectory);
-			recordInputFilesAdded("at-panel", [
-				{
-					path: file.path,
-					name: file.name,
-					isDirectory: file.isDirectory,
-					...(sizeBytes === undefined ? {} : { sizeBytes }),
-				},
-			]);
-			focusInputEditor();
-		},
-		[],
-	);
-
-	const handlePlusClick = useCallback(() => {
-		if (!hasSession) return;
-		// 无触发词时点「+」直接开面板；已开则关掉。
-		setTrigger((prev) => (prev?.kind === "slash" ? null : { kind: "slash", query: "", length: 0 }));
-		dismissedTriggerRef.current = null;
-	}, [hasSession]);
-
-	const handleOpenTodoPanel = useCallback(() => {
-		const cwd = activeSession?.cwd;
-		if (!cwd) return;
-		setDrawerActiveTab(null);
-		setActivityPanelOpen(true);
-		setTabByProject((prev) => {
-			const map = new Map(prev);
-			map.set(cwd, "todo");
-			return map;
-		});
-	}, [activeSession?.cwd, setActivityPanelOpen, setTabByProject]);
-
-	const drawerItems = useMemo((): InputBarDrawerItem[] => {
+	const hasCapsules = imageAttachments.length > 0 || Boolean(state.appshotAttachment) || Boolean(state.pendingMessageEdit);
+	const drawerItems = useMemo<InputBarDrawerItem[]>(() => {
 		const items: InputBarDrawerItem[] = [];
-		if (sandboxPermission) {
-			items.push({
-				kind: "sandbox-permission",
-				id: "sandbox-permission",
-				label: t("inputBar.drawer.permissionLabel"),
-				desc: t("inputBar.drawer.permissionDesc"),
-				pulsing: true,
-				request: sandboxPermission,
-			});
+		if (state.sandboxPermission) {
+			items.push({ kind: "sandbox-permission", id: "sandbox-permission", label: t("inputBar.drawer.permissionLabel"), desc: t("inputBar.drawer.permissionDesc"), pulsing: true, request: state.sandboxPermission });
 		}
-		if (queueItems.length > 0 && activeSession) {
-			const runtimeId = activeSession.runtimeId;
-			items.push({
-				kind: "queue",
-				id: "queue",
-				label: t("inputBar.drawer.queueLabel"),
-				// abort/error 后队列暂停（ADR-0060）：抽屉标签用暂停文案 + 脉冲提醒，
-				// 避免排队消息静默滞留、用户以为已发出。
-				desc: queuePaused
-					? t("inputBar.drawer.queuePausedDesc", { count: queueItems.length })
-					: t("inputBar.drawer.queueDesc", { count: queueItems.length }),
-				pulsing: queuePaused,
-				runtimeId,
-				onSendNow: (id) => onSendQueued?.(runtimeId, id),
-			});
+		if (state.queueItems.length > 0 && state.activeSession) {
+			const runtimeId = state.activeSession.runtimeId;
+			items.push({ kind: "queue", id: "queue", label: t("inputBar.drawer.queueLabel"), desc: state.queuePaused ? t("inputBar.drawer.queuePausedDesc", { count: state.queueItems.length }) : t("inputBar.drawer.queueDesc", { count: state.queueItems.length }), pulsing: state.queuePaused, runtimeId, onSendNow: (id) => props.onSendQueued?.(runtimeId, id) });
 		}
 		return items;
-	}, [activeSession, onSendQueued, queueItems.length, queuePaused, sandboxPermission, t]);
-
-	// 待办不再进抽屉：它自己是输入卡片外部下方的一条状态条。
-	const todo = useMemo(
-		(): InputBarTodoModel | null =>
-			todoItems.length > 0 ? { items: todoItems, onOpenPanel: handleOpenTodoPanel } : null,
-		[handleOpenTodoPanel, todoItems],
-	);
-
-	const handleSelectImages = useCallback(async () => {
-		if (!hasSession) return;
-		const selected = await window.vetta.dialog.selectImages();
-		const paths = await persistBase64Images(selected, activeSession?.runtimeId ?? null, "image-dialog");
-		for (const path of paths) insertImageToken(path);
-		focusInputEditor();
-	}, [activeSession?.runtimeId, hasSession]);
-
-	const handleSelectFiles = useCallback(async () => {
-		if (!hasSession) return;
-		const paths = await window.vetta.dialog.selectFiles(effectiveCwd || undefined);
-		const additions = [];
-		for (const path of paths) {
-			if (isImagePath(path)) insertImageToken(path);
-			else insertFileToken(path, false);
-			const sizeBytes = await readFileSize(path, false);
-			additions.push({
-				path,
-				name: pathBasename(path),
-				isDirectory: false,
-				...(sizeBytes === undefined ? {} : { sizeBytes }),
-			});
-		}
-		if (additions.length > 0) recordInputFilesAdded("file-dialog", additions);
-		focusInputEditor();
-	}, [effectiveCwd, hasSession]);
-
-	const openImagePreview = useCallback(
-		(index: number) => {
-			setFilePreview({
-				items: imageAttachments.map((item) => ({ name: item.name, path: item.path, url: item.url })),
-				index,
-			});
-		},
-		[imageAttachments, setFilePreview],
-	);
-
-	const removeImage = useCallback((path: string) => {
-		removeImageToken(path);
-		focusInputEditor();
-	}, []);
-
-	const closeContextMenu = useCallback(() => setContextMenuState(null), []);
-
-	const handleContextMenu = useCallback(
-		(e: MouseEvent<HTMLDivElement>): void => {
-			e.preventDefault();
-			if (!hasSession) return;
-			const hasSelection = readSelectionText().length > 0;
-			const position = clampContextMenuPosition(e.clientX, e.clientY);
-			void clipboardHasText().then((hasClipboard) => {
-				setContextMenuState({
-					...position,
-					canCopy: hasSelection,
-					canCut: hasSelection,
-					canPaste: hasClipboard,
-				});
-			});
-		},
-		[hasSession],
-	);
-
-	const handleMenuCopy = useCallback(() => {
-		closeContextMenu();
-		const selected = readSelectionText();
-		if (!selected) return;
-		void navigator.clipboard.writeText(selected).catch((error) => {
-			console.warn("[useInputBarModel] copy clipboard write failed", error);
-		});
-	}, [closeContextMenu]);
-
-	const handleMenuCut = useCallback(() => {
-		closeContextMenu();
-		const selected = readSelectionText();
-		if (!selected) return;
-		void navigator.clipboard.writeText(selected).catch((error) => {
-			console.warn("[useInputBarModel] cut clipboard write failed", error);
-		});
-		removeSelection();
-		focusInputEditor();
-	}, [closeContextMenu]);
-
-	const handleMenuPaste = useCallback(() => {
-		closeContextMenu();
-		if (!hasSession) return;
-		void (async () => {
-			try {
-				const richMessage = await window.vetta.clipboard.pasteUserMessage(
-					activeSession?.runtimeId ?? "draft",
-				);
-				if (richMessage) {
-					recordInputImagesAdded("paste", richMessage.images);
-					insertClipboardMessage(
-						richMessage.text,
-						richMessage.images.map((image) => image.path),
-					);
-					focusInputEditor();
-					return;
-				}
-			} catch (error) {
-				console.warn("[useInputBarModel] rich clipboard read failed", error);
-			}
-			let clip = "";
-			try {
-				clip = await navigator.clipboard.readText();
-			} catch (error) {
-				console.warn("[useInputBarModel] paste clipboard read failed", error);
-				return;
-			}
-			if (!clip) return;
-			insertPlainText(clip);
-			focusInputEditor();
-		})();
-	}, [activeSession?.runtimeId, closeContextMenu, hasSession]);
-
-	const removePromptAttachment = useCallback(() => {
-		setPromptAttachment(null);
-	}, [setPromptAttachment]);
-
-	const removeAppshot = useCallback(() => {
-		setAppshotAttachment(null);
-	}, [setAppshotAttachment]);
-
-	const cancelPendingEdit = useCallback(() => {
-		setPendingMessageEdit(null);
-		// 清空文本 → ValueBridgePlugin 会把编辑器一并清干净（含所有行内 token）。
-		setInputValue("");
-		setMentionedFiles([]);
-		setAppshotAttachment(null);
-	}, [setAppshotAttachment, setInputValue, setMentionedFiles, setPendingMessageEdit]);
-
+	}, [props.onSendQueued, state.activeSession, state.queueItems.length, state.queuePaused, state.sandboxPermission, t]);
+	const todo = useMemo<InputBarTodoModel | null>(() => state.todoItems.length > 0 ? { items: state.todoItems, onOpenPanel: trigger.openTodoPanel } : null, [state.todoItems, trigger.openTodoPanel]);
 	const defaultPlaceholders = useMemo(() => {
 		const raw = t("inputBar.placeholder.defaults", { returnObjects: true });
-		const list = Array.isArray(raw) ? (raw as string[]) : [];
-		return list.filter((item) => typeof item === "string" && item.length > 0);
+		return (Array.isArray(raw) ? raw : []).filter((item): item is string => typeof item === "string" && item.length > 0);
 	}, [t]);
-
-	const { placeholderTexts, placeholderRotating } = useMemo(() => {
-		if (!hasSession) {
-			return {
-				placeholderTexts: [t("inputBar.placeholder.noSession")] as const,
-				placeholderRotating: false,
-			};
-		}
-		if (isStreaming) {
-			return {
-				placeholderTexts: [t("inputBar.placeholder.thinking")] as const,
-				placeholderRotating: false,
-			};
-		}
-		if (showPlaceholder && firstSuggestion) {
-			return {
-				placeholderTexts: [
-					t("inputBar.placeholder.suggestion", { suggestion: firstSuggestion }),
-				] as const,
-				placeholderRotating: false,
-			};
-		}
-		return {
-			placeholderTexts: defaultPlaceholders,
-			placeholderRotating: defaultPlaceholders.length > 1,
-		};
-	}, [hasSession, isStreaming, showPlaceholder, firstSuggestion, defaultPlaceholders, t]);
-
-	const labels = useMemo<InputBarModel["labels"]>(
-		() => ({
-			capsule: {
-				removeDefault: t("inputBar.capsule.removeDefault"),
-				removeImage: t("inputBar.capsule.removeImage"),
-				removeTooltip: (path) => t("inputBar.capsule.removeTooltip", { path }),
-				activeGroup: (count) => t("inputBar.capsule.activeGroup", { count }),
-			},
-			permission: {
-				deny: t("inputBar.permission.deny"),
-				allow: t("inputBar.permission.allow"),
-				allowSession: t("inputBar.permission.allowSession"),
-			},
-			toolbar: {
-				skills: t("inputBar.toolbar.skills"),
-				addImage: t("inputBar.toolbar.addImage"),
-				attachFile: t("inputBar.toolbar.attachFile"),
-				queue: t("inputBar.drawer.queueLabel"),
-			},
-		}),
-		[t],
-	);
-
-	const contextMenu: InputBarContextMenuViewProps | null = contextMenuState
-		? {
-				canCopy: contextMenuState.canCopy,
-				canCut: contextMenuState.canCut,
-				canPaste: contextMenuState.canPaste,
-				labels: {
-					copy: t("inputBar.contextMenu.copy"),
-					cut: t("inputBar.contextMenu.cut"),
-					paste: t("inputBar.contextMenu.paste"),
-				},
-				onClose: closeContextMenu,
-				onCopy: handleMenuCopy,
-				onCut: handleMenuCut,
-				onPaste: handleMenuPaste,
-				x: contextMenuState.x,
-				y: contextMenuState.y,
-			}
-		: null;
+	const placeholderModel = useMemo(() => {
+		if (!state.hasSession) return { placeholderTexts: [t("inputBar.placeholder.noSession")], placeholderRotating: false };
+		if (state.isStreaming) return { placeholderTexts: [t("inputBar.placeholder.thinking")], placeholderRotating: false };
+		if (state.placeholderVisible && state.firstSuggestion) return { placeholderTexts: [t("inputBar.placeholder.suggestion", { suggestion: state.firstSuggestion })], placeholderRotating: false };
+		return { placeholderTexts: defaultPlaceholders, placeholderRotating: defaultPlaceholders.length > 1 };
+	}, [defaultPlaceholders, state.firstSuggestion, state.hasSession, state.isStreaming, state.placeholderVisible, t]);
+	const labels = useMemo<InputBarModel["labels"]>(() => ({
+		capsule: { removeDefault: t("inputBar.capsule.removeDefault"), removeImage: t("inputBar.capsule.removeImage"), removeTooltip: (path) => t("inputBar.capsule.removeTooltip", { path }), activeGroup: (count) => t("inputBar.capsule.activeGroup", { count }) },
+		permission: { deny: t("inputBar.permission.deny"), allow: t("inputBar.permission.allow"), allowSession: t("inputBar.permission.allowSession") },
+		toolbar: { skills: t("inputBar.toolbar.skills"), addImage: t("inputBar.toolbar.addImage"), attachFile: t("inputBar.toolbar.attachFile"), queue: t("inputBar.drawer.queueLabel") },
+	}), [t]);
+	const contextMenu: InputBarContextMenuViewProps | null = contextMenuModel.contextMenu;
 
 	return {
-		header,
-		isStreaming,
-		sendPending,
-		pendingQuestion,
-		pendingMcpElicitation,
-		firstSuggestion,
+		header: props.header,
+		isStreaming: state.isStreaming,
+		sendPending: props.sendPending,
+		pendingQuestion: state.pendingQuestion,
+		pendingMcpElicitation: state.pendingMcpElicitation,
+		firstSuggestion: state.firstSuggestion,
 		imageAttachments,
 		activeActions,
-		appshotAttachment,
-		hasSession,
-		canSend,
-		isEmpty,
-		showPlaceholder,
+		appshotAttachment: state.appshotAttachment,
+		hasSession: state.hasSession,
+		canSend: state.canSend,
+		isEmpty: state.isEmpty,
+		showPlaceholder: state.placeholderVisible,
 		hasCapsules,
-		effectiveCwd,
-		placeholderTexts,
-		placeholderRotating,
-		isFocused,
-		slashOpen,
-		slashVisible,
-		slashFilter,
-		atOpen,
-		atFilter,
+		effectiveCwd: state.effectiveCwd,
+		placeholderTexts: placeholderModel.placeholderTexts,
+		placeholderRotating: placeholderModel.placeholderRotating,
+		isFocused: trigger.isFocused,
+		slashOpen: trigger.slashOpen,
+		slashVisible: trigger.slashVisible,
+		slashFilter: trigger.slashFilter,
+		atOpen: trigger.atOpen,
+		atFilter: trigger.atFilter,
 		drawerItems,
-		drawerActiveTab,
+		drawerActiveTab: trigger.drawerActiveTab,
 		todo,
-		speechInput,
-		hasPromptAttachment: Boolean(promptAttachment),
-		promptAttachmentIcon: promptAttachment?.icon,
-		promptAttachmentLabel: promptAttachment?.label,
-		promptAttachmentLabels:
-			promptAttachment?.labels ?? (promptAttachment ? [promptAttachment.label] : undefined),
-		pendingMessageEdit: Boolean(pendingMessageEdit),
+		speechInput: state.speechInput,
+		hasPromptAttachment: Boolean(state.promptAttachment),
+		promptAttachmentIcon: state.promptAttachment?.icon,
+		promptAttachmentLabel: state.promptAttachment?.label,
+		promptAttachmentLabels: state.promptAttachment?.labels ?? (state.promptAttachment ? [state.promptAttachment.label] : undefined),
+		pendingMessageEdit: Boolean(state.pendingMessageEdit),
 		pendingEditHint: t("messageList.edit.pendingHint"),
 		cancelPendingEditLabel: t("messageList.interrupt.cancel"),
 		contextMenu,
 		labels,
 		actions: {
-			setFocused: setIsFocused,
-			setDrawerActiveTab,
-			handleEnter,
-			handleTriggerChange,
-			handleContextMenu,
-			handleSlashClose: dismissTrigger,
-			handleSlashSelect,
-			handleConnectorSelect,
-			handleAtClose: dismissTrigger,
-			handleAtSelect,
-			removeImage,
-			openImagePreview,
-			removePromptAttachment,
-			removeAppshot,
-			handlePlusClick,
-			handleSelectImages,
-			handleSelectFiles,
-			handleSend,
-			handleAbort,
-			cancelPendingEdit,
+			setFocused: trigger.setIsFocused,
+			setDrawerActiveTab: trigger.setDrawerActiveTab,
+			handleEnter: trigger.handleEnter,
+			handleTriggerChange: trigger.handleTriggerChange,
+			handleContextMenu: contextMenuModel.onContextMenu,
+			handleSlashClose: trigger.handleSlashClose,
+			handleSlashSelect: trigger.handleSlashSelect,
+			handleConnectorSelect: trigger.handleConnectorSelect,
+			handleAtClose: trigger.handleAtClose,
+			handleAtSelect: trigger.handleAtSelect,
+			removeImage: attachments.removeImage,
+			openImagePreview: attachments.openImagePreview,
+			removePromptAttachment: attachments.removePromptAttachment,
+			removeAppshot: attachments.removeAppshot,
+			handlePlusClick: trigger.handlePlusClick,
+			handleSelectImages: attachments.handleSelectImages,
+			handleSelectFiles: attachments.handleSelectFiles,
+			handleSend: trigger.handleSend,
+			handleAbort: trigger.handleAbort,
+			cancelPendingEdit: attachments.cancelPendingEdit,
 		},
 	};
 }

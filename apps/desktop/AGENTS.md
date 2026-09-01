@@ -126,6 +126,9 @@ src/
 - 新功能代码放入对应的 `domains/<领域>/` 目录
 - 跨领域共享的代码放入 `shared/`
 - 可主题化的纯 UI 展现组件放入 `@vetta/theme-ui`；desktop 领域层只保留数据加载、状态、i18n 与事件适配，通过 props/view model 驱动 UI。
+- Renderer 页面与组件必须按“连接层 + 展示层”组合：`*Page` / `*Container` / `use*Model` 负责 atom、IPC、router、业务 hook、i18n 和副作用；`*View` 只能接收稳定的 view model、actions 与明确的 region/slot props，不得再次读取业务状态或调用业务 API。
+- 一个 model 不得同时拥有会话状态、编辑器命令、附件、发送、队列、权限、语音和展示映射等互相独立的职责。新增能力应拆成按职责命名的可组合 hook/model，由连接层组装成最终 view model。
+- 不得通过不断增加 `*Override`、任意 `ReactNode` 或跨领域内部组件 import 来绕过数据/UI边界；跨业务场景应依赖 shared/theme-ui 的公开 view contract，并为草稿、流式状态等状态明确作用域。
 - **不要**在 `domains/` 外面创建新的顶层目录（如 `components/`, `hooks/`, `lib/`）
 - 每个领域内部结构：`components/`, `hooks/`, `services/`（按需）
 - 领域间通过 `@shared/store/atoms` 共享状态，不要跨领域直接 import 其他领域的内部模块
