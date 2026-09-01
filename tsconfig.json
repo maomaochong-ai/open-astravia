@@ -156,6 +156,7 @@
 		"packages/coding-agent/test/**/*",
 		"packages/runtime-core/src/**/*",
 		"packages/runtime-core/test/**/*",
+		"packages/runtime-core/examples/**/*",
 		"packages/runtime-desktop/src/**/*",
 		"packages/action-rpc/src/**/*",
 		"packages/remote-control/src/**/*",

@@ -135,7 +135,8 @@ fields are quarantined in the Session request factory instead of being spread ac
 最终都发布同一种 Definition revision：
 
 完整的创建流程、可运行示例、配置文件 Source、Tool/MCP、动态 rollout、缓存和可观测接入方式见
-[《自定义 Agent 指南》](./docs/custom-agents.md)。
+[《自定义 Agent 指南》](./docs/custom-agents.md)。仓库内可直接运行的平级 Agent 隔离与 revision rollout 场景见
+[`examples/multi-agent`](./examples/multi-agent/)。
 
 ```ts
 import { RuntimeHost } from "@vetta/runtime-core";

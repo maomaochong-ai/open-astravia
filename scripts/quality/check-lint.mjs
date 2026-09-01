@@ -8,7 +8,13 @@ import { join, relative } from "node:path";
 import { isDirectRun, repoRoot, runBun } from "./lib.mjs";
 
 const PACKAGE_SUBDIRS = ["src", "test"];
-const ROOT_TARGETS = ["package.json", "knip.config.ts", "scripts/quality", "packages/coding-agent/examples"];
+const ROOT_TARGETS = [
+	"package.json",
+	"knip.config.ts",
+	"scripts/quality",
+	"packages/coding-agent/examples",
+	"packages/runtime-core/examples",
+];
 
 export function collectBiomeTargets() {
 	const targets = [...ROOT_TARGETS];

@@ -31,6 +31,7 @@ RuntimeHost
 ## 最小可用流程
 
 下面的 Agent 只有一段系统提示词，但已经具备 revision、Instance、Session、模型绑定、默认缓存前缀和生命周期管理。
+无需 Provider 的可执行版本以及多 Agent rollout 场景见 [`../examples/multi-agent/`](../examples/multi-agent/)。
 
 ```ts
 import {
