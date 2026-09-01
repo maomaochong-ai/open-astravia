@@ -15,7 +15,8 @@
         "plugin-workbench",
         "comfyui-media-provider",
         "content-creation",
-        "browser"
+        "browser",
+        "ios-simulator"
       ]
     },
     "production": {
@@ -29,7 +30,8 @@
         "chart-renderer",
         "git",
         "plugin-workbench",
-        "browser"
+        "browser",
+        "ios-simulator"
       ]
     }
   }

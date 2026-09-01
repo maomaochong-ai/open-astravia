@@ -1,0 +1,38 @@
+{
+	"id": "ios-simulator",
+	"name": "%plugin.name%",
+	"version": "0.1.0",
+	"icon": "solar:smartphone-2-linear",
+	"defaultLocale": "zh",
+	"pluginApiVersion": "^1.0.0",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "ios_simulator",
+		"expose": "./plugin"
+	},
+	"styles": [
+		"dist/style.css"
+	],
+	"permissions": [
+		"ui.slot.activity-tab",
+		"ui.slot.workspace-view",
+		"agent.command.run",
+		"agent.command.spawn",
+		"agent.skills.control",
+		"agent.session.read",
+		"fs.read",
+		"storage.read",
+		"storage.write",
+		"shell.openExternal"
+	],
+	"commands": [
+		"baguette"
+	],
+	"agent": {
+		"skillPaths": [
+			"agent/skills/ios-simulator"
+		]
+	},
+	"description": "%plugin.description%",
+	"author": "Vetta"
+}
