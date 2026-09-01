@@ -27,8 +27,18 @@ export function createTeamSessionRepository(rootDirectory = DEFAULT_SESSION_ROOT
 	}
 
 	return {
-		memberSessionDirectory: (teamSessionId, memberId) => join(rootDirectory, teamSessionId, memberId),
+		memberSessionDirectory: (teamSessionId, memberId) =>
+			join(rootDirectory, teamSessionId, `member-${encodePathComponent(memberId)}`),
 		read: (id) => store(id).read(),
 		write: (session) => store(session.id).write(session),
 	};
+}
+
+/**
+ * Team member IDs are opaque domain identifiers (the built-in IDs contain `:`).
+ * Encode them before using them as directory names because Windows rejects
+ * characters such as `:` and path separators in a directory component.
+ */
+function encodePathComponent(value: string): string {
+	return Buffer.from(value, "utf8").toString("base64url");
 }

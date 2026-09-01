@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
 	parseCreateAgentProfileInput,
 	parseCreateTeamInput,
@@ -20,6 +21,9 @@ const CHANNELS = {
 	CREATE_SESSION: "vetta:agent-teams:create-session",
 	GET_SESSION: "vetta:agent-teams:get-session",
 	SEND_MESSAGE: "vetta:agent-teams:send-message",
+	SUBSCRIBE: "vetta:agent-teams:subscribe",
+	UNSUBSCRIBE: "vetta:agent-teams:unsubscribe",
+	ABORT: "vetta:agent-teams:abort",
 } as const;
 
 function requiredString(value: unknown, field: string): string {
@@ -32,13 +36,14 @@ export interface AgentTeamsIpcDependencies {
 		typeof agentTeamStore,
 		"read" | "listBlueprints" | "createAgent" | "updateAgent" | "deleteAgent" | "previewAgentUpdate" | "createTeam"
 	>;
-	readonly sessions: Pick<typeof agentTeamSessionService, "create" | "read" | "send">;
+	readonly sessions: Pick<typeof agentTeamSessionService, "create" | "read" | "send" | "subscribe" | "abort">;
 }
 
 export function registerAgentTeamsIpc(
 	dependencies: AgentTeamsIpcDependencies = { store: agentTeamStore, sessions: agentTeamSessionService },
 ): () => void {
 	const { store, sessions } = dependencies;
+	const subscriptions = new Map<string, () => void>();
 	ipcMain.handle(CHANNELS.LIST, () => store.read());
 	ipcMain.handle(CHANNELS.BLUEPRINTS, () => store.listBlueprints());
 	ipcMain.handle(CHANNELS.CREATE_AGENT, (_event, input: unknown) =>
@@ -64,7 +69,26 @@ export function registerAgentTeamsIpc(
 	ipcMain.handle(CHANNELS.SEND_MESSAGE, (_event, id: unknown, input: unknown) =>
 		sessions.send(requiredString(id, "sessionId"), parseSendTeamMessageInput(input)),
 	);
+	ipcMain.handle(CHANNELS.ABORT, (_event, id: unknown) => sessions.abort(requiredString(id, "sessionId")));
+	ipcMain.handle(CHANNELS.SUBSCRIBE, async (event, id: unknown) => {
+		const sessionId = requiredString(id, "sessionId");
+		const subscriptionId = `${sessionId}:${randomUUID()}`;
+		const unsubscribe = sessions.subscribe(sessionId, (payload) => {
+			if (!event.sender.isDestroyed()) {
+				event.sender.send("vetta:agent-teams:stream-event", subscriptionId, payload);
+			}
+		});
+		subscriptions.set(subscriptionId, unsubscribe);
+		return { subscriptionId };
+	});
+	ipcMain.handle(CHANNELS.UNSUBSCRIBE, (_event, subscriptionId: unknown) => {
+		const key = requiredString(subscriptionId, "subscriptionId");
+		subscriptions.get(key)?.();
+		subscriptions.delete(key);
+	});
 	return () => {
+		for (const unsubscribe of subscriptions.values()) unsubscribe();
+		subscriptions.clear();
 		for (const channel of Object.values(CHANNELS)) ipcMain.removeHandler(channel);
 	};
 }

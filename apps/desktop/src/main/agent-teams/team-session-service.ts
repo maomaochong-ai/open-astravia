@@ -14,6 +14,7 @@ import {
 	type SendTeamMessageInput,
 	type TeamFeedEvent,
 	type TeamSessionDocument,
+	type TeamSessionStreamEvent,
 } from "@vetta/agent-team";
 import type { CodingAgentRuntimeToolRegistration } from "@vetta/coding-agent/runtime";
 import type { RuntimeHost } from "@vetta/runtime-core";
@@ -39,6 +40,13 @@ export class AgentTeamSessionService {
 	private runtime: RuntimeHost | undefined;
 	private readonly sessions = new Map<string, TeamSessionDocument>();
 	private readonly sendQueues = new Map<string, Promise<void>>();
+	private readonly activeSends = new Map<string, AbortController>();
+	private readonly subscribers = new Map<string, Set<(event: TeamSessionStreamEvent) => void>>();
+	private readonly runtimeSubscriptions = new Map<string, () => void>();
+	private readonly activeMemberTurns = new Map<
+		string,
+		{ readonly teamSessionId: string; readonly memberId: string; readonly requestId: string }
+	>();
 
 	private readonly extensions: AgentTeamExtensionRegistry;
 	private readonly repository: TeamSessionRepository;
@@ -55,6 +63,50 @@ export class AgentTeamSessionService {
 	private getRuntime(): RuntimeHost {
 		this.runtime ??= getSharedRuntime();
 		return this.runtime;
+	}
+
+	subscribe(sessionId: string, handler: (event: TeamSessionStreamEvent) => void): () => void {
+		const listeners = this.subscribers.get(sessionId) ?? new Set();
+		listeners.add(handler);
+		this.subscribers.set(sessionId, listeners);
+		const session = this.sessions.get(sessionId);
+		if (session) this.attachRuntimeSubscriptions(session);
+		return () => {
+			listeners.delete(handler);
+			if (listeners.size === 0) this.subscribers.delete(sessionId);
+		};
+	}
+
+	private publish(event: TeamSessionStreamEvent): void {
+		for (const listener of this.subscribers.get(event.teamSessionId) ?? []) listener(event);
+	}
+
+	private attachRuntimeSubscriptions(session: TeamSessionDocument): void {
+		for (const runtimeState of Object.values(session.memberRuntime)) {
+			if (this.runtimeSubscriptions.has(runtimeState.sessionId)) continue;
+			const unsubscribe = this.getRuntime().subscribe(runtimeState.sessionId, (event) => {
+				const active = this.activeMemberTurns.get(runtimeState.sessionId);
+				if (!active) return;
+				if (event.type === "session.lifecycle" && event.phase === "agent_start") {
+					this.publish({
+						type: "member-start",
+						teamSessionId: active.teamSessionId,
+						memberId: active.memberId,
+						requestId: active.requestId,
+						timestamp: event.timestamp,
+					});
+				} else if (event.type === "message.delta" && event.delta) {
+					this.publish({
+						type: "member-delta",
+						teamSessionId: active.teamSessionId,
+						memberId: active.memberId,
+						requestId: active.requestId,
+						delta: event.delta,
+					});
+				}
+			});
+			this.runtimeSubscriptions.set(runtimeState.sessionId, unsubscribe);
+		}
 	}
 
 	async create(
@@ -134,6 +186,7 @@ export class AgentTeamSessionService {
 
 		await this.persist(session);
 		this.sessions.set(id, session);
+		this.attachRuntimeSubscriptions(session);
 		log.info("team session created", {
 			teamId: team.id,
 			teamSessionId: id,
@@ -171,6 +224,7 @@ export class AgentTeamSessionService {
 				logger: log,
 			});
 			this.sessions.set(id, restored);
+			this.attachRuntimeSubscriptions(restored);
 			return restored;
 		} catch (error) {
 			log.error("failed to load team session", { teamSessionId: id, error: errorMessage(error) });
@@ -180,7 +234,15 @@ export class AgentTeamSessionService {
 
 	async send(sessionId: string, input: SendTeamMessageInput): Promise<TeamSessionDocument> {
 		const previous = this.sendQueues.get(sessionId) ?? Promise.resolve();
-		const next = previous.catch(() => undefined).then(() => this.sendInternal(sessionId, input));
+		const next = previous
+			.catch(() => undefined)
+			.then(() => {
+				const controller = new AbortController();
+				this.activeSends.set(sessionId, controller);
+				return this.sendInternal(sessionId, input, controller.signal).finally(() => {
+					if (this.activeSends.get(sessionId) === controller) this.activeSends.delete(sessionId);
+				});
+			});
 		const tail = next.then(
 			() => undefined,
 			() => undefined,
@@ -200,7 +262,15 @@ export class AgentTeamSessionService {
 		}
 	}
 
-	private async sendInternal(sessionId: string, input: SendTeamMessageInput): Promise<TeamSessionDocument> {
+	async abort(sessionId: string): Promise<void> {
+		this.activeSends.get(sessionId)?.abort();
+	}
+
+	private async sendInternal(
+		sessionId: string,
+		input: SendTeamMessageInput,
+		signal: AbortSignal,
+	): Promise<TeamSessionDocument> {
 		const current = await this.read(sessionId);
 		const document = await this.readDocument();
 		const team = this.syntheticTeam(current);
@@ -243,9 +313,13 @@ export class AgentTeamSessionService {
 					updatedAt: Date.now(),
 					events: [...current.events, userEvent],
 				};
-		if (!existingUser) await this.persist(next);
+		if (!existingUser) {
+			await this.persist(next);
+			this.publish({ type: "session-updated", teamSessionId: next.id, session: next });
+		}
 
 		for (const memberId of targets) {
+			if (signal.aborted) throw new Error("Team message was cancelled");
 			if (completed.has(memberId)) continue;
 			next = await this.runMemberTurn(
 				next,
@@ -254,6 +328,7 @@ export class AgentTeamSessionService {
 				input.text,
 				input.requestId,
 				`${input.requestId}:${memberId}`,
+				signal,
 			);
 		}
 
@@ -299,9 +374,15 @@ export class AgentTeamSessionService {
 			void this.getRuntime().abort(runtimeState.sessionId);
 		};
 		signal?.addEventListener("abort", abortTarget, { once: true });
+		this.activeMemberTurns.set(runtimeState.sessionId, {
+			teamSessionId: configuredSession.id,
+			memberId,
+			requestId,
+		});
 		try {
 			await this.getRuntime().prompt(runtimeState.sessionId, { text: `${promptText}${contextText}` });
 		} finally {
+			this.activeMemberTurns.delete(runtimeState.sessionId);
 			signal?.removeEventListener("abort", abortTarget);
 		}
 
@@ -328,6 +409,7 @@ export class AgentTeamSessionService {
 			timestamp: Date.now(),
 		});
 		await this.persist(next);
+		this.publish({ type: "session-updated", teamSessionId: next.id, session: next });
 		log.info("team member turn completed", {
 			teamSessionId: next.id,
 			memberId,

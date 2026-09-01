@@ -134,6 +134,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					<ThemeSurface slot="chat.inputBar" />
 					<ThemedInputBarBackground />
 					<div className={["relative z-10 rounded-[inherit]", classNames?.cardContent].filter(Boolean).join(" ")}>
+						{model.header}
 						{/* 展开形态：命令区与编辑区同处这张卡片，两者之间没有接缝 */}
 						<PerfSendProfiler id="ib:CommandPanel">
 						<CommandPanel

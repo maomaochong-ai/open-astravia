@@ -110,6 +110,9 @@ export function useInputBarModel({
 	cwdOverride,
 	onExpandedChange,
 	sendPending,
+	header,
+	hasSessionOverride,
+	isStreamingOverride,
 }: InputBarProps): InputBarModel {
 	const { t } = useTranslation("chat");
 	/**
@@ -119,7 +122,8 @@ export function useInputBarModel({
 	 */
 	const isBlank = useAtomValue(inputBlankAtom);
 	const placeholderVisible = useAtomValue(inputPlaceholderVisibleAtom);
-	const isStreaming = useAtomValue(isStreamingAtom);
+	const atomIsStreaming = useAtomValue(isStreamingAtom);
+	const isStreaming = isStreamingOverride ?? atomIsStreaming;
 	const activeSession = useAtomValue(activeSessionAtom);
 	const pendingQuestions = useAtomValue(pendingQuestionsAtom);
 	const pendingQuestion = activeSession?.runtimeId ? pendingQuestions[activeSession.runtimeId] : undefined;
@@ -160,7 +164,7 @@ export function useInputBarModel({
 	const [drawerActiveTab, setDrawerActiveTab] = useState<string | null>(null);
 
 	const effectiveCwd = activeSession?.cwd ?? cwdOverride ?? "";
-	const hasSession = Boolean(activeSession) || Boolean(cwdOverride);
+	const hasSession = hasSessionOverride ?? (Boolean(activeSession) || Boolean(cwdOverride));
 	const speechInput = useSpeechInput(hasSession);
 	// 文件与图片如今都是文本流里的 token，因此文本非空即代表有内容可发。
 	const canSend = hasSession && !isStreaming && (!isBlank || Boolean(appshotAttachment));
@@ -610,6 +614,7 @@ export function useInputBarModel({
 		: null;
 
 	return {
+		header,
 		isStreaming,
 		sendPending,
 		pendingQuestion,

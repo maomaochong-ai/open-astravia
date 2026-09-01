@@ -1,4 +1,4 @@
-import { pageHeaderRightSlotAtom, pageHeaderTitleAtom } from "@shared/store/atoms";
+import { inputValueAtom, pageHeaderRightSlotAtom, pageHeaderTitleAtom } from "@shared/store/atoms";
 import {
 	resolveMentionedMemberIds,
 	type AgentTeamDocument,
@@ -6,7 +6,7 @@ import {
 } from "@vetta/agent-team";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Button } from "@vetta/ui";
-import { useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAgentTeamSidebarSelection } from "../hooks/useAgentTeamSidebarSelection";
@@ -24,9 +24,10 @@ export function TeamChatPage(): JSX.Element {
 	const setHeaderRight = useSetAtom(pageHeaderRightSlotAtom);
 	const [document, setDocument] = useState<AgentTeamDocument>();
 	const [session, setSession] = useState<TeamSessionDocument>();
-	const [text, setText] = useState("");
+	const [text, setText] = useAtom(inputValueAtom);
 	const [pendingText, setPendingText] = useState<string>();
 	const [targetMemberIds, setTargetMemberIds] = useState<readonly string[]>([]);
+	const [streamingByMember, setStreamingByMember] = useState<Record<string, string>>({});
 	const [sending, setSending] = useState(false);
 	const [error, setError] = useState<string>();
 
@@ -52,6 +53,36 @@ export function TeamChatPage(): JSX.Element {
 	}, [teamId]);
 
 	useEffect(() => {
+		if (!session) return;
+		let mounted = true;
+		let unsubscribe: (() => void) | undefined;
+	const subscription = window.vetta.agentTeams.subscribe(session.id, (event) => {
+			if (!mounted || event.teamSessionId !== session.id) return;
+			if (event.type === "member-start") {
+				setStreamingByMember((current) => ({ ...current, [event.memberId]: "" }));
+				return;
+			}
+			if (event.type === "member-delta") {
+				setStreamingByMember((current) => ({
+					...current,
+					[event.memberId]: `${current[event.memberId] ?? ""}${event.delta}`,
+				}));
+				return;
+			}
+			setSession(event.session);
+			setStreamingByMember({});
+		});
+		void subscription.then((cancel) => {
+			if (mounted) unsubscribe = cancel;
+			else cancel();
+		});
+		return () => {
+			mounted = false;
+			unsubscribe?.();
+		};
+	}, [session?.id]);
+
+	useEffect(() => {
 		setHeaderTitle(team ? teamDisplayName(team, t) : t("teams.title"));
 		setHeaderRight(
 			<Button
@@ -74,8 +105,8 @@ export function TeamChatPage(): JSX.Element {
 		};
 	}, [navigate, setHeaderRight, setHeaderTitle, t, team?.name, teamId]);
 
-	async function send(): Promise<void> {
-		const message = text.trim();
+	async function send(overrideText?: string): Promise<void> {
+		const message = (overrideText ?? text).trim();
 		if (!session || !message || sending) return;
 		const routedMemberIds = team
 			? resolveMentionedMemberIds(team, message, targetMemberIds)
@@ -96,6 +127,7 @@ export function TeamChatPage(): JSX.Element {
 			setText(message);
 		} finally {
 			setPendingText(undefined);
+			setStreamingByMember({});
 			setSending(false);
 		}
 	}
@@ -107,6 +139,7 @@ export function TeamChatPage(): JSX.Element {
 			session={session}
 			text={text}
 			pendingText={pendingText}
+			streamingByMember={streamingByMember}
 			targetMemberIds={targetMemberIds}
 			sending={sending}
 			error={error}

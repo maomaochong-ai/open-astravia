@@ -32,6 +32,8 @@ function dependencies(): AgentTeamsIpcDependencies {
 			create: vi.fn(),
 			read: vi.fn(),
 			send: vi.fn(),
+			subscribe: vi.fn(() => vi.fn()),
+			abort: vi.fn(),
 		},
 	};
 }
@@ -76,5 +78,30 @@ describe("Agent Team IPC contract", () => {
 
 		teardown();
 		expect(ipc.removed).toHaveLength(ipc.handlers.size);
+	});
+
+	it("bridges stream subscriptions and abort requests", async () => {
+		const deps = dependencies();
+		const streamHandler = vi.fn();
+		deps.sessions.subscribe = vi.fn((_id, handler) => {
+			streamHandler.mockImplementation(handler);
+			return vi.fn();
+		});
+		registerAgentTeamsIpc(deps);
+		const sender = { isDestroyed: () => false, send: vi.fn() };
+		const subscribe = ipc.handlers.get("vetta:agent-teams:subscribe");
+		if (!subscribe) throw new Error("subscribe handler was not registered");
+		const result = (await subscribe({ sender }, "session")) as { subscriptionId: string };
+		streamHandler({ type: "member-delta", teamSessionId: "session", memberId: "m", requestId: "r", delta: "hi" });
+		expect(sender.send).toHaveBeenCalledWith(
+			"vetta:agent-teams:stream-event",
+			result.subscriptionId,
+			expect.objectContaining({ type: "member-delta", delta: "hi" }),
+		);
+
+		const abort = ipc.handlers.get("vetta:agent-teams:abort");
+		if (!abort) throw new Error("abort handler was not registered");
+		await abort({}, "session");
+		expect(deps.sessions.abort).toHaveBeenCalledWith("session");
 	});
 });

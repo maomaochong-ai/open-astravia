@@ -9,6 +9,7 @@ import type {
 	SendTeamMessageInput,
 	TeamDefinition,
 	TeamSessionDocument,
+	TeamSessionStreamEvent,
 	UpdateAgentProfileInput,
 } from "@vetta/agent-team";
 
@@ -22,5 +23,7 @@ export interface DesktopAgentTeamsApi {
 	createTeam(input: CreateTeamInput): Promise<TeamDefinition>;
 	createSession(teamId: string, cwd: string): Promise<TeamSessionDocument>;
 	getSession(id: string): Promise<TeamSessionDocument>;
+	subscribe(id: string, handler: (event: TeamSessionStreamEvent) => void): Promise<() => void>;
+	abort(id: string): Promise<void>;
 	sendMessage(id: string, input: SendTeamMessageInput): Promise<TeamSessionDocument>;
 }

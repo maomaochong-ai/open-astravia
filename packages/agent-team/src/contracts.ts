@@ -164,6 +164,28 @@ export interface SendTeamMessageInput {
 	readonly targetMemberIds: readonly string[];
 }
 
+/** Safe renderer-facing updates for a team session. Tool arguments and reasoning are never forwarded. */
+export type TeamSessionStreamEvent =
+	| {
+			type: "member-start";
+			teamSessionId: string;
+			memberId: string;
+			requestId: string;
+			timestamp: number;
+	  }
+	| {
+			type: "member-delta";
+			teamSessionId: string;
+			memberId: string;
+			requestId: string;
+			delta: string;
+	  }
+	| {
+			type: "session-updated";
+			teamSessionId: string;
+			session: TeamSessionDocument;
+	  };
+
 export interface TeamSharedContextRecord {
 	readonly eventId: string;
 	readonly type: "agent-team.user-message.v1" | "agent-team.member-result.v1" | "agent-team.member-delegation.v1";

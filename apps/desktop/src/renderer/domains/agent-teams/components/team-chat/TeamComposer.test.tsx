@@ -3,20 +3,11 @@
 import type { TeamDefinition } from "@vetta/agent-team";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TeamComposer } from "./TeamComposer";
 
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
-}));
-
-vi.mock("@domains/chat/components/SendButton", () => ({
-	SendButton: ({ onSend, pending }: { onSend: () => void; pending?: { label: ReactNode } }) => (
-		<button type="button" onClick={onSend}>
-			{pending?.label ?? "send-button"}
-		</button>
-	),
 }));
 
 afterEach(cleanup);
@@ -28,22 +19,16 @@ const team: TeamDefinition = {
 	description: "",
 	leaderMemberId: "leader",
 	members: [
-		{
-			id: "leader",
-			handle: "vetta",
-			binding: { kind: "reference", agentProfileId: "agent-leader" },
-		},
-		{
-			id: "researcher",
-			handle: "research",
-			binding: { kind: "reference", agentProfileId: "agent-researcher" },
-		},
+		{ id: "leader", handle: "vetta", binding: { kind: "reference", agentProfileId: "agent-leader" } },
+		{ id: "researcher", handle: "research", binding: { kind: "reference", agentProfileId: "agent-researcher" } },
 	],
 	orchestrationPolicyId: "leader-delegates-v1",
 	contextPolicyId: "public-results-v1",
 	createdAt: 1,
 	updatedAt: 1,
 };
+
+const document = { schemaVersion: 1 as const, revision: 1, agents: [], teams: [team] };
 
 describe("TeamComposer", () => {
 	it("routes by member chips and inserts a readable @mention", async () => {
@@ -53,13 +38,11 @@ describe("TeamComposer", () => {
 		render(
 			<TeamComposer
 				team={team}
+				document={document}
 				text="Please"
 				selectedMemberIds={[]}
-				sending={false}
-				disabled={false}
 				onTextChange={onTextChange}
 				onSelectedMemberIdsChange={onSelectedMemberIdsChange}
-				onSend={vi.fn()}
 			/>,
 		);
 
@@ -68,26 +51,21 @@ describe("TeamComposer", () => {
 		expect(onTextChange).toHaveBeenCalledWith("Please @research ");
 	});
 
-	it("sends on Enter but keeps Shift+Enter for multiline input", async () => {
+	it("shows selected state for a routed member", async () => {
 		const user = userEvent.setup();
-		const onSend = vi.fn();
+		const onSelectedMemberIdsChange = vi.fn();
 		render(
 			<TeamComposer
 				team={team}
+				document={document}
 				text="Ready"
 				selectedMemberIds={[]}
-				sending={false}
-				disabled={false}
 				onTextChange={vi.fn()}
-				onSelectedMemberIdsChange={vi.fn()}
-				onSend={onSend}
+				onSelectedMemberIdsChange={onSelectedMemberIdsChange}
 			/>,
 		);
 
-		const input = screen.getByRole("textbox", { name: "chat.placeholder" });
-		await user.type(input, "{Shift>}{Enter}{/Shift}");
-		expect(onSend).not.toHaveBeenCalled();
-		await user.type(input, "{Enter}");
-		expect(onSend).toHaveBeenCalledTimes(1);
+		await user.click(screen.getByRole("button", { name: "@research" }));
+		expect(onSelectedMemberIdsChange).toHaveBeenCalledWith(["researcher"]);
 	});
 });

@@ -18,6 +18,7 @@ export interface TeamMessageFeedProps {
 	readonly team?: TeamDefinition;
 	readonly session?: TeamSessionDocument;
 	readonly pendingText?: string;
+	readonly streamingByMember: Readonly<Record<string, string>>;
 	readonly sending: boolean;
 }
 
@@ -36,14 +37,23 @@ export function TeamMessageFeed(props: TeamMessageFeedProps): JSX.Element {
 	}, [props.document, props.team]);
 	const feed = useMemo<TeamFeedItem[]>(() => {
 		const events = props.session?.events.map((event) => ({ kind: "event" as const, event })) ?? [];
-		return props.pendingText
+		const pendingUserAlreadyCommitted = props.pendingText
+			? props.session?.events.some((event) => event.type === "user-message" && event.text === props.pendingText)
+			: false;
+		const streaming = Object.entries(props.streamingByMember).map(([memberId, text]) => ({
+			kind: "streaming-agent" as const,
+			memberId,
+			text,
+		}));
+		return props.pendingText && !pendingUserAlreadyCommitted
 			? [
 					...events,
 					{ kind: "pending-user" as const, text: props.pendingText },
-					{ kind: "pending-agent" as const },
+					...streaming,
+					...(streaming.length === 0 ? [{ kind: "pending-agent" as const }] : []),
 				]
-			: events;
-	}, [props.pendingText, props.session?.events]);
+			: [...events, ...streaming];
+	}, [props.pendingText, props.session?.events, props.streamingByMember]);
 
 	if (!props.session) {
 		return (
@@ -86,7 +96,8 @@ export function TeamMessageFeed(props: TeamMessageFeedProps): JSX.Element {
 type TeamFeedItem =
 	| { readonly kind: "event"; readonly event: TeamFeedEvent }
 	| { readonly kind: "pending-user"; readonly text: string }
-	| { readonly kind: "pending-agent" };
+	| { readonly kind: "pending-agent" }
+	| { readonly kind: "streaming-agent"; readonly memberId: string; readonly text: string };
 
 function TeamFeedRow({
 	item,
@@ -101,6 +112,17 @@ function TeamFeedRow({
 }): JSX.Element {
 	const { t } = useTranslation("agent-teams");
 	if (item.kind === "pending-user") return <UserResult text={item.text} />;
+	if (item.kind === "streaming-agent") {
+		const profile = profilesByMemberId.get(item.memberId);
+		return (
+			<AgentResult
+				name={memberLabel(item.memberId, session, profilesByMemberId, t)}
+				blueprintId={profile?.blueprintId ?? "leader"}
+				text={item.text}
+				pending
+			/>
+		);
+	}
 	if (item.kind === "pending-agent") {
 		return (
 			<AgentResult
