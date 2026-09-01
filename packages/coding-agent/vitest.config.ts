@@ -4,6 +4,9 @@ import { coverageConfigDefaults, defineConfig } from "vitest/config";
 export default defineConfig({
 	resolve: {
 		alias: {
+			"@vetta/coding-agent/resources": fileURLToPath(
+				new URL("./src/public-api/resources.ts", import.meta.url),
+			),
 			"@vetta/agent-core": fileURLToPath(new URL("../agent/src/index.ts", import.meta.url)),
 			"@vetta/ai": fileURLToPath(new URL("../ai/src/index.ts", import.meta.url)),
 			"@vetta/ecosystem-adapter/hooks": fileURLToPath(

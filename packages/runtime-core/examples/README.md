@@ -21,3 +21,6 @@ bun packages/runtime-core/examples/multi-agent/run.ts
 示例使用低层 Agent Session 的 preview snapshot，因此不会调用 Provider。需要 Conversation 持久化、真实模型调用和
 完整 `host.createSession()` 时，请继续阅读[《自定义 Agent 指南》](../docs/custom-agents.md#接入完整-runtimehost-会话)，
 并由平台组合根提供 `RuntimeAgentSessionAssemblyBackend` 所需资源。
+
+需要继续接入 MCP、Skill、Tool 与 Session Extension 时，参见 Coding Agent 产品组合层的
+[Runtime Agent Capability Examples](../../coding-agent/examples/runtime-agents/README.md)。

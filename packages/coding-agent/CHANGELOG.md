@@ -2,6 +2,10 @@
 
 ### Added
 
+- 新增多主 Agent 进阶开发示例与功能测试，使用公开 API 展示 MCP Source/Turn binding、真实 Skill 发现与调用、
+  Session Extension 的 Tool/Service/Endpoint/Signal 组合，以及 Agent/Session 隔离和资源生命周期；
+  `@vetta/coding-agent/resources` 同步公开通用 `createInvokeSkillTool()` 与输入合同，外部组合无需深度导入。
+
 - 新增会话 Agent 配置模板快照、覆盖、版本恢复与 SessionExtension API；Prompt、Skill、Tool、MCP、Plugin、模型和推理等级在下一 Turn 原子采用，缺失资源明确失败，限制不能扩大宿主权限。
 
 - 文件配置与 Plugin 动态 MCP Server 可注入同一个 MCP Apps Host；App ToolResult 使用不透明 surface attachment，

@@ -23,6 +23,13 @@ Extension 示例（钩子、自定义工具、命令、Git 集成、自定义 pr
 
 详见 [extensions/README.md](extensions/README.md) 与 [docs/extensions.md](../docs/extensions.md)。
 
+### [runtime-agents/](runtime-agents/)
+
+基于多主 Agent 底座组合 MCP、Skill、Tool 与 Session Extension 的进阶开发示例。覆盖 Turn generation、
+Agent/Session 隔离、Host Port、资源所有权与功能测试，不需要真实 Provider。
+
+详见 [runtime-agents/README.md](runtime-agents/README.md)。
+
 ## Documentation
 
 - [文档索引](../docs/README.md)

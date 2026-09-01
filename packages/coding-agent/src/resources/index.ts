@@ -51,7 +51,12 @@ export {
 } from "./prompts/index.js";
 export { createSessionResourceRuntime } from "./runtime/session-resource-runtime.js";
 export {
+	createInvokeSkillTool,
 	formatSkillsForPrompt,
+	type InvokeSkillToolDetails,
+	type InvokeSkillToolInput,
+	InvokeSkillToolInputSchema,
+	type InvokeSkillToolOptions,
 	type LoadSkillsFromDirOptions,
 	type LoadSkillsOptions,
 	type LoadSkillsResult,
