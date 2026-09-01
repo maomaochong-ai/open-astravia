@@ -1378,9 +1378,6 @@
     "secretsDefer": "先添加，稍后填写",
     "secretsDialogConfirm": "保存并添加",
     "guides": {
-      "notion": "点击继续后会打开 Notion 授权页\n登录并选择工作区，点允许即可\n无需创建 Integration 或粘贴密钥\n授权凭证只保存在本机",
-      "figma": "打开下方链接中的官方说明，进入账号设置\n生成 Personal access token\n复制后粘贴到下方",
-      "github": "打开 GitHub 令牌页，创建 Fine-grained personal access token\n按需勾选仓库范围与权限（如 Contents、Issues、Pull requests）\n复制生成的令牌粘贴到下方",
       "slack": "打开 Slack API 应用列表，创建或选择一个 App\n在 OAuth & Permissions 安装到工作区，复制 Bot User OAuth Token（xoxb- 开头）\nTeam ID 可在工作区设置或 auth.test 中查看\n分别粘贴到下方两项",
       "gmail": "添加后，首次在对话中使用时会打开浏览器登录 Google\n按提示完成授权即可，一般无需手动填密钥",
       "googleCalendar": "打开 Google Cloud 控制台创建 OAuth 客户端（桌面应用类型）\n启用 Google Calendar API\n复制 Client ID 与 Client Secret 粘贴到下方\n首次使用时再按提示完成账号授权",
@@ -1390,18 +1387,6 @@
     "canva": {
       "displayName": "Canva",
       "description": "连接你的 Canva 账号，在对话里创建与编辑设计、套用模板、处理素材等。首次使用会打开浏览器完成授权（不填 API Key）。"
-    },
-    "notion": {
-      "displayName": "Notion",
-      "description": "连接你的 Notion 工作区，让 AI 阅读与整理页面、查找笔记与维护知识库。点击授权即可，无需粘贴密钥。"
-    },
-    "figma": {
-      "displayName": "Figma",
-      "description": "读取 Figma 设计稿上下文，辅助对照实现界面代码、核对组件与标注。连接时粘贴 Personal Access Token（仅保存在本机）。"
-    },
-    "github": {
-      "displayName": "GitHub",
-      "description": "连接你的 GitHub，让 AI 读写 Issue 与 PR、搜索代码、查看 Actions 运行日志。连接时粘贴 Personal Access Token（仅保存在本机）。"
     },
     "slack": {
       "displayName": "Slack",
@@ -1420,8 +1405,6 @@
       "description": "查找与阅读云端文件，方便把网盘资料带进对话（首次使用可能需授权）。"
     },
     "secrets": {
-      "figmaApiKey": "Figma 访问令牌",
-      "githubPat": "GitHub 访问令牌",
       "slackBotToken": "Slack 机器人令牌",
       "slackTeamId": "Slack 工作区 ID",
       "googleClientId": "Google 客户端 ID",

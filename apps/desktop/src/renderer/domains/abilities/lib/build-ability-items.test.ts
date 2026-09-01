@@ -312,13 +312,11 @@ describe("buildMcpAbilities", () => {
 			},
 		};
 
-		// 同 slug 的内置预设也在列表里（且排在前面），必须按 catalogId 取市场那一条
 		const item = buildMcpAbilities([ability], createState(), t).find(
 			(candidate) => candidate.id === "server:server:mcp:notion",
 		);
 
-		// 与内置 notion 预设撞名，运行时 key 会被限定为 `notion--<hash>`
-		expect(item?.serverName).toMatch(/^notion--[a-f0-9]{8}$/);
+		expect(item?.serverName).toBe("notion");
 		expect(item?.preset).toMatchObject({
 			name: item?.serverName,
 			browserAuth: true,
@@ -359,7 +357,7 @@ describe("buildMcpAbilities", () => {
 		});
 	});
 
-	it("keeps a built-in MCP and a same-slug GitHub MCP as separate catalog entries", () => {
+	it("keeps a same-name custom MCP separate from a marketplace MCP", () => {
 		const ability = {
 			...createBundle([]),
 			type: "mcp" as const,
@@ -391,13 +389,12 @@ describe("buildMcpAbilities", () => {
 		});
 
 		const items = buildMcpAbilities([ability], state, t);
-		const builtin = items.find((item) => item.id === "builtin:builtin:mcp:github");
+		const local = items.find((item) => item.id === "local:local:mcp:github");
 		const github = items.find((item) => item.id === "github:test-source:mcp:github");
 
-		expect(builtin).toMatchObject({ installed: true, serverName: "github" });
+		expect(local).toMatchObject({ installed: true, serverName: "github" });
 		expect(github).toMatchObject({ installed: false });
-		expect(github?.serverName).toMatch(/^github--[a-f0-9]{8}$/);
-		expect(github?.serverName).not.toContain("_");
+		expect(github?.serverName).toBe("github-2");
 	});
 });
 

@@ -1,19 +1,9 @@
 import type { McpServerConfigData, McpStdioServerConfigData } from "@preload/api.js";
-import type { AbilityDetail } from "@shared/lib/api";
-import figmaAbility from "./presets/figma/ability.json";
-import githubAbility from "./presets/github/ability.json";
-import notionAbility from "./presets/notion/ability.json";
 
 /** settings 命名空间下、内置 MCP 可用的 i18n key（须与 locales 同步扩展） */
 export type BuiltinMcpLabelKey =
 	| "mcpPresets.canva.displayName"
 	| "mcpPresets.canva.description"
-	| "mcpPresets.notion.displayName"
-	| "mcpPresets.notion.description"
-	| "mcpPresets.figma.displayName"
-	| "mcpPresets.figma.description"
-	| "mcpPresets.github.displayName"
-	| "mcpPresets.github.description"
 	| "mcpPresets.slack.displayName"
 	| "mcpPresets.slack.description"
 	| "mcpPresets.gmail.displayName"
@@ -24,8 +14,6 @@ export type BuiltinMcpLabelKey =
 	| "mcpPresets.googleDrive.description";
 
 export type BuiltinMcpSecretLabelKey =
-	| "mcpPresets.secrets.figmaApiKey"
-	| "mcpPresets.secrets.githubPat"
 	| "mcpPresets.secrets.slackBotToken"
 	| "mcpPresets.secrets.slackTeamId"
 	| "mcpPresets.secrets.googleClientId"
@@ -33,9 +21,6 @@ export type BuiltinMcpSecretLabelKey =
 	| "mcpPresets.secrets.gdriveCredentialsPath";
 
 export type BuiltinMcpGuideKey =
-	| "mcpPresets.guides.notion"
-	| "mcpPresets.guides.figma"
-	| "mcpPresets.guides.github"
 	| "mcpPresets.guides.slack"
 	| "mcpPresets.guides.gmail"
 	| "mcpPresets.guides.googleCalendar"
@@ -88,22 +73,6 @@ export interface BuiltinMcpPreset {
 	browserAuth?: boolean;
 	/** args 中用于回退识别的包名片段 */
 	packageHint?: string;
-	/**
-	 * 是否在「发现 → 推荐」列表中展示。
-	 * 缺省/false：仅保留配置与匹配逻辑（已添加识别、图标、OAuth 等），UI 不展示。
-	 * 目前只放行已接好的预设（如 Notion）。
-	 */
-	listedInDiscover?: boolean;
-	/** 与该预设同目录维护的能力详情介绍。 */
-	detail?: AbilityDetail;
-}
-
-interface BuiltinMcpAbilityDescriptor {
-	detail: AbilityDetail;
-}
-
-function descriptorDetail(descriptor: unknown): AbilityDetail {
-	return (descriptor as BuiltinMcpAbilityDescriptor).detail;
 }
 
 const MCP_ICON_BASE = "./mcp";
@@ -123,77 +92,6 @@ export const BUILTIN_MCP_PRESETS: readonly BuiltinMcpPreset[] = [
 			command: "npx",
 			args: ["-y", "mcp-remote", "https://mcp.canva.com/mcp"],
 		},
-	},
-	{
-		id: "notion",
-		name: "notion",
-		iconFile: "notion.png",
-		displayNameKey: "mcpPresets.notion.displayName",
-		descriptionKey: "mcpPresets.notion.description",
-		// 官方托管远程 MCP：HTTP + OAuth（添加后浏览器授权，无需 Internal Integration Secret）
-		packageHint: "mcp.notion.com",
-		setupGuideKey: "mcpPresets.guides.notion",
-		setupHelpUrl: "https://developers.notion.com/guides/mcp/get-started-with-mcp",
-		listedInDiscover: true,
-		detail: descriptorDetail(notionAbility),
-		config: {
-			type: "http",
-			url: "https://mcp.notion.com/mcp",
-		},
-	},
-	{
-		id: "figma",
-		name: "figma",
-		iconFile: "figma.png",
-		displayNameKey: "mcpPresets.figma.displayName",
-		descriptionKey: "mcpPresets.figma.description",
-		// 社区 Framelink MCP（figma-developer-mcp）：stdio + PAT，非官方 mcp.figma.com
-		packageHint: "figma-developer-mcp",
-		setupGuideKey: "mcpPresets.guides.figma",
-		setupHelpUrl: "https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens",
-		listedInDiscover: true,
-		detail: descriptorDetail(figmaAbility),
-		config: {
-			command: "npx",
-			args: ["-y", "figma-developer-mcp", "--stdio"],
-		},
-		secrets: [
-			{
-				envKey: "FIGMA_API_KEY",
-				labelKey: "mcpPresets.secrets.figmaApiKey",
-				required: true,
-				secret: true,
-				helpUrl: "https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens",
-			},
-		],
-	},
-	{
-		id: "github",
-		name: "github",
-		iconFile: "github.png",
-		displayNameKey: "mcpPresets.github.displayName",
-		descriptionKey: "mcpPresets.github.description",
-		// 官方托管远程 MCP：HTTP + PAT（Authorization: Bearer <token>）
-		packageHint: "api.githubcopilot.com/mcp",
-		setupGuideKey: "mcpPresets.guides.github",
-		setupHelpUrl: "https://github.com/settings/personal-access-tokens",
-		listedInDiscover: true,
-		detail: descriptorDetail(githubAbility),
-		config: {
-			type: "http",
-			url: "https://api.githubcopilot.com/mcp/",
-		},
-		secrets: [
-			{
-				envKey: "Authorization",
-				labelKey: "mcpPresets.secrets.githubPat",
-				required: true,
-				secret: true,
-				placeholder: "github_pat_… / ghp_…",
-				valueTemplate: "Bearer {value}",
-				helpUrl: "https://github.com/settings/personal-access-tokens",
-			},
-		],
 	},
 	{
 		id: "slack",
@@ -320,11 +218,6 @@ export function getBuiltinMcpPresetByName(name: string): BuiltinMcpPreset | unde
 
 export function getBuiltinMcpPresetById(id: string): BuiltinMcpPreset | undefined {
 	return BUILTIN_MCP_PRESETS.find((preset) => preset.id === id);
-}
-
-/** 推荐广场可见的内置预设（listedInDiscover !== true 的仅保留数据与匹配）。 */
-export function getListedBuiltinMcpPresets(): readonly BuiltinMcpPreset[] {
-	return BUILTIN_MCP_PRESETS.filter((preset) => preset.listedInDiscover === true);
 }
 
 /** 是否为内置预设对应的已添加条目（按 name 命中，或按包名特征回退匹配）。 */

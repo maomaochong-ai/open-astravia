@@ -30,17 +30,9 @@ function sourceId(item: AbilityItem): string {
 	return item.catalogSource.id;
 }
 
-/**
- * 「发现」可见性：市场条目，外加内置 MCP 连接器预设（Notion/Figma/GitHub）。
- * 后者没有市场行（fromMarket=false），未添加时 installed 也为 false，只按 fromMarket
- * 过滤会让它们两个 scope 都看不见。buildMcpAbilities 只为 listedInDiscover 的预设建
- * builtin 条目，未放行的预设不会漏出。
- */
+/** 「发现」只展示已列入市场的条目；应用内置项不再作为能力市场来源。 */
 export function isAbilityListedInDiscover(item: AbilityItem): boolean {
-	return (
-		(item.fromMarket && (!item.market || isMarketAbilityListed(item.market))) ||
-		(item.type === "mcp" && item.catalogSource.kind === "builtin")
-	);
+	return item.fromMarket && (!item.market || isMarketAbilityListed(item.market));
 }
 
 export function queryAbilityCatalog(items: AbilityItem[], query: AbilityCatalogQuery): AbilityCatalogPage {

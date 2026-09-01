@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SETTINGS_SECTION } from "../registry";
 import { SegmentedControl } from "@vetta/theme-ui/shared";
-import { BuiltinMcpSection } from "./BuiltinMcpSection";
 import { McpServerRow } from "./McpServerRow";
 import {
 	RemoteMcpDiscoverList,
@@ -67,7 +66,7 @@ function McpMineGrid({
 	);
 }
 
-/** 发现：上方推荐 + 下方广场（远程）。 */
+/** 发现：展示远程能力市场中的 MCP。 */
 function McpDiscoverBody({
 	model,
 	remoteModel,
@@ -78,24 +77,8 @@ function McpDiscoverBody({
 	const { t } = useTranslation("settings");
 
 	return (
-		<div className="flex flex-col gap-8">
-			<section>
-				<div className="mb-3 min-w-0">
-					<div className="text-[13px] font-semibold text-foreground">{t("mcpStore.sectionRecommended")}</div>
-					<p className="mt-0.5 text-[11px] text-muted-foreground">{t("mcpStore.sectionRecommendedHint")}</p>
-				</div>
-				<BuiltinMcpSection
-					variant="discover"
-					addedNames={model.addedServerNames}
-					onAdd={(preset) => {
-						void model.onAddBuiltinServer(preset);
-					}}
-					onRemove={model.onRemoveRemoteServer}
-					busyName={model.busyPresetName}
-				/>
-			</section>
-
-			{/* MCP 广场来自 vetta 官方市场：lite 构建（无云服务）整段隐藏，推荐（内置）不受影响 */}
+		<div>
+			{/* MCP 广场来自 Vetta 官方市场；lite 构建无云服务，因此整段隐藏。 */}
 			{cloudEnabled && (
 				<section>
 					<div className="mb-3 flex flex-wrap items-center justify-between gap-3">

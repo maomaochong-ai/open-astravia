@@ -11,6 +11,7 @@ import type {
 } from "../../preload/api-types/mcp.js";
 import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
 import { validateMcpConfig } from "../mcp-config-validation.js";
+import { ensureMcpFileMigrations } from "./migrations/index.js";
 
 export interface McpSettingsServiceOptions {
 	readonly readConfig: () => Promise<McpConfigData>;
@@ -21,6 +22,11 @@ const MCP_CONFIG_PATH = join(getVettaHomePath(), "agent", "mcp.json");
 const DEFAULT_MCP_CONFIG: McpConfigData = { mcpServers: {} };
 
 export async function readMcpConfig(): Promise<McpConfigData> {
+	try {
+		await ensureMcpFileMigrations();
+	} catch {
+		// Keep the existing tolerant read contract. A failed migration is retried on the next app launch.
+	}
 	try {
 		const raw = await readFile(MCP_CONFIG_PATH, "utf8");
 		return validateMcpConfig(JSON.parse(raw));
