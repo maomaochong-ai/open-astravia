@@ -1,5 +1,6 @@
 import {
 	activeInputActionIdsAtom,
+	pluginAbilityDetailSlotsAtom,
 	pluginActivityTabsAtom,
 	pluginCardRenderersAtom,
 	pluginFilePreviewsAtom,
@@ -13,6 +14,7 @@ import {
 	pluginTurnCardsAtom,
 	pluginWorkspaceViewsAtom,
 	type RegisteredActivityTab,
+	type RegisteredAbilityDetailSlot,
 	type RegisteredCardRenderer,
 	type RegisteredFilePreview,
 	type RegisteredFileExplorerContextMenuAction,
@@ -26,8 +28,7 @@ import {
 } from "@shared/store/atoms";
 import type { PluginsChangedEvent } from "@preload/api";
 import { getDefaultStore, useSetAtom } from "jotai";
-import { Component, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import type { ErrorInfo, ReactNode } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { PluginGlobalSlotContribution } from "@vetta-org/plugin-sdk";
 import { markPluginHostLoading, markPluginHostReady, PLUGINS_CHANGED_EVENT } from "../runtime/plugin-events";
 import { installPluginHostBridge } from "../runtime/plugin-host-bridge";
@@ -35,29 +36,10 @@ import { installPluginHostShim } from "../runtime/plugin-host-shim";
 import { PluginI18nBoundary } from "../runtime/plugin-i18n";
 import { loadPlugin, type LoadedPlugin } from "../runtime/plugin-loader";
 import { loadPluginSnapshot } from "./plugin-snapshot";
+import { PluginSlotErrorBoundary } from "./PluginSlotErrorBoundary";
 
 // 串行加载插件快照，避免并发 reload 交叉提交 activation。
 let pluginHostLifecycle = Promise.resolve();
-
-class PluginSlotErrorBoundary extends Component<
-	{ pluginSlotId: string; children: ReactNode },
-	{ failed: boolean }
-> {
-	state = { failed: false };
-
-	static getDerivedStateFromError(): { failed: boolean } {
-		return { failed: true };
-	}
-
-	componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-		console.error(`Plugin slot failed: ${this.props.pluginSlotId}`, error, errorInfo.componentStack);
-	}
-
-	render(): ReactNode {
-		if (this.state.failed) return null;
-		return this.props.children;
-	}
-}
 
 export function PluginGlobalSlotHost(): JSX.Element | null {
 	const [plugins, setPlugins] = useState<LoadedPlugin[]>([]);
@@ -66,6 +48,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	/** True while remotes are (re)loading — keep last published contributions to avoid tab flash. */
 	const [hostLoading, setHostLoading] = useState(true);
 	const setFilePreviews = useSetAtom(pluginFilePreviewsAtom);
+	const setAbilityDetailSlots = useSetAtom(pluginAbilityDetailSlotsAtom);
 	const setFileExplorerContextMenuActions = useSetAtom(pluginFileExplorerContextMenuActionsAtom);
 	const setFileExplorerToolbarActions = useSetAtom(pluginFileExplorerToolbarActionsAtom);
 	const setFileExplorerDecorationProviders = useSetAtom(pluginFileExplorerDecorationProvidersAtom);
@@ -190,6 +173,13 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		() => plugins.flatMap((plugin) => plugin.slots),
 		[plugins, revision],
 	);
+
+	useEffect(() => {
+		const abilitySlots: RegisteredAbilityDetailSlot[] = plugins.flatMap((plugin) =>
+			plugin.abilityDetailSlots.map((slot) => ({ ...slot, pluginId: plugin.id })),
+		);
+		if (abilitySlots.length > 0 || !hostLoading) setAbilityDetailSlots(abilitySlots);
+	}, [plugins, revision, hostLoading, setAbilityDetailSlots]);
 
 	// Publish file-preview registrations so FilePreviewView (a separate subtree)
 	// can dispatch by extension. Republished on every plugin/slot revision.
@@ -359,6 +349,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	useEffect(() => {
 		return () => {
 			setFilePreviews([]);
+			setAbilityDetailSlots([]);
 			setFileExplorerContextMenuActions([]);
 			setFileExplorerToolbarActions([]);
 			setFileExplorerDecorationProviders([]);
@@ -372,6 +363,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		};
 	}, [
 		setFilePreviews,
+		setAbilityDetailSlots,
 		setFileExplorerContextMenuActions,
 		setFileExplorerToolbarActions,
 		setFileExplorerDecorationProviders,

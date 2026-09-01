@@ -1,5 +1,6 @@
 import type {
 	ConversationScenario,
+	PluginAbilityDetailSlotContribution,
 	PluginActivityTabContribution,
 	PluginCardRendererContribution,
 	PluginFileExplorerContextMenuContribution,
@@ -30,6 +31,13 @@ export interface PluginI18nEntry {
  * `useTranslation` in plugin components (ADR-0033).
  */
 export const pluginI18nByIdAtom = atom<Record<string, PluginI18nEntry>>({});
+
+export interface RegisteredAbilityDetailSlot extends PluginAbilityDetailSlotContribution {
+	pluginId: string;
+}
+
+/** Inline plugin surfaces rendered only on their declared ability detail page. */
+export const pluginAbilityDetailSlotsAtom = atom<RegisteredAbilityDetailSlot[]>([]);
 
 /** A file-preview contribution registered by a loaded plugin. */
 export interface RegisteredFilePreview {

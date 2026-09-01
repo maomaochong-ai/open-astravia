@@ -324,6 +324,22 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.REVOKE_PERMISSIONS, id, permissions),
 			grantCommands: (id, names) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.GRANT_COMMANDS, id, names),
 			revokeCommands: (id, names) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.REVOKE_COMMANDS, id, names),
+			getCliProviderStatus: (pluginId, providerId) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_STATUS_GET, pluginId, providerId),
+			retryCliProvider: (pluginId, providerId) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_RETRY, pluginId, providerId),
+			runCliProvider: (pluginId, providerId, args, options) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_RUN, pluginId, providerId, args, options),
+			spawnCliProvider: (pluginId, providerId, args, options) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_SPAWN, pluginId, providerId, args, options),
+			stopCliProviderSpawn: (pluginId, spawnId) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_SPAWN_STOP, pluginId, spawnId),
+			getCliProviderSpawnStatus: (pluginId, spawnId) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_SPAWN_STATUS, pluginId, spawnId),
+			onCliProviderStatusChanged: (handler) =>
+				onIpcEvent(ipc, PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_STATUS, handler),
+			onCliProviderSpawnExit: (handler) =>
+				onIpcEvent(ipc, PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_SPAWN_EXIT, handler),
 			runCommand: (sessionId, file, args, options) =>
 				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.COMMAND_RUN, sessionId, file, args, options),
 			spawnCommand: (sessionId, file, args, options) =>

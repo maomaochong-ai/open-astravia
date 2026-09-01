@@ -287,6 +287,7 @@
 		},
 		"description": {
 			"uiSlotGlobal": "允许插件在应用级公共区域呈现界面内容，可能在多个页面持续显示。",
+			"uiSlotAbilityDetail": "允许插件在自己的能力详情页展示安装、配置或运行状态。",
 			"uiSlotFilePreview": "允许插件在文件预览区域显示自定义内容或文件查看器。",
 			"uiSlotActivityTab": "允许插件在右侧活动面板中增加一个可切换的标签页。",
 			"uiSlotInputAction": "允许插件在对话输入栏附近增加可点击的操作入口。",
@@ -340,6 +341,7 @@
 			"shellOpenExternal": "使用系统默认浏览器或应用打开插件指定的外部链接。"
 		},
 		"uiSlotGlobal": "全局 UI Slot",
+		"uiSlotAbilityDetail": "能力详情页 Slot",
 		"uiSlotFilePreview": "文件预览 Slot",
 		"uiSlotActivityTab": "活动面板 Tab",
 		"uiSlotInputAction": "输入栏动作 Slot",

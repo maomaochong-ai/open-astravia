@@ -14,6 +14,7 @@ export type { Disposable } from "./disposable.js";
 export type {
 	PluginAgentManifest,
 	PluginBrowserManifest,
+	PluginCliProviderManifest,
 	PluginManifest,
 	PluginManifestInput,
 	PluginManifestResourceReference,
@@ -52,6 +53,8 @@ export type {
 // UI slots
 export type {
 	PluginGlobalSlotContribution,
+	PluginAbilityDetailSlotContribution,
+	PluginAbilityDetailSlotProps,
 	PluginNavBadge,
 	PluginNavBadgeTone,
 	PluginWorkspaceViewProps,
@@ -221,6 +224,11 @@ export type {
 	PluginCommandSpawnHandle,
 	PluginCommandApi,
 } from "./command.js";
+export type {
+	PluginCliProviderApi,
+	PluginCliProviderPhase,
+	PluginCliProviderStatus,
+} from "./cli-provider.js";
 export type {
 	PluginBrowserAction,
 	PluginBrowserActionResult,

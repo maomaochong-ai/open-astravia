@@ -4,6 +4,7 @@ import type { PluginContext, PluginSettingsApi } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import { createPluginAgentApi, createPluginAppActionsApi } from "./plugin-agent-context";
 import { createPluginAiApi } from "./plugin-ai";
+import { createPluginCliProviderApi } from "./plugin-cli-provider-api";
 import { createPluginFileExplorerApi } from "./plugin-file-explorer-context";
 import {
 	createArtifactsApi,
@@ -86,6 +87,7 @@ export function createPluginContext({
 		conversation,
 		fs,
 		command: createCommandApi(plugin, capabilitySessionId, disposers),
+		cliProviders: createPluginCliProviderApi(plugin, disposers),
 		media: createMediaApi(plugin, capabilitySessionId, activationId, disposers, pendingRuntimeRegistrations),
 		jobs: createJobsApi(plugin, capabilitySessionId),
 		artifacts: createArtifactsApi(plugin, capabilitySessionId),

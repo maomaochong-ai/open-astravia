@@ -10,6 +10,7 @@ import type {
 import { parsePluginMcpServerConfig } from "@vetta-org/plugin-sdk/manifest";
 import type { InstalledPlugin, PluginMcpServerConfig, PluginPermission } from "../../preload/api-types/plugins.js";
 import type { PluginAgentContributionRegistry } from "./plugin-agent-contribution-registry.js";
+import { arePluginCliProvidersReady } from "./plugin-cli-provider-readiness.js";
 
 interface PluginRuntimeConfigLogger {
 	debug(message: string, data?: Record<string, unknown>): void;
@@ -50,10 +51,17 @@ export function buildPluginRuntimeConfig(
 ): AgentPluginRuntimeConfig | undefined {
 	// 工作模式不参与插件贡献的组装（ADR-0071）：模式差异完全由 mode 系统提示词承担。
 	const enabledPlugins = dependencies.plugins.filter(
-		(plugin) => plugin.enabled && plugin.agent && dependencies.isContributionModeActive(plugin.id),
+		(plugin) =>
+			plugin.enabled &&
+			plugin.agent &&
+			arePluginCliProvidersReady(plugin.id, plugin.cliProviders ?? []) &&
+			dependencies.isContributionModeActive(plugin.id),
 	);
 	const enabledToolPlugins = dependencies.plugins.filter(
-		(plugin) => plugin.enabled && dependencies.isContributionModeActive(plugin.id),
+		(plugin) =>
+			plugin.enabled &&
+			arePluginCliProvidersReady(plugin.id, plugin.cliProviders ?? []) &&
+			dependencies.isContributionModeActive(plugin.id),
 	);
 	dependencies.logger.debug("build runtime config start", {
 		agentPlugins: enabledPlugins.map((plugin) => plugin.id),

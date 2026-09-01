@@ -4,12 +4,14 @@ import { Value } from "@sinclair/typebox/value";
 import {
 	PluginCommandNameSchema,
 	PluginCommandNamesSchema,
+	PluginCliProviderManifestSchema,
 	PluginIdSchema,
 	PluginManifestSchema,
 	PluginMcpServerConfigSchema,
 	PluginVersionSchema,
 	type PluginAgentManifest,
 	type PluginBrowserManifest,
+	type PluginCliProviderManifest,
 	type PluginManifest,
 	type PluginManifestInput,
 	type PluginMcpServerConfig,
@@ -23,6 +25,7 @@ export {
 	PluginBrowserManifestSchema,
 	PluginCommandNameSchema,
 	PluginCommandNamesSchema,
+	PluginCliProviderManifestSchema,
 	PluginIdSchema,
 	PluginManifestSchema,
 	PluginMcpHttpServerConfigSchema,
@@ -30,6 +33,7 @@ export {
 	PluginMcpStdioServerConfigSchema,
 	PluginModuleFederationManifestSchema,
 	PluginNetworkManifestSchema,
+	PluginProvidersManifestSchema,
 	PluginPermissionSchema,
 	PluginSettingDefinitionSchema,
 	PluginVersionSchema,
@@ -37,6 +41,7 @@ export {
 export type {
 	PluginAgentManifest,
 	PluginBrowserManifest,
+	PluginCliProviderManifest,
 	PluginManifest,
 	PluginManifestInput,
 	PluginMcpServerConfig,
@@ -218,6 +223,27 @@ function normalizeAgentManifest(agent: PluginAgentManifest | undefined): PluginA
 	};
 }
 
+function normalizeCliProviders(providers: PluginCliProviderManifest[] | undefined): PluginCliProviderManifest[] | undefined {
+	if (!providers || providers.length === 0) return undefined;
+	const ids = new Set<string>();
+	return providers.map((provider) => {
+		if (ids.has(provider.id)) throw new Error(`Duplicate CLI provider id: ${provider.id}`);
+		ids.add(provider.id);
+		return {
+			id: provider.id,
+			command: provider.command,
+			probe: provider.probe
+				? { args: provider.probe.args ? [...provider.probe.args] : undefined, timeoutMs: provider.probe.timeoutMs }
+				: undefined,
+			install: {
+				command: provider.install.command,
+				args: provider.install.args ? [...provider.install.args] : undefined,
+				timeoutMs: provider.install.timeoutMs,
+			},
+		};
+	});
+}
+
 function normalizePluginMcpServerConfig(config: PluginMcpServerConfig): PluginMcpServerConfig {
 	const common = {
 		disabled: config.disabled,
@@ -341,6 +367,7 @@ export function parsePluginManifest(raw: unknown): PluginManifest {
 		entry: validatePluginRelativePath(trimString(raw.entry), "entry"),
 		moduleFederation: normalizeModuleFederation(raw.moduleFederation),
 		agent: normalizeAgentManifest(raw.agent),
+		providers: raw.providers ? { cli: normalizeCliProviders(raw.providers.cli) } : undefined,
 		styles: normalizeStringArray(raw.styles).map((style) => validatePluginRelativePath(style, "styles")),
 		permissions,
 		network,

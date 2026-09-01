@@ -11,6 +11,19 @@ export interface PluginGlobalSlotContribution {
 	component: ComponentType;
 }
 
+export interface PluginAbilityDetailSlotProps {
+	abilityId: string;
+	installed: boolean;
+	enabled: boolean;
+}
+
+/** Inline setup/status surface rendered near the top of one ability detail page. */
+export interface PluginAbilityDetailSlotContribution {
+	id: string;
+	abilityId: string;
+	component: ComponentType<PluginAbilityDetailSlotProps>;
+}
+
 /**
  * Props handed to a workspace-view component. A workspace view owns the whole
  * content area, so unlike panel slots it is addressed by its own route and can
@@ -444,6 +457,9 @@ export interface PluginNotifyOptions {
 
 export interface PluginUiApi {
 	registerGlobalSlot(contribution: PluginGlobalSlotContribution): Disposable;
+	registerAbilityDetailSlot(contribution: PluginAbilityDetailSlotContribution): Disposable;
+	/** Render an opaque setup URL as a host-themed PNG data URL. */
+	createQrCode(text: string): Promise<string>;
 	/**
 	 * Register a **workspace view**（工作区视图）— a full-page surface with its own
 	 * route and sidebar entry, on par with the host's built-in pages. Needs the

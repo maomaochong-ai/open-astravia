@@ -105,6 +105,7 @@ export function createInstalledPluginFromManifest(input: {
 		entryUrl,
 		moduleFederation: previous?.moduleFederation ?? manifest.moduleFederation,
 		agent: previous?.agent ?? manifest.agent,
+		cliProviders: previous?.cliProviders ?? manifest.providers?.cli ?? [],
 		styleUrls,
 		permissions,
 		grantedPermissions,

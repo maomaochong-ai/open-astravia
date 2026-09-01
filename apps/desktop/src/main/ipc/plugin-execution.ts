@@ -15,14 +15,19 @@ import {
 	destroyAllOffscreenSessions,
 	releasePluginOffscreenSession,
 } from "../plugins/offscreen-capture-service.js";
+import { pluginCliProviderService } from "../plugins/plugin-cli-provider-service.js";
 import { asPluginId } from "./plugin-input-parsers.js";
 
 const handlerChannels = Object.values(PLUGIN_EXECUTION_CHANNELS).filter(
-	(channel) => channel !== PLUGIN_EXECUTION_CHANNELS.COMMAND_SPAWN_EXIT,
+	(channel) =>
+		channel !== PLUGIN_EXECUTION_CHANNELS.COMMAND_SPAWN_EXIT &&
+		channel !== PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_STATUS &&
+		channel !== PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_SPAWN_EXIT,
 );
 
 export function registerPluginExecutionIpc(): () => void {
 	const capabilityAdapter = getDesktopCapabilityHost().adapters.plugin;
+	pluginCliProviderService.ensureEnabledProviders();
 
 	ipcMain.handle(
 		PLUGIN_EXECUTION_CHANNELS.COMMAND_RUN,
@@ -49,6 +54,38 @@ export function registerPluginExecutionIpc(): () => void {
 	);
 	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.COMMAND_SPAWN_STATUS, (_event, sessionId: unknown, spawnId: unknown) =>
 		getPluginCommandSpawnStatus(capabilityAdapter.pluginIdForSession(asPluginId(sessionId)), asPluginId(spawnId)),
+	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_STATUS_GET, (_event, pluginId: unknown, providerId: unknown) =>
+		pluginCliProviderService.getStatus(asPluginId(pluginId), asPluginId(providerId)),
+	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_RETRY, (_event, pluginId: unknown, providerId: unknown) =>
+		pluginCliProviderService.retry(asPluginId(pluginId), asPluginId(providerId)),
+	);
+	ipcMain.handle(
+		PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_RUN,
+		(_event, pluginId: unknown, providerId: unknown, args: unknown, options: unknown) =>
+			pluginCliProviderService.run(
+				asPluginId(pluginId),
+				asPluginId(providerId),
+				args,
+				(options ?? undefined) as PluginCommandRunOptions | undefined,
+			),
+	);
+	ipcMain.handle(
+		PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_SPAWN,
+		(_event, pluginId: unknown, providerId: unknown, args: unknown, options: unknown) =>
+			pluginCliProviderService.spawn(
+				asPluginId(pluginId),
+				asPluginId(providerId),
+				args,
+				(options ?? undefined) as SpawnPluginCommandOptions | undefined,
+			),
+	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_SPAWN_STOP, (_event, pluginId: unknown, spawnId: unknown) =>
+		pluginCliProviderService.stopSpawn(asPluginId(pluginId), asPluginId(spawnId)),
+	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.CLI_PROVIDER_SPAWN_STATUS, (_event, pluginId: unknown, spawnId: unknown) =>
+		pluginCliProviderService.getSpawnStatus(asPluginId(pluginId), asPluginId(spawnId)),
 	);
 	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.OFFSCREEN_CAPTURE, (_event, pluginId: unknown, options: unknown) =>
 		capturePluginOffscreen(asPluginId(pluginId), (options ?? undefined) as PluginOffscreenCaptureOptions | undefined),
@@ -99,6 +136,7 @@ export function registerPluginExecutionIpc(): () => void {
 	return () => {
 		for (const channel of handlerChannels) ipcMain.removeHandler(channel);
 		stopAllPluginSpawns();
+		pluginCliProviderService.stopAll();
 		destroyAllOffscreenSessions();
 	};
 }

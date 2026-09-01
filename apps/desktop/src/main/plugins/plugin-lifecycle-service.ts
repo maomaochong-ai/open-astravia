@@ -20,6 +20,8 @@ export interface PluginLifecycleDependencies {
 	reload(id: string): InstalledPlugin;
 	stopDevWatch(id: string): void;
 	stopSpawns(id: string): void;
+	ensureCliProviders(id: string): void;
+	stopCliProviders(id: string): void;
 	destroyOffscreenSessions(id: string): void;
 	hardRevokeAgentHandlers(
 		id: string,
@@ -79,6 +81,7 @@ export class PluginLifecycleService {
 	setEnabled(id: string, enabled: boolean): InstalledPlugin {
 		if (!enabled) this.stopPluginResources(id, true);
 		const plugin = this.dependencies.setEnabled(id, enabled);
+		if (plugin.enabled) this.dependencies.ensureCliProviders(id);
 		if (!plugin.enabled) this.actionService.clear(id);
 		this.dependencies.refreshRuntime();
 		this.recordPluginEvent(plugin, plugin.enabled ? "enabled" : "disabled");
@@ -152,6 +155,7 @@ export class PluginLifecycleService {
 	reload(id: string): InstalledPlugin {
 		this.stopPluginResources(id, false);
 		const plugin = this.dependencies.reload(id);
+		if (plugin.enabled) this.dependencies.ensureCliProviders(id);
 		this.dependencies.refreshRuntime();
 		this.recordPluginEvent(plugin, "reloaded");
 		return plugin;
@@ -175,6 +179,7 @@ export class PluginLifecycleService {
 	private stopPluginResources(id: string, includeDevWatch: boolean): void {
 		if (includeDevWatch) this.dependencies.stopDevWatch(id);
 		this.dependencies.stopSpawns(id);
+		this.dependencies.stopCliProviders(id);
 		this.dependencies.destroyOffscreenSessions(id);
 	}
 

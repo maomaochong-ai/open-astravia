@@ -15,6 +15,7 @@ import { BundleMembersSection } from "./BundleMembersSection";
 import { BundleUninstallDialog } from "./BundleUninstallDialog";
 import { McpAbilitySection } from "./McpAbilitySection";
 import { PluginAbilitySection } from "./PluginAbilitySection";
+import { PluginAbilityDetailSlotHost } from "./PluginAbilityDetailSlotHost";
 import { PluginPermissionsView } from "./PluginPermissionsView";
 
 interface DetailPageTransition {
@@ -158,6 +159,8 @@ export function AbilityDetailView({
 					{t("error.partial", { error: model.detailErrors.join(" / ") })}
 				</div>
 			) : null}
+
+			<PluginAbilityDetailSlotHost item={item} />
 
 			{detail.blocks.length > 0 ? (
 				<AbilityDetailEnter index={1}>

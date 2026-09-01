@@ -75,6 +75,17 @@ npx @vetta-org/plugin-cli add @example/vetta-plugin-demo
 CLI 使用 `npm pack --ignore-scripts` 获取包，校验 npm 元数据后仅提取声明的 zip；
 Desktop 会再次校验摘要、插件 id 与版本，然后沿用现有授权、启用和重载流程。
 
+## CLI Provider
+
+上游能力本身以 Agent CLI 为产品面时，插件可用 `plugin.json#providers.cli` 声明宿主需要准备的 executable、探测 argv
+和安装命令。用户启用插件后，Desktop 展示真实的检查、安装、验证与失败状态；全部 Provider 就绪前不会发布该插件的
+Agent 贡献。插件 Renderer 通过 `ctx.cliProviders` 订阅状态、重试或启动上游原生配置流程，Agent 则继续通过已有 Shell
+直接使用 CLI，不增加 Vetta Action、MCP 或自定义 Tool。
+
+能力专属的安装与配置界面使用 `ctx.ui.registerAbilityDetailSlot`，由宿主固定渲染在匹配 slug 的能力详情页 Header 下方。
+停用或卸载插件会停止宿主持有的进程，但不会卸载全局 CLI 或清除上游凭据。完整决策见
+[ADR-0098](../../docs/adr/0098-plugin-cli-providers-and-ability-setup-slots.md)。
+
 ## 通用浏览器扩展
 
 插件可通过 `ctx.browser` 使用宿主管理的浏览器自动化，不需要依赖 Browser 系统插件或执行 CLI。清单必须声明所需的 `browser.*` 权限以及最大 `browser.allowedHosts`；session 可以进一步收窄域名范围，不能扩大清单授权。

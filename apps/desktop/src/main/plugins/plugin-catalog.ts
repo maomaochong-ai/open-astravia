@@ -44,7 +44,7 @@ import { PluginRegistryStore, SystemPluginPreferenceStore } from "./plugin-regis
 import { PluginSettingsStore } from "./plugin-settings-store.js";
 import { SystemPluginCatalog } from "./plugin-system-catalog.js";
 
-export const PLUGIN_API_VERSION = "1.3.0";
+export const PLUGIN_API_VERSION = "1.4.0";
 export const CORE_ACTION_PLUGIN_ID = "vetta-actions";
 
 const REQUIRED_SYSTEM_PLUGIN_IDS = new Set<string>([CORE_ACTION_PLUGIN_ID]);
@@ -381,6 +381,7 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	plugin.entryUrl = `${toInstalledPluginUrl(plugin.id, plugin.activeVersion, manifest.entry)}&reload=${reloadToken}`;
 	plugin.moduleFederation = manifest.moduleFederation;
 	plugin.agent = manifest.agent;
+	plugin.cliProviders = manifest.providers?.cli ?? [];
 	plugin.allowedNetworkHosts = manifest.network?.allowedHosts ?? [];
 	plugin.allowedBrowserHosts = manifest.browser?.allowedHosts ?? [];
 	plugin.styleUrls = (manifest.styles ?? []).map(

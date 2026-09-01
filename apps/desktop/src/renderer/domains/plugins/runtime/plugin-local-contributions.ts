@@ -1,5 +1,6 @@
 import type { InstalledPlugin } from "@preload/api";
 import type {
+	PluginAbilityDetailSlotContribution,
 	PluginActivityTabContribution,
 	PluginCardRendererContribution,
 	PluginFileExplorerContextMenuContribution,
@@ -21,6 +22,7 @@ export interface LoadedPlugin {
 	defaultLocale: string;
 	locales: PluginLocales;
 	slots: PluginGlobalSlotContribution[];
+	abilityDetailSlots: PluginAbilityDetailSlotContribution[];
 	filePreviews: PluginFilePreviewContribution[];
 	fileExplorerContextMenuActions: PluginFileExplorerContextMenuContribution[];
 	fileExplorerToolbarActions: PluginFileExplorerToolbarContribution[];
@@ -36,6 +38,7 @@ export interface LoadedPlugin {
 
 export class PluginLocalContributions {
 	readonly slots: PluginGlobalSlotContribution[] = [];
+	readonly abilityDetailSlots: PluginAbilityDetailSlotContribution[] = [];
 	readonly filePreviews: PluginFilePreviewContribution[] = [];
 	readonly fileExplorerContextMenuActions: PluginFileExplorerContextMenuContribution[] = [];
 	readonly fileExplorerToolbarActions: PluginFileExplorerToolbarContribution[] = [];
@@ -49,6 +52,7 @@ export class PluginLocalContributions {
 
 	clear(): void {
 		this.slots.length = 0;
+		this.abilityDetailSlots.length = 0;
 		this.filePreviews.length = 0;
 		this.fileExplorerContextMenuActions.length = 0;
 		this.fileExplorerToolbarActions.length = 0;
@@ -69,6 +73,7 @@ export class PluginLocalContributions {
 			defaultLocale: plugin.defaultLocale,
 			locales: plugin.locales,
 			slots: this.slots,
+			abilityDetailSlots: this.abilityDetailSlots,
 			filePreviews: this.filePreviews,
 			fileExplorerContextMenuActions: this.fileExplorerContextMenuActions,
 			fileExplorerToolbarActions: this.fileExplorerToolbarActions,

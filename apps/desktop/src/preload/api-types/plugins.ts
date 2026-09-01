@@ -77,6 +77,8 @@ import type {
 	PluginBrowserSessionOptions,
 	PluginBrowserSnapshot,
 	PluginBrowserTextContent,
+	PluginCliProviderManifest,
+	PluginCliProviderStatus,
 	PluginCodingAgentHookEvent,
 	PluginCodingAgentHookEventName,
 	PluginMediaCapability,
@@ -93,6 +95,7 @@ import type {
 
 export type {
 	PluginAgentManifest,
+	PluginCliProviderManifest,
 	PluginManifest,
 	PluginMcpServerConfig,
 	PluginPermission,
@@ -149,6 +152,8 @@ export interface InstalledPlugin {
 		expose: string;
 	};
 	agent?: PluginAgentManifest;
+	/** Host-managed executable dependencies declared by this plugin. */
+	cliProviders?: PluginCliProviderManifest[];
 	styleUrls: string[];
 	permissions: PluginPermission[];
 	grantedPermissions: PluginPermission[];
@@ -701,6 +706,26 @@ export interface DesktopPluginsApi {
 	grantCommands(id: string, names: string[]): Promise<InstalledPlugin>;
 	/** Disable declared command names for a plugin. */
 	revokeCommands(id: string, names: string[]): Promise<InstalledPlugin>;
+	getCliProviderStatus(pluginId: string, providerId: string): Promise<PluginCliProviderStatus>;
+	retryCliProvider(pluginId: string, providerId: string): Promise<void>;
+	runCliProvider(
+		pluginId: string,
+		providerId: string,
+		args?: string[],
+		options?: PluginCommandRunOptions,
+	): Promise<PluginCommandRunResult>;
+	spawnCliProvider(
+		pluginId: string,
+		providerId: string,
+		args?: string[],
+		options?: PluginCommandSpawnOptions,
+	): Promise<PluginCommandSpawnResult>;
+	stopCliProviderSpawn(pluginId: string, spawnId: string): Promise<void>;
+	getCliProviderSpawnStatus(pluginId: string, spawnId: string): Promise<PluginCommandSpawnStatus>;
+	onCliProviderStatusChanged(
+		handler: (event: { pluginId: string; status: PluginCliProviderStatus }) => void,
+	): () => void;
+	onCliProviderSpawnExit(handler: (event: PluginCommandSpawnExitEvent) => void): () => void;
 	/** Run an allowed command for a plugin via the main process (execFile, no shell). */
 	runCommand(
 		sessionId: string,

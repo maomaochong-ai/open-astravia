@@ -287,6 +287,7 @@
 		},
 		"description": {
 			"uiSlotGlobal": "Lets the plugin present interface content in shared app areas that may remain visible across pages.",
+			"uiSlotAbilityDetail": "Lets the plugin show installation, setup, or runtime status on its own ability detail page.",
 			"uiSlotFilePreview": "Lets the plugin show custom content or a viewer in the file preview area.",
 			"uiSlotActivityTab": "Lets the plugin add a selectable tab to the right-side activity panel.",
 			"uiSlotInputAction": "Lets the plugin add a clickable action near the chat input.",
@@ -340,6 +341,7 @@
 			"shellOpenExternal": "Opens a plugin-selected external link in the system browser or default app."
 		},
 		"uiSlotGlobal": "Global UI slot",
+		"uiSlotAbilityDetail": "Ability detail slot",
 		"uiSlotFilePreview": "File preview slot",
 		"uiSlotActivityTab": "Activity panel tab",
 		"uiSlotInputAction": "Input bar action slot",

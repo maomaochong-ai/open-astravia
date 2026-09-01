@@ -26,6 +26,40 @@ export const PluginCommandNameSchema = Type.String({
 
 export const PluginCommandNamesSchema = Type.Array(PluginCommandNameSchema);
 
+const PluginCliCommandSchema = Type.Object(
+	{
+		command: PluginCommandNameSchema,
+		args: Type.Optional(Type.Array(Type.String(), { maxItems: 64 })),
+		timeoutMs: Type.Optional(Type.Number({ minimum: 1_000, maximum: 30 * 60_000 })),
+	},
+	{ additionalProperties: false },
+);
+
+export const PluginCliProviderManifestSchema = Type.Object(
+	{
+		id: PluginIdSchema,
+		command: PluginCommandNameSchema,
+		probe: Type.Optional(
+			Type.Object(
+				{
+					args: Type.Optional(Type.Array(Type.String(), { maxItems: 64 })),
+					timeoutMs: Type.Optional(Type.Number({ minimum: 1_000, maximum: 120_000 })),
+				},
+				{ additionalProperties: false },
+			),
+		),
+		install: PluginCliCommandSchema,
+	},
+	{ additionalProperties: false },
+);
+
+export const PluginProvidersManifestSchema = Type.Object(
+	{
+		cli: Type.Optional(Type.Array(PluginCliProviderManifestSchema, { minItems: 1, maxItems: 16 })),
+	},
+	{ additionalProperties: false },
+);
+
 export const PluginNetworkManifestSchema = Type.Object(
 	{
 		allowedHosts: Type.Array(Type.String({ minLength: 1, maxLength: 253, pattern: NON_WHITESPACE_PATTERN }), {
@@ -190,6 +224,7 @@ export const PluginManifestSchema = Type.Object(
 		entry: NonWhitespaceStringSchema,
 		moduleFederation: PluginModuleFederationManifestSchema,
 		agent: Type.Optional(PluginAgentManifestSchema),
+		providers: Type.Optional(PluginProvidersManifestSchema),
 		styles: Type.Optional(Type.Array(NonWhitespaceStringSchema)),
 		permissions: Type.Optional(Type.Array(PluginPermissionSchema)),
 		network: Type.Optional(PluginNetworkManifestSchema),
@@ -230,6 +265,8 @@ export const PluginManifestSchema = Type.Object(
 export type PluginSettingSchema = Static<typeof PluginSettingDefinitionSchema>;
 export type PluginMcpServerConfig = Static<typeof PluginMcpServerConfigSchema>;
 export type PluginAgentManifest = Static<typeof PluginAgentManifestSchema>;
+export type PluginCliProviderManifest = Static<typeof PluginCliProviderManifestSchema>;
+export type PluginProvidersManifest = Static<typeof PluginProvidersManifestSchema>;
 export type PluginNetworkManifest = Static<typeof PluginNetworkManifestSchema>;
 export type PluginBrowserManifest = Static<typeof PluginBrowserManifestSchema>;
 export type PluginManifestInput = Static<typeof PluginManifestSchema>;

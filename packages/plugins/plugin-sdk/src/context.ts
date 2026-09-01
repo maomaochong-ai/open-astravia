@@ -5,6 +5,7 @@ import type { PluginArtifactsApi } from "./artifacts.js";
 import type { PluginBrowserApi } from "./browser.js";
 import type { PluginCaptureApi } from "./capture.js";
 import type { PluginCommandApi } from "./command.js";
+import type { PluginCliProviderApi } from "./cli-provider.js";
 import type { PluginConversationApi } from "./conversation.js";
 import type { Disposable } from "./disposable.js";
 import type { PluginFileExplorerApi } from "./file-explorer.js";
@@ -52,6 +53,7 @@ export interface PluginContext {
 	official: PluginOfficialApi;
 	fs: PluginFsApi;
 	command: PluginCommandApi;
+	cliProviders: PluginCliProviderApi;
 	media: PluginMediaApi;
 	jobs: PluginJobsApi;
 	artifacts: PluginArtifactsApi;

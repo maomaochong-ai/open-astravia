@@ -17,6 +17,7 @@ import {
 import { showToast } from "@shared/store/toast-atoms";
 import type {
 	Disposable,
+	PluginAbilityDetailSlotContribution,
 	PluginActivityTabContribution,
 	PluginActivityTabTargetOptions,
 	PluginCardRendererContribution,
@@ -36,6 +37,7 @@ import type {
 	PluginWorkspaceViewHeader,
 } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
+import QRCode from "qrcode";
 import { type ComponentType, createElement, type ReactNode } from "react";
 import { router } from "../../../router";
 import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs";
@@ -176,8 +178,17 @@ export function createPluginUiApi({
 	agentContributions,
 	capabilitySessionId,
 }: CreatePluginUiApiOptions): PluginContext["ui"] {
-	const { slots, filePreviews, activityTabs, inputActions, cardRenderers, toolCallSlots, turnCards, workspaceViews } =
-		contributions;
+	const {
+		slots,
+		abilityDetailSlots,
+		filePreviews,
+		activityTabs,
+		inputActions,
+		cardRenderers,
+		toolCallSlots,
+		turnCards,
+		workspaceViews,
+	} = contributions;
 	const registerGlobalSlot = (contribution: PluginGlobalSlotContribution): Disposable => {
 		if (!hasPluginPermission(plugin, "ui.slot.global")) {
 			warnSkippedPluginContribution(plugin, "ui.slot.global", "global slot");
@@ -204,6 +215,35 @@ export function createPluginUiApi({
 			},
 		};
 		return disposable;
+	};
+	const registerAbilityDetailSlot = (contribution: PluginAbilityDetailSlotContribution): Disposable => {
+		if (!hasPluginPermission(plugin, "ui.slot.ability-detail")) {
+			warnSkippedPluginContribution(plugin, "ui.slot.ability-detail", "ability detail slot");
+			return noopDisposable;
+		}
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("Ability detail slot id is required");
+		}
+		if (typeof contribution.abilityId !== "string" || contribution.abilityId.trim().length === 0) {
+			throw new Error("Ability detail slot abilityId is required");
+		}
+		if (typeof contribution.component !== "function" && typeof contribution.component !== "object") {
+			throw new Error("Ability detail slot component is invalid");
+		}
+		const normalized: PluginAbilityDetailSlotContribution = {
+			id: `${plugin.id}:${contribution.id.trim()}`,
+			abilityId: contribution.abilityId.trim(),
+			component: contribution.component,
+		};
+		abilityDetailSlots.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = abilityDetailSlots.indexOf(normalized);
+				if (index >= 0) abilityDetailSlots.splice(index, 1);
+				onChanged();
+			},
+		};
 	};
 	const registerFilePreview = (contribution: PluginFilePreviewContribution): Disposable => {
 		if (!hasPluginPermission(plugin, "ui.slot.file-preview")) {
@@ -725,6 +765,11 @@ export function createPluginUiApi({
 
 	return {
 		registerGlobalSlot,
+		registerAbilityDetailSlot,
+		createQrCode: (text) => {
+			if (typeof text !== "string" || text.trim().length === 0) throw new Error("QR code text is required");
+			return QRCode.toDataURL(text, { width: 280, margin: 1, errorCorrectionLevel: "M" });
+		},
 		registerFilePreview,
 		registerActivityTab,
 		registerInputAction,

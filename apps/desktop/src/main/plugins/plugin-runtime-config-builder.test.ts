@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 import { DesktopPluginHookRegistry } from "./coding-agent-hook-registry.js";
 import { PluginAgentContributionRegistry } from "./plugin-agent-contribution-registry.js";
+import { clearPluginCliProviderReadiness, setPluginCliProviderReady } from "./plugin-cli-provider-readiness.js";
 import { buildPluginRuntimeConfig } from "./plugin-runtime-config-builder.js";
 
 function plugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlugin {
@@ -34,6 +35,36 @@ function plugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlugin {
 }
 
 describe("buildPluginRuntimeConfig", () => {
+	it("withholds all agent contributions until every declared CLI provider is ready", () => {
+		const contributions = new PluginAgentContributionRegistry(new DesktopPluginHookRegistry());
+		contributions.beginLoad("demo", "activation");
+		contributions.registerTool("demo", {
+			id: "tool",
+			name: "demo_tool",
+			description: "Demo tool",
+			parameters: {},
+			handlerId: "handler",
+			activationId: "activation",
+		});
+		contributions.commit("demo", "activation");
+		const dependencies = {
+			plugins: [
+				plugin({ cliProviders: [{ id: "required-cli", command: "required-cli", install: { command: "npx" } }] }),
+			],
+			isContributionModeActive: () => true,
+			contributions,
+			resolveResource: (_plugin: InstalledPlugin, path: string) => path,
+			resolveMcpRoot: (value: InstalledPlugin) => value.rootPath,
+			logger: { debug: vi.fn(), warn: vi.fn() },
+		};
+
+		clearPluginCliProviderReadiness("demo");
+		expect(buildPluginRuntimeConfig(dependencies)).toBeUndefined();
+		setPluginCliProviderReady("demo", "required-cli", true);
+		expect(buildPluginRuntimeConfig(dependencies)?.toolContributions).toHaveLength(1);
+		clearPluginCliProviderReadiness("demo");
+	});
+
 	it("keeps contributions of plugins whose declared agent_mode does not match the current mode", () => {
 		const contributions = new PluginAgentContributionRegistry(new DesktopPluginHookRegistry());
 		contributions.beginLoad("demo", "activation");

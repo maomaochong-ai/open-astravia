@@ -6,6 +6,7 @@ import type { PluginPermission } from "@preload/api";
  */
 export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"ui.slot.global": "permission.uiSlotGlobal",
+	"ui.slot.ability-detail": "permission.uiSlotAbilityDetail",
 	"ui.slot.file-preview": "permission.uiSlotFilePreview",
 	"ui.slot.activity-tab": "permission.uiSlotActivityTab",
 	"ui.slot.input-action": "permission.uiSlotInputAction",
@@ -96,6 +97,13 @@ export const PLUGIN_PERMISSION_GROUPS: readonly PluginPermissionGroup[] = [
 export const PLUGIN_PERMISSION_PRESENTATIONS = {
 	"ui.slot.global": {
 		descriptionKey: "permission.description.uiSlotGlobal",
+		group: "interface",
+		risk: "low",
+		visual: "interface",
+		uiPreview: "global",
+	},
+	"ui.slot.ability-detail": {
+		descriptionKey: "permission.description.uiSlotAbilityDetail",
 		group: "interface",
 		risk: "low",
 		visual: "interface",
