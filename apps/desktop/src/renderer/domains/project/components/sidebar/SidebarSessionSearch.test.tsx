@@ -96,7 +96,7 @@ describe("SidebarSessionSearch popover", () => {
 		);
 	});
 
-	it("selects custom calendar dates, prevents reversed ranges, includes the end day, and resets on close", async () => {
+	it("selects custom calendar dates, prevents reversed ranges, and includes the end day", async () => {
 		vi.useFakeTimers({ toFake: ["Date"] });
 		vi.setSystemTime(new Date(2026, 7, 31, 14));
 		const { user, calls, trigger } = await mountSearch();
@@ -139,6 +139,30 @@ describe("SidebarSessionSearch popover", () => {
 			}),
 		);
 		expect(screen.queryByRole("alert")).toBeNull();
+	});
+
+	it("clears and resets custom dates", async () => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		vi.setSystemTime(new Date(2026, 7, 31, 14));
+		const { user, calls, trigger } = await mountSearch();
+		await user.click(trigger);
+		await user.type(screen.getByRole("searchbox"), "budget");
+		await waitFor(() => expect(calls.at(-1)?.request.query).toBe("budget"));
+		await user.click(screen.getByRole("button", { name: "Filters" }));
+		fireEvent.keyDown(screen.getByRole("combobox", { name: "Time" }), { key: "Enter" });
+		await user.click(screen.getByRole("option", { name: "Custom dates" }));
+		const start = screen.getByRole("button", { name: "Start date" });
+		const end = screen.getByRole("button", { name: "End date" });
+		await user.click(start);
+		await user.click(screen.getByRole("button", { name: "Thursday, August 20, 2026" }));
+		await user.click(end);
+		await user.click(screen.getByRole("button", { name: "Thursday, August 20, 2026" }));
+		await waitFor(() =>
+			expect(calls.at(-1)?.request).toMatchObject({
+				modifiedFrom: new Date(2026, 7, 20).getTime(),
+				modifiedBefore: new Date(2026, 7, 21).getTime(),
+			}),
+		);
 		await user.click(end);
 		await user.click(screen.getByRole("button", { name: "Clear date" }));
 		await waitFor(() =>
@@ -160,6 +184,13 @@ describe("SidebarSessionSearch popover", () => {
 			}),
 		);
 		expect(document.activeElement).toBe(screen.getByRole("searchbox"));
+	});
+
+	it("discards time filters when search closes", async () => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		vi.setSystemTime(new Date(2026, 7, 31, 14));
+		const { user, trigger } = await mountSearch();
+		await user.click(trigger);
 		await user.click(screen.getByRole("button", { name: "Filters" }));
 		fireEvent.keyDown(screen.getByRole("combobox", { name: "Time" }), { key: "Enter" });
 		await user.click(screen.getByRole("option", { name: "Today" }));
