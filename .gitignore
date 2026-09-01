@@ -91,6 +91,14 @@ requirement/
 .agents/
 skills-lock.json
 
+# 项目级 Agent Skills（同时供 Codex 与 Claude Code 使用）
+!.agents/
+!.agents/skills/
+!.agents/skills/**
+!.claude/skills/
+!.claude/skills/**
+!skills-lock.json
+
 terminals
 mcps
 agent-tools

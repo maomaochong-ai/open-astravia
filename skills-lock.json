@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "design-taste-frontend": {
+      "source": "Leonxlnx/taste-skill",
+      "sourceType": "github",
+      "skillPath": "skills/taste-skill/SKILL.md",
+      "computedHash": "899b84384f74f540ea5284d9b2e9234e050998b42eacc805410b518d4226c0b3"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "93f53fd1c0352d3d7ec17b8f73d7351bf76f4821e55d123c9d2abc2c53ba48e4"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
+    }
+  }
+}
