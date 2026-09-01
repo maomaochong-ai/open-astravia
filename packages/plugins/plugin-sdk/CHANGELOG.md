@@ -4,6 +4,16 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-09-01
+
+### Breaking Changes
+
+- 删除 `registerTool.side_effect`，插件工具不再声明 light/heavy，也不再触发宿主首调确认或缺省声明警告。preset 与 external 插件同步删除字段，不提供旧类型兼容。
+- 删除插件清单的 `runtime` 选择字段，`moduleFederation` 改为必填；插件只支持 Module Federation，不提供其它加载路径兼容层（ADR-0091）。
+- **`agent_mode` 声明整体废弃（ADR-0071，行为变化）**：`plugin.json#agent_mode`、`registerTool({ agent_mode })`、`registerHook({ agent_mode })`、MCP 内联 map 的 `agent_mode` 与 `SKILL.md` frontmatter 的 `agent_mode` 不再有任何运行时语义——上一版它们还影响清单排序，本版确认排序对模型工具选择无可观察影响后归零。字段全部容忍传入（既有插件不需要改 manifest、不会校验失败），宿主直接忽略。要引导模型少用某个工具，把使用条件写进该工具 description 的反向触发段（Do NOT / Only for）。`AgentMode` 类型放宽为 `string`：合法模式 id 由宿主的模式注册表定义（未来可扩展），插件不应硬编码 `"work" | "coding"` 枚举，未知 id 一律按通用处理；`ctx.getAgentMode()` / `onAgentModeChanged()` 语义不变（仍是「新会话默认模式」，只适合展示层定制）。
+- `network.fetch` 现在必须同时声明 `plugin.json` 的 `network.allowedHosts`；宿主按域名/IP校验首跳与重定向。私网 IP、localhost 与显式 `*` 对所有来源使用相同规则。
+- Replaced the media protocol v2 task surface with generic operation, job, and artifact APIs: consumers now call `ctx.media.submit()` with a typed `generate | compose | transcode` request, control host-owned work through `ctx.jobs`, and persist or release temporary output through `ctx.artifacts`. Provider registration now uses `submit()`, operation-specific capability declarations, opaque `inputs`, and `uploadInput()`. The old `createJob/getJob/cancelJob/saveArtifact/releaseArtifact` methods were removed without a compatibility layer (ADR-0059).
+
 ### Added
 
 - `ctx.browser` 现在始终提供统一 facade；`ctx.browser.open()` 可在 Desktop 内置 Browser Panel 中打开受 `browser.allowedHosts` 约束的 HTTP(S) 页面，具体方法仍按权限单独校验。该展示型 API 不授予页面读取或自动化权限。
@@ -21,22 +31,6 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 - `ui.setWorkspaceViewHeader(viewId, header | null)`：工作区视图可以把标题与工具栏搬进宿主页头（`hideTitle` / `title` / `left` / `right`），不必在内容区里再画一条顶栏。实时 setter，权限沿用 `ui.slot.workspace-view`，只在该视图自己的路由上生效，视图注销或插件卸载时宿主自动撤下。
 - 新增 `tool-call-args` 会话事件（`ConversationEvent`）：模型还在生成这次工具调用，流式参数已解析出的部分键。用于「agent 正在动某个目标」这类实时 UI——`edit` / `write` 等到 `tool-call-start` 时活已经干完了。参数天然残缺，权威全量值仍取 `tool-call-start`。权限沿用 `agent.session.read`。
 
-### Breaking Changes
-
-- 删除 `registerTool.side_effect`，插件工具不再声明 light/heavy，也不再触发宿主首调确认或缺省声明警告。preset 与 external 插件同步删除字段，不提供旧类型兼容。
-- 删除插件清单的 `runtime` 选择字段，`moduleFederation` 改为必填；插件只支持 Module Federation，不提供其它加载路径兼容层（ADR-0091）。
-- **`agent_mode` 声明整体废弃（ADR-0071，行为变化）**：`plugin.json#agent_mode`、`registerTool({ agent_mode })`、`registerHook({ agent_mode })`、MCP 内联 map 的 `agent_mode` 与 `SKILL.md` frontmatter 的 `agent_mode` 不再有任何运行时语义——上一版它们还影响清单排序，本版确认排序对模型工具选择无可观察影响后归零。字段全部容忍传入（既有插件不需要改 manifest、不会校验失败），宿主直接忽略。要引导模型少用某个工具，把使用条件写进该工具 description 的反向触发段（Do NOT / Only for）。`AgentMode` 类型放宽为 `string`：合法模式 id 由宿主的模式注册表定义（未来可扩展），插件不应硬编码 `"work" | "coding"` 枚举，未知 id 一律按通用处理；`ctx.getAgentMode()` / `onAgentModeChanged()` 语义不变（仍是「新会话默认模式」，只适合展示层定制）。
-- `network.fetch` 现在必须同时声明 `plugin.json` 的 `network.allowedHosts`；宿主按域名/IP校验首跳与重定向。私网 IP、localhost 与显式 `*` 对所有来源使用相同规则。
-- Replaced the media protocol v2 task surface with generic operation, job, and artifact APIs: consumers now call `ctx.media.submit()` with a typed `generate | compose | transcode` request, control host-owned work through `ctx.jobs`, and persist or release temporary output through `ctx.artifacts`. Provider registration now uses `submit()`, operation-specific capability declarations, opaque `inputs`, and `uploadInput()`. The old `createJob/getJob/cancelJob/saveArtifact/releaseArtifact` methods were removed without a compatibility layer (ADR-0059).
-
-### Changed
-
-- **`agent_mode` 由硬闸降级为纯偏好声明（行为变化）**：`plugin.json#agent_mode`、`registerTool({ agent_mode })` 与 `registerHook({ agent_mode })` 不再排除任何贡献。插件在任何工作模式下都会加载，声明的 Hook 在任何模式下都会按 `scope_use` 与工具 matcher 触发；宿主只把该字段当作排序与提示词详略的偏好。需要按模式定制行为的插件请在 handler 内用 `ctx.getAgentMode()` 自行判断。
-- Activity Tab 现在默认采用有界 warm 驻留：访问过的组件在切换后保留，宿主按 LRU 最多缓存 2 个非活动 tab 并在空闲阶段淘汰。新增 `PluginActivityTabContribution.retention`（`active-only | warm | pinned`）；旧 `keepAliveWhenAvailable` 保持兼容并标记弃用（`true`=`pinned`，`false`=`active-only`）。
-- `setActivityPanelWidth("max")` 与 `openActivityTab(id, { width: "max" })` 的 `"max"` 从「按当前窗口算一次宽度」改为**持续状态**：窗口尺寸变化时宿主重新求值，面板跟着一起变宽变窄，直到用户拖动分隔条或有人写入具体像素为止。传数字的行为不变（仍是一次性的固定宽度）。插件无需改动。
-- **`official.sessions.list()` 的条目新增 `access`**（`PluginOfficialSessionAccess`：`readHistory` / `interactiveResume` / `rename` / `delete`）。宿主自己点会话时就是按这几位分流的（可续聊 / 只读查看 / 完全打不开），此前插件层把它丢掉了，插件只能盲跳。缺字段一律读作 `false`（= 完全不可用）：宁可退回新建会话页，也不要把用户送进一个打不开的会话。
-
-### Added
 
 - **`official.dialog.openFiles(options)`**：打开原生文件选择框并把选中文件的**内容**（base64）一起返回。插件的 `ctx.fs` 只能读已授权的项目根，所以「选个文件再自己去读」这条路走不通；这个接口不放宽任何目录授权，插件能看到的只有用户这次亲手选中的文件。用户取消时返回空数组，单文件默认 64MB 上限。
 - **`official.shell.showItemInFolder(path)`**：在系统文件管理器里定位一个本地路径。与 `ui.openExternal` 分工明确——后者只放行 http/https，刻意不让插件用它拉起任意协议（含 `file://`）。
@@ -68,6 +62,13 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 - `PluginUiApi.openExternal(url)`：把链接交给系统默认浏览器（Electron `shell.openExternal`），不是 App 内置的浏览器面板。只接受 `http:`/`https:`，其余协议宿主直接拒绝。需新权限 `shell.openExternal`。
 - `ctx.capture.offscreen(options)`（`PluginCaptureApi`，新权限 `capture.offscreen`）：宿主主进程用隐藏离屏窗口加载 http(s) 页面并 `capturePage` 出图。与 DOM 克隆类截图（html-to-image）不同，走真实渲染管线，位图与页面在屏显示逐像素一致；`sessionKey` 复用窗口（url 未变跳过重新加载，SPA 切路由零加载），`prepareScript` / `readyExpression` 对接页面自己的就绪信号，`releaseOffscreen(sessionKey)` 主动释放。窗口闲置自动回收，插件禁用/卸载/重载与 App 退出统一清扫。**该字段可选**：旧宿主上 `ctx.capture` 为 `undefined`，使用前判空。
 - Added the public `@vetta-org/plugin-sdk/tailwind-theme.css` host-theme contract for semantic Tailwind colors without importing Desktop component styles.
+
+### Changed
+
+- **`agent_mode` 由硬闸降级为纯偏好声明（行为变化）**：`plugin.json#agent_mode`、`registerTool({ agent_mode })` 与 `registerHook({ agent_mode })` 不再排除任何贡献。插件在任何工作模式下都会加载，声明的 Hook 在任何模式下都会按 `scope_use` 与工具 matcher 触发；宿主只把该字段当作排序与提示词详略的偏好。需要按模式定制行为的插件请在 handler 内用 `ctx.getAgentMode()` 自行判断。
+- Activity Tab 现在默认采用有界 warm 驻留：访问过的组件在切换后保留，宿主按 LRU 最多缓存 2 个非活动 tab 并在空闲阶段淘汰。新增 `PluginActivityTabContribution.retention`（`active-only | warm | pinned`）；旧 `keepAliveWhenAvailable` 保持兼容并标记弃用（`true`=`pinned`，`false`=`active-only`）。
+- `setActivityPanelWidth("max")` 与 `openActivityTab(id, { width: "max" })` 的 `"max"` 从「按当前窗口算一次宽度」改为**持续状态**：窗口尺寸变化时宿主重新求值，面板跟着一起变宽变窄，直到用户拖动分隔条或有人写入具体像素为止。传数字的行为不变（仍是一次性的固定宽度）。插件无需改动。
+- **`official.sessions.list()` 的条目新增 `access`**（`PluginOfficialSessionAccess`：`readHistory` / `interactiveResume` / `rename` / `delete`）。宿主自己点会话时就是按这几位分流的（可续聊 / 只读查看 / 完全打不开），此前插件层把它丢掉了，插件只能盲跳。缺字段一律读作 `false`（= 完全不可用）：宁可退回新建会话页，也不要把用户送进一个打不开的会话。
 
 ## [0.1.1] — 2026-08-04
 

@@ -7,6 +7,7 @@ const baseManifest = {
 	version: "1.0.0",
 	pluginApiVersion: "^1.0.0",
 	entry: "dist/index.js",
+	moduleFederation: { remoteName: "network_test", expose: "./plugin" },
 	permissions: ["network.fetch"],
 };
 

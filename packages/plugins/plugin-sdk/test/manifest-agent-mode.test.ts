@@ -7,6 +7,7 @@ const baseManifest = {
 	version: "1.0.0",
 	pluginApiVersion: "^1.0.0",
 	entry: "dist/index.js",
+	moduleFederation: { remoteName: "agent_mode_test", expose: "./plugin" },
 };
 
 // agent_mode 只是偏好声明（宿主不再据此排除插件），解析结果仍须稳定。
