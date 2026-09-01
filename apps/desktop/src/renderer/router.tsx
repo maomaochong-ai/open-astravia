@@ -25,6 +25,18 @@ const BatchTasksPage = lazy(async () => ({
 const AbilitiesPage = lazy(async () => ({
 	default: (await import("./domains/abilities/components/AbilitiesPage")).AbilitiesPage,
 }));
+const AgentLibraryPage = lazy(async () => ({
+	default: (await import("./domains/agent-teams/components/AgentLibraryPage")).AgentLibraryPage,
+}));
+const TeamListPage = lazy(async () => ({
+	default: (await import("./domains/agent-teams/components/TeamListPage")).TeamListPage,
+}));
+const TeamChatPage = lazy(async () => ({
+	default: (await import("./domains/agent-teams/components/TeamChatPage")).TeamChatPage,
+}));
+const TeamSettingsPage = lazy(async () => ({
+	default: (await import("./domains/agent-teams/components/TeamSettingsPage")).TeamSettingsPage,
+}));
 const ScenesPage = lazy(async () => ({
 	default: (await import("./domains/skills/components/ScenesPage")).ScenesPage,
 }));
@@ -82,6 +94,34 @@ const abilitiesRoute = createRoute({
 	validateSearch: (search: Record<string, unknown>) => ({
 		...(typeof search.detail === "string" ? { detail: search.detail } : {}),
 	}),
+});
+
+const agentLibraryRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/agents",
+	component: AgentLibraryPage,
+	pendingComponent: NoPendingComponent,
+});
+
+const teamListRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/agent-teams",
+	component: TeamListPage,
+	pendingComponent: NoPendingComponent,
+});
+
+const teamChatRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/agent-teams/$teamId",
+	component: TeamChatPage,
+	pendingComponent: NoPendingComponent,
+});
+
+const teamSettingsRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/agent-teams/$teamId/settings",
+	component: TeamSettingsPage,
+	pendingComponent: NoPendingComponent,
 });
 
 /** 旧深链：曾经的独立详情页改为能力页抽屉。 */
@@ -188,6 +228,10 @@ const routeTree = rootRoute.addChildren([
 	indexRoute,
 	automationRoute,
 	batchTasksRoute,
+	agentLibraryRoute,
+	teamListRoute,
+	teamChatRoute,
+	teamSettingsRoute,
 	knowledgeRoute,
 	knowledgeListRoute,
 	abilitiesRoute,

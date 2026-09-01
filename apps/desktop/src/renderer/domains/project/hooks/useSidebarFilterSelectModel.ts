@@ -14,8 +14,9 @@ const FILTER_OPTIONS = [
 	{ value: "batch" as const, labelKey: "filterTabs.batch" as const },
 ];
 
-const DEFAULT_CONVERSATION_FILTER_OPTIONS = [
+export const DEFAULT_CONVERSATION_FILTER_OPTIONS = [
 	{ value: "conversation" as const, labelKey: "filterTabs.conversation" as const },
+	{ value: "team" as const, labelKey: "filterTabs.team" as const },
 	{ value: "claw" as const, labelKey: "filterTabs.claw" as const },
 ];
 

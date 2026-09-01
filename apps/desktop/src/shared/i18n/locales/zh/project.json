@@ -6,6 +6,7 @@
 			"batchTasks": "批量任务",
 			"knowledge": "知识库",
 			"skills": "能力",
+			"agents": "智能体",
 			"scenes": "场景",
 			"plugins": "插件",
 			"modelSettings": "模型设置",
@@ -101,6 +102,11 @@
 			"emptyClawTitle": "还没有 Claw 记录",
 			"emptyClawDescription": "通过微信、飞书等渠道与 Claw 对话后，记录会出现在这里"
 		},
+		"teams": {
+			"title": "团队",
+			"new": "新建团队",
+			"empty": "还没有团队，点击创建"
+		},
 		"session": {
 			"forkedTooltip": "由其他会话分叉而来"
 		},
@@ -134,6 +140,7 @@
 		"normal": "普通",
 		"batch": "批量任务",
 		"conversation": "对话",
+		"team": "团队",
 		"claw": "Claw"
 	},
 	"actions": {

@@ -78,6 +78,7 @@
         "@types/adm-zip": "^0.5.8",
         "@vetta-org/plugin-sdk": "workspace:*",
         "@vetta/action-rpc": "workspace:*",
+        "@vetta/agent-team": "workspace:*",
         "@vetta/ai": "workspace:*",
         "@vetta/capability-runtime": "workspace:*",
         "@vetta/capability-sdk": "workspace:*",
@@ -254,6 +255,18 @@
       "devDependencies": {
         "@types/node": "^24.3.0",
         "typescript": "^5.7.3",
+      },
+    },
+    "packages/agent-team": {
+      "name": "@vetta/agent-team",
+      "version": "0.0.1",
+      "dependencies": {
+        "@sinclair/typebox": "^0.34.41",
+        "@vetta/runtime-core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.10.5",
+        "typescript": "^5.9.2",
       },
     },
     "packages/ai": {
@@ -2637,6 +2650,8 @@
     "@vetta/action-rpc": ["@vetta/action-rpc@workspace:packages/action-rpc"],
 
     "@vetta/agent-core": ["@vetta/agent-core@workspace:packages/agent"],
+
+    "@vetta/agent-team": ["@vetta/agent-team@workspace:packages/agent-team"],
 
     "@vetta/ai": ["@vetta/ai@workspace:packages/ai"],
 

@@ -188,7 +188,7 @@ const readSidebarWidth = (): number => {
 export const sidebarWidthAtom = atom<number>(readSidebarWidth());
 export const sidebarFilterAtom = atom<SidebarFilter>("all");
 
-export type DefaultConversationFilter = "conversation" | "claw";
+export type DefaultConversationFilter = "conversation" | "team" | "claw";
 export const defaultConversationFilterAtom = atom<DefaultConversationFilter>("conversation");
 // Always start expanded on app launch — collapse state is per-session only.
 export const sidebarCollapsedAtom = atom<boolean>(false);

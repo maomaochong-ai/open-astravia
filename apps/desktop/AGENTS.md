@@ -100,6 +100,9 @@ src/
 **重要 UI 交付前，按 [`docs/ui-review.md`](./docs/ui-review.md) 复核，不要从视觉装饰开始。**
 该文档规定审查顺序、严重级别和发现格式；它检查实现是否满足 `user-language-ui.md` 的意图，而不是另写一套设计原则。纯审查只报告问题；需要改实现时先完成审查再做最小有效修改。
 
+**UI 开发 Agent 必须遵循 [`docs/ui-agent-workflow.md`](./docs/ui-agent-workflow.md)。**
+该文档规定功能与设计的分阶段交接、UX Brief/状态矩阵/Visual Spec 产物、视觉证据和交付门；
+
 仅涉及内部实现、日志、协议或构建且不改变用户可见界面、文案或交互的任务，无需因本条额外阅读。
 
 ### 1. 不要重复造轮子

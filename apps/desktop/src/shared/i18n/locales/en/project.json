@@ -6,6 +6,7 @@
 			"batchTasks": "Batch Tasks",
 			"knowledge": "Knowledge",
 			"skills": "Capabilities",
+			"agents": "Agents",
 			"scenes": "Scenes",
 			"plugins": "Plugins",
 			"modelSettings": "Model Settings",
@@ -101,6 +102,11 @@
 			"emptyClawTitle": "No Claw records yet",
 			"emptyClawDescription": "Chat with Claw via WeChat, Feishu, and other channels to see records here"
 		},
+		"teams": {
+			"title": "Teams",
+			"new": "New team",
+			"empty": "No teams yet; click to create one"
+		},
 		"session": {
 			"forkedTooltip": "Forked from another session"
 		},
@@ -134,6 +140,7 @@
 		"normal": "Normal",
 		"batch": "Batch",
 		"conversation": "Chat",
+		"team": "Teams",
 		"claw": "Claw"
 	},
 	"actions": {

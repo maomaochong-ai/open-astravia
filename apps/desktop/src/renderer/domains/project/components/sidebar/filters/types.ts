@@ -2,7 +2,7 @@ import type { DefaultConversationFilter, SidebarFilter } from "@shared/store/ato
 
 export type ProjectFilterLabelKey = "filterTabs.all" | "filterTabs.normal" | "filterTabs.batch";
 
-export type DefaultConversationFilterLabelKey = "filterTabs.conversation" | "filterTabs.claw";
+export type DefaultConversationFilterLabelKey = "filterTabs.conversation" | "filterTabs.team" | "filterTabs.claw";
 
 export interface SidebarFilterOption {
 	value: SidebarFilter;

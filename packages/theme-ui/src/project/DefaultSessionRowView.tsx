@@ -8,6 +8,8 @@ export interface DefaultSessionRowViewProps {
 	/** When false, context menu is ignored (e.g. claw filter). */
 	contextMenuEnabled: boolean;
 	label: string;
+	/** Optional source-specific icon, used by non-session conversation sources such as Agent Teams. */
+	iconClassName?: string;
 	/** On-disk session path; used for fly-to-sidebar targeting. */
 	sessionPath?: string;
 	/** Tooltip / secondary label (e.g. forked-from preview). */
@@ -30,6 +32,7 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 	active,
 	contextMenuEnabled,
 	label,
+	iconClassName,
 	sessionPath,
 	titleExtra,
 	forked,
@@ -73,7 +76,15 @@ export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 				/>
 			) : (
 				<>
-					{pinned ? (
+					{iconClassName ? (
+						<span
+							className={cn(
+								iconClassName,
+								"h-3.5 w-3.5 shrink-0",
+								active ? "text-foreground/70" : "text-muted-foreground/50",
+							)}
+						/>
+					) : pinned ? (
 						<span className="icon-[solar--pin-linear] h-3.5 w-3.5 shrink-0 text-primary/80" />
 					) : null}
 					{running ? (

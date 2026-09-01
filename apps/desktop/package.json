@@ -126,6 +126,7 @@
 		"@vetta/capability-sdk": "workspace:*",
 		"@vetta/cli-host": "workspace:*",
 		"@vetta/coding-agent": "workspace:*",
+		"@vetta/agent-team": "workspace:*",
 		"@vetta/remote-control": "workspace:*",
 		"@vetta/remote-desktop": "workspace:*",
 		"@vetta/runtime-core": "workspace:*",

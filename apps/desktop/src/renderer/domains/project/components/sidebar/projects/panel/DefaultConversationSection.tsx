@@ -1,9 +1,12 @@
 import type { DefaultConversationFilter, Project, SessionInfo } from "@shared/store/atoms";
 import { cn } from "@shared/lib/utils";
+import { useNavigate } from "@tanstack/react-router";
 import { DefaultConversationSectionView } from "@vetta/theme-ui/project";
+import { useTranslation } from "react-i18next";
 import { DefaultConversationFilterSelect } from "../../filters/SidebarFilterSelect";
 import { useDefaultConversationSectionModel } from "../../../../hooks/useDefaultConversationSectionModel";
 import { DefaultSessionList } from "./DefaultSessionList";
+import { AgentTeamSidebarList } from "./AgentTeamSidebarList";
 
 interface DefaultConversationSectionProps {
 	activeSessionPath: string;
@@ -28,22 +31,32 @@ interface DefaultConversationSectionProps {
 export function DefaultConversationSection(
 	props: DefaultConversationSectionProps,
 ): JSX.Element {
+	const { t } = useTranslation("agent-teams");
+	const navigate = useNavigate();
 	const model = useDefaultConversationSectionModel({
 		project: props.project,
 		defaultConversationFilter: props.defaultConversationFilter,
 		onNewSession: props.onNewSession,
 	});
+	const showingTeams = props.defaultConversationFilter === "team";
 
 	const isEmpty = !props.sessionsLoading && props.sessions.length === 0;
 
 	return (
 		<DefaultConversationSectionView
-			actionsAlwaysVisible={isEmpty && model.showNewSession}
+			actionsAlwaysVisible={showingTeams || (isEmpty && model.showNewSession)}
 			className={props.className}
 			filterSelect={<DefaultConversationFilterSelect />}
-			labels={model.labels}
+			labels={
+				showingTeams
+					? { more: t("sidebar.manage"), newSession: t("sidebar.newTeam") }
+					: model.labels
+			}
 			list={
-				<DefaultSessionList
+				showingTeams ? (
+					<AgentTeamSidebarList />
+				) : (
+					<DefaultSessionList
 					activeSessionPath={props.activeSessionPath}
 					className={cn("project-list-containment -mx-1.5 px-1.5", props.listClassName)}
 					cwd={props.sessionsCwd || props.project.cwd}
@@ -54,12 +67,25 @@ export function DefaultConversationSection(
 					onSelectSession={props.onSelectSession}
 					sessions={props.sessions}
 					loading={props.sessionsLoading}
-				/>
+					/>
+				)
 			}
-			onMoreClick={model.actions.openMoreMenu}
-			onNewSession={model.actions.newSession}
-			onOpenContextMenu={model.actions.openContextMenu}
-			showNewSession={model.showNewSession}
+			onMoreClick={
+				showingTeams
+					? () => void navigate({ to: "/agent-teams" })
+					: model.actions.openMoreMenu
+			}
+			onNewSession={
+				showingTeams
+					? () => void navigate({ to: "/agent-teams" })
+					: model.actions.newSession
+			}
+			onOpenContextMenu={
+				showingTeams
+					? (event) => event.preventDefault()
+					: model.actions.openContextMenu
+			}
+			showNewSession={showingTeams || model.showNewSession}
 		/>
 	);
 }

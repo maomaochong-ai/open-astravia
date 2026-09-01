@@ -1,0 +1,122 @@
+{
+  "loading": "正在加载…",
+  "error": { "load": "智能体数据加载失败：{{error}}" },
+  "library": {
+    "title": "智能体",
+    "subtitle": "管理可复用的团队成员。系统提示词由角色预先设计，能力可以单独开关。",
+    "add": "添加智能体",
+    "delete": "删除智能体",
+    "deleteTitle": "删除这个智能体？",
+    "deleteMessage": "“{{name}}”将从智能体库中移除，此操作无法撤销。",
+    "deleteBlockedTitle": "这个智能体仍被团队引用",
+    "deleteBlockedMessage": "请先从以下 {{count}} 个团队中移除引用：{{teams}}。",
+    "gotIt": "知道了",
+    "empty": "还没有智能体，点击右上角添加一个。",
+    "selectHint": "从左侧选择一个智能体",
+    "defaultAgentName": "新智能体",
+    "defaultAgentDescription": "可配置能力的团队成员"
+  },
+  "presets": {
+    "defaultTeam": {
+      "name": "Vetta 团队"
+    },
+    "agents": {
+      "leader": {
+        "name": "Vetta",
+        "description": "统筹团队工作，并负责整合最终答复。"
+      },
+      "researcher": {
+        "name": "研究",
+        "description": "查找证据、验证事实，并输出可供团队使用的结论。"
+      },
+      "builder": {
+        "name": "执行",
+        "description": "实现方案、完成修改，并验证结果是否可维护。"
+      },
+      "reviewer": {
+        "name": "审查",
+        "description": "检查正确性、安全性和潜在回归。"
+      }
+    }
+  },
+  "profile": {
+    "fixedPrompt": "角色：{{role}}（系统提示词不可编辑）",
+    "name": "名称",
+    "handle": "提及名称",
+    "description": "职责说明",
+    "teamHandleHint": "团队中的 @名称由成员绑定决定，请在团队成员设置中修改。",
+    "abilities": "能力",
+    "abilitiesHint": "能力选择只影响这个智能体，不会改变全局安装状态。",
+    "abilityCount": "已启用 {{selected}} / {{total}}",
+    "selectAll": "使用全部能力",
+    "searchAbilities": "搜索能力…",
+    "noMatchingAbilities": "没有匹配的能力",
+    "toggleAbility": "切换 {{name}}",
+    "skills": "Skill",
+    "scenes": "场景",
+    "mcp": "MCP",
+    "plugins": "插件",
+    "abilityIdsHint": "这里只改变该智能体的能力开关，不会安装、卸载或修改全局能力。",
+    "globalDisabled": "全局能力已关闭",
+    "noInstalledAbilities": "暂无已安装的能力",
+    "save": "保存",
+    "saving": "保存中…",
+    "savedNextTurn": "已保存，从下一轮对话生效",
+    "sharedImpact": "此智能体被 {{count}} 个团队引用：{{teams}}。保存后这些团队的后续回合都会使用新配置。",
+    "confirmSharedSave": "确认更新这些团队"
+  },
+  "blueprints": {
+    "leader": { "name": "领导", "description": "负责协调团队并整合最终结果" },
+    "researcher": { "name": "研究员", "description": "收集证据并验证事实" },
+    "builder": { "name": "执行者", "description": "负责实现、修改和验证工作" },
+    "reviewer": { "name": "审查员", "description": "检查正确性、安全性和回归风险" }
+  },
+  "teams": {
+    "title": "智能体团队",
+    "subtitle": "组合智能体，选择领导，并决定成员是共享引用还是独立副本。",
+    "name": "团队名称",
+    "namePlaceholder": "例如：产品发布团队",
+    "members": "选择成员",
+    "reference": "引用",
+    "copy": "复制",
+    "leader": "领导",
+    "create": "创建团队",
+    "memberCount": "{{count}} 位成员",
+    "addMember": "添加 {{name}}",
+    "removeMember": "移除 {{name}}",
+    "bindingType": "成员绑定方式"
+  },
+  "settings": {
+    "eyebrow": "团队成员配置",
+    "subtitle": "在团队上下文中调整成员能力。预设角色提示词保持不变。",
+    "backToChat": "返回团队对话",
+    "roster": "成员与绑定方式",
+    "leader": "领导",
+    "reference": "共享引用",
+    "copy": "独立副本",
+    "referenceHint": "这是库中智能体的共享引用；保存可能影响引用它的其他团队。",
+    "copyHint": "这是此团队独有的副本；保存不会修改智能体库或其他团队。",
+    "profileMissing": "此成员的智能体配置缺失，无法编辑。"
+  },
+  "chat": {
+    "hint": "不指定成员时由领导处理；成员只会看到公开结果。",
+    "configure": "配置成员能力",
+    "leaderRoute": "领导",
+    "you": "你",
+    "member": "团队成员",
+    "delegation": "{{from}} 委派给 {{to}}",
+    "placeholder": "向团队提问，使用 @ 选择成员",
+    "send": "发送",
+    "sending": "处理中…",
+    "teamWorking": "团队正在协作",
+    "readyTitle": "团队已经就绪",
+    "readyDescription": "直接描述目标即可由领导协调处理；也可以使用 @ 指定某位成员。"
+  },
+  "sidebar": {
+    "manage": "管理团队",
+    "newTeam": "新建团队",
+    "empty": "还没有可用团队",
+    "loadError": "团队列表加载失败",
+    "memberCount": "{{count}} 人"
+  }
+}

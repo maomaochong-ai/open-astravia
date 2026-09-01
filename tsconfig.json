@@ -86,6 +86,8 @@
 			"@vetta/remote-desktop/*": ["./packages/remote-desktop/src/*"],
 			"@vetta/runtime-subagents": ["./packages/runtime-subagents/src/index.ts"],
 			"@vetta/runtime-subagents/*": ["./packages/runtime-subagents/src/*"],
+			"@vetta/agent-team": ["./packages/agent-team/src/index.ts"],
+			"@vetta/agent-team/*": ["./packages/agent-team/src/*"],
 			"@vetta-org/plugin-sdk": ["./packages/plugins/plugin-sdk/src/index.ts"],
 			"@vetta-org/plugin-sdk/manifest": ["./packages/plugins/plugin-sdk/src/manifest.ts"],
 			"@vetta-org/plugin-sdk/npm-package": ["./packages/plugins/plugin-sdk/src/npm-package.ts"],

@@ -3,7 +3,10 @@ export {
 	type CodingAgentCompactionExtensionResult,
 	createCodingAgentCompactionExtensionRuntime,
 } from "../adapters/extensions/compaction-extension-adapter.js";
-export type { CodingAgentCompactionExtensionRuntime } from "../runtime-contracts/index.js";
+export type {
+	CodingAgentCompactionExtensionRuntime,
+	CodingAgentRuntimeToolRegistration,
+} from "../runtime-contracts/index.js";
 export {
 	type CodingAgentRuntimeExtensionCommandActionPorts,
 	type CodingAgentRuntimeExtensionCommandContextActions,

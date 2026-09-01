@@ -66,6 +66,12 @@ const BUILTIN_NAV_ITEMS = [
 	},
 	{
 		type: "route",
+		path: "/agents" as const,
+		labelKey: "sidebar.nav.agents",
+		icon: "icon-[solar--users-group-rounded-linear]",
+	},
+	{
+		type: "route",
 		path: "/batch-tasks" as const,
 		labelKey: "sidebar.nav.batchTasks",
 		icon: "icon-[solar--clipboard-check-outline]",

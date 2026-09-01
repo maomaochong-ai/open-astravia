@@ -1,0 +1,27 @@
+{
+	"name": "@vetta/agent-team",
+	"version": "0.0.1",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": ["dist", "CHANGELOG.md"],
+	"scripts": {
+		"clean": "rm -rf dist",
+		"build": "tsgo -p tsconfig.build.json",
+		"test": "bun ../../scripts/quality/run-vitest.mjs --run --config vitest.config.ts"
+	},
+	"dependencies": {
+		"@sinclair/typebox": "^0.34.41",
+		"@vetta/runtime-core": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.5",
+		"typescript": "^5.9.2"
+	}
+}

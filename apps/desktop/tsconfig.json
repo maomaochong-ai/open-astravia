@@ -79,6 +79,8 @@
 			"@vetta/runtime-node/*": ["../../packages/runtime-node/src/*"],
 			"@vetta/runtime-subagents": ["../../packages/runtime-subagents/src/index.ts"],
 			"@vetta/runtime-subagents/*": ["../../packages/runtime-subagents/src/*"],
+			"@vetta/agent-team": ["../../packages/agent-team/src/index.ts"],
+			"@vetta/agent-team/*": ["../../packages/agent-team/src/*"],
 			"@vetta/runtime-tools": ["../../packages/runtime-tools/src/index.ts"],
 			"@vetta/runtime-tools/*": ["../../packages/runtime-tools/src/*"],
 			"@vetta-org/plugin-sdk": ["../../packages/plugins/plugin-sdk/src/index.ts"],

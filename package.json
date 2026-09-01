@@ -25,6 +25,7 @@
 		"packages/remote-control",
 		"packages/remote-desktop",
 		"packages/runtime-subagents",
+		"packages/agent-team",
 		"packages/runtime-knowledge",
 		"packages/runtime-tools",
 		"packages/runtime-mcp",

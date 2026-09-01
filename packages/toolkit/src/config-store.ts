@@ -10,6 +10,8 @@ export interface VersionedJsonConfigStoreOptions<TConfig> {
 	readonly migrate?: (value: unknown) => VersionedConfigMigrationResult;
 	readonly writeJson?: (path: string, value: unknown) => Promise<void>;
 	readonly logger?: VersionedJsonConfigStoreLogger;
+	/** Missing files always use defaults. Invalid/unreadable existing files may instead fail closed. */
+	readonly readErrorPolicy?: "fallback" | "throw";
 }
 
 export interface VersionedJsonConfigStore<TConfig> {
@@ -43,6 +45,16 @@ function isMissingFileError(error: unknown): boolean {
 function warnConfigFallback<TConfig>(options: VersionedJsonConfigStoreOptions<TConfig>, error: unknown): void {
 	if (isMissingFileError(error)) return;
 	options.logger?.warn("config read failed, using defaults", { name: options.name, path: options.path }, error);
+}
+
+function handleReadError<TConfig>(options: VersionedJsonConfigStoreOptions<TConfig>, error: unknown): TConfig {
+	if (isMissingFileError(error)) return options.normalize(undefined);
+	if (options.readErrorPolicy === "throw") {
+		options.logger?.warn("config read failed", { name: options.name, path: options.path }, error);
+		throw error;
+	}
+	warnConfigFallback(options, error);
+	return options.normalize(undefined);
 }
 
 function persistMigratedConfig<TConfig>(options: VersionedJsonConfigStoreOptions<TConfig>, config: TConfig): void {
@@ -83,8 +95,7 @@ export function createVersionedJsonConfigStore<TConfig>(
 				if (result.migrated) await persistMigratedConfigAsync(options, result.config);
 				return result.config;
 			} catch (error) {
-				warnConfigFallback(options, error);
-				return options.normalize(undefined);
+				return handleReadError(options, error);
 			}
 		},
 
@@ -95,8 +106,7 @@ export function createVersionedJsonConfigStore<TConfig>(
 				if (result.migrated) persistMigratedConfig(options, result.config);
 				return result.config;
 			} catch (error) {
-				warnConfigFallback(options, error);
-				return options.normalize(undefined);
+				return handleReadError(options, error);
 			}
 		},
 

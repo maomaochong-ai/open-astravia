@@ -1,0 +1,122 @@
+{
+  "loading": "Loading…",
+  "error": { "load": "Could not load agent data: {{error}}" },
+  "library": {
+    "title": "Agents",
+    "subtitle": "Manage reusable team members. Prompts are predefined; abilities can be selected per agent.",
+    "add": "Add agent",
+    "delete": "Delete agent",
+    "deleteTitle": "Delete this agent?",
+    "deleteMessage": "“{{name}}” will be removed from the agent library. This cannot be undone.",
+    "deleteBlockedTitle": "This agent is still referenced",
+    "deleteBlockedMessage": "Remove it from these {{count}} teams first: {{teams}}.",
+    "gotIt": "Got it",
+    "empty": "No agents yet. Click + to add one.",
+    "selectHint": "Select an agent on the left",
+    "defaultAgentName": "New agent",
+    "defaultAgentDescription": "A team member with configurable abilities"
+  },
+  "presets": {
+    "defaultTeam": {
+      "name": "Vetta Team"
+    },
+    "agents": {
+      "leader": {
+        "name": "Vetta",
+        "description": "Coordinates the team and owns the final response."
+      },
+      "researcher": {
+        "name": "Research",
+        "description": "Finds evidence, verifies facts, and shares conclusions with the team."
+      },
+      "builder": {
+        "name": "Build",
+        "description": "Implements solutions, makes changes, and verifies maintainability."
+      },
+      "reviewer": {
+        "name": "Review",
+        "description": "Checks correctness, safety, and potential regressions."
+      }
+    }
+  },
+  "profile": {
+    "fixedPrompt": "Role: {{role}} (system prompt is fixed)",
+    "name": "Name",
+    "handle": "Mention handle",
+    "description": "Responsibilities",
+    "teamHandleHint": "The team @handle belongs to the member binding and is changed in team member settings.",
+    "abilities": "Abilities",
+    "abilitiesHint": "Selections affect this agent only and do not change global installation state.",
+    "abilityCount": "{{selected}} of {{total}} enabled",
+    "selectAll": "Use all abilities",
+    "searchAbilities": "Search abilities…",
+    "noMatchingAbilities": "No matching abilities",
+    "toggleAbility": "Toggle {{name}}",
+    "skills": "Skills",
+    "scenes": "Scenes",
+    "mcp": "MCP",
+    "plugins": "Plugins",
+    "abilityIdsHint": "These switches affect this agent only; they do not install, uninstall, or change global abilities.",
+    "globalDisabled": "Global ability is disabled",
+    "noInstalledAbilities": "No installed abilities",
+    "save": "Save",
+    "saving": "Saving…",
+    "savedNextTurn": "Saved; effective from the next turn",
+    "sharedImpact": "This agent is referenced by {{count}} teams: {{teams}}. Future turns will use the new configuration.",
+    "confirmSharedSave": "Update these teams"
+  },
+  "blueprints": {
+    "leader": { "name": "Leader", "description": "Coordinates the team and integrates final results" },
+    "researcher": { "name": "Researcher", "description": "Gathers evidence and verifies facts" },
+    "builder": { "name": "Builder", "description": "Implements, changes, and verifies work" },
+    "reviewer": { "name": "Reviewer", "description": "Checks correctness, safety, and regressions" }
+  },
+  "teams": {
+    "title": "Agent Teams",
+    "subtitle": "Combine agents, choose a leader, and decide whether members are shared references or independent copies.",
+    "name": "Team name",
+    "namePlaceholder": "For example: Product launch team",
+    "members": "Choose members",
+    "reference": "Reference",
+    "copy": "Copy",
+    "leader": "Leader",
+    "create": "Create team",
+    "memberCount": "{{count}} members",
+    "addMember": "Add {{name}}",
+    "removeMember": "Remove {{name}}",
+    "bindingType": "Member binding"
+  },
+  "settings": {
+    "eyebrow": "Team member configuration",
+    "subtitle": "Adjust member abilities in this team context. Preset role prompts remain fixed.",
+    "backToChat": "Back to team chat",
+    "roster": "Members and bindings",
+    "leader": "Leader",
+    "reference": "Shared reference",
+    "copy": "Independent copy",
+    "referenceHint": "This is a shared library agent. Saving may affect other teams that reference it.",
+    "copyHint": "This copy belongs only to this team. Saving will not change the agent library or other teams.",
+    "profileMissing": "This member's agent configuration is missing and cannot be edited."
+  },
+  "chat": {
+    "hint": "Without a member mention, the leader handles the request; members see public results only.",
+    "configure": "Configure member abilities",
+    "leaderRoute": "Leader",
+    "you": "You",
+    "member": "Team member",
+    "delegation": "{{from}} delegated to {{to}}",
+    "placeholder": "Ask the team; use @ to choose members",
+    "send": "Send",
+    "sending": "Working…",
+    "teamWorking": "Team collaboration",
+    "readyTitle": "Your team is ready",
+    "readyDescription": "Describe the goal and the leader will coordinate it, or use @ to address a specific member."
+  },
+  "sidebar": {
+    "manage": "Manage teams",
+    "newTeam": "New team",
+    "empty": "No teams available",
+    "loadError": "Could not load teams",
+    "memberCount": "{{count}} people"
+  }
+}
