@@ -1,5 +1,5 @@
 import { Button } from "@vetta/ui";
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 import { useEffect, useRef } from "react";
 
 export type BackgroundTaskStatus = "running" | "completed" | "failed" | "killed";
@@ -69,6 +69,115 @@ export interface BackgroundTasksTabPanelViewProps {
 	onStop: (id: string, kind: "bash" | "subagent" | "mcp") => void;
 }
 
+/**
+ * Shared card shell: a bordered surface so rows stay separable on a wide panel,
+ * plus a status-tinted left rail that carries the state without extra chrome.
+ */
+function WorkCard({ active, children }: { active: boolean; children: ReactNode }): JSX.Element {
+	return (
+		<div
+			className={`relative min-w-0 overflow-hidden rounded-xl border bg-card/50 pl-3.5 pr-3 py-2.5 transition-colors duration-200 hover:bg-card ${
+				active ? "border-primary/25 hover:border-primary/40" : "border-border/50 hover:border-border"
+			}`}
+		>
+			<span
+				aria-hidden
+				className={`absolute inset-y-0 left-0 w-[3px] ${active ? "bg-primary/50" : "bg-border/60"}`}
+			/>
+			{children}
+		</div>
+	);
+}
+
+/** Header row: kind badge + identity on the left, status meta + stop pinned right. */
+function WorkCardHeader({
+	statusIcon,
+	statusClassName,
+	statusLabel,
+	durationLabel,
+	badge,
+	identity,
+	extraMeta,
+	action,
+}: {
+	statusIcon: string;
+	statusClassName: string;
+	statusLabel: string;
+	durationLabel: string;
+	badge: ReactNode;
+	identity: ReactNode;
+	extraMeta?: ReactNode;
+	action?: ReactNode;
+}): JSX.Element {
+	return (
+		<div className="flex min-w-0 items-center gap-2">
+			<span className={`${statusIcon} h-3.5 w-3.5 shrink-0 ${statusClassName}`} />
+			{badge}
+			<div className="min-w-0 flex-1">{identity}</div>
+			<div className="flex shrink-0 items-center gap-2 pl-2">
+				<span className={`whitespace-nowrap text-[11px] font-medium ${statusClassName}`}>{statusLabel}</span>
+				{extraMeta}
+				<span className="whitespace-nowrap font-mono text-[10px] tabular-nums text-muted-foreground/60">
+					{durationLabel}
+				</span>
+				{action}
+			</div>
+		</div>
+	);
+}
+
+function KindBadge({ tone, children }: { tone: "neutral" | "primary"; children: ReactNode }): JSX.Element {
+	return (
+		<span
+			className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+				tone === "primary" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+			}`}
+		>
+			{children}
+		</span>
+	);
+}
+
+function StopButton({
+	label,
+	iconOnly,
+	onClick,
+}: {
+	label: string;
+	iconOnly: boolean;
+	onClick: () => void;
+}): JSX.Element {
+	return (
+		<Button
+			type="button"
+			variant="ghost"
+			size={iconOnly ? "icon-xs" : "xs"}
+			onClick={onClick}
+			title={label}
+			aria-label={label}
+			className={`shrink-0 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive ${
+				iconOnly ? "h-6 w-6" : "h-6 px-1.5 text-[10px]"
+			}`}
+		>
+			<span className={`icon-[solar--stop-circle-linear] ${iconOnly ? "h-3.5 w-3.5" : "h-3 w-3"}`} />
+			{!iconOnly && <span>{label}</span>}
+		</Button>
+	);
+}
+
+/** Terminal-like block that keeps the command and its output visually joined. */
+function OutputBlock({ children, mono = true }: { children: ReactNode; mono?: boolean }): JSX.Element {
+	return (
+		<div
+			className={`mt-2 max-h-[140px] overflow-auto whitespace-pre-wrap break-all rounded-lg bg-muted/40 px-2 py-1.5 text-[10px] leading-relaxed text-muted-foreground ${
+				mono ? "font-mono" : ""
+			}`}
+		>
+			{children}
+		</div>
+	);
+}
+
 function BashTaskCard({
 	task,
 	stopLabel,
@@ -88,55 +197,44 @@ function BashTaskCard({
 	const running = task.status === "running";
 
 	return (
-		<div className="min-w-0 overflow-hidden rounded-xl bg-muted/30 px-3 py-2.5 transition-colors duration-200 hover:bg-muted/50">
-			{/* Left: badges (name truncates). Right: status/duration/stop never wrap or shrink. */}
-			<div className="flex min-w-0 items-center gap-1.5">
-				<span className={`${task.statusIcon} h-3.5 w-3.5 shrink-0 ${task.statusClassName}`} />
-				<span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">bash</span>
-				<span
-					className="min-w-0 flex-1 truncate rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground"
-					title={task.id}
-				>
-					{task.id}
-				</span>
-				<span className={`shrink-0 whitespace-nowrap text-[11px] font-medium ${task.statusClassName}`}>
-					{task.statusLabel}
-				</span>
-				{task.exitCode !== undefined && (
-					<span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground/70">
-						exit {task.exitCode}
+		<WorkCard active={running}>
+			<WorkCardHeader
+				statusIcon={task.statusIcon}
+				statusClassName={task.statusClassName}
+				statusLabel={task.statusLabel}
+				durationLabel={task.durationLabel}
+				badge={<KindBadge tone="neutral">bash</KindBadge>}
+				identity={
+					<span className="block truncate font-mono text-[10px] text-muted-foreground/70" title={task.id}>
+						{task.id}
 					</span>
-				)}
-				<span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground/70">
-					{task.durationLabel}
+				}
+				extraMeta={
+					task.exitCode !== undefined ? (
+						<span className="whitespace-nowrap rounded-md bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/70">
+							exit {task.exitCode}
+						</span>
+					) : undefined
+				}
+				action={running ? <StopButton label={stopLabel} iconOnly={false} onClick={() => onStop(task.id)} /> : undefined}
+			/>
+			<div className="mt-2 flex min-w-0 items-start gap-1.5 rounded-lg bg-muted/40 px-2 py-1.5">
+				<span aria-hidden className="shrink-0 select-none font-mono text-[11px] text-muted-foreground/50">
+					$
 				</span>
-				{running && (
-					<Button
-						type="button"
-						variant="ghost"
-						size="xs"
-						onClick={() => onStop(task.id)}
-						title={stopLabel}
-						aria-label={stopLabel}
-						className="h-6 shrink-0 rounded-lg px-1.5 text-[10px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-					>
-						<span className="icon-[solar--stop-circle-linear] h-3 w-3" />
-						<span>{stopLabel}</span>
-					</Button>
-				)}
-			</div>
-			<div className="mt-1.5 min-w-0 truncate font-mono text-[11px] text-foreground" title={task.command}>
-				{task.command}
+				<span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground" title={task.command}>
+					{task.command}
+				</span>
 			</div>
 			{task.tail && (
 				<pre
 					ref={tailRef}
-					className="mt-1.5 max-h-[120px] overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted/60 p-1.5 font-mono text-[10px] leading-relaxed text-muted-foreground"
+					className="mt-1 max-h-[140px] overflow-auto whitespace-pre-wrap break-all rounded-lg border border-border/40 bg-background/40 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-muted-foreground"
 				>
 					{task.tail}
 				</pre>
 			)}
-		</div>
+		</WorkCard>
 	);
 }
 
@@ -151,60 +249,38 @@ function SubagentCard({
 }): JSX.Element {
 	const active = item.status === "queued" || item.status === "pending" || item.status === "running";
 	return (
-		<div className="min-w-0 overflow-hidden rounded-xl bg-muted/30 px-3 py-2.5 transition-colors duration-200 hover:bg-muted/50">
-			{/* taskName is the only flexible chip; status/duration/stop stay on one line. */}
-			<div className="flex min-w-0 items-center gap-1.5">
-				<span className={`${item.statusIcon} h-3.5 w-3.5 shrink-0 ${item.statusClassName}`} />
-				<span className="shrink-0 rounded bg-primary/10 px-1 py-0.5 text-[10px] font-medium text-primary">
-					{item.agentType}
-				</span>
-				<span
-					className="min-w-0 flex-1 truncate rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground"
-					title={item.taskName}
-				>
-					{item.taskName}
-				</span>
-				<span className={`shrink-0 whitespace-nowrap text-[11px] font-medium ${item.statusClassName}`}>
-					{item.statusLabel}
-				</span>
-				<span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground/70">
-					{item.durationLabel}
-				</span>
-				{active && (
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-xs"
-						onClick={() => onStop(item.id)}
-						title={stopLabel}
-						aria-label={stopLabel}
-						className="h-6 w-6 shrink-0 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-					>
-						<span className="icon-[solar--stop-circle-linear] h-3.5 w-3.5" />
-					</Button>
-				)}
-			</div>
-			<div className="mt-1.5 min-w-0 line-clamp-2 text-[11px] leading-relaxed text-foreground" title={item.taskPreview}>
+		<WorkCard active={active}>
+			<WorkCardHeader
+				statusIcon={item.statusIcon}
+				statusClassName={item.statusClassName}
+				statusLabel={item.statusLabel}
+				durationLabel={item.durationLabel}
+				badge={<KindBadge tone="primary">{item.agentType}</KindBadge>}
+				identity={
+					<span className="block truncate font-mono text-[10px] text-muted-foreground/70" title={item.taskName}>
+						{item.taskName}
+					</span>
+				}
+				action={active ? <StopButton label={stopLabel} iconOnly onClick={() => onStop(item.id)} /> : undefined}
+			/>
+			<div className="mt-2 min-w-0 line-clamp-2 text-[11px] leading-relaxed text-foreground" title={item.taskPreview}>
 				{item.taskPreview}
 			</div>
 			{(item.progressLabel || item.usageLabel) && (
-				<div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+				<div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] tabular-nums text-muted-foreground/70">
 					{item.progressLabel && <span>{item.progressLabel}</span>}
+					{item.progressLabel && item.usageLabel && <span aria-hidden className="text-border">·</span>}
 					{item.usageLabel && <span>{item.usageLabel}</span>}
 				</div>
 			)}
 			{item.errorLabel && (
-				<div className="mt-2 min-w-0 rounded-lg bg-destructive/10 px-2.5 py-2 text-[10px] text-destructive">
+				<div className="mt-2 min-w-0 rounded-lg border border-destructive/20 bg-destructive/10 px-2.5 py-2 text-[10px] text-destructive">
 					<div className="font-medium">{item.errorLabel}</div>
 					{item.errorDetail && <div className="mt-0.5 max-h-16 overflow-auto break-words">{item.errorDetail}</div>}
 				</div>
 			)}
-			{item.finalText && (
-				<pre className="mt-1.5 max-h-[120px] overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted/60 p-1.5 font-mono text-[10px] leading-relaxed text-muted-foreground">
-					{item.finalText}
-				</pre>
-			)}
-		</div>
+			{item.finalText && <OutputBlock>{item.finalText}</OutputBlock>}
+		</WorkCard>
 	);
 }
 
@@ -219,41 +295,26 @@ function McpTaskCard({
 }): JSX.Element {
 	const active = item.status === "working" || item.status === "input_required";
 	return (
-		<div className="min-w-0 overflow-hidden rounded-xl bg-muted/30 px-3 py-2.5 transition-colors duration-200 hover:bg-muted/50">
-			<div className="flex min-w-0 items-center gap-1.5">
-				<span className={`${item.statusIcon} h-3.5 w-3.5 shrink-0 ${item.statusClassName}`} />
-				<span className="shrink-0 rounded bg-primary/10 px-1 py-0.5 text-[10px] font-medium text-primary">
-					MCP
-				</span>
-				<span className="min-w-0 flex-1 truncate text-[11px] text-foreground" title={`${item.serverName}: ${item.toolName}`}>
-					{item.serverName}: {item.toolName}
-				</span>
-				<span className={`shrink-0 whitespace-nowrap text-[11px] font-medium ${item.statusClassName}`}>
-					{item.statusLabel}
-				</span>
-				<span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground/70">
-					{item.durationLabel}
-				</span>
-				{active && (
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-xs"
-						onClick={() => onStop(item.id)}
-						title={stopLabel}
-						aria-label={stopLabel}
-						className="h-6 w-6 shrink-0 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-					>
-						<span className="icon-[solar--stop-circle-linear] h-3.5 w-3.5" />
-					</Button>
-				)}
-			</div>
+		<WorkCard active={active}>
+			<WorkCardHeader
+				statusIcon={item.statusIcon}
+				statusClassName={item.statusClassName}
+				statusLabel={item.statusLabel}
+				durationLabel={item.durationLabel}
+				badge={<KindBadge tone="primary">MCP</KindBadge>}
+				identity={
+					<span className="block truncate text-[11px] text-foreground" title={`${item.serverName}: ${item.toolName}`}>
+						{item.serverName}: {item.toolName}
+					</span>
+				}
+				action={active ? <StopButton label={stopLabel} iconOnly onClick={() => onStop(item.id)} /> : undefined}
+			/>
 			{item.statusMessage && (
 				<div className="mt-1.5 line-clamp-3 break-words text-[11px] leading-relaxed text-muted-foreground">
 					{item.statusMessage}
 				</div>
 			)}
-		</div>
+		</WorkCard>
 	);
 }
 
@@ -277,7 +338,7 @@ export function BackgroundTasksTabPanelView({
 	return (
 		<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 			{clearFinishedLabel !== null && (
-				<div className="flex shrink-0 items-center justify-end px-2.5 pt-2">
+				<div className="flex shrink-0 items-center justify-end border-b border-border/40 px-2.5 py-1.5">
 					<Button
 						type="button"
 						variant="ghost"
