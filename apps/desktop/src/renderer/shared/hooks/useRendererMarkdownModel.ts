@@ -1,5 +1,7 @@
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
+import { resolveLocalFilePath } from "@shared/lib/resolve-local-file-path";
 import { isSubPath, pathBasename } from "@shared/lib/utils";
+import type { RendererMarkdownModel } from "@shared/models/renderer-markdown-model";
 import {
 	activeSessionAtom,
 	activityPanelOpenAtom,
@@ -9,16 +11,16 @@ import {
 	openUrlInBrowserAtom,
 	resolvedThemeAtom,
 } from "@shared/store/atoms";
-import type { TextBlockViewProps } from "@vetta/theme-ui/chat";
+import { getFileIcon } from "@vetta/theme-ui/file-explorer";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { getFileIcon } from "../../file-explorer/components/fileIcons";
-import { resolveChatFilePath } from "../lib/resolve-chat-file-path";
 
-export type TextBlockModel = Omit<TextBlockViewProps, "text" | "isStreamingTail" | "className">;
-
-export function useTextBlockModel(): TextBlockModel {
+/** Connects renderer state and file/url actions to the host-neutral markdown view. */
+export function useRendererMarkdownModel(
+	cwdOverride?: string | null,
+	preferInlinePreview = true,
+): RendererMarkdownModel {
 	const { t } = useTranslation("chat");
 	const theme = useAtomValue(resolvedThemeAtom);
 	const activeSession = useAtomValue(activeSessionAtom);
@@ -28,48 +30,42 @@ export function useTextBlockModel(): TextBlockModel {
 	const setActivityTabByProject = useSetAtom(activityPanelTabByProjectAtom);
 	const openUrlInBrowser = useSetAtom(openUrlInBrowserAtom);
 	const narrow = useNarrowScreen();
-	const cwd = activeSession?.cwd ?? null;
+	const cwd = cwdOverride === undefined ? (activeSession?.cwd ?? null) : cwdOverride;
 
 	const onOpenFile = useCallback(
 		(path: string) => {
-			const resolved = resolveChatFilePath(path, cwd);
+			const resolved = resolveLocalFilePath(path, cwd);
 			const name = pathBasename(resolved);
-			if (!narrow && cwd && isSubPath(resolved, cwd)) {
+			if (preferInlinePreview && !narrow && cwd && isSubPath(resolved, cwd)) {
 				setActivityPanelOpen(true);
-				setActivityTabByProject((prev) => new Map(prev).set(cwd, "file"));
+				setActivityTabByProject((previous) => new Map(previous).set(cwd, "file"));
 				openInlineFilePreview({ name, path: resolved });
 				return;
 			}
 			setFilePreview({ name, path: resolved });
 		},
-		[narrow, cwd, setFilePreview, openInlineFilePreview, setActivityPanelOpen, setActivityTabByProject],
+		[
+			preferInlinePreview,
+			narrow,
+			cwd,
+			setFilePreview,
+			openInlineFilePreview,
+			setActivityPanelOpen,
+			setActivityTabByProject,
+		],
 	);
-
-	const onOpenUrl = useCallback(
-		(url: string) => {
-			openUrlInBrowser(url);
-		},
-		[openUrlInBrowser],
-	);
-
+	const onOpenUrl = useCallback((url: string) => openUrlInBrowser(url), [openUrlInBrowser]);
 	const getFileIconClass = useCallback((fileName: string) => getFileIcon(fileName, false, false), []);
+	const labels = useMemo(() => ({ copy: t("copyButton.label"), copied: t("copyButton.copied") }), [t]);
 
-	// labels 必须引用稳定：每次 render 新建对象会让 TextBlockView 的 components
-	// useMemo 失效，ReactMarkdown 把 p/a/code 等自定义节点当新型别整树 remount，
-	// .streaming-chunk 的 fade 动画在每个 delta 重播 → text block 高频闪烁。
-	const labels = useMemo(
+	return useMemo(
 		() => ({
-			copy: t("copyButton.label"),
-			copied: t("copyButton.copied"),
+			theme: theme === "dark" ? "dark" : "light",
+			labels,
+			getFileIconClass,
+			onOpenFile,
+			onOpenUrl,
 		}),
-		[t],
+		[theme, labels, getFileIconClass, onOpenFile, onOpenUrl],
 	);
-
-	return {
-		theme: theme === "dark" ? "dark" : "light",
-		labels,
-		getFileIconClass,
-		onOpenFile,
-		onOpenUrl,
-	};
 }

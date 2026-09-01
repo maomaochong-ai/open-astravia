@@ -107,7 +107,10 @@
     "delegation": "{{from}} delegated to {{to}}",
     "placeholder": "Ask the team; use @ to choose members",
     "send": "Send",
+	"stop": "Stop generating",
     "sending": "Working…",
+	"retry": "Retry",
+	"failed": "The team could not complete the request",
     "teamWorking": "Team collaboration",
     "readyTitle": "Your team is ready",
     "readyDescription": "Describe the goal and the leader will coordinate it, or use @ to address a specific member."

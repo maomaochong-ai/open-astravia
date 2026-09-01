@@ -107,7 +107,10 @@
     "delegation": "{{from}} 委派给 {{to}}",
     "placeholder": "向团队提问，使用 @ 选择成员",
     "send": "发送",
+	"stop": "停止生成",
     "sending": "处理中…",
+	"retry": "重试",
+	"failed": "团队处理失败",
     "teamWorking": "团队正在协作",
     "readyTitle": "团队已经就绪",
     "readyDescription": "直接描述目标即可由领导协调处理；也可以使用 @ 指定某位成员。"

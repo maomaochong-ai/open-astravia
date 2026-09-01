@@ -1,5 +1,5 @@
 import { useModelOptions } from "@shared/components/ModelSelect/useModelOptions";
-import { isCompactingAtom } from "@shared/store/atoms";
+import { activeSessionAtom, isCompactingAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import type { MessageListModel, MessageListProps } from "../components/message-list/types";
@@ -7,6 +7,7 @@ import { useMessageListScrollModel } from "./useMessageListScrollModel";
 
 export function useMessageListModel({ messages, isStreaming, sessionId }: MessageListProps): MessageListModel {
 	const isCompacting = useAtomValue(isCompactingAtom);
+	const activeSession = useAtomValue(activeSessionAtom);
 	const scroll = useMessageListScrollModel({ isStreaming, messages, sessionId });
 	const { options } = useModelOptions();
 	const modelNames = useMemo(() => new Map(options.map((option) => [option.key, option.displayName])), [options]);
@@ -25,6 +26,8 @@ export function useMessageListModel({ messages, isStreaming, sessionId }: Messag
 	}, [messages, modelNames]);
 
 	return {
+		parentEntryId: activeSession?.parentEntryId,
+		parentSessionPath: activeSession?.parentSessionPath,
 		isCompacting,
 		isStreaming,
 		messages,

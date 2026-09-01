@@ -1,4 +1,5 @@
 import { parseInputSegments } from "@shared/lib/input-tokens";
+import { RendererMarkdownContent } from "@shared/components/RendererMarkdownContent";
 import {
 	getBuiltinMcpPresetByName,
 	resolveMcpPresetIconUrl,
@@ -6,10 +7,8 @@ import {
 import {
 	type InlineTokenPiece,
 	type InlineTokenSupport,
-	TextBlockView as ThemeTextBlockView,
 } from "@vetta/theme-ui/chat";
 import { memo, useMemo } from "react";
-import { useTextBlockModel } from "../../hooks/useTextBlockModel";
 
 interface MarkdownContentProps {
 	text: string;
@@ -51,7 +50,6 @@ export const MarkdownContent = memo(function MarkdownContent({
 	className,
 	inlineTokens,
 }: MarkdownContentProps) {
-	const model = useTextBlockModel();
 	// 引用要稳定：rehype 插件数组一换，ReactMarkdown 就整树重建。
 	const inlineTokenSupport = useMemo<InlineTokenSupport | undefined>(
 		() =>
@@ -67,12 +65,11 @@ export const MarkdownContent = memo(function MarkdownContent({
 		[inlineTokens],
 	);
 	return (
-		<ThemeTextBlockView
+		<RendererMarkdownContent
 			text={text}
 			isStreamingTail={isStreamingTail}
 			className={className}
 			{...(inlineTokenSupport ? { inlineTokens: inlineTokenSupport } : {})}
-			{...model}
 		/>
 	);
 });

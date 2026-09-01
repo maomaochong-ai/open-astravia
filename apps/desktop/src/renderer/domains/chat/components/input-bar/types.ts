@@ -1,8 +1,8 @@
 import type { SkillInfo } from "@preload/api";
 import type { AppshotAttachment } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
-import type { InputBarContextMenuViewProps } from "@vetta/theme-ui/chat";
-import type { ComponentProps, MouseEvent, ReactNode } from "react";
+import type { InputBarContextMenuViewProps, SessionDropZoneViewProps } from "@vetta/theme-ui/chat";
+import type { ComponentProps, MouseEvent } from "react";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import type { SelectedFile } from "../AtPanel";
 import type { McpElicitationPanel } from "../McpElicitationPanel";
@@ -29,12 +29,6 @@ export interface InputBarProps {
 	 * 输入内容保持可编辑，发送按钮就地展开成带文案的胶囊并拒绝重复点击。
 	 */
 	sendPending?: { readonly label: string };
-	/** Optional content rendered at the top of the input card (for example team routing chips). */
-	header?: ReactNode;
-	/** Override the normal chat session state for another conversation host. */
-	hasSessionOverride?: boolean;
-	/** Override the normal chat streaming state for another conversation host. */
-	isStreamingOverride?: boolean;
 }
 
 export interface SendInteractionContext {
@@ -108,7 +102,7 @@ export interface SpeechInputModel {
 }
 
 export interface InputBarModel {
-	header?: ReactNode;
+	dropZone: Omit<SessionDropZoneViewProps, "children" | "className">;
 	isStreaming: boolean;
 	/** 宿主传入的发送前准备态，原样透给发送按钮。 */
 	sendPending?: { readonly label: string };

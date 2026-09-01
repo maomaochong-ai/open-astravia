@@ -15,6 +15,8 @@ export interface MessageListProps {
 }
 
 export interface MessageListModel {
+	parentEntryId?: string;
+	parentSessionPath?: string;
 	isCompacting: boolean;
 	isStreaming: boolean;
 	messages: ChatMessage[];

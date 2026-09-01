@@ -1,13 +1,12 @@
-import { activeSessionAtom } from "@shared/store/atoms";
 import {
+	ConversationTimelineView,
 	MessageListView as ThemeMessageListView,
 	MessageSelectionContextMenuView,
 	VirtuosoListContainer,
 } from "@vetta/theme-ui/chat";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { type ListItem, Virtuoso } from "react-virtuoso";
+import type { ListItem } from "react-virtuoso";
 import { useMessageSelectionContextMenu } from "../../hooks/useMessageSelectionContextMenu";
 import { SuggestionBubbles } from "../SuggestionBubbles";
 import { ForkOriginBanner, resolveForkOriginPlacement } from "./ForkOriginBanner";
@@ -52,11 +51,12 @@ export function MessageListView({
 		isStreaming,
 		messages,
 		modelSwitchLabels,
+		parentEntryId,
+		parentSessionPath,
 		scroll,
 		showWaiting,
 		tailMessageId,
 	} = model;
-	const activeSession = useAtomValue(activeSessionAtom);
 	const [activeMessageIndex, setActiveMessageIndex] = useState(() => Math.max(0, messages.length - 1));
 	useEffect(() => {
 		setActiveMessageIndex(Math.max(0, messages.length - 1));
@@ -103,10 +103,10 @@ export function MessageListView({
 		() =>
 			resolveForkOriginPlacement(
 				messages,
-				activeSession?.parentEntryId,
-				Boolean(activeSession?.parentSessionPath),
+				parentEntryId,
+				Boolean(parentSessionPath),
 			),
-		[activeSession?.parentEntryId, activeSession?.parentSessionPath, messages],
+		[parentEntryId, parentSessionPath, messages],
 	);
 	// 倒序单次扫描一次算出两个位置，避免在 itemContent 里对每个可见条目再做一次 O(n)
 	// 的 slice/some（整条列表退化成 O(n²)，且流式期间每帧重跑）。
@@ -182,10 +182,6 @@ export function MessageListView({
 		),
 		[isCompacting, showWaiting, onSend, pendingLabel, sessionId],
 	);
-	const components = useMemo(
-		() => ({ List: VirtuosoListContainer, Footer: footer }),
-		[footer],
-	);
 	const selectionMenu = useMessageSelectionContextMenu();
 
 	return (
@@ -199,11 +195,10 @@ export function MessageListView({
 				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 					<ThemeMessageListView
 						virtuoso={
-							<Virtuoso
-								ref={scroll.virtuosoRef}
+							<ConversationTimelineView
+								virtuosoRef={scroll.virtuosoRef}
 								scrollerRef={setScrollerRef}
-								data={messages}
-								className="flex-1 pt-2"
+								items={messages}
 								style={VIRTUOSO_STYLE}
 								atBottomStateChange={scroll.onAtBottomChange}
 								atBottomThreshold={80}
@@ -223,8 +218,9 @@ export function MessageListView({
 											: IDLE_INCREASE_VIEWPORT_BY
 								}
 								defaultItemHeight={DEFAULT_ITEM_HEIGHT}
-								components={components}
-								itemContent={itemContent}
+								list={VirtuosoListContainer}
+								footer={footer}
+								renderItem={itemContent}
 								initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0}
 							/>
 						}

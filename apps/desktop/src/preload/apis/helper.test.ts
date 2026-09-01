@@ -5,6 +5,21 @@ import { subscribeById } from "./helper";
 type IpcListener = Parameters<IpcRenderer["on"]>[1];
 
 describe("subscribeById", () => {
+	it("delivers the subscription snapshot after the listener is installed", async () => {
+		const harness = createIpcHarness(
+			["subscription"],
+			[{ type: "session-snapshot" }],
+			[{ type: "member-delta", delta: "buffered" }],
+		);
+		const handler = vi.fn();
+		await subscribeById(harness.ipc, "subscribe", "event", "unsubscribe", handler, ["session"]);
+		expect(handler.mock.calls).toEqual([
+			[{ type: "session-snapshot" }],
+			[{ type: "member-delta", delta: "buffered" }],
+		]);
+		expect(harness.listenerCount("event")).toBe(1);
+	});
+
 	it("isolates concurrent subscriptions and unsubscribes only the selected id", async () => {
 		const harness = createIpcHarness(["subscription-a", "subscription-b"]);
 		const first = vi.fn();
@@ -32,7 +47,11 @@ describe("subscribeById", () => {
 	});
 });
 
-function createIpcHarness(subscriptionIds: string[]): {
+function createIpcHarness(
+	subscriptionIds: string[],
+	initial: unknown[] = [],
+	duringSubscribe: unknown[] = [],
+): {
 	readonly emit: (channel: string, subscriptionId: string, payload: unknown) => void;
 	readonly ipc: IpcRenderer;
 	readonly invoke: ReturnType<typeof vi.fn>;
@@ -40,9 +59,21 @@ function createIpcHarness(subscriptionIds: string[]): {
 } {
 	const listeners = new Map<string, Set<IpcListener>>();
 	let nextSubscription = 0;
+	const emit = (channel: string, subscriptionId: string, payload: unknown): void => {
+		for (const listener of listeners.get(channel) ?? []) {
+			listener({} as IpcRendererEvent, subscriptionId, payload);
+		}
+	};
 	const invoke = vi.fn(async (channel: string) => {
 		if (channel !== "subscribe") return undefined;
-		return { subscriptionId: subscriptionIds[nextSubscription++] };
+		const index = nextSubscription++;
+		if (duringSubscribe[index] !== undefined) {
+			emit("event", subscriptionIds[index], duringSubscribe[index]);
+		}
+		return {
+			subscriptionId: subscriptionIds[index],
+			...(initial[index] === undefined ? {} : { initial: initial[index] }),
+		};
 	});
 	const ipc = {
 		invoke,
@@ -60,11 +91,7 @@ function createIpcHarness(subscriptionIds: string[]): {
 	return {
 		ipc,
 		invoke,
-		emit: (channel, subscriptionId, payload) => {
-			for (const listener of listeners.get(channel) ?? []) {
-				listener({} as IpcRendererEvent, subscriptionId, payload);
-			}
-		},
+		emit,
 		listenerCount: (channel) => listeners.get(channel)?.size ?? 0,
 	};
 }

@@ -22,13 +22,33 @@ export async function subscribeById<T>(
 	handler: (data: T) => void,
 	args: unknown[],
 ): Promise<() => void> {
-	const { subscriptionId } = (await ipc.invoke(subscribeChannel, ...args)) as {
-		subscriptionId: string;
-	};
+	let subscriptionId: string | undefined;
+	const buffered: Array<{ readonly incomingId: string; readonly data: unknown }> = [];
 	const listener = (_event: IpcRendererEvent, incomingId: string, data: unknown) => {
+		if (subscriptionId === undefined) {
+			buffered.push({ incomingId, data });
+			return;
+		}
 		if (incomingId === subscriptionId) handler(data as T);
 	};
 	ipc.on(eventChannel, listener);
+	let initial: T | undefined;
+	try {
+		const response = (await ipc.invoke(subscribeChannel, ...args)) as {
+			subscriptionId: string;
+			initial?: T;
+		};
+		subscriptionId = response.subscriptionId;
+		initial = response.initial;
+	} catch (error) {
+		ipc.removeListener(eventChannel, listener);
+		throw error;
+	}
+	if (initial !== undefined) handler(initial);
+	for (const event of buffered) {
+		if (event.incomingId === subscriptionId) handler(event.data as T);
+	}
+	buffered.length = 0;
 	return () => {
 		ipc.removeListener(eventChannel, listener);
 		void ipc.invoke(unsubscribeChannel, subscriptionId);

@@ -8,11 +8,13 @@ import { useInputBarAttachmentModel } from "./useInputBarAttachmentModel";
 import { useInputBarContextMenuModel } from "./useInputBarContextMenuModel";
 import { useInputBarState } from "./useInputBarState";
 import { useInputBarTriggerModel } from "./useInputBarTriggerModel";
+import { useSessionDropZoneModel } from "../../hooks/useSessionDropZoneModel";
 
 /** 组合输入栏各项职责，避免单一 model 同时承担状态、事件、附件和展示映射。 */
 export function useInputBarModel(props: InputBarProps): InputBarModel {
 	const { t } = useTranslation("chat");
 	const state = useInputBarState(props);
+	const dropZone = useSessionDropZoneModel(state.effectiveCwd || undefined);
 	const trigger = useInputBarTriggerModel({
 		activeSession: state.activeSession,
 		canSend: state.canSend,
@@ -85,7 +87,7 @@ export function useInputBarModel(props: InputBarProps): InputBarModel {
 	const contextMenu: InputBarContextMenuViewProps | null = contextMenuModel.contextMenu;
 
 	return {
-		header: props.header,
+		dropZone,
 		isStreaming: state.isStreaming,
 		sendPending: props.sendPending,
 		pendingQuestion: state.pendingQuestion,

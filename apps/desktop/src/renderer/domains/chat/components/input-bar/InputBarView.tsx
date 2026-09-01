@@ -3,8 +3,11 @@ import { PerfSendProfiler } from "@shared/lib/perf-send";
 import { AnimatePresence, motion } from "motion/react";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
-import { ThemeSurface } from "@vetta/theme-ui/appearance";
-import { InputBarContextMenuView, InputBarPlaceholder, SessionDropZoneView } from "@vetta/theme-ui/chat";
+import {
+	ConversationComposerView,
+	InputBarContextMenuView,
+	InputBarPlaceholder,
+} from "@vetta/theme-ui/chat";
 import { useDelayedUnmount } from "@vetta/theme-ui/shared";
 import { CommandPanel } from "../command-panel/CommandPanel";
 import { AtPanel } from "../AtPanel";
@@ -12,7 +15,6 @@ import { ActionButtonBar } from "../ActionButtonBar";
 import { QuestionPanel } from "../QuestionPanel";
 import { McpElicitationPanel } from "../McpElicitationPanel";
 import { AppshotCard } from "../AppshotCard";
-import { useSessionDropZoneModel } from "../../hooks/useSessionDropZoneModel";
 import { InputBarBackground } from "./InputBarBackground";
 import { InputBarDrawer } from "./InputBarDrawer";
 import { InputBarFooter } from "./InputBarFooter";
@@ -36,25 +38,8 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 		"chat.inputBarPlaceholder",
 		InputBarPlaceholder,
 	);
-	// Drop target = the visual input card only (not outer padding / max-width gutters).
-	const dropZone = useSessionDropZoneModel(model.effectiveCwd || undefined);
 	// 附件胶囊区折叠动画播完（200ms）后再卸载内容，动画本身是纯 CSS grid 过渡。
 	const renderCapsules = useDelayedUnmount(model.hasCapsules, 220);
-
-	const cardClass = [
-		// 浅色下输入栏与页面同为白底，靠一层大扩散低透明的外投影把它从背景里托起
-		//（近距离叠色会在白底上发灰）；深色底色本身有层级差，不投影。
-		"input-card relative z-10 overflow-visible border bg-input-bar-bg shadow-[0_8px_28px_-14px_rgb(0_0_0/0.10)] transition-[border-color,box-shadow,transform] duration-200 dark:shadow-none",
-		// 展开态：命令区钉在卡片上沿，这里去掉上圆角，上边框改为透明（见下方 inline style，
-		// 用 border-t-0 会少 1px 让整条 bar 抖一下），两块面才是连续的一整块。
-		// 跟 slashVisible 而非 slashOpen：收起时要等命令区退场动画跑完才恢复圆角。
-		model.slashVisible ? "rounded-b-[20px] rounded-t-none" : "rounded-[20px]",
-		model.isFocused ? "border-primary/20" : "border-border",
-		surface?.rootClassName,
-		classNames?.card,
-	]
-		.filter(Boolean)
-		.join(" ");
 
 	return (
 		<div className={["relative px-2 pb-3 pt-1 sm:px-4 sm:pb-4", className, classNames?.root].filter(Boolean).join(" ")}>
@@ -123,36 +108,40 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					permissionLabels={model.labels.permission}
 				/>
 
-				<SessionDropZoneView
-					{...dropZone}
-					style={{
-						opacity: model.hasSession ? 1 : 0.55,
-						...(model.slashVisible ? { borderTopColor: "transparent" } : null),
+				<ConversationComposerView
+					focused={model.isFocused}
+					topConnected={model.slashVisible}
+					dropZone={{
+						...model.dropZone,
+						style: {
+							opacity: model.hasSession ? 1 : 0.55,
+							...(model.slashVisible ? { borderTopColor: "transparent" } : null),
+						},
 					}}
-					className={cardClass}
-				>
-					<ThemeSurface slot="chat.inputBar" />
-					<ThemedInputBarBackground />
-					<div className={["relative z-10 rounded-[inherit]", classNames?.cardContent].filter(Boolean).join(" ")}>
-						{model.header}
-						{/* 展开形态：命令区与编辑区同处这张卡片，两者之间没有接缝 */}
-						<PerfSendProfiler id="ib:CommandPanel">
-						<CommandPanel
-							open={model.slashOpen}
-							onClose={model.actions.handleSlashClose}
-							onSelect={model.actions.handleSlashSelect}
-							onSelectConnector={model.actions.handleConnectorSelect}
-							filter={model.slashFilter}
-							cwd={model.effectiveCwd || undefined}
-							className={model.isFocused ? "border-primary/20" : undefined}
-						/>
-						</PerfSendProfiler>
-
-						{/*
+					classNames={{
+						card: [surface?.rootClassName, classNames?.card].filter(Boolean).join(" "),
+						content: classNames?.cardContent,
+					}}
+					regions={{
+						decoration: <ThemedInputBarBackground />,
+						command: (
+							<PerfSendProfiler id="ib:CommandPanel">
+								<CommandPanel
+									open={model.slashOpen}
+									onClose={model.actions.handleSlashClose}
+									onSelect={model.actions.handleSlashSelect}
+									onSelectConnector={model.actions.handleConnectorSelect}
+									filter={model.slashFilter}
+									cwd={model.effectiveCwd || undefined}
+									className={model.isFocused ? "border-primary/20" : undefined}
+								/>
+							</PerfSendProfiler>
+						),
+						attachments: (
+							/*
 						 * 顶部附件区只剩「不是一个词」的东西：重编辑提示、Appshot 复合卡片、
 						 * 插件上下文、场景胶囊。文件 / 图片 / skill 都已进入文本流。
-						 */}
-						{/* 纯 CSS grid 过渡替代 motion height:auto：发送清空附件的瞬间不再有逐帧 JS 高度动画。 */}
+						 */
 						<div
 							aria-hidden={!model.hasCapsules}
 							className="grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none"
@@ -221,7 +210,8 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 								)}
 							</div>
 						</div>
-
+						),
+						editor: (
 						<div className={["px-4 pb-1 pt-3", classNames?.editorWrap].filter(Boolean).join(" ")}>
 							<div className="relative">
 								<PerfSendProfiler id="ib:InputEditor">
@@ -241,7 +231,8 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 								/>
 							</div>
 						</div>
-
+						),
+						toolbar: (
 						<PerfSendProfiler id="ib:Toolbar">
 						<InputBarToolbar
 							activeActions={model.activeActions}
@@ -261,8 +252,9 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 							speechInput={model.speechInput}
 						/>
 						</PerfSendProfiler>
-					</div>
-				</SessionDropZoneView>
+						),
+					}}
+				/>
 
 				{/*
 				 * 卡片下沿的附属区：出现时整条输入栏被平滑抬高，消失时落回去，动画由

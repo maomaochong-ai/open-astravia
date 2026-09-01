@@ -28,6 +28,8 @@ declare module "@vetta/theme-sdk" {
 
 export type { ActionButtonBarItem, ActionButtonBarViewProps } from "./ActionButtonBarView";
 export { ActionButtonBarView } from "./ActionButtonBarView";
+export type { AgentAvatarViewProps } from "./AgentAvatarView";
+export { AgentAvatarView } from "./AgentAvatarView";
 export type { AppshotCardViewLabels, AppshotCardViewProps } from "./AppshotCardView";
 export { AppshotCardView } from "./AppshotCardView";
 export type {
@@ -64,6 +66,14 @@ export type { ChatHeaderActionsViewProps } from "./ChatHeaderActionsView";
 export { ChatHeaderActionsView } from "./ChatHeaderActionsView";
 export type { ContextRingViewProps } from "./ContextRingView";
 export { CIRCUMFERENCE as CONTEXT_RING_CIRCUMFERENCE, ContextRingView } from "./ContextRingView";
+export type {
+	ConversationComposerRegions,
+	ConversationComposerViewClassNames,
+	ConversationComposerViewProps,
+} from "./ConversationComposerView";
+export { ConversationComposerView } from "./ConversationComposerView";
+export type { ConversationTimelineViewProps } from "./ConversationTimelineView";
+export { ConversationTimelineView } from "./ConversationTimelineView";
 export type { CopyIconButtonLabels, CopyIconButtonProps } from "./CopyIconButton";
 export { CopyIconButton } from "./CopyIconButton";
 export {

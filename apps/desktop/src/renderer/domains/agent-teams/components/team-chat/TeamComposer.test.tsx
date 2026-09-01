@@ -1,71 +1,52 @@
 // @vitest-environment jsdom
 
-import type { TeamDefinition } from "@vetta/agent-team";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { TeamMemberViewModel } from "./teamChatModel";
 import { TeamComposer } from "./TeamComposer";
-
-vi.mock("react-i18next", () => ({
-	useTranslation: () => ({ t: (key: string) => key }),
-}));
 
 afterEach(cleanup);
 
-const team: TeamDefinition = {
-	id: "team",
-	revision: 1,
-	name: "Team",
-	description: "",
-	leaderMemberId: "leader",
-	members: [
-		{ id: "leader", handle: "vetta", binding: { kind: "reference", agentProfileId: "agent-leader" } },
-		{ id: "researcher", handle: "research", binding: { kind: "reference", agentProfileId: "agent-researcher" } },
-	],
-	orchestrationPolicyId: "leader-delegates-v1",
-	contextPolicyId: "public-results-v1",
-	createdAt: 1,
-	updatedAt: 1,
-};
-
-const document = { schemaVersion: 1 as const, revision: 1, agents: [], teams: [team] };
+const members: TeamMemberViewModel[] = [
+	{
+		id: "researcher",
+		name: "Research",
+		handle: "research",
+		avatar: "avatar.png",
+		blueprintId: "researcher",
+		selected: false,
+		status: "idle",
+	},
+];
 
 describe("TeamComposer", () => {
-	it("routes by member chips and inserts a readable @mention", async () => {
+	it("renders member avatars and routes through props-only actions", async () => {
 		const user = userEvent.setup();
-		const onTextChange = vi.fn();
-		const onSelectedMemberIdsChange = vi.fn();
-		render(
+		const onToggleMember = vi.fn();
+		const { container } = render(
 			<TeamComposer
-				team={team}
-				document={document}
-				text="Please"
-				selectedMemberIds={[]}
-				onTextChange={onTextChange}
-				onSelectedMemberIdsChange={onSelectedMemberIdsChange}
+				members={members}
+				leaderRouteLabel="Leader"
+				onSelectLeader={vi.fn()}
+				onToggleMember={onToggleMember}
 			/>,
 		);
 
+		expect(container.querySelector("img")?.getAttribute("src")).toBe("avatar.png");
 		await user.click(screen.getByRole("button", { name: "@research" }));
-		expect(onSelectedMemberIdsChange).toHaveBeenCalledWith(["researcher"]);
-		expect(onTextChange).toHaveBeenCalledWith("Please @research ");
+		expect(onToggleMember).toHaveBeenCalledWith("researcher");
 	});
 
-	it("shows selected state for a routed member", async () => {
-		const user = userEvent.setup();
-		const onSelectedMemberIdsChange = vi.fn();
+	it("marks the leader route selected when no member is selected", () => {
 		render(
 			<TeamComposer
-				team={team}
-				document={document}
-				text="Ready"
-				selectedMemberIds={[]}
-				onTextChange={vi.fn()}
-				onSelectedMemberIdsChange={onSelectedMemberIdsChange}
+				members={members}
+				leaderRouteLabel="Leader"
+				onSelectLeader={vi.fn()}
+				onToggleMember={vi.fn()}
 			/>,
 		);
-
-		await user.click(screen.getByRole("button", { name: "@research" }));
-		expect(onSelectedMemberIdsChange).toHaveBeenCalledWith(["researcher"]);
+		expect(screen.getByRole("button", { name: "Leader" }).getAttribute("aria-pressed")).toBe("true");
 	});
 });

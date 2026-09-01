@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ComponentProps, Fragment } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,6 +24,18 @@ vi.mock("react-virtuoso", () => ({
 }));
 
 vi.mock("@vetta/theme-ui/chat", () => ({
+	ConversationTimelineView: (props: Record<string, unknown>) => {
+		captured.virtuosoProps = props;
+		const data = props.items as Array<{ id: string }>;
+		const itemContent = props.renderItem as (index: number, message: { id: string }) => JSX.Element;
+		return (
+			<div>
+				{data.map((message, index) => (
+					<Fragment key={message.id}>{itemContent(index, message)}</Fragment>
+				))}
+			</div>
+		);
+	},
 	MessageListView: ({ virtuoso }: { virtuoso: JSX.Element }) => virtuoso,
 	MessageSelectionContextMenuView: () => null,
 	VirtuosoListContainer: ({ children }: { children?: JSX.Element }) => <div>{children}</div>,
@@ -86,6 +98,7 @@ function props(
 
 describe("MessageListView viewport phases", () => {
 	beforeEach(() => {
+		cleanup();
 		captured.virtuosoProps = undefined;
 	});
 

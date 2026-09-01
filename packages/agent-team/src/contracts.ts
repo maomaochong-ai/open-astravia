@@ -164,13 +164,30 @@ export interface SendTeamMessageInput {
 	readonly targetMemberIds: readonly string[];
 }
 
+export interface TeamStreamingTurnSnapshot {
+	readonly turnId: string;
+	readonly memberId: string;
+	readonly requestId: string;
+	readonly seq: number;
+	readonly text: string;
+	readonly startedAt: number;
+}
+
 /** Safe renderer-facing updates for a team session. Tool arguments and reasoning are never forwarded. */
 export type TeamSessionStreamEvent =
+	| {
+			type: "session-snapshot";
+			teamSessionId: string;
+			session: TeamSessionDocument;
+			activeTurns: readonly TeamStreamingTurnSnapshot[];
+	  }
 	| {
 			type: "member-start";
 			teamSessionId: string;
 			memberId: string;
 			requestId: string;
+			turnId: string;
+			seq: number;
 			timestamp: number;
 	  }
 	| {
@@ -178,12 +195,27 @@ export type TeamSessionStreamEvent =
 			teamSessionId: string;
 			memberId: string;
 			requestId: string;
+			turnId: string;
+			seq: number;
 			delta: string;
+			timestamp: number;
+	  }
+	| {
+			type: "member-end";
+			teamSessionId: string;
+			memberId: string;
+			requestId: string;
+			turnId: string;
+			seq: number;
+			phase: "final" | "error" | "aborted";
+			error?: string;
+			timestamp: number;
 	  }
 	| {
 			type: "session-updated";
 			teamSessionId: string;
 			session: TeamSessionDocument;
+			revision: number;
 	  };
 
 export interface TeamSharedContextRecord {

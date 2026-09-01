@@ -15,6 +15,7 @@ import {
 	type TeamFeedEvent,
 	type TeamSessionDocument,
 	type TeamSessionStreamEvent,
+	type TeamStreamingTurnSnapshot,
 } from "@vetta/agent-team";
 import type { CodingAgentRuntimeToolRegistration } from "@vetta/coding-agent/runtime";
 import type { RuntimeHost } from "@vetta/runtime-core";
@@ -36,16 +37,32 @@ export interface AgentTeamSessionServiceOptions {
 	readonly readDocument?: () => Promise<AgentTeamDocument>;
 }
 
+export interface TeamSessionSubscription {
+	readonly unsubscribe: () => void;
+	readonly snapshot?: Extract<TeamSessionStreamEvent, { type: "session-snapshot" }>;
+}
+
 export class AgentTeamSessionService {
 	private runtime: RuntimeHost | undefined;
 	private readonly sessions = new Map<string, TeamSessionDocument>();
 	private readonly sendQueues = new Map<string, Promise<void>>();
 	private readonly activeSends = new Map<string, AbortController>();
 	private readonly subscribers = new Map<string, Set<(event: TeamSessionStreamEvent) => void>>();
-	private readonly runtimeSubscriptions = new Map<string, () => void>();
+	private readonly runtimeSubscriptions = new Map<
+		string,
+		{ readonly teamSessionId: string; readonly unsubscribe: () => void }
+	>();
 	private readonly activeMemberTurns = new Map<
 		string,
-		{ readonly teamSessionId: string; readonly memberId: string; readonly requestId: string }
+		{
+			readonly teamSessionId: string;
+			readonly memberId: string;
+			readonly requestId: string;
+			readonly turnId: string;
+			readonly startedAt: number;
+			seq: number;
+			text: string;
+		}
 	>();
 
 	private readonly extensions: AgentTeamExtensionRegistry;
@@ -65,15 +82,29 @@ export class AgentTeamSessionService {
 		return this.runtime;
 	}
 
-	subscribe(sessionId: string, handler: (event: TeamSessionStreamEvent) => void): () => void {
+	subscribe(sessionId: string, handler: (event: TeamSessionStreamEvent) => void): TeamSessionSubscription {
 		const listeners = this.subscribers.get(sessionId) ?? new Set();
 		listeners.add(handler);
 		this.subscribers.set(sessionId, listeners);
 		const session = this.sessions.get(sessionId);
+		const snapshot = session
+			? ({
+					type: "session-snapshot",
+					teamSessionId: sessionId,
+					session,
+					activeTurns: this.activeTurnSnapshots(sessionId),
+				} satisfies Extract<TeamSessionStreamEvent, { type: "session-snapshot" }>)
+			: undefined;
 		if (session) this.attachRuntimeSubscriptions(session);
-		return () => {
-			listeners.delete(handler);
-			if (listeners.size === 0) this.subscribers.delete(sessionId);
+		return {
+			...(snapshot ? { snapshot } : {}),
+			unsubscribe: () => {
+				listeners.delete(handler);
+				if (listeners.size === 0) {
+					this.subscribers.delete(sessionId);
+					this.detachIdleRuntimeSubscriptions(sessionId);
+				}
+			},
 		};
 	}
 
@@ -87,25 +118,48 @@ export class AgentTeamSessionService {
 			const unsubscribe = this.getRuntime().subscribe(runtimeState.sessionId, (event) => {
 				const active = this.activeMemberTurns.get(runtimeState.sessionId);
 				if (!active) return;
-				if (event.type === "session.lifecycle" && event.phase === "agent_start") {
-					this.publish({
-						type: "member-start",
-						teamSessionId: active.teamSessionId,
-						memberId: active.memberId,
-						requestId: active.requestId,
-						timestamp: event.timestamp,
-					});
-				} else if (event.type === "message.delta" && event.delta) {
+				if (event.type === "message.delta" && event.delta) {
+					active.seq += 1;
+					active.text += event.delta;
 					this.publish({
 						type: "member-delta",
 						teamSessionId: active.teamSessionId,
 						memberId: active.memberId,
 						requestId: active.requestId,
+						turnId: active.turnId,
+						seq: active.seq,
 						delta: event.delta,
+						timestamp: event.timestamp,
 					});
 				}
 			});
-			this.runtimeSubscriptions.set(runtimeState.sessionId, unsubscribe);
+			this.runtimeSubscriptions.set(runtimeState.sessionId, {
+				teamSessionId: session.id,
+				unsubscribe,
+			});
+		}
+	}
+
+	private activeTurnSnapshots(teamSessionId: string): TeamStreamingTurnSnapshot[] {
+		return [...this.activeMemberTurns.values()]
+			.filter((turn) => turn.teamSessionId === teamSessionId)
+			.map((turn) => ({
+				turnId: turn.turnId,
+				memberId: turn.memberId,
+				requestId: turn.requestId,
+				seq: turn.seq,
+				text: turn.text,
+				startedAt: turn.startedAt,
+			}));
+	}
+
+	private detachIdleRuntimeSubscriptions(teamSessionId: string): void {
+		const hasActiveTurn = [...this.activeMemberTurns.values()].some((turn) => turn.teamSessionId === teamSessionId);
+		if (hasActiveTurn || this.subscribers.has(teamSessionId)) return;
+		for (const [runtimeSessionId, subscription] of this.runtimeSubscriptions) {
+			if (subscription.teamSessionId !== teamSessionId) continue;
+			subscription.unsubscribe();
+			this.runtimeSubscriptions.delete(runtimeSessionId);
 		}
 	}
 
@@ -186,7 +240,6 @@ export class AgentTeamSessionService {
 
 		await this.persist(session);
 		this.sessions.set(id, session);
-		this.attachRuntimeSubscriptions(session);
 		log.info("team session created", {
 			teamId: team.id,
 			teamSessionId: id,
@@ -224,7 +277,6 @@ export class AgentTeamSessionService {
 				logger: log,
 			});
 			this.sessions.set(id, restored);
-			this.attachRuntimeSubscriptions(restored);
 			return restored;
 		} catch (error) {
 			log.error("failed to load team session", { teamSessionId: id, error: errorMessage(error) });
@@ -315,7 +367,12 @@ export class AgentTeamSessionService {
 				};
 		if (!existingUser) {
 			await this.persist(next);
-			this.publish({ type: "session-updated", teamSessionId: next.id, session: next });
+			this.publish({
+				type: "session-updated",
+				teamSessionId: next.id,
+				session: next,
+				revision: next.revision,
+			});
 		}
 
 		for (const memberId of targets) {
@@ -373,17 +430,49 @@ export class AgentTeamSessionService {
 		const abortTarget = () => {
 			void this.getRuntime().abort(runtimeState.sessionId);
 		};
-		signal?.addEventListener("abort", abortTarget, { once: true });
-		this.activeMemberTurns.set(runtimeState.sessionId, {
+		const startedAt = Date.now();
+		const activeTurn = {
 			teamSessionId: configuredSession.id,
 			memberId,
 			requestId,
-		});
+			turnId: sourceTurnId,
+			startedAt,
+			seq: 0,
+			text: "",
+		};
+		this.activeMemberTurns.set(runtimeState.sessionId, activeTurn);
+		signal?.addEventListener("abort", abortTarget, { once: true });
 		try {
+			this.attachRuntimeSubscriptions(configuredSession);
+			this.publish({
+				type: "member-start",
+				teamSessionId: configuredSession.id,
+				memberId,
+				requestId,
+				turnId: sourceTurnId,
+				seq: 0,
+				timestamp: startedAt,
+			});
 			await this.getRuntime().prompt(runtimeState.sessionId, { text: `${promptText}${contextText}` });
+			if (signal?.aborted) throw new Error("Team member turn was cancelled");
+		} catch (error) {
+			activeTurn.seq += 1;
+			this.publish({
+				type: "member-end",
+				teamSessionId: configuredSession.id,
+				memberId,
+				requestId,
+				turnId: sourceTurnId,
+				seq: activeTurn.seq,
+				phase: signal?.aborted ? "aborted" : "error",
+				error: signal?.aborted ? undefined : errorMessage(error),
+				timestamp: Date.now(),
+			});
+			throw error;
 		} finally {
 			this.activeMemberTurns.delete(runtimeState.sessionId);
 			signal?.removeEventListener("abort", abortTarget);
+			this.detachIdleRuntimeSubscriptions(configuredSession.id);
 		}
 
 		const messages = this.getRuntime().getMessages(runtimeState.sessionId);
@@ -409,7 +498,22 @@ export class AgentTeamSessionService {
 			timestamp: Date.now(),
 		});
 		await this.persist(next);
-		this.publish({ type: "session-updated", teamSessionId: next.id, session: next });
+		this.publish({
+			type: "session-updated",
+			teamSessionId: next.id,
+			session: next,
+			revision: next.revision,
+		});
+		this.publish({
+			type: "member-end",
+			teamSessionId: next.id,
+			memberId,
+			requestId,
+			turnId: sourceTurnId,
+			seq: activeTurn.seq + 1,
+			phase: "final",
+			timestamp: Date.now(),
+		});
 		log.info("team member turn completed", {
 			teamSessionId: next.id,
 			memberId,

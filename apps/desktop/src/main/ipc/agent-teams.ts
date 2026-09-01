@@ -73,18 +73,26 @@ export function registerAgentTeamsIpc(
 	ipcMain.handle(CHANNELS.SUBSCRIBE, async (event, id: unknown) => {
 		const sessionId = requiredString(id, "sessionId");
 		const subscriptionId = `${sessionId}:${randomUUID()}`;
-		const unsubscribe = sessions.subscribe(sessionId, (payload) => {
+		const subscription = sessions.subscribe(sessionId, (payload) => {
 			if (!event.sender.isDestroyed()) {
 				event.sender.send("vetta:agent-teams:stream-event", subscriptionId, payload);
 			}
 		});
-		subscriptions.set(subscriptionId, unsubscribe);
-		return { subscriptionId };
+		const cleanup = () => {
+			event.sender.removeListener("destroyed", cleanup);
+			subscription.unsubscribe();
+			subscriptions.delete(subscriptionId);
+		};
+		event.sender.once("destroyed", cleanup);
+		subscriptions.set(subscriptionId, cleanup);
+		return {
+			subscriptionId,
+			...(subscription.snapshot ? { initial: subscription.snapshot } : {}),
+		};
 	});
 	ipcMain.handle(CHANNELS.UNSUBSCRIBE, (_event, subscriptionId: unknown) => {
 		const key = requiredString(subscriptionId, "subscriptionId");
 		subscriptions.get(key)?.();
-		subscriptions.delete(key);
 	});
 	return () => {
 		for (const unsubscribe of subscriptions.values()) unsubscribe();

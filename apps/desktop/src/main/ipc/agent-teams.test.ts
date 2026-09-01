@@ -32,7 +32,7 @@ function dependencies(): AgentTeamsIpcDependencies {
 			create: vi.fn(),
 			read: vi.fn(),
 			send: vi.fn(),
-			subscribe: vi.fn(() => vi.fn()),
+			subscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
 			abort: vi.fn(),
 		},
 	};
@@ -83,21 +83,64 @@ describe("Agent Team IPC contract", () => {
 	it("bridges stream subscriptions and abort requests", async () => {
 		const deps = dependencies();
 		const streamHandler = vi.fn();
+		const unsubscribe = vi.fn();
 		deps.sessions.subscribe = vi.fn((_id, handler) => {
 			streamHandler.mockImplementation(handler);
-			return vi.fn();
+			return {
+				unsubscribe,
+				snapshot: {
+					type: "session-snapshot" as const,
+					teamSessionId: "session",
+					session: {
+						schemaVersion: 1 as const,
+						revision: 0,
+						id: "session",
+						teamId: "team",
+						name: "Team",
+						cwd: "C:/workspace",
+						leaderMemberId: "leader",
+						memberHandles: { leader: "vetta" },
+						createdAt: 1,
+						updatedAt: 1,
+						events: [],
+						memberRuntime: {},
+					},
+					activeTurns: [],
+				},
+			};
 		});
 		registerAgentTeamsIpc(deps);
-		const sender = { isDestroyed: () => false, send: vi.fn() };
+		const sender = {
+			isDestroyed: () => false,
+			send: vi.fn(),
+			once: vi.fn(),
+			removeListener: vi.fn(),
+		};
 		const subscribe = ipc.handlers.get("vetta:agent-teams:subscribe");
 		if (!subscribe) throw new Error("subscribe handler was not registered");
-		const result = (await subscribe({ sender }, "session")) as { subscriptionId: string };
-		streamHandler({ type: "member-delta", teamSessionId: "session", memberId: "m", requestId: "r", delta: "hi" });
+		const result = (await subscribe({ sender }, "session")) as {
+			subscriptionId: string;
+			initial: { type: string };
+		};
+		expect(result.initial.type).toBe("session-snapshot");
+		streamHandler({
+			type: "member-delta",
+			teamSessionId: "session",
+			memberId: "m",
+			requestId: "r",
+			turnId: "turn",
+			seq: 1,
+			delta: "hi",
+			timestamp: 1,
+		});
 		expect(sender.send).toHaveBeenCalledWith(
 			"vetta:agent-teams:stream-event",
 			result.subscriptionId,
 			expect.objectContaining({ type: "member-delta", delta: "hi" }),
 		);
+		const onDestroyed = sender.once.mock.calls[0]?.[1] as (() => void) | undefined;
+		onDestroyed?.();
+		expect(unsubscribe).toHaveBeenCalledOnce();
 
 		const abort = ipc.handlers.get("vetta:agent-teams:abort");
 		if (!abort) throw new Error("abort handler was not registered");

@@ -1,66 +1,74 @@
 // @vitest-environment jsdom
 
-import type { AgentTeamDocument, TeamDefinition, TeamSessionDocument } from "@vetta/agent-team";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { TeamMemberViewModel, TeamTimelineItemViewModel } from "./teamChatModel";
 import { TeamMessageFeed } from "./TeamMessageFeed";
 
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock("react-virtuoso", () => ({
-	Virtuoso: ({ data, itemContent }: { data: readonly unknown[]; itemContent: (index: number, item: unknown) => ReactNode }) => (
-		<div>{data.map((item, index) => <div key={index}>{itemContent(index, item)}</div>)}</div>
-	),
+	Virtuoso: ({
+		data,
+		itemContent,
+	}: {
+		data: readonly unknown[];
+		itemContent: (index: number, item: unknown) => ReactNode;
+	}) => <div>{data.map((item, index) => <div key={index}>{itemContent(index, item)}</div>)}</div>,
 }));
-vi.mock("@vetta/theme-ui/chat", () => ({ VirtuosoListContainer: ({ children }: { children: ReactNode }) => <div>{children}</div> }));
-vi.mock("@domains/chat/components/blocks/TextBlock", () => ({
-	MarkdownContent: ({ text }: { text: string }) => <div data-testid="markdown">{text}</div>,
-}));
+
+vi.mock("@vetta/theme-ui/chat", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@vetta/theme-ui/chat")>();
+	return {
+		...actual,
+		TextBlockView: ({ text }: { text: string }) => <div>{text}</div>,
+	};
+});
 
 afterEach(cleanup);
 
-const team: TeamDefinition = {
-	id: "team",
-	revision: 1,
-	name: "Team",
-	description: "",
-	leaderMemberId: "leader",
-	members: [{ id: "leader", handle: "vetta", binding: { kind: "reference", agentProfileId: "leader-profile" } }],
-	orchestrationPolicyId: "leader-delegates-v1",
-	contextPolicyId: "public-results-v1",
-	createdAt: 1,
-	updatedAt: 1,
+const member: TeamMemberViewModel = {
+	id: "leader",
+	name: "Vetta",
+	handle: "vetta",
+	blueprintId: "leader",
+	selected: false,
+	status: "working",
 };
-
-const document: AgentTeamDocument = { schemaVersion: 1, revision: 1, agents: [], teams: [team] };
-const session: TeamSessionDocument = {
-	schemaVersion: 1,
-	revision: 1,
-	id: "session",
-	teamId: "team",
-	name: "Team",
-	cwd: "C:/workspace",
-	leaderMemberId: "leader",
-	memberHandles: { leader: "vetta" },
-	createdAt: 1,
-	updatedAt: 1,
-	events: [{ type: "user-message", id: "message", requestId: "request", text: "hello", targetMemberIds: [], timestamp: 1 }],
-	memberRuntime: {},
+const markdown = {
+	theme: "light" as const,
+	labels: { copy: "Copy", copied: "Copied" },
+	getFileIconClass: () => "icon",
+	onOpenFile: vi.fn(),
+	onOpenUrl: vi.fn(),
+};
+const labels = {
+	loading: "Loading",
+	readyTitle: "Ready",
+	readyDescription: "Describe the goal",
+	sending: "Working",
+	failed: "Failed",
 };
 
 describe("TeamMessageFeed", () => {
-	it("renders accumulated streaming text while the member is pending", () => {
+	it("renders accumulated streaming text instead of hiding it behind a skeleton", () => {
+		const items: TeamTimelineItemViewModel[] = [
+			{
+				id: "stream:turn",
+				kind: "member",
+				member,
+				text: "partial response",
+				pending: true,
+			},
+		];
 		render(
 			<TeamMessageFeed
-				document={document}
-				team={team}
-				session={session}
-				streamingByMember={{ leader: "partial response" }}
-				pendingText="hello"
-				sending
+				status="streaming"
+				items={items}
+				members={[member]}
+				markdown={markdown}
+				labels={labels}
 			/>,
 		);
-
 		expect(screen.getByText("partial response")).toBeTruthy();
 	});
 });

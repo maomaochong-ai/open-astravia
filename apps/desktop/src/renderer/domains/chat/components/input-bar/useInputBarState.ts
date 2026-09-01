@@ -35,19 +35,11 @@ import { useSpeechInput } from "./useSpeechInput";
  * 分别由其他 model 负责。这样普通聊天和其他 composer host 可以复用同一组状态
  * 能力，而不必复制一个巨大的连接型 hook。
  */
-export function useInputBarState({
-	cwdOverride,
-	hasSessionOverride,
-	isStreamingOverride,
-}: {
-	cwdOverride?: string;
-	hasSessionOverride?: boolean;
-	isStreamingOverride?: boolean;
-}) {
+export function useInputBarState({ cwdOverride }: { cwdOverride?: string }) {
 	const isBlank = useAtomValue(inputBlankAtom);
 	const placeholderVisible = useAtomValue(inputPlaceholderVisibleAtom);
 	const atomIsStreaming = useAtomValue(isStreamingAtom);
-	const isStreaming = isStreamingOverride ?? atomIsStreaming;
+	const isStreaming = atomIsStreaming;
 	const activeSession = useAtomValue(activeSessionAtom);
 	const pendingQuestions = useAtomValue(pendingQuestionsAtom);
 	const pendingQuestion = activeSession?.runtimeId ? pendingQuestions[activeSession.runtimeId] : undefined;
@@ -79,7 +71,7 @@ export function useInputBarState({
 	const actionBar = useInputActionBarModel();
 
 	const effectiveCwd = activeSession?.cwd ?? cwdOverride ?? "";
-	const hasSession = hasSessionOverride ?? (Boolean(activeSession) || Boolean(cwdOverride));
+	const hasSession = Boolean(activeSession) || Boolean(cwdOverride);
 	const canSend = hasSession && !isStreaming && (!isBlank || Boolean(appshotAttachment));
 	const speechInput = useSpeechInput(hasSession);
 
