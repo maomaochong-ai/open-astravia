@@ -1,4 +1,4 @@
-import { useThemeSurface } from "@vetta/theme-sdk/appearance";
+import { ConversationComposerToolbarView } from "@vetta/theme-ui/chat";
 import { memo } from "react";
 import { ContextRing } from "../ContextRing";
 import { ExecutionModeSelector } from "../ExecutionModeSelector";
@@ -49,28 +49,11 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 	slashOpen,
 	speechInput,
 }: InputBarToolbarProps): JSX.Element {
-	const toolbarLeftSurface = useThemeSurface("chat.inputBarToolbarLeft");
-	const toolbarRightSurface = useThemeSurface("chat.inputBarToolbarRight");
-
 	return (
-		<div
-			className={[
-				// 始终单行：窄宽靠折叠文案（执行模式名 / 推理档 / 快捷键提示）腾空间，不换行
-				"flex flex-nowrap items-center justify-between gap-x-1.5 px-2 pb-2 pt-1 sm:px-2.5",
-				className,
-			]
-				.filter(Boolean)
-				.join(" ")}
-		>
-			<div
-				className={[
-					"flex min-w-0 shrink items-center gap-0.5",
-					toolbarLeftSurface?.rootClassName,
-				]
-					.filter(Boolean)
-					.join(" ")}
-				data-theme-surface-root="chat.inputBarToolbarLeft"
-			>
+		<ConversationComposerToolbarView
+			className={className}
+			left={
+				<>
 				{/*
 				 * 标记给命令区的 click-outside 判定用：不跳过的话，mousedown 先把命令区
 				 * 收起、紧接着的 click 又把它打开，这个按钮就永远关不掉面板。
@@ -120,17 +103,10 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 					removeHint={labels.capsule.removeDefault}
 					groupLabel={labels.capsule.activeGroup}
 				/>
-			</div>
-
-			<div
-				className={[
-					"ml-auto flex min-w-0 shrink items-center gap-1",
-					toolbarRightSurface?.rootClassName,
-				]
-					.filter(Boolean)
-					.join(" ")}
-				data-theme-surface-root="chat.inputBarToolbarRight"
-			>
+				</>
+			}
+			right={
+				<>
 				{/* 展开形态只留发送：模型与上下文圆环让位给命令区（同上，只切 display 不卸载） */}
 				<div className={slashOpen ? "hidden" : "min-w-0 shrink"}>
 					<ModelSelector />
@@ -168,7 +144,8 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 						/>
 					</div>
 				)}
-			</div>
-		</div>
+				</>
+			}
+		/>
 	);
 });

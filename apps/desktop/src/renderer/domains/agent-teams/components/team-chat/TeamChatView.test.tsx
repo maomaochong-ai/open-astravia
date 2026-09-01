@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
@@ -18,6 +18,20 @@ vi.mock("@vetta/theme-ui/chat", () => ({
 			{regions.toolbar}
 		</div>
 	),
+	ConversationComposerToolbarView: ({
+		left,
+		right,
+	}: {
+		left?: ReactNode;
+		right: ReactNode;
+	}) => (
+		<div>
+			{left}
+			{right}
+		</div>
+	),
+	InputBarPlaceholder: ({ texts, visible }: { texts: readonly string[]; visible: boolean }) =>
+		visible ? <span>{texts[0]}</span> : null,
 	SendButton: ({
 		isStreaming,
 		onSend,
@@ -58,7 +72,10 @@ const labels = {
 	retry: "Retry",
 };
 
-function model(status: TeamChatViewModel["status"]): TeamChatViewModel {
+function model(
+	status: TeamChatViewModel["status"],
+	editorEnabled = true,
+): TeamChatViewModel {
 	return {
 		title: "Team",
 		status,
@@ -66,7 +83,7 @@ function model(status: TeamChatViewModel["status"]): TeamChatViewModel {
 		members: [],
 		timelineItems: [],
 		markdown,
-		editorEnabled: true,
+		editorEnabled,
 		canSend: status === "ready",
 		labels,
 	};
@@ -98,5 +115,16 @@ describe("TeamChatView composer interaction", () => {
 		render(<TeamChatView model={model("streaming")} actions={viewActions} />);
 		fireEvent.click(screen.getByRole("button", { name: "stop" }));
 		expect(viewActions.abort).toHaveBeenCalledOnce();
+	});
+
+	it("makes the shared Lexical editor editable when loading completes", async () => {
+		const viewActions = actions();
+		const view = render(<TeamChatView model={model("loading", false)} actions={viewActions} />);
+		const editor = screen.getByRole("textbox", { name: "Ask the team" });
+		expect(editor.getAttribute("contenteditable")).toBe("false");
+
+		view.rerender(<TeamChatView model={model("ready")} actions={viewActions} />);
+
+		await waitFor(() => expect(editor.getAttribute("contenteditable")).toBe("true"));
 	});
 });

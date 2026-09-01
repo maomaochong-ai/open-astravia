@@ -50,6 +50,7 @@ export function TeamMessageFeed({
 		<ConversationTimelineView
 			items={items}
 			computeItemKey={(_, item) => item.id}
+			defaultItemHeight={120}
 			followOutput="smooth"
 			initialTopMostItemIndex={Math.max(0, items.length - 1)}
 			renderItem={(_, item) => (

@@ -1,20 +1,12 @@
-import { LexicalComposer } from "@lexical/react/LexicalComposer";
-import { ContentEditable } from "@lexical/react/LexicalContentEditable";
-import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
-import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
-import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
+import { ConversationEditorView } from "@shared/components/conversation-editor/ConversationEditorView";
 import { memo, type MouseEvent } from "react";
 import { INPUT_EDITOR_NODES } from "./nodes";
 import { EditorHandlePlugin } from "./plugins/EditorHandlePlugin";
 import { HistoryNavPlugin } from "./plugins/HistoryNavPlugin";
 import { PasteImagePlugin } from "./plugins/PasteImagePlugin";
-import { SubmitPlugin } from "./plugins/SubmitPlugin";
 import { TriggerPlugin } from "./plugins/TriggerPlugin";
 import { ValueBridgePlugin } from "./plugins/ValueBridgePlugin";
 import type { TriggerMatch } from "./tokens/trigger";
-
-const MIN_HEIGHT = 24;
-const MAX_HEIGHT = 140;
 
 export interface InputEditorProps {
 	ariaLabel: string;
@@ -42,39 +34,23 @@ export const InputEditor = memo(function InputEditor({
 	onTriggerChange,
 }: InputEditorProps): JSX.Element {
 	return (
-		<LexicalComposer
-			initialConfig={{
-				namespace: "chat-input",
-				nodes: [...INPUT_EDITOR_NODES],
-				editable,
-				onError: (error) => {
-					console.error("[input-editor]", error);
-				},
-				theme: {},
-			}}
-		>
-			<PlainTextPlugin
-				contentEditable={
-					<ContentEditable
-						aria-label={ariaLabel}
-						className="w-full resize-none whitespace-pre-wrap break-words bg-transparent text-[13.5px] leading-[1.6] text-foreground outline-none data-[editable=false]:cursor-not-allowed"
-						style={{ minHeight: MIN_HEIGHT, maxHeight: MAX_HEIGHT, overflowY: "auto" }}
-						onFocus={() => onFocusChange(true)}
-						onBlur={() => onFocusChange(false)}
-						onContextMenu={onContextMenu}
-					/>
-				}
-				// placeholder 由 InputBarView 的覆盖层组件负责（支持轮播文案）。
-				placeholder={null}
-				ErrorBoundary={LexicalErrorBoundary}
-			/>
-			<HistoryPlugin />
-			<EditorHandlePlugin editable={editable} />
-			<ValueBridgePlugin />
-			<HistoryNavPlugin />
-			<TriggerPlugin onTriggerChange={onTriggerChange} />
-			<SubmitPlugin onEnter={onEnter} />
-			<PasteImagePlugin />
-		</LexicalComposer>
+		<ConversationEditorView
+			namespace="chat-input"
+			ariaLabel={ariaLabel}
+			editable={editable}
+			nodes={INPUT_EDITOR_NODES}
+			onContextMenu={onContextMenu}
+			onEnter={onEnter}
+			onFocusChange={onFocusChange}
+			plugins={
+				<>
+					<EditorHandlePlugin />
+					<ValueBridgePlugin />
+					<HistoryNavPlugin />
+					<TriggerPlugin onTriggerChange={onTriggerChange} />
+					<PasteImagePlugin />
+				</>
+			}
+		/>
 	);
 });

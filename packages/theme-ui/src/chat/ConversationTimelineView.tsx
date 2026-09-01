@@ -58,22 +58,25 @@ export function ConversationTimelineView<T>({
 		[list, footer],
 	);
 	return (
-		<div className={cn("@container relative flex min-h-0 flex-1 flex-col", className)}>
+		<div
+			className={cn("@container relative flex min-h-0 flex-1 flex-col", className)}
+			data-timeline-item-count={items.length}
+		>
 			<Virtuoso
 				ref={virtuosoRef}
-				data={[...items]}
+				data={items}
 				itemContent={renderItem}
-				computeItemKey={computeItemKey}
-				scrollerRef={scrollerRef}
-				atBottomStateChange={atBottomStateChange}
-				itemsRendered={itemsRendered}
-				rangeChanged={rangeChanged}
-				followOutput={followOutput}
-				initialTopMostItemIndex={initialTopMostItemIndex}
-				overscan={overscan}
-				increaseViewportBy={increaseViewportBy}
-				defaultItemHeight={defaultItemHeight}
-				atBottomThreshold={atBottomThreshold}
+				{...(computeItemKey ? { computeItemKey } : {})}
+				{...(scrollerRef ? { scrollerRef } : {})}
+				{...(atBottomStateChange ? { atBottomStateChange } : {})}
+				{...(itemsRendered ? { itemsRendered } : {})}
+				{...(rangeChanged ? { rangeChanged } : {})}
+				{...(followOutput !== undefined ? { followOutput } : {})}
+				{...(initialTopMostItemIndex !== undefined ? { initialTopMostItemIndex } : {})}
+				{...(overscan !== undefined ? { overscan } : {})}
+				{...(increaseViewportBy !== undefined ? { increaseViewportBy } : {})}
+				{...(defaultItemHeight !== undefined ? { defaultItemHeight } : {})}
+				{...(atBottomThreshold !== undefined ? { atBottomThreshold } : {})}
 				components={components}
 				className="flex-1 pt-2"
 				style={{ overflowX: "hidden", ...style }}

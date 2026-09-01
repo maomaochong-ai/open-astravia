@@ -66,6 +66,8 @@ export type { ChatHeaderActionsViewProps } from "./ChatHeaderActionsView";
 export { ChatHeaderActionsView } from "./ChatHeaderActionsView";
 export type { ContextRingViewProps } from "./ContextRingView";
 export { CIRCUMFERENCE as CONTEXT_RING_CIRCUMFERENCE, ContextRingView } from "./ContextRingView";
+export type { ConversationComposerToolbarViewProps } from "./ConversationComposerToolbarView";
+export { ConversationComposerToolbarView } from "./ConversationComposerToolbarView";
 export type {
 	ConversationComposerRegions,
 	ConversationComposerViewClassNames,

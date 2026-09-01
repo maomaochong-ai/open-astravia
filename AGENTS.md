@@ -214,6 +214,7 @@ Desktop 主进程部分目录还有更细规则；修改对应目录时必须继
 - 不使用裸 `bun test`，避免扫描整个 monorepo。
 - 不使用 `bunx vitest` 或直接 `vitest`：Windows 上 Bun worker 会在收集测试前因非法 file URL 全部失败。统一走 `scripts/quality/run-vitest.mjs`（内部用 Node 启动 Vitest）。
 - 不默认启动长驻的 `bun run dev`。`bun run verify:ui:*` 会启动或附着 Desktop 验证实例，只有用户在当前任务中明确要求使用该流程时才能运行；UI、图标、样式或 Renderer/Main 改动本身不构成授权，也不要仅因改动属于 UI 就询问用户是否运行。获得授权后只使用根目录入口，并按 [`docs/dev/README.md`](docs/dev/README.md) 操作。
+- 获得 UI 验证授权后，默认使用 `verify:ui:status:dev` / `attach:dev` / `pw:dev` 附着用户已运行的开发环境；只有验证首次启动、空状态、数据迁移、隔离性或用户明确要求新环境时才使用 Fresh。不得仅因 Fresh 是无后缀命令的默认 Profile 就优先启动它。
 - 只有任务或验证明确需要构建产物时才运行相应的 `bun run build:*`，不要把全量构建当作默认反馈循环。
 - 修改 Go 包时，使用该包 README/Makefile 定义的定向测试和检查；根 `bun run check` 不覆盖 Go。
 - 文档任务至少核对链接、命令和引用路径；文档专用修改不要求为了形式运行完整 TypeScript 检查。

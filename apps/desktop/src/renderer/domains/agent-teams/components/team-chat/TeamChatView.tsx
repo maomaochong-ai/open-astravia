@@ -1,8 +1,11 @@
+import { ConversationEditorView } from "@shared/components/conversation-editor/ConversationEditorView";
 import {
+	ConversationComposerToolbarView,
 	ConversationComposerView,
+	InputBarPlaceholder,
 	SendButton,
 } from "@vetta/theme-ui/chat";
-import { type KeyboardEvent, useState } from "react";
+import { useCallback, useState } from "react";
 import { TeamComposer } from "./TeamComposer";
 import { TeamMessageFeed } from "./TeamMessageFeed";
 import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
@@ -15,11 +18,11 @@ export interface TeamChatViewProps {
 export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element {
 	const isActive = ["sending", "streaming", "cancelling"].includes(model.status);
 	const [focused, setFocused] = useState(false);
-	function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
-		if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
-		event.preventDefault();
+	const handleEnter = useCallback(() => {
+		if (!model.canSend) return false;
 		void actions.send();
-	}
+		return true;
+	}, [actions, model.canSend]);
 
 	return (
 		<div className="flex h-full min-h-0 min-w-0 flex-1 bg-background">
@@ -52,36 +55,48 @@ export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element
 									/>
 								),
 								editor: (
-									<textarea
-										value={model.draft}
-										onChange={(event) => actions.setDraft(event.target.value)}
-										onKeyDown={handleKeyDown}
-										onFocus={() => setFocused(true)}
-										onBlur={() => setFocused(false)}
-										placeholder={model.labels.placeholder}
-										aria-label={model.labels.placeholder}
-										disabled={!model.editorEnabled}
-										rows={2}
-										className="max-h-40 min-h-14 w-full resize-none bg-transparent px-4 pb-1 pt-3 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground/70"
-									/>
+									<div className="px-4 pb-1 pt-3">
+										<div className="relative">
+											<ConversationEditorView
+												namespace="team-chat"
+												value={model.draft}
+												onValueChange={actions.setDraft}
+												ariaLabel={model.labels.placeholder}
+												editable={model.editorEnabled}
+												onEnter={handleEnter}
+												onFocusChange={setFocused}
+											/>
+											<InputBarPlaceholder
+												texts={[model.labels.placeholder]}
+												visible={model.draft.length === 0}
+												rotating={false}
+											/>
+										</div>
+									</div>
 								),
 								toolbar: (
-									<div className="flex min-h-10 items-center justify-between gap-3 px-3 pb-2">
-										<span className="min-w-0 truncate text-[11px] text-muted-foreground">
-											{model.labels.hint}
-										</span>
-										<SendButton
-											canSend={model.canSend}
-											isStreaming={isActive}
-											pending={model.status === "cancelling" ? { label: model.labels.stop } : undefined}
-											labels={{
-												sendMessage: model.labels.send,
-												stopGenerating: model.labels.stop,
-											}}
-											onSend={() => void actions.send()}
-											onAbort={actions.abort}
-										/>
-									</div>
+									<ConversationComposerToolbarView
+										left={
+											<span className="min-w-0 truncate px-1 text-[11px] text-muted-foreground">
+												{model.labels.hint}
+											</span>
+										}
+										right={
+											<SendButton
+												canSend={model.canSend}
+												isStreaming={isActive}
+												pending={
+													model.status === "cancelling" ? { label: model.labels.stop } : undefined
+												}
+												labels={{
+													sendMessage: model.labels.send,
+													stopGenerating: model.labels.stop,
+												}}
+												onSend={() => void actions.send()}
+												onAbort={actions.abort}
+											/>
+										}
+									/>
 								),
 							}}
 						/>
