@@ -50,7 +50,7 @@
 
 将 7 个工具收敛为 3 个：
 
-#### `content_creation_inspect`
+#### `inspect` 领域操作
 
 读取项目、阶段、选区、能力、诊断、评测和运行状态。要求：
 
@@ -59,7 +59,7 @@
 - 支持 `nodeIds`、`artifactIds` 等窄过滤；
 - 大模型目录返回摘要和可选值，不回传供应商无关字段。
 
-#### `content_creation_edit`
+#### `edit` 领域操作
 
 提交领域级 intent，而不是要求模型决定 apply/preview：
 
@@ -81,7 +81,7 @@ type EditRequest =
 
 安全策略不应依赖模型记住调用哪个工具。
 
-#### `content_creation_run`
+#### `run` 领域操作
 
 统一 prepare、resume、cancel 和 status：
 
@@ -93,10 +93,12 @@ type EditRequest =
 
 `open_content_creation` 作为 edit/run 成功后的宿主副作用或 UI action，不再占一个模型工具。
 
-### L2：稳定工具面与按需 Skill
+### L2：稳定入口、按需 Schema 与 Skill
 
-插件贡献启用期间，`inspect`、`assets`、`edit`、`run` 保持固定的模型工具集合与注册顺序。工具的
-name、description 和判别式 Schema 负责选择语义；执行仍受插件权限、输入校验与 run 全局确认约束，不再增加工具首调确认。
+插件贡献启用期间，`content_creation_search` 与 `content_creation_execute` 保持固定的模型工具集合与注册顺序。
+`search` 默认返回不含 Schema 的操作索引，并按 query 或精确 operation ID 返回当前步骤所需的 `inspect`、`assets`、
+`edit.*` 或 `run` Schema；`execute` 使用轻量 envelope，并在插件领域边界按完整 Schema 再校验嵌套输入。
+执行仍受插件权限、revision、路径校验与 run 全局确认约束，不增加工具首调确认。
 
 插件通过 `agent.systemPrompt.promptPaths` 固定贡献一段简洁的工作流路由提示，并申请最小的
 `agent.systemPrompt.write` 权限；它只区分复杂、规范、可审查的内容生产与简单、一次性、要求立即出结果的
@@ -104,15 +106,17 @@ name、description 和判别式 Schema 负责选择语义；执行仍受插件�
 进一步说明具体任务入口；模型命中后调用宿主 `invoke_skill`，Skill 正文以工具结果进入消息历史，并按正文路由
 读取必要 reference。这样用户措辞和工作流阶段不会改变 system prompt 内容或工具定义，专业知识仍可按任务渐进披露。
 
-### L3：宿主级 deferred plugin tools
+### L3：宿主级通用 deferred plugin tools
 
-长期可把现有 MCP `tool_search` 的 deferred controller 抽象到所有 catalog tool source。当某个领域工具包
+长期仍可把现有 MCP `tool_search` 的 deferred controller 抽象到所有 catalog tool source。当某个领域工具包
 的序列化 Schema 超过预算时，只注入轻量索引和搜索工具；命中后一次性激活完整领域工具包，并在当前
 Session 内只增不减。允许首次激活产生一次可解释的缓存变化，后续 Turn 必须恢复稳定，不能按工作流阶段
 反复启停。
 
-触发阈值应以 Schema 字节数或估算 token 为主，而不是只数工具个数。这是跨插件的架构能力，不应只为
-`content-creation` 私造第二套搜索协议。短期使用 L0-L2 的固定工具面。
+触发阈值应以 Schema 字节数或估算 token 为主，而不是只数工具个数。本插件现有 `edit` operation Schema 已达到约
+50 KB，且用户明确要求参考 Cloudflare 的 MCP 优化，因此先在插件领域内落地固定 `search + execute` 合同；它不执行
+模型生成代码，也不改变宿主 catalog。未来宿主提供通用 deferred source 后，可将同一 operation catalog 适配到宿主入口，
+而不改变 `inspect` / `assets` / `edit` / `run` 领域服务。
 
 ## 第二层：Skill 与知识资源图
 

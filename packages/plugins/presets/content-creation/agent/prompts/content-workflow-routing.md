@@ -2,6 +2,8 @@
 
 The content-creation tools and skills operate a persistent, reviewable node workflow. They are not the default path for every request to create an image or video.
 
+The model-facing control plane is progressive: use `content_creation_search` to load only the operation schemas required for the current step, then call `content_creation_execute`. Never guess nested execute input or bypass the plugin by editing its project file.
+
 Use the content-creation tools and skills when at least one of these conditions applies:
 
 - The user explicitly asks to use, inspect, modify, or troubleshoot the content-creation canvas or an existing content workflow.

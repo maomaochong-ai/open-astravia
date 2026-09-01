@@ -28,7 +28,6 @@ const MODEL_SELECTION_PROPERTIES = {
 
 const NODE_DATA_PROPERTIES = {
 	prompt: { type: "string" },
-	promptPlan: { anyOf: [VIDEO_PROMPT_PLAN_SCHEMA, KEYFRAME_PROMPT_PLAN_SCHEMA] },
 	aspectRatio: { type: "string" },
 	quality: { type: "string" },
 	resolution: { type: "string" },
@@ -97,7 +96,7 @@ const OPERATION_DESCRIPTIONS: Readonly<Record<ContentAgentOperationType, string>
 	update_node: "Update editable data on one existing node without replacing the node or its connections.",
 	duplicate_node: "Duplicate one existing node's current semantic configuration under a new or generated ID.",
 	bind_assets:
-		"Bind concrete imported asset IDs to an image-generator. Use content_creation_assets first; video media belongs in configure_video_shot.",
+		"Bind concrete imported asset IDs to an image-generator. Execute the assets operation first; video media belongs in configure_video_shot.",
 	configure_generation:
 		"Low-level compatibility or media-role repair for an existing video-generator. Prefer configure_video_shot for Agent-authored video work.",
 	configure_video_shot:
@@ -105,7 +104,7 @@ const OPERATION_DESCRIPTIONS: Readonly<Record<ContentAgentOperationType, string>
 	delete_node: "Delete one node; its incident connections are removed by the atomic project command.",
 	connect_nodes:
 		"Connect ordinary prompt or workflow topology. Do not use this operation for video media roles or imported image asset bindings.",
-	delete_edge: "Delete one existing connection by the edge ID returned from content_creation_inspect.",
+	delete_edge: "Delete one existing connection by the edge ID returned from the inspect operation.",
 };
 
 function operation(

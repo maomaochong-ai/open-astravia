@@ -52,7 +52,7 @@
 - inspect 默认 summary，详细 view 明确选择。
 - operation schema 改为真正的 discriminated union，避免所有 action 共享几十个可选字段。
 - 使用 TypeBox 或仓库现有结构化 schema 事实源，同时生成运行时校验和工具 schema，避免双份合同。
-- 四个领域工具按固定注册序进入模型工具面，不随当前消息或工作流阶段逐轮增删。
+- `search` / `execute` 两个固定入口按注册序进入模型工具面；领域 operation Schema 通过搜索按需披露，不随当前消息或工作流阶段逐轮启停工具。
 - 通过静态 prompt path 提供简洁的工作流准入与退出条件，不注册逐轮执行的 System Prompt Provider；通过稳定 Skill 索引和宿主 `invoke_skill` 按需读取任务相关方法资料，只申请静态提示所需的 `agent.systemPrompt.write`，不申请 `agent.tools.control`。
 
 验收：

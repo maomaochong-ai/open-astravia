@@ -4,24 +4,22 @@
 
 ## 贡献与路由
 
-- 插件启用后以固定顺序贡献 Skill 和 `inspect`、`assets`、`edit`、`run` 四个领域 Tool；输入栏不再提供“内容创作”开关。
+- 插件启用后以固定顺序贡献 Skill 和 `content_creation_search`、`content_creation_execute` 两个模型 Tool；输入栏不再提供“内容创作”开关。
 - 插件通过静态 prompt path 固定贡献一段工作流路由提示，只申请 `agent.systemPrompt.write`；不注册逐轮执行的动态 System Prompt Provider，也不申请 `agent.tools.control`。
 - 模型先按稳定路由提示区分工作流生产与简单直接生成，再通过 Skill 索引调用宿主 `invoke_skill`；Skill 正文作为工具结果进入消息历史，并按任务读取必要 reference。
 
-结果：用户措辞和工作流阶段不会改写静态 system prompt 内容；模型面对的工具名称、顺序和 Schema 保持稳定，方法知识在固定路由之后按需进入历史。
+结果：用户措辞和工作流阶段不会改写静态 system prompt 内容；模型面对的工具名称与顺序保持稳定，领域 Schema 与方法知识都在固定路由之后按需进入历史。
 
-## 四个领域工具
+## 渐进式领域工具面
 
-原有 7 个工具收敛为：
+原有四套领域 Schema 进一步收敛为两个固定工具：
 
 | 工具 | 职责 |
 | --- | --- |
-| `content_creation_inspect` | 读取 summary/project/graph/readiness/capabilities/runtime/diagnostics 等窄视图 |
-| `content_creation_assets` | 发现并导入宿主已授权的本地媒体，返回稳定素材引用 |
-| `content_creation_edit` | 原子提交 revision-bound 语义 operation；会话内首调经 heavy 工具闸确认，不再逐操作预览确认 |
-| `content_creation_run` | prepare/status/cancel 生成运行；prepare 进入插件全局确认弹窗 |
+| `content_creation_search` | 返回紧凑操作索引；按 query 或精确 ID 返回 `inspect` / `assets` / `edit.*` / `run` 的必要 Schema |
+| `content_creation_execute` | 用轻量 envelope 执行 `inspect`、`assets`、`edit` 或 `run`，并在插件边界再次校验按需发现的嵌套输入 |
 
-`edit` 将节点、连接和素材绑定作为一个批次完成校验与提交；revision 冲突或任一命令失败时不会产生部分修改。Agent 使用稳定的 `targetInput` 语义输入，领域层负责解析真实端口，并为端口缺失、类型不匹配、端口占用和成环返回不同错误代码。
+`edit` 仍将节点、连接和素材绑定作为一个批次完成校验与提交；revision 冲突或任一命令失败时不会产生部分修改。Agent 使用稳定的 `targetInput` 语义输入，领域层负责解析真实端口，并为端口缺失、类型不匹配、端口占用和成环返回不同错误代码。
 
 `inspect` 的 graph/readiness 视图提供语义连接、连通分量、孤立节点、可运行/阻塞节点和工作流状态，使 Agent 能在创建后确定性复查实际图结构。仅已配置凭据并满足必要 endpoint/model 配置的 Provider 模型会进入 capability registry。
 
@@ -40,7 +38,7 @@
 
 ## 已验证合同
 
-- 工具注册面固定为 4 个领域工具；插件只有静态路由提示所需的 System Prompt 写权限，没有工具控制权限或动态路由 Provider。
+- 工具注册面固定为 2 个渐进披露工具；插件只有静态路由提示所需的 System Prompt 写权限，没有工具控制权限或动态路由 Provider。
 - 只读诊断、工作流规划和端到端生成请求复用同一工具集合，通过 `invoke_skill` 和必要 reference 获取不同方法知识。
 - 创建、编辑、删除、语义连线和素材绑定都直接原子应用，revision conflict 不得覆盖并发修改。
 - 生成准备不消耗额度，用户必须在全局弹窗确认；运行仍按依赖排序。

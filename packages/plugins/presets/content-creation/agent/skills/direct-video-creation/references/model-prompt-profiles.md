@@ -1,6 +1,6 @@
 # Video model prompt profiles
 
-Select from `content_creation_inspect(view="capabilities")`. Model names below identify prompt grammar already present in Vetta's catalog; the inspected descriptor remains authoritative for modes, inputs, durations, ratios, and resolutions. Never infer audio, dialogue, first/last-frame, editing, or extension support from a family name alone.
+Select from the result of executing `inspect` with `view="capabilities"`. Model names below identify prompt grammar already present in Vetta's catalog; the inspected descriptor remains authoritative for modes, inputs, durations, ratios, and resolutions. Never infer audio, dialogue, first/last-frame, editing, or extension support from a family name alone.
 
 ## Kling 3 family profile
 

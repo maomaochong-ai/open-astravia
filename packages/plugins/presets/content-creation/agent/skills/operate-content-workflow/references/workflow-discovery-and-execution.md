@@ -32,7 +32,7 @@ After edits, inspect `readiness`. Verify the expected semantic connections and c
 
 ## Prepare and confirm
 
-`content_creation_run(action="prepare")` is a proposal boundary. It queues the run for the plugin's global confirmation dialog. Summarize the stages, expensive branches, expected outputs, and known capability limitations in chat, but do not add a message card and do not describe a prepared run as started.
+Executing `run` with `action="prepare"` is a proposal boundary. It queues the run for the plugin's global confirmation dialog. Summarize the stages, expensive branches, expected outputs, and known capability limitations in chat, but do not add a message card and do not describe a prepared run as started.
 
 ## Monitor and recover
 

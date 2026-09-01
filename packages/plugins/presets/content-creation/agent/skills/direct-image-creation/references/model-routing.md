@@ -1,6 +1,6 @@
 # Image model routing
 
-Inspect `content_creation_inspect(view="capabilities")` before selecting a provider, model, or mode. Route by requirements, not reputation or model name.
+Execute `inspect` with `view="capabilities"` before selecting a provider, model, or mode. Route by requirements, not reputation or model name.
 
 ## Match hard constraints first
 

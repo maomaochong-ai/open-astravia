@@ -13,7 +13,7 @@ export const CONTENT_PROJECT_DIR_PROPERTY = {
 export const CONTENT_REVISION_PROPERTY = {
 	type: "number",
 	description:
-		"Current project revision returned by content_creation_inspect. Include it to reject concurrent changes instead of overwriting newer state.",
+		"Current project revision returned by the inspect operation. Include it to reject concurrent changes instead of overwriting newer state.",
 } as const;
 
 export function resolveContentProjectCwd(input: ContentProjectInput, sessionCwd: string): string {

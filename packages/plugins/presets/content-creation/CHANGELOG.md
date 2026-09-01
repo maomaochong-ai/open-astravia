@@ -4,6 +4,8 @@
 
 ### Changed
 
+- 参考 Cloudflare Code Mode 的渐进式能力发现，将模型常驻工具面从 `inspect` / `assets` / `edit` / `run` 四套完整 Schema 收敛为 `content_creation_search` 与 `content_creation_execute`：默认仅暴露紧凑索引，按需返回精确 operation Schema，并在执行边界再次校验嵌套输入；revision 原子编辑、素材路径约束和生成全局确认保持不变。
+- `add_node` / `update_node` 不再重复暴露视频 `promptPlan`；Agent 视频创作计划由 `configure_video_shot` 单一高层操作拥有，避免通用节点编辑 Schema 携带整套视频方法合同。
 - 修正编辑工具及工作流文档中已失效的首次调用确认说明；保留六个 Skill 的原有功能描述与专业流程。
 - 移除 `content_creation_edit` 的副作用声明与宿主首调确认，编辑直接执行；`content_creation_run` 的生成计划全局确认保持不变。
 - 内容创作的四个领域工具改为固定模型工具面，不再按用户消息关键词逐轮启停；插件移除动态 System Prompt Provider，改为固定贡献一段简洁的工作流路由提示，明确复杂、规范、可审查的生产任务应使用内容工作流，简单、一次性、要求立即出结果的任务应走直接能力；专业方法由宿主 `invoke_skill` 按需返回到消息历史，工具 Schema 与提示词内容不再跨 Turn 变化，并移除不再需要的 `agent.tools.control` 权限。

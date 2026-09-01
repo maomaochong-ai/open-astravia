@@ -19,6 +19,7 @@
 | [visual-skills 融合](./07-visual-skills-integration.md) | 两个 Skill 和 34 份 reference 如何逐项融入 Vetta？ |
 | [Generative-Media-Skills Library 融合](./08-generative-media-library-integration.md) | Library 下 57 个 Skill 如何逐项进入场景手册、路由和质量闸门？ |
 | [视频生成时间线与分镜](./09-video-generation-timeline.md) | Prompt 内时间分段和分镜如何指导视频模型生成？ |
+| [渐进式工具面](./10-progressive-tool-surface.md) | Cloudflare Code Mode 的哪些原则适合内容创作，如何在不引入任意代码执行的前提下降低 Schema 成本？ |
 
 ## 分析快照
 

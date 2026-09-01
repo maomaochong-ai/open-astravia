@@ -134,7 +134,8 @@ describe("content generation intent planning", () => {
 					intent: "animate-still",
 					requiredKind: "image",
 					requiredCount: 1,
-					suggestedTool: "content_creation_assets",
+					suggestedTool: "content_creation_execute",
+					suggestedOperation: "assets",
 				},
 			} satisfies Partial<ContentGenerationIntentError>);
 		}
