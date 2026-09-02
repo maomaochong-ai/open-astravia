@@ -123,12 +123,27 @@ src/
 - 新功能代码放入对应的 `domains/<领域>/` 目录
 - 跨领域共享的代码放入 `shared/`
 - 可主题化的纯 UI 展现组件放入 `@vetta/theme-ui`；desktop 领域层只保留数据加载、状态、i18n 与事件适配，通过 props/view model 驱动 UI。
-- Renderer 页面与组件必须按“连接层 + 展示层”组合：`*Page` / `*Container` / `use*Model` 负责 atom、IPC、router、业务 hook、i18n 和副作用；`*View` 只能接收稳定的 view model、actions 与明确的 region/slot props，不得再次读取业务状态或调用业务 API。
+- Renderer 页面与组件必须按“连接层 + 展示层”组合：`*Page` / `*Container` / `use*Model` 负责 atom、IPC、router、业务 hook、i18n 和副作用；`*View` 只能接收稳定的 view model、actions 与公开的组合组件契约，不得再次读取业务状态或调用业务 API。
 - 一个 model 不得同时拥有会话状态、编辑器命令、附件、发送、队列、权限、语音和展示映射等互相独立的职责。新增能力应拆成按职责命名的可组合 hook/model，由连接层组装成最终 view model。
 - 不得通过不断增加 `*Override`、任意 `ReactNode` 或跨领域内部组件 import 来绕过数据/UI边界；跨业务场景应依赖 shared/theme-ui 的公开 view contract，并为草稿、流式状态等状态明确作用域。
 - **不要**在 `domains/` 外面创建新的顶层目录（如 `components/`, `hooks/`, `lib/`）
 - 每个领域内部结构：`components/`, `hooks/`, `services/`（按需）
 - 领域间通过 `@shared/store/atoms` 共享状态，不要跨领域直接 import 其他领域的内部模块
+
+#### 可组合组件是多能力 UI 的默认合同
+
+当一个 UI 包含两个及以上可以独立增删、替换、排序或复用的能力，或同一基础结构需要承载不同业务组合时，必须使用 Radix 风格的复合组件 API，而不是继续扩展一个大组件的 props。目标是让调用方通过 JSX 结构决定“使用哪些能力、放在哪里、按什么顺序”，组件本身只拥有其职责范围内的状态、语义和样式。
+
+- 使用 `Root` + 语义 Primitive 的公开结构，例如 `MessageInput.Root`、`MessageInput.Editor`、`MessageInput.Toolbar`、`MessageInput.SendAction`；由 `Root` 通过 Context 提供真正共享的状态和行为，叶子 Primitive 只消费自身所需的最小合同。
+- 独立能力必须实现为可直接挂载和卸载的子组件。增删、替换或排序静态能力应只需增删或移动 JSX，不得要求同步修改中央能力数组、字符串 Region 联合类型、位置映射表或父组件条件分支。
+- 布局位置由显式的语义容器表达，例如 `ToolbarLeading` / `ToolbarTrailing`。不得使用 `showX`、`enableX`、`leftActions`、`rightActions`、`renderX`、万能 `options` 等 props 持续为父组件增加功能开关；不得把任意 `ReactNode` prop 当成组合 API。
+- 当 Primitive 需要把行为、状态或样式附着到调用方提供的宿主元素时，提供与 Radix 一致的 `asChild` / `Slot` 能力，合并 `className`、事件、`ref` 和可访问属性，避免仅为实现样式而增加 DOM 包装层。
+- 共享 Context 不得成为隐藏的万能 view model。状态应归属于最小公共祖先；只被单个能力使用的数据和副作用留在该能力或对应 hook 中。Primitive 离开所需的 `Root` 使用时应尽早失败并给出明确错误。
+- 静态产品组合使用 JSX 作为唯一事实源。只有运行时插件、服务端下发扩展等真实动态集合才允许使用注册表；动态描述必须在边界处校验并转换为公开 Primitive，不得让注册表反向控制内置静态能力。
+- 重构现有多能力组件时，先列出必须保持的 DOM、样式、键盘、焦点、动画和事件语义，再做行为保持型拆分；不得以“可组合”为由改变既有功能或视觉。
+- 测试至少覆盖关键 Primitive 的独立增删/排序、Context 合同和 `asChild` 的宿主元素语义；具体业务组件仍须覆盖实际用户交互，不能只测试组合基础层。
+
+简单、单一职责且没有真实组合维度的叶子组件继续使用普通 props，不得为了形式创建空洞的 `Root`、Context 或 Primitive。是否拆分以“能力能否独立变化”和“状态所有权是否清晰”为判断标准，而不是组件行数。
 
 ### 3. 状态管理
 

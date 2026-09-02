@@ -4,4 +4,4 @@
 
 ### Changed
 
-- Replaced the fixed conversation-composer region prop bag with compound layout primitives so hosts can compose routing, commands, attachments, editors, and toolbars without extending a central view contract.
+- Replaced the fixed message-input region and toolbar prop contracts with Radix-style compound primitives, Context-owned state, optional DropZone composition, and `asChild` DOM polymorphism.

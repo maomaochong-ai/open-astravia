@@ -1,4 +1,5 @@
-import { type ReactNode, useEffect, useReducer, useRef } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import {
 	INPUT_BAR_FOOTER_EXIT_MS,
 	initialInputBarFooterSlotState,
@@ -28,19 +29,13 @@ const CONTENT_BASE = "transition-[opacity,transform] motion-reduce:transition-no
 const CONTENT_EXPANDED = "translate-y-0 opacity-100 duration-[280ms] delay-[40ms] ease-[cubic-bezier(0.16,1,0.3,1)]";
 const CONTENT_COLLAPSED = "translate-y-1 opacity-0 duration-[140ms] ease-[cubic-bezier(0.4,0,1,1)]";
 
-export interface InputBarFooterItem {
-	/** 槽位标识，决定顺序与复用；不要随内容变化。 */
-	readonly id: string;
-	/** 当前内容；`null` 表示该槽位收起（仍会播完退场动画再卸载）。 */
-	readonly node: ReactNode;
-}
-
-interface InputBarFooterSlotProps {
-	readonly open: boolean;
+export interface InputBarFooterItemProps {
+	/** `null` 表示该能力收起（仍会播完退场动画再卸载）。 */
 	readonly children: ReactNode;
 }
 
-function InputBarFooterSlot({ open, children }: InputBarFooterSlotProps): JSX.Element | null {
+export function InputBarFooterItem({ children }: InputBarFooterItemProps): JSX.Element | null {
+	const open = Boolean(children);
 	const [state, dispatch] = useReducer(reduceInputBarFooterSlot, open, initialInputBarFooterSlotState);
 	/** 退场期间调用方已经把内容置空了，这里得留着上一份内容把动画播完。 */
 	const retainedRef = useRef<ReactNode>(null);
@@ -77,20 +72,15 @@ function InputBarFooterSlot({ open, children }: InputBarFooterSlotProps): JSX.El
 	);
 }
 
-export function InputBarFooter({
-	items,
-	className,
-}: {
-	readonly items: readonly InputBarFooterItem[];
-	readonly className?: string;
-}): JSX.Element {
-	return (
-		<div className={className}>
-			{items.map((item) => (
-				<InputBarFooterSlot key={item.id} open={Boolean(item.node)}>
-					{item.node}
-				</InputBarFooterSlot>
-			))}
-		</div>
-	);
+export function InputBarFooterRoot({
+	children,
+	...props
+}: ComponentPropsWithoutRef<"div">): JSX.Element {
+	return <div {...props}>{children}</div>;
 }
+
+/** Compound footer: abilities are added, removed, and ordered as explicit Item children. */
+export const InputBarFooter = {
+	Root: InputBarFooterRoot,
+	Item: InputBarFooterItem,
+} as const;

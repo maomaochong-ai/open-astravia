@@ -1,20 +1,20 @@
 import { AgentAvatarView } from "@vetta/theme-ui/chat";
 import type { TeamMemberViewModel } from "./teamChatModel";
 
-export interface TeamComposerProps {
+export interface TeamRecipientSelectorProps {
 	readonly members: readonly TeamMemberViewModel[];
 	readonly leaderRouteLabel: string;
 	readonly onSelectLeader: () => void;
 	readonly onToggleMember: (memberId: string) => void;
 }
 
-/** Props-driven member routing strip shared by the team header and composer card. */
-export function TeamComposer({
+/** Props-driven recipient selector for routing a team message. */
+export function TeamRecipientSelector({
 	members,
 	leaderRouteLabel,
 	onSelectLeader,
 	onToggleMember,
-}: TeamComposerProps): JSX.Element {
+}: TeamRecipientSelectorProps): JSX.Element {
 	const hasSelectedMember = members.some((member) => member.selected);
 	return (
 		<div className="flex min-w-0 items-center gap-1.5 overflow-x-auto border-b border-border/50 px-3 py-2 no-scrollbar">
@@ -79,3 +79,4 @@ function RoutingButton({
 		</button>
 	);
 }
+

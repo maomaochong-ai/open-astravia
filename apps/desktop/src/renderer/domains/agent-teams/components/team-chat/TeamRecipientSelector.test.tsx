@@ -4,7 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TeamMemberViewModel } from "./teamChatModel";
-import { TeamComposer } from "./TeamComposer";
+import { TeamRecipientSelector } from "./TeamRecipientSelector";
 
 afterEach(cleanup);
 
@@ -20,12 +20,12 @@ const members: TeamMemberViewModel[] = [
 	},
 ];
 
-describe("TeamComposer", () => {
+describe("TeamRecipientSelector", () => {
 	it("renders member avatars and routes through props-only actions", async () => {
 		const user = userEvent.setup();
 		const onToggleMember = vi.fn();
 		const { container } = render(
-			<TeamComposer
+			<TeamRecipientSelector
 				members={members}
 				leaderRouteLabel="Leader"
 				onSelectLeader={vi.fn()}
@@ -40,7 +40,7 @@ describe("TeamComposer", () => {
 
 	it("marks the leader route selected when no member is selected", () => {
 		render(
-			<TeamComposer
+			<TeamRecipientSelector
 				members={members}
 				leaderRouteLabel="Leader"
 				onSelectLeader={vi.fn()}
@@ -50,3 +50,4 @@ describe("TeamComposer", () => {
 		expect(screen.getByRole("button", { name: "Leader" }).getAttribute("aria-pressed")).toBe("true");
 	});
 });
+

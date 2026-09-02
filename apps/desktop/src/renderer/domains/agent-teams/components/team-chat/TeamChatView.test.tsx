@@ -7,26 +7,17 @@ import type { TeamChatActions, TeamChatViewModel } from "./teamChatModel";
 import { TeamChatView } from "./TeamChatView";
 
 vi.mock("@vetta/theme-ui/chat", () => ({
-	ConversationComposer: {
+	MessageInput: {
 		Root: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+		Surface: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 		Content: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 		Routing: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 		Attachments: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 		Editor: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 		Toolbar: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+		ToolbarLeading: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+		ToolbarTrailing: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 	},
-	ConversationComposerToolbarView: ({
-		left,
-		right,
-	}: {
-		left?: ReactNode;
-		right: ReactNode;
-	}) => (
-		<div>
-			{left}
-			{right}
-		</div>
-	),
 	InputBarPlaceholder: ({ texts, visible }: { texts: readonly string[]; visible: boolean }) =>
 		visible ? <span>{texts[0]}</span> : null,
 	SendButton: ({
@@ -44,7 +35,7 @@ vi.mock("@vetta/theme-ui/chat", () => ({
 	),
 }));
 vi.mock("./TeamMessageFeed", () => ({ TeamMessageFeed: () => <div>timeline</div> }));
-vi.mock("./TeamComposer", () => ({ TeamComposer: () => <div>members</div> }));
+vi.mock("./TeamRecipientSelector", () => ({ TeamRecipientSelector: () => <div>members</div> }));
 
 afterEach(cleanup);
 

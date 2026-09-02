@@ -66,23 +66,6 @@ export type { ChatHeaderActionsViewProps } from "./ChatHeaderActionsView";
 export { ChatHeaderActionsView } from "./ChatHeaderActionsView";
 export type { ContextRingViewProps } from "./ContextRingView";
 export { CIRCUMFERENCE as CONTEXT_RING_CIRCUMFERENCE, ContextRingView } from "./ContextRingView";
-export type { ConversationComposerToolbarViewProps } from "./ConversationComposerToolbarView";
-export { ConversationComposerToolbarView } from "./ConversationComposerToolbarView";
-export type {
-	ConversationComposerPartProps,
-	ConversationComposerRootProps,
-} from "./ConversationComposerView";
-export {
-	ConversationComposer,
-	ConversationComposerAttachments,
-	ConversationComposerCommand,
-	ConversationComposerContent,
-	ConversationComposerDecoration,
-	ConversationComposerEditor,
-	ConversationComposerRoot,
-	ConversationComposerRouting,
-	ConversationComposerToolbar,
-} from "./ConversationComposerView";
 export type { ConversationTimelineViewProps } from "./ConversationTimelineView";
 export { ConversationTimelineView } from "./ConversationTimelineView";
 export type { CopyIconButtonLabels, CopyIconButtonProps } from "./CopyIconButton";
@@ -171,6 +154,27 @@ export type {
 	MessageCardsViewProps,
 } from "./MessageCardsView";
 export { MessageCardsView } from "./MessageCardsView";
+export type {
+	MessageInputDecorationProps,
+	MessageInputDropZoneProps,
+	MessageInputPrimitiveProps,
+	MessageInputRootProps,
+} from "./MessageInputView";
+export {
+	MessageInput,
+	MessageInputAttachments,
+	MessageInputCommand,
+	MessageInputContent,
+	MessageInputDecoration,
+	MessageInputDropZone,
+	MessageInputEditor,
+	MessageInputRoot,
+	MessageInputRouting,
+	MessageInputSurface,
+	MessageInputToolbar,
+	MessageInputToolbarLeading,
+	MessageInputToolbarTrailing,
+} from "./MessageInputView";
 export type {
 	CompactionBoundaryViewProps,
 	ExportMessageListViewProps,

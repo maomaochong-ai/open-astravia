@@ -223,7 +223,7 @@
 
 ### Changed
 
-- 对话与 Agent Team 输入区改用可组合 Composer：基本能力按稳定 ID 声明依赖、冲突和语义区域贡献，UI 使用 Compound Components 组合，不再依赖固定 `regions` prop；Team 的附件预览与工具栏入口作为同一能力装配，附件以结构化引用进入成员 Runtime，不再拼接进用户文本。见 ADR-0100。
+- 对话与 Agent Team 共用可组合的 `MessageInput`：输入能力通过 Radix 风格 Compound Components 直接在 JSX 中增删与排序，不再依赖固定 `regions` prop 或中央能力注册表；Team 附件以结构化引用进入成员 Runtime，不再拼接进用户文本。见 ADR-0100。
 
 - 用户发送消息后，Vetta 会在模型首个内容到达前立即显示带头像、名称与等待耗时的 Assistant 消息头；thinking、工具或正文到达后在同一条消息内接管。运行时间改为由消息的绝对开始时间派生，切换会话后继续累计，并按秒、分、小时自适应显示。
 - Work 模式的折叠工具组在 Agent 运行期间改为显示当前工具阶段、调用说明或最新 thinking 摘要，不再长期停留在笼统的「正在处理」；并行调用优先展示仍在执行的工具，阶段完成后恢复稳定的阶段总结，完整工具与思考内容仍保留在展开区。

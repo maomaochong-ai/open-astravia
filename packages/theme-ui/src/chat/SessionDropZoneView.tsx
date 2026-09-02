@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
-import type { CSSProperties, JSX, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { forwardRef } from "react";
 
 const SOFT = { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] as const };
 
@@ -11,10 +12,12 @@ export interface SessionDropZoneViewLabels {
 	externalRef: string;
 }
 
-export interface SessionDropZoneViewProps {
+export interface SessionDropZoneViewProps
+	extends Omit<
+		ComponentPropsWithoutRef<"div">,
+		"children" | "onDragEnter" | "onDragOver" | "onDragLeave" | "onDrop"
+	> {
 	/** Should be the same box as the visual input card (padding/max-width outside). */
-	className?: string;
-	style?: CSSProperties;
 	children: ReactNode;
 	dragKind: SessionDropDragKind | null;
 	enabled: boolean;
@@ -28,20 +31,26 @@ export interface SessionDropZoneViewProps {
 /**
  * Drag-and-drop shell whose overlay matches this element's box (use on the input card).
  */
-export function SessionDropZoneView({
-	className,
-	style,
-	children,
-	dragKind,
-	enabled,
-	labels,
-	onDragEnter,
-	onDragOver,
-	onDragLeave,
-	onDrop,
-}: SessionDropZoneViewProps): JSX.Element {
+export const SessionDropZoneView = forwardRef<HTMLDivElement, SessionDropZoneViewProps>(
+	function SessionDropZoneView(
+		{
+			className,
+			style,
+			children,
+			dragKind,
+			enabled,
+			labels,
+			onDragEnter,
+			onDragOver,
+			onDragLeave,
+			onDrop,
+			...props
+		},
+		forwardedRef,
+	) {
 	return (
 		<div
+			ref={forwardedRef}
 			data-vetta-drop-scope="input"
 			className={className}
 			style={style}
@@ -49,6 +58,7 @@ export function SessionDropZoneView({
 			onDragOver={onDragOver}
 			onDragLeave={onDragLeave}
 			onDrop={onDrop}
+			{...props}
 		>
 			{children}
 			<AnimatePresence>
@@ -71,4 +81,5 @@ export function SessionDropZoneView({
 			</AnimatePresence>
 		</div>
 	);
-}
+	},
+);
