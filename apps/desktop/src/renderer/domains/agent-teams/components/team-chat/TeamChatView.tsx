@@ -50,23 +50,20 @@ export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element
 								{...(model.editorEnabled ? {} : { className: "opacity-55" })}
 							>
 								<MessageInput.Content>
-									<MessageInput.Routing>
-										<TeamRecipientSelector
-											members={model.members}
-											leaderRouteLabel={model.labels.leaderRoute}
-											onSelectLeader={actions.selectLeader}
-											onToggleMember={actions.toggleMember}
-										/>
-									</MessageInput.Routing>
+									<TeamRecipientSelector
+										members={model.members}
+										leaderRouteLabel={model.labels.leaderRoute}
+										onSelectLeader={actions.selectLeader}
+										onToggleMember={actions.toggleMember}
+									/>
 
 									{model.attachments.length > 0 ? (
-										<MessageInput.Attachments>
-											<div className="flex flex-wrap gap-1.5 px-3 pt-3">
-												{model.attachments.map((attachment) => (
-													<span
-														key={attachment.path}
-														className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground"
-													>
+										<div className="flex flex-wrap gap-1.5 px-3 pt-3">
+											{model.attachments.map((attachment) => (
+												<span
+													key={attachment.path}
+													className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground"
+												>
 														<span
 															className={
 																attachment.kind === "image"
@@ -89,16 +86,14 @@ export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element
 																{model.labels.removeAttachment(attachment.name)}
 															</span>
 														</Button>
-													</span>
-												))}
-											</div>
-										</MessageInput.Attachments>
+												</span>
+											))}
+										</div>
 									) : null}
 
-									<MessageInput.Editor>
-										<div className="px-4 pb-1 pt-3">
-											<div className="relative">
-												<ConversationEditorView
+									<div className="px-4 pb-1 pt-3">
+										<div className="relative">
+											<ConversationEditorView
 													namespace="team-chat"
 													value={model.draft}
 													onValueChange={actions.setDraft}
@@ -107,15 +102,14 @@ export function TeamChatView({ model, actions }: TeamChatViewProps): JSX.Element
 													editable={model.editorEnabled}
 													onEnter={handleEnter}
 													onFocusChange={setFocused}
-												/>
-												<InputBarPlaceholder
+											/>
+											<InputBarPlaceholder
 													texts={[model.labels.placeholder]}
 													visible={model.draft.length === 0}
 													rotating={false}
-												/>
-											</div>
+											/>
 										</div>
-									</MessageInput.Editor>
+									</div>
 
 									<MessageInput.Toolbar>
 										<MessageInput.ToolbarLeading>

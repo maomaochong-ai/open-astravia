@@ -131,9 +131,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 				<MessageLayout.IncomingSurface>
 					<MessageLayout.Header>
 						<MessageLayout.HeaderLeading asChild>
-							<Message.Avatar asChild>
-								<BotAvatar active={isCurrentlyStreaming} />
-							</Message.Avatar>
+							<BotAvatar active={isCurrentlyStreaming} />
 						</MessageLayout.HeaderLeading>
 						<Message.Author>Vetta</Message.Author>
 						{message.timestamp ? <Message.Meta>{formatTime(message.timestamp)}</Message.Meta> : null}
@@ -175,7 +173,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 						/>
 					) : null}
 
-					<Message.Content>
+					<div>
 						{hasBlocks ? (
 							<div className="flex flex-col gap-0.5">
 						{exportProcessSegments.length > 0 && (
@@ -225,7 +223,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 								{message.text || "\u2026"}
 							</div>
 						) : null}
-					</Message.Content>
+					</div>
 
 					{isCurrentlyStreaming && !isAwaitingFirstActivity ? (
 						<div className="mt-2 flex items-center">
@@ -235,7 +233,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 
 					{(hasActions || isPredicting) && !isCurrentlyStreaming ? (
 						<MessageLayout.Footer asChild>
-							<Message.Actions className="gap-2">
+							<div className="gap-2">
 								{hasActions ? (
 					<div className="flex items-center gap-1">
 						{conclusionText.length > 0 && <CopyButton getText={() => conclusionText} />}
@@ -248,14 +246,14 @@ export const AssistantMessage = memo(function AssistantMessage({
 								{isPredicting ? (
 									<AssistantMessagePrimitive.PredictingStatus label={labels.predicting} />
 								) : null}
-							</Message.Actions>
+							</div>
 						</MessageLayout.Footer>
 					) : null}
 
 					<MessageLayout.AfterBody asChild>
-						<Message.Cards>
+						<div>
 							<MessageCardsHost message={message} />
-						</Message.Cards>
+						</div>
 					</MessageLayout.AfterBody>
 				</MessageLayout.IncomingSurface>
 			</MessageLayout.Incoming>

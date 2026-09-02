@@ -19,41 +19,54 @@ export function MessageRoot({ pending = false, children }: MessageRootProps): JS
 	return <MessageRootContext.Provider value={{ pending }}>{children}</MessageRootContext.Provider>;
 }
 
-export interface MessagePrimitiveProps extends ComponentPropsWithoutRef<"div"> {
+export interface MessageTextProps extends ComponentPropsWithoutRef<"span"> {
 	readonly asChild?: boolean;
 }
 
-export const MessageAvatar = createMessagePart("Avatar");
-export const MessageAuthor = createMessagePart(
-	"Author",
-	"text-[13px] font-semibold text-foreground/80",
-);
-export const MessageStatus = createMessagePart("Status", "inline-flex items-center gap-1");
-export const MessageMeta = createMessagePart("Meta", "text-[11px] text-muted-foreground/35");
-export const MessageAttachments = createMessagePart("Attachments");
-export const MessageContent = createMessagePart("Content");
-export const MessageActions = createMessagePart("Actions");
-export const MessageCards = createMessagePart("Cards");
+/** Semantic author label; may project its typography onto a caller-owned host. */
+export const MessageAuthor = forwardRef<HTMLSpanElement, MessageTextProps>(function MessageAuthor(
+	{ asChild = false, className, ...props },
+	forwardedRef,
+) {
+	const Comp = asChild ? Slot.Root : "span";
+	return (
+		<Comp
+			ref={forwardedRef}
+			className={cn("text-[13px] font-semibold text-foreground/80", className)}
+			{...props}
+		/>
+	);
+});
 
-function createMessagePart(name: string, baseClassName?: string) {
-	return forwardRef<HTMLDivElement, MessagePrimitiveProps>(function MessagePart(
-		{ asChild = false, children, className, ...props },
-		forwardedRef,
-	) {
-		useMessageRootContext(`Message.${name}`);
-		const Comp = asChild ? Slot.Root : "div";
-		return (
-			<Comp
-				ref={forwardedRef}
-				className={cn(baseClassName, className)}
-				data-message-part={name.toLowerCase()}
-				{...props}
-			>
-				{children}
-			</Comp>
-		);
-	});
-}
+/** Inline status cluster with the spacing contract shared by message recipes. */
+export const MessageStatus = forwardRef<HTMLSpanElement, MessageTextProps>(function MessageStatus(
+	{ asChild = false, className, ...props },
+	forwardedRef,
+) {
+	const Comp = asChild ? Slot.Root : "span";
+	return (
+		<Comp
+			ref={forwardedRef}
+			className={cn("inline-flex items-center gap-1", className)}
+			{...props}
+		/>
+	);
+});
+
+/** Secondary message metadata with a semantic inline default host. */
+export const MessageMeta = forwardRef<HTMLSpanElement, MessageTextProps>(function MessageMeta(
+	{ asChild = false, className, ...props },
+	forwardedRef,
+) {
+	const Comp = asChild ? Slot.Root : "span";
+	return (
+		<Comp
+			ref={forwardedRef}
+			className={cn("text-[11px] text-muted-foreground/35", className)}
+			{...props}
+		/>
+	);
+});
 
 export function useMessageRootContext(part: string): MessageRootContextValue {
 	const context = useContext(MessageRootContext);
@@ -63,12 +76,7 @@ export function useMessageRootContext(part: string): MessageRootContextValue {
 
 export const Message = {
 	Root: MessageRoot,
-	Avatar: MessageAvatar,
 	Author: MessageAuthor,
 	Status: MessageStatus,
 	Meta: MessageMeta,
-	Attachments: MessageAttachments,
-	Content: MessageContent,
-	Actions: MessageActions,
-	Cards: MessageCards,
 } as const;

@@ -105,7 +105,7 @@ export const UserMessage = memo(function UserMessage(props: UserMessageProps) {
 					) : null}
 					{hasActions ? (
 						<MessageLayout.Footer asChild>
-							<Message.Actions
+							<div
 								className={`flex-col items-end gap-0.5 transition-opacity duration-150 ${
 									actionsVisible || isPendingEdit || canSwitchBranch
 										? "pointer-events-auto opacity-100"
@@ -167,7 +167,7 @@ export const UserMessage = memo(function UserMessage(props: UserMessageProps) {
 										{relativeTime}
 									</div>
 								) : null}
-							</Message.Actions>
+							</div>
 						</MessageLayout.Footer>
 					) : null}
 				</MessageLayout.OutgoingContent>

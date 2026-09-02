@@ -152,9 +152,9 @@ function TeamFeedItem({
 					<MessageLayout.OutgoingContent>
 					{item.attachments.length > 0 ? (
 						<MessageLayout.BeforeBody asChild>
-							<Message.Attachments>
+							<div>
 								<TeamMessageAttachments attachments={item.attachments} markdown={markdown} />
-							</Message.Attachments>
+							</div>
 						</MessageLayout.BeforeBody>
 					) : null}
 					{item.text ? (
@@ -164,12 +164,12 @@ function TeamFeedItem({
 					) : null}
 					{item.text ? (
 						<MessageLayout.Footer asChild>
-							<Message.Actions className="h-6 items-center justify-end">
+							<div className="h-6 items-center justify-end">
 								<CopyButton
 									getText={() => item.text}
 									labels={{ copy: labels.copy, copied: labels.copied }}
 								/>
-							</Message.Actions>
+							</div>
 						</MessageLayout.Footer>
 					) : null}
 					</MessageLayout.OutgoingContent>
@@ -194,15 +194,13 @@ function TeamFeedItem({
 		<Message.Root pending={item.pending}>
 			<MessageLayout.Incoming aria-live={item.pending ? "polite" : undefined}>
 				<MessageLayout.Header>
-					<MessageLayout.HeaderLeading asChild>
-						<Message.Avatar>
-							<AgentAvatarView
-								name={item.member.name}
-								avatar={item.member.avatar}
-								blueprintId={item.member.blueprintId}
-								active={item.pending}
-							/>
-						</Message.Avatar>
+					<MessageLayout.HeaderLeading>
+						<AgentAvatarView
+							name={item.member.name}
+							avatar={item.member.avatar}
+							blueprintId={item.member.blueprintId}
+							active={item.pending}
+						/>
 					</MessageLayout.HeaderLeading>
 					<Message.Author>{item.member.name}</Message.Author>
 					{item.pending ? (
@@ -212,7 +210,7 @@ function TeamFeedItem({
 						</Message.Status>
 					) : null}
 				</MessageLayout.Header>
-				<Message.Content>
+				<div>
 					{item.pending && !item.text ? (
 						<div className="h-4 w-40 animate-pulse rounded bg-muted/60" />
 					) : (
@@ -223,15 +221,15 @@ function TeamFeedItem({
 							className={item.error ? "text-destructive" : "text-[14px] leading-[1.6]"}
 						/>
 					)}
-				</Message.Content>
+				</div>
 				{item.text ? (
 					<MessageLayout.Footer asChild>
-						<Message.Actions className="h-6">
+						<div className="h-6">
 							<CopyButton
 								getText={() => item.text}
 								labels={{ copy: labels.copy, copied: labels.copied }}
 							/>
-						</Message.Actions>
+						</div>
 					</MessageLayout.Footer>
 				) : null}
 			</MessageLayout.Incoming>

@@ -24,10 +24,6 @@ export interface MessageInputPrimitiveProps extends ComponentPropsWithoutRef<"di
 	readonly asChild?: boolean;
 }
 
-export interface MessageInputDecorationProps {
-	readonly children?: ReactNode;
-}
-
 export type MessageInputDropZoneProps = SessionDropZoneViewProps;
 
 /** Owns controlled message-input state; layout and abilities remain explicit children. */
@@ -84,21 +80,23 @@ export function MessageInputDropZone(
 	return <SessionDropZoneView {...props} />;
 }
 
-export const MessageInputContent = createMessageInputPart(
-	"Content",
-	"relative z-10 rounded-[inherit]",
-);
-export function MessageInputDecoration({
-	children,
-}: MessageInputDecorationProps): JSX.Element | null {
-	useMessageInputContext("Decoration");
-	if (children === undefined || children === null || children === false) return null;
-	return <>{children}</>;
-}
-export const MessageInputRouting = createMessageInputPart("Routing");
-export const MessageInputCommand = createMessageInputPart("Command");
-export const MessageInputAttachments = createMessageInputPart("Attachments");
-export const MessageInputEditor = createMessageInputPart("Editor");
+/** Stacking and radius boundary for caller-selected input abilities. */
+export const MessageInputContent = forwardRef<
+	HTMLDivElement,
+	MessageInputPrimitiveProps
+>(function MessageInputContent(
+	{ asChild = false, className, ...props },
+	forwardedRef,
+) {
+	const Comp = asChild ? Slot.Root : "div";
+	return (
+		<Comp
+			ref={forwardedRef}
+			className={cn("relative z-10 rounded-[inherit]", className)}
+			{...props}
+		/>
+	);
+});
 
 export const MessageInputToolbar = forwardRef<
 	HTMLDivElement,
@@ -107,7 +105,6 @@ export const MessageInputToolbar = forwardRef<
 	{ asChild = false, children, className, ...props },
 	forwardedRef,
 ) {
-	useMessageInputContext("Toolbar");
 	const Comp = asChild ? Slot.Root : "div";
 	return (
 		<Comp
@@ -131,7 +128,6 @@ export const MessageInputToolbarLeading = forwardRef<
 	{ asChild = false, children, className, ...props },
 	forwardedRef,
 ) {
-	useMessageInputContext("ToolbarLeading");
 	const surface = useThemeSurface("chat.inputBarToolbarLeft");
 	const Comp = asChild ? Slot.Root : "div";
 	return (
@@ -158,7 +154,6 @@ export const MessageInputToolbarTrailing = forwardRef<
 	{ asChild = false, children, className, ...props },
 	forwardedRef,
 ) {
-	useMessageInputContext("ToolbarTrailing");
 	const surface = useThemeSurface("chat.inputBarToolbarRight");
 	const Comp = asChild ? Slot.Root : "div";
 	return (
@@ -178,27 +173,6 @@ export const MessageInputToolbarTrailing = forwardRef<
 	);
 });
 
-function createMessageInputPart(name: string, baseClassName?: string) {
-	return forwardRef<HTMLDivElement, MessageInputPrimitiveProps>(function MessageInputPart(
-		{ asChild = false, children, className, ...props },
-		forwardedRef,
-	) {
-		useMessageInputContext(name);
-		if (children === undefined || children === null || children === false) return null;
-		const Comp = asChild ? Slot.Root : "div";
-		return (
-			<Comp
-				ref={forwardedRef}
-				className={cn(baseClassName, className)}
-				data-message-input-part={name.toLowerCase()}
-				{...props}
-			>
-				{children}
-			</Comp>
-		);
-	});
-}
-
 function useMessageInputContext(part: string): MessageInputContextValue {
 	const context = useContext(MessageInputContext);
 	if (!context) {
@@ -212,12 +186,7 @@ export const MessageInput = {
 	Root: MessageInputRoot,
 	Surface: MessageInputSurface,
 	DropZone: MessageInputDropZone,
-	Decoration: MessageInputDecoration,
 	Content: MessageInputContent,
-	Routing: MessageInputRouting,
-	Command: MessageInputCommand,
-	Attachments: MessageInputAttachments,
-	Editor: MessageInputEditor,
 	Toolbar: MessageInputToolbar,
 	ToolbarLeading: MessageInputToolbarLeading,
 	ToolbarTrailing: MessageInputToolbarTrailing,

@@ -1,5 +1,4 @@
 import type { ChatMessage, RegisteredCardRenderer } from "@shared/store/atoms";
-import { MessageCardsHostView } from "@vetta/theme-ui/chat";
 import {
 	type RawCard,
 	useMessageCardsHostModel,
@@ -30,9 +29,5 @@ function ResolvedMessageCards({
 }): JSX.Element | null {
 	const model = useMessageCardsHostModel(message, rawCards, renderers);
 	if (!model) return null;
-	return (
-		<MessageCardsHostView>
-			<MessageCards cards={model.cards} message={model.convMessage} />
-		</MessageCardsHostView>
-	);
+	return <MessageCards cards={model.cards} message={model.convMessage} />;
 }

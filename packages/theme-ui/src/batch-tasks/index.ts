@@ -25,8 +25,6 @@ export type {
 	BatchProjectNotificationFieldViewProps,
 } from "./BatchProjectNotificationFieldView";
 export { BatchProjectNotificationFieldView } from "./BatchProjectNotificationFieldView";
-export type { BatchProjectPromptFieldViewProps } from "./BatchProjectPromptFieldView";
-export { BatchProjectPromptFieldView } from "./BatchProjectPromptFieldView";
 export type {
 	BatchProjectRuntimeFieldsLabels,
 	BatchProjectRuntimeFieldsViewProps,

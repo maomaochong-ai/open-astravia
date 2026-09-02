@@ -1,8 +1,11 @@
 import { cn } from "@vetta/ui";
 import { Slot } from "radix-ui";
-import { forwardRef } from "react";
-import type { MessagePrimitiveProps } from "./MessageView";
+import { forwardRef, type ComponentPropsWithoutRef } from "react";
 import { useMessageRootContext } from "./MessageView";
+
+interface MessageVisualPrimitiveProps extends ComponentPropsWithoutRef<"div"> {
+	readonly asChild?: boolean;
+}
 
 export const MessageVisualOutgoingBubble = createMessageVisual(
 	"OutgoingBubble",
@@ -14,7 +17,7 @@ export const MessageVisualEventBubble = createMessageVisual(
 );
 
 function createMessageVisual(name: string, baseClassName: string) {
-	return forwardRef<HTMLDivElement, MessagePrimitiveProps>(function MessageVisualPart(
+	return forwardRef<HTMLDivElement, MessageVisualPrimitiveProps>(function MessageVisualPart(
 		{ asChild = false, children, className, ...props },
 		forwardedRef,
 	) {

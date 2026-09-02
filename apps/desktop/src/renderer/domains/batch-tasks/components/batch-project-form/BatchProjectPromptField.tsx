@@ -1,6 +1,5 @@
 import { SkillPromptArea } from "@domains/chat/components/SkillPromptArea";
 import type { SelectedSkill } from "@shared/store/atoms";
-import { BatchProjectPromptFieldView } from "@vetta/theme-ui/batch-tasks";
 import { useBatchProjectPromptFieldModel } from "../../hooks/useBatchProjectPromptFieldModel";
 
 export function BatchProjectPromptField({
@@ -19,15 +18,13 @@ export function BatchProjectPromptField({
 	const model = useBatchProjectPromptFieldModel();
 
 	return (
-		<BatchProjectPromptFieldView>
-			<SkillPromptArea
-				prompt={prompt}
-				onPromptChange={onPromptChange}
-				skill={skill}
-				onSkillChange={onSkillChange}
-				placeholder={model.placeholder}
-				minHeight={promptMinHeight}
-			/>
-		</BatchProjectPromptFieldView>
+		<SkillPromptArea
+			prompt={prompt}
+			onPromptChange={onPromptChange}
+			skill={skill}
+			onSkillChange={onSkillChange}
+			placeholder={model.placeholder}
+			minHeight={promptMinHeight}
+		/>
 	);
 }

@@ -9,15 +9,13 @@ vi.mock("@vetta/theme-sdk/appearance", () => ({ useThemeSurface: () => undefined
 afterEach(cleanup);
 
 describe("MessageInput compound primitives", () => {
-	it("composes, removes, and reorders abilities through JSX children", () => {
+	it("composes caller-owned abilities inside shared layout primitives", () => {
 		render(
 			<MessageInput.Root focused topConnected>
 				<MessageInput.Surface data-testid="surface">
 					<MessageInput.Content>
-						<MessageInput.Routing>Members</MessageInput.Routing>
-						<MessageInput.Editor asChild>
-							<section data-testid="editor">Editor</section>
-						</MessageInput.Editor>
+						<nav>Members</nav>
+						<section data-testid="editor">Editor</section>
 						<MessageInput.Toolbar>
 							<MessageInput.ToolbarLeading>
 								<span>Attach</span>
@@ -36,11 +34,24 @@ describe("MessageInput compound primitives", () => {
 		expect(surface.className).toContain("rounded-b-[20px]");
 		expect(surface.className).toContain("border-primary/20");
 		expect(screen.getByTestId("editor").tagName).toBe("SECTION");
-		expect(screen.queryByText("Attachments")).toBeNull();
+		expect(screen.getByText("Members").tagName).toBe("NAV");
 		expect(
 			screen.getByText("Attach").compareDocumentPosition(screen.getByText("Hint")) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).not.toBe(0);
+	});
+
+	it("allows stateless layout parts to be reused without a nominal Root guard", () => {
+		render(
+			<MessageInput.Content asChild>
+				<section data-testid="content">
+					<MessageInput.Toolbar>Actions</MessageInput.Toolbar>
+				</section>
+			</MessageInput.Content>,
+		);
+
+		expect(screen.getByTestId("content").className).toContain("rounded-[inherit]");
+		expect(screen.getByText("Actions").className).toContain("justify-between");
 	});
 
 	it("merges Surface into the optional DropZone DOM node with asChild", () => {
@@ -74,4 +85,3 @@ describe("MessageInput compound primitives", () => {
 		);
 	});
 });
-

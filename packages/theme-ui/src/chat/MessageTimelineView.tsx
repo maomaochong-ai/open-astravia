@@ -183,7 +183,6 @@ export const MessageTimelineCount = createSpanPrimitive(
 	"MessageTimeline.Count",
 	"text-[11px] text-muted-foreground/50",
 );
-export const MessageTimelineSearch = createPrimitive("MessageTimeline.Search", "");
 export const MessageTimelineBody = createPrimitive(
 	"MessageTimeline.Body",
 	"min-h-0 flex-1 px-1 pb-1",
@@ -254,7 +253,6 @@ export const MessageTimeline = {
 	Title: MessageTimelineTitle,
 	Count: MessageTimelineCount,
 	Close: MessageTimelineClose,
-	Search: MessageTimelineSearch,
 	Body: MessageTimelineBody,
 	Empty: MessageTimelineEmpty,
 	Entry: MessageTimelineEntry,

@@ -134,71 +134,63 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 								...(model.slashVisible ? { borderTopColor: "transparent" } : null),
 							}}
 						>
-							<MessageInput.Decoration>
-								<ThemedInputBarBackground />
-							</MessageInput.Decoration>
+							<ThemedInputBarBackground />
 							<MessageInput.Content className={classNames?.cardContent}>
-								<MessageInput.Command>
-									<PerfSendProfiler id="ib:CommandPanel">
-										<CommandPanel
-											open={model.slashOpen}
-											onClose={model.actions.handleSlashClose}
-											onSelect={model.actions.handleSlashSelect}
-											onSelectConnector={model.actions.handleConnectorSelect}
-											filter={model.slashFilter}
-											cwd={model.effectiveCwd || undefined}
-											className={model.isFocused ? "border-primary/20" : undefined}
-										/>
-									</PerfSendProfiler>
-								</MessageInput.Command>
+								<PerfSendProfiler id="ib:CommandPanel">
+									<CommandPanel
+										open={model.slashOpen}
+										onClose={model.actions.handleSlashClose}
+										onSelect={model.actions.handleSlashSelect}
+										onSelectConnector={model.actions.handleConnectorSelect}
+										filter={model.slashFilter}
+										cwd={model.effectiveCwd || undefined}
+										className={model.isFocused ? "border-primary/20" : undefined}
+									/>
+								</PerfSendProfiler>
 
 								{/*
 								 * 顶部附件区只剩「不是一个词」的东西：重编辑提示、Appshot 复合卡片、
 								 * 插件上下文、场景胶囊。文件 / 图片 / skill 都已进入文本流。
 								 */}
-								<MessageInput.Attachments>
-									<InputBarAttachmentPreview
-										open={model.hasCapsules}
-										renderContent={renderCapsules}
-										className={classNames?.capsules}
-										pendingMessageEdit={model.pendingMessageEdit}
-										pendingEditHint={model.pendingEditHint}
-										cancelPendingEditLabel={model.cancelPendingEditLabel}
-										appshotAttachment={model.appshotAttachment}
-										images={model.imageAttachments}
-										removeImageLabel={model.labels.capsule.removeImage}
-										onCancelPendingEdit={model.actions.cancelPendingEdit}
-										onRemoveAppshot={model.actions.removeAppshot}
-										onOpenImagePreview={model.actions.openImagePreview}
-										onRemoveImage={model.actions.removeImage}
-									/>
-								</MessageInput.Attachments>
+								<InputBarAttachmentPreview
+									open={model.hasCapsules}
+									renderContent={renderCapsules}
+									className={classNames?.capsules}
+									pendingMessageEdit={model.pendingMessageEdit}
+									pendingEditHint={model.pendingEditHint}
+									cancelPendingEditLabel={model.cancelPendingEditLabel}
+									appshotAttachment={model.appshotAttachment}
+									images={model.imageAttachments}
+									removeImageLabel={model.labels.capsule.removeImage}
+									onCancelPendingEdit={model.actions.cancelPendingEdit}
+									onRemoveAppshot={model.actions.removeAppshot}
+									onOpenImagePreview={model.actions.openImagePreview}
+									onRemoveImage={model.actions.removeImage}
+								/>
 
-								<MessageInput.Editor>
-									<div
-										className={["px-4 pb-1 pt-3", classNames?.editorWrap]
-											.filter(Boolean)
-											.join(" ")}
-									>
-										<div className="relative">
-											<PerfSendProfiler id="ib:InputEditor">
-												<InputEditor
-													ariaLabel={model.placeholderTexts[0]}
-													editable={model.hasSession}
-													onContextMenu={model.actions.handleContextMenu}
-													onEnter={model.actions.handleEnter}
-													onFocusChange={model.actions.setFocused}
-													onTriggerChange={model.actions.handleTriggerChange}
-												/>
-											</PerfSendProfiler>
-											<ThemedInputBarPlaceholder
-												texts={model.placeholderTexts}
-												visible={model.showPlaceholder}
-												rotating={model.placeholderRotating}
+								<div
+									className={["px-4 pb-1 pt-3", classNames?.editorWrap]
+										.filter(Boolean)
+										.join(" ")}
+								>
+									<div className="relative">
+										<PerfSendProfiler id="ib:InputEditor">
+											<InputEditor
+												ariaLabel={model.placeholderTexts[0]}
+												editable={model.hasSession}
+												onContextMenu={model.actions.handleContextMenu}
+												onEnter={model.actions.handleEnter}
+												onFocusChange={model.actions.setFocused}
+												onTriggerChange={model.actions.handleTriggerChange}
 											/>
-										</div>
+										</PerfSendProfiler>
+										<ThemedInputBarPlaceholder
+											texts={model.placeholderTexts}
+											visible={model.showPlaceholder}
+											rotating={model.placeholderRotating}
+										/>
 									</div>
-								</MessageInput.Editor>
+								</div>
 
 								<PerfSendProfiler id="ib:Toolbar">
 									<MessageInput.Toolbar className={classNames?.toolbar}>

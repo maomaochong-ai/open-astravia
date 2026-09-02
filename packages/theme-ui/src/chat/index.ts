@@ -176,8 +176,6 @@ export {
 	ForkOriginBannerView,
 	ModelSwitchBoundaryView,
 } from "./MessageBoundaryViews";
-export type { MessageCardsHostViewProps } from "./MessageCardsHostView";
-export { MessageCardsHostView } from "./MessageCardsHostView";
 export type {
 	MessageCardsTabItem,
 	MessageCardsViewLabels,
@@ -211,21 +209,15 @@ export {
 	MessageFeedVirtualList,
 } from "./MessageFeedView";
 export type {
-	MessageInputDecorationProps,
 	MessageInputDropZoneProps,
 	MessageInputPrimitiveProps,
 	MessageInputRootProps,
 } from "./MessageInputView";
 export {
 	MessageInput,
-	MessageInputAttachments,
-	MessageInputCommand,
 	MessageInputContent,
-	MessageInputDecoration,
 	MessageInputDropZone,
-	MessageInputEditor,
 	MessageInputRoot,
-	MessageInputRouting,
 	MessageInputSurface,
 	MessageInputToolbar,
 	MessageInputToolbarLeading,
@@ -284,24 +276,15 @@ export {
 	MessageTimelinePanelPositioner,
 	MessageTimelineRail,
 	MessageTimelineRoot,
-	MessageTimelineSearch,
 	MessageTimelineTick,
 	MessageTimelineTickPreview,
 	MessageTimelineTitle,
 	MessageTimelineTrigger,
 } from "./MessageTimelineView";
-export type {
-	MessagePrimitiveProps,
-	MessageRootProps,
-} from "./MessageView";
+export type { MessageRootProps, MessageTextProps } from "./MessageView";
 export {
 	Message,
-	MessageActions,
-	MessageAttachments,
 	MessageAuthor,
-	MessageAvatar,
-	MessageCards,
-	MessageContent,
 	MessageMeta,
 	MessageRoot,
 	MessageStatus,

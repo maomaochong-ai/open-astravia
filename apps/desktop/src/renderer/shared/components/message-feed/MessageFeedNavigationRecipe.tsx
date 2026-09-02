@@ -96,16 +96,14 @@ function MessageFeedNavigationRecipeContent({
 										<MessageTimeline.Close aria-label={labels.close} title={labels.close} />
 									</MessageFeedNavigation.Close>
 								</MessageTimeline.PanelHeading>
-								<MessageTimeline.Search asChild>
-									<MessageFeedNavigation.Search asChild>
-										<Input
-											type="search"
-											placeholder={labels.searchPlaceholder}
-											aria-label={labels.searchLabel}
-											className="h-7 text-[12px]"
-										/>
-									</MessageFeedNavigation.Search>
-								</MessageTimeline.Search>
+								<MessageFeedNavigation.Search asChild>
+									<Input
+										type="search"
+										placeholder={labels.searchPlaceholder}
+										aria-label={labels.searchLabel}
+										className="h-7 text-[12px]"
+									/>
+								</MessageFeedNavigation.Search>
 							</MessageTimeline.PanelHeader>
 							<MessageTimeline.Body>
 								{visibleItems.length > 0 ? (

@@ -155,7 +155,7 @@ describe("MessageFeedNavigation compound primitives", () => {
 });
 
 describe("Message compound primitives", () => {
-	it("lets a scenario combine semantic abilities inside an explicit layout", () => {
+	it("combines semantic leaves with caller-owned content inside an explicit layout", () => {
 		render(
 			<Message.Root>
 				<MessageLayout.Incoming>
@@ -163,42 +163,44 @@ describe("Message compound primitives", () => {
 						<Message.Author>Reviewer</Message.Author>
 						<Message.Status>Working</Message.Status>
 					</MessageLayout.Header>
-					<Message.Content>Review result</Message.Content>
+					<section>Review result</section>
 					<MessageLayout.Footer asChild>
-						<Message.Actions>Copy</Message.Actions>
+						<div>Copy</div>
 					</MessageLayout.Footer>
 				</MessageLayout.Incoming>
 			</Message.Root>,
 		);
 
-		expect(screen.getByText("Reviewer")).toBeTruthy();
+		expect(screen.getByText("Reviewer").tagName).toBe("SPAN");
+		expect(screen.getByText("Reviewer").className).toContain("font-semibold");
+		expect(screen.getByText("Working").className).toContain("inline-flex");
 		expect(screen.getByText("Review result")).toBeTruthy();
 		expect(screen.getByText("Copy").className).toContain("mt-2");
-		expect(document.querySelector("[data-message-part='attachments']")).toBeNull();
 	});
 
-	it("lets the same layout position host different semantic content without a feature prop", () => {
+	it("lets the same layout position host arbitrary content without a feature prop", () => {
 		const { rerender } = render(
 			<Message.Root>
 				<MessageLayout.Incoming>
 					<MessageLayout.Footer asChild>
-						<Message.Actions>Approve</Message.Actions>
+						<button type="button">Approve</button>
 					</MessageLayout.Footer>
 				</MessageLayout.Incoming>
 			</Message.Root>,
 		);
 
-		expect(screen.getByText("Approve").getAttribute("data-message-part")).toBe("actions");
+		expect(screen.getByRole("button", { name: "Approve" }).className).toContain("mt-2");
 		rerender(
 			<Message.Root>
 				<MessageLayout.Incoming>
 					<MessageLayout.Footer asChild>
-						<Message.Cards>Tool result</Message.Cards>
+						<aside>Tool result</aside>
 					</MessageLayout.Footer>
 				</MessageLayout.Incoming>
 			</Message.Root>,
 		);
-		expect(screen.getByText("Tool result").getAttribute("data-message-part")).toBe("cards");
+		expect(screen.getByText("Tool result").tagName).toBe("ASIDE");
+		expect(screen.getByText("Tool result").className).toContain("mt-2");
 	});
 
 	it("projects message state into a caller-owned layout host", () => {
@@ -217,9 +219,9 @@ describe("Message compound primitives", () => {
 		expect(root.getAttribute("data-pending")).toBe("true");
 	});
 
-	it("rejects a semantic part without its owning state boundary", () => {
-		expect(() => render(<Message.Content>orphan</Message.Content>)).toThrow(
-			"Message.Content must be used within Message.Root",
+	it("rejects a state-consuming visual without its owning state boundary", () => {
+		expect(() => render(<MessageVisual.OutgoingBubble>orphan</MessageVisual.OutgoingBubble>)).toThrow(
+			"MessageVisual.OutgoingBubble must be used within Message.Root",
 		);
 	});
 
