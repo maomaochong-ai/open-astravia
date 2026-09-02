@@ -37,8 +37,15 @@ export type {
 } from "./contracts.js";
 export {
 	applyConversationDocumentCommand,
+	type ConversationAgentAuthorReference,
+	type ConversationAgentMessageRecord,
+	type ConversationAuthorReference,
 	type ConversationDocument,
+	type ConversationMessageRecord,
+	type ConversationUserAuthorReference,
+	type ConversationUserMessageRecord,
 	createEmptyConversationDocument,
+	isConversationMessageRecord,
 	selectConversationDocumentEntries,
 } from "./conversation/index.js";
 export { isSessionError, RUNTIME_ERROR_CODES, runtimeError } from "./errors.js";

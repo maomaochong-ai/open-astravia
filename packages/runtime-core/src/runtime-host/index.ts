@@ -166,6 +166,7 @@ export type {
 	RuntimeSessionContextDeliveryMode,
 	RuntimeSessionContextUsage,
 	RuntimeSessionContextUsageView,
+	RuntimeSessionConversationController,
 	RuntimeSessionConversationView,
 	RuntimeSessionCorePorts,
 	RuntimeSessionEventStream,

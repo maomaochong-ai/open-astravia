@@ -8,6 +8,35 @@ import {
 } from "../../src/conversation/index.js";
 
 describe("ConversationDocument commands", () => {
+	it("appends an attributed user message as an ordinary conversation entry", () => {
+		const source = document();
+		const result = applyConversationDocumentCommand(source, {
+			type: "message.append",
+			record: {
+				kind: "user",
+				id: "user-coordination",
+				turnId: "turn-coordination",
+				timestamp: 10,
+				author: { kind: "user", id: "local-user" },
+				message: { role: "user", content: "coordinate this", timestamp: 10 },
+				attachments: [{ kind: "file", path: "C:/workspace/brief.md" }],
+			},
+		});
+
+		expect(result.leafId).toBe("user-coordination");
+		expect(result.document.entries.at(-1)).toEqual({
+			type: "message",
+			kind: "user",
+			id: "user-coordination",
+			parentId: source.activeLeafId,
+			timestamp: new Date(10).toISOString(),
+			turnId: "turn-coordination",
+			author: { kind: "user", id: "local-user" },
+			message: { role: "user", content: "coordinate this", timestamp: 10 },
+			attachments: [{ kind: "file", path: "C:/workspace/brief.md" }],
+		});
+	});
+
 	it("switches to the newest tip below the selected branch", () => {
 		const result = applyConversationDocumentCommand(document(), {
 			type: "branch.select",

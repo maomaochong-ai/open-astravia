@@ -9,7 +9,6 @@ const DEFAULT_SESSION_ROOT = join(getVettaHomePath(), "desktop-app", "agent-team
 const log = getAppLogger("agent-team-session-storage");
 
 export interface TeamSessionRepository {
-	memberSessionDirectory(teamSessionId: string, memberId: string): string;
 	read(id: string): Promise<TeamSessionDocument>;
 	write(session: TeamSessionDocument): Promise<void>;
 }
@@ -27,18 +26,7 @@ export function createTeamSessionRepository(rootDirectory = DEFAULT_SESSION_ROOT
 	}
 
 	return {
-		memberSessionDirectory: (teamSessionId, memberId) =>
-			join(rootDirectory, teamSessionId, `member-${encodePathComponent(memberId)}`),
 		read: (id) => store(id).read(),
 		write: (session) => store(session.id).write(session),
 	};
-}
-
-/**
- * Team member IDs are opaque domain identifiers (the built-in IDs contain `:`).
- * Encode them before using them as directory names because Windows rejects
- * characters such as `:` and path separators in a directory component.
- */
-function encodePathComponent(value: string): string {
-	return Buffer.from(value, "utf8").toString("base64url");
 }

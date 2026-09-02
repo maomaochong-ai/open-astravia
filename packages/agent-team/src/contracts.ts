@@ -1,4 +1,5 @@
 import type { PromptAttachmentRef } from "@vetta/runtime-core";
+import type { ConversationAuthorReference } from "@vetta/runtime-core/conversation";
 
 export const AGENT_TEAM_SCHEMA_VERSION = 1 as const;
 
@@ -77,6 +78,11 @@ export interface TeamMemberRuntimeState {
 	readonly deliveredEventIds: readonly string[];
 }
 
+export interface TeamCoordinationRuntimeState {
+	readonly sessionId: string;
+	readonly sessionPath: string;
+}
+
 export type TeamFeedEvent =
 	| {
 			readonly type: "user-message";
@@ -123,6 +129,9 @@ export interface TeamSessionDocument {
 	readonly memberHandles: Readonly<Record<string, string>>;
 	readonly createdAt: number;
 	readonly updatedAt: number;
+	/** Ordinary Conversation that stores the public Team timeline. Optional only for legacy sessions. */
+	readonly coordinationRuntime?: TeamCoordinationRuntimeState;
+	/** @deprecated Compatibility projection for schema-v1 sessions. New messages are also written to coordinationRuntime. */
 	readonly events: readonly TeamFeedEvent[];
 	readonly memberRuntime: Readonly<Record<string, TeamMemberRuntimeState>>;
 }
@@ -258,7 +267,7 @@ export type TeamSessionStreamEvent =
 			requestId: string;
 			turnId: string;
 			seq: number;
-			phase: "final" | "error" | "aborted";
+			phase: "final" | "waiting" | "attention-required" | "error" | "aborted";
 			error?: string;
 			timestamp: number;
 	  }
@@ -274,7 +283,13 @@ export interface TeamSharedContextRecord {
 	readonly type: "agent-team.user-message.v1" | "agent-team.member-result.v1" | "agent-team.member-delegation.v1";
 	readonly text: string;
 	readonly timestamp: number;
-	readonly metadata: { readonly teamSessionId: string; readonly sourceMemberId?: string; readonly requestId: string };
+	readonly artifactRefs?: readonly PromptAttachmentRef[];
+	readonly metadata: {
+		readonly teamSessionId: string;
+		readonly sourceMemberId?: string;
+		readonly author?: ConversationAuthorReference;
+		readonly requestId: string;
+	};
 }
 
 export interface AgentBlueprint {

@@ -25,6 +25,7 @@ const session: TeamSessionDocument = {
 };
 const member: TeamMemberViewModel = {
 	id: "leader",
+	kind: "agent",
 	name: "Vetta",
 	handle: "vetta",
 	blueprintId: "leader",
@@ -68,10 +69,13 @@ describe("team chat stream state", () => {
 		});
 		expect(items).toEqual([
 			expect.objectContaining({
-				kind: "user",
-				text: "",
-				pending: false,
-				attachments: [{ kind: "file", path: "C:/workspace/notes.txt" }],
+				kind: "message",
+				message: expect.objectContaining({
+					kind: "user",
+					text: "",
+					deliveryPhase: "completed",
+					attachments: [{ kind: "file", path: "C:/workspace/notes.txt" }],
+				}),
 			}),
 		]);
 	});
@@ -189,8 +193,11 @@ describe("team chat stream state", () => {
 			members: [member],
 			labels: { delegation: (from, to) => `${from} -> ${to}`, unknownMember: "Unknown" },
 		});
-		expect(items.filter((item) => item.kind === "user")).toHaveLength(1);
-		expect(items.at(-1)).toMatchObject({ kind: "member", text: "partial", pending: true });
+		expect(items.filter((item) => item.kind === "message" && item.message.kind === "user")).toHaveLength(1);
+		expect(items.at(-1)).toMatchObject({
+			kind: "message",
+			message: { kind: "agent", phase: "streaming", blocks: [{ text: "partial" }] },
+		});
 	});
 
 	it("groups every member response and delegation for one request into a reusable navigation turn", () => {

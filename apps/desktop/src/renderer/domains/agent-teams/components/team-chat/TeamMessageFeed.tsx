@@ -50,7 +50,8 @@ export interface TeamMessageFeedProps {
 	};
 }
 
-const shouldFollowUserItem = (item: TeamTimelineItemViewModel): boolean => item.kind === "user";
+const shouldFollowUserItem = (item: TeamTimelineItemViewModel): boolean =>
+	item.kind === "message" && item.message.kind === "user";
 
 export function TeamMessageFeed({
 	feedKey,
@@ -113,7 +114,7 @@ export function TeamMessageFeed({
 							<MessageFeedLayout.List />
 							{(item) => (
 								<div className="mx-auto w-full max-w-3xl px-4 pb-5">
-									<TeamFeedItem item={item} markdown={markdown} labels={labels} />
+									<TeamFeedItem item={item} members={members} markdown={markdown} labels={labels} />
 								</div>
 							)}
 						</MessageFeed.VirtualList>
@@ -138,72 +139,89 @@ export function TeamMessageFeed({
 
 function TeamFeedItem({
 	item,
+	members,
 	markdown,
 	labels,
 }: {
 	readonly item: TeamTimelineItemViewModel;
+	readonly members: readonly TeamMemberViewModel[];
 	readonly markdown: RendererMarkdownModel;
 	readonly labels: TeamMessageFeedProps["labels"];
 }): JSX.Element {
-	if (item.kind === "user") {
-		return (
-			<Message.Root pending={item.pending}>
-				<MessageLayout.Outgoing>
-					<MessageLayout.OutgoingContent>
-					{item.attachments.length > 0 ? (
-						<MessageLayout.BeforeBody asChild>
-							<div>
-								<TeamMessageAttachments attachments={item.attachments} markdown={markdown} />
-							</div>
-						</MessageLayout.BeforeBody>
-					) : null}
-					{item.text ? (
-						<MessageVisual.OutgoingBubble>
-							<TextBlockView {...markdown} text={item.text} />
-						</MessageVisual.OutgoingBubble>
-					) : null}
-					{item.text ? (
-						<MessageLayout.Footer asChild>
-							<div className="h-6 items-center justify-end">
-								<CopyButton
-									getText={() => item.text}
-									labels={{ copy: labels.copy, copied: labels.copied }}
-								/>
-							</div>
-						</MessageLayout.Footer>
-					) : null}
-					</MessageLayout.OutgoingContent>
-				</MessageLayout.Outgoing>
-			</Message.Root>
-		);
-	}
-	if (item.kind === "delegation") {
+	if (item.kind === "event") {
 		return (
 			<Message.Root>
 				<MessageLayout.Event>
-				<MessageVisual.EventBubble>
-					<span className="icon-[solar--forward-linear] h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-					<span className="truncate">{item.label}</span>
-				</MessageVisual.EventBubble>
+					<MessageVisual.EventBubble>
+						<span className="icon-[solar--forward-linear] h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+						<span className="truncate">{item.event.label}</span>
+					</MessageVisual.EventBubble>
 				</MessageLayout.Event>
 			</Message.Root>
 		);
 	}
 
+	const conversationMessage = item.message;
+	if (conversationMessage.kind === "user") {
+		const pending = conversationMessage.deliveryPhase === "pending";
+		return (
+			<Message.Root pending={pending}>
+				<MessageLayout.Outgoing>
+					<MessageLayout.OutgoingContent>
+						{conversationMessage.attachments?.length ? (
+							<MessageLayout.BeforeBody>
+								<TeamMessageAttachments attachments={conversationMessage.attachments} markdown={markdown} />
+							</MessageLayout.BeforeBody>
+						) : null}
+						{conversationMessage.text ? (
+							<MessageVisual.OutgoingBubble>
+								<TextBlockView {...markdown} text={conversationMessage.text} />
+							</MessageVisual.OutgoingBubble>
+						) : null}
+						{conversationMessage.text ? (
+							<MessageLayout.Footer>
+								<CopyButton
+									getText={() => conversationMessage.text}
+									labels={{ copy: labels.copy, copied: labels.copied }}
+								/>
+							</MessageLayout.Footer>
+						) : null}
+					</MessageLayout.OutgoingContent>
+				</MessageLayout.Outgoing>
+			</Message.Root>
+		);
+	}
+
+	const member =
+		members.find((candidate) => candidate.id === conversationMessage.authorId) ??
+		({
+			id: conversationMessage.authorId,
+			kind: "agent",
+			name: conversationMessage.authorId,
+			handle: conversationMessage.authorId,
+			blueprintId: "leader",
+			selected: false,
+			status: "idle",
+		} satisfies TeamMemberViewModel);
+	const text = conversationMessage.blocks
+		.flatMap((block) => (block.type === "text" ? [block.text] : []))
+		.join("\n");
+	const pending = conversationMessage.phase === "pending" || conversationMessage.phase === "streaming";
+	const failed = conversationMessage.phase === "failed";
 	return (
-		<Message.Root pending={item.pending}>
-			<MessageLayout.Incoming aria-live={item.pending ? "polite" : undefined}>
+		<Message.Root pending={pending}>
+			<MessageLayout.Incoming aria-live={pending ? "polite" : undefined}>
 				<MessageLayout.Header>
 					<MessageLayout.HeaderLeading>
 						<AgentAvatarView
-							name={item.member.name}
-							avatar={item.member.avatar}
-							blueprintId={item.member.blueprintId}
-							active={item.pending}
+							name={member.name}
+							avatar={member.avatar}
+							blueprintId={member.blueprintId}
+							active={pending}
 						/>
 					</MessageLayout.HeaderLeading>
-					<Message.Author>{item.member.name}</Message.Author>
-					{item.pending ? (
+					<Message.Author>{member.name}</Message.Author>
+					{pending ? (
 						<Message.Status className="text-[11px] text-muted-foreground/70">
 							<span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary/60" />
 							{labels.sending}
@@ -211,25 +229,20 @@ function TeamFeedItem({
 					) : null}
 				</MessageLayout.Header>
 				<div>
-					{item.pending && !item.text ? (
+					{pending && !text ? (
 						<div className="h-4 w-40 animate-pulse rounded bg-muted/60" />
 					) : (
 						<TextBlockView
 							{...markdown}
-							text={item.text || item.error || "…"}
-							isStreamingTail={item.pending}
-							className={item.error ? "text-destructive" : "text-[14px] leading-[1.6]"}
+							text={text || "…"}
+							isStreamingTail={pending}
+							className={failed ? "text-destructive" : "text-[14px] leading-[1.6]"}
 						/>
 					)}
 				</div>
-				{item.text ? (
-					<MessageLayout.Footer asChild>
-						<div className="h-6">
-							<CopyButton
-								getText={() => item.text}
-								labels={{ copy: labels.copy, copied: labels.copied }}
-							/>
-						</div>
+				{text ? (
+					<MessageLayout.Footer>
+						<CopyButton getText={() => text} labels={{ copy: labels.copy, copied: labels.copied }} />
 					</MessageLayout.Footer>
 				) : null}
 			</MessageLayout.Incoming>

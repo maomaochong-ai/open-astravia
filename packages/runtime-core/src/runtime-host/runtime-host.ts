@@ -16,10 +16,12 @@ import type {
 	SettingsPatch,
 } from "../contracts.js";
 import type { ConversationDocument } from "../conversation/document.js";
+import type { ConversationMessageRecord } from "../conversation/message-contract.js";
 import { runtimeError } from "../errors.js";
 import type { RuntimeToolDefinition, SessionContextRecord } from "../kernel/contracts.js";
 import {
 	createRuntimeObservationPublisher,
+	type RuntimeObservationContext,
 	type RuntimeObservationPublisher,
 	runtimeObservationFailure,
 } from "../observation/index.js";
@@ -266,6 +268,11 @@ export class RuntimeHost implements SessionFacade {
 	 */
 	async createSession(config: SessionConfig = {}): Promise<{ sessionId: string }> {
 		return this.sessionLifecycle.createSession(config);
+	}
+
+	/** Creates a failure-isolated publisher for product orchestration built on this host. */
+	createObservationScope(context: RuntimeObservationContext): RuntimeObservationPublisher {
+		return this.observations.scope(context);
 	}
 
 	/** 创建 Session 并直接返回 scoped API，适合最小化 SDK 接入样板代码。 */
@@ -519,6 +526,13 @@ export class RuntimeHost implements SessionFacade {
 
 	appendSessionMetadataEntry(sessionId: string, customType: string, data?: unknown): Promise<void> {
 		return this.sessionOperations.appendSessionMetadataEntry(sessionId, customType, data);
+	}
+
+	appendConversationMessage(
+		sessionId: string,
+		record: ConversationMessageRecord,
+	): Promise<{ readonly entryId: string }> {
+		return this.sessionOperations.appendConversationMessage(sessionId, record);
 	}
 
 	setSessionLabel(sessionId: string, entryId: string, label: string | undefined): Promise<void> {

@@ -1,4 +1,6 @@
+import type { ConversationMessageRecord } from "@vetta/runtime-core/conversation";
 import type { TeamDefinition, TeamFeedEvent, TeamSharedContextRecord } from "./contracts.js";
+import { projectPublicTeamContext } from "./public-context.js";
 
 export interface TeamOrchestrationPolicy {
 	readonly id: string;
@@ -12,6 +14,8 @@ export interface TeamContextProjectionPolicy {
 	readonly id: string;
 	project(input: {
 		readonly session: { readonly id: string; readonly events: readonly TeamFeedEvent[] };
+		/** Ordinary coordination messages; legacy events remain a migration fallback. */
+		readonly messages?: readonly ConversationMessageRecord[];
 		readonly targetMemberId: string;
 		readonly deliveredEventIds: ReadonlySet<string>;
 		readonly currentRequestId?: string;
@@ -43,37 +47,7 @@ const PUBLIC_RESULTS_ORCHESTRATION: TeamOrchestrationPolicy = {
 
 const PUBLIC_RESULTS_CONTEXT: TeamContextProjectionPolicy = {
 	id: "public-results-v1",
-	project({ session, targetMemberId, deliveredEventIds, currentRequestId }) {
-		const records: TeamSharedContextRecord[] = [];
-		for (const event of session.events) {
-			if (deliveredEventIds.has(event.id)) continue;
-			if (event.requestId === currentRequestId && event.type === "user-message") continue;
-			if (event.type === "member-result" && event.memberId === targetMemberId) continue;
-			if (event.type === "member-delegation" && event.targetMemberId !== targetMemberId) continue;
-			const text = event.type === "member-delegation" ? event.objective : event.text;
-			records.push({
-				eventId: event.id,
-				type:
-					event.type === "user-message"
-						? "agent-team.user-message.v1"
-						: event.type === "member-result"
-							? "agent-team.member-result.v1"
-							: "agent-team.member-delegation.v1",
-				text,
-				timestamp: event.timestamp,
-				metadata: {
-					teamSessionId: session.id,
-					requestId: event.requestId,
-					...(event.type === "member-result"
-						? { sourceMemberId: event.memberId }
-						: event.type === "member-delegation"
-							? { sourceMemberId: event.sourceMemberId }
-							: {}),
-				},
-			});
-		}
-		return records;
-	},
+	project: projectPublicTeamContext,
 };
 
 export const DEFAULT_AGENT_TEAM_EXTENSIONS: AgentTeamExtensionRegistry = Object.freeze({

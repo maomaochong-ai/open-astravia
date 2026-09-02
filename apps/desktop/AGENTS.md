@@ -134,6 +134,8 @@ src/
 
 **创建或修改任何 Desktop UI 组件前，必须完整阅读并遵守 [`docs/composable-ui-components.md`](./docs/composable-ui-components.md)。** 该规范用于根据真实变化维度选择普通叶子、容器、Compound Components 或动态描述，并定义 Behavior/Layout/Visual/Recipe/Connector 边界、props、`asChild`、API 演进、测试和审查要求。
 
+禁止 `createMessageSlot` 式“名义组合”：仅靠 namespace 名称、Context 存在性检查或空 `div`/`Slot` 转发制造公共 Part。优先直接组合已有真实能力，不为无人消费的数据创建 Provider；判据、反例、正确做法与验证要求见该规范 §2.2。
+
 该要求同时适用于 `apps/desktop/src/renderer`、`packages/theme-ui` 以及被 Desktop 使用的共享 UI。不能以“只改现有组件”“只是内部重构”或“已有 View API”为由跳过。每次变更都必须审查新增或发生语义变化的合同，不得新引入不必要的结构 prop、能力开关、任意 `ReactNode` region 或职责混合。是否使用 Compound API 取决于真实组合维度；不得为了形式把普通叶子复杂化。历史债务按影响和任务范围处理，不得借规范无限扩大无关改动。
 
 新增或修改可复用 UI 合同时，交付说明应包含：所选合同与边界、关键 props 的理由、兼容策略、自审结果、已运行测试，以及未运行的适用验证。审查任务按文档严重度和格式报告，不得仅凭组件行数、prop 数量或正则命中下结论。

@@ -7,7 +7,7 @@
 - 关键决策：交给 Leader 协调，或通过成员头像 / `@handle` 指定一名或多名成员。
 - 主要行动：输入并发送消息；运行中可以取消，失败后可以保留草稿并重试。
 - 成功反馈：用户消息立即进入时间线，成员身份和增量回复持续可见，最终回复稳定落入会话历史。
-- 不在范围内：不把 Agent Team 的事件持久化模型改造成普通聊天的 `ChatMessage`，不展示成员的私有推理或工具参数，不重设计普通聊天的全部功能。
+- 不在范围内：不把 Team 消息伪装成 Chat 专属 `ChatMessage`，不展示成员的私有推理或工具参数，不重设计普通聊天的全部功能。Team 用户/成员公开内容改用 ADR-0103 的普通 Conversation User/Agent 消息合同。
 
 ## 状态矩阵
 
@@ -36,6 +36,7 @@
 ## 架构不变量
 
 - `*View` 不访问 Jotai、router、IPC 或 domain service。
-- 普通聊天与团队聊天共享 UI contract，不共享领域消息模型、会话状态或草稿 atom。
+- 普通聊天与团队聊天共享 User/Agent Conversation 消息合同和 UI contract；各自的会话状态、命令、权限与草稿 atom 仍然独立。
 - 流式 turn 由 `requestId + turnId + memberId + seq` 唯一标识和排序。
 - Renderer 只接收成员公开文本、状态和错误，不接收私有推理或工具参数。
+- Recipe 直接组合现有 `Message`、`MessageLayout`、`MessageVisual` 与复制等真实行为叶子；禁止用 `createMessageSlot` 批量生成只有 Context 存在性检查和 `div`/`Slot` 转发的同名空壳。具体规则与正确例子见 [组件组合规范 §2.2](../../apps/desktop/docs/composable-ui-components.md#22-禁止-createmessageslot-式空壳复用真实能力)。

@@ -118,7 +118,14 @@ describe("useTeamChatModel streaming flow", () => {
 
 		expect(result.current.model.status).toBe("streaming");
 		expect(result.current.model.timelineItems).toEqual([
-			expect.objectContaining({ kind: "member", text: "partial answer", pending: true }),
+			expect.objectContaining({
+				kind: "message",
+				message: expect.objectContaining({
+					kind: "agent",
+					phase: "streaming",
+					blocks: [expect.objectContaining({ type: "text", text: "partial answer" })],
+				}),
+			}),
 		]);
 
 		const finalSession: TeamSessionDocument = {
@@ -158,7 +165,14 @@ describe("useTeamChatModel streaming flow", () => {
 
 		expect(result.current.model.status).toBe("ready");
 		expect(result.current.model.timelineItems).toEqual([
-			expect.objectContaining({ kind: "member", text: "partial answer", pending: false }),
+			expect.objectContaining({
+				kind: "message",
+				message: expect.objectContaining({
+					kind: "agent",
+					phase: "completed",
+					blocks: [expect.objectContaining({ type: "text", text: "partial answer" })],
+				}),
+			}),
 		]);
 	});
 

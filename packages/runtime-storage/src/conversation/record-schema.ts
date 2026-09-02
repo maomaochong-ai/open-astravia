@@ -262,6 +262,54 @@ const AssistantMessageSchema = Type.Object(
 	{ additionalProperties: false },
 );
 
+const PromptAttachmentRefSchema = Type.Object(
+	{
+		kind: Type.Union([Type.Literal("file"), Type.Literal("directory"), Type.Literal("image")]),
+		path: Type.String(),
+	},
+	{ additionalProperties: false },
+);
+
+const ConversationUserAuthorReferenceSchema = Type.Object(
+	{ kind: Type.Literal("user"), id: Type.String({ minLength: 1 }) },
+	{ additionalProperties: false },
+);
+
+const ConversationAgentAuthorReferenceSchema = Type.Object(
+	{
+		kind: Type.Literal("agent"),
+		id: Type.String({ minLength: 1 }),
+		agentId: Type.Optional(Type.String({ minLength: 1 })),
+	},
+	{ additionalProperties: false },
+);
+
+const ConversationMessageRecordSchema = Type.Union([
+	Type.Object(
+		{
+			kind: Type.Literal("user"),
+			id: Type.String({ minLength: 1 }),
+			turnId: Type.String({ minLength: 1 }),
+			timestamp: Type.Number(),
+			author: ConversationUserAuthorReferenceSchema,
+			message: UserMessageSchema,
+			attachments: Type.Optional(Type.Array(PromptAttachmentRefSchema)),
+		},
+		{ additionalProperties: false },
+	),
+	Type.Object(
+		{
+			kind: Type.Literal("agent"),
+			id: Type.String({ minLength: 1 }),
+			turnId: Type.String({ minLength: 1 }),
+			timestamp: Type.Number(),
+			author: ConversationAgentAuthorReferenceSchema,
+			message: AssistantMessageSchema,
+		},
+		{ additionalProperties: false },
+	),
+]);
+
 const ToolResultMessageSchema = Type.Object(
 	{
 		role: Type.Literal("toolResult"),
@@ -642,6 +690,13 @@ export const ConversationDocumentCommandSchema = Type.Union([
 	),
 	Type.Object(
 		{
+			type: Type.Literal("message.append"),
+			record: ConversationMessageRecordSchema,
+		},
+		{ additionalProperties: false },
+	),
+	Type.Object(
+		{
 			type: Type.Literal("branch_summary.append"),
 			entryId: Type.String(),
 			parentId: Type.Union([Type.String(), Type.Null()]),
@@ -711,6 +766,31 @@ export const ConversationDocumentEntrySchema = Type.Union([
 			...ConversationDocumentEntryBaseSchema,
 			type: Type.Literal("message"),
 			message: ConversationMessageSchema,
+			origin: Type.Optional(RuntimeMessageOriginSchema),
+		},
+		{ additionalProperties: false },
+	),
+	Type.Object(
+		{
+			...ConversationDocumentEntryBaseSchema,
+			type: Type.Literal("message"),
+			kind: Type.Literal("user"),
+			turnId: Type.String({ minLength: 1 }),
+			author: ConversationUserAuthorReferenceSchema,
+			message: UserMessageSchema,
+			attachments: Type.Optional(Type.Array(PromptAttachmentRefSchema)),
+			origin: Type.Optional(RuntimeMessageOriginSchema),
+		},
+		{ additionalProperties: false },
+	),
+	Type.Object(
+		{
+			...ConversationDocumentEntryBaseSchema,
+			type: Type.Literal("message"),
+			kind: Type.Literal("agent"),
+			turnId: Type.String({ minLength: 1 }),
+			author: ConversationAgentAuthorReferenceSchema,
+			message: AssistantMessageSchema,
 			origin: Type.Optional(RuntimeMessageOriginSchema),
 		},
 		{ additionalProperties: false },

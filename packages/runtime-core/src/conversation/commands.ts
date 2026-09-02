@@ -1,11 +1,13 @@
 import type { Message, UserMessage } from "@vetta/ai";
 import type { ConversationDocument, ConversationDocumentEntry } from "./document.js";
+import type { ConversationMessageRecord } from "./message-contract.js";
 
 export type ConversationDocumentCommand =
 	| { readonly type: "active_leaf.set"; readonly entryId: string | null }
 	| { readonly type: "branch.select"; readonly entryId: string }
 	| { readonly type: "message.delete"; readonly entryId: string }
 	| { readonly type: "user_turn.replace"; readonly entryId: string }
+	| { readonly type: "message.append"; readonly record: ConversationMessageRecord }
 	| {
 			readonly type: "branch_summary.append";
 			readonly entryId: string;
@@ -71,6 +73,8 @@ export function applyConversationDocumentCommand(
 			return deleteMessage(document, command.entryId, revision);
 		case "user_turn.replace":
 			return replaceLastUserTurn(document, command.entryId, revision);
+		case "message.append":
+			return appendMessageEntry(document, command.record, revision);
 		case "branch_summary.append":
 			return appendBranchSummaryEntry(document, command, revision);
 		case "custom.append":
@@ -80,6 +84,61 @@ export function applyConversationDocumentCommand(
 		case "entry.label.set":
 			return appendLabelEntry(document, command, revision);
 	}
+}
+
+function appendMessageEntry(
+	document: ConversationDocument,
+	record: ConversationMessageRecord,
+	revision: number,
+): ConversationDocumentCommandResult {
+	const entry: ConversationDocumentEntry =
+		record.kind === "user"
+			? {
+					type: "message",
+					kind: "user",
+					id: record.id,
+					parentId: document.activeLeafId,
+					timestamp: new Date(record.timestamp).toISOString(),
+					turnId: record.turnId,
+					author: record.author,
+					message: record.message,
+					...(record.attachments?.length ? { attachments: [...record.attachments] } : {}),
+				}
+			: {
+					type: "message",
+					kind: "agent",
+					id: record.id,
+					parentId: document.activeLeafId,
+					timestamp: new Date(record.timestamp).toISOString(),
+					turnId: record.turnId,
+					author: record.author,
+					message: record.message,
+				};
+	const existing = document.entries.find((candidate) => candidate.id === record.id);
+	if (existing) {
+		if (sameAttributedMessage(existing, entry)) return unchanged(document);
+		throw new Error(`Conversation document entry already exists: ${record.id}`);
+	}
+	return changed({
+		...document,
+		revision,
+		entries: [...document.entries, entry],
+		activeLeafId: record.id,
+	});
+}
+
+function sameAttributedMessage(left: ConversationDocumentEntry, right: ConversationDocumentEntry): boolean {
+	if (left.type !== "message" || right.type !== "message" || left.kind === undefined || right.kind === undefined) {
+		return false;
+	}
+	return (
+		left.kind === right.kind &&
+		left.turnId === right.turnId &&
+		JSON.stringify(left.author) === JSON.stringify(right.author) &&
+		JSON.stringify(left.message) === JSON.stringify(right.message) &&
+		JSON.stringify(left.kind === "user" ? left.attachments : undefined) ===
+			JSON.stringify(right.kind === "user" ? right.attachments : undefined)
+	);
 }
 
 export function conversationDocumentEntry(document: ConversationDocument, entryId: string): ConversationDocumentEntry {

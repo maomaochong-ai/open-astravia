@@ -11,6 +11,7 @@ afterEach(cleanup);
 const members: TeamMemberViewModel[] = [
 	{
 		id: "researcher",
+		kind: "agent",
 		name: "Research",
 		handle: "research",
 		avatar: "avatar.png",
@@ -50,4 +51,3 @@ describe("TeamRecipientSelector", () => {
 		expect(screen.getByRole("button", { name: "Leader" }).getAttribute("aria-pressed")).toBe("true");
 	});
 });
-

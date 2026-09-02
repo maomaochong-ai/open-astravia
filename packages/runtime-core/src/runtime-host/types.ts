@@ -13,6 +13,7 @@ import type {
 	RuntimeSessionContextController,
 	RuntimeSessionContextDeliveryController,
 	RuntimeSessionContextUsageView,
+	RuntimeSessionConversationController,
 	RuntimeSessionConversationView,
 	RuntimeSessionEventStream,
 	RuntimeSessionExecutionController,
@@ -53,6 +54,7 @@ export interface RuntimeHostSessionRecord {
 	contextDeliveryController: RuntimeSessionContextDeliveryController | undefined;
 	contextUsageView: RuntimeSessionContextUsageView | undefined;
 	conversationView: RuntimeSessionConversationView | undefined;
+	conversationController: RuntimeSessionConversationController | undefined;
 	executionObservationStream: RuntimeSessionExecutionObservationStream | undefined;
 	toolController: RuntimeSessionToolController | undefined;
 	modelController: RuntimeSessionModelController;

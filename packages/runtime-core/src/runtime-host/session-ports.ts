@@ -11,6 +11,7 @@ import type {
 	SettingsPatch,
 } from "../contracts.js";
 import type { ConversationDocument } from "../conversation/document.js";
+import type { ConversationMessageRecord } from "../conversation/message-contract.js";
 import type { RuntimeToolDefinition, SessionContextRecord } from "../kernel/contracts.js";
 import type { RuntimeExecutionObservationEvent } from "../runtime-execution-observation.js";
 import type { SessionExtensionEndpointHost } from "../session-extensions/contracts.js";
@@ -151,6 +152,11 @@ export interface RuntimeSessionWorkspaceView {
 /** 会话持久化文档的只读视图；供宿主兼容适配，不暴露存储或写命令。 */
 export interface RuntimeSessionConversationView {
 	readDocument(): ConversationDocument;
+}
+
+/** Append-only writer for externally authored, ordinary Conversation messages. */
+export interface RuntimeSessionConversationController {
+	appendMessage(record: ConversationMessageRecord): Promise<{ readonly entryId: string }>;
 }
 
 /** 尚未消费的用户输入数量；与具体队列实现解耦。 */

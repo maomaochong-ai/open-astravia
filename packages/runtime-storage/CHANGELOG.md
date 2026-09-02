@@ -11,6 +11,7 @@ All notable changes to `@vetta/runtime-storage` are documented in this file.
 
 ### Added
 
+- **带作者消息追加**：Conversation V2 Document Operation 支持严格 User/Agent 判别的 `message.append`，持久化稳定 turn、作者与用户附件，并在相同消息重复发布时幂等恢复。
 - **多主 Agent 会话身份**：Conversation V2 header 新增可选、向后兼容的 `agentId`，只标记创建会话的稳定主 Agent；
   definition revision 与 Instance 仍是进程内执行代际，不进入持久化协议。旧 V1/V2 文件继续可读。
 - **Prompt 缓存诊断兼容持久化**：Conversation Assistant usage Schema 接受可选的请求消息谱系、前缀兼容状态、分段变化原因，以及隐私安全的 Prompt Block/工具定义指纹和具体变化，使新会话可跨轮定位缓存前缀失效，同时继续读取旧诊断记录。

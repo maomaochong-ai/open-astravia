@@ -32,6 +32,7 @@ afterEach(() => {
 
 const member: TeamMemberViewModel = {
 	id: "leader",
+	kind: "agent",
 	name: "Vetta",
 	handle: "vetta",
 	blueprintId: "leader",
@@ -67,6 +68,73 @@ const labels = {
 };
 
 describe("TeamMessageFeed", () => {
+	it.each(["user", "agent"] as const)(
+		"keeps %s copy behavior when using message primitives directly",
+		async (kind) => {
+			const user = userEvent.setup();
+			const message: Extract<TeamTimelineItemViewModel, { kind: "message" }>["message"] = kind === "user"
+				? {
+					id: "message",
+					turnId: "turn",
+					authorId: "local-user",
+					kind,
+					role: "user",
+					deliveryPhase: "completed",
+					text: "Public text",
+				}
+				: {
+					id: "message",
+					turnId: "turn",
+					authorId: member.id,
+					kind,
+					role: "assistant",
+					phase: "completed",
+					blocks: [{ id: "text", type: "text", text: "Public text" }],
+				};
+			render(
+				<TeamMessageFeed
+					feedKey="team"
+					status="ready"
+					items={[{ kind: "message", id: message.id, message }]}
+					members={[member]}
+					markdown={markdown}
+					labels={labels}
+				/>,
+			);
+			await user.click(screen.getByRole("button", { name: "Copy" }));
+			expect(await screen.findByRole("button", { name: "Copied" })).toBeTruthy();
+			expect(await navigator.clipboard.readText()).toBe("Public text");
+		},
+	);
+
+	it("does not mount a copy capability for an attachment-only message", () => {
+		render(
+			<TeamMessageFeed
+				feedKey="team"
+				status="ready"
+				items={[{
+					id: "attachment",
+					kind: "message",
+					message: {
+						id: "attachment",
+						turnId: "turn",
+						authorId: "local-user",
+						kind: "user",
+						role: "user",
+						deliveryPhase: "completed",
+						text: "",
+						attachments: [{ kind: "file", path: "C:/workspace/notes.txt" }],
+					},
+				}]}
+				members={[member]}
+				markdown={markdown}
+				labels={labels}
+			/>,
+		);
+		expect(screen.getByRole("button", { name: "notes.txt" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Copy" })).toBeNull();
+	});
+
 	it("labels empty-state members by display name without exposing handles", () => {
 		render(
 			<TeamMessageFeed feedKey="team" status="ready" items={[]} members={[member]} markdown={markdown} labels={labels} />,
@@ -79,12 +147,17 @@ describe("TeamMessageFeed", () => {
 		const items: TeamTimelineItemViewModel[] = [
 			{
 				id: "member:request:leader",
-				kind: "member",
-				requestId: "request",
-				member,
-				text: "partial response",
-				pending: true,
-				timestamp: 1,
+				kind: "message",
+				message: {
+					id: "member:request:leader",
+					turnId: "request",
+					authorId: member.id,
+					kind: "agent",
+					role: "assistant",
+					phase: "streaming",
+					blocks: [{ type: "text", id: "text", text: "partial response" }],
+					timestamp: 1,
+				},
 			},
 		];
 		render(
@@ -104,13 +177,18 @@ describe("TeamMessageFeed", () => {
 		const items: TeamTimelineItemViewModel[] = [
 			{
 				id: "user:request",
-				kind: "user",
-				requestId: "request",
-				text: "Review this",
-				pending: false,
-				timestamp: 1,
-				attachments: [{ kind: "file", path: "C:/private/workspace/notes.txt" }],
-				targetMemberIds: [],
+				kind: "message",
+				message: {
+					id: "user:request",
+					turnId: "request",
+					authorId: "local-user",
+					kind: "user",
+					role: "user",
+					deliveryPhase: "completed",
+					text: "Review this",
+					timestamp: 1,
+					attachments: [{ kind: "file", path: "C:/private/workspace/notes.txt" }],
+				},
 			},
 		];
 		render(

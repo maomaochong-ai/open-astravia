@@ -23,6 +23,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- 新增严格区分 User/Agent 的 `ConversationMessageRecord` 与命名作者引用，并提供幂等的普通 Conversation 外部消息追加端口和产品编排观测 scope。
 - 新增 `RuntimeHost.createConversation()`、scoped Session 字符串 prompt 与 `stream()` 异步事件流，
   自动按 subscribe-before-prompt 顺序接线并负责退订。
 - 新增可运行、无需真实 Provider 的多主 Agent 示例及功能测试，覆盖平级 Agent 隔离、Definition revision 固定、

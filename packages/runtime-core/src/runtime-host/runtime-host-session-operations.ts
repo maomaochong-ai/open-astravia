@@ -10,6 +10,7 @@ import type {
 	SettingsPatch,
 } from "../contracts.js";
 import type { ConversationDocument } from "../conversation/document.js";
+import type { ConversationMessageRecord } from "../conversation/message-contract.js";
 import { isSessionError, runtimeError } from "../errors.js";
 import type { RuntimeToolDefinition, SessionContextRecord } from "../kernel/contracts.js";
 import { isTurnPersistenceError } from "../kernel/errors.js";
@@ -389,6 +390,15 @@ export class RuntimeHostSessionOperations {
 		const controller = this.requireSession(sessionId).metadataController;
 		if (!controller) throw new Error("Session metadata capability is unavailable");
 		return controller.appendEntry(customType, data);
+	}
+
+	appendConversationMessage(
+		sessionId: string,
+		record: ConversationMessageRecord,
+	): Promise<{ readonly entryId: string }> {
+		const controller = this.requireSession(sessionId).conversationController;
+		if (!controller) throw new Error("Session conversation write capability is unavailable");
+		return controller.appendMessage(record);
 	}
 
 	setSessionLabel(sessionId: string, entryId: string, label: string | undefined): Promise<void> {

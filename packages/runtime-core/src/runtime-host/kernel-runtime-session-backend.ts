@@ -5,6 +5,7 @@ import {
 	type ConversationDocumentCommand,
 	type ConversationDocumentCommandResult,
 	type ConversationDocumentStore,
+	type ConversationMessageRecord,
 	conversationDocumentEntry,
 	extractConversationEntryText,
 } from "../conversation/index.js";
@@ -47,6 +48,7 @@ import type {
 	RuntimeSessionContextController,
 	RuntimeSessionContextDeliveryController,
 	RuntimeSessionContextUsageView,
+	RuntimeSessionConversationController,
 	RuntimeSessionConversationView,
 	RuntimeSessionExecutionController,
 	RuntimeSessionExecutionObservation,
@@ -109,6 +111,7 @@ export type RuntimeSessionCoreAssembly = Pick<
 	"lifecycle" | "historyReader" | "historyController" | "modelController" | "modelView" | "workspaceView" | "corePorts"
 > & {
 	readonly conversationView: RuntimeSessionConversationView;
+	readonly conversationController: RuntimeSessionConversationController;
 	readonly queueView: RuntimeSessionQueueView;
 	readonly queueController: RuntimeSessionQueueController;
 	readonly contextUsageView: RuntimeSessionContextUsageView;
@@ -415,6 +418,12 @@ export class RuntimeSession {
 		});
 	}
 
+	async appendConversationMessage(record: ConversationMessageRecord): Promise<{ readonly entryId: string }> {
+		this.assertOpen();
+		await this.executeDocumentCommand({ type: "message.append", record });
+		return { entryId: record.id };
+	}
+
 	async setLabel(entryId: string, label: string | undefined): Promise<void> {
 		this.assertOpen();
 		await this.executeDocumentCommand({
@@ -513,6 +522,9 @@ export class RuntimeSession {
 			},
 			conversationView: {
 				readDocument: () => this.projection.readDocument(),
+			},
+			conversationController: {
+				appendMessage: (record) => this.appendConversationMessage(record),
 			},
 			queueView: queueController,
 			queueController,

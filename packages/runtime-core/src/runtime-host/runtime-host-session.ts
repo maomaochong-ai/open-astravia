@@ -9,6 +9,7 @@ import type {
 	SettingsPatch,
 } from "../contracts.js";
 import type { ConversationDocument } from "../conversation/document.js";
+import type { ConversationMessageRecord } from "../conversation/message-contract.js";
 import type { RuntimeToolDefinition, SessionContextRecord } from "../kernel/contracts.js";
 import type { SessionExtensionEndpointToken } from "../session-extensions/contracts.js";
 import type { RuntimeActiveSession } from "./active-session-host-contracts.js";
@@ -279,6 +280,10 @@ export class RuntimeHostSession implements RuntimeActiveSession {
 
 	appendMetadataEntry(customType: string, data?: unknown): Promise<void> {
 		return this.host.appendSessionMetadataEntry(this.sessionId, customType, data);
+	}
+
+	appendConversationMessage(record: ConversationMessageRecord): Promise<{ readonly entryId: string }> {
+		return this.host.appendConversationMessage(this.sessionId, record);
 	}
 
 	setLabel(entryId: string, label: string | undefined): Promise<void> {

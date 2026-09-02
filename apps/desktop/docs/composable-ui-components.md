@@ -99,7 +99,7 @@ Radix 的 `Root/Trigger/Content/Title/Close` 并不是把若干 DOM 标签放进
 - 只在测试中证明 marker 存在，而没有证明行为、语义或替换能力；
 - 给所有 Part 机械添加 `asChild`，但没有需要投影到宿主的能力。
 
-这种做法称为“名义组合”（nominal composition）：API 看起来像 Radix，实际仍只是组件别名或 DOM 包装。它增加层级、Context 约束和测试负担，却没有降低调用方扩展成本，属于应避免的错误方向。
+这种做法称为“名义组合”（nominal composition）：API 看起来像 Radix，实际仍只是组件别名或 DOM 包装。它增加层级、Context 约束和测试负担，却没有降低调用方扩展成本，禁止新建或继续扩展这种合同。
 
 组件工厂本身不是问题，但只能用于消除已经成立的真实合同之间的机械重复。使用 `createPart`、`createPrimitive` 等工厂前，必须先逐个证明生成的公开 Part 具有独立职责，并为每类 Part 保留正确的默认元素、props 类型和可访问语义；不能先有工厂，再为工厂制造组件。
 
@@ -109,6 +109,58 @@ Radix 的 `Root/Trigger/Content/Title/Close` 并不是把若干 DOM 标签放进
 - [Radix Slot 文档](https://www.radix-ui.com/primitives/docs/utilities/slot)
 - [Radix Dialog 源码](https://github.com/radix-ui/primitives/blob/main/packages/react/dialog/src/dialog.tsx)
 - [Radix Slot 源码](https://github.com/radix-ui/primitives/blob/main/packages/react/slot/src/slot.tsx)
+
+### 2.2 禁止 `createMessageSlot` 式空壳，复用真实能力
+
+禁止下面这类实现，即使改名为 `createPart`、展开成多个手写组件或添加 marker 也不合格：
+
+```tsx
+function createMessageSlot(name: string) {
+	return forwardRef<HTMLDivElement, SlotProps>(({ asChild, ...props }, ref) => {
+		useMessageContext(name); // 只检查存在，从未使用其中的消息或状态
+		const Element = asChild ? Slot.Root : "div";
+		return <Element ref={ref} {...props} />;
+	});
+}
+
+const Header = createMessageSlot("Header");
+const Body = createMessageSlot("Body");
+const ActionBar = createMessageSlot("ActionBar");
+```
+
+问题不是工厂语法，而是这些 Part 没有定义任何布局、行为或语义。`asChild` 只能合并已有属性，不能补出缺失的职责；只往 JSX 放两个普通按钮再验证顺序，也只证明 React 会按顺序渲染 children。
+
+正确做法按现有职责选取：
+
+1. **已有公共 Primitive**：直接使用，不再套同义 Provider/Slot。消息场景复用 `Message` 的状态/文字叶子、`MessageLayout` 的布局与 `MessageVisual` 的气泡。
+2. **一次性的无行为容器**：在 Recipe 中直接写合适的原生元素，不为一个 `div` 创建公共 Part，也不要求它进入 Context。
+3. **独立能力**：复制、编辑、审批等是有实际行为的叶子，直接接收各自的数据和命令，由使用方 JSX 决定是否挂载及顺序；不存在的能力不出现在公共能力表或 Root Context 中。
+4. **确有跨部件共享行为**：先列出状态/ID/ref 的所有者和真实消费者，再建立最小 Root。没有生产消费者的数据，不得仅为了宣称“共用模型”放入 Provider。
+
+下面是消息 Recipe 的真实组合（业务 `inspect` 和文案由调用方提供）：
+
+```tsx
+<Message.Root pending={pending}>
+	<MessageLayout.Incoming>
+		<MessageLayout.Header>
+			<Message.Author>{authorName}</Message.Author>
+		</MessageLayout.Header>
+		<TextBlockView {...markdown} text={text} />
+		<MessageLayout.Footer>
+			<CopyButton getText={() => text} labels={copyLabels} />
+			<Button onClick={inspect}>{inspectLabel}</Button>
+		</MessageLayout.Footer>
+	</MessageLayout.Incoming>
+</Message.Root>
+```
+
+这里 Root 的 `pending` 被布局/视觉读取；Header/Footer 确实定义排列和间距；Author 定义可复用的文字视觉；CopyButton 负责复制及完成反馈；业务按钮拥有自己的命令。删除 Inspect、交换动作顺序、把 Footer 移到正文之前，均只修改上述 JSX。若要更换 Author 的宿主，可以用 `Message.Author asChild` 把其文字视觉、属性、事件和 ref 合并到链接；不是为使用 `Slot` 而创造新叶子。
+
+禁止把完整 message/participant 塞入一个无人消费的 `ConversationMessage.Root`，再给已有 `MessageLayout.Header/Footer` 套同名 `ConversationMessage.*`。统一 TS 消息类型、复用 UI Primitive 和共享行为状态是三个不同目标；增加包装层不能代替数据消费者的迁移。
+
+对于真正定义布局的既有工厂（例如共享排列类并校验布局边界），不因使用了工厂就删除。需要检查的是其输出是否具有真实合同，而不是函数名是否包含 `create`。
+
+验证至少覆盖：真实动作执行与反馈、能力省略/重排后仍可用、`asChild` 最终宿主与 ref/事件/样式合并、必要 Context 的状态传播，以及不需要 Context 的独立叶子可单独使用。不能只验证标记或节点数量。
 
 ## 3. 按四个轴拆分
 

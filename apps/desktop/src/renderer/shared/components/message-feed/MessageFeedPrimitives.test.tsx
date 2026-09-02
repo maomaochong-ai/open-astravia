@@ -1,15 +1,18 @@
 // @vitest-environment jsdom
 
 import {
+	CopyButton,
 	Message,
 	MessageFeed,
 	MessageFeedLayout,
 	MessageLayout,
 	MessageVisual,
 } from "@vetta/theme-ui/chat";
+import { Button } from "@shared/components/ui/button";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentType, HTMLAttributes, ReactNode } from "react";
+import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { MessageFeedNavigation } from "./MessageFeedNavigation";
 
@@ -155,6 +158,87 @@ describe("MessageFeedNavigation compound primitives", () => {
 });
 
 describe("Message compound primitives", () => {
+	it("keeps real copy and custom actions functional when composed, reordered, or omitted", async () => {
+		const user = userEvent.setup();
+		const inspect = vi.fn();
+		const { rerender } = render(
+			<Message.Root>
+				<MessageLayout.Incoming>
+					<p>Response</p>
+					<MessageLayout.Footer>
+						<Button onClick={inspect}>Inspect</Button>
+						<CopyButton getText={() => "Response"} labels={{ copy: "Copy", copied: "Copied" }} />
+					</MessageLayout.Footer>
+				</MessageLayout.Incoming>
+			</Message.Root>,
+		);
+		expect(
+			screen.getAllByRole("button").map((button) => button.getAttribute("aria-label") ?? button.textContent),
+		).toEqual(["Inspect", "Copy"]);
+		await user.click(screen.getByRole("button", { name: "Inspect" }));
+		expect(inspect).toHaveBeenCalledOnce();
+		await user.click(screen.getByRole("button", { name: "Copy" }));
+		expect(await screen.findByRole("button", { name: "Copied" })).toBeTruthy();
+		expect(await navigator.clipboard.readText()).toBe("Response");
+
+		rerender(
+			<Message.Root>
+				<MessageLayout.Incoming>
+					<MessageLayout.Footer>
+						<CopyButton getText={() => "Updated response"} labels={{ copy: "Copy", copied: "Copied" }} />
+					</MessageLayout.Footer>
+					<p>Updated response</p>
+				</MessageLayout.Incoming>
+			</Message.Root>,
+		);
+		expect(screen.queryByRole("button", { name: "Inspect" })).toBeNull();
+		const copy = screen.getByRole("button", { name: "Copy" });
+		expect(
+			copy.compareDocumentPosition(screen.getByText("Updated response")) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).not.toBe(0);
+		await user.click(copy);
+		expect(await screen.findByRole("button", { name: "Copied" })).toBeTruthy();
+		expect(await navigator.clipboard.readText()).toBe("Updated response");
+	});
+
+	it("projects author typography and merges refs and events into a caller-owned link without a Root", async () => {
+		const user = userEvent.setup();
+		const forwardedRef = createRef<HTMLAnchorElement>();
+		const childRef = createRef<HTMLAnchorElement>();
+		const events: string[] = [];
+		const { container } = render(
+			<Message.Author
+				asChild
+				ref={forwardedRef}
+				className="custom-author"
+				aria-label="Open reviewer"
+				onClick={() => events.push("part")}
+			>
+				<a
+					ref={childRef}
+					href="#reviewer"
+					className="profile-link"
+					onClick={(event) => {
+						event.preventDefault();
+						events.push("host");
+					}}
+				>
+					Reviewer
+				</a>
+			</Message.Author>,
+		);
+		const link = screen.getByRole("link", { name: "Open reviewer" });
+		expect(container.firstElementChild).toBe(link);
+		expect(link.tagName).toBe("A");
+		expect(forwardedRef.current).toBe(link);
+		expect(childRef.current).toBe(link);
+		expect(link.className).toContain("font-semibold");
+		expect(link.className).toContain("custom-author");
+		expect(link.className).toContain("profile-link");
+		await user.click(link);
+		expect(events).toEqual(["host", "part"]);
+	});
+
 	it("combines semantic leaves with caller-owned content inside an explicit layout", () => {
 		render(
 			<Message.Root>

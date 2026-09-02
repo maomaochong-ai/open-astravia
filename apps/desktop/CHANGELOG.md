@@ -2,6 +2,7 @@
 
 ### Added
 
+- Agent Team 新建普通协调 Conversation 与每成员独立普通 Conversation；成员自动获得 roster、职责与带作者/附件引用的公共历史，持久工作项/attempt 提供等待状态和继续、重试、恢复服务入口。结果按持久 entry id 识别，不因成员历史压缩而漏判；旧事件与 Renderer 兼容路径暂时保留，异步多成员调度及共享 checkpoint 尚在迁移中。
 - Desktop 会话流改为直接校验和投影 Runtime 的原始 Assistant 事件；文本、思考与工具生成按 wire 顺序批处理，
   重连使用宿主 sequence 去重，不再因分类缓冲而重排内容。
 - 新增系统插件 **iOS 模拟器**：活动面板按 cwd 在 macOS 的 Xcode / SwiftPM 工程中上栏，内嵌 baguette 自带的模拟器
@@ -70,6 +71,7 @@
 
 ### Fixed
 
+- Agent Team 使用严格 User/Agent 消息 ViewModel，不再以 `member` 作为独立消息类型，多成员流式状态由每条 Agent 消息独立持有；Chat 与 Team 直接组合已有消息布局、视觉和行为叶子，移除只有名称的 `ConversationMessage` Slot/Provider。普通 Chat 的完整数据模型迁移仍在进行，不以空 Provider 宣称已完成复用。
 - Agent Team 消息列表现在复用普通对话的可组合虚拟 Feed、流式跟随、长对话导航与显式布局骨架；用户消息保留并展示附件，用户与成员消息均可复制。Chat 与 Team 各自保留领域消息合同，通过独立的行为、位置和视觉 Primitive 组合列表，同一位置可替换不同能力，不再维护一套功能残缺的 Team 专用列表机制。见 ADR-0101。
 - 重构 Agent Team 管理流程：团队配置显示成员头像并支持直接增删成员、更换负责人和删除团队；删除被团队引用的智能体时会在一次确认中列出影响并原子更新相关团队，无需逐个团队清理。团队对话不再展示或自动写入 `@handle`，输入框补回普通对话的附件、发送历史、多行输入和草稿恢复能力，已存在的团队会话会在成员变化后同步 Runtime roster。
 - Agent Team 对话改用普通对话相同的 Lexical 输入框、工具栏布局与虚拟时间线 UI 基础设施，成员以头像展示，团队草稿不再污染普通会话；流式回复按 turn/seq 增量显示，并可在订阅重连后通过 snapshot 恢复，已有 partial text 不再被等待骨架遮住；同时修复虚拟列表包装层用 `undefined` 覆盖默认 key 与 viewport 配置，进入页面触发 `C is not a function` 或消息结果已完成但列表空白的运行时错误。

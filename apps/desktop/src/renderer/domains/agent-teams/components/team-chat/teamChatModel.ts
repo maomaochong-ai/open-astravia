@@ -4,6 +4,11 @@ import {
 	type MessageFeedNavigationLabels,
 	type MessageFeedNavigationTurn,
 } from "@shared/components/message-feed/navigationModel";
+import type {
+	ConversationFeedItemViewModel,
+	ConversationMessageViewModel,
+	ConversationParticipantViewModel,
+} from "@shared/conversation";
 import type { RendererMarkdownModel } from "@shared/models/renderer-markdown-model";
 import type { AgentTeamDocument, TeamDefinition, TeamSessionDocument, TeamSessionStreamEvent } from "@vetta/agent-team";
 import type { PromptAttachmentRef } from "@vetta/runtime-core";
@@ -73,8 +78,9 @@ export function updateScopedTeamDraft(
 	return next === previous ? drafts : { ...drafts, [teamId]: next };
 }
 
-export interface TeamMemberViewModel {
+export interface TeamMemberViewModel extends ConversationParticipantViewModel {
 	readonly id: string;
+	readonly kind: "agent";
 	readonly name: string;
 	readonly handle: string;
 	readonly avatar?: string;
@@ -99,40 +105,20 @@ export interface TeamStreamingTurnViewModel {
 	readonly seq: number;
 	readonly text: string;
 	readonly startedAt: number;
-	readonly phase: "streaming" | "error" | "aborted";
+	readonly phase: "streaming" | "waiting" | "error" | "aborted";
 	readonly error?: string;
 }
 
 export type TeamStreamState = Readonly<Record<string, TeamStreamingTurnViewModel>>;
 
-export type TeamTimelineItemViewModel =
-	| {
-			readonly id: string;
-			readonly kind: "user";
-			readonly requestId: string;
-			readonly text: string;
-			readonly pending: boolean;
-			readonly timestamp: number;
-			readonly attachments: readonly PromptAttachmentRef[];
-			readonly targetMemberIds: readonly string[];
-	  }
-	| {
-			readonly id: string;
-			readonly kind: "member";
-			readonly requestId: string;
-			readonly member: TeamMemberViewModel;
-			readonly text: string;
-			readonly pending: boolean;
-			readonly timestamp: number;
-			readonly error?: string;
-	  }
-	| {
-			readonly id: string;
-			readonly kind: "delegation";
-			readonly requestId: string;
-			readonly label: string;
-			readonly timestamp: number;
-	  };
+export interface TeamTimelineEventViewModel {
+	readonly kind: "delegation";
+	readonly requestId: string;
+	readonly label: string;
+	readonly timestamp: number;
+}
+
+export type TeamTimelineItemViewModel = ConversationFeedItemViewModel<TeamTimelineEventViewModel>;
 
 export interface TeamTimelineLabels {
 	readonly delegation: (from: string, to: string) => string;
@@ -188,7 +174,7 @@ export function reduceTeamStreamState(state: TeamStreamState, event: TeamSession
 		[event.turnId]: {
 			...current,
 			seq: event.seq,
-			phase: event.phase,
+			phase: event.phase === "attention-required" ? "error" : event.phase,
 			...(event.error ? { error: event.error } : {}),
 		},
 	};
@@ -216,6 +202,7 @@ export function resolveTeamMembers(
 		const profile = document?.agents.find((candidate) => candidate.id === member.binding.agentProfileId);
 		return {
 			id: member.id,
+			kind: "agent",
 			name: resolveName(member.binding.agentProfileId, member.handle),
 			handle: member.handle,
 			...(profile?.avatar ? { avatar: profile.avatar } : {}),
@@ -245,13 +232,18 @@ export function buildTeamTimelineItems({
 		if (event.type === "user-message") {
 			return {
 				id: `user:${event.requestId}`,
-				kind: "user",
-				requestId: event.requestId,
-				text: stripAttachmentContext(event.text),
-				pending: false,
-				timestamp: event.timestamp,
-				attachments: event.attachments ?? [],
-				targetMemberIds: event.targetMemberIds,
+				kind: "message",
+				message: {
+					id: `user:${event.requestId}`,
+					turnId: event.requestId,
+					authorId: "local-user",
+					kind: "user",
+					role: "user",
+					deliveryPhase: "completed",
+					text: stripAttachmentContext(event.text),
+					timestamp: event.timestamp,
+					attachments: event.attachments ?? [],
+				},
 			};
 		}
 		if (event.type === "member-delegation") {
@@ -265,20 +257,28 @@ export function buildTeamTimelineItems({
 				labels.unknownMember;
 			return {
 				id: event.id,
-				kind: "delegation",
-				requestId: event.requestId,
-				label: labels.delegation(source, target),
-				timestamp: event.timestamp,
+				kind: "event",
+				event: {
+					kind: "delegation",
+					requestId: event.requestId,
+					label: labels.delegation(source, target),
+					timestamp: event.timestamp,
+				},
 			};
 		}
 		return {
 			id: `member:${event.sourceTurnId}`,
-			kind: "member",
-			requestId: event.requestId,
-			member: fallbackMember(event.memberId, session, memberMap, labels.unknownMember),
-			text: event.text,
-			pending: false,
-			timestamp: event.timestamp,
+			kind: "message",
+			message: {
+				id: `member:${event.sourceTurnId}`,
+				turnId: event.requestId,
+				authorId: event.memberId,
+				kind: "agent",
+				role: "assistant",
+				phase: "completed",
+				blocks: [{ type: "text", id: `text:${event.id}`, text: event.text }],
+				timestamp: event.timestamp,
+			},
 		};
 	});
 
@@ -288,13 +288,18 @@ export function buildTeamTimelineItems({
 	if (pending && !userCommitted) {
 		items.push({
 			id: `user:${pending.requestId}`,
-			kind: "user",
-			requestId: pending.requestId,
-			text: pending.displayText ?? stripAttachmentContext(pending.text),
-			pending: true,
-			timestamp: pending.timestamp ?? session.updatedAt,
-			attachments: pending.attachments ?? [],
-			targetMemberIds: pending.targetMemberIds ?? [],
+			kind: "message",
+			message: {
+				id: `user:${pending.requestId}`,
+				turnId: pending.requestId,
+				authorId: "local-user",
+				kind: "user",
+				role: "user",
+				deliveryPhase: "pending",
+				text: pending.displayText ?? stripAttachmentContext(pending.text),
+				timestamp: pending.timestamp ?? session.updatedAt,
+				attachments: pending.attachments ?? [],
+			},
 		});
 	}
 
@@ -305,24 +310,36 @@ export function buildTeamTimelineItems({
 		if (persistedResults.has(turn.turnId)) continue;
 		items.push({
 			id: `member:${turn.turnId}`,
-			kind: "member",
-			requestId: turn.requestId,
-			member: fallbackMember(turn.memberId, session, memberMap, labels.unknownMember),
-			text: turn.text,
-			pending: turn.phase === "streaming",
-			timestamp: turn.startedAt,
-			...(turn.error ? { error: turn.error } : {}),
+			kind: "message",
+			message: {
+				id: `member:${turn.turnId}`,
+				turnId: turn.requestId,
+				authorId: turn.memberId,
+				kind: "agent",
+				role: "assistant",
+				phase: turn.phase === "error" ? "failed" : turn.phase,
+				blocks: [
+					...(turn.text ? [{ type: "text" as const, id: `text:${turn.turnId}`, text: turn.text }] : []),
+					...(turn.error ? [{ type: "text" as const, id: `error:${turn.turnId}`, text: turn.error }] : []),
+				],
+				timestamp: turn.startedAt,
+			},
 		});
 	}
 	if (pending && Object.keys(streams).length === 0) {
 		items.push({
 			id: `waiting:${pending.requestId}:${session.leaderMemberId}`,
-			kind: "member",
-			requestId: pending.requestId,
-			member: fallbackMember(session.leaderMemberId, session, memberMap, labels.unknownMember),
-			text: "",
-			pending: true,
-			timestamp: pending.timestamp ?? session.updatedAt,
+			kind: "message",
+			message: {
+				id: `waiting:${pending.requestId}:${session.leaderMemberId}`,
+				turnId: pending.requestId,
+				authorId: session.leaderMemberId,
+				kind: "agent",
+				role: "assistant",
+				phase: "pending",
+				blocks: [],
+				timestamp: pending.timestamp ?? session.updatedAt,
+			},
 		});
 	}
 	return items;
@@ -334,23 +351,24 @@ export function buildTeamNavigationTurns(items: readonly TeamTimelineItemViewMod
 	const byRequest = new Map<string, (typeof turns)[number]>();
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		const item = items[itemIndex];
-		let turn = byRequest.get(item.requestId);
+		const requestId = item.kind === "message" ? item.message.turnId : item.event.requestId;
+		let turn = byRequest.get(requestId);
 		if (!turn) {
 			turn = {
-				id: `team-turn:${item.requestId}`,
+				id: `team-turn:${requestId}`,
 				turnNumber: turns.length + 1,
 				entries: [],
 			};
 			turns.push(turn);
-			byRequest.set(item.requestId, turn);
+			byRequest.set(requestId, turn);
 		}
-		const text = item.kind === "delegation" ? item.label : item.text;
+		const text = item.kind === "event" ? item.event.label : conversationViewModelText(item.message);
 		const navigationText = createMessageFeedNavigationText(text);
 		turn.entries.push({
 			id: item.id,
 			itemIndex,
 			preview: navigationText.preview,
-			role: item.kind === "user" ? "request" : "response",
+			role: item.kind === "message" && item.message.kind === "user" ? "request" : "response",
 			searchText: navigationText.searchText,
 			turnNumber: turn.turnNumber,
 		});
@@ -362,20 +380,7 @@ export function stripAttachmentContext(text: string): string {
 	return text.replace(/\n*<attachments>\n[\s\S]*?\n<\/attachments>\s*$/u, "").trimEnd();
 }
 
-function fallbackMember(
-	memberId: string,
-	session: TeamSessionDocument,
-	members: ReadonlyMap<string, TeamMemberViewModel>,
-	unknownMember: string,
-): TeamMemberViewModel {
-	return (
-		members.get(memberId) ?? {
-			id: memberId,
-			name: session.memberHandles[memberId] ?? unknownMember,
-			handle: session.memberHandles[memberId] ?? memberId,
-			blueprintId: "leader",
-			selected: false,
-			status: "idle",
-		}
-	);
+function conversationViewModelText(message: ConversationMessageViewModel): string {
+	if (message.kind === "user") return message.text;
+	return message.blocks.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("\n");
 }

@@ -217,6 +217,13 @@ const memberRuntime = Type.Object(
 	},
 	{ additionalProperties: false },
 );
+const coordinationRuntime = Type.Object(
+	{
+		sessionId: id,
+		sessionPath: Type.String({ minLength: 1, maxLength: 4_096 }),
+	},
+	{ additionalProperties: false },
+);
 export const TeamSessionDocumentSchema = Type.Object(
 	{
 		schemaVersion: Type.Literal(AGENT_TEAM_SCHEMA_VERSION),
@@ -233,6 +240,7 @@ export const TeamSessionDocumentSchema = Type.Object(
 		memberHandles: Type.Record(id, id),
 		createdAt: timestamp,
 		updatedAt: timestamp,
+		coordinationRuntime: Type.Optional(coordinationRuntime),
 		events: Type.Array(Type.Union([userEvent, resultEvent, delegationEvent]), { maxItems: 100_000 }),
 		memberRuntime: Type.Record(id, memberRuntime),
 	},

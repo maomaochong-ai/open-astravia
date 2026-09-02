@@ -4,6 +4,7 @@ import type {
 	RuntimeSessionContextController,
 	RuntimeSessionContextDeliveryController,
 	RuntimeSessionContextUsageView,
+	RuntimeSessionConversationController,
 	RuntimeSessionConversationView,
 	RuntimeSessionCorePorts,
 	RuntimeSessionExecutionController,
@@ -63,6 +64,7 @@ export interface RuntimeHostSessionAssembly {
 	readonly contextDeliveryController?: RuntimeSessionContextDeliveryController;
 	readonly contextUsageView?: RuntimeSessionContextUsageView;
 	readonly conversationView?: RuntimeSessionConversationView;
+	readonly conversationController?: RuntimeSessionConversationController;
 	readonly executionObservationStream?: RuntimeSessionExecutionObservationStream;
 	readonly toolController?: RuntimeSessionToolController;
 	/** 可选能力（ADR-0060）：缺失时 RuntimeHost 相应功能静默降级，不做 no-op 伪造。 */

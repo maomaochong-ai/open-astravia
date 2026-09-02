@@ -1,7 +1,9 @@
 import type { ToolPhase } from "@vetta/agent-core";
-import type { UserMessage } from "@vetta/ai";
+import type { AssistantMessage, UserMessage } from "@vetta/ai";
+import type { PromptAttachmentRef } from "../contracts.js";
 import type { ContextCompactionRecord, StoredSessionEvent } from "../kernel/contracts.js";
 import type { RuntimeMessageOrigin } from "../runtime-execution-observation.js";
+import type { ConversationAgentAuthorReference, ConversationUserAuthorReference } from "./message-contract.js";
 
 export interface ConversationDocumentIdentity {
 	readonly sessionId: string;
@@ -19,12 +21,37 @@ export interface ConversationDocumentEntryBase {
 	readonly timestamp: string;
 }
 
-export interface ConversationDocumentMessageEntry extends ConversationDocumentEntryBase {
+export interface ConversationDocumentLegacyMessageEntry extends ConversationDocumentEntryBase {
 	readonly type: "message";
+	readonly kind?: never;
 	/** Legacy sessions may contain extension-specific AgentMessage variants. */
 	readonly message: unknown;
 	readonly origin?: RuntimeMessageOrigin;
 }
+
+export interface ConversationDocumentUserMessageEntry extends ConversationDocumentEntryBase {
+	readonly type: "message";
+	readonly kind: "user";
+	readonly turnId: string;
+	readonly author: ConversationUserAuthorReference;
+	readonly message: UserMessage;
+	readonly attachments?: readonly PromptAttachmentRef[];
+	readonly origin?: RuntimeMessageOrigin;
+}
+
+export interface ConversationDocumentAgentMessageEntry extends ConversationDocumentEntryBase {
+	readonly type: "message";
+	readonly kind: "agent";
+	readonly turnId: string;
+	readonly author: ConversationAgentAuthorReference;
+	readonly message: AssistantMessage;
+	readonly origin?: RuntimeMessageOrigin;
+}
+
+export type ConversationDocumentMessageEntry =
+	| ConversationDocumentLegacyMessageEntry
+	| ConversationDocumentUserMessageEntry
+	| ConversationDocumentAgentMessageEntry;
 
 export interface ConversationDocumentCompactionEntry extends ConversationDocumentEntryBase {
 	readonly type: "compaction";

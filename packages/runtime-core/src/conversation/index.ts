@@ -42,3 +42,13 @@ export {
 	projectConversationDocumentHistory,
 	selectConversationDocumentBranch,
 } from "./history-projection.js";
+export {
+	type ConversationAgentAuthorReference,
+	type ConversationAgentMessageRecord,
+	type ConversationAuthorReference,
+	type ConversationMessageRecord,
+	type ConversationMessageRecordBase,
+	type ConversationUserAuthorReference,
+	type ConversationUserMessageRecord,
+	isConversationMessageRecord,
+} from "./message-contract.js";
