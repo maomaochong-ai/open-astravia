@@ -39,11 +39,14 @@ export type {
 	AskUserQuestionViewProps,
 } from "./AskUserQuestionView";
 export { AskUserQuestionView } from "./AskUserQuestionView";
-export type {
-	AssistantMessageViewLabels,
-	AssistantMessageViewProps,
+export type { AssistantMessageFoldLabels } from "./AssistantMessageView";
+export {
+	AssistantMessage,
+	AssistantMessageFold,
+	AssistantMessagePredictingStatus,
+	AssistantMessageStreamingStatus,
+	StreamingIndicator,
 } from "./AssistantMessageView";
-export { AssistantMessageView, StreamingIndicator } from "./AssistantMessageView";
 export type {
 	AtPanelClassNames,
 	AtPanelEntryModel,
@@ -54,16 +57,33 @@ export { AtPanelView } from "./AtPanelView";
 export type { BackgroundTasksBadgeViewProps } from "./BackgroundTasksBadgeView";
 export { BackgroundTasksBadgeView } from "./BackgroundTasksBadgeView";
 export type {
-	BashBackgroundTaskView,
-	BashTerminalCardLabels,
-	BashTerminalCardProps,
+	BashTerminalLabels,
+	BashTerminalPrimitiveProps,
+	BashTerminalRootProps,
 	BashTerminalStatus,
 } from "./BashTerminalCard";
-export { BashBackgroundTaskTailView, BashTerminalCard } from "./BashTerminalCard";
+export {
+	BashTerminal,
+	BashTerminalBackgroundTaskTail,
+	BashTerminalCard,
+	BashTerminalCommand,
+	BashTerminalCopyAction,
+	BashTerminalHeader,
+	BashTerminalHeaderLabel,
+	BashTerminalMeta,
+	BashTerminalPendingStatus,
+	BashTerminalResult,
+	BashTerminalRoot,
+	BashTerminalStatusDot,
+} from "./BashTerminalCard";
 export type { ChatExportHostViewProps } from "./ChatExportHostView";
 export { ChatExportHostView } from "./ChatExportHostView";
-export type { ChatHeaderActionsViewProps } from "./ChatHeaderActionsView";
-export { ChatHeaderActionsView } from "./ChatHeaderActionsView";
+export {
+	ChatHeaderActions,
+	ChatHeaderExportAction,
+	ChatHeaderPanelAction,
+	ChatHeaderPinAction,
+} from "./ChatHeaderActionsView";
 export type { ContextRingViewProps } from "./ContextRingView";
 export { CIRCUMFERENCE as CONTEXT_RING_CIRCUMFERENCE, ContextRingView } from "./ContextRingView";
 export type { CopyIconButtonLabels, CopyIconButtonProps } from "./CopyIconButton";
@@ -228,23 +248,47 @@ export {
 	MessageLayoutOutgoing,
 	MessageLayoutOutgoingContent,
 } from "./MessageLayoutView";
-export type { MessageListFooterViewProps } from "./MessageListFooterView";
-export { MessageListFooterView } from "./MessageListFooterView";
+export type { MessageListFooterPrimitiveProps } from "./MessageListFooterView";
+export {
+	MessageListFooter,
+	MessageListFooterCompacting,
+	MessageListFooterPending,
+	MessageListFooterPresence,
+	MessageListFooterRetry,
+	MessageListFooterRoot,
+	MessageListFooterWaiting,
+} from "./MessageListFooterView";
 export type {
 	MessageSelectionContextMenuViewLabels,
 	MessageSelectionContextMenuViewProps,
 } from "./MessageSelectionContextMenuView";
 export { MessageSelectionContextMenuView } from "./MessageSelectionContextMenuView";
 export type {
-	MessageTimelineTickView,
-	MessageTimelineTriggerViewProps,
+	MessageTimelineButtonProps,
+	MessageTimelinePrimitiveProps,
+	MessageTimelineTickProps,
 } from "./MessageTimelineView";
 export {
-	MessageTimelineEntryView,
-	MessageTimelinePanelView,
-	MessageTimelineRailView,
-	MessageTimelineTriggerView,
-	MessageTimelineView,
+	MessageTimeline,
+	MessageTimelineBody,
+	MessageTimelineClose,
+	MessageTimelineCount,
+	MessageTimelineEmpty,
+	MessageTimelineEntry,
+	MessageTimelineEntryMatch,
+	MessageTimelineEntryPreview,
+	MessageTimelineNavigation,
+	MessageTimelinePanel,
+	MessageTimelinePanelHeader,
+	MessageTimelinePanelHeading,
+	MessageTimelinePanelPositioner,
+	MessageTimelineRail,
+	MessageTimelineRoot,
+	MessageTimelineSearch,
+	MessageTimelineTick,
+	MessageTimelineTickPreview,
+	MessageTimelineTitle,
+	MessageTimelineTrigger,
 } from "./MessageTimelineView";
 export type {
 	MessagePrimitiveProps,
@@ -291,8 +335,31 @@ export type {
 export { NewSessionBackground } from "./NewSessionBackground";
 export type { NewSessionPageLayoutViewProps } from "./NewSessionPageLayoutView";
 export { NewSessionPageLayoutView } from "./NewSessionPageLayoutView";
-export type { ProgressGroupRowProps, ProgressGroupViewProps } from "./ProgressGroupView";
-export { ProgressGroupRow, ProgressGroupView } from "./ProgressGroupView";
+export type {
+	ProgressGroupPrimitiveProps,
+	ProgressGroupRootProps,
+	ProgressGroupRowPrimitiveProps,
+	ProgressGroupRowRootProps,
+	ProgressGroupRowTriggerProps,
+	ProgressGroupTriggerProps,
+} from "./ProgressGroupView";
+export {
+	ProgressGroup,
+	ProgressGroupChevron,
+	ProgressGroupContent,
+	ProgressGroupFrame,
+	ProgressGroupRoot,
+	ProgressGroupRowChevron,
+	ProgressGroupRowContent,
+	ProgressGroupRowFrame,
+	ProgressGroupRowRoot,
+	ProgressGroupRowStatus,
+	ProgressGroupRowText,
+	ProgressGroupRowTrigger,
+	ProgressGroupStatus,
+	ProgressGroupTitle,
+	ProgressGroupTrigger,
+} from "./ProgressGroupView";
 export type {
 	ProjectSelectorOptionView,
 	ProjectSelectorViewLabels,
@@ -356,8 +423,22 @@ export type {
 export { TextBlockView } from "./TextBlockView";
 export type { TextPreviewLabels, TextPreviewProps } from "./TextPreview";
 export { TextPreview } from "./TextPreview";
-export type { ThinkingBlockViewLabels, ThinkingBlockViewProps } from "./ThinkingBlockView";
-export { ThinkingBlockView } from "./ThinkingBlockView";
+export type {
+	ThinkingBlockPrimitiveProps,
+	ThinkingBlockRootProps,
+	ThinkingBlockTriggerProps,
+} from "./ThinkingBlockView";
+export {
+	ThinkingBlock,
+	ThinkingBlockChevron,
+	ThinkingBlockContent,
+	ThinkingBlockFrame,
+	ThinkingBlockIcon,
+	ThinkingBlockLineCount,
+	ThinkingBlockRoot,
+	ThinkingBlockTitle,
+	ThinkingBlockTrigger,
+} from "./ThinkingBlockView";
 export type { TodoCardItem, TodoCardLabels, TodoCardProps } from "./TodoCard";
 export { TodoCard } from "./TodoCard";
 export type {
@@ -377,8 +458,26 @@ export {
 } from "./TodoProgress";
 export type { TodoStatusBarLabels, TodoStatusBarViewProps } from "./TodoStatusBarView";
 export { TodoStatusBarView } from "./TodoStatusBarView";
-export type { ToolCallBlockViewProps } from "./ToolCallBlockView";
-export { ToolCallBlockView } from "./ToolCallBlockView";
+export type {
+	ToolCallPrimitiveProps,
+	ToolCallRootProps,
+	ToolCallTriggerProps,
+} from "./ToolCallBlockView";
+export {
+	ToolCall,
+	ToolCallBadge,
+	ToolCallChevron,
+	ToolCallContent,
+	ToolCallDetail,
+	ToolCallEmbedded,
+	ToolCallFrame,
+	ToolCallName,
+	ToolCallPhase,
+	ToolCallRoot,
+	ToolCallServer,
+	ToolCallStatusIcon,
+	ToolCallTrigger,
+} from "./ToolCallBlockView";
 export type { UsageBarViewProps } from "./UsageBarView";
 export { UsageBarView } from "./UsageBarView";
 export type {
@@ -389,12 +488,14 @@ export { UserMessageContextMenuView } from "./UserMessageContextMenuView";
 export type {
 	UserMessageEntryState,
 	UserMessageViewLabels,
-	UserMessageViewProps,
 } from "./UserMessageView";
 export {
 	SettingsAssistBadgeView,
 	SkillBadgeView,
-	UserMessageView,
+	UserMessage,
+	UserMessageAction,
+	UserMessageFrame,
+	UserMessageText,
 } from "./UserMessageView";
 export type {
 	UseHorizontalDragScrollOptions,

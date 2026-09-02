@@ -1,8 +1,5 @@
-import { ThemeSurface } from "../appearance/ThemeSurface";
-import type { JSX, ReactElement, ReactNode } from "react";
+import type { JSX } from "react";
 import { useEffect, useState } from "react";
-import { MessageLayout } from "./MessageLayoutView";
-import { Message } from "./MessageView";
 
 /**
  * 逐字符入场改为纯 CSS：原来每个字符一个 motion.span，流式全程 JS 每帧写内联
@@ -20,45 +17,11 @@ const STREAM_CHAR_CSS = `
 }
 `;
 
-export interface AssistantMessageViewLabels {
-	processing: string;
-	waiting: string;
-	predicting: string;
+export interface AssistantMessageFoldLabels {
 	streamingFold: (elapsed: number) => string;
 	waitingFold: (elapsed: number) => string;
 	expandFold: (count: number) => string;
 	collapseFold: (count: number) => string;
-	streamingPhrases: string[];
-}
-
-export interface AssistantMessageViewProps {
-	rootClassName?: string;
-	timestampLabel?: string;
-	durationLabel?: string;
-	showDuration: boolean;
-	isCurrentlyStreaming: boolean;
-	isPredicting: boolean;
-	conclusionText: string;
-	fold:
-		| { kind: "streaming"; count: number; startedAt?: number; waitingForFirstActivity?: boolean }
-		| { kind: "complete"; count: number; expanded: boolean; exportPanelId?: string }
-		| null;
-	labels: AssistantMessageViewLabels;
-	/** Bot avatar node. */
-	botAvatar: ReactElement | null;
-	/** Scenario-owned author identity. */
-	author: ReactNode;
-	/** Segment list. */
-	segments: ReactNode;
-	/** Export-only process segments panel. */
-	exportProcessSegments?: ReactNode;
-	/** Plain text fallback when no blocks. */
-	fallbackText?: string;
-	/** Copy + relative time row. */
-	actions?: ReactNode;
-	/** Plugin cards. */
-	messageCards: ReactNode;
-	onToggleExpanded: () => void;
 }
 
 function useElapsedSeconds(startedAt: number | undefined, active: boolean): number {
@@ -72,7 +35,7 @@ function useElapsedSeconds(startedAt: number | undefined, active: boolean): numb
 	return Math.max(0, Math.floor((now - startedAt) / 1000));
 }
 
-function AssistantFoldTip({
+export function AssistantMessageFold({
 	state,
 	count,
 	expanded,
@@ -89,7 +52,7 @@ function AssistantFoldTip({
 	waitingForFirstActivity?: boolean;
 	onToggle: () => void;
 	exportPanelId?: string;
-	labels: AssistantMessageViewLabels;
+	labels: AssistantMessageFoldLabels;
 }): JSX.Element {
 	const elapsedSeconds = useElapsedSeconds(startedAt, state === "streaming");
 	if (state === "streaming") {
@@ -160,118 +123,25 @@ export function StreamingIndicator({ phrases }: { phrases: string[] }): JSX.Elem
 	);
 }
 
-export function AssistantMessageView({
-	rootClassName,
-	timestampLabel,
-	durationLabel,
-	showDuration,
-	isCurrentlyStreaming,
-	isPredicting,
-	conclusionText,
-	fold,
-	labels,
-	botAvatar,
-	author,
-	segments,
-	exportProcessSegments,
-	fallbackText,
-	actions,
-	messageCards,
-	onToggleExpanded,
-}: AssistantMessageViewProps): JSX.Element {
+export function AssistantMessageStreamingStatus({ label }: { readonly label: string }): JSX.Element {
 	return (
-		<Message.Root>
-			<MessageLayout.Incoming
-				className={rootClassName}
-				data-theme-surface-root="chat.assistantMessage"
-			>
-				<ThemeSurface slot="chat.assistantMessage" />
-				<MessageLayout.IncomingSurface>
-					<MessageLayout.Header>
-						{botAvatar ? (
-							<MessageLayout.HeaderLeading asChild>
-								<Message.Avatar asChild>{botAvatar}</Message.Avatar>
-							</MessageLayout.HeaderLeading>
-						) : null}
-						<Message.Author>{author}</Message.Author>
-						{timestampLabel && <Message.Meta>{timestampLabel}</Message.Meta>}
-						{showDuration && durationLabel && (
-							<>
-								<span className="text-[11px] text-muted-foreground/20">·</span>
-								<Message.Meta>{durationLabel}</Message.Meta>
-							</>
-						)}
-						{isCurrentlyStreaming && (
-							<Message.Status className="flex">
-								<span
-									className="h-1.5 w-1.5 rounded-full bg-primary/60"
-									style={{ animation: "pulse 1.5s infinite" }}
-								/>
-								<span className="text-[11px] text-muted-foreground/35">
-									{fold?.kind === "streaming" && fold.waitingForFirstActivity
-										? labels.waiting
-										: labels.processing}
-								</span>
-							</Message.Status>
-						)}
-					</MessageLayout.Header>
-				{fold?.kind === "streaming" ? (
-					<AssistantFoldTip
-						state="streaming"
-						count={fold.count}
-						expanded
-						startedAt={fold.startedAt}
-						waitingForFirstActivity={fold.waitingForFirstActivity}
-						onToggle={() => undefined}
-						labels={labels}
-					/>
-				) : fold?.kind === "complete" ? (
-					<AssistantFoldTip
-						state="complete"
-						count={fold.count}
-						expanded={fold.expanded}
-						onToggle={onToggleExpanded}
-						exportPanelId={fold.exportPanelId}
-						labels={labels}
-					/>
-				) : null}
-				<Message.Content>
-					{segments ? (
-						<div className="flex flex-col gap-0.5">
-							{exportProcessSegments}
-							{segments}
-						</div>
-					) : fallbackText ? (
-						<div
-							className="text-[14px] leading-[1.6] text-foreground"
-							style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
-						>
-							{fallbackText}
-						</div>
-					) : null}
-				</Message.Content>
-				{isCurrentlyStreaming && !(fold?.kind === "streaming" && fold.waitingForFirstActivity) && (
-					<div className="mt-2 flex items-center">
-						<StreamingIndicator phrases={labels.streamingPhrases} />
-					</div>
-				)}
-				{(actions || isPredicting) && !isCurrentlyStreaming && (
-					<MessageLayout.Footer asChild>
-						<Message.Actions className="gap-2">
-							{actions}
-							{isPredicting && (
-								<span className="processing-shimmer text-[11px] font-medium">
-									{labels.predicting}
-								</span>
-							)}
-						</Message.Actions>
-					</MessageLayout.Footer>
-				)}
-				<MessageLayout.AfterBody asChild>
-					<Message.Cards>{messageCards}</Message.Cards>
-				</MessageLayout.AfterBody>
-				</MessageLayout.IncomingSurface>
-			</MessageLayout.Incoming>
-		</Message.Root>
+		<>
+			<span
+				className="h-1.5 w-1.5 rounded-full bg-primary/60"
+				style={{ animation: "pulse 1.5s infinite" }}
+			/>
+			<span className="text-[11px] text-muted-foreground/35">{label}</span>
+		</>
 	);
 }
+
+export function AssistantMessagePredictingStatus({ label }: { readonly label: string }): JSX.Element {
+	return <span className="processing-shimmer text-[11px] font-medium">{label}</span>;
+}
+
+export const AssistantMessage = {
+	Fold: AssistantMessageFold,
+	StreamingStatus: AssistantMessageStreamingStatus,
+	PredictingStatus: AssistantMessagePredictingStatus,
+	StreamingIndicator,
+} as const;

@@ -1,6 +1,5 @@
 import {
-	BashBackgroundTaskTailView,
-	BashTerminalCard as ThemeBashTerminalCard,
+	BashTerminal,
 } from "@vetta/theme-ui/chat";
 import { useTranslation } from "react-i18next";
 import { formatPhases, formatStartedAt, formatDurationPrecise } from "./shared/format";
@@ -46,7 +45,9 @@ function BackgroundTaskTail({ task }: { task: BgTask }): JSX.Element {
 			</>
 		);
 	return (
-		<BashBackgroundTaskTailView taskId={task.id} status={task.status} tail={task.tail} statusLine={statusLine} />
+		<BashTerminal.BackgroundTaskTail taskId={task.id} status={task.status} tail={task.tail}>
+			{statusLine}
+		</BashTerminal.BackgroundTaskTail>
 	);
 }
 
@@ -70,8 +71,9 @@ export function BashTerminalCard({
 	backgroundTask?: BgTask;
 }): JSX.Element {
 	const { t } = useTranslation("chat");
+	const pending = status === "pending";
 	return (
-		<ThemeBashTerminalCard
+		<BashTerminal.Root
 			command={command}
 			result={result}
 			status={status}
@@ -85,13 +87,25 @@ export function BashTerminalCard({
 			}
 			headerLabel={bashHeaderLabel(status, command)}
 			labels={{
-				copyCommand: t("bashTerminalCard.copyCommand"),
 				metaDescription: t("bashTerminalCard.metaDescription"),
 				executing: "正在执行···",
 				meta: "meta",
 			}}
-			backgroundTaskTail={backgroundTask ? <BackgroundTaskTail task={backgroundTask} /> : undefined}
-			copyButton={<CopyIconButton getText={() => command} label={t("bashTerminalCard.copyCommand")} />}
-		/>
+		>
+			<BashTerminal.Card>
+				<BashTerminal.Header>
+					<BashTerminal.StatusDot />
+					<BashTerminal.HeaderLabel />
+					<BashTerminal.CopyAction>
+						<CopyIconButton getText={() => command} label={t("bashTerminalCard.copyCommand")} />
+					</BashTerminal.CopyAction>
+				</BashTerminal.Header>
+				<BashTerminal.Command />
+				<BashTerminal.Result />
+				{!pending && backgroundTask ? <BackgroundTaskTail task={backgroundTask} /> : null}
+				<BashTerminal.PendingStatus />
+				<BashTerminal.Meta />
+			</BashTerminal.Card>
+		</BashTerminal.Root>
 	);
 }

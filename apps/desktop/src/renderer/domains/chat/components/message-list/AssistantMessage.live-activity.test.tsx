@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
@@ -11,10 +10,6 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@vetta/theme-sdk/appearance", () => ({ useThemeSurface: () => null }));
 vi.mock("@shared/components/BotAvatar", () => ({ BotAvatar: () => null }));
-vi.mock("@vetta/theme-ui/chat", () => ({
-	AssistantMessageView: ({ segments }: { segments: ReactNode }) => <div>{segments}</div>,
-	StreamingIndicator: () => null,
-}));
 vi.mock("../../hooks/useAssistantMessageModel", () => ({
 	useAssistantMessageModel: () => ({
 		conclusionText: "",
@@ -42,7 +37,7 @@ vi.mock("../../hooks/useAssistantMessageModel", () => ({
 				blocks: [],
 			},
 		],
-		showDuration: false,
+		durationAvailable: false,
 		streamingTailIndex: -1,
 		workFoldCount: 0,
 	}),

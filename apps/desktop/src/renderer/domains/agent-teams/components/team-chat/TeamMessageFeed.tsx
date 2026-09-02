@@ -1,7 +1,7 @@
 import {
-	MessageFeedNavigation,
 	type MessageFeedNavigationLabels,
 } from "@shared/components/message-feed/MessageFeedNavigation";
+import { MessageFeedNavigationRecipe } from "@shared/components/message-feed/MessageFeedNavigationRecipe";
 import { useMessageFeedActiveItem } from "@shared/components/message-feed/useMessageFeedActiveItem";
 import { useMessageFeedScrollModel } from "@shared/components/message-feed/useMessageFeedScrollModel";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
@@ -121,13 +121,14 @@ export function TeamMessageFeed({
 				</MessageFeedLayout.Viewport>
 				<MessageFeedLayout.LeftRail>
 					<MessageFeedLayout.RailContent>
-						<MessageFeedNavigation
-							activeItemIndex={activeItem.activeIndex}
-							turns={navigationTurns}
-							onNavigate={scroll.scrollToItem}
-							labels={labels.navigation}
-							minimumTurnCount={NAVIGATION_MIN_TURNS}
-						/>
+						{navigationTurns.length >= NAVIGATION_MIN_TURNS ? (
+							<MessageFeedNavigationRecipe
+								activeItemIndex={activeItem.activeIndex}
+								turns={navigationTurns}
+								onNavigate={scroll.scrollToItem}
+								labels={labels.navigation}
+							/>
+						) : null}
 					</MessageFeedLayout.RailContent>
 				</MessageFeedLayout.LeftRail>
 			</MessageFeedLayout.Frame>

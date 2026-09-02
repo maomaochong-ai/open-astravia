@@ -8,8 +8,12 @@ import {
 	MessageVisual,
 } from "@vetta/theme-ui/chat";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ComponentType, HTMLAttributes, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { MessageFeedNavigation } from "./MessageFeedNavigation";
+
+vi.mock("@shared/shortcuts", () => ({ useShortcutScope: () => undefined }));
 
 vi.mock("react-virtuoso", () => ({
 	Virtuoso: (props: {
@@ -104,6 +108,49 @@ describe("MessageFeed compound primitives", () => {
 				</MessageFeed.Root>,
 			),
 		).toThrow("MessageFeed.VirtualList requires one MessageFeedLayout.List child");
+	});
+});
+
+describe("MessageFeedNavigation compound primitives", () => {
+	it("lets JSX mount and remove navigation capabilities independently", async () => {
+		render(
+			<MessageFeedNavigation.Root>
+				<MessageFeedNavigation.Trigger asChild>
+					<button type="button">Open outline</button>
+				</MessageFeedNavigation.Trigger>
+				<MessageFeedNavigation.Preview>Tick preview</MessageFeedNavigation.Preview>
+				<MessageFeedNavigation.Content>
+					<div>
+						<label>
+							Search
+							<MessageFeedNavigation.Search />
+						</label>
+						<MessageFeedNavigation.Close asChild>
+							<button type="button">Close outline</button>
+						</MessageFeedNavigation.Close>
+					</div>
+				</MessageFeedNavigation.Content>
+			</MessageFeedNavigation.Root>,
+		);
+
+		const trigger = screen.getByRole("button", { name: "Open outline" });
+		expect(trigger.getAttribute("data-state")).toBe("closed");
+		expect(screen.getByText("Tick preview")).toBeTruthy();
+		expect(screen.queryByRole("textbox", { name: "Search" })).toBeNull();
+
+		await userEvent.click(trigger);
+		expect(trigger.getAttribute("data-state")).toBe("open");
+		expect(screen.queryByText("Tick preview")).toBeNull();
+		expect(screen.getByRole("textbox", { name: "Search" })).toBeTruthy();
+
+		await userEvent.click(screen.getByRole("button", { name: "Close outline" }));
+		expect(screen.queryByRole("textbox", { name: "Search" })).toBeNull();
+	});
+
+	it("fails early when a capability is mounted outside its Root", () => {
+		expect(() => render(<MessageFeedNavigation.Search aria-label="orphan" />)).toThrow(
+			"MessageFeedNavigation.Search must be used within MessageFeedNavigation.Root",
+		);
 	});
 });
 

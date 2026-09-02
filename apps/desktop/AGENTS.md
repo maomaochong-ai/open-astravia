@@ -130,20 +130,13 @@ src/
 - 每个领域内部结构：`components/`, `hooks/`, `services/`（按需）
 - 领域间通过 `@shared/store/atoms` 共享状态，不要跨领域直接 import 其他领域的内部模块
 
-#### 可组合组件是多能力 UI 的默认合同
+#### UI 组件合同与组合规范
 
-当一个 UI 包含两个及以上可以独立增删、替换、排序或复用的能力，或同一基础结构需要承载不同业务组合时，必须使用 Radix 风格的复合组件 API，而不是继续扩展一个大组件的 props。目标是让调用方通过 JSX 结构决定“使用哪些能力、放在哪里、按什么顺序”，组件本身只拥有其职责范围内的状态、语义和样式。
+**创建或修改任何 Desktop UI 组件前，必须完整阅读并遵守 [`docs/composable-ui-components.md`](./docs/composable-ui-components.md)。** 该规范用于根据真实变化维度选择普通叶子、容器、Compound Components 或动态描述，并定义 Behavior/Layout/Visual/Recipe/Connector 边界、props、`asChild`、API 演进、测试和审查要求。
 
-- 使用 `Root` + 语义 Primitive 的公开结构，例如 `MessageInput.Root`、`MessageInput.Editor`、`MessageInput.Toolbar`、`MessageInput.SendAction`；由 `Root` 通过 Context 提供真正共享的状态和行为，叶子 Primitive 只消费自身所需的最小合同。
-- 独立能力必须实现为可直接挂载和卸载的子组件。增删、替换或排序静态能力应只需增删或移动 JSX，不得要求同步修改中央能力数组、字符串 Region 联合类型、位置映射表或父组件条件分支。
-- 布局位置由显式的语义容器表达，例如 `ToolbarLeading` / `ToolbarTrailing`。不得使用 `showX`、`enableX`、`leftActions`、`rightActions`、`renderX`、万能 `options` 等 props 持续为父组件增加功能开关；不得把任意 `ReactNode` prop 当成组合 API。
-- 当 Primitive 需要把行为、状态或样式附着到调用方提供的宿主元素时，提供与 Radix 一致的 `asChild` / `Slot` 能力，合并 `className`、事件、`ref` 和可访问属性，避免仅为实现样式而增加 DOM 包装层。
-- 共享 Context 不得成为隐藏的万能 view model。状态应归属于最小公共祖先；只被单个能力使用的数据和副作用留在该能力或对应 hook 中。Primitive 离开所需的 `Root` 使用时应尽早失败并给出明确错误。
-- 静态产品组合使用 JSX 作为唯一事实源。只有运行时插件、服务端下发扩展等真实动态集合才允许使用注册表；动态描述必须在边界处校验并转换为公开 Primitive，不得让注册表反向控制内置静态能力。
-- 重构现有多能力组件时，先列出必须保持的 DOM、样式、键盘、焦点、动画和事件语义，再做行为保持型拆分；不得以“可组合”为由改变既有功能或视觉。
-- 测试至少覆盖关键 Primitive 的独立增删/排序、Context 合同和 `asChild` 的宿主元素语义；具体业务组件仍须覆盖实际用户交互，不能只测试组合基础层。
+该要求同时适用于 `apps/desktop/src/renderer`、`packages/theme-ui` 以及被 Desktop 使用的共享 UI。不能以“只改现有组件”“只是内部重构”或“已有 View API”为由跳过。每次变更都必须审查新增或发生语义变化的合同，不得新引入不必要的结构 prop、能力开关、任意 `ReactNode` region 或职责混合。是否使用 Compound API 取决于真实组合维度；不得为了形式把普通叶子复杂化。历史债务按影响和任务范围处理，不得借规范无限扩大无关改动。
 
-简单、单一职责且没有真实组合维度的叶子组件继续使用普通 props，不得为了形式创建空洞的 `Root`、Context 或 Primitive。是否拆分以“能力能否独立变化”和“状态所有权是否清晰”为判断标准，而不是组件行数。
+新增或修改可复用 UI 合同时，交付说明应包含：所选合同与边界、关键 props 的理由、兼容策略、自审结果、已运行测试，以及未运行的适用验证。审查任务按文档严重度和格式报告，不得仅凭组件行数、prop 数量或正则命中下结论。
 
 ### 3. 状态管理
 

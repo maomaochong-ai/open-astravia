@@ -105,7 +105,7 @@ function props(
 				onAtBottomChange: vi.fn(),
 				scrollToMessage,
 			} as never,
-			showWaiting: false,
+			waitingForResponse: false,
 			tailMessageId: "message-1",
 		},
 		onAbort: vi.fn(),

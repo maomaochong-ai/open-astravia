@@ -1,74 +1,54 @@
 // @vitest-environment jsdom
-import { AssistantMessageView, type AssistantMessageViewLabels } from "@vetta/theme-ui/chat";
+import {
+	AssistantMessage,
+	type AssistantMessageFoldLabels,
+} from "@vetta/theme-ui/chat";
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@vetta/theme-sdk/appearance", () => ({
-	useThemeSurface: () => null,
-}));
-
-const labels: AssistantMessageViewLabels = {
-	processing: "processing",
-	waiting: "waiting",
-	predicting: "predicting",
+const labels: AssistantMessageFoldLabels = {
 	streamingFold: (elapsed) => `streaming ${elapsed}`,
 	waitingFold: (elapsed) => `waited ${elapsed}`,
 	expandFold: (count) => `expand ${count}`,
 	collapseFold: (count) => `collapse ${count}`,
-	streamingPhrases: [],
 };
 
-describe("AssistantMessageView", () => {
+describe("AssistantMessage primitives", () => {
 	afterEach(() => {
 		cleanup();
 		vi.useRealTimers();
 	});
 
-	it("renders turn actions when the assistant turn has no conclusion text", () => {
-		render(
-			<AssistantMessageView
-				author="Vetta"
-				showDuration={false}
-				isCurrentlyStreaming={false}
-				isPredicting={false}
-				conclusionText=""
-				fold={null}
-				labels={labels}
-				botAvatar={null}
-				segments={null}
-				fallbackText="done"
-				actions={<button type="button">token usage</button>}
-				messageCards={null}
-				onToggleExpanded={() => undefined}
-			/>,
-		);
-
-		expect(screen.getByRole("button", { name: "token usage" })).toBeTruthy();
-	});
-
-	it("shows the assistant header and stable elapsed state before first model activity", () => {
+	it("keeps the waiting fold as an independently mountable capability", () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date(66_000));
 		render(
-			<AssistantMessageView
-				author="Vetta"
-				showDuration={false}
-				isCurrentlyStreaming
-				isPredicting={false}
-				conclusionText=""
-				fold={{ kind: "streaming", count: 0, startedAt: 1_000, waitingForFirstActivity: true }}
+			<AssistantMessage.Fold
+				state="streaming"
+				count={0}
+				expanded
+				startedAt={1_000}
+				waitingForFirstActivity
+				onToggle={vi.fn()}
 				labels={labels}
-				botAvatar={null}
-				segments={null}
-				actions={null}
-				messageCards={null}
-				onToggleExpanded={() => undefined}
 			/>,
 		);
-
-		expect(screen.getByText("Vetta")).toBeTruthy();
-		expect(screen.getByText("waiting")).toBeTruthy();
 		expect(screen.getByText("waited 65")).toBeTruthy();
-		expect(screen.queryByText("…")).toBeNull();
+	});
+
+	it("exposes the complete fold toggle without owning the message layout", async () => {
+		const onToggle = vi.fn();
+		render(
+			<AssistantMessage.Fold
+				state="complete"
+				count={3}
+				expanded={false}
+				onToggle={onToggle}
+				labels={labels}
+			/>,
+		);
+		await userEvent.click(screen.getByRole("button", { name: "expand 3" }));
+		expect(onToggle).toHaveBeenCalledOnce();
 	});
 });

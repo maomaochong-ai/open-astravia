@@ -17,24 +17,6 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@vetta/theme-sdk/appearance", () => ({ useThemeSurface: () => null }));
 vi.mock("@shared/components/BotAvatar", () => ({ BotAvatar: () => null }));
-vi.mock("@vetta/theme-ui/chat", () => ({
-	AssistantMessageView: ({
-		fallbackText,
-		fold,
-		labels,
-	}: {
-		fallbackText?: string;
-		fold: { kind: string; waitingForFirstActivity?: boolean } | null;
-		labels: { waiting: string; waitingFold: (elapsed: number) => string };
-	}) => (
-		<div>
-			<span>{fold?.waitingForFirstActivity ? labels.waiting : "not-waiting"}</span>
-			<span>{fold?.waitingForFirstActivity ? labels.waitingFold(12) : "no-timer"}</span>
-			{fallbackText ? <span>{fallbackText}</span> : null}
-		</div>
-	),
-	StreamingIndicator: () => null,
-}));
 vi.mock("../../hooks/useAssistantMessageModel", () => ({
 	useAssistantMessageModel: () => ({
 		conclusionText: "",
@@ -44,7 +26,7 @@ vi.mock("../../hooks/useAssistantMessageModel", () => ({
 		isPredicting: false,
 		stagedNarration: true,
 		segments: [],
-		showDuration: false,
+		durationAvailable: false,
 		streamingTailIndex: -1,
 		workFoldCount: 0,
 	}),
@@ -64,6 +46,8 @@ import { AssistantMessage } from "./AssistantMessage";
 
 describe("AssistantMessage first-response waiting state", () => {
 	it("projects an empty streaming draft as a waiting assistant message without an ellipsis body", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date(13_000));
 		render(
 			<AssistantMessage
 				isStreaming
@@ -81,5 +65,6 @@ describe("AssistantMessage first-response waiting state", () => {
 		expect(screen.getByText("messageList.assistantMessage.waiting")).toBeTruthy();
 		expect(screen.getByText("waited 12s")).toBeTruthy();
 		expect(screen.queryByText("…")).toBeNull();
+		vi.useRealTimers();
 	});
 });

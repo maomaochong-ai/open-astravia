@@ -19,25 +19,24 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@vetta/theme-ui/chat", () => ({
-	ProgressGroupView: ({ children, done, title }: { children: ReactNode; done: boolean; title: string }) => (
-		<div>
-			<span data-testid="group-title">{title}</span>
-			<span data-testid="group-status">{done ? "done" : "running"}</span>
-			{children}
-		</div>
-	),
-	ProgressGroupRow: ({
-		text,
-		details,
-	}: {
-		text: string;
-		details?: ReactNode;
-	}) => (
-		<div>
-			<span>{text}</span>
-			{details}
-		</div>
-	),
+	ProgressGroup: {
+		Root: ({ children, done }: { children: ReactNode; done: boolean }) => (
+			<div data-group-status={done ? "done" : "running"}>{children}</div>
+		),
+		Frame: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+		Trigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+		Status: () => <span data-testid="group-status" />,
+		Title: ({ children }: { children: ReactNode }) => <span data-testid="group-title">{children}</span>,
+		Chevron: () => null,
+		Content: ({ children }: { children: ReactNode }) => <>{children}</>,
+		RowRoot: ({ children }: { children: ReactNode }) => <>{children}</>,
+		RowFrame: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+		RowTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+		RowStatus: () => null,
+		RowText: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+		RowChevron: () => null,
+		RowContent: ({ children }: { children: ReactNode }) => <>{children}</>,
+	},
 	LiveThinkingView: ({ text }: { text: string }) => <span data-testid="live-thinking">{text}</span>,
 	SegmentShell: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
@@ -45,12 +44,13 @@ vi.mock("@vetta/theme-ui/chat", () => ({
 vi.mock("../blocks/ErrorBlock", () => ({ ErrorBlockView: () => null }));
 vi.mock("../blocks/TextBlock", () => ({ TextBlockView: () => null }));
 vi.mock("../blocks/ThinkingBlock", () => ({
-	ThinkingBlockView: ({ title }: { title?: string }) => <span data-testid="thinking-title">{title}</span>,
+	ConciseThinkingBlockView: ({ title }: { title?: string }) => (
+		<span data-testid="thinking-title">{title}</span>
+	),
 }));
 vi.mock("../blocks/ToolCallBlock", () => ({
-	ToolCallBlockView: ({ embedded }: { embedded?: boolean }) => (
-		<span data-testid="tool-details" data-embedded={embedded ? "yes" : "no"} />
-	),
+	ToolCallBlockView: () => <span data-testid="tool-details" data-embedded="no" />,
+	EmbeddedToolCallBlockView: () => <span data-testid="tool-details" data-embedded="yes" />,
 }));
 vi.mock("../blocks/tool-views/shared/parse-tool", () => ({
 	toolLabel: (block: { toolName: string }) => ({ name: `工具 ${block.toolName}`, detail: "" }),
@@ -103,7 +103,7 @@ describe("WorkSegmentRenderer live activity", () => {
 		renderSegment(stage([tool("read", { currentPhase: "正在解析配置文件" })]));
 
 		expect(screen.getByTestId("group-title").textContent).toBe("正在解析配置文件");
-		expect(screen.getByTestId("group-status").textContent).toBe("running");
+		expect(screen.getByTestId("group-title").closest("[data-group-status]")?.getAttribute("data-group-status")).toBe("running");
 	});
 
 	it("没有工具阶段时优先展示 agent 写的 description", () => {
@@ -148,7 +148,7 @@ describe("WorkSegmentRenderer live activity", () => {
 		);
 
 		expect(screen.getByTestId("group-title").textContent).toBe("已核对项目结构");
-		expect(screen.getByTestId("group-status").textContent).toBe("done");
+		expect(screen.getByTestId("group-title").closest("[data-group-status]")?.getAttribute("data-group-status")).toBe("done");
 	});
 
 	it("非当前阶段保持 agent 的阶段标题", () => {

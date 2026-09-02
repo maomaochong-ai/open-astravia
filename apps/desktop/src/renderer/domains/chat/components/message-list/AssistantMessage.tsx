@@ -1,8 +1,11 @@
 import { BotAvatar } from "@shared/components/BotAvatar";
 import type { ChatMessage } from "@shared/store/atoms";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
+import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import {
-	AssistantMessageView,
+	AssistantMessage as AssistantMessagePrimitive,
+	Message,
+	MessageLayout,
 	StreamingIndicator as ThemeStreamingIndicator,
 } from "@vetta/theme-ui/chat";
 import { memo, useId, useMemo } from "react";
@@ -63,7 +66,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 		liveThinkingId,
 		stagedNarration,
 		segments,
-		showDuration,
+		durationAvailable,
 		streamingTailIndex,
 		workFoldCount,
 	} = model;
@@ -116,23 +119,65 @@ export const AssistantMessage = memo(function AssistantMessage({
 			: null;
 
 	const showTokenUsage = !exportMode && Boolean(message.usages?.length);
+	const hasActions = conclusionText.length > 0 || showTokenUsage;
 
 	return (
-		<AssistantMessageView
-			author="Vetta"
-			rootClassName={surface?.rootClassName}
-			timestampLabel={message.timestamp ? formatTime(message.timestamp) : undefined}
-			durationLabel={formatTurnDuration(message.durationSeconds ?? 0, t)}
-			showDuration={showDuration}
-			isCurrentlyStreaming={isCurrentlyStreaming}
-			isPredicting={isPredicting}
-			conclusionText={conclusionText}
-			fold={fold}
-			labels={labels}
-			botAvatar={<BotAvatar active={isCurrentlyStreaming} />}
-			segments={
-				hasBlocks ? (
-					<>
+		<Message.Root>
+			<MessageLayout.Incoming
+				className={surface?.rootClassName}
+				data-theme-surface-root="chat.assistantMessage"
+			>
+				<ThemeSurface slot="chat.assistantMessage" />
+				<MessageLayout.IncomingSurface>
+					<MessageLayout.Header>
+						<MessageLayout.HeaderLeading asChild>
+							<Message.Avatar asChild>
+								<BotAvatar active={isCurrentlyStreaming} />
+							</Message.Avatar>
+						</MessageLayout.HeaderLeading>
+						<Message.Author>Vetta</Message.Author>
+						{message.timestamp ? <Message.Meta>{formatTime(message.timestamp)}</Message.Meta> : null}
+						{durationAvailable ? (
+							<>
+								<span className="text-[11px] text-muted-foreground/20">·</span>
+								<Message.Meta>
+									{formatTurnDuration(message.durationSeconds ?? 0, t)}
+								</Message.Meta>
+							</>
+						) : null}
+						{isCurrentlyStreaming ? (
+							<Message.Status className="flex">
+								<AssistantMessagePrimitive.StreamingStatus
+									label={isAwaitingFirstActivity ? labels.waiting : labels.processing}
+								/>
+							</Message.Status>
+						) : null}
+					</MessageLayout.Header>
+
+					{fold?.kind === "streaming" ? (
+						<AssistantMessagePrimitive.Fold
+							state="streaming"
+							count={fold.count}
+							expanded
+							startedAt={fold.startedAt}
+							waitingForFirstActivity={fold.waitingForFirstActivity}
+							onToggle={() => undefined}
+							labels={labels}
+						/>
+					) : fold?.kind === "complete" ? (
+						<AssistantMessagePrimitive.Fold
+							state="complete"
+							count={fold.count}
+							expanded={fold.expanded}
+							onToggle={toggleExpanded}
+							exportPanelId={fold.exportPanelId}
+							labels={labels}
+						/>
+					) : null}
+
+					<Message.Content>
+						{hasBlocks ? (
+							<div className="flex flex-col gap-0.5">
 						{exportProcessSegments.length > 0 && (
 							<div
 								id={exportFoldPanelId}
@@ -171,12 +216,27 @@ export const AssistantMessage = memo(function AssistantMessage({
 								/>
 							),
 						)}
-					</>
-				) : null
-			}
-			fallbackText={isAwaitingFirstActivity ? undefined : message.text || "\u2026"}
-			actions={
-				conclusionText.length > 0 || showTokenUsage ? (
+							</div>
+						) : !isAwaitingFirstActivity ? (
+							<div
+								className="text-[14px] leading-[1.6] text-foreground"
+								style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+							>
+								{message.text || "\u2026"}
+							</div>
+						) : null}
+					</Message.Content>
+
+					{isCurrentlyStreaming && !isAwaitingFirstActivity ? (
+						<div className="mt-2 flex items-center">
+							<AssistantMessagePrimitive.StreamingIndicator phrases={labels.streamingPhrases} />
+						</div>
+					) : null}
+
+					{(hasActions || isPredicting) && !isCurrentlyStreaming ? (
+						<MessageLayout.Footer asChild>
+							<Message.Actions className="gap-2">
+								{hasActions ? (
 					<div className="flex items-center gap-1">
 						{conclusionText.length > 0 && <CopyButton getText={() => conclusionText} />}
 						{(message.endedAt ?? message.timestamp) && (
@@ -184,10 +244,21 @@ export const AssistantMessage = memo(function AssistantMessage({
 						)}
 						{showTokenUsage && <MessageTokenUsage usages={message.usages ?? []} />}
 					</div>
-				) : undefined
-			}
-			messageCards={<MessageCardsHost message={message} />}
-			onToggleExpanded={toggleExpanded}
-		/>
+								) : null}
+								{isPredicting ? (
+									<AssistantMessagePrimitive.PredictingStatus label={labels.predicting} />
+								) : null}
+							</Message.Actions>
+						</MessageLayout.Footer>
+					) : null}
+
+					<MessageLayout.AfterBody asChild>
+						<Message.Cards>
+							<MessageCardsHost message={message} />
+						</Message.Cards>
+					</MessageLayout.AfterBody>
+				</MessageLayout.IncomingSurface>
+			</MessageLayout.Incoming>
+		</Message.Root>
 	);
 });

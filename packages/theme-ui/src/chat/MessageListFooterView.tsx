@@ -1,5 +1,7 @@
+import { cn } from "@vetta/ui";
 import { AnimatePresence, motion, type Transition } from "motion/react";
-import type { JSX, ReactNode } from "react";
+import { Slot } from "radix-ui";
+import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from "react";
 
 const INDICATOR_INITIAL = { opacity: 0, y: 6 };
 const INDICATOR_ANIMATE = { opacity: 1, y: 0 };
@@ -9,23 +11,44 @@ const INDICATOR_TRANSITION = {
 	ease: [0.25, 0.1, 0.25, 1] as const,
 } satisfies Transition;
 
-export interface MessageListFooterViewProps {
-	readonly compactionLabel: string;
-	readonly isCompacting: boolean;
-	/** 短生命周期的会话准备状态；显示在消息流尾部，不写入消息历史。 */
-	readonly pendingLabel?: string | null;
-	readonly pluginHost?: ReactNode;
-	/** 自动重试退避中的提示语；null / undefined 表示没在重试。 */
-	readonly retryLabel?: string | null;
-	/** 上一次失败原因的用户友好摘要。 */
-	readonly retryDetail?: string | null;
-	readonly showWaiting: boolean;
-	readonly streamingIndicator: ReactNode;
-	/** Workflow summary items (ADR-0044); rendered above the plugin host. */
-	readonly workflowItems?: ReactNode;
+export interface MessageListFooterPrimitiveProps extends ComponentPropsWithoutRef<"div"> {
+	readonly asChild?: boolean;
 }
 
-function CompactionIndicator({ label }: { label: string }): JSX.Element {
+export const MessageListFooterRoot = forwardRef<
+	HTMLDivElement,
+	MessageListFooterPrimitiveProps
+>(function MessageListFooterRoot({ asChild = false, className, ...props }, forwardedRef) {
+	const Comp = asChild ? Slot.Root : "div";
+	return (
+		<Comp
+			ref={forwardedRef}
+			className={cn("mx-auto flex max-w-3xl flex-col gap-2 px-5 pt-0", className)}
+			{...props}
+		/>
+	);
+});
+
+export function MessageListFooterPresence({ children }: { readonly children: ReactNode }): JSX.Element {
+	return <AnimatePresence initial={false}>{children}</AnimatePresence>;
+}
+
+export function MessageListFooterPending({ label }: { readonly label: string }): JSX.Element {
+	return (
+		<motion.div
+			initial={INDICATOR_INITIAL}
+			animate={INDICATOR_ANIMATE}
+			exit={INDICATOR_EXIT}
+			transition={INDICATOR_TRANSITION}
+			className="flex items-center gap-2 py-1 text-[12px] text-muted-foreground"
+		>
+			<span className="icon-[solar--refresh-linear] h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+			<span>{label}</span>
+		</motion.div>
+	);
+}
+
+export function MessageListFooterCompacting({ label }: { readonly label: string }): JSX.Element {
 	return (
 		<motion.div
 			initial={INDICATOR_INITIAL}
@@ -62,8 +85,13 @@ function CompactionIndicator({ label }: { label: string }): JSX.Element {
 	);
 }
 
-/** 重试退避期的低调提示：让「卡住不动」变成「系统正在替你重试」。 */
-function RetryIndicator({ detail, label }: { detail?: string | null; label: string }): JSX.Element {
+export function MessageListFooterRetry({
+	detail,
+	label,
+}: {
+	readonly detail?: string | null;
+	readonly label: string;
+}): JSX.Element {
 	return (
 		<motion.div
 			initial={INDICATOR_INITIAL}
@@ -81,43 +109,19 @@ function RetryIndicator({ detail, label }: { detail?: string | null; label: stri
 	);
 }
 
-export function MessageListFooterView({
-	compactionLabel,
-	isCompacting,
-	pendingLabel,
-	pluginHost,
-	retryDetail,
-	retryLabel,
-	showWaiting,
-	streamingIndicator,
-	workflowItems,
-}: MessageListFooterViewProps): JSX.Element {
-	return (
-		<div className="mx-auto flex max-w-3xl flex-col gap-2 px-5 pt-0">
-			<AnimatePresence initial={false}>
-				{pendingLabel ? (
-					<motion.div
-						key="pending"
-						initial={INDICATOR_INITIAL}
-						animate={INDICATOR_ANIMATE}
-						exit={INDICATOR_EXIT}
-						transition={INDICATOR_TRANSITION}
-						className="flex items-center gap-2 py-1 text-[12px] text-muted-foreground"
-					>
-						<span className="icon-[solar--refresh-linear] h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
-						<span>{pendingLabel}</span>
-					</motion.div>
-				) : null}
-				{isCompacting && <CompactionIndicator key="compacting" label={compactionLabel} />}
-				{!isCompacting && retryLabel ? (
-					<RetryIndicator key="retrying" label={retryLabel} detail={retryDetail} />
-				) : null}
-			</AnimatePresence>
-			{showWaiting && !pendingLabel && !isCompacting && !retryLabel && (
-				<div className="flex items-center">{streamingIndicator}</div>
-			)}
-			{workflowItems}
-			{pluginHost}
-		</div>
-	);
-}
+export const MessageListFooterWaiting = forwardRef<
+	HTMLDivElement,
+	MessageListFooterPrimitiveProps
+>(function MessageListFooterWaiting({ asChild = false, className, ...props }, forwardedRef) {
+	const Comp = asChild ? Slot.Root : "div";
+	return <Comp ref={forwardedRef} className={cn("flex items-center", className)} {...props} />;
+});
+
+export const MessageListFooter = {
+	Root: MessageListFooterRoot,
+	Presence: MessageListFooterPresence,
+	Pending: MessageListFooterPending,
+	Compacting: MessageListFooterCompacting,
+	Retry: MessageListFooterRetry,
+	Waiting: MessageListFooterWaiting,
+} as const;

@@ -1,4 +1,4 @@
-import { ChatHeaderActionsView } from "@vetta/theme-ui/chat";
+import { ChatHeaderActions } from "@vetta/theme-ui/chat";
 
 interface NewSessionHeaderActionsProps {
 	activityOpen: boolean;
@@ -22,14 +22,9 @@ export function NewSessionHeaderActions({
 	pinned,
 }: NewSessionHeaderActionsProps): JSX.Element {
 	return (
-		<ChatHeaderActionsView
-			badges={null}
-			pinTitle={pinTitle}
-			pinned={pinned}
-			onTogglePin={onTogglePin}
-			panelTitle={panelTitle}
-			panelOpen={activityOpen}
-			onTogglePanel={onToggleActivity}
-		/>
+		<>
+			<ChatHeaderActions.Pin title={pinTitle} pinned={pinned} onClick={onTogglePin} />
+			<ChatHeaderActions.Panel title={panelTitle} open={activityOpen} onClick={onToggleActivity} />
+		</>
 	);
 }

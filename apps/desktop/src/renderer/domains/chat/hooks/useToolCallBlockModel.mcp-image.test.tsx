@@ -39,7 +39,7 @@ describe("useToolCallBlockModel MCP images", () => {
 			wrapper: Wrapper,
 		});
 
-		render(<>{result.current.body}</>);
+		render(<>{result.current.content}</>);
 
 		expect(screen.getByRole("img", { name: "MCP result" }).getAttribute("src")).toBe(
 			"data:image/png;base64,aW1hZ2U=",
@@ -53,7 +53,7 @@ describe("useToolCallBlockModel MCP images", () => {
 			{ data: "aW1hZ2Uy", mimeType: "image/jpeg" },
 		];
 		const { result } = renderHook(() => useToolCallBlockModel(value), { wrapper: Wrapper });
-		render(<>{result.current.body}</>);
+		render(<>{result.current.content}</>);
 
 		expect(screen.getAllByRole("img", { name: "MCP result" })).toHaveLength(2);
 	});

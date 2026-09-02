@@ -51,7 +51,7 @@ export function MessageListView({
 		parentEntryId,
 		parentSessionPath,
 		scroll,
-		showWaiting,
+		waitingForResponse,
 		tailMessageId,
 	} = model;
 	const scrollerElement = scroll.scrollerElement;
@@ -135,15 +135,15 @@ export function MessageListView({
 				<div className="pb-16">
 					<MessageListFooter
 						isCompacting={isCompacting}
-						showWaiting={showWaiting}
-						showWorkflows={sessionId != null}
+						waiting={waitingForResponse}
+						sessionId={sessionId ?? undefined}
 						pendingLabel={pendingLabel}
 					/>
 					{onSend && <SuggestionBubbles onSend={onSend} />}
 				</div>
 			</MessageFeed.Footer>
 		),
-		[isCompacting, showWaiting, onSend, pendingLabel, sessionId],
+		[isCompacting, waitingForResponse, onSend, pendingLabel, sessionId],
 	);
 	const selectionMenu = useMessageSelectionContextMenu();
 

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { Provider, createStore } from "jotai";
 import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
@@ -15,21 +16,19 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@vetta/theme-ui/chat", () => ({
-	MessageListFooterView: ({
-		pendingLabel,
-		retryDetail,
-		retryLabel,
-	}: {
-		pendingLabel?: string;
-		retryDetail?: string;
-		retryLabel?: string;
-	}) => (
-		<div>
-			{pendingLabel ? <span>{pendingLabel}</span> : null}
-			{retryLabel ? <span>{retryLabel}</span> : null}
-			{retryDetail ? <span>{retryDetail}</span> : null}
-		</div>
-	),
+	MessageListFooter: {
+		Root: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+		Presence: ({ children }: { children: ReactNode }) => <>{children}</>,
+		Pending: ({ label }: { label: string }) => <span>{label}</span>,
+		Compacting: ({ label }: { label: string }) => <span>{label}</span>,
+		Retry: ({ detail, label }: { detail?: string; label: string }) => (
+			<div>
+				<span>{label}</span>
+				{detail ? <span>{detail}</span> : null}
+			</div>
+		),
+		Waiting: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	},
 }));
 vi.mock("../../../plugins/components/PluginTurnCardHost", () => ({ PluginTurnCardHost: () => null }));
 vi.mock("./AssistantMessage", () => ({ StreamingIndicator: () => null }));
@@ -52,7 +51,7 @@ describe("MessageListFooter retry progress", () => {
 
 		render(
 			<Provider store={store}>
-				<MessageListFooter isCompacting={false} showWaiting />
+				<MessageListFooter isCompacting={false} waiting />
 			</Provider>,
 		);
 
@@ -63,7 +62,7 @@ describe("MessageListFooter retry progress", () => {
 	it("shows session startup status in the message list footer", () => {
 		render(
 			<Provider store={store}>
-				<MessageListFooter isCompacting={false} pendingLabel="正在启动会话" showWaiting={false} />
+				<MessageListFooter isCompacting={false} pendingLabel="正在启动会话" waiting={false} />
 			</Provider>,
 		);
 

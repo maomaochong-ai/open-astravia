@@ -8,7 +8,6 @@ import {
 	pluginToolCallSlotsAtom,
 	type ToolCallBlock,
 } from "@shared/store/atoms";
-import type { ToolCallBlockViewProps } from "@vetta/theme-ui/chat";
 import { useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { Component, type ErrorInfo, type ReactNode, useId, useMemo, useState } from "react";
@@ -58,9 +57,7 @@ class PluginToolCallErrorBoundary extends Component<{ children: ReactNode }, { f
 	}
 }
 
-export type ToolCallBlockModel = ToolCallBlockViewProps;
-
-export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, aliased = false): ToolCallBlockModel {
+export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, aliased = false) {
 	const { t } = useTranslation("chat");
 	const [expanded, setExpanded] = useState(false);
 	const generatedId = useId();
@@ -105,7 +102,7 @@ export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, 
 	const iconColorClass = toolCallIconColorClass(block.status, block.isError);
 	const liveElapsedMs = useElapsedWhilePending(block.startedAt, isPending);
 	const badgeMs = toolCallDurationMs(block.status, block.durationMs, liveElapsedMs);
-	const showBadge = badgeMs !== null;
+	const badgeAvailable = badgeMs !== null;
 
 	if (pluginRenderer) {
 		const SlotComponent = pluginRenderer.component;
@@ -119,10 +116,10 @@ export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, 
 			iconColorClass,
 			name,
 			isPending,
-			showBadge: false,
-			body: null,
+			badgeAvailable: false,
+			content: null,
 			onToggle: () => undefined,
-			pluginSlot: (
+			pluginContent: (
 				<>
 					{mdIntro ? <MarkdownContent text={mdIntro} className="mb-2" /> : null}
 					<PluginToolCallErrorBoundary>
@@ -144,7 +141,7 @@ export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, 
 		};
 	}
 
-	const body = shellCommand ? (
+	const content = shellCommand ? (
 		<BashTerminalCard
 			command={shellCommand}
 			result={block.result}
@@ -247,9 +244,10 @@ export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, 
 		detail,
 		isPending,
 		currentPhase: block.currentPhase,
-		showBadge,
+		badgeAvailable,
 		badgeLabel: badgeMs !== null ? formatDurationCompact(badgeMs) : null,
-		body,
+		content,
+		pluginContent: null,
 		onToggle: () => setExpanded((v) => !v),
 	};
 }

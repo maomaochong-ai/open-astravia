@@ -1,13 +1,13 @@
 import type { ThinkingBlock, ToolCallBlock } from "@shared/store/atoms";
 import { languageAtom, pluginAgentToolLabelsAtom, pluginI18nByIdAtom } from "@shared/store/atoms";
-import { LiveThinkingView, ProgressGroupRow, ProgressGroupView, SegmentShell } from "@vetta/theme-ui/chat";
+import { LiveThinkingView, ProgressGroup, SegmentShell } from "@vetta/theme-ui/chat";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorBlockView } from "../blocks/ErrorBlock";
 import { TextBlockView } from "../blocks/TextBlock";
-import { ThinkingBlockView } from "../blocks/ThinkingBlock";
-import { ToolCallBlockView } from "../blocks/ToolCallBlock";
+import { ConciseThinkingBlockView } from "../blocks/ThinkingBlock";
+import { EmbeddedToolCallBlockView, ToolCallBlockView } from "../blocks/ToolCallBlock";
 import { toolLabel } from "../blocks/tool-views/shared/parse-tool";
 import { useExpansion } from "./expansionStore";
 import type { GroupBlock, ProgressGroupSegment, WorkSegment } from "./progressGroupModel";
@@ -38,15 +38,24 @@ interface StageRowProps {
 const StageRow = memo(function StageRow({ block, exportMode }: StageRowProps) {
 	const [expanded, toggle] = useExpansion(`row:${block.toolCallId}`);
 	useToolLabelInputs();
+	const text = rowText(block);
 	return (
-		<ProgressGroupRow
-			text={rowText(block)}
-			status={block.status}
+		<ProgressGroup.RowRoot
 			exportMode={exportMode}
 			expanded={expanded}
 			onToggle={toggle}
-			details={<ToolCallBlockView block={block} exportMode={exportMode} aliased embedded />}
-		/>
+		>
+			<ProgressGroup.RowFrame>
+				<ProgressGroup.RowTrigger>
+					<ProgressGroup.RowStatus status={block.status} />
+					<ProgressGroup.RowText title={text}>{text}</ProgressGroup.RowText>
+					<ProgressGroup.RowChevron />
+				</ProgressGroup.RowTrigger>
+				<ProgressGroup.RowContent>
+					<EmbeddedToolCallBlockView block={block} exportMode={exportMode} aliased />
+				</ProgressGroup.RowContent>
+			</ProgressGroup.RowFrame>
+		</ProgressGroup.RowRoot>
 	);
 });
 
@@ -81,32 +90,41 @@ const StageGroup = memo(function StageGroup({
 		liveTitle = phase || description || toolLabel(activity.block, true).name;
 	}
 	return (
-		<ProgressGroupView
-			title={liveTitle ?? segment.summary ?? segment.label ?? fallbackTitle}
+		<ProgressGroup.Root
 			blockCount={segment.blocks.length}
 			done={done}
 			exportMode={exportMode}
 			expanded={expanded}
 			onToggle={toggle}
 		>
-			{/* thinking 与工具调用按原顺序同列，展开阶段后才可见。 */}
-			{segment.blocks.map((block) =>
-				block.type === "tool_call" ? (
-					<StageRow key={block.toolCallId} block={block} exportMode={exportMode} />
-				) : liveThinkingId === block.id ? (
-					// 进行中的思考就地展示实时滚动卡片，不脱离所属阶段组。
-					<LiveThinkingView key={`thinking-${block.id}`} text={block.text} />
-				) : (
-					<ThinkingBlockView
-						key={`thinking-${block.id}`}
-						text={block.text}
-						exportMode={exportMode}
-						title={t("messageList.progressGroup.thinkingLabel")}
-						showLineCount={false}
-					/>
-				),
-			)}
-		</ProgressGroupView>
+			<ProgressGroup.Frame>
+				<ProgressGroup.Trigger>
+					<ProgressGroup.Status />
+					<ProgressGroup.Title>
+						{liveTitle ?? segment.summary ?? segment.label ?? fallbackTitle}
+					</ProgressGroup.Title>
+					<ProgressGroup.Chevron />
+				</ProgressGroup.Trigger>
+				<ProgressGroup.Content>
+					{/* thinking 与工具调用按原顺序同列，展开阶段后才可见。 */}
+					{segment.blocks.map((block) =>
+						block.type === "tool_call" ? (
+							<StageRow key={block.toolCallId} block={block} exportMode={exportMode} />
+						) : liveThinkingId === block.id ? (
+							// 进行中的思考就地展示实时滚动卡片，不脱离所属阶段组。
+							<LiveThinkingView key={`thinking-${block.id}`} text={block.text} />
+						) : (
+							<ConciseThinkingBlockView
+								key={`thinking-${block.id}`}
+								text={block.text}
+								exportMode={exportMode}
+								title={t("messageList.progressGroup.thinkingLabel")}
+							/>
+						),
+					)}
+				</ProgressGroup.Content>
+			</ProgressGroup.Frame>
+		</ProgressGroup.Root>
 	);
 });
 
@@ -224,11 +242,10 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 					liveThinkingId === segment.block.id ? (
 						<LiveThinkingView text={segment.block.text} />
 					) : (
-						<ThinkingBlockView
+						<ConciseThinkingBlockView
 							text={segment.block.text}
 							exportMode={exportMode}
 							title={t("messageList.progressGroup.thinkingLabel")}
-							showLineCount={false}
 						/>
 					);
 				break;

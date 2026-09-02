@@ -2,8 +2,56 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { UserMessageView } from "@vetta/theme-ui/chat";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
+
+const onEdit = vi.fn();
+const onFork = vi.fn();
+const onBranchNext = vi.fn();
+
+vi.mock("../../hooks/useUserMessageModel", () => ({
+	useUserMessageModel: () => ({
+		entryState: "static",
+		displayText: "message",
+		hasImages: false,
+		hasSkillBadge: false,
+		hasSettingsAssistBadge: false,
+		hasFileBadges: false,
+		hasAppshot: false,
+		copyText: "",
+		contextMenu: null,
+		editActionAvailable: true,
+		canSwitchBranch: true,
+		forkActionAvailable: true,
+		isPendingEdit: false,
+		branchIndex: 0,
+		branchTotal: 2,
+		actionsVisible: true,
+		labels: {
+			expand: "expand",
+			edit: "edit",
+			fork: "fork",
+			branchPrev: "previous",
+			branchNext: "next",
+			branchPosition: "1/2",
+			pendingEdit: "pending edit",
+		},
+		appshot: null,
+		images: null,
+		badges: null,
+		fileBadges: null,
+		textBody: <span>message</span>,
+		relativeTime: null,
+		copyButton: null,
+		onContextMenu: vi.fn(),
+		onEdit,
+		onFork,
+		onBranchPrev: vi.fn(),
+		onBranchNext,
+		onActionsVisibleChange: vi.fn(),
+	}),
+}));
+
+import { UserMessage } from "./UserMessage";
 
 beforeAll(() => {
 	vi.stubGlobal(
@@ -19,59 +67,19 @@ afterAll(() => vi.unstubAllGlobals());
 
 it("Runtime 恢复期间消息操作保持可用并立即接受点击", async () => {
 	const user = userEvent.setup();
-	const onEdit = vi.fn();
-	const onFork = vi.fn();
-	const onBranchNext = vi.fn();
 	render(
-		<UserMessageView
-			entryState="static"
-			displayText="message"
-			hasImages={false}
-			hasSkillBadge={false}
-			hasSettingsAssistBadge={false}
-			hasFileBadges={false}
-			hasAppshot={false}
-			copyText=""
+		<UserMessage
+			message={{ id: "user-1", role: "user", text: "message" }}
 			isLastUserMessage
-			showEditAction
-			canSwitchBranch
-			showForkAction
-			isPendingEdit={false}
-			branchIndex={0}
-			branchTotal={2}
-			actionsVisible
-			labels={{
-				expand: "expand",
-				edit: "edit",
-				fork: "fork",
-				skillBadge: "skill",
-				sceneBadge: "scene",
-				branchPrev: "previous",
-				branchNext: "next",
-				branchPosition: "1/2",
-				pendingEdit: "pending edit",
-			}}
-			appshot={null}
-			images={null}
-			badges={null}
-			fileBadges={null}
-			textBody={<span>message</span>}
-			relativeTime={null}
-			copyButton={null}
-			onContextMenu={vi.fn()}
-			onEdit={onEdit}
-			onFork={onFork}
-			onBranchPrev={vi.fn()}
-			onBranchNext={onBranchNext}
-			onActionsVisibleChange={vi.fn()}
 		/>,
 	);
 
 	expect((screen.getByLabelText("edit") as HTMLButtonElement).disabled).toBe(false);
 	expect((screen.getByLabelText("fork") as HTMLButtonElement).disabled).toBe(false);
-	// Previous remains disabled because it is a real branch boundary, unrelated to Runtime readiness.
 	expect((screen.getByLabelText("previous") as HTMLButtonElement).disabled).toBe(true);
 	expect((screen.getByLabelText("next") as HTMLButtonElement).disabled).toBe(false);
+	const outgoing = document.querySelector("[data-message-layout='outgoing']");
+	expect(outgoing?.className).toContain("justify-end");
 
 	await user.click(screen.getByLabelText("edit"));
 	await user.click(screen.getByLabelText("fork"));

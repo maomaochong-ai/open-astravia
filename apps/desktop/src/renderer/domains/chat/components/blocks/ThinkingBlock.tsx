@@ -1,30 +1,60 @@
-import { ThinkingBlockView as ThemeThinkingBlockView } from "@vetta/theme-ui/chat";
+import { ThinkingBlock } from "@vetta/theme-ui/chat";
 import { useTranslation } from "react-i18next";
 
 interface ThinkingBlockProps {
-	text: string;
-	exportMode?: boolean;
-	/** 覆盖默认标题（work 模式用「正在思考」）。 */
-	title?: string;
-	/** work 模式只要一句话，不报行数。 */
-	showLineCount?: boolean;
+	readonly text: string;
+	readonly exportMode?: boolean;
+	readonly title?: string;
 }
 
 export function ThinkingBlockView({
 	text,
 	exportMode = false,
 	title,
-	showLineCount = true,
 }: ThinkingBlockProps): JSX.Element {
 	const { t } = useTranslation("chat");
+	const resolvedTitle = title ?? t("thinkingBlock.title");
 	return (
-		<ThemeThinkingBlockView
-			text={text}
-			exportMode={exportMode}
-			labels={{
-				title: title ?? t("thinkingBlock.title"),
-				lineCount: showLineCount ? (count) => t("thinkingBlock.lineCount", { count }) : undefined,
-			}}
-		/>
+		<ThinkingBlock.Root exportMode={exportMode}>
+			<ThinkingBlock.Frame>
+				<ThinkingBlock.Trigger
+					data-export-label-collapsed={resolvedTitle}
+					data-export-label-expanded={resolvedTitle}
+				>
+					<ThinkingBlock.Icon />
+					<ThinkingBlock.Title>{resolvedTitle}</ThinkingBlock.Title>
+					<ThinkingBlock.LineCount>
+						{t("thinkingBlock.lineCount", { count: text.split("\n").length })}
+					</ThinkingBlock.LineCount>
+					<ThinkingBlock.Chevron />
+				</ThinkingBlock.Trigger>
+				<ThinkingBlock.Content>{text}</ThinkingBlock.Content>
+			</ThinkingBlock.Frame>
+		</ThinkingBlock.Root>
+	);
+}
+
+/** Work narration keeps the same behavior and layout but omits the technical line count. */
+export function ConciseThinkingBlockView({
+	text,
+	exportMode = false,
+	title,
+}: ThinkingBlockProps): JSX.Element {
+	const { t } = useTranslation("chat");
+	const resolvedTitle = title ?? t("thinkingBlock.title");
+	return (
+		<ThinkingBlock.Root exportMode={exportMode}>
+			<ThinkingBlock.Frame>
+				<ThinkingBlock.Trigger
+					data-export-label-collapsed={resolvedTitle}
+					data-export-label-expanded={resolvedTitle}
+				>
+					<ThinkingBlock.Icon />
+					<ThinkingBlock.Title>{resolvedTitle}</ThinkingBlock.Title>
+					<ThinkingBlock.Chevron />
+				</ThinkingBlock.Trigger>
+				<ThinkingBlock.Content>{text}</ThinkingBlock.Content>
+			</ThinkingBlock.Frame>
+		</ThinkingBlock.Root>
 	);
 }

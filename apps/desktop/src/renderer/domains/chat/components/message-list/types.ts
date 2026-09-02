@@ -22,7 +22,7 @@ export interface MessageListModel {
 	messages: ChatMessage[];
 	modelSwitchLabels: Map<string, string>;
 	scroll: MessageListScrollModel;
-	showWaiting: boolean;
+	waitingForResponse: boolean;
 	tailMessageId: string | null;
 }
 
@@ -40,6 +40,6 @@ export interface AssistantMessageModel {
 	segments: WorkSegment[];
 	/** Work 模式折叠条的计数单位是阶段数，而非原始 block 数。 */
 	workFoldCount: number;
-	showDuration: boolean;
+	durationAvailable: boolean;
 	streamingTailIndex: number;
 }

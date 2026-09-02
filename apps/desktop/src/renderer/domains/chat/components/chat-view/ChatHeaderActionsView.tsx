@@ -1,4 +1,4 @@
-import { ChatHeaderActionsView as ThemeChatHeaderActionsView } from "@vetta/theme-ui/chat";
+import { ChatHeaderActions } from "@vetta/theme-ui/chat";
 import { BackgroundTasksBadge } from "../BackgroundTasksBadge";
 import { SandboxGrantsBadge } from "../SandboxGrantsBadge";
 import type { ChatViewActions, ChatViewHeaderModel } from "./types";
@@ -10,23 +10,25 @@ interface ChatHeaderActionsViewProps {
 
 export function ChatHeaderActionsView({ actions, model }: ChatHeaderActionsViewProps): JSX.Element {
 	return (
-		<ThemeChatHeaderActionsView
-			badges={
-				<>
-					<BackgroundTasksBadge />
-					<SandboxGrantsBadge />
-				</>
-			}
-			exportTitle={model.exportTitle}
-			exportDisabled={model.exportDisabled}
-			exporting={model.exporting}
-			onOpenExport={actions.openExport}
-			pinTitle={model.pinTitle}
-			pinned={model.pinned}
-			onTogglePin={actions.togglePin}
-			panelTitle={model.panelTitle}
-			panelOpen={model.panelOpen}
-			onTogglePanel={actions.togglePanel}
-		/>
+		<>
+			<BackgroundTasksBadge />
+			<SandboxGrantsBadge />
+			<ChatHeaderActions.Export
+				title={model.exportTitle}
+				disabled={model.exportDisabled}
+				exporting={model.exporting}
+				onClick={actions.openExport}
+			/>
+			<ChatHeaderActions.Pin
+				title={model.pinTitle}
+				pinned={model.pinned}
+				onClick={actions.togglePin}
+			/>
+			<ChatHeaderActions.Panel
+				title={model.panelTitle}
+				open={model.panelOpen}
+				onClick={actions.togglePanel}
+			/>
+		</>
 	);
 }

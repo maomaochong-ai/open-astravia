@@ -1,144 +1,230 @@
-import { Input } from "@shared/components/ui/input";
 import { useShortcutScope } from "@shared/shortcuts";
+import { Slot } from "radix-ui";
 import {
-	MessageTimelineEntryView,
-	MessageTimelinePanelView,
-	MessageTimelineRailView,
-	MessageTimelineTriggerView,
-	MessageTimelineView,
-} from "@vetta/theme-ui/chat";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Virtuoso } from "react-virtuoso";
-import {
-	buildMessageFeedNavigationOutline,
-	findActiveMessageFeedNavigationTurnIndex,
-	type MessageFeedNavigationLabels,
-	type MessageFeedNavigationTurn,
-} from "./navigationModel";
+	createContext,
+	forwardRef,
+	type ButtonHTMLAttributes,
+	type ComponentPropsWithoutRef,
+	type ReactNode,
+	type Ref,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 
-export type { MessageFeedNavigationLabels } from "./navigationModel";
+export type { MessageFeedNavigationLabels, MessageFeedNavigationTurn } from "./navigationModel";
 
-export function MessageFeedNavigation({
-	activeItemIndex,
-	turns,
-	onNavigate,
-	labels,
-	minimumTurnCount = 1,
-}: {
-	readonly activeItemIndex: number;
-	readonly turns: readonly MessageFeedNavigationTurn[];
-	readonly onNavigate: (itemIndex: number) => void;
-	readonly labels: MessageFeedNavigationLabels;
-	readonly minimumTurnCount?: number;
-}): JSX.Element | null {
-	const rootRef = useRef<HTMLDivElement>(null);
-	const [open, setOpen] = useState(false);
+interface MessageFeedNavigationContextValue {
+	readonly open: boolean;
+	readonly query: string;
+	readonly close: () => void;
+	readonly setOpen: (open: boolean) => void;
+	readonly setQuery: (query: string) => void;
+	readonly toggle: () => void;
+}
+
+const MessageFeedNavigationContext = createContext<MessageFeedNavigationContextValue | null>(null);
+
+export interface MessageFeedNavigationRootProps {
+	readonly children: ReactNode;
+	readonly defaultOpen?: boolean;
+	readonly open?: boolean;
+	readonly onOpenChange?: (open: boolean) => void;
+}
+
+export function MessageFeedNavigationRoot({
+	children,
+	defaultOpen = false,
+	open: controlledOpen,
+	onOpenChange,
+}: MessageFeedNavigationRootProps): JSX.Element {
+	const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
 	const [query, setQuery] = useState("");
-	const ticks = useMemo(() => buildMessageFeedNavigationOutline(turns, ""), [turns]);
-	const visibleItems = useMemo(() => buildMessageFeedNavigationOutline(turns, query), [query, turns]);
-
-	const closePanel = (): void => {
-		setOpen(false);
-		setQuery("");
-	};
+	const open = controlledOpen ?? uncontrolledOpen;
+	const setOpen = useCallback(
+		(nextOpen: boolean) => {
+			if (controlledOpen === undefined) setUncontrolledOpen(nextOpen);
+			if (!nextOpen) setQuery("");
+			onOpenChange?.(nextOpen);
+		},
+		[controlledOpen, onOpenChange],
+	);
+	const close = useCallback(() => setOpen(false), [setOpen]);
+	const toggle = useCallback(() => setOpen(!open), [open, setOpen]);
 
 	useShortcutScope({
 		id: "overlay:message-outline",
 		kind: "overlay",
 		active: open,
-		bindings: [{ key: "escape", run: closePanel }],
+		bindings: [{ key: "escape", run: close }],
 	});
+
+	const value = useMemo(
+		() => ({ close, open, query, setOpen, setQuery, toggle }),
+		[close, open, query, setOpen, toggle],
+	);
+	return (
+		<MessageFeedNavigationContext.Provider value={value}>
+			{children}
+		</MessageFeedNavigationContext.Provider>
+	);
+}
+
+export function useMessageFeedNavigationContext(
+	part = "MessageFeedNavigation",
+): MessageFeedNavigationContextValue {
+	const context = useContext(MessageFeedNavigationContext);
+	if (!context) throw new Error(`${part} must be used within MessageFeedNavigation.Root`);
+	return context;
+}
+
+function composeRefs<T>(...refs: Array<Ref<T> | undefined>): (node: T | null) => void {
+	return (node) => {
+		for (const ref of refs) {
+			if (typeof ref === "function") ref(node);
+			else if (ref) ref.current = node;
+		}
+	};
+}
+
+export interface MessageFeedNavigationPrimitiveProps extends ComponentPropsWithoutRef<"div"> {
+	readonly asChild?: boolean;
+}
+
+export const MessageFeedNavigationDismissable = forwardRef<
+	HTMLDivElement,
+	MessageFeedNavigationPrimitiveProps
+>(function MessageFeedNavigationDismissable({ asChild = false, ...props }, forwardedRef) {
+	const { close, open } = useMessageFeedNavigationContext("MessageFeedNavigation.Dismissable");
+	const localRef = useRef<HTMLDivElement>(null);
+	const Comp = asChild ? Slot.Root : "div";
 
 	useEffect(() => {
 		if (!open) return;
 		const onPointerDown = (event: PointerEvent): void => {
 			const target = event.target;
-			if (!(target instanceof Node) || rootRef.current?.contains(target)) return;
-			setOpen(false);
-			setQuery("");
+			if (!(target instanceof Node) || localRef.current?.contains(target)) return;
+			close();
 		};
 		document.addEventListener("pointerdown", onPointerDown);
 		return () => document.removeEventListener("pointerdown", onPointerDown);
-	}, [open]);
+	}, [close, open]);
 
-	if (turns.length < minimumTurnCount) return null;
+	return <Comp ref={composeRefs(localRef, forwardedRef)} {...props} />;
+});
 
-	const activeTurnNumber =
-		turns[findActiveMessageFeedNavigationTurnIndex(turns, activeItemIndex)]?.turnNumber;
-	const activeVisibleIndex = visibleItems.findIndex((item) => item.turnNumber === activeTurnNumber);
-	const fallbackPreview = (preview: string): string => preview || labels.emptyRequest;
-
+export const MessageFeedNavigationState = forwardRef<
+	HTMLDivElement,
+	MessageFeedNavigationPrimitiveProps
+>(function MessageFeedNavigationState({ asChild = false, ...props }, forwardedRef) {
+	const { open } = useMessageFeedNavigationContext("MessageFeedNavigation.State");
+	const Comp = asChild ? Slot.Root : "div";
 	return (
-		<div ref={rootRef}>
-			<MessageTimelineView
-				label={labels.open}
-				open={open}
-				trigger={
-					<MessageTimelineTriggerView
-						label={labels.open}
-						aria-expanded={open}
-						data-state={open ? "open" : "closed"}
-						onClick={() => {
-							if (open) closePanel();
-							else setOpen(true);
-						}}
-					/>
-				}
-				rail={
-					<MessageTimelineRailView
-						showPreview={!open}
-						ticks={ticks.map((tick) => {
-							const preview = fallbackPreview(tick.preview);
-							return {
-								active: tick.turnNumber === activeTurnNumber,
-								id: tick.id,
-								label: preview,
-								name: labels.jumpTo(preview),
-								onClick: () => onNavigate(tick.targetItemIndex),
-							};
-						})}
-					/>
-				}
-				panel={
-					open ? (
-						<MessageTimelinePanelView
-							title={labels.title}
-							countLabel={labels.count(turns.length)}
-							emptyLabel={labels.noResults}
-							closeLabel={labels.close}
-							onClose={closePanel}
-							searchInput={
-								<Input
-									type="search"
-									value={query}
-									onChange={(event) => setQuery(event.target.value)}
-									placeholder={labels.searchPlaceholder}
-									aria-label={labels.searchLabel}
-									className="h-7 text-[12px]"
-								/>
-							}
-							timeline={
-								visibleItems.length > 0 ? (
-									<Virtuoso
-										data={visibleItems}
-										className="h-full overflow-x-hidden"
-										initialTopMostItemIndex={Math.max(0, activeVisibleIndex)}
-										computeItemKey={(_index, item) => item.id}
-										itemContent={(_index, item) => (
-											<MessageTimelineEntryView
-												active={item.turnNumber === activeTurnNumber}
-												matchPreview={item.matchPreview}
-												preview={fallbackPreview(item.preview)}
-												onClick={() => onNavigate(item.targetItemIndex)}
-											/>
-										)}
-									/>
-								) : null
-							}
-						/>
-					) : null
-				}
-			/>
-		</div>
+		<Comp
+			ref={forwardedRef}
+			aria-expanded={open}
+			data-state={open ? "open" : "closed"}
+			{...props}
+		/>
 	);
+});
+
+export interface MessageFeedNavigationTriggerProps
+	extends ButtonHTMLAttributes<HTMLButtonElement> {
+	readonly asChild?: boolean;
 }
+
+export const MessageFeedNavigationTrigger = forwardRef<
+	HTMLButtonElement,
+	MessageFeedNavigationTriggerProps
+>(function MessageFeedNavigationTrigger({ asChild = false, onClick, type, ...props }, forwardedRef) {
+	const { open, toggle } = useMessageFeedNavigationContext("MessageFeedNavigation.Trigger");
+	const Comp = asChild ? Slot.Root : "button";
+	return (
+		<Comp
+			ref={forwardedRef}
+			type={asChild ? undefined : (type ?? "button")}
+			aria-expanded={open}
+			data-state={open ? "open" : "closed"}
+			onClick={(event) => {
+				onClick?.(event);
+				if (!event.defaultPrevented) toggle();
+			}}
+			{...props}
+		/>
+	);
+});
+
+export const MessageFeedNavigationClose = forwardRef<
+	HTMLButtonElement,
+	MessageFeedNavigationTriggerProps
+>(function MessageFeedNavigationClose({ asChild = false, onClick, type, ...props }, forwardedRef) {
+	const { close } = useMessageFeedNavigationContext("MessageFeedNavigation.Close");
+	const Comp = asChild ? Slot.Root : "button";
+	return (
+		<Comp
+			ref={forwardedRef}
+			type={asChild ? undefined : (type ?? "button")}
+			onClick={(event) => {
+				onClick?.(event);
+				if (!event.defaultPrevented) close();
+			}}
+			{...props}
+		/>
+	);
+});
+
+export interface MessageFeedNavigationSearchProps extends ComponentPropsWithoutRef<"input"> {
+	readonly asChild?: boolean;
+}
+
+export const MessageFeedNavigationSearch = forwardRef<
+	HTMLInputElement,
+	MessageFeedNavigationSearchProps
+>(function MessageFeedNavigationSearch({ asChild = false, onInput, ...props }, forwardedRef) {
+	const { query, setQuery } = useMessageFeedNavigationContext("MessageFeedNavigation.Search");
+	const Comp = asChild ? Slot.Root : "input";
+	return (
+		<Comp
+			ref={forwardedRef}
+			value={query}
+			onInput={(event) => {
+				onInput?.(event);
+				if (!event.defaultPrevented) setQuery(event.currentTarget.value);
+			}}
+			{...props}
+		/>
+	);
+});
+
+export function MessageFeedNavigationContent({
+	children,
+}: {
+	readonly children: ReactNode;
+}): JSX.Element | null {
+	const { open } = useMessageFeedNavigationContext("MessageFeedNavigation.Content");
+	return open ? <>{children}</> : null;
+}
+
+export function MessageFeedNavigationPreview({
+	children,
+}: {
+	readonly children: ReactNode;
+}): JSX.Element | null {
+	const { open } = useMessageFeedNavigationContext("MessageFeedNavigation.Preview");
+	return open ? null : <>{children}</>;
+}
+
+export const MessageFeedNavigation = {
+	Root: MessageFeedNavigationRoot,
+	Dismissable: MessageFeedNavigationDismissable,
+	State: MessageFeedNavigationState,
+	Trigger: MessageFeedNavigationTrigger,
+	Close: MessageFeedNavigationClose,
+	Search: MessageFeedNavigationSearch,
+	Content: MessageFeedNavigationContent,
+	Preview: MessageFeedNavigationPreview,
+} as const;

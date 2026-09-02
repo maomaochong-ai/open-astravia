@@ -21,8 +21,6 @@ import {
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import {
 	SettingsAssistBadgeView,
-	type UserMessageContextMenuViewProps,
-	type UserMessageViewProps,
 } from "@vetta/theme-ui/chat";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo, useState, type MouseEvent, type ReactNode } from "react";
@@ -195,16 +193,12 @@ export interface UserMessageModelInput {
 	onAbortEdit?: () => void;
 }
 
-export interface UserMessageModel extends UserMessageViewProps {
-	contextMenu: UserMessageContextMenuViewProps | null;
-}
-
 export function useUserMessageModel({
 	message,
 	isLastUserMessage = false,
 	isStreaming = false,
 	onAbortEdit,
-}: UserMessageModelInput): UserMessageModel {
+}: UserMessageModelInput) {
 	const { t } = useTranslation("chat");
 	// 正文里的能力 token 要还原成命令区插入时的样子（图标 + 别名）。
 	const resolveSkillMeta = useSkillTokenMeta();
@@ -301,10 +295,10 @@ export function useUserMessageModel({
 	const pendingEdit = useAtomValue(pendingMessageEditAtom);
 
 	const hasPersistedEntry = Boolean(message.entryId);
-	const showEditAction = isLastUserMessage;
-	const canEdit = showEditAction;
+	const editActionAvailable = isLastUserMessage;
+	const canEdit = editActionAvailable;
 	const canDelete = hasPersistedEntry;
-	const showForkAction = hasPersistedEntry;
+	const forkActionAvailable = hasPersistedEntry;
 	const branch = message.branch;
 	const canSwitchBranch = Boolean(branch && branch.siblings.length > 1 && message.entryId);
 	const isPendingEdit = Boolean(
@@ -585,7 +579,7 @@ export function useUserMessageModel({
 
 	return {
 		// 入场动画只服务于 site 的演示流；桌面端恒静态，不驱动 motion。
-		entryState: "static",
+		entryState: "static" as const,
 		displayText,
 		hasImages,
 		hasSkillBadge,
@@ -612,9 +606,9 @@ export function useUserMessageModel({
 				}
 			: null,
 		isLastUserMessage,
-		showEditAction,
+		editActionAvailable,
 		canSwitchBranch,
-		showForkAction,
+		forkActionAvailable,
 		isPendingEdit,
 		branchIndex: branch?.index ?? 0,
 		branchTotal: branch?.siblings.length ?? 0,

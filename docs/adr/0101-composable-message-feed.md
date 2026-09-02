@@ -22,6 +22,10 @@
 8. 领域协议仍是能力上限。UI Primitive 可以组合附件、工具调用、推理、审批或卡片，但只有来源协议真实提供相应数据时场景才能装配该能力；不得为了“统一 UI”伪造或丢失协议语义。
 9. 虚拟列表的 key 使用领域稳定身份。Team 的用户消息使用 `requestId`，流式成员回复与最终持久化结果使用同一 `turnId/sourceTurnId` 逻辑 key，避免状态切换时重挂载消息项，也避免同一成员在一个请求中产生多次 turn 时 key 冲突。
 10. 删除已被替代的固定 `MessageListView`、`ConversationTimelineView` 和无语义 `MessageItemView` API，不保留新旧两套长期执行路径。专属业务能力继续留在场景组件中，通过公共 Primitive 组合，而不是下沉到通用 Root。
+11. 长对话导航同样按轴拆分：`MessageFeedNavigation.Root/Trigger/Close/Search/Content/Preview` 只拥有打开、关闭、查询和 dismiss 行为，`MessageTimeline.Root/Navigation/Rail/Tick/Panel/Entry` 只表达布局与视觉。Chat 和 Team 使用公开 Primitive 组成默认 recipe；不得重新增加 `trigger`、`rail`、`panel`、`searchInput`、`timeline`、`showPreview` 等结构 prop。
+12. Assistant、User 与 Footer 的默认产品结构在 Desktop 场景 JSX 中装配。theme-ui 只公开 Fold、Status、Text、Action、Presence、Pending、Retry 等独立叶子以及通用 `Message*` 布局；不得恢复由单个 `*View` 接收头像、正文、操作区、卡片或插件区域 ReactNode 后固定拼装的合同。
+13. 消息内容和标题栏能力采用同一合同。工具调用、终端、阶段详情与思考块公开只含必要共享状态的 Compound Components；无共享状态的标题栏动作公开为可独立排列的叶子，不增加空 Root。Desktop recipe 显式装配具体能力。嵌入式工具调用、精简思考块和无导出标题栏通过不同 JSX 组合表达，不再使用 `embedded`、`showLineCount`、`badges`、`pluginSlot` 或其他结构 prop 切换子树。
+14. Compound Components 的 namespace 外形不构成组合能力。消息 Primitive 只有在拥有共享行为、可访问关系、生命周期、布局位置、稳定视觉或宿主属性投影时才保留；仅做 Context 存在性检查、添加测试 marker 或生成无职责包装层的 `create*Part` 属于名义组合，应删除或收敛为普通叶子。`asChild` 只用于投影真实能力，不能作为 Primitive 存在的理由。
 
 ## 后果
 

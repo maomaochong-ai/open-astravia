@@ -1,4 +1,4 @@
-import { MessageFeedNavigation } from "@shared/components/message-feed/MessageFeedNavigation";
+import { MessageFeedNavigationRecipe } from "@shared/components/message-feed/MessageFeedNavigationRecipe";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -32,13 +32,13 @@ export function MessageTimeline({
 		}),
 		[t],
 	);
+	if (turns.length < MESSAGE_NAVIGATION_MIN_TURNS) return null;
 	return (
-		<MessageFeedNavigation
+		<MessageFeedNavigationRecipe
 			activeItemIndex={activeMessageIndex}
 			turns={turns}
 			onNavigate={onNavigate}
 			labels={labels}
-			minimumTurnCount={MESSAGE_NAVIGATION_MIN_TURNS}
 		/>
 	);
 }

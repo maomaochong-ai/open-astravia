@@ -33,7 +33,7 @@ export function useMessageListModel({ messages, isStreaming, sessionId }: Messag
 		messages,
 		modelSwitchLabels,
 		scroll,
-		showWaiting: isStreaming && messages.at(-1)?.role !== "assistant",
+		waitingForResponse: isStreaming && messages.at(-1)?.role !== "assistant",
 		tailMessageId: messages.at(-1)?.id ?? null,
 	};
 }
