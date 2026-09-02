@@ -5,7 +5,7 @@ import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStrea
 import { createCodingAgentRuntimeHostSessionConfig } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { CODING_AGENT_SESSION_PROFILE_STATE_READ } from "@vetta/coding-agent/session-extensions";
-import { RuntimeHost } from "@vetta/runtime-core";
+import { RuntimeHost, type SessionEvent } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	createCodingAgentRuntimeComposition,
@@ -158,16 +158,18 @@ describe("Coding Agent RuntimeHost backend", () => {
 				{ sessionDir: conversationDir, scenario: "batch" },
 			),
 		);
-		const eventTypes: string[] = [];
-		const unsubscribe = runtime.subscribe(sessionId, (event) => eventTypes.push(event.type));
+		const events: SessionEvent[] = [];
+		const unsubscribe = runtime.subscribe(sessionId, (event) => events.push(event));
 
 		await runtime.prompt(sessionId, { text: "hello" });
 		unsubscribe();
 
 		expect(callCount).toBe(2);
+		const eventTypes = events.map((event) => event.type);
 		expect(eventTypes).toContain("retry.start");
 		expect(eventTypes).toContain("retry.end");
-		expect(eventTypes).not.toContain("error");
+		expect(events.some((event) => event.channel === "assistant" && event.type === "error")).toBe(true);
+		expect(events.filter((event) => event.channel !== "assistant").map((event) => event.type)).not.toContain("error");
 	});
 
 	async function temporaryDirectory(prefix: string): Promise<string> {

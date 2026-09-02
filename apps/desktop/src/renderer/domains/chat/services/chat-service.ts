@@ -1026,7 +1026,7 @@ export function handleToolStart(
 		const existing = blocks.findIndex((b) => b.type === "tool_call" && b.toolCallId === toolCallId);
 		if (existing !== -1) {
 			const block = blocks[existing] as ToolCallBlock;
-			const argsChanged = Object.keys(block.args).length === 0 && Object.keys(args).length > 0;
+			const argsChanged = Object.keys(args).length > 0 && block.args !== args;
 			const startedAtChanged = startedAt !== undefined && block.startedAt === undefined;
 			if (argsChanged || startedAtChanged) {
 				blocks[existing] = {

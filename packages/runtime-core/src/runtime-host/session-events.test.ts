@@ -1,7 +1,43 @@
+import type { AssistantMessage, AssistantMessageEvent } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import { mapRuntimeSessionObservationEvent } from "./session-events.js";
 
 describe("mapRuntimeSessionObservationEvent", () => {
+	it("preserves the original assistant protocol event without field mapping", () => {
+		const partial = {
+			role: "assistant",
+			content: [{ type: "text", text: "hel" }],
+		} as unknown as AssistantMessage;
+		const assistantEvent: AssistantMessageEvent = {
+			type: "text_delta",
+			contentIndex: 0,
+			delta: "l",
+			partial,
+		};
+
+		const event = mapRuntimeSessionObservationEvent(
+			"session-1",
+			{
+				type: "assistant.event",
+				modelCallIndex: 2,
+				event: assistantEvent,
+				source: "agent",
+			},
+			123,
+			{ turnId: "turn-7" },
+		);
+
+		expect(event).toMatchObject({
+			type: "text_delta",
+			channel: "assistant",
+			turnId: "turn-7",
+			modelCallIndex: 2,
+			timestamp: 123,
+		});
+		if (event.channel !== "assistant") throw new Error("Expected assistant event");
+		expect(event).toMatchObject(assistantEvent);
+	});
+
 	it("maps retry lifecycle without depending on a Coding Agent implementation", () => {
 		const start = mapRuntimeSessionObservationEvent("session-1", {
 			type: "retry.start",

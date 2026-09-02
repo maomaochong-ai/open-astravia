@@ -1,4 +1,5 @@
 import type { IpcRenderer } from "electron";
+import { decodeSessionEvent } from "../../shared/session-event-codec.js";
 import type { DesktopApi } from "../api.js";
 import { onIpcEvent, subscribeById } from "./helper.js";
 import { subscribeSessionSearch } from "./session-search.js";
@@ -100,7 +101,15 @@ export function createSessionApi(ipc: IpcRenderer): Pick<DesktopApi, "session"> 
 			clearQueue: (sessionId) => ipc.invoke(CHANNELS.QUEUE_CLEAR, sessionId),
 			clearTodos: (sessionId) => ipc.invoke(CHANNELS.CLEAR_TODOS, sessionId),
 			subscribe: (sessionId, handler) =>
-				subscribeById(ipc, CHANNELS.SUBSCRIBE, CHANNELS.EVENT, CHANNELS.UNSUBSCRIBE, handler, [sessionId]),
+				subscribeById(
+					ipc,
+					CHANNELS.SUBSCRIBE,
+					CHANNELS.EVENT,
+					CHANNELS.UNSUBSCRIBE,
+					handler,
+					[sessionId],
+					decodeSessionEvent,
+				),
 			onQuestionRequest: (handler) => onIpcEvent(ipc, CHANNELS.QUESTION_REQUEST, handler),
 			listPendingQuestions: () => ipc.invoke(CHANNELS.QUESTION_LIST_PENDING),
 			onQuestionResolved: (handler) => onIpcEvent(ipc, CHANNELS.QUESTION_RESOLVED, handler),

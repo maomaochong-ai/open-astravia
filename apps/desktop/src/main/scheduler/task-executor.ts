@@ -121,6 +121,36 @@ async function executeTaskInner(task: ScheduledTask, runtime: RuntimeHost, optio
 		};
 
 		unsubscribe = runtime.subscribe(sessionId, async (event: SessionEvent) => {
+			if (event.channel === "assistant") {
+				if (event.type === "text_delta") {
+					responseText += event.delta;
+					emitTaskStreamEvent({
+						taskId: task.id,
+						sessionId,
+						type: "message.delta",
+						delta: event.delta,
+					});
+				} else if (event.type === "thinking_delta") {
+					emitTaskStreamEvent({
+						taskId: task.id,
+						sessionId,
+						type: "thinking.delta",
+						delta: event.delta,
+					});
+				} else if (event.type === "toolcall_start") {
+					const call = event.partial.content[event.contentIndex];
+					if (call?.type === "toolCall") {
+						emitTaskStreamEvent({
+							taskId: task.id,
+							sessionId,
+							type: "toolcall.start",
+							toolCallId: call.id,
+							toolName: call.name,
+						});
+					}
+				}
+				return;
+			}
 			if (event.type === "message.delta") {
 				responseText += event.delta;
 				emitTaskStreamEvent({

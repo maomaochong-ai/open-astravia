@@ -23,7 +23,11 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 	}
 
 	if (event.type === "session.observation") {
-		return [mapRuntimeSessionObservationEvent(event.sessionId, event.observation, event.timestamp)];
+		return [
+			mapRuntimeSessionObservationEvent(event.sessionId, event.observation, event.timestamp, {
+				turnId: event.turnId,
+			}),
+		];
 	}
 
 	if (event.type === "message.appended" && event.message.role === "assistant") {
@@ -157,7 +161,6 @@ function assistantMessageObservations(
 	failure?: RuntimeFailure,
 ): RuntimeSessionObservationEvent[] {
 	const observations: RuntimeSessionObservationEvent[] = [
-		{ type: "message.final", message, source: "agent" },
 		{
 			type: "usage.update",
 			input: message.usage.input,

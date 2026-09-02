@@ -1,8 +1,8 @@
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { ErrorEvent } from "@vetta/runtime-core";
 
 const MAX_ERROR_MESSAGE_LENGTH = 2_048;
 
-type RuntimeSessionErrorEvent = Extract<SessionEvent, { readonly type: "error" }>;
+type RuntimeSessionErrorEvent = ErrorEvent;
 
 export interface RuntimeSessionErrorLogger {
 	error(message: string, fields: Readonly<Record<string, unknown>>): void;

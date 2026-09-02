@@ -1,6 +1,7 @@
 import type { Message } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import {
+	type ErrorEvent,
 	RUNTIME_HOST_LIFECYCLE_OBSERVATION,
 	type RunningChangedReason,
 	RuntimeHost,
@@ -22,7 +23,7 @@ describe("RuntimeHost running-changed reason", () => {
 		emit(event: SessionEvent): void;
 		reasons: Array<{ running: boolean; reason: RunningChangedReason | undefined }>;
 		observedCompactions: Array<Extract<SessionEvent, { readonly type: "compaction.start" | "compaction.end" }>>;
-		observedErrors: Array<Extract<SessionEvent, { readonly type: "error" }>>;
+		observedErrors: ErrorEvent[];
 	}> {
 		let handler: ((event: SessionEvent) => void) | undefined;
 		const backend: RuntimeHostSessionBackend = {
@@ -31,7 +32,7 @@ describe("RuntimeHost running-changed reason", () => {
 					handler = h;
 				}),
 		};
-		const observedErrors: Array<Extract<SessionEvent, { readonly type: "error" }>> = [];
+		const observedErrors: ErrorEvent[] = [];
 		const observedCompactions: Array<
 			Extract<SessionEvent, { readonly type: "compaction.start" | "compaction.end" }>
 		> = [];

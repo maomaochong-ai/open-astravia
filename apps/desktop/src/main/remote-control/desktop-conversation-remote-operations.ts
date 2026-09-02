@@ -91,9 +91,17 @@ export class DesktopConversationRemoteOperations implements DesktopRemoteOperati
 		const unsubscribe = this.conversations.subscribe?.(sessionId, (event) => {
 			const mapped = mapRuntimeEvent(event, observedText);
 			if (event.type === "message.delta") observedText += event.delta;
+			if (event.channel === "assistant" && event.type === "text_delta") {
+				observedText += event.delta;
+			}
 			if (mapped?.type === "delta") {
 				observedTextDelta = true;
-				if (event.type === "message.final") observedText += mapped.text ?? "";
+				if (
+					event.type === "message.final" ||
+					(event.channel === "assistant" && (event.type === "done" || event.type === "error"))
+				) {
+					observedText += mapped.text ?? "";
+				}
 			}
 			if (mapped) queue.push(mapped);
 		});
@@ -194,6 +202,36 @@ class AsyncPromptQueue implements AsyncIterable<DesktopRemotePromptEvent> {
 }
 
 function mapRuntimeEvent(event: SessionEvent, observedText = ""): DesktopRemotePromptEvent | undefined {
+	if (event.channel === "assistant") {
+		if (event.type === "text_delta") return { type: "delta", text: event.delta };
+		if (event.type === "thinking_delta") {
+			return { type: "state", payload: { state: "thinking", text: event.delta } };
+		}
+		if (event.type === "toolcall_start" || event.type === "toolcall_delta" || event.type === "toolcall_end") {
+			const call = event.partial.content[event.contentIndex];
+			if (call?.type !== "toolCall") return undefined;
+			return {
+				type: "tool",
+				payload: {
+					phase: event.type === "toolcall_start" ? "generating" : "arguments",
+					toolCallId: call.id,
+					toolName: call.name,
+					...(event.type === "toolcall_start" ? {} : { args: preview(call.arguments) }),
+				},
+			};
+		}
+		if (event.type === "done" || event.type === "error") {
+			const message = event.type === "done" ? event.message : event.error;
+			const text = message.content
+				.filter((part): part is { type: "text"; text: string } => part.type === "text")
+				.map((part) => part.text)
+				.join("");
+			if (!text) return undefined;
+			const missing = observedText && text.startsWith(observedText) ? text.slice(observedText.length) : text;
+			return missing ? { type: "delta", text: missing } : undefined;
+		}
+		return undefined;
+	}
 	if (event.type === "session.extension") {
 		if (isCodingAgentMcpReloadStarted(event)) return { type: "state", payload: { state: "preparing" } };
 		if (readCodingAgentMcpReloadFinished(event)) return { type: "state", payload: { state: "running" } };

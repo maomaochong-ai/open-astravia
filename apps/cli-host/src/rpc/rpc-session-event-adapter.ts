@@ -1,4 +1,5 @@
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { AssistantMessageEvent } from "@vetta/ai";
+import type { AssistantSessionEvent, SessionEvent } from "@vetta/runtime-core";
 
 /**
  * Runtime SessionEvent 到现有 RPC wire event 的窄适配器。
@@ -11,6 +12,12 @@ export class RpcSessionEventAdapter {
 	private turnIndex = 0;
 
 	map(event: SessionEvent): readonly unknown[] {
+		if (event.channel === "assistant") {
+			if (event.type === "start") return [{ type: "message_start", message: event.partial }];
+			if (event.type === "done") return [{ type: "message_end", message: event.message }];
+			if (event.type === "error") return [{ type: "message_end", message: event.error }];
+			return [{ type: "message_update", assistantMessageEvent: toAssistantMessageEvent(event) }];
+		}
 		switch (event.type) {
 			case "session.lifecycle":
 				return this.mapLifecycle(event.phase, event.timestamp);
@@ -131,4 +138,21 @@ export class RpcSessionEventAdapter {
 				return [];
 		}
 	}
+}
+
+/** RPC 的历史 wire contract 不携带 Runtime Session 元数据。 */
+function toAssistantMessageEvent(event: AssistantSessionEvent): AssistantMessageEvent {
+	const {
+		schemaVersion: _schemaVersion,
+		channel: _channel,
+		sessionId: _sessionId,
+		eventId: _eventId,
+		timestamp: _timestamp,
+		source: _source,
+		sequence: _sequence,
+		turnId: _turnId,
+		modelCallIndex: _modelCallIndex,
+		...assistantEvent
+	} = event;
+	return assistantEvent;
 }

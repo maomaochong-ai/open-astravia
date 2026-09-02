@@ -130,6 +130,37 @@ function messageText(message: Message): string {
 }
 
 function translate(event: SessionEvent): void {
+	if (event.channel === "assistant") {
+		if (event.type === "text_delta") {
+			emit({ type: "message-updated", delta: event.delta });
+			return;
+		}
+		if (event.type === "done" || event.type === "error") {
+			const message = event.type === "done" ? event.message : event.error;
+			emit({
+				type: "message-added",
+				message: {
+					id: event.eventId,
+					role: "assistant",
+					text: messageText(message),
+					timestamp: event.timestamp,
+				},
+			});
+			return;
+		}
+		if (event.type === "toolcall_delta" || event.type === "toolcall_end") {
+			const call = event.partial.content[event.contentIndex];
+			if (call?.type === "toolCall" && call.arguments && typeof call.arguments === "object") {
+				emit({
+					type: "tool-call-args",
+					toolCallId: call.id,
+					toolName: call.name,
+					args: call.arguments as Record<string, unknown>,
+				});
+			}
+		}
+		return;
+	}
 	switch (event.type) {
 		case "queue.changed":
 			// 队列镜像（ADR-0060）：插件卡片据此呈现「已排队/已发出/被移除」。

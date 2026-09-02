@@ -372,6 +372,12 @@ class AppMonitorService {
 	}
 
 	private recordSessionEvent(event: SessionEvent): void {
+		if (event.channel === "assistant") {
+			if (event.type === "done" || event.type === "error") {
+				this.recordSessionMessage(event.sessionId, event.timestamp);
+			}
+			return;
+		}
 		switch (event.type) {
 			case "session.lifecycle":
 				if (event.phase === "turn_start") this.recordSessionTurn(event.sessionId, event.timestamp);

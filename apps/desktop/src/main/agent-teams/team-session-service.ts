@@ -118,6 +118,21 @@ export class AgentTeamSessionService {
 			const unsubscribe = this.getRuntime().subscribe(runtimeState.sessionId, (event) => {
 				const active = this.activeMemberTurns.get(runtimeState.sessionId);
 				if (!active) return;
+				if (event.channel === "assistant" && event.type === "text_delta" && event.delta) {
+					active.seq += 1;
+					active.text += event.delta;
+					this.publish({
+						type: "member-delta",
+						teamSessionId: active.teamSessionId,
+						memberId: active.memberId,
+						requestId: active.requestId,
+						turnId: active.turnId,
+						seq: active.seq,
+						delta: event.delta,
+						timestamp: event.timestamp,
+					});
+					return;
+				}
 				if (event.type === "message.delta" && event.delta) {
 					active.seq += 1;
 					active.text += event.delta;

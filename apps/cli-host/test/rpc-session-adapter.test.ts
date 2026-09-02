@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import type { AssistantMessage } from "@vetta/ai";
 import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeToolRegistration,
@@ -224,6 +225,33 @@ describe("IM RPC session adapter", () => {
 });
 
 describe("RPC session event compatibility", () => {
+	test("adapts a top-level assistant channel event only at the RPC boundary", () => {
+		const adapter = new RpcSessionEventAdapter();
+		const partial = { role: "assistant", content: [] } as unknown as AssistantMessage;
+		const event = {
+			schemaVersion: 1,
+			channel: "assistant",
+			sessionId: "session-1",
+			eventId: "event-1",
+			timestamp: 100,
+			source: "agent",
+			turnId: "turn-1",
+			modelCallIndex: 0,
+			sequence: 2,
+			type: "text_delta",
+			contentIndex: 0,
+			delta: "hello",
+			partial,
+		} satisfies SessionEvent;
+
+		expect(adapter.map(event)).toEqual([
+			{
+				type: "message_update",
+				assistantMessageEvent: { type: "text_delta", contentIndex: 0, delta: "hello", partial },
+			},
+		]);
+	});
+
 	test("maps the event fields consumed by IM gateway without claiming full legacy parity", () => {
 		const adapter = new RpcSessionEventAdapter();
 		const frames = [

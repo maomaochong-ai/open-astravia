@@ -80,6 +80,19 @@ export function projectRuntimeSessionObservation(
 	switch (event.type) {
 		case "lifecycle":
 			return { ...base, phase: event.phase };
+		case "assistant.event": {
+			const assistantEvent = event.event;
+			if (
+				assistantEvent.type === "text_delta" ||
+				assistantEvent.type === "thinking_delta" ||
+				assistantEvent.type === "toolcall_delta"
+			) {
+				return { ...base, characterCount: assistantEvent.delta.length };
+			}
+			if (assistantEvent.type === "done") return { ...base, status: assistantEvent.reason, role: "assistant" };
+			if (assistantEvent.type === "error") return { ...base, status: assistantEvent.reason, role: "assistant" };
+			return { ...base, status: assistantEvent.type };
+		}
 		case "message.delta":
 		case "thinking.delta":
 			return { ...base, characterCount: event.delta.length };

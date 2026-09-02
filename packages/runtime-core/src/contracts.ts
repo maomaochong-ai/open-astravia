@@ -1,5 +1,5 @@
 import type { ThinkingLevel, ToolPhase } from "@vetta/agent-core";
-import type { CacheUsageReporting, Message, Model } from "@vetta/ai";
+import type { AssistantMessageEvent, CacheUsageReporting, Message, Model } from "@vetta/ai";
 import type { ContextCompositionReport } from "./context-composition/contracts.js";
 import type { RuntimeFailure, RuntimeFailureDetails, RuntimeFailureOrigin } from "./failure-contract.js";
 import type { SessionExtensionEndpointToken, SessionExtensionObservation } from "./session-extensions/contracts.js";
@@ -19,11 +19,31 @@ export type RuntimeEventSource = "runtime-core" | "agent" | "tool" | "extension"
 
 export interface SessionEventBase {
 	schemaVersion: 1;
+	/** Runtime-owned events use "runtime"; omitted only by legacy fixture/input events. */
+	channel?: "runtime";
 	sessionId: string;
 	eventId: string;
 	timestamp: number;
 	source: RuntimeEventSource;
+	/**
+	 * RuntimeHost 为实时与重放事件分配的会话内单调序号。订阅建立时合成的
+	 * created / initial snapshot 事件和直接使用底层 EventStream 的嵌入方不带该字段。
+	 */
+	sequence?: number;
 }
+
+/**
+ * @vetta/ai 模型协议事件及其 Session 传输元数据。
+ *
+ * AssistantMessageEvent 的 `type` 和载荷字段保持在顶层；Runtime 只补充 channel
+ * 与会话相关元数据，不再包裹或映射为第二套模型事件。
+ */
+export type AssistantSessionEvent = Omit<SessionEventBase, "channel" | "source"> & {
+	channel: "assistant";
+	source: "agent";
+	turnId?: string;
+	modelCallIndex: number;
+} & AssistantMessageEvent;
 
 export interface SessionLifecycleEvent extends SessionEventBase {
 	type: "session.lifecycle";
@@ -223,6 +243,7 @@ export interface RuntimeSandboxGrantInfo {
 export type SessionEvent =
 	| SessionLifecycleEvent
 	| SessionPathChangedEvent
+	| AssistantSessionEvent
 	| MessageDeltaEvent
 	| ThinkingDeltaEvent
 	| MessageFinalEvent

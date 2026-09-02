@@ -1,4 +1,4 @@
-import type { SessionEvent } from "@vetta/runtime-core";
+import type { ErrorEvent } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import { logRuntimeSessionError, sanitizeRuntimeErrorMessage } from "./session-error-logger.js";
 
@@ -26,7 +26,7 @@ describe("runtime session error logger", () => {
 						requestId: "request-1",
 					},
 				},
-			} satisfies Extract<SessionEvent, { readonly type: "error" }>,
+			} satisfies ErrorEvent,
 			{ error },
 		);
 

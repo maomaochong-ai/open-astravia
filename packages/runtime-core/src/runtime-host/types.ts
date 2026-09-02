@@ -4,7 +4,7 @@ import type {
 	RuntimeAgentRuntime,
 	RuntimeAgentRuntimeOptions,
 } from "../agents/index.js";
-import type { SessionEvent, SessionExecutionMode } from "../contracts.js";
+import type { ErrorEvent, SessionEvent, SessionExecutionMode } from "../contracts.js";
 import type { RuntimeObservationPort, RuntimeObservationPublisher } from "../observation/index.js";
 import type { RuntimeHostAgentBackendRetirement, RuntimeHostAgentBackendRevision } from "./agent-backend-admission.js";
 import type { RuntimeHostSessionBackend } from "./session-backend.js";
@@ -72,7 +72,7 @@ export interface RuntimeHostSessionRecord {
 }
 
 /**
- * Per-session buffer of the currently-streaming LLM call's deltas.
+ * Per-session buffer of the currently-streaming LLM call's raw events.
  *
  * The runtime persists assistant messages to the JSONL history only on
  * `message_end`. So if a renderer disconnects mid-stream and reconnects
@@ -81,16 +81,14 @@ export interface RuntimeHostSessionRecord {
  * future events. Without this buffer, all text/thinking/tool-call events
  * received before reconnection would be lost.
  *
- * Text and thinking are cleared on `message_end` because each LLM call inside
- * a multi-step turn produces its own deltas; the prior call's content is
- * already on disk via `message.final`. `isActive` flips on at `agent_start`
- * and off at `agent_end`.
+ * Events retain their original order and original AssistantMessageEvent payload.
+ * They are cleared when the corresponding assistant message is durably appended
+ * (`message.final` in the current compatibility event plane). `isActive` flips
+ * on at `agent_start` and off at `agent_end`.
  */
 export interface InFlightBuffer {
 	turnStartedAt: number;
-	text: string;
-	thinking: string;
-	toolCallStarts: Array<{ toolCallId: string; toolName: string }>;
+	events: SessionEvent[];
 	isActive: boolean;
 	terminalReason: RunningChangedReason | undefined;
 }
@@ -169,7 +167,7 @@ export interface RuntimeHostOptions {
 	 * 最终会话错误的宿主观察端口。事件已通过产品层重试包装，适合接入日志、
 	 * telemetry 等旁路；观察端抛错不会影响会话执行或事件分发。
 	 */
-	sessionErrorObserver?: (event: Extract<SessionEvent, { readonly type: "error" }>) => void;
+	sessionErrorObserver?: (event: ErrorEvent) => void;
 	/** 自动压缩生命周期的宿主观察端口；观察端抛错不会影响会话执行或事件分发。 */
 	sessionCompactionObserver?: (
 		event: Extract<SessionEvent, { readonly type: "compaction.start" | "compaction.end" }>,

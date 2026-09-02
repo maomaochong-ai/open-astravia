@@ -1,4 +1,4 @@
-import type { SessionEvent } from "../contracts.js";
+import type { ErrorEvent, SessionEvent } from "../contracts.js";
 import type { RuntimeHostQueueSidecar } from "./runtime-host-queue-sidecar.js";
 import { baseSessionEvent, lifecycleSessionEvent, mapRuntimeSessionObservationEvent } from "./session-events.js";
 import type { RuntimeSessionEventStream } from "./session-ports.js";
@@ -13,7 +13,7 @@ export type RuntimeHostSessionEventRelayFailureComponent =
 export interface RuntimeHostSessionEventRelayOptions {
 	readonly queueSidecar: RuntimeHostQueueSidecar;
 	readonly synchronizeSessionIdentity: (sessionKey: string, handle: RuntimeHostSessionRecord) => void;
-	readonly sessionErrorObserver?: (event: Extract<SessionEvent, { readonly type: "error" }>) => void;
+	readonly sessionErrorObserver?: (event: ErrorEvent) => void;
 	readonly sessionCompactionObserver?: (
 		event: Extract<SessionEvent, { readonly type: "compaction.start" | "compaction.end" }>,
 	) => void;
@@ -40,7 +40,7 @@ export class RuntimeHostSessionEventRelay {
 		string,
 		WeakMap<(event: SessionEvent) => void, string>
 	>();
-	private readonly sessionSubscriptions = new Map<string, () => void>();
+	private readonly nextSequences = new Map<string, number>();
 	private readonly runningSessionPaths = new Set<string>();
 	private readonly runningChangedHandlers = new Set<
 		(sessionPath: string, running: boolean, sessionId?: string, reason?: RunningChangedReason) => void
@@ -51,45 +51,33 @@ export class RuntimeHostSessionEventRelay {
 	attach(sessionKey: string, handle: RuntimeHostSessionRecord, eventStream: RuntimeSessionEventStream): void {
 		const buffer: InFlightBuffer = {
 			turnStartedAt: 0,
-			text: "",
-			thinking: "",
-			toolCallStarts: [],
+			events: [],
 			isActive: false,
 			terminalReason: undefined,
 		};
 		this.inFlightBuffers.set(sessionKey, buffer);
-		const unsubscribe = eventStream.subscribe((event) => {
+		const unsubscribe = eventStream.subscribe((unsequencedEvent) => {
+			const event = this.withSequence(sessionKey, unsequencedEvent);
 			this.options.synchronizeSessionIdentity(sessionKey, handle);
 			this.observeSessionError(event);
 			this.observeSessionCompaction(event);
 			if (event.type === "queue.changed") {
 				this.options.queueSidecar.persist(handle.lifecycle.sessionPath, event);
-				return;
 			}
 			if (event.type === "session.lifecycle" && event.phase === "agent_start") {
 				this.currentTurnStartedAt.set(sessionKey, event.timestamp);
 				buffer.turnStartedAt = event.timestamp;
-				buffer.text = "";
-				buffer.thinking = "";
-				buffer.toolCallStarts = [];
+				buffer.events = [];
 				buffer.isActive = true;
 				buffer.terminalReason = undefined;
 				this.markRunning(handle.lifecycle.sessionPath, true, handle.lifecycle.sessionId);
-				return;
-			}
-			if (event.type === "session.lifecycle" && event.phase === "aborted") {
+			} else if (event.type === "session.lifecycle" && event.phase === "aborted") {
 				buffer.terminalReason = "aborted";
-				return;
-			}
-			if (event.type === "error" && buffer.isActive) {
+			} else if (event.channel !== "assistant" && event.type === "error" && buffer.isActive) {
 				buffer.terminalReason = "error";
-				return;
-			}
-			if (event.type === "session.lifecycle" && event.phase === "agent_end") {
+			} else if (event.type === "session.lifecycle" && event.phase === "agent_end") {
 				this.currentTurnStartedAt.delete(sessionKey);
-				buffer.text = "";
-				buffer.thinking = "";
-				buffer.toolCallStarts = [];
+				buffer.events = [];
 				buffer.isActive = false;
 				this.markRunning(
 					handle.lifecycle.sessionPath,
@@ -98,24 +86,21 @@ export class RuntimeHostSessionEventRelay {
 					buffer.terminalReason ?? "agent_end",
 				);
 				buffer.terminalReason = undefined;
-				return;
-			}
-			if (event.type === "message.final") {
-				buffer.text = "";
-				buffer.thinking = "";
-				buffer.toolCallStarts = [];
-				if (event.message.role === "assistant") {
+			} else if (event.type === "message.final" || event.type === "usage.update") {
+				buffer.events = [];
+				if (event.type === "message.final" && event.message.role === "assistant") {
 					if (event.message.stopReason === "aborted") buffer.terminalReason = "aborted";
 					else if (event.message.stopReason === "error") buffer.terminalReason = "error";
 					else buffer.terminalReason = undefined;
 				}
-				return;
+			} else if (event.channel === "assistant" && buffer.isActive) {
+				buffer.events.push(event);
+				if (event.type === "error") buffer.terminalReason = "error";
+				else if (event.type === "done" && event.message.stopReason === "aborted") {
+					buffer.terminalReason = "aborted";
+				}
 			}
-			if (event.type === "message.delta") buffer.text += event.delta;
-			else if (event.type === "thinking.delta") buffer.thinking += event.delta;
-			else if (event.type === "toolcall.start") {
-				buffer.toolCallStarts.push({ toolCallId: event.toolCallId, toolName: event.toolName });
-			}
+			this.notifyExternalSubscribers(sessionKey, event);
 		});
 		this.inFlightUnsubscribers.set(sessionKey, unsubscribe);
 	}
@@ -146,14 +131,6 @@ export class RuntimeHostSessionEventRelay {
 		}
 		externals.add(handler);
 
-		if (!this.sessionSubscriptions.has(sessionKey)) {
-			const unsubscribeSession = handle.eventStream.subscribe((event) => {
-				this.options.synchronizeSessionIdentity(sessionKey, handle);
-				this.notifyExternalSubscribers(sessionKey, event);
-			});
-			this.sessionSubscriptions.set(sessionKey, unsubscribeSession);
-		}
-
 		return () => {
 			const subscribers = this.externalSubscribers.get(sessionKey);
 			if (!subscribers) return;
@@ -162,14 +139,13 @@ export class RuntimeHostSessionEventRelay {
 			if (subscribers.size > 0) return;
 			this.externalSubscribers.delete(sessionKey);
 			this.externalSubscriberActiveToolFingerprints.delete(sessionKey);
-			this.sessionSubscriptions.get(sessionKey)?.();
-			this.sessionSubscriptions.delete(sessionKey);
 		};
 	}
 
 	broadcastSyntheticEvent(sessionKey: string, event: SessionEvent): void {
-		this.observeSessionError(event);
-		this.notifyExternalSubscribers(sessionKey, event);
+		const sequencedEvent = this.withSequence(sessionKey, event);
+		this.observeSessionError(sequencedEvent);
+		this.notifyExternalSubscribers(sessionKey, sequencedEvent);
 	}
 
 	readCurrentTurnStartedAt(sessionKey: string): number | undefined {
@@ -193,34 +169,22 @@ export class RuntimeHostSessionEventRelay {
 		this.externalSubscribers.delete(sessionKey);
 		this.externalSubscriberActiveToolFingerprints.delete(sessionKey);
 		this.currentTurnStartedAt.delete(sessionKey);
+		this.nextSequences.delete(sessionKey);
 		this.markRunning(sessionPath, false, sessionId);
 	}
 
-	private replayInFlight(sessionKey: string, sessionId: string, handler: (event: SessionEvent) => void): void {
+	private replayInFlight(sessionKey: string, _sessionId: string, handler: (event: SessionEvent) => void): void {
 		const buffer = this.inFlightBuffers.get(sessionKey);
 		if (!buffer?.isActive) return;
-		if (buffer.thinking) {
-			this.notifyExternalSubscriber(sessionKey, handler, {
-				...baseSessionEvent(sessionId, "agent"),
-				type: "thinking.delta",
-				delta: buffer.thinking,
-			});
+		for (const event of buffer.events) {
+			this.notifyExternalSubscriber(sessionKey, handler, event);
 		}
-		if (buffer.text) {
-			this.notifyExternalSubscriber(sessionKey, handler, {
-				...baseSessionEvent(sessionId, "agent"),
-				type: "message.delta",
-				delta: buffer.text,
-			});
-		}
-		for (const toolCall of buffer.toolCallStarts) {
-			this.notifyExternalSubscriber(sessionKey, handler, {
-				...baseSessionEvent(sessionId, "agent"),
-				type: "toolcall.start",
-				toolCallId: toolCall.toolCallId,
-				toolName: toolCall.toolName,
-			});
-		}
+	}
+
+	private withSequence(sessionKey: string, event: SessionEvent): SessionEvent {
+		const sequence = this.nextSequences.get(sessionKey) ?? 1;
+		this.nextSequences.set(sessionKey, sequence + 1);
+		return { ...event, sequence };
 	}
 
 	private notifyExternalSubscribers(sessionKey: string, event: SessionEvent): void {
@@ -252,7 +216,7 @@ export class RuntimeHostSessionEventRelay {
 	}
 
 	private observeSessionError(event: SessionEvent): void {
-		if (event.type !== "error" || !this.options.sessionErrorObserver) return;
+		if (event.channel === "assistant" || event.type !== "error" || !this.options.sessionErrorObserver) return;
 		try {
 			this.options.sessionErrorObserver(event);
 		} catch (error) {
@@ -295,8 +259,6 @@ export class RuntimeHostSessionEventRelay {
 	}
 
 	private detach(sessionKey: string): void {
-		this.sessionSubscriptions.get(sessionKey)?.();
-		this.sessionSubscriptions.delete(sessionKey);
 		this.inFlightUnsubscribers.get(sessionKey)?.();
 		this.inFlightUnsubscribers.delete(sessionKey);
 	}

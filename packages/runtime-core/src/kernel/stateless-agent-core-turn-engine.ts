@@ -47,7 +47,6 @@ import type {
 import { KERNEL_ERROR_CODES, TurnExecutionError, turnProtocolError } from "./errors.js";
 import { withPromptCacheDiagnostics } from "./model-call-diagnostics.js";
 import { composeModelCallSystemPrompt, resolveModelCallFrame } from "./model-call-frame.js";
-import { settledToolArgs } from "./streaming-tool-args.js";
 import { RuntimeToolExecutionError } from "./tool-execution-error.js";
 
 const DEFAULT_MAX_MODEL_CALLS = 100;
@@ -383,10 +382,9 @@ class AgentEventProjector {
 	private currentAssistant?: AssistantMessage;
 	private toolResults: Message[] = [];
 	private turnStarted = false;
-	/** toolCallId → 已经播报过的参数键数，见 {@link projectToolCallArgs}。逐轮清空。 */
-	private readonly emittedArgKeys = new Map<string, number>();
 	private assistantMessageStarted = false;
 	private terminalAssistantError = false;
+	private modelCallIndex = -1;
 	private readonly runMessages: RuntimeMessageEnvelope[] = [];
 
 	constructor(
@@ -406,6 +404,7 @@ class AgentEventProjector {
 			];
 		}
 		if (event.type === "model_call_start") {
+			this.modelCallIndex += 1;
 			this.assistantMessageStarted = false;
 			this.terminalAssistantError = false;
 			return this.startNextTurnIfNeeded();
@@ -596,12 +595,24 @@ class AgentEventProjector {
 	}
 
 	private projectModelEvent(event: AssistantMessageEvent): TurnEngineEvent[] {
+		const rawObservation: TurnEngineEvent = {
+			type: "observation",
+			observation: {
+				type: "assistant.event",
+				modelCallIndex: Math.max(this.modelCallIndex, 0),
+				event,
+				source: "agent",
+			},
+		};
 		if (event.type === "start") {
 			this.assistantMessageStarted = true;
 			const envelope = toRuntimeMessageEnvelope(event.partial, this.identities);
-			return envelope
-				? [{ type: "execution_observation", observation: { type: "message.start", message: envelope } }]
-				: [];
+			return [
+				...(envelope
+					? [{ type: "execution_observation", observation: { type: "message.start", message: envelope } } as const]
+					: []),
+				rawObservation,
+			];
 		}
 		if (
 			event.type === "text_start" ||
@@ -623,54 +634,10 @@ class AgentEventProjector {
 						},
 					]
 				: [];
-			if (event.type === "text_delta") {
-				projected.push({
-					type: "observation",
-					observation: { type: "message.delta", delta: event.delta, source: "agent" },
-				});
-			} else if (event.type === "thinking_delta") {
-				projected.push({
-					type: "observation",
-					observation: { type: "thinking.delta", delta: event.delta, source: "agent" },
-				});
-			} else if (event.type === "toolcall_start") {
-				const call = event.partial.content[event.contentIndex];
-				if (call?.type === "toolCall") {
-					projected.push({
-						type: "observation",
-						observation: {
-							type: "toolcall.start",
-							toolCallId: call.id,
-							toolName: call.name,
-							source: "agent",
-						},
-					});
-				}
-			} else if (event.type === "toolcall_delta") {
-				const call = event.partial.content[event.contentIndex];
-				if (call?.type === "toolCall") {
-					const observation = this.projectToolCallArgs(call.id, call.name, call.arguments);
-					if (observation) projected.push(observation);
-				}
-			}
+			projected.push(rawObservation);
 			return projected;
 		}
-		return [];
-	}
-
-	/** 流式参数每多解析出一个值已完整的键就播报一次；节流规则见 settledToolArgs。 */
-	private projectToolCallArgs(
-		toolCallId: string,
-		toolName: string,
-		args: unknown,
-	): Extract<TurnEngineEvent, { type: "observation" }> | null {
-		const settled = settledToolArgs(args, this.emittedArgKeys.get(toolCallId) ?? 0);
-		if (!settled) return null;
-		this.emittedArgKeys.set(toolCallId, settled.keyCount);
-		return {
-			type: "observation",
-			observation: { type: "toolcall.args", toolCallId, toolName, args: settled.args, source: "agent" },
-		};
+		return [rawObservation];
 	}
 
 	private startNextTurnIfNeeded(): TurnEngineEvent[] {
@@ -696,7 +663,6 @@ class AgentEventProjector {
 		this.toolResults = [];
 		this.turnStarted = false;
 		// 这一轮的调用都已收口，键数记录不再有用；不清就是一条按会话时长增长的泄漏。
-		this.emittedArgKeys.clear();
 		return [
 			{
 				type: "execution_observation",

@@ -426,7 +426,10 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				if (petBubble?.body) hasFinalPetBody = true;
 				const sr = (ev.message as unknown as { stopReason?: unknown }).stopReason;
 				if (typeof sr === "string") lastStopReason = sr;
-			} else if (ev.type === "error") {
+			} else if (ev.channel === "assistant" && (ev.type === "done" || ev.type === "error")) {
+				if (petBubble?.body) hasFinalPetBody = true;
+				lastStopReason = ev.type === "done" ? ev.message.stopReason : "error";
+			} else if (ev.channel !== "assistant" && ev.type === "error") {
 				lastStopReason = "error";
 			} else if (ev.type === "session.lifecycle") {
 				if (ev.phase === "agent_start") {
@@ -1436,13 +1439,21 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				if (runtimeEvent.type === "session.lifecycle" && runtimeEvent.phase === "turn_start") {
 					turnStartMap.set(sessionId, Date.now());
 				}
-				if (runtimeEvent.type === "message.final" && readConfigSync().debugMode) {
+				const assistantMessage =
+					runtimeEvent.type === "message.final"
+						? runtimeEvent.message
+						: runtimeEvent.channel === "assistant" && runtimeEvent.type === "done"
+							? runtimeEvent.message
+							: runtimeEvent.channel === "assistant" && runtimeEvent.type === "error"
+								? runtimeEvent.error
+								: undefined;
+				if (assistantMessage && readConfigSync().debugMode) {
 					const cwd = sessionCwdMap.get(sessionId);
 					if (cwd) {
 						const projectName = basename(cwd);
 						const seq = (debugSeqMap.get(sessionId) ?? 0) + 1;
 						debugSeqMap.set(sessionId, seq);
-						const msg = runtimeEvent.message as unknown as Record<string, unknown>;
+						const msg = assistantMessage as unknown as Record<string, unknown>;
 						const usage = (msg.usage ?? {}) as DebugRequestData["usage"];
 						const turnStart = turnStartMap.get(sessionId) ?? Date.now();
 						const now = Date.now();
@@ -1483,6 +1494,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		if (backgroundTasks.length > 0 && !webContents.isDestroyed()) {
 			webContents.send(CHANNELS.EVENT, subscriptionId, {
 				schemaVersion: 1,
+				channel: "runtime",
 				sessionId,
 				eventId: randomUUID(),
 				timestamp: Date.now(),
@@ -1497,6 +1509,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			try {
 				webContents.send(CHANNELS.EVENT, subscriptionId, {
 					schemaVersion: 1,
+					channel: "runtime",
 					sessionId,
 					eventId: randomUUID(),
 					timestamp: Date.now(),
@@ -1513,6 +1526,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		if (subagents.length > 0 && !webContents.isDestroyed()) {
 			webContents.send(CHANNELS.EVENT, subscriptionId, {
 				schemaVersion: 1,
+				channel: "runtime",
 				sessionId,
 				eventId: randomUUID(),
 				timestamp: Date.now(),

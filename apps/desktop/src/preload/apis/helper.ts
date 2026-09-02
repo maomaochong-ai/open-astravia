@@ -21,6 +21,7 @@ export async function subscribeById<T>(
 	unsubscribeChannel: string,
 	handler: (data: T) => void,
 	args: unknown[],
+	decode: (data: unknown) => T = (data) => data as T,
 ): Promise<() => void> {
 	let subscriptionId: string | undefined;
 	const buffered: Array<{ readonly incomingId: string; readonly data: unknown }> = [];
@@ -29,7 +30,7 @@ export async function subscribeById<T>(
 			buffered.push({ incomingId, data });
 			return;
 		}
-		if (incomingId === subscriptionId) handler(data as T);
+		if (incomingId === subscriptionId) handler(decode(data));
 	};
 	ipc.on(eventChannel, listener);
 	let initial: T | undefined;
@@ -44,9 +45,9 @@ export async function subscribeById<T>(
 		ipc.removeListener(eventChannel, listener);
 		throw error;
 	}
-	if (initial !== undefined) handler(initial);
+	if (initial !== undefined) handler(decode(initial));
 	for (const event of buffered) {
-		if (event.incomingId === subscriptionId) handler(event.data as T);
+		if (event.incomingId === subscriptionId) handler(decode(event.data));
 	}
 	buffered.length = 0;
 	return () => {

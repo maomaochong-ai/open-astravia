@@ -2,6 +2,8 @@
 
 ### Added
 
+- Desktop 会话流改为直接校验和投影 Runtime 的原始 Assistant 事件；文本、思考与工具生成按 wire 顺序批处理，
+  重连使用宿主 sequence 去重，不再因分类缓冲而重排内容。
 - 新增系统插件 **iOS 模拟器**：活动面板按 cwd 在 macOS 的 Xcode / SwiftPM 工程中上栏，内嵌 baguette 自带的模拟器
   控制台。面板直接进入某一台设备的控制台而不是设备列表，省掉「先选设备再点 Stream」这一步；
   默认沿用已启动的设备、其次选 iPhone 17 Pro，未启动时替用户启动；默认设备可在配置页指定。控制台内的

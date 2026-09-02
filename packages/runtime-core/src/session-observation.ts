@@ -1,5 +1,5 @@
 import type { ToolPhase } from "@vetta/agent-core";
-import type { CacheUsageReporting, Message } from "@vetta/ai";
+import type { AssistantMessageEvent, CacheUsageReporting, Message } from "@vetta/ai";
 import type { RuntimeEventSource, SessionError } from "./contracts.js";
 import type { RuntimeFailure } from "./failure-contract.js";
 import type { SessionExtensionObservation } from "./session-extensions/contracts.js";
@@ -27,6 +27,11 @@ interface RuntimeSessionObservationBase {
 export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 	(
 		| { readonly type: "lifecycle"; readonly phase: RuntimeSessionLifecyclePhase }
+		| {
+				readonly type: "assistant.event";
+				readonly modelCallIndex: number;
+				readonly event: AssistantMessageEvent;
+		  }
 		| { readonly type: "message.delta"; readonly delta: string }
 		| { readonly type: "thinking.delta"; readonly delta: string }
 		| { readonly type: "message.final"; readonly message: Message }

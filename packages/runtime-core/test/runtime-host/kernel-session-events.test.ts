@@ -50,7 +50,7 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 		});
 	});
 
-	it("maps persisted assistant messages to final and usage events", () => {
+	it("keeps persisted assistant messages off the raw stream and publishes usage separately", () => {
 		const events = mapKernelEventToSessionEvents({
 			type: "message.appended",
 			sessionId: "session-1",
@@ -59,8 +59,9 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 			timestamp: 123,
 		});
 
-		expect(events.map((event) => event.type)).toEqual(["message.final", "usage.update"]);
-		expect(payload(events[1])).toEqual({
+		expect(events.map((event) => event.type)).toEqual(["usage.update"]);
+		expect(payload(events[0])).toEqual({
+			channel: "runtime",
 			source: "agent",
 			type: "usage.update",
 			input: 10,
@@ -76,17 +77,17 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 		});
 	});
 
-	it("maps assistant provider errors and aborts with legacy-compatible semantics", () => {
+	it("maps durable assistant provider errors and aborts without synthesizing assistant protocol events", () => {
 		const failed = mapKernelEventToSessionEvents(messageEvent(assistantMessage("error")));
 		const aborted = mapKernelEventToSessionEvents(messageEvent(assistantMessage("aborted")));
 
-		expect(failed.map((event) => event.type)).toEqual(["message.final", "usage.update", "error"]);
-		expect(payload(failed[2])).toMatchObject({
+		expect(failed.map((event) => event.type)).toEqual(["usage.update", "error"]);
+		expect(payload(failed[1])).toMatchObject({
 			turnId: "turn-1",
 			error: { message: "provider failed", retryable: false, origin: "provider" },
 		});
-		expect(aborted.map((event) => event.type)).toEqual(["message.final", "usage.update", "session.lifecycle"]);
-		expect(payload(aborted[2])).toMatchObject({ phase: "aborted", source: "runtime-core" });
+		expect(aborted.map((event) => event.type)).toEqual(["usage.update", "session.lifecycle"]);
+		expect(payload(aborted[1])).toMatchObject({ phase: "aborted", source: "runtime-core" });
 	});
 
 	it("maps cancellation, failure and compaction terminal events", () => {

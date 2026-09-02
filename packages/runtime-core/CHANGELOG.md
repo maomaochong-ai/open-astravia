@@ -13,12 +13,18 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Changed
 
+- **破坏性变更**：标准 Kernel Session 流改为在 `channel: "assistant"` 下顶层无损传输
+  `@vetta/ai` 的 `AssistantMessageEvent`，不包进 `assistant.event.event`，也不再生产压平的
+  message/thinking/toolcall/final 模型事件；
+  RuntimeHost 按原顺序重放并附加单调 sequence。旧类型仅保留为迁移期兼容输入。
 - 通用 `SubagentInfo` 不再声明 Coding Agent Todo 进度；产品快照通过对应 Session Extension 合同扩展。
 - **破坏性变更**：Runtime Core 不再声明 Question、Confirmation、Host Interaction 或 Plugin 产品协议；
   Plugin 合同迁至 `@vetta/coding-agent/plugin-runtime`，用户交互由产品扩展与最终宿主组合。
 
 ### Added
 
+- 新增 `RuntimeHost.createConversation()`、scoped Session 字符串 prompt 与 `stream()` 异步事件流，
+  自动按 subscribe-before-prompt 顺序接线并负责退订。
 - 新增可运行、无需真实 Provider 的多主 Agent 示例及功能测试，覆盖平级 Agent 隔离、Definition revision 固定、
   新 Instance 切换、在途 Turn 稳定性与显式 Session rollout。
 

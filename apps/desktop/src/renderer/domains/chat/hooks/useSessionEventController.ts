@@ -40,18 +40,17 @@ import {
 	appendThinkingDelta,
 	finalizeMessage,
 	finishAssistantTurn,
-	fullHistoryToChat,
 	getActiveAssistantTurnStartedAt,
 	handleToolEnd,
 	handleToolPhase,
 	handleToolStart,
 	nextId,
-	resetStreamState,
 	startAssistantTurn,
 	toChatErrorDetails,
 	turnStatsCache,
 } from "../services/chat-service";
 import { writeCachedContextComposition } from "../services/context-composition-cache";
+import { ConversationProjection } from "../services/conversation-projection";
 import {
 	reconcileOptimisticUserMessages,
 	rememberOptimisticUserMessage,
@@ -96,6 +95,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 	const pendingThinkingDeltaRef = useRef("");
 	const deltaTimerRef = useRef<number | null>(null);
 	const pendingDeltaSessionRef = useRef<string | null>(null);
+	const conversationProjectionRef = useRef(new ConversationProjection());
 
 	const markPredicting = useCallback(
 		(runtimeId: string, predicting: boolean) => {
@@ -123,6 +123,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 		pendingTextDeltaRef.current = "";
 		pendingThinkingDeltaRef.current = "";
 		pendingDeltaSessionRef.current = null;
+		conversationProjectionRef.current.reset();
 	}, []);
 
 	const flushDeltas = useCallback(() => {
@@ -133,13 +134,15 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 		const textDelta = pendingTextDeltaRef.current;
 		const thinkingDelta = pendingThinkingDeltaRef.current;
 		const owningSession = pendingDeltaSessionRef.current;
+		const hasAssistantEvents = conversationProjectionRef.current.hasPendingEvents();
 		pendingTextDeltaRef.current = "";
 		pendingThinkingDeltaRef.current = "";
 		pendingDeltaSessionRef.current = null;
 
 		if (owningSession && activeSessionRef.current?.runtimeId !== owningSession) return;
-		if (textDelta || thinkingDelta) {
+		if (hasAssistantEvents || textDelta || thinkingDelta) {
 			setChatMessages((previous) => {
+				if (hasAssistantEvents) return conversationProjectionRef.current.flush(previous);
 				let next = previous;
 				if (thinkingDelta) next = appendThinkingDelta(next, thinkingDelta);
 				if (textDelta) next = appendTextDelta(next, textDelta);
@@ -182,7 +185,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 					// 否则后续 delta 仍按 draftId 续写进用户气泡**之前**的旧回复气泡里，
 					// 第二条回复会显示在它自己的用户消息上方（ADR-0060）。
 					flushDeltas();
-					resetStreamState();
+					conversationProjectionRef.current.reset();
 				}
 				for (const consumed of consumedEntries) {
 					const consumedMsg: ChatMessage = {
@@ -207,7 +210,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 					bumpSuggestionToken(sessionId);
 					// 快照本轮起始时的队列派发序号，供本轮 agent_end 判定重拉是否已过期。
 					turnStartDispatchSeqRef.current.set(sessionId, getQueuedDispatchSeq(sessionId));
-					resetStreamState();
+					conversationProjectionRef.current.reset();
 					// agent_start 就建立真实 assistant 草稿：慢模型首包到达前也有稳定消息身份与
 					// 绝对 startedAt。无用户消息介入的唤醒仍复用末尾 assistant 气泡。
 					setChatMessages((prev) => startAssistantTurn(prev, event.timestamp));
@@ -220,7 +223,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 					const endedAt = event.timestamp;
 					const startedAt = getActiveAssistantTurnStartedAt(getDefaultStore().get(chatMessagesAtom));
 					const elapsed = startedAt ? (endedAt - startedAt) / 1000 : 0;
-					resetStreamState();
+					conversationProjectionRef.current.reset();
 					setActiveSessionStreaming(false);
 					// 重试期也会走到这里（agent_end 先于 retry.start），随后的
 					// retry.start 会把进度重新点亮；真正结束时则不会，避免残留。
@@ -240,7 +243,10 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 							if (getQueuedDispatchSeq(sessionId) !== (turnStartDispatchSeqRef.current.get(sessionId) ?? 0)) {
 								return;
 							}
-							const mapped = reconcileOptimisticUserMessages(sessionId, fullHistoryToChat(history));
+							const mapped = reconcileOptimisticUserMessages(
+								sessionId,
+								conversationProjectionRef.current.projectHistory(history),
+							);
 							if (elapsed > 0) {
 								for (let i = mapped.length - 1; i >= 0; i--) {
 									if (mapped[i].role === "assistant") {
@@ -308,8 +314,23 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 				return;
 			}
 
+			// ── Raw assistant protocol stream ──
+			// AssistantMessageEvent stays intact across Runtime/IPC. The projection
+			// batches an ordered event array instead of merging by content type.
+			if (event.channel === "assistant") {
+				conversationProjectionRef.current.enqueue(event);
+				pendingDeltaSessionRef.current = sessionId;
+				if (event.type === "text_delta" || event.type === "thinking_delta" || event.type === "toolcall_delta") {
+					scheduleDeltaFlush();
+				} else {
+					flushDeltas();
+				}
+				return;
+			}
+
 			// ── Thinking delta (streaming thinking text) ──
 			if (event.type === "thinking.delta") {
+				if (conversationProjectionRef.current.hasRawAssistantStream()) return;
 				pendingThinkingDeltaRef.current += event.delta;
 				pendingDeltaSessionRef.current = sessionId;
 				scheduleDeltaFlush();
@@ -318,6 +339,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 
 			// ── Text delta (streaming assistant text) ──
 			if (event.type === "message.delta") {
+				if (conversationProjectionRef.current.hasRawAssistantStream()) return;
 				pendingTextDeltaRef.current += event.delta;
 				pendingDeltaSessionRef.current = sessionId;
 				scheduleDeltaFlush();
@@ -326,6 +348,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 
 			// ── Tool call generating (model started generating a tool call) ──
 			if (event.type === "toolcall.start") {
+				if (conversationProjectionRef.current.hasRawAssistantStream()) return;
 				// Flush pending text/thinking deltas FIRST so the tool block lands
 				// after any text that streamed before it (otherwise batched deltas
 				// get appended on the wrong side of the tool block).
@@ -336,6 +359,7 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 
 			// ── Message final (full assistant message — text, thinking, tool calls) ──
 			if (event.type === "message.final" && event.message.role === "assistant") {
+				if (conversationProjectionRef.current.hasRawAssistantStream()) return;
 				flushDeltas();
 				const { content, usage } = event.message;
 				setChatMessages((prev) => finalizeMessage(prev, content, usage));

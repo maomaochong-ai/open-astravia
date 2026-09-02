@@ -395,12 +395,7 @@ describe("KernelRuntimeSessionBackend", () => {
 				queueing: false,
 			},
 		]);
-		expect(events.map((event) => event.type)).toEqual([
-			"session.lifecycle",
-			"message.final",
-			"usage.update",
-			"session.lifecycle",
-		]);
+		expect(events.map((event) => event.type)).toEqual(["session.lifecycle", "usage.update", "session.lifecycle"]);
 		expect(await session.getState()).toMatchObject({
 			sessionId: "session-1",
 			state: "idle",
@@ -503,12 +498,7 @@ describe("KernelRuntimeSessionBackend", () => {
 			isStreaming: false,
 			messageCount: 2,
 		});
-		expect(events.map((event) => event.type)).toEqual([
-			"session.lifecycle",
-			"message.final",
-			"usage.update",
-			"session.lifecycle",
-		]);
+		expect(events.map((event) => event.type)).toEqual(["session.lifecycle", "usage.update", "session.lifecycle"]);
 		expect(assembly.historyReader.readHistory()).toMatchObject([
 			{ type: "message", entryId: "event-2", parentId: null, message: { role: "user" } },
 			{ type: "message", entryId: "event-3", parentId: "event-2", message: { role: "assistant" } },

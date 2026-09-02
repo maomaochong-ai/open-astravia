@@ -45,9 +45,67 @@ export class RuntimeHostSession implements RuntimeActiveSession {
 		return this.host.getSessionDirectory(this.sessionId);
 	}
 
-	async prompt(request: PromptRequest): Promise<RuntimeTurnPromptOutcome & { readonly sessionId: string }> {
-		const outcome = await this.host.prompt(this.sessionId, request);
+	async prompt(request: string | PromptRequest): Promise<RuntimeTurnPromptOutcome & { readonly sessionId: string }> {
+		const outcome = await this.host.prompt(this.sessionId, typeof request === "string" ? { text: request } : request);
 		return { ...outcome, sessionId: this.sessionId };
+	}
+
+	/**
+	 * 开箱即用的单轮事件流：先订阅再发 prompt，调用方无需自行处理订阅竞态。
+	 * `channel === "assistant"` 时，顶层 `type` 与载荷就是 AssistantMessageEvent。
+	 */
+	async *stream(
+		request: string | PromptRequest,
+	): AsyncGenerator<SessionEvent, RuntimeTurnPromptOutcome & { readonly sessionId: string }> {
+		const events: SessionEvent[] = [];
+		let wake: (() => void) | undefined;
+		let terminal = false;
+		let completed = false;
+		let failure: unknown;
+		let outcome: (RuntimeTurnPromptOutcome & { readonly sessionId: string }) | undefined;
+		const unsubscribe = this.subscribe((event) => {
+			events.push(event);
+			if (event.type === "session.lifecycle" && event.phase === "agent_end") terminal = true;
+			wake?.();
+			wake = undefined;
+		});
+		void this.prompt(request).then(
+			(result) => {
+				outcome = result;
+				completed = true;
+				wake?.();
+				wake = undefined;
+			},
+			(error: unknown) => {
+				failure = error;
+				completed = true;
+				wake?.();
+				wake = undefined;
+			},
+		);
+		try {
+			while (true) {
+				while (events.length > 0) {
+					const event = events.shift();
+					if (event) yield event;
+				}
+				if (terminal || completed) break;
+				await new Promise<void>((resolve) => {
+					wake = resolve;
+				});
+			}
+			if (failure !== undefined) throw failure;
+			if (!outcome) {
+				await new Promise<void>((resolve) => {
+					wake = resolve;
+				});
+				if (failure !== undefined) throw failure;
+			}
+			if (!outcome) throw new Error("Prompt stream ended without an outcome");
+			return outcome;
+		} finally {
+			unsubscribe();
+		}
 	}
 
 	continue(): Promise<void> {

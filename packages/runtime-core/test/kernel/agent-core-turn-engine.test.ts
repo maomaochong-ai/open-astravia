@@ -292,7 +292,17 @@ describe("AgentCoreTurnEngine", () => {
 				.map((event) =>
 					event.observation.type === "lifecycle" ? event.observation.phase : event.observation.type,
 				),
-		).toEqual(["agent_start", "turn_start", "turn_end", "agent_end"]);
+		).toEqual(["agent_start", "turn_start", "assistant.event", "turn_end", "agent_end"]);
+		expect(
+			events.find(
+				(event): event is Extract<TurnEngineEvent, { type: "observation" }> =>
+					event.type === "observation" && event.observation.type === "assistant.event",
+			)?.observation,
+		).toMatchObject({
+			type: "assistant.event",
+			modelCallIndex: 0,
+			event: { type: "done", reason: "stop", message: { role: "assistant" } },
+		});
 		expect(
 			events
 				.filter(
@@ -446,12 +456,14 @@ describe("AgentCoreTurnEngine", () => {
 		).toEqual([
 			"lifecycle",
 			"lifecycle",
+			"assistant.event",
 			"tool.start",
 			"tool.update",
 			"tool.phase",
 			"tool.end",
 			"lifecycle",
 			"lifecycle",
+			"assistant.event",
 			"lifecycle",
 			"lifecycle",
 		]);

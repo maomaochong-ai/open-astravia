@@ -105,9 +105,9 @@ function normalizeBodyText(value: string, maxLength = MAX_BODY_TEXT_LENGTH): str
 	return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength - 1)}…`;
 }
 
-function getAssistantBody(event: Extract<SessionEvent, { type: "message.final" }>): string | undefined {
-	if (event.message.role !== "assistant" || !Array.isArray(event.message.content)) return undefined;
-	const text = event.message.content
+function getAssistantBody(message: Extract<SessionEvent, { type: "message.final" }>["message"]): string | undefined {
+	if (message.role !== "assistant" || !Array.isArray(message.content)) return undefined;
+	const text = message.content
 		.filter((part): part is { type: "text"; text: string } => {
 			const record = getRecord(part);
 			return record?.type === "text" && typeof record.text === "string";
@@ -204,8 +204,16 @@ const sessionPetActionRules: readonly SessionPetActionRule[] = [
 	{
 		name: "assistant-final-body",
 		resolve: (event) => {
-			if (event.type !== "message.final") return null;
-			const body = getAssistantBody(event);
+			const message =
+				event.type === "message.final"
+					? event.message
+					: event.channel === "assistant" && event.type === "done"
+						? event.message
+						: event.channel === "assistant" && event.type === "error"
+							? event.error
+							: undefined;
+			if (!message) return null;
+			const body = getAssistantBody(message);
 			return body
 				? {
 						bubble: {
@@ -273,6 +281,7 @@ const sessionPetActionRules: readonly SessionPetActionRule[] = [
 	{
 		name: "event-type",
 		resolve: (event) => {
+			if (event.channel === "assistant") return null;
 			const intent = EVENT_TYPE_INTENTS[event.type];
 			if (event.type === "error" && intent?.bubble) {
 				return { ...intent, bubble: { ...intent.bubble, body: normalizeBodyText(event.error.message) } };

@@ -9,6 +9,7 @@ export function baseSessionEvent(
 ): SessionEventBase {
 	return {
 		schemaVersion: 1,
+		channel: "runtime",
 		sessionId,
 		eventId: createRuntimeId(),
 		timestamp,
@@ -34,11 +35,21 @@ export function mapRuntimeSessionObservationEvent(
 	sessionId: string,
 	event: RuntimeSessionObservationEvent,
 	timestamp = event.timestamp,
+	context?: { readonly turnId?: string },
 ): SessionEvent {
 	const base = baseSessionEvent(sessionId, event.source, timestamp);
 	switch (event.type) {
 		case "lifecycle":
 			return { ...base, type: "session.lifecycle", phase: event.phase };
+		case "assistant.event":
+			return {
+				...event.event,
+				...base,
+				channel: "assistant",
+				source: "agent",
+				...(context?.turnId ? { turnId: context.turnId } : {}),
+				modelCallIndex: event.modelCallIndex,
+			};
 		case "message.delta":
 			return { ...base, type: event.type, delta: event.delta };
 		case "thinking.delta":

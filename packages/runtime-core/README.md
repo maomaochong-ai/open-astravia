@@ -129,6 +129,27 @@ fields are quarantined in the Session request factory instead of being spread ac
   `RuntimeCapabilityDefinition`, `FeatureCompiler`, `RuntimeCapabilityComposition`,
   `AtomicRuntimeSnapshotProvider`, `AgentCoreTurnEngine`, `createDefaultRuntimeCapabilityDefinition()` and Port contracts
 
+## Minimal streaming API
+
+The scoped API subscribes before prompting, so callers do not need to coordinate
+`createSession`, `subscribe`, `prompt`, and teardown themselves:
+
+```ts
+const conversation = await runtime.createConversation({ cwd });
+
+for await (const event of conversation.stream("Summarize this project")) {
+  if (event.channel !== "assistant") continue;
+
+  // The normalized @vetta/ai AssistantMessageEvent stays at the top level.
+  // Runtime adds metadata but does not remap its type or payload fields.
+  if (event.type === "text_delta") process.stdout.write(event.delta);
+}
+```
+
+Session lifecycle, queue, tool execution, usage, extensions, and Runtime errors
+remain separate `SessionEvent` variants. Live and replayed stream events carry a
+session-local `sequence`; subscription setup snapshots do not.
+
 ## Multi-Agent Definition Example
 
 每个 Definition 是平级主 Agent，不是由某个主 Agent 派发的子任务。代码、配置文件、Plugin、数据库或远端控制面

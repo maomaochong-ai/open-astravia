@@ -268,6 +268,12 @@ export class RuntimeHost implements SessionFacade {
 		return this.sessionLifecycle.createSession(config);
 	}
 
+	/** 创建 Session 并直接返回 scoped API，适合最小化 SDK 接入样板代码。 */
+	async createConversation(config: SessionConfig = {}): Promise<RuntimeHostSession> {
+		const { sessionId } = await this.createSession(config);
+		return this.getSessionView(sessionId);
+	}
+
 	async setExecutionMode(sessionId: string, mode: SessionExecutionMode): Promise<void> {
 		await this.sessionOperations.setExecutionMode(sessionId, mode);
 	}
